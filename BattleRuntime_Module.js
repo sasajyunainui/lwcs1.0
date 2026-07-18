@@ -4700,6 +4700,7 @@
     const previewDeclaration = {
       ...cloneValue(declaration),
       actionId: `${actionEvent.actionId}:effect:${effectIndex}`,
+      __includeGrantedEffects: false,
       resourceCosts: {},
       skill: {
         ...(cloneValue(declaration?.skill || {})),
@@ -4741,9 +4742,6 @@
           condition.__equipmentName = String(action?.actionName || declaration?.skill?.name || declaration?.skill?.魂技名 || '装备').trim();
         });
       }
-    });
-    Object.entries(preview.changedRules || {}).forEach(([key, value]) => {
-      combatData[key] = cloneValue(value);
     });
     const ringBurst = String(effect?.原型 || '').trim() === '炸环'
       ? commitRingBurst(actor, declaration, effect, combatData)
@@ -5219,7 +5217,7 @@
       : declaration?.skill?.属性加成 && typeof declaration.skill.属性加成 === 'object'
         ? declaration.skill.属性加成
         : {};
-    const effects = actionKind === 'BASIC_ATTACK'
+    const baseEffects = actionKind === 'BASIC_ATTACK'
       ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }]
       : actionKind === 'EQUIP' && !explicitEffects.length
         ? Object.entries(equipmentModifiers).map(([attribute, value]) => ({
@@ -5231,6 +5229,11 @@
             持续回合: 99,
           }))
         : explicitEffects;
+    const grantedEffects = previewRuntime.pendingGrantedEffects(actor);
+    const effects = [
+      ...grantedEffects.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
+      ...baseEffects,
+    ];
     if (!effects.length && actionKind !== 'EQUIP') throw new Error('battle_structured_effects_missing');
     if (actionKind === 'USE_ITEM') {
       const inventory = findStructuredInventoryEntry(actor, declaration);
@@ -5271,10 +5274,41 @@
         },
       })); 
     }
+    if (grantedEffects.length && actor?.状态效果 && typeof actor.状态效果 === 'object') {
+      new Set(grantedEffects.map(entry => entry.stateKey)).forEach(key => {
+        delete actor.状态效果[key];
+      });
+    }
     const primaryResolutionByTarget = new Map();
+    let actionDamageMultiplier = 1;
     effects.forEach((effect, effectIndex) => {
       if (!previewRuntime.effectConditionEnabled(effect, combatData, actor, primaryTarget)) return;
       const prototype = String(effect?.原型 || '').trim();
+      if (prototype !== '机制抹消' && previewRuntime.actorSuppressesEffect(actor, effect)) {
+        facts.push(writeLedgerEvent(combatData, {
+          eventKind: 'blocked_settlement',
+          round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(actor),
+          actorName: previewRuntime.unitName(actor),
+          targetId: previewRuntime.unitId(actor),
+          targetName: previewRuntime.unitName(actor),
+          actionName,
+          actionType: actionKind,
+          actorControl,
+          actionRole,
+          actionId: actionEvent.actionId,
+          sourceActionId: actionEvent.actionId,
+          parentNodeId: actionEvent.chainNodeId || '',
+          sourceNodeId: actionEvent.chainNodeId || '',
+          result: 'suppressed',
+          resultState: 'NO_EFFECT',
+          primaryOutcome: 'mechanism_suppressed',
+          effectPrototype: prototype,
+          ruleCode: 'MECHANISM_SUPPRESSED',
+          meta: { source: 'structured_runtime', effectIndex, prototype },
+        }));
+        return;
+      }
       if (!prototype && Array.isArray(effect?.使用效果)) {
         const createdName = String(
           declaration?.skill?.生成物?.名称 ||
@@ -5356,6 +5390,9 @@
           effectIndex,
         );
         facts.push(...committedFacts);
+        if (prototype === '炸环') {
+          actionDamageMultiplier *= Math.max(0, Number(effect?.强化倍率 || 1));
+        }
         if (effectIndex === 0) {
           resolvedTargets.forEach(target => {
             const targetId = previewRuntime.unitId(target);
@@ -5386,7 +5423,10 @@
         const reaction = input?.reactionByTarget?.[previewRuntime.unitId(target)] || null;
         if (prototype === '伤害结算') {
           const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 || effect?.段数 || 1)) || 1);
-          const totalDamage = Math.max(0, previewRuntime.calculateBaseDamage(effect, actor, target));
+          const totalDamage = Math.max(
+            0,
+            previewRuntime.calculateBaseDamage(effect, actor, target) * actionDamageMultiplier,
+          );
           const segmentDamage = totalDamage / segments;
           const hitProbability = Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, effect)));
           const damageTypeText = String(effect?.伤害类型 || '').trim();
@@ -8520,7 +8560,14 @@
       const summaryNames = new Set((Array.isArray(summaries) ? summaries : []).map(unit => String(unit?.name || '').trim()).filter(Boolean));
       const recentDecision = [...(Array.isArray(input?.decisionTrace) ? input.decisionTrace : [])].reverse().find(item => summaryNames.has(String(item?.actorId || item?.actor || item?.行动者 || '').trim()));
       const preferredActorId = String(recentDecision?.actorId || recentDecision?.actor || team[0]?.id || team[0]?.name || '').trim();
-      const actor = team.find(unit => previewRuntime.unitId(unit) === preferredActorId || previewRuntime.unitName(unit) === preferredActorId) || team[0] || null;
+      const preferredActor = team.find(unit => previewRuntime.unitId(unit) === preferredActorId || previewRuntime.unitName(unit) === preferredActorId) || team[0] || null;
+      const actionableTeam = team.filter(unit => structuredActorCanAct(unit, 'ACTIVE'));
+      const actor = actionableTeam.find(unit => previewRuntime.unitId(unit) === preferredActorId || previewRuntime.unitName(unit) === preferredActorId) || actionableTeam[0] || null;
+      if (!actor && preferredActor) {
+        const actorName = String(preferredActor?.name || preferredActor?.名称 || summaries?.[0]?.name || label).trim();
+        const reason = structuredActorIncapacityReason(preferredActor, 'ACTIVE');
+        return `${actorName}当前无法取得主动行动机会${reason.startsWith('CONTROLLED:') ? `（受【${normalizeStateDisplayName(reason.slice('CONTROLLED:'.length))}】限制）` : ''}`;
+      }
       const actorName = String(actor?.name || actor?.名称 || summaries?.[0]?.name || label).trim();
       if (!actor) return `${actorName}已失去战斗能力，无法继续行动`;
       if (!opponents.length) return `${actorName}已结束交锋，转入收势与战后确认`;

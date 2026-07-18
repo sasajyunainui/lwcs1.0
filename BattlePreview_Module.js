@@ -1056,7 +1056,19 @@
       total = attack * powerRatio * mitigation * 0.4 *
         resourceDriveScale(actor, target, damageClass === 'MENTAL' ? '精神力' : '魂力');
     }
-    const perSegment = total / segments;
+    const actorMultiplier = stateEntries(actor).reduce((multiplier, [, state]) => {
+      const combatEffect = state?.战斗效果 || {};
+      return multiplier *
+        Math.max(0, Number(combatEffect?.final_damage_mult ?? 1)) *
+        Math.max(0, 1 + Number(combatEffect?.damage_bonus || combatEffect?.final_damage_bonus || 0));
+    }, 1);
+    const targetMultiplier = stateEntries(target).reduce((multiplier, [, state]) => {
+      const combatEffect = state?.战斗效果 || {};
+      return multiplier *
+        Math.max(0, Number(combatEffect?.received_damage_mult ?? 1)) *
+        Math.max(0, 1 - clamp(Number(combatEffect?.damage_reduction || 0), 0, 1));
+    }, 1);
+    const perSegment = total * actorMultiplier * targetMultiplier / segments;
     return Math.max(0, perSegment * segments);
   }
 
@@ -1331,6 +1343,22 @@
           },
         });
       }
+      if (this.changedRules.size) {
+        Object.defineProperty(snapshot, '__battlePreviewRuleOverlay', {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: Object.fromEntries(this.changedRules),
+        });
+      }
+      if (this.scheduledEvents.length) {
+        Object.defineProperty(snapshot, '__battlePreviewScheduledEvents', {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: [...this.scheduledEvents],
+        });
+      }
       return snapshot;
     }
   }
@@ -1554,13 +1582,44 @@
       combatEffect.locked_ratio = magnitude;
     }
     if (prototype === '位移执行') {
-      combatEffect.position_type = String(effect?.位移类型 || '').trim();
+      const positionType = String(effect?.位移类型 || '').trim();
+      const distanceFactor = clamp(Math.max(0, Number(effect?.距离 || 0)) / 100, 0.05, 0.25);
+      combatEffect.position_type = positionType;
       combatEffect.position_object = String(effect?.位移对象 || '').trim();
       combatEffect.position_distance = Math.max(0, Number(effect?.距离 || 0));
       combatEffect.position_projection = '命中、闪避、索敌、反应和姿态窗口';
+      if (/拉近|突进|追击/.test(positionType)) {
+        combatEffect.hit_bonus = Math.max(Number(combatEffect.hit_bonus || 0), distanceFactor);
+        combatEffect.reaction_bonus = Math.max(Number(combatEffect.reaction_bonus || 0), distanceFactor * 0.5);
+      } else if (/击退|击飞/.test(positionType)) {
+        combatEffect.hit_penalty = Math.max(Number(combatEffect.hit_penalty || 0), distanceFactor);
+        combatEffect.reaction_penalty = Math.max(Number(combatEffect.reaction_penalty || 0), distanceFactor * 0.5);
+      } else if (/脱离|瞬移|换位/.test(positionType)) {
+        combatEffect.dodge_bonus = Math.max(Number(combatEffect.dodge_bonus || 0), distanceFactor);
+        combatEffect.reaction_bonus = Math.max(Number(combatEffect.reaction_bonus || 0), distanceFactor * 0.5);
+      }
+    }
+    if (prototype === '决策干扰') {
+      const interference = String(effect?.干扰 || '').trim();
+      const interferenceMagnitude = Math.abs(parseSignedValue(effect?.数值 || '-15%', 1)) || 0.15;
+      combatEffect.hit_penalty = Math.max(
+        Number(combatEffect.hit_penalty || 0),
+        interferenceMagnitude * (/索敌/.test(interference) ? 1 : 0.5),
+      );
+      combatEffect.reaction_penalty = Math.max(
+        Number(combatEffect.reaction_penalty || 0),
+        interferenceMagnitude * (/判断/.test(interference) ? 1 : 0.5),
+      );
+      combatEffect.random_target_rate = Math.max(
+        Number(combatEffect.random_target_rate || 0),
+        /索敌/.test(interference) ? interferenceMagnitude : 0,
+      );
     }
     if (/中毒|流血|灼烧|冻伤|持续创伤/.test(state)) {
       combatEffect.dot_damage_ratio = Math.max(Number(combatEffect.dot_damage_ratio || 0), magnitude);
+    }
+    if (/持续恢复|再生|愈合|生命恢复/.test(state)) {
+      combatEffect.hot_heal_ratio = Math.max(Number(combatEffect.hot_heal_ratio || 0), magnitude);
     }
     if (['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(state)) {
       combatEffect.skip_turn = true;
@@ -1659,6 +1718,24 @@
     return String(state?.状态 || state?.状态名称 || state?.名称 || '').trim();
   }
 
+  function stateScheduledHpDelta(unit = {}, state = {}, durationOverride = null) {
+    const combatEffect = state?.战斗效果 || state?.计算层效果 || {};
+    const duration = durationOverride === null
+      ? Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0))
+      : Math.max(0, Number(durationOverride || 0));
+    const damagePerTick = Math.max(
+      0,
+      Number(combatEffect?.dot_damage || state?.dot_damage || 0) +
+      readHpMax(unit) * Math.max(
+        0,
+        Number(combatEffect?.dot_damage_ratio || state?.dot_damage_ratio || 0),
+      ),
+    );
+    const healingPerTick = readHpMax(unit) *
+      Math.max(0, Number(combatEffect?.hot_heal_ratio || state?.hot_heal_ratio || 0));
+    return duration * (healingPerTick - damagePerTick);
+  }
+
   function isNegativeState(state = {}) {
     const type = String(state?.类型 || state?.正负面 || state?.性质 || '').trim();
     if (/负|减益|异常|控制/.test(type) || state?.debuff === true) return true;
@@ -1677,6 +1754,87 @@
       if (wanted === '任意增益') return !isNegativeState(state);
       return stateName(state) === wanted;
     });
+  }
+
+  function effectMatchesMechanismMatcher(effect = {}, matcher = {}) {
+    const normalizedMatcher = matcher && typeof matcher === 'object' && !Array.isArray(matcher)
+      ? matcher
+      : { 原型: String(matcher || '').trim() };
+    const expectedPrototype = String(normalizedMatcher?.原型 || '').trim();
+    const statePrototype = String(effect?.状态 || effect?.状态名称 || '').trim().split(':')[0];
+    const actualPrototype = String(
+      effect?.来源原型摘要 ||
+      effect?.原型 ||
+      statePrototype ||
+      '',
+    ).trim();
+    if (expectedPrototype && !['全部', '抹消全部', '全部原型'].includes(expectedPrototype) &&
+      expectedPrototype !== actualPrototype) return false;
+    return Object.entries(normalizedMatcher).every(([field, rawExpected]) => {
+      if (field === '原型') return true;
+      const expected = (Array.isArray(rawExpected) ? rawExpected : String(rawExpected ?? '').split(/[、,，|/]/))
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+      if (!expected.length || expected.some(value => /^全部/.test(value) || value === '抹消全部')) return true;
+      const actual = Array.isArray(effect?.[field])
+        ? effect[field].map(value => String(value || '').trim())
+        : [String(effect?.[field] ?? '').trim()];
+      return expected.some(value => actual.includes(value));
+    });
+  }
+
+  function actorSuppressesEffect(actor = {}, effect = {}) {
+    return stateEntries(actor).some(([, state]) =>
+      (Array.isArray(state?.抹消规则) ? state.抹消规则 : []).some(rule =>
+        effectMatchesMechanismMatcher(effect, rule?.抹消对象)
+      )
+    );
+  }
+
+  function pendingGrantedEffects(unit = {}) {
+    return stateEntries(unit).flatMap(([key, state]) => {
+      const trigger = String(state?.授予触发条件 || '').trim();
+      if (!/下次行动/.test(trigger) || !Array.isArray(state?.授予效果)) return [];
+      return state.授予效果.map((effect, index) => ({
+        stateKey: key,
+        effect: cloneValue(effect),
+        effectId: String(effect?.effectId || effect?.效果ID || `${key}:grant:${index}`).trim(),
+      }));
+    });
+  }
+
+  function rulePrototypeState(effect = {}, prototype = '', context = {}) {
+    const duration = Math.max(1, Number(effect?.持续回合 || 1));
+    const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
+    const rawValue = effect?.数值 ?? effect?.强度;
+    const magnitude = Math.abs(parseSignedValue(
+      rawValue === undefined || rawValue === '' ? (prototype === '规则防御' ? '50%' : '25%') : rawValue,
+      1,
+    ));
+    const combatEffect = {};
+    if (prototype === '规则防御') {
+      if (rule === '免死') combatEffect.death_save_count = Math.max(1, Number(effect?.次数 || 1));
+      else combatEffect.damage_reduction = clamp(magnitude || 0.5, 0, 0.95);
+    } else if (prototype === '规则改写') {
+      if (rule === '缴械') combatEffect.disarm = true;
+      if (rule === '死亡转存活') {
+        combatEffect.revive_count = 1;
+        combatEffect.revive_heal_ratio = clamp(magnitude || 0.25, 0.05, 1);
+      }
+    }
+    return {
+      状态: `${prototype}:${rule || '规则'}`,
+      状态名称: `${prototype}:${rule || '规则'}`,
+      类型: prototype === '规则防御' ? 'buff' : 'debuff',
+      duration,
+      来源原型摘要: prototype,
+      来源动作ID: String(context?.rootActionId || '').trim(),
+      规则: rule,
+      防御对象: String(effect?.防御对象 || '').trim(),
+      战斗效果: combatEffect,
+      面板修改比例: {},
+      面板固定修正: {},
+    };
   }
 
   function nestedEffects(effect = {}) {
@@ -1743,8 +1901,9 @@
       positionObject,
       distance,
       projection: String(combatEffect?.position_projection || '命中、闪避、索敌、反应和姿态窗口'),
-      modelApplied: false,
-      modelReason: '当前战斗模型不使用真实距离，位移只通过命中、闪避、索敌、反应和姿态窗口表达',
+      modelApplied: true,
+      combatEffect: cloneValue(combatEffect),
+      modelReason: '位移幅度已转换为命中、闪避与反应行为池差量',
     };
   }
 
@@ -1790,10 +1949,21 @@
     const activeFingerprint = consumePreviewNode(effectContext, effect);
     try {
       const actor = overlay.readUnit(unitId(context.actor));
+      if (prototype !== '机制抹消' && actorSuppressesEffect(actor, effect)) {
+        ledger.addOutcome({
+          ...context,
+          targetId: unitId(actor),
+          outcomeKind: 'RULE_CHANGED',
+          threatValue: 0,
+          evidence: { prototype, suppressed: true, marginal: false },
+        });
+        return;
+      }
       if (prototype === '伤害结算') {
         targets.forEach(target => {
           const currentTarget = overlay.readUnit(unitId(target));
-          const rawDamage = calculateBaseDamage(effect, actor, currentTarget);
+          const rawDamage = calculateBaseDamage(effect, actor, currentTarget) *
+            Math.max(0, Number(context?.actionDamageMultiplier || 1));
           const baseHitProbability = estimateHitProbability(actor, currentTarget, effect);
           const resolvedHitProbability = typeof context?.hitProbabilityResolver === 'function'
             ? context.hitProbabilityResolver({
@@ -2020,8 +2190,31 @@
       }
       if (prototype === '决策干扰') {
         targets.forEach(target => {
-          overlay.schedule({ type: 'BELIEF_INTERFERENCE', targetId: unitId(target), interference: effect?.干扰 || '', value: effect?.数值 || '', duration: Math.max(1, Number(effect?.持续回合 || 1)) });
-          ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'BELIEF_CHANGED', threatValue: 0, evidence: { interference: effect?.干扰 || '', duration: Math.max(1, Number(effect?.持续回合 || 1)) } });
+          const targetId = unitId(target);
+          const combatEffect = deriveStateCombatEffect(effect);
+          let marginal = false;
+          overlay.changeUnit(targetId, unit => {
+            marginal = addState(unit, effect, context.effectInstanceId);
+          });
+          const duration = Math.max(1, Number(effect?.持续回合 || 1));
+          overlay.schedule({
+            type: 'BELIEF_INTERFERENCE',
+            targetId,
+            interference: effect?.干扰 || '',
+            value: effect?.数值 || '',
+            duration,
+          });
+          ledger.addOutcome({
+            ...context,
+            targetId,
+            outcomeKind: 'NEXT_ACTION_QUALITY_CHANGED',
+            threatValue: 0,
+            evidence: {
+              ...buildEffectEvidence(effect, prototype, combatEffect, { marginal }),
+              interference: effect?.干扰 || '',
+              duration,
+            },
+          });
         });
         return;
       }
@@ -2029,8 +2222,28 @@
         targets.forEach(target => {
           const delay = Math.max(0, Number(effect?.延迟回合 || 0));
           if (prototype === '状态施加' && delay > 0) {
-            overlay.schedule({ type: 'DELAYED_STATE', targetId: unitId(target), effect: cloneValue(effect), delay });
-            ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'STATE_SCHEDULED', threatValue: 0, evidence: { state: effect?.状态 || '', delay } });
+            const scheduledRound = Math.max(0, Number(context?.worldSnapshot?.回合 || 0)) + delay;
+            overlay.schedule({
+              type: 'DELAYED_STATE',
+              actorId: unitId(actor),
+              targetId: unitId(target),
+              sourceActionId: String(context?.rootActionId || '').trim(),
+              effectInstanceId: String(context?.effectInstanceId || '').trim(),
+              effect: cloneValue(effect),
+              delay,
+              scheduledRound,
+            });
+            ledger.addOutcome({
+              ...context,
+              targetId: unitId(target),
+              outcomeKind: 'STATE_SCHEDULED',
+              threatValue: 0,
+              evidence: {
+                state: effect?.状态 || '',
+                delay,
+                scheduledRound,
+              },
+            });
             return;
           }
           const inheritedApplicationProbability = Number(
@@ -2121,12 +2334,21 @@
                 readHpMax(currentTarget) * Math.max(0, Number(combatEffect?.dot_damage_ratio || 0)),
               )
             : 0;
-          if (marginal && damagePerTick > 0 && applicationProbability > 0) {
+          const healingPerTick = prototype === '状态施加'
+            ? readHpMax(currentTarget) * Math.max(0, Number(combatEffect?.hot_heal_ratio || 0))
+            : 0;
+          if (marginal && (damagePerTick > 0 || healingPerTick > 0) && applicationProbability > 0) {
             const tickCount = Math.max(1, Number(effect?.持续回合 || 1));
-            const expectedDamage = Math.min(
-              readHp(currentTarget),
-              damagePerTick * tickCount * applicationProbability,
-            );
+            const expectedDamage = damagePerTick > 0
+              ? Math.min(readHp(currentTarget), damagePerTick * tickCount * applicationProbability)
+              : 0;
+            const expectedHealing = healingPerTick > 0
+              ? Math.min(
+                  Math.max(0, readHpMax(currentTarget) - readHp(currentTarget)),
+                  healingPerTick * tickCount * applicationProbability,
+                )
+              : 0;
+            const expectedDelta = expectedHealing - expectedDamage;
             const dotEffectInstanceId = `${context.effectInstanceId}:scheduled-dot`;
             const dotWindowId = `${dotEffectInstanceId}:${unitId(target)}:${tickCount}`;
             overlay.schedule({
@@ -2137,9 +2359,12 @@
               effectInstanceId: dotEffectInstanceId,
               windowId: dotWindowId,
               damagePerTick,
+              healingPerTick,
               tickCount,
               applicationProbability,
               expectedDamage,
+              expectedHealing,
+              expectedDelta,
             });
             ledger.addOutcome({
               ...context,
@@ -2147,13 +2372,15 @@
               targetId: unitId(target),
               windowId: dotWindowId,
               outcomeKind: 'SCHEDULED_HP_DELTA',
-              threatValue: expectedDamage / Math.max(1, readHpMax(currentTarget)) * 100,
+              threatValue: Math.abs(expectedDelta) / Math.max(1, readHpMax(currentTarget)) * 100,
               evidence: {
                 prototype,
                 state,
-                delta: -expectedDamage,
+                delta: expectedDelta,
                 expectedDamage,
+                expectedHealing,
                 damagePerTick,
+                healingPerTick,
                 tickCount,
                 duration: tickCount,
                 applicationProbability,
@@ -2175,18 +2402,41 @@
       if (prototype === '时窗修正') {
         targets.forEach(target => {
           const adjustment = Number(effect?.调整回合 ?? effect?.调整次数 ?? 0);
+          const currentTarget = overlay.readUnit(unitId(target));
+          let scheduledHealthDelta = 0;
+          let scheduledTickDelta = 0;
           overlay.changeUnit(unitId(target), unit => {
             const entries = stateEntries(unit).map(([key, state]) => {
               const next = cloneValue(state);
               const current = Math.max(0, Number(next?.duration ?? next?.持续回合 ?? 0));
               const mode = String(effect?.调整方式 || '').trim();
               const duration = /压缩|减少|缩短/.test(mode) ? Math.max(0, current - Math.abs(adjustment)) : current + Math.abs(adjustment);
+              const tickDelta = duration - current;
+              scheduledHealthDelta +=
+                stateScheduledHpDelta(currentTarget, state, duration) -
+                stateScheduledHpDelta(currentTarget, state, current);
+              scheduledTickDelta += tickDelta;
               next.duration = duration;
               return [key, next];
             });
             replaceStates(unit, entries);
           });
           ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'STATE_CHANGED', threatValue: 0, evidence: { adjustment } });
+          if (Math.abs(scheduledHealthDelta) > 1e-9) {
+            ledger.addOutcome({
+              ...context,
+              effectInstanceId: `${context.effectInstanceId}:window-health`,
+              targetId: unitId(target),
+              windowId: `${context.effectInstanceId}:window:${scheduledTickDelta}`,
+              outcomeKind: 'SCHEDULED_HP_DELTA',
+              threatValue: Math.abs(scheduledHealthDelta) / Math.max(1, readHpMax(currentTarget)) * 100,
+              evidence: {
+                delta: scheduledHealthDelta,
+                tickDelta: scheduledTickDelta,
+                adjustment,
+              },
+            });
+          }
         });
         return;
       }
@@ -2196,16 +2446,78 @@
           const matches = new Set(matchingStates(currentTarget, effect?.状态 || '任意状态').map(([key]) => key));
           const limit = Math.max(0, Number(effect?.数量 || matches.size));
           const removedKeys = [...matches].slice(0, limit || matches.size);
+          const removedScheduledDelta = stateEntries(currentTarget)
+            .filter(([key]) => removedKeys.includes(key))
+            .reduce((sum, [, state]) => sum + stateScheduledHpDelta(currentTarget, state), 0);
           overlay.changeUnit(unitId(target), unit => replaceStates(unit, stateEntries(unit).filter(([key]) => !removedKeys.includes(key))));
           ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'STATE_CHANGED', threatValue: 0, evidence: { removedKeys } });
+          if (Math.abs(removedScheduledDelta) > 1e-9) {
+            ledger.addOutcome({
+              ...context,
+              effectInstanceId: `${context.effectInstanceId}:removed-health`,
+              targetId: unitId(target),
+              windowId: `${context.effectInstanceId}:removed-state-window`,
+              outcomeKind: 'SCHEDULED_HP_DELTA',
+              threatValue: Math.abs(removedScheduledDelta) / Math.max(1, readHpMax(currentTarget)) * 100,
+              evidence: {
+                delta: -removedScheduledDelta,
+                removedScheduledDelta,
+                removedKeys,
+              },
+            });
+          }
         });
         return;
       }
       if (['规则防御', '规则改写', '机制抹消'].includes(prototype)) {
         targets.forEach(target => {
-          const rule = String(effect?.规则 || effect?.抹消对象 || prototype).trim();
-          overlay.writeRule(`${unitId(target)}:${prototype}:${rule}`, { ...effect, targetId: unitId(target) });
-          ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'RULE_CHANGED', threatValue: 0, evidence: { prototype, rule } });
+          const targetId = unitId(target);
+          const matcher = effect?.抹消对象 && typeof effect.抹消对象 === 'object'
+            ? cloneValue(effect.抹消对象)
+            : { 原型: String(effect?.抹消对象 || '').trim() };
+          let removedKeys = [];
+          overlay.changeUnit(targetId, unit => {
+            if (prototype === '机制抹消') {
+              removedKeys = stateEntries(unit)
+                .filter(([, state]) => effectMatchesMechanismMatcher(state, matcher))
+                .map(([key]) => key);
+              if (removedKeys.length) {
+                replaceStates(unit, stateEntries(unit).filter(([key]) => !removedKeys.includes(key)));
+              }
+              const stateKey = `preview:${context.effectInstanceId}:机制抹消`;
+              unit.状态效果 ||= {};
+              unit.状态效果[stateKey] = {
+                状态: '机制抹消',
+                状态名称: '机制抹消',
+                类型: 'debuff',
+                duration: Math.max(1, Number(effect?.持续回合 || 1)),
+                来源原型摘要: prototype,
+                抹消规则: [{ 抹消对象: matcher, 抹消方式: '持续阻断' }],
+                战斗效果: {},
+                面板修改比例: {},
+                面板固定修正: {},
+              };
+            } else {
+              const state = rulePrototypeState(effect, prototype, context);
+              unit.状态效果 ||= {};
+              unit.状态效果[`preview:${context.effectInstanceId}:${prototype}`] = state;
+            }
+          });
+          const rule = prototype === '机制抹消'
+            ? JSON.stringify(matcher)
+            : String(effect?.规则 || effect?.防御对象 || prototype).trim();
+          overlay.writeRule(`${targetId}:${prototype}:${rule}`, {
+            ...cloneValue(effect),
+            targetId,
+            removedKeys,
+          });
+          ledger.addOutcome({
+            ...context,
+            targetId,
+            outcomeKind: 'RULE_CHANGED',
+            threatValue: 0,
+            evidence: { prototype, rule, removedKeys, marginal: prototype !== '机制抹消' || removedKeys.length > 0 },
+          });
         });
         return;
       }
@@ -2241,8 +2553,65 @@
       if (prototype === '机制授予') {
         const granted = nestedEffects(effect);
         if (!granted.length) throw new Error('battle_preview_granted_effect_missing');
-        overlay.schedule({ type: 'MECHANISM_GRANT', actorId: unitId(actor), targetIds: targets.map(unitId), effects: cloneValue(granted), trigger: effect?.触发条件 || '主动触发' });
-        targets.forEach(target => ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'ACTION_GRANTED', threatValue: 0, evidence: { trigger: effect?.触发条件 || '主动触发', count: granted.length } }));
+        const trigger = String(effect?.触发条件 || '主动触发').trim();
+        targets.forEach(target => {
+          const targetId = unitId(target);
+          if (/下次行动/.test(trigger)) {
+            overlay.changeUnit(targetId, unit => {
+              unit.状态效果 ||= {};
+              unit.状态效果[`preview:${context.effectInstanceId}:机制授予`] = {
+                状态: '机制授予',
+                状态名称: '机制授予',
+                类型: 'buff',
+                duration: Math.max(1, Number(effect?.持续回合 || 1)),
+                来源原型摘要: prototype,
+                授予触发条件: trigger,
+                授予效果: cloneValue(granted),
+                可用次数: Math.max(1, Number(effect?.可用次数 || 1)),
+                战斗效果: {},
+                面板修改比例: {},
+                面板固定修正: {},
+              };
+            });
+          } else {
+            granted.forEach((nested, index) => {
+              const grantedActor = overlay.readUnit(targetId);
+              const nestedContext = {
+                ...context,
+                actor: grantedActor,
+                effectInstanceId: `${context.effectInstanceId}:grant:${index}`,
+                depth: depth + 1,
+                effectPath: effectContext.effectPath,
+              };
+              applyEffect(
+                nested,
+                resolveTargets(overlay.snapshot(), grantedActor, {
+                  ...context.declaration,
+                  actorId: targetId,
+                  targetIds: [targetId],
+                }, nested),
+                overlay,
+                ledger,
+                nestedContext,
+                depth + 1,
+              );
+            });
+          }
+          ledger.addOutcome({
+            ...context,
+            targetId,
+            outcomeKind: 'STATE_CHANGED',
+            threatValue: 0,
+            evidence: { prototype, trigger, count: granted.length, marginal: true },
+          });
+        });
+        overlay.schedule({
+          type: 'MECHANISM_GRANT',
+          actorId: unitId(actor),
+          targetIds: targets.map(unitId),
+          effects: cloneValue(granted),
+          trigger,
+        });
         return;
       }
       if (prototype === '复制执行') {
@@ -2263,10 +2632,46 @@
         const history = context.declaration?.historySnapshot || context.worldSnapshot?.回合开始快照;
         if (!history || typeof history !== 'object') throw new Error('battle_preview_rewind_history_missing');
         targets.forEach(target => {
+          const currentUnit = overlay.readUnit(unitId(target));
           const historicUnit = findUnit(history, unitId(target));
           if (!historicUnit) throw new Error(`battle_preview_rewind_target_missing:${unitId(target)}`);
           overlay.writeUnit(cloneValue(historicUnit));
-          ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'STATE_CHANGED', threatValue: 0, evidence: { rewind: true } });
+          const hpDelta = readHp(historicUnit) - readHp(currentUnit);
+          if (Math.abs(hpDelta) > 1e-9) {
+            ledger.addOutcome({
+              ...context,
+              targetId: unitId(target),
+              outcomeKind: 'HP_DELTA',
+              threatValue: Math.abs(hpDelta) / Math.max(1, readHpMax(currentUnit)) * 100,
+              evidence: {
+                rewind: true,
+                current: readHp(currentUnit),
+                next: readHp(historicUnit),
+                delta: hpDelta,
+              },
+            });
+          }
+          ['魂力', '精神力', '体力'].forEach((resource, index) => {
+            const current = readResource(currentUnit, resource);
+            const next = readResource(historicUnit, resource);
+            if (Math.abs(next - current) <= 1e-9) return;
+            ledger.addOutcome({
+              ...context,
+              effectInstanceId: `${context.effectInstanceId}:resource:${index}`,
+              targetId: unitId(target),
+              outcomeKind: 'RESOURCE_OPTION_CHANGED',
+              threatValue: 0,
+              evidence: { rewind: true, resource, current, next, delta: next - current },
+            });
+          });
+          ledger.addOutcome({
+            ...context,
+            effectInstanceId: `${context.effectInstanceId}:state`,
+            targetId: unitId(target),
+            outcomeKind: 'STATE_CHANGED',
+            threatValue: 0,
+            evidence: { rewind: true },
+          });
         });
         return;
       }
@@ -2839,14 +3244,26 @@
         if (inventoryItem.quantity !== undefined) inventoryItem.quantity = remainingQuantity;
       });
     }
-    const effects = declaration?.actionKind === 'BASIC_ATTACK'
+    const baseEffects = declaration?.actionKind === 'BASIC_ATTACK'
       ? [basicAttackEffect()]
       : Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object') : [];
+    const grants = declaration?.__includeGrantedEffects === false ? [] : pendingGrantedEffects(actor);
+    const effects = [
+      ...grants.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
+      ...baseEffects,
+    ];
     if (!effects.length && !['DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE'].includes(String(declaration?.actionKind || '').trim())) {
       throw new Error('battle_preview_action_effects_missing');
     }
+    if (grants.length) {
+      const consumedKeys = new Set(grants.map(entry => entry.stateKey));
+      overlay.changeUnit(unitId(actor), unit => {
+        replaceStates(unit, stateEntries(unit).filter(([key]) => !consumedKeys.has(key)));
+      });
+    }
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };
     const primarySuccessProbability = new Map();
+    let actionDamageMultiplier = 1;
     effects.forEach((effect, index) => {
       const effectWorldSnapshot = overlay.snapshot();
       const effectActor = overlay.readUnit(unitId(actor)) || actor;
@@ -2868,6 +3285,7 @@
         damageMultiplierResolver: input?.damageMultiplierResolver,
         hitProbabilityResolver: input?.hitProbabilityResolver,
         applicationProbabilityResolver: input?.applicationProbabilityResolver,
+        actionDamageMultiplier,
       };
       if (!String(effect?.原型 || '').trim() && Array.isArray(effect?.使用效果)) {
         previewCreationCarrier(effect, overlay, ledger, context);
@@ -2879,6 +3297,9 @@
         );
       }
       applyEffect(effect, targets, overlay, ledger, context, 0);
+      if (String(effect?.原型 || '').trim() === '炸环') {
+        actionDamageMultiplier *= Math.max(0, Number(effect?.强化倍率 || 1));
+      }
       if (index === 0) {
         targets.forEach(target => {
           const prototype = String(effect?.原型 || '').trim();
@@ -3150,6 +3571,8 @@
     calculateDefenseDamageMultiplier,
     calculateDodgeProbability,
     deriveStateCombatEffect,
+    actorSuppressesEffect,
+    pendingGrantedEffects,
     normalizeBattleObjectives,
     evaluateBattleObjectives,
     calculateNonlethalHpFloor,

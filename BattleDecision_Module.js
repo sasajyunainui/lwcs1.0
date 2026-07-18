@@ -2145,6 +2145,7 @@
     const worldSnapshot = input.worldSnapshot || {};
     const actor = findUnitInWorld(worldSnapshot, input.actorId);
     if (!actor || !preview.isAlive(actor)) return [];
+    if (hasActionCancellation(actor)) return [];
     const actorId = preview.unitId(actor);
     const opportunityRole = String(input.actionOpportunity?.role || '').trim();
     const reactionOnly = opportunityRole === 'REACTION';
@@ -11484,6 +11485,81 @@
     ));
   }
 
+  function r8ProjectedSummonCanRealize(worldSnapshot = {}, unit = {}, objectiveContract = {}) {
+    if (!preview.isSummonUnit(unit)) return true;
+    if (Math.max(0, Number(unit?.剩余窗口 ?? unit?.__battleRuntime?.summonWindow?.remainingWindows ?? 0)) <= 0) {
+      return false;
+    }
+    const hostName = String(unit?.宿主名 || unit?.宿主ID || '').trim();
+    if (hostName) {
+      const host = worldEntries(worldSnapshot)
+        .map(entry => entry.unit)
+        .find(entry =>
+          preview.unitId(entry) === hostName ||
+          preview.unitName(entry) === hostName
+        );
+      if (!host || !preview.isBattleCapable(host)) return false;
+    }
+    const currentRound = Math.max(0, Number(worldSnapshot?.回合 || 0));
+    const startRound = Math.max(0, Number(objectiveContract?.startRound ?? 1));
+    const maxRounds = Math.max(1, Number(objectiveContract?.maxRounds ?? 1));
+    return currentRound - startRound + 1 < maxRounds;
+  }
+
+  function r8MaterializeScheduledStateForEnvelope(projectedWorld = {}, targetId = '', input = {}) {
+    const scheduledEvents = Array.isArray(projectedWorld?.__battlePreviewScheduledEvents)
+      ? projectedWorld.__battlePreviewScheduledEvents
+      : [];
+    const opportunities = Array.isArray(input?.opportunitySnapshot)
+      ? input.opportunitySnapshot
+      : Array.isArray(input?.opportunitySnapshot?.opportunities)
+        ? input.opportunitySnapshot.opportunities
+        : [];
+    const relevant = scheduledEvents.filter(event => {
+      if (String(event?.type || '').trim() !== 'DELAYED_STATE') return false;
+      if (String(event?.targetId || '').trim() !== String(targetId || '').trim()) return false;
+      const scheduledRound = Math.max(0, Number(event?.scheduledRound || 0));
+      return opportunities.some(opportunity =>
+        String(opportunity?.ownerId || '').trim() === String(targetId || '').trim() &&
+        !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+          String(opportunity?.status || '').trim().toUpperCase(),
+        ) &&
+        Math.max(0, Number(
+          opportunity?.round ??
+          opportunity?.createdAtRound ??
+          opportunity?.scheduledRound ??
+          0
+        )) >= scheduledRound
+      );
+    });
+    return relevant.reduce((world, event, index) => {
+      const target = findUnitInWorld(world, targetId);
+      if (!target || !preview.isBattleCapable(target)) return world;
+      const sourceActor = findUnitInWorld(world, event?.actorId) || target;
+      const effect = { ...cloneValue(event.effect), 延迟回合: 0 };
+      return preview.previewAction({
+        worldSnapshot: world,
+        actorId: preview.unitId(sourceActor),
+        declaration: {
+          actionId: `scheduled-materialize:${event?.effectInstanceId || index}`,
+          actorId: preview.unitId(sourceActor),
+          actionKind: 'RELEASE_SKILL',
+          targetIds: [targetId],
+          __includeGrantedEffects: false,
+          skill: {
+            name: 'scheduled-materialize',
+            消耗: '无',
+            _效果数组: [effect],
+          },
+        },
+        actionFingerprint: `scheduled-materialize:${event?.effectInstanceId || index}`,
+        horizon: 'SHALLOW',
+        previewBudget: { maxNodes: 12 },
+        battleIntent: input?.battleIntent,
+      }).afterSnapshot;
+    }, projectedWorld);
+  }
+
   function buildR8CandidateEnvelopeDeltas(input = {}) {
     const worldSnapshot = input.worldSnapshot || {};
     const actorSide = String(input.actorSide || '').trim();
@@ -11493,13 +11569,19 @@
     const actionOpportunity = input.actionOpportunity || {};
     const result = {};
     const rebuildEnvelope = (projectedWorld, targetId) => {
-      const target = findUnitInWorld(projectedWorld, targetId);
-      if (!target || !preview.isAlive(target) || !preview.isBattleCapable(target)) {
+      const scheduledWorld = r8MaterializeScheduledStateForEnvelope(projectedWorld, targetId, input);
+      const target = findUnitInWorld(scheduledWorld, targetId);
+      if (
+        !target ||
+        !preview.isAlive(target) ||
+        !preview.isBattleCapable(target) ||
+        !r8ProjectedSummonCanRealize(scheduledWorld, target, input.objectiveContract)
+      ) {
         return Object.freeze({ primaryRoute: null, backupRoute: null, searchedRouteCount: 0 });
       }
-      const targetSide = sideOf(projectedWorld, target);
+      const targetSide = sideOf(scheduledWorld, target);
       const candidates = enumerateCandidates({
-        worldSnapshot: projectedWorld,
+        worldSnapshot: scheduledWorld,
         actorId: targetId,
         actorSide: targetSide,
         beliefState: input.beliefState,
@@ -11516,7 +11598,7 @@
       const routes = candidates.map(candidate => actionRouteFromPreview({
         candidate,
         previewResult: preview.previewAction({
-          worldSnapshot: projectedWorld,
+          worldSnapshot: scheduledWorld,
           actorId: targetId,
           declaration: candidate.declaration,
           actionFingerprint: candidate.declarationFingerprint,
@@ -11524,7 +11606,7 @@
           previewBudget: { maxNodes: 12 },
           battleIntent: input.battleIntent,
         }),
-        worldSnapshot: projectedWorld,
+        worldSnapshot: scheduledWorld,
         actorSide: targetSide,
         dependencyKeys: [],
       }));
@@ -11536,19 +11618,24 @@
         result[candidateId] = Object.freeze([]);
         continue;
       }
-      const allUnitIds = worldEntries(worldSnapshot).map(entry => preview.unitId(entry.unit)).filter(Boolean);
+      const allUnitIds = [...new Set([
+        ...worldEntries(worldSnapshot).map(entry => preview.unitId(entry.unit)),
+        ...worldEntries(projectedWorld)
+          .filter(entry => r8ProjectedSummonCanRealize(projectedWorld, entry.unit, input.objectiveContract))
+          .map(entry => preview.unitId(entry.unit)),
+      ].filter(Boolean))];
       const affectedIds = new Set();
       for (const effect of route?.actionPoolEffects || []) {
         const targetId = String(effect?.targetId || '').trim();
-        if (['RESOURCE_OPTION_CHANGED', 'ACTION_CANCELLED'].includes(effect?.outcomeKind)) {
+        if (['RESOURCE_OPTION_CHANGED', 'ACTION_CANCELLED', 'SUMMON_WINDOW'].includes(effect?.outcomeKind)) {
           if (targetId) affectedIds.add(targetId);
         } else {
           allUnitIds.forEach(unitIdValue => affectedIds.add(unitIdValue));
         }
       }
       result[candidateId] = Object.freeze([...affectedIds].map(targetId => {
-        const target = findUnitInWorld(worldSnapshot, targetId);
-        const targetSide = target ? sideOf(worldSnapshot, target) : '';
+        const target = findUnitInWorld(projectedWorld, targetId) || findUnitInWorld(worldSnapshot, targetId);
+        const targetSide = target ? sideOf(projectedWorld, target) || sideOf(worldSnapshot, target) : '';
         const beforeEnvelope = routeCatalog[targetId] || {};
         const afterEnvelope = rebuildEnvelope(projectedWorld, targetId);
         const beforePP = Math.max(0, Number(beforeEnvelope?.primaryRoute?.routeBenefitPP || 0));
@@ -11791,6 +11878,23 @@
     return snapshot && typeof snapshot === 'object' ? [snapshot] : [];
   }
 
+  function r8UnitHasFutureOpportunity(request = {}, unitIdValue = '') {
+    const unitIdText = String(unitIdValue || '').trim();
+    if (!unitIdText) return false;
+    const opportunity = r8OpportunityList(request).find(entry =>
+      String(entry?.ownerId || '').trim() === unitIdText &&
+      !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+        String(entry?.status || '').trim().toUpperCase(),
+      ) &&
+      String(entry?.opportunityId || '').trim() !==
+        String(request?.actionOpportunity?.opportunityId || '').trim()
+    );
+    if (opportunity) return true;
+    return (request?.evaluationContext?.scheduledEvents || []).some(entry =>
+      String(entry?.ownerId || entry?.targetId || '').trim() === unitIdText
+    );
+  }
+
   function r8ActionPoolDeltas(request = {}, route = {}) {
     const deltas = [];
     const consumedEnvelopeTargets = new Set();
@@ -11810,10 +11914,11 @@
       );
       let deltaPP = Number(effect?.evidence?.r8HealthTrajectoryDeltaPP || 0);
       const envelopeDeltas = request?.candidateEnvelopeDeltas?.[route?.candidateId] || [];
-      const takeEnvelopeDelta = (allAffected = false) => {
+      const takeEnvelopeDelta = (allAffected = false, allowProjectedOpportunity = false) => {
         const entries = envelopeDeltas.filter(entry =>
           !consumedEnvelopeTargets.has(entry.targetId) &&
-          (allAffected || String(entry?.targetId || '').trim() === String(effect?.targetId || '').trim())
+          (allAffected || String(entry?.targetId || '').trim() === String(effect?.targetId || '').trim()) &&
+          (allowProjectedOpportunity || r8UnitHasFutureOpportunity(request, entry.targetId))
         );
         entries.forEach(entry => consumedEnvelopeTargets.add(entry.targetId));
         return entries.reduce((sum, entry) => sum + Number(entry.healthTrajectoryDeltaPP || 0), 0);
@@ -11843,15 +11948,24 @@
         const scheduled = schedules.some(entry =>
           String(entry?.sourceEventId || entry?.effectInstanceId || '').includes(String(effect.effectInstanceId || ''))
         );
-        realizable = scheduled || effect.outcomeKind === 'ACTION_GRANTED';
-        deltaPP = deltaPP || (realizable ? targetRouteValue * probability * (targetOwnSide ? 1 : -1) : 0);
+        const previewWindowCount = Math.max(
+          0,
+          Number(effect?.evidence?.remainingWindows ?? effect?.evidence?.duration ?? 0),
+        );
+        realizable = scheduled || effect.outcomeKind === 'ACTION_GRANTED' || previewWindowCount > 0;
+        const envelopeDelta = takeEnvelopeDelta(false, effect.outcomeKind === 'SUMMON_WINDOW');
+        deltaPP = deltaPP || (realizable
+          ? envelopeDelta || targetRouteValue * probability * (targetOwnSide ? 1 : -1)
+          : 0);
       } else if (effect.outcomeKind === 'RESOURCE_OPTION_CHANGED') {
         const hasNonResourceEffect = (route?.actionPoolEffects || []).some(entry =>
           entry !== effect && entry.outcomeKind !== 'RESOURCE_OPTION_CHANGED'
         );
         deltaPP = Number(effect?.evidence?.routeDeltaPP || 0) ||
           (hasNonResourceEffect ? 0 : takeEnvelopeDelta());
-      } else if (['STATE_CHANGED', 'RULE_CHANGED'].includes(effect.outcomeKind)) {
+      } else if (effect.outcomeKind === 'SHIELD_DELTA') {
+        deltaPP = takeEnvelopeDelta(true);
+      } else if (['STATE_CHANGED', 'STATE_SCHEDULED', 'RULE_CHANGED'].includes(effect.outcomeKind)) {
         deltaPP = takeEnvelopeDelta(true);
       }
       if (!deltaPP && !['ACTION_CANCELLED', 'NEXT_ACTION_QUALITY_CHANGED', 'ACTION_GRANTED', 'SUMMON_WINDOW', 'RESOURCE_OPTION_CHANGED'].includes(effect.outcomeKind)) {
@@ -12057,10 +12171,19 @@
     if (!actor) return 0;
     const costs = candidate?.costs || {};
     const resources = [['魂力', '魂力'], ['精神力', '精神力'], ['体力', '体力']];
-    return median(resources.map(([key, label]) => {
+    const resourceReserve = median(resources.map(([key, label]) => {
       const maximum = Math.max(1, preview.readResourceMax(actor, label));
       return clamp((preview.readResource(actor, label) - Math.max(0, Number(costs?.[key] || 0))) / maximum, 0, 1);
     })) * 100;
+    const asset = candidate?.declaration?.irreversibleAsset;
+    if (!asset || typeof asset !== 'object') return resourceReserve;
+    const assetId = String(asset?.assetId || '').trim();
+    const inventoryEntry = assetId
+      ? collectInventory(actor).find(entry => String(entry?.id || '').trim() === assetId)
+      : null;
+    const quantity = Math.max(0, Number(inventoryEntry?.quantity || 0));
+    const assetReserve = quantity > 0 ? 100 * Math.max(0, quantity - 1) / quantity : 0;
+    return Math.min(resourceReserve, assetReserve);
   }
 
   function r8CandidateExclusion(request = {}, candidate = {}, route = {}, projection = {}) {
@@ -12407,6 +12530,8 @@
       beliefState,
       battleIntent,
       actionOpportunity,
+      opportunitySnapshot: runtimeSnapshot.opportunitySnapshot || [],
+      objectiveContract,
     });
     const requestPayload = {
       schemaVersion: R8_REQUEST_SCHEMA,
@@ -12584,6 +12709,7 @@
     r8ObjectiveGroups,
     r8ThresholdOverkill,
     r8TerminalUtility,
+    r8UnitHasFutureOpportunity,
     r8ActionPoolDeltas,
     projectR8GoalUtility,
     buildR8CausalValueFacts,
