@@ -50008,10 +50008,14 @@ ${播报文本}
   }
 
   function 局部刷新任务详情(作用域 = null) {
-    const 候选内容 = Array.from(
-      作用域 instanceof Element
-        ? 作用域.querySelectorAll('[data-quest-content]')
-        : document.querySelectorAll('[data-quest-content]'),
+    const 候选内容 = (
+      作用域 instanceof Element && 作用域.matches('[data-quest-content]')
+        ? [作用域]
+        : Array.from(
+            作用域 instanceof Element
+              ? 作用域.querySelectorAll('[data-quest-content]')
+              : document.querySelectorAll('[data-quest-content]'),
+          )
     ).filter(节点 => 节点 instanceof Element && 节点.isConnected);
     const 当前内容 = 候选内容
       .map(节点 => {
@@ -50997,7 +51001,10 @@ ${播报文本}
       if (detailPreviewKey) {
         modalFocusState[`${detailPreviewKey}::quest-tab`] =
           tabName === '委托板' ? '委托板' : tabName === '支线' ? '支线' : '主线';
-        rerenderDetailSurface(detailPreviewKey, { ...options, questSurface: detailSurfaceHost });
+        rerenderDetailSurface(detailPreviewKey, {
+          ...options,
+          questSurface: questTabBtn.closest('[data-quest-content]') || detailSurfaceHost,
+        });
       }
       return;
     }
@@ -51010,7 +51017,10 @@ ${播报文本}
       if (boardId && detailPreviewKey) {
         modalFocusState[`${detailPreviewKey}::quest-tab`] = '委托板';
         modalFocusState[`${detailPreviewKey}::quest-board-focus`] = boardId;
-        rerenderDetailSurface(detailPreviewKey, { ...options, questSurface: detailSurfaceHost });
+        rerenderDetailSurface(detailPreviewKey, {
+          ...options,
+          questSurface: questBoardFocusBtn.closest('[data-quest-content]') || detailSurfaceHost,
+        });
       }
       return;
     }
@@ -51024,7 +51034,10 @@ ${播报文本}
       if (questName && detailPreviewKey) {
         modalFocusState[`${detailPreviewKey}::quest-tab`] = questKind === 'side' ? '支线' : '主线';
         modalFocusState[`${detailPreviewKey}::quest-focus-${questKind === 'side' ? 'side' : 'main'}`] = questName;
-        rerenderDetailSurface(detailPreviewKey, { ...options, questSurface: detailSurfaceHost });
+        rerenderDetailSurface(detailPreviewKey, {
+          ...options,
+          questSurface: questFocusBtn.closest('[data-quest-content]') || detailSurfaceHost,
+        });
       }
       return;
     }
