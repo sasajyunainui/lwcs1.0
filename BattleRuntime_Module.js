@@ -10340,6 +10340,57 @@
     const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
     const mode = String(input.mode || 'single_preview').trim();
     const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
+    const providerId = String(input?.settings?.providerId || '').trim();
+    if (providerId) {
+      if (
+        typeof decision.prepareDecisionRequest !== 'function' ||
+        typeof decision.runProvider !== 'function'
+      ) {
+        throw new Error('battle_runtime_decision_coordinator_missing');
+      }
+      const providerResults = preview.listUnits(worldSnapshot)
+        .filter(entry => preview.isAlive(entry.unit))
+        .map((entry, index) => {
+          const actorId = preview.unitId(entry.unit);
+          const request = decision.prepareDecisionRequest({
+            worldSnapshot,
+            actorId,
+            objectiveContract: input.objectiveContract || worldSnapshot?.胜负条件 || {},
+            battleIntent: input.battleIntent || {
+              mode: String(worldSnapshot?.战斗意图 || '').trim(),
+              objectives: worldSnapshot?.胜负条件 || {},
+            },
+            beliefState: input.initialBelief?.[actorId] || input.initialBelief || {},
+            actionOpportunity: input.actionOpportunity || {},
+            strategyMemory: input.strategyMemory || {},
+            seed: `${seed}:${Number(worldSnapshot?.回合 || 0)}:${index}`,
+            runtimeSnapshot: input.runtimeSnapshot || {},
+          });
+          return decision.runProvider({ providerId, request });
+        });
+      if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PROVIDER_MUTATED_STATE');
+      const decisionAudits = providerResults.map(result =>
+        buildDecisionAuditRecord(result.decisionAudit),
+      );
+      return {
+        caseId,
+        seed,
+        mode,
+        providerId,
+        ledger: [],
+        trace: [],
+        scoreAudit: decisionAudits.flatMap(item => item.scoreAudit),
+        actionChains: [],
+        reportBlocks: [],
+        roundOverview: [],
+        finalBattleReport: null,
+        aiSummaryInput: null,
+        initialSnapshot: cloneValue(worldSnapshot),
+        finalSnapshot: worldSnapshot,
+        decisions: decisionAudits,
+        providerResults,
+      };
+    }
     const decisionEngine = String(input?.settings?.decisionEngine || 'legacy').trim().toLowerCase();
     const decideOnceImpl = decisionEngine === 'next-shadow' ? decision.decideNext : decision.decide;
     if (typeof decideOnceImpl !== 'function') throw new Error(`battle_decision_engine_missing:${decisionEngine}`);
@@ -10414,6 +10465,42 @@
       }),
       initialSnapshot: cloneValue(result?.initialSnapshot || null),
       finalSnapshot: cloneValue(result?.finalSnapshot || result?.snapshot || null),
+    };
+    return Object.freeze({ ...draft, draftHash: hashBattleValue(draft) });
+  }
+
+  function executeBattleDraftR8(input = {}) {
+    const source = input && typeof input === 'object' ? cloneValue(input) : {};
+    if (source?.settings?.decisionOnly !== true) {
+      throw new Error('R8_FULL_BATTLE_DRAFT_NOT_IMPLEMENTED_PHASE_1');
+    }
+    const providerId = String(source?.settings?.providerId || '').trim();
+    if (!['legacy-baseline', 'r74-next-baseline'].includes(providerId)) {
+      throw new Error(`battle_runtime_r8_phase1_provider_invalid:${providerId || 'missing'}`);
+    }
+    const inputHash = hashBattleValue(source);
+    const result = runDecisionCase(source);
+    const objectiveContract = source.objectiveContract ||
+      source.battleIntent?.objectives ||
+      source.combatData?.胜负条件 ||
+      {};
+    const draft = {
+      schemaVersion: '8.3-draft-1',
+      status: 'DRAFT',
+      providerId,
+      inputHash,
+      objectiveHash: hashBattleValue(objectiveContract),
+      ledger: cloneValue(result?.ledger || []),
+      trace: cloneValue(result?.trace || []),
+      actionQueueTrace: cloneValue(result?.actionQueueTrace || []),
+      decisionAudit: cloneValue(result?.providerResults || []),
+      terminalResult: cloneValue(result?.terminal || {
+        terminal: false,
+        winner: 'unfinished',
+        reason: 'DECISION_ONLY',
+      }),
+      initialSnapshot: cloneValue(result?.initialSnapshot || source.combatData || null),
+      finalSnapshot: cloneValue(result?.finalSnapshot || source.combatData || null),
     };
     return Object.freeze({ ...draft, draftHash: hashBattleValue(draft) });
   }
@@ -10540,6 +10627,7 @@
     runDecisionCase,
     runBattleCase,
     executeBattleDraft,
+    executeBattleDraftR8,
     sealBattleResult,
     auditFacts,
     normalizeActionDisplayName,

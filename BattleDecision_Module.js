@@ -9,6 +9,8 @@
   if (preview.version !== '7.3-R6.3-preview-2') throw new Error(`battle_decision_preview_version_mismatch:${preview.version || 'missing'}`);
 
   const VERSION = '7.3-R6.3-decision-2';
+  const R8_REQUEST_SCHEMA = '8.3-decision-request-1';
+  const R8_RESULT_SCHEMA = '8.3-decision-result-1';
   const MAX_SEQUENCE_PROFILE_CATALOGS = 2048;
   const MAX_SEQUENCE_PROFILES_PER_CATALOG = 256;
   const skillRootCache = new WeakMap();
@@ -65,6 +67,7 @@
     resourceThreatDiagnostics: null,
   };
   let decisionWorldRevisionSequence = 0;
+  let providerExecutionDepth = 0;
 
   function worldRevisionFor(worldSnapshot = {}) {
     if (!worldSnapshot || typeof worldSnapshot !== 'object') return preview.stableHash(worldSnapshot);
@@ -107,6 +110,13 @@
   function cloneValue(value) {
     if (typeof root.structuredClone === 'function') return root.structuredClone(value);
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function deepFreeze(value, seen = new WeakSet()) {
+    if (!value || typeof value !== 'object' || seen.has(value)) return value;
+    seen.add(value);
+    Object.values(value).forEach(child => deepFreeze(child, seen));
+    return Object.freeze(value);
   }
 
   function median(values = []) {
@@ -2131,6 +2141,7 @@
   }
 
   function enumerateCandidates(input = {}) {
+    if (providerExecutionDepth > 0) throw new Error('PROVIDER_REENUMERATED_CANDIDATES');
     const worldSnapshot = input.worldSnapshot || {};
     const actor = findUnitInWorld(worldSnapshot, input.actorId);
     if (!actor || !preview.isAlive(actor)) return [];
@@ -10966,8 +10977,11 @@
     resetDecisionCaches();
     const actor = findUnitInWorld(worldSnapshot, input.actorId);
     if (!actor || !preview.isAlive(actor)) throw new Error('battle_decision_actor_unavailable');
-    const beliefState = buildInitialBelief(worldSnapshot, preview.unitId(actor), input.beliefState || {});
-    const decisionWorld = buildDecisionWorld(worldSnapshot, preview.unitId(actor), beliefState);
+    const beliefState = input?.__preparedBeliefState ||
+      buildInitialBelief(worldSnapshot, preview.unitId(actor), input.beliefState || {});
+    const decisionWorld = input?.__preparedDecisionWorld === true
+      ? worldSnapshot
+      : buildDecisionWorld(worldSnapshot, preview.unitId(actor), beliefState);
     const decisionActor = findUnitInWorld(decisionWorld, preview.unitId(actor));
     const actorSide = sideOf(decisionWorld, decisionActor);
     const battleIntent = actorBattleIntent(decisionWorld, actorSide, input.battleIntent);
@@ -10998,7 +11012,9 @@
         context.actionOpportunity?.role === 'COUNTER' ? [] : responseBranches(context),
       ),
     };
-    const generated = enumerateCandidates(scoringContext);
+    const generated = Array.isArray(input?.__frozenCandidates)
+      ? input.__frozenCandidates
+      : enumerateCandidates(scoringContext);
     if (!generated.length) throw new Error('battle_decision_candidate_pool_empty');
     const scored = generated.map(candidate => scoreCandidate(candidate, scoringContext));
     const normalized = classifyCandidateEvidence(normalizeUtilities(paretoFilter(scored)));
@@ -11080,6 +11096,200 @@
     });
   }
 
+  function declarationFingerprint(declaration = {}) {
+    return `declaration:${preview.stableHash(declaration && typeof declaration === 'object' ? declaration : {})}`;
+  }
+
+  function decisionRequestHash(request = {}) {
+    const payload = { ...request };
+    delete payload.requestHash;
+    return `request:${preview.stableHash(payload)}`;
+  }
+
+  function prepareDecisionRequest(input = {}) {
+    const worldSnapshot = input?.worldSnapshot;
+    if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
+    const sourceWorldHash = preview.stableHash(worldSnapshot);
+    const actor = findUnitInWorld(worldSnapshot, input?.actorId || '');
+    if (!actor || !preview.isAlive(actor)) throw new Error('battle_decision_actor_unavailable');
+    const actorId = preview.unitId(actor);
+    const beliefState = buildInitialBelief(worldSnapshot, actorId, input?.beliefState || {});
+    const visibleWorld = buildDecisionWorld(worldSnapshot, actorId, beliefState);
+    const visibleActor = findUnitInWorld(visibleWorld, actorId);
+    const actorSide = sideOf(visibleWorld, visibleActor);
+    const battleIntent = actorBattleIntent(visibleWorld, actorSide, input?.battleIntent);
+    const actionOpportunity = cloneValue(input?.actionOpportunity || {});
+    const candidates = enumerateCandidates({
+      ...input,
+      worldSnapshot: visibleWorld,
+      actorId,
+      actorSide,
+      battleIntent,
+      beliefState,
+      actionOpportunity,
+    });
+    if (!candidates.length) throw new Error('battle_decision_candidate_pool_empty');
+    const candidateIds = new Set();
+    const candidateFingerprintMap = {};
+    const frozenCandidates = candidates.map(candidate => {
+      const candidateId = String(candidate?.candidateId || '').trim();
+      if (!candidateId || candidateIds.has(candidateId)) {
+        throw new Error(`battle_decision_candidate_identity_invalid:${candidateId || 'missing'}`);
+      }
+      candidateIds.add(candidateId);
+      const declaration = cloneValue(candidate?.declaration || {});
+      const fingerprint = declarationFingerprint(declaration);
+      candidateFingerprintMap[candidateId] = fingerprint;
+      return {
+        ...cloneValue(candidate),
+        candidateId,
+        declaration,
+        declarationFingerprint: fingerprint,
+      };
+    });
+    const objectiveContract = cloneValue(
+      input?.objectiveContract ||
+      battleIntent?.objectives ||
+      visibleWorld?.胜负条件 ||
+      {},
+    );
+    const runtimeSnapshot = input?.runtimeSnapshot && typeof input.runtimeSnapshot === 'object'
+      ? cloneValue(input.runtimeSnapshot)
+      : {};
+    const opportunitySnapshot = cloneValue(
+      runtimeSnapshot.opportunitySnapshot ||
+      input?.opportunitySnapshot ||
+      actionOpportunity,
+    );
+    const resourceTimeline = cloneValue(
+      runtimeSnapshot.resourceTimeline ||
+      input?.resourceTimeline ||
+      [],
+    );
+    const scheduledEvents = cloneValue(
+      runtimeSnapshot.scheduledEvents ||
+      input?.scheduledEvents ||
+      [],
+    );
+    const requestPayload = {
+      schemaVersion: R8_REQUEST_SCHEMA,
+      actorId,
+      actorSide,
+      actionOpportunity,
+      objectiveContract,
+      visibleWorld,
+      beliefState,
+      teamPublicFacts: worldEntries(visibleWorld).map(entry => ({
+        unitId: preview.unitId(entry.unit),
+        side: entry.side,
+        alive: preview.isAlive(entry.unit),
+        hpRatio: preview.readHp(entry.unit) / Math.max(1, preview.readHpMax(entry.unit)),
+        visibleStates: visibleStates(entry.unit),
+      })),
+      frozenCandidates,
+      candidateFingerprintMap,
+      evaluationContext: {
+        schemaVersion: '8.3-evaluation-context-1',
+        worldRevision: String(input?.worldRevision || worldRevisionFor(worldSnapshot)),
+        visibleWorldRevision: `visible:${preview.stableHash(visibleWorld)}`,
+        beliefRevision: beliefRevisionFor(beliefState),
+        objectiveHash: `objective:${preview.stableHash(objectiveContract)}`,
+        opportunityRevision: `opportunity:${preview.stableHash(opportunitySnapshot)}`,
+        resourceTimelineRevision: `resource:${preview.stableHash(resourceTimeline)}`,
+        scheduleRevision: `schedule:${preview.stableHash(scheduledEvents)}`,
+        opportunitySnapshot,
+        resourceTimeline,
+        scheduledEvents,
+        horizon: cloneValue(input?.horizon || battleHorizonProfile(input, visibleWorld)),
+      },
+      battleIntent: cloneValue(battleIntent),
+      strategyMemory: cloneValue(input?.strategyMemory || {}),
+      seed: input?.seed ?? 1,
+    };
+    if (preview.stableHash(worldSnapshot) !== sourceWorldHash) {
+      throw new Error('PROVIDER_MUTATED_STATE:prepare');
+    }
+    const request = {
+      ...requestPayload,
+      requestHash: decisionRequestHash(requestPayload),
+    };
+    return deepFreeze(request);
+  }
+
+  function providerInput(request = {}) {
+    return {
+      worldSnapshot: request.visibleWorld,
+      visibleWorldSnapshot: request.visibleWorld,
+      actorId: request.actorId,
+      battleIntent: request.battleIntent,
+      beliefState: request.beliefState,
+      actionOpportunity: request.actionOpportunity,
+      strategyMemory: request.strategyMemory,
+      seed: request.seed,
+      __preparedDecisionWorld: true,
+      __preparedBeliefState: request.beliefState,
+      __frozenCandidates: request.frozenCandidates,
+    };
+  }
+
+  const providerRegistry = Object.freeze({
+    'legacy-baseline': request => decide(providerInput(request)),
+    'r74-next-baseline': request => decideNext(providerInput(request)),
+    'r8-shadow': () => {
+      throw new Error('R8_PROVIDER_NOT_IMPLEMENTED_PHASE_1:r8-shadow');
+    },
+    r8: () => {
+      throw new Error('R8_PROVIDER_NOT_IMPLEMENTED_PHASE_1:r8');
+    },
+  });
+
+  function runProvider(input = {}) {
+    const providerId = String(input?.providerId || '').trim();
+    const request = input?.request;
+    if (!Object.hasOwn(providerRegistry, providerId)) {
+      throw new Error(`battle_decision_provider_unknown:${providerId || 'missing'}`);
+    }
+    if (!request || request.schemaVersion !== R8_REQUEST_SCHEMA) {
+      throw new Error('DECISION_SCHEMA_MISMATCH:request');
+    }
+    const beforeHash = decisionRequestHash(request);
+    if (beforeHash !== request.requestHash) throw new Error('PROVIDER_MUTATED_STATE:request_hash');
+    let decision;
+    providerExecutionDepth += 1;
+    try {
+      decision = providerRegistry[providerId](request);
+    } finally {
+      providerExecutionDepth -= 1;
+    }
+    if (decisionRequestHash(request) !== beforeHash) throw new Error('PROVIDER_MUTATED_STATE:provider');
+    const selectedCandidateId = String(decision?.selected?.candidateId || '').trim();
+    const selectedCandidate = request.frozenCandidates.find(
+      candidate => candidate.candidateId === selectedCandidateId,
+    );
+    if (!selectedCandidate) throw new Error('PROVIDER_UNKNOWN_CANDIDATE');
+    const selectedDeclaration = cloneValue(decision?.selected?.declaration || {});
+    const expectedFingerprint = request.candidateFingerprintMap[selectedCandidateId];
+    if (declarationFingerprint(selectedDeclaration) !== expectedFingerprint) {
+      throw new Error('DECLARATION_FINGERPRINT_MISMATCH');
+    }
+    return deepFreeze({
+      schemaVersion: R8_RESULT_SCHEMA,
+      providerId,
+      requestHash: request.requestHash,
+      selectedCandidateId,
+      selectedDeclaration,
+      decisionAudit: cloneValue(decision),
+      beliefState: cloneValue(decision?.beliefState || request.beliefState),
+      teamIntent: cloneValue(decision?.teamIntent || {}),
+      strategyMemory: cloneValue(decision?.strategyMemory || request.strategyMemory),
+      strategicSignature: String(decision?.strategicSignature || '').trim(),
+      stateCapacityTotal: Math.max(0, Number(decision?.stateCapacityTotal || 0)),
+      beliefRevision: String(decision?.beliefRevision || beliefRevisionFor(request.beliefState)),
+      pendingStrategicEffect: decision?.pendingStrategicEffect === true,
+      decisionProfile: cloneValue(decision?.decisionProfile || {}),
+    });
+  }
+
   root.__LWCS_BATTLE_DECISION__ = Object.freeze({
     version: VERSION,
     actionKinds,
@@ -11124,5 +11334,9 @@
     normalizeUtilities,
     classifyCandidateEvidence,
     decide,
+    declarationFingerprint,
+    prepareDecisionRequest,
+    runProvider,
+    providerIds: Object.freeze(Object.keys(providerRegistry)),
   });
 })();
