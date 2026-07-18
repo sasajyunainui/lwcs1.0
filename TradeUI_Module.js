@@ -1560,13 +1560,14 @@ class TradeUIComponent {
     };
   }
 
-  submitAction(playerInput, sysPrompt, requestKind, patchOps = []) {
+  submitAction(playerInput, sysPrompt, requestKind, patchOps = [], transaction = {}) {
     if (this.options.onTradeAction) {
       this.options.onTradeAction({
         playerInput,
         systemPrompt: sysPrompt,
         requestKind,
-        patchOps: Array.isArray(patchOps) ? patchOps : []
+        patchOps: Array.isArray(patchOps) ? patchOps : [],
+        ...(transaction && typeof transaction === 'object' ? transaction : {}),
       });
     }
   }
@@ -1643,14 +1644,17 @@ class TradeUIComponent {
     const 批次倍率 = this.计算来源批次平均倍率(item, qty);
     const baseUnitPrice = Math.max(0, Math.floor(Number(itemDefinition.基础价格 || 0) * 批次倍率 * priceMultiplier * Math.max(0, 1 - discount)));
     const unitPrice = this.getMarketAdjustedPrice(baseUnitPrice, 'buy', { fixed: isSoulTowerDiscountTrade });
-    const total = unitPrice * qty;
+    const privilegeDiscount = this.resolvePrivilegePurchaseDiscount(storeName, itemName, itemDefinition);
+    const total = Math.max(0, Math.floor(unitPrice * privilegeDiscount.支付比例 / 100)) * qty;
     const userFame = Number(this.charData?.社交?.声望 || 0);
     const currency = this.resolveTradeCurrency(item, storeName, this.charData?.状态?.位置 || '', storeData);
     const userCoin = Number(this.charData?.财富?.[currency] || 0);
 
     this.$('#shop-base-price').textContent = `${baseUnitPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
     this.$('#shop-price').textContent = `${unitPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
-    this.$('#shop-market').textContent = 商店营业中 ? this.getMarketAdjustmentText('buy', { fixed: isSoulTowerDiscountTrade }) : this.getShopOpenStateText();
+    this.$('#shop-market').textContent = 商店营业中
+      ? `${this.getMarketAdjustmentText('buy', { fixed: isSoulTowerDiscountTrade })}${privilegeDiscount.支付比例 < 100 ? ` · 权限支付${privilegeDiscount.支付比例}%` : ''}`
+      : this.getShopOpenStateText();
     
     const totalEl = this.$('#shop-total');
     totalEl.textContent = `${total.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
@@ -1693,7 +1697,11 @@ class TradeUIComponent {
     const itemDefinition = item._临时定义 || this.取物品定义(itemName);
     const 批次倍率 = this.计算来源批次平均倍率(item, qty);
     const baseUnitPrice = Math.max(0, Math.floor(Number(itemDefinition.基础价格 || 0) * 批次倍率 * Number(item.价格倍率 || 1) * Math.max(0, 1 - Number(item.折扣 || 0))));
-    const total = this.getMarketAdjustedPrice(baseUnitPrice, 'buy', { fixed: isSoulTowerDiscountTrade }) * qty;
+    const privilegeDiscount = this.resolvePrivilegePurchaseDiscount(storeName, itemName, itemDefinition);
+    const total = Math.max(
+      0,
+      Math.floor(this.getMarketAdjustedPrice(baseUnitPrice, 'buy', { fixed: isSoulTowerDiscountTrade }) * privilegeDiscount.支付比例 / 100),
+    ) * qty;
 
     if (!this.isCurrencySpendable(currency)) return this.显示提示(this.getCurrencyBlockedMessage(currency));
 
@@ -1719,7 +1727,6 @@ class TradeUIComponent {
     const tradeItem = this.buildInventoryItemFromTradeSource(itemName, 采购定义, qty, { source: storeName, desc: 采购定义?.描述 || `购自${storeName}`, currency });
     this.appendItemDefinitionPatch(patchOps, itemName, tradeItem.definition, tradeItem.分类);
     this.appendInventoryGainPatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, tradeItem);
-
     if (isSoulTowerDiscountTrade) {
       patchOps.push({
         op: "replace",
@@ -1737,10 +1744,46 @@ class TradeUIComponent {
       `[交易地点]\n${storeName}`,
       `[交易类型]\n商店购买`,
       `[市场调整]\n${this.getMarketAdjustmentText('buy', { fixed: isSoulTowerDiscountTrade })}`,
+      ...(privilegeDiscount.支付比例 < 100 ? [`[特殊权限]\n${privilegeDiscount.记录?.名称 || '折扣权限'}，支付比例 ${privilegeDiscount.支付比例}%`] : []),
       `[结算摘要]\n已支付 ${total} ${this.getCurrencyLabel(currency)}；已获得 ${qty} 份【${itemName}】。`,
     ]);
 
-    this.submitAction(`我要在【${storeName}】购买 ${qty} 份【${itemName}】。`, sysPrompt, 'trade_shop_buy', patchOps);
+    this.submitAction(
+      `我要在【${storeName}】购买 ${qty} 份【${itemName}】。`,
+      sysPrompt,
+      'trade_shop_buy',
+      patchOps,
+      {
+        privilegeID: privilegeDiscount.权限ID || '',
+        privilegeCost: privilegeDiscount.权限ID ? 1 : 0,
+        交易参数: {
+          角色名: this.activeName,
+          地点: loc,
+          商店: storeName,
+          物品: itemName,
+          数量: qty,
+          货币: currency,
+          预期总价: total,
+          魂灵塔兑换: isSoulTowerDiscountTrade,
+        },
+      },
+    );
+  }
+
+  resolvePrivilegePurchaseDiscount(storeName = '', itemName = '', itemDefinition = {}) {
+    let runtime = window.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__;
+    try {
+      if (!runtime && window.parent && window.parent !== window) runtime = window.parent.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__;
+    } catch (错误) {}
+    if (!runtime || typeof runtime.计算购买支付比例 !== 'function') return { 权限ID: '', 记录: null, 支付比例: 100 };
+    const rootData = this.rootData || {};
+    const itemCategory = this.查找运行时物品定义(itemName)?.分类 || itemDefinition?.分类 || '';
+    return runtime.计算购买支付比例(rootData, this.activeName, {
+      地点: this.charData?.状态?.位置 || '',
+      商店: storeName,
+      物品分类: itemCategory,
+      物品: itemName,
+    });
   }
 
   // --- 资产出售模块 ---
@@ -2003,7 +2046,6 @@ class TradeUIComponent {
     this.appendItemDefinitionPatch(patchOps, itemName, tradeItem.definition, tradeItem.分类);
     this.appendInventoryGainPatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, tradeItem);
     patchOps.push({ op: "remove", path: `/world/拍卖/拍品/${this.escapeJsonPointer(itemName)}` });
-
     const log = `[竞拍成功][竞拍热][交易触发待处理] ${this.activeName} 豪掷 ${bid} ${this.getCurrencyLabel(currency)} 拍下了【${itemName}】。`;
     patchOps.push(...this.buildTradeSystemPatches(log));
 
@@ -2013,8 +2055,24 @@ class TradeUIComponent {
       `[结算摘要]\n已支付 ${bid} ${this.getCurrencyLabel(currency)}；已拍得【${itemName}】。`,
     ]);
 
-    this.submitAction(`【举牌竞拍】我出价 ${bid} 竞拍【${itemName}】！`, sysPrompt, 'trade_auction', patchOps);
+    this.submitAction(
+      `【举牌竞拍】我出价 ${bid} 竞拍【${itemName}】！`,
+      sysPrompt,
+      'trade_auction',
+      patchOps,
+      {
+        privilegeCost: 0,
+          交易参数: {
+            角色名: this.activeName,
+            地点: this.charData?.状态?.位置 || '',
+            物品: itemName,
+            出价: bid,
+            货币: currency,
+          },
+      },
+    );
   }
+
 }
 
 // 向全局挂载

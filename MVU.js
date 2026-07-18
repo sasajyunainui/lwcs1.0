@@ -340,6 +340,161 @@ const BloodlinePowerSchema = z
 
 const ItemLibrarySchema = z.looseObject({}).transform(规范化物品分类表_V1).prefault({});
 
+const 赛事权限非负整数Schema_V1 = (默认值 = 0) =>
+  z.coerce.number().int().transform(值 => Math.max(0, 值)).catch(默认值);
+const 赛事权限正整数Schema_V1 = (默认值 = 1) =>
+  z.coerce.number().int().transform(值 => Math.max(1, 值)).catch(默认值);
+const 赛事权限比例Schema_V1 = (默认值 = 0) =>
+  z.coerce.number().transform(值 => Math.min(99, Math.max(0, 值))).catch(默认值);
+const 赛事权限文本Schema_V1 = (默认值 = '') =>
+  z.string().transform(值 => 值.trim()).catch(默认值);
+
+const 权限使用配额Schema_V1 = z
+  .object({
+    上限: 赛事权限正整数Schema_V1(),
+    剩余: 赛事权限非负整数Schema_V1(),
+    重置周期: 赛事权限文本Schema_V1().optional(),
+    下次重置tick: 赛事权限非负整数Schema_V1().optional(),
+  })
+  .strict()
+  .transform(配额 => ({
+    ...配额,
+    剩余: Math.min(配额.上限, 配额.剩余),
+    ...(!配额.重置周期 ? { 下次重置tick: undefined } : {}),
+  }));
+
+const 资格权限Schema_V1 = z
+  .object({
+    类型: z.literal('资格'),
+    项目: 赛事权限文本Schema_V1(),
+  })
+  .strict();
+
+const 折扣权限Schema_V1 = z
+  .object({
+    类型: z.literal('折扣'),
+    地点: 赛事权限文本Schema_V1().optional(),
+    商店: 赛事权限文本Schema_V1().optional(),
+    物品分类: 赛事权限文本Schema_V1().optional(),
+    物品: 赛事权限文本Schema_V1().optional(),
+    支付比例: 赛事权限比例Schema_V1(),
+  })
+  .strict();
+
+const 物品选择权限Schema_V1 = z
+  .object({
+    类型: z.literal('物品选择'),
+    来源: 赛事权限文本Schema_V1(),
+    数量: 赛事权限正整数Schema_V1(),
+    品质: z.enum(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']).optional(),
+    分类: 赛事权限文本Schema_V1().optional(),
+  })
+  .strict();
+
+const 奖励加成权限Schema_V1 = z
+  .object({
+    类型: z.literal('奖励加成'),
+    来源: 赛事权限文本Schema_V1(),
+    倍率: z.coerce.number().transform(值 => Math.max(0, 值)).catch(1),
+  })
+  .strict();
+
+const 特殊权限Schema_V1 = z
+  .object({
+    名称: 赛事权限文本Schema_V1(),
+    持有人: 赛事权限文本Schema_V1(),
+    权限: z.discriminatedUnion('类型', [
+      资格权限Schema_V1,
+      折扣权限Schema_V1,
+      物品选择权限Schema_V1,
+      奖励加成权限Schema_V1,
+    ]),
+    使用配额: 权限使用配额Schema_V1.optional(),
+    到期tick: 赛事权限非负整数Schema_V1().optional(),
+  })
+  .strict();
+
+const 赛事项目流程Schema_V1 = z.enum(['单场', '循环', '淘汰', '循环后淘汰']);
+const 赛事参赛者Schema_V1 = z
+  .object({
+    名称: 赛事权限文本Schema_V1(),
+    成员: z.array(赛事权限文本Schema_V1()).transform(值 => Array.from(new Set(值.filter(Boolean)))).prefault([]),
+    状态: z.enum(['参赛', '退赛', '取消资格']).prefault('参赛'),
+  })
+  .strict();
+const 赛事参赛限制Schema_V1 = z
+  .object({
+    队伍人数上限: 赛事权限正整数Schema_V1().optional(),
+    年龄上限: 赛事权限非负整数Schema_V1().optional(),
+    等级上限: 赛事权限非负整数Schema_V1().optional(),
+    允许身份: z.array(赛事权限文本Schema_V1()).prefault([]).optional(),
+    必需装备: z.array(赛事权限文本Schema_V1()).prefault([]).optional(),
+    禁止装备: z.array(赛事权限文本Schema_V1()).prefault([]).optional(),
+    报名费用: z.object({
+      货币: 赛事权限文本Schema_V1(),
+      金额: z.coerce.number().transform(值 => Math.max(0, 值)).catch(0),
+    }).strict().optional(),
+  })
+  .strict()
+  .prefault({});
+const 赛事项目Schema_V1 = z
+  .object({
+    流程: 赛事项目流程Schema_V1,
+    参赛总数: 赛事权限正整数Schema_V1(),
+    参赛者: z.record(z.string(), 赛事参赛者Schema_V1).prefault({}),
+    参赛限制: 赛事参赛限制Schema_V1.optional(),
+  })
+  .strict();
+const 赛事私有项目进度Schema_V1 = z
+  .object({
+    状态: z.enum(['进行中', '已完成']).prefault('进行中'),
+    当前环节: 赛事权限文本Schema_V1().optional(),
+    当前轮次: 赛事权限非负整数Schema_V1().prefault(1),
+    分组结果: z.record(z.string(), z.any()).prefault({}),
+    对局: z.record(z.string(), z.any()).prefault({}),
+    系列比分: z.record(z.string(), z.any()).prefault({}),
+    开始tick: 赛事权限非负整数Schema_V1(),
+    结束tick: 赛事权限非负整数Schema_V1(),
+    下一场tick: 赛事权限非负整数Schema_V1().optional(),
+    生成种子: 赛事权限文本Schema_V1(),
+    模拟数量: 赛事权限非负整数Schema_V1().prefault(0),
+    实体: z.record(z.string(), z.any()).prefault({}),
+    实体代号: z.record(z.string(), 赛事权限文本Schema_V1()).prefault({}),
+    代号映射: z.record(z.string(), 赛事权限文本Schema_V1()).prefault({}),
+    实体绑定: z.record(z.string(), 赛事权限文本Schema_V1()).prefault({}),
+  })
+  .strict();
+const 赛事私有进度Schema_V1 = z
+  .object({
+    个人赛: 赛事私有项目进度Schema_V1.optional(),
+    团体赛: 赛事私有项目进度Schema_V1.optional(),
+  })
+  .strict()
+  .optional();
+const 赛事Schema_V1 = z
+  .object({
+    名称: 赛事权限文本Schema_V1(),
+    状态: z.enum(['筹备', '进行中', '已完成']).prefault('筹备'),
+    日程: z.object({
+      开始tick: 赛事权限非负整数Schema_V1(),
+      结束tick: 赛事权限非负整数Schema_V1(),
+    }).strict(),
+    项目: z.object({
+      个人赛: 赛事项目Schema_V1.optional(),
+      团体赛: 赛事项目Schema_V1.optional(),
+    }).strict(),
+    _进度: 赛事私有进度Schema_V1,
+  })
+  .strict();
+const 赛事战斗上下文Schema_V1 = z
+  .object({
+    赛事ID: 赛事权限文本Schema_V1(),
+    项目: z.enum(['个人赛', '团体赛']),
+    对局ID: 赛事权限文本Schema_V1(),
+    结算ID: 赛事权限文本Schema_V1(),
+  })
+  .strict();
+
 const 交付需求Schema_V1 = z
   .object({
     类型: z.literal('物品').prefault('物品'),
@@ -891,6 +1046,8 @@ const SchemaRootObject = z
               .prefault({}),
           )
           .prefault({}),
+        特殊权限: z.record(z.string(), 特殊权限Schema_V1).prefault({}),
+        赛事: z.record(z.string(), 赛事Schema_V1).prefault({}),
         地点: z
           .record(
             z.string().describe('地点名称'),
@@ -997,6 +1154,7 @@ const SchemaRootObject = z
               .prefault('点到为止')
               .describe('本次战斗的主观意图，决定是否允许致死与前端建议结局'),
             裁断结果: z.string().prefault(''),
+            赛事上下文: 赛事战斗上下文Schema_V1.optional(),
             参战者: z
               .record(z.string().describe('参战槽位或参战者姓名'), z.any())
               .prefault({})

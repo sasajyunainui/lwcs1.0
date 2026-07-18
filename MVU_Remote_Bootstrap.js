@@ -12,6 +12,7 @@ const 入口文件名 = 'MVU_ZOD_Entry.js';
 const 启动预取资源列表 = Object.freeze([
   'MVU_Skill_Runtime.js',
   'MVU_Schema_Runtime.js',
+  'MVU_Competition_Runtime.js',
   'MVU_Runtime_View.js',
   'MVU.js',
   'MVU_Hooks.js',

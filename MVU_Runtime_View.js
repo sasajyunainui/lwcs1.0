@@ -2299,9 +2299,554 @@ function 纠正AIJsonPatch新增父容器路径_V1(父路径 = [], 值 = {}, 根
   return null;
 }
 
+function 读取赛事权限运行时_V1() {
+  const 候选 = [
+    globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__,
+    globalThis.window?.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__,
+    globalThis.parent?.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__,
+  ];
+  return 候选.find(接口 => 接口 && typeof 接口 === 'object') || null;
+}
+
+function 整理赛事权限视图根_V1(数据根 = {}) {
+  const 克隆根 = cloneJsonValue(数据根, {}) || {};
+  const 运行时 = 读取赛事权限运行时_V1();
+  if (运行时?.整理特殊权限) 运行时.整理特殊权限(克隆根);
+  return 克隆根;
+}
+
+function 校验赛事权限输入字段_V1(对象 = {}, 允许字段 = [], 标签 = '对象') {
+  if (!对象 || typeof 对象 !== 'object' || Array.isArray(对象)) throw new Error(`${标签}必须是对象`);
+  const 未知字段 = Object.keys(对象).filter(字段 => !允许字段.includes(字段));
+  if (未知字段.length) throw new Error(`${标签}包含未知字段：${未知字段.join('、')}`);
+}
+
+function 读取赛事权限私有UID计数器_V1() {
+  const 读取器 = globalThis.TavernHelper?.getVariables || globalThis.getVariables;
+  if (typeof 读取器 !== 'function') return {};
+  try {
+    const 变量 = 读取器({ type: 'chat' });
+    if (变量 && typeof 变量.then !== 'function' && 变量?.lwcs_赛事权限UID计数器 && typeof 变量.lwcs_赛事权限UID计数器 === 'object') {
+      return { ...变量.lwcs_赛事权限UID计数器 };
+    }
+  } catch (错误) {}
+  return {};
+}
+
+function 保存赛事权限私有UID计数器_V1(计数器 = {}) {
+  const 写入器 = globalThis.TavernHelper?.insertOrAssignVariables || globalThis.insertOrAssignVariables;
+  if (typeof 写入器 !== 'function') return;
+  try {
+    写入器({ lwcs_赛事权限UID计数器: { ...计数器 } }, { type: 'chat' });
+  } catch (错误) {}
+}
+
+function 扫描赛事权限最大UID_V1(记录表 = {}, 前缀 = '') {
+  return Object.keys(记录表 || {}).reduce((最大值, 键) => {
+    const 匹配 = String(键).match(new RegExp(`^${前缀}_(\\d+)$`));
+    return 匹配 ? Math.max(最大值, Number(匹配[1]) || 0) : 最大值;
+  }, 0);
+}
+
+function 创建赛事权限UID分配器_V1(根 = {}) {
+  const 计数器 = 读取赛事权限私有UID计数器_V1();
+  const 已用表 = {
+    privilege: new Set(Object.keys(根?.world?.特殊权限 || {})),
+    competition: new Set(Object.keys(根?.world?.赛事 || {})),
+    participant: new Set(Object.values(根?.world?.赛事 || {}).flatMap(赛事 =>
+      Object.values(赛事?.项目 || {}).flatMap(项目 => Object.keys(项目?.参赛者 || {})),
+    )),
+    match: new Set(Object.values(根?.world?.赛事 || {}).flatMap(赛事 =>
+      Object.values(赛事?._进度 || {}).flatMap(进度 => Object.keys(进度?.对局 || {})),
+    )),
+  };
+  Object.keys(已用表).forEach(前缀 => {
+    const 扫描表 = Object.fromEntries([...已用表[前缀]].map(键 => [键, true]));
+    计数器[前缀] = Math.max(Number(计数器[前缀] || 0), 扫描赛事权限最大UID_V1(扫描表, 前缀));
+  });
+  return {
+    分配(前缀) {
+      do {
+        计数器[前缀] = Math.max(0, Number(计数器[前缀] || 0)) + 1;
+      } while (已用表[前缀]?.has(`${前缀}_${String(计数器[前缀]).padStart(3, '0')}`));
+      const UID = `${前缀}_${String(计数器[前缀]).padStart(3, '0')}`;
+      已用表[前缀]?.add(UID);
+      return UID;
+    },
+    提交() {
+      保存赛事权限私有UID计数器_V1(计数器);
+    },
+  };
+}
+
+function 规范化AI权限配额_V1(输入 = {}, 当前tick = 0, 运行时 = null) {
+  const 使用次数 = 输入.使用次数;
+  if (输入.使用配额 !== undefined) throw new Error('使用配额由脚本维护，AI不能直接填写');
+  if (使用次数 === undefined && 输入.重置周期 === undefined) return undefined;
+  const 上限 = 使用次数 === undefined ? 1 : 运行时.解析使用次数(使用次数);
+  const 配额 = { 上限, 剩余: 上限 };
+  if (输入.重置周期 !== undefined && String(输入.重置周期 || '').trim()) {
+    const 周期 = 运行时.解析重置周期(输入.重置周期);
+    配额.重置周期 = 周期;
+    配额.下次重置tick = Math.floor(Number(当前tick || 0) + 运行时.解析重置周期tick(周期));
+  }
+  return 配额;
+}
+
+function 查找AI权限物品定义_V1(根 = {}, 物品名 = '') {
+  for (const [分类, 定义表] of Object.entries(根?.物品 || {})) {
+    if (定义表 && typeof 定义表 === 'object' && 定义表[物品名]) return { 分类, 定义: 定义表[物品名] };
+  }
+  return null;
+}
+
+function 规范化AI特殊权限记录_V1(输入 = {}, 根 = {}, 运行时 = null) {
+  校验赛事权限输入字段_V1(
+    输入,
+    ['名称', '持有人', '权限', '使用次数', '重置周期', '有效期'],
+    '特殊权限',
+  );
+  const 当前tick = Number(根?.world?.时间?.tick || 0);
+  const 名称 = String(输入.名称 || '').trim();
+  const 持有人 = String(输入.持有人 || '').trim();
+  if (!名称 || !持有人) throw new Error('特殊权限必须填写名称和持有人');
+  const 权限 = 输入.权限;
+  if (!权限 || typeof 权限 !== 'object' || Array.isArray(权限)) throw new Error('特殊权限.权限必须是对象');
+  const 类型 = String(权限.类型 || '').trim();
+  let 正式权限;
+  if (类型 === '资格') {
+    校验赛事权限输入字段_V1(权限, ['类型', '项目'], '资格权限');
+    const 项目 = String(权限.项目 || '').trim();
+    if (!项目) throw new Error('资格项目不能为空');
+    正式权限 = { 类型, 项目 };
+  } else if (类型 === '折扣') {
+    校验赛事权限输入字段_V1(权限, ['类型', '地点', '商店', '物品分类', '物品', '支付比例'], '折扣权限');
+    const 地点 = String(权限.地点 || '').trim();
+    const 商店 = String(权限.商店 || '').trim();
+    const 物品分类 = String(权限.物品分类 || '').trim();
+    const 物品 = String(权限.物品 || '').trim();
+    if (!地点 && !商店 && !物品分类 && !物品) throw new Error('折扣至少限定地点、商店、物品分类或物品');
+    if (商店 && !地点) throw new Error('限定商店时必须同时限定地点');
+    if (地点 && !根?.world?.地点?.[地点]) throw new Error(`折扣地点不存在：${地点}`);
+    if (商店 && !根?.world?.地点?.[地点]?.商店?.[商店]) throw new Error(`商店不属于地点：${地点}-${商店}`);
+    const 物品定义 = 物品 ? 查找AI权限物品定义_V1(根, 物品) : null;
+    if (物品 && !物品定义) throw new Error(`折扣物品不存在：${物品}`);
+    if (物品分类 && 物品定义 && 物品定义.分类 !== 物品分类) throw new Error(`物品分类不一致：${物品}`);
+    const 支付比例 = Number(权限.支付比例);
+    if (!Number.isFinite(支付比例) || 支付比例 < 0 || 支付比例 > 99) throw new Error('支付比例必须为0至99');
+    正式权限 = { 类型, ...(地点 ? { 地点 } : {}), ...(商店 ? { 商店 } : {}), ...(物品分类 ? { 物品分类 } : {}), ...(物品 ? { 物品 } : {}), 支付比例 };
+  } else if (类型 === '物品选择') {
+    校验赛事权限输入字段_V1(权限, ['类型', '来源', '数量', '品质', '分类'], '物品选择权限');
+    const 来源 = String(权限.来源 || '').trim();
+    if (来源 !== '全局物品库') {
+      const 分隔 = 来源.indexOf('-');
+      const 地点 = 分隔 > 0 ? 来源.slice(0, 分隔) : '';
+      const 商店 = 分隔 > 0 ? 来源.slice(分隔 + 1) : '';
+      if (!地点 || !商店 || !根?.world?.地点?.[地点]?.商店?.[商店]) throw new Error(`物品选择来源不存在：${来源}`);
+    }
+    正式权限 = {
+      类型,
+      来源,
+      数量: Math.max(1, Math.floor(Number(权限.数量 || 1))),
+      ...(权限.品质 ? { 品质: String(权限.品质).trim() } : {}),
+      ...(权限.分类 ? { 分类: String(权限.分类).trim() } : {}),
+    };
+    if (!运行时.生成物品选择候选(根, { 权限: 正式权限 }).length) throw new Error(`物品选择没有可执行候选：${名称}`);
+  } else if (类型 === '奖励加成') {
+    校验赛事权限输入字段_V1(权限, ['类型', '来源', '倍率'], '奖励加成权限');
+    const 来源 = String(权限.来源 || '').trim();
+    if (来源 !== '全部委托' && !rootWorldCommissionExists_V1(根, 来源)) throw new Error(`奖励加成委托不存在：${来源}`);
+    const 倍率 = Number(权限.倍率);
+    if (!Number.isFinite(倍率) || 倍率 < 0) throw new Error('奖励倍率必须是非负数');
+    正式权限 = { 类型, 来源, 倍率 };
+  } else {
+    throw new Error(`不支持的权限类型：${类型 || '空'}`);
+  }
+  const 输出 = { 名称, 持有人, 权限: 正式权限 };
+  const 使用配额 = 规范化AI权限配额_V1(输入, 当前tick, 运行时);
+  if (使用配额) 输出.使用配额 = 使用配额;
+  if (输入.有效期 !== undefined) {
+    const 到期tick = 运行时.解析时长tick(输入.有效期, 当前tick);
+    if (到期tick !== null) 输出.到期tick = 到期tick;
+  }
+  return 输出;
+}
+
+function 合并AI特殊权限更新_V1(输入 = {}, 当前记录 = {}, 根 = {}, 运行时 = null) {
+  const 规范记录 = 规范化AI特殊权限记录_V1(输入, 根, 运行时);
+  const 当前tick = Number(根?.world?.时间?.tick || 0);
+  const 输出 = {
+    名称: 规范记录.名称,
+    持有人: 规范记录.持有人,
+    权限: 规范记录.权限,
+  };
+  const 原配额 = 当前记录?.使用配额 && typeof 当前记录.使用配额 === 'object' && !Array.isArray(当前记录.使用配额)
+    ? cloneJsonValue(当前记录.使用配额, {})
+    : null;
+  if (输入.使用次数 !== undefined || 输入.重置周期 !== undefined) {
+    const 新上限 = 输入.使用次数 !== undefined
+      ? 运行时.解析使用次数(输入.使用次数)
+      : Math.max(1, Math.floor(Number(原配额?.上限 || 1)));
+    const 配额 = {
+      上限: 新上限,
+      剩余: 原配额 ? Math.min(Math.max(0, Math.floor(Number(原配额.剩余 || 0))), 新上限) : 新上限,
+    };
+    if (输入.重置周期 !== undefined) {
+      const 周期文本 = String(输入.重置周期 || '').trim();
+      if (周期文本) {
+        const 周期 = 运行时.解析重置周期(周期文本);
+        配额.重置周期 = 周期;
+        配额.下次重置tick = Math.floor(当前tick + 运行时.解析重置周期tick(周期));
+      }
+    } else if (原配额?.重置周期) {
+      配额.重置周期 = 原配额.重置周期;
+      if (原配额.下次重置tick !== undefined) 配额.下次重置tick = 原配额.下次重置tick;
+    }
+    输出.使用配额 = 配额;
+  } else if (原配额) {
+    输出.使用配额 = 原配额;
+  }
+  if (输入.有效期 !== undefined) {
+    const 到期tick = 运行时.解析时长tick(输入.有效期, 当前tick);
+    if (到期tick !== null) 输出.到期tick = 到期tick;
+  } else if (当前记录?.到期tick !== undefined) {
+    输出.到期tick = 当前记录.到期tick;
+  }
+  return 输出;
+}
+
+function rootWorldCommissionExists_V1(根 = {}, 委托名 = '') {
+  return !!委托名 && !!根?.world?.委托板?.[委托名];
+}
+
+function 特殊权限重复条件键_V1(记录 = {}) {
+  const 权限 = 记录?.权限 || {};
+  return JSON.stringify([
+    String(记录?.持有人 || '').trim(),
+    String(权限.类型 || '').trim(),
+    String(权限.项目 || '').trim(),
+    String(权限.地点 || '').trim(),
+    String(权限.商店 || '').trim(),
+    String(权限.物品分类 || '').trim(),
+    String(权限.物品 || '').trim(),
+    String(权限.来源 || '').trim(),
+    String(权限.分类 || '').trim(),
+    String(权限.品质 || '').trim(),
+  ]);
+}
+
+function 规范化AI参赛限制_V1(输入 = {}, 根 = {}, 运行时 = null) {
+  校验赛事权限输入字段_V1(输入, ['队伍人数上限', '年龄上限', '等级上限', '允许身份', '必需装备', '禁止装备', '报名费用'], '参赛限制');
+  const 输出 = {};
+  if (输入.队伍人数上限 !== undefined) 输出.队伍人数上限 = Math.max(1, Math.floor(Number(输入.队伍人数上限 || 1)));
+  if (输入.年龄上限 !== undefined) 输出.年龄上限 = Math.max(0, Math.floor(Number(输入.年龄上限 || 0)));
+  if (输入.等级上限 !== undefined) 输出.等级上限 = Math.max(0, Math.floor(Number(输入.等级上限 || 0)));
+  ['允许身份', '必需装备', '禁止装备'].forEach(字段 => {
+    if (输入[字段] !== undefined) {
+      if (!Array.isArray(输入[字段])) throw new Error(`${字段}必须是数组`);
+      输出[字段] = Array.from(new Set(输入[字段].map(值 => String(值 || '').trim()).filter(Boolean)));
+    }
+  });
+  if (输入.报名费用 !== undefined) {
+    校验赛事权限输入字段_V1(输入.报名费用, ['货币', '金额'], '报名费用');
+    输出.报名费用 = {
+      货币: String(输入.报名费用.货币 || '').trim(),
+      金额: Math.max(0, Number(输入.报名费用.金额 || 0)),
+    };
+  }
+  return 输出;
+}
+
+function 规范化AI参赛者记录_V1(输入 = {}) {
+  校验赛事权限输入字段_V1(输入, ['名称', '成员', '状态'], '参赛者');
+  const 名称 = String(输入.名称 || '').trim();
+  const 成员 = Array.isArray(输入.成员) ? 输入.成员.map(值 => String(值 || '').trim()).filter(Boolean) : [];
+  if (!名称 || !成员.length) throw new Error('参赛者必须填写名称和成员');
+  return {
+    名称,
+    成员: Array.from(new Set(成员)),
+    状态: ['参赛', '退赛', '取消资格'].includes(输入.状态) ? 输入.状态 : '参赛',
+  };
+}
+
+function 规范化AI赛事项目_V1(输入 = {}, 根 = {}, UID分配器, 运行时, 赛事ID = '', 项目名 = '') {
+  校验赛事权限输入字段_V1(输入, ['流程', '参赛总数', '参赛者', '参赛限制'], `${项目名}项目`);
+  if (!运行时.常量.流程表.includes(String(输入.流程 || '').trim())) throw new Error(`${项目名}流程无效`);
+  if (输入.参赛总数 === undefined) throw new Error(`${项目名}必须提供参赛总数`);
+  const 参赛总数 = Math.floor(Number(输入.参赛总数));
+  if (!Number.isFinite(参赛总数) || 参赛总数 < 2) throw new Error(`${项目名}参赛总数至少为2`);
+  const 参赛者表 = {};
+  const 输入列表 = Array.isArray(输入.参赛者) ? 输入.参赛者 : Object.values(输入.参赛者 || {});
+  输入列表.forEach(项 => {
+    const 参赛者 = 规范化AI参赛者记录_V1(项);
+    if (Object.values(参赛者表).some(已有 => 已有.名称 === 参赛者.名称)) throw new Error(`参赛者名称重名：${参赛者.名称}`);
+    参赛者表[UID分配器.分配('participant')] = 参赛者;
+  });
+  if (输入列表.length > 参赛总数) throw new Error(`${项目名}已登记名单超过参赛总数`);
+  if (输入.流程 === '单场' && 参赛总数 !== 2) throw new Error(`${项目名}单场流程的参赛总数必须为2`);
+  return {
+    流程: String(输入.流程).trim(),
+    参赛总数,
+    参赛者: 参赛者表,
+    ...(输入.参赛限制 !== undefined ? { 参赛限制: 规范化AI参赛限制_V1(输入.参赛限制, 根, 运行时) } : {}),
+  };
+}
+
+function 规范化AI赛事记录_V1(输入 = {}, 根 = {}, UID分配器, 运行时) {
+  校验赛事权限输入字段_V1(输入, ['名称', '状态', '日程', '开始时间', '总时长', '项目'], '赛事');
+  const 赛事 = {
+    名称: String(输入.名称 || '').trim(),
+    状态: '筹备',
+    日程: {},
+    项目: {},
+  };
+  if (!赛事.名称) throw new Error('赛事必须填写名称');
+  const 当前tick = Number(根?.world?.时间?.tick || 0);
+  const 开始tick = 输入.开始时间 === undefined ? 当前tick : 运行时.解析时长tick(输入.开始时间, 当前tick);
+  const 时长tick = 运行时.解析时长tick(输入.总时长, 0);
+  if (开始tick === null || 时长tick === null || 时长tick <= 0) throw new Error('赛事必须填写有限的总时长');
+  赛事.日程 = { 开始tick, 结束tick: 开始tick + 时长tick };
+  const 项目输入 = 输入.项目 || {};
+  Object.keys(项目输入).forEach(项目名 => {
+    if (!['个人赛', '团体赛'].includes(项目名)) throw new Error(`赛事项目无效：${项目名}`);
+    赛事.项目[项目名] = 规范化AI赛事项目_V1(项目输入[项目名], 根, UID分配器, 运行时, '', 项目名);
+  });
+  if (!Object.keys(赛事.项目).length) throw new Error('赛事至少需要个人赛或团体赛');
+  if (输入.状态 && 输入.状态 !== '筹备') {
+    throw new Error('赛事状态只能通过请求启动进入进行中');
+  }
+  return 赛事;
+}
+
+function 预处理特殊权限赛事补丁_V2(补丁列表 = [], 根 = {}) {
+  const 运行时 = 读取赛事权限运行时_V1();
+  if (!运行时) return { 补丁: 补丁列表, UID分配器: { 提交() {} } };
+  const UID = 创建赛事权限UID分配器_V1(根);
+  const 临时根 = cloneJsonValue(根, {}) || {};
+  临时根.world ||= {};
+  临时根.world.特殊权限 ||= {};
+  临时根.world.赛事 ||= {};
+  const 映射 = new Map();
+  const 引用 = (表, 值, 类型) => 运行时.唯一引用(tableOrEmptyForRuntimeView_V1(表), 值, 类型);
+  const 输出 = [];
+  (Array.isArray(补丁列表) ? 补丁列表 : []).forEach((原补丁, index) => {
+    const 补丁 = { ...原补丁 };
+    const 路径 = 解码运行时JsonPointer路径_V1(补丁.path);
+    if (路径[0] !== 'world' || !['特殊权限', '赛事', '战斗'].includes(路径[1])) {
+      输出.push(补丁);
+      return;
+    }
+    if (路径[1] === '战斗') throw new Error(`JSONPatch[${index}]战斗上下文由脚本维护`);
+    if (路径.length < 3) throw new Error(`JSONPatch[${index}]不能整体覆盖${路径[1]}表`);
+    if (路径[1] === '特殊权限') {
+      let ID = 路径[2];
+      if (/^新增(?:_\d+)?$/.test(ID)) {
+        if (!['add', 'insert', 'replace'].includes(补丁.op)) throw new Error(`JSONPatch[${index}]新增权限操作无效`);
+        const 记录 = 规范化AI特殊权限记录_V1(补丁.value, 临时根, 运行时);
+        const 重复键 = 特殊权限重复条件键_V1(记录);
+        const 重复 = Object.entries(临时根.world.特殊权限).find(([, 已有]) => 特殊权限重复条件键_V1(已有) === 重复键);
+        ID = 重复?.[0] || UID.分配('privilege');
+        映射.set(`privilege:${路径[2]}`, ID);
+        const 写入记录 = 重复
+          ? 合并AI特殊权限更新_V1(补丁.value, 重复[1], 临时根, 运行时)
+          : 记录;
+        临时根.world.特殊权限[ID] = 写入记录;
+        输出.push({ ...补丁, op: 重复 ? 'replace' : 'add', path: 构建运行时JsonPointer路径_V1(['world', '特殊权限', ID]), value: 写入记录 });
+        return;
+      }
+      ID = 映射.get(`privilege:${ID}`) || 引用(临时根.world.特殊权限, ID, '特殊权限');
+      路径[2] = ID;
+      if (路径.length === 3 && 补丁.op === 'remove') {
+        delete 临时根.world.特殊权限[ID];
+        输出.push({ ...补丁, path: 构建运行时JsonPointer路径_V1(路径) });
+        return;
+      }
+      if (路径.length === 3 && ['add', 'replace'].includes(补丁.op)) {
+        const 记录 = 合并AI特殊权限更新_V1(补丁.value, 临时根.world.特殊权限[ID], 临时根, 运行时);
+        临时根.world.特殊权限[ID] = 记录;
+        输出.push({ ...补丁, op: 'replace', path: 构建运行时JsonPointer路径_V1(路径), value: 记录 });
+        return;
+      }
+      if (路径.slice(3).some(字段 => ['剩余', '下次重置tick', '到期tick'].includes(字段))) throw new Error(`JSONPatch[${index}]权限运行字段由脚本维护`);
+      if (!['名称', '持有人', '权限'].includes(路径[3])) throw new Error(`JSONPatch[${index}]特殊权限字段无效：${路径[3] || '空'}`);
+      const 当前记录 = 临时根.world.特殊权限?.[ID];
+      if (!当前记录) throw new Error(`JSONPatch[${index}]特殊权限不存在`);
+      if (路径[3] === '权限') {
+        if (!['add', 'replace'].includes(补丁.op)) throw new Error(`JSONPatch[${index}]权限配置只能修改`);
+        const 当前类型 = 当前记录.权限?.类型;
+        const 可写字段 = {
+          资格: ['项目'],
+          折扣: ['地点', '商店', '物品分类', '物品', '支付比例'],
+          物品选择: ['来源', '数量', '品质', '分类'],
+          奖励加成: ['来源', '倍率'],
+        }[当前类型] || [];
+        if (路径.length > 5) throw new Error(`JSONPatch[${index}]权限字段路径过深`);
+        if (路径[4] && (路径[4] === '类型' || !可写字段.includes(路径[4]))) {
+          throw new Error(`JSONPatch[${index}]权限类型或分支字段无效`);
+        }
+        const 下一个权限 = 路径[4]
+          ? { ...当前记录.权限, [路径[4]]: 补丁.value }
+          : 补丁.value;
+        const 规范记录 = 规范化AI特殊权限记录_V1({
+          名称: 当前记录.名称,
+          持有人: 当前记录.持有人,
+          权限: 下一个权限,
+        }, 临时根, 运行时);
+        临时根.world.特殊权限[ID] = { ...当前记录, 权限: 规范记录.权限 };
+        输出.push({
+          ...补丁,
+          op: 'replace',
+          path: 构建运行时JsonPointer路径_V1(路径),
+          value: 路径[4] ? 规范记录.权限[路径[4]] : 规范记录.权限,
+        });
+        return;
+      }
+      if (!['add', 'replace'].includes(补丁.op) || 路径.length !== 4) {
+        throw new Error(`JSONPatch[${index}]特殊权限字段只能修改`);
+      }
+      const 文本值 = String(补丁.value || '').trim();
+      if (!文本值) throw new Error(`JSONPatch[${index}]特殊权限名称和持有人不能为空`);
+      当前记录[路径[3]] = 文本值;
+      输出.push({ ...补丁, op: 'replace', path: 构建运行时JsonPointer路径_V1(路径), value: 文本值 });
+      return;
+    }
+    let 赛事ID = 路径[2];
+    if (/^新增(?:_\d+)?$/.test(赛事ID)) {
+      const 赛事 = 规范化AI赛事记录_V1(补丁.value, 临时根, UID, 运行时);
+      if (Object.values(临时根.world.赛事).some(已有 => 已有?.名称 === 赛事.名称)) throw new Error(`赛事名称重名：${赛事.名称}`);
+      赛事ID = UID.分配('competition');
+      映射.set(`competition:${路径[2]}`, 赛事ID);
+      临时根.world.赛事[赛事ID] = 赛事;
+      输出.push({ ...补丁, op: 'add', path: 构建运行时JsonPointer路径_V1(['world', '赛事', 赛事ID]), value: 赛事 });
+      return;
+    }
+    赛事ID = 映射.get(`competition:${赛事ID}`) || 引用(临时根.world.赛事, 赛事ID, '赛事');
+    路径[2] = 赛事ID;
+    const 赛事 = 临时根.world.赛事[赛事ID];
+    if (!赛事) throw new Error(`JSONPatch[${index}]赛事不存在`);
+    if (路径.length === 3 && 补丁.op === 'remove') {
+      delete 临时根.world.赛事[赛事ID];
+      输出.push({ ...补丁, path: 构建运行时JsonPointer路径_V1(路径) });
+      return;
+    }
+    if (路径.length === 3 && ['add', 'replace'].includes(补丁.op)) {
+      if (赛事.状态 !== '筹备') throw new Error('赛事开始后不能替换赛事配置');
+      const 记录 = 规范化AI赛事记录_V1(补丁.value, 临时根, UID, 运行时);
+      临时根.world.赛事[赛事ID] = 记录;
+      输出.push({ ...补丁, op: 'replace', path: 构建运行时JsonPointer路径_V1(路径), value: 记录 });
+      return;
+    }
+    if (路径.includes('_进度') || 路径[3] === '状态' || 路径[3] === '日程') throw new Error(`JSONPatch[${index}]赛事运行状态与绝对tick由脚本维护`);
+    if (赛事.状态 !== '筹备') throw new Error('赛事开始后AI不能修改赛事配置或名单');
+    if (路径[3] === '开始时间') {
+      if (!['add', 'replace'].includes(补丁.op)) throw new Error('开始时间只能修改，不能删除');
+      const 开始tick = 运行时.解析时长tick(补丁.value, Number(临时根?.world?.时间?.tick || 0));
+      if (开始tick === null) throw new Error('赛事开始时间必须是有限时间');
+      const 原时长 = Math.max(1, Number(赛事.日程?.结束tick || 0) - Number(赛事.日程?.开始tick || 0));
+      赛事.日程 = { 开始tick, 结束tick: 开始tick + 原时长 };
+      输出.push(
+        { op: 'replace', path: 构建运行时JsonPointer路径_V1(['world', '赛事', 赛事ID, '日程', '开始tick']), value: 赛事.日程.开始tick },
+        { op: 'replace', path: 构建运行时JsonPointer路径_V1(['world', '赛事', 赛事ID, '日程', '结束tick']), value: 赛事.日程.结束tick },
+      );
+      return;
+    }
+    if (路径[3] === '总时长') {
+      if (!['add', 'replace'].includes(补丁.op)) throw new Error('总时长只能修改，不能删除');
+      const 时长tick = 运行时.解析时长tick(补丁.value, 0);
+      if (时长tick === null || 时长tick <= 0) throw new Error('赛事总时长必须是有限正时间');
+      赛事.日程.结束tick = Number(赛事.日程.开始tick || 0) + 时长tick;
+      输出.push({ op: 'replace', path: 构建运行时JsonPointer路径_V1(['world', '赛事', 赛事ID, '日程', '结束tick']), value: 赛事.日程.结束tick });
+      return;
+    }
+    if (路径[3] === '名称') {
+      const 名称 = String(补丁.value || '').trim();
+      if (!名称) throw new Error('赛事名称不能为空');
+      赛事.名称 = 名称;
+      输出.push({ ...补丁, path: 构建运行时JsonPointer路径_V1(路径), value: 名称 });
+      return;
+    }
+    if (路径[3] !== '项目' || !路径[4]) throw new Error(`JSONPatch[${index}]赛事字段无效：${路径[3] || '空'}`);
+    if (路径[3] === '项目' && 路径[4]) {
+      const 项目名 = 路径[4];
+      if (!['个人赛', '团体赛'].includes(项目名)) throw new Error(`赛事项目无效：${项目名}`);
+      路径[4] = 项目名;
+      if (路径.length === 5 && ['add', 'replace'].includes(补丁.op)) {
+        const 已存在 = !!赛事.项目?.[项目名];
+        const 项目 = 规范化AI赛事项目_V1(补丁.value, 临时根, UID, 运行时, 赛事ID, 项目名);
+        赛事.项目[项目名] = 项目;
+        输出.push({ ...补丁, op: 已存在 ? 'replace' : 'add', path: 构建运行时JsonPointer路径_V1(路径), value: 项目 });
+        return;
+      }
+      if (!赛事.项目?.[项目名]) throw new Error(`赛事项目不存在：${项目名}`);
+      if (路径[5] === '参赛者' && 路径[6]) {
+        let 参赛者ID = 路径[6];
+        if (/^新增(?:_\d+)?$/.test(参赛者ID)) {
+          const 参赛者 = 规范化AI参赛者记录_V1(补丁.value);
+          if (Object.values(赛事.项目[项目名].参赛者 || {}).some(已有 => 已有?.名称 === 参赛者.名称)) throw new Error(`参赛者名称重名：${参赛者.名称}`);
+          const 报名校验 = 运行时.校验赛事报名(临时根, 赛事ID, {
+            项目: 项目名,
+            名称: 参赛者.名称,
+            成员: 参赛者.成员,
+            持有人: 参赛者.成员[0],
+            允许未知成员: true,
+          });
+          if (!报名校验.ok) throw new Error(`JSONPatch[${index}]${报名校验.reason}`);
+          参赛者ID = UID.分配('participant');
+          赛事.项目[项目名].参赛者[参赛者ID] = 报名校验.参赛者;
+          映射.set(`participant:${赛事ID}:${项目名}:${路径[6]}`, 参赛者ID);
+          输出.push({ ...补丁, op: 'add', path: 构建运行时JsonPointer路径_V1(['world', '赛事', 赛事ID, '项目', 项目名, '参赛者', 参赛者ID]), value: 报名校验.参赛者 });
+          return;
+        }
+        参赛者ID = 映射.get(`participant:${赛事ID}:${项目名}:${参赛者ID}`) || 引用(赛事.项目[项目名].参赛者, 参赛者ID, '参赛者');
+        路径[6] = 参赛者ID;
+        if (路径.length === 7 && 补丁.op === 'remove') {
+          delete 赛事.项目[项目名].参赛者[参赛者ID];
+          输出.push({ ...补丁, path: 构建运行时JsonPointer路径_V1(路径) });
+          return;
+        }
+        if (路径[7] !== '状态' || !['退赛', '取消资格'].includes(String(补丁.value || '').trim())) {
+          throw new Error(`JSONPatch[${index}]已有参赛者只允许改为退赛或取消资格`);
+        }
+        赛事.项目[项目名].参赛者[参赛者ID].状态 = String(补丁.value).trim();
+        输出.push({ ...补丁, op: 'replace', path: 构建运行时JsonPointer路径_V1(路径), value: String(补丁.value).trim() });
+        return;
+      }
+      if (路径[5] === '参赛者') throw new Error(`JSONPatch[${index}]不能整体覆盖参赛者表`);
+      if (路径.length === 6 && ['add', 'replace'].includes(补丁.op)) {
+        const 当前项目 = 赛事.项目[项目名];
+        if (路径[5] === '流程') {
+          const 流程 = String(补丁.value || '').trim();
+          if (!运行时.常量.流程表.includes(流程)) throw new Error(`${项目名}流程无效`);
+          if (流程 === '单场' && 当前项目.参赛总数 !== 2) throw new Error(`${项目名}单场流程的参赛总数必须为2`);
+          当前项目.流程 = 流程;
+        } else if (路径[5] === '参赛总数') {
+          const 参赛总数 = Math.floor(Number(补丁.value));
+          if (!Number.isFinite(参赛总数) || 参赛总数 < 2) throw new Error(`${项目名}参赛总数至少为2`);
+          if (运行时.有效参赛者条目(当前项目).length > 参赛总数) throw new Error(`${项目名}已登记名单超过参赛总数`);
+          if (当前项目.流程 === '单场' && 参赛总数 !== 2) throw new Error(`${项目名}单场流程的参赛总数必须为2`);
+          当前项目.参赛总数 = 参赛总数;
+        } else if (路径[5] === '参赛限制') {
+          当前项目.参赛限制 = 规范化AI参赛限制_V1(补丁.value, 临时根, 运行时);
+        } else {
+          throw new Error(`JSONPatch[${index}]赛事项目字段无效：${路径[5] || '空'}`);
+        }
+        输出.push({ op: 'replace', path: 构建运行时JsonPointer路径_V1(路径), value: cloneJsonValue(当前项目[路径[5]], 当前项目[路径[5]]) });
+        return;
+      }
+    }
+    throw new Error(`JSONPatch[${index}]赛事项目字段无效或路径过深`);
+  });
+  return { 补丁: 输出, UID分配器: UID };
+}
+
+function tableOrEmptyForRuntimeView_V1(值) {
+  return 值 && typeof 值 === 'object' && !Array.isArray(值) ? 值 : {};
+}
+
 function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options = {}) {
   const 根 = 读取运行时Mvu数据根_V1(数据输入) || {};
-  const 来源列表 = Array.isArray(patches) ? patches : [];
+  const 赛事权限预处理结果 = 预处理特殊权限赛事补丁_V2(Array.isArray(patches) ? patches : [], 根);
+  const 来源列表 = 赛事权限预处理结果.补丁;
   const 路径索引 = 收集运行时真实路径索引_V1(根);
   const 前缀映射表 = new Map();
   const 本批新增路径集合 = new Set();
@@ -2387,6 +2932,7 @@ function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options 
     }
     return { ...patch, op, path: 构建运行时JsonPointer路径_V1(路径) };
   });
+  赛事权限预处理结果.UID分配器.提交();
   return 输出;
 }
 
@@ -4452,8 +4998,171 @@ function 构建MVU正文角色薄片_V1(原角色 = {}, 当前tick = null) {
   return Object.keys(清理后).length ? 清理后 : null;
 }
 
+function 构建赛事权限正文薄片_V1(数据根 = {}, 文本 = '') {
+  const 运行时 = 读取赛事权限运行时_V1();
+  const 玩家名 = 取运行时玩家名_V1(数据根);
+  const 当前tick = Number(数据根?.world?.时间?.tick || 0);
+  const 权限 = {};
+  (运行时?.列出持有人权限?.(数据根, 玩家名, 当前tick) || []).forEach(({ 权限ID, 记录 }) => {
+      权限[记录.名称 || `权限${权限ID}`] = {
+      名称: 记录.名称,
+      类型: 记录.权限?.类型,
+      效果: cloneJsonValue(记录.权限, {}),
+      ...(记录.使用配额 ? {
+        可用状态: 记录.使用配额.剩余 > 0 ? '可用' : '等待重置',
+        剩余次数: 记录.使用配额.剩余,
+      } : {}),
+      ...(记录.到期tick !== undefined ? { 有效期: 格式化赛事权限剩余时间_V1(Number(记录.到期tick) - 当前tick) } : {}),
+    };
+  });
+  const 赛事 = {};
+  Object.entries(数据根?.world?.赛事 || {}).forEach(([赛事ID, 记录]) => {
+    if (!记录 || 记录.状态 === '已完成') return;
+    const 玩家项目条目 = Object.entries(记录.项目 || {}).find(([, 项目]) =>
+      Object.values(项目?.参赛者 || {}).some(参赛者 => 参赛者?.名称 === 玩家名 ||参赛者?.成员?.includes(玩家名)),
+    );
+    const 玩家项目 = 玩家项目条目?.[0];
+    const 相关 = 玩家项目 || String(文本 || '').includes(String(记录.名称 || '')) || 记录.状态 === '进行中';
+    if (!相关) return;
+    const 项目摘要 = {};
+    Object.entries(记录.项目 || {}).forEach(([项目名, 项目]) => {
+      const 进度 = 记录._进度?.[项目名];
+      if (!进度) return;
+      const 玩家参赛者ID = Object.entries(项目?.参赛者 || {}).find(([, 参赛者]) =>
+        参赛者?.名称 === 玩家名 ||参赛者?.成员?.includes(玩家名),
+      )?.[0];
+      const 下一场 = Object.entries(进度.对局 || {}).find(([, 对局]) =>
+        !运行时?.对局已完成?.(对局) && (!玩家参赛者ID || 对局.参赛者?.includes(玩家参赛者ID)),
+      );
+      const 显示名 = ID => 进度.实体?.[ID]?.名称 || '待实体化参赛者';
+      const 排名摘要 = 运行时?.生成循环积分表?.(记录, 项目名) || {};
+      项目摘要[项目名] = {
+        流程: 项目.流程,
+        状态: 进度.状态 || '未开始',
+        参赛总数: 项目.参赛总数,
+        ...(下一场 ? { 下一场: 下一场[1].参赛者.map(显示名) } : {}),
+        ...(项目.流程 === '循环' || 项目.流程 === '循环后淘汰' ? {
+          积分榜: Object.fromEntries(Object.entries(排名摘要).map(([分组, 排名]) => [
+            分组,
+            排名.slice(0, 8).map(({ 名称, 场次, 胜, 平, 负, 积分, 净胜分, 排名: 名次 }) => ({
+              名称, 场次, 胜, 平, 负, 积分, 净胜分, 排名: 名次,
+            })),
+          ])),
+        } : {}),
+      };
+    });
+    const 摘要 = {
+      名称: 记录.名称,
+      状态: 记录.状态,
+      开始时间: 格式化赛事权限剩余时间_V1(Number(记录.日程?.开始tick || 0) - 当前tick),
+      项目: 项目摘要,
+    };
+    赛事[记录.名称] = 摘要;
+  });
+  return { 权限, 赛事 };
+}
+
+function 构建赛事权限更新投影_V1(数据根 = {}, 文本 = '') {
+  const 玩家名 = 取运行时玩家名_V1(数据根);
+  const 权限 = {};
+  Object.entries(数据根?.world?.特殊权限 || {}).forEach(([权限ID, 记录]) => {
+    if (!记录 || (记录.持有人 !== 玩家名 && !String(文本 || '').includes(String(记录.名称 || '')))) return;
+    权限[记录.名称 || `权限${权限ID}`] = {
+      名称: 记录.名称,
+      持有人: 记录.持有人,
+      权限: cloneJsonValue(记录.权限, {}),
+      ...(记录.使用配额?.上限 !== undefined ? { 使用次数: 记录.使用配额.上限 } : {}),
+      ...(记录.使用配额?.重置周期 ? { 重置周期: 记录.使用配额.重置周期 } : {}),
+      ...(记录.到期tick !== undefined ? { 有效期: 格式化赛事权限剩余时间_V1(Number(记录.到期tick) - Number(数据根?.world?.时间?.tick || 0)) } : {}),
+    };
+  });
+  const 赛事 = {};
+  Object.entries(dataRootOrEmptyForCompetitionView_V1(数据根?.world?.赛事)).forEach(([, 记录]) => {
+    if (!记录 || 记录.状态 === '已完成') return;
+    if (记录.状态 !== '筹备' && !String(文本 || '').includes(String(记录.名称 || ''))) return;
+    const 项目 = {};
+    Object.entries(记录.项目 || {}).forEach(([项目名, 项目记录]) => {
+      项目[项目名] = {
+        流程: 项目记录.流程,
+        参赛总数: 项目记录.参赛总数,
+        ...(项目记录.参赛限制 ? { 参赛限制: cloneJsonValue(项目记录.参赛限制, {}) } : {}),
+        ...(记录.状态 === '筹备' ? {
+          参赛者: Object.values(项目记录.参赛者 || {}).map(参赛者 => cloneJsonValue(参赛者, {})),
+        } : {}),
+      };
+    });
+    赛事[记录.名称] = {
+      名称: 记录.名称,
+      开始时间: 格式化赛事权限剩余时间_V1(Number(记录.日程?.开始tick || 0) - Number(数据根?.world?.时间?.tick || 0)),
+      总时长: 格式化赛事权限剩余时间_V1(Number(记录.日程?.结束tick || 0) - Number(记录.日程?.开始tick || 0)),
+      项目,
+    };
+  });
+  return { 权限, 赛事 };
+}
+
+function 格式化赛事权限剩余时间_V1(剩余tick = 0) {
+  const tick = Math.max(0, Number(剩余tick || 0));
+  if (tick >= 51840) return `${Number((tick / 51840).toFixed(1))}年`;
+  if (tick >= 4320) return `${Number((tick / 4320).toFixed(1))}个月`;
+  if (tick >= 144) return `${Number((tick / 144).toFixed(1))}天`;
+  return `${Math.floor(tick)}tick`;
+}
+
+function dataRootOrEmptyForCompetitionView_V1(值) {
+  return 值 && typeof 值 === 'object' && !Array.isArray(值) ? 值 : {};
+}
+
+function 构建场景赛事权限钩子_V1(数据根 = {}, 当前地点 = '', 文本 = '') {
+  数据根 = 整理赛事权限视图根_V1(数据根);
+  const 运行时 = 读取赛事权限运行时_V1();
+  const 玩家名 = 取运行时玩家名_V1(数据根);
+  const 可用权限 = [];
+  const 当前tick = Number(数据根?.world?.时间?.tick || 0);
+  (运行时?.列出持有人权限?.(数据根, 玩家名) || []).forEach(({ 记录 }) => {
+    const 权限 = 记录.权限 || {};
+    if (权限.类型 === '资格' || (权限.类型 === '折扣' && (!权限.地点 || 权限.地点 === 当前地点))) {
+      可用权限.push({
+        名称: 记录.名称,
+        权限: cloneJsonValue(权限, {}),
+        可用状态: 记录.使用配额?.剩余 === 0 ? '等待重置' : '可用',
+        ...(记录.使用配额 ? { 剩余次数: 记录.使用配额.剩余 } : {}),
+        ...(记录.到期tick !== undefined ? { 有效期: 格式化赛事权限剩余时间_V1(Number(记录.到期tick) - 当前tick) } : {}),
+        ...(记录.使用配额 &&
+          typeof 记录.使用配额 === 'object' &&
+          !Array.isArray(记录.使用配额) &&
+          记录.使用配额.下次重置tick !== undefined &&
+          记录.使用配额.剩余 <= 0
+          ? { 下次可用: 格式化赛事权限剩余时间_V1(Number(记录.使用配额.下次重置tick) - 当前tick) }
+          : {}),
+      });
+    }
+  });
+  const 赛事 = Object.entries(数据根?.world?.赛事 || {})
+    .filter(([, 记录]) => 记录?.状态 !== '已完成')
+    .filter(([, 记录]) => 记录?.状态 === '进行中' || String(文本 || '').includes(String(记录?.名称 || '')))
+    .map(([, 记录]) => ({
+      名称: 记录.名称,
+      状态: 记录.状态,
+      开始时间: 格式化赛事权限剩余时间_V1(Number(记录.日程?.开始tick || 0) - Number(数据根?.world?.时间?.tick || 0)),
+      项目: Object.fromEntries(Object.entries(记录.项目 || {}).map(([项目名, 项目]) => [
+        项目名,
+        {
+          流程: 项目.流程,
+          参赛总数: 项目.参赛总数,
+          ...(项目.参赛限制 ? { 参赛限制: cloneJsonValue(项目.参赛限制, {}) } : {}),
+          ...(记录._进度?.[项目名] ? {
+            当前环节: 记录._进度[项目名].当前环节,
+            当前轮次: 记录._进度[项目名].当前轮次,
+          } : {}),
+        },
+      ])),
+    }));
+  return { 可用权限, 赛事 };
+}
+
 function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText = '') {
-  const 数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
+  const 数据根 = 整理赛事权限视图根_V1(读取运行时Mvu数据根或最新_V1(数据输入) || {});
   const 文本 = [userInput, 读取运行时最后角色消息文本_V1()].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
   const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 文本);
@@ -4472,6 +5181,7 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
   const 情报可见度 = 构建运行时情报可见度索引_V1(数据根, 角色名集合);
   const 机密情报视图 = 复制运行时命中记录表片段_V1(数据根?.world?.机密情报 || {}, 文本, 8, 构建正文机密情报条目_V1);
   const 战斗摘要 = 构建MVU战斗摘要_V1(数据根?.world?.战斗);
+  const 赛事权限薄片 = 构建赛事权限正文薄片_V1(数据根, 文本);
   const 视图 = {
     sys: 过滤MVU正文视图值_V1({ 世界线日志: 数据根?.sys?.系统播报 }, ['sys']) || {},
     world: 过滤MVU正文视图值_V1({
@@ -4481,6 +5191,8 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
       时间线: 运行时对象有内容_V1(时间线视图) ? 时间线视图 : undefined,
       机密情报: 运行时对象有内容_V1(机密情报视图) ? 机密情报视图 : undefined,
       战斗: 运行时对象有内容_V1(战斗摘要) ? 战斗摘要 : undefined,
+      特殊权限: 运行时对象有内容_V1(赛事权限薄片.权限) ? 赛事权限薄片.权限 : undefined,
+      赛事: 运行时对象有内容_V1(赛事权限薄片.赛事) ? 赛事权限薄片.赛事 : undefined,
       地点: {},
       动态地点: {},
     }, ['world']) || {},
@@ -4537,7 +5249,7 @@ function 生成MVU正文视图_V1(数据输入 = null, userInput = '', plotText 
 }
 
 function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一条角色消息 = '', plotText = '', 选项 = {}) {
-  const 原始数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
+  const 原始数据根 = 整理赛事权限视图根_V1(读取运行时Mvu数据根或最新_V1(数据输入) || {});
   const 最后角色消息文本 = String(最后一条角色消息 || '').trim() || 读取运行时最后角色消息文本_V1();
   const 文本 = [userInput, 最后角色消息文本].map(文本 => String(文本 || '').trim()).filter(Boolean).join('\n');
   const 草稿上下文 = 构建更新前运行时草稿_V1(原始数据根, 文本, 选项);
@@ -4575,6 +5287,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   const 图鉴视图 = 复制运行时命中记录表片段_V1(数据根?.world?.图鉴 || {}, 文本, 8, 构建运行时图鉴摘要条目_V1);
   const 时间线视图 = 构建运行时未来事件视图_V1(数据根?.world?.时间线 || {}, 8);
   const 战斗摘要 = 构建MVU战斗摘要_V1(数据根?.world?.战斗);
+  const 赛事权限投影 = 构建赛事权限更新投影_V1(数据根, 文本);
   const 视图 = {
     world: {
       时间: {
@@ -4585,6 +5298,8 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
       委托板: 委托板视图,
       图鉴: 图鉴视图,
       战斗: 战斗摘要,
+      特殊权限: 赛事权限投影.权限,
+      赛事: 赛事权限投影.赛事,
       地点: {},
       动态地点: {},
     },
@@ -4707,6 +5422,7 @@ function 生成MVU剧情视图_V1(数据输入 = null, userInput = '', 最后剧
       战斗: 战斗摘要,
       地点候选,
       内置角色档案命中: 内置角色摘要.length ? 内置角色摘要 : undefined,
+      赛事与权限: 构建场景赛事权限钩子_V1(数据根, 当前地点, 文本),
     },
   };
   return 过滤MVU剧情视图值_V1(剧情视图);

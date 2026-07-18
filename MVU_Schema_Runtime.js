@@ -2994,6 +2994,17 @@ function 规范化Schema根转换_V1(data = {}) {
     if (!data.world.动态地点 || typeof data.world.动态地点 !== 'object')
       data.world.动态地点 = {};
     if (!data.world.地点 || typeof data.world.地点 !== 'object') data.world.地点 = {};
+    if (!data.world.特殊权限 || typeof data.world.特殊权限 !== 'object' || Array.isArray(data.world.特殊权限))
+      data.world.特殊权限 = {};
+    if (!data.world.赛事 || typeof data.world.赛事 !== 'object' || Array.isArray(data.world.赛事))
+      data.world.赛事 = {};
+    try {
+      globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__?.整理特殊权限?.(data, {
+        当前tick: Number(data.world.时间?.tick || 0),
+      });
+    } catch (错误) {
+      console.warn('[LWCS] 特殊权限整理失败', 错误);
+    }
 
     const RESERVED_CHAR_KEYS = new Set([
       'display_data',
