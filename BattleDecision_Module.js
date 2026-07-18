@@ -11106,6 +11106,351 @@
     return `request:${preview.stableHash(payload)}`;
   }
 
+  function createDependencyView(input = {}) {
+    const worldSnapshot = input.worldSnapshot || {};
+    const objectiveContract = input.objectiveContract || {};
+    const opportunitySnapshot = input.opportunitySnapshot || {};
+    const scheduledEvents = Array.isArray(input.scheduledEvents) ? input.scheduledEvents : [];
+    const beliefState = input.beliefState || {};
+    const values = new Map();
+    const record = (key, value) => {
+      values.set(key, cloneValue(value));
+      return value;
+    };
+    const unit = unitId => {
+      const found = findUnitInWorld(worldSnapshot, unitId);
+      if (!found) throw new Error(`battle_decision_dependency_unit_missing:${unitId}`);
+      return found;
+    };
+    const state = (entry, stateKey) => stateEntries(entry)
+      .find(candidate => String(candidate?.[0] || candidate?.[1]?.状态 || candidate?.[1]?.状态名称 || '').trim() === String(stateKey || '').trim())
+      ?.[1] || null;
+    return Object.freeze({
+      readUnitHp(unitId) {
+        return record(`unit:${unitId}:hp`, preview.readHp(unit(unitId)));
+      },
+      readUnitBaseMaxHp(unitId) {
+        return record(`unit:${unitId}:baseMaxHp`, preview.readHpMax(unit(unitId)));
+      },
+      readResource(unitId, resource) {
+        return record(`unit:${unitId}:resource:${resource}`, preview.readResource(unit(unitId), resource));
+      },
+      readState(unitId, stateKey) {
+        return record(`unit:${unitId}:state:${stateKey}`, state(unit(unitId), stateKey));
+      },
+      readDefenseProfile(unitId) {
+        const target = unit(unitId);
+        return record(`target:${unitId}:defense`, {
+          defense: preview.readCombatStat(target, 'def'),
+          mental: preview.readCombatStat(target, 'men'),
+          agility: preview.readCombatStat(target, 'agi'),
+          shield: preview.readShield(target),
+        });
+      },
+      readOpportunity(opportunityId) {
+        const opportunities = Array.isArray(opportunitySnapshot)
+          ? opportunitySnapshot
+          : Array.isArray(opportunitySnapshot?.opportunities)
+            ? opportunitySnapshot.opportunities
+            : [opportunitySnapshot];
+        return record(
+          `opportunity:${opportunityId}`,
+          opportunities.find(entry =>
+            String(entry?.opportunityId || entry?.grantId || '').trim() === String(opportunityId || '').trim()
+          ) || null,
+        );
+      },
+      readSchedule(descriptorId) {
+        return record(
+          `schedule:${descriptorId}`,
+          scheduledEvents.find(entry =>
+            String(entry?.descriptorId || entry?.scheduleId || '').trim() === String(descriptorId || '').trim()
+          ) || null,
+        );
+      },
+      readObjective(conditionId) {
+        const conditions = [
+          ...(objectiveContract?.victory?.conditions || []),
+          ...(objectiveContract?.defeat?.conditions || []),
+        ];
+        return record(
+          `objective:${conditionId}`,
+          conditions.find((entry, index) =>
+            String(entry?.conditionId || entry?.id || index).trim() === String(conditionId || '').trim()
+          ) || null,
+        );
+      },
+      readRule(ruleKey) {
+        return record(`rule:${ruleKey}`, worldSnapshot?.规则?.[ruleKey] ?? worldSnapshot?.battleRules?.[ruleKey] ?? null);
+      },
+      readBelief(mechanicKey) {
+        return record(
+          `belief:${mechanicKey}`,
+          beliefState?.mechanics?.[mechanicKey] ??
+            beliefState?.mechanicPosteriors?.[mechanicKey] ??
+            beliefState?.[mechanicKey] ??
+            null,
+        );
+      },
+      dependencyKeys() {
+        return Object.freeze([...values.keys()].sort());
+      },
+      dependencyValueHash(keys = [...values.keys()]) {
+        return `dependency:${preview.stableHash(
+          [...keys].sort().map(key => [key, values.has(key) ? values.get(key) : null]),
+        )}`;
+      },
+    });
+  }
+
+  function r8PreviewCacheKey(context = {}, candidate = {}, dependencyValueHash = '') {
+    return [
+      context.worldRevision,
+      context.visibleWorldRevision,
+      context.beliefRevision,
+      context.objectiveHash,
+      context.opportunityRevision,
+      context.resourceTimelineRevision,
+      context.scheduleRevision,
+      candidate.declarationFingerprint || declarationFingerprint(candidate.declaration),
+      preview.stableHash(candidate.declaration?.targetIds || []),
+      preview.stableHash(context.horizon || {}),
+      dependencyValueHash,
+    ].join('|');
+  }
+
+  function actionRouteFromPreview(input = {}) {
+    const candidate = input.candidate || {};
+    const previewResult = input.previewResult || {};
+    const worldSnapshot = input.worldSnapshot || {};
+    const actorSide = String(input.actorSide || '').trim();
+    const targetIds = Object.freeze([...(candidate?.declaration?.targetIds || [])]);
+    const trajectories = [];
+    const outcomeKinds = new Set();
+    const realizationWindows = new Set();
+    const paymentDependencies = [];
+    const opportunityDependencies = [];
+    for (const entry of previewResult?.contributions || []) {
+      const outcomeKind = String(entry?.outcomeKind || '').trim();
+      if (outcomeKind) outcomeKinds.add(outcomeKind);
+      if (entry?.windowId) realizationWindows.add(String(entry.windowId));
+      if (entry?.outcomeKind === 'RESOURCE_OPTION_CHANGED' && entry?.windowId === 'ACTION_COST') {
+        paymentDependencies.push({
+          unitId: entry.targetId,
+          resource: entry?.evidence?.resource || '',
+          amount: Math.abs(Number(entry?.evidence?.delta || 0)),
+        });
+      }
+      if (['ACTION_CANCELLED', 'ACTION_GRANTED', 'SUMMON_WINDOW'].includes(outcomeKind)) {
+        opportunityDependencies.push({
+          targetId: entry.targetId,
+          outcomeKind,
+          windowId: entry.windowId || '',
+        });
+      }
+      if (!['HP_DELTA', 'SHIELD_DELTA'].includes(outcomeKind)) continue;
+      const target = findUnitInWorld(worldSnapshot, entry.targetId);
+      if (!target) continue;
+      const baseMaxHp = Math.max(1, preview.readHpMax(target));
+      const rawDelta = Number(entry?.evidence?.delta ?? entry?.expectedDelta ?? 0);
+      const targetSide = sideOf(worldSnapshot, target);
+      const beneficialDelta = targetSide === actorSide ? rawDelta : -rawDelta;
+      trajectories.push({
+        targetId: entry.targetId,
+        outcomeKind,
+        windowId: String(entry?.windowId || ''),
+        healthDeltaPP: 100 * rawDelta / baseMaxHp,
+        actorBenefitPP: 100 * beneficialDelta / baseMaxHp,
+        sourceEffectInstanceId: String(entry?.effectInstanceId || ''),
+      });
+    }
+    const routeShape = {
+      targetIds,
+      outcomeKinds: [...outcomeKinds].sort(),
+      healthPath: trajectories.map(entry => [
+        entry.targetId,
+        entry.outcomeKind,
+        Number(entry.healthDeltaPP.toFixed(8)),
+        entry.windowId,
+      ]),
+      paymentDependencies,
+      opportunityDependencies,
+      realizationWindows: [...realizationWindows].sort(),
+    };
+    return Object.freeze({
+      routeKey: `route:${preview.stableHash(routeShape)}`,
+      candidateId: String(candidate?.candidateId || '').trim(),
+      declarationFingerprint: candidate.declarationFingerprint || declarationFingerprint(candidate.declaration),
+      targetIds,
+      outcomeKinds: Object.freeze([...outcomeKinds].sort()),
+      paymentDependencies: deepFreeze(paymentDependencies),
+      opportunityDependencies: deepFreeze(opportunityDependencies),
+      realizationWindows: Object.freeze([...realizationWindows].sort()),
+      healthTrajectoryByTarget: deepFreeze(trajectories),
+      terminalPathId: '',
+      probabilityBounds: Object.freeze({ lower: 0, upper: 1 }),
+      dependencyKeys: Object.freeze([...(input.dependencyKeys || [])].sort()),
+      routeBenefitPP: trajectories.reduce((sum, entry) => sum + Number(entry.actorBenefitPP || 0), 0),
+    });
+  }
+
+  function routeDominates(left = {}, right = {}) {
+    const leftBenefit = Number(left.routeBenefitPP || 0);
+    const rightBenefit = Number(right.routeBenefitPP || 0);
+    const leftCost = (left.paymentDependencies || []).reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+    const rightCost = (right.paymentDependencies || []).reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+    return leftBenefit >= rightBenefit - 1e-9 &&
+      leftCost <= rightCost + 1e-9 &&
+      (leftBenefit > rightBenefit + 1e-9 || leftCost < rightCost - 1e-9);
+  }
+
+  function selectPrimaryBackupRoutes(routes = []) {
+    const nonDominated = routes.filter(route =>
+      !routes.some(other => other !== route && routeDominates(other, route))
+    ).sort((left, right) =>
+      Number(right.routeBenefitPP || 0) - Number(left.routeBenefitPP || 0) ||
+      String(left.routeKey || '').localeCompare(String(right.routeKey || ''))
+    );
+    const primaryRoute = nonDominated[0] || routes[0] || null;
+    const backupRoute = nonDominated.find(route => route.routeKey !== primaryRoute?.routeKey) ||
+      routes.find(route => route.routeKey !== primaryRoute?.routeKey) ||
+      null;
+    return Object.freeze({
+      searchedRouteCount: routes.length,
+      nonDominatedRouteCount: nonDominated.length,
+      primaryRoute,
+      backupRoute,
+    });
+  }
+
+  function buildR8RouteCatalog(input = {}) {
+    const worldSnapshot = input.worldSnapshot || {};
+    const dependencyView = input.dependencyView;
+    const evaluationContext = input.evaluationContext || {};
+    const actorId = String(input.actorId || '').trim();
+    const actorCandidates = Array.isArray(input.actorCandidates) ? input.actorCandidates : [];
+    const cache = new Map();
+    const catalog = {};
+    const previousCatalog = input.previousCatalog && typeof input.previousCatalog === 'object'
+      ? input.previousCatalog
+      : null;
+    const affectedUnitIds = new Set((input.affectedUnitIds || []).map(value => String(value || '').trim()).filter(Boolean));
+    if (previousCatalog && affectedUnitIds.size) {
+      Object.entries(previousCatalog).forEach(([unitId, envelope]) => {
+        const routes = [envelope?.primaryRoute, envelope?.backupRoute].filter(Boolean);
+        if (routes.some(route =>
+          (route.targetIds || []).some(targetId => affectedUnitIds.has(String(targetId || '').trim()))
+        )) {
+          affectedUnitIds.add(unitId);
+        }
+      });
+    }
+    const entries = worldEntries(worldSnapshot)
+      .filter(entry => preview.isAlive(entry.unit) && preview.isBattleCapable(entry.unit))
+      .sort((left, right) => String(preview.unitId(left.unit)).localeCompare(String(preview.unitId(right.unit))));
+    for (const entry of entries) {
+      const currentUnitId = preview.unitId(entry.unit);
+      if (previousCatalog && affectedUnitIds.size && !affectedUnitIds.has(currentUnitId)) {
+        catalog[currentUnitId] = previousCatalog[currentUnitId];
+        continue;
+      }
+      const candidates = currentUnitId === actorId
+        ? actorCandidates
+        : enumerateCandidates({
+            worldSnapshot,
+            actorId: currentUnitId,
+            actorSide: entry.side,
+            beliefState: input.beliefState,
+            battleIntent: input.battleIntent,
+            actionOpportunity: {
+              role: 'ACTIVE',
+              grantType: 'NATURAL_ACTION',
+              sequence: Number(input.actionOpportunity?.sequence || 0) + 1,
+            },
+          }).map(candidate => ({
+            ...candidate,
+            declarationFingerprint: declarationFingerprint(candidate.declaration),
+          }));
+      const routes = candidates.map(candidate => {
+        dependencyView.readUnitHp(currentUnitId);
+        dependencyView.readUnitBaseMaxHp(currentUnitId);
+        for (const targetId of candidate?.declaration?.targetIds || []) {
+          if (!findUnitInWorld(worldSnapshot, targetId)) continue;
+          dependencyView.readUnitHp(targetId);
+          dependencyView.readUnitBaseMaxHp(targetId);
+          dependencyView.readDefenseProfile(targetId);
+        }
+        const dependencyKeys = dependencyView.dependencyKeys();
+        const dependencyValueHash = dependencyView.dependencyValueHash(dependencyKeys);
+        const cacheKey = r8PreviewCacheKey(evaluationContext, candidate, dependencyValueHash);
+        let previewResult = cache.get(cacheKey);
+        if (!previewResult) {
+          previewResult = preview.previewAction({
+            worldSnapshot,
+            worldRevision: evaluationContext.visibleWorldRevision,
+            beliefRevision: evaluationContext.beliefRevision,
+            actorId: currentUnitId,
+            declaration: candidate.declaration,
+            actionFingerprint: candidate.declarationFingerprint,
+            horizon: 'SHALLOW',
+            previewBudget: { maxNodes: 12 },
+            battleIntent: input.battleIntent,
+          });
+          cache.set(cacheKey, previewResult);
+        }
+        return actionRouteFromPreview({
+          candidate,
+          previewResult,
+          worldSnapshot,
+          actorSide: entry.side,
+          dependencyKeys,
+        });
+      });
+      catalog[currentUnitId] = selectPrimaryBackupRoutes(routes);
+    }
+    return {
+      routeCatalog: deepFreeze(catalog),
+      cacheMetrics: Object.freeze({
+        cacheSize: cache.size,
+        previewCalls: cache.size,
+        searchedUnitCount: entries.length,
+        recomputedUnitCount: previousCatalog && affectedUnitIds.size
+          ? entries.filter(entry => affectedUnitIds.has(preview.unitId(entry.unit))).length
+          : entries.length,
+        searchedRouteCount: Object.values(catalog).reduce(
+          (sum, envelope) => sum + Number(envelope?.searchedRouteCount || 0),
+          0,
+        ),
+      }),
+    };
+  }
+
+  function buildTeamMarginalPlan(routeCatalog = {}, worldSnapshot = {}, actorId = '') {
+    const rows = Object.entries(routeCatalog)
+      .filter(([unitId]) => unitId !== actorId)
+      .map(([unitId, envelope]) => ({ unitId, route: envelope?.primaryRoute }))
+      .filter(entry => entry.route)
+      .sort((left, right) => {
+        const leftUnit = findUnitInWorld(worldSnapshot, left.unitId);
+        const rightUnit = findUnitInWorld(worldSnapshot, right.unitId);
+        return String(sideOf(worldSnapshot, leftUnit)).localeCompare(String(sideOf(worldSnapshot, rightUnit))) ||
+          left.unitId.localeCompare(right.unitId);
+      });
+    return deepFreeze(rows.flatMap(({ unitId, route }, index) =>
+      (route.healthTrajectoryByTarget || []).map(trajectory => ({
+        targetId: trajectory.targetId,
+        outcomeKind: trajectory.outcomeKind,
+        realizationWindow: trajectory.windowId,
+        sourceOpportunityId: `projected-natural:${index + 1}:${unitId}`,
+        expectedRangePP: Object.freeze({
+          lower: Number(trajectory.actorBenefitPP || 0),
+          upper: Number(trajectory.actorBenefitPP || 0),
+        }),
+        expiresAtSequence: index + 1,
+      }))
+    ));
+  }
+
   function prepareDecisionRequest(input = {}) {
     const worldSnapshot = input?.worldSnapshot;
     if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
@@ -11171,6 +11516,39 @@
       input?.scheduledEvents ||
       [],
     );
+    const dependencyView = createDependencyView({
+      worldSnapshot: visibleWorld,
+      objectiveContract,
+      opportunitySnapshot,
+      scheduledEvents,
+      beliefState,
+    });
+    const evaluationContext = {
+      schemaVersion: '8.3-evaluation-context-1',
+      worldRevision: String(input?.worldRevision || worldRevisionFor(worldSnapshot)),
+      visibleWorldRevision: `visible:${preview.stableHash(visibleWorld)}`,
+      beliefRevision: beliefRevisionFor(beliefState),
+      objectiveHash: `objective:${preview.stableHash(objectiveContract)}`,
+      opportunityRevision: `opportunity:${preview.stableHash(opportunitySnapshot)}`,
+      resourceTimelineRevision: `resource:${preview.stableHash(resourceTimeline)}`,
+      scheduleRevision: `schedule:${preview.stableHash(scheduledEvents)}`,
+      opportunitySnapshot,
+      resourceTimeline,
+      scheduledEvents,
+      horizon: cloneValue(input?.horizon || battleHorizonProfile(input, visibleWorld)),
+      dependencyView,
+    };
+    const routeAnalysis = buildR8RouteCatalog({
+      worldSnapshot: visibleWorld,
+      actorId,
+      actorCandidates: frozenCandidates,
+      beliefState,
+      battleIntent,
+      actionOpportunity,
+      dependencyView,
+      evaluationContext,
+    });
+    const teamMarginalPlan = buildTeamMarginalPlan(routeAnalysis.routeCatalog, visibleWorld, actorId);
     const requestPayload = {
       schemaVersion: R8_REQUEST_SCHEMA,
       actorId,
@@ -11188,20 +11566,10 @@
       })),
       frozenCandidates,
       candidateFingerprintMap,
-      evaluationContext: {
-        schemaVersion: '8.3-evaluation-context-1',
-        worldRevision: String(input?.worldRevision || worldRevisionFor(worldSnapshot)),
-        visibleWorldRevision: `visible:${preview.stableHash(visibleWorld)}`,
-        beliefRevision: beliefRevisionFor(beliefState),
-        objectiveHash: `objective:${preview.stableHash(objectiveContract)}`,
-        opportunityRevision: `opportunity:${preview.stableHash(opportunitySnapshot)}`,
-        resourceTimelineRevision: `resource:${preview.stableHash(resourceTimeline)}`,
-        scheduleRevision: `schedule:${preview.stableHash(scheduledEvents)}`,
-        opportunitySnapshot,
-        resourceTimeline,
-        scheduledEvents,
-        horizon: cloneValue(input?.horizon || battleHorizonProfile(input, visibleWorld)),
-      },
+      evaluationContext,
+      actionRouteCatalog: routeAnalysis.routeCatalog,
+      teamMarginalPlan,
+      routeCacheMetrics: routeAnalysis.cacheMetrics,
       battleIntent: cloneValue(battleIntent),
       strategyMemory: cloneValue(input?.strategyMemory || {}),
       seed: input?.seed ?? 1,
@@ -11335,6 +11703,12 @@
     classifyCandidateEvidence,
     decide,
     declarationFingerprint,
+    createDependencyView,
+    r8PreviewCacheKey,
+    actionRouteFromPreview,
+    selectPrimaryBackupRoutes,
+    buildR8RouteCatalog,
+    buildTeamMarginalPlan,
     prepareDecisionRequest,
     runProvider,
     providerIds: Object.freeze(Object.keys(providerRegistry)),
