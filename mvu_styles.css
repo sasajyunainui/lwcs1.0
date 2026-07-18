@@ -17141,6 +17141,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --mvu-holo-frame-base: var(--主窗体底色);
   --mvu-holo-card-material: var(--卡片材质);
   --mvu-holo-hover-material: var(--悬浮材质);
+  --标题栏材质: color-mix(in srgb, var(--暗场底板) 62%, transparent);
+  --次级导航材质: color-mix(in srgb, var(--暗场底板) 90%, transparent);
+  --工作区底板: color-mix(in srgb, var(--暗场底板强) 84%, transparent);
+  --工作区表面: var(--工作区材质), var(--工作区底板);
   --mvu-holo-card-plate: var(--卡片底板);
   --mvu-holo-card-plate-line: var(--卡片底板线);
   --mvu-holo-state-accent: var(--状态强调色);
@@ -17276,10 +17280,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   border: 1px solid transparent;
   border-radius: var(--投影圆角);
   clip-path: var(--面板裁切);
-  background:
-    var(--主面板材质),
-    var(--背景细纹),
-    var(--主窗体底色);
+  background: var(--主窗体底色);
   box-shadow: var(--主窗体阴影);
   backdrop-filter: var(--虚化强度);
   -webkit-backdrop-filter: var(--虚化强度);
@@ -17297,8 +17298,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame::before {
   z-index: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: var(--面板光层);
-  opacity: 0.52;
+  background:
+    var(--面板光层),
+    var(--主面板材质),
+    var(--背景细纹),
+    var(--主窗体底色);
+  opacity: 1;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame > * {
@@ -17656,11 +17661,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银�
   box-shadow: var(--主窗体阴影);
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王']::before {
-  opacity: 0.78;
-  clip-path: polygon(0 0, 100% 0, 92% 28%, 100% 100%, 0 100%, 8% 66%);
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王']::after {
   content: "";
   position: absolute;
@@ -17805,8 +17805,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before {
   background-size: 160% 160%;
-  mix-blend-mode: screen;
-  opacity: 0.86;
+  opacity: 1;
   animation: 幻海焦散漂移 8s ease-in-out infinite var(--mvu-holo-loop-play-state, running);
 }
 
@@ -17865,6 +17864,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar {
   gap: 6px;
   min-width: 0;
   padding: 5px 7px;
+  background: var(--标题栏材质);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--边线颜色) 72%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-toolbar-main {
@@ -17953,6 +17954,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-row {
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  background: var(--次级导航材质);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--边线颜色) 54%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-tab-row::-webkit-scrollbar {
@@ -18338,6 +18341,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch {
   height: 100%;
   overflow: hidden;
   isolation: isolate;
+  background: var(--工作区表面);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-stage-switch > .is-stage-active {
@@ -19005,7 +19009,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
   border-left-color: color-mix(in srgb, var(--边线颜色) 72%, transparent);
   border-radius: var(--卡片圆角);
   clip-path: var(--卡片裁切);
-  background: var(--工作区材质);
+  background: transparent;
   box-shadow: inset 1px 0 0 color-mix(in srgb, var(--主题主色) 18%, transparent);
   overflow: hidden;
 }
@@ -19017,7 +19021,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   height: auto;
   border-color: transparent;
   border-left-color: color-mix(in srgb, var(--边线颜色) 72%, transparent);
-  background: var(--工作区材质);
+  background: transparent;
   box-shadow: inset 1px 0 0 color-mix(in srgb, var(--主题主色) 18%, transparent);
   overflow: hidden;
 }
