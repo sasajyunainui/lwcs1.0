@@ -31184,6 +31184,13 @@
 
   function buildUnifiedSocialCard(snapshot) {
     const 社交 = deepGet(snapshot, 'activeChar.社交', {}) || {};
+    const 根 = deepGet(snapshot, 'rootData', {});
+    const 当前角色 = toText(snapshot && snapshot.activeName, '');
+    const 权限运行时 = 读取赛事权限运行时_桥接();
+    const 权限数量 =
+      权限运行时 && typeof 权限运行时.列出持有人权限 === 'function'
+        ? 权限运行时.列出持有人权限(根, 当前角色).length
+        : 0;
     const 关系数量 = (snapshot.relations || []).length || 0;
     const 核心羁绊 = snapshot.topRelation
       ? `${shortenText(snapshot.topRelation[0], 10)} · ${toText(deepGet(snapshot.topRelation[1], '关系', '陌生'), '陌生')}`
@@ -31196,6 +31203,9 @@
             <div class="mvu-archive-social-window-head"><span>社会档案</span></div>
             <div class="mvu-archive-social-window-body">
               <span><b>身份</b><em>${htmlEscape(shortenText(身份, 18))}</em></span>
+              <span class="mvu-archive-social-permission-link clickable" data-preview="特殊权限" data-detail-mode="embed">
+                <b>特殊权限</b><em>${htmlEscape(`${权限数量} 项`)}</em>
+              </span>
             </div>
           </div>
           <div class="mvu-archive-social-window clickable" data-preview="人物关系详细页" data-detail-mode="embed">
@@ -33438,10 +33448,6 @@
         preview: '情报库详细页',
         surface: normalizedSurface,
       });
-      setUnifiedCardMarkup('archive-permissions', 构建特殊权限摘要卡(snapshot), {
-        preview: '特殊权限',
-        surface: normalizedSurface,
-      });
       setUnifiedCardMarkup('social', buildUnifiedSocialCard(snapshot), {
         preview: '人物关系详细页',
         surface: normalizedSurface,
@@ -33978,44 +33984,6 @@
       `;
   }
 
-  function 构建特殊权限摘要卡(snapshot) {
-    const 根 = deepGet(snapshot, 'rootData', {});
-    const 当前角色 = toText(snapshot && snapshot.activeName, '');
-    const 运行时 = 读取赛事权限运行时_桥接();
-    const 权限列表 =
-      运行时 && typeof 运行时.列出持有人权限 === 'function'
-        ? 运行时.列出持有人权限(根, 当前角色)
-        : [];
-    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(根, 'world.时间.tick', 0), 0)));
-    const 可领取数量 = 权限列表.filter(({ 记录 }) => {
-      const 类型 = toText(deepGet(记录, '权限.类型', ''), '');
-      return 类型 === '物品选择' && typeof 运行时?.生成物品选择候选 === 'function'
-        ? (运行时.生成物品选择候选(根, 记录) || []).length > 0
-        : false;
-    }).length;
-    const 最近到期 = 权限列表
-      .map(({ 记录 }) => Math.max(0, Math.floor(toNumber(记录 && 记录.到期tick, 0)) - 当前tick))
-      .filter(Boolean)
-      .sort((a, b) => a - b)[0];
-    const 最近重置 = 权限列表
-      .map(({ 记录 }) => Math.max(0, Math.floor(toNumber(记录 && 记录.使用配额?.下次重置tick, 0)) - 当前tick))
-      .filter(Boolean)
-      .sort((a, b) => a - b)[0];
-    const 格式剩余 = tick => {
-      if (!tick) return '无';
-      if (tick >= 144) return `${Math.floor(tick / 144)}天`;
-      if (tick >= 6) return `${Math.floor(tick / 6)}时`;
-      return `${tick}tick`;
-    };
-    return buildSimpleCard('特殊权限', null, [
-      { label: '当前角色', value: 当前角色 || '未绑定' },
-      { label: '有效权限', value: `${权限列表.length} 项` },
-      { label: '最近到期', value: 格式剩余(最近到期) },
-      { label: '最近重置', value: 格式剩余(最近重置) },
-      { label: '可领取物品', value: `${可领取数量} 项` },
-    ]);
-  }
-
   function 构建赛事摘要卡(snapshot) {
     const 赛事表 = deepGet(snapshot, 'rootData.world.赛事', {});
     const 当前角色 = toText(snapshot && snapshot.activeName, '');
@@ -34052,7 +34020,6 @@
       'spirit-stage': ['武魂', '未记录'],
       armory: ['武装', '0'],
       vault: ['仓库', '0'],
-      'archive-permissions': ['特殊权限', '0'],
       social: ['社交', '0'],
       'map-current': ['当前位置', '无数据'],
       'map-locals': ['本地角色', '0'],

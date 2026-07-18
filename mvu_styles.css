@@ -18954,9 +18954,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world {
-  grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.95fr);
-  grid-template-rows: auto;
-  grid-template-areas: 'main side';
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'hero timeline'
+    'bestiary competition';
   height: 100%;
   min-height: 0;
   align-items: stretch;
@@ -18993,6 +18995,42 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-da
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org > [data-dashboard-panel='org-side'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data-dashboard-panel='terminal-side'] {
   grid-area: side;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel='world-main'],
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel='world-side'] {
+  display: contents;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-hero'] {
+  grid-area: hero;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-timeline'] {
+  grid-area: timeline;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-bestiary'] {
+  grid-area: bestiary;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-competition'] {
+  grid-area: competition;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel] > .mvu-dashboard-panel-section {
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid var(--边线颜色);
+  border-radius: var(--卡片圆角);
+  background: var(--卡片材质);
+  overflow: hidden;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel] > .mvu-dashboard-panel-section + .mvu-dashboard-panel-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--边线颜色);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
@@ -19077,48 +19115,8 @@ body.mvu-layout-holo
   --正文卡片魂影: color-mix(in srgb, var(--模块魂色) 24%, transparent);
 }
 
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-dashboard--archive
-  > [data-unified-card='archive-side']
-  [data-unified-card='archive-permissions'],
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-dashboard--world
-  > [data-dashboard-panel='world-side']
-  [data-unified-card='world-competition'] {
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-competition'] {
   min-height: 0;
-}
-
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-dashboard--archive
-  > [data-unified-card='archive-side']
-  [data-unified-card='archive-permissions']
-  .mvu-holo-row-list,
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-dashboard--world
-  > [data-dashboard-panel='world-side']
-  [data-unified-card='world-competition']
-  .mvu-holo-row-list {
-  gap: 4px;
-}
-
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-dashboard--archive
-  > [data-unified-card='archive-side']
-  [data-unified-card='archive-permissions']
-  .mvu-holo-row,
-body.mvu-layout-holo
-  #mvu-unified-mount
-  .mvu-unified-dashboard--world
-  > [data-dashboard-panel='world-side']
-  [data-unified-card='world-competition']
-  .mvu-holo-row {
-  min-height: 22px;
-  padding: 3px 0;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card > * {
@@ -20593,6 +20591,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-window-body em {
   font-weight: 820;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-archive-social-permission-link {
+  cursor: pointer;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-archive-armory-strip {

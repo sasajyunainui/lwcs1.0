@@ -619,7 +619,6 @@ const DesktopUnifiedLayout = {
                     <section class="mvu-dashboard-panel-section clickable" data-preview="武装工坊详细页" data-detail-mode="embed" data-unified-card="armory" data-unified-surface="panel"></section>
                     <section class="mvu-dashboard-panel-section clickable" data-preview="人物关系详细页" data-detail-mode="embed" data-unified-card="social" data-unified-surface="panel"></section>
                     <section class="mvu-dashboard-panel-section clickable" data-preview="情报库详细页" data-detail-mode="embed" data-unified-card="vault" data-unified-surface="panel"></section>
-                    <section class="mvu-dashboard-panel-section clickable" data-preview="特殊权限" data-detail-mode="embed" data-unified-card="archive-permissions" data-unified-surface="panel"></section>
                   </div>
                 </div>
               </section>
