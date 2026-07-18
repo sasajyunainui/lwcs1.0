@@ -14778,8 +14778,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
     linear-gradient(180deg, color-mix(in srgb, var(--暗场底板强) 72%, transparent), color-mix(in srgb, var(--暗场底板) 64%, transparent)),
     var(--全息材质底);
   --mvu-quest-card-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
-  height: min(640px, calc(100svh - 170px));
-  min-height: min(420px, calc(100svh - 210px));
+  height: min(560px, calc(100svh - 210px));
+  min-height: min(390px, calc(100svh - 250px));
   grid-template-rows: auto minmax(0, 1fr);
   align-items: stretch;
   align-content: stretch;
@@ -14837,7 +14837,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-list-card > .archive-card-head {
-  position: static;
+  position: relative;
+  z-index: 3;
 }
 
 .mvu-quest-summary-bar {
@@ -15067,6 +15068,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   min-height: 0;
   height: 100%;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
   padding-top: 0;
 }
 
@@ -15154,12 +15157,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 .archive-card-head > .mvu-quest-create-panel .mvu-detail-form-row {
   position: absolute;
   top: 54px;
-  left: 14px;
-  right: 14px;
+  left: 0;
+  right: 0;
   z-index: 80;
   width: auto;
   max-height: min(54svh, 440px);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 10px;
 }
 
@@ -22797,8 +22802,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 }
 
 #detailModal.mvu-modal-display-unified .mvu-detail-grid--quest.mvu-quest-overview-grid {
-  height: min(640px, calc(100svh - 170px)) !important;
-  min-height: min(420px, calc(100svh - 210px)) !important;
+  height: min(560px, calc(100svh - 210px)) !important;
+  min-height: min(390px, calc(100svh - 250px)) !important;
   grid-template-rows: auto minmax(0, 1fr) !important;
   align-content: stretch !important;
   min-width: 0 !important;

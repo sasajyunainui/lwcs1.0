@@ -49999,7 +49999,7 @@ ${播报文本}
   function rerenderDetailSurface(previewKey = '', options = {}) {
     const targetKey = toText(previewKey, '').trim();
     if (!targetKey) return;
-    if (targetKey === '任务界面' && 局部刷新任务详情()) return;
+    if (targetKey === '任务界面' && 局部刷新任务详情(options.questSurface)) return;
     if (options.surface === 'unified' || (currentUnifiedPreviewKey === targetKey && isUnifiedInlinePreviewActive())) {
       renderUnifiedInlinePreview(targetKey, { ...options, force: !!options.force });
       return;
@@ -50007,10 +50007,25 @@ ${播报文本}
     renderModalContent(targetKey, getModalRefs(), { force: !!options.force });
   }
 
-  function 局部刷新任务详情() {
-    const 当前内容 = Array.from(document.querySelectorAll('[data-quest-content]')).find(
-      节点 => 节点 instanceof Element && 节点.isConnected && (节点.offsetWidth || 节点.offsetHeight),
-    );
+  function 局部刷新任务详情(作用域 = null) {
+    const 候选内容 = Array.from(
+      作用域 instanceof Element
+        ? 作用域.querySelectorAll('[data-quest-content]')
+        : document.querySelectorAll('[data-quest-content]'),
+    ).filter(节点 => 节点 instanceof Element && 节点.isConnected);
+    const 当前内容 = 候选内容
+      .map(节点 => {
+        const rect = 节点.getBoundingClientRect();
+        const style = window.getComputedStyle(节点);
+        return {
+          节点,
+          可见: style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0',
+          在视口内: rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight,
+          距离视口: Math.abs(rect.top),
+        };
+      })
+      .filter(项目 => 项目.可见 && 项目.在视口内)
+      .sort((a, b) => a.距离视口 - b.距离视口)[0]?.节点;
     if (!当前内容) return false;
     const 详情 = buildLiveArchiveModal('任务界面');
     const 临时根 = document.createElement('div');
@@ -50051,6 +50066,16 @@ ${播报文本}
           : null;
     if (isInlineEditInteractionTarget(eventTarget)) {
       event.stopPropagation();
+      return;
+    }
+    const questCreateSummary = eventTarget ? eventTarget.closest('.mvu-quest-create-panel > summary') : null;
+    if (questCreateSummary && detailSurfaceHost.contains(questCreateSummary)) {
+      event.stopPropagation();
+      window.setTimeout(() => {
+        const createPanel = questCreateSummary.closest('.mvu-quest-create-panel');
+        const firstInput = createPanel?.querySelector('input, textarea, select');
+        if (createPanel?.open && firstInput instanceof HTMLElement) firstInput.focus();
+      }, 0);
       return;
     }
     const AI维护根 = eventTarget ? eventTarget.closest('[data-ai-maintenance-root]') : null;
@@ -50972,7 +50997,7 @@ ${播报文本}
       if (detailPreviewKey) {
         modalFocusState[`${detailPreviewKey}::quest-tab`] =
           tabName === '委托板' ? '委托板' : tabName === '支线' ? '支线' : '主线';
-        rerenderDetailSurface(detailPreviewKey, options);
+        rerenderDetailSurface(detailPreviewKey, { ...options, questSurface: detailSurfaceHost });
       }
       return;
     }
@@ -50985,7 +51010,7 @@ ${播报文本}
       if (boardId && detailPreviewKey) {
         modalFocusState[`${detailPreviewKey}::quest-tab`] = '委托板';
         modalFocusState[`${detailPreviewKey}::quest-board-focus`] = boardId;
-        rerenderDetailSurface(detailPreviewKey, options);
+        rerenderDetailSurface(detailPreviewKey, { ...options, questSurface: detailSurfaceHost });
       }
       return;
     }
@@ -50999,7 +51024,7 @@ ${播报文本}
       if (questName && detailPreviewKey) {
         modalFocusState[`${detailPreviewKey}::quest-tab`] = questKind === 'side' ? '支线' : '主线';
         modalFocusState[`${detailPreviewKey}::quest-focus-${questKind === 'side' ? 'side' : 'main'}`] = questName;
-        rerenderDetailSurface(detailPreviewKey, options);
+        rerenderDetailSurface(detailPreviewKey, { ...options, questSurface: detailSurfaceHost });
       }
       return;
     }
