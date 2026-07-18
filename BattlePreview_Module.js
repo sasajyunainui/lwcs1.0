@@ -1076,7 +1076,6 @@
 
   function estimateHitProbability(actor = {}, target = {}, effect = {}) {
     const explicitValue = effect?.命中概率 ?? effect?.触发概率;
-    if (String(explicitValue ?? '').trim()) return normalizeEffectProbability(explicitValue, 1);
     const attackAgility = readCombatStat(actor, 'agi');
     const targetAgility = readCombatStat(target, 'agi');
     const actorEffects = stateEntries(actor).map(([, state]) => state?.战斗效果 || {});
@@ -1086,13 +1085,22 @@
     const targetAvoidanceAdjustment = targetEffects.reduce((sum, stateEffect) =>
       sum + Number(stateEffect?.dodge_bonus || 0) -
       Math.max(Number(stateEffect?.dodge_penalty || 0), Number(stateEffect?.lock_level || 0)), 0);
+    const hasExplicitProbability = String(explicitValue ?? '').trim() !== '';
+    const baseProbability = hasExplicitProbability
+      ? normalizeEffectProbability(explicitValue, 1)
+      : clamp(
+          0.78 +
+          (attackAgility - targetAgility) / Math.max(100, attackAgility + targetAgility) * 0.35,
+          0.05,
+          0.99,
+        );
+    if (hasExplicitProbability && (baseProbability <= 0 || baseProbability >= 1)) return baseProbability;
     return clamp(
-      0.78 +
-      (attackAgility - targetAgility) / Math.max(100, attackAgility + targetAgility) * 0.35 +
+      baseProbability +
       hitAdjustment -
       targetAvoidanceAdjustment,
-      0.05,
-      0.99,
+      hasExplicitProbability ? 0 : 0.05,
+      hasExplicitProbability ? 1 : 0.99,
     );
   }
 

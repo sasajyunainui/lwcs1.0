@@ -11230,6 +11230,7 @@
     const realizationWindows = new Set();
     const paymentDependencies = [];
     const opportunityDependencies = [];
+    const actionPoolEffects = [];
     for (const entry of previewResult?.contributions || []) {
       const outcomeKind = String(entry?.outcomeKind || '').trim();
       if (outcomeKind) outcomeKinds.add(outcomeKind);
@@ -11248,7 +11249,19 @@
           windowId: entry.windowId || '',
         });
       }
-      if (!['HP_DELTA', 'SHIELD_DELTA'].includes(outcomeKind)) continue;
+      if (!['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(outcomeKind)) {
+        actionPoolEffects.push({
+          rootActionId: String(entry?.rootCauseId || entry?.sourceActionId || candidate?.candidateId || '').trim(),
+          effectInstanceId: String(entry?.effectInstanceId || '').trim(),
+          targetId: String(entry?.targetId || '').trim(),
+          outcomeKind,
+          windowId: String(entry?.windowId || ''),
+          expectedDelta: Number(entry?.expectedDelta || 0),
+          threatValue: Number(entry?.threatValue || 0),
+          evidence: cloneValue(entry?.evidence || {}),
+        });
+        continue;
+      }
       const target = findUnitInWorld(worldSnapshot, entry.targetId);
       if (!target) continue;
       const baseMaxHp = Math.max(1, preview.readHpMax(target));
@@ -11261,6 +11274,7 @@
         windowId: String(entry?.windowId || ''),
         healthDeltaPP: 100 * rawDelta / baseMaxHp,
         actorBenefitPP: 100 * beneficialDelta / baseMaxHp,
+        rootActionId: String(entry?.rootCauseId || entry?.sourceActionId || candidate?.candidateId || '').trim(),
         sourceEffectInstanceId: String(entry?.effectInstanceId || ''),
       });
     }
@@ -11276,6 +11290,12 @@
       paymentDependencies,
       opportunityDependencies,
       realizationWindows: [...realizationWindows].sort(),
+      actionPoolEffects: actionPoolEffects.map(entry => [
+        entry.targetId,
+        entry.outcomeKind,
+        entry.windowId,
+        entry.effectInstanceId,
+      ]),
     };
     return Object.freeze({
       routeKey: `route:${preview.stableHash(routeShape)}`,
@@ -11287,6 +11307,7 @@
       opportunityDependencies: deepFreeze(opportunityDependencies),
       realizationWindows: Object.freeze([...realizationWindows].sort()),
       healthTrajectoryByTarget: deepFreeze(trajectories),
+      actionPoolEffects: deepFreeze(actionPoolEffects),
       terminalPathId: '',
       probabilityBounds: Object.freeze({ lower: 0, upper: 1 }),
       dependencyKeys: Object.freeze([...(input.dependencyKeys || [])].sort()),
@@ -11331,6 +11352,8 @@
     const actorCandidates = Array.isArray(input.actorCandidates) ? input.actorCandidates : [];
     const cache = new Map();
     const catalog = {};
+    const actorCandidateRoutes = {};
+    const actorProjectedWorlds = {};
     const previousCatalog = input.previousCatalog && typeof input.previousCatalog === 'object'
       ? input.previousCatalog
       : null;
@@ -11398,6 +11421,9 @@
           });
           cache.set(cacheKey, previewResult);
         }
+        if (currentUnitId === actorId) {
+          actorProjectedWorlds[candidate.candidateId] = previewResult.afterSnapshot;
+        }
         return actionRouteFromPreview({
           candidate,
           previewResult,
@@ -11406,10 +11432,17 @@
           dependencyKeys,
         });
       });
+      if (currentUnitId === actorId) {
+        routes.forEach(route => {
+          actorCandidateRoutes[route.candidateId] = route;
+        });
+      }
       catalog[currentUnitId] = selectPrimaryBackupRoutes(routes);
     }
     return {
       routeCatalog: deepFreeze(catalog),
+      actorCandidateRoutes: deepFreeze(actorCandidateRoutes),
+      actorProjectedWorlds,
       cacheMetrics: Object.freeze({
         cacheSize: cache.size,
         previewCalls: cache.size,
@@ -11449,6 +11482,90 @@
         expiresAtSequence: index + 1,
       }))
     ));
+  }
+
+  function buildR8CandidateEnvelopeDeltas(input = {}) {
+    const worldSnapshot = input.worldSnapshot || {};
+    const actorSide = String(input.actorSide || '').trim();
+    const routeCatalog = input.routeCatalog || {};
+    const projectedWorlds = input.projectedWorlds || {};
+    const candidateRoutes = input.candidateRoutes || {};
+    const actionOpportunity = input.actionOpportunity || {};
+    const result = {};
+    const rebuildEnvelope = (projectedWorld, targetId) => {
+      const target = findUnitInWorld(projectedWorld, targetId);
+      if (!target || !preview.isAlive(target) || !preview.isBattleCapable(target)) {
+        return Object.freeze({ primaryRoute: null, backupRoute: null, searchedRouteCount: 0 });
+      }
+      const targetSide = sideOf(projectedWorld, target);
+      const candidates = enumerateCandidates({
+        worldSnapshot: projectedWorld,
+        actorId: targetId,
+        actorSide: targetSide,
+        beliefState: input.beliefState,
+        battleIntent: input.battleIntent,
+        actionOpportunity: {
+          role: 'ACTIVE',
+          grantType: 'NATURAL_ACTION',
+          sequence: Number(actionOpportunity?.sequence || 0) + 1,
+        },
+      }).map(candidate => ({
+        ...candidate,
+        declarationFingerprint: declarationFingerprint(candidate.declaration),
+      }));
+      const routes = candidates.map(candidate => actionRouteFromPreview({
+        candidate,
+        previewResult: preview.previewAction({
+          worldSnapshot: projectedWorld,
+          actorId: targetId,
+          declaration: candidate.declaration,
+          actionFingerprint: candidate.declarationFingerprint,
+          horizon: 'SHALLOW',
+          previewBudget: { maxNodes: 12 },
+          battleIntent: input.battleIntent,
+        }),
+        worldSnapshot: projectedWorld,
+        actorSide: targetSide,
+        dependencyKeys: [],
+      }));
+      return selectPrimaryBackupRoutes(routes);
+    };
+    for (const [candidateId, route] of Object.entries(candidateRoutes)) {
+      const projectedWorld = projectedWorlds[candidateId];
+      if (!projectedWorld) {
+        result[candidateId] = Object.freeze([]);
+        continue;
+      }
+      const allUnitIds = worldEntries(worldSnapshot).map(entry => preview.unitId(entry.unit)).filter(Boolean);
+      const affectedIds = new Set();
+      for (const effect of route?.actionPoolEffects || []) {
+        const targetId = String(effect?.targetId || '').trim();
+        if (['RESOURCE_OPTION_CHANGED', 'ACTION_CANCELLED'].includes(effect?.outcomeKind)) {
+          if (targetId) affectedIds.add(targetId);
+        } else {
+          allUnitIds.forEach(unitIdValue => affectedIds.add(unitIdValue));
+        }
+      }
+      result[candidateId] = Object.freeze([...affectedIds].map(targetId => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        const targetSide = target ? sideOf(worldSnapshot, target) : '';
+        const beforeEnvelope = routeCatalog[targetId] || {};
+        const afterEnvelope = rebuildEnvelope(projectedWorld, targetId);
+        const beforePP = Math.max(0, Number(beforeEnvelope?.primaryRoute?.routeBenefitPP || 0));
+        const afterPP = Math.max(0, Number(afterEnvelope?.primaryRoute?.routeBenefitPP || 0));
+        const ownTarget = String(targetSide) === actorSide;
+        return Object.freeze({
+          targetId,
+          beforeRouteKey: String(beforeEnvelope?.primaryRoute?.routeKey || ''),
+          afterRouteKey: String(afterEnvelope?.primaryRoute?.routeKey || ''),
+          beforePP,
+          afterPP,
+          healthTrajectoryDeltaPP: ownTarget ? afterPP - beforePP : beforePP - afterPP,
+          searchedRouteCount: Number(afterEnvelope?.searchedRouteCount || 0),
+        });
+      }));
+    }
+    return deepFreeze(result);
   }
 
   function buildR8ResponseModel(request = {}, candidateId = '') {
@@ -11525,6 +11642,662 @@
     if (!observable) return 0;
     const regretBefore = Math.abs(Number(primary.routeBenefitPP || 0) - Number(backup.routeBenefitPP || 0));
     return Math.max(0, regretBefore * (1 - clamp(request?.beliefState?.confidence ?? 0.5, 0, 1)));
+  }
+
+  function r8ObjectiveGroups(request = {}) {
+    const normalized = preview.normalizeBattleObjectives(
+      request?.objectiveContract || {},
+      request?.visibleWorld || {},
+    );
+    const actorIsPlayer = /player|玩家|我方|己方|友方/i.test(String(request?.actorSide || ''));
+    return Object.freeze({
+      normalized,
+      actorIsPlayer,
+      victory: actorIsPlayer ? normalized.victory : normalized.defeat,
+      defeat: actorIsPlayer ? normalized.defeat : normalized.victory,
+    });
+  }
+
+  function r8ConditionMatchesUnit(request = {}, condition = {}, unitIdValue = '') {
+    const unit = findUnitInWorld(request?.visibleWorld || {}, unitIdValue);
+    if (!unit) return false;
+    const targetIds = new Set((condition?.targetIds || []).map(value => String(value || '').trim()));
+    if (targetIds.size && !targetIds.has(preview.unitId(unit)) && !targetIds.has(preview.unitName(unit))) return false;
+    const expectedSide = String(condition?.side || '').trim().toUpperCase();
+    if (!expectedSide) return true;
+    const actualPlayer = /player|玩家|我方|己方|友方/i.test(String(sideOf(request.visibleWorld, unit)));
+    return expectedSide === (actualPlayer ? 'PLAYER' : 'ENEMY');
+  }
+
+  function r8ConditionTrajectoryValue(request = {}, condition = {}, trajectory = {}, groupRole = 'VICTORY') {
+    if (!r8ConditionMatchesUnit(request, condition, trajectory.targetId)) return 0;
+    const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
+    if (!target) return 0;
+    const targetSide = String(sideOf(request.visibleWorld, target));
+    const actorSide = String(request.actorSide || '');
+    const ownTarget = targetSide === actorSide;
+    const deltaPP = Number(trajectory.healthDeltaPP || 0);
+    const damagePP = Math.max(0, -deltaPP);
+    const sustainPP = Math.max(0, deltaPP);
+    const type = String(condition?.type || '').trim().toUpperCase();
+    if (groupRole === 'DEFEAT') {
+      if (!ownTarget) return 0;
+      if (['TEAM_DEAD', 'UNIT_DEAD', 'TEAM_INCAPACITATED', 'UNIT_INCAPACITATED', 'ROUND_REACHED', 'WITHDRAW_SUCCESS', 'UNIT_DAMAGED'].includes(type)) {
+        return sustainPP;
+      }
+      if (type === 'HP_RATIO_AT_OR_BELOW') {
+        const currentPP = 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
+        const thresholdPP = 100 * Number(condition?.threshold || 0);
+        return Math.min(sustainPP, Math.max(0, thresholdPP - currentPP));
+      }
+      return 0;
+    }
+    if (type === 'ROUND_REACHED' || type === 'WITHDRAW_SUCCESS') return ownTarget ? sustainPP : 0;
+    if (ownTarget) return 0;
+    if (['TEAM_DEAD', 'UNIT_DEAD', 'TEAM_INCAPACITATED', 'UNIT_INCAPACITATED'].includes(type)) {
+      const currentPP = 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
+      return Math.min(damagePP, currentPP);
+    }
+    if (type === 'UNIT_DAMAGED') return damagePP;
+    if (type === 'HP_RATIO_AT_OR_BELOW') {
+      const currentPP = 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
+      const thresholdPP = 100 * Number(condition?.threshold || 0);
+      return Math.min(damagePP, Math.max(0, currentPP - thresholdPP));
+    }
+    return 0;
+  }
+
+  function r8GroupTrajectoryValue(request = {}, group = {}, trajectory = {}, groupRole = 'VICTORY') {
+    const values = (group?.conditions || []).map(condition =>
+      r8ConditionTrajectoryValue(request, condition, trajectory, groupRole)
+    );
+    if (!values.length) return 0;
+    return String(group?.logic || 'ANY').toUpperCase() === 'ALL'
+      ? Math.min(...values)
+      : Math.max(...values);
+  }
+
+  function r8ThresholdOverkill(request = {}, route = {}) {
+    const groups = r8ObjectiveGroups(request);
+    let discardedOverkillPP = 0;
+    for (const trajectory of route?.healthTrajectoryByTarget || []) {
+      const damagePP = Math.max(0, -Number(trajectory?.healthDeltaPP || 0));
+      if (!(damagePP > 0)) continue;
+      const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
+      if (!target) continue;
+      const thresholdConditions = (groups.victory?.conditions || []).filter(condition =>
+        condition.type === 'HP_RATIO_AT_OR_BELOW' &&
+        r8ConditionMatchesUnit(request, condition, trajectory.targetId)
+      );
+      if (!thresholdConditions.length) continue;
+      const killAlsoRequired = (groups.victory?.conditions || []).some(condition =>
+        ['TEAM_DEAD', 'UNIT_DEAD'].includes(condition.type) &&
+        r8ConditionMatchesUnit(request, condition, trajectory.targetId)
+      );
+      if (killAlsoRequired) continue;
+      const currentPP = 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
+      const countablePP = Math.max(...thresholdConditions.map(condition =>
+        Math.max(0, currentPP - 100 * Number(condition.threshold || 0))
+      ));
+      discardedOverkillPP += Math.max(0, damagePP - Math.min(damagePP, countablePP));
+    }
+    return discardedOverkillPP;
+  }
+
+  function r8SetProjectedHp(unit = {}, nextHp = 0) {
+    const value = Math.max(0, nextHp);
+    unit.hp = value;
+    unit.HP = value;
+    unit.生命 = value;
+    if (unit.属性 && typeof unit.属性 === 'object') {
+      unit.属性.HP = value;
+      unit.属性.生命 = value;
+    }
+    if (value <= 0) {
+      unit.状态 = { ...(unit.状态 || {}), 存活: false, 行动: '死亡' };
+    }
+  }
+
+  function r8TerminalUtility(request = {}, route = {}) {
+    const projected = cloneValue(request?.visibleWorld || {});
+    const objectives = preview.normalizeBattleObjectives(request?.objectiveContract || {}, projected);
+    for (const trajectory of route?.healthTrajectoryByTarget || []) {
+      const target = findUnitInWorld(projected, trajectory.targetId);
+      if (!target) continue;
+      const delta = Number(trajectory.healthDeltaPP || 0) * Math.max(1, preview.readHpMax(target)) / 100;
+      r8SetProjectedHp(target, preview.readHp(target) + delta);
+      const resolution = preview.evaluateBattleObjectives(projected, objectives, {
+        round: Number(projected?.回合 || 0),
+        roundCompleted: false,
+      });
+      if (!resolution.terminal) continue;
+      const actorIsPlayer = r8ObjectiveGroups(request).actorIsPlayer;
+      const won = resolution.status === (actorIsPlayer ? 'PLAYER_WIN' : 'ENEMY_WIN');
+      const lost = resolution.status === (actorIsPlayer ? 'ENEMY_WIN' : 'PLAYER_WIN');
+      return Object.freeze({
+        terminal: true,
+        status: resolution.status,
+        utility: won ? 100 : lost ? -100 : 0,
+        terminalAfterEffectInstanceId: String(trajectory.sourceEffectInstanceId || ''),
+      });
+    }
+    return Object.freeze({ terminal: false, status: 'ONGOING', utility: null, terminalAfterEffectInstanceId: '' });
+  }
+
+  function r8OpportunityList(request = {}) {
+    const snapshot = request?.evaluationContext?.opportunitySnapshot;
+    if (Array.isArray(snapshot)) return snapshot;
+    if (Array.isArray(snapshot?.opportunities)) return snapshot.opportunities;
+    return snapshot && typeof snapshot === 'object' ? [snapshot] : [];
+  }
+
+  function r8ActionPoolDeltas(request = {}, route = {}) {
+    const deltas = [];
+    const consumedEnvelopeTargets = new Set();
+    const opportunities = r8OpportunityList(request);
+    const schedules = request?.evaluationContext?.scheduledEvents || [];
+    for (const effect of route?.actionPoolEffects || []) {
+      const target = findUnitInWorld(request.visibleWorld, effect.targetId);
+      const targetEnvelope = request?.actionRouteCatalog?.[effect.targetId];
+      const targetRouteValue = Math.max(0, Number(targetEnvelope?.primaryRoute?.routeBenefitPP || 0));
+      const targetOwnSide = target && String(sideOf(request.visibleWorld, target)) === String(request.actorSide);
+      const probability = clamp(
+        effect?.evidence?.applicationProbability ??
+        effect?.evidence?.probability ??
+        1,
+        0,
+        1,
+      );
+      let deltaPP = Number(effect?.evidence?.r8HealthTrajectoryDeltaPP || 0);
+      const envelopeDeltas = request?.candidateEnvelopeDeltas?.[route?.candidateId] || [];
+      const takeEnvelopeDelta = (allAffected = false) => {
+        const entries = envelopeDeltas.filter(entry =>
+          !consumedEnvelopeTargets.has(entry.targetId) &&
+          (allAffected || String(entry?.targetId || '').trim() === String(effect?.targetId || '').trim())
+        );
+        entries.forEach(entry => consumedEnvelopeTargets.add(entry.targetId));
+        return entries.reduce((sum, entry) => sum + Number(entry.healthTrajectoryDeltaPP || 0), 0);
+      };
+      let realizable = true;
+      if (effect.outcomeKind === 'ACTION_CANCELLED') {
+        const opportunity = opportunities.find(entry =>
+          String(entry?.ownerId || '').trim() === String(effect.targetId || '').trim() &&
+          !['CONSUMED', 'EXPIRED', 'LOST'].includes(String(entry?.status || '').trim().toUpperCase())
+        );
+        const descriptor = schedules.find(entry =>
+          String(entry?.ownerId || entry?.targetId || '').trim() === String(effect.targetId || '').trim()
+        );
+        realizable = !!opportunity || !!descriptor;
+        deltaPP = realizable ? targetRouteValue * probability * (targetOwnSide ? -1 : 1) : 0;
+      } else if (effect.outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED') {
+        const multiplier = Number(effect?.evidence?.multiplier || 1);
+        const explicitFactor = Number(effect?.evidence?.qualityFactor);
+        const factor = Number.isFinite(explicitFactor)
+          ? explicitFactor
+          : Number.isFinite(multiplier) && multiplier !== 1
+            ? multiplier - 1
+            : 0;
+        deltaPP = deltaPP || takeEnvelopeDelta(true) ||
+          targetRouteValue * factor * probability * (targetOwnSide ? 1 : -1);
+      } else if (['ACTION_GRANTED', 'SUMMON_WINDOW'].includes(effect.outcomeKind)) {
+        const scheduled = schedules.some(entry =>
+          String(entry?.sourceEventId || entry?.effectInstanceId || '').includes(String(effect.effectInstanceId || ''))
+        );
+        realizable = scheduled || effect.outcomeKind === 'ACTION_GRANTED';
+        deltaPP = deltaPP || (realizable ? targetRouteValue * probability * (targetOwnSide ? 1 : -1) : 0);
+      } else if (effect.outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+        const hasNonResourceEffect = (route?.actionPoolEffects || []).some(entry =>
+          entry !== effect && entry.outcomeKind !== 'RESOURCE_OPTION_CHANGED'
+        );
+        deltaPP = Number(effect?.evidence?.routeDeltaPP || 0) ||
+          (hasNonResourceEffect ? 0 : takeEnvelopeDelta());
+      } else if (['STATE_CHANGED', 'RULE_CHANGED'].includes(effect.outcomeKind)) {
+        deltaPP = takeEnvelopeDelta(true);
+      }
+      if (!deltaPP && !['ACTION_CANCELLED', 'NEXT_ACTION_QUALITY_CHANGED', 'ACTION_GRANTED', 'SUMMON_WINDOW', 'RESOURCE_OPTION_CHANGED'].includes(effect.outcomeKind)) {
+        continue;
+      }
+      deltas.push(Object.freeze({
+        ...effect,
+        ownerType: 'ACTION_POOL_DELTA',
+        realizable,
+        healthTrajectoryDeltaPP: Number(deltaPP || 0),
+      }));
+    }
+    return Object.freeze(deltas);
+  }
+
+  function projectR8GoalUtility(request = {}, candidate = {}, route = {}) {
+    const groups = r8ObjectiveGroups(request);
+    const directTrajectoryHEPP = (route?.healthTrajectoryByTarget || []).reduce((sum, trajectory) => {
+      const victoryValue = r8GroupTrajectoryValue(request, groups.victory, trajectory, 'VICTORY');
+      const defeatReduction = r8GroupTrajectoryValue(request, groups.defeat, trajectory, 'DEFEAT');
+      return sum + Math.max(victoryValue, defeatReduction);
+    }, 0);
+    const actionPoolDeltas = r8ActionPoolDeltas(request, route);
+    const actionPoolHEPP = actionPoolDeltas.reduce(
+      (sum, delta) => sum + Number(delta.healthTrajectoryDeltaPP || 0),
+      0,
+    );
+    const terminal = r8TerminalUtility(request, route);
+    const nonTerminalUtility = clamp(directTrajectoryHEPP + actionPoolHEPP, -99, 99);
+    const baseUtility = terminal.terminal ? terminal.utility : nonTerminalUtility;
+    const responseModel = request?.responseModelByCandidate?.[candidate?.candidateId] ||
+      buildR8ResponseModel(request, candidate?.candidateId);
+    const responseBranches = [
+      ...(responseModel?.mainBranches || []),
+      ...(responseModel?.disasterTail ? [responseModel.disasterTail] : []),
+    ];
+    let expectedCandidateUtility = baseUtility * Number(responseModel?.noResponseProbability ?? 1);
+    let expectedNoOpUtility = 0 * Number(responseModel?.noResponseProbability ?? 1);
+    if (terminal.terminal) {
+      expectedCandidateUtility = baseUtility;
+      expectedNoOpUtility = 0;
+    } else {
+      for (const branch of responseBranches) {
+        const probability = clamp(branch?.probability || 0, 0, 1);
+        const threat = median([
+          Number(branch?.threatEnvelope?.lower || 0),
+          Number(branch?.threatEnvelope?.upper || 0),
+        ]);
+        const catastrophic = String(branch?.projectionId || '').startsWith('disaster:');
+        expectedCandidateUtility += probability * (catastrophic ? -100 : clamp(baseUtility - threat, -99, 99));
+        expectedNoOpUtility += probability * (catastrophic ? -100 : clamp(-threat, -99, 99));
+      }
+    }
+    const informationValueHEPP = Number(request?.informationValueByCandidate?.[candidate?.candidateId] || 0);
+    const objectiveUtilityHEPP = expectedCandidateUtility - expectedNoOpUtility + informationValueHEPP;
+    const disasterThreat = responseModel?.disasterTail
+      ? Number(responseModel.disasterTail?.threatEnvelope?.upper || 0)
+      : 0;
+    return Object.freeze({
+      candidateId: String(candidate?.candidateId || ''),
+      directTrajectoryHEPP,
+      actionPoolHEPP,
+      actionPoolDeltas,
+      terminal,
+      expectedCandidateUtility,
+      expectedNoOpUtility,
+      informationValueHEPP,
+      objectiveUtilityHEPP,
+      discardedOverkillPP: r8ThresholdOverkill(request, route),
+      worstTailLossHEPP: Math.max(0, disasterThreat),
+      healthTrajectory: route?.healthTrajectoryByTarget || Object.freeze([]),
+      responseModel,
+    });
+  }
+
+  function buildR8CausalValueFacts(request = {}, candidate = {}, route = {}, projection = {}) {
+    const facts = [];
+    const currentHpByTarget = new Map();
+    for (const trajectory of route?.healthTrajectoryByTarget || []) {
+      const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
+      if (!target) continue;
+      const before = currentHpByTarget.has(trajectory.targetId)
+        ? currentHpByTarget.get(trajectory.targetId)
+        : 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
+      const after = clamp(before + Number(trajectory.healthDeltaPP || 0), 0, 100);
+      currentHpByTarget.set(trajectory.targetId, after);
+      facts.push({
+        valueKey: [
+          trajectory.rootActionId || candidate.candidateId,
+          trajectory.sourceEffectInstanceId,
+          trajectory.targetId,
+          trajectory.outcomeKind,
+          trajectory.windowId || 'NOW',
+        ].join('|'),
+        ownerType: 'STATE_DELTA',
+        rootActionId: trajectory.rootActionId || candidate.candidateId,
+        effectInstanceId: trajectory.sourceEffectInstanceId,
+        targetId: trajectory.targetId,
+        outcomeKind: trajectory.outcomeKind,
+        windowId: trajectory.windowId || 'NOW',
+        healthRangePP: Object.freeze({ lower: Math.min(before, after), upper: Math.max(before, after) }),
+        sourceFactIds: Object.freeze([]),
+        consumedRanges: Object.freeze([]),
+      });
+    }
+    for (const delta of projection?.actionPoolDeltas || []) {
+      if (!Number(delta.healthTrajectoryDeltaPP || 0)) continue;
+      facts.push({
+        valueKey: [
+          delta.rootActionId || candidate.candidateId,
+          delta.effectInstanceId,
+          delta.targetId,
+          delta.outcomeKind,
+          delta.windowId || 'NOW',
+        ].join('|'),
+        ownerType: 'ACTION_POOL_DELTA',
+        rootActionId: delta.rootActionId || candidate.candidateId,
+        effectInstanceId: delta.effectInstanceId,
+        targetId: delta.targetId,
+        outcomeKind: delta.outcomeKind,
+        windowId: delta.windowId || 'NOW',
+        healthRangePP: Object.freeze({
+          lower: Math.min(0, Number(delta.healthTrajectoryDeltaPP || 0)),
+          upper: Math.max(0, Number(delta.healthTrajectoryDeltaPP || 0)),
+        }),
+        sourceFactIds: Object.freeze([]),
+        consumedRanges: Object.freeze([]),
+      });
+    }
+    if (projection?.terminal?.terminal) {
+      facts.push({
+        valueKey: [
+          candidate.candidateId,
+          projection.terminal.terminalAfterEffectInstanceId || 'terminal',
+          request.actorId,
+          'FIRST_TERMINAL',
+          'FIRST_TERMINAL',
+        ].join('|'),
+        ownerType: 'TERMINAL_DELTA',
+        rootActionId: candidate.candidateId,
+        effectInstanceId: projection.terminal.terminalAfterEffectInstanceId || 'terminal',
+        targetId: request.actorId,
+        outcomeKind: 'FIRST_TERMINAL',
+        windowId: 'FIRST_TERMINAL',
+        healthRangePP: Object.freeze({ lower: 0, upper: 0 }),
+        sourceFactIds: Object.freeze(facts.map(fact => fact.valueKey)),
+        consumedRanges: Object.freeze([]),
+      });
+    }
+    validateR8CausalOwnership(facts);
+    return deepFreeze(facts);
+  }
+
+  function validateR8CausalOwnership(facts = []) {
+    const keys = new Set();
+    const ownedIntervals = new Map();
+    for (const fact of facts) {
+      const key = String(fact?.valueKey || '').trim();
+      if (!key || keys.has(key)) throw new Error(`DUPLICATE_CAUSAL_VALUE:${key || 'missing'}`);
+      keys.add(key);
+      const lower = Number(fact?.healthRangePP?.lower || 0);
+      const upper = Number(fact?.healthRangePP?.upper || 0);
+      if (upper < lower) throw new Error(`CAUSAL_RANGE_OWNER_CONFLICT:${key}`);
+      if (fact?.ownerType === 'TERMINAL_DELTA') continue;
+      const intervalKey = [
+        fact?.targetId,
+        fact?.windowId,
+        fact?.outcomeKind,
+      ].join('|');
+      const intervals = ownedIntervals.get(intervalKey) || [];
+      if (upper > lower && intervals.some(interval =>
+        Math.max(lower, interval.lower) < Math.min(upper, interval.upper) - 1e-9
+      )) {
+        throw new Error(`CAUSAL_RANGE_OWNER_CONFLICT:${key}`);
+      }
+      intervals.push({ lower, upper, key });
+      ownedIntervals.set(intervalKey, intervals);
+    }
+    return true;
+  }
+
+  function r8HasDefenseWindow(request = {}) {
+    const opportunity = request?.actionOpportunity || {};
+    if (
+      opportunity.imminentThreat === true ||
+      opportunity.counterWindow === true ||
+      opportunity.interceptThreat === true ||
+      opportunity.incomingAction
+    ) return true;
+    if (r8OpportunityList(request).some(entry =>
+      ['DODGE_WINDOW', 'DEFEND_WINDOW', 'GUARD_INTERCEPT', 'COUNTER_WINDOW'].includes(
+        String(entry?.grantType || '').trim().toUpperCase(),
+      ) && !['CONSUMED', 'EXPIRED', 'LOST'].includes(String(entry?.status || '').trim().toUpperCase())
+    )) return true;
+    return (request?.evaluationContext?.scheduledEvents || []).some(entry =>
+      entry?.incomingAction || entry?.threat === true ||
+      /INCOMING|CHARGE|ATTACK/.test(String(entry?.type || entry?.eventKind || '').toUpperCase())
+    );
+  }
+
+  function r8AssetReserve(request = {}, candidate = {}) {
+    const actor = findUnitInWorld(request.visibleWorld, request.actorId);
+    if (!actor) return 0;
+    const costs = candidate?.costs || {};
+    const resources = [['魂力', '魂力'], ['精神力', '精神力'], ['体力', '体力']];
+    return median(resources.map(([key, label]) => {
+      const maximum = Math.max(1, preview.readResourceMax(actor, label));
+      return clamp((preview.readResource(actor, label) - Math.max(0, Number(costs?.[key] || 0))) / maximum, 0, 1);
+    })) * 100;
+  }
+
+  function r8CandidateExclusion(request = {}, candidate = {}, route = {}, projection = {}) {
+    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+    const hasCost = Object.values(candidate?.costs || {}).some(value => Number(value || 0) > 0) ||
+      (route?.actionPoolEffects || []).some(effect => effect.outcomeKind === 'IRREVERSIBLE_ASSET_LOST');
+    if (['DEFEND', 'EVADE'].includes(actionKind) && !r8HasDefenseWindow(request)) {
+      return 'ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED';
+    }
+    if (
+      (route?.actionPoolEffects || []).some(effect => effect.outcomeKind === 'ACTION_CANCELLED') &&
+      !(projection?.actionPoolDeltas || []).some(delta =>
+        delta.outcomeKind === 'ACTION_CANCELLED' && delta.realizable && Number(delta.healthTrajectoryDeltaPP || 0) !== 0
+      ) &&
+      !Number(projection?.directTrajectoryHEPP || 0)
+    ) return 'CONTROL_WINDOW_NOT_REALIZABLE';
+    if (
+      (route?.actionPoolEffects || []).some(effect => effect.outcomeKind === 'SUMMON_WINDOW') &&
+      !(projection?.actionPoolDeltas || []).some(delta =>
+        delta.outcomeKind === 'SUMMON_WINDOW' && delta.realizable && Number(delta.healthTrajectoryDeltaPP || 0) !== 0
+      )
+    ) return 'SUMMON_WINDOW_NOT_REALIZABLE';
+    if (Number(projection?.objectiveUtilityHEPP || 0) <= 1e-9 && hasCost) return 'ZERO_MARGINAL_WITH_COST';
+    const actor = findUnitInWorld(request.visibleWorld, request.actorId);
+    if (actor && (route?.healthTrajectoryByTarget || []).some(trajectory =>
+      trajectory.targetId === request.actorId &&
+      preview.readHp(actor) + Number(trajectory.healthDeltaPP || 0) * preview.readHpMax(actor) / 100 <= 0
+    ) && !projection?.terminal?.terminal) return 'UNCOMPENSATED_SELF_DESTRUCTION';
+    if (Number(projection?.discardedOverkillPP || 0) > 0) {
+      const killsTarget = (route?.healthTrajectoryByTarget || []).some(trajectory => {
+        const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
+        return target &&
+          preview.readHp(target) + Number(trajectory.healthDeltaPP || 0) * preview.readHpMax(target) / 100 <= 0;
+      });
+      if (killsTarget) return 'AVOIDABLE_IRREVERSIBLE_OVERREACH_SELECTED';
+    }
+    return '';
+  }
+
+  function r8Dominates(left = {}, right = {}) {
+    const benefits = ['objectiveUtilityHEPP', 'informationValueHEPP', 'assetReserve', 'survivalLowerBound'];
+    const costs = ['worstTailLossHEPP', 'discardedOverkillPP'];
+    const benefitOk = benefits.every(key => Number(left[key] || 0) >= Number(right[key] || 0) - 1e-9);
+    const costOk = costs.every(key => Number(left[key] || 0) <= Number(right[key] || 0) + 1e-9);
+    const strict = benefits.some(key => Number(left[key] || 0) > Number(right[key] || 0) + 1e-9) ||
+      costs.some(key => Number(left[key] || 0) < Number(right[key] || 0) - 1e-9);
+    return benefitOk && costOk && strict;
+  }
+
+  function r8ParetoFilter(candidates = []) {
+    const viable = candidates.filter(candidate => !candidate.rejectionCode);
+    return Object.freeze(viable.filter(candidate =>
+      !viable.some(other => other !== candidate && r8Dominates(other, candidate))
+    ));
+  }
+
+  function r8NormalizeUtilities(candidates = []) {
+    const center = median(candidates.map(candidate => candidate.objectiveUtilityHEPP));
+    const mad = Math.max(1, median(candidates.map(candidate =>
+      Math.abs(Number(candidate.objectiveUtilityHEPP || 0) - center)
+    )));
+    return candidates.map(candidate => ({
+      ...candidate,
+      normalizedUtility: (Number(candidate.objectiveUtilityHEPP || 0) - center) / mad,
+    }));
+  }
+
+  function selectR8Candidate(request = {}, candidates = []) {
+    const actor = findUnitInWorld(request.visibleWorld, request.actorId);
+    const experience = experienceOf(actor || {});
+    const spiritualRatio = ratio(actor || {}, 'men');
+    const staminaRatio = ratio(actor || {}, 'vit');
+    const confidence = clamp(0.50 * experience + 0.30 * spiritualRatio + 0.20 * staminaRatio, 0, 1);
+    const temperature = 0.8 + 1.8 * (1 - confidence);
+    const maxRegret = 0.35 + 0.9 * (1 - confidence);
+    const normalized = r8NormalizeUtilities(candidates);
+    const paretoIds = new Set(r8ParetoFilter(normalized).map(candidate => candidate.candidateId));
+    const eligible = normalized.filter(candidate => !candidate.rejectionCode && paretoIds.has(candidate.candidateId))
+      .sort((left, right) =>
+        Number(right.normalizedUtility || 0) - Number(left.normalizedUtility || 0) ||
+        String(left.candidateId).localeCompare(String(right.candidateId))
+      );
+    if (!eligible.length) {
+      const fallback = normalized.find(candidate =>
+        String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'DEFEND' &&
+        !Object.values(candidate?.costs || {}).some(value => Number(value || 0) > 0)
+      );
+      if (!fallback) throw new Error('R8_NO_LEGAL_FALLBACK');
+      return Object.freeze({
+        selected: fallback,
+        normalized,
+        paretoIds,
+        confidence,
+        temperature,
+        maxRegret,
+        selectionMode: 'FORCED_DEFEND_FALLBACK',
+      });
+    }
+    const best = eligible[0];
+    const second = eligible[1];
+    if (!second || Number(best.normalizedUtility || 0) - Number(second.normalizedUtility || 0) >= 2 * temperature) {
+      return Object.freeze({
+        selected: best,
+        normalized,
+        paretoIds,
+        confidence,
+        temperature,
+        maxRegret,
+        selectionMode: 'DIRECT_BEST',
+      });
+    }
+    const pool = eligible.filter(candidate =>
+      Number(best.normalizedUtility || 0) - Number(candidate.normalizedUtility || 0) <= maxRegret + 1e-9
+    );
+    const weights = pool.map(candidate => Math.exp(Number(candidate.normalizedUtility || 0) / Math.max(0.0001, temperature)));
+    const total = weights.reduce((sum, value) => sum + value, 0) || 1;
+    let roll = stableRoll(`${request.seed}:${request.requestHash}:r8-softmax`) * total;
+    let selected = pool[pool.length - 1];
+    for (let index = 0; index < pool.length; index += 1) {
+      roll -= weights[index];
+      if (roll <= 0) {
+        selected = pool[index];
+        break;
+      }
+    }
+    return Object.freeze({
+      selected,
+      normalized,
+      paretoIds,
+      confidence,
+      temperature,
+      maxRegret,
+      selectionMode: 'SEEDED_SOFTMAX',
+    });
+  }
+
+  function runR8Provider(request = {}) {
+    const actorRoutes = request?.actorCandidateRoutes || {};
+    const evaluated = request.frozenCandidates.map(candidate => {
+      const route = actorRoutes[candidate.candidateId];
+      if (!route) throw new Error(`ACTION_ROUTE_INCOMPLETE:${candidate.candidateId}`);
+      const goalProjection = projectR8GoalUtility(request, candidate, route);
+      const causalValueFacts = buildR8CausalValueFacts(request, candidate, route, goalProjection);
+      const actor = findUnitInWorld(request.visibleWorld, request.actorId);
+      const survivalPP = actor
+        ? 100 * preview.readHp(actor) / Math.max(1, preview.readHpMax(actor))
+        : 0;
+      const record = {
+        candidateId: candidate.candidateId,
+        declaration: candidate.declaration,
+        actionName: candidateActionName(candidate),
+        costs: candidate.costs || {},
+        route,
+        goalProjection,
+        causalValueFacts,
+        objectiveUtilityHEPP: goalProjection.objectiveUtilityHEPP,
+        informationValueHEPP: goalProjection.informationValueHEPP,
+        assetReserve: r8AssetReserve(request, candidate),
+        survivalLowerBound: survivalPP - goalProjection.worstTailLossHEPP,
+        worstTailLossHEPP: goalProjection.worstTailLossHEPP,
+        discardedOverkillPP: goalProjection.discardedOverkillPP,
+      };
+      record.rejectionCode = r8CandidateExclusion(request, candidate, route, goalProjection);
+      return record;
+    });
+    const choice = selectR8Candidate(request, evaluated);
+    const selected = choice.normalized.find(candidate => candidate.candidateId === choice.selected.candidateId);
+    const alternatives = choice.normalized
+      .filter(candidate => candidate.candidateId !== selected.candidateId)
+      .sort((left, right) =>
+        Number(right.objectiveUtilityHEPP || 0) - Number(left.objectiveUtilityHEPP || 0) ||
+        String(left.candidateId).localeCompare(String(right.candidateId))
+      )
+      .slice(0, 2);
+    const scoreRecord = candidate => Object.freeze({
+      candidateId: candidate.candidateId,
+      actionName: candidate.actionName,
+      actionKind: candidate.declaration.actionKind,
+      actorId: request.actorId,
+      targetIds: Object.freeze([...(candidate.declaration.targetIds || [])]),
+      declaration: candidate.declaration,
+      objectiveUtility: candidate.objectiveUtilityHEPP,
+      objectiveUtilityHEPP: candidate.objectiveUtilityHEPP,
+      normalizedUtility: candidate.normalizedUtility,
+      vector: Object.freeze({
+        objectiveUtilityHEPP: candidate.objectiveUtilityHEPP,
+        informationValueHEPP: candidate.informationValueHEPP,
+        assetReserve: candidate.assetReserve,
+        survivalLowerBound: candidate.survivalLowerBound,
+        worstTailLossHEPP: candidate.worstTailLossHEPP,
+        discardedOverkillPP: candidate.discardedOverkillPP,
+      }),
+      goalProjection: candidate.goalProjection,
+      primaryRoute: candidate.route,
+      backupRoute: request?.actionRouteCatalog?.[request.actorId]?.backupRoute || null,
+      causalValueFacts: candidate.causalValueFacts,
+      rejectionCode: candidate.rejectionCode || '',
+      classification: candidate.rejectionCode ? 'HARD_INVALID' : 'VIABLE',
+      selected: candidate.candidateId === selected.candidateId,
+    });
+    return deepFreeze({
+      schemaVersion: '8.3-decision-audit-2',
+      version: '8.3-decision-audit-2',
+      decisionEngine: 'R8',
+      actorId: request.actorId,
+      opportunityId: String(request?.actionOpportunity?.opportunityId || ''),
+      candidateCount: evaluated.length,
+      paretoCount: choice.paretoIds.size,
+      selected: {
+        ...scoreRecord(selected),
+        selectionMode: choice.selectionMode,
+      },
+      alternatives: alternatives.map(scoreRecord),
+      candidateAudit: choice.normalized.map(scoreRecord),
+      scoreAudit: [selected, ...alternatives].map(scoreRecord),
+      beliefState: request.beliefState,
+      teamIntent: request.teamPublicFacts,
+      strategyMemory: {
+        targetIds: Object.freeze([...(selected.declaration.targetIds || [])]),
+        primaryRouteKey: selected.route.routeKey,
+        backupRouteKey: request?.actionRouteCatalog?.[request.actorId]?.backupRoute?.routeKey || '',
+      },
+      strategicSignature: `r8:${preview.stableHash({
+        selectedCandidateId: selected.candidateId,
+        primaryRouteKey: selected.route.routeKey,
+        objectiveHash: request.evaluationContext.objectiveHash,
+      })}`,
+      stateCapacityTotal: Math.max(0, Number(selected.objectiveUtilityHEPP || 0)),
+      beliefRevision: request.evaluationContext.beliefRevision,
+      pendingStrategicEffect: selected.route.realizationWindows.some(windowId => windowId && windowId !== 'NOW'),
+      decisionProfile: Object.freeze({
+        confidence: choice.confidence,
+        temperature: choice.temperature,
+        maxRegret: choice.maxRegret,
+        selectionMode: choice.selectionMode,
+      }),
+    });
   }
 
   function prepareDecisionRequest(input = {}) {
@@ -11625,6 +12398,16 @@
       evaluationContext,
     });
     const teamMarginalPlan = buildTeamMarginalPlan(routeAnalysis.routeCatalog, visibleWorld, actorId);
+    const candidateEnvelopeDeltas = buildR8CandidateEnvelopeDeltas({
+      worldSnapshot: visibleWorld,
+      actorSide,
+      routeCatalog: routeAnalysis.routeCatalog,
+      projectedWorlds: routeAnalysis.actorProjectedWorlds,
+      candidateRoutes: routeAnalysis.actorCandidateRoutes,
+      beliefState,
+      battleIntent,
+      actionOpportunity,
+    });
     const requestPayload = {
       schemaVersion: R8_REQUEST_SCHEMA,
       actorId,
@@ -11644,6 +12427,8 @@
       candidateFingerprintMap,
       evaluationContext,
       actionRouteCatalog: routeAnalysis.routeCatalog,
+      actorCandidateRoutes: routeAnalysis.actorCandidateRoutes,
+      candidateEnvelopeDeltas,
       teamMarginalPlan,
       routeCacheMetrics: routeAnalysis.cacheMetrics,
       battleIntent: cloneValue(battleIntent),
@@ -11691,12 +12476,8 @@
   const providerRegistry = Object.freeze({
     'legacy-baseline': request => decide(providerInput(request)),
     'r74-next-baseline': request => decideNext(providerInput(request)),
-    'r8-shadow': () => {
-      throw new Error('R8_PROVIDER_NOT_IMPLEMENTED_PHASE_1:r8-shadow');
-    },
-    r8: () => {
-      throw new Error('R8_PROVIDER_NOT_IMPLEMENTED_PHASE_1:r8');
-    },
+    'r8-shadow': request => runR8Provider(request),
+    r8: request => runR8Provider(request),
   });
 
   function runProvider(input = {}) {
@@ -11797,8 +12578,23 @@
     selectPrimaryBackupRoutes,
     buildR8RouteCatalog,
     buildTeamMarginalPlan,
+    buildR8CandidateEnvelopeDeltas,
     buildR8ResponseModel,
     r8InformationValue,
+    r8ObjectiveGroups,
+    r8ThresholdOverkill,
+    r8TerminalUtility,
+    r8ActionPoolDeltas,
+    projectR8GoalUtility,
+    buildR8CausalValueFacts,
+    validateR8CausalOwnership,
+    r8HasDefenseWindow,
+    r8CandidateExclusion,
+    r8Dominates,
+    r8ParetoFilter,
+    r8NormalizeUtilities,
+    selectR8Candidate,
+    runR8Provider,
     prepareDecisionRequest,
     runProvider,
     providerIds: Object.freeze(Object.keys(providerRegistry)),

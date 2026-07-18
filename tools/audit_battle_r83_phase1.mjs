@@ -52,6 +52,7 @@ for (const fileName of [
 const preview = sandbox.__LWCS_BATTLE_PREVIEW__;
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
 const runtime = sandbox.__LWCS_BATTLE_RUNTIME__;
+const implementationPhase = Math.max(1, Number(process.env.LWCS_BATTLE_PHASE || 7));
 const checks = [];
 const addCheck = (checkId, passed, detail = {}) => {
   checks.push({ checkId, passed: passed === true, ...detail });
@@ -331,15 +332,27 @@ const phase1Request = decision.prepareDecisionRequest({
   actionOpportunity: scenarios[0].opportunity,
 });
 let r8PhaseCode = '';
+let r8PhaseResult = null;
 try {
-  decision.runProvider({ providerId: 'r8', request: phase1Request });
+  r8PhaseResult = decision.runProvider({ providerId: 'r8', request: phase1Request });
 } catch (error) {
   r8PhaseCode = String(error?.message || error);
 }
 addCheck(
   'provider-r8:no-legacy-fallback',
-  r8PhaseCode === 'R8_PROVIDER_NOT_IMPLEMENTED_PHASE_1:r8',
-  { r8PhaseCode },
+  implementationPhase >= 7
+    ? r8PhaseCode === '' &&
+      r8PhaseResult?.decisionAudit?.decisionEngine === 'R8' &&
+      phase1Request.frozenCandidates.some(candidate =>
+        candidate.candidateId === r8PhaseResult?.selectedCandidateId
+      )
+    : r8PhaseCode === 'R8_PROVIDER_NOT_IMPLEMENTED_PHASE_1:r8',
+  {
+    implementationPhase,
+    r8PhaseCode,
+    selectedCandidateId: r8PhaseResult?.selectedCandidateId || '',
+    decisionEngine: r8PhaseResult?.decisionAudit?.decisionEngine || '',
+  },
 );
 
 const draftInput = {
