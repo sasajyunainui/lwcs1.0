@@ -13625,26 +13625,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-sectio
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-section,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .timeline-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card,
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-summary-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .role-switch-tile {
-  --正文卡片魂色: var(--魂环当前色, var(--模块魂色, var(--主题主色)));
-  --正文卡片魂影: var(--魂环当前阴影, color-mix(in srgb, var(--正文卡片魂色) 42%, transparent));
   min-width: 0 !important;
   overflow: visible !important;
-  border-color: var(--全息材质线);
-  border-radius: var(--正文卡片圆角);
-  clip-path: none;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 12%, transparent), transparent 28%),
-    var(--实体背景);
+  border-color: var(--边线颜色);
+  border-radius: var(--卡片圆角);
+  clip-path: var(--卡片裁切);
+  background: var(--卡片材质);
   box-shadow:
-    inset 3px 0 0 var(--正文卡片魂色),
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 12px var(--正文卡片魂影);
+    inset 2px 0 0 var(--主题主色),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-card,
@@ -13654,10 +13644,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-section {
   padding: 12px 14px !important;
-  border-color: var(--全息材质弱线);
-  border-radius: var(--投影圆角);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+  border-color: transparent;
+  border-bottom-color: color-mix(in srgb, var(--边线颜色) 72%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-card,
@@ -13665,9 +13656,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .timeline-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-summary-card {
   border-color: var(--全息材质弱线);
-  border-radius: var(--投影圆角);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+  border-radius: var(--卡片圆角);
+  background: var(--数据卡片底板);
+  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-tile {
@@ -13676,9 +13667,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-tile {
   padding: 12px 14px !important;
   overflow: visible !important;
   border: 1px solid var(--轻量信息线);
-  border-radius: var(--投影圆角);
+  border-radius: var(--卡片圆角);
   clip-path: none;
-  background: var(--轻量信息底板);
+  background: var(--数据卡片底板);
   box-shadow: none;
 }
 
@@ -13803,16 +13794,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-r
   padding: 9px 12px 9px 13px !important;
   overflow: hidden !important;
   border: 0;
-  border-left: 3px solid color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
-  border-radius: var(--投影圆角);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
-  box-shadow: none;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  background: var(--轻量信息底板);
+  box-shadow: inset 0 -1px 0 var(--轻量信息线);
   clip-path: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row:hover {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 15%, transparent), transparent 70%);
+  background: color-mix(in srgb, var(--主题主色) 6%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row--wide {
@@ -17166,24 +17157,22 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --面板远距辉光: 0 0 42px color-mix(in srgb, var(--主题主色) 12%, transparent);
   --玻璃微切角: inset 1px 1px 0 rgba(255, 255, 255, 0.12);
   --玻璃暗侧阴影: inset -1px -1px 0 rgba(0, 0, 0, 0.34);
-  --一级实体材质:
-    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 12%, transparent), transparent 28%),
-    var(--实体背景);
-  --二级实体材质:
-    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
+  --一级实体材质: var(--卡片材质);
+  --二级实体材质: linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 82%);
   --悬浮实体材质: var(--悬浮材质);
   --一级实体阴影:
-    inset 3px 0 0 var(--正文卡片魂色),
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 12px var(--正文卡片魂影);
-  --二级实体阴影: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+    inset 2px 0 0 var(--主题主色),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent);
+  --二级实体阴影: inset 0 1px 0 rgba(255, 255, 255, 0.035);
   --悬浮实体阴影:
     0 16px 34px rgba(0, 0, 0, 0.42),
     0 0 18px color-mix(in srgb, var(--主题主色) 14%, transparent);
-  --轻量信息底板: color-mix(in srgb, var(--正文卡片魂色) 7%, transparent);
-  --轻量信息线: color-mix(in srgb, var(--正文卡片魂色) 44%, transparent);
+  --数据卡片底板: color-mix(in srgb, var(--暗场卡片) 30%, transparent);
+  --轻量信息底板: color-mix(in srgb, var(--暗场卡片) 18%, transparent);
+  --轻量信息线: color-mix(in srgb, var(--边线颜色) 65%, transparent);
   --轻量信息反光: none;
   --轻量信息阴影: none;
+  --详情环境光: linear-gradient(transparent, transparent);
   --全息入场延迟: 48ms;
   --档案核心魂色: #f4f7fb;
   --武魂舞台魂色: #ffe77a;
@@ -17220,32 +17209,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
     0 1px 1px rgba(0, 0, 0, 0.92),
     0 0 5px color-mix(in srgb, var(--主题高光) 20%, transparent),
     0 0 9px color-mix(in srgb, var(--主题主色) 14%, transparent);
-  --正文卡片魂色: var(--魂环当前色, var(--模块魂色, var(--主题主色)));
-  --正文卡片魂影: var(--魂环当前阴影, color-mix(in srgb, var(--正文卡片魂色) 42%, transparent));
+  --正文卡片魂色: var(--主题主色);
+  --正文卡片魂影: color-mix(in srgb, var(--主题主色) 20%, transparent);
   --全息材质魂色: var(--正文卡片魂色);
   --全息材质魂影: var(--正文卡片魂影);
-  --全息材质底:
-    linear-gradient(90deg, color-mix(in srgb, var(--全息材质魂色) 12%, transparent), transparent 28%),
-    var(--实体背景);
-  --全息材质悬停底:
-    linear-gradient(90deg, color-mix(in srgb, var(--全息材质魂色) 16%, transparent), transparent 32%),
-    var(--实体背景);
-  --全息材质线: color-mix(in srgb, var(--全息材质魂色) 50%, transparent);
-  --全息材质弱线: color-mix(in srgb, var(--全息材质魂色) 34%, transparent);
+  --全息材质底: var(--卡片材质);
+  --全息材质悬停底: var(--悬浮材质);
+  --全息材质线: var(--边线颜色);
+  --全息材质弱线: color-mix(in srgb, var(--边线颜色) 65%, transparent);
   --全息材质角光: color-mix(in srgb, var(--全息材质魂色) 45%, transparent);
   --全息材质侧线: var(--全息材质魂色);
-  --正文卡片圆角: 0 8px 8px 0;
+  --正文卡片圆角: var(--卡片圆角);
   --正文卡片侧线宽: 4px;
   --全息材质辉光: color-mix(in srgb, var(--全息材质魂色) 6%, transparent);
   --全息材质强辉光: color-mix(in srgb, var(--全息材质魂色) 20%, transparent);
   --全息材质雾光: none;
   --全息材质雾光透明: 0;
-  --全息材质阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 12px var(--全息材质魂影);
-  --全息材质悬停阴影:
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 16px color-mix(in srgb, var(--全息材质魂色) 52%, transparent);
+  --全息材质阴影: inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent);
+  --全息材质悬停阴影: inset 0 0 18px color-mix(in srgb, var(--主题主色) 8%, transparent);
   --原型暗玻底: var(--暗场底板);
   --原型暗玻强: var(--暗场底板强);
   --原型暗玻卡片: var(--暗场卡片);
@@ -17480,6 +17461,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
     0 20px 44px rgba(0, 0, 0, 0.46),
     0 0 22px rgba(255, 51, 0, 0.42),
     inset 0 0 22px rgba(255, 51, 0, 0.1);
+  --详情环境光:
+    radial-gradient(ellipse at 50% 100%, rgba(255, 177, 44, 0.07), transparent 20%),
+    radial-gradient(ellipse at 50% 86%, rgba(139, 0, 0, 0.28), transparent 48%);
   --装甲内影: inset 1px 1px 0 rgba(255, 248, 223, 0.1), inset -1px -1px 0 rgba(0, 0, 0, 0.92), inset 0 -1px 0 rgba(255, 177, 44, 0.16), inset 0 -18px 28px rgba(139, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 69, 0, 0.18), inset 0 0 26px rgba(255, 69, 0, 0.07);
   --面板约束辉光: 0 0 0 1px rgba(255, 69, 0, 0.28);
   --面板近距辉光: 0 0 10px rgba(139, 0, 0, 0.24);
@@ -17550,7 +17534,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金�
     linear-gradient(90deg, transparent 8%, rgba(255, 69, 0, 0.06) 18%, transparent 34%, transparent 66%, rgba(255, 69, 0, 0.05) 82%, transparent 92%),
     radial-gradient(ellipse at 50% 100%, rgba(255, 248, 223, 0.1), transparent 10%),
     radial-gradient(ellipse at 50% 96%, rgba(255, 177, 44, 0.09), transparent 20%),
-    radial-gradient(ellipse at 50% 88%, rgba(139, 0, 0, 0.16), transparent 42%);
+    radial-gradient(ellipse at 50% 88%, rgba(139, 0, 0, 0.28), transparent 42%);
   opacity: 0.48;
   transform: translate3d(0, 0, 0) scale(0.96);
   transform-origin: center;
@@ -19007,23 +18991,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
   --模块魂色: color-mix(in srgb, var(--文字主色) 74%, #1b1b22);
-  --正文卡片魂色: var(--魂环当前色, var(--模块魂色, var(--主题主色)));
-  --正文卡片魂影: var(--魂环当前阴影, color-mix(in srgb, var(--正文卡片魂色) 42%, transparent));
   position: relative;
   isolation: isolate;
   min-width: 0;
   min-height: 0;
   height: auto;
   border: 1px solid var(--边线颜色);
-  border-radius: var(--正文卡片圆角);
-  clip-path: none;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 12%, transparent), transparent 28%),
-    var(--实体背景);
+  border-radius: var(--卡片圆角);
+  clip-path: var(--卡片裁切);
+  background: var(--卡片材质);
   box-shadow:
-    inset 3px 0 0 var(--正文卡片魂色),
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 12px var(--正文卡片魂影);
+    inset 2px 0 0 var(--主题主色),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent);
   overflow: hidden;
 }
 
@@ -19033,8 +19012,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   min-width: 0;
   height: auto;
   border-color: var(--边线颜色);
-  background: var(--投影背景);
-  box-shadow: var(--投影屏阴影);
+  background: var(--卡片材质);
+  box-shadow:
+    inset 2px 0 0 var(--主题主色),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent);
   overflow: hidden;
 }
 
@@ -19166,14 +19147,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:focus-within {
   transform: translateX(4px);
-  border-color: color-mix(in srgb, var(--正文卡片魂色) 62%, transparent);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 16%, transparent), transparent 32%),
-    var(--实体背景);
+  border-color: color-mix(in srgb, var(--主题主色) 58%, var(--边线颜色));
+  background: var(--悬浮材质);
   box-shadow:
-    inset 3px 0 0 var(--正文卡片魂色),
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 16px color-mix(in srgb, var(--正文卡片魂色) 52%, transparent);
+    inset 2px 0 0 var(--主题主色),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 8%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:hover > *,
@@ -19256,40 +19234,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-dashboard-panel-section:focus-visib
 
 body.mvu-layout-holo #mvu-unified-mount
   :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile)::before {
-  content: "";
+  content: none;
   position: absolute;
   inset: 7px;
   pointer-events: none;
   background: none;
   opacity: 0;
-}
-
-body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile)::before {
-  background:
-    linear-gradient(var(--主题主色), var(--主题主色)) left top / 15px 1px no-repeat,
-    linear-gradient(var(--主题主色), var(--主题主色)) left top / 1px 15px no-repeat,
-    linear-gradient(var(--主题主色), var(--主题主色)) right top / 15px 1px no-repeat,
-    linear-gradient(var(--主题主色), var(--主题主色)) right top / 1px 15px no-repeat,
-    linear-gradient(var(--主题主色), var(--主题主色)) left bottom / 15px 1px no-repeat,
-    linear-gradient(var(--主题主色), var(--主题主色)) left bottom / 1px 15px no-repeat,
-    linear-gradient(var(--主题主色), var(--主题主色)) right bottom / 15px 1px no-repeat,
-    linear-gradient(var(--主题主色), var(--主题主色)) right bottom / 1px 15px no-repeat;
-  opacity: 0.5;
-}
-
-body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile)::before {
-  inset: 8px;
-  background:
-    linear-gradient(var(--主题高光), var(--主题高光)) left top / 18px 1px no-repeat,
-    linear-gradient(var(--主题高光), var(--主题高光)) left top / 1px 18px no-repeat,
-    linear-gradient(#8a1c12, #8a1c12) right bottom / 24px 1px no-repeat,
-    linear-gradient(#8a1c12, #8a1c12) right bottom / 1px 24px no-repeat,
-    linear-gradient(90deg, transparent, rgba(255, 177, 44, 0.18), rgba(255, 69, 0, 0.14), transparent) left bottom / 100% 2px no-repeat,
-    radial-gradient(circle at 12px 12px, rgba(255, 248, 223, 0.1), transparent 18px),
-    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), rgba(139, 0, 0, 0.14), transparent 22px);
-  opacity: 0.58;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:hover,
@@ -22453,6 +22403,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   border: 1px solid var(--边线颜色);
   border-radius: var(--投影圆角);
   background:
+    var(--详情环境光),
     var(--主面板材质),
     var(--背景细纹),
     var(--主窗体底色);
@@ -23122,9 +23073,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-width: 0 !important;
   min-height: 36px !important;
   padding: 9px 11px !important;
-  border-radius: var(--投影圆角);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+  border-radius: 0;
+  background: var(--轻量信息底板);
+  box-shadow: inset 0 -1px 0 var(--轻量信息线);
   overflow: hidden !important;
 }
 
@@ -25353,8 +25304,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-card,
 #detailModal.archive-redesign-mode .archive-redesign-root .dossier-card,
 #detailModal.archive-redesign-mode .archive-redesign-root .timeline-card {
-  --正文卡片魂色: var(--魂环当前色, var(--模块魂色, var(--主题主色)));
-  --正文卡片魂影: var(--魂环当前阴影, color-mix(in srgb, var(--正文卡片魂色) 42%, transparent));
   min-width: 0;
   min-height: 0;
   display: grid;
@@ -25363,13 +25312,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   padding: 14px;
   overflow: hidden;
   transform-style: preserve-3d;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 12%, transparent), transparent 28%),
-    var(--实体背景);
+  background: var(--卡片材质);
   box-shadow:
-    inset 3px 0 0 var(--正文卡片魂色),
-    2px 4px 10px rgba(0, 0, 0, 0.3),
-    0 0 12px var(--正文卡片魂影);
+    inset 2px 0 0 var(--主题主色),
+    inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-tile,
@@ -25384,7 +25330,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   padding: 10px 12px;
   overflow: hidden;
   transform-style: preserve-3d;
-  background: var(--轻量信息底板);
+  background: var(--数据卡片底板);
   box-shadow: none;
 }
 
@@ -27377,9 +27323,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 6px 12px;
   min-height: 36px;
   padding: 9px 11px;
-  border-radius: var(--投影圆角);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+  border-radius: 0;
+  background: var(--轻量信息底板);
+  box-shadow: inset 0 -1px 0 var(--轻量信息线);
   overflow: hidden;
 }
 
@@ -27558,9 +27504,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 6px 12px;
   min-height: 36px;
   padding: 9px 11px;
-  border-radius: var(--投影圆角);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+  border-radius: 0;
+  background: var(--轻量信息底板);
+  box-shadow: inset 0 -1px 0 var(--轻量信息线);
   overflow: hidden;
 }
 
