@@ -2117,6 +2117,8 @@
     武装工坊详细页: ['副职业模块'],
     副职业工坊: ['副职业模块'],
     战斗终端: ['战斗模块'],
+    赛事: ['赛事权限模块'],
+    特殊权限: ['赛事权限模块'],
   });
   const 预览依赖任务表 = new Map();
 
@@ -4578,6 +4580,15 @@
     return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/items/${规范化冷归档路径段_桥接(名称, 'item')}__${计算归档路径短哈希_桥接(名称)}_timeline.json`;
   }
 
+  function 构建赛事归档Manifest路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
+    return `${构建冷归档聊天路径_桥接(chatKey)}/competitions/index.json`;
+  }
+
+  function 构建赛事归档文件路径_桥接(chatKey = '', 赛事ID = '', 赛事名 = '') {
+    const 标识 = `${toText(赛事ID, 'competition')}__${toText(赛事名, 'event')}`;
+    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/competitions/${规范化冷归档路径段_桥接(标识, 'competition')}__${计算归档路径短哈希_桥接(标识)}.json`;
+  }
+
   function 构建冷归档状态路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
     return `${构建冷归档聊天路径_桥接(chatKey)}/meta/status.json`;
   }
@@ -4764,6 +4775,95 @@
     }
     return 结果.data;
   }
+
+  async function 读取赛事归档Manifest_桥接() {
+    const chatKey = 取当前聊天归档标识_桥接();
+    try {
+      const manifest = await 读取冷归档Json文件_桥接(构建赛事归档Manifest路径_桥接(chatKey));
+      if (!manifest || manifest.version !== 冷归档Manifest版本_桥接 || manifest.schema !== 'competition_archive_index') {
+        throw new Error('赛事归档索引结构不匹配');
+      }
+      return manifest;
+    } catch (错误) {
+      if (错误?.status === 404 || 错误?.message === 'not_found') {
+        return { version: 冷归档Manifest版本_桥接, schema: 'competition_archive_index', chatKey, 赛事索引: {} };
+      }
+      throw 错误;
+    }
+  }
+
+  function 构建赛事归档摘要_桥接(赛事ID = '', 赛事 = {}, 文件路径 = '') {
+    const 项目条目 = Object.entries(赛事?.项目 || {});
+    const 参赛数量 = 项目条目.reduce((总数, [, 项目]) => 总数 + Math.max(0, toNumber(项目?.参赛总数, 0)), 0);
+    return {
+      赛事ID,
+      名称: toText(赛事?.名称, 赛事ID),
+      参赛数量,
+      项目数量: 项目条目.length,
+      项目摘要: 项目条目.map(([项目名, 项目]) => `${项目名} ${toNumber(项目?.参赛总数, 0)}个单位`).join(' · '),
+      path: 文件路径,
+    };
+  }
+
+  async function 归档已完成赛事_桥接(赛事ID = '') {
+    const 安全赛事ID = toText(赛事ID, '').trim();
+    if (!安全赛事ID) throw new Error('赛事ID不能为空');
+    await refreshLiveSnapshot({ force: true });
+    const 赛事 = cloneJsonValue(deepGet(liveSnapshot || lastRenderableSnapshot || {}, ['rootData', 'world', '赛事', 安全赛事ID], null), null);
+    if (!赛事 || 赛事.状态 !== '已完成') throw new Error('只有已完成赛事可以归档');
+    const chatKey = 取当前聊天归档标识_桥接();
+    const 文件路径 = 构建赛事归档文件路径_桥接(chatKey, 安全赛事ID, 赛事.名称);
+    await 上传冷归档Json文件_桥接(文件路径, {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'competition_archive_record',
+      chatKey,
+      赛事ID: 安全赛事ID,
+      赛事,
+    });
+    const manifest = await 读取赛事归档Manifest_桥接();
+    manifest.赛事索引[安全赛事ID] = 构建赛事归档摘要_桥接(安全赛事ID, 赛事, 文件路径);
+    await 上传冷归档Json文件_桥接(构建赛事归档Manifest路径_桥接(chatKey), manifest);
+    await mutateStatDataByEditor(statData => {
+      if (statData?.world?.赛事?.[安全赛事ID]?.状态 === '已完成') delete statData.world.赛事[安全赛事ID];
+    }, { force: true });
+    await refreshLiveSnapshot({ force: true });
+    return manifest.赛事索引[安全赛事ID];
+  }
+
+  async function 列出赛事归档_桥接() {
+    const manifest = await 读取赛事归档Manifest_桥接();
+    return Object.values(manifest.赛事索引 || {}).sort((a, b) => toText(a.名称, '').localeCompare(toText(b.名称, ''), 'zh-CN'));
+  }
+
+  async function 恢复赛事归档_桥接(赛事ID = '') {
+    const 安全赛事ID = toText(赛事ID, '').trim();
+    const manifest = await 读取赛事归档Manifest_桥接();
+    const 索引 = manifest.赛事索引?.[安全赛事ID];
+    if (!索引?.path) throw new Error('赛事归档不存在');
+    const 归档 = await 读取冷归档Json文件_桥接(索引.path);
+    if (!归档 || 归档.schema !== 'competition_archive_record' || !归档.赛事) throw new Error('赛事归档文件无效');
+    const 赛事 = cloneJsonValue(归档.赛事, {});
+    if (赛事.状态 !== '已完成') throw new Error('归档赛事状态不是已完成，拒绝恢复');
+    await mutateStatDataByEditor(statData => {
+      if (!statData.world) statData.world = {};
+      if (!statData.world.赛事) statData.world.赛事 = {};
+      if (statData.world.赛事[安全赛事ID]) throw new Error('热区已存在同ID赛事');
+      statData.world.赛事[安全赛事ID] = 赛事;
+    }, { force: true });
+    await refreshLiveSnapshot({ force: true });
+    return { ok: true, 赛事ID: 安全赛事ID };
+  }
+
+  window.__LWCS_ARCHIVE_COMPLETED_COMPETITION__ = 归档已完成赛事_桥接;
+  window.__LWCS_LIST_ARCHIVED_COMPETITIONS__ = 列出赛事归档_桥接;
+  window.__LWCS_RESTORE_ARCHIVED_COMPETITION__ = 恢复赛事归档_桥接;
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.__LWCS_ARCHIVE_COMPLETED_COMPETITION__ = 归档已完成赛事_桥接;
+      window.parent.__LWCS_LIST_ARCHIVED_COMPETITIONS__ = 列出赛事归档_桥接;
+      window.parent.__LWCS_RESTORE_ARCHIVED_COMPETITION__ = 恢复赛事归档_桥接;
+    }
+  } catch (错误) {}
 
   function 读取当前最新聊天楼层_桥接(兜底楼层 = -1) {
     try {
@@ -8422,6 +8522,14 @@
     return Math.max(0, Math.min(100, toNumber(任务 && 任务['当前进度'], 0)));
   }
 
+  function 读取赛事权限运行时_桥接() {
+    return (
+      globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__ ||
+      globalThis.window?.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__ ||
+      null
+    );
+  }
+
   function 构建JSONPatch任务奖励结算上下文(补丁列表 = [], 读取值 = () => undefined) {
     const 任务触碰表 = new Map();
     const 显式奖励角色集合 = new Set();
@@ -8464,8 +8572,13 @@
       if (!当前任务 || typeof 当前任务 !== 'object' || Array.isArray(当前任务)) return;
       const 当前状态 = toText(当前任务['状态'], '进行中');
       if (/失败|放弃/.test(当前状态) || 读取任务奖励进度(当前任务) < 100) return;
-      const 奖励币 = Math.max(0, Math.floor(toNumber(当前任务['奖励币'], 0)));
-      const 奖励声望 = Math.max(0, Math.floor(toNumber(当前任务['奖励声望'], 0)));
+      const 权限运行时 = 读取赛事权限运行时_桥接();
+      const 奖励加成 = 权限运行时?.计算委托奖励倍率
+        ? 权限运行时.计算委托奖励倍率(变量根, 角色键, 任务名)
+        : { 权限ID: '', 倍率: 1 };
+      const 奖励倍率 = Math.max(0, toNumber(奖励加成?.倍率, 1));
+      const 奖励币 = Math.max(0, Math.floor(toNumber(当前任务['奖励币'], 0) * 奖励倍率));
+      const 奖励声望 = Math.max(0, Math.floor(toNumber(当前任务['奖励声望'], 0) * 奖励倍率));
       deepSetMutable(变量根, [...任务路径, '状态'], '已完成');
       deepSetMutable(变量根, [...任务路径, '当前进度'], 100);
       deepSetMutable(变量根, [...任务路径, '最后更新时间tick'], 当前tick);
@@ -8489,6 +8602,9 @@
       ) {
         deepSetMutable(变量根, ['world', '委托板', 任务名, '状态'], '已完成');
         deepSetMutable(变量根, ['world', '委托板', 任务名, '承接者'], 角色键);
+      }
+      if (奖励加成?.权限ID && 权限运行时?.消费特殊权限) {
+        权限运行时.消费特殊权限(变量根, 奖励加成.权限ID, 1);
       }
     });
   }
@@ -8521,6 +8637,134 @@
       return text;
     }
     return 预处理器(text, mvuData, options);
+  }
+
+  function 交易角色路径_桥接(角色名 = '') {
+    return ['char', toText(角色名, '').trim()];
+  }
+
+  function 交易货币_桥接(物品 = {}, 商店名 = '', 地点 = '', 商店数据 = {}) {
+    const 显式货币 = toText(物品?.货币 || 物品?.默认货币, '').trim();
+    if (显式货币) return 显式货币;
+    const 上下文 = `${商店名}|${地点}|${toText(商店数据?.所属势力, '')}`;
+    if (/血神军团战备|战功商店|军需处/.test(上下文)) return '战功';
+    if (/唐门/.test(上下文)) return '唐门积分';
+    if (/史莱克|海神阁|内院|外院/.test(上下文)) return '学院积分';
+    if (/星罗/.test(上下文)) return '星罗币';
+    return '联邦币';
+  }
+
+  function 交易可用货币_桥接(货币 = '') {
+    return toText(货币, '').trim() !== '战功';
+  }
+
+  function 交易市场单价_桥接(数据根 = {}, 地点 = '', 基础单价 = 0, 固定价格 = false) {
+    if (固定价格) return Math.max(0, Math.floor(toNumber(基础单价, 0)));
+    const 地点数据 = 数据根?.world?.地点?.[地点] || {};
+    const 市场 = 构建市场派生模型(地点数据, 数据根);
+    return Math.max(0, Math.floor(toNumber(基础单价, 0) * toNumber(市场?.买入倍率, 1)));
+  }
+
+  function 交易补丁目标值_桥接(补丁列表 = [], 路径 = []) {
+    const 目标 = JSON.stringify(路径);
+    const 命中 = (Array.isArray(补丁列表) ? 补丁列表 : []).find(补丁 => {
+      const 当前路径 = decodeJsonPointerPath(补丁?.path);
+      return JSON.stringify(当前路径) === 目标 && ['add', 'replace', 'insert'].includes(补丁?.op);
+    });
+    return 命中 ? cloneJsonValue(命中.value, undefined) : undefined;
+  }
+
+  function 交易背包数量变化_桥接(原记录 = {}, 新记录 = {}) {
+    return 读取背包总数量_桥接(新记录) - 读取背包总数量_桥接(原记录);
+  }
+
+  function 校验交易请求与补丁_桥接(数据根 = {}, 请求类型 = '', 交易参数 = {}, 补丁列表 = []) {
+    const 参数 = 交易参数 && typeof 交易参数 === 'object' && !Array.isArray(交易参数) ? 交易参数 : {};
+    const 角色名 = toText(参数.角色名, '').trim();
+    const 地点 = toText(参数.地点, '').trim();
+    const 物品名 = toText(参数.物品, '').trim();
+    const 角色 = 数据根?.char?.[角色名];
+    if (!角色名 || !角色 || !物品名) throw new Error('交易请求缺少有效角色或物品');
+    const 运行时 = 读取赛事权限运行时_桥接();
+    if (!运行时) throw new Error('交易权限运行时未加载');
+    const 当前tick = Math.max(0, Math.floor(toNumber(数据根?.world?.时间?.tick, 0)));
+    if (运行时.整理特殊权限) 运行时.整理特殊权限(数据根, { 当前tick });
+    const 原背包 = cloneJsonValue(角色.背包?.[物品名], {});
+    const 交易路径 = 交易角色路径_桥接(角色名);
+    const 数量 = Math.max(1, Math.floor(toNumber(参数.数量, 1)));
+    let 消费权限ID = '';
+    let 应付 = 0;
+
+    if (请求类型 === 'trade_shop_buy') {
+      const 商店名 = toText(参数.商店, '').trim();
+      const 地点数据 = 数据根?.world?.地点?.[地点];
+      const 商店 = 地点数据?.商店?.[商店名];
+      const 商品 = 商店?.库存?.[物品名];
+      if (!地点数据 || !商店 || !商品) throw new Error('商店、地点或商品已不存在');
+      const 当前分钟 = ((当前tick * 10) % 1440 + 1440) % 1440;
+      if (Math.floor(当前分钟 / 60) < 9 || Math.floor(当前分钟 / 60) >= 22) throw new Error('商店当前未营业');
+      if (toNumber(商品.库存, 0) < 数量) throw new Error('库存不足');
+      const 命中定义 = 查找物品定义_桥接(数据根, 物品名);
+      const 定义 = { ...(命中定义?.定义 || {}), ...(商品?._临时定义 || {}), ...商品 };
+      const 基础价格 = Math.max(
+        0,
+        Math.floor(
+          toNumber(定义.基础价格, 0) *
+          toNumber(商品.批次倍率, 1) *
+          toNumber(商品.价格倍率, 1) *
+          Math.max(0, 1 - toNumber(商品.折扣, 0)),
+        ),
+      );
+      const 固定价格 = 商品._tower_discount_virtual === true;
+      const 市场单价 = 交易市场单价_桥接(数据根, 地点, 基础价格, 固定价格);
+      const 折扣 = 运行时.计算购买支付比例(数据根, 角色名, {
+        地点, 商店: 商店名, 物品分类: 命中定义?.分类 || 定义.分类 || '', 物品: 物品名,
+      });
+      消费权限ID = toText(折扣?.权限ID, '').trim();
+      应付 = Math.max(0, Math.floor(市场单价 * toNumber(折扣?.支付比例, 100) / 100)) * 数量;
+      const 货币 = 交易货币_桥接(商品, 商店名, 地点, 商店);
+      if (!交易可用货币_桥接(货币)) throw new Error('当前货币不可直接用于交易');
+      if (toNumber(角色.财富?.[货币], 0) < 应付) throw new Error('货币余额不足');
+      if (toNumber(角色.社交?.声望, 0) < toNumber(商品.需求声望, 0)) throw new Error('声望不足');
+      if (参数.货币 !== undefined && toText(参数.货币, '') !== 货币) throw new Error('交易货币与实时商品定义不一致');
+      if (参数.预期总价 !== undefined && toNumber(参数.预期总价, -1) !== 应付) throw new Error('交易金额已变化，请重新提交');
+      const 财富路径 = [...交易路径, '财富', 货币];
+      const 新财富 = toNumber(角色.财富?.[货币], 0) - 应付;
+      const 提交财富 = 交易补丁目标值_桥接(补丁列表, 财富路径);
+      if (提交财富 === undefined || toNumber(提交财富, NaN) !== 新财富) throw new Error('客户端扣款结果与实时结算不一致');
+      if (商品._tower_discount_virtual !== true) {
+        const 库存路径 = ['world', '地点', 地点, '商店', 商店名, '库存', 物品名, '库存'];
+        const 提交库存 = 交易补丁目标值_桥接(补丁列表, 库存路径);
+        if (提交库存 === undefined || toNumber(提交库存, NaN) !== toNumber(商品.库存, 0) - 数量) {
+          throw new Error('客户端库存结果与实时结算不一致');
+        }
+      }
+    } else if (请求类型 === 'trade_auction') {
+      const 拍卖 = 数据根?.world?.拍卖;
+      const 拍品 = 拍卖?.拍品?.[物品名];
+      const 出价 = Math.max(0, Math.floor(toNumber(参数.出价, 0)));
+      if (!拍品) throw new Error('拍品已不存在');
+      const 当前价 = Math.max(0, toNumber(拍品.价格, toNumber(拍品.基础价格, 0)));
+      if (出价 <= 当前价) throw new Error('出价必须高于当前价格');
+      const 货币 = 交易货币_桥接(拍品, '拍卖行', 地点, 拍卖);
+      if (!交易可用货币_桥接(货币)) throw new Error('当前货币不可直接用于交易');
+      if (toNumber(角色.财富?.[货币], 0) < 出价) throw new Error('货币余额不足');
+      应付 = 出价;
+      if (参数.货币 !== undefined && toText(参数.货币, '') !== 货币) throw new Error('拍卖货币与实时拍品定义不一致');
+      const 财富路径 = [...交易路径, '财富', 货币];
+      const 提交财富 = 交易补丁目标值_桥接(补丁列表, 财富路径);
+      if (提交财富 === undefined || toNumber(提交财富, NaN) !== toNumber(角色.财富?.[货币], 0) - 应付) {
+        throw new Error('客户端扣款结果与实时结算不一致');
+      }
+      const 删除路径 = ['world', '拍卖', '拍品', 物品名];
+      const 删除补丁 = (Array.isArray(补丁列表) ? 补丁列表 : []).some(补丁 =>
+        补丁?.op === 'remove' && JSON.stringify(decodeJsonPointerPath(补丁.path)) === JSON.stringify(删除路径),
+      );
+      if (!删除补丁) throw new Error('拍卖成交必须删除当前拍品');
+    } else {
+      throw new Error(`不支持的交易请求：${请求类型}`);
+    }
+    return { 消费权限ID, 应付, 原背包, 角色名, 物品名, 数量 };
   }
 
   async function applyJsonPatchOpsByEditor(patches, options = {}) {
@@ -8560,6 +8804,10 @@
           return current;
         };
         const 任务奖励结算上下文 = 构建JSONPatch任务奖励结算上下文(normalizedPatches, readMutableValue);
+        const 交易请求类型 = toText(写入选项?.交易请求类型, '').trim();
+        const 交易校验结果 = 交易请求类型
+          ? 校验交易请求与补丁_桥接(statData, 交易请求类型, 写入选项?.交易参数, normalizedPatches)
+          : null;
         const getDeviationDeltaMultiplier = () => {
           const raw = Number(readMutableValue(['world', '偏差倍率']) ?? 1);
           return Number.isFinite(raw) && raw >= 0 ? raw : 1;
@@ -8603,11 +8851,401 @@
           }
         });
         结算JSONPatch任务奖励(statData, 任务奖励结算上下文, readMutableValue);
+        const 交易权限消费 = 写入选项?.交易权限消费;
+        if (交易权限消费 && typeof 交易权限消费 === 'object') {
+          const 交易运行时 = 读取赛事权限运行时_桥接();
+          const 客户端权限ID = toText(交易权限消费.权限ID, '').trim();
+          const 计算权限ID = toText(交易校验结果?.消费权限ID, '').trim();
+          const 客户端消费数量 = Math.max(0, Math.floor(toNumber(交易权限消费.数量, 0)));
+          if (交易校验结果 && !计算权限ID && 客户端消费数量 > 0) {
+            throw new Error('交易请求声明了不存在的权限消费');
+          }
+          if (交易校验结果 && 客户端权限ID && 计算权限ID && 客户端权限ID !== 计算权限ID) {
+            throw new Error('交易权限与实时匹配结果不一致');
+          }
+          const 权限ID = 计算权限ID || 客户端权限ID;
+          const 消费数量 = 计算权限ID
+            ? 1
+            : 客户端消费数量;
+          if (消费数量 > 0) {
+            if (!权限ID || !交易运行时?.消费特殊权限) throw new Error('交易权限消费参数无效');
+            if (交易运行时.整理特殊权限) 交易运行时.整理特殊权限(statData);
+            if (!交易运行时.消费特殊权限(statData, 权限ID, 消费数量)) throw new Error('交易权限已失效或次数不足');
+          }
+        }
+        if (交易校验结果) {
+          const 角色 = statData?.char?.[交易校验结果.角色名];
+          const 当前背包 = 角色?.背包?.[交易校验结果.物品名] || {};
+          if (
+            交易背包数量变化_桥接(交易校验结果.原背包, 当前背包) !==
+            交易校验结果.数量
+          ) {
+            throw new Error('交易背包结果与实时结算数量不一致');
+          }
+        }
       }, 写入选项);
     } finally {
       if (需要在AI写回后清理结算锁) 清除本轮模块结算路径();
     }
   }
+
+  function 分配赛事运行时UID_桥接(数据根 = {}, 前缀 = '') {
+    const 已用 = new Set();
+    const 收集 = 记录表 => Object.keys(记录表 || {}).forEach(键 => 已用.add(键));
+    收集(数据根?.world?.特殊权限);
+    收集(数据根?.world?.赛事);
+    Object.values(数据根?.world?.赛事 || {}).forEach(赛事 => {
+      Object.values(赛事?.项目 || {}).forEach(项目 => {
+        收集(项目?.参赛者);
+      });
+      Object.values(赛事?._进度 || {}).forEach(进度 => 收集(进度?.对局));
+      Object.values(赛事?._进度 || {}).forEach(进度 => {
+        Object.values(进度?.实体代号 || {}).forEach(代号 => 已用.add(toText(代号, '').trim()));
+        Object.keys(进度?.实体绑定 || {}).forEach(代号 => 已用.add(toText(代号, '').trim()));
+      });
+    });
+    let 序号 = 0;
+    已用.forEach(键 => {
+      const 匹配 = String(键).match(new RegExp(`^${前缀}_(\\d+)$`));
+      if (匹配) 序号 = Math.max(序号, Number(匹配[1]) || 0);
+    });
+    let UID = '';
+    do {
+      序号 += 1;
+      UID = `${前缀}_${String(序号).padStart(3, '0')}`;
+    } while (已用.has(UID));
+    return UID;
+  }
+
+
+  function 确保赛事参赛者实体_桥接(数据根 = {}, 赛事ID = '', 项目名 = '', 参赛者ID = '') {
+    const 赛事 = 数据根?.world?.赛事?.[赛事ID];
+    const 项目 = 赛事?.项目?.[项目名];
+    const 进度 = 赛事?._进度?.[项目名];
+    if (!赛事 || !项目 || !进度 || !参赛者ID) throw new Error('赛事参赛者实体上下文无效');
+    if (进度.实体?.[参赛者ID]) return 进度.实体[参赛者ID];
+    const 参赛者记录 = 项目.参赛者?.[参赛者ID] || 进度.模拟参赛者?.[参赛者ID];
+    if (!参赛者记录) throw new Error(`赛事参赛者不存在：${参赛者ID}`);
+    进度.实体 ||= {};
+    进度.实体代号 ||= {};
+    进度.代号映射 ||= {};
+    进度.实体绑定 ||= {};
+    const 已知成员 = Array.isArray(参赛者记录.成员) && 参赛者记录.成员.length
+      ? 参赛者记录.成员.every(成员名 => !!数据根?.char?.[成员名])
+      : false;
+    if (已知成员) {
+      const 实体 = {
+        名称: 参赛者记录.名称,
+        成员: [...参赛者记录.成员],
+        来源: '登记',
+      };
+      进度.实体[参赛者ID] = 实体;
+      return 实体;
+    }
+    const 主代号 = 进度.实体代号[参赛者ID] || 分配赛事运行时UID_桥接(数据根, '赛事实体');
+    进度.实体代号[参赛者ID] = 主代号;
+    进度.代号映射[主代号] = 参赛者ID;
+    const 模拟数据 = 读取赛事权限运行时_桥接().计算模拟强度(赛事ID, 项目名, 参赛者ID, 项目);
+    const 成员数 = 项目名 === '团体赛'
+      ? Math.max(2, Math.min(参赛者记录.成员?.length || 项目.参赛限制?.队伍人数上限 || 3, 12))
+      : 1;
+    const 成员 = Array.from({ length: 成员数 }, (_, index) => {
+        if (index === 0) return 主代号;
+        const 成员代号 = 分配赛事运行时UID_桥接(数据根, '赛事实体');
+        进度.代号映射[成员代号] = 参赛者ID;
+        return 成员代号;
+      });
+    进度.实体[参赛者ID] = { 名称: 主代号, 成员, ...模拟数据 };
+    return 进度.实体[参赛者ID];
+  }
+
+  function 解析赛事赛果参与者ID_桥接(赛事 = {}, 项目名 = '', 对局 = {}, 引用 = '') {
+    const 安全引用 = toText(引用, '').trim();
+    if (!安全引用) return '';
+    if (Array.isArray(对局?.参赛者) && 对局.参赛者.includes(安全引用)) return 安全引用;
+    const 项目 = 赛事?.项目?.[项目名];
+    const 进度 = 赛事?._进度?.[项目名];
+    const 命中 = (Array.isArray(对局?.参赛者) ? 对局.参赛者 : []).filter(参赛者ID => {
+      const 参赛者 = 进度?.实体?.[参赛者ID] || 项目?.参赛者?.[参赛者ID];
+      const 绑定命中 = Object.entries(进度?.实体绑定 || {}).some(([代号, 正式名称]) =>
+        toText(正式名称, '').trim() === 安全引用 &&
+        (toText(进度?.实体代号?.[参赛者ID], '').trim() === 代号 || 参赛者?.成员?.includes(代号)),
+      );
+      return toText(参赛者?.名称, '').trim() === 安全引用 ||
+        toText(进度?.实体代号?.[参赛者ID], '').trim() === 安全引用 ||
+        (Array.isArray(参赛者?.成员) && 参赛者.成员.some(成员 => toText(成员, '').trim() === 安全引用)) ||
+        绑定命中;
+    });
+    if (命中.length > 1) throw new Error(`赛事赛果参与者名称重名：${安全引用}`);
+    return 命中[0] || '';
+  }
+
+  async function 结算赛事战斗_桥接(载荷 = {}) {
+    const 权限赛事运行时 = 读取赛事权限运行时_桥接();
+    if (!权限赛事运行时?.结算赛事对局) return { handled: false, reason: 'competition_runtime_missing' };
+    let 结算结果 = { handled: false, reason: 'competition_context_missing' };
+    await mutateStatDataByEditor(statData => {
+      const 上下文 = statData?.world?.战斗?.赛事上下文;
+      if (!上下文 || typeof 上下文 !== 'object') return;
+      const 赛事 = statData?.world?.赛事?.[上下文.赛事ID];
+      const 进度 = 赛事?._进度?.[上下文.项目];
+      const 对局 = 进度?.对局?.[上下文.对局ID];
+      if (!赛事 || !进度 || !对局) throw new Error('赛事战斗上下文指向不存在的对局');
+      if (载荷.取消 === true || 载荷.技术失败 === true) {
+        delete statData.world.战斗.赛事上下文;
+        结算结果 = { handled: true, settled: false, cleared: true };
+        return;
+      }
+      let 结果 = toText(载荷.结果, '').trim();
+      if (!结果 && 载荷.官方无效 === true) 结果 = '无效';
+      if (!结果 && 载荷.平局 === true) 结果 = '平局';
+      if (!结果 && 载荷.胜方) 结果 = 解析赛事赛果参与者ID_桥接(赛事, 上下文.项目, 对局, 载荷.胜方);
+      if (!结果) throw new Error('无法从战斗结果解析赛事胜者');
+      const 写入结果 = 权限赛事运行时.结算赛事对局(statData, 上下文, {
+        结果,
+        ...(Array.isArray(载荷.比分) ? { 比分: 载荷.比分 } : {}),
+      });
+      const 推进结果 = 权限赛事运行时.推进赛事状态(
+        statData,
+        上下文.赛事ID,
+        前缀 => 分配赛事运行时UID_桥接(statData, 前缀),
+      );
+      delete statData.world.战斗.赛事上下文;
+      结算结果 = { handled: true, settled: true, ...写入结果, 推进结果 };
+    }, { force: true });
+    await refreshLiveSnapshot({ force: true });
+    if (结算结果?.推进结果?.赛事完成 && typeof window.__LWCS_ARCHIVE_COMPLETED_COMPETITION__ === 'function') {
+      Promise.resolve(window.__LWCS_ARCHIVE_COMPLETED_COMPETITION__(结算结果.赛事ID)).catch(错误 =>
+        console.warn('[LWCS] 已完成赛事自动归档失败', 错误),
+      );
+    }
+    return 结算结果;
+  }
+
+  window.__LWCS_SETTLE_COMPETITION_MATCH__ = 结算赛事战斗_桥接;
+  try {
+    if (window.parent && window.parent !== window) window.parent.__LWCS_SETTLE_COMPETITION_MATCH__ = 结算赛事战斗_桥接;
+  } catch (错误) {}
+
+  async function 执行赛事权限管理动作_V2_桥接(动作 = '', 载荷 = {}) {
+    const 运行时 = 读取赛事权限运行时_桥接();
+    if (!运行时) throw new Error('赛事权限运行时未加载');
+    let 结果 = { ok: false };
+    await mutateStatDataByEditor(statData => {
+      const 赛事ID = toText(载荷.赛事ID, '').trim();
+      const 赛事 = statData?.world?.赛事?.[赛事ID];
+      if (动作 === '撤销权限') {
+        const 权限ID = toText(载荷.权限ID, '').trim();
+        if (!statData?.world?.特殊权限?.[权限ID]) throw new Error('特殊权限不存在');
+        delete statData.world.特殊权限[权限ID];
+        结果 = { ok: true, 权限ID };
+        return;
+      }
+      if (动作 === '领取物品选择') {
+        const 权限ID = toText(载荷.权限ID, '').trim();
+        const 权限记录 = statData?.world?.特殊权限?.[权限ID];
+        if (权限记录?.权限?.类型 !== '物品选择') throw new Error('物品选择权限不存在');
+        const 物品名 = toText(载荷.物品, '').trim();
+        const 候选 = 运行时.生成物品选择候选(statData, 权限记录).find(条目 => 条目.物品名 === 物品名);
+        if (!候选) throw new Error('所选物品不在权限候选中');
+        const 数量 = Math.max(1, Math.floor(toNumber(权限记录.权限.数量, 1)));
+        const 角色 = statData?.char?.[权限记录.持有人];
+        if (!角色) throw new Error('权限持有人档案不存在');
+        角色.背包 ||= {};
+        if (权限记录.权限.来源 !== '全局物品库') {
+          const [地点, 商店] = 权限记录.权限.来源.split('-', 2);
+          const 库存项 = statData?.world?.地点?.[地点]?.商店?.[商店]?.库存?.[物品名];
+          if (!库存项 || toNumber(库存项.库存, 0) < 数量) throw new Error('商店库存不足');
+          库存项.库存 -= 数量;
+        }
+        const 新增状态 = 构建背包状态记录_桥接({ ...(候选.定义 || {}), 名称: 物品名, 物品分类: 候选.分类 }, 数量);
+        角色.背包[物品名] = 合并背包状态记录_桥接(角色.背包[物品名], 新增状态);
+        if (!运行时.消费特殊权限(statData, 权限ID, 1)) throw new Error('权限次数不足');
+        结果 = { ok: true, 权限ID, 物品: 物品名, 数量 };
+        return;
+      }
+      if (!赛事) throw new Error('赛事不存在');
+      const 项目名 = ['个人赛', '团体赛'].includes(toText(载荷.项目, '')) ? toText(载荷.项目, '') : '个人赛';
+      const 项目 = 赛事.项目?.[项目名];
+      if (动作 === '报名') {
+        const 校验 = 运行时.校验赛事报名(statData, 赛事ID, { ...载荷, 项目: 项目名 });
+        if (!校验.ok) throw new Error(校验.reason);
+        const 参赛者ID = 分配赛事运行时UID_桥接(statData, 'participant');
+        赛事.项目[校验.项目名].参赛者[参赛者ID] = 校验.参赛者;
+        if (校验.报名费用) {
+          const 财富 = statData.char?.[校验.持有人]?.财富;
+          if (!财富) throw new Error('报名费用支付角色不存在');
+          财富[校验.报名费用.货币] = Math.max(0, toNumber(财富[校验.报名费用.货币], 0) - 校验.报名费用.金额);
+        }
+        结果 = { ok: true, 赛事ID, 项目: 校验.项目名, 参赛者ID };
+        return;
+      }
+      if (动作 === '启动赛事') {
+        if (赛事.状态 !== '筹备') throw new Error('只有筹备中的赛事可以启动');
+        const 项目条目 = Object.entries(赛事.项目 || {});
+        if (!项目条目.length) throw new Error('赛事没有项目');
+        赛事._进度 = {};
+        项目条目.forEach(([当前项目名, 当前项目], 项目序号) => {
+          const 已登记 = 运行时.有效参赛者条目(当前项目);
+          if (当前项目.参赛总数 < 已登记.length) throw new Error(`${当前项目名}参赛总数小于已登记数量`);
+          const 实体 = {};
+          const 模拟参赛者 = {};
+          const 排程参赛者 = { ...(当前项目.参赛者 || {}) };
+          已登记.forEach(([ID, 记录]) => {
+            const 已知成员 = (记录.成员 || []).every(成员名 => !!statData?.char?.[成员名]);
+            if (已知成员) {
+              实体[ID] = { 名称: 记录.名称, 成员: [...(记录.成员 || [])], 来源: '登记' };
+            } else {
+              模拟参赛者[ID] = cloneJsonValue(记录, {});
+            }
+          });
+          for (let index = 已登记.length; index < 当前项目.参赛总数; index += 1) {
+            const 模拟ID = `sim_${String(index + 1).padStart(5, '0')}`;
+            排程参赛者[模拟ID] = { 名称: 模拟ID, 成员: [模拟ID], 状态: '参赛' };
+            模拟参赛者[模拟ID] = cloneJsonValue(排程参赛者[模拟ID], {});
+          }
+          const 对局 = 运行时.生成项目对局(
+            赛事ID,
+            当前项目名,
+            { ...当前项目, 参赛者: 排程参赛者 },
+            前缀 => 分配赛事运行时UID_桥接(statData, 前缀),
+          );
+          const 对局数量 = Object.keys(对局).length;
+          const 分组数 = Math.max(1, Math.ceil(当前项目.参赛总数 / 5));
+          const 晋级数量 = Math.min(当前项目.参赛总数, 分组数 * 2);
+          const 预计对局数量 = 当前项目.流程 === '淘汰'
+            ? Math.max(1, 当前项目.参赛总数 - 1)
+            : 当前项目.流程 === '循环后淘汰'
+              ? 对局数量 + Math.max(1, 晋级数量 - 1)
+              : 对局数量;
+          const 项目窗口 = Math.floor((赛事.日程.结束tick - 赛事.日程.开始tick) / 项目条目.length);
+          if (项目窗口 < Math.max(1, 预计对局数量)) throw new Error(`${当前项目名}总时长不足，无法安排预计${预计对局数量}场比赛`);
+          const 项目开始tick = 赛事.日程.开始tick + 项目序号 * 项目窗口;
+          const 间隔 = Math.max(1, Math.floor(项目窗口 / Math.max(1, 预计对局数量)));
+          Object.values(对局).sort((a, b) => a.轮次 - b.轮次).forEach((对局记录, index) => {
+            对局记录.开始tick = 项目开始tick + index * 间隔;
+          });
+          赛事._进度[当前项目名] = {
+            状态: '进行中',
+            当前环节: 当前项目.流程 === '循环后淘汰' ? '循环' : 当前项目.流程,
+            当前轮次: 1,
+            分组结果: {},
+            系列比分: {},
+            开始tick: 项目开始tick,
+            结束tick: 项目开始tick + 项目窗口,
+            下一场tick: Math.min(...Object.values(对局).map(记录 => 记录.开始tick)),
+            生成种子: `${赛事ID}:${当前项目名}`,
+            模拟数量: Object.keys(模拟参赛者).length,
+            模拟参赛者,
+            对局,
+            实体,
+            实体代号: {},
+            代号映射: {},
+            实体绑定: {},
+          };
+        });
+        赛事.状态 = '进行中';
+        statData.world.时间线 ||= {};
+        const 写入赛事提醒 = (键, 事件, 触发tick, 后续 = '') => {
+          statData.world.时间线[键] = { 事件, 触发tick, 地点: '无', 状态: 'pending', 后续 };
+        };
+        写入赛事提醒(`${赛事ID}_开赛`, `${赛事.名称}开赛`, 赛事.日程.开始tick, '按赛事私有日程推进个人赛与团体赛');
+        Object.entries(赛事._进度).forEach(([当前项目名, 进度]) => {
+          写入赛事提醒(`${赛事ID}_${当前项目名}_开始`, `${赛事.名称}${当前项目名}开始`, 进度.开始tick);
+        });
+        写入赛事提醒(`${赛事ID}_结束`, `${赛事.名称}预计结束`, 赛事.日程.结束tick, '全部项目完成后归档');
+        结果 = { ok: true, 赛事ID };
+        return;
+      }
+      if (动作 === '模拟场外比赛') {
+        if (赛事.状态 !== '进行中') throw new Error('赛事当前未进行');
+        let 结算数量 = 0;
+        Object.entries(赛事._进度 || {}).forEach(([当前项目名, 进度]) => {
+          Object.entries(进度.对局 || {}).forEach(([对局ID, 对局]) => {
+            if (运行时.对局已完成(对局) || 对局.参赛者?.length !== 2) return;
+            const 涉及玩家 = 对局.参赛者.some(ID => 进度.实体?.[ID]?.成员?.includes(statData?.sys?.玩家名));
+            if (涉及玩家) return;
+            const [左ID, 右ID] = 对局.参赛者;
+            const 左实体 = 进度.实体[左ID] || 运行时.计算模拟强度(赛事ID, 当前项目名, 左ID, 赛事.项目[当前项目名]);
+            const 右实体 = 进度.实体[右ID] || 运行时.计算模拟强度(赛事ID, 当前项目名, 右ID, 赛事.项目[当前项目名]);
+            const 模拟 = 运行时.确定性模拟对局(赛事ID, 当前项目名, 对局ID, 左实体, 右实体);
+            运行时.结算赛事对局(statData, {
+              赛事ID,
+              项目: 当前项目名,
+              对局ID,
+              结算ID: `sim:${赛事ID}:${当前项目名}:${对局ID}`,
+            }, { 结果: 模拟.结果 === '左' ? 左ID : 右ID, 比分: 模拟.比分 });
+            结算数量 += 1;
+          });
+        });
+        const 推进结果 = 运行时.推进赛事状态(statData, 赛事ID, 前缀 => 分配赛事运行时UID_桥接(statData, 前缀));
+        结果 = { ok: true, 赛事ID, 结算数量, 推进结果 };
+        return;
+      }
+      if (动作 === '准备玩家对局') {
+        const 对局ID = toText(载荷.对局ID, '').trim();
+        const 进度 = 赛事._进度?.[项目名];
+        const 对局 = 进度?.对局?.[对局ID];
+        if (!项目 || !进度 || !对局 || 运行时.对局已完成(对局)) throw new Error('对局当前不可开始');
+        if (statData?.world?.战斗?.进行中) throw new Error('已有战斗进行中');
+        const 双方 = (对局.参赛者 || []).map(参赛者ID =>
+          确保赛事参赛者实体_桥接(statData, 赛事ID, 项目名, 参赛者ID),
+        );
+        statData.world.战斗.赛事上下文 = {
+          赛事ID,
+          项目: 项目名,
+          对局ID,
+          结算ID: `battle:${赛事ID}:${项目名}:${对局ID}:${Date.now()}`,
+        };
+        结果 = { ok: true, 赛事ID, 项目: 项目名, 对局ID, 对局: cloneJsonValue(对局, {}), 双方: cloneJsonValue(双方, []) };
+        return;
+      }
+      if (动作 === '手动结算') {
+        const 对局ID = toText(载荷.对局ID, '').trim();
+        const 对局 = 赛事._进度?.[项目名]?.对局?.[对局ID];
+        if (!对局) throw new Error('待结算对局不存在');
+        const 结果值 = 解析赛事赛果参与者ID_桥接(赛事, 项目名, 对局, 载荷.结果) || toText(载荷.结果, '').trim();
+        运行时.结算赛事对局(statData, {
+          赛事ID,
+          项目: 项目名,
+          对局ID,
+          结算ID: `manual:${赛事ID}:${项目名}:${对局ID}:${Date.now()}`,
+        }, { 结果: 结果值, 比分: 载荷.比分 });
+        const 推进结果 = 运行时.推进赛事状态(statData, 赛事ID, 前缀 => 分配赛事运行时UID_桥接(statData, 前缀));
+        结果 = { ok: true, 赛事ID, 项目: 项目名, 对局ID, 推进结果 };
+        return;
+      }
+      if (动作 === '绑定实体') {
+        const 代号 = toText(载荷.代号, '').trim();
+        const 正式名称 = toText(载荷.正式名称, '').trim();
+        const 进度 = 赛事._进度?.[项目名];
+        const 参赛者ID = 进度?.代号映射?.[代号];
+        const 实体 = 进度?.实体?.[参赛者ID];
+        if (!实体 || !正式名称) throw new Error('实体绑定参数无效');
+        进度.实体绑定[代号] = 正式名称;
+        if (实体.名称 === 代号) 实体.名称 = 正式名称;
+        const 成员索引 = 实体.成员?.indexOf(代号) ?? -1;
+        if (成员索引 >= 0) 实体.成员[成员索引] = 正式名称;
+        const 成员 = Array.isArray(载荷.成员) ? 载荷.成员.map(成员名 => toText(成员名, '').trim()).filter(Boolean) : [];
+        if (成员.length) 实体.成员 = 成员;
+        结果 = { ok: true, 赛事ID, 项目: 项目名, 参赛者ID, 代号, 正式名称 };
+        return;
+      }
+      throw new Error(`未知赛事权限动作：${动作}`);
+    }, { force: true });
+    await refreshLiveSnapshot({ force: true });
+    if (结果?.推进结果?.赛事完成 && typeof window.__LWCS_ARCHIVE_COMPLETED_COMPETITION__ === 'function') {
+      Promise.resolve(window.__LWCS_ARCHIVE_COMPLETED_COMPETITION__(结果.赛事ID)).catch(错误 =>
+        console.warn('[LWCS] 已完成赛事自动归档失败', 错误),
+      );
+    }
+    return 结果;
+  }
+
+  window.__LWCS_COMPETITION_PRIVILEGE_ACTION__ = 执行赛事权限管理动作_V2_桥接;
+  try {
+    if (window.parent && window.parent !== window) window.parent.__LWCS_COMPETITION_PRIVILEGE_ACTION__ = 执行赛事权限管理动作_V2_桥接;
+  } catch (错误) {}
 
   function normalizeEditorStringList(rawValue) {
     if (Array.isArray(rawValue)) {
@@ -9164,6 +9802,7 @@
         { op: 'replace', path: '/sys/系统播报', value: `[战斗裁断] 达到最大回合，双方停止交锋，本场平局。` },
       ];
       await applyJsonPatchOpsByEditor(patches, { force: true });
+      await 结算赛事战斗_桥接({ 平局: true, 比分: [0, 0] });
       await refreshLiveSnapshot({ force: true });
       return {
         handled: true,
@@ -9372,6 +10011,7 @@
     }
     try {
       await applyJsonPatchOpsByEditor(patches, { force: true });
+      await 结算赛事战斗_桥接({ 胜方: settlement.胜方 });
       await refreshLiveSnapshot({ force: true });
       const summary = `${settlement.胜方}战胜${settlement.败方}，${settlement.败方}剩余HP ${settlement.败方剩余HP比例}%`;
       return {
@@ -9630,7 +10270,23 @@
           meta && (meta.settlementKind === 'routine' || meta.结算类型 === 'routine' || requestKind.startsWith('map_action_'))
             ? { force: true, 记录本轮模块结算路径: true, 结算类型: 'routine' }
             : { force: true };
-        await applyJsonPatchOpsByEditor(patchOps, 预结算写入选项);
+        const 交易请求 = requestKind === 'trade_shop_buy' || requestKind === 'trade_auction';
+        const privilegeID = toText(meta?.privilegeID, '').trim();
+        const privilegeCost = Math.max(0, Math.floor(toNumber(meta?.privilegeCost, 0)));
+        if (交易请求 && privilegeCost > 0 && !privilegeID) {
+          throw new Error('交易权限消费参数缺少权限ID');
+        }
+        await applyJsonPatchOpsByEditor(
+          patchOps,
+          交易请求
+            ? {
+                ...预结算写入选项,
+                交易权限消费: { 权限ID: privilegeID, 数量: privilegeCost },
+                交易参数: cloneJsonValue(meta?.交易参数, {}),
+                交易请求类型: requestKind,
+              }
+            : 预结算写入选项,
+        );
         if (rollbackBase) {
           const 写后包 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: rollbackBase.目标消息元信息.消息编号 });
           const 写后根 = resolveRootData(写后包);
@@ -11630,6 +12286,8 @@
       }
       const 写前变量数据 = cloneJsonValue(基准变量数据, {});
       const nextStatData = cloneJsonValue(基准变量数据, {});
+      const 权限运行时 = 读取赛事权限运行时_桥接();
+      if (权限运行时?.整理特殊权限) 权限运行时.整理特殊权限(nextStatData);
       await Promise.resolve(mutator(nextStatData));
       const nextMvuData = cloneJsonValue(基准MVU数据, {});
       nextMvuData.stat_data = 归一化变量根_桥接(nextStatData);
@@ -11639,6 +12297,8 @@
     }
     await ensureMvuEditorStoreReady({ force: !!写入选项.force });
     const nextStatData = cloneJsonValue(mvuEditorStore.statData, {});
+    const 权限运行时 = 读取赛事权限运行时_桥接();
+    if (权限运行时?.整理特殊权限) 权限运行时.整理特殊权限(nextStatData);
     await Promise.resolve(mutator(nextStatData));
     mvuEditorStore.statData = nextStatData;
     mvuEditorStore.signature = serializeMvuEditorStoreStatData(nextStatData);
@@ -14111,7 +14771,7 @@
   const SKILL_DESIGNER_MAIN_MECHANIC_POOL = Object.freeze(
     SHARED_SKILL_MECHANISM_REGISTRY?.mainArchetypes || {
       伤害类: Object.freeze(['单体伤害', '群体伤害', '多段伤害', '持续伤害']),
-      控制类: Object.freeze(['硬控', '软控', '位移限制', '节奏打断', '封技']),
+      控制类: Object.freeze(['硬控', '软控', '迟缓', '节奏打断', '封技']),
       削弱类: Object.freeze([
         '单属性削弱',
         '多属性削弱',
@@ -14527,7 +15187,7 @@
     持续伤害: Object.freeze({ main: '伤害类', sub: '持续伤害' }),
     硬控: Object.freeze({ main: '控制类', sub: '硬控' }),
     软控: Object.freeze({ main: '控制类', sub: '软控' }),
-    位移限制: Object.freeze({ main: '控制类', sub: '位移限制' }),
+    迟缓: Object.freeze({ main: '控制类', sub: '迟缓' }),
     打断: Object.freeze({ main: '控制类', sub: '节奏打断', secondary: '打断' }),
     单属性削弱: Object.freeze({ main: '削弱类', sub: '单属性削弱' }),
     多属性削弱: Object.freeze({ main: '削弱类', sub: '多属性削弱' }),
@@ -16141,7 +16801,6 @@
     持续恢复: '魂力上限',
     护盾: '魂力上限',
     无视异常: '魂力上限',
-    位移限制: '魂力上限',
     麻痹: '魂力上限',
     僵直: '魂力上限',
     迟缓: '魂力上限',
@@ -16210,11 +16869,11 @@
   function 技能设计台状态施加允许数值字段(状态 = '') {
     const 状态名 = normalizeSkillUiText(状态, '');
     return ['持续伤害类', '恢复资源类', '防御数值类'].includes(读取技能设计台状态施加分类(状态名)) ||
-      ['禁疗', '治疗反转', '标记', '嘲讽', '共享视野', '防御剥夺', '精神抗性剥夺', '虚弱', '迟缓', '资源燃烧', '位移限制', '失控', '反噬', '精神紊乱', '僵直', '麻痹', '混乱', '魂力枯竭'].includes(状态名);
+      ['禁疗', '治疗反转', '标记', '嘲讽', '共享视野', '防御剥夺', '精神抗性剥夺', '虚弱', '迟缓', '资源燃烧', '失控', '反噬', '精神紊乱', '僵直', '麻痹', '混乱', '魂力枯竭'].includes(状态名);
   }
 
   function 技能设计台状态施加允许副数值字段(状态 = '') {
-    return ['中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '迟缓', '位移限制', '失控', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '共享视野'].includes(normalizeSkillUiText(状态, ''));
+    return ['中毒', '流血', '灼烧', '冻伤', '持续创伤', '资源燃烧', '迟缓', '失控', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '共享视野'].includes(normalizeSkillUiText(状态, ''));
   }
 
   function 技能设计台状态施加默认数值(状态 = '') {
@@ -16231,7 +16890,6 @@
     if (['资源燃烧', '魂力枯竭'].includes(状态名)) return '+3%';
     if (状态名 === '冻伤') return '-2%';
     if (状态名 === '迟缓') return '-10%';
-    if (状态名 === '位移限制') return '-15%';
     if (状态名 === '虚弱') return '-8%';
     if (状态名 === '失控') return '+35%';
     if (状态名 === '反噬') return '+3%';
@@ -16253,7 +16911,6 @@
     if (['资源燃烧', '魂力枯竭'].includes(状态名)) return '+5%';
     if (状态名 === '共享视野') return '+10%';
     if (状态名 === '迟缓') return '-8%';
-    if (状态名 === '位移限制') return '-10%';
     if (['失控', '混乱'].includes(状态名)) return '-10%';
     if (状态名 === '精神紊乱') return '-8%';
     if (['僵直', '麻痹'].includes(状态名)) return '-20%';
@@ -16297,7 +16954,6 @@
       护卫: `施术者护卫目标，替其拦截攻击，护卫者承伤降低${String(数值).replace(/^\+/, '')}。`,
       嘲讽: '目标会优先攻击施术者。',
       封技: '技能回路被封锁，暂时无法施展技能。',
-      位移限制: `目标反应${数值}，闪避率${副数值}。`,
       虚弱: `目标力量、防御、敏捷各${数值}。`,
       失控: `${String(数值).replace(/^\+/, '')}概率偏转目标，命中率${副数值}。`,
       反噬: `主动施技续受到自身生命上限${String(数值).replace(/^\+/, '')}的伤害。`,
@@ -16351,7 +17007,6 @@
       标记: { 数值: '闪避修正' },
       防御剥夺: { 数值: '防御剥夺' },
       精神抗性剥夺: { 数值: '精神抗性剥夺' },
-      位移限制: { 数值: '反应修正', 副数值: '闪避修正' },
       虚弱: { 数值: '属性修正' },
       失控: { 数值: '偏转概率', 副数值: '命中修正' },
       反噬: { 数值: '自伤比例' },
@@ -16468,9 +17123,6 @@
     if (技能设计台状态施加清理驱动字段(状态名, 字段['目标'])) {
       delete 字段['驱动属性'];
       delete 字段['影响方向'];
-    } else if (状态名 === '位移限制') {
-      if (!normalizeSkillUiText(字段['驱动属性'], '')) 字段['驱动属性'] = '魂力上限';
-      if (!normalizeSkillUiText(字段['影响方向'], '')) 字段['影响方向'] = '效果强度';
     } else if (状态名 === '标记') {
       if (!normalizeSkillUiText(字段['驱动属性'], '')) 字段['驱动属性'] = '精神力上限';
       if (!normalizeSkillUiText(字段['影响方向'], '')) 字段['影响方向'] = '效果强度';
@@ -19112,7 +19764,7 @@
       '治疗反转',
       '标记',
       '封技',
-      '位移限制',
+      '迟缓',
     ];
     if (防御状态.some(state => 状态类型.has(state))) return '防御';
     if (负面状态.some(state => 状态类型.has(state))) return '控制';
@@ -21642,10 +22294,10 @@
           createSkillDesignerNumberParam('slowRatio', '控制幅度', '0.3'),
           createSkillDesignerTextParam('hitRule', '命中条件', '接触续 / 视线锁定'),
         ];
-      case '位移限制':
+      case '迟缓':
         return [
           createSkillDesignerNumberParam('duration', '持续回合', '2', '1'),
-          createSkillDesignerNumberParam('limitPower', '限制强度', '0.2'),
+          createSkillDesignerNumberParam('slowRatio', '迟缓幅度', '0.2'),
         ];
       case '节奏打断':
         return [
@@ -23133,7 +23785,7 @@
       if (技能设计台状态施加允许副数值字段(状态名) && next['副数值'] === undefined) {
         next['副数值'] = 技能设计台状态施加默认副数值(状态名);
       }
-      if (状态名 === '位移限制') {
+      if (状态名 === '迟缓') {
         if (!normalizeSkillUiText(next['驱动属性'], '')) next['驱动属性'] = '魂力上限';
         if (!normalizeSkillUiText(next['影响方向'], '')) next['影响方向'] = '效果强度';
       }
@@ -25070,7 +25722,7 @@
       '霸体',
       '标记',
       '封技',
-      '位移限制',
+      '迟缓',
     ].includes(normalizeSkillUiText(stateName, ''))
       ? normalizeSkillUiText(stateName, '')
       : '标记';
@@ -25203,21 +25855,13 @@
         return [
           构建技能设计台状态原型('眩晕', target, parseSkillDesignerIntegerInputValue(params['duration'], 2, 1)),
         ].filter(effect => safeEntries(effect).length);
-      case '软控': {
+      case '软控':
+      case '迟缓': {
         const controlPenalty = parseSkillDesignerPercentRatio(params['slowRatio'], 0.3);
         return [
           构建技能设计台状态原型('迟缓', target, parseSkillDesignerIntegerInputValue(params['duration'], 2, 1), {
             数值: `-${Math.round(Math.min(0.45, controlPenalty) * 100)}%`,
             副数值: `-${Math.round(Math.min(0.45, Math.max(0, controlPenalty * 0.8)) * 100)}%`,
-          }),
-        ].filter(effect => safeEntries(effect).length);
-      }
-      case '位移限制': {
-        const limitPower = parseSkillDesignerPercentRatio(params['limitPower'], 0.2);
-        return [
-          构建技能设计台状态原型('位移限制', target, parseSkillDesignerIntegerInputValue(params['duration'], 2, 1), {
-            数值: `-${Math.round(Math.min(0.45, limitPower) * 100)}%`,
-            副数值: `-${Math.round(Math.min(0.45, limitPower) * 100)}%`,
           }),
         ].filter(effect => safeEntries(effect).length);
       }
@@ -25900,7 +26544,7 @@
           buildSkillDesignerRuntimeObject({
             原型: '状态施加',
             目标: target,
-            状态: '位移限制',
+            状态: '迟缓',
             数值: '-15%',
             副数值: '-10%',
             持续回合: parseSkillDesignerIntegerInputValue(params['bindDuration'], 2, 1),
@@ -32794,6 +33438,10 @@
         preview: '情报库详细页',
         surface: normalizedSurface,
       });
+      setUnifiedCardMarkup('archive-permissions', 构建特殊权限摘要卡(snapshot), {
+        preview: '特殊权限',
+        surface: normalizedSurface,
+      });
       setUnifiedCardMarkup('social', buildUnifiedSocialCard(snapshot), {
         preview: '人物关系详细页',
         surface: normalizedSurface,
@@ -32824,6 +33472,10 @@
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('world-timeline', 构建世界编年史卡(snapshot), {
+        surface: normalizedSurface,
+      });
+      setUnifiedCardMarkup('world-competition', 构建赛事摘要卡(snapshot), {
+        preview: '赛事',
         surface: normalizedSurface,
       });
       setUnifiedCardMarkup('world-bestiary', 构建怪物图鉴摘要卡(snapshot), {
@@ -33326,12 +33978,81 @@
       `;
   }
 
+  function 构建特殊权限摘要卡(snapshot) {
+    const 根 = deepGet(snapshot, 'rootData', {});
+    const 当前角色 = toText(snapshot && snapshot.activeName, '');
+    const 运行时 = 读取赛事权限运行时_桥接();
+    const 权限列表 =
+      运行时 && typeof 运行时.列出持有人权限 === 'function'
+        ? 运行时.列出持有人权限(根, 当前角色)
+        : [];
+    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(根, 'world.时间.tick', 0), 0)));
+    const 可领取数量 = 权限列表.filter(({ 记录 }) => {
+      const 类型 = toText(deepGet(记录, '权限.类型', ''), '');
+      return 类型 === '物品选择' && typeof 运行时?.生成物品选择候选 === 'function'
+        ? (运行时.生成物品选择候选(根, 记录) || []).length > 0
+        : false;
+    }).length;
+    const 最近到期 = 权限列表
+      .map(({ 记录 }) => Math.max(0, Math.floor(toNumber(记录 && 记录.到期tick, 0)) - 当前tick))
+      .filter(Boolean)
+      .sort((a, b) => a - b)[0];
+    const 最近重置 = 权限列表
+      .map(({ 记录 }) => Math.max(0, Math.floor(toNumber(记录 && 记录.使用配额?.下次重置tick, 0)) - 当前tick))
+      .filter(Boolean)
+      .sort((a, b) => a - b)[0];
+    const 格式剩余 = tick => {
+      if (!tick) return '无';
+      if (tick >= 144) return `${Math.floor(tick / 144)}天`;
+      if (tick >= 6) return `${Math.floor(tick / 6)}时`;
+      return `${tick}tick`;
+    };
+    return buildSimpleCard('特殊权限', null, [
+      { label: '当前角色', value: 当前角色 || '未绑定' },
+      { label: '有效权限', value: `${权限列表.length} 项` },
+      { label: '最近到期', value: 格式剩余(最近到期) },
+      { label: '最近重置', value: 格式剩余(最近重置) },
+      { label: '可领取物品', value: `${可领取数量} 项` },
+    ]);
+  }
+
+  function 构建赛事摘要卡(snapshot) {
+    const 赛事表 = deepGet(snapshot, 'rootData.world.赛事', {});
+    const 当前角色 = toText(snapshot && snapshot.activeName, '');
+    const 热赛事 = safeEntries(赛事表).filter(([, 赛事]) => 赛事 && 赛事.状态 !== '已完成');
+    const 当前赛事 = 热赛事[0] && 热赛事[0][1];
+    const 我的报名 = 热赛事.filter(([, 赛事]) =>
+      safeEntries(赛事 && 赛事.项目).some(([, 项目]) =>
+        safeEntries(项目 && 项目.参赛者).some(([, 参赛者]) => {
+          const 成员 = Array.isArray(参赛者 && 参赛者.成员) ? 参赛者.成员 : [];
+          return 成员.includes(当前角色) || toText(参赛者 && 参赛者.名称, '') === 当前角色;
+        }),
+      ),
+    ).length;
+    const 下一场 = 热赛事
+      .flatMap(([, 赛事]) =>
+        safeEntries(赛事 && 赛事._进度).flatMap(([, 进度]) =>
+          safeEntries(进度 && 进度.对局)
+            .filter(([, 对局]) => 对局 && !对局.赛果)
+            .map(([, 对局]) => 对局),
+        ),
+      )
+      .sort((a, b) => toNumber(a && a.开始tick, Number.MAX_SAFE_INTEGER) - toNumber(b && b.开始tick, Number.MAX_SAFE_INTEGER))[0];
+    return buildSimpleCard('赛事', null, [
+      { label: '当前赛事', value: 当前赛事 ? toText(当前赛事.名称, '未命名赛事') : '暂无' },
+      { label: '赛事状态', value: 当前赛事 ? toText(当前赛事.状态, '未知') : '暂无进行中赛事' },
+      { label: '我的报名', value: `${我的报名} 项` },
+      { label: '下一场对局', value: 下一场 ? '已安排' : '暂无' },
+    ]);
+  }
+
   function 渲染统一空态卡片() {
     const 统一空态卡片 = {
       'archive-core': ['角色', '无数据'],
       'spirit-stage': ['武魂', '未记录'],
       armory: ['武装', '0'],
       vault: ['仓库', '0'],
+      'archive-permissions': ['特殊权限', '0'],
       social: ['社交', '0'],
       'map-current': ['当前位置', '无数据'],
       'map-locals': ['本地角色', '0'],
@@ -33339,6 +34060,7 @@
       'map-dynamic': ['动态', '0'],
       'world-hero': ['世界', '无数据'],
       'world-timeline': ['安排', '0'],
+      'world-competition': ['赛事', '0'],
       'world-bestiary': ['图鉴', '0'],
       'org-hero': ['势力', '0'],
       'org-faction': ['阵营', '无'],
@@ -39838,6 +40560,9 @@
                 dispatchUiAiRequest(actionData.playerInput, actionData.systemPrompt, {
                   requestKind: actionData.requestKind,
                   patchOps: actionData.patchOps,
+                  privilegeID: actionData.privilegeID,
+                  privilegeCost: actionData.privilegeCost,
+                  交易参数: actionData.交易参数,
                 });
               },
             });
@@ -39862,6 +40587,51 @@
                 container.innerHTML =
                   '<div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">交易模块</div></div><div class="dossier-empty-note">交易模块加载失败</div></div>';
               }
+            });
+          return null;
+        },
+      };
+    }
+
+    if (previewKey === '赛事' || previewKey === '特殊权限') {
+      return {
+        title: previewKey,
+        summary: previewKey === '赛事' ? '当前赛事、赛程、对局与结算。' : '当前角色持有的特殊权限与可用操作。',
+        body: '',
+        onMount: container => {
+          const 是赛事 = previewKey === '赛事';
+          const 挂载独立模块 = () =>
+            (是赛事 ? window.mountCompetitionUI : window.mountPrivilegeUI)?.(container, snapshot, {
+              onStartMatch: ({ 赛事ID, 项目, 对局ID, 结果 }) => {
+                if (!是赛事) return;
+                const 赛事 = deepGet(snapshot, ['rootData', 'world', '赛事', 赛事ID], {});
+                const 进度 = deepGet(赛事, ['_进度', 项目], {});
+                const 对局 = deepGet(进度, ['对局', 对局ID], {});
+                const 双方 = Array.isArray(结果?.双方) && 结果.双方.length
+                  ? 结果.双方.map(参赛者 => toText(参赛者?.名称, '待实体化参赛者'))
+                  : (对局.参赛者 || []).map(参赛者ID => toText(进度?.实体?.[参赛者ID]?.名称, '待实体化参赛者'));
+                dispatchUiAiRequest(
+                  `我要参加【${toText(赛事.名称, '赛事')}】的比赛，对阵${双方.join('与')}。`,
+                  `以下内容属于前端已登记的赛事对局请求。赛事ID：${赛事ID}；项目：${项目}；对局ID：${对局ID}；双方：${双方.join(' / ')}。请自然描写入场并沿用现有战斗系统建立战斗；赛事上下文与结算ID已经由脚本写入，不要重复创建或修改。`,
+                  { requestKind: 'competition_match' },
+                );
+              },
+            });
+          const 挂载函数名 = 是赛事 ? 'mountCompetitionUI' : 'mountPrivilegeUI';
+          if (typeof window[挂载函数名] === 'function') return 挂载独立模块();
+          container.innerHTML = `<div class="cp-empty">${previewKey}模块加载中...</div>`;
+          void 请求预热预览依赖(是赛事 ? '赛事' : '特殊权限', 'competition_privilege_mount')
+            .then(() => {
+              if (!container.isConnected) return;
+              if (typeof window[挂载函数名] !== 'function') {
+                container.innerHTML = `<div class="cp-empty">${previewKey}模块暂不可用。</div>`;
+                return;
+              }
+              container.innerHTML = '';
+              activeSubUI = 挂载独立模块();
+            })
+            .catch(() => {
+              if (container.isConnected) container.innerHTML = `<div class="cp-empty">${previewKey}模块加载失败。</div>`;
             });
           return null;
         },
@@ -40566,7 +41336,8 @@
         title: '任务界面',
         summary: '我的任务与世界委托板。',
         body: `
-            <div class="archive-modal-grid mvu-detail-grid--quest mvu-quest-overview-grid" data-quest-theme="${escapeHtmlAttr(questTheme)}">
+            <div data-quest-content>
+              <div class="archive-modal-grid mvu-detail-grid--quest mvu-quest-overview-grid" data-quest-theme="${escapeHtmlAttr(questTheme)}">
               <div class="mvu-quest-summary-bar">
                 <div class="mvu-quest-summary-main">
                   <span>${htmlEscape(activeQuestTab)}</span>
@@ -40603,6 +41374,7 @@
                 </div>
                 ${questDetailHtml}
                 ${questActionHtml}
+              </div>
               </div>
             </div>
           `,
@@ -40890,7 +41662,7 @@
           }
           return;
         }
-        const liveSubUiKeys = new Set(['副职业工坊', '储物仓库详细页', '当前节点详情', '交易模块弹窗', '交易网络']);
+        const liveSubUiKeys = new Set(['副职业工坊', '储物仓库详细页', '当前节点详情', '交易模块弹窗', '交易网络', '赛事', '特殊权限']);
         if (liveSubUiKeys.has(activeDetailPreviewKey) && activeSubUI && typeof activeSubUI.updateData === 'function') {
           activeSubUI.updateData(liveSnapshot);
         } else {
@@ -45159,6 +45931,9 @@ ${播报文本}
       systemPrompt,
       requestKind,
       patchOps,
+      privilegeID: toText(data.privilegeID, '').trim(),
+      privilegeCost: Math.max(0, Math.floor(toNumber(data.privilegeCost, 0))),
+      交易参数: cloneJsonValue(data.交易参数, {}),
       moduleKind: toText(moduleKind, ''),
       request: cloneJsonValue(request, {}),
     };
@@ -47031,7 +47806,20 @@ ${播报文本}
     const patchOps = Array.isArray(inlineResult.inlineAction.patchOps) ? inlineResult.inlineAction.patchOps : [];
     if (patchOps.length) {
       try {
-        await applyJsonPatchOpsByEditor(patchOps, { force: true });
+        const 交易请求 = inlineResult.inlineAction.requestKind === 'trade_shop_buy' || inlineResult.inlineAction.requestKind === 'trade_auction';
+        await applyJsonPatchOpsByEditor(
+          patchOps,
+          交易请求
+            ? {
+                force: true,
+                交易权限消费: {
+                  权限ID: inlineResult.inlineAction.privilegeID,
+                  数量: inlineResult.inlineAction.privilegeCost,
+                },
+                交易参数: inlineResult.inlineAction.交易参数,
+              }
+            : { force: true },
+        );
         await refreshLiveSnapshot({ force: true });
       } catch (error) {
         return 构建模块路由失败结果(moduleKind, request, error && error.message ? error.message : dispatchFailReason, {
@@ -47899,6 +48687,17 @@ ${播报文本}
     try {
       await applyJsonPatchOpsByEditor(patchOps);
       detail.delivery = { ok: true, channel: 'mvu_editor_patch', patchCount: patchOps.length };
+      if (detail.combatData && detail.combatData.进行中 === false) {
+        const 裁断文本 = toText(detail.combatData.裁断结果, '').trim();
+        const 参战者名称 = collectBattleParticipantNames(detail.combatData);
+        const 胜方 = 参战者名称.find(名称 => {
+          const 位置 = 裁断文本.indexOf(名称);
+          return 位置 >= 0 && /战胜|获胜|胜出/.test(裁断文本.slice(位置, 位置 + 名称.length + 8));
+        });
+        if (/平局|未分胜负/.test(裁断文本)) await 结算赛事战斗_桥接({ 平局: true });
+        else if (胜方) await 结算赛事战斗_桥接({ 胜方 });
+        else await 结算赛事战斗_桥接({ 技术失败: true });
+      }
       await refreshLiveSnapshot({ force: true });
     } catch (error) {
       detail.delivery = { ok: false, channel: 'mvu_editor_patch', error: String((error && error.message) || error) };
@@ -49126,11 +49925,34 @@ ${播报文本}
   function rerenderDetailSurface(previewKey = '', options = {}) {
     const targetKey = toText(previewKey, '').trim();
     if (!targetKey) return;
+    if (targetKey === '任务界面' && 局部刷新任务详情()) return;
     if (options.surface === 'unified' || (currentUnifiedPreviewKey === targetKey && isUnifiedInlinePreviewActive())) {
       renderUnifiedInlinePreview(targetKey, { ...options, force: !!options.force });
       return;
     }
     renderModalContent(targetKey, getModalRefs(), { force: !!options.force });
+  }
+
+  function 局部刷新任务详情() {
+    const 当前内容 = Array.from(document.querySelectorAll('[data-quest-content]')).find(
+      节点 => 节点 instanceof Element && 节点.isConnected && (节点.offsetWidth || 节点.offsetHeight),
+    );
+    if (!当前内容) return false;
+    const 详情 = buildLiveArchiveModal('任务界面');
+    const 临时根 = document.createElement('div');
+    临时根.innerHTML = 详情 && 详情.body ? 详情.body : '';
+    const 新内容 = 临时根.querySelector('[data-quest-content]');
+    if (!新内容) return false;
+    const 滚动位置 = Array.from(当前内容.querySelectorAll('.mvu-detail-scroll-list, .mvu-quest-detail-card')).map(
+      节点 => 节点.scrollTop,
+    );
+    当前内容.replaceWith(新内容);
+    Array.from(新内容.querySelectorAll('.mvu-detail-scroll-list, .mvu-quest-detail-card')).forEach((节点, 索引) => {
+      节点.scrollTop = 滚动位置[索引] || 0;
+    });
+    const 首个输入 = 新内容.querySelector('.mvu-quest-create-panel[open] input, .mvu-quest-create-panel[open] select');
+    if (首个输入 instanceof HTMLElement) window.setTimeout(() => 首个输入.focus(), 0);
+    return true;
   }
 
   function closeDetailSurface(options = {}) {
