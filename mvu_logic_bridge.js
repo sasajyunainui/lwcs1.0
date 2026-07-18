@@ -50042,11 +50042,11 @@ ${播报文本}
     const 滚动位置 = Array.from(当前内容.querySelectorAll('.mvu-detail-scroll-list, .mvu-quest-detail-card')).map(
       节点 => 节点.scrollTop,
     );
-    当前内容.replaceWith(新内容);
-    Array.from(新内容.querySelectorAll('.mvu-detail-scroll-list, .mvu-quest-detail-card')).forEach((节点, 索引) => {
+    当前内容.replaceChildren(...Array.from(新内容.childNodes));
+    Array.from(当前内容.querySelectorAll('.mvu-detail-scroll-list, .mvu-quest-detail-card')).forEach((节点, 索引) => {
       节点.scrollTop = 滚动位置[索引] || 0;
     });
-    const 首个输入 = 新内容.querySelector('.mvu-quest-create-panel[open] input, .mvu-quest-create-panel[open] select');
+    const 首个输入 = 当前内容.querySelector('.mvu-quest-create-panel[open] input, .mvu-quest-create-panel[open] select');
     if (首个输入 instanceof HTMLElement) window.setTimeout(() => 首个输入.focus(), 0);
     return true;
   }
