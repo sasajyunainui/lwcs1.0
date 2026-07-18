@@ -168,7 +168,7 @@ await 加载MVU经典依赖_V1('MVU_Schema_Runtime.js', () =>
 
 await 加载MVU经典依赖_V1('MVU_Competition_Runtime.js', () =>
   globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__ &&
-  typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.生成循环赛对局 === 'function' &&
+  typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.生成项目对局 === 'function' &&
   typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.计算购买支付比例 === 'function'
 );
 
