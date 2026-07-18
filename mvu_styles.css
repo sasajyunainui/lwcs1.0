@@ -17347,6 +17347,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --卡片材质:
     linear-gradient(90deg, rgba(0, 255, 204, 0.12), transparent 28%),
     rgba(0, 255, 204, 0.085);
+  --工作区材质: linear-gradient(rgba(0, 255, 204, 0.018), rgba(0, 255, 204, 0.018));
   --悬浮材质:
     linear-gradient(90deg, rgba(0, 255, 204, 0.18), transparent 32%),
     rgba(4, 15, 28, 0.96);
@@ -17420,6 +17421,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --卡片材质:
     linear-gradient(90deg, rgba(255, 51, 0, 0.12), transparent 28%),
     rgba(255, 170, 0, 0.105);
+  --工作区材质: linear-gradient(rgba(255, 51, 0, 0.018), rgba(255, 51, 0, 0.018));
   --悬浮材质:
     linear-gradient(90deg, rgba(255, 51, 0, 0.18), transparent 32%),
     rgba(20, 3, 3, 0.97);
@@ -17574,6 +17576,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --卡片材质:
     linear-gradient(90deg, rgba(224, 234, 255, 0.12), transparent 28%),
     rgba(255, 255, 255, 0.11);
+  --工作区材质: linear-gradient(rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.018));
   --悬浮材质:
     linear-gradient(90deg, rgba(224, 234, 255, 0.18), transparent 32%),
     rgba(10, 14, 24, 0.94);
@@ -17706,6 +17709,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --卡片材质:
     linear-gradient(90deg, rgba(0, 210, 255, 0.12), transparent 28%),
     rgba(255, 255, 255, 0.11);
+  --工作区材质: linear-gradient(rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.012));
   --悬浮材质:
     linear-gradient(90deg, rgba(255, 126, 179, 0.16), transparent 32%),
     rgba(6, 35, 51, 0.96);
@@ -18996,13 +19000,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
   min-width: 0;
   min-height: 0;
   height: auto;
-  border: 1px solid var(--边线颜色);
+  border: 1px solid transparent;
+  border-left-color: color-mix(in srgb, var(--边线颜色) 72%, transparent);
   border-radius: var(--卡片圆角);
   clip-path: var(--卡片裁切);
-  background: var(--卡片材质);
-  box-shadow:
-    inset 2px 0 0 var(--主题主色),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent);
+  background: var(--工作区材质);
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--主题主色) 18%, transparent);
   overflow: hidden;
 }
 
@@ -19011,11 +19014,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   isolation: isolate;
   min-width: 0;
   height: auto;
-  border-color: var(--边线颜色);
-  background: var(--卡片材质);
-  box-shadow:
-    inset 2px 0 0 var(--主题主色),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 5%, transparent);
+  border-color: transparent;
+  border-left-color: color-mix(in srgb, var(--边线颜色) 72%, transparent);
+  background: var(--工作区材质);
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--主题主色) 18%, transparent);
   overflow: hidden;
 }
 
@@ -19147,11 +19149,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:focus-within {
   transform: translateX(4px);
-  border-color: color-mix(in srgb, var(--主题主色) 58%, var(--边线颜色));
-  background: var(--悬浮材质);
-  box-shadow:
-    inset 2px 0 0 var(--主题主色),
-    inset 0 0 18px color-mix(in srgb, var(--主题主色) 8%, transparent);
+  border-color: transparent;
+  border-left-color: color-mix(in srgb, var(--边线颜色) 88%, transparent);
+  background: color-mix(in srgb, var(--主题主色) 4%, transparent);
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--主题主色) 28%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:hover > *,
