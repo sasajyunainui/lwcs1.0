@@ -1,0 +1,201 @@
+{
+  "schemaVersion": "8.3-phase0-design-decisions-1",
+  "generatedAt": "2026-07-18T15:00:51.426Z",
+  "sourceEvidenceSha256": "1a4c2404fc0dc0d899cd50e09472a8ec11b4da5470e5d7e1f316a6ec2573f973",
+  "baselineHead": "9f7151a405bf9d8ea1b14453551c3b6915999bad",
+  "decisionCount": 10,
+  "decisions": [
+    {
+      "decisionId": "D01_HEALTH_NORMALIZATION",
+      "alternatives": [
+        "单位生命百分点",
+        "团队有效生命归一",
+        "目标条件化归一"
+      ],
+      "discriminatingCases": [
+        "atomic_damage_without_reaction",
+        "intent_capture_vs_kill",
+        "duel_overmatch_lethal"
+      ],
+      "selectedDesign": "以每个受影响单位最大有效生命为分母得到原子生命百分点；聚合时按胜负目标对可计区间截断，团队只做求和，不再二次归一。",
+      "rejectedReasons": {
+        "团队有效生命归一": "会让同一技能因队伍人数改变原子价值，并稀释单体致死与救援。",
+        "仅目标条件化归一": "不能作为基础单位，无法比较治疗、护盾和不同最大生命单位。"
+      },
+      "residualRisk": "护盾与治疗必须使用预期实际吸收/有效治疗，不能按名义值。"
+    },
+    {
+      "decisionId": "D02_ACTION_POOL_AGGREGATION",
+      "alternatives": [
+        "最佳合法行为",
+        "非支配行为包络",
+        "认知概率加权全行为"
+      ],
+      "discriminatingCases": [
+        "c08_resource_block_positive",
+        "c09_resource_no_consumer_negative",
+        "team_resource_support",
+        "raid_control_heavy"
+      ],
+      "selectedDesign": "每个受影响单位维护最多两个用途不同的非支配行为代表：最佳主路线和最佳备份路线；按真实机会可用率分别计值，不对完整行为池Softmax。",
+      "rejectedReasons": {
+        "仅最佳合法行为": "单一动作被封锁时无法表达备份路线和资源连续性。",
+        "认知概率加权全行为": "7v7单决策需要约5745次Preview，性能不可接受且会把大量不会选择的弱动作计入。"
+      },
+      "residualRisk": "用途分类必须来自效果路径而非技能名。"
+    },
+    {
+      "decisionId": "D03_OPPONENT_RESPONSE",
+      "alternatives": [
+        "概率回应",
+        "最坏威胁包络",
+        "关键风险混合"
+      ],
+      "discriminatingCases": [
+        "duel_charge_defense_safer",
+        "c03_defense_positive",
+        "x03_defense_multihit_reflect_three_factor_3"
+      ],
+      "selectedDesign": "公开认知下的概率回应作为期望主分支，同时强制保留一个可致死、失能、取消机会或破坏终局的灾难尾部分支；非关键回应合并。",
+      "rejectedReasons": {
+        "纯概率回应": "会稀释低概率致死风险。",
+        "纯最坏威胁包络": "会造成长期过度防御并压死合理进攻。"
+      },
+      "residualRisk": "灾难分支判定必须只使用公开证据与威胁区间。"
+    },
+    {
+      "decisionId": "D04_TIME_WINDOW",
+      "alternatives": [
+        "下一关键回应",
+        "固定两自然机会",
+        "效果生命周期解析累计"
+      ],
+      "discriminatingCases": [
+        "c05_hard_control_positive",
+        "c05_hard_control_mutation",
+        "c13_dot_positive",
+        "raid_summon_heavy"
+      ],
+      "selectedDesign": "事件驱动窗口：当前动作完整结算后，沿正式行动轴推进到效果首次兑现、失效或目标截止；默认最多覆盖行动者下两次自然机会，但DOT、召唤、蓄力和目标截止按更早的真实事件终止。",
+      "rejectedReasons": {
+        "仅下一关键回应": "会漏掉延迟控制、DOT和召唤。",
+        "固定两自然机会": "无法处理持续时间短于机会、宿主死亡或回合截止。"
+      },
+      "residualRisk": "事件窗口必须复用Runtime机会ID，不能重建第二套时间轴。"
+    },
+    {
+      "decisionId": "D05_OBJECTIVES",
+      "alternatives": [
+        "分层优先",
+        "约束式效用",
+        "终局概率与非终局组合"
+      ],
+      "discriminatingCases": [
+        "intent_capture_vs_kill",
+        "c16_objectives_positive",
+        "duel_charge_defense_safer"
+      ],
+      "selectedDesign": "约束式目标门：先剔除与目标冲突的结果；对合法结果计算终局概率增量和目标区间内生命轨迹价值。击杀目标允许计至0%，生命阈值目标只计到阈值，坚持/守护目标以失败风险降低计值。",
+      "rejectedReasons": {
+        "纯分层优先": "只能排序目标，不能处理概率与资源代价。",
+        "无约束终局组合": "会继续奖励阈值后的过量伤害。"
+      },
+      "residualRisk": "多条件OR/AND必须由现有规范化目标结构提供，不重新解析文本。"
+    },
+    {
+      "decisionId": "D06_UNCERTAINTY",
+      "alternatives": [
+        "区间上下界",
+        "离散认知假设",
+        "公开证据后验"
+      ],
+      "discriminatingCases": [
+        "duel_peer_unknown_probe",
+        "team_unknown_enemy_adaptation",
+        "duel_agile_counter_options"
+      ],
+      "selectedDesign": "公开证据后验作为中心估计，保留上下界；未显露技能只形成能力类别威胁包络，不生成具体隐藏技能。",
+      "rejectedReasons": {
+        "仅区间上下界": "不能随重复结果更新。",
+        "完整离散假设枚举": "状态数随技能与队伍规模爆炸。"
+      },
+      "residualRisk": "报告只显示角色当时可知的预测，不显示真实隐藏参数。"
+    },
+    {
+      "decisionId": "D07_LONG_EFFECTS",
+      "alternatives": [
+        "逐窗口差量",
+        "解析累计",
+        "事件驱动窗口"
+      ],
+      "discriminatingCases": [
+        "dot_schedule",
+        "c13_dot_positive",
+        "c14_summon_positive",
+        "raid_summon_heavy"
+      ],
+      "selectedDesign": "按正式调度事件逐窗口结算差量；相同来源和窗口只归属一次，目标已必死、窗口失效或不可驱动行为时后续边际归零。",
+      "rejectedReasons": {
+        "静态解析累计": "无法处理驱散、宿主死亡、目标提前死亡与终局截止。",
+        "无所有权逐窗口累加": "会产生DOT和父子状态重复计值。"
+      },
+      "residualRisk": "召唤预览实体必须使用稳定实例ID。"
+    },
+    {
+      "decisionId": "D08_DEEPENING",
+      "alternatives": [
+        "价值区间重叠",
+        "终局风险触发",
+        "行为池变化触发"
+      ],
+      "discriminatingCases": [
+        "c08_resource_block_positive",
+        "duel_charge_defense_safer",
+        "intent_capture_vs_kill"
+      ],
+      "selectedDesign": "三触发并集：候选置信区间排序重叠、可能改变终局/失能/行动机会、或改变主路线/备份路线时深化；否则停在浅评估。",
+      "rejectedReasons": {
+        "单一触发": "分别会漏掉不确定排序、灾难分支或无直接伤害的行为池效果。"
+      },
+      "residualRisk": "深化预算耗尽必须输出结构化错误，不静默降级。"
+    },
+    {
+      "decisionId": "D09_CACHE_INVALIDATION",
+      "alternatives": [
+        "全单位签名",
+        "依赖图失效",
+        "效果与目标局部签名"
+      ],
+      "discriminatingCases": [
+        "1v1/3v3/7v7复杂度曲线",
+        "resource timing",
+        "summon overlay conflict"
+      ],
+      "selectedDesign": "依赖图驱动的局部签名：动作依赖actor资源/状态、目标防御/状态、相关机会、目标条件和公开认知修订；只有这些依赖变化才失效。",
+      "rejectedReasons": {
+        "全单位签名": "任一无关单位变化都会清空缓存。",
+        "仅效果与目标局部签名": "会漏掉队友利用窗口、终局条件和行动轴变化。"
+      },
+      "residualRisk": "依赖声明不完整会产生错误复用，需变形测试。"
+    },
+    {
+      "decisionId": "D10_CAUSAL_OWNERSHIP",
+      "alternatives": [
+        "状态差量所有权",
+        "动作池差量所有权",
+        "终局差量所有权"
+      ],
+      "discriminatingCases": [
+        "c05_hard_control_positive",
+        "c08_resource_block_positive",
+        "intent_capture_vs_kill",
+        "dot_schedule"
+      ],
+      "selectedDesign": "三层互斥所有权：原子HP/护盾归状态差量；资源、控制、判定修正归首次受影响的行动池差量；胜负条件跨越归终局差量。上层只能引用下层factId，不重复累加。",
+      "rejectedReasons": {
+        "任一单层独占": "不能同时表达即时伤害、未来行为变化和目标跨越。"
+      },
+      "residualRisk": "同一效果跨多个窗口时必须使用effectInstanceId+targetId+windowId去重。"
+    }
+  ]
+}

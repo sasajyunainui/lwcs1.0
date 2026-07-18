@@ -1,0 +1,1652 @@
+{
+  "schemaVersion": "8.3-phase0-minimal-contracts-1",
+  "generatedAt": "2026-07-18T15:00:51.366Z",
+  "sourceEvidenceSha256": "09c2eeef438706e62440b9c685abfb0fa45a972cbd2e6e73feb90df6bc1f7d52",
+  "baselineHash": "53ef43626ac261d7fe551ec1b63f097561b40d59cd2be91d112dc55cb4fa9939",
+  "caseCount": 54,
+  "cases": [
+    {
+      "caseId": "c01_hit_bonus_positive",
+      "seed": 755011,
+      "inputHash": "cfc4199c27c2677336cc1a1cdf27c7181a3b13a7a066e96f84435dae33474aeb",
+      "behaviorContract": {
+        "category": "c01_hit_bonus",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [
+          "命中提升",
+          "直接攻击"
+        ],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [
+          "把命中提升视为零价值"
+        ],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "非必中攻击仍可用时，命中提升不应低于删除该攻击后的同技能价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c01_hit_bonus_positive:actor:basic:c01_hit_bonus_positive:enemy",
+        "c01_hit_bonus_positive:actor:DEFEND",
+        "c01_hit_bonus_positive:actor:EVADE",
+        "c01_hit_bonus_positive:actor:skill:命中提升:0",
+        "c01_hit_bonus_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c01_hit_bonus_negative",
+      "seed": 755012,
+      "inputHash": "58f33c6faa1650de2ecee11b0aafa2d02714d9e07d3aead31479c8d00fb314f6",
+      "behaviorContract": {
+        "category": "c01_hit_bonus",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "唯一攻击已必中时，继续增加命中不应获得攻击兑现价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c01_hit_bonus_negative:actor:basic:c01_hit_bonus_negative:enemy",
+        "c01_hit_bonus_negative:actor:DEFEND",
+        "c01_hit_bonus_negative:actor:EVADE",
+        "c01_hit_bonus_negative:actor:skill:命中提升:0",
+        "c01_hit_bonus_negative:actor:skill:必中攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c01_hit_bonus_mutation",
+      "seed": 755013,
+      "inputHash": "f02f591c50a2bbcff400ec84fae18b4dd491fb4c26fa6f77a639ca96abb58b2c",
+      "behaviorContract": {
+        "category": "c01_hit_bonus",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "降低可用攻击命中率应提高命中提升的边际，但不能超过被改善攻击的期望增量。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c01_hit_bonus_mutation:actor:basic:c01_hit_bonus_mutation:enemy",
+        "c01_hit_bonus_mutation:actor:DEFEND",
+        "c01_hit_bonus_mutation:actor:EVADE",
+        "c01_hit_bonus_mutation:actor:skill:命中提升:0",
+        "c01_hit_bonus_mutation:actor:skill:低命中重击:0"
+      ]
+    },
+    {
+      "caseId": "c02_evasion_reduction_positive",
+      "seed": 755021,
+      "inputHash": "34cc70e9b423716e3657b32600e5ed6b2928a5cee4f0c1055367132aac2a1626",
+      "behaviorContract": {
+        "category": "c02_evasion_reduction",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "存在后续攻击窗口时，降低高速目标闪避应改善攻击池期望。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c02_evasion_reduction_positive:actor:basic:c02_evasion_reduction_positive:enemy",
+        "c02_evasion_reduction_positive:actor:DEFEND",
+        "c02_evasion_reduction_positive:actor:EVADE",
+        "c02_evasion_reduction_positive:actor:skill:压制闪避:0",
+        "c02_evasion_reduction_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c02_evasion_reduction_negative",
+      "seed": 755022,
+      "inputHash": "0a45c86bfbaddecf88a4b973f70655fb4ad34899f8b597516b6e621e0d061d70",
+      "behaviorContract": {
+        "category": "c02_evasion_reduction",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "施术者没有任何可兑现攻击时，降低闪避不得获得悬空伤害价值。"
+        ]
+      },
+      "candidateCount": 4,
+      "candidateIds": [
+        "c02_evasion_reduction_negative:actor:basic:c02_evasion_reduction_negative:enemy",
+        "c02_evasion_reduction_negative:actor:DEFEND",
+        "c02_evasion_reduction_negative:actor:EVADE",
+        "c02_evasion_reduction_negative:actor:skill:压制闪避:0"
+      ]
+    },
+    {
+      "caseId": "c02_evasion_reduction_mutation",
+      "seed": 755023,
+      "inputHash": "ac0e9d6464f26beb18591ec0faaec6b776b09c6f736f2313adc932f22a6cc529",
+      "behaviorContract": {
+        "category": "c02_evasion_reduction",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "效果在队友行动前到期时，队友攻击不得计入兑现窗口。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c02_evasion_reduction_mutation:actor:basic:c02_evasion_reduction_mutation:enemy",
+        "c02_evasion_reduction_mutation:actor:DEFEND",
+        "c02_evasion_reduction_mutation:actor:EVADE",
+        "c02_evasion_reduction_mutation:actor:skill:压制闪避:0",
+        "c02_evasion_reduction_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c03_defense_positive",
+      "seed": 755031,
+      "inputHash": "3fdfdfbc944073e4ca2ca74592398939f54cc791627efcb5ba1c1b2013be8e3f",
+      "behaviorContract": {
+        "category": "c03_defense",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "确定高威胁来袭时，防御的价值应随避免的生命百分点上升。"
+        ]
+      },
+      "candidateCount": 4,
+      "candidateIds": [
+        "c03_defense_positive:actor:basic:c03_defense_positive:enemy",
+        "c03_defense_positive:actor:DEFEND",
+        "c03_defense_positive:actor:EVADE",
+        "c03_defense_positive:actor:skill:低威胁攻击:0"
+      ]
+    },
+    {
+      "caseId": "c03_defense_negative",
+      "seed": 755032,
+      "inputHash": "c8ded750a277b2e392c6a409625728679e0ca0bc947f778eb4a84aaac1df91b8",
+      "behaviorContract": {
+        "category": "c03_defense",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "没有来袭伤害窗口时，防御不能凭姿态本身获得生命价值。"
+        ]
+      },
+      "candidateCount": 4,
+      "candidateIds": [
+        "c03_defense_negative:actor:basic:c03_defense_negative:enemy",
+        "c03_defense_negative:actor:DEFEND",
+        "c03_defense_negative:actor:EVADE",
+        "c03_defense_negative:actor:skill:低威胁攻击:0"
+      ]
+    },
+    {
+      "caseId": "c03_defense_mutation",
+      "seed": 755033,
+      "inputHash": "6209967d28666b71447c736087d4657b22fe9298fdb222021b02c25f40c6d50b",
+      "behaviorContract": {
+        "category": "c03_defense",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "提高来袭段数且总伤害不变时，防御价值只按真实减伤与反伤交互变化。"
+        ]
+      },
+      "candidateCount": 4,
+      "candidateIds": [
+        "c03_defense_mutation:actor:basic:c03_defense_mutation:enemy",
+        "c03_defense_mutation:actor:DEFEND",
+        "c03_defense_mutation:actor:EVADE",
+        "c03_defense_mutation:actor:skill:低威胁攻击:0"
+      ]
+    },
+    {
+      "caseId": "c04_evade_counter_positive",
+      "seed": 755041,
+      "inputHash": "7d7ef622525f0ef227fb8def86ce538e43210ee7f61d120f3eee49a1ff73fec1",
+      "behaviorContract": {
+        "category": "c04_evade_counter",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "闪避成功能打开反击窗口时，其价值应包含授权后可执行动作的期望。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c04_evade_counter_positive:actor:basic:c04_evade_counter_positive:enemy",
+        "c04_evade_counter_positive:actor:DEFEND",
+        "c04_evade_counter_positive:actor:EVADE",
+        "c04_evade_counter_positive:actor:skill:反应强化:0",
+        "c04_evade_counter_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c04_evade_counter_negative",
+      "seed": 755042,
+      "inputHash": "4e3aae863801678614eb94b138e1f6067a95b2a613f4efcc6fa1697c5cdd69c7",
+      "behaviorContract": {
+        "category": "c04_evade_counter",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "没有合法反击动作时，闪避不得计入反击伤害。"
+        ]
+      },
+      "candidateCount": 3,
+      "candidateIds": [
+        "c04_evade_counter_negative:actor:basic:c04_evade_counter_negative:enemy",
+        "c04_evade_counter_negative:actor:DEFEND",
+        "c04_evade_counter_negative:actor:EVADE"
+      ]
+    },
+    {
+      "caseId": "c04_evade_counter_mutation",
+      "seed": 755043,
+      "inputHash": "f39ae09a611ead214e99005c53cca64dd9b2b636a5490f47479542049264a763",
+      "behaviorContract": {
+        "category": "c04_evade_counter",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "降低闪避成功概率应同时降低生存收益和反击授权收益。"
+        ]
+      },
+      "candidateCount": 4,
+      "candidateIds": [
+        "c04_evade_counter_mutation:actor:basic:c04_evade_counter_mutation:enemy",
+        "c04_evade_counter_mutation:actor:DEFEND",
+        "c04_evade_counter_mutation:actor:EVADE",
+        "c04_evade_counter_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c05_hard_control_positive",
+      "seed": 755051,
+      "inputHash": "600787d0fd25a724acedefa42a09d734dff7aed80cafd313b8e2a4541d4419d9",
+      "behaviorContract": {
+        "category": "c05_hard_control",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "硬控真实覆盖敌方下一行动时，应按被取消行为池计算价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c05_hard_control_positive:actor:basic:c05_hard_control_positive:enemy",
+        "c05_hard_control_positive:actor:DEFEND",
+        "c05_hard_control_positive:actor:EVADE",
+        "c05_hard_control_positive:actor:skill:硬控制:0",
+        "c05_hard_control_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c05_hard_control_negative",
+      "seed": 755052,
+      "inputHash": "3e19e7d56e94a8eb32d82b444ebdc96edc8823e0a6469fe3b8e80d3828d28552",
+      "behaviorContract": {
+        "category": "c05_hard_control",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "目标下一行动已被等效硬控覆盖时，重复控制只计算新增覆盖。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c05_hard_control_negative:actor:basic:c05_hard_control_negative:enemy",
+        "c05_hard_control_negative:actor:DEFEND",
+        "c05_hard_control_negative:actor:EVADE",
+        "c05_hard_control_negative:actor:skill:硬控制:0",
+        "c05_hard_control_negative:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c05_hard_control_mutation",
+      "seed": 755053,
+      "inputHash": "435c593e2694f41d57f985eebbef2d4274b1a7b35d88f37a90356f2beff83e99",
+      "behaviorContract": {
+        "category": "c05_hard_control",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "控制在敌方行动后才生效时，不得取消已经发生的行动。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c05_hard_control_mutation:actor:basic:c05_hard_control_mutation:enemy",
+        "c05_hard_control_mutation:actor:DEFEND",
+        "c05_hard_control_mutation:actor:EVADE",
+        "c05_hard_control_mutation:actor:skill:延迟控制:0",
+        "c05_hard_control_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c06_control_overlap_positive",
+      "seed": 755061,
+      "inputHash": "a1ca9dfaf794dd88751c53eb69389a66122657a4da789aa6da254d8feffaba9b",
+      "behaviorContract": {
+        "category": "c06_control_overlap",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "现有控制将在关键机会前到期时，续接可计算新增覆盖。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c06_control_overlap_positive:actor:basic:c06_control_overlap_positive:enemy",
+        "c06_control_overlap_positive:actor:DEFEND",
+        "c06_control_overlap_positive:actor:EVADE",
+        "c06_control_overlap_positive:actor:skill:硬控制:0",
+        "c06_control_overlap_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c06_control_overlap_negative",
+      "seed": 755062,
+      "inputHash": "a169d21a2d1618fa3e18806dff8d98d013200cfe21efc6a6a3948afb6b2e0c16",
+      "behaviorContract": {
+        "category": "c06_control_overlap",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "已有控制完整覆盖评估窗口时，重复控制边际应为零。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c06_control_overlap_negative:actor:basic:c06_control_overlap_negative:enemy",
+        "c06_control_overlap_negative:actor:DEFEND",
+        "c06_control_overlap_negative:actor:EVADE",
+        "c06_control_overlap_negative:actor:skill:硬控制:0",
+        "c06_control_overlap_negative:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c06_control_overlap_mutation",
+      "seed": 755063,
+      "inputHash": "9757e739fe1bc2717c7766b23f354e541dd5e3b907114b6ed891c76617177a86",
+      "behaviorContract": {
+        "category": "c06_control_overlap",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "增加能在控制窗口内行动的队友，应提高可兑现控制价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c06_control_overlap_mutation:actor:basic:c06_control_overlap_mutation:enemy",
+        "c06_control_overlap_mutation:actor:DEFEND",
+        "c06_control_overlap_mutation:actor:EVADE",
+        "c06_control_overlap_mutation:actor:skill:硬控制:0",
+        "c06_control_overlap_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c07_slow_axis_positive",
+      "seed": 755071,
+      "inputHash": "63199f9316d44b5f4188c73b513034d1f934ba4a888917004420908cd4708367",
+      "behaviorContract": {
+        "category": "c07_slow_axis",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "迟缓使行动顺序发生交叉时，应按新增先手窗口计值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c07_slow_axis_positive:actor:basic:c07_slow_axis_positive:enemy",
+        "c07_slow_axis_positive:actor:DEFEND",
+        "c07_slow_axis_positive:actor:EVADE",
+        "c07_slow_axis_positive:actor:skill:迟缓技:0",
+        "c07_slow_axis_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c07_slow_axis_negative",
+      "seed": 755072,
+      "inputHash": "0ecdca6c9f8ab1b04a10b880417d6a2850999fa57e415b5b9e7c46951faa4105",
+      "behaviorContract": {
+        "category": "c07_slow_axis",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "迟缓后仍不改变任何行动顺序时，不得虚构行动取消价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c07_slow_axis_negative:actor:basic:c07_slow_axis_negative:enemy",
+        "c07_slow_axis_negative:actor:DEFEND",
+        "c07_slow_axis_negative:actor:EVADE",
+        "c07_slow_axis_negative:actor:skill:迟缓技:0",
+        "c07_slow_axis_negative:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c07_slow_axis_mutation",
+      "seed": 755073,
+      "inputHash": "481cb446387f8129cf1ccb37257cc3b6c5a9c24f4d2284ddb117f9f95ad94d33",
+      "behaviorContract": {
+        "category": "c07_slow_axis",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "缩短迟缓到行动轴交叉前到期，应消除该交叉收益。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c07_slow_axis_mutation:actor:basic:c07_slow_axis_mutation:enemy",
+        "c07_slow_axis_mutation:actor:DEFEND",
+        "c07_slow_axis_mutation:actor:EVADE",
+        "c07_slow_axis_mutation:actor:skill:短迟缓:0",
+        "c07_slow_axis_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c08_resource_block_positive",
+      "seed": 755081,
+      "inputHash": "ac6511fc53e67c669100887db79b03704451b60a115b863efdf9e8d081c31417",
+      "behaviorContract": {
+        "category": "c08_resource_block",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "资源削减使高价值动作不可支付时，应按行为池损失计值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c08_resource_block_positive:actor:basic:c08_resource_block_positive:enemy",
+        "c08_resource_block_positive:actor:DEFEND",
+        "c08_resource_block_positive:actor:EVADE",
+        "c08_resource_block_positive:actor:skill:魂力削减:0",
+        "c08_resource_block_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c08_resource_block_negative",
+      "seed": 755082,
+      "inputHash": "7a16dbd27fb46cd173d11f2535e6efdedfd44ffdb64cb694a29740052afe1478",
+      "behaviorContract": {
+        "category": "c08_resource_block",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "削减后所有有效动作仍可支付时，资源数字本身不得直接计值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c08_resource_block_negative:actor:basic:c08_resource_block_negative:enemy",
+        "c08_resource_block_negative:actor:DEFEND",
+        "c08_resource_block_negative:actor:EVADE",
+        "c08_resource_block_negative:actor:skill:魂力削减:0",
+        "c08_resource_block_negative:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c08_resource_block_mutation",
+      "seed": 755083,
+      "inputHash": "b06b55548266498535a0034487567bc04544e35c3fc2f1aef96ace230bbcfa3e",
+      "behaviorContract": {
+        "category": "c08_resource_block",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "加入能在支付前恢复资源的来源，不得提高资源封锁价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c08_resource_block_mutation:actor:basic:c08_resource_block_mutation:enemy",
+        "c08_resource_block_mutation:actor:DEFEND",
+        "c08_resource_block_mutation:actor:EVADE",
+        "c08_resource_block_mutation:actor:skill:魂力削减:0",
+        "c08_resource_block_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c09_resource_no_consumer_positive",
+      "seed": 755091,
+      "inputHash": "2124809856de30b83153b18511f635483c9ff4c0ec484163446ce805b2f6150a",
+      "behaviorContract": {
+        "category": "c09_resource_no_consumer",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "资源消费者不存在时，资源削减应接近零边际。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c09_resource_no_consumer_positive:actor:basic:c09_resource_no_consumer_positive:enemy",
+        "c09_resource_no_consumer_positive:actor:DEFEND",
+        "c09_resource_no_consumer_positive:actor:EVADE",
+        "c09_resource_no_consumer_positive:actor:skill:魂力削减:0",
+        "c09_resource_no_consumer_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c09_resource_no_consumer_negative",
+      "seed": 755092,
+      "inputHash": "0f4ddc072dcae1a5168c3996227fc5cb082b6bb09cc448ffea43d1743bfe7785",
+      "behaviorContract": {
+        "category": "c09_resource_no_consumer",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "空技能池不能使资源削减获得未来伤害价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c09_resource_no_consumer_negative:actor:basic:c09_resource_no_consumer_negative:enemy",
+        "c09_resource_no_consumer_negative:actor:DEFEND",
+        "c09_resource_no_consumer_negative:actor:EVADE",
+        "c09_resource_no_consumer_negative:actor:skill:魂力削减:0",
+        "c09_resource_no_consumer_negative:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c09_resource_no_consumer_mutation",
+      "seed": 755093,
+      "inputHash": "b0de4f313e556d60af5f8b5496cfa2dc422451fa2626c312652cda0ef97d9206",
+      "behaviorContract": {
+        "category": "c09_resource_no_consumer",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "加入无法被本次削减封锁的低费消费者，不应显著提高削减价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c09_resource_no_consumer_mutation:actor:basic:c09_resource_no_consumer_mutation:enemy",
+        "c09_resource_no_consumer_mutation:actor:DEFEND",
+        "c09_resource_no_consumer_mutation:actor:EVADE",
+        "c09_resource_no_consumer_mutation:actor:skill:魂力削减:0",
+        "c09_resource_no_consumer_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c10_resource_consumers_positive",
+      "seed": 755101,
+      "inputHash": "094bd8625579c12a66679fac158aa6816842e70bbcf912cf6bb860825d27c5dd",
+      "behaviorContract": {
+        "category": "c10_resource_consumers",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "资源削减应同时评估被封锁的攻击与治疗，而非按系别标签加分。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c10_resource_consumers_positive:actor:basic:c10_resource_consumers_positive:enemy",
+        "c10_resource_consumers_positive:actor:DEFEND",
+        "c10_resource_consumers_positive:actor:EVADE",
+        "c10_resource_consumers_positive:actor:skill:魂力削减:0",
+        "c10_resource_consumers_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c10_resource_consumers_negative",
+      "seed": 755102,
+      "inputHash": "8bdf4b357ec12673fd2386ed568d5f25c75dc567eec6089bd36557fc3bbc6fe1",
+      "behaviorContract": {
+        "category": "c10_resource_consumers",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "已知食物不依赖目标资源时，削减魂力不能阻断食物恢复。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c10_resource_consumers_negative:actor:basic:c10_resource_consumers_negative:enemy",
+        "c10_resource_consumers_negative:actor:DEFEND",
+        "c10_resource_consumers_negative:actor:EVADE",
+        "c10_resource_consumers_negative:actor:skill:魂力削减:0",
+        "c10_resource_consumers_negative:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c10_resource_consumers_mutation",
+      "seed": 755103,
+      "inputHash": "9f0625b7fb6ff0b28aea42781fccc5cd3e4b51762cc98430c378dbedfff1740d",
+      "behaviorContract": {
+        "category": "c10_resource_consumers",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "增加多种恢复来源后，资源削减价值必须按支付时序和替代行为重新计算。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c10_resource_consumers_mutation:actor:basic:c10_resource_consumers_mutation:enemy",
+        "c10_resource_consumers_mutation:actor:DEFEND",
+        "c10_resource_consumers_mutation:actor:EVADE",
+        "c10_resource_consumers_mutation:actor:skill:魂力削减:0",
+        "c10_resource_consumers_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c11_resource_recovery_positive",
+      "seed": 755111,
+      "inputHash": "1fb5af8e7c3706e968d7376e8ec821b670d3bea02b314fb309006b19b713843f",
+      "behaviorContract": {
+        "category": "c11_resource_recovery",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "资源恢复解锁高价值动作时，应按新增行为池计值。"
+        ]
+      },
+      "candidateCount": 4,
+      "candidateIds": [
+        "c11_resource_recovery_positive:actor:basic:c11_resource_recovery_positive:enemy",
+        "c11_resource_recovery_positive:actor:DEFEND",
+        "c11_resource_recovery_positive:actor:EVADE",
+        "c11_resource_recovery_positive:actor:skill:魂力恢复:0"
+      ]
+    },
+    {
+      "caseId": "c11_resource_recovery_negative",
+      "seed": 755112,
+      "inputHash": "71e34a9ae978cecb76074aae9202bd94e94eab986c5d528866a65d6bfcb10e4c",
+      "behaviorContract": {
+        "category": "c11_resource_recovery",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "资源已充足时，额外恢复不能重复计算未来动作价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c11_resource_recovery_negative:actor:basic:c11_resource_recovery_negative:enemy",
+        "c11_resource_recovery_negative:actor:DEFEND",
+        "c11_resource_recovery_negative:actor:EVADE",
+        "c11_resource_recovery_negative:actor:skill:魂力恢复:0",
+        "c11_resource_recovery_negative:actor:skill:高威胁攻击:0"
+      ]
+    },
+    {
+      "caseId": "c11_resource_recovery_mutation",
+      "seed": 755113,
+      "inputHash": "568349ac433afaa8ea257e347d0048443da65c1e9b06600036724db1ecf3ca57",
+      "behaviorContract": {
+        "category": "c11_resource_recovery",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "恢复虽解锁动作但行动者会在下次机会前失能时，兑现价值应下降。"
+        ]
+      },
+      "candidateCount": 4,
+      "candidateIds": [
+        "c11_resource_recovery_mutation:actor:basic:c11_resource_recovery_mutation:enemy",
+        "c11_resource_recovery_mutation:actor:DEFEND",
+        "c11_resource_recovery_mutation:actor:EVADE",
+        "c11_resource_recovery_mutation:actor:skill:魂力恢复:0"
+      ]
+    },
+    {
+      "caseId": "c12_defensive_windows_positive",
+      "seed": 755121,
+      "inputHash": "fbe0927aaa95a47e03a131481a316f99d90da999a2589579a4a5b49278a0bba3",
+      "behaviorContract": {
+        "category": "c12_defensive_windows",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "护盾、减伤和禁疗只在真实来袭或治疗窗口内计值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c12_defensive_windows_positive:actor:basic:c12_defensive_windows_positive:enemy",
+        "c12_defensive_windows_positive:actor:DEFEND",
+        "c12_defensive_windows_positive:actor:EVADE",
+        "c12_defensive_windows_positive:actor:skill:及时护盾:0",
+        "c12_defensive_windows_positive:actor:skill:禁疗:0"
+      ]
+    },
+    {
+      "caseId": "c12_defensive_windows_negative",
+      "seed": 755122,
+      "inputHash": "98740b8e8d24adb6023211d6fdbfb17381c663bee54b73686d73f17c16b8aec6",
+      "behaviorContract": {
+        "category": "c12_defensive_windows",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "没有伤害或治疗窗口时，护盾与禁疗不得悬空计值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c12_defensive_windows_negative:actor:basic:c12_defensive_windows_negative:enemy",
+        "c12_defensive_windows_negative:actor:DEFEND",
+        "c12_defensive_windows_negative:actor:EVADE",
+        "c12_defensive_windows_negative:actor:skill:无来袭护盾:0",
+        "c12_defensive_windows_negative:actor:skill:禁疗:0"
+      ]
+    },
+    {
+      "caseId": "c12_defensive_windows_mutation",
+      "seed": 755123,
+      "inputHash": "67848c2dc86b5434b0d1a35b3f88449f4529e881879968bbedca3c2095b832d9",
+      "behaviorContract": {
+        "category": "c12_defensive_windows",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "效果在敌方兑现前到期时，其防护或禁疗价值应归零。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c12_defensive_windows_mutation:actor:basic:c12_defensive_windows_mutation:enemy",
+        "c12_defensive_windows_mutation:actor:DEFEND",
+        "c12_defensive_windows_mutation:actor:EVADE",
+        "c12_defensive_windows_mutation:actor:skill:短期护盾:0",
+        "c12_defensive_windows_mutation:actor:skill:短禁疗:0"
+      ]
+    },
+    {
+      "caseId": "c13_dot_positive",
+      "seed": 755131,
+      "inputHash": "d9338f4044ed293faf39b40fc4c2ae1c9d795be1894ae7f2f8e384b0ca76d354",
+      "behaviorContract": {
+        "category": "c13_dot",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "DOT有足够生命周期且目标未必死时，应累计可兑现tick。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c13_dot_positive:actor:basic:c13_dot_positive:enemy",
+        "c13_dot_positive:actor:DEFEND",
+        "c13_dot_positive:actor:EVADE",
+        "c13_dot_positive:actor:skill:持续伤害技:0",
+        "c13_dot_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c13_dot_negative",
+      "seed": 755132,
+      "inputHash": "20f75cba8209cd03c40391932fff1f157d66e51d315b6834818e423e0d5865ef",
+      "behaviorContract": {
+        "category": "c13_dot",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "目标已被确定性即时伤害终结时，额外DOT不得继续按完整持续伤害计值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c13_dot_negative:actor:basic:c13_dot_negative:enemy",
+        "c13_dot_negative:actor:DEFEND",
+        "c13_dot_negative:actor:EVADE",
+        "c13_dot_negative:actor:skill:持续伤害技:0",
+        "c13_dot_negative:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c13_dot_mutation",
+      "seed": 755133,
+      "inputHash": "c930a6fddeccdfec22059d9886dd8fc43664188a8f2c290ba67bcc320aafe419",
+      "behaviorContract": {
+        "category": "c13_dot",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "同源同强度DOT重复覆盖只计算新增tick或刷新窗口。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c13_dot_mutation:actor:basic:c13_dot_mutation:enemy",
+        "c13_dot_mutation:actor:DEFEND",
+        "c13_dot_mutation:actor:EVADE",
+        "c13_dot_mutation:actor:skill:持续伤害技:0",
+        "c13_dot_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c14_summon_positive",
+      "seed": 755141,
+      "inputHash": "70b069e5f19b1486198c05cc9ef2c1c17cb1d64f69e190f2c8fbaa53dc37b264",
+      "behaviorContract": {
+        "category": "c14_summon",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "召唤在截止前获得真实行动或保护窗口时，按召唤行为池计值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c14_summon_positive:actor:basic:c14_summon_positive:enemy",
+        "c14_summon_positive:actor:DEFEND",
+        "c14_summon_positive:actor:EVADE",
+        "c14_summon_positive:actor:skill:协同召唤:0",
+        "c14_summon_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c14_summon_negative",
+      "seed": 755142,
+      "inputHash": "0c1a55e275f2ca9897f4c789b32e72b355f374de54dfa29d8acba9399baaf269",
+      "behaviorContract": {
+        "category": "c14_summon",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "宿主在召唤行动前必然失能时，不得计算不存在的召唤窗口。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c14_summon_negative:actor:basic:c14_summon_negative:enemy",
+        "c14_summon_negative:actor:DEFEND",
+        "c14_summon_negative:actor:EVADE",
+        "c14_summon_negative:actor:skill:过期召唤:0",
+        "c14_summon_negative:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c14_summon_mutation",
+      "seed": 755143,
+      "inputHash": "f0765c0da0d082bf01c50c7986defb3edf6b6925b14048cc5df396063ab3aa69",
+      "behaviorContract": {
+        "category": "c14_summon",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "把协同召唤改为护卫时，价值应从攻击窗口转向实际承伤窗口。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c14_summon_mutation:actor:basic:c14_summon_mutation:enemy",
+        "c14_summon_mutation:actor:DEFEND",
+        "c14_summon_mutation:actor:EVADE",
+        "c14_summon_mutation:actor:skill:护卫召唤:0",
+        "c14_summon_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c15_information_positive",
+      "seed": 755151,
+      "inputHash": "ace22dd2167afd6c73e4d17ed7281cdc503f1930024ea4ef5264ad68aeb9972a",
+      "behaviorContract": {
+        "category": "c15_information",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "公开信息能改变后续最优行为时，信息价值等于减少的决策后悔。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c15_information_positive:actor:basic:c15_information_positive:enemy",
+        "c15_information_positive:actor:DEFEND",
+        "c15_information_positive:actor:EVADE",
+        "c15_information_positive:actor:skill:共享视野:0",
+        "c15_information_positive:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c15_information_negative",
+      "seed": 755152,
+      "inputHash": "c3f0d8eb1b3d860783f7bdff5907606724b61b6327736f3c5ceba0b94afadeb4",
+      "behaviorContract": {
+        "category": "c15_information",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "所有认知假设下选择相同时，额外信息价值应为零。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c15_information_negative:actor:basic:c15_information_negative:enemy",
+        "c15_information_negative:actor:DEFEND",
+        "c15_information_negative:actor:EVADE",
+        "c15_information_negative:actor:skill:共享视野:0",
+        "c15_information_negative:actor:skill:必中攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c15_information_mutation",
+      "seed": 755153,
+      "inputHash": "d60b3d4536fda986d07709b8c34fcf01de8a3ce27dc962517fb9800e991c5764",
+      "behaviorContract": {
+        "category": "c15_information",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "提高现有认知置信度不得提高同一信息揭示的边际。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "c15_information_mutation:actor:basic:c15_information_mutation:enemy",
+        "c15_information_mutation:actor:DEFEND",
+        "c15_information_mutation:actor:EVADE",
+        "c15_information_mutation:actor:skill:短共享视野:0",
+        "c15_information_mutation:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "c16_objectives_positive",
+      "seed": 755161,
+      "inputHash": "40fbba1d166a14715058bab87d1b7601b2c0ab8bae23efbbb74dab2a80116171",
+      "behaviorContract": {
+        "category": "c16_objectives",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "压制目标达到30%后，超过阈值的额外伤害只在其他目标仍要求击杀时继续计值。"
+        ]
+      },
+      "candidateCount": 6,
+      "candidateIds": [
+        "c16_objectives_positive:actor:basic:c16_objectives_positive:enemy",
+        "c16_objectives_positive:actor:DEFEND",
+        "c16_objectives_positive:actor:EVADE",
+        "c16_objectives_positive:actor:skill:高威胁攻击:0",
+        "c16_objectives_positive:actor:skill:硬控制:0",
+        "c16_objectives_positive:actor:skill:守护护盾:0"
+      ]
+    },
+    {
+      "caseId": "c16_objectives_negative",
+      "seed": 755162,
+      "inputHash": "d1ad9d31b84069c2c14e362dfea36915cb8e9169086ccc2af69201c859d898dd",
+      "behaviorContract": {
+        "category": "c16_objectives",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "坚持回合目标下，生存与阻断风险优先于无助于守成的过量伤害。"
+        ]
+      },
+      "candidateCount": 6,
+      "candidateIds": [
+        "c16_objectives_negative:actor:basic:c16_objectives_negative:enemy",
+        "c16_objectives_negative:actor:DEFEND",
+        "c16_objectives_negative:actor:EVADE",
+        "c16_objectives_negative:actor:skill:高威胁攻击:0",
+        "c16_objectives_negative:actor:skill:硬控制:0",
+        "c16_objectives_negative:actor:skill:守护护盾:0"
+      ]
+    },
+    {
+      "caseId": "c16_objectives_mutation",
+      "seed": 755163,
+      "inputHash": "a9b210d625790d9d3808dd35f2ec517afed3bb9bcf33b2e4d9112a3ba13e2145",
+      "behaviorContract": {
+        "category": "c16_objectives",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "将压制目标变为击杀目标后，阈值以下伤害仍可继续贡献终局价值。"
+        ]
+      },
+      "candidateCount": 6,
+      "candidateIds": [
+        "c16_objectives_mutation:actor:basic:c16_objectives_mutation:enemy",
+        "c16_objectives_mutation:actor:DEFEND",
+        "c16_objectives_mutation:actor:EVADE",
+        "c16_objectives_mutation:actor:skill:高威胁攻击:0",
+        "c16_objectives_mutation:actor:skill:硬控制:0",
+        "c16_objectives_mutation:actor:skill:守护护盾:0"
+      ]
+    },
+    {
+      "caseId": "x01_resource_recovery_timing_three_factor_1",
+      "seed": 755014,
+      "inputHash": "85d8be1b9b852fe4f34c23425f8ec36b18d414c02bc910b50b6a8cf184cea9a3",
+      "behaviorContract": {
+        "category": "x01_resource_recovery_timing",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [
+          "根据三因素共同变化选择"
+        ],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [
+          "只看单一标签固定加分"
+        ],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "资源削减、恢复来源与支付时序必须共同决定是否真实封锁动作。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "x01_resource_recovery_timing_three_factor_1:actor:basic:x01_resource_recovery_timing_three_factor_1:enemy",
+        "x01_resource_recovery_timing_three_factor_1:actor:DEFEND",
+        "x01_resource_recovery_timing_three_factor_1:actor:EVADE",
+        "x01_resource_recovery_timing_three_factor_1:actor:skill:魂力削减:0",
+        "x01_resource_recovery_timing_three_factor_1:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "x02_slow_axis_duration_three_factor_2",
+      "seed": 755024,
+      "inputHash": "af61dde36615909135eed878aae29f58281c85094a4a58cf8432be7281cd0486",
+      "behaviorContract": {
+        "category": "x02_slow_axis_duration",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [
+          "根据三因素共同变化选择"
+        ],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [
+          "只看单一标签固定加分"
+        ],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "迟缓只有在持续期内造成行动轴交叉才有机会价值。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "x02_slow_axis_duration_three_factor_2:actor:basic:x02_slow_axis_duration_three_factor_2:enemy",
+        "x02_slow_axis_duration_three_factor_2:actor:DEFEND",
+        "x02_slow_axis_duration_three_factor_2:actor:EVADE",
+        "x02_slow_axis_duration_three_factor_2:actor:skill:迟缓技:0",
+        "x02_slow_axis_duration_three_factor_2:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "x03_defense_multihit_reflect_three_factor_3",
+      "seed": 755034,
+      "inputHash": "d4bbbb10c676d12d3afdae7df556e31bb3d23fcfa5a23632812b1da6ae0cd4d9",
+      "behaviorContract": {
+        "category": "x03_defense_multihit_reflect",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [
+          "根据三因素共同变化选择"
+        ],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [
+          "只看单一标签固定加分"
+        ],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "防御、多段与反伤必须按每段实际承伤和反伤来源统一结算。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "x03_defense_multihit_reflect_three_factor_3:actor:basic:x03_defense_multihit_reflect_three_factor_3:enemy",
+        "x03_defense_multihit_reflect_three_factor_3:actor:DEFEND",
+        "x03_defense_multihit_reflect_three_factor_3:actor:EVADE",
+        "x03_defense_multihit_reflect_three_factor_3:actor:skill:反伤姿态:0",
+        "x03_defense_multihit_reflect_three_factor_3:actor:skill:低威胁攻击:0"
+      ]
+    },
+    {
+      "caseId": "x04_control_ally_dot_three_factor_4",
+      "seed": 755044,
+      "inputHash": "07926791678e06cfdf565b610fd84f83539c11541865d76e5308894ad2cfc7e0",
+      "behaviorContract": {
+        "category": "x04_control_ally_dot",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [
+          "根据三因素共同变化选择"
+        ],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [
+          "只看单一标签固定加分"
+        ],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "控制价值必须结合队友顺序和已有DOT是否会在窗口内兑现。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "x04_control_ally_dot_three_factor_4:actor:basic:x04_control_ally_dot_three_factor_4:enemy",
+        "x04_control_ally_dot_three_factor_4:actor:DEFEND",
+        "x04_control_ally_dot_three_factor_4:actor:EVADE",
+        "x04_control_ally_dot_three_factor_4:actor:skill:硬控制:0",
+        "x04_control_ally_dot_three_factor_4:actor:skill:持续伤害技:0"
+      ]
+    },
+    {
+      "caseId": "x05_summon_host_deadline_three_factor_5",
+      "seed": 755054,
+      "inputHash": "2b7876da423d5c9f5d4241b42203de4976cb88c1e2bc1108e7a62449407aebdb",
+      "behaviorContract": {
+        "category": "x05_summon_host_deadline",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [
+          "根据三因素共同变化选择"
+        ],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [
+          "只看单一标签固定加分"
+        ],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "召唤价值受宿主死亡、首个窗口和截止回合共同约束。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "x05_summon_host_deadline_three_factor_5:actor:basic:x05_summon_host_deadline_three_factor_5:enemy",
+        "x05_summon_host_deadline_three_factor_5:actor:DEFEND",
+        "x05_summon_host_deadline_three_factor_5:actor:EVADE",
+        "x05_summon_host_deadline_three_factor_5:actor:skill:截止召唤:0",
+        "x05_summon_host_deadline_three_factor_5:actor:skill:标准攻击技:0"
+      ]
+    },
+    {
+      "caseId": "x06_antiheal_food_crisis_three_factor_6",
+      "seed": 755064,
+      "inputHash": "314a51c32330f03fe3070a24bcc65d99e6467af1fc7b7dbab6124398fefab9c9",
+      "behaviorContract": {
+        "category": "x06_antiheal_food_crisis",
+        "mechanicalLegalSet": [
+          "BASIC_ATTACK",
+          "DEFEND",
+          "EVADE",
+          "RELEASE_SKILL"
+        ],
+        "reasonableTacticalSet": [
+          "根据三因素共同变化选择"
+        ],
+        "conditionallyReasonableSet": [],
+        "clearlyCounterintuitiveSet": [
+          "只看单一标签固定加分"
+        ],
+        "allowedFiniteErrors": [],
+        "unknowableFromPublicInformation": [],
+        "directionalRelations": [
+          "禁疗面对治疗、食物库存和危急程度时只计算被实际压低的恢复。"
+        ]
+      },
+      "candidateCount": 5,
+      "candidateIds": [
+        "x06_antiheal_food_crisis_three_factor_6:actor:basic:x06_antiheal_food_crisis_three_factor_6:enemy",
+        "x06_antiheal_food_crisis_three_factor_6:actor:DEFEND",
+        "x06_antiheal_food_crisis_three_factor_6:actor:EVADE",
+        "x06_antiheal_food_crisis_three_factor_6:actor:skill:禁疗:0",
+        "x06_antiheal_food_crisis_three_factor_6:actor:skill:标准攻击技:0"
+      ]
+    }
+  ]
+}
