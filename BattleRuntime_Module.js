@@ -26,6 +26,25 @@
     'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP',
   ]);
   const actionRoles = Object.freeze(['ACTIVE', 'REACTION', 'COUNTER', 'ASSIST', 'STATE_TICK']);
+  const opportunityGrantTypes = Object.freeze([
+    'NATURAL_ACTION', 'COUNTER_WINDOW', 'DODGE_WINDOW', 'DEFEND_WINDOW',
+    'GUARD_INTERCEPT', 'FOLLOW_UP', 'EXTRA_ACTION', 'ASSIST_WINDOW', 'SELF_TRIGGER',
+  ]);
+  const resourceTimelineOperations = Object.freeze([
+    'PAY', 'RESTORE', 'REDUCE', 'LOCK', 'UNLOCK', 'REFUND',
+    'NATURAL_RECOVERY', 'SUSTAIN_COST', 'ITEM_CONSUME',
+  ]);
+  const resourcePhasePriority = Object.freeze({
+    RESTORE: 10,
+    NATURAL_RECOVERY: 10,
+    REFUND: 15,
+    UNLOCK: 20,
+    REDUCE: 30,
+    LOCK: 35,
+    PAY: 40,
+    SUSTAIN_COST: 45,
+    ITEM_CONSUME: 50,
+  });
   const sideEffectTriggerSet = new Set(['效果生效后', '命中后', '回合结束时', '效果结束后']);
   const sideEffectTargetSet = new Set(['技能释放者', '效果承受者', '双方']);
   const sideEffectStatusMap = Object.freeze({
@@ -821,7 +840,147 @@
     if (!runtime.reactionGrantIds || typeof runtime.reactionGrantIds !== 'object') runtime.reactionGrantIds = {};
     if (!runtime.counterCount || typeof runtime.counterCount !== 'object') runtime.counterCount = {};
     if (!runtime.reactionFatigue || typeof runtime.reactionFatigue !== 'object') runtime.reactionFatigue = {};
+    if (!runtime.opportunityGraph || typeof runtime.opportunityGraph !== 'object') runtime.opportunityGraph = {};
+    if (!Array.isArray(runtime.resourceTimeline)) runtime.resourceTimeline = [];
+    if (!runtime.scheduleDescriptors || typeof runtime.scheduleDescriptors !== 'object') runtime.scheduleDescriptors = {};
+    runtime.ledgerSequence = Math.max(0, Number(runtime.ledgerSequence || 0));
+    runtime.resourceEffectSequence = Math.max(0, Number(runtime.resourceEffectSequence || 0));
     return runtime;
+  }
+
+  function inferOpportunityGrantType(input = {}) {
+    const explicit = String(input?.grantType || '').trim().toUpperCase();
+    if (opportunityGrantTypes.includes(explicit)) return explicit;
+    const nodeKind = String(input?.nodeKind || 'ACTIVE').trim().toUpperCase();
+    const actionRole = normalizeActionRole(input?.actionRole || 'ACTIVE');
+    if (nodeKind === 'COUNTER' || actionRole === 'COUNTER') return 'COUNTER_WINDOW';
+    if (nodeKind === 'REACTION' || actionRole === 'REACTION') return 'DEFEND_WINDOW';
+    if (nodeKind === 'ASSIST' || actionRole === 'ASSIST') return 'ASSIST_WINDOW';
+    if (nodeKind === 'CONTINUATION') return 'FOLLOW_UP';
+    return 'NATURAL_ACTION';
+  }
+
+  function normalizeOpportunityRecord(input = {}) {
+    const opportunityId = String(input?.opportunityId || input?.grantId || '').trim();
+    const ownerId = String(input?.ownerId || '').trim();
+    if (!opportunityId || !ownerId) throw new Error('OPPORTUNITY_SNAPSHOT_INCONSISTENT');
+    const grantType = inferOpportunityGrantType(input);
+    const sourceActorId = String(input?.sourceActorId || '').trim();
+    if (sourceActorId === ownerId && grantType !== 'SELF_TRIGGER') {
+      throw new Error('REACTION_SELF_SOURCE_INVALID');
+    }
+    return {
+      opportunityId,
+      ownerId,
+      role: normalizeActionRole(input?.role || input?.actionRole || 'ACTIVE'),
+      sourceActorId,
+      sourceActionId: String(input?.sourceActionId || '').trim(),
+      grantType,
+      validTargetIds: [...new Set((Array.isArray(input?.validTargetIds) ? input.validTargetIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean))],
+      createdAtSequence: Math.max(0, Number(input?.createdAtSequence || input?.actionSequence || 0)),
+      expiresAtSequence: Math.max(0, Number(input?.expiresAtSequence || 0)),
+      status: String(input?.status || 'PENDING').trim().toUpperCase() || 'PENDING',
+      consumedByActionId: String(input?.consumedByActionId || '').trim(),
+      lostReason: String(input?.lostReason || '').trim(),
+    };
+  }
+
+  function opportunitySnapshotFromRuntime(combatData = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    return Object.values(runtime.opportunityGraph || {})
+      .map(record => cloneValue(record))
+      .sort((left, right) =>
+        Number(left?.createdAtSequence || 0) - Number(right?.createdAtSequence || 0) ||
+        String(left?.opportunityId || '').localeCompare(String(right?.opportunityId || ''))
+      );
+  }
+
+  function resourceTimelineFromRuntime(combatData = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    return (Array.isArray(runtime.resourceTimeline) ? runtime.resourceTimeline : [])
+      .map(event => cloneValue(event))
+      .sort((left, right) =>
+        Number(left?.round || 0) - Number(right?.round || 0) ||
+        Number(left?.opportunitySequence || 0) - Number(right?.opportunitySequence || 0) ||
+        Number(left?.actionSequence || 0) - Number(right?.actionSequence || 0) ||
+        Number(left?.phasePriority || 0) - Number(right?.phasePriority || 0) ||
+        Number(left?.effectSequence || 0) - Number(right?.effectSequence || 0) ||
+        String(left?.eventId || '').localeCompare(String(right?.eventId || ''))
+      );
+  }
+
+  function scheduledEventsFromRuntime(combatData = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    return Object.values(runtime.scheduleDescriptors || {})
+      .map(event => cloneValue(event))
+      .sort((left, right) =>
+        Number(left?.creationSequence || 0) - Number(right?.creationSequence || 0) ||
+        String(left?.descriptorId || '').localeCompare(String(right?.descriptorId || ''))
+      );
+  }
+
+  function buildRuntimeDecisionSnapshot(combatData = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    return Object.freeze({
+      schemaVersion: '8.3-runtime-snapshot-1',
+      opportunitySnapshot: Object.freeze(opportunitySnapshotFromRuntime(combatData)),
+      resourceTimeline: Object.freeze(resourceTimelineFromRuntime(combatData)),
+      scheduledEvents: Object.freeze(scheduledEventsFromRuntime(combatData)),
+      firstTerminalSequence: runtime.firstTerminalSequence ? cloneValue(runtime.firstTerminalSequence) : null,
+    });
+  }
+
+  function buildDecisionRuntimeSnapshot(combatData = {}, actorId = '', actionOpportunity = {}) {
+    const snapshot = cloneValue(buildRuntimeDecisionSnapshot(combatData));
+    const opportunityId = String(
+      actionOpportunity?.opportunityId ||
+      actionOpportunity?.grantId ||
+      `decision:${Number(combatData?.回合 || 0)}:${actorId}`,
+    ).trim();
+    if (!snapshot.opportunitySnapshot.some(record => String(record?.opportunityId || '').trim() === opportunityId)) {
+      snapshot.opportunitySnapshot.push(normalizeOpportunityRecord({
+        ...actionOpportunity,
+        opportunityId,
+        ownerId: actorId,
+        role: actionOpportunity?.role || 'ACTIVE',
+        sourceActorId: String(actionOpportunity?.sourceActorId || '').trim(),
+        sourceActionId: actionOpportunity?.sourceActionId || '',
+        grantType: actionOpportunity?.grantType,
+        status: 'PENDING',
+      }));
+    }
+    return Object.freeze(snapshot);
+  }
+
+  function buildNoOpRuntimeSnapshot(runtimeSnapshot = {}, opportunityId = '') {
+    const source = cloneValue(runtimeSnapshot && typeof runtimeSnapshot === 'object' ? runtimeSnapshot : {});
+    const wantedId = String(opportunityId || '').trim();
+    const opportunities = Array.isArray(source.opportunitySnapshot) ? source.opportunitySnapshot : [];
+    let matched = false;
+    source.opportunitySnapshot = opportunities.map(record => {
+      if (String(record?.opportunityId || '').trim() !== wantedId) return record;
+      if (!['PENDING', 'EXECUTING'].includes(String(record?.status || '').trim().toUpperCase())) {
+        throw new Error('OPPORTUNITY_SNAPSHOT_INCONSISTENT');
+      }
+      matched = true;
+      return {
+        ...record,
+        status: 'CONSUMED',
+        consumedByActionId: `NO_OP:${wantedId}`,
+        lostReason: '',
+      };
+    });
+    if (!matched) throw new Error('OPPORTUNITY_SNAPSHOT_INCONSISTENT');
+    source.noOp = {
+      opportunityId: wantedId,
+      consumesOpportunity: true,
+      paysResources: false,
+      establishesStance: false,
+      triggersActionReaction: false,
+    };
+    return Object.freeze(source);
   }
 
   function getBattleSnapshot(combatData = {}) {
@@ -967,8 +1126,23 @@
     const describeActor = typeof options?.describeActor === 'function'
       ? options.describeActor
       : entry => String(entry?.char?.name || entry?.char?.名称 || '').trim();
+    const describeActorId = typeof options?.describeActorId === 'function'
+      ? options.describeActorId
+      : entry => String(
+        entry?.char?.id ||
+        entry?.char?.name ||
+        entry?.char?.名称 ||
+        entry?.id ||
+        entry?.name ||
+        entry?.名称 ||
+        '',
+      ).trim();
     const onTrace = typeof options?.onTrace === 'function' ? options.onTrace : () => {};
     const onFatal = typeof options?.onFatal === 'function' ? options.onFatal : () => {};
+    const onOpportunityChange = typeof options?.onOpportunityChange === 'function'
+      ? options.onOpportunityChange
+      : () => {};
+    const opportunities = new Map();
     let insertionSequence = Math.max(0, Number(options?.initialInsertionSequence || 0));
     let actionSequence = Math.max(0, Number(options?.initialActionSequence || 0));
     let fatal = null;
@@ -979,6 +1153,36 @@
       Number(left.phasePriority || 0) - Number(right.phasePriority || 0) ||
       Number(left.insertionSequence || 0) - Number(right.insertionSequence || 0);
     const recordTrace = (state, node, detail = {}) => {
+      const opportunity = opportunities.get(String(node?.opportunityId || '').trim());
+      if (opportunity) {
+        let opportunityChanged = false;
+        if (state === 'EXECUTING' && opportunity.status !== 'EXECUTING') {
+          opportunity.status = 'EXECUTING';
+          opportunityChanged = true;
+        }
+        if (['EXECUTED', 'COMPLETED'].includes(state)) {
+          opportunity.status = 'CONSUMED';
+          opportunity.consumedByActionId = String(
+            detail?.actionId ||
+            detail?.reactionEventId ||
+            node?.sourceActionId ||
+            `grant:${node?.grantId || node?.opportunityId || ''}`,
+          ).trim();
+          opportunity.lostReason = '';
+          opportunityChanged = true;
+        }
+        if (state === 'CANCELLED') {
+          opportunity.status = 'LOST';
+          opportunity.lostReason = String(detail?.reason || 'CANCELLED').trim();
+          opportunityChanged = true;
+        }
+        if (state === 'FATAL') {
+          opportunity.status = 'FATAL';
+          opportunity.lostReason = String(detail?.code || 'FATAL').trim();
+          opportunityChanged = true;
+        }
+        if (opportunityChanged) onOpportunityChange(cloneValue(opportunity));
+      }
       onTrace({
         state,
         round: Number(node?.round || round || 0),
@@ -995,6 +1199,7 @@
         sourceActionId: String(node?.sourceActionId || '').trim(),
         opportunityId: String(node?.opportunityId || '').trim(),
         opportunitySequence: Math.max(0, Number(node?.opportunitySequence || 0)),
+        grantType: String(node?.grantType || '').trim(),
         ...detail,
       });
     };
@@ -1042,9 +1247,28 @@
         actionRole: normalizeRole(input.actionRole || 'ACTIVE'),
         actorControl: String(input.actorControl || input?.actorEntry?.__actorControl || 'AI').trim() || 'AI',
         sourceActionId: String(input.sourceActionId || '').trim(),
+        sourceActorId: String(input.sourceActorId || '').trim(),
+        grantType: inferOpportunityGrantType(input),
+        validTargetIds: [...new Set((Array.isArray(input.validTargetIds) ? input.validTargetIds : [])
+          .map(value => String(value || '').trim())
+          .filter(Boolean))],
+        expiresAtSequence: Math.max(0, Number(input.expiresAtSequence || 0)),
         actionName: normalizeActionName(input.actionName || ''),
         execute: typeof input.execute === 'function' ? input.execute : null,
       };
+      if (node.nodeKind !== 'PRIMARY_SETTLEMENT') {
+        const opportunity = normalizeOpportunityRecord({
+          ...node,
+          ownerId: describeActorId(node.actorEntry),
+          role: node.actionRole,
+          createdAtSequence: node.actionSequence,
+        });
+        if (opportunities.has(opportunity.opportunityId)) {
+          return fail('ACTION_GRANT_DUPLICATE', input, { grantId, opportunityId: opportunity.opportunityId });
+        }
+        opportunities.set(opportunity.opportunityId, opportunity);
+        onOpportunityChange(cloneValue(opportunity));
+      }
       pending.push(node);
       recordTrace('ENQUEUED', node);
       return true;
@@ -1064,6 +1288,8 @@
         grantId: String(naturalOpportunity?.grantId || opportunityId).trim(),
         opportunityId,
         opportunitySequence: Math.max(1, Number(naturalOpportunity?.sequence || index + 1)),
+        grantType: 'NATURAL_ACTION',
+        sourceActorId: '',
       });
     });
     return {
@@ -1081,6 +1307,14 @@
       },
       hasPending(predicate) {
         return typeof predicate === 'function' && pending.some(predicate);
+      },
+      opportunitySnapshot() {
+        return [...opportunities.values()]
+          .map(record => cloneValue(record))
+          .sort((left, right) =>
+            Number(left?.createdAtSequence || 0) - Number(right?.createdAtSequence || 0) ||
+            String(left?.opportunityId || '').localeCompare(String(right?.opportunityId || ''))
+          );
       },
       get fatal() { return fatal; },
       get pendingCount() { return pending.length; },
@@ -1122,6 +1356,14 @@
         opportunityId: `natural:${Number(round || 0)}:${entry?.side || ''}:${previewRuntime.unitName(unit) || 'unit'}:${index + 1}`,
         grantId: `natural:${Number(round || 0)}:${entry?.side || ''}:${previewRuntime.unitName(unit) || 'unit'}:${index + 1}`,
         sequence: index + 1,
+        ownerId: previewRuntime.unitId(unit),
+        role: 'ACTIVE',
+        sourceActorId: '',
+        sourceActionId: '',
+        grantType: 'NATURAL_ACTION',
+        validTargetIds: [],
+        createdAtSequence: index + 1,
+        expiresAtSequence: 0,
         status: 'PENDING',
         consumedByActionId: '',
         fusionKey: '',
@@ -2540,6 +2782,85 @@
     else trace.push(payload);
     return existing || payload;
   }
+  function inferResourceTimelineOperation(event = {}) {
+    const kind = String(event?.eventKind || '').trim();
+    const ruleCode = String(event?.ruleCode || event?.meta?.reasonCode || '').trim().toUpperCase();
+    if (kind === 'action_cost') return 'PAY';
+    if (kind === 'item_consume') return 'ITEM_CONSUME';
+    if (/RESOURCE_UNLOCK/.test(ruleCode)) return 'UNLOCK';
+    if (
+      event?.effectPrototype === '资源锁定' ||
+      /RESOURCE_LOCK/.test(ruleCode)
+    ) {
+      return /UNLOCK|EXPIRE|REMOVE/.test(ruleCode) ? 'UNLOCK' : 'LOCK';
+    }
+    if (kind !== 'resource_change' && kind !== 'round_recover') return '';
+    if (/SUSTAIN_RESOURCE_COST/.test(ruleCode)) return 'SUSTAIN_COST';
+    if (/ROUND_END_NATURAL_RECOVERY/.test(ruleCode)) return 'NATURAL_RECOVERY';
+    if (/REFUND|RETURN/.test(ruleCode)) return 'REFUND';
+    const delta = Number(event?.meta?.delta ?? event?.delta ?? 0);
+    return delta >= 0 ? 'RESTORE' : 'REDUCE';
+  }
+
+  function appendRuntimeEventContracts(combatData = {}, event = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    const operation = inferResourceTimelineOperation(event);
+    if (operation && resourceTimelineOperations.includes(operation)) {
+      const rawDelta = Number(event?.meta?.delta ?? event?.delta);
+      const amount = Math.max(0, Number(event?.meta?.amount ?? event?.amount ?? event?.count ?? 0));
+      const delta = Number.isFinite(rawDelta)
+        ? rawDelta
+        : ['PAY', 'REDUCE', 'SUSTAIN_COST', 'ITEM_CONSUME'].includes(operation)
+          ? -amount
+          : ['RESTORE', 'REFUND', 'NATURAL_RECOVERY'].includes(operation)
+            ? amount
+            : 0;
+      const resource = String(
+        event?.meta?.resource ||
+        event?.resource ||
+        persistentResourceLabel(event?.meta?.resourceKey || event?.resourceKey || '') ||
+        (operation === 'ITEM_CONSUME' ? 'ITEM' : ''),
+      ).trim();
+      runtime.resourceTimeline.push({
+        eventId: String(event?.eventId || '').trim(),
+        actorId: String(event?.targetId || event?.actorId || '').trim(),
+        resource,
+        delta,
+        operation,
+        sourceEventId: String(event?.sourceActionId || event?.eventId || '').trim(),
+        round: Math.max(0, Number(event?.round || 0)),
+        opportunitySequence: Math.max(0, Number(event?.opportunitySequence || event?.meta?.opportunitySequence || 0)),
+        actionSequence: Math.max(0, Number(event?.meta?.actionSequence || event?.sequence || 0)),
+        phasePriority: Math.max(0, Number(event?.meta?.phasePriority || resourcePhasePriority[operation] || 40)),
+        effectSequence: ++runtime.resourceEffectSequence,
+      });
+    }
+    const scheduled = event?.meta?.scheduled;
+    const eventKind = String(event?.eventKind || '').trim();
+    if ((scheduled && typeof scheduled === 'object') || ['charge_start', 'charge_progress'].includes(eventKind)) {
+      const descriptorId = String(
+        scheduled?.descriptorId ||
+        `${event?.eventId || 'schedule'}:${event?.meta?.scheduledIndex ?? 0}`,
+      ).trim();
+      runtime.scheduleDescriptors[descriptorId] = {
+        descriptorId,
+        ownerId: String(scheduled?.targetId || scheduled?.actorId || event?.targetId || event?.actorId || '').trim(),
+        expectedGrantType: String(
+          scheduled?.expectedGrantType ||
+          (scheduled?.type === 'SUMMON_CREATE' ? 'ASSIST_WINDOW' : eventKind.startsWith('charge_') ? 'NATURAL_ACTION' : ''),
+        ).trim(),
+        creationSequence: Math.max(0, Number(event?.sequence || 0)),
+        expirySequence: Math.max(
+          0,
+          Number(scheduled?.expirySequence || 0),
+          Number(event?.sequence || 0) + Math.max(0, Number(scheduled?.delay || scheduled?.duration || 0)),
+        ),
+        sourceEventId: String(event?.eventId || '').trim(),
+        eventType: String(scheduled?.type || eventKind).trim(),
+      };
+    }
+  }
+
   function writeLedgerEvent(combatData = {}, payload = {}) {
     let rootData = combatData || {};
     const visited = new Set();
@@ -2548,6 +2869,8 @@
       rootData = rootData.__父级战斗数据;
     }
     const ledger = ensureLedger(rootData);
+    const runtimeState = ensureCombatRuntime(rootData);
+    const ledgerSequence = ++runtimeState.ledgerSequence;
     if (combatData && rootData !== combatData) {
       const childLedger = Array.isArray(combatData.__battleEventLedger) ? combatData.__battleEventLedger : [];
       const existingEventIds = new Set(ledger.map(item => String(item?.eventId || '').trim()).filter(Boolean));
@@ -2692,6 +3015,7 @@
     const actorId = String(payload.actorId || previewRuntime.unitId(actorUnit) || actorName).trim();
     const event = {
       eventId: String(payload.eventId || nextRuntimeId('battle-ledger')).trim(),
+      sequence: ledgerSequence,
       eventKind,
       round,
       actorId,
@@ -2845,6 +3169,7 @@
       同步回合末状态聚合节点(combatData?.__父级战斗数据 || combatData, event, traceNode);
     }
     ledger.push(event);
+    appendRuntimeEventContracts(rootData, event);
     return event;
   }
 
@@ -3461,6 +3786,13 @@
         },
       }, adapterOptions);
       runtime.objectiveResolutionEventId = String(event?.eventId || '').trim();
+      runtime.firstTerminalSequence = {
+        eventId: String(event?.eventId || '').trim(),
+        sequence: Math.max(0, Number(event?.sequence || 0)),
+        round: Math.max(0, Number(event?.round || combatData?.回合 || 0)),
+        winner: String(resolution?.winner || 'unfinished').trim(),
+        terminalReason: String(resolution?.terminalReason || '').trim(),
+      };
     }
     return resolution;
   }
@@ -5799,6 +6131,12 @@
     fillObjectiveDamageBaselines(combatData);
     const runtime = ensureCombatRuntime(combatData);
     runtime.actionQueueTrace = [];
+    runtime.opportunityGraph = {};
+    runtime.resourceTimeline = [];
+    runtime.scheduleDescriptors = {};
+    runtime.ledgerSequence = 0;
+    runtime.resourceEffectSequence = 0;
+    delete runtime.firstTerminalSequence;
     runtime.decisionSeed = seed;
     const invalidRuntime = validateBattleRuntime(combatData);
     if (invalidRuntime) {
@@ -5926,10 +6264,14 @@
           round: combatData.回合,
           initialEntries: naturalEntries,
           describeActor: entry => previewRuntime.unitName(entry?.char),
+          describeActorId: entry => previewRuntime.unitId(entry?.char),
           normalizeRole: normalizeActionRole,
           normalizeActionName: normalizeActionDisplayName,
           onTrace: event => queueTrace.push(cloneAuditSnapshot(event)),
           onFatal: fatal => { runtime.actionQueueFatal = cloneAuditSnapshot(fatal); },
+          onOpportunityChange: opportunity => {
+            runtime.opportunityGraph[opportunity.opportunityId] = cloneAuditSnapshot(opportunity);
+          },
         });
         const cancelQueueForTerminal = () => {
           queue.cancelPending('BATTLE_TERMINAL').forEach(cancelledNode => {
@@ -6708,6 +7050,12 @@
               nodeKind: 'ASSIST',
               actionRole: 'ASSIST',
               sourceActionId: String(sourceActionId || '').trim(),
+              sourceActorId: previewRuntime.unitId(summon?.__宿主 || host),
+              grantType: 'ASSIST_WINDOW',
+              validTargetIds: [...new Set([
+                ...preferredTargetIds,
+                focusTargetId,
+              ].filter(Boolean))],
               actionName: '召唤协同',
               state: {
                 hostActorId: previewRuntime.unitId(summon?.__宿主 || host),
@@ -7102,6 +7450,9 @@
                   nodeKind: 'COUNTER',
                   actionRole: 'COUNTER',
                   sourceActionId: settlement.actionEvent.actionId,
+                  sourceActorId: previewRuntime.unitId(actor),
+                  grantType: 'COUNTER_WINDOW',
+                  validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
                   state: {
                     sourceActorId: previewRuntime.unitId(actor),
                     sourceActorName: previewRuntime.unitName(actor),
@@ -7134,6 +7485,7 @@
                   nodeKind: 'CONTINUATION',
                   actionRole: 'ACTIVE',
                   sourceActionId: settlement.actionEvent.actionId,
+                  grantType: 'FOLLOW_UP',
                   state: { continuationDepth: 1, parentActionEvent: settlement.actionEvent },
                 });
               }
@@ -7431,6 +7783,9 @@
                 nodeKind: 'REACTION',
                 actionRole: 'REACTION',
                 sourceActionId: actionContext.actionEvent.actionId,
+                sourceActorId: previewRuntime.unitId(actor),
+                grantType: 'DEFEND_WINDOW',
+                validTargetIds: [previewRuntime.unitId(actor)].filter(Boolean),
                 state: { shared, targetId: previewRuntime.unitId(target) },
               });
             });
@@ -10352,6 +10707,7 @@
         .filter(entry => preview.isAlive(entry.unit))
         .map((entry, index) => {
           const actorId = preview.unitId(entry.unit);
+          const actionOpportunity = input.actionOpportunity || {};
           const request = decision.prepareDecisionRequest({
             worldSnapshot,
             actorId,
@@ -10361,10 +10717,12 @@
               objectives: worldSnapshot?.胜负条件 || {},
             },
             beliefState: input.initialBelief?.[actorId] || input.initialBelief || {},
-            actionOpportunity: input.actionOpportunity || {},
+            actionOpportunity,
             strategyMemory: input.strategyMemory || {},
             seed: `${seed}:${Number(worldSnapshot?.回合 || 0)}:${index}`,
-            runtimeSnapshot: input.runtimeSnapshot || {},
+            runtimeSnapshot: input.runtimeSnapshot && typeof input.runtimeSnapshot === 'object'
+              ? input.runtimeSnapshot
+              : buildDecisionRuntimeSnapshot(worldSnapshot, actorId, actionOpportunity),
           });
           return decision.runProvider({ providerId, request });
         });
@@ -10607,6 +10965,8 @@
     version: '7.3-R6.3',
     actionKinds,
     actionRoles,
+    opportunityGrantTypes,
+    resourceTimelineOperations,
     sideEffectStatusMap,
     reportBlockTypes,
     prototypeRegistry,
@@ -10623,6 +10983,13 @@
     settleConditionsAtRoundEnd,
     nextRuntimeId,
     ensureCombatRuntime,
+    normalizeOpportunityRecord,
+    opportunitySnapshotFromRuntime,
+    resourceTimelineFromRuntime,
+    scheduledEventsFromRuntime,
+    buildRuntimeDecisionSnapshot,
+    buildDecisionRuntimeSnapshot,
+    buildNoOpRuntimeSnapshot,
     getBattleSnapshot,
     ensureLedger,
     attachLedger,
@@ -10633,6 +11000,7 @@
     createEmptyCombatEffectMap,
     buildCombatFinalStats,
     prepareCombatData,
+    evaluateBattleTerminal,
     syncSummonUnitMirror: syncSummonMirror,
     writeCombatResource,
     readCombatResource: persistentResourceValue,
