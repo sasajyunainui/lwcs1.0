@@ -4889,15 +4889,31 @@
     const summons = [];
     for (let index = 0; index < count; index += 1) {
       const displayName = count > 1 ? `${baseName}#${index + 1}` : baseName;
-      const key = [
-        'structured-summon',
-        previewRuntime.unitId(actor),
-        Number(combatData?.回合 || 0),
+      const effectInstanceId = String(
+        effect?.effectId ||
+        effect?.效果ID ||
+        `${String(actionEvent?.actionId || 'action').trim()}:effect:${effectIndex}`,
+      ).trim();
+      const key = previewRuntime.summonInstanceId(
         String(actionEvent?.actionId || 'action').trim(),
-        effectIndex,
+        effectInstanceId,
         index + 1,
-      ].join(':');
-      if (table[key] && table[key].已消散 !== true) throw new Error(`battle_structured_summon_key_conflict:${key}`);
+      );
+      const definitionHash = previewRuntime.stableHash({
+        summonName: displayName,
+        summonType,
+        mode,
+        duration,
+        inheritRatio,
+        skills: Array.isArray(effect?.技能列表) ? effect.技能列表 : [],
+      });
+      if (table[key] && table[key].已消散 !== true) {
+        if (String(table[key]?.__definitionHash || '').trim() !== definitionHash) {
+          throw new Error(`SUMMON_PREVIEW_INSTANCE_CONFLICT:${key}`);
+        }
+        summons.push(table[key]);
+        continue;
+      }
       const stateKey = `召唤:${displayName}`;
       const hpMax = Math.max(1, Math.floor(previewRuntime.readHpMax(actor) * inheritRatio));
       const staminaMax = Math.max(1, Math.floor(previewRuntime.readResourceMax(actor, '体力') * inheritRatio));
@@ -4928,6 +4944,7 @@
         def: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'def') * inheritRatio)),
         agi: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'agi') * inheritRatio)),
         状态: { 存活: true, 行动: '战斗' }, 状态效果: {}, 持续效果: {},
+        __definitionHash: definitionHash,
         技能列表: Array.isArray(effect?.技能列表) && effect.技能列表.length
           ? cloneValue(effect.技能列表)
           : [{ name: '普通攻击', 魂技名: '普通攻击', 消耗: '无', 前摇: 10, _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: Math.max(25, Math.round(50 * inheritRatio)), 伤害类型: '近身攻击' }] }],
@@ -5458,7 +5475,7 @@
             const hpDamageLimit = nonlethal ? Math.max(0, before - nonlethalHpFloor) : before;
             const incomingDamage = Math.max(0, Math.min(
               shieldBefore + hpDamageLimit,
-              Math.round(segmentDamage * defenseMultiplier),
+              previewRuntime.calculateSettledSegmentDamage(totalDamage, segments, defenseMultiplier),
             ));
             const shieldResult = absorbRuntimeShield(target, incomingDamage);
             const damage = Math.max(0, Math.min(hpDamageLimit, shieldResult.remainingDamage));
@@ -5509,7 +5526,11 @@
                   rawDefenseValue,
                   penetrationValue,
                 },
-                intentLethalPrevented: nonlethal && damage < Math.max(0, Math.round(segmentDamage * defenseMultiplier)),
+                intentLethalPrevented: nonlethal && damage < previewRuntime.calculateSettledSegmentDamage(
+                  totalDamage,
+                  segments,
+                  defenseMultiplier,
+                ),
                 reactionEventId: String(reaction?.event?.eventId || '').trim(),
               },
             }));
@@ -5637,7 +5658,10 @@
           面板修改比例: { ...(effect?.面板修改比例 || {}) }, 面板固定修正: { ...(effect?.面板固定修正 || {}) },
         };
         const applicationId = nextRuntimeId('state-src');
-        const successProbability = Math.max(0, Math.min(1, Number(effect?.成功率 ?? effect?.触发概率 ?? 1)));
+        const successProbability = previewRuntime.normalizeEffectProbability(
+          effect?.成功率 ?? effect?.触发概率,
+          1,
+        );
         const roll = Math.random();
         let result = 'applied';
         if (negativeEffectIsImmune(target, state)) result = 'immune';

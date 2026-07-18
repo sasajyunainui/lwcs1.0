@@ -1060,6 +1060,12 @@
     return Math.max(0, perSegment * segments);
   }
 
+  function calculateSettledSegmentDamage(totalDamage = 0, segments = 1, damageMultiplier = 1) {
+    const segmentCount = Math.max(1, Math.floor(Number(segments || 1)));
+    const multiplier = clamp(Number(damageMultiplier ?? 1), 0, 1);
+    return Math.max(0, Math.round(Math.max(0, Number(totalDamage || 0)) / segmentCount * multiplier));
+  }
+
   function normalizeEffectProbability(value, fallback = 1) {
     const text = String(value ?? '').trim();
     if (!text) return clamp(Number(fallback || 0), 0, 1);
@@ -1069,8 +1075,8 @@
   }
 
   function estimateHitProbability(actor = {}, target = {}, effect = {}) {
-    const explicit = Number(effect?.命中概率 ?? effect?.触发概率);
-    if (Number.isFinite(explicit)) return clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1);
+    const explicitValue = effect?.命中概率 ?? effect?.触发概率;
+    if (String(explicitValue ?? '').trim()) return normalizeEffectProbability(explicitValue, 1);
     const attackAgility = readCombatStat(actor, 'agi');
     const targetAgility = readCombatStat(target, 'agi');
     const actorEffects = stateEntries(actor).map(([, state]) => state?.战斗效果 || {});
@@ -1193,6 +1199,7 @@
       this.changedResources = new Map();
       this.changedRules = new Map();
       this.createdSummons = new Map();
+      this.summonDefinitionHashes = new Map();
       this.scheduledEvents = [];
     }
 
@@ -1209,11 +1216,19 @@
       return unit;
     }
 
-    writeSummon(unit) {
+    writeSummon(unit, definitionHash = '') {
       const id = unitId(unit);
       if (!id) throw new Error('battle_preview_overlay_summon_id_missing');
-      if (this.readUnit(id)) throw new Error(`battle_preview_overlay_summon_conflict:${id}`);
+      const normalizedDefinitionHash = String(definitionHash || stableHash(unit)).trim();
+      if (this.createdSummons.has(id)) {
+        if (this.summonDefinitionHashes.get(id) !== normalizedDefinitionHash) {
+          throw new Error(`SUMMON_PREVIEW_INSTANCE_CONFLICT:${id}`);
+        }
+        return this.createdSummons.get(id);
+      }
+      if (findUnit(this.baseWorld, id)) throw new Error(`SUMMON_PREVIEW_INSTANCE_CONFLICT:${id}`);
       this.createdSummons.set(id, unit);
+      this.summonDefinitionHashes.set(id, normalizedDefinitionHash);
       metrics.overlayWrites += 1;
       return unit;
     }
@@ -1232,6 +1247,7 @@
     removeSummon(id) {
       const key = String(id || '').trim();
       if (!this.createdSummons.delete(key)) throw new Error(`battle_preview_overlay_created_summon_missing:${key}`);
+      this.summonDefinitionHashes.delete(key);
       metrics.overlayWrites += 1;
     }
 
@@ -1262,6 +1278,7 @@
       child.changedResources = new Map(this.changedResources);
       child.changedRules = new Map(this.changedRules);
       child.createdSummons = new Map(this.createdSummons);
+      child.summonDefinitionHashes = new Map(this.summonDefinitionHashes);
       child.scheduledEvents = [...this.scheduledEvents];
       return child;
     }
@@ -1275,6 +1292,7 @@
       this.changedResources = child.changedResources;
       this.changedRules = child.changedRules;
       this.createdSummons = child.createdSummons;
+      this.summonDefinitionHashes = child.summonDefinitionHashes;
       this.scheduledEvents = child.scheduledEvents;
     }
 
@@ -1307,6 +1325,14 @@
       }
       return snapshot;
     }
+  }
+
+  function summonInstanceId(rootActionFingerprint = '', effectInstanceId = '', summonOrdinal = 1) {
+    const rootFingerprint = String(rootActionFingerprint || '').trim();
+    const effectId = String(effectInstanceId || '').trim();
+    const ordinal = Math.max(1, Math.floor(Number(summonOrdinal || 1)));
+    if (!rootFingerprint || !effectId) throw new Error('battle_preview_summon_identity_missing');
+    return `${rootFingerprint}:${effectId}:${ordinal}`;
   }
 
   class ContributionLedger {
@@ -1804,8 +1830,13 @@
             : 0;
           const hpDamageLimit = nonlethalIntent ? Math.max(0, readHp(currentTarget) - nonlethalHpFloor) : readHp(currentTarget);
           const shieldBefore = readShield(currentTarget);
-          const incomingDamage = Math.min(shieldBefore + hpDamageLimit, rawDamage * hitProbability * applicationProbability * reactionDamageMultiplier);
-          const fullHitIncoming = Math.min(shieldBefore + hpDamageLimit, rawDamage * reactionDamageMultiplier);
+          const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
+          const settledDamage = calculateSettledSegmentDamage(rawDamage, segments, reactionDamageMultiplier) * segments;
+          const incomingDamage = Math.min(
+            shieldBefore + hpDamageLimit,
+            settledDamage * hitProbability * applicationProbability,
+          );
+          const fullHitIncoming = Math.min(shieldBefore + hpDamageLimit, settledDamage);
           let shieldAbsorb = 0;
           let expectedDamage = 0;
           overlay.changeUnit(unitId(target), unit => {
@@ -2245,13 +2276,11 @@
         const summonIds = [];
         for (let index = 0; index < count; index += 1) {
           const displayName = count > 1 ? `${summonName}#${index + 1}` : summonName;
-          const summonId = [
-            'preview-summon',
-            unitId(actor),
+          const summonId = summonInstanceId(
             context.rootActionId,
             context.effectInstanceId,
             index + 1,
-          ].join(':');
+          );
           summonIds.push(summonId);
           const hpMax = Math.max(1, Math.floor(readHpMax(actor) * inheritRatio));
           const staminaMax = Math.max(1, Math.floor(readResourceMax(actor, '体力') * inheritRatio));
@@ -2315,7 +2344,14 @@
                   }],
                 }],
           };
-          overlay.writeSummon(summonUnit);
+          overlay.writeSummon(summonUnit, stableHash({
+            summonName: displayName,
+            summonType,
+            actionMode,
+            duration,
+            inheritRatio,
+            skills: summonUnit.技能列表,
+          }));
           const summonWorld = overlay.snapshot();
           const summonSkill = summonUnit.技能列表[0] || null;
           const summonEffects = Array.isArray(summonSkill?._效果数组)
@@ -3055,6 +3091,7 @@
     PreviewOverlay,
     ContributionLedger,
     stableHash,
+    summonInstanceId,
     unitId,
     unitName,
     listUnits,
@@ -3080,6 +3117,8 @@
     readCombatStat,
     readCombatStatBreakdown,
     parseSignedValue,
+    calculateSettledSegmentDamage,
+    normalizeEffectProbability,
     effectTargetsAllies,
     resolveTargets,
     collectEffects,

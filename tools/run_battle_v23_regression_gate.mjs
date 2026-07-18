@@ -56,6 +56,7 @@ const utf8ScanTargets = [
   'lwcs/tools/audit_battle_r63_lifecycle_stalemate.mjs',
   'lwcs/tools/audit_battle_r63_decision_settlement.mjs',
   'lwcs/tools/audit_battle_r63_runtime_prepare_sustain.mjs',
+  'lwcs/tools/audit_battle_r83_phase4.mjs',
   'lwcs/tools/audit_battle_r74_report_dto.mjs',
   'lwcs/tools/audit_battle_r74_value_kernel.mjs',
   'lwcs/tools/audit_battle_r74_kernel_ab.mjs',
@@ -118,6 +119,14 @@ const commandDefinitions = [
     timeoutMs: 120000,
     groups: ['quick', 'full', 'case'],
     minPhase: 3,
+  },
+  {
+    name: 'auditBattleR83Phase4',
+    command: [process.execPath, ['lwcs/tools/audit_battle_r83_phase4.mjs']],
+    parseJson: true,
+    timeoutMs: 120000,
+    groups: ['quick', 'full', 'case'],
+    minPhase: 4,
   },
   { name: 'auditBattleR63Baseline', command: [process.execPath, ['lwcs/tools/audit_battle_r63_baseline.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'auditBattleR63QueueProbability', command: [process.execPath, ['lwcs/tools/audit_battle_r63_queue_probability.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
@@ -349,6 +358,7 @@ const writeOutput = () => {
   const phase1Result = results.find(result => result.name === 'auditBattleR83Phase1');
   const phase2Result = results.find(result => result.name === 'auditBattleR83Phase2');
   const phase3Result = results.find(result => result.name === 'auditBattleR83Phase3');
+  const phase4Result = results.find(result => result.name === 'auditBattleR83Phase4');
   const manualReviewStatus = String(manualReviewResult?.summary?.manualReviewStatus || 'NOT_SCHEDULED');
   const manualReviewRequired = new Set([5, 7, 8, 10]).has(requestedPhase);
   const automaticFailures = failed.filter(result => result.name !== 'auditBattleR74ManualReviewStatus');
@@ -380,7 +390,9 @@ const writeOutput = () => {
           : requestedPhase >= 1
             ? String(phase1Result?.summary?.coordinatorStatus || 'PENDING')
           : 'PENDING',
-      runtimeCalibrationStatus: requestedPhase >= 4 ? 'PENDING' : 'NOT_SCHEDULED',
+      runtimeCalibrationStatus: requestedPhase >= 4
+        ? String(phase4Result?.summary?.runtimeCalibrationStatus || 'PENDING')
+        : 'NOT_SCHEDULED',
       reportProjectionStatus: requestedPhase >= 10 ? 'PENDING' : 'NOT_SCHEDULED',
       manualReviewRequired,
       manualReviewStatus,
