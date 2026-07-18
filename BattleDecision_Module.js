@@ -150,7 +150,7 @@
     const explicit = Number(unit?.战斗经验 ?? unit?.battleExperience ?? unit?.经验稳定度);
     const result = Number.isFinite(explicit)
       ? clamp(explicit > 1 ? explicit / 100 : explicit, 0, 1)
-      : clamp(0.25 + unitLevel(unit) / 120 * 0.7 + (stableRoll(`experience:${preview.unitId(unit) || preview.unitName(unit)}`) * 0.12 - 0.06), 0.2, 0.96);
+      : clamp(0.25 + unitLevel(unit) / 120 * 0.7, 0.2, 0.90);
     experienceCache.set(unit, result);
     return result;
   }
@@ -11451,6 +11451,82 @@
     ));
   }
 
+  function buildR8ResponseModel(request = {}, candidateId = '') {
+    if (request?.actionOpportunity?.futureHostileResponseAllowed === false) {
+      return Object.freeze({ mainBranches: Object.freeze([]), disasterTail: null, noResponseProbability: 1 });
+    }
+    const confidence = clamp(request?.beliefState?.confidence ?? 0.5, 0, 1);
+    const unknownMass = clamp(0.35 * (1 - confidence), 0, 0.35);
+    const actorSide = String(request?.actorSide || '').trim();
+    const publicResponses = request?.beliefState?.publicResponses || {};
+    const known = Object.entries(publicResponses).flatMap(([sourceActorId, responses]) =>
+      (Array.isArray(responses) ? responses : []).map(response => ({
+        sourceActorId,
+        responseId: String(response?.responseId || response?.actionName || 'public-response').trim(),
+        threat: Math.max(0, Number(response?.baseActionValue ?? response?.utility ?? 0)),
+        catastrophic: response?.lethal === true ||
+          response?.incapacitating === true ||
+          response?.cancelsOpportunity === true ||
+          response?.breaksObjective === true,
+        evidenceEventIds: Object.freeze([...(response?.evidenceEventIds || [])]),
+      }))
+    ).filter(response => response.threat > 0);
+    const center = median(known.map(response => response.threat));
+    const deviations = known.map(response => Math.abs(response.threat - center));
+    const scale = Math.max(1, median(deviations));
+    const temperature = 1 + 3 * (1 - confidence);
+    const weighted = known.map(response => ({
+      ...response,
+      weight: Math.exp(((response.threat - center) / scale) / temperature),
+    })).sort((left, right) => right.weight - left.weight || left.responseId.localeCompare(right.responseId));
+    const disaster = weighted.find(response => response.catastrophic);
+    const selected = weighted.filter(response => response !== disaster).slice(0, 2);
+    const weightTotal = selected.reduce((sum, response) => sum + response.weight, 0) || 1;
+    const knownMass = known.length ? 1 - unknownMass : 0;
+    const mainBranches = selected.map(response => Object.freeze({
+      projectionId: `response:${candidateId}:${response.sourceActorId}:${response.responseId}`,
+      sourceActorId: response.sourceActorId,
+      probability: knownMass * response.weight / weightTotal,
+      threatEnvelope: Object.freeze({ lower: response.threat, upper: response.threat }),
+      evidenceEventIds: response.evidenceEventIds,
+      publicEvidence: true,
+    }));
+    const disasterTail = disaster ? Object.freeze({
+      projectionId: `disaster:${candidateId}:${disaster.sourceActorId}:${disaster.responseId}`,
+      sourceActorId: disaster.sourceActorId,
+      probability: Math.min(unknownMass || 0.05, 0.35),
+      threatEnvelope: Object.freeze({ lower: disaster.threat, upper: disaster.threat }),
+      evidenceEventIds: disaster.evidenceEventIds,
+      publicEvidence: true,
+    }) : null;
+    const usedMass = mainBranches.reduce((sum, branch) => sum + branch.probability, 0) +
+      Number(disasterTail?.probability || 0);
+    return Object.freeze({
+      actorSide,
+      mainBranches: Object.freeze(mainBranches),
+      disasterTail,
+      unknownMass,
+      noResponseProbability: clamp(1 - usedMass, 0, 1),
+    });
+  }
+
+  function r8InformationValue(request = {}, candidateId = '') {
+    const opportunity = request?.actionOpportunity || {};
+    if (opportunity.futureHostileResponseAllowed === false || opportunity.noFutureOpportunity === true) return 0;
+    const envelope = request?.actionRouteCatalog?.[request?.actorId];
+    const primary = envelope?.primaryRoute;
+    const backup = envelope?.backupRoute;
+    if (!primary || !backup || primary.routeKey === backup.routeKey) return 0;
+    const candidate = request?.frozenCandidates?.find(entry => entry.candidateId === candidateId);
+    const observable = (candidate?.declaration?.skill?._效果数组 || []).some(effect =>
+      String(effect?.原型 || '').trim() === '决策干扰' ||
+      /观察|侦察|探测|揭示/.test(String(effect?.信息类型 || effect?.效果 || effect?.状态 || ''))
+    ) || String(candidate?.declaration?.actionKind || '').trim() === 'OBSERVE';
+    if (!observable) return 0;
+    const regretBefore = Math.abs(Number(primary.routeBenefitPP || 0) - Number(backup.routeBenefitPP || 0));
+    return Math.max(0, regretBefore * (1 - clamp(request?.beliefState?.confidence ?? 0.5, 0, 1)));
+  }
+
   function prepareDecisionRequest(input = {}) {
     const worldSnapshot = input?.worldSnapshot;
     if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
@@ -11574,6 +11650,18 @@
       strategyMemory: cloneValue(input?.strategyMemory || {}),
       seed: input?.seed ?? 1,
     };
+    requestPayload.responseModelByCandidate = Object.fromEntries(
+      frozenCandidates.map(candidate => [
+        candidate.candidateId,
+        buildR8ResponseModel(requestPayload, candidate.candidateId),
+      ]),
+    );
+    requestPayload.informationValueByCandidate = Object.fromEntries(
+      frozenCandidates.map(candidate => [
+        candidate.candidateId,
+        r8InformationValue(requestPayload, candidate.candidateId),
+      ]),
+    );
     if (preview.stableHash(worldSnapshot) !== sourceWorldHash) {
       throw new Error('PROVIDER_MUTATED_STATE:prepare');
     }
@@ -11709,6 +11797,8 @@
     selectPrimaryBackupRoutes,
     buildR8RouteCatalog,
     buildTeamMarginalPlan,
+    buildR8ResponseModel,
+    r8InformationValue,
     prepareDecisionRequest,
     runProvider,
     providerIds: Object.freeze(Object.keys(providerRegistry)),

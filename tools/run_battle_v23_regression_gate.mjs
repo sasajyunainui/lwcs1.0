@@ -58,6 +58,7 @@ const utf8ScanTargets = [
   'lwcs/tools/audit_battle_r63_runtime_prepare_sustain.mjs',
   'lwcs/tools/audit_battle_r83_phase4.mjs',
   'lwcs/tools/audit_battle_r83_phase5.mjs',
+  'lwcs/tools/audit_battle_r83_phase6.mjs',
   'lwcs/tools/audit_battle_r74_report_dto.mjs',
   'lwcs/tools/audit_battle_r74_value_kernel.mjs',
   'lwcs/tools/audit_battle_r74_kernel_ab.mjs',
@@ -136,6 +137,14 @@ const commandDefinitions = [
     timeoutMs: 120000,
     groups: ['quick', 'full', 'case'],
     minPhase: 5,
+  },
+  {
+    name: 'auditBattleR83Phase6',
+    command: [process.execPath, ['lwcs/tools/audit_battle_r83_phase6.mjs']],
+    parseJson: true,
+    timeoutMs: 120000,
+    groups: ['quick', 'full', 'case'],
+    minPhase: 6,
   },
   { name: 'auditBattleR63Baseline', command: [process.execPath, ['lwcs/tools/audit_battle_r63_baseline.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'auditBattleR63QueueProbability', command: [process.execPath, ['lwcs/tools/audit_battle_r63_queue_probability.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
@@ -369,6 +378,7 @@ const writeOutput = () => {
   const phase3Result = results.find(result => result.name === 'auditBattleR83Phase3');
   const phase4Result = results.find(result => result.name === 'auditBattleR83Phase4');
   const phase5Result = results.find(result => result.name === 'auditBattleR83Phase5');
+  const phase6Result = results.find(result => result.name === 'auditBattleR83Phase6');
   const manualReviewStatus = String(manualReviewResult?.summary?.manualReviewStatus || 'NOT_SCHEDULED');
   const manualReviewRequired = new Set([9, 10, 12]).has(requestedPhase);
   const automaticFailures = failed.filter(result => result.name !== 'auditBattleR74ManualReviewStatus');
@@ -393,6 +403,8 @@ const writeOutput = () => {
       automaticFactStatus: automaticFailures.length > 0 ? 'BLOCKED' : 'PASSED',
       causalChainStatus: requestedPhase === 0
         ? String(phase0Result?.summary?.knownIssueStatus || 'BLOCKED')
+        : requestedPhase >= 6
+          ? String(phase6Result?.summary?.beliefResponseStatus || 'PENDING')
         : requestedPhase >= 5
           ? String(phase5Result?.summary?.routeCacheStatus || 'PENDING')
         : requestedPhase >= 3
