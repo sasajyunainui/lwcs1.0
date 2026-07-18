@@ -7363,7 +7363,7 @@ class BattleUIComponent {
               childEscalated = true;
               reasons.push('召唤协同');
             } else if (kind === 'state_settlement') {
-              const control = /控制|眩晕|禁锢|束缚|位移限制|减速|迟缓|沉默|封锁/.test(stateName);
+              const control = /控制|眩晕|麻痹|僵直|禁锢|束缚|定身|冻结|沉默|封锁/.test(stateName);
               score += control ? 7 : 4;
               if (control) childEscalated = true;
               reasons.push(stateName ? `状态:${stateName}` : '状态');
