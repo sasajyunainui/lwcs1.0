@@ -49999,7 +49999,10 @@ ${播报文本}
   function rerenderDetailSurface(previewKey = '', options = {}) {
     const targetKey = toText(previewKey, '').trim();
     if (!targetKey) return;
-    if (targetKey === '任务界面' && 局部刷新任务详情(options.questSurface)) return;
+    if (targetKey === '任务界面') {
+      局部刷新任务详情(options.questSurface);
+      return;
+    }
     if (options.surface === 'unified' || (currentUnifiedPreviewKey === targetKey && isUnifiedInlinePreviewActive())) {
       renderUnifiedInlinePreview(targetKey, { ...options, force: !!options.force });
       return;
