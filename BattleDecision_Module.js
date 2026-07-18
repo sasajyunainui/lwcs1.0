@@ -285,7 +285,7 @@
     actorStats.combatBase = Math.cbrt(actorStats.str * actorStats.def * actorStats.agi);
     const projectUnit = sourceUnit => {
       if (sideOf(worldSnapshot, sourceUnit) === actorSide) {
-        return sourceUnit;
+        return cloneValue(sourceUnit);
       }
       const id = preview.unitId(sourceUnit);
       const beliefUnit = beliefState?.units?.[id] || {};
@@ -2037,6 +2037,15 @@
       worldUnitLookupCache.set(worldSnapshot, lookup);
     }
     return lookup.get(wanted) || null;
+  }
+
+  function invalidateMutableWorldIndexes(worldSnapshot = {}) {
+    worldEntriesCache.delete(worldSnapshot);
+    worldUnitLookupCache.delete(worldSnapshot);
+    aliveEntriesCache.delete(worldSnapshot);
+    livingEntriesCache.delete(worldSnapshot);
+    sideCache.delete(worldSnapshot);
+    decisionWorldRevisionCache.delete(worldSnapshot);
   }
 
   function aliveEntries(worldSnapshot = {}) {
@@ -6595,6 +6604,13 @@
     input,
   }) {
     if (!candidate?.creation?.useful) return null;
+    const candidateId = String(candidate?.candidateId || '').trim();
+    if (
+      input?.__creationFutureUseAuditByCandidate &&
+      Object.hasOwn(input.__creationFutureUseAuditByCandidate, candidateId)
+    ) {
+      return input.__creationFutureUseAuditByCandidate[candidateId];
+    }
     const actorId = preview.unitId(actor);
     const remainingOpportunities = availableNaturalOpportunityCount(decisionWorld, actor, {
       currentOpportunityConsumedFor: new Set([actorId]),
@@ -6691,6 +6707,45 @@
       bestAlternativeUtility: Number(bestAlternative?.utility || 0),
       dominatedBy: String(dominator?.candidateId || '').trim(),
     });
+  }
+
+  function buildBaselineCreationFutureUseAudits(input = {}) {
+    const decisionWorld = input.worldSnapshot || {};
+    const actor = findUnitInWorld(decisionWorld, input.actorId || '');
+    if (!actor || !preview.isAlive(actor)) return Object.freeze({});
+    const actorSide = sideOf(decisionWorld, actor);
+    const beliefState = input.beliefState || {};
+    const candidates = Array.isArray(input.__frozenCandidates) ? input.__frozenCandidates : [];
+    const creationCandidates = candidates.filter(candidate => candidate?.creation?.useful);
+    if (!creationCandidates.length) return Object.freeze({});
+    const valueContext = buildNextValueContext(decisionWorld, actorSide, beliefState);
+    const audits = {};
+    creationCandidates.forEach(candidate => {
+      const actionKind = String(candidate?.declaration?.actionKind || '').trim();
+      const result = ['RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM', 'EQUIP'].includes(actionKind)
+        ? previewCandidateWithKnownReactions({
+            candidate,
+            decisionWorld,
+            actor,
+            actorSide,
+            beliefState,
+            valueContext,
+            input,
+          })
+        : null;
+      audits[candidate.candidateId] = result
+        ? creationFutureUseAudit({
+            candidate,
+            decisionWorld,
+            afterSnapshot: result.afterSnapshot,
+            actor,
+            actorSide,
+            beliefState,
+            input,
+          })
+        : null;
+    });
+    return deepFreeze(audits);
   }
 
   function scoreCandidatesNext(input = {}) {
@@ -11226,6 +11281,10 @@
     const worldSnapshot = input.worldSnapshot || {};
     const actorSide = String(input.actorSide || '').trim();
     const targetIds = Object.freeze([...(candidate?.declaration?.targetIds || [])]);
+    const dependencyUnitIds = Object.freeze([...new Set([
+      String(candidate?.declaration?.actorId || '').trim(),
+      ...targetIds.map(value => String(value || '').trim()),
+    ].filter(Boolean))].sort());
     const trajectories = [];
     const outcomeKinds = new Set();
     const realizationWindows = new Set();
@@ -11312,6 +11371,7 @@
       terminalPathId: '',
       probabilityBounds: Object.freeze({ lower: 0, upper: 1 }),
       dependencyKeys: Object.freeze([...(input.dependencyKeys || [])].sort()),
+      dependencyUnitIds,
       routeBenefitPP: trajectories.reduce((sum, entry) => sum + Number(entry.actorBenefitPP || 0), 0),
     });
   }
@@ -11340,6 +11400,9 @@
     return Object.freeze({
       searchedRouteCount: routes.length,
       nonDominatedRouteCount: nonDominated.length,
+      searchedTargetIds: Object.freeze([...new Set(routes.flatMap(route =>
+        (route?.targetIds || []).map(value => String(value || '').trim()).filter(Boolean)
+      ))].sort()),
       primaryRoute,
       backupRoute,
     });
@@ -11355,15 +11418,26 @@
     const catalog = {};
     const actorCandidateRoutes = {};
     const actorProjectedWorlds = {};
+    const fullRoutesByUnit = {};
     const previousCatalog = input.previousCatalog && typeof input.previousCatalog === 'object'
       ? input.previousCatalog
       : null;
     const affectedUnitIds = new Set((input.affectedUnitIds || []).map(value => String(value || '').trim()).filter(Boolean));
-    if (previousCatalog && affectedUnitIds.size) {
+    const affectedTargetUnitIds = new Set(
+      (Array.isArray(input.affectedTargetUnitIds) ? input.affectedTargetUnitIds : [...affectedUnitIds])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    affectedTargetUnitIds.forEach(unitId => affectedUnitIds.add(unitId));
+    if (previousCatalog && affectedTargetUnitIds.size) {
       Object.entries(previousCatalog).forEach(([unitId, envelope]) => {
-        const routes = [envelope?.primaryRoute, envelope?.backupRoute].filter(Boolean);
-        if (routes.some(route =>
-          (route.targetIds || []).some(targetId => affectedUnitIds.has(String(targetId || '').trim()))
+        const searchedTargetIds = Array.isArray(envelope?.searchedTargetIds)
+          ? envelope.searchedTargetIds
+          : [envelope?.primaryRoute, envelope?.backupRoute]
+              .filter(Boolean)
+              .flatMap(route => route.targetIds || []);
+        if (searchedTargetIds.some(targetId =>
+          affectedTargetUnitIds.has(String(targetId || '').trim())
         )) {
           affectedUnitIds.add(unitId);
         }
@@ -11438,12 +11512,14 @@
           actorCandidateRoutes[route.candidateId] = route;
         });
       }
+      fullRoutesByUnit[currentUnitId] = routes;
       catalog[currentUnitId] = selectPrimaryBackupRoutes(routes);
     }
     return {
       routeCatalog: deepFreeze(catalog),
       actorCandidateRoutes: deepFreeze(actorCandidateRoutes),
       actorProjectedWorlds,
+      fullRoutesByUnit,
       cacheMetrics: Object.freeze({
         cacheSize: cache.size,
         previewCalls: cache.size,
@@ -11566,9 +11642,34 @@
     const routeCatalog = input.routeCatalog || {};
     const projectedWorlds = input.projectedWorlds || {};
     const candidateRoutes = input.candidateRoutes || {};
+    const fullRoutesByUnit = input.fullRoutesByUnit || {};
     const actionOpportunity = input.actionOpportunity || {};
+    const metrics = input.metrics && typeof input.metrics === 'object' ? input.metrics : null;
     const result = {};
+    const opportunityRows = Array.isArray(input?.opportunitySnapshot)
+      ? input.opportunitySnapshot
+      : Array.isArray(input?.opportunitySnapshot?.opportunities)
+        ? input.opportunitySnapshot.opportunities
+        : [];
+    const hasFutureEnvelopeWindow = unitIdValue => {
+      const unitIdText = String(unitIdValue || '').trim();
+      if (!unitIdText) return false;
+      if (opportunityRows.some(entry =>
+        String(entry?.ownerId || '').trim() === unitIdText &&
+        String(entry?.opportunityId || '').trim() !==
+          String(actionOpportunity?.opportunityId || '').trim() &&
+        !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+          String(entry?.status || '').trim().toUpperCase(),
+        )
+      )) {
+        return true;
+      }
+      return (input?.scheduledEvents || []).some(entry =>
+        String(entry?.ownerId || entry?.targetId || '').trim() === unitIdText
+      );
+    };
     const rebuildEnvelope = (projectedWorld, targetId) => {
+      if (metrics) metrics.rebuildCount = Number(metrics.rebuildCount || 0) + 1;
       const scheduledWorld = r8MaterializeScheduledStateForEnvelope(projectedWorld, targetId, input);
       const target = findUnitInWorld(scheduledWorld, targetId);
       if (
@@ -11595,21 +11696,53 @@
         ...candidate,
         declarationFingerprint: declarationFingerprint(candidate.declaration),
       }));
-      const routes = candidates.map(candidate => actionRouteFromPreview({
-        candidate,
-        previewResult: preview.previewAction({
+      if (metrics) metrics.searchedRouteCount = Number(metrics.searchedRouteCount || 0) + candidates.length;
+      const baseRoutes = new Map(
+        (fullRoutesByUnit[targetId] || []).map(route => [route.candidateId, route]),
+      );
+      const baseRuleHash = preview.stableHash(worldSnapshot?.规则 || worldSnapshot?.battleRules || {});
+      const projectedRuleHash = preview.stableHash(scheduledWorld?.规则 || scheduledWorld?.battleRules || {});
+      const scheduledWorldRevision = preview.stableHash(scheduledWorld);
+      const baseDependencyHashes = new Map();
+      const projectedDependencyHashes = new Map();
+      const dependencyUnitHash = (snapshot, unitId, cache) => {
+        if (!cache.has(unitId)) {
+          cache.set(unitId, preview.stableHash(findUnitInWorld(snapshot, unitId) || null));
+        }
+        return cache.get(unitId);
+      };
+      const routes = candidates.map(candidate => {
+        const baseRoute = baseRoutes.get(candidate.candidateId);
+        const dependencyUnitIds = baseRoute?.dependencyUnitIds || [];
+        const reusable = !!baseRoute &&
+          baseRoute.declarationFingerprint === candidate.declarationFingerprint &&
+          baseRuleHash === projectedRuleHash &&
+          dependencyUnitIds.every(unitIdValue =>
+            dependencyUnitHash(worldSnapshot, unitIdValue, baseDependencyHashes) ===
+            dependencyUnitHash(scheduledWorld, unitIdValue, projectedDependencyHashes)
+          );
+        if (reusable) {
+          if (metrics) metrics.reusedRouteCount = Number(metrics.reusedRouteCount || 0) + 1;
+          return baseRoute;
+        }
+        if (metrics) metrics.previewCalls = Number(metrics.previewCalls || 0) + 1;
+        return actionRouteFromPreview({
+          candidate,
+          previewResult: preview.previewAction({
+            worldSnapshot: scheduledWorld,
+            worldRevision: scheduledWorldRevision,
+            actorId: targetId,
+            declaration: candidate.declaration,
+            actionFingerprint: candidate.declarationFingerprint,
+            horizon: 'SHALLOW',
+            previewBudget: { maxNodes: 12 },
+            battleIntent: input.battleIntent,
+          }),
           worldSnapshot: scheduledWorld,
-          actorId: targetId,
-          declaration: candidate.declaration,
-          actionFingerprint: candidate.declarationFingerprint,
-          horizon: 'SHALLOW',
-          previewBudget: { maxNodes: 12 },
-          battleIntent: input.battleIntent,
-        }),
-        worldSnapshot: scheduledWorld,
-        actorSide: targetSide,
-        dependencyKeys: [],
-      }));
+          actorSide: targetSide,
+          dependencyKeys: [],
+        });
+      });
       return selectPrimaryBackupRoutes(routes);
     };
     for (const [candidateId, route] of Object.entries(candidateRoutes)) {
@@ -11625,10 +11758,75 @@
           .map(entry => preview.unitId(entry.unit)),
       ].filter(Boolean))];
       const affectedIds = new Set();
+      const addRouteDependents = targetId => {
+        if (!targetId) return;
+        Object.entries(routeCatalog).forEach(([unitId, envelope]) => {
+          if (!hasFutureEnvelopeWindow(unitId)) return;
+          const searchedTargetIds = Array.isArray(envelope?.searchedTargetIds)
+            ? envelope.searchedTargetIds
+            : (fullRoutesByUnit[unitId] || []).flatMap(candidateRoute =>
+                candidateRoute?.targetIds || []
+              );
+          if (searchedTargetIds.some(routeTargetId =>
+            String(routeTargetId || '').trim() === targetId
+          )) {
+            affectedIds.add(unitId);
+          }
+        });
+      };
+      const selfPoolKeys = new Set([
+        'hit_bonus',
+        'hit_penalty',
+        'damage_bonus',
+        'final_damage_bonus',
+        'final_damage_mult',
+        'armor_pen',
+        'heal_bonus',
+        'heal_reduction',
+        'cost_delta_ratio',
+        'skip_turn',
+        'cannot_act',
+        'cannot_react',
+        'silence',
+        'disarm',
+        'blind',
+        'resource_lock',
+        'cast_speed_penalty',
+        'random_target_rate',
+      ]);
+      const incomingPoolKeys = new Set([
+        'dodge_bonus',
+        'dodge_penalty',
+        'reaction_bonus',
+        'reaction_penalty',
+        'damage_reduction',
+        'received_damage_mult',
+        'damage_taken_mult',
+        'lock_level',
+        'counter_attack_ratio',
+        'death_save_count',
+      ]);
       for (const effect of route?.actionPoolEffects || []) {
         const targetId = String(effect?.targetId || '').trim();
-        if (['RESOURCE_OPTION_CHANGED', 'ACTION_CANCELLED', 'SUMMON_WINDOW'].includes(effect?.outcomeKind)) {
+        if (effect?.outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+          if (targetId && hasFutureEnvelopeWindow(targetId)) affectedIds.add(targetId);
+        } else if (effect?.outcomeKind === 'SUMMON_WINDOW') {
           if (targetId) affectedIds.add(targetId);
+        } else if (effect?.outcomeKind === 'RULE_CHANGED') {
+          allUnitIds
+            .filter(hasFutureEnvelopeWindow)
+            .forEach(unitIdValue => affectedIds.add(unitIdValue));
+        } else if (targetId) {
+          const combatEffect = effect?.evidence?.combatEffect || {};
+          const combatKeys = Object.keys(combatEffect);
+          const changesSelfPool = combatKeys.some(key => selfPoolKeys.has(key));
+          const changesIncomingPool = combatKeys.some(key => incomingPoolKeys.has(key));
+          if (changesSelfPool || (!changesSelfPool && !changesIncomingPool)) {
+            if (hasFutureEnvelopeWindow(targetId)) affectedIds.add(targetId);
+          }
+          if (changesIncomingPool || (!changesSelfPool && !changesIncomingPool)) {
+            addRouteDependents(targetId);
+          }
         } else {
           allUnitIds.forEach(unitIdValue => affectedIds.add(unitIdValue));
         }
@@ -12271,7 +12469,15 @@
         String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'DEFEND' &&
         !Object.values(candidate?.costs || {}).some(value => Number(value || 0) > 0)
       );
-      if (!fallback) throw new Error('R8_NO_LEGAL_FALLBACK');
+      if (!fallback) {
+        throw new Error(
+          `R8_NO_LEGAL_FALLBACK:${request.actorId}:` +
+          `${String(request?.actionOpportunity?.role || '').trim() || 'UNKNOWN_ROLE'}:` +
+          `${normalized.map(candidate =>
+            `${candidate.candidateId}=${candidate.rejectionCode || 'PARETO_EMPTY'}`
+          ).join(',')}`,
+        );
+      }
       return Object.freeze({
         selected: fallback,
         normalized,
@@ -12346,7 +12552,11 @@
         worstTailLossHEPP: goalProjection.worstTailLossHEPP,
         discardedOverkillPP: goalProjection.discardedOverkillPP,
       };
-      record.rejectionCode = r8CandidateExclusion(request, candidate, route, goalProjection);
+      const exclusionCode = r8CandidateExclusion(request, candidate, route, goalProjection);
+      record.counterDeclineFallback = candidate.counterDeclineFallback === true;
+      record.forcedAction = !!request?.actionOpportunity?.forcedSkill;
+      record.forcedConstraintAudit = record.forcedAction ? exclusionCode : '';
+      record.rejectionCode = record.forcedAction ? '' : exclusionCode;
       return record;
     });
     const choice = selectR8Candidate(request, evaluated);
@@ -12381,6 +12591,9 @@
       backupRoute: request?.actionRouteCatalog?.[request.actorId]?.backupRoute || null,
       causalValueFacts: candidate.causalValueFacts,
       rejectionCode: candidate.rejectionCode || '',
+      counterDeclineFallback: candidate.counterDeclineFallback === true,
+      forcedAction: candidate.forcedAction === true,
+      forcedConstraintAudit: String(candidate.forcedConstraintAudit || '').trim(),
       classification: candidate.rejectionCode ? 'HARD_INVALID' : 'VIABLE',
       selected: candidate.candidateId === selected.candidateId,
     });
@@ -12426,9 +12639,16 @@
   function prepareDecisionRequest(input = {}) {
     const worldSnapshot = input?.worldSnapshot;
     if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
+    invalidateMutableWorldIndexes(worldSnapshot);
     const sourceWorldHash = preview.stableHash(worldSnapshot);
     const actor = findUnitInWorld(worldSnapshot, input?.actorId || '');
-    if (!actor || !preview.isAlive(actor)) throw new Error('battle_decision_actor_unavailable');
+    if (!actor || !preview.isAlive(actor)) {
+      throw new Error(
+        `battle_decision_actor_unavailable:${String(input?.actorId || '').trim() || 'missing'}:` +
+        `${actor ? 'found_in_world' : 'missing_from_world'}:` +
+        `${String(input?.actionOpportunity?.role || '').trim() || 'UNKNOWN_ROLE'}`,
+      );
+    }
     const actorId = preview.unitId(actor);
     const beliefState = buildInitialBelief(worldSnapshot, actorId, input?.beliefState || {});
     const visibleWorld = buildDecisionWorld(worldSnapshot, actorId, beliefState);
@@ -12510,29 +12730,74 @@
       horizon: cloneValue(input?.horizon || battleHorizonProfile(input, visibleWorld)),
       dependencyView,
     };
-    const routeAnalysis = buildR8RouteCatalog({
-      worldSnapshot: visibleWorld,
-      actorId,
-      actorCandidates: frozenCandidates,
-      beliefState,
-      battleIntent,
-      actionOpportunity,
-      dependencyView,
-      evaluationContext,
-    });
-    const teamMarginalPlan = buildTeamMarginalPlan(routeAnalysis.routeCatalog, visibleWorld, actorId);
-    const candidateEnvelopeDeltas = buildR8CandidateEnvelopeDeltas({
-      worldSnapshot: visibleWorld,
-      actorSide,
-      routeCatalog: routeAnalysis.routeCatalog,
-      projectedWorlds: routeAnalysis.actorProjectedWorlds,
-      candidateRoutes: routeAnalysis.actorCandidateRoutes,
-      beliefState,
-      battleIntent,
-      actionOpportunity,
-      opportunitySnapshot: runtimeSnapshot.opportunitySnapshot || [],
-      objectiveContract,
-    });
+    const candidatesOnly = String(input?.analysisDepth || '').trim().toUpperCase() === 'CANDIDATES_ONLY';
+    const candidateEnvelopeMetrics = {
+      rebuildCount: 0,
+      previewCalls: 0,
+      searchedRouteCount: 0,
+      reusedRouteCount: 0,
+    };
+    const baselineCreationFutureUseAudits =
+      candidatesOnly && String(input?.providerId || '').trim() === 'r74-next-baseline'
+        ? buildBaselineCreationFutureUseAudits({
+            ...input,
+            worldSnapshot: visibleWorld,
+            actorId,
+            actorSide,
+            battleIntent,
+            beliefState,
+            actionOpportunity,
+            __preparedDecisionWorld: true,
+            __preparedBeliefState: beliefState,
+            __frozenCandidates: frozenCandidates,
+          })
+        : {};
+    const routeAnalysis = candidatesOnly
+      ? {
+          routeCatalog: {},
+          actorCandidateRoutes: {},
+          actorProjectedWorlds: {},
+          cacheMetrics: {
+            cacheSize: 0,
+            previewCalls: 0,
+            searchedUnitCount: 0,
+            recomputedUnitCount: 0,
+            searchedRouteCount: 0,
+          },
+        }
+      : buildR8RouteCatalog({
+          worldSnapshot: visibleWorld,
+          actorId,
+          actorCandidates: frozenCandidates,
+          beliefState,
+          battleIntent,
+          actionOpportunity,
+          dependencyView,
+          evaluationContext,
+          previousCatalog: input?.previousRouteCatalog,
+          affectedUnitIds: input?.affectedRouteUnitIds,
+          affectedTargetUnitIds: input?.affectedRouteTargetUnitIds,
+        });
+    const teamMarginalPlan = candidatesOnly
+      ? []
+      : buildTeamMarginalPlan(routeAnalysis.routeCatalog, visibleWorld, actorId);
+    const candidateEnvelopeDeltas = candidatesOnly
+      ? {}
+      : buildR8CandidateEnvelopeDeltas({
+          worldSnapshot: visibleWorld,
+          actorSide,
+          routeCatalog: routeAnalysis.routeCatalog,
+          projectedWorlds: routeAnalysis.actorProjectedWorlds,
+          candidateRoutes: routeAnalysis.actorCandidateRoutes,
+          fullRoutesByUnit: routeAnalysis.fullRoutesByUnit,
+          beliefState,
+          battleIntent,
+          actionOpportunity,
+          opportunitySnapshot: runtimeSnapshot.opportunitySnapshot || [],
+          scheduledEvents: runtimeSnapshot.scheduledEvents || [],
+          objectiveContract,
+          metrics: candidateEnvelopeMetrics,
+        });
     const requestPayload = {
       schemaVersion: R8_REQUEST_SCHEMA,
       actorId,
@@ -12556,22 +12821,29 @@
       candidateEnvelopeDeltas,
       teamMarginalPlan,
       routeCacheMetrics: routeAnalysis.cacheMetrics,
+      candidateEnvelopeMetrics: Object.freeze({ ...candidateEnvelopeMetrics }),
       battleIntent: cloneValue(battleIntent),
       strategyMemory: cloneValue(input?.strategyMemory || {}),
+      analysisDepth: candidatesOnly ? 'CANDIDATES_ONLY' : 'FULL',
+      baselineCreationFutureUseAudits,
       seed: input?.seed ?? 1,
     };
-    requestPayload.responseModelByCandidate = Object.fromEntries(
-      frozenCandidates.map(candidate => [
-        candidate.candidateId,
-        buildR8ResponseModel(requestPayload, candidate.candidateId),
-      ]),
-    );
-    requestPayload.informationValueByCandidate = Object.fromEntries(
-      frozenCandidates.map(candidate => [
-        candidate.candidateId,
-        r8InformationValue(requestPayload, candidate.candidateId),
-      ]),
-    );
+    requestPayload.responseModelByCandidate = candidatesOnly
+      ? {}
+      : Object.fromEntries(
+          frozenCandidates.map(candidate => [
+            candidate.candidateId,
+            buildR8ResponseModel(requestPayload, candidate.candidateId),
+          ]),
+        );
+    requestPayload.informationValueByCandidate = candidatesOnly
+      ? {}
+      : Object.fromEntries(
+          frozenCandidates.map(candidate => [
+            candidate.candidateId,
+            r8InformationValue(requestPayload, candidate.candidateId),
+          ]),
+        );
     if (preview.stableHash(worldSnapshot) !== sourceWorldHash) {
       throw new Error('PROVIDER_MUTATED_STATE:prepare');
     }
@@ -12595,6 +12867,7 @@
       __preparedDecisionWorld: true,
       __preparedBeliefState: request.beliefState,
       __frozenCandidates: request.frozenCandidates,
+      __creationFutureUseAuditByCandidate: request.baselineCreationFutureUseAudits,
     };
   }
 
@@ -12625,6 +12898,27 @@
     }
     if (decisionRequestHash(request) !== beforeHash) throw new Error('PROVIDER_MUTATED_STATE:provider');
     const selectedCandidateId = String(decision?.selected?.candidateId || '').trim();
+    const lostOpportunity = decision?.lostOpportunity && typeof decision.lostOpportunity === 'object'
+      ? cloneValue(decision.lostOpportunity)
+      : null;
+    if (!selectedCandidateId && lostOpportunity) {
+      return deepFreeze({
+        schemaVersion: R8_RESULT_SCHEMA,
+        providerId,
+        requestHash: request.requestHash,
+        selectedCandidateId: '',
+        selectedDeclaration: null,
+        decisionAudit: cloneValue(decision),
+        beliefState: cloneValue(decision?.beliefState || request.beliefState),
+        teamIntent: cloneValue(decision?.teamIntent || {}),
+        strategyMemory: cloneValue(decision?.strategyMemory || request.strategyMemory),
+        strategicSignature: String(decision?.strategicSignature || '').trim(),
+        stateCapacityTotal: Math.max(0, Number(decision?.stateCapacityTotal || 0)),
+        beliefRevision: String(decision?.beliefRevision || beliefRevisionFor(request.beliefState)),
+        pendingStrategicEffect: decision?.pendingStrategicEffect === true,
+        decisionProfile: cloneValue(decision?.decisionProfile || {}),
+      });
+    }
     const selectedCandidate = request.frozenCandidates.find(
       candidate => candidate.candidateId === selectedCandidateId,
     );

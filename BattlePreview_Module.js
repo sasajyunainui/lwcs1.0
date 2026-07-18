@@ -1246,7 +1246,13 @@
         }
         return this.createdSummons.get(id);
       }
-      if (findUnit(this.baseWorld, id)) throw new Error(`SUMMON_PREVIEW_INSTANCE_CONFLICT:${id}`);
+      const existing = findUnit(this.baseWorld, id);
+      if (existing) {
+        if (String(existing?.__definitionHash || '').trim() !== normalizedDefinitionHash) {
+          throw new Error(`SUMMON_PREVIEW_INSTANCE_CONFLICT:${id}`);
+        }
+        return existing;
+      }
       this.createdSummons.set(id, unit);
       this.summonDefinitionHashes.set(id, normalizedDefinitionHash);
       metrics.overlayWrites += 1;
@@ -2757,14 +2763,16 @@
                   }],
                 }],
           };
-          overlay.writeSummon(summonUnit, stableHash({
+          const summonDefinitionHash = stableHash({
             summonName: displayName,
             summonType,
-            actionMode,
+            mode: actionMode,
             duration,
             inheritRatio,
-            skills: summonUnit.技能列表,
-          }));
+            skills: Array.isArray(effect?.技能列表) ? effect.技能列表 : [],
+          });
+          summonUnit.__definitionHash = summonDefinitionHash;
+          overlay.writeSummon(summonUnit, summonDefinitionHash);
           const summonWorld = overlay.snapshot();
           const summonSkill = summonUnit.技能列表[0] || null;
           const summonEffects = Array.isArray(summonSkill?._效果数组)
