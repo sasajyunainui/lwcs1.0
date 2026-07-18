@@ -17410,7 +17410,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --面板光层:
     linear-gradient(90deg, rgba(255, 51, 0, 0.38), transparent 22%),
     radial-gradient(circle at 95% 12%, rgba(255, 215, 0, 0.18), transparent 22%),
-    radial-gradient(circle at 10% 10%, rgba(255, 170, 0, 0.14), transparent 24%);
+    radial-gradient(circle at 10% 10%, rgba(255, 170, 0, 0.14), transparent 24%),
+    radial-gradient(ellipse at 50% 58%, rgba(139, 0, 0, 0.34), transparent 58%);
   --背景细纹: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px);
   --主窗体底色:
     linear-gradient(
@@ -17517,10 +17518,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金�
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王']::before {
-  opacity: 0.42;
+  opacity: 0.5;
   transform: translate3d(0, 0, 0) scale(1);
   transform-origin: 50% 54%;
-  animation: 金龙熔岩场呼吸 9s ease-in-out infinite var(--mvu-holo-loop-play-state, running);
+  animation: 金龙熔岩场呼吸 5.8s ease-in-out infinite var(--mvu-holo-loop-play-state, running);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王']::after {
@@ -17533,15 +17534,15 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金�
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, transparent 8%, rgba(255, 69, 0, 0.06) 18%, transparent 34%, transparent 66%, rgba(255, 69, 0, 0.05) 82%, transparent 92%),
-    radial-gradient(ellipse at 50% 100%, rgba(255, 248, 223, 0.1), transparent 10%),
-    radial-gradient(ellipse at 50% 96%, rgba(255, 177, 44, 0.09), transparent 20%),
-    radial-gradient(ellipse at 50% 88%, rgba(139, 0, 0, 0.28), transparent 42%);
-  opacity: 0.48;
+    linear-gradient(90deg, transparent 6%, rgba(255, 43, 0, 0.16) 20%, transparent 38%, transparent 62%, rgba(255, 43, 0, 0.14) 80%, transparent 94%),
+    radial-gradient(ellipse at 50% 100%, rgba(255, 248, 223, 0.14), transparent 11%),
+    radial-gradient(ellipse at 50% 94%, rgba(255, 91, 20, 0.28), transparent 24%),
+    radial-gradient(ellipse at 50% 82%, rgba(139, 0, 0, 0.58), transparent 48%);
+  opacity: 0.58;
   transform: translate3d(0, 0, 0) scale(0.96);
   transform-origin: center;
   mix-blend-mode: screen;
-  animation: 金龙熔岩场呼吸 12s ease-in-out infinite reverse var(--mvu-holo-loop-play-state, running);
+  animation: 金龙熔岩场呼吸 4.6s ease-in-out infinite reverse var(--mvu-holo-loop-play-state, running);
   will-change: opacity, transform;
 }
 
@@ -20704,12 +20705,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-archive-terminal-log span {
 @keyframes 金龙熔岩场呼吸 {
   0%,
   100% {
-    opacity: 0.24;
-    transform: translate3d(0, 0, 0) scale(0.98);
+    opacity: 0.22;
+    transform: translate3d(0, 0, 0) scale(0.985);
+  }
+  38% {
+    opacity: 0.52;
+    transform: translate3d(0, 0, 0) scale(1.008);
   }
   50% {
-    opacity: 0.42;
-    transform: translate3d(0, 0, 0) scale(1.015);
+    opacity: 0.82;
+    transform: translate3d(0, 0, 0) scale(1.025);
+  }
+  62% {
+    opacity: 0.46;
+    transform: translate3d(0, 0, 0) scale(1.012);
   }
 }
 
