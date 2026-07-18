@@ -13631,19 +13631,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .timeline-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-summary-card,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .role-switch-tile {
+  --正文卡片魂色: var(--魂环当前色, var(--模块魂色, var(--主题主色)));
+  --正文卡片魂影: var(--魂环当前阴影, color-mix(in srgb, var(--正文卡片魂色) 42%, transparent));
   min-width: 0 !important;
   overflow: visible !important;
-  border-color: var(--边线颜色);
-  border-radius: var(--卡片圆角);
-  clip-path: var(--卡片裁切);
+  border-color: var(--全息材质线);
+  border-radius: var(--正文卡片圆角);
+  clip-path: none;
   background:
-    var(--卡片材质),
-    var(--卡片底板);
+    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 12%, transparent), transparent 28%),
+    var(--实体背景);
   box-shadow:
-    inset 0 0 0 1px var(--卡片底板线),
-    0 12px 24px rgba(0, 0, 0, 0.18);
-  backdrop-filter: var(--虚化强度);
-  -webkit-backdrop-filter: var(--虚化强度);
+    inset 3px 0 0 var(--正文卡片魂色),
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 12px var(--正文卡片魂影);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-card,
@@ -13653,6 +13654,20 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-card {
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-section {
   padding: 12px 14px !important;
+  border-color: var(--全息材质弱线);
+  border-radius: var(--投影圆角);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .relation-card,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .timeline-card,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .intel-card,
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-summary-card {
+  border-color: var(--全息材质弱线);
+  border-radius: var(--投影圆角);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-tile {
@@ -13660,17 +13675,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-tile {
   min-height: 82px !important;
   padding: 12px 14px !important;
   overflow: visible !important;
-  border: 1px solid color-mix(in srgb, var(--边线颜色) 68%, transparent);
-  border-radius: var(--卡片圆角);
-  clip-path: var(--卡片裁切);
-  background:
-    var(--卡片材质),
-    var(--卡片底板);
-  box-shadow:
-    inset 0 0 0 1px var(--卡片底板线),
-    0 10px 20px rgba(0, 0, 0, 0.16);
-  backdrop-filter: var(--虚化强度);
-  -webkit-backdrop-filter: var(--虚化强度);
+  border: 1px solid var(--轻量信息线);
+  border-radius: var(--投影圆角);
+  clip-path: none;
+  background: var(--轻量信息底板);
+  box-shadow: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesign-root {
@@ -13794,35 +13803,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-r
   padding: 9px 12px 9px 13px !important;
   overflow: hidden !important;
   border: 0;
-  border-left: 3px solid color-mix(in srgb, var(--主题主色) 72%, var(--文字弱色));
-  border-radius: min(10px, calc(var(--卡片圆角) * 0.55));
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 9%, transparent), transparent 64%),
-    var(--轻量信息底板);
-  box-shadow:
-    inset 0 0 0 1px var(--轻量信息线),
-    var(--轻量信息反光),
-    var(--轻量信息阴影);
+  border-left: 3px solid color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+  border-radius: var(--投影圆角);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
+  box-shadow: none;
   clip-path: none;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row:hover {
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 14%, transparent), transparent 62%),
-    var(--轻量信息底板);
-}
-
-body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount .mvu-unified-detail-host .dossier-row,
-body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row {
-  border-radius: 0;
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-}
-
-body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-unified-detail-host .dossier-row,
-body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-unified-detail-host .dossier-list-row {
-  border-radius: 0;
-  clip-path: var(--卡片裁切);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 15%, transparent), transparent 70%);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row--wide {
@@ -17030,10 +17020,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
   pointer-events: auto !important;
   border: 1px solid var(--边线颜色) !important;
   border-radius: var(--卡片圆角) !important;
-  background: var(--悬浮材质) !important;
-  box-shadow:
-    0 16px 34px rgba(0, 0, 0, 0.34),
-    0 0 16px color-mix(in srgb, var(--主题主色) 12%, transparent) !important;
+  background: var(--悬浮实体材质, var(--悬浮材质)) !important;
+  box-shadow: var(--悬浮实体阴影) !important;
   backdrop-filter: var(--虚化强度) !important;
   -webkit-backdrop-filter: var(--虚化强度) !important;
 }
@@ -17086,7 +17074,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-npc-a
   max-height: none !important;
   overflow: visible !important;
   padding: 12px !important;
-  background: var(--悬浮材质) !important;
+  background: var(--悬浮实体材质, var(--悬浮材质)) !important;
   text-align: left !important;
   -webkit-font-smoothing: antialiased;
 }
@@ -17159,6 +17147,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --mvu-holo-frame-material: var(--主面板材质);
   --mvu-holo-frame-light: var(--面板光层);
   --mvu-holo-frame-texture: var(--背景细纹);
+  --mvu-holo-frame-base: var(--主窗体底色);
   --mvu-holo-card-material: var(--卡片材质);
   --mvu-holo-hover-material: var(--悬浮材质);
   --mvu-holo-card-plate: var(--卡片底板);
@@ -17177,10 +17166,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock {
   --面板远距辉光: 0 0 42px color-mix(in srgb, var(--主题主色) 12%, transparent);
   --玻璃微切角: inset 1px 1px 0 rgba(255, 255, 255, 0.12);
   --玻璃暗侧阴影: inset -1px -1px 0 rgba(0, 0, 0, 0.34);
-  --轻量信息底板: color-mix(in srgb, var(--卡片底板) 58%, transparent);
-  --轻量信息线: color-mix(in srgb, var(--卡片底板线) 76%, transparent);
-  --轻量信息反光: inset 1px 1px 0 rgba(255, 255, 255, 0.055);
-  --轻量信息阴影: 0 6px 14px rgba(0, 0, 0, 0.1);
+  --一级实体材质:
+    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 12%, transparent), transparent 28%),
+    var(--实体背景);
+  --二级实体材质:
+    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
+  --悬浮实体材质: var(--悬浮材质);
+  --一级实体阴影:
+    inset 3px 0 0 var(--正文卡片魂色),
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 12px var(--正文卡片魂影);
+  --二级实体阴影: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
+  --悬浮实体阴影:
+    0 16px 34px rgba(0, 0, 0, 0.42),
+    0 0 18px color-mix(in srgb, var(--主题主色) 14%, transparent);
+  --轻量信息底板: color-mix(in srgb, var(--正文卡片魂色) 7%, transparent);
+  --轻量信息线: color-mix(in srgb, var(--正文卡片魂色) 44%, transparent);
+  --轻量信息反光: none;
+  --轻量信息阴影: none;
   --全息入场延迟: 48ms;
   --档案核心魂色: #f4f7fb;
   --武魂舞台魂色: #ffe77a;
@@ -17295,17 +17298,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame {
   background:
     var(--主面板材质),
     var(--背景细纹),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--主题底色) 92%, transparent),
-      color-mix(in srgb, #000 44%, var(--主题辅色))
-    );
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.36),
-    var(--面板约束辉光),
-    var(--面板近距辉光),
-    var(--面板远距辉光),
-    inset 0 0 22px color-mix(in srgb, var(--主题主色) 10%, transparent);
+    var(--主窗体底色);
+  box-shadow: var(--主窗体阴影);
   backdrop-filter: var(--虚化强度);
   -webkit-backdrop-filter: var(--虚化强度);
   color: var(--mvu-holo-text);
@@ -17347,28 +17341,34 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --主题底色: #06111e;
   --主题字体: "Cascadia Code", Consolas, "Microsoft YaHei UI", monospace;
   --主题字重: 520;
-  --暗场底板: rgba(3, 14, 24, 0.72);
-  --暗场底板强: rgba(4, 15, 28, 0.84);
-  --暗场卡片: rgba(4, 18, 28, 0.68);
-  --暗场浮层: rgba(4, 15, 28, 0.92);
+  --暗场底板: rgba(10, 25, 47, 0.42);
+  --暗场底板强: rgba(6, 17, 30, 0.68);
+  --暗场卡片: rgba(0, 255, 204, 0.085);
+  --暗场浮层: rgba(6, 17, 30, 0.94);
   --投影圆角: 2px;
-  --卡片圆角: 6px;
+  --卡片圆角: 2px;
   --卡片裁切: none;
-  --面板裁切: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
-  --主面板材质:
-    radial-gradient(circle at 14% 16%, rgba(0, 255, 204, 0.1), transparent 28%),
-    linear-gradient(145deg, rgba(3, 15, 25, 0.9), rgba(2, 8, 16, 0.92));
+  --面板裁切: none;
+  --主面板材质: linear-gradient(rgba(0, 255, 204, 0.055), rgba(0, 255, 204, 0.055));
   --面板光层:
-    linear-gradient(90deg, rgba(0, 255, 204, 0.2), transparent 26%),
-    linear-gradient(180deg, rgba(0, 255, 204, 0.08), transparent 18%);
-  --背景细纹:
-    repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 255, 204, 0.055) 3px 4px),
-    repeating-linear-gradient(90deg, transparent 0 16px, rgba(0, 255, 204, 0.04) 16px 17px);
+    linear-gradient(90deg, #00ffcc 0 2px, transparent 2px) left top / 46px 2px no-repeat,
+    linear-gradient(180deg, #00ffcc 0 2px, transparent 2px) left top / 2px 46px no-repeat,
+    linear-gradient(270deg, #00ffcc 0 2px, transparent 2px) right bottom / 46px 2px no-repeat,
+    linear-gradient(0deg, #00ffcc 0 2px, transparent 2px) right bottom / 2px 46px no-repeat,
+    linear-gradient(90deg, rgba(0, 255, 204, 0.3), transparent 28%);
+  --背景细纹: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px);
+  --主窗体底色:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, #06111e 92%, transparent),
+      color-mix(in srgb, #000 44%, #0a192f)
+    );
   --卡片材质:
-    linear-gradient(135deg, rgba(0, 255, 204, 0.035), transparent 44%),
-    rgba(2, 10, 18, 0.5);
+    linear-gradient(90deg, rgba(0, 255, 204, 0.12), transparent 28%),
+    rgba(0, 255, 204, 0.085);
   --悬浮材质:
-    linear-gradient(135deg, rgba(0, 255, 204, 0.08), rgba(2, 10, 18, 0.94));
+    linear-gradient(90deg, rgba(0, 255, 204, 0.18), transparent 32%),
+    rgba(4, 15, 28, 0.96);
   --资源槽底: repeating-linear-gradient(90deg, rgba(0, 255, 204, 0.18) 0 1px, transparent 1px 5px), rgba(0, 0, 0, 0.32);
   --资源槽填充: repeating-linear-gradient(90deg, #00ffcc 0 2px, transparent 2px 5px);
   --资源槽辉光:
@@ -17387,14 +17387,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --虚线: rgba(0, 255, 204, 0.18);
   --强线: rgba(0, 255, 204, 0.38);
   --虚化强度: blur(8px);
-  --文字主色: #ccfffc;
-  --文字弱色: #00ccaa;
-  --卡片底板: rgba(0, 20, 15, 0.62);
+  --文字主色: #e9fffb;
+  --文字弱色: #8ba9b7;
+  --卡片底板: rgba(0, 255, 204, 0.055);
   --卡片底板线: rgba(0, 255, 204, 0.24);
   --状态强调色: #00ffcc;
   --状态危险色: #ff4f7a;
   --主题光束: linear-gradient(90deg, #00ffcc, rgba(0, 255, 204, 0.52), transparent);
   --主题发光: 0 0 18px rgba(0, 255, 204, 0.46);
+  --主窗体阴影:
+    0 18px 42px rgba(0, 0, 0, 0.36),
+    0 0 18px rgba(0, 255, 204, 0.46),
+    inset 0 0 22px rgba(0, 255, 204, 0.1);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='炫世唐门'] {
@@ -17404,43 +17408,40 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='炫�
 body[data-mvu-holo-theme='金龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='金龙王'] {
-  --主题主色: #8a1c12;
-  --主题辅色: #080202;
-  --主题高光: #fff8df;
-  --主题底色: #030000;
+  --主题主色: #ff3300;
+  --主题辅色: #1a0505;
+  --主题高光: #ffd700;
+  --主题底色: #140303;
   --主题字体: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --主题字重: 900;
-  --暗场底板: rgba(3, 0, 0, 0.82);
-  --暗场底板强: rgba(8, 2, 2, 0.9);
-  --暗场卡片: rgba(8, 2, 2, 0.78);
-  --暗场浮层: rgba(3, 0, 0, 0.96);
+  --暗场底板: rgba(26, 5, 5, 0.42);
+  --暗场底板强: rgba(20, 3, 3, 0.7);
+  --暗场卡片: rgba(255, 170, 0, 0.105);
+  --暗场浮层: rgba(20, 3, 3, 0.97);
   --投影圆角: 0;
   --卡片圆角: 0;
-  --卡片裁切: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
-  --面板裁切: polygon(26px 0, 100% 0, 100% calc(100% - 26px), calc(100% - 26px) 100%, 0 100%, 0 26px);
+  --卡片裁切: none;
+  --面板裁切: none;
   --主面板材质:
-    linear-gradient(116deg, transparent 0 46%, rgba(255, 69, 0, 0.026) 47%, transparent 49%),
-    repeating-linear-gradient(135deg, rgba(255, 248, 223, 0.018) 0 1px, transparent 1px 13px),
-    radial-gradient(ellipse at 50% 104%, rgba(255, 177, 44, 0.09), transparent 16%),
-    radial-gradient(ellipse at 50% 100%, rgba(139, 0, 0, 0.16), transparent 34%),
-    linear-gradient(145deg, #0f0302 0%, #080202 44%, #030000 100%);
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 7px),
+    linear-gradient(rgba(255, 51, 0, 0.07), rgba(255, 51, 0, 0.07));
   --面板光层:
-    linear-gradient(90deg, rgba(255, 248, 223, 0.1), transparent 16%, transparent 84%, rgba(255, 69, 0, 0.08)),
-    linear-gradient(180deg, rgba(255, 177, 44, 0.08), transparent 14%, transparent 82%, rgba(139, 0, 0, 0.12)),
-    radial-gradient(ellipse at 50% 100%, rgba(255, 69, 0, 0.12), transparent 26%);
-  --背景细纹:
-    repeating-linear-gradient(135deg, rgba(255, 248, 223, 0.018) 0 1px, transparent 1px 11px),
-    linear-gradient(116deg, transparent 0 45%, rgba(255, 69, 0, 0.024) 46%, transparent 49%);
+    linear-gradient(90deg, rgba(255, 51, 0, 0.38), transparent 22%),
+    radial-gradient(circle at 95% 12%, rgba(255, 215, 0, 0.18), transparent 22%),
+    radial-gradient(circle at 10% 10%, rgba(255, 170, 0, 0.14), transparent 24%);
+  --背景细纹: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px);
+  --主窗体底色:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, #140303 92%, transparent),
+      color-mix(in srgb, #000 44%, #1a0505)
+    );
   --卡片材质:
-    repeating-linear-gradient(135deg, rgba(255, 248, 223, 0.014) 0 1px, transparent 1px 12px),
-    linear-gradient(0deg, rgba(255, 69, 0, 0.08), transparent 18%),
-    radial-gradient(circle at 14% 10%, rgba(255, 248, 223, 0.045), transparent 16%),
-    linear-gradient(145deg, rgba(15, 3, 2, 0.86), rgba(8, 2, 2, 0.9) 54%, rgba(3, 0, 0, 0.96));
+    linear-gradient(90deg, rgba(255, 51, 0, 0.12), transparent 28%),
+    rgba(255, 170, 0, 0.105);
   --悬浮材质:
-    repeating-linear-gradient(135deg, rgba(255, 248, 223, 0.018) 0 1px, transparent 1px 10px),
-    linear-gradient(0deg, rgba(255, 69, 0, 0.1), transparent 20%),
-    radial-gradient(circle at 18% 10%, rgba(255, 248, 223, 0.07), transparent 22%),
-    linear-gradient(145deg, rgba(18, 4, 3, 0.86), rgba(5, 0, 0, 0.94));
+    linear-gradient(90deg, rgba(255, 51, 0, 0.18), transparent 32%),
+    rgba(20, 3, 3, 0.97);
   --资源槽底:
     linear-gradient(180deg, rgba(255, 248, 223, 0.045), transparent 42%),
     linear-gradient(90deg, rgba(2, 0, 0, 0.98), rgba(24, 2, 1, 0.9) 74%, rgba(78, 8, 2, 0.72));
@@ -17456,18 +17457,18 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --资源暗格: rgba(139, 0, 0, 0.14);
   --资源游标: #fff8df;
   --介质纹理: radial-gradient(circle, rgba(255, 246, 214, 0.032) 0 1px, transparent 1.3px);
-  --投影背景: rgba(255, 51, 0, 0.095);
-  --实体背景: rgba(255, 96, 18, 0.13);
-  --虚幻背景: rgba(255, 51, 0, 0.062);
-  --边线颜色: rgba(255, 177, 44, 0.36);
+  --投影背景: rgba(255, 51, 0, 0.07);
+  --实体背景: rgba(255, 170, 0, 0.105);
+  --虚幻背景: rgba(255, 51, 0, 0.05);
+  --边线颜色: rgba(255, 215, 0, 0.42);
   --虚线: rgba(255, 177, 44, 0.13);
   --强线: rgba(255, 69, 0, 0.32);
   --虚化强度: blur(8px) saturate(112%);
-  --文字主色: #fff8df;
-  --文字弱色: #8a3a3a;
-  --卡片底板: rgba(8, 2, 2, 0.74);
+  --文字主色: #fff0d7;
+  --文字弱色: #c9966c;
+  --卡片底板: rgba(255, 170, 0, 0.07);
   --卡片底板线: rgba(255, 69, 0, 0.18);
-  --状态强调色: #fff8df;
+  --状态强调色: #fff0d7;
   --状态危险色: #ff2600;
   --主题光束: radial-gradient(circle, #fff8df 0 10%, #ffb12c 28%, #ff4500 48%, rgba(139, 0, 0, 0.34) 68%, transparent 78%);
   --主题发光:
@@ -17475,6 +17476,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
     0 0 8px rgba(255, 177, 44, 0.58),
     0 0 16px rgba(255, 69, 0, 0.38),
     0 0 32px rgba(139, 0, 0, 0.24);
+  --主窗体阴影:
+    0 20px 44px rgba(0, 0, 0, 0.46),
+    0 0 22px rgba(255, 51, 0, 0.42),
+    inset 0 0 22px rgba(255, 51, 0, 0.1);
   --装甲内影: inset 1px 1px 0 rgba(255, 248, 223, 0.1), inset -1px -1px 0 rgba(0, 0, 0, 0.92), inset 0 -1px 0 rgba(255, 177, 44, 0.16), inset 0 -18px 28px rgba(139, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 69, 0, 0.18), inset 0 0 26px rgba(255, 69, 0, 0.07);
   --面板约束辉光: 0 0 0 1px rgba(255, 69, 0, 0.28);
   --面板近距辉光: 0 0 10px rgba(139, 0, 0, 0.24);
@@ -17521,16 +17526,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王'] {
   border-color: transparent;
-  box-shadow:
-    var(--面板约束辉光),
-    var(--面板近距辉光),
-    var(--面板远距辉光),
-    inset 0 1px 0 rgba(255, 248, 223, 0.08),
-    inset 0 -2px 0 rgba(255, 177, 44, 0.12),
-    inset 0 -38px 62px rgba(139, 0, 0, 0.09),
-    inset 0 0 30px rgba(255, 69, 0, 0.06),
-    0 0 40px rgba(139, 0, 0, 0.1),
-    0 20px 44px rgba(0, 0, 0, 0.48);
+  box-shadow: var(--主窗体阴影);
   letter-spacing: 1px;
 }
 
@@ -17566,40 +17562,37 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金�
 body[data-mvu-holo-theme='银龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='银龙王'] {
-  --主题主色: #dbeafe;
-  --主题辅色: rgba(78, 190, 255, 0.2);
-  --主题高光: #9ffcff;
-  --主题底色: #030b14;
+  --主题主色: #e0eaff;
+  --主题辅色: rgba(255, 255, 255, 0.12);
+  --主题高光: #ffffff;
+  --主题底色: rgba(10, 14, 24, 0.72);
   --主题字体: "PingFang SC", "Microsoft YaHei Light", "Microsoft YaHei", sans-serif;
   --主题字重: 300;
-  --暗场底板: rgba(7, 15, 25, 0.68);
-  --暗场底板强: rgba(9, 20, 32, 0.82);
-  --暗场卡片: rgba(13, 26, 38, 0.58);
-  --暗场浮层: rgba(6, 12, 22, 0.92);
+  --暗场底板: rgba(10, 14, 24, 0.36);
+  --暗场底板强: rgba(10, 14, 24, 0.62);
+  --暗场卡片: rgba(255, 255, 255, 0.11);
+  --暗场浮层: rgba(10, 14, 24, 0.94);
   --投影圆角: 20px;
-  --卡片圆角: 18px;
+  --卡片圆角: 20px;
   --卡片裁切: none;
   --面板裁切: none;
-  --主面板材质:
-    radial-gradient(ellipse at 50% -12%, rgba(255, 255, 255, 0.34), transparent 24%),
-    radial-gradient(ellipse at 50% 4%, rgba(159, 252, 255, 0.24), transparent 42%),
-    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.16), transparent 20%),
-    radial-gradient(ellipse at 78% 18%, rgba(122, 232, 255, 0.13), transparent 30%),
-    linear-gradient(145deg, rgba(12, 28, 42, 0.82), rgba(3, 11, 20, 0.94) 68%, rgba(1, 5, 10, 0.96));
+  --主面板材质: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1));
   --面板光层:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(159, 252, 255, 0.1) 24%, transparent 58%),
-    linear-gradient(120deg, rgba(255, 255, 255, 0.15), transparent 30%, rgba(159, 252, 255, 0.14)),
-    radial-gradient(circle at 86% 16%, rgba(159, 252, 255, 0.18), transparent 22%);
-  --背景细纹:
-    radial-gradient(color-mix(in srgb, var(--主题高光) 5%, transparent) 1px, transparent 1.4px),
-    linear-gradient(135deg, transparent 0 54%, rgba(159, 252, 255, 0.045) 55%, transparent 56%);
+    linear-gradient(90deg, rgba(224, 234, 255, 0.38), transparent 22%),
+    radial-gradient(circle at 95% 12%, rgba(255, 255, 255, 0.18), transparent 22%);
+  --背景细纹: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px);
+  --主窗体底色:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, rgba(10, 14, 24, 0.72) 92%, transparent),
+      color-mix(in srgb, #000 44%, rgba(255, 255, 255, 0.12))
+    );
   --卡片材质:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 34%),
-    linear-gradient(135deg, rgba(159, 252, 255, 0.06), rgba(9, 20, 32, 0.54));
+    linear-gradient(90deg, rgba(224, 234, 255, 0.12), transparent 28%),
+    rgba(255, 255, 255, 0.11);
   --悬浮材质:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 38%),
-    linear-gradient(135deg, rgba(159, 252, 255, 0.12), rgba(8, 18, 30, 0.74));
+    linear-gradient(90deg, rgba(224, 234, 255, 0.18), transparent 32%),
+    rgba(10, 14, 24, 0.94);
   --资源槽底: linear-gradient(90deg, rgba(5, 14, 24, 0.72), rgba(28, 55, 72, 0.44), rgba(8, 18, 30, 0.7));
   --资源槽填充: linear-gradient(90deg, #f7fdff, #9ffcff, #73baff, #f7fdff);
   --资源槽辉光:
@@ -17611,34 +17604,34 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --资源暗格: rgba(159, 252, 255, 0.14);
   --资源游标: #f7fdff;
   --介质纹理: linear-gradient(135deg, rgba(255,255,255,0.07), transparent 34%, rgba(159,252,255,0.052));
-  --投影背景: rgba(159, 252, 255, 0.075);
-  --实体背景: rgba(10, 22, 34, 0.62);
-  --虚幻背景: rgba(159, 252, 255, 0.045);
-  --边线颜色: rgba(235, 252, 255, 0.42);
+  --投影背景: rgba(255, 255, 255, 0.1);
+  --实体背景: rgba(255, 255, 255, 0.11);
+  --虚幻背景: rgba(255, 255, 255, 0.055);
+  --边线颜色: rgba(255, 255, 255, 0.3);
   --虚线: rgba(159, 252, 255, 0.17);
   --强线: rgba(247, 253, 255, 0.42);
-  --虚化强度: blur(16px) saturate(118%);
-  --文字主色: #f7fdff;
-  --文字弱色: #a7c4d8;
-  --卡片底板: rgba(8, 18, 30, 0.58);
-  --卡片底板线: rgba(235, 252, 255, 0.26);
-  --状态强调色: #9ffcff;
+  --虚化强度: blur(16px);
+  --文字主色: #f7fbff;
+  --文字弱色: #b8c7da;
+  --卡片底板: rgba(255, 255, 255, 0.07);
+  --卡片底板线: rgba(255, 255, 255, 0.22);
+  --状态强调色: #ffffff;
   --状态危险色: #ff7f9f;
   --主题光束: linear-gradient(90deg, transparent, rgba(247,253,255,0.82), rgba(159,252,255,0.46), transparent);
   --主题发光:
-    0 0 18px rgba(159, 252, 255, 0.36),
-    0 0 46px rgba(86, 174, 255, 0.18),
-    inset 0 1px 0 rgba(255,255,255,0.2),
-    inset 0 0 18px rgba(255,255,255,0.1);
+    inset 0 0 15px rgba(255, 255, 255, 0.1),
+    inset 0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 20px rgba(224, 234, 255, 0.28);
+  --主窗体阴影:
+    0 18px 40px rgba(0, 0, 0, 0.3),
+    inset 0 0 15px rgba(255, 255, 255, 0.1),
+    inset 0 0 18px rgba(255, 255, 255, 0.12),
+    0 0 20px rgba(224, 234, 255, 0.28);
   --面板约束辉光: 0 0 0 1px rgba(235, 252, 255, 0.4);
   --面板近距辉光: 0 0 16px rgba(159, 252, 255, 0.26);
   --面板远距辉光: 0 0 48px rgba(86, 174, 255, 0.16);
   --玻璃微切角: inset 1px 1px 0 rgba(255, 255, 255, 0.24), inset 0 18px 30px rgba(255, 255, 255, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.36);
   --玻璃暗侧阴影: inset -1px -1px 0 rgba(2, 8, 16, 0.7);
-  --轻量信息底板: color-mix(in srgb, rgba(255, 255, 255, 0.038) 60%, transparent);
-  --轻量信息线: rgba(183, 239, 255, 0.18);
-  --轻量信息反光: inset 1px 1px 0 rgba(255, 255, 255, 0.12);
-  --轻量信息阴影: 0 8px 18px rgba(0, 0, 0, 0.14);
   --档案核心魂色: #f7fdff;
   --武魂舞台魂色: #9ffcff;
   --档案武装魂色: #cfe9ff;
@@ -17672,14 +17665,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王'] {
   border-color: transparent;
-  box-shadow:
-    var(--面板约束辉光),
-    var(--面板近距辉光),
-    var(--面板远距辉光),
-    inset 0 1px 0 rgba(255, 255, 255, 0.26),
-    inset 0 24px 34px rgba(255, 255, 255, 0.06),
-    inset 0 0 26px rgba(159, 252, 255, 0.08),
-    0 20px 44px rgba(0, 0, 0, 0.34);
+  box-shadow: var(--主窗体阴影);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银龙王']::before {
@@ -17704,39 +17690,41 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='银�
 body[data-mvu-holo-theme='幻海蝶舞'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme='幻海蝶舞'] {
-  --主题主色: #00f2fe;
+  --主题主色: #00d2ff;
   --主题辅色: #ff7eb3;
-  --主题高光: #7df9ff;
-  --主题底色: #050b14;
-  --蝶翼金: #ff7eb3;
+  --主题高光: #ffd700;
+  --主题底色: #062333;
+  --蝶翼金: #ffd700;
   --主题字体: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --主题字重: 500;
-  --暗场底板: rgba(4, 10, 22, 0.52);
-  --暗场底板强: rgba(5, 14, 28, 0.68);
-  --暗场卡片: rgba(6, 18, 34, 0.52);
-  --暗场浮层: rgba(5, 12, 24, 0.88);
-  --投影圆角: 32px 42px 24px 42px;
-  --卡片圆角: 28px;
+  --暗场底板: rgba(6, 35, 51, 0.28);
+  --暗场底板强: rgba(6, 35, 51, 0.56);
+  --暗场卡片: rgba(255, 255, 255, 0.11);
+  --暗场浮层: rgba(6, 35, 51, 0.94);
+  --投影圆角: 30px 40px 20px 40px;
+  --卡片圆角: 30px;
   --卡片裁切: none;
   --面板裁切: none;
   --主面板材质:
-    radial-gradient(circle at 18% 24%, rgba(125, 249, 255, 0.18), transparent 22%),
-    radial-gradient(ellipse at 76% 64%, rgba(255, 126, 179, 0.16), transparent 30%),
-    radial-gradient(circle at 48% 12%, rgba(255, 255, 255, 0.1), transparent 18%),
-    linear-gradient(135deg, rgba(0, 242, 254, 0.078), rgba(255, 126, 179, 0.06), rgba(3, 8, 18, 0.68));
+    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.22), transparent 18%),
+    linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
   --面板光层:
-    radial-gradient(ellipse at 20% 30%, rgba(255, 255, 255, 0.18), transparent 19%),
-    radial-gradient(ellipse at 70% 60%, rgba(0, 242, 254, 0.22), transparent 24%),
-    linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, 0.115) 23%, transparent 31%, rgba(255, 126, 179, 0.082) 46%, transparent 54%);
+    radial-gradient(ellipse at 20% 30%, rgba(255, 255, 255, 0.16), transparent 18%),
+    radial-gradient(ellipse at 70% 60%, rgba(0, 210, 255, 0.18), transparent 22%),
+    linear-gradient(115deg, transparent 0 22%, rgba(255, 255, 255, 0.09) 24%, transparent 30%, rgba(255, 215, 0, 0.06) 45%, transparent 52%);
   --背景细纹: linear-gradient(0deg, transparent, transparent);
+  --主窗体底色:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, #062333 92%, transparent),
+      color-mix(in srgb, #000 44%, #ff7eb3)
+    );
   --卡片材质:
-    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.16), transparent 22%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.062), transparent 30%),
-    linear-gradient(135deg, rgba(0, 242, 254, 0.09), rgba(255, 126, 179, 0.07), rgba(4, 10, 22, 0.46));
+    linear-gradient(90deg, rgba(0, 210, 255, 0.12), transparent 28%),
+    rgba(255, 255, 255, 0.11);
   --悬浮材质:
-    radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.22), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 35%),
-    linear-gradient(135deg, rgba(0, 242, 254, 0.18), rgba(255, 126, 179, 0.14), rgba(5, 15, 26, 0.9));
+    linear-gradient(90deg, rgba(255, 126, 179, 0.16), transparent 32%),
+    rgba(6, 35, 51, 0.96);
   --资源槽底:
     linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 38%),
     linear-gradient(90deg, rgba(0, 20, 40, 0.58), rgba(0, 34, 54, 0.46), rgba(255, 255, 255, 0.08));
@@ -17756,24 +17744,31 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-theme-dock[data-holo-theme=
   --资源游标: #ff7eb3;
   --介质纹理:
     linear-gradient(135deg, rgba(0, 242, 254, 0.06), rgba(255, 126, 179, 0.052), rgba(255, 255, 255, 0.026));
-  --投影背景: linear-gradient(135deg, rgba(0, 242, 254, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 255, 255, 0.035));
+  --投影背景: linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(255, 126, 179, 0.08), rgba(255, 215, 0, 0.05));
   --实体背景: rgba(255, 255, 255, 0.11);
-  --虚幻背景: rgba(0, 242, 254, 0.045);
-  --边线颜色: rgba(168, 238, 255, 0.3);
+  --虚幻背景: rgba(0, 210, 255, 0.045);
+  --边线颜色: rgba(255, 255, 255, 0.18);
   --虚线: rgba(255, 255, 255, 0.16);
   --强线: rgba(255, 255, 255, 0.32);
-  --虚化强度: blur(16px) saturate(118%);
-  --文字主色: #ffffff;
-  --文字弱色: #a8d5ff;
-  --卡片底板: rgba(5, 16, 32, 0.6);
-  --卡片底板线: rgba(168, 213, 255, 0.22);
-  --状态强调色: #7df9ff;
+  --虚化强度: blur(12px) saturate(110%);
+  --文字主色: #f7feff;
+  --文字弱色: #8ec9d7;
+  --卡片底板: rgba(255, 255, 255, 0.07);
+  --卡片底板线: rgba(255, 255, 255, 0.16);
+  --状态强调色: #00d2ff;
   --状态危险色: #ff7eb3;
   --主题光束: linear-gradient(90deg, #00f2fe, #ff7eb3 58%, rgba(0, 242, 254, 0.42), transparent);
   --主题发光:
-    0 0 18px rgba(0, 242, 254, 0.48),
-    0 0 30px rgba(255, 126, 179, 0.22),
-    inset 0 0 24px rgba(255, 255, 255, 0.12);
+    0 0 15px rgba(0, 210, 255, 0.4),
+    inset 0 0 20px rgba(255, 126, 179, 0.2),
+    inset 0 0 22px rgba(0, 210, 255, 0.1),
+    0 0 30px rgba(255, 126, 179, 0.22);
+  --主窗体阴影:
+    0 18px 40px rgba(0, 0, 0, 0.3),
+    0 0 15px rgba(0, 210, 255, 0.4),
+    inset 0 0 20px rgba(255, 126, 179, 0.2),
+    inset 0 0 22px rgba(0, 210, 255, 0.1),
+    0 0 30px rgba(255, 126, 179, 0.22);
   --面板约束辉光: 0 0 0 1px rgba(125, 249, 255, 0.4);
   --面板近距辉光: 0 0 14px rgba(0, 242, 254, 0.32);
   --面板远距辉光: 0 0 46px rgba(255, 126, 179, 0.18);
@@ -17841,15 +17836,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn {
   padding: 2px 7px;
   border: 1px solid var(--边线颜色);
   border-radius: 999px;
-  background: var(--卡片材质);
+  background: var(--二级实体材质);
   color: var(--mvu-holo-text);
   font-size: 10px;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 0 10px color-mix(in srgb, var(--主题主色) 12%, transparent);
-  backdrop-filter: var(--虚化强度);
-  -webkit-backdrop-filter: var(--虚化强度);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-theme-btn[aria-pressed='true'] {
@@ -19014,20 +19007,23 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
   --模块魂色: color-mix(in srgb, var(--文字主色) 74%, #1b1b22);
+  --正文卡片魂色: var(--魂环当前色, var(--模块魂色, var(--主题主色)));
+  --正文卡片魂影: var(--魂环当前阴影, color-mix(in srgb, var(--正文卡片魂色) 42%, transparent));
   position: relative;
   isolation: isolate;
   min-width: 0;
   min-height: 0;
   height: auto;
   border: 1px solid var(--边线颜色);
-  border-radius: var(--卡片圆角);
-  clip-path: var(--卡片裁切);
-  background: var(--卡片材质);
+  border-radius: var(--正文卡片圆角);
+  clip-path: none;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 12%, transparent), transparent 28%),
+    var(--实体背景);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
-    0 12px 24px rgba(0, 0, 0, 0.18);
-  backdrop-filter: var(--虚化强度);
-  -webkit-backdrop-filter: var(--虚化强度);
+    inset 3px 0 0 var(--正文卡片魂色),
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 12px var(--正文卡片魂影);
   overflow: hidden;
 }
 
@@ -19036,6 +19032,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ma
   isolation: isolate;
   min-width: 0;
   height: auto;
+  border-color: var(--边线颜色);
+  background: var(--投影背景);
+  box-shadow: var(--投影屏阴影);
   overflow: hidden;
 }
 
@@ -19167,11 +19166,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-ca
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:hover,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:focus-within {
   transform: translateX(4px);
-  border-color: color-mix(in srgb, var(--主题主色) 58%, var(--边线颜色));
+  border-color: color-mix(in srgb, var(--正文卡片魂色) 62%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 16%, transparent), transparent 32%),
+    var(--实体背景);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--主题主色) 14%, transparent),
-    0 16px 30px rgba(0, 0, 0, 0.24),
-    0 0 18px color-mix(in srgb, var(--主题主色) 13%, transparent);
+    inset 3px 0 0 var(--正文卡片魂色),
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 16px color-mix(in srgb, var(--正文卡片魂色) 52%, transparent);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card.clickable:hover > *,
@@ -19277,21 +19279,6 @@ body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
-  border-color: transparent;
-  box-shadow:
-    var(--玻璃内折射),
-    inset 0 0 0 1px rgba(255, 69, 0, 0.16),
-    inset 0 0 20px rgba(255, 69, 0, 0.05),
-    inset 0 -1px 0 rgba(255, 177, 44, 0.18),
-    inset 0 -28px 42px rgba(139, 0, 0, 0.08),
-    0 16px 30px rgba(0, 0, 0, 0.34),
-    0 0 18px rgba(139, 0, 0, 0.12),
-    var(--面板近距辉光),
-    var(--面板远距辉光);
-}
-
-body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
   :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile)::before {
   inset: 8px;
   background:
@@ -19303,29 +19290,6 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
     radial-gradient(circle at 12px 12px, rgba(255, 248, 223, 0.1), transparent 18px),
     radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), rgba(139, 0, 0, 0.14), transparent 22px);
   opacity: 0.58;
-}
-
-body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
-  border-color: transparent;
-  box-shadow:
-    var(--玻璃微切角),
-    var(--玻璃暗侧阴影),
-    0 16px 30px rgba(0, 0, 0, 0.22),
-    var(--面板近距辉光),
-    var(--面板远距辉光);
-}
-
-body[data-mvu-holo-theme='银龙王'] #mvu-unified-mount
-  :where(.mvu-unified-card, .mvu-unified-map-stage, .mvu-unified-detail-host .relation-card, .mvu-unified-detail-host .timeline-card, .mvu-unified-detail-host .role-switch-tile) {
-  border-color: transparent;
-  box-shadow:
-    var(--玻璃微切角),
-    var(--玻璃暗侧阴影),
-    var(--面板约束辉光),
-    0 14px 28px rgba(0, 0, 0, 0.2),
-    var(--面板近距辉光),
-    var(--面板远距辉光);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > .mvu-unified-card.clickable:hover,
@@ -20239,8 +20203,10 @@ body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-led label 
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount
   :where(.archive-card-title, .mvu-unified-card h3, .mvu-archive-social-window-head span, .mvu-dashboard-panel-section h3, .mvu-holo-card-title) {
-  color: #8a3a3a;
-  text-shadow: 0 1px 0 rgba(255, 100, 50, 0.4), 0 -1px 0 rgba(0, 0, 0, 0.88);
+  color: color-mix(in srgb, var(--文字主色) 78%, var(--主题高光));
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.92),
+    0 0 8px rgba(255, 51, 0, 0.24);
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-led.is-critical label span,
@@ -21000,9 +20966,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-holo-metric {
   min-width: 0;
   min-height: 30px;
   padding: 7px 9px;
-  border-radius: calc(var(--卡片圆角) * 0.55);
-  background: var(--卡片底板);
-  box-shadow: inset 0 0 0 1px var(--卡片底板线);
+  border-radius: var(--投影圆角);
+  background: var(--轻量信息底板);
+  box-shadow: inset 0 0 0 1px var(--轻量信息线);
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-holo-row {
@@ -22438,6 +22404,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo #mvu-unified-mount .mvu-archive-ring-observatory > .mvu-soul-ring-showcase--overview::after,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王']::before,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='金龙王']::after,
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-frame[data-holo-theme='幻海蝶舞']::before,
+  body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount .holo-huanhai-enter-active::after,
+  body[data-mvu-holo-theme='幻海蝶舞']
+    #mvu-unified-mount
+    .mvu-unified-stage-switch[data-holo-theme-key='huanhai']
+    > .is-stage-enter::after,
+  body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .holo-jinlong-enter-active::after,
+  body[data-mvu-holo-theme='金龙王']
+    #mvu-unified-mount
+    .mvu-unified-stage-switch[data-holo-theme-key='jinlong']
+    > .is-stage-enter::after,
   body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-led-track i::before,
   body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-radar .radar-visual,
   body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount .mvu-archive-led.is-critical label span,
@@ -22473,6 +22450,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   max-width: min(1120px, calc(100vw - 48px)) !important;
   min-height: 0 !important;
   max-height: min(86svh, 920px) !important;
+  border: 1px solid var(--边线颜色);
+  border-radius: var(--投影圆角);
+  background:
+    var(--主面板材质),
+    var(--背景细纹),
+    var(--主窗体底色);
+  box-shadow: var(--主窗体阴影);
   overflow: hidden;
 }
 
@@ -23138,9 +23122,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   min-width: 0 !important;
   min-height: 36px !important;
   padding: 9px 11px !important;
-  border-radius: calc(var(--卡片圆角) * 0.55);
-  background: var(--卡片底板);
-  box-shadow: inset 0 0 0 1px var(--卡片底板线);
+  border-radius: var(--投影圆角);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
   overflow: hidden !important;
 }
 
@@ -25369,6 +25353,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-card,
 #detailModal.archive-redesign-mode .archive-redesign-root .dossier-card,
 #detailModal.archive-redesign-mode .archive-redesign-root .timeline-card {
+  --正文卡片魂色: var(--魂环当前色, var(--模块魂色, var(--主题主色)));
+  --正文卡片魂影: var(--魂环当前阴影, color-mix(in srgb, var(--正文卡片魂色) 42%, transparent));
   min-width: 0;
   min-height: 0;
   display: grid;
@@ -25378,9 +25364,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   overflow: hidden;
   transform-style: preserve-3d;
   background:
-    var(--卡片材质),
-    var(--卡片底板);
-  box-shadow: inset 0 0 0 1px var(--卡片底板线);
+    linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 12%, transparent), transparent 28%),
+    var(--实体背景);
+  box-shadow:
+    inset 3px 0 0 var(--正文卡片魂色),
+    2px 4px 10px rgba(0, 0, 0, 0.3),
+    0 0 12px var(--正文卡片魂影);
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-tile,
@@ -25395,8 +25384,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .map-dispatch-a
   padding: 10px 12px;
   overflow: hidden;
   transform-style: preserve-3d;
-  background: var(--卡片底板);
-  box-shadow: inset 0 0 0 1px var(--卡片底板线);
+  background: var(--轻量信息底板);
+  box-shadow: none;
 }
 
 #detailModal.archive-redesign-mode .archive-redesign-root .archive-card::before,
@@ -27388,9 +27377,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 6px 12px;
   min-height: 36px;
   padding: 9px 11px;
-  border-radius: calc(var(--卡片圆角) * 0.55);
-  background: var(--卡片底板);
-  box-shadow: inset 0 0 0 1px var(--卡片底板线);
+  border-radius: var(--投影圆角);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
   overflow: hidden;
 }
 
@@ -27569,9 +27558,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
   gap: 6px 12px;
   min-height: 36px;
   padding: 9px 11px;
-  border-radius: calc(var(--卡片圆角) * 0.55);
-  background: var(--卡片底板);
-  box-shadow: inset 0 0 0 1px var(--卡片底板线);
+  border-radius: var(--投影圆角);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--正文卡片魂色) 11%, transparent), transparent 70%);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--正文卡片魂色) 38%, transparent);
   overflow: hidden;
 }
 
@@ -31889,13 +31878,14 @@ body > .battle-skill-tooltip-floating--portal .battle-ring-tooltip-chip {
 }
 
 body[data-mvu-holo-theme='炫世唐门'] #mvu-unified-mount #mvu-battle-inline-host,
-body[data-mvu-holo-theme='炫世唐门'] #detailModal #mvu-battle-inline-host {
+body[data-mvu-holo-theme='炫世唐门'] #detailModal #mvu-battle-inline-host,
+body[data-mvu-holo-theme='炫世唐门'] > .battle-skill-tooltip-floating--portal {
   --战斗主色: #00ffcc;
   --战斗强调色: #66ffe8;
   --战斗危险色: #ff3f6e;
   --战斗警戒色: #d7ff52;
-  --战斗玻璃底: rgba(0, 9, 8, 0.88);
-  --战斗玻璃浮层: rgba(0, 24, 20, 0.72);
+  --战斗玻璃底: rgba(3, 14, 24, 0.92);
+  --战斗玻璃浮层: rgba(4, 18, 28, 0.82);
   --战斗扫描线:
     repeating-linear-gradient(0deg, rgba(0, 255, 204, 0.055) 0 1px, transparent 1px 5px),
     repeating-linear-gradient(90deg, rgba(0, 255, 204, 0.035) 0 1px, transparent 1px 18px);
@@ -31908,13 +31898,14 @@ body[data-mvu-holo-theme='炫世唐门'] #detailModal #mvu-battle-inline-host {
 }
 
 body[data-mvu-holo-theme='金龙王'] #mvu-unified-mount #mvu-battle-inline-host,
-body[data-mvu-holo-theme='金龙王'] #detailModal #mvu-battle-inline-host {
-  --战斗主色: #8a1c12;
-  --战斗强调色: #fff8df;
+body[data-mvu-holo-theme='金龙王'] #detailModal #mvu-battle-inline-host,
+body[data-mvu-holo-theme='金龙王'] > .battle-skill-tooltip-floating--portal {
+  --战斗主色: #ff3300;
+  --战斗强调色: #ffd700;
   --战斗危险色: #ff1f00;
   --战斗警戒色: #ffb12c;
-  --战斗玻璃底: rgba(3, 0, 0, 0.92);
-  --战斗玻璃浮层: rgba(8, 2, 2, 0.82);
+  --战斗玻璃底: rgba(20, 3, 3, 0.94);
+  --战斗玻璃浮层: rgba(20, 3, 3, 0.86);
   --战斗扫描线:
     repeating-linear-gradient(135deg, rgba(255, 248, 223, 0.018) 0 1px, transparent 1px 12px),
     linear-gradient(110deg, transparent 0 46%, rgba(255, 69, 0, 0.028) 47%, transparent 49%);
@@ -31981,13 +31972,14 @@ body[data-mvu-holo-theme='金龙王'] #detailModal #mvu-battle-inline-host .batt
 }
 
 body[data-mvu-holo-theme='银龙王'] #mvu-unified-mount #mvu-battle-inline-host,
-body[data-mvu-holo-theme='银龙王'] #detailModal #mvu-battle-inline-host {
-  --战斗主色: #dbeafe;
-  --战斗强调色: #9ffcff;
+body[data-mvu-holo-theme='银龙王'] #detailModal #mvu-battle-inline-host,
+body[data-mvu-holo-theme='银龙王'] > .battle-skill-tooltip-floating--portal {
+  --战斗主色: #e0eaff;
+  --战斗强调色: #ffffff;
   --战斗危险色: #ff7f9f;
   --战斗警戒色: #e8f5ff;
-  --战斗玻璃底: rgba(8, 16, 26, 0.72);
-  --战斗玻璃浮层: rgba(18, 32, 46, 0.52);
+  --战斗玻璃底: rgba(10, 14, 24, 0.9);
+  --战斗玻璃浮层: rgba(10, 14, 24, 0.8);
   --战斗边缘高光: rgba(255, 255, 255, 0.2);
   --战斗扫描线:
     radial-gradient(color-mix(in srgb, #ffffff 8%, transparent) 1px, transparent 1.3px),
@@ -32002,18 +31994,19 @@ body[data-mvu-holo-theme='银龙王'] #detailModal #mvu-battle-inline-host {
 }
 
 body[data-mvu-holo-theme='幻海蝶舞'] #mvu-unified-mount #mvu-battle-inline-host,
-body[data-mvu-holo-theme='幻海蝶舞'] #detailModal #mvu-battle-inline-host {
-  --战斗主色: #00f2fe;
+body[data-mvu-holo-theme='幻海蝶舞'] #detailModal #mvu-battle-inline-host,
+body[data-mvu-holo-theme='幻海蝶舞'] > .battle-skill-tooltip-floating--portal {
+  --战斗主色: #00d2ff;
   --战斗强调色: #ff7eb3;
   --战斗危险色: #ff7eb3;
   --战斗警戒色: #ffd166;
-  --战斗玻璃底: rgba(4, 10, 22, 0.72);
-  --战斗玻璃浮层: rgba(6, 18, 34, 0.58);
+  --战斗玻璃底: rgba(6, 35, 51, 0.9);
+  --战斗玻璃浮层: rgba(6, 35, 51, 0.8);
   --战斗扫描线:
     radial-gradient(color-mix(in srgb, #7df9ff 5%, transparent) 1px, transparent 1.3px),
     linear-gradient(135deg, rgba(0, 242, 254, 0.035), rgba(255, 126, 179, 0.03), transparent 62%);
   --战斗环境光:
-    radial-gradient(ellipse at 26% 92%, rgba(0, 242, 254, 0.18), transparent 44%),
+    radial-gradient(ellipse at 26% 92%, rgba(0, 210, 255, 0.18), transparent 44%),
     radial-gradient(ellipse at 78% 16%, rgba(255, 126, 179, 0.14), transparent 42%);
   --战斗卡片裁切: polygon(0 10px, 12px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 16px) 100%, 0 100%);
   --战斗圆角: 24px;
@@ -32024,7 +32017,7 @@ body[data-mvu-holo-theme='幻海蝶舞'] #detailModal #mvu-battle-inline-host {
   --战斗下拉选项底: rgba(4, 14, 26, 0.8);
   --战斗下拉选项光: linear-gradient(90deg, rgba(0, 242, 254, 0.18), rgba(255, 126, 179, 0.16), transparent);
   --战斗下拉边条: #ff7eb3;
-  --战斗资源填充: linear-gradient(90deg, #00f2fe, #ff7eb3, #ffd166, #00f2fe);
+  --战斗资源填充: linear-gradient(90deg, #00d2ff, #ff7eb3, #ffd700, #00d2ff);
 }
 
 body:not([data-mvu-holo-theme]) #mvu-unified-mount #mvu-battle-inline-host,
