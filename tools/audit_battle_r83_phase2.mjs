@@ -157,6 +157,18 @@ addCheck(
     decisionCount: draft.decisionAudit.length,
   },
 );
+addCheck(
+  'transaction:final-snapshot-is-committable-combat-data',
+  sealedPackage.finalSnapshot &&
+    typeof sealedPackage.finalSnapshot === 'object' &&
+    sealedPackage.finalSnapshot.参战者 &&
+    Array.isArray(sealedPackage.finalSnapshot.参战者.team_player) &&
+    Array.isArray(sealedPackage.finalSnapshot.参战者.team_enemy) &&
+    typeof sealedPackage.finalSnapshot.进行中 === 'boolean' &&
+    typeof sealedPackage.finalSnapshot.裁断结果 === 'string' &&
+    sealedPackage.finalSnapshot.胜负条件 &&
+    runtime.hashBattleValue(formalInput) === inputHashBefore,
+);
 
 assert.deepEqual(
   Object.keys(sealedPackage).sort(),

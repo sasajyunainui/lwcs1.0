@@ -4382,67 +4382,73 @@ class BattleUIComponent {
       return BATTLE_RUNTIME.verifySealedBattlePackage(sealedPackage);
     }
 
-    function onPlayerAttack(playerInput, options = {}) {
+    let formalBattleTransactionInFlight = false;
+
+    async function onPlayerAttack(playerInput, options = {}) {
+        const dryRun = options.dryRun === true;
+        if (!dryRun && formalBattleTransactionInFlight) throw new Error('BATTLE_TRANSACTION_IN_FLIGHT');
+        if (!dryRun) formalBattleTransactionInFlight = true;
+        try {
         const state = root.BattleUI?.state || {};
         const sourceCombatData = options.combatData || state.combatData;
         if (!sourceCombatData || typeof sourceCombatData !== 'object') throw new Error('battle_combat_data_missing');
         const battleMode = options.mode === 'multi_round' ? 'multi_round' : 'single_round';
-        const dryRun = options.dryRun === true;
         const maxRounds = battleMode === 'multi_round'
           ? Math.max(1, Math.min(20, Math.floor(Number(options.autoContinueConfig?.maxRounds || sourceCombatData?.胜负条件?.maxRounds || 20))))
           : 1;
-        const runtime = BATTLE_RUNTIME.ensureCombatRuntime(sourceCombatData);
+        const transactionCombatData = cloneBattleValue(sourceCombatData);
+        const runtime = BATTLE_RUNTIME.ensureCombatRuntime(transactionCombatData);
         const seed = Math.max(1, Math.floor(Number(runtime.decisionSeed || 1)));
-        const result = BATTLE_RUNTIME.runBattleCase({
+        const sealedPackage = buildBattlePackage({
           caseId: dryRun ? 'battle-ui-preview' : 'battle-ui-formal',
           seed,
-          combatData: sourceCombatData,
+          combatData: transactionCombatData,
           mode: battleMode,
           rounds: maxRounds,
           selectedAction: options.actionDeclaration || null,
           battleIntent: {
-            mode: String(options.intentMode || sourceCombatData.战斗意图 || '').trim(),
-            objectives: sourceCombatData.胜负条件 || {},
+            mode: String(options.intentMode || transactionCombatData.战斗意图 || '').trim(),
+            objectives: transactionCombatData.胜负条件 || {},
           },
+          settings: { providerId: 'r8' },
         });
-        if (!dryRun && result?.combatData && typeof result.combatData === 'object') {
-          Object.assign(sourceCombatData, result.combatData);
-        }
-        const mvuUpdate = dryRun
+        const commitReceipt = dryRun
           ? null
-          : root.BattleUIBridge?.persistCombatData?.(sourceCombatData, {
-              analysis: 'Apply the authoritative BattleRuntime final snapshot, terminal result, resources and incapacitation facts exactly as provided.',
-              extraPatchOps: Array.isArray(result?.extraPatchOps) ? result.extraPatchOps : [],
-              syncHpRecoveryOnly: false,
-            }) || null;
+          : await root.BattleUIBridge?.commitBattlePackage?.(sealedPackage);
+        if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');
+        const reportDto = sealedPackage.reportDto;
         const output = {
-          ...result,
+          ...sealedPackage,
           preview: dryRun,
+          committed: !dryRun,
           intentText: String(playerInput || '').trim(),
-          mode: dryRun ? 'preview' : 'engine_arbitrated',
+          mode: dryRun ? 'preview' : 'sealed_transaction',
           battleMode,
-          roundsExecuted: Number(result?.roundsExecuted || 0),
-          eventLedger: Array.isArray(result?.ledger) ? result.ledger : [],
-          decisionTrace: Array.isArray(result?.decisions) ? result.decisions : [],
-          resolutionTrace: Array.isArray(result?.trace) ? result.trace : [],
-          publicReportBlocks: Array.isArray(result?.reportBlocks) ? result.reportBlocks : [],
-          mvuUpdate,
+          roundsExecuted: Number(reportDto?.actualRoundCount || 0),
+          reportDto,
+          finalBattleReport: reportDto?.finalSummary || null,
+          aiSummaryInput: sealedPackage.aiSummaryInput,
+          llmBattleSummary: String(reportDto?.finalSummary?.text || ''),
+          commitReceipt,
         };
-        if (!dryRun && result?.aiSummaryInput) {
+        if (!dryRun && sealedPackage?.aiSummaryInput) {
           const settlementContext = registerBattleSettlementContext({
             id: `battle-${Date.now()}`,
-            结构化摘要: JSON.stringify(result.aiSummaryInput),
-            裁断卷宗: JSON.stringify(result.finalBattleReport || {}),
-            来源: 'BattleRuntime',
+            结构化摘要: JSON.stringify(sealedPackage.aiSummaryInput),
+            裁断卷宗: JSON.stringify(reportDto?.finalSummary || {}),
+            来源: 'BattleReport',
           });
           output.battleSettlementContext = settlementContext;
-          sendToAI(`<battle_structured_summary>\n${JSON.stringify(result.aiSummaryInput)}\n</battle_structured_summary>`, '', {
-            mvuUpdate,
+          sendToAI(`<battle_structured_summary>\n${JSON.stringify(sealedPackage.aiSummaryInput)}\n</battle_structured_summary>`, '', {
+            mvuUpdate: commitReceipt,
             requestKind: 'battle_settlement_plot',
           });
           output.aiRequest = root.__lastBattleAIRequest || null;
         }
         return output;
+        } finally {
+          if (!dryRun) formalBattleTransactionInFlight = false;
+        }
       }
 
       root.BattleUIBridge = Object.assign(root.BattleUIBridge || {}, {
@@ -9613,7 +9619,8 @@ class BattleUIComponent {
           const renderUnits = (label, units = []) => `<section class="battle-final-summary-side"><h4>${htmlEscapeText(label)}</h4>${(Array.isArray(units) ? units : []).length
             ? units.map(unit => {
                 const states = (Array.isArray(unit?.states) ? unit.states : []).map(state => `${state?.name || '状态'}(${Math.max(0, Number(state?.duration || 0))})`).filter(Boolean);
-                return `<div class="battle-final-summary-unit"><b>${htmlEscapeText(unit?.name || '单位')}</b><span>HP ${Math.max(0, Number(unit?.hp || 0))}/${Math.max(1, Number(unit?.hpMax || 1))}</span><span>魂力 ${Math.max(0, Number(unit?.sp || 0))}/${Math.max(1, Number(unit?.spMax || 1))}</span><span>体力 ${Math.max(0, Number(unit?.vit || 0))}/${Math.max(1, Number(unit?.vitMax || 1))}</span><span>精神力 ${Math.max(0, Number(unit?.men || 0))}/${Math.max(1, Number(unit?.menMax || 1))}</span>${states.length ? `<em>${htmlEscapeText(states.join('、'))}</em>` : ''}</div>`;
+                const resources = unit?.resources || {};
+                return `<div class="battle-final-summary-unit"><b>${htmlEscapeText(unit?.name || '单位')}</b><span>HP ${Math.max(0, Number(unit?.hp || 0))}/${Math.max(1, Number(unit?.hpMax || 1))}</span><span>魂力 ${Math.max(0, Number(unit?.sp ?? resources.soul ?? 0))}/${Math.max(1, Number(unit?.spMax ?? resources.soulMax ?? 1))}</span><span>体力 ${Math.max(0, Number(unit?.vit ?? resources.stamina ?? 0))}/${Math.max(1, Number(unit?.vitMax ?? resources.staminaMax ?? 1))}</span><span>精神力 ${Math.max(0, Number(unit?.men ?? resources.spirit ?? 0))}/${Math.max(1, Number(unit?.menMax ?? resources.spiritMax ?? 1))}</span>${states.length ? `<em>${htmlEscapeText(states.join('、'))}</em>` : ''}</div>`;
               }).join('')
             : '<p class="battle-final-summary-empty">无可行动单位</p>'}</section>`;
           const renderList = (title, items = []) => `<section class="battle-final-summary-list"><h4>${htmlEscapeText(title)}</h4>${(Array.isArray(items) ? items : []).length
@@ -9632,6 +9639,91 @@ class BattleUIComponent {
               ${summonText.length ? renderList('召唤物', summonText) : ''}
             </section>
           `;
+        }
+
+        function 渲染ReportDto数字(token = {}) {
+          if (!Number.isFinite(Number(token?.value))) return '';
+          const sourceEventId = String(token?.sourceEventId || '').trim();
+          const sourceFactId = String(token?.sourceFactId || '').trim();
+          const attrs = [
+            sourceEventId ? `data-source-event-id="${htmlEscapeText(sourceEventId)}"` : '',
+            sourceFactId ? `data-source-fact-id="${htmlEscapeText(sourceFactId)}"` : '',
+            token?.sourceName ? `data-source-name="${htmlEscapeText(token.sourceName)}"` : '',
+            token?.sourceType ? `data-source-type="${htmlEscapeText(token.sourceType)}"` : '',
+            token?.operation ? `data-source-operation="${htmlEscapeText(token.operation)}"` : '',
+          ].filter(Boolean).join(' ');
+          return `<button class="battle-preview-report-badge battle-preview-report-badge--resource" type="button"${attrs ? ` ${attrs}` : ''} aria-haspopup="true">${htmlEscapeText(`${token.label} ${Number(token.value).toFixed(Math.abs(Number(token.value)) < 10 ? 2 : 0)}${token.unit || ''}`)}</button>`;
+        }
+
+        function 显示ReportDto数字来源(button) {
+          const tooltip = 读取技能悬浮节点();
+          if (!tooltip || !button) return;
+          const sourceName = String(button.getAttribute('data-source-name') || '战斗事实').trim();
+          const sourceType = String(button.getAttribute('data-source-type') || '事实').trim();
+          const operation = String(button.getAttribute('data-source-operation') || '读取').trim();
+          const eventId = String(button.getAttribute('data-source-event-id') || '').trim();
+          const factId = String(button.getAttribute('data-source-fact-id') || '').trim();
+          tooltip.setAttribute('role', 'tooltip');
+          tooltip.innerHTML = `
+            <div class="battle-ring-tooltip-title"><strong>数字来源</strong><span>${htmlEscapeText(sourceName)}</span></div>
+            <div class="battle-ring-tooltip-meta">
+              <span class="battle-ring-tooltip-meta-row"><em>来源类型</em><strong>${htmlEscapeText(sourceType)}</strong></span>
+              <span class="battle-ring-tooltip-meta-row"><em>计算操作</em><strong>${htmlEscapeText(operation)}</strong></span>
+              <span class="battle-ring-tooltip-meta-row"><em>事件</em><strong>${htmlEscapeText(eventId || '未登记')}</strong></span>
+              <span class="battle-ring-tooltip-meta-row"><em>事实</em><strong>${htmlEscapeText(factId || '未登记')}</strong></span>
+            </div>
+          `;
+          button.setAttribute('aria-describedby', tooltip.id || 'ui-skill-tooltip');
+          定位技能悬浮(button);
+        }
+
+        function 绑定ReportDto数字来源(node) {
+          node?.querySelectorAll?.('[data-source-event-id][data-source-fact-id]').forEach(button => {
+            button.addEventListener('mouseenter', () => 显示ReportDto数字来源(button));
+            button.addEventListener('focus', () => 显示ReportDto数字来源(button));
+            button.addEventListener('click', () => 显示ReportDto数字来源(button));
+            button.addEventListener('mouseleave', () => {
+              const tooltip = 读取技能悬浮节点();
+              if (!tooltip?.matches(':hover')) 关闭技能悬浮();
+            });
+            button.addEventListener('blur', 关闭技能悬浮);
+            button.addEventListener('keydown', event => {
+              if (event.key !== 'Escape') return;
+              关闭技能悬浮();
+              button.focus();
+            });
+          });
+        }
+
+        function 渲染ReportDto记录视图(reportDto = {}, activeView = 'report') {
+          if (activeView === 'round') {
+            const rows = Array.isArray(reportDto?.roundOverview) ? reportDto.roundOverview : [];
+            return rows.length
+              ? `<section class="battle-round-dashboard" aria-label="回合速览">${rows.map(row => `<article class="battle-round-dashboard-row"><div class="battle-round-dashboard-head"><span>第${Math.max(0, Number(row?.round || 0))}回合</span><b>${htmlEscapeText(row?.headline || '回合结算')}</b></div><p>${htmlEscapeText(row?.summary || '')}</p></article>`).join('')}</section>`
+              : '<div class="battle-preview-empty">暂无回合结算</div>';
+          }
+          if (activeView === 'decision') {
+            const rows = Array.isArray(reportDto?.adjudications) ? reportDto.adjudications : [];
+            return rows.length
+              ? `<div class="battle-preview-trace">${rows.map(row => {
+                  const alternatives = (Array.isArray(row?.alternatives) ? row.alternatives : [])
+                    .map(item => `<li><b>${htmlEscapeText(item?.actionName || '替代行动')}</b>${item?.differenceSummary ? `：${htmlEscapeText(item.differenceSummary)}` : ''}</li>`)
+                    .join('');
+                  const numbers = [
+                    ...(row?.predicted?.numbers || []),
+                    ...(row?.actual?.numericTokens || []),
+                  ].map(渲染ReportDto数字).filter(Boolean).join('');
+                  return `<article class="battle-preview-trace-card"><header><span>第${Math.max(0, Number(row?.round || 0))}回合 · ${htmlEscapeText(row?.actorName || '行动者')}</span><b>${htmlEscapeText(row?.selected?.actionName || '行动')}</b></header><p>${htmlEscapeText(row?.reasonSummary || '')}</p>${numbers ? `<div class="battle-preview-report-badges">${numbers}</div>` : ''}${alternatives ? `<ul>${alternatives}</ul>` : ''}</article>`;
+                }).join('')}</div>`
+              : '<div class="battle-preview-empty">暂无判定明细</div>';
+          }
+          if (activeView === 'summary') {
+            return 渲染战斗总结HTML(reportDto?.finalSummary) || '<div class="battle-preview-empty">暂无总结</div>';
+          }
+          const exchanges = Array.isArray(reportDto?.exchanges) ? reportDto.exchanges : [];
+          return exchanges.length
+            ? `<div class="battle-preview-report">${exchanges.map(exchange => `<article class="battle-preview-report-group"><header class="battle-structured-report-head"><span>第${Math.max(0, Number(exchange?.round || 0))}回合 · ${htmlEscapeText(exchange?.actorName || '行动者')}</span><b>${htmlEscapeText(exchange?.action?.name || '行动')}</b></header>${exchange?.intentSummary ? `<p><b>意图</b> ${htmlEscapeText(exchange.intentSummary)}</p>` : ''}<p>${htmlEscapeText(exchange?.text || '')}</p></article>`).join('')}</div>`
+            : '<div class="battle-preview-empty">暂无战报</div>';
         }
 
         function 解码战斗预演HTML实体(text = '') {
@@ -9793,6 +9885,25 @@ class BattleUIComponent {
             `;
             return;
           }
+          if (result?.reportDto && typeof result.reportDto === 'object') {
+            const activeView = 读取战斗记录视图();
+            const 视图标签 = { round: '回合', report: '战报', decision: '判定', summary: '总结' };
+            node.hidden = false;
+            node.innerHTML = `
+              <div class="battle-preview-head">
+                <span>${activeTab === 'preview' ? '预演结果' : '实战结果'}</span>
+                <b>${htmlEscapeText(格式化战斗模式显示文本(result.modeLabel, result.battleMode, result.mode))}</b>
+                <em>${htmlEscapeText(`推进${Math.max(0, Number(result.reportDto.actualRoundCount || 0))}回合`)}</em>
+              </div>
+              <div class="battle-record-view-tabs" role="tablist" aria-label="记录视图">
+                ${Object.entries(视图标签).map(([view, label]) => `<button class="battle-record-view-tab${view === activeView ? ' active' : ''}" type="button" role="tab" data-battle-record-view="${view}" aria-selected="${view === activeView ? 'true' : 'false'}" tabindex="${view === activeView ? '0' : '-1'}">${label}</button>`).join('')}
+              </div>
+              <section class="battle-record-view" role="tabpanel" aria-label="${htmlEscapeText(视图标签[activeView])}">${渲染ReportDto记录视图(result.reportDto, activeView)}</section>
+            `;
+            绑定分段控件键盘导航(node.querySelector('.battle-record-view-tabs'), 'data-battle-record-view', activeView, 设置战斗记录视图);
+            绑定ReportDto数字来源(node);
+            return;
+          }
           const logs = Array.isArray(result.logs) ? result.logs : [];
           const context = 构建战斗结果展示上下文(result);
           context.eventLedger = result?.eventLedger || result?.combatData?.__battleEventLedger || [];
@@ -9928,6 +10039,34 @@ class BattleUIComponent {
           if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordTab = 'preview';
           设置战斗记录展开状态(true);
           渲染战斗记录面板();
+        }
+
+        function renderReport(reportDto = {}, options = {}) {
+          if (!reportDto || typeof reportDto !== 'object') throw new TypeError('battle_report_dto_invalid');
+          const preview = options.preview === true;
+          const result = {
+            preview,
+            committed: !preview,
+            mode: preview ? 'preview' : 'sealed_transaction',
+            battleMode: options.battleMode || 'single_round',
+            roundsExecuted: Math.max(0, Number(reportDto.actualRoundCount || 0)),
+            reportDto,
+            finalBattleReport: reportDto.finalSummary || null,
+            aiSummaryInput: reportDto.aiSummaryInput || null,
+            llmBattleSummary: String(reportDto?.finalSummary?.text || ''),
+          };
+          if (window.BattleUI?.state) {
+            if (preview) {
+              window.BattleUI.state.previewResult = result;
+              window.BattleUI.state.activeBattleRecordTab = 'preview';
+            } else {
+              window.BattleUI.state.actualBattleResult = result;
+              window.BattleUI.state.activeBattleRecordTab = 'actual';
+            }
+          }
+          设置战斗记录展开状态(true);
+          渲染战斗记录面板();
+          return result;
         }
 
         function renderSoulTowerSettlementPanel(pendingSettlement = null) {
@@ -10097,8 +10236,25 @@ class BattleUIComponent {
           };
         }
 
-        function submitBattleIntent() {
+        function 设置战斗事务等待状态(pending) {
           const state = window.BattleUI?.state || {};
+          state.battleTransactionPending = pending === true;
+          const locked = state.battleTransactionPending || !!state.pendingTowerSettlement;
+          const arbitrateBtn = byId('ui-arbitrate');
+          const previewBtn = byId('ui-battle-preview');
+          [arbitrateBtn, previewBtn].forEach(button => {
+            if (!button) return;
+            button.disabled = locked;
+            if (state.battleTransactionPending) button.setAttribute('aria-busy', 'true');
+            else button.removeAttribute('aria-busy');
+          });
+        }
+
+        async function submitBattleIntent() {
+          const state = window.BattleUI?.state || {};
+          if (state.battleTransactionPending) {
+            return { ok: false, mode: 'transaction_pending', message: '战斗事务正在结算。' };
+          }
           if (state.pendingTowerSettlement) {
             return {
               ok: false,
@@ -10130,6 +10286,8 @@ class BattleUIComponent {
           if (output) output.value = intentText;
           window.__battleLastIntentText = intentText;
 
+          设置战斗事务等待状态(true);
+          try {
           let result = { intentText, mode: 'intent_only', battleMode };
           try {
               window.dispatchEvent(new CustomEvent('battle-ui-intent-submit', { detail: { intentText, actionDeclaration, battleMode, intentMode: state.currentIntentMode || '点到为止', autoContinueConfig } }));
@@ -10139,7 +10297,7 @@ class BattleUIComponent {
 
           if (typeof onPlayerAttack === 'function') {
             try {
-              const engineResult = onPlayerAttack(intentText, { mode: battleMode, intentMode: state.currentIntentMode || '点到为止', actionDeclaration, autoContinueConfig }) || {};
+              const engineResult = await onPlayerAttack(intentText, { mode: battleMode, intentMode: state.currentIntentMode || '点到为止', actionDeclaration, autoContinueConfig }) || {};
               if (typeof syncFromBattleEngine === 'function') syncFromBattleEngine();
               result = {
                 ...engineResult,
@@ -10168,12 +10326,17 @@ class BattleUIComponent {
             console.warn('battle-ui-submit-finished dispatch failed', error);
           }
           return result;
+          } finally {
+            设置战斗事务等待状态(false);
+          }
         }
 
-        function previewBattleIntent() {
+        async function previewBattleIntent() {
           const state = window.BattleUI?.state || {};
+          if (state.battleTransactionPending) {
+            return { ok: false, mode: 'transaction_pending', message: '战斗事务正在结算。' };
+          }
           if (state.pendingTowerSettlement) return { ok: false, mode: 'tower_pending_choice' };
-          const previewBtn = byId('ui-battle-preview');
           const battleMode = state.currentMode === 'multi_round' ? 'multi_round' : 'single_round';
           const autoContinueConfig = 读取界面自动续推设置(state);
           state.combatData.战斗意图 = state.currentIntentMode || '点到为止';
@@ -10193,9 +10356,9 @@ class BattleUIComponent {
           const output = byId('ui-intent-output');
           if (output) output.value = intentText;
           window.__battleLastIntentText = intentText;
-          if (previewBtn) previewBtn.disabled = true;
+          设置战斗事务等待状态(true);
           try {
-            const result = onPlayerAttack(intentText, {
+            const result = await onPlayerAttack(intentText, {
               mode: battleMode,
               intentMode: state.currentIntentMode || '点到为止',
               dryRun: true,
@@ -10213,7 +10376,7 @@ class BattleUIComponent {
             渲染战斗预演面板(result);
             return result;
           } finally {
-            if (previewBtn) previewBtn.disabled = false;
+            设置战斗事务等待状态(false);
           }
         }
 
@@ -10309,6 +10472,7 @@ class BattleUIComponent {
               buildActionDeclaration,
               submitBattleIntent,
               previewBattleIntent,
+              renderReport,
               读取可提交战斗动作队列,
               resolveSoulTowerSettlement,
             });

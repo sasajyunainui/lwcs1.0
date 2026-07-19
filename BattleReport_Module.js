@@ -173,14 +173,26 @@
     return '';
   }
 
+  function snapshotTeam(snapshot = {}, side = 'player') {
+    const projected = side === 'player' ? snapshot?.team_player : snapshot?.team_enemy;
+    if (Array.isArray(projected)) return projected;
+    const formal = snapshot?.参战者?.[side === 'player' ? 'team_player' : 'team_enemy'];
+    return Array.isArray(formal) ? formal : Object.values(formal || {});
+  }
+
+  function snapshotSummons(snapshot = {}) {
+    if (Array.isArray(snapshot?.summons)) return snapshot.summons;
+    return Object.values(snapshot?.召唤单位表 || {});
+  }
+
   function snapshotUnits(snapshot = {}) {
     return [
-      ...(Array.isArray(snapshot?.team_player) ? snapshot.team_player.map(unit => ({ unit, side: 'player' })) : []),
-      ...(Array.isArray(snapshot?.team_enemy) ? snapshot.team_enemy.map(unit => ({ unit, side: 'enemy' })) : []),
-      ...(Array.isArray(snapshot?.summons) ? snapshot.summons.map(unit => ({
+      ...snapshotTeam(snapshot, 'player').map(unit => ({ unit, side: 'player' })),
+      ...snapshotTeam(snapshot, 'enemy').map(unit => ({ unit, side: 'enemy' })),
+      ...snapshotSummons(snapshot).map(unit => ({
         unit,
         side: text(unit?.side || unit?.阵营).toLowerCase().includes('enemy') ? 'enemy' : 'player',
-      })) : []),
+      })),
     ];
   }
 
@@ -433,6 +445,7 @@
       sourceType: text(sourceType),
       operation: text(operation),
       sourceEventId: text(event?.eventId),
+      sourceFactId: text(event?.eventId),
       visibility: visibilityMode,
       ...extra,
     };
@@ -1328,6 +1341,7 @@
       sourceType: 'DECISION_PREVIEW',
       operation: 'COMPARE',
       sourceEventId: text(sourceEventId),
+      sourceFactId: text(sourceEventId),
       visibility: text(visibility) || 'PLAYER',
     };
   }
@@ -1476,6 +1490,35 @@
     const selectedVector = selected?.vector || {};
     const alternativeVector = alternative?.vector || {};
     const differences = [];
+    const r8Comparison =
+      selectedVector?.objectiveUtilityHEPP !== undefined ||
+      alternativeVector?.objectiveUtilityHEPP !== undefined;
+    if (r8Comparison) {
+      const utilityDelta =
+        number(selectedVector?.objectiveUtilityHEPP, number(selected?.objectiveUtilityHEPP, 0)) -
+        number(alternativeVector?.objectiveUtilityHEPP, number(alternative?.objectiveUtilityHEPP, 0));
+      const informationDelta =
+        number(selectedVector?.informationValueHEPP, 0) -
+        number(alternativeVector?.informationValueHEPP, 0);
+      const survivalDelta =
+        number(selectedVector?.survivalLowerBound, 0) -
+        number(alternativeVector?.survivalLowerBound, 0);
+      const tailDelta =
+        number(alternativeVector?.worstTailLossHEPP, 0) -
+        number(selectedVector?.worstTailLossHEPP, 0);
+      const overkillDelta =
+        number(alternativeVector?.discardedOverkillPP, 0) -
+        number(selectedVector?.discardedOverkillPP, 0);
+      if (Math.abs(utilityDelta) > 0.01) {
+        differences.push(`目标生命轨迹效用相差${displayNumber(Math.abs(utilityDelta))}HEPP`);
+      }
+      if (informationDelta > 0.01) differences.push(`所选方案多减少${displayNumber(informationDelta)}HEPP的后续选择后悔`);
+      if (survivalDelta > 0.01) differences.push(`所选方案的生存下界高${displayNumber(survivalDelta)}HEPP`);
+      if (tailDelta > 0.01) differences.push(`所选方案的最坏回应损失少${displayNumber(tailDelta)}HEPP`);
+      if (overkillDelta > 0.01) differences.push(`所选方案少产生${displayNumber(overkillDelta)}PP阈值后过量`);
+      if (differences.length) return unique(differences);
+      return ['两者的目标生命轨迹、最坏回应和资源保留投影相同，本次选择处于允许后悔范围内'];
+    }
     if (alternative?.repeatedActionAudit?.failureAdaptation?.applied === true) {
       differences.push('该替代方案根据此前公开的命中或抵抗结果降低了预期兑现率');
     }
@@ -1521,6 +1564,132 @@
       return ['所选方案在当前目标、风险与后续能力的合并比较中更优'];
     }
     return ['两者可兑现战果接近，本次选择处于允许的主观选择边界内'];
+  }
+
+  function buildR8DecisionReason(decision = {}, selected = {}, selectedPublic = {}, alternatives = [], directory = new Map()) {
+    const projection = selected?.goalProjection || decision?.goalProjection || {};
+    const route = selected?.primaryRoute || {};
+    const parts = [];
+    if (projection?.terminal?.terminal === true) {
+      parts.push(`该路线首先到达${text(projection.terminal.status || '终局')}条件`);
+    }
+    const trajectories = Array.isArray(projection?.healthTrajectory)
+      ? projection.healthTrajectory
+      : Array.isArray(route?.healthTrajectoryByTarget)
+        ? route.healthTrajectoryByTarget
+        : [];
+    trajectories.slice(0, 2).forEach(trajectory => {
+      const targetName = publicEntityName(directory, trajectory?.targetId, trajectory?.targetId || '目标');
+      const benefit = number(trajectory?.actorBenefitPP, 0);
+      if (Math.abs(benefit) > 0.01) {
+        parts.push(`${targetName}的目标生命轨迹改变${displayNumber(Math.abs(benefit))}PP`);
+      }
+    });
+    const poolDeltas = Array.isArray(projection?.actionPoolDeltas)
+      ? projection.actionPoolDeltas
+      : [];
+    poolDeltas
+      .filter(delta => Math.abs(number(delta?.healthTrajectoryDeltaPP, 0)) > 0.01)
+      .slice(0, 2)
+      .forEach(delta => {
+        const targetName = publicEntityName(directory, delta?.targetId, delta?.targetId || '目标');
+        parts.push(`${targetName}的后续行为池改变${displayNumber(Math.abs(number(delta.healthTrajectoryDeltaPP, 0)))}HEPP`);
+      });
+    const payments = Array.isArray(route?.paymentDependencies) ? route.paymentDependencies : [];
+    if (payments.length) {
+      parts.push(`支付顺序为${payments.map(entry =>
+        `${playerSafeText(entry?.resource || '资源', directory)}${displayNumber(entry?.amount)}`
+      ).join('、')}`);
+    }
+    if (number(selected?.vector?.discardedOverkillPP, 0) > 0) {
+      parts.push(`其中${displayNumber(selected.vector.discardedOverkillPP)}PP属于阈值后过量，不计入目标收益`);
+    }
+    if (alternatives[0]?.differenceSummary) {
+      parts.push(`相对${candidateDisplayLabel(alternatives[0])}：${alternatives[0].differenceSummary}`);
+    }
+    return parts.length
+      ? parts.join('；')
+      : `${candidateDisplayLabel(selectedPublic)}没有产生可单独计入的悬空分值，选择仅依据其目标生命轨迹投影`;
+  }
+
+  function publicR8DecisionEvidence(decision = {}, selected = {}, directory = new Map(), visibilityMode = 'PLAYER') {
+    const projection = decision?.goalProjection || selected?.goalProjection || {};
+    const projectWindowId = value => {
+      const raw = text(value);
+      if (!raw || visibilityMode === 'DEVELOPER') return raw;
+      if (internalSummonIdPattern.test(raw)) {
+        const publicName = playerSafeText(raw, directory);
+        return publicName === raw ? '召唤窗口' : `${publicName}的召唤窗口`;
+      }
+      return playerSafeText(raw, directory);
+    };
+    const healthTrajectory = (Array.isArray(decision?.healthTrajectory) ? decision.healthTrajectory : [])
+      .map(entry => ({
+        targetId: publicEntityId(directory, entry?.targetId),
+        targetName: publicEntityName(directory, entry?.targetId, entry?.targetId),
+        outcomeKind: text(entry?.outcomeKind),
+        windowId: projectWindowId(entry?.windowId),
+        healthDeltaPP: number(entry?.healthDeltaPP, 0),
+        actorBenefitPP: number(entry?.actorBenefitPP, 0),
+      }));
+    const actionRouteDeltas = (Array.isArray(decision?.actionRouteDeltas) ? decision.actionRouteDeltas : [])
+      .map(entry => ({
+        targetId: publicEntityId(directory, entry?.targetId),
+        targetName: publicEntityName(directory, entry?.targetId, entry?.targetId),
+        outcomeKind: text(entry?.outcomeKind),
+        windowId: projectWindowId(entry?.windowId),
+        healthTrajectoryDeltaPP: number(entry?.healthTrajectoryDeltaPP, 0),
+        realizable: entry?.realizable !== false,
+      }));
+    const payments = (Array.isArray(decision?.resourceTimelineSummary?.payments)
+      ? decision.resourceTimelineSummary.payments
+      : []
+    ).map(entry => ({
+      unitId: publicEntityId(directory, entry?.unitId),
+      unitName: publicEntityName(directory, entry?.unitId, entry?.unitId),
+      resource: playerSafeText(entry?.resource, directory),
+      amount: number(entry?.amount, 0),
+    }));
+    const observations = (Array.isArray(decision?.probabilitySources?.mechanicObservations)
+      ? decision.probabilitySources.mechanicObservations
+      : []
+    ).map(entry => ({
+      mechanic: playerSafeText(entry?.stateName || entry?.effectPrototype || '机制', directory),
+      estimatedProbability: number(entry?.estimatedProbability, NaN),
+      posterior: number(entry?.posterior, NaN),
+      result: playerSafeText(entry?.result, directory),
+    }));
+    const responseModel = decision?.probabilitySources?.responseModel || {};
+    return {
+      goalProjection: {
+        directTrajectoryHEPP: number(projection?.directTrajectoryHEPP, 0),
+        actionPoolHEPP: number(projection?.actionPoolHEPP, 0),
+        informationValueHEPP: number(projection?.informationValueHEPP, 0),
+        objectiveUtilityHEPP: number(projection?.objectiveUtilityHEPP, 0),
+        discardedOverkillPP: number(projection?.discardedOverkillPP, 0),
+        worstTailLossHEPP: number(projection?.worstTailLossHEPP, 0),
+        terminal: {
+          terminal: projection?.terminal?.terminal === true,
+          status: text(projection?.terminal?.status),
+        },
+      },
+      healthTrajectory,
+      actionRouteDeltas,
+      realizationWindows: unique(decision?.realizationWindows || []).map(projectWindowId),
+      resourceTimelineSummary: { payments },
+      probabilitySources: {
+        unknownMass: number(responseModel?.unknownMass, 0),
+        noResponseProbability: number(responseModel?.noResponseProbability, 0),
+        observations,
+      },
+      causalValueFacts: visibilityMode === 'DEVELOPER'
+        ? cloneValue(decision?.causalValueFacts || [])
+        : [],
+      uncertaintyBounds: {
+        lower: number(decision?.uncertaintyBounds?.lower, 0),
+        upper: number(decision?.uncertaintyBounds?.upper, 1),
+      },
+    };
   }
 
   function decisionReasonCategory(decision = {}, selected = {}, options = {}) {
@@ -2034,6 +2203,7 @@
       const selected = decision?.selected && typeof decision.selected === 'object'
         ? decision.selected
         : null;
+      const r8Decision = text(decision?.decisionEngine).toUpperCase() === 'R8';
       const lostOpportunity = decision?.lostOpportunity?.reasonCode
         ? decision.lostOpportunity
         : null;
@@ -2126,14 +2296,19 @@
       );
       const adjudicationId = `adjudication:${number(decision?.round, 0)}:${publicEntityId(directory, decision?.actorId)}:${decisionIndex + 1}`;
       const sourceEventId = text(anchor?.factId);
+      const r8Evidence = r8Decision
+        ? publicR8DecisionEvidence(decision, selected, directory, visibilityMode)
+        : null;
       const developerDecisionNumbers = [
-        adjudicationNumberToken(adjudicationId, sourceEventId, '预估局面收益', selected?.objectiveUtility, '效用', selectedPublic.actionName, 'DEVELOPER'),
-        adjudicationNumberToken(adjudicationId, sourceEventId, '动作链预期战果', selected?.vector?.expectedStateGain, '效用', selectedPublic.actionName, 'DEVELOPER'),
-        adjudicationNumberToken(adjudicationId, sourceEventId, '资源连续性', selected?.vector?.resourceContinuity, '容量', selectedPublic.actionName, 'DEVELOPER'),
+        adjudicationNumberToken(adjudicationId, sourceEventId, r8Decision ? '目标生命轨迹效用' : '预估局面收益', r8Decision ? selected?.vector?.objectiveUtilityHEPP : selected?.objectiveUtility, r8Decision ? 'HEPP' : '效用', selectedPublic.actionName, 'DEVELOPER'),
+        adjudicationNumberToken(adjudicationId, sourceEventId, r8Decision ? '直接生命轨迹' : '动作链预期战果', r8Decision ? selected?.goalProjection?.directTrajectoryHEPP : selected?.vector?.expectedStateGain, r8Decision ? 'HEPP' : '效用', selectedPublic.actionName, 'DEVELOPER'),
+        adjudicationNumberToken(adjudicationId, sourceEventId, r8Decision ? '行为池生命轨迹' : '资源连续性', r8Decision ? selected?.goalProjection?.actionPoolHEPP : selected?.vector?.resourceContinuity, r8Decision ? 'HEPP' : '容量', selectedPublic.actionName, 'DEVELOPER'),
         adjudicationNumberToken(adjudicationId, sourceEventId, '生存下界', selected?.vector?.survivalLowerBound, '容量', selectedPublic.actionName, 'DEVELOPER'),
-        adjudicationNumberToken(adjudicationId, sourceEventId, '最坏回应损失', selected?.vector?.worstTailCapacityLoss, '容量', selectedPublic.actionName, 'DEVELOPER'),
-        adjudicationNumberToken(adjudicationId, sourceEventId, '重复动作边际', selected?.repeatedActionAudit?.repeatedActionDelta, '效用', selectedPublic.actionName, 'DEVELOPER'),
-        adjudicationNumberToken(adjudicationId, sourceEventId, '相对最佳替代差距', selected?.repeatedActionAudit?.currentAlternativeGap, '效用', selectedPublic.actionName, 'DEVELOPER'),
+        adjudicationNumberToken(adjudicationId, sourceEventId, '最坏回应损失', r8Decision ? selected?.vector?.worstTailLossHEPP : selected?.vector?.worstTailCapacityLoss, r8Decision ? 'HEPP' : '容量', selectedPublic.actionName, 'DEVELOPER'),
+        adjudicationNumberToken(adjudicationId, sourceEventId, '阈值后过量', r8Decision ? selected?.vector?.discardedOverkillPP : NaN, 'PP', selectedPublic.actionName, 'DEVELOPER'),
+        adjudicationNumberToken(adjudicationId, sourceEventId, '信息后悔减少', r8Decision ? selected?.vector?.informationValueHEPP : NaN, 'HEPP', selectedPublic.actionName, 'DEVELOPER'),
+        adjudicationNumberToken(adjudicationId, sourceEventId, '重复动作边际', r8Decision ? NaN : selected?.repeatedActionAudit?.repeatedActionDelta, '效用', selectedPublic.actionName, 'DEVELOPER'),
+        adjudicationNumberToken(adjudicationId, sourceEventId, '相对最佳替代差距', r8Decision ? NaN : selected?.repeatedActionAudit?.currentAlternativeGap, '效用', selectedPublic.actionName, 'DEVELOPER'),
       ].filter(Boolean);
       const visibleDecisionNumbers = [
         adjudicationNumberToken(adjudicationId, sourceEventId, '剩余同等消耗次数', selected?.repeatedActionAudit?.resourceRunwayAfter, '次', selectedPublic.actionName),
@@ -2190,6 +2365,14 @@
         grantId: text(anchor?.grantId || anchor?.developerDetail?.meta?.grantId),
         selected: selectedPublic,
         alternatives: alternativePublic,
+        goalProjection: r8Evidence?.goalProjection || null,
+        healthTrajectory: r8Evidence?.healthTrajectory || null,
+        actionRouteDeltas: r8Evidence?.actionRouteDeltas || null,
+        realizationWindows: r8Evidence?.realizationWindows || null,
+        resourceTimelineSummary: r8Evidence?.resourceTimelineSummary || null,
+        probabilitySources: r8Evidence?.probabilitySources || null,
+        causalValueFacts: r8Evidence?.causalValueFacts || null,
+        uncertaintyBounds: r8Evidence?.uncertaintyBounds || null,
         intentSummary: (() => {
           const targets = selectedPublic.targetNames.length
             ? selectedPublic.targetNames.join('、')
@@ -2239,7 +2422,9 @@
         })(),
         reasonSummary: playerLocked
           ? `玩家已锁定${selectedPublic.actionName}；本次只校验机械合法性，AI不替换该声明`
-          : buildDecisionReason(decision, selectedPublic, alternativePublic, {
+          : r8Decision
+            ? buildR8DecisionReason(decision, selected, selectedPublic, alternativePublic, directory)
+            : buildDecisionReason(decision, selectedPublic, alternativePublic, {
               actorSide,
               directory,
               repeatedSelection,
@@ -2978,21 +3163,23 @@
     const name = publicEntityName(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称, unit?.name || unit?.名称);
     const states = Array.isArray(unit?.状态效果)
       ? unit.状态效果.map(state => text(state?.name || state?.状态 || state?.状态名称)).filter(Boolean)
-      : Object.values(unit?.状态效果 || {}).map(state => text(state?.name || state?.状态 || state?.状态名称)).filter(Boolean);
+      : Object.entries(unit?.状态效果 || {}).map(([stateKey, state]) =>
+          text(state?.name || state?.状态 || state?.状态名称 || stateKey)
+        ).filter(Boolean);
     return {
       id,
       name,
       side,
-      hp: number(unit?.hp ?? unit?.HP, 0),
-      hpMax: Math.max(1, number(unit?.hp_max ?? unit?.HP上限, 1)),
+      hp: number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0),
+      hpMax: Math.max(1, number(unit?.hp_max ?? unit?.HP上限 ?? unit?.属性?.HP上限, 1)),
       shield: Math.max(0, number(unit?.shield ?? unit?.护盾, 0)),
       resources: {
-        soul: number(unit?.sp ?? unit?.魂力, 0),
-        soulMax: Math.max(0, number(unit?.sp_max ?? unit?.魂力上限, 0)),
-        spirit: number(unit?.men ?? unit?.精神力, 0),
-        spiritMax: Math.max(0, number(unit?.men_max ?? unit?.精神力上限, 0)),
-        stamina: number(unit?.vit ?? unit?.sta ?? unit?.体力, 0),
-        staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限, 0)),
+        soul: number(unit?.sp ?? unit?.魂力 ?? unit?.属性?.魂力, 0),
+        soulMax: Math.max(0, number(unit?.sp_max ?? unit?.魂力上限 ?? unit?.属性?.魂力上限, 0)),
+        spirit: number(unit?.men ?? unit?.精神力 ?? unit?.属性?.精神力, 0),
+        spiritMax: Math.max(0, number(unit?.men_max ?? unit?.精神力上限 ?? unit?.属性?.精神力上限, 0)),
+        stamina: number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0),
+        staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
       },
       actionState: text(unit?.actionState || unit?.状态?.行动 || unit?.行动状态 || '战斗'),
       states: unique(states),
@@ -3231,8 +3418,7 @@
   }
 
   function finalSide(snapshot = {}, side = 'player', directory = new Map()) {
-    const list = side === 'player' ? snapshot?.team_player : snapshot?.team_enemy;
-    return (Array.isArray(list) ? list : []).map(unit => unitStateFromSnapshot(unit, side, directory));
+    return snapshotTeam(snapshot, side).map(unit => unitStateFromSnapshot(unit, side, directory));
   }
 
   function projectPlayerValue(value, directory = new Map(), key = '') {
@@ -3352,7 +3538,7 @@
     const terminal = projectTerminalResult(draft?.terminalResult || {}, 'PLAYER', directory);
     const playerUnits = finalSide(snapshot, 'player', directory);
     const enemyUnits = finalSide(snapshot, 'enemy', directory);
-    const summons = (Array.isArray(snapshot?.summons) ? snapshot.summons : []).map(unit => unitStateFromSnapshot(
+    const summons = snapshotSummons(snapshot).map(unit => unitStateFromSnapshot(
       unit,
       text(unit?.side || unit?.阵营).toLowerCase().includes('enemy') ? 'enemy' : 'player',
       directory,
@@ -3618,7 +3804,11 @@
       }
       factsById.set(factId, fact);
       (Array.isArray(fact?.numericTokens) ? fact.numericTokens : []).forEach((token, tokenIndex) => {
-        if (!Number.isFinite(Number(token?.value)) || text(token?.sourceEventId) !== factId) {
+        if (
+          !Number.isFinite(Number(token?.value)) ||
+          text(token?.sourceEventId) !== factId ||
+          text(token?.sourceFactId) !== factId
+        ) {
           pushFatal('REPORT_NUMBER_SOURCE_MISSING', { factId, tokenIndex });
         }
       });

@@ -173,6 +173,14 @@ const commandDefinitions = [
     minPhase: 9,
     maxPhase: 9,
   },
+  {
+    name: 'auditBattleR83Phase10',
+    command: [process.execPath, ['lwcs/tools/audit_battle_r83_phase10.mjs']],
+    parseJson: true,
+    timeoutMs: 180000,
+    groups: ['quick', 'full', 'case'],
+    minPhase: 10,
+  },
   { name: 'auditBattleR63Baseline', command: [process.execPath, ['lwcs/tools/audit_battle_r63_baseline.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'auditBattleR63QueueProbability', command: [process.execPath, ['lwcs/tools/audit_battle_r63_queue_probability.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
   { name: 'auditBattleR63PreviewFoundation', command: [process.execPath, ['lwcs/tools/audit_battle_r63_preview_foundation.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
@@ -376,13 +384,19 @@ const runBattleAiSummaryContract = () => {
   const failures = [];
   const requestBlock = battleUi.match(/sendToAI\(`<battle_structured_summary>[\s\S]*?requestKind:\s*['"]battle_settlement_plot['"][\s\S]*?\}\);/)?.[0] || '';
   const summaryBuilder = battleRuntime.match(/function buildAiNarrativeSummary\([\s\S]*?(?=\n  function )/)?.[0] || '';
+  const autoSummaryBuilder = bridge.match(/function 构建自动战斗结构化摘要\([\s\S]*?(?=\n  function )/)?.[0] || '';
   if (!/<battle_structured_summary>[\s\S]*?<\/battle_structured_summary>/.test(requestBlock)) failures.push('BATTLE_REQUEST_MISSING_STRUCTURED_SUMMARY');
-  if (!/JSON\.stringify\(result\.aiSummaryInput\)/.test(requestBlock)) failures.push('BATTLE_REQUEST_MISSING_AI_SUMMARY_INPUT');
+  if (!/JSON\.stringify\(sealedPackage\.aiSummaryInput\)/.test(requestBlock)) failures.push('BATTLE_REQUEST_MISSING_AI_SUMMARY_INPUT');
   if (/battle_public_report|<战斗公开战报>/.test(requestBlock)) failures.push('BATTLE_REQUEST_USES_PUBLIC_REPORT');
   if (/eventLedger|decisionTrace|resolutionTrace|scoreAudit|ruleCode|rawObjectiveScore|publicReport|innerHTML|querySelector/.test(requestBlock)) failures.push('BATTLE_REQUEST_LEAKS_INTERNAL_RUNTIME_DATA');
   if (!/本轮输入包含战斗结构化摘要/.test(adapter) || !/<battle_structured_summary>/.test(adapter)) failures.push('ADAPTER_MISSING_STRUCTURED_SUMMARY_CONTRACT');
   if (/battle_public_report|本轮输入包含战斗公开战报/.test(adapter)) failures.push('ADAPTER_RETAINS_PUBLIC_REPORT_CONTRACT');
-  if (!/function 构建自动战斗结构化摘要/.test(bridge) || !/执行结果\.llmBattleSummary \|\| 执行结果\.finalBattleReport\?\.text/.test(bridge)) failures.push('BRIDGE_MISSING_STRUCTURED_SUMMARY_SOURCE');
+  if (
+    !autoSummaryBuilder ||
+    !/执行结果\?\.aiSummaryInput/.test(autoSummaryBuilder) ||
+    !/JSON\.stringify\(摘要输入\)/.test(autoSummaryBuilder) ||
+    /llmBattleSummary|finalBattleReport|reportDto|publicReport/.test(autoSummaryBuilder)
+  ) failures.push('BRIDGE_MISSING_STRUCTURED_SUMMARY_SOURCE');
   if (/function 构建自动战斗公开战报|<battle_public_report>/.test(bridge)) failures.push('BRIDGE_RETAINS_PUBLIC_REPORT_BUILDER');
   if (!summaryBuilder) failures.push('LLM_SUMMARY_BUILDER_MISSING');
   if (/ruleCode|rawObjectiveScore|scoreParts|candidate/i.test(summaryBuilder)) failures.push('LLM_SUMMARY_BUILDER_READS_INTERNAL_SCORING');
@@ -407,6 +421,7 @@ const writeOutput = () => {
   const phase5Result = results.find(result => result.name === 'auditBattleR83Phase5');
   const phase6Result = results.find(result => result.name === 'auditBattleR83Phase6');
   const phase7Result = results.find(result => result.name === 'auditBattleR83Phase7');
+  const phase10Result = results.find(result => result.name === 'auditBattleR83Phase10');
   const manualReviewStatus = String(manualReviewResult?.summary?.manualReviewStatus || 'NOT_SCHEDULED');
   const manualReviewRequired = new Set([9, 10, 12]).has(requestedPhase);
   const automaticFailures = failed.filter(result => result.name !== 'auditBattleR74ManualReviewStatus');
@@ -447,7 +462,9 @@ const writeOutput = () => {
       runtimeCalibrationStatus: requestedPhase >= 4
         ? String(phase4Result?.summary?.runtimeCalibrationStatus || 'PENDING')
         : 'NOT_SCHEDULED',
-      reportProjectionStatus: requestedPhase >= 10 ? 'PENDING' : 'NOT_SCHEDULED',
+      reportProjectionStatus: requestedPhase >= 10
+        ? String(phase10Result?.summary?.reportProjectionStatus || 'PENDING')
+        : 'NOT_SCHEDULED',
       manualReviewRequired,
       manualReviewStatus,
       phaseExitStatus,

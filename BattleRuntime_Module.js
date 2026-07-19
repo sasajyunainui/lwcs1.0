@@ -11025,8 +11025,40 @@
               ? selected.predictedOutcomeEvidence
               : [],
             mechanicObservations: Array.isArray(selected?.mechanicObservations) ? selected.mechanicObservations : [],
+            goalProjection: selected?.goalProjection || null,
+            primaryRoute: selected?.primaryRoute || selected?.route || null,
+            backupRoute: selected?.backupRoute || null,
+            causalValueFacts: Array.isArray(selected?.causalValueFacts) ? selected.causalValueFacts : [],
           }
         : null,
+      goalProjection: selected?.goalProjection || null,
+      healthTrajectory: Array.isArray(selected?.goalProjection?.healthTrajectory)
+        ? selected.goalProjection.healthTrajectory
+        : [],
+      actionRouteDeltas: Array.isArray(selected?.goalProjection?.actionPoolDeltas)
+        ? selected.goalProjection.actionPoolDeltas
+        : [],
+      realizationWindows: Array.isArray(selected?.primaryRoute?.realizationWindows)
+        ? selected.primaryRoute.realizationWindows
+        : [],
+      resourceTimelineSummary: {
+        payments: Array.isArray(selected?.primaryRoute?.paymentDependencies)
+          ? selected.primaryRoute.paymentDependencies
+          : [],
+        resourceDeltas: Array.isArray(selected?.goalProjection?.actionPoolDeltas)
+          ? selected.goalProjection.actionPoolDeltas.filter(delta =>
+              String(delta?.outcomeKind || '').trim() === 'RESOURCE_OPTION_CHANGED'
+            )
+          : [],
+      },
+      probabilitySources: {
+        responseModel: selected?.goalProjection?.responseModel || null,
+        mechanicObservations: Array.isArray(selected?.mechanicObservations)
+          ? selected.mechanicObservations
+          : [],
+      },
+      causalValueFacts: Array.isArray(selected?.causalValueFacts) ? selected.causalValueFacts : [],
+      uncertaintyBounds: selected?.primaryRoute?.probabilityBounds || { lower: 0, upper: 1 },
       lostOpportunity: decision?.lostOpportunity || null,
       beliefState: decision?.beliefState || {},
       teamIntent: decision?.teamIntent || {},
@@ -11189,8 +11221,8 @@
         terminal: result?.winner && result.winner !== 'unfinished',
         winner: result?.winner || 'unfinished',
       }),
-      initialSnapshot: cloneValue(result?.initialSnapshot || null),
-      finalSnapshot: cloneValue(result?.finalSnapshot || result?.snapshot || null),
+      initialSnapshot: cloneValue(source?.combatData || result?.initialSnapshot || null),
+      finalSnapshot: cloneValue(result?.combatData || result?.finalSnapshot || result?.snapshot || null),
     };
     return Object.freeze({ ...draft, draftHash: hashBattleValue(draft) });
   }
@@ -11222,8 +11254,8 @@
         winner: 'unfinished',
         reason: 'DECISION_ONLY',
       }),
-      initialSnapshot: cloneValue(result?.initialSnapshot || source.combatData || null),
-      finalSnapshot: cloneValue(result?.finalSnapshot || source.combatData || null),
+      initialSnapshot: cloneValue(source.combatData || result?.initialSnapshot || null),
+      finalSnapshot: cloneValue(result?.combatData || result?.finalSnapshot || source.combatData || null),
     };
     return Object.freeze({ ...draft, draftHash: hashBattleValue(draft) });
   }

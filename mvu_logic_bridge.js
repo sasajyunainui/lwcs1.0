@@ -45303,9 +45303,13 @@ ${播报文本}
   }
 
   function 构建自动战斗结构化摘要(执行结果 = {}) {
-    const 摘要 = toText(执行结果.llmBattleSummary || 执行结果.finalBattleReport?.text, '').trim();
-    if (!摘要) return '';
-    return ['<battle_structured_summary>', 摘要, '</battle_structured_summary>'].join('\n');
+    const 摘要输入 = 执行结果?.aiSummaryInput;
+    if (!摘要输入 || typeof 摘要输入 !== 'object') return '';
+    return [
+      '<battle_structured_summary>',
+      JSON.stringify(摘要输入),
+      '</battle_structured_summary>',
+    ].join('\n');
   }
 
   function 构建战斗事务输入(combatData = {}, options = {}) {
@@ -45328,6 +45332,9 @@ ${播报文本}
       battleIntent: {
         mode: toText(options.intentMode || combatData?.战斗意图, '').trim(),
         objectives: cloneJsonValue(combatData?.胜负条件 || {}, {}),
+      },
+      settings: {
+        providerId: 'r8',
       },
     };
   }
