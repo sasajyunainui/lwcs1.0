@@ -14824,12 +14824,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   z-index: 40;
 }
 
-.mvu-quest-list-card:has(.mvu-quest-create-panel[open]) .mvu-quest-tab-row {
-  z-index: 1;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .mvu-quest-list-card:has(.mvu-quest-create-panel[open]) .mvu-quest-pane {
   z-index: 1;
   opacity: 0;
