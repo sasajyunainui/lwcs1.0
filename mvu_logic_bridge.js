@@ -50065,13 +50065,55 @@ ${播报文本}
     临时根.innerHTML = 详情 && 详情.body ? 详情.body : '';
     const 新内容 = 临时根.querySelector('[data-quest-content]');
     if (!新内容) return false;
-    const 滚动位置 = Array.from(当前内容.querySelectorAll('.mvu-detail-scroll-list, .mvu-quest-detail-card')).map(
-      节点 => 节点.scrollTop,
-    );
-    当前内容.replaceChildren(...Array.from(新内容.childNodes));
-    Array.from(当前内容.querySelectorAll('.mvu-detail-scroll-list, .mvu-quest-detail-card')).forEach((节点, 索引) => {
-      节点.scrollTop = 滚动位置[索引] || 0;
+    const 当前网格 = 当前内容.querySelector('.mvu-quest-overview-grid');
+    const 新网格 = 新内容.querySelector('.mvu-quest-overview-grid');
+    const 当前统计 = 当前网格?.querySelector('.mvu-quest-summary-bar');
+    const 新统计 = 新网格?.querySelector('.mvu-quest-summary-bar');
+    const 当前列表卡 = 当前网格?.querySelector('.mvu-quest-list-card');
+    const 新列表卡 = 新网格?.querySelector('.mvu-quest-list-card');
+    const 当前详情卡 = 当前网格?.querySelector('.mvu-quest-detail-card');
+    const 新详情卡 = 新网格?.querySelector('.mvu-quest-detail-card');
+    if (!当前网格 || !新网格 || !当前统计 || !新统计 || !当前列表卡 || !新列表卡 || !当前详情卡 || !新详情卡) {
+      return false;
+    }
+
+    const 列表滚动位置 = 当前列表卡.querySelector('.mvu-detail-scroll-list')?.scrollTop || 0;
+    const 详情滚动位置 = 当前详情卡.scrollTop || 0;
+    当前网格.setAttribute('data-quest-theme', 新网格.getAttribute('data-quest-theme') || '');
+    当前统计.replaceChildren(...Array.from(新统计.childNodes));
+
+    当前列表卡.querySelectorAll('[data-quest-tab]').forEach(页签 => {
+      const 页签值 = 页签.getAttribute('data-quest-tab') || '';
+      const 新页签 = Array.from(新列表卡.querySelectorAll('[data-quest-tab]')).find(
+        候选 => 候选.getAttribute('data-quest-tab') === 页签值,
+      );
+      if (!新页签) return;
+      页签.className = 新页签.className;
+      const 当前数量 = 页签.querySelector('.mvu-quest-tab-count');
+      const 新数量 = 新页签.querySelector('.mvu-quest-tab-count');
+      if (当前数量 && 新数量) 当前数量.textContent = 新数量.textContent;
     });
+
+    const 当前列表头 = 当前列表卡.querySelector('.archive-card-head');
+    const 新列表头 = 新列表卡.querySelector('.archive-card-head');
+    const 当前工作区 = 当前列表卡.querySelector('.mvu-quest-workbench');
+    const 新工作区 = 新列表卡.querySelector('.mvu-quest-workbench');
+    if (当前列表头 && 新列表头) 当前列表头.replaceChildren(...Array.from(新列表头.childNodes));
+    if (当前工作区 && 新工作区) 当前工作区.replaceChildren(...Array.from(新工作区.childNodes));
+
+    const 当前详情头 = 当前详情卡.querySelector('.archive-card-head');
+    const 新详情头 = 新详情卡.querySelector('.archive-card-head');
+    if (当前详情头 && 新详情头) 当前详情头.replaceChildren(...Array.from(新详情头.childNodes));
+    Array.from(当前详情卡.children).forEach(子节点 => {
+      if (子节点 !== 当前详情头) 子节点.remove();
+    });
+    Array.from(新详情卡.children).forEach(子节点 => {
+      if (!子节点.classList.contains('archive-card-head')) 当前详情卡.appendChild(子节点);
+    });
+
+    const 当前列表滚动区 = 当前列表卡.querySelector('.mvu-detail-scroll-list');
+    if (当前列表滚动区) 当前列表滚动区.scrollTop = 列表滚动位置;
+    当前详情卡.scrollTop = 详情滚动位置;
     const 首个输入 = 当前内容.querySelector('.mvu-quest-create-panel[open] input, .mvu-quest-create-panel[open] select');
     if (首个输入 instanceof HTMLElement) window.setTimeout(() => 首个输入.focus(), 0);
     return true;
