@@ -13207,15 +13207,15 @@
       beliefRevision: beliefRevisionFor(beliefState),
       objectiveHash: `objective:${preview.stableHash(objectiveContract)}`,
       opportunityRevision: `opportunity:${
-        runtimeSnapshot.opportunityRevision ??
+        runtimeSnapshot.opportunitySnapshotHash ||
         preview.stableHash(opportunitySnapshot)
       }`,
       resourceTimelineRevision: `resource:${
-        runtimeSnapshot.resourceTimelineRevision ??
+        runtimeSnapshot.resourceTimelineHash ||
         preview.stableHash(resourceTimeline)
       }`,
       scheduleRevision: `schedule:${
-        runtimeSnapshot.scheduleRevision ??
+        runtimeSnapshot.scheduledEventsHash ||
         preview.stableHash(scheduledEvents)
       }`,
       opportunitySnapshot,
