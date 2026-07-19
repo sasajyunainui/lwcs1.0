@@ -1174,6 +1174,9 @@
       Number(left?.creationSequence || 0) - Number(right?.creationSequence || 0) ||
       String(left?.descriptorId || '').localeCompare(String(right?.descriptorId || ''))
     );
+    snapshot.opportunitySnapshotHash = previewRuntime.stableHash(snapshot.opportunitySnapshot);
+    snapshot.resourceTimelineHash = previewRuntime.stableHash(snapshot.resourceTimeline);
+    snapshot.scheduledEventsHash = previewRuntime.stableHash(snapshot.scheduledEvents);
     return Object.freeze(snapshot);
   }
 

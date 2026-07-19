@@ -9719,11 +9719,23 @@ class BattleUIComponent {
                   const alternatives = (Array.isArray(row?.alternatives) ? row.alternatives : [])
                     .map(item => `<li><b>${htmlEscapeText(item?.actionName || '替代行动')}</b>${item?.differenceSummary ? `：${htmlEscapeText(item.differenceSummary)}` : ''}</li>`)
                     .join('');
-                  const numbers = [
-                    ...(row?.predicted?.numbers || []),
-                    ...(row?.actual?.numericTokens || []),
-                  ].map(渲染ReportDto数字).filter(Boolean).join('');
-                  return `<article class="battle-preview-trace-card"><header><span>第${Math.max(0, Number(row?.round || 0))}回合 · ${htmlEscapeText(row?.actorName || '行动者')}</span><b>${htmlEscapeText(row?.selected?.actionName || '行动')}</b></header><p>${htmlEscapeText(row?.reasonSummary || '')}</p>${numbers ? `<div class="battle-preview-report-badges">${numbers}</div>` : ''}${alternatives ? `<ul>${alternatives}</ul>` : ''}</article>`;
+                  const predictedNumbers = (Array.isArray(row?.predicted?.numbers) ? row.predicted.numbers : [])
+                    .map(渲染ReportDto数字)
+                    .filter(Boolean)
+                    .join('');
+                  const actualNumbers = (Array.isArray(row?.actual?.numericTokens) ? row.actual.numericTokens : [])
+                    .map(渲染ReportDto数字)
+                    .filter(Boolean)
+                    .join('');
+                  const numberGroups = [
+                    predictedNumbers
+                      ? `<section class="battle-preview-report-number-group" aria-label="预演预测"><h5>预演预测</h5><div class="battle-preview-report-badges">${predictedNumbers}</div></section>`
+                      : '',
+                    actualNumbers
+                      ? `<section class="battle-preview-report-number-group" aria-label="实际结算"><h5>实际结算</h5><div class="battle-preview-report-badges">${actualNumbers}</div></section>`
+                      : '',
+                  ].filter(Boolean).join('');
+                  return `<article class="battle-preview-trace-card"><header><span>第${Math.max(0, Number(row?.round || 0))}回合 · ${htmlEscapeText(row?.actorName || '行动者')}</span><b>${htmlEscapeText(row?.selected?.actionName || '行动')}</b></header><p>${htmlEscapeText(row?.reasonSummary || '')}</p>${numberGroups ? `<div class="battle-preview-report-number-groups">${numberGroups}</div>` : ''}${alternatives ? `<ul>${alternatives}</ul>` : ''}</article>`;
                 }).join('')}</div>`
               : '<div class="battle-preview-empty">暂无判定明细</div>';
           }

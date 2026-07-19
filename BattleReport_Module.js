@@ -1492,8 +1492,22 @@
     const selectedRoute = selected?.primaryRoute || {};
     const alternativeRoute = alternative?.primaryRoute || {};
     const difference = (left, right) => number(left, 0) - number(right, 0);
-    const selectedAction = candidateDisplayLabel(publicCandidate(selected, directory));
-    const alternativeAction = candidateDisplayLabel(publicCandidate(alternative, directory));
+    const publicWindow = value => {
+      const raw = text(value);
+      if (!raw) return '';
+      if (raw === 'ACTION_COST') return '支付时';
+      if (/summon|召唤/i.test(raw)) return '召唤物行动窗口';
+      if (/effect|round|NOW/i.test(raw)) return '本次效果兑现窗口';
+      return '后续兑现窗口';
+    };
+    const selectedAction = candidateDisplayLabel(publicCandidate({
+      ...selected,
+      actionName: selected?.actionName || selected?.selectedActionName,
+    }, directory));
+    const alternativeAction = candidateDisplayLabel(publicCandidate({
+      ...alternative,
+      actionName: alternative?.actionName || alternative?.selectedActionName,
+    }, directory));
     const components = [
       {
         key: 'directTrajectoryHEPP',
@@ -1548,8 +1562,12 @@
         alternative: component.alternative,
         delta: component.selected - component.alternative,
       }));
-    const selectedWindows = unique(selectedRoute?.realizationWindows || []).filter(Boolean);
-    const alternativeWindows = unique(alternativeRoute?.realizationWindows || []).filter(Boolean);
+    const selectedWindows = unique(selectedRoute?.realizationWindows || [])
+      .map(publicWindow)
+      .filter(Boolean);
+    const alternativeWindows = unique(alternativeRoute?.realizationWindows || [])
+      .map(publicWindow)
+      .filter(Boolean);
     const selectedTargets = unique(selected?.declaration?.targetIds || selected?.targetIds || [])
       .map(targetId => publicEntityName(directory, targetId, targetId));
     const alternativeTargets = unique(alternative?.declaration?.targetIds || alternative?.targetIds || [])

@@ -12762,21 +12762,67 @@
   }
 
   function r8HasDefenseWindow(request = {}) {
-    const opportunity = request?.actionOpportunity || {};
+    const actorId = String(request?.actorId || '').trim();
+    if (!actorId) return false;
+    const defensiveGrantTypes = new Set([
+      'DODGE_WINDOW',
+      'DEFEND_WINDOW',
+      'GUARD_INTERCEPT',
+      'COUNTER_WINDOW',
+    ]);
+    const activeStatus = value => ![
+      'CONSUMED',
+      'EXPIRED',
+      'LOST',
+      'FATAL',
+      'CANCELLED',
+    ].includes(String(value || '').trim().toUpperCase());
+    const targetsActor = entry => {
+      const validTargetIds = Array.isArray(entry?.validTargetIds)
+        ? entry.validTargetIds.map(value => String(value || '').trim()).filter(Boolean)
+        : [];
+      const targetIds = Array.isArray(entry?.targetIds)
+        ? entry.targetIds.map(value => String(value || '').trim()).filter(Boolean)
+        : [];
+      const explicitTargetId = String(
+        entry?.targetId ||
+        entry?.incomingAction?.targetId ||
+        entry?.incomingAction?.target_id ||
+        entry?.incomingAction?.targetIds?.[0] ||
+        '',
+      ).trim();
+      const sourceActorId = String(entry?.sourceActorId || '').trim();
+      return (
+        validTargetIds.includes(actorId) ||
+        targetIds.includes(actorId) ||
+        explicitTargetId === actorId ||
+        (sourceActorId && validTargetIds.includes(sourceActorId))
+      );
+    };
+    const belongsToActor = entry =>
+      String(entry?.ownerId || '').trim() === actorId &&
+      activeStatus(entry?.status) &&
+      defensiveGrantTypes.has(String(entry?.grantType || entry?.expectedGrantType || '').trim().toUpperCase()) &&
+      String(entry?.sourceActorId || '').trim() !== actorId &&
+      targetsActor(entry);
+    const currentOpportunity = request?.actionOpportunity || {};
+    if (belongsToActor(currentOpportunity)) return true;
     if (
-      opportunity.imminentThreat === true ||
-      opportunity.counterWindow === true ||
-      opportunity.interceptThreat === true ||
-      opportunity.incomingAction
+      currentOpportunity?.incomingAction &&
+      String(currentOpportunity?.sourceActorId || '').trim() !== actorId &&
+      ['ACTIVE', 'REACTION', 'COUNTER'].includes(String(currentOpportunity?.role || '').trim().toUpperCase())
     ) return true;
-    if (r8OpportunityList(request).some(entry =>
-      ['DODGE_WINDOW', 'DEFEND_WINDOW', 'GUARD_INTERCEPT', 'COUNTER_WINDOW'].includes(
-        String(entry?.grantType || '').trim().toUpperCase(),
-      ) && !['CONSUMED', 'EXPIRED', 'LOST'].includes(String(entry?.status || '').trim().toUpperCase())
-    )) return true;
+    if (
+      currentOpportunity?.counterWindow === true &&
+      String(currentOpportunity?.sourceActorId || '').trim() !== actorId
+    ) return true;
+    if (r8OpportunityList(request).some(belongsToActor)) return true;
     return (request?.evaluationContext?.scheduledEvents || []).some(entry =>
-      entry?.incomingAction || entry?.threat === true ||
-      /INCOMING|CHARGE|ATTACK/.test(String(entry?.type || entry?.eventKind || '').toUpperCase())
+      belongsToActor({
+        ...entry,
+        grantType: entry?.grantType || entry?.expectedGrantType,
+        status: entry?.status || 'PENDING',
+      })
     );
   }
 
@@ -13160,9 +13206,18 @@
       visibleWorldRevision: `visible:${preview.stableHash(visibleWorld)}`,
       beliefRevision: beliefRevisionFor(beliefState),
       objectiveHash: `objective:${preview.stableHash(objectiveContract)}`,
-      opportunityRevision: `opportunity:${preview.stableHash(opportunitySnapshot)}`,
-      resourceTimelineRevision: `resource:${preview.stableHash(resourceTimeline)}`,
-      scheduleRevision: `schedule:${preview.stableHash(scheduledEvents)}`,
+      opportunityRevision: `opportunity:${
+        runtimeSnapshot.opportunityRevision ??
+        preview.stableHash(opportunitySnapshot)
+      }`,
+      resourceTimelineRevision: `resource:${
+        runtimeSnapshot.resourceTimelineRevision ??
+        preview.stableHash(resourceTimeline)
+      }`,
+      scheduleRevision: `schedule:${
+        runtimeSnapshot.scheduleRevision ??
+        preview.stableHash(scheduledEvents)
+      }`,
       opportunitySnapshot,
       resourceTimeline,
       scheduledEvents,

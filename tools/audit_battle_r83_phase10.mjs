@@ -485,6 +485,13 @@ add(
     /Escape/.test(numericBinding) &&
     /显示ReportDto数字来源/.test(numericBinding),
 );
+add(
+  'ui:prediction-and-settlement-numbers-are-separated',
+  /battle-preview-report-number-groups/.test(uiSource) &&
+    /aria-label="预演预测"/.test(uiSource) &&
+    /aria-label="实际结算"/.test(uiSource) &&
+    /sourceDetail/.test(numericRenderer),
+);
 const autoSummaryBuilder = bridgeSource.match(/function 构建自动战斗结构化摘要\([\s\S]*?(?=\n  function )/)?.[0] || '';
 add(
   'bridge:ai-summary-uses-structured-report-input',

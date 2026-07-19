@@ -30506,6 +30506,32 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   min-width: 0;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-number-groups,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-number-groups,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-number-groups {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-number-group,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-number-group,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-number-group {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-number-group h5,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-number-group h5,
+#detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-number-group h5 {
+  margin: 0;
+  color: var(--战斗记录文字弱色);
+  font-size: 0.78em;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-preview-report-badge,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge,
 #detailModal #mvu-battle-inline-host .battle-record-terminal .battle-preview-report-badge {
