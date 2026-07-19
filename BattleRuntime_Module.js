@@ -148,14 +148,65 @@
   }
 
   function hashBattleValue(value) {
-    const text = stableSerialize(value);
     let primary = 0x811c9dc5;
     let secondary = 0x9e3779b9;
-    for (let index = 0; index < text.length; index += 1) {
-      const code = text.charCodeAt(index);
-      primary = Math.imul(primary ^ code, 0x01000193);
-      secondary = Math.imul(secondary ^ (code + index), 0x85ebca6b);
-    }
+    let characterIndex = 0;
+    const update = text => {
+      for (let index = 0; index < text.length; index += 1) {
+        const code = text.charCodeAt(index);
+        primary = Math.imul(primary ^ code, 0x01000193);
+        secondary = Math.imul(secondary ^ (code + characterIndex), 0x85ebca6b);
+        characterIndex += 1;
+      }
+    };
+    const seen = new WeakSet();
+    const visit = item => {
+      if (item === null) {
+        update('null');
+        return;
+      }
+      const type = typeof item;
+      if (type === 'number') {
+        update(Number.isFinite(item) ? JSON.stringify(item) : 'null');
+        return;
+      }
+      if (type === 'boolean' || type === 'string') {
+        update(JSON.stringify(item));
+        return;
+      }
+      if (type === 'undefined' || type === 'function' || type === 'symbol') return;
+      if (Array.isArray(item)) {
+        if (seen.has(item)) throw new Error('battle_hash_circular_value');
+        seen.add(item);
+        update('[');
+        for (let index = 0; index < item.length; index += 1) {
+          if (index > 0) update(',');
+          if (Object.hasOwn(item, index)) visit(item[index]);
+        }
+        update(']');
+        seen.delete(item);
+        return;
+      }
+      if (type !== 'object') {
+        update(JSON.stringify(String(item)));
+        return;
+      }
+      if (seen.has(item)) throw new Error('battle_hash_circular_value');
+      seen.add(item);
+      const keys = Object.keys(item)
+        .filter(key => item[key] !== undefined && typeof item[key] !== 'function' && typeof item[key] !== 'symbol')
+        .sort();
+      update('{');
+      keys.forEach((key, index) => {
+        if (index > 0) update(',');
+        update(JSON.stringify(key));
+        update(':');
+        visit(item[key]);
+      });
+      update('}');
+      seen.delete(item);
+    };
+    visit(value);
     return `r74-${(primary >>> 0).toString(16).padStart(8, '0')}${(secondary >>> 0).toString(16).padStart(8, '0')}`;
   }
 
@@ -843,9 +894,68 @@
     if (!runtime.opportunityGraph || typeof runtime.opportunityGraph !== 'object') runtime.opportunityGraph = {};
     if (!Array.isArray(runtime.resourceTimeline)) runtime.resourceTimeline = [];
     if (!runtime.scheduleDescriptors || typeof runtime.scheduleDescriptors !== 'object') runtime.scheduleDescriptors = {};
+    if (!runtime.routeUnitHashCache || typeof runtime.routeUnitHashCache !== 'object') runtime.routeUnitHashCache = {};
     runtime.ledgerSequence = Math.max(0, Number(runtime.ledgerSequence || 0));
     runtime.resourceEffectSequence = Math.max(0, Number(runtime.resourceEffectSequence || 0));
     return runtime;
+  }
+
+  function invalidateRouteUnitHashes(combatData = {}, unitIds = []) {
+    const runtime = ensureCombatRuntime(combatData);
+    const ids = [...new Set((Array.isArray(unitIds) ? unitIds : [unitIds])
+      .map(value => String(value || '').trim())
+      .filter(Boolean))];
+    if (!ids.length) {
+      runtime.routeUnitHashCache = {};
+      return;
+    }
+    ids.forEach(unitId => { delete runtime.routeUnitHashCache[unitId]; });
+  }
+
+  function routeUnitHash(combatData = {}, unit = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    const unitId = previewRuntime.unitId(unit);
+    if (!unitId) return '';
+    const cached = runtime.routeUnitHashCache[unitId]?.routeHash;
+    if (cached) return cached;
+    const snapshot = cloneValue(unit);
+    if (snapshot && typeof snapshot === 'object') {
+      delete snapshot.__宿主;
+      if (snapshot.__battleRuntime && typeof snapshot.__battleRuntime === 'object') {
+        delete snapshot.__battleRuntime.naturalOpportunity;
+      }
+    }
+    const hash = previewRuntime.stableHash(snapshot);
+    runtime.routeUnitHashCache[unitId] = {
+      ...(runtime.routeUnitHashCache[unitId] || {}),
+      routeHash: hash,
+    };
+    return hash;
+  }
+
+  function fullRouteUnitHash(combatData = {}, unit = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    const unitId = previewRuntime.unitId(unit);
+    if (!unitId) return '';
+    const cached = runtime.routeUnitHashCache[unitId]?.fullHash;
+    if (cached) return cached;
+    const hash = previewRuntime.stableHash(unit);
+    runtime.routeUnitHashCache[unitId] = {
+      ...(runtime.routeUnitHashCache[unitId] || {}),
+      fullHash: hash,
+    };
+    return hash;
+  }
+
+  function invalidateRouteHashesFromFacts(combatData = {}, actorId = '', facts = []) {
+    const ids = new Set([String(actorId || '').trim()].filter(Boolean));
+    (Array.isArray(facts) ? facts : []).forEach(fact => {
+      [fact?.actorId, fact?.targetId, fact?.sourceActorId, fact?.meta?.actorId, fact?.meta?.targetId]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .forEach(id => ids.add(id));
+    });
+    invalidateRouteUnitHashes(combatData, [...ids]);
   }
 
   function inferOpportunityGrantType(input = {}) {
@@ -933,6 +1043,7 @@
   }
 
   function buildDecisionRuntimeSnapshot(combatData = {}, actorId = '', actionOpportunity = {}) {
+    const runtime = ensureCombatRuntime(combatData);
     const snapshot = cloneValue(buildRuntimeDecisionSnapshot(combatData));
     const opportunityId = String(
       actionOpportunity?.opportunityId ||
@@ -951,6 +1062,118 @@
         status: 'PENDING',
       }));
     }
+    const battleHorizon = actionOpportunity?.battleHorizon || {};
+    const currentRound = Math.max(0, Number(battleHorizon.currentRound ?? combatData?.回合 ?? 0));
+    const finalRound = Math.max(0, Number(battleHorizon.finalRound ?? battleHorizon.roundLimit ?? 0));
+    if (finalRound > currentRound) {
+      const nextRound = currentRound + 1;
+      const existingDescriptorIds = new Set(
+        snapshot.scheduledEvents.map(record => String(record?.descriptorId || '').trim()),
+      );
+      const creationBase = Math.max(
+        0,
+        ...snapshot.opportunitySnapshot.map(record => Number(record?.createdAtSequence || 0)),
+        ...snapshot.scheduledEvents.map(record => Number(record?.creationSequence || 0)),
+      );
+      const cachedQueue = runtime.r8NaturalScheduleCache;
+      const currentQueue = Array.isArray(cachedQueue?.queue) ? cachedQueue.queue : null;
+      const queue = currentQueue || buildActionQueue(combatData).map(entry => ({
+        ownerId: previewRuntime.unitId(entry?.char),
+        side: entry?.side || '',
+      })).filter(entry => entry.ownerId);
+      const queueSignature = previewRuntime.stableHash(queue);
+      const cacheKey = `${currentRound}:${finalRound}:${queueSignature}`;
+      const cachedDescriptors = cachedQueue?.key === cacheKey
+        ? cachedQueue.descriptors
+        : null;
+      const descriptors = cachedDescriptors || queue.map((entry, index) => ({
+        descriptorId: `next-natural:${nextRound}:${entry.ownerId}`,
+        ownerId: entry.ownerId,
+        expectedGrantType: 'NATURAL_ACTION',
+        creationOffset: index + 1,
+        expiryOffset: index + 1,
+        eventType: 'NEXT_ROUND_NATURAL_ACTION',
+      }));
+      if (!cachedDescriptors) {
+        runtime.r8NaturalScheduleCache = {
+          key: cacheKey,
+          queue,
+          descriptors,
+        };
+      }
+      descriptors.forEach(descriptor => {
+        const descriptorId = String(descriptor?.descriptorId || '').trim();
+        if (!descriptorId || existingDescriptorIds.has(descriptorId)) return;
+        snapshot.scheduledEvents.push({
+          descriptorId,
+          ownerId: descriptor.ownerId,
+          expectedGrantType: descriptor.expectedGrantType,
+          creationSequence: creationBase + Number(descriptor.creationOffset || 0),
+          expirySequence: creationBase + Number(descriptor.expiryOffset || 0),
+          sourceEventId: opportunityId,
+          eventType: descriptor.eventType,
+        });
+        existingDescriptorIds.add(descriptorId);
+      });
+      snapshot.scheduledEvents.sort((left, right) =>
+        Number(left?.creationSequence || 0) - Number(right?.creationSequence || 0) ||
+        String(left?.descriptorId || '').localeCompare(String(right?.descriptorId || ''))
+      );
+    }
+    const decisionActor = listCombatUnits(combatData).find(unit =>
+      previewRuntime.unitId(unit) === String(actorId || '').trim()
+    );
+    const decisionSide = decisionActor ? inferUnitSide(combatData, previewRuntime.unitName(decisionActor)) : '';
+    const hostileEntries = listPrimaryCombatUnits(combatData)
+      .filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) !== decisionSide);
+    const alliedTargets = listPrimaryCombatUnits(combatData)
+      .filter(unit => inferUnitSide(combatData, previewRuntime.unitName(unit)) === decisionSide)
+      .filter(unit => previewRuntime.isBattleCapable(unit));
+    hostileEntries.forEach(source => {
+      const charge = source?.蓄力技能;
+      if (!charge || !previewRuntime.isBattleCapable(source)) return;
+      const remainingCastTime = Math.max(0, Number(
+        charge?.cast_time ?? charge?.skill?.前摇 ?? charge?.前摇 ?? 0
+      ));
+      if (remainingCastTime > 40) return;
+      const namedTarget = String(
+        charge?.target_id ||
+        charge?.targetId ||
+        charge?.target_name ||
+        charge?.targetIds?.[0] ||
+        ''
+      ).trim();
+      const target = namedTarget
+        ? alliedTargets.find(unit => isUnitIdentityMatch(unit, namedTarget))
+        : alliedTargets.length === 1 ? alliedTargets[0] : null;
+      if (!target || previewRuntime.unitId(target) !== String(actorId || '').trim()) return;
+      const sourceActorId = previewRuntime.unitId(source);
+      const descriptorId = `visible-charge:${currentRound + 1}:${sourceActorId}:${actorId}`;
+      if (snapshot.scheduledEvents.some(record =>
+        String(record?.descriptorId || '').trim() === descriptorId
+      )) return;
+      const creationSequence = Math.max(
+        0,
+        ...snapshot.opportunitySnapshot.map(record => Number(record?.createdAtSequence || 0)),
+        ...snapshot.scheduledEvents.map(record => Number(record?.creationSequence || 0)),
+      ) + 1;
+      snapshot.scheduledEvents.push({
+        descriptorId,
+        ownerId: String(actorId || '').trim(),
+        sourceActorId,
+        expectedGrantType: 'DEFEND_WINDOW',
+        creationSequence,
+        expirySequence: creationSequence,
+        sourceEventId: opportunityId,
+        eventType: 'VISIBLE_CHARGE_RELEASE',
+        incomingAction: cloneValue(charge),
+        threat: true,
+      });
+    });
+    snapshot.scheduledEvents.sort((left, right) =>
+      Number(left?.creationSequence || 0) - Number(right?.creationSequence || 0) ||
+      String(left?.descriptorId || '').localeCompare(String(right?.descriptorId || ''))
+    );
     return Object.freeze(snapshot);
   }
 
@@ -1123,6 +1346,9 @@
     const normalizeActionName = typeof options?.normalizeActionName === 'function'
       ? options.normalizeActionName
       : value => String(value || '').trim();
+    const isRegisteredActor = typeof options?.isRegisteredActor === 'function'
+      ? options.isRegisteredActor
+      : () => true;
     const describeActor = typeof options?.describeActor === 'function'
       ? options.describeActor
       : entry => String(entry?.char?.name || entry?.char?.名称 || '').trim();
@@ -1192,6 +1418,7 @@
         phasePriority: Number(node?.phasePriority || 0),
         insertionSequence: Number(node?.insertionSequence || 0),
         grantId: String(node?.grantId || '').trim(),
+        actorId: describeActorId(node?.actorEntry),
         actorName: describeActor(node?.actorEntry),
         nodeKind: String(node?.nodeKind || 'ACTIVE').trim(),
         actionRole: normalizeRole(node?.actionRole || 'ACTIVE'),
@@ -1256,10 +1483,19 @@
         actionName: normalizeActionName(input.actionName || ''),
         execute: typeof input.execute === 'function' ? input.execute : null,
       };
+      const actorId = describeActorId(node.actorEntry);
+      if (!actorId || !isRegisteredActor(actorId, node.actorEntry, node)) {
+        return fail('OPPORTUNITY_OWNER_NOT_REGISTERED_UNIT', input, {
+          actorId,
+          nodeKind: node.nodeKind,
+          grantId,
+          opportunityId: node.opportunityId,
+        });
+      }
       if (node.nodeKind !== 'PRIMARY_SETTLEMENT') {
         const opportunity = normalizeOpportunityRecord({
           ...node,
-          ownerId: describeActorId(node.actorEntry),
+          ownerId: actorId,
           role: node.actionRole,
           createdAtSequence: node.actionSequence,
         });
@@ -4488,6 +4724,7 @@
       normalizeRole: options?.normalizeRole,
       normalizeActionName: options?.normalizeActionName,
       describeActor: options?.describeActor,
+      isRegisteredActor: options?.isRegisteredActor,
       onTrace: options?.onTrace,
       onFatal: options?.onFatal,
       initialInsertionSequence: options?.initialInsertionSequence,
@@ -5044,6 +5281,8 @@
       actionName,
       primaryTarget,
       actionEvent,
+      allowPreparedDefense: input?.allowPreparedDefense !== false,
+      noWindowDefenseFallback: input?.noWindowDefenseFallback === true,
       action: { actionKind, actionName, actorControl },
     };
   }
@@ -5102,6 +5341,8 @@
       actionName,
       primaryTarget,
       actionEvent,
+      allowPreparedDefense,
+      noWindowDefenseFallback,
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
     const action = { actionKind, actionName, actorControl };
@@ -5158,7 +5399,9 @@
     });
     if (['DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD'].includes(actionKind)) {
       const eventKind = actionKind === 'DEFEND' || actionKind === 'GUARD' ? 'defend' : actionKind === 'EVADE' ? 'dodge' : 'pass';
-      const preparedDefense = actionRole === 'ACTIVE' && ['DEFEND', 'EVADE'].includes(actionKind);
+      const preparedDefense = allowPreparedDefense !== false &&
+        actionRole === 'ACTIVE' &&
+        ['DEFEND', 'EVADE'].includes(actionKind);
       if (preparedDefense) {
         actor.__battleRuntime = actor.__battleRuntime && typeof actor.__battleRuntime === 'object' ? actor.__battleRuntime : {};
         actor.__battleRuntime.activeDefenseStance = {
@@ -5170,8 +5413,16 @@
         };
       }
       let result = 'complete';
-      let primaryOutcome = actionKind === 'OBSERVE' ? 'information_gained' : 'stance_established';
-      const meta = { source: 'structured_runtime', preparedDefense };
+      let primaryOutcome = actionKind === 'OBSERVE'
+        ? 'information_gained'
+        : noWindowDefenseFallback
+          ? 'no_formal_window'
+          : 'stance_established';
+      const meta = {
+        source: 'structured_runtime',
+        preparedDefense,
+        noWindowDefenseFallback: noWindowDefenseFallback === true,
+      };
       if (actionKind === 'WITHDRAW') {
         const actorSide = previewRuntime.sideOf(combatData, actor);
         const pursuers = listCombatUnits(combatData)
@@ -6214,16 +6465,7 @@
     const providerId = String(input?.settings?.providerId || '').trim();
     const routeCatalogCacheEnabled = input?.settings?.disableRouteCatalogCache !== true;
     const routeCatalogCacheByActor = new Map();
-    const routeTargetUnitHash = unit => {
-      const snapshot = cloneValue(unit || {});
-      if (snapshot && typeof snapshot === 'object') {
-        delete snapshot.__宿主;
-        if (snapshot.__battleRuntime && typeof snapshot.__battleRuntime === 'object') {
-          delete snapshot.__battleRuntime.naturalOpportunity;
-        }
-      }
-      return previewRuntime.stableHash(snapshot);
-    };
+    const routeTargetUnitHash = unit => routeUnitHash(combatData, unit);
     const directDecision = decisionEngine === 'next-shadow'
       ? decisionRuntime.decideNext
       : decisionRuntime.decide;
@@ -6257,6 +6499,7 @@
     runtime.opportunityGraph = {};
     runtime.resourceTimeline = [];
     runtime.scheduleDescriptors = {};
+    runtime.routeUnitHashCache = {};
     runtime.ledgerSequence = 0;
     runtime.resourceEffectSequence = 0;
     delete runtime.firstTerminalSequence;
@@ -6380,6 +6623,7 @@
         combatData.回合 = Number(source?.回合 || 0) + roundOffset;
         roundsExecuted = roundOffset;
         logs.push(...beginBattleRound(combatData, combatData.回合).filter(Boolean));
+        invalidateRouteUnitHashes(combatData);
         const queueTrace = runtime.actionQueueTrace;
         const naturalEntries = buildActionQueue(combatData);
         initializeNaturalOpportunityStates(naturalEntries, combatData.回合);
@@ -6388,6 +6632,9 @@
           initialEntries: naturalEntries,
           describeActor: entry => previewRuntime.unitName(entry?.char),
           describeActorId: entry => previewRuntime.unitId(entry?.char),
+          isRegisteredActor: actorId => listCombatUnits(combatData).some(unit =>
+            previewRuntime.unitId(unit) === String(actorId || '').trim()
+          ),
           normalizeRole: normalizeActionRole,
           normalizeActionName: normalizeActionDisplayName,
           onTrace: event => queueTrace.push(cloneAuditSnapshot(event)),
@@ -6964,9 +7211,24 @@
             const routeCache = routeCatalogCacheEnabled
               ? routeCatalogCacheByActor.get(actorId) || null
               : null;
+            const decisionRuntimeSnapshot = buildDecisionRuntimeSnapshot(
+              combatData,
+              actorId,
+              decisionInput.actionOpportunity,
+            );
+            const currentOpportunityHash = previewRuntime.stableHash({
+              opportunitySnapshot: decisionRuntimeSnapshot.opportunitySnapshot || [],
+              actionOpportunity: decisionInput.actionOpportunity || {},
+            });
+            const currentResourceTimelineHash = previewRuntime.stableHash(
+              decisionRuntimeSnapshot.resourceTimeline || [],
+            );
+            const currentScheduleHash = previewRuntime.stableHash(
+              decisionRuntimeSnapshot.scheduledEvents || [],
+            );
             const currentUnitHashes = Object.fromEntries(
               [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)]
-                .map(unit => [previewRuntime.unitId(unit), previewRuntime.stableHash(unit)])
+                .map(unit => [previewRuntime.unitId(unit), fullRouteUnitHash(combatData, unit)])
                 .filter(([unitId]) => unitId),
             );
             const currentTargetUnitHashes = Object.fromEntries(
@@ -7014,7 +7276,10 @@
               });
               if (
                 routeCache.round !== Number(combatData?.回合 || 0) ||
-                routeCache.objectiveHash !== previewRuntime.stableHash(combatData?.胜负条件 || {})
+                routeCache.objectiveHash !== previewRuntime.stableHash(combatData?.胜负条件 || {}) ||
+                routeCache.opportunityHash !== currentOpportunityHash ||
+                routeCache.resourceTimelineHash !== currentResourceTimelineHash ||
+                routeCache.scheduleHash !== currentScheduleHash
               ) {
                 Object.keys(currentUnitHashes).forEach(unitId => affectedRouteUnitIds.add(unitId));
                 Object.keys(currentUnitHashes).forEach(unitId => affectedRouteTargetUnitIds.add(unitId));
@@ -7027,11 +7292,7 @@
               analysisDepth: ['legacy-baseline', 'r74-next-baseline'].includes(providerId)
                 ? 'CANDIDATES_ONLY'
                 : 'FULL',
-              runtimeSnapshot: buildDecisionRuntimeSnapshot(
-                combatData,
-                actorId,
-                decisionInput.actionOpportunity,
-              ),
+              runtimeSnapshot: decisionRuntimeSnapshot,
               previousRouteCatalog: routeCache?.catalog || null,
               affectedRouteUnitIds: [...affectedRouteUnitIds],
               affectedRouteTargetUnitIds: [...affectedRouteTargetUnitIds],
@@ -7045,6 +7306,9 @@
                 publicResponseHashes: currentPublicResponseHashes,
                 round: Number(combatData?.回合 || 0),
                 objectiveHash: previewRuntime.stableHash(combatData?.胜负条件 || {}),
+                opportunityHash: currentOpportunityHash,
+                resourceTimelineHash: currentResourceTimelineHash,
+                scheduleHash: currentScheduleHash,
               });
             }
             const providerResult = decisionRuntime.runProvider({ providerId, request });
@@ -7549,6 +7813,10 @@
                 grantId: node.grantId,
                 preparedDefense,
               });
+              invalidateRouteHashesFromFacts(combatData, actorId, [
+                reaction?.event,
+                ...(Array.isArray(reaction?.facts) ? reaction.facts : []),
+              ]);
               registerPredictedEvidence(reaction?.event, decisionResult);
               if (reaction?.event && Array.isArray(reaction?.facts) && reaction.facts.length) {
                 recordSettledBeliefs(decisionResult, {
@@ -7613,6 +7881,7 @@
                 actionContext: shared.actionContext,
                 reactionByTarget: shared.reactionByTarget,
               });
+              invalidateRouteHashesFromFacts(combatData, previewRuntime.unitId(actor), settlement?.facts);
               recordSettledBeliefs(shared.decisionResult, settlement);
               if (node.actionRole === 'COUNTER') {
                 const counterHit = settlement.facts.find(event => String(event?.eventKind || '').trim() === 'hit_result');
@@ -7974,6 +8243,11 @@
               ? prepareStructuredFusion(combatData, actor, declaration)
               : null;
             const parentActionEvent = node?.state?.parentActionEvent || null;
+            const noWindowDefenseFallback =
+              node.nodeKind === 'ACTIVE' &&
+              ['DEFEND', 'EVADE'].includes(String(declaration?.actionKind || '').trim().toUpperCase()) &&
+              String(decisionResult?.decisionProfile?.selectionMode || '').trim() === 'FORCED_DEFEND_FALLBACK' &&
+              String(decisionResult?.selected?.rejectionCode || '').trim() === 'ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED';
             const actionContext = beginStructuredDeclaration({
               combatData,
               declaration,
@@ -7984,6 +8258,8 @@
               opportunitySequence: node.opportunitySequence,
               grantId: node.grantId,
               decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
+              allowPreparedDefense: !noWindowDefenseFallback,
+              noWindowDefenseFallback,
               parentNodeId: String(node?.state?.counterWindowEvent?.chainNodeId || node?.state?.reactionEvent?.chainNodeId || parentActionEvent?.chainNodeId || '').trim(),
               reactionNodeId: String(node?.state?.reactionEvent?.chainNodeId || '').trim(),
               chainType: node.nodeKind === 'CONTINUATION' ? 'FOLLOW_UP' : '',
@@ -10999,6 +11275,7 @@
             utilityBefore: Number(selected?.utilityBefore || 0),
             utilityAfter: Number(selected?.utilityAfter || 0),
             objectiveUtility: Number(selected?.objectiveUtility || 0),
+            objectiveUtilityHEPP: Number(selected?.objectiveUtilityHEPP ?? selected?.objectiveUtility ?? 0),
             normalizedUtility: Number(selected?.normalizedUtility || 0),
             vector: selected?.vector || {},
             rejectionCode: String(selected?.rejectionCode || '').trim(),
@@ -11031,6 +11308,9 @@
             causalValueFacts: Array.isArray(selected?.causalValueFacts) ? selected.causalValueFacts : [],
           }
         : null,
+      alternatives: Array.isArray(decision?.alternatives)
+        ? decision.alternatives.slice(0, 2).map(normalizeScoreCandidate)
+        : [],
       goalProjection: selected?.goalProjection || null,
       healthTrajectory: Array.isArray(selected?.goalProjection?.healthTrajectory)
         ? selected.goalProjection.healthTrajectory
@@ -11245,6 +11525,11 @@
       providerId,
       inputHash,
       objectiveHash: hashBattleValue(objectiveContract),
+      caseId: String(result?.caseId || source?.caseId || '').trim(),
+      seed: result?.seed ?? source?.seed ?? 1,
+      mode: String(result?.mode || source?.mode || '').trim(),
+      roundsRequested: Math.max(0, Number(result?.roundsRequested || source?.rounds || 0)),
+      actualRoundCount: Math.max(0, Number(result?.roundsExecuted || 0)),
       ledger: cloneValue(result?.ledger || []),
       trace: cloneValue(result?.trace || []),
       actionQueueTrace: cloneValue(result?.actionQueueTrace || []),
@@ -11278,7 +11563,7 @@
       throw new Error('BATTLE_COMMIT_HASH_MISMATCH:report');
     }
     return Object.freeze({
-      schemaVersion: '7.3-R7.4-sealed-1',
+      schemaVersion: '8.3-sealed-1',
       sealStatus: 'SEALED',
       draftHash,
       reportHash,
@@ -11294,7 +11579,7 @@
     if (!sealedPackage || String(sealedPackage?.sealStatus || '').trim() !== 'SEALED') {
       throw new Error('BATTLE_COMMIT_BEFORE_REPORT_SEAL');
     }
-    if (!['7.3-R7.4-sealed-1', '8.3-sealed-1'].includes(String(sealedPackage?.schemaVersion || '').trim())) {
+    if (String(sealedPackage?.schemaVersion || '').trim() !== '8.3-sealed-1') {
       throw new Error('BATTLE_COMMIT_HASH_MISMATCH:schema');
     }
     const draftHash = String(sealedPackage?.draftHash || '').trim();

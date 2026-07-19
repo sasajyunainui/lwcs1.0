@@ -10,7 +10,7 @@
   }
 
   const visibilityModes = Object.freeze(['PLAYER', 'DEVELOPER']);
-  const reportSchemaVersion = '7.3-R7.4-report-3';
+  const reportSchemaVersion = '8.3-report-1';
   const internalSummonPattern = /(?:structured-summon|battle-summon|summon-instance|preview-summon):[^\s,，。；;|]+/gi;
   const internalSummonIdPattern = /^(?:structured-summon|battle-summon|summon-instance|preview-summon):/i;
   const passiveEventKinds = new Set([
@@ -1484,6 +1484,110 @@
     return totals;
   }
 
+  function candidateComparisonEvidence(selected = {}, alternative = {}, directory = new Map()) {
+    const selectedProjection = selected?.goalProjection || {};
+    const alternativeProjection = alternative?.goalProjection || {};
+    const selectedVector = selected?.vector || {};
+    const alternativeVector = alternative?.vector || {};
+    const selectedRoute = selected?.primaryRoute || {};
+    const alternativeRoute = alternative?.primaryRoute || {};
+    const difference = (left, right) => number(left, 0) - number(right, 0);
+    const selectedAction = candidateDisplayLabel(publicCandidate(selected, directory));
+    const alternativeAction = candidateDisplayLabel(publicCandidate(alternative, directory));
+    const components = [
+      {
+        key: 'directTrajectoryHEPP',
+        label: '直接生命轨迹',
+        unit: 'HEPP',
+        selected: number(selectedProjection?.directTrajectoryHEPP, 0),
+        alternative: number(alternativeProjection?.directTrajectoryHEPP, 0),
+      },
+      {
+        key: 'actionPoolHEPP',
+        label: '行为池兑现',
+        unit: 'HEPP',
+        selected: number(selectedProjection?.actionPoolHEPP, 0),
+        alternative: number(alternativeProjection?.actionPoolHEPP, 0),
+      },
+      {
+        key: 'informationValueHEPP',
+        label: '信息后悔减少',
+        unit: 'HEPP',
+        selected: number(selectedVector?.informationValueHEPP, number(selectedProjection?.informationValueHEPP, 0)),
+        alternative: number(alternativeVector?.informationValueHEPP, number(alternativeProjection?.informationValueHEPP, 0)),
+      },
+      {
+        key: 'survivalLowerBound',
+        label: '生存下界',
+        unit: 'HEPP',
+        selected: number(selectedVector?.survivalLowerBound, 0),
+        alternative: number(alternativeVector?.survivalLowerBound, 0),
+      },
+      {
+        key: 'worstTailLossHEPP',
+        label: '最坏回应损失',
+        unit: 'HEPP',
+        selected: number(selectedVector?.worstTailLossHEPP, number(selectedProjection?.worstTailLossHEPP, 0)),
+        alternative: number(alternativeVector?.worstTailLossHEPP, number(alternativeProjection?.worstTailLossHEPP, 0)),
+      },
+      {
+        key: 'discardedOverkillPP',
+        label: '阈值后过量',
+        unit: 'PP',
+        selected: number(selectedVector?.discardedOverkillPP, number(selectedProjection?.discardedOverkillPP, 0)),
+        alternative: number(alternativeVector?.discardedOverkillPP, number(alternativeProjection?.discardedOverkillPP, 0)),
+      },
+    ];
+    const changedComponents = components
+      .filter(component => Math.abs(component.selected - component.alternative) > 0.01)
+      .map(component => ({
+        key: component.key,
+        label: component.label,
+        unit: component.unit,
+        selected: component.selected,
+        alternative: component.alternative,
+        delta: component.selected - component.alternative,
+      }));
+    const selectedWindows = unique(selectedRoute?.realizationWindows || []).filter(Boolean);
+    const alternativeWindows = unique(alternativeRoute?.realizationWindows || []).filter(Boolean);
+    const selectedTargets = unique(selected?.declaration?.targetIds || selected?.targetIds || [])
+      .map(targetId => publicEntityName(directory, targetId, targetId));
+    const alternativeTargets = unique(alternative?.declaration?.targetIds || alternative?.targetIds || [])
+      .map(targetId => publicEntityName(directory, targetId, targetId));
+    const summary = changedComponents.map(component =>
+      `${component.label}：${selectedAction}${displayNumber(component.selected)}${component.unit}，` +
+      `${alternativeAction}${displayNumber(component.alternative)}${component.unit}`,
+    );
+    if (!summary.length) {
+      summary.push('已公开的生命轨迹、行为池、风险和资源保留投影没有形成可区分差异');
+    }
+    return {
+      comparisonType: 'CANDIDATE_DELTA',
+      selectedAction,
+      alternativeAction,
+      selectedTargets,
+      alternativeTargets,
+      selectedObjectiveUtilityHEPP: number(
+        selectedVector?.objectiveUtilityHEPP,
+        number(selected?.objectiveUtilityHEPP, 0),
+      ),
+      alternativeObjectiveUtilityHEPP: number(
+        alternativeVector?.objectiveUtilityHEPP,
+        number(alternative?.objectiveUtilityHEPP, 0),
+      ),
+      objectiveUtilityDeltaHEPP: difference(
+        selectedVector?.objectiveUtilityHEPP,
+        alternativeVector?.objectiveUtilityHEPP,
+      ),
+      changedComponents,
+      selectedWindows,
+      alternativeWindows,
+      summary,
+      explanation: `比较${selectedAction}与${alternativeAction}的公开预估：${summary.join('；')}` +
+        `。兑现窗口：${selectedWindows.length ? selectedWindows.join('、') : '无'}；替代方案：${alternativeWindows.length ? alternativeWindows.join('、') : '无'}`,
+    };
+  }
+
   function candidateDifferenceSummaries(selected = {}, alternative = {}) {
     const selectedTotals = candidateEvidenceTotals(selected);
     const alternativeTotals = candidateEvidenceTotals(alternative);
@@ -1509,8 +1613,18 @@
       const overkillDelta =
         number(alternativeVector?.discardedOverkillPP, 0) -
         number(selectedVector?.discardedOverkillPP, 0);
+      const comparison = candidateComparisonEvidence(selected, alternative);
       if (Math.abs(utilityDelta) > 0.01) {
-        differences.push(`目标生命轨迹效用相差${displayNumber(Math.abs(utilityDelta))}HEPP`);
+        differences.push(
+          comparison.changedComponents.length
+            ? comparison.changedComponents
+              .slice(0, 3)
+              .map(component =>
+                `${component.label}相差${displayNumber(Math.abs(component.delta))}${component.unit}`
+              )
+              .join('；')
+            : `公开预估总效用相差${displayNumber(Math.abs(utilityDelta))}HEPP`,
+        );
       }
       if (informationDelta > 0.01) differences.push(`所选方案多减少${displayNumber(informationDelta)}HEPP的后续选择后悔`);
       if (survivalDelta > 0.01) differences.push(`所选方案的生存下界高${displayNumber(survivalDelta)}HEPP`);
@@ -2186,7 +2300,7 @@
     visibilityMode = 'PLAYER',
     sourceEventsByFactId = new Map(),
   ) {
-      const decisions = Array.isArray(draft?.decisionAudit) ? draft.decisionAudit : [];
+    const decisions = Array.isArray(draft?.decisionAudit) ? draft.decisionAudit : [];
     const claimedFactIds = new Set();
     return decisions.map((decision, decisionIndex) => {
       const matched = findDecisionAnchor(
@@ -2281,6 +2395,9 @@
           ...item,
           differenceFromSelected: number(selected?.objectiveUtility, 0) - number(candidate?.objectiveUtility, 0),
           differenceSummary: unique(differences).slice(0, 3).join('；'),
+          comparisonEvidence: r8Decision
+            ? candidateComparisonEvidence(selected, candidate, directory)
+            : null,
         };
       });
       const sourceActionFact = exchange.factIds
@@ -2298,6 +2415,12 @@
       const sourceEventId = text(anchor?.factId);
       const r8Evidence = r8Decision
         ? publicR8DecisionEvidence(decision, selected, directory, visibilityMode)
+        : null;
+      const primaryComparison = r8Decision && alternativePublic[0]?.comparisonEvidence
+        ? {
+            ...alternativePublic[0].comparisonEvidence,
+            comparisonId: `${adjudicationId}:comparison:0`,
+          }
         : null;
       const developerDecisionNumbers = [
         adjudicationNumberToken(adjudicationId, sourceEventId, r8Decision ? '目标生命轨迹效用' : '预估局面收益', r8Decision ? selected?.vector?.objectiveUtilityHEPP : selected?.objectiveUtility, r8Decision ? 'HEPP' : '效用', selectedPublic.actionName, 'DEVELOPER'),
@@ -2334,7 +2457,13 @@
       const decisionNumbers = [
         ...(visibilityMode === 'DEVELOPER' ? developerDecisionNumbers : []),
         ...visibleDecisionNumbers,
-      ];
+      ].map(token => primaryComparison
+        ? {
+            ...token,
+            sourceDetail: primaryComparison.explanation,
+            comparisonId: primaryComparison.comparisonId,
+          }
+        : token);
       const actualFacts = collectDecisionActualFacts(
         exchange,
         anchor,
@@ -2365,6 +2494,7 @@
         grantId: text(anchor?.grantId || anchor?.developerDetail?.meta?.grantId),
         selected: selectedPublic,
         alternatives: alternativePublic,
+        comparisonEvidence: primaryComparison,
         goalProjection: r8Evidence?.goalProjection || null,
         healthTrajectory: r8Evidence?.healthTrajectory || null,
         actionRouteDeltas: r8Evidence?.actionRouteDeltas || null,
@@ -3647,13 +3777,17 @@
   }
 
   function build(input = {}) {
-    const draft = input?.draft && typeof input.draft === 'object' ? cloneValue(input.draft) : null;
-    if (!draft || text(draft?.status) !== 'DRAFT') throw new Error('battle_report_draft_invalid');
-    const draftHash = text(draft?.draftHash);
+    const sourceDraft = input?.draft && typeof input.draft === 'object' ? input.draft : null;
+    if (!sourceDraft || text(sourceDraft?.status) !== 'DRAFT') throw new Error('battle_report_draft_invalid');
+    const draftHash = text(sourceDraft?.draftHash);
+    const draft = { ...sourceDraft };
     delete draft.draftHash;
     if (!draftHash || runtime.hashBattleValue(draft) !== draftHash) throw new Error('BATTLE_COMMIT_HASH_MISMATCH:draft');
     const visibilityMode = normalizeVisibilityMode(input?.visibilityMode || 'PLAYER');
     const ledger = Array.isArray(draft?.ledger) ? draft.ledger.filter(Boolean) : [];
+    const ledgerOrderByFactId = new Map(
+      ledger.map((event, index) => [text(event?.eventId), index]),
+    );
     const directory = buildEntityDirectory(draft, ledger);
     const actionReferences = buildActionReferenceMap(ledger);
     const factRegistry = ledger.map(event => buildFact(event, visibilityMode, directory, actionReferences));
@@ -3679,6 +3813,11 @@
         roundCanonicalFactIds.get(round).push(factId);
         return;
       }
+      if (kind === 'battle_objective_resolved') {
+        fact.canonicalFactOwner = 'final-summary';
+        finalCanonicalFactIds.push(factId);
+        return;
+      }
       if (
         (passiveEventKinds.has(kind) && !isActionScopedOpportunityFact(event)) ||
         text(event?.actionRole) === 'STATE_TICK'
@@ -3687,11 +3826,6 @@
         fact.canonicalFactOwner = ownerId;
         if (!roundCanonicalFactIds.has(round)) roundCanonicalFactIds.set(round, []);
         roundCanonicalFactIds.get(round).push(factId);
-        return;
-      }
-      if (kind === 'battle_objective_resolved') {
-        fact.canonicalFactOwner = 'final-summary';
-        finalCanonicalFactIds.push(factId);
         return;
       }
       const eventActionRole = text(event?.actionRole).toUpperCase();
@@ -3719,7 +3853,11 @@
     });
     const exchanges = [...exchangeMap.values()]
       .map(exchange => exchangePresentation(exchange, factsById, directory))
-      .sort((left, right) => left.round - right.round || ledger.findIndex(event => text(event?.eventId) === left.factIds[0]) - ledger.findIndex(event => text(event?.eventId) === right.factIds[0]));
+      .sort((left, right) =>
+        left.round - right.round ||
+        number(ledgerOrderByFactId.get(text(left.factIds[0])), Number.MAX_SAFE_INTEGER) -
+          number(ledgerOrderByFactId.get(text(right.factIds[0])), Number.MAX_SAFE_INTEGER)
+      );
     const roundOverview = buildRoundOverview(draft, ledger, factsById, exchanges, directory);
     roundOverview.forEach(row => {
       row.canonicalFactIds = roundCanonicalFactIds.get(row.round) || [];
@@ -3786,7 +3924,7 @@
   }
 
   function auditProjection(reportDto = {}) {
-    const report = reportDto && typeof reportDto === 'object' ? cloneValue(reportDto) : {};
+    const report = reportDto && typeof reportDto === 'object' ? { ...reportDto } : {};
     const fatals = [];
     const pushFatal = (code, detail = {}) => fatals.push({ code, ...detail });
     const projectionDirectory = new Map();

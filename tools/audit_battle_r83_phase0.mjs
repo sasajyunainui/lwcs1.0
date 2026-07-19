@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
@@ -9,9 +10,9 @@ const evidenceDir = path.join(toolDir, 'evidence', 'r8');
 const readJson = fileName => JSON.parse(
   fs.readFileSync(path.join(evidenceDir, fileName), 'utf8'),
 );
-const sha256File = filePath => crypto
+const sha256Text = text => crypto
   .createHash('sha256')
-  .update(fs.readFileSync(filePath))
+  .update(text, 'utf8')
   .digest('hex');
 const checks = [];
 const addCheck = (checkId, passed, detail = {}) => {
@@ -50,30 +51,41 @@ const minimal = readJson('r75_minimal_case_contracts.json');
 const real = readJson('r75_real_case_manifest.json');
 const decisions = readJson('r75_design_decisions.json');
 const oracleMap = readJson('r8_issue_oracle_map.json');
+const implementationHead = String(baseline.repository?.implementationHead || '').trim();
 const sourceCache = new Map();
 const sourceOf = fileName => {
   if (!sourceCache.has(fileName)) {
-    sourceCache.set(fileName, fs.readFileSync(path.join(repoRoot, fileName), 'utf8'));
+    sourceCache.set(fileName, execFileSync(
+      'git',
+      ['show', `${implementationHead}:${fileName}`],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        windowsHide: true,
+        maxBuffer: 64 * 1024 * 1024,
+      },
+    ));
   }
   return sourceCache.get(fileName);
 };
 
 addCheck('baseline:schema', baseline.schemaVersion === '8.3-phase0-baseline-1');
 addCheck('baseline:r75-head', baseline.repository?.r75EvidenceHead === '9f7151a405bf9d8ea1b14453551c3b6915999bad');
-addCheck('baseline:implementation-head', baseline.repository?.implementationHead === '6dd2191c3d787230877e1af65f41dcb7c479ba50');
+addCheck('baseline:implementation-head', implementationHead === '6dd2191c3d787230877e1af65f41dcb7c479ba50');
 addCheck('baseline:all-sources-unchanged', baseline.allBattleSourcesUnchanged === true);
 addCheck('baseline:source-count', baseline.unchangedBattleSourceCount === 7);
 
 for (const [fileName, hashes] of Object.entries(baseline.coreFiles || {})) {
-  const currentHash = sha256File(path.join(repoRoot, fileName));
+  const frozenHash = sha256Text(sourceOf(fileName));
   addCheck(
     `source-hash:${fileName}`,
-    currentHash === hashes.implementationSha256 &&
+    frozenHash === hashes.implementationSha256 &&
       hashes.implementationSha256 === hashes.r75Sha256 &&
       hashes.unchangedSinceR75 === true,
     {
       expected: hashes.implementationSha256,
-      actual: currentHash,
+      actual: frozenHash,
+      sourceCommit: implementationHead,
     },
   );
 }

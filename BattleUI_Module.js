@@ -4375,7 +4375,9 @@ class BattleUIComponent {
       const source = cloneBattleValue(input);
       const visibilityMode = String(source?.visibilityMode || 'PLAYER').trim().toUpperCase() || 'PLAYER';
       delete source.visibilityMode;
-      const draft = BATTLE_RUNTIME.executeBattleDraft(source);
+      const draft = typeof BATTLE_RUNTIME.executeBattleDraftR8 === 'function'
+        ? BATTLE_RUNTIME.executeBattleDraftR8(source)
+        : BATTLE_RUNTIME.executeBattleDraft(source);
       const reportDto = battleReport.build({ draft, visibilityMode });
       const reportAudit = battleReport.auditProjection(reportDto);
       const sealedPackage = BATTLE_RUNTIME.sealBattleResult({ draft, reportAudit });
@@ -9651,6 +9653,8 @@ class BattleUIComponent {
             token?.sourceName ? `data-source-name="${htmlEscapeText(token.sourceName)}"` : '',
             token?.sourceType ? `data-source-type="${htmlEscapeText(token.sourceType)}"` : '',
             token?.operation ? `data-source-operation="${htmlEscapeText(token.operation)}"` : '',
+            token?.comparisonId ? `data-comparison-id="${htmlEscapeText(token.comparisonId)}"` : '',
+            token?.sourceDetail ? `data-source-detail="${htmlEscapeText(token.sourceDetail)}"` : '',
           ].filter(Boolean).join(' ');
           return `<button class="battle-preview-report-badge battle-preview-report-badge--resource" type="button"${attrs ? ` ${attrs}` : ''} aria-haspopup="true">${htmlEscapeText(`${token.label} ${Number(token.value).toFixed(Math.abs(Number(token.value)) < 10 ? 2 : 0)}${token.unit || ''}`)}</button>`;
         }
@@ -9663,6 +9667,8 @@ class BattleUIComponent {
           const operation = String(button.getAttribute('data-source-operation') || '读取').trim();
           const eventId = String(button.getAttribute('data-source-event-id') || '').trim();
           const factId = String(button.getAttribute('data-source-fact-id') || '').trim();
+          const comparisonId = String(button.getAttribute('data-comparison-id') || '').trim();
+          const sourceDetail = String(button.getAttribute('data-source-detail') || '').trim();
           tooltip.setAttribute('role', 'tooltip');
           tooltip.innerHTML = `
             <div class="battle-ring-tooltip-title"><strong>数字来源</strong><span>${htmlEscapeText(sourceName)}</span></div>
@@ -9671,6 +9677,10 @@ class BattleUIComponent {
               <span class="battle-ring-tooltip-meta-row"><em>计算操作</em><strong>${htmlEscapeText(operation)}</strong></span>
               <span class="battle-ring-tooltip-meta-row"><em>事件</em><strong>${htmlEscapeText(eventId || '未登记')}</strong></span>
               <span class="battle-ring-tooltip-meta-row"><em>事实</em><strong>${htmlEscapeText(factId || '未登记')}</strong></span>
+              ${comparisonId || sourceDetail
+                ? `<span class="battle-ring-tooltip-meta-row"><em>比较依据</em><strong>${htmlEscapeText(comparisonId || '候选比较')}</strong></span>
+                   <span class="battle-ring-tooltip-meta-row battle-ring-tooltip-meta-row--detail"><em>比较明细</em><strong>${htmlEscapeText(sourceDetail || '未登记')}</strong></span>`
+                : ''}
             </div>
           `;
           button.setAttribute('aria-describedby', tooltip.id || 'ui-skill-tooltip');

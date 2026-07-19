@@ -34,12 +34,18 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 sandbox.self = sandbox;
 vm.createContext(sandbox);
-for (const fileName of ['MVU_Skill_Runtime.js', 'BattlePreview_Module.js', 'BattleDecision_Module.js']) {
+for (const fileName of [
+  'MVU_Skill_Runtime.js',
+  'BattlePreview_Module.js',
+  'BattleDecision_Module.js',
+  'BattleRuntime_Module.js',
+]) {
   vm.runInContext(fs.readFileSync(path.join(repoRoot, fileName), 'utf8'), sandbox, { filename: fileName });
 }
 
 const preview = sandbox.__LWCS_BATTLE_PREVIEW__;
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
+const runtime = sandbox.__LWCS_BATTLE_RUNTIME__;
 const contracts = JSON.parse(
   fs.readFileSync(path.join(repoRoot, 'tools', 'evidence', 'r8', 'r75_minimal_case_contracts.json'), 'utf8'),
 );
@@ -130,6 +136,7 @@ function request(options = {}) {
       ally: { primaryRoute: { routeBenefitPP: options.allyRouteValue ?? 15 }, backupRoute: { routeBenefitPP: 6 } },
       enemy: { primaryRoute: { routeBenefitPP: options.enemyRouteValue ?? 20 }, backupRoute: { routeBenefitPP: 8 } },
     },
+    candidateEnvelopeDeltas: options.candidateEnvelopeDeltas || {},
     responseModelByCandidate: {
       test: options.responseModel || { mainBranches: [], disasterTail: null, noResponseProbability: 1 },
     },
@@ -222,6 +229,107 @@ add(
 );
 const incomingRequest = request({ actionOpportunity: { role: 'ACTIVE', imminentThreat: true, incomingAction: { actionId: 'incoming' } } });
 add('oracle:defense-with-formal-window-preserved', decision.r8HasDefenseWindow(incomingRequest) === true);
+
+function chargeWorld(power) {
+  const actor = unit('actor', 'player', 100);
+  const enemy = unit('enemy', 'enemy', 100);
+  enemy.蓄力技能 = {
+    id: `charge:${power}`,
+    cast_time: 40,
+    targetId: 'actor',
+    skill: {
+      id: `charge-skill:${power}`,
+      name: `charge-skill:${power}`,
+      魂技名: `charge-skill:${power}`,
+      消耗: '无',
+      _效果数组: [{
+        effectId: `charge-damage:${power}`,
+        原型: '伤害结算',
+        目标: '单体',
+        威力倍率: power,
+        伤害类型: '近身攻击',
+        命中概率: '100%',
+      }],
+    },
+  };
+  return {
+    回合: 1,
+    战斗意图: '求生',
+    胜负条件: objective('ROUND_REACHED'),
+    参战者: { team_player: [actor], team_enemy: [enemy] },
+  };
+}
+
+function scheduledDefenseAudit(power, seed) {
+  const world = chargeWorld(power);
+  const opportunity = {
+    opportunityId: `natural:actor:${power}`,
+    ownerId: 'actor',
+    role: 'ACTIVE',
+    grantType: 'NATURAL_ACTION',
+    sequence: 1,
+    battleHorizon: { currentRound: 1, finalRound: 3 },
+  };
+  const runtimeSnapshot = runtime.buildDecisionRuntimeSnapshot(world, 'actor', opportunity);
+  const prepared = decision.prepareDecisionRequest({
+    worldSnapshot: world,
+    actorId: 'actor',
+    objectiveContract: world.胜负条件,
+    actionOpportunity: opportunity,
+    runtimeSnapshot,
+    battleIntent: { mode: '求生', objectives: world.胜负条件 },
+    seed,
+  });
+  const result = decision.runProvider({ providerId: 'r8', request: prepared });
+  const candidates = result.decisionAudit.candidateAudit;
+  return {
+    runtimeSnapshot,
+    defend: candidates.find(candidate => candidate.declaration?.actionKind === 'DEFEND'),
+    evade: candidates.find(candidate => candidate.declaration?.actionKind === 'EVADE'),
+    basic: candidates.find(candidate => candidate.declaration?.actionKind === 'BASIC_ATTACK'),
+  };
+}
+
+const survivableCharge = scheduledDefenseAudit(20, 837010);
+const unavoidableCharge = scheduledDefenseAudit(5000, 837011);
+const survivableDefendDelta = survivableCharge.defend?.goalProjection?.actionPoolDeltas?.find(
+  delta => delta.outcomeKind === 'INCOMING_HEALTH_DELTA',
+);
+const survivableEvadeDelta = survivableCharge.evade?.goalProjection?.actionPoolDeltas?.find(
+  delta => delta.outcomeKind === 'INCOMING_HEALTH_DELTA',
+);
+add(
+  'oracle:scheduled-visible-charge-produces-real-defense-delta',
+  survivableCharge.runtimeSnapshot.scheduledEvents.some(event =>
+    event.eventType === 'VISIBLE_CHARGE_RELEASE' &&
+    event.ownerId === 'actor' &&
+    event.sourceActorId === 'enemy'
+  ) &&
+    Number(survivableDefendDelta?.healthTrajectoryDeltaPP || 0) > 0 &&
+    Number(survivableEvadeDelta?.healthTrajectoryDeltaPP || 0) > 0 &&
+    survivableCharge.defend?.primaryRoute?.routeKey !== survivableCharge.evade?.primaryRoute?.routeKey,
+  {
+    scheduledEvents: survivableCharge.runtimeSnapshot.scheduledEvents,
+    defend: survivableCharge.defend,
+    evade: survivableCharge.evade,
+  },
+);
+add(
+  'oracle:unavoidable-charge-does-not-invent-defense-value',
+  !unavoidableCharge.defend?.goalProjection?.actionPoolDeltas?.some(delta =>
+    delta.outcomeKind === 'INCOMING_HEALTH_DELTA' &&
+    Number(delta.healthTrajectoryDeltaPP || 0) > 1e-9
+  ) &&
+    !unavoidableCharge.evade?.goalProjection?.actionPoolDeltas?.some(delta =>
+      delta.outcomeKind === 'INCOMING_HEALTH_DELTA' &&
+      Number(delta.healthTrajectoryDeltaPP || 0) > 1e-9
+    ),
+  {
+    scheduledEvents: unavoidableCharge.runtimeSnapshot.scheduledEvents,
+    defend: unavoidableCharge.defend,
+    evade: unavoidableCharge.evade,
+  },
+);
 
 const controlEffect = effect('ACTION_CANCELLED', 'enemy', { applicationProbability: 1 });
 const controlWithout = project(request(), route({ effects: [controlEffect] }));
@@ -373,6 +481,98 @@ function directionalCheck(contract) {
   }
   return false;
 }
+
+const summonCandidate = {
+  candidateId: 'test',
+  declaration: { actionKind: 'RELEASE_SKILL' },
+  costs: { 魂力: 10 },
+};
+const unrealizableSummonRoute = route({
+  effects: [effect('SUMMON_WINDOW', 'actor', {})],
+});
+const unrealizableSummonProjection = project(request(), unrealizableSummonRoute);
+add(
+  'oracle:pure-summon-without-realization-window-is-rejected',
+  decision.r8CandidateExclusion(
+    request(),
+    summonCandidate,
+    unrealizableSummonRoute,
+    unrealizableSummonProjection,
+  ) === 'SUMMON_WINDOW_NOT_REALIZABLE',
+);
+
+const compoundSummonRoute = route({
+  health: [hp('enemy', -12, 'compound-damage')],
+  effects: [effect('SUMMON_WINDOW', 'actor', {})],
+});
+const compoundSummonProjection = project(request(), compoundSummonRoute);
+add(
+  'oracle:compound-summon-keeps-independent-direct-value',
+  decision.r8CandidateExclusion(
+    request(),
+    summonCandidate,
+    compoundSummonRoute,
+    compoundSummonProjection,
+  ) !== 'SUMMON_WINDOW_NOT_REALIZABLE' &&
+    compoundSummonProjection.directTrajectoryHEPP === 12,
+);
+
+const healthRouteFactKey = 'test|effect|enemy|HP_DELTA|NOW';
+const sustainThreatRequest = request({
+  objective: objective('ROUND_REACHED'),
+  opportunities: [{
+    opportunityId: 'natural:enemy:2',
+    ownerId: 'enemy',
+    grantType: 'NATURAL_ACTION',
+    status: 'OPEN',
+  }],
+  candidateEnvelopeDeltas: {
+    test: [{
+      targetId: 'enemy',
+      beforeRouteKey: 'enemy:threat:20',
+      afterRouteKey: 'enemy:threat:5',
+      beforePP: 20,
+      afterPP: 5,
+      healthTrajectoryDeltaPP: 15,
+      sourceEffectKeys: [],
+      sourceHealthFactKeys: [healthRouteFactKey],
+    }],
+  },
+});
+const sustainThreatRoute = route({ health: [hp('enemy', -20)] });
+const sustainThreatProjection = project(sustainThreatRequest, sustainThreatRoute);
+const sustainThreatFacts = decision.buildR8CausalValueFacts(
+  sustainThreatRequest,
+  summonCandidate,
+  sustainThreatRoute,
+  sustainThreatProjection,
+);
+add(
+  'oracle:round-reached-damage-values-only-real-future-threat-reduction',
+  sustainThreatProjection.directTrajectoryHEPP === 0 &&
+    sustainThreatProjection.actionPoolHEPP === 15 &&
+    sustainThreatProjection.actionPoolDeltas.some(delta =>
+      delta.outcomeKind === 'HEALTH_ROUTE_CHANGED' &&
+      delta.evidence?.sourceFactIds?.includes(healthRouteFactKey)
+    ) &&
+    sustainThreatFacts.some(fact =>
+      fact.ownerType === 'ACTION_POOL_DELTA' &&
+      fact.sourceFactIds?.includes(healthRouteFactKey)
+    ),
+);
+
+const noFutureThreatProjection = project(
+  request({
+    objective: objective('ROUND_REACHED'),
+    candidateEnvelopeDeltas: sustainThreatRequest.candidateEnvelopeDeltas,
+  }),
+  sustainThreatRoute,
+);
+add(
+  'oracle:round-reached-damage-without-future-threat-window-stays-zero',
+  noFutureThreatProjection.directTrajectoryHEPP === 0 &&
+    noFutureThreatProjection.actionPoolHEPP === 0,
+);
 
 for (const contract of contracts.cases) {
   add(

@@ -101,14 +101,6 @@
     };
   }
 
-  function stableStringify(value) {
-    if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-    if (value && typeof value === 'object') {
-      return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
-    }
-    return JSON.stringify(value);
-  }
-
   function stableHash(value) {
     const cacheable = Array.isArray(value);
     if (cacheable) {
@@ -118,14 +110,46 @@
         return cached;
       }
     }
-    const text = typeof value === 'string' ? value : stableStringify(value);
     metrics.stableHashCalls += 1;
-    metrics.stableHashChars += text.length;
     let hash = 2166136261;
-    for (let index = 0; index < text.length; index += 1) {
-      hash ^= text.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
+    let characterCount = 0;
+    const update = text => {
+      characterCount += text.length;
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+    };
+    const visit = (item, undefinedText) => {
+      if (Array.isArray(item)) {
+        update('[');
+        for (let index = 0; index < item.length; index += 1) {
+          if (index > 0) update(',');
+          if (Object.hasOwn(item, index)) visit(item[index], '');
+        }
+        update(']');
+        return;
+      }
+      if (item && typeof item === 'object') {
+        update('{');
+        Object.keys(item).sort().forEach((key, index) => {
+          if (index > 0) update(',');
+          update(JSON.stringify(key));
+          update(':');
+          visit(item[key], 'undefined');
+        });
+        update('}');
+        return;
+      }
+      const serialized = JSON.stringify(item);
+      if (serialized === undefined && undefinedText === null) {
+        throw new TypeError('battle_preview_stable_hash_value_not_serializable');
+      }
+      update(serialized === undefined ? undefinedText : serialized);
+    };
+    if (typeof value === 'string') update(value);
+    else visit(value, null);
+    metrics.stableHashChars += characterCount;
     const result = (hash >>> 0).toString(36);
     if (cacheable) stableHashCache.set(value, result);
     return result;

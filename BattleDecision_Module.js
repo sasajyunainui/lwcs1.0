@@ -17,6 +17,8 @@
   const effectFingerprintCache = new WeakMap();
   const skillCostCache = new WeakMap();
   const targetProfileCache = new WeakMap();
+  const decisionRequestHashCache = new WeakMap();
+  const preparedDecisionRequests = new WeakMap();
   let baseActionValueCache = new WeakMap();
   let unitSkillCache = new WeakMap();
   let stateEntriesCache = new WeakMap();
@@ -77,7 +79,7 @@
       return cached;
     }
     decisionMetrics.worldRevisionAssignments += 1;
-    const revision = `decision-world:${decisionRevisionSequence}:${++decisionWorldRevisionSequence}`;
+    const revision = `decision-world:${preview.stableHash(worldSnapshot)}`;
     decisionWorldRevisionCache.set(worldSnapshot, revision);
     return revision;
   }
@@ -11157,9 +11159,13 @@
   }
 
   function decisionRequestHash(request = {}) {
+    const cached = decisionRequestHashCache.get(request);
+    if (cached) return cached;
     const payload = { ...request };
     delete payload.requestHash;
-    return `request:${preview.stableHash(payload)}`;
+    const result = `request:${preview.stableHash(payload)}`;
+    if (request && typeof request === 'object') decisionRequestHashCache.set(request, result);
+    return result;
   }
 
   function createDependencyView(input = {}) {
@@ -11169,8 +11175,11 @@
     const scheduledEvents = Array.isArray(input.scheduledEvents) ? input.scheduledEvents : [];
     const beliefState = input.beliefState || {};
     const values = new Map();
+    const dependencyHashCache = new Map();
     const record = (key, value) => {
+      if (values.has(key)) return values.get(key);
       values.set(key, cloneValue(value));
+      dependencyHashCache.clear();
       return value;
     };
     const unit = unitId => {
@@ -11252,9 +11261,15 @@
         return Object.freeze([...values.keys()].sort());
       },
       dependencyValueHash(keys = [...values.keys()]) {
-        return `dependency:${preview.stableHash(
-          [...keys].sort().map(key => [key, values.has(key) ? values.get(key) : null]),
+        const normalizedKeys = [...keys].sort();
+        const cacheKey = normalizedKeys.join('\u0000');
+        const cached = dependencyHashCache.get(cacheKey);
+        if (cached) return cached;
+        const result = `dependency:${preview.stableHash(
+          normalizedKeys.map(key => [key, values.has(key) ? values.get(key) : null]),
         )}`;
+        dependencyHashCache.set(cacheKey, result);
+        return result;
       },
     });
   }
@@ -11273,6 +11288,43 @@
       preview.stableHash(context.horizon || {}),
       dependencyValueHash,
     ].join('|');
+  }
+
+  function r8ActionPoolEffectKey(effect = {}) {
+    return [
+      String(effect?.effectInstanceId || '').trim(),
+      String(effect?.targetId || '').trim(),
+      String(effect?.outcomeKind || '').trim(),
+      String(effect?.windowId || '').trim(),
+    ].join('|');
+  }
+
+  function r8HealthTrajectoryFactKey(candidateId = '', trajectory = {}) {
+    return [
+      String(trajectory?.rootActionId || candidateId || '').trim(),
+      String(trajectory?.sourceEffectInstanceId || '').trim(),
+      String(trajectory?.targetId || '').trim(),
+      String(trajectory?.outcomeKind || '').trim(),
+      String(trajectory?.windowId || 'NOW').trim() || 'NOW',
+    ].join('|');
+  }
+
+  function r8ActionPoolEffectHasMechanicalDelta(effect = {}) {
+    const outcomeKind = String(effect?.outcomeKind || '').trim();
+    if (!outcomeKind) return false;
+    const evidence = effect?.evidence && typeof effect.evidence === 'object' ? effect.evidence : {};
+    if (
+      outcomeKind === 'STATE_CHANGED' &&
+      Array.isArray(evidence.removedKeys) &&
+      evidence.removedKeys.length === 0 &&
+      !evidence.state &&
+      !evidence.stateName &&
+      !evidence.combatEffect &&
+      !Number(effect?.expectedDelta || 0)
+    ) {
+      return false;
+    }
+    return true;
   }
 
   function actionRouteFromPreview(input = {}) {
@@ -11310,7 +11362,7 @@
         });
       }
       if (!['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(outcomeKind)) {
-        actionPoolEffects.push({
+        const actionPoolEffect = {
           rootActionId: String(entry?.rootCauseId || entry?.sourceActionId || candidate?.candidateId || '').trim(),
           effectInstanceId: String(entry?.effectInstanceId || '').trim(),
           targetId: String(entry?.targetId || '').trim(),
@@ -11319,13 +11371,17 @@
           expectedDelta: Number(entry?.expectedDelta || 0),
           threatValue: Number(entry?.threatValue || 0),
           evidence: cloneValue(entry?.evidence || {}),
-        });
+        };
+        if (r8ActionPoolEffectHasMechanicalDelta(actionPoolEffect)) {
+          actionPoolEffects.push(actionPoolEffect);
+        }
         continue;
       }
       const target = findUnitInWorld(worldSnapshot, entry.targetId);
       if (!target) continue;
       const baseMaxHp = Math.max(1, preview.readHpMax(target));
       const rawDelta = Number(entry?.evidence?.delta ?? entry?.expectedDelta ?? 0);
+      if (Math.abs(rawDelta) <= 1e-9) continue;
       const targetSide = sideOf(worldSnapshot, target);
       const beneficialDelta = targetSide === actorSide ? rawDelta : -rawDelta;
       trajectories.push({
@@ -11418,6 +11474,7 @@
     const catalog = {};
     const actorCandidateRoutes = {};
     const actorProjectedWorlds = {};
+    const actorProjectedWorldRevisions = {};
     const fullRoutesByUnit = {};
     const previousCatalog = input.previousCatalog && typeof input.previousCatalog === 'object'
       ? input.previousCatalog
@@ -11498,6 +11555,10 @@
         }
         if (currentUnitId === actorId) {
           actorProjectedWorlds[candidate.candidateId] = previewResult.afterSnapshot;
+          actorProjectedWorldRevisions[candidate.candidateId] = [
+            evaluationContext.visibleWorldRevision,
+            candidate.declarationFingerprint,
+          ].join('|');
         }
         return actionRouteFromPreview({
           candidate,
@@ -11519,6 +11580,7 @@
       routeCatalog: deepFreeze(catalog),
       actorCandidateRoutes: deepFreeze(actorCandidateRoutes),
       actorProjectedWorlds,
+      actorProjectedWorldRevisions: Object.freeze(actorProjectedWorldRevisions),
       fullRoutesByUnit,
       cacheMetrics: Object.freeze({
         cacheSize: cache.size,
@@ -11641,6 +11703,7 @@
     const actorSide = String(input.actorSide || '').trim();
     const routeCatalog = input.routeCatalog || {};
     const projectedWorlds = input.projectedWorlds || {};
+    const projectedWorldRevisions = input.projectedWorldRevisions || {};
     const candidateRoutes = input.candidateRoutes || {};
     const fullRoutesByUnit = input.fullRoutesByUnit || {};
     const actionOpportunity = input.actionOpportunity || {};
@@ -11668,7 +11731,37 @@
         String(entry?.ownerId || entry?.targetId || '').trim() === unitIdText
       );
     };
-    const rebuildEnvelope = (projectedWorld, targetId) => {
+    const routeTargetIdsForUnit = unitIdValue => {
+      const envelope = routeCatalog[unitIdValue] || {};
+      const searchedTargetIds = Array.isArray(envelope?.searchedTargetIds)
+        ? envelope.searchedTargetIds
+        : (fullRoutesByUnit[unitIdValue] || []).flatMap(route => route?.targetIds || []);
+      return new Set(searchedTargetIds.map(value => String(value || '').trim()).filter(Boolean));
+    };
+    const hasGlobalRuleImpact = effect => {
+      const evidence = effect?.evidence && typeof effect.evidence === 'object' ? effect.evidence : {};
+      const combatEffect = evidence.combatEffect && typeof evidence.combatEffect === 'object'
+        ? evidence.combatEffect
+        : {};
+      return effect?.outcomeKind === 'RULE_CHANGED' &&
+        (
+          evidence.global === true ||
+          evidence.scope === 'GLOBAL' ||
+          combatEffect.global === true ||
+          combatEffect.scope === 'GLOBAL'
+        );
+    };
+    const baseRuleHash = preview.stableHash(worldSnapshot?.规则 || worldSnapshot?.battleRules || {});
+    const baseDependencyHashes = new Map();
+    const projectedDependencyHashesByWorld = new WeakMap();
+    const projectedRuleHashes = new WeakMap();
+    const dependencyUnitHash = (snapshot, unitId, cache) => {
+      if (!cache.has(unitId)) {
+        cache.set(unitId, preview.stableHash(findUnitInWorld(snapshot, unitId) || null));
+      }
+      return cache.get(unitId);
+    };
+    const rebuildEnvelope = (projectedWorld, projectedWorldRevision, targetId) => {
       if (metrics) metrics.rebuildCount = Number(metrics.rebuildCount || 0) + 1;
       const scheduledWorld = r8MaterializeScheduledStateForEnvelope(projectedWorld, targetId, input);
       const target = findUnitInWorld(scheduledWorld, targetId);
@@ -11681,6 +11774,11 @@
         return Object.freeze({ primaryRoute: null, backupRoute: null, searchedRouteCount: 0 });
       }
       const targetSide = sideOf(scheduledWorld, target);
+      let projectedRuleHash = projectedRuleHashes.get(scheduledWorld);
+      if (!projectedRuleHash) {
+        projectedRuleHash = preview.stableHash(scheduledWorld?.规则 || scheduledWorld?.battleRules || {});
+        projectedRuleHashes.set(scheduledWorld, projectedRuleHash);
+      }
       const candidates = enumerateCandidates({
         worldSnapshot: scheduledWorld,
         actorId: targetId,
@@ -11700,17 +11798,17 @@
       const baseRoutes = new Map(
         (fullRoutesByUnit[targetId] || []).map(route => [route.candidateId, route]),
       );
-      const baseRuleHash = preview.stableHash(worldSnapshot?.规则 || worldSnapshot?.battleRules || {});
-      const projectedRuleHash = preview.stableHash(scheduledWorld?.规则 || scheduledWorld?.battleRules || {});
-      const scheduledWorldRevision = preview.stableHash(scheduledWorld);
-      const baseDependencyHashes = new Map();
-      const projectedDependencyHashes = new Map();
-      const dependencyUnitHash = (snapshot, unitId, cache) => {
-        if (!cache.has(unitId)) {
-          cache.set(unitId, preview.stableHash(findUnitInWorld(snapshot, unitId) || null));
-        }
-        return cache.get(unitId);
-      };
+      const scheduledEvents = Array.isArray(scheduledWorld?.__battlePreviewScheduledEvents)
+        ? scheduledWorld.__battlePreviewScheduledEvents
+        : [];
+      const scheduledWorldRevision = scheduledWorld === projectedWorld
+        ? projectedWorldRevision
+        : `${projectedWorldRevision}|scheduled:${preview.stableHash(scheduledEvents)}`;
+      let projectedDependencyHashes = projectedDependencyHashesByWorld.get(scheduledWorld);
+      if (!projectedDependencyHashes) {
+        projectedDependencyHashes = new Map();
+        projectedDependencyHashesByWorld.set(scheduledWorld, projectedDependencyHashes);
+      }
       const routes = candidates.map(candidate => {
         const baseRoute = baseRoutes.get(candidate.candidateId);
         const dependencyUnitIds = baseRoute?.dependencyUnitIds || [];
@@ -11747,6 +11845,8 @@
     };
     for (const [candidateId, route] of Object.entries(candidateRoutes)) {
       const projectedWorld = projectedWorlds[candidateId];
+      const projectedWorldRevision = projectedWorldRevisions[candidateId] ||
+        `projected:${candidateId}:${preview.stableHash(projectedWorld)}`;
       if (!projectedWorld) {
         result[candidateId] = Object.freeze([]);
         continue;
@@ -11758,19 +11858,46 @@
           .map(entry => preview.unitId(entry.unit)),
       ].filter(Boolean))];
       const affectedIds = new Set();
-      const addRouteDependents = targetId => {
+      const sourceEffectsByAffectedId = new Map();
+      const sourceHealthFactsByAffectedId = new Map();
+      const assetLossTargetIds = new Set(
+        (route?.actionPoolEffects || [])
+          .filter(effect => effect?.outcomeKind === 'IRREVERSIBLE_ASSET_LOST')
+          .map(effect => String(effect?.targetId || '').trim())
+          .filter(Boolean),
+      );
+      const registerSourceEffect = (affectedId, effect, impactMode) => {
+        const unitId = String(affectedId || '').trim();
+        if (!unitId || !effect) return;
+        const rows = sourceEffectsByAffectedId.get(unitId) || [];
+        const effectKey = r8ActionPoolEffectKey(effect);
+        if (!rows.some(row => row.effectKey === effectKey && row.impactMode === impactMode)) {
+          rows.push({ effectKey, effect, impactMode });
+          sourceEffectsByAffectedId.set(unitId, rows);
+        }
+      };
+      const registerSourceHealthFact = (affectedId, trajectory) => {
+        const unitId = String(affectedId || '').trim();
+        if (!unitId || !trajectory) return;
+        const rows = sourceHealthFactsByAffectedId.get(unitId) || [];
+        const factKey = r8HealthTrajectoryFactKey(candidateId, trajectory);
+        if (!rows.includes(factKey)) {
+          rows.push(factKey);
+          sourceHealthFactsByAffectedId.set(unitId, rows);
+        }
+      };
+      const addRouteDependents = (targetId, effect) => {
         if (!targetId) return;
         Object.entries(routeCatalog).forEach(([unitId, envelope]) => {
           if (!hasFutureEnvelopeWindow(unitId)) return;
           const searchedTargetIds = Array.isArray(envelope?.searchedTargetIds)
             ? envelope.searchedTargetIds
-            : (fullRoutesByUnit[unitId] || []).flatMap(candidateRoute =>
-                candidateRoute?.targetIds || []
-              );
+            : [...routeTargetIdsForUnit(unitId)];
           if (searchedTargetIds.some(routeTargetId =>
             String(routeTargetId || '').trim() === targetId
           )) {
             affectedIds.add(unitId);
+            registerSourceEffect(unitId, effect, 'INCOMING_ROUTE');
           }
         });
       };
@@ -11806,39 +11933,84 @@
         'counter_attack_ratio',
         'death_save_count',
       ]);
+      for (const trajectory of route?.healthTrajectoryByTarget || []) {
+        const targetId = String(trajectory?.targetId || '').trim();
+        if (
+          !targetId ||
+          Math.abs(Number(trajectory?.healthDeltaPP || 0)) <= 1e-9 ||
+          assetLossTargetIds.has(targetId) ||
+          !hasFutureEnvelopeWindow(targetId)
+        ) {
+          continue;
+        }
+        affectedIds.add(targetId);
+        registerSourceHealthFact(targetId, trajectory);
+      }
       for (const effect of route?.actionPoolEffects || []) {
+        if (!r8ActionPoolEffectHasMechanicalDelta(effect)) continue;
         const targetId = String(effect?.targetId || '').trim();
         if (effect?.outcomeKind === 'RESOURCE_OPTION_CHANGED') {
-          if (targetId && hasFutureEnvelopeWindow(targetId)) affectedIds.add(targetId);
+          if (targetId && hasFutureEnvelopeWindow(targetId)) {
+            affectedIds.add(targetId);
+            registerSourceEffect(targetId, effect, 'SELF_ROUTE');
+          }
         } else if (effect?.outcomeKind === 'SUMMON_WINDOW') {
-          if (targetId) affectedIds.add(targetId);
+          if (targetId) {
+            affectedIds.add(targetId);
+            registerSourceEffect(targetId, effect, 'SELF_ROUTE');
+          }
         } else if (effect?.outcomeKind === 'RULE_CHANGED') {
-          allUnitIds
-            .filter(hasFutureEnvelopeWindow)
-            .forEach(unitIdValue => affectedIds.add(unitIdValue));
+          if (hasGlobalRuleImpact(effect)) {
+            allUnitIds
+              .filter(hasFutureEnvelopeWindow)
+              .forEach(unitIdValue => {
+                affectedIds.add(unitIdValue);
+                registerSourceEffect(unitIdValue, effect, 'GLOBAL');
+              });
+          } else if (targetId && hasFutureEnvelopeWindow(targetId)) {
+            affectedIds.add(targetId);
+            registerSourceEffect(targetId, effect, 'SELF_ROUTE');
+            addRouteDependents(targetId, effect);
+          }
         } else if (targetId) {
           const combatEffect = effect?.evidence?.combatEffect || {};
           const combatKeys = Object.keys(combatEffect);
           const changesSelfPool = combatKeys.some(key => selfPoolKeys.has(key));
           const changesIncomingPool = combatKeys.some(key => incomingPoolKeys.has(key));
           if (changesSelfPool || (!changesSelfPool && !changesIncomingPool)) {
-            if (hasFutureEnvelopeWindow(targetId)) affectedIds.add(targetId);
+            if (hasFutureEnvelopeWindow(targetId)) {
+              affectedIds.add(targetId);
+              registerSourceEffect(targetId, effect, 'SELF_ROUTE');
+            }
           }
           if (changesIncomingPool || (!changesSelfPool && !changesIncomingPool)) {
-            addRouteDependents(targetId);
+            addRouteDependents(targetId, effect);
           }
         } else {
-          allUnitIds.forEach(unitIdValue => affectedIds.add(unitIdValue));
+          allUnitIds.forEach(unitIdValue => {
+            affectedIds.add(unitIdValue);
+            registerSourceEffect(unitIdValue, effect, 'GLOBAL');
+          });
         }
       }
       result[candidateId] = Object.freeze([...affectedIds].map(targetId => {
         const target = findUnitInWorld(projectedWorld, targetId) || findUnitInWorld(worldSnapshot, targetId);
         const targetSide = target ? sideOf(projectedWorld, target) || sideOf(worldSnapshot, target) : '';
         const beforeEnvelope = routeCatalog[targetId] || {};
-        const afterEnvelope = rebuildEnvelope(projectedWorld, targetId);
+        const afterEnvelope = rebuildEnvelope(projectedWorld, projectedWorldRevision, targetId);
         const beforePP = Math.max(0, Number(beforeEnvelope?.primaryRoute?.routeBenefitPP || 0));
         const afterPP = Math.max(0, Number(afterEnvelope?.primaryRoute?.routeBenefitPP || 0));
         const ownTarget = String(targetSide) === actorSide;
+        const routeTargetIds = new Set([
+          ...(beforeEnvelope?.primaryRoute?.targetIds || []),
+          ...(afterEnvelope?.primaryRoute?.targetIds || []),
+        ].map(value => String(value || '').trim()).filter(Boolean));
+        const sourceEffectKeys = (sourceEffectsByAffectedId.get(targetId) || [])
+          .filter(source => source.impactMode !== 'INCOMING_ROUTE' ||
+            routeTargetIds.has(String(source.effect?.targetId || '').trim())
+          )
+          .map(source => source.effectKey);
+        const sourceHealthFactKeys = sourceHealthFactsByAffectedId.get(targetId) || [];
         return Object.freeze({
           targetId,
           beforeRouteKey: String(beforeEnvelope?.primaryRoute?.routeKey || ''),
@@ -11847,6 +12019,8 @@
           afterPP,
           healthTrajectoryDeltaPP: ownTarget ? afterPP - beforePP : beforePP - afterPP,
           searchedRouteCount: Number(afterEnvelope?.searchedRouteCount || 0),
+          sourceEffectKeys: Object.freeze([...new Set(sourceEffectKeys)].sort()),
+          sourceHealthFactKeys: Object.freeze([...new Set(sourceHealthFactKeys)].sort()),
         });
       }));
     }
@@ -12069,6 +12243,131 @@
     return Object.freeze({ terminal: false, status: 'ONGOING', utility: null, terminalAfterEffectInstanceId: '' });
   }
 
+  function r8IncomingHealthDeltas(request = {}, candidate = {}, route = {}) {
+    const actorId = String(request?.actorId || '').trim();
+    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+    const projectedWorld = request?.actorProjectedWorlds?.[candidate?.candidateId] || request?.visibleWorld || {};
+    const currentIncoming = request?.actionOpportunity?.incomingAction
+      ? [{
+          eventId: `incoming:${request?.actionOpportunity?.opportunityId || candidate?.candidateId}`,
+          sourceActorId: String(request?.actionOpportunity?.sourceActorId || '').trim(),
+          ownerId: actorId,
+          incomingAction: request.actionOpportunity.incomingAction,
+          prepared: false,
+        }]
+      : [];
+    const scheduledIncoming = (request?.evaluationContext?.scheduledEvents || [])
+      .filter(event =>
+        event?.incomingAction &&
+        String(event?.ownerId || event?.targetId || '').trim() === actorId
+      )
+      .map(event => ({
+        eventId: String(event?.descriptorId || event?.eventId || '').trim(),
+        sourceActorId: String(event?.sourceActorId || '').trim(),
+        ownerId: actorId,
+        incomingAction: event.incomingAction,
+        prepared: true,
+      }));
+    return Object.freeze([...currentIncoming, ...scheduledIncoming].flatMap(event => {
+      const baseSource = findUnitInWorld(request.visibleWorld, event.sourceActorId);
+      const projectedSource = findUnitInWorld(projectedWorld, event.sourceActorId);
+      const baseTarget = findUnitInWorld(request.visibleWorld, actorId);
+      const projectedTarget = findUnitInWorld(projectedWorld, actorId);
+      if (!baseSource || !baseTarget || !projectedTarget) return [];
+      const baseMaxHp = Math.max(1, preview.readHpMax(baseTarget));
+      const previewIncoming = (worldSnapshot, source, target, multiplier, suffix) => {
+        if (!source || !preview.isBattleCapable(source) || !preview.isBattleCapable(target)) return 0;
+        const incomingActionKind = String(event.incomingAction?.actionKind || '').trim().toUpperCase();
+        const declaration = {
+          actorId: preview.unitId(source),
+          actionKind: incomingActionKind || 'RELEASE_SKILL',
+          targetIds: [preview.unitId(target)],
+          skill: incomingActionKind === 'BASIC_ATTACK'
+            ? {}
+            : cloneValue(event.incomingAction?.skill || event.incomingAction),
+          resourceCosts: {},
+          __includeGrantedEffects: false,
+        };
+        const result = preview.previewAction({
+          worldSnapshot,
+          worldRevision: `${request?.evaluationContext?.visibleWorldRevision || 'visible'}:${event.eventId}:${suffix}`,
+          actorId: declaration.actorId,
+          declaration,
+          actionFingerprint: `incoming:${event.eventId}:${candidate?.candidateId}:${suffix}`,
+          damageMultiplierByTarget: { [actorId]: multiplier },
+          horizon: 'SHALLOW',
+          previewBudget: { maxNodes: 12 },
+          battleIntent: request?.battleIntent,
+        });
+        return (result?.contributions || [])
+          .filter(entry =>
+            entry?.outcomeKind === 'HP_DELTA' &&
+            String(entry?.targetId || '').trim() === actorId
+          )
+          .reduce((sum, entry) => sum + Math.max(0, -Number(entry?.evidence?.delta ?? entry?.expectedDelta ?? 0)), 0);
+      };
+      const baselineDamage = previewIncoming(
+        request.visibleWorld,
+        baseSource,
+        baseTarget,
+        1,
+        'noop',
+      );
+      let multiplier = 1;
+      if (actionKind === 'DEFEND') {
+        multiplier = preview.calculateDefenseDamageMultiplier(projectedTarget, projectedSource || baseSource, event.prepared);
+      } else if (actionKind === 'EVADE') {
+        multiplier = 1 - preview.calculateDodgeProbability(projectedTarget, projectedSource || baseSource, event.prepared);
+      }
+      const candidateDamage = previewIncoming(
+        projectedWorld,
+        projectedSource,
+        projectedTarget,
+        multiplier,
+        'candidate',
+      );
+      const incomingTrajectory = damage => ({
+        targetId: actorId,
+        outcomeKind: 'INCOMING_HEALTH_DELTA',
+        windowId: event.eventId,
+        healthDeltaPP: -100 * damage / baseMaxHp,
+        sourceEffectInstanceId: `${candidate?.candidateId}:incoming:${event.eventId}`,
+      });
+      const baselineTerminal = r8TerminalUtility(
+        { ...request, visibleWorld: request.visibleWorld },
+        { healthTrajectoryByTarget: [incomingTrajectory(baselineDamage)] },
+      );
+      const candidateTerminal = r8TerminalUtility(
+        { ...request, visibleWorld: projectedWorld },
+        { healthTrajectoryByTarget: [incomingTrajectory(candidateDamage)] },
+      );
+      if (
+        baselineTerminal.terminal &&
+        candidateTerminal.terminal &&
+        baselineTerminal.utility === candidateTerminal.utility &&
+        baselineTerminal.status === candidateTerminal.status
+      ) {
+        return [];
+      }
+      const avoidedPP = 100 * (baselineDamage - candidateDamage) / baseMaxHp;
+      if (Math.abs(avoidedPP) <= 1e-9) return [];
+      return [Object.freeze({
+        rootActionId: String(candidate?.candidateId || ''),
+        effectInstanceId: `${candidate?.candidateId}:incoming:${event.eventId}`,
+        targetId: actorId,
+        outcomeKind: 'INCOMING_HEALTH_DELTA',
+        windowId: event.eventId,
+        ownerType: 'ACTION_POOL_DELTA',
+        realizable: true,
+        healthTrajectoryDeltaPP: avoidedPP,
+        baselineDamagePP: 100 * baselineDamage / baseMaxHp,
+        candidateDamagePP: 100 * candidateDamage / baseMaxHp,
+        sourceActorId: event.sourceActorId,
+        prepared: event.prepared,
+      })];
+    }));
+  }
+
   function r8OpportunityList(request = {}) {
     const snapshot = request?.evaluationContext?.opportunitySnapshot;
     if (Array.isArray(snapshot)) return snapshot;
@@ -12095,10 +12394,14 @@
 
   function r8ActionPoolDeltas(request = {}, route = {}) {
     const deltas = [];
-    const consumedEnvelopeTargets = new Set();
     const opportunities = r8OpportunityList(request);
     const schedules = request?.evaluationContext?.scheduledEvents || [];
+    const envelopeDeltas = request?.candidateEnvelopeDeltas?.[route?.candidateId] || [];
+    const remainingEnvelopeDelta = new Map(
+      envelopeDeltas.map((entry, index) => [index, Number(entry?.healthTrajectoryDeltaPP || 0)]),
+    );
     for (const effect of route?.actionPoolEffects || []) {
+      if (!r8ActionPoolEffectHasMechanicalDelta(effect)) continue;
       const target = findUnitInWorld(request.visibleWorld, effect.targetId);
       const targetEnvelope = request?.actionRouteCatalog?.[effect.targetId];
       const targetRouteValue = Math.max(0, Number(targetEnvelope?.primaryRoute?.routeBenefitPP || 0));
@@ -12111,15 +12414,42 @@
         1,
       );
       let deltaPP = Number(effect?.evidence?.r8HealthTrajectoryDeltaPP || 0);
-      const envelopeDeltas = request?.candidateEnvelopeDeltas?.[route?.candidateId] || [];
-      const takeEnvelopeDelta = (allAffected = false, allowProjectedOpportunity = false) => {
-        const entries = envelopeDeltas.filter(entry =>
-          !consumedEnvelopeTargets.has(entry.targetId) &&
+      const effectKey = r8ActionPoolEffectKey(effect);
+      const takeEnvelopeDelta = (
+        allAffected = false,
+        allowProjectedOpportunity = false,
+        options = {},
+      ) => {
+        const requiredSign = Math.sign(Number(options.requiredSign || 0));
+        let remainingCapacity = Number.isFinite(Number(options.capacity))
+          ? Math.max(0, Number(options.capacity))
+          : Number.POSITIVE_INFINITY;
+        const entries = envelopeDeltas
+          .map((entry, index) => ({ entry, index }))
+          .filter(({ entry, index }) =>
+          Math.abs(Number(remainingEnvelopeDelta.get(index) || 0)) > 1e-9 &&
+          (
+            (
+              (!Array.isArray(entry?.sourceEffectKeys) || !entry.sourceEffectKeys.length) &&
+              (!Array.isArray(entry?.sourceHealthFactKeys) || !entry.sourceHealthFactKeys.length)
+            ) ||
+            entry.sourceEffectKeys.includes(effectKey)
+          ) &&
           (allAffected || String(entry?.targetId || '').trim() === String(effect?.targetId || '').trim()) &&
           (allowProjectedOpportunity || r8UnitHasFutureOpportunity(request, entry.targetId))
         );
-        entries.forEach(entry => consumedEnvelopeTargets.add(entry.targetId));
-        return entries.reduce((sum, entry) => sum + Number(entry.healthTrajectoryDeltaPP || 0), 0);
+        let total = 0;
+        for (const { index } of entries) {
+          if (!(remainingCapacity > 1e-9)) break;
+          const remaining = Number(remainingEnvelopeDelta.get(index) || 0);
+          if (requiredSign && Math.sign(remaining) !== requiredSign) continue;
+          const amount = Math.min(Math.abs(remaining), remainingCapacity);
+          const allocated = Math.sign(remaining) * amount;
+          remainingEnvelopeDelta.set(index, remaining - allocated);
+          total += allocated;
+          remainingCapacity -= amount;
+        }
+        return total;
       };
       let realizable = true;
       if (effect.outcomeKind === 'ACTION_CANCELLED') {
@@ -12156,13 +12486,15 @@
           ? envelopeDelta || targetRouteValue * probability * (targetOwnSide ? 1 : -1)
           : 0);
       } else if (effect.outcomeKind === 'RESOURCE_OPTION_CHANGED') {
-        const hasNonResourceEffect = (route?.actionPoolEffects || []).some(entry =>
-          entry !== effect && entry.outcomeKind !== 'RESOURCE_OPTION_CHANGED'
-        );
+        const resourceDirection = Math.sign(Number(effect?.expectedDelta || effect?.evidence?.delta || 0)) *
+          (targetOwnSide ? 1 : -1);
         deltaPP = Number(effect?.evidence?.routeDeltaPP || 0) ||
-          (hasNonResourceEffect ? 0 : takeEnvelopeDelta());
+          takeEnvelopeDelta(false, false, { requiredSign: resourceDirection });
       } else if (effect.outcomeKind === 'SHIELD_DELTA') {
-        deltaPP = takeEnvelopeDelta(true);
+        deltaPP = takeEnvelopeDelta(true, false, {
+          requiredSign: targetOwnSide ? 1 : -1,
+          capacity: Math.max(0, Math.abs(Number(effect?.threatValue || 0))) * probability,
+        });
       } else if (['STATE_CHANGED', 'STATE_SCHEDULED', 'RULE_CHANGED'].includes(effect.outcomeKind)) {
         deltaPP = takeEnvelopeDelta(true);
       }
@@ -12176,6 +12508,38 @@
         healthTrajectoryDeltaPP: Number(deltaPP || 0),
       }));
     }
+    envelopeDeltas.forEach((entry, index) => {
+      const deltaPP = Number(remainingEnvelopeDelta.get(index) || 0);
+      const sourceFactIds = Array.isArray(entry?.sourceHealthFactKeys)
+        ? entry.sourceHealthFactKeys.filter(Boolean)
+        : [];
+      if (
+        Math.abs(deltaPP) <= 1e-9 ||
+        !sourceFactIds.length ||
+        !r8UnitHasFutureOpportunity(request, entry?.targetId)
+      ) {
+        return;
+      }
+      deltas.push(Object.freeze({
+        rootActionId: String(route?.candidateId || '').trim(),
+        effectInstanceId: `health-route:${preview.stableHash(sourceFactIds)}`,
+        targetId: String(entry?.targetId || '').trim(),
+        outcomeKind: 'HEALTH_ROUTE_CHANGED',
+        windowId: 'NEXT_ACTION_ENVELOPE',
+        expectedDelta: 0,
+        threatValue: 0,
+        evidence: Object.freeze({
+          beforeRouteKey: String(entry?.beforeRouteKey || '').trim(),
+          afterRouteKey: String(entry?.afterRouteKey || '').trim(),
+          beforePP: Number(entry?.beforePP || 0),
+          afterPP: Number(entry?.afterPP || 0),
+          sourceFactIds: Object.freeze([...sourceFactIds]),
+        }),
+        ownerType: 'ACTION_POOL_DELTA',
+        realizable: true,
+        healthTrajectoryDeltaPP: deltaPP,
+      }));
+    });
     return Object.freeze(deltas);
   }
 
@@ -12186,12 +12550,15 @@
       const defeatReduction = r8GroupTrajectoryValue(request, groups.defeat, trajectory, 'DEFEAT');
       return sum + Math.max(victoryValue, defeatReduction);
     }, 0);
-    const actionPoolDeltas = r8ActionPoolDeltas(request, route);
+    const terminal = r8TerminalUtility(request, route);
+    const actionPoolDeltas = Object.freeze([
+      ...r8ActionPoolDeltas(request, route),
+      ...r8IncomingHealthDeltas(request, candidate, route),
+    ].filter(() => !terminal.terminal));
     const actionPoolHEPP = actionPoolDeltas.reduce(
       (sum, delta) => sum + Number(delta.healthTrajectoryDeltaPP || 0),
       0,
     );
-    const terminal = r8TerminalUtility(request, route);
     const nonTerminalUtility = clamp(directTrajectoryHEPP + actionPoolHEPP, -99, 99);
     const baseUtility = terminal.terminal ? terminal.utility : nonTerminalUtility;
     const responseModel = request?.responseModelByCandidate?.[candidate?.candidateId] ||
@@ -12239,10 +12606,55 @@
     });
   }
 
+  function r8EffectiveRoute(route = {}, projection = {}) {
+    const conditionalDeltas = (projection?.actionPoolDeltas || [])
+      .filter(delta =>
+        delta?.outcomeKind === 'INCOMING_HEALTH_DELTA' &&
+        Math.abs(Number(delta?.healthTrajectoryDeltaPP || 0)) > 1e-9
+      )
+      .map(delta => Object.freeze({
+        targetId: String(delta?.targetId || '').trim(),
+        outcomeKind: 'INCOMING_HEALTH_DELTA',
+        windowId: String(delta?.windowId || '').trim(),
+        healthDeltaPP: Number(delta?.healthTrajectoryDeltaPP || 0),
+        actorBenefitPP: Number(delta?.healthTrajectoryDeltaPP || 0),
+        rootActionId: String(delta?.rootActionId || route?.candidateId || '').trim(),
+        sourceEffectInstanceId: String(delta?.effectInstanceId || '').trim(),
+        sourceActorId: String(delta?.sourceActorId || '').trim(),
+        baselineDamagePP: Number(delta?.baselineDamagePP || 0),
+        candidateDamagePP: Number(delta?.candidateDamagePP || 0),
+      }));
+    if (!conditionalDeltas.length) return route;
+    const realizationWindows = Object.freeze([...new Set([
+      ...(route?.realizationWindows || []),
+      ...conditionalDeltas.map(delta => delta.windowId),
+    ].filter(Boolean))].sort());
+    const routeShape = {
+      baseRouteKey: String(route?.routeKey || ''),
+      conditionalHealthPath: conditionalDeltas.map(delta => [
+        delta.targetId,
+        delta.outcomeKind,
+        Number(delta.healthDeltaPP.toFixed(8)),
+        delta.windowId,
+        delta.sourceActorId,
+      ]),
+      realizationWindows,
+    };
+    return Object.freeze({
+      ...route,
+      routeKey: `route:${preview.stableHash(routeShape)}`,
+      realizationWindows,
+      conditionalHealthTrajectoryByTarget: Object.freeze(conditionalDeltas),
+      routeBenefitPP: Number(route?.routeBenefitPP || 0) +
+        conditionalDeltas.reduce((sum, delta) => sum + Number(delta.actorBenefitPP || 0), 0),
+    });
+  }
+
   function buildR8CausalValueFacts(request = {}, candidate = {}, route = {}, projection = {}) {
     const facts = [];
     const currentHpByTarget = new Map();
     for (const trajectory of route?.healthTrajectoryByTarget || []) {
+      if (Math.abs(Number(trajectory?.healthDeltaPP || 0)) <= 1e-9) continue;
       const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
       if (!target) continue;
       const before = currentHpByTarget.has(trajectory.targetId)
@@ -12289,7 +12701,11 @@
           lower: Math.min(0, Number(delta.healthTrajectoryDeltaPP || 0)),
           upper: Math.max(0, Number(delta.healthTrajectoryDeltaPP || 0)),
         }),
-        sourceFactIds: Object.freeze([]),
+        sourceFactIds: Object.freeze(
+          Array.isArray(delta?.evidence?.sourceFactIds)
+            ? [...delta.evidence.sourceFactIds]
+            : [],
+        ),
         consumedRanges: Object.freeze([]),
       });
     }
@@ -12369,10 +12785,16 @@
     if (!actor) return 0;
     const costs = candidate?.costs || {};
     const resources = [['魂力', '魂力'], ['精神力', '精神力'], ['体力', '体力']];
-    const resourceReserve = median(resources.map(([key, label]) => {
+    const paidResources = resources.filter(([key]) => Math.max(0, Number(costs?.[key] || 0)) > 0);
+    const resourceReserve = (paidResources.length ? paidResources : resources).reduce((lowest, [key, label]) => {
       const maximum = Math.max(1, preview.readResourceMax(actor, label));
-      return clamp((preview.readResource(actor, label) - Math.max(0, Number(costs?.[key] || 0))) / maximum, 0, 1);
-    })) * 100;
+      const remaining = clamp(
+        (preview.readResource(actor, label) - Math.max(0, Number(costs?.[key] || 0))) / maximum,
+        0,
+        1,
+      );
+      return Math.min(lowest, remaining);
+    }, 1) * 100;
     const asset = candidate?.declaration?.irreversibleAsset;
     if (!asset || typeof asset !== 'object') return resourceReserve;
     const assetId = String(asset?.assetId || '').trim();
@@ -12402,6 +12824,12 @@
       (route?.actionPoolEffects || []).some(effect => effect.outcomeKind === 'SUMMON_WINDOW') &&
       !(projection?.actionPoolDeltas || []).some(delta =>
         delta.outcomeKind === 'SUMMON_WINDOW' && delta.realizable && Number(delta.healthTrajectoryDeltaPP || 0) !== 0
+      ) &&
+      !projection?.terminal?.terminal &&
+      Math.abs(Number(projection?.directTrajectoryHEPP || 0)) <= 1e-9 &&
+      !(projection?.actionPoolDeltas || []).some(delta =>
+        delta.outcomeKind !== 'SUMMON_WINDOW' &&
+        Math.abs(Number(delta.healthTrajectoryDeltaPP || 0)) > 1e-9
       )
     ) return 'SUMMON_WINDOW_NOT_REALIZABLE';
     if (Number(projection?.objectiveUtilityHEPP || 0) <= 1e-9 && hasCost) return 'ZERO_MARGINAL_WITH_COST';
@@ -12542,7 +12970,7 @@
         declaration: candidate.declaration,
         actionName: candidateActionName(candidate),
         costs: candidate.costs || {},
-        route,
+        route: r8EffectiveRoute(route, goalProjection),
         goalProjection,
         causalValueFacts,
         objectiveUtilityHEPP: goalProjection.objectiveUtilityHEPP,
@@ -12568,6 +12996,17 @@
         String(left.candidateId).localeCompare(String(right.candidateId))
       )
       .slice(0, 2);
+    const backupRouteFor = candidate => choice.normalized
+      .filter(other =>
+        other.candidateId !== candidate.candidateId &&
+        other.route?.routeKey &&
+        other.route.routeKey !== candidate.route?.routeKey &&
+        !other.rejectionCode
+      )
+      .sort((left, right) =>
+        Number(right.objectiveUtilityHEPP || 0) - Number(left.objectiveUtilityHEPP || 0) ||
+        String(left.candidateId).localeCompare(String(right.candidateId))
+      )[0]?.route || null;
     const scoreRecord = candidate => Object.freeze({
       candidateId: candidate.candidateId,
       actionName: candidate.actionName,
@@ -12588,7 +13027,7 @@
       }),
       goalProjection: candidate.goalProjection,
       primaryRoute: candidate.route,
-      backupRoute: request?.actionRouteCatalog?.[request.actorId]?.backupRoute || null,
+      backupRoute: backupRouteFor(candidate),
       causalValueFacts: candidate.causalValueFacts,
       rejectionCode: candidate.rejectionCode || '',
       counterDeclineFallback: candidate.counterDeclineFallback === true,
@@ -12617,7 +13056,7 @@
       strategyMemory: {
         targetIds: Object.freeze([...(selected.declaration.targetIds || [])]),
         primaryRouteKey: selected.route.routeKey,
-        backupRouteKey: request?.actionRouteCatalog?.[request.actorId]?.backupRoute?.routeKey || '',
+        backupRouteKey: backupRouteFor(selected)?.routeKey || '',
       },
       strategicSignature: `r8:${preview.stableHash({
         selectedCandidateId: selected.candidateId,
@@ -12717,7 +13156,7 @@
     });
     const evaluationContext = {
       schemaVersion: '8.3-evaluation-context-1',
-      worldRevision: String(input?.worldRevision || worldRevisionFor(worldSnapshot)),
+      worldRevision: String(input?.worldRevision || `decision-world:${sourceWorldHash}`),
       visibleWorldRevision: `visible:${preview.stableHash(visibleWorld)}`,
       beliefRevision: beliefRevisionFor(beliefState),
       objectiveHash: `objective:${preview.stableHash(objectiveContract)}`,
@@ -12788,6 +13227,7 @@
           actorSide,
           routeCatalog: routeAnalysis.routeCatalog,
           projectedWorlds: routeAnalysis.actorProjectedWorlds,
+          projectedWorldRevisions: routeAnalysis.actorProjectedWorldRevisions,
           candidateRoutes: routeAnalysis.actorCandidateRoutes,
           fullRoutesByUnit: routeAnalysis.fullRoutesByUnit,
           beliefState,
@@ -12818,6 +13258,7 @@
       evaluationContext,
       actionRouteCatalog: routeAnalysis.routeCatalog,
       actorCandidateRoutes: routeAnalysis.actorCandidateRoutes,
+      actorProjectedWorlds: routeAnalysis.actorProjectedWorlds,
       candidateEnvelopeDeltas,
       teamMarginalPlan,
       routeCacheMetrics: routeAnalysis.cacheMetrics,
@@ -12851,7 +13292,9 @@
       ...requestPayload,
       requestHash: decisionRequestHash(requestPayload),
     };
-    return deepFreeze(request);
+    const frozenRequest = deepFreeze(request);
+    preparedDecisionRequests.set(frozenRequest, frozenRequest.requestHash);
+    return frozenRequest;
   }
 
   function providerInput(request = {}) {
@@ -12887,8 +13330,14 @@
     if (!request || request.schemaVersion !== R8_REQUEST_SCHEMA) {
       throw new Error('DECISION_SCHEMA_MISMATCH:request');
     }
-    const beforeHash = decisionRequestHash(request);
-    if (beforeHash !== request.requestHash) throw new Error('PROVIDER_MUTATED_STATE:request_hash');
+    const beforeHash = String(request.requestHash || '').trim();
+    if (
+      !Object.isFrozen(request) ||
+      !beforeHash ||
+      preparedDecisionRequests.get(request) !== beforeHash
+    ) {
+      throw new Error('PROVIDER_MUTATED_STATE:request_hash');
+    }
     let decision;
     providerExecutionDepth += 1;
     try {
@@ -12896,7 +13345,9 @@
     } finally {
       providerExecutionDepth -= 1;
     }
-    if (decisionRequestHash(request) !== beforeHash) throw new Error('PROVIDER_MUTATED_STATE:provider');
+    if (!Object.isFrozen(request) || String(request.requestHash || '').trim() !== beforeHash) {
+      throw new Error('PROVIDER_MUTATED_STATE:provider');
+    }
     const selectedCandidateId = String(decision?.selected?.candidateId || '').trim();
     const lostOpportunity = decision?.lostOpportunity && typeof decision.lostOpportunity === 'object'
       ? cloneValue(decision.lostOpportunity)

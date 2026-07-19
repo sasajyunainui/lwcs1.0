@@ -45,6 +45,7 @@ for (const fileName of [
 }
 
 const runtime = sandbox.__LWCS_BATTLE_RUNTIME__;
+const decision = sandbox.__LWCS_BATTLE_DECISION__;
 const report = sandbox.__LWCS_BATTLE_REPORT__;
 const checks = [];
 const add = (checkId, passed, detail = {}) => checks.push({ checkId, passed: passed === true, ...detail });
@@ -117,7 +118,7 @@ const objectiveContract = {
     conditions: [{ type: 'TEAM_INCAPACITATED', side: 'PLAYER' }],
   },
 };
-const draft = runtime.executeBattleDraft({
+const draftInput = {
   caseId: 'phase10-r8-report',
   seed: 831001,
   combatData: {
@@ -134,6 +135,15 @@ const draft = runtime.executeBattleDraft({
   rounds: 2,
   battleIntent: { mode: '击败', objectives: objectiveContract },
   settings: { providerId: 'r8-shadow' },
+};
+const draft = runtime.executeBattleDraft(structuredClone(draftInput));
+const repeatedDraft = runtime.executeBattleDraft(structuredClone(draftInput));
+const fullRecomputeDraft = runtime.executeBattleDraft({
+  ...structuredClone(draftInput),
+  settings: {
+    ...draftInput.settings,
+    disableRouteCatalogCache: true,
+  },
 });
 const reportDto = report.build({ draft, visibilityMode: 'PLAYER' });
 const reportAudit = report.auditProjection(reportDto);
@@ -144,6 +154,27 @@ const developerAdjudications = Array.isArray(developerReportDto.adjudications)
   ? developerReportDto.adjudications
   : [];
 const r8Decisions = draft.decisionAudit.filter(item => String(item?.decisionEngine || '').toUpperCase() === 'R8');
+const comparableDraftHashes = value => ({
+  ledgerHash: runtime.hashBattleValue(value.ledger),
+  traceHash: runtime.hashBattleValue(value.trace),
+  decisionAuditHash: runtime.hashBattleValue(value.decisionAudit),
+  terminalHash: runtime.hashBattleValue(value.terminalResult),
+  finalSnapshotHash: runtime.hashBattleValue(value.finalSnapshot),
+});
+const draftHashes = comparableDraftHashes(draft);
+const repeatedDraftHashes = comparableDraftHashes(repeatedDraft);
+const fullRecomputeHashes = comparableDraftHashes(fullRecomputeDraft);
+
+add(
+  'runtime:fixed-seed-is-deterministic',
+  JSON.stringify(draftHashes) === JSON.stringify(repeatedDraftHashes),
+  { draftHashes, repeatedDraftHashes },
+);
+add(
+  'decision:local-cache-matches-full-recompute',
+  JSON.stringify(draftHashes) === JSON.stringify(fullRecomputeHashes),
+  { draftHashes, fullRecomputeHashes },
+);
 
 add(
   'report:r8-decision-count',
@@ -178,6 +209,34 @@ add(
     ),
   { numericTokenCount: numericTokens.length },
 );
+add(
+  'report:r8-comparison-evidence-is-semantic',
+  adjudications
+    .filter(item => item?.selected?.actionKind && item?.selected?.actionKind !== 'LOST_OPPORTUNITY')
+    .every(item => {
+      const alternatives = Array.isArray(item?.alternatives) ? item.alternatives : [];
+      if (!alternatives.length) return true;
+      const comparison = item?.comparisonEvidence;
+      const hasComponents = Array.isArray(comparison?.changedComponents);
+      const hasComparisonId = String(comparison?.comparisonId || '').trim().length > 0;
+      const hasExplanation = String(comparison?.explanation || '').trim().length > 0;
+      const predictedNumbers = Array.isArray(item?.predicted?.numbers) ? item.predicted.numbers : [];
+      const previewNumbersHaveDetail = predictedNumbers.every(token =>
+        String(token?.sourceDetail || '').trim().length > 0 &&
+        String(token?.comparisonId || '').trim().length > 0
+      );
+      const alternativeDetails = alternatives.every(candidate =>
+        candidate?.comparisonEvidence &&
+        String(candidate.comparisonEvidence?.alternativeAction || '').trim().length > 0 &&
+        Array.isArray(candidate.comparisonEvidence?.changedComponents)
+      );
+      return hasComponents && hasComparisonId && hasExplanation && previewNumbersHaveDetail && alternativeDetails;
+    }),
+  {
+    adjudicationCount: adjudications.length,
+    comparisonEvidenceCount: adjudications.filter(item => item?.comparisonEvidence).length,
+  },
+);
 const serializedAdjudications = JSON.stringify(adjudications);
 add(
   'report:no-v1-score-language',
@@ -209,6 +268,147 @@ const aiSerialized = JSON.stringify(reportDto.aiSummaryInput || {});
 add(
   'ai:structured-summary-only',
   !/scoreAudit|candidateId|rawDecision|formulaTrace|normalizedUtility|objectiveUtility|finalBattleReport|reportBlocks/.test(aiSerialized),
+);
+
+const supportActor = unit('support', 'player', { system: '辅助系', str: 180 });
+supportActor.技能列表.unshift({
+  id: 'support-burst',
+  name: '高耗爆发',
+  魂技名: '高耗爆发',
+  消耗: { 魂力: 80 },
+  _效果数组: [{
+    effectId: 'support-burst-damage',
+    原型: '伤害结算',
+    目标: '单体',
+    威力倍率: 320,
+    伤害类型: '远程攻击',
+    命中概率: '100%',
+  }],
+});
+supportActor.技能列表.unshift({
+  id: 'support-shield',
+  name: '净化屏障',
+  魂技名: '净化屏障',
+  消耗: { 魂力: 80 },
+  _效果数组: [
+    {
+      effectId: 'support-empty-cleanse',
+      原型: '状态移除',
+      目标: '群体',
+      状态: '任意负面',
+    },
+    {
+      effectId: 'support-team-shield',
+      原型: '状态施加',
+      目标: '群体',
+      状态: '护盾',
+      数值: '+20%',
+      持续回合: 1,
+    },
+  ],
+});
+const supportWorld = {
+  进行中: true,
+  回合: 1,
+  战斗意图: '击败',
+  胜负条件: objectiveContract,
+  参战者: {
+    team_player: [supportActor, unit('ally', 'player')],
+    team_enemy: [unit('enemy-a', 'enemy', { power: 120 }), unit('enemy-b', 'enemy', { power: 120 })],
+  },
+};
+const supportOpportunity = {
+  opportunityId: 'natural:1:player:support:1',
+  ownerId: 'support',
+  role: 'ACTIVE',
+  grantType: 'NATURAL_ACTION',
+  sequence: 1,
+  battleHorizon: {
+    currentRound: 1,
+    finalRound: 2,
+    remainingRounds: 1,
+    naturalActionBudget: 4,
+  },
+};
+const supportRuntimeSnapshot = runtime.buildDecisionRuntimeSnapshot(
+  supportWorld,
+  'support',
+  supportOpportunity,
+);
+const supportRequest = decision.prepareDecisionRequest({
+  worldSnapshot: supportWorld,
+  actorId: 'support',
+  objectiveContract,
+  actionOpportunity: supportOpportunity,
+  runtimeSnapshot: supportRuntimeSnapshot,
+  seed: 831002,
+});
+const supportCandidate = supportRequest.frozenCandidates.find(candidate =>
+  candidate.declaration?.skill?.id === 'support-shield' ||
+  candidate.candidateId === 'support:skill:support-shield:0'
+);
+const supportProjection = supportCandidate
+  ? decision.projectR8GoalUtility(
+      supportRequest,
+      supportCandidate,
+      supportRequest.actorCandidateRoutes[supportCandidate.candidateId],
+    )
+  : null;
+const supportDecision = supportCandidate
+  ? decision.runProvider({ providerId: 'r8', request: supportRequest })
+  : null;
+const supportScore = supportDecision?.decisionAudit?.candidateAudit?.find(
+  candidate => candidate.candidateId === supportCandidate?.candidateId,
+);
+const supportShieldDeltas = supportProjection?.actionPoolDeltas?.filter(
+  delta => delta.outcomeKind === 'SHIELD_DELTA',
+) || [];
+const supportResourceDeltas = supportProjection?.actionPoolDeltas?.filter(
+  delta => delta.outcomeKind === 'RESOURCE_OPTION_CHANGED',
+) || [];
+add(
+  'decision:future-natural-descriptors-preserve-resource-continuity',
+  !!supportCandidate &&
+    supportRuntimeSnapshot.scheduledEvents.filter(event =>
+    event.eventType === 'NEXT_ROUND_NATURAL_ACTION' &&
+    event.expectedGrantType === 'NATURAL_ACTION'
+  ).length === 4 &&
+    supportResourceDeltas.some(delta => delta.targetId === 'support' && delta.healthTrajectoryDeltaPP < 0),
+  {
+    scheduledEvents: supportRuntimeSnapshot.scheduledEvents,
+    resourceDeltas: supportResourceDeltas,
+  },
+);
+add(
+  'decision:empty-state-cannot-own-shield-envelope',
+  !!supportCandidate &&
+    !supportProjection.actionPoolDeltas.some(delta =>
+    delta.outcomeKind === 'STATE_CHANGED' &&
+    Math.abs(Number(delta.healthTrajectoryDeltaPP || 0)) > 1e-9
+  ) &&
+    !supportScore?.causalValueFacts?.some(fact =>
+      fact.effectInstanceId === 'support-empty-cleanse'
+    ),
+  {
+    actionPoolDeltas: supportProjection?.actionPoolDeltas || [],
+    causalValueFacts: supportScore?.causalValueFacts || [],
+  },
+);
+add(
+  'decision:shield-causal-range-capped-by-expected-absorption',
+  !!supportCandidate &&
+    supportShieldDeltas.length > 0 &&
+    supportShieldDeltas.every(delta =>
+      Math.abs(Number(delta.healthTrajectoryDeltaPP || 0)) <=
+      Math.abs(Number(delta.threatValue || 0)) + 1e-9
+    ),
+  { shieldDeltas: supportShieldDeltas },
+);
+add(
+  'decision:paid-resource-reserve-uses-consumed-resource',
+  !!supportCandidate &&
+    Number(supportScore?.vector?.assetReserve) <= 20 + 1e-9,
+  { assetReserve: supportScore?.vector?.assetReserve },
 );
 
 const uiSource = fs.readFileSync(path.join(repoRoot, 'BattleUI_Module.js'), 'utf8');

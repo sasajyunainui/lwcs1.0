@@ -871,22 +871,6 @@
     return 是否追加;
   }
 
-  function 注册正文一次性注入(context = {}) {
-    const 助手 = window.TavernHelper || 读取窗口字段('TavernHelper');
-    if (!助手 || typeof 助手.injectPrompts !== 'function') return false;
-    const userInput = String(context.userInput || '');
-    const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
-    const 注入片段 = [构建正文时间线预览(userInput, statData)].filter(Boolean);
-    let 是否注册 = false;
-    for (const 文本 of 注入片段) {
-      const 注入编号 = `lwcs-runtime-${取哈希(文本)}`;
-      try { 助手.uninjectPrompts?.([注入编号]); } catch (_) {}
-      助手.injectPrompts([{ id: 注入编号, position: 'in_chat', depth: 0, role: 'system', content: 文本, should_scan: false, _qrf_scope: 'story' }], { once: true });
-      是否注册 = true;
-    }
-    return 是否注册;
-  }
-
   function 构建剧情推进临时系统消息(options = {}) {
     const 输出 = [];
     const 魂灵塔待战消息 = 构建魂灵塔待战系统消息(options?.statData);
@@ -1143,7 +1127,6 @@
     preparePromptRuntimeData: 准备提示词运行时数据,
     读取最近MVU前置记录,
     appendStoryRuntimeInjects: 追加正文注入,
-    registerStoryRuntimeInjects: 注册正文一次性注入,
     buildPlanningRuntimeSystemMessages: 构建剧情推进临时系统消息,
     confirmBeforeStoryGeneration: 正文生成前确认,
     registerBattleSettlementContext: 登记战斗结算上下文,

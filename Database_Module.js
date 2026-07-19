@@ -19299,18 +19299,6 @@ $CONTENT
             return false;
         }
     }
-    function 注册正文运行时一次性注入_ACU(context = {}) {
-        const 适配器 = 获取剧情推进运行时适配器_ACU();
-        if (!适配器 || typeof 适配器.registerStoryRuntimeInjects !== 'function')
-            return false;
-        try {
-            return 适配器.registerStoryRuntimeInjects(context) === true;
-        }
-        catch (错误) {
-            logWarn_ACU('[剧情推进] 运行时适配器注册正文一次性注入失败:', 错误);
-            return false;
-        }
-    }
     function 追加剧情推进临时正文注入_ACU(options, 文本列表 = []) {
         const 注入列表 = (Array.isArray(文本列表) ? 文本列表 : [文本列表])
             .map(文本 => String(文本 || '').trim())
@@ -56830,7 +56818,7 @@ $CONTENT
                                         userInput: s1.originalMessage || '',
                                         statData: s1.statData || null,
                                     };
-                                    注册正文运行时一次性注入_ACU(重试运行时上下文);
+                                    追加正文运行时注入_ACU(params, 重试运行时上下文);
                                     追加剧情推进临时正文注入_ACU(params, s1.transientStoryInjects || []);
                                     冻结正文自动重试上下文_ACU(params, 重试运行时上下文);
                                     lastMessage.mes = s1.visibleMessage || s1.finalMessage;
@@ -56883,7 +56871,7 @@ $CONTENT
                                         userInput: s2.originalMessage || '',
                                         statData: s2.statData || null,
                                     };
-                                    注册正文运行时一次性注入_ACU(重试运行时上下文);
+                                    追加正文运行时注入_ACU(params, 重试运行时上下文);
                                     追加剧情推进临时正文注入_ACU(params, s2.transientStoryInjects || []);
                                     冻结正文自动重试上下文_ACU(params, 重试运行时上下文);
                                 }
