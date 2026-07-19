@@ -49429,7 +49429,26 @@ ${播报文本}
   }
 
   function bindUnifiedDetailDelegation(host) {
-    if (!host || host.__mvuUnifiedDetailDelegationBound) return;
+    if (!host) return;
+    if (host.__mvuQuestDetailCaptureHandler) {
+      host.removeEventListener('click', host.__mvuQuestDetailCaptureHandler, true);
+    }
+    host.__mvuQuestDetailCaptureHandler = event => {
+      const eventTarget =
+        event.target instanceof Element
+          ? event.target
+          : event.target && event.target.parentElement
+            ? event.target.parentElement
+            : null;
+      const 任务内部入口 = eventTarget
+        ? eventTarget.closest('[data-quest-tab], [data-quest-focus], [data-quest-board-focus]')
+        : null;
+      if (!任务内部入口 || !host.contains(任务内部入口)) return;
+      event.stopImmediatePropagation();
+      handleDetailSurfaceClick(event, host, { surface: 'unified' });
+    };
+    host.addEventListener('click', host.__mvuQuestDetailCaptureHandler, true);
+    if (host.__mvuUnifiedDetailDelegationBound) return;
     host.addEventListener('click', event => {
       handleDetailSurfaceClick(event, host, { surface: 'unified' });
     });
