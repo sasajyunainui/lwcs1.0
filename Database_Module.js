@@ -17617,51 +17617,6 @@ $CONTENT
         }
     }
 
-    function 是偏差表_ACU(表格) {
-        return String(表格?.name || '').trim() === '偏差表';
-    }
-
-    function 构建偏差表专用上下文_ACU(全部表格数据 = currentJsonTableData_ACU) {
-        const 剧情文本 = String(getPlotFromHistory_ACU() || '');
-        const 远端时间线 = String(extractLastTagContent_ACU(剧情文本, '远端原著时间线命中')
-            ?? extractLastTagContent_ACU(剧情文本, 'timeline_recall')
-            ?? '').trim();
-        const 偏差召回原文 = String(extractLastTagContent_ACU(剧情文本, 'deviation_ledger_recall') ?? '').trim();
-        const 偏差召回 = 偏差召回原文 ? 展开偏差账本召回_ACU(偏差召回原文, 全部表格数据) : '';
-        const 偏差审查 = String(extractLastTagContent_ACU(剧情文本, 'scene_ruling') ?? '').trim();
-        const 片段列表 = [];
-        if (远端时间线 && 远端时间线 !== '无') {
-            片段列表.push(`<远端原著时间线命中>\n${远端时间线}\n</远端原著时间线命中>`);
-        }
-        if (偏差召回 && 偏差召回 !== '无相关偏差记录。') {
-            片段列表.push(`<deviation_ledger_recall>\n${偏差召回}\n</deviation_ledger_recall>`);
-        }
-        if (偏差审查) {
-            片段列表.push(`<scene_ruling>\n${偏差审查}\n</scene_ruling>`);
-        }
-        return 片段列表.length
-            ? 片段列表.join('\n\n')
-            : '本轮无可用偏差专用上下文。仅可根据最终正文事实更新偏差表。';
-    }
-
-    function 替换偏差表专用上下文_ACU(文本, 表格, 全部表格数据 = currentJsonTableData_ACU) {
-        const 原文 = String(文本 ?? '');
-        if (!是偏差表_ACU(表格) || !原文.includes('{{偏差表专用上下文}}')) return 原文;
-        return 原文.replace(/\{\{\s*偏差表专用上下文\s*\}\}/g, 构建偏差表专用上下文_ACU(全部表格数据));
-    }
-
-    function 获取提示用源数据_ACU(表格, 全部表格数据 = currentJsonTableData_ACU) {
-        const 源数据 = 表格?.sourceData || {};
-        if (!是偏差表_ACU(表格)) return 源数据;
-        return {
-            ...源数据,
-            note: 替换偏差表专用上下文_ACU(源数据.note, 表格, 全部表格数据),
-            insertNode: 替换偏差表专用上下文_ACU(源数据.insertNode, 表格, 全部表格数据),
-            updateNode: 替换偏差表专用上下文_ACU(源数据.updateNode, 表格, 全部表格数据),
-            deleteNode: 替换偏差表专用上下文_ACU(源数据.deleteNode, 表格, 全部表格数据),
-        };
-    }
-
     async function prepareAIInput_ACU(messages, updateMode = 'standard', targetSheetKeys = null, options = {}) {
         const sqlMode = isSqliteMode();
         const sourceTableData = await resolvePromptSourceTableData_ACU(options, sqlMode);
@@ -17763,7 +17718,7 @@ $CONTENT
                 const headers = table.content[0] ? table.content[0].slice(1).map((h, i) => `[${i}:${h}]`).join(', ') : 'No Headers';
                 tableDataText += `  Columns: ${headers}\n`;
                 if (table.sourceData) {
-                    const 提示源数据 = 获取提示用源数据_ACU(table, workingTableData);
+                    const 提示源数据 = table.sourceData;
                     tableDataText += `  - Note: ${提示源数据.note || 'N/A'}\n`;
                     const initNodeContent = 提示源数据.initNode || 提示源数据.insertNode || 'N/A';
                     tableDataText += `  - Init Trigger: ${initNodeContent}\n`;
@@ -17776,7 +17731,7 @@ $CONTENT
                 const headers = table.content[0] ? table.content[0].slice(1).map((h, i) => `[${i}:${h}]`).join(', ') : 'No Headers';
                 tableDataText += `  Columns: ${headers}\n`;
                 if (table.sourceData) {
-                    const 提示源数据 = 获取提示用源数据_ACU(table, workingTableData);
+                    const 提示源数据 = table.sourceData;
                     tableDataText += `  - Note: ${提示源数据.note || 'N/A'}\n`;
                     tableDataText += `  - Insert Trigger: ${提示源数据.insertNode || 提示源数据.initNode || 'N/A'}\n`;
                     tableDataText += `  - Update Trigger: ${提示源数据.updateNode || 'N/A'}\n`;
@@ -17878,7 +17833,7 @@ $CONTENT
         text += ddl.trim() + '\n';
         // 输出 Note 和 Trigger（作为 SQL 注释）
         if (table.sourceData) {
-            const 提示源数据 = 获取提示用源数据_ACU(table, options.tableData || currentJsonTableData_ACU);
+            const 提示源数据 = table.sourceData;
             if (提示源数据.note)
                 text += `-- Note: ${提示源数据.note.replace(/\n/g, '\n-- ')}\n`;
             if (提示源数据.insertNode)
