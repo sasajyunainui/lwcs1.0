@@ -101,44 +101,89 @@ function 加载模块脚本入口(入口地址) {
   });
 }
 
-const 最新提交哈希 = await 取最新提交哈希();
-const 错误列表 = [];
-let 已加载 = false;
-
-for (const CDN地址 of CDN地址列表) {
-  const 资源基础地址 = `${CDN地址}/gh/${仓库名}@${最新提交哈希}/`;
+const 共享宿主窗口 = (() => {
   try {
-    globalThis.__LWCS_MVU_资源基础地址__ = 资源基础地址;
-    globalThis.__LWCS_MVU_资源基础地址候选列表__ = CDN地址列表.map(候选CDN地址 => `${候选CDN地址}/gh/${仓库名}@${最新提交哈希}/`);
-    globalThis.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
-    try {
-      if (globalThis.parent && globalThis.parent !== globalThis) {
-        globalThis.parent.__LWCS_MVU_资源基础地址__ = 资源基础地址;
-        globalThis.parent.__LWCS_MVU_资源基础地址候选列表__ = globalThis.__LWCS_MVU_资源基础地址候选列表__;
-        globalThis.parent.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
-      }
-    } catch (错误) {}
-    try {
-      if (globalThis.top && globalThis.top !== globalThis) {
-        globalThis.top.__LWCS_MVU_资源基础地址__ = 资源基础地址;
-        globalThis.top.__LWCS_MVU_资源基础地址候选列表__ = globalThis.__LWCS_MVU_资源基础地址候选列表__;
-        globalThis.top.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
-      }
-    } catch (错误) {}
+    if (globalThis.parent && globalThis.parent !== globalThis && globalThis.parent.document) return globalThis.parent;
+  } catch (错误) {}
+  return globalThis;
+})();
+const 共享启动状态 = (() => {
+  const 键 = '__LWCS_REMOTE_BOOTSTRAP_STATE__';
+  const 已有状态 = 共享宿主窗口[键];
+  if (已有状态 && typeof 已有状态 === 'object') return 已有状态;
+  const 新状态 = {
+    commitPromise: null,
+    commit: '',
+    resourceBases: [],
+    mvuStatus: 'idle',
+    uiStatus: 'idle',
+  };
+  共享宿主窗口[键] = 新状态;
+  return 新状态;
+})();
 
-    const 入口地址 = `${资源基础地址}${入口文件名}`;
-    try {
-      await withTimeout(import(入口地址), `导入 ${入口地址}`);
-    } catch (导入错误) {
-      await 加载模块脚本入口(入口地址);
-    }
-    预取关键资源(资源基础地址);
-    已加载 = true;
-    break;
-  } catch (错误) {
-    错误列表.push(`${CDN地址}: ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
+async function 取共享最新提交哈希() {
+  if (共享启动状态.commit) return 共享启动状态.commit;
+  if (!共享启动状态.commitPromise) {
+    共享启动状态.commitPromise = 取最新提交哈希()
+      .then(提交哈希 => {
+        共享启动状态.commit = 提交哈希;
+        共享启动状态.commitPromise = null;
+        return 提交哈希;
+      })
+      .catch(错误 => {
+        共享启动状态.commitPromise = null;
+        throw 错误;
+      });
   }
+  return await 共享启动状态.commitPromise;
 }
-if (!已加载) {
-  throw new Error(`LWCS MVU 入口 CDN 全部失败: ${错误列表.join(' | ')}`);
+
+共享启动状态.mvuStatus = 'loading';
+try {
+  const 最新提交哈希 = await 取共享最新提交哈希();
+  const 错误列表 = [];
+  let 已加载 = false;
+
+  for (const CDN地址 of CDN地址列表) {
+    const 资源基础地址 = `${CDN地址}/gh/${仓库名}@${最新提交哈希}/`;
+    try {
+      const 资源基础地址候选列表 = CDN地址列表.map(候选CDN地址 => `${候选CDN地址}/gh/${仓库名}@${最新提交哈希}/`);
+      globalThis.__LWCS_MVU_资源基础地址__ = 资源基础地址;
+      globalThis.__LWCS_MVU_资源基础地址候选列表__ = 资源基础地址候选列表;
+      globalThis.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
+      共享启动状态.resourceBases = 资源基础地址候选列表;
+      try {
+        if (globalThis.parent && globalThis.parent !== globalThis) {
+          globalThis.parent.__LWCS_MVU_资源基础地址__ = 资源基础地址;
+          globalThis.parent.__LWCS_MVU_资源基础地址候选列表__ = 资源基础地址候选列表;
+          globalThis.parent.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
+        }
+      } catch (错误) {}
+      try {
+        if (globalThis.top && globalThis.top !== globalThis) {
+          globalThis.top.__LWCS_MVU_资源基础地址__ = 资源基础地址;
+          globalThis.top.__LWCS_MVU_资源基础地址候选列表__ = 资源基础地址候选列表;
+          globalThis.top.__LWCS_MVU_当前远程提交__ = 最新提交哈希;
+        }
+      } catch (错误) {}
+
+      const 入口地址 = `${资源基础地址}${入口文件名}`;
+      try {
+        await withTimeout(import(入口地址), `导入 ${入口地址}`);
+      } catch (导入错误) {
+        await 加载模块脚本入口(入口地址);
+      }
+      预取关键资源(资源基础地址);
+      已加载 = true;
+      break;
+    } catch (错误) {
+      错误列表.push(`${CDN地址}: ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
+    }
+  }
+  if (!已加载) throw new Error(`LWCS MVU 入口 CDN 全部失败: ${错误列表.join(' | ')}`);
+  共享启动状态.mvuStatus = 'ready';
+} catch (错误) {
+  共享启动状态.mvuStatus = 'failed';
+  throw 错误;
 }

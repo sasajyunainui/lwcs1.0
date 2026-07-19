@@ -16665,14 +16665,27 @@ $CONTENT
         const 适配器 = 获取剧情推进运行时适配器_ACU();
         if (适配器 && typeof 适配器.processPromptRuntimeContent === 'function') {
             try {
-                return String(await Promise.resolve(适配器.processPromptRuntimeContent(文本, 上下文 || {})) ?? '');
+                const 适配器结果 = String(await Promise.resolve(适配器.processPromptRuntimeContent(文本, 上下文 || {})) ?? '');
+                const 未解析占位符 = 查找未解析剧情推进运行时占位符_ACU(适配器结果);
+                if (未解析占位符.length > 0) {
+                    throw new Error(`运行时占位符未解析: ${未解析占位符.map(名称 => `{{${名称}}}`).join(', ')}`);
+                }
+                return 适配器结果;
             }
             catch (错误) {
                 logWarn_ACU('[剧情推进] 运行时提示词内容处理失败:', 错误);
+                if (错误 && /^运行时占位符未解析:/.test(String(错误.message || ''))) throw 错误;
             }
         }
         const 替换后内容 = 替换剧情推进运行时占位符_ACU(文本, 上下文?.viewType || 'empty', 上下文 || {});
-        return 注入剧情推进运行时特殊占位符_ACU(替换后内容, 上下文 || {});
+        const 最终内容 = 注入剧情推进运行时特殊占位符_ACU(替换后内容, 上下文 || {});
+        const 未解析占位符 = 查找未解析剧情推进运行时占位符_ACU(最终内容);
+        if (未解析占位符.length > 0) {
+            const 错误 = new Error(`运行时占位符未解析: ${未解析占位符.map(名称 => `{{${名称}}}`).join(', ')}`);
+            logWarn_ACU('[剧情推进] 已阻止发送未解析运行时占位符:', 错误.message);
+            throw 错误;
+        }
+        return 最终内容;
     }
     function 读取消息当前滑动编号_ACU(消息) {
         if (!消息 || typeof 消息 !== 'object')
@@ -19012,8 +19025,37 @@ $CONTENT
         }
         return [...new Set(names)];
     }
+    const 剧情推进运行时占位符集合_ACU = new Set([
+        'MVU_RUNTIME_VIEW',
+        'MVU_RUNTIME_UPDATE',
+        'MVU_UPDATE_STRUCTURE_HINTS',
+        'MVU_MUTUAL_VISIBILITY_VIEW',
+        '剧情钩子._引导.时间线预览',
+        '剧情钩子._引导.远端原著时间线候选',
+        '角色基础六维对标',
+        '剧情当前地点',
+        '剧情当前主身份',
+        '场景背景角色补充',
+        '场景候选角色资料',
+        '场景审计材料',
+        '玩家角色表',
+        '战斗裁断任务',
+        '战斗裁断输出格式',
+    ]);
     function 是剧情推进运行时占位符名_ACU(tagName) {
-        return 是剧情推进适配器占位符名_ACU(tagName);
+        const 标准名 = String(tagName || '').trim();
+        if (剧情推进运行时占位符集合_ACU.has(标准名)) return true;
+        return 是剧情推进适配器占位符名_ACU(标准名);
+    }
+    function 查找未解析剧情推进运行时占位符_ACU(text = '') {
+        const 未解析 = [];
+        const 占位符模式 = /\{\{\s*([^{}\s]+)\s*\}\}/g;
+        let 匹配;
+        while ((匹配 = 占位符模式.exec(String(text || ''))) !== null) {
+            const 名称 = String(匹配[1] || '').trim();
+            if (是剧情推进运行时占位符名_ACU(名称) && !未解析.includes(名称)) 未解析.push(名称);
+        }
+        return 未解析;
     }
     function buildPlotTagMapFromText_ACU(text, requestedTagNames = null) {
         const sourceText = String(text || '');

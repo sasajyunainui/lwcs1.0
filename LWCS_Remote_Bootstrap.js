@@ -42,6 +42,20 @@
     return window;
   })();
   const 宿主文档 = 宿主窗口.document;
+  const 共享启动状态 = (() => {
+    const 键 = '__LWCS_REMOTE_BOOTSTRAP_STATE__';
+    const 已有状态 = 宿主窗口[键];
+    if (已有状态 && typeof 已有状态 === 'object') return 已有状态;
+    const 新状态 = {
+      commitPromise: null,
+      commit: '',
+      resourceBases: [],
+      mvuStatus: 'idle',
+      uiStatus: 'idle',
+    };
+    宿主窗口[键] = 新状态;
+    return 新状态;
+  })();
 
   if (宿主窗口[引导键]) return;
   宿主窗口[引导键] = true;
@@ -142,6 +156,33 @@
     return 提交哈希;
   }
 
+  async function 取共享最新提交哈希() {
+    if (共享启动状态.commit) return 共享启动状态.commit;
+    if (!共享启动状态.commitPromise) {
+      共享启动状态.commitPromise = 取最新提交哈希()
+        .then(提交哈希 => {
+          共享启动状态.commit = 提交哈希;
+          共享启动状态.commitPromise = null;
+          return 提交哈希;
+        })
+        .catch(错误 => {
+          共享启动状态.commitPromise = null;
+          throw 错误;
+        });
+    }
+    return await 共享启动状态.commitPromise;
+  }
+
+  async function 等待MVU就绪(最大等待毫秒 = 12000) {
+    const 开始时间 = Date.now();
+    while (Date.now() - 开始时间 < 最大等待毫秒) {
+      if (共享启动状态.mvuStatus === 'ready') return true;
+      if (共享启动状态.mvuStatus === 'failed') return false;
+      await new Promise(resolve => setTimeout(resolve, 120));
+    }
+    return 共享启动状态.mvuStatus === 'ready';
+  }
+
   async function 加载正式入口(提交哈希) {
     const 错误列表 = [];
     for (const CDN地址 of CDN地址列表) {
@@ -179,10 +220,14 @@
   }
 
   async function 启动远程入口() {
+    共享启动状态.uiStatus = 'loading';
     try {
-      const 提交哈希 = await 取最新提交哈希();
+      const 提交哈希 = await 取共享最新提交哈希();
+      if (!await 等待MVU就绪()) throw new Error('MVU 运行时未就绪，已停止加载 UI');
       await 加载正式入口(提交哈希);
+      共享启动状态.uiStatus = 'ready';
     } catch (错误) {
+      共享启动状态.uiStatus = 'failed';
       console.error('[LWCS] 远程入口加载失败:', 错误);
     } finally {
       宿主窗口[引导键] = false;

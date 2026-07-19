@@ -696,17 +696,7 @@
         console.warn('[LWCS适配器] MVU运行时占位符替换失败:', 错误);
       }
     }
-    return 替换战斗裁断占位符(源文本
-      .replaceAll(MVU运行时视图占位符, '')
-      .replaceAll(MVU运行时更新占位符, '')
-      .replaceAll(MVU更新结构提示占位符, '')
-      .replaceAll(MVU相互可见性视图占位符, '')
-      .replaceAll(场景背景角色补充占位符, '')
-      .replaceAll(场景候选角色资料占位符, '')
-      .replaceAll(场景审计材料占位符, '')
-      .replaceAll(玩家角色表占位符, '')
-      .replace(/<status_current_variables>\s*<\/status_current_variables>/gi, '')
-      .trim());
+    return 源文本;
   }
 
   function 读取剧情钩子时间线预览(userInput = '', statData = null) {
@@ -756,19 +746,25 @@
     const lastCharMessage = String(context.lastCharMessage || '');
     const statData = context.statData && typeof context.statData === 'object' ? context.statData : null;
     const 近场文本 = String(context.captureText || '').trim() || 构建近场文本(userInput, lastCharMessage);
+    const 视图接口 = 读取MVU运行时视图接口();
+    const 视图接口可用 = !!(
+      视图接口 &&
+      typeof 视图接口.生成MVU剧情视图 === 'function' &&
+      typeof 视图接口.生成角色基础六维对标摘要 === 'function'
+    );
     if (结果.includes(剧情当前地点占位符)) {
       结果 = 结果.replaceAll(剧情当前地点占位符, 读取剧情当前地点(statData));
     }
     if (结果.includes(剧情当前主身份占位符)) {
       结果 = 结果.replaceAll(剧情当前主身份占位符, 读取剧情当前主身份(statData));
     }
-    if (结果.includes(时间线预览占位符)) {
+    if (结果.includes(时间线预览占位符) && 视图接口可用) {
       结果 = 结果.replaceAll(时间线预览占位符, 读取剧情钩子时间线预览(userInput, statData) || '无');
     }
-    if (结果.includes(远端原著时间线候选占位符)) {
+    if (结果.includes(远端原著时间线候选占位符) && 视图接口可用) {
       结果 = 结果.replaceAll(远端原著时间线候选占位符, 读取远端原著时间线候选(userInput, statData, 近场文本) || '无远端原著时间线候选。');
     }
-    if (结果.includes(角色基础六维对标占位符)) {
+    if (结果.includes(角色基础六维对标占位符) && 视图接口可用) {
       结果 = 结果.replaceAll(角色基础六维对标占位符, 读取角色基础六维对标(userInput, statData, 近场文本));
     }
     return 结果;

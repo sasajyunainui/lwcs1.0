@@ -10,8 +10,17 @@
   })();
   const 宿主文档 = 宿主窗口.document;
 
-  const 调试热更新模式 = !!宿主窗口[加载器键];
+  const UI启动状态 = (() => {
+    const 键 = '__LWCS_UI_ENTRY_STATE__';
+    const 已有状态 = 宿主窗口[键];
+    if (已有状态 && typeof 已有状态 === 'object') return 已有状态;
+    const 新状态 = { 成功启动: false, 重试次数: 0, 最近错误: '' };
+    宿主窗口[键] = 新状态;
+    return 新状态;
+  })();
+  const 调试热更新模式 = UI启动状态.成功启动 === true && !!宿主窗口[加载器键];
   宿主窗口[加载器键] = true;
+  const 最大启动重试次数 = 2;
 
   const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@40824ccf8937ad861424dc0ff399f93aa8c6cd28/';
   const 资源基础地址 = (() => {
@@ -1005,14 +1014,34 @@
         if (mounted) {
           记录阶段(加载阶段.首屏可交互);
           加载状态.首屏可交互时间 = Date.now();
+          UI启动状态.成功启动 = true;
+          UI启动状态.重试次数 = 0;
+          UI启动状态.最近错误 = '';
           setTimeout(triggerMvuRefresh, 0);
           setTimeout(triggerMvuRefresh, 280);
           setTimeout(triggerMvuRefresh, 900);
         }
         安排空闲预取();
       } catch (错误) {
-        记录阶段(加载阶段.失败, 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error'));
+        const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error');
+        UI启动状态.成功启动 = false;
+        UI启动状态.最近错误 = 错误文本;
+        记录阶段(加载阶段.失败, 错误文本);
         console.error('[MVU] External UI Vue loader failed:', 错误);
+        引导承诺 = null;
+        模块加载承诺表.clear();
+        Object.values(模块状态表).forEach(状态 => {
+          if (状态 && 状态.状态 !== 'loaded') {
+            状态.状态 = 'pending';
+            状态.错误 = '';
+          }
+        });
+        if (UI启动状态.重试次数 < 最大启动重试次数) {
+          UI启动状态.重试次数 += 1;
+          setTimeout(() => {
+            if (!引导承诺) 引导加载();
+          }, UI启动状态.重试次数 === 1 ? 首次重试延迟毫秒 : 二次重试延迟毫秒);
+        }
       }
     })();
     return 引导承诺;
