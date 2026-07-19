@@ -14799,7 +14799,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 .mvu-quest-detail-card {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
   align-content: start;
   gap: 10px;
   min-width: 0;
@@ -14815,9 +14814,14 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-list-card {
+  grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden !important;
   isolation: isolate;
   z-index: 2;
+}
+
+.mvu-quest-detail-card {
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .mvu-quest-list-card:has(.mvu-quest-create-panel[open]) {
@@ -14931,21 +14935,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-tab-row {
-  position: absolute;
-  top: 52px;
-  left: -14px;
-  z-index: 8;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: stretch;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
   gap: 4px;
-  width: 30px;
+  width: 100%;
   min-width: 0;
-  padding: 0;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 4px;
+  border-radius: var(--mvu-radius-md, 12px);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 18%, transparent);
+  background: color-mix(in srgb, var(--暗场底板强) 48%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
   isolation: isolate;
 }
 
@@ -14954,12 +14956,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 7px;
   width: 100%;
   min-width: 0;
-  height: 30px;
-  min-height: 30px;
-  padding: 0;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 8px;
   border-radius: var(--mvu-radius-sm, 8px);
   border: 1px solid color-mix(in srgb, var(--边线颜色) 28%, transparent);
   background: color-mix(in srgb, var(--暗场底板强) 86%, transparent);
@@ -14982,9 +14984,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 .mvu-quest-tab::after {
   content: '';
   position: absolute;
-  inset: 7px auto 7px 4px;
-  width: 2px;
-  height: auto;
+  inset: auto 8px 3px;
+  width: auto;
+  height: 2px;
   border-radius: var(--mvu-radius-pill, 999px);
   background: var(--mvu-quest-accent);
   opacity: 0;
@@ -15018,38 +15020,41 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   opacity: 1;
 }
 
-.mvu-quest-tab-mark {
-  flex: 0 0 18px;
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: var(--mvu-radius-sm, 8px);
-  border: 0;
-  background: transparent;
+.mvu-quest-tab-label {
+  position: static;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  overflow: hidden;
   color: currentColor;
   font-size: var(--mvu-font-sm, 12px);
-  font-weight: 900;
-  line-height: 1;
-}
-
-.mvu-quest-tab-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mvu-quest-tab-count {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 18px;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: var(--mvu-radius-pill, 999px);
+  border: 1px solid color-mix(in srgb, var(--边线颜色) 26%, transparent);
+  background: color-mix(in srgb, var(--暗场底板强) 64%, transparent);
+  color: color-mix(in srgb, var(--文字主色) 76%, transparent);
+  font-size: var(--mvu-font-xs, 10px);
+  line-height: 1.2;
+  font-weight: 800;
 }
 
 .mvu-quest-tab:hover .mvu-quest-tab-count,
 .mvu-quest-tab:focus-visible .mvu-quest-tab-count,
 .mvu-quest-tab.is-active .mvu-quest-tab-count {
   border-color: var(--mvu-quest-accent-border);
-  color: var(--white);
+  color: var(--文字主色);
 }
 
 .mvu-quest-pane {
@@ -15440,7 +15445,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   display: grid;
   gap: 14px;
   min-width: 0;
+  min-height: 0;
   align-content: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 4px 10px 0;
+  scrollbar-width: thin;
 }
 
 .mvu-quest-detail-header {
@@ -15591,10 +15602,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
 }
 
 .mvu-quest-meta-grid--board {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.mvu-quest-deadline-row {
+.mvu-quest-deadline-row,
+.mvu-quest-delivery-row {
   grid-column: 1 / -1;
 }
 
@@ -15818,91 +15830,19 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer
   }
 
   .mvu-quest-tab-row {
-    position: relative;
-    top: auto;
-    left: auto;
-    order: 2;
-    z-index: 1;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    flex-direction: initial;
-    gap: 4px;
-    min-width: 0;
-    width: 100%;
-    padding: 4px;
-    border-radius: var(--mvu-radius-md, 12px);
-  }
-
-  .mvu-quest-list-card > .archive-card-head {
-    order: 1;
-  }
-
-  .mvu-quest-list-card > .mvu-quest-workbench {
-    order: 3;
+    gap: 3px;
+    padding: 3px;
   }
 
   .mvu-quest-tab {
-    width: 100%;
-    min-width: 0;
+    gap: 4px;
     height: 38px;
     min-height: 38px;
-    justify-content: flex-start;
-    gap: 8px;
-    padding: 0 8px;
-    border-radius: var(--mvu-radius-sm, 8px);
-    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
+    padding: 0 6px;
   }
 
-  .mvu-quest-tab:hover,
-  .mvu-quest-tab:focus-visible,
-  .mvu-quest-tab.is-active {
-    width: 100%;
-  }
-
-  .mvu-quest-tab-mark {
-    flex-basis: 18px;
-    width: 18px;
-    height: 18px;
-    font-size: var(--mvu-font-sm, 12px);
-  }
-
-  .mvu-quest-tab-label,
-  .mvu-quest-tab:hover .mvu-quest-tab-label,
-  .mvu-quest-tab:focus-visible .mvu-quest-tab-label,
-  .mvu-quest-tab.is-active .mvu-quest-tab-label {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: hidden;
-    clip: auto;
-    min-width: 0;
-    opacity: 1;
-    transform: none;
-    font-size: var(--mvu-font-sm, 12px);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .mvu-quest-tab-count,
-  .mvu-quest-tab:hover .mvu-quest-tab-count,
-  .mvu-quest-tab:focus-visible .mvu-quest-tab-count,
-  .mvu-quest-tab.is-active .mvu-quest-tab-count {
-    position: static;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transform: none;
-    margin-left: auto;
-    min-width: 18px;
-    padding: 2px 6px;
-    border-radius: var(--mvu-radius-pill, 999px);
-    border: 1px solid color-mix(in srgb, var(--边线颜色) 28%, transparent);
-    background: color-mix(in srgb, var(--暗场底板强) 68%, transparent);
-    color: color-mix(in srgb, var(--文字主色) 82%, transparent);
+  .mvu-quest-tab-label {
     font-size: var(--mvu-font-xs, 10px);
-    line-height: 1.2;
-    font-weight: 800;
-    opacity: 1;
   }
 
   .archive-card-head > .mvu-quest-create-panel .mvu-detail-form-row {
@@ -22300,10 +22240,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     position: static !important;
   }
 
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-scroll-list,
+  body.mvu-layout-holo
+    #mvu-unified-mount
+    .mvu-unified-detail-host
+    .mvu-detail-scroll-list:not(.mvu-quest-scroll-list),
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-form-grid,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--quest > .archive-card,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-brief-row > span,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-field-value,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-row--wide > span,
@@ -22855,7 +22797,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 #detailModal.mvu-modal-display-unified .mvu-armory-main-grid > .archive-card,
 #detailModal.mvu-modal-display-unified .dossier-shell--social:not(.social-archive-terminal) > .dossier-card,
 #detailModal.mvu-modal-display-unified .location-detail-grid:not(.location-detail-grid--refined) > .archive-card,
-#detailModal.mvu-modal-display-unified .mvu-detail-grid--quest > .archive-card:not(.mvu-quest-list-card) {
+#detailModal.mvu-modal-display-unified
+  .mvu-detail-grid--quest
+  > .archive-card:not(.mvu-quest-list-card):not(.mvu-quest-detail-card) {
   align-self: stretch !important;
   height: 100% !important;
   min-height: 0 !important;
@@ -23776,10 +23720,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     padding: 10px 10px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  #detailModal.mvu-modal-display-unified .mvu-detail-scroll-list,
+  #detailModal.mvu-modal-display-unified .mvu-detail-scroll-list:not(.mvu-quest-scroll-list),
   #detailModal.mvu-modal-display-unified .mvu-detail-embed,
   #detailModal.mvu-modal-display-unified .mvu-detail-form-grid,
-  #detailModal.mvu-modal-display-unified .mvu-detail-grid--quest > .archive-card,
   #detailModal.mvu-modal-display-unified .mvu-armory-main-grid > .archive-card,
   #detailModal.mvu-modal-display-unified .dossier-shell--social:not(.social-archive-terminal) > .dossier-card,
   #detailModal.mvu-modal-display-unified .dossier-shell--faction > .dossier-card,
@@ -26612,10 +26555,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
     position: static !important;
   }
 
-  #detailModal .mvu-detail-scroll-list,
+  #detailModal .mvu-detail-scroll-list:not(.mvu-quest-scroll-list),
   #detailModal .mvu-detail-embed,
   #detailModal .mvu-detail-form-grid,
-  #detailModal .mvu-detail-grid--quest > .archive-card,
   #detailModal .mvu-armory-main-grid > .archive-card,
   #detailModal .dossier-shell--social:not(.social-archive-terminal) > .dossier-card,
   #detailModal .location-detail-grid > .archive-card,
@@ -27100,7 +27042,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
 #detailModal.archive-redesign-mode.mvu-modal-display-split
   .archive-redesign-root
   .mvu-detail-grid--quest
-  > .archive-card {
+  > .archive-card:not(.mvu-quest-list-card):not(.mvu-quest-detail-card) {
   align-self: stretch;
   height: 100%;
   min-height: 0;
@@ -28408,10 +28350,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
     position: static;
   }
 
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-detail-scroll-list,
+  #detailModal.archive-redesign-mode.mvu-modal-display-split
+    .archive-redesign-root
+    .mvu-detail-scroll-list:not(.mvu-quest-scroll-list),
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-detail-embed,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-detail-form-grid,
-  #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-detail-grid--quest > .archive-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-main-grid > .archive-card,
   #detailModal.archive-redesign-mode.mvu-modal-display-split
     .archive-redesign-root

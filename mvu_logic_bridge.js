@@ -40946,10 +40946,8 @@
         `;
       };
       const 任务页签按钮 = (页签文本, 页签值, 数量) => {
-        const 页签短标 = 页签值 === '委托板' ? '委' : 页签文本.slice(0, 1);
         return `
           <button type="button" class="mvu-quest-tab ${activeQuestTab === 页签值 ? 'is-active' : ''}" data-quest-tab="${escapeHtmlAttr(页签值)}">
-            <span class="mvu-quest-tab-mark" aria-hidden="true">${htmlEscape(页签短标)}</span>
             <span class="mvu-quest-tab-label">${htmlEscape(页签文本)}</span>
             <span class="mvu-quest-tab-count">${htmlEscape(String(数量))}</span>
           </button>
@@ -41318,19 +41316,19 @@
                 </div>
               </div>
               <div class="archive-card mvu-detail-scroll-card mvu-quest-list-card">
-                <div class="mvu-quest-tab-row" role="tablist" aria-label="任务分类">
-                  ${任务页签按钮('主线', '主线', 主线任务列表.length)}
-                  ${任务页签按钮('支线', '支线', 支线任务列表.length)}
-                  ${任务页签按钮('委托板', '委托板', questBoardEntries.length)}
-                </div>
                 <div class="archive-card-head">
                   <div class="archive-card-title">${htmlEscape(activeQuestTab === '委托板' ? '委托板' : '任务')}</div>
                   ${activeTaskCreateFormHtml}
                   ${boardCreateFormHtml}
                 </div>
+                <div class="mvu-quest-tab-row" role="tablist" aria-label="任务分类">
+                  ${任务页签按钮('主线', '主线', 主线任务列表.length)}
+                  ${任务页签按钮('支线', '支线', 支线任务列表.length)}
+                  ${任务页签按钮('委托板', '委托板', questBoardEntries.length)}
+                </div>
                 <div class="mvu-quest-workbench">
                   <div class="mvu-quest-pane">
-                    <div class="relation-directory-grid mvu-detail-scroll-list">${activeListHtml}</div>
+                    <div class="relation-directory-grid mvu-detail-scroll-list mvu-quest-scroll-list">${activeListHtml}</div>
                     ${activeListPaginationHtml}
                   </div>
                 </div>
@@ -50078,7 +50076,7 @@ ${播报文本}
     }
 
     const 列表滚动位置 = 当前列表卡.querySelector('.mvu-detail-scroll-list')?.scrollTop || 0;
-    const 详情滚动位置 = 当前详情卡.scrollTop || 0;
+    const 详情滚动位置 = 当前详情卡.querySelector('.mvu-quest-detail-shell')?.scrollTop || 0;
     当前网格.setAttribute('data-quest-theme', 新网格.getAttribute('data-quest-theme') || '');
     当前统计.replaceChildren(...Array.from(新统计.childNodes));
 
@@ -50113,7 +50111,8 @@ ${播报文本}
 
     const 当前列表滚动区 = 当前列表卡.querySelector('.mvu-detail-scroll-list');
     if (当前列表滚动区) 当前列表滚动区.scrollTop = 列表滚动位置;
-    当前详情卡.scrollTop = 详情滚动位置;
+    const 当前详情滚动区 = 当前详情卡.querySelector('.mvu-quest-detail-shell');
+    if (当前详情滚动区) 当前详情滚动区.scrollTop = 详情滚动位置;
     const 首个输入 = 当前内容.querySelector('.mvu-quest-create-panel[open] input, .mvu-quest-create-panel[open] select');
     if (首个输入 instanceof HTMLElement) window.setTimeout(() => 首个输入.focus(), 0);
     return true;
