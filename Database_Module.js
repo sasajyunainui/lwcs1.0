@@ -4407,6 +4407,7 @@ $CONTENT
             params,
             dryRun,
             at: Date.now(),
+            chatId: getActiveChatId_ACU(),
             开始聊天长度: Array.isArray(聊天数组) ? 聊天数组.length : 0,
             开始最后角色索引: 最新角色消息?.消息索引 ?? -1,
             开始最后角色签名: 最新角色消息?.文本签名 || '',
@@ -4417,6 +4418,7 @@ $CONTENT
                 params,
                 dryRun,
                 at: Date.now(),
+                chatId: getActiveChatId_ACU(),
                 开始聊天长度: Array.isArray(聊天数组) ? 聊天数组.length : 0,
                 开始最后角色索引: 最新角色消息?.消息索引 ?? -1,
                 开始最后角色签名: 最新角色消息?.文本签名 || '',
@@ -4486,39 +4488,73 @@ $CONTENT
         return !!读取正文后置上下文_ACU();
     }
     async function 执行生成结束后置更新_ACU(事件名 = 'unknown', 事件消息编号 = null) {
-        if (!shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
-            logWarn_ACU(`ACU: Skip auto table update because no 正文生成上下文 is available. event=${事件名}`);
-            return;
+        if (生成结束后置状态_ACU.处理中) {
+            logDebug_ACU(`[生成结束后置] 已有同轮处理正在进行，复用处理结果: event=${事件名}`);
+            return await 生成结束后置状态_ACU.处理中;
         }
-        const 正文上下文 = 读取正文后置上下文_ACU();
-        const 目标消息元信息 = 读取指定角色消息元信息_ACU(事件消息编号, 正文上下文);
-        const 消息键 = 构建防截断流入消息键_ACU(目标消息元信息, 事件消息编号);
-        if (!消息键) {
-            logWarn_ACU(`[生成结束后置] 未找到本轮明确 AI 楼层，跳过数据库自动提交: event=${事件名}`);
-            return;
-        }
-        generationGate_ACU.正文后置上下文 = null;
-        if (生成结束后置状态_ACU.已处理消息键 === 消息键) {
-            logDebug_ACU(`[生成结束后置] 同一楼层已处理，跳过重复事件: event=${事件名}`);
-            return;
-        }
-        const 生成错误结果 = await 处理生成错误门闸_ACU(事件名, 目标消息元信息);
-        if (生成错误结果?.action !== 'continue') {
-            logDebug_ACU(`[生成错误重试] 已阻断后置更新: event=${事件名}, reason=${生成错误结果?.reason || 'unknown'}`);
+        const 处理Promise = (async () => {
+            if (!shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
+                logWarn_ACU(`ACU: Skip auto table update because no 正文生成上下文 is available. event=${事件名}`);
+                return { action: 'skipped', reason: 'no_generation_context' };
+            }
+            const 正文上下文 = 读取正文后置上下文_ACU();
+            const 目标消息元信息 = await 等待本轮真实角色消息落地_ACU(正文上下文);
+            if (!目标消息元信息 || 目标消息元信息.消息索引 < 0) {
+                const 已停止 = 本轮生成已经停止_ACU();
+                const reason = 已停止 ? 'generation_stopped' : 'generation_not_landed';
+                logWarn_ACU(`[生成结束后置] 未确认本轮真实 AI 楼层，阻断后置更新: event=${事件名}, reason=${reason}, eventMessageId=${事件消息编号 ?? ''}`);
+                generationGate_ACU.正文后置上下文 = null;
+                防截断流入状态_ACU.等待检测 = false;
+                防截断流入状态_ACU.自动重试中 = false;
+                防截断流入状态_ACU.登记键 = '';
+                生成结束后置状态_ACU.已处理时间 = Date.now();
+                return { action: 'blocked', reason };
+            }
+            const 消息键 = 构建防截断流入消息键_ACU(目标消息元信息);
+            if (!消息键) {
+                logWarn_ACU(`[生成结束后置] 本轮 AI 楼层元信息无效，阻断后置更新: event=${事件名}`);
+                generationGate_ACU.正文后置上下文 = null;
+                防截断流入状态_ACU.等待检测 = false;
+                防截断流入状态_ACU.自动重试中 = false;
+                防截断流入状态_ACU.登记键 = '';
+                return { action: 'blocked', reason: 'invalid_target_message' };
+            }
+            if (生成结束后置状态_ACU.已处理消息键 === 消息键) {
+                logDebug_ACU(`[生成结束后置] 同一楼层已处理，跳过重复事件: event=${事件名}`);
+                return { action: 'skipped', reason: 'duplicate_message' };
+            }
+            const 生成错误结果 = await 处理生成错误门闸_ACU(事件名, 目标消息元信息);
+            if (生成错误结果?.action !== 'continue') {
+                logDebug_ACU(`[生成错误重试] 已阻断后置更新: event=${事件名}, reason=${生成错误结果?.reason || 'unknown'}`);
+                生成结束后置状态_ACU.已处理消息键 = 消息键;
+                生成结束后置状态_ACU.已处理时间 = Date.now();
+                if (生成错误结果?.action !== 'blocked_retrying')
+                    generationGate_ACU.正文后置上下文 = null;
+                return 生成错误结果;
+            }
+            const 防截断结果 = await 处理防截断流入生成结束_ACU(目标消息元信息);
+            if (防截断结果?.action !== 'continue') {
+                logDebug_ACU(`[防截断流入] 已阻断后置更新: event=${事件名}, reason=${防截断结果?.reason || 'unknown'}`);
+                生成结束后置状态_ACU.已处理消息键 = 消息键;
+                生成结束后置状态_ACU.已处理时间 = Date.now();
+                if (防截断结果?.action !== 'blocked_retrying')
+                    generationGate_ACU.正文后置上下文 = null;
+                return 防截断结果;
+            }
             生成结束后置状态_ACU.已处理消息键 = 消息键;
             生成结束后置状态_ACU.已处理时间 = Date.now();
-            return;
+            generationGate_ACU.正文后置上下文 = null;
+            await handleNewMessageDebounced_ACU(事件名, { 目标消息元信息 });
+            return { action: 'continue', reason: 'post_update_dispatched' };
+        })();
+        生成结束后置状态_ACU.处理中 = 处理Promise;
+        try {
+            return await 处理Promise;
         }
-        const 防截断结果 = await 处理防截断流入生成结束_ACU(事件消息编号, 目标消息元信息);
-        if (防截断结果?.action !== 'continue') {
-            logDebug_ACU(`[防截断流入] 已阻断后置更新: event=${事件名}, reason=${防截断结果?.reason || 'unknown'}`);
-            生成结束后置状态_ACU.已处理消息键 = 消息键;
-            生成结束后置状态_ACU.已处理时间 = Date.now();
-            return;
+        finally {
+            if (生成结束后置状态_ACU.处理中 === 处理Promise)
+                生成结束后置状态_ACU.处理中 = null;
         }
-        生成结束后置状态_ACU.已处理消息键 = 消息键;
-        生成结束后置状态_ACU.已处理时间 = Date.now();
-        await handleNewMessageDebounced_ACU(事件名, { 目标消息元信息 });
     }
     function 调度生成结束后置更新_ACU(事件名 = 'unknown', 事件消息编号 = null) {
         logDebug_ACU(`ACU ${事件名} event for message_id: ${事件消息编号}`);
@@ -4548,13 +4584,28 @@ $CONTENT
         重试次数: 0,
         已处理消息键: '',
         已阻断消息键: '',
+        登记键: '',
         计时器: 0,
         最后登记时间: 0,
     };
     const 生成结束后置状态_ACU = {
         已处理消息键: '',
         已处理时间: 0,
+        处理中: null,
     };
+    function 重置生成结束运行时状态_ACU() {
+        if (防截断流入状态_ACU.计时器)
+            clearTimeout(防截断流入状态_ACU.计时器);
+        防截断流入状态_ACU.等待检测 = false;
+        防截断流入状态_ACU.自动重试中 = false;
+        防截断流入状态_ACU.重试次数 = 0;
+        防截断流入状态_ACU.已处理消息键 = '';
+        防截断流入状态_ACU.已阻断消息键 = '';
+        防截断流入状态_ACU.登记键 = '';
+        防截断流入状态_ACU.计时器 = 0;
+        生成结束后置状态_ACU.已处理消息键 = '';
+        生成结束后置状态_ACU.已处理时间 = 0;
+    }
     function 读取防截断流入布尔_ACU(值, 默认值) {
         if (值 === true || 值 === 'true' || 值 === 1 || 值 === '1')
             return true;
@@ -4623,12 +4674,7 @@ $CONTENT
         }
         return { ...归一化配置 };
     }
-    function 归一化生成结束消息编号_ACU(消息编号) {
-        if (消息编号 === undefined || 消息编号 === null || 消息编号 === '')
-            return '';
-        return String(消息编号);
-    }
-    function 构建防截断流入消息键_ACU(消息元信息, 事件消息编号) {
+    function 构建防截断流入消息键_ACU(消息元信息) {
         if (!消息元信息 || 消息元信息.消息索引 < 0)
             return '';
         return [
@@ -4664,35 +4710,44 @@ $CONTENT
             return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
         return 读取角色消息元信息_ACU(聊天数组[索引], 索引);
     }
-    function 读取指定角色消息元信息_ACU(事件消息编号, 生成上下文 = null) {
+    function 读取指定角色消息元信息_ACU(生成上下文 = null) {
         const 聊天数组 = getChatArray_ACU();
         if (!Array.isArray(聊天数组) || 聊天数组.length === 0)
             return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
-        const 标准消息编号 = 归一化生成结束消息编号_ACU(事件消息编号);
-        if (标准消息编号) {
-            for (let 消息索引 = 0; 消息索引 < 聊天数组.length; 消息索引 += 1) {
-                const 消息 = 聊天数组[消息索引];
-                if (!消息 || 消息.is_user)
-                    continue;
-                const 候选编号 = String(消息?.id ?? 消息?.message_id ?? 消息索引);
-                if (候选编号 === 标准消息编号 || String(消息索引) === 标准消息编号)
-                    return 读取角色消息元信息_ACU(消息, 消息索引);
-            }
-        }
         const 起点 = 生成上下文 || generationGate_ACU.lastGeneration || {};
+        if (起点.chatId && 起点.chatId !== getActiveChatId_ACU())
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
         const 开始聊天长度 = Number.isInteger(起点.开始聊天长度) ? 起点.开始聊天长度 : -1;
         const 开始最后角色索引 = Number.isInteger(起点.开始最后角色索引) ? 起点.开始最后角色索引 : -1;
+        const 最后用户消息编号 = Number.isInteger(起点.最后用户消息编号) ? 起点.最后用户消息编号 : -1;
         if (开始聊天长度 < 0 && 开始最后角色索引 < 0)
             return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
-        for (let 消息索引 = Math.max(0, 开始聊天长度); 消息索引 < 聊天数组.length; 消息索引 += 1) {
-            const 消息 = 聊天数组[消息索引];
-            if (消息 && !消息.is_user)
-                return 读取角色消息元信息_ACU(消息, 消息索引);
-        }
-        for (let 消息索引 = 聊天数组.length - 1; 消息索引 > 开始最后角色索引; 消息索引 -= 1) {
-            const 消息 = 聊天数组[消息索引];
-            if (消息 && !消息.is_user)
-                return 读取角色消息元信息_ACU(消息, 消息索引);
+        const 消息索引 = 聊天数组.length - 1;
+        const 消息 = 聊天数组[消息索引];
+        if (!消息 || 消息.is_user || 消息索引 <= 最后用户消息编号)
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        const 首次元信息 = 读取角色消息元信息_ACU(消息, 消息索引);
+        const 是新增楼层 = 消息索引 >= 开始聊天长度;
+        const 是原位更新 = 消息索引 === 开始最后角色索引
+            && 首次元信息.文本签名 !== String(起点.开始最后角色签名 || '');
+        if (!是新增楼层 && !是原位更新)
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        const 当前元信息 = 读取当前目标角色消息元信息_ACU(首次元信息);
+        if (!当前元信息 || 当前元信息.滑动编号 !== 首次元信息.滑动编号 || 当前元信息.文本签名 !== 首次元信息.文本签名)
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        return 当前元信息;
+    }
+    async function 等待本轮真实角色消息落地_ACU(生成上下文 = null) {
+        const 最大重读次数 = 4;
+        const 重读间隔毫秒 = [80, 160, 320, 500];
+        for (let 尝试次数 = 0; 尝试次数 <= 最大重读次数; 尝试次数 += 1) {
+            const 当前上下文 = generationGate_ACU.正文后置上下文 || 生成上下文;
+            const 目标消息元信息 = 读取指定角色消息元信息_ACU(当前上下文);
+            if (目标消息元信息.消息索引 >= 0)
+                return 目标消息元信息;
+            if (尝试次数 < 最大重读次数) {
+                await new Promise(resolve => setTimeout(resolve, 重读间隔毫秒[尝试次数]));
+            }
         }
         return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
     }
@@ -4724,13 +4779,23 @@ $CONTENT
         if (!配置.启用 || !原始文本) {
             防截断流入状态_ACU.等待检测 = false;
             防截断流入状态_ACU.自动重试中 = false;
+            防截断流入状态_ACU.登记键 = '';
             return false;
+        }
+        const 登记键 = [
+            String(generationGate_ACU.lastUserMessageId ?? ''),
+            hashUserInput_ACU(原始文本),
+        ].join('|');
+        if (防截断流入状态_ACU.等待检测 && 防截断流入状态_ACU.登记键 === 登记键) {
+            防截断流入状态_ACU.最后登记时间 = Date.now();
+            return true;
         }
         if (!防截断流入状态_ACU.自动重试中)
             防截断流入状态_ACU.重试次数 = 0;
         防截断流入状态_ACU.等待检测 = true;
         防截断流入状态_ACU.已处理消息键 = '';
         防截断流入状态_ACU.已阻断消息键 = '';
+        防截断流入状态_ACU.登记键 = 登记键;
         防截断流入状态_ACU.最后登记时间 = Date.now();
         return true;
     }
@@ -5004,12 +5069,12 @@ $CONTENT
             }
         }, Math.max(0, Number(配置.重试延迟毫秒) || 0));
     }
-    async function 处理防截断流入生成结束_ACU(事件消息编号, 目标消息元信息 = null) {
+    async function 处理防截断流入生成结束_ACU(目标消息元信息 = null) {
         const 配置 = 读取防截断流入配置_ACU();
         if (!配置.启用)
             return { action: 'continue' };
-        const 消息元信息 = 目标消息元信息 || 读取指定角色消息元信息_ACU(事件消息编号, 读取正文后置上下文_ACU() || generationGate_ACU.lastGeneration);
-        const 消息键 = 构建防截断流入消息键_ACU(消息元信息, 事件消息编号);
+        const 消息元信息 = 目标消息元信息 || 读取指定角色消息元信息_ACU(读取正文后置上下文_ACU() || generationGate_ACU.lastGeneration);
+        const 消息键 = 构建防截断流入消息键_ACU(消息元信息);
         if (!防截断流入状态_ACU.等待检测) {
             if (消息键 && 防截断流入状态_ACU.已阻断消息键 === 消息键)
                 return { action: 'blocked', reason: 'truncation_already_blocked' };
@@ -5028,6 +5093,7 @@ $CONTENT
             防截断流入状态_ACU.重试次数 = 0;
             防截断流入状态_ACU.已处理消息键 = '';
             防截断流入状态_ACU.已阻断消息键 = '';
+            防截断流入状态_ACU.登记键 = '';
             return { action: 'continue', reason: 'truncation_guard_length_passed' };
         }
         防截断流入状态_ACU.已阻断消息键 = 消息键;
@@ -5042,6 +5108,7 @@ $CONTENT
         }
         防截断流入状态_ACU.等待检测 = false;
         防截断流入状态_ACU.自动重试中 = false;
+        防截断流入状态_ACU.登记键 = '';
         const 已耗尽 = 配置.自动重试 && 配置.自动重试次数 > 0 && 防截断流入状态_ACU.重试次数 >= 配置.自动重试次数;
         showToastr_ACU('warning', 已耗尽 ? `正文低于字数下限 ${配置.字数下限}，已停止重试并阻断数据库/MVU更新。` : `正文低于字数下限 ${配置.字数下限}，已阻断数据库/MVU更新。`, '防截断流入');
         return { action: 'blocked', reason: 'truncation_length_failed' };
@@ -21545,6 +21612,7 @@ $CONTENT
                 generationGate_ACU.lastUserSendIntentAt = 0;
                 generationGate_ACU.lastGeneration = null;
                 generationGate_ACU.正文后置上下文 = null;
+                重置生成结束运行时状态_ACU();
                 return;
             }
             logWarn_ACU(`ACU: Received invalid chat file name: "${chatFileName}". This can happen after an update error. Ignoring event to preserve current state.`);
@@ -21568,6 +21636,7 @@ $CONTENT
         generationGate_ACU.lastUserSendIntentAt = 0;
         generationGate_ACU.lastGeneration = null;
         generationGate_ACU.正文后置上下文 = null;
+        重置生成结束运行时状态_ACU();
         logDebug_ACU(`ACU: currentChatFileIdentifier FINAL set to: "${currentChatFileIdentifier_ACU}" (Source: CHAT_CHANGED event)`);
         // 持久化聊天数据读取由 presentation/bootstrap/init.ts 的延迟 CHAT_CHANGED 阶段统一执行。
         // 这里绝不从当前内存缓存派生表格/模板，避免在宿主 chatMetadata 尚未切换完成时读到旧上下文。
