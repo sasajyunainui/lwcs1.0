@@ -16656,6 +16656,7 @@ $CONTENT
         }
         catch (错误) {
             logWarn_ACU('[剧情推进] 运行时占位符替换失败:', 错误);
+            if (错误?.__LWCS_RUNTIME_ERROR__ === true) throw 错误;
             return source;
         }
     }
@@ -16673,7 +16674,10 @@ $CONTENT
             }
             catch (错误) {
                 logWarn_ACU('[剧情推进] 运行时提示词内容处理失败:', 错误);
-                if (错误 && /^运行时占位符未解析:/.test(String(错误.message || ''))) throw 错误;
+                if (
+                    错误?.__LWCS_RUNTIME_ERROR__ === true
+                    || /^运行时占位符未解析:/.test(String(错误?.message || ''))
+                ) throw 错误;
             }
         }
         const 替换后内容 = 替换剧情推进运行时占位符_ACU(文本, 上下文?.viewType || 'empty', 上下文 || {});

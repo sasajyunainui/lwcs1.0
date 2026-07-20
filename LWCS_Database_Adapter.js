@@ -429,6 +429,24 @@
     return null;
   }
 
+  function 读取运行时视图诊断() {
+    const 接口 = 读取MVU运行时视图接口();
+    if (接口 && typeof 接口.读取运行时视图诊断 === 'function') {
+      try {
+        const 诊断 = 接口.读取运行时视图诊断();
+        if (诊断 && typeof 诊断 === 'object') return 诊断;
+      } catch (_) {}
+    }
+    return 读取窗口字段('__LWCS_MVU_RUNTIME_VIEW_DIAGNOSTICS__') || { 错误列表: [] };
+  }
+
+  function 创建运行时处理错误(消息, 详情 = null) {
+    const 错误 = new Error(String(消息 || '运行时处理失败'));
+    错误.__LWCS_RUNTIME_ERROR__ = true;
+    if (详情 && typeof 详情 === 'object') 错误.details = 详情;
+    return 错误;
+  }
+
   function 缓存StatData(statData, userInput = '') {
     if (!statData || typeof statData !== 'object') return null;
     本轮StatData = statData;
@@ -678,25 +696,47 @@
       return 源文本;
     }
     const 接口 = 读取MVU运行时视图接口();
-    if (接口 && typeof 接口.替换MVU运行时视图占位符 === 'function') {
-      try {
-        const statData = 取StatData(context.statData, context.userInput || '');
-        return 替换战斗裁断占位符(接口.替换MVU运行时视图占位符(源文本, viewType, {
-          statData,
-          userInput: context.userInput || '',
-          lastCharMessage: context.lastCharMessage || '',
-          plotText: context.plotText || '',
-          场景线索种子文本: context.场景线索种子文本 || '',
-          运行时提示已使用类型: 取本轮提示限流集合({
-            ...context,
-            viewType,
-          }),
-        }));
-      } catch (错误) {
-        console.warn('[LWCS适配器] MVU运行时占位符替换失败:', 错误);
-      }
+    if (!接口 || typeof 接口.替换MVU运行时视图占位符 !== 'function') {
+      throw 创建运行时处理错误('运行时视图接口未就绪', {
+        占位符: [...[
+          MVU运行时视图占位符,
+          MVU运行时更新占位符,
+          MVU更新结构提示占位符,
+          MVU相互可见性视图占位符,
+          场景候选角色资料占位符,
+          场景背景角色补充占位符,
+          场景审计材料占位符,
+          玩家角色表占位符,
+        ].filter(占位符 => 源文本.includes(占位符))],
+      });
     }
-    return 源文本;
+    const statData = 取StatData(context.statData, context.userInput || '');
+    let 结果;
+    try {
+      结果 = 替换战斗裁断占位符(接口.替换MVU运行时视图占位符(源文本, viewType, {
+        statData,
+        userInput: context.userInput || '',
+        lastCharMessage: context.lastCharMessage || '',
+        plotText: context.plotText || '',
+        场景线索种子文本: context.场景线索种子文本 || '',
+        运行时提示已使用类型: 取本轮提示限流集合({
+          ...context,
+          viewType,
+        }),
+      }));
+    } catch (错误) {
+      const 诊断 = 读取运行时视图诊断();
+      throw 创建运行时处理错误(`运行时视图替换失败: ${错误?.message || String(错误 || 'unknown_error')}`, 诊断);
+    }
+    const 诊断 = 读取运行时视图诊断();
+    const 错误列表 = Array.isArray(诊断?.错误列表) ? 诊断.错误列表 : [];
+    if (错误列表.length > 0) {
+      throw 创建运行时处理错误(
+        `运行时视图生成失败: ${错误列表.map(项目 => `${项目.阶段 || '未知阶段'}(${项目.错误 || 'unknown_error'})`).join('；')}`,
+        诊断,
+      );
+    }
+    return 结果;
   }
 
   function 读取剧情钩子时间线预览(userInput = '', statData = null) {

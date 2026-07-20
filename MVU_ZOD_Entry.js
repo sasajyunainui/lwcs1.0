@@ -172,10 +172,25 @@ await 加载MVU经典依赖_V1('MVU_Competition_Runtime.js', () =>
   typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.计算购买支付比例 === 'function'
 );
 
-await 加载MVU经典依赖_V1('MVU_Runtime_View.js', () =>
-  globalThis.__LWCS_MVU_RUNTIME_VIEW__ &&
-  typeof globalThis.__LWCS_MVU_RUNTIME_VIEW__ === 'object'
-);
+await 加载MVU经典依赖_V1('MVU_Runtime_View.js', () => {
+  const 运行时视图 = globalThis.__LWCS_MVU_RUNTIME_VIEW__;
+  const 必需方法 = [
+    '替换MVU运行时视图占位符',
+    '生成MVU剧情视图',
+    '生成MVU相互可见性视图',
+    '生成场景背景角色补充',
+    '生成场景候选角色资料',
+    '生成场景审计材料',
+    '生成角色基础六维对标摘要',
+  ];
+  const 错误状态 = globalThis.__LWCS_MVU_RUNTIME_VIEW_ERROR__;
+  if (错误状态?.错误列表?.length) {
+    throw new Error(`MVU运行时视图接口注册失败：${错误状态.错误列表.map(项目 => 项目.错误 || 'unknown_error').join('；')}`);
+  }
+  return !!运行时视图
+    && typeof 运行时视图 === 'object'
+    && 必需方法.every(方法名 => typeof 运行时视图[方法名] === 'function');
+});
 
 await 导入MVU候选模块_V1('MVU.js');
 

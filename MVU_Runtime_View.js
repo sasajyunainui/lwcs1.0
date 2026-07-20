@@ -7405,6 +7405,32 @@ function 序列化MVU运行时视图_V1(视图 = {}) {
   }
 }
 
+function 读取运行时视图诊断_V1() {
+  const 诊断 = globalThis.__LWCS_MVU_RUNTIME_VIEW_DIAGNOSTICS__;
+  return 诊断 && typeof 诊断 === 'object'
+    ? cloneJsonValue(诊断, { 错误列表: [] })
+    : { 错误列表: [] };
+}
+
+function 写入运行时视图诊断_V1(错误列表 = []) {
+  const 诊断 = {
+    时间: Date.now(),
+    错误列表: Array.isArray(错误列表) ? 错误列表 : [],
+  };
+  globalThis.__LWCS_MVU_RUNTIME_VIEW_DIAGNOSTICS__ = 诊断;
+  try {
+    if (globalThis.parent && globalThis.parent !== globalThis) {
+      globalThis.parent.__LWCS_MVU_RUNTIME_VIEW_DIAGNOSTICS__ = 诊断;
+    }
+  } catch (错误) {}
+  try {
+    if (globalThis.top && globalThis.top !== globalThis) {
+      globalThis.top.__LWCS_MVU_RUNTIME_VIEW_DIAGNOSTICS__ = 诊断;
+    }
+  } catch (错误) {}
+  return 诊断;
+}
+
 function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty', 上下文 = {}) {
   const 源文本 = String(文本 || '');
   const 需要主视图 = 源文本.includes(MVU_RUNTIME_VIEW_PLACEHOLDER_V1);
@@ -7416,6 +7442,7 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
   const 需要场景审计材料 = 源文本.includes(场景审计材料占位符_V1);
   const 需要玩家角色表 = 源文本.includes(玩家角色表占位符_V1);
   if (!需要主视图 && !需要更新视图 && !需要结构提示 && !需要相互可见性 && !需要场景候选角色资料 && !需要场景背景角色补充 && !需要场景审计材料 && !需要玩家角色表) return 源文本;
+  写入运行时视图诊断_V1([]);
   const 数据根 = 上下文?.statData || 获取最新运行时Mvu数据根_V1();
   const userInput = 上下文?.userInput || '';
   const 最后角色消息输入 = String(上下文?.lastCharMessage || 上下文?.aiText || '').trim() || 读取运行时最后角色消息文本_V1();
@@ -7433,41 +7460,75 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
     });
     return 更新视图;
   };
-  let 主视图文本 = '';
+  const 错误列表 = [];
+  const 替换值 = new Map();
+  const 尝试生成 = (阶段, 占位符, 生成器) => {
+    try {
+      替换值.set(占位符, String(生成器() ?? ''));
+      return true;
+    } catch (错误) {
+      错误列表.push({
+        阶段,
+        占位符,
+        错误: 错误?.message || String(错误 || 'unknown_error'),
+      });
+      return false;
+    }
+  };
   if (需要主视图) {
-    if (视图类型文本 === 'plot') {
-      主视图文本 = 生成MVU剧情提示文本_V1(数据根, userInput, String(最后角色消息输入 || ''));
-    } else if (视图类型文本 === 'story') {
-      主视图文本 = 生成MVU正文提示文本_V1(数据根, userInput, plotText, 读取正文视图());
-    } else {
+    尝试生成('主剧情视图', MVU_RUNTIME_VIEW_PLACEHOLDER_V1, () => {
+      if (视图类型文本 === 'plot') return 生成MVU剧情提示文本_V1(数据根, userInput, String(最后角色消息输入 || ''));
+      if (视图类型文本 === 'story') return 生成MVU正文提示文本_V1(数据根, userInput, plotText, 读取正文视图());
       const 主视图 = 视图类型文本 === 'empty' ? {} : (视图类型文本 === 'update' ? 读取更新视图() : 读取正文视图());
-      主视图文本 = 序列化MVU运行时视图_V1(主视图);
+      return 序列化MVU运行时视图_V1(主视图);
+    });
+  }
+  if (需要更新视图) {
+    尝试生成('更新视图', MVU_RUNTIME_UPDATE_PLACEHOLDER_V1, () => 序列化MVU运行时视图_V1(读取更新视图()));
+  }
+  if (需要结构提示) {
+    尝试生成('更新结构提示', MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_V1, () => 生成MVU更新结构提示_V1(数据根, userInput, 最后角色消息输入, plotText, {
+      运行时提示已使用类型: 上下文?.运行时提示已使用类型,
+    }));
+  }
+  if (需要相互可见性) {
+    尝试生成('相互可见性视图', MVU相互可见性视图占位符_V1, () => 生成MVU相互可见性视图_V1(数据根, userInput, 最后角色消息输入));
+  }
+  let 场景背景角色补充文本 = '';
+  let 场景候选角色资料文本 = '';
+  let 场景背景角色补充成功 = true;
+  let 场景候选角色资料成功 = true;
+  if (需要场景背景角色补充 || 需要场景候选角色资料 || 需要场景审计材料) {
+    场景背景角色补充成功 = 尝试生成('场景背景角色补充', 场景背景角色补充占位符_V1, () =>
+      生成场景背景角色补充_V1(数据根, userInput, 最后角色消息输入, 上下文?.场景线索种子文本 || ''));
+    场景背景角色补充文本 = 替换值.get(场景背景角色补充占位符_V1) || '';
+  }
+  if (需要场景候选角色资料 || 需要场景审计材料) {
+    if (场景背景角色补充成功) {
+      场景候选角色资料成功 = 尝试生成('场景候选角色资料', 场景候选角色资料占位符_V1, () =>
+        生成场景候选角色资料_V1(数据根, userInput, 最后角色消息输入, 上下文?.场景线索种子文本 || '', 10, 场景背景角色补充文本));
+      场景候选角色资料文本 = 替换值.get(场景候选角色资料占位符_V1) || '';
+    } else {
+      场景候选角色资料成功 = false;
+      错误列表.push({ 阶段: '场景候选角色资料', 占位符: 场景候选角色资料占位符_V1, 错误: '依赖场景背景角色补充失败' });
     }
   }
-  const 更新视图文本 = 需要更新视图 ? 序列化MVU运行时视图_V1(读取更新视图()) : '';
-  const 结构提示 = 需要结构提示 ? 生成MVU更新结构提示_V1(数据根, userInput, 最后角色消息输入, plotText, {
-    运行时提示已使用类型: 上下文?.运行时提示已使用类型,
-  }) : '';
-  const 相互可见性文本 = 需要相互可见性 ? 生成MVU相互可见性视图_V1(数据根, userInput, 最后角色消息输入) : '';
-  const 场景背景角色补充文本 = (需要场景背景角色补充 || 需要场景候选角色资料 || 需要场景审计材料)
-    ? 生成场景背景角色补充_V1(数据根, userInput, 最后角色消息输入, 上下文?.场景线索种子文本 || '')
-    : '';
-  const 场景候选角色资料文本 = (需要场景候选角色资料 || 需要场景审计材料)
-    ? 生成场景候选角色资料_V1(数据根, userInput, 最后角色消息输入, 上下文?.场景线索种子文本 || '', 10, 场景背景角色补充文本)
-    : '';
-  const 场景审计材料文本 = 需要场景审计材料
-    ? 生成场景审计材料_V1(数据根, userInput, 最后角色消息输入, 上下文?.场景线索种子文本 || '', 10, 场景背景角色补充文本, 场景候选角色资料文本)
-    : '';
-  const 玩家角色表文本 = 需要玩家角色表 ? 生成MVU玩家角色表_V1(数据根) : '';
-  const 替换后 = 源文本
-    .replaceAll(MVU_RUNTIME_VIEW_PLACEHOLDER_V1, 主视图文本)
-    .replaceAll(MVU_RUNTIME_UPDATE_PLACEHOLDER_V1, 更新视图文本)
-    .replaceAll(MVU_UPDATE_STRUCTURE_HINTS_PLACEHOLDER_V1, 结构提示)
-    .replaceAll(MVU相互可见性视图占位符_V1, 相互可见性文本)
-    .replaceAll(场景背景角色补充占位符_V1, 场景背景角色补充文本)
-    .replaceAll(场景候选角色资料占位符_V1, 场景候选角色资料文本)
-    .replaceAll(场景审计材料占位符_V1, 场景审计材料文本)
-    .replaceAll(玩家角色表占位符_V1, 玩家角色表文本);
+  if (需要场景审计材料) {
+    if (场景背景角色补充成功 && 场景候选角色资料成功) {
+      尝试生成('场景审计材料', 场景审计材料占位符_V1, () =>
+        生成场景审计材料_V1(数据根, userInput, 最后角色消息输入, 上下文?.场景线索种子文本 || '', 10, 场景背景角色补充文本, 场景候选角色资料文本));
+    } else {
+      错误列表.push({ 阶段: '场景审计材料', 占位符: 场景审计材料占位符_V1, 错误: '依赖场景资料生成失败' });
+    }
+  }
+  if (需要玩家角色表) {
+    尝试生成('玩家角色表', 玩家角色表占位符_V1, () => 生成MVU玩家角色表_V1(数据根));
+  }
+  写入运行时视图诊断_V1(错误列表);
+  const 替换后 = Array.from(替换值.entries()).reduce(
+    (文本值, [占位符, 值]) => 文本值.replaceAll(占位符, 值),
+    源文本,
+  );
   return 替换后.replace(/<status_current_variables>\s*(?:\{\}|\[\]|\s*)\s*<\/status_current_variables>/gi, '').trim();
 }
 
@@ -7711,11 +7772,32 @@ try {
     应用内置物品实例化: 应用内置物品实例化_V1,
     构建内置角色命中摘要: 构建内置角色命中摘要_V1,
     替换MVU运行时视图占位符: 替换MVU运行时视图占位符_V1,
+    读取运行时视图诊断: 读取运行时视图诊断_V1,
   });
   globalThis.__LWCS_MVU_RUNTIME_VIEW__ = 运行时视图接口;
+  delete globalThis.__LWCS_MVU_RUNTIME_VIEW_ERROR__;
   try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_MVU_RUNTIME_VIEW__ = 运行时视图接口; } catch (错误) {}
+  try { if (globalThis.parent && globalThis.parent !== globalThis) delete globalThis.parent.__LWCS_MVU_RUNTIME_VIEW_ERROR__; } catch (错误) {}
   try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_MVU_RUNTIME_VIEW__ = 运行时视图接口; } catch (错误) {}
-} catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) delete globalThis.top.__LWCS_MVU_RUNTIME_VIEW_ERROR__; } catch (错误) {}
+} catch (错误) {
+  const 诊断 = {
+    时间: Date.now(),
+    错误列表: [{
+      阶段: '运行时视图接口注册',
+      占位符: '',
+      错误: 错误?.message || String(错误 || 'unknown_error'),
+    }],
+  };
+  globalThis.__LWCS_MVU_RUNTIME_VIEW_ERROR__ = 诊断;
+  globalThis.__LWCS_MVU_RUNTIME_VIEW_DIAGNOSTICS__ = 诊断;
+  try {
+    if (globalThis.parent && globalThis.parent !== globalThis) {
+      globalThis.parent.__LWCS_MVU_RUNTIME_VIEW_ERROR__ = 诊断;
+      globalThis.parent.__LWCS_MVU_RUNTIME_VIEW_DIAGNOSTICS__ = 诊断;
+    }
+  } catch (错误) {}
+}
 
 function 追加系统播报文本(数据对象 = {}, 文本 = '', 分隔符 = ' ') {
   if (!数据对象 || typeof 数据对象 !== 'object') return '';
