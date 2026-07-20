@@ -6,6 +6,27 @@ function 读取MVUSchema部件_V1(部件名 = '') {
   return 部件;
 }
 
+function 记录角色归一化播报事件_V1(角色名 = '', 文本 = '') {
+  if (globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__ === true) return;
+  const 内容 = String(文本 || '').trim();
+  if (!内容) return;
+  if (!Array.isArray(globalThis.__LWCS_SCHEMA_BROADCAST_EVENTS__)) {
+    globalThis.__LWCS_SCHEMA_BROADCAST_EVENTS__ = [];
+  }
+  globalThis.__LWCS_SCHEMA_BROADCAST_EVENTS__.push({
+    角色名: String(角色名 || '').trim(),
+    文本: 内容,
+  });
+}
+
+function 取出角色归一化播报事件_V1() {
+  const 事件列表 = Array.isArray(globalThis.__LWCS_SCHEMA_BROADCAST_EVENTS__)
+    ? globalThis.__LWCS_SCHEMA_BROADCAST_EVENTS__
+    : [];
+  globalThis.__LWCS_SCHEMA_BROADCAST_EVENTS__ = [];
+  return 事件列表;
+}
+
 function 读取内置角色库_V1() {
   const 候选列表 = [globalThis];
   try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
@@ -2764,6 +2785,17 @@ function 构建内置角色实例_V1(角色名 = '', 当前tick = 0, 数据根 =
   return 角色;
 }
 
+function 解析内置角色Schema_V1(角色 = {}) {
+  const 原抑制状态 = globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__;
+  globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__ = true;
+  try {
+    return 读取MVUSchema部件_V1('CharacterSchema').parse(角色);
+  } finally {
+    if (原抑制状态 === undefined) delete globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__;
+    else globalThis.__LWCS_SUPPRESS_SCHEMA_BROADCAST__ = 原抑制状态;
+  }
+}
+
 function 是内置角色空壳_V1(角色 = {}) {
   if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return true;
   const 等级 = Math.max(0, Number(角色?.属性?.等级 || 0) || 0);
@@ -2860,7 +2892,7 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
     if (!角色) return;
     const 临时根 = { ...数据根, char: { [角色名]: 角色 } };
     水合角色物品引用_V1(临时根);
-    数据根.char[角色名] = 读取MVUSchema部件_V1('CharacterSchema').parse(临时根.char[角色名]);
+    数据根.char[角色名] = 解析内置角色Schema_V1(临时根.char[角色名]);
     已写入.push(角色名);
   });
   if (已写入.length > 0) {
@@ -2902,7 +2934,7 @@ function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本
     if (!角色) return;
     const 临时根 = { ...数据根, char: { [角色名]: 角色 } };
     水合角色物品引用_V1(临时根);
-    数据根.char[角色名] = 读取MVUSchema部件_V1('CharacterSchema').parse(临时根.char[角色名]);
+    数据根.char[角色名] = 解析内置角色Schema_V1(临时根.char[角色名]);
     已写入.push(角色名);
   });
   if (已写入.length > 0) {
@@ -3048,6 +3080,7 @@ function 规范化Schema根转换_V1(data = {}) {
 
     if (typeof data.sys.玩家名 !== 'string' || !data.sys.玩家名.trim()) data.sys.玩家名 = '无名氏';
     if (typeof data.sys.系统播报 !== 'string' || !data.sys.系统播报.trim()) data.sys.系统播报 = '初始化';
+    取出角色归一化播报事件_V1().forEach(事件 => 追加系统播报文本(data, 事件.文本));
     处理临时突破请求_V1(data);
 
     const appendSystemReasonText = text => {
@@ -8631,6 +8664,7 @@ function 规范化角色Schema_V1(char) {
     if (魂灵年限总和 > 魂灵年限上限) {
       const 超载比例 = Math.max(0, (魂灵年限总和 - 魂灵年限上限) / Math.max(1, 魂灵年限上限));
       const 反噬层数 = Math.max(1, Math.min(10, Math.ceil(超载比例 * 10)));
+      const 旧超载层数 = Math.max(0, Math.floor(Number(char.属性.状态效果?.['精神超载']?.层数 || 0)));
       const HP保留比例 = Math.max(0.03, 1 - Math.min(0.97, 0.45 + 超载比例 * 1.4));
       const 精神保留比例 = Math.max(0, 1 - Math.min(1, 0.7 + 超载比例 * 1.8));
       char.属性.HP = Math.min(Math.max(0, Number(char.属性.HP || 0)), Math.max(1, Math.floor(char.属性.HP上限 * HP保留比例)));
@@ -8643,6 +8677,19 @@ function 规范化角色Schema_V1(char) {
         持续回合: 99,
         战斗效果: { 持续伤害: 0, 跳过回合: 反噬层数 >= 8, 破防比例: Math.min(0.5, 0.08 * 反噬层数) },
       };
+      if (反噬层数 !== 旧超载层数) {
+        const 反噬结果 = 反噬层数 >= 8
+          ? '当场昏迷，生命体征跌至濒危线'
+          : 反噬层数 >= 5
+            ? '精神识海重创，陷入昏迷'
+            : 反噬层数 >= 3
+              ? '精神识海撕裂，身体重创'
+              : '精神震荡，气血逆冲';
+        记录角色归一化播报事件_V1(
+          normalizedCharName,
+          `[精神超载反噬] ${normalizedCharName || '角色'} 魂灵年限总和${魂灵年限总和}超过精神力承载上限${魂灵年限上限}，${反噬结果}！`,
+        );
+      }
     } else {
       delete char.属性.状态效果['精神超载'];
     }
