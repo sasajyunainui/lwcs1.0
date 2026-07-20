@@ -8631,7 +8631,6 @@ function 规范化角色Schema_V1(char) {
     if (魂灵年限总和 > 魂灵年限上限) {
       const 超载比例 = Math.max(0, (魂灵年限总和 - 魂灵年限上限) / Math.max(1, 魂灵年限上限));
       const 反噬层数 = Math.max(1, Math.min(10, Math.ceil(超载比例 * 10)));
-      const 旧超载层数 = Math.max(0, Math.floor(Number(char.属性.状态效果?.['精神超载']?.层数 || 0)));
       const HP保留比例 = Math.max(0.03, 1 - Math.min(0.97, 0.45 + 超载比例 * 1.4));
       const 精神保留比例 = Math.max(0, 1 - Math.min(1, 0.7 + 超载比例 * 1.8));
       char.属性.HP = Math.min(Math.max(0, Number(char.属性.HP || 0)), Math.max(1, Math.floor(char.属性.HP上限 * HP保留比例)));
@@ -8644,13 +8643,6 @@ function 规范化角色Schema_V1(char) {
         持续回合: 99,
         战斗效果: { 持续伤害: 0, 跳过回合: 反噬层数 >= 8, 破防比例: Math.min(0.5, 0.08 * 反噬层数) },
       };
-      if (旧超载层数 !== 反噬层数) {
-        const 反噬结果 = 反噬层数 >= 8 ? '当场昏迷，生命体征跌至濒危线' : 反噬层数 >= 5 ? '精神识海重创，陷入昏迷' : 反噬层数 >= 3 ? '精神识海撕裂，身体重创' : '精神震荡，气血逆冲';
-        追加系统播报文本(
-          data,
-          `[精神超载反噬] ${charName} 魂灵年限总和${魂灵年限总和}超过精神力承载上限${魂灵年限上限}，${反噬结果}！`,
-        );
-      }
     } else {
       delete char.属性.状态效果['精神超载'];
     }
