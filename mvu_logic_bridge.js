@@ -40946,8 +40946,10 @@
         `;
       };
       const 任务页签按钮 = (页签文本, 页签值, 数量) => {
+        const 页签短标 = 页签值 === '委托板' ? '委' : 页签文本.slice(0, 1);
         return `
           <button type="button" class="mvu-quest-tab ${activeQuestTab === 页签值 ? 'is-active' : ''}" data-quest-tab="${escapeHtmlAttr(页签值)}">
+            <span class="mvu-quest-tab-mark" aria-hidden="true">${htmlEscape(页签短标)}</span>
             <span class="mvu-quest-tab-label">${htmlEscape(页签文本)}</span>
             <span class="mvu-quest-tab-count">${htmlEscape(String(数量))}</span>
           </button>
@@ -41316,15 +41318,15 @@
                 </div>
               </div>
               <div class="archive-card mvu-detail-scroll-card mvu-quest-list-card">
-                <div class="archive-card-head">
-                  <div class="archive-card-title">${htmlEscape(activeQuestTab === '委托板' ? '委托板' : '任务')}</div>
-                  ${activeTaskCreateFormHtml}
-                  ${boardCreateFormHtml}
-                </div>
                 <div class="mvu-quest-tab-row" role="tablist" aria-label="任务分类">
                   ${任务页签按钮('主线', '主线', 主线任务列表.length)}
                   ${任务页签按钮('支线', '支线', 支线任务列表.length)}
                   ${任务页签按钮('委托板', '委托板', questBoardEntries.length)}
+                </div>
+                <div class="archive-card-head">
+                  <div class="archive-card-title">${htmlEscape(activeQuestTab === '委托板' ? '委托板' : '任务')}</div>
+                  ${activeTaskCreateFormHtml}
+                  ${boardCreateFormHtml}
                 </div>
                 <div class="mvu-quest-workbench">
                   <div class="mvu-quest-pane">
