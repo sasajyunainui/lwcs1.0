@@ -3618,6 +3618,58 @@ function 构建运行时原著时间线预览文本_V1(当前tick = 0, 最大数
     .join('\n');
 }
 
+function 构建时间跳跃运行时资料_V1(时间推进上下文 = null) {
+  const 旧tick = Number(时间推进上下文?.旧tick ?? NaN);
+  const 增量tick = Number(时间推进上下文?.tick增量 ?? NaN);
+  const 新tick = Number(时间推进上下文?.新tick ?? (Number.isFinite(旧tick) && Number.isFinite(增量tick) ? 旧tick + 增量tick : NaN));
+  if (!Number.isFinite(旧tick) || !Number.isFinite(新tick) || 新tick <= 旧tick) return null;
+  const 旧近端节点 = new Set(
+    收集后续原著时间线预览项_V1(旧tick, 20)
+      .map(事件 => String(事件?.标识 || '').trim())
+      .filter(Boolean),
+  );
+  const 跨越节点 = (Array.isArray(读取原著时间线事件源_V1())
+    ? 读取原著时间线事件源_V1()
+    : Object.values(读取原著时间线事件源_V1() || {}).flat())
+    .map(事件 => ({
+      标识: String(事件?.标识 || '').trim(),
+      触发tick: Number(事件?.触发tick || 0),
+      简述: String(事件?.简述 || '').trim(),
+    }))
+    .filter(事件 =>
+      事件.标识 &&
+      Number.isFinite(事件.触发tick) &&
+      事件.触发tick > 旧tick &&
+      事件.触发tick <= 新tick &&
+      !旧近端节点.has(事件.标识) &&
+      事件.简述,
+    )
+    .sort((左, 右) => 左.触发tick - 右.触发tick)
+    .slice(0, 24);
+  const 旧时间 = 解析运行时tick日历片段_V1(旧tick);
+  const 新时间 = 解析运行时tick日历片段_V1(新tick);
+  const 概览行 = 跨越节点.map(事件 => {
+    const 时间 = 解析运行时tick日历片段_V1(事件.触发tick);
+    return `- ${时间.日期}｜${事件.简述}`;
+  });
+  if (跨越节点.length >= 24) 概览行.push('- （跨越节点过多，仅显示前24条）');
+  const 结果 = {
+    旧tick,
+    新tick,
+    旧时间: `${旧时间.日期} ${旧时间.时间}`,
+    新时间: `${新时间.日期} ${新时间.时间}`,
+    跨越节点,
+    跨越概览: 概览行.length
+      ? 概览行.join('\n')
+      : '本次跨越期间没有需要注入的原著节点。',
+  };
+  globalThis.__LWCS_TIME_JUMP_RUNTIME__ = 结果;
+  try {
+    if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_TIME_JUMP_RUNTIME__ = 结果;
+  } catch (_) {}
+  return 结果;
+}
+
 var 远端原著时间线泛主角名_V1 = Object.freeze(new Set(['唐舞麟']));
 var 远端原著时间线最低入选分_V1 = 9;
 var 远端原著时间线高置信入选分_V1 = 13.5;
@@ -5416,11 +5468,18 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   return 输出视图;
 }
 
-function 生成MVU剧情视图_V1(数据输入 = null, userInput = '', 最后剧情文本 = '') {
+function 生成MVU剧情视图_V1(数据输入 = null, userInput = '', 最后剧情文本 = '', 时间推进上下文 = null) {
   const 数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
   const { 玩家名, 当前地点 } = 取运行时当前范围_V1(数据根);
   const 文本 = String(userInput || '');
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
+  const 时间跳跃资料 = 时间推进上下文
+    ? 构建时间跳跃运行时资料_V1({
+      ...时间推进上下文,
+      旧tick: Number(时间推进上下文.旧tick ?? 当前tick),
+    })
+    : null;
+  const 视图tick = 时间跳跃资料?.新tick ?? 当前tick;
   const 战斗摘要 = 构建MVU战斗摘要_V1(数据根?.world?.战斗);
   const 委托摘要 = 复制运行时命中记录表片段_V1(数据根?.world?.委托板 || {}, 文本, 6, 构建运行时委托草案条目_V1);
   const 内置角色摘要 = 构建内置角色命中摘要_V1(数据根, 文本);
@@ -5428,8 +5487,11 @@ function 生成MVU剧情视图_V1(数据输入 = null, userInput = '', 最后剧
   const 地点候选 = 构建运行时地点候选_V1(数据根, userInput, 最后剧情文本);
   const 剧情视图 = {
     当前: {
-      时间: {
-        当前: 数据根?.world?.时间?._calendar || '',
+        时间: {
+        当前: 时间跳跃资料?.新时间 || 数据根?.world?.时间?._calendar || '',
+        ...(时间跳跃资料 ? {
+          时间推进: `旧时间：${时间跳跃资料.旧时间}\n新时间：${时间跳跃资料.新时间}`,
+        } : {}),
       },
       地点: 当前地点,
       玩家: 玩家名,
@@ -5439,10 +5501,11 @@ function 生成MVU剧情视图_V1(数据输入 = null, userInput = '', 最后剧
     角色简表,
     剧情钩子: {
       _引导: {
-        时间线预览: 构建运行时原著时间线预览文本_V1(当前tick, 20),
+        时间线预览: 构建运行时原著时间线预览文本_V1(视图tick, 20),
+        ...(时间跳跃资料 ? { 跨越期间原著概览: 时间跳跃资料.跨越概览 } : {}),
         远端原著时间线候选: 构建远端原著时间线候选文本_V1(数据根, userInput, 20),
       },
-      时间线: 构建运行时未来事件视图_V1(数据根?.world?.时间线 || {}, 8, { 派生时间文本: true, 当前tick }),
+      时间线: 构建运行时未来事件视图_V1(数据根?.world?.时间线 || {}, 8, { 派生时间文本: true, 当前tick: 视图tick }),
       委托板: 委托摘要,
       拍卖: 构建运行时拍卖薄片_V1(数据根?.world?.拍卖 || {}, 文本, 4),
       战斗: 战斗摘要,
@@ -6141,14 +6204,20 @@ function 构建MVU剧情提示地点候选段_V1(剧情视图 = {}) {
   return 行列表.join('\n');
 }
 
-function 生成MVU剧情提示文本_V1(数据输入 = null, userInput = '', 最后剧情文本 = '') {
-  const 剧情视图 = 生成MVU剧情视图_V1(数据输入, userInput, 最后剧情文本);
+function 生成MVU剧情提示文本_V1(数据输入 = null, userInput = '', 最后剧情文本 = '', 时间推进上下文 = null) {
+  const 剧情视图 = 生成MVU剧情视图_V1(数据输入, userInput, 最后剧情文本, 时间推进上下文);
   return [
     构建MVU剧情提示当前段_V1(剧情视图),
     构建MVU剧情提示角色段_V1(剧情视图),
     构建MVU剧情提示地点候选段_V1(剧情视图),
     构建MVU剧情提示赛事权限段_V1(剧情视图),
-    构建MVU剧情提示引导段_V1(剧情视图),
+    [
+      构建MVU剧情提示引导段_V1(剧情视图),
+      剧情视图?.当前?.时间?.时间推进 ? `【时间推进】\n${剧情视图.当前.时间.时间推进}` : '',
+      剧情视图?.剧情钩子?._引导?.跨越期间原著概览
+        ? `【跨越期间原著概览】\n${剧情视图.剧情钩子._引导.跨越期间原著概览}`
+        : '',
+    ].filter(Boolean).join('\n'),
   ].filter(Boolean).join('\n\n');
 }
 
@@ -7477,7 +7546,12 @@ function 替换MVU运行时视图占位符_V1(文本 = '', 视图类型 = 'empty
   };
   if (需要主视图) {
     尝试生成('主剧情视图', MVU_RUNTIME_VIEW_PLACEHOLDER_V1, () => {
-      if (视图类型文本 === 'plot') return 生成MVU剧情提示文本_V1(数据根, userInput, String(最后角色消息输入 || ''));
+      if (视图类型文本 === 'plot') return 生成MVU剧情提示文本_V1(
+        数据根,
+        userInput,
+        String(最后角色消息输入 || ''),
+        上下文?.时间推进上下文 || null,
+      );
       if (视图类型文本 === 'story') return 生成MVU正文提示文本_V1(数据根, userInput, plotText, 读取正文视图());
       const 主视图 = 视图类型文本 === 'empty' ? {} : (视图类型文本 === 'update' ? 读取更新视图() : 读取正文视图());
       return 序列化MVU运行时视图_V1(主视图);

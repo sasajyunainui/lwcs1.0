@@ -18963,6 +18963,26 @@ $CONTENT
         const contentStart = openIdx + open.length;
         return String(text).slice(contentStart, closeIdx);
     }
+    function parseTimeJumpToTicks_ACU(rawValue = '') {
+        const source = String(rawValue || '').trim().replace(/\s+/g, '');
+        if (!source) return null;
+        const match = source.match(/^([0-9]+|[零〇一二两三四五六七八九十百千万]+)个?(分|分钟|小时|时|天|日|月|年)$/i);
+        if (!match) return null;
+        const numberText = match[1];
+        const digits = { 零: 0, 〇: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+        let amount = /^\d+$/.test(numberText) ? Number(numberText) : 0;
+        if (!amount) {
+            if (numberText === '十') amount = 10;
+            else if (numberText.includes('十')) {
+                const [left, right] = numberText.split('十');
+                amount = (left ? (digits[left] ?? 0) * 10 : 10) + (right ? (digits[right] ?? 0) : 0);
+            } else amount = [...numberText].reduce((sum, char) => sum * 10 + (digits[char] ?? 0), 0);
+        }
+        if (!Number.isFinite(amount) || amount <= 0) return null;
+        const unit = match[2];
+        const tick增量 = unit === '分' || unit === '分钟' ? 0.1 : unit === '小时' || unit === '时' ? 6 : unit === '天' || unit === '日' ? 144 : unit === '月' ? 4320 : 51840;
+        return { 原文: source, 数值: amount, 单位: unit, tick增量: amount * tick增量 };
+    }
     function extractPlotTagsFromResponse_ACU(text, extractTags, extractInjectTags = '') {
         const injectTagNames = String(extractInjectTags || '')
             .split(',')
@@ -19745,6 +19765,7 @@ $CONTENT
             lastCharMessage: getLatestAIMessageContent_ACU(),
             plotText: lastPlotContent || '',
             captureText: [过滤后用户消息, await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai')].filter(Boolean).join('\n'),
+            时间推进上下文: null,
         });
         let finalWithRandom = parseRandomTags_ACU(plotFinalDirective);
         finalWithRandom = replaceRandomVariables_ACU(finalWithRandom);
@@ -19804,6 +19825,7 @@ $CONTENT
                 plotText: sharedContext.lastPlotContent || "",
                 captureText: [sharedContext.userMessage, await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai')].filter(Boolean).join('\n'),
                 场景线索种子文本,
+                时间推进上下文: sharedContext.时间推进上下文 || null,
             });
             c = renderPlotTaskContentWithIsolatedVariables_ACU(c, sharedContext);
             seg.__renderedContent = c;
@@ -19969,6 +19991,11 @@ $CONTENT
     }
     async function runPlotTasksRuntime_ACU(plotSettings, userMessage, runtimeOptions = {}) {
         const { inputForHash = userMessage, hasExistingUserMessage = false, systemMessages = [] } = runtimeOptions;
+        try {
+            delete globalThis.__LWCS_TIME_JUMP_RUNTIME__;
+            if (globalThis.parent && globalThis.parent !== globalThis) delete globalThis.parent.__LWCS_TIME_JUMP_RUNTIME__;
+        }
+        catch (_) {}
         ensurePlotTasksCompat_ACU(plotSettings, { syncLegacy: true });
         const enabledTasks = getEnabledPlotTasks_ACU(plotSettings);
         if (!enabledTasks.length) {
@@ -20036,6 +20063,21 @@ $CONTENT
             successfulResults.push(...stageSuccessfulResults);
             failedResults.push(...stageFailedResults);
             completedSuccessfulResults = [...successfulResults];
+            const timeJumpTag = stageSuccessfulResults
+                .map(result => String(result?.extractedTags?.time_jump || '').trim())
+                .find(Boolean);
+            if (timeJumpTag) {
+                const parsedTimeJump = parseTimeJumpToTicks_ACU(timeJumpTag);
+                if (parsedTimeJump) {
+                    sharedContext.时间推进上下文 = {
+                        原文: parsedTimeJump.原文,
+                        数值: parsedTimeJump.数值,
+                        单位: parsedTimeJump.单位,
+                        tick增量: parsedTimeJump.tick增量,
+                    };
+                    logDebug_ACU(`[剧情推进] 已识别本轮时间推进：${parsedTimeJump.原文}`);
+                }
+            }
             if (stageFailedResults.length > 0) {
                 stageFailedResults.forEach((result) => {
                     logWarn_ACU(`[剧情推进] [阶段:${result.stage ?? stageGroup.stage}] [任务:${result.taskName || result.taskId || '未命名任务'}] 未产出有效结果: ${result.error || '未知错误'}`);

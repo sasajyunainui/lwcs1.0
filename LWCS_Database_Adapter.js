@@ -719,6 +719,7 @@
         lastCharMessage: context.lastCharMessage || '',
         plotText: context.plotText || '',
         场景线索种子文本: context.场景线索种子文本 || '',
+        时间推进上下文: context.时间推进上下文 || null,
         运行时提示已使用类型: 取本轮提示限流集合({
           ...context,
           viewType,
@@ -739,11 +740,11 @@
     return 结果;
   }
 
-  function 读取剧情钩子时间线预览(userInput = '', statData = null) {
+  function 读取剧情钩子时间线预览(userInput = '', statData = null, 时间推进上下文 = null) {
     const 接口 = 读取MVU运行时视图接口();
     if (!接口 || typeof 接口.生成MVU剧情视图 !== 'function') return '';
     try {
-      const 剧情视图 = 接口.生成MVU剧情视图(取StatData(statData, userInput) || null, userInput);
+      const 剧情视图 = 接口.生成MVU剧情视图(取StatData(statData, userInput) || null, userInput, '', 时间推进上下文);
       return String(剧情视图?.剧情钩子?._引导?.时间线预览 || '').trim();
     } catch (错误) {
       console.warn('[LWCS适配器] 时间线预览读取失败:', 错误);
@@ -751,11 +752,11 @@
     }
   }
 
-  function 读取远端原著时间线候选(userInput = '', statData = null, 近场文本 = '') {
+  function 读取远端原著时间线候选(userInput = '', statData = null, 近场文本 = '', 时间推进上下文 = null) {
     const 接口 = 读取MVU运行时视图接口();
     if (!接口 || typeof 接口.生成MVU剧情视图 !== 'function') return '';
     try {
-      const 剧情视图 = 接口.生成MVU剧情视图(取StatData(statData, userInput) || null, 近场文本 || userInput);
+      const 剧情视图 = 接口.生成MVU剧情视图(取StatData(statData, userInput) || null, 近场文本 || userInput, '', 时间推进上下文);
       return String(剧情视图?.剧情钩子?._引导?.远端原著时间线候选 || '').trim();
     } catch (错误) {
       console.warn('[LWCS适配器] 远端原著时间线候选读取失败:', 错误);
@@ -799,10 +800,10 @@
       结果 = 结果.replaceAll(剧情当前主身份占位符, 读取剧情当前主身份(statData));
     }
     if (结果.includes(时间线预览占位符) && 视图接口可用) {
-      结果 = 结果.replaceAll(时间线预览占位符, 读取剧情钩子时间线预览(userInput, statData) || '无');
+      结果 = 结果.replaceAll(时间线预览占位符, 读取剧情钩子时间线预览(userInput, statData, context.时间推进上下文 || null) || '无');
     }
     if (结果.includes(远端原著时间线候选占位符) && 视图接口可用) {
-      结果 = 结果.replaceAll(远端原著时间线候选占位符, 读取远端原著时间线候选(userInput, statData, 近场文本) || '无远端原著时间线候选。');
+      结果 = 结果.replaceAll(远端原著时间线候选占位符, 读取远端原著时间线候选(userInput, statData, 近场文本, context.时间推进上下文 || null) || '无远端原著时间线候选。');
     }
     if (结果.includes(角色基础六维对标占位符) && 视图接口可用) {
       结果 = 结果.replaceAll(角色基础六维对标占位符, 读取角色基础六维对标(userInput, statData, 近场文本));
@@ -833,6 +834,7 @@
       captureText: 近场上下文.captureText || '',
       latestCharMessageInfo: 上下文.latestCharMessageInfo,
       场景线索种子文本: 上下文.场景线索种子文本 || '',
+      时间推进上下文: 上下文.时间推进上下文 || null,
       运行时提示已使用类型: 取本轮提示限流集合({
         ...上下文,
         userInput: 用户输入文本,
@@ -846,6 +848,7 @@
       lastCharMessage: 最后角色消息文本,
       statData: 运行时StatData,
       captureText: 近场上下文.captureText || '',
+      时间推进上下文: 上下文.时间推进上下文 || null,
     });
   }
 
