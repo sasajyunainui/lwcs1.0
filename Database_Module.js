@@ -847,8 +847,8 @@
         uid: "sheet_OptionsNew",
         name: "选项表",
         sourceData: {
-            note: "记录每轮user可以进行的动作选项。此表有且仅有一行。\n- 列1: 选项一 \u2013 参考<route_boundary>，以第三人称描述主角可采取的主线倾向行动，选择当前条件下能够触及的最远有效节点，快速推进剧情。字段值格式固定为：主线快进：具体行动。\n- 列2: 选项二 \u2013 参考<route_boundary>，以第三人称描述主角可采取的独立支线行动，不偏向任何立场、不强行靠拢主线，选择当前条件下能够触及的最远有效节点，快速推进剧情。字段值格式固定为：支线快进：具体行动。\n- 列3: 选项三 \u2013 参考<route_boundary>，以第三人称描述主角可采取的独立支线行动，不偏向任何立场、不强行靠拢主线，按当前局面的自然步骤渐进推进。字段值格式固定为：支线渐进：具体行动。\n- 列4: 选项四 \u2013 以第三人称描述主角可采取的 NSFW 相关行动，但必须符合剧情逻辑，不得代替主角说话。\n前三列必须分别以\u201C主线快进：\u201D\u201C支线快进：\u201D\u201C支线渐进：\u201D开头，冒号后直接填写行动内容；选项四维持原有格式。所有选项必须使用第三人称（如\u201C主角尝试\u2026\u201D，\u201C主角决定\u2026\u201D），不得代替主角发言；必须紧扣当前剧情；四个选项需风格明确、互不重复；不得提出已经被客观结果否定、尚未满足前置条件或超出玩家权限的行动。\n【路线与后续边界】\n{{route_boundary}}\n【玩家角色表】\n{{玩家角色表}}\n【选项生成约束】\n生成每个选项前必须核对<route_boundary>、玩家角色表和当前已经成立的剧情事实。快速推进选项应覆盖玩家能够主动完成的必要过渡，直接指向下一处有效互动、流程节点或场景入口，不把同一行动拆成等待、观察、再次确认等多个半步；若主线存在身份、权限、空间或时间壁垒，选项一只能选择<route_boundary>中已经成立的边缘切入、间接接触或主线辐射路径，不得强行交汇。选项二和选项三应沿玩家当前生活、原创事件或独立目标推进，不借支线名义复制主线快进。渐进推进选项仍需带来具体的信息、接触或准备进展，不得原地停留。所有选项只描述玩家拟采取的行动，不预写NPC回应、客观结果或后续结算。选项只能使用玩家已经掌握且当前可执行的能力、实际持有的物品、已掌握的情报和已经成立的行动权限；四项可以采用不同策略，但每项都必须符合玩家当前性格、既有关系或本轮明确情境，禁止虚构能力、物品、权限、NPC在场状态或无缘由的性格反转。",
-            initNode: "游戏初始化时，生成四个初始选项。选项一、选项二、选项三的字段值必须分别以\u201C主线快进：\u201D\u201C支线快进：\u201D\u201C支线渐进：\u201D开头，选项四维持原有格式。",
+            note: "记录每轮user可以进行的动作选项。此表有且仅有一行。\n- 列1: 选项一 \u2013 参考<route_boundary>，以第三人称描述主角可采取的主线倾向行动，选择当前条件下能够触及的最远有效节点，快速推进剧情。字段值格式固定为：主线快进：具体行动。\n- 列2: 选项二 \u2013 参考<route_boundary>，以第三人称描述主角可采取的独立支线行动，不偏向任何立场、不强行靠拢主线，选择当前条件下能够触及的最远有效节点，快速推进剧情。字段值格式固定为：支线快进：具体行动。\n- 列3: 选项三 \u2013 参考<route_boundary>，以第三人称描述主角可采取的独立支线行动，不偏向任何立场、不强行靠拢主线，按当前局面的自然步骤渐进推进。字段值格式固定为：支线渐进：具体行动。\n- 列4: 选项四 \u2013 以第三人称描述主角可采取的 NSFW 相关行动，但必须符合剧情逻辑，不得代替主角说话。\n前三列必须分别以\u201C主线快进：\u201D\u201C支线快进：\u201D\u201C支线渐进：\u201D开头，冒号后直接填写行动内容；选项四维持原有格式。所有选项必须使用第三人称（如\u201C主角尝试\u2026\u201D，\u201C主角决定\u2026\u201D），不得代替主角发言；必须紧扣当前剧情；四个选项需风格明确、互不重复；不得提出已经被客观结果否定、尚未满足前置条件或超出玩家权限的行动。\n【玩家角色表】\n{{玩家角色表}}\n【选项生成约束】\n生成每个选项前必须读取本轮输入中已有的<route_boundary>，并核对玩家角色表和当前已经成立的剧情事实。快速推进选项应覆盖玩家能够主动完成的必要过渡，直接指向下一处有效互动、流程节点或场景入口，不把同一行动拆成等待、观察、再次确认等多个半步；若主线存在身份、权限、空间或时间壁垒，选项一只能选择<route_boundary>中已经成立的边缘切入、间接接触或主线辐射路径，不得强行交汇。选项二和选项三应沿玩家当前生活、原创事件或独立目标推进，不借支线名义复制主线快进。渐进推进选项仍需带来具体的信息、接触或准备进展，不得原地停留。所有选项只描述玩家拟采取的行动，不预写NPC回应、客观结果或后续结算。选项只能使用玩家已经掌握且当前可执行的能力、实际持有的物品、已掌握的情报和已经成立的行动权限；四项可以采用不同策略，但每项都必须符合玩家当前性格、既有关系或本轮明确情境，禁止虚构能力、物品、权限、NPC在场状态或无缘由的性格反转。",
+            initNode: "游戏初始化时，生成四个初始选项。",
             deleteNode: "禁止删除。",
             updateNode: "每轮交互后必须更新此表，根据当前剧情生成新的四个选项覆盖原有内容。选项一、选项二、选项三的字段值必须分别以\u201C主线快进：\u201D\u201C支线快进：\u201D\u201C支线渐进：\u201D开头。\nSQL示例: UPDATE options SET option_1 = '主线快进：具体行动', option_2 = '支线快进：具体行动', option_3 = '支线渐进：具体行动', option_4 = '新选项四' WHERE row_id = 1;",
             insertNode: "禁止操作。",
@@ -18083,11 +18083,6 @@ $CONTENT
         }
         const lastPlotContent = getPlotFromHistory_ACU();
         logDebug_ACU('[填表] $6 上轮规划数据:', lastPlotContent ? `长度=${lastPlotContent.length}` : '(空)');
-        const routeBoundaryContent = String(extractLastTagContent_ACU(lastPlotContent, 'route_boundary') || '').trim();
-        const tableDataTextForPrompt = dynamicContent.tableDataText.replace(
-            /\{\{\s*route_boundary\s*\}\}/gi,
-            routeBoundaryContent ? `<route_boundary>${routeBoundaryContent}</route_boundary>` : '无可用路线与后续边界',
-        );
         const tableExcludeTags = (settings_ACU.tableContextExcludeTags || '').trim();
         const tableExcludeRules = normalizeExcludeRules_ACU(settings_ACU.tableContextExcludeRules, tableExcludeTags);
         const filterTableInjectedContent = (value, placeholderKey = '') => {
@@ -18098,7 +18093,7 @@ $CONTENT
         };
         for (const segment of promptSegments) {
             let finalContent = segment.content;
-            finalContent = finalContent.replace('$0', filterTableInjectedContent(tableDataTextForPrompt, '$0'));
+            finalContent = finalContent.replace('$0', filterTableInjectedContent(dynamicContent.tableDataText, '$0'));
             finalContent = finalContent.replace('$1', filterTableInjectedContent(dynamicContent.messagesText || '', '$1'));
             finalContent = finalContent.replace('$4', filterTableInjectedContent(dynamicContent.worldbookContent, '$4'));
             finalContent = finalContent.replace(/\$6/g, filterTableInjectedContent(lastPlotContent || '', '$6'));
