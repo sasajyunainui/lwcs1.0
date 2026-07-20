@@ -18960,11 +18960,9 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas:
-    'hero timeline'
-    'bestiary competition';
+  grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.95fr);
+  grid-template-rows: auto;
+  grid-template-areas: 'main side';
   height: 100%;
   min-height: 0;
   align-items: stretch;
@@ -19005,38 +19003,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel='world-main'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel='world-side'] {
-  display: contents;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-hero'] {
-  grid-area: hero;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-timeline'] {
-  grid-area: timeline;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-bestiary'] {
-  grid-area: bestiary;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world [data-unified-card='world-competition'] {
-  grid-area: competition;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel] > .mvu-dashboard-panel-section {
-  min-width: 0;
-  min-height: 0;
-  padding: 12px;
-  border: 1px solid var(--边线颜色);
-  border-radius: var(--卡片圆角);
-  background: var(--卡片材质);
-  overflow: hidden;
-}
-
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel] > .mvu-dashboard-panel-section + .mvu-dashboard-panel-section {
-  padding-top: 12px;
-  border-top: 1px solid var(--边线颜色);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: initial;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
@@ -21680,6 +21648,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     max-height: none;
     overflow: visible;
   }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel] {
+    grid-template-rows: auto auto;
+  }
 }
 
 @container mvu-detail-area (max-width: 640px) {
@@ -22026,6 +21998,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel] {
+    grid-template-rows: auto auto;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--org {
