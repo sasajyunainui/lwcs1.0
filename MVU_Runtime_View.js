@@ -3623,11 +3623,6 @@ function 构建时间跳跃运行时资料_V1(时间推进上下文 = null) {
   const 增量tick = Number(时间推进上下文?.tick增量 ?? NaN);
   const 新tick = Number(时间推进上下文?.新tick ?? (Number.isFinite(旧tick) && Number.isFinite(增量tick) ? 旧tick + 增量tick : NaN));
   if (!Number.isFinite(旧tick) || !Number.isFinite(新tick) || 新tick <= 旧tick) return null;
-  const 旧近端节点 = new Set(
-    收集后续原著时间线预览项_V1(旧tick, 20)
-      .map(事件 => String(事件?.标识 || '').trim())
-      .filter(Boolean),
-  );
   const 跨越节点 = (Array.isArray(读取原著时间线事件源_V1())
     ? 读取原著时间线事件源_V1()
     : Object.values(读取原著时间线事件源_V1() || {}).flat())
@@ -3641,7 +3636,6 @@ function 构建时间跳跃运行时资料_V1(时间推进上下文 = null) {
       Number.isFinite(事件.触发tick) &&
       事件.触发tick > 旧tick &&
       事件.触发tick <= 新tick &&
-      !旧近端节点.has(事件.标识) &&
       事件.简述,
     )
     .sort((左, 右) => 左.触发tick - 右.触发tick)
