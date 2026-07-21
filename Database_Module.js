@@ -4393,6 +4393,14 @@ $CONTENT
             generationGate_ACU.lastUserMessageId = messageId;
             generationGate_ACU.lastUserMessageText = String(msg.mes || '');
             generationGate_ACU.lastUserMessageAt = Date.now();
+            const 待绑定围栏 = 生成错误状态_ACU.待开始正文重试围栏;
+            if (待绑定围栏 && 待绑定围栏.chatId === getActiveChatId_ACU()) {
+                待绑定围栏.userMessageId = messageId;
+            }
+            const 本轮围栏 = 生成错误状态_ACU.本轮?.正文重试围栏;
+            if (本轮围栏 && 本轮围栏.chatId === getActiveChatId_ACU()) {
+                本轮围栏.userMessageId = messageId;
+            }
         }
         catch (e) {
             // ignore
@@ -4498,15 +4506,20 @@ $CONTENT
                 return { action: 'skipped', reason: 'no_generation_context' };
             }
             const 正文上下文 = 读取正文后置上下文_ACU();
+            const 前置裁决 = 读取防截断桥接裁决_ACU();
+            if (读取防截断流入配置_ACU().启用 && 前置裁决.phase !== 'passed') {
+                const 日志函数 = 前置裁决.phase === 'unavailable' ? logWarn_ACU : logDebug_ACU;
+                日志函数(`[防截断流入] 前置门闸未通过，阻断生成结束后置: event=${事件名}, phase=${前置裁决.phase}, reason=${前置裁决.reason || 'unknown'}`);
+                生成结束后置状态_ACU.已处理时间 = Date.now();
+                return { action: 'blocked', reason: 前置裁决.reason || 前置裁决.phase };
+            }
             const 目标消息元信息 = await 等待本轮真实角色消息落地_ACU(正文上下文);
             if (!目标消息元信息 || 目标消息元信息.消息索引 < 0) {
                 const 已停止 = 本轮生成已经停止_ACU();
                 const reason = 已停止 ? 'generation_stopped' : 'generation_not_landed';
                 logWarn_ACU(`[生成结束后置] 未确认本轮真实 AI 楼层，阻断后置更新: event=${事件名}, reason=${reason}, eventMessageId=${事件消息编号 ?? ''}`);
                 generationGate_ACU.正文后置上下文 = null;
-                防截断流入状态_ACU.等待检测 = false;
-                防截断流入状态_ACU.自动重试中 = false;
-                防截断流入状态_ACU.登记键 = '';
+                取消防截断桥接登记_ACU(reason);
                 生成结束后置状态_ACU.已处理时间 = Date.now();
                 return { action: 'blocked', reason };
             }
@@ -4514,10 +4527,18 @@ $CONTENT
             if (!消息键) {
                 logWarn_ACU(`[生成结束后置] 本轮 AI 楼层元信息无效，阻断后置更新: event=${事件名}`);
                 generationGate_ACU.正文后置上下文 = null;
-                防截断流入状态_ACU.等待检测 = false;
-                防截断流入状态_ACU.自动重试中 = false;
-                防截断流入状态_ACU.登记键 = '';
+                取消防截断桥接登记_ACU('invalid_target_message');
                 return { action: 'blocked', reason: 'invalid_target_message' };
+            }
+            if (
+                前置裁决.phase === 'passed' &&
+                Number.isInteger(Number(前置裁决.targetMessageId)) &&
+                Number(前置裁决.targetMessageId) !== Number(目标消息元信息.消息索引)
+            ) {
+                logWarn_ACU(`[防截断流入] 已通过楼层与后置目标不一致，阻断更新: guard=${前置裁决.targetMessageId}, target=${目标消息元信息.消息索引}`);
+                generationGate_ACU.正文后置上下文 = null;
+                取消防截断桥接登记_ACU('target_message_mismatch');
+                return { action: 'blocked', reason: 'target_message_mismatch' };
             }
             if (生成结束后置状态_ACU.已处理消息键 === 消息键) {
                 logDebug_ACU(`[生成结束后置] 同一楼层已处理，跳过重复事件: event=${事件名}`);
@@ -4530,21 +4551,21 @@ $CONTENT
                 生成结束后置状态_ACU.已处理时间 = Date.now();
                 if (生成错误结果?.action !== 'blocked_retrying')
                     generationGate_ACU.正文后置上下文 = null;
+                if (生成错误结果?.action === 'blocked_retrying') {
+                    const 围栏 = 生成错误状态_ACU.本轮?.正文重试围栏;
+                    await 重新登记生成错误重试防截断_ACU(围栏?.userMessageId);
+                }
+                else {
+                    取消防截断桥接登记_ACU(生成错误结果?.reason || 'generation_error');
+                }
                 return 生成错误结果;
-            }
-            const 防截断结果 = await 处理防截断流入生成结束_ACU(目标消息元信息);
-            if (防截断结果?.action !== 'continue') {
-                logDebug_ACU(`[防截断流入] 已阻断后置更新: event=${事件名}, reason=${防截断结果?.reason || 'unknown'}`);
-                生成结束后置状态_ACU.已处理消息键 = 消息键;
-                生成结束后置状态_ACU.已处理时间 = Date.now();
-                if (防截断结果?.action !== 'blocked_retrying')
-                    generationGate_ACU.正文后置上下文 = null;
-                return 防截断结果;
             }
             生成结束后置状态_ACU.已处理消息键 = 消息键;
             生成结束后置状态_ACU.已处理时间 = Date.now();
             generationGate_ACU.正文后置上下文 = null;
             await handleNewMessageDebounced_ACU(事件名, { 目标消息元信息 });
+            await onLoopGenerationEnded_ACU();
+            取消防截断桥接登记_ACU('completed');
             return { action: 'continue', reason: 'post_update_dispatched' };
         })();
         生成结束后置状态_ACU.处理中 = 处理Promise;
@@ -4581,12 +4602,6 @@ $CONTENT
     const 防截断流入状态_ACU = {
         等待检测: false,
         自动重试中: false,
-        重试次数: 0,
-        已处理消息键: '',
-        已阻断消息键: '',
-        登记键: '',
-        计时器: 0,
-        最后登记时间: 0,
     };
     const 生成结束后置状态_ACU = {
         已处理消息键: '',
@@ -4594,15 +4609,8 @@ $CONTENT
         处理中: null,
     };
     function 重置生成结束运行时状态_ACU() {
-        if (防截断流入状态_ACU.计时器)
-            clearTimeout(防截断流入状态_ACU.计时器);
         防截断流入状态_ACU.等待检测 = false;
         防截断流入状态_ACU.自动重试中 = false;
-        防截断流入状态_ACU.重试次数 = 0;
-        防截断流入状态_ACU.已处理消息键 = '';
-        防截断流入状态_ACU.已阻断消息键 = '';
-        防截断流入状态_ACU.登记键 = '';
-        防截断流入状态_ACU.计时器 = 0;
         生成结束后置状态_ACU.已处理消息键 = '';
         生成结束后置状态_ACU.已处理时间 = 0;
     }
@@ -4683,9 +4691,6 @@ $CONTENT
             String(消息元信息.滑动编号 ?? ''),
             String(消息元信息.文本签名 ?? ''),
         ].join('|');
-    }
-    function 计算防截断流入可见字数_ACU(正文文本) {
-        return String(正文文本 || '').replace(/\s+/gu, '').length;
     }
     function 清理后端块后正文_ACU(正文文本 = '') {
         return String(正文文本 || '')
@@ -4773,38 +4778,112 @@ $CONTENT
         return String(当前元信息.滑动编号 ?? '') === String(目标消息元信息.滑动编号 ?? '')
             && String(当前元信息.文本签名 ?? '') === String(目标消息元信息.文本签名 ?? '');
     }
-    function 登记防截断流入等待检测_ACU(正文指令文本) {
+    function 获取防截断桥接接口_ACU() {
+        const 候选窗口 = [];
+        try {
+            候选窗口.push(window);
+        }
+        catch (错误) { }
+        try {
+            if (topLevelWindow_ACU && topLevelWindow_ACU !== window)
+                候选窗口.push(topLevelWindow_ACU);
+        }
+        catch (错误) { }
+        try {
+            if (window.parent && window.parent !== window)
+                候选窗口.push(window.parent);
+        }
+        catch (错误) { }
+        try {
+            if (window.top && window.top !== window)
+                候选窗口.push(window.top);
+        }
+        catch (错误) { }
+        for (const 候选 of 候选窗口) {
+            try {
+                const 接口 = 候选?.__LWCS_TRUNCATION_GUARD__;
+                if (接口 && typeof 接口.arm === 'function' && typeof 接口.getVerdict === 'function' && typeof 接口.cancel === 'function')
+                    return 接口;
+            }
+            catch (错误) { }
+        }
+        return null;
+    }
+    async function 等待防截断桥接接口_ACU() {
+        for (let 次数 = 0; 次数 < 15; 次数 += 1) {
+            const 接口 = 获取防截断桥接接口_ACU();
+            if (接口)
+                return 接口;
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return null;
+    }
+    function 读取防截断桥接裁决_ACU() {
+        try {
+            const 接口 = 获取防截断桥接接口_ACU();
+            const 裁决 = 接口?.getVerdict?.();
+            return 裁决 && typeof 裁决 === 'object' ? 裁决 : { phase: 'unavailable', reason: 'bridge_unavailable' };
+        }
+        catch (错误) {
+            logWarn_ACU('[防截断流入] 读取桥接裁决失败:', 错误);
+            return { phase: 'unavailable', reason: 'bridge_verdict_failed' };
+        }
+    }
+    function 取消防截断桥接登记_ACU(原因 = 'cancelled') {
+        try {
+            获取防截断桥接接口_ACU()?.cancel?.(原因);
+        }
+        catch (错误) {
+            logWarn_ACU('[防截断流入] 取消桥接登记失败:', 错误);
+        }
+    }
+    async function 重新登记生成错误重试防截断_ACU(用户消息编号) {
+        const 配置 = 读取防截断流入配置_ACU();
+        if (!配置.启用)
+            return false;
+        const 接口 = await 等待防截断桥接接口_ACU();
+        if (!接口)
+            throw new Error('truncation_guard_bridge_not_ready_for_error_retry');
+        const 结果 = await Promise.resolve(接口.arm({
+            registrationKey: [getActiveChatId_ACU(), 'generation_error_retry', Date.now()].join('|'),
+            chatId: getActiveChatId_ACU(),
+            userMessageId: Number.isInteger(用户消息编号) ? 用户消息编号 : generationGate_ACU.lastUserMessageId,
+            config: 配置,
+        }));
+        if (!结果 || 结果.ok !== true)
+            throw new Error(`truncation_guard_error_retry_arm_failed:${结果?.reason || 'unknown'}`);
+        return true;
+    }
+    async function 登记防截断流入等待检测_ACU(正文指令文本, 选项 = {}) {
         const 配置 = 读取防截断流入配置_ACU();
         const 原始文本 = String(正文指令文本 || '').trim();
         if (!配置.启用 || !原始文本) {
-            防截断流入状态_ACU.等待检测 = false;
-            防截断流入状态_ACU.自动重试中 = false;
-            防截断流入状态_ACU.登记键 = '';
+            取消防截断桥接登记_ACU('disabled');
             return false;
         }
-        const 登记键 = [
-            String(generationGate_ACU.lastUserMessageId ?? ''),
-            hashUserInput_ACU(原始文本),
-        ].join('|');
-        if (防截断流入状态_ACU.等待检测 && 防截断流入状态_ACU.登记键 === 登记键) {
-            防截断流入状态_ACU.最后登记时间 = Date.now();
-            return true;
+        const 接口 = await 等待防截断桥接接口_ACU();
+        if (!接口) {
+            showToastr_ACU('error', '防截断执行层未就绪，已停止本次正文生成。', '防截断流入');
+            throw new Error('truncation_guard_bridge_not_ready');
         }
-        if (!防截断流入状态_ACU.自动重试中)
-            防截断流入状态_ACU.重试次数 = 0;
-        防截断流入状态_ACU.等待检测 = true;
-        防截断流入状态_ACU.已处理消息键 = '';
-        防截断流入状态_ACU.已阻断消息键 = '';
-        防截断流入状态_ACU.登记键 = 登记键;
-        防截断流入状态_ACU.最后登记时间 = Date.now();
+        const 结果 = await Promise.resolve(接口.arm({
+            registrationKey: [getActiveChatId_ACU(), hashUserInput_ACU(原始文本)].join('|'),
+            chatId: getActiveChatId_ACU(),
+            userMessageId: Number.isInteger(选项?.userMessageId) ? 选项.userMessageId : null,
+            config: 配置,
+        }));
+        if (!结果 || 结果.ok !== true) {
+            showToastr_ACU('error', '防截断执行层登记失败，已停止本次正文生成。', '防截断流入');
+            throw new Error(`truncation_guard_arm_failed:${结果?.reason || 'unknown'}`);
+        }
         return true;
     }
     function 防截断流入后置更新应阻断_ACU(目标消息元信息 = null) {
         const 配置 = 读取防截断流入配置_ACU();
-        if (!配置.启用 || !防截断流入状态_ACU.已阻断消息键)
+        if (!配置.启用)
             return false;
-        const 消息键 = 构建防截断流入消息键_ACU(目标消息元信息 || 读取最新角色消息元信息_ACU());
-        return !!消息键 && 消息键 === 防截断流入状态_ACU.已阻断消息键;
+        const 裁决 = 读取防截断桥接裁决_ACU();
+        return ['armed', 'bound', 'retry_pending', 'retrying', 'blocked', 'exhausted'].includes(裁决.phase);
     }
     const 生成错误可重试状态码_ACU = new Set(['408', '429', '500', '502', '503', '504', '520', '522', '524']);
     const 生成错误不可重试状态码_ACU = new Set(['400', '401', '403']);
@@ -4830,9 +4909,14 @@ $CONTENT
         if (!options || typeof options !== 'object')
             return false;
         const 聊天数组 = getChatArray_ACU();
-        const 用户消息编号 = generationGate_ACU.lastUserMessageId;
+        const 候选用户消息编号 = generationGate_ACU.lastUserMessageId;
+        const 用户消息编号 = Number.isInteger(候选用户消息编号)
+            && 候选用户消息编号 === 聊天数组?.length - 1
+            && 聊天数组[候选用户消息编号]?.is_user
+            ? 候选用户消息编号
+            : null;
         const 上一角色消息 = 读取最新角色消息元信息_ACU();
-        if (!Array.isArray(聊天数组) || !Number.isInteger(用户消息编号) || !聊天数组[用户消息编号]?.is_user)
+        if (!Array.isArray(聊天数组))
             return false;
         const 围栏 = {
             chatId: getActiveChatId_ACU(),
@@ -4925,7 +5009,7 @@ $CONTENT
         };
         生成错误状态_ACU.已处理键 = '';
         生成错误状态_ACU.最近停止时间 = 0;
-        if (!是冻结重试 && !防截断流入状态_ACU.自动重试中)
+        if (!是原生重试 && !防截断流入状态_ACU.自动重试中)
             生成错误状态_ACU.重试次数 = 0;
     }
     function 标记生成错误停止_ACU() {
@@ -5012,16 +5096,6 @@ $CONTENT
         安排生成错误重试_ACU(配置, 错误类型);
         return { action: 'blocked_retrying', reason: 'generation_error_retrying' };
     }
-    async function 删除防截断流入截断楼层_ACU(消息元信息) {
-        const 聊天数组 = getChatArray_ACU();
-        const 消息索引 = Number(消息元信息?.消息索引 ?? -1);
-        if (!Array.isArray(聊天数组) || 消息索引 < 0 || 消息索引 !== 聊天数组.length - 1) {
-            logWarn_ACU('[防截断流入] 截断楼层不是当前最后一层，跳过自动删除。');
-            return false;
-        }
-        await deleteLastMessage_ACU();
-        return true;
-    }
     async function 触发防截断流入重新生成_ACU() {
         const 助手 = window.TavernHelper || topLevelWindow_ACU?.TavernHelper;
         const 围栏 = 生成错误状态_ACU.本轮?.正文重试围栏;
@@ -5044,74 +5118,6 @@ $CONTENT
             return true;
         }
         return false;
-    }
-    function 安排防截断流入重试_ACU(配置) {
-        if (防截断流入状态_ACU.计时器)
-            clearTimeout(防截断流入状态_ACU.计时器);
-        防截断流入状态_ACU.等待检测 = true;
-        防截断流入状态_ACU.自动重试中 = true;
-        防截断流入状态_ACU.已处理消息键 = '';
-        防截断流入状态_ACU.计时器 = setTimeout(async () => {
-            防截断流入状态_ACU.计时器 = 0;
-            try {
-                const 已触发 = await 触发防截断流入重新生成_ACU();
-                if (!已触发) {
-                    防截断流入状态_ACU.等待检测 = false;
-                    防截断流入状态_ACU.自动重试中 = false;
-                    showToastr_ACU('error', '重ROLL触发失败，已阻断数据库/MVU更新。', '防截断流入');
-                }
-            }
-            catch (错误) {
-                防截断流入状态_ACU.等待检测 = false;
-                防截断流入状态_ACU.自动重试中 = false;
-                logError_ACU('[防截断流入] 触发重ROLL失败:', 错误);
-                showToastr_ACU('error', '重ROLL触发失败，已阻断数据库/MVU更新。', '防截断流入');
-            }
-        }, Math.max(0, Number(配置.重试延迟毫秒) || 0));
-    }
-    async function 处理防截断流入生成结束_ACU(目标消息元信息 = null) {
-        const 配置 = 读取防截断流入配置_ACU();
-        if (!配置.启用)
-            return { action: 'continue' };
-        const 消息元信息 = 目标消息元信息 || 读取指定角色消息元信息_ACU(读取正文后置上下文_ACU() || generationGate_ACU.lastGeneration);
-        const 消息键 = 构建防截断流入消息键_ACU(消息元信息);
-        if (!防截断流入状态_ACU.等待检测) {
-            if (消息键 && 防截断流入状态_ACU.已阻断消息键 === 消息键)
-                return { action: 'blocked', reason: 'truncation_already_blocked' };
-            return { action: 'continue' };
-        }
-        if (!消息键)
-            return { action: 'continue' };
-        if (防截断流入状态_ACU.已处理消息键 === 消息键)
-            return { action: 'blocked', reason: 'truncation_duplicate_event' };
-        防截断流入状态_ACU.已处理消息键 = 消息键;
-        const 正文文本 = String(消息元信息.文本 || '');
-        const 可见字数 = 计算防截断流入可见字数_ACU(正文文本);
-        if (可见字数 >= 配置.字数下限) {
-            防截断流入状态_ACU.等待检测 = false;
-            防截断流入状态_ACU.自动重试中 = false;
-            防截断流入状态_ACU.重试次数 = 0;
-            防截断流入状态_ACU.已处理消息键 = '';
-            防截断流入状态_ACU.已阻断消息键 = '';
-            防截断流入状态_ACU.登记键 = '';
-            return { action: 'continue', reason: 'truncation_guard_length_passed' };
-        }
-        防截断流入状态_ACU.已阻断消息键 = 消息键;
-        if (配置.自动重试 && 防截断流入状态_ACU.重试次数 < 配置.自动重试次数) {
-            const 删除成功 = await 删除防截断流入截断楼层_ACU(消息元信息);
-            if (删除成功) {
-                防截断流入状态_ACU.重试次数 += 1;
-                showToastr_ACU('warning', `正文疑似截断，已阻断更新并重ROLL ${防截断流入状态_ACU.重试次数}/${配置.自动重试次数}。`, '防截断流入');
-                安排防截断流入重试_ACU(配置);
-                return { action: 'blocked_retrying', reason: 'truncation_retrying' };
-            }
-        }
-        防截断流入状态_ACU.等待检测 = false;
-        防截断流入状态_ACU.自动重试中 = false;
-        防截断流入状态_ACU.登记键 = '';
-        const 已耗尽 = 配置.自动重试 && 配置.自动重试次数 > 0 && 防截断流入状态_ACU.重试次数 >= 配置.自动重试次数;
-        showToastr_ACU('warning', 已耗尽 ? `正文低于字数下限 ${配置.字数下限}，已停止重试并阻断数据库/MVU更新。` : `正文低于字数下限 ${配置.字数下限}，已阻断数据库/MVU更新。`, '防截断流入');
-        return { action: 'blocked', reason: 'truncation_length_failed' };
     }
     function 打开防截断流入设置面板_ACU() {
         const 文档 = topLevelWindow_ACU?.document || document;
@@ -55587,7 +55593,7 @@ $CONTENT
             plotText: runtimePlotText || 正文生成指导,
             captureText: [过滤后用户输入文本, 过滤后最后角色消息文本].filter(Boolean).join('\n'),
         });
-        登记防截断流入等待检测_ACU(替换后正文生成指导);
+        await 登记防截断流入等待检测_ACU(替换后正文生成指导);
         if (typeof options?.prompt === 'string' && options.prompt.trim()) {
             return { target: 'prompt', value: 替换后正文生成指导, statData: 运行时数据 || null };
         }
@@ -55779,7 +55785,7 @@ $CONTENT
                 }
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
                 const finalMessageForGeneration = String(正文指令文本 || '').trim();
-                登记防截断流入等待检测_ACU(finalMessageForGeneration);
+                await 登记防截断流入等待检测_ACU(finalMessageForGeneration, { userMessageId: lastMessageIndex });
                 const 运行时数据 = await 准备正文生成运行时数据_ACU(messageToProcess, 完整规划文本, finalMessageForGeneration);
                 markPlotIntercept_ACU(messageToProcess);
                 markPlotIntercept_ACU(finalMessageForGeneration);
@@ -55869,7 +55875,7 @@ $CONTENT
                 }
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
                 const finalMessageForGeneration = String(正文指令文本 || '').trim();
-                登记防截断流入等待检测_ACU(finalMessageForGeneration);
+                await 登记防截断流入等待检测_ACU(finalMessageForGeneration);
                 const 运行时数据 = await 准备正文生成运行时数据_ACU(originalInputText, 完整规划文本, finalMessageForGeneration);
                 markPlotIntercept_ACU(originalInputText);
                 markPlotIntercept_ACU(finalMessageForGeneration);
@@ -56810,7 +56816,9 @@ $CONTENT
                             recordGenerationContext_ACU(type, params, dryRun);
                             登记生成错误开始_ACU(type, params, dryRun);
                         }
-                        catch (e) { }
+                        catch (错误) {
+                            logError_ACU('[生成错误重试] 生成开始登记失败:', 错误);
+                        }
                     });
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED) {
@@ -56824,16 +56832,8 @@ $CONTENT
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
                         调度生成结束后置更新_ACU('GENERATION_ENDED', message_id);
-                        // [剧情推进] 保存Plot到消息和循环检测
-                        // savePlotToLatestMessage_ACU(); // Moved to runOptimizationLogic_ACU
-                        void onLoopGenerationEnded_ACU().catch(错误 => {
-                            logError_ACU('[剧情推进] GENERATION_ENDED 循环检查失败:', 错误);
-                        });
                     });
                 }
-                SillyTavern_API_ACU.eventSource.on('js_generation_ended', (message_id) => {
-                    调度生成结束后置更新_ACU('js_generation_ended', message_id);
-                });
                 // [剧情推进] 拦截用户输入进行剧情规划
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS, async (type, params, dryRun) => {
