@@ -179,11 +179,6 @@
   let 引导承诺 = null;
   let 空闲预取已安排 = false;
   let 数据库模块后台加载已安排 = false;
-  let 加载追踪隐藏计时器 = 0;
-  let 加载追踪已手动关闭 = false;
-  const 加载追踪会话ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const 加载追踪面板ID = 'lwcs-script-load-tracker';
-  const 加载追踪样式ID = 'lwcs-script-load-tracker-style';
 
   Object.keys(模块注册表).forEach(模块名 => {
     模块状态表[模块名] = {
@@ -197,272 +192,29 @@
 
   宿主窗口.__LWCS_加载状态__ = 加载状态;
   宿主窗口.__LWCS_模块状态__ = 模块状态表;
-  宿主窗口.__LWCS_加载追踪会话__ = 加载追踪会话ID;
   try {
-    宿主文档.getElementById(加载追踪样式ID)?.remove();
+    宿主窗口.__LWCS_加载追踪器__?.开始新会话?.();
   } catch (错误) {}
 
-  function 转义加载追踪文本(值) {
-    return String(值 ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function 确保加载追踪样式() {
-    if (!宿主文档.head || 宿主文档.getElementById(加载追踪样式ID)) return;
-    const 样式节点 = 宿主文档.createElement('style');
-    样式节点.id = 加载追踪样式ID;
-    样式节点.textContent = `
-      #${加载追踪面板ID} {
-        position: fixed;
-        top: 14px;
-        right: 14px;
-        z-index: 2147483000;
-        width: min(320px, calc(100vw - 28px));
-        overflow: hidden;
-        border: 1px solid rgba(94, 216, 255, 0.28);
-        border-radius: 8px;
-        background: rgba(10, 17, 24, 0.96);
-        color: #eaf7fb;
-        box-shadow: 0 14px 38px rgba(0, 0, 0, 0.42);
-        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-        font-size: 12px;
-        line-height: 1.35;
-        backdrop-filter: blur(10px);
-        animation: lwcs-load-tracker-in 160ms ease-out;
-      }
-      #${加载追踪面板ID}.is-complete {
-        border-color: rgba(74, 222, 128, 0.34);
-      }
-      #${加载追踪面板ID}.has-error {
-        border-color: rgba(251, 113, 133, 0.48);
-      }
-      #${加载追踪面板ID} .lwcs-load-head {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 10px 8px;
-        border-bottom: 1px solid rgba(148, 190, 204, 0.14);
-      }
-      #${加载追踪面板ID} .lwcs-load-title {
-        display: grid;
-        gap: 2px;
-        min-width: 0;
-      }
-      #${加载追踪面板ID} .lwcs-load-title strong {
-        overflow: hidden;
-        color: #f4fbfd;
-        font-size: 13px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      #${加载追踪面板ID} .lwcs-load-title span {
-        color: #91acb6;
-        font-size: 10px;
-      }
-      #${加载追踪面板ID} .lwcs-load-close {
-        display: grid;
-        place-items: center;
-        width: 28px;
-        height: 28px;
-        padding: 0;
-        border: 0;
-        border-radius: 6px;
-        background: transparent;
-        color: #9db4bc;
-        font-size: 18px;
-        line-height: 1;
-        cursor: pointer;
-      }
-      #${加载追踪面板ID} .lwcs-load-close:hover,
-      #${加载追踪面板ID} .lwcs-load-close:focus-visible {
-        background: rgba(255, 255, 255, 0.08);
-        color: #ffffff;
-        outline: 1px solid rgba(94, 216, 255, 0.45);
-      }
-      #${加载追踪面板ID} .lwcs-load-progress {
-        height: 3px;
-        overflow: hidden;
-        background: rgba(148, 190, 204, 0.12);
-      }
-      #${加载追踪面板ID} .lwcs-load-progress i {
-        display: block;
-        height: 100%;
-        background: #4dd6ff;
-        box-shadow: 0 0 10px rgba(77, 214, 255, 0.48);
-        transition: width 180ms ease;
-      }
-      #${加载追踪面板ID}.is-complete .lwcs-load-progress i {
-        background: #4ade80;
-        box-shadow: 0 0 10px rgba(74, 222, 128, 0.42);
-      }
-      #${加载追踪面板ID} .lwcs-load-list {
-        display: grid;
-        max-height: min(310px, calc(100vh - 120px));
-        overflow-x: hidden;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        scrollbar-width: thin;
-      }
-      #${加载追踪面板ID} .lwcs-load-row {
-        display: grid;
-        grid-template-columns: 9px minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 8px;
-        min-height: 28px;
-        padding: 5px 10px;
-        border-bottom: 1px solid rgba(148, 190, 204, 0.08);
-      }
-      #${加载追踪面板ID} .lwcs-load-row:last-child {
-        border-bottom: 0;
-      }
-      #${加载追踪面板ID} .lwcs-load-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: #53656c;
-      }
-      #${加载追踪面板ID} .lwcs-load-name {
-        min-width: 0;
-        overflow: hidden;
-        color: #dcecf1;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      #${加载追踪面板ID} .lwcs-load-state {
-        color: #829ba5;
-        font-size: 10px;
-        white-space: nowrap;
-      }
-      #${加载追踪面板ID} .lwcs-load-row[data-state="loading"] .lwcs-load-dot {
-        background: #4dd6ff;
-        box-shadow: 0 0 8px rgba(77, 214, 255, 0.68);
-        animation: lwcs-load-dot-pulse 900ms ease-in-out infinite;
-      }
-      #${加载追踪面板ID} .lwcs-load-row[data-state="loaded"] .lwcs-load-dot {
-        background: #4ade80;
-      }
-      #${加载追踪面板ID} .lwcs-load-row[data-state="failed"] .lwcs-load-dot,
-      #${加载追踪面板ID} .lwcs-load-row[data-state="degraded"] .lwcs-load-dot {
-        background: #fb7185;
-        box-shadow: 0 0 8px rgba(251, 113, 133, 0.5);
-      }
-      #${加载追踪面板ID} .lwcs-load-row[data-state="failed"] .lwcs-load-state,
-      #${加载追踪面板ID} .lwcs-load-row[data-state="degraded"] .lwcs-load-state {
-        color: #fda4af;
-      }
-      @keyframes lwcs-load-tracker-in {
-        from { opacity: 0; transform: translateY(-8px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes lwcs-load-dot-pulse {
-        0%, 100% { opacity: 0.45; }
-        50% { opacity: 1; }
-      }
-      @media (max-width: 520px) {
-        #${加载追踪面板ID} {
-          top: 8px;
-          right: 8px;
-          width: calc(100vw - 16px);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        #${加载追踪面板ID},
-        #${加载追踪面板ID} .lwcs-load-dot,
-        #${加载追踪面板ID} .lwcs-load-progress i {
-          animation: none;
-          transition: none;
-        }
-      }
-    `;
-    宿主文档.head.appendChild(样式节点);
-  }
-
   function 刷新加载追踪面板() {
-    if (
-      加载追踪已手动关闭
-      || 宿主窗口.__LWCS_加载追踪会话__ !== 加载追踪会话ID
-      || !宿主文档.body
-    ) {
-      return;
-    }
-    确保加载追踪样式();
-    let 面板 = 宿主文档.getElementById(加载追踪面板ID);
-    if (!面板 || 面板.dataset.session !== 加载追踪会话ID) {
-      if (面板) 面板.remove();
-      面板 = 宿主文档.createElement('section');
-      面板.id = 加载追踪面板ID;
-      面板.dataset.session = 加载追踪会话ID;
-      面板.setAttribute('role', 'status');
-      面板.setAttribute('aria-live', 'polite');
-      宿主文档.body.appendChild(面板);
-    }
-
-    const 状态文本表 = {
-      pending: '等待',
-      loading: '加载中',
-      loaded: '完成',
-      degraded: '降级',
-      failed: '失败',
-    };
-    const 模块列表 = 当前启动追踪模块顺序.map(模块名 => ({
-      模块名,
-      状态: 模块状态表[模块名] || { 状态: 'pending', 错误: '' },
-    }));
-    const 完成数 = 模块列表.filter(项目 => 项目.状态.状态 === 'loaded').length;
-    const 异常列表 = 模块列表.filter(项目 => ['failed', 'degraded'].includes(项目.状态.状态));
-    const 全部完成 = 完成数 === 模块列表.length && 异常列表.length === 0 && 加载状态.阶段 === 加载阶段.完成;
-    const 进度 = 模块列表.length ? Math.round((完成数 / 模块列表.length) * 100) : 100;
-    const 副标题 = 异常列表.length
-      ? `${异常列表.length} 项异常 · ${加载状态.阶段}`
-      : `${完成数}/${模块列表.length} · ${加载状态.阶段}`;
-    面板.className = `${全部完成 ? 'is-complete' : ''}${异常列表.length ? ' has-error' : ''}`.trim();
-    面板.innerHTML = `
-      <div class="lwcs-load-head">
-        <div class="lwcs-load-title">
-          <strong>${全部完成 ? '脚本加载完成' : 异常列表.length ? '脚本加载异常' : '脚本加载中'}</strong>
-          <span>${转义加载追踪文本(副标题)}</span>
-        </div>
-        <button type="button" class="lwcs-load-close" title="关闭加载追踪" aria-label="关闭加载追踪">×</button>
-      </div>
-      <div class="lwcs-load-progress" aria-hidden="true"><i style="width:${进度}%"></i></div>
-      <div class="lwcs-load-list">
-        ${模块列表.map(({ 模块名, 状态 }) => {
-          const 当前状态 = 状态.状态 || 'pending';
-          const 错误提示 = 状态.错误 ? ` title="${转义加载追踪文本(状态.错误)}"` : '';
-          return `
-            <div class="lwcs-load-row" data-state="${转义加载追踪文本(当前状态)}"${错误提示}>
-              <i class="lwcs-load-dot" aria-hidden="true"></i>
-              <span class="lwcs-load-name">${转义加载追踪文本(模块名)}</span>
-              <span class="lwcs-load-state">${转义加载追踪文本(状态文本表[当前状态] || 当前状态)}</span>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-    面板.querySelector('.lwcs-load-close')?.addEventListener('click', () => {
-      加载追踪已手动关闭 = true;
-      if (加载追踪隐藏计时器) clearTimeout(加载追踪隐藏计时器);
-      面板.remove();
-    }, { once: true });
-
-    if (全部完成) {
-      if (!加载追踪隐藏计时器) {
-        加载追踪隐藏计时器 = setTimeout(() => {
-          if (宿主窗口.__LWCS_加载追踪会话__ !== 加载追踪会话ID) return;
-          const 当前面板 = 宿主文档.getElementById(加载追踪面板ID);
-          if (当前面板?.dataset.session === 加载追踪会话ID) 当前面板.remove();
-          加载追踪隐藏计时器 = 0;
-        }, 900);
-      }
-    } else if (加载追踪隐藏计时器) {
-      clearTimeout(加载追踪隐藏计时器);
-      加载追踪隐藏计时器 = 0;
-    }
+    const 追踪器 = 宿主窗口.__LWCS_加载追踪器__;
+    if (!追踪器 || typeof 追踪器.更新模块快照 !== 'function') return;
+    const 模块列表 = 当前启动追踪模块顺序.map(模块名 => {
+      const 状态 = 模块状态表[模块名] || {};
+      return {
+        名称: 模块名,
+        状态: 状态.状态 || 'pending',
+        错误: 状态.错误 || '',
+      };
+    });
+    追踪器.更新模块快照({
+      阶段: 加载状态.阶段,
+      模块列表,
+      全部完成: 加载状态.阶段 === 加载阶段.完成
+        && 模块列表.length > 0
+        && 模块列表.every(项目 => 项目.状态 === 'loaded'),
+      最近错误: 加载状态.最近错误,
+    });
   }
 
   function 睡眠(毫秒) {

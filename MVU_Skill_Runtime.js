@@ -22193,6 +22193,143 @@ function 注册技能正式结构补齐接口_V1() {
 
 注册技能正式结构补齐接口_V1();
 
+function 创建战斗事件纯契约_V1() {
+  const operations = Object.freeze([
+    'HP_DELTA',
+    'SHIELD_DELTA',
+    'RESOURCE_PAY',
+    'RESOURCE_RESTORE',
+    'RESOURCE_REDUCE',
+    'RESOURCE_LOCK',
+    'RESOURCE_UNLOCK',
+    'RESOURCE_REFUND',
+    'NATURAL_RECOVERY',
+    'SUSTAIN_COST',
+    'STATE_APPLY',
+    'STATE_REFRESH',
+    'STATE_REPLACE',
+    'STATE_REMOVE',
+    'DOT_TICK',
+    'HOT_TICK',
+    'SUMMON_CREATE',
+    'SUMMON_WINDOW',
+    'SUMMON_EXPIRE',
+    'HOST_INVALID',
+    'OPPORTUNITY_CANCEL',
+    'OPPORTUNITY_GRANT',
+  ]);
+  const operationSet = new Set(operations);
+  const phasePriority = Object.freeze({
+    RESOURCE_RESTORE: 10,
+    NATURAL_RECOVERY: 10,
+    RESOURCE_REFUND: 15,
+    RESOURCE_UNLOCK: 20,
+    RESOURCE_REDUCE: 30,
+    RESOURCE_LOCK: 35,
+    RESOURCE_PAY: 40,
+    SUSTAIN_COST: 45,
+    HP_DELTA: 50,
+    SHIELD_DELTA: 50,
+    STATE_REMOVE: 55,
+    STATE_REPLACE: 56,
+    STATE_REFRESH: 57,
+    STATE_APPLY: 58,
+    DOT_TICK: 60,
+    HOT_TICK: 60,
+    SUMMON_CREATE: 65,
+    HOST_INVALID: 66,
+    SUMMON_WINDOW: 70,
+    OPPORTUNITY_CANCEL: 75,
+    OPPORTUNITY_GRANT: 80,
+    SUMMON_EXPIRE: 90,
+  });
+  const compareBattleEventPosition = (left = {}, right = {}) =>
+    Number(left?.round || 0) - Number(right?.round || 0) ||
+    Number(left?.opportunitySequence || 0) - Number(right?.opportunitySequence || 0) ||
+    Number(left?.actionSequence || 0) - Number(right?.actionSequence || 0) ||
+    Number(left?.phasePriority || 0) - Number(right?.phasePriority || 0) ||
+    Number(left?.effectSequence || 0) - Number(right?.effectSequence || 0) ||
+    String(left?.eventId || '').localeCompare(String(right?.eventId || ''));
+  const validateOutcomeGroup = group => {
+    if (!group || typeof group !== 'object') {
+      throw new TypeError('BATTLE_OUTCOME_GROUP_INVALID');
+    }
+    if (String(group.schemaVersion || '') !== '8.3-outcome-group-1') {
+      throw new Error('BATTLE_OUTCOME_GROUP_SCHEMA_MISMATCH');
+    }
+    const groupKey = String(group.groupKey || '').trim();
+    if (!groupKey) throw new Error('BATTLE_OUTCOME_GROUP_KEY_MISSING');
+    const outcomes = Array.isArray(group.outcomes) ? group.outcomes : [];
+    if (!outcomes.length) throw new Error(`BATTLE_OUTCOME_GROUP_EMPTY:${groupKey}`);
+    const outcomeIds = new Set();
+    let probabilityTotal = 0;
+    outcomes.forEach(outcome => {
+      const outcomeId = String(outcome?.outcomeId || '').trim();
+      const probability = Number(outcome?.probability);
+      if (!outcomeId || outcomeIds.has(outcomeId)) {
+        throw new Error(`BATTLE_OUTCOME_ID_INVALID:${groupKey}:${outcomeId || 'missing'}`);
+      }
+      if (!Number.isFinite(probability) || probability < 0 || probability > 1) {
+        throw new Error(`BATTLE_OUTCOME_PROBABILITY_INVALID:${groupKey}:${outcomeId}`);
+      }
+      outcomeIds.add(outcomeId);
+      probabilityTotal += probability;
+    });
+    if (Math.abs(probabilityTotal - 1) > 1e-9) {
+      throw new Error(`BATTLE_OUTCOME_PROBABILITY_SUM_INVALID:${groupKey}:${probabilityTotal}`);
+    }
+    return true;
+  };
+  const validateProjectedEvent = event => {
+    if (!event || typeof event !== 'object') {
+      throw new TypeError('BATTLE_PROJECTED_EVENT_INVALID');
+    }
+    if (String(event.schemaVersion || '') !== '8.3-projected-event-1') {
+      throw new Error('BATTLE_PROJECTED_EVENT_SCHEMA_MISMATCH');
+    }
+    const eventId = String(event.eventId || '').trim();
+    const operation = String(event.operation || '').trim().toUpperCase();
+    if (!eventId) throw new Error('BATTLE_PROJECTED_EVENT_ID_MISSING');
+    if (!operationSet.has(operation)) {
+      throw new Error(`BATTLE_PROJECTED_EVENT_OPERATION_INVALID:${eventId}:${operation || 'missing'}`);
+    }
+    for (const key of [
+      'round',
+      'opportunitySequence',
+      'actionSequence',
+      'phasePriority',
+      'effectSequence',
+    ]) {
+      const value = Number(event[key]);
+      if (!Number.isFinite(value) || value < 0) {
+        throw new Error(`BATTLE_PROJECTED_EVENT_POSITION_INVALID:${eventId}:${key}`);
+      }
+    }
+    return true;
+  };
+  return Object.freeze({
+    schemaVersion: '8.3-battle-event-contract-1',
+    operations,
+    phasePriority,
+    compareBattleEventPosition,
+    validateOutcomeGroup,
+    validateProjectedEvent,
+  });
+}
+
+function 注册战斗事件纯契约_V1() {
+  const contract = 创建战斗事件纯契约_V1();
+  const register = target => {
+    if (!target || typeof target !== 'object') return;
+    target.__LWCS_BATTLE_EVENT_CONTRACT__ = contract;
+  };
+  register(globalThis);
+  try { if (globalThis.parent && globalThis.parent !== globalThis) register(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) register(globalThis.top); } catch (错误) {}
+}
+
+注册战斗事件纯契约_V1();
+
 
 globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1; } catch (错误) {}

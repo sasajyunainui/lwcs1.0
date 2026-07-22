@@ -4367,23 +4367,6 @@ class BattleUIComponent {
 
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
 
-    function buildBattlePackage(input = {}) {
-      const battleReport = root.__LWCS_BATTLE_REPORT__;
-      if (!battleReport || typeof battleReport.build !== 'function' || typeof battleReport.auditProjection !== 'function') {
-        throw new Error('battle_report_module_missing');
-      }
-      const source = cloneBattleValue(input);
-      const visibilityMode = String(source?.visibilityMode || 'PLAYER').trim().toUpperCase() || 'PLAYER';
-      delete source.visibilityMode;
-      const draft = typeof BATTLE_RUNTIME.executeBattleDraftR8 === 'function'
-        ? BATTLE_RUNTIME.executeBattleDraftR8(source)
-        : BATTLE_RUNTIME.executeBattleDraft(source);
-      const reportDto = battleReport.build({ draft, visibilityMode });
-      const reportAudit = battleReport.auditProjection(reportDto);
-      const sealedPackage = BATTLE_RUNTIME.sealBattleResult({ draft, reportAudit });
-      return BATTLE_RUNTIME.verifySealedBattlePackage(sealedPackage);
-    }
-
     let formalBattleTransactionInFlight = false;
 
     async function onPlayerAttack(playerInput, options = {}) {
@@ -4398,29 +4381,22 @@ class BattleUIComponent {
         const maxRounds = battleMode === 'multi_round'
           ? Math.max(1, Math.min(20, Math.floor(Number(options.autoContinueConfig?.maxRounds || sourceCombatData?.胜负条件?.maxRounds || 20))))
           : 1;
-        const transactionCombatData = cloneBattleValue(sourceCombatData);
-        const runtime = BATTLE_RUNTIME.ensureCombatRuntime(transactionCombatData);
-        const seed = Math.max(1, Math.floor(Number(runtime.decisionSeed || 1)));
-        const sealedPackage = buildBattlePackage({
-          caseId: dryRun ? 'battle-ui-preview' : 'battle-ui-formal',
-          seed,
-          combatData: transactionCombatData,
+        const executeTransaction = root.BattleUIBridge?.executeBattleTransaction;
+        if (typeof executeTransaction !== 'function') throw new Error('battle_transaction_unavailable');
+        const transactionResult = await executeTransaction(cloneBattleValue(sourceCombatData), {
           mode: battleMode,
           rounds: maxRounds,
-          selectedAction: options.actionDeclaration || null,
-          battleIntent: {
-            mode: String(options.intentMode || transactionCombatData.战斗意图 || '').trim(),
-            objectives: transactionCombatData.胜负条件 || {},
-          },
-          settings: { providerId: 'r8' },
+          actionDeclaration: options.actionDeclaration || null,
+          intentMode: String(options.intentMode || sourceCombatData.战斗意图 || '').trim(),
+          executionMode: 'manual',
+          dryRun,
+          commit: !dryRun,
         });
-        const commitReceipt = dryRun
-          ? null
-          : await root.BattleUIBridge?.commitBattlePackage?.(sealedPackage);
+        const commitReceipt = transactionResult?.commitReceipt || null;
         if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');
-        const reportDto = sealedPackage.reportDto;
+        const reportDto = transactionResult.reportDto;
         const output = {
-          ...sealedPackage,
+          ...transactionResult,
           preview: dryRun,
           committed: !dryRun,
           intentText: String(playerInput || '').trim(),
@@ -4429,19 +4405,19 @@ class BattleUIComponent {
           roundsExecuted: Number(reportDto?.actualRoundCount || 0),
           reportDto,
           finalBattleReport: reportDto?.finalSummary || null,
-          aiSummaryInput: sealedPackage.aiSummaryInput,
+          aiSummaryInput: transactionResult.aiSummaryInput,
           llmBattleSummary: String(reportDto?.finalSummary?.text || ''),
           commitReceipt,
         };
-        if (!dryRun && sealedPackage?.aiSummaryInput) {
+        if (!dryRun && transactionResult?.aiSummaryInput) {
           const settlementContext = registerBattleSettlementContext({
             id: `battle-${Date.now()}`,
-            结构化摘要: JSON.stringify(sealedPackage.aiSummaryInput),
+            结构化摘要: JSON.stringify(transactionResult.aiSummaryInput),
             裁断卷宗: JSON.stringify(reportDto?.finalSummary || {}),
             来源: 'BattleReport',
           });
           output.battleSettlementContext = settlementContext;
-          sendToAI(`<battle_structured_summary>\n${JSON.stringify(sealedPackage.aiSummaryInput)}\n</battle_structured_summary>`, '', {
+          sendToAI(`<battle_structured_summary>\n${JSON.stringify(transactionResult.aiSummaryInput)}\n</battle_structured_summary>`, '', {
             mvuUpdate: commitReceipt,
             requestKind: 'battle_settlement_plot',
           });
@@ -4454,9 +4430,6 @@ class BattleUIComponent {
       }
 
       root.BattleUIBridge = Object.assign(root.BattleUIBridge || {}, {
-        __buildBattlePackageImpl(input = {}) {
-          return buildBattlePackage(input);
-        },
         __executePlayerBattleIntentImpl(playerInput, options = {}) {
           return onPlayerAttack(String(playerInput || ''), options);
         },

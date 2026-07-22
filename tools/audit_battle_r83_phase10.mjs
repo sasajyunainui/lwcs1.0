@@ -50,6 +50,44 @@ const report = sandbox.__LWCS_BATTLE_REPORT__;
 const checks = [];
 const add = (checkId, passed, detail = {}) => checks.push({ checkId, passed: passed === true, ...detail });
 
+function firstDifference(left, right, pathParts = []) {
+  if (Object.is(left, right)) return null;
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== 'object' ||
+    typeof right !== 'object'
+  ) {
+    return {
+      path: pathParts.join('.'),
+      left,
+      right,
+    };
+  }
+  if (Array.isArray(left) !== Array.isArray(right)) {
+    return {
+      path: pathParts.join('.'),
+      leftType: Array.isArray(left) ? 'array' : typeof left,
+      rightType: Array.isArray(right) ? 'array' : typeof right,
+    };
+  }
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  const allKeys = [...new Set([...leftKeys, ...rightKeys])].sort();
+  for (const key of allKeys) {
+    if (!Object.hasOwn(left, key) || !Object.hasOwn(right, key)) {
+      return {
+        path: [...pathParts, key].join('.'),
+        leftPresent: Object.hasOwn(left, key),
+        rightPresent: Object.hasOwn(right, key),
+      };
+    }
+    const difference = firstDifference(left[key], right[key], [...pathParts, key]);
+    if (difference) return difference;
+  }
+  return null;
+}
+
 function unit(id, side, options = {}) {
   const skill = {
     id: `${id}:skill`,
@@ -173,7 +211,18 @@ add(
 add(
   'decision:local-cache-matches-full-recompute',
   JSON.stringify(draftHashes) === JSON.stringify(fullRecomputeHashes),
-  { draftHashes, fullRecomputeHashes },
+  {
+    draftHashes,
+    fullRecomputeHashes,
+    firstDecisionAuditDifference: firstDifference(
+      draft.decisionAudit,
+      fullRecomputeDraft.decisionAudit,
+      ['decisionAudit'],
+    ),
+    draftDecision2InvalidationAudit: draft.decisionAudit?.[2]?.routeCacheMetrics?.invalidationAudit,
+    fullRecomputeDecision2InvalidationAudit:
+      fullRecomputeDraft.decisionAudit?.[2]?.routeCacheMetrics?.invalidationAudit,
+  },
 );
 
 add(
@@ -370,10 +419,19 @@ add(
   'decision:future-natural-descriptors-preserve-resource-continuity',
   !!supportCandidate &&
     supportRuntimeSnapshot.scheduledEvents.filter(event =>
-    event.eventType === 'NEXT_ROUND_NATURAL_ACTION' &&
+    event.eventType === 'FUTURE_NATURAL_ACTION' &&
     event.expectedGrantType === 'NATURAL_ACTION'
   ).length === 4 &&
-    supportResourceDeltas.some(delta => delta.targetId === 'support' && delta.healthTrajectoryDeltaPP < 0),
+    supportResourceDeltas.some(delta =>
+      delta.targetId === 'support' &&
+      delta.windowId === 'ACTION_COST' &&
+      delta.healthTrajectoryDeltaPP < 0 &&
+      Number(delta.evidence?.before || 0) === 100 &&
+      Number(delta.evidence?.next || 0) === 20
+    ) &&
+    supportRuntimeSnapshot.scheduledEvents.every(event =>
+      String(event?.descriptorId || '').startsWith('future-natural:2:')
+    ),
   {
     scheduledEvents: supportRuntimeSnapshot.scheduledEvents,
     resourceDeltas: supportResourceDeltas,
@@ -416,8 +474,8 @@ const bridgeSource = fs.readFileSync(path.join(repoRoot, 'mvu_logic_bridge.js'),
 const onPlayerAttack = uiSource.match(/function onPlayerAttack\(playerInput, options = \{\}\) \{[\s\S]*?\n      \}/)?.[0] || '';
 add(
   'ui:formal-path-uses-package',
-  /buildBattlePackage|executeBattleTransaction/.test(onPlayerAttack) &&
-    /commitBattlePackage/.test(onPlayerAttack) &&
+  /executeBattleTransaction/.test(onPlayerAttack) &&
+    !/buildBattlePackage|commitBattlePackage/.test(onPlayerAttack) &&
     !/runBattleCase|persistCombatData|buildFinalSummary|buildAiNarrativeSummary/.test(onPlayerAttack),
 );
 add(
@@ -425,13 +483,25 @@ add(
   /formalBattleTransactionInFlight/.test(onPlayerAttack) &&
     /cloneBattleValue\(sourceCombatData\)/.test(onPlayerAttack) &&
     !/ensureCombatRuntime\(sourceCombatData\)/.test(onPlayerAttack) &&
-    onPlayerAttack.indexOf('commitBattlePackage') >= 0 &&
-    onPlayerAttack.indexOf('sendToAI') > onPlayerAttack.indexOf('commitBattlePackage'),
+    /commitReceipt\?\.committed/.test(onPlayerAttack) &&
+    onPlayerAttack.indexOf('sendToAI') > onPlayerAttack.indexOf('commitReceipt'),
 );
 add(
   'ui:preview-never-commits',
   /dryRun/.test(onPlayerAttack) &&
-    /commitBattlePackage/.test(onPlayerAttack),
+    /commit: !dryRun/.test(onPlayerAttack) &&
+    /if \(!dryRun && transactionResult\?\.aiSummaryInput\)/.test(onPlayerAttack),
+);
+add(
+  'bridge:formal-transaction-owns-draft-report-seal-commit',
+  /function 构建战斗提交包\(/.test(bridgeSource) &&
+    /function 提交战斗包\(/.test(bridgeSource) &&
+    /const sealedPackage = 构建战斗提交包\(transactionInput\)/.test(bridgeSource) &&
+    /const commitReceipt = await 提交战斗包\(sealedPackage\)/.test(bridgeSource) &&
+    /delete 正式战斗桥接接口\.buildBattlePackage/.test(bridgeSource) &&
+    /delete 正式战斗桥接接口\.commitBattlePackage/.test(bridgeSource) &&
+    !/buildBattlePackage\(input/.test(bridgeSource) &&
+    !/commitBattlePackage\(sealedPackage/.test(bridgeSource),
 );
 const reportDtoRenderer = uiSource.match(/function 渲染ReportDto记录视图\(reportDto = \{\}, activeView = 'report'\) \{[\s\S]*?\n        \}/)?.[0] || '';
 const recordPanel = uiSource.match(/function 渲染战斗记录面板\(\) \{[\s\S]*?\n        \}/)?.[0] || '';

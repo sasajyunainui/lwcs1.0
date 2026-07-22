@@ -247,6 +247,21 @@ const deepFrozen = value => {
   return Object.isFrozen(value) && Object.values(value).every(deepFrozen);
 };
 
+const stripDiagnosticFields = value => {
+  if (Array.isArray(value)) return value.map(stripDiagnosticFields);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => ![
+        'timing',
+        'routeCacheMetrics',
+        'candidateEnvelopeMetrics',
+        'evaluationSessionObservation',
+      ].includes(key))
+      .map(([key, child]) => [key, stripDiagnosticFields(child)]),
+  );
+};
+
 const equivalence = [];
 for (const scenario of scenarios) {
   for (const providerId of ['legacy-baseline', 'r74-next-baseline']) {
@@ -340,18 +355,149 @@ try {
 }
 addCheck(
   'provider-r8:no-legacy-fallback',
-  implementationPhase >= 7
-    ? r8PhaseCode === '' &&
-      r8PhaseResult?.decisionAudit?.decisionEngine === 'R8' &&
-      phase1Request.frozenCandidates.some(candidate =>
-        candidate.candidateId === r8PhaseResult?.selectedCandidateId
-      )
-    : r8PhaseCode === 'R8_PROVIDER_NOT_IMPLEMENTED_PHASE_1:r8',
+  r8PhaseCode === '' &&
+    r8PhaseResult?.decisionAudit?.decisionEngine === 'R8' &&
+    phase1Request.frozenCandidates.some(candidate =>
+      candidate.candidateId === r8PhaseResult?.selectedCandidateId
+    ),
   {
     implementationPhase,
     r8PhaseCode,
     selectedCandidateId: r8PhaseResult?.selectedCandidateId || '',
     decisionEngine: r8PhaseResult?.decisionAudit?.decisionEngine || '',
+  },
+);
+
+const sessionWorldHashBefore = preview.stableHash(scenarios[0].world);
+const session = decision.createEvaluationSession({
+  objectiveHash: preview.stableHash(scenarios[0].world.胜负条件),
+  visibleWorldRevision: `visible:${sessionWorldHashBefore}`,
+  beliefRevision: 'belief:phase1',
+  opportunityRevision: 'opportunity:phase1',
+  resourceTimelineRevision: 'resource:phase1',
+  scheduleRevision: 'schedule:phase1',
+});
+const factDelta = decision.advanceEvaluationSession(session, {
+  sequence: 1,
+  sourceEventIds: ['phase1:event:1'],
+  changedFactKeys: ['unit:actor:hp'],
+  opportunityChanges: [],
+  resourceTimelineChanges: [],
+  scheduleChanges: [],
+  visibleBeliefChanges: [],
+  terminalReached: false,
+});
+const previewMetricsBeforeSessionRequest = preview.readMetrics();
+const requestWithSession = decision.prepareDecisionRequest({
+  session,
+  worldSnapshot: scenarios[0].world,
+  actorId: scenarios[0].actorId,
+  objectiveContract: scenarios[0].world.胜负条件,
+  actionOpportunity: scenarios[0].opportunity,
+  seed: 'phase1-session-request',
+});
+const previewMetricsAfterSessionRequest = preview.readMetrics();
+const requestWithoutSession = decision.prepareDecisionRequest({
+  worldSnapshot: scenarios[0].world,
+  actorId: scenarios[0].actorId,
+  objectiveContract: scenarios[0].world.胜负条件,
+  actionOpportunity: scenarios[0].opportunity,
+  seed: 'phase1-session-request',
+});
+const sessionMetrics = decision.readEvaluationSessionMetrics(session);
+const sessionRequestRecord = sessionMetrics.requestRecords.at(-1);
+addCheck(
+  'evaluation-session:opaque-nonsemantic-request',
+  Object.isFrozen(session) &&
+    Object.keys(session).sort().join(',') === 'schemaVersion,sessionId' &&
+    !Object.hasOwn(requestWithSession, 'session') &&
+    requestWithSession.requestHash === requestWithoutSession.requestHash &&
+    preview.stableHash(requestWithSession.frozenCandidates) ===
+      preview.stableHash(requestWithoutSession.frozenCandidates) &&
+    preview.stableHash(scenarios[0].world) === sessionWorldHashBefore,
+  {
+    sessionId: session.sessionId,
+    requestHash: requestWithSession.requestHash,
+    candidateCount: requestWithSession.frozenCandidates.length,
+  },
+);
+addCheck(
+  'evaluation-session:fact-delta-and-actual-work',
+  factDelta.schemaVersion === 'FactDeltaBatchV1' &&
+    factDelta.changedFactKeys.includes('unit:actor:hp') &&
+    sessionMetrics.metrics.factDeltaCount === 1 &&
+    sessionMetrics.metrics.requestCount === 1 &&
+    sessionRequestRecord?.actualWork?.previewCalls ===
+      (
+        Number(previewMetricsAfterSessionRequest.previewCalls || 0) -
+        Number(previewMetricsBeforeSessionRequest.previewCalls || 0)
+      ) &&
+    sessionMetrics.storeSizes.operationGraphStore === 0 &&
+    sessionMetrics.storeSizes.fullRoutesByUnit === 0,
+  {
+    metrics: sessionMetrics.metrics,
+    actualWork: sessionRequestRecord?.actualWork || {},
+    storeSizes: sessionMetrics.storeSizes,
+  },
+);
+const disposedSession = decision.disposeEvaluationSession(session);
+let disposedReadCode = '';
+try {
+  decision.readEvaluationSessionMetrics(session);
+} catch (error) {
+  disposedReadCode = String(error?.message || error);
+}
+addCheck(
+  'evaluation-session:dispose',
+  disposedSession.status === 'DISPOSED' &&
+    disposedReadCode === 'DECISION_EVALUATION_SESSION_INVALID',
+  { disposedReadCode },
+);
+
+const structuredInput = {
+  caseId: 'phase1-structured-equivalence',
+  seed: 831002,
+  rounds: 1,
+  combatData: scenarios[0].world,
+  objectiveContract: scenarios[0].world.胜负条件,
+  settings: {
+    providerId: 'r8',
+  },
+};
+const structuredWithSession = runtime.runDecisionCase(structuredInput);
+const structuredWithoutSession = runtime.runDecisionCase({
+  ...structuredInput,
+  settings: {
+    ...structuredInput.settings,
+    disableEvaluationSession: true,
+  },
+});
+const structuredHashes = result => ({
+  decision: runtime.hashBattleValue(
+    stripDiagnosticFields(result.decisions || []),
+  ),
+  ledger: runtime.hashBattleValue(result.ledger || []),
+  terminal: runtime.hashBattleValue(result.terminal || null),
+  finalSnapshot: runtime.hashBattleValue(result.finalSnapshot || null),
+});
+const withSessionHashes = structuredHashes(structuredWithSession);
+const withoutSessionHashes = structuredHashes(structuredWithoutSession);
+addCheck(
+  'evaluation-session:runtime-semantic-equivalence',
+  preview.stableHash(withSessionHashes) ===
+    preview.stableHash(withoutSessionHashes) &&
+    structuredWithSession.evaluationSessionMetrics?.metrics?.requestCount > 0 &&
+    structuredWithoutSession.evaluationSessionMetrics === null &&
+    structuredWithSession.decisionPerformanceDiagnostics.every(entry =>
+      entry?.evaluationSessionObservation?.request?.requestHash
+    ),
+  {
+    withSessionHashes,
+    withoutSessionHashes,
+    requestCount:
+      structuredWithSession.evaluationSessionMetrics?.metrics?.requestCount || 0,
+    factDeltaCount:
+      structuredWithSession.evaluationSessionMetrics?.metrics?.factDeltaCount || 0,
   },
 );
 
@@ -388,6 +534,11 @@ addCheck(
 addCheck(
   'draft-r8:input-immutable',
   runtime.hashBattleValue(draftInput) === draftInputHash,
+);
+addCheck(
+  'draft-r8:no-session-persistence',
+  !JSON.stringify(draft).includes('evaluationSession') &&
+    !JSON.stringify(draft).includes('queue-evaluation:'),
 );
 
 const decisionSource = fs.readFileSync(path.join(repoRoot, 'BattleDecision_Module.js'), 'utf8');

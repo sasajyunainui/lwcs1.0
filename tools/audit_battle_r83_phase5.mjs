@@ -52,6 +52,38 @@ const addCheck = (checkId, passed, detail = {}) => {
   checks.push({ checkId, passed: passed === true, ...detail });
 };
 
+function firstStructuralDifference(left, right, currentPath = '$') {
+  if (Object.is(left, right)) return null;
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== 'object' ||
+    typeof right !== 'object'
+  ) {
+    return { path: currentPath, left, right };
+  }
+  if (Array.isArray(left) !== Array.isArray(right)) {
+    return { path: currentPath, left, right };
+  }
+  const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort();
+  for (const key of keys) {
+    if (!Object.hasOwn(left, key) || !Object.hasOwn(right, key)) {
+      return {
+        path: `${currentPath}.${key}`,
+        left: left[key],
+        right: right[key],
+      };
+    }
+    const difference = firstStructuralDifference(
+      left[key],
+      right[key],
+      `${currentPath}.${key}`,
+    );
+    if (difference) return difference;
+  }
+  return null;
+}
+
 function skill(id, power, cost = 0) {
   return {
     id,
@@ -153,9 +185,37 @@ const request = decision.prepareDecisionRequest({
   objectiveContract: source.胜负条件,
   actionOpportunity: {
     opportunityId: 'natural:actor:1',
+    ownerId: 'actor',
     role: 'ACTIVE',
     grantType: 'NATURAL_ACTION',
     sequence: 1,
+  },
+  runtimeSnapshot: {
+    opportunitySnapshot: [
+      {
+        opportunityId: 'natural:actor:1',
+        ownerId: 'actor',
+        grantType: 'NATURAL_ACTION',
+        status: 'EXECUTING',
+        createdAtSequence: 1,
+      },
+      {
+        opportunityId: 'natural:ally:1',
+        ownerId: 'ally',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 2,
+      },
+      {
+        opportunityId: 'natural:enemy:1',
+        ownerId: 'enemy',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 3,
+      },
+    ],
+    resourceTimeline: [],
+    scheduledEvents: [],
   },
   seed: 835001,
 });
@@ -200,6 +260,266 @@ addCheck(
   },
 );
 
+const isolatedDependencyWorld = world();
+isolatedDependencyWorld.参战者.team_enemy.push(
+  unit('enemy-2', 'enemy', { def: 130, skills: [skill('enemy-2-strike', 90, 0)] }),
+);
+const isolatedDependencyRequest = decision.prepareDecisionRequest({
+  worldSnapshot: isolatedDependencyWorld,
+  actorId: 'actor',
+  objectiveContract: isolatedDependencyWorld.胜负条件,
+  actionOpportunity: {
+    opportunityId: 'natural:actor:dependency-isolation',
+    ownerId: 'actor',
+    role: 'ACTIVE',
+    grantType: 'NATURAL_ACTION',
+    sequence: 1,
+  },
+  runtimeSnapshot: {
+    opportunitySnapshot: [{
+      opportunityId: 'natural:actor:dependency-isolation',
+      ownerId: 'actor',
+      grantType: 'NATURAL_ACTION',
+      status: 'EXECUTING',
+      createdAtSequence: 1,
+    }],
+    resourceTimeline: [],
+    scheduledEvents: [],
+  },
+  seed: 835002,
+});
+const routeAgainstEnemy = Object.values(isolatedDependencyRequest.actorCandidateRoutes)
+  .find(route =>
+    route.targetIds?.length === 1 &&
+    route.targetIds[0] === 'enemy'
+  );
+const routeAgainstEnemy2 = Object.values(isolatedDependencyRequest.actorCandidateRoutes)
+  .find(route =>
+    route.targetIds?.length === 1 &&
+    route.targetIds[0] === 'enemy-2'
+  );
+addCheck(
+  'dependency-view:candidate-captures-do-not-inherit-other-targets',
+  routeAgainstEnemy &&
+    routeAgainstEnemy2 &&
+    routeAgainstEnemy.dependencyKeys.includes('target:enemy:defense') &&
+    !routeAgainstEnemy.dependencyKeys.some(key => key.includes('enemy-2')) &&
+    routeAgainstEnemy2.dependencyKeys.includes('target:enemy-2:defense') &&
+    !routeAgainstEnemy2.dependencyKeys.some(key =>
+      key === 'target:enemy:defense' ||
+      key.startsWith('unit:enemy:')
+    ),
+  {
+    routeAgainstEnemy: routeAgainstEnemy?.dependencyKeys,
+    routeAgainstEnemy2: routeAgainstEnemy2?.dependencyKeys,
+  },
+);
+
+const freeRouteAgainstEnemy = Object.values(isolatedDependencyRequest.actorCandidateRoutes)
+  .find(route =>
+    String(route?.candidateId || '').includes(':skill:weak:') &&
+    route.targetIds?.length === 1 &&
+    route.targetIds[0] === 'enemy'
+  );
+const worldDependencyHash = (snapshot, route) => preview.stableHash(
+  (route?.dependencyKeys || [])
+    .filter(key => /^(unit:|target:|rule:)/.test(String(key || '').trim()))
+    .map(key => [key, preview.dependencyValueForKey(snapshot, key)]),
+);
+addCheck(
+  'dependency-view:free-physical-route-captures-directional-state-scopes',
+  freeRouteAgainstEnemy &&
+    !freeRouteAgainstEnemy.dependencyKeys.includes('unit:actor:resource:魂力') &&
+    !freeRouteAgainstEnemy.dependencyKeys.includes('unit:enemy:resource:魂力') &&
+    !freeRouteAgainstEnemy.dependencyKeys.includes('unit:enemy:resource:精神力') &&
+    !freeRouteAgainstEnemy.dependencyKeys.includes('unit:enemy:resourceMax:精神力') &&
+    !freeRouteAgainstEnemy.dependencyKeys.includes('unit:actor:state:__collection') &&
+    !freeRouteAgainstEnemy.dependencyKeys.includes('unit:enemy:state:__collection') &&
+    freeRouteAgainstEnemy.dependencyKeys.includes('unit:actor:state:__OUTGOING_DAMAGE') &&
+    freeRouteAgainstEnemy.dependencyKeys.includes('unit:actor:state:__OUTGOING_HIT') &&
+    freeRouteAgainstEnemy.dependencyKeys.includes('unit:enemy:state:__INCOMING_DAMAGE') &&
+    freeRouteAgainstEnemy.dependencyKeys.includes('unit:enemy:state:__INCOMING_HIT') &&
+    freeRouteAgainstEnemy.dependencyKeys
+      .filter(key => key.startsWith('unit:actor:state:'))
+      .every(key => [
+        'unit:actor:state:__action',
+        'unit:actor:state:__OUTGOING_DAMAGE',
+        'unit:actor:state:__OUTGOING_HIT',
+        'unit:actor:state:__SUPPRESSION',
+        'unit:actor:state:__GRANTED_EFFECTS',
+      ].includes(key)),
+  { dependencyKeys: freeRouteAgainstEnemy?.dependencyKeys },
+);
+
+const unreadFieldWorld = structuredClone(isolatedDependencyWorld);
+unreadFieldWorld.参战者.team_enemy[0].审计备注 = 'does-not-affect-preview';
+const readDefenseWorld = structuredClone(isolatedDependencyWorld);
+readDefenseWorld.参战者.team_enemy[0].def = 155;
+readDefenseWorld.参战者.team_enemy[0].属性.防御 = 155;
+const addedStateWorld = structuredClone(isolatedDependencyWorld);
+addedStateWorld.参战者.team_player[0].状态效果['新增命中增益'] = {
+  状态: '新增命中增益',
+  战斗效果: { hit_bonus: 0.2 },
+};
+const baseRouteDependencyHash = worldDependencyHash(
+  isolatedDependencyWorld,
+  freeRouteAgainstEnemy,
+);
+addCheck(
+  'cache:unread-world-field-preserves-route-dependency-hash',
+  baseRouteDependencyHash === worldDependencyHash(unreadFieldWorld, freeRouteAgainstEnemy),
+  {
+    baseRouteDependencyHash,
+    unreadFieldDependencyHash: worldDependencyHash(unreadFieldWorld, freeRouteAgainstEnemy),
+  },
+);
+addCheck(
+  'cache:read-defense-and-new-state-invalidate-route-dependency-hash',
+  baseRouteDependencyHash !== worldDependencyHash(readDefenseWorld, freeRouteAgainstEnemy) &&
+    baseRouteDependencyHash !== worldDependencyHash(addedStateWorld, freeRouteAgainstEnemy),
+  {
+    baseRouteDependencyHash,
+    defenseDependencyHash: worldDependencyHash(readDefenseWorld, freeRouteAgainstEnemy),
+    addedStateDependencyHash: worldDependencyHash(addedStateWorld, freeRouteAgainstEnemy),
+  },
+);
+
+const actorOutgoingStateWorld = structuredClone(isolatedDependencyWorld);
+actorOutgoingStateWorld.参战者.team_player[0].状态效果['输出命中增益'] = {
+  状态: '输出命中增益',
+  战斗效果: { hit_bonus: 0.2 },
+};
+const actorIncomingStateWorld = structuredClone(isolatedDependencyWorld);
+actorIncomingStateWorld.参战者.team_player[0].状态效果['来袭减伤'] = {
+  状态: '来袭减伤',
+  战斗效果: { damage_reduction: 0.2 },
+};
+const targetIncomingStateWorld = structuredClone(isolatedDependencyWorld);
+targetIncomingStateWorld.参战者.team_enemy[0].状态效果['目标减伤'] = {
+  状态: '目标减伤',
+  战斗效果: { damage_reduction: 0.2 },
+};
+const targetOutgoingStateWorld = structuredClone(isolatedDependencyWorld);
+targetOutgoingStateWorld.参战者.team_enemy[0].状态效果['目标输出增益'] = {
+  状态: '目标输出增益',
+  战斗效果: { damage_bonus: 0.2 },
+};
+addCheck(
+  'cache:directional-state-change-invalidates-only-affected-route-side',
+  baseRouteDependencyHash !==
+    worldDependencyHash(actorOutgoingStateWorld, freeRouteAgainstEnemy) &&
+    baseRouteDependencyHash ===
+    worldDependencyHash(actorIncomingStateWorld, freeRouteAgainstEnemy) &&
+    baseRouteDependencyHash !==
+    worldDependencyHash(targetIncomingStateWorld, freeRouteAgainstEnemy) &&
+    baseRouteDependencyHash ===
+    worldDependencyHash(targetOutgoingStateWorld, freeRouteAgainstEnemy),
+  {
+    baseRouteDependencyHash,
+    actorOutgoingStateHash: worldDependencyHash(
+      actorOutgoingStateWorld,
+      freeRouteAgainstEnemy,
+    ),
+    actorIncomingStateHash: worldDependencyHash(
+      actorIncomingStateWorld,
+      freeRouteAgainstEnemy,
+    ),
+    targetIncomingStateHash: worldDependencyHash(
+      targetIncomingStateWorld,
+      freeRouteAgainstEnemy,
+    ),
+    targetOutgoingStateHash: worldDependencyHash(
+      targetOutgoingStateWorld,
+      freeRouteAgainstEnemy,
+    ),
+  },
+);
+
+const thresholdWorld = {
+  回合: 1,
+  参战者: {
+    team_player: [unit('threshold-actor', 'player')],
+    team_enemy: [unit('threshold-enemy', 'enemy', { hp: 175 })],
+  },
+};
+const thresholdObjective = {
+  schemaVersion: '8.3-objective-1',
+  startRound: 1,
+  maxRounds: 6,
+  resolutionPriority: 'DEFEAT_FIRST',
+  victory: {
+    logic: 'ANY',
+    conditions: [{
+      conditionId: 'threshold',
+      type: 'HP_RATIO_AT_OR_BELOW',
+      side: 'ENEMY',
+      targetIds: ['threshold-enemy'],
+      threshold: 0.3,
+    }],
+  },
+  defeat: {
+    logic: 'ANY',
+    conditions: [{
+      conditionId: 'defeat',
+      type: 'TEAM_INCAPACITATED',
+      side: 'PLAYER',
+      targetIds: ['threshold-actor'],
+    }],
+  },
+};
+thresholdWorld.胜负条件 = thresholdObjective;
+const thresholdRoute = (candidateId, delta) => decision.actionRouteFromPreview({
+  candidate: {
+    candidateId,
+    declaration: {
+      actionKind: 'RELEASE_SKILL',
+      actorId: 'threshold-actor',
+      targetIds: ['threshold-enemy'],
+    },
+  },
+  previewResult: {
+    contributions: [{
+      rootCauseId: candidateId,
+      effectInstanceId: `${candidateId}:effect`,
+      targetId: 'threshold-enemy',
+      outcomeKind: 'HP_DELTA',
+      windowId: 'NOW',
+      expectedDelta: delta,
+      evidence: { delta },
+    }],
+  },
+  worldSnapshot: thresholdWorld,
+  actorSide: 'team_player',
+  dependencyKeys: [],
+  objectiveRequest: {
+    actorId: 'threshold-actor',
+    actorSide: 'team_player',
+    visibleWorld: thresholdWorld,
+    objectiveContract: thresholdObjective,
+  },
+});
+const preciseThresholdRoute = thresholdRoute('threshold:precise', -25);
+const lethalThresholdRoute = thresholdRoute('threshold:lethal', -175);
+const thresholdEnvelope = decision.selectPrimaryBackupRoutes([
+  preciseThresholdRoute,
+  lethalThresholdRoute,
+]);
+addCheck(
+  'routes:objective-conditioned-threshold-prefers-non-overkill',
+  thresholdEnvelope.primaryRoute?.candidateId === 'threshold:precise' &&
+    preciseThresholdRoute.objectiveRouteUtilityHEPP === 100 &&
+    lethalThresholdRoute.objectiveRouteUtilityHEPP === 100 &&
+    preciseThresholdRoute.routeDiscardedOverkillPP === 0 &&
+    lethalThresholdRoute.routeDiscardedOverkillPP === 30,
+  {
+    primaryCandidateId: thresholdEnvelope.primaryRoute?.candidateId,
+    preciseObjectiveUtility: preciseThresholdRoute.objectiveRouteUtilityHEPP,
+    lethalObjectiveUtility: lethalThresholdRoute.objectiveRouteUtilityHEPP,
+    preciseOverkillPP: preciseThresholdRoute.routeDiscardedOverkillPP,
+    lethalOverkillPP: lethalThresholdRoute.routeDiscardedOverkillPP,
+  },
+);
+
 addCheck(
   'routes:structural-key-and-health-path',
   String(actorEnvelope.primaryRoute.routeKey).startsWith('route:') &&
@@ -213,7 +533,11 @@ addCheck(
   'team-plan:stable-excludes-current-actor',
   request.teamMarginalPlan.length > 0 &&
     request.teamMarginalPlan.every(entry =>
-      !String(entry.sourceOpportunityId || '').includes(':actor')
+      !String(entry.sourceOpportunityId || '').includes(':actor') &&
+      !String(entry.sourceOpportunityId || '').startsWith('projected-natural:')
+    ) &&
+    request.teamMarginalPlan.some(entry =>
+      entry.sourceOpportunityId === 'natural:ally:1'
     ),
   { teamMarginalPlan: request.teamMarginalPlan },
 );
@@ -258,9 +582,37 @@ const fullChanged = decision.prepareDecisionRequest({
   objectiveContract: changedWorld.胜负条件,
   actionOpportunity: {
     opportunityId: 'natural:actor:1',
+    ownerId: 'actor',
     role: 'ACTIVE',
     grantType: 'NATURAL_ACTION',
     sequence: 1,
+  },
+  runtimeSnapshot: {
+    opportunitySnapshot: [
+      {
+        opportunityId: 'natural:actor:1',
+        ownerId: 'actor',
+        grantType: 'NATURAL_ACTION',
+        status: 'EXECUTING',
+        createdAtSequence: 1,
+      },
+      {
+        opportunityId: 'natural:ally:1',
+        ownerId: 'ally',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 2,
+      },
+      {
+        opportunityId: 'natural:enemy:1',
+        ownerId: 'enemy',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 3,
+      },
+    ],
+    resourceTimeline: [],
+    scheduledEvents: [],
   },
   seed: 835003,
 });
@@ -278,6 +630,7 @@ const localChanged = decision.buildR8RouteCatalog({
   beliefState: fullChanged.beliefState,
   battleIntent: fullChanged.battleIntent,
   actionOpportunity: fullChanged.actionOpportunity,
+  objectiveContract: fullChanged.objectiveContract,
   dependencyView: localDependencyView,
   evaluationContext: fullChanged.evaluationContext,
   previousCatalog: request.actionRouteCatalog,
@@ -290,6 +643,270 @@ addCheck(
     localHash: preview.stableHash(localChanged.routeCatalog),
     fullHash: preview.stableHash(fullChanged.actionRouteCatalog),
     recomputedUnitCount: localChanged.cacheMetrics.recomputedUnitCount,
+    firstDifference: firstStructuralDifference(
+      localChanged.routeCatalog,
+      fullChanged.actionRouteCatalog,
+    ),
+  },
+);
+
+const reusedRequest = decision.prepareDecisionRequest({
+  worldSnapshot: source,
+  actorId: 'actor',
+  objectiveContract: source.胜负条件,
+  actionOpportunity: {
+    opportunityId: 'natural:actor:1',
+    ownerId: 'actor',
+    role: 'ACTIVE',
+    grantType: 'NATURAL_ACTION',
+    sequence: 1,
+  },
+  runtimeSnapshot: {
+    opportunitySnapshot: [
+      {
+        opportunityId: 'natural:actor:1',
+        ownerId: 'actor',
+        grantType: 'NATURAL_ACTION',
+        status: 'EXECUTING',
+        createdAtSequence: 1,
+      },
+      {
+        opportunityId: 'natural:ally:1',
+        ownerId: 'ally',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 2,
+      },
+      {
+        opportunityId: 'natural:enemy:1',
+        ownerId: 'enemy',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 3,
+      },
+    ],
+    resourceTimeline: [],
+    scheduledEvents: [],
+  },
+  previousRouteCatalog: request.actionRouteCatalog,
+  affectedRouteUnitIds: ['actor'],
+  affectedRouteTargetUnitIds: [],
+  seed: 835001,
+});
+addCheck(
+  'cache:unused-invalidation-hint-does-not-falsify-executed-work-metrics',
+  request.requestHash === reusedRequest.requestHash &&
+    preview.stableHash(request.actionRouteCatalog) ===
+      preview.stableHash(reusedRequest.actionRouteCatalog) &&
+    preview.stableHash(request.routeCacheMetrics) ===
+      preview.stableHash(reusedRequest.routeCacheMetrics),
+  {
+    requestHash: request.requestHash,
+    reusedRequestHash: reusedRequest.requestHash,
+    firstRouteDifference: firstStructuralDifference(
+      request.actionRouteCatalog,
+      reusedRequest.actionRouteCatalog,
+    ),
+    originalMetrics: request.routeCacheMetrics,
+    reusedMetrics: reusedRequest.routeCacheMetrics,
+  },
+);
+
+const preparedRouteCache = decision.preparedRouteCacheSnapshot(request);
+const ownershipIndex = preparedRouteCache.routeFactOwnershipIndex || {};
+const ownersByFact = ownershipIndex.ownersByFact || {};
+const expectedOwnershipRows = Object.entries(
+  preparedRouteCache.fullRoutesByUnit || {},
+).flatMap(([unitId, routes]) =>
+  (Array.isArray(routes) ? routes : []).flatMap(route => [
+    ...(route?.dependencyKeys || []).map(factKey => ({
+      factKey,
+      unitId,
+      candidateId: route.candidateId,
+      role: 'DEPENDENCY_READ',
+    })),
+    ...(route?.opportunityDependencies || [])
+      .map(dependency => ({
+        factKey: `opportunity:${
+          String(
+            dependency?.opportunityId ||
+            dependency?.grantId ||
+            dependency?.descriptorId ||
+            '',
+          ).trim()
+        }`,
+        unitId,
+        candidateId: route.candidateId,
+        role: String(dependency?.role || 'OPPORTUNITY_DEPENDENCY'),
+      }))
+      .filter(row => row.factKey !== 'opportunity:'),
+    ...(route?.paymentDependencies || [])
+      .map(dependency => ({
+        factKey: `unit:${String(dependency?.unitId || '').trim()}:resource:${
+          String(dependency?.resource || '').trim()
+        }`,
+        unitId,
+        candidateId: route.candidateId,
+        role: 'PAYMENT_DEPENDENCY',
+      }))
+      .filter(row => !/:resource:$/.test(row.factKey)),
+  ]),
+);
+const missingOwnershipRows = expectedOwnershipRows.filter(expected =>
+  !(ownersByFact[expected.factKey] || []).some(owner =>
+    String(owner?.unitId || '') === String(expected.unitId || '') &&
+    String(owner?.candidateId || '') ===
+      String(expected.candidateId || '') &&
+    String(owner?.role || '') === String(expected.role || '')
+  ),
+);
+addCheck(
+  'route-fact-ownership:complete-private-index',
+  ownershipIndex.schemaVersion === 'RouteFactOwnershipIndexV1' &&
+    expectedOwnershipRows.length > 0 &&
+    missingOwnershipRows.length === 0 &&
+    !Object.hasOwn(request, 'routeFactOwnershipIndex') &&
+    !JSON.stringify(request).includes('RouteFactOwnershipIndexV1'),
+  {
+    summary: preparedRouteCache.routeFactOwnershipSummary,
+    expectedOwnershipCount: expectedOwnershipRows.length,
+    missingOwnershipRows,
+    requestContainsOwnershipIndex:
+      Object.hasOwn(request, 'routeFactOwnershipIndex') ||
+      JSON.stringify(request).includes('RouteFactOwnershipIndexV1'),
+  },
+);
+addCheck(
+  'route-fact-ownership:unread-fact-has-no-owner',
+  !Object.hasOwn(ownersByFact, 'unit:unrelated:state:never-read'),
+);
+const candidateScopedReuseRequest = decision.prepareDecisionRequest({
+  worldSnapshot: source,
+  actorId: 'actor',
+  objectiveContract: source.胜负条件,
+  actionOpportunity: {
+    opportunityId: 'natural:actor:1',
+    ownerId: 'actor',
+    role: 'ACTIVE',
+    grantType: 'NATURAL_ACTION',
+    sequence: 1,
+  },
+  runtimeSnapshot: {
+    opportunitySnapshot: [
+      {
+        opportunityId: 'natural:actor:1',
+        ownerId: 'actor',
+        grantType: 'NATURAL_ACTION',
+        status: 'EXECUTING',
+        createdAtSequence: 1,
+      },
+      {
+        opportunityId: 'natural:ally:1',
+        ownerId: 'ally',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 2,
+      },
+      {
+        opportunityId: 'natural:enemy:1',
+        ownerId: 'enemy',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 3,
+      },
+    ],
+    resourceTimeline: [],
+    scheduledEvents: [],
+  },
+  previousRouteCatalog: request.actionRouteCatalog,
+  previousFullRoutesByUnit: preparedRouteCache.fullRoutesByUnit,
+  previousActorCandidateRoutes: preparedRouteCache.actorCandidateRoutes,
+  previousActorProjectedWorlds: preparedRouteCache.actorProjectedWorlds,
+  previousActorProjectedWorldRevisions: preparedRouteCache.actorProjectedWorldRevisions,
+  previousActorPredictedOutcomeEvidence: preparedRouteCache.actorPredictedOutcomeEvidence,
+  previousActorCandidateEnvelopeDeltas: preparedRouteCache.actorCandidateEnvelopeDeltas,
+  affectedRouteUnitIds: ['actor'],
+  affectedRouteTargetUnitIds: [],
+  affectedRouteKeysByUnit: {
+    actor: [request.frozenCandidates[0].candidateId],
+  },
+  seed: 835001,
+});
+addCheck(
+  'cache:candidate-scoped-invalidation-preserves-unaffected-mechanical-routes',
+  preview.stableHash(request.actionRouteCatalog) ===
+    preview.stableHash(candidateScopedReuseRequest.actionRouteCatalog) &&
+    candidateScopedReuseRequest.routeCacheMetrics.recomputedUnitIds.length === 1 &&
+    candidateScopedReuseRequest.routeCacheMetrics.recomputedUnitIds[0] === 'actor' &&
+    candidateScopedReuseRequest.routeCacheMetrics.mechanicalReuseAttemptCount > 0 &&
+    candidateScopedReuseRequest.routeCacheMetrics.reusedRouteCandidateCount >=
+      request.frozenCandidates.length - 1,
+  {
+    expectedAffectedCandidateId: request.frozenCandidates[0].candidateId,
+    firstRouteDifference: firstStructuralDifference(
+      request.actionRouteCatalog,
+      candidateScopedReuseRequest.actionRouteCatalog,
+    ),
+    routeCacheMetrics: candidateScopedReuseRequest.routeCacheMetrics,
+  },
+);
+
+addCheck(
+  'cache:reported-recomputed-unit-count-equals-executed-rebuild-set',
+  reusedRequest.routeCacheMetrics.recomputedUnitCount ===
+    reusedRequest.routeCacheMetrics.recomputedUnitIds.length,
+  {
+    reportedRecomputedUnitCount:
+      reusedRequest.routeCacheMetrics.recomputedUnitCount,
+    executedRecomputedUnitIds:
+      reusedRequest.routeCacheMetrics.recomputedUnitIds,
+    previewCalls: reusedRequest.routeCacheMetrics.previewCalls,
+  },
+);
+
+const directOpportunityImpact = decision.buildOpportunityImpactSet({
+  candidate: {
+    candidateId: 'actor:basic:enemy',
+    declaration: {
+      actionKind: 'BASIC_ATTACK',
+      actorId: 'actor',
+      targetIds: ['enemy'],
+    },
+  },
+  actionOpportunity: {
+    opportunityId: 'natural:actor:1',
+    ownerId: 'actor',
+    grantType: 'NATURAL_ACTION',
+    status: 'EXECUTING',
+  },
+  previewResult: { contributions: [] },
+  opportunitySnapshot: [
+    {
+      opportunityId: 'natural:actor:1',
+      ownerId: 'actor',
+      grantType: 'NATURAL_ACTION',
+      status: 'EXECUTING',
+    },
+    {
+      opportunityId: 'natural:ally:1',
+      ownerId: 'ally',
+      grantType: 'NATURAL_ACTION',
+      status: 'PENDING',
+    },
+    {
+      opportunityId: 'natural:enemy:1',
+      ownerId: 'enemy',
+      grantType: 'NATURAL_ACTION',
+      status: 'PENDING',
+    },
+  ],
+});
+addCheck(
+  'opportunity-impact:ordinary-action-depends-only-on-executing-opportunity',
+  directOpportunityImpact.concreteIds.length === 1 &&
+    directOpportunityImpact.concreteIds[0] === 'natural:actor:1',
+  {
+    opportunityImpact: directOpportunityImpact,
   },
 );
 
@@ -320,6 +937,33 @@ const hiddenOnlyRequest = decision.prepareDecisionRequest({
     role: 'ACTIVE',
     grantType: 'NATURAL_ACTION',
     sequence: 1,
+  },
+  runtimeSnapshot: {
+    opportunitySnapshot: [
+      {
+        opportunityId: 'natural:actor:1',
+        ownerId: 'actor',
+        grantType: 'NATURAL_ACTION',
+        status: 'EXECUTING',
+        createdAtSequence: 1,
+      },
+      {
+        opportunityId: 'natural:ally:1',
+        ownerId: 'ally',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 2,
+      },
+      {
+        opportunityId: 'natural:enemy:1',
+        ownerId: 'enemy',
+        grantType: 'NATURAL_ACTION',
+        status: 'PENDING',
+        createdAtSequence: 3,
+      },
+    ],
+    resourceTimeline: [],
+    scheduledEvents: [],
   },
   seed: 835004,
 });

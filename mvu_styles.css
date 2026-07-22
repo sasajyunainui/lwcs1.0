@@ -2564,10 +2564,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-hero-card {
   min-width: 0;
   min-height: 0;
   height: 100%;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-canvas.map-canvas-large {
-  height: 100%;
+  height: auto;
   min-height: 0;
   max-height: none;
   align-self: stretch;
@@ -2581,17 +2582,17 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-status-strip
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-left-route-card.map-command-card {
-  position: absolute;
-  left: 8px;
+  position: relative;
+  left: auto;
   right: auto;
-  bottom: 8px;
-  z-index: 13;
+  bottom: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
   gap: 4px;
-  width: min(360px, calc(100% - 16px));
-  max-width: calc(100% - 16px);
+  width: 100%;
+  max-width: none;
+  margin-top: 8px;
   padding: 6px;
 }
 
@@ -2606,6 +2607,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card .map-action-detail-row {
   grid-column: 1;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu {
+  top: auto;
+  bottom: calc(100% + 5px);
 }
 
 .split-left-page[data-target='page-map'] > .map-hero-card {
@@ -2633,7 +2639,25 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-hero-card {
     grid-template-rows: minmax(300px, 1fr) auto;
+    height: auto;
+    min-height: 0;
     overflow: visible;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
+    height: auto;
+    overflow: visible;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage > .map-layout {
+    height: auto;
+    min-height: 0;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-canvas.map-canvas-large {
+    height: clamp(300px, 72vw, 480px);
+    min-height: 300px;
+    aspect-ratio: auto;
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-left-route-card.map-command-card {
@@ -2646,6 +2670,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card
     margin-top: 8px;
     grid-template-columns: minmax(0, 1fr);
     padding: 6px;
+  }
+
+  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu {
+    top: auto;
+    bottom: calc(100% + 5px);
+    max-width: min(100%, 320px);
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-command-card .map-action-control-row,

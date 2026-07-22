@@ -149,18 +149,21 @@ function runtimeSnapshot(extra = {}) {
         ownerId: 'actor',
         grantType: 'NATURAL_ACTION',
         status: 'EXECUTING',
+        createdAtSequence: 1,
       },
       {
         opportunityId: 'natural:actor:next',
         ownerId: 'actor',
         grantType: 'NATURAL_ACTION',
         status: 'PENDING',
+        createdAtSequence: 2,
       },
       {
         opportunityId: 'natural:enemy:next',
         ownerId: 'enemy',
         grantType: 'NATURAL_ACTION',
         status: 'PENDING',
+        createdAtSequence: 3,
       },
       ...(extra.opportunities || []),
     ],
@@ -468,6 +471,92 @@ add(
   {
     actionPoolHEPP: restoreProjection.actionPoolHEPP,
     envelope: resourceRequest.candidateEnvelopeDeltas[restoreCandidate.candidateId],
+  },
+);
+
+const restoreRoute = resourceRequest.actorCandidateRoutes[
+  restoreCandidate.candidateId
+];
+const restoreEnvelope = resourceRequest.candidateEnvelopeDeltas[
+  restoreCandidate.candidateId
+].find(entry => entry.targetId === 'actor');
+const mixedResourceProjectedWorld = structuredClone(
+  resourceRequest.actorProjectedWorlds[restoreCandidate.candidateId],
+);
+const mixedResourceEnemy =
+  mixedResourceProjectedWorld.参战者.team_enemy[0];
+mixedResourceEnemy.hp = 10;
+mixedResourceEnemy.属性.HP = 10;
+const mixedResourceRoute = {
+  ...restoreRoute,
+  healthTrajectoryByTarget: [
+    ...(restoreRoute.healthTrajectoryByTarget || []),
+    {
+      targetId: 'enemy',
+      outcomeKind: 'HP_DELTA',
+      windowId: 'mixed-resource-direct-health',
+      healthDeltaPP: -90,
+      actorBenefitPP: 90,
+      rootActionId: restoreCandidate.candidateId,
+      sourceEffectInstanceId: 'mixed-resource-direct-health',
+    },
+  ],
+};
+const mixedResourceEnvelopeDeltas = decision.buildR8CandidateEnvelopeDeltas({
+  worldSnapshot: resourceRequest.visibleWorld,
+  actorSide: resourceRequest.actorSide,
+  routeCatalog: resourceRequest.actionRouteCatalog,
+  projectedWorlds: {
+    [restoreCandidate.candidateId]: mixedResourceProjectedWorld,
+  },
+  projectedWorldRevisions: {
+    [restoreCandidate.candidateId]: 'mixed-resource-projected-world',
+  },
+  candidateRoutes: {
+    [restoreCandidate.candidateId]: mixedResourceRoute,
+  },
+  fullRoutesByUnit:
+    decision.preparedRouteCacheSnapshot(resourceRequest).fullRoutesByUnit,
+  resourceRouteCatalog: resourceRequest.actionRouteCatalog,
+  resourceFullRoutesByUnit:
+    decision.preparedRouteCacheSnapshot(resourceRequest).fullRoutesByUnit,
+  beliefState: resourceRequest.beliefState,
+  battleIntent: resourceRequest.battleIntent,
+  actionOpportunity: resourceRequest.actionOpportunity,
+  opportunitySnapshot:
+    resourceRequest.evaluationContext.opportunitySnapshot,
+  resourceTimeline:
+    resourceRequest.evaluationContext.resourceTimeline,
+  scheduledEvents:
+    resourceRequest.evaluationContext.scheduledEvents,
+  objectiveContract: resourceRequest.objectiveContract,
+});
+const mixedResourceEnvelope = mixedResourceEnvelopeDeltas[
+  restoreCandidate.candidateId
+].find(entry => entry.targetId === 'actor');
+add(
+  'resource:non-resource-outcomes-do-not-enter-resource-opportunity-delta',
+  Math.abs(
+    Number(mixedResourceEnvelope?.resourceOpportunityDeltaPP || 0) -
+    Number(restoreEnvelope?.resourceOpportunityDeltaPP || 0)
+  ) <= 1e-9 &&
+    mixedResourceEnvelope?.beforeRouteKey === restoreEnvelope?.beforeRouteKey &&
+    mixedResourceEnvelope?.afterRouteKey === restoreEnvelope?.afterRouteKey,
+  {
+    restore: {
+      beforeRouteKey: restoreEnvelope?.beforeRouteKey || '',
+      afterRouteKey: restoreEnvelope?.afterRouteKey || '',
+      resourceOpportunityDeltaPP: Number(
+        restoreEnvelope?.resourceOpportunityDeltaPP || 0
+      ),
+    },
+    mixed: {
+      beforeRouteKey: mixedResourceEnvelope?.beforeRouteKey || '',
+      afterRouteKey: mixedResourceEnvelope?.afterRouteKey || '',
+      resourceOpportunityDeltaPP: Number(
+        mixedResourceEnvelope?.resourceOpportunityDeltaPP || 0
+      ),
+    },
   },
 );
 
@@ -812,6 +901,60 @@ add(
   {
     projection: suppressProjection,
     states: suppressAfterEnemy?.状态效果,
+  },
+);
+
+const suppressDotSkill = {
+  id: 'suppress-dot',
+  name: '抹消持续伤害',
+  魂技名: '抹消持续伤害',
+  消耗: '无',
+  _效果数组: [{
+    原型: '机制抹消',
+    目标: '单体',
+    抹消对象: { 原型: '状态施加', 状态: '中毒' },
+    持续回合: 1,
+    effectId: 'suppress-dot-effect',
+  }],
+};
+const poisonedEnemy = unit('enemy', 'enemy', {
+  skills: [damageSkill('enemy-attack', 50)],
+  states: {
+    中毒: {
+      状态: '中毒',
+      状态名称: '中毒',
+      类型: 'debuff',
+      duration: 3,
+      来源原型摘要: '状态施加',
+      战斗效果: { dot_damage: 5 },
+    },
+  },
+});
+const suppressDotRequest = prepare(world(
+  unit('actor', 'player', { skills: [suppressDotSkill] }),
+  poisonedEnemy,
+));
+const suppressDotCandidate = candidateBySkill(suppressDotRequest, 'suppress-dot');
+const suppressDotPreview = preview.previewAction({
+  worldSnapshot: suppressDotRequest.visibleWorld,
+  actorId: 'actor',
+  declaration: suppressDotCandidate.declaration,
+  actionFingerprint: suppressDotCandidate.declarationFingerprint,
+});
+const suppressDotWindow = suppressDotPreview.contributions.find(entry =>
+  entry.outcomeKind === 'SCHEDULED_HP_DELTA' &&
+  entry.effectInstanceId === 'suppress-dot-effect:removed-health',
+);
+add(
+  'mechanism-suppress:removes-remaining-scheduled-health-window',
+  !!suppressDotWindow &&
+    Number(suppressDotWindow.evidence?.removedScheduledDelta || 0) === -15 &&
+    Number(suppressDotWindow.evidence?.delta || 0) === 15 &&
+    Number(suppressDotWindow.evidence?.tickCount || 0) === 3 &&
+    suppressDotPreview.afterSnapshot.参战者.team_enemy[0].状态效果.中毒 === undefined,
+  {
+    contribution: suppressDotWindow,
+    remainingStates: suppressDotPreview.afterSnapshot.参战者.team_enemy[0].状态效果,
   },
 );
 

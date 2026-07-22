@@ -3402,6 +3402,20 @@
     return `${text(fact?.actorId || event?.actorId || event?.actorName)}|${opportunityId}`;
   }
 
+  function executedRoundNumbers(draft = {}, ledger = []) {
+    const explicit = Array.isArray(draft?.executedRoundNumbers)
+      ? draft.executedRoundNumbers.map(value => Math.max(0, number(value, 0))).filter(value => value > 0)
+      : [];
+    const fromLedger = ledger
+      .map(event => Math.max(0, number(event?.round ?? event?.absoluteRound, 0)))
+      .filter(value => value > 0);
+    const rounds = [...new Set(explicit.length ? explicit : fromLedger)].sort((left, right) => left - right);
+    if (rounds.length) return rounds;
+    const count = Math.max(0, number(draft?.actualRoundCount, 0));
+    const start = Math.max(1, number(draft?.roundStart, 1));
+    return Array.from({ length: count }, (_, index) => start + index);
+  }
+
   function buildRoundOverview(draft = {}, ledger = [], factsById = new Map(), exchanges = [], directory = new Map()) {
     const states = initialUnitStates(draft, directory);
     const exchangeByRound = new Map();
@@ -3416,7 +3430,7 @@
       rawEventsByRound.get(round).push(event);
     });
     const rows = [];
-    for (let round = 1; round <= Math.max(0, number(draft?.actualRoundCount, 0)); round += 1) {
+    for (const round of executedRoundNumbers(draft, ledger)) {
       const events = rawEventsByRound.get(round) || [];
       const factIds = events.map(event => text(event?.eventId)).filter(Boolean);
       events.forEach(event => {
@@ -3989,9 +4003,23 @@
         projectedDecisionCount: Number(report.projectedDecisionCount),
       });
     }
-    const expectedRounds = Array.from({ length: Math.max(0, number(report?.actualRoundCount, 0)) }, (_, index) => index + 1);
     const actualRounds = (Array.isArray(report?.roundOverview) ? report.roundOverview : []).map(row => number(row?.round, 0));
-    if (JSON.stringify(expectedRounds) !== JSON.stringify(actualRounds)) {
+    const registryRounds = [...new Set(
+      registry
+        .map(fact => Math.max(0, number(fact?.round, 0)))
+        .filter(round => round > 0),
+    )].sort((left, right) => left - right);
+    const expectedRounds = registryRounds.length
+      ? registryRounds
+      : Array.from({ length: Math.max(0, number(report?.actualRoundCount, 0)) }, (_, index) => index + 1);
+    const expectedCount = Math.max(0, number(report?.actualRoundCount, 0));
+    const contiguousRounds = expectedRounds.length === 0 ||
+      expectedRounds.every((round, index) => index === 0 || round === expectedRounds[index - 1] + 1);
+    if (
+      JSON.stringify(expectedRounds) !== JSON.stringify(actualRounds) ||
+      actualRounds.length !== expectedCount ||
+      !contiguousRounds
+    ) {
       pushFatal('ROUND_SUMMARY_MISSING', { expectedRounds, actualRounds });
     }
     const ownerRefs = new Map();

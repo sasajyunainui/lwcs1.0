@@ -13,12 +13,17 @@
   const R8_RESULT_SCHEMA = '8.3-decision-result-1';
   const MAX_SEQUENCE_PROFILE_CATALOGS = 2048;
   const MAX_SEQUENCE_PROFILES_PER_CATALOG = 256;
+  const MAX_R8_TERMINAL_CANONICAL_ROUTE_KEYS = 8192;
   const skillRootCache = new WeakMap();
   const effectFingerprintCache = new WeakMap();
   const skillCostCache = new WeakMap();
   const targetProfileCache = new WeakMap();
   const decisionRequestHashCache = new WeakMap();
+  const declarationFingerprintCache = new WeakMap();
   const preparedDecisionRequests = new WeakMap();
+  const preparedRouteAnalyses = new WeakMap();
+  const evaluationSessionStates = new WeakMap();
+  let evaluationSessionSequence = 0;
   let baseActionValueCache = new WeakMap();
   let unitSkillCache = new WeakMap();
   let stateEntriesCache = new WeakMap();
@@ -46,6 +51,28 @@
   let decisionBeliefRevisionCache = new WeakMap();
   let responseThreatSnapshotCache = new WeakMap();
   let objectiveEvaluationCache = new WeakMap();
+  let r8ObjectiveContextCache = new WeakMap();
+  let r8ObjectiveWorldContextCache = new WeakMap();
+  let r8ConditionedRouteTerminalCache = new WeakMap();
+  let r8TerminalMechanicalDistributionCache = new Map();
+  let r8TerminalAttributionProjectionCache = new Map();
+  let r8TerminalWorldStateSignatureCache = new WeakMap();
+  let r8TerminalRouteSignatureCache = new WeakMap();
+  let r8TerminalCanonicalRouteSignatureCache = new WeakMap();
+  let r8TerminalCanonicalRouteKeyCache = new Map();
+  let r8TerminalRootCanonicalSeen = new Map();
+  let r8RouteMechanicalSignatureCache = new WeakMap();
+  let r8RouteActorIdCache = new WeakMap();
+  let r8RouteContextProjectionCache = new WeakMap();
+  let r8BehaviorRouteIdentityCache = new WeakMap();
+  let r8BehaviorCatalogIdentityCache = new WeakMap();
+  let r8ResourceOpportunityPlanCache = new Map();
+  let r8ResourcePlanStructureFingerprintCache = new WeakMap();
+  let r8ResourceRouteProjectionCache = new WeakMap();
+  let r8ResourceRouteSemanticValueCache = new WeakMap();
+  let r8ResourceRouteSemanticHashCache = new WeakMap();
+  let r8ObjectLifecycleTokenCache = new WeakMap();
+  let r8ObjectLifecycleTokenSequence = 0;
   let unitCapacitySignatureCache = new WeakMap();
   let sequenceProfileSignatureCache = new WeakMap();
   let sequenceProfileSemanticCache = new Map();
@@ -66,6 +93,72 @@
     sequenceProfileCalls: 0,
     sequenceProfileCacheHits: 0,
     sequenceProfileMisses: 0,
+    resourceOpportunityPlanCalls: 0,
+    resourceOpportunityPlanCacheHits: 0,
+    resourceOpportunityPlanTranslations: 0,
+    resourceOpportunityPlanMemoHits: 0,
+    resourceOpportunityPlanExpandedStates: 0,
+    primitiveOutcomeGroupCount: 0,
+    rawCartesianUpperBound: 0,
+    peakActiveSufficientStates: 0,
+    mergedEquivalentStateCount: 0,
+    operationEventCount: 0,
+    routeProjectionCalls: 0,
+    routeProjectionCacheHits: 0,
+    resourceAffordabilityProjectionCalls: 0,
+    resourceAffordabilityRouteGroupCount: 0,
+    resourceAffordabilityRouteElidedCount: 0,
+    resourceSemanticMemoKeyCount: 0,
+    envelopeSemanticCacheHits: 0,
+    envelopeSemanticCacheMisses: 0,
+    terminalProjectionCalls: 0,
+    terminalProjectionCacheHits: 0,
+    terminalSemanticCacheHits: 0,
+    terminalSemanticCacheMisses: 0,
+    terminalMechanicalDistributionBuilds: 0,
+    terminalMechanicalDistributionCacheHits: 0,
+    terminalAttributionProjectionBuilds: 0,
+    terminalCanonicalRouteKeyCacheHits: 0,
+    terminalDependencyUnitCount: 0,
+    terminalRootCanonicalSourceEquivalentHits: 0,
+    terminalRootCanonicalWorldVariantHits: 0,
+    terminalRootCanonicalUniqueMisses: 0,
+    terminalRootCanonicalSimpleCalls: 0,
+    terminalRootCanonicalSimpleSourceEquivalentHits: 0,
+    terminalSummaryProjectionCalls: 0,
+    terminalFullProjectionCalls: 0,
+    terminalUtilityRouteSplitCalls: 0,
+    terminalCacheMissNoEntry: 0,
+    terminalCacheMissObjectiveContext: 0,
+    terminalCacheMissObjectiveMode: 0,
+    terminalCacheMissProjectionMode: 0,
+    terminalDeterministicEvaluations: 0,
+    terminalProbabilisticEvaluations: 0,
+    terminalTrajectoryRows: 0,
+    terminalProbabilityFactorRows: 0,
+    terminalAtomicGroups: 0,
+    terminalSimpleSummaryCalls: 0,
+    terminalSimpleSummaryOutcomeBranches: 0,
+    terminalSimpleSummaryFastPathHits: 0,
+    terminalBranchMergeCalls: 0,
+    terminalBranchMergeInputBranches: 0,
+    terminalBranchMergeOutputBranches: 0,
+    terminalBranchMergeMaxInput: 0,
+    terminalBranchMergeMaxOutput: 0,
+    terminalSummaryDeferredMergeCalls: 0,
+    terminalSummaryDeferredMergeBranches: 0,
+    terminalSummaryDeferredMergeMaxBranches: 0,
+    terminalBranchBudgetFatals: 0,
+    lightweightEnvelopeRouteCount: 0,
+    envelopeMechanicalRouteCacheHits: 0,
+    declarationFingerprintCacheHits: 0,
+    envelopeObjectIdentityCacheHits: 0,
+    resourceRouteSemanticValueCacheHits: 0,
+    resourceRouteSemanticHashCacheHits: 0,
+    mechanicalUnitRowsHashCacheHits: 0,
+    terminalCallOriginCounts: {},
+    terminalCallOriginCacheHitCounts: {},
+    terminalCallOriginSemanticMissCounts: {},
     resourceThreatDiagnostics: null,
   };
   let decisionWorldRevisionSequence = 0;
@@ -96,9 +189,410 @@
   }
 
   function resetDecisionMetrics() {
-    Object.keys(decisionMetrics).forEach(key => { decisionMetrics[key] = 0; });
+    Object.keys(decisionMetrics).forEach(key => {
+      decisionMetrics[key] = key.startsWith('terminalCallOrigin')
+        ? {}
+        : 0;
+    });
     sequenceProfileSignatureCache = new WeakMap();
+    r8ObjectiveContextCache = new WeakMap();
+    r8ObjectiveWorldContextCache = new WeakMap();
+    r8ConditionedRouteTerminalCache = new WeakMap();
+    r8TerminalMechanicalDistributionCache = new Map();
+    r8TerminalAttributionProjectionCache = new Map();
+    r8TerminalWorldStateSignatureCache = new WeakMap();
+    r8TerminalRouteSignatureCache = new WeakMap();
+    r8TerminalCanonicalRouteSignatureCache = new WeakMap();
+    r8TerminalRootCanonicalSeen = new Map();
+    r8RouteMechanicalSignatureCache = new WeakMap();
+    r8RouteActorIdCache = new WeakMap();
+    r8BehaviorRouteIdentityCache = new WeakMap();
+    r8BehaviorCatalogIdentityCache = new WeakMap();
+    r8ResourceOpportunityPlanCache = new Map();
+    r8ResourcePlanStructureFingerprintCache = new WeakMap();
+    r8ResourceRouteProjectionCache = new WeakMap();
+    r8ResourceRouteSemanticValueCache = new WeakMap();
+    r8ResourceRouteSemanticHashCache = new WeakMap();
+    r8ObjectLifecycleTokenCache = new WeakMap();
+    r8ObjectLifecycleTokenSequence = 0;
   }
+
+  function numericMetricDelta(before = {}, after = {}) {
+    return Object.freeze(Object.fromEntries(
+      [...new Set([
+        ...Object.keys(before || {}),
+        ...Object.keys(after || {}),
+      ])]
+        .filter(key =>
+          Number.isFinite(Number(before?.[key])) ||
+          Number.isFinite(Number(after?.[key]))
+        )
+        .sort()
+        .map(key => [
+          key,
+          Number(after?.[key] || 0) - Number(before?.[key] || 0),
+        ]),
+    ));
+  }
+
+  function evaluationSessionState(session, allowDisposed = false) {
+    const state = session && typeof session === 'object'
+      ? evaluationSessionStates.get(session)
+      : null;
+    if (!state || (!allowDisposed && state.disposed)) {
+      throw new Error('DECISION_EVALUATION_SESSION_INVALID');
+    }
+    return state;
+  }
+
+  function evaluationSessionMetricsSnapshot(state) {
+    return deepFreeze({
+      schemaVersion: '8.3-evaluation-session-metrics-1',
+      sessionId: state.sessionId,
+      status: state.disposed ? 'DISPOSED' : 'ACTIVE',
+      revisionState: cloneValue(state.revisionState),
+      metrics: cloneValue(state.metrics),
+      latestFactDelta: state.latestFactDelta
+        ? cloneValue(state.latestFactDelta)
+        : null,
+      requestRecords: cloneValue(state.requestRecords),
+      factDeltaRecords: cloneValue(state.factDeltaRecords),
+      storeSizes: {
+        operationGraphStore: state.operationGraphStore.size,
+        fullRoutesByUnit: state.fullRoutesByUnit.size,
+        routeFactOwnershipIndex: state.routeFactOwnershipIndex.size,
+        behaviorEnvelopeStore: state.behaviorEnvelopeStore.size,
+        resourcePlanStore: state.resourcePlanStore.size,
+        terminalDistributionStore: state.terminalDistributionStore.size,
+        attributionStore: state.attributionStore.size,
+        paretoGraphByUnit: state.paretoGraphByUnit.size,
+      },
+    });
+  }
+
+  function createEvaluationSession(initialContext = {}) {
+    if (!initialContext || typeof initialContext !== 'object') {
+      throw new TypeError('DECISION_EVALUATION_SESSION_CONTEXT_INVALID');
+    }
+    const sessionId = `queue-evaluation:${++evaluationSessionSequence}`;
+    const handle = Object.freeze({
+      schemaVersion: '8.3-queue-evaluation-session-handle-1',
+      sessionId,
+    });
+    evaluationSessionStates.set(handle, {
+      schemaVersion: 'QueueEvaluationSessionV1',
+      sessionId,
+      disposed: false,
+      sourceContextHash: preview.stableHash(initialContext),
+      revisionState: {
+        objectiveHash: String(initialContext?.objectiveHash || '').trim(),
+        visibleWorldRevision: String(
+          initialContext?.visibleWorldRevision || '',
+        ).trim(),
+        beliefRevision: String(initialContext?.beliefRevision || '').trim(),
+        opportunityRevision: String(
+          initialContext?.opportunityRevision || '',
+        ).trim(),
+        resourceTimelineRevision: String(
+          initialContext?.resourceTimelineRevision || '',
+        ).trim(),
+        scheduleRevision: String(
+          initialContext?.scheduleRevision || '',
+        ).trim(),
+      },
+      operationGraphStore: new Map(),
+      fullRoutesByUnit: new Map(),
+      routeFactOwnershipIndex: new Map(),
+      behaviorEnvelopeStore: new Map(),
+      resourcePlanStore: new Map(),
+      terminalDistributionStore: new Map(),
+      attributionStore: new Map(),
+      paretoGraphByUnit: new Map(),
+      latestFactDelta: null,
+      factDeltaRecords: [],
+      requestRecords: [],
+      metrics: {
+        factDeltaCount: 0,
+        changedFactCount: 0,
+        opportunityChangeCount: 0,
+        resourceTimelineChangeCount: 0,
+        scheduleChangeCount: 0,
+        visibleBeliefChangeCount: 0,
+        requestCount: 0,
+        previewCalls: 0,
+        previewCacheHits: 0,
+        overlayWrites: 0,
+        routeRebuilds: 0,
+        searchedRoutes: 0,
+        reusedRoutes: 0,
+        terminalProjectionCalls: 0,
+        terminalMechanicalDistributionBuilds: 0,
+        terminalAttributionProjectionBuilds: 0,
+        ownershipIndexBuilds: 0,
+        ownershipOwnerCount: 0,
+        ownershipDirtyOwnerCount: 0,
+        unscopedLayerCount: 0,
+      },
+    });
+    return handle;
+  }
+
+  function advanceEvaluationSession(session, factDeltaBatch = {}) {
+    const state = evaluationSessionState(session);
+    const normalized = deepFreeze({
+      schemaVersion: 'FactDeltaBatchV1',
+      sequence: Math.max(0, Number(factDeltaBatch?.sequence || 0)),
+      sourceEventIds: [
+        ...new Set(
+          (factDeltaBatch?.sourceEventIds || [])
+            .map(value => String(value || '').trim())
+            .filter(Boolean),
+        ),
+      ].sort(),
+      changedFactKeys: [
+        ...new Set(
+          (factDeltaBatch?.changedFactKeys || [])
+            .map(value => String(value || '').trim())
+            .filter(Boolean),
+        ),
+      ].sort(),
+      opportunityChanges: cloneValue(
+        Array.isArray(factDeltaBatch?.opportunityChanges)
+          ? factDeltaBatch.opportunityChanges
+          : [],
+      ),
+      resourceTimelineChanges: cloneValue(
+        Array.isArray(factDeltaBatch?.resourceTimelineChanges)
+          ? factDeltaBatch.resourceTimelineChanges
+          : [],
+      ),
+      scheduleChanges: cloneValue(
+        Array.isArray(factDeltaBatch?.scheduleChanges)
+          ? factDeltaBatch.scheduleChanges
+          : [],
+      ),
+      visibleBeliefChanges: cloneValue(
+        Array.isArray(factDeltaBatch?.visibleBeliefChanges)
+          ? factDeltaBatch.visibleBeliefChanges
+          : [],
+      ),
+      terminalReached: factDeltaBatch?.terminalReached === true,
+      revisions: cloneValue(
+        factDeltaBatch?.revisions &&
+        typeof factDeltaBatch.revisions === 'object'
+          ? factDeltaBatch.revisions
+          : {},
+      ),
+      batchHash: '',
+    });
+    const batch = deepFreeze({
+      ...normalized,
+      batchHash: `fact-delta:${preview.stableHash({
+        ...normalized,
+        batchHash: undefined,
+      })}`,
+    });
+    state.latestFactDelta = batch;
+    state.factDeltaRecords.push(batch);
+    state.metrics.factDeltaCount += 1;
+    state.metrics.changedFactCount += batch.changedFactKeys.length;
+    state.metrics.opportunityChangeCount += batch.opportunityChanges.length;
+    state.metrics.resourceTimelineChangeCount +=
+      batch.resourceTimelineChanges.length;
+    state.metrics.scheduleChangeCount += batch.scheduleChanges.length;
+    state.metrics.visibleBeliefChangeCount +=
+      batch.visibleBeliefChanges.length;
+    for (const key of Object.keys(state.revisionState)) {
+      if (batch.revisions?.[key] !== undefined) {
+        state.revisionState[key] = String(batch.revisions[key] || '').trim();
+      }
+    }
+    return batch;
+  }
+
+  function readEvaluationSessionMetrics(session) {
+    return evaluationSessionMetricsSnapshot(evaluationSessionState(session));
+  }
+
+  function disposeEvaluationSession(session) {
+    const state = evaluationSessionState(session);
+    state.disposed = true;
+    const snapshot = evaluationSessionMetricsSnapshot(state);
+    evaluationSessionStates.delete(session);
+    return snapshot;
+  }
+
+  function recordEvaluationSessionRequest(state, input = {}) {
+    if (!state) return;
+    const previewDelta = numericMetricDelta(
+      input.previewMetricsBefore,
+      input.previewMetricsAfter,
+    );
+    const decisionDelta = numericMetricDelta(
+      input.decisionMetricsBefore,
+      input.decisionMetricsAfter,
+    );
+    const routeMetrics = input.routeMetrics || {};
+    const envelopeMetrics = input.envelopeMetrics || {};
+    const allRoutes = Object.values(input.fullRoutesByUnit || {})
+      .flatMap(routes => Array.isArray(routes) ? routes : []);
+    const layerIdentityStatus = {
+      status: 'PHASE1_OBSERVATION_ONLY',
+      routeCount: allRoutes.length,
+      mechanicalIdentityCount: allRoutes.filter(route =>
+        r8RouteMechanicalSignatureCache.has(route)
+      ).length,
+      behaviorIdentityCount: allRoutes.filter(route =>
+        r8BehaviorRouteIdentityCache.has(route)
+      ).length,
+      resourceIdentityStatus: 'NOT_BOUND',
+      terminalIdentityStatus: 'NOT_BOUND',
+      attributionIdentityStatus: 'NOT_BOUND',
+    };
+    const actualWork = {
+      previewCalls: Math.max(0, Number(previewDelta.previewCalls || 0)),
+      previewCacheHits: Math.max(0, Number(previewDelta.cacheHits || 0)),
+      overlayWrites: Math.max(0, Number(previewDelta.overlayWrites || 0)),
+      routeRebuilds: Math.max(
+        0,
+        Number(
+          envelopeMetrics.rebuildCount ??
+          routeMetrics.recomputedUnitCount ??
+          0,
+        ),
+      ),
+      searchedRoutes: Math.max(
+        0,
+        Number(
+          envelopeMetrics.searchedRouteCount ??
+          routeMetrics.searchedRouteCount ??
+          0,
+        ),
+      ),
+      reusedRoutes: Math.max(
+        0,
+        Number(
+          envelopeMetrics.reusedRouteCount ??
+          routeMetrics.reusedValuedRouteCount ??
+          0,
+        ),
+      ),
+      terminalProjectionCalls: Math.max(
+        0,
+        Number(decisionDelta.terminalProjectionCalls || 0),
+      ),
+      terminalMechanicalDistributionBuilds: Math.max(
+        0,
+        Number(decisionDelta.terminalMechanicalDistributionBuilds || 0),
+      ),
+      terminalAttributionProjectionBuilds: Math.max(
+        0,
+        Number(decisionDelta.terminalAttributionProjectionBuilds || 0),
+      ),
+    };
+    state.metrics.requestCount += 1;
+    Object.keys(actualWork).forEach(key => {
+      state.metrics[key] =
+        Number(state.metrics[key] || 0) + Number(actualWork[key] || 0);
+    });
+    state.requestRecords.push(deepFreeze({
+      requestIndex: state.requestRecords.length,
+      actorId: String(input?.actorId || '').trim(),
+      opportunityId: String(input?.opportunityId || '').trim(),
+      requestHash: String(input?.requestHash || '').trim(),
+      candidateCount: Math.max(0, Number(input?.candidateCount || 0)),
+      latestFactDeltaSequence: Math.max(
+        0,
+        Number(state.latestFactDelta?.sequence || 0),
+      ),
+      ownershipImpact: cloneValue(input?.ownershipImpact || {}),
+      actualWork,
+      layerIdentityStatus,
+    }));
+  }
+
+  function recordEvaluationSessionOwnership(
+    state,
+    requestHash = '',
+    routeFactOwnershipIndex = {},
+  ) {
+    if (!state) return Object.freeze({});
+    const changedFactKeys = state.latestFactDelta?.changedFactKeys || [];
+    const dirtyOwners = new Map();
+    const matchedFactKeys = [];
+    changedFactKeys.forEach(factKey => {
+      const owners = routeFactOwnershipIndex?.ownersByFact?.[factKey] || [];
+      if (!owners.length) return;
+      matchedFactKeys.push(factKey);
+      owners.forEach(owner => {
+        dirtyOwners.set(String(owner?.ownerKey || ''), owner);
+      });
+    });
+    const impact = deepFreeze({
+      factDeltaSequence: Math.max(
+        0,
+        Number(state.latestFactDelta?.sequence || 0),
+      ),
+      changedFactCount: changedFactKeys.length,
+      matchedFactKeys: Object.freeze([...new Set(matchedFactKeys)].sort()),
+      dirtyOwnerCount: dirtyOwners.size,
+      dirtyOwnersByLayer: Object.freeze(
+        Object.fromEntries(
+          [...[
+            ...dirtyOwners.values(),
+          ].reduce((rows, owner) => {
+              const layer = String(owner?.layer || 'UNKNOWN').trim();
+              if (!rows.has(layer)) rows.set(layer, []);
+              rows.get(layer).push({
+                unitId: owner.unitId,
+                candidateId: owner.candidateId,
+                routeKey: owner.routeKey,
+                dependencyRole: owner.dependencyRole,
+              });
+              return rows;
+            }, new Map()).entries()]
+            .map(([layer, owners]) => [
+              layer,
+              Object.freeze(
+                owners.sort((left, right) =>
+                  `${left.unitId}\u0000${left.candidateId}\u0000${left.routeKey}\u0000${left.dependencyRole}`.localeCompare(
+                    `${right.unitId}\u0000${right.candidateId}\u0000${right.routeKey}\u0000${right.dependencyRole}`,
+                  )
+                ),
+              ),
+            ])
+            .sort(([left], [right]) => left.localeCompare(right)),
+        ),
+      ),
+      unscopedLayerCount: Array.isArray(
+        routeFactOwnershipIndex?.unscopedLayers,
+      )
+        ? routeFactOwnershipIndex.unscopedLayers.length
+        : 0,
+    });
+    while (state.routeFactOwnershipIndex.size >= 128) {
+      state.routeFactOwnershipIndex.delete(
+        state.routeFactOwnershipIndex.keys().next().value,
+      );
+    }
+    state.routeFactOwnershipIndex.set(String(requestHash || ''), {
+      indexHash: String(routeFactOwnershipIndex?.indexHash || '').trim(),
+      impact,
+    });
+    state.metrics.ownershipIndexBuilds =
+      Number(state.metrics.ownershipIndexBuilds || 0) + 1;
+    state.metrics.ownershipOwnerCount =
+      Number(state.metrics.ownershipOwnerCount || 0) +
+      Math.max(0, Number(routeFactOwnershipIndex?.ownerCount || 0));
+    state.metrics.ownershipDirtyOwnerCount =
+      Number(state.metrics.ownershipDirtyOwnerCount || 0) +
+      impact.dirtyOwnerCount;
+    state.metrics.unscopedLayerCount =
+      Number(state.metrics.unscopedLayerCount || 0) +
+      impact.unscopedLayerCount;
+    return impact;
+  }
+
   let decisionRevisionSequence = 0;
   const actionKinds = Object.freeze([
     'BASIC_ATTACK', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
@@ -170,7 +664,7 @@
   function decisionRuntimeState(worldSnapshot = {}) {
     const source = worldSnapshot?.__battleRuntime;
     if (!source || typeof source !== 'object') return null;
-    return {
+    const result = {
       reactionGrantIds: { ...(source.reactionGrantIds || {}) },
       reactionResponseUses: cloneValue(source.reactionResponseUses || {}),
       unitReactionCount: { ...(source.unitReactionCount || {}) },
@@ -1584,8 +2078,12 @@
       : null);
     if (!product) return null;
     const productId = String(product?.id || product?.物品ID || product?.名称 || product?.name || product).trim();
-    const stock = collectInventory(actor).filter(entry => entry.id === productId).reduce((sum, entry) => sum + entry.quantity, 0);
     const actorSide = sideOf(worldSnapshot, actor);
+    const stock = livingEntries(worldSnapshot)
+      .filter(entry => entry.side === actorSide)
+      .flatMap(entry => collectInventory(entry.unit))
+      .filter(entry => entry.id === productId)
+      .reduce((sum, entry) => sum + entry.quantity, 0);
     const useEffects = (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).flatMap(effect =>
       Array.isArray(effect?.使用效果) ? effect.使用效果 : [],
     );
@@ -1828,6 +2326,70 @@
     return actor;
   }
 
+  function snapshotAfterRouteResourceEffects(
+    worldSnapshot = {},
+    route = {},
+    includeActionCost = false,
+  ) {
+    const deltasByUnit = new Map();
+    (route?.actionPoolEffects || []).forEach(effect => {
+      if (
+        String(effect?.outcomeKind || '').trim() !==
+          'RESOURCE_OPTION_CHANGED' ||
+        (
+          includeActionCost !== true &&
+          String(effect?.windowId || '').trim() === 'ACTION_COST'
+        )
+      ) {
+        return;
+      }
+      const unitId = String(effect?.targetId || '').trim();
+      const resource = String(effect?.evidence?.resource || '').trim();
+      const delta = Number(
+        effect?.expectedDelta ?? effect?.evidence?.delta ?? 0,
+      );
+      if (!unitId || !resource || !Number.isFinite(delta) || !delta) return;
+      const rows = deltasByUnit.get(unitId) || [];
+      rows.push({ resource, delta });
+      deltasByUnit.set(unitId, rows);
+    });
+    if (!deltasByUnit.size) return worldSnapshot;
+    return mapWorldUnits(worldSnapshot, unit => {
+      const rows = deltasByUnit.get(preview.unitId(unit));
+      if (!rows?.length) return unit;
+      const next = {
+        ...unit,
+        属性: unit?.属性 && typeof unit.属性 === 'object'
+          ? { ...unit.属性 }
+          : {},
+        final: unit?.final && typeof unit.final === 'object'
+          ? { ...unit.final }
+          : unit?.final,
+      };
+      rows.forEach(({ resource, delta }) => {
+        const maximum = Math.max(0, preview.readResourceMax(next, resource));
+        const value = clamp(
+          preview.readResource(next, resource) + delta,
+          0,
+          maximum || Number.MAX_SAFE_INTEGER,
+        );
+        if (/精神/.test(resource)) {
+          next.men = value;
+          next.属性.精神力 = value;
+        } else if (/体力/.test(resource)) {
+          next.vit = value;
+          next.sta = value;
+          next.属性.体力 = value;
+          preview.refreshStaminaAdjustedFinal(next);
+        } else {
+          next.sp = value;
+          next.属性.魂力 = value;
+        }
+      });
+      return next;
+    });
+  }
+
   function snapshotWithUnitResourcesFrom(targetSnapshot = {}, sourceSnapshot = {}, actorId = '') {
     const sourceUnit = findUnitInWorld(sourceSnapshot, actorId);
     if (!sourceUnit) return targetSnapshot;
@@ -2016,6 +2578,9 @@
   }
 
   function worldEntries(worldSnapshot = {}) {
+    if (!worldSnapshot || typeof worldSnapshot !== 'object') {
+      return Object.freeze([]);
+    }
     let entries = worldEntriesCache.get(worldSnapshot);
     if (!entries) {
       entries = Object.freeze(preview.listUnits(worldSnapshot));
@@ -2026,7 +2591,9 @@
 
   function findUnitInWorld(worldSnapshot = {}, id = '') {
     const wanted = String(id || '').trim();
-    if (!wanted) return null;
+    if (!wanted || !worldSnapshot || typeof worldSnapshot !== 'object') {
+      return null;
+    }
     let lookup = worldUnitLookupCache.get(worldSnapshot);
     if (!lookup) {
       lookup = new Map();
@@ -2161,6 +2728,14 @@
     const opportunityRole = String(input.actionOpportunity?.role || '').trim();
     const reactionOnly = opportunityRole === 'REACTION';
     const counterOnly = opportunityRole === 'COUNTER';
+    const assistOnly = opportunityRole === 'ASSIST';
+    const opportunityValidTargetIds = new Set(
+      (Array.isArray(input.actionOpportunity?.validTargetIds)
+        ? input.actionOpportunity.validTargetIds
+        : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
     const forcedSkill = input.actionOpportunity?.forcedSkill && typeof input.actionOpportunity.forcedSkill === 'object'
       ? input.actionOpportunity.forcedSkill
       : null;
@@ -2177,7 +2752,9 @@
     const counterSourceId = String(input.actionOpportunity?.sourceActorId || '').trim();
     const directHostile = counterOnly && counterSourceId
       ? hostile.filter(target => preview.unitId(target) === counterSourceId)
-      : hostile;
+      : assistOnly && opportunityValidTargetIds.size
+        ? hostile.filter(target => opportunityValidTargetIds.has(preview.unitId(target)))
+        : hostile;
     const candidates = reactionOnly || forcedSkill || !basicAttackAllowed ? [] : directHostile.map(target => {
       const targetId = preview.unitId(target);
       return { candidateId: `${actorId}:basic:${targetId}`, declaration: { actionId: `${actorId}:basic:${targetId}`, actorId, actionKind: 'BASIC_ATTACK', targetIds: [targetId] } };
@@ -2187,7 +2764,7 @@
       declaration: defensiveDeclaration(actorId, 'DEFEND'),
       counterDeclineFallback: true,
     });
-    if (!counterOnly && !forcedSkill) ['DEFEND', 'EVADE'].forEach(actionKind => candidates.push({ candidateId: `${actorId}:${actionKind}`, declaration: defensiveDeclaration(actorId, actionKind) }));
+    if (!counterOnly && !assistOnly && !forcedSkill) ['DEFEND', 'EVADE'].forEach(actionKind => candidates.push({ candidateId: `${actorId}:${actionKind}`, declaration: defensiveDeclaration(actorId, actionKind) }));
     if (!counterOnly && !forcedSkill && input.actionOpportunity?.counterWindow === true && input.actionOpportunity?.counterActionAvailable === true) {
       candidates.push({ candidateId: `${actorId}:COUNTER`, declaration: defensiveDeclaration(actorId, 'COUNTER') });
     }
@@ -2203,23 +2780,32 @@
     }
     (forcedSkill ? [forcedSkill] : skillReleaseAllowed ? collectSkills(actor) : []).forEach((skill, index) => {
       const costs = parseSkillCosts(skill);
-      if (!costAffordable(actor, skill)) return;
+      const affordable = costAffordable(actor, skill);
+      if (!affordable && input?.includeUnaffordableRoutes !== true) return;
       const isPlayerLockedSkill = playerLockedSkillId && skillId(skill, index) === playerLockedSkillId;
       if (!forcedSkill && !isPlayerLockedSkill && !actionCompletesWithinBattleHorizon(skill, input, worldSnapshot)) return;
       const fusion = preview.resolveFusionAction(worldSnapshot, actor, skill, {
         resourceCosts: costs,
-        requirePendingOpportunity: true,
+        requirePendingOpportunity: input?.includeUnaffordableRoutes !== true,
+        ignoreResourceAvailability: input?.includeUnaffordableRoutes === true,
       });
       if (fusion.required && (!fusion.valid || reactionOnly || counterOnly)) return;
+      const strictFusion = input?.includeUnaffordableRoutes === true &&
+        fusion.required
+        ? preview.resolveFusionAction(worldSnapshot, actor, skill, {
+            resourceCosts: costs,
+            requirePendingOpportunity: true,
+          })
+        : fusion;
       if (counterOnly && !isExplicitCounterSkill(skill, immediateBudget)) return;
       if (!forcedSkill && !counterOnly && input.actionOpportunity?.enforceImmediateBudget === true && !isImmediateReactionSkill(skill, immediateBudget)) return;
       if (reactionOnly && !isImmediateReactionSkill(skill, immediateBudget)) return;
       const profile = targetProfile(skill);
       if (counterOnly && !['HOSTILE_SINGLE', 'HOSTILE_GROUP', 'ANY_SINGLE'].includes(profile)) return;
       const counterSkill = counterOnly
-        ? { ...skill, 消耗: '无', 魂力消耗: 0, 精神力消耗: 0, 体力消耗: 0, 前摇: 0, cast_time: 0 }
+        ? { ...skill, 前摇: 0, cast_time: 0 }
         : skill;
-      const declarationCosts = counterOnly ? parseSkillCosts(counterSkill) : costs;
+      const declarationCosts = costs;
       const creation = creationProfile(counterSkill, actor, worldSnapshot);
       const reactionSourceId = String(input.actionOpportunity?.sourceActorId || '').trim();
       const legalTargetSets = enumerateTargetSets(worldSnapshot, actor, profile, input.beliefState);
@@ -2231,15 +2817,29 @@
         ? [legalForcedTargetSet]
         : (reactionOnly || counterOnly) && reactionSourceId && ['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile)
         ? [[reactionSourceId]]
-        : legalTargetSets;
+        : assistOnly && opportunityValidTargetIds.size
+          ? legalTargetSets.filter(targetSet =>
+              targetSet.length > 0 &&
+              targetSet.every(targetId => opportunityValidTargetIds.has(targetId))
+            )
+          : legalTargetSets;
       const ringBurst = (Array.isArray(counterSkill?._效果数组) ? counterSkill._效果数组 : [])
         .some(effect => String(effect?.原型 || '').trim() === '炸环');
       const ringOptions = ringBurst
         ? collectAvailableRings(actor, worldSnapshot?.当前世界tick)
         : [null];
+      const creationRecipientIds = creation
+        ? creation.consumerIds.length
+          ? creation.consumerIds
+          : [actorId]
+        : [''];
       targetSets.forEach((targetIds, targetIndex) => {
         ringOptions.forEach(ringOption => {
-        const id = `${actorId}:${forcedSkill ? 'forced-skill' : 'skill'}:${skillId(skill, index)}:${targetIndex}${ringOption ? `:ring:${ringOption.ringId}` : ''}`;
+        creationRecipientIds.forEach(creationRecipientId => {
+        const recipientSuffix = creation
+          ? `:recipient:${creationRecipientId}`
+          : '';
+        const id = `${actorId}:${forcedSkill ? 'forced-skill' : 'skill'}:${skillId(skill, index)}:${targetIndex}${recipientSuffix}${ringOption ? `:ring:${ringOption.ringId}` : ''}`;
         const declaration = {
           actionId: id,
           actorId,
@@ -2248,6 +2848,7 @@
           skill: counterSkill,
           resourceCosts: declarationCosts,
         };
+        if (creation) declaration.creationRecipientId = creationRecipientId;
         if (fusion.required) {
           declaration.fusionKey = fusion.fusionKey;
           declaration.fusionParticipantIds = [...fusion.participantIds];
@@ -2271,13 +2872,19 @@
           declaration,
           skill: counterSkill,
           costs: declarationCosts,
-          creation,
+          resourcePotentialOnly:
+            !affordable ||
+            (fusion.required && strictFusion?.valid !== true),
+          creation: creation
+            ? { ...creation, recipientId: creationRecipientId }
+            : null,
+        });
         });
         });
       });
     });
     if (forcedSkill) return candidates;
-    if (reactionOnly || counterOnly) return candidates;
+    if (reactionOnly || counterOnly || assistOnly) return candidates;
     const currentEquipmentIds = new Set(Object.values(actor?.装备 || {}).map(item => String(item?.id || item?.物品ID || item?.名称 || item?.name || '')).filter(Boolean));
     const runtimeEquipmentId = String(actor?.__battleRuntime?.equippedDecisionItem?.id || '').trim();
     if (runtimeEquipmentId) currentEquipmentIds.add(runtimeEquipmentId);
@@ -6063,13 +6670,40 @@
     });
   }
 
+  function recordBeliefResolverDependency({
+    beliefState,
+    dependencyView,
+    recordDependency,
+    mechanicKey,
+  }) {
+    if (typeof recordDependency === 'function') {
+      recordDependency(
+        `belief:${mechanicKey}`,
+        beliefState?.mechanics?.[mechanicKey] ??
+          beliefState?.mechanicPosteriors?.[mechanicKey] ??
+          beliefState?.[mechanicKey] ??
+          null,
+      );
+      return;
+    }
+    if (dependencyView) dependencyView.readBelief(mechanicKey);
+  }
+
   function candidateHitProbabilityResolver({
     beliefState,
     actor,
     candidate,
     worldSnapshot,
+    dependencyView = null,
   }) {
-    return ({ targetId, actor: damageActor, effect, effectInstanceId, baseHitProbability }) => {
+    return ({
+      targetId,
+      actor: damageActor,
+      effect,
+      effectInstanceId,
+      baseHitProbability,
+      recordDependency = null,
+    }) => {
       if (/:summon-assist(?::|$)/i.test(String(effectInstanceId || '').trim())) {
         return baseHitProbability;
       }
@@ -6078,6 +6712,33 @@
       const effectIndex = Number(
         String(effectInstanceId || '').match(/:effect:(\d+)$/)?.[1] || 0,
       );
+      const stateFingerprint = relevantStateFingerprint(beliefState, targetId);
+      const exactKey = hitMechanicKey({
+        sourceActionId: candidate.candidateId,
+        targetId,
+        effectIndex,
+        effect,
+        beliefState,
+      });
+      const adaptationKey = mechanicAdaptationKey({
+        actionKind: candidate?.declaration?.actionKind || 'RELEASE_SKILL',
+        effectPrototype: '命中判定',
+        targetId,
+        damageClassName: damageClass(effect?.伤害类型),
+        relevantStateFingerprint: stateFingerprint,
+      });
+      recordBeliefResolverDependency({
+        beliefState,
+        dependencyView,
+        recordDependency,
+        mechanicKey: exactKey,
+      });
+      recordBeliefResolverDependency({
+        beliefState,
+        dependencyView,
+        recordDependency,
+        mechanicKey: adaptationKey,
+      });
       const factor = hitMechanicFactor(
         beliefState,
         damageActor || actor,
@@ -6099,8 +6760,16 @@
     beliefState,
     actor,
     candidate,
+    dependencyView = null,
   }) {
-    return ({ targetId, actor: stateActor, effect, effectInstanceId, baseApplicationProbability }) => {
+    return ({
+      targetId,
+      actor: stateActor,
+      effect,
+      effectInstanceId,
+      baseApplicationProbability,
+      recordDependency = null,
+    }) => {
       if (/:summon-assist(?::|$)/i.test(String(effectInstanceId || '').trim())) {
         return baseApplicationProbability;
       }
@@ -6118,6 +6787,18 @@
         targetId,
         stateName: String(effect?.状态 || effect?.状态名称 || '').trim(),
         relevantStateFingerprint: relevantFingerprint,
+      });
+      recordBeliefResolverDependency({
+        beliefState,
+        dependencyView,
+        recordDependency,
+        mechanicKey: key,
+      });
+      recordBeliefResolverDependency({
+        beliefState,
+        dependencyView,
+        recordDependency,
+        mechanicKey: adaptationKey,
       });
       const observations = [...new Set([key, adaptationKey])]
         .reduce((sum, recordKey) =>
@@ -6162,7 +6843,11 @@
         targetRealizationFactor(beliefState, actor, targetId, damageEffects),
       ]),
     );
-    const basePreview = (worldSnapshot, damageMultiplierByTarget = {}) => {
+    const basePreview = (
+      worldSnapshot,
+      damageMultiplierByTarget = {},
+      evadeProbabilityByTarget = {},
+    ) => {
       const result = preview.previewAction({
         worldSnapshot,
         worldRevision: `next:${worldRevisionFor(worldSnapshot)}`,
@@ -6180,6 +6865,12 @@
               0,
               4,
             ),
+          ]),
+        ),
+        evadeProbabilityByTarget: Object.fromEntries(
+          (candidate?.declaration?.targetIds || []).map(targetId => [
+            targetId,
+            clamp(Number(evadeProbabilityByTarget[targetId] ?? 0), 0, 1),
           ]),
         ),
         hitProbabilityResolver: candidateHitProbabilityResolver({
@@ -6229,6 +6920,7 @@
     if (!hostileTargets.length) return basePreview(decisionWorld);
     let reactionWorld = decisionWorld;
     const damageMultiplierByTarget = {};
+    const evadeProbabilityByTarget = {};
     const reactionAudit = [];
     hostileTargets.forEach(targetBefore => {
       const targetId = preview.unitId(targetBefore);
@@ -6283,7 +6975,12 @@
         const selectedPlan = preparedResponses.reduce((best, plan) =>
           !best || plan.multiplier < best.multiplier ? plan : best
         , null);
-        damageMultiplierByTarget[targetId] = selectedPlan.multiplier;
+        damageMultiplierByTarget[targetId] = selectedPlan.actionKind === 'EVADE'
+          ? 1
+          : selectedPlan.multiplier;
+        evadeProbabilityByTarget[targetId] = selectedPlan.actionKind === 'EVADE'
+          ? selectedPlan.dodgeProbability
+          : 0;
         reactionAudit.push(Object.freeze({
           targetId,
           responseId: String(selectedPlan.response?.responseId || '').trim(),
@@ -6327,8 +7024,15 @@
             });
             planWorld = reactionPreview.afterSnapshot;
           }
-          const multipliers = { ...damageMultiplierByTarget, [targetId]: multiplier };
-          const attackPreview = basePreview(planWorld, multipliers);
+          const multipliers = {
+            ...damageMultiplierByTarget,
+            [targetId]: actionKind === 'EVADE' ? 1 : multiplier,
+          };
+          const evadeProbabilities = {
+            ...evadeProbabilityByTarget,
+            [targetId]: actionKind === 'EVADE' ? plan.dodgeProbability : 0,
+          };
+          const attackPreview = basePreview(planWorld, multipliers, evadeProbabilities);
           const attackerUtility = stateUtilityNext(
             attackPreview.afterSnapshot,
             actorSide,
@@ -6363,7 +7067,15 @@
           String(selectedPlan.response?.responseId || '').trim(),
         );
       }
-      damageMultiplierByTarget[targetId] = selectedPlan.multiplier;
+      const selectedActionKind = String(
+        selectedPlan.declaration?.actionKind || ''
+      ).trim().toUpperCase();
+      damageMultiplierByTarget[targetId] = selectedActionKind === 'EVADE'
+        ? 1
+        : selectedPlan.multiplier;
+      evadeProbabilityByTarget[targetId] = selectedActionKind === 'EVADE'
+        ? selectedPlan.dodgeProbability
+        : 0;
       reactionAudit.push(Object.freeze({
         targetId,
         responseId: String(selectedPlan.response?.responseId || '').trim(),
@@ -6382,7 +7094,11 @@
         inferred: selectedPlan.inferred === true,
       }));
     });
-    const result = basePreview(reactionWorld, damageMultiplierByTarget);
+    const result = basePreview(
+      reactionWorld,
+      damageMultiplierByTarget,
+      evadeProbabilityByTarget,
+    );
     const immediateCounterRisk = estimateImmediateCounterRisk({
       decisionWorld,
       actor,
@@ -6614,7 +7330,30 @@
       return input.__creationFutureUseAuditByCandidate[candidateId];
     }
     const actorId = preview.unitId(actor);
-    const remainingOpportunities = availableNaturalOpportunityCount(decisionWorld, actor, {
+    const consumerId = String(
+      candidate?.declaration?.creationRecipientId ||
+      candidate?.creation?.recipientId ||
+      actorId,
+    ).trim();
+    const consumer = findUnitInWorld(decisionWorld, consumerId);
+    if (
+      !consumer ||
+      sideOf(decisionWorld, consumer) !== actorSide ||
+      !preview.isBattleCapable(consumer)
+    ) {
+      return Object.freeze({
+        realizable: false,
+        reason: 'CREATION_CONSUMER_UNAVAILABLE',
+        remainingOpportunities: 0,
+        futureRound: Math.max(0, Number(decisionWorld?.回合 || 0)),
+        consumerId,
+        itemCandidateId: '',
+        itemUtility: 0,
+        bestAlternativeUtility: 0,
+        dominatedBy: '',
+      });
+    }
+    const remainingOpportunities = availableNaturalOpportunityCount(decisionWorld, consumer, {
       currentOpportunityConsumedFor: new Set([actorId]),
     });
     const futureRound = Math.max(0, Number(decisionWorld?.回合 || 0)) +
@@ -6634,14 +7373,14 @@
     const futureWorld = mapWorldUnits(
       { ...afterSnapshot, 回合: futureRound },
       unit => {
-        if (preview.unitId(unit) !== actorId) return unit;
+        if (preview.unitId(unit) !== consumerId) return unit;
         return {
           ...unit,
           __battleRuntime: {
             ...(unit?.__battleRuntime || {}),
             naturalOpportunity: {
               round: futureRound,
-              opportunityId: `preview-natural:${futureRound}:${actorId}`,
+              opportunityId: `preview-natural:${futureRound}:${consumerId}`,
               status: 'PENDING',
               consumedByActionId: '',
               fusionKey: '',
@@ -6653,7 +7392,7 @@
     const futureCandidates = enumerateCandidates({
       ...input,
       worldSnapshot: futureWorld,
-      actorId,
+      actorId: consumerId,
       beliefState,
       actionOpportunity: {
         role: 'ACTIVE',
@@ -6661,7 +7400,7 @@
         futureHostileResponseAllowed: false,
       },
     }).filter(futureCandidate => !futureCandidate.creation);
-    const futureActor = findUnitInWorld(futureWorld, actorId);
+    const futureActor = findUnitInWorld(futureWorld, consumerId);
     const futureScores = futureCandidates.map(futureCandidate => projectFutureAction({
       candidate: futureCandidate,
       futureWorld,
@@ -6704,6 +7443,7 @@
         : dominator ? 'FUTURE_USE_DOMINATED' : 'FUTURE_USE_UNAVAILABLE',
       remainingOpportunities,
       futureRound,
+      consumerId,
       itemCandidateId: String(itemScore?.candidateId || '').trim(),
       itemUtility: Number(itemScore?.utility || 0),
       bestAlternativeUtility: Number(bestAlternative?.utility || 0),
@@ -6902,7 +7642,11 @@
       if (creationUseAudit && !creationUseAudit.realizable) {
         candidateSnapshot = snapshotWithInventoryQuantity(
           candidateSnapshot,
-          preview.unitId(actor),
+          String(
+            candidate?.declaration?.creationRecipientId ||
+            candidate?.creation?.recipientId ||
+            preview.unitId(actor),
+          ).trim(),
           candidate.creation.productId,
           candidate.creation.stock,
         );
@@ -9736,6 +10480,7 @@
       .filter(effect => String(effect?.原型 || '').trim() === '状态施加')
       .forEach(effect => targetIds.forEach(targetId => {
         const estimatedProbability = probabilityValue(effect?.成功率 ?? effect?.触发概率, 0.65);
+        if (estimatedProbability <= 1e-9 || estimatedProbability >= 1 - 1e-9) return;
         const relevantFingerprint = relevantStateFingerprint(beliefState, targetId);
         const key = mechanicKey({
           sourceActionId: candidateId,
@@ -9777,6 +10522,7 @@
         const target = findUnitInWorld(worldSnapshot, targetId);
         if (!target) return;
         const estimatedProbability = preview.estimateHitProbability(actor, target, effect);
+        if (estimatedProbability <= 1e-9 || estimatedProbability >= 1 - 1e-9) return;
         const relevantFingerprint = relevantStateFingerprint(beliefState, targetId);
         const key = hitMechanicKey({
           sourceActionId: candidateId,
@@ -9813,6 +10559,12 @@
         });
       }));
     if (withdrawalEstimate && withdrawalTargetId) {
+      if (
+        withdrawalEstimate.successProbability <= 1e-9 ||
+        withdrawalEstimate.successProbability >= 1 - 1e-9
+      ) {
+        return Object.freeze(observations);
+      }
       const relevantFingerprint = relevantStateFingerprint(beliefState, withdrawalTargetId);
       const key = mechanicKey({
         sourceActionId: 'WITHDRAW',
@@ -11155,7 +11907,20 @@
   }
 
   function declarationFingerprint(declaration = {}) {
-    return `declaration:${preview.stableHash(declaration && typeof declaration === 'object' ? declaration : {})}`;
+    if (!declaration || typeof declaration !== 'object') {
+      return `declaration:${preview.stableHash({})}`;
+    }
+    if (!Object.isFrozen(declaration)) {
+      return `declaration:${preview.stableHash(declaration)}`;
+    }
+    const cached = declarationFingerprintCache.get(declaration);
+    if (cached) {
+      decisionMetrics.declarationFingerprintCacheHits += 1;
+      return cached;
+    }
+    const result = `declaration:${preview.stableHash(declaration)}`;
+    declarationFingerprintCache.set(declaration, result);
+    return result;
   }
 
   function decisionRequestHash(request = {}) {
@@ -11163,6 +11928,9 @@
     if (cached) return cached;
     const payload = { ...request };
     delete payload.requestHash;
+    delete payload.routeCacheMetrics;
+    delete payload.candidateEnvelopeMetrics;
+    delete payload.objectiveCompactMode;
     const result = `request:${preview.stableHash(payload)}`;
     if (request && typeof request === 'object') decisionRequestHashCache.set(request, result);
     return result;
@@ -11176,7 +11944,9 @@
     const beliefState = input.beliefState || {};
     const values = new Map();
     const dependencyHashCache = new Map();
+    let activeCapture = null;
     const record = (key, value) => {
+      if (activeCapture) activeCapture.add(key);
       if (values.has(key)) return values.get(key);
       values.set(key, cloneValue(value));
       dependencyHashCache.clear();
@@ -11187,9 +11957,25 @@
       if (!found) throw new Error(`battle_decision_dependency_unit_missing:${unitId}`);
       return found;
     };
-    const state = (entry, stateKey) => stateEntries(entry)
-      .find(candidate => String(candidate?.[0] || candidate?.[1]?.状态 || candidate?.[1]?.状态名称 || '').trim() === String(stateKey || '').trim())
-      ?.[1] || null;
+    const state = (entry, stateKey) => {
+      const wantedKey = String(stateKey || '').trim();
+      const states = entry?.状态效果;
+      if (
+        states &&
+        !Array.isArray(states) &&
+        typeof states === 'object' &&
+        Object.hasOwn(states, wantedKey)
+      ) {
+        return states[wantedKey];
+      }
+      return stateEntries(entry).find((candidate, index) =>
+        String(
+          candidate?.状态 ||
+          candidate?.状态名称 ||
+          (Array.isArray(states) ? `index:${index}` : '')
+        ).trim() === wantedKey
+      ) || null;
+    };
     return Object.freeze({
       readUnitHp(unitId) {
         return record(`unit:${unitId}:hp`, preview.readHp(unit(unitId)));
@@ -11257,6 +12043,83 @@
             null,
         );
       },
+      readDependencyKey(key) {
+        const dependencyKey = String(key || '').trim();
+        const unitMatch = dependencyKey.match(
+          /^unit:(.+):(hp|baseMaxHp|resource:[^:]+|resourceMax:[^:]+|stat:[^:]+|state:.+)$/,
+        );
+        if (unitMatch) {
+          const unitId = unitMatch[1];
+          const kind = unitMatch[2];
+          if (kind === 'hp') return this.readUnitHp(unitId);
+          if (kind === 'baseMaxHp') {
+            return this.readUnitBaseMaxHp(unitId);
+          }
+          if (kind.startsWith('resource:')) {
+            return this.readResource(
+              unitId,
+              kind.slice('resource:'.length),
+            );
+          }
+          if (kind.startsWith('resourceMax:')) {
+            return record(
+              dependencyKey,
+              preview.readResourceMax(
+                unit(unitId),
+                kind.slice('resourceMax:'.length),
+              ),
+            );
+          }
+          if (kind.startsWith('stat:')) {
+            return record(
+              dependencyKey,
+              preview.readCombatStat(
+                unit(unitId),
+                kind.slice('stat:'.length),
+              ),
+            );
+          }
+          return record(
+            dependencyKey,
+            preview.dependencyValueForKey(worldSnapshot, dependencyKey),
+          );
+        }
+        const defenseMatch = dependencyKey.match(/^target:(.+):defense$/);
+        if (defenseMatch) return this.readDefenseProfile(defenseMatch[1]);
+        if (dependencyKey.startsWith('opportunity:')) {
+          return this.readOpportunity(
+            dependencyKey.slice('opportunity:'.length),
+          );
+        }
+        if (dependencyKey.startsWith('schedule:')) {
+          return this.readSchedule(dependencyKey.slice('schedule:'.length));
+        }
+        if (dependencyKey.startsWith('objective:')) {
+          return this.readObjective(
+            dependencyKey.slice('objective:'.length),
+          );
+        }
+        if (dependencyKey.startsWith('rule:')) {
+          return this.readRule(dependencyKey.slice('rule:'.length));
+        }
+        if (dependencyKey.startsWith('belief:')) {
+          return this.readBelief(dependencyKey.slice('belief:'.length));
+        }
+        return record(dependencyKey, null);
+      },
+      recordPreviewRead(key, value) {
+        return record(String(key || '').trim(), value);
+      },
+      beginCapture() {
+        if (activeCapture) throw new Error('battle_decision_dependency_capture_nested');
+        activeCapture = new Set();
+      },
+      endCapture() {
+        if (!activeCapture) throw new Error('battle_decision_dependency_capture_missing');
+        const keys = Object.freeze([...activeCapture].sort());
+        activeCapture = null;
+        return keys;
+      },
       dependencyKeys() {
         return Object.freeze([...values.keys()].sort());
       },
@@ -11271,7 +12134,115 @@
         dependencyHashCache.set(cacheKey, result);
         return result;
       },
+      dependencyRows(keys = [...values.keys()]) {
+        return Object.freeze(
+          [...keys].sort().map(key => Object.freeze([
+            key,
+            cloneValue(values.has(key) ? values.get(key) : null),
+          ])),
+        );
+      },
     });
+  }
+
+  function captureObjectiveHorizonScheduleDependencies(
+    dependencyView,
+    objectiveContract = {},
+    scheduledEvents = [],
+  ) {
+    const objectiveRounds = new Set(
+      [
+        ...(objectiveContract?.victory?.conditions || []),
+        ...(objectiveContract?.defeat?.conditions || []),
+      ]
+        .filter(condition =>
+          String(condition?.type || '').trim().toUpperCase() ===
+          'ROUND_REACHED'
+        )
+        .map(condition =>
+          Math.max(
+            0,
+            Number(
+              condition?.round ??
+              condition?.targetRound ??
+              condition?.value ??
+              0
+            ),
+          )
+        )
+        .filter(round => Number.isFinite(round) && round > 0),
+    );
+    if (!objectiveRounds.size) return;
+    (Array.isArray(scheduledEvents) ? scheduledEvents : []).forEach(event => {
+      const scheduledRound = Math.max(
+        0,
+        Number(event?.round ?? event?.scheduledRound ?? 0),
+      );
+      if (!objectiveRounds.has(scheduledRound)) return;
+      const descriptorId = String(
+        event?.descriptorId || event?.scheduleId || '',
+      ).trim();
+      if (descriptorId) dependencyView.readSchedule(descriptorId);
+    });
+  }
+
+  function canonicalDependencySnapshot(input = {}, keys = []) {
+    const dependencyKeys = [...new Set(
+      (Array.isArray(keys) ? keys : [])
+        .map(key => String(key || '').trim())
+        .filter(Boolean),
+    )].sort();
+    const canonicalView = createDependencyView(input);
+    dependencyKeys.forEach(key => canonicalView.readDependencyKey(key));
+    return Object.freeze({
+      dependencyValueHash: canonicalView.dependencyValueHash(dependencyKeys),
+      rows: canonicalView.dependencyRows(dependencyKeys),
+    });
+  }
+
+  function canonicalDependencyValueHash(input = {}, keys = []) {
+    return canonicalDependencySnapshot(input, keys).dependencyValueHash;
+  }
+
+  function replayableDependencyKeys(
+    worldSnapshot = {},
+    previewResult = {},
+    dependencyKeys = [],
+  ) {
+    const createdSummonIds = new Set(
+      (Array.isArray(previewResult?.scheduledEvents)
+        ? previewResult.scheduledEvents
+        : [])
+        .filter(event =>
+          String(event?.type || event?.operation || '')
+            .trim()
+            .toUpperCase() === 'SUMMON_CREATE'
+        )
+        .flatMap(event => Array.isArray(event?.summonIds) ? event.summonIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const unitIdForKey = key => {
+      const unitMatch = String(key || '').trim().match(
+        /^unit:(.+):(hp|baseMaxHp|resource:[^:]+|resourceMax:[^:]+|stat:[^:]+|state:.+)$/,
+      );
+      if (unitMatch) return unitMatch[1];
+      const defenseMatch = String(key || '').trim().match(/^target:(.+):defense$/);
+      return defenseMatch ? defenseMatch[1] : '';
+    };
+    return Object.freeze(
+      [...new Set(dependencyKeys)]
+        .map(key => String(key || '').trim())
+        .filter(Boolean)
+        .filter(key => {
+          const unitId = unitIdForKey(key);
+          if (!unitId) return true;
+          if (findUnitInWorld(worldSnapshot, unitId)) return true;
+          if (createdSummonIds.has(unitId)) return false;
+          throw new Error(`R8_DEPENDENCY_UNKNOWN_UNIT:${unitId}:${key}`);
+        })
+        .sort(),
+    );
   }
 
   function r8PreviewCacheKey(context = {}, candidate = {}, dependencyValueHash = '') {
@@ -11283,6 +12254,7 @@
       context.opportunityRevision,
       context.resourceTimelineRevision,
       context.scheduleRevision,
+      context.runtimeEvaluationRevision,
       candidate.declarationFingerprint || declarationFingerprint(candidate.declaration),
       preview.stableHash(candidate.declaration?.targetIds || []),
       preview.stableHash(context.horizon || {}),
@@ -11327,6 +12299,338 @@
     return true;
   }
 
+  function buildDependencyDeltaSet(input = {}) {
+    const worldRevision = String(input?.worldRevision || '').trim();
+    const candidate = input?.candidate || {};
+    const previewResult = input?.previewResult || {};
+    const dependencyKeys = [...new Set([
+      ...(Array.isArray(input?.dependencyKeys) ? input.dependencyKeys : []),
+      ...(Array.isArray(previewResult?.dependencyReads)
+        ? previewResult.dependencyReads.map(([key]) => String(key || '').trim())
+        : []),
+    ].filter(Boolean))].sort();
+    const changedFacts = [];
+    const addFact = (fact = {}) => {
+      const factKey = String(fact?.factKey || '').trim();
+      if (!factKey) return;
+      changedFacts.push(Object.freeze({
+        factKey,
+        ownerId: String(fact?.ownerId || '').trim(),
+        targetId: String(fact?.targetId || '').trim(),
+        category: String(fact?.category || 'UNKNOWN').trim().toUpperCase(),
+        sourceEffectId: String(fact?.sourceEffectId || '').trim(),
+        realizationWindow: String(fact?.realizationWindow || 'NOW').trim() || 'NOW',
+        probabilityGroupKey: String(fact?.probabilityGroupKey || '').trim(),
+      }));
+    };
+    (previewResult?.changedUnitIds || []).forEach(unitId => {
+      addFact({
+        factKey: `unit:${String(unitId || '').trim()}`,
+        ownerId: unitId,
+        category: 'STATE',
+      });
+    });
+    Object.keys(previewResult?.changedRules || {}).forEach(ruleKey => {
+      addFact({
+        factKey: `rule:${String(ruleKey || '').trim()}`,
+        category: 'RULE',
+      });
+    });
+    (previewResult?.contributions || []).forEach((entry, index) => {
+      const outcomeKind = String(entry?.outcomeKind || '').trim().toUpperCase();
+      const evidence = entry?.evidence || {};
+      const targetId = String(entry?.targetId || '').trim();
+      const sourceEffectId = String(entry?.effectInstanceId || '').trim();
+      const rootActionId = String(
+        entry?.rootCauseId ||
+        entry?.sourceActionId ||
+        candidate?.candidateId ||
+        ''
+      ).trim();
+      const factKey = [
+        rootActionId,
+        sourceEffectId || index,
+        targetId,
+        outcomeKind,
+        String(entry?.windowId || 'NOW').trim() || 'NOW',
+      ].join('|');
+      const category =
+        ['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(outcomeKind)
+          ? 'HP'
+          : ['RESOURCE_OPTION_CHANGED'].includes(outcomeKind)
+            ? 'RESOURCE'
+            : ['ACTION_CANCELLED', 'ACTION_GRANTED', 'NEXT_ACTION_QUALITY_CHANGED']
+                .includes(outcomeKind)
+              ? 'OPPORTUNITY'
+              : ['STATE_CHANGED', 'STATE_SCHEDULED'].includes(outcomeKind)
+                ? 'STATE'
+                : outcomeKind === 'RULE_CHANGED'
+                  ? 'RULE'
+                  : outcomeKind === 'SUMMON_WINDOW'
+                    ? 'SUMMON'
+                    : 'UNKNOWN';
+      addFact({
+        factKey: `effect:${factKey}`,
+        ownerId: String(candidate?.declaration?.actorId || '').trim(),
+        targetId,
+        category,
+        sourceEffectId,
+        realizationWindow: entry?.windowId || 'NOW',
+        probabilityGroupKey:
+          evidence?.distributionGroupKey ||
+          evidence?.probabilityGroupKey ||
+          '',
+      });
+    });
+    (previewResult?.scheduledEvents || []).forEach((event, index) => {
+      const eventId = String(
+        event?.eventId ||
+        event?.descriptorId ||
+        `${candidate?.candidateId || 'candidate'}:schedule:${index}`
+      ).trim();
+      addFact({
+        factKey: `schedule:${eventId}`,
+        ownerId: event?.ownerId,
+        targetId: event?.targetId,
+        category: 'SCHEDULE',
+        sourceEffectId: event?.effectInstanceId || event?.sourceEventId,
+        realizationWindow: event?.windowId || event?.scheduledRound || 'SCHEDULED',
+        probabilityGroupKey:
+          event?.probabilityGroupKey ||
+          event?.distributionGroupKey ||
+          '',
+      });
+    });
+    const uniqueFacts = [...new Map(
+      changedFacts.map(fact => [
+        [
+          fact.factKey,
+          fact.ownerId,
+          fact.targetId,
+          fact.category,
+          fact.sourceEffectId,
+          fact.realizationWindow,
+          fact.probabilityGroupKey,
+        ].join('|'),
+        fact,
+      ]),
+    ).values()].sort((left, right) =>
+      String(left.factKey).localeCompare(String(right.factKey))
+    );
+    const dependencyReads = new Map(
+      (previewResult?.dependencyReads || []).map(([key, value]) => [
+        String(key || '').trim(),
+        value,
+      ]),
+    );
+    const dependencyValueHash = String(input?.dependencyValueHash || '').trim() ||
+      `dependency:${preview.stableHash(
+        dependencyKeys.map(key => [key, dependencyReads.has(key) ? dependencyReads.get(key) : null]),
+      )}`;
+    return Object.freeze({
+      schemaVersion: '8.3-dependency-delta-set-1',
+      worldRevision,
+      candidateId: String(candidate?.candidateId || '').trim(),
+      changedFacts: Object.freeze(uniqueFacts),
+      dependencyKeys: Object.freeze(dependencyKeys),
+      dependencyValueHash,
+      dependencyHash: `dependency-delta:${preview.stableHash({
+        worldRevision,
+        candidateId: String(candidate?.candidateId || '').trim(),
+        changedFacts: uniqueFacts,
+        dependencyKeys,
+        dependencyValueHash,
+      })}`,
+    });
+  }
+
+  function buildOpportunityImpactSet(input = {}) {
+    const candidate = input?.candidate || {};
+    const previewResult = input?.previewResult || {};
+    const opportunitySnapshot = Array.isArray(input?.opportunitySnapshot)
+      ? input.opportunitySnapshot
+      : Array.isArray(input?.opportunitySnapshot?.opportunities)
+        ? input.opportunitySnapshot.opportunities
+        : input?.opportunitySnapshot && typeof input.opportunitySnapshot === 'object'
+          ? [input.opportunitySnapshot]
+          : [];
+    const scheduledEvents = Array.isArray(input?.scheduledEvents)
+      ? input.scheduledEvents
+      : input?.scheduledEvents && typeof input.scheduledEvents === 'object'
+        ? [input.scheduledEvents]
+        : [];
+    const concreteIds = new Set();
+    const concreteReferences = [];
+    const scheduledDescriptors = new Set();
+    const projectedResponses = new Set();
+    const cancelledIds = new Set();
+    const createdIds = new Set();
+    const reorderedIds = new Set();
+    const expiresBeforeUseIds = new Set();
+    const addIds = (target, values) => {
+      (Array.isArray(values) ? values : [values]).forEach(value => {
+        const id = String(value || '').trim();
+        if (id) target.add(id);
+      });
+    };
+    const addConcreteReference = (opportunityId, role, targetId = '') => {
+      const id = String(opportunityId || '').trim();
+      const normalizedRole = String(role || '').trim();
+      if (!id || !normalizedRole) return;
+      concreteIds.add(id);
+      if (!concreteReferences.some(reference =>
+        reference.opportunityId === id &&
+        reference.role === normalizedRole &&
+        reference.targetId === String(targetId || '').trim()
+      )) {
+        concreteReferences.push({
+          opportunityId: id,
+          role: normalizedRole,
+          targetId: String(targetId || '').trim(),
+        });
+      }
+    };
+    addConcreteReference(
+      input?.actionOpportunity?.opportunityId ||
+        input?.actionOpportunity?.grantId ||
+        '',
+      'EXECUTING_ACTION',
+      candidate?.declaration?.actorId,
+    );
+    scheduledEvents.forEach(event => {
+      const id = String(
+        event?.descriptorId ||
+        event?.scheduleId ||
+        ''
+      ).trim();
+      if (id) scheduledDescriptors.add(id);
+    });
+    (input?.projectedResponses || []).forEach(response => {
+      const id = String(response?.projectionId || '').trim();
+      if (id) projectedResponses.add(id);
+    });
+    (previewResult?.contributions || []).forEach(entry => {
+      const outcomeKind = String(entry?.outcomeKind || '').trim().toUpperCase();
+      const evidence = entry?.evidence || {};
+      const targetOpportunityIds = [
+        evidence?.targetOpportunityId,
+        ...(Array.isArray(evidence?.targetOpportunityIds)
+          ? evidence.targetOpportunityIds
+          : []),
+        ...(Array.isArray(evidence?.coveredTargetOpportunityIds)
+          ? evidence.coveredTargetOpportunityIds
+          : []),
+      ];
+      if (outcomeKind === 'ACTION_CANCELLED') {
+        addIds(cancelledIds, targetOpportunityIds);
+        targetOpportunityIds.forEach(opportunityId =>
+          addConcreteReference(
+            opportunityId,
+            'CANCEL_TARGET',
+            entry?.targetId,
+          )
+        );
+      } else if (outcomeKind === 'ACTION_GRANTED') {
+        const grantedIds = [
+          evidence?.opportunityId,
+          evidence?.grantId,
+          entry?.effectInstanceId,
+        ];
+        addIds(createdIds, grantedIds);
+        grantedIds.forEach(opportunityId =>
+          addConcreteReference(
+            opportunityId,
+            'GRANT_CREATED',
+            entry?.targetId,
+          )
+        );
+      } else if (outcomeKind === 'SUMMON_WINDOW') {
+        const summonIds = [
+          evidence?.opportunityId,
+          evidence?.grantId,
+          entry?.effectInstanceId,
+        ];
+        addIds(createdIds, summonIds);
+        summonIds.forEach(opportunityId =>
+          addConcreteReference(
+            opportunityId,
+            'SUMMON_WINDOW',
+            entry?.targetId,
+          )
+        );
+      } else if (outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED') {
+        addIds(reorderedIds, targetOpportunityIds);
+        targetOpportunityIds.forEach(opportunityId =>
+          addConcreteReference(
+            opportunityId,
+            'REORDER_TARGET',
+            entry?.targetId,
+          )
+        );
+      }
+      addIds(expiresBeforeUseIds, evidence?.expiresBeforeUseIds);
+    });
+    const normalized = {
+      schemaVersion: '8.3-opportunity-impact-set-1',
+      concreteIds: [...concreteIds].sort(),
+      concreteReferences: concreteReferences
+        .sort((left, right) =>
+          left.opportunityId.localeCompare(right.opportunityId) ||
+          left.role.localeCompare(right.role) ||
+          left.targetId.localeCompare(right.targetId)
+        ),
+      scheduledDescriptors: [...scheduledDescriptors].sort(),
+      projectedResponses: [...projectedResponses].sort(),
+      cancelledIds: [...cancelledIds].sort(),
+      createdIds: [...createdIds].sort(),
+      reorderedIds: [...reorderedIds].sort(),
+      expiresBeforeUseIds: [...expiresBeforeUseIds].sort(),
+    };
+    return Object.freeze({
+      ...normalized,
+      dependencyHash: `opportunity-impact:${preview.stableHash(normalized)}`,
+    });
+  }
+
+  function r8ResourceWorldStateKey({
+    rowIndex = 0,
+    timelineRevision = '',
+    balances = new Map(),
+    locks = new Set(),
+    consumedOpportunityIds = new Set(),
+    consumedLifecycleEventIds = new Set(),
+    worldRevision = '',
+    objectiveHash = '',
+    worldStateHash = '',
+    terminalStatus = 'ONGOING',
+    probabilisticStateUnresolved = false,
+  } = {}) {
+    const mapEntries = value => value instanceof Map
+      ? [...value.entries()]
+      : Object.entries(value || {});
+    const setEntries = value => value instanceof Set
+      ? [...value]
+      : Array.isArray(value) ? value : [];
+    return `resource-world:${preview.stableHash({
+      rowIndex: Number(rowIndex || 0),
+      timelineRevision: String(timelineRevision || '').trim(),
+      balances: mapEntries(balances)
+        .map(([key, value]) => [
+          String(key || ''),
+          Number(Number(value || 0).toFixed(8)),
+        ])
+        .sort(([left], [right]) => left.localeCompare(right)),
+      locks: setEntries(locks).map(String).sort(),
+      consumedOpportunityIds: setEntries(consumedOpportunityIds).map(String).sort(),
+      consumedLifecycleEventIds: setEntries(consumedLifecycleEventIds).map(String).sort(),
+      worldRevision: String(worldRevision || '').trim(),
+      objectiveHash: String(objectiveHash || '').trim(),
+      worldStateHash: String(worldStateHash || '').trim(),
+      terminalStatus: String(terminalStatus || 'ONGOING').trim(),
+      probabilisticStateUnresolved: probabilisticStateUnresolved === true,
+    })}`;
+  }
+
   function actionRouteFromPreview(input = {}) {
     const candidate = input.candidate || {};
     const previewResult = input.previewResult || {};
@@ -11343,7 +12647,198 @@
     const paymentDependencies = [];
     const opportunityDependencies = [];
     const actionPoolEffects = [];
-    for (const entry of previewResult?.contributions || []) {
+    const probabilityFactors = [];
+    const opportunityRows = Array.isArray(input?.opportunitySnapshot)
+      ? input.opportunitySnapshot
+      : Array.isArray(input?.opportunitySnapshot?.opportunities)
+        ? input.opportunitySnapshot.opportunities
+        : [];
+    const addOpportunityDependency = ({
+      opportunityId = '',
+      role = '',
+      targetId = '',
+      outcomeKind = '',
+      windowId = '',
+    } = {}) => {
+      const normalizedId = String(opportunityId || '').trim();
+      const normalizedRole = String(role || '').trim();
+      const normalizedTargetId = String(targetId || '').trim();
+      const normalizedOutcomeKind = String(outcomeKind || '').trim();
+      const normalizedWindowId = String(windowId || '').trim();
+      if (!normalizedId || !normalizedRole) return;
+      const entry = {
+        opportunityId: normalizedId,
+        role: normalizedRole,
+        targetId: normalizedTargetId,
+        outcomeKind: normalizedOutcomeKind,
+        windowId: normalizedWindowId,
+      };
+      if (!opportunityDependencies.some(existing =>
+        existing.opportunityId === entry.opportunityId &&
+        existing.role === entry.role &&
+        existing.targetId === entry.targetId &&
+        existing.outcomeKind === entry.outcomeKind &&
+        existing.windowId === entry.windowId
+      )) {
+        opportunityDependencies.push(entry);
+      }
+    };
+    const opportunityIdsForUnit = unitId =>
+      opportunityRows
+        .filter(opportunity =>
+          String(opportunity?.ownerId || '').trim() ===
+            String(unitId || '').trim()
+        )
+        .map(opportunity =>
+          String(opportunity?.opportunityId || opportunity?.grantId || '').trim()
+        )
+        .filter(Boolean);
+    addOpportunityDependency({
+      opportunityId:
+        input?.actionOpportunity?.opportunityId ||
+        input?.actionOpportunity?.grantId ||
+        '',
+      role: 'EXECUTING_ACTION',
+      targetId: String(candidate?.declaration?.actorId || '').trim(),
+      outcomeKind: 'ACTION_DECLARATION',
+      windowId: 'CURRENT_OPPORTUNITY',
+    });
+    const healthContributionRows = (entry = {}, contributionSequence = 0) => {
+      const outcomeKind = String(entry?.outcomeKind || '').trim();
+      if (!['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(outcomeKind)) return [];
+      const target = findUnitInWorld(worldSnapshot, entry.targetId);
+      if (!target) return [];
+      const baseMaxHp = Math.max(1, preview.readHpMax(target));
+      const evidence = entry?.evidence || {};
+      const rawDelta = Number(evidence?.delta ?? entry?.expectedDelta ?? 0);
+      const rawOutcomeDistribution = Array.isArray(evidence?.outcomeDistribution)
+        ? evidence.outcomeDistribution
+        : [];
+      const schedule = (previewResult?.scheduledEvents || []).find(event =>
+        String(event?.effectInstanceId || '').trim() ===
+        String(entry?.effectInstanceId || '').trim()
+      );
+      const tickCount = outcomeKind === 'SCHEDULED_HP_DELTA'
+        ? Math.max(
+            1,
+            Math.floor(Number(
+              evidence?.tickCount ??
+              schedule?.tickCount ??
+              evidence?.duration ??
+              1
+            )),
+          )
+        : 1;
+      const damagePerTick = outcomeKind === 'SCHEDULED_HP_DELTA'
+        ? Math.max(0, Number(evidence?.damagePerTick ?? schedule?.damagePerTick ?? 0))
+        : 0;
+      const healingPerTick = outcomeKind === 'SCHEDULED_HP_DELTA'
+        ? Math.max(0, Number(evidence?.healingPerTick ?? schedule?.healingPerTick ?? 0))
+        : 0;
+      const perTickDelta = outcomeKind === 'SCHEDULED_HP_DELTA' &&
+        (damagePerTick > 0 || healingPerTick > 0)
+        ? healingPerTick - damagePerTick
+        : rawDelta / tickCount;
+      const targetSide = sideOf(worldSnapshot, target);
+      const beneficialDelta = targetSide === actorSide ? perTickDelta : -perTickDelta;
+      const distribution = rawOutcomeDistribution.length
+        ? rawOutcomeDistribution.map((branch, index) => {
+            const branchDelta = Number(branch?.delta || 0) / tickCount;
+            const branchIncoming = Number.isFinite(Number(branch?.incoming))
+              ? Number(branch.incoming) / tickCount
+              : Math.max(0, -branchDelta);
+            return Object.freeze({
+              branchKey: String(branch?.branchKey || `branch:${index}`).trim(),
+              probability: clamp(Number(branch?.probability || 0), 0, 1),
+              healthDeltaPP: 100 * branchDelta / baseMaxHp,
+              incomingDamagePP: 100 * branchIncoming / baseMaxHp,
+              shieldAbsorbPP: 100 * Number(branch?.shieldAbsorb || 0) /
+                Math.max(1, baseMaxHp * tickCount),
+              conditionalOn: Object.freeze({ ...(branch?.conditionalOn || {}) }),
+              assignments: Object.freeze({ ...(branch?.assignments || {}) }),
+              actionState: String(branch?.actionState || '').trim(),
+            });
+          })
+        : Object.freeze([Object.freeze({
+            branchKey: 'deterministic',
+            probability: 1,
+            healthDeltaPP: 100 * perTickDelta / baseMaxHp,
+            incomingDamagePP: 100 * Math.max(0, -perTickDelta) / baseMaxHp,
+            shieldAbsorbPP: 0,
+            conditionalOn: Object.freeze({}),
+            assignments: Object.freeze({}),
+            actionState: '',
+          })]);
+      const sourceEffectInstanceId = String(entry?.effectInstanceId || '');
+      const rootActionId = String(
+        entry?.rootCauseId ||
+        entry?.sourceActionId ||
+        candidate?.candidateId ||
+        ''
+      ).trim();
+      const baseWindowId = String(entry?.windowId || 'NOW').trim() || 'NOW';
+      return Array.from({ length: tickCount }, (_, tickIndex) => ({
+        targetId: String(entry?.targetId || '').trim(),
+        outcomeKind,
+        windowId: tickCount > 1
+          ? `${baseWindowId}:tick:${tickIndex + 1}`
+          : baseWindowId,
+        healthDeltaPP: 100 * perTickDelta / baseMaxHp,
+        actorBenefitPP: 100 * beneficialDelta / baseMaxHp,
+        rootActionId,
+        sourceEffectInstanceId,
+        contributionSequence: contributionSequence + tickIndex / 1000,
+        scheduledEventId: outcomeKind === 'SCHEDULED_HP_DELTA'
+          ? `${sourceEffectInstanceId}:tick:${tickIndex + 1}`
+          : '',
+        tickIndex: tickIndex + 1,
+        tickCount,
+        distributionGroupKey: String(
+          evidence?.distributionGroupKey ||
+          [
+            rootActionId,
+            sourceEffectInstanceId,
+            baseWindowId,
+            entry?.targetId || '',
+          ].join('|')
+        ).trim(),
+        outcomeDistribution: Object.freeze(distribution),
+      }));
+    };
+    if (candidate?.resourcePotentialOnly === true) {
+      const payerIds = [
+        ...new Set(
+          (
+            Array.isArray(candidate?.declaration?.fusionParticipantIds) &&
+            candidate.declaration.fusionParticipantIds.length
+              ? candidate.declaration.fusionParticipantIds
+              : [candidate?.declaration?.actorId]
+          )
+            .map(value => String(value || '').trim())
+            .filter(Boolean),
+        ),
+      ];
+      payerIds.forEach(payerId => {
+        const payer = findUnitInWorld(worldSnapshot, payerId);
+        Object.entries(
+          candidate?.costs ||
+          candidate?.declaration?.resourceCosts ||
+          {},
+        ).forEach(([resource, rawCost]) => {
+          const text = String(rawCost ?? '').trim();
+          const numeric = Math.max(0, Number.parseFloat(text) || 0);
+          if (!(numeric > 1e-9)) return;
+          paymentDependencies.push({
+            unitId: payerId,
+            resource,
+            amount: text.includes('%')
+              ? preview.readResourceMax(payer, resource) * numeric / 100
+              : numeric,
+          });
+        });
+      });
+    }
+    for (const [contributionSequence, entry] of (previewResult?.contributions || []).entries()) {
       const outcomeKind = String(entry?.outcomeKind || '').trim();
       if (outcomeKind) outcomeKinds.add(outcomeKind);
       if (entry?.windowId) realizationWindows.add(String(entry.windowId));
@@ -11354,46 +12849,141 @@
           amount: Math.abs(Number(entry?.evidence?.delta || 0)),
         });
       }
-      if (['ACTION_CANCELLED', 'ACTION_GRANTED', 'SUMMON_WINDOW'].includes(outcomeKind)) {
-        opportunityDependencies.push({
-          targetId: entry.targetId,
-          outcomeKind,
-          windowId: entry.windowId || '',
-        });
+      if (outcomeKind === 'ACTION_CANCELLED') {
+        const evidence = entry?.evidence || {};
+        const targetOpportunityIds = [
+          evidence?.targetOpportunityId,
+          ...(Array.isArray(evidence?.targetOpportunityIds)
+            ? evidence.targetOpportunityIds
+            : []),
+          ...(Array.isArray(evidence?.coveredTargetOpportunityIds)
+            ? evidence.coveredTargetOpportunityIds
+            : []),
+        ];
+        targetOpportunityIds.forEach(opportunityId =>
+          addOpportunityDependency({
+            opportunityId,
+            role: 'CANCEL_TARGET',
+            targetId: entry.targetId,
+            outcomeKind,
+            windowId: entry.windowId,
+          })
+        );
+      } else if (outcomeKind === 'ACTION_GRANTED') {
+        const evidence = entry?.evidence || {};
+        [
+          evidence?.opportunityId,
+          evidence?.grantId,
+          entry?.effectInstanceId,
+        ].forEach(opportunityId =>
+          addOpportunityDependency({
+            opportunityId,
+            role: 'GRANT_CREATED',
+            targetId: entry.targetId,
+            outcomeKind,
+            windowId: entry.windowId,
+          })
+        );
+      } else if (outcomeKind === 'SUMMON_WINDOW') {
+        const evidence = entry?.evidence || {};
+        [
+          evidence?.opportunityId,
+          evidence?.grantId,
+          entry?.effectInstanceId,
+        ].forEach(opportunityId =>
+          addOpportunityDependency({
+            opportunityId,
+            role: 'SUMMON_WINDOW',
+            targetId: entry.targetId,
+            outcomeKind,
+            windowId: entry.windowId,
+          })
+        );
       }
       if (!['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(outcomeKind)) {
+        const target = findUnitInWorld(worldSnapshot, entry.targetId);
+        const targetBaseMaxHp = target
+          ? Math.max(1, preview.readHpMax(target))
+          : 1;
         const actionPoolEffect = {
           rootActionId: String(entry?.rootCauseId || entry?.sourceActionId || candidate?.candidateId || '').trim(),
           effectInstanceId: String(entry?.effectInstanceId || '').trim(),
           targetId: String(entry?.targetId || '').trim(),
           outcomeKind,
           windowId: String(entry?.windowId || ''),
+          contributionSequence,
           expectedDelta: Number(entry?.expectedDelta || 0),
+          expectedDeltaPP:
+            100 * Number(entry?.expectedDelta || 0) / targetBaseMaxHp,
           threatValue: Number(entry?.threatValue || 0),
           evidence: cloneValue(entry?.evidence || {}),
         };
         if (r8ActionPoolEffectHasMechanicalDelta(actionPoolEffect)) {
           actionPoolEffects.push(actionPoolEffect);
         }
+        if (Array.isArray(entry?.evidence?.outcomeDistribution)) {
+          probabilityFactors.push({
+            rootActionId: actionPoolEffect.rootActionId,
+            effectInstanceId: actionPoolEffect.effectInstanceId,
+            targetId: actionPoolEffect.targetId,
+            outcomeKind,
+            windowId: actionPoolEffect.windowId,
+            contributionSequence,
+            distributionGroupKey: String(
+              entry?.evidence?.distributionGroupKey ||
+              [
+                actionPoolEffect.rootActionId,
+                actionPoolEffect.effectInstanceId,
+                actionPoolEffect.windowId || 'NOW',
+                actionPoolEffect.targetId,
+              ].join('|')
+            ).trim(),
+            outcomeDistribution: entry.evidence.outcomeDistribution.map((branch, index) => Object.freeze({
+              branchKey: String(branch?.branchKey || `branch:${index}`).trim(),
+              probability: clamp(Number(branch?.probability || 0), 0, 1),
+              conditionalOn: Object.freeze({ ...(branch?.conditionalOn || {}) }),
+              assignments: Object.freeze({ ...(branch?.assignments || {}) }),
+              actionState: String(branch?.actionState || '').trim(),
+            })),
+          });
+        }
         continue;
       }
-      const target = findUnitInWorld(worldSnapshot, entry.targetId);
-      if (!target) continue;
-      const baseMaxHp = Math.max(1, preview.readHpMax(target));
-      const rawDelta = Number(entry?.evidence?.delta ?? entry?.expectedDelta ?? 0);
-      if (Math.abs(rawDelta) <= 1e-9) continue;
-      const targetSide = sideOf(worldSnapshot, target);
-      const beneficialDelta = targetSide === actorSide ? rawDelta : -rawDelta;
-      trajectories.push({
-        targetId: entry.targetId,
-        outcomeKind,
-        windowId: String(entry?.windowId || ''),
-        healthDeltaPP: 100 * rawDelta / baseMaxHp,
-        actorBenefitPP: 100 * beneficialDelta / baseMaxHp,
-        rootActionId: String(entry?.rootCauseId || entry?.sourceActionId || candidate?.candidateId || '').trim(),
-        sourceEffectInstanceId: String(entry?.effectInstanceId || ''),
+      const rows = healthContributionRows(entry, contributionSequence);
+      rows.forEach(row => {
+        const probabilityByCondition = new Map();
+        row.outcomeDistribution.forEach(branch => {
+          const conditionKey = preview.stableHash(branch.conditionalOn || {});
+          probabilityByCondition.set(
+            conditionKey,
+            Number(probabilityByCondition.get(conditionKey) || 0) +
+              Number(branch.probability || 0),
+          );
+        });
+        if ([...probabilityByCondition.values()].some(total => Math.abs(total - 1) > 1e-9)) {
+          throw new Error(`ACTION_ROUTE_OUTCOME_DISTRIBUTION_INVALID:${candidate?.candidateId || 'unknown'}:${entry?.semanticKey || ''}`);
+        }
+        trajectories.push(row);
       });
     }
+    const fusionPartnerIds = Array.isArray(
+      candidate?.declaration?.fusionPartnerIds,
+    )
+      ? candidate.declaration.fusionPartnerIds
+      : [];
+    fusionPartnerIds.forEach(partnerId => {
+      const normalizedPartnerId = String(partnerId || '').trim();
+      if (!normalizedPartnerId) return;
+      opportunityIdsForUnit(normalizedPartnerId).forEach(opportunityId =>
+        addOpportunityDependency({
+          opportunityId,
+          role: 'FUSION_PARTNER_PENDING',
+          targetId: normalizedPartnerId,
+          outcomeKind: 'FUSION_PARTNER_OPPORTUNITY',
+          windowId: 'CURRENT_ROUND_PENDING_NATURAL_ACTION',
+        })
+      );
+    });
     const routeShape = {
       targetIds,
       outcomeKinds: [...outcomeKinds].sort(),
@@ -11402,6 +12992,17 @@
         entry.outcomeKind,
         Number(entry.healthDeltaPP.toFixed(8)),
         entry.windowId,
+        entry.distributionGroupKey,
+        entry.outcomeDistribution.map(branch => [
+          branch.branchKey,
+          Number(branch.probability.toFixed(12)),
+          Number(branch.healthDeltaPP.toFixed(8)),
+          Number(branch.incomingDamagePP || 0).toFixed(8),
+          Number(branch.shieldAbsorbPP || 0).toFixed(8),
+          branch.conditionalOn,
+          branch.assignments,
+          branch.actionState,
+        ]),
       ]),
       paymentDependencies,
       opportunityDependencies,
@@ -11412,8 +13013,48 @@
         entry.windowId,
         entry.effectInstanceId,
       ]),
+      probabilityFactors: probabilityFactors.map(factor => [
+        factor.effectInstanceId,
+        factor.targetId,
+        factor.windowId,
+        factor.distributionGroupKey,
+        factor.outcomeDistribution,
+      ]),
+      operationGraphHash: String(
+        previewResult?.operationGraph?.graphHash || '',
+      ),
     };
-    return Object.freeze({
+    const lightweightEnvelopeRoute =
+      String(input?.routeBuildMode || '').trim().toUpperCase() ===
+        'ENVELOPE_REBUILD';
+    if (lightweightEnvelopeRoute) {
+      decisionMetrics.lightweightEnvelopeRouteCount += 1;
+    }
+    const dependencyDeltaSet = lightweightEnvelopeRoute
+      ? null
+      : buildDependencyDeltaSet({
+          worldRevision: input?.worldRevision,
+          candidate,
+          previewResult,
+          dependencyKeys: input?.dependencyKeys,
+          dependencyValueHash: input?.dependencyValueHash,
+        });
+    const lifecycleEventSet = lightweightEnvelopeRoute
+      ? null
+      : preview.buildLifecycleEventSet(previewResult, {
+          worldSnapshot,
+          rootActionId: candidate?.candidateId,
+        });
+    const opportunityImpactSet = lightweightEnvelopeRoute
+      ? null
+      : buildOpportunityImpactSet({
+          candidate,
+          previewResult,
+          opportunitySnapshot: input?.opportunitySnapshot,
+          scheduledEvents: input?.scheduledEvents,
+          projectedResponses: input?.projectedResponses,
+        });
+    const route = {
       routeKey: `route:${preview.stableHash(routeShape)}`,
       candidateId: String(candidate?.candidateId || '').trim(),
       declarationFingerprint: candidate.declarationFingerprint || declarationFingerprint(candidate.declaration),
@@ -11424,34 +13065,562 @@
       realizationWindows: Object.freeze([...realizationWindows].sort()),
       healthTrajectoryByTarget: deepFreeze(trajectories),
       actionPoolEffects: deepFreeze(actionPoolEffects),
+      probabilityFactors: deepFreeze(probabilityFactors),
+      operationGraph: previewResult?.operationGraph || null,
+      dependencyDeltaSet,
+      lifecycleEventSet,
+      opportunityImpactSet,
       terminalPathId: '',
       probabilityBounds: Object.freeze({ lower: 0, upper: 1 }),
       dependencyKeys: Object.freeze([...(input.dependencyKeys || [])].sort()),
       dependencyUnitIds,
-      routeBenefitPP: trajectories.reduce((sum, entry) => sum + Number(entry.actorBenefitPP || 0), 0),
+      resourcePotentialOnly: candidate?.resourcePotentialOnly === true,
+      routeBenefitPP:
+        trajectories.reduce((sum, entry) => sum + Number(entry.actorBenefitPP || 0), 0) +
+        actionPoolEffects.reduce((sum, entry) => {
+          const explicitDelta = Number(
+            entry?.evidence?.r8HealthTrajectoryDeltaPP ??
+            entry?.evidence?.routeDeltaPP ??
+            0,
+          );
+          return sum + (Number.isFinite(explicitDelta) ? explicitDelta : 0);
+        }, 0),
+    };
+    r8RouteActorIdCache.set(
+      route,
+      String(candidate?.declaration?.actorId || '').trim(),
+    );
+    r8TerminalRouteSignatureCache.set(
+      route,
+      `terminal:${preview.stableHash({
+        healthTrajectoryByTarget: trajectories,
+        probabilityFactors,
+      })}`,
+    );
+    return r8ConditionRouteForObjective(route, input.objectiveRequest);
+  }
+
+  function r8ConditionRouteForObjective(route = {}, objectiveRequest = null) {
+    if (!objectiveRequest?.objectiveContract || !objectiveRequest?.visibleWorld) {
+      return Object.freeze(route);
+    }
+    const objectiveContext = r8ObjectiveContext(objectiveRequest);
+    const directBenefitPP = (route?.healthTrajectoryByTarget || []).reduce(
+      (sum, entry) => sum + Number(entry.actorBenefitPP || 0),
+      0,
+    );
+    const indirectBenefitPP = Number(route.routeBenefitPP || 0) - directBenefitPP;
+    const relevantFactors = r8TerminalRelevantProbabilityFactors(route);
+    let branchUpperBound = 1;
+    for (const factor of relevantFactors) {
+      branchUpperBound *= Math.max(1, factor?.outcomeDistribution?.length || 1);
+      if (branchUpperBound > 4096) break;
+    }
+    if (branchUpperBound <= 4096) {
+      for (const trajectory of route?.healthTrajectoryByTarget || []) {
+        branchUpperBound *= Math.max(1, trajectory?.outcomeDistribution?.length || 1);
+        if (branchUpperBound > 4096) break;
+      }
+    }
+    const terminalRequest = {
+      ...objectiveRequest,
+      terminalProjectionMode: 'SUMMARY',
+      terminalCallOrigin: 'ROUTE_OBJECTIVE_CONDITIONING',
+    };
+    const terminal = r8TerminalUtility(terminalRequest, route);
+    const ongoingProbability = Number(
+      terminal.ongoingProbability ?? (terminal.terminal ? 0 : 1),
+    );
+    const objectiveRouteUtilityHEPP = clamp(
+      Number(terminal.expectedTerminalUtility || 0) +
+      Number(terminal.expectedOngoingTrajectoryUtility || 0) +
+      ongoingProbability * indirectBenefitPP,
+      -100,
+      100,
+    );
+    const conditionedRoute = Object.freeze({
+      ...route,
+      objectiveRouteUtilityHEPP,
+      routeDiscardedOverkillPP: Number(terminal.expectedDiscardedOverkillPP || 0),
+      routeObjectiveAnalysisMode: 'EXACT_TERMINAL',
+      routeObjectiveBranchUpperBound: branchUpperBound,
+      terminalPathId: String(
+        terminal?.terminalAfterEffectInstanceId || '',
+      ).trim(),
+    });
+    r8CopyTerminalRouteMetadata(route, conditionedRoute, false);
+    r8ConditionedRouteTerminalCache.set(conditionedRoute, {
+      objectiveContext,
+      objectiveCompactMode:
+        String(objectiveRequest?.objectiveCompactMode || 'FAST').trim().toUpperCase(),
+      terminalProjectionMode: 'SUMMARY',
+      terminal,
+    });
+    return conditionedRoute;
+  }
+
+  function r8CopyTerminalRouteMetadata(
+    sourceRoute = {},
+    targetRoute = {},
+    includeTerminalResult = true,
+  ) {
+    const sourceIsRoute =
+      sourceRoute && typeof sourceRoute === 'object';
+    const targetIsRoute =
+      targetRoute && typeof targetRoute === 'object';
+    const actorId = sourceIsRoute
+      ? r8RouteActorIdCache.get(sourceRoute)
+      : '';
+    if (actorId && targetIsRoute) {
+      r8RouteActorIdCache.set(targetRoute, actorId);
+    }
+    const routeSignature = sourceIsRoute
+      ? r8TerminalRouteSignatureCache.get(sourceRoute)
+      : '';
+    if (routeSignature && targetIsRoute) {
+      r8TerminalRouteSignatureCache.set(targetRoute, routeSignature);
+    }
+    const canonicalSignature = sourceIsRoute
+      ? r8TerminalCanonicalRouteSignatureCache.get(sourceRoute)
+      : '';
+    if (canonicalSignature && targetIsRoute) {
+      r8TerminalCanonicalRouteSignatureCache.set(
+        targetRoute,
+        canonicalSignature,
+      );
+    }
+    if (includeTerminalResult) {
+      const terminalCache = sourceIsRoute
+        ? r8ConditionedRouteTerminalCache.get(sourceRoute)
+        : null;
+      if (terminalCache && targetIsRoute) {
+        r8ConditionedRouteTerminalCache.set(targetRoute, terminalCache);
+      }
+    }
+    return targetRoute;
+  }
+
+  function routeSelectionBenefit(route = {}) {
+    const behaviorValue = Number(route?.behaviorRouteUtilityHEPP);
+    if (Number.isFinite(behaviorValue)) return behaviorValue;
+    const intrinsicBehaviorValue = Number(route?.intrinsicBehaviorUtilityHEPP);
+    if (Number.isFinite(intrinsicBehaviorValue)) return intrinsicBehaviorValue;
+    const objectiveValue = Number(route?.objectiveRouteUtilityHEPP);
+    return Number.isFinite(objectiveValue)
+      ? objectiveValue
+      : Number(route?.routeBenefitPP || 0);
+  }
+
+  function r8MechanicalRouteOnly(route = {}) {
+    const {
+      intrinsicActionPoolDeltas,
+      intrinsicActionPoolHEPP,
+      resourceActionPoolHEPP,
+      intrinsicBehaviorUtilityHEPP,
+      behaviorRouteUtilityHEPP,
+      behaviorValuationMode,
+      objectiveRouteUtilityHEPP,
+      routeDiscardedOverkillPP,
+      routeObjectiveAnalysisMode,
+      routeObjectiveBranchUpperBound,
+      terminalPathId,
+      ...mechanicalRoute
+    } = route || {};
+    const result = Object.freeze({ ...mechanicalRoute });
+    const actorId = route && typeof route === 'object'
+      ? r8RouteActorIdCache.get(route)
+      : '';
+    if (actorId) {
+      r8RouteActorIdCache.set(result, actorId);
+    }
+    const mechanicalSignature = route && typeof route === 'object'
+      ? r8RouteMechanicalSignatureCache.get(route)
+      : null;
+    if (mechanicalSignature) {
+      r8RouteMechanicalSignatureCache.set(result, mechanicalSignature);
+    }
+    return result;
+  }
+
+  // Diagnostic only. This is intentionally not used by Provider or cache selection.
+  function auditR8LayerIdentities(input = {}) {
+    const request = input?.request && typeof input.request === 'object'
+      ? input.request
+      : input;
+    const visibleWorld = request?.visibleWorld || request?.worldSnapshot || {};
+    const candidateById = new Map(
+      (request?.frozenCandidates || [])
+        .filter(candidate => candidate && typeof candidate === 'object')
+        .map(candidate => [String(candidate.candidateId || '').trim(), candidate]),
+    );
+    const routeEntries = Object.entries(
+      request?.actorCandidateRoutes || request?.candidateRoutes || {},
+    ).sort(([left], [right]) => left.localeCompare(right));
+    const opportunitySnapshot = request?.evaluationContext?.opportunitySnapshot || [];
+    const scheduledEvents = request?.evaluationContext?.scheduledEvents || [];
+    const resourceTimeline = request?.evaluationContext?.resourceTimeline || [];
+    const behaviorSharedInput = {
+      beliefState: request?.beliefState || {},
+      opportunitySnapshot,
+      scheduledEvents,
+      resourceTimeline,
+      objectiveContract: request?.objectiveContract || visibleWorld?.胜负条件 || {},
+      actionOpportunity: request?.actionOpportunity || {},
+    };
+    const resourcePlan = r8BuildResourceOpportunityPlan({
+      worldSnapshot: visibleWorld,
+      actorSide: request?.actorSide,
+      unitIds: Object.keys(request?.actionRouteCatalog || {}),
+      projectionScope: 'RESOURCE_AFFORDABILITY',
+      routeCatalog: request?.actionRouteCatalog || {},
+      fullRoutesByUnit: request?.fullRoutesByUnit || {},
+      actionOpportunity: request?.actionOpportunity,
+      opportunitySnapshot,
+      scheduledEvents,
+      resourceTimeline,
+    });
+    const resourcePlanDependencySet = r8ResourcePlanDependencySet({
+      worldSnapshot: visibleWorld,
+      actorSide: request?.actorSide,
+      unitIds: Object.keys(request?.actionRouteCatalog || {}),
+      projectionScope: 'RESOURCE_AFFORDABILITY',
+      routeCatalog: request?.actionRouteCatalog || {},
+      fullRoutesByUnit: request?.fullRoutesByUnit || {},
+      actionOpportunity: request?.actionOpportunity,
+      opportunitySnapshot,
+      scheduledEvents,
+      resourceTimeline,
+      objectiveContract:
+        request?.objectiveContract || visibleWorld?.胜负条件 || {},
+    });
+    const rows = routeEntries.map(([candidateId, route]) => {
+      const candidate = candidateById.get(String(candidateId || '').trim()) || {
+        candidateId,
+        declaration: {},
+      };
+      const mechanicalRoute = r8MechanicalRouteOnly(route);
+      const retainedTerminalFields = [
+        'objectiveRouteUtilityHEPP',
+        'routeDiscardedOverkillPP',
+        'routeObjectiveAnalysisMode',
+        'routeObjectiveBranchUpperBound',
+        'terminalPathId',
+      ].filter(key => Object.hasOwn(mechanicalRoute, key));
+      const mechanicalIdentity = r8MechanicalRouteIdentity(mechanicalRoute);
+      let projection = null;
+      let causalFacts = null;
+      let behaviorDependencySet = null;
+      let terminalProjectionIdentity = null;
+      let attributionIdentity = null;
+      let error = '';
+      try {
+        behaviorDependencySet = r8BehaviorEnvelopeDependencySet({
+          worldSnapshot: visibleWorld,
+          route,
+          candidate,
+          targetId: request?.actorId,
+          evaluationContext: request?.evaluationContext || {},
+          beliefState: request?.beliefState || {},
+          objectiveContract:
+            request?.objectiveContract || visibleWorld?.胜负条件 || {},
+          actionOpportunity: request?.actionOpportunity || {},
+          semanticPhaseHash: preview.stableHash({
+            includedEffectOutcomeKinds: [],
+            excludedEffectOutcomeKinds: [],
+            includeHealthTrajectories: true,
+            objectiveCompactMode: 'FAST',
+          }),
+        });
+        projection = projectR8GoalUtility(request, candidate, route);
+        causalFacts = buildR8CausalValueFacts(
+          request,
+          candidate,
+          route,
+          projection,
+        );
+        const distribution =
+          projection?.terminal?.mechanicalTerminalDistribution || {};
+        terminalProjectionIdentity = r8TerminalProjectionIdentity({
+          objectiveContext: r8ObjectiveContext(request),
+          actorSide: request?.actorSide,
+          objectiveCompactMode: request?.objectiveCompactMode,
+          terminalProjectionMode: 'SUMMARY',
+          terminalWorldDependencyHash:
+            distribution?.worldDependencyHash || '',
+          routeMechanicalSignature:
+            distribution?.routeMechanicalHash || '',
+        });
+        attributionIdentity = r8AttributionIdentity(
+          distribution,
+          route,
+          r8TerminalAtomicGroups(route),
+        );
+      } catch (cause) {
+        error = String(cause?.message || cause || 'unknown_layer_audit_error');
+      }
+      return Object.freeze({
+        candidateId: String(candidateId || '').trim(),
+        mechanicalIdentity: mechanicalIdentity.identity,
+        mechanicalDependencySet: mechanicalIdentity,
+        mechanicalCloneRetainedTerminalFields: Object.freeze(
+          retainedTerminalFields,
+        ),
+        behaviorInputIdentity:
+          behaviorDependencySet?.identity || '',
+        behaviorDependencyScope: behaviorDependencySet
+          ? 'EXPLICIT_DEPENDENCY_SET'
+          : 'UNAVAILABLE',
+        behaviorDependencySet,
+        resourcePlanIdentity: resourcePlanDependencySet.identity,
+        resourcePlanDependencySet,
+        terminalIdentity: terminalProjectionIdentity?.identity || '',
+        terminalProjectionIdentity,
+        attributionIdentity: attributionIdentity?.identity || '',
+        attributionDependencySet: attributionIdentity,
+        terminalProjection: projection
+          ? Object.freeze({
+              objectiveUtilityHEPP: Number(projection.objectiveUtilityHEPP || 0),
+              terminalProbability: Number(
+                projection?.terminal?.terminalProbability || 0,
+              ),
+              firstTerminalSequence:
+                projection?.terminal?.terminalAfterEffectInstanceId || '',
+            })
+          : null,
+        error,
+      });
+    });
+    return Object.freeze({
+      schemaVersion: 'R8LayerIdentityAuditV1',
+      identityScope:
+        'Formal layer identities used by behavior, resource, terminal, and attribution cache selection.',
+      sharedIdentity: `shared:${preview.stableHash(behaviorSharedInput)}`,
+      resourcePlanIdentity: resourcePlanDependencySet.identity,
+      resourcePlanHash: preview.stableHash(resourcePlan),
+      rows: Object.freeze(rows),
     });
   }
 
+  function r8ResourceRouteSemanticValue(route = null) {
+    if (!route || typeof route !== 'object') return null;
+    const cached = r8ResourceRouteSemanticValueCache.get(route);
+    if (cached) {
+      decisionMetrics.resourceRouteSemanticValueCacheHits += 1;
+      return cached;
+    }
+    const finiteOrNull = value => {
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    };
+    const result = {
+      candidateId: String(route?.candidateId || ''),
+      routeKey: String(route?.routeKey || ''),
+      declarationFingerprint: String(route?.declarationFingerprint || ''),
+      targetIds: route?.targetIds || [],
+      healthTrajectoryByTarget: route?.healthTrajectoryByTarget || [],
+      paymentDependencies: route?.paymentDependencies || [],
+      opportunityDependencies: route?.opportunityDependencies || [],
+      probabilityFactors: route?.probabilityFactors || [],
+      operationGraphHash: String(route?.operationGraph?.graphHash || ''),
+      intrinsicActionPoolDeltas: route?.intrinsicActionPoolDeltas || [],
+      actionPoolDeltas: route?.actionPoolDeltas || [],
+      routeBenefitPP: Number(route?.routeBenefitPP || 0),
+      objectiveRouteUtilityHEPP: finiteOrNull(
+        route?.objectiveRouteUtilityHEPP
+      ),
+      intrinsicBehaviorUtilityHEPP: finiteOrNull(
+        route?.intrinsicBehaviorUtilityHEPP
+      ),
+      behaviorRouteUtilityHEPP: finiteOrNull(
+        route?.behaviorRouteUtilityHEPP
+      ),
+      resourceActionPoolHEPP: finiteOrNull(
+        route?.resourceActionPoolHEPP
+      ),
+      selectionBenefitHEPP: routeSelectionBenefit(route),
+      routeDiscardedOverkillPP: Number(
+        route?.routeDiscardedOverkillPP || 0
+      ),
+      resourcePotentialOnly: route?.resourcePotentialOnly === true,
+      probabilityBounds: route?.probabilityBounds || {},
+      terminalPathId: String(route?.terminalPathId || ''),
+    };
+    const frozen = Object.freeze(result);
+    if (Object.isFrozen(route)) {
+      r8ResourceRouteSemanticValueCache.set(route, frozen);
+    }
+    return frozen;
+  }
+
+  function r8ObjectLifecycleToken(value) {
+    if (!value || typeof value !== 'object') {
+      return `${typeof value}:${String(value)}`;
+    }
+    let token = r8ObjectLifecycleTokenCache.get(value);
+    if (!token) {
+      r8ObjectLifecycleTokenSequence += 1;
+      token = `object:${r8ObjectLifecycleTokenSequence}`;
+      r8ObjectLifecycleTokenCache.set(value, token);
+    }
+    return token;
+  }
+
+  function r8ResourceRouteSemanticHash(
+    routeCatalog = {},
+    fullRoutesByUnit = {},
+  ) {
+    const revisionToken = JSON.stringify({
+      routeCatalog: Object.entries(routeCatalog)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([unitId, envelope]) => [
+          unitId,
+          r8ObjectLifecycleToken(envelope?.primaryRoute),
+          r8ObjectLifecycleToken(envelope?.backupRoute),
+        ]),
+      fullRoutesByUnit: Object.entries(fullRoutesByUnit)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([unitId, routes]) => [
+          unitId,
+          ...(Array.isArray(routes) ? routes : [])
+            .map(r8ObjectLifecycleToken),
+        ]),
+    });
+    let byFullRoutes = r8ResourceRouteSemanticHashCache.get(routeCatalog);
+    if (!byFullRoutes) {
+      byFullRoutes = new WeakMap();
+      r8ResourceRouteSemanticHashCache.set(routeCatalog, byFullRoutes);
+    }
+    const cached = byFullRoutes.get(fullRoutesByUnit);
+    if (cached?.revisionToken === revisionToken) {
+      decisionMetrics.resourceRouteSemanticHashCacheHits += 1;
+      return cached.hash;
+    }
+    const hash = preview.stableHash({
+      routeCatalog: Object.fromEntries(
+        Object.entries(routeCatalog)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([unitId, envelope]) => [
+            unitId,
+            {
+              primaryRoute: r8ResourceRouteSemanticValue(
+                envelope?.primaryRoute
+              ),
+              backupRoute: r8ResourceRouteSemanticValue(
+                envelope?.backupRoute
+              ),
+            },
+          ]),
+      ),
+      fullRoutesByUnit: Object.fromEntries(
+        Object.entries(fullRoutesByUnit)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([unitId, routes]) => [
+            unitId,
+            (Array.isArray(routes) ? routes : [])
+              .map(r8ResourceRouteSemanticValue)
+              .sort((left, right) =>
+                left.candidateId.localeCompare(right.candidateId) ||
+                left.routeKey.localeCompare(right.routeKey)
+              ),
+          ]),
+      ),
+    });
+    byFullRoutes.set(fullRoutesByUnit, { revisionToken, hash });
+    return hash;
+  }
+
+  function r8ResourceAffectedRouteOwnerIds(
+    seedUnitIds = [],
+    routeCatalog = {},
+    fullRoutesByUnit = {},
+  ) {
+    const payerIds = new Set(
+      (Array.isArray(seedUnitIds) ? seedUnitIds : [seedUnitIds])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const ownerIds = new Set();
+    let changed = true;
+    while (changed) {
+      changed = false;
+      Object.keys({
+        ...routeCatalog,
+        ...fullRoutesByUnit,
+      }).sort().forEach(ownerId => {
+        const routes = [
+          ...(Array.isArray(fullRoutesByUnit[ownerId])
+            ? fullRoutesByUnit[ownerId]
+            : []),
+          routeCatalog[ownerId]?.primaryRoute,
+          routeCatalog[ownerId]?.backupRoute,
+        ].filter(Boolean);
+        const dependsOnAffectedPayer = routes.some(route =>
+          (route?.paymentDependencies || []).some(dependency =>
+            payerIds.has(String(dependency?.unitId || '').trim())
+          )
+        );
+        if (!dependsOnAffectedPayer) return;
+        if (!ownerIds.has(ownerId)) {
+          ownerIds.add(ownerId);
+          changed = true;
+        }
+        routes.forEach(route => {
+          (route?.paymentDependencies || []).forEach(dependency => {
+            const payerId = String(dependency?.unitId || '').trim();
+            if (payerId && !payerIds.has(payerId)) {
+              payerIds.add(payerId);
+              changed = true;
+            }
+          });
+        });
+      });
+    }
+    payerIds.forEach(unitId => {
+      if (
+        Array.isArray(fullRoutesByUnit[unitId]) ||
+        routeCatalog[unitId]?.primaryRoute ||
+        routeCatalog[unitId]?.backupRoute
+      ) {
+        ownerIds.add(unitId);
+      }
+    });
+    return Object.freeze([...ownerIds].sort());
+  }
+
   function routeDominates(left = {}, right = {}) {
-    const leftBenefit = Number(left.routeBenefitPP || 0);
-    const rightBenefit = Number(right.routeBenefitPP || 0);
+    const leftBenefit = routeSelectionBenefit(left);
+    const rightBenefit = routeSelectionBenefit(right);
     const leftCost = (left.paymentDependencies || []).reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
     const rightCost = (right.paymentDependencies || []).reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+    const leftOverkill = Math.max(0, Number(left?.routeDiscardedOverkillPP || 0));
+    const rightOverkill = Math.max(0, Number(right?.routeDiscardedOverkillPP || 0));
     return leftBenefit >= rightBenefit - 1e-9 &&
       leftCost <= rightCost + 1e-9 &&
-      (leftBenefit > rightBenefit + 1e-9 || leftCost < rightCost - 1e-9);
+      leftOverkill <= rightOverkill + 1e-9 &&
+      (
+        leftBenefit > rightBenefit + 1e-9 ||
+        leftCost < rightCost - 1e-9 ||
+        leftOverkill < rightOverkill - 1e-9
+      );
   }
 
   function selectPrimaryBackupRoutes(routes = []) {
-    const nonDominated = routes.filter(route =>
-      !routes.some(other => other !== route && routeDominates(other, route))
+    const currentlyAvailableRoutes = routes.filter(route =>
+      route?.resourcePotentialOnly !== true
+    );
+    const selectableRoutes = currentlyAvailableRoutes.length
+      ? currentlyAvailableRoutes
+      : routes;
+    const nonDominated = selectableRoutes.filter(route =>
+      !selectableRoutes.some(other => other !== route && routeDominates(other, route))
     ).sort((left, right) =>
-      Number(right.routeBenefitPP || 0) - Number(left.routeBenefitPP || 0) ||
+      routeSelectionBenefit(right) - routeSelectionBenefit(left) ||
+      Number(left?.routeDiscardedOverkillPP || 0) - Number(right?.routeDiscardedOverkillPP || 0) ||
       String(left.routeKey || '').localeCompare(String(right.routeKey || ''))
     );
-    const primaryRoute = nonDominated[0] || routes[0] || null;
+    const primaryRoute = nonDominated[0] || selectableRoutes[0] || null;
     const backupRoute = nonDominated.find(route => route.routeKey !== primaryRoute?.routeKey) ||
-      routes.find(route => route.routeKey !== primaryRoute?.routeKey) ||
+      selectableRoutes.find(route => route.routeKey !== primaryRoute?.routeKey) ||
       null;
     return Object.freeze({
       searchedRouteCount: routes.length,
@@ -11459,15 +13628,1348 @@
       searchedTargetIds: Object.freeze([...new Set(routes.flatMap(route =>
         (route?.targetIds || []).map(value => String(value || '').trim()).filter(Boolean)
       ))].sort()),
+      dependencyKeys: Object.freeze([...new Set(routes.flatMap(route =>
+        Array.isArray(route?.dependencyKeys) ? route.dependencyKeys : []
+      ))].sort()),
       primaryRoute,
       backupRoute,
     });
   }
 
+  function r8MechanicalDependencyValue(
+    worldSnapshot = {},
+    evaluationContext = {},
+    objectiveContract = {},
+    beliefState = {},
+    key = '',
+  ) {
+    const dependencyKey = String(key || '').trim();
+    if (/^(unit:|target:|rule:)/.test(dependencyKey)) {
+      return preview.dependencyValueForKey(worldSnapshot, dependencyKey);
+    }
+    if (dependencyKey.startsWith('opportunity:')) {
+      const opportunityId = dependencyKey.slice('opportunity:'.length);
+      const opportunities = Array.isArray(evaluationContext?.opportunitySnapshot)
+        ? evaluationContext.opportunitySnapshot
+        : Array.isArray(evaluationContext?.opportunitySnapshot?.opportunities)
+          ? evaluationContext.opportunitySnapshot.opportunities
+          : [];
+      return opportunities.find(entry =>
+        String(entry?.opportunityId || entry?.grantId || '').trim() ===
+        opportunityId
+      ) || null;
+    }
+    if (dependencyKey.startsWith('schedule:')) {
+      const descriptorId = dependencyKey.slice('schedule:'.length);
+      return (evaluationContext?.scheduledEvents || []).find(entry =>
+        String(entry?.descriptorId || entry?.scheduleId || '').trim() ===
+        descriptorId
+      ) || null;
+    }
+    if (dependencyKey.startsWith('objective:')) {
+      const conditionId = dependencyKey.slice('objective:'.length);
+      const conditions = [
+        ...(objectiveContract?.victory?.conditions || []),
+        ...(objectiveContract?.defeat?.conditions || []),
+      ];
+      return conditions.find((entry, index) =>
+        String(entry?.conditionId || entry?.id || index).trim() === conditionId
+      ) || null;
+    }
+    if (dependencyKey.startsWith('belief:')) {
+      const mechanicKey = dependencyKey.slice('belief:'.length);
+      return beliefState?.mechanics?.[mechanicKey] ??
+        beliefState?.mechanicPosteriors?.[mechanicKey] ??
+        beliefState?.[mechanicKey] ??
+        null;
+    }
+    return null;
+  }
+
+  function r8MechanicalRouteSignature({
+    route = {},
+    candidate = {},
+    worldSnapshot = {},
+    evaluationContext = {},
+    objectiveContract = {},
+    beliefState = {},
+    unitHashCache = new Map(),
+    unitRowsHashCache = new Map(),
+    dependencyRowsHashCache = new Map(),
+    objectiveHash = '',
+    routeContextIdentity = {},
+  } = {}) {
+    const unitIds = [...new Set([
+      ...(route?.dependencyUnitIds || []),
+      String(candidate?.declaration?.actorId || '').trim(),
+      ...(candidate?.declaration?.targetIds || []),
+      ...(route?.paymentDependencies || []).map(entry => entry?.unitId),
+    ].map(value => String(value || '').trim()).filter(Boolean))].sort();
+    const dependencyKeys = [...new Set(
+      (Array.isArray(route?.dependencyKeys) ? route.dependencyKeys : [])
+        .map(key => String(key || '').trim())
+        .filter(Boolean),
+    )].sort();
+    const opportunityIds = [...new Set([
+      ...(Array.isArray(route?.opportunityDependencies)
+        ? route.opportunityDependencies
+        : []),
+      ...dependencyKeys
+        .filter(key => key.startsWith('opportunity:'))
+        .map(key => key.slice('opportunity:'.length)),
+    ].map(value =>
+      typeof value === 'object' && value !== null
+        ? value.opportunityId || value.grantId || value.descriptorId || ''
+        : value
+    ).map(value => String(value || '').trim()).filter(Boolean))].sort();
+    const scheduleIds = dependencyKeys
+      .filter(key => key.startsWith('schedule:'))
+      .map(key => key.slice('schedule:'.length))
+      .filter(Boolean)
+      .sort();
+    const contextCache = evaluationContext &&
+      typeof evaluationContext === 'object'
+      ? r8RouteContextProjectionCache.get(evaluationContext) ||
+        (() => {
+          const next = new Map();
+          r8RouteContextProjectionCache.set(evaluationContext, next);
+          return next;
+        })()
+      : null;
+    const contextProjectionKey = JSON.stringify([
+      unitIds,
+      opportunityIds,
+      scheduleIds,
+      dependencyKeys.filter(key => key.includes(':resource:')).sort(),
+    ]);
+    let preciseRouteContext = contextCache?.get(contextProjectionKey);
+    if (!preciseRouteContext) {
+      const opportunities = Array.isArray(evaluationContext?.opportunitySnapshot)
+        ? evaluationContext.opportunitySnapshot
+        : Array.isArray(evaluationContext?.opportunitySnapshot?.opportunities)
+          ? evaluationContext.opportunitySnapshot.opportunities
+          : [];
+      const scheduledEvents = Array.isArray(evaluationContext?.scheduledEvents)
+        ? evaluationContext.scheduledEvents
+        : [];
+      const resourceTimeline = Array.isArray(evaluationContext?.resourceTimeline)
+        ? evaluationContext.resourceTimeline
+        : [];
+      const opportunityRows = opportunities
+        .filter(entry => opportunityIds.includes(String(
+          entry?.opportunityId || entry?.grantId || '',
+        ).trim()))
+        .sort((left, right) =>
+          String(left?.opportunityId || left?.grantId || '').localeCompare(
+            String(right?.opportunityId || right?.grantId || ''),
+          ));
+      const scheduleRows = scheduledEvents
+        .filter(entry => scheduleIds.includes(String(
+          entry?.descriptorId || entry?.scheduleId || '',
+        ).trim()))
+        .sort((left, right) =>
+          String(left?.descriptorId || left?.scheduleId || '').localeCompare(
+            String(right?.descriptorId || right?.scheduleId || ''),
+          ));
+      const resourceRows = resourceTimeline
+        .filter(entry => {
+          const ownerId = String(
+            entry?.actorId ||
+            entry?.unitId ||
+            entry?.targetId ||
+            entry?.ownerId ||
+            '',
+          ).trim();
+          return unitIds.includes(ownerId);
+        })
+        .sort((left, right) =>
+          Number(left?.round || 0) - Number(right?.round || 0) ||
+          Number(left?.opportunitySequence || 0) -
+            Number(right?.opportunitySequence || 0) ||
+          Number(left?.actionSequence || 0) -
+            Number(right?.actionSequence || 0) ||
+          String(left?.eventId || '').localeCompare(String(right?.eventId || '')),
+        );
+      preciseRouteContext = Object.freeze({
+        actionOpportunityHash: preview.stableHash(opportunityRows),
+        opportunityRevision: preview.stableHash(opportunityRows),
+        resourceTimelineRevision: preview.stableHash(resourceRows),
+        scheduleRevision: preview.stableHash(scheduleRows),
+        horizonHash: String(routeContextIdentity?.horizonHash || '').trim(),
+        runtimeEvaluationRevision: '',
+      });
+      contextCache?.set(contextProjectionKey, preciseRouteContext);
+    }
+    const preserveHp = unitIds.some(unitIdValue => {
+      const unit = findUnitInWorld(worldSnapshot, unitIdValue);
+      return !!unit && r8UnitHasHpSensitiveBehavior(unit);
+    });
+    const unitRows = unitIds.map(unitIdValue => {
+      const cacheKey = `${preserveHp ? 'hp' : 'no-hp'}:${unitIdValue}`;
+      if (!unitHashCache.has(cacheKey)) {
+        const unit = findUnitInWorld(worldSnapshot, unitIdValue);
+        if (!unit) {
+          unitHashCache.set(cacheKey, '');
+        } else {
+          const snapshot = cloneValue(unit);
+          if (snapshot && typeof snapshot === 'object') {
+            delete snapshot.__宿主;
+            if (
+              snapshot.__battleRuntime &&
+              typeof snapshot.__battleRuntime === 'object'
+            ) {
+              delete snapshot.__battleRuntime.naturalOpportunity;
+            }
+            if (!preserveHp) {
+              delete snapshot.hp;
+              delete snapshot.HP;
+              delete snapshot.生命;
+              if (snapshot.属性 && typeof snapshot.属性 === 'object') {
+                delete snapshot.属性.HP;
+                delete snapshot.属性.生命;
+              }
+            }
+          }
+          unitHashCache.set(cacheKey, preview.stableHash(snapshot));
+        }
+      }
+      return [unitIdValue, unitHashCache.get(cacheKey)];
+    });
+    const dependencyRows = dependencyKeys
+      .filter(key =>
+        /^(unit:|target:|rule:|belief:|opportunity:|schedule:)/.test(
+          String(key || '').trim(),
+        )
+      )
+      .filter(key =>
+        preserveHp ||
+        !/^unit:[^:]+:hp$/.test(String(key || '').trim())
+      )
+      .map(key => [
+        key,
+        r8MechanicalDependencyValue(
+          worldSnapshot,
+          evaluationContext,
+          objectiveContract,
+          beliefState,
+          key,
+        ),
+      ]);
+    const details = {
+      declarationFingerprint:
+        candidate?.declarationFingerprint ||
+        route?.declarationFingerprint ||
+        declarationFingerprint(candidate?.declaration || {}),
+      unitRowsHash: (() => {
+        const cacheKey = JSON.stringify(unitRows);
+        const cached = unitRowsHashCache.get(cacheKey);
+        if (cached) {
+          decisionMetrics.mechanicalUnitRowsHashCacheHits += 1;
+          return cached;
+        }
+        const hash = preview.stableHash(unitRows);
+        unitRowsHashCache.set(cacheKey, hash);
+        return hash;
+      })(),
+      dependencyRowsHash: (() => {
+        const cacheKey = JSON.stringify(dependencyRows);
+        const cached = dependencyRowsHashCache.get(cacheKey);
+        if (cached) return cached;
+        const hash = preview.stableHash(dependencyRows);
+        dependencyRowsHashCache.set(cacheKey, hash);
+        return hash;
+      })(),
+      objectiveHash: String(objectiveHash || '').trim() ||
+        preview.stableHash(objectiveContract || {}),
+      routeContextIdentity: preciseRouteContext,
+      battleIntentMode: String(
+        objectiveContract?.mode ||
+        worldSnapshot?.战斗意图 ||
+        ''
+      ).trim(),
+      preserveHp,
+    };
+    return {
+      ...details,
+      signature: preview.stableHash(details),
+    };
+  }
+
+  function r8IdentityRows(value = []) {
+    return Object.freeze(
+      (Array.isArray(value) ? value : [])
+        .map(row => cloneValue(row))
+        .sort((left, right) =>
+          preview.stableHash(left).localeCompare(preview.stableHash(right))
+        ),
+    );
+  }
+
+  function r8OpportunityRowsForIdentity(
+    evaluationContext = {},
+    unitIds = new Set(),
+    opportunityIds = new Set(),
+  ) {
+    const opportunities = Array.isArray(evaluationContext?.opportunitySnapshot)
+      ? evaluationContext.opportunitySnapshot
+      : Array.isArray(evaluationContext?.opportunitySnapshot?.opportunities)
+        ? evaluationContext.opportunitySnapshot.opportunities
+        : [];
+    return r8IdentityRows(opportunities.filter(entry => {
+      const id = String(
+        entry?.opportunityId || entry?.grantId || '',
+      ).trim();
+      const ownerId = String(entry?.ownerId || '').trim();
+      const sourceActorId = String(entry?.sourceActorId || '').trim();
+      const targetId = String(entry?.targetId || '').trim();
+      return opportunityIds.has(id) ||
+        unitIds.has(ownerId) ||
+        unitIds.has(sourceActorId) ||
+        unitIds.has(targetId);
+    }));
+  }
+
+  function r8ScheduleRowsForIdentity(
+    evaluationContext = {},
+    unitIds = new Set(),
+    scheduleIds = new Set(),
+  ) {
+    return r8IdentityRows(
+      (Array.isArray(evaluationContext?.scheduledEvents)
+        ? evaluationContext.scheduledEvents
+        : []
+      ).filter(entry => {
+        const id = String(
+          entry?.descriptorId || entry?.scheduleId || '',
+        ).trim();
+        const ownerId = String(entry?.ownerId || '').trim();
+        const sourceActorId = String(entry?.sourceActorId || '').trim();
+        const targetId = String(entry?.targetId || '').trim();
+        return scheduleIds.has(id) ||
+          unitIds.has(ownerId) ||
+          unitIds.has(sourceActorId) ||
+          unitIds.has(targetId);
+      }),
+    );
+  }
+
+  function r8ResourceRowsForIdentity(
+    evaluationContext = {},
+    unitIds = new Set(),
+    resourceNames = new Set(),
+    includeAllWhenUnspecified = false,
+  ) {
+    if (!resourceNames.size && !includeAllWhenUnspecified) {
+      return Object.freeze([]);
+    }
+    return r8IdentityRows(
+      (Array.isArray(evaluationContext?.resourceTimeline)
+        ? evaluationContext.resourceTimeline
+        : []
+      ).filter(entry => {
+        const ownerId = String(
+          entry?.actorId ||
+          entry?.unitId ||
+          entry?.targetId ||
+          entry?.ownerId ||
+          '',
+        ).trim();
+        const resource = String(entry?.resource || '').trim();
+        return unitIds.has(ownerId) &&
+          (!resourceNames.size || resourceNames.has(resource));
+      }),
+    );
+  }
+
+  function r8RouteOpportunityDependencyRows(route = {}) {
+    return (Array.isArray(route?.opportunityDependencies)
+      ? route.opportunityDependencies
+      : []
+    ).map(entry => ({
+      opportunityId: String(
+        entry?.opportunityId ||
+        entry?.grantId ||
+        entry?.descriptorId ||
+        '',
+      ).trim(),
+      role: String(entry?.role || '').trim(),
+      targetId: String(entry?.targetId || '').trim(),
+      outcomeKind: String(entry?.outcomeKind || '').trim(),
+      windowId: String(entry?.windowId || '').trim(),
+    })).filter(entry => entry.opportunityId);
+  }
+
+  function r8OwnershipOpportunityRole(role = '') {
+    const normalized = String(role || '').trim().toUpperCase();
+    if (/CANCEL|取消|中断/.test(normalized)) return 'OPPORTUNITY_CANCEL';
+    if (/EXPLOIT|利用|FOLLOW_UP|ASSIST/.test(normalized)) {
+      return 'OPPORTUNITY_EXPLOIT';
+    }
+    if (/WAIT|等待/.test(normalized)) return 'OPPORTUNITY_WAIT';
+    return 'OPPORTUNITY_EXECUTE';
+  }
+
+  function r8OwnershipResourceRole(operation = '') {
+    const normalized = String(operation || '').trim().toUpperCase();
+    if (['PAY', 'SUSTAIN_COST', 'ITEM_CONSUME'].includes(normalized)) {
+      return 'RESOURCE_PAY_BEFORE';
+    }
+    if (normalized === 'LOCK' || normalized === 'UNLOCK') {
+      return 'RESOURCE_LOCK';
+    }
+    return 'RESOURCE_PAY_AFTER';
+  }
+
+  function r8OwnershipRoleForFact(
+    factKey = '',
+    layer = 'MECHANICAL',
+    unitId = '',
+  ) {
+    const key = String(factKey || '').trim();
+    if (key.startsWith('opportunity:')) return 'OPPORTUNITY_EXECUTE';
+    if (key.startsWith('schedule:')) return 'SCHEDULE_REALIZATION';
+    if (key.startsWith('belief:')) return 'BELIEF_RESPONSE';
+    if (key.startsWith('objective:')) return 'OBJECTIVE_TERMINAL';
+    if (key.startsWith('rule:')) return 'GLOBAL_RULE';
+    if (key.startsWith('unit:')) {
+      const [ownerId, field] = key.slice('unit:'.length).split(':');
+      if (field === 'resource') return 'RESOURCE_PAY_BEFORE';
+      return String(ownerId || '').trim() === String(unitId || '').trim()
+        ? 'MECHANICAL_OUTGOING'
+        : 'MECHANICAL_INCOMING';
+    }
+    if (key.startsWith('target:')) return 'MECHANICAL_INCOMING';
+    return layer === 'ATTRIBUTION'
+      ? 'ATTRIBUTION_ONLY'
+      : '';
+  }
+
+  function r8BuildRouteFactOwnershipIndex(
+    fullRoutesByUnit = {},
+    input = {},
+  ) {
+    const ownersByFact = new Map();
+    const unscopedLayers = [];
+    const add = (factKey, owner) => {
+      const key = String(factKey || '').trim();
+      if (!key) return;
+      const rows = ownersByFact.get(key) || [];
+      const ownerKey = [
+        owner.unitId,
+        owner.candidateId,
+        owner.routeKey,
+        owner.layer,
+        owner.dependencyRole,
+      ].join('\u0000');
+      if (!rows.some(row => row.ownerKey === ownerKey)) {
+        rows.push(Object.freeze({ ...owner, ownerKey }));
+        ownersByFact.set(key, rows);
+      }
+    };
+    const addUnscoped = (owner, layer, reason) => {
+      unscopedLayers.push(Object.freeze({
+        unitId: owner.unitId,
+        candidateId: owner.candidateId,
+        routeKey: owner.routeKey,
+        layer,
+        reason: String(reason || '').trim(),
+      }));
+    };
+    const addDependencyRows = (owner, layer, dependencyKeys = []) => {
+      dependencyKeys.forEach(factKey => {
+        const dependencyRole = r8OwnershipRoleForFact(
+          factKey,
+          layer,
+          owner.unitId,
+        );
+        if (!dependencyRole) {
+          addUnscoped(owner, layer, `UNKNOWN_FACT_KEY:${factKey}`);
+          return;
+        }
+        add(factKey, { ...owner, layer, dependencyRole });
+      });
+    };
+    const addOpportunityRows = (owner, layer, dependencies = []) => {
+      dependencies.forEach(dependency => {
+        add(`opportunity:${dependency.opportunityId}`, {
+          ...owner,
+          layer,
+          dependencyRole: r8OwnershipOpportunityRole(dependency.role),
+        });
+      });
+    };
+    const addPaymentRows = (owner, layer, dependencies = []) => {
+      dependencies.forEach(dependency => {
+        const dependencyUnitId = String(dependency?.unitId || '').trim();
+        const resource = String(dependency?.resource || '').trim();
+        if (!dependencyUnitId || !resource) {
+          addUnscoped(owner, layer, 'PAYMENT_DEPENDENCY_INCOMPLETE');
+          return;
+        }
+        add(`unit:${dependencyUnitId}:resource:${resource}`, {
+          ...owner,
+          layer,
+          dependencyRole: 'RESOURCE_PAY_BEFORE',
+        });
+      });
+    };
+    Object.entries(fullRoutesByUnit || {})
+      .sort(([left], [right]) => left.localeCompare(right))
+      .forEach(([unitId, routes]) => {
+        (Array.isArray(routes) ? routes : []).forEach(route => {
+          const owner = {
+            unitId: String(unitId || '').trim(),
+            candidateId: String(route?.candidateId || '').trim(),
+            routeKey: String(route?.routeKey || '').trim(),
+          };
+          addDependencyRows(owner, 'MECHANICAL', route?.dependencyKeys || []);
+          addOpportunityRows(
+            owner,
+            'MECHANICAL',
+            r8RouteOpportunityDependencyRows(route),
+          );
+          addPaymentRows(
+            owner,
+            'MECHANICAL',
+            route?.paymentDependencies || [],
+          );
+
+          const behaviorIdentity = r8BehaviorRouteIdentityCache.get(route);
+          if (!behaviorIdentity) {
+            addUnscoped(owner, 'BEHAVIOR', 'BEHAVIOR_IDENTITY_MISSING');
+          } else {
+            addDependencyRows(
+              owner,
+              'BEHAVIOR',
+              behaviorIdentity.dependencyKeys || [],
+            );
+            addOpportunityRows(
+              owner,
+              'BEHAVIOR',
+              behaviorIdentity.opportunityDependencies || [],
+            );
+            (behaviorIdentity.scheduleRows || []).forEach(row => {
+              const descriptorId = String(
+                row?.descriptorId || row?.scheduleId || '',
+              ).trim();
+              if (!descriptorId) {
+                addUnscoped(owner, 'BEHAVIOR', 'SCHEDULE_DEPENDENCY_INCOMPLETE');
+                return;
+              }
+              add(`schedule:${descriptorId}`, {
+                ...owner,
+                layer: 'BEHAVIOR',
+                dependencyRole: 'SCHEDULE_REALIZATION',
+              });
+            });
+            (behaviorIdentity.resourceRows || []).forEach(row => {
+              const resourceOwnerId = String(
+                row?.actorId ||
+                row?.unitId ||
+                row?.targetId ||
+                row?.ownerId ||
+                '',
+              ).trim();
+              const resource = String(row?.resource || '').trim();
+              if (!resourceOwnerId || !resource) {
+                addUnscoped(owner, 'BEHAVIOR', 'RESOURCE_DEPENDENCY_INCOMPLETE');
+                return;
+              }
+              add(`unit:${resourceOwnerId}:resource:${resource}`, {
+                ...owner,
+                layer: 'BEHAVIOR',
+                dependencyRole: r8OwnershipResourceRole(row?.operation),
+              });
+            });
+          }
+
+          addPaymentRows(
+            owner,
+            'RESOURCE',
+            route?.paymentDependencies || [],
+          );
+          (route?.paymentDependencies || []).forEach(dependency => {
+            const dependencyUnitId = String(dependency?.unitId || '').trim();
+            const resource = String(dependency?.resource || '').trim();
+            if (dependencyUnitId && resource) {
+              add(`unit:${dependencyUnitId}:resource:${resource}`, {
+                ...owner,
+                layer: 'RESOURCE',
+                dependencyRole: 'RESOURCE_PAY_AFTER',
+              });
+            }
+          });
+
+          const targetIds = new Set([
+            ...(route?.targetIds || []),
+            ...(route?.healthTrajectoryByTarget || []).map(
+              trajectory => trajectory?.targetId,
+            ),
+            ...(route?.actionPoolEffects || []).map(effect => effect?.targetId),
+          ].map(value => String(value || '').trim()).filter(Boolean));
+          targetIds.forEach(targetId => {
+            add(`unit:${targetId}:hp`, {
+              ...owner,
+              layer: 'TERMINAL',
+              dependencyRole: 'OBJECTIVE_TERMINAL',
+            });
+            add(`unit:${targetId}:hp`, {
+              ...owner,
+              layer: 'ATTRIBUTION',
+              dependencyRole: 'ATTRIBUTION_ONLY',
+            });
+          });
+          const objectiveHash = String(
+            input?.evaluationContext?.objectiveHash ||
+            input?.objectiveHash ||
+            '',
+          ).trim();
+          if (objectiveHash) {
+            add(
+              objectiveHash.startsWith('objective:')
+                ? objectiveHash
+                : `objective:${objectiveHash}`,
+              {
+              ...owner,
+              layer: 'TERMINAL',
+              dependencyRole: 'OBJECTIVE_TERMINAL',
+              },
+            );
+          } else {
+            addUnscoped(owner, 'TERMINAL', 'OBJECTIVE_IDENTITY_MISSING');
+          }
+        });
+      });
+    const normalizedOwnersByFact = Object.fromEntries(
+      [...ownersByFact.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([factKey, owners]) => [
+          factKey,
+          Object.freeze(
+            owners
+              .slice()
+              .sort((left, right) => left.ownerKey.localeCompare(right.ownerKey)),
+          ),
+        ]),
+    );
+    const ownerRows = Object.values(normalizedOwnersByFact).flat();
+    const summaryByLayer = Object.fromEntries(
+      ['MECHANICAL', 'BEHAVIOR', 'RESOURCE', 'TERMINAL', 'ATTRIBUTION']
+        .map(layer => [
+          layer,
+          ownerRows.filter(owner => owner.layer === layer).length,
+        ]),
+    );
+    const normalizedUnscopedLayers = Object.freeze(
+      unscopedLayers
+        .slice()
+        .sort((left, right) =>
+          `${left.unitId}\u0000${left.candidateId}\u0000${left.routeKey}\u0000${left.layer}\u0000${left.reason}`.localeCompare(
+            `${right.unitId}\u0000${right.candidateId}\u0000${right.routeKey}\u0000${right.layer}\u0000${right.reason}`,
+          )
+        ),
+    );
+    const payload = {
+      schemaVersion: 'RouteFactOwnershipIndexV2',
+      ownersByFact: Object.freeze(normalizedOwnersByFact),
+      ownerCount: ownerRows.length,
+      summaryByLayer: Object.freeze(summaryByLayer),
+      unscopedLayers: normalizedUnscopedLayers,
+    };
+    return Object.freeze({
+      ...payload,
+      indexHash: `route-fact-ownership:${preview.stableHash(payload)}`,
+    });
+  }
+
+  function r8MechanicalRouteIdentity(route = {}) {
+    const normalizeOutcomes = outcomes =>
+      (Array.isArray(outcomes) ? outcomes : []).map(outcome => ({
+        probability: Number(outcome?.probability || 0),
+        healthDeltaPP: Number(outcome?.healthDeltaPP || 0),
+        incomingDamagePP: Number(outcome?.incomingDamagePP || 0),
+        shieldAbsorbPP: Number(outcome?.shieldAbsorbPP || 0),
+        conditionalOn: outcome?.conditionalOn || {},
+        assignments: outcome?.assignments || {},
+        actionState: String(outcome?.actionState || '').trim(),
+      }));
+    const payload = Object.freeze({
+      schemaVersion: 'MechanicalRouteIdentityV1',
+      declarationFingerprint: String(
+        route?.declarationFingerprint || '',
+      ).trim(),
+      targetIds: Object.freeze([...(route?.targetIds || [])].map(String).sort()),
+      outcomeKinds: Object.freeze(
+        [...(route?.outcomeKinds || [])].map(String).sort(),
+      ),
+      paymentDependencies: r8IdentityRows(
+        (route?.paymentDependencies || []).map(entry => ({
+          unitId: String(entry?.unitId || '').trim(),
+          resource: String(entry?.resource || '').trim(),
+          amount: Number(entry?.amount || 0),
+        })),
+      ),
+      opportunityDependencies: r8IdentityRows(
+        r8RouteOpportunityDependencyRows(route).map(entry => ({
+          opportunityId: entry.opportunityId,
+          role: entry.role,
+          targetId: entry.targetId,
+          outcomeKind: entry.outcomeKind,
+          windowId: entry.windowId,
+        })),
+      ),
+      realizationWindows: Object.freeze(
+        [...(route?.realizationWindows || [])].map(String).sort(),
+      ),
+      healthTrajectoryByTarget: r8IdentityRows(
+        (route?.healthTrajectoryByTarget || []).map(trajectory => ({
+          targetId: String(trajectory?.targetId || '').trim(),
+          outcomeKind: String(trajectory?.outcomeKind || '').trim(),
+          windowId: String(trajectory?.windowId || '').trim(),
+          healthDeltaPP: Number(trajectory?.healthDeltaPP || 0),
+          actorBenefitPP: Number(trajectory?.actorBenefitPP || 0),
+          contributionSequence: Number(
+            trajectory?.contributionSequence || 0,
+          ),
+          outcomeDistribution: normalizeOutcomes(
+            trajectory?.outcomeDistribution,
+          ),
+        })),
+      ),
+      actionPoolEffects: r8IdentityRows(
+        (route?.actionPoolEffects || []).map(effect => ({
+          targetId: String(effect?.targetId || '').trim(),
+          outcomeKind: String(effect?.outcomeKind || '').trim(),
+          windowId: String(effect?.windowId || '').trim(),
+          expectedDelta: Number(effect?.expectedDelta || 0),
+          expectedDeltaPP: Number(effect?.expectedDeltaPP || 0),
+          threatValue: Number(effect?.threatValue || 0),
+          evidence: effect?.evidence || {},
+        })),
+      ),
+      probabilityFactors: r8IdentityRows(
+        (route?.probabilityFactors || []).map(factor => ({
+          targetId: String(factor?.targetId || '').trim(),
+          outcomeKind: String(factor?.outcomeKind || '').trim(),
+          windowId: String(factor?.windowId || '').trim(),
+          contributionSequence: Number(
+            factor?.contributionSequence || 0,
+          ),
+          outcomeDistribution: normalizeOutcomes(
+            factor?.outcomeDistribution,
+          ),
+        })),
+      ),
+      operationGraphHash: String(
+        route?.operationGraph?.graphHash || '',
+      ).trim(),
+      dependencyKeys: Object.freeze(
+        [...(route?.dependencyKeys || [])].map(String).sort(),
+      ),
+    });
+    return Object.freeze({
+      ...payload,
+      identity: `mechanical-route:${preview.stableHash(payload)}`,
+    });
+  }
+
+  function r8LayerUnitIds(route = {}, targetId = '', candidate = {}) {
+    return new Set([
+      targetId,
+      ...(route?.dependencyUnitIds || []),
+      String(candidate?.declaration?.actorId || '').trim(),
+      ...(candidate?.declaration?.targetIds || []),
+      ...(route?.targetIds || []),
+      ...(route?.paymentDependencies || []).map(entry => entry?.unitId),
+      ...r8RouteOpportunityDependencyRows(route).flatMap(entry => [
+        entry.targetId,
+      ]),
+    ].map(value => String(value || '').trim()).filter(Boolean));
+  }
+
+  function r8BehaviorEnvelopeDependencySet({
+    worldSnapshot = {},
+    route = {},
+    routes = [],
+    candidate = {},
+    candidates = [],
+    targetId = '',
+    evaluationContext = {},
+    beliefState = {},
+    objectiveContract = {},
+    actionOpportunity = {},
+    semanticPhaseHash = '',
+  } = {}) {
+    const dependencyRoutes = [
+      route,
+      ...(Array.isArray(routes) ? routes : []),
+    ].filter(value => value && typeof value === 'object');
+    const dependencyCandidates = [
+      candidate,
+      ...(Array.isArray(candidates) ? candidates : []),
+    ].filter(value => value && typeof value === 'object');
+    const unitIds = new Set();
+    dependencyRoutes.forEach(dependencyRoute =>
+      r8LayerUnitIds(dependencyRoute, targetId, candidate)
+        .forEach(unitId => unitIds.add(unitId))
+    );
+    dependencyCandidates.forEach(dependencyCandidate =>
+      r8LayerUnitIds({}, targetId, dependencyCandidate)
+        .forEach(unitId => unitIds.add(unitId))
+    );
+    const dependencyKeys = [...new Set(
+      dependencyRoutes.flatMap(dependencyRoute =>
+        Array.isArray(dependencyRoute?.dependencyKeys)
+          ? dependencyRoute.dependencyKeys
+          : []
+      )
+        .map(key => String(key || '').trim())
+        .filter(Boolean),
+    )].sort();
+    const beliefKeys = dependencyKeys
+      .filter(key => key.startsWith('belief:'))
+      .map(key => key.slice('belief:'.length))
+      .sort();
+    const opportunityDependencies = dependencyRoutes.flatMap(
+      dependencyRoute => r8RouteOpportunityDependencyRows(dependencyRoute),
+    );
+    const opportunityIds = new Set(
+      opportunityDependencies.map(entry => entry.opportunityId),
+    );
+    const scheduleIds = new Set(
+      dependencyKeys
+        .filter(key => key.startsWith('schedule:'))
+        .map(key => key.slice('schedule:'.length)),
+    );
+    const resourceUnitIds = new Set();
+    const resourceNames = new Set();
+    dependencyRoutes.forEach(dependencyRoute => {
+      (dependencyRoute?.paymentDependencies || []).forEach(entry => {
+        const unitId = String(entry?.unitId || '').trim();
+        const resource = String(entry?.resource || '').trim();
+        if (unitId) resourceUnitIds.add(unitId);
+        if (resource) resourceNames.add(resource);
+      });
+      (dependencyRoute?.actionPoolEffects || []).forEach(effect => {
+        if (
+          String(effect?.outcomeKind || '').trim() !==
+          'RESOURCE_OPTION_CHANGED'
+        ) {
+          return;
+        }
+        const unitId = String(effect?.targetId || '').trim();
+        const resource = String(effect?.evidence?.resource || '').trim();
+        if (unitId) resourceUnitIds.add(unitId);
+        if (resource) resourceNames.add(resource);
+      });
+    });
+    const unitRows = r8IdentityRows(
+      [...unitIds].map(unitId => {
+        const unit = findUnitInWorld(worldSnapshot, unitId);
+        return {
+          unitId,
+          unit: unit || null,
+        };
+      }),
+    );
+    const beliefRows = beliefKeys.length
+      ? r8IdentityRows(beliefKeys.map(key => [
+          key,
+          beliefState?.mechanics?.[key] ??
+            beliefState?.mechanicPosteriors?.[key] ??
+            beliefState?.[key] ??
+            null,
+        ]))
+      : Object.freeze([]);
+    const opportunityRows = r8OpportunityRowsForIdentity(
+      evaluationContext,
+      new Set(),
+      opportunityIds,
+    );
+    const scheduleRows = r8ScheduleRowsForIdentity(
+      evaluationContext,
+      new Set(),
+      scheduleIds,
+    );
+    const resourceRows = r8ResourceRowsForIdentity(
+      evaluationContext,
+      resourceUnitIds,
+      resourceNames,
+    );
+    const dependencySet = Object.freeze({
+      schemaVersion: 'BehaviorEnvelopeDependencySetV1',
+      unitIds: Object.freeze([...unitIds].sort()),
+      dependencyKeys: Object.freeze(dependencyKeys),
+      beliefKeys: Object.freeze(beliefKeys),
+      opportunityDependencies: Object.freeze(
+        opportunityDependencies.map(entry => Object.freeze(entry)),
+      ),
+      opportunityRows,
+      scheduleRows,
+      resourceRows,
+      objectiveHash: preview.stableHash(objectiveContract || {}),
+      actionOpportunityHash: preview.stableHash(opportunityDependencies),
+      semanticPhaseHash: String(semanticPhaseHash || '').trim(),
+      candidateFingerprints: Object.freeze(
+        dependencyCandidates.map(dependencyCandidate =>
+          String(
+            dependencyCandidate?.declarationFingerprint ||
+            declarationFingerprint(dependencyCandidate?.declaration || {}),
+          ).trim()
+        ).sort(),
+      ),
+      mechanicalRouteIdentities: Object.freeze(
+        dependencyRoutes.map(dependencyRoute =>
+          r8MechanicalRouteIdentity(dependencyRoute).identity
+        ).sort(),
+      ),
+      beliefRows,
+    });
+    const componentHashes = Object.freeze(
+      Object.fromEntries([
+        'unitRows',
+        'beliefRows',
+        'opportunityRows',
+        'scheduleRows',
+        'resourceRows',
+        'objectiveHash',
+        'actionOpportunityHash',
+        'semanticPhaseHash',
+        'candidateFingerprints',
+        'mechanicalRouteIdentities',
+        'dependencyKeys',
+        'opportunityDependencies',
+      ].map(key => [
+        key,
+        preview.stableHash(dependencySet[key] ?? null),
+      ])),
+    );
+    return Object.freeze({
+      ...dependencySet,
+      componentHashes,
+      identity: `behavior-envelope:${preview.stableHash(dependencySet)}`,
+    });
+  }
+
+  function r8BehaviorIdentityMismatchComponents(
+    previousIdentity = {},
+    currentIdentity = {},
+  ) {
+    const previous = previousIdentity?.componentHashes || {};
+    const current = currentIdentity?.componentHashes || {};
+    return [...new Set([
+      ...Object.keys(previous),
+      ...Object.keys(current),
+    ])]
+      .sort()
+      .filter(key =>
+        String(previous[key] || '') !== String(current[key] || '')
+      );
+  }
+
+  function r8BehaviorUnitIdentity(
+    unitId = '',
+    routes = [],
+    input = {},
+  ) {
+    return r8BehaviorEnvelopeDependencySet({
+      worldSnapshot: input?.worldSnapshot || {},
+      routes,
+      candidates: (Array.isArray(routes) ? routes : []).map(route => ({
+        declarationFingerprint: route?.declarationFingerprint || '',
+      })),
+      targetId: String(unitId || '').trim(),
+      evaluationContext: input?.evaluationContext || {},
+      beliefState: input?.beliefState || {},
+      objectiveContract:
+        input?.objectiveContract ||
+        input?.worldSnapshot?.胜负条件 ||
+        {},
+      actionOpportunity: r8ExecutionOpportunityForUnit(
+        input,
+        unitId,
+      ),
+      semanticPhaseHash: preview.stableHash({
+        mode: input?.forceFullBehaviorRouteValuation === true
+          ? 'FULL'
+          : 'SHALLOW',
+        objectiveCompactMode: String(
+          input?.objectiveCompactMode || 'FAST',
+        ).trim().toUpperCase(),
+      }),
+    });
+  }
+
+  function r8BehaviorRouteIdentity(route = {}, input = {}) {
+    const ownerId = String(
+      (
+        route && typeof route === 'object'
+          ? r8RouteActorIdCache.get(route)
+          : ''
+      ) ||
+      route?.targetIds?.[0] ||
+      '',
+    ).trim();
+    return r8BehaviorEnvelopeDependencySet({
+      worldSnapshot: input?.worldSnapshot || {},
+      route,
+      candidate: {
+        declaration: {
+          actorId: ownerId,
+          targetIds: [...(route?.targetIds || [])],
+        },
+        declarationFingerprint: String(
+          route?.declarationFingerprint || '',
+        ).trim(),
+      },
+      targetId: ownerId,
+      evaluationContext: input?.evaluationContext || {},
+      beliefState: input?.beliefState || {},
+      objectiveContract:
+        input?.objectiveContract ||
+        input?.worldSnapshot?.胜负条件 ||
+        {},
+      actionOpportunity: r8ExecutionOpportunityForUnit(
+        input,
+        ownerId,
+      ),
+      semanticPhaseHash: preview.stableHash({
+        mode: input?.forceFullBehaviorRouteValuation === true
+          ? 'FULL'
+          : 'SHALLOW',
+        objectiveCompactMode: String(
+          input?.objectiveCompactMode || 'FAST',
+        ).trim().toUpperCase(),
+      }),
+    });
+  }
+
+  function r8RememberBehaviorRouteIdentities(
+    fullRoutesByUnit = {},
+    input = {},
+  ) {
+    const catalogIdentity = r8BehaviorCatalogIdentity(
+      fullRoutesByUnit,
+      input,
+    );
+    Object.entries(fullRoutesByUnit).forEach(([unitId, routes]) => {
+      const unitRoutes = Array.isArray(routes) ? routes : [];
+      if (!unitRoutes.length) return;
+      unitRoutes.forEach(route => {
+        if (route && typeof route === 'object') {
+          r8BehaviorRouteIdentityCache.set(
+            route,
+            r8BehaviorRouteIdentity(route, input),
+          );
+          r8BehaviorCatalogIdentityCache.set(route, catalogIdentity);
+        }
+      });
+    });
+  }
+
+  function r8BehaviorCatalogIdentity(
+    fullRoutesByUnit = {},
+    input = {},
+  ) {
+    const routes = Object.values(fullRoutesByUnit)
+      .flatMap(unitRoutes => Array.isArray(unitRoutes) ? unitRoutes : []);
+    const routesByUnit = Object.fromEntries(
+      Object.entries(fullRoutesByUnit)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([unitId, routes]) => [
+          unitId,
+          (Array.isArray(routes) ? routes : [])
+            .map(route => Object.freeze({
+              candidateId: String(route?.candidateId || '').trim(),
+              declarationFingerprint: String(
+                route?.declarationFingerprint || '',
+              ).trim(),
+              mechanicalIdentity:
+                r8MechanicalRouteIdentity(route).identity,
+              objectiveRouteUtilityHEPP: Number(
+                route?.objectiveRouteUtilityHEPP || 0,
+              ),
+              routeDiscardedOverkillPP: Number(
+                route?.routeDiscardedOverkillPP || 0,
+              ),
+              terminalPathId: String(
+                route?.terminalPathId || '',
+              ).trim(),
+            }))
+            .sort((left, right) =>
+              left.candidateId.localeCompare(right.candidateId) ||
+              left.declarationFingerprint.localeCompare(
+                right.declarationFingerprint,
+              )
+            ),
+        ]),
+    );
+    const dependencyKeys = [...new Set(
+      routes.flatMap(route =>
+        Array.isArray(route?.dependencyKeys)
+          ? route.dependencyKeys
+          : []
+      ),
+    )].map(key => String(key || '').trim()).filter(Boolean).sort();
+    const dependencySnapshot = canonicalDependencySnapshot({
+      worldSnapshot: input?.worldSnapshot || {},
+      objectiveContract:
+        input?.objectiveContract ||
+        input?.worldSnapshot?.胜负条件 ||
+        {},
+      opportunitySnapshot:
+        input?.evaluationContext?.opportunitySnapshot || [],
+      scheduledEvents:
+        input?.evaluationContext?.scheduledEvents || [],
+      beliefState: input?.beliefState || {},
+    }, dependencyKeys);
+    const payload = Object.freeze({
+      schemaVersion: 'BehaviorCatalogIdentityV1',
+      routesByUnit,
+      dependencyKeys: Object.freeze(dependencyKeys),
+      dependencyValueHash: dependencySnapshot.dependencyValueHash,
+      objectiveHash: preview.stableHash(
+        input?.objectiveContract ||
+        input?.worldSnapshot?.胜负条件 ||
+        {},
+      ),
+      beliefRevision: beliefRevisionFor(input?.beliefState || {}),
+      actionOpportunityHash: preview.stableHash(
+        input?.actionOpportunity || {},
+      ),
+      opportunitySnapshotHash: preview.stableHash(
+        input?.evaluationContext?.opportunitySnapshot || [],
+      ),
+      resourceTimelineHash: preview.stableHash(
+        input?.evaluationContext?.resourceTimeline || [],
+      ),
+      scheduledEventsHash: preview.stableHash(
+        input?.evaluationContext?.scheduledEvents || [],
+      ),
+      semanticPhaseHash: preview.stableHash({
+        scope: 'FULL_MECHANICAL_ROUTE_CATALOG',
+        mode: input?.forceFullBehaviorRouteValuation === true
+          ? 'FULL'
+          : 'SHALLOW',
+        objectiveCompactMode: String(
+          input?.objectiveCompactMode || 'FAST',
+        ).trim().toUpperCase(),
+      }),
+    });
+    const componentHashes = Object.freeze(
+      Object.fromEntries(
+        Object.entries(payload).map(([key, value]) => [
+          key,
+          preview.stableHash(value),
+        ]),
+      ),
+    );
+    return Object.freeze({
+      ...payload,
+      componentHashes,
+      identity: `behavior-catalog:${preview.stableHash(payload)}`,
+    });
+  }
+
+  function r8ResourcePlanDependencySet(input = {}) {
+    const routeCatalog = input?.routeCatalog || {};
+    const fullRoutesByUnit = input?.fullRoutesByUnit || {};
+    const unitIds = new Set(
+      (Array.isArray(input?.unitIds) ? input.unitIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    Object.values(fullRoutesByUnit).flat().forEach(route => {
+      (route?.paymentDependencies || []).forEach(entry => {
+        const unitId = String(entry?.unitId || '').trim();
+        if (unitId) unitIds.add(unitId);
+      });
+    });
+    const resourceNames = new Set(
+      Object.values(fullRoutesByUnit).flat().flatMap(route =>
+        (route?.paymentDependencies || [])
+          .map(entry => String(entry?.resource || '').trim())
+          .filter(Boolean),
+      ),
+    );
+    const routeRows = r8IdentityRows(
+      Object.entries(fullRoutesByUnit).flatMap(([unitId, routes]) =>
+        (Array.isArray(routes) ? routes : []).map(route => ({
+          unitId,
+          route: r8ResourceRouteSemanticValue(route),
+        })),
+      ),
+    );
+    const storedRows = r8IdentityRows(
+      Object.entries(routeCatalog).map(([unitId, envelope]) => ({
+        unitId,
+        primary: r8ResourceRouteSemanticValue(envelope?.primaryRoute),
+        backup: r8ResourceRouteSemanticValue(envelope?.backupRoute),
+      })),
+    );
+    const dependencySet = Object.freeze({
+      schemaVersion: 'ResourcePlanDependencySetV1',
+      unitIds: Object.freeze([...unitIds].sort()),
+      resourceNames: Object.freeze([...resourceNames].sort()),
+      worldRows: r8IdentityRows(
+        preview.listUnits(input?.worldSnapshot || {}).map(entry => {
+          const unit = entry?.unit || entry;
+          const unitId = preview.unitId(unit);
+          return {
+            unitId,
+            side: sideOf(input?.worldSnapshot || {}, unit),
+            hp: preview.readHp(unit),
+            baseMaxHp: preview.readHpMax(unit),
+            alive: preview.isPhysicallyAlive(unit),
+            capable: preview.isBattleCapable(unit),
+            actionState: String(unit?.状态?.行动 || '').trim(),
+            resources: unitIds.has(unitId)
+              ? Object.fromEntries(
+                  ['魂力', '精神力', '体力'].map(resource => [
+                    resource,
+                    {
+                      value: preview.readResource(unit, resource),
+                      maximum: preview.readResourceMax(unit, resource),
+                    },
+                  ]),
+                )
+              : null,
+          };
+        }),
+      ),
+      routeRows,
+      storedRows,
+      opportunityRows: r8OpportunityRowsForIdentity(
+        {
+          opportunitySnapshot: input?.opportunitySnapshot,
+        },
+        unitIds,
+        new Set(),
+      ),
+      scheduleRows: r8ScheduleRowsForIdentity(
+        { scheduledEvents: input?.scheduledEvents },
+        unitIds,
+        new Set(),
+      ),
+      resourceRows: r8ResourceRowsForIdentity(
+        { resourceTimeline: input?.resourceTimeline },
+        unitIds,
+        resourceNames,
+        true,
+      ),
+      actorSide: String(input?.actorSide || '').trim(),
+      projectionScope: String(input?.projectionScope || 'FULL_CAUSAL')
+        .trim()
+        .toUpperCase(),
+    });
+    return Object.freeze({
+      ...dependencySet,
+      identity: `resource-plan:${preview.stableHash(dependencySet)}`,
+    });
+  }
+
+  function r8TerminalProjectionIdentity({
+    objectiveContext = {},
+    actorSide = '',
+    objectiveCompactMode = 'FAST',
+    terminalProjectionMode = 'SUMMARY',
+    terminalWorldDependencyHash = '',
+    routeMechanicalSignature = '',
+    utilityMechanicalSignature = '',
+  } = {}) {
+    const identity = Object.freeze({
+      schemaVersion: 'TerminalProjectionIdentityV1',
+      objectiveSemanticHash: String(
+        objectiveContext?.objectiveSemanticHash || '',
+      ).trim(),
+      actorSide: String(actorSide || '').trim(),
+      objectiveCompactMode: String(objectiveCompactMode || 'FAST')
+        .trim()
+        .toUpperCase(),
+      terminalProjectionMode: String(terminalProjectionMode || 'SUMMARY')
+        .trim()
+        .toUpperCase(),
+      terminalWorldDependencyHash: String(
+        terminalWorldDependencyHash || '',
+      ).trim(),
+      routeMechanicalSignature: String(
+        routeMechanicalSignature || '',
+      ).trim(),
+      utilityMechanicalSignature: String(
+        utilityMechanicalSignature || '',
+      ).trim(),
+    });
+    return Object.freeze({
+      ...identity,
+      identity: `terminal-projection:${preview.stableHash(identity)}`,
+    });
+  }
+
+  function r8AttributionIdentity(
+    distribution = {},
+    route = {},
+    groups = [],
+  ) {
+    const identity = Object.freeze({
+      schemaVersion: 'AttributionIdentityV1',
+      distributionHash: String(distribution?.distributionHash || '').trim(),
+      candidateId: String(route?.candidateId || '').trim(),
+      groups: r8IdentityRows((groups || []).map(group => ({
+        atomicKey: String(group?.atomicKey || '').trim(),
+        trajectories: (group?.trajectories || []).map(trajectory => ({
+          sourceEffectInstanceId: String(
+            trajectory?.sourceEffectInstanceId || '',
+          ).trim(),
+          targetId: String(trajectory?.targetId || '').trim(),
+          outcomeKind: String(trajectory?.outcomeKind || '').trim(),
+          windowId: String(trajectory?.windowId || '').trim(),
+        })),
+        probabilityFactors: (group?.probabilityFactors || []).map(factor => ({
+          effectInstanceId: String(factor?.effectInstanceId || '').trim(),
+          targetId: String(factor?.targetId || '').trim(),
+          outcomeKind: String(factor?.outcomeKind || '').trim(),
+          windowId: String(factor?.windowId || '').trim(),
+        })),
+      }))),
+    });
+    return Object.freeze({
+      ...identity,
+      identity: `attribution:${preview.stableHash(identity)}`,
+    });
+  }
+
   function buildR8RouteCatalog(input = {}) {
+    const traceRouteStages =
+      globalThis?.process?.env?.BATTLE_R8_ROUTE_STAGE_TRACE === '1';
+    const routeTraceStartedAt =
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+    const traceRouteStage = stage => {
+      if (traceRouteStages) {
+        const now =
+          typeof globalThis?.performance?.now === 'function'
+            ? globalThis.performance.now()
+            : Date.now();
+        console.error(`[r8-route-stage] ${JSON.stringify({
+          stage,
+          elapsedMs: Number((now - routeTraceStartedAt).toFixed(3)),
+        })}`);
+      }
+    };
+    traceRouteStage('mechanical-start');
     const worldSnapshot = input.worldSnapshot || {};
     const dependencyView = input.dependencyView;
     const evaluationContext = input.evaluationContext || {};
+    const canonicalDependencyInput = {
+      worldSnapshot,
+      objectiveContract: input.objectiveContract || worldSnapshot?.胜负条件 || {},
+      opportunitySnapshot: evaluationContext.opportunitySnapshot,
+      scheduledEvents: evaluationContext.scheduledEvents,
+      beliefState: input.beliefState,
+    };
+    const dependencyValueHashFor = dependencyKeys =>
+      canonicalDependencyValueHash(canonicalDependencyInput, dependencyKeys);
     const actorId = String(input.actorId || '').trim();
     const actorCandidates = Array.isArray(input.actorCandidates) ? input.actorCandidates : [];
     const cache = new Map();
@@ -11475,18 +14977,166 @@
     const actorCandidateRoutes = {};
     const actorProjectedWorlds = {};
     const actorProjectedWorldRevisions = {};
+    const actorPredictedOutcomeEvidence = {};
     const fullRoutesByUnit = {};
+    const projectedWorldsByUnit = {};
+    const projectedWorldRevisionsByUnit = {};
+    const mechanicalUnitHashCache = new Map();
+    const mechanicalUnitRowsHashCache = new Map();
+    const mechanicalDependencyRowsHashCache = new Map();
+    const mechanicalObjectiveHash = preview.stableHash(
+      input.objectiveContract || worldSnapshot?.胜负条件 || {},
+    );
+    const mechanicalRouteContextIdentity = Object.freeze({
+      actionOpportunityHash: preview.stableHash(
+        input.actionOpportunity || {},
+      ),
+      opportunityRevision: String(
+        evaluationContext?.opportunityRevision || '',
+      ).trim(),
+      resourceTimelineRevision: String(
+        evaluationContext?.resourceTimelineRevision || '',
+      ).trim(),
+      scheduleRevision: String(
+        evaluationContext?.scheduleRevision || '',
+      ).trim(),
+      horizonHash: preview.stableHash(evaluationContext?.horizon || {}),
+      runtimeEvaluationRevision: String(
+        evaluationContext?.runtimeEvaluationRevision || '',
+      ).trim(),
+    });
+    const reusedValuedUnitIds = new Set();
+    const recomputedUnitIds = new Set();
+    let mechanicalReuseAttemptCount = 0;
+    let mechanicalReuseSignatureMatchCount = 0;
+    let mechanicalReuseSignatureMismatchCount = 0;
+    let rebuiltRouteSameMechanicalSignatureCount = 0;
+    let rebuiltRouteChangedMechanicalSignatureCount = 0;
+    let reusedMechanicalRouteCount = 0;
+    let reusedRouteCandidateCount = 0;
+    let behaviorReuseAttemptCount = 0;
+    let behaviorReuseIdentityMatchCount = 0;
+    let behaviorReuseIdentityMismatchCount = 0;
+    const behaviorReuseMismatchCounts = {};
+    const behaviorReuseMismatchByUnit = {};
+    let behaviorRouteReuseAttemptCount = 0;
+    let behaviorRouteReuseMatchCount = 0;
+    const behaviorRouteReuseMismatchCounts = {};
+    const behaviorRouteReuseMismatchByUnit = {};
+    const mechanicalReuseMismatchCounts = {};
     const previousCatalog = input.previousCatalog && typeof input.previousCatalog === 'object'
       ? input.previousCatalog
       : null;
+    const previousFullRoutesByUnit =
+      input.previousFullRoutesByUnit && typeof input.previousFullRoutesByUnit === 'object'
+        ? input.previousFullRoutesByUnit
+        : null;
+    const previousActorCandidateRoutes =
+      input.previousActorCandidateRoutes &&
+      typeof input.previousActorCandidateRoutes === 'object'
+        ? input.previousActorCandidateRoutes
+        : null;
+    const previousActorProjectedWorlds =
+      input.previousActorProjectedWorlds &&
+      typeof input.previousActorProjectedWorlds === 'object'
+        ? input.previousActorProjectedWorlds
+        : null;
+    const previousActorProjectedWorldRevisions =
+      input.previousActorProjectedWorldRevisions &&
+      typeof input.previousActorProjectedWorldRevisions === 'object'
+        ? input.previousActorProjectedWorldRevisions
+        : null;
+    const previousActorPredictedOutcomeEvidence =
+      input.previousActorPredictedOutcomeEvidence &&
+      typeof input.previousActorPredictedOutcomeEvidence === 'object'
+        ? input.previousActorPredictedOutcomeEvidence
+        : null;
     const affectedUnitIds = new Set((input.affectedUnitIds || []).map(value => String(value || '').trim()).filter(Boolean));
     const affectedTargetUnitIds = new Set(
       (Array.isArray(input.affectedTargetUnitIds) ? input.affectedTargetUnitIds : [...affectedUnitIds])
         .map(value => String(value || '').trim())
         .filter(Boolean),
     );
+    const affectedRouteKeysByUnit = new Map(
+      Object.entries(input?.affectedRouteKeysByUnit || {})
+        .map(([unitId, routeKeys]) => [
+          String(unitId || '').trim(),
+          new Set(
+            (Array.isArray(routeKeys) ? routeKeys : [])
+              .map(value => String(value || '').trim())
+              .filter(Boolean),
+          ),
+        ])
+        .filter(([unitId, routeKeys]) => unitId && routeKeys.size),
+    );
+    const rebaseReusedRoute = route => {
+      const dependencyDeltaSet = route?.dependencyDeltaSet;
+      if (!dependencyDeltaSet) return route;
+      const worldRevision = String(
+        evaluationContext.worldRevision || ''
+      ).trim();
+      const dependencyKeys = [
+        ...(dependencyDeltaSet?.dependencyKeys || route?.dependencyKeys || []),
+      ].map(value => String(value || '').trim()).filter(Boolean).sort();
+      const dependencyValueHash = dependencyValueHashFor(dependencyKeys);
+      const nextDependencyDeltaSet = {
+        ...dependencyDeltaSet,
+        worldRevision,
+        dependencyKeys: Object.freeze(dependencyKeys),
+        dependencyValueHash,
+      };
+      nextDependencyDeltaSet.dependencyHash =
+        `dependency-delta:${preview.stableHash({
+          worldRevision,
+          candidateId: String(route?.candidateId || '').trim(),
+          changedFacts: nextDependencyDeltaSet.changedFacts || [],
+          dependencyKeys,
+          dependencyValueHash,
+        })}`;
+      const rebasedRoute = Object.freeze({
+        ...route,
+        dependencyDeltaSet: Object.freeze(nextDependencyDeltaSet),
+      });
+      return r8CopyTerminalRouteMetadata(route, rebasedRoute);
+    };
+    const rebaseProjectedWorld = (
+      projectedWorld,
+      route,
+      currentUnitId,
+    ) => {
+      if (!projectedWorld) return null;
+      const changedUnitIds = new Set([
+        currentUnitId,
+        ...(route?.targetIds || []),
+        ...(route?.paymentDependencies || []).map(entry => entry?.unitId),
+        ...(route?.dependencyDeltaSet?.changedFacts || []).flatMap(fact => [
+          fact?.ownerId,
+          fact?.targetId,
+        ]),
+      ].map(value => String(value || '').trim()).filter(Boolean));
+      return mapWorldUnits(worldSnapshot, unit => {
+        const id = preview.unitId(unit);
+        if (!changedUnitIds.has(id)) return unit;
+        return findUnitInWorld(projectedWorld, id) || unit;
+      });
+    };
+    const actorReuseSupported =
+      previousActorCandidateRoutes &&
+      previousActorProjectedWorlds &&
+      previousActorPredictedOutcomeEvidence &&
+      Object.values(previousActorCandidateRoutes).every(route =>
+        !(route?.outcomeKinds || []).some(kind =>
+          ['RULE_CHANGED', 'SUMMON_WINDOW'].includes(
+            String(kind || '').trim().toUpperCase()
+          )
+        )
+      );
     affectedTargetUnitIds.forEach(unitId => affectedUnitIds.add(unitId));
-    if (previousCatalog && affectedTargetUnitIds.size) {
+    if (
+      previousCatalog &&
+      affectedTargetUnitIds.size &&
+      affectedRouteKeysByUnit.size === 0
+    ) {
       Object.entries(previousCatalog).forEach(([unitId, envelope]) => {
         const searchedTargetIds = Array.isArray(envelope?.searchedTargetIds)
           ? envelope.searchedTargetIds
@@ -11505,122 +15155,1040 @@
       .sort((left, right) => String(preview.unitId(left.unit)).localeCompare(String(preview.unitId(right.unit))));
     for (const entry of entries) {
       const currentUnitId = preview.unitId(entry.unit);
-      if (previousCatalog && affectedUnitIds.size && !affectedUnitIds.has(currentUnitId)) {
-        catalog[currentUnitId] = previousCatalog[currentUnitId];
-        continue;
-      }
+      const potentialCandidates = enumerateCandidates({
+        worldSnapshot,
+        actorId: currentUnitId,
+        actorSide: entry.side,
+        beliefState: input.beliefState,
+        battleIntent: input.battleIntent,
+        includeUnaffordableRoutes: true,
+        actionOpportunity: {
+          role: 'ACTIVE',
+          grantType: 'NATURAL_ACTION',
+          sequence: Number(input.actionOpportunity?.sequence || 0) + 1,
+        },
+      }).map(candidate => ({
+        ...candidate,
+        declarationFingerprint:
+          candidate.declarationFingerprint ||
+          declarationFingerprint(candidate.declaration),
+      }));
+      const currentActorCandidateIds = new Set(
+        actorCandidates.map(candidate =>
+          String(candidate?.candidateId || '').trim()
+        ),
+      );
       const candidates = currentUnitId === actorId
-        ? actorCandidates
-        : enumerateCandidates({
-            worldSnapshot,
-            actorId: currentUnitId,
-            actorSide: entry.side,
-            beliefState: input.beliefState,
-            battleIntent: input.battleIntent,
-            actionOpportunity: {
-              role: 'ACTIVE',
-              grantType: 'NATURAL_ACTION',
-              sequence: Number(input.actionOpportunity?.sequence || 0) + 1,
+        ? [...new Map([...actorCandidates, ...potentialCandidates].map(candidate => [
+            String(candidate?.candidateId || '').trim(),
+            {
+              ...candidate,
+              declarationFingerprint:
+                candidate.declarationFingerprint ||
+                declarationFingerprint(candidate.declaration),
             },
-          }).map(candidate => ({
-            ...candidate,
-            declarationFingerprint: declarationFingerprint(candidate.declaration),
-          }));
-      const routes = candidates.map(candidate => {
-        dependencyView.readUnitHp(currentUnitId);
-        dependencyView.readUnitBaseMaxHp(currentUnitId);
-        for (const targetId of candidate?.declaration?.targetIds || []) {
-          if (!findUnitInWorld(worldSnapshot, targetId)) continue;
-          dependencyView.readUnitHp(targetId);
-          dependencyView.readUnitBaseMaxHp(targetId);
-          dependencyView.readDefenseProfile(targetId);
+          ])).values()]
+        : potentialCandidates;
+      const previousValuedRoutes = Array.isArray(
+        previousFullRoutesByUnit?.[currentUnitId],
+      )
+        ? previousFullRoutesByUnit[currentUnitId]
+        : [];
+      const currentCandidateById = new Map(candidates.map(candidate => [
+        String(candidate?.candidateId || '').trim(),
+        String(candidate?.declarationFingerprint || '').trim(),
+      ]));
+      const candidateSetMatches =
+        currentCandidateById.size === previousValuedRoutes.length &&
+        previousValuedRoutes.every(route =>
+          currentCandidateById.get(String(route?.candidateId || '').trim()) ===
+          String(route?.declarationFingerprint || '').trim()
+        );
+      const behaviorRouteIdentityRows = previousValuedRoutes.map(route => {
+        const previousIdentity = r8BehaviorRouteIdentityCache.get(route);
+        const currentIdentity = r8BehaviorRouteIdentity(route, {
+          ...input,
+          worldSnapshot,
+          evaluationContext,
+        });
+        return {
+          route,
+          previousIdentity,
+          currentIdentity,
+          matches:
+            !!previousIdentity &&
+            previousIdentity.identity === currentIdentity.identity,
+        };
+      });
+      behaviorRouteIdentityRows.forEach(row => {
+        behaviorRouteReuseAttemptCount += 1;
+        if (row.matches) {
+          behaviorRouteReuseMatchCount += 1;
+          return;
         }
-        const dependencyKeys = dependencyView.dependencyKeys();
-        const dependencyValueHash = dependencyView.dependencyValueHash(dependencyKeys);
-        const cacheKey = r8PreviewCacheKey(evaluationContext, candidate, dependencyValueHash);
-        let previewResult = cache.get(cacheKey);
-        if (!previewResult) {
-          previewResult = preview.previewAction({
-            worldSnapshot,
-            worldRevision: evaluationContext.visibleWorldRevision,
-            beliefRevision: evaluationContext.beliefRevision,
-            actorId: currentUnitId,
-            declaration: candidate.declaration,
-            actionFingerprint: candidate.declarationFingerprint,
-            horizon: 'SHALLOW',
-            previewBudget: { maxNodes: 12 },
-            battleIntent: input.battleIntent,
+        const components = row.previousIdentity
+          ? r8BehaviorIdentityMismatchComponents(
+              row.previousIdentity,
+              row.currentIdentity,
+            )
+          : ['storedIdentityMissing'];
+        components.forEach(component => {
+          behaviorRouteReuseMismatchCounts[component] =
+            Number(behaviorRouteReuseMismatchCounts[component] || 0) + 1;
+        });
+        const unitRows = behaviorRouteReuseMismatchByUnit[currentUnitId] || {};
+        unitRows[String(row?.route?.candidateId || '').trim()] = components;
+        behaviorRouteReuseMismatchByUnit[currentUnitId] = unitRows;
+      });
+      const behaviorIdentityMatches =
+        candidateSetMatches &&
+        behaviorRouteIdentityRows.length > 0 &&
+        behaviorRouteIdentityRows.every(row => row.matches);
+      const affectedRouteKeys = affectedRouteKeysByUnit.get(currentUnitId);
+      if (previousValuedRoutes.length) {
+        behaviorReuseAttemptCount += 1;
+        if (behaviorIdentityMatches) {
+          behaviorReuseIdentityMatchCount += 1;
+        } else {
+          behaviorReuseIdentityMismatchCount += 1;
+          const mismatchComponents = [
+            ...(candidateSetMatches
+              ? []
+              : ['candidateFingerprints']),
+            ...behaviorRouteIdentityRows.flatMap(row =>
+              row.previousIdentity
+                ? r8BehaviorIdentityMismatchComponents(
+                    row.previousIdentity,
+                    row.currentIdentity,
+                  )
+                : ['storedIdentityMissing']
+            ),
+          ].filter((component, index, rows) =>
+            rows.indexOf(component) === index
+          );
+          mismatchComponents.forEach(component => {
+            behaviorReuseMismatchCounts[component] =
+              Number(behaviorReuseMismatchCounts[component] || 0) + 1;
           });
-          cache.set(cacheKey, previewResult);
+          behaviorReuseMismatchByUnit[currentUnitId] = Object.freeze(
+            mismatchComponents,
+          );
         }
+      }
+      const previousRoutesByCandidate = new Map(
+        (previousFullRoutesByUnit?.[currentUnitId] || []).map(route => [
+          String(route?.candidateId || '').trim(),
+          route,
+        ]),
+      );
+      projectedWorldsByUnit[currentUnitId] = {};
+      projectedWorldRevisionsByUnit[currentUnitId] = {};
+      let recomputedCurrentUnit = false;
+      const routes = candidates.map(candidate => {
+        const objectiveRequest = {
+          actorId: currentUnitId,
+          actorSide: entry.side,
+          visibleWorld: worldSnapshot,
+          objectiveCompactMode: input.objectiveCompactMode || 'FAST',
+          objectiveContract:
+            input.objectiveContract ||
+            worldSnapshot?.胜负条件 ||
+            {},
+        };
+        const candidateId = String(candidate?.candidateId || '').trim();
+        const routeIsAffected = affectedRouteKeys
+          ? affectedRouteKeys.has(candidateId)
+          : affectedUnitIds.has(currentUnitId);
+        const previousRoute = (
+          routeIsAffected ||
+          (currentUnitId === actorId && !actorReuseSupported)
+        )
+          ? null
+          : previousRoutesByCandidate.get(candidateId) || null;
+        const previousMechanical =
+          previousRoute &&
+          r8RouteMechanicalSignatureCache.get(previousRoute);
+        if (
+          previousRoute &&
+          previousMechanical &&
+          String(previousRoute?.declarationFingerprint || '').trim() ===
+            String(candidate?.declarationFingerprint || '').trim()
+        ) {
+          mechanicalReuseAttemptCount += 1;
+          const currentMechanical = r8MechanicalRouteSignature({
+            route: previousRoute,
+            candidate,
+            worldSnapshot,
+            evaluationContext,
+            objectiveContract: objectiveRequest.objectiveContract,
+            beliefState: input.beliefState,
+            unitHashCache: mechanicalUnitHashCache,
+            unitRowsHashCache: mechanicalUnitRowsHashCache,
+            dependencyRowsHashCache: mechanicalDependencyRowsHashCache,
+            objectiveHash: mechanicalObjectiveHash,
+            routeContextIdentity: mechanicalRouteContextIdentity,
+          });
+          if (currentMechanical.signature === previousMechanical.signature) {
+            mechanicalReuseSignatureMatchCount += 1;
+            const reusedRoute = r8ConditionRouteForObjective(
+              r8MechanicalRouteOnly(rebaseReusedRoute(previousRoute)),
+              objectiveRequest,
+            );
+            r8RouteMechanicalSignatureCache.set(reusedRoute, currentMechanical);
+            if (
+              currentUnitId === actorId &&
+              currentActorCandidateIds.has(candidateId)
+            ) {
+              actorProjectedWorlds[candidateId] = rebaseProjectedWorld(
+                previousActorProjectedWorlds?.[candidateId],
+                reusedRoute,
+                currentUnitId,
+              );
+              actorProjectedWorldRevisions[candidateId] = [
+                evaluationContext.visibleWorldRevision,
+                reusedRoute.declarationFingerprint || '',
+              ].join('|');
+              actorPredictedOutcomeEvidence[candidateId] =
+                previousActorPredictedOutcomeEvidence?.[candidateId] || [];
+            }
+            reusedMechanicalRouteCount += 1;
+            reusedRouteCandidateCount += 1;
+            return reusedRoute;
+          }
+          mechanicalReuseSignatureMismatchCount += 1;
+          [
+            'declarationFingerprint',
+            'unitRowsHash',
+            'dependencyRowsHash',
+            'objectiveHash',
+            'battleIntentMode',
+            'preserveHp',
+          ].forEach(key => {
+            if (currentMechanical[key] === previousMechanical[key]) return;
+            mechanicalReuseMismatchCounts[key] =
+              Number(mechanicalReuseMismatchCounts[key] || 0) + 1;
+          });
+        }
+        dependencyView.beginCapture();
+        recomputedCurrentUnit = true;
+        [
+          ...(input.objectiveContract?.victory?.conditions || []),
+          ...(input.objectiveContract?.defeat?.conditions || []),
+        ].forEach((condition, index) => {
+          dependencyView.readObjective(condition?.conditionId || condition?.id || index);
+        });
+        captureObjectiveHorizonScheduleDependencies(
+          dependencyView,
+          input.objectiveContract,
+          evaluationContext.scheduledEvents,
+        );
+        Object.keys(worldSnapshot?.规则 || worldSnapshot?.battleRules || {}).forEach(ruleKey =>
+          dependencyView.readRule(ruleKey)
+        );
+        const previewWorld = worldSnapshot;
+        const previewResult = preview.previewAction({
+          worldSnapshot: previewWorld,
+          worldRevision: evaluationContext.visibleWorldRevision,
+          beliefSnapshot: input.beliefState,
+          beliefRevision: evaluationContext.beliefRevision,
+          actorId: currentUnitId,
+          declaration: candidate.declaration,
+          actionFingerprint: candidate.declarationFingerprint,
+          dependencyRecorder: (key, value) =>
+            dependencyView.recordPreviewRead(key, value),
+          hitProbabilityResolver: candidateHitProbabilityResolver({
+            beliefState: input.beliefState,
+            actor: entry.unit,
+            candidate,
+            worldSnapshot: previewWorld,
+            dependencyView,
+          }),
+          applicationProbabilityResolver: candidateApplicationProbabilityResolver({
+            beliefState: input.beliefState,
+            actor: entry.unit,
+            candidate,
+            dependencyView,
+          }),
+          horizon: 'SHALLOW',
+          previewBudget: { maxNodes: 12 },
+          collectProbabilityBranches: true,
+          paymentMode: candidate?.resourcePotentialOnly === true
+            ? 'EXTERNAL_TIMELINE'
+            : 'FORMAL',
+          resourcePotentialOnly: candidate?.resourcePotentialOnly === true,
+          battleIntent: input.battleIntent,
+          allowProjectedFusion: candidate?.resourcePotentialOnly === true &&
+            Array.isArray(candidate?.declaration?.fusionParticipantIds) &&
+            candidate.declaration.fusionParticipantIds.length > 1,
+        });
+        const dependencyKeys = replayableDependencyKeys(
+          worldSnapshot,
+          previewResult,
+          dependencyView.endCapture(),
+        );
+        const dependencyValueHash = dependencyValueHashFor(dependencyKeys);
+        const cacheKey = r8PreviewCacheKey(evaluationContext, candidate, dependencyValueHash);
+        if (!cache.has(cacheKey)) cache.set(cacheKey, previewResult);
         if (currentUnitId === actorId) {
-          actorProjectedWorlds[candidate.candidateId] = previewResult.afterSnapshot;
-          actorProjectedWorldRevisions[candidate.candidateId] = [
-            evaluationContext.visibleWorldRevision,
-            candidate.declarationFingerprint,
-          ].join('|');
+          if (currentActorCandidateIds.has(candidate.candidateId)) {
+            actorProjectedWorlds[candidate.candidateId] =
+              previewResult.afterSnapshot;
+          }
+          if (currentActorCandidateIds.has(candidate.candidateId)) {
+            actorProjectedWorldRevisions[candidate.candidateId] = [
+              evaluationContext.visibleWorldRevision,
+              candidate.declarationFingerprint,
+            ].join('|');
+            actorPredictedOutcomeEvidence[candidate.candidateId] =
+              predictedOutcomeEvidence(previewResult, worldSnapshot);
+          }
         }
-        return actionRouteFromPreview({
+        projectedWorldsByUnit[currentUnitId][candidate.candidateId] =
+          previewResult.afterSnapshot;
+        projectedWorldRevisionsByUnit[currentUnitId][candidate.candidateId] = [
+          evaluationContext.visibleWorldRevision,
+          currentUnitId,
+          candidate.declarationFingerprint,
+        ].join('|');
+        const route = actionRouteFromPreview({
           candidate,
           previewResult,
           worldSnapshot,
           actorSide: entry.side,
           dependencyKeys,
+          worldRevision: evaluationContext.worldRevision,
+          opportunitySnapshot: evaluationContext.opportunitySnapshot,
+          scheduledEvents: evaluationContext.scheduledEvents,
+          objectiveRequest,
+          dependencyValueHash,
         });
+        r8RouteMechanicalSignatureCache.set(
+          route,
+          r8MechanicalRouteSignature({
+            route,
+            candidate,
+            worldSnapshot,
+            evaluationContext,
+            objectiveContract: objectiveRequest.objectiveContract,
+            beliefState: input.beliefState,
+            unitHashCache: mechanicalUnitHashCache,
+            unitRowsHashCache: mechanicalUnitRowsHashCache,
+            dependencyRowsHashCache: mechanicalDependencyRowsHashCache,
+            objectiveHash: mechanicalObjectiveHash,
+            routeContextIdentity: mechanicalRouteContextIdentity,
+          }),
+        );
+        if (previousMechanical) {
+          const rebuiltMechanical = r8RouteMechanicalSignatureCache.get(route);
+          if (rebuiltMechanical?.signature === previousMechanical.signature) {
+            rebuiltRouteSameMechanicalSignatureCount += 1;
+          } else {
+            rebuiltRouteChangedMechanicalSignatureCount += 1;
+          }
+        }
+        return route;
       });
+      if (recomputedCurrentUnit) recomputedUnitIds.add(currentUnitId);
       if (currentUnitId === actorId) {
         routes.forEach(route => {
+          if (!currentActorCandidateIds.has(route.candidateId)) return;
           actorCandidateRoutes[route.candidateId] = route;
         });
       }
       fullRoutesByUnit[currentUnitId] = routes;
       catalog[currentUnitId] = selectPrimaryBackupRoutes(routes);
     }
-    return {
-      routeCatalog: deepFreeze(catalog),
-      actorCandidateRoutes: deepFreeze(actorCandidateRoutes),
-      actorProjectedWorlds,
-      actorProjectedWorldRevisions: Object.freeze(actorProjectedWorldRevisions),
+    traceRouteStage('mechanical-complete');
+    const currentBehaviorCatalogIdentity = r8BehaviorCatalogIdentity(
       fullRoutesByUnit,
-      cacheMetrics: Object.freeze({
+      {
+        ...input,
+        worldSnapshot,
+        evaluationContext,
+      },
+    );
+    const previousBehaviorCatalogIdentity = Object.values(
+      previousFullRoutesByUnit || {},
+    )
+      .flatMap(routes => Array.isArray(routes) ? routes : [])
+      .map(route => r8BehaviorCatalogIdentityCache.get(route))
+      .find(Boolean);
+    const canReuseBehaviorCatalog =
+      !!previousBehaviorCatalogIdentity &&
+      previousBehaviorCatalogIdentity.identity ===
+        currentBehaviorCatalogIdentity.identity &&
+      Object.keys(fullRoutesByUnit).every(unitId => {
+        const currentRoutes = fullRoutesByUnit[unitId] || [];
+        const previousRoutes = previousFullRoutesByUnit?.[unitId] || [];
+        return (
+          currentRoutes.length === previousRoutes.length &&
+          previousRoutes.every(route =>
+            Number.isFinite(Number(route?.behaviorRouteUtilityHEPP))
+          )
+        );
+      });
+    if (canReuseBehaviorCatalog) {
+      Object.keys(fullRoutesByUnit).forEach(unitId => {
+        const reusedRoutes = (previousFullRoutesByUnit[unitId] || [])
+          .map(rebaseReusedRoute);
+        reusedRoutes.forEach(route => {
+          r8BehaviorCatalogIdentityCache.set(
+            route,
+            currentBehaviorCatalogIdentity,
+          );
+        });
+        fullRoutesByUnit[unitId] = reusedRoutes;
+        catalog[unitId] = selectPrimaryBackupRoutes(reusedRoutes);
+        reusedValuedUnitIds.add(unitId);
+      });
+    } else {
+      Object.keys(fullRoutesByUnit).forEach(unitId => {
+        const currentRoutes = fullRoutesByUnit[unitId] || [];
+        const previousRoutes = previousFullRoutesByUnit?.[unitId] || [];
+        if (
+          !currentRoutes.length ||
+          currentRoutes.length !== previousRoutes.length
+        ) {
+          return;
+        }
+        const previousByCandidate = new Map(
+          previousRoutes.map(route => [
+            String(route?.candidateId || '').trim(),
+            route,
+          ]),
+        );
+        const behaviorIndependent = currentRoutes.every(route => {
+          const previousRoute = previousByCandidate.get(
+            String(route?.candidateId || '').trim(),
+          );
+          if (
+            !previousRoute ||
+            !Number.isFinite(
+              Number(previousRoute?.behaviorRouteUtilityHEPP),
+            )
+          ) {
+            return false;
+          }
+          if (
+            (route?.actionPoolEffects || []).some(effect =>
+              r8ActionPoolEffectHasMechanicalDelta(effect)
+            )
+          ) {
+            return false;
+          }
+          return (
+            r8MechanicalRouteIdentity(route).identity ===
+              r8MechanicalRouteIdentity(previousRoute).identity &&
+            Math.abs(
+              Number(route?.objectiveRouteUtilityHEPP || 0) -
+              Number(previousRoute?.objectiveRouteUtilityHEPP || 0)
+            ) <= 1e-9 &&
+            Math.abs(
+              Number(route?.routeDiscardedOverkillPP || 0) -
+              Number(previousRoute?.routeDiscardedOverkillPP || 0)
+            ) <= 1e-9 &&
+            String(route?.terminalPathId || '').trim() ===
+              String(previousRoute?.terminalPathId || '').trim()
+          );
+        });
+        if (!behaviorIndependent) return;
+        const reusedRoutes = currentRoutes.map(route => {
+          const previousRoute = previousByCandidate.get(
+            String(route?.candidateId || '').trim(),
+          );
+          const rebasedRoute = rebaseReusedRoute(previousRoute);
+          r8BehaviorCatalogIdentityCache.set(
+            rebasedRoute,
+            currentBehaviorCatalogIdentity,
+          );
+          return rebasedRoute;
+        });
+        fullRoutesByUnit[unitId] = reusedRoutes;
+        catalog[unitId] = selectPrimaryBackupRoutes(reusedRoutes);
+        reusedValuedUnitIds.add(unitId);
+      });
+    }
+    const result = buildR8BehaviorRouteCatalog({
+      ...input,
+      mechanicalRouteCatalog: catalog,
+      mechanicalFullRoutesByUnit: fullRoutesByUnit,
+      projectedWorldsByUnit,
+      projectedWorldRevisionsByUnit,
+      actorCandidateRoutes,
+      actorProjectedWorlds,
+      actorProjectedWorldRevisions,
+      actorPredictedOutcomeEvidence,
+      reusedValuedUnitIds: Object.freeze([...reusedValuedUnitIds]),
+      previousActorCandidateEnvelopeDeltas:
+        input?.previousActorCandidateEnvelopeDeltas || {},
+      cacheMetrics: {
         cacheSize: cache.size,
         previewCalls: cache.size,
         searchedUnitCount: entries.length,
-        recomputedUnitCount: previousCatalog && affectedUnitIds.size
-          ? entries.filter(entry => affectedUnitIds.has(preview.unitId(entry.unit))).length
-          : entries.length,
+        recomputedUnitCount: recomputedUnitIds.size,
         searchedRouteCount: Object.values(catalog).reduce(
           (sum, envelope) => sum + Number(envelope?.searchedRouteCount || 0),
           0,
         ),
-      }),
-    };
+        reusedMechanicalRouteCount,
+        recomputedUnitIds: Object.freeze([...recomputedUnitIds].sort()),
+        reusedValuedUnitIds: Object.freeze([...reusedValuedUnitIds].sort()),
+        mechanicalReuseAttemptCount,
+        mechanicalReuseSignatureMatchCount,
+        mechanicalReuseSignatureMismatchCount,
+        rebuiltRouteSameMechanicalSignatureCount,
+        rebuiltRouteChangedMechanicalSignatureCount,
+        reusedRouteCandidateCount,
+        behaviorReuseAttemptCount,
+        behaviorReuseIdentityMatchCount,
+        behaviorReuseIdentityMismatchCount,
+        behaviorReuseMismatchCounts:
+          Object.freeze({ ...behaviorReuseMismatchCounts }),
+        behaviorReuseMismatchByUnit:
+          Object.freeze({ ...behaviorReuseMismatchByUnit }),
+        behaviorRouteReuseAttemptCount,
+        behaviorRouteReuseMatchCount,
+        behaviorRouteReuseMismatchCounts:
+          Object.freeze({ ...behaviorRouteReuseMismatchCounts }),
+        behaviorRouteReuseMismatchByUnit:
+          Object.freeze(
+            Object.fromEntries(
+              Object.entries(behaviorRouteReuseMismatchByUnit).map(
+                ([unitId, routeRows]) => [
+                  unitId,
+                  Object.freeze(
+                    Object.fromEntries(
+                      Object.entries(routeRows).map(
+                        ([candidateId, components]) => [
+                          candidateId,
+                          Object.freeze([...components]),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        reusedValuedUnitCount: reusedValuedUnitIds.size,
+        reusedValuedRouteCount: [...reusedValuedUnitIds].reduce(
+          (sum, unitId) =>
+            sum + Number(previousFullRoutesByUnit?.[unitId]?.length || 0),
+          0,
+        ),
+        mechanicalReuseMismatchCounts:
+          Object.freeze({ ...mechanicalReuseMismatchCounts }),
+        invalidationAudit: cloneValue(input?.routeInvalidationAudit || {}),
+      },
+    });
+    traceRouteStage('behavior-complete');
+    return result;
   }
 
-  function buildTeamMarginalPlan(routeCatalog = {}, worldSnapshot = {}, actorId = '') {
+  function r8EnvelopeBestValue(envelope = {}) {
+    return routeSelectionBenefit(envelope?.primaryRoute);
+  }
+
+  function buildR8ActorEnvelopeForBelief(input = {}, beliefState = {}) {
+    const worldSnapshot = input.worldSnapshot || {};
+    const actorId = String(input.actorId || '').trim();
+    const actor = findUnitInWorld(worldSnapshot, actorId);
+    if (!actor || !preview.isBattleCapable(actor)) {
+      return Object.freeze({
+        envelope: Object.freeze({ primaryRoute: null, backupRoute: null }),
+        candidates: Object.freeze([]),
+        routes: Object.freeze([]),
+      });
+    }
+    const actorSide = sideOf(worldSnapshot, actor);
+    const candidates = (input.actorCandidates || enumerateCandidates({
+      worldSnapshot,
+      actorId,
+      actorSide,
+      beliefState,
+      battleIntent: input.battleIntent,
+      actionOpportunity: {
+        role: 'ACTIVE',
+        grantType: 'NATURAL_ACTION',
+        sequence: Number(input?.actionOpportunity?.sequence || 0) + 1,
+      },
+    })).map(candidate => ({
+      ...candidate,
+      declarationFingerprint:
+        candidate.declarationFingerprint || declarationFingerprint(candidate.declaration),
+    }));
+    const previousRoutes = new Map(
+      (input?.previousAnalysis?.routes || []).map(route => [
+        String(route?.candidateId || '').trim(),
+        route,
+      ]),
+    );
+    const changedBeliefKeys = new Set(
+      (input?.changedBeliefKeys || [])
+        .map(key => String(key || '').trim())
+        .filter(Boolean)
+        .map(key => key.startsWith('belief:') ? key : `belief:${key}`),
+    );
+    const disableRouteReuse = input?.disableObservationRouteReuse === true;
+    const metrics = input?.metrics && typeof input.metrics === 'object'
+      ? input.metrics
+      : null;
+    const routes = candidates.map(candidate => {
+      const previousRoute = previousRoutes.get(candidate.candidateId);
+      const previousDependencyKeys = Array.isArray(previousRoute?.dependencyKeys)
+        ? previousRoute.dependencyKeys
+        : [];
+      const canReuse =
+        !disableRouteReuse &&
+        !!previousRoute &&
+        previousRoute.declarationFingerprint === candidate.declarationFingerprint &&
+        !previousDependencyKeys.some(key => changedBeliefKeys.has(String(key || '').trim()));
+      if (canReuse) {
+        if (metrics) {
+          metrics.informationEnvelopeReusedRouteCount =
+            Number(metrics.informationEnvelopeReusedRouteCount || 0) + 1;
+        }
+        return previousRoute;
+      }
+      if (metrics) {
+        metrics.informationEnvelopePreviewCalls =
+          Number(metrics.informationEnvelopePreviewCalls || 0) + 1;
+      }
+      const previewResult = preview.previewAction({
+        worldSnapshot,
+        worldRevision: input.evaluationContext?.visibleWorldRevision,
+        beliefSnapshot: beliefState,
+        beliefRevision: beliefRevisionFor(beliefState),
+        actorId,
+        declaration: candidate.declaration,
+        actionFingerprint: candidate.declarationFingerprint,
+        hitProbabilityResolver: candidateHitProbabilityResolver({
+          beliefState,
+          actor,
+          candidate,
+          worldSnapshot,
+        }),
+        applicationProbabilityResolver: candidateApplicationProbabilityResolver({
+          beliefState,
+          actor,
+          candidate,
+        }),
+        horizon: 'SHALLOW',
+        previewBudget: { maxNodes: 12 },
+        collectProbabilityBranches: true,
+        battleIntent: input.battleIntent,
+      });
+      return actionRouteFromPreview({
+        candidate,
+        previewResult,
+        worldSnapshot,
+        actorSide,
+        dependencyKeys: (previewResult?.dependencyReads || []).map(([key]) => key),
+        worldRevision: input?.worldRevision,
+        opportunitySnapshot: input?.opportunitySnapshot,
+        scheduledEvents: input?.scheduledEvents,
+        objectiveRequest: {
+          actorId,
+          actorSide,
+          visibleWorld: worldSnapshot,
+          objectiveCompactMode: input.objectiveCompactMode || 'FAST',
+          objectiveContract: input.objectiveContract || worldSnapshot?.胜负条件 || {},
+        },
+      });
+    });
+    return Object.freeze({
+      envelope: selectPrimaryBackupRoutes(routes),
+      candidates: Object.freeze(candidates),
+      routes: Object.freeze(routes),
+    });
+  }
+
+  function buildR8ObservationOutcomesByCandidate(input = {}) {
+    const worldSnapshot = input.worldSnapshot || {};
+    const actorId = String(input.actorId || '').trim();
+    const actor = findUnitInWorld(worldSnapshot, actorId);
+    const candidates = Array.isArray(input.actorCandidates) ? input.actorCandidates : [];
+    if (
+      !actor ||
+      input?.actionOpportunity?.futureHostileResponseAllowed === false ||
+      input?.actionOpportunity?.noFutureOpportunity === true
+    ) {
+      return Object.freeze({});
+    }
+    const opportunitySnapshot = input?.evaluationContext?.opportunitySnapshot;
+    const opportunityRows = Array.isArray(opportunitySnapshot)
+      ? opportunitySnapshot
+      : Array.isArray(opportunitySnapshot?.opportunities)
+        ? opportunitySnapshot.opportunities
+        : opportunitySnapshot && typeof opportunitySnapshot === 'object'
+          ? [opportunitySnapshot]
+          : [];
+    const hasFutureOpportunity =
+      opportunityRows.some(opportunity =>
+        String(opportunity?.ownerId || '').trim() === actorId &&
+        String(opportunity?.opportunityId || '').trim() !==
+          String(input?.actionOpportunity?.opportunityId || '').trim() &&
+        !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+          String(opportunity?.status || '').trim().toUpperCase()
+        )
+      ) ||
+      (input?.evaluationContext?.scheduledEvents || []).some(event =>
+        String(event?.ownerId || event?.targetId || '').trim() === actorId
+      );
+    if (!hasFutureOpportunity) return Object.freeze({});
+
+    const outcomesByCandidate = candidates.map(candidate => {
+      const projectedWorld = input?.actorProjectedWorlds?.[candidate.candidateId];
+      const projectedActor = findUnitInWorld(projectedWorld, actorId);
+      if (!projectedActor || !preview.isBattleCapable(projectedActor)) return [candidate.candidateId, []];
+      const projectedResolution = preview.evaluateBattleObjectives(
+        projectedWorld,
+        preview.normalizeBattleObjectives(input.objectiveContract || {}, projectedWorld),
+        {
+          round: Number(projectedWorld?.回合 || 0),
+          roundCompleted: false,
+        },
+      );
+      if (projectedResolution?.terminal === true) return [candidate.candidateId, []];
+      const nextRouteInput = {
+        worldSnapshot: projectedWorld,
+        actorId,
+        beliefState: input.beliefState,
+        battleIntent: input.battleIntent,
+        actionOpportunity: input.actionOpportunity,
+        objectiveCompactMode: input.objectiveCompactMode || 'FAST',
+        evaluationContext: {
+          ...(input.evaluationContext || {}),
+          visibleWorldRevision: [
+            input.evaluationContext?.visibleWorldRevision || 'visible',
+            candidate.candidateId,
+            'next-opportunity',
+          ].join(':'),
+        },
+      };
+      const baseAnalysis = buildR8ActorEnvelopeForBelief(
+        {
+          ...nextRouteInput,
+          metrics: input.metrics,
+        },
+        input.beliefState,
+      );
+      const baseEnvelope = baseAnalysis.envelope;
+      if (
+        !baseEnvelope?.primaryRoute ||
+        !baseEnvelope?.backupRoute ||
+        baseEnvelope.primaryRoute.routeKey === baseEnvelope.backupRoute.routeKey
+      ) {
+        return [candidate.candidateId, []];
+      }
+      const valueBefore = r8EnvelopeBestValue(baseEnvelope);
+      let observations = buildMechanicObservations(
+        candidate,
+        actor,
+        worldSnapshot,
+        input.beliefState,
+      );
+      const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+      if (!observations.length && actionKind === 'OBSERVE') {
+        const nextCandidateIds = new Set([
+          String(baseEnvelope?.primaryRoute?.candidateId || '').trim(),
+          String(baseEnvelope?.backupRoute?.candidateId || '').trim(),
+        ].filter(Boolean));
+        observations = baseAnalysis.candidates
+          .filter(nextCandidate => nextCandidateIds.has(nextCandidate.candidateId))
+          .flatMap(nextCandidate => buildMechanicObservations(
+            nextCandidate,
+            projectedActor,
+            projectedWorld,
+            input.beliefState,
+          ));
+      }
+      const observationByGroup = new Map();
+      observations.forEach(observation => {
+        const probability = clamp(
+          Number(observation?.posterior ?? observation?.estimatedProbability ?? 0.5),
+          0,
+          1,
+        );
+        if (probability <= 0.001 || probability >= 0.999) return;
+        const groupId = [
+          String(observation?.adaptationKey || observation?.mechanicKey || '').trim(),
+          String(observation?.targetId || '').trim(),
+          String(observation?.effectPrototype || '').trim(),
+        ].join('|');
+        if (!observationByGroup.has(groupId)) observationByGroup.set(groupId, observation);
+      });
+      const outcomes = [...observationByGroup.entries()].flatMap(([groupId, observation]) => {
+        const probability = clamp(
+          Number(observation?.posterior ?? observation?.estimatedProbability ?? 0.5),
+          0,
+          1,
+        );
+        const groupOutcomes = [true, false].map(success => {
+          const nextBelief = updateMechanicBelief(input.beliefState, {
+            ...observation,
+            success,
+          });
+          const changedBeliefKeys = [
+            String(observation?.mechanicKey || '').trim(),
+            String(observation?.adaptationKey || '').trim(),
+          ].filter(Boolean);
+          const nextEnvelope = buildR8ActorEnvelopeForBelief(
+            {
+              ...nextRouteInput,
+              actorCandidates: baseAnalysis.candidates,
+              previousAnalysis: baseAnalysis,
+              changedBeliefKeys,
+              disableObservationRouteReuse:
+                input?.disableObservationRouteReuse === true,
+              metrics: input.metrics,
+            },
+            nextBelief,
+          ).envelope;
+          return Object.freeze({
+            observationGroupId: `${candidate.candidateId}|${groupId}`,
+            probability: success ? probability : 1 - probability,
+            valueBeforeHEPP: valueBefore,
+            bestValueAfterHEPP: r8EnvelopeBestValue(nextEnvelope),
+            nextPrimaryRouteKey: String(nextEnvelope?.primaryRoute?.routeKey || '').trim(),
+            nextBackupRouteKey: String(nextEnvelope?.backupRoute?.routeKey || '').trim(),
+            evidenceKeys: Object.freeze([
+              String(observation?.mechanicKey || '').trim(),
+              String(observation?.adaptationKey || '').trim(),
+            ].filter(Boolean)),
+            observationResult: success ? 'SUCCESS' : 'FAILURE',
+          });
+        });
+        return groupOutcomes.some(outcome =>
+          Math.abs(Number(outcome.bestValueAfterHEPP || 0) - valueBefore) > 1e-9 ||
+          outcome.nextPrimaryRouteKey !== baseEnvelope?.primaryRoute?.routeKey ||
+          outcome.nextBackupRouteKey !== baseEnvelope?.backupRoute?.routeKey
+        ) ? groupOutcomes : [];
+      });
+      return [candidate.candidateId, outcomes];
+    }).filter(([, outcomes]) => outcomes.length);
+    return deepFreeze(Object.fromEntries(outcomesByCandidate));
+  }
+
+  function buildTeamMarginalPlan(
+    routeCatalog = {},
+    worldSnapshot = {},
+    actorId = '',
+    runtimeContext = {},
+  ) {
+    const opportunitySnapshot = runtimeContext?.opportunitySnapshot;
+    const opportunities = Array.isArray(opportunitySnapshot)
+      ? opportunitySnapshot
+      : Array.isArray(opportunitySnapshot?.opportunities)
+        ? opportunitySnapshot.opportunities
+        : [];
+    const scheduledEvents = Array.isArray(runtimeContext?.scheduledEvents)
+      ? runtimeContext.scheduledEvents
+      : [];
+    const active = status => !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+      String(status || '').trim().toUpperCase()
+    );
+    const nextOpportunityFor = unitId => {
+      const rows = [
+        ...opportunities
+          .filter(entry =>
+            String(entry?.ownerId || '').trim() === unitId &&
+            active(entry?.status)
+          )
+          .map(entry => ({
+            id: String(entry?.opportunityId || '').trim(),
+            sequence: Math.max(0, Number(entry?.createdAtSequence ?? entry?.sequence ?? 0)),
+          })),
+        ...scheduledEvents
+          .filter(entry =>
+            String(entry?.ownerId || entry?.targetId || '').trim() === unitId
+          )
+          .map(entry => ({
+            id: String(entry?.descriptorId || entry?.scheduleId || '').trim(),
+            sequence: Math.max(0, Number(entry?.creationSequence || 0)),
+          })),
+      ].filter(entry => entry.id)
+        .sort((left, right) =>
+          left.sequence - right.sequence ||
+          left.id.localeCompare(right.id)
+        );
+      return rows[0] || null;
+    };
     const rows = Object.entries(routeCatalog)
       .filter(([unitId]) => unitId !== actorId)
-      .map(([unitId, envelope]) => ({ unitId, route: envelope?.primaryRoute }))
-      .filter(entry => entry.route)
+      .map(([unitId, envelope]) => ({
+        unitId,
+        side: sideOf(worldSnapshot, findUnitInWorld(worldSnapshot, unitId)),
+        route: envelope?.primaryRoute,
+        opportunity: nextOpportunityFor(unitId),
+      }))
+      .filter(entry => entry.route && entry.opportunity)
       .sort((left, right) => {
-        const leftUnit = findUnitInWorld(worldSnapshot, left.unitId);
-        const rightUnit = findUnitInWorld(worldSnapshot, right.unitId);
-        return String(sideOf(worldSnapshot, leftUnit)).localeCompare(String(sideOf(worldSnapshot, rightUnit))) ||
+        return left.opportunity.sequence - right.opportunity.sequence ||
+          String(left.side).localeCompare(String(right.side)) ||
           left.unitId.localeCompare(right.unitId);
       });
-    return deepFreeze(rows.flatMap(({ unitId, route }, index) =>
-      (route.healthTrajectoryByTarget || []).map(trajectory => ({
+    return deepFreeze(rows.flatMap(({ unitId, side, route, opportunity }) => {
+      const healthRows = (route.healthTrajectoryByTarget || []).map(trajectory => ({
         targetId: trajectory.targetId,
         outcomeKind: trajectory.outcomeKind,
+        marginalKind: String(trajectory?.outcomeKind || '').trim() === 'SCHEDULED_HP_DELTA'
+          ? Number(trajectory?.healthDeltaPP || 0) < 0 ? 'DOT' : 'HOT'
+          : Number(trajectory?.healthDeltaPP || 0) < 0 ? 'DAMAGE' : 'HEAL',
         realizationWindow: trajectory.windowId,
-        sourceOpportunityId: `projected-natural:${index + 1}:${unitId}`,
+        sourceOpportunityId: opportunity.id,
+        sourceOpportunitySequence: opportunity.sequence,
+        sourceUnitId: unitId,
+        sourceSide: side,
         expectedRangePP: Object.freeze({
           lower: Number(trajectory.actorBenefitPP || 0),
           upper: Number(trajectory.actorBenefitPP || 0),
         }),
-        expiresAtSequence: index + 1,
-      }))
-    ));
+        expiresAtSequence: opportunity.sequence,
+      }));
+      const effectRows = (route.actionPoolEffects || []).flatMap(effect => {
+        const outcomeKind = String(effect?.outcomeKind || '').trim();
+        let marginalKind = '';
+        let amount = 0;
+        const extra = {};
+        if (outcomeKind === 'SHIELD_DELTA') {
+          marginalKind = 'SHIELD';
+          amount = Math.max(0, Number(effect?.threatValue || 0));
+        } else if (outcomeKind === 'ACTION_CANCELLED') {
+          marginalKind = 'CONTROL';
+          amount = Math.max(
+            0,
+            Number(
+              effect?.evidence?.r8HealthTrajectoryDeltaPP ??
+              effect?.evidence?.routeDeltaPP ??
+              0
+            ),
+          );
+        } else if (
+          outcomeKind === 'RESOURCE_OPTION_CHANGED' &&
+          Number(effect?.expectedDelta ?? effect?.evidence?.delta ?? 0) > 0
+        ) {
+          marginalKind = 'RESOURCE_SUPPORT';
+          amount = Math.max(
+            0,
+            Number(
+              effect?.evidence?.r8HealthTrajectoryDeltaPP ??
+              effect?.evidence?.routeDeltaPP ??
+              0
+            ),
+          );
+          extra.resource = String(effect?.evidence?.resource || '').trim();
+        }
+        if (!marginalKind) return [];
+        return [{
+          targetId: effect.targetId,
+          outcomeKind,
+          marginalKind,
+          realizationWindow: effect.windowId,
+          sourceOpportunityId: opportunity.id,
+          sourceOpportunitySequence: opportunity.sequence,
+          sourceUnitId: unitId,
+          sourceSide: side,
+          expectedRangePP: Object.freeze({ lower: amount, upper: amount }),
+          expiresAtSequence: opportunity.sequence,
+          ...extra,
+        }];
+      });
+      return [...healthRows, ...effectRows];
+    }));
+  }
+
+  function r8ApplyTeamMarginalPlan(request = {}, route = {}) {
+    const plan = (request?.teamMarginalPlan || []).filter(entry =>
+      String(entry?.sourceSide || '').trim() === String(request?.actorSide || '').trim()
+    );
+    if (!plan.length || !(route?.healthTrajectoryByTarget || []).length) return route;
+    const remainingByPlan = new Map(plan.map((entry, index) => [
+      index,
+      Math.max(0, Number(entry?.expectedRangePP?.upper || 0)),
+    ]));
+    const currentSequence = Math.max(0, Number(request?.actionOpportunity?.sequence || 0));
+    let changed = false;
+    const trajectories = (route.healthTrajectoryByTarget || []).map(trajectory => {
+      let remainingBenefit = Math.max(0, Number(trajectory?.actorBenefitPP || 0));
+      if (!(remainingBenefit > 1e-9)) return trajectory;
+      const marginalKind = String(trajectory?.outcomeKind || '').trim() === 'SCHEDULED_HP_DELTA'
+        ? Number(trajectory?.healthDeltaPP || 0) < 0 ? 'DOT' : 'HOT'
+        : Number(trajectory?.healthDeltaPP || 0) < 0 ? 'DAMAGE' : 'HEAL';
+      const marginalGroup = ['DAMAGE', 'DOT'].includes(marginalKind)
+        ? 'HOSTILE_HP_LOSS'
+        : 'ALLIED_HP_RESTORE';
+      const realizationSequence = Math.max(
+        currentSequence,
+        Number(
+          trajectory?.realizationSequence ??
+          trajectory?.opportunitySequence ??
+          trajectory?.actionSequence ??
+          currentSequence
+        ),
+      );
+      for (let index = 0; index < plan.length && remainingBenefit > 1e-9; index += 1) {
+        const occupied = Number(remainingByPlan.get(index) || 0);
+        if (!(occupied > 1e-9)) continue;
+        const entry = plan[index];
+        const entryKind = String(entry?.marginalKind || '').trim();
+        const entryGroup = ['DAMAGE', 'DOT'].includes(entryKind)
+          ? 'HOSTILE_HP_LOSS'
+          : ['HEAL', 'HOT'].includes(entryKind)
+            ? 'ALLIED_HP_RESTORE'
+            : entryKind;
+        const sourceSequence = Math.max(
+          0,
+          Number(
+            entry?.sourceOpportunitySequence ??
+            entry?.expiresAtSequence ??
+            0
+          ),
+        );
+        if (
+          String(entry?.targetId || '').trim() !== String(trajectory?.targetId || '').trim() ||
+          entryGroup !== marginalGroup ||
+          sourceSequence > realizationSequence ||
+          Number(entry?.expiresAtSequence || 0) < currentSequence
+        ) {
+          continue;
+        }
+        const consumed = Math.min(remainingBenefit, occupied);
+        remainingBenefit -= consumed;
+        remainingByPlan.set(index, occupied - consumed);
+      }
+      const originalBenefit = Number(trajectory?.actorBenefitPP || 0);
+      if (Math.abs(originalBenefit - remainingBenefit) <= 1e-9) return trajectory;
+      changed = true;
+      const ratio = originalBenefit > 0 ? remainingBenefit / originalBenefit : 1;
+      return Object.freeze({
+        ...trajectory,
+        objectiveMarginalHealthDeltaPP: Number(trajectory?.healthDeltaPP || 0) * ratio,
+        objectiveMarginalActorBenefitPP: remainingBenefit,
+        teamMarginalConsumedPP: originalBenefit - remainingBenefit,
+      });
+    });
+    if (!changed) return route;
+    const marginalRoute = Object.freeze({
+      ...route,
+      healthTrajectoryByTarget: Object.freeze(trajectories),
+      routeBenefitPP: trajectories.reduce(
+        (sum, trajectory) => sum + Number(
+          trajectory?.objectiveMarginalActorBenefitPP ??
+          trajectory?.actorBenefitPP ??
+          0
+        ),
+        0,
+      ),
+    });
+    r8TerminalRouteSignatureCache.set(
+      marginalRoute,
+      `terminal:${preview.stableHash({
+        healthTrajectoryByTarget: trajectories,
+        probabilityFactors: route?.probabilityFactors || [],
+      })}`,
+    );
+    return marginalRoute;
   }
 
   function r8ProjectedSummonCanRealize(worldSnapshot = {}, unit = {}, objectiveContract = {}) {
@@ -11698,6 +16266,4184 @@
     }, projectedWorld);
   }
 
+  function r8FutureOpportunityRows(input = {}) {
+    const currentOpportunityId = String(
+      input?.actionOpportunity?.opportunityId ||
+      input?.actionOpportunity?.grantId ||
+      '',
+    ).trim();
+    const currentRound = Math.max(
+      0,
+      Number(
+        input?.actionOpportunity?.round ??
+        input?.actionOpportunity?.battleHorizon?.currentRound ??
+        input?.worldSnapshot?.回合 ??
+        0
+      ),
+    );
+    const currentSequence = Math.max(
+      0,
+      Number(
+        input?.actionOpportunity?.sequence ??
+        input?.actionOpportunity?.createdAtSequence ??
+        0
+      ),
+    );
+    const rows = [];
+    const seen = new Set();
+    const add = (entry, kind) => {
+      const ownerId = String(entry?.ownerId || entry?.targetId || '').trim();
+      const id = String(
+        entry?.opportunityId ||
+        entry?.grantId ||
+        entry?.descriptorId ||
+        entry?.scheduleId ||
+        '',
+      ).trim();
+      const sequence = Number(
+        entry?.createdAtSequence ??
+        entry?.sequence ??
+        entry?.creationSequence ??
+        0
+      );
+      const round = Math.max(
+        0,
+        Number(entry?.round ?? entry?.scheduledRound ?? currentRound),
+      );
+      if (
+        !ownerId ||
+        !id ||
+        id === currentOpportunityId ||
+        !Number.isFinite(sequence) ||
+        round < currentRound ||
+        (round === currentRound && sequence <= currentSequence) ||
+        ['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+          String(entry?.status || '').trim().toUpperCase(),
+        )
+      ) {
+        return;
+      }
+      const key = `${kind}:${id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({
+        id,
+        ownerId,
+        round,
+        sequence,
+        kind,
+        grantType: String(
+          entry?.grantType || entry?.expectedGrantType || '',
+        ).trim(),
+        isNaturalAction:
+          String(entry?.eventType || '').trim() ===
+            'FUTURE_NATURAL_ACTION' ||
+          String(
+            entry?.expectedGrantType || entry?.grantType || '',
+          ).trim() === 'NATURAL_ACTION',
+      });
+    };
+    const opportunityRows = Array.isArray(input?.opportunitySnapshot)
+      ? input.opportunitySnapshot
+      : Array.isArray(input?.opportunitySnapshot?.opportunities)
+        ? input.opportunitySnapshot.opportunities
+        : [];
+    opportunityRows.forEach(entry => add(entry, 'CONCRETE_OPPORTUNITY'));
+    (input?.scheduledEvents || []).forEach(entry => add(entry, 'SCHEDULE_DESCRIPTOR'));
+    const baseOrderWorld = input?.worldSnapshot || {};
+    const projectedOrderWorld = input?.orderWorldSnapshot || baseOrderWorld;
+    const orderWorldExpiresAfterRound = Number(input?.orderWorldExpiresAfterRound);
+    const orderWorldForRound = round =>
+      Number.isFinite(orderWorldExpiresAfterRound) &&
+      Number(round || 0) > orderWorldExpiresAfterRound
+        ? baseOrderWorld
+        : projectedOrderWorld;
+    return rows.sort((left, right) => {
+      if (left.round !== right.round) return left.round - right.round;
+      if (left.isNaturalAction && right.isNaturalAction) {
+        const orderWorld = orderWorldForRound(left.round);
+        const leftUnit = findUnitInWorld(orderWorld, left.ownerId);
+        const rightUnit = findUnitInWorld(orderWorld, right.ownerId);
+        if (leftUnit && rightUnit) {
+          const orderDelta = preview.compareNaturalActionOrder(leftUnit, rightUnit);
+          if (orderDelta) return orderDelta;
+        }
+      }
+      return left.sequence - right.sequence ||
+        left.ownerId.localeCompare(right.ownerId) ||
+        left.id.localeCompare(right.id);
+    }).map((row, index) => Object.freeze({ ...row, orderIndex: index + 1 }));
+  }
+
+  function r8EvaluationFutureOpportunityRows(input = {}) {
+    const rows = r8FutureOpportunityRows(input);
+    const actorId = String(
+      input?.actorId || input?.actionOpportunity?.ownerId || '',
+    ).trim();
+    if (!actorId) return rows;
+    let actorNaturalOpportunityCount = 0;
+    const cutoffIndex = rows.findIndex(row => {
+      if (
+        row.ownerId !== actorId ||
+        row.isNaturalAction !== true
+      ) {
+        return false;
+      }
+      actorNaturalOpportunityCount += 1;
+      return actorNaturalOpportunityCount >= 2;
+    });
+    return cutoffIndex >= 0
+      ? Object.freeze(rows.slice(0, cutoffIndex + 1))
+      : rows;
+  }
+
+  function r8ExecutionOpportunityForUnit(input = {}, unitIdValue = '') {
+    const unitIdText = String(unitIdValue || '').trim();
+    const current = input?.actionOpportunity || {};
+    if (
+      !unitIdText ||
+      String(current?.ownerId || input?.actorId || '').trim() === unitIdText
+    ) {
+      return current;
+    }
+    const row = r8FutureOpportunityRows({
+      worldSnapshot: input?.worldSnapshot || {},
+      actionOpportunity: current,
+      opportunitySnapshot:
+        input?.opportunitySnapshot ||
+        input?.evaluationContext?.opportunitySnapshot ||
+        [],
+      scheduledEvents:
+        input?.scheduledEvents ||
+        input?.evaluationContext?.scheduledEvents ||
+        [],
+    }).find(entry => entry.ownerId === unitIdText);
+    if (!row) return current;
+    return Object.freeze({
+      opportunityId: row.id,
+      grantId: row.id,
+      ownerId: unitIdText,
+      role: 'ACTIVE',
+      grantType: row.kind === 'SCHEDULE_DESCRIPTOR'
+        ? 'SCHEDULE_DESCRIPTOR'
+        : 'NATURAL_ACTION',
+      round: row.round,
+      sequence: row.sequence,
+      createdAtSequence: row.sequence,
+      status: 'PROJECTED_EXECUTION',
+    });
+  }
+
+  function r8RouteHealthDeltaForTarget(route = {}, targetId = '') {
+    const wantedId = String(targetId || '').trim();
+    return (route?.healthTrajectoryByTarget || []).reduce((sum, trajectory) =>
+      String(trajectory?.targetId || '').trim() === wantedId
+        ? sum + Number(trajectory?.healthDeltaPP || 0)
+        : sum,
+    0);
+  }
+
+  function r8RouteThreatAgainstSide(route = {}, protectedSide = '', worldSnapshot = {}) {
+    const directThreat = (route?.healthTrajectoryByTarget || []).reduce((sum, trajectory) => {
+      const target = findUnitInWorld(worldSnapshot, trajectory?.targetId);
+      if (!target || String(sideOf(worldSnapshot, target)) !== String(protectedSide)) {
+        return sum;
+      }
+      return sum + Math.max(0, -Number(trajectory?.healthDeltaPP || 0));
+    }, 0);
+    return Math.max(0, directThreat, routeSelectionBenefit(route));
+  }
+
+  function r8TargetHealthBranchesAfterRoute(
+    route = {},
+    targetId = '',
+    beforeHpPP = 0,
+    beforeShieldPP = 0,
+    beforeShieldLayers = null,
+    currentRound = 0,
+  ) {
+    const wantedTargetId = String(targetId || '').trim();
+    const targetTrajectories = (route?.healthTrajectoryByTarget || [])
+      .filter(trajectory =>
+        String(trajectory?.targetId || '').trim() === wantedTargetId
+      );
+    const shieldEffects = (route?.actionPoolEffects || []).filter(effect =>
+      String(effect?.targetId || '').trim() === wantedTargetId &&
+      String(effect?.outcomeKind || '').trim() === 'SHIELD_DELTA' &&
+      !Number(effect?.evidence?.absorbedDamage || 0)
+    );
+    const normalizeShieldLayers = layers => {
+      const source = Array.isArray(layers)
+        ? layers
+        : Number(beforeShieldPP || 0) > 1e-9
+          ? [{
+              layerId: 'direct',
+              valuePP: Math.max(0, Number(beforeShieldPP || 0)),
+              expiresAtRound: Number.POSITIVE_INFINITY,
+            }]
+          : [];
+      return source
+        .map((layer, index) => ({
+          layerId: String(layer?.layerId || `shield:${index}`),
+          valuePP: Math.max(0, Number(layer?.valuePP || 0)),
+          expiresAtRound: Number.isFinite(Number(layer?.expiresAtRound))
+            ? Number(layer.expiresAtRound)
+            : Number.POSITIVE_INFINITY,
+        }))
+        .filter(layer => layer.valuePP > 1e-9)
+        .sort((left, right) =>
+          left.expiresAtRound - right.expiresAtRound ||
+          left.layerId.localeCompare(right.layerId)
+        );
+    };
+    const shieldTotal = layers =>
+      (layers || []).reduce(
+        (sum, layer) => sum + Math.max(0, Number(layer?.valuePP || 0)),
+        0,
+      );
+    const consumeShield = (layers, incomingPP) => {
+      let remaining = Math.max(0, Number(incomingPP || 0));
+      const nextLayers = normalizeShieldLayers(layers).map(layer => ({ ...layer }));
+      for (const layer of nextLayers) {
+        if (!(remaining > 1e-9)) break;
+        const absorbed = Math.min(layer.valuePP, remaining);
+        layer.valuePP -= absorbed;
+        remaining -= absorbed;
+      }
+      return {
+        hpDamagePP: Math.max(0, remaining),
+        layers: nextLayers.filter(layer => layer.valuePP > 1e-9),
+      };
+    };
+    const initialShieldLayers = normalizeShieldLayers(beforeShieldLayers);
+    if (!targetTrajectories.length && !shieldEffects.length) {
+      return Object.freeze([Object.freeze({
+        probability: 1,
+        hpPP: clamp(Number(beforeHpPP || 0), 0, 100),
+        shieldPP: shieldTotal(initialShieldLayers),
+        shieldLayers: deepFreeze(initialShieldLayers),
+      })]);
+    }
+    const relevantAssignmentKeys = new Set(
+      targetTrajectories.flatMap(trajectory =>
+        (trajectory?.outcomeDistribution || []).flatMap(outcome =>
+          Object.keys(outcome?.conditionalOn || {})
+        )
+      ),
+    );
+    const relevantFactors = r8TerminalRelevantProbabilityFactors(route)
+      .filter(factor => {
+        const producedKeys = new Set(
+          (factor?.outcomeDistribution || []).flatMap(outcome =>
+            Object.keys(outcome?.assignments || {})
+          ),
+        );
+        return [...producedKeys].some(key => relevantAssignmentKeys.has(key));
+      });
+    const entries = [
+      ...relevantFactors.map((factor, index) => ({
+        kind: 'FACTOR',
+        order: Number.isFinite(Number(factor?.contributionSequence))
+          ? Number(factor.contributionSequence)
+          : index,
+        value: factor,
+      })),
+      ...targetTrajectories.map((trajectory, index) => ({
+        kind: 'TRAJECTORY',
+        order: Number.isFinite(Number(trajectory?.contributionSequence))
+          ? Number(trajectory.contributionSequence)
+          : relevantFactors.length + index,
+        value: trajectory,
+      })),
+      ...shieldEffects.map((effect, index) => ({
+        kind: 'SHIELD',
+        order: Number.isFinite(Number(effect?.contributionSequence))
+          ? Number(effect.contributionSequence)
+          : relevantFactors.length + targetTrajectories.length + index,
+        value: effect,
+      })),
+    ].sort((left, right) =>
+      left.order - right.order ||
+      (
+        left.kind === right.kind
+          ? 0
+          : left.kind === 'FACTOR'
+            ? -1
+            : right.kind === 'FACTOR'
+              ? 1
+              : left.kind === 'SHIELD'
+                ? -1
+                : 1
+      )
+    );
+    let branches = [{
+      probability: 1,
+      hpPP: clamp(Number(beforeHpPP || 0), 0, 100),
+      shieldPP: shieldTotal(initialShieldLayers),
+      shieldLayers: initialShieldLayers,
+      assignments: {},
+    }];
+    for (const entry of entries) {
+      if (entry.kind === 'SHIELD') {
+        const shieldDeltaPP = Number(
+          entry.value?.expectedDeltaPP ??
+          entry.value?.expectedDelta ??
+          0
+        );
+        const duration = Math.max(
+          1,
+          Number(
+            entry.value?.evidence?.duration ??
+            entry.value?.evidence?.持续回合 ??
+            1
+          ),
+        );
+        branches = branches.map(branch => {
+          let layers = normalizeShieldLayers(branch.shieldLayers);
+          if (shieldDeltaPP > 1e-9) {
+            layers = [
+              ...layers,
+              {
+                layerId: String(
+                  entry.value?.effectInstanceId ||
+                  `${route?.candidateId || 'route'}:shield:${entry.order}`
+                ),
+                valuePP: shieldDeltaPP,
+                expiresAtRound: Math.max(0, Number(currentRound || 0)) +
+                  duration - 1,
+              },
+            ];
+          } else if (shieldDeltaPP < -1e-9) {
+            layers = consumeShield(layers, -shieldDeltaPP).layers;
+          }
+          layers = normalizeShieldLayers(layers);
+          return {
+            ...branch,
+            shieldPP: shieldTotal(layers),
+            shieldLayers: layers,
+          };
+        });
+        continue;
+      }
+      const outcomes = Array.isArray(entry.value?.outcomeDistribution) &&
+        entry.value.outcomeDistribution.length
+        ? entry.value.outcomeDistribution
+        : [{
+            probability: 1,
+            healthDeltaPP: entry.kind === 'TRAJECTORY'
+              ? Number(entry.value?.healthDeltaPP || 0)
+              : 0,
+          }];
+      const next = [];
+      for (const branch of branches) {
+        for (const outcome of outcomes) {
+          if (Object.entries(outcome?.conditionalOn || {}).some(([key, value]) =>
+            String(branch.assignments?.[key] || '') !== String(value || '')
+          )) {
+            continue;
+          }
+          const assignments = { ...branch.assignments };
+          let conflict = false;
+          Object.entries(outcome?.assignments || {}).forEach(([key, value]) => {
+            if (
+              assignments[key] !== undefined &&
+              String(assignments[key]) !== String(value)
+            ) {
+              conflict = true;
+              return;
+            }
+            assignments[key] = value;
+          });
+          if (conflict) continue;
+          const probability = branch.probability *
+            clamp(Number(outcome?.probability || 0), 0, 1);
+          if (!(probability > 1e-15)) continue;
+          const incomingDamagePP = Number(outcome?.incomingDamagePP || 0);
+          const shieldResolution = incomingDamagePP > 1e-9
+            ? consumeShield(branch.shieldLayers, incomingDamagePP)
+            : null;
+          next.push({
+            probability,
+            hpPP: entry.kind === 'TRAJECTORY'
+              ? incomingDamagePP > 1e-9
+                ? Math.max(
+                    0,
+                    branch.hpPP - Number(shieldResolution?.hpDamagePP || 0),
+                  )
+                : clamp(
+                    branch.hpPP +
+                      Number(outcome?.healthDeltaPP ?? entry.value?.healthDeltaPP ?? 0),
+                    0,
+                    100,
+                  )
+              : branch.hpPP,
+            shieldPP: entry.kind === 'TRAJECTORY' &&
+              incomingDamagePP > 1e-9
+              ? shieldTotal(shieldResolution?.layers || [])
+              : branch.shieldPP,
+            shieldLayers: entry.kind === 'TRAJECTORY' &&
+              incomingDamagePP > 1e-9
+              ? shieldResolution?.layers || []
+              : branch.shieldLayers,
+            assignments,
+          });
+        }
+      }
+      if (next.length > 4096) {
+        throw new Error(
+          `TARGET_PRESSURE_BRANCH_BUDGET_EXCEEDED:${route?.candidateId || 'unknown'}:${wantedTargetId}`,
+        );
+      }
+      branches = next;
+    }
+    const merged = new Map();
+    branches.forEach(branch => {
+      const hpPP = Number(branch.hpPP.toFixed(8));
+      const shieldPP = Number(branch.shieldPP.toFixed(8));
+      const shieldLayers = normalizeShieldLayers(branch.shieldLayers);
+      const layerKey = shieldLayers.map(layer => [
+        layer.layerId,
+        Number(layer.valuePP.toFixed(8)),
+        Number.isFinite(layer.expiresAtRound)
+          ? layer.expiresAtRound
+          : 'INF',
+      ]);
+      const key = JSON.stringify([hpPP, shieldPP, layerKey]);
+      merged.set(
+        key,
+        Number(merged.get(key) || 0) + Number(branch.probability || 0),
+      );
+    });
+    const total = [...merged.values()].reduce((sum, value) => sum + value, 0);
+    if (!(total > 1e-12)) {
+      throw new Error(
+        `TARGET_PRESSURE_OUTCOME_DISTRIBUTION_INVALID:${route?.candidateId || 'unknown'}:${wantedTargetId}`,
+      );
+    }
+    return Object.freeze([...merged.entries()]
+      .map(([key, probability]) => {
+        const [hpPP, shieldPP, layerKey] = JSON.parse(key);
+        const shieldLayers = layerKey.map(([layerId, valuePP, expiresAtRound]) => ({
+          layerId,
+          valuePP,
+          expiresAtRound: expiresAtRound === 'INF'
+            ? Number.POSITIVE_INFINITY
+            : Number(expiresAtRound),
+        }));
+        return Object.freeze({
+        hpPP,
+        shieldPP,
+        shieldLayers: deepFreeze(shieldLayers),
+        probability: probability / total,
+      });
+      })
+      .sort((left, right) =>
+        left.hpPP - right.hpPP ||
+        left.shieldPP - right.shieldPP
+      ));
+  }
+
+  function r8SummonHasFutureEnvelopeWindow(effect = {}, scheduledEvents = []) {
+    if (String(effect?.outcomeKind || '').trim().toUpperCase() !== 'SUMMON_WINDOW') {
+      return false;
+    }
+    const remainingWindows = Math.max(
+      0,
+      Number(effect?.evidence?.remainingWindows ?? effect?.evidence?.duration ?? 0),
+    );
+    if (remainingWindows > 0) return true;
+    const effectInstanceId = String(effect?.effectInstanceId || '').trim();
+    return !!effectInstanceId && scheduledEvents.some(entry =>
+      String(entry?.sourceEventId || entry?.effectInstanceId || '')
+        .includes(effectInstanceId)
+    );
+  }
+
+  function r8StateDependencyClass(effect = {}) {
+    const evidence = effect?.evidence || {};
+    const combatEffect = effect?.evidence?.combatEffect || {};
+    const combatKeys = Object.keys(combatEffect);
+    const selfPoolKeys = new Set([
+      'hit_bonus',
+      'hit_penalty',
+      'damage_bonus',
+      'final_damage_bonus',
+      'final_damage_mult',
+      'armor_pen',
+      'heal_bonus',
+      'heal_reduction',
+      'cost_delta_ratio',
+      'skip_turn',
+      'cannot_act',
+      'cannot_react',
+      'silence',
+      'disarm',
+      'blind',
+      'resource_lock',
+      'cast_speed_penalty',
+      'random_target_rate',
+    ]);
+    const incomingPoolKeys = new Set([
+      'dodge_bonus',
+      'dodge_penalty',
+      'reaction_bonus',
+      'reaction_penalty',
+      'damage_reduction',
+      'received_damage_mult',
+      'damage_taken_mult',
+      'lock_level',
+      'counter_attack_ratio',
+      'death_save_count',
+      'revive_count',
+      'revive_heal_ratio',
+      'heal_reduction',
+    ]);
+    const scheduledOnlyKeys = new Set([
+      'dot_damage',
+      'dot_damage_ratio',
+      'hot_heal_ratio',
+    ]);
+    const auxiliaryKeys = new Set([
+      'locked_resource',
+      'locked_ratio',
+      'position_type',
+      'position_object',
+      'position_distance',
+      'position_projection',
+    ]);
+    const recognizedKeys = new Set([
+      ...selfPoolKeys,
+      ...incomingPoolKeys,
+      ...scheduledOnlyKeys,
+      ...auxiliaryKeys,
+    ]);
+    const attributes = String(evidence?.attribute || '')
+      .split('、')
+      .map(value => value.trim())
+      .filter(Boolean);
+    const selfRouteAttributes = new Set([
+      '力量',
+      '敏捷',
+      '魂力上限',
+      '精神力上限',
+      '体力上限',
+    ]);
+    const incomingRouteAttributes = new Set([
+      '防御',
+      '敏捷',
+    ]);
+    const attributeModifier =
+      String(evidence?.prototype || '').trim() === '属性修正';
+    const nextActionGrant =
+      String(evidence?.prototype || '').trim() === '机制授予' &&
+      /下次行动/.test(String(
+        evidence?.trigger || evidence?.授予触发条件 || '',
+      ));
+    const unknownAttributes = attributeModifier
+      ? attributes.filter(attribute =>
+          !selfRouteAttributes.has(attribute) &&
+          !incomingRouteAttributes.has(attribute)
+        )
+      : [];
+    return Object.freeze({
+      selfRoute:
+        nextActionGrant ||
+        combatKeys.some(key => selfPoolKeys.has(key)) ||
+        attributes.some(attribute => selfRouteAttributes.has(attribute)),
+      incomingRoute:
+        combatKeys.some(key => incomingPoolKeys.has(key)) ||
+        attributes.some(attribute => incomingRouteAttributes.has(attribute)),
+      scheduledOnly: combatKeys.length > 0 &&
+        combatKeys.every(key => scheduledOnlyKeys.has(key) || auxiliaryKeys.has(key)),
+      unknownKeys: Object.freeze(
+        [
+          ...combatKeys.filter(key => !recognizedKeys.has(key)),
+          ...unknownAttributes.map(attribute => `attribute:${attribute}`),
+        ].sort(),
+      ),
+      combatKeys: Object.freeze(combatKeys.sort()),
+    });
+  }
+
+  function r8ChangedStateDependencyClass(beforeUnit = {}, afterUnit = {}) {
+    const beforeStates = beforeUnit?.状态效果 || {};
+    const afterStates = afterUnit?.状态效果 || {};
+    const changedStateKeys = [...new Set([
+      ...Object.keys(beforeStates),
+      ...Object.keys(afterStates),
+    ])].filter(key =>
+      preview.stableHash(beforeStates[key] || null) !==
+      preview.stableHash(afterStates[key] || null)
+    );
+    const classes = changedStateKeys.flatMap(key => [
+      beforeStates[key],
+      afterStates[key],
+    ])
+      .filter(state => state && typeof state === 'object')
+      .map(state => r8StateDependencyClass({
+        evidence: {
+          prototype: String(
+            state?.原型 || state?.prototype || '',
+          ).trim(),
+          attribute: String(
+            state?.属性 || state?.attribute || '',
+          ).trim(),
+          trigger: String(
+            state?.授予触发条件 || state?.trigger || '',
+          ).trim(),
+          combatEffect:
+            state?.战斗效果 ||
+            state?.combatEffect ||
+            state?.battleEffects ||
+            {},
+        },
+      }));
+    return Object.freeze({
+      selfRoute: classes.some(entry => entry.selfRoute),
+      incomingRoute: classes.some(entry => entry.incomingRoute),
+      scheduledOnly:
+        classes.length > 0 &&
+        classes.every(entry => entry.scheduledOnly),
+      unknownKeys: Object.freeze([
+        ...new Set(classes.flatMap(entry => entry.unknownKeys || [])),
+      ].sort()),
+      changedStateKeys: Object.freeze(changedStateKeys.sort()),
+    });
+  }
+
+  function r8UnitHasHpSensitiveBehavior(unit = {}) {
+    const visited = new Set();
+    const visit = value => {
+      if (!value || typeof value !== 'object') return false;
+      if (visited.has(value)) return false;
+      visited.add(value);
+      if (Array.isArray(value)) return value.some(visit);
+      if (
+        ['生命比例', '生命数值'].includes(String(value?.类型 || '').trim()) ||
+        ['生命', 'HP', 'hp', 'hp_ratio'].includes(String(value?.驱动属性 || '').trim())
+      ) {
+        return true;
+      }
+      const costs = value?.消耗 && typeof value.消耗 === 'object'
+        ? value.消耗
+        : {};
+      if (Object.entries(costs).some(([resource, amount]) =>
+        /生命|HP/i.test(String(resource || '')) &&
+        Math.abs(Number.parseFloat(String(amount ?? '')) || 0) > 1e-9
+      )) {
+        return true;
+      }
+      const prototype = String(value?.原型 || '').trim();
+      const target = String(value?.目标 || '').trim();
+      const resources = Array.isArray(value?.资源)
+        ? value.资源
+        : [value?.资源];
+      if (
+        prototype === '资源变化' &&
+        resources.some(resource => /生命|HP/i.test(String(resource || ''))) &&
+        ['自身', '群体', '全场'].includes(target)
+      ) {
+        return true;
+      }
+      if (
+        value?.战斗效果 &&
+        typeof value.战斗效果 === 'object' &&
+        Object.keys(value.战斗效果).some(key => /(^|_)hp(_|$)|生命/.test(String(key || '')))
+      ) {
+        return true;
+      }
+      return Object.values(value).some(visit);
+    };
+    return visit({
+      skills: unit?.技能列表 || unit?.skills || [],
+      inventory: collectInventory(unit).map(entry => entry.item),
+      states: unit?.状态效果 || {},
+      runtime: unit?.__battleRuntime || {},
+    });
+  }
+
+  function r8HealthTrajectoryUsesPressureOnly(input = {}, trajectory = {}) {
+    const worldSnapshot = input?.worldSnapshot || {};
+    const projectedWorld = input?.projectedWorld || {};
+    const actorSide = String(input?.actorSide || '').trim();
+    const targetId = String(trajectory?.targetId || '').trim();
+    const targetBefore = findUnitInWorld(worldSnapshot, targetId);
+    const targetAfter = findUnitInWorld(projectedWorld, targetId);
+    if (
+      !targetBefore ||
+      !targetAfter ||
+      String(sideOf(worldSnapshot, targetBefore)) === actorSide ||
+      !(Number(trajectory?.healthDeltaPP || 0) < -1e-9) ||
+      !preview.isBattleCapable(targetBefore) ||
+      !preview.isBattleCapable(targetAfter) ||
+      r8UnitHasHpSensitiveBehavior(targetBefore)
+    ) {
+      return false;
+    }
+    const groups = r8ObjectiveGroups({
+      visibleWorld: worldSnapshot,
+      actorSide,
+      objectiveContract: input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+    });
+    return groups.actorIsPlayer &&
+      (groups?.victory?.conditions || []).length > 0 &&
+      groups.victory.conditions.every(condition =>
+        String(condition?.type || '').trim().toUpperCase() === 'ROUND_REACHED'
+      );
+  }
+
+  function r8ResourcePlanTranslationProfile(input = {}) {
+    const worldSnapshot = input?.worldSnapshot || {};
+    const candidateWorld = input?.candidateWorld || {};
+    const routeCatalog = input?.routeCatalog || {};
+    const fullRoutesByUnit = input?.fullRoutesByUnit || {};
+    const trackedUnitIds = new Set(
+      (Array.isArray(input?.unitIds) ? input.unitIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    [...trackedUnitIds].forEach(ownerId => {
+      [
+        ...(Array.isArray(fullRoutesByUnit[ownerId])
+          ? fullRoutesByUnit[ownerId]
+          : []),
+        routeCatalog[ownerId]?.primaryRoute,
+        routeCatalog[ownerId]?.backupRoute,
+      ].filter(Boolean).forEach(route => {
+        (route?.paymentDependencies || []).forEach(dependency => {
+          const payerId = String(dependency?.unitId || '').trim();
+          if (payerId) trackedUnitIds.add(payerId);
+        });
+      });
+    });
+    const resourceNames = ['魂力', '精神力', '体力'];
+    const changedBalances = [];
+    trackedUnitIds.forEach(unitId => {
+      const beforeUnit = findUnitInWorld(worldSnapshot, unitId);
+      const afterUnit = findUnitInWorld(candidateWorld, unitId);
+      if (!beforeUnit || !afterUnit) return;
+      resourceNames.forEach(resource => {
+        const before = preview.readResource(beforeUnit, resource);
+        const after = preview.readResource(afterUnit, resource);
+        if (Math.abs(after - before) <= 1e-9) return;
+        changedBalances.push({
+          unitId,
+          resource,
+          before,
+          after,
+          delta: after - before,
+          maximum: Math.max(
+            preview.readResourceMax(beforeUnit, resource),
+            preview.readResourceMax(afterUnit, resource),
+          ),
+        });
+      });
+    });
+    if (!changedBalances.length) {
+      return Object.freeze({
+        translatable: true,
+        changedBalances: Object.freeze([]),
+      });
+    }
+    if (changedBalances.some(entry => entry.resource === '体力')) {
+      return Object.freeze({
+        translatable: false,
+        reason: 'STAMINA_CAN_CHANGE_MECHANICAL_ROUTES',
+        changedBalances: Object.freeze(changedBalances),
+      });
+    }
+    const changedKeys = new Set(
+      changedBalances.map(entry => `${entry.unitId}\u0000${entry.resource}`),
+    );
+    const resourceTimeline = Array.isArray(input?.resourceTimeline)
+      ? input.resourceTimeline
+      : [];
+    if (resourceTimeline.some(event => {
+      const unitId = String(event?.actorId || event?.targetId || '').trim();
+      const resource = String(event?.resource || '').trim();
+      return changedKeys.has(`${unitId}\u0000${resource}`);
+    })) {
+      return Object.freeze({
+        translatable: false,
+        reason: 'AFFECTED_RESOURCE_HAS_TIMELINE_EVENT',
+        changedBalances: Object.freeze(changedBalances),
+      });
+    }
+    const routesFor = unitId => [
+      ...(Array.isArray(fullRoutesByUnit[unitId])
+        ? fullRoutesByUnit[unitId]
+        : []),
+      routeCatalog[unitId]?.primaryRoute,
+      routeCatalog[unitId]?.backupRoute,
+    ].filter(Boolean);
+    const futureRows = r8EvaluationFutureOpportunityRows(input).filter(row =>
+      !trackedUnitIds.size ||
+      trackedUnitIds.has(String(row?.ownerId || '').trim())
+    );
+    for (const changed of changedBalances) {
+      let worstCaseCost = 0;
+      futureRows.forEach(row => {
+        const routeCosts = routesFor(String(row?.ownerId || '').trim())
+          .map(route =>
+            (route?.paymentDependencies || [])
+              .filter(dependency =>
+                String(dependency?.unitId || '').trim() === changed.unitId &&
+                String(dependency?.resource || '').trim() === changed.resource
+              )
+              .reduce(
+                (sum, dependency) =>
+                  sum + Math.max(0, Number(dependency?.amount || 0)),
+                0,
+              )
+          );
+        worstCaseCost += routeCosts.length
+          ? Math.max(...routeCosts)
+          : 0;
+      });
+      if (Math.min(changed.before, changed.after) + 1e-9 < worstCaseCost) {
+        return Object.freeze({
+          translatable: false,
+          reason: 'RESOURCE_CAN_CROSS_PAYMENT_FRONTIER',
+          changedBalances: Object.freeze(changedBalances),
+        });
+      }
+    }
+    return Object.freeze({
+      translatable: true,
+      changedBalances: Object.freeze(changedBalances),
+    });
+  }
+
+  function r8TranslateResourceOpportunityPlan(plan = {}, profile = {}) {
+    const changedBalances = Array.isArray(profile?.changedBalances)
+      ? profile.changedBalances
+      : [];
+    if (!changedBalances.length) return plan;
+    const offsets = new Map(
+      changedBalances.map(entry => [
+        `${entry.unitId}\u0000${entry.resource}`,
+        {
+          delta: Number(entry.delta || 0),
+          maximum: Math.max(0, Number(entry.maximum || 0)),
+        },
+      ]),
+    );
+    const translateBalances = balances => Object.freeze(
+      Object.fromEntries(
+        Object.entries(balances || {}).map(([key, value]) => {
+          const offset = offsets.get(key);
+          if (!offset) return [key, value];
+          return [
+            key,
+            clamp(
+              Number(value || 0) + offset.delta,
+              0,
+              offset.maximum || Number.MAX_SAFE_INTEGER,
+            ),
+          ];
+        }),
+      ),
+    );
+    return Object.freeze({
+      ...plan,
+      rows: Object.freeze((plan?.rows || []).map(row => Object.freeze({
+        ...row,
+        balancesBefore: translateBalances(row?.balancesBefore),
+        balancesAfter: translateBalances(row?.balancesAfter),
+      }))),
+      finalResources: translateBalances(plan?.finalResources),
+    });
+  }
+
+  function r8BuildResourceOpportunityPlan(input = {}) {
+    const worldSnapshot = input?.worldSnapshot || {};
+    const objectiveContract =
+      input?.objectiveContract || worldSnapshot?.胜负条件 || {};
+    const projectionScope = String(
+      input?.projectionScope || 'FULL_CAUSAL',
+    ).trim().toUpperCase();
+    decisionMetrics.resourceOpportunityPlanCalls += 1;
+    const stageTrace =
+      globalThis?.process?.env?.BATTLE_R8_RESOURCE_PLAN_STAGE_TRACE === '1';
+    const stageMetrics = {
+      solveCalls: 0,
+      routeChoices: 0,
+      projectionCalls: 0,
+      projectionCacheHits: 0,
+      projectionCacheMisses: 0,
+      projectionMs: 0,
+      cloneStateCalls: 0,
+      cloneStateMs: 0,
+      worldHashCalls: 0,
+      worldHashMs: 0,
+      cacheKeyMs: 0,
+      routeCandidateBuildMs: 0,
+      solveMs: 0,
+      suffixSolveCalls: 0,
+      memoHits: 0,
+    };
+    const stageStateSignatures = stageTrace
+      ? {
+          fullMemoKeys: new Set(),
+          baseKeysWithoutBalances: new Set(),
+          worldStateHashes: new Set(),
+          balanceHashes: new Set(),
+          consumedOpportunityHashes: new Set(),
+          consumedBehaviorHashes: new Set(),
+          consumedHealthWindowHashes: new Set(),
+          eventIndexes: new Set(),
+          healthStateHashes: new Set(),
+          capabilityStateHashes: new Set(),
+          effectStateHashes: new Set(),
+          worldHashesByRowIndex: new Map(),
+          balanceHashesByBaseKey: new Map(),
+        }
+      : null;
+    const stageClockNow = () =>
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+    const measureStage = (key, callback) => {
+      if (!stageTrace) return callback();
+      const startedAt = stageClockNow();
+      const result = callback();
+      stageMetrics[key] = Number(stageMetrics[key] || 0) + (
+        stageClockNow() - startedAt
+      );
+      return result;
+    };
+    const cloneStateMeasured = state => {
+      if (!stageTrace) return cloneState(state);
+      const startedAt = stageClockNow();
+      const result = cloneState(state);
+      stageMetrics.cloneStateCalls += 1;
+      stageMetrics.cloneStateMs += stageClockNow() - startedAt;
+      return result;
+    };
+    const worldStateHashMeasured = world => {
+      if (!stageTrace) return worldStateHash(world);
+      const startedAt = stageClockNow();
+      const result = worldStateHash(world);
+      stageMetrics.worldHashCalls += 1;
+      stageMetrics.worldHashMs += stageClockNow() - startedAt;
+      return result;
+    };
+    const cacheKeyStartedAt = stageTrace ? stageClockNow() : 0;
+    const routeCatalog = input?.routeCatalog || {};
+    const fullRoutesByUnit = input?.fullRoutesByUnit || {};
+    const skipPlanCache = input?.__skipResourceOpportunityPlanCache === true ||
+      globalThis?.process?.env?.BATTLE_R8_RESOURCE_PLAN_FORCE_FULL === '1';
+    const cacheableInput =
+      worldSnapshot && typeof worldSnapshot === 'object' &&
+      routeCatalog && typeof routeCatalog === 'object' &&
+      fullRoutesByUnit && typeof fullRoutesByUnit === 'object';
+    let planCacheKey = '';
+    let planCacheComponents = null;
+    let rawRouteCatalogHash = '';
+    let rawFullRoutesHash = '';
+    if (!skipPlanCache && cacheableInput) {
+      const structureFingerprint = value => {
+        const cached = r8ResourcePlanStructureFingerprintCache.get(value);
+        if (cached) return cached;
+        const fingerprint = preview.stableHash(value);
+        r8ResourcePlanStructureFingerprintCache.set(value, fingerprint);
+        return fingerprint;
+      };
+      rawRouteCatalogHash = structureFingerprint(routeCatalog);
+      rawFullRoutesHash = structureFingerprint(fullRoutesByUnit);
+      const resourceRouteSemanticHash = r8ResourceRouteSemanticHash(
+        routeCatalog,
+        fullRoutesByUnit,
+      );
+      const trackedIds = (Array.isArray(input?.unitIds) ? input.unitIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+      const resourceDependencyUnitIds = new Set(trackedIds);
+      trackedIds.forEach(unitId => {
+        const routes = [
+          ...(Array.isArray(fullRoutesByUnit[unitId])
+            ? fullRoutesByUnit[unitId]
+            : []),
+          routeCatalog[unitId]?.primaryRoute,
+          routeCatalog[unitId]?.backupRoute,
+        ].filter(Boolean);
+        routes.forEach(route => {
+          (route?.paymentDependencies || []).forEach(dependency => {
+            const payerId = String(dependency?.unitId || '').trim();
+            if (payerId) resourceDependencyUnitIds.add(payerId);
+          });
+        });
+      });
+      const worldDependencyHash = preview.stableHash({
+        round: Math.max(0, Number(worldSnapshot?.回合 || 0)),
+        units: preview.listUnits(worldSnapshot).map(entry => {
+          const unitId = preview.unitId(entry.unit);
+          const includeResources = resourceDependencyUnitIds.has(unitId);
+          return {
+            unitId,
+            side: sideOf(worldSnapshot, entry.unit),
+            hp: Number(preview.readHp(entry.unit).toFixed(8)),
+            hpMax: Number(preview.readHpMax(entry.unit).toFixed(8)),
+            alive: preview.isPhysicallyAlive(entry.unit),
+            capable: preview.isBattleCapable(entry.unit),
+            actionState: String(entry.unit?.状态?.行动 || '').trim(),
+            resources: includeResources
+              ? Object.fromEntries(['魂力', '精神力', '体力'].map(resource => [
+                  resource,
+                  {
+                    value: Number(
+                      preview.readResource(entry.unit, resource).toFixed(8),
+                    ),
+                    maximum: Number(
+                      preview.readResourceMax(entry.unit, resource).toFixed(8),
+                    ),
+                  },
+                ]))
+              : null,
+          };
+        }).sort((left, right) =>
+          String(left.unitId || '').localeCompare(String(right.unitId || ''))
+        ),
+      });
+      const dependencySet = r8ResourcePlanDependencySet({
+        ...input,
+        objectiveContract,
+        routeCatalog,
+        fullRoutesByUnit,
+      });
+      planCacheComponents = {
+        dependencySet,
+        worldDependencyHash,
+        resourceRouteSemanticHash,
+        objectiveCompactMode:
+          String(input?.objectiveCompactMode || 'FAST').trim().toUpperCase(),
+        actionOpportunity: input?.actionOpportunity || null,
+      };
+      planCacheKey = preview.stableHash(planCacheComponents);
+      const cachedPlan = r8ResourceOpportunityPlanCache.get(planCacheKey);
+      if (cachedPlan) {
+        decisionMetrics.resourceOpportunityPlanCacheHits += 1;
+        if (
+          globalThis?.process?.env?.BATTLE_R8_RESOURCE_PLAN_CACHE_AUDIT === '1'
+        ) {
+          const fullPlan = r8BuildResourceOpportunityPlan({
+            ...input,
+            __skipResourceOpportunityPlanCache: true,
+          });
+          if (preview.stableHash(cachedPlan) !== preview.stableHash(fullPlan)) {
+            throw new Error('DEPENDENCY_LOCAL_FULL_HASH_MISMATCH:RESOURCE_OPPORTUNITY_PLAN');
+          }
+        }
+        return cachedPlan;
+      }
+    }
+    if (stageTrace) {
+      stageMetrics.cacheKeyMs += stageClockNow() - cacheKeyStartedAt;
+    }
+    const trackedUnitIds = new Set(
+      (Array.isArray(input?.unitIds) ? input.unitIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const futureRows = r8EvaluationFutureOpportunityRows(input).filter(row =>
+      !trackedUnitIds.size || trackedUnitIds.has(String(row?.ownerId || '').trim())
+    );
+    const resourceNames = ['魂力', '精神力', '体力'];
+    const resourceKey = (unitId, resource) => `${unitId}\u0000${resource}`;
+    const initialBalances = new Map();
+    const resourceMaxima = new Map();
+    worldEntries(worldSnapshot).forEach(entry => {
+      const unitId = preview.unitId(entry.unit);
+      if (!unitId) return;
+      resourceNames.forEach(resource => {
+        const key = resourceKey(unitId, resource);
+        initialBalances.set(key, Math.max(0, preview.readResource(entry.unit, resource)));
+        resourceMaxima.set(key, Math.max(0, preview.readResourceMax(entry.unit, resource)));
+      });
+    });
+    const compareResourcePosition = (left = {}, right = {}) =>
+      Number(left?.round || 0) - Number(right?.round || 0) ||
+      Number(left?.opportunitySequence || 0) - Number(right?.opportunitySequence || 0) ||
+      Number(left?.actionSequence || 0) - Number(right?.actionSequence || 0) ||
+      Number(left?.phasePriority || 0) - Number(right?.phasePriority || 0) ||
+      Number(left?.effectSequence || 0) - Number(right?.effectSequence || 0) ||
+      String(left?.eventId || '').localeCompare(String(right?.eventId || ''));
+    const currentPosition = {
+      round: Math.max(
+        0,
+        Number(
+          input?.actionOpportunity?.round ??
+          input?.actionOpportunity?.battleHorizon?.currentRound ??
+          worldSnapshot?.回合 ??
+          0
+        ),
+      ),
+      opportunitySequence: Math.max(
+        0,
+        Number(
+          input?.actionOpportunity?.sequence ??
+          input?.actionOpportunity?.createdAtSequence ??
+          0
+        ),
+      ),
+      actionSequence: Number.MAX_SAFE_INTEGER,
+      phasePriority: Number.MAX_SAFE_INTEGER,
+      effectSequence: Number.MAX_SAFE_INTEGER,
+      eventId: '\uffff',
+    };
+    const resourceEvents = (Array.isArray(input?.resourceTimeline)
+      ? input.resourceTimeline
+      : [])
+      .filter(event => compareResourcePosition(event, currentPosition) > 0)
+      .slice()
+      .sort(compareResourcePosition);
+    const routeCandidatesByUnit = new Map();
+    const routeCandidatesFor = unitId => {
+      if (routeCandidatesByUnit.has(unitId)) {
+        return routeCandidatesByUnit.get(unitId);
+      }
+      const routeCandidateStartedAt = stageTrace ? stageClockNow() : 0;
+      const routes = Array.isArray(fullRoutesByUnit[unitId])
+        ? fullRoutesByUnit[unitId]
+        : [];
+      const stored = [
+        routeCatalog[unitId]?.primaryRoute,
+        routeCatalog[unitId]?.backupRoute,
+      ].filter(Boolean);
+      const unique = [...new Map([...routes, ...stored].map(route => [
+        String(route?.routeKey || route?.candidateId || ''),
+        route,
+      ])).values()].filter(Boolean);
+      const noOp = {
+        routeKey: '',
+        candidateId: '',
+        targetIds: [],
+        healthTrajectoryByTarget: [],
+        paymentDependencies: [],
+        objectiveRouteUtilityHEPP: 0,
+        routeBenefitPP: 0,
+      };
+      const transitionGroups = new Map();
+      [...unique, noOp].forEach(route => {
+        const transitionKey = projectionScope === 'RESOURCE_AFFORDABILITY'
+          ? (() => {
+              const terminal =
+                r8ConditionedRouteTerminalCache.get(route)?.terminal || {};
+              return preview.stableHash({
+                paymentDependencies: (route?.paymentDependencies || [])
+                  .map(entry => ({
+                    unitId: String(entry?.unitId || '').trim(),
+                    resource: String(entry?.resource || '').trim(),
+                    amount: Math.max(0, Number(entry?.amount || 0)),
+                  }))
+                  .sort((left, right) =>
+                    left.unitId.localeCompare(right.unitId) ||
+                    left.resource.localeCompare(right.resource) ||
+                    left.amount - right.amount
+                  ),
+                opportunityDependencies:
+                  (route?.opportunityDependencies || [])
+                    .filter(entry =>
+                      String(entry?.outcomeKind || '').trim() ===
+                        'FUSION_PARTNER_OPPORTUNITY'
+                    )
+                    .map(entry => ({
+                      targetId: String(entry?.targetId || '').trim(),
+                      outcomeKind: String(
+                        entry?.outcomeKind || '',
+                      ).trim(),
+                    }))
+                    .sort((left, right) =>
+                      left.targetId.localeCompare(right.targetId) ||
+                      left.outcomeKind.localeCompare(right.outcomeKind)
+                    ),
+                terminal: {
+                  status: String(terminal?.status || 'ONGOING').trim(),
+                  terminalProbability: Number(
+                    terminal?.terminalProbability || 0,
+                  ),
+                  ongoingProbability: Number(
+                    terminal?.ongoingProbability ??
+                    (terminal?.terminal ? 0 : 1),
+                  ),
+                  expectedTerminalUtility: Number(
+                    terminal?.expectedTerminalUtility || 0,
+                  ),
+                },
+              });
+            })()
+          : preview.stableHash({
+              healthTrajectoryByTarget:
+                route?.healthTrajectoryByTarget || [],
+              intrinsicActionPoolDeltas:
+                route?.intrinsicActionPoolDeltas || [],
+              probabilityFactors: route?.probabilityFactors || [],
+              opportunityDependencies:
+                route?.opportunityDependencies || [],
+              paymentDependencies: route?.paymentDependencies || [],
+              operationGraphHash: route?.operationGraph
+                ? String(
+                    route.operationGraph.graphHash ||
+                    preview.stableHash(route.operationGraph),
+                  )
+                : '',
+            });
+        const current = transitionGroups.get(transitionKey);
+        if (
+          !current ||
+          routeSelectionBenefit(route) >
+            routeSelectionBenefit(current) + 1e-9 ||
+          (
+            Math.abs(
+              routeSelectionBenefit(route) -
+              routeSelectionBenefit(current),
+            ) <= 1e-9 &&
+            String(route?.routeKey || '').localeCompare(
+              String(current?.routeKey || ''),
+            ) < 0
+          )
+        ) {
+          transitionGroups.set(transitionKey, route);
+        }
+      });
+      const candidates = Object.freeze([...transitionGroups.values()]);
+      if (projectionScope === 'RESOURCE_AFFORDABILITY') {
+        decisionMetrics.resourceAffordabilityRouteGroupCount +=
+          candidates.length;
+        decisionMetrics.resourceAffordabilityRouteElidedCount +=
+          Math.max(0, unique.length + 1 - candidates.length);
+      }
+      routeCandidatesByUnit.set(unitId, candidates);
+      if (stageTrace) {
+        stageMetrics.routeCandidateBuildMs +=
+          stageClockNow() - routeCandidateStartedAt;
+      }
+      return candidates;
+    };
+    const applyResourceEvent = (state, event) => {
+      const unitId = String(event?.actorId || event?.targetId || '').trim();
+      const resource = String(event?.resource || '').trim();
+      if (!unitId || !resource || resource === 'ITEM') return;
+      const key = resourceKey(unitId, resource);
+      const operation = String(event?.operation || '').trim().toUpperCase();
+      if (operation === 'LOCK') {
+        state.locks.add(key);
+        return;
+      }
+      if (operation === 'UNLOCK') {
+        state.locks.delete(key);
+        return;
+      }
+      const current = Math.max(0, Number(state.balances.get(key) || 0));
+      const explicitDelta = Number(event?.delta);
+      const amount = Math.max(0, Number(event?.amount || 0));
+      const delta = Number.isFinite(explicitDelta)
+        ? explicitDelta
+        : ['PAY', 'REDUCE', 'SUSTAIN_COST'].includes(operation)
+          ? -amount
+          : ['RESTORE', 'REFUND', 'NATURAL_RECOVERY'].includes(operation)
+            ? amount
+            : 0;
+      const maximum = Math.max(current, Number(resourceMaxima.get(key) || 0));
+      state.balances.set(key, clamp(current + delta, 0, maximum || Number.MAX_SAFE_INTEGER));
+    };
+    const applyEventsBefore = (state, marker) => {
+      while (
+        state.eventIndex < resourceEvents.length &&
+        compareResourcePosition(resourceEvents[state.eventIndex], marker) <= 0
+      ) {
+        applyResourceEvent(state, resourceEvents[state.eventIndex]);
+        state.eventIndex += 1;
+      }
+    };
+    const fusionPartnerOpportunityIds = (state, route, row) => {
+      const partnerIds = (route?.opportunityDependencies || [])
+        .filter(entry =>
+          String(entry?.outcomeKind || '').trim() ===
+          'FUSION_PARTNER_OPPORTUNITY'
+        )
+        .map(entry => String(entry?.targetId || '').trim())
+        .filter(Boolean);
+      if (!partnerIds.length) return [];
+      const opportunityIds = partnerIds.map(partnerId => {
+        const partnerRow = futureRows.find(candidateRow =>
+          String(candidateRow?.ownerId || '').trim() === partnerId &&
+          Number(candidateRow?.round || 0) === Number(row?.round || 0) &&
+          Number(candidateRow?.sequence || 0) > Number(row?.sequence || 0) &&
+          !state.consumedOpportunityIds.has(String(candidateRow?.id || '').trim())
+        );
+        return String(partnerRow?.id || '').trim();
+      });
+      return opportunityIds.every(Boolean) ? opportunityIds : [];
+    };
+    const routePayable = (state, route, row) =>
+      (route?.paymentDependencies || []).every(entry => {
+        const payerId = String(entry?.unitId || '').trim();
+        const resource = String(entry?.resource || '').trim();
+        const amount = Math.max(0, Number(entry?.amount || 0));
+        const key = resourceKey(payerId, resource);
+        return amount <= 1e-9 ||
+          (
+            !state.locks.has(key) &&
+            Number(state.balances.get(key) || 0) + 1e-9 >= amount
+          );
+      }) &&
+      (
+        !(route?.opportunityDependencies || []).some(entry =>
+          String(entry?.outcomeKind || '').trim() ===
+          'FUSION_PARTNER_OPPORTUNITY'
+        ) ||
+        fusionPartnerOpportunityIds(state, route, row).length ===
+          (route?.opportunityDependencies || []).filter(entry =>
+            String(entry?.outcomeKind || '').trim() ===
+            'FUSION_PARTNER_OPPORTUNITY'
+          ).length
+      );
+    const payRoute = (state, route, row) => {
+      (route?.paymentDependencies || []).forEach(entry => {
+        const payerId = String(entry?.unitId || '').trim();
+        const resource = String(entry?.resource || '').trim();
+        const amount = Math.max(0, Number(entry?.amount || 0));
+        if (!payerId || !resource || amount <= 1e-9) return;
+        const key = resourceKey(payerId, resource);
+        state.balances.set(
+          key,
+          Math.max(0, Number(state.balances.get(key) || 0) - amount),
+        );
+      });
+      fusionPartnerOpportunityIds(state, route, row).forEach(opportunityId => {
+        state.consumedOpportunityIds.add(opportunityId);
+      });
+    };
+    const worldStateHash = world => preview.stableHash({
+      round: Math.max(0, Number(world?.回合 || 0)),
+      units: preview.listUnits(world).map(entry => ({
+        unitId: preview.unitId(entry.unit),
+        side: sideOf(world, entry.unit),
+        hp: Number(preview.readHp(entry.unit).toFixed(8)),
+        hpMax: Number(preview.readHpMax(entry.unit).toFixed(8)),
+        alive: preview.isPhysicallyAlive(entry.unit),
+        capable: preview.isBattleCapable(entry.unit),
+        actionState: String(entry.unit?.状态?.行动 || '').trim(),
+        states: Object.entries(entry.unit?.状态效果 || {})
+          .filter(([, state]) => state && typeof state === 'object')
+          .map(([key, state]) => [
+            String(key || '').trim(),
+            String(state?.状态 || state?.状态名称 || '').trim(),
+            Number(state?.duration ?? state?.持续回合 ?? 0),
+            Number(state?.__previewApplicationProbability ?? 1),
+            preview.stableHash(state?.战斗效果 || {}),
+          ])
+          .sort(([left], [right]) => left.localeCompare(right)),
+      })).sort((left, right) =>
+        String(left.unitId || '').localeCompare(String(right.unitId || ''))
+      ),
+    });
+    const finalHpByUnit = world => Object.freeze(Object.fromEntries(
+      preview.listUnits(world)
+        .map(entry => [
+          preview.unitId(entry.unit),
+          Number(preview.readHp(entry.unit).toFixed(8)),
+        ])
+        .filter(([unitId]) => unitId)
+        .sort(([left], [right]) => left.localeCompare(right)),
+    ));
+    const trajectoryRealizationKey = trajectory => {
+      const explicit = String(
+        trajectory?.scheduledEventId ||
+        trajectory?.tickId ||
+        trajectory?.realizationEventId ||
+        ''
+      ).trim();
+      return explicit ? `health-window:${explicit}` : '';
+    };
+    const applyRouteHealth = (state, route) => {
+      let projectedWorld = state.world;
+      const consumedHealthWindowKeys = new Set(
+        state.consumedHealthWindowKeys,
+      );
+      (route?.healthTrajectoryByTarget || []).forEach(trajectory => {
+        const realizationKey = trajectoryRealizationKey(trajectory);
+        if (
+          realizationKey &&
+          consumedHealthWindowKeys.has(realizationKey)
+        ) {
+          return;
+        }
+        const targetId = String(trajectory?.targetId || '').trim();
+        if (!targetId) return;
+        const forked = r8ForkWorldForUnitMutation(projectedWorld, targetId);
+        if (!forked.unit) return;
+        projectedWorld = forked.world;
+        const healthDeltaPP = Number(trajectory?.healthDeltaPP || 0);
+        const delta =
+          healthDeltaPP * Math.max(1, preview.readHpMax(forked.unit)) / 100;
+        r8SetProjectedHp(
+          forked.unit,
+          preview.readHp(forked.unit) + delta,
+        );
+        if (realizationKey) {
+          consumedHealthWindowKeys.add(realizationKey);
+        }
+      });
+      return { projectedWorld, consumedHealthWindowKeys };
+    };
+    const applyRouteStateBranch = (state, route, branch) => {
+      if (!branch) {
+        return { projectedWorld: state.world, supported: true };
+      }
+      if (branch?.world && typeof branch.world === 'object') {
+        return {
+          projectedWorld: branch.world,
+          supported: true,
+        };
+      }
+      const changes = Array.isArray(branch?.stateChanges) &&
+        branch.stateChanges.length
+        ? branch.stateChanges
+        : [{
+            targetId: String(branch?.targetId || '').trim(),
+            stateEntries: branch?.stateEntries || {},
+            removedStateKeys: Array.isArray(branch?.removedStateKeys)
+              ? branch.removedStateKeys
+              : [],
+          }];
+      let projectedWorld = state.world;
+      let appliedChange = false;
+      changes.forEach(change => {
+        const targetId = String(change?.targetId || '').trim();
+        if (!targetId) return;
+        const stateEntries = change?.stateEntries || {};
+        const removedStateKeys = Array.isArray(change?.removedStateKeys)
+          ? change.removedStateKeys
+          : [];
+        if (!Object.keys(stateEntries).length && !removedStateKeys.length) return;
+        const forked = r8ForkWorldForUnitMutation(projectedWorld, targetId);
+        if (!forked.unit) return;
+        const nextStates = {
+          ...(forked.unit.状态效果 || {}),
+        };
+        removedStateKeys.forEach(key => {
+          delete nextStates[String(key || '').trim()];
+        });
+        forked.unit.状态效果 = {
+          ...nextStates,
+          ...cloneValue(stateEntries),
+        };
+        projectedWorld = forked.world;
+        appliedChange = true;
+      });
+      return {
+        projectedWorld,
+        supported: appliedChange || changes.every(change =>
+          !String(change?.targetId || '').trim() ||
+          (
+            !Object.keys(change?.stateEntries || {}).length &&
+            !(Array.isArray(change?.removedStateKeys)
+              ? change.removedStateKeys
+              : []).length
+          )
+        ),
+      };
+    };
+    const routeTargetsAvailable = (state, route) => {
+      if (!String(route?.routeKey || '').trim()) return true;
+      return (route?.healthTrajectoryByTarget || []).every(trajectory => {
+        const target = findUnitInWorld(state.world, trajectory?.targetId);
+        if (!target) return false;
+        return Number(trajectory?.healthDeltaPP || 0) >= -1e-9 ||
+          preview.isPhysicallyAlive(target);
+      });
+    };
+    const routeProjectionContextHash = preview.stableHash({
+      objectiveContract,
+      objectiveCompactMode:
+        String(input?.objectiveCompactMode || 'FAST').trim().toUpperCase(),
+      actionOpportunity: input?.actionOpportunity || null,
+      opportunitySnapshot: input?.opportunitySnapshot || [],
+      scheduledEvents: input?.scheduledEvents || [],
+    });
+    const routeStateProjection = (state, route, row) => {
+      decisionMetrics.routeProjectionCalls += 1;
+      const behaviorAssignmentKeys = [
+        ...new Set(
+          (route?.intrinsicActionPoolDeltas || [])
+            .map(delta => {
+              const probability = clamp(
+                Number(
+                  delta?.evidence?.r8RealizationProbability ??
+                  delta?.evidence?.applicationProbability ??
+                  1
+                ),
+                0,
+                1,
+              );
+              if (
+                probability <= 1e-9 ||
+                probability >= 1 - 1e-9
+              ) {
+                return '';
+              }
+              return [
+                String(delta?.effectInstanceId || '').trim(),
+                String(delta?.targetId || '').trim(),
+              ].join('|');
+            })
+            .filter(Boolean),
+          ),
+      ].sort();
+      const marginalSufficientRawCartesianUpperBound =
+        (route?.operationGraph?.outcomeGroups || []).reduce(
+          (product, group) =>
+            product * Math.max(1, Number(group?.outcomes?.length || 0)),
+          1,
+        );
+      const cachedRouteTerminal =
+        r8ConditionedRouteTerminalCache.get(route)?.terminal || null;
+      const healthTrajectoryMarginallyIndependent =
+        !(route?.healthTrajectoryByTarget || []).length ||
+        (
+          Number(cachedRouteTerminal?.terminalProbability || 0) <= 1e-9 &&
+          (route?.healthTrajectoryByTarget || []).every(trajectory => {
+            const target = findUnitInWorld(
+              state.world,
+              String(trajectory?.targetId || '').trim(),
+            );
+            if (!target || r8UnitHasHpSensitiveBehavior(target)) return false;
+            const hpMax = Math.max(1, preview.readHpMax(target));
+            const currentHpPP = 100 * preview.readHp(target) / hpMax;
+            const outcomes =
+              Array.isArray(trajectory?.outcomeDistribution) &&
+              trajectory.outcomeDistribution.length
+                ? trajectory.outcomeDistribution
+                : [trajectory];
+            const minimumHpPP = outcomes.reduce(
+              (minimum, outcome) =>
+                Math.min(
+                  minimum,
+                  currentHpPP + Number(
+                    outcome?.healthDeltaPP ??
+                    trajectory?.healthDeltaPP ??
+                    0
+                  ),
+                ),
+              currentHpPP,
+            );
+            return minimumHpPP > 1e-9;
+          })
+        );
+      const marginalSufficientBehaviorProjection =
+        marginalSufficientRawCartesianUpperBound > 64 &&
+        healthTrajectoryMarginallyIndependent &&
+        (route?.probabilityFactors || []).every(factor =>
+          [
+            'STATE_CHANGED',
+            'STATE_SCHEDULED',
+            'NEXT_ACTION_QUALITY_CHANGED',
+          ].includes(String(factor?.outcomeKind || '').trim().toUpperCase()) &&
+          (factor?.outcomeDistribution || []).every(outcome =>
+            !String(outcome?.actionState || '').trim()
+          )
+        ) &&
+        (route?.intrinsicActionPoolDeltas || []).length > 0 &&
+        (route?.intrinsicActionPoolDeltas || []).every(delta =>
+          [
+            'STATE_CHANGED',
+            'STATE_SCHEDULED',
+            'NEXT_ACTION_QUALITY_CHANGED',
+          ].includes(String(delta?.outcomeKind || '').trim().toUpperCase()) &&
+          Number.isFinite(Number(delta?.healthTrajectoryDeltaPP || 0)) &&
+          Number.isFinite(Number(
+            delta?.evidence?.r8RealizedHealthTrajectoryDeltaPP ??
+            delta?.healthTrajectoryDeltaPP ??
+            0
+          ))
+        ) &&
+        [
+          ...(route?.operationGraph?.deterministicEvents || []),
+          ...(route?.operationGraph?.conditionalEvents || []),
+        ].every(event =>
+          [
+            'STATE_APPLY',
+            'STATE_REFRESH',
+            'STATE_REPLACE',
+            'STATE_REMOVE',
+          ].includes(String(event?.operation || '').trim().toUpperCase())
+        );
+      let operationProjection = null;
+      if (
+        !marginalSufficientBehaviorProjection &&
+        route?.operationGraph &&
+        (
+          route.operationGraph.deterministicEvents?.length ||
+          route.operationGraph.conditionalEvents?.length
+        )
+      ) {
+        try {
+          operationProjection = preview.evaluateOperationGraph({
+            graph: route.operationGraph,
+            baseState: {
+              world: state.world,
+              locks: state.locks,
+            },
+            projectionContract: {
+              kind: 'RESOURCE_ROUTE',
+              mergeKey: 'FULL',
+              assignmentKeys: behaviorAssignmentKeys,
+            },
+            maxActiveStates: 64,
+          });
+        } catch (error) {
+          if (
+            String(error?.message || error).startsWith(
+              'BATTLE_PREVIEW_PROBABILITY_BRANCH_BUDGET_EXCEEDED:',
+            )
+          ) {
+            throw new Error([
+              String(error?.message || error),
+              `candidate=${String(route?.candidateId || '').trim()}`,
+              `route=${String(route?.routeKey || '').trim()}`,
+              `row=${String(row?.id || '').trim()}`,
+              `groups=${Number(route.operationGraph?.outcomeGroups?.length || 0)}`,
+              `retainedAssignments=${behaviorAssignmentKeys.length}`,
+            ].join(':'));
+          }
+          throw error;
+        }
+      }
+      if (operationProjection) {
+        decisionMetrics.primitiveOutcomeGroupCount += Number(
+          operationProjection.primitiveOutcomeGroupCount || 0,
+        );
+        decisionMetrics.rawCartesianUpperBound = Math.max(
+          decisionMetrics.rawCartesianUpperBound,
+          Number(operationProjection.rawCartesianUpperBound || 0),
+        );
+        decisionMetrics.peakActiveSufficientStates = Math.max(
+          decisionMetrics.peakActiveSufficientStates,
+          Number(operationProjection.peakActiveSufficientStates || 0),
+        );
+        decisionMetrics.mergedEquivalentStateCount += Number(
+          operationProjection.mergedEquivalentStateCount || 0,
+        );
+        decisionMetrics.operationEventCount += Number(
+          operationProjection.operationEventCount || 0,
+        );
+      } else if (marginalSufficientBehaviorProjection) {
+        decisionMetrics.primitiveOutcomeGroupCount += Number(
+          route?.operationGraph?.outcomeGroups?.length || 0,
+        );
+        decisionMetrics.rawCartesianUpperBound = Math.max(
+          decisionMetrics.rawCartesianUpperBound,
+          marginalSufficientRawCartesianUpperBound,
+        );
+        decisionMetrics.peakActiveSufficientStates = Math.max(
+          decisionMetrics.peakActiveSufficientStates,
+          1,
+        );
+        decisionMetrics.mergedEquivalentStateCount += Math.max(
+          0,
+          marginalSufficientRawCartesianUpperBound - 1,
+        );
+        decisionMetrics.operationEventCount += Number(
+          (route?.operationGraph?.deterministicEvents || []).length +
+          (route?.operationGraph?.conditionalEvents || []).length,
+        );
+      }
+      const operationBranches = operationProjection?.finalStates || [];
+      const baseHealthTrajectories = route?.healthTrajectoryByTarget || [];
+      const routeHasProbabilisticOutcome = [
+        ...(route?.healthTrajectoryByTarget || []).flatMap(trajectory =>
+          Array.isArray(trajectory?.outcomeDistribution)
+            ? trajectory.outcomeDistribution
+            : []
+        ),
+        ...(route?.probabilityFactors || []).flatMap(factor =>
+          Array.isArray(factor?.outcomeDistribution)
+            ? factor.outcomeDistribution
+            : []
+        ),
+      ].some(outcome => {
+        const probability = Number(outcome?.probability ?? 1);
+        return probability > 1e-12 && probability < 1 - 1e-12;
+      });
+      const routeHasProbabilisticBehavior =
+        (route?.intrinsicActionPoolDeltas || []).some(delta => {
+          const probability = Number(
+            delta?.evidence?.r8RealizationProbability ??
+            delta?.evidence?.applicationProbability ??
+            1
+          );
+          return probability > 1e-12 && probability < 1 - 1e-12;
+        });
+      const routeHasProbabilisticOperationGraph =
+        operationBranches.length > 1;
+      const routeHasAnyProbabilisticResolution =
+        routeHasProbabilisticOutcome ||
+        routeHasProbabilisticBehavior ||
+        routeHasProbabilisticOperationGraph;
+      let routeCache = r8ResourceRouteProjectionCache.get(route);
+      if (!routeCache) {
+        routeCache = new Map();
+        r8ResourceRouteProjectionCache.set(route, routeCache);
+      }
+      const projectionCacheKey = [
+        routeProjectionContextHash,
+        state.worldStateHash,
+        String(row?.id || '').trim(),
+        [...state.consumedOpportunityIds].sort().join('\u0001'),
+        [...state.consumedBehaviorKeys].sort().join('\u0001'),
+        [...state.consumedHealthWindowKeys].sort().join('\u0001'),
+      ].join('\u0002');
+      const cachedProjection = routeHasAnyProbabilisticResolution
+        ? null
+        : routeCache.get(projectionCacheKey);
+      if (cachedProjection) {
+        if (stageTrace) stageMetrics.projectionCacheHits += 1;
+        decisionMetrics.routeProjectionCacheHits += 1;
+        const healthProjection = applyRouteHealth(
+          state,
+          cachedProjection.stateConditionedRoute,
+        );
+        const projectedWorld =
+          healthProjection.projectedWorld === state.world
+            ? { ...state.world }
+            : healthProjection.projectedWorld;
+        projectedWorld.回合 = Math.max(
+          0,
+          Number(row?.round ?? projectedWorld?.回合 ?? 0),
+        );
+        return {
+          ...cachedProjection.result,
+          projectedWorld,
+          consumedHealthWindowKeys:
+            healthProjection.consumedHealthWindowKeys,
+        };
+      }
+      if (stageTrace) stageMetrics.projectionCacheMisses += 1;
+      const owner = findUnitInWorld(state.world, row?.ownerId);
+      const ownerSide = owner
+        ? sideOf(state.world, owner)
+        : String(input?.actorSide || '').trim();
+      const availableHealthTrajectories =
+        baseHealthTrajectories.filter(trajectory => {
+          const realizationKey = trajectoryRealizationKey(trajectory);
+          return !realizationKey ||
+            !state.consumedHealthWindowKeys.has(realizationKey);
+        });
+      const removedDirectBenefit =
+        (route?.healthTrajectoryByTarget || []).reduce(
+          (sum, trajectory) => sum + Number(trajectory?.actorBenefitPP || 0),
+          0,
+        ) -
+        availableHealthTrajectories.reduce(
+          (sum, trajectory) => sum + Number(trajectory?.actorBenefitPP || 0),
+          0,
+        );
+      const stateConditionedRoute = {
+        ...route,
+        routeBenefitPP:
+          Number(route?.routeBenefitPP || 0) - removedDirectBenefit,
+        healthTrajectoryByTarget: Object.freeze(availableHealthTrajectories),
+      };
+      r8TerminalRouteSignatureCache.set(
+        stateConditionedRoute,
+        `terminal:${preview.stableHash({
+          healthTrajectoryByTarget: availableHealthTrajectories,
+          probabilityFactors: route?.probabilityFactors || [],
+        })}`,
+      );
+      const objectiveRequest = {
+        actorId: String(row?.ownerId || '').trim(),
+        actorSide: ownerSide,
+        visibleWorld: state.world,
+        objectiveCompactMode: input?.objectiveCompactMode || 'FAST',
+        objectiveContract,
+      };
+      const conditionedRoute = r8ConditionRouteForObjective(
+        stateConditionedRoute,
+        objectiveRequest,
+      );
+      const terminal = r8TerminalUtility(
+        {
+          ...objectiveRequest,
+          terminalCallOrigin: 'RESOURCE_OPPORTUNITY_PLAN',
+        },
+        conditionedRoute,
+      );
+      const originalObjective = Number(
+        stateConditionedRoute?.objectiveRouteUtilityHEPP ??
+        stateConditionedRoute?.routeBenefitPP ??
+        0
+      );
+      const storedActionPoolDeltas = Array.isArray(
+        stateConditionedRoute?.intrinsicActionPoolDeltas,
+      )
+        ? stateConditionedRoute.intrinsicActionPoolDeltas
+        : [];
+      const consumedBehaviorKeys = new Set(state.consumedBehaviorKeys);
+      const newlyConsumedOpportunityIds = [];
+      const behaviorProjections = storedActionPoolDeltas.map(delta => {
+        const outcomeKind = String(delta?.outcomeKind || '').trim();
+        const originalExpectedUtilityHEPP = Number(
+          delta?.healthTrajectoryDeltaPP || 0,
+        );
+        let value = originalExpectedUtilityHEPP;
+        let behaviorKey = '';
+        let consumedOpportunityIds = [];
+        const behaviorRealizationProbability = clamp(
+          Number(
+            delta?.evidence?.r8RealizationProbability ??
+            delta?.evidence?.applicationProbability ??
+            1
+          ),
+          0,
+          1,
+        );
+        if (outcomeKind === 'ACTION_CANCELLED') {
+          const control = r8ControlOpportunityProfile({
+            actorId: String(row?.ownerId || '').trim(),
+            actorSide: ownerSide,
+            visibleWorld: state.world,
+            objectiveContract,
+            actionOpportunity: {
+              opportunityId: String(row?.id || '').trim(),
+              round: Number(row?.round || 0),
+              sequence: Number(row?.sequence || 0),
+              createdAtSequence: Number(row?.sequence || 0),
+            },
+            evaluationContext: {
+              opportunitySnapshot: (Array.isArray(input?.opportunitySnapshot)
+                ? input.opportunitySnapshot
+                : []
+              ).filter(opportunity =>
+                !state.consumedOpportunityIds.has(String(
+                  opportunity?.opportunityId || opportunity?.grantId || ''
+                ).trim())
+              ),
+              scheduledEvents: input?.scheduledEvents || [],
+            },
+          }, delta);
+          const coveredTargetOpportunityIds = [
+            ...new Set(
+              (
+                Array.isArray(control?.coveredTargetOpportunityIds)
+                  ? control.coveredTargetOpportunityIds
+                  : [control?.targetOpportunityId]
+              )
+                .map(value => String(value || '').trim())
+                .filter(Boolean),
+            ),
+          ].sort();
+          behaviorKey = coveredTargetOpportunityIds.length === 1
+            ? `control-opportunity:${coveredTargetOpportunityIds[0]}`
+            : coveredTargetOpportunityIds.length > 1
+              ? `control-opportunities:${preview.stableHash(
+                  coveredTargetOpportunityIds,
+                )}`
+              : '';
+          if (!control?.coveredAfter || !behaviorKey) value = 0;
+          else {
+            consumedOpportunityIds = coveredTargetOpportunityIds;
+            if (behaviorRealizationProbability >= 1 - 1e-9) {
+              newlyConsumedOpportunityIds.push(...coveredTargetOpportunityIds);
+            }
+          }
+        } else if (outcomeKind === 'SUMMON_WINDOW') {
+          const instanceId = String(
+            delta?.evidence?.instanceId ||
+            delta?.evidence?.summonInstanceId ||
+            delta?.targetId ||
+            delta?.effectInstanceId ||
+            ''
+          ).trim();
+          behaviorKey = instanceId ? `summon-window:${instanceId}` : '';
+        } else if (
+          ['STATE_CHANGED', 'STATE_SCHEDULED', 'RULE_CHANGED'].includes(
+            outcomeKind,
+          )
+        ) {
+          const stableWindow =
+            /^(REPLACE|REFRESH|IDEMPOTENT)$/i.test(String(
+              delta?.evidence?.stackMode ||
+              delta?.evidence?.overlapMode ||
+              ''
+            ).trim());
+          behaviorKey = stableWindow
+            ? [
+                'state-window',
+                String(delta?.targetId || '').trim(),
+                String(
+                  delta?.evidence?.stateKey ||
+                  delta?.effectInstanceId ||
+                  ''
+                ).trim(),
+                String(delta?.windowId || '').trim(),
+              ].join(':')
+            : [
+                'state-application',
+              String(delta?.effectInstanceId || '').trim(),
+              String(delta?.targetId || '').trim(),
+            ].join(':');
+        }
+        if (
+          outcomeKind === 'RESOURCE_OPTION_CHANGED' &&
+          !behaviorKey
+        ) {
+          behaviorKey = [
+            'resource-option',
+            String(delta?.targetId || '').trim(),
+            String(delta?.evidence?.resource || '').trim(),
+            String(delta?.windowId || '').trim(),
+            String(delta?.effectInstanceId || '').trim(),
+          ].join(':');
+        }
+        const probabilistic =
+          behaviorRealizationProbability > 1e-9 &&
+          behaviorRealizationProbability < 1 - 1e-9;
+        if (
+          !probabilistic &&
+          behaviorKey &&
+          consumedBehaviorKeys.has(behaviorKey)
+        ) {
+          value = 0;
+        } else if (
+          !probabilistic &&
+          behaviorKey &&
+          Math.abs(value) > 1e-9
+        ) {
+          consumedBehaviorKeys.add(behaviorKey);
+        }
+        const sourceRealizedUtilityHEPP = Number(
+          delta?.evidence?.r8RealizedHealthTrajectoryDeltaPP ??
+          (
+            probabilistic && behaviorRealizationProbability > 1e-9
+              ? originalExpectedUtilityHEPP / behaviorRealizationProbability
+              : originalExpectedUtilityHEPP
+          )
+        );
+        const realizedUtilityHEPP =
+          Math.abs(value) <= 1e-9
+            ? 0
+            : (
+                Math.abs(originalExpectedUtilityHEPP) > 1e-9 &&
+                Number.isFinite(sourceRealizedUtilityHEPP)
+              )
+              ? sourceRealizedUtilityHEPP *
+                (value / originalExpectedUtilityHEPP)
+              : (
+                  probabilistic && behaviorRealizationProbability > 1e-9
+                    ? value / behaviorRealizationProbability
+                    : value
+                );
+        return Object.freeze({
+          outcomeKind,
+          expectedUtilityHEPP: value,
+          realizedUtilityHEPP,
+          probability: behaviorRealizationProbability,
+          probabilistic,
+          effectInstanceId: String(delta?.effectInstanceId || '').trim(),
+          targetId: String(delta?.targetId || '').trim(),
+          assignmentKey: [
+            String(delta?.effectInstanceId || '').trim(),
+            String(delta?.targetId || '').trim(),
+          ].join('|'),
+          behaviorKey,
+          consumedOpportunityIds: Object.freeze(consumedOpportunityIds),
+        });
+      });
+      const nonObjectiveBehavior = storedActionPoolDeltas.length
+        ? behaviorProjections.reduce(
+            (sum, entry) => sum + Number(entry?.expectedUtilityHEPP || 0),
+            0,
+          )
+        : routeSelectionBenefit(stateConditionedRoute) - originalObjective;
+      const deterministicBehaviorUtility = behaviorProjections
+        .filter(entry => entry?.probabilistic !== true)
+        .reduce(
+          (sum, entry) => sum + Number(entry?.expectedUtilityHEPP || 0),
+          0,
+        );
+      const ongoingProbability = clamp(
+        Number(terminal?.ongoingProbability ?? (terminal?.terminal ? 0 : 1)),
+        0,
+        1,
+      );
+      const utilityHEPP = clamp(
+        Number(conditionedRoute?.objectiveRouteUtilityHEPP || 0) +
+          ongoingProbability * nonObjectiveBehavior,
+        -100,
+        100,
+      );
+      const healthProjection = applyRouteHealth(state, stateConditionedRoute);
+      const projectedWorld =
+        healthProjection.projectedWorld === state.world
+          ? { ...state.world }
+          : healthProjection.projectedWorld;
+      projectedWorld.回合 = Math.max(
+        0,
+        Number(row?.round ?? projectedWorld?.回合 ?? 0),
+      );
+      const terminalResult = preview.evaluateBattleObjectives(
+        projectedWorld,
+        preview.normalizeBattleObjectives(objectiveContract, projectedWorld),
+        {
+          round: Number(projectedWorld?.回合 || 0),
+          roundCompleted: false,
+        },
+      );
+      const terminalProbability = clamp(
+        Number(terminal?.terminalProbability || 0),
+        0,
+        1,
+      );
+      const exactHealthProbabilityBranchesEligible =
+        routeHasProbabilisticOutcome &&
+        storedActionPoolDeltas.length === 0 &&
+        Array.isArray(terminal?.ongoingBranchWorlds) &&
+        Array.isArray(terminal?.terminalBranchWorlds);
+      const operationStateBranches = operationBranches.map(branch => {
+        return Object.freeze({
+          branchKey: Object.entries(branch?.outcomeIds || {})
+            .map(([groupKey, outcomeId]) => `${groupKey}:${outcomeId}`)
+            .join('|'),
+          probability: Number(branch?.probability || 0),
+          world: branch?.world,
+          ...(Object.hasOwn(branch || {}, 'balances')
+            ? { balances: branch.balances }
+            : {}),
+          ...(Object.hasOwn(branch || {}, 'locks')
+            ? { lockedResources: branch.locks }
+            : {}),
+          assignments: branch?.assignments || {},
+          appliedEventIds: branch?.appliedEventIds || [],
+          skippedEventIds: branch?.skippedEventIds || [],
+          outcomes: Object.freeze(
+            Object.entries(branch?.assignments || {})
+              .filter(([key]) => key.includes('|'))
+              .map(([key, outcome]) => {
+                const splitAt = key.lastIndexOf('|');
+                return Object.freeze({
+                  effectInstanceId: key.slice(0, splitAt),
+                  targetId: key.slice(splitAt + 1),
+                  outcome: String(outcome || '').trim().toUpperCase(),
+                });
+              }),
+          ),
+        });
+      });
+      const routeStateBranches = operationStateBranches;
+      const operationGraphBranchesEligible =
+        operationStateBranches.length > 0;
+      const exactProbabilityBranchesEligible =
+        exactHealthProbabilityBranchesEligible ||
+        operationGraphBranchesEligible ||
+        marginalSufficientBehaviorProjection;
+      const hasRealizableProbabilisticBehavior =
+        behaviorProjections.some(entry => entry?.probabilistic === true);
+      const probabilisticStateUnresolved =
+        state.probabilisticStateUnresolved === true ||
+        (
+          (
+            routeHasProbabilisticOutcome ||
+            hasRealizableProbabilisticBehavior
+          ) &&
+          !exactProbabilityBranchesEligible
+        );
+      const branchWorldAtRound = branchWorld => {
+        const world = branchWorld === state.world
+          ? { ...state.world }
+          : branchWorld;
+        world.回合 = Math.max(
+          0,
+          Number(row?.round ?? world?.回合 ?? 0),
+        );
+        return world;
+      };
+      let exactOutcomeBranches = Object.freeze([]);
+      if (marginalSufficientBehaviorProjection) {
+        exactOutcomeBranches = Object.freeze([
+          Object.freeze({
+            probability: 1,
+            terminalStatus:
+              terminalResult?.terminal === true
+                ? String(terminalResult.status || '').trim()
+                : 'ONGOING',
+            terminalResult:
+              terminalResult?.terminal === true ? terminalResult : null,
+            projectedWorld,
+            utilityHEPP,
+            consumedBehaviorKeys: Object.freeze([
+              ...consumedBehaviorKeys,
+            ]),
+            newlyConsumedOpportunityIds: Object.freeze([
+              ...newlyConsumedOpportunityIds,
+            ]),
+            assignments: Object.freeze({}),
+            appliedEventIds: Object.freeze([]),
+            skippedEventIds: Object.freeze([]),
+          }),
+        ]);
+      } else if (exactHealthProbabilityBranchesEligible) {
+        exactOutcomeBranches = Object.freeze([
+          ...(terminal.terminalBranchWorlds || []).map(branch =>
+            Object.freeze({
+              probability: clamp(Number(branch?.probability || 0), 0, 1),
+              terminalStatus: String(branch?.status || '').trim(),
+              terminalResult: {
+                terminal: true,
+                status: String(branch?.status || '').trim(),
+              },
+              projectedWorld: branchWorldAtRound(branch?.world || state.world),
+              utilityHEPP: Number(branch?.objectiveUtility || 0),
+              consumedBehaviorKeys: Object.freeze([
+                ...consumedBehaviorKeys,
+              ]),
+              newlyConsumedOpportunityIds: Object.freeze([
+                ...newlyConsumedOpportunityIds,
+              ]),
+            })
+          ),
+          ...(terminal.ongoingBranchWorlds || []).map(branch =>
+            Object.freeze({
+              probability: clamp(Number(branch?.probability || 0), 0, 1),
+              terminalStatus: 'ONGOING',
+              terminalResult: null,
+              projectedWorld: branchWorldAtRound(branch?.world || state.world),
+              utilityHEPP: clamp(
+                Number(branch?.objectiveUtility || 0) +
+                  nonObjectiveBehavior,
+                -99,
+                99,
+              ),
+              consumedBehaviorKeys: Object.freeze([
+                ...consumedBehaviorKeys,
+              ]),
+              newlyConsumedOpportunityIds: Object.freeze([
+                ...newlyConsumedOpportunityIds,
+              ]),
+            })
+          ),
+        ].filter(branch => branch.probability > 1e-15));
+      } else if (operationGraphBranchesEligible) {
+        const baseTerminalBranches = [
+          ...(terminal?.terminalBranchWorlds || []).map(branch => ({
+            ...branch,
+            terminal: true,
+          })),
+          ...(terminal?.ongoingBranchWorlds || []).map(branch => ({
+            ...branch,
+            terminal: false,
+          })),
+        ];
+        const resolvedBaseTerminalBranches = baseTerminalBranches.length
+          ? baseTerminalBranches
+          : [{
+              probability: 1,
+              world: projectedWorld,
+              objectiveUtility: 0,
+              terminal: false,
+            }];
+        const stateBranches = routeStateBranches;
+        const makeBehaviorBranch = (baseBranch, stateBranch) => {
+          const baseAssignments =
+            baseBranch?.assignments && typeof baseBranch.assignments === 'object'
+              ? baseBranch.assignments
+              : {};
+          const stateAssignments =
+            stateBranch?.assignments && typeof stateBranch.assignments === 'object'
+              ? stateBranch.assignments
+              : {};
+          const sharedAssignmentKeys = Object.keys(stateAssignments).filter(key =>
+            Object.hasOwn(baseAssignments, key)
+          );
+          if (sharedAssignmentKeys.some(key =>
+            String(baseAssignments[key] || '') !==
+            String(stateAssignments[key] || '')
+          )) {
+            return null;
+          }
+          const stateProjection = stateBranch
+            ? applyRouteStateBranch(
+                { world: branchWorldAtRound(baseBranch?.world || projectedWorld) },
+                route,
+                stateBranch,
+              )
+            : { projectedWorld: branchWorldAtRound(baseBranch?.world || projectedWorld), supported: true };
+          if (!stateProjection.supported) return null;
+          const baseBranchWorld = branchWorldAtRound(
+            baseBranch?.world || projectedWorld,
+          );
+          let branchWorld = mapWorldUnits(
+            stateProjection.projectedWorld,
+            unit => {
+              const baseUnit = findUnitInWorld(
+                baseBranchWorld,
+                preview.unitId(unit),
+              );
+              if (!baseUnit) return unit;
+              const next = cloneValue(unit);
+              r8SetProjectedHp(next, preview.readHp(baseUnit));
+              return next;
+            },
+          );
+          branchWorld.回合 = Math.max(
+            0,
+            Number(row?.round ?? branchWorld?.回合 ?? 0),
+          );
+          let branchConditionedRoute = r8ConditionRouteForObjective(
+            stateConditionedRoute,
+            {
+              actorId: String(row?.ownerId || '').trim(),
+              actorSide: ownerSide,
+              visibleWorld: branchWorld,
+              objectiveCompactMode: input?.objectiveCompactMode || 'FAST',
+              objectiveContract,
+            },
+          );
+          const terminalResultForBranch = preview.evaluateBattleObjectives(
+            branchWorld,
+            preview.normalizeBattleObjectives(objectiveContract, branchWorld),
+            {
+              round: Number(branchWorld?.回合 || 0),
+              roundCompleted: false,
+            },
+          );
+          const isTerminal =
+            terminalResultForBranch?.terminal === true;
+          const consumedKeys = new Set(consumedBehaviorKeys);
+          const consumedOpportunityIds = [...newlyConsumedOpportunityIds];
+          const branchBehaviorUtility = behaviorProjections.reduce(
+            (sum, behavior) => {
+              if (behavior?.probabilistic !== true) return sum;
+              const outcome = String(
+                stateAssignments[behavior.assignmentKey] || '',
+              ).trim().toUpperCase();
+              if (!['HIT', 'SUCCESS'].includes(outcome)) return sum;
+              if (
+                behavior.behaviorKey &&
+                consumedKeys.has(behavior.behaviorKey)
+              ) {
+                return sum;
+              }
+              if (behavior.behaviorKey) {
+                consumedKeys.add(behavior.behaviorKey);
+              }
+              consumedOpportunityIds.push(
+                ...(behavior?.consumedOpportunityIds || []),
+              );
+              return sum + Number(
+                behavior?.realizedUtilityHEPP || 0,
+              );
+            },
+            0,
+          );
+          const branchObjectiveUtility = isTerminal
+            ? terminalResultForBranch.status === 'PLAYER_WIN'
+              ? 100
+              : terminalResultForBranch.status === 'ENEMY_WIN'
+                ? -100
+                : 0
+            : Number(
+                branchConditionedRoute?.objectiveRouteUtilityHEPP ??
+                baseBranch?.objectiveUtility ??
+                0
+                ) +
+              deterministicBehaviorUtility +
+              branchBehaviorUtility;
+          const branchResult = {
+            probability:
+              clamp(Number(baseBranch?.probability || 0), 0, 1) *
+              (
+                sharedAssignmentKeys.length
+                  ? 1
+                  : Number(stateBranch?.probability ?? 1)
+              ),
+            terminalStatus: isTerminal
+              ? String(terminalResultForBranch.status || '').trim()
+              : 'ONGOING',
+            terminalResult: isTerminal ? terminalResultForBranch : null,
+            projectedWorld: branchWorld,
+            utilityHEPP: clamp(
+              branchObjectiveUtility,
+              isTerminal ? -100 : -99,
+              isTerminal ? 100 : 99,
+            ),
+            consumedBehaviorKeys: Object.freeze([...consumedKeys]),
+            newlyConsumedOpportunityIds: Object.freeze(
+              [...new Set(consumedOpportunityIds.filter(Boolean))],
+            ),
+            assignments: Object.freeze(
+              cloneValue({
+                ...baseAssignments,
+                ...stateAssignments,
+              }),
+            ),
+            appliedEventIds: Object.freeze([
+              ...(stateBranch?.appliedEventIds || []),
+            ]),
+            skippedEventIds: Object.freeze([
+              ...(stateBranch?.skippedEventIds || []),
+            ]),
+          };
+          if (Object.hasOwn(stateBranch || {}, 'balances')) {
+            branchResult.finalResources = Object.freeze(
+              cloneValue(stateBranch.balances),
+            );
+          }
+          if (Object.hasOwn(stateBranch || {}, 'lockedResources')) {
+            branchResult.lockedResources = Object.freeze([
+              ...(stateBranch.lockedResources || []),
+            ].sort());
+          }
+          return Object.freeze(branchResult);
+        };
+        if (stateBranches.length > 0) {
+          exactOutcomeBranches = Object.freeze(
+            resolvedBaseTerminalBranches
+              .flatMap(baseBranch =>
+                stateBranches
+                  .map(stateBranch => makeBehaviorBranch(baseBranch, stateBranch))
+                  .filter(Boolean)
+              )
+              .filter(branch => branch.probability > 1e-15),
+          );
+        }
+      }
+      const result = {
+        conditionedRoute,
+        projectedWorld,
+        utilityHEPP,
+        terminalStatus:
+          terminalResult?.terminal === true &&
+          terminalProbability >= 1 - 1e-9 &&
+          !probabilisticStateUnresolved
+            ? String(terminalResult.status || '').trim()
+            : 'ONGOING',
+        terminalResult:
+          terminalResult?.terminal === true &&
+          terminalProbability >= 1 - 1e-9 &&
+          !probabilisticStateUnresolved
+            ? terminalResult
+            : null,
+        terminalProbability,
+        probabilisticStateUnresolved,
+        exactOutcomeBranches,
+        consumedBehaviorKeys,
+        consumedHealthWindowKeys:
+          healthProjection.consumedHealthWindowKeys,
+        newlyConsumedOpportunityIds,
+        projectionMode: exactOutcomeBranches.length
+          ? (
+              marginalSufficientBehaviorProjection
+                ? 'MARGINAL_SUFFICIENT_BEHAVIOR_STATE'
+                : 'EXACT_PROBABILISTIC_BRANCH_STATE'
+            )
+          : probabilisticStateUnresolved
+            ? 'INCOMPLETE_OPERATION_GRAPH'
+            : 'DETERMINISTIC_STATE',
+      };
+      if (probabilisticStateUnresolved) {
+        throw new Error(
+          `ACTION_ROUTE_INCOMPLETE:PROBABILITY_GRAPH:${String(route?.routeKey || route?.candidateId || 'unknown')}`,
+        );
+      }
+      const {
+        projectedWorld: ignoredProjectedWorld,
+        consumedHealthWindowKeys: ignoredConsumedHealthWindowKeys,
+        ...cacheableResult
+      } = result;
+      if (!routeHasAnyProbabilisticResolution) {
+        routeCache.set(projectionCacheKey, {
+          stateConditionedRoute,
+          result: cacheableResult,
+        });
+      }
+      return result;
+    };
+    const affordabilityWorldByRound = new Map();
+    const affordabilityWorldHashByRound = new Map();
+    const resourceAffordabilityProjection = (state, route, row) => {
+      decisionMetrics.resourceAffordabilityProjectionCalls += 1;
+      const routeUtilityHEPP = clamp(
+        Number(routeSelectionBenefit(route) || 0),
+        -100,
+        100,
+      );
+      const terminal =
+        r8ConditionedRouteTerminalCache.get(route)?.terminal || {};
+      const terminalProbability = clamp(
+        Number(terminal?.terminalProbability || 0),
+        0,
+        1,
+      );
+      const ongoingProbability = clamp(
+        Number(
+          terminal?.ongoingProbability ??
+          (terminalProbability > 0 ? 1 - terminalProbability : 1)
+        ),
+        0,
+        1,
+      );
+      const expectedTerminalUtility = Number(
+        terminal?.expectedTerminalUtility || 0,
+      );
+      const ongoingUtilityHEPP = ongoingProbability > 1e-12
+        ? clamp(
+            (
+              routeUtilityHEPP -
+              expectedTerminalUtility
+            ) / ongoingProbability,
+            -99,
+            99,
+          )
+        : 0;
+      const projectedRound = Math.max(
+        0,
+        Number(row?.round ?? state.world?.回合 ?? 0),
+      );
+      if (!affordabilityWorldByRound.has(projectedRound)) {
+        affordabilityWorldByRound.set(
+          projectedRound,
+          Object.freeze({
+            ...state.world,
+            回合: projectedRound,
+          }),
+        );
+      }
+      const projectedWorld =
+        affordabilityWorldByRound.get(projectedRound);
+      const exactOutcomeBranches = [];
+      if (terminalProbability > 1e-12) {
+        exactOutcomeBranches.push(Object.freeze({
+          probability: terminalProbability,
+          terminalStatus: String(
+            terminal?.status || 'PROBABILISTIC',
+          ).trim() || 'PROBABILISTIC',
+          terminalResult: Object.freeze({
+            terminal: true,
+            status: String(
+              terminal?.status || 'PROBABILISTIC',
+            ).trim() || 'PROBABILISTIC',
+          }),
+          projectedWorld,
+          utilityHEPP: clamp(
+            expectedTerminalUtility /
+              Math.max(terminalProbability, 1e-12),
+            -100,
+            100,
+          ),
+          consumedBehaviorKeys: Object.freeze([
+            ...state.consumedBehaviorKeys,
+          ]),
+          newlyConsumedOpportunityIds: Object.freeze([]),
+          assignments: Object.freeze({}),
+          appliedEventIds: Object.freeze([]),
+          skippedEventIds: Object.freeze([]),
+        }));
+      }
+      if (ongoingProbability > 1e-12) {
+        exactOutcomeBranches.push(Object.freeze({
+          probability: ongoingProbability,
+          terminalStatus: 'ONGOING',
+          terminalResult: null,
+          projectedWorld,
+          utilityHEPP: ongoingUtilityHEPP,
+          consumedBehaviorKeys: Object.freeze([
+            ...state.consumedBehaviorKeys,
+          ]),
+          newlyConsumedOpportunityIds: Object.freeze([]),
+          assignments: Object.freeze({}),
+          appliedEventIds: Object.freeze([]),
+          skippedEventIds: Object.freeze([]),
+        }));
+      }
+      return Object.freeze({
+        conditionedRoute: route,
+        projectedWorld,
+        utilityHEPP: routeUtilityHEPP,
+        terminalStatus:
+          terminalProbability >= 1 - 1e-9
+            ? String(terminal?.status || 'PROBABILISTIC').trim() ||
+              'PROBABILISTIC'
+            : 'ONGOING',
+        terminalResult:
+          terminalProbability >= 1 - 1e-9
+            ? Object.freeze({
+                terminal: true,
+                status: String(
+                  terminal?.status || 'PROBABILISTIC',
+                ).trim() || 'PROBABILISTIC',
+              })
+            : null,
+        terminalProbability,
+        probabilisticStateUnresolved: false,
+        exactOutcomeBranches: Object.freeze(exactOutcomeBranches),
+        consumedBehaviorKeys: new Set(state.consumedBehaviorKeys),
+        consumedHealthWindowKeys:
+          new Set(state.consumedHealthWindowKeys),
+        newlyConsumedOpportunityIds: Object.freeze([]),
+        projectionMode: 'RESOURCE_AFFORDABILITY_ENVELOPE',
+      });
+    };
+    const cloneState = state => ({
+      balances: new Map(state.balances),
+      locks: new Set(state.locks),
+      consumedOpportunityIds: new Set(state.consumedOpportunityIds),
+      consumedBehaviorKeys: new Set(state.consumedBehaviorKeys),
+      consumedHealthWindowKeys: new Set(state.consumedHealthWindowKeys),
+      eventIndex: state.eventIndex,
+      world: state.world,
+      worldStateHash: state.worldStateHash,
+      terminalStatus: state.terminalStatus,
+      terminalResult: state.terminalResult,
+      probabilisticStateUnresolved: state.probabilisticStateUnresolved,
+    });
+    const affordabilityBalanceKeysByRow = new Map();
+    const affordabilityBalanceKeysForRow = rowIndex => {
+      if (affordabilityBalanceKeysByRow.has(rowIndex)) {
+        return affordabilityBalanceKeysByRow.get(rowIndex);
+      }
+      const keys = new Set();
+      futureRows.slice(rowIndex).forEach(row => {
+        routeCandidatesFor(row.ownerId).forEach(route => {
+          (route?.paymentDependencies || []).forEach(entry => {
+            const unitId = String(entry?.unitId || '').trim();
+            const resource = String(entry?.resource || '').trim();
+            if (unitId && resource) keys.add(resourceKey(unitId, resource));
+          });
+        });
+      });
+      const stored = Object.freeze([...keys].sort());
+      affordabilityBalanceKeysByRow.set(rowIndex, stored);
+      return stored;
+    };
+    const stateMemoKey = (rowIndex, state) => {
+      if (projectionScope === 'RESOURCE_AFFORDABILITY') {
+        const relevantBalanceKeys =
+          affordabilityBalanceKeysForRow(rowIndex);
+        const balanceRows = relevantBalanceKeys.map(key => [
+          key,
+          Number(state.balances.get(key) || 0),
+        ]);
+        const lockRows = relevantBalanceKeys.filter(key =>
+          state.locks.has(key)
+        );
+        const memoKey = [
+          'RESOURCE_AFFORDABILITY',
+          rowIndex,
+          state.eventIndex,
+          state.terminalStatus,
+          balanceRows.map(([key, value]) =>
+            `${key}:${Number(value).toFixed(8)}`
+          ).join('\u0001'),
+          lockRows.join('\u0001'),
+          [...state.consumedOpportunityIds].sort().join('\u0001'),
+        ].join('\u0002');
+        decisionMetrics.resourceSemanticMemoKeyCount += 1;
+        if (stageStateSignatures) {
+          const balancesHash = balanceRows.map(([key, value]) =>
+            `${key}:${Number(value).toFixed(8)}`
+          ).join('\u0001');
+          const consumedOpportunityHash =
+            [...state.consumedOpportunityIds].sort().join('\u0001');
+          const baseKeyWithoutBalances = [
+            rowIndex,
+            state.eventIndex,
+            state.terminalStatus,
+            lockRows.join('\u0001'),
+            consumedOpportunityHash,
+          ].join('\u0002');
+          stageStateSignatures.fullMemoKeys.add(memoKey);
+          stageStateSignatures.baseKeysWithoutBalances.add(
+            baseKeyWithoutBalances,
+          );
+          stageStateSignatures.worldStateHashes.add(
+            state.worldStateHash,
+          );
+          stageStateSignatures.balanceHashes.add(balancesHash);
+          stageStateSignatures.consumedOpportunityHashes.add(
+            consumedOpportunityHash,
+          );
+          stageStateSignatures.consumedBehaviorHashes.add('');
+          stageStateSignatures.consumedHealthWindowHashes.add('');
+          stageStateSignatures.eventIndexes.add(state.eventIndex);
+          if (!stageStateSignatures.balanceHashesByBaseKey.has(
+            baseKeyWithoutBalances,
+          )) {
+            stageStateSignatures.balanceHashesByBaseKey.set(
+              baseKeyWithoutBalances,
+              new Set(),
+            );
+          }
+          stageStateSignatures.balanceHashesByBaseKey
+            .get(baseKeyWithoutBalances)
+            .add(balancesHash);
+        }
+        return memoKey;
+      }
+      const worldUnits = preview.listUnits(state.world)
+        .map(entry => ({
+          unitId: preview.unitId(entry.unit),
+          hp: Number(preview.readHp(entry.unit).toFixed(8)),
+          alive: preview.isPhysicallyAlive(entry.unit),
+          capable: preview.isBattleCapable(entry.unit),
+          actionState: String(entry.unit?.状态?.行动 || '').trim(),
+          states: Object.entries(entry.unit?.状态效果 || {})
+            .filter(([, value]) => value && typeof value === 'object')
+            .map(([key, value]) => [
+              String(key || '').trim(),
+              String(value?.状态 || value?.状态名称 || '').trim(),
+              Number(value?.duration ?? value?.持续回合 ?? 0),
+              Number(value?.__previewApplicationProbability ?? 1),
+              preview.stableHash(value?.战斗效果 || {}),
+            ])
+            .sort(([left], [right]) => left.localeCompare(right)),
+        }))
+        .sort((left, right) =>
+          String(left.unitId || '').localeCompare(String(right.unitId || ''))
+        );
+      const balancesHash = preview.stableHash(
+        Object.fromEntries([...state.balances].sort(([left], [right]) =>
+          String(left).localeCompare(String(right))
+        )),
+      );
+      const consumedOpportunityHash = preview.stableHash(
+        [...state.consumedOpportunityIds].sort(),
+      );
+      const consumedBehaviorHash = preview.stableHash(
+        [...state.consumedBehaviorKeys].sort(),
+      );
+      const consumedHealthWindowHash = preview.stableHash(
+        [...state.consumedHealthWindowKeys].sort(),
+      );
+      const baseKeyWithoutBalances = [
+        rowIndex,
+        state.worldStateHash,
+        preview.stableHash([...state.locks].sort()),
+        consumedOpportunityHash,
+        consumedBehaviorHash,
+        consumedHealthWindowHash,
+        state.eventIndex,
+        state.terminalStatus,
+        state.probabilisticStateUnresolved === true ? '1' : '0',
+      ].join('\u0002');
+      const memoKey = [
+        r8ResourceWorldStateKey({
+          rowIndex,
+          timelineRevision: routeProjectionContextHash,
+          balances: state.balances,
+          locks: state.locks,
+          consumedOpportunityIds: state.consumedOpportunityIds,
+          consumedLifecycleEventIds: state.consumedHealthWindowKeys,
+          worldRevision: String(input?.worldRevision || '').trim(),
+          objectiveHash: preview.stableHash(objectiveContract),
+          worldStateHash: state.worldStateHash,
+          terminalStatus: state.terminalStatus,
+          probabilisticStateUnresolved:
+            state.probabilisticStateUnresolved === true,
+        }),
+        state.eventIndex,
+        [...state.consumedBehaviorKeys].sort().join('\u0001'),
+      ].join('\u0002');
+      if (stageStateSignatures) {
+        stageStateSignatures.fullMemoKeys.add(memoKey);
+        stageStateSignatures.baseKeysWithoutBalances.add(
+          baseKeyWithoutBalances,
+        );
+        stageStateSignatures.worldStateHashes.add(state.worldStateHash);
+        stageStateSignatures.balanceHashes.add(balancesHash);
+        stageStateSignatures.consumedOpportunityHashes.add(
+          consumedOpportunityHash,
+        );
+        stageStateSignatures.consumedBehaviorHashes.add(
+          consumedBehaviorHash,
+        );
+        stageStateSignatures.consumedHealthWindowHashes.add(
+          consumedHealthWindowHash,
+        );
+        stageStateSignatures.eventIndexes.add(state.eventIndex);
+        stageStateSignatures.healthStateHashes.add(preview.stableHash(
+          worldUnits.map(unit => [unit.unitId, unit.hp]),
+        ));
+        stageStateSignatures.capabilityStateHashes.add(preview.stableHash(
+          worldUnits.map(unit => [
+            unit.unitId,
+            unit.alive,
+            unit.capable,
+            unit.actionState,
+          ]),
+        ));
+        stageStateSignatures.effectStateHashes.add(preview.stableHash(
+          worldUnits.map(unit => [unit.unitId, unit.states]),
+        ));
+        if (!stageStateSignatures.worldHashesByRowIndex.has(rowIndex)) {
+          stageStateSignatures.worldHashesByRowIndex.set(
+            rowIndex,
+            new Set(),
+          );
+        }
+        stageStateSignatures.worldHashesByRowIndex
+          .get(rowIndex)
+          .add(state.worldStateHash);
+        if (!stageStateSignatures.balanceHashesByBaseKey.has(
+          baseKeyWithoutBalances,
+        )) {
+          stageStateSignatures.balanceHashesByBaseKey.set(
+            baseKeyWithoutBalances,
+            new Set(),
+          );
+        }
+        stageStateSignatures.balanceHashesByBaseKey
+          .get(baseKeyWithoutBalances)
+          .add(balancesHash);
+      }
+      return memoKey;
+    };
+    const initialState = {
+      balances: initialBalances,
+      locks: new Set(),
+      consumedOpportunityIds: new Set(),
+      consumedBehaviorKeys: new Set(),
+      consumedHealthWindowKeys: new Set(),
+      eventIndex: 0,
+      world: worldSnapshot,
+      worldStateHash: worldStateHash(worldSnapshot),
+      terminalStatus: 'ONGOING',
+      terminalResult: null,
+      probabilisticStateUnresolved: false,
+    };
+    let exploredStateCount = 1;
+    let memoHitCount = 0;
+    const diagnosticStateLimit = Math.max(
+      0,
+      Number(
+        globalThis?.process?.env?.BATTLE_R8_RESOURCE_PLAN_DIAGNOSTIC_LIMIT ||
+        0
+      ),
+    );
+    const diagnosticTrace =
+      globalThis?.process?.env?.BATTLE_R8_RESOURCE_PLAN_TRACE === '1';
+    let diagnosticTraceCount = 0;
+    if (diagnosticTrace) {
+      console.error('[r8-resource-plan:start]', JSON.stringify({
+        futureRowCount: futureRows.length,
+        unitIds: [...trackedUnitIds].sort(),
+        routeCounts: Object.fromEntries(
+          [...new Set(futureRows.map(row => row.ownerId))]
+            .sort()
+            .map(unitId => [unitId, routeCandidatesFor(unitId).length]),
+        ),
+      }));
+    }
+    const resultFromState = (state, fields = {}) => {
+      const rows = Object.freeze(fields.rows || []);
+      const stateTerminal =
+        String(fields.terminalStatus ?? state.terminalStatus ?? 'ONGOING') !==
+        'ONGOING';
+      const terminalProbability = clamp(
+        Number(
+          fields.terminalProbability ??
+          (stateTerminal ? 1 : 0)
+        ),
+        0,
+        1,
+      );
+      const ongoingProbability = clamp(
+        Number(fields.ongoingProbability ?? (1 - terminalProbability)),
+        0,
+        1,
+      );
+      const terminalExpectedUtilityHEPP = Number(
+        fields.terminalExpectedUtilityHEPP ??
+        (stateTerminal ? fields.cumulativeUtilityHEPP || 0 : 0)
+      );
+      const ongoingExpectedUtilityHEPP = Number(
+        fields.ongoingExpectedUtilityHEPP ??
+        (stateTerminal ? 0 : fields.cumulativeUtilityHEPP || 0)
+      );
+      const terminalStatus = String(
+        fields.terminalStatus ?? state.terminalStatus ?? 'ONGOING',
+      );
+      const terminalResult =
+        fields.terminalResult ?? state.terminalResult ?? null;
+      const terminalStep = Number.isFinite(fields.terminalStep)
+        ? fields.terminalStep
+        : null;
+      const probabilisticStateUnresolved =
+        fields.probabilisticStateUnresolved === true ||
+        state.probabilisticStateUnresolved === true;
+      const cumulativeUtilityHEPP = Number(
+        fields.cumulativeUtilityHEPP ??
+        terminalExpectedUtilityHEPP + ongoingExpectedUtilityHEPP
+      );
+      const branchPlans = Object.freeze(
+        fields.branchPlans || [Object.freeze({
+          probability: 1,
+          cumulativeUtilityHEPP,
+          terminalStatus,
+          terminalResult,
+          terminalStep,
+          finalState: state,
+          rows,
+          probabilisticStateUnresolved,
+          resourceWorldStateKey: stateMemoKey(futureRows.length, state),
+        })],
+      );
+      return Object.freeze({
+        cumulativeUtilityHEPP,
+        terminalExpectedUtilityHEPP,
+        ongoingExpectedUtilityHEPP,
+        terminalProbability,
+        ongoingProbability,
+        rows,
+        finalState: state,
+        terminalStatus,
+        terminalResult,
+        terminalStep,
+        probabilisticStateUnresolved,
+        resourceWorldStateKey: stateMemoKey(futureRows.length, state),
+        branchPlans,
+        utilitySequence: Object.freeze(rows.map(row =>
+          Number(row?.routeUtilityHEPP || 0)
+        )),
+        routeSequence: Object.freeze(rows.map(row =>
+          String(row?.selectedRouteKey || '')
+        )),
+      });
+    };
+    const resultFromBranchPlans = (branchPlans, fallbackState) => {
+      const merged = new Map();
+      branchPlans
+        .filter(branch => Number(branch?.probability || 0) > 1e-15)
+        .forEach(branch => {
+          const finalState = branch?.finalState || fallbackState;
+          const mergeKey = [
+            stateMemoKey(futureRows.length, finalState),
+            String(branch?.terminalStatus || 'ONGOING'),
+            Number.isFinite(branch?.terminalStep)
+              ? branch.terminalStep
+              : '',
+            Number(
+              Number(branch?.cumulativeUtilityHEPP || 0).toFixed(8),
+            ),
+            branch?.probabilisticStateUnresolved === true ? '1' : '0',
+          ].join('\u0003');
+          const current = merged.get(mergeKey);
+          const rows = Object.freeze(branch?.rows || []);
+          if (current) {
+            current.probability += Number(branch.probability);
+            const currentRouteSequence = current.rows
+              .map(row => String(row?.selectedRouteKey || ''))
+              .join('\u0001');
+            const candidateRouteSequence = rows
+              .map(row => String(row?.selectedRouteKey || ''))
+              .join('\u0001');
+            if (candidateRouteSequence.localeCompare(currentRouteSequence) < 0) {
+              current.rows = rows;
+              current.terminalResult = branch?.terminalResult || null;
+            }
+            return;
+          }
+          merged.set(mergeKey, {
+            ...branch,
+            probability: Number(branch.probability),
+            rows,
+          });
+        });
+      const compacted = [...merged.values()];
+      if (!compacted.length) return resultFromState(fallbackState);
+      if (compacted.length > 4096) {
+        throw new Error(
+          `RESOURCE_OPPORTUNITY_PROBABILITY_BRANCH_BUDGET_EXCEEDED:${compacted.length}`,
+        );
+      }
+      const totalProbability = compacted.reduce(
+        (sum, branch) => sum + branch.probability,
+        0,
+      );
+      if (Math.abs(totalProbability - 1) > 1e-8) {
+        throw new Error(
+          `RESOURCE_OPPORTUNITY_PROBABILITY_MASS_INVALID:${totalProbability}`,
+        );
+      }
+      const weighted = compacted.map(branch => Object.freeze({
+        ...branch,
+        probability: branch.probability / Math.max(1e-15, totalProbability),
+      }));
+      const terminalBranches = weighted.filter(branch =>
+        String(branch?.terminalStatus || 'ONGOING') !== 'ONGOING'
+      );
+      const terminalProbability = clamp(
+        terminalBranches.reduce(
+          (sum, branch) => sum + branch.probability,
+          0,
+        ),
+        0,
+        1,
+      );
+      const ongoingProbability = clamp(1 - terminalProbability, 0, 1);
+      const terminalExpectedUtilityHEPP = terminalBranches.reduce(
+        (sum, branch) =>
+          sum + branch.probability *
+            Number(branch?.cumulativeUtilityHEPP || 0),
+        0,
+      );
+      const ongoingExpectedUtilityHEPP = weighted
+        .filter(branch =>
+          String(branch?.terminalStatus || 'ONGOING') === 'ONGOING'
+        )
+        .reduce(
+          (sum, branch) =>
+            sum + branch.probability *
+              Number(branch?.cumulativeUtilityHEPP || 0),
+          0,
+        );
+      const terminalStatuses = new Set(
+        terminalBranches.map(branch =>
+          String(branch?.terminalStatus || '').trim()
+        ),
+      );
+      const terminalStatus =
+        terminalProbability >= 1 - 1e-9 && terminalStatuses.size === 1
+          ? [...terminalStatuses][0]
+          : terminalProbability >= 1 - 1e-9
+            ? 'PROBABILISTIC'
+          : 'ONGOING';
+      const representative = weighted.slice().sort((left, right) =>
+        right.probability - left.probability ||
+        right.cumulativeUtilityHEPP - left.cumulativeUtilityHEPP ||
+        left.rows
+          .map(row => String(row?.selectedRouteKey || ''))
+          .join('\u0001')
+          .localeCompare(
+            right.rows
+              .map(row => String(row?.selectedRouteKey || ''))
+              .join('\u0001'),
+        )
+      )[0];
+      return resultFromState(
+        representative?.finalState || fallbackState,
+        {
+          cumulativeUtilityHEPP:
+            terminalExpectedUtilityHEPP + ongoingExpectedUtilityHEPP,
+          terminalExpectedUtilityHEPP,
+          ongoingExpectedUtilityHEPP,
+          terminalProbability,
+          ongoingProbability,
+          rows: representative?.rows || [],
+          terminalStatus,
+          terminalResult:
+            terminalStatus === 'ONGOING'
+              ? null
+              : representative?.terminalResult || null,
+          terminalStep:
+            terminalProbability >= 1 - 1e-9
+              ? Math.min(...terminalBranches.map(branch =>
+                  Number.isFinite(branch?.terminalStep)
+                    ? branch.terminalStep
+                    : Number.POSITIVE_INFINITY
+                ))
+              : null,
+          probabilisticStateUnresolved: weighted.some(branch =>
+            branch?.probabilisticStateUnresolved === true
+          ),
+          branchPlans: Object.freeze(weighted),
+        },
+      );
+    };
+    const compareUtilitySequence = (left = [], right = []) => {
+      const length = Math.max(left.length, right.length);
+      for (let index = 0; index < length; index += 1) {
+        const difference =
+          Number(right[index] || 0) - Number(left[index] || 0);
+        if (Math.abs(difference) > 1e-9) return difference;
+      }
+      return 0;
+    };
+    const compareRouteSequence = (left = [], right = []) => {
+      const length = Math.max(left.length, right.length);
+      for (let index = 0; index < length; index += 1) {
+        const difference = String(left[index] || '').localeCompare(
+          String(right[index] || ''),
+        );
+        if (difference) return difference;
+      }
+      return 0;
+    };
+    const resultIsBetter = (left, right) =>
+      !right ||
+      left.cumulativeUtilityHEPP > right.cumulativeUtilityHEPP + 1e-9 ||
+      (
+        Math.abs(
+          left.cumulativeUtilityHEPP - right.cumulativeUtilityHEPP,
+        ) <= 1e-9 &&
+        (
+          Number(left.terminalStep ?? Number.POSITIVE_INFINITY) <
+            Number(right.terminalStep ?? Number.POSITIVE_INFINITY) ||
+          (
+            Number(left.terminalStep ?? Number.POSITIVE_INFINITY) ===
+              Number(right.terminalStep ?? Number.POSITIVE_INFINITY) &&
+            (
+              compareUtilitySequence(
+                left.utilitySequence,
+                right.utilitySequence,
+              ) < 0 ||
+              (
+                compareUtilitySequence(
+                  left.utilitySequence,
+                  right.utilitySequence,
+                ) === 0 &&
+                compareRouteSequence(
+                  left.routeSequence,
+                  right.routeSequence,
+                ) < 0
+              )
+            )
+          )
+        )
+      );
+    const memo = new Map();
+    const solve = (rowIndex, sourceState) => {
+      if (stageTrace) stageMetrics.solveCalls += 1;
+      if (
+        rowIndex >= futureRows.length ||
+        sourceState.terminalStatus !== 'ONGOING'
+      ) {
+        return resultFromState(sourceState);
+      }
+      const memoKey = stateMemoKey(rowIndex, sourceState);
+      const cached = memo.get(memoKey);
+      if (cached) {
+        memoHitCount += 1;
+        if (stageTrace) stageMetrics.memoHits += 1;
+        return cached;
+      }
+      const row = futureRows[rowIndex];
+      const marker = {
+        round: row.round,
+        opportunitySequence: row.sequence,
+        actionSequence: 1,
+        phasePriority: 40,
+        effectSequence: 0,
+        eventId: '',
+      };
+      const preparedState = cloneStateMeasured(sourceState);
+      applyEventsBefore(preparedState, marker);
+      if (
+        preparedState.consumedOpportunityIds.has(
+          String(row?.id || '').trim(),
+        )
+      ) {
+        const skippedRow = Object.freeze({
+            opportunityId: row.id,
+            opportunityRound: row.round,
+            opportunitySequence: row.sequence,
+            ownerId: row.ownerId,
+            selectedRouteKey: '',
+            selectedCandidateId: '',
+            routeUtilityHEPP: 0,
+            consumedByFusion: true,
+            balancesBefore: Object.freeze(
+              Object.fromEntries(preparedState.balances),
+            ),
+            balancesAfter: Object.freeze(
+              Object.fromEntries(preparedState.balances),
+            ),
+            lockedResources: Object.freeze([...preparedState.locks].sort()),
+          });
+        const suffix = solve(rowIndex + 1, preparedState);
+        const result = resultFromBranchPlans(
+          suffix.branchPlans.map(branch => Object.freeze({
+            ...branch,
+            rows: Object.freeze([skippedRow, ...(branch?.rows || [])]),
+          })),
+          preparedState,
+        );
+        memo.set(memoKey, result);
+        return result;
+      }
+      const choices = routeCandidatesFor(row.ownerId).filter(route =>
+        routeTargetsAvailable(preparedState, route) &&
+        routePayable(preparedState, route, row)
+      );
+      let best = null;
+      choices.forEach(route => {
+          if (stageTrace) stageMetrics.routeChoices += 1;
+          const next = cloneStateMeasured(preparedState);
+          const balancesBefore = Object.fromEntries(next.balances);
+          payRoute(next, route, row);
+          const projectionStartedAt = diagnosticTrace
+            ? Date.now()
+            : 0;
+          if (diagnosticTrace && diagnosticTraceCount < 20) {
+            console.error('[r8-resource-plan:projection-start]', JSON.stringify({
+              exploredStateCount,
+              rowId: row?.id || '',
+              candidateId: route?.candidateId || '',
+              routeKey: route?.routeKey || '',
+              healthCount: route?.healthTrajectoryByTarget?.length || 0,
+              actionPoolDeltaCount:
+                route?.intrinsicActionPoolDeltas?.length || 0,
+            }));
+          }
+          const projection = measureStage(
+            'projectionMs',
+            () => projectionScope === 'RESOURCE_AFFORDABILITY'
+              ? resourceAffordabilityProjection(next, route, row)
+              : routeStateProjection(next, route, row),
+          );
+          if (stageTrace) stageMetrics.projectionCalls += 1;
+          if (diagnosticTrace && diagnosticTraceCount < 20) {
+            console.error('[r8-resource-plan:projection-end]', JSON.stringify({
+              exploredStateCount,
+              rowId: row?.id || '',
+              candidateId: route?.candidateId || '',
+              durationMs: Date.now() - projectionStartedAt,
+            }));
+            diagnosticTraceCount += 1;
+          }
+          const utilityHEPP = projection.utilityHEPP;
+          const paidState = cloneStateMeasured(next);
+          next.world = projection.projectedWorld;
+          if (projectionScope === 'RESOURCE_AFFORDABILITY') {
+            const projectedRound = Math.max(
+              0,
+              Number(next.world?.回合 || 0),
+            );
+            if (!affordabilityWorldHashByRound.has(projectedRound)) {
+              affordabilityWorldHashByRound.set(
+                projectedRound,
+                worldStateHashMeasured(next.world),
+              );
+            }
+            next.worldStateHash =
+              affordabilityWorldHashByRound.get(projectedRound);
+          } else {
+            next.worldStateHash = worldStateHashMeasured(next.world);
+          }
+          next.terminalStatus = projection.terminalStatus;
+          next.terminalResult = projection.terminalResult;
+          next.consumedBehaviorKeys = projection.consumedBehaviorKeys;
+          next.consumedHealthWindowKeys =
+            projection.consumedHealthWindowKeys;
+          projection.newlyConsumedOpportunityIds.forEach(opportunityId => {
+            next.consumedOpportunityIds.add(opportunityId);
+          });
+          next.probabilisticStateUnresolved =
+            projection.probabilisticStateUnresolved;
+          const selectedRow = Object.freeze({
+            opportunityId: row.id,
+            opportunityRound: row.round,
+            opportunitySequence: row.sequence,
+            ownerId: row.ownerId,
+            selectedRouteKey: String(route?.routeKey || ''),
+            selectedCandidateId: String(route?.candidateId || ''),
+            routeUtilityHEPP: utilityHEPP,
+            conditionedObjectiveUtilityHEPP: Number(
+              projection.conditionedRoute?.objectiveRouteUtilityHEPP || 0,
+            ),
+            worldStateHashAfter: next.worldStateHash,
+            hpAfter: finalHpByUnit(next.world),
+            terminalStatus: next.terminalStatus,
+            terminalProbability: projection.terminalProbability,
+            probabilisticStateUnresolved:
+              next.probabilisticStateUnresolved,
+            consumedBehaviorKeys: Object.freeze([
+              ...next.consumedBehaviorKeys,
+            ].sort()),
+            consumedHealthWindowKeys: Object.freeze([
+              ...next.consumedHealthWindowKeys,
+            ].sort()),
+            projectionMode: projection.projectionMode,
+            balancesBefore: Object.freeze(balancesBefore),
+            balancesAfter: Object.freeze(Object.fromEntries(next.balances)),
+            lockedResources: Object.freeze([...next.locks].sort()),
+          });
+          exploredStateCount += 1;
+          if (
+            diagnosticStateLimit > 0 &&
+            exploredStateCount > diagnosticStateLimit
+          ) {
+            throw new Error([
+              'RESOURCE_OPPORTUNITY_PLAN_DIAGNOSTIC_LIMIT',
+              diagnosticStateLimit,
+              futureRows.length,
+              row?.id || '',
+              memo.size,
+              routeCandidatesFor(row.ownerId).length,
+            ].join(':'));
+          }
+          const transitionOutcomes = projection.exactOutcomeBranches?.length
+            ? projection.exactOutcomeBranches
+            : [Object.freeze({
+                probability: 1,
+                terminalStatus: projection.terminalStatus,
+                terminalResult: projection.terminalResult,
+                projectedWorld: projection.projectedWorld,
+                utilityHEPP,
+              })];
+          const policyBranches = [];
+          transitionOutcomes.forEach(outcome => {
+            const branchState = cloneStateMeasured(paidState);
+            if (
+              Object.hasOwn(outcome || {}, 'finalResources') &&
+              outcome?.finalResources &&
+              typeof outcome.finalResources === 'object'
+            ) {
+              branchState.balances = new Map(
+                Object.entries(outcome.finalResources).map(([key, value]) => [
+                  key,
+                  Math.max(0, Number(value || 0)),
+                ]),
+              );
+            }
+            if (
+              Object.hasOwn(outcome || {}, 'lockedResources') &&
+              Array.isArray(outcome.lockedResources)
+            ) {
+              branchState.locks = new Set(
+                outcome.lockedResources
+                  .map(value => String(value || '').trim())
+                  .filter(Boolean),
+              );
+            }
+            branchState.world = outcome.projectedWorld;
+            branchState.worldStateHash =
+              outcome.projectedWorld === projection.projectedWorld
+                ? next.worldStateHash
+                : worldStateHashMeasured(branchState.world);
+            branchState.terminalStatus = String(
+              outcome?.terminalStatus || 'ONGOING',
+            );
+            branchState.terminalResult = outcome?.terminalResult || null;
+            branchState.consumedBehaviorKeys =
+              new Set(
+                outcome?.consumedBehaviorKeys ||
+                projection.consumedBehaviorKeys,
+              );
+            branchState.consumedHealthWindowKeys =
+              new Set(projection.consumedHealthWindowKeys);
+            (
+              outcome?.newlyConsumedOpportunityIds ||
+              projection.newlyConsumedOpportunityIds
+            ).forEach(opportunityId => {
+              branchState.consumedOpportunityIds.add(opportunityId);
+            });
+            branchState.probabilisticStateUnresolved =
+              projection.probabilisticStateUnresolved;
+            const branchRow = Object.freeze({
+              ...selectedRow,
+              branchProbability: Number(outcome?.probability || 0),
+              branchUtilityHEPP: Number(outcome?.utilityHEPP || 0),
+              worldStateHashAfter: branchState.worldStateHash,
+              hpAfter: finalHpByUnit(branchState.world),
+              terminalStatus: branchState.terminalStatus,
+              balancesAfter: Object.freeze(
+                Object.fromEntries(branchState.balances),
+              ),
+              lockedResources: Object.freeze([
+                ...branchState.locks,
+              ].sort()),
+              assignments: Object.freeze(
+                cloneValue(outcome?.assignments || {}),
+              ),
+              consumedBehaviorKeys: Object.freeze([
+                ...branchState.consumedBehaviorKeys,
+              ].sort()),
+              consumedOpportunityIds: Object.freeze([
+                ...branchState.consumedOpportunityIds,
+              ].sort()),
+              appliedEventIds: Object.freeze([
+                ...(outcome?.appliedEventIds || []),
+              ]),
+              skippedEventIds: Object.freeze([
+                ...(outcome?.skippedEventIds || []),
+              ]),
+            });
+            const suffix = branchState.terminalStatus === 'ONGOING'
+              ? (() => {
+                  if (stageTrace) stageMetrics.suffixSolveCalls += 1;
+                  return solve(rowIndex + 1, branchState);
+                })()
+              : resultFromState(branchState, {
+                  cumulativeUtilityHEPP: Number(
+                    outcome?.utilityHEPP || 0,
+                  ),
+                  terminalExpectedUtilityHEPP: Number(
+                    outcome?.utilityHEPP || 0,
+                  ),
+                  ongoingExpectedUtilityHEPP: 0,
+                  terminalProbability: 1,
+                  ongoingProbability: 0,
+                  terminalStatus: branchState.terminalStatus,
+                  terminalResult: branchState.terminalResult,
+                  terminalStep: rowIndex,
+                });
+            suffix.branchPlans.forEach(suffixBranch => {
+              const suffixTerminal =
+                String(suffixBranch?.terminalStatus || 'ONGOING') !==
+                'ONGOING';
+              policyBranches.push(Object.freeze({
+                probability:
+                  Number(outcome?.probability || 0) *
+                  Number(suffixBranch?.probability || 0),
+                cumulativeUtilityHEPP: suffixTerminal
+                  ? Number(suffixBranch?.cumulativeUtilityHEPP || 0)
+                  : clamp(
+                      Number(outcome?.utilityHEPP || 0) +
+                      Number(suffixBranch?.cumulativeUtilityHEPP || 0),
+                      -99,
+                      99,
+                    ),
+                terminalStatus: String(
+                  suffixBranch?.terminalStatus || 'ONGOING',
+                ),
+                terminalResult: suffixBranch?.terminalResult || null,
+                terminalStep: suffixBranch?.terminalStep ?? null,
+                finalState: suffixBranch?.finalState || suffix.finalState,
+                rows: Object.freeze([
+                  branchRow,
+                  ...(suffixBranch?.rows || []),
+                ]),
+                probabilisticStateUnresolved:
+                  projection.probabilisticStateUnresolved === true ||
+                  suffixBranch?.probabilisticStateUnresolved === true,
+              }));
+            });
+          });
+          const candidate = resultFromBranchPlans(policyBranches, next);
+          if (resultIsBetter(candidate, best)) best = candidate;
+        });
+      const result = best || resultFromState(preparedState);
+      memo.set(memoKey, result);
+      return result;
+    };
+    const solveStartedAt = stageTrace ? stageClockNow() : 0;
+    const selectedResult = solve(0, initialState);
+    if (stageTrace) {
+      stageMetrics.solveMs += stageClockNow() - solveStartedAt;
+    }
+    const selected = selectedResult.finalState || initialState;
+    if (selectedResult.probabilisticStateUnresolved === true) {
+      throw new Error(
+        'RESOURCE_OPPORTUNITY_PROBABILITY_BRANCH_BUDGET_EXCEEDED:UNRESOLVED_SELECTED_BRANCH',
+      );
+    }
+    decisionMetrics.resourceOpportunityPlanMemoHits += memoHitCount;
+    decisionMetrics.resourceOpportunityPlanExpandedStates += exploredStateCount;
+    const result = Object.freeze({
+      cumulativeUtilityHEPP: clamp(
+        Number(selectedResult.cumulativeUtilityHEPP || 0),
+        -100,
+        100,
+      ),
+      rows: Object.freeze(selectedResult.rows || []),
+      finalResources: Object.freeze(Object.fromEntries(selected.balances)),
+      finalHpByUnit: finalHpByUnit(selected.world || worldSnapshot),
+      terminalStatus: String(
+        selectedResult.terminalStatus || selected.terminalStatus || 'ONGOING',
+      ),
+      terminalResult:
+        String(selectedResult.terminalStatus || 'ONGOING') === 'ONGOING'
+          ? null
+          : selectedResult.terminalResult || selected.terminalResult || null,
+      terminalStep: Number.isFinite(selectedResult.terminalStep)
+        ? selectedResult.terminalStep
+        : null,
+      terminalProbability: Number(
+        selectedResult.terminalProbability || 0,
+      ),
+      ongoingProbability: Number(
+        selectedResult.ongoingProbability || 0,
+      ),
+      probabilisticStateUnresolved:
+        selectedResult.probabilisticStateUnresolved === true,
+      probabilityProjectionMode:
+        selectedResult.branchPlans.length > 1
+          ? 'EXACT_PROBABILISTIC_BRANCH_STATE'
+          : 'DETERMINISTIC_STATE',
+      branchPlanCount: selectedResult.branchPlans.length,
+      branchPlanSummary: Object.freeze(
+        selectedResult.branchPlans.map(branch => Object.freeze({
+          probability: Number(branch?.probability || 0),
+          cumulativeUtilityHEPP: Number(
+            branch?.cumulativeUtilityHEPP || 0,
+          ),
+          terminalStatus: String(
+            branch?.terminalStatus || 'ONGOING',
+          ),
+          terminalStep: Number.isFinite(branch?.terminalStep)
+            ? branch.terminalStep
+            : null,
+          finalHpByUnit: finalHpByUnit(
+            branch?.finalState?.world || worldSnapshot,
+          ),
+          worldStateHash: String(
+            branch?.finalState?.worldStateHash || '',
+          ),
+          selectedRouteKeys: Object.freeze(
+            (branch?.rows || []).map(row =>
+              String(row?.selectedRouteKey || '')
+            ),
+          ),
+          consumedOpportunityIds: Object.freeze([
+            ...(branch?.finalState?.consumedOpportunityIds || []),
+          ].sort()),
+          finalResources: Object.freeze(
+            Object.fromEntries(
+              branch?.finalState?.balances || [],
+            ),
+          ),
+          lockedResources: Object.freeze([
+            ...(branch?.finalState?.locks || []),
+          ].sort()),
+          assignments: Object.freeze(
+            cloneValue(
+              (branch?.rows || []).flatMap(row =>
+                Object.entries(row?.assignments || {})
+              ).reduce((result, [key, value]) => {
+                result[key] = value;
+                return result;
+              }, {}),
+            ),
+          ),
+          appliedEventIds: Object.freeze(
+            (branch?.rows || []).flatMap(row =>
+              row?.appliedEventIds || []
+            ),
+          ),
+          skippedEventIds: Object.freeze(
+            (branch?.rows || []).flatMap(row =>
+              row?.skippedEventIds || []
+            ),
+          ),
+          paymentFailures: Object.freeze(
+            (branch?.rows || []).flatMap(row =>
+              row?.paymentFailures || []
+            ),
+          ),
+        })),
+      ),
+      finalWorldStateHash:
+        selected.worldStateHash || worldStateHash(selected.world || worldSnapshot),
+      consumedBehaviorKeys: Object.freeze([
+        ...(selected.consumedBehaviorKeys || []),
+      ].sort()),
+      consumedHealthWindowKeys: Object.freeze([
+        ...(selected.consumedHealthWindowKeys || []),
+      ].sort()),
+      exploredStateCount,
+      memoizedStateCount: memo.size,
+      memoHitCount,
+      frontierStateCount: 1,
+    });
+    if (planCacheKey) {
+      r8ResourceOpportunityPlanCache.set(planCacheKey, result);
+      if (r8ResourceOpportunityPlanCache.size > 2048) {
+        r8ResourceOpportunityPlanCache.delete(
+          r8ResourceOpportunityPlanCache.keys().next().value,
+        );
+      }
+    }
+    if (
+      globalThis?.process?.env
+        ?.BATTLE_R8_RESOURCE_PLAN_TRACE_SUMMARY === '1'
+    ) {
+      console.error('[r8-resource-plan:summary]', JSON.stringify({
+        unitIds: [...trackedUnitIds].sort(),
+        worldStateHash: worldStateHash(worldSnapshot),
+        futureRowCount: futureRows.length,
+        futureRows: futureRows.map(row => ({
+          id: row.id,
+          ownerId: row.ownerId,
+          round: row.round,
+          sequence: row.sequence,
+          kind: row.kind,
+        })),
+        routeCounts: Object.fromEntries(
+          [...new Set(futureRows.map(row => row.ownerId))]
+            .sort()
+            .map(unitId => [unitId, routeCandidatesFor(unitId).length]),
+        ),
+        routeProfiles: Object.fromEntries(
+          [...new Set(futureRows.map(row => row.ownerId))]
+            .sort()
+            .map(unitId => [
+              unitId,
+              routeCandidatesFor(unitId).map(route => ({
+                routeKey: String(route?.routeKey || ''),
+                candidateId: String(route?.candidateId || ''),
+                utilityHEPP: Number(routeSelectionBenefit(route) || 0),
+                paymentDependencies:
+                  route?.paymentDependencies || [],
+                healthTrajectoryByTarget:
+                  route?.healthTrajectoryByTarget || [],
+              })),
+            ]),
+        ),
+        exploredStateCount,
+        memoizedStateCount: memo.size,
+        memoHitCount,
+        cumulativeUtilityHEPP: result.cumulativeUtilityHEPP,
+        planCacheKey,
+        planCacheComponents: planCacheComponents
+          ? {
+              worldDependencyHash:
+                planCacheComponents.worldDependencyHash,
+              rawRouteCatalogHash,
+              rawFullRoutesHash,
+              resourceRouteSemanticHash:
+                planCacheComponents.resourceRouteSemanticHash,
+              objectiveHash: preview.stableHash(
+                planCacheComponents.objectiveContract,
+              ),
+              actionOpportunityHash: preview.stableHash(
+                planCacheComponents.actionOpportunity,
+              ),
+              opportunitySnapshotHash: preview.stableHash(
+                planCacheComponents.opportunitySnapshot,
+              ),
+              scheduledEventsHash: preview.stableHash(
+                planCacheComponents.scheduledEvents,
+              ),
+              resourceTimelineHash: preview.stableHash(
+                planCacheComponents.resourceTimeline,
+              ),
+            }
+          : null,
+        ...(stageTrace
+          ? {
+              stageMetrics: Object.fromEntries(
+                Object.entries(stageMetrics).map(([key, value]) => [
+                  key,
+                  typeof value === 'number'
+                    ? Number(value.toFixed(3))
+                    : value,
+                ]),
+              ),
+              stateSignatureSummary: {
+                uniqueFullMemoKeys:
+                  stageStateSignatures.fullMemoKeys.size,
+                uniqueBaseKeysWithoutBalances:
+                  stageStateSignatures.baseKeysWithoutBalances.size,
+                uniqueWorldStateHashes:
+                  stageStateSignatures.worldStateHashes.size,
+                uniqueBalanceHashes:
+                  stageStateSignatures.balanceHashes.size,
+                uniqueConsumedOpportunityHashes:
+                  stageStateSignatures.consumedOpportunityHashes.size,
+                uniqueConsumedBehaviorHashes:
+                  stageStateSignatures.consumedBehaviorHashes.size,
+                uniqueConsumedHealthWindowHashes:
+                  stageStateSignatures.consumedHealthWindowHashes.size,
+                uniqueEventIndexes:
+                  stageStateSignatures.eventIndexes.size,
+                uniqueHealthStateHashes:
+                  stageStateSignatures.healthStateHashes.size,
+                uniqueCapabilityStateHashes:
+                  stageStateSignatures.capabilityStateHashes.size,
+                uniqueEffectStateHashes:
+                  stageStateSignatures.effectStateHashes.size,
+                worldVariantsByRowIndex: Object.fromEntries(
+                  [...stageStateSignatures.worldHashesByRowIndex.entries()]
+                    .sort(([left], [right]) => left - right)
+                    .map(([rowIndex, values]) => [
+                      rowIndex,
+                      values.size,
+                    ]),
+                ),
+                maxBalanceVariantsPerBaseKey: Math.max(
+                  0,
+                  ...[...stageStateSignatures.balanceHashesByBaseKey.values()]
+                    .map(values => values.size),
+                ),
+              },
+            }
+          : {}),
+      }));
+    }
+    return result;
+  }
+
+  function r8BuildTargetPressurePlan(input = {}) {
+    const worldSnapshot = input?.worldSnapshot || {};
+    const actorSide = String(input?.actorSide || '').trim();
+    const routeCatalog = input?.routeCatalog || {};
+    const fullRoutesByUnit = input?.fullRoutesByUnit || {};
+    const futureRows = r8EvaluationFutureOpportunityRows(input);
+    const blockedOpportunityIds = new Set(
+      (Array.isArray(input?.blockedOpportunityIds) ? input.blockedOpportunityIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const captureRows = input?.captureRows !== false;
+    const initialRound = Math.max(
+      0,
+      Number(input?.actionOpportunity?.round ?? worldSnapshot?.回合 ?? 0),
+    );
+    let activePlanRound = initialRound;
+    const hpByUnit = new Map();
+    const hpBranchesByUnit = new Map();
+    const resourcesByUnit = new Map();
+    worldEntries(worldSnapshot).forEach(entry => {
+      const unitId = preview.unitId(entry.unit);
+      if (!unitId) return;
+      hpByUnit.set(
+        unitId,
+        100 * preview.readHp(entry.unit) / Math.max(1, preview.readHpMax(entry.unit)),
+      );
+      const stateShieldLayers = Object.entries(entry.unit?.状态效果 || {})
+        .map(([stateKey, state]) => {
+          const value = Math.max(0, Number(state?.shield_value || 0));
+          const duration = Math.max(
+            1,
+            Number(state?.duration ?? state?.持续回合 ?? state?.剩余回合 ?? 1),
+          );
+          return {
+            layerId: String(stateKey || `state-shield:${unitId}`),
+            valuePP: 100 * value / Math.max(1, preview.readHpMax(entry.unit)),
+            expiresAtRound: initialRound + duration - 1,
+          };
+        })
+        .filter(layer => layer.valuePP > 1e-9);
+      const directShieldPP =
+        100 * preview.readShield(entry.unit) / Math.max(1, preview.readHpMax(entry.unit));
+      const shieldLayers = stateShieldLayers.length
+        ? stateShieldLayers
+        : directShieldPP > 1e-9
+          ? [{
+              layerId: `direct-shield:${unitId}`,
+              valuePP: directShieldPP,
+              expiresAtRound: Number.POSITIVE_INFINITY,
+            }]
+          : [];
+      hpBranchesByUnit.set(unitId, Object.freeze([Object.freeze({
+        probability: 1,
+        hpPP: 100 * preview.readHp(entry.unit) / Math.max(1, preview.readHpMax(entry.unit)),
+        shieldPP: shieldLayers.reduce(
+          (sum, layer) => sum + Number(layer.valuePP || 0),
+          0,
+        ),
+        shieldLayers: deepFreeze(shieldLayers),
+      })]));
+      resourcesByUnit.set(unitId, new Map(
+        ['魂力', '精神力', '体力'].map(resource => [
+          resource,
+          Math.max(0, preview.readResource(entry.unit, resource)),
+        ]),
+      ));
+    });
+    Object.entries(input?.initialHpOverrides || {}).forEach(([unitId, value]) => {
+      if (hpByUnit.has(unitId) && Number.isFinite(Number(value))) {
+        const hpPP = clamp(Number(value), 0, 100);
+        hpByUnit.set(unitId, hpPP);
+        hpBranchesByUnit.set(unitId, Object.freeze([Object.freeze({
+          probability: 1,
+          hpPP,
+          shieldPP: Number(
+            hpBranchesByUnit.get(unitId)?.[0]?.shieldPP || 0
+          ),
+          shieldLayers: deepFreeze(
+            hpBranchesByUnit.get(unitId)?.[0]?.shieldLayers || []
+          ),
+        })]));
+      }
+    });
+    const capableProbability = unitId =>
+      (hpBranchesByUnit.get(unitId) || []).reduce(
+        (sum, branch) =>
+          sum + (Number(branch?.hpPP || 0) > 1e-9
+            ? Number(branch?.probability || 0)
+            : 0),
+        0,
+      );
+    const expectedHpPP = unitId =>
+      (hpBranchesByUnit.get(unitId) || []).reduce(
+        (sum, branch) =>
+          sum + Number(branch?.probability || 0) * Number(branch?.hpPP || 0),
+        0,
+      );
+    const expectedShieldPP = unitId =>
+      (hpBranchesByUnit.get(unitId) || []).reduce(
+        (sum, branch) =>
+          sum + Number(branch?.probability || 0) * Number(branch?.shieldPP || 0),
+        0,
+      );
+    const materializeShieldRound = round => {
+      const nextRound = Math.max(0, Number(round || 0));
+      if (nextRound <= activePlanRound) return;
+      activePlanRound = nextRound;
+      hpBranchesByUnit.forEach((branches, unitId) => {
+        const merged = new Map();
+        branches.forEach(branch => {
+          const shieldLayers = (branch?.shieldLayers || []).filter(layer =>
+            !Number.isFinite(Number(layer?.expiresAtRound)) ||
+            Number(layer.expiresAtRound) >= nextRound
+          );
+          const shieldPP = shieldLayers.reduce(
+            (sum, layer) => sum + Math.max(0, Number(layer?.valuePP || 0)),
+            0,
+          );
+          const hpPP = Number(Number(branch?.hpPP || 0).toFixed(8));
+          const layerKey = shieldLayers.map(layer => [
+            String(layer?.layerId || ''),
+            Number(Number(layer?.valuePP || 0).toFixed(8)),
+            Number.isFinite(Number(layer?.expiresAtRound))
+              ? Number(layer.expiresAtRound)
+              : 'INF',
+          ]);
+          const key = JSON.stringify([hpPP, Number(shieldPP.toFixed(8)), layerKey]);
+          merged.set(
+            key,
+            Number(merged.get(key) || 0) + Number(branch?.probability || 0),
+          );
+        });
+        hpBranchesByUnit.set(unitId, Object.freeze(
+          [...merged.entries()].map(([key, probability]) => {
+            const [hpPP, shieldPP, layerKey] = JSON.parse(key);
+            return Object.freeze({
+              probability,
+              hpPP,
+              shieldPP,
+              shieldLayers: deepFreeze(layerKey.map(
+                ([layerId, valuePP, expiresAtRound]) => ({
+                  layerId,
+                  valuePP,
+                  expiresAtRound: expiresAtRound === 'INF'
+                    ? Number.POSITIVE_INFINITY
+                    : Number(expiresAtRound),
+                }),
+              )),
+            });
+          }),
+        ));
+      });
+    };
+    const applyRouteToTarget = (route, targetId, executionProbability = 1) => {
+      const current = hpBranchesByUnit.get(targetId) || [];
+      const merged = new Map();
+      current.forEach(branch => {
+        const branchProbability = Number(branch?.probability || 0);
+        const noExecutionProbability =
+          branchProbability * (1 - clamp(executionProbability, 0, 1));
+        if (noExecutionProbability > 1e-15) {
+          const hpPP = Number(Number(branch?.hpPP || 0).toFixed(8));
+          const shieldPP = Number(Number(branch?.shieldPP || 0).toFixed(8));
+          const layerKey = (branch?.shieldLayers || []).map(layer => [
+            String(layer?.layerId || ''),
+            Number(Number(layer?.valuePP || 0).toFixed(8)),
+            Number.isFinite(Number(layer?.expiresAtRound))
+              ? Number(layer.expiresAtRound)
+              : 'INF',
+          ]);
+          const key = JSON.stringify([hpPP, shieldPP, layerKey]);
+          merged.set(key, Number(merged.get(key) || 0) + noExecutionProbability);
+        }
+        r8TargetHealthBranchesAfterRoute(
+          route,
+          targetId,
+          Number(branch?.hpPP || 0),
+          Number(branch?.shieldPP || 0),
+          branch?.shieldLayers || [],
+          activePlanRound,
+        ).forEach(outcome => {
+          const probability = branchProbability *
+            clamp(executionProbability, 0, 1) *
+            Number(outcome?.probability || 0);
+          if (!(probability > 1e-15)) return;
+          const hpPP = Number(Number(outcome?.hpPP || 0).toFixed(8));
+          const shieldPP = Number(Number(outcome?.shieldPP || 0).toFixed(8));
+          const layerKey = (outcome?.shieldLayers || []).map(layer => [
+            String(layer?.layerId || ''),
+            Number(Number(layer?.valuePP || 0).toFixed(8)),
+            Number.isFinite(Number(layer?.expiresAtRound))
+              ? Number(layer.expiresAtRound)
+              : 'INF',
+          ]);
+          const key = JSON.stringify([hpPP, shieldPP, layerKey]);
+          merged.set(key, Number(merged.get(key) || 0) + probability);
+        });
+      });
+      const total = [...merged.values()].reduce((sum, value) => sum + value, 0) || 1;
+      hpBranchesByUnit.set(targetId, Object.freeze(
+        [...merged.entries()]
+          .map(([key, probability]) => {
+            const [hpPP, shieldPP, layerKey] = JSON.parse(key);
+            return Object.freeze({
+            hpPP,
+            shieldPP,
+            shieldLayers: deepFreeze(layerKey.map(
+              ([layerId, valuePP, expiresAtRound]) => ({
+                layerId,
+                valuePP,
+                expiresAtRound: expiresAtRound === 'INF'
+                  ? Number.POSITIVE_INFINITY
+                  : Number(expiresAtRound),
+              }),
+            )),
+            probability: probability / total,
+          });
+          })
+          .sort((left, right) => left.hpPP - right.hpPP),
+      ));
+      hpByUnit.set(targetId, expectedHpPP(targetId));
+    };
+    const routeThreatAtCurrentState = route =>
+      [...new Set(
+        (route?.healthTrajectoryByTarget || [])
+          .map(trajectory => String(trajectory?.targetId || '').trim())
+          .filter(Boolean),
+      )].reduce((sum, targetId) => {
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        if (
+          !target ||
+          String(sideOf(worldSnapshot, target)) !== actorSide ||
+          !hpBranchesByUnit.has(targetId)
+        ) {
+          return sum;
+        }
+        const before = expectedHpPP(targetId);
+        const beforeBranches = hpBranchesByUnit.get(targetId);
+        applyRouteToTarget(route, targetId, 1);
+        const damage = Math.max(0, before - expectedHpPP(targetId));
+        hpBranchesByUnit.set(targetId, beforeBranches);
+        hpByUnit.set(targetId, before);
+        return sum + damage;
+      }, 0);
+    const routeCandidatesFor = unitId => {
+      const routes = Array.isArray(fullRoutesByUnit[unitId])
+        ? fullRoutesByUnit[unitId]
+        : [];
+      const stored = [
+        routeCatalog[unitId]?.primaryRoute,
+        routeCatalog[unitId]?.backupRoute,
+      ].filter(Boolean);
+      return [...new Map([...routes, ...stored].map(route => [
+        String(route?.routeKey || route?.candidateId || ''),
+        route,
+      ])).values()].filter(Boolean);
+    };
+    const routePayable = route => (route?.paymentDependencies || []).every(entry => {
+      const payerId = String(entry?.unitId || '').trim();
+      const resource = String(entry?.resource || '').trim();
+      const amount = Math.max(0, Number(entry?.amount || 0));
+      return amount <= 1e-9 ||
+        Number(resourcesByUnit.get(payerId)?.get(resource) || 0) + 1e-9 >= amount;
+    });
+    const payRoute = route => {
+      (route?.paymentDependencies || []).forEach(entry => {
+        const payerId = String(entry?.unitId || '').trim();
+        const resource = String(entry?.resource || '').trim();
+        const amount = Math.max(0, Number(entry?.amount || 0));
+        if (!payerId || !resource || amount <= 1e-9) return;
+        const resourceMap = resourcesByUnit.get(payerId);
+        if (!resourceMap) return;
+        resourceMap.set(
+          resource,
+          Math.max(0, Number(resourceMap.get(resource) || 0) - amount),
+        );
+      });
+    };
+    const remainingThreatFor = (unitId, afterOrderIndex) => {
+      const payableRoutes = routeCandidatesFor(unitId).filter(routePayable);
+      if (!payableRoutes.length) return 0;
+      const threatPerOpportunity = payableRoutes.reduce(
+        (maximum, route) => Math.max(
+          maximum,
+          routeThreatAtCurrentState(route),
+        ),
+        0,
+      );
+      if (!(threatPerOpportunity > 1e-9)) return 0;
+      return futureRows.reduce((sum, row) =>
+        row.ownerId === unitId && row.orderIndex > afterOrderIndex
+          ? sum + threatPerOpportunity * capableProbability(unitId)
+          : sum,
+      0);
+    };
+    const pressureProfileFor = (route, orderIndex) => {
+      const visitedTargets = new Set();
+      return (route?.healthTrajectoryByTarget || []).reduce((profile, trajectory) => {
+        const targetId = String(trajectory?.targetId || '').trim();
+        const target = findUnitInWorld(worldSnapshot, targetId);
+        if (
+          !targetId ||
+          !target ||
+          String(sideOf(worldSnapshot, target)) === actorSide ||
+          visitedTargets.has(targetId)
+        ) {
+          return profile;
+        }
+        visitedTargets.add(targetId);
+        const before = Number(hpByUnit.get(targetId) || 0);
+        const beforeCapableProbability = capableProbability(targetId);
+        const remainingThreatPP = remainingThreatFor(targetId, orderIndex);
+        if (
+          !(before > 1e-9) ||
+          !(beforeCapableProbability > 1e-9) ||
+          !(remainingThreatPP > 1e-9)
+        ) {
+          return profile;
+        }
+        const beforeBranches = hpBranchesByUnit.get(targetId);
+        applyRouteToTarget(route, targetId, 1);
+        const after = expectedHpPP(targetId);
+        const afterCapableProbability = capableProbability(targetId);
+        hpBranchesByUnit.set(targetId, beforeBranches);
+        hpByUnit.set(targetId, before);
+        const effectiveDamagePP = Math.max(0, before - after);
+        if (!(effectiveDamagePP > 1e-9)) return profile;
+        profile.priorityPP += remainingThreatPP *
+          clamp(effectiveDamagePP / before, 0, 1);
+        profile.removedThreatPP += remainingThreatPP *
+          clamp(
+            (beforeCapableProbability - afterCapableProbability) /
+              beforeCapableProbability,
+            0,
+            1,
+          );
+        return profile;
+      }, { priorityPP: 0, removedThreatPP: 0 });
+    };
+    const routeCost = route => (route?.paymentDependencies || [])
+      .reduce((sum, entry) => sum + Math.max(0, Number(entry?.amount || 0)), 0);
+    const selectRoute = row => {
+      const owner = findUnitInWorld(worldSnapshot, row.ownerId);
+      if (!owner) return { route: null, removedThreatPP: 0 };
+      const payableRoutes = routeCandidatesFor(row.ownerId).filter(routePayable);
+      if (!payableRoutes.length) return { route: null, removedThreatPP: 0 };
+      const primary = routeCatalog[row.ownerId]?.primaryRoute;
+      const fallback = primary && routePayable(primary)
+        ? primary
+        : payableRoutes.slice().sort((left, right) =>
+            routeSelectionBenefit(right) - routeSelectionBenefit(left) ||
+            routeCost(left) - routeCost(right) ||
+            String(left?.routeKey || '').localeCompare(String(right?.routeKey || ''))
+          )[0];
+      if (String(sideOf(worldSnapshot, owner)) !== actorSide) {
+        return { route: fallback, removedThreatPP: 0 };
+      }
+      const ranked = payableRoutes.map(route => ({
+        route,
+        ...pressureProfileFor(route, row.orderIndex),
+      })).sort((left, right) =>
+        right.priorityPP - left.priorityPP ||
+        right.removedThreatPP - left.removedThreatPP ||
+        routeSelectionBenefit(right.route) - routeSelectionBenefit(left.route) ||
+        routeCost(left.route) - routeCost(right.route) ||
+        String(left.route?.routeKey || '').localeCompare(String(right.route?.routeKey || ''))
+      );
+      return ranked[0]?.priorityPP > 1e-9
+        ? ranked[0]
+        : { route: fallback, priorityPP: 0, removedThreatPP: 0 };
+    };
+    let threatPP = 0;
+    const planRows = [];
+    const recordPlanRow = row => {
+      if (captureRows) planRows.push(Object.freeze(row));
+    };
+    futureRows.forEach(row => {
+      materializeShieldRound(row.round);
+      if (blockedOpportunityIds.has(String(row.id || '').trim())) {
+        recordPlanRow({
+          opportunityId: row.id,
+          opportunityRound: row.round,
+          opportunitySequence: row.sequence,
+          ownerId: row.ownerId,
+          selectedRouteKey: '',
+          pressurePriorityPP: 0,
+          removedThreatPP: 0,
+          addedThreatPP: 0,
+          ownerRealizationProbability: 0,
+          healthChanges: [],
+          skippedReason: 'CONTROLLED_OPPORTUNITY',
+        });
+        return;
+      }
+      const owner = findUnitInWorld(worldSnapshot, row.ownerId);
+      const ownerRealizationProbability = capableProbability(row.ownerId);
+      if (
+        !owner ||
+        ownerRealizationProbability <= 1e-9 ||
+        !preview.isBattleCapable(owner)
+      ) {
+        recordPlanRow({
+          opportunityId: row.id,
+          opportunityRound: row.round,
+          opportunitySequence: row.sequence,
+          ownerId: row.ownerId,
+          selectedRouteKey: '',
+          pressurePriorityPP: 0,
+          removedThreatPP: 0,
+          addedThreatPP: 0,
+          ownerRealizationProbability,
+          skippedReason: 'OWNER_NOT_CAPABLE',
+        });
+        return;
+      }
+      const selected = selectRoute(row);
+      if (!selected.route) {
+        recordPlanRow({
+          opportunityId: row.id,
+          opportunityRound: row.round,
+          opportunitySequence: row.sequence,
+          ownerId: row.ownerId,
+          selectedRouteKey: '',
+          pressurePriorityPP: 0,
+          removedThreatPP: 0,
+          addedThreatPP: 0,
+          ownerRealizationProbability,
+          skippedReason: 'NO_PAYABLE_ROUTE',
+        });
+        return;
+      }
+      const ownerSide = String(sideOf(worldSnapshot, owner));
+      const addedThreatPP = ownerSide === actorSide
+        ? 0
+        : ownerRealizationProbability * routeThreatAtCurrentState(selected.route);
+      threatPP += addedThreatPP;
+      payRoute(selected.route);
+      const healthChanges = [];
+      const touchedTargets = new Set(
+        [
+          ...(selected.route?.healthTrajectoryByTarget || []),
+          ...(selected.route?.actionPoolEffects || []).filter(effect =>
+            String(effect?.outcomeKind || '').trim() === 'SHIELD_DELTA'
+          ),
+        ]
+          .map(entry => String(entry?.targetId || '').trim())
+          .filter(Boolean),
+      );
+      touchedTargets.forEach(targetId => {
+        if (!hpByUnit.has(targetId)) return;
+        const before = expectedHpPP(targetId);
+        const shieldBefore = expectedShieldPP(targetId);
+        const beforeCapableProbability = capableProbability(targetId);
+        applyRouteToTarget(selected.route, targetId, ownerRealizationProbability);
+        const after = expectedHpPP(targetId);
+        const shieldAfter = expectedShieldPP(targetId);
+        const afterCapableProbability = capableProbability(targetId);
+        healthChanges.push(Object.freeze({
+          targetId,
+          before,
+          after,
+          shieldBefore,
+          shieldAfter,
+          beforeCapableProbability,
+          afterCapableProbability,
+        }));
+      });
+      recordPlanRow({
+        opportunityId: row.id,
+        opportunityRound: row.round,
+        opportunitySequence: row.sequence,
+        ownerId: row.ownerId,
+        selectedRouteKey: String(selected.route?.routeKey || ''),
+        selectedCandidateId: String(selected.route?.candidateId || ''),
+        pressurePriorityPP: Number(selected.priorityPP || 0),
+        removedThreatPP: Number(selected.removedThreatPP || 0),
+        addedThreatPP,
+        ownerRealizationProbability,
+        healthChanges: Object.freeze(healthChanges),
+        skippedReason: '',
+      });
+    });
+    return Object.freeze({
+      threatPP,
+      rows: Object.freeze(planRows),
+      finalHpByUnit: Object.freeze(Object.fromEntries(hpByUnit)),
+      finalCapableProbabilityByUnit: Object.freeze(Object.fromEntries(
+        [...hpBranchesByUnit.keys()].map(unitId => [
+          unitId,
+          capableProbability(unitId),
+        ]),
+      )),
+      finalShieldPPByUnit: Object.freeze(Object.fromEntries(
+        [...hpBranchesByUnit.keys()].map(unitId => [
+          unitId,
+          expectedShieldPP(unitId),
+        ]),
+      )),
+    });
+  }
+
+  function r8FutureThreatWindowDelta(input = {}) {
+    const worldSnapshot = input?.worldSnapshot || {};
+    const projectedWorld = input?.projectedWorld || {};
+    const actorSide = String(input?.actorSide || '').trim();
+    const targetId = String(input?.targetId || '').trim();
+    const targetBefore = findUnitInWorld(worldSnapshot, targetId);
+    const targetAfter = findUnitInWorld(projectedWorld, targetId);
+    if (
+      !targetBefore ||
+      !targetAfter ||
+      String(sideOf(worldSnapshot, targetBefore)) === actorSide ||
+      !preview.isBattleCapable(targetBefore)
+    ) {
+      return 0;
+    }
+    const groups = r8ObjectiveGroups({
+      visibleWorld: worldSnapshot,
+      actorSide,
+      objectiveContract: input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+    });
+    if (!(groups?.victory?.conditions || []).some(condition =>
+      String(condition?.type || '').trim().toUpperCase() === 'ROUND_REACHED'
+    )) {
+      return 0;
+    }
+    const futureRows = r8EvaluationFutureOpportunityRows(input);
+    if (!futureRows.some(row => row.ownerId === targetId)) return 0;
+    const routeCatalog = input?.routeCatalog || {};
+    const candidateRouteCatalog = input?.candidateRouteCatalog || routeCatalog;
+    const baseMaxHp = Math.max(1, preview.readHpMax(targetBefore));
+    const beforeHpPP = 100 * preview.readHp(targetBefore) / baseMaxHp;
+    const afterHpPP = 100 * preview.readHp(targetAfter) / baseMaxHp;
+    const forceOrderComparison = input?.forceOrderComparison === true;
+    const forceOpportunityComparison =
+      Array.isArray(input?.candidateBlockedOpportunityIds) &&
+      input.candidateBlockedOpportunityIds.length > 0;
+    if (
+      !forceOrderComparison &&
+      !forceOpportunityComparison &&
+      !(afterHpPP < beforeHpPP - 1e-9)
+    ) {
+      return 0;
+    }
+    const baselinePlan = r8BuildTargetPressurePlan({
+      ...input,
+      worldSnapshot,
+      orderWorldSnapshot: worldSnapshot,
+      actorSide,
+      routeCatalog,
+      initialHpOverrides: { [targetId]: beforeHpPP },
+      captureRows: !!input?.audit,
+    });
+    const candidatePlan = r8BuildTargetPressurePlan({
+      ...input,
+      worldSnapshot,
+      orderWorldSnapshot: projectedWorld,
+      actorSide,
+      routeCatalog: candidateRouteCatalog,
+      blockedOpportunityIds: input?.candidateBlockedOpportunityIds,
+      initialHpOverrides: { [targetId]: afterHpPP },
+      captureRows: !!input?.audit,
+    });
+    const deltaPP = Math.max(
+      0,
+      Number(baselinePlan?.threatPP || 0) - Number(candidatePlan?.threatPP || 0),
+    );
+    if (input?.audit && typeof input.audit === 'object') {
+      input.audit.beforeHpPP = beforeHpPP;
+      input.audit.afterHpPP = afterHpPP;
+      input.audit.deltaPP = deltaPP;
+      input.audit.baselinePlan = baselinePlan;
+      input.audit.candidatePlan = candidatePlan;
+    }
+    return deltaPP;
+  }
+
   function buildR8CandidateEnvelopeDeltas(input = {}) {
     const worldSnapshot = input.worldSnapshot || {};
     const actorSide = String(input.actorSide || '').trim();
@@ -11707,14 +20453,85 @@
     const candidateRoutes = input.candidateRoutes || {};
     const fullRoutesByUnit = input.fullRoutesByUnit || {};
     const actionOpportunity = input.actionOpportunity || {};
+    const includedEffectOutcomeKinds = new Set(
+      (Array.isArray(input?.includedEffectOutcomeKinds)
+        ? input.includedEffectOutcomeKinds
+        : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const excludedEffectOutcomeKinds = new Set(
+      (Array.isArray(input?.excludedEffectOutcomeKinds)
+        ? input.excludedEffectOutcomeKinds
+        : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const includeHealthTrajectories = input?.includeHealthTrajectories !== false;
+    const envelopeSemanticPhaseHash = preview.stableHash({
+      includedEffectOutcomeKinds: [...includedEffectOutcomeKinds].sort(),
+      excludedEffectOutcomeKinds: [...excludedEffectOutcomeKinds].sort(),
+      includeHealthTrajectories,
+      objectiveCompactMode: String(input?.objectiveCompactMode || 'FAST'),
+    });
+    const selectedActionPoolEffects = route =>
+      (route?.actionPoolEffects || []).filter(effect => {
+        const outcomeKind = String(effect?.outcomeKind || '').trim();
+        return (
+          (!includedEffectOutcomeKinds.size ||
+            includedEffectOutcomeKinds.has(outcomeKind)) &&
+          !excludedEffectOutcomeKinds.has(outcomeKind)
+        );
+      });
     const metrics = input.metrics && typeof input.metrics === 'object' ? input.metrics : null;
+    const collectRootCauseDiagnostics =
+      metrics?.collectRootCauseDiagnostics === true;
+    const incrementMetricMap = (map, key, amount = 1) => {
+      if (!collectRootCauseDiagnostics || !map) return;
+      const normalizedKey = String(key || 'UNKNOWN').trim() || 'UNKNOWN';
+      map[normalizedKey] =
+        Number(map[normalizedKey] || 0) + Number(amount || 0);
+    };
+    const dependencyKeyClass = key => {
+      const normalized = String(key || '').trim();
+      if (normalized.startsWith('unit:')) {
+        if (/:hp$/.test(normalized)) return 'UNIT_HP';
+        if (/:baseMaxHp$/.test(normalized)) return 'UNIT_BASE_MAX_HP';
+        if (/:resource:/.test(normalized)) return 'UNIT_RESOURCE';
+        if (/:state:/.test(normalized)) return 'UNIT_STATE';
+        return 'UNIT_OTHER';
+      }
+      if (normalized.startsWith('target:')) return 'TARGET_DEFENSE';
+      if (normalized.startsWith('rule:')) return 'RULE';
+      if (normalized.startsWith('belief:')) return 'BELIEF';
+      if (normalized.startsWith('opportunity:')) return 'OPPORTUNITY';
+      if (normalized.startsWith('schedule:')) return 'SCHEDULE';
+      if (normalized.startsWith('objective:')) return 'OBJECTIVE';
+      return 'OTHER';
+    };
     const result = {};
+    const rebuiltEnvelopeCache =
+      input?.envelopeSemanticCache instanceof Map
+        ? input.envelopeSemanticCache
+        : new Map();
+    const mechanicalPreviewEvidenceCache =
+      input?.envelopeMechanicalPreviewCache instanceof Map
+        ? input.envelopeMechanicalPreviewCache
+        : new Map();
+    const mechanicalRouteEvidenceCache =
+      input?.envelopeMechanicalRouteCache instanceof Map
+        ? input.envelopeMechanicalRouteCache
+        : new Map();
+    const resourceBaselinePlanCache =
+      input?.resourceBaselinePlanCache instanceof Map
+        ? input.resourceBaselinePlanCache
+        : new Map();
     const opportunityRows = Array.isArray(input?.opportunitySnapshot)
       ? input.opportunitySnapshot
       : Array.isArray(input?.opportunitySnapshot?.opportunities)
         ? input.opportunitySnapshot.opportunities
         : [];
-    const hasFutureEnvelopeWindow = unitIdValue => {
+    const hasFutureEnvelopeWindow = (unitIdValue, minimumRound = Number.NEGATIVE_INFINITY) => {
       const unitIdText = String(unitIdValue || '').trim();
       if (!unitIdText) return false;
       if (opportunityRows.some(entry =>
@@ -11723,12 +20540,32 @@
           String(actionOpportunity?.opportunityId || '').trim() &&
         !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
           String(entry?.status || '').trim().toUpperCase(),
-        )
+        ) &&
+        Math.max(
+          0,
+          Number(
+            entry?.round ??
+            entry?.createdAtRound ??
+            entry?.scheduledRound ??
+            input?.worldSnapshot?.回合 ??
+            0
+          ),
+        ) >= minimumRound
       )) {
         return true;
       }
       return (input?.scheduledEvents || []).some(entry =>
-        String(entry?.ownerId || entry?.targetId || '').trim() === unitIdText
+        String(entry?.ownerId || entry?.targetId || '').trim() === unitIdText &&
+        Math.max(
+          0,
+          Number(
+            entry?.round ??
+            entry?.createdAtRound ??
+            entry?.scheduledRound ??
+            input?.worldSnapshot?.回合 ??
+            0
+          ),
+        ) >= minimumRound
       );
     };
     const routeTargetIdsForUnit = unitIdValue => {
@@ -11737,6 +20574,28 @@
         ? envelope.searchedTargetIds
         : (fullRoutesByUnit[unitIdValue] || []).flatMap(route => route?.targetIds || []);
       return new Set(searchedTargetIds.map(value => String(value || '').trim()).filter(Boolean));
+    };
+    const hasResourceDependentFutureEnvelopeWindow = payerIdValue => {
+      const payerId = String(payerIdValue || '').trim();
+      if (!payerId || hasFutureEnvelopeWindow(payerId)) return !!payerId;
+      const resourceRoutesByUnit =
+        input?.resourceFullRoutesByUnit || fullRoutesByUnit || {};
+      return Object.entries(resourceRoutesByUnit).some(([ownerId, routes]) => {
+        const candidateRoutes = [
+          ...(Array.isArray(routes) ? routes : []),
+          input?.resourceRouteCatalog?.[ownerId]?.primaryRoute,
+          input?.resourceRouteCatalog?.[ownerId]?.backupRoute,
+          routeCatalog?.[ownerId]?.primaryRoute,
+          routeCatalog?.[ownerId]?.backupRoute,
+        ].filter(Boolean);
+        const dependsOnPayer = candidateRoutes.some(route =>
+          (route?.paymentDependencies || []).some(dependency =>
+            String(dependency?.unitId || '').trim() === payerId
+          )
+        );
+        return dependsOnPayer &&
+          hasFutureEnvelopeWindow(ownerId);
+      });
     };
     const hasGlobalRuleImpact = effect => {
       const evidence = effect?.evidence && typeof effect.evidence === 'object' ? effect.evidence : {};
@@ -11751,18 +20610,83 @@
           combatEffect.scope === 'GLOBAL'
         );
     };
-    const baseRuleHash = preview.stableHash(worldSnapshot?.规则 || worldSnapshot?.battleRules || {});
-    const baseDependencyHashes = new Map();
-    const projectedDependencyHashesByWorld = new WeakMap();
-    const projectedRuleHashes = new WeakMap();
-    const dependencyUnitHash = (snapshot, unitId, cache) => {
-      if (!cache.has(unitId)) {
-        cache.set(unitId, preview.stableHash(findUnitInWorld(snapshot, unitId) || null));
+    const routeDependencyHashCacheByWorld = new WeakMap();
+    const dependencyValueHashCacheByWorld = new WeakMap();
+    const routeDependencyKeySignatureCache = new WeakMap();
+    const rebuildObjectIdentityCache = new WeakMap();
+    const dependencyValueSignature = value => {
+      if (
+        value === null ||
+        value === undefined ||
+        ['string', 'number', 'boolean'].includes(typeof value)
+      ) {
+        return JSON.stringify(value);
       }
-      return cache.get(unitId);
+      return preview.stableHash(value);
     };
+    const routeDependencyValueSignature = (snapshot, key) => {
+      let valueHashCache = dependencyValueHashCacheByWorld.get(snapshot);
+      if (!valueHashCache) {
+        valueHashCache = new Map();
+        dependencyValueHashCacheByWorld.set(snapshot, valueHashCache);
+      }
+      const normalizedKey = String(key || '').trim();
+      if (!valueHashCache.has(normalizedKey)) {
+        valueHashCache.set(
+          normalizedKey,
+          dependencyValueSignature(
+            preview.dependencyValueForKey(snapshot, normalizedKey),
+          ),
+        );
+      }
+      return valueHashCache.get(normalizedKey);
+    };
+    const rebuildObjectIdentity = value => {
+      if (!value || typeof value !== 'object') {
+        return preview.stableHash(value);
+      }
+      const cached = rebuildObjectIdentityCache.get(value);
+      if (cached) {
+        decisionMetrics.envelopeObjectIdentityCacheHits += 1;
+        return cached;
+      }
+      const identity = preview.stableHash(value);
+      rebuildObjectIdentityCache.set(value, identity);
+      return identity;
+    };
+    const routeWorldDependencyHash = (snapshot, route) => {
+      let worldCache = routeDependencyHashCacheByWorld.get(snapshot);
+      if (!worldCache) {
+        worldCache = new Map();
+        routeDependencyHashCacheByWorld.set(snapshot, worldCache);
+      }
+      const dependencyKeys = (route?.dependencyKeys || []).filter(key =>
+        /^(unit:|target:|rule:)/.test(String(key || '').trim())
+      );
+      let cacheKey = routeDependencyKeySignatureCache.get(route);
+      if (!cacheKey) {
+        cacheKey = JSON.stringify(dependencyKeys);
+        routeDependencyKeySignatureCache.set(route, cacheKey);
+      }
+      if (worldCache.has(cacheKey)) return worldCache.get(cacheKey);
+      const result = JSON.stringify(dependencyKeys.map(key => {
+        return [key, routeDependencyValueSignature(snapshot, key)];
+      }));
+      worldCache.set(cacheKey, result);
+      return result;
+    };
+    const changedRouteDependencyKeys = (beforeSnapshot, afterSnapshot, route) =>
+      (route?.dependencyKeys || [])
+        .filter(key =>
+          /^(unit:|target:|rule:)/.test(String(key || '').trim())
+        )
+        .filter(key =>
+          routeDependencyValueSignature(beforeSnapshot, key) !==
+          routeDependencyValueSignature(afterSnapshot, key)
+        );
     const rebuildEnvelope = (projectedWorld, projectedWorldRevision, targetId) => {
       if (metrics) metrics.rebuildCount = Number(metrics.rebuildCount || 0) + 1;
+      incrementMetricMap(metrics?.rebuildByTargetId, targetId);
       const scheduledWorld = r8MaterializeScheduledStateForEnvelope(projectedWorld, targetId, input);
       const target = findUnitInWorld(scheduledWorld, targetId);
       if (
@@ -11771,14 +20695,14 @@
         !preview.isBattleCapable(target) ||
         !r8ProjectedSummonCanRealize(scheduledWorld, target, input.objectiveContract)
       ) {
-        return Object.freeze({ primaryRoute: null, backupRoute: null, searchedRouteCount: 0 });
+        return Object.freeze({
+          primaryRoute: null,
+          backupRoute: null,
+          searchedRouteCount: 0,
+          fullRoutes: Object.freeze([]),
+        });
       }
       const targetSide = sideOf(scheduledWorld, target);
-      let projectedRuleHash = projectedRuleHashes.get(scheduledWorld);
-      if (!projectedRuleHash) {
-        projectedRuleHash = preview.stableHash(scheduledWorld?.规则 || scheduledWorld?.battleRules || {});
-        projectedRuleHashes.set(scheduledWorld, projectedRuleHash);
-      }
       const candidates = enumerateCandidates({
         worldSnapshot: scheduledWorld,
         actorId: targetId,
@@ -11795,6 +20719,11 @@
         declarationFingerprint: declarationFingerprint(candidate.declaration),
       }));
       if (metrics) metrics.searchedRouteCount = Number(metrics.searchedRouteCount || 0) + candidates.length;
+      incrementMetricMap(
+        metrics?.searchedRoutesByTargetId,
+        targetId,
+        candidates.length,
+      );
       const baseRoutes = new Map(
         (fullRoutesByUnit[targetId] || []).map(route => [route.candidateId, route]),
       );
@@ -11803,50 +20732,405 @@
         : [];
       const scheduledWorldRevision = scheduledWorld === projectedWorld
         ? projectedWorldRevision
-        : `${projectedWorldRevision}|scheduled:${preview.stableHash(scheduledEvents)}`;
-      let projectedDependencyHashes = projectedDependencyHashesByWorld.get(scheduledWorld);
-      if (!projectedDependencyHashes) {
-        projectedDependencyHashes = new Map();
-        projectedDependencyHashesByWorld.set(scheduledWorld, projectedDependencyHashes);
+        : `${projectedWorldRevision}|scheduled:${rebuildObjectIdentity(scheduledEvents)}`;
+      const candidateTargetIds = [
+        ...new Set(
+          candidates.flatMap(candidate =>
+            Array.isArray(candidate?.declaration?.targetIds)
+              ? candidate.declaration.targetIds
+              : []
+          )
+            .map(value => String(value || '').trim())
+            .filter(Boolean),
+        ),
+      ].sort();
+      const actorIdentity = rebuildObjectIdentity(target);
+      const candidateTargetIdentities = candidateTargetIds.map(unitIdValue => [
+        unitIdValue,
+        rebuildObjectIdentity(findUnitInWorld(scheduledWorld, unitIdValue) || null),
+      ]);
+      const rulesIdentity = rebuildObjectIdentity(
+        scheduledWorld?.规则 || scheduledWorld?.battleRules || {},
+      );
+      const objectiveIdentity = rebuildObjectIdentity(
+        input?.objectiveContract || {},
+      );
+      const actionOpportunityIdentity = rebuildObjectIdentity({
+        round: Number(actionOpportunity?.round || 0),
+        sequence: Number(actionOpportunity?.sequence || 0),
+        grantType: String(actionOpportunity?.grantType || ''),
+      });
+      const behaviorDependencySet = r8BehaviorEnvelopeDependencySet({
+        worldSnapshot: scheduledWorld,
+        routes: candidates.map(candidate =>
+          baseRoutes.get(candidate?.candidateId) || {}
+        ),
+        candidates,
+        targetId,
+        evaluationContext: {
+          ...input?.evaluationContext,
+          opportunitySnapshot: opportunityRows,
+          scheduledEvents,
+          resourceTimeline: input?.resourceTimeline || [],
+        },
+        beliefState: input?.beliefState || {},
+        objectiveContract:
+          input?.objectiveContract || scheduledWorld?.胜负条件 || {},
+        actionOpportunity,
+        semanticPhaseHash: envelopeSemanticPhaseHash,
+      });
+      const rebuildCacheKey = behaviorDependencySet.identity + '\u0001' + [
+        targetId,
+        actorIdentity,
+        JSON.stringify(candidateTargetIdentities),
+        JSON.stringify(candidates.map(candidate => [
+          candidate.candidateId,
+          candidate.declarationFingerprint,
+        ])),
+        rulesIdentity,
+        objectiveIdentity,
+        actionOpportunityIdentity,
+      ].join('\u0001');
+      if (rebuiltEnvelopeCache.has(rebuildCacheKey)) {
+        decisionMetrics.envelopeSemanticCacheHits += 1;
+        if (metrics) {
+          metrics.envelopeSemanticCacheHits =
+            Number(metrics.envelopeSemanticCacheHits || 0) + 1;
+        }
+        return rebuiltEnvelopeCache.get(rebuildCacheKey);
+      }
+      decisionMetrics.envelopeSemanticCacheMisses += 1;
+      if (metrics) {
+        metrics.envelopeSemanticCacheMisses =
+          Number(metrics.envelopeSemanticCacheMisses || 0) + 1;
       }
       const routes = candidates.map(candidate => {
         const baseRoute = baseRoutes.get(candidate.candidateId);
-        const dependencyUnitIds = baseRoute?.dependencyUnitIds || [];
-        const reusable = !!baseRoute &&
-          baseRoute.declarationFingerprint === candidate.declarationFingerprint &&
-          baseRuleHash === projectedRuleHash &&
-          dependencyUnitIds.every(unitIdValue =>
-            dependencyUnitHash(worldSnapshot, unitIdValue, baseDependencyHashes) ===
-            dependencyUnitHash(scheduledWorld, unitIdValue, projectedDependencyHashes)
-          );
+        const declarationMatches = !!baseRoute &&
+          baseRoute.declarationFingerprint === candidate.declarationFingerprint;
+        const dependencyMatches = declarationMatches &&
+          routeWorldDependencyHash(worldSnapshot, baseRoute) ===
+            routeWorldDependencyHash(scheduledWorld, baseRoute);
+        const reusable = declarationMatches && dependencyMatches;
         if (reusable) {
           if (metrics) metrics.reusedRouteCount = Number(metrics.reusedRouteCount || 0) + 1;
-          return baseRoute;
+          incrementMetricMap(metrics?.reusedRoutesByTargetId, targetId);
+          if (collectRootCauseDiagnostics) {
+            const classes = new Set(
+              (baseRoute?.dependencyKeys || []).map(dependencyKeyClass),
+            );
+            (classes.size ? classes : new Set(['NO_RECORDED_DEPENDENCY']))
+              .forEach(keyClass =>
+                incrementMetricMap(
+                  metrics?.reusedRouteDependencyClassCounts,
+                  keyClass,
+                )
+              );
+          }
+          return r8MechanicalRouteOnly(
+            r8ConditionRouteForObjective(r8MechanicalRouteOnly(baseRoute), {
+              actorId: targetId,
+              actorSide: targetSide,
+              visibleWorld: scheduledWorld,
+              objectiveContract: input.objectiveContract || scheduledWorld?.胜负条件 || {},
+            }),
+          );
         }
-        if (metrics) metrics.previewCalls = Number(metrics.previewCalls || 0) + 1;
-        return actionRouteFromPreview({
-          candidate,
-          previewResult: preview.previewAction({
+        incrementMetricMap(metrics?.previewCallsByTargetId, targetId);
+        let repreviewChangedKeys = [];
+        if (collectRootCauseDiagnostics) {
+          if (!baseRoute) {
+            incrementMetricMap(
+              metrics?.repreviewReasonCounts,
+              'NO_BASE_ROUTE',
+            );
+          } else if (!declarationMatches) {
+            incrementMetricMap(
+              metrics?.repreviewReasonCounts,
+              'DECLARATION_FINGERPRINT_CHANGED',
+            );
+          } else {
+            const changedKeys = changedRouteDependencyKeys(
+              worldSnapshot,
+              scheduledWorld,
+              baseRoute,
+            );
+            repreviewChangedKeys = changedKeys;
+            incrementMetricMap(
+              metrics?.repreviewDependencyCombinationCounts,
+              [
+                ...new Set(
+                  (changedKeys.length ? changedKeys : ['UNRESOLVED'])
+                    .map(dependencyKeyClass),
+                ),
+              ].sort().join('+'),
+            );
+            incrementMetricMap(
+              metrics?.repreviewReasonCounts,
+              changedKeys.length
+                ? 'DEPENDENCY_VALUE_CHANGED'
+                : 'DEPENDENCY_HASH_CHANGED_WITHOUT_KEY_DELTA',
+            );
+            (changedKeys.length ? changedKeys : ['UNRESOLVED'])
+              .forEach(key => {
+                incrementMetricMap(
+                  metrics?.repreviewDependencyKeyClassCounts,
+                  dependencyKeyClass(key),
+                );
+                incrementMetricMap(
+                  metrics?.repreviewDependencyKeyCounts,
+                  key,
+                );
+                if (
+                  String(key || '').endsWith(':state:__collection')
+                ) {
+                  const stateUnitId = String(key || '')
+                    .slice(
+                      'unit:'.length,
+                      -':state:__collection'.length,
+                    );
+                  const role = stateUnitId === String(targetId || '').trim()
+                    ? 'ROUTE_ACTOR_STATE_COLLECTION'
+                    : (baseRoute?.targetIds || []).some(routeTargetId =>
+                        String(routeTargetId || '').trim() === stateUnitId
+                      )
+                      ? 'ROUTE_TARGET_STATE_COLLECTION'
+                      : 'THIRD_PARTY_STATE_COLLECTION';
+                  incrementMetricMap(
+                    metrics?.repreviewStateCollectionRoleCounts,
+                    role,
+                  );
+                }
+              });
+          }
+        }
+        const mechanicalEvidenceKey =
+          baseRoute &&
+          globalThis?.process?.env
+            ?.BATTLE_R8_DISABLE_ENVELOPE_MECHANICAL_CACHE !== '1'
+          ? [
+              targetId,
+              candidate.declarationFingerprint,
+              routeWorldDependencyHash(scheduledWorld, baseRoute),
+              beliefRevisionFor(input.beliefState),
+            ].join('\u0001')
+          : '';
+        let previewResult = mechanicalEvidenceKey
+          ? mechanicalPreviewEvidenceCache.get(mechanicalEvidenceKey)
+          : null;
+        if (previewResult) {
+          if (metrics) {
+            metrics.mechanicalEvidenceCacheHits =
+              Number(metrics.mechanicalEvidenceCacheHits || 0) + 1;
+          }
+        } else {
+          if (metrics) {
+            metrics.previewCalls = Number(metrics.previewCalls || 0) + 1;
+            metrics.mechanicalEvidenceCacheMisses =
+              Number(metrics.mechanicalEvidenceCacheMisses || 0) + 1;
+          }
+          previewResult = preview.previewAction({
             worldSnapshot: scheduledWorld,
             worldRevision: scheduledWorldRevision,
+            beliefSnapshot: input.beliefState,
+            beliefRevision: beliefRevisionFor(input.beliefState),
             actorId: targetId,
             declaration: candidate.declaration,
             actionFingerprint: candidate.declarationFingerprint,
+            hitProbabilityResolver: candidateHitProbabilityResolver({
+              beliefState: input.beliefState,
+              actor: target,
+              candidate,
+              worldSnapshot: scheduledWorld,
+            }),
+            applicationProbabilityResolver: candidateApplicationProbabilityResolver({
+              beliefState: input.beliefState,
+              actor: target,
+              candidate,
+            }),
             horizon: 'SHALLOW',
             previewBudget: { maxNodes: 12 },
+            collectProbabilityBranches: true,
             battleIntent: input.battleIntent,
-          }),
-          worldSnapshot: scheduledWorld,
+          });
+          if (mechanicalEvidenceKey) {
+            mechanicalPreviewEvidenceCache.set(
+              mechanicalEvidenceKey,
+              previewResult,
+            );
+          }
+        }
+        const routeBuildMode =
+          globalThis?.process?.env
+            ?.BATTLE_R8_DISABLE_LIGHTWEIGHT_ENVELOPE_ROUTE === '1'
+            ? 'FORMAL'
+            : 'ENVELOPE_REBUILD';
+        const mechanicalRouteKey =
+          mechanicalEvidenceKey &&
+          globalThis?.process?.env
+            ?.BATTLE_R8_DISABLE_ENVELOPE_MECHANICAL_ROUTE_CACHE !== '1'
+            ? `${mechanicalEvidenceKey}\u0001${routeBuildMode}`
+            : '';
+        let mechanicalRoute = mechanicalRouteKey
+          ? mechanicalRouteEvidenceCache.get(mechanicalRouteKey)
+          : null;
+        if (mechanicalRoute) {
+          decisionMetrics.envelopeMechanicalRouteCacheHits += 1;
+          if (metrics) {
+            metrics.mechanicalRouteCacheHits =
+              Number(metrics.mechanicalRouteCacheHits || 0) + 1;
+          }
+        } else {
+          mechanicalRoute = actionRouteFromPreview({
+            candidate,
+            previewResult,
+            worldSnapshot: scheduledWorld,
+            actorSide: targetSide,
+            dependencyKeys: [],
+            worldRevision: scheduledWorldRevision,
+            opportunitySnapshot: input?.opportunitySnapshot,
+            scheduledEvents,
+            objectiveRequest: null,
+            routeBuildMode,
+          });
+          if (mechanicalRouteKey) {
+            mechanicalRouteEvidenceCache.set(
+              mechanicalRouteKey,
+              mechanicalRoute,
+            );
+          }
+        }
+        if (
+          collectRootCauseDiagnostics &&
+          baseRoute &&
+          mechanicalRoute?.routeKey === baseRoute?.routeKey
+        ) {
+          const changedDependencyClasses = [
+            ...new Set(
+              (repreviewChangedKeys.length
+                ? repreviewChangedKeys
+                : ['UNRESOLVED']
+              ).map(dependencyKeyClass),
+            ),
+          ].sort();
+          const stateOnlyChange =
+            changedDependencyClasses.length === 1 &&
+            changedDependencyClasses[0] === 'UNIT_STATE';
+          metrics.repreviewSameMechanicalRouteCount =
+            Number(metrics.repreviewSameMechanicalRouteCount || 0) + 1;
+          incrementMetricMap(
+            metrics
+              ?.repreviewSameMechanicalRouteDependencyCombinationCounts,
+            changedDependencyClasses.join('+'),
+          );
+          (repreviewChangedKeys.length
+            ? repreviewChangedKeys
+            : ['UNRESOLVED']
+          ).forEach(key => {
+            incrementMetricMap(
+              metrics
+                ?.repreviewSameMechanicalRouteDependencyClassCounts,
+              dependencyKeyClass(key),
+            );
+            if (
+              !String(key || '').endsWith(':state:__collection')
+            ) {
+              return;
+            }
+            const stateUnitId = String(key || '')
+              .slice(
+                'unit:'.length,
+                -':state:__collection'.length,
+              );
+            const role = stateUnitId === String(targetId || '').trim()
+              ? 'ROUTE_ACTOR_STATE_COLLECTION'
+              : (baseRoute?.targetIds || []).some(routeTargetId =>
+                  String(routeTargetId || '').trim() === stateUnitId
+                )
+                ? 'ROUTE_TARGET_STATE_COLLECTION'
+                : 'THIRD_PARTY_STATE_COLLECTION';
+            incrementMetricMap(
+              metrics
+                ?.repreviewSameMechanicalRouteStateCollectionRoleCounts,
+              role,
+            );
+            const beforeStateUnit = findUnitInWorld(
+              worldSnapshot,
+              stateUnitId,
+            );
+            const afterStateUnit = findUnitInWorld(
+              scheduledWorld,
+              stateUnitId,
+            );
+            const stateChange = r8ChangedStateDependencyClass(
+              beforeStateUnit,
+              afterStateUnit,
+            );
+            (stateChange.changedStateKeys || []).forEach(stateKey =>
+              incrementMetricMap(
+                metrics?.repreviewSameMechanicalRouteStateKeyCounts,
+                `${role}:${stateKey}`,
+              )
+            );
+            const stateClass = stateChange.selfRoute &&
+              stateChange.incomingRoute
+              ? 'SELF_AND_INCOMING'
+              : stateChange.selfRoute
+                ? 'SELF_ROUTE'
+                : stateChange.incomingRoute
+                  ? 'INCOMING_ROUTE'
+                  : stateChange.scheduledOnly
+                    ? 'SCHEDULED_ONLY'
+                    : stateChange.unknownKeys?.length
+                      ? 'UNKNOWN'
+                      : 'NO_ROUTE_DEPENDENCY';
+            incrementMetricMap(
+              metrics?.repreviewSameMechanicalRouteStateClassCounts,
+              `${role}:${stateClass}`,
+            );
+            if (stateOnlyChange) {
+              incrementMetricMap(
+                metrics?.repreviewSameMechanicalStateOnlyRoleCounts,
+                role,
+              );
+              (stateChange.changedStateKeys || []).forEach(stateKey =>
+                incrementMetricMap(
+                  metrics?.repreviewSameMechanicalStateOnlyKeyCounts,
+                  `${role}:${stateKey}`,
+                )
+              );
+              incrementMetricMap(
+                metrics?.repreviewSameMechanicalStateOnlyClassCounts,
+                `${role}:${stateClass}`,
+              );
+            }
+          });
+        }
+        return r8ConditionRouteForObjective(mechanicalRoute, {
+          actorId: targetId,
           actorSide: targetSide,
-          dependencyKeys: [],
+          visibleWorld: scheduledWorld,
+          objectiveCompactMode: input.objectiveCompactMode || 'FAST',
+          objectiveContract:
+            input.objectiveContract || scheduledWorld?.胜负条件 || {},
         });
       });
-      return selectPrimaryBackupRoutes(routes);
+      const rebuiltEnvelope = Object.freeze({
+        ...selectPrimaryBackupRoutes(routes),
+        fullRoutes: Object.freeze(routes),
+        behaviorDependencyIdentity: behaviorDependencySet.identity,
+      });
+      rebuiltEnvelopeCache.set(rebuildCacheKey, rebuiltEnvelope);
+      return rebuiltEnvelope;
     };
     for (const [candidateId, route] of Object.entries(candidateRoutes)) {
       const projectedWorld = projectedWorlds[candidateId];
       const projectedWorldRevision = projectedWorldRevisions[candidateId] ||
-        `projected:${candidateId}:${preview.stableHash(projectedWorld)}`;
+        `projected:${candidateId}:${
+          projectedWorld && typeof projectedWorld === 'object'
+            ? preview.stableHash(projectedWorld)
+            : 'absent'
+        }`;
       if (!projectedWorld) {
         result[candidateId] = Object.freeze([]);
         continue;
@@ -11858,10 +21142,13 @@
           .map(entry => preview.unitId(entry.unit)),
       ].filter(Boolean))];
       const affectedIds = new Set();
+      const pressureOnlyHealthIds = new Set();
+      const capabilityOnlyHealthIds = new Set();
       const sourceEffectsByAffectedId = new Map();
       const sourceHealthFactsByAffectedId = new Map();
+      const candidateActionPoolEffects = selectedActionPoolEffects(route);
       const assetLossTargetIds = new Set(
-        (route?.actionPoolEffects || [])
+        candidateActionPoolEffects
           .filter(effect => effect?.outcomeKind === 'IRREVERSIBLE_ASSET_LOST')
           .map(effect => String(effect?.targetId || '').trim())
           .filter(Boolean),
@@ -11901,39 +21188,73 @@
           }
         });
       };
-      const selfPoolKeys = new Set([
-        'hit_bonus',
-        'hit_penalty',
-        'damage_bonus',
-        'final_damage_bonus',
-        'final_damage_mult',
-        'armor_pen',
-        'heal_bonus',
-        'heal_reduction',
-        'cost_delta_ratio',
-        'skip_turn',
-        'cannot_act',
-        'cannot_react',
-        'silence',
-        'disarm',
-        'blind',
-        'resource_lock',
-        'cast_speed_penalty',
-        'random_target_rate',
-      ]);
-      const incomingPoolKeys = new Set([
-        'dodge_bonus',
-        'dodge_penalty',
-        'reaction_bonus',
-        'reaction_penalty',
-        'damage_reduction',
-        'received_damage_mult',
-        'damage_taken_mult',
-        'lock_level',
-        'counter_attack_ratio',
-        'death_save_count',
-      ]);
-      for (const trajectory of route?.healthTrajectoryByTarget || []) {
+      const stateEffects = candidateActionPoolEffects.filter(effect =>
+        ['STATE_CHANGED', 'STATE_SCHEDULED'].includes(
+          String(effect?.outcomeKind || '').trim(),
+        )
+      );
+      const changedStateUnitIds = allUnitIds.filter(unitIdValue => {
+        const beforeUnit = findUnitInWorld(worldSnapshot, unitIdValue);
+        const afterUnit = findUnitInWorld(projectedWorld, unitIdValue);
+        return preview.stableHash(beforeUnit?.状态效果 || {}) !==
+          preview.stableHash(afterUnit?.状态效果 || {});
+      });
+      changedStateUnitIds.forEach(unitIdValue => {
+        const beforeUnit = findUnitInWorld(worldSnapshot, unitIdValue);
+        const afterUnit = findUnitInWorld(projectedWorld, unitIdValue);
+        const actualDependency = r8ChangedStateDependencyClass(
+          beforeUnit,
+          afterUnit,
+        );
+        const declaredDependencies = stateEffects.map(effect =>
+          r8StateDependencyClass(effect)
+        );
+        const affectsSelfRoute =
+          actualDependency.selfRoute ||
+          declaredDependencies.some(entry => entry.selfRoute);
+        const affectsIncomingRoute =
+          actualDependency.incomingRoute ||
+          declaredDependencies.some(entry => entry.incomingRoute);
+        if (
+          affectsSelfRoute &&
+          hasFutureEnvelopeWindow(unitIdValue)
+        ) {
+          affectedIds.add(unitIdValue);
+          stateEffects.forEach(effect =>
+            registerSourceEffect(unitIdValue, effect, 'SELF_ROUTE')
+          );
+        }
+        if (affectsIncomingRoute) {
+          stateEffects.forEach(effect =>
+            addRouteDependents(unitIdValue, effect)
+          );
+        }
+      });
+      const inventoryEffects = candidateActionPoolEffects.filter(effect =>
+        String(effect?.outcomeKind || '').trim() === 'NEXT_ACTION_QUALITY_CHANGED' &&
+        (
+          String(effect?.evidence?.productId || '').trim() ||
+          String(effect?.evidence?.recipientId || '').trim()
+        )
+      );
+      allUnitIds.forEach(unitIdValue => {
+        const beforeUnit = findUnitInWorld(worldSnapshot, unitIdValue);
+        const afterUnit = findUnitInWorld(projectedWorld, unitIdValue);
+        if (
+          preview.stableHash(collectInventory(beforeUnit)) ===
+          preview.stableHash(collectInventory(afterUnit)) ||
+          !hasFutureEnvelopeWindow(unitIdValue)
+        ) {
+          return;
+        }
+        affectedIds.add(unitIdValue);
+        inventoryEffects.forEach(effect =>
+          registerSourceEffect(unitIdValue, effect, 'SELF_ROUTE')
+        );
+      });
+      for (const trajectory of includeHealthTrajectories
+        ? route?.healthTrajectoryByTarget || []
+        : []) {
         const targetId = String(trajectory?.targetId || '').trim();
         if (
           !targetId ||
@@ -11943,21 +21264,43 @@
         ) {
           continue;
         }
-        affectedIds.add(targetId);
         registerSourceHealthFact(targetId, trajectory);
+        if (r8HealthTrajectoryUsesPressureOnly({
+          worldSnapshot,
+          projectedWorld,
+          actorSide,
+          objectiveContract: input?.objectiveContract,
+        }, trajectory)) {
+          pressureOnlyHealthIds.add(targetId);
+          continue;
+        }
+        const targetBefore = findUnitInWorld(worldSnapshot, targetId);
+        if (targetBefore && !r8UnitHasHpSensitiveBehavior(targetBefore)) {
+          capabilityOnlyHealthIds.add(targetId);
+          continue;
+        }
+        affectedIds.add(targetId);
       }
-      for (const effect of route?.actionPoolEffects || []) {
+      for (const effect of candidateActionPoolEffects) {
         if (!r8ActionPoolEffectHasMechanicalDelta(effect)) continue;
         const targetId = String(effect?.targetId || '').trim();
-        if (effect?.outcomeKind === 'RESOURCE_OPTION_CHANGED') {
-          if (targetId && hasFutureEnvelopeWindow(targetId)) {
+        if (effect?.outcomeKind === 'SHIELD_DELTA') {
+          if (targetId) addRouteDependents(targetId, effect);
+        } else if (effect?.outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+          if (targetId && hasResourceDependentFutureEnvelopeWindow(targetId)) {
             affectedIds.add(targetId);
             registerSourceEffect(targetId, effect, 'SELF_ROUTE');
           }
         } else if (effect?.outcomeKind === 'SUMMON_WINDOW') {
-          if (targetId) {
+          if (targetId && r8SummonHasFutureEnvelopeWindow(
+            effect,
+            input?.scheduledEvents || [],
+          )) {
             affectedIds.add(targetId);
             registerSourceEffect(targetId, effect, 'SELF_ROUTE');
+          } else if (metrics) {
+            metrics.skippedZeroWindowSummonRebuildCount =
+              Number(metrics.skippedZeroWindowSummonRebuildCount || 0) + 1;
           }
         } else if (effect?.outcomeKind === 'RULE_CHANGED') {
           if (hasGlobalRuleImpact(effect)) {
@@ -11972,18 +21315,55 @@
             registerSourceEffect(targetId, effect, 'SELF_ROUTE');
             addRouteDependents(targetId, effect);
           }
+        } else if (effect?.outcomeKind === 'STATE_SCHEDULED') {
+          const scheduledRound = Math.max(
+            0,
+            Number(effect?.evidence?.scheduledRound || 0),
+          );
+          if (targetId && hasFutureEnvelopeWindow(targetId, scheduledRound)) {
+            affectedIds.add(targetId);
+            registerSourceEffect(targetId, effect, 'SELF_ROUTE');
+            addRouteDependents(targetId, effect);
+          }
+        } else if (
+          effect?.outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+          (
+            String(effect?.evidence?.productId || '').trim() ||
+            String(effect?.evidence?.recipientId || '').trim()
+          )
+        ) {
+          if (targetId && hasFutureEnvelopeWindow(targetId)) {
+            affectedIds.add(targetId);
+            registerSourceEffect(targetId, effect, 'SELF_ROUTE');
+          }
         } else if (targetId) {
-          const combatEffect = effect?.evidence?.combatEffect || {};
-          const combatKeys = Object.keys(combatEffect);
-          const changesSelfPool = combatKeys.some(key => selfPoolKeys.has(key));
-          const changesIncomingPool = combatKeys.some(key => incomingPoolKeys.has(key));
-          if (changesSelfPool || (!changesSelfPool && !changesIncomingPool)) {
+          const dependencyClass = r8StateDependencyClass(effect);
+          if (metrics) {
+            const classKey = dependencyClass.scheduledOnly
+              ? 'SCHEDULED_ONLY'
+              : dependencyClass.selfRoute && dependencyClass.incomingRoute
+                ? 'SELF_AND_INCOMING'
+                : dependencyClass.selfRoute
+                  ? 'SELF_ROUTE'
+                  : dependencyClass.incomingRoute
+                    ? 'INCOMING_ROUTE'
+                    : dependencyClass.unknownKeys.length
+                      ? 'UNKNOWN'
+                      : 'NO_ROUTE_DEPENDENCY';
+            metrics.stateDependencyClassCounts[classKey] =
+              Number(metrics.stateDependencyClassCounts[classKey] || 0) + 1;
+            dependencyClass.unknownKeys.forEach(key => {
+              metrics.unknownStateDependencyKeys[key] =
+                Number(metrics.unknownStateDependencyKeys[key] || 0) + 1;
+            });
+          }
+          if (dependencyClass.selfRoute) {
             if (hasFutureEnvelopeWindow(targetId)) {
               affectedIds.add(targetId);
               registerSourceEffect(targetId, effect, 'SELF_ROUTE');
             }
           }
-          if (changesIncomingPool || (!changesSelfPool && !changesIncomingPool)) {
+          if (dependencyClass.incomingRoute) {
             addRouteDependents(targetId, effect);
           }
         } else {
@@ -11993,38 +21373,1182 @@
           });
         }
       }
-      result[candidateId] = Object.freeze([...affectedIds].map(targetId => {
+      const evaluatedIds = [...new Set([
+        ...affectedIds,
+        ...pressureOnlyHealthIds,
+        ...capabilityOnlyHealthIds,
+      ])];
+      result[candidateId] = Object.freeze(evaluatedIds.map(targetId => {
         const target = findUnitInWorld(projectedWorld, targetId) || findUnitInWorld(worldSnapshot, targetId);
         const targetSide = target ? sideOf(projectedWorld, target) || sideOf(worldSnapshot, target) : '';
         const beforeEnvelope = routeCatalog[targetId] || {};
-        const afterEnvelope = rebuildEnvelope(projectedWorld, projectedWorldRevision, targetId);
-        const beforePP = Math.max(0, Number(beforeEnvelope?.primaryRoute?.routeBenefitPP || 0));
-        const afterPP = Math.max(0, Number(afterEnvelope?.primaryRoute?.routeBenefitPP || 0));
+        const pressureOnly =
+          pressureOnlyHealthIds.has(targetId) &&
+          !affectedIds.has(targetId) &&
+          !(sourceEffectsByAffectedId.get(targetId) || []).length;
+        const capabilityOnly =
+          capabilityOnlyHealthIds.has(targetId) &&
+          !affectedIds.has(targetId) &&
+          !(sourceEffectsByAffectedId.get(targetId) || []).length;
+        const afterEnvelope = pressureOnly || capabilityOnly
+          ? beforeEnvelope
+          : rebuildEnvelope(projectedWorld, projectedWorldRevision, targetId);
+        let beforePP = Math.max(0, routeSelectionBenefit(beforeEnvelope?.primaryRoute));
+        let afterPP = Math.max(0, routeSelectionBenefit(afterEnvelope?.primaryRoute));
         const ownTarget = String(targetSide) === actorSide;
+        const targetPressureAudit = metrics?.collectTargetPressureAudit === true
+          ? {}
+          : null;
+        const hasSourceHealthFacts = sourceHealthFactsByAffectedId.has(targetId);
+        const hostileTarget = !ownTarget;
+        const baselineOrderTarget = findUnitInWorld(worldSnapshot, targetId);
+        const projectedOrderTarget = findUnitInWorld(projectedWorld, targetId);
+        const hasActionAxisEffect = !!baselineOrderTarget &&
+          !!projectedOrderTarget &&
+          Math.abs(
+            Number(preview.naturalActionOrderProfile(projectedOrderTarget)?.effectiveAgility || 0) -
+            Number(preview.naturalActionOrderProfile(baselineOrderTarget)?.effectiveAgility || 0),
+          ) > 1e-9;
+        const candidateBlockedOpportunityIds = [];
+        candidateActionPoolEffects
+          .filter(effect => effect?.outcomeKind === 'ACTION_CANCELLED')
+          .forEach(effect => {
+            const control = r8ControlOpportunityProfile({
+              ...input,
+              visibleWorld: worldSnapshot,
+              actionOpportunity,
+              objectiveContract: input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+              evaluationContext: {
+                ...(input?.evaluationContext || {}),
+                opportunitySnapshot: input?.opportunitySnapshot,
+                scheduledEvents: input?.scheduledEvents || [],
+              },
+            }, effect);
+            if (
+              String(control?.targetOpportunityId || '').trim() &&
+              control?.coveredAfter === true
+            ) {
+              candidateBlockedOpportunityIds.push(control.targetOpportunityId);
+            }
+          });
+        const hasActionAvailabilityEffect = candidateBlockedOpportunityIds.length > 0;
+        const actionAxisDuration = candidateActionPoolEffects
+          .filter(effect => {
+            if (String(effect?.targetId || '').trim() !== String(targetId || '').trim()) {
+              return false;
+            }
+            const combatEffect = effect?.evidence?.combatEffect || {};
+            return Number(combatEffect?.cast_speed_penalty || 0) !== 0 ||
+              Number(combatEffect?.cast_speed_bonus || 0) !== 0;
+          })
+          .reduce(
+            (maximum, effect) =>
+              Math.max(maximum, Math.max(1, Number(effect?.evidence?.duration || 1))),
+            0,
+          );
+        const orderWorldExpiresAfterRound = actionAxisDuration > 0
+          ? Math.max(
+              0,
+              Number(actionOpportunity?.round ?? worldSnapshot?.回合 ?? 0),
+            ) + actionAxisDuration
+          : Number.NaN;
+        const usesTargetPressurePlan = hostileTarget &&
+          (hasSourceHealthFacts || hasActionAxisEffect || hasActionAvailabilityEffect) &&
+          (r8ObjectiveGroups({
+            visibleWorld: worldSnapshot,
+            actorSide,
+            objectiveContract: input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+          })?.victory?.conditions || []).some(condition =>
+            String(condition?.type || '').trim().toUpperCase() === 'ROUND_REACHED'
+          );
+        const candidateRouteCatalog = usesTargetPressurePlan
+          ? {
+              ...routeCatalog,
+              [targetId]: afterEnvelope,
+            }
+          : routeCatalog;
+        const futureThreatWindowDeltaPP = usesTargetPressurePlan
+          ? r8FutureThreatWindowDelta({
+              worldSnapshot,
+              projectedWorld,
+              actorSide,
+              targetId,
+              routeCatalog,
+              candidateRouteCatalog,
+              fullRoutesByUnit,
+              actionOpportunity,
+              opportunitySnapshot: input?.opportunitySnapshot,
+              scheduledEvents: input?.scheduledEvents,
+               objectiveContract: input?.objectiveContract,
+               forceOrderComparison: hasActionAxisEffect && !hasSourceHealthFacts,
+               candidateBlockedOpportunityIds,
+               orderWorldExpiresAfterRound,
+               audit: targetPressureAudit,
+            })
+          : 0;
+        const healthTrajectoryDeltaPP = usesTargetPressurePlan
+          ? futureThreatWindowDeltaPP
+          : ownTarget
+            ? afterPP - beforePP
+            : beforePP - afterPP;
         const routeTargetIds = new Set([
           ...(beforeEnvelope?.primaryRoute?.targetIds || []),
           ...(afterEnvelope?.primaryRoute?.targetIds || []),
         ].map(value => String(value || '').trim()).filter(Boolean));
-        const sourceEffectKeys = (sourceEffectsByAffectedId.get(targetId) || [])
+        const relevantSourceEffects = (sourceEffectsByAffectedId.get(targetId) || [])
           .filter(source => source.impactMode !== 'INCOMING_ROUTE' ||
             routeTargetIds.has(String(source.effect?.targetId || '').trim())
-          )
-          .map(source => source.effectKey);
-        const sourceHealthFactKeys = sourceHealthFactsByAffectedId.get(targetId) || [];
+          );
+        const hasResourceSourceEffect = relevantSourceEffects.some(source =>
+          String(source?.effect?.outcomeKind || '').trim() ===
+          'RESOURCE_OPTION_CHANGED'
+        );
+        const resourceRouteCatalog =
+          input?.resourceRouteCatalog || routeCatalog;
+        const resourceFullRoutesByUnit =
+          input?.resourceFullRoutesByUnit || fullRoutesByUnit;
+        const resourcePlanUnitIdList = hasResourceSourceEffect
+          ? r8ResourceAffectedRouteOwnerIds(
+              [targetId],
+              resourceRouteCatalog,
+              resourceFullRoutesByUnit,
+            )
+          : Object.freeze([]);
+        const candidateResourceWorld = hasResourceSourceEffect
+          ? snapshotAfterRouteResourceEffects(
+              worldSnapshot,
+              {
+                actionPoolEffects: relevantSourceEffects.map(
+                  source => source.effect
+                ),
+              },
+              true,
+            )
+          : null;
+        const baselineResourcePlanKey = hasResourceSourceEffect
+          ? preview.stableHash({
+              actorSide,
+              unitIds: resourcePlanUnitIdList,
+              routeSemanticHash: r8ResourceRouteSemanticHash(
+                resourceRouteCatalog,
+                resourceFullRoutesByUnit,
+              ),
+              actionOpportunity,
+              opportunitySnapshot: input?.opportunitySnapshot,
+              scheduledEvents: input?.scheduledEvents,
+              resourceTimeline: input?.resourceTimeline,
+              objectiveContract:
+                input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+            })
+          : '';
+        const baselineResourcePlan = hasResourceSourceEffect
+          ? (() => {
+              if (resourceBaselinePlanCache.has(baselineResourcePlanKey)) {
+                return resourceBaselinePlanCache.get(
+                  baselineResourcePlanKey,
+                );
+              }
+              const plan = r8BuildResourceOpportunityPlan({
+                worldSnapshot,
+                actorSide,
+                unitIds: resourcePlanUnitIdList,
+                projectionScope: 'RESOURCE_AFFORDABILITY',
+                routeCatalog: resourceRouteCatalog,
+                fullRoutesByUnit: resourceFullRoutesByUnit,
+                actionOpportunity,
+                opportunitySnapshot: input?.opportunitySnapshot,
+                scheduledEvents: input?.scheduledEvents,
+                resourceTimeline: input?.resourceTimeline,
+              });
+              resourceBaselinePlanCache.set(
+                baselineResourcePlanKey,
+                plan,
+              );
+              return plan;
+            })()
+          : null;
+        const resourceTranslationProfile = hasResourceSourceEffect
+          ? r8ResourcePlanTranslationProfile({
+              worldSnapshot,
+              candidateWorld: candidateResourceWorld,
+              unitIds: resourcePlanUnitIdList,
+              routeCatalog: resourceRouteCatalog,
+              fullRoutesByUnit: resourceFullRoutesByUnit,
+              actionOpportunity,
+              opportunitySnapshot: input?.opportunitySnapshot,
+              scheduledEvents: input?.scheduledEvents,
+              resourceTimeline: input?.resourceTimeline,
+            })
+          : null;
+        const resourceTranslationEnabled =
+          globalThis?.process?.env
+            ?.BATTLE_R8_DISABLE_RESOURCE_PLAN_TRANSLATION !== '1';
+        const candidateResourcePlan = hasResourceSourceEffect
+          ? resourceTranslationEnabled &&
+            resourceTranslationProfile?.translatable === true
+            ? (() => {
+                decisionMetrics.resourceOpportunityPlanTranslations += 1;
+                return r8TranslateResourceOpportunityPlan(
+                  baselineResourcePlan,
+                  resourceTranslationProfile,
+                );
+              })()
+            : r8BuildResourceOpportunityPlan({
+                worldSnapshot: candidateResourceWorld,
+                actorSide,
+                unitIds: resourcePlanUnitIdList,
+                projectionScope: 'RESOURCE_AFFORDABILITY',
+                routeCatalog: resourceRouteCatalog,
+                fullRoutesByUnit: resourceFullRoutesByUnit,
+                actionOpportunity,
+                opportunitySnapshot: input?.opportunitySnapshot,
+                scheduledEvents: input?.scheduledEvents,
+                resourceTimeline: input?.resourceTimeline,
+              })
+          : null;
+        if (hasResourceSourceEffect) {
+          beforePP = Number(
+            baselineResourcePlan?.cumulativeUtilityHEPP || beforePP,
+          );
+          afterPP = Number(
+            candidateResourcePlan?.cumulativeUtilityHEPP || afterPP,
+          );
+        }
+        const resourceOpportunityDeltaPP = hasResourceSourceEffect
+          ? ownTarget
+            ? Number(candidateResourcePlan?.cumulativeUtilityHEPP || 0) -
+              Number(baselineResourcePlan?.cumulativeUtilityHEPP || 0)
+            : Number(baselineResourcePlan?.cumulativeUtilityHEPP || 0) -
+              Number(candidateResourcePlan?.cumulativeUtilityHEPP || 0)
+          : 0;
+        const effectiveHealthTrajectoryDeltaPP = hasResourceSourceEffect
+          ? resourceOpportunityDeltaPP
+          : healthTrajectoryDeltaPP;
+            const sourceEffectKeys = relevantSourceEffects.map(source => source.effectKey);
+            const sourceHealthFactKeys = sourceHealthFactsByAffectedId.get(targetId) || [];
+            const rawSourceEffects =
+              sourceEffectsByAffectedId.get(targetId) || [];
+            if (metrics) {
+          if (pressureOnly) {
+            metrics.skippedHealthEnvelopeRebuildCount =
+              Number(metrics.skippedHealthEnvelopeRebuildCount || 0) + 1;
+            metrics.pressureOnlyHealthEvaluationCount =
+              Number(metrics.pressureOnlyHealthEvaluationCount || 0) + 1;
+            if (Math.abs(healthTrajectoryDeltaPP) <= 1e-9) {
+              metrics.zeroPressureOnlyHealthEvaluationCount =
+                Number(metrics.zeroPressureOnlyHealthEvaluationCount || 0) + 1;
+            } else {
+              metrics.nonZeroPressureOnlyHealthEvaluationCount =
+                Number(metrics.nonZeroPressureOnlyHealthEvaluationCount || 0) + 1;
+            }
+          } else if (capabilityOnly) {
+            metrics.skippedHealthEnvelopeRebuildCount =
+              Number(metrics.skippedHealthEnvelopeRebuildCount || 0) + 1;
+          } else {
+            if (sourceHealthFactKeys.length && sourceEffectKeys.length) {
+              metrics.mixedSourceRebuildCount =
+                Number(metrics.mixedSourceRebuildCount || 0) + 1;
+            } else if (sourceHealthFactKeys.length) {
+              metrics.healthOnlyRebuildCount =
+                Number(metrics.healthOnlyRebuildCount || 0) + 1;
+            } else {
+              metrics.effectOnlyRebuildCount =
+                Number(metrics.effectOnlyRebuildCount || 0) + 1;
+            }
+            if (Math.abs(effectiveHealthTrajectoryDeltaPP) <= 1e-9) {
+              metrics.zeroDeltaRebuildCount =
+                Number(metrics.zeroDeltaRebuildCount || 0) + 1;
+            } else {
+              metrics.nonZeroDeltaRebuildCount =
+                Number(metrics.nonZeroDeltaRebuildCount || 0) + 1;
+            }
+            const sourceOutcomeKinds = new Set(
+              relevantSourceEffects
+                .map(source => String(source?.effect?.outcomeKind || '').trim())
+                .filter(Boolean),
+            );
+            if (sourceHealthFactKeys.length) sourceOutcomeKinds.add('HP_TRAJECTORY');
+            if (collectRootCauseDiagnostics) {
+              const impactModes = new Set(
+                relevantSourceEffects
+                  .map(source => String(source?.impactMode || '').trim())
+                  .filter(Boolean),
+              );
+              const reasonKey = [
+                [...sourceOutcomeKinds].sort().join('+') || 'NO_SOURCE_KIND',
+                [...impactModes].sort().join('+') || 'NO_IMPACT_MODE',
+              ].join('|');
+              incrementMetricMap(metrics?.rebuildReasonCounts, reasonKey);
+              incrementMetricMap(
+                Math.abs(effectiveHealthTrajectoryDeltaPP) <= 1e-9
+                  ? metrics?.zeroDeltaByTargetId
+                  : metrics?.nonZeroDeltaByTargetId,
+                targetId,
+              );
+              if (
+                !sourceHealthFactKeys.length &&
+                !sourceEffectKeys.length
+              ) {
+                const beforeUnit = findUnitInWorld(
+                  worldSnapshot,
+                  targetId,
+                );
+                const afterUnit = findUnitInWorld(projectedWorld, targetId);
+                const worldDeltaKinds = [
+                  preview.stableHash(beforeUnit?.状态效果 || {}) !==
+                  preview.stableHash(afterUnit?.状态效果 || {})
+                    ? 'STATE'
+                    : '',
+                  preview.stableHash(collectInventory(beforeUnit)) !==
+                  preview.stableHash(collectInventory(afterUnit))
+                    ? 'INVENTORY'
+                    : '',
+                  ['魂力', '精神力', '体力'].filter(resource =>
+                    Math.abs(
+                      preview.readResource(beforeUnit, resource) -
+                      preview.readResource(afterUnit, resource),
+                    ) > 1e-9
+                  ).length
+                    ? 'RESOURCE'
+                    : '',
+                  Math.abs(
+                    preview.readHp(beforeUnit) - preview.readHp(afterUnit),
+                  ) > 1e-9
+                    ? 'HP'
+                    : '',
+                ].filter(Boolean);
+                const gapKind = rawSourceEffects.length
+                  ? 'SOURCE_FILTERED_BY_ROUTE_TARGET'
+                  : worldDeltaKinds.length
+                    ? `UNOWNED_WORLD_DELTA:${worldDeltaKinds.sort().join('+')}`
+                    : 'NO_SOURCE_NO_WORLD_DELTA';
+                metrics.ownershipGapCount =
+                  Number(metrics.ownershipGapCount || 0) + 1;
+                incrementMetricMap(metrics?.ownershipGapCounts, gapKind);
+                incrementMetricMap(
+                  metrics?.ownershipGapByCandidateTarget,
+                  `${candidateId}\u0000${targetId}\u0000${gapKind}`,
+                );
+              }
+            }
+            sourceOutcomeKinds.forEach(outcomeKind => {
+              metrics.rebuildSourceOutcomeCounts[outcomeKind] =
+                Number(metrics.rebuildSourceOutcomeCounts[outcomeKind] || 0) + 1;
+              if (Math.abs(effectiveHealthTrajectoryDeltaPP) <= 1e-9) {
+                metrics.zeroDeltaSourceOutcomeCounts[outcomeKind] =
+                  Number(metrics.zeroDeltaSourceOutcomeCounts[outcomeKind] || 0) + 1;
+              }
+            });
+          }
+          if (
+            hasResourceSourceEffect &&
+            metrics.collectTargetPressureAudit === true
+          ) {
+            metrics.resourceOpportunityAudits.push(Object.freeze({
+              candidateId,
+              targetId,
+              deltaPP: resourceOpportunityDeltaPP,
+              baselineUtilityHEPP: Number(
+                baselineResourcePlan?.cumulativeUtilityHEPP || 0
+              ),
+              candidateUtilityHEPP: Number(
+                candidateResourcePlan?.cumulativeUtilityHEPP || 0
+              ),
+              baselineRows: Object.freeze(
+                (baselineResourcePlan?.rows || []).map(row => Object.freeze({
+                  opportunityId: String(row?.opportunityId || ''),
+                  ownerId: String(row?.ownerId || ''),
+                  selectedRouteKey: String(row?.selectedRouteKey || ''),
+                  routeUtilityHEPP: Number(row?.routeUtilityHEPP || 0),
+                  balancesBefore: row?.balancesBefore || {},
+                  balancesAfter: row?.balancesAfter || {},
+                  lockedResources: row?.lockedResources || [],
+                })),
+              ),
+              candidateRows: Object.freeze(
+                (candidateResourcePlan?.rows || []).map(row => Object.freeze({
+                  opportunityId: String(row?.opportunityId || ''),
+                  ownerId: String(row?.ownerId || ''),
+                  selectedRouteKey: String(row?.selectedRouteKey || ''),
+                  routeUtilityHEPP: Number(row?.routeUtilityHEPP || 0),
+                  balancesBefore: row?.balancesBefore || {},
+                  balancesAfter: row?.balancesAfter || {},
+                  lockedResources: row?.lockedResources || [],
+                })),
+              ),
+            }));
+          }
+          if (
+            targetPressureAudit?.baselinePlan &&
+            (
+              sourceHealthFactKeys.length ||
+              hasActionAvailabilityEffect ||
+              hasActionAxisEffect
+            )
+          ) {
+            metrics.targetPressureAudits.push(Object.freeze({
+              candidateId,
+              targetId,
+              candidateBlockedOpportunityIds: Object.freeze([
+                ...candidateBlockedOpportunityIds,
+              ]),
+              beforeHpPP: Number(targetPressureAudit.beforeHpPP || 0),
+              afterHpPP: Number(targetPressureAudit.afterHpPP || 0),
+              deltaPP: Number(targetPressureAudit.deltaPP || 0),
+              baselineThreatPP: Number(targetPressureAudit.baselinePlan?.threatPP || 0),
+              candidateThreatPP: Number(targetPressureAudit.candidatePlan?.threatPP || 0),
+              baselineRows: targetPressureAudit.baselinePlan?.rows || [],
+              candidateRows: targetPressureAudit.candidatePlan?.rows || [],
+            }));
+          }
+        }
         return Object.freeze({
           targetId,
-          beforeRouteKey: String(beforeEnvelope?.primaryRoute?.routeKey || ''),
-          afterRouteKey: String(afterEnvelope?.primaryRoute?.routeKey || ''),
+          beforeRouteKey: String(
+            hasResourceSourceEffect
+              ? (
+                  baselineResourcePlan?.rows || []
+                ).find(row =>
+                  String(row?.ownerId || '').trim() === String(targetId || '').trim()
+                )?.selectedRouteKey ||
+                beforeEnvelope?.primaryRoute?.routeKey ||
+                ''
+              : beforeEnvelope?.primaryRoute?.routeKey || '',
+          ),
+          afterRouteKey: String(
+            hasResourceSourceEffect
+              ? (
+                  candidateResourcePlan?.rows || []
+                ).find(row =>
+                  String(row?.ownerId || '').trim() === String(targetId || '').trim()
+                )?.selectedRouteKey ||
+                afterEnvelope?.primaryRoute?.routeKey ||
+                ''
+              : afterEnvelope?.primaryRoute?.routeKey || '',
+          ),
           beforePP,
           afterPP,
-          healthTrajectoryDeltaPP: ownTarget ? afterPP - beforePP : beforePP - afterPP,
+          healthTrajectoryDeltaPP: effectiveHealthTrajectoryDeltaPP,
+          ...(hasResourceSourceEffect
+            ? {
+                resourceOpportunityDeltaPP,
+                resourceOpportunityBaseline: baselineResourcePlan,
+                resourceOpportunityCandidate: candidateResourcePlan,
+              }
+            : {}),
+          ...(futureThreatWindowDeltaPP > 1e-9
+            ? { futureThreatWindowDeltaPP }
+            : {}),
           searchedRouteCount: Number(afterEnvelope?.searchedRouteCount || 0),
+          pressureOnly,
+          capabilityOnly,
           sourceEffectKeys: Object.freeze([...new Set(sourceEffectKeys)].sort()),
           sourceHealthFactKeys: Object.freeze([...new Set(sourceHealthFactKeys)].sort()),
         });
       }));
     }
     return deepFreeze(result);
+  }
+
+  function r8RouteWithBehaviorUtility(route = {}, fields = {}) {
+    const valuedRoute = Object.freeze({
+      ...route,
+      ...fields,
+    });
+    const mechanicalSignature = r8RouteMechanicalSignatureCache.get(route);
+    if (mechanicalSignature) {
+      r8RouteMechanicalSignatureCache.set(valuedRoute, mechanicalSignature);
+    }
+    return r8CopyTerminalRouteMetadata(route, valuedRoute);
+  }
+
+  function buildR8ShallowBehaviorRouteCatalog(input = {}) {
+    const traceRouteStages =
+      globalThis?.process?.env?.BATTLE_R8_ROUTE_STAGE_TRACE === '1';
+    const routeClockNow = () =>
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+    const routeStageStartedAt = traceRouteStages
+      ? routeClockNow()
+      : 0;
+    const traceRouteStage = (stage, detail = {}) => {
+      if (!traceRouteStages) return;
+      const now = routeClockNow();
+      console.error(`[r8-route-stage] ${stage} ${JSON.stringify({
+        elapsedMs: Number((now - routeStageStartedAt).toFixed(3)),
+        ...detail,
+      })}`);
+    };
+    const worldSnapshot = input?.worldSnapshot || {};
+    const mechanicalRouteCatalog = input?.mechanicalRouteCatalog || {};
+    const mechanicalFullRoutesByUnit = input?.mechanicalFullRoutesByUnit || {};
+    const projectedWorldsByUnit = input?.projectedWorldsByUnit || {};
+    const projectedWorldRevisionsByUnit =
+      input?.projectedWorldRevisionsByUnit || {};
+    const actorId = String(input?.actorId || '').trim();
+    const reusedValuedUnitIds = new Set(
+      (Array.isArray(input?.reusedValuedUnitIds)
+        ? input.reusedValuedUnitIds
+        : []
+      ).map(value => String(value || '').trim()).filter(Boolean),
+    );
+    const ongoingProbabilityFor = route => {
+      const terminal = r8ConditionedRouteTerminalCache.get(route)?.terminal;
+      return Number(
+        terminal?.ongoingProbability ?? (terminal?.terminal ? 0 : 1),
+      );
+    };
+    const requestFor = (
+      unitId,
+      actorSide,
+      routeCatalog,
+      candidateEnvelopeDeltas = {},
+    ) => ({
+      actorId: unitId,
+      actorSide,
+      visibleWorld: worldSnapshot,
+      objectiveContract:
+        input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+      actionOpportunity: r8ExecutionOpportunityForUnit({
+        ...input,
+        worldSnapshot,
+      }, unitId),
+      evaluationContext: input?.evaluationContext || {},
+      actionRouteCatalog: routeCatalog,
+      candidateEnvelopeDeltas,
+      teamMarginalPlan: Object.freeze([]),
+    });
+    const intrinsicFullRoutesByUnit = {};
+    const intrinsicRouteCatalog = {};
+    const intrinsicEnvelopeDeltasByUnit = {};
+    Object.keys(mechanicalFullRoutesByUnit).sort().forEach(unitId => {
+      const intrinsicStartedAt = traceRouteStages
+        ? routeClockNow()
+        : 0;
+      if (reusedValuedUnitIds.has(unitId)) {
+        const routes = mechanicalFullRoutesByUnit[unitId] || [];
+        intrinsicEnvelopeDeltasByUnit[unitId] = Object.freeze({});
+        intrinsicFullRoutesByUnit[unitId] = routes;
+        intrinsicRouteCatalog[unitId] =
+          mechanicalRouteCatalog[unitId] || selectPrimaryBackupRoutes(routes);
+        traceRouteStage(`intrinsic-reused:${unitId}`, {
+          routeCount: routes.length,
+        });
+        return;
+      }
+      const unit = findUnitInWorld(worldSnapshot, unitId);
+      const actorSide = unit ? sideOf(worldSnapshot, unit) : '';
+      const unitRoutes = mechanicalFullRoutesByUnit[unitId] || [];
+      const routesNeedingEnvelope = unitRoutes.filter(route =>
+        (route?.actionPoolEffects || []).some(effect =>
+          String(effect?.outcomeKind || '').trim() !==
+            'RESOURCE_OPTION_CHANGED' &&
+          r8ActionPoolEffectHasMechanicalDelta(effect)
+        )
+      );
+      const routeIdsNeedingEnvelope = new Set(
+        routesNeedingEnvelope.map(route => String(route?.candidateId || '')),
+      );
+      const projectedWorlds = Object.fromEntries(
+        Object.entries(projectedWorldsByUnit[unitId] || {})
+          .filter(([candidateId]) =>
+            routeIdsNeedingEnvelope.has(String(candidateId || ''))
+          ),
+      );
+      const candidateEnvelopeDeltas = routesNeedingEnvelope.length &&
+        Object.keys(projectedWorlds).length
+        ? buildR8CandidateEnvelopeDeltas({
+            worldSnapshot,
+            beliefState: input?.beliefState,
+            battleIntent: input?.battleIntent,
+            actorSide,
+            routeCatalog: mechanicalRouteCatalog,
+            projectedWorlds,
+            projectedWorldRevisions:
+              projectedWorldRevisionsByUnit[unitId] || {},
+            candidateRoutes: Object.fromEntries(
+              routesNeedingEnvelope.map(route => [
+                route.candidateId,
+                route,
+              ]),
+            ),
+            fullRoutesByUnit: mechanicalFullRoutesByUnit,
+            actionOpportunity: r8ExecutionOpportunityForUnit({
+              ...input,
+              worldSnapshot,
+            }, unitId),
+            opportunitySnapshot:
+              input?.evaluationContext?.opportunitySnapshot || [],
+            resourceTimeline:
+              input?.evaluationContext?.resourceTimeline || [],
+            scheduledEvents:
+              input?.evaluationContext?.scheduledEvents || [],
+            objectiveContract:
+              input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+            objectiveCompactMode: input?.objectiveCompactMode || 'FAST',
+            excludedEffectOutcomeKinds: ['RESOURCE_OPTION_CHANGED'],
+            metrics:
+              input?.metrics && typeof input.metrics === 'object'
+                ? input.metrics
+                : null,
+            envelopeSemanticCache: input?.envelopeSemanticCache,
+            envelopeMechanicalPreviewCache:
+              input?.envelopeMechanicalPreviewCache,
+            envelopeMechanicalRouteCache:
+              input?.envelopeMechanicalRouteCache,
+            resourceBaselinePlanCache: input?.resourceBaselinePlanCache,
+          })
+        : {};
+      intrinsicEnvelopeDeltasByUnit[unitId] = candidateEnvelopeDeltas;
+      const request = requestFor(
+        unitId,
+        actorSide,
+        mechanicalRouteCatalog,
+        candidateEnvelopeDeltas,
+      );
+      const routes = unitRoutes.map(route => {
+        const nonResourceRoute = {
+          ...route,
+          actionPoolEffects: Object.freeze(
+            (route?.actionPoolEffects || []).filter(effect =>
+              String(effect?.outcomeKind || '').trim() !==
+              'RESOURCE_OPTION_CHANGED'
+            ),
+          ),
+        };
+        const intrinsicActionPoolDeltas = r8ActionPoolDeltas(
+          request,
+          nonResourceRoute,
+        );
+        const intrinsicActionPoolHEPP =
+          ongoingProbabilityFor(route) *
+          intrinsicActionPoolDeltas.reduce(
+            (sum, delta) =>
+              sum + Number(delta?.healthTrajectoryDeltaPP || 0),
+            0,
+          );
+        const needsEnvelope = routeIdsNeedingEnvelope.has(
+          String(route?.candidateId || ''),
+        );
+        const hasExactEnvelope =
+          Array.isArray(candidateEnvelopeDeltas[route?.candidateId]);
+        return r8RouteWithBehaviorUtility(route, {
+          ...(globalThis?.process?.env
+            ?.BATTLE_R8_DISABLE_ROUTE_ACTION_POOL_FACTS === '1'
+            ? {}
+            : {
+                intrinsicActionPoolDeltas:
+                  deepFreeze(intrinsicActionPoolDeltas),
+              }),
+          intrinsicActionPoolHEPP,
+          resourceActionPoolHEPP: 0,
+          intrinsicBehaviorUtilityHEPP: clamp(
+            Number(route?.objectiveRouteUtilityHEPP || 0) +
+              intrinsicActionPoolHEPP,
+            -100,
+            100,
+          ),
+          behaviorValuationMode: needsEnvelope
+            ? hasExactEnvelope
+              ? 'EXACT_AFFECTED_ACTION_ENVELOPE'
+              : String(route?.behaviorValuationMode || '') ||
+                'SHALLOW_ACTION_ENVELOPE'
+            : 'DIRECT_ROUTE_REUSE',
+        });
+      });
+      intrinsicFullRoutesByUnit[unitId] = routes;
+      intrinsicRouteCatalog[unitId] = selectPrimaryBackupRoutes(routes);
+      if (traceRouteStages) {
+        const now = routeClockNow();
+        traceRouteStage(`intrinsic-complete:${unitId}`, {
+          durationMs: Number((now - intrinsicStartedAt).toFixed(3)),
+          routeCount: unitRoutes.length,
+          routesNeedingEnvelope: routesNeedingEnvelope.length,
+          projectedWorldCount: Object.keys(projectedWorlds).length,
+        });
+      }
+    });
+
+    const finalFullRoutesByUnit = {};
+    const finalRouteCatalog = {};
+    const resourceBaselinePlanByTarget =
+      input?.resourceBaselinePlanCache instanceof Map
+        ? input.resourceBaselinePlanCache
+        : new Map();
+    const resourceBaselinePlanFor = ({
+      targetId,
+      actorSide,
+      unitIds,
+    }) => {
+      const key = [
+        String(actorSide || '').trim(),
+        (Array.isArray(unitIds) ? unitIds : [targetId])
+          .map(value => String(value || '').trim())
+          .filter(Boolean)
+          .sort()
+          .join('\u0000'),
+        r8ResourceRouteSemanticHash(
+          intrinsicRouteCatalog,
+          intrinsicFullRoutesByUnit,
+        ),
+      ].join('\u0001');
+      if (resourceBaselinePlanByTarget.has(key)) {
+        return resourceBaselinePlanByTarget.get(key);
+      }
+      const plan = r8BuildResourceOpportunityPlan({
+        worldSnapshot,
+        actorSide,
+        unitIds,
+        projectionScope: 'RESOURCE_AFFORDABILITY',
+        routeCatalog: intrinsicRouteCatalog,
+        fullRoutesByUnit: intrinsicFullRoutesByUnit,
+        actionOpportunity: input?.actionOpportunity,
+        opportunitySnapshot:
+          input?.evaluationContext?.opportunitySnapshot || [],
+        scheduledEvents:
+          input?.evaluationContext?.scheduledEvents || [],
+        resourceTimeline:
+          input?.evaluationContext?.resourceTimeline || [],
+      });
+      resourceBaselinePlanByTarget.set(key, plan);
+      return plan;
+    };
+    Object.keys(intrinsicFullRoutesByUnit).sort().forEach(unitId => {
+      const resourceStartedAt = traceRouteStages
+        ? routeClockNow()
+        : 0;
+      if (reusedValuedUnitIds.has(unitId)) {
+        const routes = intrinsicFullRoutesByUnit[unitId] || [];
+        finalFullRoutesByUnit[unitId] = routes;
+        finalRouteCatalog[unitId] =
+          intrinsicRouteCatalog[unitId] || selectPrimaryBackupRoutes(routes);
+        traceRouteStage(`resource-reused:${unitId}`, {
+          routeCount: routes.length,
+        });
+        return;
+      }
+      const unit = findUnitInWorld(worldSnapshot, unitId);
+      const actorSide = unit ? sideOf(worldSnapshot, unit) : '';
+      const routes = (intrinsicFullRoutesByUnit[unitId] || []).map(route => {
+        const affectedResourceTargetIds = [...new Set(
+          (route?.actionPoolEffects || [])
+            .filter(effect =>
+              String(effect?.outcomeKind || '').trim() ===
+                'RESOURCE_OPTION_CHANGED' &&
+              String(effect?.windowId || '').trim() !== 'ACTION_COST' &&
+              Math.abs(Number(
+                effect?.expectedDelta ?? effect?.evidence?.delta ?? 0
+              )) > 1e-9
+            )
+            .map(effect => String(effect?.targetId || '').trim())
+            .filter(Boolean),
+        )];
+        if (!affectedResourceTargetIds.length) {
+          return r8RouteWithBehaviorUtility(route, {
+            behaviorRouteUtilityHEPP: Number(
+              route?.intrinsicBehaviorUtilityHEPP ??
+              route?.objectiveRouteUtilityHEPP ??
+              route?.routeBenefitPP ??
+              0
+            ),
+          });
+        }
+        const resourceWorld = snapshotAfterRouteResourceEffects(
+          worldSnapshot,
+          route,
+        );
+        const resourceActionPoolHEPP = affectedResourceTargetIds.reduce(
+          (sum, targetId) => {
+            const target = findUnitInWorld(worldSnapshot, targetId);
+            if (!target) return sum;
+            const resourcePlanUnitIds =
+              r8ResourceAffectedRouteOwnerIds(
+                [targetId],
+                intrinsicRouteCatalog,
+                intrinsicFullRoutesByUnit,
+              );
+            const baselinePlan = resourceBaselinePlanFor({
+              targetId,
+              actorSide,
+              unitIds: resourcePlanUnitIds,
+            });
+            const candidatePlan = r8BuildResourceOpportunityPlan({
+              worldSnapshot: resourceWorld,
+              actorSide,
+              unitIds: resourcePlanUnitIds,
+              projectionScope: 'RESOURCE_AFFORDABILITY',
+              routeCatalog: intrinsicRouteCatalog,
+              fullRoutesByUnit: intrinsicFullRoutesByUnit,
+              actionOpportunity: input?.actionOpportunity,
+              opportunitySnapshot:
+                input?.evaluationContext?.opportunitySnapshot || [],
+              scheduledEvents:
+                input?.evaluationContext?.scheduledEvents || [],
+              resourceTimeline:
+                input?.evaluationContext?.resourceTimeline || [],
+            });
+            const targetOwnSide =
+              String(sideOf(worldSnapshot, target)) === actorSide;
+            const delta = targetOwnSide
+              ? Number(candidatePlan?.cumulativeUtilityHEPP || 0) -
+                Number(baselinePlan?.cumulativeUtilityHEPP || 0)
+              : Number(baselinePlan?.cumulativeUtilityHEPP || 0) -
+                Number(candidatePlan?.cumulativeUtilityHEPP || 0);
+            return sum + delta;
+          },
+          0,
+        ) * ongoingProbabilityFor(route);
+        return r8RouteWithBehaviorUtility(route, {
+          resourceActionPoolHEPP,
+          behaviorRouteUtilityHEPP: clamp(
+            Number(route?.intrinsicBehaviorUtilityHEPP || 0) +
+              resourceActionPoolHEPP,
+            -100,
+            100,
+          ),
+        });
+      });
+      finalFullRoutesByUnit[unitId] = routes;
+      finalRouteCatalog[unitId] = selectPrimaryBackupRoutes(routes);
+      if (traceRouteStages) {
+        const now = routeClockNow();
+        traceRouteStage(`resource-complete:${unitId}`, {
+          durationMs: Number((now - resourceStartedAt).toFixed(3)),
+          routeCount: routes.length,
+          routesWithResourceEffects: routes.filter(route =>
+            (route?.actionPoolEffects || []).some(effect =>
+              String(effect?.outcomeKind || '').trim() === 'RESOURCE_OPTION_CHANGED'
+            )
+          ).length,
+        });
+      }
+    });
+    const formalActorCandidateIds = new Set(
+      Object.keys(input?.actorCandidateRoutes || {}),
+    );
+    const actorHasResourceEnvelope = (
+      finalFullRoutesByUnit[actorId] || []
+    ).some(route =>
+      (route?.actionPoolEffects || []).some(effect =>
+        String(effect?.outcomeKind || '').trim() ===
+          'RESOURCE_OPTION_CHANGED'
+      )
+    );
+    const actorCandidateEnvelopeDeltas = reusedValuedUnitIds.has(actorId)
+      ? input?.previousActorCandidateEnvelopeDeltas || {}
+      : actorHasResourceEnvelope
+        ? {}
+        : intrinsicEnvelopeDeltasByUnit[actorId] || {};
+    r8RememberBehaviorRouteIdentities(finalFullRoutesByUnit, {
+      ...input,
+      worldSnapshot,
+    });
+    return {
+      routeCatalog: deepFreeze(finalRouteCatalog),
+      actorCandidateRoutes: deepFreeze(Object.fromEntries(
+        (finalFullRoutesByUnit[actorId] || [])
+          .filter(route => formalActorCandidateIds.has(route.candidateId))
+          .map(route => [route.candidateId, route]),
+      )),
+      actorProjectedWorlds: input?.actorProjectedWorlds || {},
+      actorProjectedWorldRevisions: Object.freeze(
+        input?.actorProjectedWorldRevisions || {},
+      ),
+      actorPredictedOutcomeEvidence: deepFreeze(
+        input?.actorPredictedOutcomeEvidence || {},
+      ),
+      fullRoutesByUnit: deepFreeze(finalFullRoutesByUnit),
+      candidateEnvelopeDeltas: deepFreeze(actorCandidateEnvelopeDeltas),
+      cacheMetrics: Object.freeze({
+        ...(input?.cacheMetrics || {}),
+        behaviorValuedRouteCount: Object.values(finalFullRoutesByUnit)
+          .reduce((sum, routes) => sum + routes.length, 0),
+        reusedValuedUnitCount: reusedValuedUnitIds.size,
+        reusedValuedRouteCount: [...reusedValuedUnitIds].reduce(
+          (sum, unitId) =>
+            sum + Number(finalFullRoutesByUnit?.[unitId]?.length || 0),
+          0,
+        ),
+        behaviorValuationMode: 'SELECTIVE_EXACT_ACTION_ENVELOPE',
+      }),
+    };
+  }
+
+  function buildR8BehaviorRouteCatalog(input = {}) {
+    if (input?.forceFullBehaviorRouteValuation !== true) {
+      return buildR8ShallowBehaviorRouteCatalog(input);
+    }
+    const worldSnapshot = input?.worldSnapshot || {};
+    const mechanicalRouteCatalog = input?.mechanicalRouteCatalog || {};
+    const mechanicalFullRoutesByUnit = input?.mechanicalFullRoutesByUnit || {};
+    const projectedWorldsByUnit = input?.projectedWorldsByUnit || {};
+    const projectedWorldRevisionsByUnit =
+      input?.projectedWorldRevisionsByUnit || {};
+    const actorId = String(input?.actorId || '').trim();
+    const metrics = input?.metrics && typeof input.metrics === 'object'
+      ? input.metrics
+      : null;
+    const commonEnvelopeInput = {
+      worldSnapshot,
+      beliefState: input?.beliefState,
+      battleIntent: input?.battleIntent,
+      actionOpportunity: input?.actionOpportunity,
+      opportunitySnapshot:
+        input?.evaluationContext?.opportunitySnapshot || [],
+      resourceTimeline:
+        input?.evaluationContext?.resourceTimeline || [],
+      scheduledEvents:
+        input?.evaluationContext?.scheduledEvents || [],
+      objectiveContract:
+        input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+      objectiveCompactMode: input?.objectiveCompactMode || 'FAST',
+      metrics,
+    };
+    const intrinsicEnvelopeDeltasByUnit = {};
+    const intrinsicFullRoutesByUnit = {};
+    const intrinsicRouteCatalog = {};
+    const ongoingProbabilityFor = route => {
+      const cached = r8ConditionedRouteTerminalCache.get(route);
+      const terminal = cached?.terminal || r8TerminalUtility({
+        actorId: '',
+        actorSide: '',
+        visibleWorld: worldSnapshot,
+        objectiveCompactMode: input?.objectiveCompactMode || 'FAST',
+        objectiveContract:
+          input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+        terminalCallOrigin: 'ONGOING_PROBABILITY_LOOKUP',
+      }, route);
+      return Number(
+        terminal?.ongoingProbability ?? (terminal?.terminal ? 0 : 1),
+      );
+    };
+    const routeRequest = (
+      unitId,
+      actorSide,
+      routeCatalog,
+      candidateEnvelopeDeltas,
+    ) => ({
+      actorId: unitId,
+      actorSide,
+      visibleWorld: worldSnapshot,
+      objectiveContract:
+        input?.objectiveContract || worldSnapshot?.胜负条件 || {},
+      actionOpportunity: r8ExecutionOpportunityForUnit({
+        ...input,
+        worldSnapshot,
+      }, unitId),
+      evaluationContext: input?.evaluationContext || {},
+      actionRouteCatalog: routeCatalog,
+      candidateEnvelopeDeltas,
+      teamMarginalPlan: Object.freeze([]),
+    });
+
+    Object.keys(mechanicalFullRoutesByUnit).sort().forEach(unitId => {
+      const unit = findUnitInWorld(worldSnapshot, unitId);
+      const actorSide = unit ? sideOf(worldSnapshot, unit) : '';
+      const projectedWorlds = projectedWorldsByUnit[unitId] || {};
+      const candidateRoutes = Object.fromEntries(
+        (mechanicalFullRoutesByUnit[unitId] || []).map(route => [
+          route.candidateId,
+          route,
+        ]),
+      );
+      const canRevalue = Object.keys(projectedWorlds).length > 0;
+      const envelopeDeltas = canRevalue
+        ? buildR8CandidateEnvelopeDeltas({
+            ...commonEnvelopeInput,
+            actorSide,
+            routeCatalog: mechanicalRouteCatalog,
+            projectedWorlds,
+            projectedWorldRevisions:
+              projectedWorldRevisionsByUnit[unitId] || {},
+            candidateRoutes,
+            fullRoutesByUnit: mechanicalFullRoutesByUnit,
+            excludedEffectOutcomeKinds: ['RESOURCE_OPTION_CHANGED'],
+          })
+        : {};
+      intrinsicEnvelopeDeltasByUnit[unitId] = envelopeDeltas;
+      const request = routeRequest(
+        unitId,
+        actorSide,
+        mechanicalRouteCatalog,
+        envelopeDeltas,
+      );
+      const routes = (mechanicalFullRoutesByUnit[unitId] || []).map(route => {
+        if (!canRevalue && Number.isFinite(Number(
+          route?.intrinsicBehaviorUtilityHEPP,
+        ))) {
+          return route;
+        }
+        const nonResourceRoute = {
+          ...route,
+          actionPoolEffects: Object.freeze(
+            (route?.actionPoolEffects || []).filter(effect =>
+              String(effect?.outcomeKind || '').trim() !==
+              'RESOURCE_OPTION_CHANGED'
+            ),
+          ),
+        };
+        const intrinsicDeltas = r8ActionPoolDeltas(request, nonResourceRoute);
+        const intrinsicActionPoolHEPP =
+          ongoingProbabilityFor(route) *
+          intrinsicDeltas.reduce(
+            (sum, delta) =>
+              sum + Number(delta?.healthTrajectoryDeltaPP || 0),
+            0,
+          );
+        return r8RouteWithBehaviorUtility(route, {
+          ...(globalThis?.process?.env
+            ?.BATTLE_R8_DISABLE_ROUTE_ACTION_POOL_FACTS === '1'
+            ? {}
+            : {
+                intrinsicActionPoolDeltas: deepFreeze(intrinsicDeltas),
+              }),
+          intrinsicActionPoolHEPP,
+          resourceActionPoolHEPP: 0,
+          intrinsicBehaviorUtilityHEPP: clamp(
+            Number(route?.objectiveRouteUtilityHEPP || 0) +
+              intrinsicActionPoolHEPP,
+            -100,
+            100,
+          ),
+        });
+      });
+      intrinsicFullRoutesByUnit[unitId] = routes;
+      intrinsicRouteCatalog[unitId] = selectPrimaryBackupRoutes(routes);
+    });
+
+    const resourceEnvelopeDeltasByUnit = {};
+    const finalFullRoutesByUnit = {};
+    const finalRouteCatalog = {};
+    Object.keys(intrinsicFullRoutesByUnit).sort().forEach(unitId => {
+      const unit = findUnitInWorld(worldSnapshot, unitId);
+      const actorSide = unit ? sideOf(worldSnapshot, unit) : '';
+      const projectedWorlds = projectedWorldsByUnit[unitId] || {};
+      const candidateRoutes = Object.fromEntries(
+        (intrinsicFullRoutesByUnit[unitId] || []).map(route => [
+          route.candidateId,
+          route,
+        ]),
+      );
+      const routesWithResourceEffects = (intrinsicFullRoutesByUnit[unitId] || [])
+        .some(route => (route?.actionPoolEffects || []).some(effect =>
+          String(effect?.outcomeKind || '').trim() ===
+          'RESOURCE_OPTION_CHANGED'
+        ));
+      const canRevalue =
+        routesWithResourceEffects && Object.keys(projectedWorlds).length > 0;
+      const envelopeDeltas = canRevalue
+        ? buildR8CandidateEnvelopeDeltas({
+            ...commonEnvelopeInput,
+            actorSide,
+            routeCatalog: intrinsicRouteCatalog,
+            projectedWorlds,
+            projectedWorldRevisions:
+              projectedWorldRevisionsByUnit[unitId] || {},
+            candidateRoutes,
+            fullRoutesByUnit: intrinsicFullRoutesByUnit,
+            resourceRouteCatalog: intrinsicRouteCatalog,
+            resourceFullRoutesByUnit: intrinsicFullRoutesByUnit,
+            includedEffectOutcomeKinds: ['RESOURCE_OPTION_CHANGED'],
+            includeHealthTrajectories: false,
+          })
+        : {};
+      resourceEnvelopeDeltasByUnit[unitId] = envelopeDeltas;
+      const request = routeRequest(
+        unitId,
+        actorSide,
+        intrinsicRouteCatalog,
+        envelopeDeltas,
+      );
+      const routes = (intrinsicFullRoutesByUnit[unitId] || []).map(route => {
+        if (!canRevalue || !(route?.actionPoolEffects || []).some(effect =>
+          String(effect?.outcomeKind || '').trim() ===
+          'RESOURCE_OPTION_CHANGED'
+        )) {
+          return r8RouteWithBehaviorUtility(route, {
+            behaviorRouteUtilityHEPP: Number(
+              route?.intrinsicBehaviorUtilityHEPP ??
+              route?.objectiveRouteUtilityHEPP ??
+              route?.routeBenefitPP ??
+              0
+            ),
+          });
+        }
+        const resourceRoute = {
+          ...route,
+          actionPoolEffects: Object.freeze(
+            (route?.actionPoolEffects || []).filter(effect =>
+              String(effect?.outcomeKind || '').trim() ===
+              'RESOURCE_OPTION_CHANGED'
+            ),
+          ),
+        };
+        const resourceDeltas = r8ActionPoolDeltas(request, resourceRoute);
+        const resourceActionPoolHEPP =
+          ongoingProbabilityFor(route) *
+          resourceDeltas.reduce(
+            (sum, delta) =>
+              sum + Number(delta?.healthTrajectoryDeltaPP || 0),
+            0,
+          );
+        return r8RouteWithBehaviorUtility(route, {
+          resourceActionPoolHEPP,
+          behaviorRouteUtilityHEPP: clamp(
+            Number(route?.intrinsicBehaviorUtilityHEPP || 0) +
+              resourceActionPoolHEPP,
+            -100,
+            100,
+          ),
+        });
+      });
+      finalFullRoutesByUnit[unitId] = routes;
+      finalRouteCatalog[unitId] = selectPrimaryBackupRoutes(routes);
+    });
+
+    const formalActorCandidateIds = new Set(
+      Object.keys(input?.actorCandidateRoutes || {}),
+    );
+    const actorCandidateRoutes = Object.fromEntries(
+      (finalFullRoutesByUnit[actorId] || [])
+        .filter(route => formalActorCandidateIds.has(route.candidateId))
+        .map(route => [route.candidateId, route]),
+    );
+    const actorCandidateEnvelopeDeltas = Object.fromEntries(
+      [...new Set([
+        ...Object.keys(intrinsicEnvelopeDeltasByUnit[actorId] || {}),
+        ...Object.keys(resourceEnvelopeDeltasByUnit[actorId] || {}),
+      ])].map(candidateId => [
+        candidateId,
+        Object.freeze([
+          ...(intrinsicEnvelopeDeltasByUnit[actorId]?.[candidateId] || []),
+          ...(resourceEnvelopeDeltasByUnit[actorId]?.[candidateId] || []),
+        ]),
+      ]),
+    );
+    r8RememberBehaviorRouteIdentities(finalFullRoutesByUnit, {
+      ...input,
+      worldSnapshot,
+    });
+    return {
+      routeCatalog: deepFreeze(finalRouteCatalog),
+      actorCandidateRoutes: deepFreeze(actorCandidateRoutes),
+      actorProjectedWorlds: input?.actorProjectedWorlds || {},
+      actorProjectedWorldRevisions: Object.freeze(
+        input?.actorProjectedWorldRevisions || {},
+      ),
+      actorPredictedOutcomeEvidence: deepFreeze(
+        input?.actorPredictedOutcomeEvidence || {},
+      ),
+      fullRoutesByUnit: deepFreeze(finalFullRoutesByUnit),
+      candidateEnvelopeDeltas: deepFreeze(actorCandidateEnvelopeDeltas),
+      cacheMetrics: Object.freeze({
+        ...(input?.cacheMetrics || {}),
+        behaviorValuedRouteCount: Object.values(finalFullRoutesByUnit)
+          .reduce((sum, routes) => sum + routes.length, 0),
+      }),
+    };
   }
 
   function buildR8ResponseModel(request = {}, candidateId = '') {
@@ -12034,18 +22558,83 @@
     const confidence = clamp(request?.beliefState?.confidence ?? 0.5, 0, 1);
     const unknownMass = clamp(0.35 * (1 - confidence), 0, 0.35);
     const actorSide = String(request?.actorSide || '').trim();
+    const candidate = (request?.frozenCandidates || []).find(entry =>
+      String(entry?.candidateId || '').trim() === String(candidateId || '').trim()
+    );
+    const candidateTargetIds = new Set(
+      (candidate?.declaration?.targetIds || [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const opportunities = Array.isArray(request?.evaluationContext?.opportunitySnapshot)
+      ? request.evaluationContext.opportunitySnapshot
+      : Array.isArray(request?.evaluationContext?.opportunitySnapshot?.opportunities)
+        ? request.evaluationContext.opportunitySnapshot.opportunities
+        : [];
+    const scheduledEvents = Array.isArray(request?.evaluationContext?.scheduledEvents)
+      ? request.evaluationContext.scheduledEvents
+      : [];
+    const hasFutureResponseWindow = sourceActorId =>
+      opportunities.some(opportunity =>
+        String(opportunity?.ownerId || '').trim() === sourceActorId &&
+        String(opportunity?.opportunityId || '').trim() !==
+          String(request?.actionOpportunity?.opportunityId || '').trim() &&
+        !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+          String(opportunity?.status || '').trim().toUpperCase(),
+        )
+      ) ||
+      scheduledEvents.some(event =>
+        String(event?.ownerId || event?.targetId || '').trim() === sourceActorId
+      );
     const publicResponses = request?.beliefState?.publicResponses || {};
     const known = Object.entries(publicResponses).flatMap(([sourceActorId, responses]) =>
-      (Array.isArray(responses) ? responses : []).map(response => ({
-        sourceActorId,
-        responseId: String(response?.responseId || response?.actionName || 'public-response').trim(),
-        threat: Math.max(0, Number(response?.baseActionValue ?? response?.utility ?? 0)),
-        catastrophic: response?.lethal === true ||
-          response?.incapacitating === true ||
-          response?.cancelsOpportunity === true ||
-          response?.breaksObjective === true,
-        evidenceEventIds: Object.freeze([...(response?.evidenceEventIds || [])]),
-      }))
+      (Array.isArray(responses) ? responses : []).flatMap(response => {
+        const source = findUnitInWorld(request?.visibleWorld || {}, sourceActorId);
+        if (!source || String(sideOf(request?.visibleWorld || {}, source)) === actorSide) {
+          return [];
+        }
+        const roles = new Set([
+          String(response?.responseRole || '').trim().toUpperCase(),
+          ...(Array.isArray(response?.responseRoles)
+            ? response.responseRoles.map(role => String(role || '').trim().toUpperCase())
+            : []),
+        ].filter(Boolean));
+        const candidateTriggered = [...roles].some(role =>
+          ['REACTION', 'COUNTER'].includes(role)
+        ) && candidateTargetIds.has(sourceActorId);
+        const timelineTriggered = [...roles].some(role =>
+          ['ACTIVE', 'NATURAL_ACTION'].includes(role)
+        ) && hasFutureResponseWindow(sourceActorId);
+        if (!candidateTriggered && !timelineTriggered) return [];
+        const responseId = String(
+          response?.responseId || response?.actionName || 'public-response',
+        ).trim();
+        if (
+          candidateTriggered &&
+          reactionResponseAlreadyConsumed(
+            request?.visibleWorld || {},
+            sourceActorId,
+            responseId,
+          )
+        ) {
+          return [];
+        }
+        return [{
+          sourceActorId,
+          responseId,
+          threat: Math.max(0, Number(response?.baseActionValue ?? response?.utility ?? 0)),
+          declaration: response?.declaration && typeof response.declaration === 'object'
+            ? cloneValue(response.declaration)
+            : null,
+          appliesToNoOp: timelineTriggered,
+          triggerTiming: candidateTriggered ? 'PRE_ACTION' : 'POST_ACTION',
+          catastrophic: response?.lethal === true ||
+            response?.incapacitating === true ||
+            response?.cancelsOpportunity === true ||
+            response?.breaksObjective === true,
+          evidenceEventIds: Object.freeze([...(response?.evidenceEventIds || [])]),
+        }];
+      })
     ).filter(response => response.threat > 0);
     const center = median(known.map(response => response.threat));
     const deviations = known.map(response => Math.abs(response.threat - center));
@@ -12062,16 +22651,24 @@
     const mainBranches = selected.map(response => Object.freeze({
       projectionId: `response:${candidateId}:${response.sourceActorId}:${response.responseId}`,
       sourceActorId: response.sourceActorId,
+      responseId: response.responseId,
       probability: knownMass * response.weight / weightTotal,
       threatEnvelope: Object.freeze({ lower: response.threat, upper: response.threat }),
+      declaration: response.declaration ? deepFreeze(response.declaration) : null,
+      appliesToNoOp: response.appliesToNoOp === true,
+      triggerTiming: response.triggerTiming,
       evidenceEventIds: response.evidenceEventIds,
       publicEvidence: true,
     }));
     const disasterTail = disaster ? Object.freeze({
       projectionId: `disaster:${candidateId}:${disaster.sourceActorId}:${disaster.responseId}`,
       sourceActorId: disaster.sourceActorId,
+      responseId: disaster.responseId,
       probability: Math.min(unknownMass || 0.05, 0.35),
       threatEnvelope: Object.freeze({ lower: disaster.threat, upper: disaster.threat }),
+      declaration: disaster.declaration ? deepFreeze(disaster.declaration) : null,
+      appliesToNoOp: disaster.appliesToNoOp === true,
+      triggerTiming: disaster.triggerTiming,
       evidenceEventIds: disaster.evidenceEventIds,
       publicEvidence: true,
     }) : null;
@@ -12093,82 +22690,267 @@
     const primary = envelope?.primaryRoute;
     const backup = envelope?.backupRoute;
     if (!primary || !backup || primary.routeKey === backup.routeKey) return 0;
-    const candidate = request?.frozenCandidates?.find(entry => entry.candidateId === candidateId);
-    const observable = (candidate?.declaration?.skill?._效果数组 || []).some(effect =>
-      String(effect?.原型 || '').trim() === '决策干扰' ||
-      /观察|侦察|探测|揭示/.test(String(effect?.信息类型 || effect?.效果 || effect?.状态 || ''))
-    ) || String(candidate?.declaration?.actionKind || '').trim() === 'OBSERVE';
-    if (!observable) return 0;
-    const regretBefore = Math.abs(Number(primary.routeBenefitPP || 0) - Number(backup.routeBenefitPP || 0));
-    return Math.max(0, regretBefore * (1 - clamp(request?.beliefState?.confidence ?? 0.5, 0, 1)));
+    const explicitOutcomes = Array.isArray(request?.observationOutcomes)
+      ? request.observationOutcomes
+      : Array.isArray(request?.observationOutcomesByCandidate?.[candidateId])
+        ? request.observationOutcomesByCandidate[candidateId]
+        : [];
+    if (!explicitOutcomes.length) return 0;
+    const groups = new Map();
+    explicitOutcomes.forEach((outcome, index) => {
+      const groupId = String(outcome?.observationGroupId || `group:${index}`).trim();
+      const rows = groups.get(groupId) || [];
+      rows.push(outcome);
+      groups.set(groupId, rows);
+    });
+    return Math.max(0, ...[...groups.values()].map(outcomes => {
+      const explicitValueBefore = Number(outcomes[0]?.valueBeforeHEPP);
+      const valueBefore = Number.isFinite(explicitValueBefore)
+        ? explicitValueBefore
+        : routeSelectionBenefit(primary);
+      const probabilityTotal = outcomes.reduce(
+        (sum, outcome) => sum + clamp(outcome?.probability || 0, 0, 1),
+        0,
+      );
+      if (!(probabilityTotal > 1e-9)) return 0;
+      const expectedBestAfter = outcomes.reduce((sum, outcome) => {
+        const probability = clamp(outcome?.probability || 0, 0, 1) / probabilityTotal;
+        const explicitBestValue = Number(outcome?.bestValueAfterHEPP);
+        if (Number.isFinite(explicitBestValue)) {
+          return sum + probability * explicitBestValue;
+        }
+        const primaryKey = String(outcome?.nextPrimaryRouteKey || primary.routeKey || '').trim();
+        const backupKey = String(outcome?.nextBackupRouteKey || backup.routeKey || '').trim();
+        return sum + probability * (
+          primaryKey !== primary.routeKey && primaryKey === backup.routeKey
+            ? routeSelectionBenefit(backup)
+            : valueBefore
+        );
+      }, 0);
+      return expectedBestAfter - valueBefore;
+    }));
   }
 
-  function r8ObjectiveGroups(request = {}) {
+  function buildR8ObjectiveContext(request = {}) {
     const normalized = preview.normalizeBattleObjectives(
       request?.objectiveContract || {},
       request?.visibleWorld || {},
     );
     const actorIsPlayer = /player|玩家|我方|己方|友方/i.test(String(request?.actorSide || ''));
-    return Object.freeze({
+    const actorSide = String(request?.actorSide || '').trim();
+    const objectiveUnitIndex = preview.buildObjectiveUnitIndex(
+      request?.visibleWorld || {},
+    );
+    const unitProfilesById = new Map();
+    const unitProfilesByName = new Map();
+    objectiveUnitIndex.entries.forEach(entry => {
+      const id = preview.unitId(entry.unit);
+      const name = preview.unitName(entry.unit);
+      if (!id) return;
+      const profile = Object.freeze({
+        id,
+        name,
+        unit: entry.unit,
+        side: String(entry.side || '').trim(),
+        ownTarget: String(entry.side || '').trim() === actorSide,
+        currentPP:
+          100 * preview.readHp(entry.unit) /
+          Math.max(1, preview.readHpMax(entry.unit)),
+      });
+      unitProfilesById.set(id, profile);
+      if (name) unitProfilesByName.set(name, profile);
+    });
+    const conditionProfiles = new Map();
+    [
+      ...(normalized?.victory?.conditions || []),
+      ...(normalized?.defeat?.conditions || []),
+    ].forEach(condition => {
+      conditionProfiles.set(condition, Object.freeze({
+        expectedSide: String(condition?.side || '').trim().toUpperCase(),
+        targetIds: new Set(
+          (condition?.targetIds || [])
+            .map(value => String(value || '').trim())
+            .filter(Boolean),
+        ),
+      }));
+    });
+    const groups = Object.freeze({
       normalized,
       actorIsPlayer,
       victory: actorIsPlayer ? normalized.victory : normalized.defeat,
       defeat: actorIsPlayer ? normalized.defeat : normalized.victory,
     });
+    return {
+      groups,
+      actorSide,
+      unitProfilesById,
+      unitProfilesByName,
+      conditionProfiles,
+      objectiveUnitIndex,
+      objectiveSemanticHash: preview.stableHash(normalized),
+    };
   }
 
-  function r8ConditionMatchesUnit(request = {}, condition = {}, unitIdValue = '') {
-    const unit = findUnitInWorld(request?.visibleWorld || {}, unitIdValue);
-    if (!unit) return false;
-    const targetIds = new Set((condition?.targetIds || []).map(value => String(value || '').trim()));
-    if (targetIds.size && !targetIds.has(preview.unitId(unit)) && !targetIds.has(preview.unitName(unit))) return false;
-    const expectedSide = String(condition?.side || '').trim().toUpperCase();
+  function r8ObjectiveContext(request = {}) {
+    if (!request || typeof request !== 'object') {
+      return buildR8ObjectiveContext(request);
+    }
+    const cached = r8ObjectiveContextCache.get(request);
+    if (cached) return cached;
+    const world = request?.visibleWorld;
+    const objectiveContract = request?.objectiveContract;
+    const actorSide = String(request?.actorSide || '').trim();
+    let context = null;
+    if (
+      world && typeof world === 'object' &&
+      objectiveContract && typeof objectiveContract === 'object'
+    ) {
+      let byObjective = r8ObjectiveWorldContextCache.get(world);
+      if (!byObjective) {
+        byObjective = new WeakMap();
+        r8ObjectiveWorldContextCache.set(world, byObjective);
+      }
+      let byActorSide = byObjective.get(objectiveContract);
+      if (!byActorSide) {
+        byActorSide = new Map();
+        byObjective.set(objectiveContract, byActorSide);
+      }
+      context = byActorSide.get(actorSide) || null;
+      if (!context) {
+        context = buildR8ObjectiveContext(request);
+        byActorSide.set(actorSide, context);
+      }
+    }
+    if (!context) context = buildR8ObjectiveContext(request);
+    r8ObjectiveContextCache.set(request, context);
+    return context;
+  }
+
+  function r8ObjectiveGroups(request = {}) {
+    return r8ObjectiveContext(request).groups;
+  }
+
+  function r8ConditionMatchesUnit(
+    request = {},
+    condition = {},
+    unitIdValue = '',
+    objectiveContext = r8ObjectiveContext(request),
+  ) {
+    const unitIdText = String(unitIdValue || '').trim();
+    const unitProfile =
+      objectiveContext.unitProfilesById.get(unitIdText) ||
+      objectiveContext.unitProfilesByName.get(unitIdText);
+    if (!unitProfile) return false;
+    const conditionProfile = objectiveContext.conditionProfiles.get(condition) || {
+      expectedSide: String(condition?.side || '').trim().toUpperCase(),
+      targetIds: new Set(
+        (condition?.targetIds || [])
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+      ),
+    };
+    if (
+      conditionProfile.targetIds.size &&
+      !conditionProfile.targetIds.has(unitProfile.id) &&
+      !conditionProfile.targetIds.has(unitProfile.name)
+    ) {
+      return false;
+    }
+    const expectedSide = conditionProfile.expectedSide;
     if (!expectedSide) return true;
-    const actualPlayer = /player|玩家|我方|己方|友方/i.test(String(sideOf(request.visibleWorld, unit)));
+    const actualPlayer = /player|玩家|我方|己方|友方/i.test(unitProfile.side);
     return expectedSide === (actualPlayer ? 'PLAYER' : 'ENEMY');
   }
 
-  function r8ConditionTrajectoryValue(request = {}, condition = {}, trajectory = {}, groupRole = 'VICTORY') {
-    if (!r8ConditionMatchesUnit(request, condition, trajectory.targetId)) return 0;
-    const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
-    if (!target) return 0;
-    const targetSide = String(sideOf(request.visibleWorld, target));
-    const actorSide = String(request.actorSide || '');
-    const ownTarget = targetSide === actorSide;
-    const deltaPP = Number(trajectory.healthDeltaPP || 0);
-    const damagePP = Math.max(0, -deltaPP);
-    const sustainPP = Math.max(0, deltaPP);
-    const type = String(condition?.type || '').trim().toUpperCase();
-    if (groupRole === 'DEFEAT') {
-      if (!ownTarget) return 0;
-      if (['TEAM_DEAD', 'UNIT_DEAD', 'TEAM_INCAPACITATED', 'UNIT_INCAPACITATED', 'ROUND_REACHED', 'WITHDRAW_SUCCESS', 'UNIT_DAMAGED'].includes(type)) {
-        return sustainPP;
-      }
-      if (type === 'HP_RATIO_AT_OR_BELOW') {
-        const currentPP = 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
-        const thresholdPP = 100 * Number(condition?.threshold || 0);
-        return Math.min(sustainPP, Math.max(0, thresholdPP - currentPP));
-      }
-      return 0;
+  function r8TrajectoryDeltaByTarget(trajectories = []) {
+    if (trajectories instanceof Map) return trajectories;
+    const totals = new Map();
+    for (const trajectory of trajectories) {
+      const targetId = String(trajectory?.targetId || '').trim();
+      if (!targetId) continue;
+      totals.set(
+        targetId,
+        Number(totals.get(targetId) || 0) +
+          Number(
+            trajectory?.objectiveMarginalHealthDeltaPP ??
+            trajectory?.healthDeltaPP ??
+            0
+          )
+      );
     }
-    if (type === 'ROUND_REACHED' || type === 'WITHDRAW_SUCCESS') return ownTarget ? sustainPP : 0;
-    if (ownTarget) return 0;
-    if (['TEAM_DEAD', 'UNIT_DEAD', 'TEAM_INCAPACITATED', 'UNIT_INCAPACITATED'].includes(type)) {
-      const currentPP = 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
-      return Math.min(damagePP, currentPP);
-    }
-    if (type === 'UNIT_DAMAGED') return damagePP;
-    if (type === 'HP_RATIO_AT_OR_BELOW') {
-      const currentPP = 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
-      const thresholdPP = 100 * Number(condition?.threshold || 0);
-      return Math.min(damagePP, Math.max(0, currentPP - thresholdPP));
-    }
-    return 0;
+    return totals;
   }
 
-  function r8GroupTrajectoryValue(request = {}, group = {}, trajectory = {}, groupRole = 'VICTORY') {
+  function r8ConditionTrajectoryValue(
+    request = {},
+    condition = {},
+    trajectories = [],
+    groupRole = 'VICTORY',
+    trajectoryTotals = r8TrajectoryDeltaByTarget(trajectories),
+    objectiveContext = r8ObjectiveContext(request),
+  ) {
+    const type = String(condition?.type || '').trim().toUpperCase();
+    const values = [];
+    for (const [targetId, deltaPP] of trajectoryTotals) {
+      if (!r8ConditionMatchesUnit(
+        request,
+        condition,
+        targetId,
+        objectiveContext,
+      )) {
+        continue;
+      }
+      const unitProfile =
+        objectiveContext.unitProfilesById.get(targetId) ||
+        objectiveContext.unitProfilesByName.get(targetId);
+      if (!unitProfile) continue;
+      const ownTarget = unitProfile.ownTarget;
+      const currentPP = unitProfile.currentPP;
+      const afterPP = clamp(currentPP + deltaPP, 0, 100);
+      let value = 0;
+      if (groupRole === 'DEFEAT') {
+        if (!ownTarget) continue;
+        if (['TEAM_DEAD', 'UNIT_DEAD', 'TEAM_INCAPACITATED', 'UNIT_INCAPACITATED', 'UNIT_DAMAGED', 'ROUND_REACHED', 'WITHDRAW_SUCCESS'].includes(type)) {
+          value = afterPP - currentPP;
+        } else if (type === 'HP_RATIO_AT_OR_BELOW') {
+          const thresholdPP = 100 * Number(condition?.threshold || 0);
+          value = Math.max(0, currentPP - thresholdPP) - Math.max(0, afterPP - thresholdPP);
+        }
+      } else if (type === 'ROUND_REACHED' || type === 'WITHDRAW_SUCCESS') {
+        if (ownTarget) value = afterPP - currentPP;
+      } else if (!ownTarget) {
+        if (['TEAM_DEAD', 'UNIT_DEAD', 'TEAM_INCAPACITATED', 'UNIT_INCAPACITATED', 'UNIT_DAMAGED'].includes(type)) {
+          value = currentPP - afterPP;
+        } else if (type === 'HP_RATIO_AT_OR_BELOW') {
+          const thresholdPP = 100 * Number(condition?.threshold || 0);
+          value = Math.max(0, currentPP - thresholdPP) - Math.max(0, afterPP - thresholdPP);
+        }
+      }
+      values.push(value);
+    }
+    if (!values.length) return 0;
+    return String(condition?.scope || 'ANY').toUpperCase() === 'ALL'
+      ? Math.min(...values)
+      : Math.max(...values);
+  }
+
+  function r8GroupTrajectoryValue(
+    request = {},
+    group = {},
+    trajectories = [],
+    groupRole = 'VICTORY',
+    trajectoryTotals = r8TrajectoryDeltaByTarget(trajectories),
+    objectiveContext = r8ObjectiveContext(request),
+  ) {
     const values = (group?.conditions || []).map(condition =>
-      r8ConditionTrajectoryValue(request, condition, trajectory, groupRole)
+      r8ConditionTrajectoryValue(
+        request,
+        condition,
+        trajectories,
+        groupRole,
+        trajectoryTotals,
+        objectiveContext,
+      )
     );
     if (!values.length) return 0;
     return String(group?.logic || 'ANY').toUpperCase() === 'ALL'
@@ -12176,8 +22958,83 @@
       : Math.max(...values);
   }
 
+  function r8GroupRelevantTargetIds(
+    request = {},
+    group = {},
+    trajectories = [],
+    trajectoryTotals = r8TrajectoryDeltaByTarget(trajectories),
+    objectiveContext = r8ObjectiveContext(request),
+  ) {
+    return new Set([...trajectoryTotals.keys()]
+      .map(targetId => String(targetId || '').trim())
+      .filter(targetId =>
+        targetId &&
+        (group?.conditions || []).some(condition =>
+          r8ConditionMatchesUnit(
+            request,
+            condition,
+            targetId,
+            objectiveContext,
+          )
+        )
+      ));
+  }
+
+  function r8UniqueObjectiveTrajectoryValue(
+    request = {},
+    groups = {},
+    trajectories = [],
+    objectiveContext = r8ObjectiveContext(request),
+  ) {
+    const trajectoryTotals = r8TrajectoryDeltaByTarget(trajectories);
+    const victoryValue = r8GroupTrajectoryValue(
+      request,
+      groups.victory,
+      trajectories,
+      'VICTORY',
+      trajectoryTotals,
+      objectiveContext,
+    );
+    const defeatValue = r8GroupTrajectoryValue(
+      request,
+      groups.defeat,
+      trajectories,
+      'DEFEAT',
+      trajectoryTotals,
+      objectiveContext,
+    );
+    if (
+      Math.sign(victoryValue) !== Math.sign(defeatValue) ||
+      Math.abs(victoryValue) <= 1e-9 ||
+      Math.abs(defeatValue) <= 1e-9
+    ) {
+      return victoryValue + defeatValue;
+    }
+    const victoryTargets = r8GroupRelevantTargetIds(
+      request,
+      groups.victory,
+      trajectories,
+      trajectoryTotals,
+      objectiveContext,
+    );
+    const defeatTargets = r8GroupRelevantTargetIds(
+      request,
+      groups.defeat,
+      trajectories,
+      trajectoryTotals,
+      objectiveContext,
+    );
+    const sharesTargetFact = [...victoryTargets].some(targetId =>
+      defeatTargets.has(targetId)
+    );
+    if (!sharesTargetFact) return victoryValue + defeatValue;
+    const overlap = Math.min(Math.abs(victoryValue), Math.abs(defeatValue));
+    return victoryValue + defeatValue - Math.sign(victoryValue) * overlap;
+  }
+
   function r8ThresholdOverkill(request = {}, route = {}) {
     const groups = r8ObjectiveGroups(request);
+    const objectiveContext = r8ObjectiveContext(request);
     let discardedOverkillPP = 0;
     for (const trajectory of route?.healthTrajectoryByTarget || []) {
       const damagePP = Math.max(0, -Number(trajectory?.healthDeltaPP || 0));
@@ -12186,12 +23043,22 @@
       if (!target) continue;
       const thresholdConditions = (groups.victory?.conditions || []).filter(condition =>
         condition.type === 'HP_RATIO_AT_OR_BELOW' &&
-        r8ConditionMatchesUnit(request, condition, trajectory.targetId)
+        r8ConditionMatchesUnit(
+          request,
+          condition,
+          trajectory.targetId,
+          objectiveContext,
+        )
       );
       if (!thresholdConditions.length) continue;
       const killAlsoRequired = (groups.victory?.conditions || []).some(condition =>
         ['TEAM_DEAD', 'UNIT_DEAD'].includes(condition.type) &&
-        r8ConditionMatchesUnit(request, condition, trajectory.targetId)
+        r8ConditionMatchesUnit(
+          request,
+          condition,
+          trajectory.targetId,
+          objectiveContext,
+        )
       );
       if (killAlsoRequired) continue;
       const currentPP = 100 * preview.readHp(target) / Math.max(1, preview.readHpMax(target));
@@ -12203,8 +23070,55 @@
     return discardedOverkillPP;
   }
 
+  function r8RealizedThresholdOverkillPP(
+    request = {},
+    worldSnapshot = {},
+    trajectory = {},
+    healthDeltaPP = 0,
+    groups = r8ObjectiveGroups(request),
+    objectiveContext = r8ObjectiveContext(request),
+    objectiveStateByUnitId = null,
+  ) {
+    const damagePP = Math.max(0, -Number(healthDeltaPP || 0));
+    if (!(damagePP > 0)) return 0;
+    const targetId = String(trajectory?.targetId || '').trim();
+    const target = findUnitInWorld(worldSnapshot, targetId);
+    if (!target) return 0;
+    const thresholdConditions = (groups.victory?.conditions || []).filter(condition =>
+      condition.type === 'HP_RATIO_AT_OR_BELOW' &&
+      r8ConditionMatchesUnit(request, condition, targetId, objectiveContext)
+    );
+    if (!thresholdConditions.length) return 0;
+    const killAlsoRequired = (groups.victory?.conditions || []).some(condition =>
+      ['TEAM_DEAD', 'UNIT_DEAD'].includes(condition.type) &&
+      r8ConditionMatchesUnit(request, condition, targetId, objectiveContext)
+    );
+    if (killAlsoRequired) return 0;
+    const stateOverride = objectiveStateByUnitId instanceof Map
+      ? objectiveStateByUnitId.get(targetId)
+      : objectiveStateByUnitId && typeof objectiveStateByUnitId === 'object'
+        ? objectiveStateByUnitId[targetId]
+        : null;
+    const currentHp = Number.isFinite(Number(stateOverride?.hp))
+      ? Number(stateOverride.hp)
+      : preview.readHp(target);
+    const currentPP =
+      100 * currentHp / Math.max(1, preview.readHpMax(target));
+    const afterPP = clamp(currentPP - damagePP, 0, 100);
+    const countablePP = Math.max(...thresholdConditions.map(condition => {
+      const thresholdPP = 100 * Number(condition.threshold || 0);
+      return Math.max(0, currentPP - thresholdPP) -
+        Math.max(0, afterPP - thresholdPP);
+    }));
+    return Math.max(0, damagePP - Math.max(0, countablePP));
+  }
+
   function r8SetProjectedHp(unit = {}, nextHp = 0) {
-    const value = Math.max(0, nextHp);
+    const value = clamp(
+      Number(nextHp || 0),
+      0,
+      Math.max(0, preview.readHpMax(unit)),
+    );
     unit.hp = value;
     unit.HP = value;
     unit.生命 = value;
@@ -12217,30 +23131,1911 @@
     }
   }
 
-  function r8TerminalUtility(request = {}, route = {}) {
-    const projected = cloneValue(request?.visibleWorld || {});
-    const objectives = preview.normalizeBattleObjectives(request?.objectiveContract || {}, projected);
-    for (const trajectory of route?.healthTrajectoryByTarget || []) {
-      const target = findUnitInWorld(projected, trajectory.targetId);
-      if (!target) continue;
-      const delta = Number(trajectory.healthDeltaPP || 0) * Math.max(1, preview.readHpMax(target)) / 100;
-      r8SetProjectedHp(target, preview.readHp(target) + delta);
-      const resolution = preview.evaluateBattleObjectives(projected, objectives, {
-        round: Number(projected?.回合 || 0),
-        roundCompleted: false,
+  function r8ForkWorldForUnitMutation(worldSnapshot = {}, targetId = '') {
+    const wantedId = String(targetId || '').trim();
+    const current = findUnitInWorld(worldSnapshot, wantedId);
+    if (!current) return { world: worldSnapshot, unit: null };
+    const nextUnit = {
+      ...current,
+      属性: current?.属性 && typeof current.属性 === 'object'
+        ? { ...current.属性 }
+        : current?.属性,
+      状态: current?.状态 && typeof current.状态 === 'object'
+        ? { ...current.状态 }
+        : current?.状态,
+    };
+    const nextWorld = { ...worldSnapshot };
+    const participants = worldSnapshot?.参战者;
+    if (participants && typeof participants === 'object') {
+      let participantsChanged = false;
+      const nextParticipants = { ...participants };
+      Object.entries(participants).forEach(([side, value]) => {
+        if (Array.isArray(value)) {
+          const index = value.findIndex(unit => preview.unitId(unit) === wantedId);
+          if (index < 0) return;
+          const nextSide = [...value];
+          nextSide[index] = nextUnit;
+          nextParticipants[side] = nextSide;
+          participantsChanged = true;
+          return;
+        }
+        if (!value || typeof value !== 'object') return;
+        const entry = Object.entries(value).find(([, unit]) => preview.unitId(unit) === wantedId);
+        if (!entry) return;
+        nextParticipants[side] = { ...value, [entry[0]]: nextUnit };
+        participantsChanged = true;
       });
-      if (!resolution.terminal) continue;
-      const actorIsPlayer = r8ObjectiveGroups(request).actorIsPlayer;
-      const won = resolution.status === (actorIsPlayer ? 'PLAYER_WIN' : 'ENEMY_WIN');
-      const lost = resolution.status === (actorIsPlayer ? 'ENEMY_WIN' : 'PLAYER_WIN');
-      return Object.freeze({
-        terminal: true,
-        status: resolution.status,
-        utility: won ? 100 : lost ? -100 : 0,
-        terminalAfterEffectInstanceId: String(trajectory.sourceEffectInstanceId || ''),
-      });
+      if (participantsChanged) nextWorld.参战者 = nextParticipants;
     }
-    return Object.freeze({ terminal: false, status: 'ONGOING', utility: null, terminalAfterEffectInstanceId: '' });
+    const summons = worldSnapshot?.召唤单位表;
+    if (summons && typeof summons === 'object') {
+      const entry = Object.entries(summons).find(([, unit]) => preview.unitId(unit) === wantedId);
+      if (entry) nextWorld.召唤单位表 = { ...summons, [entry[0]]: nextUnit };
+    }
+    return { world: nextWorld, unit: nextUnit };
+  }
+
+  function r8TerminalRelevantProbabilityFactors(route = {}) {
+    const allProbabilityFactors = Array.isArray(route?.probabilityFactors)
+      ? route.probabilityFactors
+      : [];
+    const requiredAssignmentKeys = new Set(
+      (route?.healthTrajectoryByTarget || []).flatMap(trajectory =>
+        (trajectory?.outcomeDistribution || []).flatMap(outcome =>
+          Object.keys(outcome?.conditionalOn || {})
+        )
+      ),
+    );
+    const terminalRelevantFactors = new Set();
+    let factorClosureChanged = true;
+    while (factorClosureChanged) {
+      factorClosureChanged = false;
+      for (const factor of allProbabilityFactors) {
+        if (terminalRelevantFactors.has(factor)) continue;
+        const outcomes = factor?.outcomeDistribution || [];
+        const changesActionState = outcomes.some(outcome =>
+          String(outcome?.actionState || '').trim()
+        );
+        const producedKeys = new Set(
+          outcomes.flatMap(outcome => Object.keys(outcome?.assignments || {})),
+        );
+        if (
+          !changesActionState &&
+          ![...producedKeys].some(key => requiredAssignmentKeys.has(key))
+        ) {
+          continue;
+        }
+        terminalRelevantFactors.add(factor);
+        outcomes.forEach(outcome => {
+          Object.keys(outcome?.conditionalOn || {}).forEach(key => {
+            if (requiredAssignmentKeys.has(key)) return;
+            requiredAssignmentKeys.add(key);
+            factorClosureChanged = true;
+          });
+        });
+      }
+    }
+    return Object.freeze(
+      allProbabilityFactors.filter(factor => terminalRelevantFactors.has(factor)),
+    );
+  }
+
+  function r8TerminalInitialUnitStates(world = {}) {
+    return Object.fromEntries(
+      preview.listUnits(world).map(entry => [
+        preview.unitId(entry.unit),
+        {
+          hp: Number(preview.readHp(entry.unit).toFixed(8)),
+          baseMaxHp: Number(preview.readHpMax(entry.unit).toFixed(8)),
+          alive: preview.isPhysicallyAlive(entry.unit),
+          capable: preview.isBattleCapable(entry.unit),
+          actionState: String(entry.unit?.状态?.行动 || '').trim(),
+          stamina: Number(
+            Number.isFinite(Number(entry.unit?.vit))
+              ? entry.unit.vit
+              : preview.readResource(entry.unit, '体力')
+          ),
+        },
+      ]),
+    );
+  }
+
+  function r8TerminalAtomicGroups(route = {}) {
+    const terminalRelevantFactors = new Set(
+      r8TerminalRelevantProbabilityFactors(route),
+    );
+    const atomicGroups = [];
+    const atomicGroupByKey = new Map();
+    const ensureGroup = (atomicKey, order) => {
+      let group = atomicGroupByKey.get(atomicKey);
+      if (!group) {
+        group = {
+          atomicKey,
+          order,
+          probabilityFactors: [],
+          trajectories: [],
+        };
+        atomicGroupByKey.set(atomicKey, group);
+        atomicGroups.push(group);
+      }
+      group.order = Math.min(Number(group.order || 0), Number(order || 0));
+      return group;
+    };
+    for (const [trajectoryIndex, trajectory] of (
+      route?.healthTrajectoryByTarget || []
+    ).entries()) {
+      const order = Number.isFinite(Number(trajectory?.contributionSequence))
+        ? Number(trajectory.contributionSequence)
+        : trajectoryIndex;
+      const atomicKey = [
+        String(trajectory?.rootActionId || route?.candidateId || '').trim(),
+        String(trajectory?.sourceEffectInstanceId || '').trim(),
+        String(trajectory?.windowId || 'NOW').trim() || 'NOW',
+      ].join('|');
+      ensureGroup(atomicKey, order).trajectories.push(trajectory);
+    }
+    for (const [factorIndex, factor] of (
+      route?.probabilityFactors || []
+    ).entries()) {
+      if (!terminalRelevantFactors.has(factor)) continue;
+      const order = Number.isFinite(Number(factor?.contributionSequence))
+        ? Number(factor.contributionSequence)
+        : Number(route?.healthTrajectoryByTarget?.length || 0) + factorIndex;
+      const atomicKey = [
+        String(factor?.rootActionId || route?.candidateId || '').trim(),
+        String(factor?.effectInstanceId || '').trim(),
+        String(factor?.windowId || 'NOW').trim() || 'NOW',
+      ].join('|');
+      ensureGroup(atomicKey, order).probabilityFactors.push(factor);
+    }
+    atomicGroups.sort((left, right) =>
+      Number(left.order || 0) - Number(right.order || 0) ||
+      String(left.atomicKey || '').localeCompare(String(right.atomicKey || ''))
+    );
+    return Object.freeze(atomicGroups.map((group, groupIndex) =>
+      Object.freeze({
+        ...group,
+        groupIndex,
+        probabilityFactors: Object.freeze([...group.probabilityFactors]),
+        trajectories: Object.freeze([...group.trajectories]),
+      })
+    ));
+  }
+
+  function r8TerminalRelevantUnitIds(
+    request = {},
+    objectiveContext = r8ObjectiveContext(request),
+    route = {},
+    utilityRoute = route,
+  ) {
+    const relevantIds = new Set();
+    const collectRouteTargets = sourceRoute => {
+      (sourceRoute?.healthTrajectoryByTarget || []).forEach(trajectory => {
+        const targetId = String(trajectory?.targetId || '').trim();
+        if (targetId) relevantIds.add(targetId);
+      });
+      (sourceRoute?.probabilityFactors || []).forEach(factor => {
+        const targetId = String(factor?.targetId || '').trim();
+        if (targetId) relevantIds.add(targetId);
+      });
+    };
+    collectRouteTargets(route);
+    if (utilityRoute !== route) collectRouteTargets(utilityRoute);
+    const conditions = [
+      ...(objectiveContext?.groups?.normalized?.victory?.conditions || []),
+      ...(objectiveContext?.groups?.normalized?.defeat?.conditions || []),
+    ];
+    conditions.forEach(condition => {
+      objectiveContext.unitProfilesById.forEach(profile => {
+        if (
+          r8ConditionMatchesUnit(
+            request,
+            condition,
+            profile.id,
+            objectiveContext,
+          )
+        ) {
+          relevantIds.add(profile.id);
+        }
+      });
+    });
+    if (!relevantIds.size) {
+      objectiveContext.unitProfilesById.forEach(profile =>
+        relevantIds.add(profile.id)
+      );
+    }
+    return Object.freeze([...relevantIds].sort());
+  }
+
+  function r8TerminalWorldDependencyHash(
+    world = {},
+    initialUnitStates = null,
+    request = {},
+    objectiveContext = r8ObjectiveContext(request),
+    route = {},
+    utilityRoute = route,
+  ) {
+    const relevantUnitIds = r8TerminalRelevantUnitIds(
+      request,
+      objectiveContext,
+      route,
+      utilityRoute,
+    );
+    const dependencyKey = [
+      objectiveContext.objectiveSemanticHash,
+      relevantUnitIds.join(','),
+    ].join('|');
+    let byDependency = null;
+    if (world && typeof world === 'object') {
+      byDependency = r8TerminalWorldStateSignatureCache.get(world);
+      if (byDependency?.has(dependencyKey)) {
+        return byDependency.get(dependencyKey);
+      }
+    }
+    const unitStates =
+      initialUnitStates || r8TerminalInitialUnitStates(world);
+    const signature = JSON.stringify({
+      round: Number(world?.回合 || 0),
+      units: relevantUnitIds.map(unitId => [
+        unitId,
+        unitStates[unitId] || null,
+      ]),
+    });
+    const dependencyHash =
+      `terminal-world:${preview.stableHash(signature)}`;
+    decisionMetrics.terminalDependencyUnitCount += relevantUnitIds.length;
+    if (world && typeof world === 'object') {
+      if (!byDependency) {
+        byDependency = new Map();
+        r8TerminalWorldStateSignatureCache.set(world, byDependency);
+      }
+      byDependency.set(dependencyKey, dependencyHash);
+    }
+    return dependencyHash;
+  }
+
+  function r8TerminalRouteSignature(route = {}) {
+    if (route && typeof route === 'object') {
+      const cached = r8TerminalRouteSignatureCache.get(route);
+      if (cached) return cached;
+    }
+    const signature = `terminal:${preview.stableHash({
+        healthTrajectoryByTarget: route?.healthTrajectoryByTarget || [],
+        probabilityFactors: route?.probabilityFactors || [],
+      })}`;
+    if (route && typeof route === 'object') {
+      r8TerminalRouteSignatureCache.set(route, signature);
+    }
+    return signature;
+  }
+
+  function r8TerminalCanonicalMechanicalSignature(route = {}) {
+    if (route && typeof route === 'object') {
+      const cached = r8TerminalCanonicalRouteSignatureCache.get(route);
+      if (cached) return cached;
+    }
+    const routeKey = String(route?.routeKey || '').trim();
+    const routeSignature = route && typeof route === 'object'
+      ? String(r8TerminalRouteSignatureCache.get(route) || '').trim()
+      : '';
+    const routeIdentityKey = routeKey && routeSignature
+      ? `${routeKey}\u0001${routeSignature}`
+      : '';
+    if (
+      routeIdentityKey &&
+      r8TerminalCanonicalRouteKeyCache.has(routeIdentityKey)
+    ) {
+      const cached = r8TerminalCanonicalRouteKeyCache.get(routeIdentityKey);
+      if (route && typeof route === 'object') {
+        r8TerminalCanonicalRouteSignatureCache.set(route, cached);
+      }
+      decisionMetrics.terminalCanonicalRouteKeyCacheHits += 1;
+      return cached;
+    }
+    const assignmentAliases = new Map();
+    const aliasAssignmentKey = key => {
+      const normalized = String(key || '').trim();
+      if (!assignmentAliases.has(normalized)) {
+        assignmentAliases.set(
+          normalized,
+          `assignment:${assignmentAliases.size}`,
+        );
+      }
+      return assignmentAliases.get(normalized);
+    };
+    const normalizedObjectEntries = value =>
+      Object.entries(value || {})
+        .map(([key, entryValue]) => [
+          aliasAssignmentKey(key),
+          String(entryValue ?? ''),
+        ])
+        .sort(([left], [right]) => left.localeCompare(right));
+    const normalizedOutcomes = outcomes =>
+      (outcomes || []).map(outcome => [
+        Number(outcome?.probability || 0),
+        Number(outcome?.healthDeltaPP || 0),
+        String(outcome?.actionState || '').trim(),
+        normalizedObjectEntries(outcome?.conditionalOn),
+        normalizedObjectEntries(outcome?.assignments),
+      ]);
+    const groups = [];
+    const groupByAtomicKey = new Map();
+    const ensureGroup = (atomicKey, order) => {
+      let group = groupByAtomicKey.get(atomicKey);
+      if (!group) {
+        group = {
+          insertionIndex: groups.length,
+          order,
+          trajectories: [],
+          probabilityFactors: [],
+        };
+        groupByAtomicKey.set(atomicKey, group);
+        groups.push(group);
+      }
+      group.order = Math.min(group.order, order);
+      return group;
+    };
+    (route?.healthTrajectoryByTarget || []).forEach(
+      (trajectory, trajectoryIndex) => {
+        const order = Number.isFinite(
+          Number(trajectory?.contributionSequence),
+        )
+          ? Number(trajectory.contributionSequence)
+          : trajectoryIndex;
+        const atomicKey = [
+          String(
+            trajectory?.rootActionId || route?.candidateId || '',
+          ).trim(),
+          String(trajectory?.sourceEffectInstanceId || '').trim(),
+          String(trajectory?.windowId || 'NOW').trim() || 'NOW',
+        ].join('|');
+        ensureGroup(atomicKey, order).trajectories.push([
+          String(trajectory?.targetId || '').trim(),
+          String(trajectory?.outcomeKind || '').trim(),
+          Number(trajectory?.healthDeltaPP || 0),
+          Number(
+            trajectory?.objectiveMarginalHealthDeltaPP ??
+            trajectory?.healthDeltaPP ??
+            0
+          ),
+          normalizedOutcomes(
+            Array.isArray(trajectory?.outcomeDistribution) &&
+            trajectory.outcomeDistribution.length
+              ? trajectory.outcomeDistribution
+              : [{
+                  probability: 1,
+                  healthDeltaPP: Number(
+                    trajectory?.healthDeltaPP || 0,
+                  ),
+                }],
+          ),
+        ]);
+      },
+    );
+    (route?.probabilityFactors || []).forEach((factor, factorIndex) => {
+      const order = Number.isFinite(Number(factor?.contributionSequence))
+        ? Number(factor.contributionSequence)
+        : (route?.healthTrajectoryByTarget || []).length + factorIndex;
+      const atomicKey = [
+        String(
+          factor?.rootActionId || route?.candidateId || '',
+        ).trim(),
+        String(factor?.effectInstanceId || '').trim(),
+        String(factor?.windowId || 'NOW').trim() || 'NOW',
+      ].join('|');
+      ensureGroup(atomicKey, order).probabilityFactors.push([
+        String(factor?.targetId || '').trim(),
+        String(factor?.outcomeKind || '').trim(),
+        normalizedOutcomes(factor?.outcomeDistribution || []),
+      ]);
+    });
+    groups.sort((left, right) =>
+      Number(left.order || 0) - Number(right.order || 0) ||
+      Number(left.insertionIndex || 0) - Number(right.insertionIndex || 0)
+    );
+    const signature = `terminal-mechanical:${preview.stableHash(
+      groups.map(group => [
+      Number(group.order || 0),
+      group.probabilityFactors,
+      group.trajectories,
+      ]),
+    )}`;
+    if (route && typeof route === 'object') {
+      r8TerminalCanonicalRouteSignatureCache.set(route, signature);
+    }
+    if (routeIdentityKey) {
+      while (
+        r8TerminalCanonicalRouteKeyCache.size >=
+        MAX_R8_TERMINAL_CANONICAL_ROUTE_KEYS
+      ) {
+        const oldestKey = r8TerminalCanonicalRouteKeyCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        r8TerminalCanonicalRouteKeyCache.delete(oldestKey);
+      }
+      r8TerminalCanonicalRouteKeyCache.set(routeIdentityKey, signature);
+    }
+    return signature;
+  }
+
+  function r8MechanicalTerminalDistribution(
+    terminal = {},
+    route = {},
+    cacheIdentity = {},
+    groups = r8TerminalAtomicGroups(route),
+  ) {
+    const groupIndexByAtomicKey = new Map(
+      groups.map(group => [String(group.atomicKey || ''), group.groupIndex]),
+    );
+    const terminalPathSlots = Object.freeze(
+      (terminal?.terminalPaths || []).map(path => Object.freeze({
+        probability: Number(path?.probability || 0),
+        status: String(path?.status || '').trim(),
+        groupIndex: Number(
+          groupIndexByAtomicKey.get(
+            String(path?.terminalAtomicKey || '').trim(),
+          ) ?? -1,
+        ),
+      })),
+    );
+    const semanticIdentity = String(
+      cacheIdentity?.semanticCacheKey || '',
+    ).trim();
+    const worldDependencyHash = String(
+      cacheIdentity?.worldDependencyHash || '',
+    ).trim();
+    const routeSignature = String(
+      cacheIdentity?.routeSignature || '',
+    );
+    const core = {
+      schemaVersion: 'MechanicalTerminalDistributionV1',
+      worldDependencyHash,
+      routeMechanicalHash: routeSignature,
+      firstTerminalSequence:
+        terminalPathSlots.length && terminalPathSlots[0].groupIndex >= 0
+          ? terminalPathSlots[0].groupIndex
+          : null,
+      terminal: terminal?.terminal === true,
+      status: String(terminal?.status || '').trim(),
+      utility: terminal?.utility == null ? null : Number(terminal.utility),
+      terminalStatusMass: Object.freeze({
+        PLAYER_WIN: Number(terminal?.winProbability || 0),
+        ENEMY_WIN: Number(terminal?.lossProbability || 0),
+        DRAW: Number(terminal?.drawProbability || 0),
+      }),
+      terminalProbability: Number(terminal?.terminalProbability || 0),
+      winProbability: Number(terminal?.winProbability || 0),
+      lossProbability: Number(terminal?.lossProbability || 0),
+      drawProbability: Number(terminal?.drawProbability || 0),
+      ongoingMass: Number(terminal?.ongoingProbability || 0),
+      ongoingProbability: Number(terminal?.ongoingProbability || 0),
+      expectedTerminalUtility: Number(
+        terminal?.expectedTerminalUtility || 0,
+      ),
+      expectedOngoingTrajectoryUtility: Number(
+        terminal?.expectedOngoingTrajectoryUtility || 0,
+      ),
+      discardedOverkillPP: Number(
+        terminal?.expectedDiscardedOverkillPP || 0,
+      ),
+      expectedDiscardedOverkillPP: Number(
+        terminal?.expectedDiscardedOverkillPP || 0,
+      ),
+      terminalPathSlots,
+      sourceNeutralEvents: terminalPathSlots,
+      branchAssignments: Object.freeze([]),
+    };
+    const distributionIdentity = semanticIdentity || JSON.stringify([
+      core.worldDependencyHash,
+      core.routeMechanicalHash,
+      core.terminal,
+      core.status,
+      core.terminalProbability,
+      core.winProbability,
+      core.lossProbability,
+      core.drawProbability,
+      core.ongoingProbability,
+      core.expectedTerminalUtility,
+      core.expectedOngoingTrajectoryUtility,
+      core.expectedDiscardedOverkillPP,
+      terminalPathSlots,
+    ]);
+    const distribution = {
+      ...core,
+      distributionHash:
+        `terminal-distribution:${preview.stableHash(distributionIdentity)}`,
+    };
+    Object.defineProperty(distribution, 'terminalBranchMetrics', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: terminal?.terminalBranchMetrics || Object.freeze({}),
+    });
+    Object.defineProperty(distribution, 'ongoingBranchWorlds', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: terminal?.ongoingBranchWorlds || Object.freeze([]),
+    });
+    Object.defineProperty(distribution, 'terminalBranchWorlds', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: terminal?.terminalBranchWorlds || Object.freeze([]),
+    });
+    decisionMetrics.terminalMechanicalDistributionBuilds += 1;
+    return Object.freeze(distribution);
+  }
+
+  function r8TerminalAttributionProjection(
+    distribution = {},
+    route = {},
+    groups = r8TerminalAtomicGroups(route),
+  ) {
+    const attributionIdentity = r8AttributionIdentity(
+      distribution,
+      route,
+      groups,
+    );
+    const cachedProjection = r8TerminalAttributionProjectionCache.get(
+      attributionIdentity.identity,
+    );
+    if (cachedProjection) {
+      return cachedProjection;
+    }
+    const terminalPaths = Object.freeze(
+      (distribution?.terminalPathSlots || []).map(slot => {
+        const group = groups[Number(slot?.groupIndex)] || null;
+        const firstSource =
+          group?.trajectories?.[0] ||
+          group?.probabilityFactors?.[0] ||
+          null;
+        return Object.freeze({
+          probability: Number(slot?.probability || 0),
+          status: String(slot?.status || '').trim(),
+          terminalAtomicKey: String(group?.atomicKey || '').trim(),
+          terminalAfterEffectInstanceId: String(
+            firstSource?.sourceEffectInstanceId ||
+            firstSource?.effectInstanceId ||
+            '',
+          ).trim(),
+        });
+      }),
+    );
+    const firstTerminalPath = terminalPaths[0] || {};
+    const attribution = Object.freeze({
+      schemaVersion: 'TerminalAttributionProjectionV1',
+      distributionHash: String(distribution?.distributionHash || '').trim(),
+      rootActionId: String(route?.candidateId || '').trim(),
+      effectInstanceId: String(
+        firstTerminalPath?.terminalAfterEffectInstanceId || '',
+      ).trim(),
+      sourceFactIds: Object.freeze(
+        groups.flatMap(group => [
+          ...(group?.trajectories || []).map(trajectory =>
+            String(trajectory?.sourceEffectInstanceId || '').trim()
+          ),
+          ...(group?.probabilityFactors || []).map(factor =>
+            String(factor?.effectInstanceId || '').trim()
+          ),
+        ]).filter(Boolean),
+      ),
+      terminalPaths,
+      terminalAtomicKey: String(
+        firstTerminalPath?.terminalAtomicKey || '',
+      ).trim(),
+    });
+    const terminal = {
+      terminal: distribution?.terminal === true,
+      status: String(distribution?.status || '').trim(),
+      utility: distribution?.utility == null
+        ? null
+        : Number(distribution.utility),
+      terminalProbability: Number(distribution?.terminalProbability || 0),
+      winProbability: Number(distribution?.winProbability || 0),
+      lossProbability: Number(distribution?.lossProbability || 0),
+      drawProbability: Number(distribution?.drawProbability || 0),
+      ongoingProbability: Number(distribution?.ongoingProbability || 0),
+      expectedTerminalUtility: Number(
+        distribution?.expectedTerminalUtility || 0,
+      ),
+      expectedOngoingTrajectoryUtility: Number(
+        distribution?.expectedOngoingTrajectoryUtility || 0,
+      ),
+      expectedDiscardedOverkillPP: Number(
+        distribution?.expectedDiscardedOverkillPP || 0,
+      ),
+      terminalPaths,
+      terminalAfterEffectInstanceId: String(
+        firstTerminalPath?.terminalAfterEffectInstanceId || '',
+      ).trim(),
+      terminalAtomicKey: String(
+        firstTerminalPath?.terminalAtomicKey || '',
+      ).trim(),
+    };
+    Object.defineProperty(terminal, 'mechanicalTerminalDistribution', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: distribution,
+    });
+    Object.defineProperty(terminal, 'terminalAttributionProjection', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: attribution,
+    });
+    Object.defineProperty(terminal, 'terminalBranchMetrics', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: distribution?.terminalBranchMetrics || Object.freeze({}),
+    });
+    Object.defineProperty(terminal, 'ongoingBranchWorlds', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: distribution?.ongoingBranchWorlds || Object.freeze([]),
+    });
+    Object.defineProperty(terminal, 'terminalBranchWorlds', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: distribution?.terminalBranchWorlds || Object.freeze([]),
+    });
+    decisionMetrics.terminalAttributionProjectionBuilds += 1;
+    const result = Object.freeze(terminal);
+    while (r8TerminalAttributionProjectionCache.size >= 4096) {
+      const oldestKey =
+        r8TerminalAttributionProjectionCache.keys().next().value;
+      if (oldestKey === undefined) break;
+      r8TerminalAttributionProjectionCache.delete(oldestKey);
+    }
+    r8TerminalAttributionProjectionCache.set(
+      attributionIdentity.identity,
+      result,
+    );
+    return result;
+  }
+
+  function r8TerminalUtility(request = {}, route = {}, utilityRoute = route) {
+    decisionMetrics.terminalProjectionCalls += 1;
+    const terminalCallOrigin = String(
+      request?.terminalCallOrigin || 'UNLABELED',
+    ).trim() || 'UNLABELED';
+    const incrementOriginMetric = metricMap => {
+      if (!metricMap) return;
+      metricMap[terminalCallOrigin] =
+        Number(metricMap[terminalCallOrigin] || 0) + 1;
+    };
+    incrementOriginMetric(decisionMetrics.terminalCallOriginCounts);
+    const initialWorld = request?.visibleWorld || {};
+    const objectiveContext = r8ObjectiveContext(request);
+    const terminalProjectionMode =
+      String(request?.terminalProjectionMode || 'FULL').trim().toUpperCase();
+    if (terminalProjectionMode === 'SUMMARY') {
+      decisionMetrics.terminalSummaryProjectionCalls += 1;
+    } else {
+      decisionMetrics.terminalFullProjectionCalls += 1;
+    }
+    if (utilityRoute !== route) {
+      decisionMetrics.terminalUtilityRouteSplitCalls += 1;
+    }
+    if (utilityRoute === route) {
+      const cached = r8ConditionedRouteTerminalCache.get(route);
+      if (
+        cached?.objectiveContext === objectiveContext &&
+        cached?.objectiveCompactMode ===
+          String(request?.objectiveCompactMode || 'FAST').trim().toUpperCase() &&
+        cached?.terminalProjectionMode === terminalProjectionMode
+      ) {
+        decisionMetrics.terminalProjectionCacheHits += 1;
+        incrementOriginMetric(decisionMetrics.terminalCallOriginCacheHitCounts);
+        return cached.terminal;
+      }
+      if (!cached) {
+        decisionMetrics.terminalCacheMissNoEntry += 1;
+      } else if (cached.objectiveContext !== objectiveContext) {
+        decisionMetrics.terminalCacheMissObjectiveContext += 1;
+      } else if (
+        cached.objectiveCompactMode !==
+          String(request?.objectiveCompactMode || 'FAST').trim().toUpperCase()
+      ) {
+        decisionMetrics.terminalCacheMissObjectiveMode += 1;
+      } else {
+        decisionMetrics.terminalCacheMissProjectionMode += 1;
+      }
+    }
+    const objectiveGroups = objectiveContext.groups;
+    const objectives = objectiveGroups.normalized;
+    const initialUnitStates = r8TerminalInitialUnitStates(initialWorld);
+    const semanticCacheEnabled =
+      terminalProjectionMode === 'SUMMARY' &&
+      globalThis?.process?.env
+        ?.BATTLE_R8_DISABLE_TERMINAL_SEMANTIC_CACHE !== '1';
+    const terminalWorldDependencyHash = semanticCacheEnabled
+      ? r8TerminalWorldDependencyHash(
+          initialWorld,
+          initialUnitStates,
+          request,
+          objectiveContext,
+          route,
+          utilityRoute,
+        )
+      : '';
+    const routeMechanicalSignature = semanticCacheEnabled
+      ? r8TerminalCanonicalMechanicalSignature(route)
+      : '';
+    const utilityMechanicalSignature = semanticCacheEnabled &&
+      utilityRoute !== route
+      ? r8TerminalCanonicalMechanicalSignature(utilityRoute)
+      : '';
+    const terminalProjectionIdentity = semanticCacheEnabled
+      ? r8TerminalProjectionIdentity({
+          objectiveContext,
+          actorSide: request?.actorSide,
+          objectiveCompactMode: request?.objectiveCompactMode,
+          terminalProjectionMode,
+          terminalWorldDependencyHash,
+          routeMechanicalSignature,
+          utilityMechanicalSignature,
+        })
+      : null;
+    const semanticCacheKey = terminalProjectionIdentity?.identity || '';
+    if (
+      semanticCacheKey &&
+      r8TerminalMechanicalDistributionCache.has(semanticCacheKey)
+    ) {
+      decisionMetrics.terminalProjectionCacheHits += 1;
+      decisionMetrics.terminalSemanticCacheHits += 1;
+      decisionMetrics.terminalMechanicalDistributionCacheHits += 1;
+      incrementOriginMetric(decisionMetrics.terminalCallOriginCacheHitCounts);
+      const cachedDistribution =
+        r8TerminalMechanicalDistributionCache.get(semanticCacheKey);
+      const cachedTerminal = r8TerminalAttributionProjection(
+        cachedDistribution,
+        route,
+      );
+      if (utilityRoute === route && route && typeof route === 'object') {
+        r8ConditionedRouteTerminalCache.set(route, {
+          objectiveContext,
+          objectiveCompactMode:
+            String(request?.objectiveCompactMode || 'FAST').trim().toUpperCase(),
+          terminalProjectionMode,
+          terminal: cachedTerminal,
+        });
+      }
+      return cachedTerminal;
+    }
+    if (semanticCacheKey) {
+      decisionMetrics.terminalSemanticCacheMisses += 1;
+      incrementOriginMetric(decisionMetrics.terminalCallOriginSemanticMissCounts);
+      if (
+        globalThis?.process?.env
+          ?.BATTLE_R8_TERMINAL_ROOT_CAUSE_TRACE === '1'
+      ) {
+        const canonicalKey = [
+          objectiveContext.objectiveSemanticHash,
+          String(request?.actorSide || '').trim(),
+          String(
+            request?.objectiveCompactMode || 'FAST',
+          ).trim().toUpperCase(),
+          terminalProjectionMode,
+          routeMechanicalSignature,
+          utilityMechanicalSignature,
+        ].join('\u0001');
+        const seenWorlds =
+          r8TerminalRootCanonicalSeen.get(canonicalKey);
+        const simpleCanonicalRoute =
+          (route?.healthTrajectoryByTarget || []).length === 1 &&
+          (route?.probabilityFactors || []).length === 0;
+        if (simpleCanonicalRoute) {
+          decisionMetrics.terminalRootCanonicalSimpleCalls += 1;
+        }
+        if (seenWorlds?.has(terminalWorldDependencyHash)) {
+          decisionMetrics.terminalRootCanonicalSourceEquivalentHits += 1;
+          if (simpleCanonicalRoute) {
+            decisionMetrics
+              .terminalRootCanonicalSimpleSourceEquivalentHits += 1;
+          }
+        } else if (seenWorlds?.size) {
+          decisionMetrics.terminalRootCanonicalWorldVariantHits += 1;
+          seenWorlds.add(terminalWorldDependencyHash);
+        } else {
+          decisionMetrics.terminalRootCanonicalUniqueMisses += 1;
+          r8TerminalRootCanonicalSeen.set(
+            canonicalKey,
+            new Set([terminalWorldDependencyHash]),
+          );
+        }
+      }
+    }
+    const rememberTerminalResult = terminal => {
+      const distribution = r8MechanicalTerminalDistribution(
+        terminal,
+        route,
+        {
+          semanticCacheKey,
+          worldDependencyHash: terminalWorldDependencyHash,
+          routeSignature: [
+            routeMechanicalSignature,
+            utilityMechanicalSignature,
+          ].join('|'),
+        },
+        atomicGroups,
+      );
+      if (semanticCacheKey) {
+        r8TerminalMechanicalDistributionCache.set(
+          semanticCacheKey,
+          distribution,
+        );
+      }
+      const attributedTerminal = r8TerminalAttributionProjection(
+        distribution,
+        route,
+        atomicGroups,
+      );
+      if (utilityRoute === route && route && typeof route === 'object') {
+        r8ConditionedRouteTerminalCache.set(route, {
+          objectiveContext,
+          objectiveCompactMode:
+            String(request?.objectiveCompactMode || 'FAST').trim().toUpperCase(),
+          terminalProjectionMode,
+          terminal: attributedTerminal,
+        });
+      }
+      return attributedTerminal;
+    };
+    const atomicGroups = r8TerminalAtomicGroups(route);
+    const terminalRelevantFactors = new Set(
+      atomicGroups.flatMap(group => group.probabilityFactors),
+    );
+    const allProbabilityFactors = Array.isArray(route?.probabilityFactors)
+      ? route.probabilityFactors
+      : [];
+    decisionMetrics.terminalTrajectoryRows +=
+      Number(route?.healthTrajectoryByTarget?.length || 0);
+    decisionMetrics.terminalProbabilityFactorRows +=
+      terminalRelevantFactors.size;
+    decisionMetrics.terminalAtomicGroups += atomicGroups.length;
+    const actorIsPlayer = objectiveGroups.actorIsPlayer;
+    const winStatus = actorIsPlayer ? 'PLAYER_WIN' : 'ENEMY_WIN';
+    const lossStatus = actorIsPlayer ? 'ENEMY_WIN' : 'PLAYER_WIN';
+    const utilityTrajectoryByKey = new Map(
+      (utilityRoute?.healthTrajectoryByTarget || []).map(trajectory => [
+        r8HealthTrajectoryFactKey(route?.candidateId || '', trajectory),
+        trajectory,
+      ]),
+    );
+    const terminalMass = {
+      PLAYER_WIN: 0,
+      ENEMY_WIN: 0,
+      DRAW: 0,
+    };
+    const terminalPaths = [];
+    const terminalBranchWorlds = [];
+    const useCompactObjectiveState =
+      String(request?.objectiveCompactMode || 'FAST').trim().toUpperCase() !== 'FULL';
+    const summaryOnly =
+      terminalProjectionMode === 'SUMMARY' && useCompactObjectiveState;
+    if (
+      summaryOnly &&
+      atomicGroups.length === 1 &&
+      atomicGroups[0].probabilityFactors.length === 0 &&
+      atomicGroups[0].trajectories.length === 1
+    ) {
+      decisionMetrics.terminalSimpleSummaryCalls += 1;
+      decisionMetrics.terminalSimpleSummaryOutcomeBranches += Math.max(
+        1,
+        Number(
+          atomicGroups[0].trajectories[0]?.outcomeDistribution?.length || 0,
+        ),
+      );
+    }
+    const compactBattleCapable = state =>
+      state?.alive === true &&
+      Number(state?.hp || 0) > 0 &&
+      Number(state?.stamina || 0) > 0 &&
+      !/失去战斗力|昏迷|投降|制服/.test(
+        String(state?.actionState || '').trim(),
+      );
+    const compactUnitState = (branch, unitId) =>
+      branch?.unitStates?.[unitId] || initialUnitStates[unitId] || null;
+    const compactUnitStateOverrides = (branch, unitId, nextState) => {
+      const initialState = initialUnitStates[unitId];
+      const unitStates = { ...(branch?.unitStates || {}) };
+      const unchanged = initialState &&
+        initialState.hp === nextState.hp &&
+        initialState.baseMaxHp === nextState.baseMaxHp &&
+        initialState.alive === nextState.alive &&
+        initialState.capable === nextState.capable &&
+        initialState.actionState === nextState.actionState &&
+        initialState.stamina === nextState.stamina;
+      if (unchanged) delete unitStates[unitId];
+      else unitStates[unitId] = nextState;
+      return unitStates;
+    };
+    const isUnconditionalDeterministicOutcome = outcome =>
+      Math.abs(Number(outcome?.probability || 0) - 1) <= 1e-12 &&
+      Object.keys(outcome?.conditionalOn || {}).length === 0 &&
+      Object.keys(outcome?.assignments || {}).length === 0;
+    const simpleSummaryGroup = summaryOnly &&
+      atomicGroups.length === 1 &&
+      atomicGroups[0].probabilityFactors.length === 0 &&
+      atomicGroups[0].trajectories.length === 1
+      ? atomicGroups[0]
+      : null;
+    const simpleSummaryTrajectory = simpleSummaryGroup?.trajectories?.[0] || null;
+    const simpleSummaryOutcomes = simpleSummaryTrajectory
+      ? (
+          Array.isArray(simpleSummaryTrajectory.outcomeDistribution) &&
+          simpleSummaryTrajectory.outcomeDistribution.length
+            ? simpleSummaryTrajectory.outcomeDistribution
+            : [{
+                branchKey: 'deterministic',
+                probability: 1,
+                healthDeltaPP: Number(
+                  simpleSummaryTrajectory.healthDeltaPP || 0,
+                ),
+              }]
+        )
+      : [];
+    const simpleSummaryFastPath =
+      !!simpleSummaryTrajectory &&
+      simpleSummaryOutcomes.every(outcome =>
+        Object.keys(outcome?.conditionalOn || {}).length === 0
+      ) &&
+      globalThis?.process?.env
+        ?.BATTLE_R8_DISABLE_SIMPLE_SUMMARY_TERMINAL_PATH !== '1';
+    if (simpleSummaryFastPath) {
+      decisionMetrics.terminalSimpleSummaryFastPathHits += 1;
+      const targetId = String(
+        simpleSummaryTrajectory?.targetId || '',
+      ).trim();
+      const currentState = initialUnitStates[targetId] || null;
+      if (currentState) {
+        const utilityTrajectory = utilityTrajectoryByKey.get(
+          r8HealthTrajectoryFactKey(
+            route?.candidateId || '',
+            simpleSummaryTrajectory,
+          ),
+        ) || simpleSummaryTrajectory;
+        const mechanicalExpectedPP = Number(
+          simpleSummaryTrajectory?.healthDeltaPP || 0,
+        );
+        const marginalExpectedPP = Number(
+          utilityTrajectory?.objectiveMarginalHealthDeltaPP ??
+          utilityTrajectory?.healthDeltaPP ??
+          mechanicalExpectedPP
+        );
+        const marginalRatio = Math.abs(mechanicalExpectedPP) > 1e-9
+          ? marginalExpectedPP / mechanicalExpectedPP
+          : 1;
+        let ongoingProbability = 0;
+        let expectedOngoingTrajectoryUtility = 0;
+        let expectedDiscardedOverkillPP = 0;
+        for (const outcome of simpleSummaryOutcomes) {
+          const probability = clamp(
+            Number(outcome?.probability || 0),
+            0,
+            1,
+          );
+          if (!(probability > 1e-15)) continue;
+          const healthDeltaPP = Number(
+            outcome?.healthDeltaPP ??
+            simpleSummaryTrajectory?.healthDeltaPP ??
+            0
+          );
+          const discardedOverkillPP = r8RealizedThresholdOverkillPP(
+            request,
+            initialWorld,
+            simpleSummaryTrajectory,
+            healthDeltaPP,
+            objectiveGroups,
+            objectiveContext,
+            initialUnitStates,
+          );
+          expectedDiscardedOverkillPP +=
+            probability * discardedOverkillPP;
+          const baseMaxHp = Math.max(
+            1,
+            Number(currentState.baseMaxHp || 1),
+          );
+          const nextHp = clamp(
+            Number(currentState.hp || 0) +
+              healthDeltaPP * baseMaxHp / 100,
+            0,
+            baseMaxHp,
+          );
+          const actionState =
+            String(outcome?.actionState || '').trim() ||
+            (
+              nextHp <= 0
+                ? '死亡'
+                : String(currentState.actionState || '').trim()
+            );
+          const nextState = {
+            ...currentState,
+            hp: Number(nextHp.toFixed(8)),
+            alive: currentState.alive === true && nextHp > 0,
+            actionState,
+          };
+          nextState.capable = compactBattleCapable(nextState);
+          const objectiveStateByUnitId = {
+            [targetId]: nextState,
+          };
+          const resolution = preview.evaluateBattleObjectivesCompact(
+            initialWorld,
+            objectives,
+            {
+              round: Number(initialWorld?.回合 || 0),
+              roundCompleted: false,
+              objectivesAlreadyNormalized: true,
+              unitIndex: objectiveContext.objectiveUnitIndex,
+              objectiveStateByUnitId,
+              initialObjectiveStateByUnitId: initialUnitStates,
+            },
+          );
+          if (resolution.terminal) {
+            terminalMass[resolution.status] =
+              Number(terminalMass[resolution.status] || 0) + probability;
+            terminalPaths.push(Object.freeze({
+              probability,
+              status: resolution.status,
+              terminalAtomicKey: simpleSummaryGroup.atomicKey,
+              terminalAfterEffectInstanceId: String(
+                simpleSummaryTrajectory?.sourceEffectInstanceId || '',
+              ),
+            }));
+            continue;
+          }
+          ongoingProbability += probability;
+          const trajectoryTotals = new Map([[
+            targetId,
+            healthDeltaPP * marginalRatio,
+          ]]);
+          expectedOngoingTrajectoryUtility += probability * clamp(
+            r8UniqueObjectiveTrajectoryValue(
+              request,
+              objectiveGroups,
+              trajectoryTotals,
+              objectiveContext,
+            ),
+            -99,
+            99,
+          );
+        }
+        const winProbability = Number(terminalMass[winStatus] || 0);
+        const lossProbability = Number(terminalMass[lossStatus] || 0);
+        const drawProbability = Number(terminalMass.DRAW || 0);
+        const terminalProbability = clamp(
+          winProbability + lossProbability + drawProbability,
+          0,
+          1,
+        );
+        const expectedTerminalUtility =
+          100 * winProbability - 100 * lossProbability;
+        const deterministicTerminal =
+          terminalProbability >= 1 - 1e-9;
+        const deterministicStatus = deterministicTerminal
+          ? Object.entries(terminalMass).find(
+              ([, probability]) => probability >= 1 - 1e-9,
+            )?.[0] || 'PROBABILISTIC'
+          : terminalProbability > 1e-9
+            ? 'PROBABILISTIC'
+            : 'ONGOING';
+        const firstTerminalPath = terminalPaths[0] || {};
+        const result = {
+          terminal: deterministicTerminal,
+          status: deterministicStatus,
+          utility: deterministicTerminal
+            ? expectedTerminalUtility
+            : null,
+          terminalProbability,
+          winProbability,
+          lossProbability,
+          drawProbability,
+          ongoingProbability: clamp(ongoingProbability, 0, 1),
+          expectedTerminalUtility,
+          expectedOngoingTrajectoryUtility,
+          expectedDiscardedOverkillPP,
+          terminalPaths: Object.freeze(terminalPaths),
+          terminalAfterEffectInstanceId: String(
+            firstTerminalPath.terminalAfterEffectInstanceId || '',
+          ),
+          terminalAtomicKey: String(
+            firstTerminalPath.terminalAtomicKey || '',
+          ),
+        };
+        Object.defineProperty(result, 'terminalBranchMetrics', {
+          configurable: false,
+          enumerable: false,
+          writable: false,
+          value: Object.freeze({
+            mergeCalls: 0,
+            totalInputBranches: 0,
+            totalOutputBranches: 0,
+            maxInputBranches: 0,
+            maxOutputBranches: 0,
+            deferredMergeCalls: 0,
+            deferredMergeBranches: 0,
+            deferredMergeMaxBranches: 0,
+          }),
+        });
+        Object.defineProperty(result, 'ongoingBranchWorlds', {
+          configurable: false,
+          enumerable: false,
+          writable: false,
+          value: Object.freeze([]),
+        });
+        Object.defineProperty(result, 'terminalBranchWorlds', {
+          configurable: false,
+          enumerable: false,
+          writable: false,
+          value: Object.freeze([]),
+        });
+        const frozenResult = Object.freeze(result);
+        return rememberTerminalResult(frozenResult);
+      }
+    }
+    const deterministicRoute = atomicGroups.every(group =>
+      (group.probabilityFactors || []).every(factor =>
+        factor?.outcomeDistribution?.length === 1 &&
+        isUnconditionalDeterministicOutcome(factor.outcomeDistribution[0])
+      ) &&
+      (group.trajectories || []).every(trajectory => {
+        const outcomes = trajectory?.outcomeDistribution;
+        return !Array.isArray(outcomes) ||
+          outcomes.length === 0 ||
+          (
+            outcomes.length === 1 &&
+            isUnconditionalDeterministicOutcome(outcomes[0])
+          );
+      })
+    );
+    if (deterministicRoute && !summaryOnly) {
+      decisionMetrics.terminalDeterministicEvaluations += 1;
+      let projected = initialWorld;
+      const deterministicUnitStates = { ...initialUnitStates };
+      const realizedTrajectories = [];
+      let discardedOverkillPP = 0;
+      for (const group of atomicGroups) {
+        for (const factor of group.probabilityFactors || []) {
+          const outcome = factor.outcomeDistribution[0] || {};
+          const forked = r8ForkWorldForUnitMutation(projected, factor.targetId);
+          const target = forked.unit;
+          if (target && String(outcome?.actionState || '').trim()) {
+            projected = forked.world;
+            target.状态 = {
+              ...(target.状态 || {}),
+              行动: String(outcome.actionState).trim(),
+            };
+            deterministicUnitStates[preview.unitId(target)] = {
+              hp: Number(preview.readHp(target).toFixed(8)),
+              alive: preview.isPhysicallyAlive(target),
+              capable: preview.isBattleCapable(target),
+            };
+          }
+        }
+        for (const trajectory of group.trajectories) {
+          const outcome = trajectory?.outcomeDistribution?.[0] || {};
+          const healthDeltaPP = Number(
+            outcome?.healthDeltaPP ?? trajectory?.healthDeltaPP ?? 0
+          );
+          discardedOverkillPP += r8RealizedThresholdOverkillPP(
+            request,
+            projected,
+            trajectory,
+            healthDeltaPP,
+            objectiveGroups,
+            objectiveContext,
+          );
+          const forked = r8ForkWorldForUnitMutation(projected, trajectory.targetId);
+          const target = forked.unit;
+          if (!target) continue;
+          projected = forked.world;
+          const delta = healthDeltaPP * Math.max(1, preview.readHpMax(target)) / 100;
+          r8SetProjectedHp(target, preview.readHp(target) + delta);
+          if (String(outcome?.actionState || '').trim()) {
+            target.状态 = {
+              ...(target.状态 || {}),
+              行动: String(outcome.actionState).trim(),
+            };
+          }
+          deterministicUnitStates[preview.unitId(target)] = {
+            hp: Number(preview.readHp(target).toFixed(8)),
+            alive: preview.isPhysicallyAlive(target),
+            capable: preview.isBattleCapable(target),
+          };
+          const utilityTrajectory = utilityTrajectoryByKey.get(
+            r8HealthTrajectoryFactKey(route?.candidateId || '', trajectory),
+          ) || trajectory;
+          const mechanicalExpectedPP = Number(trajectory?.healthDeltaPP || 0);
+          const marginalExpectedPP = Number(
+            utilityTrajectory?.objectiveMarginalHealthDeltaPP ??
+            utilityTrajectory?.healthDeltaPP ??
+            mechanicalExpectedPP
+          );
+          const marginalRatio = Math.abs(mechanicalExpectedPP) > 1e-9
+            ? marginalExpectedPP / mechanicalExpectedPP
+            : 1;
+          const marginalHealthDeltaPP = healthDeltaPP * marginalRatio;
+          realizedTrajectories.push({
+            ...utilityTrajectory,
+            healthDeltaPP: marginalHealthDeltaPP,
+            objectiveMarginalHealthDeltaPP: marginalHealthDeltaPP,
+            actorBenefitPP:
+              Math.sign(Number(utilityTrajectory?.actorBenefitPP || 0)) *
+              Math.abs(marginalHealthDeltaPP),
+          });
+        }
+        const resolution = preview.evaluateBattleObjectivesCompact(projected, objectives, {
+          round: Number(projected?.回合 || 0),
+          roundCompleted: false,
+          objectivesAlreadyNormalized: useCompactObjectiveState,
+          unitIndex: useCompactObjectiveState
+            ? objectiveContext.objectiveUnitIndex
+            : undefined,
+          objectiveStateByUnitId: useCompactObjectiveState
+            ? deterministicUnitStates
+            : undefined,
+          initialObjectiveStateByUnitId: useCompactObjectiveState
+            ? initialUnitStates
+            : undefined,
+        });
+        if (!resolution.terminal) continue;
+        const winStatus = actorIsPlayer ? 'PLAYER_WIN' : 'ENEMY_WIN';
+        const lossStatus = actorIsPlayer ? 'ENEMY_WIN' : 'PLAYER_WIN';
+        const utility = resolution.status === winStatus
+          ? 100
+          : resolution.status === lossStatus
+            ? -100
+            : 0;
+        const result = {
+          terminal: true,
+          status: resolution.status,
+          utility,
+          terminalProbability: 1,
+          winProbability: resolution.status === winStatus ? 1 : 0,
+          lossProbability: resolution.status === lossStatus ? 1 : 0,
+          drawProbability: resolution.status === 'DRAW' ? 1 : 0,
+          ongoingProbability: 0,
+          expectedTerminalUtility: utility,
+          expectedOngoingTrajectoryUtility: 0,
+          expectedDiscardedOverkillPP: discardedOverkillPP,
+          terminalPaths: Object.freeze([Object.freeze({
+            probability: 1,
+            status: resolution.status,
+            terminalAtomicKey: group.atomicKey,
+            terminalAfterEffectInstanceId: String(group.trajectories[0]?.sourceEffectInstanceId || ''),
+          })]),
+          terminalAfterEffectInstanceId: String(group.trajectories[0]?.sourceEffectInstanceId || ''),
+          terminalAtomicKey: group.atomicKey,
+        };
+        Object.defineProperty(result, 'ongoingBranchWorlds', {
+          configurable: false,
+          enumerable: false,
+          writable: false,
+          value: Object.freeze([]),
+        });
+        Object.defineProperty(result, 'terminalBranchWorlds', {
+          configurable: false,
+          enumerable: false,
+          writable: false,
+          value: Object.freeze([Object.freeze({
+            probability: 1,
+            status: resolution.status,
+            world: projected,
+            objectiveUtility: utility,
+            assignments: Object.freeze({}),
+          })]),
+        });
+        return rememberTerminalResult(Object.freeze(result));
+      }
+      const objectiveUtility = clamp(
+        r8UniqueObjectiveTrajectoryValue(
+          request,
+          objectiveGroups,
+          realizedTrajectories,
+          objectiveContext,
+        ),
+        -99,
+        99,
+      );
+      const result = {
+        terminal: false,
+        status: 'ONGOING',
+        utility: null,
+        terminalProbability: 0,
+        winProbability: 0,
+        lossProbability: 0,
+        drawProbability: 0,
+        ongoingProbability: 1,
+        expectedTerminalUtility: 0,
+        expectedOngoingTrajectoryUtility: objectiveUtility,
+        expectedDiscardedOverkillPP: discardedOverkillPP,
+        terminalPaths: Object.freeze([]),
+        terminalAfterEffectInstanceId: '',
+        terminalAtomicKey: '',
+      };
+      Object.defineProperty(result, 'ongoingBranchWorlds', {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: Object.freeze([Object.freeze({
+          probability: 1,
+          world: projected,
+          objectiveUtility,
+          assignments: Object.freeze({}),
+        })]),
+      });
+      Object.defineProperty(result, 'terminalBranchWorlds', {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: Object.freeze([]),
+      });
+      return rememberTerminalResult(Object.freeze(result));
+    }
+    decisionMetrics.terminalProbabilisticEvaluations += 1;
+    let activeBranches = [{
+      probability: 1,
+      ...(summaryOnly ? {} : { world: initialWorld }),
+      trajectoryTotals: new Map(),
+      assignments: {},
+      unitStates: {},
+      discardedOverkillPP: 0,
+    }];
+    const futureAssignmentUseCounts = new Map();
+    const registerOutcomeAssignmentUses = outcomes => {
+      (outcomes || []).forEach(outcome => {
+        [
+          ...Object.keys(outcome?.conditionalOn || {}),
+          ...Object.keys(outcome?.assignments || {}),
+        ].forEach(key => {
+          futureAssignmentUseCounts.set(
+            key,
+            Number(futureAssignmentUseCounts.get(key) || 0) + 1,
+          );
+        });
+      });
+    };
+    atomicGroups.forEach(group => {
+      (group?.probabilityFactors || []).forEach(factor =>
+        registerOutcomeAssignmentUses(factor?.outcomeDistribution || [])
+      );
+      (group?.trajectories || []).forEach(trajectory =>
+        registerOutcomeAssignmentUses(trajectory?.outcomeDistribution || [])
+      );
+    });
+    const releaseOutcomeAssignmentUses = outcomes => {
+      (outcomes || []).forEach(outcome => {
+        [
+          ...Object.keys(outcome?.conditionalOn || {}),
+          ...Object.keys(outcome?.assignments || {}),
+        ].forEach(key => {
+          const next = Number(futureAssignmentUseCounts.get(key) || 0) - 1;
+          if (next > 0) futureAssignmentUseCounts.set(key, next);
+          else futureAssignmentUseCounts.delete(key);
+        });
+      });
+    };
+    const activeAssignmentKeys = () => new Set(futureAssignmentUseCounts.keys());
+    const nextBranchUnitStates = (branch, unit) => {
+      if (!unit) return branch.unitStates || {};
+      const unitId = preview.unitId(unit);
+      if (!unitId) return branch.unitStates || {};
+      const nextState = {
+        hp: Number(preview.readHp(unit).toFixed(8)),
+        alive: preview.isPhysicallyAlive(unit),
+        capable: preview.isBattleCapable(unit),
+      };
+      const initialState = initialUnitStates[unitId];
+      const unchanged = initialState &&
+        initialState.hp === nextState.hp &&
+        initialState.alive === nextState.alive &&
+        initialState.capable === nextState.capable;
+      const unitStates = { ...(branch.unitStates || {}) };
+      if (unchanged) delete unitStates[unitId];
+      else unitStates[unitId] = nextState;
+      return unitStates;
+    };
+    let terminalBranchStage = 'INITIAL';
+    const terminalBranchMetrics = {
+      mergeCalls: 0,
+      totalInputBranches: 0,
+      totalOutputBranches: 0,
+      maxInputBranches: 0,
+      maxOutputBranches: 0,
+      deferredMergeCalls: 0,
+      deferredMergeBranches: 0,
+      deferredMergeMaxBranches: 0,
+    };
+    const terminalUnitStateIds = [...new Set([
+      ...Object.keys(initialUnitStates),
+      ...atomicGroups.flatMap(group => [
+        ...(group?.probabilityFactors || []).map(factor =>
+          String(factor?.targetId || '').trim()
+        ),
+        ...(group?.trajectories || []).map(trajectory =>
+          String(trajectory?.targetId || '').trim()
+        ),
+      ]),
+    ].filter(Boolean))].sort();
+    const terminalTrajectoryTargetIds = [...new Set(
+      atomicGroups.flatMap(group =>
+        (group?.trajectories || []).map(trajectory =>
+          String(trajectory?.targetId || '').trim()
+        )
+      ).filter(Boolean),
+    )].sort();
+    const mergeActiveBranches = (branches, retainedAssignmentKeys = activeAssignmentKeys()) => {
+      const liveBranches = branches.filter(branch =>
+        Number(branch?.probability || 0) > 1e-15
+      );
+      const deferSummaryMerge =
+        summaryOnly &&
+        liveBranches.length <= 4096 &&
+        globalThis?.process?.env
+          ?.BATTLE_R8_DISABLE_SUMMARY_BRANCH_MERGE_DEFERRAL !== '1';
+      if (deferSummaryMerge) {
+        const retainedAssignmentKeySet =
+          retainedAssignmentKeys instanceof Set
+            ? retainedAssignmentKeys
+            : new Set(retainedAssignmentKeys || []);
+        for (const branch of liveBranches) {
+          Object.keys(branch.assignments || {}).forEach(key => {
+            if (!retainedAssignmentKeySet.has(key)) {
+              delete branch.assignments[key];
+            }
+          });
+        }
+        terminalBranchMetrics.deferredMergeCalls += 1;
+        terminalBranchMetrics.deferredMergeBranches += liveBranches.length;
+        terminalBranchMetrics.deferredMergeMaxBranches = Math.max(
+          terminalBranchMetrics.deferredMergeMaxBranches,
+          liveBranches.length,
+        );
+        decisionMetrics.terminalSummaryDeferredMergeCalls += 1;
+        decisionMetrics.terminalSummaryDeferredMergeBranches +=
+          liveBranches.length;
+        decisionMetrics.terminalSummaryDeferredMergeMaxBranches = Math.max(
+          decisionMetrics.terminalSummaryDeferredMergeMaxBranches,
+          liveBranches.length,
+        );
+        return liveBranches;
+      }
+      terminalBranchMetrics.mergeCalls += 1;
+      terminalBranchMetrics.totalInputBranches += liveBranches.length;
+      terminalBranchMetrics.maxInputBranches = Math.max(
+        terminalBranchMetrics.maxInputBranches,
+        liveBranches.length,
+      );
+      decisionMetrics.terminalBranchMergeCalls += 1;
+      decisionMetrics.terminalBranchMergeInputBranches += liveBranches.length;
+      decisionMetrics.terminalBranchMergeMaxInput = Math.max(
+        decisionMetrics.terminalBranchMergeMaxInput,
+        liveBranches.length,
+      );
+      const merged = new Map();
+      const retainedAssignmentKeyList =
+        [...retainedAssignmentKeys].sort();
+      for (const branch of liveBranches) {
+        const retainedAssignments = {};
+        const retainedAssignmentRows = [];
+        retainedAssignmentKeyList.forEach(key => {
+          if (!Object.hasOwn(branch.assignments || {}, key)) return;
+          const value = branch.assignments[key];
+          retainedAssignments[key] = value;
+          retainedAssignmentRows.push([key, value]);
+        });
+        const unitStateRows = [];
+        terminalUnitStateIds.forEach(unitId => {
+          if (!Object.hasOwn(branch.unitStates || {}, unitId)) return;
+          const state = branch.unitStates[unitId];
+          unitStateRows.push([
+            unitId,
+            Number(state?.hp || 0),
+            Number(state?.baseMaxHp || 0),
+            state?.alive === true,
+            state?.capable === true,
+            String(state?.actionState || ''),
+            Number(state?.stamina || 0),
+          ]);
+        });
+        const trajectoryRows = [];
+        terminalTrajectoryTargetIds.forEach(targetId => {
+          if (!(branch.trajectoryTotals || new Map()).has(targetId)) return;
+          trajectoryRows.push([
+            targetId,
+            branch.trajectoryTotals.get(targetId),
+          ]);
+        });
+        const stateKey = JSON.stringify([
+          unitStateRows,
+          retainedAssignmentRows,
+          trajectoryRows,
+          Number(branch.discardedOverkillPP || 0).toFixed(8),
+        ]);
+        const current = merged.get(stateKey);
+        if (current) {
+          current.probability += branch.probability;
+          continue;
+        }
+        merged.set(stateKey, {
+          probability: branch.probability,
+          ...(summaryOnly ? {} : { world: branch.world }),
+          trajectoryTotals: branch.trajectoryTotals,
+          assignments: retainedAssignments,
+          unitStates: branch.unitStates,
+          discardedOverkillPP: branch.discardedOverkillPP,
+        });
+      }
+      if (merged.size > 4096) {
+        decisionMetrics.terminalBranchBudgetFatals += 1;
+        throw new Error([
+          'DECISION_TERMINAL_BRANCH_BUDGET_EXCEEDED',
+          String(route?.candidateId || 'unknown'),
+          terminalBranchStage,
+          merged.size,
+        ].join(':'));
+      }
+      terminalBranchMetrics.totalOutputBranches += merged.size;
+      terminalBranchMetrics.maxOutputBranches = Math.max(
+        terminalBranchMetrics.maxOutputBranches,
+        merged.size,
+      );
+      decisionMetrics.terminalBranchMergeOutputBranches += merged.size;
+      decisionMetrics.terminalBranchMergeMaxOutput = Math.max(
+        decisionMetrics.terminalBranchMergeMaxOutput,
+        merged.size,
+      );
+      return [...merged.values()];
+    };
+    for (const group of atomicGroups) {
+      let expanded = activeBranches;
+      for (const factor of group.probabilityFactors) {
+        terminalBranchStage = `FACTOR:${group.atomicKey}:${factor.distributionGroupKey || factor.effectInstanceId || 'unknown'}`;
+        const next = [];
+        for (const branch of expanded) {
+          for (const outcome of factor?.outcomeDistribution || []) {
+            const conditionalOn = outcome?.conditionalOn || {};
+            if (Object.entries(conditionalOn).some(([key, value]) =>
+              String(branch.assignments?.[key] || '') !== String(value || '')
+            )) {
+              continue;
+            }
+            const assignments = { ...(branch.assignments || {}) };
+            let assignmentConflict = false;
+            Object.entries(outcome?.assignments || {}).forEach(([key, value]) => {
+              if (
+                assignments[key] !== undefined &&
+                String(assignments[key]) !== String(value)
+              ) {
+                assignmentConflict = true;
+                return;
+              }
+              assignments[key] = value;
+            });
+            if (assignmentConflict) continue;
+            const probability = branch.probability *
+              clamp(Number(outcome?.probability || 0), 0, 1);
+            if (!(probability > 1e-15)) continue;
+            if (summaryOnly) {
+              const targetId = String(factor?.targetId || '').trim();
+              const currentState = compactUnitState(branch, targetId);
+              const actionState = String(outcome?.actionState || '').trim();
+              let unitStates = branch.unitStates || {};
+              if (currentState && actionState) {
+                const nextState = {
+                  ...currentState,
+                  actionState,
+                };
+                nextState.capable = compactBattleCapable(nextState);
+                unitStates = compactUnitStateOverrides(
+                  branch,
+                  targetId,
+                  nextState,
+                );
+              }
+              next.push({
+                probability,
+                assignments,
+                trajectoryTotals: branch.trajectoryTotals,
+                unitStates,
+                discardedOverkillPP: branch.discardedOverkillPP,
+              });
+              continue;
+            }
+            const forked = r8ForkWorldForUnitMutation(branch.world, factor.targetId);
+            const world = forked.world;
+            const target = forked.unit;
+            if (target && String(outcome?.actionState || '').trim()) {
+              target.状态 = {
+                ...(target.状态 || {}),
+                行动: String(outcome.actionState).trim(),
+              };
+            }
+            next.push({
+              probability,
+              world,
+              assignments,
+              trajectoryTotals: branch.trajectoryTotals,
+              unitStates: nextBranchUnitStates(branch, target),
+              discardedOverkillPP: branch.discardedOverkillPP,
+            });
+          }
+        }
+        releaseOutcomeAssignmentUses(factor?.outcomeDistribution || []);
+        expanded = mergeActiveBranches(next);
+      }
+      for (const trajectory of group.trajectories) {
+        terminalBranchStage = `TRAJECTORY:${group.atomicKey}:${trajectory.distributionGroupKey || trajectory.sourceEffectInstanceId || 'unknown'}`;
+        const outcomes = Array.isArray(trajectory?.outcomeDistribution) &&
+          trajectory.outcomeDistribution.length
+          ? trajectory.outcomeDistribution
+          : [{
+              branchKey: 'deterministic',
+              probability: 1,
+              healthDeltaPP: Number(trajectory?.healthDeltaPP || 0),
+            }];
+        const next = [];
+        for (const branch of expanded) {
+          for (const outcome of outcomes) {
+            const conditionalOn = outcome?.conditionalOn || {};
+            if (Object.entries(conditionalOn).some(([key, value]) =>
+              String(branch.assignments?.[key] || '') !== String(value || '')
+            )) {
+              continue;
+            }
+            const assignments = { ...(branch.assignments || {}) };
+            let assignmentConflict = false;
+            Object.entries(outcome?.assignments || {}).forEach(([key, value]) => {
+              if (
+                assignments[key] !== undefined &&
+                String(assignments[key]) !== String(value)
+              ) {
+                assignmentConflict = true;
+                return;
+              }
+              assignments[key] = value;
+            });
+            if (assignmentConflict) continue;
+            const probability = branch.probability * clamp(Number(outcome?.probability || 0), 0, 1);
+            if (!(probability > 1e-15)) continue;
+            const healthDeltaPP = Number(outcome?.healthDeltaPP ?? trajectory?.healthDeltaPP ?? 0);
+            const discardedOverkillPP = Number(branch.discardedOverkillPP || 0) +
+              r8RealizedThresholdOverkillPP(
+                request,
+                summaryOnly ? initialWorld : branch.world,
+                trajectory,
+                healthDeltaPP,
+                objectiveGroups,
+                objectiveContext,
+                summaryOnly ? branch.unitStates : null,
+              );
+            const utilityTrajectory = utilityTrajectoryByKey.get(
+              r8HealthTrajectoryFactKey(route?.candidateId || '', trajectory),
+            ) || trajectory;
+            const mechanicalExpectedPP = Number(trajectory?.healthDeltaPP || 0);
+            const marginalExpectedPP = Number(
+              utilityTrajectory?.objectiveMarginalHealthDeltaPP ??
+              utilityTrajectory?.healthDeltaPP ??
+              mechanicalExpectedPP
+            );
+            const marginalRatio = Math.abs(mechanicalExpectedPP) > 1e-9
+              ? marginalExpectedPP / mechanicalExpectedPP
+              : 1;
+            const marginalHealthDeltaPP = healthDeltaPP * marginalRatio;
+            const trajectoryTotals = new Map(branch.trajectoryTotals || []);
+            trajectoryTotals.set(
+              String(trajectory?.targetId || '').trim(),
+              Number(
+                trajectoryTotals.get(
+                  String(trajectory?.targetId || '').trim(),
+                ) || 0,
+              ) + marginalHealthDeltaPP,
+            );
+            if (summaryOnly) {
+              const targetId = String(trajectory?.targetId || '').trim();
+              const currentState = compactUnitState(branch, targetId);
+              if (!currentState) continue;
+              const baseMaxHp = Math.max(1, Number(currentState.baseMaxHp || 1));
+              const nextHp = clamp(
+                Number(currentState.hp || 0) +
+                  healthDeltaPP * baseMaxHp / 100,
+                0,
+                baseMaxHp,
+              );
+              const actionState =
+                String(outcome?.actionState || '').trim() ||
+                (nextHp <= 0 ? '死亡' : String(currentState.actionState || '').trim());
+              const nextState = {
+                ...currentState,
+                hp: Number(nextHp.toFixed(8)),
+                alive: currentState.alive === true && nextHp > 0,
+                actionState,
+              };
+              nextState.capable = compactBattleCapable(nextState);
+              next.push({
+                probability,
+                assignments,
+                trajectoryTotals,
+                unitStates: compactUnitStateOverrides(
+                  branch,
+                  targetId,
+                  nextState,
+                ),
+                discardedOverkillPP,
+              });
+              continue;
+            }
+            const forked = r8ForkWorldForUnitMutation(branch.world, trajectory.targetId);
+            const world = forked.world;
+            const target = forked.unit;
+            if (!target) continue;
+            const delta = healthDeltaPP * Math.max(1, preview.readHpMax(target)) / 100;
+            r8SetProjectedHp(target, preview.readHp(target) + delta);
+            if (String(outcome?.actionState || '').trim()) {
+              target.状态 = {
+                ...(target.状态 || {}),
+                行动: String(outcome.actionState).trim(),
+              };
+            }
+            next.push({
+              probability,
+              world,
+              assignments,
+              trajectoryTotals,
+              unitStates: nextBranchUnitStates(branch, target),
+              discardedOverkillPP,
+            });
+          }
+        }
+        releaseOutcomeAssignmentUses(outcomes);
+        expanded = mergeActiveBranches(next);
+      }
+      const ongoing = [];
+      for (const branch of expanded) {
+        const objectiveWorld = summaryOnly ? initialWorld : branch.world;
+        const resolution = preview.evaluateBattleObjectivesCompact(objectiveWorld, objectives, {
+          round: Number(objectiveWorld?.回合 || 0),
+          roundCompleted: false,
+          objectivesAlreadyNormalized: useCompactObjectiveState,
+          unitIndex: useCompactObjectiveState
+            ? objectiveContext.objectiveUnitIndex
+            : undefined,
+          objectiveStateByUnitId: useCompactObjectiveState
+            ? branch.unitStates
+            : undefined,
+          initialObjectiveStateByUnitId: useCompactObjectiveState
+            ? initialUnitStates
+            : undefined,
+        });
+        if (!resolution.terminal) {
+          ongoing.push(branch);
+          continue;
+        }
+        terminalMass[resolution.status] =
+          Number(terminalMass[resolution.status] || 0) + branch.probability;
+        terminalMass.discardedOverkillPP =
+          Number(terminalMass.discardedOverkillPP || 0) +
+          branch.probability * Number(branch.discardedOverkillPP || 0);
+        terminalPaths.push(Object.freeze({
+          probability: branch.probability,
+          status: resolution.status,
+          terminalAtomicKey: group.atomicKey,
+          terminalAfterEffectInstanceId: String(group.trajectories[0]?.sourceEffectInstanceId || ''),
+        }));
+        if (!summaryOnly) {
+          terminalBranchWorlds.push(Object.freeze({
+            probability: branch.probability,
+            status: resolution.status,
+            world: branch.world,
+            assignments: Object.freeze({
+              ...(branch.assignments || {}),
+            }),
+            objectiveUtility:
+              resolution.status === winStatus
+                ? 100
+                : resolution.status === lossStatus
+                  ? -100
+                  : 0,
+          }));
+        }
+      }
+      terminalBranchStage = `ONGOING:${group.atomicKey}`;
+      activeBranches = mergeActiveBranches(ongoing);
+      if (!activeBranches.length) break;
+    }
+    const winProbability = Number(terminalMass[winStatus] || 0);
+    const lossProbability = Number(terminalMass[lossStatus] || 0);
+    const drawProbability = Number(terminalMass.DRAW || 0);
+    const terminalProbability = clamp(
+      winProbability + lossProbability + drawProbability,
+      0,
+      1,
+    );
+    const ongoingProbability = clamp(
+      activeBranches.reduce((sum, branch) => sum + branch.probability, 0),
+      0,
+      1,
+    );
+    const expectedTerminalUtility = 100 * winProbability - 100 * lossProbability;
+    const ongoingBranchSummaries = activeBranches.map(branch => Object.freeze({
+      probability: branch.probability,
+      objectiveUtility: clamp(
+        r8UniqueObjectiveTrajectoryValue(
+          request,
+          objectiveGroups,
+          branch.trajectoryTotals,
+          objectiveContext,
+        ),
+        -99,
+        99,
+      ),
+    }));
+    const ongoingBranchWorlds = summaryOnly
+      ? []
+      : activeBranches.map((branch, index) => Object.freeze({
+          ...ongoingBranchSummaries[index],
+          world: branch.world,
+          assignments: Object.freeze({
+            ...(branch.assignments || {}),
+          }),
+        }));
+    const expectedOngoingTrajectoryUtility = ongoingBranchSummaries.reduce(
+      (sum, branch) => sum + branch.probability * branch.objectiveUtility,
+      0,
+    );
+    const expectedDiscardedOverkillPP =
+      Number(terminalMass.discardedOverkillPP || 0) +
+      activeBranches.reduce(
+        (sum, branch) =>
+          sum + branch.probability * Number(branch.discardedOverkillPP || 0),
+        0,
+      );
+    const deterministicTerminal = terminalProbability >= 1 - 1e-9;
+    const deterministicStatus = deterministicTerminal
+      ? Object.entries(terminalMass).find(([, probability]) => probability >= 1 - 1e-9)?.[0] || 'PROBABILISTIC'
+      : terminalProbability > 1e-9
+        ? 'PROBABILISTIC'
+        : 'ONGOING';
+    const firstTerminalPath = terminalPaths[0] || {};
+    const result = {
+      terminal: deterministicTerminal,
+      status: deterministicStatus,
+      utility: deterministicTerminal ? expectedTerminalUtility : null,
+      terminalProbability,
+      winProbability,
+      lossProbability,
+      drawProbability,
+      ongoingProbability,
+      expectedTerminalUtility,
+      expectedOngoingTrajectoryUtility,
+      expectedDiscardedOverkillPP,
+      terminalPaths: Object.freeze(terminalPaths),
+      terminalAfterEffectInstanceId: String(firstTerminalPath.terminalAfterEffectInstanceId || ''),
+      terminalAtomicKey: String(firstTerminalPath.terminalAtomicKey || ''),
+    };
+    Object.defineProperty(result, 'terminalBranchMetrics', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: Object.freeze({ ...terminalBranchMetrics }),
+    });
+    Object.defineProperty(result, 'ongoingBranchWorlds', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: Object.freeze(ongoingBranchWorlds),
+    });
+    Object.defineProperty(result, 'terminalBranchWorlds', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: Object.freeze(terminalBranchWorlds),
+    });
+    return rememberTerminalResult(Object.freeze(result));
   }
 
   function r8IncomingHealthDeltas(request = {}, candidate = {}, route = {}) {
@@ -12334,11 +25129,19 @@
         sourceEffectInstanceId: `${candidate?.candidateId}:incoming:${event.eventId}`,
       });
       const baselineTerminal = r8TerminalUtility(
-        { ...request, visibleWorld: request.visibleWorld },
+        {
+          ...request,
+          visibleWorld: request.visibleWorld,
+          terminalCallOrigin: 'INCOMING_RISK_BASELINE',
+        },
         { healthTrajectoryByTarget: [incomingTrajectory(baselineDamage)] },
       );
       const candidateTerminal = r8TerminalUtility(
-        { ...request, visibleWorld: projectedWorld },
+        {
+          ...request,
+          visibleWorld: projectedWorld,
+          terminalCallOrigin: 'INCOMING_RISK_CANDIDATE',
+        },
         { healthTrajectoryByTarget: [incomingTrajectory(candidateDamage)] },
       );
       if (
@@ -12368,6 +25171,212 @@
     }));
   }
 
+  function r8CounterAuthorizationDeltas(request = {}, candidate = {}) {
+    const candidateId = String(candidate?.candidateId || '').trim();
+    if (Object.hasOwn(request?.counterAuthorizationByCandidate || {}, candidateId)) {
+      return request.counterAuthorizationByCandidate[candidateId];
+    }
+    if (providerExecutionDepth > 0) {
+      throw new Error(`ACTION_ROUTE_INCOMPLETE:counter-authorization:${candidateId}`);
+    }
+    if (String(request?.actionOpportunity?.role || '').trim().toUpperCase() !== 'REACTION') {
+      return Object.freeze([]);
+    }
+    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+    const opensCounterCheck =
+      ['DEFEND', 'EVADE', 'GUARD'].includes(actionKind) ||
+      preview.declarationGrantsCounter(candidate?.declaration || {});
+    if (!opensCounterCheck) return Object.freeze([]);
+    const actorId = String(request?.actorId || '').trim();
+    const sourceActorId = String(request?.actionOpportunity?.sourceActorId || '').trim();
+    const projectedWorld =
+      request?.actorProjectedWorlds?.[candidate?.candidateId] ||
+      request?.visibleWorld ||
+      {};
+    const actor = findUnitInWorld(projectedWorld, actorId);
+    const sourceActor = findUnitInWorld(projectedWorld, sourceActorId);
+    if (
+      !actor ||
+      !sourceActor ||
+      !preview.isBattleCapable(actor) ||
+      !preview.isPhysicallyAlive(sourceActor) ||
+      stateEntries(actor).some(state =>
+        state?.cannot_react === true ||
+        state?.战斗效果?.cannot_react === true ||
+        state?.计算层效果?.cannot_react === true
+      )
+    ) {
+      return Object.freeze([]);
+    }
+    const counterOpportunity = {
+      opportunityId: `projected-counter:${request?.actionOpportunity?.opportunityId || candidate?.candidateId}`,
+      ownerId: actorId,
+      role: 'COUNTER',
+      grantType: 'COUNTER_WINDOW',
+      sourceActorId,
+      validTargetIds: [sourceActorId],
+      immediateBudget: 40,
+      sequence: Math.max(
+        0,
+        Number(
+          request?.actionOpportunity?.sequence ??
+          request?.actionOpportunity?.createdAtSequence ??
+          0
+        ),
+      ) + 1,
+    };
+    const counterCandidates = enumerateCandidates({
+      worldSnapshot: projectedWorld,
+      actorId,
+      actorSide: request?.actorSide,
+      beliefState: request?.beliefState || {},
+      battleIntent: request?.battleIntent,
+      actionOpportunity: counterOpportunity,
+    }).filter(counterCandidate => counterCandidate?.counterDeclineFallback !== true);
+    const counterRoutes = counterCandidates.map(counterCandidate => {
+      const counterPreview = preview.previewAction({
+        worldSnapshot: projectedWorld,
+        worldRevision: [
+          request?.evaluationContext?.visibleWorldRevision || 'visible',
+          candidate?.candidateId || '',
+          'counter',
+          counterCandidate?.candidateId || '',
+        ].join(':'),
+        beliefSnapshot: request?.beliefState || {},
+        beliefRevision: request?.evaluationContext?.beliefRevision || '',
+        actorId,
+        declaration: counterCandidate.declaration,
+        actionFingerprint: `counter:${counterCandidate.candidateId}`,
+        hitProbabilityResolver: candidateHitProbabilityResolver({
+          beliefState: request?.beliefState || {},
+          actor,
+          candidate: counterCandidate,
+          worldSnapshot: projectedWorld,
+        }),
+        applicationProbabilityResolver: candidateApplicationProbabilityResolver({
+          beliefState: request?.beliefState || {},
+          actor,
+          candidate: counterCandidate,
+        }),
+        horizon: 'SHALLOW',
+        previewBudget: { maxNodes: 12 },
+        collectProbabilityBranches: true,
+        battleIntent: request?.battleIntent,
+      });
+      return actionRouteFromPreview({
+        candidate: counterCandidate,
+        previewResult: counterPreview,
+        worldSnapshot: projectedWorld,
+        actorSide: request?.actorSide,
+        dependencyKeys: [],
+        objectiveRequest: {
+          actorId,
+          actorSide: request?.actorSide,
+          visibleWorld: projectedWorld,
+          objectiveCompactMode: request?.objectiveCompactMode || 'FAST',
+          objectiveContract: request?.objectiveContract || projectedWorld?.胜负条件 || {},
+        },
+      });
+    });
+    const counterEnvelope = selectPrimaryBackupRoutes(counterRoutes);
+    const bestRoute = counterEnvelope?.primaryRoute || null;
+    const routeValueHEPP = Math.max(0, routeSelectionBenefit(bestRoute));
+    if (!(routeValueHEPP > 1e-9)) return Object.freeze([]);
+    const contest = preview.calculateReactionContest(actor, sourceActor);
+    const conditionalProbability = clamp(
+      (actionKind === 'EVADE' ? 0.45 : 0.24) +
+        (Number(contest?.probability || 0) - 0.25) * 0.5,
+      0.08,
+      0.72,
+    );
+    let authorizationTriggerProbability = 1;
+    if (actionKind === 'EVADE') {
+      authorizationTriggerProbability = preview.calculateDodgeProbability(
+        actor,
+        sourceActor,
+        false,
+      );
+    } else if (actionKind === 'DEFEND') {
+      const incoming = request?.actionOpportunity?.incomingAction || {};
+      const incomingActionKind = String(incoming?.actionKind || '').trim().toUpperCase();
+      const incomingDeclaration = {
+        actorId: sourceActorId,
+        actionKind: incomingActionKind || 'RELEASE_SKILL',
+        targetIds: [actorId],
+        skill: incomingActionKind === 'BASIC_ATTACK'
+          ? {}
+          : cloneValue(incoming?.skill || incoming),
+        resourceCosts: {},
+        __includeGrantedEffects: false,
+      };
+      const incomingPreview = preview.previewAction({
+        worldSnapshot: projectedWorld,
+        worldRevision: [
+          request?.evaluationContext?.visibleWorldRevision || 'visible',
+          candidate?.candidateId || '',
+          'counter-trigger',
+        ].join(':'),
+        actorId: sourceActorId,
+        declaration: incomingDeclaration,
+        actionFingerprint: `counter-trigger:${candidate?.candidateId || ''}`,
+        damageMultiplierByTarget: {
+          [actorId]: preview.calculateDefenseDamageMultiplier(actor, sourceActor, false),
+        },
+        horizon: 'SHALLOW',
+        previewBudget: { maxNodes: 12 },
+        battleIntent: request?.battleIntent,
+      });
+      const damageContributions = (incomingPreview?.contributions || []).filter(entry =>
+        String(entry?.outcomeKind || '') === 'HP_DELTA' &&
+        String(entry?.targetId || '').trim() === actorId
+      );
+      authorizationTriggerProbability = 1 - damageContributions.reduce(
+        (missProbability, contribution) => {
+          const evidence = contribution?.evidence || {};
+          const hitProbability = clamp(
+            Number(evidence?.hitProbability ?? 1) *
+              Number(evidence?.applicationProbability ?? 1),
+            0,
+            1,
+          );
+          return missProbability * (1 - hitProbability);
+        },
+        1,
+      );
+    }
+    const openProbability = clamp(
+      authorizationTriggerProbability * conditionalProbability,
+      0,
+      1,
+    );
+    const healthTrajectoryDeltaPP = openProbability * routeValueHEPP;
+    if (!(healthTrajectoryDeltaPP > 1e-9)) return Object.freeze([]);
+    return Object.freeze([Object.freeze({
+      rootActionId: String(candidate?.candidateId || '').trim(),
+      effectInstanceId: `${candidate?.candidateId || ''}:counter-authorization`,
+      targetId: sourceActorId,
+      outcomeKind: 'COUNTER_AUTHORIZATION',
+      windowId: counterOpportunity.opportunityId,
+      ownerType: 'ACTION_POOL_DELTA',
+      realizable: true,
+      healthTrajectoryDeltaPP,
+      evidence: Object.freeze({
+        sourceActorId,
+        authorizationTriggerProbability,
+        conditionalCounterProbability: conditionalProbability,
+        openProbability,
+        counterRouteValueHEPP: routeValueHEPP,
+        counterCandidateCount: counterCandidates.length,
+        primaryCounterCandidateId: String(bestRoute?.candidateId || '').trim(),
+        primaryCounterRouteKey: String(bestRoute?.routeKey || '').trim(),
+        backupCounterCandidateId: String(counterEnvelope?.backupRoute?.candidateId || '').trim(),
+        payableCounterCandidateIds: Object.freeze(
+          counterCandidates.map(entry => String(entry?.candidateId || '').trim()),
+        ),
+      }),
+    })]);
+  }
+
   function r8OpportunityList(request = {}) {
     const snapshot = request?.evaluationContext?.opportunitySnapshot;
     if (Array.isArray(snapshot)) return snapshot;
@@ -12392,6 +25401,262 @@
     );
   }
 
+  function r8ControlOpportunityProfile(request = {}, effect = {}) {
+    const targetId = String(effect?.targetId || '').trim();
+    const currentRound = Math.max(
+      0,
+      Number(
+        request?.actionOpportunity?.round ??
+        request?.visibleWorld?.回合 ??
+        0
+      ),
+    );
+    const currentSequence = Math.max(
+      0,
+      Number(
+        request?.actionOpportunity?.sequence ??
+        request?.actionOpportunity?.createdAtSequence ??
+        0
+      ),
+    );
+    const active = status => !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+      String(status || '').trim().toUpperCase()
+    );
+    const concrete = r8OpportunityList(request)
+      .filter(entry => {
+        const explicitSequence =
+          entry?.createdAtSequence !== undefined ||
+          entry?.sequence !== undefined;
+        return String(entry?.ownerId || '').trim() === targetId &&
+          String(entry?.opportunityId || '').trim() !==
+            String(request?.actionOpportunity?.opportunityId || '').trim() &&
+          active(entry?.status) &&
+          (
+            !explicitSequence ||
+            Number(entry?.round ?? currentRound) > currentRound ||
+            (
+              Number(entry?.round ?? currentRound) === currentRound &&
+              Number(entry?.createdAtSequence ?? entry?.sequence) >
+                currentSequence
+            )
+          );
+      })
+      .map(entry => ({
+        id: String(entry?.opportunityId || '').trim(),
+        round: Math.max(0, Number(entry?.round ?? currentRound)),
+        sequence: Number(
+          entry?.createdAtSequence ??
+          entry?.sequence ??
+          currentSequence + 1
+        ),
+        kind: 'CONCRETE_OPPORTUNITY',
+      }));
+    const scheduled = (request?.evaluationContext?.scheduledEvents || [])
+      .filter(entry => {
+        const explicitSequence = entry?.creationSequence !== undefined;
+        return String(entry?.ownerId || entry?.targetId || '').trim() ===
+            targetId &&
+          (
+            !explicitSequence ||
+            Number(entry?.round ?? entry?.scheduledRound ?? currentRound) >
+              currentRound ||
+            (
+              Number(entry?.round ?? entry?.scheduledRound ?? currentRound) ===
+                currentRound &&
+              Number(entry?.creationSequence) > currentSequence
+            )
+          ) &&
+          Number(
+            entry?.expirySequence ??
+            entry?.creationSequence ??
+            currentSequence + 1
+          ) >= currentSequence;
+      })
+      .map(entry => ({
+        id: String(entry?.descriptorId || entry?.scheduleId || '').trim(),
+        round: Math.max(
+          0,
+          Number(entry?.round ?? entry?.scheduledRound ?? currentRound),
+        ),
+        sequence: Number(entry?.creationSequence ?? currentSequence + 1),
+        kind: 'SCHEDULE_DESCRIPTOR',
+      }));
+    const targetOpportunities = [...concrete, ...scheduled]
+      .filter(entry => entry.id)
+      .sort((left, right) =>
+        left.round - right.round ||
+        left.sequence - right.sequence ||
+        left.id.localeCompare(right.id)
+      );
+    const duration = Math.max(1, Number(effect?.evidence?.duration || 1));
+    const explicitExpirySequence = Number(
+      effect?.evidence?.expiresAtSequence ??
+      effect?.evidence?.expirySequence
+    );
+    const target = findUnitInWorld(request?.visibleWorld || {}, targetId);
+    const applicationProbability = clamp(
+      Number(
+        effect?.evidence?.applicationProbability ??
+        effect?.evidence?.probability ??
+        1
+      ),
+      0,
+      1,
+    );
+    const allTargetOpportunityProfiles = targetOpportunities
+      .map((entry, index) => {
+        const opportunityIndex = index + 1;
+        const expiresBeforeUse =
+          Number.isFinite(explicitExpirySequence) &&
+          explicitExpirySequence < entry.sequence;
+        const coveredProbabilityBefore = target
+          ? cancellationProbabilityAtOpportunity(
+              target,
+              opportunityIndex,
+            )
+          : 0;
+        const marginalCoverageProbability = !expiresBeforeUse &&
+          opportunityIndex <= duration
+          ? Math.max(0, applicationProbability - coveredProbabilityBefore)
+          : 0;
+        return {
+          entry,
+          opportunityIndex,
+          expiresBeforeUse,
+          coveredProbabilityBefore,
+          marginalCoverageProbability,
+        };
+      });
+    const targetOpportunityProfiles = allTargetOpportunityProfiles
+      .filter(profile =>
+        profile.marginalCoverageProbability > 1e-9
+      );
+    const targetOpportunity =
+      targetOpportunityProfiles[0]?.entry ||
+      targetOpportunities[0] ||
+      null;
+    const targetOpportunityProfile = allTargetOpportunityProfiles.find(
+      profile => profile.entry === targetOpportunity,
+    ) || null;
+    const expiresBeforeUse = !!targetOpportunity &&
+      Number.isFinite(explicitExpirySequence) &&
+      explicitExpirySequence < targetOpportunity.sequence;
+    const coveredProbabilityBefore = Number(
+      targetOpportunityProfile?.coveredProbabilityBefore || 0,
+    );
+    const marginalCoverageProbability = Number(
+      targetOpportunityProfile?.marginalCoverageProbability || 0,
+    );
+    const totalMarginalCoverageProbability =
+      targetOpportunityProfiles.reduce(
+        (sum, profile) =>
+          sum + Number(profile.marginalCoverageProbability || 0),
+        0,
+      );
+    const actorSide = String(request?.actorSide || '').trim();
+    const lastCoveredOpportunity =
+      targetOpportunityProfiles[targetOpportunityProfiles.length - 1]?.entry ||
+      targetOpportunity;
+    const windowEndSequence = lastCoveredOpportunity
+      ? Number.isFinite(explicitExpirySequence)
+        ? explicitExpirySequence
+        : lastCoveredOpportunity.sequence
+      : currentSequence;
+    const windowEndRound = lastCoveredOpportunity?.round ?? currentRound;
+    const exploiterRows = [
+      ...r8OpportunityList(request)
+        .filter(entry => {
+          const ownerId = String(entry?.ownerId || '').trim();
+          const owner = findUnitInWorld(request?.visibleWorld || {}, ownerId);
+          const round = Math.max(0, Number(entry?.round ?? currentRound));
+          const sequence = Number(
+            entry?.createdAtSequence ??
+            entry?.sequence ??
+            currentSequence + 1
+          );
+          return owner &&
+            String(sideOf(request.visibleWorld, owner)) === actorSide &&
+            String(entry?.opportunityId || '').trim() !==
+              String(request?.actionOpportunity?.opportunityId || '').trim() &&
+            active(entry?.status) &&
+            (
+              round > currentRound ||
+              (round === currentRound && sequence > currentSequence)
+            ) &&
+            (
+              round < windowEndRound ||
+              (round === windowEndRound && sequence <= windowEndSequence)
+            );
+        })
+        .map(entry => ({
+          id: String(entry?.opportunityId || '').trim(),
+          round: Math.max(0, Number(entry?.round ?? currentRound)),
+          sequence: Number(
+            entry?.createdAtSequence ??
+            entry?.sequence ??
+            currentSequence + 1
+          ),
+        })),
+      ...(request?.evaluationContext?.scheduledEvents || [])
+        .filter(entry => {
+          const ownerId = String(entry?.ownerId || entry?.targetId || '').trim();
+          const owner = findUnitInWorld(request?.visibleWorld || {}, ownerId);
+          const round = Math.max(
+            0,
+            Number(entry?.round ?? entry?.scheduledRound ?? currentRound),
+          );
+          const sequence = Number(
+            entry?.creationSequence ??
+            currentSequence + 1
+          );
+          return owner &&
+            String(sideOf(request.visibleWorld, owner)) === actorSide &&
+            (
+              round > currentRound ||
+              (round === currentRound && sequence > currentSequence)
+            ) &&
+            (
+              round < windowEndRound ||
+              (round === windowEndRound && sequence <= windowEndSequence)
+            );
+        })
+        .map(entry => ({
+          id: String(entry?.descriptorId || entry?.scheduleId || '').trim(),
+          round: Math.max(
+            0,
+            Number(entry?.round ?? entry?.scheduledRound ?? currentRound),
+          ),
+          sequence: Number(
+            entry?.creationSequence ??
+            currentSequence + 1
+          ),
+        })),
+    ].filter(entry => entry.id)
+      .sort((left, right) =>
+        left.round - right.round ||
+        left.sequence - right.sequence ||
+        left.id.localeCompare(right.id)
+      );
+    return Object.freeze({
+      targetOpportunityId: String(targetOpportunity?.id || '').trim(),
+      targetOpportunityKind: String(targetOpportunity?.kind || '').trim(),
+      targetOpportunitySequence: Number(targetOpportunity?.sequence || 0),
+      coveredBefore: coveredProbabilityBefore > 1e-9,
+      coveredAfter: marginalCoverageProbability > 1e-9,
+      coveredProbabilityBefore,
+      marginalCoverageProbability,
+      totalMarginalCoverageProbability,
+      applicationProbability,
+      coveredTargetOpportunityIds: Object.freeze(
+        targetOpportunityProfiles.map(profile => profile.entry.id),
+      ),
+      exploiterOpportunityIds: Object.freeze([
+        ...new Set(exploiterRows.map(entry => entry.id)),
+      ]),
+      expiresBeforeUse,
+    });
+  }
+
   function r8ActionPoolDeltas(request = {}, route = {}) {
     const deltas = [];
     const opportunities = r8OpportunityList(request);
@@ -12400,11 +25665,15 @@
     const remainingEnvelopeDelta = new Map(
       envelopeDeltas.map((entry, index) => [index, Number(entry?.healthTrajectoryDeltaPP || 0)]),
     );
-    for (const effect of route?.actionPoolEffects || []) {
+    for (const sourceEffect of route?.actionPoolEffects || []) {
+      let effect = sourceEffect;
       if (!r8ActionPoolEffectHasMechanicalDelta(effect)) continue;
       const target = findUnitInWorld(request.visibleWorld, effect.targetId);
       const targetEnvelope = request?.actionRouteCatalog?.[effect.targetId];
-      const targetRouteValue = Math.max(0, Number(targetEnvelope?.primaryRoute?.routeBenefitPP || 0));
+      const targetRouteValue = Math.max(
+        0,
+        routeSelectionBenefit(targetEnvelope?.primaryRoute),
+      );
       const targetOwnSide = target && String(sideOf(request.visibleWorld, target)) === String(request.actorSide);
       const probability = clamp(
         effect?.evidence?.applicationProbability ??
@@ -12414,6 +25683,7 @@
         1,
       );
       let deltaPP = Number(effect?.evidence?.r8HealthTrajectoryDeltaPP || 0);
+      let realizationProbability = probability;
       const effectKey = r8ActionPoolEffectKey(effect);
       const takeEnvelopeDelta = (
         allAffected = false,
@@ -12453,34 +25723,73 @@
       };
       let realizable = true;
       if (effect.outcomeKind === 'ACTION_CANCELLED') {
-        const opportunity = opportunities.find(entry =>
-          String(entry?.ownerId || '').trim() === String(effect.targetId || '').trim() &&
-          !['CONSUMED', 'EXPIRED', 'LOST'].includes(String(entry?.status || '').trim().toUpperCase())
-        );
-        const descriptor = schedules.find(entry =>
-          String(entry?.ownerId || entry?.targetId || '').trim() === String(effect.targetId || '').trim()
-        );
-        realizable = !!opportunity || !!descriptor;
-        deltaPP = realizable ? targetRouteValue * probability * (targetOwnSide ? -1 : 1) : 0;
+        const control = r8ControlOpportunityProfile(request, effect);
+        const envelopeDelta = takeEnvelopeDelta(false);
+        realizable = control.coveredAfter;
+        realizationProbability = control.applicationProbability;
+        deltaPP = realizable
+          ? envelopeDelta || targetRouteValue *
+              control.totalMarginalCoverageProbability *
+              (targetOwnSide ? -1 : 1)
+          : 0;
+        effect = {
+          ...effect,
+          evidence: {
+            ...(effect?.evidence || {}),
+            ...control,
+          },
+        };
       } else if (effect.outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED') {
         const multiplier = Number(effect?.evidence?.multiplier || 1);
         const explicitFactor = Number(effect?.evidence?.qualityFactor);
+        const combatEffect =
+          effect?.evidence?.combatEffect &&
+          typeof effect.evidence.combatEffect === 'object'
+            ? effect.evidence.combatEffect
+            : {};
+        const derivedFactor = [
+          'hit_bonus',
+          'damage_bonus',
+          'defense_bonus',
+          'dodge_bonus',
+          'reaction_bonus',
+          'cast_speed_bonus',
+        ].reduce(
+          (sum, key) => sum + Math.max(0, Number(combatEffect?.[key] || 0)),
+          0,
+        ) - [
+          'hit_penalty',
+          'damage_penalty',
+          'defense_penalty',
+          'dodge_penalty',
+          'reaction_penalty',
+          'cast_speed_penalty',
+        ].reduce(
+          (sum, key) => sum + Math.max(0, Number(combatEffect?.[key] || 0)),
+          0,
+        );
         const factor = Number.isFinite(explicitFactor)
           ? explicitFactor
           : Number.isFinite(multiplier) && multiplier !== 1
             ? multiplier - 1
-            : 0;
+            : clamp(derivedFactor, -1, 1);
         deltaPP = deltaPP || takeEnvelopeDelta(true) ||
           targetRouteValue * factor * probability * (targetOwnSide ? 1 : -1);
       } else if (['ACTION_GRANTED', 'SUMMON_WINDOW'].includes(effect.outcomeKind)) {
         const scheduled = schedules.some(entry =>
           String(entry?.sourceEventId || entry?.effectInstanceId || '').includes(String(effect.effectInstanceId || ''))
         );
+        const immediateWindowConsumed =
+          effect.outcomeKind === 'SUMMON_WINDOW' &&
+          effect?.evidence?.immediateWindowConsumed === true;
         const previewWindowCount = Math.max(
           0,
           Number(effect?.evidence?.remainingWindows ?? effect?.evidence?.duration ?? 0),
         );
-        realizable = scheduled || effect.outcomeKind === 'ACTION_GRANTED' || previewWindowCount > 0;
+        realizable = scheduled ||
+          immediateWindowConsumed ||
+          effect.outcomeKind === 'ACTION_GRANTED' ||
+          previewWindowCount > 0;
         const envelopeDelta = takeEnvelopeDelta(false, effect.outcomeKind === 'SUMMON_WINDOW');
         deltaPP = deltaPP || (realizable
           ? envelopeDelta || targetRouteValue * probability * (targetOwnSide ? 1 : -1)
@@ -12491,7 +25800,7 @@
         deltaPP = Number(effect?.evidence?.routeDeltaPP || 0) ||
           takeEnvelopeDelta(false, false, { requiredSign: resourceDirection });
       } else if (effect.outcomeKind === 'SHIELD_DELTA') {
-        deltaPP = takeEnvelopeDelta(true, false, {
+        deltaPP = deltaPP || takeEnvelopeDelta(true, false, {
           requiredSign: targetOwnSide ? 1 : -1,
           capacity: Math.max(0, Math.abs(Number(effect?.threatValue || 0))) * probability,
         });
@@ -12503,16 +25812,60 @@
       }
       deltas.push(Object.freeze({
         ...effect,
+        evidence: Object.freeze({
+          ...(effect?.evidence || {}),
+          r8RealizationProbability: clamp(
+            Number(realizationProbability || 0),
+            0,
+            1,
+          ),
+          r8RealizedHealthTrajectoryDeltaPP:
+            realizationProbability > 1e-9
+              ? Number(deltaPP || 0) / realizationProbability
+              : 0,
+        }),
         ownerType: 'ACTION_POOL_DELTA',
         realizable,
         healthTrajectoryDeltaPP: Number(deltaPP || 0),
       }));
     }
     envelopeDeltas.forEach((entry, index) => {
-      const deltaPP = Number(remainingEnvelopeDelta.get(index) || 0);
+      let deltaPP = Number(remainingEnvelopeDelta.get(index) || 0);
       const sourceFactIds = Array.isArray(entry?.sourceHealthFactKeys)
         ? entry.sourceHealthFactKeys.filter(Boolean)
         : [];
+      const ongoingBranchWorlds = Array.isArray(request?.ongoingBranchWorlds)
+        ? request.ongoingBranchWorlds
+        : [];
+      if (
+        Math.abs(deltaPP) <= 1e-9 &&
+        sourceFactIds.length &&
+        ongoingBranchWorlds.length
+      ) {
+        const targetId = String(entry?.targetId || '').trim();
+        const baselineTarget = findUnitInWorld(request?.visibleWorld || {}, targetId);
+        if (baselineTarget && preview.isBattleCapable(baselineTarget)) {
+          const lostCapabilityProbability = ongoingBranchWorlds.reduce(
+            (sum, branch) => {
+              const branchTarget = findUnitInWorld(branch?.world || {}, targetId);
+              return sum + (
+                branchTarget && preview.isBattleCapable(branchTarget)
+                  ? 0
+                  : clamp(Number(branch?.probability || 0), 0, 1)
+              );
+            },
+            0,
+          );
+          if (lostCapabilityProbability > 1e-9) {
+            const targetOwnSide =
+              String(sideOf(request.visibleWorld, baselineTarget)) ===
+              String(request.actorSide);
+            deltaPP = Math.max(0, Number(entry?.beforePP || 0)) *
+              lostCapabilityProbability *
+              (targetOwnSide ? -1 : 1);
+          }
+        }
+      }
       if (
         Math.abs(deltaPP) <= 1e-9 ||
         !sourceFactIds.length ||
@@ -12534,40 +25887,544 @@
           beforePP: Number(entry?.beforePP || 0),
           afterPP: Number(entry?.afterPP || 0),
           sourceFactIds: Object.freeze([...sourceFactIds]),
+          branchResolved: Math.abs(
+            Number(remainingEnvelopeDelta.get(index) || 0) - deltaPP
+          ) > 1e-9,
+          futureThreatWindowResolved:
+            Number(entry?.futureThreatWindowDeltaPP || 0) > 1e-9,
+          futureThreatWindowDeltaPP: Math.max(
+            0,
+            Number(entry?.futureThreatWindowDeltaPP || 0),
+          ),
         }),
         ownerType: 'ACTION_POOL_DELTA',
         realizable: true,
         healthTrajectoryDeltaPP: deltaPP,
       }));
     });
-    return Object.freeze(deltas);
+    const teamPlan = (request?.teamMarginalPlan || []).filter(entry =>
+      String(entry?.sourceSide || '').trim() === String(request?.actorSide || '').trim()
+    );
+    const remainingByPlan = new Map(teamPlan.map((entry, index) => [
+      index,
+      Math.max(0, Number(entry?.expectedRangePP?.upper || 0)),
+    ]));
+    return Object.freeze(deltas.map(delta => {
+      const marginalKind = delta?.outcomeKind === 'SHIELD_DELTA'
+        ? 'SHIELD'
+        : delta?.outcomeKind === 'ACTION_CANCELLED'
+          ? 'CONTROL'
+          : delta?.outcomeKind === 'RESOURCE_OPTION_CHANGED' &&
+              Number(delta?.expectedDelta ?? delta?.evidence?.delta ?? 0) > 0
+            ? 'RESOURCE_SUPPORT'
+            : '';
+      if (!marginalKind || !delta.realizable) return delta;
+      let remaining = Math.max(0, Number(delta?.healthTrajectoryDeltaPP || 0));
+      let consumed = 0;
+      for (let index = 0; index < teamPlan.length && remaining > 1e-9; index += 1) {
+        const entry = teamPlan[index];
+        const effectRealizationSequence = Math.max(
+          Number(request?.actionOpportunity?.sequence || 0),
+          Number(
+            delta?.evidence?.targetOpportunitySequence ??
+            delta?.evidence?.realizationSequence ??
+            delta?.opportunitySequence ??
+            Number(request?.actionOpportunity?.sequence || 0) + 1
+          ),
+        );
+        const sourceSequence = Math.max(
+          0,
+          Number(
+            entry?.sourceOpportunitySequence ??
+            entry?.expiresAtSequence ??
+            0
+          ),
+        );
+        if (
+          String(entry?.marginalKind || '').trim() !== marginalKind ||
+          String(entry?.targetId || '').trim() !== String(delta?.targetId || '').trim() ||
+          sourceSequence > effectRealizationSequence ||
+          Number(entry?.expiresAtSequence || 0) <
+            Number(request?.actionOpportunity?.sequence || 0) ||
+          (
+            marginalKind === 'RESOURCE_SUPPORT' &&
+            String(entry?.resource || '').trim() !== String(delta?.evidence?.resource || '').trim()
+          ) ||
+          (
+            marginalKind === 'CONTROL' &&
+            String(entry?.targetOpportunityId || '').trim() &&
+            String(delta?.evidence?.targetOpportunityId || '').trim() &&
+            String(entry.targetOpportunityId).trim() !==
+              String(delta.evidence.targetOpportunityId).trim()
+          )
+        ) {
+          continue;
+        }
+        if (marginalKind === 'CONTROL') {
+          consumed = remaining;
+          remaining = 0;
+          break;
+        }
+        const occupied = Number(remainingByPlan.get(index) || 0);
+        if (!(occupied > 1e-9)) continue;
+        const amount = Math.min(remaining, occupied);
+        remaining -= amount;
+        consumed += amount;
+        remainingByPlan.set(index, occupied - amount);
+      }
+      if (!(consumed > 1e-9)) return delta;
+      return Object.freeze({
+        ...delta,
+        healthTrajectoryDeltaPP: Math.sign(Number(delta?.healthTrajectoryDeltaPP || 0)) * remaining,
+        teamMarginalConsumedPP: consumed,
+      });
+    }));
+  }
+
+  function r8PreActionResponseProjection(
+    request = {},
+    candidate = {},
+    branch = {},
+    options = {},
+  ) {
+    const cached = request?.preActionResponseProjectionByCandidate
+      ?.[candidate?.candidateId]?.[branch?.projectionId];
+    if (cached && options?.forceRebuild !== true) return cached;
+    const sourceActorId = String(branch?.sourceActorId || '').trim();
+    const declaration = branch?.declaration;
+    const source = findUnitInWorld(request?.visibleWorld || {}, sourceActorId);
+    if (!sourceActorId || !source || !declaration || !preview.isBattleCapable(source)) {
+      return null;
+    }
+    const responsePreview = preview.previewAction({
+      worldSnapshot: request.visibleWorld,
+      worldRevision: [
+        request?.evaluationContext?.visibleWorldRevision || 'visible',
+        candidate?.candidateId || '',
+        branch?.projectionId || '',
+        'pre-action-response',
+      ].join(':'),
+      actorId: sourceActorId,
+      declaration,
+      actionFingerprint: `response:${branch?.projectionId || sourceActorId}:pre-action`,
+      horizon: 'SHALLOW',
+      previewBudget: { maxNodes: 12 },
+      collectProbabilityBranches: true,
+      battleIntent: request?.battleIntent,
+    });
+    const responseWorld = responsePreview?.afterSnapshot;
+    const actor = findUnitInWorld(responseWorld, request?.actorId);
+    if (!responseWorld || !actor || !preview.isBattleCapable(actor)) return null;
+    markReactionResponseConsumed(
+      responseWorld,
+      sourceActorId,
+      String(branch?.responseId || '').trim(),
+    );
+    const candidatePreview = preview.previewAction({
+      worldSnapshot: responseWorld,
+      worldRevision: [
+        request?.evaluationContext?.visibleWorldRevision || 'visible',
+        candidate?.candidateId || '',
+        branch?.projectionId || '',
+        'after-pre-action-response',
+      ].join(':'),
+      actorId: request.actorId,
+      declaration: candidate.declaration,
+      actionFingerprint: `candidate:${candidate?.candidateId || ''}:after-response:${
+        branch?.projectionId || sourceActorId
+      }`,
+      horizon: 'SHALLOW',
+      previewBudget: { maxNodes: 12 },
+      collectProbabilityBranches: true,
+      battleIntent: request?.battleIntent,
+    });
+    const route = actionRouteFromPreview({
+      candidate,
+      previewResult: candidatePreview,
+      worldSnapshot: responseWorld,
+      actorSide: request.actorSide,
+      dependencyKeys: [],
+    });
+    const branchRequest = {
+      ...request,
+      visibleWorld: responseWorld,
+      actorProjectedWorlds: {
+        ...(request?.actorProjectedWorlds || {}),
+        [candidate.candidateId]: candidatePreview.afterSnapshot,
+      },
+      terminalCallOrigin: 'PRE_ACTION_RESPONSE_CANDIDATE',
+    };
+    const terminal = r8TerminalUtility(branchRequest, route);
+    const groups = r8ObjectiveGroups(branchRequest);
+    const directTrajectoryHEPP = r8UniqueObjectiveTrajectoryValue(
+      branchRequest,
+      groups,
+      route.healthTrajectoryByTarget,
+    );
+    const actionPoolHEPP = r8ActionPoolDeltas({
+      ...branchRequest,
+      ongoingBranchWorlds: terminal.ongoingBranchWorlds,
+    }, route).reduce(
+      (sum, delta) => sum + Number(delta?.healthTrajectoryDeltaPP || 0),
+      0,
+    );
+    const continuation = r8DefensiveResponseContinuationDelta({
+      request,
+      candidate,
+      branch,
+      responsePreview,
+      responseWorld,
+      candidateWorld: candidatePreview.afterSnapshot,
+    });
+    const ongoingWorldBranches = Array.isArray(terminal.ongoingBranchWorlds)
+      ? terminal.ongoingBranchWorlds
+      : [];
+    const expectedUtility = clamp(
+      Number(terminal.expectedTerminalUtility || 0) +
+        ongoingWorldBranches.reduce((sum, ongoingBranch) =>
+          sum + Number(ongoingBranch?.probability || 0) * (
+            Number(ongoingBranch?.objectiveUtility || 0) + actionPoolHEPP
+          )
+        , 0) +
+        Number(continuation?.healthTrajectoryDeltaPP || 0),
+      -100,
+      100,
+    );
+    return Object.freeze({
+      schemaVersion: '8.3-pre-action-response-projection-1',
+      candidateId: String(candidate?.candidateId || '').trim(),
+      projectionId: String(branch?.projectionId || '').trim(),
+      responseId: String(branch?.responseId || '').trim(),
+      sourceActorId,
+      responseConsumed: true,
+      routeKey: String(route?.routeKey || '').trim(),
+      terminalStatus: String(terminal?.status || 'ONGOING').trim(),
+      directTrajectoryHEPP,
+      actionPoolHEPP,
+      continuation,
+      continuationDeltaHEPP: Number(
+        continuation?.healthTrajectoryDeltaPP || 0,
+      ),
+      expectedUtility,
+    });
+  }
+
+  function r8DefensiveResponseContinuationDelta({
+    request = {},
+    candidate = {},
+    branch = {},
+    responsePreview = {},
+    responseWorld = {},
+    candidateWorld = {},
+  } = {}) {
+    const responseContributions = Array.isArray(responsePreview?.contributions)
+      ? responsePreview.contributions
+      : [];
+    const responseSourceId = String(branch?.sourceActorId || '').trim();
+    const responseIsDefensive = responseContributions.length > 0 &&
+      responseContributions.every(contribution => {
+        const outcomeKind = String(contribution?.outcomeKind || '').trim();
+        const targetId = String(contribution?.targetId || '').trim();
+        if (
+          ['HP_DELTA', 'SCHEDULED_HP_DELTA', 'ACTION_CANCELLED'].includes(
+            outcomeKind,
+          ) &&
+          targetId !== responseSourceId
+        ) {
+          return false;
+        }
+        return !['ACTION_GRANTED', 'SUMMON_WINDOW'].includes(outcomeKind);
+      });
+    if (!responseIsDefensive) return null;
+    const currentSequence = Math.max(
+      0,
+      Number(
+        request?.actionOpportunity?.sequence ??
+        request?.actionOpportunity?.opportunitySequence ??
+        request?.actionOpportunity?.createdAtSequence ??
+        0,
+      ),
+    );
+    const actorSide = String(request?.actorSide || '').trim();
+    const opportunityRows = (
+      Array.isArray(request?.evaluationContext?.opportunitySnapshot)
+        ? request.evaluationContext.opportunitySnapshot
+        : []
+    )
+      .filter(opportunity =>
+        Math.max(
+          0,
+          Number(
+            opportunity?.sequence ??
+            opportunity?.opportunitySequence ??
+            opportunity?.createdAtSequence ??
+            0,
+          ),
+        ) > currentSequence &&
+        !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+          String(opportunity?.status || '').trim().toUpperCase(),
+        )
+      )
+      .sort((left, right) =>
+        Number(
+          left?.sequence ??
+          left?.opportunitySequence ??
+          left?.createdAtSequence ??
+          0,
+        ) -
+          Number(
+            right?.sequence ??
+            right?.opportunitySequence ??
+            right?.createdAtSequence ??
+            0,
+          ) ||
+        String(left?.opportunityId || '').localeCompare(
+          String(right?.opportunityId || ''),
+        )
+      );
+    const futureFriendlyOpportunities = [];
+    for (const opportunity of opportunityRows) {
+      const ownerId = String(opportunity?.ownerId || '').trim();
+      const owner = findUnitInWorld(request?.visibleWorld || {}, ownerId);
+      if (!owner) continue;
+      if (String(sideOf(request.visibleWorld, owner)) !== actorSide) break;
+      futureFriendlyOpportunities.push(opportunity);
+    }
+    if (!futureFriendlyOpportunities.length) return null;
+    const unitIds = [
+      ...new Set(
+        futureFriendlyOpportunities
+          .map(opportunity => String(opportunity?.ownerId || '').trim())
+          .filter(Boolean),
+      ),
+    ];
+    const planForWorld = (worldSnapshot, revisionSuffix) => {
+      const dependencyView = createDependencyView({
+        worldSnapshot,
+        objectiveContract: request.objectiveContract,
+        opportunitySnapshot: futureFriendlyOpportunities,
+        scheduledEvents: request?.evaluationContext?.scheduledEvents || [],
+        beliefState: request.beliefState,
+      });
+      const evaluationContext = {
+        ...(request?.evaluationContext || {}),
+        worldRevision: `${
+          request?.evaluationContext?.worldRevision || 'response-continuation'
+        }:${revisionSuffix}`,
+        visibleWorldRevision: `visible:${preview.stableHash(worldSnapshot)}`,
+        opportunitySnapshot: futureFriendlyOpportunities,
+        dependencyView,
+      };
+      const actor = findUnitInWorld(worldSnapshot, request.actorId);
+      const actorCandidates = actor && preview.isBattleCapable(actor)
+        ? enumerateCandidates({
+            worldSnapshot,
+            actorId: request.actorId,
+            actorSide,
+            beliefState: request.beliefState,
+            battleIntent: request.battleIntent,
+            actionOpportunity: request.actionOpportunity,
+            includeUnaffordableRoutes: true,
+          }).map(entry => ({
+            ...entry,
+            declarationFingerprint:
+              entry.declarationFingerprint ||
+              declarationFingerprint(entry.declaration),
+          }))
+        : [];
+      const routeAnalysis = buildR8RouteCatalog({
+        worldSnapshot,
+        actorId: request.actorId,
+        actorCandidates,
+        beliefState: request.beliefState,
+        battleIntent: request.battleIntent,
+        actionOpportunity: request.actionOpportunity,
+        objectiveContract: request.objectiveContract,
+        objectiveCompactMode: request.objectiveCompactMode || 'FAST',
+        dependencyView,
+        evaluationContext,
+        forceFullBehaviorRouteValuation: true,
+      });
+      return r8BuildResourceOpportunityPlan({
+        worldSnapshot,
+        actorSide,
+        unitIds,
+        projectionScope: 'FULL_CAUSAL',
+        routeCatalog: routeAnalysis.routeCatalog,
+        fullRoutesByUnit: routeAnalysis.fullRoutesByUnit,
+        actionOpportunity: request.actionOpportunity,
+        opportunitySnapshot: futureFriendlyOpportunities,
+        scheduledEvents: request?.evaluationContext?.scheduledEvents || [],
+        resourceTimeline: request?.evaluationContext?.resourceTimeline || [],
+        objectiveContract: request.objectiveContract,
+      });
+    };
+    const baselinePlan = planForWorld(responseWorld, 'response-only');
+    const candidatePlan = planForWorld(candidateWorld, 'response-and-candidate');
+    const healthTrajectoryDeltaPP = clamp(
+      Number(candidatePlan?.cumulativeUtilityHEPP || 0) -
+        Number(baselinePlan?.cumulativeUtilityHEPP || 0),
+      -100,
+      100,
+    );
+    return Object.freeze({
+      schemaVersion: '8.3-response-continuation-delta-1',
+      outcomeKind: 'RESPONSE_CONSUMPTION_ACTION_POOL',
+      targetId: responseSourceId,
+      responseId: String(branch?.responseId || '').trim(),
+      projectionId: String(branch?.projectionId || '').trim(),
+      opportunityIds: Object.freeze(
+        futureFriendlyOpportunities.map(opportunity =>
+          String(opportunity?.opportunityId || '').trim()
+        ).filter(Boolean),
+      ),
+      affectedUnitIds: Object.freeze(unitIds),
+      baselineRouteKeys: Object.freeze(
+        (baselinePlan?.rows || []).map(row =>
+          String(row?.selectedRouteKey || '').trim()
+        ).filter(Boolean),
+      ),
+      candidateRouteKeys: Object.freeze(
+        (candidatePlan?.rows || []).map(row =>
+          String(row?.selectedRouteKey || '').trim()
+        ).filter(Boolean),
+      ),
+      baselineUtilityHEPP: Number(
+        baselinePlan?.cumulativeUtilityHEPP || 0,
+      ),
+      candidateUtilityHEPP: Number(
+        candidatePlan?.cumulativeUtilityHEPP || 0,
+      ),
+      healthTrajectoryDeltaPP,
+    });
   }
 
   function projectR8GoalUtility(request = {}, candidate = {}, route = {}) {
+    const mechanicalRoute = route;
+    const marginalRoute = r8ApplyTeamMarginalPlan(request, route);
     const groups = r8ObjectiveGroups(request);
-    const directTrajectoryHEPP = (route?.healthTrajectoryByTarget || []).reduce((sum, trajectory) => {
-      const victoryValue = r8GroupTrajectoryValue(request, groups.victory, trajectory, 'VICTORY');
-      const defeatReduction = r8GroupTrajectoryValue(request, groups.defeat, trajectory, 'DEFEAT');
-      return sum + Math.max(victoryValue, defeatReduction);
-    }, 0);
-    const terminal = r8TerminalUtility(request, route);
-    const actionPoolDeltas = Object.freeze([
-      ...r8ActionPoolDeltas(request, route),
-      ...r8IncomingHealthDeltas(request, candidate, route),
-    ].filter(() => !terminal.terminal));
-    const actionPoolHEPP = actionPoolDeltas.reduce(
-      (sum, delta) => sum + Number(delta.healthTrajectoryDeltaPP || 0),
-      0,
+    const trajectories = marginalRoute?.healthTrajectoryByTarget || [];
+    const directTrajectoryHEPP = r8UniqueObjectiveTrajectoryValue(
+      request,
+      groups,
+      trajectories,
     );
-    const nonTerminalUtility = clamp(directTrajectoryHEPP + actionPoolHEPP, -99, 99);
-    const baseUtility = terminal.terminal ? terminal.utility : nonTerminalUtility;
-    const responseModel = request?.responseModelByCandidate?.[candidate?.candidateId] ||
-      buildR8ResponseModel(request, candidate?.candidateId);
+    const terminal = r8TerminalUtility(
+      {
+        ...request,
+        terminalCallOrigin: 'CANDIDATE_GOAL_UTILITY',
+      },
+      mechanicalRoute,
+      marginalRoute,
+    );
+    const responseModel = request?.responseModelByCandidate?.[
+      candidate?.candidateId
+    ] || buildR8ResponseModel(request, candidate?.candidateId);
     const responseBranches = [
       ...(responseModel?.mainBranches || []),
       ...(responseModel?.disasterTail ? [responseModel.disasterTail] : []),
     ];
-    let expectedCandidateUtility = baseUtility * Number(responseModel?.noResponseProbability ?? 1);
+    const baseActionPoolDeltas = Object.freeze([
+      ...r8ActionPoolDeltas({
+        ...request,
+        ongoingBranchWorlds: terminal.ongoingBranchWorlds,
+      }, mechanicalRoute),
+      ...r8IncomingHealthDeltas(request, candidate, mechanicalRoute),
+      ...r8CounterAuthorizationDeltas(request, candidate),
+    ].filter(() => Number(terminal.ongoingProbability ?? (terminal.terminal ? 0 : 1)) > 1e-9));
+    const responseActionPoolDeltas = Object.freeze(
+      responseBranches.flatMap(branch => {
+        const projection = request?.preActionResponseProjectionByCandidate
+          ?.[candidate?.candidateId]?.[branch?.projectionId];
+        const continuation = projection?.continuation;
+        const branchProbability = clamp(branch?.probability || 0, 0, 1);
+        const deltaPP = Number(
+          continuation?.healthTrajectoryDeltaPP || 0,
+        ) * branchProbability;
+        if (Math.abs(deltaPP) <= 1e-9) return [];
+        return [Object.freeze({
+          rootActionId: String(candidate?.candidateId || '').trim(),
+          effectInstanceId: `response-consumption:${
+            String(branch?.responseId || branch?.projectionId || '').trim()
+          }`,
+          targetId: String(
+            continuation?.targetId || branch?.sourceActorId || '',
+          ).trim(),
+          outcomeKind: 'RESPONSE_CONSUMPTION_ACTION_POOL',
+          windowId: (
+            continuation?.opportunityIds || []
+          ).join('|') || 'NEXT_FRIENDLY_OPPORTUNITIES',
+          ownerType: 'ACTION_POOL_DELTA',
+          realizable: true,
+          healthTrajectoryDeltaPP: deltaPP,
+          evidence: Object.freeze({
+            responseId: String(branch?.responseId || '').trim(),
+            projectionId: String(branch?.projectionId || '').trim(),
+            probability: branchProbability,
+            opportunityIds: Object.freeze([
+              ...(continuation?.opportunityIds || []),
+            ]),
+            affectedUnitIds: Object.freeze([
+              ...(continuation?.affectedUnitIds || []),
+            ]),
+            baselineRouteKeys: Object.freeze([
+              ...(continuation?.baselineRouteKeys || []),
+            ]),
+            candidateRouteKeys: Object.freeze([
+              ...(continuation?.candidateRouteKeys || []),
+            ]),
+            baselineUtilityHEPP: Number(
+              continuation?.baselineUtilityHEPP || 0,
+            ),
+            candidateUtilityHEPP: Number(
+              continuation?.candidateUtilityHEPP || 0,
+            ),
+          }),
+        })];
+      }).filter(() =>
+        Number(
+          terminal.ongoingProbability ?? (terminal.terminal ? 0 : 1),
+        ) > 1e-9
+      ),
+    );
+    const actionPoolDeltas = Object.freeze([
+      ...baseActionPoolDeltas,
+      ...responseActionPoolDeltas,
+    ]);
+    const baseActionPoolHEPP = baseActionPoolDeltas.reduce(
+      (sum, delta) => sum + Number(delta.healthTrajectoryDeltaPP || 0),
+      0,
+    );
+    const responseActionPoolHEPP = responseActionPoolDeltas.reduce(
+      (sum, delta) => sum + Number(delta.healthTrajectoryDeltaPP || 0),
+      0,
+    );
+    const ongoingProbability = Number(
+      terminal.ongoingProbability ?? (terminal.terminal ? 0 : 1)
+    );
+    const terminalUtilityMass = Number(terminal.expectedTerminalUtility || 0);
+    const ongoingWorldBranches = Array.isArray(terminal.ongoingBranchWorlds)
+      ? terminal.ongoingBranchWorlds
+      : [{
+          probability: ongoingProbability,
+          world: request?.actorProjectedWorlds?.[candidate?.candidateId] ||
+            request?.visibleWorld ||
+            {},
+          objectiveUtility: ongoingProbability > 1e-9
+            ? Number(terminal.expectedOngoingTrajectoryUtility ?? directTrajectoryHEPP) /
+              ongoingProbability
+            : 0,
+        }];
+    const ongoingUtilityMass = ongoingWorldBranches.reduce(
+      (sum, branch) => sum + Number(branch.probability || 0) * (
+        Number(branch.objectiveUtility || 0) + baseActionPoolHEPP
+      ),
+      0,
+    );
+    const baseUtility = clamp(terminalUtilityMass + ongoingUtilityMass, -100, 100);
+    let expectedCandidateUtility =
+      terminalUtilityMass +
+      ongoingUtilityMass * Number(responseModel?.noResponseProbability ?? 1);
     let expectedNoOpUtility = 0 * Number(responseModel?.noResponseProbability ?? 1);
     if (terminal.terminal) {
       expectedCandidateUtility = baseUtility;
@@ -12575,33 +26432,147 @@
     } else {
       for (const branch of responseBranches) {
         const probability = clamp(branch?.probability || 0, 0, 1);
-        const threat = median([
-          Number(branch?.threatEnvelope?.lower || 0),
-          Number(branch?.threatEnvelope?.upper || 0),
-        ]);
         const catastrophic = String(branch?.projectionId || '').startsWith('disaster:');
-        expectedCandidateUtility += probability * (catastrophic ? -100 : clamp(baseUtility - threat, -99, 99));
-        expectedNoOpUtility += probability * (catastrophic ? -100 : clamp(-threat, -99, 99));
+        if (
+          String(branch?.triggerTiming || '').trim() === 'PRE_ACTION' &&
+          branch?.declaration
+        ) {
+          const preActionProjection = r8PreActionResponseProjection(
+            request,
+            candidate,
+            branch,
+          );
+          if (preActionProjection) {
+            expectedCandidateUtility += probability *
+              Number(preActionProjection.expectedUtility || 0);
+            continue;
+          }
+        }
+        const responseUtility = worldSnapshot => {
+          const declaration = branch?.declaration;
+          const sourceActorId = String(branch?.sourceActorId || '').trim();
+          const source = findUnitInWorld(worldSnapshot, sourceActorId);
+          if (sourceActorId && source && !preview.isBattleCapable(source)) {
+            return Object.freeze({ expectedUtility: 0, ongoingProbability: 1 });
+          }
+          if (!declaration || !sourceActorId || !source) {
+            const threat = median([
+              Number(branch?.threatEnvelope?.lower || 0),
+              Number(branch?.threatEnvelope?.upper || 0),
+            ]);
+            return Object.freeze({
+              expectedUtility: catastrophic ? -100 : clamp(-threat, -99, 99),
+              ongoingProbability: catastrophic ? 0 : 1,
+            });
+          }
+          const responsePreview = preview.previewAction({
+            worldSnapshot,
+            worldRevision: [
+              request?.evaluationContext?.visibleWorldRevision || 'visible',
+              candidate?.candidateId || '',
+              branch?.projectionId || '',
+            ].join(':'),
+            actorId: sourceActorId,
+            declaration,
+            actionFingerprint: `response:${branch?.projectionId || sourceActorId}`,
+            horizon: 'SHALLOW',
+            previewBudget: { maxNodes: 12 },
+            collectProbabilityBranches: true,
+            battleIntent: request?.battleIntent,
+          });
+          const responseRoute = actionRouteFromPreview({
+            candidate: {
+              candidateId: `response:${branch?.projectionId || sourceActorId}`,
+              declaration,
+              declarationFingerprint: declarationFingerprint(declaration),
+            },
+            previewResult: responsePreview,
+            worldSnapshot,
+            actorSide: String(sideOf(worldSnapshot, findUnitInWorld(worldSnapshot, sourceActorId))),
+            dependencyKeys: [],
+          });
+          const responseRequest = { ...request, visibleWorld: worldSnapshot };
+          const responseTerminal = r8TerminalUtility(
+            {
+              ...responseRequest,
+              terminalCallOrigin: 'RESPONSE_ROUTE',
+            },
+            responseRoute,
+          );
+          const responseGroups = r8ObjectiveGroups(responseRequest);
+          const responseOngoingTrajectory = responseTerminal.terminal
+            ? 0
+            : Number(
+                responseTerminal.expectedOngoingTrajectoryUtility ??
+                r8UniqueObjectiveTrajectoryValue(
+                  responseRequest,
+                  responseGroups,
+                  responseRoute.healthTrajectoryByTarget,
+                )
+              );
+          return Object.freeze({
+            expectedUtility: clamp(
+              Number(responseTerminal.expectedTerminalUtility || 0) +
+              responseOngoingTrajectory,
+              -100,
+              100,
+            ),
+            ongoingProbability: Number(
+              responseTerminal.ongoingProbability ??
+              (responseTerminal.terminal ? 0 : 1)
+            ),
+          });
+        };
+        const noOpResponse = branch?.appliesToNoOp === true
+          ? responseUtility(request?.visibleWorld || {})
+          : Object.freeze({ expectedUtility: 0, ongoingProbability: 1 });
+        const candidateResponseMass = ongoingWorldBranches.reduce((sum, ongoingBranch) => {
+          const candidateResponse = responseUtility(ongoingBranch.world);
+          return sum + Number(ongoingBranch.probability || 0) * clamp(
+              Number(candidateResponse.expectedUtility || 0) +
+              Number(candidateResponse.ongoingProbability || 0) * (
+                Number(ongoingBranch.objectiveUtility || 0) +
+                  baseActionPoolHEPP
+              ),
+            -100,
+            100,
+          );
+        }, 0);
+        expectedCandidateUtility += probability * candidateResponseMass;
+        expectedNoOpUtility += probability * Number(noOpResponse.expectedUtility || 0);
       }
     }
-    const informationValueHEPP = Number(request?.informationValueByCandidate?.[candidate?.candidateId] || 0);
-    const objectiveUtilityHEPP = expectedCandidateUtility - expectedNoOpUtility + informationValueHEPP;
+    const informationValueHEPP = terminal.terminal
+      ? 0
+      : ongoingProbability *
+        Number(request?.informationValueByCandidate?.[candidate?.candidateId] || 0);
+    const objectiveUtilityHEPP = clamp(
+      expectedCandidateUtility - expectedNoOpUtility + informationValueHEPP,
+      -100,
+      100,
+    );
     const disasterThreat = responseModel?.disasterTail
       ? Number(responseModel.disasterTail?.threatEnvelope?.upper || 0)
       : 0;
     return Object.freeze({
       candidateId: String(candidate?.candidateId || ''),
       directTrajectoryHEPP,
-      actionPoolHEPP,
+      actionPoolHEPP: baseActionPoolHEPP + responseActionPoolHEPP,
+      baseActionPoolHEPP,
+      responseActionPoolHEPP,
       actionPoolDeltas,
       terminal,
       expectedCandidateUtility,
       expectedNoOpUtility,
       informationValueHEPP,
       objectiveUtilityHEPP,
-      discardedOverkillPP: r8ThresholdOverkill(request, route),
+      discardedOverkillPP: Number(
+        terminal.expectedDiscardedOverkillPP ??
+        r8ThresholdOverkill(request, mechanicalRoute)
+      ),
       worstTailLossHEPP: Math.max(0, disasterThreat),
-      healthTrajectory: route?.healthTrajectoryByTarget || Object.freeze([]),
+      healthTrajectory: mechanicalRoute?.healthTrajectoryByTarget || Object.freeze([]),
+      teamMarginalTrajectory: marginalRoute?.healthTrajectoryByTarget || Object.freeze([]),
       responseModel,
     });
   }
@@ -12678,11 +26649,17 @@
         windowId: trajectory.windowId || 'NOW',
         healthRangePP: Object.freeze({ lower: Math.min(before, after), upper: Math.max(before, after) }),
         sourceFactIds: Object.freeze([]),
-        consumedRanges: Object.freeze([]),
+        consumedRanges: [],
       });
     }
     for (const delta of projection?.actionPoolDeltas || []) {
       if (!Number(delta.healthTrajectoryDeltaPP || 0)) continue;
+      const sourceFactIds = Array.isArray(delta?.evidence?.sourceFactIds)
+        ? [...delta.evidence.sourceFactIds]
+        : [];
+      const sourceFacts = sourceFactIds
+        .map(sourceFactId => facts.find(fact => fact.valueKey === sourceFactId))
+        .filter(Boolean);
       facts.push({
         valueKey: [
           delta.rootActionId || candidate.candidateId,
@@ -12701,15 +26678,59 @@
           lower: Math.min(0, Number(delta.healthTrajectoryDeltaPP || 0)),
           upper: Math.max(0, Number(delta.healthTrajectoryDeltaPP || 0)),
         }),
-        sourceFactIds: Object.freeze(
-          Array.isArray(delta?.evidence?.sourceFactIds)
-            ? [...delta.evidence.sourceFactIds]
-            : [],
-        ),
-        consumedRanges: Object.freeze([]),
+        sourceFactIds: Object.freeze(sourceFactIds),
+        consumedRanges: sourceFacts.map(sourceFact => Object.freeze({
+          sourceFactId: sourceFact.valueKey,
+          lower: Number(sourceFact.healthRangePP?.lower || 0),
+          upper: Number(sourceFact.healthRangePP?.upper || 0),
+        })),
       });
     }
-    if (projection?.terminal?.terminal) {
+    if (Number(projection?.terminal?.terminalProbability || 0) > 1e-9) {
+      const sourceFactIds = facts.map(fact => fact.valueKey);
+      const consumedBySource = new Map();
+      facts.forEach(fact => {
+        (fact?.consumedRanges || []).forEach(range => {
+          const sourceFactId = String(range?.sourceFactId || '').trim();
+          if (!sourceFactId) return;
+          const rows = consumedBySource.get(sourceFactId) || [];
+          rows.push({
+            lower: Number(range?.lower || 0),
+            upper: Number(range?.upper || 0),
+          });
+          consumedBySource.set(sourceFactId, rows);
+        });
+      });
+      const remainingRanges = projection?.terminal?.terminal
+        ? facts.flatMap(sourceFact => {
+        const sourceLower = Number(sourceFact.healthRangePP?.lower || 0);
+        const sourceUpper = Number(sourceFact.healthRangePP?.upper || 0);
+        if (!(sourceUpper > sourceLower + 1e-9)) return [];
+        const consumed = [...(consumedBySource.get(sourceFact.valueKey) || [])]
+          .filter(range => range.upper > range.lower + 1e-9)
+          .sort((left, right) => left.lower - right.lower || left.upper - right.upper);
+        const residual = [];
+        let cursor = sourceLower;
+        consumed.forEach(range => {
+          const lower = clamp(range.lower, sourceLower, sourceUpper);
+          const upper = clamp(range.upper, sourceLower, sourceUpper);
+          if (lower > cursor + 1e-9) residual.push({ lower: cursor, upper: lower });
+          cursor = Math.max(cursor, upper);
+        });
+        if (cursor < sourceUpper - 1e-9) residual.push({ lower: cursor, upper: sourceUpper });
+        return residual.map(range => Object.freeze({
+          sourceFactId: sourceFact.valueKey,
+          lower: range.lower,
+          upper: range.upper,
+        }));
+        })
+        : [];
+      const terminalPaths = (projection?.terminal?.terminalPaths || []).map(path => Object.freeze({
+        probability: Number(path?.probability || 0),
+        status: String(path?.status || '').trim(),
+        terminalAtomicKey: String(path?.terminalAtomicKey || '').trim(),
+        terminalAfterEffectInstanceId: String(path?.terminalAfterEffectInstanceId || '').trim(),
+      }));
       facts.push({
         valueKey: [
           candidate.candidateId,
@@ -12725,8 +26746,13 @@
         outcomeKind: 'FIRST_TERMINAL',
         windowId: 'FIRST_TERMINAL',
         healthRangePP: Object.freeze({ lower: 0, upper: 0 }),
-        sourceFactIds: Object.freeze(facts.map(fact => fact.valueKey)),
-        consumedRanges: Object.freeze([]),
+        sourceFactIds: Object.freeze(sourceFactIds),
+        consumedRanges: Object.freeze(remainingRanges),
+        terminalProbability: Number(projection.terminal.terminalProbability || 0),
+        winProbability: Number(projection.terminal.winProbability || 0),
+        lossProbability: Number(projection.terminal.lossProbability || 0),
+        drawProbability: Number(projection.terminal.drawProbability || 0),
+        terminalPaths: Object.freeze(terminalPaths),
       });
     }
     validateR8CausalOwnership(facts);
@@ -12736,10 +26762,13 @@
   function validateR8CausalOwnership(facts = []) {
     const keys = new Set();
     const ownedIntervals = new Map();
+    const factByKey = new Map();
+    const consumedBySource = new Map();
     for (const fact of facts) {
       const key = String(fact?.valueKey || '').trim();
       if (!key || keys.has(key)) throw new Error(`DUPLICATE_CAUSAL_VALUE:${key || 'missing'}`);
       keys.add(key);
+      factByKey.set(key, fact);
       const lower = Number(fact?.healthRangePP?.lower || 0);
       const upper = Number(fact?.healthRangePP?.upper || 0);
       if (upper < lower) throw new Error(`CAUSAL_RANGE_OWNER_CONFLICT:${key}`);
@@ -12757,6 +26786,34 @@
       }
       intervals.push({ lower, upper, key });
       ownedIntervals.set(intervalKey, intervals);
+    }
+    for (const fact of facts) {
+      for (const consumed of fact?.consumedRanges || []) {
+        const sourceFactId = String(consumed?.sourceFactId || '').trim();
+        const source = factByKey.get(sourceFactId);
+        if (!source || source === fact) {
+          throw new Error(`CAUSAL_RANGE_OWNER_CONFLICT:${fact.valueKey}:source:${sourceFactId || 'missing'}`);
+        }
+        const lower = Number(consumed?.lower || 0);
+        const upper = Number(consumed?.upper || 0);
+        const sourceLower = Number(source?.healthRangePP?.lower || 0);
+        const sourceUpper = Number(source?.healthRangePP?.upper || 0);
+        if (
+          upper < lower ||
+          lower < sourceLower - 1e-9 ||
+          upper > sourceUpper + 1e-9
+        ) {
+          throw new Error(`CAUSAL_RANGE_OWNER_CONFLICT:${fact.valueKey}:range:${sourceFactId}`);
+        }
+        const prior = consumedBySource.get(sourceFactId) || [];
+        if (upper > lower && prior.some(interval =>
+          Math.max(lower, interval.lower) < Math.min(upper, interval.upper) - 1e-9
+        )) {
+          throw new Error(`CAUSAL_RANGE_OWNER_CONFLICT:${fact.valueKey}:consumed_twice:${sourceFactId}`);
+        }
+        prior.push({ lower, upper, owner: fact.valueKey });
+        consumedBySource.set(sourceFactId, prior);
+      }
     }
     return true;
   }
@@ -12854,7 +26911,17 @@
 
   function r8CandidateExclusion(request = {}, candidate = {}, route = {}, projection = {}) {
     const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
-    const hasCost = Object.values(candidate?.costs || {}).some(value => Number(value || 0) > 0) ||
+    const opportunityRole = String(request?.actionOpportunity?.role || '').trim().toUpperCase();
+    const consumesNaturalOpportunity =
+      opportunityRole === 'ACTIVE' &&
+      String(request?.actionOpportunity?.grantType || 'NATURAL_ACTION').trim().toUpperCase() ===
+        'NATURAL_ACTION';
+    const consumesOptionalReaction =
+      ['REACTION', 'COUNTER'].includes(opportunityRole) &&
+      candidate?.counterDeclineFallback !== true;
+    const hasCost = consumesNaturalOpportunity ||
+      consumesOptionalReaction ||
+      Object.values(candidate?.costs || {}).some(value => Number(value || 0) > 0) ||
       (route?.actionPoolEffects || []).some(effect => effect.outcomeKind === 'IRREVERSIBLE_ASSET_LOST');
     if (['DEFEND', 'EVADE'].includes(actionKind) && !r8HasDefenseWindow(request)) {
       return 'ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED';
@@ -12869,7 +26936,7 @@
     if (
       (route?.actionPoolEffects || []).some(effect => effect.outcomeKind === 'SUMMON_WINDOW') &&
       !(projection?.actionPoolDeltas || []).some(delta =>
-        delta.outcomeKind === 'SUMMON_WINDOW' && delta.realizable && Number(delta.healthTrajectoryDeltaPP || 0) !== 0
+        delta.outcomeKind === 'SUMMON_WINDOW' && delta.realizable
       ) &&
       !projection?.terminal?.terminal &&
       Math.abs(Number(projection?.directTrajectoryHEPP || 0)) <= 1e-9 &&
@@ -12884,15 +26951,39 @@
       trajectory.targetId === request.actorId &&
       preview.readHp(actor) + Number(trajectory.healthDeltaPP || 0) * preview.readHpMax(actor) / 100 <= 0
     ) && !projection?.terminal?.terminal) return 'UNCOMPENSATED_SELF_DESTRUCTION';
-    if (Number(projection?.discardedOverkillPP || 0) > 0) {
-      const killsTarget = (route?.healthTrajectoryByTarget || []).some(trajectory => {
-        const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
-        return target &&
-          preview.readHp(target) + Number(trajectory.healthDeltaPP || 0) * preview.readHpMax(target) / 100 <= 0;
-      });
-      if (killsTarget) return 'AVOIDABLE_IRREVERSIBLE_OVERREACH_SELECTED';
-    }
     return '';
+  }
+
+  function r8ApplyThresholdAlternativeExclusions(records = [], request = {}) {
+    for (const record of records) {
+      if (record.rejectionCode || !(Number(record?.discardedOverkillPP || 0) > 0)) continue;
+      const lethalTargetIds = new Set((record?.route?.healthTrajectoryByTarget || [])
+        .filter(trajectory => {
+          const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
+          return target &&
+            preview.readHp(target) +
+              Number(trajectory?.healthDeltaPP || 0) * preview.readHpMax(target) / 100 <= 0;
+        })
+        .map(trajectory => String(trajectory?.targetId || '').trim())
+        .filter(Boolean));
+      if (!lethalTargetIds.size) continue;
+      const alternative = records.find(other =>
+        other !== record &&
+        !other.rejectionCode &&
+        Number(other?.objectiveUtilityHEPP || 0) >= Number(record?.objectiveUtilityHEPP || 0) - 1e-9 &&
+        Number(other?.worstTailLossHEPP || 0) <= Number(record?.worstTailLossHEPP || 0) + 1e-9 &&
+        Number(other?.discardedOverkillPP || 0) < Number(record?.discardedOverkillPP || 0) - 1e-9 &&
+        !(other?.route?.healthTrajectoryByTarget || []).some(trajectory => {
+          if (!lethalTargetIds.has(String(trajectory?.targetId || '').trim())) return false;
+          const target = findUnitInWorld(request.visibleWorld, trajectory.targetId);
+          return target &&
+            preview.readHp(target) +
+              Number(trajectory?.healthDeltaPP || 0) * preview.readHpMax(target) / 100 <= 0;
+        })
+      );
+      if (alternative) record.rejectionCode = 'AVOIDABLE_IRREVERSIBLE_OVERREACH_SELECTED';
+    }
+    return records;
   }
 
   function r8Dominates(left = {}, right = {}) {
@@ -12923,6 +27014,40 @@
     }));
   }
 
+  function r8SelectionEntropyKey(request = {}, candidates = []) {
+    const opportunity = request?.actionOpportunity || {};
+    const context = request?.evaluationContext || {};
+    return `r8-selection:${preview.stableHash({
+      schemaVersion: '8.3-selection-entropy-1',
+      seed: request?.seed ?? 1,
+      actorId: String(request?.actorId || '').trim(),
+      actorSide: String(request?.actorSide || '').trim(),
+      opportunity: {
+        opportunityId: String(opportunity?.opportunityId || '').trim(),
+        role: String(opportunity?.role || '').trim(),
+        grantType: String(opportunity?.grantType || '').trim(),
+        sourceActorId: String(opportunity?.sourceActorId || '').trim(),
+        sourceActionId: String(opportunity?.sourceActionId || '').trim(),
+        sequence: Math.max(0, Number(
+          opportunity?.sequence ??
+          opportunity?.opportunitySequence ??
+          opportunity?.createdAtSequence ??
+          0
+        )),
+      },
+      visibleWorldRevision: String(context?.visibleWorldRevision || '').trim(),
+      beliefRevision: String(context?.beliefRevision || '').trim(),
+      objectiveHash: String(context?.objectiveHash || '').trim(),
+      opportunityRevision: String(context?.opportunityRevision || '').trim(),
+      resourceTimelineRevision: String(context?.resourceTimelineRevision || '').trim(),
+      scheduleRevision: String(context?.scheduleRevision || '').trim(),
+      candidateIds: candidates
+        .map(candidate => String(candidate?.candidateId || '').trim())
+        .filter(Boolean)
+        .sort(),
+    })}`;
+  }
+
   function selectR8Candidate(request = {}, candidates = []) {
     const actor = findUnitInWorld(request.visibleWorld, request.actorId);
     const experience = experienceOf(actor || {});
@@ -12933,6 +27058,34 @@
     const maxRegret = 0.35 + 0.9 * (1 - confidence);
     const normalized = r8NormalizeUtilities(candidates);
     const paretoIds = new Set(r8ParetoFilter(normalized).map(candidate => candidate.candidateId));
+    if (request?.playerLockedDeclaration) {
+      const lockedChoice = selectPlayerLockedCandidate(
+        normalized,
+        request.playerLockedDeclaration,
+        request.visibleWorld,
+      );
+      const lockedCandidate = lockedChoice.selected;
+      const lockedSelection = Object.freeze({
+        ...lockedCandidate,
+        rejectionCode: '',
+        playerLocked: true,
+        selectionMode: 'PLAYER_LOCKED',
+        forcedConstraintAudit: String(lockedCandidate?.rejectionCode || '').trim(),
+      });
+      return Object.freeze({
+        selected: lockedSelection,
+        normalized: normalized.map(candidate =>
+          candidate.candidateId === lockedSelection.candidateId
+            ? lockedSelection
+            : candidate
+        ),
+        paretoIds,
+        confidence: 1,
+        temperature: 0,
+        maxRegret: 0,
+        selectionMode: 'PLAYER_LOCKED',
+      });
+    }
     const eligible = normalized.filter(candidate => !candidate.rejectionCode && paretoIds.has(candidate.candidateId))
       .sort((left, right) =>
         Number(right.normalizedUtility || 0) - Number(left.normalizedUtility || 0) ||
@@ -12952,9 +27105,47 @@
           ).join(',')}`,
         );
       }
+      const fallbackProjection = Object.freeze({
+        ...(fallback?.goalProjection || {}),
+        directTrajectoryHEPP: 0,
+        actionPoolHEPP: 0,
+        actionPoolDeltas: Object.freeze([]),
+        expectedCandidateUtility: Number(fallback?.goalProjection?.expectedNoOpUtility || 0),
+        objectiveUtilityHEPP: 0,
+        informationValueHEPP: 0,
+        discardedOverkillPP: 0,
+        worstTailLossHEPP: 0,
+        healthTrajectory: Object.freeze([]),
+        teamMarginalTrajectory: Object.freeze([]),
+        responseModel: Object.freeze({
+          actorSide: String(request?.actorSide || '').trim(),
+          mainBranches: Object.freeze([]),
+          disasterTail: null,
+          unknownMass: 0,
+          noResponseProbability: 1,
+        }),
+      });
+      const forcedFallback = Object.freeze({
+        ...fallback,
+        goalProjection: fallbackProjection,
+        causalValueFacts: Object.freeze([]),
+        objectiveUtilityHEPP: 0,
+        informationValueHEPP: 0,
+        normalizedUtility: 0,
+        survivalLowerBound: Math.max(0, Number(fallback?.survivalLowerBound || 0)),
+        worstTailLossHEPP: 0,
+        discardedOverkillPP: 0,
+        forcedFallback: true,
+        fallbackReason: 'NO_ELIGIBLE_CANDIDATE',
+        fallbackSourceRejectionCode: String(fallback?.rejectionCode || '').trim(),
+        rejectionCode: '',
+      });
+      const fallbackNormalized = normalized.map(candidate =>
+        candidate.candidateId === forcedFallback.candidateId ? forcedFallback : candidate
+      );
       return Object.freeze({
-        selected: fallback,
-        normalized,
+        selected: forcedFallback,
+        normalized: fallbackNormalized,
         paretoIds,
         confidence,
         temperature,
@@ -12980,7 +27171,9 @@
     );
     const weights = pool.map(candidate => Math.exp(Number(candidate.normalizedUtility || 0) / Math.max(0.0001, temperature)));
     const total = weights.reduce((sum, value) => sum + value, 0) || 1;
-    let roll = stableRoll(`${request.seed}:${request.requestHash}:r8-softmax`) * total;
+    const selectionEntropyKey = r8SelectionEntropyKey(request, normalized);
+    const selectionRoll = stableRoll(selectionEntropyKey);
+    let roll = selectionRoll * total;
     let selected = pool[pool.length - 1];
     for (let index = 0; index < pool.length; index += 1) {
       roll -= weights[index];
@@ -12997,6 +27190,8 @@
       temperature,
       maxRegret,
       selectionMode: 'SEEDED_SOFTMAX',
+      selectionEntropyKey,
+      selectionRoll,
     });
   }
 
@@ -13033,6 +27228,72 @@
       record.rejectionCode = record.forcedAction ? '' : exclusionCode;
       return record;
     });
+    r8ApplyThresholdAlternativeExclusions(evaluated, request);
+    const actionRole = String(request?.actionOpportunity?.role || '').trim().toUpperCase();
+    if (
+      actionRole === 'REACTION' &&
+      !request?.actionOpportunity?.forcedSkill &&
+      !evaluated.some(candidate => !candidate.rejectionCode)
+    ) {
+      return deepFreeze({
+        schemaVersion: '8.3-decision-audit-2',
+        version: '8.3-decision-audit-2',
+        decisionEngine: 'R8',
+        actorId: request.actorId,
+        opportunityId: String(request?.actionOpportunity?.opportunityId || ''),
+        candidateCount: evaluated.length,
+        paretoCount: 0,
+        selected: null,
+        alternatives: [],
+        candidateAudit: evaluated.map(candidate => Object.freeze({
+          candidateId: candidate.candidateId,
+          actionName: candidate.actionName,
+          actionKind: candidate.declaration.actionKind,
+          actorId: request.actorId,
+          targetIds: Object.freeze([...(candidate.declaration.targetIds || [])]),
+          declaration: candidate.declaration,
+          objectiveUtility: candidate.objectiveUtilityHEPP,
+          objectiveUtilityHEPP: candidate.objectiveUtilityHEPP,
+          normalizedUtility: 0,
+          vector: Object.freeze({
+            objectiveUtilityHEPP: candidate.objectiveUtilityHEPP,
+            informationValueHEPP: candidate.informationValueHEPP,
+            assetReserve: candidate.assetReserve,
+            survivalLowerBound: candidate.survivalLowerBound,
+            worstTailLossHEPP: candidate.worstTailLossHEPP,
+            discardedOverkillPP: candidate.discardedOverkillPP,
+          }),
+          goalProjection: candidate.goalProjection,
+          primaryRoute: candidate.route,
+          backupRoute: null,
+          causalValueFacts: candidate.causalValueFacts,
+          predictedOutcomeEvidence: request.predictedOutcomeEvidenceByCandidate?.[candidate.candidateId] || Object.freeze([]),
+          mechanicObservations: request.mechanicObservationsByCandidate?.[candidate.candidateId] || Object.freeze([]),
+          rejectionCode: candidate.rejectionCode || '',
+          classification: 'HARD_INVALID',
+          selected: false,
+        })),
+        scoreAudit: [],
+        lostOpportunity: Object.freeze({
+          reasonCode: 'REACTION_NO_EFFECTIVE_ACTION',
+          reasonText: '当前没有能够改善本次结算的即时应对动作，本次反应窗口按放弃记录',
+          actionRole,
+          opportunityId: String(request?.actionOpportunity?.opportunityId || '').trim(),
+          grantId: String(request?.actionOpportunity?.grantId || '').trim(),
+          sourceActorId: String(request?.actionOpportunity?.sourceActorId || '').trim(),
+        }),
+        beliefState: request.beliefState,
+        teamIntent: request.teamPublicFacts,
+        strategyMemory: request.strategyMemory || {},
+        strategicSignature: `r8:reaction-decline:${request.requestHash}`,
+        stateCapacityTotal: 0,
+        beliefRevision: request.evaluationContext.beliefRevision,
+        pendingStrategicEffect: false,
+        decisionProfile: Object.freeze({
+          selectionMode: 'REACTION_DECLINED',
+        }),
+      });
+    }
     const choice = selectR8Candidate(request, evaluated);
     const selected = choice.normalized.find(candidate => candidate.candidateId === choice.selected.candidateId);
     const alternatives = choice.normalized
@@ -13075,10 +27336,16 @@
       primaryRoute: candidate.route,
       backupRoute: backupRouteFor(candidate),
       causalValueFacts: candidate.causalValueFacts,
+      predictedOutcomeEvidence: request.predictedOutcomeEvidenceByCandidate?.[candidate.candidateId] || Object.freeze([]),
+      mechanicObservations: request.mechanicObservationsByCandidate?.[candidate.candidateId] || Object.freeze([]),
       rejectionCode: candidate.rejectionCode || '',
       counterDeclineFallback: candidate.counterDeclineFallback === true,
+      playerLocked: candidate.playerLocked === true,
       forcedAction: candidate.forcedAction === true,
       forcedConstraintAudit: String(candidate.forcedConstraintAudit || '').trim(),
+      forcedFallback: candidate.forcedFallback === true,
+      fallbackReason: String(candidate.fallbackReason || '').trim(),
+      fallbackSourceRejectionCode: String(candidate.fallbackSourceRejectionCode || '').trim(),
       classification: candidate.rejectionCode ? 'HARD_INVALID' : 'VIABLE',
       selected: candidate.candidateId === selected.candidateId,
     });
@@ -13117,15 +27384,46 @@
         temperature: choice.temperature,
         maxRegret: choice.maxRegret,
         selectionMode: choice.selectionMode,
+        selectionEntropyKey: String(choice.selectionEntropyKey || '').trim(),
+        selectionRoll: Number.isFinite(Number(choice.selectionRoll))
+          ? Number(choice.selectionRoll)
+          : null,
       }),
     });
   }
 
   function prepareDecisionRequest(input = {}) {
+    const sessionState = input?.session
+      ? evaluationSessionState(input.session)
+      : null;
+    const previewMetricsBefore = typeof preview.readMetrics === 'function'
+      ? preview.readMetrics()
+      : {};
+    const decisionMetricsBefore = { ...decisionMetrics };
+    const tracePrepareStages =
+      globalThis?.process?.env?.BATTLE_R8_PREPARE_STAGE_TRACE === '1';
+    const prepareTraceStartedAt =
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+    const tracePrepareStage = stage => {
+      if (!tracePrepareStages) return;
+      const now =
+        typeof globalThis?.performance?.now === 'function'
+          ? globalThis.performance.now()
+          : Date.now();
+      console.error(`[r8-prepare-stage] ${JSON.stringify({
+        stage,
+        elapsedMs: Number((now - prepareTraceStartedAt).toFixed(3)),
+      })}`);
+    };
+    tracePrepareStage('entry');
     const worldSnapshot = input?.worldSnapshot;
     if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
     invalidateMutableWorldIndexes(worldSnapshot);
+    tracePrepareStage('indexes-invalidated');
     const sourceWorldHash = preview.stableHash(worldSnapshot);
+    tracePrepareStage('source-world-hashed');
     const actor = findUnitInWorld(worldSnapshot, input?.actorId || '');
     if (!actor || !preview.isAlive(actor)) {
       throw new Error(
@@ -13135,12 +27433,23 @@
       );
     }
     const actorId = preview.unitId(actor);
+    tracePrepareStage('actor-found');
     const beliefState = buildInitialBelief(worldSnapshot, actorId, input?.beliefState || {});
+    tracePrepareStage('belief-built');
     const visibleWorld = buildDecisionWorld(worldSnapshot, actorId, beliefState);
+    tracePrepareStage('visible-world-built');
     const visibleActor = findUnitInWorld(visibleWorld, actorId);
     const actorSide = sideOf(visibleWorld, visibleActor);
     const battleIntent = actorBattleIntent(visibleWorld, actorSide, input?.battleIntent);
     const actionOpportunity = cloneValue(input?.actionOpportunity || {});
+    const opportunityOwnerId = String(
+      actionOpportunity?.ownerId || '',
+    ).trim();
+    if (opportunityOwnerId && opportunityOwnerId !== actorId) {
+      throw new Error('OPPORTUNITY_SNAPSHOT_INCONSISTENT');
+    }
+    actionOpportunity.ownerId = actorId;
+    tracePrepareStage('before-enumerate');
     const candidates = enumerateCandidates({
       ...input,
       worldSnapshot: visibleWorld,
@@ -13150,6 +27459,7 @@
       beliefState,
       actionOpportunity,
     });
+    tracePrepareStage(`after-enumerate:${candidates.length}`);
     if (!candidates.length) throw new Error('battle_decision_candidate_pool_empty');
     const candidateIds = new Set();
     const candidateFingerprintMap = {};
@@ -13159,7 +27469,7 @@
         throw new Error(`battle_decision_candidate_identity_invalid:${candidateId || 'missing'}`);
       }
       candidateIds.add(candidateId);
-      const declaration = cloneValue(candidate?.declaration || {});
+      const declaration = deepFreeze(cloneValue(candidate?.declaration || {}));
       const fingerprint = declarationFingerprint(declaration);
       candidateFingerprintMap[candidateId] = fingerprint;
       return {
@@ -13206,31 +27516,113 @@
       visibleWorldRevision: `visible:${preview.stableHash(visibleWorld)}`,
       beliefRevision: beliefRevisionFor(beliefState),
       objectiveHash: `objective:${preview.stableHash(objectiveContract)}`,
-      opportunityRevision: `opportunity:${
+      opportunityRevision:
+        runtimeSnapshot.opportunityRevision ||
+        `opportunity:${
         runtimeSnapshot.opportunitySnapshotHash ||
         preview.stableHash(opportunitySnapshot)
       }`,
-      resourceTimelineRevision: `resource:${
+      resourceTimelineRevision:
+        runtimeSnapshot.resourceTimelineRevision ||
+        `resource:${
         runtimeSnapshot.resourceTimelineHash ||
         preview.stableHash(resourceTimeline)
       }`,
-      scheduleRevision: `schedule:${
+      scheduleRevision:
+        runtimeSnapshot.scheduleRevision ||
+        `schedule:${
         runtimeSnapshot.scheduledEventsHash ||
         preview.stableHash(scheduledEvents)
       }`,
+      runtimeEvaluationRevision: String(
+        runtimeSnapshot.evaluationRevision ||
+        `runtime-evaluation:${preview.stableHash({
+          opportunitySnapshot,
+          resourceTimeline,
+          scheduledEvents,
+        })}`
+      ),
       opportunitySnapshot,
       resourceTimeline,
       scheduledEvents,
       horizon: cloneValue(input?.horizon || battleHorizonProfile(input, visibleWorld)),
       dependencyView,
     };
+    tracePrepareStage('evaluation-context-built');
     const candidatesOnly = String(input?.analysisDepth || '').trim().toUpperCase() === 'CANDIDATES_ONLY';
+    const objectiveCompactMode =
+      input?.disableCompactObjectiveFastPath === true ? 'FULL' : 'FAST';
     const candidateEnvelopeMetrics = {
       rebuildCount: 0,
       previewCalls: 0,
       searchedRouteCount: 0,
       reusedRouteCount: 0,
+      healthOnlyRebuildCount: 0,
+      effectOnlyRebuildCount: 0,
+      mixedSourceRebuildCount: 0,
+      zeroDeltaRebuildCount: 0,
+      nonZeroDeltaRebuildCount: 0,
+      rebuildSourceOutcomeCounts: {},
+      zeroDeltaSourceOutcomeCounts: {},
+      targetPressureAudits: [],
+      resourceOpportunityAudits: [],
+      collectTargetPressureAudit: input?.collectTargetPressureAudit === true,
+      envelopeSemanticCacheHits: 0,
+      envelopeSemanticCacheMisses: 0,
+      skippedZeroWindowSummonRebuildCount: 0,
+      skippedHealthEnvelopeRebuildCount: 0,
+      pressureOnlyHealthEvaluationCount: 0,
+      zeroPressureOnlyHealthEvaluationCount: 0,
+      nonZeroPressureOnlyHealthEvaluationCount: 0,
+      stateDependencyClassCounts: {},
+      unknownStateDependencyKeys: {},
+      informationEnvelopePreviewCalls: 0,
+      informationEnvelopeReusedRouteCount: 0,
+      mechanicalEvidenceCacheHits: 0,
+      mechanicalEvidenceCacheMisses: 0,
+      mechanicalRouteCacheHits: 0,
+      collectRootCauseDiagnostics:
+        globalThis?.process?.env
+          ?.BATTLE_R8_ENVELOPE_ROOT_CAUSE_TRACE === '1',
+      rebuildByTargetId: {},
+      searchedRoutesByTargetId: {},
+      previewCallsByTargetId: {},
+      reusedRoutesByTargetId: {},
+      zeroDeltaByTargetId: {},
+      nonZeroDeltaByTargetId: {},
+      rebuildReasonCounts: {},
+      repreviewReasonCounts: {},
+      repreviewDependencyCombinationCounts: {},
+      repreviewDependencyKeyClassCounts: {},
+      repreviewDependencyKeyCounts: {},
+      repreviewStateCollectionRoleCounts: {},
+      repreviewSameMechanicalRouteCount: 0,
+      repreviewSameMechanicalRouteDependencyCombinationCounts: {},
+      repreviewSameMechanicalRouteDependencyClassCounts: {},
+      repreviewSameMechanicalRouteStateCollectionRoleCounts: {},
+      repreviewSameMechanicalRouteStateKeyCounts: {},
+      repreviewSameMechanicalRouteStateClassCounts: {},
+      repreviewSameMechanicalStateOnlyRoleCounts: {},
+      repreviewSameMechanicalStateOnlyKeyCounts: {},
+      repreviewSameMechanicalStateOnlyClassCounts: {},
+      reusedRouteDependencyClassCounts: {},
+      ownershipGapCount: 0,
+      ownershipGapCounts: {},
+      ownershipGapByCandidateTarget: {},
     };
+    const requestComputationCache =
+      input?.previousComputationCache &&
+      input.previousComputationCache.envelopeSemanticCache instanceof Map &&
+      input.previousComputationCache.envelopeMechanicalPreviewCache instanceof Map &&
+      input.previousComputationCache.envelopeMechanicalRouteCache instanceof Map &&
+      input.previousComputationCache.resourceBaselinePlanCache instanceof Map
+        ? input.previousComputationCache
+        : {
+            envelopeSemanticCache: new Map(),
+            envelopeMechanicalPreviewCache: new Map(),
+            envelopeMechanicalRouteCache: new Map(),
+            resourceBaselinePlanCache: new Map(),
+          };
     const baselineCreationFutureUseAudits =
       candidatesOnly && String(input?.providerId || '').trim() === 'r74-next-baseline'
         ? buildBaselineCreationFutureUseAudits({
@@ -13266,33 +27658,105 @@
           beliefState,
           battleIntent,
           actionOpportunity,
+          objectiveContract,
+          objectiveCompactMode,
           dependencyView,
           evaluationContext,
           previousCatalog: input?.previousRouteCatalog,
+          previousFullRoutesByUnit: input?.previousFullRoutesByUnit,
+          previousActorCandidateRoutes:
+            input?.previousActorCandidateRoutes,
+          previousActorProjectedWorlds:
+            input?.previousActorProjectedWorlds,
+          previousActorProjectedWorldRevisions:
+            input?.previousActorProjectedWorldRevisions,
+          previousActorPredictedOutcomeEvidence:
+            input?.previousActorPredictedOutcomeEvidence,
+          previousActorCandidateEnvelopeDeltas:
+            input?.previousActorCandidateEnvelopeDeltas,
           affectedUnitIds: input?.affectedRouteUnitIds,
           affectedTargetUnitIds: input?.affectedRouteTargetUnitIds,
+          affectedRouteKeysByUnit: input?.affectedRouteKeysByUnit,
+          routeInvalidationAudit: input?.routeInvalidationAudit,
+          metrics: candidateEnvelopeMetrics,
+          envelopeSemanticCache:
+            requestComputationCache.envelopeSemanticCache,
+          envelopeMechanicalPreviewCache:
+            requestComputationCache.envelopeMechanicalPreviewCache,
+          envelopeMechanicalRouteCache:
+            requestComputationCache.envelopeMechanicalRouteCache,
+          resourceBaselinePlanCache:
+            requestComputationCache.resourceBaselinePlanCache,
+          forceFullBehaviorRouteValuation:
+            input?.forceFullBehaviorRouteValuation === true,
         });
+    tracePrepareStage('route-analysis-complete');
     const teamMarginalPlan = candidatesOnly
       ? []
-      : buildTeamMarginalPlan(routeAnalysis.routeCatalog, visibleWorld, actorId);
+      : buildTeamMarginalPlan(routeAnalysis.routeCatalog, visibleWorld, actorId, {
+          opportunitySnapshot,
+          scheduledEvents,
+        });
     const candidateEnvelopeDeltas = candidatesOnly
       ? {}
-      : buildR8CandidateEnvelopeDeltas({
-          worldSnapshot: visibleWorld,
-          actorSide,
-          routeCatalog: routeAnalysis.routeCatalog,
-          projectedWorlds: routeAnalysis.actorProjectedWorlds,
-          projectedWorldRevisions: routeAnalysis.actorProjectedWorldRevisions,
-          candidateRoutes: routeAnalysis.actorCandidateRoutes,
-          fullRoutesByUnit: routeAnalysis.fullRoutesByUnit,
-          beliefState,
-          battleIntent,
-          actionOpportunity,
-          opportunitySnapshot: runtimeSnapshot.opportunitySnapshot || [],
-          scheduledEvents: runtimeSnapshot.scheduledEvents || [],
-          objectiveContract,
-          metrics: candidateEnvelopeMetrics,
-        });
+      : Object.keys(routeAnalysis.candidateEnvelopeDeltas || {}).length
+        ? routeAnalysis.candidateEnvelopeDeltas
+        : buildR8CandidateEnvelopeDeltas({
+            worldSnapshot: visibleWorld,
+            actorSide,
+            routeCatalog: routeAnalysis.routeCatalog,
+            projectedWorlds: routeAnalysis.actorProjectedWorlds,
+            projectedWorldRevisions:
+              routeAnalysis.actorProjectedWorldRevisions,
+            candidateRoutes: routeAnalysis.actorCandidateRoutes,
+            fullRoutesByUnit: routeAnalysis.fullRoutesByUnit,
+            resourceRouteCatalog: routeAnalysis.routeCatalog,
+            resourceFullRoutesByUnit: routeAnalysis.fullRoutesByUnit,
+            beliefState,
+            battleIntent,
+            actionOpportunity,
+            opportunitySnapshot: runtimeSnapshot.opportunitySnapshot || [],
+            resourceTimeline: runtimeSnapshot.resourceTimeline || [],
+            scheduledEvents: runtimeSnapshot.scheduledEvents || [],
+            objectiveContract,
+            objectiveCompactMode,
+            metrics: candidateEnvelopeMetrics,
+            envelopeSemanticCache:
+              requestComputationCache.envelopeSemanticCache,
+            envelopeMechanicalPreviewCache:
+              requestComputationCache.envelopeMechanicalPreviewCache,
+            envelopeMechanicalRouteCache:
+              requestComputationCache.envelopeMechanicalRouteCache,
+            resourceBaselinePlanCache:
+              requestComputationCache.resourceBaselinePlanCache,
+          });
+    const mechanicObservationsByCandidate = candidatesOnly
+      ? {}
+      : Object.fromEntries(frozenCandidates.map(candidate => {
+          const withdrawalProfile = String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW'
+            ? aliveEntries(visibleWorld)
+                .filter(entry => entry.side !== actorSide)
+                .map(entry => ({
+                  targetId: preview.unitId(entry.unit),
+                  estimate: preview.estimateWithdrawal(visibleActor, entry.unit),
+                }))
+                .sort((left, right) =>
+                  Number(left?.estimate?.successProbability || 0) -
+                  Number(right?.estimate?.successProbability || 0)
+                )[0] || null
+            : null;
+          return [
+            candidate.candidateId,
+            buildMechanicObservations(
+              candidate,
+              visibleActor,
+              visibleWorld,
+              beliefState,
+              withdrawalProfile?.estimate || null,
+              withdrawalProfile?.targetId || '',
+            ),
+          ];
+        }));
     const requestPayload = {
       schemaVersion: R8_REQUEST_SCHEMA,
       actorId,
@@ -13314,16 +27778,47 @@
       actionRouteCatalog: routeAnalysis.routeCatalog,
       actorCandidateRoutes: routeAnalysis.actorCandidateRoutes,
       actorProjectedWorlds: routeAnalysis.actorProjectedWorlds,
+      predictedOutcomeEvidenceByCandidate: routeAnalysis.actorPredictedOutcomeEvidence || {},
+      mechanicObservationsByCandidate,
       candidateEnvelopeDeltas,
       teamMarginalPlan,
       routeCacheMetrics: routeAnalysis.cacheMetrics,
-      candidateEnvelopeMetrics: Object.freeze({ ...candidateEnvelopeMetrics }),
       battleIntent: cloneValue(battleIntent),
+      playerLockedDeclaration: input?.playerLockedDeclaration
+        ? cloneValue(input.playerLockedDeclaration)
+        : null,
       strategyMemory: cloneValue(input?.strategyMemory || {}),
       analysisDepth: candidatesOnly ? 'CANDIDATES_ONLY' : 'FULL',
       baselineCreationFutureUseAudits,
       seed: input?.seed ?? 1,
+      objectiveCompactMode,
     };
+    requestPayload.counterAuthorizationByCandidate = candidatesOnly
+      ? {}
+      : Object.fromEntries(
+          frozenCandidates.map(candidate => [
+            candidate.candidateId,
+            r8CounterAuthorizationDeltas(requestPayload, candidate),
+          ]),
+        );
+    requestPayload.observationOutcomesByCandidate = candidatesOnly
+      ? {}
+      : buildR8ObservationOutcomesByCandidate({
+          worldSnapshot: visibleWorld,
+          actorId,
+          actorCandidates: frozenCandidates,
+          beliefState,
+          battleIntent,
+          actionOpportunity,
+          objectiveContract,
+          evaluationContext,
+          routeCatalog: routeAnalysis.routeCatalog,
+          actorProjectedWorlds: routeAnalysis.actorProjectedWorlds,
+          objectiveCompactMode,
+          disableObservationRouteReuse:
+            input?.disableObservationRouteReuse === true,
+          metrics: candidateEnvelopeMetrics,
+        });
     requestPayload.responseModelByCandidate = candidatesOnly
       ? {}
       : Object.fromEntries(
@@ -13331,6 +27826,43 @@
             candidate.candidateId,
             buildR8ResponseModel(requestPayload, candidate.candidateId),
           ]),
+        );
+    requestPayload.preActionResponseProjectionByCandidate = candidatesOnly
+      ? {}
+      : Object.fromEntries(
+          frozenCandidates.map(candidate => {
+            const branches = [
+              ...(requestPayload.responseModelByCandidate?.[
+                candidate.candidateId
+              ]?.mainBranches || []),
+              ...(requestPayload.responseModelByCandidate?.[
+                candidate.candidateId
+              ]?.disasterTail
+                ? [
+                    requestPayload.responseModelByCandidate[
+                      candidate.candidateId
+                    ].disasterTail,
+                  ]
+                : []),
+            ].filter(branch =>
+              String(branch?.triggerTiming || '').trim() === 'PRE_ACTION' &&
+              branch?.declaration
+            );
+            return [
+              candidate.candidateId,
+              Object.freeze(Object.fromEntries(
+                branches.map(branch => [
+                  String(branch?.projectionId || '').trim(),
+                  r8PreActionResponseProjection(
+                    requestPayload,
+                    candidate,
+                    branch,
+                    { forceRebuild: true },
+                  ),
+                ]),
+              )),
+            ];
+          }),
         );
     requestPayload.informationValueByCandidate = candidatesOnly
       ? {}
@@ -13340,6 +27872,9 @@
             r8InformationValue(requestPayload, candidate.candidateId),
           ]),
         );
+    requestPayload.candidateEnvelopeMetrics = Object.freeze({
+      ...candidateEnvelopeMetrics,
+    });
     if (preview.stableHash(worldSnapshot) !== sourceWorldHash) {
       throw new Error('PROVIDER_MUTATED_STATE:prepare');
     }
@@ -13348,8 +27883,76 @@
       requestHash: decisionRequestHash(requestPayload),
     };
     const frozenRequest = deepFreeze(request);
+    const routeFactOwnershipIndex = r8BuildRouteFactOwnershipIndex(
+      routeAnalysis.fullRoutesByUnit || {},
+      {
+        evaluationContext,
+        objectiveHash: evaluationContext.objectiveHash,
+      },
+    );
+    const ownershipImpact = sessionState
+      ? recordEvaluationSessionOwnership(
+          sessionState,
+          frozenRequest.requestHash,
+          routeFactOwnershipIndex,
+        )
+      : null;
     preparedDecisionRequests.set(frozenRequest, frozenRequest.requestHash);
+    preparedRouteAnalyses.set(frozenRequest, Object.freeze({
+      fullRoutesByUnit: routeAnalysis.fullRoutesByUnit || Object.freeze({}),
+      computationCache: requestComputationCache,
+      routeFactOwnershipIndex,
+      routeFactOwnershipSummary: Object.freeze({
+        schemaVersion: routeFactOwnershipIndex.schemaVersion,
+        factCount: Object.keys(
+          routeFactOwnershipIndex.ownersByFact || {},
+        ).length,
+        ownerCount: Object.values(
+          routeFactOwnershipIndex.ownersByFact || {},
+        ).reduce((sum, owners) => sum + owners.length, 0),
+        indexHash: routeFactOwnershipIndex.indexHash,
+        summaryByLayer: routeFactOwnershipIndex.summaryByLayer,
+        unscopedLayerCount: routeFactOwnershipIndex.unscopedLayers.length,
+      }),
+      actorCandidateRoutes:
+        routeAnalysis.actorCandidateRoutes || Object.freeze({}),
+      actorProjectedWorlds:
+        routeAnalysis.actorProjectedWorlds || Object.freeze({}),
+      actorProjectedWorldRevisions:
+        routeAnalysis.actorProjectedWorldRevisions || Object.freeze({}),
+      actorPredictedOutcomeEvidence:
+        routeAnalysis.actorPredictedOutcomeEvidence || Object.freeze({}),
+      actorCandidateEnvelopeDeltas:
+        candidateEnvelopeDeltas || Object.freeze({}),
+    }));
+    if (sessionState) {
+      recordEvaluationSessionRequest(sessionState, {
+        actorId,
+        opportunityId:
+          actionOpportunity?.opportunityId ||
+          actionOpportunity?.grantId ||
+          '',
+        requestHash: frozenRequest.requestHash,
+        candidateCount: frozenCandidates.length,
+        previewMetricsBefore,
+        previewMetricsAfter: typeof preview.readMetrics === 'function'
+          ? preview.readMetrics()
+          : {},
+        decisionMetricsBefore,
+        decisionMetricsAfter: decisionMetrics,
+        routeMetrics: routeAnalysis.cacheMetrics,
+        envelopeMetrics: candidateEnvelopeMetrics,
+        fullRoutesByUnit: routeAnalysis.fullRoutesByUnit,
+        ownershipImpact,
+      });
+    }
     return frozenRequest;
+  }
+
+  function preparedRouteCacheSnapshot(request) {
+    const snapshot = preparedRouteAnalyses.get(request);
+    if (!snapshot) throw new Error('DECISION_PREPARED_ROUTE_ANALYSIS_MISSING');
+    return snapshot;
   }
 
   function providerInput(request = {}) {
@@ -13360,6 +27963,7 @@
       battleIntent: request.battleIntent,
       beliefState: request.beliefState,
       actionOpportunity: request.actionOpportunity,
+      playerLockedDeclaration: request.playerLockedDeclaration,
       strategyMemory: request.strategyMemory,
       seed: request.seed,
       __preparedDecisionWorld: true,
@@ -13430,6 +28034,20 @@
     );
     if (!selectedCandidate) throw new Error('PROVIDER_UNKNOWN_CANDIDATE');
     const selectedDeclaration = cloneValue(decision?.selected?.declaration || {});
+    if (
+      request?.playerLockedDeclaration &&
+      (
+        !matchesPlayerLockedDeclaration(
+          selectedCandidate,
+          request.playerLockedDeclaration,
+          request.visibleWorld,
+        ) ||
+        decision?.selected?.playerLocked !== true ||
+        String(decision?.selected?.selectionMode || '').trim() !== 'PLAYER_LOCKED'
+      )
+    ) {
+      throw new Error('PLAYER_LOCKED_OVERRIDDEN');
+    }
     const expectedFingerprint = request.candidateFingerprintMap[selectedCandidateId];
     if (declarationFingerprint(selectedDeclaration) !== expectedFingerprint) {
       throw new Error('DECLARATION_FINGERPRINT_MISMATCH');
@@ -13497,13 +28115,40 @@
     classifyCandidateEvidence,
     decide,
     declarationFingerprint,
+    preparedRouteCacheSnapshot,
+    createEvaluationSession,
+    advanceEvaluationSession,
+    readEvaluationSessionMetrics,
+    disposeEvaluationSession,
     createDependencyView,
     r8PreviewCacheKey,
+    buildDependencyDeltaSet,
+    buildOpportunityImpactSet,
+    r8BuildRouteFactOwnershipIndex,
+    r8ResourceWorldStateKey,
+    r8ResourceRouteSemanticHash,
+    r8ResourceAffectedRouteOwnerIds,
     actionRouteFromPreview,
     selectPrimaryBackupRoutes,
     buildR8RouteCatalog,
+    auditR8LayerIdentities,
     buildTeamMarginalPlan,
+    r8SelectionEntropyKey,
+    r8SummonHasFutureEnvelopeWindow,
+    r8StateDependencyClass,
+    r8ChangedStateDependencyClass,
+    r8UnitHasHpSensitiveBehavior,
+    r8HealthTrajectoryUsesPressureOnly,
+    r8FutureOpportunityRows,
+    r8EvaluationFutureOpportunityRows,
+    r8ExecutionOpportunityForUnit,
+    r8BuildResourceOpportunityPlan,
+    r8ResourcePlanTranslationProfile,
+    r8TranslateResourceOpportunityPlan,
+    r8BuildTargetPressurePlan,
+    buildR8ObservationOutcomesByCandidate,
     buildR8CandidateEnvelopeDeltas,
+    r8FutureThreatWindowDelta,
     buildR8ResponseModel,
     r8InformationValue,
     r8ObjectiveGroups,

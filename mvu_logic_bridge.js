@@ -2436,6 +2436,11 @@
     const safeCharData = charData && typeof charData === 'object' ? charData : {};
     const nextLevel = currentLv + 1;
     const hiddenVar = Math.max(0.1, toNumber(deepGet(safeCharData, '属性.底子波动', 1), 1));
+    const currentLevelSoulRequirement = Math.floor(
+      getBaseSpMaxForLevel(Math.max(1, currentLv)) *
+        getCharacterDualSpiritSoulPowerCoeffForUi(safeCharData) *
+        hiddenVar,
+    );
     const nextSpMax = Math.floor(
       getBaseSpMaxForLevel(nextLevel) *
         getCharacterDualSpiritSoulPowerCoeffForUi(safeCharData) *
@@ -2443,6 +2448,8 @@
     );
     return {
       needed: Math.max(0, nextSpMax - currentSpMax),
+      currentLevelSoulRequirement,
+      nextLevelSoulRequirement: nextSpMax,
       nextLevel,
       isMax: false,
     };
@@ -31266,6 +31273,10 @@
   function 构建档案魂力经验条(stat = {}, nextLevelSoul = {}) {
     const 当前魂力上限 = Math.max(0, toNumber(stat && stat.魂力上限, 0));
     const 待补魂力 = Math.max(0, toNumber(nextLevelSoul && nextLevelSoul.needed, 0));
+    const 本级起始魂力 = Math.max(0, toNumber(nextLevelSoul && nextLevelSoul.currentLevelSoulRequirement, 当前魂力上限));
+    const 下级门槛魂力 = Math.max(本级起始魂力, toNumber(nextLevelSoul && nextLevelSoul.nextLevelSoulRequirement, 当前魂力上限 + 待补魂力));
+    const 本级所需魂力 = Math.max(0, 下级门槛魂力 - 本级起始魂力);
+    const 本级已增长魂力 = Math.max(0, Math.min(本级所需魂力, 当前魂力上限 - 本级起始魂力));
     const 目标等级 = Math.max(0, toNumber(nextLevelSoul && nextLevelSoul.nextLevel, toNumber(stat && stat.等级, 0) + 1));
     const 是否满级 = !!(nextLevelSoul && nextLevelSoul.isMax);
     const 是否受限 = !!(nextLevelSoul && nextLevelSoul.blocked);
@@ -31278,11 +31289,10 @@
         : 待补魂力 <= 0
           ? `可至 Lv.${formatNumber(目标等级)}`
           : `还需 ${格式化属性短数字(待补魂力)}`;
-    const 目标魂力上限 = 当前魂力上限 + 待补魂力;
-    const 进度 = 是否满级 || 是否受限 || 待补魂力 <= 0 ? 100 : ratioPercent(当前魂力上限, 目标魂力上限);
+    const 进度 = 是否满级 || 是否受限 || 待补魂力 <= 0 ? 100 : ratioPercent(本级已增长魂力, 本级所需魂力);
     const 提示文本 = 是否满级
       ? '魂力经验：已抵达上限'
-      : `${状态文本}；当前魂力上限 ${格式化属性完整数字(当前魂力上限)}；目标 Lv.${formatNumber(目标等级)}`;
+      : `${状态文本}；本级进度 ${格式化属性完整数字(本级已增长魂力)} / ${格式化属性完整数字(本级所需魂力)}；目标 Lv.${formatNumber(目标等级)}`;
     return `
         <div class="mvu-archive-led mvu-archive-led--soul mvu-archive-led--breakthrough" style="--value:${进度}%" title="${escapeHtmlAttr(提示文本)}">
           <label>魂力经验<span>${htmlEscape(状态文本)}</span></label>
@@ -45778,9 +45788,188 @@ ${播报文本}
   }
 
   function 构建战斗提交包(input = {}) {
-    const impl = window.BattleUIBridge?.__buildBattlePackageImpl;
-    if (typeof impl !== 'function') throw new Error('battle_package_builder_not_ready');
-    return impl(cloneJsonValue(input, {}));
+    const runtime = window.__LWCS_BATTLE_RUNTIME__;
+    const report = window.__LWCS_BATTLE_REPORT__;
+    if (!runtime || typeof runtime.executeBattleDraftR8 !== 'function') {
+      throw new Error('battle_runtime_r8_draft_builder_missing');
+    }
+    if (!report || typeof report.build !== 'function' || typeof report.auditProjection !== 'function') {
+      throw new Error('battle_report_module_missing');
+    }
+    const source = cloneJsonValue(input, {});
+    const visibilityMode = toText(source.visibilityMode, 'PLAYER').trim().toUpperCase() || 'PLAYER';
+    delete source.visibilityMode;
+    const draft = runtime.executeBattleDraftR8(source);
+    const reportDto = report.build({ draft, visibilityMode });
+    const reportAudit = report.auditProjection(reportDto);
+    const sealedPackage = runtime.sealBattleResult({ draft, reportAudit });
+    return runtime.verifySealedBattlePackage(sealedPackage);
+  }
+
+  const 战斗提交属性字段 = Object.freeze([
+    '年龄',
+    '等级',
+    '天赋梯队',
+    '邪魂师',
+    'HP',
+    'HP上限',
+    '魂力',
+    '魂力上限',
+    '精神力',
+    '精神力上限',
+    '力量',
+    '防御',
+    '敏捷',
+    '体力',
+    '体力上限',
+    '状态效果',
+  ]);
+  const 战斗提交状态字段 = Object.freeze([
+    '存活',
+    '死亡tick',
+    '死亡类型',
+    '受伤部位',
+    '行动',
+    '当前领域',
+    '位置',
+    '横坐标',
+    '纵坐标',
+  ]);
+  const 战斗提交角色字段 = Object.freeze(['决策记忆', '血脉之力', '复制效果', '装备', '背包']);
+  const 战斗状态倍率运行键映射 = Object.freeze({
+    str: '力量',
+    def: '防御',
+    agi: '敏捷',
+    vit_max: '体力上限',
+    sp_max: '魂力上限',
+    men_max: '精神力上限',
+  });
+
+  function 构建战斗状态落盘值(condition = {}) {
+    const source = cloneJsonValue(condition, {});
+    const duration = Math.max(0, toNumber(source.持续回合 ?? source.duration, 0));
+    const ratio = {};
+    const fixed = {};
+    Object.entries(source.面板修改比例 || {}).forEach(([key, value]) => {
+      const schemaKey = 战斗状态倍率运行键映射[key] || key;
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) ratio[schemaKey] = parsed;
+    });
+    Object.entries(source.面板倍率 || {}).forEach(([key, value]) => {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) ratio[key] = parsed;
+    });
+    Object.entries(source.面板固定修正 || {}).forEach(([key, value]) => {
+      const schemaKey = 战斗状态倍率运行键映射[key] || key;
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && Math.abs(parsed) >= 0.0001) fixed[schemaKey] = parsed;
+    });
+    Object.entries(source.面板固定值 || {}).forEach(([key, value]) => {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && Math.abs(parsed) >= 0.0001) fixed[key] = parsed;
+    });
+    const persisted = {
+      ...source,
+      类型: toText(source.类型, 'buff') || 'buff',
+      层数: Math.max(1, Math.floor(toNumber(source.层数, 1))),
+      描述: toText(source.描述, '无') || '无',
+      持续回合: duration,
+      面板倍率: ratio,
+      面板固定值: fixed,
+      战斗效果: cloneJsonValue(source.战斗效果 || {}, {}),
+    };
+    delete persisted.duration;
+    delete persisted.面板修改比例;
+    delete persisted.面板固定修正;
+    delete persisted.__previewApplicationProbability;
+    return persisted;
+  }
+
+  function 构建战斗状态集合落盘值(conditionMap) {
+    if (!conditionMap || typeof conditionMap !== 'object' || Array.isArray(conditionMap)) return {};
+    return Object.fromEntries(
+      Object.entries(conditionMap)
+        .filter(([name, condition]) => name && condition && typeof condition === 'object')
+        .map(([name, condition]) => [name, 构建战斗状态落盘值(condition)]),
+    );
+  }
+
+  function 追加战斗提交字段补丁(patchOps, currentRoot, pathSegments, value) {
+    if (value === undefined) return;
+    const path = `/${pathSegments.map(escapeJsonPointerValue).join('/')}`;
+    const previous = deepGet(currentRoot, pathSegments, undefined);
+    patchOps.push({
+      op: previous === undefined ? 'add' : 'replace',
+      path,
+      value: cloneJsonValue(value, value),
+    });
+  }
+
+  function 构建正式战斗写回补丁(finalSnapshot = {}) {
+    if (!finalSnapshot || typeof finalSnapshot !== 'object' || Array.isArray(finalSnapshot)) {
+      throw new Error('battle_commit_final_snapshot_invalid');
+    }
+    const participants = finalSnapshot.参战者;
+    if (
+      !participants ||
+      !Array.isArray(participants.team_player) ||
+      !Array.isArray(participants.team_enemy)
+    ) {
+      throw new Error('battle_commit_final_snapshot_not_persistable');
+    }
+    const snapshot = liveSnapshot || lastRenderableSnapshot || {};
+    const currentRoot = deepGet(snapshot, 'rootData', {});
+    const compactCombatData = compactCombatDataForWorldStorage(snapshot, finalSnapshot);
+    const patchOps = [{
+      op: deepGet(currentRoot, ['world', '战斗'], undefined) === undefined ? 'add' : 'replace',
+      path: '/world/战斗',
+      value: compactCombatData,
+    }];
+
+    [...participants.team_player, ...participants.team_enemy].forEach(participant => {
+      if (!participant || typeof participant !== 'object') return;
+      if (toText(participant.来源, '').trim() === '临时单位') return;
+      if (participant.实力压制?.刻意压制等级 === true) return;
+      const participantName = toText(participant.name || participant.名称, '').trim();
+      const charKey = resolveSnapshotCharKey(snapshot, participantName);
+      if (!charKey) return;
+      const attributeSource =
+        participant.属性 && typeof participant.属性 === 'object' ? participant.属性 : participant;
+      const statusSource =
+        participant.状态 && typeof participant.状态 === 'object' ? participant.状态 : participant;
+      战斗提交属性字段.forEach(key => {
+        const value = key === '状态效果'
+          ? 构建战斗状态集合落盘值(
+              participant.状态效果 && typeof participant.状态效果 === 'object'
+                ? participant.状态效果
+                : attributeSource.状态效果,
+            )
+          : attributeSource[key];
+        追加战斗提交字段补丁(
+          patchOps,
+          currentRoot,
+          ['char', charKey, '属性', key],
+          value,
+        );
+      });
+      战斗提交状态字段.forEach(key => {
+        追加战斗提交字段补丁(
+          patchOps,
+          currentRoot,
+          ['char', charKey, '状态', key],
+          statusSource[key],
+        );
+      });
+      战斗提交角色字段.forEach(key => {
+        追加战斗提交字段补丁(
+          patchOps,
+          currentRoot,
+          ['char', charKey, key],
+          participant[key],
+        );
+      });
+    });
+    return patchOps;
   }
 
   async function 提交战斗包(sealedPackage = {}) {
@@ -45789,13 +45978,12 @@ ${播报文本}
       throw new Error('battle_runtime_package_verifier_missing');
     }
     const verifiedPackage = runtime.verifySealedBattlePackage(sealedPackage);
-    const buildPatch = window.BattleUIBridge?.buildCombatJsonPatch;
-    if (typeof buildPatch !== 'function') throw new Error('battle_commit_patch_builder_missing');
-    const patchOps = buildPatch(verifiedPackage.finalSnapshot);
     const beforeCommitHash = runtime.hashBattleValue(verifiedPackage);
+    const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot);
     if (runtime.hashBattleValue(verifiedPackage) !== beforeCommitHash) {
       throw new Error('BATTLE_COMMIT_HASH_MISMATCH:pre_commit');
     }
+    runtime.verifySealedBattlePackage(verifiedPackage);
     await applyJsonPatchOpsByEditor(patchOps, {
       force: true,
       记录本轮模块结算路径: true,
@@ -45812,6 +46000,8 @@ ${播报文本}
     return receipt;
   }
 
+  let 正式战斗事务执行中 = false;
+
   async function 执行战斗事务(combatData = {}, options = {}) {
     const executionMode = 规范化战斗提交模式(options.executionMode || 读取战斗提交模式());
     if (executionMode === 'free_narrative') {
@@ -45821,37 +46011,41 @@ ${播报文本}
         reason: 'FREE_NARRATIVE',
       };
     }
-    const transactionInput = 构建战斗事务输入(cloneJsonValue(combatData, {}), options);
-    const sealedPackage = 构建战斗提交包(transactionInput);
-    if (options.dryRun === true || options.commit === false) {
+    const shouldCommit = options.dryRun !== true && options.commit !== false;
+    if (shouldCommit && 正式战斗事务执行中) throw new Error('BATTLE_TRANSACTION_IN_FLIGHT');
+    if (shouldCommit) 正式战斗事务执行中 = true;
+    try {
+      const transactionInput = 构建战斗事务输入(cloneJsonValue(combatData, {}), options);
+      const sealedPackage = 构建战斗提交包(transactionInput);
+      if (!shouldCommit) {
+        return {
+          ...sealedPackage,
+          preview: true,
+          committed: false,
+          executionMode,
+        };
+      }
+      const commitReceipt = await 提交战斗包(sealedPackage);
       return {
         ...sealedPackage,
-        preview: true,
-        committed: false,
+        preview: false,
+        committed: true,
         executionMode,
+        commitReceipt,
+        winner: toText(sealedPackage?.terminalResult?.winner, 'unfinished'),
+        objectiveResolution: sealedPackage.terminalResult,
+        finalBattleReport: sealedPackage.reportDto?.finalSummary || null,
+        llmBattleSummary: toText(sealedPackage.reportDto?.finalSummary?.text, ''),
       };
+    } finally {
+      if (shouldCommit) 正式战斗事务执行中 = false;
     }
-    const commitReceipt = await 提交战斗包(sealedPackage);
-    return {
-      ...sealedPackage,
-      preview: false,
-      committed: true,
-      executionMode,
-      commitReceipt,
-      winner: toText(sealedPackage?.terminalResult?.winner, 'unfinished'),
-      objectiveResolution: sealedPackage.terminalResult,
-      finalBattleReport: sealedPackage.reportDto?.finalSummary || null,
-      llmBattleSummary: toText(sealedPackage.reportDto?.finalSummary?.text, ''),
-    };
   }
 
-  window.BattleUIBridge = Object.assign(window.BattleUIBridge || {}, {
-    buildBattlePackage(input = {}) {
-      return 构建战斗提交包(input);
-    },
-    commitBattlePackage(sealedPackage = {}) {
-      return 提交战斗包(sealedPackage);
-    },
+  const 正式战斗桥接接口 = window.BattleUIBridge || {};
+  delete 正式战斗桥接接口.buildBattlePackage;
+  delete 正式战斗桥接接口.commitBattlePackage;
+  window.BattleUIBridge = Object.assign(正式战斗桥接接口, {
     executeBattleTransaction(combatData = {}, options = {}) {
       return 执行战斗事务(combatData, options);
     },

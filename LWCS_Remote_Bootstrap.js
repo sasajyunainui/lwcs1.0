@@ -60,6 +60,323 @@
   if (宿主窗口[引导键]) return;
   宿主窗口[引导键] = true;
 
+  const 加载追踪器 = (() => {
+    const 面板ID = 'lwcs-script-load-tracker';
+    const 样式ID = 'lwcs-script-load-tracker-style';
+    let 会话ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const 状态 = {
+      阶段: '远程引导启动',
+      入口状态: 'pending',
+      入口错误: '',
+      模块列表: [],
+      模块完成: false,
+      最近错误: '',
+    };
+    let 已手动关闭 = false;
+    let 隐藏计时器 = 0;
+    let 待渲染计时器 = 0;
+
+    function 转义文本(值) {
+      return String(值 ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function 确保样式() {
+      if (!宿主文档.head || 宿主文档.getElementById(样式ID)) return;
+      const 样式节点 = 宿主文档.createElement('style');
+      样式节点.id = 样式ID;
+      样式节点.textContent = `
+        #${面板ID} {
+          position: fixed;
+          top: 14px;
+          right: 14px;
+          z-index: 2147483000;
+          width: min(320px, calc(100vw - 28px));
+          overflow: hidden;
+          border: 1px solid rgba(94, 216, 255, 0.28);
+          border-radius: 8px;
+          background: rgba(10, 17, 24, 0.96);
+          color: #eaf7fb;
+          box-shadow: 0 14px 38px rgba(0, 0, 0, 0.42);
+          font: 12px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif;
+          backdrop-filter: blur(10px);
+          animation: lwcs-load-tracker-in 160ms ease-out;
+        }
+        #${面板ID}.is-complete { border-color: rgba(74, 222, 128, 0.34); }
+        #${面板ID}.has-error { border-color: rgba(251, 113, 133, 0.48); }
+        #${面板ID} .lwcs-load-head {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 10px 8px;
+          border-bottom: 1px solid rgba(148, 190, 204, 0.14);
+        }
+        #${面板ID} .lwcs-load-title {
+          display: grid;
+          gap: 2px;
+          min-width: 0;
+        }
+        #${面板ID} .lwcs-load-title strong {
+          overflow: hidden;
+          color: #f4fbfd;
+          font-size: 13px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        #${面板ID} .lwcs-load-title span {
+          color: #91acb6;
+          font-size: 10px;
+        }
+        #${面板ID} .lwcs-load-close {
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          border: 0;
+          border-radius: 6px;
+          background: transparent;
+          color: #9db4bc;
+          font-size: 18px;
+          cursor: pointer;
+        }
+        #${面板ID} .lwcs-load-close:hover,
+        #${面板ID} .lwcs-load-close:focus-visible {
+          background: rgba(255, 255, 255, 0.08);
+          color: #fff;
+          outline: 1px solid rgba(94, 216, 255, 0.45);
+        }
+        #${面板ID} .lwcs-load-progress {
+          height: 3px;
+          overflow: hidden;
+          background: rgba(148, 190, 204, 0.12);
+        }
+        #${面板ID} .lwcs-load-progress i {
+          display: block;
+          height: 100%;
+          background: #4dd6ff;
+          box-shadow: 0 0 10px rgba(77, 214, 255, 0.48);
+          transition: width 180ms ease;
+        }
+        #${面板ID}.is-complete .lwcs-load-progress i {
+          background: #4ade80;
+          box-shadow: 0 0 10px rgba(74, 222, 128, 0.42);
+        }
+        #${面板ID} .lwcs-load-list {
+          display: grid;
+          max-height: min(310px, calc(100vh - 120px));
+          overflow-x: hidden;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          scrollbar-width: thin;
+        }
+        #${面板ID} .lwcs-load-row {
+          display: grid;
+          grid-template-columns: 9px minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 8px;
+          min-height: 28px;
+          padding: 5px 10px;
+          border-bottom: 1px solid rgba(148, 190, 204, 0.08);
+        }
+        #${面板ID} .lwcs-load-row:last-child { border-bottom: 0; }
+        #${面板ID} .lwcs-load-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #53656c;
+        }
+        #${面板ID} .lwcs-load-name {
+          min-width: 0;
+          overflow: hidden;
+          color: #dcecf1;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        #${面板ID} .lwcs-load-state {
+          color: #829ba5;
+          font-size: 10px;
+          white-space: nowrap;
+        }
+        #${面板ID} .lwcs-load-row[data-state="loading"] .lwcs-load-dot {
+          background: #4dd6ff;
+          box-shadow: 0 0 8px rgba(77, 214, 255, 0.68);
+          animation: lwcs-load-dot-pulse 900ms ease-in-out infinite;
+        }
+        #${面板ID} .lwcs-load-row[data-state="loaded"] .lwcs-load-dot { background: #4ade80; }
+        #${面板ID} .lwcs-load-row[data-state="failed"] .lwcs-load-dot,
+        #${面板ID} .lwcs-load-row[data-state="degraded"] .lwcs-load-dot {
+          background: #fb7185;
+          box-shadow: 0 0 8px rgba(251, 113, 133, 0.5);
+        }
+        #${面板ID} .lwcs-load-row[data-state="failed"] .lwcs-load-state,
+        #${面板ID} .lwcs-load-row[data-state="degraded"] .lwcs-load-state { color: #fda4af; }
+        @keyframes lwcs-load-tracker-in {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes lwcs-load-dot-pulse {
+          0%, 100% { opacity: 0.45; }
+          50% { opacity: 1; }
+        }
+        @media (max-width: 520px) {
+          #${面板ID} {
+            top: 8px;
+            right: 8px;
+            width: calc(100vw - 16px);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          #${面板ID},
+          #${面板ID} .lwcs-load-dot,
+          #${面板ID} .lwcs-load-progress i {
+            animation: none;
+            transition: none;
+          }
+        }
+      `;
+      宿主文档.head.appendChild(样式节点);
+    }
+
+    function 刷新面板() {
+      if (已手动关闭) return;
+      if (!宿主文档.body) {
+        if (!待渲染计时器) {
+          待渲染计时器 = setTimeout(() => {
+            待渲染计时器 = 0;
+            刷新面板();
+          }, 80);
+        }
+        return;
+      }
+      确保样式();
+      let 面板 = 宿主文档.getElementById(面板ID);
+      if (!面板 || 面板.dataset.session !== 会话ID) {
+        if (面板) 面板.remove();
+        面板 = 宿主文档.createElement('section');
+        面板.id = 面板ID;
+        面板.dataset.session = 会话ID;
+        面板.setAttribute('role', 'status');
+        面板.setAttribute('aria-live', 'polite');
+        宿主文档.body.appendChild(面板);
+      }
+
+      const 模块列表 = [
+        { 名称: '远程引导', 状态: 'loaded', 错误: '' },
+        { 名称: 'ST_UI_Entry.js', 状态: 状态.入口状态, 错误: 状态.入口错误 },
+        ...状态.模块列表,
+      ];
+      const 完成数 = 模块列表.filter(项目 => 项目.状态 === 'loaded').length;
+      const 异常列表 = 模块列表.filter(项目 => ['failed', 'degraded'].includes(项目.状态));
+      const 全部完成 = 状态.入口状态 === 'loaded' && 状态.模块完成 && 异常列表.length === 0;
+      const 进度 = 模块列表.length ? Math.round((完成数 / 模块列表.length) * 100) : 100;
+      const 状态文本表 = {
+        pending: '等待',
+        loading: '加载中',
+        loaded: '完成',
+        degraded: '降级',
+        failed: '失败',
+      };
+      const 副标题 = 异常列表.length
+        ? `${异常列表.length} 项异常 · ${状态.阶段}`
+        : `${完成数}/${模块列表.length} · ${状态.阶段}`;
+      面板.className = `${全部完成 ? 'is-complete' : ''}${异常列表.length ? ' has-error' : ''}`.trim();
+      面板.innerHTML = `
+        <div class="lwcs-load-head">
+          <div class="lwcs-load-title">
+            <strong>${全部完成 ? '脚本加载完成' : 异常列表.length ? '脚本加载异常' : '脚本加载中'}</strong>
+            <span>${转义文本(副标题)}</span>
+          </div>
+          <button type="button" class="lwcs-load-close" title="关闭加载追踪" aria-label="关闭加载追踪">×</button>
+        </div>
+        <div class="lwcs-load-progress" aria-hidden="true"><i style="width:${进度}%"></i></div>
+        <div class="lwcs-load-list">
+          ${模块列表.map(项目 => {
+            const 错误提示 = 项目.错误 ? ` title="${转义文本(项目.错误)}"` : '';
+            return `
+              <div class="lwcs-load-row" data-state="${转义文本(项目.状态)}"${错误提示}>
+                <i class="lwcs-load-dot" aria-hidden="true"></i>
+                <span class="lwcs-load-name">${转义文本(项目.名称)}</span>
+                <span class="lwcs-load-state">${转义文本(状态文本表[项目.状态] || 项目.状态)}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      面板.querySelector('.lwcs-load-close')?.addEventListener('click', () => {
+        已手动关闭 = true;
+        if (隐藏计时器) clearTimeout(隐藏计时器);
+        面板.remove();
+      }, { once: true });
+
+      if (全部完成) {
+        if (!隐藏计时器) {
+          隐藏计时器 = setTimeout(() => {
+            const 当前面板 = 宿主文档.getElementById(面板ID);
+            if (当前面板?.dataset.session === 会话ID) 当前面板.remove();
+            隐藏计时器 = 0;
+          }, 900);
+        }
+      } else if (隐藏计时器) {
+        clearTimeout(隐藏计时器);
+        隐藏计时器 = 0;
+      }
+    }
+
+    const 接口 = {
+      开始新会话() {
+        会话ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        状态.阶段 = '入口已启动';
+        状态.入口状态 = 'loading';
+        状态.入口错误 = '';
+        状态.模块列表 = [];
+        状态.模块完成 = false;
+        状态.最近错误 = '';
+        已手动关闭 = false;
+        if (隐藏计时器) {
+          clearTimeout(隐藏计时器);
+          隐藏计时器 = 0;
+        }
+        宿主文档.getElementById(面板ID)?.remove();
+        刷新面板();
+      },
+      更新入口(入口状态, 阶段 = 状态.阶段, 错误 = '') {
+        状态.入口状态 = 入口状态 || 'pending';
+        状态.阶段 = 阶段 || 状态.阶段;
+        状态.入口错误 = 错误 || '';
+        if (错误) 状态.最近错误 = 错误;
+        刷新面板();
+      },
+      更新模块快照(快照 = {}) {
+        状态.阶段 = String(快照.阶段 || 状态.阶段);
+        状态.模块列表 = Array.isArray(快照.模块列表) ? 快照.模块列表 : 状态.模块列表;
+        状态.模块完成 = 快照.全部完成 === true;
+        if (快照.最近错误) 状态.最近错误 = String(快照.最近错误);
+        刷新面板();
+      },
+      标记失败(错误, 阶段 = '远程入口失败') {
+        const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error');
+        状态.入口状态 = 'failed';
+        状态.入口错误 = 错误文本;
+        状态.最近错误 = 错误文本;
+        状态.阶段 = 阶段;
+        刷新面板();
+      },
+    };
+
+    宿主窗口.__LWCS_加载追踪器__ = 接口;
+    try {
+      if (window !== 宿主窗口) window.__LWCS_加载追踪器__ = 接口;
+    } catch (错误) {}
+    刷新面板();
+    return 接口;
+  })();
+
   function 构建资源基础地址(CDN地址, 提交哈希) {
     return `${CDN地址}/gh/${仓库名}@${提交哈希}/`;
   }
@@ -221,13 +538,18 @@
 
   async function 启动远程入口() {
     共享启动状态.uiStatus = 'loading';
+    加载追踪器.更新入口('pending', '正在解析最新版本');
     try {
       const 提交哈希 = await 取共享最新提交哈希();
+      加载追踪器.更新入口('pending', '等待 MVU 运行时');
       if (!await 等待MVU就绪()) throw new Error('MVU 运行时未就绪，已停止加载 UI');
+      加载追踪器.更新入口('loading', '正在加载 ST_UI_Entry.js');
       await 加载正式入口(提交哈希);
+      加载追踪器.更新入口('loaded', '入口已执行');
       共享启动状态.uiStatus = 'ready';
     } catch (错误) {
       共享启动状态.uiStatus = 'failed';
+      加载追踪器.标记失败(错误);
       console.error('[LWCS] 远程入口加载失败:', 错误);
     } finally {
       宿主窗口[引导键] = false;

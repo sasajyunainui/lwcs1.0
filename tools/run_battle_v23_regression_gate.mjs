@@ -186,13 +186,13 @@ const commandDefinitions = [
   { name: 'auditBattleR63PreviewFoundation', command: [process.execPath, ['lwcs/tools/audit_battle_r63_preview_foundation.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
   { name: 'auditBattleR63PrototypeMatrix', command: [process.execPath, ['lwcs/tools/audit_battle_r63_prototype_matrix.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
   { name: 'auditBattleR63PrototypeE2E', command: [process.execPath, ['lwcs/tools/audit_battle_r63_prototype_e2e.mjs']], parseJson: true, timeoutMs: 60000, groups: ['quick', 'full'] },
-  { name: 'auditBattleR63Decision', command: [process.execPath, ['lwcs/tools/audit_battle_r63_decision.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
+  { name: 'auditBattleR63Decision', command: [process.execPath, ['lwcs/tools/audit_battle_r63_decision.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'], maxPhase: 1 },
   { name: 'auditBattleR63BeliefDeepPreview', command: [process.execPath, ['lwcs/tools/audit_battle_r63_belief_deep_preview.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
   { name: 'auditBattleR63ScenarioMatrix', command: [process.execPath, ['lwcs/tools/audit_battle_r63_scenario_matrix.mjs']], parseJson: true, timeoutMs: 60000, groups: ['quick', 'full'] },
   { name: 'auditBattleR63LifecycleStalemate', command: [process.execPath, ['lwcs/tools/audit_battle_r63_lifecycle_stalemate.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
-  { name: 'auditBattleR63DecisionSettlement', command: [process.execPath, ['lwcs/tools/audit_battle_r63_decision_settlement.mjs']], parseJson: true, timeoutMs: 60000, groups: ['quick', 'full'] },
+  { name: 'auditBattleR63DecisionSettlement', command: [process.execPath, ['lwcs/tools/audit_battle_r63_decision_settlement.mjs']], parseJson: true, timeoutMs: 60000, groups: ['quick', 'full'], maxPhase: 1 },
   { name: 'auditBattleR63RuntimePrepareSustain', command: [process.execPath, ['lwcs/tools/audit_battle_r63_runtime_prepare_sustain.mjs']], parseJson: true, timeoutMs: 60000, groups: ['quick', 'full'] },
-  { name: 'auditBattleRouteObjectives', command: [process.execPath, ['lwcs/tools/audit_battle_route_objectives.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
+  { name: 'auditBattleRouteObjectives', command: [process.execPath, ['lwcs/tools/audit_battle_route_objectives.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full', 'case'], maxPhase: 1 },
   { name: 'syntaxBattlePreview', command: [process.execPath, ['--check', 'lwcs/BattlePreview_Module.js']], timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'syntaxBattleDecision', command: [process.execPath, ['--check', 'lwcs/BattleDecision_Module.js']], timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
   { name: 'syntaxBattleRuntime', command: [process.execPath, ['--check', 'lwcs/BattleRuntime_Module.js']], timeoutMs: 30000, groups: ['quick', 'full', 'case'] },
@@ -206,18 +206,19 @@ const commandDefinitions = [
     parseJson: true,
     timeoutMs: 60000,
     groups: ['quick', 'full', 'case'],
+    maxPhase: 1,
   },
-  { name: 'auditBattleR74ReportDto', command: [process.execPath, ['lwcs/tools/audit_battle_r74_report_dto.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 3 },
-  { name: 'auditBattleR74ValueKernel', command: [process.execPath, ['lwcs/tools/audit_battle_r74_value_kernel.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 4 },
-  { name: 'auditBattleR74KernelAb', command: [process.execPath, ['lwcs/tools/audit_battle_r74_kernel_ab.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 5 },
-  { name: 'auditBattleR74Phase6Matrix', command: [process.execPath, ['lwcs/tools/audit_battle_r74_phase6_matrix.mjs']], parseJson: true, timeoutMs: 180000, groups: ['quick', 'full'], minPhase: 6 },
-  { name: 'auditBattleR74Phase7Report', command: [process.execPath, ['lwcs/tools/audit_battle_r74_phase7_report.mjs']], parseJson: true, timeoutMs: 300000, groups: ['quick', 'full'], minPhase: 7 },
-  { name: 'auditBattleReportRenderHtml', command: [process.execPath, ['lwcs/tools/audit_battle_report_render_html.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 7 },
+  { name: 'auditBattleR74ReportDto', command: [process.execPath, ['lwcs/tools/audit_battle_r74_report_dto.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 3, maxPhase: 7 },
+  { name: 'auditBattleR74ValueKernel', command: [process.execPath, ['lwcs/tools/audit_battle_r74_value_kernel.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 4, maxPhase: 7 },
+  { name: 'auditBattleR74KernelAb', command: [process.execPath, ['lwcs/tools/audit_battle_r74_kernel_ab.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 5, maxPhase: 7 },
+  { name: 'auditBattleR74Phase6Matrix', command: [process.execPath, ['lwcs/tools/audit_battle_r74_phase6_matrix.mjs']], parseJson: true, timeoutMs: 180000, groups: ['quick', 'full'], minPhase: 6, maxPhase: 7 },
+  { name: 'auditBattleR74Phase7Report', command: [process.execPath, ['lwcs/tools/audit_battle_r74_phase7_report.mjs']], parseJson: true, timeoutMs: 300000, groups: ['quick', 'full'], minPhase: 7, maxPhase: 7 },
+  { name: 'auditBattleReportRenderHtml', command: [process.execPath, ['lwcs/tools/audit_battle_report_render_html.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 7, maxPhase: 7 },
   { name: 'auditBattleLocalUiPlaywright', command: [process.execPath, ['lwcs/tools/audit_battle_local_ui_playwright.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'], minPhase: 10 },
   { name: 'auditBattleLedgerStrictness', command: [process.execPath, ['lwcs/tools/audit_battle_ledger_strictness.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'] },
   { name: 'auditBattleSummonTrace', command: [process.execPath, ['lwcs/tools/audit_battle_summon_trace.mjs']], parseJson: true, timeoutMs: 120000, groups: ['quick', 'full'] },
   { name: 'auditBattleBehaviorLogicMatrix', command: [process.execPath, ['tools/audit_battle_behavior_logic_matrix.mjs']], parseJson: true, timeoutMs: 30000, groups: ['quick', 'full'] },
-  { name: 'auditBattlePhase8BatchMatrix', command: [process.execPath, ['lwcs/tools/audit_battle_phase8_batch_matrix.mjs']], parseJson: true, timeoutMs: 300000, groups: ['quick', 'full'], minPhase: 8 },
+  { name: 'auditBattlePhase8BatchMatrix', command: [process.execPath, ['lwcs/tools/audit_battle_phase8_batch_matrix.mjs']], parseJson: true, timeoutMs: 300000, groups: ['quick', 'full'], minPhase: 7, maxPhase: 7 },
   { name: 'auditBattleDeterminism', command: [process.execPath, ['tools/audit_battle_v73_determinism.mjs', '--runs', full ? '100' : '10']], parseJson: true, timeoutMs: full ? 300000 : 60000, groups: ['quick', 'full'] },
   {
     name: 'diffCheckBattleUiStylesAndSamples',
@@ -386,7 +387,7 @@ const runBattleAiSummaryContract = () => {
   const summaryBuilder = battleRuntime.match(/function buildAiNarrativeSummary\([\s\S]*?(?=\n  function )/)?.[0] || '';
   const autoSummaryBuilder = bridge.match(/function 构建自动战斗结构化摘要\([\s\S]*?(?=\n  function )/)?.[0] || '';
   if (!/<battle_structured_summary>[\s\S]*?<\/battle_structured_summary>/.test(requestBlock)) failures.push('BATTLE_REQUEST_MISSING_STRUCTURED_SUMMARY');
-  if (!/JSON\.stringify\(sealedPackage\.aiSummaryInput\)/.test(requestBlock)) failures.push('BATTLE_REQUEST_MISSING_AI_SUMMARY_INPUT');
+  if (!/JSON\.stringify\(transactionResult\.aiSummaryInput\)/.test(requestBlock)) failures.push('BATTLE_REQUEST_MISSING_AI_SUMMARY_INPUT');
   if (/battle_public_report|<战斗公开战报>/.test(requestBlock)) failures.push('BATTLE_REQUEST_USES_PUBLIC_REPORT');
   if (/eventLedger|decisionTrace|resolutionTrace|scoreAudit|ruleCode|rawObjectiveScore|publicReport|innerHTML|querySelector/.test(requestBlock)) failures.push('BATTLE_REQUEST_LEAKS_INTERNAL_RUNTIME_DATA');
   if (!/本轮输入包含战斗结构化摘要/.test(adapter) || !/<battle_structured_summary>/.test(adapter)) failures.push('ADAPTER_MISSING_STRUCTURED_SUMMARY_CONTRACT');
