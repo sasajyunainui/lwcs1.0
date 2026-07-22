@@ -20205,11 +20205,14 @@ $CONTENT
             taskResults: successfulResults,
         });
         logDebug_ACU('[剧情推进] [Plot] 已暂存plot数据，用户输入哈希:', userInputHash, '，原始文本长度:', inputForHash?.length || 0);
-        const transientStoryInjects = sortPlotTaskResults_ACU(successfulResults)
+        const transientStoryInjects = [
+            ...sortPlotTaskResults_ACU(successfulResults)
             .map(result => result?.success && typeof result.rawResponse === 'string'
             ? buildPlotTagBlock_ACU('scene_audit', extractLastTagContent_ACU(result.rawResponse, 'scene_audit'))
             : '')
-            .filter(Boolean);
+            .filter(Boolean),
+            buildPlotTagBlock_ACU(模块路由结果标签_ACU, 本轮模块路由事件列表),
+        ].filter(Boolean);
         const finalMessage = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
         logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length);
         await savePlotToLatestMessage_ACU(true);
