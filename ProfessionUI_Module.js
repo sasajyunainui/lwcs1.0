@@ -2956,11 +2956,6 @@ class ProfessionUIComponent {
     return this.buildConsumePlanPatches(消耗计划);
   }
 
-  buildTimeSkipPatch(跳过小时 = 0) {
-    const 当前tick = Math.max(0, Number(this.snapshot?.sd?.world?.时间?.tick || 0));
-    const 目标tick = 当前tick + Math.max(0, Math.floor(Number(跳过小时 || 0) * 副职业每小时tick));
-    return [{ op: 'replace', path: '/world/时间/tick', value: 目标tick }];
-  }
   buildMaterialConsumePatches(materialNames, qty) {
     return this.buildConsumePlanPatches(
       materialNames.reduce((计划, 名称) => {
@@ -3292,7 +3287,6 @@ class ProfessionUIComponent {
     if (!是否代工) patchOps.push(...this.buildResourceFinalPatches(资源状态));
     else if (资金单次消耗 > 0) patchOps.push({ op: 'replace', path: `${this.activeCharBasePath}/财富/联邦币`, value: 当前资金 });
     patchOps.push(...this.buildMaterialFinalPatches(材料库存快照, materialNames));
-    patchOps.push(...this.buildTimeSkipPatch(总小时));
 
     Object.entries(产物汇总).forEach(([产物名, 数据]) => {
       const 平均品质系数 = Number((Number(数据.品质系数累计 || 0) / Math.max(1, Number(数据.数量 || 1))).toFixed(2));
@@ -3329,20 +3323,21 @@ class ProfessionUIComponent {
       patchOps.push(...progress.patches);
     }
 
-    const 连续结果播报 = `[连续副职业] ${本次工序显示名} ${连续配置.连续天数}天（${总小时}小时）结束：执行${统计.执行次数}次，成功${统计.成功次数}次，失败${统计.失败次数}次，大成功${统计.大成功次数}次。${是否代工 ? '' : ` 冥想${统计.冥想小时}小时，睡眠${统计.睡眠小时}小时。`}时间已推进${总小时 * 副职业每小时tick}tick。`;
+    const 连续结果播报 = `[连续副职业] ${本次工序显示名} ${连续配置.连续天数}天（${总小时}小时）结束：执行${统计.执行次数}次，成功${统计.成功次数}次，失败${统计.失败次数}次，大成功${统计.大成功次数}次。${是否代工 ? '' : ` 冥想${统计.冥想小时}小时，睡眠${统计.睡眠小时}小时。`}`;
     patchOps.push(...this.buildSystemResultPatches(连续结果播报, 统计.最后检定, 统计.最后成功率));
 
     const materialText = materialNames.length > 0 ? materialNames.map(name => `${qty}份${name}`).join('、') : '无显式材料';
     const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
+    const 连续时长文本 = `${连续配置.连续天数}天（${总小时}小时）`;
     const actionLead = commissionCtx.isOfficial
-      ? `我要在${officialLocationName}连续委托${本次工序显示名}${连续配置.连续天数}天，目标是【${targetName}】`
+      ? `我要在${officialLocationName}连续委托${本次工序显示名}${连续时长文本}，目标是【${targetName}】`
       : (commissionCtx.isPrivate
-        ? `我要委托【${commissionCtx.executorName}】连续代工${本次工序显示名}${连续配置.连续天数}天，目标是【${targetName}】`
-        : `我要连续进行${本次工序显示名}${连续配置.连续天数}天，目标是【${targetName}】`);
+        ? `我要委托【${commissionCtx.executorName}】连续代工${本次工序显示名}${连续时长文本}，目标是【${targetName}】`
+        : `我要连续进行${本次工序显示名}${连续时长文本}，目标是【${targetName}】`);
     const consumptionText = commissionCtx.isCommission
       ? `连续代工单次费用：${this.formatFedCoin(commissionCtx.commissionFee)}。本轮执行 ${统计.执行次数} 次，累计扣费 ${this.formatFedCoin(统计.执行次数 * Number(commissionCtx.commissionFee || 0))}。`
       : `单次消耗：${this.formatResourceCost(costs)}。本轮执行 ${统计.执行次数} 次后，剩余资源为 体:${Math.floor(资源状态.体力)} / 魂:${Math.floor(资源状态.魂力)} / 精:${Math.floor(资源状态.精神力)}。`;
-    const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${连续结果播报}\n\n[副职业资源消耗]\n${consumptionText}\n\n本次资源、材料、时间、产物与副职业进度已由前端结算写回；正文只承接自然剧情，不输出变量维护指令。`;
+    const sysPrompt = `${PROF_HIDDEN_ARBITRATION_NARRATION_RULES}\n\n[执行来源]\n本次执行者：${commissionCtx.executorName}。${commissionCtx.note}\n\n${连续结果播报}\n\n[副职业资源消耗]\n${consumptionText}\n\n本次资源、材料、产物与副职业进度已由前端结算写回；连续时长只用于本轮时间裁定。正文只承接自然剧情，不输出变量维护指令。`;
     this.submitAction(`${actionLead}，材料：${materialText}。`, sysPrompt, `prof_${cfg.mode}_continuous`, patchOps);
   }
 

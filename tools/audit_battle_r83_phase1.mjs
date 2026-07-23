@@ -390,6 +390,7 @@ const factDelta = decision.advanceEvaluationSession(session, {
 const previewMetricsBeforeSessionRequest = preview.readMetrics();
 const requestWithSession = decision.prepareDecisionRequest({
   session,
+  disableSessionMechanicalReuse: true,
   worldSnapshot: scenarios[0].world,
   actorId: scenarios[0].actorId,
   objectiveContract: scenarios[0].world.胜负条件,

@@ -7560,7 +7560,13 @@
     });
     const decisionEngine = String(input?.settings?.decisionEngine || 'legacy').trim().toLowerCase();
     const providerId = String(input?.settings?.providerId || '').trim();
-    const routeCatalogCacheEnabled = input?.settings?.disableRouteCatalogCache !== true;
+    const sessionMechanicalReuseRequested =
+      ['r8-shadow', 'r8'].includes(providerId) &&
+      input?.settings?.disableEvaluationSession !== true &&
+      input?.settings?.disableSessionMechanicalReuse !== true;
+    const routeCatalogCacheEnabled =
+      input?.settings?.disableRouteCatalogCache !== true &&
+      !sessionMechanicalReuseRequested;
     const routeCatalogCacheByActor = new Map();
     const routeCatalogCacheByContext = new Map();
     const routeCatalogCacheBySide = new Map();
@@ -7716,6 +7722,35 @@
       );
       delete envelope.targetPressureAudits;
       delete envelope.resourceOpportunityAudits;
+      const behaviorLayerSemanticHashes =
+        fields?.behaviorLayerSemanticHashes &&
+        Object.keys(fields.behaviorLayerSemanticHashes).length
+          ? {
+              ...cloneValue(fields.behaviorLayerSemanticHashes),
+              paretoRelationsHash:
+                `pareto:${previewRuntime.stableHash(
+                  (
+                    Array.isArray(decisionResult?.candidateAudit)
+                      ? decisionResult.candidateAudit
+                      : []
+                  ).map(candidate => ({
+                    candidateId: String(
+                      candidate?.candidateId || '',
+                    ).trim(),
+                    classification: String(
+                      candidate?.classification || '',
+                    ).trim(),
+                    dominatedBy: String(
+                      candidate?.dominatedBy || '',
+                    ).trim(),
+                    rejectionCode: String(
+                      candidate?.rejectionCode || '',
+                    ).trim(),
+                    vector: cloneValue(candidate?.vector || {}),
+                  })),
+                )}`,
+            }
+          : {};
       decisionPerformanceDiagnostics.push({
         index: decisionPerformanceDiagnostics.length,
         round: Number(fields?.round || 0),
@@ -7737,6 +7772,7 @@
         routeFactOwnershipSummary: cloneValue(
           fields?.routeFactOwnershipSummary || {},
         ),
+        behaviorLayerSemanticHashes,
         evaluationSessionObservation: cloneValue(
           fields?.evaluationSessionObservation || {},
         ),
@@ -8367,6 +8403,7 @@
         const decideForNode = (actor, node, extras = {}) => {
           const decisionStartedAt = performanceNow();
           let routeFactOwnershipSummary = {};
+          let behaviorLayerSemanticHashes = {};
           let evaluationSessionObservation = {};
           const actorId = previewRuntime.unitId(actor);
           const actorSide = inferUnitSide(combatData, previewRuntime.unitName(actor));
@@ -8775,6 +8812,18 @@
                 input?.settings?.collectTargetPressureAudit === true,
               disableObservationRouteReuse:
                 input?.settings?.disableObservationRouteReuse === true,
+              disableSessionMechanicalReuse:
+                input?.settings?.disableSessionMechanicalReuse === true,
+              verifySessionMechanicalReuse:
+                input?.settings?.verifySessionMechanicalReuse === true,
+              disableSessionBehaviorReuse:
+                input?.settings?.disableSessionBehaviorReuse === true,
+              verifySessionBehaviorReuse:
+                input?.settings?.verifySessionBehaviorReuse === true,
+              collectBehaviorLayerHashes:
+                input?.settings?.collectBehaviorLayerHashes === true,
+              collectBehaviorIdentityObservations:
+                input?.settings?.collectBehaviorIdentityObservations === true,
               disableCompactObjectiveFastPath:
                 input?.settings?.disableCompactObjectiveFastPath === true,
             });
@@ -8844,14 +8893,16 @@
                 nextRouteCache,
               );
             }
-            routeFactOwnershipSummary =
-              routeCatalogCacheEnabled &&
-              ['r8-shadow', 'r8'].includes(providerId)
-                ? cloneValue(
-                    decisionRuntime.preparedRouteCacheSnapshot(request)
-                      .routeFactOwnershipSummary || {},
-                  )
-                : {};
+            if (['r8-shadow', 'r8'].includes(providerId)) {
+              const preparedRouteEvidence =
+                decisionRuntime.preparedRouteCacheSnapshot(request);
+              routeFactOwnershipSummary = cloneValue(
+                preparedRouteEvidence.routeFactOwnershipSummary || {},
+              );
+              behaviorLayerSemanticHashes = cloneValue(
+                preparedRouteEvidence.behaviorLayerSemanticHashes || {},
+              );
+            }
             const providerStartedAt = performanceNow();
             const providerResult = decisionRuntime.runProvider({ providerId, request });
             const providerFinishedAt = performanceNow();
@@ -9011,6 +9062,7 @@
             recordDecisionPerformance(decisionResult, {
               ...decisionAuditFields,
               routeFactOwnershipSummary,
+              behaviorLayerSemanticHashes,
               evaluationSessionObservation,
             });
             decisions.push(buildDecisionAuditRecord(decisionAuditFields));
@@ -9087,6 +9139,7 @@
               typeof routeFactOwnershipSummary === 'object'
                 ? routeFactOwnershipSummary
                 : {},
+            behaviorLayerSemanticHashes,
             evaluationSessionObservation,
           });
           decisions.push(buildDecisionAuditRecord(decisionAuditFields));

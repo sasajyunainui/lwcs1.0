@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
@@ -2118,6 +2119,220 @@ addCheck(
     /runtime\.firstTerminalSequence = \{/.test(runtimeSource),
 );
 
+function runPhase3FullBattle(args = []) {
+  const worker = spawnSync(
+    process.execPath,
+    [
+      path.join(toolDir, 'audit_battle_r83_phase9.mjs'),
+      '--worker-full',
+      'team_control_overlap',
+      'r8-shadow',
+      '--rounds',
+      '1',
+      '--no-target-pressure-audit',
+      '--no-route-cache',
+      '--collect-behavior-layer-hashes',
+      ...args,
+    ],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      timeout: 180000,
+      maxBuffer: 64 * 1024 * 1024,
+      windowsHide: true,
+    },
+  );
+  if (worker.error) {
+    return { error: String(worker.error?.message || worker.error) };
+  }
+  if (worker.status !== 0) {
+    return {
+      error: String(
+        worker.stderr ||
+        worker.stdout ||
+        `PHASE3_WORKER_EXIT:${worker.status}`,
+      ),
+    };
+  }
+  try {
+    return JSON.parse(worker.stdout);
+  } catch (error) {
+    return {
+      error: `PHASE3_WORKER_OUTPUT_INVALID:${String(
+        error?.message || error,
+      )}`,
+    };
+  }
+}
+
+const phase3Full = runPhase3FullBattle([
+  '--no-session-mechanical-reuse',
+  '--no-session-behavior-reuse',
+]);
+const phase3Oracle = runPhase3FullBattle([
+  '--verify-session-mechanical-reuse',
+  '--verify-session-behavior-reuse',
+]);
+const phase3Incremental = runPhase3FullBattle();
+const semanticHashFields = [
+  'candidateEnvelopeDeltasHash',
+  'valuedFullRoutesHash',
+  'behaviorEnvelopesHash',
+  'primaryBackupRoutesHash',
+  'paretoRelationsHash',
+  'decisionSemanticHash',
+  'ledgerHash',
+  'terminalHash',
+  'finalSnapshotHash',
+];
+const phase3SemanticHashesEqual =
+  !phase3Full.error &&
+  !phase3Oracle.error &&
+  !phase3Incremental.error &&
+  semanticHashFields.every(field =>
+    phase3Full[field] === phase3Oracle[field] &&
+    phase3Full[field] === phase3Incremental[field]
+  );
+const fullPreviewCalls = Number(
+  phase3Full?.routeMetrics?.evaluationSessionPreviewCalls || 0,
+);
+const incrementalPreviewCalls = Number(
+  phase3Incremental?.routeMetrics?.evaluationSessionPreviewCalls || 0,
+);
+const incrementalMetrics =
+  phase3Incremental?.evaluationSession?.metrics || {};
+const oracleMetrics = phase3Oracle?.evaluationSession?.metrics || {};
+addCheck(
+  'session-mechanical-reuse:full-oracle-and-final-hashes',
+  phase3SemanticHashesEqual &&
+    Number(phase3Full?.fatalCount || 0) === 0 &&
+    Number(phase3Oracle?.fatalCount || 0) === 0 &&
+    Number(phase3Incremental?.fatalCount || 0) === 0 &&
+    Number(oracleMetrics.mechanicalReuseOracleChecks || 0) > 0 &&
+    Number(oracleMetrics.mechanicalReuseOracleMismatches || 0) === 0,
+  {
+    fullError: phase3Full.error || '',
+    oracleError: phase3Oracle.error || '',
+    incrementalError: phase3Incremental.error || '',
+    hashes: Object.fromEntries(semanticHashFields.map(field => [
+      field,
+      {
+        full: phase3Full?.[field] || '',
+        oracle: phase3Oracle?.[field] || '',
+        incremental: phase3Incremental?.[field] || '',
+      },
+    ])),
+    oracleChecks: Number(
+      oracleMetrics.mechanicalReuseOracleChecks || 0,
+    ),
+    oracleMismatches: Number(
+      oracleMetrics.mechanicalReuseOracleMismatches || 0,
+    ),
+  },
+);
+addCheck(
+  'session-mechanical-reuse:actual-preview-work-falls',
+  phase3SemanticHashesEqual &&
+    Number(incrementalMetrics.mechanicalReuseHits || 0) > 0 &&
+    incrementalPreviewCalls < fullPreviewCalls &&
+    fullPreviewCalls - incrementalPreviewCalls ===
+      Number(incrementalMetrics.mechanicalReuseHits || 0),
+  {
+    fullDurationMs: Number(phase3Full?.durationMs || 0),
+    incrementalDurationMs: Number(
+      phase3Incremental?.durationMs || 0,
+    ),
+    fullPreviewCalls,
+    incrementalPreviewCalls,
+    previewCallReduction: fullPreviewCalls - incrementalPreviewCalls,
+    mechanicalReuseHits: Number(
+      incrementalMetrics.mechanicalReuseHits || 0,
+    ),
+    mechanicalDirtyRouteCount: Number(
+      incrementalMetrics.mechanicalDirtyRouteCount || 0,
+    ),
+    unscopedLayerCount: Number(
+      incrementalMetrics.unscopedLayerCount || 0,
+    ),
+  },
+);
+addCheck(
+  'session-behavior-reuse:full-oracle-and-final-hashes',
+  phase3SemanticHashesEqual &&
+    Number(phase3Full?.fatalCount || 0) === 0 &&
+    Number(phase3Oracle?.fatalCount || 0) === 0 &&
+    Number(phase3Incremental?.fatalCount || 0) === 0 &&
+    Number(
+      oracleMetrics.behaviorReuseOracleChecks || 0,
+    ) > 0 &&
+    Number(
+      oracleMetrics.behaviorReuseOracleMismatches || 0,
+    ) === 0,
+  {
+    oracleChecks: Number(
+      oracleMetrics.behaviorReuseOracleChecks || 0,
+    ),
+    oracleMismatches: Number(
+      oracleMetrics.behaviorReuseOracleMismatches || 0,
+    ),
+    fullBehaviorRebuilds: Number(
+      phase3Full?.routeMetrics?.envelopeRebuildCount || 0,
+    ),
+    oracleBehaviorRebuilds: Number(
+      phase3Oracle?.routeMetrics?.envelopeRebuildCount || 0,
+    ),
+    incrementalBehaviorRebuilds: Number(
+      phase3Incremental?.routeMetrics?.envelopeRebuildCount || 0,
+    ),
+  },
+);
+addCheck(
+  'session-behavior-reuse:actual-envelope-work-falls',
+  phase3SemanticHashesEqual &&
+    Number(incrementalMetrics.behaviorReuseHits || 0) > 0 &&
+    Number(
+      phase3Incremental?.routeMetrics?.envelopeRebuildCount || 0,
+    ) <
+      Number(
+        phase3Full?.routeMetrics?.envelopeRebuildCount || 0,
+      ) &&
+    Number(
+      phase3Full?.routeMetrics?.envelopeRebuildCount || 0,
+    ) -
+      Number(
+        phase3Incremental?.routeMetrics?.envelopeRebuildCount || 0,
+      ) ===
+      Number(incrementalMetrics.behaviorReuseHits || 0),
+  {
+    fullBehaviorRebuilds: Number(
+      phase3Full?.routeMetrics?.envelopeRebuildCount || 0,
+    ),
+    incrementalBehaviorRebuilds: Number(
+      phase3Incremental?.routeMetrics?.envelopeRebuildCount || 0,
+    ),
+    behaviorReuseHits: Number(
+      incrementalMetrics.behaviorReuseHits || 0,
+    ),
+    fullTerminalProjectionCalls: Number(
+      phase3Full?.routeMetrics?.evaluationSessionTerminalProjectionCalls || 0,
+    ),
+    incrementalTerminalProjectionCalls: Number(
+      phase3Incremental?.routeMetrics?.evaluationSessionTerminalProjectionCalls || 0,
+    ),
+  },
+);
+addCheck(
+  'session-mechanical-reuse:runtime-only-source-closure',
+  /disableSessionMechanicalReuse/.test(runtimeSource) &&
+    /verifySessionMechanicalReuse/.test(runtimeSource) &&
+    !/mechanicalReuse|operationGraphStore|behaviorReuse|behaviorEnvelopeStore/.test(
+      fs.readFileSync(path.join(repoRoot, 'BattleReport_Module.js'), 'utf8'),
+    ) &&
+    !/mechanicalReuse|operationGraphStore|behaviorReuse|behaviorEnvelopeStore/.test(
+      fs.readFileSync(path.join(repoRoot, 'BattleUI_Module.js'), 'utf8'),
+    ),
+);
+
 const failed = checks.filter(check => !check.passed);
 const output = {
   summary: {
@@ -2125,7 +2340,12 @@ const output = {
     passedCount: checks.length - failed.length,
     failedCount: failed.length,
     opportunityCheckCount: checks.filter(check => check.checkId.startsWith('opportunity:')).length,
-    runtimeEventContractStatus: failed.length === 0 ? 'RUNTIME_EVENT_CONTRACT_PASSED' : 'BLOCKED',
+    runtimeEventContractStatus: failed.length === 0
+      ? 'RUNTIME_EVENT_CONTRACT_PASSED'
+      : 'BLOCKED',
+    exactIncrementalStatus: failed.length === 0
+      ? 'MECHANICAL_AND_BEHAVIOR_LAYER_EXACT_REUSE_PASSED'
+      : 'BLOCKED',
   },
   checks,
 };

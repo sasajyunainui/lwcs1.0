@@ -1031,11 +1031,33 @@ const delayedWithRequest = prepare(delayedWorld, {
     }],
   }),
 });
+const delayedExpiredRequest = prepare(delayedWorld, {
+  runtimeSnapshot: runtimeSnapshot({
+    opportunities: [{
+      opportunityId: 'natural:enemy:round3',
+      ownerId: 'enemy',
+      grantType: 'NATURAL_ACTION',
+      status: 'PENDING',
+      round: 3,
+    }],
+  }),
+});
 const delayedWithoutRequest = prepare(delayedWorld);
 const delayedWithCandidate = candidateBySkill(delayedWithRequest, 'delayed-disarm');
+const delayedExpiredCandidate = candidateBySkill(
+  delayedExpiredRequest,
+  'delayed-disarm',
+);
 const delayedWithoutCandidate = candidateBySkill(delayedWithoutRequest, 'delayed-disarm');
 const delayedWithProjection = projectionFor(delayedWithRequest, delayedWithCandidate);
+const delayedExpiredProjection = projectionFor(
+  delayedExpiredRequest,
+  delayedExpiredCandidate,
+);
 const delayedWithoutProjection = projectionFor(delayedWithoutRequest, delayedWithoutCandidate);
+const delayedWithEnemyEnvelope =
+  delayedWithRequest.candidateEnvelopeDeltas[delayedWithCandidate.candidateId]
+    ?.find(entry => entry?.targetId === 'enemy') || null;
 const delayedPreview = preview.previewAction({
   worldSnapshot: delayedWithRequest.visibleWorld,
   actorId: 'actor',
@@ -1054,6 +1076,264 @@ add(
     scheduledEvents: delayedPreview.scheduledEvents,
     projectedScheduledEvents: delayedPreview.afterSnapshot.__battlePreviewScheduledEvents,
     opportunitySnapshot: delayedWithRequest.evaluationContext.opportunitySnapshot,
+  },
+);
+add(
+  'delayed-state:expired-before-opportunity-has-zero-value',
+  delayedExpiredProjection.actionPoolHEPP === 0 &&
+    !delayedExpiredRequest.candidateEnvelopeDeltas[
+      delayedExpiredCandidate.candidateId
+    ]?.some(entry => Math.abs(Number(entry?.healthTrajectoryDeltaPP || 0)) > 1e-9),
+  {
+    projection: delayedExpiredProjection,
+    envelope:
+      delayedExpiredRequest.candidateEnvelopeDeltas[
+        delayedExpiredCandidate.candidateId
+      ],
+    opportunitySnapshot:
+      delayedExpiredRequest.evaluationContext.opportunitySnapshot,
+  },
+);
+add(
+  'delayed-state:binds-the-first-opportunity-at-or-after-realization',
+  delayedWithEnemyEnvelope?.behaviorRealizationWindow?.opportunityId ===
+      'natural:enemy:round2' &&
+    delayedWithEnemyEnvelope?.behaviorRealizationWindow?.round === 2 &&
+    delayedWithEnemyEnvelope?.behaviorRealizationWindow
+      ?.unaffectedEarlierOpportunityIds?.includes('natural:enemy:next') &&
+    !delayedWithEnemyEnvelope?.behaviorRealizationWindow
+      ?.affectedOpportunityIds?.includes('natural:enemy:next'),
+  {
+    envelope: delayedWithEnemyEnvelope,
+    opportunitySnapshot: delayedWithRequest.evaluationContext.opportunitySnapshot,
+  },
+);
+
+const staggeredDelayedSkill = {
+  id: 'staggered-delayed-disarm',
+  name: '错峰延迟缴械',
+  魂技名: '错峰延迟缴械',
+  消耗: '无',
+  _效果数组: [{
+    原型: '状态施加',
+    目标: '单体',
+    状态: '眩晕',
+    数值: '-20%',
+    持续回合: 1,
+    延迟回合: 1,
+    成功率: '100%',
+    effectId: 'staggered-disarm-round2',
+  }, {
+    原型: '状态施加',
+    目标: '单体',
+    状态: '眩晕',
+    数值: '-20%',
+    持续回合: 1,
+    延迟回合: 2,
+    成功率: '100%',
+    effectId: 'staggered-disarm-round3',
+  }],
+};
+const staggeredDelayedRequest = prepare(world(
+  unit('actor', 'player', {
+    skills: [staggeredDelayedSkill, damageSkill('actor-attack', 50)],
+  }),
+  unit('enemy', 'enemy', { skills: [damageSkill('enemy-attack', 160)] }),
+), {
+  runtimeSnapshot: runtimeSnapshot({
+    opportunities: [{
+      opportunityId: 'natural:enemy:round2',
+      ownerId: 'enemy',
+      grantType: 'NATURAL_ACTION',
+      status: 'PENDING',
+      round: 2,
+    }, {
+      opportunityId: 'natural:enemy:round3',
+      ownerId: 'enemy',
+      grantType: 'NATURAL_ACTION',
+      status: 'PENDING',
+      round: 3,
+    }],
+  }),
+});
+const staggeredDelayedCandidate = candidateBySkill(
+  staggeredDelayedRequest,
+  'staggered-delayed-disarm',
+);
+const staggeredDelayedProjection = projectionFor(
+  staggeredDelayedRequest,
+  staggeredDelayedCandidate,
+);
+const staggeredDelayedActionPoolIds =
+  staggeredDelayedProjection.actionPoolDeltas
+    .filter(delta => delta?.outcomeKind === 'STATE_SCHEDULED')
+    .filter(delta => Math.abs(Number(delta?.healthTrajectoryDeltaPP || 0)) > 1e-9)
+    .map(delta => String(delta?.effectInstanceId || '').trim())
+    .sort();
+add(
+  'delayed-state:staggered-realization-windows-each-own-action-pool-delta',
+  staggeredDelayedActionPoolIds.includes('staggered-disarm-round2') &&
+    staggeredDelayedActionPoolIds.includes('staggered-disarm-round3'),
+  {
+    projection: staggeredDelayedProjection,
+    envelope: staggeredDelayedRequest.candidateEnvelopeDeltas[
+      staggeredDelayedCandidate.candidateId
+    ],
+    nonZeroStateScheduledEffectIds: staggeredDelayedActionPoolIds,
+    opportunitySnapshot:
+      staggeredDelayedRequest.evaluationContext.opportunitySnapshot,
+  },
+);
+
+const overlappingDelayedSkill = {
+  id: 'overlapping-delayed-disarm',
+  name: '重叠延迟缴械',
+  魂技名: '重叠延迟缴械',
+  消耗: '无',
+  _效果数组: [{
+    原型: '状态施加',
+    目标: '单体',
+    状态: '眩晕',
+    数值: '-20%',
+    持续回合: 2,
+    延迟回合: 1,
+    成功率: '100%',
+    effectId: 'overlap-disarm-round2-duration2',
+  }, {
+    原型: '状态施加',
+    目标: '单体',
+    状态: '眩晕',
+    数值: '-20%',
+    持续回合: 1,
+    延迟回合: 2,
+    成功率: '100%',
+    effectId: 'overlap-disarm-round3-redundant',
+  }],
+};
+const overlappingDelayedRequest = prepare(world(
+  unit('actor', 'player', {
+    skills: [overlappingDelayedSkill, damageSkill('actor-attack', 50)],
+  }),
+  unit('enemy', 'enemy', { skills: [damageSkill('enemy-attack', 160)] }),
+), {
+  runtimeSnapshot: runtimeSnapshot({
+    opportunities: [{
+      opportunityId: 'natural:enemy:round2',
+      ownerId: 'enemy',
+      grantType: 'NATURAL_ACTION',
+      status: 'PENDING',
+      round: 2,
+    }, {
+      opportunityId: 'natural:enemy:round3',
+      ownerId: 'enemy',
+      grantType: 'NATURAL_ACTION',
+      status: 'PENDING',
+      round: 3,
+    }],
+  }),
+});
+const overlappingDelayedCandidate = candidateBySkill(
+  overlappingDelayedRequest,
+  'overlapping-delayed-disarm',
+);
+const overlappingDelayedProjection = projectionFor(
+  overlappingDelayedRequest,
+  overlappingDelayedCandidate,
+);
+const overlappingDelayedValues = Object.fromEntries(
+  overlappingDelayedProjection.actionPoolDeltas
+    .filter(delta => delta?.outcomeKind === 'STATE_SCHEDULED')
+    .map(delta => [
+      String(delta?.effectInstanceId || '').trim(),
+      Number(delta?.healthTrajectoryDeltaPP || 0),
+    ]),
+);
+add(
+  'delayed-state:overlapping-windows-do-not-duplicate-redundant-control',
+  Number(overlappingDelayedValues['overlap-disarm-round2-duration2'] || 0) > 0 &&
+    Math.abs(
+      Number(overlappingDelayedValues['overlap-disarm-round3-redundant'] || 0),
+    ) <= 1e-9,
+  {
+    projection: overlappingDelayedProjection,
+    envelope: overlappingDelayedRequest.candidateEnvelopeDeltas[
+      overlappingDelayedCandidate.candidateId
+    ],
+    actionPoolValues: overlappingDelayedValues,
+    opportunitySnapshot:
+      overlappingDelayedRequest.evaluationContext.opportunitySnapshot,
+  },
+);
+
+const layeredDelayedControlSkill = {
+  id: 'layered-delayed-control',
+  name: '封技迟缓',
+  魂技名: '封技迟缓',
+  消耗: '无',
+  _效果数组: [{
+    原型: '状态施加',
+    目标: '单体',
+    状态: '封技',
+    数值: '-20%',
+    持续回合: 1,
+    延迟回合: 1,
+    成功率: '100%',
+    effectId: 'layered-silence-round2',
+  }, {
+    原型: '状态施加',
+    目标: '单体',
+    状态: '迟缓',
+    数值: '-20%',
+    持续回合: 1,
+    延迟回合: 1,
+    成功率: '100%',
+    effectId: 'layered-slow-round2',
+  }],
+};
+const layeredDelayedControlRequest = prepare(world(
+  unit('actor', 'player', {
+    skills: [layeredDelayedControlSkill, damageSkill('actor-attack', 50)],
+  }),
+  unit('enemy', 'enemy', { skills: [damageSkill('enemy-attack', 160)] }),
+), {
+  runtimeSnapshot: runtimeSnapshot({
+    opportunities: [{
+      opportunityId: 'natural:enemy:round2',
+      ownerId: 'enemy',
+      grantType: 'NATURAL_ACTION',
+      status: 'PENDING',
+      round: 2,
+    }],
+  }),
+});
+const layeredDelayedControlCandidate = candidateBySkill(
+  layeredDelayedControlRequest,
+  'layered-delayed-control',
+);
+const layeredDelayedControlProjection = projectionFor(
+  layeredDelayedControlRequest,
+  layeredDelayedControlCandidate,
+);
+const layeredDelayedControlValues = Object.fromEntries(
+  layeredDelayedControlProjection.actionPoolDeltas
+    .filter(delta => delta?.outcomeKind === 'STATE_SCHEDULED')
+    .map(delta => [
+      String(delta?.effectInstanceId || '').trim(),
+      Number(delta?.healthTrajectoryDeltaPP || 0),
+    ]),
+);
+add(
+  'delayed-state:overlapping-non-equivalent-controls-own-sequential-marginals',
+  Number(layeredDelayedControlValues['layered-silence-round2'] || 0) > 1e-9 &&
+    Number(layeredDelayedControlValues['layered-slow-round2'] || 0) > 1e-9,
+  {
+    projection: layeredDelayedControlProjection,
+    envelope: layeredDelayedControlRequest.candidateEnvelopeDeltas[
+      layeredDelayedControlCandidate.candidateId
+    ],
+    actionPoolValues: layeredDelayedControlValues,
+    opportunitySnapshot:
+      layeredDelayedControlRequest.evaluationContext.opportunitySnapshot,
   },
 );
 

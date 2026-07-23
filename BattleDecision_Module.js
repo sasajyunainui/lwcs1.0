@@ -14,6 +14,7 @@
   const MAX_SEQUENCE_PROFILE_CATALOGS = 2048;
   const MAX_SEQUENCE_PROFILES_PER_CATALOG = 256;
   const MAX_R8_TERMINAL_CANONICAL_ROUTE_KEYS = 8192;
+  const MAX_R8_TERMINAL_IDENTITY_OBSERVATIONS = 16384;
   const skillRootCache = new WeakMap();
   const effectFingerprintCache = new WeakMap();
   const skillCostCache = new WeakMap();
@@ -61,6 +62,7 @@
   let r8TerminalCanonicalRouteSignatureCache = new WeakMap();
   let r8TerminalCanonicalRouteKeyCache = new Map();
   let r8TerminalRootCanonicalSeen = new Map();
+  let r8TerminalIdentityObservations = [];
   let r8RouteMechanicalSignatureCache = new WeakMap();
   let r8RouteActorIdCache = new WeakMap();
   let r8RouteContextProjectionCache = new WeakMap();
@@ -204,6 +206,7 @@
     r8TerminalRouteSignatureCache = new WeakMap();
     r8TerminalCanonicalRouteSignatureCache = new WeakMap();
     r8TerminalRootCanonicalSeen = new Map();
+    r8TerminalIdentityObservations = [];
     r8RouteMechanicalSignatureCache = new WeakMap();
     r8RouteActorIdCache = new WeakMap();
     r8BehaviorRouteIdentityCache = new WeakMap();
@@ -255,6 +258,7 @@
       latestFactDelta: state.latestFactDelta
         ? cloneValue(state.latestFactDelta)
         : null,
+      dirtyMechanicalRouteCount: state.dirtyMechanicalRouteSlots.size,
       requestRecords: cloneValue(state.requestRecords),
       factDeltaRecords: cloneValue(state.factDeltaRecords),
       storeSizes: {
@@ -309,6 +313,8 @@
       attributionStore: new Map(),
       paretoGraphByUnit: new Map(),
       latestFactDelta: null,
+      latestRouteFactOwnershipIndex: null,
+      dirtyMechanicalRouteSlots: new Set(),
       factDeltaRecords: [],
       requestRecords: [],
       metrics: {
@@ -332,6 +338,22 @@
         ownershipOwnerCount: 0,
         ownershipDirtyOwnerCount: 0,
         unscopedLayerCount: 0,
+        mechanicalReuseAttempts: 0,
+        mechanicalReuseHits: 0,
+        mechanicalReuseMisses: 0,
+        mechanicalReuseOracleChecks: 0,
+        mechanicalReuseOracleMismatches: 0,
+        mechanicalReuseUnscopedRejects: 0,
+        mechanicalReuseDirtyRejects: 0,
+        mechanicalRoutesStored: 0,
+        mechanicalRoutesEvicted: 0,
+        mechanicalDirtyRouteCount: 0,
+        behaviorReuseAttempts: 0,
+        behaviorReuseHits: 0,
+        behaviorReuseMisses: 0,
+        behaviorReuseOracleChecks: 0,
+        behaviorReuseOracleMismatches: 0,
+        behaviorEnvelopesStored: 0,
       },
     });
     return handle;
@@ -394,6 +416,24 @@
     });
     state.latestFactDelta = batch;
     state.factDeltaRecords.push(batch);
+    const previousOwnership = state.latestRouteFactOwnershipIndex;
+    if (previousOwnership?.ownersByFact) {
+      const dirtyBefore = state.dirtyMechanicalRouteSlots.size;
+      batch.changedFactKeys.forEach(factKey => {
+        (previousOwnership.ownersByFact?.[factKey] || []).forEach(owner => {
+          if (String(owner?.layer || '').trim() !== 'MECHANICAL') return;
+          state.dirtyMechanicalRouteSlots.add(
+            r8SessionMechanicalRouteSlotKey(
+              owner?.unitId,
+              owner?.candidateId,
+            ),
+          );
+        });
+      });
+      state.metrics.mechanicalDirtyRouteCount =
+        Number(state.metrics.mechanicalDirtyRouteCount || 0) +
+        Math.max(0, state.dirtyMechanicalRouteSlots.size - dirtyBefore);
+    }
     state.metrics.factDeltaCount += 1;
     state.metrics.changedFactCount += batch.changedFactKeys.length;
     state.metrics.opportunityChangeCount += batch.opportunityChanges.length;
@@ -579,6 +619,7 @@
       indexHash: String(routeFactOwnershipIndex?.indexHash || '').trim(),
       impact,
     });
+    state.latestRouteFactOwnershipIndex = routeFactOwnershipIndex;
     state.metrics.ownershipIndexBuilds =
       Number(state.metrics.ownershipIndexBuilds || 0) + 1;
     state.metrics.ownershipOwnerCount =
@@ -591,6 +632,389 @@
       Number(state.metrics.unscopedLayerCount || 0) +
       impact.unscopedLayerCount;
     return impact;
+  }
+
+  function r8SessionMechanicalRouteSlotKey(unitId = '', candidateId = '') {
+    return [
+      'r8-session-mechanical-route',
+      String(unitId || '').trim(),
+      String(candidateId || '').trim(),
+    ].join('\u0000');
+  }
+
+  function r8BuildOverlayPatch(beforeValue, afterValue, path = [], rows = []) {
+    if (Object.is(beforeValue, afterValue)) return rows;
+    const beforeObject =
+      beforeValue && typeof beforeValue === 'object' &&
+      !Array.isArray(beforeValue);
+    const afterObject =
+      afterValue && typeof afterValue === 'object' &&
+      !Array.isArray(afterValue);
+    if (!beforeObject || !afterObject) {
+      if (
+        Array.isArray(beforeValue) &&
+        Array.isArray(afterValue) &&
+        preview.stableHash(beforeValue) === preview.stableHash(afterValue)
+      ) {
+        return rows;
+      }
+      rows.push(Object.freeze({
+        operation: 'SET',
+        path: Object.freeze([...path]),
+        value: cloneValue(afterValue),
+      }));
+      return rows;
+    }
+    const keys = [...new Set([
+      ...Object.keys(beforeValue),
+      ...Object.keys(afterValue),
+    ])].sort();
+    keys.forEach(key => {
+      if (!Object.hasOwn(afterValue, key)) {
+        rows.push(Object.freeze({
+          operation: 'DELETE',
+          path: Object.freeze([...path, key]),
+        }));
+        return;
+      }
+      if (!Object.hasOwn(beforeValue, key)) {
+        rows.push(Object.freeze({
+          operation: 'SET',
+          path: Object.freeze([...path, key]),
+          value: cloneValue(afterValue[key]),
+        }));
+        return;
+      }
+      r8BuildOverlayPatch(
+        beforeValue[key],
+        afterValue[key],
+        [...path, key],
+        rows,
+      );
+    });
+    return rows;
+  }
+
+  function r8ApplyOverlayPatch(value, rows = []) {
+    let result = cloneValue(value);
+    (Array.isArray(rows) ? rows : []).forEach(row => {
+      const path = Array.isArray(row?.path) ? row.path : [];
+      if (!path.length) {
+        if (row?.operation === 'SET') result = cloneValue(row?.value);
+        return;
+      }
+      let target = result;
+      for (let index = 0; index < path.length - 1; index += 1) {
+        const key = path[index];
+        if (!target[key] || typeof target[key] !== 'object') {
+          target[key] = {};
+        }
+        target = target[key];
+      }
+      const key = path[path.length - 1];
+      if (row?.operation === 'DELETE') {
+        delete target[key];
+      } else {
+        target[key] = cloneValue(row?.value);
+      }
+    });
+    return result;
+  }
+
+  function r8BuildMechanicalOverlayDelta(
+    baseWorld = {},
+    previewResult = {},
+  ) {
+    const afterWorld = previewResult?.afterSnapshot || {};
+    const changedUnitPatches = Object.fromEntries(
+      (previewResult?.changedUnitIds || [])
+        .map(unitIdValue => String(unitIdValue || '').trim())
+        .filter(Boolean)
+        .map(unitIdValue => {
+          const beforeUnit = findUnitInWorld(baseWorld, unitIdValue);
+          const afterUnit = findUnitInWorld(afterWorld, unitIdValue);
+          if (!beforeUnit || !afterUnit) return [unitIdValue, []];
+          return [
+            unitIdValue,
+            Object.freeze(
+              r8BuildOverlayPatch(beforeUnit, afterUnit),
+            ),
+          ];
+        }),
+    );
+    const baseSummons =
+      baseWorld?.召唤单位表 &&
+      typeof baseWorld.召唤单位表 === 'object'
+        ? baseWorld.召唤单位表
+        : {};
+    const afterSummons =
+      afterWorld?.召唤单位表 &&
+      typeof afterWorld.召唤单位表 === 'object'
+        ? afterWorld.召唤单位表
+        : {};
+    const createdSummons = Object.fromEntries(
+      Object.entries(afterSummons)
+        .filter(([key]) => !Object.hasOwn(baseSummons, key))
+        .map(([key, summon]) => [key, cloneValue(summon)]),
+    );
+    const payload = Object.freeze({
+      schemaVersion: 'MechanicalOverlayDeltaV1',
+      changedUnitPatches: deepFreeze(changedUnitPatches),
+      createdSummons: deepFreeze(createdSummons),
+      changedRules: deepFreeze(cloneValue(
+        previewResult?.changedRules || {},
+      )),
+      scheduledEvents: deepFreeze(cloneValue(
+        previewResult?.scheduledEvents || [],
+      )),
+    });
+    return Object.freeze({
+      ...payload,
+      deltaHash: `mechanical-overlay:${preview.stableHash(payload)}`,
+    });
+  }
+
+  function r8ApplyMechanicalOverlayDelta(
+    baseWorld = {},
+    overlayDelta = {},
+  ) {
+    const patchesByUnit = overlayDelta?.changedUnitPatches || {};
+    const projectedWorld = mapWorldUnits(baseWorld, unit => {
+      const unitIdValue = preview.unitId(unit);
+      const rows = patchesByUnit[unitIdValue];
+      return Array.isArray(rows) && rows.length
+        ? r8ApplyOverlayPatch(unit, rows)
+        : unit;
+    });
+    const createdSummons = overlayDelta?.createdSummons || {};
+    if (Object.keys(createdSummons).length) {
+      Object.defineProperty(projectedWorld, '召唤单位表', {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: {
+          ...(projectedWorld?.召唤单位表 || {}),
+          ...cloneValue(createdSummons),
+        },
+      });
+    }
+    const changedRules = overlayDelta?.changedRules || {};
+    if (Object.keys(changedRules).length) {
+      Object.defineProperty(projectedWorld, '__battlePreviewRuleOverlay', {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: cloneValue(changedRules),
+      });
+    }
+    const scheduledEvents = overlayDelta?.scheduledEvents || [];
+    if (scheduledEvents.length) {
+      Object.defineProperty(projectedWorld, '__battlePreviewScheduledEvents', {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: cloneValue(scheduledEvents),
+      });
+    }
+    return projectedWorld;
+  }
+
+  function r8BehaviorEnvelopeSemanticValue(envelope = {}) {
+    const routeValue = route => route
+      ? {
+          candidateId: String(route?.candidateId || '').trim(),
+          declarationFingerprint: String(
+            route?.declarationFingerprint || '',
+          ).trim(),
+          routeKey: String(route?.routeKey || '').trim(),
+          mechanicalIdentity: r8MechanicalRouteIdentity(route).identity,
+          objectiveRouteUtilityHEPP: Number(
+            route?.objectiveRouteUtilityHEPP || 0,
+          ),
+          routeDiscardedOverkillPP: Number(
+            route?.routeDiscardedOverkillPP || 0,
+          ),
+          routeObjectiveAnalysisMode: String(
+            route?.routeObjectiveAnalysisMode || '',
+          ).trim(),
+          routeObjectiveBranchUpperBound: Number(
+            route?.routeObjectiveBranchUpperBound || 0,
+          ),
+          terminalPathId: String(route?.terminalPathId || '').trim(),
+          resourcePotentialOnly: route?.resourcePotentialOnly === true,
+        }
+      : null;
+    return Object.freeze({
+      searchedRouteCount: Math.max(
+        0,
+        Number(envelope?.searchedRouteCount || 0),
+      ),
+      nonDominatedRouteCount: Math.max(
+        0,
+        Number(envelope?.nonDominatedRouteCount || 0),
+      ),
+      searchedTargetIds: Object.freeze([
+        ...(envelope?.searchedTargetIds || []),
+      ].map(String).sort()),
+      dependencyKeys: Object.freeze([
+        ...(envelope?.dependencyKeys || []),
+      ].map(String).sort()),
+      behaviorDependencyIdentity: String(
+        envelope?.behaviorDependencyIdentity || '',
+      ).trim(),
+      behaviorRealizationWindow: envelope?.behaviorRealizationWindow
+        ? Object.freeze({
+            opportunityId: String(
+              envelope.behaviorRealizationWindow?.opportunityId || '',
+            ).trim(),
+            round: Number(
+              envelope.behaviorRealizationWindow?.round || 0,
+            ),
+            sequence: Number(
+              envelope.behaviorRealizationWindow?.sequence || 0,
+            ),
+            affectedOpportunityIds: Object.freeze([
+              ...(envelope.behaviorRealizationWindow
+                ?.affectedOpportunityIds || []),
+            ].map(String).sort()),
+            unaffectedEarlierOpportunityIds: Object.freeze([
+              ...(envelope.behaviorRealizationWindow
+                ?.unaffectedEarlierOpportunityIds || []),
+            ].map(String).sort()),
+            expiredBeforeOpportunityIds: Object.freeze([
+              ...(envelope.behaviorRealizationWindow
+                ?.expiredBeforeOpportunityIds || []),
+            ].map(String).sort()),
+            sourceEffectInstanceIds: Object.freeze([
+              ...(envelope.behaviorRealizationWindow
+                ?.sourceEffectInstanceIds || []),
+            ].map(String).sort()),
+          })
+        : null,
+      primaryRoute: routeValue(envelope?.primaryRoute),
+      backupRoute: routeValue(envelope?.backupRoute),
+      fullRoutes: Object.freeze(
+        (Array.isArray(envelope?.fullRoutes)
+          ? envelope.fullRoutes
+          : [])
+          .map(routeValue)
+          .sort((left, right) =>
+            String(left?.candidateId || '').localeCompare(
+              String(right?.candidateId || ''),
+            ) ||
+            String(left?.routeKey || '').localeCompare(
+              String(right?.routeKey || ''),
+            )
+          ),
+      ),
+    });
+  }
+
+  function r8BehaviorLayerSemanticHashes(
+    routeAnalysis = {},
+    candidateEnvelopeDeltas = {},
+  ) {
+    const fullRoutesByUnit = routeAnalysis?.fullRoutesByUnit || {};
+    const routeCatalog = routeAnalysis?.routeCatalog || {};
+    const valuedFullRoutes = Object.fromEntries(
+      Object.entries(fullRoutesByUnit)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([unitId, routes]) => [
+          unitId,
+          (Array.isArray(routes) ? routes : [])
+            .map(r8ResourceRouteSemanticValue)
+            .sort((left, right) =>
+              String(left?.candidateId || '').localeCompare(
+                String(right?.candidateId || ''),
+              ) ||
+              String(left?.routeKey || '').localeCompare(
+                String(right?.routeKey || ''),
+              )
+            ),
+        ]),
+    );
+    const behaviorEnvelopes = Object.fromEntries(
+      Object.entries(routeCatalog)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([unitId, envelope]) => [
+          unitId,
+          r8BehaviorEnvelopeSemanticValue({
+            ...envelope,
+            fullRoutes: fullRoutesByUnit[unitId] || [],
+          }),
+        ]),
+    );
+    const primaryBackup = Object.fromEntries(
+      Object.entries(routeCatalog)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([unitId, envelope]) => [
+          unitId,
+          {
+            primaryRoute:
+              r8ResourceRouteSemanticValue(envelope?.primaryRoute),
+            backupRoute:
+              r8ResourceRouteSemanticValue(envelope?.backupRoute),
+          },
+        ]),
+    );
+    return Object.freeze({
+      schemaVersion: 'BehaviorLayerSemanticHashesV1',
+      candidateEnvelopeDeltasHash: preview.stableHash(
+        candidateEnvelopeDeltas || {},
+      ),
+      valuedFullRoutesHash: preview.stableHash(valuedFullRoutes),
+      behaviorEnvelopesHash: preview.stableHash(behaviorEnvelopes),
+      primaryBackupRoutesHash: preview.stableHash(primaryBackup),
+    });
+  }
+
+  function r8MarkSessionMechanicalRouteScope(
+    state,
+    fullRoutesByUnit = {},
+    routeFactOwnershipIndex = {},
+  ) {
+    if (
+      !state?.operationGraphStore ||
+      !(state.operationGraphStore instanceof Map)
+    ) {
+      return;
+    }
+    const unscopedSlots = new Set(
+      (routeFactOwnershipIndex?.unscopedLayers || [])
+        .filter(row => String(row?.layer || '').trim() === 'MECHANICAL')
+        .map(row => r8SessionMechanicalRouteSlotKey(
+          row?.unitId,
+          row?.candidateId,
+        )),
+    );
+    const activeSlots = new Set();
+    Object.entries(fullRoutesByUnit || {}).forEach(([unitId, routes]) => {
+      (Array.isArray(routes) ? routes : []).forEach(route => {
+        const slotKey = r8SessionMechanicalRouteSlotKey(
+          unitId,
+          route?.candidateId,
+        );
+        activeSlots.add(slotKey);
+        const entry = state.operationGraphStore.get(slotKey);
+        if (!entry || entry?.kind !== 'MECHANICAL_ROUTE') return;
+        state.dirtyMechanicalRouteSlots.delete(slotKey);
+        const unscopedMechanical = unscopedSlots.has(slotKey);
+        if (entry.unscopedMechanical === unscopedMechanical) return;
+        state.operationGraphStore.set(slotKey, Object.freeze({
+          ...entry,
+          unscopedMechanical,
+        }));
+      });
+    });
+    [...state.operationGraphStore.entries()].forEach(([slotKey, entry]) => {
+      if (entry?.kind !== 'MECHANICAL_ROUTE' || activeSlots.has(slotKey)) {
+        return;
+      }
+      state.operationGraphStore.delete(slotKey);
+      state.dirtyMechanicalRouteSlots.delete(slotKey);
+      state.metrics.mechanicalRoutesEvicted =
+        Number(state.metrics.mechanicalRoutesEvicted || 0) + 1;
+    });
   }
 
   let decisionRevisionSequence = 0;
@@ -13698,6 +14122,7 @@
     dependencyRowsHashCache = new Map(),
     objectiveHash = '',
     routeContextIdentity = {},
+    preserveHpOverride = null,
   } = {}) {
     const unitIds = [...new Set([
       ...(route?.dependencyUnitIds || []),
@@ -13800,10 +14225,14 @@
       });
       contextCache?.set(contextProjectionKey, preciseRouteContext);
     }
-    const preserveHp = unitIds.some(unitIdValue => {
-      const unit = findUnitInWorld(worldSnapshot, unitIdValue);
-      return !!unit && r8UnitHasHpSensitiveBehavior(unit);
-    });
+    const preserveHp = preserveHpOverride === true ||
+      (
+        preserveHpOverride !== false &&
+        unitIds.some(unitIdValue => {
+          const unit = findUnitInWorld(worldSnapshot, unitIdValue);
+          return !!unit && r8UnitHasHpSensitiveBehavior(unit);
+        })
+      );
     const unitRows = unitIds.map(unitIdValue => {
       const cacheKey = `${preserveHp ? 'hp' : 'no-hp'}:${unitIdValue}`;
       if (!unitHashCache.has(cacheKey)) {
@@ -14567,6 +14996,160 @@
       );
   }
 
+  function r8BehaviorIdentityUnitProjection(
+    unit = null,
+    runtimeMode = 'FULL',
+  ) {
+    if (!unit || typeof unit !== 'object') return null;
+    const projected = cloneValue(unit);
+    if (!projected || typeof projected !== 'object') return projected;
+    delete projected.__宿主;
+    if (
+      projected.__battleRuntime &&
+      typeof projected.__battleRuntime === 'object'
+    ) {
+      if (runtimeMode === 'WITHOUT_RUNTIME') {
+        delete projected.__battleRuntime;
+      } else if (runtimeMode === 'WITHOUT_NATURAL_OPPORTUNITY') {
+        delete projected.__battleRuntime.naturalOpportunity;
+        if (!Object.keys(projected.__battleRuntime).length) {
+          delete projected.__battleRuntime;
+        }
+      }
+    }
+    return projected;
+  }
+
+  function r8BehaviorIdentityOpportunityProjection(
+    opportunity = {},
+    includeIdentity = true,
+  ) {
+    const projected = {
+      ownerId: String(opportunity?.ownerId || '').trim(),
+      role: String(opportunity?.role || '').trim(),
+      grantType: String(opportunity?.grantType || '').trim(),
+      sourceActorId: String(opportunity?.sourceActorId || '').trim(),
+      targetId: String(opportunity?.targetId || '').trim(),
+      validTargetIds: Object.freeze(
+        [...(opportunity?.validTargetIds || [])].map(String).sort(),
+      ),
+      status: String(opportunity?.status || '').trim(),
+      outcomeKind: String(opportunity?.outcomeKind || '').trim(),
+    };
+    if (!includeIdentity) return Object.freeze(projected);
+    return Object.freeze({
+      ...projected,
+      opportunityId: String(
+        opportunity?.opportunityId ||
+        opportunity?.grantId ||
+        opportunity?.descriptorId ||
+        '',
+      ).trim(),
+      windowId: String(opportunity?.windowId || '').trim(),
+      sourceActionId: String(opportunity?.sourceActionId || '').trim(),
+      sourceEventId: String(opportunity?.sourceEventId || '').trim(),
+      createdAtSequence: Number(opportunity?.createdAtSequence || 0),
+      expiresAtSequence: Number(opportunity?.expiresAtSequence || 0),
+      consumedByActionId: String(
+        opportunity?.consumedByActionId || '',
+      ).trim(),
+    });
+  }
+
+  function r8BehaviorEnvelopeUtilityValue(envelope = {}) {
+    const routeValue = route => route
+      ? {
+          candidateId: String(route?.candidateId || '').trim(),
+          declarationFingerprint: String(
+            route?.declarationFingerprint || '',
+          ).trim(),
+          objectiveRouteUtilityHEPP: Number(
+            route?.objectiveRouteUtilityHEPP || 0,
+          ),
+          routeDiscardedOverkillPP: Number(
+            route?.routeDiscardedOverkillPP || 0,
+          ),
+          routeObjectiveAnalysisMode: String(
+            route?.routeObjectiveAnalysisMode || '',
+          ).trim(),
+          routeObjectiveBranchUpperBound: Number(
+            route?.routeObjectiveBranchUpperBound || 0,
+          ),
+          resourcePotentialOnly: route?.resourcePotentialOnly === true,
+        }
+      : null;
+    return Object.freeze({
+      searchedRouteCount: Math.max(
+        0,
+        Number(envelope?.searchedRouteCount || 0),
+      ),
+      nonDominatedRouteCount: Math.max(
+        0,
+        Number(envelope?.nonDominatedRouteCount || 0),
+      ),
+      searchedTargetIds: Object.freeze(
+        [...(envelope?.searchedTargetIds || [])].map(String).sort(),
+      ),
+      primaryRoute: routeValue(envelope?.primaryRoute),
+      backupRoute: routeValue(envelope?.backupRoute),
+      fullRoutes: Object.freeze(
+        (Array.isArray(envelope?.fullRoutes) ? envelope.fullRoutes : [])
+          .map(routeValue)
+          .sort((left, right) =>
+            String(left?.candidateId || '').localeCompare(
+              String(right?.candidateId || ''),
+            ) ||
+            String(left?.declarationFingerprint || '').localeCompare(
+              String(right?.declarationFingerprint || ''),
+            )
+          ),
+      ),
+    });
+  }
+
+  function r8BehaviorEnvelopeIdentityV2({
+    behaviorDependencySet = {},
+    targetId = '',
+    actorIdentity = '',
+    candidateTargetIdentities = [],
+    candidateIdFingerprintRows = [],
+    rulesIdentity = '',
+    objectiveIdentity = '',
+    actionOpportunityIdentity = '',
+  } = {}) {
+    const componentHashes = Object.fromEntries(
+      Object.entries(behaviorDependencySet?.componentHashes || {})
+        .filter(([key]) => key !== 'semanticPhaseHash')
+        .sort(([left], [right]) => left.localeCompare(right)),
+    );
+    const payload = Object.freeze({
+      schemaVersion: 'BehaviorEnvelopeIdentityV2',
+      targetId: String(targetId || '').trim(),
+      componentHashes: Object.freeze(componentHashes),
+      actorIdentity: String(actorIdentity || '').trim(),
+      candidateTargetIdentitiesHash:
+        preview.stableHash(candidateTargetIdentities),
+      candidateIdFingerprintRowsHash:
+        preview.stableHash(candidateIdFingerprintRows),
+      rulesIdentity: String(rulesIdentity || '').trim(),
+      objectiveIdentity: String(objectiveIdentity || '').trim(),
+      actionOpportunityIdentity: String(
+        actionOpportunityIdentity || '',
+      ).trim(),
+    });
+    return Object.freeze({
+      ...payload,
+      identity: `behavior-envelope-v2:${preview.stableHash(payload)}`,
+    });
+  }
+
+  function r8BehaviorEnvelopeExactHash(envelope = {}) {
+    return preview.stableHash({
+      ...(envelope || {}),
+      behaviorDependencyIdentity: '',
+    });
+  }
+
   function r8BehaviorUnitIdentity(
     unitId = '',
     routes = [],
@@ -15051,6 +15634,79 @@
       typeof input.previousActorPredictedOutcomeEvidence === 'object'
         ? input.previousActorPredictedOutcomeEvidence
         : null;
+    const mechanicalSessionStore =
+      input?.mechanicalSessionStore instanceof Map
+        ? input.mechanicalSessionStore
+        : null;
+    const mechanicalSessionMetrics =
+      input?.mechanicalSessionMetrics &&
+      typeof input.mechanicalSessionMetrics === 'object'
+        ? input.mechanicalSessionMetrics
+        : null;
+    const sessionMechanicalReuseEnabled =
+      input?.enableSessionMechanicalReuse === true &&
+      !!mechanicalSessionStore;
+    const verifySessionMechanicalReuse =
+      input?.verifySessionMechanicalReuse === true;
+    const dirtySessionMechanicalRouteSlots =
+      input?.dirtySessionMechanicalRouteSlots instanceof Set
+        ? input.dirtySessionMechanicalRouteSlots
+        : new Set();
+    const sessionMechanicalEntryFor = (unitId, candidateId) => {
+      if (!sessionMechanicalReuseEnabled) return null;
+      const entry = mechanicalSessionStore.get(
+        r8SessionMechanicalRouteSlotKey(unitId, candidateId),
+      );
+      return entry?.kind === 'MECHANICAL_ROUTE' ? entry : null;
+    };
+    const storeSessionMechanicalRoute = ({
+      unitId,
+      candidate,
+      route,
+      mechanicalSignature,
+      overlayDelta,
+      contributions,
+      predictedOutcomeEvidence: evidence,
+    }) => {
+      if (!mechanicalSessionStore || !candidate?.candidateId || !route) return;
+      const slotKey = r8SessionMechanicalRouteSlotKey(
+        unitId,
+        candidate.candidateId,
+      );
+      const previous = mechanicalSessionStore.get(slotKey);
+      mechanicalSessionStore.set(slotKey, Object.freeze({
+        schemaVersion: 'MechanicalPreviewIdentityV1',
+        kind: 'MECHANICAL_ROUTE',
+        slotKey,
+        unitId: String(unitId || '').trim(),
+        candidateId: String(candidate.candidateId || '').trim(),
+        declarationFingerprint: String(
+          candidate?.declarationFingerprint || '',
+        ).trim(),
+        mechanicalIdentity: String(
+          mechanicalSignature?.signature || '',
+        ).trim(),
+        mechanicalSignature: Object.freeze({
+          ...(mechanicalSignature || {}),
+        }),
+        route: r8MechanicalRouteOnly(route),
+        overlayDelta: overlayDelta || null,
+        contributions: Object.freeze(cloneValue(
+          Array.isArray(contributions) ? contributions : [],
+        )),
+        predictedOutcomeEvidence: Object.freeze([
+          ...(Array.isArray(evidence) ? evidence : []),
+        ]),
+        unscopedMechanical: previous?.unscopedMechanical === true,
+      }));
+      if (!mechanicalSessionMetrics) return;
+      mechanicalSessionMetrics.mechanicalRoutesStored =
+        Number(mechanicalSessionMetrics.mechanicalRoutesStored || 0) + 1;
+      if (previous) {
+        mechanicalSessionMetrics.mechanicalRoutesEvicted =
+          Number(mechanicalSessionMetrics.mechanicalRoutesEvicted || 0) + 1;
+      }
+    };
     const affectedUnitIds = new Set((input.affectedUnitIds || []).map(value => String(value || '').trim()).filter(Boolean));
     const affectedTargetUnitIds = new Set(
       (Array.isArray(input.affectedTargetUnitIds) ? input.affectedTargetUnitIds : [...affectedUnitIds])
@@ -15114,11 +15770,50 @@
           fact?.targetId,
         ]),
       ].map(value => String(value || '').trim()).filter(Boolean));
-      return mapWorldUnits(worldSnapshot, unit => {
+      const rebasedWorld = mapWorldUnits(worldSnapshot, unit => {
         const id = preview.unitId(unit);
         if (!changedUnitIds.has(id)) return unit;
         return findUnitInWorld(projectedWorld, id) || unit;
       });
+      const currentSummons =
+        worldSnapshot?.召唤单位表 &&
+        typeof worldSnapshot.召唤单位表 === 'object'
+          ? worldSnapshot.召唤单位表
+          : {};
+      const projectedSummons =
+        projectedWorld?.召唤单位表 &&
+        typeof projectedWorld.召唤单位表 === 'object'
+          ? projectedWorld.召唤单位表
+          : {};
+      const createdSummons = Object.fromEntries(
+        Object.entries(projectedSummons).filter(([key]) =>
+          !Object.hasOwn(currentSummons, key)
+        ),
+      );
+      if (Object.keys(createdSummons).length) {
+        Object.defineProperty(rebasedWorld, '召唤单位表', {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: {
+            ...(rebasedWorld?.召唤单位表 || {}),
+            ...createdSummons,
+          },
+        });
+      }
+      for (const key of [
+        '__battlePreviewRuleOverlay',
+        '__battlePreviewScheduledEvents',
+      ]) {
+        if (!Object.hasOwn(projectedWorld, key)) continue;
+        Object.defineProperty(rebasedWorld, key, {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: cloneValue(projectedWorld[key]),
+        });
+      }
+      return rebasedWorld;
     };
     const actorReuseSupported =
       previousActorCandidateRoutes &&
@@ -15299,21 +15994,56 @@
         const routeIsAffected = affectedRouteKeys
           ? affectedRouteKeys.has(candidateId)
           : affectedUnitIds.has(currentUnitId);
-        const previousRoute = (
-          routeIsAffected ||
-          (currentUnitId === actorId && !actorReuseSupported)
-        )
-          ? null
-          : previousRoutesByCandidate.get(candidateId) || null;
+        const sessionEntry = sessionMechanicalEntryFor(
+          currentUnitId,
+          candidateId,
+        );
+        const sessionSlotKey = r8SessionMechanicalRouteSlotKey(
+          currentUnitId,
+          candidateId,
+        );
+        const sessionMechanicalDirty =
+          dirtySessionMechanicalRouteSlots.has(sessionSlotKey);
+        const previousRoute = sessionMechanicalReuseEnabled
+          ? (
+              sessionEntry?.unscopedMechanical === true ||
+              sessionMechanicalDirty
+                ? null
+                : sessionEntry?.route || null
+            )
+          : (
+              routeIsAffected ||
+              (currentUnitId === actorId && !actorReuseSupported)
+            )
+              ? null
+              : previousRoutesByCandidate.get(candidateId) || null;
         const previousMechanical =
-          previousRoute &&
-          r8RouteMechanicalSignatureCache.get(previousRoute);
+          sessionEntry?.mechanicalSignature ||
+          (
+            previousRoute &&
+            r8RouteMechanicalSignatureCache.get(previousRoute)
+          );
+        if (sessionEntry?.unscopedMechanical === true && mechanicalSessionMetrics) {
+          mechanicalSessionMetrics.mechanicalReuseUnscopedRejects =
+            Number(
+              mechanicalSessionMetrics.mechanicalReuseUnscopedRejects || 0,
+            ) + 1;
+        }
+        if (sessionMechanicalDirty && mechanicalSessionMetrics) {
+          mechanicalSessionMetrics.mechanicalReuseDirtyRejects =
+            Number(mechanicalSessionMetrics.mechanicalReuseDirtyRejects || 0) + 1;
+        }
+        let sessionMechanicalOracle = null;
         if (
           previousRoute &&
           previousMechanical &&
           String(previousRoute?.declarationFingerprint || '').trim() ===
             String(candidate?.declarationFingerprint || '').trim()
         ) {
+          if (sessionEntry && mechanicalSessionMetrics) {
+            mechanicalSessionMetrics.mechanicalReuseAttempts =
+              Number(mechanicalSessionMetrics.mechanicalReuseAttempts || 0) + 1;
+          }
           mechanicalReuseAttemptCount += 1;
           const currentMechanical = r8MechanicalRouteSignature({
             route: previousRoute,
@@ -15327,6 +16057,7 @@
             dependencyRowsHashCache: mechanicalDependencyRowsHashCache,
             objectiveHash: mechanicalObjectiveHash,
             routeContextIdentity: mechanicalRouteContextIdentity,
+            preserveHpOverride: sessionEntry ? true : null,
           });
           if (currentMechanical.signature === previousMechanical.signature) {
             mechanicalReuseSignatureMatchCount += 1;
@@ -15335,39 +16066,85 @@
               objectiveRequest,
             );
             r8RouteMechanicalSignatureCache.set(reusedRoute, currentMechanical);
+            const reusedProjectedWorld = sessionEntry?.overlayDelta
+              ? r8ApplyMechanicalOverlayDelta(
+                  worldSnapshot,
+                  sessionEntry.overlayDelta,
+                )
+              : rebaseProjectedWorld(
+                  previousActorProjectedWorlds?.[candidateId],
+                  reusedRoute,
+                  currentUnitId,
+                );
+            projectedWorldsByUnit[currentUnitId][candidateId] =
+              reusedProjectedWorld;
+            projectedWorldRevisionsByUnit[currentUnitId][candidateId] = [
+              evaluationContext.visibleWorldRevision,
+              currentUnitId,
+              reusedRoute.declarationFingerprint || '',
+            ].join('|');
             if (
               currentUnitId === actorId &&
               currentActorCandidateIds.has(candidateId)
             ) {
-              actorProjectedWorlds[candidateId] = rebaseProjectedWorld(
-                previousActorProjectedWorlds?.[candidateId],
-                reusedRoute,
-                currentUnitId,
-              );
+              const rebasedPredictedEvidence =
+                Array.isArray(sessionEntry?.contributions)
+                  ? predictedOutcomeEvidence(
+                      {
+                        contributions: sessionEntry.contributions,
+                      },
+                      worldSnapshot,
+                    )
+                  : sessionEntry?.predictedOutcomeEvidence ||
+                    previousActorPredictedOutcomeEvidence?.[candidateId] ||
+                    [];
+              actorProjectedWorlds[candidateId] = reusedProjectedWorld;
               actorProjectedWorldRevisions[candidateId] = [
                 evaluationContext.visibleWorldRevision,
                 reusedRoute.declarationFingerprint || '',
               ].join('|');
               actorPredictedOutcomeEvidence[candidateId] =
-                previousActorPredictedOutcomeEvidence?.[candidateId] || [];
+                rebasedPredictedEvidence;
             }
-            reusedMechanicalRouteCount += 1;
-            reusedRouteCandidateCount += 1;
-            return reusedRoute;
+            if (sessionEntry && verifySessionMechanicalReuse) {
+              sessionMechanicalOracle = {
+                entry: sessionEntry,
+                route: reusedRoute,
+                projectedWorld: reusedProjectedWorld,
+                predictedOutcomeEvidence:
+                  actorPredictedOutcomeEvidence[candidateId] ||
+                  sessionEntry?.predictedOutcomeEvidence ||
+                  [],
+              };
+            } else {
+              if (sessionEntry && mechanicalSessionMetrics) {
+                mechanicalSessionMetrics.mechanicalReuseHits =
+                  Number(mechanicalSessionMetrics.mechanicalReuseHits || 0) + 1;
+              }
+              reusedMechanicalRouteCount += 1;
+              reusedRouteCandidateCount += 1;
+              return reusedRoute;
+            }
           }
-          mechanicalReuseSignatureMismatchCount += 1;
-          [
-            'declarationFingerprint',
-            'unitRowsHash',
-            'dependencyRowsHash',
-            'objectiveHash',
-            'battleIntentMode',
-            'preserveHp',
-          ].forEach(key => {
-            if (currentMechanical[key] === previousMechanical[key]) return;
-            mechanicalReuseMismatchCounts[key] =
-              Number(mechanicalReuseMismatchCounts[key] || 0) + 1;
-          });
+          if (!sessionMechanicalOracle) {
+            mechanicalReuseSignatureMismatchCount += 1;
+            if (sessionEntry && mechanicalSessionMetrics) {
+              mechanicalSessionMetrics.mechanicalReuseMisses =
+                Number(mechanicalSessionMetrics.mechanicalReuseMisses || 0) + 1;
+            }
+            [
+              'declarationFingerprint',
+              'unitRowsHash',
+              'dependencyRowsHash',
+              'objectiveHash',
+              'battleIntentMode',
+              'preserveHp',
+            ].forEach(key => {
+              if (currentMechanical[key] === previousMechanical[key]) return;
+              mechanicalReuseMismatchCounts[key] =
+                Number(mechanicalReuseMismatchCounts[key] || 0) + 1;
+            });
+          }
         }
         dependencyView.beginCapture();
         recomputedCurrentUnit = true;
@@ -15462,22 +16239,83 @@
           objectiveRequest,
           dependencyValueHash,
         });
+        const mechanicalSignature = r8MechanicalRouteSignature({
+          route,
+          candidate,
+          worldSnapshot,
+          evaluationContext,
+          objectiveContract: objectiveRequest.objectiveContract,
+          beliefState: input.beliefState,
+          unitHashCache: mechanicalUnitHashCache,
+          unitRowsHashCache: mechanicalUnitRowsHashCache,
+          dependencyRowsHashCache: mechanicalDependencyRowsHashCache,
+          objectiveHash: mechanicalObjectiveHash,
+          routeContextIdentity: mechanicalRouteContextIdentity,
+          preserveHpOverride: sessionMechanicalReuseEnabled ? true : null,
+        });
         r8RouteMechanicalSignatureCache.set(
           route,
-          r8MechanicalRouteSignature({
-            route,
-            candidate,
-            worldSnapshot,
-            evaluationContext,
-            objectiveContract: objectiveRequest.objectiveContract,
-            beliefState: input.beliefState,
-            unitHashCache: mechanicalUnitHashCache,
-            unitRowsHashCache: mechanicalUnitRowsHashCache,
-            dependencyRowsHashCache: mechanicalDependencyRowsHashCache,
-            objectiveHash: mechanicalObjectiveHash,
-            routeContextIdentity: mechanicalRouteContextIdentity,
-          }),
+          mechanicalSignature,
         );
+        if (sessionMechanicalOracle) {
+          const routeMatches =
+            r8MechanicalRouteIdentity(route).identity ===
+            r8MechanicalRouteIdentity(sessionMechanicalOracle.route).identity;
+          const projectedWorldMatches =
+            preview.stableHash(previewResult.afterSnapshot) ===
+            preview.stableHash(sessionMechanicalOracle.projectedWorld || {});
+          const predictedEvidenceMatches =
+            currentUnitId !== actorId ||
+            !currentActorCandidateIds.has(candidateId) ||
+            preview.stableHash(
+              predictedOutcomeEvidence(previewResult, worldSnapshot),
+            ) === preview.stableHash(
+              sessionMechanicalOracle.predictedOutcomeEvidence || [],
+            );
+          if (mechanicalSessionMetrics) {
+            mechanicalSessionMetrics.mechanicalReuseOracleChecks =
+              Number(
+                mechanicalSessionMetrics.mechanicalReuseOracleChecks || 0,
+              ) + 1;
+          }
+          if (
+            !routeMatches ||
+            !projectedWorldMatches ||
+            !predictedEvidenceMatches
+          ) {
+            if (mechanicalSessionMetrics) {
+              mechanicalSessionMetrics.mechanicalReuseOracleMismatches =
+                Number(
+                  mechanicalSessionMetrics.mechanicalReuseOracleMismatches || 0,
+                ) + 1;
+            }
+            throw new Error([
+              'INCREMENTAL_FULL_HASH_MISMATCH',
+              'MECHANICAL_ROUTE',
+              currentUnitId,
+              candidateId,
+              routeMatches ? 'ROUTE_EQ' : 'ROUTE_NE',
+              projectedWorldMatches ? 'WORLD_EQ' : 'WORLD_NE',
+              predictedEvidenceMatches ? 'EVIDENCE_EQ' : 'EVIDENCE_NE',
+            ].join(':'));
+          }
+        }
+        storeSessionMechanicalRoute({
+          unitId: currentUnitId,
+          candidate,
+          route,
+          mechanicalSignature,
+          overlayDelta: r8BuildMechanicalOverlayDelta(
+            worldSnapshot,
+            previewResult,
+          ),
+          contributions: previewResult?.contributions || [],
+          predictedOutcomeEvidence:
+            currentUnitId === actorId &&
+            currentActorCandidateIds.has(candidateId)
+              ? actorPredictedOutcomeEvidence[candidateId]
+              : [],
+        });
         if (previousMechanical) {
           const rebuiltMechanical = r8RouteMechanicalSignatureCache.get(route);
           if (rebuiltMechanical?.signature === previousMechanical.signature) {
@@ -15514,6 +16352,7 @@
       .map(route => r8BehaviorCatalogIdentityCache.get(route))
       .find(Boolean);
     const canReuseBehaviorCatalog =
+      input?.enableBehaviorReuse !== false &&
       !!previousBehaviorCatalogIdentity &&
       previousBehaviorCatalogIdentity.identity ===
         currentBehaviorCatalogIdentity.identity &&
@@ -15541,7 +16380,7 @@
         catalog[unitId] = selectPrimaryBackupRoutes(reusedRoutes);
         reusedValuedUnitIds.add(unitId);
       });
-    } else {
+    } else if (input?.enableBehaviorReuse !== false) {
       Object.keys(fullRoutesByUnit).forEach(unitId => {
         const currentRoutes = fullRoutesByUnit[unitId] || [];
         const previousRoutes = previousFullRoutesByUnit?.[unitId] || [];
@@ -16216,29 +17055,146 @@
     const scheduledEvents = Array.isArray(projectedWorld?.__battlePreviewScheduledEvents)
       ? projectedWorld.__battlePreviewScheduledEvents
       : [];
-    const opportunities = Array.isArray(input?.opportunitySnapshot)
-      ? input.opportunitySnapshot
-      : Array.isArray(input?.opportunitySnapshot?.opportunities)
-        ? input.opportunitySnapshot.opportunities
-        : [];
-    const relevant = scheduledEvents.filter(event => {
-      if (String(event?.type || '').trim() !== 'DELAYED_STATE') return false;
-      if (String(event?.targetId || '').trim() !== String(targetId || '').trim()) return false;
-      const scheduledRound = Math.max(0, Number(event?.scheduledRound || 0));
-      return opportunities.some(opportunity =>
-        String(opportunity?.ownerId || '').trim() === String(targetId || '').trim() &&
-        !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
-          String(opportunity?.status || '').trim().toUpperCase(),
-        ) &&
-        Math.max(0, Number(
-          opportunity?.round ??
-          opportunity?.createdAtRound ??
-          opportunity?.scheduledRound ??
-          0
-        )) >= scheduledRound
-      );
+    const opportunities = r8FutureOpportunityRows({
+      worldSnapshot: projectedWorld,
+      actionOpportunity: input?.actionOpportunity,
+      opportunitySnapshot: input?.opportunitySnapshot,
+      scheduledEvents: [],
+    }).filter(opportunity =>
+      String(opportunity?.ownerId || '').trim() === String(targetId || '').trim()
+    );
+    const eventProfiles = scheduledEvents
+      .filter(event =>
+        String(event?.type || '').trim() === 'DELAYED_STATE' &&
+        String(event?.targetId || '').trim() === String(targetId || '').trim()
+      )
+      .map((event, index) => {
+        const scheduledRound = Math.max(0, Number(event?.scheduledRound || 0));
+        const duration = Math.max(1, Number(
+          event?.effect?.持续回合 ??
+          event?.effect?.duration ??
+          event?.duration ??
+          1,
+        ));
+        const expiresAtRound = scheduledRound + duration - 1;
+        const activeOpportunities = opportunities.filter(opportunity =>
+          opportunity.round >= scheduledRound &&
+          opportunity.round <= expiresAtRound
+        );
+        return {
+          event,
+          index,
+          scheduledRound,
+          duration,
+          expiresAtRound,
+          activeOpportunities,
+          unaffectedEarlierOpportunityIds: opportunities
+            .filter(opportunity => opportunity.round < scheduledRound)
+            .map(opportunity => opportunity.id),
+          expiredBeforeOpportunityIds: opportunities
+            .filter(opportunity => opportunity.round > expiresAtRound)
+            .map(opportunity => opportunity.id),
+        };
+      });
+    const activeProfiles = eventProfiles.filter(profile =>
+      profile.activeOpportunities.length > 0
+    );
+    const windowGroupsByOpportunityId = new Map();
+    activeProfiles.forEach(profile => {
+      profile.activeOpportunities.forEach(opportunity => {
+        const group = windowGroupsByOpportunityId.get(opportunity.id) || {
+          opportunity,
+          introducedProfiles: [],
+        };
+        group.introducedProfiles.push(profile);
+        windowGroupsByOpportunityId.set(opportunity.id, group);
+      });
     });
-    return relevant.reduce((world, event, index) => {
+    const scheduledWindowGroups = Object.freeze(
+      [...windowGroupsByOpportunityId.values()]
+        .sort((left, right) =>
+          left.opportunity.round - right.opportunity.round ||
+          left.opportunity.sequence - right.opportunity.sequence ||
+          left.opportunity.id.localeCompare(right.opportunity.id)
+        )
+        .map(group => Object.freeze({
+          opportunityId: String(group.opportunity?.id || '').trim(),
+          round: Number(group.opportunity?.round || 0),
+          sequence: Number(group.opportunity?.sequence || 0),
+          grantType: String(group.opportunity?.grantType || '').trim(),
+          affectedOpportunityIds: Object.freeze([
+            ...new Set(group.introducedProfiles.flatMap(profile =>
+              profile.activeOpportunities.map(opportunity => opportunity.id)
+            )),
+          ].sort()),
+          unaffectedEarlierOpportunityIds: Object.freeze([
+            ...new Set(group.introducedProfiles.flatMap(profile =>
+              profile.unaffectedEarlierOpportunityIds
+            )),
+          ].sort()),
+          expiredBeforeOpportunityIds: Object.freeze([
+            ...new Set(group.introducedProfiles.flatMap(profile =>
+              profile.expiredBeforeOpportunityIds
+            )),
+          ].sort()),
+          sourceEffectInstanceIds: Object.freeze(
+            group.introducedProfiles
+              .map(profile => String(
+                profile.event?.effectInstanceId || '',
+              ).trim())
+              .filter(Boolean)
+              .sort(),
+          ),
+        })),
+    );
+    const requestedOpportunityId = String(
+      input?.scheduledMaterializationOpportunityId || '',
+    ).trim();
+    const selectedWindow =
+      scheduledWindowGroups.find(window =>
+        window.opportunityId === requestedOpportunityId
+      ) ||
+      scheduledWindowGroups[0] ||
+      null;
+    const selectedOpportunity = selectedWindow
+      ? {
+          id: selectedWindow.opportunityId,
+          round: selectedWindow.round,
+          sequence: selectedWindow.sequence,
+          grantType: selectedWindow.grantType,
+        }
+      : null;
+    const materializedProfiles = selectedOpportunity
+      ? activeProfiles.filter(profile =>
+          profile.activeOpportunities.some(opportunity =>
+            opportunity.id === selectedOpportunity.id
+          )
+        )
+      : [];
+    const behaviorRealizationWindow = selectedWindow
+      ? selectedWindow
+      : eventProfiles.length
+        ? Object.freeze({
+            opportunityId: '',
+            round: 0,
+            sequence: 0,
+            grantType: '',
+            affectedOpportunityIds: Object.freeze([]),
+            unaffectedEarlierOpportunityIds: Object.freeze([
+              ...new Set(eventProfiles.flatMap(profile =>
+                profile.unaffectedEarlierOpportunityIds
+              )),
+            ].sort()),
+            expiredBeforeOpportunityIds: Object.freeze([
+              ...new Set(eventProfiles.flatMap(profile =>
+                profile.expiredBeforeOpportunityIds
+              )),
+            ].sort()),
+            sourceEffectInstanceIds: Object.freeze([]),
+          })
+      : null;
+    const worldSnapshot = materializedProfiles.reduce((world, profile) => {
+      const { event, index } = profile;
       const target = findUnitInWorld(world, targetId);
       if (!target || !preview.isBattleCapable(target)) return world;
       const sourceActor = findUnitInWorld(world, event?.actorId) || target;
@@ -16264,6 +17220,11 @@
         battleIntent: input?.battleIntent,
       }).afterSnapshot;
     }, projectedWorld);
+    return Object.freeze({
+      worldSnapshot,
+      behaviorRealizationWindow,
+      scheduledWindowGroups,
+    });
   }
 
   function r8FutureOpportunityRows(input = {}) {
@@ -20514,6 +21475,20 @@
       input?.envelopeSemanticCache instanceof Map
         ? input.envelopeSemanticCache
         : new Map();
+    const behaviorSessionStore =
+      input?.behaviorSessionStore instanceof Map
+        ? input.behaviorSessionStore
+        : null;
+    const behaviorSessionMetrics =
+      input?.behaviorSessionMetrics &&
+      typeof input.behaviorSessionMetrics === 'object'
+        ? input.behaviorSessionMetrics
+        : null;
+    const sessionBehaviorReuseEnabled =
+      input?.enableSessionBehaviorReuse === true &&
+      !!behaviorSessionStore;
+    const verifySessionBehaviorReuse =
+      input?.verifySessionBehaviorReuse === true;
     const mechanicalPreviewEvidenceCache =
       input?.envelopeMechanicalPreviewCache instanceof Map
         ? input.envelopeMechanicalPreviewCache
@@ -20684,10 +21659,44 @@
           routeDependencyValueSignature(beforeSnapshot, key) !==
           routeDependencyValueSignature(afterSnapshot, key)
         );
-    const rebuildEnvelope = (projectedWorld, projectedWorldRevision, targetId) => {
-      if (metrics) metrics.rebuildCount = Number(metrics.rebuildCount || 0) + 1;
-      incrementMetricMap(metrics?.rebuildByTargetId, targetId);
-      const scheduledWorld = r8MaterializeScheduledStateForEnvelope(projectedWorld, targetId, input);
+    const rebuildEnvelope = (
+      projectedWorld,
+      projectedWorldRevision,
+      targetId,
+      sourceCandidateId = '',
+      scheduledMaterializationOpportunityId = '',
+    ) => {
+      const scheduledState = r8MaterializeScheduledStateForEnvelope(
+        projectedWorld,
+        targetId,
+        {
+          ...input,
+          scheduledMaterializationOpportunityId,
+        },
+      );
+      const scheduledWorld = scheduledState.worldSnapshot;
+      const behaviorRealizationWindow =
+        scheduledState.behaviorRealizationWindow;
+      const envelopeActionOpportunity =
+        behaviorRealizationWindow?.opportunityId
+          ? Object.freeze({
+              ...actionOpportunity,
+              opportunityId: behaviorRealizationWindow.opportunityId,
+              grantId: behaviorRealizationWindow.opportunityId,
+              ownerId: targetId,
+              role: 'ACTIVE',
+              grantType:
+                behaviorRealizationWindow.grantType || 'NATURAL_ACTION',
+              round: behaviorRealizationWindow.round,
+              sequence: behaviorRealizationWindow.sequence,
+              createdAtSequence: behaviorRealizationWindow.sequence,
+              status: 'PROJECTED_EXECUTION',
+            })
+          : {
+              role: 'ACTIVE',
+              grantType: 'NATURAL_ACTION',
+              sequence: Number(actionOpportunity?.sequence || 0) + 1,
+            };
       const target = findUnitInWorld(scheduledWorld, targetId);
       if (
         !target ||
@@ -20695,6 +21704,10 @@
         !preview.isBattleCapable(target) ||
         !r8ProjectedSummonCanRealize(scheduledWorld, target, input.objectiveContract)
       ) {
+        if (metrics) {
+          metrics.rebuildCount = Number(metrics.rebuildCount || 0) + 1;
+        }
+        incrementMetricMap(metrics?.rebuildByTargetId, targetId);
         return Object.freeze({
           primaryRoute: null,
           backupRoute: null,
@@ -20709,11 +21722,7 @@
         actorSide: targetSide,
         beliefState: input.beliefState,
         battleIntent: input.battleIntent,
-        actionOpportunity: {
-          role: 'ACTIVE',
-          grantType: 'NATURAL_ACTION',
-          sequence: Number(actionOpportunity?.sequence || 0) + 1,
-        },
+        actionOpportunity: envelopeActionOpportunity,
       }).map(candidate => ({
         ...candidate,
         declarationFingerprint: declarationFingerprint(candidate.declaration),
@@ -20756,9 +21765,15 @@
         input?.objectiveContract || {},
       );
       const actionOpportunityIdentity = rebuildObjectIdentity({
-        round: Number(actionOpportunity?.round || 0),
-        sequence: Number(actionOpportunity?.sequence || 0),
-        grantType: String(actionOpportunity?.grantType || ''),
+        opportunityId: String(
+          envelopeActionOpportunity?.opportunityId ||
+          envelopeActionOpportunity?.grantId ||
+          '',
+        ),
+        round: Number(envelopeActionOpportunity?.round || 0),
+        sequence: Number(envelopeActionOpportunity?.sequence || 0),
+        grantType: String(envelopeActionOpportunity?.grantType || ''),
+        behaviorRealizationWindow,
       });
       const behaviorDependencySet = r8BehaviorEnvelopeDependencySet({
         worldSnapshot: scheduledWorld,
@@ -20776,9 +21791,220 @@
         beliefState: input?.beliefState || {},
         objectiveContract:
           input?.objectiveContract || scheduledWorld?.胜负条件 || {},
-        actionOpportunity,
+        actionOpportunity: envelopeActionOpportunity,
         semanticPhaseHash: envelopeSemanticPhaseHash,
       });
+      const collectBehaviorIdentityObservations =
+        metrics?.collectBehaviorIdentityObservations === true &&
+        Array.isArray(metrics?.behaviorIdentityObservations);
+      const candidateIdFingerprintRows = candidates
+        .map(candidate => [
+          String(candidate?.candidateId || '').trim(),
+          String(candidate?.declarationFingerprint || '').trim(),
+        ])
+        .sort((left, right) =>
+          `${left[0]}\u0000${left[1]}`.localeCompare(
+            `${right[0]}\u0000${right[1]}`,
+          )
+        );
+      const behaviorIdentityV2 = r8BehaviorEnvelopeIdentityV2({
+        behaviorDependencySet,
+        targetId,
+        actorIdentity,
+        candidateTargetIdentities,
+        candidateIdFingerprintRows,
+        rulesIdentity,
+        objectiveIdentity,
+        actionOpportunityIdentity,
+      });
+      const candidateFingerprintRows = collectBehaviorIdentityObservations
+        ? candidates
+            .map(candidate => String(
+              candidate?.declarationFingerprint || '',
+            ).trim())
+            .sort()
+        : null;
+      const unitRowsWithoutNaturalOpportunity =
+        collectBehaviorIdentityObservations
+          ? r8IdentityRows(
+              behaviorDependencySet.unitIds.map(unitIdValue => ({
+                unitId: unitIdValue,
+                unit: r8BehaviorIdentityUnitProjection(
+                  findUnitInWorld(scheduledWorld, unitIdValue),
+                  'WITHOUT_NATURAL_OPPORTUNITY',
+                ),
+              })),
+            )
+          : null;
+      const unitRowsWithoutRuntime =
+        collectBehaviorIdentityObservations
+          ? r8IdentityRows(
+              behaviorDependencySet.unitIds.map(unitIdValue => ({
+                unitId: unitIdValue,
+                unit: r8BehaviorIdentityUnitProjection(
+                  findUnitInWorld(scheduledWorld, unitIdValue),
+                  'WITHOUT_RUNTIME',
+                ),
+              })),
+            )
+          : null;
+      const opportunityDependenciesStructural =
+        collectBehaviorIdentityObservations
+          ? behaviorDependencySet.opportunityDependencies.map(entry =>
+              r8BehaviorIdentityOpportunityProjection(entry, false)
+            )
+          : null;
+      const opportunityRowsStructural = collectBehaviorIdentityObservations
+        ? behaviorDependencySet.opportunityRows.map(entry =>
+            r8BehaviorIdentityOpportunityProjection(entry, false)
+          )
+        : null;
+      const observationBase = collectBehaviorIdentityObservations
+        ? {
+            schemaVersion: 'BehaviorEnvelopeIdentityObservationV1',
+            observationIndex: metrics.behaviorIdentityObservations.length,
+            requestActorId: String(input?.actorId || '').trim(),
+            requestOpportunityId: String(
+              actionOpportunity?.opportunityId ||
+              actionOpportunity?.grantId ||
+              '',
+            ).trim(),
+            requestOpportunitySequence: Number(
+              actionOpportunity?.sequence || 0,
+            ),
+            sourceCandidateId: String(sourceCandidateId || '').trim(),
+            targetId: String(targetId || '').trim(),
+            candidateCount: candidates.length,
+            candidateFingerprintSetHash: preview.stableHash(
+              candidateFingerprintRows,
+            ),
+            candidateIdFingerprintSetHash: preview.stableHash(
+              candidateIdFingerprintRows,
+            ),
+            candidateTargetIdsHash: preview.stableHash(candidateTargetIds),
+            v1Identity: behaviorDependencySet.identity,
+            v1ComponentHashes: cloneValue(
+              behaviorDependencySet.componentHashes || {},
+            ),
+            rebuildComponentHashes: {
+              actorIdentity,
+              actorWithoutNaturalOpportunityIdentity:
+                preview.stableHash(r8BehaviorIdentityUnitProjection(
+                  target,
+                  'WITHOUT_NATURAL_OPPORTUNITY',
+                )),
+              actorWithoutRuntimeIdentity:
+                preview.stableHash(r8BehaviorIdentityUnitProjection(
+                  target,
+                  'WITHOUT_RUNTIME',
+                )),
+              candidateTargetIdentities:
+                preview.stableHash(candidateTargetIdentities),
+              candidateTargetsWithoutNaturalOpportunity:
+                preview.stableHash(candidateTargetIds.map(unitIdValue => [
+                  unitIdValue,
+                  r8BehaviorIdentityUnitProjection(
+                    findUnitInWorld(scheduledWorld, unitIdValue),
+                    'WITHOUT_NATURAL_OPPORTUNITY',
+                  ),
+                ])),
+              candidateTargetsWithoutRuntime:
+                preview.stableHash(candidateTargetIds.map(unitIdValue => [
+                  unitIdValue,
+                  r8BehaviorIdentityUnitProjection(
+                    findUnitInWorld(scheduledWorld, unitIdValue),
+                    'WITHOUT_RUNTIME',
+                  ),
+                ])),
+              rulesIdentity,
+              objectiveIdentity,
+              actionOpportunityIdentity,
+              actionOpportunityStructuralIdentity: preview.stableHash({
+                grantType: String(
+                  actionOpportunity?.grantType || '',
+                ).trim(),
+                role: String(actionOpportunity?.role || '').trim(),
+              }),
+            },
+            queueNeutralVariantHashes: {
+              unitRowsWithoutNaturalOpportunity:
+                preview.stableHash(unitRowsWithoutNaturalOpportunity),
+              unitRowsWithoutRuntime:
+                preview.stableHash(unitRowsWithoutRuntime),
+              opportunityDependenciesStructural:
+                preview.stableHash(opportunityDependenciesStructural),
+              opportunityRowsStructural:
+                preview.stableHash(opportunityRowsStructural),
+              candidateFingerprintSet:
+                preview.stableHash(candidateFingerprintRows),
+              candidateTargetsWithoutNaturalOpportunity:
+                preview.stableHash(candidateTargetIds.map(unitIdValue => [
+                  unitIdValue,
+                  r8BehaviorIdentityUnitProjection(
+                    findUnitInWorld(scheduledWorld, unitIdValue),
+                    'WITHOUT_NATURAL_OPPORTUNITY',
+                  ),
+                ])),
+              candidateTargetsWithoutRuntime:
+                preview.stableHash(candidateTargetIds.map(unitIdValue => [
+                  unitIdValue,
+                  r8BehaviorIdentityUnitProjection(
+                    findUnitInWorld(scheduledWorld, unitIdValue),
+                    'WITHOUT_RUNTIME',
+                  ),
+                ])),
+              actionOpportunityStructural:
+                preview.stableHash({
+                  grantType: String(
+                    actionOpportunity?.grantType || '',
+                  ).trim(),
+                  role: String(actionOpportunity?.role || '').trim(),
+                }),
+            },
+            unitRuntimeKeysByUnit: Object.fromEntries(
+              behaviorDependencySet.unitIds.map(unitIdValue => {
+                const unit = findUnitInWorld(scheduledWorld, unitIdValue);
+                return [
+                  unitIdValue,
+                  Object.keys(
+                    unit?.__battleRuntime &&
+                    typeof unit.__battleRuntime === 'object'
+                      ? unit.__battleRuntime
+                      : {},
+                  ).sort(),
+                ];
+              }),
+            ),
+            cacheHit: false,
+          }
+        : null;
+      const recordBehaviorIdentityObservation = (
+        envelope,
+        cacheHit = false,
+      ) => {
+        if (!observationBase) return;
+        const envelopeWithoutDependencyIdentity = {
+          ...(envelope || {}),
+          behaviorDependencyIdentity: '',
+        };
+        metrics.behaviorIdentityObservations.push(Object.freeze({
+          ...observationBase,
+          cacheHit,
+          finalEnvelopeExactHash: preview.stableHash(
+            envelopeWithoutDependencyIdentity,
+          ),
+          finalEnvelopeSemanticHash: preview.stableHash(
+            r8BehaviorEnvelopeSemanticValue(
+              envelopeWithoutDependencyIdentity,
+            ),
+          ),
+          finalEnvelopeUtilityHash: preview.stableHash(
+            r8BehaviorEnvelopeUtilityValue(
+              envelopeWithoutDependencyIdentity,
+            ),
+          ),
+        }));
+      };
       const rebuildCacheKey = behaviorDependencySet.identity + '\u0001' + [
         targetId,
         actorIdentity,
@@ -20791,19 +22017,55 @@
         objectiveIdentity,
         actionOpportunityIdentity,
       ].join('\u0001');
+      const cachedSessionEntry = sessionBehaviorReuseEnabled
+        ? behaviorSessionStore.get(behaviorIdentityV2.identity)
+        : null;
+      const cachedSessionEnvelope =
+        cachedSessionEntry?.kind === 'BEHAVIOR_ENVELOPE'
+          ? cachedSessionEntry.envelope
+          : null;
+      if (sessionBehaviorReuseEnabled && behaviorSessionMetrics) {
+        behaviorSessionMetrics.behaviorReuseAttempts =
+          Number(behaviorSessionMetrics.behaviorReuseAttempts || 0) + 1;
+      }
+      if (cachedSessionEnvelope && behaviorSessionMetrics) {
+        behaviorSessionMetrics.behaviorReuseHits =
+          Number(behaviorSessionMetrics.behaviorReuseHits || 0) + 1;
+      }
+      if (cachedSessionEnvelope && !verifySessionBehaviorReuse) {
+        const reboundEnvelope = Object.freeze({
+          ...cachedSessionEnvelope,
+          behaviorDependencyIdentity: behaviorDependencySet.identity,
+        });
+        rebuiltEnvelopeCache.set(rebuildCacheKey, reboundEnvelope);
+        recordBehaviorIdentityObservation(reboundEnvelope, true);
+        return reboundEnvelope;
+      }
+      if (
+        sessionBehaviorReuseEnabled &&
+        !cachedSessionEnvelope &&
+        behaviorSessionMetrics
+      ) {
+        behaviorSessionMetrics.behaviorReuseMisses =
+          Number(behaviorSessionMetrics.behaviorReuseMisses || 0) + 1;
+      }
       if (rebuiltEnvelopeCache.has(rebuildCacheKey)) {
         decisionMetrics.envelopeSemanticCacheHits += 1;
         if (metrics) {
           metrics.envelopeSemanticCacheHits =
             Number(metrics.envelopeSemanticCacheHits || 0) + 1;
         }
-        return rebuiltEnvelopeCache.get(rebuildCacheKey);
+        const cachedEnvelope = rebuiltEnvelopeCache.get(rebuildCacheKey);
+        recordBehaviorIdentityObservation(cachedEnvelope, true);
+        return cachedEnvelope;
       }
       decisionMetrics.envelopeSemanticCacheMisses += 1;
       if (metrics) {
         metrics.envelopeSemanticCacheMisses =
           Number(metrics.envelopeSemanticCacheMisses || 0) + 1;
+        metrics.rebuildCount = Number(metrics.rebuildCount || 0) + 1;
       }
+      incrementMetricMap(metrics?.rebuildByTargetId, targetId);
       const routes = candidates.map(candidate => {
         const baseRoute = baseRoutes.get(candidate.candidateId);
         const declarationMatches = !!baseRoute &&
@@ -21119,8 +22381,61 @@
         ...selectPrimaryBackupRoutes(routes),
         fullRoutes: Object.freeze(routes),
         behaviorDependencyIdentity: behaviorDependencySet.identity,
+        ...(behaviorRealizationWindow
+          ? { behaviorRealizationWindow }
+          : {}),
+        ...(scheduledState.scheduledWindowGroups?.length
+          ? {
+              scheduledWindowGroups:
+                scheduledState.scheduledWindowGroups,
+            }
+          : {}),
       });
+      if (cachedSessionEnvelope && verifySessionBehaviorReuse) {
+        if (behaviorSessionMetrics) {
+          behaviorSessionMetrics.behaviorReuseOracleChecks =
+            Number(
+              behaviorSessionMetrics.behaviorReuseOracleChecks || 0,
+            ) + 1;
+        }
+        if (
+          r8BehaviorEnvelopeExactHash(cachedSessionEnvelope) !==
+          r8BehaviorEnvelopeExactHash(rebuiltEnvelope)
+        ) {
+          if (behaviorSessionMetrics) {
+            behaviorSessionMetrics.behaviorReuseOracleMismatches =
+              Number(
+                behaviorSessionMetrics.behaviorReuseOracleMismatches || 0,
+              ) + 1;
+          }
+          throw new Error([
+            'INCREMENTAL_FULL_HASH_MISMATCH',
+            'BEHAVIOR_ENVELOPE',
+            targetId,
+            behaviorIdentityV2.identity,
+          ].join(':'));
+        }
+      }
+      if (behaviorSessionStore) {
+        behaviorSessionStore.set(behaviorIdentityV2.identity, Object.freeze({
+          schemaVersion: 'BehaviorEnvelopeIdentityV2',
+          kind: 'BEHAVIOR_ENVELOPE',
+          identity: behaviorIdentityV2.identity,
+          targetId: String(targetId || '').trim(),
+          envelope: Object.freeze({
+            ...rebuiltEnvelope,
+            behaviorDependencyIdentity: '',
+          }),
+        }));
+        if (behaviorSessionMetrics) {
+          behaviorSessionMetrics.behaviorEnvelopesStored =
+            Number(
+              behaviorSessionMetrics.behaviorEnvelopesStored || 0,
+            ) + 1;
+        }
+      }
       rebuiltEnvelopeCache.set(rebuildCacheKey, rebuiltEnvelope);
+      recordBehaviorIdentityObservation(rebuiltEnvelope, false);
       return rebuiltEnvelope;
     };
     for (const [candidateId, route] of Object.entries(candidateRoutes)) {
@@ -21378,7 +22693,8 @@
         ...pressureOnlyHealthIds,
         ...capabilityOnlyHealthIds,
       ])];
-      result[candidateId] = Object.freeze(evaluatedIds.map(targetId => {
+      const scheduledWindowGroupsByTarget = new Map();
+      const envelopeRows = evaluatedIds.map(targetId => {
         const target = findUnitInWorld(projectedWorld, targetId) || findUnitInWorld(worldSnapshot, targetId);
         const targetSide = target ? sideOf(projectedWorld, target) || sideOf(worldSnapshot, target) : '';
         const beforeEnvelope = routeCatalog[targetId] || {};
@@ -21392,7 +22708,18 @@
           !(sourceEffectsByAffectedId.get(targetId) || []).length;
         const afterEnvelope = pressureOnly || capabilityOnly
           ? beforeEnvelope
-          : rebuildEnvelope(projectedWorld, projectedWorldRevision, targetId);
+          : rebuildEnvelope(
+              projectedWorld,
+              projectedWorldRevision,
+              targetId,
+              candidateId,
+            );
+        if (afterEnvelope?.scheduledWindowGroups?.length) {
+          scheduledWindowGroupsByTarget.set(
+            targetId,
+            afterEnvelope.scheduledWindowGroups,
+          );
+        }
         let beforePP = Math.max(0, routeSelectionBenefit(beforeEnvelope?.primaryRoute));
         let afterPP = Math.max(0, routeSelectionBenefit(afterEnvelope?.primaryRoute));
         const ownTarget = String(targetSide) === actorSide;
@@ -21495,9 +22822,20 @@
           ...(beforeEnvelope?.primaryRoute?.targetIds || []),
           ...(afterEnvelope?.primaryRoute?.targetIds || []),
         ].map(value => String(value || '').trim()).filter(Boolean));
+        const scheduledSourceEffectIds = new Set(
+          afterEnvelope?.behaviorRealizationWindow?.sourceEffectInstanceIds ||
+          [],
+        );
         const relevantSourceEffects = (sourceEffectsByAffectedId.get(targetId) || [])
           .filter(source => source.impactMode !== 'INCOMING_ROUTE' ||
             routeTargetIds.has(String(source.effect?.targetId || '').trim())
+          )
+          .filter(source =>
+            String(source?.effect?.outcomeKind || '').trim() !==
+              'STATE_SCHEDULED' ||
+            scheduledSourceEffectIds.has(
+              String(source?.effect?.effectInstanceId || '').trim(),
+            )
           );
         const hasResourceSourceEffect = relevantSourceEffects.some(source =>
           String(source?.effect?.outcomeKind || '').trim() ===
@@ -21842,10 +23180,83 @@
           searchedRouteCount: Number(afterEnvelope?.searchedRouteCount || 0),
           pressureOnly,
           capabilityOnly,
+          ...(afterEnvelope?.behaviorRealizationWindow
+            ? {
+                behaviorRealizationWindow:
+                  afterEnvelope.behaviorRealizationWindow,
+              }
+            : {}),
           sourceEffectKeys: Object.freeze([...new Set(sourceEffectKeys)].sort()),
           sourceHealthFactKeys: Object.freeze([...new Set(sourceHealthFactKeys)].sort()),
         });
-      }));
+      });
+      const laterScheduledWindowRows = [...scheduledWindowGroupsByTarget.entries()]
+        .flatMap(([targetId, windows]) => {
+          if (!Array.isArray(windows) || windows.length < 2) return [];
+          const target = findUnitInWorld(projectedWorld, targetId) ||
+            findUnitInWorld(worldSnapshot, targetId);
+          if (!target) return [];
+          const ownTarget = String(sideOf(projectedWorld, target)) === actorSide;
+          const sourceRows = sourceEffectsByAffectedId.get(targetId) || [];
+          return windows.slice(1).map(window => {
+            const afterEnvelope = rebuildEnvelope(
+              projectedWorld,
+              projectedWorldRevision,
+              targetId,
+              candidateId,
+              window.opportunityId,
+            );
+            const beforePP = Math.max(
+              0,
+              routeSelectionBenefit(
+                (routeCatalog[targetId] || {})?.primaryRoute,
+              ),
+            );
+            const afterPP = Math.max(
+              0,
+              routeSelectionBenefit(afterEnvelope?.primaryRoute),
+            );
+            const sourceEffectKeys = sourceRows
+              .filter(source =>
+                String(source?.effect?.outcomeKind || '').trim() ===
+                  'STATE_SCHEDULED' &&
+                window.sourceEffectInstanceIds.includes(
+                  String(source?.effect?.effectInstanceId || '').trim(),
+                )
+              )
+              .map(source => source.effectKey)
+              .filter(Boolean);
+            return Object.freeze({
+              targetId,
+              beforeRouteKey: String(
+                routeCatalog[targetId]?.primaryRoute?.routeKey || '',
+              ),
+              afterRouteKey: String(
+                afterEnvelope?.primaryRoute?.routeKey || '',
+              ),
+              beforePP,
+              afterPP,
+              healthTrajectoryDeltaPP: ownTarget
+                ? afterPP - beforePP
+                : beforePP - afterPP,
+              searchedRouteCount: Number(
+                afterEnvelope?.searchedRouteCount || 0,
+              ),
+              pressureOnly: false,
+              capabilityOnly: false,
+              behaviorRealizationWindow:
+                afterEnvelope?.behaviorRealizationWindow || window,
+              sourceEffectKeys: Object.freeze(
+                [...new Set(sourceEffectKeys)].sort(),
+              ),
+              sourceHealthFactKeys: Object.freeze([]),
+            });
+          });
+        });
+      result[candidateId] = Object.freeze([
+        ...envelopeRows,
+        ...laterScheduledWindowRows,
+      ]);
     }
     return deepFreeze(result);
   }
@@ -21998,6 +23409,12 @@
             envelopeMechanicalRouteCache:
               input?.envelopeMechanicalRouteCache,
             resourceBaselinePlanCache: input?.resourceBaselinePlanCache,
+            behaviorSessionStore: input?.behaviorSessionStore,
+            behaviorSessionMetrics: input?.behaviorSessionMetrics,
+            enableSessionBehaviorReuse:
+              input?.enableSessionBehaviorReuse === true,
+            verifySessionBehaviorReuse:
+              input?.verifySessionBehaviorReuse === true,
           })
         : {};
       intrinsicEnvelopeDeltasByUnit[unitId] = candidateEnvelopeDeltas;
@@ -22304,6 +23721,12 @@
         input?.objectiveContract || worldSnapshot?.胜负条件 || {},
       objectiveCompactMode: input?.objectiveCompactMode || 'FAST',
       metrics,
+      behaviorSessionStore: input?.behaviorSessionStore,
+      behaviorSessionMetrics: input?.behaviorSessionMetrics,
+      enableSessionBehaviorReuse:
+        input?.enableSessionBehaviorReuse === true,
+      verifySessionBehaviorReuse:
+        input?.verifySessionBehaviorReuse === true,
     };
     const intrinsicEnvelopeDeltasByUnit = {};
     const intrinsicFullRoutesByUnit = {};
@@ -23374,13 +24797,12 @@
     }
     const unitStates =
       initialUnitStates || r8TerminalInitialUnitStates(world);
-    const signature = JSON.stringify({
-      round: Number(world?.回合 || 0),
-      units: relevantUnitIds.map(unitId => [
-        unitId,
-        unitStates[unitId] || null,
-      ]),
-    });
+    const signature = JSON.stringify(r8TerminalWorldIdentityProjection(
+      world,
+      relevantUnitIds,
+      unitStates,
+      'EXACT',
+    ));
     const dependencyHash =
       `terminal-world:${preview.stableHash(signature)}`;
     decisionMetrics.terminalDependencyUnitCount += relevantUnitIds.length;
@@ -23392,6 +24814,140 @@
       byDependency.set(dependencyKey, dependencyHash);
     }
     return dependencyHash;
+  }
+
+  function r8TerminalWorldIdentityProjection(
+    world = {},
+    relevantUnitIds = [],
+    unitStates = {},
+    staminaMode = 'EXACT',
+    actionStateMode = 'EXACT',
+  ) {
+    return Object.freeze({
+      round: Number(world?.回合 || 0),
+      units: relevantUnitIds.map(unitId => {
+        const state = unitStates?.[unitId] || null;
+        if (!state) return [unitId, null];
+        const row = {
+          hp: Number(state.hp || 0),
+          baseMaxHp: Number(state.baseMaxHp || 0),
+          alive: state.alive === true,
+          capable: state.capable === true,
+          actionState: String(state.actionState || '').trim(),
+          stamina: Number(state.stamina || 0),
+        };
+        if (staminaMode === 'CAPABILITY_CLASS') {
+          row.stamina = row.stamina > 0 ? 'POSITIVE' : 'NON_POSITIVE';
+        } else if (staminaMode === 'OMIT') {
+          delete row.stamina;
+        }
+        if (actionStateMode === 'OMIT') delete row.actionState;
+        return [unitId, row];
+      }),
+    });
+  }
+
+  function r8TerminalDistributionResultHash(distribution = {}) {
+    return preview.stableHash({
+      terminal: distribution?.terminal === true,
+      status: String(distribution?.status || '').trim(),
+      utility: distribution?.utility == null
+        ? null
+        : Number(distribution.utility),
+      terminalProbability: Number(distribution?.terminalProbability || 0),
+      winProbability: Number(distribution?.winProbability || 0),
+      lossProbability: Number(distribution?.lossProbability || 0),
+      drawProbability: Number(distribution?.drawProbability || 0),
+      ongoingProbability: Number(distribution?.ongoingProbability || 0),
+      expectedTerminalUtility: Number(
+        distribution?.expectedTerminalUtility || 0,
+      ),
+      expectedOngoingTrajectoryUtility: Number(
+        distribution?.expectedOngoingTrajectoryUtility || 0,
+      ),
+      expectedDiscardedOverkillPP: Number(
+        distribution?.expectedDiscardedOverkillPP || 0,
+      ),
+      terminalPathSlots: distribution?.terminalPathSlots || [],
+    });
+  }
+
+  function r8RecordTerminalIdentityObservation({
+    world = {},
+    initialUnitStates = {},
+    relevantUnitIds = [],
+    objectiveContext = {},
+    actorSide = '',
+    objectiveCompactMode = 'FAST',
+    terminalProjectionMode = 'SUMMARY',
+    routeMechanicalSignature = '',
+    utilityMechanicalSignature = '',
+    terminalWorldDependencyHash = '',
+    terminalCallOrigin = '',
+    distribution = {},
+  } = {}) {
+    if (
+      globalThis?.process?.env
+        ?.BATTLE_R8_COLLECT_TERMINAL_IDENTITY_OBSERVATIONS !== '1' ||
+      r8TerminalIdentityObservations.length >=
+        MAX_R8_TERMINAL_IDENTITY_OBSERVATIONS
+    ) {
+      return;
+    }
+    const identity = {
+      objectiveSemanticHash: String(
+        objectiveContext?.objectiveSemanticHash || '',
+      ).trim(),
+      actorSide: String(actorSide || '').trim(),
+      objectiveCompactMode: String(objectiveCompactMode || 'FAST')
+        .trim()
+        .toUpperCase(),
+      terminalProjectionMode: String(terminalProjectionMode || 'SUMMARY')
+        .trim()
+        .toUpperCase(),
+      routeMechanicalSignature: String(routeMechanicalSignature || '').trim(),
+      utilityMechanicalSignature: String(utilityMechanicalSignature || '').trim(),
+    };
+    const terminalWorldIdentity = mode => preview.stableHash(
+      r8TerminalWorldIdentityProjection(
+        world,
+        relevantUnitIds,
+        initialUnitStates,
+        mode,
+      ),
+    );
+    r8TerminalIdentityObservations.push(Object.freeze({
+      schemaVersion: 'TerminalIdentityObservationV1',
+      terminalCallOrigin: String(terminalCallOrigin || '').trim(),
+      ...identity,
+      exactTerminalWorldHash: String(terminalWorldDependencyHash || '').trim(),
+      capabilityClassTerminalWorldHash:
+        `terminal-world:${terminalWorldIdentity('CAPABILITY_CLASS')}`,
+      withoutStaminaTerminalWorldHash:
+        `terminal-world:${terminalWorldIdentity('OMIT')}`,
+      withoutActionStateTerminalWorldHash:
+        `terminal-world:${preview.stableHash(
+          r8TerminalWorldIdentityProjection(
+            world,
+            relevantUnitIds,
+            initialUnitStates,
+            'EXACT',
+            'OMIT',
+          ),
+        )}`,
+      resultHash: r8TerminalDistributionResultHash(distribution),
+      terminal: distribution?.terminal === true,
+      status: String(distribution?.status || '').trim(),
+      expectedTerminalUtility: Number(
+        distribution?.expectedTerminalUtility || 0,
+      ),
+      expectedOngoingTrajectoryUtility: Number(
+        distribution?.expectedOngoingTrajectoryUtility || 0,
+      ),
+      expectedDiscardedOverkillPP: Number(
+        distribution?.expectedDiscardedOverkillPP || 0,
+      ),
+    }));
   }
 
   function r8TerminalRouteSignature(route = {}) {
@@ -23963,6 +25519,30 @@
         },
         atomicGroups,
       );
+      if (
+        globalThis?.process?.env
+          ?.BATTLE_R8_COLLECT_TERMINAL_IDENTITY_OBSERVATIONS === '1'
+      ) {
+        r8RecordTerminalIdentityObservation({
+          world: initialWorld,
+          initialUnitStates,
+          relevantUnitIds: r8TerminalRelevantUnitIds(
+            request,
+            objectiveContext,
+            route,
+            utilityRoute,
+          ),
+          objectiveContext,
+          actorSide: request?.actorSide,
+          objectiveCompactMode: request?.objectiveCompactMode,
+          terminalProjectionMode,
+          routeMechanicalSignature,
+          utilityMechanicalSignature,
+          terminalWorldDependencyHash,
+          terminalCallOrigin,
+          distribution,
+        });
+      }
       if (semanticCacheKey) {
         r8TerminalMechanicalDistributionCache.set(
           semanticCacheKey,
@@ -25699,6 +27279,11 @@
           .filter(({ entry, index }) =>
           Math.abs(Number(remainingEnvelopeDelta.get(index) || 0)) > 1e-9 &&
           (
+            !entry?.behaviorRealizationWindow ||
+            (entry.behaviorRealizationWindow?.affectedOpportunityIds || [])
+              .length > 0
+          ) &&
+          (
             (
               (!Array.isArray(entry?.sourceEffectKeys) || !entry.sourceEffectKeys.length) &&
               (!Array.isArray(entry?.sourceHealthFactKeys) || !entry.sourceHealthFactKeys.length)
@@ -25869,6 +27454,11 @@
       if (
         Math.abs(deltaPP) <= 1e-9 ||
         !sourceFactIds.length ||
+        (
+          entry?.behaviorRealizationWindow &&
+          !(entry.behaviorRealizationWindow?.affectedOpportunityIds || [])
+            .length
+        ) ||
         !r8UnitHasFutureOpportunity(request, entry?.targetId)
       ) {
         return;
@@ -27609,6 +29199,10 @@
       ownershipGapCount: 0,
       ownershipGapCounts: {},
       ownershipGapByCandidateTarget: {},
+      collectBehaviorIdentityObservations:
+        input?.collectBehaviorIdentityObservations === true,
+      behaviorIdentityObservations:
+        input?.collectBehaviorIdentityObservations === true ? [] : null,
     };
     const requestComputationCache =
       input?.previousComputationCache &&
@@ -27687,6 +29281,34 @@
             requestComputationCache.envelopeMechanicalRouteCache,
           resourceBaselinePlanCache:
             requestComputationCache.resourceBaselinePlanCache,
+          behaviorSessionStore:
+            sessionState &&
+            input?.disableSessionBehaviorReuse !== true
+              ? sessionState.behaviorEnvelopeStore
+              : null,
+          behaviorSessionMetrics: sessionState?.metrics || null,
+          enableSessionBehaviorReuse:
+            !!sessionState &&
+            input?.disableSessionBehaviorReuse !== true,
+          verifySessionBehaviorReuse:
+            input?.verifySessionBehaviorReuse === true,
+          mechanicalSessionStore:
+            sessionState &&
+            input?.disableSessionMechanicalReuse !== true
+              ? sessionState.operationGraphStore
+              : null,
+          mechanicalSessionMetrics: sessionState?.metrics || null,
+          dirtySessionMechanicalRouteSlots: sessionState
+            ? new Set(sessionState.dirtyMechanicalRouteSlots)
+            : new Set(),
+          enableSessionMechanicalReuse:
+            !!sessionState &&
+            input?.disableSessionMechanicalReuse !== true,
+          verifySessionMechanicalReuse:
+            input?.verifySessionMechanicalReuse === true,
+          enableBehaviorReuse:
+            !sessionState ||
+            input?.disableSessionMechanicalReuse === true,
           forceFullBehaviorRouteValuation:
             input?.forceFullBehaviorRouteValuation === true,
         });
@@ -27729,6 +29351,17 @@
               requestComputationCache.envelopeMechanicalRouteCache,
             resourceBaselinePlanCache:
               requestComputationCache.resourceBaselinePlanCache,
+            behaviorSessionStore:
+              sessionState &&
+              input?.disableSessionBehaviorReuse !== true
+                ? sessionState.behaviorEnvelopeStore
+                : null,
+            behaviorSessionMetrics: sessionState?.metrics || null,
+            enableSessionBehaviorReuse:
+              !!sessionState &&
+              input?.disableSessionBehaviorReuse !== true,
+            verifySessionBehaviorReuse:
+              input?.verifySessionBehaviorReuse === true,
           });
     const mechanicObservationsByCandidate = candidatesOnly
       ? {}
@@ -27757,6 +29390,21 @@
             ),
           ];
         }));
+    const behaviorLayerSemanticHashes =
+      input?.collectBehaviorLayerHashes !== true
+        ? null
+        : candidatesOnly
+      ? Object.freeze({
+          schemaVersion: 'BehaviorLayerSemanticHashesV1',
+          candidateEnvelopeDeltasHash: '',
+          valuedFullRoutesHash: '',
+          behaviorEnvelopesHash: '',
+          primaryBackupRoutesHash: '',
+        })
+      : r8BehaviorLayerSemanticHashes(
+          routeAnalysis,
+          candidateEnvelopeDeltas,
+        );
     const requestPayload = {
       schemaVersion: R8_REQUEST_SCHEMA,
       actorId,
@@ -27890,6 +29538,13 @@
         objectiveHash: evaluationContext.objectiveHash,
       },
     );
+    if (sessionState) {
+      r8MarkSessionMechanicalRouteScope(
+        sessionState,
+        routeAnalysis.fullRoutesByUnit || {},
+        routeFactOwnershipIndex,
+      );
+    }
     const ownershipImpact = sessionState
       ? recordEvaluationSessionOwnership(
           sessionState,
@@ -27924,6 +29579,8 @@
         routeAnalysis.actorPredictedOutcomeEvidence || Object.freeze({}),
       actorCandidateEnvelopeDeltas:
         candidateEnvelopeDeltas || Object.freeze({}),
+      behaviorLayerSemanticHashes:
+        behaviorLayerSemanticHashes || Object.freeze({}),
     }));
     if (sessionState) {
       recordEvaluationSessionRequest(sessionState, {
@@ -28154,6 +29811,9 @@
     r8ObjectiveGroups,
     r8ThresholdOverkill,
     r8TerminalUtility,
+    readTerminalIdentityObservations: () => Object.freeze([
+      ...r8TerminalIdentityObservations,
+    ]),
     r8UnitHasFutureOpportunity,
     r8ActionPoolDeltas,
     projectR8GoalUtility,

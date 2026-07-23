@@ -6943,9 +6943,9 @@
           ? `\n[抵达后意图]\n玩家刚才点击的是【${followUpLabel}】。本轮只完成移动与到达描写；不要直接结算交易、工坊、商店购买或战斗胜负，抵达后由玩家再次发起对应模块。若抵达时已超过商店营业时间，剧情中只写到店铺关门。`
           : '';
         const targetTerrainLine = targetTerrainBrief ? `目标地形：${targetTerrainBrief}` : '';
-        const logMsg = `[系统仲裁] 地图移动已由前端直接结算并写回 MVU。玩家${移动动作}，经过 ${request.est_duration} 的跋涉，现已抵达新地点：【${移动显示目标}】。${targetTerrainLine ? `\n${targetTerrainLine}` : ''}`;
-        const sysPrompt = `[前端仲裁器说明]\n以下内容为系统后台已完成结算的仲裁结果，系统已自动扣除了相应的金钱、体力与时间。\n请仅将以下仲裁结论转写成自然剧情，描写路途见闻、到达环境与角色反应即可。不要输出 UpdateVariable，不要再次改写位置、坐标、时间或资源消耗。\n\n${logMsg}${followUpLine}`;
-        dispatchMapAiRequest(`[启程前往] ${移动动作}前往【${移动显示目标}】${targetTerrainBrief ? ` · 地形：${targetTerrainBrief}` : ''}`, sysPrompt, { requestKind: 'map_travel_settled' });
+        const logMsg = `[系统仲裁] 地图移动已由前端结算位置与资源结果。玩家${移动动作}，预计经过 ${request.est_duration} 的跋涉，现已抵达新地点：【${移动显示目标}】。${targetTerrainLine ? `\n${targetTerrainLine}` : ''}`;
+        const sysPrompt = `[前端仲裁器说明]\n以下内容为系统后台已完成位置、坐标与资源消耗结算的仲裁结果；移动耗时仅作为本轮时间裁定的输入，世界时间由剧情推进任务统一结算。\n请仅将以下仲裁结论转写成自然剧情，描写路途见闻、到达环境与角色反应即可。不要输出 UpdateVariable，不要再次改写位置、坐标或资源消耗。\n\n${logMsg}${followUpLine}`;
+        dispatchMapAiRequest(`[启程前往] ${移动动作}前往【${移动显示目标}】，预计耗时${request.est_duration}${targetTerrainBrief ? ` · 地形：${targetTerrainBrief}` : ''}`, sysPrompt, { requestKind: 'map_travel_settled' });
       } catch (e) {
         console.error('Settle map travel failed:', e);
         mapState.lastTravelNote = `[地图移动失败] ${e && e.message ? e.message : '移动结算失败'}`;
@@ -7128,7 +7128,7 @@
 
 ${logMsg}
 
-本次行动收益、时间推进与系统播报已由前端结算写回。请结合当前设施、在场角色与地点功能，自然写出这次行动的过程、收获与后续推进；若当前节点并不适合该动作，也请在剧情里明确说明阻碍原因。正文不要输出变量维护指令或系统术语。`;
+本次行动收益与系统播报已由前端预结算写回，行动耗时仅用于本轮时间裁定。请结合当前设施、在场角色与地点功能，自然写出这次行动的过程、收获与后续推进；若当前节点并不适合该动作，也请在剧情里明确说明阻碍原因。正文不要输出变量维护指令或系统术语。`;
 
         dispatchMapAiRequest(playerInput, sysPrompt, { requestKind: `map_action_${action}`, patchOps, settlementKind: 'routine' });
       } catch (e) {

@@ -11405,6 +11405,87 @@
     return 键;
   }
 
+  function 暂存任务时间推进_桥接(时间推进上下文 = {}, options = {}) {
+    const 增量tick = Number(时间推进上下文?.tick增量);
+    const 旧tick = Number(时间推进上下文?.旧tick);
+    if (!Number.isFinite(增量tick) || 增量tick <= 0 || !Number.isFinite(旧tick) || 旧tick < 0) {
+      return { ok: false, reason: 'time_advance_context_invalid' };
+    }
+    const 新tick = Number((旧tick + 增量tick).toFixed(2));
+    const 时间补丁 = [
+      { op: 'replace', path: '/world/时间/tick', value: 新tick },
+      { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(新tick) },
+    ];
+    const 已有事务 = 查找剧情模块预结算记录_桥接(options);
+    if (已有事务) {
+      if (Number(已有事务.任务时间推进tick) === 新tick) return { ok: true, reused: true, unchanged: true, 新tick };
+      const 结算根 = cloneJsonValue(已有事务.settledStatData, {});
+      if (!结算根.world || typeof 结算根.world !== 'object') 结算根.world = {};
+      if (!结算根.world.时间 || typeof 结算根.world.时间 !== 'object') 结算根.world.时间 = {};
+      结算根.world.时间.tick = 新tick;
+      结算根.world.时间._calendar = formatTickToCalendarDateText(新tick);
+      已有事务.settledStatData = 结算根;
+      已有事务.settledPaths = Array.from(
+        new Map(
+          [...已有事务.settledPaths, ['world', '时间', 'tick'], ['world', '时间', '_calendar']]
+            .map(normalizeEditorPath)
+            .filter(path => path.length)
+            .map(path => [JSON.stringify(path), path]),
+        ).values(),
+      );
+      const 写后MVU数据 = cloneJsonValue(已有事务.写后MVU数据, {});
+      const 写后根 = resolveRootData(写后MVU数据);
+      if (!写后根) return { ok: false, reason: 'time_advance_staging_root_missing' };
+      if (!写后根.world || typeof 写后根.world !== 'object') 写后根.world = {};
+      if (!写后根.world.时间 || typeof 写后根.world.时间 !== 'object') 写后根.world.时间 = {};
+      写后根.world.时间.tick = 新tick;
+      写后根.world.时间._calendar = formatTickToCalendarDateText(新tick);
+      已有事务.写后MVU数据 = 写后MVU数据;
+      已有事务.写后记录 = 构建路径回滚记录自路径列表(结算根, 已有事务.settledPaths);
+      已有事务.patchOps = [...已有事务.patchOps, ...时间补丁];
+      已有事务.任务时间推进tick = 新tick;
+      return { ok: true, reused: true, 新tick };
+    }
+    const 旧AI元信息 = 查找当前最后AI楼层元信息_桥接();
+    if (!旧AI元信息) return { ok: false, reason: 'time_advance_previous_ai_missing' };
+    const 基底MVU数据 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 旧AI元信息.消息编号 });
+    const 基底根 = resolveRootData(基底MVU数据);
+    if (!基底根) return { ok: false, reason: 'time_advance_base_root_missing' };
+    const 结算根 = cloneJsonValue(基底根, {});
+    if (!结算根.world || typeof 结算根.world !== 'object') 结算根.world = {};
+    if (!结算根.world.时间 || typeof 结算根.world.时间 !== 'object') 结算根.world.时间 = {};
+    结算根.world.时间.tick = 新tick;
+    结算根.world.时间._calendar = formatTickToCalendarDateText(新tick);
+    const 写后MVU数据 = cloneJsonValue(基底MVU数据, {});
+    const 写后根 = resolveRootData(写后MVU数据);
+    if (!写后根.world || typeof 写后根.world !== 'object') 写后根.world = {};
+    if (!写后根.world.时间 || typeof 写后根.world.时间 !== 'object') 写后根.world.时间 = {};
+    写后根.world.时间.tick = 新tick;
+    写后根.world.时间._calendar = formatTickToCalendarDateText(新tick);
+    const 时间路径 = [['world', '时间', 'tick'], ['world', '时间', '_calendar']];
+    const 记录键 = 登记剧情模块预结算事务_桥接({
+      requestKind: 'time_advance',
+      旧AI消息编号: 旧AI元信息.消息编号,
+      旧AI消息索引: 旧AI元信息.消息索引,
+      旧AI滑动编号: 旧AI元信息.滑动编号,
+      旧AI文本签名: 旧AI元信息.文本签名,
+      回滚记录: 构建路径回滚记录自路径列表(基底根, 时间路径),
+      写后记录: 构建路径回滚记录自路径列表(结算根, 时间路径),
+      写后MVU数据,
+      baseStatData: 基底根,
+      settledStatData: 结算根,
+      settledPaths: 时间路径,
+      patchOps: 时间补丁,
+      用户输入文本: toText(options.userInput || options.用户输入文本, ''),
+      用户输入签名: toText(options.userInputSignature || options.用户输入签名, '') || 构建剧情模块用户输入签名(options.userInput || options.用户输入文本),
+      路由块哈希: toText(options.routeHash || options.路由块哈希, ''),
+      规划文本哈希: toText(options.planningHash || options.规划文本哈希, ''),
+      路由签名: 读取剧情模块路由签名_桥接(options),
+      任务时间推进tick: 新tick,
+    });
+    return 记录键 ? { ok: true, reused: false, 新tick } : { ok: false, reason: 'time_advance_transaction_register_failed' };
+  }
+
   function 登记剧情模块预结算事务自写入_桥接(options = {}, beforeStatData = {}, afterStatData = {}, writeAfterMvuData = {}) {
     if (!是剧情模块预结算写入(options)) return '';
     const 旧AI元信息 = 查找当前最后AI楼层元信息_桥接();
@@ -47488,6 +47569,11 @@ ${播报文本}
     return '';
   }
 
+  function 读取任务时间推进tick_桥接(options = {}) {
+    const tick增量 = Number(options?.时间推进上下文?.tick增量);
+    return Number.isFinite(tick增量) && tick增量 > 0 ? tick增量 : 0;
+  }
+
   function 读取移动请求文本(payload = {}, 字段列表 = [], 回退值 = '') {
     for (const 字段 of 字段列表) {
       if (payload && payload[字段] !== undefined && payload[字段] !== null && payload[字段] !== '') {
@@ -47854,8 +47940,6 @@ ${播报文本}
     const activePath = escapeJsonPointerValue(request.charKey);
     const targetPath = escapeJsonPointerValue(目标短名);
     const finalLocName = 构建移动绝对位置(snapshot, 目标短名, 父级.name);
-    const 当前tick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
-    const 下一tick = Number((当前tick + request.耗时tick).toFixed(2));
     const 未解析文本 = Array.isArray(request.未解析角色) && request.未解析角色.length ? `；未解析同行角色：${request.未解析角色.join('、')}` : '';
     const patchOps = [
       {
@@ -47870,8 +47954,6 @@ ${播报文本}
         },
       },
       ...构建移动角色位置补丁(request.角色列表, finalLocName, 坐标.x, 坐标.y),
-      { op: 'replace', path: '/world/时间/tick', value: 下一tick },
-      { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
       {
         op: 'replace',
         path: '/sys/系统播报',
@@ -47947,16 +48029,12 @@ ${播报文本}
     const targetY = Number.isFinite(toNumber(mapRequest.target_y, NaN))
       ? Math.round(toNumber(mapRequest.target_y, -1))
       : -1;
-    const 当前tick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
     const 耗时tick = Math.max(0, toNumber(mapRequest.est_ticks, 0));
-    const 下一tick = Number((当前tick + 耗时tick).toFixed(2));
     const 出行方式 = toText(mapRequest.method, '步行');
     const 耗时文本 = toText(mapRequest.est_duration, 耗时tick > 0 ? `${耗时tick} tick` : '一段时间');
     const 未解析文本 = Array.isArray(request.未解析角色) && request.未解析角色.length ? `；未解析同行角色：${request.未解析角色.join('、')}` : '';
     const patchOps = [
       ...构建移动角色位置补丁(request.角色列表, finalLocName, targetX, targetY),
-      { op: 'replace', path: '/world/时间/tick', value: 下一tick },
-      { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
       {
         op: 'replace',
         path: '/sys/系统播报',
@@ -47996,9 +48074,7 @@ ${播报文本}
       return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
     }
     const activePath = escapeJsonPointerValue(角色.key);
-    const 当前tick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
     const 耗时tick = Math.max(0, toNumber(mapRequest.est_ticks, 0));
-    const 下一tick = Number((当前tick + 耗时tick).toFixed(2));
     const 出行方式 = toText(mapRequest.method, '步行');
     const 耗时文本 = toText(mapRequest.est_duration, 耗时tick > 0 ? `${耗时tick} tick` : '一段时间');
     const 最终位置 = toText(options.finalLocName, toText(mapRequest.target_loc, '未知地点'));
@@ -48014,8 +48090,6 @@ ${播报文本}
     const 地形名 = toText(options.terrainName, '');
     const patchOps = [
       ...构建移动角色位置补丁(角色解析.角色列表, 最终位置, targetX, targetY),
-      { op: 'replace', path: '/world/时间/tick', value: 下一tick },
-      { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(下一tick) },
       {
         op: 'replace',
         path: '/sys/系统播报',
@@ -48307,10 +48381,6 @@ ${播报文本}
         });
       }
     });
-    const 时间 = deepGet(settledRoot, 'world.时间', null);
-    if (时间 && typeof 时间 === 'object' && !Array.isArray(时间)) {
-      patches.push({ op: 'replace', path: '/world/时间', value: cloneJsonValue(时间, {}) });
-    }
     const systemText = toText(
       options.systemText !== undefined ? options.systemText : deepGet(settledRoot, 'sys.系统播报', ''),
       '',
@@ -48795,8 +48865,12 @@ ${播报文本}
       request = 解析新技能获得模块意图请求(snapshot, payload);
     } else if (moduleKind === 'travel') {
       request = 解析移动模块意图请求(snapshot, payload, text);
+      const 任务时间tick = 读取任务时间推进tick_桥接(options);
+      if (request && 任务时间tick > 0) request.耗时tick = 任务时间tick;
     } else if (moduleKind === 'routine') {
       request = 解析日常模块意图请求(snapshot, payload, text);
+      const 任务时间tick = 读取任务时间推进tick_桥接(options);
+      if (request && 任务时间tick > 0) request.耗时tick = 任务时间tick;
     } else if (moduleKind === 'trial_entry') {
       request = request || 解析试炼入场意图请求(snapshot, payload, kind, text);
     } else {
@@ -48822,6 +48896,9 @@ ${播报文本}
         payload && typeof payload === 'object' ? payload : {},
         请求缺失原因,
       );
+    }
+    if (['travel', 'routine'].includes(moduleKind) && 读取任务时间推进tick_桥接(options) <= 0) {
+      return 构建模块路由失败结果(moduleKind, request, 'time_advance_missing');
     }
     const 战斗提交模式 =
       moduleKind === 'battle'
@@ -48958,6 +49035,7 @@ ${播报文本}
       }
     };
     window.__LWCS_GET_STORY_MODULE_STAGING_STAT__ = (options = {}) => 读取剧情模块预结算StatData_桥接(options);
+    window.__LWCS_STAGE_TIME_ADVANCE__ = (时间推进上下文, options = {}) => 暂存任务时间推进_桥接(时间推进上下文, options);
     if (!window.__MVU_MODULE_INTENT_ROUTER_EVENT_BOUND__) {
       window.addEventListener('mvu-module-intent', event => {
         const detail = event && event.detail && typeof event.detail === 'object' ? event.detail : {};

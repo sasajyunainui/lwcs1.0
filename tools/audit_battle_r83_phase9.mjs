@@ -643,6 +643,18 @@ function fullBattleRecord(caseDefinition, providerId, runtime, options = {}) {
         options.disableCompactObjectiveFastPath === true,
       collectTargetPressureAudit: options.collectTargetPressureAudit === true,
       disableEvaluationSession: options.disableEvaluationSession === true,
+      disableSessionMechanicalReuse:
+        options.disableSessionMechanicalReuse === true,
+      verifySessionMechanicalReuse:
+        options.verifySessionMechanicalReuse === true,
+      disableSessionBehaviorReuse:
+        options.disableSessionBehaviorReuse === true,
+      verifySessionBehaviorReuse:
+        options.verifySessionBehaviorReuse === true,
+      collectBehaviorLayerHashes:
+        options.collectBehaviorLayerHashes === true,
+      collectBehaviorIdentityObservations:
+        options.collectBehaviorIdentityObservations === true,
     },
   });
   performanceTrace('run-battle-end', {
@@ -673,12 +685,47 @@ function fullBattleRecord(caseDefinition, providerId, runtime, options = {}) {
           : 0,
       }
     : null;
+  const terminalMetrics = options.collectTerminalMetrics === true
+    ? Object.fromEntries(
+        Object.entries(plain(decision.readMetrics()))
+          .filter(([key]) => key.startsWith('terminal')),
+      )
+    : undefined;
+  const terminalIdentityObservations =
+    options.collectTerminalIdentityObservations === true
+      ? plain(decision.readTerminalIdentityObservations())
+      : undefined;
   const semanticDecisions = decisions.map(decisionAudit => {
     const copy = plain(decisionAudit);
     delete copy.routeCacheMetrics;
     delete copy.candidateEnvelopeMetrics;
     return copy;
   });
+  const behaviorLayerHashSequence = decisionPerformanceDiagnostics.map(
+    diagnostic => plain(
+      diagnostic?.behaviorLayerSemanticHashes || {},
+    ),
+  );
+  const aggregateBehaviorLayerHash = key => sha256(
+    behaviorLayerHashSequence.map(row => String(row?.[key] || '')),
+  );
+  const behaviorIdentityObservations = decisionPerformanceDiagnostics.flatMap(
+    (diagnostic, decisionIndex) =>
+      (
+        Array.isArray(
+          diagnostic?.candidateEnvelopeMetrics
+            ?.behaviorIdentityObservations,
+        )
+          ? diagnostic.candidateEnvelopeMetrics.behaviorIdentityObservations
+          : []
+      ).map(observation => ({
+        decisionIndex,
+        round: Number(diagnostic?.round || 0),
+        actorId: String(diagnostic?.actorId || ''),
+        actionRole: String(diagnostic?.actionRole || ''),
+        ...plain(observation),
+      })),
+  );
   const ledger = Array.isArray(result?.ledger) ? result.ledger : [];
   const fatalCodes = (Array.isArray(result?.audit?.fatals) ? result.audit.fatals : [])
     .map(item => String(item?.code || '').trim())
@@ -809,6 +856,9 @@ function fullBattleRecord(caseDefinition, providerId, runtime, options = {}) {
       routeCacheMetrics: plain(decisionAudit?.routeCacheMetrics || {}),
       routeFactOwnershipSummary: plain(
         decisionAudit?.routeFactOwnershipSummary || {},
+      ),
+      behaviorLayerSemanticHashes: plain(
+        decisionAudit?.behaviorLayerSemanticHashes || {},
       ),
       candidateEnvelopeMetrics: plain(decisionAudit?.candidateEnvelopeMetrics || {}),
       evaluationSession: (() => {
@@ -992,6 +1042,24 @@ function fullBattleRecord(caseDefinition, providerId, runtime, options = {}) {
     decisionHash: sha256(decisions),
     decisionSemanticHash: sha256(semanticDecisions),
     decisionSemanticHashes: semanticDecisions.map(sha256),
+    candidateEnvelopeDeltasHash: aggregateBehaviorLayerHash(
+      'candidateEnvelopeDeltasHash',
+    ),
+    valuedFullRoutesHash: aggregateBehaviorLayerHash(
+      'valuedFullRoutesHash',
+    ),
+    behaviorEnvelopesHash: aggregateBehaviorLayerHash(
+      'behaviorEnvelopesHash',
+    ),
+    primaryBackupRoutesHash: aggregateBehaviorLayerHash(
+      'primaryBackupRoutesHash',
+    ),
+    paretoRelationsHash: aggregateBehaviorLayerHash(
+      'paretoRelationsHash',
+    ),
+    behaviorIdentityObservations,
+    terminalMetrics,
+    terminalIdentityObservations,
     debugDecision: debugDecisionIndex >= 0
       ? plain(decisions[debugDecisionIndex]) || null
       : undefined,
@@ -1011,6 +1079,30 @@ function runFullBattleWorker(caseId, providerId, options = {}) {
   }
   if (options.disableCompactObjectiveFastPath === true) {
     workerArgs.push('--no-compact-objective-fast-path');
+  }
+  if (options.disableSessionMechanicalReuse === true) {
+    workerArgs.push('--no-session-mechanical-reuse');
+  }
+  if (options.verifySessionMechanicalReuse === true) {
+    workerArgs.push('--verify-session-mechanical-reuse');
+  }
+  if (options.disableSessionBehaviorReuse === true) {
+    workerArgs.push('--no-session-behavior-reuse');
+  }
+  if (options.verifySessionBehaviorReuse === true) {
+    workerArgs.push('--verify-session-behavior-reuse');
+  }
+  if (options.collectBehaviorLayerHashes === true) {
+    workerArgs.push('--collect-behavior-layer-hashes');
+  }
+  if (options.collectBehaviorIdentityObservations === true) {
+    workerArgs.push('--collect-behavior-identity-observations');
+  }
+  if (options.collectTerminalMetrics === true) {
+    workerArgs.push('--collect-terminal-metrics');
+  }
+  if (options.collectTerminalIdentityObservations === true) {
+    workerArgs.push('--collect-terminal-identity-observations');
   }
   if (options.forceNight === true) workerArgs.push('--night');
   if (options.collectTargetPressureAudit === false) {
@@ -1063,6 +1155,30 @@ function runFullBattleWorkerAsync(caseId, providerId, options = {}) {
   }
   if (options.disableCompactObjectiveFastPath === true) {
     workerArgs.push('--no-compact-objective-fast-path');
+  }
+  if (options.disableSessionMechanicalReuse === true) {
+    workerArgs.push('--no-session-mechanical-reuse');
+  }
+  if (options.verifySessionMechanicalReuse === true) {
+    workerArgs.push('--verify-session-mechanical-reuse');
+  }
+  if (options.disableSessionBehaviorReuse === true) {
+    workerArgs.push('--no-session-behavior-reuse');
+  }
+  if (options.verifySessionBehaviorReuse === true) {
+    workerArgs.push('--verify-session-behavior-reuse');
+  }
+  if (options.collectBehaviorLayerHashes === true) {
+    workerArgs.push('--collect-behavior-layer-hashes');
+  }
+  if (options.collectBehaviorIdentityObservations === true) {
+    workerArgs.push('--collect-behavior-identity-observations');
+  }
+  if (options.collectTerminalMetrics === true) {
+    workerArgs.push('--collect-terminal-metrics');
+  }
+  if (options.collectTerminalIdentityObservations === true) {
+    workerArgs.push('--collect-terminal-identity-observations');
   }
   if (options.forceNight === true) workerArgs.push('--night');
   if (options.collectTargetPressureAudit === false) {
@@ -1425,6 +1541,22 @@ if (workerIndex >= 0) {
         process.argv.includes('--no-compact-objective-fast-path'),
       disableEvaluationSession:
         process.argv.includes('--no-evaluation-session'),
+      disableSessionMechanicalReuse:
+        process.argv.includes('--no-session-mechanical-reuse'),
+      verifySessionMechanicalReuse:
+        process.argv.includes('--verify-session-mechanical-reuse'),
+      disableSessionBehaviorReuse:
+        process.argv.includes('--no-session-behavior-reuse'),
+      verifySessionBehaviorReuse:
+        process.argv.includes('--verify-session-behavior-reuse'),
+      collectBehaviorLayerHashes:
+        process.argv.includes('--collect-behavior-layer-hashes'),
+      collectBehaviorIdentityObservations:
+        process.argv.includes('--collect-behavior-identity-observations'),
+      collectTerminalMetrics:
+        process.argv.includes('--collect-terminal-metrics'),
+      collectTerminalIdentityObservations:
+        process.argv.includes('--collect-terminal-identity-observations'),
       forceNight: process.argv.includes('--night'),
       collectTargetPressureAudit:
         !process.argv.includes('--no-target-pressure-audit'),

@@ -996,6 +996,7 @@
       路由块哈希: 取哈希(路由块),
       planningHash: 取哈希(context.planningText || ''),
       规划文本哈希: 取哈希(context.planningText || ''),
+      时间推进上下文: context.时间推进上下文 || null,
       latestUserMessageInfo: 最新用户消息,
       latestAiMessageInfo: 最新角色消息,
     };
@@ -1084,11 +1085,37 @@
     return await 接管承诺;
   }
 
+  async function 暂存任务时间推进(context = {}) {
+    const 时间推进上下文 = context.时间推进上下文;
+    if (!时间推进上下文 || Number(时间推进上下文.tick增量) <= 0) return { action: 'continue' };
+    const 暂存函数 = 读取窗口函数('__LWCS_STAGE_TIME_ADVANCE__');
+    if (typeof 暂存函数 !== 'function') {
+      console.warn('[LWCS适配器] 时间预结算桥接接口未就绪，已阻断正文生成。');
+      return { action: 'blocked', reason: 'time_advance_bridge_unavailable' };
+    }
+    try {
+      const 结果 = await Promise.resolve(暂存函数(时间推进上下文, 构建剧情模块路由事务上下文(context, context.planningText || 'time_advance')));
+      return 结果?.ok === true
+        ? { action: 'continue', result: 结果 }
+        : { action: 'blocked', reason: String(结果?.reason || 'time_advance_stage_failed') };
+    } catch (错误) {
+      console.warn('[LWCS适配器] 时间预结算失败，已阻断正文生成:', 错误);
+      return { action: 'blocked', reason: 'time_advance_stage_failed' };
+    }
+  }
+
   async function 正文生成前确认(context = {}) {
     const 战斗裁断决定 = await 尝试接管战斗裁断(context.planningText || '', context);
-    if (战斗裁断决定.action === 'continueWithRuntimeEvent') return 战斗裁断决定;
+    if (战斗裁断决定.action === 'continueWithRuntimeEvent') {
+      if (context.延后时间预结算 === true) return 战斗裁断决定;
+      const 时间推进决定 = await 暂存任务时间推进(context);
+      return 时间推进决定.action === 'blocked' ? 时间推进决定 : 战斗裁断决定;
+    }
     const 模块路由决定 = await 尝试接管模块路由(context.planningText || '', context);
     if (模块路由决定.action === 'blocked') return 模块路由决定;
+    if (context.延后时间预结算 === true) return 模块路由决定;
+    const 时间推进决定 = await 暂存任务时间推进(context);
+    if (时间推进决定.action === 'blocked') return 时间推进决定;
     if (模块路由决定.action === 'continueWithRuntimeEvent') return 模块路由决定;
     return 模块路由决定;
   }

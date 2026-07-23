@@ -16836,7 +16836,7 @@ $CONTENT
             return 选项?.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
         }
     }
-    async function 准备正文生成运行时数据_ACU(userInput = '', runtimePlotText = '', finalMessage = '', originalUserInput = '') {
+    async function 准备正文生成运行时数据_ACU(userInput = '', runtimePlotText = '', finalMessage = '', originalUserInput = '', 时间推进上下文 = null) {
         const 适配器 = 获取剧情推进运行时适配器_ACU();
         if (!适配器 || typeof 适配器.prepareStoryRuntimeData !== 'function')
             return null;
@@ -16847,6 +16847,7 @@ $CONTENT
                 runtimePlotText: String(runtimePlotText || ''),
                 finalMessage: String(finalMessage || ''),
                 lastCharMessage: getLatestAIMessageContent_ACU(),
+                时间推进上下文,
             }));
         }
         catch (错误) {
@@ -18989,6 +18990,17 @@ $CONTENT
         const tick增量 = unit === '分' || unit === '分钟' ? 0.1 : unit === '小时' || unit === '时' ? 6 : unit === '天' || unit === '日' ? 144 : unit === '月' ? 4320 : 51840;
         return { 原文: source, 数值: amount, 单位: unit, tick增量: amount * tick增量 };
     }
+    function 读取剧情推进当前世界tick_ACU() {
+        try {
+            const mvu数据 = window.Mvu?.getMvuData?.({ type: 'message', message_id: 'latest' });
+            const tick = Number(mvu数据?.stat_data?.world?.时间?.tick);
+            return Number.isFinite(tick) && tick >= 0 ? tick : 0;
+        }
+        catch (错误) {
+            logWarn_ACU('[剧情推进] 读取当前世界时间失败，按0 tick处理:', 错误);
+            return 0;
+        }
+    }
     function extractPlotTagsFromResponse_ACU(text, extractTags, extractInjectTags = '') {
         const injectTagNames = String(extractInjectTags || '')
             .split(',')
@@ -20069,17 +20081,19 @@ $CONTENT
             successfulResults.push(...stageSuccessfulResults);
             failedResults.push(...stageFailedResults);
             completedSuccessfulResults = [...successfulResults];
-            const timeJumpTag = stageSuccessfulResults
-                .map(result => String(result?.extractedTags?.time_jump || '').trim())
-                .find(Boolean);
+            const 时间裁定任务结果 = stageSuccessfulResults.find(result => String(result?.taskId || '') === 'plotTask2');
+            const timeJumpTag = String(时间裁定任务结果?.extractedTags?.time_jump || '').trim();
             if (timeJumpTag) {
                 const parsedTimeJump = parseTimeJumpToTicks_ACU(timeJumpTag);
                 if (parsedTimeJump) {
+                    const 旧tick = 读取剧情推进当前世界tick_ACU();
                     sharedContext.时间推进上下文 = {
                         原文: parsedTimeJump.原文,
                         数值: parsedTimeJump.数值,
                         单位: parsedTimeJump.单位,
                         tick增量: parsedTimeJump.tick增量,
+                        旧tick,
+                        新tick: 旧tick + parsedTimeJump.tick增量,
                     };
                     logDebug_ACU(`[剧情推进] 已识别本轮时间推进：${parsedTimeJump.原文}`);
                 }
@@ -20160,6 +20174,8 @@ $CONTENT
                     source: 'plot_stage_runtime',
                     originalUserInput: historyAnchorText,
                     userInput: historyAnchorText,
+                    时间推进上下文: sharedContext.时间推进上下文 || null,
+                    延后时间预结算: true,
                 });
                 const 事件文本 = 规范化模块路由运行事件文本_ACU(模块路由决定);
                 if (事件文本) {
@@ -20224,6 +20240,7 @@ $CONTENT
             failedResults,
             aggregatedTags,
             enabledTaskCount: enabledTasks.length,
+            时间推进上下文: sharedContext.时间推进上下文 || null,
         };
     }
     // ═══ 世界书内容获取 ═══
@@ -20423,6 +20440,7 @@ $CONTENT
                 enabledTaskCount: runtimeResult.enabledTaskCount,
                 aggregatedTagNames,
                 hasPartialFailure: runtimeResult.failedResults.length > 0,
+                时间推进上下文: runtimeResult.时间推进上下文 || null,
             };
         }
         catch (error) {
@@ -55582,12 +55600,18 @@ $CONTENT
      * 处理规划结果并决定如何写回 TavernHelper.generate 的 options
      * 纯业务逻辑：返回应该写回的位置和内容
      */
-    async function applyPlanningResultToOptions_ACU(options, finalMessage, userMessage = '', runtimePlotText = '') {
+    async function applyPlanningResultToOptions_ACU(options, finalMessage, userMessage = '', runtimePlotText = '', 时间推进上下文 = null) {
         const 正文生成指导 = String(finalMessage || '').trim();
         const 用户输入文本 = String(userMessage || '');
         const 过滤后用户输入文本 = await 套用酒馆Prompt正则_ACU(用户输入文本, 'user');
         const 过滤后最后角色消息文本 = await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai');
-        const 运行时数据 = await 准备正文生成运行时数据_ACU(过滤后用户输入文本, runtimePlotText || '', 正文生成指导, 用户输入文本);
+        const 运行时数据 = await 准备正文生成运行时数据_ACU(
+            过滤后用户输入文本,
+            runtimePlotText || '',
+            正文生成指导,
+            用户输入文本,
+            时间推进上下文,
+        );
         const 替换后正文生成指导 = await 处理剧情推进提示词运行时内容_ACU(正文生成指导, {
             viewType: 'story',
             statData: 运行时数据 || undefined,
@@ -55595,6 +55619,7 @@ $CONTENT
             lastCharMessage: 过滤后最后角色消息文本,
             plotText: runtimePlotText || 正文生成指导,
             captureText: [过滤后用户输入文本, 过滤后最后角色消息文本].filter(Boolean).join('\n'),
+            时间推进上下文,
         });
         await 登记防截断流入等待检测_ACU(替换后正文生成指导);
         if (typeof options?.prompt === 'string' && options.prompt.trim()) {
@@ -55685,14 +55710,21 @@ $CONTENT
             if (正文指令文本) {
                 const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本, {
                     originalUserInput: userMessage,
-                    userInput: userMessage
+                    userInput: userMessage,
+                    时间推进上下文: finalMessage?.时间推进上下文 || null,
                 });
                 if (运行时生成决定.action === 'blocked') {
                     return { action: 'blocked', reason: 运行时生成决定.reason || 'runtime_generation_blocked', userMessage };
                 }
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
                 const finalMessageForGeneration = String(正文指令文本 || '').trim();
-                const writeBack = await applyPlanningResultToOptions_ACU(options, finalMessageForGeneration, userMessage, 完整规划文本);
+                const writeBack = await applyPlanningResultToOptions_ACU(
+                    options,
+                    finalMessageForGeneration,
+                    userMessage,
+                    完整规划文本,
+                    finalMessage?.时间推进上下文 || null,
+                );
                 markPlotIntercept_ACU(userMessage);
                 markPlotIntercept_ACU(finalMessageForGeneration);
                 return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, transientStoryInjects: finalMessage?.transientStoryInjects || [], writeBack, userMessage };
@@ -55776,7 +55808,8 @@ $CONTENT
                 const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本, {
                     originalUserInput: messageToProcess,
                     userInput: messageToProcess,
-                    userMessageIndex: lastMessageIndex
+                    userMessageIndex: lastMessageIndex,
+                    时间推进上下文: finalMessage?.时间推进上下文 || null,
                 });
                 if (运行时生成决定.action === 'blocked') {
                     return {
@@ -55789,7 +55822,13 @@ $CONTENT
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
                 const finalMessageForGeneration = String(正文指令文本 || '').trim();
                 await 登记防截断流入等待检测_ACU(finalMessageForGeneration, { userMessageId: lastMessageIndex });
-                const 运行时数据 = await 准备正文生成运行时数据_ACU(messageToProcess, 完整规划文本, finalMessageForGeneration);
+                const 运行时数据 = await 准备正文生成运行时数据_ACU(
+                    messageToProcess,
+                    完整规划文本,
+                    finalMessageForGeneration,
+                    '',
+                    finalMessage?.时间推进上下文 || null,
+                );
                 markPlotIntercept_ACU(messageToProcess);
                 markPlotIntercept_ACU(finalMessageForGeneration);
                 return {
@@ -55867,7 +55906,8 @@ $CONTENT
             if (正文指令文本) {
                 const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本, {
                     originalUserInput: originalInputText,
-                    userInput: originalInputText
+                    userInput: originalInputText,
+                    时间推进上下文: finalMessage?.时间推进上下文 || null,
                 });
                 if (运行时生成决定.action === 'blocked') {
                     return {
@@ -55879,7 +55919,13 @@ $CONTENT
                 const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
                 const finalMessageForGeneration = String(正文指令文本 || '').trim();
                 await 登记防截断流入等待检测_ACU(finalMessageForGeneration);
-                const 运行时数据 = await 准备正文生成运行时数据_ACU(originalInputText, 完整规划文本, finalMessageForGeneration);
+                const 运行时数据 = await 准备正文生成运行时数据_ACU(
+                    originalInputText,
+                    完整规划文本,
+                    finalMessageForGeneration,
+                    '',
+                    finalMessage?.时间推进上下文 || null,
+                );
                 markPlotIntercept_ACU(originalInputText);
                 markPlotIntercept_ACU(finalMessageForGeneration);
                 return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, transientStoryInjects: finalMessage?.transientStoryInjects || [], statData: 运行时数据 || null, originalMessage: originalInputText };
