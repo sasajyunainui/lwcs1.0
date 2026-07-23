@@ -3554,14 +3554,18 @@ function 格式化运行时未来事件剩余时间_V1(触发tick = 0, 当前tic
 
 function 格式化远端原著时间线最大单位发生文本_V1(触发tick = 0, 当前tick = 0) {
   const 距离tick = Number(触发tick || 0) - Number(当前tick || 0);
-  if (!Number.isFinite(距离tick) || 距离tick <= 0) return '即将发生';
-  const 总天数 = Math.floor((距离tick * 10) / (24 * 60));
+  if (!Number.isFinite(距离tick)) return '时间未知';
+  if (Math.abs(距离tick) < 0.0001) return '此刻发生';
+  const 总天数 = Math.floor((Math.abs(距离tick) * 10) / (24 * 60));
+  if (总天数 === 0) return 距离tick > 0 ? '1天内发生' : '1天内已经发生';
   const 年数 = Math.floor(总天数 / 360);
-  if (年数 > 0) return `${年数}年后发生`;
   const 月数 = Math.floor(总天数 / 30);
-  if (月数 > 0) return `${月数}个月后发生`;
-  if (总天数 > 0) return `${总天数}天后发生`;
-  return '1天内发生';
+  const 时间文本 = 年数 > 0
+    ? `${年数}年`
+    : 月数 > 0
+      ? `${月数}个月`
+      : `${总天数}天`;
+  return 距离tick > 0 ? `${时间文本}后发生` : `${时间文本}前发生`;
 }
 
 function 解析运行时tick日历片段_V1(tick值 = 0) {
@@ -4276,7 +4280,7 @@ function 收集远端原著时间线链式扩展候选_V1(全部事件列表 = [
       if (偏移 === 0) continue;
       const 候选 = 全部事件列表[种子索引 + 偏移];
       if (!候选 || !候选.标识 || 排除标识.has(候选.标识)) continue;
-      if (!Number.isFinite(候选.触发tick) || 候选.触发tick <= 当前tick) continue;
+      if (!Number.isFinite(候选.触发tick)) continue;
       const 结果 = 计算远端原著时间线链式扩展分数_V1(候选, 种子, 上下文);
       if (结果) 扩展候选.push(结果);
     }
@@ -4301,7 +4305,7 @@ function 收集远端原著时间线候选_V1(数据根 = {}, 用户输入 = '',
   const 运行补充文本 = 构建远端原著时间线运行补充文本_V1(数据根);
   const 查询文本 = [捕获文本, 运行补充文本].filter(Boolean).join('\n');
   if (!查询文本.trim()) return [];
-  const 近端标识 = new Set(收集后续原著时间线预览项_V1(当前tick, 3, 读取原著时间线事件源_V1()).map(事件 => 事件.标识));
+  const 近端标识 = new Set(收集后续原著时间线预览项_V1(当前tick, 20, 读取原著时间线事件源_V1()).map(事件 => 事件.标识));
   const 锚点 = 收集远端原著时间线实体锚点_V1(数据根, 捕获文本, 运行补充文本);
   const 关键词 = 切分运行时实体关键词_V1(查询文本, Array.from(锚点.实体).join(' '), Array.from(锚点.角色).join(' '))
     .filter(是有效远端原著时间线命中词_V1);
@@ -4339,7 +4343,7 @@ function 收集远端原著时间线候选_V1(数据根 = {}, 用户输入 = '',
     频率上下文,
   };
   const 可扫描事件列表 = 全部事件列表
-    .filter(事件 => 事件.标识 && Number.isFinite(事件.触发tick) && 事件.触发tick > 当前tick && !近端标识.has(事件.标识))
+    .filter(事件 => 事件.标识 && Number.isFinite(事件.触发tick) && !近端标识.has(事件.标识))
     .map(事件 => 计算远端原著时间线候选分数_V1(事件, 上下文))
     .filter(Boolean)
     .sort((左, 右) => {

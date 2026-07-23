@@ -74,6 +74,11 @@
     stableHashChars: 0,
     stableHashCacheHits: 0,
     stableHashImmutableCacheHits: 0,
+    operationGraphBuilds: 0,
+    operationGraphEvaluations: 0,
+    operationGraphEventApplications: 0,
+    operationGraphStateExpansions: 0,
+    operationGraphStateMerges: 0,
   };
   const previewCache = new Map();
   const unitIdCache = new WeakMap();
@@ -5499,6 +5504,7 @@
     if (!previewResult || typeof previewResult !== 'object') {
       throw new TypeError('BATTLE_PREVIEW_OPERATION_GRAPH_RESULT_MISSING');
     }
+    metrics.operationGraphBuilds += 1;
     const rootActionId = String(
       input?.rootActionId ||
       previewResult?.actionId ||
@@ -6526,6 +6532,7 @@
     if (!baseWorld || typeof baseWorld !== 'object') {
       throw new TypeError('BATTLE_PREVIEW_BRANCH_BASE_WORLD_MISSING');
     }
+    metrics.operationGraphEvaluations += 1;
     const projectionContract = input?.projectionContract || {};
     const operationFilter = new Set(
       (projectionContract?.operations || [])
@@ -6584,6 +6591,7 @@
       .filter(event => !event?.conditionalOn)
       .forEach(event => {
         initialConsumedEventIds.add(event.eventId);
+        metrics.operationGraphEventApplications += 1;
         if (
           applyOperationGraphEvent(
             initialOverlay,
@@ -6648,6 +6656,7 @@
               skippedEventIds.push(event.eventId);
               return;
             }
+            metrics.operationGraphEventApplications += 1;
             if (
               applyOperationGraphEvent(
                 overlay,
@@ -6673,6 +6682,7 @@
             skippedEventIds,
             mergedPathCount: state.mergedPathCount,
           });
+          metrics.operationGraphStateExpansions += 1;
         });
       });
       const merged = new Map();
@@ -6699,6 +6709,7 @@
           ...new Set([...existing.skippedEventIds, ...state.skippedEventIds]),
         ].sort();
         mergedEquivalentStateCount += 1;
+        metrics.operationGraphStateMerges += 1;
       });
       states = [...merged.values()];
       peakActiveSufficientStates = Math.max(

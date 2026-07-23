@@ -13287,6 +13287,12 @@
     }
     const inputHash = hashBattleValue(source);
     const result = runDecisionCase(source);
+    if (Number(result?.audit?.fatalCount || 0) > 0) {
+      const codes = (Array.isArray(result?.audit?.fatals) ? result.audit.fatals : [])
+        .map(item => String(item?.code || '').trim())
+        .filter(Boolean);
+      throw new Error(`battle_draft_runtime_audit_failed:${codes.join(',') || 'unknown'}`);
+    }
     const objectiveContract = source.objectiveContract ||
       source.battleIntent?.objectives ||
       source.combatData?.胜负条件 ||
@@ -13309,6 +13315,12 @@
       trace: cloneValue(result?.trace || []),
       actionQueueTrace: cloneValue(result?.actionQueueTrace || []),
       decisionAudit: cloneValue(result?.providerResults || result?.decisions || []),
+      runtimeAudit: cloneValue(result?.audit || {
+        fatalCount: 0,
+        warningCount: 0,
+        fatals: [],
+        warnings: [],
+      }),
       terminalResult: cloneValue(result?.terminal || {
         terminal: false,
         winner: 'unfinished',
@@ -13317,7 +13329,25 @@
       initialSnapshot: cloneValue(source.combatData || result?.initialSnapshot || null),
       finalSnapshot: cloneValue(result?.combatData || source.combatData || null),
     };
-    return Object.freeze({ ...draft, draftHash: hashBattleValue(draft) });
+    const sealedDraft = {
+      ...draft,
+      draftHash: hashBattleValue(draft),
+    };
+    Object.defineProperty(sealedDraft, 'runtimeDiagnostics', {
+      enumerable: false,
+      configurable: false,
+      writable: false,
+      value: Object.freeze({
+        schemaVersion: '8.3-runtime-diagnostics-1',
+        decisionPerformanceDiagnostics: cloneValue(
+          result?.decisionPerformanceDiagnostics || [],
+        ),
+        evaluationSessionMetrics: cloneValue(
+          result?.evaluationSessionMetrics || null,
+        ),
+      }),
+    });
+    return Object.freeze(sealedDraft);
   }
 
   function sealBattleResult(input = {}) {

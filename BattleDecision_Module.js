@@ -73,6 +73,7 @@
   let r8ResourceRouteProjectionCache = new WeakMap();
   let r8ResourceRouteSemanticValueCache = new WeakMap();
   let r8ResourceRouteSemanticHashCache = new WeakMap();
+  let r8RouteParetoGraphCache = new WeakMap();
   let r8ObjectLifecycleTokenCache = new WeakMap();
   let r8ObjectLifecycleTokenSequence = 0;
   let unitCapacitySignatureCache = new WeakMap();
@@ -216,6 +217,7 @@
     r8ResourceRouteProjectionCache = new WeakMap();
     r8ResourceRouteSemanticValueCache = new WeakMap();
     r8ResourceRouteSemanticHashCache = new WeakMap();
+    r8RouteParetoGraphCache = new WeakMap();
     r8ObjectLifecycleTokenCache = new WeakMap();
     r8ObjectLifecycleTokenSequence = 0;
   }
@@ -259,6 +261,11 @@
         ? cloneValue(state.latestFactDelta)
         : null,
       dirtyMechanicalRouteCount: state.dirtyMechanicalRouteSlots.size,
+      dirtyOwnersByLayer: Object.fromEntries(
+        [...state.dirtyOwnersByLayer.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([layer, owners]) => [layer, [...owners].sort()]),
+      ),
       requestRecords: cloneValue(state.requestRecords),
       factDeltaRecords: cloneValue(state.factDeltaRecords),
       storeSizes: {
@@ -272,6 +279,153 @@
         paretoGraphByUnit: state.paretoGraphByUnit.size,
       },
     });
+  }
+
+  const R8_EVALUATION_LAYERS = Object.freeze([
+    'MECHANICAL',
+    'BEHAVIOR',
+    'RESOURCE',
+    'TERMINAL',
+    'ATTRIBUTION',
+  ]);
+
+  function r8SessionOwnerKey(owner = {}) {
+    return String(
+      owner?.ownerKey ||
+      [
+        owner?.unitId,
+        owner?.candidateId,
+        owner?.routeKey,
+        owner?.layer,
+        owner?.dependencyRole,
+      ].join('\u0000'),
+    ).trim();
+  }
+
+  function r8SessionDirtyOwnersSnapshot(state) {
+    return Object.freeze(Object.fromEntries(
+      [...state.dirtyOwnersByLayer.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([layer, owners]) => [
+          layer,
+          Object.freeze([...owners].sort()),
+        ]),
+    ));
+  }
+
+  function r8SessionMarkDirtyOwner(state, owner, reason = '') {
+    const layer = String(owner?.layer || '').trim().toUpperCase();
+    if (!R8_EVALUATION_LAYERS.includes(layer)) return false;
+    const ownerKey = r8SessionOwnerKey(owner);
+    if (!ownerKey) return false;
+    const owners = state.dirtyOwnersByLayer.get(layer);
+    if (owners.has(ownerKey)) return false;
+    owners.add(ownerKey);
+    state.dirtyOwnerReasons.set(
+      `${layer}\u0000${ownerKey}`,
+      String(reason || '').trim(),
+    );
+    state.metrics.layerDirtyOwnerCounts[layer] =
+      Number(state.metrics.layerDirtyOwnerCounts[layer] || 0) + 1;
+    return true;
+  }
+
+  function r8SessionStoreRouteLayers(
+    state,
+    fullRoutesByUnit = {},
+    routeCatalog = {},
+  ) {
+    if (!state) return;
+    const activeUnitIds = new Set();
+    Object.entries(fullRoutesByUnit || {})
+      .sort(([left], [right]) => left.localeCompare(right))
+      .forEach(([unitId, routes]) => {
+        const normalizedUnitId = String(unitId || '').trim();
+        if (!normalizedUnitId) return;
+        activeUnitIds.add(normalizedUnitId);
+        const normalizedRoutes = Object.freeze(
+          (Array.isArray(routes) ? routes : []).slice(),
+        );
+        state.fullRoutesByUnit.set(normalizedUnitId, normalizedRoutes);
+        state.behaviorEnvelopeStore.set(
+          `route-catalog:${normalizedUnitId}`,
+          Object.freeze({
+            kind: 'ROUTE_CATALOG',
+            unitId: normalizedUnitId,
+            envelope: routeCatalog?.[normalizedUnitId] || Object.freeze({
+              primaryRoute: null,
+              backupRoute: null,
+            }),
+          }),
+        );
+        state.paretoGraphByUnit.set(
+          normalizedUnitId,
+          Object.freeze([
+            ...(r8RouteParetoGraphCache.get(routes) || []),
+          ]),
+        );
+        (Array.isArray(routes) ? routes : []).forEach(route => {
+          const routeKey = String(route?.routeKey || '').trim();
+          if (!routeKey) return;
+          const resourceIdentity = `resource-route:${preview.stableHash(
+            r8ResourceRouteSemanticValue(route),
+          )}`;
+          state.resourcePlanStore.set(routeKey, Object.freeze({
+            schemaVersion: 'ResourcePlanIdentityV1',
+            routeKey,
+            candidateId: String(route?.candidateId || '').trim(),
+            identity: resourceIdentity,
+            paymentDependencies: cloneValue(
+              route?.paymentDependencies || [],
+            ),
+            resourceActionPoolHEPP: Number(
+              route?.resourceActionPoolHEPP || 0,
+            ),
+          }));
+        });
+      });
+    [...state.fullRoutesByUnit.keys()].forEach(unitId => {
+      if (!activeUnitIds.has(unitId)) state.fullRoutesByUnit.delete(unitId);
+    });
+    [...state.paretoGraphByUnit.keys()].forEach(unitId => {
+      if (!activeUnitIds.has(unitId)) state.paretoGraphByUnit.delete(unitId);
+    });
+    state.metrics.layerStoreWrites =
+      Number(state.metrics.layerStoreWrites || 0) + 1;
+    R8_EVALUATION_LAYERS.forEach(layer => {
+      const dirty = state.dirtyOwnersByLayer.get(layer);
+      if (!dirty?.size) return;
+      state.metrics.layerLayerRebuilds[layer] =
+        Number(state.metrics.layerLayerRebuilds[layer] || 0) + dirty.size;
+      dirty.clear();
+    });
+    state.dirtyOwnerReasons.clear();
+    state.dirtyMechanicalRouteSlots.clear();
+  }
+
+  function r8SessionFullRoutesSnapshot(state) {
+    if (!state?.fullRoutesByUnit?.size) return null;
+    return Object.freeze(Object.fromEntries(
+      [...state.fullRoutesByUnit.entries()]
+        .sort(([left], [right]) => left.localeCompare(right)),
+    ));
+  }
+
+  function r8SessionRouteCatalogSnapshot(state) {
+    if (!state?.fullRoutesByUnit?.size) return null;
+    return Object.freeze(Object.fromEntries(
+      [...state.fullRoutesByUnit.keys()]
+        .sort()
+        .map(unitId => [
+          unitId,
+          state.behaviorEnvelopeStore.get(
+            `route-catalog:${unitId}`,
+          )?.envelope || Object.freeze({
+            primaryRoute: null,
+            backupRoute: null,
+          }),
+        ]),
+    ));
   }
 
   function createEvaluationSession(initialContext = {}) {
@@ -315,6 +469,10 @@
       latestFactDelta: null,
       latestRouteFactOwnershipIndex: null,
       dirtyMechanicalRouteSlots: new Set(),
+      dirtyOwnersByLayer: new Map(
+        R8_EVALUATION_LAYERS.map(layer => [layer, new Set()]),
+      ),
+      dirtyOwnerReasons: new Map(),
       factDeltaRecords: [],
       requestRecords: [],
       metrics: {
@@ -348,6 +506,17 @@
         mechanicalRoutesStored: 0,
         mechanicalRoutesEvicted: 0,
         mechanicalDirtyRouteCount: 0,
+        layerDirtyOwnerCounts: Object.fromEntries(
+          R8_EVALUATION_LAYERS.map(layer => [layer, 0]),
+        ),
+        layerUnscopedOwnerCounts: Object.fromEntries(
+          R8_EVALUATION_LAYERS.map(layer => [layer, 0]),
+        ),
+        layerInvalidationBatches: 0,
+        layerStoreWrites: 0,
+        layerLayerRebuilds: Object.fromEntries(
+          R8_EVALUATION_LAYERS.map(layer => [layer, 0]),
+        ),
         behaviorReuseAttempts: 0,
         behaviorReuseHits: 0,
         behaviorReuseMisses: 0,
@@ -420,19 +589,34 @@
     if (previousOwnership?.ownersByFact) {
       const dirtyBefore = state.dirtyMechanicalRouteSlots.size;
       batch.changedFactKeys.forEach(factKey => {
-        (previousOwnership.ownersByFact?.[factKey] || []).forEach(owner => {
-          if (String(owner?.layer || '').trim() !== 'MECHANICAL') return;
+        const owners = previousOwnership.ownersByFact?.[factKey] || [];
+        owners.forEach(owner => {
+          const layer = String(owner?.layer || '').trim().toUpperCase();
+          r8SessionMarkDirtyOwner(state, owner, `FACT:${factKey}`);
+          if (layer !== 'MECHANICAL') return;
           state.dirtyMechanicalRouteSlots.add(
-            r8SessionMechanicalRouteSlotKey(
-              owner?.unitId,
-              owner?.candidateId,
-            ),
+            r8SessionMechanicalRouteSlotKey(owner?.unitId, owner?.candidateId),
           );
         });
+        if (!owners.length) {
+          (previousOwnership?.unscopedLayers || []).forEach(owner => {
+            const layer = String(owner?.layer || '').trim().toUpperCase();
+            r8SessionMarkDirtyOwner(
+              state,
+              owner,
+              `UNSCOPED_FACT:${factKey}`,
+            );
+            if (!R8_EVALUATION_LAYERS.includes(layer)) return;
+            state.metrics.layerUnscopedOwnerCounts[layer] =
+              Number(state.metrics.layerUnscopedOwnerCounts[layer] || 0) + 1;
+          });
+        }
       });
       state.metrics.mechanicalDirtyRouteCount =
         Number(state.metrics.mechanicalDirtyRouteCount || 0) +
         Math.max(0, state.dirtyMechanicalRouteSlots.size - dirtyBefore);
+      state.metrics.layerInvalidationBatches =
+        Number(state.metrics.layerInvalidationBatches || 0) + 1;
     }
     state.metrics.factDeltaCount += 1;
     state.metrics.changedFactCount += batch.changedFactKeys.length;
@@ -493,6 +677,26 @@
       previewCalls: Math.max(0, Number(previewDelta.previewCalls || 0)),
       previewCacheHits: Math.max(0, Number(previewDelta.cacheHits || 0)),
       overlayWrites: Math.max(0, Number(previewDelta.overlayWrites || 0)),
+      operationGraphBuilds: Math.max(
+        0,
+        Number(previewDelta.operationGraphBuilds || 0),
+      ),
+      operationGraphEvaluations: Math.max(
+        0,
+        Number(previewDelta.operationGraphEvaluations || 0),
+      ),
+      operationGraphEventApplications: Math.max(
+        0,
+        Number(previewDelta.operationGraphEventApplications || 0),
+      ),
+      operationGraphStateExpansions: Math.max(
+        0,
+        Number(previewDelta.operationGraphStateExpansions || 0),
+      ),
+      operationGraphStateMerges: Math.max(
+        0,
+        Number(previewDelta.operationGraphStateMerges || 0),
+      ),
       routeRebuilds: Math.max(
         0,
         Number(
@@ -546,6 +750,7 @@
         Number(state.latestFactDelta?.sequence || 0),
       ),
       ownershipImpact: cloneValue(input?.ownershipImpact || {}),
+      dirtyOwnersByLayer: cloneValue(input?.dirtyOwnersByLayer || {}),
       actualWork,
       layerIdentityStatus,
     }));
@@ -14046,13 +14251,31 @@
     const selectableRoutes = currentlyAvailableRoutes.length
       ? currentlyAvailableRoutes
       : routes;
-    const nonDominated = selectableRoutes.filter(route =>
-      !selectableRoutes.some(other => other !== route && routeDominates(other, route))
-    ).sort((left, right) =>
+    const dominanceByRoute = new Map();
+    const dominanceRows = selectableRoutes.map(route => {
+      const dominator = selectableRoutes.find(other =>
+        other !== route && routeDominates(other, route)
+      );
+      dominanceByRoute.set(route, dominator || null);
+      return {
+        routeKey: String(route?.routeKey || '').trim(),
+        candidateId: String(route?.candidateId || '').trim(),
+        dominatedBy: String(dominator?.routeKey || '').trim(),
+      };
+    });
+    if (routes && typeof routes === 'object') {
+      r8RouteParetoGraphCache.set(
+        routes,
+        Object.freeze(dominanceRows.map(row => Object.freeze(row))),
+      );
+    }
+    const nonDominated = selectableRoutes
+      .filter(route => !dominanceByRoute.get(route))
+      .sort((left, right) =>
       routeSelectionBenefit(right) - routeSelectionBenefit(left) ||
       Number(left?.routeDiscardedOverkillPP || 0) - Number(right?.routeDiscardedOverkillPP || 0) ||
       String(left.routeKey || '').localeCompare(String(right.routeKey || ''))
-    );
+      );
     const primaryRoute = nonDominated[0] || selectableRoutes[0] || null;
     const backupRoute = nonDominated.find(route => route.routeKey !== primaryRoute?.routeKey) ||
       selectableRoutes.find(route => route.routeKey !== primaryRoute?.routeKey) ||
@@ -14338,10 +14561,19 @@
   function r8IdentityRows(value = []) {
     return Object.freeze(
       (Array.isArray(value) ? value : [])
-        .map(row => cloneValue(row))
+        .map((row, index) => {
+          const valueRow = cloneValue(row);
+          return {
+            value: valueRow,
+            index,
+            sortHash: preview.stableHash(valueRow),
+          };
+        })
         .sort((left, right) =>
-          preview.stableHash(left).localeCompare(preview.stableHash(right))
-        ),
+          left.sortHash.localeCompare(right.sortHash) ||
+          left.index - right.index
+        )
+        .map(entry => entry.value),
     );
   }
 
@@ -15151,6 +15383,101 @@
     return Object.freeze({
       ...payload,
       identity: `behavior-envelope-v2:${preview.stableHash(payload)}`,
+    });
+  }
+
+  function r8BehaviorEnvelopeMechanicalIdentityV3({
+    behaviorDependencySet = {},
+    worldSnapshot = {},
+    evaluationContext = {},
+    objectiveContract = {},
+    beliefState = {},
+    targetId = '',
+    candidateTargetIds = [],
+    candidateFingerprints = [],
+    mechanicalRouteIdentities = [],
+    actionOpportunity = {},
+  } = {}) {
+    const dependencyKeys = Object.freeze(
+      [...new Set(
+        Array.isArray(behaviorDependencySet?.dependencyKeys)
+          ? behaviorDependencySet.dependencyKeys
+          : [],
+      )].map(key => String(key || '').trim()).filter(Boolean).sort(),
+    );
+    const dependencyRows = Object.freeze(
+      dependencyKeys.map(key => Object.freeze([
+        key,
+        cloneValue(r8MechanicalDependencyValue(
+          worldSnapshot,
+          evaluationContext,
+          objectiveContract,
+          beliefState,
+          key,
+        )),
+      ])),
+    );
+    const opportunityRows = Object.freeze(
+      (behaviorDependencySet?.opportunityRows || [])
+        .map(row => r8BehaviorIdentityOpportunityProjection(row, false))
+        .sort((left, right) =>
+          preview.stableHash(left).localeCompare(preview.stableHash(right))
+        ),
+    );
+    const scheduleRows = Object.freeze(
+      (behaviorDependencySet?.scheduleRows || [])
+        .map(row => Object.freeze({
+          ownerId: String(row?.ownerId || '').trim(),
+          sourceActorId: String(row?.sourceActorId || '').trim(),
+          targetId: String(row?.targetId || '').trim(),
+          descriptorId: String(
+            row?.descriptorId || row?.scheduleId || '',
+          ).trim(),
+          expectedGrantType: String(
+            row?.expectedGrantType || row?.grantType || '',
+          ).trim(),
+          creationSequence: Number(
+            row?.creationSequence || row?.sequence || 0,
+          ),
+          expirySequence: Number(
+            row?.expirySequence || row?.expiresAtSequence || 0,
+          ),
+        }))
+        .sort((left, right) =>
+          preview.stableHash(left).localeCompare(preview.stableHash(right))
+        ),
+    );
+    const payload = Object.freeze({
+      schemaVersion: 'BehaviorEnvelopeMechanicalIdentityV3',
+      targetId: String(targetId || '').trim(),
+      candidateTargetIds: Object.freeze(
+        [...new Set(candidateTargetIds.map(value => String(value || '').trim()))]
+          .filter(Boolean)
+          .sort(),
+      ),
+      candidateFingerprints: Object.freeze(
+        [...new Set(candidateFingerprints.map(value => String(value || '').trim()))]
+          .filter(Boolean)
+          .sort(),
+      ),
+      mechanicalRouteIdentities: Object.freeze(
+        [...new Set(mechanicalRouteIdentities.map(value => String(value || '').trim()))]
+          .filter(Boolean)
+          .sort(),
+      ),
+      dependencyRows,
+      opportunityRows,
+      scheduleRows,
+      objectiveHash: preview.stableHash(objectiveContract || {}),
+      beliefRows: cloneValue(behaviorDependencySet?.beliefRows || []),
+      actionOpportunity: r8BehaviorIdentityOpportunityProjection(
+        actionOpportunity,
+        false,
+      ),
+    });
+    return Object.freeze({
+      ...payload,
+      identity: `behavior-envelope-v3:${preview.stableHash(payload)}`,
     });
   }
 
@@ -15991,12 +16318,12 @@
       projectedWorldRevisionsByUnit[currentUnitId] = {};
       let recomputedCurrentUnit = false;
       const routes = candidates.map(candidate => {
-        const objectiveRequest = {
-          actorId: currentUnitId,
-          actorSide: entry.side,
-          visibleWorld: worldSnapshot,
-          objectiveCompactMode: input.objectiveCompactMode || 'FAST',
-          objectiveContract:
+      const objectiveRequest = {
+        actorId: currentUnitId,
+        actorSide: entry.side,
+        visibleWorld: worldSnapshot,
+        objectiveCompactMode: input.objectiveCompactMode || 'FAST',
+        objectiveContract:
             input.objectiveContract ||
             worldSnapshot?.胜负条件 ||
             {},
@@ -21661,6 +21988,87 @@
       worldCache.set(cacheKey, result);
       return result;
     };
+    const mechanicalPreviewInputIdentity = (
+      snapshot,
+      candidate,
+      route,
+    ) => {
+      if (!route) return null;
+      const paymentByKey = new Map(
+        (route?.paymentDependencies || []).map(dependency => [
+          [
+            String(dependency?.unitId || '').trim(),
+            String(dependency?.resource || '').trim(),
+          ].join('\u0000'),
+          Math.max(0, Number(dependency?.amount || 0)),
+        ]),
+      );
+      const dependencyRows = (route?.dependencyKeys || [])
+        .filter(key =>
+          /^(unit:|target:|rule:)/.test(String(key || '').trim())
+        )
+        .map(key => {
+          const normalizedKey = String(key || '').trim();
+          const resourceMatch = normalizedKey.match(
+            /^unit:(.+):resource:([^:]+)$/,
+          );
+          if (!resourceMatch) {
+            return [
+              normalizedKey,
+              cloneValue(preview.dependencyValueForKey(
+                snapshot,
+                normalizedKey,
+              )),
+            ];
+          }
+          const [, unitIdValue, resource] = resourceMatch;
+          const paymentAmount = paymentByKey.get(
+            [unitIdValue, resource].join('\u0000'),
+          );
+          if (paymentAmount === undefined) {
+            return [
+              normalizedKey,
+              preview.readResource(
+                findUnitInWorld(snapshot, unitIdValue) || {},
+                resource,
+              ),
+            ];
+          }
+          const unit = findUnitInWorld(snapshot, unitIdValue);
+          const current = unit ? preview.readResource(unit, resource) : 0;
+          const maximum = unit
+            ? preview.readResourceMax(unit, resource)
+            : 0;
+          return [
+            normalizedKey,
+            Object.freeze({
+              maximum,
+              paymentAmount,
+              affordable: current + 1e-9 >= paymentAmount,
+            }),
+          ];
+        });
+      const payload = Object.freeze({
+        schemaVersion: 'MechanicalPreviewIdentityV1',
+        actorId: String(
+          candidate?.declaration?.actorId || '',
+        ).trim(),
+        declarationFingerprint: String(
+          candidate?.declarationFingerprint || '',
+        ).trim(),
+        targetIds: Object.freeze(
+          [...(candidate?.declaration?.targetIds || [])]
+            .map(value => String(value || '').trim())
+            .filter(Boolean)
+            .sort(),
+        ),
+        dependencyRows: Object.freeze(dependencyRows),
+      });
+      return Object.freeze({
+        ...payload,
+        identity: `mechanical-preview-v1:${preview.stableHash(payload)}`,
+      });
+    };
     const changedRouteDependencyKeys = (beforeSnapshot, afterSnapshot, route) =>
       (route?.dependencyKeys || [])
         .filter(key =>
@@ -21828,6 +22236,33 @@
         objectiveIdentity,
         actionOpportunityIdentity,
       });
+      const behaviorMechanicalIdentityV3 =
+        collectBehaviorIdentityObservations
+          ? r8BehaviorEnvelopeMechanicalIdentityV3({
+              behaviorDependencySet,
+              worldSnapshot: scheduledWorld,
+              evaluationContext: {
+                ...input?.evaluationContext,
+                opportunitySnapshot: opportunityRows,
+                scheduledEvents,
+                resourceTimeline: input?.resourceTimeline || [],
+              },
+              objectiveContract:
+                input?.objectiveContract || scheduledWorld?.胜负条件 || {},
+              beliefState: input?.beliefState || {},
+              targetId,
+              candidateTargetIds,
+              candidateFingerprints: candidates.map(candidate =>
+                String(candidate?.declarationFingerprint || '').trim()
+              ),
+              mechanicalRouteIdentities: candidates.map(candidate =>
+                r8MechanicalRouteIdentity(
+                  baseRoutes.get(candidate?.candidateId) || {},
+                ).identity
+              ),
+              actionOpportunity: envelopeActionOpportunity,
+            })
+          : null;
       const candidateFingerprintRows = collectBehaviorIdentityObservations
         ? candidates
             .map(candidate => String(
@@ -21897,6 +22332,13 @@
             v1ComponentHashes: cloneValue(
               behaviorDependencySet.componentHashes || {},
             ),
+            v2Identity: String(behaviorIdentityV2.identity || '').trim(),
+            v2ComponentHashes: cloneValue(
+              behaviorIdentityV2.componentHashes || {},
+            ),
+            v3Identity: String(
+              behaviorMechanicalIdentityV3.identity || '',
+            ).trim(),
             rebuildComponentHashes: {
               actorIdentity,
               actorWithoutNaturalOpportunityIdentity:
@@ -22001,6 +22443,13 @@
         metrics.behaviorIdentityObservations.push(Object.freeze({
           ...observationBase,
           cacheHit,
+          v2Identity: String(behaviorIdentityV2.identity || '').trim(),
+          v2ComponentHashes: cloneValue(
+            behaviorIdentityV2.componentHashes || {},
+          ),
+          v3Identity: String(
+            behaviorMechanicalIdentityV3.identity || '',
+          ).trim(),
           finalEnvelopeExactHash: preview.stableHash(
             envelopeWithoutDependencyIdentity,
           ),
@@ -22035,6 +22484,32 @@
         cachedSessionEntry?.kind === 'BEHAVIOR_ENVELOPE'
           ? cachedSessionEntry.envelope
           : null;
+      const reboundSessionEnvelope = cachedSessionEnvelope
+        ? (() => {
+            const {
+              behaviorDependencyIdentity: cachedDependencyIdentity,
+              behaviorRealizationWindow: cachedRealizationWindow,
+              scheduledWindowGroups: cachedScheduledWindowGroups,
+              ...cachedEnvelopeCore
+            } = cachedSessionEnvelope;
+            void cachedDependencyIdentity;
+            void cachedRealizationWindow;
+            void cachedScheduledWindowGroups;
+            return Object.freeze({
+              ...cachedEnvelopeCore,
+              behaviorDependencyIdentity: behaviorDependencySet.identity,
+              ...(behaviorRealizationWindow
+                ? { behaviorRealizationWindow }
+                : {}),
+              ...(scheduledState.scheduledWindowGroups?.length
+                ? {
+                    scheduledWindowGroups:
+                      scheduledState.scheduledWindowGroups,
+                  }
+                : {}),
+            });
+          })()
+        : null;
       if (sessionBehaviorReuseEnabled && behaviorSessionMetrics) {
         behaviorSessionMetrics.behaviorReuseAttempts =
           Number(behaviorSessionMetrics.behaviorReuseAttempts || 0) + 1;
@@ -22044,13 +22519,9 @@
           Number(behaviorSessionMetrics.behaviorReuseHits || 0) + 1;
       }
       if (cachedSessionEnvelope && !verifySessionBehaviorReuse) {
-        const reboundEnvelope = Object.freeze({
-          ...cachedSessionEnvelope,
-          behaviorDependencyIdentity: behaviorDependencySet.identity,
-        });
-        rebuiltEnvelopeCache.set(rebuildCacheKey, reboundEnvelope);
-        recordBehaviorIdentityObservation(reboundEnvelope, true);
-        return reboundEnvelope;
+        rebuiltEnvelopeCache.set(rebuildCacheKey, reboundSessionEnvelope);
+        recordBehaviorIdentityObservation(reboundSessionEnvelope, true);
+        return reboundSessionEnvelope;
       }
       if (
         sessionBehaviorReuseEnabled &&
@@ -22188,6 +22659,14 @@
               beliefRevisionFor(input.beliefState),
             ].join('\u0001')
           : '';
+        const mechanicalInputIdentity =
+          collectRootCauseDiagnostics && baseRoute
+            ? mechanicalPreviewInputIdentity(
+                scheduledWorld,
+                candidate,
+                baseRoute,
+              )
+            : null;
         let previewResult = mechanicalEvidenceKey
           ? mechanicalPreviewEvidenceCache.get(mechanicalEvidenceKey)
           : null;
@@ -22272,6 +22751,30 @@
               mechanicalRoute,
             );
           }
+        }
+        if (
+          collectRootCauseDiagnostics &&
+          mechanicalInputIdentity &&
+          Array.isArray(metrics?.mechanicalPreviewIdentityObservations)
+        ) {
+          metrics.mechanicalPreviewIdentityObservations.push(Object.freeze({
+            schemaVersion: 'MechanicalPreviewIdentityObservationV1',
+            sourceCandidateId: String(sourceCandidateId || '').trim(),
+            targetId: String(targetId || '').trim(),
+            candidateId: String(candidate?.candidateId || '').trim(),
+            inputIdentity: mechanicalInputIdentity.identity,
+            baseRouteKey: String(baseRoute?.routeKey || '').trim(),
+            resultRouteKey: String(
+              mechanicalRoute?.routeKey || '',
+            ).trim(),
+            exactDependencyHash: routeWorldDependencyHash(
+              scheduledWorld,
+              baseRoute,
+            ),
+            dependencyKeys: Object.freeze([
+              ...(baseRoute?.dependencyKeys || []),
+            ]),
+          }));
         }
         if (
           collectRootCauseDiagnostics &&
@@ -22410,7 +22913,7 @@
             ) + 1;
         }
         if (
-          r8BehaviorEnvelopeExactHash(cachedSessionEnvelope) !==
+          r8BehaviorEnvelopeExactHash(reboundSessionEnvelope) !==
           r8BehaviorEnvelopeExactHash(rebuiltEnvelope)
         ) {
           if (behaviorSessionMetrics) {
@@ -23077,9 +23580,9 @@
                 incrementMetricMap(
                   metrics?.ownershipGapByCandidateTarget,
                   `${candidateId}\u0000${targetId}\u0000${gapKind}`,
-                );
-              }
-            }
+            );
+          }
+        }
             sourceOutcomeKinds.forEach(outcomeKind => {
               metrics.rebuildSourceOutcomeCounts[outcomeKind] =
                 Number(metrics.rebuildSourceOutcomeCounts[outcomeKind] || 0) + 1;
@@ -25144,8 +25647,10 @@
         ),
       })),
     );
-    const semanticIdentity = String(
-      cacheIdentity?.semanticCacheKey || '',
+    const distributionIdentity = String(
+      cacheIdentity?.distributionIdentity ||
+      cacheIdentity?.semanticCacheKey ||
+      '',
     ).trim();
     const worldDependencyHash = String(
       cacheIdentity?.worldDependencyHash || '',
@@ -25191,7 +25696,7 @@
       sourceNeutralEvents: terminalPathSlots,
       branchAssignments: Object.freeze([]),
     };
-    const distributionIdentity = semanticIdentity || JSON.stringify([
+    const fallbackDistributionIdentity = JSON.stringify([
       core.worldDependencyHash,
       core.routeMechanicalHash,
       core.terminal,
@@ -25206,10 +25711,14 @@
       core.expectedDiscardedOverkillPP,
       terminalPathSlots,
     ]);
+    const resolvedDistributionIdentity =
+      distributionIdentity || fallbackDistributionIdentity;
     const distribution = {
       ...core,
       distributionHash:
-        `terminal-distribution:${preview.stableHash(distributionIdentity)}`,
+        `terminal-distribution:${preview.stableHash(
+          resolvedDistributionIdentity,
+        )}`,
     };
     Object.defineProperty(distribution, 'terminalBranchMetrics', {
       configurable: false,
@@ -25419,35 +25928,37 @@
       terminalProjectionMode === 'SUMMARY' &&
       globalThis?.process?.env
         ?.BATTLE_R8_DISABLE_TERMINAL_SEMANTIC_CACHE !== '1';
-    const terminalWorldDependencyHash = semanticCacheEnabled
-      ? r8TerminalWorldDependencyHash(
-          initialWorld,
-          initialUnitStates,
-          request,
-          objectiveContext,
-          route,
-          utilityRoute,
-        )
-      : '';
+    const terminalWorldDependencyHash = r8TerminalWorldDependencyHash(
+      initialWorld,
+      initialUnitStates,
+      request,
+      objectiveContext,
+      route,
+      utilityRoute,
+    );
     const routeMechanicalSignature = semanticCacheEnabled
       ? r8TerminalCanonicalMechanicalSignature(route)
+      : r8TerminalRouteSignature(route);
+    const utilityMechanicalSignature = utilityRoute !== route
+      ? (
+          semanticCacheEnabled
+            ? r8TerminalCanonicalMechanicalSignature(utilityRoute)
+            : r8TerminalRouteSignature(utilityRoute)
+        )
       : '';
-    const utilityMechanicalSignature = semanticCacheEnabled &&
-      utilityRoute !== route
-      ? r8TerminalCanonicalMechanicalSignature(utilityRoute)
+    const terminalProjectionIdentity = r8TerminalProjectionIdentity({
+      objectiveContext,
+      actorSide: request?.actorSide,
+      objectiveCompactMode: request?.objectiveCompactMode,
+      terminalProjectionMode,
+      terminalWorldDependencyHash,
+      routeMechanicalSignature,
+      utilityMechanicalSignature,
+    });
+    const distributionIdentity = terminalProjectionIdentity.identity;
+    const semanticCacheKey = semanticCacheEnabled
+      ? distributionIdentity
       : '';
-    const terminalProjectionIdentity = semanticCacheEnabled
-      ? r8TerminalProjectionIdentity({
-          objectiveContext,
-          actorSide: request?.actorSide,
-          objectiveCompactMode: request?.objectiveCompactMode,
-          terminalProjectionMode,
-          terminalWorldDependencyHash,
-          routeMechanicalSignature,
-          utilityMechanicalSignature,
-        })
-      : null;
-    const semanticCacheKey = terminalProjectionIdentity?.identity || '';
     if (
       semanticCacheKey &&
       r8TerminalMechanicalDistributionCache.has(semanticCacheKey)
@@ -25522,6 +26033,7 @@
         route,
         {
           semanticCacheKey,
+          distributionIdentity,
           worldDependencyHash: terminalWorldDependencyHash,
           routeSignature: [
             routeMechanicalSignature,
@@ -29099,6 +29611,11 @@
       collectRootCauseDiagnostics:
         globalThis?.process?.env
           ?.BATTLE_R8_ENVELOPE_ROOT_CAUSE_TRACE === '1',
+      mechanicalPreviewIdentityObservations:
+        globalThis?.process?.env
+          ?.BATTLE_R8_ENVELOPE_ROOT_CAUSE_TRACE === '1'
+          ? []
+          : null,
       rebuildByTargetId: {},
       searchedRoutesByTargetId: {},
       previewCallsByTargetId: {},
@@ -29157,6 +29674,24 @@
             __frozenCandidates: frozenCandidates,
           })
         : {};
+    const sessionPreviousFullRoutesByUnit =
+      sessionState &&
+      (
+        input?.disableSessionMechanicalReuse !== true ||
+        input?.disableSessionBehaviorReuse !== true
+      ) &&
+      input?.previousFullRoutesByUnit == null
+        ? r8SessionFullRoutesSnapshot(sessionState)
+        : null;
+    const sessionPreviousRouteCatalog =
+      sessionState &&
+      (
+        input?.disableSessionMechanicalReuse !== true ||
+        input?.disableSessionBehaviorReuse !== true
+      ) &&
+      input?.previousRouteCatalog == null
+        ? r8SessionRouteCatalogSnapshot(sessionState)
+        : null;
     const routeAnalysis = candidatesOnly
       ? {
           routeCatalog: {},
@@ -29181,8 +29716,11 @@
           objectiveCompactMode,
           dependencyView,
           evaluationContext,
-          previousCatalog: input?.previousRouteCatalog,
-          previousFullRoutesByUnit: input?.previousFullRoutesByUnit,
+          previousCatalog:
+            input?.previousRouteCatalog || sessionPreviousRouteCatalog,
+          previousFullRoutesByUnit:
+            input?.previousFullRoutesByUnit ||
+            sessionPreviousFullRoutesByUnit,
           previousActorCandidateRoutes:
             input?.previousActorCandidateRoutes,
           previousActorProjectedWorlds:
@@ -29226,6 +29764,9 @@
           dirtySessionMechanicalRouteSlots: sessionState
             ? new Set(sessionState.dirtyMechanicalRouteSlots)
             : new Set(),
+          dirtySessionOwnersByLayer: sessionState
+            ? r8SessionDirtyOwnersSnapshot(sessionState)
+            : Object.freeze({}),
           enableSessionMechanicalReuse:
             !!sessionState &&
             input?.disableSessionMechanicalReuse !== true,
@@ -29287,6 +29828,9 @@
               input?.disableSessionBehaviorReuse !== true,
             verifySessionBehaviorReuse:
               input?.verifySessionBehaviorReuse === true,
+            dirtySessionOwnersByLayer: sessionState
+              ? r8SessionDirtyOwnersSnapshot(sessionState)
+              : Object.freeze({}),
           });
     const mechanicObservationsByCandidate = candidatesOnly
       ? {}
@@ -29448,6 +29992,13 @@
     requestPayload.candidateEnvelopeMetrics = Object.freeze({
       ...candidateEnvelopeMetrics,
     });
+    if (sessionState && !candidatesOnly) {
+      r8SessionStoreRouteLayers(
+        sessionState,
+        routeAnalysis.fullRoutesByUnit || {},
+        routeAnalysis.routeCatalog || {},
+      );
+    }
     if (preview.stableHash(worldSnapshot) !== sourceWorldHash) {
       throw new Error('PROVIDER_MUTATED_STATE:prepare');
     }
@@ -29526,6 +30077,7 @@
         envelopeMetrics: candidateEnvelopeMetrics,
         fullRoutesByUnit: routeAnalysis.fullRoutesByUnit,
         ownershipImpact,
+        dirtyOwnersByLayer: r8SessionDirtyOwnersSnapshot(sessionState),
       });
     }
     return frozenRequest;
