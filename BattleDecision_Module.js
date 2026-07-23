@@ -2066,6 +2066,7 @@
     if (declaration?.skill && typeof declaration.skill === 'object') return skillName(declaration.skill);
     return ({
       BASIC_ATTACK: '普通攻击',
+      PASS_OPPORTUNITY: '让过行动',
       DEFEND: '防御',
       EVADE: '闪避',
       COUNTER: '反击',
@@ -3188,7 +3189,17 @@
       declaration: defensiveDeclaration(actorId, 'DEFEND'),
       counterDeclineFallback: true,
     });
-    if (!counterOnly && !assistOnly && !forcedSkill) ['DEFEND', 'EVADE'].forEach(actionKind => candidates.push({ candidateId: `${actorId}:${actionKind}`, declaration: defensiveDeclaration(actorId, actionKind) }));
+    if (!counterOnly && !assistOnly && !forcedSkill) {
+      candidates.push({
+        candidateId: `${actorId}:PASS_OPPORTUNITY`,
+        declaration: defensiveDeclaration(actorId, 'PASS_OPPORTUNITY'),
+        voluntaryOpportunityPass: true,
+      });
+      ['DEFEND', 'EVADE'].forEach(actionKind => candidates.push({
+        candidateId: `${actorId}:${actionKind}`,
+        declaration: defensiveDeclaration(actorId, actionKind),
+      }));
+    }
     if (!counterOnly && !forcedSkill && input.actionOpportunity?.counterWindow === true && input.actionOpportunity?.counterActionAvailable === true) {
       candidates.push({ candidateId: `${actorId}:COUNTER`, declaration: defensiveDeclaration(actorId, 'COUNTER') });
     }
@@ -27325,41 +27336,7 @@
           },
         };
       } else if (effect.outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED') {
-        const multiplier = Number(effect?.evidence?.multiplier || 1);
-        const explicitFactor = Number(effect?.evidence?.qualityFactor);
-        const combatEffect =
-          effect?.evidence?.combatEffect &&
-          typeof effect.evidence.combatEffect === 'object'
-            ? effect.evidence.combatEffect
-            : {};
-        const derivedFactor = [
-          'hit_bonus',
-          'damage_bonus',
-          'defense_bonus',
-          'dodge_bonus',
-          'reaction_bonus',
-          'cast_speed_bonus',
-        ].reduce(
-          (sum, key) => sum + Math.max(0, Number(combatEffect?.[key] || 0)),
-          0,
-        ) - [
-          'hit_penalty',
-          'damage_penalty',
-          'defense_penalty',
-          'dodge_penalty',
-          'reaction_penalty',
-          'cast_speed_penalty',
-        ].reduce(
-          (sum, key) => sum + Math.max(0, Number(combatEffect?.[key] || 0)),
-          0,
-        );
-        const factor = Number.isFinite(explicitFactor)
-          ? explicitFactor
-          : Number.isFinite(multiplier) && multiplier !== 1
-            ? multiplier - 1
-            : clamp(derivedFactor, -1, 1);
-        deltaPP = deltaPP || takeEnvelopeDelta(true) ||
-          targetRouteValue * factor * probability * (targetOwnSide ? 1 : -1);
+        deltaPP = deltaPP || takeEnvelopeDelta(true);
       } else if (['ACTION_GRANTED', 'SUMMON_WINDOW'].includes(effect.outcomeKind)) {
         const scheduled = schedules.some(entry =>
           String(entry?.sourceEventId || entry?.effectInstanceId || '').includes(String(effect.effectInstanceId || ''))
@@ -27392,7 +27369,7 @@
       } else if (['STATE_CHANGED', 'STATE_SCHEDULED', 'RULE_CHANGED'].includes(effect.outcomeKind)) {
         deltaPP = takeEnvelopeDelta(true);
       }
-      if (!deltaPP && !['ACTION_CANCELLED', 'NEXT_ACTION_QUALITY_CHANGED', 'ACTION_GRANTED', 'SUMMON_WINDOW', 'RESOURCE_OPTION_CHANGED'].includes(effect.outcomeKind)) {
+      if (!deltaPP && !['ACTION_CANCELLED', 'ACTION_GRANTED', 'SUMMON_WINDOW', 'RESOURCE_OPTION_CHANGED'].includes(effect.outcomeKind)) {
         continue;
       }
       deltas.push(Object.freeze({
@@ -28501,6 +28478,7 @@
 
   function r8CandidateExclusion(request = {}, candidate = {}, route = {}, projection = {}) {
     const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+    const voluntaryOpportunityPass = actionKind === 'PASS_OPPORTUNITY';
     const opportunityRole = String(request?.actionOpportunity?.role || '').trim().toUpperCase();
     const consumesNaturalOpportunity =
       opportunityRole === 'ACTIVE' &&
@@ -28509,7 +28487,7 @@
     const consumesOptionalReaction =
       ['REACTION', 'COUNTER'].includes(opportunityRole) &&
       candidate?.counterDeclineFallback !== true;
-    const hasCost = consumesNaturalOpportunity ||
+    const hasCost = (!voluntaryOpportunityPass && consumesNaturalOpportunity) ||
       consumesOptionalReaction ||
       Object.values(candidate?.costs || {}).some(value => Number(value || 0) > 0) ||
       (route?.actionPoolEffects || []).some(effect => effect.outcomeKind === 'IRREVERSIBLE_ASSET_LOST');
@@ -28682,66 +28660,13 @@
         String(left.candidateId).localeCompare(String(right.candidateId))
       );
     if (!eligible.length) {
-      const fallback = normalized.find(candidate =>
-        String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'DEFEND' &&
-        !Object.values(candidate?.costs || {}).some(value => Number(value || 0) > 0)
+      throw new Error(
+        `R8_NO_LEGAL_CANDIDATE:${request.actorId}:` +
+        `${String(request?.actionOpportunity?.role || '').trim() || 'UNKNOWN_ROLE'}:` +
+        `${normalized.map(candidate =>
+          `${candidate.candidateId}=${candidate.rejectionCode || 'PARETO_EMPTY'}`
+        ).join(',')}`,
       );
-      if (!fallback) {
-        throw new Error(
-          `R8_NO_LEGAL_FALLBACK:${request.actorId}:` +
-          `${String(request?.actionOpportunity?.role || '').trim() || 'UNKNOWN_ROLE'}:` +
-          `${normalized.map(candidate =>
-            `${candidate.candidateId}=${candidate.rejectionCode || 'PARETO_EMPTY'}`
-          ).join(',')}`,
-        );
-      }
-      const fallbackProjection = Object.freeze({
-        ...(fallback?.goalProjection || {}),
-        directTrajectoryHEPP: 0,
-        actionPoolHEPP: 0,
-        actionPoolDeltas: Object.freeze([]),
-        expectedCandidateUtility: Number(fallback?.goalProjection?.expectedNoOpUtility || 0),
-        objectiveUtilityHEPP: 0,
-        informationValueHEPP: 0,
-        discardedOverkillPP: 0,
-        worstTailLossHEPP: 0,
-        healthTrajectory: Object.freeze([]),
-        teamMarginalTrajectory: Object.freeze([]),
-        responseModel: Object.freeze({
-          actorSide: String(request?.actorSide || '').trim(),
-          mainBranches: Object.freeze([]),
-          disasterTail: null,
-          unknownMass: 0,
-          noResponseProbability: 1,
-        }),
-      });
-      const forcedFallback = Object.freeze({
-        ...fallback,
-        goalProjection: fallbackProjection,
-        causalValueFacts: Object.freeze([]),
-        objectiveUtilityHEPP: 0,
-        informationValueHEPP: 0,
-        normalizedUtility: 0,
-        survivalLowerBound: Math.max(0, Number(fallback?.survivalLowerBound || 0)),
-        worstTailLossHEPP: 0,
-        discardedOverkillPP: 0,
-        forcedFallback: true,
-        fallbackReason: 'NO_ELIGIBLE_CANDIDATE',
-        fallbackSourceRejectionCode: String(fallback?.rejectionCode || '').trim(),
-        rejectionCode: '',
-      });
-      const fallbackNormalized = normalized.map(candidate =>
-        candidate.candidateId === forcedFallback.candidateId ? forcedFallback : candidate
-      );
-      return Object.freeze({
-        selected: forcedFallback,
-        normalized: fallbackNormalized,
-        paretoIds,
-        confidence,
-        temperature,
-        maxRegret,
-        selectionMode: 'FORCED_DEFEND_FALLBACK',
-      });
     }
     const best = eligible[0];
     const second = eligible[1];

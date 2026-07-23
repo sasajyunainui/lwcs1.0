@@ -29,7 +29,7 @@
   const SOUL_TOWER_MAX_AGE_GAP = 3;
 
   const actionKinds = Object.freeze([
-    'BASIC_ATTACK', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
+    'BASIC_ATTACK', 'PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'COUNTER', 'OBSERVE',
     'GUARD', 'WITHDRAW', 'RELEASE_SKILL', 'USE_ITEM', 'EQUIP',
   ]);
   const actionRoles = Object.freeze(['ACTIVE', 'REACTION', 'COUNTER', 'ASSIST', 'STATE_TICK']);
@@ -2492,7 +2492,7 @@
     }
     const actionType = {
       BASIC_ATTACK: '常规攻击', DEFEND: '防御', EVADE: '闪避', COUNTER: '反击',
-      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: '撤退',
+      OBSERVE: '观察', GUARD: '保护队友', WITHDRAW: '撤退', PASS_OPPORTUNITY: '让过行动',
     }[actionKind] || '防御';
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
     const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无', 前摇: 10 };
@@ -3485,6 +3485,9 @@
   function inferResourceTimelineOperation(event = {}) {
     const kind = String(event?.eventKind || '').trim();
     const ruleCode = String(event?.ruleCode || event?.meta?.reasonCode || '').trim().toUpperCase();
+    const explicit = String(event?.operation || event?.meta?.operation || '').trim().toUpperCase();
+    if (resourceTimelineOperations.includes(explicit)) return explicit;
+    if (event?.meta?.auditOnly === true) return '';
     if (kind === 'action_cost') return 'PAY';
     if (kind === 'item_consume') return 'ITEM_CONSUME';
     if (/RESOURCE_UNLOCK/.test(ruleCode)) return 'UNLOCK';
@@ -3498,8 +3501,7 @@
     if (/SUSTAIN_RESOURCE_COST/.test(ruleCode)) return 'SUSTAIN_COST';
     if (/ROUND_END_NATURAL_RECOVERY/.test(ruleCode)) return 'NATURAL_RECOVERY';
     if (/REFUND|RETURN/.test(ruleCode)) return 'REFUND';
-    const delta = Number(event?.meta?.delta ?? event?.delta ?? 0);
-    return delta >= 0 ? 'RESTORE' : 'REDUCE';
+    return '';
   }
 
   function appendRuntimeEventContracts(combatData = {}, event = {}) {
@@ -3821,7 +3823,6 @@
       if (counteredActionName) upsertTraceItem('counteredAction', '被反制动作', counteredActionName);
       upsertTraceItem('attacker', '反击方', actorName);
       upsertTraceItem('target', '目标', targetName);
-      upsertTraceItem('finalDamage', '最终伤害', inferredAppliedDamage);
       if (trace.length > 40) {
         const redundantIndex = trace.findIndex(item => String(item?.key || '').trim() === 'counterProbability');
         if (redundantIndex >= 0) trace.splice(redundantIndex, 1);
@@ -3900,6 +3901,17 @@
     const amount = Math.round(Number(delta || 0));
     const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey];
     if (!combatData || !unit || !amount || !resource) return null;
+    const ruleCode = String(meta.reasonCode || '').trim().toUpperCase();
+    const operation = String(
+      meta.operation ||
+      (/SUSTAIN_RESOURCE_COST/.test(ruleCode)
+        ? 'SUSTAIN_COST'
+        : /ROUND_END_NATURAL_RECOVERY/.test(ruleCode)
+          ? 'NATURAL_RECOVERY'
+          : amount > 0
+            ? 'RESTORE'
+            : 'REDUCE'),
+    ).trim().toUpperCase();
     return writeLedgerEvent(combatData, {
       eventKind: 'resource_change',
       round: Number(combatData?.回合 || 0),
@@ -3919,6 +3931,7 @@
       duration: Math.max(0, Number(meta.duration || 0)),
       effectSummary: String(meta.effectSummary || '').trim(),
       driverAttr: String(meta.driverAttr || '').trim(),
+      operation,
       meta: { ...meta, resourceKey, resource, amount: Math.abs(amount), delta: amount },
     });
   }
@@ -5342,10 +5355,13 @@
     }));
   }
 
-  function writeStructuredResourceFact(combatData = {}, actor = {}, target = {}, action = {}, actionEvent = {}, resourceKey = '', delta = 0, actionRole = 'ACTIVE') {
+  function writeStructuredResourceFact(combatData = {}, actor = {}, target = {}, action = {}, actionEvent = {}, resourceKey = '', delta = 0, actionRole = 'ACTIVE', operation = '') {
     const amount = Number(delta || 0);
     if (!amount) return null;
     const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力', shield: '护盾' }[resourceKey] || resourceKey;
+    const resourceOperation = resourceKey === 'shield'
+      ? ''
+      : String(operation || (amount > 0 ? 'RESTORE' : 'REDUCE')).trim().toUpperCase();
     return writeLedgerEvent(combatData, {
       eventKind: resourceKey === 'shield' ? (amount > 0 ? 'shield_create' : 'shield_break') : 'resource_change',
       round: Number(combatData?.回合 || 0),
@@ -5363,7 +5379,16 @@
       sourceNodeId: actionEvent?.chainNodeId || '',
       result: amount > 0 ? 'gain' : 'loss',
       resultState: amount > 0 ? 'GAIN' : 'LOSS',
-      meta: { resource, resourceKey, delta: amount, amount: Math.abs(amount), source: 'structured_runtime' },
+      primaryOutcome: amount > 0 ? 'resource_restored' : 'resource_reduced',
+      operation: resourceOperation,
+      meta: {
+        resource,
+        resourceKey,
+        delta: amount,
+        amount: Math.abs(amount),
+        operation: resourceOperation,
+        source: 'structured_runtime',
+      },
     });
   }
 
@@ -5870,7 +5895,6 @@
       primaryTarget,
       actionEvent,
       allowPreparedDefense: input?.allowPreparedDefense !== false,
-      noWindowDefenseFallback: input?.noWindowDefenseFallback === true,
       action: { actionKind, actionName, actorControl },
     };
   }
@@ -5930,7 +5954,6 @@
       primaryTarget,
       actionEvent,
       allowPreparedDefense,
-      noWindowDefenseFallback,
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
     const action = { actionKind, actionName, actorControl };
@@ -5956,7 +5979,17 @@
         const cost = textValue.includes('%') ? maximum * numeric / 100 : numeric;
         if (before + 1e-9 < cost) throw new Error(`battle_structured_resource_insufficient:${resource}`);
         writeCombatResource(costPayer, key, before - cost);
-        facts.push(writeStructuredResourceFact(combatData, costPayer, costPayer, action, actionEvent, key, -cost, actionRole));
+        facts.push(writeStructuredResourceFact(
+          combatData,
+          costPayer,
+          costPayer,
+          action,
+          actionEvent,
+          key,
+          -cost,
+          actionRole,
+          'PAY',
+        ));
         facts.push(writeLedgerEvent(combatData, {
           eventKind: 'action_cost',
           round: Number(combatData?.回合 || 0),
@@ -5985,7 +6018,7 @@
         if (!label) void label;
       });
     });
-    if (['DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD'].includes(actionKind)) {
+    if (['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'OBSERVE', 'WITHDRAW', 'GUARD'].includes(actionKind)) {
       const eventKind = actionKind === 'DEFEND' || actionKind === 'GUARD' ? 'defend' : actionKind === 'EVADE' ? 'dodge' : 'pass';
       const preparedDefense = allowPreparedDefense !== false &&
         actionRole === 'ACTIVE' &&
@@ -6001,15 +6034,15 @@
         };
       }
       let result = 'complete';
-      let primaryOutcome = actionKind === 'OBSERVE'
+      let primaryOutcome = actionKind === 'PASS_OPPORTUNITY'
+        ? 'opportunity_passed'
+        : actionKind === 'OBSERVE'
         ? 'information_gained'
-        : noWindowDefenseFallback
-          ? 'no_formal_window'
-          : 'stance_established';
+        : 'stance_established';
       const meta = {
         source: 'structured_runtime',
         preparedDefense,
-        noWindowDefenseFallback: noWindowDefenseFallback === true,
+        voluntaryOpportunityPass: actionKind === 'PASS_OPPORTUNITY',
       };
       if (actionKind === 'WITHDRAW') {
         const actorSide = previewRuntime.sideOf(combatData, actor);
@@ -6772,6 +6805,7 @@
             key,
             actual,
             actionRole,
+            actual > 0 ? 'RESTORE' : 'REDUCE',
           ) || (
             !resourceSample.succeeded
               ? writeLedgerEvent(combatData, {
@@ -6792,12 +6826,14 @@
                   result: 'failed',
                   resultState: 'FAILURE',
                   primaryOutcome: 'resource_effect_failed',
+                  operation: delta >= 0 ? 'RESTORE' : 'REDUCE',
                   meta: {
                     source: 'structured_runtime',
                     resource: resourceText,
                     resourceKey: key,
                     delta: 0,
                     amount: 0,
+                    operation: delta >= 0 ? 'RESTORE' : 'REDUCE',
                   },
                 })
               : null
@@ -9596,7 +9632,6 @@
                   meta: {
                     source: 'structured_shadow',
                     settlementEventId: String(counterHit?.eventId || '').trim(),
-                    resolvedDamage: Math.max(0, Number(counterHit?.appliedDamage || counterHit?.meta?.appliedDamage || 0)),
                     grantId: node.grantId,
                     sourceActorId: String(node?.state?.sourceActorId || '').trim(),
                     sourceActorName: String(node?.state?.sourceActorName || counterSourceAction?.actorName || '').trim(),
@@ -9907,15 +9942,6 @@
               ? prepareStructuredFusion(combatData, actor, declaration)
               : null;
             const parentActionEvent = node?.state?.parentActionEvent || null;
-            const noWindowDefenseFallback =
-              node.nodeKind === 'ACTIVE' &&
-              ['DEFEND', 'EVADE'].includes(String(declaration?.actionKind || '').trim().toUpperCase()) &&
-              String(decisionResult?.decisionProfile?.selectionMode || '').trim() === 'FORCED_DEFEND_FALLBACK' &&
-              String(
-                decisionResult?.selected?.fallbackSourceRejectionCode ||
-                decisionResult?.selected?.rejectionCode ||
-                '',
-              ).trim() === 'ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED';
             const actionContext = beginStructuredDeclaration({
               combatData,
               declaration,
@@ -9926,8 +9952,6 @@
               opportunitySequence: node.opportunitySequence,
               grantId: node.grantId,
               decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
-              allowPreparedDefense: !noWindowDefenseFallback,
-              noWindowDefenseFallback,
               parentNodeId: String(node?.state?.counterWindowEvent?.chainNodeId || node?.state?.reactionEvent?.chainNodeId || parentActionEvent?.chainNodeId || '').trim(),
               reactionNodeId: String(node?.state?.reactionEvent?.chainNodeId || '').trim(),
               chainType: node.nodeKind === 'CONTINUATION' ? 'FOLLOW_UP' : '',
@@ -11987,6 +12011,17 @@
     const warnings = [];
     const pushFatal = (code, detail = {}) => fatals.push({ code, ...detail });
     const readDamage = event => Math.max(0, Math.round(Number(event?.appliedDamage ?? event?.meta?.appliedDamage ?? event?.meta?.damage ?? event?.damage ?? 0)));
+    const resourceOperations = new Set([
+      'PAY',
+      'RESTORE',
+      'REDUCE',
+      'LOCK',
+      'UNLOCK',
+      'REFUND',
+      'NATURAL_RECOVERY',
+      'SUSTAIN_COST',
+      'ITEM_CONSUME',
+    ]);
     const readProbability = value => {
       if (value === null || value === undefined || value === '') return null;
       if (typeof value === 'string' && /%/.test(value)) return Number.parseFloat(value) / 100;
@@ -12131,6 +12166,41 @@
       if (eventId) entry.eventIds.push(String(eventId));
       balanceDeltas.set(key, entry);
     };
+    eventLedger.forEach(event => {
+      const kind = String(event?.eventKind || '').trim();
+      const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+      if (
+        kind === 'resource_change' &&
+        Math.abs(Number(meta.delta ?? event?.delta ?? 0)) > 1e-9 &&
+        meta.auditOnly !== true &&
+        !resourceOperations.has(String(event?.operation || meta.operation || '').trim().toUpperCase())
+      ) {
+        pushFatal('RESOURCE_TIMELINE_OPERATION_MISSING', {
+          eventId: event?.eventId || '',
+          operation: String(event?.operation || meta.operation || '').trim(),
+        });
+      }
+      if (kind === 'counter') {
+        const trace = Array.isArray(meta.settlementTrace) ? meta.settlementTrace : [];
+        const mirroredDamage = Number(
+          meta.resolvedDamage ??
+          meta.damage ??
+          trace.find(item => String(item?.key || '').trim() === 'finalDamage')?.value ??
+          0,
+        );
+        if (
+          readDamage(event) > 0 ||
+          mirroredDamage > 0
+        ) {
+          pushFatal('COUNTER_WRAPPER_DAMAGE_OWNERSHIP', {
+            eventId: event?.eventId || '',
+            settlementEventId: String(meta.settlementEventId || '').trim(),
+            mirroredDamage,
+          });
+        }
+      }
+    });
+
     eventLedger.forEach(event => {
       const kind = String(event?.eventKind || '').trim();
       const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};

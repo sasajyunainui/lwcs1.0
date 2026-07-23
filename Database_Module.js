@@ -20227,9 +20227,9 @@ $CONTENT
             ? buildPlotTagBlock_ACU('scene_audit', extractLastTagContent_ACU(result.rawResponse, 'scene_audit'))
             : '')
             .filter(Boolean),
-            buildPlotTagBlock_ACU(模块路由结果标签_ACU, 本轮模块路由事件列表),
         ].filter(Boolean);
-        const finalMessage = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, aggregatedTags, aggregatedInjectOnlyTagNames);
+        const 最终聚合标签 = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
+        const finalMessage = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, 最终聚合标签, aggregatedInjectOnlyTagNames);
         logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length);
         await savePlotToLatestMessage_ACU(true);
         return {
@@ -20238,7 +20238,7 @@ $CONTENT
             transientStoryInjects,
             successfulResults,
             failedResults,
-            aggregatedTags,
+            aggregatedTags: 最终聚合标签,
             enabledTaskCount: enabledTasks.length,
             时间推进上下文: sharedContext.时间推进上下文 || null,
         };
