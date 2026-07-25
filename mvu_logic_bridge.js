@@ -11441,7 +11441,7 @@
       写后根.world.时间.tick = 新tick;
       写后根.world.时间._calendar = formatTickToCalendarDateText(新tick);
       已有事务.写后MVU数据 = 写后MVU数据;
-      已有事务.写后记录 = 构建路径回滚记录自路径列表(结算根, 已有事务.settledPaths);
+      已有事务.写后记录 = 构建路径回滚记录自路径列表_桥接(结算根, 已有事务.settledPaths);
       已有事务.patchOps = [...已有事务.patchOps, ...时间补丁];
       已有事务.任务时间推进tick = 新tick;
       return { ok: true, reused: true, 新tick };
@@ -11469,8 +11469,8 @@
       旧AI消息索引: 旧AI元信息.消息索引,
       旧AI滑动编号: 旧AI元信息.滑动编号,
       旧AI文本签名: 旧AI元信息.文本签名,
-      回滚记录: 构建路径回滚记录自路径列表(基底根, 时间路径),
-      写后记录: 构建路径回滚记录自路径列表(结算根, 时间路径),
+      回滚记录: 构建路径回滚记录自路径列表_桥接(基底根, 时间路径),
+      写后记录: 构建路径回滚记录自路径列表_桥接(结算根, 时间路径),
       写后MVU数据,
       baseStatData: 基底根,
       settledStatData: 结算根,

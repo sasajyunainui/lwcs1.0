@@ -5353,9 +5353,6 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   const 赛事权限投影 = 构建赛事权限更新投影_V1(数据根, 文本);
   const 视图 = {
     world: {
-      时间: {
-        tick: Number(数据根?.world?.时间?.tick || 0),
-      },
       时间线: 时间线视图,
       拍卖: 拍卖视图,
       委托板: 委托板视图,
