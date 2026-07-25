@@ -7644,10 +7644,8 @@ ${logMsg}
       .map(text => toText(text, '').trim())
       .filter(Boolean)
       .join(' · ');
-    const 构建动作摘要文本 = (动作预览, 默认说明) => 合并动作说明文本(
-      动作预览?.slotReason || timedHint(默认说明),
-      动作预览?.mimicHint || ''
-    );
+    const 构建动作摘要文本 = (动作预览, 默认说明) =>
+      动作预览?.slotReason || timedHint(默认说明);
     const pushMappedActionSlot = (action, options = {}) => {
       const normalized = toText(action, '');
       if (!normalized || ['inspect', 'enter'].includes(normalized)) return;

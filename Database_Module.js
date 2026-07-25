@@ -2656,7 +2656,7 @@ $CONTENT
      * @param label - 按钮文本
      */
     function renderStopButton_ACU(id, label) {
-        return `<button id="${escapeHtml_ACU$1(id)}" style="border: 1px solid #ffc107; color: #ffc107; background: transparent; padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; margin-left: 15px; font-size: 0.9em; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='#ffc107'; this.style.color='#1a1d24';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#ffc107';">${escapeHtml_ACU$1(label)}</button>`;
+        return `<button id="${escapeHtml_ACU$1(id)}" class="qrf-abort-btn">${escapeHtml_ACU$1(label)}</button>`;
     }
     /**
      * 生成正文替换 toast 中的"重新优化"按钮 HTML
@@ -31347,6 +31347,66 @@ $CONTENT
         background: var(--toast-accent) !important;
         color: var(--toast-bg) !important;
       }
+      #toast-container .acu-toast.acu-toast--running.toast {
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        width: min(340px, calc(100vw - 24px)) !important;
+        min-height: 0;
+        padding: 8px 9px 8px 10px !important;
+        border-left-width: 2px !important;
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #toast-container .acu-toast.acu-toast--running.toast:active {
+        cursor: grabbing;
+      }
+      #toast-container .acu-toast.acu-toast--running.toast::before {
+        display: none !important;
+      }
+      #toast-container .acu-toast.acu-toast--running.toast .toast-title {
+        display: inline-flex;
+        align-items: center;
+        align-self: center;
+        margin: 0 !important;
+        padding: 3px 6px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--toast-accent) 14%, transparent);
+        color: var(--toast-text) !important;
+        font-size: 11px !important;
+        font-weight: 650 !important;
+        line-height: 1.2;
+        letter-spacing: 0;
+        white-space: nowrap;
+      }
+      #toast-container .acu-toast.acu-toast--running.toast .toast-message {
+        min-width: 0;
+        font-size: 12px !important;
+        line-height: 1.35 !important;
+      }
+      #toast-container .acu-toast.acu-toast--running.toast .acu-running-toast-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 0;
+      }
+      #toast-container .acu-toast.acu-toast--running.toast .acu-running-toast-status {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      #toast-container .acu-toast.acu-toast--running.toast .qrf-abort-btn {
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 3px 8px !important;
+        border-radius: 999px !important;
+        font-size: 11px !important;
+        line-height: 1.35;
+        white-space: nowrap;
+      }
       @media (max-width: 520px) {
         #toast-container .acu-toast.toast {
           width: min(320px, calc(100vw - 16px)) !important;
@@ -31374,6 +31434,22 @@ $CONTENT
         .acu-toast .qrf-abort-btn {
           padding: 3px 10px !important;
           font-size: 12px !important;
+        }
+        #toast-container .acu-toast.acu-toast--running.toast {
+          width: min(300px, calc(100vw - 20px)) !important;
+          padding: 7px 8px !important;
+          gap: 6px;
+        }
+        #toast-container .acu-toast.acu-toast--running.toast .toast-title {
+          padding: 2px 5px;
+          font-size: 10px !important;
+        }
+        #toast-container .acu-toast.acu-toast--running.toast .toast-message {
+          font-size: 11px !important;
+        }
+        #toast-container .acu-toast.acu-toast--running.toast .qrf-abort-btn {
+          padding: 3px 7px !important;
+          font-size: 10px !important;
         }
       }
     `;
@@ -31485,6 +31561,119 @@ $CONTENT
         }
         catch (e) { }
         return toastr_API_ACU[type]?.(message, title, finalOptions) ?? null;
+    }
+    function cleanupLongRunningToastDrag_ACU($toast) {
+        const toastElement = $toast?.[0] || $toast;
+        if (typeof toastElement?.__acuRunningToastDragCleanup === 'function') {
+            toastElement.__acuRunningToastDragCleanup();
+        }
+    }
+    function attachLongRunningToastDrag_ACU($toast) {
+        const toastElement = $toast?.[0] || $toast;
+        if (!toastElement || typeof toastElement.addEventListener !== 'function')
+            return;
+        cleanupLongRunningToastDrag_ACU(toastElement);
+        const hostWindow = toastElement.ownerDocument?.defaultView || topLevelWindow_ACU || window;
+        const visualViewport = hostWindow.visualViewport || null;
+        const getViewport = () => ({
+            left: Number(visualViewport?.offsetLeft || 0),
+            top: Number(visualViewport?.offsetTop || 0),
+            width: Number(visualViewport?.width || hostWindow.innerWidth || 0),
+            height: Number(visualViewport?.height || hostWindow.innerHeight || 0),
+        });
+        const clampPosition = (left, top) => {
+            const viewport = getViewport();
+            const rect = toastElement.getBoundingClientRect();
+            const margin = 10;
+            const minLeft = viewport.left + margin;
+            const minTop = viewport.top + margin;
+            const maxLeft = Math.max(minLeft, viewport.left + viewport.width - rect.width - margin);
+            const maxTop = Math.max(minTop, viewport.top + viewport.height - rect.height - margin);
+            return {
+                left: Math.min(maxLeft, Math.max(minLeft, left)),
+                top: Math.min(maxTop, Math.max(minTop, top)),
+            };
+        };
+        const setPosition = (left, top) => {
+            const position = clampPosition(left, top);
+            toastElement.style.setProperty('position', 'fixed', 'important');
+            toastElement.style.setProperty('left', `${position.left}px`, 'important');
+            toastElement.style.setProperty('top', `${position.top}px`, 'important');
+            toastElement.style.setProperty('right', 'auto', 'important');
+            toastElement.style.setProperty('bottom', 'auto', 'important');
+            toastElement.style.setProperty('margin', '0', 'important');
+        };
+        let dragging = false;
+        let pointerId = null;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+        const onPointerDown = (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0)
+                return;
+            if (event.target?.closest?.('button, a, input, select, textarea, [role="button"]'))
+                return;
+            const rect = toastElement.getBoundingClientRect();
+            dragging = true;
+            pointerId = event.pointerId;
+            startX = event.clientX;
+            startY = event.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+            toastElement.setPointerCapture?.(pointerId);
+            event.preventDefault();
+            event.stopPropagation();
+        };
+        const onPointerMove = (event) => {
+            if (!dragging || event.pointerId !== pointerId)
+                return;
+            setPosition(startLeft + event.clientX - startX, startTop + event.clientY - startY);
+            event.preventDefault();
+        };
+        const finishDrag = (event) => {
+            if (!dragging || event.pointerId !== pointerId)
+                return;
+            dragging = false;
+            toastElement.releasePointerCapture?.(pointerId);
+            pointerId = null;
+            event.preventDefault();
+        };
+        const onViewportChange = () => {
+            const rect = toastElement.getBoundingClientRect();
+            setPosition(rect.left, rect.top);
+        };
+        toastElement.addEventListener('pointerdown', onPointerDown);
+        toastElement.addEventListener('pointermove', onPointerMove);
+        toastElement.addEventListener('pointerup', finishDrag);
+        toastElement.addEventListener('pointercancel', finishDrag);
+        hostWindow.addEventListener('resize', onViewportChange);
+        visualViewport?.addEventListener('resize', onViewportChange);
+        visualViewport?.addEventListener('scroll', onViewportChange);
+        toastElement.__acuRunningToastDragCleanup = () => {
+            toastElement.removeEventListener('pointerdown', onPointerDown);
+            toastElement.removeEventListener('pointermove', onPointerMove);
+            toastElement.removeEventListener('pointerup', finishDrag);
+            toastElement.removeEventListener('pointercancel', finishDrag);
+            hostWindow.removeEventListener('resize', onViewportChange);
+            visualViewport?.removeEventListener('resize', onViewportChange);
+            visualViewport?.removeEventListener('scroll', onViewportChange);
+            delete toastElement.__acuRunningToastDragCleanup;
+        };
+        hostWindow.requestAnimationFrame(() => {
+            if (!toastElement.isConnected)
+                return;
+            const viewport = getViewport();
+            const rect = toastElement.getBoundingClientRect();
+            const isMobile = viewport.width <= 520;
+            const left = isMobile
+                ? viewport.left + (viewport.width - rect.width) / 2
+                : viewport.left + viewport.width - rect.width - 16;
+            const top = isMobile
+                ? viewport.top + viewport.height - rect.height - 12
+                : viewport.top + 16;
+            setPosition(left, top);
+        });
     }
 
     /**
@@ -33498,10 +33687,13 @@ $CONTENT
     function showOptimizationProgressToast_ACU(message = '正在进行正文优化...') {
         hideOptimizationProgressToast_ACU();
         const stopButtonHtml = renderStopButton_ACU('acu-opt-stop-btn', '取消优化');
-        _set_optimizationProgressToast_ACU(showToastr_ACU('info', `<div>${message}${stopButtonHtml}</div>`, {
+        const $toast = showToastr_ACU('info', `<div class="acu-running-toast-content"><span class="acu-running-toast-status">${message}</span>${stopButtonHtml}</div>`, {
             timeOut: 0,
             extendedTimeOut: 0,
             tapToDismiss: false,
+            closeButton: false,
+            progressBar: false,
+            toastClass: 'toast acu-toast acu-toast--info acu-toast--running',
             onShown: function () {
                 jQuery_API_ACU('#acu-opt-stop-btn').off('click.acu_opt_cancel').on('click.acu_opt_cancel', function (e) {
                     e.preventDefault();
@@ -33514,13 +33706,16 @@ $CONTENT
                     jQuery_API_ACU(this).closest('.toast').remove();
                 });
             }
-        }));
+        });
+        _set_optimizationProgressToast_ACU($toast);
+        attachLongRunningToastDrag_ACU($toast);
     }
     /**
      * 隐藏正文优化进度提示框
      */
     function hideOptimizationProgressToast_ACU() {
         if (optimizationProgressToast_ACU && toastr_API_ACU) {
+            cleanupLongRunningToastDrag_ACU(optimizationProgressToast_ACU);
             toastr_API_ACU.clear(optimizationProgressToast_ACU);
         }
         _set_optimizationProgressToast_ACU(null);
@@ -38077,6 +38272,7 @@ $CONTENT
     }
     function clearAutoUpdateToast_ACU(loadingToast) {
         if (loadingToast && toastr_API_ACU) {
+            cleanupLongRunningToastDrag_ACU(loadingToast);
             toastr_API_ACU.clear(loadingToast);
         }
     }
@@ -38164,11 +38360,14 @@ $CONTENT
                 const stopButtonId = `acu-stop-auto-update-btn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
                 const stopButtonHtml = renderStopButton_ACU(stopButtonId, '终止');
                 const initialMessage = '自动填表正在准备，请稍候...';
-                const toastMessage = `<div><span class="acu-toast-progress-message">${initialMessage}</span>${stopButtonHtml}</div>`;
+                const toastMessage = `<div class="acu-running-toast-content"><span class="acu-running-toast-status acu-toast-progress-message">${initialMessage}</span>${stopButtonHtml}</div>`;
                 autoProgressToast = showToastr_ACU('info', toastMessage, {
                     timeOut: 0,
                     extendedTimeOut: 0,
                     tapToDismiss: false,
+                    closeButton: false,
+                    progressBar: false,
+                    toastClass: 'toast acu-toast acu-toast--info acu-toast--running',
                     acuToastCategory: ACU_TOAST_CATEGORY_ACU.MANUAL_TABLE,
                     onShown: function () {
                         if (typeof bindTableFillStopButton_ACU === 'function') {
@@ -38183,6 +38382,7 @@ $CONTENT
                         }
                     }
                 });
+                attachLongRunningToastDrag_ACU(autoProgressToast);
             }
             // 调用 service 层执行更新计划，传入纯业务操作委托（不含 UI 操作）
             let result;
@@ -41164,6 +41364,7 @@ $CONTENT
     }
     function clearLoadingToast(loadingToast) {
         if (loadingToast && toastr_API_ACU) {
+            cleanupLongRunningToastDrag_ACU(loadingToast);
             toastr_API_ACU.clear(loadingToast);
         }
     }
@@ -41209,11 +41410,14 @@ $CONTENT
             const initialMessage = progressContext
                 ? `${buildBatchProgressLabel(progressContext)}：${batchToastMessage || '正在填表，请稍候...'}`
                 : (batchToastMessage || '正在填表，请稍候...');
-            const toastMessage = `<div><span class="acu-toast-progress-message">${initialMessage}</span>${stopButtonHtml}</div>`;
+            const toastMessage = `<div class="acu-running-toast-content"><span class="acu-running-toast-status acu-toast-progress-message">${initialMessage}</span>${stopButtonHtml}</div>`;
             loadingToast = showToastr_ACU('info', toastMessage, {
                 timeOut: 0,
                 extendedTimeOut: 0,
                 tapToDismiss: false,
+                closeButton: false,
+                progressBar: false,
+                toastClass: 'toast acu-toast acu-toast--info acu-toast--running',
                 acuToastCategory: ACU_TOAST_CATEGORY_ACU.MANUAL_TABLE,
                 onShown: function () {
                     if (typeof bindTableFillStopButton_ACU === 'function') {
@@ -41228,6 +41432,7 @@ $CONTENT
                     }
                 }
             });
+            attachLongRunningToastDrag_ACU(loadingToast);
         }
         try {
             // 调用 service 层，传入进度回调（只接收纯数据事件）
@@ -41246,9 +41451,7 @@ $CONTENT
         }
         finally {
             // UI：清除加载 toast
-            if (loadingToast && toastr_API_ACU) {
-                toastr_API_ACU.clear(loadingToast);
-            }
+            clearLoadingToast(loadingToast);
         }
     }
     /**
@@ -41305,10 +41508,13 @@ $CONTENT
             notifyTableFillStart();
             const stopButtonId = `acu-stop-manual-update-btn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             const stopButtonHtml = renderStopButton_ACU(stopButtonId, '终止');
-            manualProgressToast = showToastr_ACU('info', `<div><span class="acu-toast-progress-message">手动填表开始。</span>${stopButtonHtml}</div>`, {
+            manualProgressToast = showToastr_ACU('info', `<div class="acu-running-toast-content"><span class="acu-running-toast-status acu-toast-progress-message">手动填表开始。</span>${stopButtonHtml}</div>`, {
                 timeOut: 0,
                 extendedTimeOut: 0,
                 tapToDismiss: false,
+                closeButton: false,
+                progressBar: false,
+                toastClass: 'toast acu-toast acu-toast--info acu-toast--running',
                 acuToastCategory: ACU_TOAST_CATEGORY_ACU.MANUAL_TABLE,
                 onShown: function () {
                     if (typeof bindTableFillStopButton_ACU === 'function') {
@@ -41323,6 +41529,7 @@ $CONTENT
                     }
                 },
             });
+            attachLongRunningToastDrag_ACU(manualProgressToast);
             const result = await orchestrateManualUpdate_ACU(targetKeys, 
             // processBatch 回调保留给兼容路径；当前手动填表主路径由 service grouped helper 执行。
             async (indices, batchMode, batchOptions) => {
@@ -54511,20 +54718,6 @@ $CONTENT
                     #${POPUP_ID_ACU} ::-webkit-scrollbar-thumb { background: var(--acu-border-2); border-radius: 999px; }
                     #${POPUP_ID_ACU} ::-webkit-scrollbar-thumb:hover { background: var(--acu-text-3); }
                         
-                    /* Toast 终止按钮（剧情推进） */
-                    #toast-container .qrf-abort-btn {
-                        margin-left: 8px;
-                        padding: 4px 10px;
-                        border-radius: 999px;
-                        border: 1px solid rgba(255, 107, 107, 0.35) !important;
-                        background: rgba(255, 107, 107, 0.20) !important;
-                        color: #fff !important;
-                        cursor: pointer;
-                        font-weight: 650;
-                        white-space: nowrap;
-                        box-shadow: none !important;
-                    }
-
                     /* ═══════════════════════════════════════════════════════════════
                        工具类系统 — 替代 200+ 处 inline style
                        ═══════════════════════════════════════════════════════════════ */
@@ -55958,8 +56151,8 @@ $CONTENT
     async function runOptimizationLogicWithUI_ACU(userMessage, options = {}) {
         // 1. 创建带中止按钮的进度 toast
         const toastMsg = `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span class="toastr-message" style="margin-right: 10px;">正在读取过往的记忆并分析，请稍后...</span>
+      <div class="acu-running-toast-content">
+          <span class="acu-running-toast-status">正在读取过往的记忆并分析，请稍后...</span>
           <button class="qrf-abort-btn">终止</button>
       </div>
   `;
@@ -55970,9 +56163,10 @@ $CONTENT
             tapToDismiss: false,
             closeButton: false,
             progressBar: false,
-            toastClass: 'toast acu-toast acu-toast--info',
+            toastClass: 'toast acu-toast acu-toast--info acu-toast--running',
             acuToastCategory: ACU_TOAST_CATEGORY_ACU.PLANNING,
         });
+        attachLongRunningToastDrag_ACU($toast);
         // 2. 绑定中止按钮事件
         setTimeout(() => {
             const $abortBtn = ($toast && $toast.find) ? $toast.find('.qrf-abort-btn') : null;
@@ -55986,6 +56180,7 @@ $CONTENT
                         logDebug_ACU('[剧情推进] 用户手动中止了规划任务。');
                     }
                     try {
+                        cleanupLongRunningToastDrag_ACU($toast);
                         if ($toast)
                             toastr_API_ACU.clear($toast);
                     }
@@ -56011,6 +56206,7 @@ $CONTENT
         const result = await runOptimizationLogic_ACU(userMessage, options);
         // 4. 清除进度 toast
         try {
+            cleanupLongRunningToastDrag_ACU($toast);
             if ($toast)
                 toastr_API_ACU.clear($toast);
         }
@@ -56551,6 +56747,7 @@ $CONTENT
      */
     function clearToastElement_ACU($toast) {
         try {
+            cleanupLongRunningToastDrag_ACU($toast);
             if ($toast)
                 toastr_API_ACU?.clear?.($toast);
         }
@@ -56571,8 +56768,8 @@ $CONTENT
      */
     async function processSummaryVectorIndexBeforeGenerationWithUI_ACU(options = {}) {
         const toastMsg = `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span class="toastr-message" style="margin-right: 10px;">正在召回交火记忆并重排纪要索引，请稍后...</span>
+      <div class="acu-running-toast-content">
+          <span class="acu-running-toast-status">正在召回交火记忆并重排纪要索引，请稍后...</span>
       </div>
   `;
         const $toast = showToastr_ACU('info', toastMsg, {
@@ -56582,9 +56779,10 @@ $CONTENT
             tapToDismiss: false,
             closeButton: false,
             progressBar: false,
-            toastClass: 'toast acu-toast acu-toast--info',
+            toastClass: 'toast acu-toast acu-toast--info acu-toast--running',
             acuToastCategory: ACU_TOAST_CATEGORY_ACU.PLANNING,
         });
+        attachLongRunningToastDrag_ACU($toast);
         try {
             const result = await processSummaryVectorIndexBeforeGeneration_ACU(options);
             if (shouldShowSummaryVectorResultToast_ACU(result)) {

@@ -74,6 +74,7 @@
   let r8ResourceRouteSemanticValueCache = new WeakMap();
   let r8ResourceRouteSemanticHashCache = new WeakMap();
   let r8RouteParetoGraphCache = new WeakMap();
+  let r8MechanicalRouteIdentityCache = new WeakMap();
   let r8ObjectLifecycleTokenCache = new WeakMap();
   let r8ObjectLifecycleTokenSequence = 0;
   let unitCapacitySignatureCache = new WeakMap();
@@ -218,6 +219,7 @@
     r8ResourceRouteSemanticValueCache = new WeakMap();
     r8ResourceRouteSemanticHashCache = new WeakMap();
     r8RouteParetoGraphCache = new WeakMap();
+    r8MechanicalRouteIdentityCache = new WeakMap();
     r8ObjectLifecycleTokenCache = new WeakMap();
     r8ObjectLifecycleTokenSequence = 0;
   }
@@ -14955,6 +14957,10 @@
   }
 
   function r8MechanicalRouteIdentity(route = {}) {
+    if (route && typeof route === 'object' && Object.isFrozen(route)) {
+      const cached = r8MechanicalRouteIdentityCache.get(route);
+      if (cached) return cached;
+    }
     const normalizeOutcomes = outcomes =>
       (Array.isArray(outcomes) ? outcomes : []).map(outcome => ({
         probability: Number(outcome?.probability || 0),
@@ -15039,10 +15045,14 @@
         [...(route?.dependencyKeys || [])].map(String).sort(),
       ),
     });
-    return Object.freeze({
+    const identity = Object.freeze({
       ...payload,
       identity: `mechanical-route:${preview.stableHash(payload)}`,
     });
+    if (route && typeof route === 'object' && Object.isFrozen(route)) {
+      r8MechanicalRouteIdentityCache.set(route, identity);
+    }
+    return identity;
   }
 
   function r8LayerUnitIds(route = {}, targetId = '', candidate = {}) {

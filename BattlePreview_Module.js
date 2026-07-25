@@ -2067,21 +2067,80 @@
   }
 
   class PreviewOverlay {
-    constructor(baseWorld = {}, baseRevision = '') {
+    constructor(baseWorld = {}, baseRevision = '', parent = null) {
+      if (
+        parent &&
+        (
+          !(parent instanceof PreviewOverlay) ||
+          parent.baseWorld !== baseWorld
+        )
+      ) {
+        throw new Error('battle_preview_overlay_parent_mismatch');
+      }
       this.baseWorld = baseWorld;
       this.baseRevision = String(baseRevision || stableHash(baseWorld));
+      this.parent = parent;
       this.changedUnits = new Map();
       this.changedStates = new Map();
       this.changedResources = new Map();
       this.changedRules = new Map();
       this.createdSummons = new Map();
       this.summonDefinitionHashes = new Map();
+      this.removedSummons = new Set();
       this.scheduledEvents = [];
+    }
+
+    readMapEntry(mapName, key) {
+      const normalizedKey = String(key || '').trim();
+      for (let overlay = this; overlay; overlay = overlay.parent) {
+        if (
+          (mapName === 'createdSummons' ||
+            mapName === 'summonDefinitionHashes') &&
+          overlay.removedSummons.has(normalizedKey)
+        ) {
+          return undefined;
+        }
+        if (overlay[mapName].has(normalizedKey)) {
+          return overlay[mapName].get(normalizedKey);
+        }
+      }
+      return undefined;
+    }
+
+    mergedMap(mapName) {
+      const chain = [];
+      for (let overlay = this; overlay; overlay = overlay.parent) {
+        chain.push(overlay);
+      }
+      const merged = new Map();
+      for (let index = chain.length - 1; index >= 0; index -= 1) {
+        const overlay = chain[index];
+        if (
+          mapName === 'createdSummons' ||
+          mapName === 'summonDefinitionHashes'
+        ) {
+          overlay.removedSummons.forEach(id => merged.delete(id));
+        }
+        overlay[mapName].forEach((value, key) => merged.set(key, value));
+      }
+      return merged;
+    }
+
+    mergedScheduledEvents() {
+      const chain = [];
+      for (let overlay = this; overlay; overlay = overlay.parent) {
+        chain.push(overlay);
+      }
+      return chain
+        .reverse()
+        .flatMap(overlay => overlay.scheduledEvents);
     }
 
     readUnit(id) {
       const key = String(id || '').trim();
-      return this.changedUnits.get(key) || this.createdSummons.get(key) || findUnit(this.baseWorld, key);
+      return this.readMapEntry('changedUnits', key) ||
+        this.readMapEntry('createdSummons', key) ||
+        findUnit(this.baseWorld, key);
     }
 
     writeUnit(unit) {
@@ -2096,11 +2155,15 @@
       const id = unitId(unit);
       if (!id) throw new Error('battle_preview_overlay_summon_id_missing');
       const normalizedDefinitionHash = String(definitionHash || stableHash(unit)).trim();
-      if (this.createdSummons.has(id)) {
-        if (this.summonDefinitionHashes.get(id) !== normalizedDefinitionHash) {
+      const existingCreated = this.readMapEntry('createdSummons', id);
+      if (existingCreated) {
+        if (
+          this.readMapEntry('summonDefinitionHashes', id) !==
+          normalizedDefinitionHash
+        ) {
           throw new Error(`SUMMON_PREVIEW_INSTANCE_CONFLICT:${id}`);
         }
-        return this.createdSummons.get(id);
+        return existingCreated;
       }
       const existing = findUnit(this.baseWorld, id);
       if (existing) {
@@ -2109,6 +2172,7 @@
         }
         return existing;
       }
+      this.removedSummons.delete(id);
       this.createdSummons.set(id, unit);
       this.summonDefinitionHashes.set(id, normalizedDefinitionHash);
       metrics.overlayWrites += 1;
@@ -2117,10 +2181,11 @@
 
     changeSummon(id, mutator) {
       const key = String(id || '').trim();
-      const current = this.createdSummons.get(key);
+      const current = this.readMapEntry('createdSummons', key);
       if (!current) throw new Error(`battle_preview_overlay_created_summon_missing:${key}`);
       const next = cloneUnitForOverlay(current);
       mutator(next);
+      this.removedSummons.delete(key);
       this.createdSummons.set(key, next);
       metrics.overlayWrites += 1;
       return next;
@@ -2128,8 +2193,12 @@
 
     removeSummon(id) {
       const key = String(id || '').trim();
-      if (!this.createdSummons.delete(key)) throw new Error(`battle_preview_overlay_created_summon_missing:${key}`);
+      if (!this.readMapEntry('createdSummons', key)) {
+        throw new Error(`battle_preview_overlay_created_summon_missing:${key}`);
+      }
+      this.createdSummons.delete(key);
       this.summonDefinitionHashes.delete(key);
+      this.removedSummons.add(key);
       metrics.overlayWrites += 1;
     }
 
@@ -2154,44 +2223,46 @@
     }
 
     fork() {
-      const child = new PreviewOverlay(this.baseWorld, this.baseRevision);
-      child.changedUnits = new Map(this.changedUnits);
-      child.changedStates = new Map(this.changedStates);
-      child.changedResources = new Map(this.changedResources);
-      child.changedRules = new Map(this.changedRules);
-      child.createdSummons = new Map(this.createdSummons);
-      child.summonDefinitionHashes = new Map(this.summonDefinitionHashes);
-      child.scheduledEvents = [...this.scheduledEvents];
-      return child;
+      return new PreviewOverlay(this.baseWorld, this.baseRevision, this);
     }
 
     commitFrom(child) {
-      if (!(child instanceof PreviewOverlay) || child.baseWorld !== this.baseWorld) {
+      if (
+        !(child instanceof PreviewOverlay) ||
+        child.baseWorld !== this.baseWorld ||
+        child.parent !== this
+      ) {
         throw new Error('battle_preview_overlay_transaction_mismatch');
       }
-      this.changedUnits = child.changedUnits;
-      this.changedStates = child.changedStates;
-      this.changedResources = child.changedResources;
-      this.changedRules = child.changedRules;
-      this.createdSummons = child.createdSummons;
-      this.summonDefinitionHashes = child.summonDefinitionHashes;
-      this.scheduledEvents = child.scheduledEvents;
+      this.changedUnits = child.mergedMap('changedUnits');
+      this.changedStates = child.mergedMap('changedStates');
+      this.changedResources = child.mergedMap('changedResources');
+      this.changedRules = child.mergedMap('changedRules');
+      this.createdSummons = child.mergedMap('createdSummons');
+      this.summonDefinitionHashes = child.mergedMap('summonDefinitionHashes');
+      this.removedSummons = new Set();
+      this.scheduledEvents = child.mergedScheduledEvents();
+      this.parent = null;
     }
 
     snapshot() {
+      const changedUnits = this.mergedMap('changedUnits');
+      const changedRules = this.mergedMap('changedRules');
+      const createdSummons = this.mergedMap('createdSummons');
+      const scheduledEvents = this.mergedScheduledEvents();
       const participants = this.baseWorld?.参战者 || {};
       const nextParticipants = Object.fromEntries(Object.entries(participants).map(([side, value]) => {
         if (Array.isArray(value)) {
-          return [side, value.map(unit => this.changedUnits.get(unitId(unit)) || unit)];
+          return [side, value.map(unit => changedUnits.get(unitId(unit)) || unit)];
         }
         if (value && typeof value === 'object') {
-          return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, this.changedUnits.get(unitId(unit)) || unit]))];
+          return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, changedUnits.get(unitId(unit)) || unit]))];
         }
         return [side, value];
       }));
       const snapshot = { ...this.baseWorld, 参战者: nextParticipants };
       const summons = this.baseWorld?.召唤单位表;
-      if ((summons && typeof summons === 'object' && Object.keys(summons).length) || this.createdSummons.size) {
+      if ((summons && typeof summons === 'object' && Object.keys(summons).length) || createdSummons.size) {
         Object.defineProperty(snapshot, '召唤单位表', {
           configurable: true,
           enumerable: true,
@@ -2199,26 +2270,26 @@
           value: {
             ...Object.fromEntries(Object.entries(summons || {}).map(([key, unit]) => [
               key,
-              this.changedUnits.get(unitId(unit)) || unit,
+              changedUnits.get(unitId(unit)) || unit,
             ])),
-            ...Object.fromEntries(this.createdSummons),
+            ...Object.fromEntries(createdSummons),
           },
         });
       }
-      if (this.changedRules.size) {
+      if (changedRules.size) {
         Object.defineProperty(snapshot, '__battlePreviewRuleOverlay', {
           configurable: true,
           enumerable: true,
           writable: true,
-          value: Object.fromEntries(this.changedRules),
+          value: Object.fromEntries(changedRules),
         });
       }
-      if (this.scheduledEvents.length) {
+      if (scheduledEvents.length) {
         Object.defineProperty(snapshot, '__battlePreviewScheduledEvents', {
           configurable: true,
           enumerable: true,
           writable: true,
-          value: [...this.scheduledEvents],
+          value: [...scheduledEvents],
         });
       }
       return snapshot;
@@ -4690,7 +4761,7 @@
     damageMultiplierResolver,
     hitProbabilityResolver,
   }) {
-    const summonEvents = overlay.scheduledEvents.filter(event =>
+    const summonEvents = overlay.mergedScheduledEvents().filter(event =>
       event?.type === 'SUMMON_CREATE' &&
       String(event?.actionMode || '').trim() === '协同攻击'
     );
@@ -4706,7 +4777,7 @@
       .filter(Boolean))];
     summonEvents.forEach(event => {
       (event.summonIds || []).forEach((summonId, summonIndex) => {
-        const summon = overlay.createdSummons.get(summonId);
+        const summon = overlay.readMapEntry('createdSummons', summonId);
         if (!summon) throw new Error(`battle_preview_cooperative_summon_missing:${summonId}`);
         const snapshot = overlay.snapshot();
         const summonSide = sideOf(snapshot, summon);
@@ -5454,9 +5525,13 @@
       actionKind: String(declaration?.actionKind || '').trim(),
       nodeCount: nodeBudget.count,
       contributions: Object.freeze([...ledger.entries]),
-      scheduledEvents: Object.freeze([...overlay.scheduledEvents]),
-      changedRules: Object.freeze(Object.fromEntries(overlay.changedRules)),
-      changedUnitIds: Object.freeze([...overlay.changedUnits.keys()]),
+      scheduledEvents: Object.freeze(overlay.mergedScheduledEvents()),
+      changedRules: Object.freeze(
+        Object.fromEntries(overlay.mergedMap('changedRules')),
+      ),
+      changedUnitIds: Object.freeze([
+        ...overlay.mergedMap('changedUnits').keys(),
+      ]),
       afterSnapshot: overlay.snapshot(),
       metrics: Object.freeze({ overlayWrites: metrics.overlayWrites, fullCloneCalls: 0 }),
     };
@@ -6389,7 +6464,7 @@
     }
     if (event.operation === 'SUMMON_WINDOW') {
       const instanceId = String(payload?.instanceId || targetId).trim();
-      const summon = overlay.createdSummons.get(instanceId);
+      const summon = overlay.readMapEntry('createdSummons', instanceId);
       const hostId = String(
         payload?.hostId || event?.sourceActorId || ''
       ).trim();
@@ -6850,7 +6925,7 @@
         ),
         summonState: Object.freeze(
           Object.fromEntries(
-            [...overlay.createdSummons].map(([id, summon]) => [
+            [...overlay.mergedMap('createdSummons')].map(([id, summon]) => [
               id,
               cloneValue(summon),
             ]),
