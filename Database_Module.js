@@ -56179,18 +56179,7 @@ $CONTENT
                         abortController_ACU.abort();
                         logDebug_ACU('[剧情推进] 用户手动中止了规划任务。');
                     }
-                    try {
-                        cleanupLongRunningToastDrag_ACU($toast);
-                        if ($toast)
-                            toastr_API_ACU.clear($toast);
-                    }
-                    catch (e) { }
-                    // DOM 级兜底：确保 toast 元素被彻底移除，防止 toastr.clear 不生效
-                    try {
-                        if ($toast && $toast.closest)
-                            $toast.closest('.toast').remove();
-                    }
-                    catch (e) { }
+                    clearToastElement_ACU($toast);
                     _set_isProcessing_Plot_ACU(false);
                     setTimeout(() => {
                         showToastr_ACU('info', '规划任务已被用户中止。', { acuToastCategory: ACU_TOAST_CATEGORY_ACU.PLANNING });
@@ -56202,15 +56191,14 @@ $CONTENT
                 logWarn_ACU('[剧情推进] 未找到中止按钮元素。');
             }
         }, 200);
-        // 3. 调用 service 层纯函数
-        const result = await runOptimizationLogic_ACU(userMessage, options);
-        // 4. 清除进度 toast
+        // 3. 调用 service 层纯函数；无论正常完成、中止还是抛错，都必须清除长期运行提示
+        let result;
         try {
-            cleanupLongRunningToastDrag_ACU($toast);
-            if ($toast)
-                toastr_API_ACU.clear($toast);
+            result = await runOptimizationLogic_ACU(userMessage, options);
         }
-        catch (e) { }
+        finally {
+            clearToastElement_ACU($toast);
+        }
         // 5. 根据结果做 UI 通知
         if (!result) {
             return null;
@@ -56751,12 +56739,16 @@ $CONTENT
             if ($toast)
                 toastr_API_ACU?.clear?.($toast);
         }
-        catch (e) { }
+        catch (error) {
+            logWarn_ACU('[运行提示] Toastr 清理失败，继续执行 DOM 兜底:', error);
+        }
         try {
             if ($toast && $toast.closest)
                 $toast.closest('.toast').remove();
         }
-        catch (e) { }
+        catch (error) {
+            logWarn_ACU('[运行提示] DOM 兜底清理失败:', error);
+        }
     }
     function shouldShowSummaryVectorResultToast_ACU(result) {
         if (!result || result.skipped)

@@ -7360,7 +7360,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   padding: 9px 10px;
   border-radius: var(--mvu-radius-lg, 16px);
   border: 1px solid var(--全息材质线);
-  background: var(--全息材质底);
+  background: var(--悬浮材质);
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.34),
     var(--全息材质阴影);
@@ -7385,7 +7385,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   left: 16px;
   top: -5px;
   transform: rotate(45deg);
-  background: var(--暗场卡片);
+  background: var(--暗场浮层);
   border-left: 1px solid var(--全息材质线);
   border-top: 1px solid var(--全息材质线);
 }

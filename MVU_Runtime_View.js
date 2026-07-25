@@ -3130,7 +3130,7 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
   const 更新视图 = 生成MVU更新视图_V1(数据根, userInput, 最后角色消息文本, plotText, 更新视图选项);
   const 可见占位统计 = 收集运行时可见占位统计_V1(更新视图);
   const 魂技待补全路径 = 收集运行时魂技待补全路径_V1(更新视图);
- 
+
   return [
     'Existing MVU Entity Hits:',
     'Only names listed here count as already existing in MVU. Lore-known, worldbook-known, narratively familiar, or previously mentioned names do NOT count as existing unless listed here.',
@@ -3143,18 +3143,7 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
     格式化运行时占位统计_V1(可见占位统计),
     ...格式化运行时魂技待补全路径提示_V1(魂技待补全路径),
     '',
-    '[Death State Rule]',
-    'If a character dies, write 状态.存活=false and choose 状态.死亡类型 as 自然 or 意外. Do NOT write 死亡tick; the script records the current tick automatically.',
-    '',
-  '[Scene Presence & New Entity Check]',
-  'You MUST audit and register newly introduced, durable entities before patching:',
-  '1. 【Important Entity Diff】: Compare characters/places in this reply with "Existing MVU Entity Hits". First check if the entity already exists in the hits; if it exists, you are strictly PROHIBITED from adding it again! Only register when a completely NEW character/place with a proper name enters the long-term plot.',
-  '2. 【Filter Passing NPCs/Scenes】: Strictly IGNORE generic descriptive NPCs (e.g., "板寸头", "瘦高个", "胖宿管") and one-off background places. Do NOT create MVU entities for them.',
-  '3. 【Location Granularity Lock (FATAL)】: ABSOLUTELY FORBIDDEN to register micro-locations (e.g., specific rooms like "104号宿舍", floors, seats, corridors) as new locations! You MUST snap them to the parent 【Major Building/Functional Area】 (e.g., "宿舍区", "教学楼"). If a character enters "104号宿舍" and "宿舍区" is already in Hits, the location is deemed ALREADY EXISTING. DO NOT register it in the table!',
-  '',
-'New Entity Table:',
-'char=Insert new durable characters with formal names (if none, write 无); world.动态地点=Insert new building-level locations (Micro-rooms/floors STRICTLY PROHIBITED. If parent area exists, force 无); org=Insert new factions (if none, write 无); 物品=Insert new mechanically relevant items only (important items/equipment/usable props/special materials/lasting access credentials; generic keys/clothes/routine documents/daily supplies write 无).',
-'',
+
   ].join('\n');
 }
 
