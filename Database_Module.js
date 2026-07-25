@@ -56252,6 +56252,7 @@ $CONTENT
             finalMessage: result.finalMessage,
             runtimePlotText: result.runtimePlotText || result.finalMessage,
             transientStoryInjects: Array.isArray(result.transientStoryInjects) ? result.transientStoryInjects : [],
+            时间推进上下文: result.时间推进上下文 || null,
         };
     }
 
