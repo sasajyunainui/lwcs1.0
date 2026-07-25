@@ -1088,14 +1088,17 @@
   async function 暂存任务时间推进(context = {}) {
     const 时间推进上下文 = context.时间推进上下文;
     if (!时间推进上下文 || Number(时间推进上下文.tick增量) <= 0) return { action: 'continue' };
-    const 暂存函数 = 读取窗口函数('__LWCS_STAGE_TIME_ADVANCE__');
-    if (typeof 暂存函数 !== 'function') {
-      console.warn('[LWCS适配器] 时间预结算桥接接口未就绪，已阻断正文生成。');
+    const 路由函数 = 读取窗口函数('__MVU_ROUTE_MODULE_INTENT__');
+    if (typeof 路由函数 !== 'function') {
+      console.warn('[LWCS适配器] 模块路由桥接接口未就绪，时间预结算已阻断正文生成。');
       return { action: 'blocked', reason: 'time_advance_bridge_unavailable' };
     }
     try {
-      const 结果 = await Promise.resolve(暂存函数(时间推进上下文, 构建剧情模块路由事务上下文(context, context.planningText || 'time_advance')));
-      return 结果?.ok === true
+      const 结果 = await Promise.resolve(路由函数(
+        { module: 'time_advance', 时间推进上下文 },
+        构建剧情模块路由事务上下文(context, 'time_advance'),
+      ));
+      return 结果?.handled === true && 结果?.result?.ok === true
         ? { action: 'continue', result: 结果 }
         : { action: 'blocked', reason: String(结果?.reason || 'time_advance_stage_failed') };
     } catch (错误) {

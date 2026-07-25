@@ -11405,7 +11405,7 @@
     return 键;
   }
 
-  function 暂存任务时间推进_桥接(时间推进上下文 = {}, options = {}) {
+  async function 暂存任务时间推进_桥接(时间推进上下文 = {}, options = {}) {
     const 增量tick = Number(时间推进上下文?.tick增量);
     const 旧tick = Number(时间推进上下文?.旧tick);
     if (!Number.isFinite(增量tick) || 增量tick <= 0 || !Number.isFinite(旧tick) || 旧tick < 0) {
@@ -11418,7 +11418,12 @@
     ];
     const 已有事务 = 查找剧情模块预结算记录_桥接(options);
     if (已有事务) {
-      if (Number(已有事务.任务时间推进tick) === 新tick) return { ok: true, reused: true, unchanged: true, 新tick };
+      if (Number(已有事务.任务时间推进tick) === 新tick) {
+        if (已有事务.记录键 && 已有事务.状态 !== 'user_message_committed') {
+          await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance_retry');
+        }
+        return { ok: true, reused: true, unchanged: true, 新tick };
+      }
       const 结算根 = cloneJsonValue(已有事务.settledStatData, {});
       if (!结算根.world || typeof 结算根.world !== 'object') 结算根.world = {};
       if (!结算根.world.时间 || typeof 结算根.world.时间 !== 'object') 结算根.world.时间 = {};
@@ -11444,6 +11449,10 @@
       已有事务.写后记录 = 构建路径回滚记录自路径列表_桥接(结算根, 已有事务.settledPaths);
       已有事务.patchOps = [...已有事务.patchOps, ...时间补丁];
       已有事务.任务时间推进tick = 新tick;
+      已有事务.状态 = 'waiting_user_message';
+      if (已有事务.记录键) {
+        await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance');
+      }
       return { ok: true, reused: true, 新tick };
     }
     const 旧AI元信息 = 查找当前最后AI楼层元信息_桥接();
@@ -11483,7 +11492,10 @@
       路由签名: 读取剧情模块路由签名_桥接(options),
       任务时间推进tick: 新tick,
     });
-    return 记录键 ? { ok: true, reused: false, 新tick } : { ok: false, reason: 'time_advance_transaction_register_failed' };
+    if (!记录键) return { ok: false, reason: 'time_advance_transaction_register_failed' };
+    const 记录 = 剧情模块预结算事务表.get(记录键);
+    if (记录) await 尝试提交剧情模块预结算事务_桥接(记录键, 记录, 'time_advance');
+    return { ok: true, reused: false, 新tick };
   }
 
   function 登记剧情模块预结算事务自写入_桥接(options = {}, beforeStatData = {}, afterStatData = {}, writeAfterMvuData = {}) {
@@ -11825,9 +11837,20 @@
     if (!事件源 || typeof 事件源.on !== 'function' || !事件名) return false;
     事件源.on(事件名, 变量包 => {
       if (!变量包 || typeof 变量包 !== 'object') return;
-      const 目标消息编号 = 读取目标消息编号_桥接(变量包);
-      if (目标消息编号 === null) return;
-      const 剧情模块记录 = 查找剧情模块正文楼结算记录_桥接(目标消息编号);
+      let 目标消息编号 = 读取目标消息编号_桥接(变量包);
+      let 剧情模块记录 = 目标消息编号 === null ? null : 查找剧情模块正文楼结算记录_桥接(目标消息编号);
+      if (!剧情模块记录) {
+        const 候选记录 = Array.from(剧情模块预结算事务表.values())
+          .filter(记录 => 记录 && 记录.settledStatData && Array.isArray(记录.settledPaths))
+          .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+        for (const 记录 of 候选记录) {
+          const AI楼层 = 读取旧楼层后首个AI回复_桥接(记录.旧AI消息索引);
+          if (!AI楼层?.消息编号) continue;
+          目标消息编号 = AI楼层.消息编号;
+          剧情模块记录 = 记录;
+          break;
+        }
+      }
       if (剧情模块记录) {
         const 合并后变量包 = 合并正文变量包到剧情模块结算态_桥接(变量包, 剧情模块记录);
         if (合并后变量包) {
@@ -47557,6 +47580,7 @@ ${播报文本}
 
   function 归一化模块意图类型(kind = '') {
     const 文本 = toText(kind, '').toLowerCase();
+    if (/^time_advance$|时间推进|时间结算/.test(文本)) return 'time_advance';
     if (/battle|combat|战斗|切磋|单挑/.test(文本)) return 'battle';
     if (/trade|交易|购买|出售|竞拍|拍卖/.test(文本)) return 'trade';
     if (/craft|profession|job|副职业|工坊|锻造|制造|设计|修理|维修/.test(文本)) return 'profession';
@@ -48650,6 +48674,23 @@ ${播报文本}
     let moduleKind = '';
     let request = null;
 
+    if (归一化模块意图类型(kind) === 'time_advance') {
+      const 时间推进上下文 = payload.时间推进上下文 || payload.timeAdvanceContext || options.时间推进上下文;
+      if (dryRun) {
+        return 构建模块路由成功结果('time_advance', 时间推进上下文 || {}, {
+          dryRun: true,
+          dispatchMode: 'settled_summary',
+        });
+      }
+      const result = await Promise.resolve(暂存任务时间推进_桥接(时间推进上下文, options));
+      return result?.ok
+        ? 构建模块路由成功结果('time_advance', 时间推进上下文 || {}, {
+            dispatchMode: 'settled_summary',
+            result,
+          })
+        : 构建模块路由失败结果('time_advance', 时间推进上下文 || {}, result?.reason || 'time_advance_stage_failed', { result });
+    }
+
     if (归一化模块意图类型(kind) === '未命中') {
       return 构建模块路由成功结果('未命中', payload && typeof payload === 'object' ? payload : {}, {
         dryRun,
@@ -49035,7 +49076,6 @@ ${播报文本}
       }
     };
     window.__LWCS_GET_STORY_MODULE_STAGING_STAT__ = (options = {}) => 读取剧情模块预结算StatData_桥接(options);
-    window.__LWCS_STAGE_TIME_ADVANCE__ = (时间推进上下文, options = {}) => 暂存任务时间推进_桥接(时间推进上下文, options);
     if (!window.__MVU_MODULE_INTENT_ROUTER_EVENT_BOUND__) {
       window.addEventListener('mvu-module-intent', event => {
         const detail = event && event.detail && typeof event.detail === 'object' ? event.detail : {};
