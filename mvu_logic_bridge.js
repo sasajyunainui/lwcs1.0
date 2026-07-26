@@ -2320,29 +2320,47 @@
   }
 
   function 构建技能设计台分支行摘要(行, 序号 = 0) {
-    if (!(行 instanceof Element)) return `分支 ${序号 + 1}`;
-    const 取文本 = el => {
+    const 缺省 = `分支 ${序号 + 1}`;
+    if (!(行 instanceof Element)) return 缺省;
+    const 取值 = el => {
       if (!el) return '';
       if (el.tagName === 'SELECT') return toText(el.options[el.selectedIndex]?.textContent, '').split('｜')[0].trim();
       return toText(el.value, '').trim();
     };
-    const 条件行 = Array.from(行.querySelectorAll('[data-skill-designer-condition-row]'));
-    const 条件描述 = 条件行
-      .map(条件 => {
-        const 字段 = 取文本(条件.querySelector('[data-skill-designer-condition-field]'));
-        const 比较 = 取文本(条件.querySelector('[data-skill-designer-condition-compare-field] select, [data-skill-designer-condition-compare-field] input'));
-        return [字段, 比较].filter(Boolean).join(' ');
+    // 一条条件行里挂着好几套控件，按条件类型只有一部分适用，
+    // 不适用的那些宿主 field 是 hidden 的，摘要必须跳过它们
+    const 取可见字段 = (条件行, 标签名) => {
+      const 宿主 = Array.from(条件行.querySelectorAll('.mvu-editor-field')).find(节点 => {
+        if (节点.hidden) return false;
+        const 标签 = 节点.querySelector('.mvu-editor-label');
+        if (!标签) return false;
+        const 文本 = Array.from(标签.childNodes)
+          .filter(n => n.nodeType === Node.TEXT_NODE)
+          .map(n => n.textContent)
+          .join('')
+          .trim();
+        return 文本 === 标签名;
+      });
+      return 宿主 ? 取值(宿主.querySelector('[data-skill-designer-condition-field]')) : '';
+    };
+    const 条件描述 = Array.from(行.querySelectorAll('[data-skill-designer-condition-row]'))
+      .map(条件行 => {
+        const 类型 = toText(条件行.getAttribute('data-skill-designer-condition-type'), '').trim();
+        if (!类型) return '';
+        // 阈值那格的标签跟条件类型同名（如类型「生命比例」→ 标签「生命比例」）
+        return [类型, 取可见字段(条件行, '比较'), 取可见字段(条件行, 类型)].filter(Boolean).join(' ');
       })
       .filter(Boolean);
-    // 有替换/追加效果时标出去向，让人不点开也知道这条分支做什么
+    // 标出这条分支的去向，让人不点开也知道它做什么
     const 去向 = [];
-    if (行.querySelector('[data-skill-designer-prototype-row][data-skill-designer-branch-slot="替换效果"]')) 去向.push('替换');
-    if (行.querySelector('[data-skill-designer-prototype-row][data-skill-designer-branch-slot="追加效果"]')) 去向.push('追加');
-    const 片段 = [`分支 ${序号 + 1}`];
+    if (行.querySelector('[data-skill-designer-branch-slot="替换效果"]')) 去向.push('替换');
+    if (行.querySelector('[data-skill-designer-branch-slot="追加效果"]')) 去向.push('追加');
+    const 片段 = [缺省];
     if (条件描述.length) 片段.push(条件描述.slice(0, 2).join('、'));
     if (去向.length) 片段.push(去向.join('/'));
     return 片段.join(' · ');
   }
+
 
   // 列表-详情分层：效果行与条件分支行共用一套，只是取行方式和摘要不同。
   // 增删行走的是局部 insertAdjacentHTML，不会重跑 onMount，所以这里必须
