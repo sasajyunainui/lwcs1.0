@@ -5903,6 +5903,38 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   position: relative;
 }
 
+/* 最终摘要是右栏唯一一段人话，上浮到首屏并给出主标题量级 */
+.skill-designer-summary-row--headline {
+  border-left-color: color-mix(in srgb, var(--主题主色) 72%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 20%, transparent), transparent);
+}
+
+.skill-designer-summary-row--headline > span {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* COST 明细是结算中间量，默认折叠；玩家要的是「够不够」不是系数 */
+.skill-designer-cost-fold > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: rgba(223, 247, 255, 0.72);
+  list-style: none;
+}
+
+.skill-designer-cost-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.skill-designer-cost-fold > summary::before {
+  content: '▸ ';
+  color: color-mix(in srgb, var(--主题主色) 80%, transparent);
+}
+
+.skill-designer-cost-fold[open] > summary::before {
+  content: '▾ ';
+}
+
 .skill-designer-summary-row em {
   font-style: normal;
   font-size: var(--mvu-font-xs, 10px);

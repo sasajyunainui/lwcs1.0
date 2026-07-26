@@ -36943,16 +36943,16 @@
                       ? `<div class=\"skill-designer-summary-row\"><em>融合对象</em><span data-skill-designer-preview=\"fusion\">${htmlEscape(buildSkillDesignerFusionSummary(designerDraft) || '未设置')}</span></div>`
                       : ''
                   }
-                  <div class=\"skill-designer-summary-row\"><em>当前属性</em>${buildSkillDesignerCurrentAttributeSummaryHtml(snapshot)}</div>
-                  <div class=\"skill-designer-summary-row skill-designer-trial-card\" data-skill-designer-cost-row ${技能COST试算内容 ? '' : 'hidden'}><em>COST</em><div data-skill-designer-cost>${技能COST试算内容}</div></div>
+                  <div class=\"skill-designer-summary-row skill-designer-summary-row--headline\"><em>最终摘要</em><span data-skill-designer-preview=\"summary\">${htmlEscape(构建技能设计台当前翻译摘要(designerDraft, previewMeta, snapshot.rootData) || '未设置')}</span></div>
                   <div class=\"skill-designer-summary-row skill-designer-trial-card\" data-skill-designer-trial-row ${技能试算内容 ? '' : 'hidden'}><em>试算</em><div data-skill-designer-simulation>${技能试算内容}</div></div>
+                  <div class=\"skill-designer-summary-row\"><em>当前属性</em>${buildSkillDesignerCurrentAttributeSummaryHtml(snapshot)}</div>
+                  <details class=\"skill-designer-summary-row skill-designer-trial-card skill-designer-cost-fold\" data-skill-designer-cost-row ${技能COST试算内容 ? '' : 'hidden'}><summary>COST 明细</summary><div data-skill-designer-cost>${技能COST试算内容}</div></details>
                   ${
                     previewMeta.scope === 'art'
                       ? `<div class=\"skill-designer-summary-row\"><em>功法进度</em><span data-skill-designer-preview=\"progress\">${htmlEscape(buildSkillDesignerArtProgressSummary(designerDraft) || '未设置')}</span></div>`
                       : ''
                   }
                   <div class=\"skill-designer-summary-row\"><em>附带属性</em><span data-skill-designer-preview=\"attribute\">${htmlEscape(buildSkillDesignerAttributeSummary(designerDraft) || '未设置')}</span></div>
-                  <div class=\"skill-designer-summary-row\"><em>最终摘要</em><span data-skill-designer-preview=\"summary\">${htmlEscape(构建技能设计台当前翻译摘要(designerDraft, previewMeta, snapshot.rootData) || '未设置')}</span></div>
                 </div>
               </div>
             </div>
