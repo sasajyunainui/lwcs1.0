@@ -2283,16 +2283,16 @@
   // [data-skill-designer-prototype-row]，天然就是「可增删实体」。
   const 技能设计台效果层缓存 = Object.create(null);
 
-  function 读取技能设计台效果层(previewKey = '') {
-    const key = String(previewKey || '').trim();
-    if (!key) return -1;
+  function 读取技能设计台效果层(previewKey = '', 层名 = '效果') {
+    const key = `${String(previewKey || '').trim()}::${层名}`;
+    if (key.startsWith('::')) return -1;
     const v = Number(技能设计台效果层缓存[key]);
     return Number.isFinite(v) ? v : -1;
   }
 
-  function 写入技能设计台效果层(previewKey = '', 序号 = -1) {
-    const key = String(previewKey || '').trim();
-    if (!key) return;
+  function 写入技能设计台效果层(previewKey = '', 序号 = -1, 层名 = '效果') {
+    const key = `${String(previewKey || '').trim()}::${层名}`;
+    if (key.startsWith('::')) return;
     技能设计台效果层缓存[key] = Number(序号);
   }
 
@@ -2319,24 +2319,47 @@
     return 片段.join(' · ');
   }
 
-  function 装配技能设计台效果分层(mountEl, previewKey = '') {
-    if (!(mountEl instanceof Element)) return;
-    const 主格 = mountEl.querySelector('[data-skill-designer-prototype-grid="main"]');
-    if (!主格 || 主格.querySelector('[data-skill-designer-effect-list]')) return;
-    const 行列表 = Array.from(主格.querySelectorAll(':scope > [data-skill-designer-prototype-row]'));
-    // 只有一个效果时列表层是纯粹的多余点击：直接展开它，不装分层
+  function 构建技能设计台条件分支摘要(行, 序号 = 0) {
+    if (!(行 instanceof Element)) return `分支 ${序号 + 1}`;
+    const 取文本 = el => {
+      if (!el) return '';
+      if (el.tagName === 'SELECT') return toText(el.options[el.selectedIndex]?.textContent, '').split('｜')[0].trim();
+      return toText(el.value, '').trim();
+    };
+    const 条件行 = Array.from(行.querySelectorAll('[data-skill-designer-condition-row]'));
+    const 条件描述 = 条件行
+      .map(条件 => {
+        const 字段 = 取文本(条件.querySelector('[data-skill-designer-condition-field]'));
+        const 比较 = 取文本(条件.querySelector('[data-skill-designer-condition-compare-field] select, [data-skill-designer-condition-compare-field] input'));
+        return [字段, 比较].filter(Boolean).join(' ');
+      })
+      .filter(Boolean);
+    // 有替换/追加效果时标出去向，让人不点开也知道这条分支做什么
+    const 去向 = [];
+    if (行.querySelector('[data-skill-designer-prototype-row][data-skill-designer-branch-slot="替换效果"]')) 去向.push('替换');
+    if (行.querySelector('[data-skill-designer-prototype-row][data-skill-designer-branch-slot="追加效果"]')) 去向.push('追加');
+    const 片段 = [`分支 ${序号 + 1}`];
+    if (条件描述.length) 片段.push(条件描述.slice(0, 2).join('、'));
+    if (去向.length) 片段.push(去向.join('/'));
+    return 片段.join(' · ');
+  }
+
+  // 列表-详情分层：效果行与条件分支行共用一套，只是取行方式和摘要不同
+  function 装配技能设计台列表分层(容器, 行列表, 配置 = {}) {
+    const { previewKey = '', 层名 = '效果', 列表类名 = 'skill-designer-effect-list', 标记 = 'data-skill-designer-effect-list', 摘要 = () => '', 返回文案 = '‹ 返回列表' } = 配置;
+    if (!(容器 instanceof Element) || 容器.querySelector(`[${标记}]`)) return;
+    // 只有一项时列表层是纯粹的多余点击：直接展开它，不装分层
     if (行列表.length < 2) return;
 
     const 列表 = document.createElement('div');
-    列表.className = 'skill-designer-effect-list';
-    列表.setAttribute('data-skill-designer-effect-list', '1');
-    主格.insertBefore(列表, 行列表[0]);
+    列表.className = 列表类名;
+    列表.setAttribute(标记, '1');
+    容器.insertBefore(列表, 行列表[0]);
 
     const 返回条 = document.createElement('div');
     返回条.className = 'skill-designer-effect-back';
-    返回条.setAttribute('data-skill-designer-effect-back', '1');
-    返回条.innerHTML = '<button type="button" class="skill-designer-effect-back-btn">‹ 返回效果列表</button><strong data-skill-designer-effect-title></strong>';
-    主格.insertBefore(返回条, 行列表[0]);
+    返回条.innerHTML = `<button type="button" class="skill-designer-effect-back-btn">${htmlEscape(返回文案)}</button><strong data-skill-designer-effect-title></strong>`;
+    容器.insertBefore(返回条, 行列表[0]);
 
     const 显示 = 序号 => {
       const 有效 = Number.isFinite(序号) && 序号 >= 0 && 序号 < 行列表.length;
@@ -2348,13 +2371,13 @@
       });
       if (有效) {
         const 标题 = 返回条.querySelector('[data-skill-designer-effect-title]');
-        if (标题) 标题.textContent = 构建技能设计台效果摘要(行列表[序号]);
+        if (标题) 标题.textContent = 摘要(行列表[序号], 序号);
       } else {
         列表.innerHTML = 行列表
-          .map((行, i) => `<button type="button" class="skill-designer-effect-summary" data-skill-designer-effect-open="${i}"><span>${htmlEscape(构建技能设计台效果摘要(行))}</span><i>›</i></button>`)
+          .map((行, i) => `<button type="button" class="skill-designer-effect-summary" data-skill-designer-effect-open="${i}"><span>${htmlEscape(摘要(行, i))}</span><i>›</i></button>`)
           .join('');
       }
-      写入技能设计台效果层(previewKey, 有效 ? 序号 : -1);
+      写入技能设计台效果层(previewKey, 有效 ? 序号 : -1, 层名);
     };
 
     列表.addEventListener('click', 事件 => {
@@ -2369,9 +2392,41 @@
       显示(-1);
     });
 
-    const 缓存层 = 读取技能设计台效果层(previewKey);
+    const 缓存层 = 读取技能设计台效果层(previewKey, 层名);
     显示(Number.isFinite(缓存层) && 缓存层 >= 0 && 缓存层 < 行列表.length ? 缓存层 : -1);
   }
+
+  // 条件分支是效果之下的第三层：一条分支就是一整块表单，
+  // 多条并排时整个「效果」页会长到看不到头
+  function 装配技能设计台条件分支分层(mountEl, previewKey = '') {
+    if (!(mountEl instanceof Element)) return;
+    mountEl.querySelectorAll('[data-skill-designer-condition-branch-list]').forEach((列表容器, 容器序号) => {
+      const 分支行 = Array.from(列表容器.querySelectorAll(':scope > [data-skill-designer-condition-branch-row]'));
+      装配技能设计台列表分层(列表容器, 分支行, {
+        previewKey,
+        层名: `条件分支${容器序号}`,
+        列表类名: 'skill-designer-effect-list skill-designer-branch-list',
+        标记: 'data-skill-designer-branch-list',
+        摘要: 构建技能设计台条件分支摘要,
+        返回文案: '‹ 返回分支列表',
+      });
+    });
+  }
+
+  function 装配技能设计台效果分层(mountEl, previewKey = '') {
+    if (!(mountEl instanceof Element)) return;
+    const 主格 = mountEl.querySelector('[data-skill-designer-prototype-grid="main"]');
+    if (!主格) return;
+    装配技能设计台列表分层(主格, Array.from(主格.querySelectorAll(':scope > [data-skill-designer-prototype-row]')), {
+      previewKey,
+      层名: '效果',
+      列表类名: 'skill-designer-effect-list',
+      标记: 'data-skill-designer-effect-list',
+      摘要: 构建技能设计台效果摘要,
+      返回文案: '‹ 返回效果列表',
+    });
+  }
+
 
   function 装配技能设计台分页(mountEl, previewKey = '') {
     if (!(mountEl instanceof Element)) return;
@@ -35402,6 +35457,7 @@
           const form = mountEl.querySelector('[data-skill-designer-form]');
           装配技能设计台分页(mountEl, previewKey);
           装配技能设计台效果分层(mountEl, previewKey);
+          装配技能设计台条件分支分层(mountEl, previewKey);
           const primaryMainInput = mountEl.querySelector('[data-skill-designer-field=\"primaryMain\"]');
           const primarySubInput = mountEl.querySelector('[data-skill-designer-field=\"primarySub\"]');
           const typeInput = mountEl.querySelector('[data-skill-designer-field=\"type\"]');

@@ -4979,7 +4979,25 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
 
 /* 效果列表 ↔ 效果详情两层视图。隐藏规则必须排在 .skill-designer-subsection
    之后：两者同特异性时靠源序决胜（本轮已踩过一次）。不使用 !important。 */
+/* 条件分支列表比效果列表深一层，缩进并压低一档，
+   让人一眼看出这是「某个效果之下」的分支，而不是并列的另一组效果 */
+.skill-designer-branch-list {
+  margin-left: 10px;
+  border-left: 1px solid color-mix(in srgb, var(--主题主色) 22%, transparent);
+  padding-left: 8px;
+}
+
+.skill-designer-branch-list .skill-designer-effect-summary {
+  font-size: 12px;
+}
+
 .skill-designer-subsection[data-skill-designer-effect-hidden] {
+  display: none;
+}
+
+/* 分支行的类名恰好也是 subsection，上一条已覆盖；这条只作为
+   将来结构变化时的兜底，必须排在后面才不会被同权重规则压掉 */
+[data-skill-designer-condition-branch-row][data-skill-designer-effect-hidden] {
   display: none;
 }
 
