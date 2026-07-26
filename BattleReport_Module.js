@@ -4404,11 +4404,13 @@
         sequence: number(entry.raw?.sequence, 0),
         eventKind: text(entry.raw?.eventKind),
         stepRole: settlementStepRoles[text(entry.raw?.eventKind)] || 'OTHER',
+        actorId: text(entry.fact.actorId),
         actorName: text(entry.fact.actorName),
         targetName: text(entry.fact.targetName),
         /* 这一步是不是由交锋发起者以外的人做出的——反击、格挡、闪避都靠它识别，
-           渲染时据此加"对此"之类的回应连接词，而不是让读者自己猜谁在回应谁。 */
-        byResponder: text(entry.fact.actorName) !== text(exchange?.actorName),
+           渲染时据此加"对此"之类的回应连接词，而不是让读者自己猜谁在回应谁。
+           必须比 actorId 而不是显示名：同名单位（尤其召唤物）会让名字比较误判归属。 */
+        byResponder: text(entry.fact.actorId) !== text(exchange?.actorId),
         text: text(entry.fact.summary),
         /* 玩家版没有覆盖到的事件类型回落到 AI 版，宁可稍显生硬也不能凭空造句。 */
         playerText: playerStepText(entry.raw, entry.fact) || text(entry.fact.summary),
@@ -4688,6 +4690,33 @@
     ].filter(Boolean).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   }
 
+  /*
+   * 多目标交锋的步骤分组。
+   *
+   * 一次 AoE 会对每个目标各产生一串效果事实，平铺成一条步骤流后
+   * "谁挨了什么"就糊在一起了（实测一次【迟缓光环】命中 3 人 → 6 条属性/判定修正混排）。
+   * 目标多于一个时按承受者分组，每组内部仍保持真实时序。
+   * 不指向具体目标的步骤（声明、支付、窗口）留在共享段，不重复到每一组。
+   */
+  function groupStepsByTarget(steps = [], actorName = '') {
+    const rows = Array.isArray(steps) ? steps : [];
+    const targets = unique(
+      rows.map(step => text(step?.targetName)).filter(name => name && name !== text(actorName)),
+    );
+    if (targets.length <= 1) return null;
+    const shared = rows.filter(step => {
+      const targetName = text(step?.targetName);
+      return !targetName || targetName === text(actorName);
+    });
+    return {
+      shared,
+      groups: targets.map(targetName => ({
+        targetName,
+        steps: rows.filter(step => text(step?.targetName) === targetName),
+      })).filter(group => group.steps.length),
+    };
+  }
+
   function renderChainNodeForAI(node = {}, lines = []) {
     {
       /* 局面：只报会在下一个窗口兑现、且不是行动者自己的蓄力，其余属于噪音。 */
@@ -4729,13 +4758,22 @@
       /* 按真实时序逐步输出，一步一行。回应方的步骤加"对此"前缀，
          让"谁在回应谁"从文本上直接可读，而不是靠 AI 猜并列分句的关系。 */
       const steps = Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [];
-      let 上一步是发起方 = true;
-      steps.forEach(step => {
-        if (step.stepRole === 'DECLARE' && step.actorName === node.actorName) return;
-        const 回应前缀 = step.byResponder && 上一步是发起方 ? '对此，' : '';
-        lines.push(`  ${回应前缀}${step.text}`);
-        上一步是发起方 = !step.byResponder;
-      });
+      const 可叙述 = steps.filter(step => !(step.stepRole === 'DECLARE' && step.actorName === node.actorName));
+      const 分组 = groupStepsByTarget(可叙述, node.actorName);
+      if (分组) {
+        分组.shared.forEach(step => lines.push(`  ${step.text}`));
+        分组.groups.forEach(group => {
+          lines.push(`  对${group.targetName}：`);
+          group.steps.forEach(step => lines.push(`    ${step.text}`));
+        });
+      } else {
+        let 上一步是发起方 = true;
+        可叙述.forEach(step => {
+          const 回应前缀 = step.byResponder && 上一步是发起方 ? '对此，' : '';
+          lines.push(`  ${回应前缀}${step.text}`);
+          上一步是发起方 = !step.byResponder;
+        });
+      }
       if (!steps.length && text(node?.settlement?.declarationSummary)) {
         lines.push(`  ${text(node.settlement.declarationSummary)}`);
       }
@@ -5920,6 +5958,7 @@
     renderChainForAI,
     buildPipelineStats,
     buildBattleHeadline,
+    groupStepsByTarget,
     adaptDecisionTrace,
   });
 })();

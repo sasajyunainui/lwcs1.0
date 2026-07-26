@@ -30776,16 +30776,11 @@
       });
       if (!锚点映射.size || !槽位映射.size) return;
 
-      // 先一次读完全部矩形，再统一写样式；读写交替会让每轮都强制重排
-      const 锚点写入列表 = [];
       槽位映射.forEach((槽位, 序号) => {
         const 锚点 = 锚点映射.get(序号);
         if (!(槽位 instanceof HTMLElement) || !(锚点 instanceof HTMLElement)) return;
         const 槽位矩形 = 槽位.getBoundingClientRect();
         if (!(槽位矩形.width > 0 && 槽位矩形.height > 0)) return;
-        锚点写入列表.push({ 锚点, 槽位矩形 });
-      });
-      锚点写入列表.forEach(({ 锚点, 槽位矩形 }) => {
         const 中心Y = 槽位矩形.top + 槽位矩形.height / 2 - 扫描矩形.top;
         const 比例 = 扫描矩形.height > 0 ? 中心Y / 扫描矩形.height : 0.5;
         const 线宽 = Math.max(34, Math.round(Math.max(0, 轨道矩形.right - 槽位矩形.right - 18)));

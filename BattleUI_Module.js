@@ -9845,14 +9845,26 @@ class BattleUIComponent {
           /* 结算按真实时序逐步渲染。回应方的步骤缩进并标记，
              让"谁在回应谁"一眼可辨，而不是读一堆并列句自己拼因果。 */
           const steps = Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [];
-          const 结算明细 = steps
-            .filter(step => !(step.stepRole === 'DECLARE' && step.actorName === 行动者))
-            .map(step => {
-              const 文本 = String(step.playerText || step.text || '').trim();
-              if (!文本) return '';
-              return `<p class="battle-chain-step${step.byResponder ? ' battle-chain-step--response' : ''}">${htmlEscapeText(文本)}</p>`;
-            })
-            .filter(Boolean);
+          const 可叙述 = steps.filter(step => !(step.stepRole === 'DECLARE' && step.actorName === 行动者));
+          const 渲染步骤 = (step, 额外类名 = '') => {
+            const 文本 = String(step.playerText || step.text || '').trim();
+            if (!文本) return '';
+            const 类名 = ['battle-chain-step', step.byResponder ? 'battle-chain-step--response' : '', 额外类名]
+              .filter(Boolean).join(' ');
+            return `<p class="${类名}">${htmlEscapeText(文本)}</p>`;
+          };
+          /* 多目标 AoE 按承受者分组，否则每个目标的效果会糊成一片，
+             玩家分不清哪条作用在谁身上。 */
+          const 分组 = 群体分组步骤(可叙述, 行动者);
+          const 结算明细 = 分组
+            ? [
+                ...分组.shared.map(step => 渲染步骤(step)),
+                ...分组.groups.flatMap(group => [
+                  `<p class="battle-chain-step battle-chain-step--target">对${htmlEscapeText(group.targetName)}</p>`,
+                  ...group.steps.map(step => 渲染步骤(step, 'battle-chain-step--grouped')),
+                ]),
+              ].filter(Boolean)
+            : 可叙述.map(step => 渲染步骤(step)).filter(Boolean);
           /* 蓄力、让过这类动作没有后续步骤，此时声明本身就是全部内容——
              不兜底会渲染出一张只有标题的空卡。
              兜底要取声明步骤的玩家版措辞，取 declarationSummary 会把 AI 版判定腔漏给玩家。 */
