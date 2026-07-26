@@ -4976,6 +4976,78 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   background: rgba(5, 24, 34, 0.3);
 }
 
+/* 效果列表 ↔ 效果详情两层视图。隐藏规则必须排在 .skill-designer-subsection
+   之后：两者同特异性时靠源序决胜（本轮已踩过一次）。不使用 !important。 */
+.skill-designer-subsection[data-skill-designer-effect-hidden] {
+  display: none;
+}
+
+.skill-designer-effect-list {
+  display: grid;
+  gap: 6px;
+}
+
+.skill-designer-effect-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(164, 221, 234, 0.18);
+  border-left: 3px solid rgba(77, 240, 255, 0.42);
+  background: rgba(5, 24, 34, 0.34);
+  color: rgba(232, 248, 255, 0.92);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.skill-designer-effect-summary:hover,
+.skill-designer-effect-summary:focus-visible {
+  border-color: rgba(77, 240, 255, 0.6);
+  background: rgba(8, 34, 46, 0.5);
+}
+
+.skill-designer-effect-summary i {
+  flex: 0 0 auto;
+  font-style: normal;
+  opacity: 0.6;
+}
+
+.skill-designer-effect-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.skill-designer-effect-back-btn {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(164, 221, 234, 0.22);
+  background: transparent;
+  color: rgba(223, 247, 255, 0.78);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.skill-designer-effect-back strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(232, 248, 255, 0.92);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .skill-designer-status-prototype-row {
   padding: 12px;
 }

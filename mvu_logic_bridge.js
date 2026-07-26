@@ -2278,6 +2278,99 @@
     { 名称: '属性与呈现', 标题集: ['元属性特征', '终端解析图谱'] },
   ]);
 
+  // ── 效果列表 ↔ 效果详情两层视图 ─────────────────────────────
+  // 与分页同思路：不改渲染函数，在挂载后按层折叠。效果行本身是
+  // [data-skill-designer-prototype-row]，天然就是「可增删实体」。
+  const 技能设计台效果层缓存 = Object.create(null);
+
+  function 读取技能设计台效果层(previewKey = '') {
+    const key = String(previewKey || '').trim();
+    if (!key) return -1;
+    const v = Number(技能设计台效果层缓存[key]);
+    return Number.isFinite(v) ? v : -1;
+  }
+
+  function 写入技能设计台效果层(previewKey = '', 序号 = -1) {
+    const key = String(previewKey || '').trim();
+    if (!key) return;
+    技能设计台效果层缓存[key] = Number(序号);
+  }
+
+  // 摘要直接从已渲染的控件读，避免与数据模型耦合
+  function 构建技能设计台效果摘要(行) {
+    if (!(行 instanceof Element)) return '效果';
+    const 原型 = toText(行.getAttribute('data-skill-designer-rendered-prototype'), '').trim() || '效果';
+    const 取 = 属性名 => {
+      const el = 行.querySelector(`[${属性名}]`);
+      if (!el) return '';
+      if (el.tagName === 'SELECT') return toText(el.options[el.selectedIndex]?.textContent, '').split('｜')[0].trim();
+      return toText(el.value, '').trim();
+    };
+    const 片段 = [原型];
+    const 目标 = 取('data-skill-designer-prototype-field="目标"');
+    if (目标) 片段.push(目标);
+    ['数值', '威力倍率', '强化倍率'].some(字段 => {
+      const v = 取(`data-skill-designer-prototype-field="${字段}"`);
+      if (v) { 片段.push(v); return true; }
+      return false;
+    });
+    const 持续 = 取('data-skill-designer-prototype-field="持续回合"');
+    if (持续 && 持续 !== '0') 片段.push(`持续${持续}回合`);
+    return 片段.join(' · ');
+  }
+
+  function 装配技能设计台效果分层(mountEl, previewKey = '') {
+    if (!(mountEl instanceof Element)) return;
+    const 主格 = mountEl.querySelector('[data-skill-designer-prototype-grid="main"]');
+    if (!主格 || 主格.querySelector('[data-skill-designer-effect-list]')) return;
+    const 行列表 = Array.from(主格.querySelectorAll(':scope > [data-skill-designer-prototype-row]'));
+    if (!行列表.length) return;
+
+    const 列表 = document.createElement('div');
+    列表.className = 'skill-designer-effect-list';
+    列表.setAttribute('data-skill-designer-effect-list', '1');
+    主格.insertBefore(列表, 行列表[0]);
+
+    const 返回条 = document.createElement('div');
+    返回条.className = 'skill-designer-effect-back';
+    返回条.setAttribute('data-skill-designer-effect-back', '1');
+    返回条.innerHTML = '<button type="button" class="skill-designer-effect-back-btn">‹ 返回效果列表</button><strong data-skill-designer-effect-title></strong>';
+    主格.insertBefore(返回条, 行列表[0]);
+
+    const 显示 = 序号 => {
+      const 有效 = Number.isFinite(序号) && 序号 >= 0 && 序号 < 行列表.length;
+      列表.hidden = 有效;
+      返回条.hidden = !有效;
+      行列表.forEach((行, i) => {
+        if (有效 && i === 序号) 行.removeAttribute('data-skill-designer-effect-hidden');
+        else 行.setAttribute('data-skill-designer-effect-hidden', '1');
+      });
+      if (有效) {
+        const 标题 = 返回条.querySelector('[data-skill-designer-effect-title]');
+        if (标题) 标题.textContent = 构建技能设计台效果摘要(行列表[序号]);
+      } else {
+        列表.innerHTML = 行列表
+          .map((行, i) => `<button type="button" class="skill-designer-effect-summary" data-skill-designer-effect-open="${i}"><span>${htmlEscape(构建技能设计台效果摘要(行))}</span><i>›</i></button>`)
+          .join('');
+      }
+      写入技能设计台效果层(previewKey, 有效 ? 序号 : -1);
+    };
+
+    列表.addEventListener('click', 事件 => {
+      const 按钮 = 事件.target instanceof Element ? 事件.target.closest('[data-skill-designer-effect-open]') : null;
+      if (!按钮) return;
+      事件.preventDefault();
+      显示(Number(按钮.getAttribute('data-skill-designer-effect-open')));
+    });
+    返回条.addEventListener('click', 事件 => {
+      if (!(事件.target instanceof Element) || !事件.target.closest('.skill-designer-effect-back-btn')) return;
+      事件.preventDefault();
+      显示(-1);
+    });
+
+    显示(读取技能设计台效果层(previewKey));
+  }
+
   function 装配技能设计台分页(mountEl, previewKey = '') {
     if (!(mountEl instanceof Element)) return;
     const 表单 = mountEl.querySelector('[data-skill-designer-form]');
@@ -35253,6 +35346,7 @@
         onMount: mountEl => {
           const form = mountEl.querySelector('[data-skill-designer-form]');
           装配技能设计台分页(mountEl, previewKey);
+          装配技能设计台效果分层(mountEl, previewKey);
           const primaryMainInput = mountEl.querySelector('[data-skill-designer-field=\"primaryMain\"]');
           const primarySubInput = mountEl.querySelector('[data-skill-designer-field=\"primarySub\"]');
           const typeInput = mountEl.querySelector('[data-skill-designer-field=\"type\"]');
