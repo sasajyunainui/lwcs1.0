@@ -16443,30 +16443,30 @@
         <div class="skill-designer-side-effect-row" data-skill-designer-side-effect-row data-skill-designer-side-effect-scope="${escapeHtmlAttr(字段名)}">
           <button type="button" class="skill-designer-remove-btn" data-skill-designer-remove-side-effect data-skill-designer-disableable aria-label="删除副作用" title="删除副作用">×</button>
           <label class="mvu-editor-field">
-            <span class="mvu-editor-label">类型</span>
+            ${构建技能设计台说明标签('类型', 技能设计台副作用字段提示.类型)}
             <select class="mvu-editor-select" data-skill-designer-side-effect-field="副作用类型" data-skill-designer-disableable>
               ${buildSkillDesignerSelectOptions(技能设计台副作用类型候选_V1, 类型)}
             </select>
           </label>
           <label class="mvu-editor-field">
-            <span class="mvu-editor-label">时机</span>
+            ${构建技能设计台说明标签('时机', 技能设计台副作用字段提示.时机)}
             <select class="mvu-editor-select" data-skill-designer-side-effect-field="触发时机" data-skill-designer-disableable>
               ${buildSkillDesignerSelectOptions(技能设计台副作用触发时机选项_V1, 条目['触发时机'] || '效果生效后')}
             </select>
           </label>
           <label class="mvu-editor-field">
-            <span class="mvu-editor-label">对象</span>
+            ${构建技能设计台说明标签('对象', 技能设计台副作用字段提示.对象)}
             <select class="mvu-editor-select" data-skill-designer-side-effect-field="生效对象" data-skill-designer-disableable>
               ${buildSkillDesignerSelectOptions(技能设计台副作用生效对象选项_V1, 条目['生效对象'] || '技能释放者')}
             </select>
           </label>
           <label class="mvu-editor-field">
-            <span class="mvu-editor-label">概率</span>
+            ${构建技能设计台说明标签('概率', 技能设计台副作用字段提示.概率)}
             <input class="mvu-editor-input" type="text" value="${escapeHtmlAttr(格式化技能设计台概率百分比(条目['触发概率'] ?? 1))}" data-skill-designer-side-effect-field="触发概率" data-skill-designer-disableable />
           </label>
           ${是致死献祭 ? '' : `
             <label class="mvu-editor-field">
-              <span class="mvu-editor-label">持续</span>
+              ${构建技能设计台说明标签('持续', 技能设计台副作用字段提示.持续)}
               <input class="mvu-editor-input" type="number" min="0" step="1" value="${escapeHtmlAttr(String(条目['持续回合'] ?? 1))}" data-skill-designer-side-effect-field="持续回合" data-skill-designer-disableable />
             </label>
             <label class="mvu-editor-field">
@@ -24298,6 +24298,30 @@
     return 原型提示表[原型名]?.[字段名] || 通用提示表[字段名] || '';
   }
 
+  // 供副作用、条件分支等「非原型字段」复用：这些字段不走原型提示表，
+  // 但同样需要说明；统一用与原型字段一致的 ? 徽标。
+  function 构建技能设计台说明标签(显示名 = '', 提示 = '') {
+    const 文本 = normalizeSkillUiText(提示, '');
+    if (!文本) return `<span class="mvu-editor-label">${htmlEscape(显示名)}</span>`;
+    return `<span class="mvu-editor-label mvu-editor-label--with-hint">${htmlEscape(显示名)}<button type="button" class="mvu-editor-hint-badge" tabindex="0" aria-label="${escapeHtmlAttr(显示名)}说明" data-hint-text="${escapeHtmlAttr(文本)}">?</button></span>`;
+  }
+
+  const 技能设计台条件字段提示 = Object.freeze({
+    类型: '选择用什么条件来判断，例如目标生命比例、是否命中、是否存在护盾。',
+    比较: '条件的比较方式；与右侧阈值一起构成判断式。',
+    处理: '条件成立时怎么办：替换掉原效果，或在原效果之外追加。',
+    替换效果: '条件成立时改为执行这里的效果，原效果不再结算。',
+    追加效果: '条件成立时在原效果之外额外执行这里的效果。',
+  });
+
+  const 技能设计台副作用字段提示 = Object.freeze({
+    类型: '选择副作用的种类；不同种类决定下面填强度还是关联效果。',
+    时机: '副作用在什么时候结算：效果生效后、命中后、回合结束时或效果结束后。',
+    对象: '副作用落在谁身上：技能释放者、效果承受者或双方。',
+    概率: '副作用的触发概率；填 100% 表示必定触发。',
+    持续: '副作用生效几个回合。',
+  });
+
   function 构建技能设计台原型字段标签(原型 = '', 字段 = '', 显示名 = '', effect = {}) {
     const 提示 = 获取技能设计台原型字段提示(原型, 字段, effect);
     const 原型名 = normalizeSkillUiText(原型, '');
@@ -24750,7 +24774,7 @@
           <div class=\"mvu-editor-field-grid skill-designer-condition-row skill-designer-condition-row--target\" data-skill-designer-condition-row data-skill-designer-condition-type=\"${escapeHtmlAttr(类型)}\">
             ${允许删除 ? '<button type=\"button\" class=\"skill-designer-remove-btn\" data-skill-designer-remove-condition data-skill-designer-disableable aria-label=\"删除判定条件\" title=\"删除该判定条件\">×</button>' : ''}
             <label class=\"mvu-editor-field\">
-              <span class=\"mvu-editor-label\">类型</span>
+              ${构建技能设计台说明标签('类型', 技能设计台条件字段提示.类型)}
               <select class=\"mvu-editor-select\" data-skill-designer-condition-field=\"类型\" data-skill-designer-disableable>
                 ${构建技能设计台条件类型分组选项(类型)}
               </select>
@@ -24769,7 +24793,7 @@
         <div class=\"mvu-editor-field-grid skill-designer-condition-row${追加动画 ? ' skill-designer-fade-in' : ''}\" data-skill-designer-condition-row data-skill-designer-condition-type=\"${escapeHtmlAttr(类型)}\">
           ${允许删除 ? '<button type=\"button\" class=\"skill-designer-remove-btn\" data-skill-designer-remove-condition data-skill-designer-disableable aria-label=\"删除判定条件\" title=\"删除该判定条件\">×</button>' : ''}
           <label class=\"mvu-editor-field\">
-            <span class=\"mvu-editor-label\">类型</span>
+            ${构建技能设计台说明标签('类型', 技能设计台条件字段提示.类型)}
             <select class=\"mvu-editor-select\" data-skill-designer-condition-field=\"类型\" data-skill-designer-disableable>
               ${构建技能设计台条件类型分组选项(类型)}
             </select>
@@ -24817,21 +24841,21 @@
           </div>
           <div class=\"mvu-editor-field-grid\">
             <label class=\"mvu-editor-field\">
-              <span class=\"mvu-editor-label\">处理</span>
+              ${构建技能设计台说明标签('处理', 技能设计台条件字段提示.处理)}
               <select class=\"mvu-editor-select\" data-skill-designer-condition-branch-action data-skill-designer-disableable>
                 ${buildSkillDesignerSelectOptions(SKILL_DESIGNER_CONDITION_BRANCH_ACTION_OPTIONS, 处理)}
               </select>
             </label>
           </div>
           <div class=\"mvu-editor-field mvu-editor-field-wide skill-designer-nested-prototype-field\" data-skill-designer-condition-effect=\"替换效果\"${处理 === '替换效果' ? '' : ' hidden'}${处理 === '替换效果' ? '' : ' style=\"display:none\"'}>
-            <span class=\"mvu-editor-label\">替换效果</span>
+            ${构建技能设计台说明标签('替换效果', 技能设计台条件字段提示.替换效果)}
             <div class=\"skill-designer-preview-stack\" data-skill-designer-prototype-grid=\"condition-replace\" data-skill-designer-allow-empty=\"true\">
               ${替换效果.length ? 构建技能设计台原型效果行列表(替换效果, fallbackTarget, true, { 禁用条件分支: true, 禁用释放前降低结算 }) : ''}
             </div>
             <div class=\"mvu-editor-actions\"><button type=\"button\" class=\"tag-chip\" data-skill-designer-add-condition-effect data-skill-designer-condition-effect-kind=\"替换效果\" data-skill-designer-disableable>新增原型</button></div>
           </div>
           <div class=\"mvu-editor-field mvu-editor-field-wide skill-designer-nested-prototype-field\" data-skill-designer-condition-effect=\"追加效果\"${处理 === '追加效果' ? '' : ' hidden'}${处理 === '追加效果' ? '' : ' style=\"display:none\"'}>
-            <span class=\"mvu-editor-label\">追加效果</span>
+            ${构建技能设计台说明标签('追加效果', 技能设计台条件字段提示.追加效果)}
             <div class=\"skill-designer-preview-stack\" data-skill-designer-prototype-grid=\"condition-append\" data-skill-designer-allow-empty=\"true\">
               ${追加效果.length ? 构建技能设计台原型效果行列表(追加效果, fallbackTarget, true, { 禁用条件分支: true, 禁用释放前降低结算 }) : ''}
             </div>
