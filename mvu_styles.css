@@ -5113,6 +5113,52 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   scrollbar-width: thin;
 }
 
+/* 技能设计台分页：分区按名称归页，不用编号（分区是条件渲染的，页数会变） */
+.skill-designer-pager {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(5, 24, 34, 0.42);
+  border: 1px solid rgba(164, 221, 234, 0.16);
+}
+
+.skill-designer-pager-tab {
+  flex: 1;
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(223, 247, 255, 0.62);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.skill-designer-pager-tab.is-on {
+  background: rgba(77, 240, 255, 0.16);
+  color: #dff7ff;
+  box-shadow: inset 0 0 0 1px rgba(77, 240, 255, 0.34);
+}
+
+.skill-designer-pager-tab i {
+  font-style: normal;
+  opacity: 0.55;
+  margin-left: 5px;
+  font-size: 11px;
+}
+
+.mvu-editor-section[data-skill-designer-page-hidden] {
+  display: none;
+}
+
+/* 左栏改单列：两列下选项说明会被截断（实测「护盾变化｜获得护盾…」127px 装 247px） */
+.skill-designer-layout .mvu-editor-field-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .skill-designer-title-actions {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) max-content max-content;

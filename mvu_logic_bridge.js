@@ -2248,6 +2248,90 @@
     return String(previewKey || '').startsWith('技能设计台：');
   }
 
+  // 分页页码要跨「详情随 MVU 更新整页重建」保持住，缓存方式与草稿一致
+  const 技能设计台页码缓存 = Object.create(null);
+
+  function 读取技能设计台页码(previewKey = '') {
+    const key = String(previewKey || '').trim();
+    if (!key) return 0;
+    const 值 = Number(技能设计台页码缓存[key]);
+    return Number.isFinite(值) && 值 >= 0 ? Math.floor(值) : 0;
+  }
+
+  function 写入技能设计台页码(previewKey = '', 页码 = 0) {
+    const key = String(previewKey || '').trim();
+    if (!key) return;
+    技能设计台页码缓存[key] = Math.max(0, Math.floor(Number(页码) || 0));
+  }
+
+  // 分区按标题归页；标题是条件渲染的，未出现的分区自然不进页，页数随之收缩
+  const 技能设计台分页定义 = Object.freeze([
+    { 名称: '基础', 标题集: ['基础框架载体', '实体凝结参数', '融合对象', '功法进度'] },
+    { 名称: '效果', 标题集: ['核心术式阵列', '使用效果阵列', '使用效果', '施展副作用', '使用副作用'] },
+    { 名称: '消耗与成长', 标题集: ['运转能量配置', '技能掌控度'] },
+    { 名称: '属性与呈现', 标题集: ['元属性特征', '终端解析图谱'] },
+  ]);
+
+  function 装配技能设计台分页(mountEl, previewKey = '') {
+    if (!(mountEl instanceof Element)) return;
+    const 表单 = mountEl.querySelector('[data-skill-designer-form]');
+    if (!表单 || 表单.querySelector('[data-skill-designer-pager]')) return;
+    const 分区列表 = Array.from(表单.querySelectorAll(':scope > .mvu-editor-section, :scope > * > .mvu-editor-section'));
+    if (分区列表.length < 2) return;
+
+    const 取标题 = 节点 => toText(节点.querySelector('.mvu-editor-section-title')?.textContent, '').trim();
+    const 页 = 技能设计台分页定义
+      .map(定义 => ({
+        名称: 定义.名称,
+        分区: 分区列表.filter(节点 => 定义.标题集.includes(取标题(节点))),
+      }))
+      .filter(项 => 项.分区.length);
+    // 没归到任何页的分区统一挂到最后一页，避免被分页吞掉
+    const 已归 = new Set(页.flatMap(项 => 项.分区));
+    const 漏网 = 分区列表.filter(节点 => !已归.has(节点));
+    if (漏网.length) {
+      if (页.length) 页[页.length - 1].分区.push(...漏网);
+      else 页.push({ 名称: '设置', 分区: 漏网 });
+    }
+    if (页.length < 2) return;
+
+    const 页签行 = document.createElement('nav');
+    页签行.className = 'skill-designer-pager';
+    页签行.setAttribute('data-skill-designer-pager', '1');
+    页.forEach((项, 序号) => {
+      const 按钮 = document.createElement('button');
+      按钮.type = 'button';
+      按钮.className = 'skill-designer-pager-tab';
+      按钮.dataset.pageIndex = String(序号);
+      const 可见控件 = 项.分区.reduce(
+        (合计, 节点) => 合计 + Array.from(节点.querySelectorAll('input,select,textarea')).length,
+        0,
+      );
+      按钮.innerHTML = `${htmlEscape(项.名称)}<i>${可见控件}</i>`;
+      页签行.appendChild(按钮);
+    });
+    分区列表[0].parentElement.insertBefore(页签行, 分区列表[0]);
+
+    const 切页 = 目标 => {
+      const 序号 = Math.max(0, Math.min(页.length - 1, Number(目标) || 0));
+      页.forEach((项, i) => {
+        项.分区.forEach(节点 => {
+          if (i === 序号) 节点.removeAttribute('data-skill-designer-page-hidden');
+          else 节点.setAttribute('data-skill-designer-page-hidden', '1');
+        });
+      });
+      Array.from(页签行.children).forEach((按钮, i) => 按钮.classList.toggle('is-on', i === 序号));
+      写入技能设计台页码(previewKey, 序号);
+    };
+    页签行.addEventListener('click', 事件 => {
+      const 按钮 = 事件.target instanceof Element ? 事件.target.closest('[data-page-index]') : null;
+      if (!按钮) return;
+      事件.preventDefault();
+      切页(按钮.dataset.pageIndex);
+    });
+    切页(读取技能设计台页码(previewKey));
+  }
+
   function readCachedSkillDesignerDraft(previewKey = '') {
     const key = String(previewKey || '').trim();
     if (!key) return null;
@@ -35068,6 +35152,7 @@
         summary: '',
         onMount: mountEl => {
           const form = mountEl.querySelector('[data-skill-designer-form]');
+          装配技能设计台分页(mountEl, previewKey);
           const primaryMainInput = mountEl.querySelector('[data-skill-designer-field=\"primaryMain\"]');
           const primarySubInput = mountEl.querySelector('[data-skill-designer-field=\"primarySub\"]');
           const typeInput = mountEl.querySelector('[data-skill-designer-field=\"type\"]');
