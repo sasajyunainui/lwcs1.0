@@ -30738,8 +30738,10 @@
     if (概览层.getAttribute('aria-hidden') === 'true') return false;
     const 档案页 = 挂载点.querySelector(".mvu-unified-page[data-target='page-archive'].active");
     if (!(档案页 instanceof HTMLElement)) return false;
-    // 不在此处读 offsetParent / getComputedStyle：那会强制重排，
-    // 而「是否真的渲染出来」已由 同步档案魂环锚点布局 里的零尺寸矩形判断兜住。
+    // 这道可见性闸门是承重的：档案页未真正渲染时必须在此拦下，
+    // 否则下游会对每个魂环槽位逐个读矩形，实测会把回流放大一个数量级。
+    // offsetParent 为 null 时才补一次 getComputedStyle，常见路径只有一次廉价读。
+    if (!档案页.offsetParent && getComputedStyle(档案页).display === 'none') return false;
     return true;
   }
 

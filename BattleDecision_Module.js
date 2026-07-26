@@ -21902,7 +21902,12 @@
     };
     const hasResourceDependentFutureEnvelopeWindow = payerIdValue => {
       const payerId = String(payerIdValue || '').trim();
-      if (!payerId || hasFutureEnvelopeWindow(payerId)) return !!payerId;
+      if (!payerId) return false;
+      // 这里问的是「有没有别人的路线依赖这个 payer 的资源」，不是「payer 自己有没有窗口」。
+      // 原先的 hasFutureEnvelopeWindow(payerId) 短路让闸门对任何活着的单位恒真，
+      // 使下面的 paymentDependencies 反查成为死代码，实测导致 RESOURCE_OPTION_CHANGED
+      // 触发的包络重建 100% 产出零变化。payer 自身的依赖仍被覆盖：
+      // 路线构造时会把 payer 自己写进 paymentDependencies（见 :13475）。
       const resourceRoutesByUnit =
         input?.resourceFullRoutesByUnit || fullRoutesByUnit || {};
       return Object.entries(resourceRoutesByUnit).some(([ownerId, routes]) => {

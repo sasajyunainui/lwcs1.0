@@ -9717,6 +9717,9 @@ class BattleUIComponent {
           STATE_CHANGED: '状态',
           ACTION_CANCELLED: '行动取消',
           SUMMON_WINDOW: '召唤',
+          IRREVERSIBLE_ASSET_LOST: '物品消耗',
+          NEXT_ACTION_QUALITY_CHANGED: '能力变化',
+          RULE_CHANGED: '规则改动',
           RESOURCE_OPTION_CHANGED: '资源变化',
           PAYMENT: '消耗',
           TERMINAL: '终局',
@@ -9735,6 +9738,9 @@ class BattleUIComponent {
           RESOURCE_OPTION_CHANGED: '预期的资源变化没有发生',
           PAYMENT: '消耗没有扣除',
           TERMINAL: '没能就此分出胜负',
+          IRREVERSIBLE_ASSET_LOST: '预定要用掉的东西没有用掉',
+          NEXT_ACTION_QUALITY_CHANGED: '预定的能力变化没有生效',
+          RULE_CHANGED: '预定的规则改动没有生效',
         });
 
         function 渲染因果链对账行(row = {}) {
@@ -9848,9 +9854,13 @@ class BattleUIComponent {
             })
             .filter(Boolean);
           /* 蓄力、让过这类动作没有后续步骤，此时声明本身就是全部内容——
-             不兜底会渲染出一张只有标题的空卡。 */
+             不兜底会渲染出一张只有标题的空卡。
+             兜底要取声明步骤的玩家版措辞，取 declarationSummary 会把 AI 版判定腔漏给玩家。 */
           if (!结算明细.length) {
-            const 声明 = String(node?.settlement?.declarationSummary || '').trim();
+            const 声明步骤 = steps.find(step => step.stepRole === 'DECLARE');
+            const 声明 = String(
+              声明步骤?.playerText || 声明步骤?.text || node?.settlement?.declarationSummary || '',
+            ).trim();
             if (声明) 结算明细.push(`<p>${htmlEscapeText(声明)}</p>`);
           }
           const 结算 = 结算明细.join('');

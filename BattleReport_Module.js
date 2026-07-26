@@ -1752,6 +1752,46 @@
         : verdict('CONFIRMED', resolved.map(event => event.eventId), { status: actualStatus }, searched);
     }
 
+    if (kind === 'IRREVERSIBLE_ASSET_LOST') {
+      /* 炸环、消耗品这类不可逆操作是最不该漏对账的——一旦预演说消耗了而实际没有
+         （或反过来），玩家的资产账就对不上，且无法回滚。 */
+      const searched = ['item_consume', 'effect_resolved', 'create'];
+      const consumed = events.filter(event =>
+        rawEventKindIs(event, 'item_consume') ||
+        (rawEventKindIs(event, 'effect_resolved') && rawMeta(event).ringBurst) ||
+        matchesEffectInstance(event, effectInstanceId)
+      );
+      if (consumed.length) {
+        return verdict('CONFIRMED', consumed.map(event => event.eventId), {
+          eventKind: text(consumed[0]?.eventKind),
+          itemName: text(consumed[0]?.itemName || rawMeta(consumed[0]).itemName),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
+    if (kind === 'NEXT_ACTION_QUALITY_CHANGED' || kind === 'RULE_CHANGED') {
+      /* 这两类的"收益"是内部估值不可验证，但"修正是否挂上"是可验证的物理事实。
+         整条丢弃会连可验证的那一半也丢掉，所以只对施加事实做对账，不碰收益。 */
+      const searched = ['effect_resolved', 'state_apply'];
+      const applied = anchored(['effect_resolved', 'state_apply'])
+        .filter(event => !['resisted', 'immune', 'evaded'].includes(text(event?.result)));
+      if (applied.length) {
+        return verdict('CONFIRMED', applied.map(event => event.eventId), {
+          eventKind: text(applied[0]?.eventKind),
+        }, searched);
+      }
+      const rejected = scoped(['state_apply']).filter(event =>
+        ['resisted', 'immune', 'evaded'].includes(text(event?.result))
+      );
+      if (rejected.length) {
+        return verdict('MISSED', rejected.map(event => event.eventId), {
+          result: text(rejected[0]?.result),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
     /* 决策内部估值（INCOMING_HEALTH_DELTA / COUNTER_AUTHORIZATION / HEALTH_ROUTE_CHANGED /
        RESPONSE_CONSUMPTION_ACTION_POOL 等）是反事实差分，基线世界从未发生，物理上无法验证，
        不参与对账，也不进战报的事实陈述。 */
@@ -4512,6 +4552,9 @@
    */
   const aiReconciliationDenials = Object.freeze({
     HP_DELTA: { MISSED: '攻击未命中，未造成伤害', PREEMPTED: '攻击未能打出' },
+    IRREVERSIBLE_ASSET_LOST: { MISSED: '预定消耗的物品未被消耗', PREEMPTED: '物品未被消耗' },
+    NEXT_ACTION_QUALITY_CHANGED: { MISSED: '预定的能力修正未能挂上', PREEMPTED: '能力修正未生效' },
+    RULE_CHANGED: { MISSED: '预定的规则改写未能生效', PREEMPTED: '规则改写未生效' },
     SCHEDULED_HP_DELTA: { MISSED: '持续伤害未生效', PREEMPTED: '持续伤害未能挂上' },
     SHIELD_DELTA: { MISSED: '护盾未建立', PREEMPTED: '护盾未能建立' },
     STATE_CHANGED: { MISSED: '状态被抵抗，未生效', PREEMPTED: '状态未能施加' },
