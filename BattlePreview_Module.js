@@ -5156,6 +5156,12 @@
     if (previewCache.has(cacheKey)) {
       metrics.cacheHits += 1;
       const cached = previewCache.get(cacheKey);
+      // B2：命中刷新插入序（配合写入侧上限构成 LRU）。缓存键含 worldRevision，
+      // 随决策换代后旧键不可再命中；session 路径不清缓存（__preparedDecisionWorld
+      // 跳过 resetDecisionCaches），无上限时整场累积（raid 实测 +~2600 条/决策、
+      // 决策18 达 4.6 万条，值含 afterSnapshot 整世界 ≈ 40MB/决策滞留）。
+      previewCache.delete(cacheKey);
+      previewCache.set(cacheKey, cached);
       (cached?.dependencyReads || []).forEach(([key, value]) => {
         recordPreviewDependency(key, value);
       });
@@ -5587,6 +5593,10 @@
     });
     const result = Object.freeze(resultValue);
     previewCache.set(cacheKey, result);
+    // B2：容量上限（约 3 个决策代），淘汰最旧插入项；缓存只影响重算次数不影响语义。
+    while (previewCache.size > 8192) {
+      previewCache.delete(previewCache.keys().next().value);
+    }
     return result;
     } finally {
       const popped = dependencyCaptureStack.pop();

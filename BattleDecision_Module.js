@@ -3147,9 +3147,18 @@
     return next;
   }
 
+  function 读取技能增益语义助手() {
+    const helpers = root.__LWCS_SKILL_COST_HELPERS_V1__;
+    if (!helpers || typeof helpers.结算修正是否增益语义_V1 !== 'function' || typeof helpers.判定修正是否增益语义_V1 !== 'function') {
+      throw new Error('battle_decision_skill_semantic_helpers_missing');
+    }
+    return helpers;
+  }
+
   function targetProfile(skill = {}) {
     const cached = targetProfileCache.get(skill);
     if (cached) return cached;
+    const 增益语义 = 读取技能增益语义助手();
     const effects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
     const targets = effects.map(effect => String(effect?.目标 || '').trim()).filter(Boolean);
     if (!targets.length || targets.every(target => target === '自身')) {
@@ -3162,7 +3171,9 @@
       if (prototype === '伤害结算' || prototype === '资源锁定' || prototype === '机制抹消') return true;
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() !== '正向护盾';
       if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) < 0;
-      if (prototype === '状态施加' || prototype === '属性修正' || prototype === '判定修正' || prototype === '结算修正') return Number.parseFloat(String(effect?.数值 || '-1')) < 0 || /眩晕|沉默|中毒|流血|灼烧|禁疗|迟缓|致盲|混乱|嘲讽/.test(String(effect?.状态 || ''));
+      if (prototype === '结算修正') return !增益语义.结算修正是否增益语义_V1(effect);
+      if (prototype === '判定修正') return !增益语义.判定修正是否增益语义_V1(effect);
+      if (prototype === '状态施加' || prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '-1')) < 0 || /眩晕|沉默|中毒|流血|灼烧|禁疗|迟缓|致盲|混乱|嘲讽/.test(String(effect?.状态 || ''));
       return false;
     });
     const friendly = targetableEffects.some(effect => {
@@ -3172,6 +3183,9 @@
       if (/友方|己方|队友|自身/.test(target)) return true;
       if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() === '正向护盾' && !hostile;
+      if (prototype === '结算修正') return 增益语义.结算修正是否增益语义_V1(effect) && !hostile;
+      if (prototype === '判定修正') return 增益语义.判定修正是否增益语义_V1(effect) && !hostile;
+      if (prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
       return false;
     });
     const profile = targets.some(target => /全场|群体/.test(target))
