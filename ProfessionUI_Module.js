@@ -870,7 +870,7 @@ const ProfessionTemplate = `
     <div class="prof-workshop-left">
       <div class="section-card section-card--process">
         <div class="prof-command-head">
-          <div class="section-title" id="prof-ui-title">副职业工坊</div>
+          <div class="section-title" id="prof-ui-title">工坊</div>
           <div class="prof-command-subtitle" id="prof-ui-subtitle">-</div>
         </div>
 
@@ -926,7 +926,7 @@ const ProfessionTemplate = `
         <div class="prof-workshop-tips">
           <div class="prof-workshop-tip-title">工坊提示</div>
           <div class="prof-info-alert"><span id="target-hint">锻造会尝试根据所选材料自动生成产物名；修理模式下这里填待修对象名。</span></div>
-          <div class="prof-info-alert"><span id="materials-hint">锻造支持多选融锻；其余副职业按材料协同处理。</span></div>
+          <div class="prof-info-alert"><span id="materials-hint">锻造支持多选融锻；其余工坊按材料协同处理。</span></div>
           <div class="prof-info-alert"><span id="qty-hint">锻造默认会按“每种材料消耗量”扣除材料，并同步扣除副职业资源。</span></div>
         </div>
       </div>
@@ -934,9 +934,9 @@ const ProfessionTemplate = `
 
     <div class="prof-workshop-right">
       <div class="section-card section-card--preview">
-        <div class="section-title">副职业预演</div>
+        <div class="section-title">工坊预演</div>
         <div class="prof-preview-summary">
-          <div class="info-row info-row--subtle"><span class="info-key">当前副职业</span><span class="info-val" id="prev-job">-</span></div>
+          <div class="info-row info-row--subtle"><span class="info-key">当前工坊</span><span class="info-val" id="prev-job">-</span></div>
           <div class="info-row info-row--subtle"><span class="info-key">执行来源</span><span class="info-val" id="prev-executor">-</span></div>
         </div>
         <div class="info-panel">
@@ -993,7 +993,7 @@ const PROFESSION_CONFIG = {
     costs: { 1: [5, 10, 25], 2: [20, 40, 200], 3: [80, 150, 750], 4: [300, 600, 2500], 5: [1000, 2000, 9000] },
     expGain: { 1: 50, 2: 400, 3: 2000, 4: 10000, 5: 50000 },
     targetHint: '这里填写设计图名称，例如：二字斗铠设计图。',
-    materialHint: '设计副职业允许无材料起草，但选入模板/旧图纸会被视作协同设计材料。'
+    materialHint: '设计工坊允许无材料起草，但选入模板/旧图纸会被视作协同设计材料。'
   },
   repair: {
     mode: 'repair', jobName: '修理师', title: '修理工序', displayName: '机甲修理', actionLabel: '开始修理',
@@ -1651,7 +1651,7 @@ class ProfessionUIComponent {
     this.updateTierOptions();
     this.$('#qty-hint').textContent = this.activeMode === 'forge'
       ? '锻造会按“每种材料消耗量”扣除材料，并同步扣除副职业资源。'
-      : '副职业会按输入数量同步扩大基础资源消耗；材料按勾选项扣除。';
+      : '工坊会按输入数量同步扩大基础资源消耗；材料按勾选项扣除。';
   }
 
   getForgeTierLabel(tier) {

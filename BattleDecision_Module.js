@@ -343,6 +343,7 @@
   ) {
     if (!state) return;
     const activeUnitIds = new Set();
+    const activeRouteKeys = new Set();
     Object.entries(fullRoutesByUnit || {})
       .sort(([left], [right]) => left.localeCompare(right))
       .forEach(([unitId, routes]) => {
@@ -373,6 +374,7 @@
         (Array.isArray(routes) ? routes : []).forEach(route => {
           const routeKey = String(route?.routeKey || '').trim();
           if (!routeKey) return;
+          activeRouteKeys.add(routeKey);
           const resourceIdentity = `resource-route:${preview.stableHash(
             r8ResourceRouteSemanticValue(route),
           )}`;
@@ -395,6 +397,17 @@
     });
     [...state.paretoGraphByUnit.keys()].forEach(unitId => {
       if (!activeUnitIds.has(unitId)) state.paretoGraphByUnit.delete(unitId);
+    });
+    // B2：resourcePlanStore 与 route-catalog:* 信封随目录换代即成死键（前者当前
+    // 无读取方、后者只经活跃单位键读取），照 fullRoutesByUnit 的清退口径处理。
+    [...state.resourcePlanStore.keys()].forEach(routeKey => {
+      if (!activeRouteKeys.has(routeKey)) state.resourcePlanStore.delete(routeKey);
+    });
+    [...state.behaviorEnvelopeStore.keys()].forEach(key => {
+      if (typeof key === 'string' && key.startsWith('route-catalog:') &&
+        !activeUnitIds.has(key.slice('route-catalog:'.length))) {
+        state.behaviorEnvelopeStore.delete(key);
+      }
     });
     state.metrics.layerStoreWrites =
       Number(state.metrics.layerStoreWrites || 0) + 1;
@@ -22525,6 +22538,13 @@
       const cachedSessionEntry = sessionBehaviorReuseEnabled
         ? behaviorSessionStore.get(behaviorIdentityV2.identity)
         : null;
+      // B2：命中即刷新插入序（Map 迭代序=插入序），配合写入侧的容量上限构成 LRU——
+      // 身份哈希随世界演进每决策翻新一代（实测 +~420 条/决策、~55MB/决策滞留，
+      // raid 4GB 决策~75 OOM），旧代条目按键不可再命中，必须能被清退。
+      if (cachedSessionEntry) {
+        behaviorSessionStore.delete(behaviorIdentityV2.identity);
+        behaviorSessionStore.set(behaviorIdentityV2.identity, cachedSessionEntry);
+      }
       const cachedSessionEnvelope =
         cachedSessionEntry?.kind === 'BEHAVIOR_ENVELOPE'
           ? cachedSessionEntry.envelope
@@ -22986,6 +23006,13 @@
             behaviorDependencyIdentity: '',
           }),
         }));
+        // B2：容量上限（约 4-5 个决策代的量），淘汰最旧插入项。缓存仅影响
+        // 重建工作量，不影响语义——重用侧另有 INCREMENTAL_FULL_HASH_MISMATCH
+        // Oracle 兜底。route-catalog:* 条目每决策由 r8SessionStoreRouteLayers
+        // 重写，插入序天然新鲜，不会被误逐。
+        while (behaviorSessionStore.size > 2048) {
+          behaviorSessionStore.delete(behaviorSessionStore.keys().next().value);
+        }
         if (behaviorSessionMetrics) {
           behaviorSessionMetrics.behaviorEnvelopesStored =
             Number(

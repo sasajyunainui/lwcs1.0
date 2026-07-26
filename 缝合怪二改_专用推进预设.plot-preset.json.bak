@@ -352,7 +352,7 @@
       }
     ],
     "globalRevision": 0,
-    "finalSystemDirective": "$8\n以上是玩家本轮输入。下面七份是后台推演结果，各自用法不同。\n\n本轮剧本，按【本轮剧情推进】的顺序演完，写到【本轮落点与后续接力】成立；【世界进程与路线关系】只写已经进场的部分：\n{{route_boundary}}\n\n登场名单与反应标尺。名单外的人不出场、不说话、不被点名；等级区间与实力评价只用来定NPC反应有多强烈，正文不报数字，也不让角色说出“百年难得一见”这类结论：\n{{scene_audit}}\n\n本轮上限。行动结果演到这个程度为止，不加码不打折；每个人只能说、只能反应自己实际知道的事：\n{{scene_ruling}}\n\n只决定“怎么说”，不决定“做什么”；名单上没有底稿的人，按其身份与场景常识照常演：\n{{character_performance_brief}}\n\n存档记录，正文不点破，只让它体现在人物的行动里：\n{{butterfly_analysis}}\n\n编码索引，对应内容由世界书按编码注入。正文不出现 AM / DV 编码；只有编码而看不到内容时，视为本轮未调取，不要据编码猜测：\n{{recall}}\n{{deviation_ledger_recall}}\n\n约束优先于剧本：剧本要的动作若与名单或上限冲突，改过程，但仍推进到【本轮落点】。\n结合以上与<status_current_variables>写正文。不只写开场，不停在等玩家行动的位置。\n正文不出现：【小节名】、AM/DV 编码、等级数字、对推演过程的复述。",
+    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下<character_performance_brief>是人物演出底稿：\n{{character_performance_brief}}\n\n以下<recall>是记忆回溯编码：\n{{recall}}\n\n以下<deviation_ledger_recall>是偏差召回编码：\n{{deviation_ledger_recall}}\n\n以下<scene_audit>确定本轮登场人物与场景边界：\n{{scene_audit}}\n\n以下<scene_ruling>确定行动结果、权限与信息边界：\n{{scene_ruling}}\n\n以下<route_boundary>确定本轮事件、世界进程关系与后续落点：\n{{route_boundary}}\n\n以下<butterfly_analysis>记录已经成立的世界线影响：\n{{butterfly_analysis}}\n\n以上是本轮推演结果，请结合上述推演结果和<status_current_variables>信息规划正文",
     "prompts": [
       {
         "id": "mainPrompt",
@@ -372,7 +372,7 @@
         "id": "finalSystemDirective",
         "name": "最终注入指令 (Storyteller Directive)",
         "role": "system",
-        "content": "$8\n以上是玩家本轮输入。下面七份是后台推演结果，各自用法不同。\n\n本轮剧本，按【本轮剧情推进】的顺序演完，写到【本轮落点与后续接力】成立；【世界进程与路线关系】只写已经进场的部分：\n{{route_boundary}}\n\n登场名单与反应标尺。名单外的人不出场、不说话、不被点名；等级区间与实力评价只用来定NPC反应有多强烈，正文不报数字，也不让角色说出“百年难得一见”这类结论：\n{{scene_audit}}\n\n本轮上限。行动结果演到这个程度为止，不加码不打折；每个人只能说、只能反应自己实际知道的事：\n{{scene_ruling}}\n\n只决定“怎么说”，不决定“做什么”；名单上没有底稿的人，按其身份与场景常识照常演：\n{{character_performance_brief}}\n\n存档记录，正文不点破，只让它体现在人物的行动里：\n{{butterfly_analysis}}\n\n编码索引，对应内容由世界书按编码注入。正文不出现 AM / DV 编码；只有编码而看不到内容时，视为本轮未调取，不要据编码猜测：\n{{recall}}\n{{deviation_ledger_recall}}\n\n约束优先于剧本：剧本要的动作若与名单或上限冲突，改过程，但仍推进到【本轮落点】。\n结合以上与<status_current_variables>写正文。不只写开场，不停在等玩家行动的位置。\n正文不出现：【小节名】、AM/DV 编码、等级数字、对推演过程的复述。",
+        "content": "$8\n\n以上是用户的本轮输入，以下<character_performance_brief>是人物演出底稿：\n{{character_performance_brief}}\n\n以下<recall>是记忆回溯编码：\n{{recall}}\n\n以下<deviation_ledger_recall>是偏差召回编码：\n{{deviation_ledger_recall}}\n\n以下<scene_audit>确定本轮登场人物与场景边界：\n{{scene_audit}}\n\n以下<scene_ruling>确定行动结果、权限与信息边界：\n{{scene_ruling}}\n\n以下<route_boundary>确定本轮事件、世界进程关系与后续落点：\n{{route_boundary}}\n\n以下<butterfly_analysis>记录已经成立的世界线影响：\n{{butterfly_analysis}}\n\n以上是本轮推演结果，请结合上述推演结果和<status_current_variables>信息规划正文",
         "deletable": false
       }
     ],

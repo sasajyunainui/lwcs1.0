@@ -281,7 +281,7 @@
       actions: ['打开斗铠总览', '查看槽位覆盖', '浏览装备摘要'],
     },
     副职业工坊: {
-      title: '副职业工坊',
+      title: '工坊',
       summary: '由终端入口进入，集中处理锻造、制造、设计与修理。',
       fields: ['activeChar.副职业', 'activeChar.背包', 'activeChar.属性'],
       duties: ['展示副职业等级', '展示工坊入口状态', '进入副职业操作页'],
@@ -301,8 +301,8 @@
       actions: ['查看融合模式', '查看来源武魂', '打开融合技详情'],
     },
     储物仓库详细页: {
-      title: '储物仓库',
-      summary: '聚合当前背包与货币数据，并以仓库式视图展示核心物资。',
+      title: '背包',
+      summary: '汇总随身物品与各类货币，一处查看全部持有物资。',
       fields: ['activeChar.背包', 'activeChar.财富'],
       duties: ['展示物品数量', '展示品质/品阶/描述', '整合多种货币与资产摘要'],
       actions: ['按分类筛选', '查看物品详情', '整理 / 使用道具'],
@@ -1618,7 +1618,7 @@
 
     if (key === '副职业工坊') {
       return {
-        title: '副职业工坊',
+        title: '工坊',
         body: `
             <div class="archive-modal-grid mvu-detail-grid--single mvu-profession-workshop-detail">
               <div class="archive-card full mvu-detail-embed-card">
@@ -1642,7 +1642,7 @@
                   { label: '机甲', value: '' },
                   { label: '主武器', value: '' },
                   { label: '防具', value: '' },
-                  { label: '副职业', value: '' },
+                  { label: '工坊', value: '' },
                   { label: '战斗形态', value: '' },
                 ])}
               </div>
@@ -1669,7 +1669,7 @@
 
     if (key === '储物仓库详细页') {
       return {
-        title: '储物仓库',
+        title: '背包',
         body: `
             <div class="archive-modal-grid vault-modal-grid">
               <div class="archive-card full vault-wallet-card">
@@ -30928,6 +30928,12 @@
         secondaryTrack: snapshot && snapshot.secondaryTrack ? snapshot.secondaryTrack : null,
         soulBoneEntries: Array.isArray(snapshot && snapshot.soulBoneEntries) ? snapshot.soulBoneEntries : [],
         inventoryEntries: Array.isArray(snapshot && snapshot.inventoryEntries) ? snapshot.inventoryEntries : [],
+        // 人物关系卡在 archive 分支渲染，这几项是 snapshot 顶层派生数据、
+        // 不在 activeChar 里，漏掉会导致关系变化后卡片不刷新
+        primaryFaction: snapshot && snapshot.primaryFaction ? snapshot.primaryFaction : null,
+        topRelation: snapshot && snapshot.topRelation ? snapshot.topRelation : null,
+        relations: Array.isArray(snapshot && snapshot.relations) ? snapshot.relations : [],
+        unlockedKnowledges: Array.isArray(snapshot && snapshot.unlockedKnowledges) ? snapshot.unlockedKnowledges : [],
       }),
       map: buildRenderSignature({
         currentLoc: toText(snapshot && snapshot.currentLoc, ''),
@@ -30952,13 +30958,6 @@
         ]),
         latestTimeline: snapshot && snapshot.latestTimeline ? snapshot.latestTimeline : null,
         timelineEntries: Array.isArray(snapshot && snapshot.timelineEntries) ? snapshot.timelineEntries : [],
-      }),
-      social: buildRenderSignature({
-        social: deepGet(snapshot, 'activeChar.社交', {}),
-        primaryFaction: snapshot && snapshot.primaryFaction ? snapshot.primaryFaction : null,
-        topRelation: snapshot && snapshot.topRelation ? snapshot.topRelation : null,
-        relations: Array.isArray(snapshot && snapshot.relations) ? snapshot.relations : [],
-        unlockedKnowledges: Array.isArray(snapshot && snapshot.unlockedKnowledges) ? snapshot.unlockedKnowledges : [],
       }),
       world: buildRenderSignature({
         rootWorld: deepGet(snapshot, 'rootData.world', {}),
@@ -31938,7 +31937,7 @@
       : '支持融锻数 --';
     const 当前角色 = toText(snapshot && snapshot.activeName, '当前角色');
     return buildSimpleCard('副职业操作', null, [
-      { label: '副职业等级', value: 当前等级摘要 },
+      { label: '工坊等级', value: 当前等级摘要 },
       { label: '主副职', value: 首项副职业 },
       { label: '执行状态', value: 支持摘要 },
       { label: '当前角色', value: 当前角色 },
@@ -32189,7 +32188,7 @@
         </div>
         <div class="mvu-archive-armory-strip">
           <span class="mvu-archive-armory-link clickable" data-preview="武装工坊详细页" data-detail-mode="embed"><b>装备</b><em>${htmlEscape(装备摘要)}</em></span>
-          <span class="mvu-archive-armory-link clickable" data-preview="储物仓库详细页" data-detail-mode="embed"><b>仓库</b><em>${htmlEscape(`${仓库摘要} · ${资金摘要}`)}</em></span>
+          <span class="mvu-archive-armory-link clickable" data-preview="储物仓库详细页" data-detail-mode="embed"><b>背包</b><em>${htmlEscape(`${仓库摘要} · ${资金摘要}`)}</em></span>
         </div>
       `;
   }
@@ -32998,7 +32997,7 @@
         title: '武装',
         value: '0',
         meta: '无武装',
-        rows: [{ label: '副职业', value: shortenText(副职业等级摘要, 16) }],
+        rows: [{ label: '工坊', value: shortenText(副职业等级摘要, 16) }],
       });
     }
     return buildShellSummaryCard({
@@ -33013,7 +33012,7 @@
       rows: [
         { label: '主武器', value: shortenText(toText(weapon.名称, '未记录'), 14) },
         { label: '防具', value: shortenText(防具Summary, 14) },
-        { label: '副职业', value: shortenText(副职业等级摘要, 14) },
+        { label: '工坊', value: shortenText(副职业等级摘要, 14) },
         { label: '机甲', value: shortenText(mechSummary, 14) },
       ],
     });
@@ -33022,7 +33021,7 @@
   function buildShellVaultCard(snapshot) {
     if (!snapshot) {
       return buildShellSummaryCard({
-        kicker: '仓库',
+        kicker: '背包',
         title: '资源概览',
         value: '待同步',
         meta: '当前聊天',
@@ -33041,15 +33040,15 @@
     const hasStoredResources = inventoryCount > 0 || fedCoin > 0 || starCoin > 0 || tangPt > 0 || bloodPt > 0;
     if (!hasStoredResources) {
       return buildShellSummaryCard({
-        title: '仓库',
+        title: '背包',
         value: '0',
         meta: '无物资',
         rows: [{ label: '货币', value: '0' }],
       });
     }
     return buildShellSummaryCard({
-      kicker: '仓库',
-      title: '仓库',
+      kicker: '背包',
+      title: '背包',
       value: `${formatNumber(inventoryCount)} 物资`,
       meta: `流动资金 ${formatNumber(fedCoin)} / 星罗 ${formatNumber(starCoin)}`,
       metrics: [
@@ -34343,7 +34342,7 @@
     });
     const otherCurrencyText = secondaryCurrencies.map(item => `${item.label} ${formatNumber(item.value)}`);
     return {
-      title: '仓库',
+      title: '背包',
       body: `
           <div class="mvu-shell-lite-root" data-shell-light-view="vault">
             <section class="mvu-shell-lite-card mvu-shell-lite-card--hero mvu-shell-lite-card--wallet">
@@ -35060,7 +35059,7 @@
       'archive-core': ['角色', '无数据'],
       'spirit-stage': ['武魂', '未记录'],
       armory: ['武装', '0'],
-      vault: ['仓库', '0'],
+      vault: ['背包', '0'],
       social: ['社交', '0'],
       'map-current': ['当前位置', '无数据'],
       'map-locals': ['本地角色', '0'],
@@ -38756,7 +38755,7 @@
     if (previewKey === '副职业工坊') {
       const 是否玩家控制 = isSnapshotPlayerControlled(snapshot);
       return {
-        title: '副职业工坊',
+        title: '工坊',
         summary: '',
         body: `
             <div class="archive-modal-grid mvu-detail-grid--single mvu-profession-workshop-detail">
@@ -39930,7 +39929,7 @@
           </div>`
         : '';
       return {
-        title: '储物仓库',
+        title: '背包',
         summary: '当前背包、货币与核心物资。',
         body: `
             <div class="archive-modal-grid vault-modal-grid">
