@@ -437,6 +437,21 @@
       .replace(internalEffectInstancePattern, '召唤物');
   }
 
+  /* 对账诊断（matchDiagnostic）的 expectedTargetId/expectedEffectInstanceId 等字段
+     携带内部效果实例/召唤 id，原样投影会触发 REPORT_VISIBILITY_LEAK（B7 生成
+     duel_agile_counter_options 首次咬中，既有缺陷）。深度过 playerSafeText，
+     与 :1687 targetName 的既有做法同口径。归报告线复核。 */
+  function sanitizeDiagnosticForProjection(value, directory = new Map()) {
+    if (typeof value === 'string') return playerSafeText(value, directory);
+    if (Array.isArray(value)) return value.map(item => sanitizeDiagnosticForProjection(item, directory));
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+        key, sanitizeDiagnosticForProjection(item, directory),
+      ]));
+    }
+    return value;
+  }
+
   function resourceName(event = {}) {
     const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
     const raw = text(event?.resource || meta?.resource || meta?.resourceKey);
@@ -1691,7 +1706,9 @@
           expected: cloneValue(prediction.expected || {}),
           actual: judged.actual ? cloneValue(judged.actual) : null,
           magnitude: judged.magnitude ? cloneValue(judged.magnitude) : null,
-          matchDiagnostic: judged.matchDiagnostic ? cloneValue(judged.matchDiagnostic) : null,
+          matchDiagnostic: judged.matchDiagnostic
+            ? sanitizeDiagnosticForProjection(cloneValue(judged.matchDiagnostic), directory)
+            : null,
           actualFactIds: judged.factIds,
           searchedEventKinds: judged.searchedEventKinds,
         };
@@ -4246,7 +4263,9 @@
     });
     if (report?.visibilityMode === 'PLAYER') {
       const serialized = JSON.stringify(report);
-      if (internalSummonIdPattern.test(serialized)) {
+      /* internalSummonIdPattern 带 ^ 锚，对整段序列化串 .test() 永不命中——
+         该门禁此前形同虚设。改用非锚定形式扫描嵌入出现。 */
+      if (/(?:structured-summon|battle-summon|summon-instance|preview-summon):/i.test(serialized)) {
         pushFatal('REPORT_VISIBILITY_LEAK', { reason: 'INTERNAL_SUMMON_ID' });
       }
       /* 效果实例 ID 不带召唤前缀，旧门禁抓不到它，实测能一路漏到玩家界面。 */
