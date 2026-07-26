@@ -34467,6 +34467,7 @@
     const previousSectionSignatures =
       previousSectionSignaturesOverride || lastDashboardSectionRenderSignatures || Object.create(null);
     renderUnifiedCardsBySurface(snapshot, sectionSignatures, previousSectionSignatures, 'panel');
+    补齐可点击入口无障碍属性(document.getElementById('mvu-unified-mount'));
   }
 
   function getFusionArchiveMeta(snapshot) {
@@ -50399,6 +50400,7 @@ ${播报文本}
     if (typeof window.__MVU_同步统一详情视口__ === 'function') {
       window.__MVU_同步统一详情视口__();
     }
+    补齐可点击入口无障碍属性(宿主节点);
     性能探针?.标记('详情渲染完成');
   }
 
@@ -51077,6 +51079,39 @@ ${播报文本}
     event.stopPropagation();
     打开预览入口(clickable, previewKey);
   });
+
+  // 键盘等价路径：32 个 .clickable 入口里原本只有 3 个是 <button>，其余
+  // 是 div/section/span，键盘完全打不开任何详情窗口，182 条 :focus-visible
+  // 规则对它们也永远不生效。这里复用同一个 打开预览入口，不新增分支逻辑。
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+    const 目标 = event.target instanceof Element ? event.target : null;
+    if (!目标) return;
+    // 原生可交互元素交给浏览器默认行为，避免重复触发
+    if (目标.matches('button, a, input, select, textarea, [contenteditable="true"]')) return;
+    const clickable = 目标.closest('.clickable[data-preview]');
+    if (!clickable) return;
+    const unifiedMount = document.getElementById('mvu-unified-mount');
+    if (!unifiedMount || !unifiedMount.contains(clickable)) return;
+    const previewKey = clickable.dataset.preview;
+    if (!previewKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    打开预览入口(clickable, previewKey);
+  });
+
+  // 给委托式入口补上语义与可聚焦性；它们由多处 HTML 模板生成，
+  // 逐个模板加属性容易漏，改为挂载后统一补齐。
+  function 补齐可点击入口无障碍属性(根节点) {
+    const 根 = 根节点 instanceof Element ? 根节点 : document.getElementById('mvu-unified-mount');
+    if (!根) return;
+    根.querySelectorAll('.clickable[data-preview]').forEach(节点 => {
+      if (节点.matches('button, a, input, select, textarea')) return;
+      if (!节点.hasAttribute('role')) 节点.setAttribute('role', 'button');
+      if (!节点.hasAttribute('tabindex')) 节点.setAttribute('tabindex', '0');
+    });
+  }
+  window.__LWCS_补齐入口无障碍__ = 补齐可点击入口无障碍属性;
 
   function getDetailSurfacePreviewKey(options = {}) {
     const explicitKey = toText(options.previewKey, '').trim();
