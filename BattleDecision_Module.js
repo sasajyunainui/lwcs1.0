@@ -30617,6 +30617,7 @@
     parseSkillCosts,
     costAffordable,
     enumerateCandidates,
+    targetProfile,
     buildInitialBelief,
     buildDecisionWorld,
     mechanicKey,

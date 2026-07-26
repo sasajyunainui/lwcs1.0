@@ -2319,7 +2319,7 @@
     return 片段.join(' · ');
   }
 
-  function 构建技能设计台条件分支摘要(行, 序号 = 0) {
+  function 构建技能设计台分支行摘要(行, 序号 = 0) {
     if (!(行 instanceof Element)) return `分支 ${序号 + 1}`;
     const 取文本 = el => {
       if (!el) return '';
@@ -2424,7 +2424,7 @@
         层名: `条件分支${容器序号}`,
         列表类名: 'skill-designer-effect-list skill-designer-branch-list',
         标记: 'data-skill-designer-branch-list',
-        摘要: 构建技能设计台条件分支摘要,
+        摘要: 构建技能设计台分支行摘要,
         返回文案: '‹ 返回分支列表',
       });
     });
