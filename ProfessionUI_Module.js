@@ -609,6 +609,11 @@ const ProfessionStyles = `
     box-shadow: inset 0 -1px 0 rgba(141, 225, 239, 0.08);
   }
 
+  .prof-module-scope .info-row--resource {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
   .prof-module-scope .info-row--hero {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
@@ -708,6 +713,9 @@ const ProfessionStyles = `
   .prof-module-scope .val-green { color: var(--green); }
 
   .prof-module-scope .prof-action-zone {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
     display: grid;
     gap: 8px;
     align-self: end;
@@ -716,7 +724,7 @@ const ProfessionStyles = `
     border: 1px solid rgba(141, 225, 239, 0.1);
     background:
       radial-gradient(circle at 50% 0%, rgba(141, 225, 239, 0.08), transparent 58%),
-      rgba(0, 0, 0, 0.18);
+      rgba(2, 12, 18, 0.94);
   }
 
   .prof-module-scope .prof-action-warning {

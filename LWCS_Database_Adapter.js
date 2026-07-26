@@ -204,8 +204,10 @@
     return 本轮战斗结算上下文 && typeof 本轮战斗结算上下文 === 'object' ? 本轮战斗结算上下文 : null;
   }
 
+  /* 门控标记：楼层里现在留的是一行战果 <battle_result>，
+     完整因果链走 inject 不进楼层，所以不能再按旧的结构化摘要标签判断本轮是否有战斗。 */
   function 本轮输入包含战斗结构化摘要(text = '') {
-    return /<battle_structured_summary>[\s\S]*?<\/battle_structured_summary>/i.test(String(text || ''));
+    return /<battle_result>[\s\S]*?<\/battle_result>/i.test(String(text || ''));
   }
 
   function 取本轮有效战斗结算上下文(userInput = '') {

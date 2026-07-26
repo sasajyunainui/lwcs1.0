@@ -1,0 +1,17 @@
+{
+  "id": "9a4c1e70-2d5b-4f83-b6a1-7c0e5d18f2a4",
+  "scriptName": "隐藏 character_focus v1.0",
+  "findRegex": "/<character_focus>[\\s\\S]*?(?:<\\/character_focus>|$)/gi",
+  "replaceString": "",
+  "trimStrings": [],
+  "placement": [
+    2
+  ],
+  "disabled": false,
+  "markdownOnly": true,
+  "promptOnly": false,
+  "runOnEdit": true,
+  "substituteRegex": 0,
+  "minDepth": null,
+  "maxDepth": null
+}

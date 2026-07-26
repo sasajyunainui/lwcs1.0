@@ -109,6 +109,8 @@
     RELEASE_SKILL: '魂技',
     USE_ITEM: '使用物品',
     EQUIP: '装备',
+    PASS_OPPORTUNITY: '让过行动',
+    FUSION_SKILL: '武魂融合技',
   });
 
   function cloneValue(value) {
@@ -685,7 +687,10 @@
       ...(Array.isArray(event?.targetIds) ? event.targetIds : []),
       event?.targetId,
     ]).map(value => publicEntityName(directory, value, value));
-    const action = playerSafeText(event?.actionName || event?.finalActionName || kind, directory) || '行动';
+    /* 运行时会把 PASS_OPPORTUNITY 这类动作枚举原样写进 actionName。
+       映射只能做在叙述层：fact.actionName 是 findDecisionAnchor 的匹配键，改动它会破坏决策匹配。 */
+    const rawActionName = text(event?.actionName || event?.finalActionName || kind);
+    const action = playerSafeText(actionKindLabels[rawActionName] || rawActionName, directory) || '行动';
     const result = resultLabel(event);
     const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
     const damage = number(event?.appliedDamage ?? meta?.appliedDamage ?? event?.damage ?? meta?.damage, 0);
@@ -702,7 +707,10 @@
         const sameSide = targetEntries.length === targets.length && targetEntries.every(entry => text(entry?.side) === text(event?.actorSide));
         return `${actor}使用【${action}】作用于${sameSide ? '己方' : '敌方'}${targets.length}个目标`;
       }
-      return `${actor}使用【${action}】${target ? `指向${target}` : ''}`;
+      /* 目标即自己的动作（让过、防御、观察等）不能写成"指向自己"，那是逻辑错误。 */
+      return target && target !== actor
+        ? `${actor}使用【${action}】指向${target}`
+        : `${actor}采取【${action}】`;
     }
     if (kind === 'charge_start') {
       const remainingCastTime = Math.max(0, number(meta?.remainingCastTime, 0));
@@ -732,22 +740,62 @@
     }
     if (kind === 'defend' || kind === 'guard') {
       const damageMultiplier = number(meta?.damageMultiplier, NaN);
+      /* 原文"将本次伤害压至X%"有三重歧义：压到还是压掉、基数是什么、是系数还是实际结果。
+         防御事件写在伤害结算之前，这里的倍率是姿态系数（后续若命中才会应用），
+         必须把"减免比例"和"这是姿态而非已结算"都说清楚。 */
       const mitigation = Number.isFinite(damageMultiplier) && damageMultiplier >= 0 && damageMultiplier <= 1
-        ? `，将本次伤害压至${Math.round(damageMultiplier * 1000) / 10}%`
-        : '';
+        ? `，姿态可将后续承受的伤害减免${Math.round((1 - damageMultiplier) * 1000) / 10}%`
+        : '，防御姿态已建立';
       return target && target !== actor
-        ? `${actor}以【${action}】应对${target}的攻势${mitigation || '，防御已生效'}`
-        : `${actor}进入【${action}】姿态`;
+        ? `${actor}以【${action}】应对${target}的攻势${mitigation}`
+        : `${actor}进入【${action}】姿态${mitigation}`;
     }
-    if (kind === 'reaction_window') return `${actor}的即时反应窗口${/FAILURE|unavailable/i.test(text(event?.resultState || event?.result)) ? '不可用' : '已建立'}`;
-    if (kind === 'counter_window') return `${actor}的反击窗口${/FAILURE|missed/i.test(text(event?.resultState || event?.result)) ? '未能成立' : '已成立'}`;
+    if (kind === 'reaction_window') return `${actor}的即时反应机会${/FAILURE|unavailable/i.test(text(event?.resultState || event?.result)) ? '不可用' : '已建立'}`;
+    if (kind === 'counter_window') {
+      const opened = !/FAILURE|missed/i.test(text(event?.resultState || event?.result));
+      /* "未能成立"不说原因，AI 与玩家都无法理解。反击窗口是概率判定，
+         probability/roll 都在 meta 里，如实给出成功率与判定结果即可，不需要编原因。 */
+      const probability = number(meta?.probability, NaN);
+      const chance = Number.isFinite(probability) && probability > 0 && probability <= 1
+        ? `（触发概率${Math.round(probability * 1000) / 10}%）`
+        : '';
+      const source = target && target !== actor ? `对${target}的` : '';
+      return opened
+        ? `${actor}${source ? `获得${source}反击机会` : '获得反击机会'}${chance}`
+        : `${actor}未能抓住${source || ''}反击机会${chance}，判定未通过`;
+    }
     if (kind === 'counter') return /declined|放弃/i.test(`${event?.result} ${action}`)
       ? `${actor}放弃对${target || '来源攻击者'}的反击`
       : `${actor}以【${action}】反击${target || '来源攻击者'}`;
     if (kind === 'hit_result') {
-      if (damage > 0) return `${actor}以【${action}】命中${target || '目标'}，造成${damage}点伤害`;
-      if (/miss/i.test(text(event?.result))) return `${actor}的【${action}】落点偏离，未命中${target || '目标'}`;
-      if (number(meta?.shieldAbsorb, 0) > 0) return `${actor}的【${action}】命中${target || '目标'}，伤害被护盾吸收`;
+      if (damage > 0) {
+        /* "造成N点伤害"没说 N 是最终扣血还是原始伤害。运行时会经
+           防御倍率 → 护盾吸收 → 非致命钳制 三级折减，折减量必须一并交代，
+           否则 AI 无法判断这一击到底打得重不重。 */
+        const rawDamage = number(meta?.rawDamage, NaN);
+        const shieldAbsorb = number(meta?.shieldAbsorb, 0);
+        const reductions = [];
+        if (Number.isFinite(rawDamage) && rawDamage > damage + shieldAbsorb + 0.5) {
+          reductions.push(`原始伤害${Math.round(rawDamage)}点经防御与减伤后落到${damage}点`);
+        }
+        if (shieldAbsorb > 0) reductions.push(`护盾另吸收${Math.round(shieldAbsorb)}点`);
+        if (meta?.intentLethalPrevented === true) reductions.push('因非致命意图未击杀目标');
+        return `${actor}以【${action}】命中${target || '目标'}，实际扣减${damage}点生命`
+          + (reductions.length ? `（${reductions.join('；')}）` : '');
+      }
+      if (/miss/i.test(text(event?.result))) {
+        /* "落点偏离"暗示投射物，近身攻击用它就与机制不符。按 damageType 分别措辞。 */
+        const damageType = text(meta?.damageType);
+        const missPhrase = /近身|近战/.test(damageType)
+          ? '被躲开'
+          : /精神/.test(damageType)
+            ? '未能穿透心神'
+            : '落点偏离';
+        return `${actor}的【${action}】${missPhrase}，未命中${target || '目标'}`;
+      }
+      if (number(meta?.shieldAbsorb, 0) > 0) {
+        return `${actor}的【${action}】命中${target || '目标'}，伤害被护盾完全吸收${Math.round(number(meta.shieldAbsorb, 0))}点`;
+      }
       return `${actor}的【${action}】命中${target || '目标'}，但未造成有效伤害`;
     }
     if (kind === 'state_tick') return damage > 0
@@ -1284,6 +1332,733 @@
       summarizeImmediateResultFacts(immediateFacts),
       continuationSummary,
     ]).map(text).filter(Boolean).join('；');
+  }
+
+  /*
+   * 预测/实际对账层（链路无关）
+   *
+   * 预测侧来自决策阶段的机械预演（BattlePreview 经 BattleDecision 投影进 draft.decisionAudit），
+   * 实际侧来自 Runtime 写出的 ledger 事实。两者是各自独立实现的结算代码，中间还隔着随机数，
+   * 因此"对不上"有三种性质完全不同的原因，必须分开表达：
+   *   CONFIRMED   预测的效果有对应成功事实           → 战报可写成已发生
+   *   MISSED      有对应的失败事实（未命中/被抵抗）   → 战报可写成明确没发生
+   *   PREEMPTED   行动本身没执行（失机/被阻断）       → 战报可写成没来得及
+   *   UNCONFIRMED 既无成功事实也无失败事实，查无此事  → 战报一个字都不能写
+   * 前三种都是有据可依的结果；只有 UNCONFIRMED 是真问题，它同时也是
+   * "预演与运行时两套结算代码分叉"的检出信号。
+   */
+  const reconciliationResourceNames = Object.freeze({
+    sp: '魂力',
+    men: '精神力',
+    vit: '体力',
+    hp: '生命',
+  });
+  const preemptionEventKinds = Object.freeze(['lost_opportunity', 'blocked_action', 'target_fail']);
+  const controlDenialReasonPattern = /^(?:CONTROLLED|UNCONSCIOUS|INCAPACITATED|SUBDUED|DEAD)/i;
+
+  function rawMeta(event = {}) {
+    return event && typeof event.meta === 'object' && event.meta ? event.meta : {};
+  }
+
+  function rawEventTargets(event = {}) {
+    return unique([
+      ...(Array.isArray(event?.targetIds) ? event.targetIds : []),
+      event?.targetId,
+    ]).map(text).filter(Boolean);
+  }
+
+  function rawEventHitsTarget(event = {}, targetId = '') {
+    const wanted = text(targetId);
+    if (!wanted) return true;
+    const ids = rawEventTargets(event);
+    if (ids.includes(wanted)) return true;
+    return text(event?.targetName) === wanted;
+  }
+
+  function rawEventKindIs(event = {}, ...kinds) {
+    return kinds.includes(text(event?.eventKind));
+  }
+
+  /* 黄金锚点：effect_resolved 原样携带预演 contribution 的 effectInstanceId + windowId + outcomeKind，
+     与预测项可精确 1:1 join；其余事件类型退化为 targetId 匹配。 */
+  function matchesEffectInstance(event = {}, effectInstanceId = '') {
+    const wanted = text(effectInstanceId);
+    if (!wanted) return false;
+    return text(rawMeta(event).effectInstanceId) === wanted;
+  }
+
+  function collectPredictedOutcomes(decision = {}) {
+    const selected = decision?.selected || {};
+    const predictions = [];
+    const push = entry => {
+      if (!entry) return;
+      predictions.push({
+        ...entry,
+        predictionId: `prediction:${predictions.length + 1}:${entry.kind}`,
+      });
+    };
+
+    (Array.isArray(selected?.predictedOutcomeEvidence) ? selected.predictedOutcomeEvidence : [])
+      .forEach(evidence => {
+        const kind = text(evidence?.outcomeKind).toUpperCase();
+        const targetId = text(evidence?.targetId);
+        if (!kind || !targetId) return;
+        const delta = Number(evidence?.expectedDelta);
+        push({
+          kind,
+          source: 'PREDICTED_OUTCOME',
+          targetId,
+          effectInstanceId: text(evidence?.sourceEffectId),
+          windowId: text(evidence?.windowId),
+          expected: {
+            delta: Number.isFinite(delta) ? delta : null,
+            stateName: text(evidence?.evidence?.stateName || evidence?.evidence?.state),
+            duration: Number.isFinite(Number(evidence?.evidence?.duration))
+              ? Number(evidence.evidence.duration)
+              : null,
+            hitProbability: Number.isFinite(Number(evidence?.hitProbability))
+              ? Number(evidence.hitProbability)
+              : null,
+          },
+        });
+      });
+
+    /* healthTrajectory 是唯一带 SCHEDULED_HP_DELTA（持续伤害/治疗）的预测源，
+       predictedOutcomeEvidence 的白名单会把这类整条丢弃，所以必须单独收。 */
+    (Array.isArray(decision?.healthTrajectory) ? decision.healthTrajectory : [])
+      .filter(row => text(row?.outcomeKind).toUpperCase() === 'SCHEDULED_HP_DELTA')
+      .forEach(row => {
+        const targetId = text(row?.targetId);
+        if (!targetId) return;
+        push({
+          kind: 'SCHEDULED_HP_DELTA',
+          source: 'HEALTH_TRAJECTORY',
+          targetId,
+          effectInstanceId: text(row?.sourceEffectInstanceId),
+          windowId: text(row?.windowId),
+          expected: {
+            healthDeltaPP: Number.isFinite(Number(row?.healthDeltaPP)) ? Number(row.healthDeltaPP) : null,
+            tickIndex: Number.isFinite(Number(row?.tickIndex)) ? Number(row.tickIndex) : null,
+            tickCount: Number.isFinite(Number(row?.tickCount)) ? Number(row.tickCount) : null,
+          },
+        });
+      });
+
+    (Array.isArray(decision?.resourceTimelineSummary?.payments)
+      ? decision.resourceTimelineSummary.payments
+      : []).forEach(payment => {
+        const resource = text(payment?.resource);
+        const amount = Number(payment?.amount);
+        if (!resource || !Number.isFinite(amount) || amount <= 0) return;
+        push({
+          kind: 'PAYMENT',
+          source: 'RESOURCE_TIMELINE',
+          targetId: text(payment?.unitId),
+          expected: { resource, amount },
+        });
+      });
+
+    const terminal = decision?.goalProjection?.terminal || {};
+    if (terminal?.terminal === true) {
+      push({
+        kind: 'TERMINAL',
+        source: 'GOAL_PROJECTION',
+        targetId: '',
+        expected: { status: text(terminal?.status) },
+      });
+    }
+
+    return predictions;
+  }
+
+  /*
+   * 数值吻合度与效果确认是两件事，必须分开。
+   *
+   * "命中并造成 160 伤害"是可以写进正文的确认事实（status=CONFIRMED）；
+   * "预测 327 实际 160"是必须暴露给开发者的链路偏差（aligned=false）。
+   * 混在一起会导致：要么把偏差当正常放过，要么因为数值不准就不敢叙述已经发生的事。
+   *
+   * 实测发现运行时会在 rawDamage → incomingDamage → appliedDamage 之间做多级折减，
+   * 其中防御倍率、护盾吸收、非致命意图钳制都会造成合理差异。这类差异要标注成因，
+   * 而不是笼统算作"预测不准"。
+   */
+  const magnitudeTolerance = 0.25;
+
+  function compareMagnitude(predicted = 0, actual = {}, context = {}) {
+    const expectedValue = Math.abs(Number(predicted) || 0);
+    const appliedValue = Math.abs(Number(actual?.appliedDamage) || 0);
+    if (expectedValue <= 0 && appliedValue <= 0) return null;
+    const denominator = Math.max(expectedValue, appliedValue, 1);
+    const deviation = Math.abs(expectedValue - appliedValue) / denominator;
+    const explanations = [];
+    if (actual?.intentLethalPrevented === true) explanations.push('NONLETHAL_INTENT_CLAMP');
+    if (Number(actual?.shieldAbsorb || 0) > 0) explanations.push('SHIELD_ABSORB');
+    if (Number(actual?.defenseMultiplier ?? 1) < 1) explanations.push('DEFENSE_REDUCTION');
+
+    /* 预演自洽性：伤害预测不可能超过目标当时的剩余生命，超过说明预演侧的生命裁剪没有生效。
+       这条检查不依赖运行时结果，是对预演单独成立的硬约束——即使运行时数值恰好吻合，
+       预测值本身越界也必须报出来。 */
+    const remainingHp = Number(context?.targetRemainingHp);
+    const exceedsTargetHp = Number.isFinite(remainingHp) &&
+      remainingHp >= 0 &&
+      expectedValue > remainingHp + 1e-9;
+
+    /* 预演与运行时的未折减伤害是否同一个模型。两者都是"未经防御/护盾/钳制处理"的量，
+       量级差超过一个数量级，说明两套伤害公式已经分叉，钳制类成因解释不了这种差距。 */
+    const rawValue = Math.abs(Number(actual?.rawDamage) || 0);
+    const rawModelDiverged = expectedValue > 0 && rawValue > 0 &&
+      (rawValue / expectedValue > 10 || expectedValue / rawValue > 10);
+
+    return {
+      predicted: Number(expectedValue.toFixed(2)),
+      applied: Number(appliedValue.toFixed(2)),
+      raw: Number(rawValue.toFixed(2)),
+      incoming: Number((Number(actual?.incomingDamage) || 0).toFixed(2)),
+      targetRemainingHp: Number.isFinite(remainingHp) ? remainingHp : null,
+      deviation: Number(deviation.toFixed(4)),
+      aligned: deviation <= magnitudeTolerance,
+      /* 有成因的差异仍然算偏差，但可解释；无成因的偏差才是预演与运行时分叉的强信号。 */
+      explanations,
+      exceedsTargetHp,
+      rawModelDiverged,
+      /* 只要预测越界或未折减模型分叉，无论运行时侧有没有钳制成因，都算未解释——
+         钳制能解释"实际为什么变小"，解释不了"预测值本身从哪来"。 */
+      unexplained: exceedsTargetHp ||
+        rawModelDiverged ||
+        (deviation > magnitudeTolerance && explanations.length === 0),
+    };
+  }
+
+  function judgePrediction(prediction = {}, events = [], context = {}) {
+    const kind = text(prediction?.kind).toUpperCase();
+    const targetId = text(prediction?.targetId);
+    const effectInstanceId = text(prediction?.effectInstanceId);
+    const expected = prediction?.expected || {};
+    const verdict = (status, factIds = [], actual = null, searched = [], magnitude = null) => ({
+      status,
+      factIds: unique(factIds.map(text).filter(Boolean)),
+      actual,
+      searchedEventKinds: searched,
+      magnitude,
+    });
+    const scoped = kinds => events.filter(event =>
+      rawEventKindIs(event, ...kinds) &&
+      (rawEventHitsTarget(event, targetId) || matchesEffectInstance(event, effectInstanceId))
+    );
+    const anchored = kinds => {
+      const byInstance = events.filter(event =>
+        rawEventKindIs(event, ...kinds) && matchesEffectInstance(event, effectInstanceId)
+      );
+      return byInstance.length ? byInstance : scoped(kinds);
+    };
+    const preempted = searched => context?.preemptionEvent
+      ? verdict('PREEMPTED', [context.preemptionEvent.eventId], {
+          reasonCode: text(rawMeta(context.preemptionEvent).reasonCode || context.preemptionEvent?.ruleCode),
+        }, searched)
+      : verdict('UNCONFIRMED', [], null, searched);
+
+    if (kind === 'HP_DELTA' || kind === 'SCHEDULED_HP_DELTA') {
+      const searched = ['hit_result', 'effect_resolved', 'resource_change'];
+      const isHealing = Number(expected?.delta) > 0 || Number(expected?.healthDeltaPP) > 0;
+      if (isHealing) {
+        const heals = scoped(['resource_change', 'effect_resolved']).filter(event =>
+          Number(rawMeta(event).delta || 0) > 0 || text(event?.result) === 'resolved'
+        );
+        if (heals.length) {
+          return verdict('CONFIRMED', heals.map(event => event.eventId), {
+            delta: heals.reduce((sum, event) => sum + Number(rawMeta(event).delta || 0), 0),
+          }, searched);
+        }
+        return preempted(searched);
+      }
+      const hits = anchored(['hit_result']);
+      /* 一次伤害效果按 segments 拆成多条 hit_result，必须聚合求和后再比，不能逐条比。 */
+      const landed = hits.filter(event => Number(rawMeta(event).appliedDamage || 0) > 0);
+      if (landed.length) {
+        const sumOf = key => landed.reduce((sum, event) => sum + Number(rawMeta(event)[key] || 0), 0);
+        const actual = {
+          appliedDamage: sumOf('appliedDamage'),
+          rawDamage: sumOf('rawDamage'),
+          incomingDamage: sumOf('incomingDamage'),
+          shieldAbsorb: sumOf('shieldAbsorb'),
+          segments: landed.length,
+          defenseMultiplier: Number(rawMeta(landed[0]).defenseMultiplier ?? 1),
+          intentLethalPrevented: landed.some(event => rawMeta(event).intentLethalPrevented === true),
+        };
+        return verdict(
+          'CONFIRMED',
+          landed.map(event => event.eventId),
+          actual,
+          searched,
+          compareMagnitude(Math.abs(Number(expected?.delta || 0)), actual, {
+            targetRemainingHp: context?.remainingHpOf ? context.remainingHpOf(targetId) : null,
+          }),
+        );
+      }
+      const failed = hits.filter(event => ['miss', 'no_effect'].includes(text(event?.result)));
+      if (failed.length) {
+        return verdict('MISSED', failed.map(event => event.eventId), {
+          primaryOutcome: text(failed[0]?.primaryOutcome),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
+    if (kind === 'SHIELD_DELTA') {
+      const searched = ['shield_create', 'shield_break', 'hit_result'];
+      const gaining = Number(expected?.delta) > 0;
+      if (gaining) {
+        const created = scoped(['shield_create']);
+        if (created.length) {
+          return verdict('CONFIRMED', created.map(event => event.eventId), {
+            amount: created.reduce((sum, event) => sum + Number(event?.amount ?? rawMeta(event).amount ?? 0), 0),
+          }, searched);
+        }
+        return preempted(searched);
+      }
+      const absorbed = events.filter(event =>
+        rawEventKindIs(event, 'hit_result') &&
+        rawEventHitsTarget(event, targetId) &&
+        Number(rawMeta(event).shieldAbsorb || 0) > 0
+      );
+      const broken = scoped(['shield_break']);
+      if (absorbed.length || broken.length) {
+        return verdict('CONFIRMED', [...absorbed, ...broken].map(event => event.eventId), {
+          shieldAbsorb: absorbed.reduce((sum, event) => sum + Number(rawMeta(event).shieldAbsorb || 0), 0),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
+    if (kind === 'STATE_CHANGED') {
+      const searched = ['state_apply'];
+      const applies = scoped(['state_apply']).filter(event => {
+        const wanted = text(expected?.stateName);
+        if (!wanted) return true;
+        return text(rawMeta(event).stateName) === wanted;
+      });
+      const applied = applies.filter(event => text(event?.result) === 'applied');
+      if (applied.length) {
+        return verdict('CONFIRMED', applied.map(event => event.eventId), {
+          stateName: text(rawMeta(applied[0]).stateName),
+          duration: Number(rawMeta(applied[0]).duration || 0),
+        }, searched);
+      }
+      const rejected = applies.filter(event =>
+        ['resisted', 'immune', 'evaded', 'no_effect'].includes(text(event?.result))
+      );
+      if (rejected.length) {
+        return verdict('MISSED', rejected.map(event => event.eventId), {
+          result: text(rejected[0]?.result),
+          stateName: text(rawMeta(rejected[0]).stateName),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
+    if (kind === 'ACTION_CANCELLED') {
+      const searched = ['charge_interrupt', 'blocked_action', 'lost_opportunity', 'state_apply'];
+      /* 取消的是"对方的下一个行动机会"，兑现事实可能落在本次行动之后，
+         所以这里接受同一动作树内任何一条取消类事实。 */
+      const cancels = events.filter(event =>
+        (rawEventKindIs(event, 'charge_interrupt') && rawEventHitsTarget(event, targetId)) ||
+        (rawEventKindIs(event, 'blocked_action', 'lost_opportunity') &&
+          (rawEventHitsTarget(event, targetId) || text(event?.actorId) === targetId) &&
+          controlDenialReasonPattern.test(text(rawMeta(event).reasonCode || event?.ruleCode)))
+      );
+      if (cancels.length) {
+        return verdict('CONFIRMED', cancels.map(event => event.eventId), {
+          eventKind: text(cancels[0]?.eventKind),
+          ruleCode: text(cancels[0]?.ruleCode),
+        }, searched);
+      }
+      /* 控制没能施加成功 → 取消自然不会发生，这是有据可依的否定而不是查无此事。 */
+      const controlRejected = events.filter(event =>
+        rawEventKindIs(event, 'state_apply') &&
+        rawEventHitsTarget(event, targetId) &&
+        ['resisted', 'immune', 'evaded'].includes(text(event?.result))
+      );
+      if (controlRejected.length) {
+        return verdict('MISSED', controlRejected.map(event => event.eventId), {
+          result: text(controlRejected[0]?.result),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
+    if (kind === 'SUMMON_WINDOW') {
+      const searched = ['summon_create'];
+      const created = scoped(['summon_create']);
+      if (created.length) {
+        return verdict('CONFIRMED', created.map(event => event.eventId), {
+          summonName: text(rawMeta(created[0]).summonName),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
+    if (kind === 'RESOURCE_OPTION_CHANGED') {
+      const searched = ['resource_change', 'effect_resolved'];
+      /* action_cost 是 auditOnly 审计事件，真正扣减在同 actionId 的 resource_change(PAY)，
+         这里必须排除它，否则资源变化被双计。 */
+      const changes = anchored(['resource_change', 'effect_resolved'])
+        .filter(event => rawMeta(event).auditOnly !== true);
+      if (changes.length) {
+        return verdict('CONFIRMED', changes.map(event => event.eventId), {
+          resource: text(rawMeta(changes[0]).resource),
+          delta: Number(rawMeta(changes[0]).delta || 0),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
+    if (kind === 'PAYMENT') {
+      const searched = ['action_cost'];
+      const costs = events.filter(event =>
+        rawEventKindIs(event, 'action_cost') &&
+        (text(rawMeta(event).resource) === text(expected?.resource) ||
+          text(reconciliationResourceNames[text(rawMeta(event).resourceKey)]) === text(expected?.resource))
+      );
+      if (costs.length) {
+        return verdict('CONFIRMED', costs.map(event => event.eventId), {
+          resource: text(rawMeta(costs[0]).resource),
+          amount: costs.reduce((sum, event) => sum + Number(rawMeta(event).amount || 0), 0),
+        }, searched);
+      }
+      return context?.actionExecuted
+        ? verdict('UNCONFIRMED', [], null, searched)
+        : preempted(searched);
+    }
+
+    if (kind === 'TERMINAL') {
+      const searched = ['battle_objective_resolved'];
+      const resolved = events.filter(event => rawEventKindIs(event, 'battle_objective_resolved'));
+      if (!resolved.length) return verdict('UNCONFIRMED', [], null, searched);
+      const actualStatus = text(rawMeta(resolved[0]).status);
+      return text(expected?.status) && actualStatus && actualStatus !== text(expected.status)
+        ? verdict('MISSED', resolved.map(event => event.eventId), { status: actualStatus }, searched)
+        : verdict('CONFIRMED', resolved.map(event => event.eventId), { status: actualStatus }, searched);
+    }
+
+    /* 决策内部估值（INCOMING_HEALTH_DELTA / COUNTER_AUTHORIZATION / HEALTH_ROUTE_CHANGED /
+       RESPONSE_CONSUMPTION_ACTION_POOL 等）是反事实差分，基线世界从未发生，物理上无法验证，
+       不参与对账，也不进战报的事实陈述。 */
+    return verdict('UNVERIFIABLE', [], null, []);
+  }
+
+  function reconcileDecision(decision = {}, events = [], options = {}) {
+    const predictions = collectPredictedOutcomes(decision);
+    if (!predictions.length) return [];
+    const directory = options?.directory instanceof Map ? options.directory : new Map();
+    const remainingHpById = options?.remainingHpById instanceof Map ? options.remainingHpById : null;
+    const scopedEvents = Array.isArray(events) ? events.filter(Boolean) : [];
+    const context = {
+      actionExecuted: scopedEvents.some(event => rawEventKindIs(event, 'action_start')),
+      preemptionEvent: scopedEvents.find(event => rawEventKindIs(event, ...preemptionEventKinds)) || null,
+      remainingHpOf: unitId => {
+        if (!remainingHpById) return null;
+        const found = remainingHpById.get(text(unitId));
+        return Number.isFinite(Number(found)) ? Number(found) : null;
+      },
+    };
+    return predictions
+      .map(prediction => {
+        const judged = judgePrediction(prediction, scopedEvents, context);
+        if (judged.status === 'UNVERIFIABLE') return null;
+        return {
+          predictionId: prediction.predictionId,
+          kind: prediction.kind,
+          source: prediction.source,
+          targetId: publicEntityId(directory, prediction.targetId),
+          targetName: prediction.targetId
+            ? publicEntityName(directory, prediction.targetId, prediction.targetId)
+            : '',
+          status: judged.status,
+          expected: cloneValue(prediction.expected || {}),
+          actual: judged.actual ? cloneValue(judged.actual) : null,
+          magnitude: judged.magnitude ? cloneValue(judged.magnitude) : null,
+          actualFactIds: judged.factIds,
+          searchedEventKinds: judged.searchedEventKinds,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function summarizeReconciliation(reconciliation = []) {
+    const rows = Array.isArray(reconciliation) ? reconciliation : [];
+    const countOf = status => rows.filter(row => text(row?.status) === status).length;
+    return {
+      total: rows.length,
+      confirmed: countOf('CONFIRMED'),
+      missed: countOf('MISSED'),
+      preempted: countOf('PREEMPTED'),
+      unconfirmed: countOf('UNCONFIRMED'),
+      /* 效果确认了但数值对不上、且找不到折减成因——预演与运行时结算分叉的检出计数。 */
+      magnitudeUnexplained: rows.filter(row => row?.magnitude?.unexplained === true).length,
+      predictionExceedsTargetHp: rows.filter(row => row?.magnitude?.exceedsTargetHp === true).length,
+      rawDamageModelDiverged: rows.filter(row => row?.magnitude?.rawModelDiverged === true).length,
+    };
+  }
+
+  /* 从战斗初始快照建立"单位→剩余生命"索引，供对账做预演自洽性检查。
+     这是决策发生前的可见生命，与预演侧裁剪所用的基线同源。 */
+  function buildRemainingHpIndex(draft = {}) {
+    const index = new Map();
+    snapshotUnits(draft?.initialSnapshot || {}).forEach(entry => {
+      const unit = entry?.unit || {};
+      const hp = Number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP);
+      if (!Number.isFinite(hp)) return;
+      unique([unit?.id, unit?.name, unit?.名称, unit?.unitId])
+        .map(text)
+        .filter(Boolean)
+        .forEach(key => {
+          if (!index.has(key)) index.set(key, Math.max(0, hp));
+        });
+    });
+    return index;
+  }
+
+  /*
+   * 威胁快照（链路无关）
+   *
+   * "某单位正在蓄力"必须来自真实的 charge_start/charge_progress 事实，不能从决策问题标签反推。
+   * naturalActionBudget = 40 是运行时的自然行动预算；剩余前摇 <= 40 表示该蓄力会在下一个
+   * 自然行动窗口内打出——这是运行时判定"可见蓄力威胁"和"防守姿态是否值得保留"时用的同一个阈值
+   * （BattleRuntime_Module.js:1374-1392 与 :5094-5110），战报沿用它以保证口径一致。
+   */
+  const naturalActionBudget = 40;
+  const chargeOpenEventKinds = Object.freeze(['charge_start', 'charge_progress']);
+
+  function chargeRemainingCastTime(event = {}) {
+    const meta = rawMeta(event);
+    const candidates = [
+      meta.remainingCastTime,
+      meta.cast_time,
+      meta.castTime,
+      event?.castTimePoints,
+    ];
+    const found = candidates.find(value => Number.isFinite(Number(value)));
+    return Number.isFinite(Number(found)) ? Math.max(0, Number(found)) : null;
+  }
+
+  function buildThreatContext(events = [], options = {}) {
+    const directory = options?.directory || new Map();
+    const upToSequence = Number.isFinite(Number(options?.upToSequence))
+      ? Number(options.upToSequence)
+      : Number.MAX_SAFE_INTEGER;
+    const observerId = text(options?.observerId);
+    const ordered = (Array.isArray(events) ? events.filter(Boolean) : [])
+      .filter(event => number(event?.sequence, 0) < upToSequence)
+      .sort((left, right) => number(left?.sequence, 0) - number(right?.sequence, 0));
+
+    /* 蓄力链按 actorId 归并，不按 actionId。
+       运行时的蓄力状态存在 unit.蓄力技能 这个单值字段上，所以一个单位同时最多只有一个
+       未结算蓄力；而 charge_progress 实测写出的 actionId 是空串（只有 opportunityId 有值），
+       按 actionId 归并会整条漏掉。actorId 是这条链上唯一可靠的键。
+       charge_start/charge_progress 开链或续链，charge_interrupt 作废，
+       同一单位出现 action_start 表示蓄力已兑现。 */
+    const chargeByActor = new Map();
+    ordered.forEach(event => {
+      const kind = text(event?.eventKind);
+      const chargeActorId = text(event?.actorId);
+      if (!chargeActorId) return;
+      if (chargeOpenEventKinds.includes(kind)) {
+        chargeByActor.set(chargeActorId, event);
+        return;
+      }
+      if (kind === 'charge_interrupt' || kind === 'action_start') chargeByActor.delete(chargeActorId);
+    });
+
+    const pendingCharges = [...chargeByActor.values()].map(event => {
+      const remainingCastTime = chargeRemainingCastTime(event);
+      const remainingOpportunityCount = Number.isFinite(Number(rawMeta(event).remainingOpportunityCount))
+        ? Math.max(0, Number(rawMeta(event).remainingOpportunityCount))
+        : null;
+      const targetIds = rawEventTargets(event);
+      return {
+        sourceFactId: text(event?.eventId),
+        actorId: publicEntityId(directory, event?.actorId),
+        actorName: publicEntityName(directory, event?.actorId, event?.actorName),
+        actionName: playerSafeText(event?.actionName || event?.finalActionName, directory),
+        remainingCastTime,
+        remainingOpportunityCount,
+        /* 只有剩余前摇 <= 自然行动预算时，这次蓄力才会在下一个窗口内兑现，
+           此前它对当前决策不构成即时威胁。 */
+        imminent: Number.isFinite(remainingCastTime) && remainingCastTime <= naturalActionBudget,
+        targetIds: targetIds.map(value => publicEntityId(directory, value)).filter(Boolean),
+        targetNames: targetIds.map(value => publicEntityName(directory, value, value)).filter(Boolean),
+        /* 目标为空的蓄力在运行时语义里等于"威胁全体"，不能当成无目标略过。 */
+        targetsObserver: !targetIds.length ||
+          (!!observerId && targetIds.includes(observerId)),
+      };
+    });
+
+    /* 反应/反击窗口：开窗事件出现后，若同 opportunityId 已有 action_start 消费，
+       或已出现 lost_opportunity/blocked_action，则该窗口不再开放。 */
+    const consumedOpportunityIds = new Set(
+      ordered
+        .filter(event => rawEventKindIs(event, 'action_start', 'lost_opportunity', 'blocked_action'))
+        .map(event => text(event?.opportunityId))
+        .filter(Boolean),
+    );
+    const openWindows = ordered
+      .filter(event => rawEventKindIs(event, 'reaction_window', 'counter_window'))
+      .filter(event => {
+        const opportunityId = text(event?.opportunityId);
+        return !opportunityId || !consumedOpportunityIds.has(opportunityId);
+      })
+      .map(event => ({
+        sourceFactId: text(event?.eventId),
+        kind: text(event?.eventKind),
+        ownerId: publicEntityId(directory, event?.actorId),
+        ownerName: publicEntityName(directory, event?.actorId, event?.actorName),
+        sourceActorName: publicEntityName(
+          directory,
+          rawMeta(event).sourceActorId || event?.sourceActorId,
+          text(rawMeta(event).sourceActorId || event?.sourceActorId),
+        ),
+      }));
+
+    return {
+      pendingCharges: pendingCharges.filter(charge => charge.imminent || charge.remainingCastTime === null),
+      deferredCharges: pendingCharges.filter(charge => !charge.imminent && charge.remainingCastTime !== null),
+      openWindows,
+    };
+  }
+
+  /*
+   * 决策链中立契约（B 层）
+   *
+   * 战报只认这份契约，不认任何具体决策引擎的词汇。契约刻意不含 HEPP/Pareto/temperature 这类
+   * 引擎专有概念：narrowing 的阶段名由适配器提供，selectionLabel 是不透明字符串，
+   * 战报层不解释它们的语义，只负责如实转述。换引擎时只需新写一个适配器。
+   *
+   * wasOptimal 是契约里最关键的字段：它把"引擎明知有更高排名的候选却选了别的"
+   * （R8 的 SEEDED_SOFTMAX）表达成任何引擎都能回答的布尔量。没有它，战报会把随机抽样
+   * 说成"因为它更好"，这是对实际链路最严重的失真。
+   */
+  const r8RejectionChecks = Object.freeze({
+    ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED: {
+      text: '没有可用的防御窗口',
+      checked: '本次机会是否为防御授权、是否存在来袭动作、是否为反击窗口、机会列表与排期事件中是否存在防御授权',
+    },
+    CONTROL_WINDOW_NOT_REALIZABLE: {
+      text: '控制效果落不到目标的真实行动窗口上',
+      checked: '路线含行动取消效果，但行动池投影里没有可兑现的取消项，且直接生命轨迹为零',
+    },
+    SUMMON_WINDOW_NOT_REALIZABLE: {
+      text: '召唤物没有可兑现的行动窗口',
+      checked: '路线含召唤窗口效果，但行动池投影里没有可兑现的召唤项，且无终局、无直接生命轨迹、无其他行动池收益',
+    },
+    ZERO_MARGINAL_WITH_COST: {
+      text: '要付出代价但没有收益',
+      checked: '目标效用不大于零，同时该动作会消耗行动机会、反应机会或资源',
+    },
+    UNCOMPENSATED_SELF_DESTRUCTION: {
+      text: '会让自己倒下且换不来终局',
+      checked: '生命轨迹显示行动者自身生命归零，且该路线不满足终局条件',
+    },
+    AVOIDABLE_IRREVERSIBLE_OVERREACH_SELECTED: {
+      text: '存在同等收益但浪费更少的替代方案',
+      checked: '该路线造成阈值后溢出击杀，而另有候选收益不更低、最坏损失不更高、溢出更少且不产生同样的击杀',
+    },
+  });
+
+  function rejectionReasonText(reasonCode = '') {
+    const code = text(reasonCode);
+    if (!code) return '';
+    return text(r8RejectionChecks[code]?.text) || text(rejectionLabels[code]) || code;
+  }
+
+  function rejectionReasonChecked(reasonCode = '') {
+    return text(r8RejectionChecks[text(reasonCode)]?.checked);
+  }
+
+  function adaptR8DecisionTrace(decision = {}, directory = new Map()) {
+    const auditRows = Array.isArray(decision?.candidateAudit) && decision.candidateAudit.length
+      ? decision.candidateAudit
+      : Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : [];
+    const selectedId = text(decision?.selected?.candidateId);
+    const rows = auditRows.map(candidate => {
+      const reasonCode = text(candidate?.rejectionCode);
+      const isSelected = candidate?.selected === true ||
+        (!!selectedId && text(candidate?.candidateId) === selectedId);
+      return {
+        name: candidateDisplayLabel(publicCandidate(candidate, directory)),
+        targetNames: unique((Array.isArray(candidate?.targetIds) ? candidate.targetIds : [])
+          .map(targetId => publicEntityName(directory, targetId, targetId))
+          .filter(Boolean)),
+        status: isSelected ? 'SELECTED' : reasonCode ? 'EXCLUDED' : 'CONSIDERED',
+        reasonCode,
+        reasonText: rejectionReasonText(reasonCode),
+        reasonChecked: rejectionReasonChecked(reasonCode),
+        rank: Number.isFinite(Number(candidate?.normalizedUtility))
+          ? Number(candidate.normalizedUtility)
+          : null,
+      };
+    });
+
+    const viable = rows.filter(row => row.status !== 'EXCLUDED');
+    const ranked = viable
+      .filter(row => Number.isFinite(row.rank))
+      .sort((left, right) => right.rank - left.rank);
+    const topRanked = ranked[0] || null;
+    const selectedRow = rows.find(row => row.status === 'SELECTED') || null;
+    const candidateCount = Math.max(rows.length, number(decision?.candidateCount, 0));
+    const paretoCount = Math.max(0, number(decision?.paretoCount, 0));
+
+    /* 收敛过程：阶段名在这里落地，战报层拿到的只是"阶段标签 + 前后数量 + 淘汰原因分布"。 */
+    const droppedReasons = [...rows
+      .filter(row => row.status === 'EXCLUDED')
+      .reduce((counts, row) => {
+        const key = row.reasonCode || 'UNSPECIFIED';
+        counts.set(key, (counts.get(key) || 0) + 1);
+        return counts;
+      }, new Map())
+      .entries()]
+      .map(([reasonCode, count]) => ({ reasonCode, reasonText: rejectionReasonText(reasonCode), count }))
+      .sort((left, right) => right.count - left.count || left.reasonCode.localeCompare(right.reasonCode));
+
+    const narrowing = [
+      { stage: '候选生成', before: 0, after: candidateCount, droppedReasons: [] },
+      { stage: '硬排除', before: candidateCount, after: viable.length, droppedReasons },
+    ];
+    if (paretoCount > 0 && paretoCount < viable.length) {
+      narrowing.push({ stage: '非支配筛选', before: viable.length, after: paretoCount, droppedReasons: [] });
+    }
+    narrowing.push({
+      stage: '选择',
+      before: paretoCount > 0 ? paretoCount : viable.length,
+      after: selectedRow ? 1 : 0,
+      droppedReasons: [],
+    });
+
+    const selectionLabel = text(decision?.decisionProfile?.selectionMode);
+    const wasOptimal = !selectedRow || !topRanked
+      ? null
+      : selectedRow.name === topRanked.name ||
+        Math.abs(number(selectedRow.rank, 0) - number(topRanked.rank, 0)) <= 1e-9;
+
+    return {
+      engineLabel: text(decision?.decisionEngine) || 'UNKNOWN',
+      candidateCount,
+      candidates: rows,
+      narrowing,
+      selectionLabel,
+      /* 引擎选中的是不是它自己排第一的候选。false 表示引擎明知有更高排名者，
+         战报必须如实说明这是在可接受范围内的取舍，不能说成"因为它更好"。 */
+      wasOptimal,
+      topRankedName: wasOptimal === false ? text(topRanked?.name) : '',
+      rankGap: wasOptimal === false && selectedRow && topRanked
+        ? Number((number(topRanked.rank, 0) - number(selectedRow.rank, 0)).toFixed(4))
+        : null,
+    };
+  }
+
+  function adaptDecisionTrace(decision = {}, directory = new Map()) {
+    /* 目前只有 R8 一个适配器。换引擎时在这里按 decisionEngine 增派新适配器，
+       战报层与 UI 层不需要任何改动。 */
+    return adaptR8DecisionTrace(decision, directory);
   }
 
   function publicCandidate(candidate = {}, directory = new Map()) {
@@ -2868,14 +3643,17 @@
       )
     );
     if (!hasIndependentEffect) return normalizedSummary;
+    /* 原文"附带效果仍按独立检定结算"在讲机制却不给结论，是误导性废话——
+       后半句已经写明了效果是否生效，前缀只需交代"附带效果与伤害各自判定"这个前提，
+       不能让读者以为检定结果还未知。 */
     const missedCount = activeHits.filter(fact => hitOutcomeKind(fact) === 'MISS').length;
     if (missedCount === activeHits.length) {
-      return `伤害均未命中，独立效果另行判定：${normalizedSummary}`;
+      return `伤害未命中，但附带效果与伤害各自判定，因此仍有结果：${normalizedSummary}`;
     }
     if (missedCount > 0) {
-      return `部分段数或目标未命中，独立效果分别判定：${normalizedSummary}`;
+      return `部分段数未命中，附带效果与伤害各自判定：${normalizedSummary}`;
     }
-    return `伤害已命中，附带效果仍按独立检定结算：${normalizedSummary}`;
+    return `附带效果与伤害各自判定：${normalizedSummary}`;
   }
 
   function buildExchangeTargetGroups({
@@ -3304,6 +4082,387 @@
         ].filter(Boolean).join('。'),
       };
     });
+  }
+
+  /*
+   * 因果链（A 层主轴）
+   *
+   * 一个链节点 = 一次行动的完整因果：
+   *   局面(context) → 决策(decision) → 机制结算(settlement) → 对账(reconciliation)
+   * 交锋分组沿用 build() 已有并已被 auditProjection 校验过的 exchange 划分，不重造；
+   * 决策匹配沿用 findDecisionAnchor。本函数只负责把这些既有部件按因果顺序串成一条链，
+   * 并补上原先完全缺失的两块：决策发生时的局面，和事后的预测/实际对账。
+   */
+  function decisionKindOf(decision = {}) {
+    const selected = decision?.selected || {};
+    if (decision?.lostOpportunity?.reasonCode) return 'LOST_OPPORTUNITY';
+    if (selected?.playerLocked === true ||
+      text(selected?.selectionMode).toUpperCase() === 'PLAYER_LOCKED') return 'PLAYER_LOCKED';
+    if (selected?.forcedAction === true) return 'FORCED';
+    if (selected?.counterDeclineFallback === true) return 'DECLINED';
+    return 'CHOICE';
+  }
+
+  function buildNarrativeChain(input = {}) {
+    const {
+      draft = {},
+      exchanges = [],
+      factsById = new Map(),
+      directory = new Map(),
+      sourceEventsByFactId = new Map(),
+      ledger = [],
+      remainingHpById = new Map(),
+    } = input;
+
+    const decisions = Array.isArray(draft?.decisionAudit) ? draft.decisionAudit : [];
+    const claimedFactIds = new Set();
+    const matchedByExchangeId = new Map();
+    decisions.forEach(decision => {
+      const matched = findDecisionAnchor(
+        decision,
+        exchanges,
+        factsById,
+        directory,
+        claimedFactIds,
+        sourceEventsByFactId,
+      );
+      if (!matched?.exchange) return;
+      const key = text(matched.exchange.exchangeId);
+      if (!matchedByExchangeId.has(key)) matchedByExchangeId.set(key, []);
+      matchedByExchangeId.get(key).push({ decision, anchor: matched.anchor });
+    });
+
+    const rawEventOf = factId => sourceEventsByFactId.get(text(factId)) || null;
+
+    return exchanges.map(exchange => {
+      const exchangeFactIds = Array.isArray(exchange?.factIds) ? exchange.factIds : [];
+      const rawEvents = exchangeFactIds.map(rawEventOf).filter(Boolean);
+      const anchorSequence = rawEvents.reduce(
+        (lowest, event) => Math.min(lowest, number(event?.sequence, Number.MAX_SAFE_INTEGER)),
+        Number.MAX_SAFE_INTEGER,
+      );
+
+      const attached = matchedByExchangeId.get(text(exchange.exchangeId)) || [];
+      /* 一次交锋内可能挂多个决策（主动 + 对方的反应/反击）。主决策是与交锋行动者一致的那个，
+         但其余决策同样是真实发生过的判断，不能丢——反应窗口放弃、反击拒绝这类决策
+         恰恰是链路诊断里最值得看的部分。 */
+      const orderedDecisions = [...attached].sort((left, right) => {
+        const leftPrimary = text(left.decision?.actorId) === text(exchange?.actorId) ? 0 : 1;
+        const rightPrimary = text(right.decision?.actorId) === text(exchange?.actorId) ? 0 : 1;
+        return leftPrimary - rightPrimary;
+      });
+      const primary = orderedDecisions[0] || null;
+
+      const decisions = orderedDecisions.map(item => ({
+        actorId: publicEntityId(directory, item.decision?.actorId),
+        actorName: publicEntityName(directory, item.decision?.actorId, item.decision?.actorId),
+        isPrimary: item === primary,
+        kind: decisionKindOf(item.decision),
+        trace: adaptDecisionTrace(item.decision, directory),
+        lostOpportunityReason: item.decision?.lostOpportunity?.reasonCode
+          ? playerSafeText(
+              item.decision.lostOpportunity.reasonText || item.decision.lostOpportunity.reasonCode,
+              directory,
+            )
+          : '',
+      }));
+
+      const decisionTrace = decisions[0]?.trace || null;
+
+      /* 局面必须是"决策发生之前"的世界，所以以本次交锋最早一条事实的 sequence 为界。 */
+      const context = buildThreatContext(ledger, {
+        directory,
+        upToSequence: anchorSequence,
+        observerId: text(primary?.decision?.actorId || exchange?.actorId),
+      });
+
+      const reconciliation = primary?.decision
+        ? reconcileDecision(primary.decision, rawEvents, { directory, remainingHpById })
+        : [];
+
+      return {
+        chainId: text(exchange.exchangeId),
+        round: number(exchange?.round, 0),
+        sequence: anchorSequence === Number.MAX_SAFE_INTEGER ? 0 : anchorSequence,
+        actorId: text(exchange?.actorId),
+        actorName: text(exchange?.actorName),
+        action: {
+          /* 动作名可能是 PASS_OPPORTUNITY 这类原始枚举，必须映射成中文再出现在战报里。 */
+          name: text(actionKindLabels[text(exchange?.action?.name)] || exchange?.action?.name),
+          role: text(exchange?.action?.role),
+        },
+        targetNames: unique(exchange?.targetNames || []),
+        context,
+        decisionKind: decisions[0]?.kind || 'NONE',
+        decision: decisionTrace,
+        decisions,
+        lostOpportunityReason: text(decisions[0]?.lostOpportunityReason),
+        settlement: {
+          declarationSummary: text(exchange?.action?.summary),
+          responseSummary: text(exchange?.responseSummary),
+          resultSummary: text(exchange?.resultSummary),
+          continuationSummary: text(exchange?.continuationSummary),
+          responseFactIds: unique(exchange?.responseFactIds || []),
+          resultFactIds: unique(exchange?.resultFactIds || []),
+          continuationFactIds: unique(exchange?.continuationFactIds || []),
+        },
+        targetGroups: Array.isArray(exchange?.targetGroups) ? exchange.targetGroups : [],
+        reconciliation,
+        reconciliationSummary: summarizeReconciliation(reconciliation),
+        factIds: [...exchangeFactIds],
+      };
+    }).sort((left, right) =>
+      left.round - right.round ||
+      left.sequence - right.sequence ||
+      text(left.chainId).localeCompare(text(right.chainId))
+    );
+  }
+
+  /*
+   * AI 战报文本投影
+   *
+   * 这份文本是 AI 扩写自然战斗叙述的唯一依据，因此每一行都必须是事实，不能是解释。
+   * 三条硬规则：
+   *   1 只用离散事实做主干（谁对谁、用什么、命中没命中、状态上没上、被什么码排除）。
+   *     PP/HEPP 这类连续量一律不出现——它们翻成人话必然失真，而离散量天然就是人话。
+   *   2 不反推意图。引擎没有"意图"这个概念，它只算标量；写"意图：打断蓄力"是编的。
+   *     能写的是"这条路线含行动取消效果"这类事实性因果。
+   *   3 只有对账为 CONFIRMED 的效果才由 settlement 如实叙述；MISSED/PREEMPTED 写成明确否定；
+   *     UNCONFIRMED 完全不出现在文本里——AI 看不到就不会写，这是杜绝误写战况的根本手段。
+   */
+  const aiReconciliationDenials = Object.freeze({
+    HP_DELTA: { MISSED: '攻击未命中，未造成伤害', PREEMPTED: '攻击未能打出' },
+    SCHEDULED_HP_DELTA: { MISSED: '持续伤害未生效', PREEMPTED: '持续伤害未能挂上' },
+    SHIELD_DELTA: { MISSED: '护盾未建立', PREEMPTED: '护盾未能建立' },
+    STATE_CHANGED: { MISSED: '状态被抵抗，未生效', PREEMPTED: '状态未能施加' },
+    ACTION_CANCELLED: { MISSED: '未能打断对方行动', PREEMPTED: '打断未能生效' },
+    SUMMON_WINDOW: { MISSED: '召唤未成立', PREEMPTED: '召唤未能建立' },
+    RESOURCE_OPTION_CHANGED: { MISSED: '资源变化未发生', PREEMPTED: '资源变化未发生' },
+    PAYMENT: { MISSED: '消耗未支付', PREEMPTED: '消耗未支付' },
+    TERMINAL: { MISSED: '未达成预期的终局条件', PREEMPTED: '终局未达成' },
+  });
+
+  function aiDenialLine(row = {}) {
+    const status = text(row?.status);
+    if (status !== 'MISSED' && status !== 'PREEMPTED') return '';
+    const template = aiReconciliationDenials[text(row?.kind)];
+    const base = text(template?.[status]);
+    if (!base) return '';
+    const stateName = text(row?.expected?.stateName);
+    const target = text(row?.targetName);
+    const subject = stateName ? `${stateName}` : '';
+    return [
+      target ? `对${target}` : '',
+      subject ? `${subject}：` : '',
+      base,
+    ].filter(Boolean).join('');
+  }
+
+  /* 一行战果：同时用于楼层留存（玩家可读、不污染上下文）与 AI 战报的抬头。
+     终局必须用人话，不能把 winner 的原始枚举值直接抛出去。 */
+  function buildBattleHeadline(input = {}) {
+    const sides = input?.sides || {};
+    const playerNames = (Array.isArray(sides?.player) ? sides.player : []).map(unit => text(unit?.name)).filter(Boolean);
+    const enemyNames = (Array.isArray(sides?.enemy) ? sides.enemy : []).map(unit => text(unit?.name)).filter(Boolean);
+    const outcome = [terminalText(input?.terminalResult || {}), terminalConditionText(input?.terminalResult || {})]
+      .map(text)
+      .filter(Boolean)
+      .join('：');
+    return [
+      playerNames.length && enemyNames.length ? `${playerNames.join('、')} vs ${enemyNames.join('、')}` : '',
+      `${Math.max(0, number(input?.roundCount, 0))}回合`,
+      outcome,
+    ].filter(Boolean).join(' · ');
+  }
+
+  function renderChainForAI(input = {}) {
+    const chain = Array.isArray(input?.chain) ? input.chain : [];
+    const sides = input?.sides || {};
+    const lines = [];
+
+    lines.push(buildBattleHeadline(input));
+
+    let currentRound = null;
+    chain.forEach(node => {
+      if (node.round !== currentRound) {
+        currentRound = node.round;
+        lines.push('', `[第${currentRound}回合]`);
+      }
+
+      /* 局面：只报会在下一个窗口兑现、且不是行动者自己的蓄力，其余属于噪音。 */
+      (node?.context?.pendingCharges || [])
+        .filter(charge => charge.imminent && text(charge.actorId) !== text(node.actorId))
+        .forEach(charge => {
+          lines.push(`  ! ${charge.actorName}蓄力中【${charge.actionName}】，下个行动窗口即可打出`);
+        });
+
+      if (node.decisionKind === 'LOST_OPPORTUNITY') {
+        lines.push(`${node.actorName} 失去行动：${node.lostOpportunityReason || '无法行动'}`);
+        lines.push('');
+        return;
+      }
+
+      const targets = node.targetNames.filter(name => name && name !== node.actorName);
+      lines.push([
+        node.actorName,
+        targets.length ? `→ ${targets.join('、')}` : '',
+        `· ${node.action.name}`,
+      ].filter(Boolean).join(' '));
+
+      if (node.decisionKind === 'PLAYER_LOCKED') lines.push('  玩家指定动作');
+      if (node.decisionKind === 'FORCED') lines.push('  前一窗口已声明，本次按既定动作兑现');
+
+      /* 被排除的候选：只取真正携带排除码的，最多两条，避免刷屏。 */
+      (node?.decision?.candidates || [])
+        .filter(candidate => candidate.status === 'EXCLUDED' && candidate.reasonText)
+        .slice(0, 2)
+        .forEach(candidate => {
+          lines.push(`  未选${candidate.name}：${candidate.reasonText}`);
+        });
+
+      /* 引擎明知有更高排名却选了别的，必须如实说明，不能包装成"因为它更好"。 */
+      if (node?.decision?.wasOptimal === false && node.decision.topRankedName) {
+        lines.push(`  注：引擎评分更高的是${node.decision.topRankedName}，本次在可接受范围内选了当前动作`);
+      }
+
+      [
+        node?.settlement?.responseSummary,
+        node?.settlement?.resultSummary,
+        node?.settlement?.continuationSummary,
+      ].map(text).filter(Boolean).forEach(summary => lines.push(`  ${summary}`));
+
+      (node?.reconciliation || [])
+        .map(aiDenialLine)
+        .filter(Boolean)
+        .forEach(line => lines.push(`  ${line}`));
+
+      /* 同一次交锋里对方做出的反应/反击决策也是真实发生的判断，必须一并交代，
+         否则 AI 会以为对方毫无反应。 */
+      (node?.decisions || []).slice(1).forEach(entry => {
+        if (entry.kind === 'LOST_OPPORTUNITY') {
+          lines.push(`  ${entry.actorName}未能应对：${entry.lostOpportunityReason || '没有可用的应对动作'}`);
+          return;
+        }
+        if (entry.kind === 'DECLINED') {
+          lines.push(`  ${entry.actorName}放弃了本次反击机会`);
+          return;
+        }
+        if (text(entry.trace?.selectionLabel) === 'REACTION_DECLINED') {
+          lines.push(`  ${entry.actorName}没有能改变本次结算的应对动作`);
+        }
+      });
+
+      /* 节点之间留空行，否则局面提示会看起来像挂在上一个单位身上。 */
+      lines.push('');
+    });
+
+    const finalState = [...(Array.isArray(sides?.player) ? sides.player : []), ...(Array.isArray(sides?.enemy) ? sides.enemy : [])]
+      .map(unit => {
+        const hp = Number(unit?.hp);
+        const hpMax = Number(unit?.hpMax);
+        return Number.isFinite(hp) && Number.isFinite(hpMax)
+          ? `${text(unit?.name)} ${hp}/${hpMax}`
+          : text(unit?.name);
+      })
+      .filter(Boolean);
+    if (finalState.length) lines.push('', `[终态] ${finalState.join(' | ')}`);
+
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  /*
+   * 链路收敛统计（B 层）
+   *
+   * 用途不是给玩家看，是回答"当前决策链里哪些阶段真的在改变结果、哪些只是在烧 CPU"。
+   * 例如：非支配筛选后前沿恒为 1，说明多维支配机制没有实际参与选择；
+   *       SEEDED_SOFTMAX 触发率为 0，说明随机温度那套可以整体去掉；
+   *       某个排除码从不触发，它的判定开销是白花的；
+   *       硬排除后候选归零的比例高，说明候选生成在大量产出必然被排除的候选。
+   * 这些数字全部来自既有投影，不进决策热路径，也不需要引擎改动。
+   */
+  function buildPipelineStats(chain = []) {
+    /* 统计以"决策"为单位而不是"链节点"，因为一次交锋里可能挂着主动方与应对方两个决策，
+       只数节点会漏掉反应侧的判断。 */
+    const nodes = (Array.isArray(chain) ? chain : [])
+      .flatMap(node => (Array.isArray(node?.decisions) ? node.decisions : []))
+      .filter(entry => entry?.trace)
+      .map(entry => ({ decision: entry.trace, kind: entry.kind }));
+    const tally = (values) => {
+      const counts = new Map();
+      values.forEach(value => {
+        const key = text(value) || '(未标注)';
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+      return [...counts.entries()]
+        .map(([key, count]) => ({ key, count }))
+        .sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
+    };
+
+    const candidateCounts = nodes.map(node => number(node.decision.candidateCount, 0));
+    const stageRows = new Map();
+    nodes.forEach(node => {
+      (node.decision.narrowing || []).forEach(step => {
+        const stage = text(step?.stage);
+        if (!stage) return;
+        if (!stageRows.has(stage)) {
+          stageRows.set(stage, { stage, occurrences: 0, totalBefore: 0, totalAfter: 0, emptied: 0 });
+        }
+        const row = stageRows.get(stage);
+        row.occurrences += 1;
+        row.totalBefore += number(step?.before, 0);
+        row.totalAfter += number(step?.after, 0);
+        if (number(step?.before, 0) > 0 && number(step?.after, 0) === 0) row.emptied += 1;
+      });
+    });
+
+    const reconciliationTotals = (Array.isArray(chain) ? chain : []).reduce((totals, node) => {
+      const summary = node?.reconciliationSummary || {};
+      Object.keys(totals).forEach(key => {
+        totals[key] += Math.max(0, number(summary?.[key], 0));
+      });
+      return totals;
+    }, {
+      total: 0,
+      confirmed: 0,
+      missed: 0,
+      preempted: 0,
+      unconfirmed: 0,
+      magnitudeUnexplained: 0,
+      predictionExceedsTargetHp: 0,
+      rawDamageModelDiverged: 0,
+    });
+
+    return {
+      decisionCount: nodes.length,
+      candidateCount: {
+        min: candidateCounts.length ? Math.min(...candidateCounts) : 0,
+        max: candidateCounts.length ? Math.max(...candidateCounts) : 0,
+        mean: candidateCounts.length
+          ? Number((candidateCounts.reduce((sum, value) => sum + value, 0) / candidateCounts.length).toFixed(2))
+          : 0,
+      },
+      selectionLabels: tally(nodes.map(node => node.decision.selectionLabel)),
+      /* wasOptimal=false 的占比就是"随机取舍实际改变了多少次决策"。
+         为 0 说明温度机制从未真正生效。 */
+      optimality: {
+        optimal: nodes.filter(node => node.decision.wasOptimal === true).length,
+        suboptimal: nodes.filter(node => node.decision.wasOptimal === false).length,
+        notApplicable: nodes.filter(node => node.decision.wasOptimal === null).length,
+      },
+      rejectionCodes: tally(nodes.flatMap(node =>
+        (node.decision.candidates || [])
+          .filter(candidate => candidate.status === 'EXCLUDED')
+          .map(candidate => candidate.reasonCode)
+      )),
+      /* emptied：该阶段把候选清空的次数。硬排除阶段频繁清空 = 候选生成在做无用功。 */
+      narrowingStages: [...stageRows.values()].map(row => ({
+        ...row,
+        meanBefore: row.occurrences ? Number((row.totalBefore / row.occurrences).toFixed(2)) : 0,
+        meanAfter: row.occurrences ? Number((row.totalAfter / row.occurrences).toFixed(2)) : 0,
+      })),
+      decisionKinds: tally(nodes.map(node => node.kind)),
+      reconciliation: reconciliationTotals,
+    };
   }
 
   function unitStateFromSnapshot(unit = {}, side = '', directory = new Map()) {
@@ -3923,6 +5082,32 @@
     const finalSummary = buildFinalSummary(draft, roundOverview, directory);
     finalSummary.canonicalFactIds = finalCanonicalFactIds;
     const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview);
+
+    /* 因果链主轴：局面 → 决策 → 机制结算 → 对账。
+       它复用上面已经算好并会被 auditProjection 校验的 exchange 分组，
+       只负责按因果顺序重新串联，并补上原先缺失的局面与对账两块。 */
+    const narrativeChain = buildNarrativeChain({
+      draft,
+      exchanges,
+      factsById,
+      directory,
+      sourceEventsByFactId,
+      ledger,
+      remainingHpById: buildRemainingHpIndex(draft),
+    });
+    const pipelineStats = buildPipelineStats(narrativeChain);
+    const projectedTerminal = projectTerminalResult(draft?.terminalResult || {}, visibilityMode, directory);
+    const chainRenderInput = {
+      chain: narrativeChain,
+      terminalResult: projectedTerminal,
+      roundCount: Math.max(0, number(draft?.actualRoundCount, 0)),
+      sides: {
+        player: finalSummary?.sides?.player?.units || [],
+        enemy: finalSummary?.sides?.enemy?.units || [],
+      },
+    };
+    const aiReport = renderChainForAI(chainRenderInput);
+    const battleHeadline = buildBattleHeadline(chainRenderInput);
     factRegistry.forEach(fact => {
       fact.projectionRefs.push({ ownerId: fact.canonicalFactOwner, projection: 'DETAIL' });
       const roundId = `round:${fact.round}`;
@@ -3939,7 +5124,7 @@
       schemaVersion: reportSchemaVersion,
       visibilityMode,
       actualRoundCount: Math.max(0, number(draft?.actualRoundCount, 0)),
-      terminalResult: projectTerminalResult(draft?.terminalResult || {}, visibilityMode, directory),
+      terminalResult: projectedTerminal,
       projectionStatus: 'PENDING',
       sourceDecisionCount,
       projectedDecisionCount,
@@ -3952,6 +5137,10 @@
       adjudications,
       finalSummary,
       aiSummaryInput,
+      narrativeChain,
+      pipelineStats,
+      aiReport,
+      battleHeadline,
     };
   }
 
@@ -4313,44 +5502,6 @@
     };
   }
 
-  function serializeFullText(reportDto = {}) {
-    const lines = ['回合速览'];
-    (Array.isArray(reportDto?.roundOverview) ? reportDto.roundOverview : []).forEach(round => {
-      lines.push(`回合 ${number(round?.round, 0)}：${text(round?.summary) || '已完成'}`);
-      if (text(round?.passiveSummary)) lines.push(`回合 ${number(round?.round, 0)} 收束：${round.passiveSummary}`);
-    });
-    lines.push('', '动作组战报');
-    const clashGroups = Array.isArray(reportDto?.clashGroups) ? reportDto.clashGroups : [];
-    if (clashGroups.length) {
-      const clashIndexByRound = new Map();
-      clashGroups.forEach(clash => {
-        const round = number(clash?.round, 0);
-        const index = (clashIndexByRound.get(round) || 0) + 1;
-        clashIndexByRound.set(round, index);
-        lines.push(`第${round}回合 · 交锋${index}：${text(clash?.text) || '交锋已记录'}`);
-      });
-    } else {
-      (Array.isArray(reportDto?.exchanges) ? reportDto.exchanges : []).forEach(exchange => {
-        const targetGroups = Array.isArray(exchange?.targetGroups) ? exchange.targetGroups : [];
-        if (targetGroups.length > 1) {
-          lines.push(`第${number(exchange?.round, 0)}回合 · ${text(exchange?.action?.summary) || '交锋已记录'}`);
-          targetGroups.forEach(group => {
-            lines.push(`  ${text(group?.targetName) || '目标'}：${text(group?.text) || '未产生可见结果'}`);
-          });
-        } else {
-          lines.push(`第${number(exchange?.round, 0)}回合 · ${text(exchange?.text) || '交锋已记录'}`);
-        }
-      });
-    }
-    lines.push('', '判定明细');
-    (Array.isArray(reportDto?.adjudications) ? reportDto.adjudications : []).forEach(item => {
-      const alternatives = (Array.isArray(item?.alternatives) ? item.alternatives : []).map(candidateDisplayLabel).join('、') || '无';
-      lines.push(`第${number(item?.round, 0)}回合 · ${item.actorName}选择${candidateDisplayLabel(item?.selected)}；替代：${alternatives}。${item.reasonSummary}`);
-      if (item?.actual?.resultSummary) lines.push(`实际结果：${item.actual.resultSummary}`);
-    });
-    lines.push('', '总结型战报', text(reportDto?.finalSummary?.text));
-    return lines.filter((line, index, all) => line || (index > 0 && all[index - 1])).join('\n').trim();
-  }
 
   root.__LWCS_BATTLE_REPORT__ = Object.freeze({
     version: reportSchemaVersion,
@@ -4358,6 +5509,14 @@
     build,
     auditProjection,
     candidateDisplayLabel,
-    serializeFullText,
+    reconcileDecision,
+    summarizeReconciliation,
+    buildThreatContext,
+    buildRemainingHpIndex,
+    buildNarrativeChain,
+    renderChainForAI,
+    buildPipelineStats,
+    buildBattleHeadline,
+    adaptDecisionTrace,
   });
 })();

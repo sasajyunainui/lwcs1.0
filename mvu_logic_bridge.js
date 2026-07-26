@@ -10656,8 +10656,10 @@
     const 结果 = await helper.generate({
       generation_id: 请求.generationId,
       user_input: '',
+      /* should_scan 必须为 false：注入内容里全是角色名、地名、技能名，
+         开启世界书关键词扫描会让每次注入连锁拉起一串 keyed 条目，token 静默膨胀。 */
       injects: 请求.systemPrompt
-        ? [{ role: 'system', content: 请求.systemPrompt, position: 'in_chat', depth: 0, should_scan: true }]
+        ? [{ role: 'system', content: 请求.systemPrompt, position: 'in_chat', depth: 0, should_scan: false }]
         : [],
     });
     const 原始助手文本 = 读取UI生成返回文本_桥接(结果);
@@ -46052,14 +46054,17 @@ ${播报文本}
     return { ok: true, combatData };
   }
 
-  function 构建自动战斗结构化摘要(执行结果 = {}) {
-    const 摘要输入 = 执行结果?.aiSummaryInput;
-    if (!摘要输入 || typeof 摘要输入 !== 'object') return '';
-    return [
-      '<battle_structured_summary>',
-      JSON.stringify(摘要输入),
-      '</battle_structured_summary>',
-    ].join('\n');
+  /* 楼层只留一行战果：它会永久留在聊天历史里，必须既是玩家能读的结论，
+     又不占上下文。完整因果链走 inject（见 构建自动战斗战报注入）。 */
+  function 构建自动战斗战果标题(执行结果 = {}) {
+    const 标题 = toText(执行结果?.reportDto?.battleHeadline, '').trim();
+    return 标题 ? `<battle_result>${标题}</battle_result>` : '';
+  }
+
+  /* 完整因果链只在当轮存在，AI 读完即弃，不进聊天历史。 */
+  function 构建自动战斗战报注入(执行结果 = {}) {
+    const 战报 = toText(执行结果?.reportDto?.aiReport, '').trim();
+    return 战报 ? `<battle_report>\n${战报}\n</battle_report>` : '';
   }
 
   function 构建战斗事务输入(combatData = {}, options = {}) {
@@ -46445,16 +46450,21 @@ ${播报文本}
     自动战斗延后写回次数 = 0;
     let 提交结果 = null;
     try {
-      const 结构化摘要 = 构建自动战斗结构化摘要(执行结果);
+      const 战果标题 = 构建自动战斗战果标题(执行结果);
+      const 战报注入 = 构建自动战斗战报注入(执行结果);
       const 裁断卷宗 = 构建自动战斗裁断卷宗(战斗数据, 执行结果);
       const 登记接口 = typeof window.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__ === 'function'
         ? window.__LWCS_REGISTER_BATTLE_SETTLEMENT_CONTEXT__
         : null;
-      if (登记接口) 登记接口({ 结构化摘要, 裁断卷宗, 来源: 'auto_battle_route' });
-      提交结果 = await dispatchUiAiRequest(['自动战斗推进', 结构化摘要].filter(Boolean).join('\n\n'), '', {
-        requestKind: 'battle_settlement_plot',
-        skipActionLock: true,
-      });
+      if (登记接口) 登记接口({ 结构化摘要: 战果标题, 裁断卷宗, 来源: 'auto_battle_route' });
+      提交结果 = await dispatchUiAiRequest(
+        ['自动战斗推进', 战果标题].filter(Boolean).join('\n\n'),
+        战报注入,
+        {
+          requestKind: 'battle_settlement_plot',
+          skipActionLock: true,
+        },
+      );
     } catch (error) {
       return { ok: false, reason: error && error.message ? error.message : 'battle_auto_dispatch_failed', 已接管: 战斗已接管 };
     }

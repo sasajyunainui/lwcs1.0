@@ -4409,18 +4409,29 @@ class BattleUIComponent {
           llmBattleSummary: String(reportDto?.finalSummary?.text || ''),
           commitReceipt,
         };
-        if (!dryRun && transactionResult?.aiSummaryInput) {
+        if (!dryRun && reportDto?.aiReport) {
+          /* 投递分两路：
+             楼层只留一行战果（玩家可读、且永久留在聊天历史里也不占上下文）；
+             完整因果链走 inject，只在当轮存在，读完即弃，不进历史。
+             这样 AI 有足够的事实扩写战斗，而长战斗的全量细节不会成为永久噪音。 */
+          const 战果标题 = String(reportDto.battleHeadline || '战斗已结算');
+          /* 裁断卷宗与 battle_report 是两个不同的注入点，不能塞同样的内容：
+             卷宗只承载"不可改写的终局事实"，完整因果链由 inject 提供。 */
           const settlementContext = registerBattleSettlementContext({
             id: `battle-${Date.now()}`,
-            结构化摘要: JSON.stringify(transactionResult.aiSummaryInput),
-            裁断卷宗: JSON.stringify(reportDto?.finalSummary || {}),
+            结构化摘要: 战果标题,
+            裁断卷宗: 战果标题,
             来源: 'BattleReport',
           });
           output.battleSettlementContext = settlementContext;
-          sendToAI(`<battle_structured_summary>\n${JSON.stringify(transactionResult.aiSummaryInput)}\n</battle_structured_summary>`, '', {
-            mvuUpdate: commitReceipt,
-            requestKind: 'battle_settlement_plot',
-          });
+          sendToAI(
+            `<battle_result>${战果标题}</battle_result>`,
+            `<battle_report>\n${reportDto.aiReport}\n</battle_report>`,
+            {
+              mvuUpdate: commitReceipt,
+              requestKind: 'battle_settlement_plot',
+            },
+          );
           output.aiRequest = root.__lastBattleAIRequest || null;
         }
         return output;
@@ -5705,7 +5716,7 @@ class BattleUIComponent {
               autoContinueConfig,
               pendingTowerSettlement,
               activeBattleRecordTab: previousState.activeBattleRecordTab === 'preview' ? 'preview' : 'actual',
-              activeBattleRecordView: ['round', 'report', 'decision', 'summary'].includes(previousState.activeBattleRecordView) ? previousState.activeBattleRecordView : 'round',
+              activeBattleRecordView: ['chain', 'summary'].includes(previousState.activeBattleRecordView) ? previousState.activeBattleRecordView : 'chain',
               activeBattleDecisionRound: Math.max(0, Number(previousState.activeBattleDecisionRound || 0)),
               activeBattleDecisionActionId: String(previousState.activeBattleDecisionActionId || '').trim(),
               battleRecordCollapsed: previousState.battleRecordCollapsed !== false,
@@ -5881,11 +5892,11 @@ class BattleUIComponent {
 
         function 读取战斗记录视图() {
           const view = String(window.BattleUI?.state?.activeBattleRecordView || '').trim();
-          return ['round', 'report', 'decision', 'summary'].includes(view) ? view : 'round';
+          return ['chain', 'summary'].includes(view) ? view : 'chain';
         }
 
-        function 设置战斗记录视图(view = 'round') {
-          const activeView = ['round', 'report', 'decision', 'summary'].includes(view) ? view : 'round';
+        function 设置战斗记录视图(view = 'chain') {
+          const activeView = ['chain', 'summary'].includes(view) ? view : 'chain';
           if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordView = activeView;
           渲染战斗记录面板();
           读取战斗记录面板节点()?.querySelector(`[data-battle-record-view="${activeView}"]`)?.focus();
@@ -9678,47 +9689,197 @@ class BattleUIComponent {
           });
         }
 
-        function 渲染ReportDto记录视图(reportDto = {}, activeView = 'report') {
-          if (activeView === 'round') {
-            const rows = Array.isArray(reportDto?.roundOverview) ? reportDto.roundOverview : [];
-            return rows.length
-              ? `<section class="battle-round-dashboard" aria-label="回合速览">${rows.map(row => `<article class="battle-round-dashboard-row"><div class="battle-round-dashboard-head"><span>第${Math.max(0, Number(row?.round || 0))}回合</span><b>${htmlEscapeText(row?.headline || '回合结算')}</b></div><p>${htmlEscapeText(row?.summary || '')}</p></article>`).join('')}</section>`
-              : '<div class="battle-preview-empty">暂无回合结算</div>';
+        /* 对账四态的展示口径与战报层一致：
+           CONFIRMED 才是既成事实；MISSED/PREEMPTED 是有据可依的否定；
+           UNCONFIRMED 是"查无此事"，只在判定依据折叠区里出现，不进正文陈述。 */
+        const 对账状态标签 = Object.freeze({
+          CONFIRMED: { text: '已确认', mark: '✓' },
+          MISSED: { text: '未发生', mark: '✗' },
+          PREEMPTED: { text: '未执行', mark: '—' },
+          UNCONFIRMED: { text: '无对应事实', mark: '?' },
+        });
+        /* 选择模式在中立契约里是不透明字符串（战报层不解释语义），
+           但直接把英文枚举摆给玩家看没有意义，所以在展示层做一张已知值的显示名表，
+           未知值原样透出——换引擎时不认识的新模式仍能显示，不会变成空白。 */
+        const 选择模式显示名 = Object.freeze({
+          DIRECT_BEST: '明显最优',
+          SEEDED_SOFTMAX: '相近取舍',
+          PLAYER_LOCKED: '玩家指定',
+          FORCED_FALLBACK: '无其他可行',
+          FORCED_ACTION: '既定动作',
+          REACTION_DECLINED: '放弃应对',
+          ALL_OPTIONS_NEGATIVE: '均有损失',
+        });
+        const 对账种类标签 = Object.freeze({
+          HP_DELTA: '伤害',
+          SCHEDULED_HP_DELTA: '持续伤害',
+          SHIELD_DELTA: '护盾',
+          STATE_CHANGED: '状态',
+          ACTION_CANCELLED: '行动取消',
+          SUMMON_WINDOW: '召唤',
+          RESOURCE_OPTION_CHANGED: '资源变化',
+          PAYMENT: '消耗',
+          TERMINAL: '终局',
+        });
+
+        function 渲染因果链对账行(row = {}) {
+          const status = String(row?.status || '').trim();
+          const label = 对账状态标签[status];
+          if (!label) return '';
+          const kind = 对账种类标签[String(row?.kind || '').trim()] || String(row?.kind || '');
+          const target = String(row?.targetName || '').trim();
+          const detail = status === 'CONFIRMED' && Number.isFinite(Number(row?.magnitude?.applied))
+            ? `${Number(row.magnitude.applied)}`
+            : String(row?.expected?.stateName || '').trim();
+          return `<li class="battle-chain-check battle-chain-check--${status.toLowerCase()}">`
+            + `<span class="battle-chain-check-mark" aria-hidden="true">${label.mark}</span>`
+            + `<span class="battle-chain-check-kind">${htmlEscapeText(kind)}</span>`
+            + (target ? `<span class="battle-chain-check-target">${htmlEscapeText(target)}</span>` : '')
+            + (detail ? `<b class="battle-chain-check-value">${htmlEscapeText(detail)}</b>` : '')
+            + `<span class="battle-chain-check-status">${htmlEscapeText(label.text)}</span>`
+            + '</li>';
+        }
+
+        function 渲染因果链判定依据(node = {}) {
+          const decisions = Array.isArray(node?.decisions) ? node.decisions : [];
+          if (!decisions.length && !(node?.reconciliation || []).length) return '';
+
+          const 决策块 = decisions.map(entry => {
+            const trace = entry?.trace || {};
+            const 候选行 = (Array.isArray(trace.candidates) ? trace.candidates : [])
+              .map(candidate => {
+                const status = String(candidate?.status || '').trim();
+                const 状态文本 = status === 'SELECTED' ? '选中' : status === 'EXCLUDED' ? '排除' : '可选';
+                const 原因 = candidate?.reasonText
+                  ? `<span class="battle-chain-candidate-reason">${htmlEscapeText(candidate.reasonText)}</span>`
+                  : '';
+                /* 排除码背后"引擎检查了什么"必须能展开，否则结论只是换个说法重复一遍。 */
+                const 检查 = candidate?.reasonChecked
+                  ? `<span class="battle-chain-candidate-checked">检查：${htmlEscapeText(candidate.reasonChecked)}</span>`
+                  : '';
+                return `<li class="battle-chain-candidate battle-chain-candidate--${status.toLowerCase()}">`
+                  + `<span class="battle-chain-candidate-state">${htmlEscapeText(状态文本)}</span>`
+                  + `<b>${htmlEscapeText(candidate?.name || '候选')}</b>${原因}${检查}</li>`;
+              })
+              .join('');
+            const 收敛 = (Array.isArray(trace.narrowing) ? trace.narrowing : [])
+              .map(step => `<li><span>${htmlEscapeText(step?.stage || '')}</span><b>${Math.max(0, Number(step?.before || 0))} → ${Math.max(0, Number(step?.after || 0))}</b></li>`)
+              .join('');
+            const 非最优 = trace.wasOptimal === false && trace.topRankedName
+              ? `<p class="battle-chain-suboptimal">引擎评分更高的是${htmlEscapeText(trace.topRankedName)}，本次在可接受范围内选了当前动作</p>`
+              : '';
+            return `<section class="battle-chain-decision">`
+              + `<h5>${htmlEscapeText(entry?.actorName || '行动者')}的判断`
+              + (trace.selectionLabel ? `<span class="battle-chain-selection">${htmlEscapeText(选择模式显示名[trace.selectionLabel] || trace.selectionLabel)}</span>` : '')
+              + '</h5>'
+              + (收敛 ? `<ol class="battle-chain-narrowing">${收敛}</ol>` : '')
+              + (候选行 ? `<ul class="battle-chain-candidates">${候选行}</ul>` : '')
+              + 非最优
+              + '</section>';
+          }).join('');
+
+          /* 未确认的预测只在这里出现——玩家能查，但它不会被当成已发生的事实叙述。 */
+          const 未确认 = (Array.isArray(node?.reconciliation) ? node.reconciliation : [])
+            .filter(row => String(row?.status || '') === 'UNCONFIRMED')
+            .map(row => `<li>${htmlEscapeText(对账种类标签[row?.kind] || row?.kind || '')}${row?.targetName ? ` · ${htmlEscapeText(row.targetName)}` : ''}：预演给出了这项效果，但结算事实里没有对应记录</li>`)
+            .join('');
+
+          return '<details class="battle-preview-trace-fold battle-chain-fold">'
+            + '<summary>判定依据</summary>'
+            + 决策块
+            + (未确认 ? `<section class="battle-chain-unconfirmed"><h5>未能确认的预测</h5><ul>${未确认}</ul></section>` : '')
+            + '</details>';
+        }
+
+        function 渲染因果链节点(node = {}, factsById = new Map()) {
+          const 回合 = Math.max(0, Number(node?.round || 0));
+          const 行动者 = String(node?.actorName || '行动者');
+          const 动作 = String(node?.action?.name || '行动');
+          const 目标 = (Array.isArray(node?.targetNames) ? node.targetNames : [])
+            .filter(name => name && name !== 行动者);
+
+          /* 局面只报会在下一个窗口兑现、且不是行动者自己的蓄力；其余是噪音。 */
+          const 威胁 = (node?.context?.pendingCharges || [])
+            .filter(charge => charge?.imminent && String(charge?.actorId || '') !== String(node?.actorId || ''))
+            .map(charge => `<li>${htmlEscapeText(charge.actorName)}蓄力中【${htmlEscapeText(charge.actionName)}】，下个行动窗口即可打出</li>`)
+            .join('');
+
+          const 排除 = (Array.isArray(node?.decision?.candidates) ? node.decision.candidates : [])
+            .filter(candidate => candidate?.status === 'EXCLUDED' && candidate?.reasonText)
+            .slice(0, 2)
+            .map(candidate => `<li>未选${htmlEscapeText(candidate.name)}：${htmlEscapeText(candidate.reasonText)}</li>`)
+            .join('');
+
+          const 结算明细 = [
+            node?.settlement?.responseSummary,
+            node?.settlement?.resultSummary,
+            node?.settlement?.continuationSummary,
+          ].map(value => String(value || '').trim()).filter(Boolean);
+          /* 蓄力、让过这类动作没有结算明细，此时声明本身就是全部内容——
+             不兜底会渲染出一张只有标题的空卡。 */
+          if (!结算明细.length) {
+            const 声明 = String(node?.settlement?.declarationSummary || '').trim();
+            if (声明) 结算明细.push(声明);
           }
-          if (activeView === 'decision') {
-            const rows = Array.isArray(reportDto?.adjudications) ? reportDto.adjudications : [];
-            return rows.length
-              ? `<div class="battle-preview-trace">${rows.map(row => {
-                  const alternatives = (Array.isArray(row?.alternatives) ? row.alternatives : [])
-                    .map(item => `<li><b>${htmlEscapeText(item?.actionName || '替代行动')}</b>${item?.differenceSummary ? `：${htmlEscapeText(item.differenceSummary)}` : ''}</li>`)
-                    .join('');
-                  const predictedNumbers = (Array.isArray(row?.predicted?.numbers) ? row.predicted.numbers : [])
-                    .map(渲染ReportDto数字)
-                    .filter(Boolean)
-                    .join('');
-                  const actualNumbers = (Array.isArray(row?.actual?.numericTokens) ? row.actual.numericTokens : [])
-                    .map(渲染ReportDto数字)
-                    .filter(Boolean)
-                    .join('');
-                  const numberGroups = [
-                    predictedNumbers
-                      ? `<section class="battle-preview-report-number-group" aria-label="预演预测"><h5>预演预测</h5><div class="battle-preview-report-badges">${predictedNumbers}</div></section>`
-                      : '',
-                    actualNumbers
-                      ? `<section class="battle-preview-report-number-group" aria-label="实际结算"><h5>实际结算</h5><div class="battle-preview-report-badges">${actualNumbers}</div></section>`
-                      : '',
-                  ].filter(Boolean).join('');
-                  return `<article class="battle-preview-trace-card"><header><span>第${Math.max(0, Number(row?.round || 0))}回合 · ${htmlEscapeText(row?.actorName || '行动者')}</span><b>${htmlEscapeText(row?.selected?.actionName || '行动')}</b></header><p>${htmlEscapeText(row?.reasonSummary || '')}</p>${numberGroups ? `<div class="battle-preview-report-number-groups">${numberGroups}</div>` : ''}${alternatives ? `<ul>${alternatives}</ul>` : ''}</article>`;
-                }).join('')}</div>`
-              : '<div class="battle-preview-empty">暂无判定明细</div>';
-          }
+          const 结算 = 结算明细.map(value => `<p>${htmlEscapeText(value)}</p>`).join('');
+
+          const 对账 = (Array.isArray(node?.reconciliation) ? node.reconciliation : [])
+            .map(渲染因果链对账行)
+            .filter(Boolean)
+            .join('');
+
+          const 失机 = node?.decisionKind === 'LOST_OPPORTUNITY' && node?.lostOpportunityReason
+            ? `<p class="battle-chain-lost">失去行动：${htmlEscapeText(node.lostOpportunityReason)}</p>`
+            : '';
+
+          /* 每个数字都必须能查到来源事实。数字令牌带 data-source-* 属性，
+             由 绑定ReportDto数字来源 挂上悬浮/点击展开"数字来源"面板。 */
+          const 数字 = (Array.isArray(node?.factIds) ? node.factIds : [])
+            .flatMap(factId => {
+              const fact = factsById.get(String(factId || ''));
+              return Array.isArray(fact?.numericTokens) ? fact.numericTokens : [];
+            })
+            .map(渲染ReportDto数字)
+            .filter(Boolean)
+            .join('');
+
+          return '<article class="battle-preview-report-group battle-chain-node">'
+            + '<header class="battle-structured-report-head">'
+            + `<span>第${回合}回合 · ${htmlEscapeText(行动者)}</span>`
+            + `<b>${htmlEscapeText(动作)}${目标.length ? ` → ${htmlEscapeText(目标.join('、'))}` : ''}</b>`
+            + '</header>'
+            + (威胁 ? `<section class="battle-chain-section battle-chain-section--threat"><h4>局面</h4><ul>${威胁}</ul></section>` : '')
+            + (排除 ? `<section class="battle-chain-section battle-chain-section--why"><h4>为什么</h4><ul>${排除}</ul></section>` : '')
+            + 失机
+            + (结算 ? `<section class="battle-chain-section battle-chain-section--settle"><h4>结算</h4>${结算}</section>` : '')
+            + (对账 ? `<section class="battle-chain-section battle-chain-section--check"><h4>预期兑现</h4><ul class="battle-chain-checks">${对账}</ul></section>` : '')
+            + (数字 ? `<div class="battle-preview-report-badges">${数字}</div>` : '')
+            + 渲染因果链判定依据(node)
+            + '</article>';
+        }
+
+        function 渲染ReportDto记录视图(reportDto = {}, activeView = 'chain') {
           if (activeView === 'summary') {
             return 渲染战斗总结HTML(reportDto?.finalSummary) || '<div class="battle-preview-empty">暂无总结</div>';
           }
-          const exchanges = Array.isArray(reportDto?.exchanges) ? reportDto.exchanges : [];
-          return exchanges.length
-            ? `<div class="battle-preview-report">${exchanges.map(exchange => `<article class="battle-preview-report-group"><header class="battle-structured-report-head"><span>第${Math.max(0, Number(exchange?.round || 0))}回合 · ${htmlEscapeText(exchange?.actorName || '行动者')}</span><b>${htmlEscapeText(exchange?.action?.name || '行动')}</b></header>${exchange?.intentSummary ? `<p><b>意图</b> ${htmlEscapeText(exchange.intentSummary)}</p>` : ''}<p>${htmlEscapeText(exchange?.text || '')}</p></article>`).join('')}</div>`
-            : '<div class="battle-preview-empty">暂无战报</div>';
+          const chain = Array.isArray(reportDto?.narrativeChain) ? reportDto.narrativeChain : [];
+          if (!chain.length) return '<div class="battle-preview-empty">暂无战报</div>';
+          const factsById = new Map(
+            (Array.isArray(reportDto?.factRegistry) ? reportDto.factRegistry : [])
+              .map(fact => [String(fact?.factId || ''), fact]),
+          );
+          /* 单一因果链时间线：按回合分段，每次行动一张卡，卡内顺序即因果顺序。 */
+          const 分段 = [];
+          let 当前回合 = null;
+          chain.forEach(node => {
+            const 回合 = Math.max(0, Number(node?.round || 0));
+            if (回合 !== 当前回合) {
+              当前回合 = 回合;
+              分段.push(`<h3 class="battle-chain-round">第${回合}回合</h3>`);
+            }
+            分段.push(渲染因果链节点(node, factsById));
+          });
+          return `<div class="battle-preview-report battle-chain">${分段.join('')}</div>`;
         }
 
         function 解码战斗预演HTML实体(text = '') {
@@ -9882,7 +10043,7 @@ class BattleUIComponent {
           }
           if (result?.reportDto && typeof result.reportDto === 'object') {
             const activeView = 读取战斗记录视图();
-            const 视图标签 = { round: '回合', report: '战报', decision: '判定', summary: '总结' };
+            const 视图标签 = { chain: '战报', summary: '总结' };
             node.hidden = false;
             node.innerHTML = `
               <div class="battle-preview-head">
@@ -9926,7 +10087,7 @@ class BattleUIComponent {
             result?.combatData || context?.combatData || null,
           ).finalBattleReport;
           const activeView = 读取战斗记录视图();
-          const 视图标签 = { round: '回合', report: '战报', decision: '判定', summary: '总结' };
+          const 视图标签 = { chain: '战报', summary: '总结' };
           let 视图内容 = '';
           if (activeView === 'round') {
             视图内容 = 渲染回合速览HTML(回合速览) || '<div class="battle-preview-empty">暂无回合结算</div>';

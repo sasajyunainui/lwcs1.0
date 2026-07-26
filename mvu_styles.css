@@ -4445,6 +4445,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   padding: 8px;
 }
 
+.timeline-card-lines em + em::before {
+  content: ' · ';
+  opacity: 0.55;
+}
+
 .identity-card h3,
 .summary-card h4,
 .spirit-main-card h4 {
@@ -19031,12 +19036,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--terminal > [data
   grid-area: side;
 }
 
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel='world-main'],
-body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--world > [data-dashboard-panel='world-side'] {
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: initial;
-}
-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard > .mvu-unified-card {
   --模块魂色: color-mix(in srgb, var(--文字主色) 74%, #1b1b22);
   position: relative;
@@ -30187,6 +30186,232 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
 #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-preview-report-group:last-child {
   padding-bottom: 0;
   border-bottom: 0;
+}
+
+/* 因果链时间线：局面 → 为什么 → 结算 → 预期兑现，卡内顺序即因果顺序 */
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-round,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-round,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-round {
+  margin: 10px 0 4px;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-section,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  margin: 3px 0;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-section h4,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section h4,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section h4 {
+  margin: 0;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+  font-weight: 500;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-section :is(ul, ol),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section :is(ul, ol),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section :is(ul, ol) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-section :is(li, p),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section :is(li, p),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section :is(li, p) {
+  margin: 0 0 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-section--threat,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section--threat,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-section--threat {
+  color: var(--战斗警示色, #e8a33d);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-lost,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-lost,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-lost {
+  margin: 3px 0;
+  color: var(--战斗记录文字弱色);
+}
+
+/* 预期兑现：确认 / 未发生 / 未执行 三态用符号与色彩区分，不用文字堆叠 */
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check {
+  display: grid;
+  grid-template-columns: 14px auto auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: baseline;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check-kind,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check-kind,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check-kind {
+  color: var(--战斗记录文字弱色);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check-status,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check-status,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check-status {
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check--confirmed .battle-chain-check-mark,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check--confirmed .battle-chain-check-mark,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check--confirmed .battle-chain-check-mark {
+  color: var(--战斗恢复色, #4fbf8b);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check--missed .battle-chain-check-mark,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check--missed .battle-chain-check-mark,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check--missed .battle-chain-check-mark {
+  color: var(--战斗伤害色, #e06c68);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check--preempted .battle-chain-check-mark,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check--preempted .battle-chain-check-mark,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check--preempted .battle-chain-check-mark {
+  color: var(--战斗记录文字弱色);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check--unconfirmed .battle-chain-check-mark,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check--unconfirmed .battle-chain-check-mark,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check--unconfirmed .battle-chain-check-mark {
+  color: var(--战斗警示色, #e8a33d);
+}
+
+/* 判定依据折叠区：结论必须能展开到引擎实际检查了什么 */
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-decision,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-decision,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-decision {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-decision h5,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-decision h5,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-decision h5 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+  font-weight: 600;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-selection,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-selection,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-selection {
+  color: var(--战斗主色);
+  font-weight: 500;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-narrowing,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-narrowing,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-narrowing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-narrowing li,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-narrowing li,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-narrowing li {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-candidates,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidates,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidates {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-candidate,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidate,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidate {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-candidate-state,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidate-state,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidate-state {
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-candidate--selected .battle-chain-candidate-state,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidate--selected .battle-chain-candidate-state,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidate--selected .battle-chain-candidate-state {
+  color: var(--战斗主色);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-candidate :is(.battle-chain-candidate-reason, .battle-chain-candidate-checked),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidate :is(.battle-chain-candidate-reason, .battle-chain-candidate-checked),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-candidate :is(.battle-chain-candidate-reason, .battle-chain-candidate-checked) {
+  display: block;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-suboptimal,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-suboptimal,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-suboptimal {
+  margin: 2px 0 0;
+  color: var(--战斗警示色, #e8a33d);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-unconfirmed,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-unconfirmed,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-unconfirmed {
+  margin-top: 5px;
+  color: var(--战斗警示色, #e8a33d);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-unconfirmed :is(h5, ul),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-unconfirmed :is(h5, ul),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-unconfirmed :is(h5, ul) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-final-summary,
