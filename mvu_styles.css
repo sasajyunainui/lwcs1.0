@@ -30259,6 +30259,21 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   color: var(--战斗记录文字弱色);
 }
 
+/* 多目标 AoE 按承受者分组：组标题起分隔作用，组内步骤缩进归属 */
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-step--target,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-step--target,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-step--target {
+  margin-top: 4px;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-step--grouped,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-step--grouped,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-step--grouped {
+  margin-left: 12px;
+}
+
 /* 预期兑现：确认 / 未发生 / 未执行 三态用符号与色彩区分，不用文字堆叠 */
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check,

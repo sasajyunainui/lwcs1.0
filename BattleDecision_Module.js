@@ -21902,12 +21902,15 @@
     };
     const hasResourceDependentFutureEnvelopeWindow = payerIdValue => {
       const payerId = String(payerIdValue || '').trim();
-      if (!payerId) return false;
-      // 这里问的是「有没有别人的路线依赖这个 payer 的资源」，不是「payer 自己有没有窗口」。
-      // 原先的 hasFutureEnvelopeWindow(payerId) 短路让闸门对任何活着的单位恒真，
-      // 使下面的 paymentDependencies 反查成为死代码，实测导致 RESOURCE_OPTION_CHANGED
-      // 触发的包络重建 100% 产出零变化。payer 自身的依赖仍被覆盖：
-      // 路线构造时会把 payer 自己写进 paymentDependencies（见 :13475）。
+      // 注意：这里的短路看似让下面的 paymentDependencies 反查成为死代码
+      // （实测 RESOURCE_OPTION_CHANGED 触发的包络重建 100% 产出零变化），
+      // 但删除它会破坏语义等价——phase3 的 session-mechanical-reuse 与
+      // session-behavior-reuse 全量 oracle 哈希立即不一致。原因是反查依赖
+      // resourceFullRoutesByUnit / fullRoutesByUnit 的完整程度，而该目录在
+      // 增量复用路径下只装载脏单位、在全量路径下装载全部，两者答案会分叉。
+      // 短路恰好使闸门与目录完整性无关，从而保持两条路径一致。
+      // 要真正收窄这里，必须换一个与目录完整性无关的判据，不能简单删短路。
+      if (!payerId || hasFutureEnvelopeWindow(payerId)) return !!payerId;
       const resourceRoutesByUnit =
         input?.resourceFullRoutesByUnit || fullRoutesByUnit || {};
       return Object.entries(resourceRoutesByUnit).some(([ownerId, routes]) => {

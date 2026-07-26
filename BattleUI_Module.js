@@ -9743,6 +9743,28 @@ class BattleUIComponent {
           RULE_CHANGED: '预定的规则改动没有生效',
         });
 
+        /* 与战报层 groupStepsByTarget 同一套分组口径：目标多于一个时按承受者分组，
+           不指向具体目标的步骤（声明、支付、窗口）留在共享段不重复。 */
+        function 群体分组步骤(steps = [], actorName = '') {
+          const rows = Array.isArray(steps) ? steps : [];
+          const targets = [...new Set(
+            rows.map(step => String(step?.targetName || '')).filter(name => name && name !== actorName),
+          )];
+          if (targets.length <= 1) return null;
+          return {
+            shared: rows.filter(step => {
+              const t = String(step?.targetName || '');
+              return !t || t === actorName;
+            }),
+            groups: targets
+              .map(targetName => ({
+                targetName,
+                steps: rows.filter(step => String(step?.targetName || '') === targetName),
+              }))
+              .filter(group => group.steps.length),
+          };
+        }
+
         function 渲染因果链对账行(row = {}) {
           const status = String(row?.status || '').trim();
           if (status !== 'MISSED' && status !== 'PREEMPTED') return '';

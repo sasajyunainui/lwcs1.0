@@ -30738,10 +30738,14 @@
     if (概览层.getAttribute('aria-hidden') === 'true') return false;
     const 档案页 = 挂载点.querySelector(".mvu-unified-page[data-target='page-archive'].active");
     if (!(档案页 instanceof HTMLElement)) return false;
-    // 这道可见性闸门是承重的：档案页未真正渲染时必须在此拦下，
-    // 否则下游会对每个魂环槽位逐个读矩形，实测会把回流放大一个数量级。
-    // offsetParent 为 null 时才补一次 getComputedStyle，常见路径只有一次廉价读。
-    if (!档案页.offsetParent && getComputedStyle(档案页).display === 'none') return false;
+    // 这道可见性闸门是承重的：档案页未真正渲染时必须拦下，否则下游会逐个魂环槽位读矩形。
+    // 但不能用 offsetParent / getComputedStyle——开窗期间本函数被高频调用，
+    // 每次都会强制布局。改读内存里的页签状态，语义等价且零成本。
+    let 当前页签 = '';
+    try {
+      当前页签 = toText(window.__MVU_TAB_STATE__ && window.__MVU_TAB_STATE__.current, '');
+    } catch (错误) {}
+    if (当前页签 && 当前页签 !== 'page-archive') return false;
     return true;
   }
 
