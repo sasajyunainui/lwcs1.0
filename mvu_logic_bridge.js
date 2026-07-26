@@ -30636,6 +30636,20 @@
         factions: Array.isArray(snapshot && snapshot.势力) ? snapshot.势力 : [],
         locationData: snapshot && snapshot.locationData ? snapshot.locationData : null,
         latestTimeline: snapshot && snapshot.latestTimeline ? snapshot.latestTimeline : null,
+        // 怪物图鉴摘要卡在 world 分支渲染，签名必须覆盖它的数据源
+        bestiaryEntries: Array.isArray(snapshot && snapshot.bestiaryEntries) ? snapshot.bestiaryEntries : [],
+      }),
+      org: buildRenderSignature({
+        factions: Array.isArray(snapshot && snapshot.势力) ? snapshot.势力 : [],
+        orgEntries: Array.isArray(snapshot && snapshot.orgEntries) ? snapshot.orgEntries : [],
+        social: deepGet(snapshot, 'activeChar.社交', {}),
+        primaryFaction: snapshot && snapshot.primaryFaction ? snapshot.primaryFaction : null,
+        topRelation: snapshot && snapshot.topRelation ? snapshot.topRelation : null,
+        locationData: snapshot && snapshot.locationData ? snapshot.locationData : null,
+        storeNames: Array.isArray(snapshot && snapshot.storeNames) ? snapshot.storeNames : [],
+        dynamicLocationNames: Array.isArray(snapshot && snapshot.dynamicLocationNames) ? snapshot.dynamicLocationNames : [],
+        本地人物数: getShellLocalCharacterEntries(snapshot, 99).length,
+        市场: [toText(snapshot && snapshot.本地供给, ''), toText(snapshot && snapshot.价格带, '')],
       }),
       terminal: buildRenderSignature({
         rootSys: deepGet(snapshot, 'rootData.sys', {}),
@@ -30658,6 +30672,7 @@
       sections.map || '',
       sections.social || '',
       sections.world || '',
+      sections.org || '',
       sections.terminal || '',
     ].join('|');
   }
@@ -30723,7 +30738,8 @@
     if (概览层.getAttribute('aria-hidden') === 'true') return false;
     const 档案页 = 挂载点.querySelector(".mvu-unified-page[data-target='page-archive'].active");
     if (!(档案页 instanceof HTMLElement)) return false;
-    if (!档案页.offsetParent && getComputedStyle(档案页).display === 'none') return false;
+    // 不在此处读 offsetParent / getComputedStyle：那会强制重排，
+    // 而「是否真的渲染出来」已由 同步档案魂环锚点布局 里的零尺寸矩形判断兜住。
     return true;
   }
 
@@ -30758,11 +30774,16 @@
       });
       if (!锚点映射.size || !槽位映射.size) return;
 
+      // 先一次读完全部矩形，再统一写样式；读写交替会让每轮都强制重排
+      const 锚点写入列表 = [];
       槽位映射.forEach((槽位, 序号) => {
         const 锚点 = 锚点映射.get(序号);
         if (!(槽位 instanceof HTMLElement) || !(锚点 instanceof HTMLElement)) return;
         const 槽位矩形 = 槽位.getBoundingClientRect();
         if (!(槽位矩形.width > 0 && 槽位矩形.height > 0)) return;
+        锚点写入列表.push({ 锚点, 槽位矩形 });
+      });
+      锚点写入列表.forEach(({ 锚点, 槽位矩形 }) => {
         const 中心Y = 槽位矩形.top + 槽位矩形.height / 2 - 扫描矩形.top;
         const 比例 = 扫描矩形.height > 0 ? 中心Y / 扫描矩形.height : 0.5;
         const 线宽 = Math.max(34, Math.round(Math.max(0, 轨道矩形.right - 槽位矩形.right - 18)));
@@ -34177,6 +34198,9 @@
         preview: '怪物图鉴',
         surface: normalizedSurface,
       });
+    }
+
+    if (sectionSignatures.org !== previousSectionSignatures.org) {
       setUnifiedCardMarkup('org-hero', buildOrgHeroCard(snapshot), {
         preview: '势力矩阵总览',
         surface: normalizedSurface,
@@ -34814,7 +34838,8 @@
           : '';
     } catch (error) {}
     if (currentTab === 'page-map') return 'map';
-    if (currentTab === 'page-world' || currentTab === 'page-org') return 'world';
+    if (currentTab === 'page-world') return 'world';
+    if (currentTab === 'page-org') return 'org';
     if (currentTab === 'page-terminal') return 'terminal';
     return 'archive';
   }

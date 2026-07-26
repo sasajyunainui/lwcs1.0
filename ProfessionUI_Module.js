@@ -727,6 +727,16 @@ const ProfessionStyles = `
       rgba(2, 12, 18, 0.94);
   }
 
+  .prof-module-scope.is-prof-busy .prof-action-zone {
+    opacity: 0.62;
+    pointer-events: none;
+  }
+
+  .prof-module-scope.is-prof-busy .action-btn::after {
+    content: ' 执行中…';
+    font-weight: 400;
+  }
+
   .prof-module-scope .prof-action-warning {
     min-height: 18px;
     color: var(--red);
@@ -3142,14 +3152,37 @@ class ProfessionUIComponent {
     }
   }
 
-  executeProfessionAction() {
-    const 连续配置 = this.获取连续模式配置();
-    if (连续配置.连续模式开启) {
-      this.executeContinuousProfession(连续配置);
-      return;
+  设置执行态(忙碌) {
+    this.执行中 = !!忙碌;
+    const 作用域 = this.$('.prof-module-scope') || this.container;
+    if (作用域 && 作用域.classList) 作用域.classList.toggle('is-prof-busy', this.执行中);
+    if (忙碌) {
+      const 提交 = this.$('#prof-submit');
+      if (提交) 提交.disabled = true;
     }
-    if (this.activeMode === 'forge') this.executeForge();
-    else this.executeGenericProfession();
+  }
+
+  async executeProfessionAction() {
+    if (this.执行中) return;
+    const 连续配置 = this.获取连续模式配置();
+    this.设置执行态(true);
+    try {
+      // 执行链是同步的，浏览器不会中途重绘；先让忙碌态绘制一帧再开工
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      if (连续配置.连续模式开启) {
+        this.executeContinuousProfession(连续配置);
+      } else if (this.activeMode === 'forge') {
+        this.executeForge();
+      } else {
+        this.executeGenericProfession();
+      }
+    } finally {
+      this.设置执行态(false);
+      // 提交按钮的禁用态由规则校验决定，交回 updatePreview 重算，不在此处直接放开
+      try {
+        this.updatePreview();
+      } catch (错误) {}
+    }
   }
 
   executeContinuousProfession(连续配置 = this.获取连续模式配置()) {

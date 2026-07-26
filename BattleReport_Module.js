@@ -4262,6 +4262,61 @@
     }
     if (kind === 'charge_interrupt') return `${actor}的蓄力被打断了`;
     if (kind === 'lost_opportunity' || kind === 'blocked_action') return `${actor}这次没能行动`;
+
+    if (kind === 'action_start' || kind === 'pass') {
+      const actionType = text(rawEvent?.actionType).toUpperCase();
+      if (actionType === 'PASS_OPPORTUNITY') return `${actor}按兵不动`;
+      if (actionType === 'WITHDRAW') return `${actor}想要脱身`;
+      if (['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType) || !target || target === actor) {
+        return `${actor}摆开【${action}】的架势`;
+      }
+      const targetCount = rawEventTargets(rawEvent).length;
+      return targetCount > 1
+        ? `${actor}朝${targetCount}个目标放出【${action}】`
+        : `${actor}朝${target}使出【${action}】`;
+    }
+
+    if (kind === 'state_apply') {
+      const outcome = resultLabel(rawEvent);
+      const receiver = target || actor;
+      const state = playerSafeText(stateName(rawEvent), new Map()) || '某种状态';
+      const dur = number(rawEvent?.duration ?? meta?.duration, 0);
+      if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
+        return `${receiver}扛住了【${state}】，没有中招`;
+      }
+      return receiver === actor
+        ? `${actor}进入【${state}】状态${dur > 0 ? `，可持续${dur}回合` : ''}`
+        : `${receiver}被打成【${state}】状态${dur > 0 ? `，要持续${dur}回合` : ''}`;
+    }
+
+    if (kind === 'counter') {
+      return /declined|放弃/i.test(`${rawEvent?.result} ${fact?.summary}`)
+        ? `${actor}放弃了还手的机会`
+        : `${actor}立刻还手`;
+    }
+
+    if (kind === 'effect_resolved') {
+      /* 这一类承载了十几种"预演直接落地"的原型，AI 版会精确到属性数值与百分比
+         （如"敏捷由1375变为1228.4"）。玩家只需要知道方向和对象。 */
+      const detail = meta?.effectDetail && typeof meta.effectDetail === 'object' ? meta.effectDetail : {};
+      const receiver = target || actor;
+      const dur = number(detail?.duration ?? meta?.duration, 0);
+      const 时长 = dur > 0 ? `，持续${dur}回合` : '';
+      const attribute = text(detail?.attribute);
+      if (attribute) {
+        const evidence = meta?.evidence && typeof meta.evidence === 'object' ? meta.evidence : {};
+        const before = number(evidence?.current, NaN);
+        const after = number(evidence?.next, NaN);
+        const 方向 = Number.isFinite(before) && Number.isFinite(after)
+          ? (after < before ? '被削弱' : after > before ? '被增强' : '发生变化')
+          : '发生变化';
+        return `${receiver}的${attribute}${方向}了${时长}`;
+      }
+      if (text(detail?.check)) return `${receiver}接下来的${text(detail.check)}判定变得更难${时长}`;
+      if (text(detail?.settlement)) return `${receiver}接下来的${text(detail.settlement)}结算被改变${时长}`;
+      if (text(detail?.resource)) return `${receiver}的${text(detail.resource)}发生了变化${时长}`;
+      return '';
+    }
     return '';
   }
 
@@ -4290,6 +4345,9 @@
         /* complete 只是动作收尾标记，同一动作已有声明步骤时它不带新信息，
            留着会出现"采取【让过行动】"后面紧跟"使出【让过行动】"的重复叙述。 */
         if (kind === 'complete' && declarationFactIds.has(text(entry.raw?.actionId))) return false;
+        /* pass 与它的 action_start 描述的是同一次"让过行动"，
+           两条都留会输出"古月采取【让过行动】"紧跟"古月使出【让过行动】"。 */
+        if (kind === 'pass' && declarationFactIds.has(text(entry.raw?.actionId))) return false;
         if (kind === 'round_summary') return false;
         /* 反击动作本身已经由它自己的 action_start + hit_result 完整叙述，
            counter 事件再说一遍"以【X】反击Y"就成了重复。
@@ -4497,20 +4555,98 @@
     ].filter(Boolean).join(' · ');
   }
 
+  /*
+   * inject 体积上限。
+   *
+   * 这份战报每轮都会作为 system inject 发出，长战斗（20 回合团战单回合就有 30 个决策）
+   * 若不设上限会膨胀到数万字符，挤占正文生成预算。
+   * 压缩策略：最近若干回合保留完整因果链（AI 主要要写的就是这几回合），
+   * 更早的回合退化为每回合一行，并显式标注"已压缩"——绝不静默截断，
+   * 否则 AI 会以为前面什么都没发生。
+   */
+  const aiReportCharBudget = 6000;
+
+  function compressAiReportRounds(roundBlocks = [], budget = aiReportCharBudget) {
+    const blocks = Array.isArray(roundBlocks) ? roundBlocks : [];
+    const totalOf = rows => rows.reduce((sum, row) => sum + row.text.length, 0);
+    if (totalOf(blocks) <= budget) return { blocks, compressedRounds: 0 };
+    /* 从最早的回合开始逐个压缩，直到进入预算；最近两回合无论如何保留完整。 */
+    const kept = blocks.map(block => ({ ...block }));
+    let compressed = 0;
+    for (let index = 0; index < kept.length - 2; index += 1) {
+      if (totalOf(kept) <= budget) break;
+      kept[index] = {
+        ...kept[index],
+        text: `[第${kept[index].round}回合] ${kept[index].digest}`,
+      };
+      compressed += 1;
+    }
+    return { blocks: kept, compressedRounds: compressed };
+  }
+
+  /* 压缩后每回合只留一行时用的摘要：谁出手、造成多少伤害、有谁倒下。
+     必须来自已确认事实，压缩不等于可以放宽真实性要求。 */
+  function digestRoundForAI(nodes = []) {
+    const actors = unique(nodes.map(node => text(node?.actorName)).filter(Boolean));
+    const damage = nodes.reduce((sum, node) => sum + (node?.reconciliation || [])
+      .filter(row => text(row?.status) === 'CONFIRMED' && text(row?.kind) === 'HP_DELTA')
+      .reduce((inner, row) => inner + Math.max(0, number(row?.magnitude?.applied, 0)), 0), 0);
+    const denied = nodes.some(node => (node?.settlement?.steps || [])
+      .some(step => ['charge_interrupt', 'blocked_action', 'lost_opportunity'].includes(text(step?.eventKind))));
+    return [
+      actors.length ? `${actors.join('、')}先后出手` : '无人行动',
+      damage > 0 ? `合计造成${Math.round(damage)}点伤害` : '',
+      denied ? '期间有行动被打断或落空' : '',
+    ].filter(Boolean).join('，');
+  }
+
   function renderChainForAI(input = {}) {
     const chain = Array.isArray(input?.chain) ? input.chain : [];
     const sides = input?.sides || {};
-    const lines = [];
 
-    lines.push(buildBattleHeadline(input));
-
-    let currentRound = null;
+    /* 先按回合切块再拼接，这样超预算时可以整回合压缩，而不是从中间截断。 */
+    const roundBlocks = [];
+    const nodesByRound = new Map();
     chain.forEach(node => {
-      if (node.round !== currentRound) {
-        currentRound = node.round;
-        lines.push('', `[第${currentRound}回合]`);
-      }
+      const round = number(node?.round, 0);
+      if (!nodesByRound.has(round)) nodesByRound.set(round, []);
+      nodesByRound.get(round).push(node);
+    });
 
+    nodesByRound.forEach((nodes, round) => {
+      const lines = [`[第${round}回合]`];
+      nodes.forEach(node => renderChainNodeForAI(node, lines));
+      roundBlocks.push({
+        round,
+        text: lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd(),
+        digest: digestRoundForAI(nodes),
+      });
+    });
+
+    const { blocks, compressedRounds } = compressAiReportRounds(roundBlocks);
+
+    const finalState = [...(Array.isArray(sides?.player) ? sides.player : []), ...(Array.isArray(sides?.enemy) ? sides.enemy : [])]
+      .map(unit => {
+        const hp = Number(unit?.hp);
+        const hpMax = Number(unit?.hpMax);
+        return Number.isFinite(hp) && Number.isFinite(hpMax)
+          ? `${text(unit?.name)} ${hp}/${hpMax}`
+          : text(unit?.name);
+      })
+      .filter(Boolean);
+
+    return [
+      buildBattleHeadline(input),
+      /* 压缩必须显式告知，否则 AI 会以为前面几个回合什么都没发生。 */
+      compressedRounds > 0 ? `（前${compressedRounds}个回合已压缩为单行概要，细节从下方完整回合起算）` : '',
+      '',
+      blocks.map(block => block.text).join('\n\n'),
+      finalState.length ? `\n[终态] ${finalState.join(' | ')}` : '',
+    ].filter(Boolean).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  function renderChainNodeForAI(node = {}, lines = []) {
+    {
       /* 局面：只报会在下一个窗口兑现、且不是行动者自己的蓄力，其余属于噪音。 */
       (node?.context?.pendingCharges || [])
         .filter(charge => charge.imminent && text(charge.actorId) !== text(node.actorId))
@@ -4521,7 +4657,7 @@
       if (node.decisionKind === 'LOST_OPPORTUNITY') {
         lines.push(`${node.actorName} 失去行动：${node.lostOpportunityReason || '无法行动'}`);
         lines.push('');
-        return;
+        return lines;
       }
 
       const targets = node.targetNames.filter(name => name && name !== node.actorName);
@@ -4590,20 +4726,8 @@
 
       /* 节点之间留空行，否则局面提示会看起来像挂在上一个单位身上。 */
       lines.push('');
-    });
-
-    const finalState = [...(Array.isArray(sides?.player) ? sides.player : []), ...(Array.isArray(sides?.enemy) ? sides.enemy : [])]
-      .map(unit => {
-        const hp = Number(unit?.hp);
-        const hpMax = Number(unit?.hpMax);
-        return Number.isFinite(hp) && Number.isFinite(hpMax)
-          ? `${text(unit?.name)} ${hp}/${hpMax}`
-          : text(unit?.name);
-      })
-      .filter(Boolean);
-    if (finalState.length) lines.push('', `[终态] ${finalState.join(' | ')}`);
-
-    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+    return lines;
   }
 
   /*

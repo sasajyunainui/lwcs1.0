@@ -60,6 +60,7 @@
   let r8TerminalWorldStateSignatureCache = new WeakMap();
   let r8TerminalRouteSignatureCache = new WeakMap();
   let r8TerminalCanonicalRouteSignatureCache = new WeakMap();
+  let r8TerminalConditionUnitIdsCache = new WeakMap();
   let r8TerminalCanonicalRouteKeyCache = new Map();
   let r8TerminalRootCanonicalSeen = new Map();
   let r8TerminalIdentityObservations = [];
@@ -207,6 +208,7 @@
     r8TerminalWorldStateSignatureCache = new WeakMap();
     r8TerminalRouteSignatureCache = new WeakMap();
     r8TerminalCanonicalRouteSignatureCache = new WeakMap();
+    r8TerminalConditionUnitIdsCache = new WeakMap();
     r8TerminalRootCanonicalSeen = new Map();
     r8TerminalIdentityObservations = [];
     r8RouteMechanicalSignatureCache = new WeakMap();
@@ -25249,6 +25251,37 @@
     ));
   }
 
+  // 条件命中的单位集合只由 objectiveContext 决定：条件来自 groups.normalized，
+  // 单位来自 unitProfilesById，而 r8ConditionMatchesUnit 只读 unitProfile 的
+  // id/name/side 与 conditionProfile 的 expectedSide/targetIds，不读世界也不读路线。
+  // objectiveContext 的身份按 (world, objectiveContract, actorSide) 稳定复用，
+  // 因此这段条件×单位扫描每个 context 只需做一次。
+  function r8TerminalConditionUnitIds(request, objectiveContext) {
+    const cached = r8TerminalConditionUnitIdsCache.get(objectiveContext);
+    if (cached) return cached;
+    const conditionUnitIds = new Set();
+    [
+      ...(objectiveContext?.groups?.normalized?.victory?.conditions || []),
+      ...(objectiveContext?.groups?.normalized?.defeat?.conditions || []),
+    ].forEach(condition => {
+      objectiveContext.unitProfilesById.forEach(profile => {
+        if (
+          r8ConditionMatchesUnit(
+            request,
+            condition,
+            profile.id,
+            objectiveContext,
+          )
+        ) {
+          conditionUnitIds.add(profile.id);
+        }
+      });
+    });
+    const result = Object.freeze([...conditionUnitIds]);
+    r8TerminalConditionUnitIdsCache.set(objectiveContext, result);
+    return result;
+  }
+
   function r8TerminalRelevantUnitIds(
     request = {},
     objectiveContext = r8ObjectiveContext(request),
@@ -25268,24 +25301,9 @@
     };
     collectRouteTargets(route);
     if (utilityRoute !== route) collectRouteTargets(utilityRoute);
-    const conditions = [
-      ...(objectiveContext?.groups?.normalized?.victory?.conditions || []),
-      ...(objectiveContext?.groups?.normalized?.defeat?.conditions || []),
-    ];
-    conditions.forEach(condition => {
-      objectiveContext.unitProfilesById.forEach(profile => {
-        if (
-          r8ConditionMatchesUnit(
-            request,
-            condition,
-            profile.id,
-            objectiveContext,
-          )
-        ) {
-          relevantIds.add(profile.id);
-        }
-      });
-    });
+    r8TerminalConditionUnitIds(request, objectiveContext).forEach(unitId =>
+      relevantIds.add(unitId)
+    );
     if (!relevantIds.size) {
       objectiveContext.unitProfilesById.forEach(profile =>
         relevantIds.add(profile.id)

@@ -847,19 +847,35 @@ const DesktopUnifiedLayout = {
         host.removeEventListener('wheel', handleUnifiedDetailWheel, { passive: false });
       };
     };
+    // 逐层 getComputedStyle + 读 scrollHeight 会强制重排，结果缓存到下次 resize
+    let 详情滚动容器缓存 = null;
+    let 详情滚动容器缓存起点 = null;
+    const 清除详情滚动容器缓存 = () => {
+      详情滚动容器缓存 = null;
+      详情滚动容器缓存起点 = null;
+    };
     const getDetailScrollTarget = () => {
-      let current = detailHostRef.value ? detailHostRef.value.closest('.mvu-unified-frame') : document.getElementById('mvu-unified-mount');
+      const 起点 = detailHostRef.value ? detailHostRef.value.closest('.mvu-unified-frame') : document.getElementById('mvu-unified-mount');
+      if (详情滚动容器缓存 && 详情滚动容器缓存起点 === 起点 && 详情滚动容器缓存.isConnected) {
+        return 详情滚动容器缓存;
+      }
+      let current = 起点;
       while (current && current !== document.body) {
         try {
           const style = window.getComputedStyle(current);
           const overflowY = style ? style.overflowY : '';
           if ((overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight + 2) {
+            详情滚动容器缓存 = current;
+            详情滚动容器缓存起点 = 起点;
             return current;
           }
         } catch (err) {}
         current = current.parentElement;
       }
-      return document.scrollingElement || document.documentElement || document.body;
+      const 兜底 = document.scrollingElement || document.documentElement || document.body;
+      详情滚动容器缓存 = 兜底;
+      详情滚动容器缓存起点 = 起点;
+      return 兜底;
     };
     const scheduleFrameTask = task => {
       const run = () => {
@@ -912,13 +928,16 @@ const DesktopUnifiedLayout = {
       const 状态栏高度下限 = Math.min(620, Math.max(520, 视口高度 - 发送栏高度 - 120));
       const 状态栏最大高度 = Math.max(状态栏高度下限, Math.min(状态栏高度上限, 状态栏目标高度));
       const 统一挂载 = frame.closest('#mvu-unified-mount') || frame.parentElement || frame;
+      const detailHost = detailHostRef.value;
+      const 需要详情高度 = !!(detailHost && detailHost.isConnected);
+      // 写样式前读完工具栏高度；写完再读会强制重排
+      const toolbar = 需要详情高度 ? frame.querySelector('.mvu-unified-toolbar') : null;
+      const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 64;
+
       统一挂载.style.setProperty('--mvu-unified-frame-max-height', `${Math.floor(状态栏最大高度)}px`);
       frame.style.setProperty('--mvu-unified-frame-max-height', `${Math.floor(状态栏最大高度)}px`);
 
-      const detailHost = detailHostRef.value;
-      if (detailHost && detailHost.isConnected) {
-        const toolbar = frame.querySelector('.mvu-unified-toolbar');
-        const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 64;
+      if (需要详情高度) {
         const 详情最大高度 = Math.max(420, 状态栏最大高度 - toolbarHeight - 18);
         detailHost.style.setProperty('--mvu-unified-detail-max-height', `${Math.floor(详情最大高度)}px`);
       }
@@ -1111,6 +1130,7 @@ const DesktopUnifiedLayout = {
       切换移动状态栏折叠();
     };
     const handleDesktopUnifiedResize = () => {
+      清除详情滚动容器缓存();
       移动状态栏模式.value = typeof window.matchMedia === 'function'
         ? window.matchMedia('(max-width: 760px)').matches
         : window.innerWidth <= 760;
