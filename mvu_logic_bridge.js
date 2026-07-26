@@ -24295,7 +24295,10 @@
       : 原型名 === '状态施加' && ['数值', '副数值'].includes(字段名)
         ? 技能设计台状态施加字段显示名(effect && effect['状态'], 字段名)
         : 显示名 || 字段;
-    return `<span class=\"mvu-editor-label\"${提示 ? ` title=\"${escapeHtmlAttr(提示)}\"` : ''}>${htmlEscape(基础标签)}</span>`;
+    // 提示原本只进 title，触屏用户永远看不到，而这些正是决定字段含义的说明。
+    // 改为常驻小字：标签一行、说明一行，说明可换行完整显示。
+    if (!提示) return `<span class=\"mvu-editor-label\">${htmlEscape(基础标签)}</span>`;
+    return `<span class=\"mvu-editor-label mvu-editor-label--with-hint\">${htmlEscape(基础标签)}<small class=\"mvu-editor-hint\">${htmlEscape(提示)}</small></span>`;
   }
 
   function 技能设计台原型字段是否必填(原型 = '', 字段 = '') {
@@ -35087,6 +35090,9 @@
         终端解析图谱: '填写给玩家看的画面与效果摘要，不参与战斗结算。',
       };
       const 标题提示 = 标题 => ` title="${escapeHtmlAttr(标题提示表[标题] || '')}"`;
+      // 分区说明同样不能只留在 title 里：改为标题下方常驻一行小字
+      const 标题说明 = 标题 =>
+        标题提示表[标题] ? `<small class=\"mvu-editor-section-hint\">${htmlEscape(标题提示表[标题])}</small>` : '';
       const 构建消耗输入 = 资源 => {
         const 显示 = designerDraft.costType === 资源 || designerDraft.costType === '混合';
         return `
@@ -35134,7 +35140,7 @@
         : '';
       const 技能掌控度区块 = `
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('技能掌控度')}>技能掌控度</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('技能掌控度')}>技能掌控度${标题说明('技能掌控度')}</div>
                     <div class=\"skill-designer-inline-toggle\">
                       <span class=\"mvu-editor-label\">技能掌控度</span>
                       <label class=\"skill-designer-check-toggle\" title=\"技能掌控度\">
@@ -36866,7 +36872,7 @@
                 <div class=\"archive-card-head\"><div class=\"archive-card-title\">${htmlEscape(scopeLabels.parameterTitle)}</div></div>
                 <div class=\"mvu-editor-grid\">
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('基础框架载体')}>基础框架载体</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('基础框架载体')}>基础框架载体${标题说明('基础框架载体')}</div>
                     <div class=\"mvu-editor-field-grid skill-designer-basic-grid\">
                       <label class=\"mvu-editor-field\">
                         <span class=\"mvu-editor-label\">${htmlEscape(scopeLabels.nameFieldLabel)}</span>
@@ -36960,7 +36966,7 @@
                   </section>
 
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\" data-skill-designer-prototype-title${标题提示(是造物承载 ? '使用效果阵列' : '核心术式阵列')}>${是造物承载 ? '使用效果阵列' : '核心术式阵列'}</div>
+                    <div class=\"mvu-editor-section-title\" data-skill-designer-prototype-title${标题提示(是造物承载 ? '使用效果阵列' : '核心术式阵列')}>${是造物承载 ? '使用效果阵列' : '核心术式阵列'}${标题说明(是造物承载 ? '使用效果阵列' : '核心术式阵列')}</div>
                     <div class=\"skill-designer-preview-stack\" data-skill-designer-prototype-grid=\"main\">
                       ${
                         designerDraft.prototypeEffects && designerDraft.prototypeEffects.length > 0
@@ -36986,7 +36992,7 @@
                   </section>
 
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('运转能量配置')}>运转能量配置</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('运转能量配置')}>运转能量配置${标题说明('运转能量配置')}</div>
                     <div class=\"mvu-editor-label\">启动消耗 / 维持重扫</div>
                     <div class=\"mvu-editor-field-grid\">
                       <label class=\"mvu-editor-field\">
@@ -37007,7 +37013,7 @@
                   ${技能掌控度区块}
 
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('元属性特征')}>元属性特征</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('元属性特征')}>元属性特征${标题说明('元属性特征')}</div>
                     <div class=\"skill-designer-subsection\">
                       <div class=\"mvu-editor-label\">附带属性</div>
                       <div class=\"skill-designer-chip-grid\" data-skill-designer-attribute-grid>
@@ -37017,7 +37023,7 @@
                   </section>
 
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('终端解析图谱')}>终端解析图谱</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('终端解析图谱')}>终端解析图谱${标题说明('终端解析图谱')}</div>
                     <div class=\"mvu-editor-field-grid\">
                       <label class=\"mvu-editor-field mvu-editor-field-wide\">
                         <span class=\"mvu-editor-label\">${htmlEscape(scopeLabels.visualLabel)}</span>

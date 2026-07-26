@@ -4832,6 +4832,30 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   letter-spacing: 0.04em;
 }
 
+/* 字段说明常驻可读：整行铺开、允许换行、不省略。
+   这些文案本来就写好了，之前只进 title，触屏看不到、鼠标也要悬停才知道。 */
+.mvu-editor-label--with-hint {
+  display: grid;
+  gap: 2px;
+}
+
+.mvu-editor-hint,
+.mvu-editor-section-hint {
+  display: block;
+  color: rgba(184, 215, 224, 0.62);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.mvu-editor-section-hint {
+  margin-top: 3px;
+  font-weight: 400;
+}
+
 .skill-designer-fixed-cost-chip {
   margin-left: 6px;
   font-size: 11px;
