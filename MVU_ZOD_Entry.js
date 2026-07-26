@@ -1,5 +1,64 @@
 const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', import.meta.url);
 const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
+const MVU追踪模块顺序_V1 = Object.freeze([
+  'MVU_ZOD_Entry.js',
+  'MVU_Skill_Runtime.js',
+  'MVU_Schema_Runtime.js',
+  'MVU_Competition_Runtime.js',
+  'MVU_Runtime_View.js',
+  'MVU.js',
+  'MVU_Hooks.js',
+  'timeline.js',
+  'IntelEvents.js',
+]);
+const MVU共享宿主窗口_V1 = (() => {
+  try {
+    if (globalThis.parent && globalThis.parent !== globalThis && globalThis.parent.document) return globalThis.parent;
+  } catch (错误) {}
+  return globalThis;
+})();
+const MVU共享启动状态_V1 = (() => {
+  const 键 = '__LWCS_REMOTE_BOOTSTRAP_STATE__';
+  const 已有状态 = MVU共享宿主窗口_V1[键];
+  if (已有状态 && typeof 已有状态 === 'object') return 已有状态;
+  const 新状态 = {
+    commitPromise: null,
+    commit: '',
+    resourceBases: [],
+    mvuStatus: 'loading',
+    mvuStage: 'MVU 入口执行中',
+    mvuModules: [],
+    mvuTrackingComplete: false,
+    uiStatus: 'idle',
+  };
+  MVU共享宿主窗口_V1[键] = 新状态;
+  return 新状态;
+})();
+
+function 发布MVU模块状态_V1(名称, 状态, 阶段, 错误 = '') {
+  const 状态表 = new Map(
+    (Array.isArray(MVU共享启动状态_V1.mvuModules) ? MVU共享启动状态_V1.mvuModules : [])
+      .map(项目 => [项目.名称, { ...项目 }])
+  );
+  MVU追踪模块顺序_V1.forEach(模块名 => {
+    if (!状态表.has(模块名)) 状态表.set(模块名, { 名称: 模块名, 状态: 'pending', 阶段: '等待', 错误: '' });
+  });
+  状态表.set(名称, { 名称, 状态, 阶段, 错误 });
+  MVU共享启动状态_V1.mvuStage = 阶段;
+  MVU共享启动状态_V1.mvuModules = MVU追踪模块顺序_V1.map(模块名 => 状态表.get(模块名));
+  MVU共享启动状态_V1.mvuTrackingComplete = MVU共享启动状态_V1.mvuModules.every(项目 =>
+    ['loaded', 'degraded', 'failed'].includes(项目.状态)
+  );
+  try {
+    MVU共享宿主窗口_V1.__LWCS_加载追踪器__?.更新MVU快照?.({
+      阶段,
+      模块列表: MVU共享启动状态_V1.mvuModules,
+      全部完成: MVU共享启动状态_V1.mvuTrackingComplete,
+    });
+  } catch (追踪错误) {}
+}
+
+发布MVU模块状态_V1('MVU_ZOD_Entry.js', 'loading', '执行中');
 const MVU_ZOD_ENTRY_BASE_CANDIDATES_V1 = (() => {
   const 候选原值 = globalThis.__LWCS_MVU_资源基础地址候选列表__;
   const 候选列表 = Array.isArray(候选原值) ? 候选原值 : [];
@@ -93,15 +152,19 @@ function 同步MVU全局字段_V1(字段名, 字段值) {
 async function 加载MVU数据源模块_V1(文件名, 导出名, 开始字段, 完成字段, 错误字段) {
   MVU数据源加载状态_V1[开始字段] = Date.now();
   MVU数据源加载状态_V1[错误字段] = '';
+  发布MVU模块状态_V1(文件名, 'loading', '下载并执行');
   try {
     const 模块 = await 导入MVU候选模块_V1(文件名);
     const 数据源 = 模块 && 模块[导出名] ? 模块[导出名] : {};
     同步MVU全局字段_V1(导出名, 数据源);
     MVU数据源加载状态_V1[完成字段] = Date.now();
     MVU数据源加载状态_V1[错误字段] = '';
+    发布MVU模块状态_V1(文件名, 'loaded', '完成');
     return 数据源;
   } catch (错误) {
-    MVU数据源加载状态_V1[错误字段] = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error');
+    const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error');
+    MVU数据源加载状态_V1[错误字段] = 错误文本;
+    发布MVU模块状态_V1(文件名, 'degraded', '降级', 错误文本);
     console.warn(`[LWCS] MVU数据源加载失败：${文件名}`, 错误);
     return {};
   }
@@ -116,6 +179,7 @@ async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
   const 错误列表 = [];
   let 地址 = '';
   let 代码文本 = '';
+  发布MVU模块状态_V1(文件名, 'loading', '下载中');
   for (const 候选地址 of 构建MVU候选资源地址列表_V1(文件名)) {
     try {
       const 响应 = await MVU_FETCH_V1(候选地址);
@@ -127,12 +191,23 @@ async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
       错误列表.push(`${候选地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
     }
   }
-  if (!代码文本) throw new Error(`MVU依赖加载失败：${文件名} ${错误列表.join(' | ')}`);
-  const 脚本 = 文档.createElement('script');
-  脚本.id = 标记;
-  脚本.text = `${代码文本}\n//# sourceURL=${地址}`;
-  (文档.body || 文档.documentElement).appendChild(脚本);
-  if (!已就绪()) throw new Error(`MVU依赖未暴露预期接口：${文件名}`);
+  if (!代码文本) {
+    const 错误 = new Error(`MVU依赖加载失败：${文件名} ${错误列表.join(' | ')}`);
+    发布MVU模块状态_V1(文件名, 'failed', '失败', 错误.message);
+    throw 错误;
+  }
+  发布MVU模块状态_V1(文件名, 'loading', '执行中');
+  try {
+    const 脚本 = 文档.createElement('script');
+    脚本.id = 标记;
+    脚本.text = `${代码文本}\n//# sourceURL=${地址}`;
+    (文档.body || 文档.documentElement).appendChild(脚本);
+    if (!已就绪()) throw new Error(`MVU依赖未暴露预期接口：${文件名}`);
+    发布MVU模块状态_V1(文件名, 'loaded', '完成');
+  } catch (错误) {
+    发布MVU模块状态_V1(文件名, 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
+    throw 错误;
+  }
 }
 
 if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mvu');
@@ -192,7 +267,14 @@ await 加载MVU经典依赖_V1('MVU_Runtime_View.js', () => {
     && 必需方法.every(方法名 => typeof 运行时视图[方法名] === 'function');
 });
 
-await 导入MVU候选模块_V1('MVU.js');
+发布MVU模块状态_V1('MVU.js', 'loading', '下载并执行');
+try {
+  await 导入MVU候选模块_V1('MVU.js');
+  发布MVU模块状态_V1('MVU.js', 'loaded', '完成');
+} catch (错误) {
+  发布MVU模块状态_V1('MVU.js', 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
+  throw 错误;
+}
 
 globalThis.__LWCS_MVU变量结构已注册__ = true;
 
@@ -201,3 +283,5 @@ await 加载MVU经典依赖_V1('MVU_Hooks.js', () =>
   typeof globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__ === 'function' &&
   typeof globalThis.__LWCS_PREPROCESS_JSON_PATCH_TEXT__ === 'function'
 );
+
+发布MVU模块状态_V1('MVU_ZOD_Entry.js', 'loaded', '完成');

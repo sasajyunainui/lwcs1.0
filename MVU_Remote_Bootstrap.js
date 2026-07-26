@@ -9,6 +9,17 @@ const CDN地址列表 = Object.freeze([
 const 请求超时毫秒 = 6500;
 const GitHub请求超时毫秒 = 8000;
 const 入口文件名 = 'MVU_ZOD_Entry.js';
+const MVU追踪模块顺序 = Object.freeze([
+  'MVU_ZOD_Entry.js',
+  'MVU_Skill_Runtime.js',
+  'MVU_Schema_Runtime.js',
+  'MVU_Competition_Runtime.js',
+  'MVU_Runtime_View.js',
+  'MVU.js',
+  'MVU_Hooks.js',
+  'timeline.js',
+  'IntelEvents.js',
+]);
 const 启动预取资源列表 = Object.freeze([
   'MVU_Skill_Runtime.js',
   'MVU_Schema_Runtime.js',
@@ -116,11 +127,41 @@ const 共享启动状态 = (() => {
     commit: '',
     resourceBases: [],
     mvuStatus: 'idle',
+    mvuStage: '等待 MVU 引导',
+    mvuModules: [],
+    mvuTrackingComplete: false,
     uiStatus: 'idle',
   };
   共享宿主窗口[键] = 新状态;
   return 新状态;
 })();
+if (!Array.isArray(共享启动状态.mvuModules)) 共享启动状态.mvuModules = [];
+if (typeof 共享启动状态.mvuStage !== 'string') 共享启动状态.mvuStage = '等待 MVU 引导';
+if (typeof 共享启动状态.mvuTrackingComplete !== 'boolean') 共享启动状态.mvuTrackingComplete = false;
+
+function 更新MVU入口追踪(状态, 阶段, 错误 = '') {
+  const 状态表 = new Map(共享启动状态.mvuModules.map(项目 => [项目.名称, { ...项目 }]));
+  if (!状态表.size) {
+    MVU追踪模块顺序.forEach(名称 => {
+      状态表.set(名称, { 名称, 状态: 'pending', 阶段: '等待', 错误: '' });
+    });
+  }
+  状态表.set(入口文件名, { 名称: 入口文件名, 状态, 阶段, 错误 });
+  共享启动状态.mvuStage = 阶段;
+  共享启动状态.mvuModules = MVU追踪模块顺序.map(名称 =>
+    状态表.get(名称) || { 名称, 状态: 'pending', 阶段: '等待', 错误: '' }
+  );
+  共享启动状态.mvuTrackingComplete = 共享启动状态.mvuModules.every(项目 =>
+    ['loaded', 'degraded', 'failed'].includes(项目.状态)
+  );
+  try {
+    共享宿主窗口.__LWCS_加载追踪器__?.更新MVU快照?.({
+      阶段,
+      模块列表: 共享启动状态.mvuModules,
+      全部完成: 共享启动状态.mvuTrackingComplete,
+    });
+  } catch (追踪错误) {}
+}
 
 async function 取共享最新提交哈希() {
   if (共享启动状态.commit) return 共享启动状态.commit;
@@ -140,6 +181,7 @@ async function 取共享最新提交哈希() {
 }
 
 共享启动状态.mvuStatus = 'loading';
+更新MVU入口追踪('loading', '下载并执行');
 try {
   const 最新提交哈希 = await 取共享最新提交哈希();
   const 错误列表 = [];
@@ -183,7 +225,9 @@ try {
   }
   if (!已加载) throw new Error(`LWCS MVU 入口 CDN 全部失败: ${错误列表.join(' | ')}`);
   共享启动状态.mvuStatus = 'ready';
+  更新MVU入口追踪('loaded', '完成');
 } catch (错误) {
   共享启动状态.mvuStatus = 'failed';
+  更新MVU入口追踪('failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
   throw 错误;
 }

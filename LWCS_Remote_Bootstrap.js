@@ -23,6 +23,7 @@
     'RequestMonitorWidget.js',
     'Database_Module.js',
     'BattleUI_Module.js',
+    'sheep_map_restore.js',
     'CompetitionPrivilegeUI_Module.js',
     'MVU_ZOD_Entry.js',
     'MVU_Skill_Runtime.js',
@@ -51,11 +52,17 @@
       commit: '',
       resourceBases: [],
       mvuStatus: 'idle',
+      mvuStage: '等待 MVU 引导',
+      mvuModules: [],
+      mvuTrackingComplete: false,
       uiStatus: 'idle',
     };
     宿主窗口[键] = 新状态;
     return 新状态;
   })();
+  if (!Array.isArray(共享启动状态.mvuModules)) 共享启动状态.mvuModules = [];
+  if (typeof 共享启动状态.mvuStage !== 'string') 共享启动状态.mvuStage = '等待 MVU 引导';
+  if (typeof 共享启动状态.mvuTrackingComplete !== 'boolean') 共享启动状态.mvuTrackingComplete = false;
 
   if (宿主窗口[引导键]) return;
   宿主窗口[引导键] = true;
@@ -67,6 +74,7 @@
     const 状态 = {
       阶段: '远程引导启动',
       入口状态: 'pending',
+      入口详情: '等待',
       入口错误: '',
       模块列表: [],
       模块完成: false,
@@ -266,14 +274,21 @@
         宿主文档.body.appendChild(面板);
       }
 
+      const MVU模块列表 = Array.isArray(共享启动状态.mvuModules)
+        ? 共享启动状态.mvuModules.map(项目 => ({ ...项目 }))
+        : [];
       const 模块列表 = [
         { 名称: '远程引导', 状态: 'loaded', 错误: '' },
-        { 名称: 'ST_UI_Entry.js', 状态: 状态.入口状态, 错误: 状态.入口错误 },
+        ...MVU模块列表,
+        { 名称: 'ST_UI_Entry.js', 状态: 状态.入口状态, 阶段: 状态.入口详情, 错误: 状态.入口错误 },
         ...状态.模块列表,
       ];
       const 完成数 = 模块列表.filter(项目 => 项目.状态 === 'loaded').length;
       const 异常列表 = 模块列表.filter(项目 => ['failed', 'degraded'].includes(项目.状态));
-      const 全部完成 = 状态.入口状态 === 'loaded' && 状态.模块完成 && 异常列表.length === 0;
+      const MVU追踪完成 = 共享启动状态.mvuTrackingComplete === true
+        || (共享启动状态.mvuStatus === 'ready' && MVU模块列表.length === 0)
+        || (MVU模块列表.length > 0 && MVU模块列表.every(项目 => ['loaded', 'degraded', 'failed'].includes(项目.状态)));
+      const 全部完成 = MVU追踪完成 && 状态.入口状态 === 'loaded' && 状态.模块完成 && 异常列表.length === 0;
       const 进度 = 模块列表.length ? Math.round((完成数 / 模块列表.length) * 100) : 100;
       const 状态文本表 = {
         pending: '等待',
@@ -302,7 +317,7 @@
               <div class="lwcs-load-row" data-state="${转义文本(项目.状态)}"${错误提示}>
                 <i class="lwcs-load-dot" aria-hidden="true"></i>
                 <span class="lwcs-load-name">${转义文本(项目.名称)}</span>
-                <span class="lwcs-load-state">${转义文本(状态文本表[项目.状态] || 项目.状态)}</span>
+                <span class="lwcs-load-state">${转义文本(项目.阶段 || 状态文本表[项目.状态] || 项目.状态)}</span>
               </div>
             `;
           }).join('')}
@@ -333,6 +348,7 @@
         会话ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         状态.阶段 = '入口已启动';
         状态.入口状态 = 'loading';
+        状态.入口详情 = '启动中';
         状态.入口错误 = '';
         状态.模块列表 = [];
         状态.模块完成 = false;
@@ -345,9 +361,10 @@
         宿主文档.getElementById(面板ID)?.remove();
         刷新面板();
       },
-      更新入口(入口状态, 阶段 = 状态.阶段, 错误 = '') {
+      更新入口(入口状态, 阶段 = 状态.阶段, 错误 = '', 入口详情 = '') {
         状态.入口状态 = 入口状态 || 'pending';
         状态.阶段 = 阶段 || 状态.阶段;
+        状态.入口详情 = 入口详情 || 状态.入口详情;
         状态.入口错误 = 错误 || '';
         if (错误) 状态.最近错误 = 错误;
         刷新面板();
@@ -359,9 +376,16 @@
         if (快照.最近错误) 状态.最近错误 = String(快照.最近错误);
         刷新面板();
       },
+      更新MVU快照(快照 = {}) {
+        if (Array.isArray(快照.模块列表)) 共享启动状态.mvuModules = 快照.模块列表;
+        if (typeof 快照.阶段 === 'string' && 快照.阶段) 共享启动状态.mvuStage = 快照.阶段;
+        if (typeof 快照.全部完成 === 'boolean') 共享启动状态.mvuTrackingComplete = 快照.全部完成;
+        刷新面板();
+      },
       标记失败(错误, 阶段 = '远程入口失败') {
         const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error');
         状态.入口状态 = 'failed';
+        状态.入口详情 = '失败';
         状态.入口错误 = 错误文本;
         状态.最近错误 = 错误文本;
         状态.阶段 = 阶段;
@@ -536,16 +560,60 @@
     throw new Error(`LWCS 入口 CDN 全部失败: ${错误列表.join(' | ')}`);
   }
 
+  async function 准备正式入口(提交哈希) {
+    const 错误列表 = [];
+    for (const CDN地址 of CDN地址列表) {
+      const 资源基础地址 = 构建资源基础地址(CDN地址, 提交哈希);
+      const 入口地址 = `${资源基础地址}${入口文件名}`;
+      try {
+        const 资源基础地址候选列表 = 构建资源基础地址候选列表(资源基础地址, 提交哈希);
+        宿主窗口.__LWCS_资源基础地址__ = 资源基础地址;
+        宿主窗口.__LWCS_资源基础地址候选列表__ = 资源基础地址候选列表;
+        宿主窗口.__LWCS_当前远程提交__ = 提交哈希;
+        try {
+          if (window !== 宿主窗口) {
+            window.__LWCS_资源基础地址__ = 资源基础地址;
+            window.__LWCS_资源基础地址候选列表__ = 资源基础地址候选列表;
+            window.__LWCS_当前远程提交__ = 提交哈希;
+          }
+        } catch (错误) {}
+        预取关键资源(资源基础地址);
+        const 响应 = await fetchWithTimeout(入口地址, { cache: 'force-cache' });
+        if (!响应.ok) throw new Error(`入口读取失败:${响应.status}`);
+        return { 入口地址, 入口代码: await 响应.text() };
+      } catch (错误) {
+        错误列表.push(`${CDN地址}: ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
+      }
+    }
+    throw new Error(`LWCS 入口预读 CDN 全部失败: ${错误列表.join(' | ')}`);
+  }
+
   async function 启动远程入口() {
     共享启动状态.uiStatus = 'loading';
-    加载追踪器.更新入口('pending', '正在解析最新版本');
+    加载追踪器.更新入口('pending', '正在解析最新版本', '', '等待版本');
     try {
       const 提交哈希 = await 取共享最新提交哈希();
-      加载追踪器.更新入口('pending', '等待 MVU 运行时');
+      加载追踪器.更新入口('loading', '并行准备 UI 入口', '', '下载中');
+      const 入口准备结果承诺 = 准备正式入口(提交哈希).then(
+        结果 => ({ ok: true, 结果 }),
+        错误 => ({ ok: false, 错误 }),
+      );
+      入口准备结果承诺.then(准备结果 => {
+        if (准备结果.ok) 加载追踪器.更新入口('pending', '等待 MVU 运行时', '', '等待执行');
+        else 加载追踪器.更新入口('pending', '等待 MVU 运行时', '', '等待回退');
+      });
       if (!await 等待MVU就绪()) throw new Error('MVU 运行时未就绪，已停止加载 UI');
-      加载追踪器.更新入口('loading', '正在加载 ST_UI_Entry.js');
-      await 加载正式入口(提交哈希);
-      加载追踪器.更新入口('loaded', '入口已执行');
+      const 入口准备结果 = await 入口准备结果承诺;
+      if (入口准备结果.ok) {
+        加载追踪器.更新入口('loading', '正在执行 ST_UI_Entry.js', '', '执行中');
+        const { 入口地址, 入口代码 } = 入口准备结果.结果;
+        const 执行入口 = new Function(`${入口代码}\n//# sourceURL=${入口地址}`);
+        执行入口();
+      } else {
+        加载追踪器.更新入口('loading', '正在回退加载 ST_UI_Entry.js', '', '回退加载');
+        await 加载正式入口(提交哈希);
+      }
+      加载追踪器.更新入口('loaded', '入口已执行', '', '完成');
       共享启动状态.uiStatus = 'ready';
     } catch (错误) {
       共享启动状态.uiStatus = 'failed';

@@ -96,7 +96,7 @@
   const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库']);
   const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
   const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '赛事权限模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块', '数据库模块']);
-  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
+  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '地图模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
   const 正常启动追踪模块顺序 = Object.freeze(Array.from(new Set([
     ...核心模块顺序,
     '请求监控挂件',
@@ -183,6 +183,7 @@
   Object.keys(模块注册表).forEach(模块名 => {
     模块状态表[模块名] = {
       状态: 'pending',
+      阶段: 模块名 === '地图模块' ? '等待首屏' : '等待',
       尝试次数: 0,
       错误: '',
       最近来源: '',
@@ -204,6 +205,7 @@
       return {
         名称: 模块名,
         状态: 状态.状态 || 'pending',
+        阶段: 状态.阶段 || '',
         错误: 状态.错误 || '',
       };
     });
@@ -396,13 +398,21 @@
     return 'mvu-inline-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
   }
 
-  async function 加载样式(地址) {
+  async function 加载样式(地址, 状态 = null) {
     const 样式标记 = 取样式标记(地址);
     const 旧样式 = 宿主文档.getElementById(样式标记);
     if (旧样式 && !调试热更新模式) return 地址;
     if (旧样式) 旧样式.remove();
 
+    if (状态) {
+      状态.阶段 = '下载中';
+      刷新加载追踪面板();
+    }
     const 样式文本 = await 读取文本资源(地址, 'CSS load failed');
+    if (状态) {
+      状态.阶段 = '应用中';
+      刷新加载追踪面板();
+    }
     const 样式节点 = 宿主文档.createElement('style');
     样式节点.id = 样式标记;
     样式节点.textContent = 样式文本;
@@ -410,7 +420,7 @@
     return 地址;
   }
 
-  function 加载远程脚本(地址) {
+  function 加载远程脚本(地址, 状态 = null) {
     return new Promise((resolve, reject) => {
       const 脚本标记 = 取远程脚本标记(地址);
       if (宿主文档.getElementById(脚本标记)) {
@@ -418,6 +428,10 @@
         return;
       }
       const 脚本节点 = 宿主文档.createElement('script');
+      if (状态) {
+        状态.阶段 = '下载并执行';
+        刷新加载追踪面板();
+      }
       let 已完成 = false;
       const 完成 = (成功, 结果) => {
         if (已完成) return;
@@ -441,13 +455,21 @@
     });
   }
 
-  async function 加载内联脚本(地址) {
+  async function 加载内联脚本(地址, 状态 = null) {
     const 脚本标记 = 取内联脚本标记(地址);
     const 旧脚本 = 宿主文档.getElementById(脚本标记);
     if (旧脚本 && !调试热更新模式) return 地址;
     if (旧脚本) 旧脚本.remove();
 
+    if (状态) {
+      状态.阶段 = '下载中';
+      刷新加载追踪面板();
+    }
     const 代码文本 = await 读取文本资源(地址, 'JS load failed');
+    if (状态) {
+      状态.阶段 = '执行中';
+      刷新加载追踪面板();
+    }
     const 脚本节点 = 宿主文档.createElement('script');
     脚本节点.id = 脚本标记;
     脚本节点.text = `${代码文本}\n//# sourceURL=${地址}`;
@@ -455,7 +477,7 @@
     return 地址;
   }
 
-  function 加载模块脚本(地址) {
+  function 加载模块脚本(地址, 状态 = null) {
     return new Promise(async (resolve, reject) => {
       const 脚本标记 = 取内联脚本标记(地址);
       const 旧脚本 = 宿主文档.getElementById(脚本标记);
@@ -466,7 +488,15 @@
       if (旧脚本) 旧脚本.remove();
 
       try {
+        if (状态) {
+          状态.阶段 = '下载中';
+          刷新加载追踪面板();
+        }
         const 代码文本 = await 读取文本资源(地址, 'Module JS load failed');
+        if (状态) {
+          状态.阶段 = '执行中';
+          刷新加载追踪面板();
+        }
         const 脚本节点 = 宿主文档.createElement('script');
         let 已完成 = false;
         const 完成加载 = () => {
@@ -534,14 +564,16 @@
       模块状态表.地图模块.状态 = 'loading';
       刷新加载追踪面板();
       try {
-        await 加载内联脚本(模块注册表.地图模块.地址);
+        await 加载内联脚本(模块注册表.地图模块.地址, 模块状态表.地图模块);
         模块状态表.地图模块.状态 = 'loaded';
+        模块状态表.地图模块.阶段 = '完成';
         模块状态表.地图模块.错误 = '';
         模块状态表.地图模块.最后完成时间 = Date.now();
         刷新加载追踪面板();
       } catch (错误) {
         记录模块失败('地图模块', 'hot_reload', 错误);
         模块状态表.地图模块.状态 = 'failed';
+        模块状态表.地图模块.阶段 = '失败';
         刷新加载追踪面板();
         throw 错误;
       }
@@ -562,11 +594,18 @@
       const 依赖结果 = await 尝试加载模块(依赖模块名, `dependency:${模块名}`, false);
       if (!依赖结果?.ok) throw 依赖结果?.error || new Error(`module_dependency_failed:${模块名}:${依赖模块名}`);
     }
-    if (模块.类型 === 'css') return 加载样式(模块.地址);
-    if (模块.类型 === 'remote-js') return 加载远程脚本(模块.地址);
-    if (模块.类型 === 'wait-global') return 等待全局函数(模块.全局键, 12000, 模块.值类型 || 'function');
-    if (模块.类型 === 'module-js') return 加载模块脚本(模块.地址);
-    return 加载内联脚本(模块.地址);
+    const 状态 = 模块状态表[模块名];
+    if (模块.类型 === 'css') return 加载样式(模块.地址, 状态);
+    if (模块.类型 === 'remote-js') return 加载远程脚本(模块.地址, 状态);
+    if (模块.类型 === 'wait-global') {
+      if (状态) {
+        状态.阶段 = '等待接口';
+        刷新加载追踪面板();
+      }
+      return 等待全局函数(模块.全局键, 12000, 模块.值类型 || 'function');
+    }
+    if (模块.类型 === 'module-js') return 加载模块脚本(模块.地址, 状态);
+    return 加载内联脚本(模块.地址, 状态);
   }
 
   async function 尝试加载模块(模块名, 来源 = 'runtime', 允许失败降级 = true) {
@@ -578,6 +617,7 @@
 
     const 加载承诺 = (async () => {
       状态.状态 = 'loading';
+      状态.阶段 = '准备加载';
       状态.最近来源 = 来源 || '';
       状态.错误 = '';
       刷新加载追踪面板();
@@ -587,6 +627,7 @@
         try {
           await 执行模块加载(模块名);
           状态.状态 = 'loaded';
+          状态.阶段 = '完成';
           状态.错误 = '';
           状态.最后完成时间 = Date.now();
           刷新加载追踪面板();
@@ -594,15 +635,19 @@
         } catch (错误) {
           记录模块失败(模块名, 来源, 错误);
           if (尝试序号 < 最大尝试次数) {
+            状态.阶段 = '等待重试';
+            刷新加载追踪面板();
             await 睡眠(尝试序号 === 1 ? 首次重试延迟毫秒 : 二次重试延迟毫秒);
             continue;
           }
           状态.状态 = 模块.关键 || !允许失败降级 ? 'failed' : 'degraded';
+          状态.阶段 = 状态.状态 === 'degraded' ? '降级' : '失败';
           刷新加载追踪面板();
           return { ok: false, 模块名, error: 错误, attempts: 尝试序号, degraded: 状态.状态 === 'degraded' };
         }
       }
       状态.状态 = 模块.关键 || !允许失败降级 ? 'failed' : 'degraded';
+      状态.阶段 = 状态.状态 === 'degraded' ? '降级' : '失败';
       刷新加载追踪面板();
       return { ok: false, 模块名, reason: 'retry_exhausted' };
     })()
@@ -1050,18 +1095,22 @@
     if (空闲预取已安排) return;
     空闲预取已安排 = true;
     记录阶段(加载阶段.空闲预取中);
-    const 空闲执行器 = typeof 宿主窗口.requestIdleCallback === 'function'
+    if (模块状态表.地图模块?.状态 === 'pending') {
+      模块状态表.地图模块.阶段 = '等待空闲';
+      刷新加载追踪面板();
+    }
+    const 使用原生空闲回调 = typeof 宿主窗口.requestIdleCallback === 'function';
+    const 空闲执行器 = 使用原生空闲回调
       ? 宿主窗口.requestIdleCallback.bind(宿主窗口)
       : callback => setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 8 }), 160);
     ['地图模块', '战斗模块'].forEach(预取模块文本);
     空闲执行器(async () => {
-      await Promise.allSettled([
-        确保模块已加载('地图模块', { 来源: 'idle_prefetch:map' }),
-        确保模块已加载('战斗模块', { 来源: 'idle_prefetch:battle' })
-      ]);
+      const 地图加载承诺 = 确保模块已加载('地图模块', { 来源: 'idle_prefetch:map' });
+      const 战斗加载承诺 = 确保模块已加载('战斗模块', { 来源: 'idle_prefetch:battle' });
+      await Promise.allSettled([地图加载承诺, 战斗加载承诺]);
       记录阶段(加载阶段.完成);
       加载状态.结束时间 = Date.now();
-    });
+    }, 使用原生空闲回调 ? { timeout: 800 } : undefined);
   }
 
   async function 引导加载() {
