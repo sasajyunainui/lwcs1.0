@@ -24442,6 +24442,60 @@
 
   // 供副作用、条件分支等「非原型字段」复用：这些字段不走原型提示表，
   // 但同样需要说明；统一用与原型字段一致的 ? 徽标。
+  // 说明气泡必须走顶层浮层：徽标外有 7 层 overflow-x:hidden 在裁切，
+  // 绝对定位无论怎么调都会被剪。沿用项目既有做法——fixed 挂 body。
+  let 说明气泡节点 = null;
+
+  function 取说明气泡节点() {
+    if (说明气泡节点 && 说明气泡节点.isConnected) return 说明气泡节点;
+    const 节点 = document.createElement('div');
+    节点.className = 'mvu-editor-hint-bubble';
+    节点.setAttribute('role', 'tooltip');
+    节点.hidden = true;
+    document.body.appendChild(节点);
+    说明气泡节点 = 节点;
+    return 节点;
+  }
+
+  function 显示说明气泡(徽标) {
+    const 文本 = toText(徽标 &&徽标.getAttribute && 徽标.getAttribute('data-hint-text'), '').trim();
+    if (!文本) return;
+    const 气泡 = 取说明气泡节点();
+    气泡.textContent = 文本;
+    气泡.hidden = false;
+    const r = 徽标.getBoundingClientRect();
+    const 边距 = 10;
+    const 宽 = Math.min(300, window.innerWidth - 边距 * 2);
+    气泡.style.maxWidth = 宽 + 'px';
+    // 先放好再量高，避免用上一次的尺寸定位
+    气泡.style.left = '0px';
+    气泡.style.top = '0px';
+    const b = 气泡.getBoundingClientRect();
+    let left = Math.min(Math.max(边距, r.left), window.innerWidth - b.width - 边距);
+    let top = r.bottom + 6;
+    if (top + b.height > window.innerHeight - 边距) top = Math.max(边距, r.top - b.height - 6);
+    气泡.style.left = Math.round(left) + 'px';
+    气泡.style.top = Math.round(top) + 'px';
+  }
+
+  function 隐藏说明气泡() {
+    if (说明气泡节点) 说明气泡节点.hidden = true;
+  }
+
+  document.addEventListener('pointerover', 事件 => {
+    const 徽标 = 事件.target instanceof Element ? 事件.target.closest('.mvu-editor-hint-badge') : null;
+    if (徽标) 显示说明气泡(徽标);
+  });
+  document.addEventListener('pointerout', 事件 => {
+    const 徽标 = 事件.target instanceof Element ? 事件.target.closest('.mvu-editor-hint-badge') : null;
+    if (徽标) 隐藏说明气泡();
+  });
+  document.addEventListener('focusin', 事件 => {
+    const 徽标 = 事件.target instanceof Element ? 事件.target.closest('.mvu-editor-hint-badge') : null;
+    if (徽标) 显示说明气泡(徽标); else 隐藏说明气泡();
+  });
+  window.addEventListener('scroll', 隐藏说明气泡, true);
+
   function 构建技能设计台说明标签(显示名 = '', 提示 = '') {
     const 文本 = normalizeSkillUiText(提示, '');
     if (!文本) return `<span class="mvu-editor-label">${htmlEscape(显示名)}</span>`;

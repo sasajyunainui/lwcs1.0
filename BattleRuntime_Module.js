@@ -4700,6 +4700,7 @@
     const mirror = summon?.__来源状态?.召唤物;
     if (!mirror || typeof mirror !== 'object') return;
     mirror.召唤键 = summon.召唤键;
+    if (summon.预演召唤键) mirror.预演召唤键 = summon.预演召唤键;
     mirror.召唤单位类型 = summon.类型;
     mirror.召唤物名称 = previewRuntime.unitName(summon) || '召唤物';
     mirror.行动模式 = summon.行动模式;
@@ -5724,6 +5725,20 @@
         effectInstanceId,
         index + 1,
       );
+      // B1-P1(b)：主键（runtime actionId 口径）不动，另按预演口径（决策候选 id）
+      // 计算 previewSummonKey 别名，供战报目录/对账把预演证据与运行时实体接上。
+      const decisionCandidateId = String(actionEvent?.meta?.decisionCandidateId || '').trim();
+      const previewSummonKey = decisionCandidateId
+        ? `preview-summon:${previewRuntime.summonInstanceId(
+            decisionCandidateId,
+            String(
+              effect?.effectId ||
+              effect?.效果ID ||
+              `${decisionCandidateId}:effect:${effectIndex}`,
+            ).trim(),
+            index + 1,
+          )}`
+        : '';
       const definitionHash = previewRuntime.stableHash({
         summonName: displayName,
         summonType,
@@ -5748,7 +5763,7 @@
         类型: 'buff', 状态: stateKey, 状态名称: stateKey, duration,
         描述: `由[${action.actionName}]生成`, 来源原型摘要: '召唤生成', 来源技能: action.actionName,
         召唤物: {
-          召唤键: key, 召唤单位类型: summonType, 召唤物名称: displayName, 行动模式: mode,
+          召唤键: key, 预演召唤键: previewSummonKey, 召唤单位类型: summonType, 召唤物名称: displayName, 行动模式: mode,
           生命: hpMax, 生命上限: hpMax, 精神负载: Math.max(0, Number(effect?.精神负载 || 0)),
           生成回合: Number(combatData?.回合 || 0), 已消散: false,
         },
@@ -5756,7 +5771,7 @@
       actor.状态效果 = actor.状态效果 && typeof actor.状态效果 === 'object' ? actor.状态效果 : {};
       actor.状态效果[stateKey] = sourceState;
       const summon = {
-        id: key, name: displayName, 名称: displayName, 召唤键: key,
+        id: key, name: displayName, 名称: displayName, 召唤键: key, 预演召唤键: previewSummonKey,
         类型: summonType, 召唤单位类型: summonType, 单位性质: '召唤物', 行动模式: mode,
         宿主名: previewRuntime.unitName(actor), __宿主: actor, __来源状态: sourceState, 来源状态键: stateKey,
         阵营: inferUnitSide(combatData, previewRuntime.unitName(actor)) === 'enemy' ? '敌方' : '玩家',
@@ -5812,6 +5827,7 @@
           source: 'structured_runtime',
           effectIndex,
           summonKey: key,
+          previewSummonKey,
           summonName: displayName,
           summonType,
           summonMode: mode,

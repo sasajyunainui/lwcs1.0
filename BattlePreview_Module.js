@@ -84,6 +84,8 @@
   const unitIdCache = new WeakMap();
   const unitNameCache = new WeakMap();
   const dependencyCaptureStack = [];
+  // 预演自造召唤物的依赖键：这些实体随路线重放重新生成，不构成对外部世界的依赖
+  const PREVIEW_SUMMON_DEPENDENCY_KEY = /^(?:unit|target):preview-summon:/;
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, Number(value) || 0));
@@ -98,6 +100,10 @@
     const capture = dependencyCaptureStack[dependencyCaptureStack.length - 1];
     const normalizedKey = String(key || '').trim();
     if (!capture || !normalizedKey) return;
+    // 预演召唤物的读取不记依赖：其 id 只存在于候选自身的 overlay 里；一旦记入
+    // dependencyKeys，会话复用重定基会拿它对真实世界求哈希，unit() 解析直接抛
+    // battle_decision_dependency_unit_missing（B1-P0，raid 决策33 实测复现）。
+    if (PREVIEW_SUMMON_DEPENDENCY_KEY.test(normalizedKey)) return;
     if (!capture.reads.has(normalizedKey)) {
       capture.reads.set(normalizedKey, cloneValue(value));
     }
@@ -4600,11 +4606,14 @@
         const summonDefinitions = [];
         for (let index = 0; index < count; index += 1) {
           const displayName = count > 1 ? `${summonName}#${index + 1}` : summonName;
-          const summonId = summonInstanceId(
+          // B1-P0：预演侧召唤 id 统一带 preview-summon: 前缀——战报脱敏
+          // （internalSummonIdPattern）与依赖过滤立即覆盖，且不可能与真实单位撞名。
+          // 运行时车道（commitStructuredSummon）的主键不变，另计 previewSummonKey 别名。
+          const summonId = `preview-summon:${summonInstanceId(
             context.rootActionId,
             context.effectInstanceId,
             index + 1,
-          );
+          )}`;
           summonIds.push(summonId);
           const hpMax = Math.max(1, Math.floor(readHpMax(actor) * inheritRatio));
           const staminaMax = Math.max(1, Math.floor(readResourceMax(actor, '体力') * inheritRatio));

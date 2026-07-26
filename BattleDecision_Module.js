@@ -2338,9 +2338,11 @@
             priorEffect?.效果ID ||
             `${actionId}:effect:${priorIndex}`,
           ).trim();
+          // B1-P0：与预演 overlay 实际生成的 id（preview-summon:${actionId}:${effectInstanceId}:${n}）
+          // 完全同形——原先多插一段 actorId 使审计 id 永不等于 overlay id（四空间之 D）。
+          // actionId 本就以 actor 段开头，去掉冗余段即对齐。
           return Array.from({ length: count }, (_, index) => [
             'preview-summon',
-            preview.unitId(actor),
             actionId,
             effectInstanceId,
             index + 1,
