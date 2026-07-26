@@ -8328,7 +8328,17 @@
           const actualDamageByTarget = new Map();
           (settlement?.facts || []).forEach(event => {
             if (String(event?.eventKind || '').trim() !== 'hit_result') return;
-            const rawDamage = Math.max(0, Number(event?.meta?.rawDamage || 0));
+            // 必须用 appliedDamage（实际扣血）而不是 rawDamage。
+            // rawDamage 是 :6726 写入的 segmentDamage —— 裁剪前、护盾前、减伤前的理论值；
+            // 而预测侧的 expectedValuePercent 是按目标剩余生命裁剪过的 HP 损失。
+            // 两者量纲不同：实测 duel_charge_defense_safer 中同一次命中
+            // rawDamage 24449.7 对 appliedDamage 160，比值 152.8 倍，
+            // 会让 TARGET_REALIZATION 信念系统性学到「此攻击者远低于预期」。
+            const rawDamage = Math.max(
+              0,
+              Number(event?.meta?.appliedDamage ?? event?.meta?.rawDamage ?? 0),
+            );
+            const hitObservedDamage = Math.max(0, Number(event?.meta?.rawDamage || 0));
             const target = listCombatUnits(combatData).find(unit =>
               isUnitIdentityMatch(unit, event?.targetId || event?.targetName)
             );
@@ -8350,7 +8360,9 @@
               hitObserved: false,
               sourceEventId: String(event?.eventId || '').trim(),
             };
-            if (String(event?.result || '').trim() === 'hit' || rawDamage > 0) {
+            // 命中判定仍用未裁剪值：护盾全吸或目标已见底时 appliedDamage 可能为 0，
+            // 但那依然是一次命中，不能因此把观测丢掉。
+            if (String(event?.result || '').trim() === 'hit' || hitObservedDamage > 0) {
               current.hitObserved = true;
             }
             if (rawDamage > 0) {
