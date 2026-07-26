@@ -899,7 +899,7 @@ const ProfessionTemplate = `
             </div>
             <div class="form-group param-token param-token--small">
               <label>连续天数</label>
-              <input id="prof-loop-days" class="tech-input" type="number" min="1" value="1" />
+              <input id="prof-loop-days" class="tech-input" type="number" min="1" max="365" value="1" />
             </div>
           </div>
           <div class="form-group param-token param-token--target">
@@ -1130,7 +1130,7 @@ class ProfessionUIComponent {
       target: this.$('#prof-target')?.value || '',
       selectedMaterials: this.getSelectedMaterialNames(),
       连续模式开启: this.$('#prof-loop-enabled')?.value === '1',
-      连续天数: Math.max(1, Number(this.$('#prof-loop-days')?.value || 副职业连续模式默认天数)),
+      连续天数: Math.min(365, Math.max(1, Number(this.$('#prof-loop-days')?.value || 副职业连续模式默认天数))),
     };
   }
 
@@ -2234,7 +2234,7 @@ class ProfessionUIComponent {
 
   获取连续模式配置() {
     const 连续模式开启 = this.$('#prof-loop-enabled')?.value === '1';
-    const 连续天数 = Math.max(1, Number(this.$('#prof-loop-days')?.value || 副职业连续模式默认天数));
+    const 连续天数 = Math.min(365, Math.max(1, Number(this.$('#prof-loop-days')?.value || 副职业连续模式默认天数)));
     const 连续总小时 = Math.max(1, 连续天数 * 副职业每日小时);
     return { 连续模式开启, 连续天数, 连续总小时 };
   }

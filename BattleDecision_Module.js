@@ -23037,25 +23037,6 @@
           }
         });
       };
-      // 护盾变化只改变「打这个目标」的结算结果，不改变旁观单位自身候选的机械路线。
-      // 因此依赖判据必须是「该单位实际选定的路线是否指向此目标」，
-      // 而不是 addRouteDependents 用的「该单位是否搜索过此目标」——
-      // 7v7 下几乎全队都搜索过同一个敌人，一次 SHIELD_DELTA 会拉起约 7 次重建，
-      // 实测这些重建 100% 产出零变化。
-      const addSelectedRouteTargetDependents = (targetId, effect) => {
-        if (!targetId) return;
-        Object.entries(routeCatalog).forEach(([unitId, envelope]) => {
-          if (!hasFutureEnvelopeWindow(unitId)) return;
-          const selectedTargetIds = [envelope?.primaryRoute, envelope?.backupRoute]
-            .filter(Boolean)
-            .flatMap(route => route?.targetIds || [])
-            .map(value => String(value || '').trim());
-          if (selectedTargetIds.includes(targetId)) {
-            affectedIds.add(unitId);
-            registerSourceEffect(unitId, effect, 'INCOMING_ROUTE');
-          }
-        });
-      };
       const stateEffects = candidateActionPoolEffects.filter(effect =>
         ['STATE_CHANGED', 'STATE_SCHEDULED'].includes(
           String(effect?.outcomeKind || '').trim(),

@@ -2897,7 +2897,18 @@
     );
     const healingPerTick = readHpMax(unit) *
       Math.max(0, Number(combatEffect?.hot_heal_ratio || state?.hot_heal_ratio || 0));
-    return duration * (healingPerTick - damagePerTick);
+    // 两侧必须各自按生命上限裁剪，口径与状态施加主路径（见本文件 4142-4151）一致。
+    // 未裁剪时 duration * damagePerTick 可以任意倍于剩余生命——damagePerTick 本身含
+    // readHpMax(unit) * dot_damage_ratio，再乘持续回合即可远超目标剩余生命，
+    // 而本函数的结果直通 SCHEDULED_HP_DELTA 与 healthTrajectoryByTarget 主路径，
+    // 是预演伤害相对运行时严重高估的来源。
+    const currentHp = readHp(unit);
+    const totalDamage = Math.min(currentHp, damagePerTick * duration);
+    const totalHealing = Math.min(
+      Math.max(0, readHpMax(unit) - currentHp),
+      healingPerTick * duration,
+    );
+    return totalHealing - totalDamage;
   }
 
   function isNegativeState(state = {}) {

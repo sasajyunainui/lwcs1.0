@@ -16938,7 +16938,7 @@
         return `
               <label class=\"mvu-editor-field\">
                 <span class=\"mvu-editor-label\">${htmlEscape(字段)}</span>
-                <input class=\"mvu-editor-input\" type=\"text\" value=\"${escapeHtmlAttr(值)}\" placeholder=\"默认无\" ${属性名}=\"${escapeHtmlAttr(字段)}\" data-skill-designer-disableable />
+                <input class=\"mvu-editor-input\" type=\"text\" value=\"${escapeHtmlAttr(值)}\" placeholder=\"留空 = 无\" ${属性名}=\"${escapeHtmlAttr(字段)}\" data-skill-designer-disableable />
               </label>
             `;
       })
@@ -25078,7 +25078,7 @@
     return `
         <label class=\"mvu-editor-field\">
           ${标签}
-          <input class=\"mvu-editor-input\" type=\"text\" value=\"${escapeHtmlAttr(value)}\" placeholder=\"默认无\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable />
+          <input class=\"mvu-editor-input\" type=\"text\" value=\"${escapeHtmlAttr(value)}\" placeholder=\"留空 = 无\" data-skill-designer-prototype-field=\"${escapeHtmlAttr(key)}\" data-skill-designer-disableable />
         </label>
       `;
   }
@@ -35038,7 +35038,7 @@
         : '';
       const 技能掌控度区块 = `
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('技能掌控度')}>[ 05 ] 技能掌控度</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('技能掌控度')}>技能掌控度</div>
                     <div class=\"skill-designer-inline-toggle\">
                       <span class=\"mvu-editor-label\">技能掌控度</span>
                       <label class=\"skill-designer-check-toggle\" title=\"技能掌控度\">
@@ -36108,6 +36108,10 @@
           };
 
           const handleRefresh = async () => {
+            // 这一步会丢弃草稿且不可撤销，有未保存编辑时必须先确认
+            if (readCachedSkillDesignerDraft(previewKey)) {
+              if (!window.confirm('重新读取会丢弃当前未保存的修改，确定继续？')) return;
+            }
             await runDesignerTask(async () => {
               clearCachedSkillDesignerDraft(previewKey);
               await refreshLiveSnapshot({ force: true });
@@ -36765,7 +36769,7 @@
                 <div class=\"archive-card-head\"><div class=\"archive-card-title\">${htmlEscape(scopeLabels.parameterTitle)}</div></div>
                 <div class=\"mvu-editor-grid\">
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('基础框架载体')}>[ 01 ] 基础框架载体</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('基础框架载体')}>基础框架载体</div>
                     <div class=\"mvu-editor-field-grid skill-designer-basic-grid\">
                       <label class=\"mvu-editor-field\">
                         <span class=\"mvu-editor-label\">${htmlEscape(scopeLabels.nameFieldLabel)}</span>
@@ -36840,7 +36844,7 @@
                   }
 
                   <section class=\"mvu-editor-section\" data-skill-designer-construct-section${是造物承载 ? '' : ' hidden style=\"display:none\"'}>
-                    <div class=\"mvu-editor-section-title\">[ 02 ] 实体凝结参数</div>
+                    <div class=\"mvu-editor-section-title\">实体凝结参数</div>
                     <div class=\"mvu-editor-field-grid\">
                       <label class=\"mvu-editor-field\">
                         <span class=\"mvu-editor-label\">数量</span>
@@ -36859,7 +36863,7 @@
                   </section>
 
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\" data-skill-designer-prototype-title${标题提示(是造物承载 ? '使用效果阵列' : '核心术式阵列')}>${是造物承载 ? '[ 03 ] 使用效果阵列' : '[ 02 ] 核心术式阵列'}</div>
+                    <div class=\"mvu-editor-section-title\" data-skill-designer-prototype-title${标题提示(是造物承载 ? '使用效果阵列' : '核心术式阵列')}>${是造物承载 ? '使用效果阵列' : '核心术式阵列'}</div>
                     <div class=\"skill-designer-preview-stack\" data-skill-designer-prototype-grid=\"main\">
                       ${
                         designerDraft.prototypeEffects && designerDraft.prototypeEffects.length > 0
@@ -36885,7 +36889,7 @@
                   </section>
 
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('运转能量配置')}>[ 04 ] 运转能量配置</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('运转能量配置')}>运转能量配置</div>
                     <div class=\"mvu-editor-label\">启动消耗 / 维持重扫</div>
                     <div class=\"mvu-editor-field-grid\">
                       <label class=\"mvu-editor-field\">
@@ -36906,7 +36910,7 @@
                   ${技能掌控度区块}
 
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('元属性特征')}>[ 06 ] 元属性特征</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('元属性特征')}>元属性特征</div>
                     <div class=\"skill-designer-subsection\">
                       <div class=\"mvu-editor-label\">附带属性</div>
                       <div class=\"skill-designer-chip-grid\" data-skill-designer-attribute-grid>
@@ -36916,7 +36920,7 @@
                   </section>
 
                   <section class=\"mvu-editor-section\">
-                    <div class=\"mvu-editor-section-title\"${标题提示('终端解析图谱')}>[ 07 ] 终端解析图谱</div>
+                    <div class=\"mvu-editor-section-title\"${标题提示('终端解析图谱')}>终端解析图谱</div>
                     <div class=\"mvu-editor-field-grid\">
                       <label class=\"mvu-editor-field mvu-editor-field-wide\">
                         <span class=\"mvu-editor-label\">${htmlEscape(scopeLabels.visualLabel)}</span>
@@ -50658,34 +50662,7 @@ ${播报文本}
       closeModal();
       return;
     }
-    const liveRequiredKeys = new Set([
-      '生命图谱详细页',
-      '私密档案详细页',
-      '社会档案详细页',
-      '所属势力详细页',
-      '人物关系详细页',
-      '情报库详细页',
-      '武装工坊详细页',
-      '副职业工坊',
-      '武魂融合技详细页',
-      '储物仓库详细页',
-      '第1武魂详细页',
-      '第2武魂详细页',
-      '血脉封印详细页',
-      '近期安排',
-      '本地据点详情',
-      '当前节点详情',
-      '试炼与情报',
-      '近期见闻',
-      '势力矩阵总览',
-      '我的阵营详情',
-      '怪物图鉴',
-    ]);
-    if (
-      !liveSnapshot &&
-      (liveRequiredKeys.has(previewKey) ||
-        String(previewKey || '').startsWith('地图节点：'))
-    ) {
+    if (!liveSnapshot && isLiveRequiredPreviewKey(previewKey)) {
       if (skeletonArchive) {
         const isVaultSkeleton = previewKey === '储物仓库详细页';
         modalPanel.classList.add('archive-mode');
