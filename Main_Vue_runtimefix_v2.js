@@ -537,6 +537,7 @@ const DesktopUnifiedLayout = {
             <div class="mvu-unified-detail-bar" v-show="detailState.isOpen">
               <button type="button" class="mvu-unified-detail-back" aria-label="返回" @click="closeUnifiedDetail">&lt;</button>
               <strong class="mvu-unified-detail-title">{{ 详情路径标题 }}</strong>
+              <div class="mvu-unified-detail-actions" data-detail-title-actions></div>
             </div>
             <div class="mvu-unified-overview-bar" v-show="!detailState.isOpen">
               <div class="mvu-unified-status-strip">

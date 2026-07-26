@@ -36562,8 +36562,12 @@
             document.querySelectorAll('[data-skill-designer-title-actions]').forEach(node => {
               if (node && node.parentNode) node.parentNode.removeChild(node);
             });
+            // 标题本身是 overflow:hidden + ellipsis + nowrap 的截断容器，
+            // 控件塞进去会被裁；壳层已开出兄弟槽，优先用它。
+            // 找不到说明加载到的是旧版壳层，退回原位置以免整组操作消失。
             const 标题容器 = currentUnifiedPreviewKey
-              ? document.querySelector('#mvu-unified-mount .mvu-unified-detail-title')
+              ? document.querySelector('#mvu-unified-mount [data-detail-title-actions]') ||
+                document.querySelector('#mvu-unified-mount .mvu-unified-detail-title')
               : document.querySelector('#detailModal .modal-title-wrap');
             if (!标题容器) return null;
             const 操作槽 = document.createElement('div');

@@ -18573,6 +18573,24 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-bar {
   gap: 8px;
 }
 
+/* 详情标题旁的操作槽。标题本身是 ellipsis 截断容器，控件必须放在它外面，
+   否则会被 overflow:hidden 裁掉；标题可压缩让位，槽不参与压缩 */
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-actions:empty {
+  display: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-title {
+  flex: 0 1 auto;
+}
+
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-back {
   appearance: none;
   -webkit-appearance: none;
