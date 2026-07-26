@@ -4902,7 +4902,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
 
 .skill-designer-layout {
   gap: 16px;
-  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr);
+  /* 列宽由 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-designer-layout
+     以同值 + !important 定义，此处重复声明是死规则，删除以免以后改一处不生效。 */
   min-width: 0;
   min-height: 0;
   align-items: stretch;
@@ -5586,13 +5587,28 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   margin-bottom: 8px;
 }
 
+/* 开关加文字状态：原先只有一个 18px 空方块，看不出当前是开还是关
+   （对应 UX 准则 Color Only：不要只靠颜色/形状传达状态） */
 .skill-designer-check-toggle {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  min-height: 18px;
   cursor: pointer;
+}
+
+.skill-designer-check-toggle::after {
+  content: '关';
+  color: rgba(223, 247, 255, 0.5);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.skill-designer-check-toggle:has(input:checked)::after {
+  content: '开';
+  color: rgba(77, 240, 255, 0.92);
 }
 
 .skill-designer-check-toggle input {
@@ -6501,6 +6517,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   gap: 6px;
 }
 
+/* 钱包条是只读展示：去掉内凹阴影与描边，避免看着像可输入的字段 */
 .wallet-chip {
   display: flex;
   min-width: 0;
@@ -6510,9 +6527,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   gap: 8px;
   padding: 5px 9px;
   border-radius: var(--mvu-radius-pill, 999px);
-  border: 1px solid rgba(118, 226, 255, 0.08);
-  background: rgba(6, 18, 30, 0.32);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  border: 0;
+  background: rgba(6, 18, 30, 0.22);
 }
 
 .wallet-chip b {
