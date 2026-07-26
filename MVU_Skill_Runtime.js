@@ -2441,6 +2441,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('硬控', {
+    说明: '让目标完全无法行动，直到回合结束或满足解除条件。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '硬控' },
@@ -2453,6 +2454,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('软控', {
+    说明: '限制目标的行动能力，但不完全剥夺其行动。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '软控' },
@@ -2461,6 +2463,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('slowRatio', '控制幅度', '0.3'), num('duration', '持续回合', '2', '1')],
   });
   register(['节奏打断', '打断'], {
+    说明: '打断目标正在进行的动作，并追加一段僵直。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -2471,6 +2474,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [select('interruptWindow', '打断时机', 'INTERRUPT_WINDOW'), num('extraDelay', '追加僵直', '0.5')],
   });
   register('封技', {
+    说明: '封住目标的技能，使其在持续期内无法施放。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -2481,6 +2485,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('duration', '持续回合', '2', '1'), select('muteScope', '限制范围', 'MUTE_SCOPE')],
   });
   register('单属性削弱', {
+    说明: '按倍率压低目标的某一项属性。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '削弱类' },
@@ -2493,6 +2498,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('多属性削弱', {
+    说明: '按倍率同时压低目标的多项属性。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '削弱类' },
@@ -2505,6 +2511,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('禁疗', {
+    说明: '按幅度削减目标受到的治疗量。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -2515,6 +2522,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('banHealRatio', '禁疗幅度', '1.0'), num('duration', '持续回合', '2', '1')],
   });
   register('治疗反转', {
+    说明: '把目标受到的治疗按倍率转成伤害。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -2525,6 +2533,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('invertRatio', '反转倍率', '1.0'), num('duration', '持续回合', '2', '1')],
   });
   register('掌控压制', {
+    说明: '按倍率压低目标的技能掌控度。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '削弱类' },
@@ -2533,6 +2542,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('reduceRatio', '压制倍率', '0.85'), num('duration', '持续回合', '2', '1')],
   });
   register('速度压制', {
+    说明: '按幅度压低目标的速度相关判定。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '削弱类' },
@@ -2540,6 +2550,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('slowRatio', '压制幅度', '0.3'), num('duration', '持续回合', '2', '1')],
   });
   register('单属性增益', {
+    说明: '按倍率提升自己或队友的某一项属性。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '增益类', cooperation: '中' },
@@ -2552,6 +2563,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('多属性增益', {
+    说明: '按倍率同时提升多项属性。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '增益类', cooperation: '高' },
@@ -2564,6 +2576,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('全属性增益', {
+    说明: '按倍率提升全部主属性。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '增益类', cooperation: '高' },
@@ -2572,6 +2585,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('allGainRatio', '全属性倍率', '1.15'), num('duration', '持续回合', '2', '1')],
   });
   register('消耗', {
+    说明: '修改技能自身的资源消耗。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '增益类' },
@@ -2580,6 +2594,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('gainRatio', '修正数值', '-20%'), num('duration', '持续回合', '3', '1')],
   });
   register('前摇', {
+    说明: '修改技能自身的前摇。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '增益类' },
@@ -2588,6 +2603,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('gainRatio', '修正数值', '-20%'), num('duration', '持续回合', '2', '1')],
   });
   register('掌控提升', {
+    说明: '按倍率提升技能掌控度。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '增益类' },
@@ -2596,6 +2612,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('gainRatio', '提升倍率', '1.2'), num('duration', '持续回合', '3', '1')],
   });
   register('速度提升', {
+    说明: '按倍率提升速度相关判定。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '增益类' },
@@ -2604,6 +2621,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('gainRatio', '提升倍率', '1.15'), num('duration', '持续回合', '2', '1')],
   });
   register('修炼增益', {
+    说明: '提升战斗外的修炼收益。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2614,6 +2632,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('收益倍率', '收益倍率', '1.2'), num('duration', '持续回合', '6', '1')],
   });
   register(['护盾', '小护盾'], {
+    说明: '为目标附加一层护盾，优先承受伤害。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2628,6 +2647,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('承伤修正', {
+    说明: '修改目标受到伤害的倍率。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '防御', mainType: '防御类', defenseNature: '承伤修正', effectMode: '持续' },
@@ -2640,6 +2660,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('免伤', {
+    说明: '在触发条件下完全免除若干次伤害。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '防御', mainType: '防御类', defenseNature: '免伤', effectMode: '触发' },
@@ -2652,6 +2673,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('霸体', {
+    说明: '在持续期内免疫指定级别以下的控制。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '防御', mainType: '防御类', defenseNature: '霸体', effectMode: '持续' },
@@ -2664,6 +2686,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register(['免死', '免死/锁血'], {
+    说明: '生命降到阈值时锁血不死。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '防御', mainType: '防御类', defenseNature: '免死', effectMode: '触发' },
@@ -2676,6 +2699,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('无敌金身', {
+    说明: '在持续期内完全免疫伤害。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2689,6 +2713,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('伤害反射', {
+    说明: '把受到的伤害按比例反弹给攻击者。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2703,6 +2728,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('伤害转移', {
+    说明: '把受到的伤害按比例转给指定对象。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2717,6 +2743,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('伤害分摊', {
+    说明: '把受到的伤害按比例分给多名队友承担。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2732,6 +2759,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('消耗分摊', {
+    说明: '把技能消耗按比例分给多名队友承担。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2747,6 +2775,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('体力恢复', {
+    说明: '按倍率回复体力。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '回复类', recoverNature: '体力恢复' },
@@ -2755,6 +2784,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('recoverRatio', '回复倍率', '0.35'), num('repeatCount', '生效次数', '1', '1')],
   });
   register('魂力恢复', {
+    说明: '按倍率回复魂力。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2765,6 +2795,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('recoverRatio', '回复倍率', '0.35'), num('repeatCount', '生效次数', '1', '1')],
   });
   register('精神恢复', {
+    说明: '按倍率回复精神力。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2775,6 +2806,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('recoverRatio', '回复倍率', '0.35'), num('repeatCount', '生效次数', '1', '1')],
   });
   register('持续恢复', {
+    说明: '挂上持续回复状态，之后每回合按倍率回血。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '回复类', recoverNature: '持续恢复', effectMode: '持续' },
@@ -2787,6 +2819,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register(['净化/解控', '净化', '解控'], {
+    说明: '清除目标身上的负面状态。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -2801,6 +2834,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('感知干扰', {
+    说明: '干扰目标的感知，使其判断出现偏差。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '软控' },
@@ -2809,6 +2843,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('disturbPower', '干扰强度', '0.12'), num('duration', '持续回合', '2', '1')],
   });
   register('标记锁定', {
+    说明: '标记目标并持续追踪，使其难以脱离。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '软控' },
@@ -2821,6 +2856,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('共享视野', {
+    说明: '把自己的视野共享给队友。',
     可主机制: true,
     可副机制: true,
     目标语义: '上下文',
@@ -2835,6 +2871,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('幻境', {
+    说明: '在范围内制造幻境，影响其中单位的认知。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '硬控' },
@@ -2847,6 +2884,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('催眠', {
+    说明: '使目标进入睡眠，直到满足唤醒条件。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '硬控' },
@@ -2859,6 +2897,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('认知扭曲', {
+    说明: '扭曲目标的认知，使其误判局势。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '软控' },
@@ -2867,6 +2906,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('twistPower', '扭曲强度', '0.18'), num('duration', '持续回合', '2', '1')],
   });
   register('目标锁定', {
+    说明: '锁定目标，提升对其的命中。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '感知/认知类', controlStrength: '软控' },
@@ -2880,6 +2920,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('自身位移', {
+    说明: '让自己移动一段距离。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '位移类', effectMode: '持续' },
@@ -2888,6 +2929,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [text('moveDistance', '位移幅度', '5米')],
   });
   register('强制位移', {
+    说明: '强制移动目标。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '位移类', controlStrength: '软控' },
@@ -2896,6 +2938,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [text('moveDistance', '位移幅度', '4米')],
   });
   register('位移交换', {
+    说明: '与目标交换位置。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '位移类', controlStrength: '软控' },
@@ -2908,6 +2951,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('追击位移', {
+    说明: '在追击窗口内贴近目标并追加结算。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '位移类', effectMode: '持续' },
@@ -2920,6 +2964,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('脱离位移', {
+    说明: '拉开与目标的距离。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '位移类', effectMode: '持续' },
@@ -2932,6 +2977,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register(['追击'], {
+    说明: '在追击窗口内对目标追加一次结算。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '辅助', mainType: '位移类', effectMode: '持续' },
@@ -2945,6 +2991,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('分身', {
+    说明: '生成分身协同作战。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '防御', mainType: '特殊规则类', defenseNature: '分身', effectMode: '持续' },
@@ -3001,6 +3048,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('反制', {
+    说明: '在触发条件下反制目标的指定行为。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '防御', mainType: '特殊规则类', defenseNature: '反制', effectMode: '触发' },
@@ -3014,6 +3062,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register(['转化', '伤害转回复'], {
+    说明: '把伤害按比率转成回复。',
     可主机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '特殊规则类' },
@@ -3022,6 +3071,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [text('convertPath', '转化方向', '伤害→回复'), num('convertRatio', '转化比率', '0.6')],
   });
   register('回复转伤害', {
+    说明: '把回复按比率转成伤害。',
     可主机制: false,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '特殊规则类' },
@@ -3030,6 +3080,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [text('convertPath', '转化方向', '回复→伤害'), num('convertRatio', '转化比率', '0.6')],
   });
   register('状态交换', {
+    说明: '与目标交换身上的状态。',
     可主机制: true,
     目标语义: '上下文',
     摘要提示: { skillType: '辅助', mainType: '特殊规则类' },
@@ -3041,6 +3092,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('状态转移', {
+    说明: '把状态从一方转移到另一方。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3057,6 +3109,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('强制绑定/锁定', {
+    说明: '把目标与自己强制绑定，直到满足解除条件。',
     可主机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '特殊规则类', controlStrength: '软控' },
@@ -3152,11 +3205,13 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('luckModifier', '气运修正', '0.12')],
   });
   register('自身也受影响', {
+    说明: '让本次效果同时作用于自己。',
     目标语义: '仅自身',
     仅自身: true,
     摘要提示: { skillType: '辅助', mainType: '特殊规则类' },
   });
   register('自残换收益', {
+    说明: '以自身代价换取更强的效果。',
     目标语义: '仅自身',
     仅自身: true,
     摘要提示: { skillType: '辅助', mainType: '特殊规则类' },
@@ -3174,6 +3229,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('burstEnhanceRatio', '强化倍率', '100')],
   });
   register('引爆持续伤害', {
+    说明: '立刻引爆目标身上的持续伤害。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3184,6 +3240,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('detonateRatio', '引爆倍率', '1.2'), text('consumeMode', '消耗规则', '消耗全部持续伤害')],
   });
   register('斩盾', {
+    说明: '削除目标的护盾。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3194,6 +3251,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [],
   });
   register('吞噬', {
+    说明: '吞噬目标资源并按比例转化给自己。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3208,6 +3266,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('能力共享', {
+    说明: '把自己的资源按比例共享给队友。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -3222,6 +3281,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('机制抹消', {
+    说明: '抹消目标身上指定的机制。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3234,6 +3294,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('驱散增益', {
+    说明: '移除目标身上指定数量的增益状态。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '削弱类' },
@@ -3243,6 +3304,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('dispelCount', '驱散数量', '1', '1')],
   });
   register('窃取增益', {
+    说明: '夺取目标身上的增益状态。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '特殊规则类' },
@@ -3252,6 +3314,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('stealCount', '窃取数量', '1', '1')],
   });
   register('隐身', {
+    说明: '进入隐匿状态，直到持续结束或被破隐。',
     可副机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '辅助', mainType: '增益类', effectMode: '持续' },
@@ -3263,6 +3326,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('护卫', {
+    说明: '替被护卫者承受伤害。',
     可主机制: true,
     可副机制: true,
     目标语义: '可赋予',
@@ -3274,6 +3338,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('duration', '持续回合', '2', '1'), num('reduceRatio', '护卫减伤', '0.1')],
   });
   register('嘲讽', {
+    说明: '强制目标优先攻击自己。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '软控' },
@@ -3283,6 +3348,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('duration', '持续回合', '2', '1'), text('focusRule', '聚火规则', '强制优先自身')],
   });
   register('破隐', {
+    说明: '使目标脱离隐匿状态。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '控制类' },
@@ -3292,6 +3358,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [],
   });
   register('减速', {
+    说明: '降低目标的行动速度。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '软控' },
@@ -3301,6 +3368,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('slowRatio', '减速幅度', '0.3'), num('duration', '持续回合', '2', '1')],
   });
   register('迟缓', {
+    说明: '拉长目标的出手间隔。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3311,6 +3379,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('slowRatio', '迟缓幅度', '0.3'), num('duration', '持续回合', '2', '1')],
   });
   register('致盲', {
+    说明: '让目标在持续期内命中大幅下降。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '控制类', controlStrength: '软控' },
@@ -3321,6 +3390,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   });
   // v3 阶段 7：'沉默'已删除（与'封技'语义重合，统一走封技）。BattleUI 内残留硬编码作为兼容白名单保留，旧档自动迁移
   register('标记弱点', {
+    说明: '给目标挂上弱点标记，使后续结算对其更有效。',
     可副机制: true,
     目标语义: '敌对',
     摘要提示: { skillType: '控制', mainType: '削弱类' },
@@ -3377,6 +3447,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [num('dotRatio', '每跳倍率', '20'), num('duration', '持续回合', '3', '1')],
   });
   register('生命链接', {
+    说明: '与目标建立生命链接，按比例分摊伤害。',
     可主机制: true,
     可副机制: true,
     目标语义: '上下文',
@@ -3391,6 +3462,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('延长持续伤害', {
+    说明: '延长目标身上持续伤害的回合。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3405,6 +3477,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('压缩持续伤害', {
+    说明: '把持续伤害压缩成更短更高的形态。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3419,6 +3492,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('资源燃烧', {
+    说明: '让目标每回合持续损失指定资源。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3433,6 +3507,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register('资源锁定', {
+    说明: '锁定目标的资源，使其无法回复或使用。',
     可主机制: true,
     可副机制: true,
     目标语义: '敌对',
@@ -3448,6 +3523,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     ],
   });
   register(['反击', '受击反击'], {
+    说明: '被攻击时按倍率反击攻击者。',
     可副机制: true,
     目标语义: '可赋予',
     摘要提示: { skillType: '防御', mainType: '防御类', defenseNature: '反制', effectMode: '触发' },
@@ -3457,6 +3533,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
     设计台参数定义: [select('counterRule', '反击条件', 'COUNTER_RULE'), num('counterRatio', '反击倍率', '0.8')],
   });
   register('机制授予', {
+    说明: '把一组效果授予目标，在触发条件下生效。',
     可主机制: false,
     可副机制: true,
     目标语义: '可赋予',
