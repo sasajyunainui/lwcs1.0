@@ -1146,6 +1146,9 @@
   });
   const preemptionEventKinds = Object.freeze(['lost_opportunity', 'blocked_action', 'target_fail']);
   const controlDenialReasonPattern = /^(?:CONTROLLED|UNCONSCIOUS|INCAPACITATED|SUBDUED|DEAD)/i;
+  /* 失能兑现的两种写法：运行时用 ruleCode 标注成因，用 stateName 标注结果，两者都要认。 */
+  const incapacitationRulePattern = /^(?:TRAUMA_UNCONSCIOUS|NONLETHAL_INTENT_DISABLE)/i;
+  const incapacitationStatePattern = /昏迷|失去战斗力|失能/;
 
   function rawMeta(event = {}) {
     return event && typeof event.meta === 'object' && event.meta ? event.meta : {};
@@ -1342,13 +1345,66 @@
       );
       return byInstance.length ? byInstance : scoped(kinds);
     };
-    const preempted = searched => context?.preemptionEvent
-      ? verdict('PREEMPTED', [context.preemptionEvent.eventId], {
+    const preempted = searched => {
+      if (context?.preemptionEvent) {
+        return verdict('PREEMPTED', [context.preemptionEvent.eventId], {
           reasonCode: text(rawMeta(context.preemptionEvent).reasonCode || context.preemptionEvent?.ruleCode),
-        }, searched)
-      : verdict('UNCONFIRMED', [], null, searched);
+        }, searched);
+      }
+      /* UNCONFIRMED 有两种成因，症状完全相同但归属完全不同：
+         (a) 引擎压根没产生这类事实 —— 预演与运行时分叉
+         (b) 产生了但没匹配上（如 targetId 归一化不一致）—— 对账自身的匹配缺陷
+         不区分的话，我的匹配 bug 会伪装成引擎 bug，反之亦然。 */
+      const kindPresent = events.some(event => rawEventKindIs(event, ...searched));
+      const kindPresentForOtherTarget = events.some(event =>
+        rawEventKindIs(event, ...searched) && !rawEventHitsTarget(event, targetId)
+      );
+      const result = verdict('UNCONFIRMED', [], null, searched);
+      result.matchDiagnostic = {
+        searchedKindPresent: kindPresent,
+        sameKindHitOtherTarget: kindPresentForOtherTarget,
+        expectedTargetId: targetId,
+        expectedEffectInstanceId: effectInstanceId,
+        /* 同类事实存在却没落到预期目标上 —— 优先怀疑匹配键，而不是引擎。 */
+        likelyCause: !kindPresent
+          ? 'ENGINE_PRODUCED_NO_SUCH_FACT'
+          : kindPresentForOtherTarget
+            ? 'TARGET_MATCH_FAILED'
+            : 'FACT_PRESENT_BUT_UNMATCHED',
+      };
+      return result;
+    };
 
-    if (kind === 'HP_DELTA' || kind === 'SCHEDULED_HP_DELTA') {
+    if (kind === 'SCHEDULED_HP_DELTA') {
+      /* 持续伤害/治疗不走 hit_result——运行时在回合末以 state_tick 结算（DOT_TICK/HOT_TICK）。
+         而且 state_tick 的事实归属是 round:N 而非交锋，因此不在本次行动的事件集合里：
+         只看交锋作用域会永远匹配不上，把"作用域够不着"误报成"引擎没产生事实"。
+         这里改用回合级事件池，按目标匹配。 */
+      const searched = ['state_tick'];
+      const pool = Array.isArray(context?.deferredEvents) && context.deferredEvents.length
+        ? context.deferredEvents
+        : events;
+      const ticks = pool.filter(event =>
+        rawEventKindIs(event, 'state_tick') && rawEventHitsTarget(event, targetId)
+      );
+      const healing = Number(expected?.healthDeltaPP) > 0;
+      const landed = ticks.filter(event => {
+        const tickDamage = number(event?.appliedDamage ?? rawMeta(event).appliedDamage ?? rawMeta(event).damage, 0);
+        const tickDelta = number(rawMeta(event).delta, 0);
+        return healing ? tickDelta > 0 : tickDamage > 0 || tickDelta < 0;
+      });
+      if (landed.length) {
+        return verdict('CONFIRMED', landed.map(event => event.eventId), {
+          ticks: landed.length,
+          appliedDamage: landed.reduce(
+            (sum, event) => sum + number(event?.appliedDamage ?? rawMeta(event).appliedDamage, 0), 0,
+          ),
+        }, searched);
+      }
+      return preempted(searched);
+    }
+
+    if (kind === 'HP_DELTA') {
       const searched = ['hit_result', 'effect_resolved', 'resource_change'];
       const isHealing = Number(expected?.delta) > 0 || Number(expected?.healthDeltaPP) > 0;
       if (isHealing) {
@@ -1455,12 +1511,21 @@
         (rawEventKindIs(event, 'charge_interrupt') && rawEventHitsTarget(event, targetId)) ||
         (rawEventKindIs(event, 'blocked_action', 'lost_opportunity') &&
           (rawEventHitsTarget(event, targetId) || text(event?.actorId) === targetId) &&
-          controlDenialReasonPattern.test(text(rawMeta(event).reasonCode || event?.ruleCode)))
+          controlDenialReasonPattern.test(text(rawMeta(event).reasonCode || event?.ruleCode))) ||
+        /* 失能类 state_apply（非致命意图致残、创伤昏迷）就是预演侧 ACTION_CANCELLED 的兑现事实：
+           目标被打成失去战斗力/昏迷，后续行动自然取消，运行时不会再单独写一条取消事件。 */
+        (rawEventKindIs(event, 'state_apply') &&
+          rawEventHitsTarget(event, targetId) &&
+          text(event?.result) === 'applied' &&
+          (incapacitationRulePattern.test(text(event?.ruleCode)) ||
+            incapacitationStatePattern.test(text(rawMeta(event).stateName))))
       );
       if (cancels.length) {
+        /* 不能把 ruleCode 放进对账结果：它是内部规则码，随 DTO 会漏进 PLAYER 模式
+           （已被 PLAYER_INTERNAL_RESULT_LEAK 门禁抓到）。
+           要追具体成因走 actualFactIds 回溯事实即可。 */
         return verdict('CONFIRMED', cancels.map(event => event.eventId), {
           eventKind: text(cancels[0]?.eventKind),
-          ruleCode: text(cancels[0]?.ruleCode),
         }, searched);
       }
       /* 控制没能施加成功 → 取消自然不会发生，这是有据可依的否定而不是查无此事。 */
@@ -1586,6 +1651,9 @@
     const context = {
       actionExecuted: scopedEvents.some(event => rawEventKindIs(event, 'action_start')),
       preemptionEvent: scopedEvents.find(event => rawEventKindIs(event, ...preemptionEventKinds)) || null,
+      /* 回合末结算的事实（持续伤害等）不属于任何交锋，必须单独供给，
+         否则它们永远落在对账的作用域之外。 */
+      deferredEvents: Array.isArray(options?.deferredEvents) ? options.deferredEvents.filter(Boolean) : [],
       remainingHpOf: unitId => {
         if (!remainingHpById) return null;
         const found = remainingHpById.get(text(unitId));
@@ -1608,6 +1676,7 @@
           expected: cloneValue(prediction.expected || {}),
           actual: judged.actual ? cloneValue(judged.actual) : null,
           magnitude: judged.magnitude ? cloneValue(judged.magnitude) : null,
+          matchDiagnostic: judged.matchDiagnostic ? cloneValue(judged.matchDiagnostic) : null,
           actualFactIds: judged.factIds,
           searchedEventKinds: judged.searchedEventKinds,
         };
@@ -2747,6 +2816,10 @@
         actorId: text(entry.fact.actorId),
         actorName: text(entry.fact.actorName),
         targetName: text(entry.fact.targetName),
+        /* ledger 里的真实因果边：这一步挂在哪次行动下、由哪次行动引发。
+           叙述的因果连接词必须用它，不能靠"上一步是不是发起方"猜。 */
+        actionId: text(entry.raw?.actionId),
+        sourceActionId: text(entry.raw?.sourceActionId),
         /* 这一步是不是由交锋发起者以外的人做出的——反击、格挡、闪避都靠它识别，
            渲染时据此加"对此"之类的回应连接词，而不是让读者自己猜谁在回应谁。
            必须比 actorId 而不是显示名：同名单位（尤其召唤物）会让名字比较误判归属。 */
@@ -2842,8 +2915,13 @@
         observerId: text(primary?.decision?.actorId || exchange?.actorId),
       });
 
+      /* 持续效果在本回合末乃至之后的回合才结算，作用域要放宽到"本回合起的所有 tick"。 */
+      const deferredEvents = (Array.isArray(ledger) ? ledger : []).filter(event =>
+        text(event?.eventKind) === 'state_tick' &&
+        number(event?.round, 0) >= number(exchange?.round, 0)
+      );
       const reconciliation = primary?.decision
-        ? reconcileDecision(primary.decision, rawEvents, { directory, remainingHpById })
+        ? reconcileDecision(primary.decision, rawEvents, { directory, remainingHpById, deferredEvents })
         : [];
 
       return {
@@ -3082,13 +3160,17 @@
       if (node.decisionKind === 'PLAYER_LOCKED') lines.push('  玩家指定动作');
       if (node.decisionKind === 'FORCED') lines.push('  前一窗口已声明，本次按既定动作兑现');
 
-      /* 被排除的候选：只取真正携带排除码的，最多两条，避免刷屏。 */
-      (node?.decision?.candidates || [])
-        .filter(candidate => candidate.status === 'EXCLUDED' && candidate.reasonText)
-        .slice(0, 2)
-        .forEach(candidate => {
-          lines.push(`  未选${candidate.name}：${candidate.reasonText}`);
-        });
+      /* 被排除的候选最多列两条避免刷屏，但截断必须告知——
+         否则"排除了 8 个候选"和"排除了 2 个候选"在战报上长得一模一样，
+         可疑的排除会被静默藏在截断线以下。 */
+      const 全部排除 = (node?.decision?.candidates || [])
+        .filter(candidate => candidate.status === 'EXCLUDED' && candidate.reasonText);
+      全部排除.slice(0, 2).forEach(candidate => {
+        lines.push(`  未选${candidate.name}：${candidate.reasonText}`);
+      });
+      if (全部排除.length > 2) {
+        lines.push(`  另有${全部排除.length - 2}个候选被排除（详见判定依据）`);
+      }
 
       /* 引擎明知有更高排名却选了别的，必须如实说明，不能包装成"因为它更好"。 */
       if (node?.decision?.wasOptimal === false && node.decision.topRankedName) {
@@ -3107,11 +3189,15 @@
           group.steps.forEach(step => lines.push(`    ${step.text}`));
         });
       } else {
-        let 上一步是发起方 = true;
+        /* 因果连接词由 ledger 的 sourceActionId 决定：
+           这一步的来源动作是本次交锋的根动作，且执行者不是发起方 → 它是对根动作的回应。
+           原先靠"上一步是不是发起方"推断，那只是启发式，会标错归属。 */
+        const rootActionIds = new Set(
+          可叙述.filter(step => !step.byResponder).map(step => text(step.actionId)).filter(Boolean),
+        );
         可叙述.forEach(step => {
-          const 回应前缀 = step.byResponder && 上一步是发起方 ? '对此，' : '';
-          lines.push(`  ${回应前缀}${step.text}`);
-          上一步是发起方 = !step.byResponder;
+          const 回应根动作 = step.byResponder && rootActionIds.has(text(step.sourceActionId));
+          lines.push(`  ${回应根动作 ? '对此，' : ''}${step.text}`);
         });
       }
       if (!steps.length && text(node?.settlement?.declarationSummary)) {
@@ -4182,12 +4268,75 @@
     if (/scoreAudit|candidateId|ruleCode|formulaTrace|normalizedUtility|objectiveUtility|rawDecision/i.test(aiSerialized)) {
       pushFatal('AI_SUMMARY_INTERNAL_DATA_LEAK');
     }
+    /*
+     * 链路诊断门禁。
+     *
+     * 对账原先只是 DTO 里的数据，没有任何东西消费它——检测器做了却没接线，
+     * 等于预演与运行时分叉可以无限期存在而无人发现。这里把它接进审计：
+     *   DEVELOPER  升为致命，调试时当场暴露
+     *   PLAYER     只计数，不阻断玩家的战斗提交
+     * 另外检查排除码转述表是否漂移：引擎新增或改名排除码时，
+     * 静态说明表不会自动跟上，必须有信号提示表已过期。
+     */
+    const developerMode = report?.visibilityMode === 'DEVELOPER';
+    const diagnostics = {
+      unconfirmedPredictions: [],
+      divergedMagnitudes: [],
+      unknownRejectionCodes: [],
+    };
+    (Array.isArray(report?.narrativeChain) ? report.narrativeChain : []).forEach(node => {
+      (Array.isArray(node?.reconciliation) ? node.reconciliation : []).forEach(row => {
+        if (text(row?.status) === 'UNCONFIRMED') {
+          diagnostics.unconfirmedPredictions.push({
+            chainId: text(node?.chainId),
+            round: number(node?.round, 0),
+            actorName: text(node?.actorName),
+            kind: text(row?.kind),
+            targetName: text(row?.targetName),
+            searchedEventKinds: Array.isArray(row?.searchedEventKinds) ? row.searchedEventKinds : [],
+            /* 区分"引擎没产生这类事实"与"产生了但没匹配上"——
+               前者是引擎问题，后者是对账的匹配问题，两者症状相同必须分开记。 */
+            matchDiagnostic: row?.matchDiagnostic || null,
+          });
+        }
+        if (row?.magnitude?.unexplained === true) {
+          diagnostics.divergedMagnitudes.push({
+            chainId: text(node?.chainId),
+            round: number(node?.round, 0),
+            actorName: text(node?.actorName),
+            kind: text(row?.kind),
+            targetName: text(row?.targetName),
+            magnitude: row.magnitude,
+          });
+        }
+      });
+      (Array.isArray(node?.decision?.candidates) ? node.decision.candidates : []).forEach(candidate => {
+        const code = text(candidate?.reasonCode);
+        if (code && !candidate?.reasonChecked) diagnostics.unknownRejectionCodes.push(code);
+      });
+    });
+    diagnostics.unknownRejectionCodes = unique(diagnostics.unknownRejectionCodes);
+
+    if (developerMode) {
+      diagnostics.unconfirmedPredictions.forEach(entry => pushFatal('PREDICTION_UNCONFIRMED', entry));
+      diagnostics.divergedMagnitudes.forEach(entry => pushFatal('PREDICTION_MAGNITUDE_DIVERGED', entry));
+      diagnostics.unknownRejectionCodes.forEach(code =>
+        pushFatal('REJECTION_CODE_UNDOCUMENTED', { reasonCode: code }));
+    }
+
     report.projectionStatus = fatals.length ? 'FAILED' : 'PASSED';
     const reportHash = runtime.hashBattleValue(report);
     return {
       passed: fatals.length === 0,
       fatalCount: fatals.length,
       fatals,
+      /* 无论哪种模式都把诊断带出来：PLAYER 模式不阻断，但数据必须可取，
+         否则"不阻断"就退化成"看不见"。 */
+      diagnostics,
+      diagnosticCount:
+        diagnostics.unconfirmedPredictions.length +
+        diagnostics.divergedMagnitudes.length +
+        diagnostics.unknownRejectionCodes.length,
       reportHash,
       reportDto: report,
     };

@@ -30427,6 +30427,13 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   margin-left: 12px;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-more,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-more,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-more {
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
 /* 预期兑现：确认 / 未发生 / 未执行 三态用符号与色彩区分，不用文字堆叠 */
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check,

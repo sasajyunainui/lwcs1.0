@@ -9857,12 +9857,18 @@ class BattleUIComponent {
             .map(charge => `<li>${htmlEscapeText(charge.actorName)}蓄力中【${htmlEscapeText(charge.actionName)}】，下个行动窗口即可打出</li>`)
             .join('');
 
-          /* 玩家版排除原因自带"为什么"，避免读到"没有防御窗口"却不知道为什么没有。 */
-          const 排除 = (Array.isArray(node?.decision?.candidates) ? node.decision.candidates : [])
-            .filter(candidate => candidate?.status === 'EXCLUDED' && (candidate?.reasonPlayerText || candidate?.reasonText))
-            .slice(0, 2)
-            .map(candidate => `<li>没选${htmlEscapeText(candidate.name)}：${htmlEscapeText(candidate.reasonPlayerText || candidate.reasonText)}</li>`)
-            .join('');
+          /* 玩家版排除原因用带"为什么"的措辞。
+             只列两条，但**必须告知截断**——否则排除了 8 个和排除了 2 个在界面上没有区别，
+             可疑的排除会被静默藏在截断线以下。 */
+          const 全部排除 = (Array.isArray(node?.decision?.candidates) ? node.decision.candidates : [])
+            .filter(candidate => candidate?.status === 'EXCLUDED' && (candidate?.reasonPlayerText || candidate?.reasonText));
+          const 排除 = [
+            ...全部排除.slice(0, 2).map(candidate =>
+              `<li>没选${htmlEscapeText(candidate.name)}：${htmlEscapeText(candidate.reasonPlayerText || candidate.reasonText)}</li>`),
+            全部排除.length > 2
+              ? `<li class="battle-chain-more">另有${全部排除.length - 2}个选项被排除，展开判定依据可看全部</li>`
+              : '',
+          ].filter(Boolean).join('');
 
           /* 结算按真实时序逐步渲染。回应方的步骤缩进并标记，
              让"谁在回应谁"一眼可辨，而不是读一堆并列句自己拼因果。 */

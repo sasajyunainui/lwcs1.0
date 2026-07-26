@@ -1272,7 +1272,7 @@
     });
   }
 
-  function buildDecisionRuntimeSnapshot(combatData = {}, actorId = '', actionOpportunity = {}) {
+  function buildDecisionRuntimeSnapshot(combatData = {}, actorId = '', actionOpportunity = {}, options = {}) {
     const runtime = ensureCombatRuntime(combatData);
     const snapshot = cloneValue(buildRuntimeDecisionSnapshot(combatData));
     const opportunityId = String(
@@ -1421,6 +1421,22 @@
       Number(left?.creationSequence || 0) - Number(right?.creationSequence || 0) ||
       String(left?.descriptorId || '').localeCompare(String(right?.descriptorId || ''))
     );
+    if (options?.identityLite === true) {
+      // 轻身份：这些哈希/Revision 只服务于 r8 系的 session、fact-delta 与
+      // 路线目录失效索引；r9 两者皆无（:7826/:8892 门已排除），
+      // 却要为它们付出每决策十余次集合级 stableHash。
+      snapshot.opportunitySnapshotHash = '';
+      snapshot.opportunityCacheHash = '';
+      snapshot.resourceTimelineHash = '';
+      snapshot.scheduledEventsHash = '';
+      snapshot.opportunityRevision =
+        `opportunity:lite:${snapshot.opportunitySnapshot.length}:${String(actionOpportunity?.opportunityId || '')}`;
+      snapshot.resourceTimelineRevision = `resource:lite:${snapshot.resourceTimeline.length}`;
+      snapshot.scheduleRevision = `schedule:lite:${snapshot.scheduledEvents.length}`;
+      snapshot.evaluationRevision =
+        `runtime-evaluation:lite:${Number(combatData?.回合 || 0)}:${snapshot.firstTerminalSequence || 0}`;
+      return Object.freeze(snapshot);
+    }
     snapshot.opportunitySnapshotHash = previewRuntime.stableHash(snapshot.opportunitySnapshot);
     snapshot.opportunityCacheHash = previewRuntime.stableHash({
       opportunitySnapshot: snapshot.opportunitySnapshot,
@@ -6785,7 +6801,11 @@
           const key = /生命|HP/i.test(resourceText) ? 'hp' : /体力/.test(resourceText) ? 'vit' : /精神/.test(resourceText) ? 'men' : 'sp';
           const before = persistentResourceValue(target, key);
           const delta = previewRuntime.parseSignedValue(effect?.数值, persistentResourceMax(target, key));
-          const operation = delta >= 0 ? 'RESOURCE_RESTORE' : 'RESOURCE_REDUCE';
+          // 账本操作码必须取自 resourceOperations 注册表（RESTORE/REDUCE，:45 将其映射到
+          // 合同相位 RESOURCE_RESTORE）。此前此处写 RESOURCE_RESTORE/RESOURCE_REDUCE，
+          // 是唯一偏离注册表的写入器——r8 从不经此路径给非自身目标恢复生命，
+          // r9 首次高频触发后被 RESOURCE_TIMELINE_OPERATION_MISSING 审计拦下。
+          const operation = delta >= 0 ? 'RESTORE' : 'REDUCE';
           const resourceSample = sampleEffectOutcome({
             effect,
             effectIndex,
@@ -8518,8 +8538,12 @@
           let decisionTiming = {};
           if (providerId) {
             const snapshotStartedAt = performanceNow();
+            // r9 无 session、无路线目录缓存（:7826/:8892 门），身份记账全为白算。
+            const identityLite = providerId === 'r9';
             const currentBelief = beliefByActor.get(actorId) || initialBeliefFor(actorId);
-            const beliefContextHash = previewRuntime.stableHash(currentBelief);
+            const beliefContextHash = identityLite
+              ? `belief-lite:${actorId}`
+              : previewRuntime.stableHash(currentBelief);
             const routeCacheContextKey = [
               actorSide,
               beliefContextHash,
@@ -8542,6 +8566,7 @@
               combatData,
               actorId,
               decisionInput.actionOpportunity,
+              { identityLite },
             );
             const factDelta = advanceRuntimeEvaluationSession(
               decisionRuntimeSnapshot,
@@ -8550,45 +8575,48 @@
             if (factDelta) {
               evaluationSessionObservation.factDelta = cloneValue(factDelta);
             }
-            const currentOpportunityHash = decisionRuntimeSnapshot.opportunityCacheHash ||
+            const currentOpportunityHash = identityLite ? '' :
+              decisionRuntimeSnapshot.opportunityCacheHash ||
               previewRuntime.stableHash({
                 opportunitySnapshot: decisionRuntimeSnapshot.opportunitySnapshot || [],
                 actionOpportunity: decisionInput.actionOpportunity || {},
               });
-            const currentResourceTimelineHash = decisionRuntimeSnapshot.resourceTimelineHash ||
+            const currentResourceTimelineHash = identityLite ? '' :
+              decisionRuntimeSnapshot.resourceTimelineHash ||
               previewRuntime.stableHash(decisionRuntimeSnapshot.resourceTimeline || []);
-            const currentScheduleHash = decisionRuntimeSnapshot.scheduledEventsHash ||
+            const currentScheduleHash = identityLite ? '' :
+              decisionRuntimeSnapshot.scheduledEventsHash ||
               previewRuntime.stableHash(decisionRuntimeSnapshot.scheduledEvents || []);
-            const currentOpportunityEntryHashes = keyedRecordHashes(
+            const currentOpportunityEntryHashes = identityLite ? {} : keyedRecordHashes(
               decisionRuntimeSnapshot.opportunitySnapshot,
               record => record?.opportunityId || record?.grantId,
             );
-            const currentResourceDependencyHashes = resourceDependencyHashes(
+            const currentResourceDependencyHashes = identityLite ? {} : resourceDependencyHashes(
               decisionRuntimeSnapshot.resourceTimeline,
             );
-            const currentScheduleEntryHashes = scheduleDependencyHashes(
+            const currentScheduleEntryHashes = identityLite ? {} : scheduleDependencyHashes(
               decisionRuntimeSnapshot.scheduledEvents,
             );
-            const currentRuleHashes = Object.fromEntries(
+            const currentRuleHashes = identityLite ? {} : Object.fromEntries(
               Object.entries(combatData?.规则 || combatData?.battleRules || {})
                 .sort(([left], [right]) => left.localeCompare(right))
                 .map(([key, value]) => [key, previewRuntime.stableHash(value)]),
             );
-            const currentUnitHashes = Object.fromEntries(
+            const currentUnitHashes = identityLite ? {} : Object.fromEntries(
               [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)]
                 .map(unit => [previewRuntime.unitId(unit), fullRouteUnitHash(combatData, unit)])
                 .filter(([unitId]) => unitId),
             );
-            const currentTargetUnitHashes = Object.fromEntries(
+            const currentTargetUnitHashes = identityLite ? {} : Object.fromEntries(
               [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)]
                 .map(unit => [previewRuntime.unitId(unit), routeTargetUnitHash(unit)])
                 .filter(([unitId]) => unitId),
             );
-            const currentBeliefUnitHashes = Object.fromEntries(
+            const currentBeliefUnitHashes = identityLite ? {} : Object.fromEntries(
               Object.entries(currentBelief?.units || {})
                 .map(([unitId, unitBelief]) => [unitId, previewRuntime.stableHash(unitBelief)]),
             );
-            const currentPublicResponseHashes = Object.fromEntries(
+            const currentPublicResponseHashes = identityLite ? {} : Object.fromEntries(
               Object.entries(currentBelief?.publicResponses || {})
                 .map(([unitId, responses]) => [unitId, previewRuntime.stableHash(responses)]),
             );
@@ -8828,7 +8856,7 @@
               session: evaluationSession,
               providerId,
               objectiveContract: combatData?.胜负条件 || {},
-              analysisDepth: ['legacy-baseline', 'r74-next-baseline'].includes(providerId)
+              analysisDepth: ['legacy-baseline', 'r74-next-baseline', 'r9'].includes(providerId)
                 ? 'CANDIDATES_ONLY'
                 : 'FULL',
               runtimeSnapshot: decisionRuntimeSnapshot,
@@ -12778,6 +12806,21 @@
           }
           return;
         }
+        if (actionDecisionEngine === 'R9') {
+          // R9 Tier-1 合同：廉价分即效用，无 r8 向量分量；字段必须存在且为有限数。
+          const r9Fields = ['candidateId', 'actionKind', 'targetIds', 'objectiveUtility', 'objectiveUtilityHEPP', 'selected'];
+          const r9Missing = r9Fields.filter(key => candidate?.[key] === undefined || candidate?.[key] === null);
+          if (r9Missing.length) {
+            pushFatal('SCORING_COMPONENT_MISSING', { actionIndex, candidateIndex, candidateId: candidate?.candidateId || '', missing: r9Missing });
+            return;
+          }
+          const r9Invalid = ['objectiveUtility', 'objectiveUtilityHEPP']
+            .filter(key => !Number.isFinite(Number(candidate[key])));
+          if (r9Invalid.length) {
+            pushFatal('SCORING_COMPONENT_MISSING', { actionIndex, candidateIndex, candidateId: candidate.candidateId, invalidNumbers: r9Invalid });
+          }
+          return;
+        }
         const missing = scoreFields.filter(key => candidate?.[key] === undefined || candidate?.[key] === null);
         const vector = candidate?.vector && typeof candidate.vector === 'object' ? candidate.vector : null;
         if (vector) missing.push(...vectorFields.filter(key => vector[key] === undefined || vector[key] === null).map(key => `vector.${key}`));
@@ -13294,7 +13337,7 @@
   function executeBattleDraftR8(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
     const providerId = String(source?.settings?.providerId || '').trim();
-    if (!['legacy-baseline', 'r74-next-baseline', 'r8-shadow', 'r8'].includes(providerId)) {
+    if (!['legacy-baseline', 'r74-next-baseline', 'r8-shadow', 'r8', 'r9'].includes(providerId)) {
       throw new Error(`battle_runtime_r8_provider_invalid:${providerId || 'missing'}`);
     }
     const inputHash = hashBattleValue(source);

@@ -2401,6 +2401,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   register(['直接伤害', '单体伤害'], {
     可主机制: true,
     目标语义: '敌对',
+    说明: '对单个敌人打出一次伤害结算。威力倍率是相对基础攻击的百分比，攻击段数决定同一次施放里结算几次。',
     摘要提示: { skillType: '输出', mainType: '伤害类', effectMode: '瞬发' },
     designerMainHint: '伤害类',
     designerSubHint: '单体伤害',
@@ -2409,6 +2410,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   register('群体伤害', {
     可主机制: true,
     目标语义: '敌对',
+    说明: '对范围内多个敌人各打一次伤害结算。作用范围只写给玩家看，不参与结算；命中几个由战斗时的站位决定。',
     摘要提示: { skillType: '输出', mainType: '伤害类', cooperation: '高', effectMode: '瞬发' },
     designerMainHint: '伤害类',
     designerSubHint: '群体伤害',
@@ -2417,6 +2419,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   register('多段伤害', {
     可主机制: true,
     目标语义: '敌对',
+    说明: '一次施放拆成多段连续结算，每段独立判定命中。段数越多单段威力应越低，否则总伤会超预算。',
     摘要提示: { skillType: '输出', mainType: '伤害类', effectMode: '持续' },
     designerMainHint: '伤害类',
     designerSubHint: '多段伤害',
@@ -2427,6 +2430,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   register('持续伤害', {
     可主机制: true,
     目标语义: '敌对',
+    说明: '给目标挂持续创伤状态，之后每回合按每跳倍率扣血。叠层上限决定同一目标最多叠几层。',
     摘要提示: { skillType: '输出', mainType: '伤害类', effectMode: '持续' },
     designerMainHint: '伤害类',
     designerSubHint: '持续伤害',
@@ -3328,6 +3332,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   register('斩杀补伤', {
     可副机制: true,
     目标语义: '敌对',
+    说明: '挂在主伤害上的追加：目标血量低于触发血线时，按补伤倍率再补一次结算。只在残血阶段生效，不影响常规输出。',
     摘要提示: { skillType: '输出', mainType: '伤害类' },
     designerMainHint: '伤害类',
     designerSubHint: '单体伤害',
@@ -3337,6 +3342,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   register('穿透', {
     可副机制: true,
     目标语义: '敌对',
+    说明: '让本次伤害忽略目标一部分防御。穿透比例是无视的防御占比，不是额外伤害；穿透对象决定无视物防还是精神抗性。',
     摘要提示: { skillType: '输出', mainType: '伤害类' },
     designerMainHint: '伤害类',
     designerSubHint: '单体伤害',
@@ -3349,6 +3355,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   register('伤害吸收', {
     可副机制: true,
     目标语义: '上下文',
+    说明: '把伤害按比例转成自己的资源。吸收来源选「造成伤害」按打出的量转化，选「受到伤害」按挨打的量转化；吸收资源决定补进生命还是魂力等。',
     摘要提示: { skillType: '输出', mainType: '伤害类' },
     designerMainHint: '伤害类',
     designerSubHint: '单体伤害',
@@ -3362,6 +3369,7 @@ var SKILL_MECHANISM_META_V1 = (() => {
   register('流血DOT', {
     可副机制: true,
     目标语义: '敌对',
+    说明: '主效果命中后追加持续创伤，每回合按每跳倍率掉血。与「持续伤害」同底层，区别是它作为副机制挂在别的主效果上。',
     摘要提示: { skillType: '输出', mainType: '伤害类', effectMode: '持续' },
     designerMainHint: '伤害类',
     designerSubHint: '持续伤害',

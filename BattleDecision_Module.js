@@ -29513,7 +29513,11 @@
     if (!worldSnapshot || typeof worldSnapshot !== 'object') throw new TypeError('battle_decision_world_missing');
     invalidateMutableWorldIndexes(worldSnapshot);
     tracePrepareStage('indexes-invalidated');
-    const sourceWorldHash = preview.stableHash(worldSnapshot);
+    // 轻 prepare（CANDIDATES_ONLY）跳过整世界哈希：该哈希只服务于
+    // 「重分析期间世界未被变异」这条内部不变量，轻路径没有重分析可保护，
+    // 却要为它付出每决策 2 次世界级 stableHash——r9 实测 87.6% 耗时在此类哈希上。
+    const lightPrepare = String(input?.analysisDepth || '').trim().toUpperCase() === 'CANDIDATES_ONLY';
+    const sourceWorldHash = lightPrepare ? '' : preview.stableHash(worldSnapshot);
     tracePrepareStage('source-world-hashed');
     const actor = findUnitInWorld(worldSnapshot, input?.actorId || '');
     if (!actor || !preview.isAlive(actor)) {
@@ -29603,8 +29607,18 @@
     });
     const evaluationContext = {
       schemaVersion: '8.3-evaluation-context-1',
-      worldRevision: String(input?.worldRevision || `decision-world:${sourceWorldHash}`),
-      visibleWorldRevision: `visible:${preview.stableHash(visibleWorld)}`,
+      // 轻 prepare 不做世界内容哈希：这两个 Revision 只被 r8 系的 session、
+      // 依赖视图与完整路线分析消费（legacy/r74 的 providerInput 不含 evaluationContext），
+      // 轻路径用 回合+决策方 构成的廉价身份即可保持唯一性语义。
+      worldRevision: String(
+        input?.worldRevision ||
+        (lightPrepare
+          ? `decision-world:lite:${Number(visibleWorld?.回合 || 0)}:${actorId}`
+          : `decision-world:${sourceWorldHash}`),
+      ),
+      visibleWorldRevision: lightPrepare
+        ? `visible:lite:${Number(visibleWorld?.回合 || 0)}`
+        : `visible:${preview.stableHash(visibleWorld)}`,
       beliefRevision: beliefRevisionFor(beliefState),
       objectiveHash: `objective:${preview.stableHash(objectiveContract)}`,
       opportunityRevision:
@@ -29640,7 +29654,7 @@
       dependencyView,
     };
     tracePrepareStage('evaluation-context-built');
-    const candidatesOnly = String(input?.analysisDepth || '').trim().toUpperCase() === 'CANDIDATES_ONLY';
+    const candidatesOnly = lightPrepare;
     const objectiveCompactMode =
       input?.disableCompactObjectiveFastPath === true ? 'FULL' : 'FAST';
     const candidateEnvelopeMetrics = {
@@ -30063,14 +30077,35 @@
         routeAnalysis.routeCatalog || {},
       );
     }
-    if (preview.stableHash(worldSnapshot) !== sourceWorldHash) {
+    if (!lightPrepare && preview.stableHash(worldSnapshot) !== sourceWorldHash) {
       throw new Error('PROVIDER_MUTATED_STATE:prepare');
     }
     const request = {
       ...requestPayload,
-      requestHash: decisionRequestHash(requestPayload),
+      // 轻 prepare 的请求身份不含世界内容：候选指纹已捕获全部声明语义，
+      // 机会 id + 回合 + 种子保证跨决策唯一。完整 prepare 保持原整载荷哈希。
+      requestHash: lightPrepare
+        ? `request-lite:${preview.stableHash([
+            actorId,
+            String(actionOpportunity?.opportunityId || ''),
+            String(input?.seed ?? ''),
+            Number(visibleWorld?.回合 || 0),
+            frozenCandidates.map(candidate =>
+              candidateFingerprintMap[candidate.candidateId] || ''),
+          ])}`
+        : decisionRequestHash(requestPayload),
     };
-    const frozenRequest = deepFreeze(request);
+    // 轻 prepare 不深冻世界：deepFreeze 会 O(世界) 递归冻结每个对象，
+    // 而 runProvider 的防变异合同只要求 request 顶层冻结 + 其余载荷深冻。
+    let frozenRequest;
+    if (lightPrepare) {
+      for (const key of Object.keys(request)) {
+        if (key !== 'visibleWorld') deepFreeze(request[key]);
+      }
+      frozenRequest = Object.freeze(request);
+    } else {
+      frozenRequest = deepFreeze(request);
+    }
     const routeFactOwnershipIndex = r8BuildRouteFactOwnershipIndex(
       routeAnalysis.fullRoutesByUnit || {},
       {
@@ -30171,11 +30206,253 @@
     };
   }
 
+  // ===== R9 双层引擎（v0：Tier-1 廉价筛选骨架）=====
+  // 目标：7v7 五回合 5 秒（33ms/决策）。走 CANDIDATES_ONLY 轻 prepare，
+  // 本层只做纯算术打分——禁用清单：previewAction / 路线目录 / 包络 / 终局投影 / stableHash。
+  // P0 门（2026-07-26，24 案例）：meanRegret@3=0.2%、maxRegret@3=2.9%，
+  // 严格 containment@3=66.7% 未达 90%（剩余全为效用平局裁决分歧），
+  // 经确认按 regret 口径过门；后续质量门为整场战斗 A/B（终局胜负一致、
+  // 逐回合 utility-regret≤3%、CONFIRMED 不降、fatal=0），不再用单决策 containment。
+  const R9_CONTROL_KEYS = Object.freeze([
+    'skip_turn', 'cannot_act', 'cannot_react', 'silence', 'skill_seal', 'disarm',
+    '眩晕', '冰冻', '石化',
+  ]);
+  const R9_BASIC_EFFECT = Object.freeze({
+    原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击',
+  });
+
+  function r9SideOf(worldSnapshot, unit) {
+    const entry = worldEntries(worldSnapshot).find(item => item.unit === unit);
+    return entry ? String(entry.side || '').trim() : '';
+  }
+
+  function r9CheapScore(worldSnapshot, actor, candidate, intentMode) {
+    const declaration = candidate?.declaration || {};
+    const actionKind = String(declaration?.actionKind || '').trim().toUpperCase();
+    const skill = declaration?.skill || declaration?.raw_skill || null;
+    const targets = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
+      .map(id => findUnitInWorld(worldSnapshot, id))
+      .filter(Boolean);
+    const actorSide = r9SideOf(worldSnapshot, actor);
+    const actorHpMax = Math.max(1, preview.readHpMax(actor));
+    // 意图加权：守护/求生/点到为止 下，纯输出的价值被目标函数显著压低
+    const passiveIntent = /守护|求生|点到为止/.test(String(intentMode || ''));
+    const hostileScale = passiveIntent ? 0.45 : 1;
+    const guardScale = passiveIntent ? 1.6 : 1;
+
+    if (actionKind === 'PASS' || actionKind === 'PASS_OPPORTUNITY') return 0;
+    if (actionKind === 'DEFEND' || actionKind === 'EVADE') {
+      let incoming = 0;
+      for (const entry of worldEntries(worldSnapshot)) {
+        if (String(entry.side || '').trim() === actorSide) continue;
+        if (!preview.isAlive(entry.unit)) continue;
+        const raw = preview.calculateBaseDamage(R9_BASIC_EFFECT, entry.unit, actor) *
+          preview.estimateHitProbability(entry.unit, actor, R9_BASIC_EFFECT);
+        incoming = Math.max(incoming, raw);
+      }
+      const incomingPP = 100 * Math.min(incoming, preview.readHp(actor)) / actorHpMax;
+      return 0.35 * guardScale * incomingPP;
+    }
+
+    const effects = actionKind === 'BASIC_ATTACK' || !skill
+      ? [R9_BASIC_EFFECT]
+      : preview.collectEffects(skill);
+    let score = 0;
+    for (const effect of (effects || [])) {
+      const prototype = String(effect?.原型 || '').trim();
+      const effectTargets = targets.length ? targets : [null];
+      for (const target of effectTargets) {
+        if (prototype === '伤害结算' && target) {
+          if (r9SideOf(worldSnapshot, target) === actorSide) continue;
+          const hitProbability = preview.estimateHitProbability(actor, target, effect);
+          const raw = preview.calculateBaseDamage(effect, actor, target) * hitProbability;
+          const capped = Math.min(raw, Math.max(0, preview.readHp(target)));
+          score += hostileScale * 100 * capped / Math.max(1, preview.readHpMax(target));
+          if (raw >= preview.readHp(target) && preview.readHp(target) > 0) {
+            score += hostileScale * 12;
+          }
+          // 蓄力打断窗口：对正在蓄力的目标造成伤害有独立时机价值
+          if (target?.蓄力技能) score += 14 * hitProbability;
+        } else if (prototype === '资源变化') {
+          const resource = String(effect?.资源类型 || effect?.资源 || '').trim();
+          const amount = Math.max(0, Number(effect?.数值 ?? effect?.威力倍率) || 0);
+          const beneficiary = target || actor;
+          if (/HP|生命/i.test(resource) && amount > 0) {
+            const missing = Math.max(
+              0,
+              preview.readHpMax(beneficiary) - preview.readHp(beneficiary),
+            );
+            score += 100 * Math.min(amount, missing) /
+              Math.max(1, preview.readHpMax(beneficiary));
+          } else if (amount > 0) {
+            score += 3;
+          }
+        } else if (prototype === '护盾变化') {
+          const amount = Math.max(0, Number(effect?.数值 ?? effect?.威力倍率) || 0);
+          if (amount > 0) score += 100 * amount / actorHpMax * 0.8;
+        } else if (prototype === '状态施加' && target) {
+          const combatEffect = effect?.战斗效果 || {};
+          const isControl = R9_CONTROL_KEYS.some(key =>
+            Number(combatEffect?.[key]) > 0 ||
+            String(effect?.状态名称 || effect?.状态 || '').includes(key));
+          const hostile = r9SideOf(worldSnapshot, target) !== actorSide;
+          const applicationProbability =
+            0.7 * preview.estimateHitProbability(actor, target, effect);
+          if (isControl && hostile) {
+            score += 9 * applicationProbability;
+            if (target?.蓄力技能) score += 14 * applicationProbability;
+          } else if (!hostile) score += 3;
+          const dotRatio = Math.max(0, Number(combatEffect?.dot_damage_ratio) || 0) +
+            Math.max(0, Number(effect?.dot_damage_ratio) || 0);
+          const dotFlat = Math.max(0, Number(combatEffect?.dot_damage) || 0) +
+            Math.max(0, Number(effect?.dot_damage) || 0);
+          if (hostile && (dotRatio > 0 || dotFlat > 0)) {
+            const duration = Math.max(1, Number(effect?.持续回合 ?? effect?.duration ?? 1) || 1);
+            const perTick = dotFlat + preview.readHpMax(target) * dotRatio;
+            const capped = Math.min(perTick * duration, Math.max(0, preview.readHp(target)));
+            score += 100 * capped / Math.max(1, preview.readHpMax(target)) *
+              applicationProbability;
+          }
+        }
+      }
+    }
+    // 资源成本罚项：与普攻近价值并列时偏向零消耗选项
+    const costs = skill?.消耗 && typeof skill.消耗 === 'object' ? skill.消耗 : null;
+    if (costs) {
+      for (const [resource, rawCost] of Object.entries(costs)) {
+        const amount = Math.max(0, Number.parseFloat(String(rawCost ?? '')) || 0);
+        if (!(amount > 0)) continue;
+        const maximum = Math.max(1, Number(preview.readResourceMax(actor, resource)) || 1);
+        score -= 8 * Math.min(1, amount / maximum);
+      }
+    }
+    return score;
+  }
+
+  function runR9Provider(request = {}) {
+    const candidates = Array.isArray(request?.frozenCandidates)
+      ? request.frozenCandidates
+      : [];
+    const beliefState = cloneValue(request?.beliefState || {});
+    const strategyMemory = cloneValue(request?.strategyMemory || {});
+    if (!candidates.length) {
+      return {
+        decisionEngine: 'R9',
+        lostOpportunity: {
+          reasonCode: 'R9_NO_CANDIDATES',
+          reasonText: '无机械合法候选',
+        },
+        beliefState,
+        strategyMemory,
+        decisionProfile: { engine: 'R9', selectionMode: 'LOST_OPPORTUNITY' },
+      };
+    }
+    const worldSnapshot = request.visibleWorld;
+    const actor = findUnitInWorld(worldSnapshot, request.actorId);
+    const intentMode = String(request?.battleIntent?.mode || '').trim();
+    const locked = request?.playerLockedDeclaration || null;
+    // 反击窗口合同（COUNTER_ACTOR_SOURCE_INVALID 审计）：反击动作必须指向来源攻击者，
+    // 否则必须以 counterDeclineFallback 走正规拒绝流。r8 靠 counter 授权数据过滤；
+    // r9 在此按窗口来源直接收窄候选池。
+    const opportunity = request?.actionOpportunity || {};
+    const counterSourceId = String(opportunity?.sourceActorId || '').trim();
+    const isCounterWindow = counterSourceId && (
+      String(opportunity?.role || '').trim().toUpperCase() === 'COUNTER' ||
+      opportunity?.counterWindow === true
+    );
+    let counterDecline = false;
+    let pool = candidates;
+    if (!locked && isCounterWindow) {
+      const eligible = candidates.filter(candidate =>
+        (Array.isArray(candidate?.declaration?.targetIds)
+          ? candidate.declaration.targetIds
+          : []
+        ).some(id => String(id || '').trim() === counterSourceId));
+      if (eligible.length) {
+        pool = eligible;
+      } else {
+        counterDecline = true;
+        const baseline = candidates.find(candidate =>
+          ['PASS', 'PASS_OPPORTUNITY'].includes(
+            String(candidate?.declaration?.actionKind || '').trim().toUpperCase(),
+          )) || candidates[0];
+        pool = [baseline];
+      }
+    }
+    let rows;
+    if (locked) {
+      const lockedCandidate = candidates.find(candidate =>
+        matchesPlayerLockedDeclaration(candidate, locked, worldSnapshot));
+      if (!lockedCandidate) throw new Error('R9_PLAYER_LOCKED_CANDIDATE_MISSING');
+      rows = [{ candidate: lockedCandidate, score: 0, playerLocked: true }];
+    } else {
+      rows = pool
+        .map(candidate => ({
+          candidate,
+          score: actor ? r9CheapScore(worldSnapshot, actor, candidate, intentMode) : 0,
+          playerLocked: false,
+        }))
+        .sort((left, right) =>
+          right.score - left.score ||
+          String(left.candidate.candidateId).localeCompare(
+            String(right.candidate.candidateId),
+          ));
+    }
+    const winner = rows[0];
+    const winnerDeclaration = cloneValue(winner.candidate.declaration || {});
+    const actionName = String(
+      winnerDeclaration?.skill?.name ||
+      winnerDeclaration?.skill?.魂技名 ||
+      winnerDeclaration?.actionKind ||
+      '',
+    ).trim();
+    // 审计合同：行数 ≤3（SCORING_AUDIT_OVERSIZED），R9 分支要求字段存在且有限
+    const scoreAudit = rows.slice(0, 3).map(row => ({
+      candidateId: String(row.candidate.candidateId || ''),
+      actionKind: String(row.candidate.declaration?.actionKind || ''),
+      actorId: String(request.actorId || ''),
+      targetIds: cloneValue(row.candidate.declaration?.targetIds || []),
+      declaration: {
+        actionKind: String(row.candidate.declaration?.actionKind || ''),
+        targetIds: cloneValue(row.candidate.declaration?.targetIds || []),
+      },
+      objectiveUtility: row.score,
+      objectiveUtilityHEPP: row.score,
+      selected: row === winner,
+    }));
+    return {
+      decisionEngine: 'R9',
+      selected: {
+        candidateId: String(winner.candidate.candidateId || ''),
+        declaration: winnerDeclaration,
+        selectedActionName: actionName,
+        selectionMode: winner.playerLocked
+          ? 'PLAYER_LOCKED'
+          : counterDecline ? 'R9_COUNTER_DECLINE' : 'R9_TIER1_DIRECT',
+        playerLocked: winner.playerLocked === true,
+        counterDeclineFallback: counterDecline === true,
+        objectiveUtility: winner.score,
+        objectiveUtilityHEPP: winner.score,
+        vector: { objectiveUtilityHEPP: winner.score },
+      },
+      scoreAudit,
+      candidateCount: candidates.length,
+      beliefState,
+      strategyMemory,
+      decisionProfile: {
+        engine: 'R9',
+        tier: 'TIER1',
+        selectionMode: winner.playerLocked ? 'PLAYER_LOCKED' : 'R9_TIER1_DIRECT',
+      },
+    };
+  }
+
   const providerRegistry = Object.freeze({
     'legacy-baseline': request => decide(providerInput(request)),
     'r74-next-baseline': request => decideNext(providerInput(request)),
     'r8-shadow': request => runR8Provider(request),
     r8: request => runR8Provider(request),
+    r9: request => runR9Provider(request),
   });
 
   function runProvider(input = {}) {
