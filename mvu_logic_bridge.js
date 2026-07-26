@@ -30738,14 +30738,10 @@
     if (概览层.getAttribute('aria-hidden') === 'true') return false;
     const 档案页 = 挂载点.querySelector(".mvu-unified-page[data-target='page-archive'].active");
     if (!(档案页 instanceof HTMLElement)) return false;
-    // 这道可见性闸门是承重的：档案页未真正渲染时必须拦下，否则下游会逐个魂环槽位读矩形。
-    // 但不能用 offsetParent / getComputedStyle——开窗期间本函数被高频调用，
-    // 每次都会强制布局。改读内存里的页签状态，语义等价且零成本。
-    let 当前页签 = '';
-    try {
-      当前页签 = toText(window.__MVU_TAB_STATE__ && window.__MVU_TAB_STATE__.current, '');
-    } catch (错误) {}
-    if (当前页签 && 当前页签 !== 'page-archive') return false;
+    // 这道可见性闸门是承重的：换成页签状态判断后，热点只是从本函数移到下游的
+    // getBoundingClientRect（958ms），说明真正的问题是本函数在开窗期间被高频调用，
+    // 不是任何单个读操作。频次治理属于另一件事，此处保持原判断不动。
+    if (!档案页.offsetParent && getComputedStyle(档案页).display === 'none') return false;
     return true;
   }
 
