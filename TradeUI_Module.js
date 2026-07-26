@@ -24,6 +24,10 @@ const TradeStyles = `
     font-family: var(--font-cjk);
     display: flex;
     flex-direction: column;
+    /* 不设上限时整个模块会撑破详情宿主（实测 709px 塞进 536px），
+       trade-body 的 overflow-y:auto 因此从不接管滚动，提交按钮被推到折叠线下。 */
+    max-height: 100%;
+    min-height: 0;
   }
 
   .trade-module-scope .trade-tabs {
@@ -55,7 +59,8 @@ const TradeStyles = `
   }
 
   .trade-module-scope .trade-body {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -142,6 +147,10 @@ const TradeStyles = `
   }
 
   .trade-module-scope .action-btn {
+    /* 提交按钮固定在可视区底部，不随内容滚出视野 */
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
     width: 100%;
     margin-top: 20px;
     background: linear-gradient(90deg, rgba(228,201,111,0.1), rgba(228,201,111,0.3));
