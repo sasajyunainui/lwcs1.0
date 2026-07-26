@@ -30249,6 +30249,16 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   color: var(--战斗记录文字弱色);
 }
 
+/* 回应方的步骤缩进并带引导线，让"谁在回应谁"一眼可辨 */
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-step--response,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-step--response,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-step--response {
+  margin-left: 10px;
+  padding-left: 8px;
+  border-left: 2px solid color-mix(in srgb, var(--战斗主色) 32%, transparent);
+  color: var(--战斗记录文字弱色);
+}
+
 /* 预期兑现：确认 / 未发生 / 未执行 三态用符号与色彩区分，不用文字堆叠 */
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-chain-check,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-chain-check,

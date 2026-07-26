@@ -784,14 +784,15 @@
           + (reductions.length ? `（${reductions.join('；')}）` : '');
       }
       if (/miss/i.test(text(event?.result))) {
-        /* "落点偏离"暗示投射物，近身攻击用它就与机制不符。按 damageType 分别措辞。 */
-        const damageType = text(meta?.damageType);
-        const missPhrase = /近身|近战/.test(damageType)
-          ? '被躲开'
-          : /精神/.test(damageType)
-            ? '未能穿透心神'
-            : '落点偏离';
-        return `${actor}的【${action}】${missPhrase}，未命中${target || '目标'}`;
+        /* 未命中事件的 meta 不带 damageType（只有命中分支才写），
+           所以无法判断是近身还是远程——不能沿用"落点偏离"这种暗示投射物的措辞，
+           那会让 AI 把近身攻击写成投掷。改用不预设攻击方式的中性表述。
+           primaryOutcome 能区分"被闪避"与"单纯没打中"，这一点是可靠的。 */
+        const dodged = text(meta?.primaryOutcome) === 'dodged' ||
+          text(event?.primaryOutcome) === 'dodged';
+        return dodged
+          ? `${actor}的【${action}】被${target || '目标'}闪开`
+          : `${actor}的【${action}】未能命中${target || '目标'}`;
       }
       if (number(meta?.shieldAbsorb, 0) > 0) {
         return `${actor}的【${action}】命中${target || '目标'}，伤害被护盾完全吸收${Math.round(number(meta.shieldAbsorb, 0))}点`;
@@ -822,10 +823,15 @@
     }
     if (kind === 'state_apply') {
       const outcome = resultLabel(event);
+      const receiver = target || actor;
+      /* "获得【失去战斗力】"是自相矛盾的措辞。状态有正负之分，
+         对己方增益用"获得"，对敌方减益用"陷入"，都由施加方与承受方是否同阵营决定。 */
+      const selfBuff = receiver === actor;
+      const verb = selfBuff ? '获得' : '陷入';
       if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
-        return `${actor}通过【${action}】尝试使${target || actor}获得【${namedState || '状态'}】，结果为${outcome}`;
+        return `${actor}试图用【${action}】让${receiver}${verb}【${namedState || '状态'}】，但${outcome}`;
       }
-      return `${actor}通过【${action}】使${target || actor}获得【${namedState || '状态'}】${duration > 0 ? `，持续${duration}回合` : ''}`;
+      return `${actor}用【${action}】让${receiver}${verb}【${namedState || '状态'}】${duration > 0 ? `，持续${duration}回合` : ''}`;
     }
     if (kind === 'state_remove') return `${target || actor}移除【${namedState || action}】`;
     if (kind === 'state_expire') return `${target || actor}的【${namedState || action}】到期`;
@@ -887,7 +893,13 @@
           : winner === 'draw' ? '达到回合上限，双方未分胜负'
             : '战斗目标完成裁断';
     }
-    return `${actor}${target && target !== actor ? `对${target}` : ''}完成【${action}】结算，结果为${result}`;
+    /* 兜底句原本是"完成【X】结算，结果为成功"这种纯日志腔，
+       而且对"让过行动"这类不存在失败的动作，"结果为成功"会让人以为它可能失败。
+       成功时直接陈述动作本身，只有非成功结果才需要点出结果。 */
+    const 指向 = target && target !== actor ? `对${target}` : '';
+    return ['成功', '已完成', '已生效'].includes(result)
+      ? `${actor}${指向}使出【${action}】`
+      : `${actor}${指向}使出【${action}】，${result}`;
   }
 
   function buildFact(
@@ -1937,29 +1949,60 @@
    * （R8 的 SEEDED_SOFTMAX）表达成任何引擎都能回答的布尔量。没有它，战报会把随机抽样
    * 说成"因为它更好"，这是对实际链路最严重的失真。
    */
+  /*
+   * 排除码说明表。
+   *
+   * 必须明确：下面三个字段全部是对引擎判定条件的**静态转述**，不是逐次决策的证据提取。
+   * draft 里每个候选只带一个 rejectionCode 字符串，判定当时的机会对象、机会列表、
+   * 排期事件、资源消耗都没有随之落盘，所以这里不可能给出"这一次为什么"的实证。
+   *
+   * 由此产生一条硬约束：**转述不得引入判定条件之外的事实断言**。
+   * 反例（已修正）：把 ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED 写成"这一刻没有人在攻击他"——
+   * 该码判的是本次行动机会的授权类型不属于防御类，实测同一回合对手确实在攻击，
+   * 这句转述凭空断言了一个 draft 无法支持、且被 ledger 证伪的世界状态。
+   *
+   * text    给 AI 与开发者：贴近判定条件本身
+   * player  给玩家：只换措辞，不加信息
+   * checked 折叠区展开：引擎实际检查了什么，供追查
+   */
   const r8RejectionChecks = Object.freeze({
     ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED: {
       text: '没有可用的防御窗口',
+      /* 这里曾经写成"这一刻没有人在攻击他"——那是错的。
+         r8HasDefenseWindow 判的是"本次行动机会的授权类型是否属于防御类"，
+         与"有没有人在攻击他"是两回事：实测同一回合里对手确实在攻击，
+         但行动者自己那次机会的 grantType 是 natural，防御依然无从生效。
+         而 grantType 不在 draft 里（只有 opportunityId 字符串），无法据此断言世界状态，
+         所以玩家版只陈述可确证的部分，不补一个查不到的原因。 */
+      player: '防御和闪避在这次出手机会上无法生效',
       checked: '本次机会是否为防御授权、是否存在来袭动作、是否为反击窗口、机会列表与排期事件中是否存在防御授权',
     },
     CONTROL_WINDOW_NOT_REALIZABLE: {
       text: '控制效果落不到目标的真实行动窗口上',
+      player: '就算控制住对方，对方本来也没有会被打断的行动',
       checked: '路线含行动取消效果，但行动池投影里没有可兑现的取消项，且直接生命轨迹为零',
     },
     SUMMON_WINDOW_NOT_REALIZABLE: {
       text: '召唤物没有可兑现的行动窗口',
+      player: '召唤出来也来不及行动',
       checked: '路线含召唤窗口效果，但行动池投影里没有可兑现的召唤项，且无终局、无直接生命轨迹、无其他行动池收益',
     },
     ZERO_MARGINAL_WITH_COST: {
       text: '要付出代价但没有收益',
+      /* 代价可能是行动机会、反应机会、资源或不可逆资产四者之一，
+         但 declaration 在 draft 里只留了 actionId/actorId/actionKind/targetIds，
+         没有 resourceCosts，无法判断是哪一种——所以不能写死成"占掉出手机会"。 */
+      player: '要付出代价，却换不到任何好处',
       checked: '目标效用不大于零，同时该动作会消耗行动机会、反应机会或资源',
     },
     UNCOMPENSATED_SELF_DESTRUCTION: {
       text: '会让自己倒下且换不来终局',
+      player: '这么打自己会先倒下，而且换不来胜负',
       checked: '生命轨迹显示行动者自身生命归零，且该路线不满足终局条件',
     },
     AVOIDABLE_IRREVERSIBLE_OVERREACH_SELECTED: {
       text: '存在同等收益但浪费更少的替代方案',
+      player: '有别的打法效果一样，但不会白白浪费伤害',
       checked: '该路线造成阈值后溢出击杀，而另有候选收益不更低、最坏损失不更高、溢出更少且不产生同样的击杀',
     },
   });
@@ -1972,6 +2015,14 @@
 
   function rejectionReasonChecked(reasonCode = '') {
     return text(r8RejectionChecks[text(reasonCode)]?.checked);
+  }
+
+  /* 玩家版排除原因：必须自带"为什么"，不能只是把内部码换个说法。
+     没有玩家版模板时回落到 AI 版，宁可生硬也不编。 */
+  function rejectionReasonPlayerText(reasonCode = '') {
+    const code = text(reasonCode);
+    if (!code) return '';
+    return text(r8RejectionChecks[code]?.player) || rejectionReasonText(code);
   }
 
   function adaptR8DecisionTrace(decision = {}, directory = new Map()) {
@@ -1991,6 +2042,7 @@
         status: isSelected ? 'SELECTED' : reasonCode ? 'EXCLUDED' : 'CONSIDERED',
         reasonCode,
         reasonText: rejectionReasonText(reasonCode),
+        reasonPlayerText: rejectionReasonPlayerText(reasonCode),
         reasonChecked: rejectionReasonChecked(reasonCode),
         rank: Number.isFinite(Number(candidate?.normalizedUtility))
           ? Number(candidate.normalizedUtility)
@@ -4093,6 +4145,180 @@
    * 决策匹配沿用 findDecisionAnchor。本函数只负责把这些既有部件按因果顺序串成一条链，
    * 并补上原先完全缺失的两块：决策发生时的局面，和事后的预测/实际对账。
    */
+  /*
+   * 结算步骤：把一次行动内部的事实还原成有序因果序列。
+   *
+   * 原先 responseSummary / resultSummary / continuationSummary 三个字符串各自用 `；` 把事实拼平，
+   * 时序与因果全部丢失——"王金玺命中谢邂160点；谢邂命中王金玺275点"读起来像对攻，
+   * 实际是「王金玺攻击 → 谢邂防御 → 反击机会成立 → 谢邂反击」。
+   * ledger 里有 sequence 全序和 sourceActionId 因果边，这里按它们重建顺序，
+   * 并标出每一步由谁做出，让"谁在回应谁"从结构上就能读出来。
+   */
+  const settlementStepRoles = Object.freeze({
+    action_start: 'DECLARE',
+    charge_start: 'DECLARE',
+    charge_progress: 'DECLARE',
+    action_cost: 'COST',
+    reaction_window: 'WINDOW',
+    counter_window: 'WINDOW',
+    defend: 'RESPOND',
+    dodge: 'RESPOND',
+    guard: 'RESPOND',
+    counter: 'COUNTER',
+    hit_result: 'HIT',
+    state_apply: 'EFFECT',
+    shield_create: 'EFFECT',
+    shield_break: 'EFFECT',
+    summon_create: 'EFFECT',
+    resource_change: 'EFFECT',
+    effect_resolved: 'EFFECT',
+    item_consume: 'EFFECT',
+    create: 'EFFECT',
+    charge_interrupt: 'CONTINUE',
+    blocked_action: 'CONTINUE',
+    lost_opportunity: 'CONTINUE',
+    state_remove: 'CONTINUE',
+    state_expire: 'CONTINUE',
+    summon_end: 'CONTINUE',
+    target_fail: 'CONTINUE',
+  });
+
+  /*
+   * 玩家版措辞。
+   *
+   * 与 AI 版的取舍方向相反：AI 版要精确到基数、概率、折减分解，越无歧义越好；
+   * 玩家版要回答"这对我意味着什么"，术语（窗口、判定、姿态系数）一律不出现，
+   * 比例换成能直接感知的说法，并且只保留玩家关心的量。
+   * 任何一句玩家版都必须能对回同一条事实，不允许为了顺口而增删事实。
+   */
+  function ratioWords(ratio) {
+    const percent = Math.round(number(ratio, 0) * 100);
+    if (percent >= 70) return '大部分';
+    if (percent >= 45) return '大约一半';
+    if (percent >= 25) return '一部分';
+    if (percent > 0) return '一小部分';
+    return '';
+  }
+
+  function playerStepText(rawEvent = {}, fact = {}) {
+    const kind = text(rawEvent?.eventKind);
+    const meta = rawMeta(rawEvent);
+    const actor = text(fact?.actorName);
+    const target = text(fact?.targetName);
+    const action = text(fact?.actionName);
+
+    if (kind === 'defend' || kind === 'guard') {
+      const multiplier = number(meta?.damageMultiplier, NaN);
+      const words = Number.isFinite(multiplier) ? ratioWords(1 - multiplier) : '';
+      return target && target !== actor
+        ? `${actor}架住了${target}的攻击${words ? `，能挡下${words}伤害` : ''}`
+        : `${actor}摆出防御架势${words ? `，能挡下${words}伤害` : ''}`;
+    }
+    if (kind === 'counter_window') {
+      const opened = !/FAILURE|missed/i.test(text(rawEvent?.resultState || rawEvent?.result));
+      return opened ? `${actor}抓住了反击的机会` : `${actor}没能抓住反击机会`;
+    }
+    if (kind === 'reaction_window') {
+      return /FAILURE|unavailable/i.test(text(rawEvent?.resultState || rawEvent?.result))
+        ? `${actor}来不及做出反应`
+        : `${actor}还来得及做出反应`;
+    }
+    if (kind === 'hit_result') {
+      const applied = number(rawEvent?.appliedDamage ?? meta?.appliedDamage, 0);
+      if (applied > 0) {
+        const raw = number(meta?.rawDamage, NaN);
+        const absorbed = number(meta?.shieldAbsorb, 0);
+        const 备注 = [];
+        /* 只在折减确实发生、且幅度值得一提时才说，避免每一击都拖一句解释。 */
+        if (Number.isFinite(raw) && raw > applied + absorbed + 0.5) {
+          备注.push(`对方的防御卸掉了不少力道`);
+        }
+        if (absorbed > 0) 备注.push(`护盾替他挡下${Math.round(absorbed)}点`);
+        if (meta?.intentLethalPrevented === true) 备注.push('手下留情没有取其性命');
+        return `${actor}打中${target}，扣掉${applied}点生命`
+          + (备注.length ? `（${备注.join('，')}）` : '');
+      }
+      if (/miss/i.test(text(rawEvent?.result))) {
+        return text(meta?.primaryOutcome) === 'dodged'
+          ? `${target}闪开了${actor}的攻击`
+          : `${actor}没有打中${target}`;
+      }
+      if (absorbedShieldOnly(meta)) return `${actor}打中了${target}，但被护盾全部挡下`;
+      return `${actor}打中了${target}，却没造成实质伤害`;
+    }
+    if (kind === 'action_cost' || kind === 'resource_change') {
+      const amount = Math.abs(number(meta?.amount ?? meta?.delta, 0));
+      const resource = text(meta?.resource) || '资源';
+      if (!amount) return '';
+      return number(meta?.delta, 0) > 0
+        ? `${actor}恢复了${amount}点${resource}`
+        : `${actor}消耗${amount}点${resource}`;
+    }
+    if (kind === 'charge_start' || kind === 'charge_progress') {
+      const remaining = number(meta?.remainingOpportunityCount, NaN);
+      return Number.isFinite(remaining) && remaining > 0
+        ? `${actor}正在蓄力【${action}】，还要等${remaining}次行动机会`
+        : `${actor}正在蓄力【${action}】`;
+    }
+    if (kind === 'charge_interrupt') return `${actor}的蓄力被打断了`;
+    if (kind === 'lost_opportunity' || kind === 'blocked_action') return `${actor}这次没能行动`;
+    return '';
+  }
+
+  function absorbedShieldOnly(meta = {}) {
+    return number(meta?.shieldAbsorb, 0) > 0;
+  }
+
+  function buildSettlementSteps(exchange = {}, factsById = new Map(), rawEventOf = () => null) {
+    const declarationFactIds = new Set();
+    const rows = (Array.isArray(exchange?.factIds) ? exchange.factIds : [])
+      .map(factId => ({ fact: factsById.get(text(factId)), raw: rawEventOf(factId) }))
+      .filter(entry => entry.fact && entry.raw);
+
+    rows.forEach(entry => {
+      if (['action_start', 'charge_start'].includes(text(entry.raw?.eventKind))) {
+        declarationFactIds.add(text(entry.raw?.actionId));
+      }
+    });
+
+    return rows
+      .filter(entry => {
+        const kind = text(entry.raw?.eventKind);
+        /* action_cost 是 auditOnly 审计事件，真正扣减写在同 actionId 的 resource_change，
+           两条都叙述会变成同一笔消耗说两遍。 */
+        if (kind === 'action_cost') return false;
+        /* complete 只是动作收尾标记，同一动作已有声明步骤时它不带新信息，
+           留着会出现"采取【让过行动】"后面紧跟"使出【让过行动】"的重复叙述。 */
+        if (kind === 'complete' && declarationFactIds.has(text(entry.raw?.actionId))) return false;
+        if (kind === 'round_summary') return false;
+        /* 反击动作本身已经由它自己的 action_start + hit_result 完整叙述，
+           counter 事件再说一遍"以【X】反击Y"就成了重复。
+           但"放弃反击"没有其他事实承载，必须保留。 */
+        if (kind === 'counter' && !/declined|放弃/i.test(`${entry.raw?.result} ${entry.fact?.summary}`)) return false;
+        return true;
+      })
+      .sort((left, right) =>
+        number(left.raw?.sequence, 0) - number(right.raw?.sequence, 0) ||
+        text(left.fact?.factId).localeCompare(text(right.fact?.factId))
+      )
+      .map(entry => ({
+        factId: text(entry.fact.factId),
+        sequence: number(entry.raw?.sequence, 0),
+        eventKind: text(entry.raw?.eventKind),
+        stepRole: settlementStepRoles[text(entry.raw?.eventKind)] || 'OTHER',
+        actorName: text(entry.fact.actorName),
+        targetName: text(entry.fact.targetName),
+        /* 这一步是不是由交锋发起者以外的人做出的——反击、格挡、闪避都靠它识别，
+           渲染时据此加"对此"之类的回应连接词，而不是让读者自己猜谁在回应谁。 */
+        byResponder: text(entry.fact.actorName) !== text(exchange?.actorName),
+        text: text(entry.fact.summary),
+        /* 玩家版没有覆盖到的事件类型回落到 AI 版，宁可稍显生硬也不能凭空造句。 */
+        playerText: playerStepText(entry.raw, entry.fact) || text(entry.fact.summary),
+        numericTokens: Array.isArray(entry.fact.numericTokens) ? entry.fact.numericTokens : [],
+      }))
+      .filter(step => step.text);
+  }
+
   function decisionKindOf(decision = {}) {
     const selected = decision?.selected || {};
     if (decision?.lostOpportunity?.reasonCode) return 'LOST_OPPORTUNITY';
@@ -4199,12 +4425,8 @@
         lostOpportunityReason: text(decisions[0]?.lostOpportunityReason),
         settlement: {
           declarationSummary: text(exchange?.action?.summary),
-          responseSummary: text(exchange?.responseSummary),
-          resultSummary: text(exchange?.resultSummary),
-          continuationSummary: text(exchange?.continuationSummary),
-          responseFactIds: unique(exchange?.responseFactIds || []),
-          resultFactIds: unique(exchange?.resultFactIds || []),
-          continuationFactIds: unique(exchange?.continuationFactIds || []),
+          /* 有序因果步骤取代原先三条 `；` 拼接的摘要串。 */
+          steps: buildSettlementSteps(exchange, factsById, rawEventOf),
         },
         targetGroups: Array.isArray(exchange?.targetGroups) ? exchange.targetGroups : [],
         reconciliation,
@@ -4325,13 +4547,27 @@
         lines.push(`  注：引擎评分更高的是${node.decision.topRankedName}，本次在可接受范围内选了当前动作`);
       }
 
-      [
-        node?.settlement?.responseSummary,
-        node?.settlement?.resultSummary,
-        node?.settlement?.continuationSummary,
-      ].map(text).filter(Boolean).forEach(summary => lines.push(`  ${summary}`));
+      /* 按真实时序逐步输出，一步一行。回应方的步骤加"对此"前缀，
+         让"谁在回应谁"从文本上直接可读，而不是靠 AI 猜并列分句的关系。 */
+      const steps = Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [];
+      let 上一步是发起方 = true;
+      steps.forEach(step => {
+        if (step.stepRole === 'DECLARE' && step.actorName === node.actorName) return;
+        const 回应前缀 = step.byResponder && 上一步是发起方 ? '对此，' : '';
+        lines.push(`  ${回应前缀}${step.text}`);
+        上一步是发起方 = !step.byResponder;
+      });
+      if (!steps.length && text(node?.settlement?.declarationSummary)) {
+        lines.push(`  ${text(node.settlement.declarationSummary)}`);
+      }
 
+      /* 对账否定行只在结算步骤没覆盖到时才补。
+         若判定 MISSED 所依据的事实已经被某个步骤叙述过（例如"未能命中X"），
+         再输出一句"攻击未命中，未造成伤害"就是同一件事说两遍。 */
+      const 已叙述事实 = new Set(steps.map(step => step.factId));
       (node?.reconciliation || [])
+        .filter(row => !(Array.isArray(row?.actualFactIds) ? row.actualFactIds : [])
+          .some(factId => 已叙述事实.has(text(factId))))
         .map(aiDenialLine)
         .filter(Boolean)
         .forEach(line => lines.push(`  ${line}`));

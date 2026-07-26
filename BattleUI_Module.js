@@ -9722,21 +9722,39 @@ class BattleUIComponent {
           TERMINAL: '终局',
         });
 
+        /* 玩家版只呈现"本来想做但没做到"的部分。
+           已兑现的效果结算步骤里已经逐条叙述过（"打中X，扣掉160点"），
+           在这里再列一遍"伤害 X 已确认"是同一件事说两遍，还会让玩家以为是两次伤害。 */
+        const 未兑现说法 = Object.freeze({
+          HP_DELTA: '预期的伤害没有打出',
+          SCHEDULED_HP_DELTA: '预期的持续伤害没有挂上',
+          SHIELD_DELTA: '预期的护盾没有建立',
+          STATE_CHANGED: '状态没能加上',
+          ACTION_CANCELLED: '没能打断对方的行动',
+          SUMMON_WINDOW: '召唤没有成功',
+          RESOURCE_OPTION_CHANGED: '预期的资源变化没有发生',
+          PAYMENT: '消耗没有扣除',
+          TERMINAL: '没能就此分出胜负',
+        });
+
         function 渲染因果链对账行(row = {}) {
           const status = String(row?.status || '').trim();
-          const label = 对账状态标签[status];
-          if (!label) return '';
-          const kind = 对账种类标签[String(row?.kind || '').trim()] || String(row?.kind || '');
+          if (status !== 'MISSED' && status !== 'PREEMPTED') return '';
+          const kind = String(row?.kind || '').trim();
+          const 说法 = 未兑现说法[kind] || `${对账种类标签[kind] || kind}没有兑现`;
           const target = String(row?.targetName || '').trim();
-          const detail = status === 'CONFIRMED' && Number.isFinite(Number(row?.magnitude?.applied))
-            ? `${Number(row.magnitude.applied)}`
-            : String(row?.expected?.stateName || '').trim();
+          const stateName = String(row?.expected?.stateName || '').trim();
+          const 补充 = status === 'PREEMPTED' ? '（这次行动没能打出去）' : '';
+          /* 目标要放在说法前面，"对王金玺 预期的伤害没有打出"才是自然语序；
+             放后面会读成"预期的伤害没有打出 对王金玺"。 */
+          const 正文 = [
+            target ? `对${target}` : '',
+            stateName ? `${说法}：【${stateName}】` : 说法,
+            补充,
+          ].filter(Boolean).join('');
           return `<li class="battle-chain-check battle-chain-check--${status.toLowerCase()}">`
-            + `<span class="battle-chain-check-mark" aria-hidden="true">${label.mark}</span>`
-            + `<span class="battle-chain-check-kind">${htmlEscapeText(kind)}</span>`
-            + (target ? `<span class="battle-chain-check-target">${htmlEscapeText(target)}</span>` : '')
-            + (detail ? `<b class="battle-chain-check-value">${htmlEscapeText(detail)}</b>` : '')
-            + `<span class="battle-chain-check-status">${htmlEscapeText(label.text)}</span>`
+            + `<span class="battle-chain-check-mark" aria-hidden="true">${对账状态标签[status].mark}</span>`
+            + `<span class="battle-chain-check-kind">${htmlEscapeText(正文)}</span>`
             + '</li>';
         }
 
@@ -9762,8 +9780,15 @@ class BattleUIComponent {
                   + `<b>${htmlEscapeText(candidate?.name || '候选')}</b>${原因}${检查}</li>`;
               })
               .join('');
+            /* 首个阶段的 before 恒为 0（还没有候选），写成"0 → 10"玩家会问 0 是什么，
+               这一阶段直接陈述产出数量。 */
             const 收敛 = (Array.isArray(trace.narrowing) ? trace.narrowing : [])
-              .map(step => `<li><span>${htmlEscapeText(step?.stage || '')}</span><b>${Math.max(0, Number(step?.before || 0))} → ${Math.max(0, Number(step?.after || 0))}</b></li>`)
+              .map(step => {
+                const before = Math.max(0, Number(step?.before || 0));
+                const after = Math.max(0, Number(step?.after || 0));
+                const 变化 = before > 0 ? `${before} → ${after}` : `${after}`;
+                return `<li><span>${htmlEscapeText(step?.stage || '')}</span><b>${变化}</b></li>`;
+              })
               .join('');
             const 非最优 = trace.wasOptimal === false && trace.topRankedName
               ? `<p class="battle-chain-suboptimal">引擎评分更高的是${htmlEscapeText(trace.topRankedName)}，本次在可接受范围内选了当前动作</p>`
@@ -9804,24 +9829,31 @@ class BattleUIComponent {
             .map(charge => `<li>${htmlEscapeText(charge.actorName)}蓄力中【${htmlEscapeText(charge.actionName)}】，下个行动窗口即可打出</li>`)
             .join('');
 
+          /* 玩家版排除原因自带"为什么"，避免读到"没有防御窗口"却不知道为什么没有。 */
           const 排除 = (Array.isArray(node?.decision?.candidates) ? node.decision.candidates : [])
-            .filter(candidate => candidate?.status === 'EXCLUDED' && candidate?.reasonText)
+            .filter(candidate => candidate?.status === 'EXCLUDED' && (candidate?.reasonPlayerText || candidate?.reasonText))
             .slice(0, 2)
-            .map(candidate => `<li>未选${htmlEscapeText(candidate.name)}：${htmlEscapeText(candidate.reasonText)}</li>`)
+            .map(candidate => `<li>没选${htmlEscapeText(candidate.name)}：${htmlEscapeText(candidate.reasonPlayerText || candidate.reasonText)}</li>`)
             .join('');
 
-          const 结算明细 = [
-            node?.settlement?.responseSummary,
-            node?.settlement?.resultSummary,
-            node?.settlement?.continuationSummary,
-          ].map(value => String(value || '').trim()).filter(Boolean);
-          /* 蓄力、让过这类动作没有结算明细，此时声明本身就是全部内容——
+          /* 结算按真实时序逐步渲染。回应方的步骤缩进并标记，
+             让"谁在回应谁"一眼可辨，而不是读一堆并列句自己拼因果。 */
+          const steps = Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [];
+          const 结算明细 = steps
+            .filter(step => !(step.stepRole === 'DECLARE' && step.actorName === 行动者))
+            .map(step => {
+              const 文本 = String(step.playerText || step.text || '').trim();
+              if (!文本) return '';
+              return `<p class="battle-chain-step${step.byResponder ? ' battle-chain-step--response' : ''}">${htmlEscapeText(文本)}</p>`;
+            })
+            .filter(Boolean);
+          /* 蓄力、让过这类动作没有后续步骤，此时声明本身就是全部内容——
              不兜底会渲染出一张只有标题的空卡。 */
           if (!结算明细.length) {
             const 声明 = String(node?.settlement?.declarationSummary || '').trim();
-            if (声明) 结算明细.push(声明);
+            if (声明) 结算明细.push(`<p>${htmlEscapeText(声明)}</p>`);
           }
-          const 结算 = 结算明细.map(value => `<p>${htmlEscapeText(value)}</p>`).join('');
+          const 结算 = 结算明细.join('');
 
           const 对账 = (Array.isArray(node?.reconciliation) ? node.reconciliation : [])
             .map(渲染因果链对账行)
@@ -9852,7 +9884,7 @@ class BattleUIComponent {
             + (排除 ? `<section class="battle-chain-section battle-chain-section--why"><h4>为什么</h4><ul>${排除}</ul></section>` : '')
             + 失机
             + (结算 ? `<section class="battle-chain-section battle-chain-section--settle"><h4>结算</h4>${结算}</section>` : '')
-            + (对账 ? `<section class="battle-chain-section battle-chain-section--check"><h4>预期兑现</h4><ul class="battle-chain-checks">${对账}</ul></section>` : '')
+            + (对账 ? `<section class="battle-chain-section battle-chain-section--check"><h4>没能做到</h4><ul class="battle-chain-checks">${对账}</ul></section>` : '')
             + (数字 ? `<div class="battle-preview-report-badges">${数字}</div>` : '')
             + 渲染因果链判定依据(node)
             + '</article>';
