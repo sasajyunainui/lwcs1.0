@@ -4841,6 +4841,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
 }
 
 .mvu-editor-hint-badge {
+  position: relative;
   flex: 0 0 auto;
   width: 15px;
   height: 15px;
@@ -4864,9 +4865,13 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   content: attr(data-hint-text);
   position: absolute;
   z-index: 30;
-  max-width: min(320px, 78vw);
-  margin-top: 18px;
-  margin-left: -8px;
+  /* 徽标只有 15px 宽，绝对定位子元素会收缩到父宽导致一字一行；
+     必须用 max-content 撑开再限最大宽。 */
+  top: 100%;
+  left: 0;
+  width: max-content;
+  max-width: min(300px, 60vw);
+  margin-top: 6px;
   padding: 7px 10px;
   border-radius: 8px;
   border: 1px solid rgba(120, 220, 255, 0.28);
