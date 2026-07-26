@@ -61,6 +61,7 @@
   let r8TerminalRouteSignatureCache = new WeakMap();
   let r8TerminalCanonicalRouteSignatureCache = new WeakMap();
   let r8TerminalConditionUnitIdsCache = new WeakMap();
+  let r8ConditionMembershipCache = new WeakMap();
   let r8TerminalCanonicalRouteKeyCache = new Map();
   let r8TerminalRootCanonicalSeen = new Map();
   let r8TerminalIdentityObservations = [];
@@ -209,6 +210,7 @@
     r8TerminalRouteSignatureCache = new WeakMap();
     r8TerminalCanonicalRouteSignatureCache = new WeakMap();
     r8TerminalConditionUnitIdsCache = new WeakMap();
+    r8ConditionMembershipCache = new WeakMap();
     r8TerminalRootCanonicalSeen = new Map();
     r8TerminalIdentityObservations = [];
     r8RouteMechanicalSignatureCache = new WeakMap();
@@ -24787,6 +24789,28 @@
     return r8ObjectiveContext(request).groups;
   }
 
+  // 条件对单位的命中结果只由 (condition, unitProfile) 决定：
+  // 判定读的是 unitProfile 的 id/name/side 与 conditionProfile 的 expectedSide/targetIds，
+  // 三者在一个 objectiveContext 内都不变。因此每个条件的命中单位集合只需算一次。
+  // 与 A1 同一数据源、同一缓存模式（A1 已过 phase1/3/7）。
+  function r8ConditionUnitMembership(objectiveContext, condition) {
+    let byCondition = r8ConditionMembershipCache.get(objectiveContext);
+    if (!byCondition) {
+      byCondition = new Map();
+      r8ConditionMembershipCache.set(objectiveContext, byCondition);
+    }
+    let members = byCondition.get(condition);
+    if (members) return members;
+    members = new Set();
+    objectiveContext.unitProfilesById.forEach(profile => {
+      if (r8ConditionMatchesUnitProfile(objectiveContext, condition, profile)) {
+        members.add(profile.id);
+      }
+    });
+    byCondition.set(condition, members);
+    return members;
+  }
+
   function r8ConditionMatchesUnit(
     request = {},
     condition = {},
@@ -24798,6 +24822,10 @@
       objectiveContext.unitProfilesById.get(unitIdText) ||
       objectiveContext.unitProfilesByName.get(unitIdText);
     if (!unitProfile) return false;
+    return r8ConditionUnitMembership(objectiveContext, condition).has(unitProfile.id);
+  }
+
+  function r8ConditionMatchesUnitProfile(objectiveContext, condition, unitProfile) {
     const conditionProfile = objectiveContext.conditionProfiles.get(condition) || {
       expectedSide: String(condition?.side || '').trim().toUpperCase(),
       targetIds: new Set(

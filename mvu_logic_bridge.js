@@ -1684,7 +1684,7 @@
               </div>
               <div class="mvu-inventory-workbench inventory-definition-layout">
                 <div class="archive-card inventory-instance-panel mvu-inventory-registry">
-                  <div class="archive-card-head"><div class="archive-card-title">物资图谱</div></div>
+                  <div class="archive-card-head"><div class="archive-card-title">背包</div></div>
                   <div class="mvu-inventory-registry-scroll">
                     <div class="inventory-scroll-shell">${makeInventoryGrid([], { className: 'mvu-inventory-grid' })}</div>
                   </div>
@@ -1692,7 +1692,7 @@
                 <div class="archive-card inventory-definition-panel mvu-inventory-definition-console">
                   <div class="mvu-inventory-inspector inventory-detail-terminal inventory-detail-terminal-empty">
                     <div class="mvu-inventory-inspector-head">
-                      <div><b>未持有物品</b><span>当前背包暂无物资</span></div>
+                      <div><b>背包是空的</b><span>还没有任何物品</span></div>
                     </div>
                     <div class="mvu-inventory-inspector-scroll">
                       <div class="inventory-detail-quote">暂无说明</div>
@@ -4008,7 +4008,7 @@
     if (!物品名 || 物品名 === '__new__') {
       return `<div class="mvu-inventory-inspector inventory-detail-terminal inventory-detail-terminal-empty">
         <div class="mvu-inventory-inspector-head">
-          <div><b>未持有物品</b><span>当前背包暂无物资</span></div>
+          <div><b>背包是空的</b><span>还没有任何物品</span></div>
         </div>
         <div class="mvu-inventory-inspector-scroll">
           <div class="inventory-detail-quote">暂无说明</div>
@@ -15723,6 +15723,7 @@
   const SKILL_DESIGNER_RESOURCE_TYPE_OPTIONS = Object.freeze(['无', '魂力', '精神力', '体力', '混合']);
   const SKILL_DESIGNER_COST_RESOURCE_KEYS = Object.freeze(['魂力', '精神力', '体力']);
   const 技能设计台参数提示表 = Object.freeze({
+    威力: '打出去的基础威力',
     威力倍率: '打出去的基础威力',
     对应等级: '物品或装备自身等级基准；非伤害物品效果超过该等级无效',
     强度倍率: '这招压出去的力道',
@@ -22946,13 +22947,13 @@
         ];
       case '单体伤害':
         return [
-          createSkillDesignerNumberParam('powerRatio', '威力倍率', '140'),
+          createSkillDesignerNumberParam('powerRatio', '威力', '140'),
           createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
           createSkillDesignerTextParam('range', '作用范围', '单体 / 直线 / 点杀'),
         ];
       case '群体伤害':
         return [
-          createSkillDesignerNumberParam('powerRatio', '威力倍率', '110'),
+          createSkillDesignerNumberParam('powerRatio', '威力', '110'),
           createSkillDesignerTextParam('range', '作用半径', '半径5米'),
           createSkillDesignerNumberParam('hitCount', '攻击段数', '1', '1'),
         ];
@@ -23919,6 +23920,8 @@
       const 状态选项 = 读取技能设计台原型字段选项('状态施加', '状态').filter(状态 => 技能设计台状态施加是负面语义(状态));
       return [{ label: '交出状态', options: ['任意负面', ...状态选项] }];
     }
+    // 护盾模式是严格三值枚举：结构校验对非法值直接 throw，不能留成自由输入框。
+    if (原型名 === '护盾变化' && 字段名 === '护盾模式') return ['正向护盾', '斩盾', '窃盾'];
     if (原型名 === '状态移除' && 字段名 === '匹配原型') return ['无', '资源变化', '护盾变化'];
     if (原型名 === '状态移除' && 字段名 === '资源') return ['生命'];
     if (原型名 === '机制授予' && 字段名 === '触发条件') {
@@ -39654,7 +39657,7 @@
               <div class="mvu-inventory-workbench inventory-definition-layout${定义编辑展开 ? ' is-editor-open' : ''}">
                 <div class="archive-card inventory-instance-panel mvu-inventory-registry">
                   <div class="archive-card-head">
-                    <div class="archive-card-title">物资图谱</div>
+                    <div class="archive-card-title">背包</div>
                     <div class="inventory-instance-actions">
                       ${背包条目列表.length ? `<span class="state-tag live">${背包条目列表.length} 件</span>` : ''}
                     </div>

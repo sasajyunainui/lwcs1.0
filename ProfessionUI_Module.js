@@ -2632,7 +2632,7 @@ class ProfessionUIComponent {
   }
 
   渲染材料空槽HTML(配置 = {}) {
-    const 文本 = 配置.requiresMaterials ? '未检测到可用材料' : '材料槽可留空';
+    const 文本 = 配置.requiresMaterials ? '需要材料才能开工，背包里暂时没有可用的' : '材料槽可留空';
     return `
       <div class="prof-empty-slots">
         <div class="prof-empty-slot"></div>
