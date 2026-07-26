@@ -247,6 +247,10 @@
         const summonName = text(meta?.summonName || event?.summonName || event?.createdName || event?.targetName || '召唤物');
         const entry = register(summonId, summonName, event?.targetSide, event?.actorName);
         if (entry && summonName && !aliases.has(summonName)) aliases.set(summonName, entry);
+        // B1-P1(b)：预演口径别名（preview-summon:候选id:效果实例:序号）也注册到同一实体，
+        // 使决策预演证据里的召唤 id 能在目录里解析出公开名。
+        const previewSummonKey = text(meta?.previewSummonKey || event?.previewSummonKey);
+        if (previewSummonKey) register(previewSummonKey, summonName, event?.targetSide, event?.actorName);
       }
       const actorId = text(event?.actorId);
       const actorName = text(event?.actorName);

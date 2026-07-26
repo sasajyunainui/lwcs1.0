@@ -2405,6 +2405,7 @@
         'IRREVERSIBLE_ASSET_LOST',
       ]);
       let expectedDelta = Number.NaN;
+      let targetUnresolvedCapped = false;
       if (outcomeKind === 'HP_DELTA') {
         const canonicalDelta = Number(entry?.expectedDelta);
         const expectedDamage = Number(evidence?.expectedDamage);
@@ -2431,7 +2432,21 @@
             expectedDelta = 0;
           }
         } else {
-          expectedDelta = rawDelta;
+          // S2-B-3：目标解析失败不得静默放行未裁剪值（实测出现 11048.88 超满血预测）。
+          // 保守口径：幅值封顶到可见单位的最大 HP 上限（真实世界推导的界，而非常数），
+          // 并在公开证据落 targetUnresolved 标记供对账归因。可见快照整体缺失时
+          // 无从推界，维持原值但同样落标记。
+          const visibleHpMaxima = aliveEntries(visibleWorldSnapshot || {})
+            .map(item => preview.readHpMax(item.unit))
+            .filter(value => Number.isFinite(value) && value > 0);
+          if (visibleHpMaxima.length) {
+            const maxVisibleHpMax = Math.max(...visibleHpMaxima);
+            const cappedMagnitude = Math.min(Math.abs(rawDelta), maxVisibleHpMax);
+            expectedDelta = rawDelta < 0 ? -cappedMagnitude : cappedMagnitude;
+          } else {
+            expectedDelta = rawDelta;
+          }
+          targetUnresolvedCapped = true;
         }
       } else if (outcomeKind === 'SHIELD_DELTA') {
         const canonicalDelta = Number(entry?.expectedDelta);

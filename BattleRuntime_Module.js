@@ -4169,6 +4169,9 @@
       eventKind: 'state_tick',
       round: Number(combatData?.回合 || 0),
       actorName: String(source?.sourceActorName || '').trim(),
+      // N-14：tick 事实必须带 targetId——召唤物 id≠name，只写 name 会让对账
+      // 全部 TARGET_MATCH_FAILED。
+      targetId: previewRuntime.unitId(unit) || '',
       targetName: unit?.name || unit?.名称 || label,
       actionName: String(source?.sourceActionName || '').trim(),
       actionType: 'state_tick',
@@ -4385,7 +4388,10 @@
         if (!mirror || mirror.已消散 === true) return;
         const hostId = previewRuntime.unitId(host) || previewRuntime.unitName(host);
         const name = String(mirror?.召唤物名称 || mirror?.name || '召唤物').trim() || '召唤物';
+        // B1：兜底键（第三套 id 空间）只在旧存档缺 召唤键 时出现——补水时把派生键
+        // 写回镜像，后续存取即收敛到单一键，不再漂移。
         const key = String(mirror?.召唤键 || `${hostId}:${stateKey}:${name}`).trim();
+        if (!String(mirror?.召唤键 || '').trim()) mirror.召唤键 = key;
         const existing = table[key];
         if (existing) {
           existing.__宿主 = host;
