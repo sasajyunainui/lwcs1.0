@@ -5150,13 +5150,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   font-size: 11px;
 }
 
-/* 特异性要盖过 .skill-designer-shell .mvu-editor-section.skill-designer-section-compact
-   (0,3,0)，用属性选择器补齐而不是加 !important */
-.skill-designer-shell .mvu-editor-section[data-skill-designer-page-hidden],
-.mvu-editor-section[data-skill-designer-page-hidden][data-skill-designer-page-hidden] {
-  display: none;
-}
-
 /* 左栏改单列：两列下选项说明会被截断（实测「护盾变化｜获得护盾…」127px 装 247px） */
 .skill-designer-layout .mvu-editor-field-grid {
   grid-template-columns: minmax(0, 1fr);
@@ -5304,6 +5297,12 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   border: 0;
   background: transparent;
   animation: none;
+}
+
+/* 必须排在 .skill-designer-section-compact 之后：两者同为 (0,3,0)，
+   同特异性时靠源序决胜。按项目门禁不使用 !important。 */
+.skill-designer-shell .mvu-editor-section[data-skill-designer-page-hidden] {
+  display: none;
 }
 
 .skill-designer-shell .mvu-editor-section.skill-designer-section-compact .skill-designer-side-effect-list:empty {
