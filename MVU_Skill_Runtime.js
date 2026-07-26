@@ -4587,6 +4587,10 @@ if (typeof globalThis !== 'undefined') {
     最终同步生成预算承载_V1,
     断言并同步自动生成最终预算_V1,
     条件分支约束_V1,
+    // 食物造物直接食用口径：结算/判定修正的增益方向语义，供 BattleDecision 目标侧写共用同一口径
+    结算修正是否增益语义_V1,
+    判定修正是否增益语义_V1,
+    食物造物效果可直接食用_V1,
   });
   try {
     if (typeof window !== 'undefined' && window.parent && window.parent !== window && !window.parent.__LWCS_SKILL_MECHANISM_REGISTRY__) {
@@ -6379,15 +6383,14 @@ function 读取技能机制预算档案_V1(机制名 = '') {
   return 技能机制预算档案表_V1.get(机制) || null;
 }
 
-function 食物造物机制需要授予壳预算_V1(机制名 = '') {
+function 食物造物机制需要授予壳预算_V1(机制名 = '', context = {}) {
   const 原型列表 = 读取机制编译原型列表_V1(机制名);
   if (!原型列表.length) return false;
   return 原型列表.some(条目 => {
     const 原型 = String(条目?.原型 || '').trim();
     if (!原型 || 原型 === '机制授予') return false;
-    if (['属性修正', '资源变化', '护盾变化', '状态移除'].includes(原型)) return false;
-    if (原型 === '状态施加') return 状态施加是否负面语义_V1(条目?.状态);
-    return 机制授予允许授予原型集合_V1.has(原型);
+    if (!机制授予允许授予原型集合_V1.has(原型)) return false;
+    return !食物造物效果可直接食用_V1(构建自动生成档案估算效果_V1(条目, { ...(context || {}), 机制名 }));
   });
 }
 
@@ -6470,7 +6473,7 @@ function 估算机制组合预算区间_V1(机制名 = '', context = {}) {
   }
   const 需要食物造物授予壳 = String(context?.系别 || context?.type || '').trim() === '食物系' &&
     String(context?.释放形态 || '').trim() === '造物承载' &&
-    食物造物机制需要授予壳预算_V1(机制);
+    食物造物机制需要授予壳预算_V1(机制, { ...(context || {}), 目标 });
   const 需要运行授予壳 = 自动生成机制需要运行授予壳预算_V1(机制, { ...(context || {}), 目标 });
   const 壳COST = 需要食物造物授予壳 || 需要运行授予壳 ? Number(SKILL_UNIT_COST_TABLE_V1.机制授予 || 25) : 0;
   const 最低可达COST = Number((使用档案.最低COST + 壳COST).toFixed(2));
@@ -11843,11 +11846,36 @@ function 食物造物效果为正向数值_V1(effect = {}) {
   return Number.isFinite(数值) && 数值 > 0 && !/^-/.test(String(原始数值 || '').trim());
 }
 
+// 结算修正的增益方向表：符号结算按 数值×方向>0 判增益；集合内结算为正向百分比防御/输出增益。
+// 反击（仅限后续触发槽位）与 持续伤害引爆（需要敌方DOT时机）刻意排除，必须继续走机制授予壳。
+var 结算修正符号增益方向表_V1 = Object.freeze({ 造成伤害: 1, 治疗: 1, 技能效果: 1, 受到伤害: -1, 消耗: -1, 前摇: -1 });
+var 结算修正正向增益结算集合_V1 = new Set(['反伤', '伤害转移', '伤害吸收', '伤害转治疗', '防御穿透']);
+
+function 结算修正是否增益语义_V1(effect = {}) {
+  const 结算 = String(effect?.结算 || '').trim();
+  if (结算修正正向增益结算集合_V1.has(结算)) return true;
+  const 方向 = Number(结算修正符号增益方向表_V1[结算] || 0);
+  if (!方向) return false;
+  const 数值 = parseSkillSignedChangeNumber(effect?.数值);
+  return Number.isFinite(数值) && 数值 * 方向 > 0;
+}
+
+function 判定修正是否增益语义_V1(effect = {}) {
+  if (effect?.打断效果 === true) return false;
+  const 数值 = parseSkillSignedChangeNumber(effect?.数值);
+  return Number.isFinite(数值) && 数值 > 0;
+}
+
 function 食物造物效果可直接食用_V1(effect = {}) {
   const 原型 = String(effect?.原型 || '').trim();
+  const 目标 = String(effect?.目标 || '').trim();
+  const 自身目标 = !目标 || 目标 === '自身';
   if (原型 === '资源变化' || 原型 === '属性修正' || 原型 === '护盾变化') return 食物造物效果为正向数值_V1(effect);
   if (原型 === '状态移除') return true;
   if (原型 === '状态施加') return !状态施加是否负面语义_V1(effect?.状态);
+  if (原型 === '结算修正') return 自身目标 && 结算修正是否增益语义_V1(effect);
+  if (原型 === '判定修正') return 自身目标 && 判定修正是否增益语义_V1(effect);
+  if (原型 === '规则防御') return 自身目标;
   return 原型 === '机制授予';
 }
 

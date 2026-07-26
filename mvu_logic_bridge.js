@@ -2344,20 +2344,37 @@
     return 片段.join(' · ');
   }
 
-  // 列表-详情分层：效果行与条件分支行共用一套，只是取行方式和摘要不同
+  // 列表-详情分层：效果行与条件分支行共用一套，只是取行方式和摘要不同。
+  // 增删行走的是局部 insertAdjacentHTML，不会重跑 onMount，所以这里必须
+  // 能就地重建：行数跨过 2 的边界时装上或拆掉，行数变了时刷新列表。
   function 装配技能设计台列表分层(容器, 行列表, 配置 = {}) {
     const { previewKey = '', 层名 = '效果', 列表类名 = 'skill-designer-effect-list', 标记 = 'data-skill-designer-effect-list', 摘要 = () => '', 返回文案 = '‹ 返回列表' } = 配置;
-    if (!(容器 instanceof Element) || 容器.querySelector(`[${标记}]`)) return;
+    if (!(容器 instanceof Element)) return;
+
+    const 已装列表 = 容器.querySelector(`:scope > [${标记}]`);
+    const 拆除分层 = () => {
+      容器.querySelectorAll(`:scope > [${标记}], :scope > [data-skill-designer-layer-back="${层名}"]`).forEach(节点 => 节点.remove());
+      行列表.forEach(行 => 行.removeAttribute('data-skill-designer-effect-hidden'));
+    };
     // 只有一项时列表层是纯粹的多余点击：直接展开它，不装分层
-    if (行列表.length < 2) return;
+    if (行列表.length < 2) {
+      if (已装列表) 拆除分层();
+      return;
+    }
+    if (已装列表) {
+      if (Number(已装列表.getAttribute('data-skill-designer-layer-count')) === 行列表.length) return;
+      拆除分层();
+    }
 
     const 列表 = document.createElement('div');
     列表.className = 列表类名;
     列表.setAttribute(标记, '1');
+    列表.setAttribute('data-skill-designer-layer-count', String(行列表.length));
     容器.insertBefore(列表, 行列表[0]);
 
     const 返回条 = document.createElement('div');
     返回条.className = 'skill-designer-effect-back';
+    返回条.setAttribute('data-skill-designer-layer-back', 层名);
     返回条.innerHTML = `<button type="button" class="skill-designer-effect-back-btn">${htmlEscape(返回文案)}</button><strong data-skill-designer-effect-title></strong>`;
     容器.insertBefore(返回条, 行列表[0]);
 
@@ -35828,6 +35845,10 @@
 
           const refreshPreview = (draftOverride = null) => {
             const formState = draftOverride || syncDraftCache();
+            // 新增/删除效果行与条件分支走的是局部 insertAdjacentHTML，
+            // onMount 不会再跑，分层只能在这里跟着行数重建
+            装配技能设计台效果分层(mountEl, previewKey);
+            装配技能设计台条件分支分层(mountEl, previewKey);
             const previewMap = {
               fusion: buildSkillDesignerFusionSummary(formState) || '未设置',
               mechanic: 构建技能设计台原型摘要(formState) || '未设置',
