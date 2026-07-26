@@ -2324,7 +2324,8 @@
     const 主格 = mountEl.querySelector('[data-skill-designer-prototype-grid="main"]');
     if (!主格 || 主格.querySelector('[data-skill-designer-effect-list]')) return;
     const 行列表 = Array.from(主格.querySelectorAll(':scope > [data-skill-designer-prototype-row]'));
-    if (!行列表.length) return;
+    // 只有一个效果时列表层是纯粹的多余点击：直接展开它，不装分层
+    if (行列表.length < 2) return;
 
     const 列表 = document.createElement('div');
     列表.className = 'skill-designer-effect-list';
@@ -2368,7 +2369,8 @@
       显示(-1);
     });
 
-    显示(读取技能设计台效果层(previewKey));
+    const 缓存层 = 读取技能设计台效果层(previewKey);
+    显示(Number.isFinite(缓存层) && 缓存层 >= 0 && 缓存层 < 行列表.length ? 缓存层 : -1);
   }
 
   function 装配技能设计台分页(mountEl, previewKey = '') {
