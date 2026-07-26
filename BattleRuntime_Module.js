@@ -4816,7 +4816,9 @@
     return writeLedgerEvent(combatData, {
       eventKind: 'blocked_action',
       round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(summon) || '',
       actorName: summonName,
+      targetId: previewRuntime.unitId(host) || previewRuntime.unitId(summon?.__宿主) || '',
       targetName: hostName,
       actionName: '召唤控制',
       actionType: 'summon_control',
@@ -5525,10 +5527,23 @@
       ),
       battleIntent: { mode: String(combatData?.战斗意图 || '').trim(), objectives: combatData?.胜负条件 || {} },
     });
+    // N-09：资源转移经本车道直贴快照，此前不产生任何 resource_change 事实——
+    // 资源平衡审计（RESOURCE_TIMELINE_OPERATION_MISSING 一族）对它整体盲区。
+    // 提交前记每单位资源现值，提交后按差额补写注册表口径（RESTORE/REDUCE）的事实。
+    const isResourceTransfer = String(effect?.原型 || '').trim() === '资源转移';
+    const resourceBeforeByUnit = new Map();
+    const RESOURCE_FACT_KEYS = ['hp', 'vit', 'sp', 'men'];
     preview.changedUnitIds.forEach(unitId => {
       const actual = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
       const snapshot = previewRuntime.findUnit(preview.afterSnapshot, unitId);
       if (!actual || !snapshot) throw new Error(`battle_structured_preview_commit_target_missing:${unitId}`);
+      if (isResourceTransfer) {
+        resourceBeforeByUnit.set(unitId, Object.fromEntries(
+          RESOURCE_FACT_KEYS.map(key => [key, key === 'hp'
+            ? previewRuntime.readHp(actual)
+            : previewRuntime.readResource(actual, { vit: '体力', sp: '魂力', men: '精神力' }[key])]),
+        ));
+      }
       const stateKeysBefore = new Set(Object.keys(actual?.状态效果 || {}));
       applyPreviewUnitSnapshot(actual, snapshot);
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
@@ -5549,6 +5564,24 @@
         });
       }
     });
+    const resourceTransferFacts = [];
+    if (isResourceTransfer) {
+      resourceBeforeByUnit.forEach((before, unitId) => {
+        const actual = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
+        if (!actual) return;
+        RESOURCE_FACT_KEYS.forEach(key => {
+          const after = key === 'hp'
+            ? previewRuntime.readHp(actual)
+            : previewRuntime.readResource(actual, { vit: '体力', sp: '魂力', men: '精神力' }[key]);
+          const delta = after - Number(before?.[key] || 0);
+          if (Math.abs(delta) > 1e-9) {
+            resourceTransferFacts.push(
+              writeStructuredResourceFact(combatData, actor, actual, action, actionEvent, key, delta, actionRole),
+            );
+          }
+        });
+      });
+    }
     const ringBurst = String(effect?.原型 || '').trim() === '炸环'
       ? commitRingBurst(actor, declaration, effect, combatData)
       : null;
@@ -5688,6 +5721,7 @@
         }));
       });
     }
+    facts.push(...resourceTransferFacts);
     return facts.filter(Boolean);
   }
 
@@ -6932,6 +6966,20 @@
           else removeRuntimeShield(target, effect?.数值 || requested);
           const actual = currentShieldTotal(target) - before;
           facts.push(writeStructuredResourceFact(combatData, actor, target, action, actionEvent, 'shield', actual, actionRole));
+          // N-06：窃盾的 actor 侧收益此前只存在于预演——运行时按实际移除量
+          // 给施放者生成同额护盾并写 shield_create 事实，两侧记账对齐。
+          if (
+            String(effect?.护盾模式 || '').trim() === '窃盾' &&
+            previewRuntime.unitId(target) !== previewRuntime.unitId(actor) &&
+            actual < -1e-9
+          ) {
+            const actorBefore = currentShieldTotal(actor);
+            applyRuntimeShield(actor, -actual, Math.max(1, Number(effect?.持续回合 || 1)), actionName);
+            const stolenApplied = currentShieldTotal(actor) - actorBefore;
+            if (Math.abs(stolenApplied) > 1e-9) {
+              facts.push(writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'shield', stolenApplied, actionRole));
+            }
+          }
           if (isPrimaryEffect) {
             const targetId = previewRuntime.unitId(target);
             primaryResolutionByTarget.set(targetId, Math.abs(actual) > 1e-9);
@@ -7977,7 +8025,9 @@
               writeLedgerEvent(combatData, {
                 eventKind: 'blocked_action',
                 round: Number(combatData.回合 || 0),
+                actorId: previewRuntime.unitId(actionContext.actor) || '',
                 actorName: previewRuntime.unitName(actionContext.actor) || '未知单位',
+                targetId: previewRuntime.unitId(actionContext.primaryTarget) || '',
                 targetName: previewRuntime.unitName(actionContext.primaryTarget) || '',
                 actionName: actionContext.actionName || '行动取消',
                 actionType: actionContext.actionKind || 'opportunity_cancelled',
@@ -7999,6 +8049,7 @@
             writeLedgerEvent(combatData, {
               eventKind: 'blocked_action',
               round: Number(combatData.回合 || 0),
+              actorId: previewRuntime.unitId(cancelledActor) || '',
               actorName: previewRuntime.unitName(cancelledActor) || '未知单位',
               actionName: cancelledKind === 'ACTIVE'
                 ? '自然行动取消'
@@ -9333,7 +9384,9 @@
             writeLedgerEvent(combatData, {
               eventKind: 'blocked_action',
               round: Number(combatData?.回合 || 0),
+              actorId: previewRuntime.unitId(summon) || '',
               actorName: previewRuntime.unitName(summon),
+              targetId: previewRuntime.unitId(host) || '',
               targetName: previewRuntime.unitName(host),
               actionName: '召唤协同',
               actionType: 'summon_assist',
@@ -9407,7 +9460,9 @@
             writeLedgerEvent(combatData, {
               eventKind: 'blocked_action',
               round: Number(combatData.回合 || 0),
+              actorId: previewRuntime.unitId(actor) || '',
               actorName: previewRuntime.unitName(actor),
+              targetId: previewRuntime.unitId(actor) || '',
               targetName: previewRuntime.unitName(actor),
               actionName: '融合协同',
               actionType: 'opportunity_consumed',
@@ -9490,7 +9545,9 @@
               `宿主${incapacityReasonText}`,
             );
             writeLedgerEvent(combatData, {
-              eventKind: 'blocked_action', round: Number(combatData.回合 || 0), actorName, targetName: actorName,
+              eventKind: 'blocked_action', round: Number(combatData.回合 || 0),
+              actorId: previewRuntime.unitId(actor) || '', actorName,
+              targetId: previewRuntime.unitId(actor) || '', targetName: actorName,
               actionName: '失去行动', actionType: 'opportunity_cancelled', actorControl: node.actorControl,
               actionRole: node.actionRole, sourceActionId: String(node?.state?.shared?.actionContext?.actionEvent?.actionId || node.sourceActionId || '').trim(),
               parentNodeId: String(node?.state?.shared?.actionContext?.actionEvent?.chainNodeId || '').trim(),
@@ -9855,8 +9912,10 @@
                     ? `宿主受【${hostIncapacityReason.slice('CONTROLLED:'.length).trim()}】影响`
                     : '宿主已经失去战斗能力';
                 writeLedgerEvent(combatData, {
-                  eventKind: 'blocked_action', round: Number(combatData.回合 || 0), actorName: previewRuntime.unitName(actor),
-                  targetName: previewRuntime.unitName(host), actionName: '召唤协同', actionType: 'summon_assist',
+                  eventKind: 'blocked_action', round: Number(combatData.回合 || 0),
+                  actorId: previewRuntime.unitId(actor) || '', actorName: previewRuntime.unitName(actor),
+                  targetId: previewRuntime.unitId(host) || '', targetName: previewRuntime.unitName(host),
+                  actionName: '召唤协同', actionType: 'summon_assist',
                   actorControl: 'AI', actionRole: 'ASSIST', sourceActionId: String(node.sourceActionId || '').trim(),
                   result: 'cancelled', resultState: 'FAILURE', ruleCode: 'SUMMON_HOST_UNAVAILABLE',
                   meta: {
@@ -9990,8 +10049,18 @@
                 naturalOpportunity.status = 'CONSUMED';
                 naturalOpportunity.consumedByActionId = String(chargeStart?.actionId || chargeStart?.eventId || '').trim();
               }
+              // N-15：蓄力包在此归一化——威胁三路径（Decision 侧）只认 _效果数组；
+              // 仅有 效果数组 的技能包若不补齐，蓄力威胁会静默降级为威力50普攻或空效果。
+              const chargeSkillPackage = cloneValue(declaration.skill);
+              if (
+                chargeSkillPackage && typeof chargeSkillPackage === 'object' &&
+                !Array.isArray(chargeSkillPackage._效果数组) &&
+                Array.isArray(chargeSkillPackage.效果数组)
+              ) {
+                chargeSkillPackage._效果数组 = cloneValue(chargeSkillPackage.效果数组);
+              }
               actor.蓄力技能 = {
-                skill: cloneValue(declaration.skill),
+                skill: chargeSkillPackage,
                 cast_time: castTime - naturalActionBudget,
                 targetIds: cloneValue(declaration.targetIds || []),
                 actionName,

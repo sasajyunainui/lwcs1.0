@@ -2503,6 +2503,11 @@
         'productId',
         'quantity',
         'useEffectCount',
+        // S2-B-4：命中条件值（未乘命中率/施加率的单次实现口径）必须过白名单——
+        // 对账层拿期望值(×p)比单次实现值时，需要它来解释 1/p 的量纲差。
+        'fullHitDamage',
+        'fullHitIncoming',
+        'fullHitShieldAbsorb',
       ].forEach(key => {
         if (evidence[key] !== undefined && evidence[key] !== null) publicEvidence[key] = evidence[key];
       });
@@ -2510,6 +2515,7 @@
         if (expectedDelta < 0) publicEvidence.expectedDamage = Math.abs(expectedDelta);
         if (expectedDelta > 0) publicEvidence.delta = expectedDelta;
       }
+      if (targetUnresolvedCapped) publicEvidence.targetUnresolved = true;
       return [{
         outcomeKind,
         targetId,

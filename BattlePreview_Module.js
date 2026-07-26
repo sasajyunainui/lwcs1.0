@@ -3650,6 +3650,9 @@
               damageType: effect?.伤害类型 || '',
             },
           });
+          // N-07：证据必须带 hitProbability——预测行的 hitProbability 取自
+          // evidence?.hitProbability ?? 1，缺失时按确定性(=1)发射，而运行时的
+          // 昏迷/失能只在实际命中才发生，对账被结构性打成 UNCONFIRMED。
           if (nonlethalIncapacitated) {
             ledger.addOutcome({
               ...context,
@@ -3657,7 +3660,7 @@
               outcomeKind: 'ACTION_CANCELLED',
               windowId: 'NONLETHAL_INCAPACITATION',
               threatValue: 0,
-              evidence: { reason: 'NONLETHAL_INCAPACITATION', hpFloor: nonlethalHpFloor },
+              evidence: { reason: 'NONLETHAL_INCAPACITATION', hpFloor: nonlethalHpFloor, hitProbability },
             });
           }
           if (traumaUnconscious) {
@@ -3667,7 +3670,7 @@
               outcomeKind: 'ACTION_CANCELLED',
               windowId: 'TRAUMA_UNCONSCIOUS',
               threatValue: hitProbability * 100,
-              evidence: { reason: 'TRAUMA_UNCONSCIOUS', probability: hitProbability, fullHitDamage, hpAfter: readHp(currentTarget) - fullHitDamage, hpMax: readHpMax(currentTarget) },
+              evidence: { reason: 'TRAUMA_UNCONSCIOUS', probability: hitProbability, hitProbability, fullHitDamage, hpAfter: readHp(currentTarget) - fullHitDamage, hpMax: readHpMax(currentTarget) },
             });
           }
         });
