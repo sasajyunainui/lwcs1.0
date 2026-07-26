@@ -4977,10 +4977,29 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   background: rgba(5, 24, 34, 0.3);
 }
 
+/* 嵌套的 subsection 不再画完整的框。第一层保留边框+背景标出分区归属，
+   第二层起改为「缩进 + 左引导线」——层级照样看得出来，但不再是盒子套盒子。
+   实测最深一条链有 6 层框，其中中间 3 层纯粹是容器，每层都自带
+   12px 内边距、一圈边框和一层背景，叠起来既吃宽度又吃注意力。 */
+.skill-designer-subsection .skill-designer-subsection {
+  margin-top: 8px;
+  padding: 0 0 0 10px;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--主题主色) 20%, transparent);
+  border-radius: 0;
+  background: none;
+}
+
+/* 再深一层的引导线继续减弱，避免三条线一样粗看不出主次 */
+.skill-designer-subsection .skill-designer-subsection .skill-designer-subsection {
+  border-left-color: color-mix(in srgb, var(--主题主色) 12%, transparent);
+}
+
 /* 效果列表 ↔ 效果详情两层视图。隐藏规则必须排在 .skill-designer-subsection
-   之后：两者同特异性时靠源序决胜（本轮已踩过一次）。不使用 !important。 */
-/* 条件分支列表比效果列表深一层，缩进并压低一档，
-   让人一眼看出这是「某个效果之下」的分支，而不是并列的另一组效果 */
+   之后：两者同特异性时靠源序决胜（本轮已踩过一次）。不使用 !important。
+
+   条件分支列表比效果列表深一层，缩进并压低一档，
+   让人一眼看出这是「某个效果之下」的分支，而不是并列的另一组效果。 */
 .skill-designer-branch-list {
   margin-left: 10px;
   border-left: 1px solid color-mix(in srgb, var(--主题主色) 22%, transparent);
