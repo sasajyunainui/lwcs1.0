@@ -2348,7 +2348,10 @@
         const 类型 = toText(条件行.getAttribute('data-skill-designer-condition-type'), '').trim();
         if (!类型) return '';
         // 阈值那格的标签跟条件类型同名（如类型「生命比例」→ 标签「生命比例」）
-        return [类型, 取可见字段(条件行, '比较'), 取可见字段(条件行, 类型)].filter(Boolean).join(' ');
+        const 阈值 = 取可见字段(条件行, 类型);
+        // 有的条件类型没有「比较」格（如「使用者」），补个等号才不会读成两个词并排
+        const 比较 = 取可见字段(条件行, '比较') || (阈值 ? '=' : '');
+        return [类型, 比较, 阈值].filter(Boolean).join(' ');
       })
       .filter(Boolean);
     // 标出这条分支的去向，让人不点开也知道它做什么
