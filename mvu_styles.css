@@ -19018,14 +19018,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
   position: relative;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 33%, 340px);
-  grid-template-rows: auto auto;
+  /* 右列两张卡按内容定高并向上收拢。原为 auto auto + align-content: stretch，
+     剩余空间被摊到两卡之间，实测在 548px 列里留出 126px 空隙。 */
+  grid-template-rows: max-content max-content;
   grid-template-areas:
     'stage current'
     'stage locals';
   height: 100%;
   min-height: 0;
-  align-items: stretch;
-  align-content: stretch;
+  align-items: start;
+  align-content: start;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > .mvu-unified-map-stage {

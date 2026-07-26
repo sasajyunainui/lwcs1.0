@@ -233,7 +233,7 @@
       actions: ['显示过滤', '字号密度', '主题切换'],
     },
     生命图谱详细页: {
-      title: '详细档案',
+      title: '生命图谱',
       summary: '角色状态、修为、外观与成长记录。',
       fields: [
         'activeChar.属性.*',
@@ -1348,7 +1348,7 @@
 
     if (key === '生命图谱详细页') {
       return {
-        title: '详细档案',
+        title: '生命图谱',
         body: `
             <div class="archive-modal-grid dossier-shell dossier-shell--life">
               <div class="archive-card dossier-card dossier-card--life-core">
@@ -33502,7 +33502,7 @@
     const woundLabel = getDisplayWoundLabel(stat);
     const placeText = buildShellLocationLabel(snapshot, { fullLimit: 24, trailLimit: 10 });
     return {
-      title: '详细档案',
+      title: '生命图谱',
       body: `
           <div class="mvu-shell-lite-root" data-shell-light-view="life">
             <section class="mvu-shell-lite-card mvu-shell-lite-card--hero">
@@ -37443,7 +37443,7 @@
           preview: skill.preview || '',
         }));
       return {
-        title: '详细档案',
+        title: '生命图谱',
         summary: '角色状态、修为、外观与成长记录。',
         body: `
             <div class="archive-modal-grid dossier-shell dossier-shell--life">
