@@ -5495,6 +5495,8 @@
       ...cloneValue(declaration),
       actionId: `${actionEvent.actionId}:effect:${effectIndex}`,
       __includeGrantedEffects: false,
+      // USE_ITEM 的数量扣减已在结构化结算入口完成（item_consume 事实），提交车道不得重复扣减
+      __skipInventoryConsume: true,
       resourceCosts: {},
       skill: {
         ...(cloneValue(declaration?.skill || {})),

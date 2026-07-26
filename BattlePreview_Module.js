@@ -5238,7 +5238,7 @@
         });
       });
     }
-    if (String(declaration?.actionKind || '').trim() === 'USE_ITEM') {
+    if (String(declaration?.actionKind || '').trim() === 'USE_ITEM' && declaration?.__skipInventoryConsume !== true) {
       overlay.changeUnit(unitId(actor), unit => {
         const inventoryItem = findInventoryEntry(unit, declaration);
         const quantityBefore = Math.max(0, Number(inventoryItem?.数量 ?? inventoryItem?.quantity ?? 0));
