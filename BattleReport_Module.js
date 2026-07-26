@@ -13,6 +13,13 @@
   const reportSchemaVersion = '8.3-report-1';
   const internalSummonPattern = /(?:structured-summon|battle-summon|summon-instance|preview-summon):[^\s,，。；;|]+/gi;
   const internalSummonIdPattern = /^(?:structured-summon|battle-summon|summon-instance|preview-summon):/i;
+  /*
+   * 效果实例 ID（形如 `角色:skill:技能名:0:角色:skill:技能名:0:effect:0:1`）也是内部标识，
+   * 但它不带上面那四种前缀，所以既躲过了 playerSafeText 的替换，也躲过了泄漏门禁——
+   * 实测它会一路渲染到玩家界面上（见召唤类技能的 SUMMON_WINDOW 对账目标）。
+   * 这类 ID 的稳定特征是含 `:skill:` 段，用它识别并统一替换成可读称谓。
+   */
+  const internalEffectInstancePattern = /[^\s:，。；;|]+:skill:[^\s，。；;|]+/gi;
   const passiveEventKinds = new Set([
     'state_tick',
     'round_recover',
@@ -421,7 +428,9 @@
     entries.forEach(entry => {
       result = result.split(entry.rawId).join(entry.name || '召唤物');
     });
-    return result.replace(internalSummonPattern, '召唤物');
+    return result
+      .replace(internalSummonPattern, '召唤物')
+      .replace(internalEffectInstancePattern, '召唤物');
   }
 
   function resourceName(event = {}) {
@@ -1669,8 +1678,10 @@
           kind: prediction.kind,
           source: prediction.source,
           targetId: publicEntityId(directory, prediction.targetId),
+          /* 目标可能是效果实例 ID（召唤类效果），directory 查不到时会原样透出内部串，
+             必须再过一遍 playerSafeText 才能保证不漏。 */
           targetName: prediction.targetId
-            ? publicEntityName(directory, prediction.targetId, prediction.targetId)
+            ? playerSafeText(publicEntityName(directory, prediction.targetId, prediction.targetId), directory)
             : '',
           status: judged.status,
           expected: cloneValue(prediction.expected || {}),
@@ -4233,6 +4244,10 @@
       const serialized = JSON.stringify(report);
       if (internalSummonIdPattern.test(serialized)) {
         pushFatal('REPORT_VISIBILITY_LEAK', { reason: 'INTERNAL_SUMMON_ID' });
+      }
+      /* 效果实例 ID 不带召唤前缀，旧门禁抓不到它，实测能一路漏到玩家界面。 */
+      if (/:skill:/.test(serialized)) {
+        pushFatal('REPORT_VISIBILITY_LEAK', { reason: 'INTERNAL_EFFECT_INSTANCE_ID' });
       }
       if (/"ruleCode"|"developerDetail"|"rawDecision"|"candidateId"/.test(serialized)) {
         pushFatal('PLAYER_INTERNAL_RESULT_LEAK', { reason: 'INTERNAL_DECISION_OR_RULE_DATA' });

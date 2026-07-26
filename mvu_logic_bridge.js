@@ -24307,10 +24307,10 @@
       : 原型名 === '状态施加' && ['数值', '副数值'].includes(字段名)
         ? 技能设计台状态施加字段显示名(effect && effect['状态'], 字段名)
         : 显示名 || 字段;
-    // 提示原本只进 title，触屏用户永远看不到，而这些正是决定字段含义的说明。
-    // 改为常驻小字：标签一行、说明一行，说明可换行完整显示。
+    // 说明改为图标触发：常驻小字会把表单堆成一堵字墙，纯 title 又让触屏无解。
+    // 折中为标签旁一个 ? 徽标，hover 与 focus 都能唤出气泡，且可被键盘聚焦。
     if (!提示) return `<span class=\"mvu-editor-label\">${htmlEscape(基础标签)}</span>`;
-    return `<span class=\"mvu-editor-label mvu-editor-label--with-hint\">${htmlEscape(基础标签)}<small class=\"mvu-editor-hint\">${htmlEscape(提示)}</small></span>`;
+    return `<span class=\"mvu-editor-label mvu-editor-label--with-hint\">${htmlEscape(基础标签)}<button type=\"button\" class=\"mvu-editor-hint-badge\" tabindex=\"0\" aria-label=\"${escapeHtmlAttr(基础标签)}说明\" data-hint-text=\"${escapeHtmlAttr(提示)}\">?</button></span>`;
   }
 
   function 技能设计台原型字段是否必填(原型 = '', 字段 = '') {
@@ -35104,7 +35104,9 @@
       const 标题提示 = 标题 => ` title="${escapeHtmlAttr(标题提示表[标题] || '')}"`;
       // 分区说明同样不能只留在 title 里：改为标题下方常驻一行小字
       const 标题说明 = 标题 =>
-        标题提示表[标题] ? `<small class=\"mvu-editor-section-hint\">${htmlEscape(标题提示表[标题])}</small>` : '';
+        标题提示表[标题]
+          ? `<button type=\"button\" class=\"mvu-editor-hint-badge\" tabindex=\"0\" aria-label=\"${escapeHtmlAttr(标题)}说明\" data-hint-text=\"${escapeHtmlAttr(标题提示表[标题])}\">?</button>`
+          : '';
       const 构建消耗输入 = 资源 => {
         const 显示 = designerDraft.costType === 资源 || designerDraft.costType === '混合';
         return `
