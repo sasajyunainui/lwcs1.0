@@ -357,7 +357,7 @@
       }
     ],
     "globalRevision": 0,
-    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下是人物演出底稿：\n{{character_performance_brief}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是客观场景裁定：\n{{scene_audit}}\n{{scene_ruling}}\n{{route_boundary}}\n{{butterfly_analysis}}\n\n以<scene_audit>确定实际登场人物；以<scene_ruling>确定玩家行动结果、人物权限和世界回应；以<route_boundary>确定本轮需要完整演绎的事件、世界进程关系和后续落点；以<butterfly_analysis>校正已经成立的世界线影响。\n<character_performance_brief>只决定已登场人物怎样说话、行动和表达情绪，不改变登场名单、行动结果和剧情路线。经客观场景裁定确认登场、但没有对应人物底稿的新原创角色，按其场景职责、年龄、身份与环境标准自然演出。\n正文按照<scene_ruling>标明的信息来源分别演绎玩家与NPC；一项信息只供实际亲历、目击、听闻或通过公开与职责渠道获得它的一方使用。\n正文从【本轮剧情推进】确定的承接位置开始，完整演绎本轮事件，并落实【本轮落点与后续接力】确定的客观变化。不能只完成开场动作，不能复述规划，也不能停在等待玩家继续行动的位置。",
+    "finalSystemDirective": "$8\n\n以上是用户的本轮输入，以下<character_performance_brief>是人物演出底稿：\n{{character_performance_brief}}\n\n以下<recall>是记忆回溯编码：\n{{recall}}\n\n以下<deviation_ledger_recall>是偏差召回编码：\n{{deviation_ledger_recall}}\n\n以下<scene_audit>确定本轮登场人物与场景边界：\n{{scene_audit}}\n\n以下<scene_ruling>确定行动结果、权限与信息边界：\n{{scene_ruling}}\n\n以下<route_boundary>确定本轮事件、世界进程关系与后续落点：\n{{route_boundary}}\n\n以下<butterfly_analysis>记录已经成立的世界线影响：\n{{butterfly_analysis}}\n\n人物底稿只决定人物如何演出；没有底稿的新原创角色按客观裁定自然演出。玩家与NPC只使用各自实际获得的信息。\n\n正文完整演绎【本轮剧情推进】，直至【本轮落点与后续接力】成立。不复述规划，不只写开场，不停在等待玩家行动的位置。",
     "prompts": [
       {
         "id": "mainPrompt",
@@ -377,7 +377,7 @@
         "id": "finalSystemDirective",
         "name": "最终注入指令 (Storyteller Directive)",
         "role": "system",
-        "content": "$8\n\n以上是用户的本轮输入，以下是人物演出底稿：\n{{character_performance_brief}}\n\n以下是<记忆回溯>的编码：\n{{recall}}\n以下是偏差召回的编码：\n{{deviation_ledger_recall}}\n\n以下是客观场景裁定：\n{{scene_audit}}\n{{scene_ruling}}\n{{route_boundary}}\n{{butterfly_analysis}}\n\n以<scene_audit>确定实际登场人物；以<scene_ruling>确定玩家行动结果、人物权限和世界回应；以<route_boundary>确定本轮需要完整演绎的事件、世界进程关系和后续落点；以<butterfly_analysis>校正已经成立的世界线影响。\n<character_performance_brief>只决定已登场人物怎样说话、行动和表达情绪，不改变登场名单、行动结果和剧情路线。经客观场景裁定确认登场、但没有对应人物底稿的新原创角色，按其场景职责、年龄、身份与环境标准自然演出。\n正文按照<scene_ruling>标明的信息来源分别演绎玩家与NPC；一项信息只供实际亲历、目击、听闻或通过公开与职责渠道获得它的一方使用。\n正文从【本轮剧情推进】确定的承接位置开始，完整演绎本轮事件，并落实【本轮落点与后续接力】确定的客观变化。不能只完成开场动作，不能复述规划，也不能停在等待玩家继续行动的位置。",
+        "content": "$8\n\n以上是用户的本轮输入，以下<character_performance_brief>是人物演出底稿：\n{{character_performance_brief}}\n\n以下<recall>是记忆回溯编码：\n{{recall}}\n\n以下<deviation_ledger_recall>是偏差召回编码：\n{{deviation_ledger_recall}}\n\n以下<scene_audit>确定本轮登场人物与场景边界：\n{{scene_audit}}\n\n以下<scene_ruling>确定行动结果、权限与信息边界：\n{{scene_ruling}}\n\n以下<route_boundary>确定本轮事件、世界进程关系与后续落点：\n{{route_boundary}}\n\n以下<butterfly_analysis>记录已经成立的世界线影响：\n{{butterfly_analysis}}\n\n人物底稿只决定人物如何演出；没有底稿的新原创角色按客观裁定自然演出。玩家与NPC只使用各自实际获得的信息。\n\n正文完整演绎【本轮剧情推进】，直至【本轮落点与后续接力】成立。不复述规划，不只写开场，不停在等待玩家行动的位置。",
         "deletable": false
       }
     ],
