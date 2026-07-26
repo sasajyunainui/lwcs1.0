@@ -2285,7 +2285,17 @@
     const 分区列表 = Array.from(表单.querySelectorAll(':scope > .mvu-editor-section, :scope > * > .mvu-editor-section'));
     if (分区列表.length < 2) return;
 
-    const 取标题 = 节点 => toText(节点.querySelector('.mvu-editor-section-title')?.textContent, '').trim();
+    // 标题下现在挂了常驻说明 <small>，直接读 textContent 会把说明也读进来，
+    // 导致标题匹配失效、分页归组错乱。只取标题元素的直接文本节点。
+    const 取标题 = 节点 => {
+      const 标题节点 = 节点.querySelector('.mvu-editor-section-title');
+      if (!标题节点) return '';
+      return Array.from(标题节点.childNodes)
+        .filter(n => n.nodeType === Node.TEXT_NODE)
+        .map(n => n.textContent)
+        .join('')
+        .trim();
+    };
     const 命中标记 = (节点, 定义) =>
       Array.isArray(定义.标记集) && 定义.标记集.some(选择器 => !!节点.querySelector(选择器));
     const 页 = 技能设计台分页定义
