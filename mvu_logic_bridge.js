@@ -14475,6 +14475,32 @@
     return await getLatestMessageVariablesFallback();
   }
 
+  async function getLatestVariablesFast() {
+    const host = getMvuHost();
+    const readers = [
+      host && typeof host.getMvuData === 'function'
+        ? () => Promise.resolve(host.getMvuData({ type: 'message', message_id: 'latest' }))
+        : null,
+      window.TavernHelper && typeof window.TavernHelper.getVariables === 'function'
+        ? () => Promise.resolve(window.TavernHelper.getVariables({ type: 'message', message_id: 'latest' }))
+        : null,
+    ];
+    for (const reader of readers) {
+      if (typeof reader !== 'function') continue;
+      try {
+        const vars = await reader();
+        if (vars && typeof vars === 'object' && resolveRootData(vars)) return vars;
+      } catch (err) {}
+    }
+    if (host && typeof host.getAllVariables === 'function') {
+      try {
+        const vars = await Promise.resolve(host.getAllVariables());
+        if (vars && typeof vars === 'object' && resolveRootData(vars)) return vars;
+      } catch (err) {}
+    }
+    return null;
+  }
+
   function getSharedMvuRefreshHub() {
     const hubKey = '__dragonUiSharedMvuRefreshHub';
     const existingHub = window[hubKey];
@@ -14487,22 +14513,45 @@
     const CHAT_CONTEXT_POLL_KEY = '__dragonUiSharedChatContextPollTimer';
     const POLL_VIS_KEY = '__dragonUiSharedRefreshPollVisibilityBound';
     const POLL_FOCUS_KEY = '__dragonUiSharedRefreshPollFocusBound';
+    const MVU_QUIET_WINDOW_MS = 150;
     let bindingsReady = false;
     let running = false;
     let pending = false;
     let lastTriggerArgs = [];
     let lastChatContextSignature = '';
-
-    const getAllVariablesDirect = async () => {
-      return await getAllVariablesSafe();
-    };
+    let revision = 0;
+    let quietTimer = 0;
+    let variableUpdateActive = false;
+    let latestVariables = null;
+    let latestVariableEventArgs = [];
 
     const 读取刷新事件变量载荷 = args => {
       for (const item of Array.isArray(args) ? args : []) {
         if (!item || typeof item !== 'object') continue;
         if (resolveRootData(item)) return item;
+        const candidates = [item.detail, item.data, item.payload, item.variables, item.state, item.mvu];
+        for (const candidate of candidates) {
+          if (candidate && typeof candidate === 'object' && resolveRootData(candidate)) return candidate;
+        }
       }
       return null;
+    };
+
+    const getChatContextSignature = () => {
+      const meta = getCurrentChatContextMeta();
+      return [
+        toText(meta.characterId, '').trim(),
+        toText(meta.groupId, '').trim(),
+        toText(meta.chatId, '').trim(),
+        toText(meta.name1, '').trim(),
+        toText(meta.name2, '').trim(),
+      ].join('||');
+    };
+
+    const clearQuietTimer = () => {
+      if (!quietTimer) return;
+      window.clearTimeout(quietTimer);
+      quietTimer = 0;
     };
 
     const schedulePendingDispatch = () => {
@@ -14515,24 +14564,43 @@
     };
 
     const hub = {
-      async getAllVariables() {
-        return await getAllVariablesDirect();
+      runtime: {
+        get revision() {
+          return revision;
+        },
+        get variableUpdateActive() {
+          return variableUpdateActive;
+        },
+        get latestVariables() {
+          return latestVariables;
+        },
       },
 
-      async dispatch(...args) {
-        lastTriggerArgs = args;
+      async getAllVariables() {
+        return await getAllVariablesSafe();
+      },
+
+      async dispatch(meta = {}, ...args) {
+        const normalizedMeta = meta && typeof meta === 'object' ? meta : { source: 'manual' };
+        const expectedRevision = Number.isFinite(normalizedMeta.revision) ? normalizedMeta.revision : revision;
+        if (expectedRevision !== revision) return;
+        const expectedChatSignature = toText(normalizedMeta.chatSignature, '');
+        if (expectedChatSignature && expectedChatSignature !== getChatContextSignature()) return;
+        lastTriggerArgs = [normalizedMeta, ...args];
         if (running) {
           pending = true;
           return;
         }
         running = true;
         try {
-          const 事件变量 = 读取刷新事件变量载荷(args);
-          const vars = 事件变量 || await getAllVariablesDirect();
+          const 事件变量 = normalizedMeta.vars || 读取刷新事件变量载荷(args) || latestVariables;
+          let vars = 事件变量 || (normalizedMeta.recovery ? await getAllVariablesSafe() : await getLatestVariablesFast());
+          if (!vars && !normalizedMeta.recovery) vars = await getAllVariablesSafe();
+          if (!vars) return;
           const entries = Array.from(subscribers.entries());
           for (const [subscriberId, subscriber] of entries) {
             try {
-              await Promise.resolve(subscriber.handler(vars, ...args));
+              await Promise.resolve(subscriber.handler(vars, normalizedMeta, ...args));
             } catch (error) {
               console.warn(`[DragonUI] MVU shared refresh subscriber failed: ${subscriberId}`, error);
             }
@@ -14546,8 +14614,61 @@
         }
       },
 
-      trigger(...args) {
-        return hub.dispatch(...args);
+      trigger(meta = {}, ...args) {
+        return hub.dispatch(meta, ...args);
+      },
+
+      markVariableUpdateStarted(...args) {
+        variableUpdateActive = true;
+        latestVariables = null;
+        latestVariableEventArgs = args;
+        clearQuietTimer();
+      },
+
+      markVariableUpdateEnded(...args) {
+        variableUpdateActive = false;
+        latestVariables = 读取刷新事件变量载荷(args);
+        latestVariableEventArgs = args;
+        clearQuietTimer();
+        const scheduledRevision = revision;
+        const scheduledChatSignature = getChatContextSignature();
+        quietTimer = window.setTimeout(() => {
+          quietTimer = 0;
+          if (scheduledRevision !== revision || scheduledChatSignature !== getChatContextSignature()) return;
+          hub.dispatch(
+            {
+              source: 'variable_update_ended',
+              eventKey: 'VARIABLE_UPDATE_ENDED',
+              revision: scheduledRevision,
+              chatSignature: scheduledChatSignature,
+              vars: latestVariables,
+            },
+            ...latestVariableEventArgs,
+          );
+        }, MVU_QUIET_WINDOW_MS);
+      },
+
+      requestRecovery(source, args = [], delay = 0) {
+        revision += 1;
+        variableUpdateActive = false;
+        latestVariables = null;
+        latestVariableEventArgs = [];
+        clearQuietTimer();
+        const scheduledRevision = revision;
+        const scheduledChatSignature = getChatContextSignature();
+        window.setTimeout(() => {
+          if (scheduledRevision !== revision || scheduledChatSignature !== getChatContextSignature()) return;
+          hub.dispatch(
+            {
+              source,
+              recovery: true,
+              force: true,
+              revision: scheduledRevision,
+              chatSignature: scheduledChatSignature,
+            },
+            ...(Array.isArray(args) ? args : []),
+          );
+        }, Math.max(0, Number(delay) || 0));
       },
 
       ensureBindings() {
@@ -14555,25 +14676,28 @@
         bindingsReady = true;
 
         const host = getMvuHost();
-        const eventName = host && host.events ? host.events.VARIABLE_UPDATE_ENDED : '';
+        const variableUpdateStartedEvent =
+          host?.events?.VARIABLE_UPDATE_STARTED || window.Mvu?.events?.VARIABLE_UPDATE_STARTED || 'mag_variable_update_started';
+        const variableUpdateEndedEvent =
+          host?.events?.VARIABLE_UPDATE_ENDED || window.Mvu?.events?.VARIABLE_UPDATE_ENDED || 'mag_variable_update_ended';
         const eventOnFn =
           typeof __mvuBridgeRoot.eventOn === 'function'
             ? __mvuBridgeRoot.eventOn.bind(__mvuBridgeRoot)
             : typeof window.eventOn === 'function'
               ? window.eventOn.bind(window)
               : null;
-        const getChatContextSignature = () => {
-          const meta = getCurrentChatContextMeta();
-          return [
-            toText(meta.characterId, '').trim(),
-            toText(meta.groupId, '').trim(),
-            toText(meta.chatId, '').trim(),
-            toText(meta.name1, '').trim(),
-            toText(meta.name2, '').trim(),
-          ].join('||');
-        };
         let bound = false;
-        const triggerFromEvent = (...args) => hub.trigger({ source: 'event', eventName }, ...args);
+        const startFromEvent = (...args) => hub.markVariableUpdateStarted(...args);
+        const endFromEvent = (...args) => hub.markVariableUpdateEnded(...args);
+        const bindMvuEvent = (target, method, eventName, handler) => {
+          if (!target || !eventName || typeof target[method] !== 'function') return false;
+          try {
+            target[method](eventName, handler);
+            return true;
+          } catch (err) {
+            return false;
+          }
+        };
         const bindSillyTavernEventSource = () => {
           let context = null;
           try {
@@ -14583,53 +14707,67 @@
           if (!eventSource || typeof eventSource.on !== 'function') return false;
           const eventTypes = context?.eventTypes || {};
           let hasBound = false;
-          ['MESSAGE_UPDATED', 'GENERATION_ENDED', 'CHAT_CHANGED'].forEach(eventKey => {
+          [
+            'MESSAGE_SENT',
+            'MESSAGE_UPDATED',
+            'GENERATION_ENDED',
+            'CHAT_CHANGED',
+            'MESSAGE_DELETED',
+            'MESSAGE_SWIPED',
+            'MESSAGE_EDITED',
+          ].forEach(eventKey => {
             const sillyEventName = eventTypes[eventKey] || eventKey;
             if (!sillyEventName) return;
             try {
               eventSource.on(sillyEventName, (...args) => {
-                const 延迟 = eventKey === 'CHAT_CHANGED' ? 0 : 80;
-                window.setTimeout(() => hub.trigger({ source: 'silly_event', eventName: sillyEventName, eventKey }, ...args), 延迟);
+                if (eventKey === 'MESSAGE_SENT' || eventKey === 'MESSAGE_UPDATED' || eventKey === 'GENERATION_ENDED') return;
+                hub.requestRecovery(`silly_event:${eventKey}`, args, eventKey === 'CHAT_CHANGED' ? 0 : 80);
               });
               hasBound = true;
             } catch (err) {}
           });
+          if (variableUpdateStartedEvent) {
+            try {
+              eventSource.on(variableUpdateStartedEvent, startFromEvent);
+              hasBound = true;
+            } catch (err) {}
+          }
+          if (variableUpdateEndedEvent) {
+            try {
+              eventSource.on(variableUpdateEndedEvent, endFromEvent);
+              hasBound = true;
+            } catch (err) {}
+          }
           return hasBound;
         };
 
-        if (eventName && eventOnFn) {
+        if (eventOnFn) {
           try {
-            eventOnFn(eventName, triggerFromEvent);
+            if (variableUpdateStartedEvent) eventOnFn(variableUpdateStartedEvent, startFromEvent);
+            if (variableUpdateEndedEvent) eventOnFn(variableUpdateEndedEvent, endFromEvent);
             bound = true;
           } catch (err) {}
         }
 
-        if (host && eventName && typeof host.on === 'function') {
-          try {
-            host.on(eventName, triggerFromEvent);
-            bound = true;
-          } catch (err) {}
-        }
+        if (bindMvuEvent(host, 'on', variableUpdateStartedEvent, startFromEvent)) bound = true;
+        if (bindMvuEvent(host, 'on', variableUpdateEndedEvent, endFromEvent)) bound = true;
+        if (bindMvuEvent(host, 'addEventListener', variableUpdateStartedEvent, startFromEvent)) bound = true;
+        if (bindMvuEvent(host, 'addEventListener', variableUpdateEndedEvent, endFromEvent)) bound = true;
 
-        if (host && eventName && typeof host.addEventListener === 'function') {
+        [variableUpdateStartedEvent, variableUpdateEndedEvent].forEach(eventName => {
+          if (!eventName) return;
+          const handler = eventName === variableUpdateStartedEvent ? startFromEvent : endFromEvent;
           try {
-            host.addEventListener(eventName, triggerFromEvent);
-            bound = true;
-          } catch (err) {}
-        }
-
-        if (eventName) {
-          try {
-            window.addEventListener(eventName, triggerFromEvent);
+            window.addEventListener(eventName, handler);
             bound = true;
           } catch (err) {}
           try {
             if (window.top && window.top !== window && typeof window.top.addEventListener === 'function') {
-              window.top.addEventListener(eventName, triggerFromEvent);
+              window.top.addEventListener(eventName, handler);
               bound = true;
             }
           } catch (err) {}
-        }
+        });
 
         if (bindSillyTavernEventSource()) bound = true;
 
@@ -14652,20 +14790,20 @@
                 setPreferredActiveCharacterName('');
               }
             } catch (err) {}
-            hub.trigger({ source: 'chat_context', signature: nextSignature });
+            hub.requestRecovery('chat_context', [], 0);
           }, 1000);
         }
 
         if (!window[POLL_VIS_KEY]) {
           document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') hub.trigger({ source: 'visibility' });
+            if (document.visibilityState === 'visible') hub.requestRecovery('visibility', [], 80);
           });
           window[POLL_VIS_KEY] = true;
         }
 
         if (!window[POLL_FOCUS_KEY]) {
           window.addEventListener('focus', () => {
-            hub.trigger({ source: 'focus' });
+            hub.requestRecovery('focus', [], 80);
           });
           window[POLL_FOCUS_KEY] = true;
         }
@@ -14677,7 +14815,7 @@
         subscribers.set(subscriberId, { handler });
         hub.ensureBindings();
         if (options.immediate !== false) {
-          hub.trigger({ source: 'subscribe', subscriberId });
+          hub.requestRecovery(`subscribe:${subscriberId}`, [], 0);
         }
         return () => {
           subscribers.delete(subscriberId);
@@ -14689,7 +14827,7 @@
     return hub;
   }
 
-  function bindMvuUpdates(handler) {
+  function bindMvuUpdates(handler, options = {}) {
     const hub = getSharedMvuRefreshHub();
     return hub.subscribe('dragon-ui-main', async (vars, ...args) => {
       try {
@@ -14697,7 +14835,7 @@
       } catch (error) {
         console.warn('[DragonUI] MVU 实时刷新执行失败', error);
       }
-    });
+    }, options);
   }
 
   function resolveRootData(vars) {
@@ -34665,20 +34803,45 @@
   window.__MVU_CLAMP_UNIFIED_MAP_CANVAS__ = scheduleUnifiedMapCanvasClamp;
   window.addEventListener('resize', () => scheduleUnifiedMapCanvasClamp());
 
-  function renderLiveCards(snapshot, precomputedSectionSignatures = null) {
+  function getVisibleDashboardSectionKey() {
+    let currentTab = '';
+    try {
+      currentTab =
+        window.__MVU_TAB_STATE__ && typeof window.__MVU_TAB_STATE__.current === 'string'
+          ? window.__MVU_TAB_STATE__.current
+          : '';
+    } catch (error) {}
+    if (currentTab === 'page-map') return 'map';
+    if (currentTab === 'page-world' || currentTab === 'page-org') return 'world';
+    if (currentTab === 'page-terminal') return 'terminal';
+    return 'archive';
+  }
+
+  function renderLiveCards(snapshot, precomputedSectionSignatures = null, options = {}) {
     if (!全息概览槽位已挂载()) return false;
     const sectionSignatures = precomputedSectionSignatures || buildDashboardSectionRenderSignatures(snapshot);
     const previousSectionSignatures = lastDashboardSectionRenderSignatures || Object.create(null);
-    renderUnifiedCards(snapshot, sectionSignatures, previousSectionSignatures);
+    const visibleSection = toText(options.section, '').trim() || getVisibleDashboardSectionKey();
+    const renderPreviousSignatures = { ...sectionSignatures };
+    renderPreviousSignatures[visibleSection] =
+      options.forceSection === true ? '' : previousSectionSignatures[visibleSection];
+    renderUnifiedCards(snapshot, sectionSignatures, renderPreviousSignatures);
 
-    if (sectionSignatures.map !== previousSectionSignatures.map && typeof window.__sheepMapResync === 'function') {
+    if (
+      visibleSection === 'map' &&
+      sectionSignatures.map !== renderPreviousSignatures.map &&
+      typeof window.__sheepMapResync === 'function'
+    ) {
       try {
         window.__sheepMapResync({ center: false, syncVisual: false });
       } catch (err) {}
       scheduleUnifiedMapCanvasClamp();
     }
 
-    lastDashboardSectionRenderSignatures = sectionSignatures;
+    lastDashboardSectionRenderSignatures = {
+      ...previousSectionSignatures,
+      [visibleSection]: sectionSignatures[visibleSection],
+    };
     return true;
   }
 
@@ -42135,6 +42298,11 @@
       const shouldRenderDashboard = !!options.force || nextDashboardRenderSignature !== lastDashboardRenderSignature;
       const 当前暂停完整刷新 =
         !options.force && (初始暂停完整刷新 || refreshInlineEditToken !== inlineEditSessionToken || shouldPauseLiveRefresh(options));
+      const 刷新版本仍有效 = () => {
+        if (!Number.isFinite(options.revision)) return true;
+        return getSharedMvuRefreshHub().runtime.revision === options.revision;
+      };
+      if (!刷新版本仍有效()) return;
       if (shouldRenderHeader) {
         renderHeader(liveSnapshot);
         lastHeaderRenderSignature = nextHeaderRenderSignature;
@@ -42149,6 +42317,16 @@
       }
 
       if (需要渲染仪表盘) {
+        if (shouldRenderHeader && !options.force) {
+          await new Promise(resolve => {
+            if (typeof window.requestAnimationFrame === 'function') {
+              window.requestAnimationFrame(() => resolve());
+            } else {
+              window.setTimeout(resolve, 0);
+            }
+          });
+          if (!刷新版本仍有效()) return;
+        }
         if (renderLiveCards(liveSnapshot, nextDashboardSectionRenderSignatures)) {
           lastDashboardRenderSignature = nextDashboardRenderSignature;
           已写回真实卡片 = true;
@@ -42224,7 +42402,15 @@
     installDirectModuleIntentGuard();
     安装冷归档楼层监视器_桥接();
     await refreshLiveSnapshot();
-    bindMvuUpdates(vars => refreshLiveSnapshot({ sharedVars: vars }));
+    bindMvuUpdates(
+      (vars, meta = {}) =>
+        refreshLiveSnapshot({
+          sharedVars: vars,
+          force: meta.force === true,
+          revision: Number.isFinite(meta.revision) ? meta.revision : undefined,
+        }),
+      { immediate: false },
+    );
   }
 
   window.__MVU_REFRESH_LIVE_SNAPSHOT__ = options => refreshLiveSnapshot(options);
@@ -42369,6 +42555,18 @@
     } catch (err) {}
 
     closeModal();
+    const 当前快照 = liveSnapshot || lastRenderableSnapshot;
+    if (当前快照 && 全息概览槽位已挂载()) {
+      const 执行补渲染 = () => {
+        const 区段签名 = buildDashboardSectionRenderSignatures(当前快照);
+        renderLiveCards(当前快照, 区段签名, {
+          section: getVisibleDashboardSectionKey(),
+          forceSection: true,
+        });
+      };
+      if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(执行补渲染);
+      else window.setTimeout(执行补渲染, 0);
+    }
   }
 
   const initialMainTab = (() => {

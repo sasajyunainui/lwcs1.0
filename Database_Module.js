@@ -38421,10 +38421,6 @@ $CONTENT
             }
             if (result.autoMergeTriggered && result.autoMergeSuccess) {
                 showToastr_ACU('success', '自动合并纪要完成！');
-                try {
-                    topLevelWindow_ACU.AutoCardUpdaterAPI._notifyTableUpdate();
-                }
-                catch (_) { }
             }
             if (typeof updateCardUpdateStatusDisplay_ACU === 'function')
                 updateCardUpdateStatusDisplay_ACU();
@@ -41222,7 +41218,7 @@ $CONTENT
         }
         catch (_) { }
         // 2. 刷新可视化编辑器
-        setTimeout(() => {
+        const refreshVisualizer = () => {
             try {
                 if (typeof window.ACU_Visualizer_Refresh === 'function') {
                     window.ACU_Visualizer_Refresh();
@@ -41230,7 +41226,13 @@ $CONTENT
                 }
             }
             catch (_) { }
-        }, 200);
+        };
+        if (typeof globalThis.requestIdleCallback === 'function') {
+            globalThis.requestIdleCallback(refreshVisualizer, { timeout: 500 });
+        }
+        else {
+            setTimeout(refreshVisualizer, 0);
+        }
         // 3. UI 选择器刷新
         if ($manualTableSelector_ACU) {
             try {
@@ -41247,8 +41249,6 @@ $CONTENT
         if (typeof updateCardUpdateStatusDisplay_ACU === 'function') {
             updateCardUpdateStatusDisplay_ACU();
         }
-        // 4. 等待前端完成数据读取（保持原有 800ms 等待行为）
-        await new Promise(resolve => setTimeout(resolve, 800));
         return result;
     }
     /**
@@ -41381,7 +41381,6 @@ $CONTENT
         switch (event.phase) {
             case 'complete':
                 updateStatusDisplay();
-                notifyTableUpdate();
                 break;
             case 'retry':
                 showToastr_ACU('warning', message, { timeOut: 5000 });
@@ -41439,9 +41438,7 @@ $CONTENT
             const result = await executeCardUpdateCore_ACU(messagesToUse, saveTargetIndex, isImportMode, updateMode, isSilentMode, targetSheetKeys, requestOptions, localAbortController, progressContext, (event) => handleProgressEvent(event, isSilentMode, loadingToast));
             // UI：根据返回值决定后续 UI 操作
             if (result.success && !isSilentMode) {
-                setTimeout(() => {
-                    notifyTableUpdate();
-                }, 250);
+                notifyTableUpdate();
             }
             else if (!result.success && !result.aborted && !isSilentMode) {
                 showToastr_ACU('error', `更新失败: ${result.error || '未知错误'}`);
@@ -47829,12 +47826,13 @@ $CONTENT
             return;
         if (!jQuery_API_ACU('#acu-visualizer-content').length && !ACU_WindowManager.isOpen(`${SCRIPT_ID_PREFIX_ACU}-visualizer-window`))
             return;
-        // 1. 尝试从聊天记录重新构建完整数据
-        logDebug_ACU('Visualizer: Forcing data refresh directly from chat history (Global Function)...');
-        // 确保消息列表是最新的
-        await loadAllChatMessages_ACU();
-        // 使用合并逻辑从聊天记录提取最新数据
-        const freshData = await mergeAllIndependentTables_ACU();
+        // 数据库事务已经更新运行时快照；仅在运行时数据缺失时回退聊天历史重建。
+        let freshData = currentJsonTableData_ACU;
+        if (!freshData) {
+            logDebug_ACU('Visualizer: Runtime data missing, rebuilding from chat history...');
+            await loadAllChatMessages_ACU();
+            freshData = await mergeAllIndependentTables_ACU();
+        }
         if (!freshData) {
             logWarn_ACU('Visualizer refresh: Failed to merge data from chat history.');
             // 如果失败，回退到使用当前内存数据（如果存在）
@@ -56796,9 +56794,30 @@ $CONTENT
     // [从 state-manager.ts 搬入 presentation 层] 安装发送意图捕捉钩子（DOM 事件绑定）
     async function ensureInitialSeedCheckpointBeforeGeneration_ACU(reason, { allowPendingFirstUserMessage = true } = {}) {
         try {
+            await new Promise(resolve => {
+                const hostWindow = topLevelWindow_ACU || globalThis;
+                if (typeof hostWindow.requestAnimationFrame === 'function') {
+                    hostWindow.requestAnimationFrame(() => resolve());
+                }
+                else {
+                    globalThis.setTimeout(resolve, 0);
+                }
+            });
             const result = await ensureInitialSeedCheckpoint_ACU({ reason, allowPendingFirstUserMessage });
             if (result?.success && isSqliteMode()) {
-                await reloadStorageProvider();
+                const provider = getStorageProvider();
+                let runtimeValid = provider?.mode === 'sqlite' && typeof provider.isReady === 'function' && provider.isReady();
+                if (runtimeValid && provider.engine && typeof provider.engine.getTableNames === 'function') {
+                    const runtimeTableNames = new Set(provider.engine.getTableNames());
+                    const expectedSheets = Object.values(currentJsonTableData_ACU || {}).filter(sheet => sheet?.sourceData?.ddl);
+                    runtimeValid = expectedSheets.every(sheet => {
+                        const tableName = parseDDLTableName(sheet.sourceData.ddl);
+                        return !!tableName && runtimeTableNames.has(tableName);
+                    });
+                }
+                if (!runtimeValid) {
+                    await reloadStorageProvider();
+                }
             }
             return result;
         }
@@ -57342,6 +57361,7 @@ $CONTENT
      */
     let isNotifyingTableUpdate_ACU = false;
     let hasPendingTableUpdateNotification_ACU = false;
+    let tableUpdateNotificationTimer_ACU = null;
     function notifyTableUpdateCallbacksOnce_ACU(ctx) {
         const callbacksSnapshot = [...ctx.tableUpdateCallbacks];
         const callbackCount = callbacksSnapshot.length;
@@ -57366,6 +57386,15 @@ $CONTENT
         });
     }
     function notifyTableUpdateCallbacksSafely_ACU(ctx) {
+        if (tableUpdateNotificationTimer_ACU !== null) {
+            globalThis.clearTimeout(tableUpdateNotificationTimer_ACU);
+        }
+        tableUpdateNotificationTimer_ACU = globalThis.setTimeout(() => {
+            tableUpdateNotificationTimer_ACU = null;
+            notifyTableUpdateCallbacksNow_ACU(ctx);
+        }, 50);
+    }
+    function notifyTableUpdateCallbacksNow_ACU(ctx) {
         if (isNotifyingTableUpdate_ACU) {
             hasPendingTableUpdateNotification_ACU = true;
             logDebug_ACU('[回调管理] Table update notification is already running; queued one coalesced follow-up notification.');
@@ -59031,9 +59060,6 @@ $CONTENT
                                 if (messageIndex != null) {
                                     if (SillyTavern_API_ACU?.eventSource?.emit && SillyTavern_API_ACU?.eventTypes?.MESSAGE_UPDATED) {
                                         SillyTavern_API_ACU.eventSource.emit(SillyTavern_API_ACU.eventTypes.MESSAGE_UPDATED, messageIndex);
-                                    }
-                                    if (topLevelWindow_ACU?.AutoCardUpdaterAPI) {
-                                        topLevelWindow_ACU.AutoCardUpdaterAPI._notifyTableUpdate();
                                     }
                                 }
                                 logDebug_ACU('[游戏初始化] 数据库模板注入成功（包含种子数据）');
@@ -62525,11 +62551,12 @@ $CONTENT
     const ASSISTANT_BUTTON_ID_ACU = 'acu-vis-assistant-btn';
     const ASSISTANT_HOST_ID_ACU = 'acu-vis-assistant-host';
     const ASSISTANT_DOCK_SELECTOR_ACU = '#acu-vis-assistant-dock';
-    const LIFECYCLE_POLL_MS_ACU = 200;
+    const LIFECYCLE_POLL_MS_ACU = 1000;
     const DISABLE_AUTO_INIT_FLAG_ACU = '__ACU_DISABLE_TEMPLATE_ASSISTANT_ADDON_AUTO_INIT__';
     let addonInitialized_ACU = false;
     let lifecycleTimer_ACU = null;
     let visualizerObserver_ACU = null;
+    let visualizerObserverRoot_ACU = null;
     let lastVisualizerOpen_ACU = false;
     let lastSheetKey_ACU = null;
     function getAddonDocument_ACU() {
@@ -62609,16 +62636,24 @@ $CONTENT
         lastVisualizerOpen_ACU = true;
     }
     function startVisualizerObserver_ACU() {
-        const doc = getAddonDocument_ACU();
-        if (!doc?.body || typeof MutationObserver !== 'function')
+        const root = getVisualizerRoot_ACU();
+        if (root === visualizerObserverRoot_ACU)
+            return;
+        if (visualizerObserver_ACU) {
+            visualizerObserver_ACU.disconnect();
+            visualizerObserver_ACU = null;
+        }
+        visualizerObserverRoot_ACU = root || null;
+        if (!root || typeof MutationObserver !== 'function')
             return;
         visualizerObserver_ACU = new MutationObserver(() => {
             syncVisualizerTemplateAssistantAddon_ACU();
         });
-        visualizerObserver_ACU.observe(doc.body, { childList: true, subtree: true });
+        visualizerObserver_ACU.observe(root, { childList: true, subtree: true });
     }
     function startLifecyclePoll_ACU() {
         lifecycleTimer_ACU = globalThis.setInterval(() => {
+            startVisualizerObserver_ACU();
             syncVisualizerTemplateAssistantAddon_ACU();
         }, LIFECYCLE_POLL_MS_ACU);
     }
@@ -62627,6 +62662,7 @@ $CONTENT
             visualizerObserver_ACU.disconnect();
             visualizerObserver_ACU = null;
         }
+        visualizerObserverRoot_ACU = null;
         if (lifecycleTimer_ACU !== null) {
             globalThis.clearInterval(lifecycleTimer_ACU);
             lifecycleTimer_ACU = null;
