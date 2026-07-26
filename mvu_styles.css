@@ -5150,7 +5150,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   font-size: 11px;
 }
 
-.mvu-editor-section[data-skill-designer-page-hidden] {
+/* 特异性要盖过 .skill-designer-shell .mvu-editor-section.skill-designer-section-compact
+   (0,3,0)，用属性选择器补齐而不是加 !important */
+.skill-designer-shell .mvu-editor-section[data-skill-designer-page-hidden],
+.mvu-editor-section[data-skill-designer-page-hidden][data-skill-designer-page-hidden] {
   display: none;
 }
 
