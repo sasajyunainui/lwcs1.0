@@ -4295,6 +4295,7 @@
           const matches = new Set(matchingStates(currentTarget, effect?.状态 || '任意状态').map(([key]) => key));
           const limit = Math.max(0, Number(effect?.数量 || matches.size));
           const removedKeys = [...matches].slice(0, limit || matches.size);
+          if (!removedKeys.length) return;
           const removedScheduledDelta = stateEntries(currentTarget)
             .filter(([key]) => removedKeys.includes(key))
             .reduce((sum, [, state]) => sum + stateScheduledHpDelta(currentTarget, state), 0);

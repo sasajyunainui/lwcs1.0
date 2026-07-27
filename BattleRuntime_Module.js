@@ -363,11 +363,14 @@
     const stateName = /护盾|屏障|结界/.test(String(sourceName || '')) ? String(sourceName || '护盾') : `${sourceName || '护盾'}护盾`;
     const existing = unit.状态效果[stateName];
     if (existing) {
+      existing.状态 = String(existing.状态 || stateName).trim() || stateName;
+      existing.状态名称 = String(existing.状态名称 || stateName).trim() || stateName;
       existing.duration = Math.max(Number(existing.duration || 0), Number(duration || 0));
       existing.shield_value = Math.max(0, Number(existing.shield_value || 0)) + amount;
     } else {
       unit.状态效果[stateName] = {
-        类型: 'buff', 层数: 1, 描述: `由[${sourceName || stateName}]附加`, 来源原型摘要: '护盾变化',
+        类型: 'buff', 状态: stateName, 状态名称: stateName, 层数: 1,
+        描述: `由[${sourceName || stateName}]附加`, 来源原型摘要: '护盾变化',
         duration: Number(duration || 0), 面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
         战斗效果: createEmptyCombatEffectMap(), shield_value: amount,
       };
@@ -482,20 +485,129 @@
     } };
   }
 
-  function settleDelayedEffect(unit = {}, effect = {}, label = '目标') {
+  function settleDelayedEffect(
+    unit = {},
+    effect = {},
+    label = '目标',
+    combatData = null,
+    sourceContext = {},
+  ) {
     if (!unit || !effect || typeof effect !== 'object') return '';
     if (!unit.状态效果) unit.状态效果 = {};
     const prototype = String(effect?.原型 || '').trim();
     const valueText = String(effect?.数值 ?? '').trim();
     const value = readSignedBattleValue(valueText || effect?.威力倍率 || 0);
+    const formalCombatData =
+      combatData &&
+      typeof combatData === 'object' &&
+      (combatData.参战者 || combatData.__父级战斗数据 || combatData.__battleEventLedger)
+        ? combatData
+        : null;
+    const sourceCondition = sourceContext?.condition && typeof sourceContext.condition === 'object'
+      ? sourceContext.condition
+      : {};
+    const sourceActionId = String(
+      sourceContext?.sourceActionId ||
+      sourceCondition?.来源动作ID ||
+      sourceCondition?.sourceActionId ||
+      '',
+    ).trim();
+    const sourceEffectId = String(
+      sourceContext?.sourceEffectId ||
+      sourceCondition?.来源效果ID ||
+      sourceCondition?.sourceEffectId ||
+      '',
+    ).trim();
+    const sourceActorName = String(
+      sourceContext?.actorName ||
+      sourceCondition?.来源角色 ||
+      effect?.来源角色 ||
+      '',
+    ).trim();
+    const actionName = String(
+      sourceContext?.actionName ||
+      sourceCondition?.来源技能 ||
+      effect?.来源技能 ||
+      sourceContext?.stateName ||
+      '延迟效果',
+    ).trim();
+    const childFacts = [];
+    const factBase = {
+      round: Number(formalCombatData?.回合 || 0),
+      actorId: String(sourceContext?.actorId || sourceActorName).trim(),
+      actorName: sourceActorName,
+      targetId: previewRuntime.unitId(unit),
+      targetName: previewRuntime.unitName(unit) || label,
+      actionName,
+      actionType: 'DELAYED_EFFECT',
+      actorControl: 'SYSTEM',
+      actionRole: 'STATE_TICK',
+      actionId: sourceActionId,
+      sourceActionId,
+      sourceEffectId,
+      effectPrototype: prototype,
+    };
+    const writeFact = payload => {
+      if (!formalCombatData) return null;
+      const fact = writeLedgerEvent(formalCombatData, { ...factBase, ...payload });
+      if (fact) childFacts.push(fact);
+      return fact;
+    };
+    const finish = log => {
+      if (formalCombatData) {
+        writeLedgerEvent(formalCombatData, {
+          ...factBase,
+          eventKind: 'effect_resolved',
+          result: childFacts.length ? 'resolved' : 'no_effect',
+          resultState: childFacts.length ? 'SUCCESS' : 'NO_EFFECT',
+          factType: prototypeRuntimeContract[prototype]?.factTypes?.[0] || 'EFFECT',
+          primaryOutcome: childFacts.length ? 'delayed_effect_resolved' : 'no_effect',
+          operation: 'WRAP',
+          meta: {
+            source: 'delayed_effect_settlement',
+            wrapperOnly: true,
+            childEventIds: childFacts.map(fact => fact.eventId),
+            stateName: String(sourceContext?.stateName || '').trim(),
+            operation: 'WRAP',
+          },
+        });
+      }
+      return log;
+    };
+
     if (prototype === '伤害结算') {
       const damageType = String(effect?.伤害类型 || '近身攻击').trim() || '近身攻击';
       const multiplier = Math.max(1, Number(effect?.威力倍率 || 100));
-      const damage = /真实/.test(damageType)
+      const requestedDamage = /真实/.test(damageType)
         ? Math.max(1, Math.floor(previewRuntime.readHpMax(unit) * Math.min(1, multiplier / 1000)))
         : Math.max(1, Math.floor(previewRuntime.readHpMax(unit) * Math.min(1, multiplier / 1800)));
-      writeCombatResource(unit, 'hp', previewRuntime.readHp(unit) - damage);
-      return `[延迟效果] ${label}受到${damage}点${damageType}。`;
+      const before = previewRuntime.readHp(unit);
+      writeCombatResource(unit, 'hp', before - requestedDamage);
+      const after = previewRuntime.readHp(unit);
+      const appliedDamage = Math.max(0, before - after);
+      if (appliedDamage > 0) {
+        writeFact({
+          eventKind: 'state_tick',
+          result: 'dot',
+          resultState: 'SUCCESS',
+          factType: 'STATE_TICK',
+          primaryOutcome: 'delayed_damage',
+          appliedDamage,
+          operation: 'DAMAGE',
+          meta: {
+            source: 'delayed_effect_settlement',
+            stateName: String(sourceContext?.stateName || actionName).trim(),
+            damageType,
+            before,
+            after,
+            delta: -appliedDamage,
+            amount: appliedDamage,
+            appliedDamage,
+            operation: 'DAMAGE',
+          },
+        });
+      }
+      return finish(appliedDamage > 0 ? `[延迟效果] ${label}受到${appliedDamage}点${damageType}。` : '');
     }
     if (prototype === '资源变化') {
       const resourceText = String(effect?.资源 || '').trim();
@@ -506,53 +618,170 @@
       const delta = /%$/.test(valueText) || Math.abs(value) <= 1 ? Math.floor(maximum * value) : Math.floor(value);
       const next = Math.max(0, Math.min(maximum, current + delta));
       const actual = next - current;
-      if (!actual) return '';
-      if (findResourceSuppression(unit, resourceLabel)) return `[机制抹消] ${label}对【资源变化 资源:${resourceLabel}】存在封锁，延迟资源变化未能落地。`;
+      if (!actual) return finish('');
+      if (findResourceSuppression(unit, resourceLabel)) {
+        return finish(`[机制抹消] ${label}对【资源变化 资源:${resourceLabel}】存在封锁，延迟资源变化未能落地。`);
+      }
       writeCombatResource(unit, resourceKey, next);
-      return `[延迟效果] ${label}${actual >= 0 ? '恢复' : '损失'}${Math.abs(actual)}点${resourceText || '资源'}。`;
+      writeFact({
+        eventKind: 'resource_change',
+        result: actual > 0 ? 'gain' : 'loss',
+        resultState: actual > 0 ? 'GAIN' : 'LOSS',
+        factType: 'RESOURCE',
+        primaryOutcome: actual > 0 ? 'resource_restored' : 'resource_reduced',
+        operation: actual > 0 ? 'RESTORE' : 'REDUCE',
+        meta: {
+          source: 'delayed_effect_settlement',
+          resource: resourceLabel,
+          resourceKey,
+          before: current,
+          after: next,
+          delta: actual,
+          amount: Math.abs(actual),
+          operation: actual > 0 ? 'RESTORE' : 'REDUCE',
+        },
+      });
+      return finish(`[延迟效果] ${label}${actual >= 0 ? '恢复' : '损失'}${Math.abs(actual)}点${resourceText || '资源'}。`);
     }
     if (prototype === '护盾变化') {
-      if (findPrototypeSuppression(unit, prototype)) return `[机制抹消] ${label}对【护盾变化】存在封锁，延迟护盾变化未能落地。`;
+      if (findPrototypeSuppression(unit, prototype)) {
+        return finish(`[机制抹消] ${label}对【护盾变化】存在封锁，延迟护盾变化未能落地。`);
+      }
+      const before = currentShieldTotal(unit);
       if (value >= 0) {
         const amount = /%$/.test(valueText) || Math.abs(value) <= 1 ? Math.floor(previewRuntime.readHpMax(unit) * Math.abs(value)) : Math.floor(Math.abs(value));
         const applied = applyRuntimeShield(unit, amount, Math.max(1, Number(effect?.持续回合 || 1)), '延迟护盾');
-        return applied > 0 ? `[延迟效果] ${label}获得${applied}点护盾。` : '';
+        const after = currentShieldTotal(unit);
+        if (applied > 0) {
+          writeFact({
+            eventKind: 'shield_create',
+            result: 'created',
+            resultState: 'GAIN',
+            factType: 'SHIELD',
+            primaryOutcome: 'shield_created',
+            operation: 'CREATE',
+            meta: {
+              source: 'delayed_effect_settlement',
+              stateName: '延迟护盾',
+              before,
+              after,
+              amount: applied,
+              delta: applied,
+              operation: 'CREATE',
+            },
+          });
+        }
+        return finish(applied > 0 ? `[延迟效果] ${label}获得${applied}点护盾。` : '');
       }
-      if (!(currentShieldTotal(unit) > 0)) return '';
-      return `[延迟效果] ${label}被削减${removeRuntimeShield(unit, valueText || effect?.数值 || '-100%')}点护盾。`;
+      if (!(before > 0)) return finish('');
+      const removed = removeRuntimeShield(unit, valueText || effect?.数值 || '-100%');
+      const after = currentShieldTotal(unit);
+      if (removed > 0) {
+        writeFact({
+          eventKind: 'shield_break',
+          result: 'reduced',
+          resultState: 'LOSS',
+          factType: 'SHIELD',
+          primaryOutcome: 'shield_reduced',
+          operation: 'REDUCE',
+          meta: {
+            source: 'delayed_effect_settlement',
+            before,
+            after,
+            amount: removed,
+            delta: -removed,
+            remainingShield: after,
+            operation: 'REDUCE',
+          },
+        });
+      }
+      return finish(removed > 0 ? `[延迟效果] ${label}被削减${removed}点护盾。` : '');
     }
     if (prototype === '属性修正') {
       const attribute = String(effect?.属性 || '').trim();
-      if (!attribute || !value) return '';
-      if (findPrototypeSuppression(unit, prototype, '属性', attribute)) return `[机制抹消] ${label}对【属性修正 属性:${attribute}】存在封锁，延迟属性修正未能落地。`;
+      if (!attribute || !value) return finish('');
+      if (findPrototypeSuppression(unit, prototype, '属性', attribute)) {
+        return finish(`[机制抹消] ${label}对【属性修正 属性:${attribute}】存在封锁，延迟属性修正未能落地。`);
+      }
       const runtimeKey = { 力量: 'str', 防御: 'def', 敏捷: 'agi', 体力上限: 'vit_max', 魂力上限: 'sp_max', 精神力上限: 'men_max' }[attribute] || attribute;
       const percentage = /%$/.test(valueText);
-      unit.状态效果[`延迟属性:${attribute || runtimeKey}`] = {
-        类型: value >= 0 ? 'buff' : 'debuff', 层数: 1, 描述: '延迟效果属性修正', 来源原型摘要: '属性修正',
-        属性: runtimeKey, duration: Math.max(1, Number(effect?.持续回合 || 1)),
+      const stateName = `延迟属性:${attribute || runtimeKey}`;
+      const before = unit.状态效果[stateName] ? cloneValue(unit.状态效果[stateName]) : null;
+      const after = {
+        类型: value >= 0 ? 'buff' : 'debuff',
+        状态: stateName,
+        状态名称: stateName,
+        层数: 1,
+        描述: '延迟效果属性修正',
+        来源原型摘要: '属性修正',
+        属性: runtimeKey,
+        duration: Math.max(1, Number(effect?.持续回合 || 1)),
         面板修改比例: percentage ? { [runtimeKey]: Math.max(0.1, 1 + value) } : {},
-        面板固定修正: percentage ? {} : { [runtimeKey]: value }, 战斗效果: createEmptyCombatEffectMap(),
+        面板固定修正: percentage ? {} : { [runtimeKey]: value },
+        战斗效果: createEmptyCombatEffectMap(),
       };
-      return `[延迟效果] ${label}获得${attribute || runtimeKey}修正。`;
+      unit.状态效果[stateName] = after;
+      writeFact({
+        eventKind: before ? 'state_replace' : 'state_apply',
+        result: before ? 'replaced' : 'applied',
+        resultState: 'SUCCESS',
+        factType: 'ATTRIBUTE',
+        primaryOutcome: before ? 'state_replace' : 'state_apply',
+        operation: 'ATTRIBUTE_MODIFY',
+        duration: after.duration,
+        meta: {
+          source: 'delayed_effect_settlement',
+          stateName,
+          before,
+          after: cloneValue(after),
+          operation: 'ATTRIBUTE_MODIFY',
+        },
+      });
+      return finish(`[延迟效果] ${label}获得${attribute || runtimeKey}修正。`);
     }
     if (prototype === '状态施加') {
       const stateName = String(effect?.状态 || '').trim();
-      if (!stateName) return '';
-      if (findPrototypeSuppression(unit, prototype, '状态', stateName)) return `[机制抹消] ${label}对【状态施加 状态:${stateName}】存在封锁，延迟状态施加未能落地。`;
+      if (!stateName) return finish('');
+      if (findPrototypeSuppression(unit, prototype, '状态', stateName)) {
+        return finish(`[机制抹消] ${label}对【状态施加 状态:${stateName}】存在封锁，延迟状态施加未能落地。`);
+      }
       const state = {
         类型: ['自身', '友方', '友方单体', '友方群体', '召唤物', '分身'].includes(String(effect?.目标 || '').trim()) ? 'buff' : 'debuff',
-        层数: 1, 来源原型摘要: '状态施加', 描述: '延迟效果状态施加', duration: Math.max(0, Number(effect?.持续回合 || 0)),
+        状态: stateName,
+        状态名称: stateName,
+        层数: 1,
+        来源原型摘要: '状态施加',
+        描述: '延迟效果状态施加',
+        duration: Math.max(0, Number(effect?.持续回合 || 0)),
         面板修改比例: { ...(effect?.面板修改比例 || {}) },
         战斗效果: { ...createEmptyCombatEffectMap(), ...(effect?.计算层效果 || {}) },
       };
-      if (negativeEffectIsImmune(unit, state)) return `[无视异常] ${label}免疫了[${stateName}]延迟状态。`;
+      if (negativeEffectIsImmune(unit, state)) return finish(`[无视异常] ${label}免疫了[${stateName}]延迟状态。`);
       const removal = findPersistentStateRemoval(unit, stateName, state);
-      if (removal) return `[持续状态移除] ${label}的[${stateName}]被[${removal[0]}]拦截。`;
+      if (removal) return finish(`[持续状态移除] ${label}的[${stateName}]被[${removal[0]}]拦截。`);
+      const before = unit.状态效果[stateName] ? cloneValue(unit.状态效果[stateName]) : null;
       const merged = mergeRuntimeCondition(unit.状态效果[stateName], state, effect);
-      if (!merged.applied) return `[延迟效果] ${label}的[${stateName}]已存在，本次未形成新的刷新或叠加。`;
+      if (!merged.applied) return finish(`[延迟效果] ${label}的[${stateName}]已存在，本次未形成新的刷新或叠加。`);
       unit.状态效果[stateName] = merged.state;
       unit.final = buildCombatFinalStats(unit);
-      return `[延迟效果] ${label}获得[${stateName}]。`;
+      writeFact({
+        eventKind: before ? 'state_replace' : 'state_apply',
+        result: before ? 'replaced' : 'applied',
+        resultState: 'SUCCESS',
+        factType: 'STATE',
+        primaryOutcome: before ? 'state_replace' : 'state_apply',
+        operation: before ? 'STATE_REPLACE' : 'STATE_APPLY',
+        duration: Math.max(0, Number(merged.state?.duration || 0)),
+        meta: {
+          source: 'delayed_effect_settlement',
+          stateName,
+          before,
+          after: cloneValue(merged.state),
+          mergeKind: merged.mergeKind,
+          operation: before ? 'STATE_REPLACE' : 'STATE_APPLY',
+        },
+      });
+      return finish(`[延迟效果] ${label}获得[${stateName}]。`);
     }
     throw new Error(`battle_delayed_effect_unsupported:${prototype || 'missing'}`);
   }
@@ -872,7 +1101,10 @@
       if (!condition) return;
       if (condition.延迟效果 === true && Array.isArray(condition?.结算效果)) {
         condition.结算效果.forEach(effect => {
-          const delayedLog = settleDelayedEffect(unit, effect, label);
+          const delayedLog = settleDelayedEffect(unit, effect, label, combatData, {
+            stateName: key,
+            condition,
+          });
           if (delayedLog) logs.push(delayedLog);
         });
       }
@@ -5380,7 +5612,18 @@
     }));
   }
 
-  function writeStructuredResourceFact(combatData = {}, actor = {}, target = {}, action = {}, actionEvent = {}, resourceKey = '', delta = 0, actionRole = 'ACTIVE', operation = '') {
+  function writeStructuredResourceFact(
+    combatData = {},
+    actor = {},
+    target = {},
+    action = {},
+    actionEvent = {},
+    resourceKey = '',
+    delta = 0,
+    actionRole = 'ACTIVE',
+    operation = '',
+    details = {},
+  ) {
     const amount = Number(delta || 0);
     if (!amount) return null;
     const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力', shield: '护盾' }[resourceKey] || resourceKey;
@@ -5406,15 +5649,282 @@
       resultState: amount > 0 ? 'GAIN' : 'LOSS',
       primaryOutcome: amount > 0 ? 'resource_restored' : 'resource_reduced',
       operation: resourceOperation,
+      factType: String(details?.factType || '').trim(),
+      effectPrototype: String(details?.effectPrototype || '').trim(),
+      sourceEffectId: String(details?.sourceEffectId || '').trim(),
       meta: {
         resource,
         resourceKey,
         delta: amount,
         amount: Math.abs(amount),
         operation: resourceOperation,
-        source: 'structured_runtime',
+        before: Number.isFinite(Number(details?.before)) ? Number(details.before) : null,
+        after: Number.isFinite(Number(details?.after)) ? Number(details.after) : null,
+        effectInstanceId: String(details?.sourceEffectId || '').trim(),
+        source: String(details?.source || 'structured_runtime').trim(),
+        ...(details?.meta && typeof details.meta === 'object' ? cloneValue(details.meta) : {}),
       },
     });
+  }
+
+  const structuredPrototypeOperations = Object.freeze({
+    资源转移: 'RESOURCE_TRANSFER',
+    属性修正: 'ATTRIBUTE_MODIFY',
+    判定修正: 'CHECK_MODIFY',
+    结算修正: 'SETTLEMENT_MODIFY',
+    炸环: 'RING_BURST',
+    时窗修正: 'WINDOW_MODIFY',
+    状态移除: 'STATE_REMOVE',
+    规则防御: 'RULE_DEFENSE',
+    状态转移: 'STATE_TRANSFER',
+    状态交换: 'STATE_EXCHANGE',
+    资源锁定: 'LOCK',
+    规则改写: 'RULE_REWRITE',
+    机制抹消: 'MECHANISM_SUPPRESS',
+    机制授予: 'OPPORTUNITY_GRANT',
+    复制执行: 'COPY_EXECUTE',
+    时光回溯: 'SNAPSHOT_RESTORE',
+    位移执行: 'POSITION_SHIFT',
+    决策干扰: 'DECISION_INTERFERENCE',
+  });
+  const structuredFactResourceKeys = Object.freeze(['hp', 'vit', 'sp', 'men']);
+  const structuredSnapshotIgnoredFields = new Set([
+    'hp', 'HP', 'hp_max', 'HP上限', 'vit', '体力', 'vit_max', '体力上限',
+    'sp', '魂力', 'sp_max', '魂力上限', 'men', '精神力', 'men_max', '精神力上限',
+    '属性', '状态效果', 'final', '__battleRuntime', '__父级战斗数据', '__宿主', '__来源状态',
+  ]);
+
+  function structuredStateIdentity(key = '', state = {}) {
+    return String(state?.状态 || state?.状态名称 || state?.名称 || key || '').trim();
+  }
+
+  function structuredResourceValue(unit = {}, key = '') {
+    if (key === 'hp') return previewRuntime.readHp(unit);
+    return previewRuntime.readResource(unit, { vit: '体力', sp: '魂力', men: '精神力' }[key] || key);
+  }
+
+  function structuredContributionForTarget(contributions = [], targetId = '', outcomeKinds = []) {
+    const accepted = new Set(outcomeKinds.map(value => String(value || '').trim().toUpperCase()).filter(Boolean));
+    return contributions.find(contribution =>
+      String(contribution?.targetId || '').trim() === String(targetId || '').trim() &&
+      (!accepted.size || accepted.has(String(contribution?.outcomeKind || '').trim().toUpperCase()))
+    ) || null;
+  }
+
+  function structuredPreviewFactBase(
+    combatData = {},
+    actor = {},
+    target = {},
+    action = {},
+    actionEvent = {},
+    actionRole = 'ACTIVE',
+    prototype = '',
+    contribution = null,
+  ) {
+    return {
+      round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(actor),
+      actorName: previewRuntime.unitName(actor),
+      targetId: previewRuntime.unitId(target),
+      targetName: previewRuntime.unitName(target),
+      actionName: action.actionName,
+      actionType: action.actionKind,
+      actorControl: action.actorControl,
+      actionRole,
+      actionId: actionEvent?.actionId || '',
+      sourceActionId: actionEvent?.actionId || '',
+      parentNodeId: actionEvent?.chainNodeId || '',
+      sourceNodeId: actionEvent?.chainNodeId || '',
+      effectPrototype: prototype,
+      sourceEffectId: String(contribution?.effectInstanceId || '').trim(),
+      factType: prototypeRuntimeContract[prototype]?.factTypes?.[0] || 'EFFECT',
+      groupKey: String(contribution?.evidence?.probabilityGroupKey || contribution?.evidence?.distributionGroupKey || '').trim(),
+      operation: structuredPrototypeOperations[prototype] || 'STATE_APPLY',
+    };
+  }
+
+  function writeStructuredPreviewUnitFacts({
+    combatData = {},
+    actor = {},
+    target = {},
+    beforeUnit = {},
+    action = {},
+    actionEvent = {},
+    actionRole = 'ACTIVE',
+    prototype = '',
+    contributions = [],
+  } = {}) {
+    const facts = [];
+    const targetId = previewRuntime.unitId(target);
+    const contribution = structuredContributionForTarget(contributions, targetId);
+    const base = structuredPreviewFactBase(
+      combatData,
+      actor,
+      target,
+      action,
+      actionEvent,
+      actionRole,
+      prototype,
+      contribution,
+    );
+    const beforeResources = Object.fromEntries(
+      structuredFactResourceKeys.map(key => [key, structuredResourceValue(beforeUnit, key)]),
+    );
+    const afterResources = Object.fromEntries(
+      structuredFactResourceKeys.map(key => [key, structuredResourceValue(target, key)]),
+    );
+    structuredFactResourceKeys.forEach(key => {
+      const before = Number(beforeResources[key] || 0);
+      const after = Number(afterResources[key] || 0);
+      const delta = after - before;
+      if (Math.abs(delta) <= 1e-9) return;
+      const healthContribution = key === 'hp'
+        ? structuredContributionForTarget(contributions, targetId, ['HP_DELTA'])
+        : null;
+      const damageOwnedByHit =
+        key === 'hp' &&
+        delta < 0 &&
+        !!healthContribution &&
+        !['资源转移', '时光回溯'].includes(prototype);
+      if (damageOwnedByHit) {
+        facts.push(writeLedgerEvent(combatData, {
+          ...structuredPreviewFactBase(
+            combatData,
+            actor,
+            target,
+            action,
+            actionEvent,
+            actionRole,
+            prototype,
+            healthContribution,
+          ),
+          eventKind: 'hit_result',
+          result: 'hit',
+          resultState: 'SUCCESS',
+          primaryOutcome: 'full_hit',
+          appliedDamage: Math.abs(delta),
+          operation: 'DAMAGE',
+          meta: {
+            source: 'structured_preview_commit',
+            effectInstanceId: String(healthContribution?.effectInstanceId || '').trim(),
+            outcomeKind: 'HP_DELTA',
+            before,
+            after,
+            delta,
+            rawDamage: Math.abs(delta),
+            appliedDamage: Math.abs(delta),
+            evidence: cloneValue(healthContribution?.evidence || {}),
+          },
+        }));
+        return;
+      }
+      facts.push(writeStructuredResourceFact(
+        combatData,
+        actor,
+        target,
+        action,
+        actionEvent,
+        key,
+        delta,
+        actionRole,
+        delta > 0 ? 'RESTORE' : 'REDUCE',
+        {
+          before,
+          after,
+          source: 'structured_preview_commit',
+          factType: prototypeRuntimeContract[prototype]?.factTypes?.[0] || 'RESOURCE',
+          effectPrototype: prototype,
+          sourceEffectId: String(contribution?.effectInstanceId || '').trim(),
+          meta: {
+            outcomeKind: String(contribution?.outcomeKind || 'RESOURCE_OPTION_CHANGED').trim(),
+            evidence: cloneValue(contribution?.evidence || {}),
+          },
+        },
+      ));
+    });
+
+    const beforeStates = beforeUnit?.状态效果 && typeof beforeUnit.状态效果 === 'object'
+      ? beforeUnit.状态效果
+      : {};
+    const afterStates = target?.状态效果 && typeof target.状态效果 === 'object'
+      ? target.状态效果
+      : {};
+    [...new Set([...Object.keys(beforeStates), ...Object.keys(afterStates)])].sort().forEach(stateKey => {
+      const beforeState = beforeStates[stateKey];
+      const afterState = afterStates[stateKey];
+      if (beforeState !== undefined && afterState !== undefined &&
+        stableSerialize(beforeState) === stableSerialize(afterState)) return;
+      const eventKind = beforeState === undefined
+        ? 'state_apply'
+        : afterState === undefined
+          ? 'state_remove'
+          : 'state_replace';
+      const state = afterState ?? beforeState ?? {};
+      const stateName = structuredStateIdentity(stateKey, state);
+      const stateContribution = structuredContributionForTarget(
+        contributions,
+        targetId,
+        ['STATE_CHANGED', 'NEXT_ACTION_QUALITY_CHANGED', 'RULE_CHANGED', 'ACTION_CANCELLED'],
+      ) || contribution;
+      const operation = eventKind === 'state_remove'
+        ? 'STATE_REMOVE'
+        : eventKind === 'state_replace'
+          ? 'STATE_REPLACE'
+          : structuredPrototypeOperations[prototype] || 'STATE_APPLY';
+      facts.push(writeLedgerEvent(combatData, {
+        ...structuredPreviewFactBase(
+          combatData,
+          actor,
+          target,
+          action,
+          actionEvent,
+          actionRole,
+          prototype,
+          stateContribution,
+        ),
+        eventKind,
+        result: eventKind === 'state_remove' ? 'removed' : eventKind === 'state_replace' ? 'replaced' : 'applied',
+        resultState: 'SUCCESS',
+        primaryOutcome: eventKind,
+        operation,
+        duration: Math.max(0, Number(afterState?.duration ?? afterState?.持续回合 ?? 0)),
+        meta: {
+          source: 'structured_preview_commit',
+          effectInstanceId: String(stateContribution?.effectInstanceId || '').trim(),
+          outcomeKind: String(stateContribution?.outcomeKind || 'STATE_CHANGED').trim(),
+          stateKey,
+          stateName,
+          before: beforeState === undefined ? null : cloneValue(beforeState),
+          after: afterState === undefined ? null : cloneValue(afterState),
+          evidence: cloneValue(stateContribution?.evidence || {}),
+          operation,
+        },
+      }));
+    });
+
+    if (prototype === '时光回溯') {
+      const changedFields = [...new Set([...Object.keys(beforeUnit || {}), ...Object.keys(target || {})])]
+        .filter(key => !structuredSnapshotIgnoredFields.has(key))
+        .filter(key => stableSerialize(beforeUnit?.[key]) !== stableSerialize(target?.[key]))
+        .sort();
+      if (changedFields.length) {
+        facts.push(writeLedgerEvent(combatData, {
+          ...base,
+          eventKind: 'snapshot_restore',
+          result: 'restored',
+          resultState: 'SUCCESS',
+          primaryOutcome: 'snapshot_restored',
+          operation: 'SNAPSHOT_RESTORE',
+          meta: {
+            source: 'structured_preview_commit',
+            changedFields,
+            before: Object.fromEntries(changedFields.map(key => [key, cloneValue(beforeUnit?.[key])])),
+            after: Object.fromEntries(changedFields.map(key => [key, cloneValue(target?.[key])])),
+          },
+        }));
+      }
+    }
+    return facts.filter(Boolean);
   }
 
   const previewCommittedPrototypes = new Set([
@@ -5465,6 +5975,7 @@
       ringId: ringPath.join('/'),
       ringPath,
       age,
+      previousRecoveryTick: existingRecoveryTick,
       recoveryTick: ring.炸环恢复tick,
       recoveryDuration,
     };
@@ -5529,23 +6040,13 @@
       ),
       battleIntent: { mode: String(combatData?.战斗意图 || '').trim(), objectives: combatData?.胜负条件 || {} },
     });
-    // N-09：资源转移经本车道直贴快照，此前不产生任何 resource_change 事实——
-    // 资源平衡审计（RESOURCE_TIMELINE_OPERATION_MISSING 一族）对它整体盲区。
-    // 提交前记每单位资源现值，提交后按差额补写注册表口径（RESTORE/REDUCE）的事实。
-    const isResourceTransfer = String(effect?.原型 || '').trim() === '资源转移';
-    const resourceBeforeByUnit = new Map();
-    const RESOURCE_FACT_KEYS = ['hp', 'vit', 'sp', 'men'];
+    const prototype = String(effect?.原型 || '').trim();
+    const beforeUnitsById = new Map();
     preview.changedUnitIds.forEach(unitId => {
       const actual = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
       const snapshot = previewRuntime.findUnit(preview.afterSnapshot, unitId);
       if (!actual || !snapshot) throw new Error(`battle_structured_preview_commit_target_missing:${unitId}`);
-      if (isResourceTransfer) {
-        resourceBeforeByUnit.set(unitId, Object.fromEntries(
-          RESOURCE_FACT_KEYS.map(key => [key, key === 'hp'
-            ? previewRuntime.readHp(actual)
-            : previewRuntime.readResource(actual, { vit: '体力', sp: '魂力', men: '精神力' }[key])]),
-        ));
-      }
+      beforeUnitsById.set(unitId, cloneValue(actual));
       const stateKeysBefore = new Set(Object.keys(actual?.状态效果 || {}));
       applyPreviewUnitSnapshot(actual, snapshot);
       Object.entries(actual?.状态效果 || {}).forEach(([key, condition]) => {
@@ -5566,60 +6067,121 @@
         });
       }
     });
-    const resourceTransferFacts = [];
-    if (isResourceTransfer) {
-      resourceBeforeByUnit.forEach((before, unitId) => {
-        const actual = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
-        if (!actual) return;
-        RESOURCE_FACT_KEYS.forEach(key => {
-          const after = key === 'hp'
-            ? previewRuntime.readHp(actual)
-            : previewRuntime.readResource(actual, { vit: '体力', sp: '魂力', men: '精神力' }[key]);
-          const delta = after - Number(before?.[key] || 0);
-          if (Math.abs(delta) > 1e-9) {
-            resourceTransferFacts.push(
-              writeStructuredResourceFact(combatData, actor, actual, action, actionEvent, key, delta, actionRole),
-            );
-          }
-        });
-      });
-    }
-    const ringBurst = String(effect?.原型 || '').trim() === '炸环'
+    const ringBurst = prototype === '炸环'
       ? commitRingBurst(actor, declaration, effect, combatData)
       : null;
-    const facts = preview.contributions.map(contribution => writeLedgerEvent(combatData, {
-      eventKind: 'effect_resolved',
-      round: Number(combatData?.回合 || 0),
-      actorName: previewRuntime.unitName(actor),
-      targetName: String(contribution?.targetId || '').trim(),
-      targetId: String(contribution?.targetId || '').trim(),
-      actionName: action.actionName,
-      actionType: action.actionKind,
-      actorControl: action.actorControl,
-      actionRole,
-      actionId: actionEvent.actionId,
-      sourceActionId: actionEvent.actionId,
-      parentNodeId: actionEvent.chainNodeId || '',
-      sourceNodeId: actionEvent.chainNodeId || '',
-      result: 'resolved',
-      resultState: 'SUCCESS',
-      effectPrototype: String(effect?.原型 || '').trim(),
-      factType: prototypeRuntimeContract[String(effect?.原型 || '').trim()]?.factTypes?.[0] || 'EFFECT',
-      primaryOutcome: String(contribution?.outcomeKind || 'effect_resolved').toLowerCase(),
-      groupKey: String(primaryOutcomeSample?.groupKey || '').trim(),
-      outcomeId: String(primaryOutcomeSample?.outcomeId || '').trim(),
-      probability: Number.isFinite(Number(primaryOutcomeSample?.probability))
-        ? Number(primaryOutcomeSample.probability)
-        : 1,
-      roll: Number.isFinite(Number(primaryOutcomeSample?.roll))
-        ? Number(primaryOutcomeSample.roll)
-        : null,
-      operation: String(primaryOutcomeSample?.operation || '').trim(),
-      meta: {
-        source: 'structured_preview_commit', effectIndex,
-        effectInstanceId: contribution?.effectInstanceId || '', windowId: contribution?.windowId || '',
-        outcomeKind: contribution?.outcomeKind || '', evidence: cloneValue(contribution?.evidence || {}),
-        ringBurst: ringBurst ? cloneValue(ringBurst) : null,
+    const facts = [];
+    beforeUnitsById.forEach((beforeUnit, unitId) => {
+      const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, unitId));
+      if (!target) throw new Error(`battle_structured_preview_commit_target_missing:${unitId}`);
+      facts.push(...writeStructuredPreviewUnitFacts({
+        combatData,
+        actor,
+        target,
+        beforeUnit,
+        action,
+        actionEvent,
+        actionRole,
+        prototype,
+        contributions: preview.contributions,
+      }));
+    });
+    if (ringBurst) {
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'ring_burst',
+        round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(actor),
+        actorName: previewRuntime.unitName(actor),
+        targetId: previewRuntime.unitId(actor),
+        targetName: previewRuntime.unitName(actor),
+        actionName: action.actionName,
+        actionType: action.actionKind,
+        actorControl: action.actorControl,
+        actionRole,
+        actionId: actionEvent.actionId,
+        sourceActionId: actionEvent.actionId,
+        parentNodeId: actionEvent.chainNodeId || '',
+        sourceNodeId: actionEvent.chainNodeId || '',
+        result: 'consumed',
+        resultState: 'SUCCESS',
+        effectPrototype: prototype,
+        factType: 'RING_BURST',
+        primaryOutcome: 'irreversible_asset_lost',
+        operation: 'CONSUME',
+        meta: {
+          source: 'structured_preview_commit',
+          effectIndex,
+          ringBurst: cloneValue(ringBurst),
+          before: { recoveryTick: Math.max(0, Number(ringBurst.previousRecoveryTick || 0)) },
+          after: { recoveryTick: Math.max(0, Number(ringBurst.recoveryTick || 0)) },
+        },
+      }));
+    }
+    preview.scheduledEvents.forEach((scheduled, scheduledIndex) => {
+      const targetId = String(scheduled?.targetId || previewRuntime.unitId(actor)).trim();
+      const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'schedule_descriptor', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor),
+        targetId, targetName: target ? previewRuntime.unitName(target) : targetId, actionName: action.actionName,
+        actionType: action.actionKind, actorControl: action.actorControl, actionRole, actionId: actionEvent.actionId,
+        sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+        result: 'scheduled', resultState: 'GAIN', effectPrototype: prototype,
+        factType: 'SCHEDULE',
+        primaryOutcome: String(scheduled?.type || 'scheduled').toLowerCase(),
+        operation: 'SCHEDULE_CREATE',
+        meta: {
+          source: 'structured_preview_commit',
+          effectIndex,
+          scheduledIndex,
+          scheduled: cloneValue(scheduled),
+          effectInstanceId: String(scheduled?.effectInstanceId || '').trim(),
+          operation: 'SCHEDULE_CREATE',
+        },
+      }));
+    });
+    const declaredTargetIds = Array.isArray(previewDeclaration?.targetIds)
+      ? previewDeclaration.targetIds.map(value => String(value || '').trim()).filter(Boolean)
+      : [];
+    const wrapperTargetIds = [...new Set([
+      ...declaredTargetIds,
+      ...preview.changedUnitIds.map(String),
+      ...preview.contributions.map(contribution => String(contribution?.targetId || '').trim()),
+      ...preview.scheduledEvents.map(scheduled => String(scheduled?.targetId || '').trim()),
+    ].filter(Boolean))];
+    if (!wrapperTargetIds.length) wrapperTargetIds.push(previewRuntime.unitId(actor));
+    const canonicalFacts = facts.filter(fact =>
+      String(fact?.eventKind || '').trim() !== 'effect_resolved'
+    );
+    wrapperTargetIds.forEach(targetId => {
+      const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId));
+      const childEventIds = canonicalFacts
+        .filter(fact =>
+          String(fact?.targetId || '').trim() === targetId ||
+          (targetId === previewRuntime.unitId(actor) && String(fact?.actorId || '').trim() === targetId)
+        )
+        .map(fact => String(fact?.eventId || '').trim())
+        .filter(Boolean);
+      const contribution = structuredContributionForTarget(preview.contributions, targetId);
+      facts.push(writeLedgerEvent(combatData, {
+        eventKind: 'effect_resolved',
+        round: Number(combatData?.回合 || 0),
+        actorId: previewRuntime.unitId(actor),
+        actorName: previewRuntime.unitName(actor),
+        targetId,
+        targetName: target ? previewRuntime.unitName(target) : targetId,
+        actionName: action.actionName,
+        actionType: action.actionKind,
+        actorControl: action.actorControl,
+        actionRole,
+        actionId: actionEvent.actionId,
+        sourceActionId: actionEvent.actionId,
+        parentNodeId: actionEvent.chainNodeId || '',
+        sourceNodeId: actionEvent.chainNodeId || '',
+        result: childEventIds.length ? 'resolved' : 'no_effect',
+        resultState: childEventIds.length ? 'SUCCESS' : 'NO_EFFECT',
+        effectPrototype: prototype,
+        factType: prototypeRuntimeContract[prototype]?.factTypes?.[0] || 'EFFECT',
+        primaryOutcome: childEventIds.length ? 'effect_resolved' : 'no_effect',
         groupKey: String(primaryOutcomeSample?.groupKey || '').trim(),
         outcomeId: String(primaryOutcomeSample?.outcomeId || '').trim(),
         probability: Number.isFinite(Number(primaryOutcomeSample?.probability))
@@ -5628,37 +6190,24 @@
         roll: Number.isFinite(Number(primaryOutcomeSample?.roll))
           ? Number(primaryOutcomeSample.roll)
           : null,
-        operation: String(primaryOutcomeSample?.operation || '').trim(),
-        effectDetail: {
-          attribute: Array.isArray(effect?.属性)
-            ? effect.属性.map(value => String(value || '').trim()).filter(Boolean).join('、')
-            : String(effect?.属性 || '').trim(),
-          check: String(effect?.判定 || '').trim(),
-          settlement: String(effect?.结算 || '').trim(),
-          value: String(effect?.数值 || '').trim(),
-          element: String(effect?.限定元素 || '').trim(),
-          positionType: String(effect?.位移类型 || '').trim(),
-          positionObject: String(effect?.位移对象 || '').trim(),
-          distance: Math.max(0, Number(effect?.距离 || 0)),
-          resource: String(effect?.资源 || '').trim(),
-          duration: Math.max(0, Number(effect?.持续回合 || 0)),
-        },
-      },
-    }));
-    preview.scheduledEvents.forEach((scheduled, scheduledIndex) => {
-      facts.push(writeLedgerEvent(combatData, {
-        eventKind: 'effect_resolved', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor),
-        targetName: String(scheduled?.targetId || previewRuntime.unitId(actor)).trim(), actionName: action.actionName,
-        actionType: action.actionKind, actorControl: action.actorControl, actionRole, actionId: actionEvent.actionId,
-        sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
-        result: 'scheduled', resultState: 'GAIN', effectPrototype: String(effect?.原型 || '').trim(),
-        factType: prototypeRuntimeContract[String(effect?.原型 || '').trim()]?.factTypes?.[0] || 'EFFECT',
-        primaryOutcome: String(scheduled?.type || 'scheduled').toLowerCase(),
+        operation: 'WRAP',
         meta: {
           source: 'structured_preview_commit',
+          wrapperOnly: true,
           effectIndex,
-          scheduledIndex,
-          scheduled: cloneValue(scheduled),
+          childEventIds,
+          effectInstanceId: String(contribution?.effectInstanceId || '').trim(),
+          windowId: String(contribution?.windowId || '').trim(),
+          outcomeKind: String(contribution?.outcomeKind || '').trim(),
+          groupKey: String(primaryOutcomeSample?.groupKey || '').trim(),
+          outcomeId: String(primaryOutcomeSample?.outcomeId || '').trim(),
+          probability: Number.isFinite(Number(primaryOutcomeSample?.probability))
+            ? Number(primaryOutcomeSample.probability)
+            : 1,
+          roll: Number.isFinite(Number(primaryOutcomeSample?.roll))
+            ? Number(primaryOutcomeSample.roll)
+            : null,
+          operation: 'WRAP',
           effectDetail: {
             attribute: Array.isArray(effect?.属性)
               ? effect.属性.map(value => String(value || '').trim()).filter(Boolean).join('、')
@@ -5676,54 +6225,6 @@
         },
       }));
     });
-    if (!facts.length) {
-      const declaredTargetIds = Array.isArray(previewDeclaration?.targetIds)
-        ? previewDeclaration.targetIds
-            .map(value => String(value || '').trim())
-            .filter(Boolean)
-        : [];
-      const targetRule = String(
-        effect?.目标 ||
-        previewDeclaration?.targetKind ||
-        '',
-      ).trim();
-      const fallbackTargetIds = [
-        ...new Set(
-          [
-            ...previewRuntime
-              .resolveTargets(combatData, actor, previewDeclaration, effect)
-              .map(previewRuntime.unitId)
-              .map(String)
-              .filter(Boolean),
-            ...declaredTargetIds,
-          ],
-        ),
-      ];
-      const targetScoped = Boolean(
-        declaredTargetIds.length ||
-        /自身|自己|友方|己方|队友|敌方|对方|群体|全体|全场|单体|范围/.test(targetRule),
-      );
-      const noTargetFacts = fallbackTargetIds.length
-        ? fallbackTargetIds
-        : targetScoped
-          ? ['']
-          : [previewRuntime.unitId(actor)];
-      noTargetFacts.forEach(targetId => {
-        const target = targetId
-          ? listCombatUnits(combatData).find(unit => previewRuntime.unitId(unit) === targetId) || null
-          : null;
-        facts.push(writeLedgerEvent(combatData, {
-          eventKind: 'effect_resolved', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor),
-          targetName: target ? previewRuntime.unitName(target) : '', targetId, targetIds: targetId ? [targetId] : [],
-          actionName: action.actionName, actionType: action.actionKind,
-          actorControl: action.actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
-          parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result: 'no_effect',
-          resultState: 'NO_EFFECT', effectPrototype: String(effect?.原型 || '').trim(), primaryOutcome: 'no_effect',
-          meta: { source: 'structured_preview_commit', effectIndex },
-        }));
-      });
-    }
-    facts.push(...resourceTransferFacts);
     return facts.filter(Boolean);
   }
 
@@ -10437,6 +10938,8 @@
 
   function inferFactType(eventKind = '', event = {}) {
     const kind = String(eventKind || event?.eventKind || '').trim();
+    const explicit = String(event?.factType || event?.meta?.factType || '').trim();
+    if (explicit) return explicit;
     if (kind === 'action_start') return inferActionRole(event) === 'STATE_TICK' ? 'STATE_TICK' : 'ACTION_DECLARED';
     if (kind === 'charge_start') return 'ACTION_DECLARED';
     if (kind === 'hit_result' || kind === 'counter') return 'DAMAGE';

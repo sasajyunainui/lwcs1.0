@@ -596,6 +596,7 @@
     if (text(event?.eventKind) !== 'effect_resolved') return '';
     if (text(event?.result).toLowerCase() === 'no_effect' || text(event?.resultState).toUpperCase() === 'NO_EFFECT') return '';
     const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    if (meta?.wrapperOnly === true) return '';
     const evidence = meta?.evidence && typeof meta.evidence === 'object' ? meta.evidence : {};
     const detail = meta?.effectDetail && typeof meta.effectDetail === 'object' ? meta.effectDetail : {};
     if (evidence?.marginal === false) return '';
@@ -849,7 +850,7 @@
         ? `${target || actor}的护盾吸收${amount}点伤害，剩余${remaining}点`
         : `${target || actor}的护盾吸收${amount}点伤害后破裂`;
     }
-    if (kind === 'state_apply') {
+    if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(event);
       const receiver = target || actor;
       /* "获得【失去战斗力】"是自相矛盾的措辞。状态有正负之分，
@@ -858,6 +859,9 @@
       const verb = selfBuff ? '获得' : '陷入';
       if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
         return `${actor}试图用【${action}】让${receiver}${verb}【${namedState || '状态'}】，但${outcome}`;
+      }
+      if (kind === 'state_replace') {
+        return `${actor}通过【${action}】更新${receiver}的【${namedState || '状态'}】${duration > 0 ? `，持续${duration}回合` : ''}`;
       }
       return `${actor}用【${action}】让${receiver}${verb}【${namedState || '状态'}】${duration > 0 ? `，持续${duration}回合` : ''}`;
     }
@@ -869,6 +873,9 @@
       return `${actor}通过【${action}】召唤${summonName}`;
     }
     if (kind === 'summon_end') return `${actor}离场${meta?.reasonText ? `：${playerSafeText(meta.reasonText, directory)}` : ''}`;
+    if (kind === 'ring_burst') return `${actor}通过【${action}】发动炸环`;
+    if (kind === 'schedule_descriptor') return `${actor}通过【${action}】建立后续效果窗口`;
+    if (kind === 'snapshot_restore') return `${target || actor}的战斗状态被【${action}】回溯`;
     if (kind === 'create' || kind === 'item_created') {
       const itemName = playerSafeText(event?.createdName || meta?.createdName || meta?.productId || event?.itemName || action || '物品', directory);
       const count = Math.max(1, number(event?.count ?? event?.quantity ?? meta?.count ?? meta?.quantity, 1));
@@ -1356,6 +1363,21 @@
     const targetId = text(prediction?.targetId);
     const effectInstanceId = text(prediction?.effectInstanceId);
     const expected = prediction?.expected || {};
+    const directory = context?.directory instanceof Map ? context.directory : new Map();
+    const eventHitsTarget = event =>
+      rawEventHitsTarget(event, targetId) ||
+      sameEntityReference(
+        directory,
+        event?.targetId,
+        event?.targetName,
+        targetId,
+        targetId,
+      );
+    const eventBelongsToAction = event => {
+      const actionIds = context?.actionIds instanceof Set ? context.actionIds : new Set();
+      if (!actionIds.size) return true;
+      return [event?.actionId, event?.sourceActionId].map(text).some(actionId => actionIds.has(actionId));
+    };
     const verdict = (status, factIds = [], actual = null, searched = [], magnitude = null) => ({
       status,
       factIds: unique(factIds.map(text).filter(Boolean)),
@@ -1365,7 +1387,7 @@
     });
     const scoped = kinds => events.filter(event =>
       rawEventKindIs(event, ...kinds) &&
-      (rawEventHitsTarget(event, targetId) || matchesEffectInstance(event, effectInstanceId))
+      (eventHitsTarget(event) || matchesEffectInstance(event, effectInstanceId))
     );
     const anchored = kinds => {
       const byInstance = events.filter(event =>
@@ -1385,7 +1407,7 @@
          不区分的话，我的匹配 bug 会伪装成引擎 bug，反之亦然。 */
       const kindPresent = events.some(event => rawEventKindIs(event, ...searched));
       const kindPresentForOtherTarget = events.some(event =>
-        rawEventKindIs(event, ...searched) && !rawEventHitsTarget(event, targetId)
+        rawEventKindIs(event, ...searched) && !eventHitsTarget(event)
       );
       const result = verdict('UNCONFIRMED', [], null, searched);
       result.matchDiagnostic = {
@@ -1409,11 +1431,13 @@
          只看交锋作用域会永远匹配不上，把"作用域够不着"误报成"引擎没产生事实"。
          这里改用回合级事件池，按目标匹配。 */
       const searched = ['state_tick'];
-      const pool = Array.isArray(context?.deferredEvents) && context.deferredEvents.length
-        ? context.deferredEvents
-        : events;
+      const pool = Array.isArray(context?.ledgerEvents) && context.ledgerEvents.length
+        ? context.ledgerEvents
+        : Array.isArray(context?.deferredEvents) && context.deferredEvents.length
+          ? context.deferredEvents
+          : events;
       const ticks = pool.filter(event =>
-        rawEventKindIs(event, 'state_tick') && rawEventHitsTarget(event, targetId)
+        rawEventKindIs(event, 'state_tick') && eventHitsTarget(event)
       );
       const healing = Number(expected?.healthDeltaPP) > 0;
       const landed = ticks.filter(event => {
@@ -1429,15 +1453,42 @@
           ),
         }, searched);
       }
+      const rejectedApplications = pool.filter(event =>
+        rawEventKindIs(event, 'state_apply') &&
+        eventHitsTarget(event) &&
+        (matchesEffectInstance(event, effectInstanceId) || eventBelongsToAction(event)) &&
+        ['resisted', 'immune', 'evaded', 'no_effect'].includes(text(event?.result))
+      );
+      if (rejectedApplications.length) {
+        return verdict('MISSED', rejectedApplications.map(event => event.eventId), {
+          result: text(rejectedApplications[0]?.result),
+        }, ['state_apply', ...searched]);
+      }
+      const terminalEvent = pool.find(event =>
+        rawEventKindIs(event, 'battle_objective_resolved') &&
+        number(event?.sequence, 0) >= number(context?.exchangeMaxSequence, 0)
+      );
+      if (terminalEvent || number(context?.exchangeRound, 0) >= number(context?.lastLedgerRound, 0)) {
+        return verdict(
+          'PREEMPTED',
+          terminalEvent ? [terminalEvent.eventId] : [],
+          {
+            reasonCode: terminalEvent
+              ? text(rawMeta(terminalEvent).reasonCode || terminalEvent?.ruleCode || rawMeta(terminalEvent).status)
+              : 'NO_FUTURE_TICK_WINDOW',
+          },
+          searched,
+        );
+      }
       return preempted(searched);
     }
 
     if (kind === 'HP_DELTA') {
-      const searched = ['hit_result', 'effect_resolved', 'resource_change'];
+      const searched = ['hit_result', 'resource_change'];
       const isHealing = Number(expected?.delta) > 0 || Number(expected?.healthDeltaPP) > 0;
       if (isHealing) {
-        const heals = scoped(['resource_change', 'effect_resolved']).filter(event =>
-          Number(rawMeta(event).delta || 0) > 0 || text(event?.result) === 'resolved'
+        const heals = scoped(['resource_change']).filter(event =>
+          Number(rawMeta(event).delta || 0) > 0
         );
         if (heals.length) {
           return verdict('CONFIRMED', heals.map(event => event.eventId), {
@@ -1493,7 +1544,7 @@
       }
       const absorbed = events.filter(event =>
         rawEventKindIs(event, 'hit_result') &&
-        rawEventHitsTarget(event, targetId) &&
+        eventHitsTarget(event) &&
         Number(rawMeta(event).shieldAbsorb || 0) > 0
       );
       const broken = scoped(['shield_break']);
@@ -1506,8 +1557,8 @@
     }
 
     if (kind === 'STATE_CHANGED') {
-      const searched = ['state_apply'];
-      const applies = scoped(['state_apply']).filter(event => {
+      const searched = ['state_apply', 'state_replace', 'state_remove'];
+      const applies = scoped(['state_apply', 'state_replace', 'state_remove']).filter(event => {
         const wanted = text(expected?.stateName);
         if (!wanted) return true;
         return text(rawMeta(event).stateName) === wanted;
@@ -1536,14 +1587,15 @@
       /* 取消的是"对方的下一个行动机会"，兑现事实可能落在本次行动之后，
          所以这里接受同一动作树内任何一条取消类事实。 */
       const cancels = events.filter(event =>
-        (rawEventKindIs(event, 'charge_interrupt') && rawEventHitsTarget(event, targetId)) ||
+        (rawEventKindIs(event, 'charge_interrupt') && eventHitsTarget(event)) ||
         (rawEventKindIs(event, 'blocked_action', 'lost_opportunity') &&
-          (rawEventHitsTarget(event, targetId) || text(event?.actorId) === targetId) &&
+          (eventHitsTarget(event) ||
+            sameEntityReference(directory, event?.actorId, event?.actorName, targetId, targetId)) &&
           controlDenialReasonPattern.test(text(rawMeta(event).reasonCode || event?.ruleCode))) ||
         /* 失能类 state_apply（非致命意图致残、创伤昏迷）就是预演侧 ACTION_CANCELLED 的兑现事实：
            目标被打成失去战斗力/昏迷，后续行动自然取消，运行时不会再单独写一条取消事件。 */
         (rawEventKindIs(event, 'state_apply') &&
-          rawEventHitsTarget(event, targetId) &&
+          eventHitsTarget(event) &&
           text(event?.result) === 'applied' &&
           (incapacitationRulePattern.test(text(event?.ruleCode)) ||
             incapacitationStatePattern.test(text(rawMeta(event).stateName))))
@@ -1559,7 +1611,7 @@
       /* 控制没能施加成功 → 取消自然不会发生，这是有据可依的否定而不是查无此事。 */
       const controlRejected = events.filter(event =>
         rawEventKindIs(event, 'state_apply') &&
-        rawEventHitsTarget(event, targetId) &&
+        eventHitsTarget(event) &&
         ['resisted', 'immune', 'evaded'].includes(text(event?.result))
       );
       if (controlRejected.length) {
@@ -1582,10 +1634,10 @@
     }
 
     if (kind === 'RESOURCE_OPTION_CHANGED') {
-      const searched = ['resource_change', 'effect_resolved'];
+      const searched = ['resource_change'];
       /* action_cost 是 auditOnly 审计事件，真正扣减在同 actionId 的 resource_change(PAY)，
          这里必须排除它，否则资源变化被双计。 */
-      const changes = anchored(['resource_change', 'effect_resolved'])
+      const changes = anchored(['resource_change'])
         .filter(event => rawMeta(event).auditOnly !== true);
       if (changes.length) {
         return verdict('CONFIRMED', changes.map(event => event.eventId), {
@@ -1597,16 +1649,27 @@
     }
 
     if (kind === 'PAYMENT') {
-      const searched = ['action_cost'];
-      const costs = events.filter(event =>
-        rawEventKindIs(event, 'action_cost') &&
-        (text(rawMeta(event).resource) === text(expected?.resource) ||
-          text(reconciliationResourceNames[text(rawMeta(event).resourceKey)]) === text(expected?.resource))
+      const searched = ['resource_change'];
+      const ledgerEvents = Array.isArray(context?.ledgerEvents) ? context.ledgerEvents : events;
+      const costs = ledgerEvents.filter(event =>
+        rawEventKindIs(event, 'resource_change') &&
+        text(event?.operation || rawMeta(event).operation).toUpperCase() === 'PAY' &&
+        eventHitsTarget(event) &&
+        eventBelongsToAction(event) &&
+        (resourceName(event) === text(expected?.resource) ||
+          text(reconciliationResourceNames[text(rawMeta(event).resourceKey)]) === text(expected?.resource)) &&
+        Math.abs(
+          Math.abs(number(rawMeta(event).amount ?? rawMeta(event).delta ?? event?.delta, 0)) -
+          number(expected?.amount, 0),
+        ) <= 1e-9
       );
       if (costs.length) {
         return verdict('CONFIRMED', costs.map(event => event.eventId), {
-          resource: text(rawMeta(costs[0]).resource),
-          amount: costs.reduce((sum, event) => sum + Number(rawMeta(event).amount || 0), 0),
+          resource: resourceName(costs[0]),
+          amount: costs.reduce(
+            (sum, event) => sum + Math.abs(number(rawMeta(event).amount ?? rawMeta(event).delta ?? event?.delta, 0)),
+            0,
+          ),
         }, searched);
       }
       return context?.actionExecuted
@@ -1627,10 +1690,10 @@
     if (kind === 'IRREVERSIBLE_ASSET_LOST') {
       /* 炸环、消耗品这类不可逆操作是最不该漏对账的——一旦预演说消耗了而实际没有
          （或反过来），玩家的资产账就对不上，且无法回滚。 */
-      const searched = ['item_consume', 'effect_resolved', 'create'];
+      const searched = ['item_consume', 'ring_burst', 'create'];
       const consumed = events.filter(event =>
         rawEventKindIs(event, 'item_consume') ||
-        (rawEventKindIs(event, 'effect_resolved') && rawMeta(event).ringBurst) ||
+        rawEventKindIs(event, 'ring_burst') ||
         matchesEffectInstance(event, effectInstanceId)
       );
       if (consumed.length) {
@@ -1645,15 +1708,15 @@
     if (kind === 'NEXT_ACTION_QUALITY_CHANGED' || kind === 'RULE_CHANGED') {
       /* 这两类的"收益"是内部估值不可验证，但"修正是否挂上"是可验证的物理事实。
          整条丢弃会连可验证的那一半也丢掉，所以只对施加事实做对账，不碰收益。 */
-      const searched = ['effect_resolved', 'state_apply'];
-      const applied = anchored(['effect_resolved', 'state_apply'])
+      const searched = ['state_apply', 'state_replace', 'state_remove', 'schedule_descriptor', 'snapshot_restore'];
+      const applied = anchored(['state_apply', 'state_replace', 'state_remove', 'schedule_descriptor', 'snapshot_restore'])
         .filter(event => !['resisted', 'immune', 'evaded'].includes(text(event?.result)));
       if (applied.length) {
         return verdict('CONFIRMED', applied.map(event => event.eventId), {
           eventKind: text(applied[0]?.eventKind),
         }, searched);
       }
-      const rejected = scoped(['state_apply']).filter(event =>
+      const rejected = scoped(['state_apply', 'state_replace']).filter(event =>
         ['resisted', 'immune', 'evaded'].includes(text(event?.result))
       );
       if (rejected.length) {
@@ -1676,9 +1739,22 @@
     const directory = options?.directory instanceof Map ? options.directory : new Map();
     const remainingHpById = options?.remainingHpById instanceof Map ? options.remainingHpById : null;
     const scopedEvents = Array.isArray(events) ? events.filter(Boolean) : [];
+    const ledgerEvents = Array.isArray(options?.ledgerEvents) ? options.ledgerEvents.filter(Boolean) : scopedEvents;
+    const actionIds = new Set(
+      scopedEvents
+        .flatMap(event => [event?.actionId, event?.sourceActionId])
+        .map(text)
+        .filter(Boolean),
+    );
     const context = {
       actionExecuted: scopedEvents.some(event => rawEventKindIs(event, 'action_start')),
       preemptionEvent: scopedEvents.find(event => rawEventKindIs(event, ...preemptionEventKinds)) || null,
+      directory,
+      ledgerEvents,
+      actionIds,
+      exchangeRound: Math.max(0, number(options?.exchangeRound, 0)),
+      exchangeMaxSequence: Math.max(0, ...scopedEvents.map(event => number(event?.sequence, 0))),
+      lastLedgerRound: Math.max(0, ...ledgerEvents.map(event => number(event?.round, 0))),
       /* 回合末结算的事实（持续伤害等）不属于任何交锋，必须单独供给，
          否则它们永远落在对账的作用域之外。 */
       deferredEvents: Array.isArray(options?.deferredEvents) ? options.deferredEvents.filter(Boolean) : [],
@@ -2292,7 +2368,7 @@
       text(fact?.sourceActionId),
     ]).filter(Boolean));
     const hasIndependentEffect = continuationFacts.some(fact =>
-      fact?.eventKind === 'state_apply' &&
+      ['state_apply', 'state_replace'].includes(fact?.eventKind) &&
       (
         hitActionIds.has(text(fact?.actionId)) ||
         hitActionIds.has(text(fact?.sourceActionId))
@@ -2501,6 +2577,7 @@
           'shield_create',
           'resource_change',
           'state_apply',
+          'state_replace',
           'state_remove',
           'state_expire',
         ].includes(fact.eventKind)
@@ -2521,7 +2598,7 @@
       text(fact?.actionRole).toUpperCase() === 'REACTION'
     ));
     const continuationFacts = resultFacts.filter(fact =>
-      ['state_apply', 'state_remove', 'state_expire', 'summon_create', 'summon_end', 'lost_opportunity', 'action_cancelled', 'charge_interrupt'].includes(fact.eventKind)
+      ['state_apply', 'state_replace', 'state_remove', 'state_expire', 'summon_create', 'summon_end', 'lost_opportunity', 'action_cancelled', 'charge_interrupt', 'schedule_descriptor'].includes(fact.eventKind)
     );
     const immediateResults = resultFacts.filter(fact => !continuationFacts.includes(fact));
     const creationFact = facts.find(fact => ['create', 'item_created'].includes(fact.eventKind));
@@ -2648,11 +2725,15 @@
     counter: 'COUNTER',
     hit_result: 'HIT',
     state_apply: 'EFFECT',
+    state_replace: 'EFFECT',
     shield_create: 'EFFECT',
     shield_break: 'EFFECT',
     summon_create: 'EFFECT',
     resource_change: 'EFFECT',
     effect_resolved: 'EFFECT',
+    ring_burst: 'EFFECT',
+    schedule_descriptor: 'CONTINUE',
+    snapshot_restore: 'EFFECT',
     item_consume: 'EFFECT',
     create: 'EFFECT',
     charge_interrupt: 'CONTINUE',
@@ -2757,7 +2838,7 @@
         : `${actor}朝${target}使出【${action}】`;
     }
 
-    if (kind === 'state_apply') {
+    if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(rawEvent);
       const receiver = target || actor;
       const state = playerSafeText(stateName(rawEvent), new Map()) || '某种状态';
@@ -2765,10 +2846,16 @@
       if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
         return `${receiver}扛住了【${state}】，没有中招`;
       }
+      if (kind === 'state_replace') {
+        return `${receiver}的【${state}】被更新${dur > 0 ? `，可持续${dur}回合` : ''}`;
+      }
       return receiver === actor
         ? `${actor}进入【${state}】状态${dur > 0 ? `，可持续${dur}回合` : ''}`
         : `${receiver}被打成【${state}】状态${dur > 0 ? `，要持续${dur}回合` : ''}`;
     }
+    if (kind === 'ring_burst') return `${actor}发动炸环`;
+    if (kind === 'schedule_descriptor') return `${actor}留下了后续生效的效果`;
+    if (kind === 'snapshot_restore') return `${target || actor}的战斗状态被回溯`;
 
     if (kind === 'counter') {
       return /declined|放弃/i.test(`${rawEvent?.result} ${fact?.summary}`)
@@ -2953,7 +3040,13 @@
         number(event?.round, 0) >= number(exchange?.round, 0)
       );
       const reconciliation = primary?.decision
-        ? reconcileDecision(primary.decision, rawEvents, { directory, remainingHpById, deferredEvents })
+        ? reconcileDecision(primary.decision, rawEvents, {
+            directory,
+            remainingHpById,
+            deferredEvents,
+            ledgerEvents: ledger,
+            exchangeRound: exchange?.round,
+          })
         : [];
 
       return {
@@ -3434,7 +3527,9 @@
       }
     }
     if (kind === 'shield_create' && target) target.shield += Math.max(0, number(meta?.amount ?? rawEvent?.amount, 0));
-    if (kind === 'state_apply' && target && fact.stateName) target.states = unique([...target.states, fact.stateName]);
+    if (['state_apply', 'state_replace'].includes(kind) && target && fact.stateName) {
+      target.states = unique([...target.states, fact.stateName]);
+    }
     if (['state_remove', 'state_expire'].includes(kind) && target && fact.stateName) {
       target.states = target.states.filter(name => name !== fact.stateName);
     }
