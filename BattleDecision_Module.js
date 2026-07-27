@@ -2537,7 +2537,11 @@
         expectedValuePercent: outcomeKind === 'HP_DELTA' && visibleTargetFor(targetId)
           ? Math.abs(expectedDelta) / Math.max(1, preview.readHpMax(visibleTargetFor(targetId))) * 100
           : Math.max(0, Number(entry?.threatValue || 0)),
-        hitProbability: clamp(Number(evidence?.hitProbability ?? 1), 0, 1),
+        hitProbability: clamp(Number(
+          evidence?.hitProbability ??
+          evidence?.applicationProbability ??
+          1
+        ), 0, 1),
         reactionDamageMultiplier: clamp(Number(evidence?.reactionDamageMultiplier ?? 1), 0, 1),
         damageType: String(evidence?.damageType || '').trim(),
         sourceEffectId: String(entry?.effectInstanceId || '').trim(),
@@ -2998,6 +3002,21 @@
     return actor;
   }
 
+  function r8IsNonHealthResourceEffect(effect = {}) {
+    if (
+      String(effect?.outcomeKind || '').trim() !==
+      'RESOURCE_OPTION_CHANGED'
+    ) {
+      return false;
+    }
+    const resource = String(effect?.evidence?.resource || '').trim();
+    return Boolean(resource) &&
+      !/(?:hp|health|生命)/i.test(resource) &&
+      Math.abs(Number(
+        effect?.expectedDelta ?? effect?.evidence?.delta ?? 0,
+      )) > 1e-9;
+  }
+
   function snapshotAfterRouteResourceEffects(
     worldSnapshot = {},
     route = {},
@@ -3006,8 +3025,7 @@
     const deltasByUnit = new Map();
     (route?.actionPoolEffects || []).forEach(effect => {
       if (
-        String(effect?.outcomeKind || '').trim() !==
-          'RESOURCE_OPTION_CHANGED' ||
+        !r8IsNonHealthResourceEffect(effect) ||
         (
           includeActionCost !== true &&
           String(effect?.windowId || '').trim() === 'ACTION_COST'
@@ -3086,6 +3104,30 @@
       return next;
     });
     return markCapacityDeltaSnapshot(restored, targetSnapshot, [actorId]);
+  }
+
+  function r8ResourceNeutralProjectedWorld(
+    baselineWorld = {},
+    projectedWorld = {},
+    route = {},
+  ) {
+    const targetIds = [...new Set(
+      (route?.actionPoolEffects || [])
+        .filter(r8IsNonHealthResourceEffect)
+        .map(effect => String(effect?.targetId || '').trim())
+        .filter(Boolean),
+    )].sort();
+    return Object.freeze({
+      world: targetIds.reduce(
+        (world, targetId) =>
+          snapshotWithUnitResourcesFrom(world, baselineWorld, targetId),
+        projectedWorld,
+      ),
+      targetIds: Object.freeze(targetIds),
+      revisionSuffix: targetIds.length
+        ? `resource-neutral:${targetIds.join('\u0000')}`
+        : 'resource-neutral:none',
+    });
   }
 
   function unitAfterInventoryConsumption(unit = {}, inventoryId = '') {
@@ -21831,14 +21873,30 @@
         .filter(Boolean),
     );
     const includeHealthTrajectories = input?.includeHealthTrajectories !== false;
+    const effectOwnershipPhase = String(
+      input?.effectOwnershipPhase || 'ALL',
+    ).trim().toUpperCase();
     const envelopeSemanticPhaseHash = preview.stableHash({
       includedEffectOutcomeKinds: [...includedEffectOutcomeKinds].sort(),
       excludedEffectOutcomeKinds: [...excludedEffectOutcomeKinds].sort(),
       includeHealthTrajectories,
+      effectOwnershipPhase,
       objectiveCompactMode: String(input?.objectiveCompactMode || 'FAST'),
     });
     const selectedActionPoolEffects = route =>
       (route?.actionPoolEffects || []).filter(effect => {
+        if (
+          effectOwnershipPhase === 'INTRINSIC' &&
+          r8IsNonHealthResourceEffect(effect)
+        ) {
+          return false;
+        }
+        if (
+          effectOwnershipPhase === 'RESOURCE' &&
+          !r8IsNonHealthResourceEffect(effect)
+        ) {
+          return false;
+        }
         const outcomeKind = String(effect?.outcomeKind || '').trim();
         return (
           (!includedEffectOutcomeKinds.size ||
@@ -23438,8 +23496,7 @@
             )
           );
         const hasResourceSourceEffect = relevantSourceEffects.some(source =>
-          String(source?.effect?.outcomeKind || '').trim() ===
-          'RESOURCE_OPTION_CHANGED'
+          r8IsNonHealthResourceEffect(source?.effect)
         );
         const resourceRouteCatalog =
           input?.resourceRouteCatalog || routeCatalog;
@@ -23953,19 +24010,47 @@
       const unitRoutes = mechanicalFullRoutesByUnit[unitId] || [];
       const routesNeedingEnvelope = unitRoutes.filter(route =>
         (route?.actionPoolEffects || []).some(effect =>
-          String(effect?.outcomeKind || '').trim() !==
-            'RESOURCE_OPTION_CHANGED' &&
+          !r8IsNonHealthResourceEffect(effect) &&
           r8ActionPoolEffectHasMechanicalDelta(effect)
         )
       );
       const routeIdsNeedingEnvelope = new Set(
         routesNeedingEnvelope.map(route => String(route?.candidateId || '')),
       );
-      const projectedWorlds = Object.fromEntries(
+      const intrinsicProjectedRows =
         Object.entries(projectedWorldsByUnit[unitId] || {})
           .filter(([candidateId]) =>
             routeIdsNeedingEnvelope.has(String(candidateId || ''))
-          ),
+          )
+          .map(([candidateId, projectedWorld]) => {
+            const route = unitRoutes.find(candidateRoute =>
+              String(candidateRoute?.candidateId || '') ===
+                String(candidateId || '')
+            );
+            return [
+              candidateId,
+              r8ResourceNeutralProjectedWorld(
+                worldSnapshot,
+                projectedWorld,
+                route,
+              ),
+            ];
+          });
+      const projectedWorlds = Object.fromEntries(
+        intrinsicProjectedRows.map(([candidateId, projection]) => [
+          candidateId,
+          projection.world,
+        ]),
+      );
+      const intrinsicProjectedWorldRevisions = Object.fromEntries(
+        intrinsicProjectedRows.map(([candidateId, projection]) => [
+          candidateId,
+          [
+            projectedWorldRevisionsByUnit[unitId]?.[candidateId] ||
+              'projected',
+            projection.revisionSuffix,
+          ].join('|'),
+        ]),
       );
       const candidateEnvelopeDeltas = routesNeedingEnvelope.length &&
         Object.keys(projectedWorlds).length
@@ -23976,8 +24061,7 @@
             actorSide,
             routeCatalog: mechanicalRouteCatalog,
             projectedWorlds,
-            projectedWorldRevisions:
-              projectedWorldRevisionsByUnit[unitId] || {},
+            projectedWorldRevisions: intrinsicProjectedWorldRevisions,
             candidateRoutes: Object.fromEntries(
               routesNeedingEnvelope.map(route => [
                 route.candidateId,
@@ -23998,7 +24082,7 @@
             objectiveContract:
               input?.objectiveContract || worldSnapshot?.胜负条件 || {},
             objectiveCompactMode: input?.objectiveCompactMode || 'FAST',
-            excludedEffectOutcomeKinds: ['RESOURCE_OPTION_CHANGED'],
+            effectOwnershipPhase: 'INTRINSIC',
             metrics:
               input?.metrics && typeof input.metrics === 'object'
                 ? input.metrics
@@ -24029,8 +24113,7 @@
           ...route,
           actionPoolEffects: Object.freeze(
             (route?.actionPoolEffects || []).filter(effect =>
-              String(effect?.outcomeKind || '').trim() !==
-              'RESOURCE_OPTION_CHANGED'
+              !r8IsNonHealthResourceEffect(effect)
             ),
           ),
         };
@@ -24150,14 +24233,7 @@
       const routes = (intrinsicFullRoutesByUnit[unitId] || []).map(route => {
         const affectedResourceTargetIds = [...new Set(
           (route?.actionPoolEffects || [])
-            .filter(effect =>
-              String(effect?.outcomeKind || '').trim() ===
-                'RESOURCE_OPTION_CHANGED' &&
-              String(effect?.windowId || '').trim() !== 'ACTION_COST' &&
-              Math.abs(Number(
-                effect?.expectedDelta ?? effect?.evidence?.delta ?? 0
-              )) > 1e-9
-            )
+            .filter(r8IsNonHealthResourceEffect)
             .map(effect => String(effect?.targetId || '').trim())
             .filter(Boolean),
         )];
@@ -24174,6 +24250,7 @@
         const resourceWorld = snapshotAfterRouteResourceEffects(
           worldSnapshot,
           route,
+          true,
         );
         const resourceActionPoolHEPP = affectedResourceTargetIds.reduce(
           (sum, targetId) => {
@@ -24235,7 +24312,7 @@
           routeCount: routes.length,
           routesWithResourceEffects: routes.filter(route =>
             (route?.actionPoolEffects || []).some(effect =>
-              String(effect?.outcomeKind || '').trim() === 'RESOURCE_OPTION_CHANGED'
+              r8IsNonHealthResourceEffect(effect)
             )
           ).length,
         });
@@ -24248,8 +24325,7 @@
       finalFullRoutesByUnit[actorId] || []
     ).some(route =>
       (route?.actionPoolEffects || []).some(effect =>
-        String(effect?.outcomeKind || '').trim() ===
-          'RESOURCE_OPTION_CHANGED'
+        r8IsNonHealthResourceEffect(effect)
       )
     );
     const actorCandidateEnvelopeDeltas = reusedValuedUnitIds.has(actorId)
@@ -24377,18 +24453,42 @@
           route,
         ]),
       );
+      const intrinsicProjectedRows = Object.entries(projectedWorlds)
+        .map(([candidateId, projectedWorld]) => [
+          candidateId,
+          r8ResourceNeutralProjectedWorld(
+            worldSnapshot,
+            projectedWorld,
+            candidateRoutes[candidateId],
+          ),
+        ]);
+      const intrinsicProjectedWorlds = Object.fromEntries(
+        intrinsicProjectedRows.map(([candidateId, projection]) => [
+          candidateId,
+          projection.world,
+        ]),
+      );
+      const intrinsicProjectedWorldRevisions = Object.fromEntries(
+        intrinsicProjectedRows.map(([candidateId, projection]) => [
+          candidateId,
+          [
+            projectedWorldRevisionsByUnit[unitId]?.[candidateId] ||
+              'projected',
+            projection.revisionSuffix,
+          ].join('|'),
+        ]),
+      );
       const canRevalue = Object.keys(projectedWorlds).length > 0;
       const envelopeDeltas = canRevalue
         ? buildR8CandidateEnvelopeDeltas({
             ...commonEnvelopeInput,
             actorSide,
             routeCatalog: mechanicalRouteCatalog,
-            projectedWorlds,
-            projectedWorldRevisions:
-              projectedWorldRevisionsByUnit[unitId] || {},
+            projectedWorlds: intrinsicProjectedWorlds,
+            projectedWorldRevisions: intrinsicProjectedWorldRevisions,
             candidateRoutes,
             fullRoutesByUnit: mechanicalFullRoutesByUnit,
-            excludedEffectOutcomeKinds: ['RESOURCE_OPTION_CHANGED'],
+            effectOwnershipPhase: 'INTRINSIC',
           })
         : {};
       intrinsicEnvelopeDeltasByUnit[unitId] = envelopeDeltas;
@@ -24457,8 +24557,7 @@
       );
       const routesWithResourceEffects = (intrinsicFullRoutesByUnit[unitId] || [])
         .some(route => (route?.actionPoolEffects || []).some(effect =>
-          String(effect?.outcomeKind || '').trim() ===
-          'RESOURCE_OPTION_CHANGED'
+          r8IsNonHealthResourceEffect(effect)
         ));
       const canRevalue =
         routesWithResourceEffects && Object.keys(projectedWorlds).length > 0;
@@ -24474,7 +24573,7 @@
             fullRoutesByUnit: intrinsicFullRoutesByUnit,
             resourceRouteCatalog: intrinsicRouteCatalog,
             resourceFullRoutesByUnit: intrinsicFullRoutesByUnit,
-            includedEffectOutcomeKinds: ['RESOURCE_OPTION_CHANGED'],
+            effectOwnershipPhase: 'RESOURCE',
             includeHealthTrajectories: false,
           })
         : {};
@@ -24487,8 +24586,7 @@
       );
       const routes = (intrinsicFullRoutesByUnit[unitId] || []).map(route => {
         if (!canRevalue || !(route?.actionPoolEffects || []).some(effect =>
-          String(effect?.outcomeKind || '').trim() ===
-          'RESOURCE_OPTION_CHANGED'
+          r8IsNonHealthResourceEffect(effect)
         )) {
           return r8RouteWithBehaviorUtility(route, {
             behaviorRouteUtilityHEPP: Number(
@@ -24503,8 +24601,7 @@
           ...route,
           actionPoolEffects: Object.freeze(
             (route?.actionPoolEffects || []).filter(effect =>
-              String(effect?.outcomeKind || '').trim() ===
-              'RESOURCE_OPTION_CHANGED'
+              r8IsNonHealthResourceEffect(effect)
             ),
           ),
         };
@@ -27300,9 +27397,36 @@
       const baseTarget = findUnitInWorld(request.visibleWorld, actorId);
       const projectedTarget = findUnitInWorld(projectedWorld, actorId);
       if (!baseSource || !baseTarget || !projectedTarget) return [];
-      const baseMaxHp = Math.max(1, preview.readHpMax(baseTarget));
-      const previewIncoming = (worldSnapshot, source, target, multiplier, suffix) => {
-        if (!source || !preview.isBattleCapable(source) || !preview.isBattleCapable(target)) return 0;
+      const previewIncoming = ({
+        worldSnapshot,
+        source,
+        target,
+        multiplier = 1,
+        evadeProbability = 0,
+        suffix,
+      }) => {
+        const incomingCandidateId = [
+          candidate?.candidateId || 'unknown',
+          'incoming',
+          event.eventId,
+          suffix,
+        ].join(':');
+        if (
+          !source ||
+          !preview.isBattleCapable(source) ||
+          !preview.isBattleCapable(target)
+        ) {
+          return Object.freeze({
+            damagePP: 0,
+            distribution: Object.freeze([]),
+            route: Object.freeze({
+              candidateId: incomingCandidateId,
+              routeKey: `route:${incomingCandidateId}:empty`,
+              healthTrajectoryByTarget: Object.freeze([]),
+              probabilityFactors: Object.freeze([]),
+            }),
+          });
+        }
         const incomingActionKind = String(event.incomingAction?.actionKind || '').trim().toUpperCase();
         const declaration = {
           actorId: preview.unitId(source),
@@ -27321,43 +27445,90 @@
           declaration,
           actionFingerprint: `incoming:${event.eventId}:${candidate?.candidateId}:${suffix}`,
           damageMultiplierByTarget: { [actorId]: multiplier },
+          evadeProbabilityByTarget: { [actorId]: evadeProbability },
           horizon: 'SHALLOW',
           previewBudget: { maxNodes: 12 },
+          collectProbabilityBranches: true,
           battleIntent: request?.battleIntent,
         });
-        return (result?.contributions || [])
-          .filter(entry =>
-            entry?.outcomeKind === 'HP_DELTA' &&
-            String(entry?.targetId || '').trim() === actorId
-          )
-          .reduce((sum, entry) => sum + Math.max(0, -Number(entry?.evidence?.delta ?? entry?.expectedDelta ?? 0)), 0);
+        const incomingRoute = actionRouteFromPreview({
+          candidate: {
+            candidateId: incomingCandidateId,
+            declaration,
+            declarationFingerprint: declarationFingerprint(declaration),
+          },
+          previewResult: result,
+          worldSnapshot,
+          actorSide: request.actorSide,
+          dependencyKeys: [],
+          objectiveRequest: {
+            ...request,
+            visibleWorld: worldSnapshot,
+          },
+        });
+        const targetTrajectories = (incomingRoute?.healthTrajectoryByTarget || [])
+          .filter(trajectory =>
+            String(trajectory?.targetId || '').trim() === actorId
+          );
+        return Object.freeze({
+          damagePP: Math.max(
+            0,
+            -targetTrajectories.reduce(
+              (sum, trajectory) =>
+                sum + Number(trajectory?.healthDeltaPP || 0),
+              0,
+            ),
+          ),
+          distribution: Object.freeze(targetTrajectories.map(trajectory =>
+            Object.freeze({
+              distributionGroupKey: String(
+                trajectory?.distributionGroupKey || '',
+              ).trim(),
+              outcomeDistribution: Object.freeze(
+                (trajectory?.outcomeDistribution || []).map(branch =>
+                  Object.freeze({
+                    branchKey: String(branch?.branchKey || '').trim(),
+                    probability: Number(branch?.probability || 0),
+                    healthDeltaPP: Number(branch?.healthDeltaPP || 0),
+                    conditionalOn: Object.freeze({
+                      ...(branch?.conditionalOn || {}),
+                    }),
+                    assignments: Object.freeze({
+                      ...(branch?.assignments || {}),
+                    }),
+                    actionState: String(branch?.actionState || '').trim(),
+                  }),
+                ),
+              ),
+            }),
+          )),
+          route: incomingRoute,
+        });
       };
-      const baselineDamage = previewIncoming(
-        request.visibleWorld,
-        baseSource,
-        baseTarget,
-        1,
-        'noop',
-      );
+      const baselineIncoming = previewIncoming({
+        worldSnapshot: request.visibleWorld,
+        source: baseSource,
+        target: baseTarget,
+        suffix: 'noop',
+      });
       let multiplier = 1;
+      let evadeProbability = 0;
       if (actionKind === 'DEFEND') {
         multiplier = preview.calculateDefenseDamageMultiplier(projectedTarget, projectedSource || baseSource, event.prepared);
       } else if (actionKind === 'EVADE') {
-        multiplier = 1 - preview.calculateDodgeProbability(projectedTarget, projectedSource || baseSource, event.prepared);
+        evadeProbability = preview.calculateDodgeProbability(
+          projectedTarget,
+          projectedSource || baseSource,
+          event.prepared,
+        );
       }
-      const candidateDamage = previewIncoming(
-        projectedWorld,
-        projectedSource,
-        projectedTarget,
+      const candidateIncoming = previewIncoming({
+        worldSnapshot: projectedWorld,
+        source: projectedSource,
+        target: projectedTarget,
         multiplier,
-        'candidate',
-      );
-      const incomingTrajectory = damage => ({
-        targetId: actorId,
-        outcomeKind: 'INCOMING_HEALTH_DELTA',
-        windowId: event.eventId,
-        healthDeltaPP: -100 * damage / baseMaxHp,
-        sourceEffectInstanceId: `${candidate?.candidateId}:incoming:${event.eventId}`,
+        evadeProbability,
+        suffix: 'candidate',
       });
       const baselineTerminal = r8TerminalUtility(
         {
@@ -27365,7 +27536,7 @@
           visibleWorld: request.visibleWorld,
           terminalCallOrigin: 'INCOMING_RISK_BASELINE',
         },
-        { healthTrajectoryByTarget: [incomingTrajectory(baselineDamage)] },
+        baselineIncoming.route,
       );
       const candidateTerminal = r8TerminalUtility(
         {
@@ -27373,18 +27544,16 @@
           visibleWorld: projectedWorld,
           terminalCallOrigin: 'INCOMING_RISK_CANDIDATE',
         },
-        { healthTrajectoryByTarget: [incomingTrajectory(candidateDamage)] },
+        candidateIncoming.route,
       );
-      if (
-        baselineTerminal.terminal &&
-        candidateTerminal.terminal &&
-        baselineTerminal.utility === candidateTerminal.utility &&
-        baselineTerminal.status === candidateTerminal.status
-      ) {
-        return [];
-      }
-      const avoidedPP = 100 * (baselineDamage - candidateDamage) / baseMaxHp;
-      if (Math.abs(avoidedPP) <= 1e-9) return [];
+      const baselineExpectedUtility =
+        Number(baselineTerminal?.expectedTerminalUtility || 0) +
+        Number(baselineTerminal?.expectedOngoingTrajectoryUtility || 0);
+      const candidateExpectedUtility =
+        Number(candidateTerminal?.expectedTerminalUtility || 0) +
+        Number(candidateTerminal?.expectedOngoingTrajectoryUtility || 0);
+      const utilityDelta = candidateExpectedUtility - baselineExpectedUtility;
+      if (Math.abs(utilityDelta) <= 1e-9) return [];
       return [Object.freeze({
         rootActionId: String(candidate?.candidateId || ''),
         effectInstanceId: `${candidate?.candidateId}:incoming:${event.eventId}`,
@@ -27393,11 +27562,24 @@
         windowId: event.eventId,
         ownerType: 'ACTION_POOL_DELTA',
         realizable: true,
-        healthTrajectoryDeltaPP: avoidedPP,
-        baselineDamagePP: 100 * baselineDamage / baseMaxHp,
-        candidateDamagePP: 100 * candidateDamage / baseMaxHp,
+        healthTrajectoryDeltaPP: utilityDelta,
+        baselineDamagePP: baselineIncoming.damagePP,
+        candidateDamagePP: candidateIncoming.damagePP,
         sourceActorId: event.sourceActorId,
         prepared: event.prepared,
+        evidence: Object.freeze({
+          dodgeProbability: evadeProbability,
+          baselineDistribution: baselineIncoming.distribution,
+          candidateDistribution: candidateIncoming.distribution,
+          baselineExpectedUtility,
+          candidateExpectedUtility,
+          baselineTerminalStatus: String(
+            baselineTerminal?.status || 'ONGOING',
+          ).trim(),
+          candidateTerminalStatus: String(
+            candidateTerminal?.status || 'ONGOING',
+          ).trim(),
+        }),
       })];
     }));
   }
