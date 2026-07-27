@@ -5628,7 +5628,7 @@
     if (!amount) return null;
     const resource = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力', shield: '护盾' }[resourceKey] || resourceKey;
     const resourceOperation = resourceKey === 'shield'
-      ? ''
+      ? String(operation || (amount > 0 ? 'CREATE' : 'REDUCE')).trim().toUpperCase()
       : String(operation || (amount > 0 ? 'RESTORE' : 'REDUCE')).trim().toUpperCase();
     return writeLedgerEvent(combatData, {
       eventKind: resourceKey === 'shield' ? (amount > 0 ? 'shield_create' : 'shield_break') : 'resource_change',
@@ -5647,7 +5647,9 @@
       sourceNodeId: actionEvent?.chainNodeId || '',
       result: amount > 0 ? 'gain' : 'loss',
       resultState: amount > 0 ? 'GAIN' : 'LOSS',
-      primaryOutcome: amount > 0 ? 'resource_restored' : 'resource_reduced',
+      primaryOutcome: resourceKey === 'shield'
+        ? amount > 0 ? 'shield_created' : 'shield_reduced'
+        : amount > 0 ? 'resource_restored' : 'resource_reduced',
       operation: resourceOperation,
       factType: String(details?.factType || '').trim(),
       effectPrototype: String(details?.effectPrototype || '').trim(),
@@ -6345,6 +6347,7 @@
         actionRole, actionId: actionEvent.actionId,
         sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
         result: 'created', resultState: 'GAIN', effectPrototype: '召唤生成', factType: 'SUMMON', primaryOutcome: 'summon_created',
+        sourceEffectId: effectInstanceId,
         groupKey: String(outcomeSample?.groupKey || '').trim(),
         outcomeId: String(outcomeSample?.outcomeId || '').trim(),
         probability: Number.isFinite(Number(outcomeSample?.probability))
@@ -6386,6 +6389,16 @@
             ? Number(outcomeSample.roll)
             : null,
           operation: 'SUMMON_CREATE',
+          before: null,
+          after: {
+            summonKey: key,
+            summonName: displayName,
+            summonType,
+            summonMode: mode,
+            duration,
+            windowId: window.windowId,
+            remainingWindows: window.remainingWindows,
+          },
         },
       }));
     }
@@ -6827,6 +6840,11 @@
             Math.max(0, Number(conditionalMeta?.branchIndex || 0))
           }:${Math.max(0, Number(conditionalMeta?.nestedIndex || 0))}`;
       const prototype = String(effect?.原型 || '').trim();
+      const sourceEffectId = String(
+        effect?.effectId ||
+        effect?.效果ID ||
+        `${actionEvent.actionId}:effect:${effectIndex}`,
+      ).trim();
       if (!conditionTargets.length) return;
       if (prototype !== '机制抹消' && previewRuntime.actorSuppressesEffect(actor, effect)) {
         facts.push(writeLedgerEvent(combatData, {
@@ -7107,6 +7125,7 @@
             primaryOutcome: 'summon_failed',
             effectPrototype: '召唤生成',
             factType: 'SUMMON',
+            sourceEffectId,
             groupKey: summonSample.groupKey,
             outcomeId: summonSample.outcomeId,
             probability: summonSample.probability,
@@ -7122,6 +7141,8 @@
               roll: summonSample.roll,
               operation: 'SUMMON_CREATE',
               position: outcomePosition('SUMMON_CREATE', effectIndex),
+              before: null,
+              after: null,
             },
           });
           if (failedFact) facts.push(failedFact);
@@ -7199,7 +7220,8 @@
                 targetId: previewRuntime.unitId(target), targetName: previewRuntime.unitName(target),
                 actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
                 parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', reactionNodeId: String(reaction?.event?.chainNodeId || '').trim(),
-                result: 'miss', resultState: 'FAILURE', primaryOutcome: 'dodged',
+                result: 'miss', resultState: 'FAILURE', primaryOutcome: 'dodged', effectPrototype: prototype,
+                factType: 'DAMAGE', sourceEffectId, operation: 'DAMAGE',
                 meta: {
                   source: 'structured_runtime',
                   effectIndex,
@@ -7220,6 +7242,9 @@
                   attackPressureBreakdown: reaction?.event?.meta?.attackPressureBreakdown,
                   reactionAgilityBreakdown: reaction?.event?.meta?.reactionAgilityBreakdown,
                   sourceAgilityBreakdown: reaction?.event?.meta?.sourceAgilityBreakdown,
+                  before: previewRuntime.readHp(target),
+                  after: previewRuntime.readHp(target),
+                  operation: 'DAMAGE',
                 },
               }));
               continue;
@@ -7233,7 +7258,8 @@
                 actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
                 parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
                 reactionNodeId: String(reaction?.event?.chainNodeId || '').trim(),
-                result: 'miss', resultState: 'FAILURE', primaryOutcome: 'attack_missed',
+                result: 'miss', resultState: 'FAILURE', primaryOutcome: 'attack_missed', effectPrototype: prototype,
+                factType: 'DAMAGE', sourceEffectId, operation: 'DAMAGE',
                 meta: {
                   source: 'structured_runtime',
                   effectIndex,
@@ -7243,6 +7269,9 @@
                   roll,
                   appliedDamage: 0,
                   reactionEventId: String(reaction?.event?.eventId || '').trim(),
+                  before: previewRuntime.readHp(target),
+                  after: previewRuntime.readHp(target),
+                  operation: 'DAMAGE',
                 },
               }));
               continue;
@@ -7275,6 +7304,14 @@
                 'shield',
                 -shieldResult.absorbed,
                 actionRole,
+                'REDUCE',
+                {
+                  before: shieldBefore,
+                  after: currentShieldTotal(target),
+                  sourceEffectId,
+                  effectPrototype: prototype,
+                  factType: 'SHIELD',
+                },
               );
               if (shieldEvent) {
                 shieldEvent.primaryOutcome = currentShieldTotal(target) > 0 ? 'shield_absorbed' : 'shield_depleted';
@@ -7295,6 +7332,7 @@
               parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result: incomingDamage > 0 ? 'hit' : 'no_effect',
               resultState: incomingDamage > 0 ? 'SUCCESS' : 'NO_EFFECT',
               primaryOutcome: damage > 0 ? 'full_hit' : shieldResult.absorbed > 0 ? 'shield_absorbed' : 'no_effect',
+              effectPrototype: prototype, factType: 'DAMAGE', sourceEffectId, operation: 'DAMAGE',
               reactionNodeId: String(reaction?.event?.chainNodeId || '').trim(),
               meta: {
                 source: 'structured_runtime', effectIndex, segment: segment + 1, segments, hitProbability, roll,
@@ -7317,11 +7355,16 @@
                   defenseMultiplier,
                 ),
                 reactionEventId: String(reaction?.event?.eventId || '').trim(),
+                before,
+                after: hpAfter,
+                delta: -damage,
+                operation: 'DAMAGE',
               },
             }));
             if (traumaUnconscious || nonlethalIncapacitated) {
               const actionState = traumaUnconscious ? '昏迷' : '失去战斗力';
               const hpMax = previewRuntime.readHpMax(target);
+              const beforeActionState = cloneValue(target?.状态 || {});
               target.状态 = { ...(target.状态 || {}), 行动: actionState };
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
@@ -7331,6 +7374,7 @@
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
                 ruleCode: traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : 'NONLETHAL_INTENT_DISABLE',
                 result: 'applied', resultState: 'SUCCESS', primaryOutcome: traumaUnconscious ? 'trauma_unconscious' : 'nonlethal_incapacitation',
+                effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
                 meta: {
                   source: 'structured_runtime',
                   stateName: actionState,
@@ -7341,6 +7385,9 @@
                   nonlethalHpFloor,
                   nonlethalIncapacitated,
                   traumaUnconscious,
+                  before: beforeActionState,
+                  after: cloneValue(target.状态),
+                  operation: 'STATE_APPLY',
                 },
               }));
             }
@@ -7385,6 +7432,13 @@
             actual,
             actionRole,
             actual > 0 ? 'RESTORE' : 'REDUCE',
+            {
+              before,
+              after: before + actual,
+              sourceEffectId,
+              effectPrototype: prototype,
+              factType: 'RESOURCE',
+            },
           ) || (
             !resourceSample.succeeded
               ? writeLedgerEvent(combatData, {
@@ -7405,6 +7459,9 @@
                   result: 'failed',
                   resultState: 'FAILURE',
                   primaryOutcome: 'resource_effect_failed',
+                  effectPrototype: prototype,
+                  factType: 'RESOURCE',
+                  sourceEffectId,
                   operation: delta >= 0 ? 'RESTORE' : 'REDUCE',
                   meta: {
                     source: 'structured_runtime',
@@ -7413,6 +7470,9 @@
                     delta: 0,
                     amount: 0,
                     operation: delta >= 0 ? 'RESTORE' : 'REDUCE',
+                    before,
+                    after: before,
+                    requestedDelta: delta,
                   },
                 })
               : null
@@ -7467,8 +7527,27 @@
           const requested = previewRuntime.parseSignedValue(effect?.数值, previewRuntime.readHpMax(target));
           if (requested >= 0) applyRuntimeShield(target, requested, Math.max(1, Number(effect?.持续回合 || 1)), actionName);
           else removeRuntimeShield(target, effect?.数值 || requested);
-          const actual = currentShieldTotal(target) - before;
-          facts.push(writeStructuredResourceFact(combatData, actor, target, action, actionEvent, 'shield', actual, actionRole));
+          const after = currentShieldTotal(target);
+          const actual = after - before;
+          const shieldFact = writeStructuredResourceFact(
+            combatData,
+            actor,
+            target,
+            action,
+            actionEvent,
+            'shield',
+            actual,
+            actionRole,
+            actual > 0 ? 'CREATE' : 'REDUCE',
+            {
+              before,
+              after,
+              sourceEffectId,
+              effectPrototype: prototype,
+              factType: 'SHIELD',
+            },
+          );
+          if (shieldFact) facts.push(shieldFact);
           // N-06：窃盾的 actor 侧收益此前只存在于预演——运行时按实际移除量
           // 给施放者生成同额护盾并写 shield_create 事实，两侧记账对齐。
           if (
@@ -7478,9 +7557,27 @@
           ) {
             const actorBefore = currentShieldTotal(actor);
             applyRuntimeShield(actor, -actual, Math.max(1, Number(effect?.持续回合 || 1)), actionName);
-            const stolenApplied = currentShieldTotal(actor) - actorBefore;
+            const actorAfter = currentShieldTotal(actor);
+            const stolenApplied = actorAfter - actorBefore;
             if (Math.abs(stolenApplied) > 1e-9) {
-              facts.push(writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'shield', stolenApplied, actionRole));
+              facts.push(writeStructuredResourceFact(
+                combatData,
+                actor,
+                actor,
+                action,
+                actionEvent,
+                'shield',
+                stolenApplied,
+                actionRole,
+                'CREATE',
+                {
+                  before: actorBefore,
+                  after: actorAfter,
+                  sourceEffectId,
+                  effectPrototype: prototype,
+                  factType: 'SHIELD',
+                },
+              ));
             }
           }
           if (isPrimaryEffect) {
@@ -7496,26 +7593,31 @@
           if (shieldAmount > 0) {
             const beforeShield = currentShieldTotal(target);
             applyRuntimeShield(target, shieldAmount, Math.max(1, Number(effect?.持续回合 || 1)), actionName);
-            const actualShield = currentShieldTotal(target) - beforeShield;
-            facts.push(writeLedgerEvent(combatData, {
-              eventKind: 'shield_create',
-              round: Number(combatData?.回合 || 0),
-              actorName: previewRuntime.unitName(actor),
-              targetName: previewRuntime.unitName(target),
-              actionName,
-              actionType: actionKind,
-              actorControl,
+            const afterShield = currentShieldTotal(target);
+            const actualShield = afterShield - beforeShield;
+            const shieldFact = writeStructuredResourceFact(
+              combatData,
+              actor,
+              target,
+              action,
+              actionEvent,
+              'shield',
+              actualShield,
               actionRole,
-              actionId: actionEvent.actionId,
-              sourceActionId: actionEvent.actionId,
-              parentNodeId: actionEvent.chainNodeId || '',
-              sourceNodeId: actionEvent.chainNodeId || '',
-              result: 'applied',
-              resultState: 'SUCCESS',
-              primaryOutcome: 'shield_created',
-              amount: actualShield,
-              meta: { source: 'structured_runtime', effectIndex, amount: actualShield, duration: Math.max(1, Number(effect?.持续回合 || 1)) },
-            }));
+              'CREATE',
+              {
+                before: beforeShield,
+                after: afterShield,
+                sourceEffectId,
+                effectPrototype: prototype,
+                factType: 'SHIELD',
+                meta: {
+                  effectIndex,
+                  duration: Math.max(1, Number(effect?.持续回合 || 1)),
+                },
+              },
+            );
+            if (shieldFact) facts.push(shieldFact);
             if (isPrimaryEffect) {
               const targetId = previewRuntime.unitId(target);
               primaryResolutionByTarget.set(targetId, actualShield > 0);
@@ -7524,6 +7626,9 @@
           }
           return;
         }
+        const stateBefore = target?.状态效果?.[stateName]
+          ? cloneValue(target.状态效果[stateName])
+          : null;
         const hostileState = inferUnitSide(combatData, previewRuntime.unitName(target)) !== inferUnitSide(combatData, previewRuntime.unitName(actor));
         if (hostileState && reaction?.evaded === true) {
           facts.push(writeLedgerEvent(combatData, {
@@ -7532,9 +7637,13 @@
             parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result: 'evaded',
             resultState: 'FAILURE', primaryOutcome: 'dodged', reactionNodeId: String(reaction?.event?.chainNodeId || '').trim(),
             duration: Math.max(1, Number(effect?.持续回合 || 1)),
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
             meta: {
               source: 'structured_runtime', effectIndex, stateName, successRate: 0, roll: null,
               reactionEventId: String(reaction?.event?.eventId || '').trim(),
+              before: stateBefore,
+              after: stateBefore,
+              operation: 'STATE_APPLY',
             },
           }));
           return;
@@ -7546,6 +7655,7 @@
             parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
             result: 'no_effect', resultState: 'NO_EFFECT', primaryOutcome: 'target_incapacitated',
             duration: Math.max(1, Number(effect?.持续回合 || 1)),
+            effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
             meta: {
               source: 'structured_runtime',
               effectIndex,
@@ -7554,6 +7664,9 @@
               successRate: 0,
               roll: null,
               reason: 'TARGET_INCAPACITATED',
+              before: stateBefore,
+              after: stateBefore,
+              operation: 'STATE_APPLY',
             },
           }));
           if (isPrimaryEffect) {
@@ -7585,6 +7698,7 @@
         });
         const roll = stateSample.roll;
         let result = 'applied';
+        let mergeKind = 'NO_EFFECT';
         if (negativeEffectIsImmune(target, state)) result = 'immune';
         else if (!stateSample.succeeded) result = 'resisted';
         else if (!stateName) result = 'invalid';
@@ -7597,6 +7711,7 @@
               ? Array.from({ length: existingDuration }, () => String(existingState.__状态来源键).trim())
               : [];
           const merged = mergeRuntimeCondition(existingState, state, effect);
+          mergeKind = merged.mergeKind;
           if (merged.applied) {
             const sourceId = registerStateSource(combatData, {
               applicationId,
@@ -7655,19 +7770,29 @@
           }
           else result = 'no_effect';
         }
+        const stateReplaced = result === 'applied' && stateBefore !== null;
+        const stateEventKind = stateReplaced ? 'state_replace' : 'state_apply';
+        const stateOperation = stateReplaced ? 'STATE_REPLACE' : 'STATE_APPLY';
+        const stateResult = stateReplaced ? 'replaced' : result;
+        const stateAfter = result === 'applied'
+          ? cloneValue(target?.状态效果?.[stateName] || null)
+          : cloneValue(stateBefore);
         facts.push(writeLedgerEvent(combatData, {
-          eventKind: 'state_apply', round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
+          eventKind: stateEventKind, round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(target),
           actionName, actionType: actionKind, actorControl, actionRole, actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId,
-          parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result,
+          parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '', result: stateResult,
           resultState: result === 'applied' ? 'SUCCESS' : result === 'no_effect' ? 'NO_EFFECT' : 'FAILURE',
-          primaryOutcome: result === 'applied' ? 'state_applied' : result === 'immune' ? 'state_immune' : 'state_resisted',
+          primaryOutcome: result === 'applied' ? stateReplaced ? 'state_replaced' : 'state_applied' : result === 'immune' ? 'state_immune' : 'state_resisted',
           duration, applicationId: result === 'applied' ? applicationId : '',
+          effectPrototype: prototype,
+          factType: 'STATE',
+          sourceEffectId,
           groupKey: stateSample.groupKey,
           outcomeId: stateSample.outcomeId,
           probability: stateSample.probability,
           roll: stateSample.roll,
-          operation: 'STATE_APPLY',
-          position: outcomePosition('STATE_APPLY', effectIndex),
+          operation: stateOperation,
+          position: outcomePosition(stateOperation, effectIndex),
           meta: {
             source: 'structured_runtime',
             effectIndex,
@@ -7679,8 +7804,11 @@
             groupKey: stateSample.groupKey,
             outcomeId: stateSample.outcomeId,
             probability: stateSample.probability,
-            operation: 'STATE_APPLY',
-            position: outcomePosition('STATE_APPLY', effectIndex),
+            before: stateBefore,
+            after: stateAfter,
+            mergeKind,
+            operation: stateOperation,
+            position: outcomePosition(stateOperation, effectIndex),
           },
         }));
         if (isPrimaryEffect) {

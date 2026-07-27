@@ -1563,11 +1563,13 @@
         if (!wanted) return true;
         return text(rawMeta(event).stateName) === wanted;
       });
-      const applied = applies.filter(event => text(event?.result) === 'applied');
-      if (applied.length) {
-        return verdict('CONFIRMED', applied.map(event => event.eventId), {
-          stateName: text(rawMeta(applied[0]).stateName),
-          duration: Number(rawMeta(applied[0]).duration || 0),
+      const realized = applies.filter(event =>
+        ['applied', 'replaced', 'removed'].includes(text(event?.result))
+      );
+      if (realized.length) {
+        return verdict('CONFIRMED', realized.map(event => event.eventId), {
+          stateName: text(rawMeta(realized[0]).stateName),
+          duration: Number(rawMeta(realized[0]).duration || 0),
         }, searched);
       }
       const rejected = applies.filter(event =>
