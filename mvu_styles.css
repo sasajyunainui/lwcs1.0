@@ -4898,7 +4898,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
 
 .skill-designer-value-unit-control {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 86px;
+  grid-template-columns: minmax(0, 1fr) 104px;
   gap: 8px;
   align-items: center;
 }
@@ -5091,7 +5091,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
 }
 
 .skill-designer-status-prototype-row > .mvu-editor-field-grid[data-skill-designer-prototype-fields] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: stretch;
   gap: 12px 16px;
 }
@@ -5316,9 +5316,37 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
   font-size: 11px;
 }
 
-/* 左栏改单列：两列下选项说明会被截断（实测「护盾变化｜获得护盾…」127px 装 247px） */
+/* 普通配置继续单列；原型字段按信息密度分配宽度，避免短值独占整行。 */
 .skill-designer-layout .mvu-editor-field-grid {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.skill-designer-layout [data-skill-designer-prototype-fields] {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field {
+  grid-column: span 6;
+}
+
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field:has([data-skill-designer-prototype-field='目标']),
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field:has([data-skill-designer-prototype-field='生效方式']),
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field:has([data-skill-designer-prototype-field='资源']),
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field:has([data-skill-designer-prototype-field='持续回合']),
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field:has([data-skill-designer-prototype-field='数量']),
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field:has([data-skill-designer-prototype-field='攻击段数']),
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field:has([data-skill-designer-prototype-field='对应等级']) {
+  grid-column: span 4;
+}
+
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field:has([data-skill-designer-prototype-field='数值']) {
+  grid-column: span 8;
+}
+
+.skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field-wide,
+.skill-designer-layout [data-skill-designer-prototype-fields] > .skill-designer-advanced-fields {
+  grid-column: 1 / -1;
 }
 
 .skill-designer-title-actions {
@@ -6421,7 +6449,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
     min-height: 44px;
   }
   .skill-designer-status-prototype-row > .mvu-editor-field-grid[data-skill-designer-prototype-fields] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(12, minmax(0, 1fr));
   }
   .skill-designer-remove-btn {
     width: 32px;
@@ -6500,13 +6528,25 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
 }
 
 @media (max-width: 760px) {
-  .mvu-editor-field-grid,
+  .mvu-editor-field-grid:not([data-skill-designer-prototype-fields]),
   .skill-designer-fusion-participant-row {
     grid-template-columns: 1fr;
   }
 
   .mvu-editor-actions {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .skill-designer-layout [data-skill-designer-prototype-fields] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field,
+  .skill-designer-layout [data-skill-designer-prototype-fields] > .mvu-editor-field-wide,
+  .skill-designer-layout [data-skill-designer-prototype-fields] > .skill-designer-advanced-fields {
+    grid-column: 1;
   }
 }
 
@@ -19278,9 +19318,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--archive > [data-
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
   position: relative;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 33%, 340px);
-  /* 右列两张卡按内容定高并向上收拢。原为 auto auto + align-content: stretch，
-     剩余空间被摊到两卡之间，实测在 548px 列里留出 126px 空隙。 */
-  grid-template-rows: max-content max-content;
+  /* 焦点卡按内容定高，在场人物卡吃掉剩余高度并在卡内滚动。
+     原为 max-content max-content：两行高度全由右列内容决定，
+     跨两行的地图 stage 会随在场人物数量忽高忽低。 */
+  grid-template-rows: max-content minmax(0, 1fr);
   grid-template-areas:
     'stage current'
     'stage locals';
@@ -19308,6 +19349,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unif
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card='map-locals'] {
   grid-area: locals;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card='map-route'],
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map > [data-unified-card='map-dynamic'] {
@@ -21838,17 +21884,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   }
 
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: auto auto;
-    height: 100%;
-    min-height: 0;
-    align-items: stretch;
-    align-content: stretch;
-  }
-
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-dashboard--map {
     grid-template-columns: minmax(0, 1fr) clamp(260px, 32%, 310px);
-    grid-template-rows: auto auto;
+    grid-template-rows: max-content minmax(0, 1fr);
     grid-template-areas:
       'stage current'
       'stage locals';

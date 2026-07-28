@@ -123,10 +123,48 @@
   const conditionalEffectFields = Object.freeze([...(sharedRegistry?.条件分支效果数组字段 || [])]);
   let runtimeIdSequence = 0;
   let runtimeIdContext = 'runtime';
+  const battleDraftAttestations = new WeakMap();
+  const sealedBattlePackageAttestations = new WeakSet();
 
   function cloneValue(value) {
     if (typeof structuredClone === 'function') return structuredClone(value);
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function freezeBattleValue(value, seen = new WeakSet()) {
+    if (!value || typeof value !== 'object' || seen.has(value)) return value;
+    if (
+      !Array.isArray(value) &&
+      Object.prototype.toString.call(value) !== '[object Object]'
+    ) {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:non_plain_value');
+    }
+    seen.add(value);
+    Object.getOwnPropertyNames(value).forEach(key => {
+      freezeBattleValue(value[key], seen);
+    });
+    return Object.freeze(value);
+  }
+
+  function attestBattleDraft(draft) {
+    const frozenDraft = freezeBattleValue(draft);
+    battleDraftAttestations.set(frozenDraft, Object.freeze({
+      schemaVersion: String(frozenDraft?.schemaVersion || '').trim(),
+      draftHash: String(frozenDraft?.draftHash || '').trim(),
+    }));
+    return frozenDraft;
+  }
+
+  function verifyBattleDraftAttestation(draft) {
+    const attestation = draft && typeof draft === 'object'
+      ? battleDraftAttestations.get(draft)
+      : null;
+    return Boolean(
+      attestation &&
+      Object.isFrozen(draft) &&
+      attestation.schemaVersion === String(draft?.schemaVersion || '').trim() &&
+      attestation.draftHash === String(draft?.draftHash || '').trim(),
+    );
   }
 
   function stableSerialize(value, seen = new WeakSet()) {
@@ -1084,6 +1122,7 @@
       const prototypeLog = settlePersistentPrototype(unit, key, condition, label, combatData);
       if (prototypeLog) logs.push(prototypeLog);
       if (typeof condition.duration === 'number') {
+        if (structuredControlConsumesActiveOpportunity(condition)) return;
         if (Array.isArray(condition.__状态来源窗口)) {
           condition.__状态来源窗口.shift();
           condition.__状态来源键 = String(condition.__状态来源窗口[0] || '').trim();
@@ -1146,6 +1185,447 @@
     runtime.ledgerSequence = Math.max(0, Number(runtime.ledgerSequence || 0));
     runtime.resourceEffectSequence = Math.max(0, Number(runtime.resourceEffectSequence || 0));
     return runtime;
+  }
+
+  function createRuntimeFactJournal() {
+    return {
+      sequence: 0,
+      sourceEventIds: [],
+      changedFactKeys: new Set(),
+      opportunityChanges: new Map(),
+      resourceTimelineChanges: new Map(),
+      scheduleChanges: new Map(),
+      visibleBeliefChanges: new Map(),
+      viewScheduleRecords: new Map(),
+      viewScheduleInitialized: false,
+      revisions: {
+        visibleWorld: 0,
+        opportunity: 0,
+        resourceTimeline: 0,
+        schedule: 0,
+        belief: 0,
+      },
+    };
+  }
+
+  function resetRuntimeFactJournal(combatData = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    runtime.evaluationFactJournal = createRuntimeFactJournal();
+    return runtime.evaluationFactJournal;
+  }
+
+  function ensureRuntimeFactJournal(combatData = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    if (
+      !runtime.evaluationFactJournal ||
+      typeof runtime.evaluationFactJournal !== 'object'
+    ) {
+      runtime.evaluationFactJournal = createRuntimeFactJournal();
+    }
+    return runtime.evaluationFactJournal;
+  }
+
+  function coalesceRuntimeRecordChange(
+    records,
+    id,
+    previousRecord,
+    currentRecord,
+  ) {
+    const normalizedId = String(id || '').trim();
+    if (!normalizedId) return;
+    const existing = records.get(normalizedId);
+    const beforeHash = existing
+      ? String(existing.beforeHash || '')
+      : previousRecord === undefined
+        ? ''
+        : previewRuntime.stableHash(previousRecord);
+    const afterHash = currentRecord === undefined
+      ? ''
+      : previewRuntime.stableHash(currentRecord);
+    if (beforeHash === afterHash) {
+      records.delete(normalizedId);
+      return;
+    }
+    records.set(normalizedId, {
+      id: normalizedId,
+      changeType: !beforeHash
+        ? 'CREATED'
+        : !afterHash
+          ? 'REMOVED'
+          : 'CHANGED',
+      beforeHash,
+      afterHash,
+    });
+  }
+
+  function recordRuntimeFactKey(combatData = {}, factKey = '') {
+    const normalized = String(factKey || '').trim();
+    if (!normalized) return;
+    const journal = ensureRuntimeFactJournal(combatData);
+    journal.changedFactKeys.add(normalized);
+    journal.revisions.visibleWorld += 1;
+  }
+
+  function recordRuntimeOpportunityChange(
+    combatData = {},
+    previousRecord,
+    currentRecord,
+  ) {
+    const record = currentRecord || previousRecord || {};
+    const opportunityId = String(
+      record?.opportunityId || record?.grantId || '',
+    ).trim();
+    if (!opportunityId) return;
+    const journal = ensureRuntimeFactJournal(combatData);
+    coalesceRuntimeRecordChange(
+      journal.opportunityChanges,
+      opportunityId,
+      previousRecord,
+      currentRecord,
+    );
+    journal.changedFactKeys.add(`opportunity:${opportunityId}`);
+    journal.revisions.opportunity += 1;
+  }
+
+  function recordRuntimeTimelineChange(
+    combatData = {},
+    collectionName = '',
+    id = '',
+    previousRecord,
+    currentRecord,
+  ) {
+    const journal = ensureRuntimeFactJournal(combatData);
+    const table =
+      collectionName === 'resource'
+        ? journal.resourceTimelineChanges
+        : journal.scheduleChanges;
+    const normalizedPrevious =
+      collectionName === 'schedule' && previousRecord !== undefined
+        ? semanticScheduleRecord(
+            previousRecord,
+            String(id || '').trim(),
+          )
+        : previousRecord;
+    const normalizedCurrent =
+      collectionName === 'schedule' && currentRecord !== undefined
+        ? semanticScheduleRecord(
+            currentRecord,
+            String(id || '').trim(),
+          )
+        : currentRecord;
+    coalesceRuntimeRecordChange(
+      table,
+      id,
+      normalizedPrevious,
+      normalizedCurrent,
+    );
+    if (collectionName === 'resource') {
+      journal.revisions.resourceTimeline += 1;
+    } else {
+      journal.revisions.schedule += 1;
+      const scheduleFactKey = `schedule:${String(id || '').trim()}`;
+      if (table.has(String(id || '').trim())) {
+        journal.changedFactKeys.add(scheduleFactKey);
+      } else {
+        journal.changedFactKeys.delete(scheduleFactKey);
+      }
+    }
+  }
+
+  function recordRuntimeViewScheduleSnapshot(
+    combatData = {},
+    scheduledEvents = [],
+  ) {
+    const journal = ensureRuntimeFactJournal(combatData);
+    const current = new Map(
+      (Array.isArray(scheduledEvents) ? scheduledEvents : [])
+        .map(record => [
+          String(
+            record?.descriptorId || record?.scheduleId || '',
+          ).trim(),
+          record,
+        ])
+        .filter(([id]) => id),
+    );
+    if (!journal.viewScheduleInitialized) {
+      journal.viewScheduleRecords = current;
+      journal.viewScheduleInitialized = true;
+      return;
+    }
+    const ids = new Set([
+      ...journal.viewScheduleRecords.keys(),
+      ...current.keys(),
+    ]);
+    [...ids].sort().forEach(descriptorId => {
+      const previousRecord =
+        journal.viewScheduleRecords.get(descriptorId);
+      const currentRecord = current.get(descriptorId);
+      if (
+        previousRecord !== undefined &&
+        currentRecord !== undefined &&
+        previewRuntime.stableHash(
+          semanticScheduleRecord(previousRecord, descriptorId),
+        ) ===
+          previewRuntime.stableHash(
+            semanticScheduleRecord(currentRecord, descriptorId),
+          )
+      ) {
+        return;
+      }
+      recordRuntimeTimelineChange(
+        combatData,
+        'schedule',
+        descriptorId,
+        previousRecord,
+        currentRecord,
+      );
+    });
+    journal.viewScheduleRecords = current;
+  }
+
+  function recordRuntimeVisibleBeliefChange(
+    combatData = {},
+    actorId = '',
+    previousBelief,
+    currentBelief,
+    existedBefore = false,
+  ) {
+    const normalizedActorId = String(actorId || '').trim();
+    if (!normalizedActorId) return;
+    const journal = ensureRuntimeFactJournal(combatData);
+    const previousIdentity = existedBefore
+      ? String(
+          previousBelief?.revision ||
+          previewRuntime.stableHash(previousBelief || {}),
+        ).trim()
+      : '';
+    const currentIdentity = String(
+      currentBelief?.revision ||
+      previewRuntime.stableHash(currentBelief || {}),
+    ).trim();
+    const existing = journal.visibleBeliefChanges.get(normalizedActorId);
+    const beforeHash = existing
+      ? String(existing.beforeHash || '')
+      : previousIdentity;
+    if (beforeHash === currentIdentity) {
+      journal.visibleBeliefChanges.delete(normalizedActorId);
+      journal.changedFactKeys.delete(`belief:${normalizedActorId}`);
+      return;
+    }
+    journal.visibleBeliefChanges.set(normalizedActorId, {
+      id: normalizedActorId,
+      changeType: !beforeHash ? 'CREATED' : 'CHANGED',
+      beforeHash,
+      afterHash: currentIdentity,
+    });
+    journal.changedFactKeys.add(`belief:${normalizedActorId}`);
+    journal.revisions.belief += 1;
+  }
+
+  function ledgerEventChangedFactKeys(event = {}) {
+    const keys = new Set();
+    const eventKind = String(event?.eventKind || '').trim();
+    const operation = String(
+      event?.operation || event?.meta?.operation || '',
+    ).trim().toUpperCase();
+    const targetId = String(
+      event?.targetId ||
+      event?.targetIds?.[0] ||
+      event?.actorId ||
+      '',
+    ).trim();
+    if (!targetId) return keys;
+    const before = event?.meta?.before;
+    const after = event?.meta?.after;
+    const changed =
+      before !== undefined &&
+      after !== undefined &&
+      previewRuntime.stableHash(before) !== previewRuntime.stableHash(after);
+    if (
+      changed &&
+      (
+        eventKind === 'hit_result' ||
+        eventKind === 'state_tick' &&
+          String(event?.meta?.resourceKey || '').trim() === 'hp'
+      )
+    ) {
+      keys.add(`unit:${targetId}:hp`);
+    }
+    if (
+      changed &&
+      ['shield_create', 'shield_break'].includes(eventKind)
+    ) {
+      keys.add(`unit:${targetId}:state:__SHIELD`);
+    }
+    const resourceDelta = Number(
+      event?.meta?.delta ?? event?.delta ?? 0,
+    );
+    const resourceChanged =
+      changed ||
+      (
+        eventKind === 'resource_change' &&
+        Math.abs(resourceDelta) > 1e-9 &&
+        !['FAILURE', 'NO_EFFECT'].includes(
+          String(event?.resultState || '').trim().toUpperCase(),
+        )
+      );
+    if (resourceChanged && eventKind === 'resource_change') {
+      const resourceKey = String(
+        event?.meta?.resourceKey || '',
+      ).trim();
+      const resource = String(
+        event?.meta?.resource || '',
+      ).trim();
+      if (resourceKey === 'hp' || resource === '生命') {
+        keys.add(`unit:${targetId}:hp`);
+      } else if (resourceKey === 'shield' || resource === '护盾') {
+        keys.add(`unit:${targetId}:state:__SHIELD`);
+      } else {
+        const label = {
+          sp: '魂力',
+          men: '精神力',
+          vit: '体力',
+        }[resourceKey] || resource;
+        if (label) keys.add(`unit:${targetId}:resource:${label}`);
+      }
+    }
+    if (
+      changed &&
+      [
+        'state_apply',
+        'state_replace',
+        'state_remove',
+      ].includes(eventKind)
+    ) {
+      const beforeAction = before && typeof before === 'object'
+        ? before.行动
+        : undefined;
+      const afterAction = after && typeof after === 'object'
+        ? after.行动
+        : undefined;
+      if (beforeAction !== undefined || afterAction !== undefined) {
+        keys.add(`unit:${targetId}:state:__ACTION`);
+      } else {
+        const stateKey = String(
+          event?.meta?.stateKey ||
+          event?.meta?.stateName ||
+          event?.stateName ||
+          '',
+        ).trim();
+        if (stateKey) keys.add(`unit:${targetId}:state:${stateKey}`);
+      }
+    }
+    if (
+      [
+        'state_expire',
+        'state_remove',
+      ].includes(eventKind) ||
+      [
+        'STATE_EXPIRE',
+        'STATE_REMOVE',
+      ].includes(operation)
+    ) {
+      const stateKey = String(
+        event?.meta?.stateKey ||
+        event?.meta?.stateName ||
+        event?.stateName ||
+        '',
+      ).trim();
+      if (stateKey) keys.add(`unit:${targetId}:state:${stateKey}`);
+    }
+    if (operation === 'SNAPSHOT_RESTORE') {
+      (event?.meta?.changedFields || []).forEach(field => {
+        const normalized = String(field || '').trim();
+        if (/^(hp|HP)$/.test(normalized)) {
+          keys.add(`unit:${targetId}:hp`);
+        } else if (/^(sp|魂力)$/.test(normalized)) {
+          keys.add(`unit:${targetId}:resource:魂力`);
+        } else if (/^(men|精神力)$/.test(normalized)) {
+          keys.add(`unit:${targetId}:resource:精神力`);
+        } else if (/^(vit|体力)$/.test(normalized)) {
+          keys.add(`unit:${targetId}:resource:体力`);
+        }
+      });
+    }
+    return keys;
+  }
+
+  function recordRuntimeLedgerEvent(combatData = {}, event = {}) {
+    const eventId = String(event?.eventId || '').trim();
+    if (!eventId) return;
+    const journal = ensureRuntimeFactJournal(combatData);
+    journal.sourceEventIds.push(eventId);
+    ledgerEventChangedFactKeys(event).forEach(key =>
+      recordRuntimeFactKey(combatData, key)
+    );
+  }
+
+  function drainRuntimeFactDeltaBatch(
+    combatData = {},
+    {
+      sequence = 0,
+      terminalReached = false,
+      runtimeSnapshot = {},
+    } = {},
+  ) {
+    const journal = ensureRuntimeFactJournal(combatData);
+    const mapChanges = (records, idKey) =>
+      [...records.values()]
+        .sort((left, right) =>
+          String(left?.id || '').localeCompare(String(right?.id || ''))
+        )
+        .map(change => ({
+          [idKey]: String(change?.id || '').trim(),
+          changeType: String(change?.changeType || '').trim(),
+          beforeHash: String(change?.beforeHash || ''),
+          afterHash: String(change?.afterHash || ''),
+        }));
+    const batch = {
+      sequence: Math.max(0, Number(sequence || 0)),
+      sourceEventIds: [...journal.sourceEventIds],
+      changedFactKeys: [...journal.changedFactKeys].sort(),
+      opportunityChanges: mapChanges(
+        journal.opportunityChanges,
+        'opportunityId',
+      ),
+      resourceTimelineChanges: mapChanges(
+        journal.resourceTimelineChanges,
+        'eventId',
+      ),
+      scheduleChanges: mapChanges(
+        journal.scheduleChanges,
+        'descriptorId',
+      ),
+      visibleBeliefChanges: mapChanges(
+        journal.visibleBeliefChanges,
+        'actorId',
+      ),
+      terminalReached: terminalReached === true,
+      revisions: {
+        visibleWorldRevision:
+          `visible-journal:${journal.revisions.visibleWorld}`,
+        beliefRevision:
+          `belief-journal:${journal.revisions.belief}`,
+        opportunityRevision:
+          String(runtimeSnapshot?.opportunityRevision || '').trim() ||
+          `opportunity-journal:${journal.revisions.opportunity}`,
+        resourceTimelineRevision:
+          String(runtimeSnapshot?.resourceTimelineRevision || '').trim() ||
+          `resource-journal:${journal.revisions.resourceTimeline}`,
+        scheduleRevision:
+          String(runtimeSnapshot?.scheduleRevision || '').trim() ||
+          `schedule-journal:${journal.revisions.schedule}`,
+      },
+      deltaSource: 'EVENT_JOURNAL',
+    };
+    journal.sequence += 1;
+    journal.sourceEventIds.length = 0;
+    journal.changedFactKeys.clear();
+    journal.opportunityChanges.clear();
+    journal.resourceTimelineChanges.clear();
+    journal.scheduleChanges.clear();
+    journal.visibleBeliefChanges.clear();
+    return batch;
   }
 
   function invalidateRouteUnitHashes(combatData = {}, unitIds = []) {
@@ -1345,25 +1825,35 @@
         ])
         .filter(([id]) => id)
         .sort(([left], [right]) => left.localeCompare(right))
-        .map(([id, record]) => {
-          const semanticRecord =
-            String(record?.eventType || '').trim() ===
-              'FUTURE_NATURAL_ACTION'
-              ? {
-                  descriptorId: id,
-                  ownerId: String(record?.ownerId || '').trim(),
-                  expectedGrantType: String(
-                    record?.expectedGrantType || '',
-                  ).trim(),
-                  round: Number(
-                    record?.round ?? record?.scheduledRound ?? 0,
-                  ),
-                  eventType: 'FUTURE_NATURAL_ACTION',
-                }
-              : record;
-          return [id, previewRuntime.stableHash(semanticRecord)];
-        }),
+        .map(([id, record]) => [
+          id,
+          previewRuntime.stableHash(
+            semanticScheduleRecord(record, id),
+          ),
+        ]),
     );
+  }
+
+  function semanticScheduleRecord(record = {}, descriptorId = '') {
+    return String(record?.eventType || '').trim() ===
+        'FUTURE_NATURAL_ACTION'
+      ? {
+          descriptorId: String(
+            descriptorId ||
+            record?.descriptorId ||
+            record?.scheduleId ||
+            '',
+          ).trim(),
+          ownerId: String(record?.ownerId || '').trim(),
+          expectedGrantType: String(
+            record?.expectedGrantType || '',
+          ).trim(),
+          round: Number(
+            record?.round ?? record?.scheduledRound ?? 0,
+          ),
+          eventType: 'FUTURE_NATURAL_ACTION',
+        }
+      : record;
   }
 
   function changedHashKeys(previous = {}, current = {}) {
@@ -1504,9 +1994,42 @@
     });
   }
 
+  function buildEventOwnedRuntimeSnapshot(combatData = {}) {
+    const runtime = ensureCombatRuntime(combatData);
+    const journal = ensureRuntimeFactJournal(combatData);
+    const scheduledEvents = scheduledEventsFromRuntime(combatData);
+    recordRuntimeViewScheduleSnapshot(combatData, scheduledEvents);
+    return {
+      schemaVersion: '8.3-runtime-snapshot-1',
+      opportunitySnapshot: opportunitySnapshotFromRuntime(combatData),
+      resourceTimeline: resourceTimelineFromRuntime(combatData),
+      scheduledEvents,
+      opportunityRevision:
+        `opportunity-journal:${journal.revisions.opportunity}`,
+      resourceTimelineRevision:
+        `resource-journal:${journal.revisions.resourceTimeline}`,
+      scheduleRevision:
+        `schedule-journal:${journal.revisions.schedule}`,
+      evaluationRevision: [
+        'runtime-evaluation-journal',
+        journal.revisions.visibleWorld,
+        journal.revisions.belief,
+        journal.revisions.opportunity,
+        journal.revisions.resourceTimeline,
+        journal.revisions.schedule,
+      ].join(':'),
+      firstTerminalSequence: runtime.firstTerminalSequence
+        ? cloneValue(runtime.firstTerminalSequence)
+        : null,
+    };
+  }
+
   function buildDecisionRuntimeSnapshot(combatData = {}, actorId = '', actionOpportunity = {}, options = {}) {
     const runtime = ensureCombatRuntime(combatData);
-    const snapshot = cloneValue(buildRuntimeDecisionSnapshot(combatData));
+    const eventOwned = options?.eventOwned === true;
+    const snapshot = eventOwned
+      ? buildEventOwnedRuntimeSnapshot(combatData)
+      : cloneValue(buildRuntimeDecisionSnapshot(combatData));
     const opportunityId = String(
       actionOpportunity?.opportunityId ||
       actionOpportunity?.grantId ||
@@ -1542,7 +2065,11 @@
         ownerId: previewRuntime.unitId(entry?.char),
         side: entry?.side || '',
       })).filter(entry => entry.ownerId);
-      const queueSignature = previewRuntime.stableHash(queue);
+      const queueSignature = eventOwned
+        ? queue
+            .map(entry => `${entry.ownerId}:${entry.side}`)
+            .join('|')
+        : previewRuntime.stableHash(queue);
       const cacheKey = `${currentRound}:${finalRound}:${queueSignature}`;
       const cachedDescriptors = cachedQueue?.key === cacheKey
         ? cachedQueue.descriptors
@@ -1653,6 +2180,43 @@
       Number(left?.creationSequence || 0) - Number(right?.creationSequence || 0) ||
       String(left?.descriptorId || '').localeCompare(String(right?.descriptorId || ''))
     );
+    if (eventOwned) {
+      recordRuntimeViewScheduleSnapshot(
+        combatData,
+        snapshot.scheduledEvents,
+      );
+      const journal = ensureRuntimeFactJournal(combatData);
+      snapshot.opportunitySnapshotHash = '';
+      snapshot.opportunityCacheHash = '';
+      snapshot.resourceTimelineHash = '';
+      snapshot.scheduledEventsHash = '';
+      snapshot.opportunityRevision = [
+        'opportunity-journal',
+        journal.revisions.opportunity,
+        snapshot.opportunitySnapshot.length,
+        String(actionOpportunity?.opportunityId || ''),
+      ].join(':');
+      snapshot.resourceTimelineRevision = [
+        'resource-journal',
+        journal.revisions.resourceTimeline,
+        snapshot.resourceTimeline.length,
+      ].join(':');
+      snapshot.scheduleRevision = [
+        'schedule-journal',
+        journal.revisions.schedule,
+        snapshot.scheduledEvents.length,
+      ].join(':');
+      snapshot.evaluationRevision = [
+        'runtime-evaluation-journal',
+        Number(combatData?.回合 || 0),
+        journal.revisions.visibleWorld,
+        journal.revisions.belief,
+        journal.revisions.opportunity,
+        journal.revisions.resourceTimeline,
+        journal.revisions.schedule,
+      ].join(':');
+      return Object.freeze(snapshot);
+    }
     if (options?.identityLite === true) {
       // 轻身份：这些哈希/Revision 只服务于 r8 系的 session、fact-delta 与
       // 路线目录失效索引；r9 两者皆无（:7826/:8892 门已排除），
@@ -3771,7 +4335,7 @@
         persistentResourceLabel(event?.meta?.resourceKey || event?.resourceKey || '') ||
         (operation === 'ITEM_CONSUME' ? 'ITEM' : ''),
       ).trim();
-      runtime.resourceTimeline.push({
+      const timelineEvent = {
         eventId: String(event?.eventId || '').trim(),
         actorId: String(event?.targetId || event?.actorId || '').trim(),
         resource,
@@ -3783,7 +4347,15 @@
         actionSequence: Math.max(0, Number(event?.meta?.actionSequence || event?.sequence || 0)),
         phasePriority: Math.max(0, Number(event?.meta?.phasePriority || resourcePhasePriority[operation] || 40)),
         effectSequence: ++runtime.resourceEffectSequence,
-      });
+      };
+      runtime.resourceTimeline.push(timelineEvent);
+      recordRuntimeTimelineChange(
+        combatData,
+        'resource',
+        timelineEvent.eventId,
+        undefined,
+        timelineEvent,
+      );
     }
     const scheduled = event?.meta?.scheduled;
     const eventKind = String(event?.eventKind || '').trim();
@@ -3792,7 +4364,8 @@
         scheduled?.descriptorId ||
         `${event?.eventId || 'schedule'}:${event?.meta?.scheduledIndex ?? 0}`,
       ).trim();
-      runtime.scheduleDescriptors[descriptorId] = {
+      const previousDescriptor = runtime.scheduleDescriptors[descriptorId];
+      const descriptor = {
         descriptorId,
         ownerId: String(scheduled?.targetId || scheduled?.actorId || event?.targetId || event?.actorId || '').trim(),
         expectedGrantType: String(
@@ -3808,6 +4381,14 @@
         sourceEventId: String(event?.eventId || '').trim(),
         eventType: String(scheduled?.type || eventKind).trim(),
       };
+      runtime.scheduleDescriptors[descriptorId] = descriptor;
+      recordRuntimeTimelineChange(
+        combatData,
+        'schedule',
+        descriptorId,
+        previousDescriptor,
+        descriptor,
+      );
     }
   }
 
@@ -4142,6 +4723,7 @@
     }
     ledger.push(event);
     appendRuntimeEventContracts(rootData, event);
+    recordRuntimeLedgerEvent(rootData, event);
     return event;
   }
 
@@ -7209,8 +7791,15 @@
           const rawDefenseValue = damageClass === 'MENTAL'
             ? previewRuntime.readCombatStat(target, 'men')
             : previewRuntime.readCombatStat(target, 'def');
-          const penetrationValue = Math.max(0, Number(effect?.防穿 ?? effect?.穿透 ?? effect?.防御穿透 ?? 0));
-          const formulaDefenseValue = Math.max(1, rawDefenseValue - penetrationValue);
+          const penetration = previewRuntime.calculateDefensePenetration(
+            effect,
+            actor,
+            rawDefenseValue,
+          );
+          const formulaDefenseValue = Math.max(
+            1,
+            rawDefenseValue - penetration.penetrationValue,
+          );
           let anySegmentHit = false;
           for (let segment = 0; segment < segments; segment += 1) {
             if (reaction?.evaded === true) {
@@ -7347,7 +7936,13 @@
                   attackValue: formulaAttackValue,
                   defenseValue: formulaDefenseValue,
                   rawDefenseValue,
-                  penetrationValue,
+                  flatPenetrationValue:
+                    penetration.flatPenetrationValue,
+                  stateArmorPenRatio:
+                    penetration.stateArmorPenRatio,
+                  stateArmorPenetrationValue:
+                    penetration.stateArmorPenetrationValue,
+                  penetrationValue: penetration.penetrationValue,
                 },
                 intentLethalPrevented: nonlethal && damage < previewRuntime.calculateSettledSegmentDamage(
                   totalDamage,
@@ -7958,13 +8553,88 @@
     return !Object.values(unit?.状态效果 || {}).some(state => structuredControlPreventsOpportunity(state, actionRole));
   }
 
-  function structuredControlPreventsOpportunity(state = {}, actionRole = 'ACTIVE') {
+  function structuredControlConsumesActiveOpportunity(state = {}) {
     const effects = state?.战斗效果 || state?.计算层效果 || {};
     const stateName = String(state?.状态 || state?.状态名称 || state?.name || '').trim();
     const hardControl = ['眩晕', '麻痹', '僵直', '束缚', '禁锢', '定身', '冻结', '冻结束缚', '星光停滞'].includes(stateName);
     return hardControl || state?.skip_turn === true || state?.cannot_act === true ||
-      effects.skip_turn === true || effects.cannot_act === true ||
+      effects.skip_turn === true || effects.cannot_act === true;
+  }
+
+  function structuredControlPreventsOpportunity(state = {}, actionRole = 'ACTIVE') {
+    const effects = state?.战斗效果 || state?.计算层效果 || {};
+    return structuredControlConsumesActiveOpportunity(state) ||
       (normalizeActionRole(actionRole) !== 'ACTIVE' && (state?.cannot_react === true || effects.cannot_react === true));
+  }
+
+  function consumeStructuredControlActiveBudget(combatData = {}, unit = {}, node = {}) {
+    if (normalizeActionRole(node?.actionRole) !== 'ACTIVE') return;
+    const states = unit?.状态效果 && typeof unit.状态效果 === 'object'
+      ? unit.状态效果
+      : {};
+    const targetId = previewRuntime.unitId(unit) || '';
+    const targetName = previewRuntime.unitName(unit) || '未知单位';
+    Object.entries(states).forEach(([stateKey, state]) => {
+      if (
+        !structuredControlConsumesActiveOpportunity(state) ||
+        !Number.isFinite(Number(state?.duration)) ||
+        Number(state.duration) <= 0
+      ) {
+        return;
+      }
+      const stateName = String(
+        state?.状态名称 || state?.状态 || stateKey || '控制状态',
+      ).trim();
+      const previousDuration = Math.max(0, Number(state.duration));
+      const source = findStateSource(combatData, {
+        applicationId: String(state?.__状态来源键 || '').trim(),
+        stateName,
+        targetName,
+        maxRound: Number(combatData?.回合 || 0),
+      });
+      const nextDuration = Math.max(0, previousDuration - 1);
+      state.duration = nextDuration;
+      if (Array.isArray(state.__状态来源窗口)) {
+        state.__状态来源窗口.shift();
+        state.__状态来源键 = String(state.__状态来源窗口[0] || '').trim();
+      }
+      const expired = nextDuration <= 0;
+      writeLedgerEvent(combatData, {
+        eventKind: expired ? 'state_expire' : 'state_replace',
+        round: Number(combatData?.回合 || 0),
+        actorId: targetId,
+        actorName: targetName,
+        targetId,
+        targetName,
+        actionName: stateName,
+        actionType: 'control_opportunity',
+        actorControl: 'SYSTEM',
+        actionRole: 'STATE_TICK',
+        sourceActionName: String(source?.sourceActionName || '').trim(),
+        sourceActionId: String(source?.sourceActionId || '').trim(),
+        parentNodeId: String(source?.sourceNodeId || '').trim(),
+        sourceNodeId: String(source?.sourceNodeId || '').trim(),
+        opportunityId: String(node?.opportunityId || node?.grantId || '').trim(),
+        opportunitySequence: Math.max(0, Number(node?.opportunitySequence || 0)),
+        result: expired ? 'expired' : 'consumed',
+        resultState: expired ? 'EXPIRED' : 'SUCCESS',
+        factType: 'STATE_CHANGE',
+        operation: expired ? 'STATE_EXPIRE' : 'CONTROL_WINDOW_CONSUME',
+        duration: nextDuration,
+        meta: {
+          source: 'structured_runtime',
+          stateKey,
+          stateName,
+          previousDuration,
+          nextDuration,
+          opportunityId: String(node?.opportunityId || node?.grantId || '').trim(),
+          operation: expired ? 'STATE_EXPIRE' : 'CONTROL_WINDOW_CONSUME',
+        },
+      });
+      if (expired) {
+        settleExpiredConditionBase(unit, stateKey, state, targetName, combatData);
+      }
+    });
   }
 
   function structuredActorIncapacityReason(unit = {}, actionRole = 'ACTIVE') {
@@ -8317,13 +8987,22 @@
     });
     const decisionEngine = String(input?.settings?.decisionEngine || 'legacy').trim().toLowerCase();
     const providerId = String(input?.settings?.providerId || '').trim();
+    const sessionReuseVerificationRequested =
+      input?.settings?.verifySessionMechanicalReuse === true ||
+      input?.settings?.verifySessionBehaviorReuse === true;
+    const routeCatalogCacheEnabled =
+      input?.settings?.disableRouteCatalogCache !== true &&
+      !sessionReuseVerificationRequested;
     const sessionMechanicalReuseRequested =
       ['r8-shadow', 'r8'].includes(providerId) &&
       input?.settings?.disableEvaluationSession !== true &&
-      input?.settings?.disableSessionMechanicalReuse !== true;
-    const routeCatalogCacheEnabled =
-      input?.settings?.disableRouteCatalogCache !== true &&
-      !sessionMechanicalReuseRequested;
+      input?.settings?.disableSessionMechanicalReuse !== true &&
+      !routeCatalogCacheEnabled;
+    const sessionBehaviorReuseRequested =
+      ['r8-shadow', 'r8'].includes(providerId) &&
+      input?.settings?.disableEvaluationSession !== true &&
+      input?.settings?.disableSessionBehaviorReuse !== true &&
+      !routeCatalogCacheEnabled;
     const routeCatalogCacheByActor = new Map();
     const routeCatalogCacheByContext = new Map();
     const routeCatalogCacheBySide = new Map();
@@ -8367,6 +9046,7 @@
     runtime.routeUnitHashCache = {};
     runtime.ledgerSequence = 0;
     runtime.resourceEffectSequence = 0;
+    resetRuntimeFactJournal(combatData);
     delete runtime.firstTerminalSequence;
     runtime.decisionSeed = seed;
     const invalidRuntime = validateBattleRuntime(combatData);
@@ -8543,8 +9223,32 @@
     const strategicHistoryByActor = new Map();
     const logs = [];
     const initialSnapshot = getBattleSnapshot(combatData);
+    const eventOwnedEvaluationEnabled =
+      providerId === 'r9v2-shadow' &&
+      input?.settings?.disableEventOwnedFactDelta !== true;
+    const verifyEventOwnedFactDelta =
+      eventOwnedEvaluationEnabled &&
+      input?.settings?.verifyEventOwnedFactDelta === true;
+    const setVisibleBelief = (actorId, nextBelief) => {
+      const normalizedActorId = String(actorId || '').trim();
+      const existedBefore = beliefByActor.has(normalizedActorId);
+      const previousBelief = existedBefore
+        ? beliefByActor.get(normalizedActorId)
+        : undefined;
+      beliefByActor.set(normalizedActorId, nextBelief);
+      if (eventOwnedEvaluationEnabled) {
+        recordRuntimeVisibleBeliefChange(
+          combatData,
+          normalizedActorId,
+          previousBelief,
+          nextBelief,
+          existedBefore,
+        );
+      }
+      return nextBelief;
+    };
     const evaluationSessionEnabled =
-      ['r8-shadow', 'r8'].includes(providerId) &&
+      ['r8-shadow', 'r8', 'r9v2-shadow'].includes(providerId) &&
       input?.settings?.disableEvaluationSession !== true &&
       typeof decisionRuntime.createEvaluationSession === 'function' &&
       typeof decisionRuntime.advanceEvaluationSession === 'function' &&
@@ -8552,7 +9256,9 @@
       typeof decisionRuntime.disposeEvaluationSession === 'function';
     const initialEvaluationRuntimeSnapshot =
       evaluationSessionEnabled
-        ? buildRuntimeDecisionSnapshot(combatData)
+        ? eventOwnedEvaluationEnabled
+          ? buildEventOwnedRuntimeSnapshot(combatData)
+          : buildRuntimeDecisionSnapshot(combatData)
         : null;
     const evaluationSession = evaluationSessionEnabled
       ? decisionRuntime.createEvaluationSession({
@@ -8560,7 +9266,9 @@
             combatData?.胜负条件 || {},
           ),
           visibleWorldRevision:
-            `visible:${previewRuntime.stableHash(combatData)}`,
+            eventOwnedEvaluationEnabled
+              ? 'visible-journal:0'
+              : `visible:${previewRuntime.stableHash(combatData)}`,
           beliefRevision: 'belief:initial',
           opportunityRevision: String(
             initialEvaluationRuntimeSnapshot?.opportunityRevision || '',
@@ -8574,7 +9282,9 @@
         })
       : null;
     let evaluationFactDeltaSequence = 0;
-    let lastEvaluationFactState = evaluationSession
+    let lastEvaluationFactState =
+      evaluationSession &&
+      (!eventOwnedEvaluationEnabled || verifyEventOwnedFactDelta)
       ? {
           ...captureEvaluationFactState(
             combatData,
@@ -8584,11 +9294,88 @@
           runtimeSnapshot: initialEvaluationRuntimeSnapshot,
         }
       : null;
+    const comparableFactDelta = batch => ({
+      sourceEventIds: [...(batch?.sourceEventIds || [])],
+      changedFactKeys: [...(batch?.changedFactKeys || [])].sort(),
+      opportunityChanges: (batch?.opportunityChanges || [])
+        .map(change => ({
+          opportunityId: String(change?.opportunityId || '').trim(),
+          changeType: String(change?.changeType || '').trim(),
+        }))
+        .sort((left, right) =>
+          left.opportunityId.localeCompare(right.opportunityId)
+        ),
+      resourceTimelineChanges: (batch?.resourceTimelineChanges || [])
+        .map(change => ({
+          eventId: String(change?.eventId || '').trim(),
+          changeType: String(change?.changeType || '').trim(),
+        }))
+        .sort((left, right) => left.eventId.localeCompare(right.eventId)),
+      scheduleChanges: (batch?.scheduleChanges || [])
+        .map(change => ({
+          descriptorId: String(change?.descriptorId || '').trim(),
+          changeType: String(change?.changeType || '').trim(),
+        }))
+        .sort((left, right) =>
+          left.descriptorId.localeCompare(right.descriptorId)
+        ),
+      visibleBeliefChanges: (batch?.visibleBeliefChanges || [])
+        .map(change => ({
+          actorId: String(change?.actorId || '').trim(),
+          changeType: String(change?.changeType || '').trim(),
+        }))
+        .sort((left, right) => left.actorId.localeCompare(right.actorId)),
+      terminalReached: batch?.terminalReached === true,
+    });
     const advanceRuntimeEvaluationSession = (
       runtimeSnapshot,
       terminalReached = false,
     ) => {
       if (!evaluationSession) return null;
+      const sequence = ++evaluationFactDeltaSequence;
+      if (eventOwnedEvaluationEnabled) {
+        const journalBatch = drainRuntimeFactDeltaBatch(combatData, {
+          sequence,
+          terminalReached,
+          runtimeSnapshot,
+        });
+        if (verifyEventOwnedFactDelta) {
+          const current = {
+            ...captureEvaluationFactState(
+              combatData,
+              runtimeSnapshot,
+              beliefByActor,
+            ),
+            runtimeSnapshot,
+          };
+          const scanBatch = buildEvaluationFactDeltaBatch({
+            previous: lastEvaluationFactState,
+            current,
+            sequence,
+            terminalReached,
+          });
+          lastEvaluationFactState = current;
+          const journalComparable = comparableFactDelta(journalBatch);
+          const scanComparable = comparableFactDelta(scanBatch);
+          if (
+            JSON.stringify(journalComparable) !==
+              JSON.stringify(scanComparable)
+          ) {
+            throw new Error(
+              `EVENT_OWNED_FACT_DELTA_MISMATCH:${JSON.stringify({
+                sequence,
+                journal: journalComparable,
+                scan: scanComparable,
+              })}`,
+            );
+          }
+          journalBatch.verification = 'SCAN_EQUIVALENT';
+        }
+        return decisionRuntime.advanceEvaluationSession(
+          evaluationSession,
+          journalBatch,
+        );
+      }
       const current = {
         ...captureEvaluationFactState(
           combatData,
@@ -8600,7 +9387,7 @@
       const batch = buildEvaluationFactDeltaBatch({
         previous: lastEvaluationFactState,
         current,
-        sequence: ++evaluationFactDeltaSequence,
+        sequence,
         terminalReached,
       });
       lastEvaluationFactState = current;
@@ -8645,7 +9432,20 @@
           onTrace: event => queueTrace.push(cloneAuditSnapshot(event)),
           onFatal: fatal => { runtime.actionQueueFatal = cloneAuditSnapshot(fatal); },
           onOpportunityChange: opportunity => {
-            runtime.opportunityGraph[opportunity.opportunityId] = cloneAuditSnapshot(opportunity);
+            const opportunityId = String(
+              opportunity?.opportunityId || '',
+            ).trim();
+            const previousOpportunity =
+              runtime.opportunityGraph[opportunityId];
+            const nextOpportunity = cloneAuditSnapshot(opportunity);
+            runtime.opportunityGraph[opportunityId] = nextOpportunity;
+            if (eventOwnedEvaluationEnabled) {
+              recordRuntimeOpportunityChange(
+                combatData,
+                previousOpportunity,
+                nextOpportunity,
+              );
+            }
           },
         });
         const cancelQueueForTerminal = () => {
@@ -8708,6 +9508,79 @@
         };
         let opportunitySequence = 0;
         const initialBeliefFor = actorId => input?.initialBelief?.[actorId] || input?.initialBelief || {};
+        const publicSettlementOutcomeSemantics = (facts = [], sourceSide = '') => {
+          const rows = Array.isArray(facts) ? facts.filter(Boolean) : [];
+          const targetFor = event => listCombatUnits(combatData).find(unit =>
+            isUnitIdentityMatch(unit, event?.targetId || event?.targetName || '')
+          );
+          const hostileTarget = event => {
+            const target = targetFor(event);
+            const targetSide = target
+              ? inferUnitSide(combatData, previewRuntime.unitName(target))
+              : String(event?.targetSide || '').trim();
+            return target && targetSide && targetSide !== sourceSide
+              ? target
+              : null;
+          };
+          const lethal = rows.some(event => {
+            const target = hostileTarget(event);
+            if (!target) return false;
+            const outcome = [
+              event?.result,
+              event?.resultState,
+              event?.primaryOutcome,
+              event?.ruleCode,
+            ].map(value => String(value || '').trim()).join('|');
+            return !structuredActorPhysicallyAlive(target) ||
+              /dead|death|killed|lethal|致死|死亡/i.test(outcome);
+          });
+          const incapacitating = rows.some(event => {
+            const target = hostileTarget(event);
+            if (!target || !structuredActorPhysicallyAlive(target)) return false;
+            const outcome = [
+              event?.eventKind,
+              event?.operation,
+              event?.result,
+              event?.primaryOutcome,
+              event?.ruleCode,
+              event?.meta?.stateName,
+            ].map(value => String(value || '').trim()).join('|');
+            return !structuredActorCanAct(target, 'ACTIVE') ||
+              /incapacitat|cannot_act|skip_turn|失能|昏迷|眩晕|麻痹|冻结|束缚|禁锢/i.test(
+                outcome,
+              );
+          });
+          const cancelsOpportunity = rows.some(event => {
+            const signature = [
+              event?.eventKind,
+              event?.operation,
+              event?.outcomeKind,
+              event?.result,
+              event?.primaryOutcome,
+              event?.ruleCode,
+            ].map(value => String(value || '').trim()).join('|');
+            return /blocked_action|opportunity_cancel|action_cancel|取消机会|行动取消/i.test(
+              signature,
+            );
+          });
+          const objectiveResolution = previewRuntime.evaluateBattleObjectives(
+            combatData,
+            combatData?.胜负条件 || {},
+            {
+              round: Number(combatData?.回合 || 0),
+              roundCompleted: false,
+            },
+          );
+          return {
+            lethal,
+            incapacitating,
+            cancelsOpportunity,
+            breaksObjective: objectiveResolution?.terminal === true,
+            evidenceEventIds: rows
+              .map(event => String(event?.eventId || '').trim())
+              .filter(Boolean),
+          };
+        };
         const recordPublicReactionObservation = ({
           reactor,
           incomingSource,
@@ -8740,6 +9613,10 @@
           const damageMultiplier = actionKind === 'EVADE' && Number.isFinite(dodgeProbability)
             ? 1 - dodgeProbability
             : Number(reaction?.damageMultiplier);
+          const publicOutcomes = publicSettlementOutcomeSemantics(
+            facts,
+            sourceSide,
+          );
           listPrimaryCombatUnits(combatData).forEach(observer => {
             const observerSide = inferUnitSide(combatData, previewRuntime.unitName(observer));
             if (!observerSide || observerSide === sourceSide) return;
@@ -8752,16 +9629,22 @@
               responseId: `REACTION:${actionKind}:${actionName}`,
               responseRole: 'REACTION',
               actionName,
-              declaration,
+              declaration:
+                decisionRuntime.projectPublicResponseDeclaration(declaration),
               baseActionValue: 0,
               damageMultiplier,
               dodgeProbability,
               shieldRatio: shieldAmount / Math.max(1, previewRuntime.readHpMax(reactor)),
               opensCounterCheck: reaction.opensCounterCheck === true,
               preparedDefense: reaction?.event?.meta?.preparedDefenseConsumed === true,
+              lethal: publicOutcomes.lethal,
+              incapacitating: publicOutcomes.incapacitating,
+              cancelsOpportunity: publicOutcomes.cancelsOpportunity,
+              breaksObjective: publicOutcomes.breaksObjective,
+              evidenceEventIds: publicOutcomes.evidenceEventIds,
               result: facts.map(event => String(event?.result || '')).filter(Boolean).join('|') || 'declared',
             });
-            beliefByActor.set(observerId, next);
+            setVisibleBelief(observerId, next);
             const history = strategicHistoryByActor.get(observerId) || [];
             if (history.length) history[history.length - 1] = { ...history[history.length - 1], newInformation: true };
             strategicHistoryByActor.set(observerId, history);
@@ -8844,7 +9727,7 @@
                     : String(event?.result || '').trim() === 'applied';
                 const previous = beliefByActor.get(actorId) || initialBeliefFor(actorId);
                 const next = decisionRuntime.updateMechanicBelief(previous, { ...observation, success });
-                beliefByActor.set(actorId, next);
+                setVisibleBelief(actorId, next);
                 const history = strategicHistoryByActor.get(actorId) || [];
                 if (history.length) history[history.length - 1] = { ...history[history.length - 1], newInformation: true };
                 strategicHistoryByActor.set(actorId, history);
@@ -8936,7 +9819,7 @@
                     estimatedProbability: Number(predicted?.hitProbability ?? 0.65),
                     success,
                   });
-                  beliefByActor.set(hostId, next);
+                  setVisibleBelief(hostId, next);
                   const history = strategicHistoryByActor.get(hostId) || [];
                   if (history.length) history[history.length - 1] = { ...history[history.length - 1], newInformation: true };
                   strategicHistoryByActor.set(hostId, history);
@@ -9020,6 +9903,14 @@
             const appliedDamage = Math.max(0, Number(event?.appliedDamage || meta?.appliedDamage || 0));
             return sum + 100 * appliedDamage / Math.max(1, previewRuntime.readHpMax(target));
           }, 0);
+          const publicOutcomes = publicSettlementOutcomeSemantics(
+            settlementFacts,
+            sourceSide,
+          );
+          const publicDeclaration =
+            decisionRuntime.projectPublicResponseDeclaration(
+              decisionResult?.selected?.declaration || {},
+            );
           const predictedDamageByTarget = new Map();
           const childSettlement = settledActionRole === 'ASSIST' && !decisionResult?.selected?.predictedOutcomeEvidence;
           (evidenceSource?.selected?.predictedOutcomeEvidence || []).filter(evidence => {
@@ -9119,7 +10010,7 @@
                 actualValuePercent: actual.actualValuePercent,
                 sourceEventId: actual.sourceEventId,
               });
-              beliefByActor.set(observerId, next);
+              setVisibleBelief(observerId, next);
               const history = strategicHistoryByActor.get(observerId) || [];
               if (history.length) history[history.length - 1] = { ...history[history.length - 1], newInformation: true };
               strategicHistoryByActor.set(observerId, history);
@@ -9150,11 +10041,17 @@
               responseId: `${settledActionRole}:${settledActionName}`,
               responseRole: settledActionRole,
               actionName: settledActionName,
+              declaration: publicDeclaration,
               baseActionValue,
               hpDamageValue,
+              lethal: publicOutcomes.lethal,
+              incapacitating: publicOutcomes.incapacitating,
+              cancelsOpportunity: publicOutcomes.cancelsOpportunity,
+              breaksObjective: publicOutcomes.breaksObjective,
+              evidenceEventIds: publicOutcomes.evidenceEventIds,
               result: (settlement?.facts || []).map(event => String(event?.result || '')).filter(Boolean).join('|') || 'declared',
             });
-            beliefByActor.set(observerId, next);
+            setVisibleBelief(observerId, next);
             const history = strategicHistoryByActor.get(observerId) || [];
             if (history.length) history[history.length - 1] = { ...history[history.length - 1], newInformation: true };
             strategicHistoryByActor.set(observerId, history);
@@ -9243,7 +10140,9 @@
           if (providerId) {
             const snapshotStartedAt = performanceNow();
             // r9 无 session、无路线目录缓存（:7826/:8892 门），身份记账全为白算。
-            const identityLite = providerId === 'r9';
+            const identityLite =
+              providerId === 'r9' ||
+              providerId === 'r9v2-shadow';
             const currentBelief = beliefByActor.get(actorId) || initialBeliefFor(actorId);
             const beliefContextHash = identityLite
               ? `belief-lite:${actorId}`
@@ -9270,7 +10169,10 @@
               combatData,
               actorId,
               decisionInput.actionOpportunity,
-              { identityLite },
+              {
+                identityLite,
+                eventOwned: eventOwnedEvaluationEnabled,
+              },
             );
             const factDelta = advanceRuntimeEvaluationSession(
               decisionRuntimeSnapshot,
@@ -9559,8 +10461,15 @@
               ...decisionInput,
               session: evaluationSession,
               providerId,
+              verifyR9v2MechanicalBasis:
+                input?.settings?.verifyR9v2MechanicalBasis === true,
               objectiveContract: combatData?.胜负条件 || {},
-              analysisDepth: ['legacy-baseline', 'r74-next-baseline', 'r9'].includes(providerId)
+              analysisDepth: [
+                'legacy-baseline',
+                'r74-next-baseline',
+                'r9',
+                'r9v2-shadow',
+              ].includes(providerId)
                 ? 'CANDIDATES_ONLY'
                 : 'FULL',
               runtimeSnapshot: decisionRuntimeSnapshot,
@@ -9576,7 +10485,7 @@
                 routeCache?.actorPredictedOutcomeEvidence || null,
               previousActorCandidateEnvelopeDeltas:
                 routeCache?.actorCandidateEnvelopeDeltas || null,
-              previousComputationCache: routeCache?.computationCache || null,
+              previousComputationCache: null,
               affectedRouteUnitIds: [...affectedRouteUnitIds],
               affectedRouteTargetUnitIds: [...affectedRouteTargetUnitIds],
               affectedRouteKeysByUnit: Object.fromEntries(
@@ -9593,11 +10502,11 @@
               disableObservationRouteReuse:
                 input?.settings?.disableObservationRouteReuse === true,
               disableSessionMechanicalReuse:
-                input?.settings?.disableSessionMechanicalReuse === true,
+                !sessionMechanicalReuseRequested,
               verifySessionMechanicalReuse:
                 input?.settings?.verifySessionMechanicalReuse === true,
               disableSessionBehaviorReuse:
-                input?.settings?.disableSessionBehaviorReuse === true,
+                !sessionBehaviorReuseRequested,
               verifySessionBehaviorReuse:
                 input?.settings?.verifySessionBehaviorReuse === true,
               collectBehaviorLayerHashes:
@@ -9627,7 +10536,7 @@
               const nextRouteCache = {
                 catalog: request.actionRouteCatalog,
                 fullRoutesByUnit: preparedRouteCache.fullRoutesByUnit,
-                computationCache: preparedRouteCache.computationCache,
+                computationCache: null,
                 actorCandidateRoutes:
                   preparedRouteCache.actorCandidateRoutes,
                 actorProjectedWorlds:
@@ -9764,7 +10673,7 @@
               naturalOpportunity.status = 'LOST';
               naturalOpportunity.reason = lostOpportunity.reasonCode;
             }
-            beliefByActor.set(
+            setVisibleBelief(
               actorId,
               decisionResult.beliefState || beliefByActor.get(actorId) || initialBeliefFor(actorId),
             );
@@ -9859,7 +10768,12 @@
               actor,
             ),
           };
-          beliefByActor.set(actorId, decisionResult.beliefState || beliefByActor.get(actorId) || initialBeliefFor(actorId));
+          setVisibleBelief(
+            actorId,
+            decisionResult.beliefState ||
+              beliefByActor.get(actorId) ||
+              initialBeliefFor(actorId),
+          );
           strategyByActor.set(actorId, decisionResult.strategyMemory || {});
           const history = strategicHistoryByActor.get(actorId) || [];
           const previousCapacity = Number(history.at(-1)?.capacityTotal);
@@ -10196,6 +11110,9 @@
                 stateName: controlledStateName,
               },
             });
+            if (controlledStateName) {
+              consumeStructuredControlActiveBudget(combatData, actor, node);
+            }
             if (node.actionRole === 'ASSIST' && actor?.召唤键) {
               consumeSummonWindow(combatData, actor, incapacityReasonText, node.grantId);
             }
@@ -10825,7 +11742,9 @@
       }
       if (evaluationSession) {
         advanceRuntimeEvaluationSession(
-          buildRuntimeDecisionSnapshot(combatData),
+          eventOwnedEvaluationEnabled
+            ? buildEventOwnedRuntimeSnapshot(combatData)
+            : buildRuntimeDecisionSnapshot(combatData),
           terminal?.terminal === true,
         );
       }
@@ -13545,6 +14464,142 @@
           }
           return;
         }
+        if (actionDecisionEngine === 'R9V2_SHADOW') {
+          const proof = candidate?.candidateValueProof;
+          const r9v2Fields = [
+            'candidateId',
+            'actionKind',
+            'actorId',
+            'targetIds',
+            'objectiveUtilityHEPP',
+            'vector',
+            'candidateValueProof',
+            'selected',
+          ];
+          const r9v2VectorFields = [
+            'objectiveUtilityHEPP',
+            'informationValueHEPP',
+            'assetReserve',
+            'survivalLowerBound',
+            'worstTailLossHEPP',
+            'discardedOverkillPP',
+          ];
+          const r9v2ProofFields = [
+            'goalUtilityDeltaHEPP',
+            'informationValueHEPP',
+            'objectiveUtilityHEPP',
+            'causalValueFacts',
+            'reconciliationError',
+          ];
+          const missing = r9v2Fields
+            .filter(key =>
+              candidate?.[key] === undefined ||
+              candidate?.[key] === null
+            );
+          const vector =
+            candidate?.vector &&
+            typeof candidate.vector === 'object'
+              ? candidate.vector
+              : null;
+          if (vector) {
+            missing.push(...r9v2VectorFields
+              .filter(key =>
+                vector[key] === undefined ||
+                vector[key] === null
+              )
+              .map(key => `vector.${key}`));
+          }
+          if (proof && typeof proof === 'object') {
+            missing.push(...r9v2ProofFields
+              .filter(key =>
+                proof[key] === undefined ||
+                proof[key] === null
+              )
+              .map(key => `candidateValueProof.${key}`));
+          }
+          if (missing.length) {
+            pushFatal('SCORING_COMPONENT_MISSING', {
+              actionIndex,
+              candidateIndex,
+              candidateId: candidate?.candidateId || '',
+              missing,
+            });
+            return;
+          }
+          const invalidNumbers = [
+            'objectiveUtilityHEPP',
+          ].filter(key =>
+            !Number.isFinite(Number(candidate[key]))
+          ).concat(
+            r9v2VectorFields
+              .filter(key =>
+                !Number.isFinite(Number(vector[key]))
+              )
+              .map(key => `vector.${key}`),
+            [
+              'goalUtilityDeltaHEPP',
+              'informationValueHEPP',
+              'objectiveUtilityHEPP',
+              'reconciliationError',
+            ]
+              .filter(key =>
+                !Number.isFinite(Number(proof[key]))
+              )
+              .map(key => `candidateValueProof.${key}`),
+          );
+          if (invalidNumbers.length) {
+            pushFatal('SCORING_COMPONENT_MISSING', {
+              actionIndex,
+              candidateIndex,
+              candidateId: candidate.candidateId,
+              invalidNumbers,
+            });
+            return;
+          }
+          const causalTotal = proof.causalValueFacts.reduce(
+            (sum, fact) =>
+              sum + Number(fact?.valueHEPP || 0),
+            0,
+          );
+          if (
+            Math.abs(
+              Number(proof.objectiveUtilityHEPP) -
+              (
+                Number(proof.goalUtilityDeltaHEPP) +
+                Number(proof.informationValueHEPP)
+              )
+            ) > 1e-6 ||
+            Math.abs(
+              Number(candidate.objectiveUtilityHEPP) -
+              Number(proof.objectiveUtilityHEPP)
+            ) > 1e-6 ||
+            Math.abs(
+              Number(vector.objectiveUtilityHEPP) -
+              Number(proof.objectiveUtilityHEPP)
+            ) > 1e-6 ||
+            Math.abs(
+              causalTotal -
+              Number(proof.goalUtilityDeltaHEPP)
+            ) > 1e-6 ||
+            Math.abs(Number(proof.reconciliationError)) > 1e-6
+          ) {
+            pushFatal('CAUSAL_RECONCILIATION_MISMATCH', {
+              actionIndex,
+              candidateIndex,
+              candidateId: candidate.candidateId,
+              causalTotal,
+              goalUtilityDeltaHEPP:
+                Number(proof.goalUtilityDeltaHEPP),
+              informationValueHEPP:
+                Number(proof.informationValueHEPP),
+              objectiveUtilityHEPP:
+                Number(proof.objectiveUtilityHEPP),
+              reconciliationError:
+                Number(proof.reconciliationError),
+            });
+          }
+          return;
+        }
         const missing = scoreFields.filter(key => candidate?.[key] === undefined || candidate?.[key] === null);
         const vector = candidate?.vector && typeof candidate.vector === 'object' ? candidate.vector : null;
         if (vector) missing.push(...vectorFields.filter(key => vector[key] === undefined || vector[key] === null).map(key => `vector.${key}`));
@@ -13855,6 +14910,17 @@
             primaryRoute: selected?.primaryRoute || selected?.route || null,
             backupRoute: selected?.backupRoute || null,
             causalValueFacts: Array.isArray(selected?.causalValueFacts) ? selected.causalValueFacts : [],
+            candidateValueProof:
+              selected?.candidateValueProof &&
+              typeof selected.candidateValueProof === 'object'
+                ? selected.candidateValueProof
+                : null,
+            goalUtilityDeltaHEPP: Number(
+              selected?.goalUtilityDeltaHEPP || 0,
+            ),
+            informationValueHEPP: Number(
+              selected?.informationValueHEPP || 0,
+            ),
           }
         : null,
       alternatives: Array.isArray(decision?.alternatives)
@@ -14055,13 +15121,20 @@
       initialSnapshot: cloneValue(source?.combatData || result?.initialSnapshot || null),
       finalSnapshot: cloneValue(result?.combatData || result?.finalSnapshot || result?.snapshot || null),
     };
-    return Object.freeze({ ...draft, draftHash: hashBattleValue(draft) });
+    return attestBattleDraft({ ...draft, draftHash: hashBattleValue(draft) });
   }
 
   function executeBattleDraftR8(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
     const providerId = String(source?.settings?.providerId || '').trim();
-    if (!['legacy-baseline', 'r74-next-baseline', 'r8-shadow', 'r8', 'r9'].includes(providerId)) {
+    if (![
+      'legacy-baseline',
+      'r74-next-baseline',
+      'r8-shadow',
+      'r8',
+      'r9',
+      'r9v2-shadow',
+    ].includes(providerId)) {
       throw new Error(`battle_runtime_r8_provider_invalid:${providerId || 'missing'}`);
     }
     const inputHash = hashBattleValue(source);
@@ -14126,40 +15199,50 @@
         ),
       }),
     });
-    return Object.freeze(sealedDraft);
+    return attestBattleDraft(sealedDraft);
   }
 
   function sealBattleResult(input = {}) {
-    const draft = input?.draft && typeof input.draft === 'object' ? cloneValue(input.draft) : null;
+    const draft = input?.draft && typeof input.draft === 'object' ? input.draft : null;
     const reportAudit = input?.reportAudit && typeof input.reportAudit === 'object' ? input.reportAudit : null;
     if (!draft || String(draft?.status || '').trim() !== 'DRAFT') throw new Error('battle_result_draft_invalid');
     const draftHash = String(draft?.draftHash || '').trim();
-    delete draft.draftHash;
-    if (!draftHash || hashBattleValue(draft) !== draftHash) throw new Error('BATTLE_COMMIT_HASH_MISMATCH:draft');
+    if (!draftHash || verifyBattleDraftAttestation(draft) !== true) {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:draft');
+    }
     if (reportAudit?.passed !== true || Number(reportAudit?.fatalCount || 0) > 0) {
       throw new Error('battle_result_report_audit_failed');
     }
     const reportDto = reportAudit?.reportDto && typeof reportAudit.reportDto === 'object'
-      ? cloneValue(reportAudit.reportDto)
+      ? reportAudit.reportDto
       : null;
     const reportHash = String(reportAudit?.reportHash || '').trim();
-    if (!reportDto || !reportHash || hashBattleValue(reportDto) !== reportHash) {
+    const reportRuntime = root.__LWCS_BATTLE_REPORT__;
+    if (
+      !reportDto ||
+      !reportHash ||
+      !reportRuntime ||
+      typeof reportRuntime.verifyProjectionAttestation !== 'function' ||
+      reportRuntime.verifyProjectionAttestation(reportAudit, draftHash) !== true
+    ) {
       throw new Error('BATTLE_COMMIT_HASH_MISMATCH:report');
     }
-    return Object.freeze({
+    const sealedPackage = Object.freeze({
       schemaVersion: '8.3-sealed-1',
       sealStatus: 'SEALED',
       draftHash,
       reportHash,
-      terminalResult: cloneValue(draft.terminalResult),
-      finalSnapshot: cloneValue(draft.finalSnapshot),
+      terminalResult: draft.terminalResult,
+      finalSnapshot: draft.finalSnapshot,
       reportDto,
-      aiSummaryInput: cloneValue(reportDto.aiSummaryInput || null),
+      aiSummaryInput: reportDto.aiSummaryInput || null,
     });
+    sealedBattlePackageAttestations.add(sealedPackage);
+    return sealedPackage;
   }
 
   function verifySealedBattlePackage(input = {}) {
-    const sealedPackage = input && typeof input === 'object' ? cloneValue(input) : null;
+    const sealedPackage = input && typeof input === 'object' ? input : null;
     if (!sealedPackage || String(sealedPackage?.sealStatus || '').trim() !== 'SEALED') {
       throw new Error('BATTLE_COMMIT_BEFORE_REPORT_SEAL');
     }
@@ -14174,15 +15257,17 @@
       !reportHash ||
       !reportDto ||
       typeof reportDto !== 'object' ||
+      !sealedBattlePackageAttestations.has(sealedPackage) ||
+      !Object.isFrozen(sealedPackage) ||
       String(reportDto?.sourceDraftHash || '').trim() !== draftHash ||
-      hashBattleValue(reportDto) !== reportHash
+      String(reportDto?.projectionStatus || '').trim() !== 'PASSED'
     ) {
       throw new Error('BATTLE_COMMIT_HASH_MISMATCH:package');
     }
     if (!sealedPackage?.finalSnapshot || typeof sealedPackage.finalSnapshot !== 'object') {
       throw new Error('BATTLE_COMMIT_HASH_MISMATCH:final_snapshot');
     }
-    return Object.freeze(sealedPackage);
+    return sealedPackage;
   }
 
   function auditPrototypeCoverage() {
@@ -14240,8 +15325,10 @@
     prototypeManifest,
     prototypeOptionMatrix,
     cloneValue,
+    freezeBattleValue,
     stableSerialize,
     hashBattleValue,
+    verifyBattleDraftAttestation,
     normalizeSideEffectList,
     settleConditionSideEffects,
     settleDelayedEffect,

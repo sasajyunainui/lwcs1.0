@@ -11,6 +11,7 @@
 
   const visibilityModes = Object.freeze(['PLAYER', 'DEVELOPER']);
   const reportSchemaVersion = '8.3-report-1';
+  const reportAuditAttestations = new WeakMap();
   const internalSummonPattern = /(?:structured-summon|battle-summon|summon-instance|preview-summon):[^\s,，。；;|]+/gi;
   const internalSummonIdPattern = /^(?:structured-summon|battle-summon|summon-instance|preview-summon):/i;
   /*
@@ -3967,9 +3968,10 @@
     const sourceDraft = input?.draft && typeof input.draft === 'object' ? input.draft : null;
     if (!sourceDraft || text(sourceDraft?.status) !== 'DRAFT') throw new Error('battle_report_draft_invalid');
     const draftHash = text(sourceDraft?.draftHash);
-    const draft = { ...sourceDraft };
-    delete draft.draftHash;
-    if (!draftHash || runtime.hashBattleValue(draft) !== draftHash) throw new Error('BATTLE_COMMIT_HASH_MISMATCH:draft');
+    if (!draftHash || runtime.verifyBattleDraftAttestation(sourceDraft) !== true) {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:draft');
+    }
+    const draft = sourceDraft;
     const visibilityMode = normalizeVisibilityMode(input?.visibilityMode || 'PLAYER');
     const ledger = Array.isArray(draft?.ledger) ? draft.ledger.filter(Boolean) : [];
     const ledgerOrderByFactId = new Map(
@@ -4461,7 +4463,8 @@
 
     report.projectionStatus = fatals.length ? 'FAILED' : 'PASSED';
     const reportHash = runtime.hashBattleValue(report);
-    return {
+    const sealedReportDto = runtime.freezeBattleValue(report);
+    const reportAudit = runtime.freezeBattleValue({
       passed: fatals.length === 0,
       fatalCount: fatals.length,
       fatals,
@@ -4473,8 +4476,29 @@
         diagnostics.divergedMagnitudes.length +
         diagnostics.unknownRejectionCodes.length,
       reportHash,
-      reportDto: report,
-    };
+      reportDto: sealedReportDto,
+    });
+    reportAuditAttestations.set(reportAudit, Object.freeze({
+      reportDto: sealedReportDto,
+      reportHash,
+      sourceDraftHash: text(sealedReportDto?.sourceDraftHash),
+    }));
+    return reportAudit;
+  }
+
+  function verifyProjectionAttestation(reportAudit = {}, expectedDraftHash = '') {
+    const attestation = reportAudit && typeof reportAudit === 'object'
+      ? reportAuditAttestations.get(reportAudit)
+      : null;
+    return Boolean(
+      attestation &&
+      Object.isFrozen(reportAudit) &&
+      Object.isFrozen(reportAudit.reportDto) &&
+      attestation.reportDto === reportAudit.reportDto &&
+      attestation.reportHash === text(reportAudit.reportHash) &&
+      attestation.sourceDraftHash === text(expectedDraftHash) &&
+      text(reportAudit.reportDto?.sourceDraftHash) === text(expectedDraftHash),
+    );
   }
 
 
@@ -4483,6 +4507,7 @@
     visibilityModes,
     build,
     auditProjection,
+    verifyProjectionAttestation,
     candidateDisplayLabel,
     reconcileDecision,
     summarizeReconciliation,

@@ -576,6 +576,110 @@
     return listUnits(worldSnapshot).find(entry => unitId(entry.unit) === id)?.side || '';
   }
 
+  function compileMechanicalProjectionContext(worldSnapshot = {}) {
+    const entries = listUnits(worldSnapshot);
+    const unitById = new Map();
+    const profileById = new Map();
+    const projectedEntries = entries.map(entry => {
+      const unit = entry.unit;
+      const id = unitId(unit);
+      const states = collectStateEntries(unit);
+      const outgoingDamageMultiplier = states.reduce((multiplier, [, state]) => {
+        const combatEffect = state?.战斗效果 || {};
+        return multiplier *
+          Math.max(0, Number(combatEffect?.final_damage_mult ?? 1)) *
+          Math.max(
+            0,
+            1 + Number(
+              combatEffect?.damage_bonus ||
+              combatEffect?.final_damage_bonus ||
+              0,
+            ),
+          );
+      }, 1);
+      const incomingDamageMultiplier = states.reduce((multiplier, [, state]) => {
+        const combatEffect = state?.战斗效果 || {};
+        return multiplier *
+          Math.max(0, Number(combatEffect?.received_damage_mult ?? 1)) *
+          Math.max(
+            0,
+            1 - clamp(Number(combatEffect?.damage_reduction || 0), 0, 1),
+          );
+      }, 1);
+      const outgoingHitAdjustment = states.reduce((sum, [, state]) => {
+        const combatEffect = state?.战斗效果 || {};
+        return sum +
+          Number(combatEffect?.hit_bonus || 0) -
+          Number(combatEffect?.hit_penalty || 0);
+      }, 0);
+      const outgoingArmorPenRatio = clamp(
+        states.reduce((sum, [, state]) =>
+          sum + Math.max(0, Number(state?.战斗效果?.armor_pen || 0)),
+        0),
+        0,
+        1,
+      );
+      const incomingAvoidanceAdjustment = states.reduce((sum, [, state]) => {
+        const combatEffect = state?.战斗效果 || {};
+        return sum +
+          Number(combatEffect?.dodge_bonus || 0) -
+          Math.max(
+            Number(combatEffect?.dodge_penalty || 0),
+            Number(combatEffect?.lock_level || 0),
+          );
+      }, 0);
+      const profile = Object.freeze({
+        unit,
+        id,
+        side: entry.side,
+        physicallyAlive: isPhysicallyAlive(unit),
+        battleCapable: isBattleCapable(unit),
+        hasPendingGrantedEffects: states.some(([, state]) =>
+          /下次行动/.test(String(state?.授予触发条件 || '').trim()) &&
+          Array.isArray(state?.授予效果) &&
+          state.授予效果.length > 0
+        ),
+        stats: Object.freeze({
+          str: readCombatStat(unit, 'str'),
+          def: readCombatStat(unit, 'def'),
+          agi: readCombatStat(unit, 'agi'),
+          men: readCombatStat(unit, 'men'),
+        }),
+        resourceMax: Object.freeze({
+          魂力: readResourceMax(unit, '魂力'),
+          精神力: readResourceMax(unit, '精神力'),
+        }),
+        outgoingDamageMultiplier,
+        incomingDamageMultiplier,
+        outgoingHitAdjustment,
+        outgoingArmorPenRatio,
+        incomingAvoidanceAdjustment,
+      });
+      unitById.set(id, unit);
+      const name = unitName(unit);
+      if (name && !unitById.has(name)) unitById.set(name, unit);
+      profileById.set(id, profile);
+      return Object.freeze({ unit, side: entry.side, profile });
+    });
+    return Object.freeze({
+      schemaVersion: 'MechanicalProjectionContextV1',
+      worldSnapshot,
+      entries: Object.freeze(projectedEntries),
+      unitById,
+      profileById,
+    });
+  }
+
+  function mechanicalProjectionProfile(context, unit = {}) {
+    if (
+      !context ||
+      context.schemaVersion !== 'MechanicalProjectionContextV1'
+    ) {
+      return null;
+    }
+    return context.profileById.get(unitId(unit)) || null;
+  }
+
   function isDead(unit = {}) {
     const directHp = Number(unit?.hp);
     return unit?.状态?.存活 === false || (Number.isFinite(directHp) ? directHp <= 0 : readHp(unit) <= 0);
@@ -1448,21 +1552,70 @@
     return 'MELEE';
   }
 
-  function resourceDriveScale(actor = {}, target = {}, resource = '魂力') {
-    const actorMax = readResourceMax(actor, resource);
-    const targetMax = readResourceMax(target, resource);
+  function resourceDriveScale(
+    actor = {},
+    target = {},
+    resource = '魂力',
+    projectionContext = null,
+  ) {
+    const actorProfile = mechanicalProjectionProfile(
+      projectionContext,
+      actor,
+    );
+    const targetProfile = mechanicalProjectionProfile(
+      projectionContext,
+      target,
+    );
+    const actorMax = Number.isFinite(
+      Number(actorProfile?.resourceMax?.[resource]),
+    )
+      ? Number(actorProfile.resourceMax[resource])
+      : readResourceMax(actor, resource);
+    const targetMax = Number.isFinite(
+      Number(targetProfile?.resourceMax?.[resource]),
+    )
+      ? Number(targetProfile.resourceMax[resource])
+      : readResourceMax(target, resource);
     return clamp(Math.pow(Math.max(0.01, actorMax / Math.max(1, targetMax)), 0.45), 0.35, 1.85);
   }
 
-  function calculateBaseDamage(effect = {}, actor = {}, target = {}) {
+  function calculateBaseDamage(
+    effect = {},
+    actor = {},
+    target = {},
+    projectionContext = null,
+  ) {
     const damageClass = classifyDamageType(effect?.伤害类型);
     const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0));
-    const attack = damageClass === 'MENTAL' ? readCombatStat(actor, 'men') : readCombatStat(actor, 'str');
-    const rawDefense = damageClass === 'MENTAL'
-      ? Math.max(1, readCombatStat(target, 'men'))
-      : Math.max(1, readCombatStat(target, 'def'));
-    const penetration = Math.max(0, Number(effect?.防穿 ?? effect?.穿透 ?? effect?.防御穿透 ?? 0));
-    const defense = Math.max(1, rawDefense - penetration);
+    const actorProfile = mechanicalProjectionProfile(
+      projectionContext,
+      actor,
+    );
+    const targetProfile = mechanicalProjectionProfile(
+      projectionContext,
+      target,
+    );
+    const attackKey = damageClass === 'MENTAL' ? 'men' : 'str';
+    const defenseKey = damageClass === 'MENTAL' ? 'men' : 'def';
+    const attack = Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
+      ? Number(actorProfile.stats[attackKey])
+      : readCombatStat(actor, attackKey);
+    const rawDefense = Math.max(
+      1,
+      Number.isFinite(Number(targetProfile?.stats?.[defenseKey]))
+        ? Number(targetProfile.stats[defenseKey])
+        : readCombatStat(target, defenseKey),
+    );
+    const penetration = calculateDefensePenetration(
+      effect,
+      actor,
+      rawDefense,
+      projectionContext,
+    );
+    const defense = Math.max(
+      1,
+      rawDefense - penetration.penetrationValue,
+    );
     const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)));
     const powerRatio = power / 100;
     let total = 0;
@@ -1471,22 +1624,76 @@
     } else {
       const mitigation = attack / Math.max(1, attack + defense);
       total = attack * powerRatio * mitigation * 0.4 *
-        resourceDriveScale(actor, target, damageClass === 'MENTAL' ? '精神力' : '魂力');
+        resourceDriveScale(
+          actor,
+          target,
+          damageClass === 'MENTAL' ? '精神力' : '魂力',
+          projectionContext,
+        );
     }
-    const actorMultiplier = stateEntries(actor, 'OUTGOING_DAMAGE').reduce((multiplier, [, state]) => {
-      const combatEffect = state?.战斗效果 || {};
-      return multiplier *
-        Math.max(0, Number(combatEffect?.final_damage_mult ?? 1)) *
-        Math.max(0, 1 + Number(combatEffect?.damage_bonus || combatEffect?.final_damage_bonus || 0));
-    }, 1);
-    const targetMultiplier = stateEntries(target, 'INCOMING_DAMAGE').reduce((multiplier, [, state]) => {
-      const combatEffect = state?.战斗效果 || {};
-      return multiplier *
-        Math.max(0, Number(combatEffect?.received_damage_mult ?? 1)) *
-        Math.max(0, 1 - clamp(Number(combatEffect?.damage_reduction || 0), 0, 1));
-    }, 1);
+    const actorMultiplier = actorProfile
+      ? actorProfile.outgoingDamageMultiplier
+      : stateEntries(actor, 'OUTGOING_DAMAGE').reduce((multiplier, [, state]) => {
+          const combatEffect = state?.战斗效果 || {};
+          return multiplier *
+            Math.max(0, Number(combatEffect?.final_damage_mult ?? 1)) *
+            Math.max(0, 1 + Number(combatEffect?.damage_bonus || combatEffect?.final_damage_bonus || 0));
+        }, 1);
+    const targetMultiplier = targetProfile
+      ? targetProfile.incomingDamageMultiplier
+      : stateEntries(target, 'INCOMING_DAMAGE').reduce((multiplier, [, state]) => {
+          const combatEffect = state?.战斗效果 || {};
+          return multiplier *
+            Math.max(0, Number(combatEffect?.received_damage_mult ?? 1)) *
+            Math.max(0, 1 - clamp(Number(combatEffect?.damage_reduction || 0), 0, 1));
+        }, 1);
     const perSegment = total * actorMultiplier * targetMultiplier / segments;
     return Math.max(0, perSegment * segments);
+  }
+
+  function calculateDefensePenetration(
+    effect = {},
+    actor = {},
+    rawDefense = 0,
+    projectionContext = null,
+  ) {
+    const actorProfile = mechanicalProjectionProfile(
+      projectionContext,
+      actor,
+    );
+    const flatPenetrationValue = Math.max(
+      0,
+      Number(
+        effect?.防穿 ??
+        effect?.穿透 ??
+        effect?.防御穿透 ??
+        0,
+      ),
+    );
+    const stateArmorPenRatio = clamp(
+      Number.isFinite(Number(actorProfile?.outgoingArmorPenRatio))
+        ? Number(actorProfile.outgoingArmorPenRatio)
+        : stateEntries(actor, 'OUTGOING_DAMAGE').reduce(
+            (sum, [, state]) =>
+              sum +
+              Math.max(
+                0,
+                Number(state?.战斗效果?.armor_pen || 0),
+              ),
+            0,
+          ),
+      0,
+      1,
+    );
+    const stateArmorPenetrationValue =
+      Math.max(0, Number(rawDefense || 0)) * stateArmorPenRatio;
+    return Object.freeze({
+      flatPenetrationValue,
+      stateArmorPenRatio,
+      stateArmorPenetrationValue,
+      penetrationValue:
+        flatPenetrationValue + stateArmorPenetrationValue,
+    });
   }
 
   function calculateSettledSegmentDamage(totalDamage = 0, segments = 1, damageMultiplier = 1) {
@@ -1608,17 +1815,46 @@
     return clamp(text.includes('%') || Math.abs(numeric) > 1 ? numeric / 100 : numeric, 0, 1);
   }
 
-  function estimateHitProbability(actor = {}, target = {}, effect = {}) {
+  function estimateHitProbability(
+    actor = {},
+    target = {},
+    effect = {},
+    projectionContext = null,
+  ) {
     const explicitValue = effect?.命中概率 ?? effect?.触发概率;
-    const attackAgility = readCombatStat(actor, 'agi');
-    const targetAgility = readCombatStat(target, 'agi');
-    const actorEffects = stateEntries(actor, 'OUTGOING_HIT').map(([, state]) => state?.战斗效果 || {});
-    const targetEffects = stateEntries(target, 'INCOMING_HIT').map(([, state]) => state?.战斗效果 || {});
-    const hitAdjustment = actorEffects.reduce((sum, stateEffect) =>
-      sum + Number(stateEffect?.hit_bonus || 0) - Number(stateEffect?.hit_penalty || 0), 0);
-    const targetAvoidanceAdjustment = targetEffects.reduce((sum, stateEffect) =>
-      sum + Number(stateEffect?.dodge_bonus || 0) -
-      Math.max(Number(stateEffect?.dodge_penalty || 0), Number(stateEffect?.lock_level || 0)), 0);
+    const actorProfile = mechanicalProjectionProfile(
+      projectionContext,
+      actor,
+    );
+    const targetProfile = mechanicalProjectionProfile(
+      projectionContext,
+      target,
+    );
+    const attackAgility = Number.isFinite(Number(actorProfile?.stats?.agi))
+      ? Number(actorProfile.stats.agi)
+      : readCombatStat(actor, 'agi');
+    const targetAgility = Number.isFinite(Number(targetProfile?.stats?.agi))
+      ? Number(targetProfile.stats.agi)
+      : readCombatStat(target, 'agi');
+    const hitAdjustment = actorProfile
+      ? actorProfile.outgoingHitAdjustment
+      : stateEntries(actor, 'OUTGOING_HIT')
+          .map(([, state]) => state?.战斗效果 || {})
+          .reduce((sum, stateEffect) =>
+            sum +
+            Number(stateEffect?.hit_bonus || 0) -
+            Number(stateEffect?.hit_penalty || 0), 0);
+    const targetAvoidanceAdjustment = targetProfile
+      ? targetProfile.incomingAvoidanceAdjustment
+      : stateEntries(target, 'INCOMING_HIT')
+          .map(([, state]) => state?.战斗效果 || {})
+          .reduce((sum, stateEffect) =>
+            sum +
+            Number(stateEffect?.dodge_bonus || 0) -
+            Math.max(
+              Number(stateEffect?.dodge_penalty || 0),
+              Number(stateEffect?.lock_level || 0),
+            ), 0);
     const hasExplicitProbability = String(explicitValue ?? '').trim() !== '';
     const baseProbability = hasExplicitProbability
       ? normalizeEffectProbability(explicitValue, 1)
@@ -2423,14 +2659,37 @@
     return false;
   }
 
-  function resolveTargets(worldSnapshot = {}, actor = {}, declaration = {}, effect = {}) {
-    const all = listUnits(worldSnapshot);
-    const actorSide = sideOf(worldSnapshot, actor);
+  function resolveTargets(
+    worldSnapshot = {},
+    actor = {},
+    declaration = {},
+    effect = {},
+    projectionContext = null,
+  ) {
+    const all = projectionContext?.schemaVersion ===
+      'MechanicalProjectionContextV1'
+      ? projectionContext.entries
+      : listUnits(worldSnapshot);
+    const actorProfile = mechanicalProjectionProfile(
+      projectionContext,
+      actor,
+    );
+    const actorSide = actorProfile?.side || sideOf(worldSnapshot, actor);
     const targetText = String(effect?.目标 || declaration?.targetKind || '').trim();
     const declaredIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds.map(String) : [];
-    const targetIsEligible = target => effectTargetsAllies(effect)
-      ? isPhysicallyAlive(target)
-      : isBattleCapable(target);
+    const targetIsEligible = target => {
+      const profile = mechanicalProjectionProfile(
+        projectionContext,
+        target,
+      );
+      return effectTargetsAllies(effect)
+        ? profile
+          ? profile.physicallyAlive
+          : isPhysicallyAlive(target)
+        : profile
+          ? profile.battleCapable
+          : isBattleCapable(target);
+    };
     if (/自身/.test(targetText)) return [actor];
     if (/友方.*群体|己方.*群体|全场|群体/.test(targetText)) {
       const friendly = all.filter(entry =>
@@ -2445,7 +2704,10 @@
     }
     if (declaredIds.length) {
       return declaredIds
-        .map(id => findUnit(worldSnapshot, id))
+        .map(id =>
+          projectionContext?.unitById?.get(id) ||
+          findUnit(worldSnapshot, id)
+        )
         .filter(target => target && targetIsEligible(target));
     }
     const friendly = all.filter(entry => entry.side === actorSide && targetIsEligible(entry.unit)).map(entry => entry.unit);
@@ -3512,7 +3774,19 @@
             setHp(unit, readHp(unit) - expectedDamage);
           });
           const fullHitDamage = damageExpectation.fullHitHpDamage;
-          const traumaUnconscious = shouldTriggerTraumaUnconscious(fullHitDamage, readHp(currentTarget) - fullHitDamage, readHpMax(currentTarget));
+          const traumaBranches = damageExpectation.outcomeDistribution.filter(
+            branch => shouldTriggerTraumaUnconscious(
+              Number(branch.hpDamage || 0),
+              readHp(currentTarget) - Number(branch.hpDamage || 0),
+              readHpMax(currentTarget),
+            ),
+          );
+          const traumaProbability = traumaBranches.reduce(
+            (sum, branch) => sum + Number(branch.probability || 0),
+            0,
+          );
+          const traumaUnconscious = traumaProbability > 1e-9;
+          const deterministicTrauma = traumaProbability >= 1 - 1e-9;
           const nonlethalIncapacitated = nonlethalIntent && nonlethalHpFloor <= 1 && hpDamageLimit > 0 && expectedDamage >= hpDamageLimit - 1e-9;
           const activeRequiredValues = required.key && required.values.length
             ? required.values
@@ -3596,10 +3870,10 @@
               }),
             ]),
           ];
-          if (nonlethalIncapacitated || traumaUnconscious && hitProbability >= 1 - 1e-9) {
+          if (nonlethalIncapacitated || deterministicTrauma) {
             overlay.changeUnit(unitId(target), unit => {
               if (nonlethalIncapacitated) unit.状态 = { ...(unit.状态 || {}), 行动: '失去战斗力' };
-              if (traumaUnconscious && hitProbability >= 1 - 1e-9) unit.状态 = { ...(unit.状态 || {}), 行动: '昏迷' };
+              if (deterministicTrauma) unit.状态 = { ...(unit.状态 || {}), 行动: '昏迷' };
             });
           }
           if (shieldAbsorb > 0) {
@@ -3669,8 +3943,28 @@
               targetId: unitId(target),
               outcomeKind: 'ACTION_CANCELLED',
               windowId: 'TRAUMA_UNCONSCIOUS',
-              threatValue: hitProbability * 100,
-              evidence: { reason: 'TRAUMA_UNCONSCIOUS', probability: hitProbability, hitProbability, fullHitDamage, hpAfter: readHp(currentTarget) - fullHitDamage, hpMax: readHpMax(currentTarget) },
+              threatValue: traumaProbability * 100,
+              evidence: {
+                reason: 'TRAUMA_UNCONSCIOUS',
+                probability: traumaProbability,
+                traumaProbability,
+                hitProbability,
+                fullHitDamage,
+                hpAfter: readHp(currentTarget) - fullHitDamage,
+                hpMax: readHpMax(currentTarget),
+                distributionGroupKey: String(
+                  outcomeAssignmentKey ||
+                  [
+                    context.rootActionId,
+                    context.effectInstanceId,
+                    context.windowId,
+                    unitId(target),
+                  ].join('|')
+                ).trim(),
+                traumaBranchKeys: Object.freeze(
+                  traumaBranches.map(branch => String(branch.branchKey || '').trim()),
+                ),
+              },
             });
           }
         });
@@ -3978,10 +4272,16 @@
             context?.applicationProbability ??
             1
           );
-          const baseApplicationProbability = prototype === '状态施加'
-            ? normalizeEffectProbability(effect?.成功率 ?? effect?.触发概率, 1)
+          const hasOwnApplicationProbability =
+            effect?.成功率 !== undefined ||
+            effect?.触发概率 !== undefined;
+          const baseApplicationProbability = hasOwnApplicationProbability
+            ? normalizeEffectProbability(
+                effect?.成功率 ?? effect?.触发概率,
+                1,
+              )
             : 1;
-          const resolvedApplicationProbability = prototype === '状态施加' &&
+          const resolvedApplicationProbability =
             typeof context?.applicationProbabilityResolver === 'function'
             ? context.applicationProbabilityResolver({
                 targetId: unitId(target),
@@ -4869,6 +5169,1153 @@
     return BASIC_ATTACK_EFFECT;
   }
 
+  function compileMechanicalBasis(input = {}) {
+    const declaration = input?.declaration;
+    if (!declaration || typeof declaration !== 'object') {
+      throw new TypeError('R9V2_MECHANICAL_BASIS_DECLARATION_MISSING');
+    }
+    const actionKind = String(declaration?.actionKind || '')
+      .trim()
+      .toUpperCase();
+    const paymentMode = String(input?.paymentMode || 'FORMAL')
+      .trim()
+      .toUpperCase();
+    if (!['FORMAL', 'EXTERNAL_TIMELINE'].includes(paymentMode)) {
+      throw new Error(
+        `R9V2_MECHANICAL_BASIS_PAYMENT_MODE_INVALID:${paymentMode}`,
+      );
+    }
+    const effects = actionKind === 'BASIC_ATTACK'
+      ? [BASIC_ATTACK_EFFECT]
+      : Array.isArray(declaration?.skill?._效果数组)
+        ? declaration.skill._效果数组.filter(
+            effect => effect && typeof effect === 'object',
+          )
+        : [];
+    const supportedNoEffectActions = new Set([
+      'DEFEND',
+      'EVADE',
+      'PASS_OPPORTUNITY',
+    ]);
+    const supportedPrototypes = new Set([
+      '伤害结算',
+      '资源变化',
+      '状态施加',
+      '属性修正',
+      '判定修正',
+      '结算修正',
+    ]);
+    const unsupportedReasons = [];
+    const creationCarriers = [];
+    const actorId = String(
+      input?.actorId || declaration?.actorId || '',
+    ).trim();
+    let requiresSequentialProjection = false;
+    if (
+      !effects.length &&
+      actionKind &&
+      !supportedNoEffectActions.has(actionKind)
+    ) {
+      unsupportedReasons.push(`ACTION_KIND:${actionKind}`);
+    }
+    const inspectNestedEffect = (effect, path) => {
+      const prototype = String(effect?.原型 || '').trim();
+      const nestedEffects = Array.isArray(effect?.使用效果)
+        ? effect.使用效果.filter(
+            nested => nested && typeof nested === 'object',
+          )
+        : [];
+      if (!prototype && nestedEffects.length) {
+        nestedEffects.forEach((nested, nestedIndex) =>
+          inspectNestedEffect(
+            nested,
+            `${path}:carrier:${nestedIndex}`,
+          )
+        );
+        return;
+      }
+      if (!supportedPrototypes.has(prototype)) {
+        unsupportedReasons.push(
+          `CREATION_EFFECT:PROTOTYPE:${prototype || 'MISSING'}:${path}`,
+        );
+      }
+      if (Math.max(0, Number(effect?.延迟回合 || 0)) > 0) {
+        unsupportedReasons.push(`CREATION_EFFECT:DELAYED_EFFECT:${path}`);
+      }
+      (Array.isArray(effect?.条件分支) ? effect.条件分支 : [])
+        .forEach((branch, branchIndex) => {
+          [
+            ['replace', branch?.替换效果],
+            ['append', branch?.追加效果],
+          ].forEach(([mode, nestedEffects]) => {
+            (Array.isArray(nestedEffects) ? nestedEffects : [])
+              .filter(nested => nested && typeof nested === 'object')
+              .forEach((nested, nestedIndex) => {
+                inspectNestedEffect(
+                  nested,
+                  `${path}:${branchIndex}:${mode}:${nestedIndex}`,
+                );
+              });
+          });
+        });
+    };
+    const inspectEffect = (effect, path) => {
+      const prototype = String(effect?.原型 || '').trim();
+      const useEffects = Array.isArray(effect?.使用效果)
+        ? effect.使用效果.filter(
+            nested => nested && typeof nested === 'object',
+          )
+        : [];
+      if (!prototype && useEffects.length) {
+        const skill = declaration?.skill || {};
+        const product = skill?.生成物 || skill?.产物 || skill?.制作产物 || null;
+        const productId = String(
+          product?.id ||
+          product?.物品ID ||
+          product?.名称 ||
+          product?.name ||
+          (typeof product === 'string' || typeof product === 'number'
+            ? product
+            : '') ||
+          skill?.魂技名 ||
+          skill?.name ||
+          '',
+        ).trim();
+        if (!productId) {
+          unsupportedReasons.push(
+            `CREATION_EFFECT:PRODUCT_ID_MISSING:${path}`,
+          );
+        }
+        creationCarriers.push({
+          effectIndex: Number.parseInt(path, 10) || 0,
+          productId,
+          quantity: Math.max(
+            1,
+            Math.floor(Number(effect?.数量 || 1)) || 1,
+          ),
+          recipientId: String(
+            declaration?.creationRecipientId || actorId,
+          ).trim(),
+          useEffects: useEffects.map(nested => cloneValue(nested)),
+        });
+        useEffects.forEach((nested, nestedIndex) =>
+          inspectNestedEffect(
+            nested,
+            `${path}:use:${nestedIndex}`,
+          )
+        );
+        return;
+      }
+      if (
+        ['属性修正', '判定修正', '结算修正'].includes(prototype) ||
+        (
+          Array.isArray(effect?.条件分支) &&
+          effect.条件分支.length > 0
+        ) ||
+        String(effect?.生效方式 || '').trim() === '跟随主原型'
+      ) {
+        requiresSequentialProjection = true;
+      }
+      if (!supportedPrototypes.has(prototype)) {
+        unsupportedReasons.push(
+          `PROTOTYPE:${prototype || 'MISSING'}:${path}`,
+        );
+      }
+      if (Math.max(0, Number(effect?.延迟回合 || 0)) > 0) {
+        unsupportedReasons.push(`DELAYED_EFFECT:${path}`);
+      }
+      (Array.isArray(effect?.条件分支) ? effect.条件分支 : [])
+        .forEach((branch, branchIndex) => {
+          [
+            ['replace', branch?.替换效果],
+            ['append', branch?.追加效果],
+          ].forEach(([mode, nestedEffects]) => {
+            (Array.isArray(nestedEffects) ? nestedEffects : [])
+              .filter(nested => nested && typeof nested === 'object')
+              .forEach((nested, nestedIndex) => {
+                inspectEffect(
+                  nested,
+                  `${path}:${branchIndex}:${mode}:${nestedIndex}`,
+                );
+              });
+          });
+        });
+    };
+    effects.forEach((effect, index) => {
+      inspectEffect(effect, String(index));
+    });
+    if (
+      declaration?.irreversibleAsset &&
+      typeof declaration.irreversibleAsset === 'object'
+    ) {
+      unsupportedReasons.push('IRREVERSIBLE_ASSET');
+    }
+    const targetIds = Object.freeze(
+      (Array.isArray(declaration?.targetIds)
+        ? declaration.targetIds
+        : []
+      )
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const frozenEffects = Object.freeze(
+      effects.map(effect => Object.freeze(cloneValue(effect))),
+    );
+    const declarationView = Object.freeze({
+      actorId,
+      actionKind,
+      targetIds,
+      resourceCosts: Object.freeze({
+        ...(
+          declaration?.resourceCosts &&
+          typeof declaration.resourceCosts === 'object'
+            ? declaration.resourceCosts
+            : {}
+        ),
+      }),
+      skill: Object.freeze({
+        ...(
+          declaration?.skill &&
+          typeof declaration.skill === 'object'
+            ? declaration.skill
+            : {}
+        ),
+        _效果数组: frozenEffects,
+      }),
+      actionId: String(
+        declaration?.actionId ||
+        declaration?.candidateId ||
+        input?.actionFingerprint ||
+        '',
+      ).trim(),
+      __includeGrantedEffects:
+        declaration?.__includeGrantedEffects !== false,
+    });
+    return Object.freeze({
+      schemaVersion: 'MechanicalBasisV2',
+      identity: String(
+        input?.identity ||
+        `mechanical-basis:${stableHash({
+          actorId,
+          actionKind,
+          targetIds,
+          paymentMode,
+          resourceCosts: declarationView.resourceCosts,
+          effects: frozenEffects,
+        })}`,
+      ).trim(),
+      actorId,
+      actionKind,
+      targetIds,
+      paymentMode,
+      declaration: declarationView,
+      effects: frozenEffects,
+      creationCarriers: Object.freeze(
+        creationCarriers.map(carrier => Object.freeze({
+          ...carrier,
+          useEffects: Object.freeze(
+            carrier.useEffects.map(effect => Object.freeze(effect)),
+          ),
+        })),
+      ),
+      requiresSequentialProjection,
+      unsupportedReasons: Object.freeze([
+        ...new Set(unsupportedReasons),
+      ].sort()),
+    });
+  }
+
+  function mechanicalBasisStateMarginal(target = {}, effect = {}) {
+    if (
+      Number(effect?.__previewApplicationProbability ?? 1) <= 1e-12
+    ) {
+      return false;
+    }
+    const existingEntry = findStateEntry(target, effect);
+    if (!existingEntry) return true;
+    const existing = existingEntry[1] || {};
+    const stackable =
+      effect?.可叠加 === true ||
+      /叠加|层数/.test(
+        String(effect?.叠加规则 || effect?.层数规则 || ''),
+      );
+    if (stackable) return true;
+    const requestedDuration = Math.max(
+      1,
+      Number(effect?.持续回合 || 1),
+    );
+    const existingDuration = Math.max(
+      0,
+      Number(
+        existing?.duration ??
+        existing?.持续回合 ??
+        existing?.剩余回合 ??
+        0,
+      ),
+    );
+    return (
+      effect?.刷新 === true ||
+      effect?.可刷新 === true ||
+      requestedDuration > existingDuration
+    );
+  }
+
+  function evaluateDirectMechanicalBasis({
+    basis,
+    worldSnapshot,
+    projectionContext,
+    actor,
+    actorProfile,
+    battleIntent,
+  }) {
+    const contributions = [];
+    const changedUnitIds = new Set();
+    const resourceOverrides = new Map();
+    const readProjectedResource = (unit, resource) => {
+      const key = `${unitId(unit)}\u0000${resource}`;
+      return resourceOverrides.has(key)
+        ? resourceOverrides.get(key)
+        : readResource(unit, resource);
+    };
+    const writeProjectedResource = (unit, resource, value) => {
+      resourceOverrides.set(
+        `${unitId(unit)}\u0000${resource}`,
+        value,
+      );
+    };
+    if (basis.paymentMode === 'FORMAL') {
+      Object.entries(basis.declaration.resourceCosts || {})
+        .forEach(([resource, rawCost]) => {
+          const costText = String(rawCost ?? '').trim();
+          const numericCost = Math.max(
+            0,
+            Number.parseFloat(costText) || 0,
+          );
+          if (!(numericCost > 1e-9)) return;
+          const maximum = Number.isFinite(
+            Number(actorProfile?.resourceMax?.[resource]),
+          )
+            ? Number(actorProfile.resourceMax[resource])
+            : readResourceMax(actor, resource);
+          const cost = costText.includes('%')
+            ? maximum * numericCost / 100
+            : numericCost;
+          const before = readProjectedResource(actor, resource);
+          if (before + 1e-9 < cost) {
+            throw new Error(
+              `battle_preview_resource_insufficient:${resource}`,
+            );
+          }
+          const next = before - cost;
+          writeProjectedResource(actor, resource, next);
+          changedUnitIds.add(unitId(actor));
+          contributions.push(Object.freeze({
+            targetId: unitId(actor),
+            outcomeKind: 'RESOURCE_OPTION_CHANGED',
+            windowId: 'ACTION_COST',
+            expectedDelta: -cost,
+            evidence: Object.freeze({
+              resource,
+              before,
+              next,
+              delta: -cost,
+            }),
+          }));
+        });
+    }
+    basis.effects.forEach((effect, effectIndex) => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (
+        !prototype &&
+        Array.isArray(effect?.使用效果) &&
+        effect.使用效果.length
+      ) {
+        return;
+      }
+      const targets = resolveTargets(
+        worldSnapshot,
+        actor,
+        basis.declaration,
+        effect,
+        projectionContext,
+      );
+      targets.forEach(target => {
+        if (
+          !effectConditionEnabled(
+            effect,
+            worldSnapshot,
+            actor,
+            target,
+          )
+        ) {
+          return;
+        }
+        const targetId = unitId(target);
+        const windowId =
+          `round:${Number(worldSnapshot?.回合 || 0)}:effect:${effectIndex}`;
+        if (prototype === '伤害结算') {
+          const rawDamage = calculateBaseDamage(
+            effect,
+            actor,
+            target,
+            projectionContext,
+          );
+          const hitProbability = estimateHitProbability(
+            actor,
+            target,
+            effect,
+            projectionContext,
+          );
+          const segments = Math.max(
+            1,
+            Math.floor(
+              Number(effect?.攻击段数 ?? effect?.段数 ?? 1),
+            ) || 1,
+          );
+          const perSegmentDamage = calculateSettledSegmentDamage(
+            rawDamage,
+            segments,
+            1,
+          );
+          const nonlethalIntent =
+            /点到为止|切磋|训练|非致命/.test(
+              String(
+                battleIntent?.mode ||
+                battleIntent ||
+                '',
+              ).trim(),
+            );
+          const nonlethalHpFloor = nonlethalIntent
+            ? calculateNonlethalHpFloor(
+                worldSnapshot,
+                target,
+                battleIntent || {},
+              )
+            : 0;
+          const hpDamageLimit = nonlethalIntent
+            ? Math.max(0, readHp(target) - nonlethalHpFloor)
+            : readHp(target);
+          const shieldBefore = readShield(target);
+          const damageExpectation = expectedSegmentedDamageOutcome({
+            segments,
+            perSegmentDamage,
+            hitProbability,
+            applicationProbability: 1,
+            shieldBefore,
+            hpDamageLimit,
+          });
+          const shieldAbsorb =
+            damageExpectation.expectedShieldAbsorb;
+          const expectedDamage = damageExpectation.expectedHpDamage;
+          if (shieldAbsorb > 0) {
+            contributions.push(Object.freeze({
+              targetId,
+              outcomeKind: 'SHIELD_DELTA',
+              windowId,
+              expectedDelta: -shieldAbsorb,
+              evidence: Object.freeze({
+                current: shieldBefore,
+                next: Math.max(0, shieldBefore - shieldAbsorb),
+                delta: -shieldAbsorb,
+                absorbedDamage: shieldAbsorb,
+              }),
+            }));
+          }
+          contributions.push(Object.freeze({
+            targetId,
+            outcomeKind: 'HP_DELTA',
+            windowId,
+            expectedDelta: -expectedDamage,
+            evidence: Object.freeze({
+              rawDamage,
+              hitProbability,
+              applicationProbability: 1,
+              evadeProbability: 0,
+              reactionDamageMultiplier: 1,
+              perSegmentDamage,
+              incomingDamage: damageExpectation.expectedIncoming,
+              shieldAbsorb,
+              expectedDamage,
+              fullHitIncoming:
+                damageExpectation.fullHitIncoming,
+              fullHitShieldAbsorb:
+                damageExpectation.fullHitShieldAbsorb,
+              fullHitDamage: damageExpectation.fullHitHpDamage,
+              outcomeDistribution:
+                damageExpectation.outcomeDistribution,
+              delta: -expectedDamage,
+              current: readHp(target),
+              next: Math.max(0, readHp(target) - expectedDamage),
+            }),
+          }));
+          const traumaBranches =
+            damageExpectation.outcomeDistribution.filter(branch =>
+              shouldTriggerTraumaUnconscious(
+                Number(branch.hpDamage || 0),
+                readHp(target) - Number(branch.hpDamage || 0),
+                readHpMax(target),
+              ),
+            );
+          const traumaProbability = traumaBranches.reduce(
+            (sum, branch) =>
+              sum + Number(branch.probability || 0),
+            0,
+          );
+          const nonlethalIncapacitated =
+            nonlethalIntent &&
+            nonlethalHpFloor <= 1 &&
+            hpDamageLimit > 0 &&
+            expectedDamage >= hpDamageLimit - 1e-9;
+          if (nonlethalIncapacitated) {
+            contributions.push(Object.freeze({
+              targetId,
+              outcomeKind: 'ACTION_CANCELLED',
+              windowId: 'NONLETHAL_INCAPACITATION',
+              evidence: Object.freeze({
+                reason: 'NONLETHAL_INCAPACITATION',
+                hpFloor: nonlethalHpFloor,
+                hitProbability,
+              }),
+            }));
+          }
+          if (traumaProbability > 1e-9) {
+            contributions.push(Object.freeze({
+              targetId,
+              outcomeKind: 'ACTION_CANCELLED',
+              windowId: 'TRAUMA_UNCONSCIOUS',
+              evidence: Object.freeze({
+                reason: 'TRAUMA_UNCONSCIOUS',
+                probability: traumaProbability,
+                traumaProbability,
+                hitProbability,
+                fullHitDamage:
+                  damageExpectation.fullHitHpDamage,
+                hpAfter:
+                  readHp(target) -
+                  damageExpectation.fullHitHpDamage,
+                hpMax: readHpMax(target),
+              }),
+            }));
+          }
+          if (
+            expectedDamage > 1e-9 ||
+            shieldAbsorb > 1e-9
+          ) {
+            changedUnitIds.add(targetId);
+          }
+          return;
+        }
+        if (prototype === '资源变化') {
+          const resource = String(effect?.资源 || '魂力').trim();
+          const current = /生命|HP/i.test(resource)
+            ? readHp(target)
+            : readProjectedResource(target, resource);
+          const maximum = readResourceMax(target, resource);
+          const realizedNext = clamp(
+            current + parseSignedValue(effect?.数值, maximum),
+            0,
+            maximum,
+          );
+          const delta = realizedNext - current;
+          if (!/生命|HP/i.test(resource)) {
+            writeProjectedResource(target, resource, realizedNext);
+          }
+          contributions.push(Object.freeze({
+            targetId,
+            outcomeKind: /生命|HP/i.test(resource)
+              ? 'HP_DELTA'
+              : 'RESOURCE_OPTION_CHANGED',
+            windowId,
+            expectedDelta: delta,
+            evidence: Object.freeze({
+              resource,
+              current,
+              next: realizedNext,
+              delta,
+              realizedDelta: delta,
+              applicationProbability: 1,
+              ownApplicationProbability: 1,
+            }),
+          }));
+          if (Math.abs(delta) > 1e-9) {
+            changedUnitIds.add(targetId);
+          }
+          return;
+        }
+        if (prototype === '状态施加') {
+          const applicationProbability =
+            normalizeEffectProbability(
+              effect?.成功率 ?? effect?.触发概率,
+              1,
+            );
+          const projectedEffect = {
+            ...effect,
+            __previewApplicationProbability:
+              applicationProbability,
+          };
+          const marginal = mechanicalBasisStateMarginal(
+            target,
+            projectedEffect,
+          );
+          const combatEffect = deriveStateCombatEffect(effect);
+          const cancelsAction =
+            marginal &&
+            (
+              combatEffect?.skip_turn === true ||
+              combatEffect?.cannot_act === true
+            );
+          const requestedDuration = Math.max(
+            1,
+            Number(effect?.持续回合 || 1),
+          );
+          const existingStateEntry = findStateEntry(target, effect);
+          const existingState = existingStateEntry?.[1] || null;
+          const existingDuration = existingState
+            ? Math.max(
+                0,
+                Number(
+                  existingState?.duration ??
+                  existingState?.持续回合 ??
+                  existingState?.剩余回合 ??
+                  0
+                ),
+              )
+            : 0;
+          const stackable =
+            effect?.可叠加 === true ||
+            /叠加|层数/.test(
+              String(effect?.叠加规则 || effect?.层数规则 || ''),
+            );
+          const refreshable =
+            effect?.刷新 === true ||
+            effect?.可刷新 === true ||
+            requestedDuration > existingDuration;
+          const effectInstanceId = String(
+            effect?.effectId ||
+            effect?.效果ID ||
+            `${basis.declaration.actionId}:effect:${effectIndex}`,
+          ).trim();
+          const applicationGroupKey = [
+            basis.identity,
+            effectInstanceId,
+            targetId,
+            'state-application',
+          ].join('|');
+          contributions.push(Object.freeze({
+            targetId,
+            outcomeKind: cancelsAction
+              ? 'ACTION_CANCELLED'
+              : 'STATE_CHANGED',
+            windowId,
+            evidence: Object.freeze({
+              prototype,
+              state: String(effect?.状态 || '').trim(),
+              duration: requestedDuration,
+              applicationProbability,
+              ownApplicationProbability:
+                applicationProbability,
+              cancelsAction,
+              marginal,
+              projectedEffect: Object.freeze(cloneValue(effect)),
+              distributionGroupKey: applicationGroupKey,
+              combatEffect: Object.freeze({
+                ...combatEffect,
+              }),
+            }),
+          }));
+          const damagePerTick = Math.max(
+            0,
+            Number(combatEffect?.dot_damage || 0) +
+            readHpMax(target) *
+              Math.max(
+                0,
+                Number(combatEffect?.dot_damage_ratio || 0),
+              ),
+          );
+          const healingPerTick =
+            readHpMax(target) *
+            Math.max(
+              0,
+              Number(combatEffect?.hot_heal_ratio || 0),
+            );
+          if (
+            marginal &&
+            applicationProbability > 1e-12 &&
+            (damagePerTick > 0 || healingPerTick > 0)
+          ) {
+            const tickCount =
+              existingState && !stackable && refreshable
+                ? Math.max(
+                    0,
+                    requestedDuration - existingDuration,
+                  )
+                : existingState && !stackable
+                  ? 0
+                  : requestedDuration;
+            if (tickCount > 0) {
+              const realizedDamage = damagePerTick > 0
+                ? Math.min(
+                    readHp(target),
+                    damagePerTick * tickCount,
+                  )
+                : 0;
+              const realizedHealing = healingPerTick > 0
+                ? Math.min(
+                    Math.max(
+                      0,
+                      readHpMax(target) - readHp(target),
+                    ),
+                    healingPerTick * tickCount,
+                  )
+                : 0;
+              const realizedDelta =
+                realizedHealing - realizedDamage;
+              const expectedDamage =
+                realizedDamage * applicationProbability;
+              const expectedHealing =
+                realizedHealing * applicationProbability;
+              const expectedDelta =
+                expectedHealing - expectedDamage;
+              const scheduledEffectInstanceId =
+                `${effectInstanceId}:scheduled-dot`;
+              contributions.push(Object.freeze({
+                targetId,
+                outcomeKind: 'SCHEDULED_HP_DELTA',
+                windowId: [
+                  scheduledEffectInstanceId,
+                  targetId,
+                  tickCount,
+                ].join(':'),
+                expectedDelta,
+                evidence: Object.freeze({
+                  prototype,
+                  state: String(effect?.状态 || '').trim(),
+                  delta: expectedDelta,
+                  expectedDamage,
+                  expectedHealing,
+                  damagePerTick,
+                  healingPerTick,
+                  tickCount,
+                  duration: tickCount,
+                  applicationProbability,
+                  ownApplicationProbability:
+                    applicationProbability,
+                  outcomeDistribution: Object.freeze([
+                    Object.freeze({
+                      branchKey: 'state:resisted',
+                      probability: 1,
+                      conditionalOn: {
+                        [applicationGroupKey]: 'RESISTED',
+                      },
+                      delta: 0,
+                    }),
+                    Object.freeze({
+                      branchKey: 'state:hit',
+                      probability: 1,
+                      conditionalOn: {
+                        [applicationGroupKey]: 'HIT',
+                      },
+                      delta: realizedDelta,
+                    }),
+                  ]),
+                  distributionGroupKey: applicationGroupKey,
+                }),
+              }));
+            }
+          }
+          if (marginal) changedUnitIds.add(targetId);
+        }
+      });
+    });
+    basis.creationCarriers.forEach(carrier => {
+      const recipientId = String(carrier?.recipientId || '').trim();
+      if (!recipientId) return;
+      contributions.push(Object.freeze({
+        targetId: recipientId,
+        outcomeKind: 'NEXT_ACTION_QUALITY_CHANGED',
+        windowId:
+          `round:${Number(worldSnapshot?.回合 || 0)}:effect:${Number(
+            carrier?.effectIndex || 0,
+          )}`,
+        expectedDelta: 1,
+        evidence: Object.freeze({
+          delta: 1,
+          productId: String(carrier?.productId || '').trim(),
+          quantity: Math.max(1, Number(carrier?.quantity || 1)),
+          recipientId,
+          useEffectCount: Array.isArray(carrier?.useEffects)
+            ? carrier.useEffects.length
+            : 0,
+          useEffects: cloneValue(carrier?.useEffects || []),
+        }),
+      }));
+      changedUnitIds.add(recipientId);
+    });
+    return Object.freeze({
+      schemaVersion: 'MechanicalBasisEvaluationV1',
+      basisIdentity: basis.identity,
+      actorId: basis.actorId,
+      contributions: Object.freeze(contributions),
+      changedUnitIds: Object.freeze([...changedUnitIds].sort()),
+    });
+  }
+
+  function evaluateMechanicalBasis(input = {}) {
+    const basis = input?.basis;
+    const worldSnapshot = input?.worldSnapshot;
+    const projectionContext =
+      input?.mechanicalProjectionContext || null;
+    if (
+      !basis ||
+      basis?.schemaVersion !== 'MechanicalBasisV2'
+    ) {
+      throw new TypeError('R9V2_MECHANICAL_BASIS_INVALID');
+    }
+    if (!worldSnapshot || typeof worldSnapshot !== 'object') {
+      throw new TypeError('R9V2_MECHANICAL_BASIS_WORLD_MISSING');
+    }
+    if (
+      projectionContext &&
+      (
+        projectionContext.schemaVersion !==
+          'MechanicalProjectionContextV1' ||
+        projectionContext.worldSnapshot !== worldSnapshot
+      )
+    ) {
+      throw new Error(
+        'R9V2_MECHANICAL_PROJECTION_CONTEXT_WORLD_MISMATCH',
+      );
+    }
+    if (basis.unsupportedReasons.length) {
+      throw new Error(
+        `R9V2_MECHANICAL_BASIS_UNSUPPORTED:${basis.unsupportedReasons.join(',')}`,
+      );
+    }
+    const actorId = input?.actorId || basis.actorId;
+    const actor =
+      projectionContext?.unitById?.get(actorId) ||
+      findUnit(worldSnapshot, actorId);
+    const actorProfile = mechanicalProjectionProfile(
+      projectionContext,
+      actor,
+    );
+    if (
+      !actor ||
+      !(actorProfile ? actorProfile.battleCapable : isAlive(actor))
+    ) {
+      throw new Error('R9V2_MECHANICAL_BASIS_ACTOR_UNAVAILABLE');
+    }
+    if (
+      basis.declaration.__includeGrantedEffects !== false &&
+      (
+        actorProfile
+          ? actorProfile.hasPendingGrantedEffects
+          : pendingGrantedEffects(actor).length > 0
+      )
+    ) {
+      throw new Error(
+        'R9V2_MECHANICAL_BASIS_UNSUPPORTED:GRANTED_EFFECTS',
+      );
+    }
+    if (basis.requiresSequentialProjection !== true) {
+      return evaluateDirectMechanicalBasis({
+        basis,
+        worldSnapshot,
+        projectionContext,
+        actor,
+        actorProfile,
+        battleIntent: input?.battleIntent || {},
+      });
+    }
+    const rootActionId = String(
+      basis.declaration?.actionId ||
+      basis.declaration?.candidateId ||
+      `preview:${buildCacheKey({
+        worldSnapshot,
+        actorId,
+        declaration: basis.declaration,
+        paymentMode: basis.paymentMode,
+        worldRevision: basis.identity,
+        actionFingerprint: basis.identity,
+        collectProbabilityBranches: true,
+        horizon: 'SHALLOW',
+      })}`,
+    ).trim();
+    const overlay = new PreviewOverlay(
+      worldSnapshot,
+      String(input?.revision || basis.identity || '').trim(),
+    );
+    const ledger = new ContributionLedger();
+    const changedUnitIds = new Set();
+    if (basis.paymentMode === 'FORMAL') {
+      Object.entries(basis.declaration.resourceCosts || {})
+        .forEach(([resource, rawCost], index) => {
+          const costText = String(rawCost ?? '').trim();
+          const numericCost = Math.max(
+            0,
+            Number.parseFloat(costText) || 0,
+          );
+          if (!(numericCost > 1e-9)) return;
+          const cost = costText.includes('%')
+            ? readResourceMax(actor, resource) * numericCost / 100
+            : numericCost;
+          const currentActor = overlay.readUnit(actorId);
+          const before = readResource(currentActor, resource);
+          if (before + 1e-9 < cost) {
+            throw new Error(
+              `battle_preview_resource_insufficient:${resource}`,
+            );
+          }
+          const next = before - cost;
+          overlay.changeUnit(actorId, unit => {
+            setResourceValue(unit, resource, next);
+          });
+          changedUnitIds.add(actorId);
+          ledger.addOutcome({
+            rootActionId,
+            sourceActionId: rootActionId,
+            actor,
+            declaration: basis.declaration,
+            effectInstanceId: `${rootActionId}:cost:0:${index}`,
+            targetId: actorId,
+            outcomeKind: 'RESOURCE_OPTION_CHANGED',
+            windowId: 'ACTION_COST',
+            threatValue: 0,
+            evidence: {
+              resource,
+              before,
+              next,
+              delta: -cost,
+            },
+          });
+        });
+    }
+    const primarySuccessProbability = new Map();
+    const primaryOutcomeKeyByTarget = new Map();
+    const primaryOutcomeDistributionByTarget = new Map();
+    const nodeBudget = {
+      count: 0,
+      limit: MAX_PREVIEW_NODES,
+      activeFingerprints: new Set(),
+    };
+    basis.effects.forEach((effect, effectIndex) => {
+      const effectWorldSnapshot = overlay.snapshot();
+      const effectActor = overlay.readUnit(actorId) || actor;
+      const targets = resolveTargets(
+        effectWorldSnapshot,
+        effectActor,
+        basis.declaration,
+        effect,
+      );
+      if (!targets.length) return;
+      const followsPrimary =
+        effectIndex > 0 &&
+        String(effect?.生效方式 || '').trim() === '跟随主原型';
+      const effectInstanceId = String(
+        effect?.effectId ||
+        effect?.效果ID ||
+        `${rootActionId}:effect:${effectIndex}`,
+      ).trim();
+      const context = {
+        actor: effectActor,
+        declaration: basis.declaration,
+        worldSnapshot: effectWorldSnapshot,
+        nodeBudget,
+        depth: 0,
+        effectPath: [],
+        rootActionId,
+        effectInstanceId,
+        windowId:
+          `round:${Number(worldSnapshot?.回合 || 0)}:effect:${effectIndex}`,
+        battleIntent: input?.battleIntent || {},
+        actionDamageMultiplier: 1,
+        primarySucceeded: false,
+        primaryOutcomeKeyByTarget,
+        primaryOutcomeDistributionByTarget,
+      };
+      context.primarySucceededByTarget = new Map(
+        targets.map(target => [
+          unitId(target),
+          primarySuccessProbability.get(unitId(target)) >= 1 - 1e-9,
+        ]),
+      );
+      context.primarySuccessProbabilityByTarget = new Map(
+        targets.map(target => [
+          unitId(target),
+          primarySuccessProbability.get(unitId(target)),
+        ]),
+      );
+      context.primaryOutcomeByTarget = new Map(
+        targets.map(target => {
+          const distribution =
+            primaryOutcomeDistributionByTarget.get(unitId(target)) || [];
+          return [
+            unitId(target),
+            distribution.length === 1
+              ? String(distribution[0]?.outcome || '').trim().toUpperCase()
+              : '',
+          ];
+        }),
+      );
+      const hasOwnApplicationProbability =
+        effect?.成功率 !== undefined ||
+        effect?.触发概率 !== undefined;
+      const ownApplicationProbabilityByTarget = new Map(
+        targets.map(target => [
+          unitId(target),
+          hasOwnApplicationProbability
+            ? normalizeEffectProbability(
+                effect?.成功率 ?? effect?.触发概率,
+                1,
+              )
+            : 1,
+        ]),
+      );
+      context.ownApplicationProbabilityByTarget =
+        ownApplicationProbabilityByTarget;
+      if (followsPrimary) {
+        context.applicationProbabilityByTarget = new Map(
+          targets.map(target => [
+            unitId(target),
+            clamp(
+              Number(
+                primarySuccessProbability.get(unitId(target)) ?? 0,
+              ),
+              0,
+              1,
+            ),
+          ]),
+        );
+        context.requiredOutcomeKeyByTarget = new Map(
+          targets.map(target => [
+            unitId(target),
+            primaryOutcomeKeyByTarget.get(unitId(target)) || '',
+          ]),
+        );
+        context.requiredOutcomeValuesByTarget = new Map(
+          targets.map(target => [unitId(target), ['HIT']]),
+        );
+        context.requiredOutcomeUniverseByTarget = new Map(
+          targets.map(target => [
+            unitId(target),
+            (
+              primaryOutcomeDistributionByTarget.get(unitId(target)) || []
+            )
+              .map(row =>
+                String(row?.outcome || '').trim().toUpperCase()
+              )
+              .filter(Boolean),
+          ]),
+        );
+      } else if (effectIndex === 0) {
+        context.outcomeAssignmentKeyByTarget = new Map(
+          targets.map(target => {
+            const targetId = unitId(target);
+            const key = [
+              rootActionId,
+              effectInstanceId,
+              context.windowId,
+              targetId,
+              'primary-resolution',
+            ].join('|');
+            primaryOutcomeKeyByTarget.set(targetId, key);
+            return [targetId, key];
+          }),
+        );
+      }
+      if (
+        !followsPrimary &&
+        !['伤害结算', '状态施加'].includes(
+          String(effect?.原型 || '').trim(),
+        )
+      ) {
+        context.applicationProbabilityByTarget =
+          ownApplicationProbabilityByTarget;
+      }
+      applyEffect(effect, targets, overlay, ledger, context, 0);
+      targets.forEach(target => changedUnitIds.add(unitId(target)));
+      if (effectIndex !== 0) return;
+      const prototype = String(effect?.原型 || '').trim();
+      targets.forEach(target => {
+        const targetId = unitId(target);
+        if (prototype === '伤害结算') {
+          const currentActor = overlay.readUnit(actorId) || effectActor;
+          const currentTarget = overlay.readUnit(targetId) || target;
+          const perSegment = estimateHitProbability(
+            currentActor,
+            currentTarget,
+            effect,
+          );
+          const segments = Math.max(
+            1,
+            Math.floor(
+              Number(effect?.攻击段数 || effect?.段数 || 1),
+            ) || 1,
+          );
+          const hitProbability =
+            1 - Math.pow(1 - perSegment, segments);
+          const distribution = [
+            ...(hitProbability < 1 - 1e-12
+              ? [{
+                  outcome: 'MISS',
+                  probability: 1 - hitProbability,
+                }]
+              : []),
+            ...(hitProbability > 1e-12
+              ? [{ outcome: 'HIT', probability: hitProbability }]
+              : []),
+          ];
+          primaryOutcomeDistributionByTarget.set(
+            targetId,
+            Object.freeze(
+              distribution.map(row => Object.freeze(row)),
+            ),
+          );
+          primarySuccessProbability.set(targetId, hitProbability);
+        } else if (prototype === '状态施加') {
+          const applicationProbability =
+            ownApplicationProbabilityByTarget.get(targetId) ?? 1;
+          primarySuccessProbability.set(
+            targetId,
+            applicationProbability,
+          );
+          primaryOutcomeDistributionByTarget.set(
+            targetId,
+            Object.freeze([
+              ...(applicationProbability > 1e-12
+                ? [Object.freeze({
+                    outcome: 'HIT',
+                    probability: applicationProbability,
+                  })]
+                : []),
+              ...(applicationProbability < 1 - 1e-12
+                ? [Object.freeze({
+                    outcome: 'RESISTED',
+                    probability: 1 - applicationProbability,
+                  })]
+                : []),
+            ]),
+          );
+        } else {
+          primarySuccessProbability.set(targetId, 1);
+          primaryOutcomeDistributionByTarget.set(
+            targetId,
+            Object.freeze([
+              Object.freeze({ outcome: 'HIT', probability: 1 }),
+            ]),
+          );
+        }
+      });
+    });
+    return Object.freeze({
+      schemaVersion: 'MechanicalBasisEvaluationV1',
+      basisIdentity: basis.identity,
+      actorId: basis.actorId,
+      contributions: Object.freeze([...ledger.entries]),
+      changedUnitIds: Object.freeze([...changedUnitIds].sort()),
+    });
+  }
+
   function calculateBaseActionValue(actor = {}, target = {}, declaration = {}) {
     const effects = declaration?.actionKind === 'BASIC_ATTACK'
       ? [basicAttackEffect()]
@@ -5085,12 +6532,13 @@
         threatValue: 0,
         evidence: {
           delta: 1,
-          productId,
-          quantity,
-          recipientId,
-          useEffectCount: useEffects.length,
-        },
-      });
+            productId,
+            quantity,
+            recipientId,
+            useEffectCount: useEffects.length,
+            useEffects: cloneValue(useEffects),
+          },
+        });
     } finally {
       context.nodeBudget.activeFingerprints.delete(activeFingerprint);
     }
@@ -5444,6 +6892,8 @@
                 })
               : null;
             const perSegment = clamp(
+              resolvedHitProbability !== null &&
+              resolvedHitProbability !== undefined &&
               Number.isFinite(Number(resolvedHitProbability))
                 ? Number(resolvedHitProbability)
                 : baseHitProbability,
@@ -7453,6 +8903,7 @@
     readCombatStatBreakdown,
     dependencyValueForKey,
     parseSignedValue,
+    calculateDefensePenetration,
     calculateSettledSegmentDamage,
     normalizeEffectProbability,
     effectTargetsAllies,
@@ -7479,6 +8930,9 @@
     calculateReactionContest,
     calculateDefenseDamageMultiplier,
     calculateDodgeProbability,
+    compileMechanicalBasis,
+    compileMechanicalProjectionContext,
+    evaluateMechanicalBasis,
     deriveStateCombatEffect,
     actorSuppressesEffect,
     pendingGrantedEffects,

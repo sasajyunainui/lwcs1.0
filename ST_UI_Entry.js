@@ -1047,48 +1047,40 @@
     尝试注册();
   }
 
-  function 注册防截断流入脚本按钮() {
+  function 清理已废弃防护配置() {
     try {
-      if (宿主窗口.__LWCS_TRUNCATION_GUARD_ENTRY_BUTTON_BOUND__) return true;
-      if (
-        typeof appendInexistentScriptButtons !== 'function' ||
-        typeof getButtonEvent !== 'function' ||
-        typeof eventOn !== 'function'
-      ) {
-        return false;
+      const 候选窗口 = [window, 宿主窗口];
+      try {
+        if (window.parent && !候选窗口.includes(window.parent)) 候选窗口.push(window.parent);
+      } catch (错误) {}
+      try {
+        if (window.top && !候选窗口.includes(window.top)) 候选窗口.push(window.top);
+      } catch (错误) {}
+      for (const 候选 of 候选窗口) {
+        try { 候选.localStorage?.removeItem('LWCS_防截断流入配置_v1'); } catch (错误) {}
+        try { delete 候选.__LWCS_OPEN_TRUNCATION_GUARD_PANEL__; } catch (错误) {}
+        try { delete 候选.__LWCS_TRUNCATION_GUARD__; } catch (错误) {}
+        try { delete 候选.__LWCS_TRUNCATION_GUARD_ENTRY_BUTTON_BOUND__; } catch (错误) {}
       }
-      appendInexistentScriptButtons([{ name: '防截断流入', visible: true }]);
-      eventOn(getButtonEvent('防截断流入'), async () => {
-        try {
-          await 引导加载();
-          let 打开防截断流入面板 = 读取已就绪全局值('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__');
-          if (typeof 打开防截断流入面板 !== 'function') {
-            await 等待数据库模块就绪('truncation_guard_button', true);
-            await 等待全局函数('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__', 12000);
-            打开防截断流入面板 = 读取已就绪全局值('__LWCS_OPEN_TRUNCATION_GUARD_PANEL__');
-          }
-          if (typeof 打开防截断流入面板 !== 'function') throw new Error('防截断流入面板未就绪');
-          打开防截断流入面板();
-        } catch (错误) {
-          console.error('[MVU] 防截断流入按钮执行失败:', 错误);
-          显示入口按钮提示(构建入口按钮错误文本('防截断流入', 错误), 'error');
-        }
-      });
-      宿主窗口.__LWCS_TRUNCATION_GUARD_ENTRY_BUTTON_BOUND__ = true;
+      if (typeof getScriptButtons !== 'function' || typeof replaceScriptButtons !== 'function') return false;
+      const 当前按钮 = getScriptButtons();
+      if (!Array.isArray(当前按钮)) return false;
+      const 保留按钮 = 当前按钮.filter(按钮 => 按钮?.name !== '防截断流入');
+      if (保留按钮.length !== 当前按钮.length) replaceScriptButtons(保留按钮);
       return true;
     } catch (错误) {
-      console.warn('[MVU] 防截断流入按钮注册失败:', 错误);
+      console.warn('[MVU] 已废弃防护配置清理失败:', 错误);
       return false;
     }
   }
 
-  function 安排防截断流入脚本按钮注册() {
+  function 安排已废弃防护配置清理() {
     const 启动时间 = Date.now();
-    const 尝试注册 = () => {
-      if (注册防截断流入脚本按钮()) return;
-      if (Date.now() - 启动时间 < 12000) setTimeout(尝试注册, 500);
+    const 尝试清理 = () => {
+      if (清理已废弃防护配置()) return;
+      if (Date.now() - 启动时间 < 12000) setTimeout(尝试清理, 500);
     };
-    尝试注册();
+    尝试清理();
   }
 
   function 安排空闲预取() {
@@ -1212,6 +1204,6 @@
   }
 
   安排冷归档脚本按钮注册();
-  安排防截断流入脚本按钮注册();
+  安排已废弃防护配置清理();
   监控并启动引导();
 })();
