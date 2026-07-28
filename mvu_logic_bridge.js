@@ -44920,6 +44920,8 @@ ${播报文本}
     const 内容类型 = 规范化传授内容类型(payload.内容类型 || payload.type || payload.category || payload.类型);
     const 结果 = toText(payload.结果 || payload.result || '成立', '成立').trim();
     const 理由 = toText(payload.理由 || payload.reason, '').trim();
+    const 效果数组 = Array.isArray(payload._效果数组) ? payload._效果数组 : [];
+    const 已定义 = payload.已定义 === true || (payload.已定义 !== false && 效果数组.length > 0);
     const 学生 = resolveSnapshotCharacter(snapshot, 学生名 || snapshot?.activeName);
     const 老师 = 老师名 ? resolveSnapshotCharacter(snapshot, 老师名) : { key: '', displayName: '', char: null };
     if (!学生.key || !学生.char) return { invalid: true, reason: 'teaching_student_unresolved', 学生: 学生名, 老师: 老师名, 内容类型, 内容名称, 结果, 理由 };
@@ -44934,6 +44936,13 @@ ${播报文本}
       内容名称,
       结果,
       理由,
+      _效果数组: 效果数组,
+      已定义,
+      画面描述: toText(payload.画面描述, '').trim(),
+      效果描述: toText(payload.效果描述, '').trim(),
+      承载方式: toText(payload.承载方式, '').trim(),
+      消耗: payload.消耗,
+      前摇: payload.前摇,
     };
   }
 
@@ -44946,6 +44955,7 @@ ${播报文本}
     const category = 内容类型 === '功法' ? '功法' : '自创魂技';
     const parentKey = 内容类型 === '功法' ? '功法' : '自创魂技';
     const recordKey = skillLabel;
+    const 已定义 = 内容类型 !== '功法' && request.已定义 === true && Array.isArray(request._效果数组) && request._效果数组.length > 0;
     const previewKey = buildSkillDesignerPreviewKey({
       path: ['char', studentKey, parentKey, recordKey],
       label: skillLabel,
@@ -44958,6 +44968,18 @@ ${播报文本}
         if (!charData || typeof charData !== 'object') throw new Error('未找到学生角色。');
         if (!charData[parentKey] || typeof charData[parentKey] !== 'object' || Array.isArray(charData[parentKey]))
           charData[parentKey] = {};
+        if (已定义) {
+          charData[parentKey][recordKey] = {
+            魂技名: skillLabel,
+            画面描述: normalizeSkillUiText(request.画面描述, '未知'),
+            效果描述: normalizeSkillUiText(request.效果描述, '未知'),
+            承载方式: toText(request.承载方式, '直接生效') || '直接生效',
+            消耗: request.消耗 ?? '无',
+            前摇: toNumber(request.前摇, 0),
+            _效果数组: cloneJsonValue(request._效果数组, []),
+          };
+          return;
+        }
         if (!charData[parentKey][recordKey]) {
           charData[parentKey][recordKey] = 内容类型 === '功法'
             ? 构建功法学习记录_桥接(skillLabel, '未知', statData)
@@ -44967,6 +44989,7 @@ ${播报文本}
       { force: true },
     );
     await refreshLiveSnapshot({ force: true });
+    if (已定义) return { ok: true, recordKey, 内容类型, 已定义: true, skipDesigner: true };
     打开技能设计确认({
       previewKey,
       charName: toText(request.学生, studentKey),
@@ -54477,6 +54500,17 @@ ${播报文本}
           value: { 属性: '吸收灵物年限', 数值: toNumber(effect['数值'], 0) },
         };
       }
+      if (prototype === '天赋提升') {
+        return {
+          target,
+          type: 'talent_tier_up',
+          description: description || '提升天赋梯队',
+          value: {
+            上限梯队: toText(effect['上限梯队'], ''),
+            提升档数: Math.max(1, toNumber(effect['提升档数'], 1)),
+          },
+        };
+      }
       if (prototype === '状态移除') {
         return {
           target,
@@ -54575,10 +54609,33 @@ ${播报文本}
       if (usableEffect.type === 'heal') return this.applyInventoryHealEffect(charData.属性, usableEffect, logs);
       if (usableEffect.type === 'durability_repair') return false;
       if (usableEffect.type === 'state_set') return this.applyInventoryStateSetEffect(charData, usableEffect, logs);
+      if (usableEffect.type === 'talent_tier_up') return this.applyTalentTierUpEffect(charData, usableEffect, logs);
       if (usableEffect.type === 'state_remove') return this.applyInventoryStateRemoveEffect(charData, usableEffect, logs);
       if (['buff', 'debuff', 'shield', 'custom', 'mechanism_grant', 'cultivation_gain'].includes(String(usableEffect.type || '')))
         return this.appendInventoryStatusEffect(charData.属性.状态效果, itemName, usableEffect, index, logs, 当前tick, charData);
       return false;
+    },
+
+    applyTalentTierUpEffect(charData = {}, effect = {}, logs = []) {
+      const 天赋梯队序列 = ['天赋极差', '劣等', '正常', '优秀', '天才', '顶级天才', '绝世妖孽'];
+      const value = effect && typeof effect === 'object' ? effect.value || {} : {};
+      if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
+      const 当前梯队 = toText(charData.属性.天赋梯队, '正常').trim() || '正常';
+      const 当前序号 = 天赋梯队序列.indexOf(当前梯队);
+      if (当前序号 < 0) return false;
+      const 提升档数 = Math.max(1, toNumber(value.提升档数, 1));
+      let 目标序号 = 当前序号 + 提升档数;
+      const 上限梯队 = toText(value.上限梯队, '').trim();
+      if (上限梯队) {
+        const 上限序号 = 天赋梯队序列.indexOf(上限梯队);
+        if (上限序号 >= 0) 目标序号 = Math.min(目标序号, 上限序号);
+      }
+      目标序号 = Math.min(天赋梯队序列.length - 1, 目标序号);
+      if (目标序号 <= 当前序号) return false;
+      charData.属性.天赋梯队 = 天赋梯队序列[目标序号];
+      delete charData.__mvu_显式天赋梯队;
+      logs.push(`天赋梯队 ${当前梯队}→${天赋梯队序列[目标序号]}`);
+      return true;
     },
 
     读取复制类型(effect = {}) {
