@@ -57,6 +57,7 @@
     STATE_SCHEDULED: 'SCHEDULED_STATE',
     RULE_CHANGED: 'RULE_DELTA',
     SUMMON_WINDOW: 'SCHEDULED_STATE',
+    WITHDRAWAL_CONTEST: 'OBJECTIVE_TERMINAL',
   });
   const effectArrayFields = Object.freeze([
     '_效果数组',
@@ -1535,13 +1536,84 @@
     );
   }
 
+  function parseSignedRange(value) {
+    if (typeof value === 'number') return null;
+    const text = String(value ?? '').trim();
+    const match = text.match(
+      /^([+-]?\d+(?:\.\d+)?)(%?)\s*[~～]\s*([+-]?\d+(?:\.\d+)?)(%?)$/,
+    );
+    if (!match) return null;
+    const first = Number(match[1]);
+    const second = Number(match[3]);
+    if (!Number.isFinite(first) || !Number.isFinite(second)) {
+      return null;
+    }
+    return {
+      lower: Math.min(first, second),
+      upper: Math.max(first, second),
+      isPercent: match[2] === '%' || match[4] === '%',
+    };
+  }
+
+  function signedRangeValue(range, base, ratio) {
+    const scalar =
+      range.lower +
+      clamp(Number(ratio || 0), 0, 1) *
+        (range.upper - range.lower);
+    return range.isPercent
+      ? Number(base || 0) * scalar / 100
+      : scalar;
+  }
+
   function parseSignedValue(value, base = 0) {
     if (typeof value === 'number') return Number(value) || 0;
     const text = String(value ?? '').trim();
     if (!text) return 0;
+    const range = parseSignedRange(text);
+    if (range) return signedRangeValue(range, base, 0.5);
     const numeric = Number.parseFloat(text.replace('%', ''));
     if (!Number.isFinite(numeric)) return 0;
     return text.includes('%') ? Number(base || 0) * numeric / 100 : numeric;
+  }
+
+  function sampleSignedValue(
+    value,
+    base = 0,
+    randomSource = Math.random,
+  ) {
+    const range = parseSignedRange(value);
+    if (!range) return parseSignedValue(value, base);
+    const sampled = Number(
+      typeof randomSource === 'function'
+        ? randomSource()
+        : 0.5,
+    );
+    return signedRangeValue(
+      range,
+      base,
+      Number.isFinite(sampled) ? sampled : 0.5,
+    );
+  }
+
+  function sampleSignedValueExpression(
+    value,
+    randomSource = Math.random,
+  ) {
+    const range = parseSignedRange(value);
+    if (!range) return value;
+    const sampled = Number(
+      typeof randomSource === 'function'
+        ? randomSource()
+        : 0.5,
+    );
+    const scalar =
+      range.lower +
+      clamp(
+        Number.isFinite(sampled) ? sampled : 0.5,
+        0,
+        1,
+      ) * (range.upper - range.lower);
+    return range.isPercent ? `${scalar}%` : scalar;
   }
 
   function classifyDamageType(value = '') {
@@ -2126,6 +2198,28 @@
         comparison,
         { numeric: true },
       );
+    }
+    if (type === '天赋梯队') {
+      const 天赋梯队序号 = {
+        天赋极差: 0,
+        劣等: 1,
+        正常: 2,
+        优秀: 3,
+        天才: 4,
+        顶级天才: 5,
+        绝世妖孽: 6,
+      };
+      const 当前梯队 = String(
+        subject?.属性?.天赋梯队 ||
+        subject?.天赋梯队 ||
+        '正常'
+      ).trim();
+      const actualRank = 天赋梯队序号[当前梯队];
+      const expectedRank = 天赋梯队序号[String(expected || '').trim()];
+      if (!Number.isFinite(actualRank) || !Number.isFinite(expectedRank)) {
+        return compareCondition(当前梯队, String(expected || '').trim(), comparison);
+      }
+      return compareCondition(actualRank, expectedRank, comparison, { numeric: true });
     }
     if (type === '环境满足') {
       const environment = JSON.stringify(
@@ -4550,42 +4644,83 @@
       if (prototype === '时窗修正') {
         targets.forEach(target => {
           const adjustment = Number(effect?.调整回合 ?? effect?.调整次数 ?? 0);
-          const currentTarget = overlay.readUnit(unitId(target));
-          let scheduledHealthDelta = 0;
-          let scheduledTickDelta = 0;
-          overlay.changeUnit(unitId(target), unit => {
+          const targetId = unitId(target);
+          const currentTarget = overlay.readUnit(targetId);
+          const durationChanges = [];
+          const scheduledRows = [];
+          overlay.changeUnit(targetId, unit => {
             const entries = stateEntries(unit).map(([key, state]) => {
               const next = cloneValue(state);
               const current = Math.max(0, Number(next?.duration ?? next?.持续回合 ?? 0));
               const mode = String(effect?.调整方式 || '').trim();
               const duration = /压缩|减少|缩短/.test(mode) ? Math.max(0, current - Math.abs(adjustment)) : current + Math.abs(adjustment);
               const tickDelta = duration - current;
-              scheduledHealthDelta +=
+              const stateKey = String(key || '').trim() || `index:${durationChanges.length}`;
+              const tickWindowId = [
+                context.effectInstanceId,
+                'window',
+                targetId,
+                stateKey,
+              ].join(':');
+              const scheduledHealthDelta =
                 stateScheduledHpDelta(currentTarget, state, duration) -
                 stateScheduledHpDelta(currentTarget, state, current);
-              scheduledTickDelta += tickDelta;
+              durationChanges.push(Object.freeze({
+                stateKey,
+                windowId: tickWindowId,
+                beforeDuration: current,
+                afterDuration: duration,
+                tickDelta,
+              }));
+              if (Math.abs(scheduledHealthDelta) > 1e-9) {
+                scheduledRows.push(Object.freeze({
+                  stateKey,
+                  tickWindowId,
+                  scheduledHealthDelta,
+                  tickDelta,
+                  beforeDuration: current,
+                  afterDuration: duration,
+                }));
+              }
               next.duration = duration;
               return [key, next];
             });
             replaceStates(unit, entries);
           });
-          ledger.addOutcome({ ...context, targetId: unitId(target), outcomeKind: 'STATE_CHANGED', threatValue: 0, evidence: { adjustment } });
-          if (Math.abs(scheduledHealthDelta) > 1e-9) {
+          ledger.addOutcome({
+            ...context,
+            targetId,
+            outcomeKind: 'STATE_CHANGED',
+            threatValue: 0,
+            evidence: {
+              prototype,
+              adjustment,
+              sourceStateKeys: durationChanges
+                .map(change => change.stateKey)
+                .filter(Boolean),
+              durationChanges,
+            },
+          });
+          scheduledRows.forEach(row => {
             ledger.addOutcome({
               ...context,
-              effectInstanceId: `${context.effectInstanceId}:window-health`,
-              targetId: unitId(target),
-              windowId: `${context.effectInstanceId}:window:${scheduledTickDelta}`,
+              effectInstanceId: `${context.effectInstanceId}:window-health:${row.stateKey}`,
+              targetId,
+              windowId: row.tickWindowId,
               outcomeKind: 'SCHEDULED_HP_DELTA',
-              threatValue: Math.abs(scheduledHealthDelta) / Math.max(1, readHpMax(currentTarget)) * 100,
+              threatValue: Math.abs(row.scheduledHealthDelta) / Math.max(1, readHpMax(currentTarget)) * 100,
               evidence: {
-                delta: scheduledHealthDelta,
-                tickDelta: scheduledTickDelta,
+                delta: row.scheduledHealthDelta,
+                tickDelta: row.tickDelta,
                 adjustment,
-                tickCount: Math.max(1, Math.abs(scheduledTickDelta)),
+                tickCount: Math.max(1, Math.abs(row.tickDelta)),
+                sourceStateKey: row.stateKey,
+                tickWindowId: row.tickWindowId,
+                beforeDuration: row.beforeDuration,
+                afterDuration: row.afterDuration,
               },
             });
-          }
+          });
         });
         return;
       }
@@ -5082,6 +5217,7 @@
     nodeBudget,
     battleIntent,
     damageMultiplierByTarget,
+    evadeProbabilityByTarget,
     damageMultiplierResolver,
     hitProbabilityResolver,
   }) {
@@ -5141,6 +5277,7 @@
               windowId: `${summonId}:window:1`,
               battleIntent,
               damageMultiplierByTarget,
+              evadeProbabilityByTarget,
               damageMultiplierResolver,
               hitProbabilityResolver,
             }, 1);
@@ -5200,10 +5337,16 @@
     const supportedPrototypes = new Set([
       '伤害结算',
       '资源变化',
+      '护盾变化',
       '状态施加',
-      '属性修正',
-      '判定修正',
-      '结算修正',
+          '状态移除',
+          '属性修正',
+          '判定修正',
+          '结算修正',
+          '时窗修正',
+          '位移执行',
+          '决策干扰',
+          '召唤生成',
     ]);
     const unsupportedReasons = [];
     const creationCarriers = [];
@@ -5214,7 +5357,8 @@
     if (
       !effects.length &&
       actionKind &&
-      !supportedNoEffectActions.has(actionKind)
+      !supportedNoEffectActions.has(actionKind) &&
+      actionKind !== 'WITHDRAW'
     ) {
       unsupportedReasons.push(`ACTION_KIND:${actionKind}`);
     }
@@ -5307,7 +5451,17 @@
         return;
       }
       if (
-        ['属性修正', '判定修正', '结算修正'].includes(prototype) ||
+        [
+          '护盾变化',
+          '状态移除',
+          '属性修正',
+          '判定修正',
+          '结算修正',
+          '时窗修正',
+          '位移执行',
+          '决策干扰',
+          '召唤生成',
+        ].includes(prototype) ||
         (
           Array.isArray(effect?.条件分支) &&
           effect.条件分支.length > 0
@@ -5522,6 +5676,38 @@
             }),
           }));
         });
+    }
+    if (basis.actionKind === 'WITHDRAW') {
+      const contest = buildWithdrawalContest(worldSnapshot, actor);
+      contributions.push(Object.freeze({
+        rootActionId: String(
+          basis.declaration?.actionId ||
+          basis.identity ||
+          '',
+        ).trim(),
+        sourceActionId: String(
+          basis.declaration?.actionId ||
+          basis.identity ||
+          '',
+        ).trim(),
+        actorId: unitId(actor),
+        effectInstanceId: `${String(
+          basis.declaration?.actionId ||
+          basis.identity ||
+          'withdrawal',
+        ).trim()}:withdrawal-contest`,
+        targetId: unitId(actor),
+        windowId: 'CURRENT_OPPORTUNITY',
+        outcomeKind: 'WITHDRAWAL_CONTEST',
+        expectedDelta: -contest.expectedPursuitDamage,
+        evidence: Object.freeze({
+          ...contest,
+          delta: -contest.expectedPursuitDamage,
+        }),
+      }));
+      if (contest.expectedPursuitDamage > 1e-9) {
+        changedUnitIds.add(unitId(actor));
+      }
     }
     basis.effects.forEach((effect, effectIndex) => {
       const prototype = String(effect?.原型 || '').trim();
@@ -5957,6 +6143,7 @@
       actorId: basis.actorId,
       contributions: Object.freeze(contributions),
       changedUnitIds: Object.freeze([...changedUnitIds].sort()),
+      summonDefinitions: Object.freeze([]),
     });
   }
 
@@ -6017,7 +6204,22 @@
         'R9V2_MECHANICAL_BASIS_UNSUPPORTED:GRANTED_EFFECTS',
       );
     }
-    if (basis.requiresSequentialProjection !== true) {
+    const damageMultiplierOverrides =
+      input?.damageMultiplierByTarget instanceof Map
+        ? input.damageMultiplierByTarget.size
+        : Object.keys(input?.damageMultiplierByTarget || {}).length;
+    const evadeProbabilityOverrides =
+      input?.evadeProbabilityByTarget instanceof Map
+        ? input.evadeProbabilityByTarget.size
+        : Object.keys(input?.evadeProbabilityByTarget || {}).length;
+    const requiresSequentialProjection =
+      basis.requiresSequentialProjection === true ||
+      input?.captureProjectedUnits === true ||
+      damageMultiplierOverrides > 0 ||
+      evadeProbabilityOverrides > 0 ||
+      typeof input?.damageMultiplierResolver === 'function' ||
+      typeof input?.hitProbabilityResolver === 'function';
+    if (!requiresSequentialProjection) {
       return evaluateDirectMechanicalBasis({
         basis,
         worldSnapshot,
@@ -6129,6 +6331,14 @@
           `round:${Number(worldSnapshot?.回合 || 0)}:effect:${effectIndex}`,
         battleIntent: input?.battleIntent || {},
         actionDamageMultiplier: 1,
+        damageMultiplierByTarget:
+          input?.damageMultiplierByTarget || {},
+        evadeProbabilityByTarget:
+          input?.evadeProbabilityByTarget || {},
+        damageMultiplierResolver:
+          input?.damageMultiplierResolver,
+        hitProbabilityResolver:
+          input?.hitProbabilityResolver,
         primarySucceeded: false,
         primaryOutcomeKeyByTarget,
         primaryOutcomeDistributionByTarget,
@@ -6241,10 +6451,30 @@
         if (prototype === '伤害结算') {
           const currentActor = overlay.readUnit(actorId) || effectActor;
           const currentTarget = overlay.readUnit(targetId) || target;
-          const perSegment = estimateHitProbability(
+          const basePerSegment = estimateHitProbability(
             currentActor,
             currentTarget,
             effect,
+          );
+          const resolvedPerSegment =
+            typeof input?.hitProbabilityResolver === 'function'
+              ? input.hitProbabilityResolver({
+                  targetId,
+                  actor: currentActor,
+                  effect,
+                  effectInstanceId,
+                  baseHitProbability: basePerSegment,
+                  recordDependency: recordPreviewDependency,
+                })
+              : null;
+          const perSegment = clamp(
+            resolvedPerSegment !== null &&
+              resolvedPerSegment !== undefined &&
+              Number.isFinite(Number(resolvedPerSegment))
+              ? Number(resolvedPerSegment)
+              : basePerSegment,
+            0,
+            1,
           );
           const segments = Math.max(
             1,
@@ -6252,17 +6482,42 @@
               Number(effect?.攻击段数 || effect?.段数 || 1),
             ) || 1,
           );
+          const evadeProbability = clamp(
+            Number(
+              input?.evadeProbabilityByTarget?.get?.(targetId) ??
+              input?.evadeProbabilityByTarget?.[targetId] ??
+              0
+            ),
+            0,
+            1,
+          );
           const hitProbability =
             1 - Math.pow(1 - perSegment, segments);
           const distribution = [
-            ...(hitProbability < 1 - 1e-12
+            ...(evadeProbability > 1e-12
               ? [{
-                  outcome: 'MISS',
-                  probability: 1 - hitProbability,
+                  outcome: 'EVADED',
+                  probability: evadeProbability,
                 }]
               : []),
-            ...(hitProbability > 1e-12
-              ? [{ outcome: 'HIT', probability: hitProbability }]
+            ...(
+              (1 - evadeProbability) * (1 - hitProbability) >
+                1e-12
+              ? [{
+                  outcome: 'MISS',
+                  probability:
+                    (1 - evadeProbability) *
+                    (1 - hitProbability),
+                }]
+              : []
+            ),
+            ...(
+              (1 - evadeProbability) * hitProbability > 1e-12
+              ? [{
+                  outcome: 'HIT',
+                  probability:
+                    (1 - evadeProbability) * hitProbability,
+                }]
               : []),
           ];
           primaryOutcomeDistributionByTarget.set(
@@ -6271,7 +6526,15 @@
               distribution.map(row => Object.freeze(row)),
             ),
           );
-          primarySuccessProbability.set(targetId, hitProbability);
+          primarySuccessProbability.set(
+            targetId,
+            distribution
+              .filter(row => row.outcome === 'HIT')
+              .reduce(
+                (sum, row) => sum + Number(row.probability || 0),
+                0,
+              ),
+          );
         } else if (prototype === '状态施加') {
           const applicationProbability =
             ownApplicationProbabilityByTarget.get(targetId) ?? 1;
@@ -6307,12 +6570,60 @@
         }
       });
     });
+    settleImmediateCooperativeSummons({
+      overlay,
+      ledger,
+      rootActionId,
+      declaration: basis.declaration,
+      worldSnapshot,
+      nodeBudget,
+      battleIntent: input?.battleIntent || {},
+      damageMultiplierByTarget: input?.damageMultiplierByTarget || {},
+      evadeProbabilityByTarget:
+        input?.evadeProbabilityByTarget || {},
+      damageMultiplierResolver: input?.damageMultiplierResolver,
+      hitProbabilityResolver: input?.hitProbabilityResolver,
+    });
+    ledger.entries.forEach(entry => {
+      const targetId = String(entry?.targetId || '').trim();
+      if (targetId) changedUnitIds.add(targetId);
+    });
+    const summonDefinitions = Object.freeze(
+      overlay
+        .mergedScheduledEvents()
+        .filter(event => event?.type === 'SUMMON_CREATE')
+        .flatMap(event =>
+          Array.isArray(event?.summonDefinitions)
+            ? event.summonDefinitions
+            : [],
+        )
+        .map(summon => Object.freeze(cloneValue(summon))),
+    );
+    const projectedUnitSnapshots =
+      input?.captureProjectedUnits === true
+        ? Object.freeze(
+            [...overlay.mergedMap('changedUnits').entries()]
+              .sort(([left], [right]) =>
+                String(left).localeCompare(String(right))
+              )
+              .map(([projectedUnitId, unit]) =>
+                Object.freeze({
+                  unitId: String(projectedUnitId || '').trim(),
+                  unit: Object.freeze(cloneValue(unit)),
+                })
+              ),
+          )
+        : null;
     return Object.freeze({
       schemaVersion: 'MechanicalBasisEvaluationV1',
       basisIdentity: basis.identity,
       actorId: basis.actorId,
       contributions: Object.freeze([...ledger.entries]),
       changedUnitIds: Object.freeze([...changedUnitIds].sort()),
+      summonDefinitions,
+      ...(projectedUnitSnapshots
+        ? { projectedUnitSnapshots }
+        : {}),
     });
   }
 
@@ -6721,6 +7032,23 @@
     const primaryOutcomeKeyByTarget = new Map();
     const primaryOutcomeDistributionByTarget = new Map();
     let actionDamageMultiplier = 1;
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+      const contest = buildWithdrawalContest(worldSnapshot, actor);
+      ledger.addOutcome({
+        rootActionId,
+        sourceActionId: rootActionId,
+        actor: actor,
+        effectInstanceId: `${rootActionId}:withdrawal-contest`,
+        targetId: unitId(actor),
+        windowId: 'CURRENT_OPPORTUNITY',
+        outcomeKind: 'WITHDRAWAL_CONTEST',
+        threatValue: 0,
+        evidence: {
+          ...contest,
+          delta: -contest.expectedPursuitDamage,
+        },
+      });
+    }
     effects.forEach((effect, index) => {
       const effectWorldSnapshot = overlay.snapshot();
       const effectActor = overlay.readUnit(unitId(actor)) || actor;
@@ -6993,6 +7321,8 @@
       nodeBudget,
       battleIntent: input?.battleIntent || {},
       damageMultiplierByTarget: input?.damageMultiplierByTarget || {},
+      evadeProbabilityByTarget:
+        input?.evadeProbabilityByTarget || {},
       damageMultiplierResolver: input?.damageMultiplierResolver,
       hitProbabilityResolver: input?.hitProbabilityResolver,
     });
@@ -8808,6 +9138,15 @@
     const partialProbability = Math.max(0, partialThreshold - successProbability);
     const failureProbability = Math.max(0, 1 - successProbability - partialProbability);
     const hpMax = readHpMax(actor);
+    const currentHp = readHp(actor);
+    const partialPursuitDamage = Math.min(
+      currentHp,
+      Math.round(hpMax * 0.04),
+    );
+    const failurePursuitDamage = Math.min(
+      currentHp,
+      Math.round(hpMax * 0.08),
+    );
     return Object.freeze({
       withdrawalScore,
       pursuitScore,
@@ -8815,7 +9154,152 @@
       successProbability,
       partialProbability,
       failureProbability,
-      expectedPursuitDamage: partialProbability * hpMax * 0.04 + failureProbability * hpMax * 0.08,
+      partialPursuitDamage,
+      failurePursuitDamage,
+      expectedPursuitDamage:
+        partialProbability * partialPursuitDamage +
+        failureProbability * failurePursuitDamage,
+    });
+  }
+
+  function buildWithdrawalContest(worldSnapshot = {}, actor = {}) {
+    const actorId = unitId(actor);
+    const actorSide = sideOf(worldSnapshot, actor);
+    const visiblePursuers = listUnits(worldSnapshot)
+      .filter(entry =>
+        entry?.unit &&
+        isBattleCapable(entry.unit) &&
+        unitId(entry.unit) !== actorId &&
+        entry.side !== actorSide
+      )
+      .sort((left, right) => {
+        const pressureDelta =
+          calculateWithdrawalPressure(
+            right.unit,
+            actor,
+            'PURSUIT',
+          ) -
+          calculateWithdrawalPressure(
+            left.unit,
+            actor,
+            'PURSUIT',
+          );
+        return Math.abs(pressureDelta) > 1e-9
+          ? pressureDelta
+          : unitId(left.unit).localeCompare(unitId(right.unit));
+      });
+    const visiblePursuerIds = Object.freeze(
+      visiblePursuers
+        .map(entry => unitId(entry.unit))
+        .filter(Boolean),
+    );
+    visiblePursuerIds.forEach(pursuerId =>
+      recordPreviewDependency(
+        `opportunity:${actorId}:withdrawal:pursuer:${pursuerId}`,
+        true,
+      )
+    );
+    recordPreviewDependency(
+      `opportunity:${actorId}:withdrawal:visible-pursuers`,
+      visiblePursuerIds,
+    );
+    const pursuer = visiblePursuers[0]?.unit || null;
+    if (!pursuer) {
+      const probabilityGroupKey = `withdrawal:${stableHash({
+        actorId,
+        visiblePursuerIds,
+        outcome: 'SUCCESS',
+      })}`;
+      return Object.freeze({
+        pursuerId: '',
+        visiblePursuerIds,
+        probabilityGroupKey,
+        withdrawalScore: 0,
+        pursuitScore: 0,
+        ratio: Number.POSITIVE_INFINITY,
+        successProbability: 1,
+        partialProbability: 0,
+        failureProbability: 0,
+        partialPursuitDamage: 0,
+        failurePursuitDamage: 0,
+        expectedPursuitDamage: 0,
+        outcomeDistribution: Object.freeze([
+          Object.freeze({
+            branchKey: 'SUCCESS',
+            outcome: 'SUCCESS',
+            probability: 1,
+            withdrawalSuccess: true,
+            pursuitDamage: 0,
+            delta: 0,
+            hpDamage: 0,
+            conditionalOn: Object.freeze({
+              [probabilityGroupKey]: 'SUCCESS',
+            }),
+            assignments: Object.freeze({
+              [probabilityGroupKey]: 'SUCCESS',
+            }),
+          }),
+        ]),
+      });
+    }
+    const estimate = estimateWithdrawal(actor, pursuer);
+    const probabilityGroupKey = `withdrawal:${stableHash({
+      actorId,
+      pursuerId: unitId(pursuer),
+      visiblePursuerIds,
+      successProbability: estimate.successProbability,
+      partialProbability: estimate.partialProbability,
+      failureProbability: estimate.failureProbability,
+      partialPursuitDamage: estimate.partialPursuitDamage,
+      failurePursuitDamage: estimate.failurePursuitDamage,
+    })}`;
+    const branch = (branchKey, probability, withdrawalSuccess, pursuitDamage) =>
+      Object.freeze({
+        branchKey,
+        outcome: branchKey,
+        probability,
+        withdrawalSuccess,
+        pursuitDamage,
+        delta: -pursuitDamage,
+        hpDamage: pursuitDamage,
+        conditionalOn: Object.freeze({
+          [probabilityGroupKey]: branchKey,
+        }),
+        assignments: Object.freeze({
+          [probabilityGroupKey]: branchKey,
+        }),
+      });
+    return Object.freeze({
+      pursuerId: unitId(pursuer),
+      visiblePursuerIds,
+      probabilityGroupKey,
+      ...estimate,
+      outcomeDistribution: Object.freeze([
+        ...(estimate.successProbability > 1e-12
+          ? [branch(
+              'SUCCESS',
+              estimate.successProbability,
+              true,
+              0,
+            )]
+          : []),
+        ...(estimate.partialProbability > 1e-12
+          ? [branch(
+              'PARTIAL',
+              estimate.partialProbability,
+              false,
+              estimate.partialPursuitDamage,
+            )]
+          : []),
+        ...(estimate.failureProbability > 1e-12
+          ? [branch(
+              'FAILURE',
+              estimate.failureProbability,
+              false,
+              estimate.failurePursuitDamage,
+            )]
+          : []),
+      ]),
     });
   }
 
@@ -8927,6 +9411,7 @@
     calculateWithdrawalPressure,
     calculateWithdrawalPressureDetails,
     estimateWithdrawal,
+    buildWithdrawalContest,
     calculateReactionContest,
     calculateDefenseDamageMultiplier,
     calculateDodgeProbability,
@@ -8941,6 +9426,8 @@
     evaluateBattleObjectives,
     evaluateBattleObjectivesCompact,
     calculateNonlethalHpFloor,
+    sampleSignedValue,
+    sampleSignedValueExpression,
     previewAction,
     buildActionOperationGraph,
     evaluateOperationGraph,

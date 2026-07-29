@@ -4482,7 +4482,11 @@
       eventMeta.appliedDamage = inferredAppliedDamage;
       if (eventMeta.damage === undefined && inferredAppliedDamage > 0) eventMeta.damage = inferredAppliedDamage;
     }
-    if (eventKind === 'hit_result' && inferredAppliedDamage > 0) {
+    if (
+      eventKind === 'hit_result' &&
+      inferredAppliedDamage > 0 &&
+      eventMeta.directHpDamage !== true
+    ) {
       const formula = eventMeta.formulaTrace && typeof eventMeta.formulaTrace === 'object' ? eventMeta.formulaTrace : eventMeta;
       const attackValue = Number(formula.attackValue || eventMeta.formulaAttackValue || 0);
       const defenseValue = Number(formula.defenseValue || eventMeta.formulaDefenseValue || eventMeta.actualDefense || 0);
@@ -4556,6 +4560,26 @@
       targetSide: eventSides.targetSide,
       targetId: targetIds[0] || '',
       targetIds,
+      declaredTargetId: String(
+        payload.declaredTargetId ||
+        eventMeta.declaredTargetId ||
+        '',
+      ).trim(),
+      resolvedTargetId: String(
+        payload.resolvedTargetId ||
+        eventMeta.resolvedTargetId ||
+        '',
+      ).trim(),
+      targetSetHash: String(
+        payload.targetSetHash ||
+        eventMeta.targetSetHash ||
+        '',
+      ).trim(),
+      resolutionEventId: String(
+        payload.resolutionEventId ||
+        eventMeta.resolutionEventId ||
+        '',
+      ).trim(),
       targetScope: String(payload.targetScope || eventMeta.targetScope || matchedSourceAction?.targetScope || matchedAction?.targetScope || matchedCounterStart?.targetScope || '').trim() || (targetName ? 'single' : 'self'),
       actionName,
       initialActionName: normalizeActionDisplayName(payload.initialActionName || eventMeta.initialActionName || actionName),
@@ -6577,6 +6601,14 @@
     outcomeSample = null,
   ) {
     const committedEffect = cloneValue(effect);
+    ['数值', '副数值'].forEach(field => {
+      if (committedEffect[field] === undefined) return;
+      committedEffect[field] =
+        previewRuntime.sampleSignedValueExpression(
+          committedEffect[field],
+          Math.random,
+        );
+    });
     const outcomeSamples = Array.isArray(outcomeSample)
       ? outcomeSample
       : outcomeSample
@@ -6987,6 +7019,151 @@
     return { summons, facts: facts.filter(Boolean) };
   }
 
+  function resolveStructuredTargetInterference(input = {}) {
+    const {
+      combatData,
+      actor,
+      declaration,
+      actionKind,
+      actionRole,
+      eventKind,
+      actionId,
+    } = input;
+    const declaredTargetIds = Array.isArray(declaration?.targetIds)
+      ? declaration.targetIds
+          .map(value => String(value || '').trim())
+          .filter(Boolean)
+      : [];
+    if (
+      eventKind !== 'action_start' ||
+      actionRole !== 'ACTIVE' ||
+      declaredTargetIds.length !== 1
+    ) {
+      return null;
+    }
+    const profile = actionKind === 'BASIC_ATTACK'
+      ? 'HOSTILE_SINGLE'
+      : decisionRuntime.targetProfile(declaration?.skill || {});
+    if (profile !== 'HOSTILE_SINGLE') return null;
+    const actionIdentity = [
+      'FORMAL',
+      decisionRuntime.declarationFingerprint({
+        ...declaration,
+        actionId: '',
+        targetIds: [],
+      }),
+    ].join('\u0000');
+    const rate = Math.max(
+      0,
+      Math.min(
+        1,
+        Number(
+          buildCombatFinalStats(actor)
+            ?.战斗效果?.random_target_rate || 0,
+        ),
+      ),
+    );
+    if (!(rate > 1e-12)) return null;
+    const eligibleTargets = previewRuntime.listUnits(combatData)
+      .map(entry => entry?.unit)
+      .filter(target =>
+        target &&
+        previewRuntime.isBattleCapable(target)
+      )
+      .sort((left, right) =>
+        previewRuntime.unitId(left).localeCompare(
+          previewRuntime.unitId(right),
+        )
+      );
+    const eligibleTargetIds = [
+      ...new Set(
+        eligibleTargets
+          .map(previewRuntime.unitId)
+          .filter(Boolean),
+      ),
+    ];
+    const declaredTargetId = declaredTargetIds[0];
+    if (
+      eligibleTargetIds.length < 2 ||
+      !eligibleTargetIds.includes(declaredTargetId)
+    ) {
+      return null;
+    }
+    const targetSetHash =
+      previewRuntime.stableHash(eligibleTargetIds);
+    const runtimeSeed = Math.max(
+      1,
+      Math.floor(
+        Number(
+          ensureCombatRuntime(combatData)?.decisionSeed || 1,
+        ),
+      ),
+    );
+    const stableRoll = suffix => {
+      const hash = hashBattleValue([
+        runtimeSeed,
+        String(input?.opportunityId || '').trim(),
+        actionId,
+        targetSetHash,
+        rate,
+        suffix,
+      ]);
+      return Number.parseInt(
+        hash.replace(/^r74-/, '').slice(0, 8),
+        16,
+      ) / 0x100000000;
+    };
+    const gateRoll = stableRoll('target-resolution-gate');
+    const triggered =
+      rate >= 1 - 1e-12 || gateRoll < rate;
+    const targetRoll = stableRoll('target-resolution-index');
+    const targetIndex = Math.min(
+      eligibleTargetIds.length - 1,
+      Math.floor(targetRoll * eligibleTargetIds.length),
+    );
+    const resolvedTargetId = triggered
+      ? eligibleTargetIds[targetIndex]
+      : declaredTargetId;
+    const sourceStates = Object.entries(
+      actor?.状态效果 || {},
+    ).filter(([, state]) =>
+      Number(
+        state?.战斗效果?.random_target_rate || 0,
+      ) > 1e-12
+    ).map(([stateKey, state]) => ({
+      stateKey,
+      stateName: String(
+        state?.状态 ||
+        state?.状态名称 ||
+        stateKey,
+      ).trim(),
+      sourceActionId: String(
+        state?.sourceActionId ||
+        state?.来源动作ID ||
+        '',
+      ).trim(),
+      sourceEventId: String(
+        state?.sourceEventId ||
+        state?.来源事件ID ||
+        '',
+      ).trim(),
+    }));
+    return {
+      rate,
+      declaredTargetId,
+      resolvedTargetId,
+      eligibleTargetIds,
+      targetSetHash,
+      actionIdentity,
+      gateRoll,
+      targetRoll,
+      triggered,
+      redirected:
+        triggered && resolvedTargetId !== declaredTargetId,
+      sourceStates,
+    };
+  }
+
   function beginStructuredDeclaration(input = {}) {
     const combatData = input?.combatData;
     let declaration = input?.declaration;
@@ -7009,17 +7186,122 @@
     const primaryEffect = actionKind === 'BASIC_ATTACK'
       ? { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }
       : explicitEffects[0] || { 目标: declaration?.targetKind || '' };
-    const primaryTarget = resolveStructuredTargets(combatData, actor, declaration, primaryEffect)[0] || actor;
     const actionId = String(input?.actionId || nextRuntimeId('battle-action')).trim();
     const chainNodeId = String(input?.chainNodeId || actionId).trim();
     const eventKind = String(input?.eventKind || 'action_start').trim();
     const stateTick = eventKind === 'state_tick';
+    const declaredTargetIds = Array.isArray(declaration?.targetIds)
+      ? declaration.targetIds
+          .map(value => String(value || '').trim())
+          .filter(Boolean)
+      : [];
+    const targetInterference =
+      resolveStructuredTargetInterference({
+        combatData,
+        actor,
+        declaration,
+        actionKind,
+        actionRole,
+        eventKind,
+        actionId,
+        opportunityId: input?.opportunityId,
+      });
+    if (targetInterference) {
+      declaration = {
+        ...declaration,
+        targetIds: [targetInterference.resolvedTargetId],
+      };
+    }
+    const primaryTarget = resolveStructuredTargets(
+      combatData,
+      actor,
+      declaration,
+      primaryEffect,
+    )[0] || actor;
+    const targetResolutionEvent = targetInterference
+      ? writeLedgerEvent(combatData, {
+          eventKind: 'target_resolution',
+          round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(actor),
+          actorName: previewRuntime.unitName(actor),
+          targetId: targetInterference.resolvedTargetId,
+          targetName: previewRuntime.unitName(primaryTarget),
+          targetIds: [targetInterference.resolvedTargetId],
+          declaredTargetId:
+            targetInterference.declaredTargetId,
+          resolvedTargetId:
+            targetInterference.resolvedTargetId,
+          targetSetHash: targetInterference.targetSetHash,
+          actionName,
+          actionType: actionKind,
+          actorControl,
+          actionRole,
+          actionId,
+          sourceActionId: actionId,
+          opportunityId:
+            String(input?.opportunityId || '').trim(),
+          opportunitySequence: Math.max(
+            0,
+            Number(input?.opportunitySequence || 0),
+          ),
+          grantId: String(input?.grantId || '').trim(),
+          chainNodeId,
+          parentNodeId:
+            String(input?.parentNodeId || '').trim(),
+          sourceNodeId:
+            String(input?.parentNodeId || '').trim(),
+          reactionNodeId:
+            String(input?.reactionNodeId || '').trim(),
+          result: targetInterference.redirected
+            ? 'redirected'
+            : 'kept',
+          resultState: 'COMPLETED',
+          ruleCode: 'TARGET_INTERFERENCE_RESOLVED',
+          factType: 'TARGET_RESOLUTION',
+          effectPrototype: '决策干扰',
+          operation: 'TARGET_RESOLVE',
+          probability: targetInterference.rate,
+          roll: targetInterference.gateRoll,
+          meta: {
+            source: 'structured_runtime',
+            declaredTargetId:
+              targetInterference.declaredTargetId,
+            resolvedTargetId:
+              targetInterference.resolvedTargetId,
+            eligibleTargetIds:
+              targetInterference.eligibleTargetIds,
+            targetSetHash:
+              targetInterference.targetSetHash,
+            actionIdentity:
+              targetInterference.actionIdentity,
+            randomTargetRate: targetInterference.rate,
+            gateRoll: targetInterference.gateRoll,
+            targetRoll: targetInterference.targetRoll,
+            triggered: targetInterference.triggered,
+            redirected: targetInterference.redirected,
+            sourceStates: targetInterference.sourceStates,
+            before: targetInterference.declaredTargetId,
+            after: targetInterference.resolvedTargetId,
+          },
+        })
+      : null;
     const actionEvent = writeLedgerEvent(combatData, {
       eventKind,
       round: Number(combatData?.回合 || 0),
       actorName: previewRuntime.unitName(actor),
       targetName: previewRuntime.unitName(primaryTarget),
       targetIds: declaration?.targetIds || [],
+      declaredTargetId:
+        targetInterference?.declaredTargetId ||
+        declaredTargetIds[0] ||
+        '',
+      resolvedTargetId:
+        targetInterference?.resolvedTargetId ||
+        String(declaration?.targetIds?.[0] || '').trim(),
+      targetSetHash:
+        targetInterference?.targetSetHash || '',
+      resolutionEventId:
+        String(targetResolutionEvent?.eventId || '').trim(),
       actionName,
       actionType: actionKind,
       actorControl,
@@ -7044,6 +7326,26 @@
         opportunitySequence: Math.max(0, Number(input?.opportunitySequence || 0)),
         grantId: String(input?.grantId || '').trim(),
         decisionCandidateId: String(input?.decisionCandidateId || '').trim(),
+        declaredTargetIds,
+        resolvedTargetIds:
+          Array.isArray(declaration?.targetIds)
+            ? declaration.targetIds
+            : [],
+        targetResolutionEventId:
+          String(targetResolutionEvent?.eventId || '').trim(),
+        ...(targetInterference
+          ? {
+              targetResolution: {
+                randomTargetRate: targetInterference.rate,
+                targetSetHash:
+                  targetInterference.targetSetHash,
+                actionIdentity:
+                  targetInterference.actionIdentity,
+                triggered: targetInterference.triggered,
+                redirected: targetInterference.redirected,
+              },
+            }
+          : {}),
         effectTargetAudit: structuredDeclarationEffectTargetAudit(combatData, actor, declaration),
         fusionKey: String(declaration?.fusionKey || '').trim(),
         fusionParticipantIds: Array.isArray(declaration?.fusionParticipantIds)
@@ -7063,6 +7365,7 @@
       actorControl,
       actionName,
       primaryTarget,
+      targetResolutionEvent,
       actionEvent,
       allowPreparedDefense: input?.allowPreparedDefense !== false,
       action: { actionKind, actionName, actorControl },
@@ -7127,7 +7430,10 @@
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
     const action = { actionKind, actionName, actorControl };
-    const facts = [actionEvent];
+    const facts = [
+      context?.targetResolutionEvent,
+      actionEvent,
+    ].filter(Boolean);
     const resourceCosts = Object.prototype.hasOwnProperty.call(declaration, 'resourceCosts')
       ? declaration.resourceCosts || {}
       : actionKind === 'RELEASE_SKILL'
@@ -7216,24 +7522,160 @@
       };
       if (actionKind === 'WITHDRAW') {
         const actorSide = previewRuntime.sideOf(combatData, actor);
-        const pursuers = listCombatUnits(combatData)
-          .filter(unit => previewRuntime.isBattleCapable(unit) && previewRuntime.sideOf(combatData, unit) !== actorSide)
-          .sort((left, right) =>
-            previewRuntime.calculateWithdrawalPressure(right, actor, 'PURSUIT') -
-            previewRuntime.calculateWithdrawalPressure(left, actor, 'PURSUIT')
-          );
-        const estimate = previewRuntime.estimateWithdrawal(actor, pursuers[0] || {});
+        const contest = previewRuntime.buildWithdrawalContest(
+          combatData,
+          actor,
+        );
         const roll = Math.random();
-        const succeeded = roll < estimate.successProbability;
-        result = succeeded ? 'withdrawn' : 'failed';
-        primaryOutcome = succeeded ? 'withdrawal_success' : 'withdrawal_failed';
+        const successBoundary = Number(contest.successProbability || 0);
+        const partialBoundary =
+          successBoundary +
+          Number(contest.partialProbability || 0);
+        const outcome =
+          roll < successBoundary
+            ? 'SUCCESS'
+            : roll < partialBoundary
+              ? 'PARTIAL'
+              : 'FAILURE';
+        const result =
+          outcome === 'SUCCESS'
+            ? 'withdrawn'
+            : outcome === 'PARTIAL'
+              ? 'partial'
+              : 'failed';
+        const primaryOutcome =
+          outcome === 'SUCCESS'
+            ? 'withdrawal_success'
+            : outcome === 'PARTIAL'
+              ? 'withdrawal_partial'
+              : 'withdrawal_failed';
+        const pursuer = contest.pursuerId
+          ? listCombatUnits(combatData).find(unit =>
+              previewRuntime.unitId(unit) === contest.pursuerId
+            )
+          : null;
+        const pursuitDamage =
+          outcome === 'PARTIAL'
+            ? Number(contest.partialPursuitDamage || 0)
+            : outcome === 'FAILURE'
+              ? Number(contest.failurePursuitDamage || 0)
+              : 0;
+        const beforeHp = previewRuntime.readHp(actor);
+        const afterHp = writeCombatResource(
+          actor,
+          'hp',
+          beforeHp - pursuitDamage,
+        );
+        const appliedDamage = Math.max(0, beforeHp - afterHp);
+        const childEventIds = [];
+        const withdrawalEvent = writeLedgerEvent(combatData, {
+          eventKind,
+          round: Number(combatData?.回合 || 0),
+          actorId: previewRuntime.unitId(actor),
+          actorName: previewRuntime.unitName(actor),
+          targetId: previewRuntime.unitId(actor),
+          targetName: previewRuntime.unitName(actor),
+          targetIds: [previewRuntime.unitId(actor)],
+          actionName,
+          actionType: actionKind,
+          actorControl,
+          actionRole,
+          actionId: actionEvent.actionId,
+          sourceActionId: actionEvent.actionId,
+          parentNodeId: actionEvent.chainNodeId || '',
+          sourceNodeId: actionEvent.chainNodeId || '',
+          result,
+          resultState:
+            outcome === 'SUCCESS'
+              ? 'SUCCESS'
+              : outcome === 'PARTIAL'
+                ? 'PARTIAL'
+                : 'FAILED',
+          actionStatus: 'COMPLETED',
+          primaryOutcome,
+          factType: 'WITHDRAWAL_CONTEST',
+          operation: 'WITHDRAW_RESOLVE',
+          groupKey: contest.probabilityGroupKey,
+          meta: {
+            ...meta,
+            pursuerId: contest.pursuerId,
+            visiblePursuerIds: contest.visiblePursuerIds,
+            successProbability: contest.successProbability,
+            partialProbability: contest.partialProbability,
+            failureProbability: contest.failureProbability,
+            partialPursuitDamage: contest.partialPursuitDamage,
+            failurePursuitDamage: contest.failurePursuitDamage,
+            expectedPursuitDamage: contest.expectedPursuitDamage,
+            probabilityGroupKey: contest.probabilityGroupKey,
+            outcomeDistribution: contest.outcomeDistribution,
+            withdrawalOutcome: outcome,
+            roll,
+            successBoundary,
+            partialBoundary,
+            childEventIds,
+          },
+        });
+        if (appliedDamage > 1e-9 && pursuer) {
+          const pursuitEvent = writeLedgerEvent(combatData, {
+            eventKind: 'hit_result',
+            round: Number(combatData?.回合 || 0),
+            actorId: previewRuntime.unitId(pursuer),
+            actorName: previewRuntime.unitName(pursuer),
+            targetId: previewRuntime.unitId(actor),
+            targetName: previewRuntime.unitName(actor),
+            targetIds: [previewRuntime.unitId(actor)],
+            actionName: '撤离追击',
+            sourceActionName: actionName,
+            actionType: 'WITHDRAW_PURSUIT',
+            actorControl: 'SYSTEM',
+            actionRole: 'REACTION',
+            actionId: actionEvent.actionId,
+            sourceActionId: actionEvent.actionId,
+            parentNodeId: actionEvent.chainNodeId || '',
+            sourceNodeId: actionEvent.chainNodeId || '',
+            result: 'hit',
+            resultState: 'SUCCESS',
+            actionStatus: 'COMPLETED',
+            primaryOutcome: 'pursuit_damage',
+            appliedDamage,
+            factType: 'DAMAGE',
+            effectPrototype: '撤离追击',
+            sourceEffectId: `${actionEvent.actionId}:withdrawal-contest`,
+            operation: 'DAMAGE',
+            groupKey: contest.probabilityGroupKey,
+            meta: {
+              source: 'structured_runtime',
+              withdrawalOutcome: outcome,
+              probabilityGroupKey: contest.probabilityGroupKey,
+              pursuerId: contest.pursuerId,
+              before: beforeHp,
+              after: afterHp,
+              delta: -appliedDamage,
+              damage: appliedDamage,
+              appliedDamage,
+              directHpDamage: true,
+              sourceActionId: actionEvent.actionId,
+            },
+          });
+          childEventIds.push(String(pursuitEvent?.eventId || '').trim());
+          withdrawalEvent.meta.childEventIds = [...childEventIds];
+          withdrawalEvent.childEventIds = [...childEventIds];
+        } else {
+          withdrawalEvent.meta.childEventIds = [];
+          withdrawalEvent.childEventIds = [];
+        }
         Object.assign(meta, {
-          successProbability: estimate.successProbability,
-          partialProbability: estimate.partialProbability,
-          failureProbability: estimate.failureProbability,
+          withdrawalOutcome: outcome,
+          successProbability: contest.successProbability,
+          partialProbability: contest.partialProbability,
+          failureProbability: contest.failureProbability,
+          partialPursuitDamage: contest.partialPursuitDamage,
+          failurePursuitDamage: contest.failurePursuitDamage,
+          expectedPursuitDamage: contest.expectedPursuitDamage,
+          probabilityGroupKey: contest.probabilityGroupKey,
           roll,
         });
-        if (succeeded) {
+        if (outcome === 'SUCCESS') {
           const runtime = ensureCombatRuntime(combatData);
           runtime.withdrawalSuccess = true;
           runtime.withdrawalSuccessSides = Array.from(new Set([
@@ -7241,6 +7683,21 @@
             actorSide,
           ].filter(Boolean)));
         }
+        facts.push(withdrawalEvent);
+        if (childEventIds.length) {
+          facts.push(
+            ...ensureLedger(combatData).filter(event =>
+              childEventIds.includes(String(event?.eventId || '').trim())
+            ),
+          );
+        }
+        return {
+          actionEvent,
+          facts: facts.filter(Boolean),
+          actor,
+          target: primaryTarget,
+          terminal: 'SUCCESS',
+        };
       }
       facts.push(writeLedgerEvent(combatData, {
         eventKind, round: Number(combatData?.回合 || 0), actorName: previewRuntime.unitName(actor), targetName: previewRuntime.unitName(primaryTarget),
@@ -8001,7 +8458,11 @@
           const resourceText = String(effect?.资源 || '魂力').trim();
           const key = /生命|HP/i.test(resourceText) ? 'hp' : /体力/.test(resourceText) ? 'vit' : /精神/.test(resourceText) ? 'men' : 'sp';
           const before = persistentResourceValue(target, key);
-          const delta = previewRuntime.parseSignedValue(effect?.数值, persistentResourceMax(target, key));
+          const delta = previewRuntime.sampleSignedValue(
+            effect?.数值,
+            persistentResourceMax(target, key),
+            Math.random,
+          );
           // 账本操作码必须取自 resourceOperations 注册表（RESTORE/REDUCE，:45 将其映射到
           // 合同相位 RESOURCE_RESTORE）。此前此处写 RESOURCE_RESTORE/RESOURCE_REDUCE，
           // 是唯一偏离注册表的写入器——r8 从不经此路径给非自身目标恢复生命，
@@ -8119,7 +8580,11 @@
         }
         if (prototype === '护盾变化') {
           const before = currentShieldTotal(target);
-          const requested = previewRuntime.parseSignedValue(effect?.数值, previewRuntime.readHpMax(target));
+          const requested = previewRuntime.sampleSignedValue(
+            effect?.数值,
+            previewRuntime.readHpMax(target),
+            Math.random,
+          );
           if (requested >= 0) applyRuntimeShield(target, requested, Math.max(1, Number(effect?.持续回合 || 1)), actionName);
           else removeRuntimeShield(target, effect?.数值 || requested);
           const after = currentShieldTotal(target);
@@ -8184,7 +8649,14 @@
         }
         const stateName = String(effect?.状态 || '').trim();
         if (/护盾|屏障|结界/.test(stateName)) {
-          const shieldAmount = Math.max(0, previewRuntime.parseSignedValue(effect?.数值, previewRuntime.readHpMax(target)));
+          const shieldAmount = Math.max(
+            0,
+            previewRuntime.sampleSignedValue(
+              effect?.数值,
+              previewRuntime.readHpMax(target),
+              Math.random,
+            ),
+          );
           if (shieldAmount > 0) {
             const beforeShield = currentShieldTotal(target);
             applyRuntimeShield(target, shieldAmount, Math.max(1, Number(effect?.持续回合 || 1)), actionName);
@@ -8826,6 +9298,37 @@
       sourceNodeId: parentActionEvent.chainNodeId || '',
       actionType: actionKind,
     };
+    if (actionKind === 'PASS_OPPORTUNITY') {
+      const sourceActorId = previewRuntime.unitId(sourceActor);
+      const event = writeLedgerEvent(combatData, {
+        ...common,
+        eventKind: 'pass',
+        actorId: previewRuntime.unitId(reactor),
+        targetId: sourceActorId,
+        targetIds: [sourceActorId],
+        actionId: nextRuntimeId('battle-reaction-pass'),
+        actionName: '让过行动',
+        result: 'complete',
+        resultState: 'SUCCESS',
+        actionStatus: 'COMPLETED',
+        primaryOutcome: 'opportunity_passed',
+        ruleCode: 'REACTION_OPPORTUNITY_PASSED',
+        factType: 'REACTION',
+        operation: 'OPPORTUNITY_PASS',
+        meta: {
+          source: 'structured_runtime',
+          voluntaryOpportunityPass: true,
+          preparedDefenseConsumed: !!preparedDefense,
+        },
+      });
+      return {
+        actionKind,
+        event,
+        evaded: false,
+        damageMultiplier: 1,
+        opensCounterCheck: false,
+      };
+    }
     if (actionKind === 'EVADE') {
       const contest = structuredReactionContest(reactor, sourceActor);
       const probability = previewRuntime.calculateDodgeProbability(reactor, sourceActor, !!preparedDefense);
@@ -11644,10 +12147,11 @@
             }
             bindStructuredFusionSource(fusion, actionContext.actionEvent.actionId, actionContext.actionName);
             registerPredictedEvidence(actionContext.actionEvent, decisionResult);
-            const shared = { declaration, actionContext, reactionByTarget: {}, decisionResult };
-            const hostileTargets = node.nodeKind === 'COUNTER' || structuredDamageEffects(declaration).length === 0
+            const resolvedDeclaration = actionContext.declaration;
+            const shared = { declaration: resolvedDeclaration, actionContext, reactionByTarget: {}, decisionResult };
+            const hostileTargets = node.nodeKind === 'COUNTER' || structuredDamageEffects(resolvedDeclaration).length === 0
               ? []
-              : resolveStructuredTargets(combatData, actor, declaration, structuredDamageEffects(declaration)[0])
+              : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
                   .filter(target => inferUnitSide(combatData, previewRuntime.unitName(target)) !== inferUnitSide(combatData, previewRuntime.unitName(actor)));
             hostileTargets.forEach(target => {
               const reactionOpportunity = consumeStructuredReactionOpportunity(
@@ -11949,6 +12453,7 @@
       OBSERVE: '观察',
       GUARD: '保护队友',
       WITHDRAW: '撤退',
+      PASS_OPPORTUNITY: '让过行动',
       USE_ITEM: '使用物品',
       EQUIP: '穿戴装备',
     };
@@ -11988,6 +12493,7 @@
     const explicit = String(event?.factType || event?.meta?.factType || '').trim();
     if (explicit) return explicit;
     if (kind === 'action_start') return inferActionRole(event) === 'STATE_TICK' ? 'STATE_TICK' : 'ACTION_DECLARED';
+    if (kind === 'target_resolution') return 'TARGET_RESOLUTION';
     if (kind === 'charge_start') return 'ACTION_DECLARED';
     if (kind === 'hit_result' || kind === 'counter') return 'DAMAGE';
     if (kind === 'state_tick') return 'STATE_TICK';
@@ -12401,7 +12907,12 @@
       else if (kind === 'dodge') content = `${prefix}${actor}${/success|evaded|dodged|成功|闪避/.test(result) ? '成功闪避' : '未能闪避'}${target ? `${target}的攻击` : ''}。`;
       else if (kind === 'defend') content = `${prefix}${actor}完成防御结算（${result || '已防御'}）。`;
       else if (kind === 'pass' && String(event?.actionType || '').trim().toUpperCase() === 'WITHDRAW') {
-        content = `${prefix}${actor}${String(event?.primaryOutcome || '').trim() === 'withdrawal_success' ? '成功撤离战场' : '尝试撤离，但未能成功摆脱追击'}。`;
+        const outcome = String(event?.primaryOutcome || '').trim();
+        content = outcome === 'withdrawal_success'
+          ? `${prefix}${actor}成功撤离战场。`
+          : outcome === 'withdrawal_partial'
+            ? `${prefix}${actor}未能完全撤离，并在追击中受伤。`
+            : `${prefix}${actor}撤离失败并遭到追击。`;
       }
       else content = `${prefix}${actor}的【${action}】未能执行（${result || event?.failReason || '动作受阻'}）。`;
       const textBlock = { type: 'text', content, ...source };
@@ -12903,8 +13414,13 @@
         )) {
           if (String(fact.outcomeKind || '').trim() === 'withdrawal_success' || /withdrawn|success/i.test(String(fact.resultState || '').trim())) {
             push(`${actor}成功撤离战场`);
+          } else if (
+            String(fact.outcomeKind || '').trim() === 'withdrawal_partial' ||
+            /partial/i.test(String(fact.resultState || '').trim())
+          ) {
+            push(`${actor}未能完全撤离，并在追击中受伤`);
           } else {
-            push(`${actor}尝试撤离，但未能成功摆脱追击`);
+            push(`${actor}撤离失败并遭到追击`);
           }
           return;
         }
@@ -14225,6 +14741,80 @@
       .filter(event => ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()))
       .map(event => [String(event?.actionId || '').trim(), event])
       .filter(([actionId]) => !!actionId));
+    eventLedger
+      .filter(event =>
+        String(event?.eventKind || '').trim() ===
+          'target_resolution'
+      )
+      .forEach(event => {
+        const actionId = String(
+          event?.actionId || event?.sourceActionId || '',
+        ).trim();
+        const actionStart = actionStartsById.get(actionId);
+        const declaredTargetId = String(
+          event?.declaredTargetId ||
+          event?.meta?.declaredTargetId ||
+          '',
+        ).trim();
+        const resolvedTargetId = String(
+          event?.resolvedTargetId ||
+          event?.meta?.resolvedTargetId ||
+          '',
+        ).trim();
+        const targetSetHash = String(
+          event?.targetSetHash ||
+          event?.meta?.targetSetHash ||
+          '',
+        ).trim();
+        const eligibleTargetIds =
+          Array.isArray(event?.meta?.eligibleTargetIds)
+            ? event.meta.eligibleTargetIds
+                .map(value => String(value || '').trim())
+                .filter(Boolean)
+            : [];
+        if (
+          !actionId ||
+          !declaredTargetId ||
+          !resolvedTargetId ||
+          !targetSetHash ||
+          !eligibleTargetIds.includes(resolvedTargetId)
+        ) {
+          pushFatal('TARGET_RESOLUTION_FACT_INCOMPLETE', {
+            eventId: String(event?.eventId || '').trim(),
+            actionId,
+            declaredTargetId,
+            resolvedTargetId,
+            targetSetHash,
+            eligibleTargetIds,
+          });
+          return;
+        }
+        if (
+          !actionStart ||
+          Number(event?.sequence || 0) >=
+            Number(actionStart?.sequence || 0) ||
+          String(
+            actionStart?.resolvedTargetId ||
+            actionStart?.meta?.resolvedTargetIds?.[0] ||
+            actionStart?.targetId ||
+            '',
+          ).trim() !== resolvedTargetId ||
+          String(
+            actionStart?.resolutionEventId ||
+            actionStart?.meta?.targetResolutionEventId ||
+            '',
+          ).trim() !== String(event?.eventId || '').trim()
+        ) {
+          pushFatal('TARGET_RESOLUTION_ACTION_MISMATCH', {
+            eventId: String(event?.eventId || '').trim(),
+            actionId,
+            actionStartEventId:
+              String(actionStart?.eventId || '').trim(),
+            declaredTargetId,
+            resolvedTargetId,
+          });
+        }
+      });
     const combatUnitNameById = new Map(listCombatUnits(combatData).map(unit => [
       previewRuntime.unitId(unit),
       previewRuntime.unitName(unit),
@@ -14697,7 +15287,7 @@
       ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) &&
       normalizeActionRole(event?.actionRole || 'ACTIVE') === 'ACTIVE'
     );
-    const terminalKinds = new Set(['hit_result', 'state_apply', 'resource_change', 'item_consume', 'create', 'summon_create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'complete', 'blocked_action', 'failed_action', 'target_fail']);
+    const terminalKinds = new Set(['hit_result', 'state_apply', 'state_replace', 'resource_change', 'item_consume', 'create', 'summon_create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'complete', 'blocked_action', 'failed_action', 'target_fail']);
     activeStarts.forEach(start => {
       if (String(start?.eventKind || '').trim() === 'charge_start') return;
       const terminal = eventLedger.find(event =>

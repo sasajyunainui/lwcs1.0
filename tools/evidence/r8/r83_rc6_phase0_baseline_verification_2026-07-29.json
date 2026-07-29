@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "RC6Phase0BaselineVerificationV1",
+  "generatedAt": "2026-07-29T05:47:59.865Z",
+  "repository": {
+    "head": "546bdfd03a289eec89b6f1aa1e076ebebea6e4b6",
+    "branch": "master"
+  },
+  "sourceFiles": {
+    "BattleDecision_Module.js": {
+      "sha256": "75607727b39ef693e5a1afbe548d20dfa08e7a40d362f93e96128a4281e1e53c",
+      "bytes": 1526740
+    },
+    "BattlePreview_Module.js": {
+      "sha256": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+      "bytes": 365715
+    },
+    "BattleReport_Module.js": {
+      "sha256": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626",
+      "bytes": 226071
+    },
+    "BattleRuntime_Module.js": {
+      "sha256": "ecf518517322b71c6e9691efaed061dea47c6d057f7cc8570f94099e42769465",
+      "bytes": 811354
+    }
+  },
+  "patchOwnershipManifest": {
+    "path": "tools/evidence/r8/r83_rc6_phase0_patch_ownership_manifest_2026-07-29.json",
+    "sha256": "4d141dc92fd1de02cf7b395bfa88628e75a65174d9f27c393579d135d610a9ef",
+    "hunkCount": 192
+  },
+  "gates": {
+    "syntax": {
+      "BattleDecision_Module.js": {
+        "exitCode": 0,
+        "passed": true,
+        "stderr": ""
+      },
+      "BattlePreview_Module.js": {
+        "exitCode": 0,
+        "passed": true,
+        "stderr": ""
+      },
+      "BattleReport_Module.js": {
+        "exitCode": 0,
+        "passed": true,
+        "stderr": ""
+      },
+      "BattleRuntime_Module.js": {
+        "exitCode": 0,
+        "passed": true,
+        "stderr": ""
+      }
+    },
+    "phase1": {
+      "checkCount": 16,
+      "passedCount": 16,
+      "failedCount": 0,
+      "equivalenceCaseCount": 8,
+      "coordinatorStatus": "COORDINATOR_BOUNDARY_PASSED"
+    },
+    "phase3": {
+      "checkCount": 45,
+      "passedCount": 45,
+      "failedCount": 0,
+      "opportunityCheckCount": 3,
+      "runtimeEventContractStatus": "RUNTIME_EVENT_CONTRACT_PASSED",
+      "exactIncrementalStatus": "MECHANICAL_AND_BEHAVIOR_LAYER_EXACT_REUSE_PASSED"
+    },
+    "phase7": {
+      "checkCount": 221,
+      "passedCount": 221,
+      "failedCount": 0,
+      "executableContractCount": 54,
+      "r8ValueChainStatus": "R8_GOAL_CAUSAL_SELECTION_CONTRACT_PASSED"
+    },
+    "r9v2CandidateProof": {
+      "caseCount": 24,
+      "actorRequestCount": 132,
+      "uniqueOfficialRequestCount": 264,
+      "requestErrorCount": 0,
+      "formalCandidateCount": 2115,
+      "futureCandidateCount": 2136,
+      "totalCandidateProofRows": 4251,
+      "proofFoundCount": 4251,
+      "proofMissingCount": 0,
+      "unsupportedProofRowCount": 0,
+      "objectiveEquationErrorRowCount": 0,
+      "reconciliationErrorRowCount": 0,
+      "candidatePresenceMismatchRowCount": 0,
+      "requestShapeMismatchCount": 0,
+      "formalCandidateCoverageRatio": 1,
+      "futureCandidateCoverageRatio": 1
+    },
+    "tacticalPrimitiveProbe": {
+      "caseCount": 24,
+      "candidateCount": 0,
+      "decisionInterferenceCandidateCount": 0,
+      "timeWindowCandidateCount": 0,
+      "withdrawCandidateCount": 0,
+      "observedClusterCount": 0,
+      "unobservedClusters": [
+        "decisionInterference",
+        "timeWindow",
+        "withdraw"
+      ]
+    },
+    "reportDto": {
+      "status": "BLOCKED",
+      "rejectionCodes": [
+        "ZERO_PROGRESS",
+        "OBJECTIVE_STALL",
+        "DOMINATED",
+        "UNCOMPENSATED_RISK"
+      ]
+    },
+    "phase10": {
+      "status": "BLOCKED",
+      "passedCount": 20,
+      "failedCount": 7,
+      "failedChecks": [
+        "report:r8-decision-count",
+        "report:number-dual-source",
+        "decision:future-natural-descriptors-preserve-resource-continuity",
+        "ui:preview-never-commits",
+        "ui:report-dto-four-views",
+        "ui:prediction-and-settlement-numbers-are-separated",
+        "bridge:ai-summary-uses-structured-report-input"
+      ]
+    }
+  },
+  "acceptance": {
+    "phase0Status": "PASSED",
+    "behaviorBaselineStatus": "ACCEPTED",
+    "reportMigrationStatus": "BLOCKED",
+    "providerSwitchStatus": "NOT_READY",
+    "overallCompletionStatus": "NOT_COMPLETE"
+  },
+  "failures": []
+}

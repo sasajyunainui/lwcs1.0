@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "PatchOwnershipManifestAuditV1",
+  "manifestPath": "tools/evidence/r8/r83_rc6_phase0_patch_ownership_manifest_2026-07-29.json",
+  "manifestSha256": "acb81968c2facbc2bd698b99a90410863f4e497cd831a87dcb83be037b49f696",
+  "checkedHunks": 192,
+  "ownershipCounts": {
+    "B5_CANONICAL_FACTS": 1,
+    "R9V2_CAUSAL_PARETO": 2,
+    "R9V2_MECHANICAL_POOL": 4,
+    "R9V2_REACTION_PASS": 2,
+    "R9V2_RESPONSE_TERMINAL": 1,
+    "R9V2_SUMMON_CREATION_WINDOW": 1,
+    "RC6_BASELINE_RECONCILIATION": 175,
+    "REPORT_PROJECTION_FOUNDATION": 6
+  },
+  "confidenceCounts": {
+    "HIGH": 2,
+    "MEDIUM": 15,
+    "LOW": 175
+  },
+  "failures": [],
+  "status": "PASSED"
+}

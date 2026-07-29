@@ -1331,13 +1331,60 @@
   }
 
   function visibleStates(unit = {}) {
-    return Object.values(unit?.状态效果 || {}).filter(state => state && typeof state === 'object' && state?.隐藏 !== true && state?.hidden !== true).map(state => ({
-      name: String(state?.状态 || state?.状态名称 || '').trim(),
-      duration: Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0)),
-      type: String(state?.类型 || state?.正负面 || '').trim(),
-      combatEffect: cloneValue(state?.战斗效果 || {}),
-      applicationProbability: clamp(Number(state?.__previewApplicationProbability ?? 1), 0, 1),
-    }));
+    const hpMax = Math.max(1, preview.readHpMax(unit));
+    return Object.values(unit?.状态效果 || {})
+      .filter(state =>
+        state &&
+        typeof state === 'object' &&
+        state?.隐藏 !== true &&
+        state?.hidden !== true
+      )
+      .map(state => {
+        const shieldRatio =
+          Math.max(0, Number(state?.shield_value || 0)) / hpMax;
+        return {
+          name: String(
+            state?.状态 || state?.状态名称 || '',
+          ).trim(),
+          duration: Math.max(
+            0,
+            Number(state?.duration ?? state?.持续回合 ?? 0),
+          ),
+          type: String(
+            state?.类型 || state?.正负面 || '',
+          ).trim(),
+          combatEffect: cloneValue(state?.战斗效果 || {}),
+          applicationProbability: clamp(
+            Number(
+              state?.__previewApplicationProbability ?? 1,
+            ),
+            0,
+            1,
+          ),
+          ...(shieldRatio > 1e-12 ? { shieldRatio } : {}),
+        };
+      });
+  }
+
+  function visibleTargetInterferenceRate(unit = {}) {
+    const states = Array.isArray(unit?.状态效果)
+      ? unit.状态效果
+      : Object.values(unit?.状态效果 || {});
+    return clamp(
+      states.reduce(
+        (sum, state) =>
+          sum +
+          Math.max(
+            0,
+            Number(
+              state?.战斗效果?.random_target_rate || 0,
+            ),
+          ),
+        0,
+      ),
+      0,
+      1,
+    );
   }
 
   function decisionRuntimeState(worldSnapshot = {}) {
@@ -1389,7 +1436,7 @@
         id,
         side: entry.side,
         allied,
-        alive: preview.isAlive(unit),
+        alive: preview.isPhysicallyAlive(unit),
         hpRatio: preview.readHp(unit) / preview.readHpMax(unit),
         publicUnitRole,
         strengthRange: allied ? [level, level] : prior.strengthRange || [Math.max(1, level - strengthHalfWidth), level + strengthHalfWidth],
@@ -1408,6 +1455,8 @@
     const targetRealization = existing?.targetRealization && typeof existing.targetRealization === 'object'
       ? existing.targetRealization
       : {};
+    const targetInterferenceRate =
+      visibleTargetInterferenceRate(actor);
     const visibleRevision = Object.values(units).map(unit => [
       unit.id,
       unit.side,
@@ -1433,6 +1482,10 @@
       mechanics,
       publicResponses,
       targetRealization,
+      targetInterferenceRate,
+      targetInterferencePossible:
+        targetInterferenceRate > 1e-12 ||
+        existing?.confused === true,
     };
   }
 
@@ -1492,6 +1545,13 @@
         类型: String(state?.type || '').trim(),
         战斗效果: cloneValue(state?.combatEffect || {}),
         __previewApplicationProbability: clamp(Number(state?.applicationProbability ?? 1), 0, 1),
+        ...(Number(state?.shieldRatio || 0) > 1e-12
+          ? {
+              shield_value:
+                hpMax *
+                Math.max(0, Number(state.shieldRatio || 0)),
+            }
+          : {}),
       }]));
       const projected = {
         id,
@@ -3596,7 +3656,15 @@
       : assistOnly && opportunityValidTargetIds.size
         ? hostile.filter(target => opportunityValidTargetIds.has(preview.unitId(target)))
         : hostile;
-    const candidates = reactionOnly || forcedSkill || !basicAttackAllowed ? [] : directHostile.map(target => {
+    const interferencePossible = opportunityRole === 'ACTIVE' &&
+      (
+        input?.beliefState?.targetInterferencePossible === true ||
+        input?.beliefState?.confused === true
+      );
+    const directBasicTargets = interferencePossible
+      ? aliveEntries(worldSnapshot).map(entry => entry.unit)
+      : directHostile;
+    const candidates = reactionOnly || forcedSkill || !basicAttackAllowed ? [] : directBasicTargets.map(target => {
       const targetId = preview.unitId(target);
       return { candidateId: `${actorId}:basic:${targetId}`, declaration: { actionId: `${actorId}:basic:${targetId}`, actorId, actionKind: 'BASIC_ATTACK', targetIds: [targetId] } };
     });
@@ -29976,7 +30044,7 @@
     return true;
   }
 
-  function r8HasDefenseWindow(request = {}) {
+  function hasDefenseWindow(request = {}) {
     const actorId = String(request?.actorId || '').trim();
     if (!actorId) return false;
     const defensiveGrantTypes = new Set([
@@ -30082,7 +30150,7 @@
       consumesOptionalReaction ||
       Object.values(candidate?.costs || {}).some(value => Number(value || 0) > 0) ||
       (route?.actionPoolEffects || []).some(effect => effect.outcomeKind === 'IRREVERSIBLE_ASSET_LOST');
-    if (['DEFEND', 'EVADE'].includes(actionKind) && !r8HasDefenseWindow(request)) {
+    if (['DEFEND', 'EVADE'].includes(actionKind) && !hasDefenseWindow(request)) {
       return 'ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED';
     }
     if (
@@ -31284,8 +31352,125 @@
     return clamp(Number(value ?? 1), 0, 1);
   }
 
+  function r9v2NormalizeSummonDefinitions(values = []) {
+    const byId = new Map();
+    (Array.isArray(values) ? values : []).forEach(value => {
+      if (!value || typeof value !== 'object') return;
+      const summonId = String(
+        value?.id ||
+        value?.召唤键 ||
+        value?.summonId ||
+        '',
+      ).trim();
+      if (!summonId) return;
+      const definitionHash = String(
+        value?.__definitionHash ||
+        value?.definitionHash ||
+        '',
+      ).trim();
+      const existing = byId.get(summonId);
+      if (
+        existing &&
+        String(existing?.__definitionHash || '').trim() !== definitionHash
+      ) {
+        throw new Error(`SUMMON_PREVIEW_INSTANCE_CONFLICT:${summonId}`);
+      }
+      if (!existing) {
+        byId.set(
+          summonId,
+          Object.freeze({
+            ...cloneValue(value),
+            id: summonId,
+            召唤键: String(value?.召唤键 || summonId).trim(),
+            __definitionHash: definitionHash,
+          }),
+        );
+      }
+    });
+    return Object.freeze(
+      [...byId.values()].sort((left, right) =>
+        String(left?.id || '').localeCompare(String(right?.id || ''))
+      ),
+    );
+  }
+
+  function r9v2SummonDefinitionsFromEvents(events = []) {
+    return r9v2NormalizeSummonDefinitions(
+      (Array.isArray(events) ? events : [])
+        .filter(event => event?.type === 'SUMMON_CREATE')
+        .flatMap(event =>
+          Array.isArray(event?.summonDefinitions)
+            ? event.summonDefinitions
+            : [],
+        ),
+    );
+  }
+
   function r9v2NormalizedContribution(contribution = {}) {
     const evidence = contribution?.evidence || {};
+    const projectedEffect =
+      evidence?.projectedEffect &&
+      typeof evidence.projectedEffect === 'object'
+        ? evidence.projectedEffect
+        : {};
+    const prototype = String(
+      evidence?.prototype ||
+      projectedEffect?.原型 ||
+      '',
+    ).trim();
+    const state = String(
+      evidence?.state ||
+      projectedEffect?.状态 ||
+      projectedEffect?.状态名称 ||
+      '',
+    ).trim();
+    const check = String(
+      evidence?.check ||
+      projectedEffect?.判定 ||
+      '',
+    ).trim();
+    const settlement = String(
+      evidence?.settlement ||
+      projectedEffect?.结算 ||
+      '',
+    ).trim();
+    const attribute = Array.isArray(
+      evidence?.attribute || projectedEffect?.属性
+    )
+      ? (
+        Array.isArray(evidence?.attribute)
+          ? evidence.attribute
+          : projectedEffect?.属性
+      )
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .join('、')
+      : String(
+        evidence?.attribute ||
+        projectedEffect?.属性 ||
+        '',
+      ).trim();
+    const value = evidence?.value ?? projectedEffect?.数值 ?? '';
+    const combatEffect = {
+      ...preview.deriveStateCombatEffect({
+        ...projectedEffect,
+        原型: prototype || projectedEffect?.原型,
+        状态: state || projectedEffect?.状态,
+        状态名称: state || projectedEffect?.状态名称,
+        判定: check || projectedEffect?.判定,
+        结算: settlement || projectedEffect?.结算,
+        数值: value,
+      }),
+      ...(
+        evidence?.combatEffect &&
+        typeof evidence.combatEffect === 'object'
+          ? evidence.combatEffect
+          : {}
+      ),
+    };
+    const withdrawalContest =
+      String(contribution?.outcomeKind || '').trim() ===
+        'WITHDRAWAL_CONTEST';
     const outcomeDistribution = Object.freeze(
       (Array.isArray(evidence?.outcomeDistribution)
         ? evidence.outcomeDistribution
@@ -31294,6 +31479,9 @@
         branchKey: String(
           outcome?.branchKey || `outcome:${index}`,
         ).trim(),
+        outcome: String(
+          outcome?.outcome || outcome?.branchKey || '',
+        ).trim().toUpperCase(),
         probability: clamp(Number(outcome?.probability ?? 0), 0, 1),
         delta: Number.isFinite(Number(outcome?.delta))
           ? Number(outcome.delta)
@@ -31309,6 +31497,17 @@
         hpDamage: Number.isFinite(Number(outcome?.hpDamage))
           ? Number(outcome.hpDamage)
           : null,
+        ...(withdrawalContest
+          ? {
+              withdrawalSuccess:
+                outcome?.withdrawalSuccess === true,
+              pursuitDamage: Number.isFinite(
+                Number(outcome?.pursuitDamage),
+              )
+                ? Math.max(0, Number(outcome.pursuitDamage))
+                : null,
+            }
+          : {}),
         conditionalOn: Object.freeze({
           ...(outcome?.conditionalOn || {}),
         }),
@@ -31318,6 +31517,9 @@
       })),
     );
     return Object.freeze({
+      effectInstanceId: String(
+        contribution?.effectInstanceId || '',
+      ).trim(),
       targetId: String(contribution?.targetId || '').trim(),
       outcomeKind: String(contribution?.outcomeKind || '').trim(),
       windowId: String(contribution?.windowId || '').trim(),
@@ -31327,6 +31529,11 @@
           ? Number(evidence.delta)
           : 0,
       probability: r9v2ContributionProbability(contribution),
+      probabilityGroupKey: String(
+        evidence?.probabilityGroupKey ||
+        evidence?.distributionGroupKey ||
+        '',
+      ).trim(),
       evidence: Object.freeze({
         resource: String(evidence?.resource || '').trim(),
         before: Number.isFinite(Number(evidence?.before))
@@ -31343,13 +31550,25 @@
           : 0,
         duration: Math.max(
           0,
-          Number(evidence?.duration ?? evidence?.combatEffect?.duration ?? 0),
+          Number(
+            evidence?.duration ??
+            projectedEffect?.持续回合 ??
+            evidence?.combatEffect?.duration ??
+            0,
+          ),
         ),
-        state: String(evidence?.state || '').trim(),
-        prototype: String(evidence?.prototype || '').trim(),
-        check: String(evidence?.check || '').trim(),
-        settlement: String(evidence?.settlement || '').trim(),
-        attribute: String(evidence?.attribute || '').trim(),
+        state,
+        interference: String(evidence?.interference || '').trim(),
+        prototype,
+        positionType: String(evidence?.positionType || '').trim(),
+        positionObject: String(evidence?.positionObject || '').trim(),
+        distance: Number.isFinite(Number(evidence?.distance))
+          ? Math.max(0, Number(evidence.distance))
+          : null,
+        check,
+        settlement,
+        attribute,
+        value,
         cancelsAction: evidence?.cancelsAction === true,
         marginal:
           typeof evidence?.marginal === 'boolean'
@@ -31380,14 +31599,47 @@
               : [],
           ),
         ),
-        combatEffect: Object.freeze(
-          cloneValue(
-            evidence?.combatEffect &&
-            typeof evidence.combatEffect === 'object'
-              ? evidence.combatEffect
-              : {},
-          ),
+        sourceStateKey: String(
+          evidence?.sourceStateKey || '',
+        ).trim(),
+        sourceStateKeys: Object.freeze(
+          (Array.isArray(evidence?.sourceStateKeys)
+            ? evidence.sourceStateKeys
+            : []
+          ).map(value => String(value || '').trim()).filter(Boolean),
         ),
+        tickWindowId: String(
+          evidence?.tickWindowId || '',
+        ).trim(),
+        durationChanges: Object.freeze(
+          (Array.isArray(evidence?.durationChanges)
+            ? evidence.durationChanges
+            : []
+          ).map(change => Object.freeze({
+            stateKey: String(change?.stateKey || '').trim(),
+            windowId: String(change?.windowId || '').trim(),
+            beforeDuration: Math.max(
+              0,
+              Number(change?.beforeDuration || 0),
+            ),
+            afterDuration: Math.max(
+              0,
+              Number(change?.afterDuration || 0),
+            ),
+            tickDelta: Number.isFinite(Number(change?.tickDelta))
+              ? Number(change.tickDelta)
+              : 0,
+          })).filter(change => change.stateKey),
+        ),
+        removedKeys: Object.freeze(
+          (Array.isArray(evidence?.removedKeys)
+            ? evidence.removedKeys
+            : []
+          ).map(value =>
+            String(value || '').trim()
+          ).filter(Boolean),
+        ),
+        combatEffect: Object.freeze(cloneValue(combatEffect)),
         distributionGroupKey: String(
           evidence?.distributionGroupKey ||
           evidence?.probabilityGroupKey ||
@@ -31422,14 +31674,7 @@
         expectedHealing: Number.isFinite(Number(evidence?.expectedHealing))
           ? Math.max(0, Number(evidence.expectedHealing))
           : 0,
-        projectedEffect: Object.freeze(
-          cloneValue(
-            evidence?.projectedEffect &&
-            typeof evidence.projectedEffect === 'object'
-              ? evidence.projectedEffect
-              : {},
-          ),
-        ),
+        projectedEffect: Object.freeze(cloneValue(projectedEffect)),
         productId: String(evidence?.productId || '').trim(),
         quantity: Number.isFinite(Number(evidence?.quantity))
           ? Math.max(0, Number(evidence.quantity))
@@ -31445,6 +31690,99 @@
               : [],
           ),
         ),
+        summonName: String(evidence?.summonName || '').trim(),
+        actionMode: String(evidence?.actionMode || '').trim(),
+        immediateWindowConsumed:
+          evidence?.immediateWindowConsumed === true,
+        remainingWindows: Math.max(
+          0,
+          Number(evidence?.remainingWindows || 0),
+        ),
+        actionPotential: Math.max(
+          0,
+          Number(evidence?.actionPotential || 0),
+        ),
+        instanceId: String(
+          evidence?.instanceId ||
+          evidence?.summonInstanceId ||
+          '',
+        ).trim(),
+        definitionHash: String(
+          evidence?.definitionHash || '',
+        ).trim(),
+        probabilityGroupKey: String(
+          evidence?.probabilityGroupKey || '',
+        ).trim(),
+        ...(withdrawalContest
+          ? {
+              pursuerId:
+                String(evidence?.pursuerId || '').trim(),
+              visiblePursuerIds: Object.freeze(
+                (Array.isArray(evidence?.visiblePursuerIds)
+                  ? evidence.visiblePursuerIds
+                  : []
+                ).map(value =>
+                  String(value || '').trim()
+                ).filter(Boolean),
+              ),
+              successProbability: Number.isFinite(
+                Number(evidence?.successProbability),
+              )
+                ? clamp(
+                    Number(evidence.successProbability),
+                    0,
+                    1,
+                  )
+                : null,
+              partialProbability: Number.isFinite(
+                Number(evidence?.partialProbability),
+              )
+                ? clamp(
+                    Number(evidence.partialProbability),
+                    0,
+                    1,
+                  )
+                : null,
+              failureProbability: Number.isFinite(
+                Number(evidence?.failureProbability),
+              )
+                ? clamp(
+                    Number(evidence.failureProbability),
+                    0,
+                    1,
+                  )
+                : null,
+              partialPursuitDamage: Number.isFinite(
+                Number(evidence?.partialPursuitDamage),
+              )
+                ? Math.max(
+                    0,
+                    Number(evidence.partialPursuitDamage),
+                  )
+                : null,
+              failurePursuitDamage: Number.isFinite(
+                Number(evidence?.failurePursuitDamage),
+              )
+                ? Math.max(
+                    0,
+                    Number(evidence.failurePursuitDamage),
+                  )
+                : null,
+              expectedPursuitDamage: Number.isFinite(
+                Number(evidence?.expectedPursuitDamage),
+              )
+                ? Math.max(
+                    0,
+                    Number(evidence.expectedPursuitDamage),
+                  )
+                : null,
+            }
+          : {}),
+        executionRole: String(
+          contribution?.executionRole ||
+          evidence?.executionRole ||
+          '',
+        ).trim(),
         productionWindow: Number.isFinite(
           Number(evidence?.productionWindow),
         )
@@ -31581,6 +31919,9 @@
           candidate,
           declaration,
         ),
+        summonDefinitions: r9v2SummonDefinitionsFromEvents(
+          previewResult?.scheduledEvents || [],
+        ),
         actionKind: String(declaration?.actionKind || '').trim().toUpperCase(),
         targetIds: Object.freeze(
           (Array.isArray(declaration?.targetIds)
@@ -31645,6 +31986,9 @@
 
   function r9v2MechanicalComparable(contribution = {}) {
     return {
+      effectInstanceId: String(
+        contribution?.effectInstanceId || '',
+      ).trim(),
       targetId: String(contribution?.targetId || '').trim(),
       outcomeKind: String(contribution?.outcomeKind || '').trim(),
       windowId: String(contribution?.windowId || '').trim(),
@@ -31661,10 +32005,14 @@
       state: String(
         contribution?.evidence?.state || '',
       ).trim(),
+      interference: String(
+        contribution?.evidence?.interference || '',
+      ).trim(),
       cancelsAction:
         contribution?.evidence?.cancelsAction === true,
       modifierEvidenceIdentity: preview.stableHash({
         prototype: contribution?.evidence?.prototype || '',
+        interference: contribution?.evidence?.interference || '',
         check: contribution?.evidence?.check || '',
         settlement: contribution?.evidence?.settlement || '',
         attribute: contribution?.evidence?.attribute || '',
@@ -31682,6 +32030,78 @@
         useEffects: contribution?.evidence?.useEffects || [],
         productionWindow: contribution?.evidence?.productionWindow ?? null,
       }),
+      summonEvidenceIdentity:
+        String(contribution?.outcomeKind || '').trim() ===
+          'SUMMON_WINDOW'
+          ? preview.stableHash({
+              summonName: contribution?.evidence?.summonName || '',
+              actionMode: contribution?.evidence?.actionMode || '',
+              immediateWindowConsumed:
+                contribution?.evidence?.immediateWindowConsumed === true,
+              remainingWindows:
+                contribution?.evidence?.remainingWindows ?? null,
+              actionPotential:
+                contribution?.evidence?.actionPotential ?? null,
+              instanceId:
+                contribution?.evidence?.instanceId ||
+                contribution?.evidence?.summonInstanceId ||
+                '',
+              definitionHash:
+                contribution?.evidence?.definitionHash || '',
+              probabilityGroupKey:
+                contribution?.evidence?.probabilityGroupKey ||
+                contribution?.evidence?.distributionGroupKey ||
+                '',
+              executionRole:
+                contribution?.executionRole ||
+                contribution?.evidence?.executionRole ||
+                '',
+            })
+          : '',
+      behaviorMutationIdentity: preview.stableHash({
+        prototype: contribution?.evidence?.prototype || '',
+        state: contribution?.evidence?.state || '',
+        interference: contribution?.evidence?.interference || '',
+        duration: contribution?.evidence?.duration ?? null,
+        sourceStateKey: contribution?.evidence?.sourceStateKey || '',
+        sourceStateKeys: contribution?.evidence?.sourceStateKeys || [],
+        tickWindowId: contribution?.evidence?.tickWindowId || '',
+        durationChanges: contribution?.evidence?.durationChanges || [],
+        positionType: contribution?.evidence?.positionType || '',
+        positionObject: contribution?.evidence?.positionObject || '',
+        distance: contribution?.evidence?.distance ?? null,
+        removedKeys: contribution?.evidence?.removedKeys || [],
+        combatEffect: contribution?.evidence?.combatEffect || {},
+      }),
+      ...(String(contribution?.outcomeKind || '').trim() ===
+        'WITHDRAWAL_CONTEST'
+        ? {
+            withdrawalEvidenceIdentity: preview.stableHash({
+              pursuerId:
+                contribution?.evidence?.pursuerId || '',
+              visiblePursuerIds:
+                contribution?.evidence?.visiblePursuerIds || [],
+              successProbability:
+                contribution?.evidence?.successProbability ?? null,
+              partialProbability:
+                contribution?.evidence?.partialProbability ?? null,
+              failureProbability:
+                contribution?.evidence?.failureProbability ?? null,
+              partialPursuitDamage:
+                contribution?.evidence?.partialPursuitDamage ?? null,
+              failurePursuitDamage:
+                contribution?.evidence?.failurePursuitDamage ?? null,
+              expectedPursuitDamage:
+                contribution?.evidence?.expectedPursuitDamage ?? null,
+              probabilityGroupKey:
+                contribution?.evidence?.probabilityGroupKey ||
+                contribution?.evidence?.distributionGroupKey ||
+                '',
+              outcomeDistribution:
+                contribution?.evidence?.outcomeDistribution || [],
+            }),
+          }
+        : {}),
       correlationIdentity:
         contribution?.evidence?.requiredOutcomeKey
           ? preview.stableHash({
@@ -31732,15 +32152,31 @@
         })}`,
       );
     }
+    if (
+      preview.stableHash(projectedEntry?.summonDefinitions || []) !==
+      preview.stableHash(previewEntry?.summonDefinitions || [])
+    ) {
+      throw new Error(
+        `R9V2_MECHANICAL_BASIS_MISMATCH:${JSON.stringify({
+          reason: 'SUMMON_DEFINITION_METADATA',
+          projected: projectedEntry?.summonDefinitions || [],
+          expected: previewEntry?.summonDefinitions || [],
+        })}`,
+      );
+    }
     const exactKeys = [
       'targetId',
       'outcomeKind',
       'windowId',
       'resource',
       'state',
+      'interference',
       'cancelsAction',
       'modifierEvidenceIdentity',
       'creationEvidenceIdentity',
+      'summonEvidenceIdentity',
+      'behaviorMutationIdentity',
+      'withdrawalEvidenceIdentity',
       'correlationIdentity',
     ];
     const numericKeys = [
@@ -31807,6 +32243,7 @@
     mechanicalProjectionContext,
     metricKey = 'r9v2PoolPreviewCalls',
     verifyMechanicalBasis = false,
+    captureProjectedUnits = false,
   }) {
     const actor = findUnitInWorld(worldSnapshot, actorId);
     const actorSide = actor ? sideOf(worldSnapshot, actor) : '';
@@ -31850,6 +32287,7 @@
         actionOpportunity,
         revision,
         mechanicalProjectionContext,
+        captureProjectedUnits,
       });
       r9v2Metric(state, 'r9v2MechanicalBasisEvaluations');
       const contributions = Object.freeze(
@@ -31866,6 +32304,9 @@
         creationCarrier: r9v2CreationCarrierMetadata(
           candidate,
           declaration,
+        ),
+        summonDefinitions: r9v2NormalizeSummonDefinitions(
+          projection?.summonDefinitions || [],
         ),
         actionKind: String(
           declaration?.actionKind || '',
@@ -31898,6 +32339,22 @@
         changedUnitIds: Object.freeze([
           ...(projection?.changedUnitIds || []),
         ]),
+        ...(Array.isArray(projection?.projectedUnitSnapshots)
+          ? {
+              projectedUnitSnapshots: Object.freeze(
+                projection.projectedUnitSnapshots.map(snapshot =>
+                  Object.freeze({
+                    unitId: String(
+                      snapshot?.unitId || '',
+                    ).trim(),
+                    unit: Object.freeze(
+                      cloneValue(snapshot?.unit || {}),
+                    ),
+                  })
+                ),
+              ),
+            }
+          : {}),
         hardInvalid: false,
         previewError: '',
       });
@@ -31921,6 +32378,7 @@
           candidate,
           declaration,
         ),
+        summonDefinitions: Object.freeze([]),
         actionKind: String(
           declaration?.actionKind || '',
         ).trim().toUpperCase(),
@@ -32133,14 +32591,24 @@
     const unit = findUnitInWorld(worldSnapshot, unitId);
     if (!unit || !preview.isAlive(unit)) {
       pool.unitEntries.delete(unitId);
+      pool.targetInterferenceRateByUnit?.delete(unitId);
       return;
     }
+    const targetInterferenceRate =
+      visibleTargetInterferenceRate(unit);
+    const unitBelief = targetInterferenceRate > 1e-12
+      ? {
+          ...beliefState,
+          targetInterferencePossible: true,
+          targetInterferenceRate,
+        }
+      : beliefState;
     const catalog = r9v2DeclarationCatalog({
       state,
       worldSnapshot,
       observerSide,
       unitId,
-      beliefState,
+      beliefState: unitBelief,
       battleIntent,
       actionOpportunity,
     });
@@ -32158,7 +32626,7 @@
         worldSnapshot,
         actorId: unitId,
         candidate,
-        beliefState,
+        beliefState: unitBelief,
         battleIntent,
         actionOpportunity: {
           role: 'ACTIVE',
@@ -32170,6 +32638,10 @@
       })
     ));
     pool.unitEntries.set(unitId, entries);
+    pool.targetInterferenceRateByUnit.set(
+      unitId,
+      targetInterferenceRate,
+    );
     r9v2Metric(state, 'r9v2PoolUnitBuilds');
     r9v2Metric(state, 'r9v2PoolEntryCount', entries.length);
   }
@@ -32221,6 +32693,7 @@
       factDeltaCount: 0,
       unitEntries: new Map(),
       targetSourceUnitIds: new Map(),
+      targetInterferenceRateByUnit: new Map(),
     };
     if (!recipient || !preview.isBattleCapable(recipient)) {
       return {
@@ -32232,10 +32705,19 @@
         unsupportedAlternativeCount: 0,
       };
     }
+    const targetInterferenceRate =
+      visibleTargetInterferenceRate(recipient);
+    const recipientBelief = targetInterferenceRate > 1e-12
+      ? {
+          ...beliefState,
+          targetInterferencePossible: true,
+          targetInterferenceRate,
+        }
+      : beliefState;
     const rawCandidates = r9v2FutureCandidates({
       worldSnapshot,
       unitId: recipientId,
-      beliefState,
+      beliefState: recipientBelief,
       battleIntent,
       actionOpportunity,
     })
@@ -32251,7 +32733,7 @@
         worldSnapshot,
         actorId: recipientId,
         candidate,
-        beliefState,
+        beliefState: recipientBelief,
         battleIntent,
         actionOpportunity,
         revision,
@@ -32260,6 +32742,10 @@
       })
     ));
     pool.unitEntries.set(recipientId, entries);
+    pool.targetInterferenceRateByUnit.set(
+      recipientId,
+      targetInterferenceRate,
+    );
     r9v2ReindexTargets(pool);
     return {
       state,
@@ -32304,6 +32790,7 @@
         entry,
         {
           bestHealthByUnit: new Map(),
+          behaviorPoolByIdentity: new Map(),
           pendingNaturalActorIds: null,
         },
       ));
@@ -32403,10 +32890,14 @@
         request?.actionOpportunity?.pendingNaturalActorIds || []
       ).filter(unitId => String(unitId || '').trim() !== recipientId),
     };
-    const routeRequest = worldSnapshot => ({
+    const routeRequest = (
+      worldSnapshot,
+      creationProductIdForContext = '',
+    ) => ({
       visibleWorld: worldSnapshot,
       actorId: recipientId,
       actorSide: sideOf(worldSnapshot, recipient),
+      creationProductId: creationProductIdForContext,
       actionOpportunity: futureActionOpportunity,
       evaluationContext: {
         opportunitySnapshot:
@@ -32435,7 +32926,7 @@
       actionOpportunity: futureActionOpportunity,
       productId,
       revision: `creation-consumer:with:${entry.candidateId}`,
-      routeRequest: routeRequest(withProductWorld),
+      routeRequest: routeRequest(withProductWorld, productId),
     });
     const withoutProductProof = withoutProduct.bestProof
       ? withoutProduct.bestProof
@@ -32584,6 +33075,7 @@
         factDeltaCount: state.factDeltaRecords.length,
         unitEntries: new Map(),
         targetSourceUnitIds: new Map(),
+        targetInterferenceRateByUnit: new Map(),
       };
       currentUnitIds.forEach(unitId =>
         r9v2BuildFutureUnitPool({
@@ -32611,7 +33103,10 @@
       ? new Set(currentUnitIds)
       : new Set(scope.rebuildUnits);
     [...pool.unitEntries.keys()].forEach(unitId => {
-      if (!currentUnitIds.has(unitId)) pool.unitEntries.delete(unitId);
+      if (!currentUnitIds.has(unitId)) {
+        pool.unitEntries.delete(unitId);
+        pool.targetInterferenceRateByUnit.delete(unitId);
+      }
     });
     currentUnitIds.forEach(unitId => {
       if (!pool.unitEntries.has(unitId)) rebuildUnitIds.add(unitId);
@@ -32681,12 +33176,22 @@
     unitId,
     resourceOverrides = {},
   ) {
-    return r9v2AffordablePoolEntries(
+    const entries = r9v2AffordablePoolEntries(
       worldSnapshot,
       pool,
       unitId,
       resourceOverrides,
-    ).reduce(
+    );
+    const targetInterferenceRate = Number(
+      pool?.targetInterferenceRateByUnit?.get(unitId) || 0,
+    );
+    if (targetInterferenceRate > 1e-12) {
+      return r9v2TargetResolutionPoolProjection(
+        entries,
+        targetInterferenceRate,
+      ).bestUtilityHEPP;
+    }
+    return entries.reduce(
       (best, entry) =>
         Math.max(best, Number(entry.directGoalUtilityHEPP || 0)),
       0,
@@ -32826,8 +33331,110 @@
     ) {
       return null;
     }
-    const next = { ...unit };
-    const stateName = String(evidence?.state || '').trim();
+    const next = {
+      ...unit,
+      ...(unit?.属性 && typeof unit.属性 === 'object'
+        ? { 属性: { ...unit.属性 } }
+        : {}),
+      ...(unit?.final && typeof unit.final === 'object'
+        ? { final: { ...unit.final } }
+        : {}),
+    };
+    const prototype = String(evidence?.prototype || '').trim();
+    if (prototype === '时窗修正') {
+      const changes = Array.isArray(evidence?.durationChanges)
+        ? evidence.durationChanges
+        : [];
+      if (!changes.length) return null;
+      const changesByKey = new Map(
+        changes.map(change => [
+          String(change?.stateKey || '').trim(),
+          change,
+        ]).filter(([stateKey]) => stateKey),
+      );
+      const applyDurationChange = (state, change) => {
+        if (!state || !change) return state;
+        const duration = Math.max(
+          0,
+          Number(change?.afterDuration || 0),
+        );
+        const updated = {
+          ...state,
+          duration,
+          持续回合: duration,
+        };
+        if (Object.hasOwn(state, '剩余回合')) {
+          updated.剩余回合 = duration;
+        }
+        return updated;
+      };
+      if (Array.isArray(unit?.状态效果)) {
+        next.状态效果 = unit.状态效果.map((state, index) =>
+          applyDurationChange(
+            state,
+            changesByKey.get(String(index)),
+          )
+        );
+        return next;
+      }
+      next.状态效果 = Object.fromEntries(
+        Object.entries(unit?.状态效果 || {}).map(([key, state]) => [
+          key,
+          applyDurationChange(
+            state,
+            changesByKey.get(String(key)),
+          ),
+        ]),
+      );
+      return next;
+    }
+    if (prototype === '属性修正') {
+      const rawChanges =
+        Array.isArray(evidence?.changes) && evidence.changes.length
+          ? evidence.changes
+          : evidence?.attribute
+            ? [evidence]
+            : [];
+      rawChanges.forEach(change => {
+        const attribute = String(
+          change?.attribute || evidence?.attribute || '',
+        ).trim();
+        if (!attribute) return;
+        const current = readAttributeValue(next, attribute);
+        const delta = Number.isFinite(Number(change?.delta))
+          ? Number(change.delta)
+          : Number.isFinite(Number(change?.next)) &&
+              Number.isFinite(Number(change?.current))
+            ? Number(change.next) - Number(change.current)
+            : 0;
+        if (!Number.isFinite(delta)) return;
+        writeAttributeValue(next, attribute, current + delta);
+      });
+    }
+    const modifierAttribute = String(
+      evidence?.attribute || '',
+    ).trim();
+    const modifierCheck = String(
+      evidence?.check || '',
+    ).trim();
+    const modifierSettlement = String(
+      evidence?.settlement || '',
+    ).trim();
+    const stateName = String(
+      evidence?.state ||
+      (prototype === '决策干扰'
+        ? '决策干扰'
+        : prototype === '位移执行'
+          ? `位移投影:${contribution?.windowId || 'current'}`
+          : prototype === '属性修正'
+            ? `${modifierAttribute || '属性'}修正`
+            : prototype === '判定修正'
+              ? `${modifierCheck || '判定'}判定修正`
+              : prototype === '结算修正'
+                ? `${modifierSettlement || '结算'}结算修正`
+          : ''),
+    ).trim();
+    if (!stateName) return null;
     const combatEffect = {
       ...(evidence?.combatEffect || {}),
     };
@@ -32835,6 +33442,11 @@
     const stateValue = {
       状态: stateName,
       状态名称: stateName,
+      原型: prototype,
+      属性: modifierAttribute,
+      判定: modifierCheck,
+      结算: modifierSettlement,
+      数值: evidence?.value ?? '',
       duration,
       持续回合: duration,
       __previewApplicationProbability: 1,
@@ -32990,8 +33602,19 @@
     const facts = [];
     const diagnostics = [];
     entry.contributions.forEach((contribution, index) => {
-      if (contribution?.outcomeKind !== 'STATE_CHANGED') return;
       const evidence = contribution?.evidence || {};
+      const outcomeKind = String(
+        contribution?.outcomeKind || '',
+      ).trim();
+      const positionMutation =
+        outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+        String(evidence?.prototype || '').trim() === '位移执行';
+      if (
+        outcomeKind !== 'STATE_CHANGED' &&
+        !positionMutation
+      ) {
+        return;
+      }
       const effects = evidence?.combatEffect || {};
       const applicationProbability = clamp(
         Number(
@@ -33145,7 +33768,7 @@
             ownerType: 'ACTION_POOL_DELTA',
             targetId,
             valueHEPP: contributionValue,
-            sourceOutcomeKind: 'STATE_CHANGED',
+            sourceOutcomeKind: outcomeKind,
             dependencyRole: 'OPPORTUNITY_EXPLOIT',
             applicationProbability,
           }));
@@ -33253,7 +33876,7 @@
         ownerType: 'ACTION_POOL_DELTA',
         targetId,
         valueHEPP: value,
-        sourceOutcomeKind: 'STATE_CHANGED',
+        sourceOutcomeKind: outcomeKind,
         dependencyRole: 'SCHEDULE_REALIZATION',
         applicationProbability,
         orderBefore: Object.freeze(beforeOrder),
@@ -33275,6 +33898,912 @@
       castOrderDeltaHEPP,
       facts: Object.freeze(facts),
       diagnostics: Object.freeze(diagnostics),
+    });
+  }
+
+  function r9v2BehaviorMutationKind(contribution = {}) {
+    const outcomeKind = String(
+      contribution?.outcomeKind || '',
+    ).trim();
+    const evidence = contribution?.evidence || {};
+    if (
+      outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+      String(evidence?.prototype || '').trim() === '决策干扰'
+    ) {
+      return 'DECISION_INTERFERENCE';
+    }
+    if (
+      outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+      String(evidence?.prototype || '').trim() === '位移执行'
+    ) {
+      return 'POSITION';
+    }
+    if (
+      outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+      String(evidence?.prototype || '').trim() === '属性修正'
+    ) {
+      return 'ATTRIBUTE_MODIFIER';
+    }
+    if (
+      outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+      String(evidence?.prototype || '').trim() === '判定修正'
+    ) {
+      return 'CHECK_MODIFIER';
+    }
+    if (
+      outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+      String(evidence?.prototype || '').trim() === '结算修正'
+    ) {
+      return 'SETTLEMENT_MODIFIER';
+    }
+    if (
+      outcomeKind === 'STATE_CHANGED' &&
+      String(evidence?.prototype || '').trim() === '状态施加' &&
+      String(evidence?.state || '').trim()
+    ) {
+      return 'STATE_APPLY';
+    }
+    if (
+      outcomeKind === 'STATE_CHANGED' &&
+      Array.isArray(evidence?.removedKeys) &&
+      evidence.removedKeys.length
+    ) {
+      return 'STATE_REMOVE';
+    }
+    if (
+      outcomeKind === 'STATE_CHANGED' &&
+      String(evidence?.prototype || '').trim() === '时窗修正' &&
+      Array.isArray(evidence?.durationChanges) &&
+      evidence.durationChanges.length > 0
+    ) {
+      return 'TIME_WINDOW';
+    }
+    return '';
+  }
+
+  function r9v2UnitAfterBehaviorMutation(
+    unit = {},
+    contribution = {},
+  ) {
+    const kind = r9v2BehaviorMutationKind(contribution);
+    if (
+      kind === 'POSITION' ||
+      kind === 'DECISION_INTERFERENCE' ||
+      kind === 'TIME_WINDOW' ||
+      kind === 'STATE_APPLY' ||
+      kind === 'ATTRIBUTE_MODIFIER' ||
+      kind === 'CHECK_MODIFIER' ||
+      kind === 'SETTLEMENT_MODIFIER'
+    ) {
+      return r9v2ProjectedStateUnit(unit, contribution);
+    }
+    if (kind !== 'STATE_REMOVE') return null;
+    const removedKeys = new Set(
+      (contribution?.evidence?.removedKeys || [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    if (!removedKeys.size) return null;
+    const sourceStates = unit?.状态效果;
+    const nextStates = Array.isArray(sourceStates)
+      ? sourceStates.filter((state, index) =>
+          !removedKeys.has(String(index)) &&
+          !removedKeys.has(String(
+            state?.stateId ||
+            state?.状态ID ||
+            state?.id ||
+            '',
+          ).trim())
+        )
+      : Object.fromEntries(
+          Object.entries(sourceStates || {})
+            .filter(([key]) => !removedKeys.has(String(key).trim())),
+        );
+    return {
+      ...unit,
+      状态效果: nextStates,
+      ...(unit?.属性 && typeof unit.属性 === 'object'
+        ? {
+            属性: {
+              ...unit.属性,
+              状态效果: nextStates,
+            },
+          }
+        : {}),
+    };
+  }
+
+  function r9v2BehaviorMutationBelief(
+    request = {},
+    targetId = '',
+    contribution = {},
+  ) {
+    const baseBelief =
+      request?.beliefState && typeof request.beliefState === 'object'
+        ? request.beliefState
+        : {};
+    if (
+      r9v2BehaviorMutationKind(contribution) !==
+        'DECISION_INTERFERENCE' ||
+      !/索敌/.test(
+        String(contribution?.evidence?.interference || '').trim(),
+      ) ||
+      !(
+        Number(
+          contribution?.evidence?.combatEffect?.random_target_rate || 0,
+        ) > 1e-12
+      )
+    ) {
+      return baseBelief;
+    }
+    return Object.freeze({
+      ...baseBelief,
+      targetInterferencePossible: true,
+      interferenceSource:
+        String(
+          baseBelief?.interferenceSource ||
+          `r9v2:target:${String(targetId || '').trim()}`,
+        ).trim(),
+    });
+  }
+
+  function r9v2BehaviorMutationIdentity(
+    contribution = {},
+  ) {
+    const evidence = contribution?.evidence || {};
+    return [
+      r9v2BehaviorMutationKind(contribution),
+      String(contribution?.targetId || '').trim(),
+      String(evidence?.state || '').trim(),
+      String(evidence?.interference || '').trim(),
+      String(evidence?.prototype || '').trim(),
+      String(evidence?.attribute || '').trim(),
+      String(evidence?.check || '').trim(),
+      String(evidence?.settlement || '').trim(),
+      String(evidence?.value ?? '').trim(),
+      JSON.stringify(evidence?.changes || []),
+      JSON.stringify(evidence?.projectedEffect || {}),
+      Math.max(0, Number(evidence?.duration || 0)),
+      (evidence?.durationChanges || [])
+        .map(change => [
+          String(change?.stateKey || '').trim(),
+          String(change?.windowId || '').trim(),
+          Number(change?.beforeDuration || 0),
+          Number(change?.afterDuration || 0),
+          Number(change?.tickDelta || 0),
+        ])
+        .sort((left, right) =>
+          String(left[0]).localeCompare(String(right[0]))
+        ),
+      String(evidence?.positionType || '').trim(),
+      String(evidence?.positionObject || '').trim(),
+      Number(evidence?.distance ?? 0),
+      (evidence?.removedKeys || [])
+        .map(value => String(value || '').trim())
+        .sort()
+        .join(','),
+      JSON.stringify(Object.entries(evidence?.combatEffect || {})
+        .sort(([left], [right]) => left.localeCompare(right))),
+    ].join('\u0000');
+  }
+
+  function r9v2TargetResolutionActionIdentity(entry = {}) {
+    const declaration = entry?.declaration || {};
+    return [
+      entry?.resourcePotentialOnly === true
+        ? 'EXTERNAL_TIMELINE'
+        : 'FORMAL',
+      declarationFingerprint({
+        ...declaration,
+        actionId: '',
+        targetIds: [],
+      }),
+    ].join('\u0000');
+  }
+
+  function r9v2TargetResolutionPoolProjection(
+    entries = [],
+    randomTargetRate = 0,
+    utilityByCandidate = null,
+  ) {
+    const rate = clamp(Number(randomTargetRate || 0), 0, 1);
+    const expectedByCandidate = new Map();
+    const groups = new Map();
+    const utilityFor = entry => {
+      const candidateId =
+        String(entry?.candidateId || '').trim();
+      if (
+        utilityByCandidate instanceof Map &&
+        utilityByCandidate.has(candidateId)
+      ) {
+        return Number(utilityByCandidate.get(candidateId) || 0);
+      }
+      if (
+        utilityByCandidate &&
+        typeof utilityByCandidate === 'object' &&
+        Object.hasOwn(utilityByCandidate, candidateId)
+      ) {
+        return Number(utilityByCandidate[candidateId] || 0);
+      }
+      return Number(entry?.directGoalUtilityHEPP || 0);
+    };
+    if (rate > 1e-12) {
+      entries.forEach(entry => {
+        const profile =
+          entry?.actionKind === 'BASIC_ATTACK'
+            ? 'HOSTILE_SINGLE'
+            : targetProfile(entry?.declaration?.skill || {});
+        if (
+          profile !== 'HOSTILE_SINGLE' ||
+          !Array.isArray(entry?.targetIds) ||
+          entry.targetIds.length !== 1
+        ) {
+          return;
+        }
+        const identity =
+          r9v2TargetResolutionActionIdentity(entry);
+        if (!groups.has(identity)) groups.set(identity, []);
+        groups.get(identity).push(entry);
+      });
+    }
+    const groupRows = [];
+    groups.forEach((variants, actionIdentity) => {
+      const bestByTarget = new Map();
+      variants.forEach(entry => {
+        const targetId =
+          String(entry?.targetIds?.[0] || '').trim();
+        if (!targetId) return;
+        const current = bestByTarget.get(targetId);
+        if (
+          !current ||
+          utilityFor(entry) >
+            utilityFor(current) + 1e-9 ||
+          (
+            Math.abs(
+              utilityFor(entry) -
+              utilityFor(current),
+            ) <= 1e-9 &&
+            String(entry?.candidateId || '').localeCompare(
+              String(current?.candidateId || ''),
+            ) < 0
+          )
+        ) {
+          bestByTarget.set(targetId, entry);
+        }
+      });
+      const targetEntries = [...bestByTarget.entries()]
+        .sort(([left], [right]) => left.localeCompare(right));
+      if (!targetEntries.length) return;
+      const targetSetIds =
+        targetEntries.map(([targetId]) => targetId);
+      const meanUtilityHEPP =
+        targetEntries.reduce(
+          (sum, [, entry]) =>
+            sum + utilityFor(entry),
+          0,
+        ) / targetEntries.length;
+      const variantRows = variants.map(entry => {
+        const directUtilityHEPP =
+          utilityFor(entry);
+        const expectedUtilityHEPP =
+          (1 - rate) * directUtilityHEPP +
+          rate * meanUtilityHEPP;
+        expectedByCandidate.set(
+          String(entry?.candidateId || '').trim(),
+          expectedUtilityHEPP,
+        );
+        return Object.freeze({
+          candidateId:
+            String(entry?.candidateId || '').trim(),
+          declaredTargetId:
+            String(entry?.targetIds?.[0] || '').trim(),
+          directUtilityHEPP,
+          expectedUtilityHEPP,
+        });
+      }).sort((left, right) =>
+        String(left.candidateId).localeCompare(
+          String(right.candidateId),
+        )
+      );
+      groupRows.push(Object.freeze({
+        actionIdentity,
+        targetSetIds: Object.freeze(targetSetIds),
+        targetSetHash: preview.stableHash(targetSetIds),
+        meanUtilityHEPP,
+        variants: Object.freeze(variantRows),
+      }));
+    });
+    const ranked = entries.map(entry => {
+      const candidateId =
+        String(entry?.candidateId || '').trim();
+      return {
+        entry,
+        utilityHEPP: expectedByCandidate.has(candidateId)
+          ? expectedByCandidate.get(candidateId)
+          : utilityFor(entry),
+      };
+    }).sort((left, right) =>
+      Number(right.utilityHEPP || 0) -
+        Number(left.utilityHEPP || 0) ||
+      String(left?.entry?.candidateId || '').localeCompare(
+        String(right?.entry?.candidateId || ''),
+      )
+    );
+    const best = ranked[0] || null;
+    return Object.freeze({
+      schemaVersion: 'R9v2TargetResolutionProjectionV1',
+      complete: true,
+      randomTargetRate: rate,
+      affectedActionCount: groupRows.length,
+      bestUtilityHEPP: Number(best?.utilityHEPP || 0),
+      bestCandidateId:
+        String(best?.entry?.candidateId || '').trim(),
+      bestDeclaredTargetId:
+        String(best?.entry?.targetIds?.[0] || '').trim(),
+      expectedUtilityByCandidate: Object.freeze(
+        Object.fromEntries(
+          [...expectedByCandidate.entries()]
+            .sort(([left], [right]) =>
+              left.localeCompare(right)
+            ),
+        ),
+      ),
+      groups: Object.freeze(groupRows.sort((left, right) =>
+        String(left.actionIdentity).localeCompare(
+          String(right.actionIdentity),
+        )
+      )),
+    });
+  }
+
+  function r9v2ApplyCurrentTargetResolution(
+    entries = [],
+    proofs = [],
+    randomTargetRate = 0,
+  ) {
+    const rate = clamp(Number(randomTargetRate || 0), 0, 1);
+    if (!(rate > 1e-12)) return proofs;
+    const utilityByCandidate = new Map(
+      proofs.map(proof => [
+        String(proof?.candidateId || '').trim(),
+        Number(proof?.goalUtilityDeltaHEPP || 0),
+      ]),
+    );
+    const projection = r9v2TargetResolutionPoolProjection(
+      entries,
+      rate,
+      utilityByCandidate,
+    );
+    const proofByCandidate = new Map(
+      proofs.map(proof => [
+        String(proof?.candidateId || '').trim(),
+        proof,
+      ]),
+    );
+    const terminalProjectionFields = [
+      'terminalProbability',
+      'winProbability',
+      'lossProbability',
+      'drawProbability',
+      'ongoingProbability',
+      'expectedTerminalUtility',
+      'expectedOngoingTrajectoryUtility',
+      'terminalDeltaHEPP',
+      'expectedDiscardedOverkillPP',
+    ];
+    return proofs.map(proof => {
+      const candidateId =
+        String(proof?.candidateId || '').trim();
+      if (
+        !Object.hasOwn(
+          projection.expectedUtilityByCandidate,
+          candidateId,
+        )
+      ) {
+        return proof;
+      }
+      const group = projection.groups.find(entry =>
+        entry.variants.some(variant =>
+          variant.candidateId === candidateId
+        )
+      );
+      const variant = group?.variants.find(entry =>
+        entry.candidateId === candidateId
+      );
+      if (!group || !variant) return proof;
+      const bestProofByTarget = new Map();
+      group.variants.forEach(groupVariant => {
+        const targetId =
+          String(groupVariant.declaredTargetId || '').trim();
+        const variantProof =
+          proofByCandidate.get(groupVariant.candidateId);
+        if (!targetId || !variantProof) return;
+        const current = bestProofByTarget.get(targetId);
+        if (
+          !current ||
+          Number(variantProof.goalUtilityDeltaHEPP || 0) >
+            Number(current.goalUtilityDeltaHEPP || 0) + 1e-9 ||
+          (
+            Math.abs(
+              Number(variantProof.goalUtilityDeltaHEPP || 0) -
+                Number(current.goalUtilityDeltaHEPP || 0),
+            ) <= 1e-9 &&
+            String(variantProof.candidateId || '')
+              .localeCompare(
+                String(current.candidateId || ''),
+              ) < 0
+          )
+        ) {
+          bestProofByTarget.set(targetId, variantProof);
+        }
+      });
+      const targetProofs = [...bestProofByTarget.values()];
+      const directTerminalProjection =
+        proof?.terminalProjection || null;
+      const expectedTerminalProjectionValues = {};
+      const hasAnyTerminalProjection = targetProofs.some(
+        variantProof => !!variantProof?.terminalProjection,
+      ) || !!directTerminalProjection;
+      if (hasAnyTerminalProjection) {
+        terminalProjectionFields.forEach(field => {
+          const directValue = Number(
+            directTerminalProjection?.[field] || 0,
+          );
+          const meanValue = targetProofs.length
+            ? targetProofs.reduce(
+                (sum, variantProof) =>
+                  sum +
+                  Number(
+                    variantProof?.terminalProjection?.[field] || 0,
+                  ),
+                0,
+              ) / targetProofs.length
+            : 0;
+          expectedTerminalProjectionValues[field] =
+            (1 - rate) * directValue + rate * meanValue;
+        });
+      }
+      const expectedTerminalProjection =
+        hasAnyTerminalProjection
+          ? Object.freeze({
+              projectionMode:
+                'TARGET_RESOLUTION_EXPECTATION',
+              terminal:
+                expectedTerminalProjectionValues
+                  .terminalProbability > 1e-12,
+              status: 'MIXED',
+              ...expectedTerminalProjectionValues,
+              terminalPaths: Object.freeze([]),
+              terminalAfterEffectInstanceId: '',
+              terminalAtomicKey: '',
+            })
+          : null;
+      const directGoalUtilityHEPP =
+        Number(proof.goalUtilityDeltaHEPP || 0);
+      const goalUtilityDeltaHEPP =
+        Number(
+          projection.expectedUtilityByCandidate[candidateId] ||
+          0,
+        );
+      const targetResolutionDeltaHEPP =
+        goalUtilityDeltaHEPP - directGoalUtilityHEPP;
+      const causalValueFacts = [
+        ...(proof.causalValueFacts || []),
+      ];
+      if (Math.abs(targetResolutionDeltaHEPP) > 1e-9) {
+        causalValueFacts.push(Object.freeze({
+          factId: `${candidateId}:target-resolution:current`,
+          ownerType: 'ACTION_POOL_DELTA',
+          targetId:
+            String(variant.declaredTargetId || '').trim(),
+          valueHEPP: targetResolutionDeltaHEPP,
+          sourceOutcomeKind:
+            'TARGET_RESOLUTION_EXPECTATION',
+          dependencyRole: 'BELIEF_RESPONSE',
+          randomTargetRate: rate,
+          actionIdentity: group.actionIdentity,
+          targetSetHash: group.targetSetHash,
+        }));
+      }
+      const reconciled = causalValueFacts.reduce(
+        (sum, fact) => sum + Number(fact?.valueHEPP || 0),
+        0,
+      );
+      if (
+        Math.abs(reconciled - goalUtilityDeltaHEPP) > 1e-6
+      ) {
+        throw new Error('CAUSAL_RECONCILIATION_MISMATCH');
+      }
+      const objectiveUtilityHEPP =
+        goalUtilityDeltaHEPP +
+        Number(proof.informationValueHEPP || 0);
+      const vector = Object.freeze({
+        ...(proof.vector || {}),
+        objectiveUtilityHEPP,
+        ...(expectedTerminalProjection
+          ? {
+              discardedOverkillPP:
+                expectedTerminalProjection
+                  .expectedDiscardedOverkillPP,
+            }
+          : {}),
+      });
+      const next = {
+        ...proof,
+        goalUtilityDeltaHEPP,
+        objectiveUtilityHEPP,
+        components: Object.freeze({
+          ...(proof.components || {}),
+          targetResolutionDeltaHEPP,
+        }),
+        causalValueFacts: Object.freeze(causalValueFacts),
+        reconciliationError:
+          reconciled - goalUtilityDeltaHEPP,
+        ...(expectedTerminalProjection
+          ? {
+              terminalProjection:
+                expectedTerminalProjection,
+            }
+          : {}),
+        currentActionTargetResolutionProjection:
+          Object.freeze({
+            schemaVersion:
+              'R9v2CurrentActionTargetResolutionProjectionV1',
+            complete: true,
+            randomTargetRate: rate,
+            actionIdentity: group.actionIdentity,
+            targetSetIds: group.targetSetIds,
+            targetSetHash: group.targetSetHash,
+            meanUtilityHEPP: group.meanUtilityHEPP,
+            declaredTargetId:
+              String(variant.declaredTargetId || '').trim(),
+            directUtilityHEPP:
+              Number(variant.directUtilityHEPP || 0),
+            expectedUtilityHEPP:
+              Number(variant.expectedUtilityHEPP || 0),
+            targetResolutionDeltaHEPP,
+            ...(expectedTerminalProjection
+              ? {
+                  declaredTerminalProjection:
+                    directTerminalProjection
+                      ? Object.freeze({
+                          ...directTerminalProjection,
+                        })
+                      : null,
+                  expectedTerminalProjection,
+                }
+              : {}),
+          }),
+        sliceCoverage:
+          `${proof.sliceCoverage}_CURRENT_TARGET_RESOLUTION_V1`,
+      };
+      Object.defineProperty(next, 'vector', {
+        value: vector,
+        enumerable: false,
+        writable: false,
+        configurable: false,
+      });
+      return Object.freeze(next);
+    });
+  }
+
+  function r9v2ProjectedBehaviorPool({
+    request,
+    targetId,
+    projectedWorld,
+    cache,
+    identity,
+    beliefState = request?.beliefState,
+  }) {
+    const target = findUnitInWorld(projectedWorld, targetId);
+    const targetInterferenceRate =
+      visibleTargetInterferenceRate(target || {});
+    const creationProductId = String(
+      request?.creationProductId || '',
+    ).trim();
+    const cacheIdentity = [
+      identity,
+      `target-interference:${targetInterferenceRate}`,
+      `creation-product:${creationProductId}`,
+    ].join('\u0000');
+    const cached =
+      cache?.behaviorPoolByIdentity?.get(cacheIdentity);
+    if (cached) return cached;
+    const state = r9v2EphemeralState();
+    const pool = {
+      schemaVersion: 'BehaviorPoolSessionV1',
+      observerActorId: request.actorId,
+      observerSide: request.actorSide,
+      generation: 1,
+      factDeltaCount: 0,
+      unitEntries: new Map(),
+      targetSourceUnitIds: new Map(),
+      targetInterferenceRateByUnit: new Map(),
+    };
+    if (!target || !preview.isBattleCapable(target)) {
+      const unavailable = Object.freeze({
+        pool,
+        candidateCount: 0,
+        supportedCandidateCount: 0,
+        bestUtilityHEPP: 0,
+        bestCandidateId: '',
+      });
+      cache?.behaviorPoolByIdentity?.set(
+        cacheIdentity,
+        unavailable,
+      );
+      return unavailable;
+    }
+    const targetBelief = targetInterferenceRate > 1e-12
+      ? {
+          ...beliefState,
+          targetInterferencePossible: true,
+          targetInterferenceRate,
+        }
+      : beliefState;
+    const rawCandidates = r9v2FutureCandidates({
+      worldSnapshot: projectedWorld,
+      unitId: targetId,
+      beliefState: targetBelief,
+      battleIntent: request.battleIntent,
+      actionOpportunity: request.actionOpportunity,
+    });
+    const candidates = creationProductId
+      ? rawCandidates.map(candidate =>
+          r9v2CreationConsumerCandidate(
+            candidate,
+            creationProductId,
+          )
+        )
+      : rawCandidates;
+    const mechanicalProjectionContext =
+      preview.compileMechanicalProjectionContext(projectedWorld);
+    const entries = Object.freeze(candidates.map(candidate =>
+      r9v2BuildMechanicalEntry({
+        state,
+        worldSnapshot: projectedWorld,
+        actorId: targetId,
+        candidate,
+        beliefState: targetBelief,
+        battleIntent: request.battleIntent,
+        actionOpportunity: {
+          ...request.actionOpportunity,
+          role: 'ACTIVE',
+          ownerId: targetId,
+        },
+        revision: `behavior-mutation:${identity}`,
+        mechanicalProjectionContext,
+        verifyMechanicalBasis: false,
+      })
+    ));
+    pool.unitEntries.set(targetId, entries);
+    pool.targetInterferenceRateByUnit.set(
+      targetId,
+      targetInterferenceRate,
+    );
+    r9v2ReindexTargets(pool);
+    const supported = entries.filter(entry =>
+      entry.hardInvalid !== true
+    );
+    const targetResolutionProjection =
+      r9v2TargetResolutionPoolProjection(
+        supported,
+        targetInterferenceRate,
+      );
+    const result = Object.freeze({
+      pool,
+      candidateCount: candidates.length,
+      supportedCandidateCount: supported.length,
+      bestUtilityHEPP:
+        targetResolutionProjection.bestUtilityHEPP,
+      bestCandidateId:
+        targetResolutionProjection.bestCandidateId,
+      targetResolutionProjection,
+    });
+    cache?.behaviorPoolByIdentity?.set(cacheIdentity, result);
+    return result;
+  }
+
+  function r9v2BehaviorPoolDeltaProjection(
+    request,
+    pool,
+    entry,
+    cache,
+  ) {
+    let routeDeltaHEPP = 0;
+    const facts = [];
+    const diagnostics = [];
+    const targetResolutionProjections = [];
+    const projectedContributionIndexes = new Set();
+    entry.contributions.forEach((contribution, index) => {
+      const kind = r9v2BehaviorMutationKind(contribution);
+      if (!kind) return;
+      const targetId = String(
+        contribution?.targetId || '',
+      ).trim();
+      const target = findUnitInWorld(
+        request.visibleWorld,
+        targetId,
+      );
+      if (!target) return;
+      const applicationProbability = clamp(
+        Number(
+          contribution?.evidence?.applicationProbability ??
+          contribution?.evidence?.ownApplicationProbability ??
+          contribution?.probability ??
+          1
+        ),
+        0,
+        1,
+      );
+      if (
+        contribution?.evidence?.marginal === false ||
+        applicationProbability <= 1e-12
+      ) {
+        projectedContributionIndexes.add(index);
+        diagnostics.push(Object.freeze({
+          kind,
+          targetId,
+          routeDeltaHEPP: 0,
+          reason: contribution?.evidence?.marginal === false
+            ? 'NON_MARGINAL_NO_STATE_CHANGE'
+            : 'APPLICATION_PROBABILITY_ZERO',
+          applicationProbability,
+        }));
+        return;
+      }
+      const opportunityCount =
+        r9v2RealizableActiveOpportunityCount(
+          request,
+          targetId,
+        );
+      if (!(opportunityCount > 0)) {
+        projectedContributionIndexes.add(index);
+        diagnostics.push(Object.freeze({
+          kind,
+          targetId,
+          routeDeltaHEPP: 0,
+          reason: 'NO_REALIZABLE_ACTIVE_OPPORTUNITY',
+        }));
+        return;
+      }
+      const projectedTarget = r9v2UnitAfterBehaviorMutation(
+        target,
+        contribution,
+      );
+      if (!projectedTarget) return;
+      const projectedBelief = r9v2BehaviorMutationBelief(
+        request,
+        targetId,
+        contribution,
+      );
+      const addsTargetInterference =
+        kind === 'DECISION_INTERFERENCE' &&
+        /索敌/.test(
+          String(
+            contribution?.evidence?.interference || '',
+          ).trim(),
+        ) &&
+        Number(
+          contribution?.evidence?.combatEffect
+            ?.random_target_rate || 0,
+        ) > 1e-12;
+      const beforeTargetInterferenceRate =
+        visibleTargetInterferenceRate(target);
+      const afterTargetInterferenceRate =
+        visibleTargetInterferenceRate(projectedTarget);
+      const identity = r9v2BehaviorMutationIdentity(contribution);
+      const projectedWorld = replaceWorldUnit(
+        request.visibleWorld,
+        targetId,
+        projectedTarget,
+      );
+      const projected = r9v2ProjectedBehaviorPool({
+        request,
+        targetId,
+        projectedWorld,
+        cache,
+        identity,
+        beliefState: projectedBelief,
+      });
+      const complete =
+        projected.supportedCandidateCount ===
+          projected.candidateCount &&
+        (
+          afterTargetInterferenceRate <= 1e-12 ||
+          projected.targetResolutionProjection?.complete === true
+        );
+      if (!complete) {
+        diagnostics.push(Object.freeze({
+          kind,
+          targetId,
+          routeDeltaHEPP: 0,
+          reason: 'PROJECTED_BEHAVIOR_POOL_INCOMPLETE',
+          candidateCount: projected.candidateCount,
+          supportedCandidateCount:
+            projected.supportedCandidateCount,
+          targetResolutionComplete:
+            projected.targetResolutionProjection?.complete === true,
+          beforeTargetInterferenceRate,
+          afterTargetInterferenceRate,
+        }));
+        return;
+      }
+      if (addsTargetInterference) {
+        targetResolutionProjections.push(Object.freeze({
+          contributionIndex: index,
+          targetId,
+          ...projected.targetResolutionProjection,
+        }));
+      }
+      projectedContributionIndexes.add(index);
+      const beforeBest = r9v2BestAffordableUtility(
+        request.visibleWorld,
+        pool,
+        targetId,
+      );
+      const afterBest = projected.bestUtilityHEPP;
+      const targetSide = sideOf(request.visibleWorld, target);
+      const value =
+        (targetSide === request.actorSide ? 1 : -1) *
+        (afterBest - beforeBest) *
+        applicationProbability;
+      routeDeltaHEPP += value;
+      diagnostics.push(Object.freeze({
+        kind,
+        targetId,
+        routeDeltaHEPP: value,
+        reason: '',
+        beforeBestRouteHEPP: beforeBest,
+        afterBestRouteHEPP: afterBest,
+        afterBestCandidateId: projected.bestCandidateId,
+        candidateCount: projected.candidateCount,
+        applicationProbability,
+        beforeTargetInterferenceRate,
+        afterTargetInterferenceRate,
+        ...(addsTargetInterference
+          ? {
+              targetResolutionProjection:
+                projected.targetResolutionProjection,
+            }
+          : {}),
+      }));
+      if (Math.abs(value) <= 1e-9) return;
+      facts.push(Object.freeze({
+        factId:
+          `${entry.candidateId}:behavior:${targetId}:${index}`,
+        ownerType: 'ACTION_POOL_DELTA',
+        targetId,
+        valueHEPP: value,
+        sourceOutcomeKind: contribution.outcomeKind,
+        dependencyRole: 'OPPORTUNITY_EXPLOIT',
+        mutationKind: kind,
+        beforeBestRouteHEPP: beforeBest,
+        afterBestRouteHEPP: afterBest,
+        afterBestCandidateId: projected.bestCandidateId,
+        applicationProbability,
+        beforeTargetInterferenceRate,
+        afterTargetInterferenceRate,
+        ...(addsTargetInterference
+          ? {
+              targetResolutionProjection:
+                projected.targetResolutionProjection,
+            }
+          : {}),
+      }));
+    });
+    return Object.freeze({
+      routeDeltaHEPP,
+      facts: Object.freeze(facts),
+      diagnostics: Object.freeze(diagnostics),
+      targetResolutionProjections: Object.freeze(
+        targetResolutionProjections,
+      ),
+      projectedContributionIndexes: Object.freeze(
+        [...projectedContributionIndexes].sort((left, right) =>
+          left - right
+        ),
+      ),
     });
   }
 
@@ -33327,6 +34856,99 @@
     })));
   }
 
+  function r9v2WithdrawalHpDistribution(contribution = {}) {
+    const evidence = contribution?.evidence || {};
+    const probabilityGroupKey = String(
+      evidence?.probabilityGroupKey ||
+      evidence?.distributionGroupKey ||
+      contribution?.probabilityGroupKey ||
+      '',
+    ).trim();
+    const outcomes = Array.isArray(evidence?.outcomeDistribution)
+      ? evidence.outcomeDistribution
+      : [];
+    if (!probabilityGroupKey || !outcomes.length) {
+      throw new Error('R9V2_WITHDRAWAL_DISTRIBUTION_MISSING');
+    }
+    const rows = outcomes.map((outcome, index) => {
+      const withdrawalOutcome = String(
+        outcome?.outcome ||
+        outcome?.branchKey ||
+        `OUTCOME_${index}`,
+      ).trim().toUpperCase();
+      const probability = clamp(
+        Number(outcome?.probability || 0),
+        0,
+        1,
+      );
+      const pursuitDamage = Number.isFinite(
+        Number(outcome?.pursuitDamage),
+      )
+        ? Math.max(0, Number(outcome.pursuitDamage))
+        : Math.max(0, Number(outcome?.hpDamage || 0));
+      const delta = Number.isFinite(Number(outcome?.delta))
+        ? Number(outcome.delta)
+        : -pursuitDamage;
+      return Object.freeze({
+        probability,
+        delta,
+        withdrawalOutcome,
+        withdrawalSuccess:
+          outcome?.withdrawalSuccess === true ||
+          withdrawalOutcome === 'SUCCESS',
+        pursuitDamage,
+        probabilityGroupKey,
+      });
+    }).filter(row => row.probability > 1e-15);
+    const total = rows.reduce(
+      (sum, row) => sum + Number(row.probability || 0),
+      0,
+    );
+    if (Math.abs(total - 1) > 1e-9) {
+      throw new Error(
+        `R9V2_WITHDRAWAL_PROBABILITY_INVALID:${total}`,
+      );
+    }
+    const branchProbability = outcome =>
+      rows
+        .filter(row => row.withdrawalOutcome === outcome)
+        .reduce((sum, row) => sum + row.probability, 0);
+    const contractRows = [
+      ['SUCCESS', evidence?.successProbability],
+      ['PARTIAL', evidence?.partialProbability],
+      ['FAILURE', evidence?.failureProbability],
+    ];
+    contractRows.forEach(([outcome, expected]) => {
+      if (
+        Number.isFinite(Number(expected)) &&
+        Math.abs(branchProbability(outcome) - Number(expected)) > 1e-9
+      ) {
+        throw new Error(
+          `R9V2_WITHDRAWAL_BRANCH_PROBABILITY_MISMATCH:${outcome}`,
+        );
+      }
+    });
+    const expectedPursuitDamage = rows.reduce(
+      (sum, row) =>
+        sum +
+        Number(row.probability || 0) *
+          Number(row.pursuitDamage || 0),
+      0,
+    );
+    if (
+      Number.isFinite(Number(evidence?.expectedPursuitDamage)) &&
+      Math.abs(
+        expectedPursuitDamage -
+          Number(evidence.expectedPursuitDamage)
+      ) > 1e-6
+    ) {
+      throw new Error(
+        'R9V2_WITHDRAWAL_EXPECTED_DAMAGE_MISMATCH',
+      );
+    }
+    return Object.freeze(rows);
+  }
+
   function r9v2ScheduledHpDistribution(contribution = {}) {
     const evidence = contribution?.evidence || {};
     const applicationProbability = clamp(
@@ -33376,7 +34998,7 @@
   }
 
   function r9v2ConvolveHpDistributions(left = [], right = []) {
-    return r9v2MergeDeltaDistribution(left.flatMap(leftRow =>
+    const rows = left.flatMap(leftRow =>
       right.map(rightRow => ({
         probability:
           Number(leftRow?.probability || 0) *
@@ -33384,8 +35006,71 @@
         delta:
           Number(leftRow?.delta || 0) +
           Number(rightRow?.delta || 0),
+        withdrawalOutcome: String(
+          rightRow?.withdrawalOutcome ||
+          leftRow?.withdrawalOutcome ||
+          '',
+        ).trim(),
+        withdrawalSuccess:
+          rightRow?.withdrawalOutcome
+            ? rightRow?.withdrawalSuccess === true
+            : leftRow?.withdrawalSuccess === true,
+        pursuitDamage: Number(
+          rightRow?.pursuitDamage ??
+          leftRow?.pursuitDamage ??
+          0,
+        ),
+        probabilityGroupKey: String(
+          rightRow?.probabilityGroupKey ||
+          leftRow?.probabilityGroupKey ||
+          '',
+        ).trim(),
       }))
-    ));
+    );
+    if (!rows.some(row => row.withdrawalOutcome)) {
+      return r9v2MergeDeltaDistribution(rows);
+    }
+    const merged = new Map();
+    rows.forEach(row => {
+      if (
+        !(row.probability > 1e-15) ||
+        !Number.isFinite(row.delta)
+      ) {
+        return;
+      }
+      const key = [
+        row.delta.toFixed(9),
+        row.withdrawalOutcome,
+        row.withdrawalSuccess ? '1' : '0',
+        row.pursuitDamage.toFixed(9),
+        row.probabilityGroupKey,
+      ].join('|');
+      const current = merged.get(key);
+      if (current) {
+        current.probability += row.probability;
+      } else {
+        merged.set(key, { ...row });
+      }
+    });
+    const result = [...merged.values()].sort((leftRow, rightRow) =>
+      leftRow.delta - rightRow.delta ||
+      leftRow.withdrawalOutcome.localeCompare(
+        rightRow.withdrawalOutcome,
+      )
+    );
+    const total = result.reduce(
+      (sum, row) => sum + Number(row.probability || 0),
+      0,
+    );
+    if (Math.abs(total - 1) > 1e-9) {
+      throw new Error(
+        `R9V2_HP_DISTRIBUTION_INVALID:${total}`,
+      );
+    }
+    return Object.freeze(result.map(row => Object.freeze({
+      ...row,
+      probability: row.probability / total,
+    })));
   }
 
   function r9v2ResponseRoleSet(response = {}) {
@@ -33794,6 +35479,9 @@
     state = {},
     condition = {},
   ) {
+    if (condition?.type === 'WITHDRAW_SUCCESS') {
+      return state?.withdrawalSuccess === true;
+    }
     if (
       condition?.type === 'TEAM_INCAPACITATED' ||
       condition?.type === 'UNIT_INCAPACITATED'
@@ -33894,10 +35582,44 @@
     };
     const hpContributionsByTarget = new Map();
     const scheduledTargetIds = new Set();
+    let withdrawalContestByTarget = null;
     entry.contributions.forEach(contribution => {
       const outcomeKind = String(
         contribution?.outcomeKind || '',
       ).trim();
+      if (outcomeKind === 'WITHDRAWAL_CONTEST') {
+        const targetId = String(
+          contribution?.targetId || entry?.actorId || '',
+        ).trim();
+        if (!targetId) {
+          throw new Error('R9V2_WITHDRAWAL_TARGET_MISSING');
+        }
+        if (withdrawalContestByTarget?.has(targetId)) {
+          throw new Error(
+            `R9V2_WITHDRAWAL_CONTEST_DUPLICATE:${targetId}`,
+          );
+        }
+        withdrawalContestByTarget ||= new Map();
+        const current = hpContributionsByTarget.get(targetId) ||
+          Object.freeze([Object.freeze({
+            probability: 1,
+            delta: 0,
+          })]);
+        const distribution =
+          r9v2WithdrawalHpDistribution(contribution);
+        withdrawalContestByTarget.set(
+          targetId,
+          Object.freeze({
+            contribution,
+            distribution,
+          }),
+        );
+        hpContributionsByTarget.set(
+          targetId,
+          r9v2ConvolveHpDistributions(current, distribution),
+        );
+        return;
+      }
       if (
         outcomeKind !== 'HP_DELTA' &&
         outcomeKind !== 'SCHEDULED_HP_DELTA'
@@ -33927,7 +35649,12 @@
 
     const reactionProfiles = [];
     hpContributionsByTarget.forEach((distribution, targetId) => {
-      if (!distribution.some(outcome => Number(outcome?.delta || 0) < 0)) {
+      if (
+        withdrawalContestByTarget?.has(targetId) ||
+        !distribution.some(
+          outcome => Number(outcome?.delta || 0) < 0
+        )
+      ) {
         return;
       }
       const profile = r9v2ReactionProfile(request, entry, targetId);
@@ -34022,6 +35749,49 @@
         worldSnapshot,
         row.condition,
       );
+      if (
+        row?.condition?.type === 'WITHDRAW_SUCCESS' &&
+        staticMatch !== true &&
+        withdrawalContestByTarget?.size
+      ) {
+        const explicitTargetIds = new Set(
+          (Array.isArray(row?.condition?.targetIds)
+            ? row.condition.targetIds
+            : []
+          ).map(value => String(value || '').trim()).filter(Boolean),
+        );
+        const conditionSide = r9v2ObjectiveSide(
+          row?.condition?.side,
+        );
+        const unitIds = new Set(
+          [...withdrawalContestByTarget.keys()].filter(targetId => {
+            if (
+              explicitTargetIds.size &&
+              !explicitTargetIds.has(targetId)
+            ) {
+              return false;
+            }
+            const target = findUnitInWorld(
+              worldSnapshot,
+              targetId,
+            );
+            return (
+              !conditionSide ||
+              (
+                target &&
+                r9v2ObjectiveSide(
+                  sideOf(worldSnapshot, target),
+                ) === conditionSide
+              )
+            );
+          }),
+        );
+        return Object.freeze({
+          ...row,
+          staticMatch: null,
+          unitIds,
+        });
+      }
       return Object.freeze({
         ...row,
         staticMatch,
@@ -34090,6 +35860,9 @@
         expectedDirectHealthHEPP += probability * directValue;
         expectedDiscardedOverkillPP +=
           probability * discardedOverkillPP;
+        const withdrawalOutcome = String(
+          outcome?.withdrawalOutcome || '',
+        ).trim();
         return Object.freeze({
           probability,
           hp,
@@ -34097,6 +35870,20 @@
           capable,
           directValue,
           discardedOverkillPP,
+          ...(withdrawalOutcome
+            ? {
+                withdrawalOutcome,
+                withdrawalSuccess:
+                  outcome?.withdrawalSuccess === true,
+                pursuitDamage: Math.max(
+                  0,
+                  Number(outcome?.pursuitDamage || 0),
+                ),
+                probabilityGroupKey: String(
+                  outcome?.probabilityGroupKey || '',
+                ).trim(),
+              }
+            : {}),
         });
       });
       targetSummaries.set(targetId, Object.freeze(outcomes));
@@ -34239,6 +36026,86 @@
         `R9V2_TERMINAL_PROBABILITY_INVALID:${probabilityTotal}`,
       );
     }
+    const withdrawalRows = withdrawalContestByTarget
+      ? [...withdrawalContestByTarget.entries()]
+      : [];
+    if (withdrawalRows.length > 1) {
+      throw new Error('R9V2_WITHDRAWAL_MULTI_CONTEST_UNSCOPED');
+    }
+    const withdrawalProjection = withdrawalRows.length
+      ? (() => {
+          const [targetId, contest] = withdrawalRows[0];
+          const evidence = contest?.contribution?.evidence || {};
+          const target = findUnitInWorld(
+            worldSnapshot,
+            targetId,
+          );
+          const hpMax = Math.max(
+            1,
+            preview.readHpMax(target || {}),
+          );
+          const distribution = contest.distribution;
+          return Object.freeze({
+            targetId,
+            pursuerId: String(
+              evidence?.pursuerId || '',
+            ).trim(),
+            visiblePursuerIds: Object.freeze([
+              ...(evidence?.visiblePursuerIds || []),
+            ]),
+            probabilityGroupKey: String(
+              evidence?.probabilityGroupKey ||
+              evidence?.distributionGroupKey ||
+              '',
+            ).trim(),
+            successProbability: distribution
+              .filter(row => row.withdrawalOutcome === 'SUCCESS')
+              .reduce(
+                (sum, row) => sum + row.probability,
+                0,
+              ),
+            partialProbability: distribution
+              .filter(row => row.withdrawalOutcome === 'PARTIAL')
+              .reduce(
+                (sum, row) => sum + row.probability,
+                0,
+              ),
+            failureProbability: distribution
+              .filter(row => row.withdrawalOutcome === 'FAILURE')
+              .reduce(
+                (sum, row) => sum + row.probability,
+                0,
+              ),
+            expectedPursuitDamage: distribution.reduce(
+              (sum, row) =>
+                sum +
+                row.probability *
+                  Number(row.pursuitDamage || 0),
+              0,
+            ),
+            maxPursuitLossHEPP:
+              100 *
+              distribution.reduce(
+                (maximum, row) =>
+                  Math.max(
+                    maximum,
+                    Number(row.pursuitDamage || 0),
+                  ),
+                0,
+              ) /
+              hpMax,
+            branches: Object.freeze(
+              distribution.map(row => Object.freeze({
+                outcome: row.withdrawalOutcome,
+                probability: row.probability,
+                withdrawalSuccess:
+                  row.withdrawalSuccess === true,
+                pursuitDamage: row.pursuitDamage,
+              })),
+            ),
+          });
+        })()
+      : null;
     return Object.freeze({
       expectedDirectHealthHEPP,
       expectedDiscardedOverkillPP,
@@ -34252,12 +36119,59 @@
       responseProjection,
       targetSummaries,
       scheduledTargetIds,
+      ...(withdrawalContestByTarget
+        ? {
+            withdrawalContestTargetIds: Object.freeze(
+              [...withdrawalContestByTarget.keys()].sort(),
+            ),
+          }
+        : {}),
+      ...(withdrawalProjection
+        ? { withdrawalProjection }
+        : {}),
     });
   }
 
   function r9v2StateContributionFullyProjected(contribution = {}) {
-    if (contribution?.outcomeKind !== 'STATE_CHANGED') return false;
+    const outcomeKind = String(
+      contribution?.outcomeKind || '',
+    ).trim();
+    const prototype = String(
+      contribution?.evidence?.prototype || '',
+    ).trim();
+    if (outcomeKind === 'STATE_CHANGED' && prototype === '时窗修正') {
+      const changes = Array.isArray(
+        contribution?.evidence?.durationChanges,
+      )
+        ? contribution.evidence.durationChanges
+        : [];
+      if (!changes.length) {
+        return Math.abs(
+          Number(contribution?.expectedDelta || 0),
+        ) <= 1e-9;
+      }
+      return changes.every(change =>
+          String(change?.stateKey || '').trim() &&
+          String(change?.windowId || '').trim() &&
+          Number.isFinite(Number(change?.beforeDuration)) &&
+          Number.isFinite(Number(change?.afterDuration)),
+      );
+    }
+    const positionMutation =
+      outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+      String(
+        contribution?.evidence?.prototype || '',
+      ).trim() === '位移执行';
+    if (
+      outcomeKind !== 'STATE_CHANGED' &&
+      !positionMutation
+    ) {
+      return false;
+    }
     const effects = contribution?.evidence?.combatEffect || {};
+    if (positionMutation) {
+      return Object.keys(effects).length > 0;
+    }
     const handledKeys = new Set([
       'reaction_bonus',
       'reaction_penalty',
@@ -34280,6 +36194,740 @@
       meaningfulKeys.every(key => handledKeys.has(key));
   }
 
+  function r9v2WorldWithSummon(
+    worldSnapshot = {},
+    summon = {},
+  ) {
+    const summonId = String(
+      summon?.id ||
+      summon?.召唤键 ||
+      summon?.summonId ||
+      '',
+    ).trim();
+    if (!summonId) return worldSnapshot;
+    const nextWorld = {
+      ...worldSnapshot,
+      召唤单位表: {
+        ...(worldSnapshot?.召唤单位表 || {}),
+        [summonId]: cloneValue(summon),
+      },
+    };
+    return attachDecisionRuntimeState(nextWorld, worldSnapshot);
+  }
+
+  function r9v2SummonWindowProjection(
+    request = {},
+    pool,
+    entry = {},
+    projectionCache = null,
+  ) {
+    const summonRows = entry.contributions
+      .map((contribution, index) => ({
+        contribution,
+        index,
+      }))
+      .filter(row =>
+        String(row?.contribution?.outcomeKind || '').trim() ===
+          'SUMMON_WINDOW'
+      );
+    if (!summonRows.length) {
+      return Object.freeze({
+        complete: true,
+        routeDeltaHEPP: 0,
+        facts: Object.freeze([]),
+        diagnostics: Object.freeze([]),
+        projectedContributionIndexes: Object.freeze([]),
+      });
+    }
+    const depth = Math.max(
+      0,
+      Number(projectionCache?.summonProjectionDepth || 0),
+    );
+    if (depth > 0) {
+      return Object.freeze({
+        complete: false,
+        routeDeltaHEPP: 0,
+        facts: Object.freeze([]),
+        diagnostics: Object.freeze([Object.freeze({
+          reason: 'NESTED_SUMMON_PROJECTION_UNSCOPED',
+        })]),
+        projectedContributionIndexes: Object.freeze([]),
+      });
+    }
+    const summonDefinitionsById = new Map(
+      r9v2NormalizeSummonDefinitions(
+        entry?.summonDefinitions || [],
+      ).map(summon => [
+        String(summon?.id || '').trim(),
+        summon,
+      ]),
+    );
+    const facts = [];
+    const diagnostics = [];
+    const projectedContributionIndexes = new Set();
+    let routeDeltaHEPP = 0;
+    let complete = true;
+    summonRows.forEach(({ contribution, index }) => {
+      const evidence = contribution?.evidence || {};
+      const summonId = String(
+        evidence?.instanceId ||
+        evidence?.summonInstanceId ||
+        contribution?.targetId ||
+        '',
+      ).trim();
+      const remainingWindows = Math.max(
+        0,
+        Math.floor(Number(evidence?.remainingWindows || 0)),
+      );
+      const applicationProbability = r9v2ContributionProbability(
+        contribution,
+      );
+      const definition = summonDefinitionsById.get(summonId) || null;
+      const hostId = String(
+        definition?.宿主名 ||
+        definition?.宿主ID ||
+        definition?.hostId ||
+        '',
+      ).trim();
+      const host = hostId
+        ? findUnitInWorld(request.visibleWorld, hostId)
+        : null;
+      const baseDiagnostic = {
+        contributionIndex: index,
+        summonId,
+        remainingWindows,
+        applicationProbability,
+        hostId,
+      };
+      if (!definition) {
+        complete = false;
+        diagnostics.push(Object.freeze({
+          ...baseDiagnostic,
+          reason: 'SUMMON_DEFINITION_MISSING',
+        }));
+        return;
+      }
+      if (
+        remainingWindows <= 0 ||
+        applicationProbability <= 1e-12
+      ) {
+        projectedContributionIndexes.add(index);
+        diagnostics.push(Object.freeze({
+          ...baseDiagnostic,
+          reason: remainingWindows <= 0
+            ? 'NO_REMAINING_SUMMON_WINDOW'
+            : 'SUMMON_APPLICATION_ZERO',
+          routeDeltaHEPP: 0,
+        }));
+        return;
+      }
+      if (!host || !preview.isBattleCapable(host)) {
+        projectedContributionIndexes.add(index);
+        diagnostics.push(Object.freeze({
+          ...baseDiagnostic,
+          reason: 'SUMMON_HOST_UNAVAILABLE',
+          routeDeltaHEPP: 0,
+        }));
+        return;
+      }
+      const projectedSummon = cloneValue(definition);
+      projectedSummon.剩余窗口 = remainingWindows;
+      projectedSummon.__battleRuntime = {
+        ...(projectedSummon.__battleRuntime || {}),
+        summonWindow: {
+          ...(projectedSummon.__battleRuntime?.summonWindow || {}),
+          remainingWindows,
+        },
+      };
+      const availableWindows = availableNaturalOpportunityCount(
+        request.visibleWorld,
+        projectedSummon,
+        {
+          currentOpportunityConsumedFor:
+            new Set([request.actorId]),
+        },
+      );
+      const realizableWindows = Math.min(
+        remainingWindows,
+        Math.max(0, availableWindows),
+      );
+      if (!(realizableWindows > 0)) {
+        projectedContributionIndexes.add(index);
+        diagnostics.push(Object.freeze({
+          ...baseDiagnostic,
+          reason: 'NO_FUTURE_NATURAL_OPPORTUNITY',
+          availableWindows,
+          routeDeltaHEPP: 0,
+        }));
+        return;
+      }
+      const summonWorld = r9v2WorldWithSummon(
+        request.visibleWorld,
+        projectedSummon,
+      );
+      const identity = [
+        entry.candidateId,
+        summonId,
+        String(evidence?.definitionHash || '').trim(),
+        remainingWindows,
+      ].join('\u0000');
+      const cached = projectionCache?.summonWindowByIdentity?.get(identity);
+      if (cached) {
+        routeDeltaHEPP += Number(cached.routeDeltaHEPP || 0);
+        if (!cached.complete) complete = false;
+        if (cached.complete) projectedContributionIndexes.add(index);
+        if (cached.fact) facts.push(Object.freeze({
+          ...cached.fact,
+          factId: `${entry.candidateId}:summon-window:${index}`,
+        }));
+        diagnostics.push(Object.freeze({
+          ...baseDiagnostic,
+          ...cached.diagnostic,
+          contributionIndex: index,
+          cached: true,
+        }));
+        return;
+      }
+      const summonIdValue = String(
+        projectedSummon?.id ||
+        projectedSummon?.召唤键 ||
+        '',
+      ).trim();
+      const summonSide = sideOf(summonWorld, projectedSummon);
+      const summonBelief = request?.beliefState || {};
+      const futureActionOpportunity = {
+        ...cloneValue(request?.actionOpportunity || {}),
+        role: 'ACTIVE',
+        ownerId: summonIdValue,
+        sequence:
+          Number(request?.actionOpportunity?.sequence || 0) + 1,
+        pendingNaturalActorIds: (
+          request?.actionOpportunity?.pendingNaturalActorIds || []
+        ).filter(unitId =>
+          String(unitId || '').trim() !== summonIdValue
+        ),
+      };
+      const candidates = r9v2FutureCandidates({
+        worldSnapshot: summonWorld,
+        unitId: summonIdValue,
+        beliefState: summonBelief,
+        battleIntent: request.battleIntent,
+        actionOpportunity: futureActionOpportunity,
+      });
+      const temporaryState = r9v2EphemeralState();
+      const mechanicalProjectionContext =
+        preview.compileMechanicalProjectionContext(summonWorld);
+      const entries = Object.freeze(candidates.map(candidate =>
+        r9v2BuildMechanicalEntry({
+          state: temporaryState,
+          worldSnapshot: summonWorld,
+          actorId: summonIdValue,
+          candidate,
+          beliefState: summonBelief,
+          battleIntent: request.battleIntent,
+          actionOpportunity: futureActionOpportunity,
+          revision: `summon-window:${identity}`,
+          mechanicalProjectionContext,
+          verifyMechanicalBasis: false,
+        })
+      ));
+      const temporaryPool = {
+        ...pool,
+        observerActorId: summonIdValue,
+        observerSide: summonSide,
+        unitEntries: new Map(pool?.unitEntries || []),
+        targetSourceUnitIds: new Map(),
+        targetInterferenceRateByUnit:
+          new Map(pool?.targetInterferenceRateByUnit || []),
+      };
+      temporaryPool.unitEntries.set(summonIdValue, entries);
+      temporaryPool.targetInterferenceRateByUnit.set(
+        summonIdValue,
+        visibleTargetInterferenceRate(projectedSummon),
+      );
+      r9v2ReindexTargets(temporaryPool);
+      const futureRequest = {
+        ...request,
+        visibleWorld: summonWorld,
+        actorId: summonIdValue,
+        actorSide: summonSide,
+        actionOpportunity: futureActionOpportunity,
+      };
+      const childCache = {
+        ...(projectionCache || {}),
+        summonProjectionDepth: depth + 1,
+      };
+      const proofs = entries
+        .filter(futureEntry => futureEntry.hardInvalid !== true)
+        .map(futureEntry =>
+          r9v2CandidateValueProof(
+            futureRequest,
+            temporaryPool,
+            futureEntry,
+            childCache,
+          )
+        );
+      const supportedProofs = proofs.filter(proof =>
+        !Array.isArray(proof?.unsupportedOutcomeKinds) ||
+        proof.unsupportedOutcomeKinds.length === 0
+      );
+      const poolComplete =
+        candidates.length === supportedProofs.length &&
+        entries.every(futureEntry => futureEntry.hardInvalid !== true);
+      const bestProof = supportedProofs
+        .slice()
+        .sort((left, right) =>
+          Number(right?.objectiveUtilityHEPP || 0) -
+            Number(left?.objectiveUtilityHEPP || 0) ||
+          String(left?.candidateId || '').localeCompare(
+            String(right?.candidateId || ''),
+          )
+        )[0] || null;
+      const signedRouteDelta =
+        (summonSide === request.actorSide ? 1 : -1) *
+        Number(bestProof?.objectiveUtilityHEPP || 0) *
+        applicationProbability;
+      const fact = poolComplete && Math.abs(signedRouteDelta) > 1e-9
+        ? Object.freeze({
+            factId: `${entry.candidateId}:summon-window:${index}`,
+            ownerType: 'ACTION_POOL_DELTA',
+            targetId: summonIdValue,
+            valueHEPP: signedRouteDelta,
+            sourceOutcomeKind: 'SUMMON_WINDOW',
+            dependencyRole: 'OPPORTUNITY_EXPLOIT',
+            summonId: summonIdValue,
+            remainingWindows,
+            realizableWindows,
+            applicationProbability,
+            bestCandidateId:
+              String(bestProof?.candidateId || '').trim(),
+            bestRouteUtilityHEPP:
+              Number(bestProof?.objectiveUtilityHEPP || 0),
+          })
+        : null;
+      const cachedResult = Object.freeze({
+        complete: poolComplete,
+        routeDeltaHEPP: poolComplete
+          ? signedRouteDelta
+          : 0,
+        fact,
+        diagnostic: {
+          reason: poolComplete
+            ? ''
+            : 'SUMMON_BEHAVIOR_POOL_INCOMPLETE',
+          candidateCount: candidates.length,
+          supportedCandidateCount: supportedProofs.length,
+          bestCandidateId:
+            String(bestProof?.candidateId || '').trim(),
+          bestRouteUtilityHEPP:
+            Number(bestProof?.objectiveUtilityHEPP || 0),
+          realizableWindows,
+        },
+      });
+      if (projectionCache?.summonWindowByIdentity) {
+        projectionCache.summonWindowByIdentity.set(
+          identity,
+          cachedResult,
+        );
+      }
+      if (!poolComplete) {
+        complete = false;
+        diagnostics.push(Object.freeze({
+          ...baseDiagnostic,
+          ...cachedResult.diagnostic,
+        }));
+        return;
+      }
+      projectedContributionIndexes.add(index);
+      routeDeltaHEPP += signedRouteDelta;
+      if (fact) facts.push(fact);
+      diagnostics.push(Object.freeze({
+        ...baseDiagnostic,
+        ...cachedResult.diagnostic,
+      }));
+    });
+    return Object.freeze({
+      complete,
+      routeDeltaHEPP: complete ? routeDeltaHEPP : 0,
+      facts: Object.freeze(complete ? facts : []),
+      diagnostics: Object.freeze(diagnostics),
+      projectedContributionIndexes: Object.freeze(
+        complete
+          ? [...projectedContributionIndexes].sort(
+              (left, right) => left - right,
+            )
+          : [],
+      ),
+    });
+  }
+
+  function r9v2WorldWithProjectedUnits(
+    worldSnapshot = {},
+    projectedUnitSnapshots = [],
+  ) {
+    const replacements = new Map(
+      (Array.isArray(projectedUnitSnapshots)
+        ? projectedUnitSnapshots
+        : []
+      )
+        .map(snapshot => [
+          String(snapshot?.unitId || '').trim(),
+          snapshot?.unit,
+        ])
+        .filter(([unitId, unit]) =>
+          unitId &&
+          unit &&
+          typeof unit === 'object'
+        ),
+    );
+    if (!replacements.size) return worldSnapshot;
+    const replaceUnit = unit =>
+      replacements.get(preview.unitId(unit)) || unit;
+    const participants = worldSnapshot?.参战者 || {};
+    const nextParticipants = Object.fromEntries(
+      Object.entries(participants).map(([side, value]) => {
+        if (Array.isArray(value)) {
+          return [side, value.map(replaceUnit)];
+        }
+        if (value && typeof value === 'object') {
+          return [
+            side,
+            Object.fromEntries(
+              Object.entries(value).map(([key, unit]) => [
+                key,
+                replaceUnit(unit),
+              ]),
+            ),
+          ];
+        }
+        return [side, value];
+      }),
+    );
+    const nextWorld = {
+      ...worldSnapshot,
+      参战者: nextParticipants,
+    };
+    if (
+      worldSnapshot?.召唤单位表 &&
+      typeof worldSnapshot.召唤单位表 === 'object'
+    ) {
+      nextWorld.召唤单位表 = Object.fromEntries(
+        Object.entries(worldSnapshot.召唤单位表)
+          .map(([key, unit]) => [key, replaceUnit(unit)]),
+      );
+    }
+    return nextWorld;
+  }
+
+  function r9v2PrepareCurrentIncomingProjection({
+    state,
+    request,
+    mechanicalProjectionContext,
+  }) {
+    const actionOpportunity = request?.actionOpportunity || {};
+    const incomingAction = actionOpportunity?.incomingAction;
+    if (!incomingAction || typeof incomingAction !== 'object') {
+      return null;
+    }
+    const actorId = String(request?.actorId || '').trim();
+    const sourceActorId = String(
+      actionOpportunity?.sourceActorId ||
+      incomingAction?.actorId ||
+      incomingAction?.sourceActorId ||
+      '',
+    ).trim();
+    if (!actorId || !sourceActorId) {
+      throw new Error('R9V2_CURRENT_INCOMING_IDENTITY_MISSING');
+    }
+    const actionKind = String(
+      incomingAction?.actionKind || 'RELEASE_SKILL',
+    ).trim().toUpperCase();
+    const targetIds = [
+      ...(Array.isArray(incomingAction?.targetIds)
+        ? incomingAction.targetIds
+        : []),
+      incomingAction?.targetId,
+      incomingAction?.target_id,
+    ]
+      .map(value => String(value || '').trim())
+      .filter(Boolean);
+    const declaration = {
+      ...cloneValue(incomingAction),
+      actionId: String(
+        incomingAction?.actionId ||
+        `incoming:${actionOpportunity?.opportunityId || actorId}`,
+      ).trim(),
+      actorId: sourceActorId,
+      actionKind,
+      targetIds: targetIds.length
+        ? [...new Set(targetIds)]
+        : [actorId],
+      resourceCosts: {},
+      __includeGrantedEffects: false,
+      ...(actionKind === 'BASIC_ATTACK'
+        ? { skill: {} }
+        : {
+            skill: cloneValue(
+              incomingAction?.skill || incomingAction,
+            ),
+          }),
+    };
+    const basis = preview.compileMechanicalBasis({
+      identity: [
+        'r9v2-current-incoming',
+        actionOpportunity?.opportunityId || actorId,
+        declarationFingerprint(declaration),
+      ].join(':'),
+      actorId: sourceActorId,
+      declaration,
+      paymentMode: 'EXTERNAL_TIMELINE',
+      actionFingerprint: declarationFingerprint(declaration),
+    });
+    r9v2Metric(state, 'r9v2IncomingMechanicalBasisCompiles');
+    const baselineEvaluation = preview.evaluateMechanicalBasis({
+      basis,
+      worldSnapshot: request.visibleWorld,
+      actorId: sourceActorId,
+      battleIntent: request?.battleIntent || {},
+      actionOpportunity,
+      revision: [
+        'r9v2-current-incoming-baseline',
+        actionOpportunity?.opportunityId || actorId,
+      ].join(':'),
+      mechanicalProjectionContext,
+    });
+    r9v2Metric(state, 'r9v2IncomingMechanicalBasisEvaluations');
+    const baselineEntry = Object.freeze({
+      schemaVersion: 'R9v2IncomingMechanicalEntryV1',
+      candidateId:
+        `__NO_OP_INCOMING__:${actionOpportunity?.opportunityId || actorId}`,
+      actorId: sourceActorId,
+      actorSide: sideOf(
+        request.visibleWorld,
+        findUnitInWorld(request.visibleWorld, sourceActorId) || {},
+      ),
+      actionKind,
+      targetIds: Object.freeze([...declaration.targetIds]),
+      contributions: Object.freeze(
+        (baselineEvaluation?.contributions || [])
+          .map(r9v2NormalizedContribution),
+      ),
+    });
+    const baselineHealthProjection =
+      r9v2ProjectHealthAndTerminal(request, baselineEntry);
+    return Object.freeze({
+      schemaVersion: 'R9v2CurrentIncomingProjectionContextV1',
+      state,
+      basis,
+      declaration: Object.freeze(declaration),
+      sourceActorId,
+      targetIds: Object.freeze([...declaration.targetIds]),
+      baselineEntry,
+      baselineHealthProjection,
+      baselineBranchCount:
+        baselineEntry.contributions.reduce(
+          (sum, contribution) =>
+            sum +
+            Math.max(
+              1,
+              Number(
+                contribution?.evidence?.outcomeDistribution
+                  ?.length || 0,
+              ),
+            ),
+          0,
+        ),
+    });
+  }
+
+  function r9v2CurrentIncomingResponseProjection(
+    request,
+    entry,
+    candidateHealthProjection,
+    incomingContext,
+  ) {
+    if (!incomingContext) return null;
+    const projectedWorld = r9v2WorldWithProjectedUnits(
+      request.visibleWorld,
+      entry?.projectedUnitSnapshots || [],
+    );
+    const projectedSource = findUnitInWorld(
+      projectedWorld,
+      incomingContext.sourceActorId,
+    );
+    const projectedTarget = findUnitInWorld(
+      projectedWorld,
+      request.actorId,
+    );
+    const incomingTargetsActor =
+      incomingContext.targetIds.includes(request.actorId);
+    const actionKind = String(
+      entry?.actionKind || '',
+    ).trim().toUpperCase();
+    const damageMultiplierByTarget = {};
+    const evadeProbabilityByTarget = {};
+    if (
+      incomingTargetsActor &&
+      projectedSource &&
+      projectedTarget &&
+      actionKind === 'DEFEND'
+    ) {
+      damageMultiplierByTarget[request.actorId] =
+        preview.calculateDefenseDamageMultiplier(
+          projectedTarget,
+          projectedSource,
+          false,
+        );
+    } else if (
+      incomingTargetsActor &&
+      projectedSource &&
+      projectedTarget &&
+      actionKind === 'EVADE'
+    ) {
+      evadeProbabilityByTarget[request.actorId] =
+        preview.calculateDodgeProbability(
+          projectedTarget,
+          projectedSource,
+          false,
+        );
+    }
+    let candidateEntry;
+    if (
+      !projectedSource ||
+      !projectedTarget ||
+      !preview.isBattleCapable(projectedSource) ||
+      !preview.isBattleCapable(projectedTarget)
+    ) {
+      candidateEntry = Object.freeze({
+        schemaVersion: 'R9v2IncomingMechanicalEntryV1',
+        candidateId:
+          `${entry.candidateId}:incoming:cancelled`,
+        actorId: incomingContext.sourceActorId,
+        actorSide: '',
+        actionKind:
+          String(incomingContext.declaration?.actionKind || '')
+            .trim().toUpperCase(),
+        targetIds: incomingContext.targetIds,
+        contributions: Object.freeze([]),
+      });
+    } else {
+      const candidateEvaluation = preview.evaluateMechanicalBasis({
+        basis: incomingContext.basis,
+        worldSnapshot: projectedWorld,
+        actorId: incomingContext.sourceActorId,
+        battleIntent: request?.battleIntent || {},
+        actionOpportunity: request?.actionOpportunity || {},
+        revision: [
+          'r9v2-current-incoming-candidate',
+          request?.actionOpportunity?.opportunityId ||
+            request.actorId,
+          entry.candidateId,
+        ].join(':'),
+        damageMultiplierByTarget,
+        evadeProbabilityByTarget,
+      });
+      r9v2Metric(
+        incomingContext.state,
+        'r9v2IncomingMechanicalBasisEvaluations',
+      );
+      candidateEntry = Object.freeze({
+        schemaVersion: 'R9v2IncomingMechanicalEntryV1',
+        candidateId: `${entry.candidateId}:incoming`,
+        actorId: incomingContext.sourceActorId,
+        actorSide: sideOf(projectedWorld, projectedSource),
+        actionKind:
+          String(incomingContext.declaration?.actionKind || '')
+            .trim().toUpperCase(),
+        targetIds: incomingContext.targetIds,
+        contributions: Object.freeze(
+          (candidateEvaluation?.contributions || [])
+            .map(r9v2NormalizedContribution),
+        ),
+      });
+    }
+    const candidateProjection = r9v2ProjectHealthAndTerminal(
+      {
+        ...request,
+        visibleWorld: projectedWorld,
+      },
+      candidateEntry,
+    );
+    const candidateOngoingProbability = clamp(
+      Number(candidateHealthProjection?.ongoingProbability ?? 1),
+      0,
+      1,
+    );
+    const baselineProjection =
+      incomingContext.baselineHealthProjection;
+    const directDeltaHEPP =
+      candidateOngoingProbability *
+        Number(
+          candidateProjection
+            ?.expectedOngoingDirectHealthHEPP || 0,
+        ) -
+      Number(
+        baselineProjection
+          ?.expectedOngoingDirectHealthHEPP || 0,
+      );
+    const terminalDeltaHEPP =
+      candidateOngoingProbability *
+        Number(candidateProjection?.expectedTerminalUtility || 0) -
+      Number(baselineProjection?.expectedTerminalUtility || 0);
+    return Object.freeze({
+      schemaVersion: 'R9v2CurrentIncomingResponseProjectionV1',
+      sourceActorId: incomingContext.sourceActorId,
+      targetIds: incomingContext.targetIds,
+      actionKind,
+      incomingTargetsActor,
+      damageMultiplier:
+        Number(
+          damageMultiplierByTarget?.[request.actorId] ?? 1,
+        ),
+      evadeProbability:
+        Number(
+          evadeProbabilityByTarget?.[request.actorId] ?? 0,
+        ),
+      candidateOngoingProbability,
+      directDeltaHEPP,
+      terminalDeltaHEPP,
+      totalDeltaHEPP:
+        directDeltaHEPP + terminalDeltaHEPP,
+      baselineExpectedDirectHealthHEPP:
+        Number(
+          baselineProjection
+            ?.expectedOngoingDirectHealthHEPP || 0,
+        ),
+      candidateExpectedDirectHealthHEPP:
+        Number(
+          candidateProjection
+            ?.expectedOngoingDirectHealthHEPP || 0,
+        ),
+      baselineExpectedTerminalUtility:
+        Number(
+          baselineProjection?.expectedTerminalUtility || 0,
+        ),
+      candidateExpectedTerminalUtility:
+        Number(
+          candidateProjection?.expectedTerminalUtility || 0,
+        ),
+      baselineBranchCount:
+        incomingContext.baselineBranchCount,
+      candidateBranchCount:
+        candidateEntry.contributions.reduce(
+          (sum, contribution) =>
+            sum +
+            Math.max(
+              1,
+              Number(
+                contribution?.evidence?.outcomeDistribution
+                  ?.length || 0,
+              ),
+            ),
+          0,
+        ),
+    });
+  }
+
   function r9v2CandidateValueProof(
     request,
     pool,
@@ -34292,6 +36940,21 @@
       request,
       entry,
     );
+    const incomingResponseProjection =
+      r9v2CurrentIncomingResponseProjection(
+        request,
+        entry,
+        healthProjection,
+        projectionCache?.currentIncoming || null,
+      );
+    const incomingResponseDirectDeltaHEPP =
+      Number(
+        incomingResponseProjection?.directDeltaHEPP || 0,
+      );
+    const incomingResponseTerminalDeltaHEPP =
+      Number(
+        incomingResponseProjection?.terminalDeltaHEPP || 0,
+      );
     const stateOpportunityProjection =
       r9v2StateOpportunityProjection(
         request,
@@ -34299,9 +36962,30 @@
         entry,
         projectionCache,
       );
-    const creationProjection =
-      r9v2CreationConsumerProjection(request, entry);
+    const behaviorPoolProjection =
+      r9v2BehaviorPoolDeltaProjection(
+        request,
+        pool,
+        entry,
+        projectionCache,
+      );
+    const creationProjection = entry?.creationCarrier
+      ? r9v2CreationConsumerProjection(request, entry)
+      : null;
+    if (projectionCache && !projectionCache.summonWindowByIdentity) {
+      projectionCache.summonWindowByIdentity = new Map();
+    }
+    const summonWindowProjection =
+      r9v2SummonWindowProjection(
+        request,
+        pool,
+        entry,
+        projectionCache,
+      );
     const causalValueFacts = [];
+    const withdrawalContestTargetId = String(
+      healthProjection?.withdrawalContestTargetIds?.[0] || '',
+    ).trim();
     healthProjection.targetSummaries.forEach((outcomes, targetId) => {
       const value = outcomes.reduce(
         (sum, outcome) =>
@@ -34317,11 +37001,37 @@
         targetId,
         valueHEPP: value,
         sourceOutcomeKind:
-          healthProjection.scheduledTargetIds.has(targetId)
+          withdrawalContestTargetId === targetId
+            ? 'WITHDRAWAL_CONTEST'
+            : healthProjection.scheduledTargetIds.has(targetId)
             ? 'SCHEDULED_HP_DELTA'
             : 'HP_DELTA',
       }));
     });
+    if (Math.abs(incomingResponseDirectDeltaHEPP) > 1e-9) {
+      causalValueFacts.push(Object.freeze({
+        factId: `${entry.candidateId}:incoming:direct`,
+        ownerType: 'ACTION_POOL_DELTA',
+        targetId: request.actorId,
+        valueHEPP: incomingResponseDirectDeltaHEPP,
+        sourceOutcomeKind: 'INCOMING_HEALTH_DELTA',
+        dependencyRole: 'OPPORTUNITY_EXECUTE',
+        sourceActorId:
+          String(
+            incomingResponseProjection?.sourceActorId || '',
+          ).trim(),
+        baselineExpectedDirectHealthHEPP:
+          Number(
+            incomingResponseProjection
+              ?.baselineExpectedDirectHealthHEPP || 0,
+          ),
+        candidateExpectedDirectHealthHEPP:
+          Number(
+            incomingResponseProjection
+              ?.candidateExpectedDirectHealthHEPP || 0,
+          ),
+      }));
+    }
 
     const cancellationByTarget = new Map();
     entry.contributions.forEach(contribution => {
@@ -34431,10 +37141,20 @@
       Number(
         stateOpportunityProjection?.castOrderDeltaHEPP || 0,
       ) * ongoingProbability;
+    const scaledBehaviorPoolDeltaHEPP =
+      Number(
+        behaviorPoolProjection?.routeDeltaHEPP || 0,
+      ) * ongoingProbability;
     const scaledCreationWindowDeltaHEPP =
       Number(
         creationProjection?.complete
           ? creationProjection.routeDeltaHEPP
+          : 0,
+      ) * ongoingProbability;
+    const scaledSummonWindowDeltaHEPP =
+      Number(
+        summonWindowProjection?.complete
+          ? summonWindowProjection.routeDeltaHEPP
           : 0,
       ) * ongoingProbability;
     cancellationByTarget.forEach((cancellation, targetId) => {
@@ -34494,6 +37214,15 @@
         valueHEPP: value,
       }));
     });
+    (behaviorPoolProjection?.facts || []).forEach(fact => {
+      const value =
+        Number(fact?.valueHEPP || 0) * ongoingProbability;
+      if (Math.abs(value) <= 1e-9) return;
+      causalValueFacts.push(Object.freeze({
+        ...fact,
+        valueHEPP: value,
+      }));
+    });
     if (Math.abs(scaledCreationWindowDeltaHEPP) > 1e-9) {
       causalValueFacts.push(Object.freeze({
         factId: `${entry.candidateId}:creation-window`,
@@ -34511,6 +37240,15 @@
           creationProjection?.withProductCandidateId || '',
       }));
     }
+    (summonWindowProjection?.facts || []).forEach(fact => {
+      const value =
+        Number(fact?.valueHEPP || 0) * ongoingProbability;
+      if (Math.abs(value) <= 1e-9) return;
+      causalValueFacts.push(Object.freeze({
+        ...fact,
+        valueHEPP: value,
+      }));
+    });
 
     const goalUtilityDeltaHEPP =
       Number(healthProjection.expectedTerminalUtility || 0) +
@@ -34521,7 +37259,11 @@
       scaledResourceFrontierDeltaHEPP +
       scaledReactionOpportunityDeltaHEPP +
       scaledCastOrderDeltaHEPP +
-      scaledCreationWindowDeltaHEPP;
+      scaledBehaviorPoolDeltaHEPP +
+      scaledCreationWindowDeltaHEPP +
+      scaledSummonWindowDeltaHEPP +
+      incomingResponseDirectDeltaHEPP +
+      incomingResponseTerminalDeltaHEPP;
     let reconciled = causalValueFacts.reduce(
       (sum, fact) => sum + Number(fact.valueHEPP || 0),
       0,
@@ -34552,17 +37294,35 @@
       'RESOURCE_OPTION_CHANGED',
       'SHIELD_DELTA',
     ]);
+    if (healthProjection?.withdrawalProjection) {
+      supported.add('WITHDRAWAL_CONTEST');
+    }
     if (creationProjection?.complete) {
       supported.add('NEXT_ACTION_QUALITY_CHANGED');
     }
+    if (summonWindowProjection?.complete) {
+      supported.add('SUMMON_WINDOW');
+    }
+    const behaviorProjectedIndexes = new Set(
+      behaviorPoolProjection?.projectedContributionIndexes || [],
+    );
+    const summonProjectedIndexes = new Set(
+      summonWindowProjection?.projectedContributionIndexes || [],
+    );
     const unsupportedOutcomeKinds = [
       ...new Set(
         entry.contributions
-          .filter(contribution => {
+          .filter((contribution, index) => {
             const kind = String(
               contribution?.outcomeKind || '',
             ).trim();
             if (!kind) return false;
+            if (behaviorProjectedIndexes.has(index)) {
+              return false;
+            }
+            if (summonProjectedIndexes.has(index)) {
+              return false;
+            }
             if (kind === 'STATE_CHANGED') {
               return !r9v2StateContributionFullyProjected(
                 contribution,
@@ -34595,15 +37355,21 @@
       0,
     );
     const worstTailLossHEPP =
-      healthProjection.terminalProbability >= 1 - 1e-9
-        ? 0
-        : Math.max(
-            0,
-            Number(
-              healthProjection?.responseProjection?.disasterTail
-                ?.threatUpperHEPP || 0,
+      Math.max(
+        Number(
+          healthProjection?.withdrawalProjection
+            ?.maxPursuitLossHEPP || 0,
+        ),
+        healthProjection.terminalProbability >= 1 - 1e-9
+          ? 0
+          : Math.max(
+              0,
+              Number(
+                healthProjection?.responseProjection?.disasterTail
+                  ?.threatUpperHEPP || 0,
+              ),
             ),
-          );
+      );
     const terminalProjection =
       healthProjection.terminalProbability > 1e-12 ||
       Math.abs(terminalDeltaHEPP) > 1e-12 ||
@@ -34620,6 +37386,16 @@
             expectedOngoingTrajectoryUtility:
               healthProjection.expectedOngoingDirectHealthHEPP,
             terminalDeltaHEPP,
+            ...(healthProjection?.withdrawalProjection
+              ? {
+                  withdrawalSuccessProbability:
+                    healthProjection.withdrawalProjection
+                      .successProbability,
+                  withdrawalProbabilityGroupKey:
+                    healthProjection.withdrawalProjection
+                      .probabilityGroupKey,
+                }
+              : {}),
           })
         : null;
     const paretoVector = Object.freeze({
@@ -34649,8 +37425,29 @@
           scaledReactionOpportunityDeltaHEPP,
         castOrderDeltaHEPP:
           scaledCastOrderDeltaHEPP,
+        behaviorPoolDeltaHEPP:
+          scaledBehaviorPoolDeltaHEPP,
         creationWindowDeltaHEPP:
           scaledCreationWindowDeltaHEPP,
+        summonWindowDeltaHEPP:
+          scaledSummonWindowDeltaHEPP,
+        incomingResponseDirectDeltaHEPP,
+        incomingResponseTerminalDeltaHEPP,
+        incomingResponseDeltaHEPP:
+          incomingResponseDirectDeltaHEPP +
+          incomingResponseTerminalDeltaHEPP,
+        ...(healthProjection?.withdrawalProjection
+          ? {
+              withdrawalExpectedPursuitDamage: Number(
+                healthProjection.withdrawalProjection
+                  .expectedPursuitDamage || 0,
+              ),
+              withdrawalSuccessProbability: Number(
+                healthProjection.withdrawalProjection
+                  .successProbability || 0,
+              ),
+            }
+          : {}),
         terminalDeltaHEPP,
       }),
       causalValueFacts: Object.freeze(causalValueFacts),
@@ -34662,10 +37459,22 @@
           }
         : {}),
       ...(terminalProjection ? { terminalProjection } : {}),
+      ...(healthProjection?.withdrawalProjection
+        ? {
+            withdrawalProjection:
+              healthProjection.withdrawalProjection,
+          }
+        : {}),
       ...(healthProjection.responseProjection
         ? {
             responseProjection:
               healthProjection.responseProjection,
+          }
+        : {}),
+      ...(incomingResponseProjection
+        ? {
+            currentIncomingResponseProjection:
+              incomingResponseProjection,
           }
         : {}),
       ...(stateOpportunityProjection?.diagnostics?.length
@@ -34676,14 +37485,48 @@
             }),
           }
         : {}),
+      ...(behaviorPoolProjection?.diagnostics?.length
+        ? {
+            behaviorPoolProjection: Object.freeze({
+              diagnostics:
+                behaviorPoolProjection.diagnostics,
+            }),
+          }
+        : {}),
+      ...(behaviorPoolProjection
+        ?.targetResolutionProjections?.length
+        ? {
+            targetResolutionProjection:
+              behaviorPoolProjection
+                .targetResolutionProjections,
+          }
+        : {}),
       ...(creationProjection
         ? {
             creationProjection,
           }
         : {}),
+      ...(summonWindowProjection?.diagnostics?.length
+        ? {
+            summonWindowProjection: Object.freeze({
+              complete: summonWindowProjection.complete,
+              diagnostics: summonWindowProjection.diagnostics,
+            }),
+          }
+        : {}),
       sliceCoverage:
-        'STATE_OPPORTUNITY_SCHEDULED_HEALTH_CREATION_V1',
+        'STATE_OPPORTUNITY_BEHAVIOR_POOL_SCHEDULED_HEALTH_CREATION_SUMMON_CURRENT_INCOMING_V1',
     };
+    const actionKind = String(
+      entry?.actionKind || '',
+    ).trim().toUpperCase();
+    if (
+      ['DEFEND', 'EVADE'].includes(actionKind) &&
+      !hasDefenseWindow(request)
+    ) {
+      proof.rejectionCode =
+        'ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED';
+    }
     Object.defineProperty(proof, 'vector', {
       value: paretoVector,
       enumerable: false,
@@ -34724,10 +37567,13 @@
     );
     const currentRole =
       String(actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+    const captureProjectedUnits =
+      !!actionOpportunity?.incomingAction;
     const currentEntries = frozenCandidates.map(candidate => {
       const cached = activeByCandidate.get(candidate.candidateId);
       if (
         currentRole === 'ACTIVE' &&
+        !captureProjectedUnits &&
         cached &&
         cached.declarationFingerprint ===
           candidate.declarationFingerprint &&
@@ -34739,6 +37585,7 @@
       }
       if (
         currentRole === 'ACTIVE' &&
+        !captureProjectedUnits &&
         cached &&
         cached.declarationFingerprint ===
           candidate.declarationFingerprint &&
@@ -34768,6 +37615,7 @@
         mechanicalProjectionContext,
         metricKey: 'r9v2CurrentCandidatePreviewCalls',
         verifyMechanicalBasis,
+        captureProjectedUnits,
       });
     });
     const requestLike = {
@@ -34781,15 +37629,33 @@
     };
     const projectionCache = {
       bestHealthByUnit: new Map(),
+      behaviorPoolByIdentity: new Map(),
       pendingNaturalActorIds: null,
     };
-    const proofs = currentEntries.map(entry =>
+    projectionCache.currentIncoming =
+      r9v2PrepareCurrentIncomingProjection({
+        state: prepared.state,
+        request: requestLike,
+        mechanicalProjectionContext,
+      });
+    const directProofs = currentEntries.map(entry =>
       r9v2CandidateValueProof(
         requestLike,
         prepared.pool,
         entry,
         projectionCache,
       )
+    );
+    const currentTargetInterferenceRate =
+      currentRole === 'ACTIVE'
+        ? visibleTargetInterferenceRate(
+            findUnitInWorld(worldSnapshot, actorId) || {},
+          )
+        : 0;
+    const proofs = r9v2ApplyCurrentTargetResolution(
+      currentEntries,
+      directProofs,
+      currentTargetInterferenceRate,
     );
     r9v2Metric(prepared.state, 'r9v2CandidateProofs', proofs.length);
     return Object.freeze({
@@ -34841,6 +37707,29 @@
     return neverWorse && strictlyBetter;
   }
 
+  function r9v2ProviderRejectionCode(request = {}, row = {}) {
+    const existing = String(
+      row?.proof?.rejectionCode || '',
+    ).trim();
+    if (existing) return existing;
+    if (request?.playerLockedDeclaration) return '';
+    const opportunityRole = String(
+      request?.actionOpportunity?.role || '',
+    ).trim().toUpperCase();
+    if (!['REACTION', 'COUNTER'].includes(opportunityRole)) {
+      return '';
+    }
+    const actionKind = String(
+      row?.entry?.actionKind || '',
+    ).trim().toUpperCase();
+    if (['PASS', 'PASS_OPPORTUNITY'].includes(actionKind)) {
+      return '';
+    }
+    return Number(row?.proof?.objectiveUtilityHEPP || 0) <= 1e-9
+      ? 'ZERO_MARGINAL_WITH_COST'
+      : '';
+  }
+
   function runR9v2ShadowProvider(request = {}) {
     const prepared = preparedR9v2Slices.get(request);
     if (!prepared) {
@@ -34868,18 +37757,29 @@
     const entryByCandidate = new Map(
       prepared.entries.map(entry => [entry.candidateId, entry]),
     );
-    let rows = candidates.map(candidate => ({
+    const auditableRows = candidates.map(candidate => ({
       candidate,
       entry: entryByCandidate.get(candidate.candidateId),
       proof: proofByCandidate.get(candidate.candidateId),
       playerLocked: false,
-    }));
-    rows = rows.filter(row =>
+    })).filter(row =>
       row.entry &&
       row.proof &&
       row.entry.hardInvalid !== true
+    ).map(row => ({
+      ...row,
+      providerRejectionCode:
+        r9v2ProviderRejectionCode(request, row),
+    }));
+    if (!auditableRows.length) {
+      throw new Error('R9V2_ALL_CANDIDATES_INVALID');
+    }
+    let rows = auditableRows.filter(row =>
+      !row.providerRejectionCode
     );
-    if (!rows.length) throw new Error('R9V2_ALL_CANDIDATES_INVALID');
+    if (!rows.length) {
+      throw new Error('R9V2_ALL_CANDIDATES_REJECTED');
+    }
 
     const locked = request?.playerLockedDeclaration || null;
     if (locked) {
@@ -34943,6 +37843,11 @@
         row.proof.objectiveUtilityHEPP,
       vector: cloneValue(row.proof.vector),
       candidateValueProof: cloneValue(row.proof),
+      rejectionCode: row.providerRejectionCode,
+      classification:
+        row.providerRejectionCode
+          ? 'HARD_INVALID'
+          : 'VIABLE',
       selected: row === winner,
     });
     const selectedDeclaration = cloneValue(
@@ -34979,7 +37884,7 @@
         candidateValueProof: cloneValue(winner.proof),
       },
       scoreAudit: ordered.slice(0, 3).map(auditRow),
-      candidateAudit: rows.map(auditRow),
+      candidateAudit: auditableRows.map(auditRow),
       candidateCount: candidates.length,
       paretoCount: paretoRows.length,
       beliefState: cloneValue(request?.beliefState || {}),
@@ -34993,7 +37898,8 @@
       beliefRevision: request.evaluationContext.beliefRevision,
       pendingStrategicEffect:
         winner.proof.components.controlOpportunityDeltaHEPP !== 0 ||
-        winner.proof.components.resourceFrontierDeltaHEPP !== 0,
+        winner.proof.components.resourceFrontierDeltaHEPP !== 0 ||
+        winner.proof.components.behaviorPoolDeltaHEPP !== 0,
       decisionProfile: {
         engine: 'R9V2_SHADOW',
         slice: 'CONTROL_RESOURCE_V1',
@@ -35443,7 +38349,7 @@
     projectR8GoalUtility,
     buildR8CausalValueFacts,
     validateR8CausalOwnership,
-    r8HasDefenseWindow,
+    hasDefenseWindow,
     r8CandidateExclusion,
     r8Dominates,
     r8ParetoFilter,

@@ -887,9 +887,12 @@
       return `${actor}使用【${itemName}】${target && target !== actor ? `作用于${target}` : ''}`;
     }
     if (kind === 'pass' && text(event?.actionType).toUpperCase() === 'WITHDRAW') {
-      return text(event?.result) === 'withdrawn'
+      const result = text(event?.result).toLowerCase();
+      return result === 'withdrawn'
         ? `${actor}成功撤离战场`
-        : `${actor}尝试撤离，但未能摆脱追击`;
+        : result === 'partial'
+          ? `${actor}未能完全撤离，并在追击中受伤`
+          : `${actor}撤离失败并遭到追击`;
     }
     if (kind === 'lost_opportunity') {
       const reasonCode = text(event?.reasonCode || event?.ruleCode || meta?.reasonCode).toUpperCase();
@@ -1654,27 +1657,65 @@
     if (kind === 'PAYMENT') {
       const searched = ['resource_change'];
       const ledgerEvents = Array.isArray(context?.ledgerEvents) ? context.ledgerEvents : events;
-      const costs = ledgerEvents.filter(event =>
+      const paymentActionIds = new Set();
+      if (context?.paymentActionIdsByActor instanceof Map) {
+        for (const [actorRef, actionIds] of context.paymentActionIdsByActor.entries()) {
+          if (
+            actorRef !== targetId &&
+            !sameEntityReference(
+              directory,
+              actorRef,
+              actorRef,
+              targetId,
+              targetId,
+            )
+          ) {
+            continue;
+          }
+          for (const actionId of actionIds || []) {
+            if (text(actionId)) paymentActionIds.add(text(actionId));
+          }
+        }
+      }
+      const anchored = paymentActionIds.size > 0;
+      const claimedPaymentEventIds =
+        context?.claimedPaymentEventIds instanceof Set
+          ? context.claimedPaymentEventIds
+          : new Set();
+      const costs = (anchored ? ledgerEvents : events).filter(event =>
         rawEventKindIs(event, 'resource_change') &&
         text(event?.operation || rawMeta(event).operation).toUpperCase() === 'PAY' &&
         eventHitsTarget(event) &&
-        eventBelongsToAction(event) &&
+        (!anchored ||
+          [event?.actionId, event?.sourceActionId]
+            .map(text)
+            .some(actionId => paymentActionIds.has(actionId))) &&
+        !claimedPaymentEventIds.has(text(event?.eventId)) &&
         (resourceName(event) === text(expected?.resource) ||
           text(reconciliationResourceNames[text(rawMeta(event).resourceKey)]) === text(expected?.resource)) &&
         Math.abs(
           Math.abs(number(rawMeta(event).amount ?? rawMeta(event).delta ?? event?.delta, 0)) -
           number(expected?.amount, 0),
         ) <= 1e-9
+      ).sort((left, right) =>
+        number(left?.sequence, 0) - number(right?.sequence, 0) ||
+        text(left?.eventId).localeCompare(text(right?.eventId))
       );
       if (costs.length) {
-        return verdict('CONFIRMED', costs.map(event => event.eventId), {
-          resource: resourceName(costs[0]),
-          amount: costs.reduce(
-            (sum, event) => sum + Math.abs(number(rawMeta(event).amount ?? rawMeta(event).delta ?? event?.delta, 0)),
-            0,
+        const cost = costs[0];
+        const eventId = text(cost?.eventId);
+        if (eventId) claimedPaymentEventIds.add(eventId);
+        return verdict('CONFIRMED', [eventId], {
+          resource: resourceName(cost),
+          amount: Math.abs(
+            number(
+              rawMeta(cost).amount ?? rawMeta(cost).delta ?? cost?.delta,
+              0,
+            ),
           ),
         }, searched);
       }
+      if (!anchored) return verdict('UNVERIFIABLE', [], null, searched);
       return context?.actionExecuted
         ? verdict('UNCONFIRMED', [], null, searched)
         : preempted(searched);
@@ -1749,12 +1790,32 @@
         .map(text)
         .filter(Boolean),
     );
+    const paymentActionIdsByActor = new Map();
+    for (const event of scopedEvents) {
+      if (!rawEventKindIs(event, 'action_start')) continue;
+      const actionIdsForEvent = [event?.actionId, event?.sourceActionId]
+        .map(text)
+        .filter(Boolean);
+      if (!actionIdsForEvent.length) continue;
+      for (const actorRef of unique([event?.actorId, event?.actorName])
+        .map(text)
+        .filter(Boolean)) {
+        if (!paymentActionIdsByActor.has(actorRef)) {
+          paymentActionIdsByActor.set(actorRef, new Set());
+        }
+        for (const actionId of actionIdsForEvent) {
+          paymentActionIdsByActor.get(actorRef).add(actionId);
+        }
+      }
+    }
     const context = {
       actionExecuted: scopedEvents.some(event => rawEventKindIs(event, 'action_start')),
       preemptionEvent: scopedEvents.find(event => rawEventKindIs(event, ...preemptionEventKinds)) || null,
       directory,
       ledgerEvents,
       actionIds,
+      paymentActionIdsByActor,
+      claimedPaymentEventIds: new Set(),
       exchangeRound: Math.max(0, number(options?.exchangeRound, 0)),
       exchangeMaxSequence: Math.max(0, ...scopedEvents.map(event => number(event?.sequence, 0))),
       lastLedgerRound: Math.max(0, ...ledgerEvents.map(event => number(event?.round, 0))),
@@ -1968,7 +2029,7 @@
     ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED: {
       text: '没有可用的防御窗口',
       /* 这里曾经写成"这一刻没有人在攻击他"——那是错的。
-         r8HasDefenseWindow 判的是"本次行动机会的授权类型是否属于防御类"，
+         hasDefenseWindow 判的是"本次行动机会的授权类型是否属于防御类"，
          与"有没有人在攻击他"是两回事：实测同一回合里对手确实在攻击，
          但行动者自己那次机会的 grantType 是 natural，防御依然无从生效。
          而 grantType 不在 draft 里（只有 opportunityId 字符串），无法据此断言世界状态，
