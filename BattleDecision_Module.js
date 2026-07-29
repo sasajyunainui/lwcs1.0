@@ -1953,6 +1953,7 @@
     'payments',
     'sustainCost',
     'itemCost',
+    'irreversibleAsset',
     '消耗',
     '资源消耗',
     '消耗资源',
@@ -25078,6 +25079,10 @@
             ? targetActorId
             : normalized;
         }).filter(Boolean);
+      }
+      if (String(declaration.actionKind || '').trim().toUpperCase() === 'USE_ITEM') {
+        delete declaration.irreversibleAsset;
+        declaration.__skipInventoryConsume = true;
       }
       return declaration;
     };

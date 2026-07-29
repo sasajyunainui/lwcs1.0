@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "BattleReadingDigestIndexV2",
+  "caseId": "item_creation_consumption",
+  "evidenceHash": "14e9b722cfda92ab6f49061a66c26f411ca755bb095a0845afca1da08e4f72c4",
+  "digestToolHash": "9333a2b70866cb52adccc1ea59385e2cc2395a507c254e4fb967548501aa46fb",
+  "digestRef": {
+    "schemaVersion": "ContentAddressedArtifactRefV1",
+    "artifactType": "BATTLE_READING_DIGEST",
+    "contentHash": "9920a3a71847e0cce4ec7307037fbefd84f08d8146d801a9fdeaca90d6a83575",
+    "byteLength": 1241607,
+    "storedByteLength": 61673,
+    "encoding": "gzip+utf8-json",
+    "relativePath": "objects/99/9920a3a71847e0cce4ec7307037fbefd84f08d8146d801a9fdeaca90d6a83575.json.gz"
+  }
+}

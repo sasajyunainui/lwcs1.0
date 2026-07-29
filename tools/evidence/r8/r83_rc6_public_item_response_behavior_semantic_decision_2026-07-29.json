@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "BehaviorSemanticDecisionV2",
+  "decisionId": "R83RC6-PUBLIC-ITEM-RESPONSE-SEMANTIC-001",
+  "semanticDomain": "S4_LIMITED_KNOWLEDGE_PUBLIC_ITEM_RESPONSE",
+  "publicInputs": [
+    "已公开发生的物品动作名称、目标、可观察效果和实现结果",
+    "该公开动作的ACTIVE、REACTION或COUNTER角色",
+    "公开证据次数、灾难语义和证据事件ID",
+    "当前公开生命比例、存活、公开状态和正式未来机会"
+  ],
+  "forbiddenHiddenInputs": [
+    "物品精确剩余数量",
+    "未公开库存结构与库存键",
+    "不可观察的物品成本、稀缺度和未来库存",
+    "正式世界对象或隐藏资源",
+    "角色名、技能名、案例ID特判"
+  ],
+  "eventOrder": [
+    "正式USE_ITEM在真实世界校验并消费库存",
+    "Runtime记录可观察动作和实现结果",
+    "公开观察投影移除隐藏库存与成本字段",
+    "后续Decision按公开证据建立回应概率",
+    "公开回应Preview只重放可观察机械效果",
+    "回应投影不得读取、扣减或合成隐藏库存",
+    "若该回应在正式Runtime中真正被选择，仍必须通过真实库存校验"
+  ],
+  "formulasAndAlgorithms": [
+    "公开回应声明保留actionKind、公开名称、目标和可观察效果；删除irreversibleAsset、resourceCosts、costs、payment、sustainCost及内部字段。",
+    "USE_ITEM公开回应重放在临时声明上设置__skipInventoryConsume=true；该标记不进入belief、Draft、Report或MVU。",
+    "回应概率继续来自公开观察次数、confidence和灾难尾部，不从隐藏库存推导0或1。",
+    "公开回应重放不产生IRREVERSIBLE_ASSET_LOST名义价值；物品的战术影响只能来自其可观察机械对未来生命轨迹或失败风险的改变。",
+    "正式候选Preview和Runtime继续要求真实库存存在且数量至少为1。"
+  ],
+  "hardExclusions": [
+    "公开信念保存物品精确quantityBefore、remainingQuantity或隐藏库存路径",
+    "公开回应Preview因有限认知世界缺少隐藏库存而抛错",
+    "公开回应重放修改visibleWorld或正式世界库存",
+    "正式USE_ITEM绕过真实库存校验",
+    "通过合成库存或读取正式隐藏世界解决回应投影"
+  ],
+  "allowedEquivalentStrategies": [
+    "未来可为所有公开回应建立独立的ObservableMechanicDeclaration类型，但必须保持相同公开字段、概率和正式执行边界。",
+    "当前批次允许复用现有声明结构，只在公开投影删除隐藏资产字段，并在临时重放声明上设置内部跳过标记。"
+  ],
+  "factOwnership": {
+    "formalItemConsumption": "RUNTIME_ITEM_CONSUME_FACT",
+    "publicResponseEvidence": "BELIEF_PUBLIC_RESPONSE",
+    "projectedObservableEffect": "DECISION_RESPONSE_PROJECTION",
+    "hiddenInventoryQuantity": "NONE_IN_PUBLIC_BELIEF",
+    "projectedAssetCost": "NONE"
+  },
+  "positiveCases": [
+    "观察过的恢复大肉包可以在对手库存不可见时进入FUTURE_ACTIVE回应概率并完成Preview。",
+    "公开回应声明保留恢复效果和目标，但不包含irreversibleAsset或资源成本。",
+    "正式徐笠智USE_ITEM仍从真实库存扣减并写唯一ITEM_CONSUME事实。",
+    "item_creation_consumption完成Draft、Report、Audit、Seal和verify。"
+  ],
+  "negativeCases": [
+    "有限认知visibleWorld缺少库存导致battle_preview_item_unavailable。",
+    "公开信念暴露quantityBefore=1或其他精确库存数量。",
+    "公开回应重放写入库存、资源或正式Ledger。",
+    "正式动作因__skipInventoryConsume而绕过消费。"
+  ],
+  "protectedCases": [
+    "普通技能公开回应仍按现有概率和机械投影。",
+    "正式物品候选与Runtime库存不足仍明确拒绝。",
+    "候选枚举、目标、机会、概率分支和回合数量不减少。",
+    "R9v2只使用公开回应威胁包络的现有路径不发生机械变化。",
+    "54个BehaviorOracleV2和当前回放保护集继续通过。"
+  ],
+  "rejectedAlternatives": [
+    "放宽Preview正式库存校验",
+    "读取隐藏库存决定公开回应是否存在",
+    "删除物品类公开回应",
+    "向visibleWorld注入虚构库存",
+    "保留irreversibleAsset但只删除quantityBefore"
+  ]
+}

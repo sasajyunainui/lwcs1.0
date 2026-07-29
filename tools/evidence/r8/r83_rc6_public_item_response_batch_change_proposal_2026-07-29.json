@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "BatchChangeProposalV1",
+  "proposalId": "R83RC6-PUBLIC-ITEM-RESPONSE-001",
+  "rootCauseAnalysisId": "R83RC6-PUBLIC-ITEM-RESPONSE-RCA-001",
+  "semanticDecisionId": "R83RC6-PUBLIC-ITEM-RESPONSE-SEMANTIC-001",
+  "generatedAt": "2026-07-29",
+  "status": "APPROVED_FOR_IMPLEMENTATION",
+  "selectedDesign": {
+    "name": "ObservableItemResponseProjectionV1",
+    "summary": "在公开声明投影中删除irreversibleAsset，在R8公开回应临时声明中仅对USE_ITEM设置__skipInventoryConsume，使有限认知回应重放只计算可观察机械，正式Preview和Runtime库存校验保持不变。"
+  },
+  "rejectedAlternatives": [
+    {
+      "design": "Preview遇到公开世界库存缺失时自动跳过",
+      "reason": "Preview无法可靠区分正式候选与公开回应，会放松真实库存合法性。"
+    },
+    {
+      "design": "按当前隐藏库存过滤公开回应",
+      "reason": "违反有限认知，且需要Decision读取正式隐藏世界。"
+    },
+    {
+      "design": "为公开回应合成一件临时物品",
+      "reason": "会发明数量和依赖，污染Overlay、行为池与缓存身份。"
+    },
+    {
+      "design": "删除所有物品公开回应",
+      "reason": "减少回应机制和概率分支，违反不可减少语义。"
+    }
+  ],
+  "affectedModules": [
+    "BattleDecision_Module.js:publicResponseHiddenDeclarationKeys",
+    "BattleDecision_Module.js:buildR8ResponseModel.responseDeclaration",
+    "tools/audit_battle_r83_phase7.mjs",
+    "tools/probe_r83_rc6_item_inventory_divergence.mjs"
+  ],
+  "exactDataFlow": [
+    "Runtime继续从真实动作生成公开观察。",
+    "projectPublicResponseDeclaration删除irreversibleAsset及既有隐藏成本字段。",
+    "updatePublicObservation只保存公开物品机制，不保存精确库存数量。",
+    "buildR8ResponseModel从publicResponses复制声明。",
+    "若actionKind=USE_ITEM，在该临时复制上设置__skipInventoryConsume=true。",
+    "responseUtility继续用有限认知visibleWorld调用现有Preview。",
+    "Preview跳过隐藏库存扣减，但完整计算物品可观察效果、概率、目标轨迹和终局。",
+    "正式候选与Runtime不携带该临时标记，继续严格校验并消费真实库存。"
+  ],
+  "interfaceChanges": {
+    "candidateEnumerationChanged": false,
+    "previewInterfaceChanged": false,
+    "runtimeInterfaceChanged": false,
+    "reportInterfaceChanged": false,
+    "mvuPersistenceChanged": false,
+    "publicBeliefDeclaration": "removes irreversibleAsset",
+    "ephemeralResponseDeclaration": "adds __skipInventoryConsume only for USE_ITEM"
+  },
+  "formulasAndAlgorithms": [
+    "projectPublicResponseDeclaration skips keys starting with __, all existing hidden cost keys, and irreversibleAsset",
+    "if projected declaration actionKind is USE_ITEM then replayDeclaration.__skipInventoryConsume = true",
+    "response probability, threat envelope and no-response mass remain unchanged",
+    "formal USE_ITEM inventory lookup and ITEM_CONSUME fact ownership remain unchanged"
+  ],
+  "cacheAndInvalidationChanges": [
+    "公开beliefHash会因删除隐藏irreversibleAsset而变化。",
+    "回应声明指纹和依赖身份会按正确公开语义变化。",
+    "不改变机械Preview缓存键算法、Session结构或跨战斗缓存边界。",
+    "属于Decision投影修改，重跑54 Oracle、决策回放和受影响完整战斗。"
+  ],
+  "sourceClosureChanges": {
+    "additions": [
+      "公开USE_ITEM回应的可观察机械重放上下文"
+    ],
+    "deletions": [
+      "公开belief中的irreversibleAsset精确库存数据",
+      "公开回应Preview读取隐藏库存的路径"
+    ]
+  },
+  "deletionList": [],
+  "positiveOracles": [
+    "projectPublicResponseDeclaration对USE_ITEM保留公开skill效果但删除irreversibleAsset和resourceCosts。",
+    "公开USE_ITEM回应在空库存visibleWorld上完成Preview且不改变输入世界。",
+    "item_creation_consumption正式r8事务完成并通过Report审计与Seal校验。"
+  ],
+  "negativeOracles": [
+    "公开belief不得包含quantityBefore、remainingQuantity或irreversibleAsset。",
+    "正式USE_ITEM库存为空时Preview和Runtime仍必须拒绝。",
+    "公开回应重放不得生成IRREVERSIBLE_ASSET_LOST或ITEM_CONSUME正式事实。"
+  ],
+  "protectedBehaviors": [
+    "54个BehaviorOracleV2、221项检查保持通过。",
+    "当前RC6回放中非物品决策的候选Hash、机械事实Hash、CandidateValueProof Hash和正式选择保持相同。",
+    "普通技能、反应、防御、反击与召唤公开回应保持现有语义。",
+    "正式物品创建、入库、消费和Ledger所有权保持不变。",
+    "PLAYER不新增隐藏库存信息。"
+  ],
+  "expectedHashChanges": {
+    "mustChange": [
+      "BattleDecision_Module.js source hash",
+      "包含物品公开回应的beliefHash和DecisionAudit hash",
+      "item_creation_consumption从失败变为完整Draft、Report、Seal和Snapshot hashes"
+    ],
+    "mustRemainEqual": [
+      "BattlePreview_Module.js source hash",
+      "BattleRuntime_Module.js source hash",
+      "非物品公开回应的机械与选择结果",
+      "正式物品库存消费事实结构"
+    ]
+  },
+  "requiredStableHashes": [
+    "非物品RC6回放的candidateHash",
+    "非物品RC6回放的mechanicalFactsHash",
+    "非物品RC6回放的candidateValueProofHash"
+  ],
+  "expectedWorkloadChange": {
+    "candidateEnumeration": "不变",
+    "responseBranches": "不变",
+    "previewWork": "移除一次无效隐藏库存递归查找",
+    "runtimeWork": "不变",
+    "expectedEndToEndImpact": "常数级，非性能批次"
+  },
+  "performanceBudget": {
+    "maximumMedianRegressionPercent": 3,
+    "maximumP95RegressionPercent": 3,
+    "expectedRegressionPercent": 0
+  },
+  "rollbackCriteria": [
+    "正式USE_ITEM绕过真实库存校验或不再写ITEM_CONSUME。",
+    "任一公开belief继续暴露精确库存数量。",
+    "物品回应概率或候选数量被删除。",
+    "普通公开回应、54 Oracle、回放或Report审计回退。",
+    "非预期修改Preview、Runtime、Report或MVU结构。"
+  ]
+}

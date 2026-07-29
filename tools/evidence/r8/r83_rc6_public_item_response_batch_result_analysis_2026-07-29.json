@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "BatchResultAnalysisV1",
+  "analysisId": "R83RC6-PUBLIC-ITEM-RESPONSE-BRA-001",
+  "proposalId": "R83RC6-PUBLIC-ITEM-RESPONSE-001",
+  "generatedAt": "2026-07-29",
+  "status": "BATCH_ACCEPTED_CONTINUE_PHASE3",
+  "beforeEvidenceHashes": {
+    "formalFailureEvidence": "c7df786e4c4fa5e66158edb4fcc25aa1929a0dc169cf084d4d93ca309c3f55a5",
+    "inventoryDivergenceProbe": "0a6377948374136c595f38fae3179ac427e0efc9a712d468e7c4bcfc1a70e13f"
+  },
+  "afterEvidenceHashes": {
+    "itemCreationConsumption": "14e9b722cfda92ab6f49061a66c26f411ca755bb095a0845afca1da08e4f72c4",
+    "fullDraft": "5b0fd2aa5e010cc2ed965720a312abc91fad1679cf0e117b54751d1c9d44f62f",
+    "fullReportDto": "0f297a804001b1fa81ab5842a315be74fb499203fcf5cc3ba389d66d6a91bacf",
+    "readingDigest": "9920a3a71847e0cce4ec7307037fbefd84f08d8146d801a9fdeaca90d6a83575"
+  },
+  "incrementalVsFullComparison": {
+    "oracleProtection": {
+      "checkCount": 223,
+      "passedCount": 223,
+      "failedCount": 0,
+      "executableContractCount": 54
+    },
+    "formalTransaction": {
+      "draftCreated": true,
+      "reportAuditPassed": true,
+      "fullReportProjectionPassed": true,
+      "sealPassed": true,
+      "runtimeFatalCount": 0,
+      "reportVisibilityLeakCount": 0
+    },
+    "protectedModules": {
+      "BattlePreview_Module.jsHashUnchanged": true,
+      "BattleRuntime_Module.jsHashUnchanged": true,
+      "BattleReport_Module.jsHashUnchanged": true
+    }
+  },
+  "workloadDelta": {
+    "candidateEnumerationChanged": false,
+    "responseBranchCountChanged": false,
+    "previewMechanicsChanged": false,
+    "runtimeSettlementChanged": false,
+    "addedWork": "one constant-time actionKind check and one ephemeral field assignment per replayed public item response",
+    "removedWork": "failed hidden-inventory lookup that previously aborted the transaction"
+  },
+  "performanceDelta": {
+    "classification": "NON_PERFORMANCE_SEMANTIC_BATCH",
+    "afterElapsedMs": 115294.761,
+    "attribution": "The before run terminated early, so elapsed time is not a valid speed comparison. This batch is accepted on correctness and transaction completion, not performance gain.",
+    "expectedRegression": "constant-time and below the 3 percent regression budget"
+  },
+  "behaviorDelta": {
+    "publicBelief": "no longer stores irreversibleAsset or exact item quantity",
+    "publicResponseProjection": "continues to project the observed item action and effects without consuming hidden inventory",
+    "formalUseItem": "continues to require and consume real inventory",
+    "selectedActionsIntentionallyChanged": false
+  },
+  "resolvedObservations": [
+    "RC6-P2-OBS-13-PUBLIC-ITEM-RESPONSE-HIDDEN-INVENTORY-REQUIRED",
+    "RC6-P2-OBS-14-PUBLIC-ITEM-DECLARATION-QUANTITY-LEAK",
+    "STRUCTURED_SHADOW_NODE_FAILED:battle_preview_item_unavailable:恢复大肉包"
+  ],
+  "newObservations": [],
+  "residualRisks": [
+    "The full item case remains slow under r8; this is expected because r8 is the semantic diagnostic provider and the performance executor remains r9v2-shadow.",
+    "The 24-battle and blind human review gates remain open.",
+    "The formal Provider remains r8 and the overall RC6 status remains NOT_COMPLETE."
+  ],
+  "nextBatchDecision": {
+    "decision": "ACCEPT_THIS_BATCH_AND_IMPLEMENT_APPROVED_R9V2_COUNTER_DECLINE_BATCH",
+    "rollback": false,
+    "nextAction": "Propagate counterDeclineFallback through the r9v2 rejection, audit and selected result without changing candidate value."
+  },
+  "evidenceArtifacts": {
+    "rootCauseAnalysis": "tools/evidence/r8/r83_rc6_public_item_response_root_cause_analysis_2026-07-29.json",
+    "semanticDecision": "tools/evidence/r8/r83_rc6_public_item_response_behavior_semantic_decision_2026-07-29.json",
+    "proposal": "tools/evidence/r8/r83_rc6_public_item_response_batch_change_proposal_2026-07-29.json",
+    "implementationSelfAudit": "tools/evidence/r8/r83_rc6_public_item_response_implementation_self_audit_2026-07-29.json",
+    "currentCaseIndex": "tools/evidence/r8/r83_rc6_current_hash_evidence/cases/item_creation_consumption.json",
+    "readingDigestIndex": "tools/evidence/r8/r83_rc6_current_hash_evidence/digests/item_creation_consumption.json"
+  }
+}

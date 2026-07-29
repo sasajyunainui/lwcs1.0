@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "FormalTransactionFailureEvidenceV1",
+  "generatedAt": "2026-07-29T07:54:52.336Z",
+  "caseId": "item_creation_consumption",
+  "providerId": "r8",
+  "inputHash": "498c0c9cf8dece8b3cc35439a1bfd55b4d2556b67f0b5f79c5b08802ac4a551e",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+    "BattleDecision_Module.js": "b0bf052bb14bb4fa6f684011059b7db2c8ccf32477efa3e2bc8542c3336f98be",
+    "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+    "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626",
+    "BattleUI_Module.js": "921668b81ea5bd8d92b14e308754d0e08c589eb67a2da0b6978ef006cc95f254",
+    "mvu_logic_bridge.js": "798e504fac45b184a09035a3a95847f980ba2208a8431703f20472ca15d832ae"
+  },
+  "toolHashes": {
+    "tools/capture_r83_rc6_formal_failure.mjs": "0c58537e5b5924f6b1f8586467898d7e42253a56fa3d2dad8930a663812065f3",
+    "tools/r83_rc6_battle_harness.mjs": "8c1c643506a74cc1afe9d504e7e6010003f49f5f5c8f318e7fc4167f286ba53d",
+    "tools/battle_r63_manual_cases.mjs": "97043de0a7ea75eb9d2997ba398c5b42efec6291c719d2b7fb9cf276ca699889"
+  },
+  "runConfig": {
+    "seed": 632689,
+    "rounds": 6,
+    "mode": "team_preview"
+  },
+  "elapsedMs": 49860.063,
+  "error": {
+    "name": "Error",
+    "message": "STRUCTURED_SHADOW_NODE_FAILED:battle_preview_item_unavailable:恢复大肉包",
+    "stackFrames": [
+      "Error: STRUCTURED_SHADOW_NODE_FAILED:battle_preview_item_unavailable:恢复大肉包",
+      "    at runStructuredBattle (BattleRuntime_Module.js:12230:32)",
+      "    at runDecisionCase (BattleRuntime_Module.js:15571:56)",
+      "    at Object.executeBattleDraftR8 (BattleRuntime_Module.js:15733:20)",
+      "    at executeFormalTransaction (file:///D:/silltyavern/tavern_helper_template-main/tavern_helper_template-main/lwcs/tools/r83_rc6_battle_harness.mjs:170:25)",
+      "    at file:///D:/silltyavern/tavern_helper_template-main/tavern_helper_template-main/lwcs/tools/capture_r83_rc6_formal_failure.mjs:39:3",
+      "    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)",
+      "    at async node:internal/modules/esm/loader:643:26",
+      "    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)"
+    ]
+  },
+  "transactionArtifacts": {
+    "draftCreated": false,
+    "reportCreated": false,
+    "auditCreated": false,
+    "sealCreated": false
+  },
+  "manualReviews": [],
+  "automaticConclusionGenerated": false
+}
