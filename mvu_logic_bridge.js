@@ -10172,7 +10172,7 @@
       存活: 取败方字段(['状态', '存活']) !== false,
       死亡tick: toNumber(取败方字段(['状态', '死亡tick']), -1),
       死亡类型: toText(取败方字段(['状态', '死亡类型']), '无'),
-      行动: toText(取败方字段(['状态', '行动']), '战斗'),
+      战斗失能原因: toText(取败方字段(['__战斗失能原因']), ''),
       精神力: toNumber(取败方字段(['属性', '精神力']), 0),
     };
 
@@ -10195,7 +10195,6 @@
           { op: 'replace', path: `/char/${safeKey}/状态/存活`, value: 前置快照.存活 !== false },
           { op: 'replace', path: `/char/${safeKey}/状态/死亡tick`, value: toNumber(前置快照.死亡tick, -1) },
           { op: 'replace', path: `/char/${safeKey}/状态/死亡类型`, value: toText(前置快照.死亡类型, '无') },
-          { op: 'replace', path: `/char/${safeKey}/状态/行动`, value: toText(前置快照.行动, '战斗') },
           { op: 'replace', path: `/char/${safeKey}/属性/精神力`, value: toNumber(前置快照.精神力, 0) },
         );
       } else {
@@ -10206,7 +10205,7 @@
             { op: 'replace', path: `${restorePath}/状态/存活`, value: 前置快照.存活 !== false },
             { op: 'replace', path: `${restorePath}/状态/死亡tick`, value: toNumber(前置快照.死亡tick, -1) },
             { op: 'replace', path: `${restorePath}/状态/死亡类型`, value: toText(前置快照.死亡类型, '无') },
-            { op: 'replace', path: `${restorePath}/状态/行动`, value: toText(前置快照.行动, '战斗') },
+            { op: 'replace', path: `${restorePath}/__战斗失能原因`, value: toText(前置快照.战斗失能原因, '') },
             { op: 'replace', path: `${restorePath}/存活`, value: 前置快照.存活 !== false },
           );
         }
@@ -10215,22 +10214,12 @@
 
     if (loserKey) {
       const 写回HP = 虚拟死亡 ? hpMax : finalHp;
-      const 失能行动 = /TRAUMA_UNCONSCIOUS|UNCONSCIOUS|STAMINA_EXHAUSTED/.test(settlement.终局原因)
-        ? '昏迷'
-        : /SURRENDERED/.test(settlement.终局原因)
-          ? '投降'
-          : /SUBDUED/.test(settlement.终局原因)
-            ? '制服'
-            : '失去战斗力';
       patches.push(
         { op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/属性/HP`, value: 写回HP },
         { op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/状态/存活`, value: alive },
         { op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/状态/死亡tick`, value: alive ? -1 : 当前tick },
         { op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/状态/死亡类型`, value: alive ? '无' : '意外' },
       );
-      if (settlement.终局类型 === 'incapacitated') {
-        patches.push({ op: 'replace', path: `/char/${escapeJsonPointerValue(loserKey)}/状态/行动`, value: 失能行动 });
-      }
       if (虚拟死亡) {
         const 最近一击比例 = Math.max(0, toNumber(deepGet(combatData, '虚拟裁断数据.最近一击HP比例', 0), 0));
         const 精神消耗比例 = Math.max(0.4, Math.min(0.9, 0.4 + Math.min(1, 最近一击比例) * 0.5));
@@ -10254,13 +10243,13 @@
     } else {
       const participantPath = findBattleParticipantPath(combatData, loserName);
       if (participantPath) {
-        const 失能行动 = /TRAUMA_UNCONSCIOUS|UNCONSCIOUS|STAMINA_EXHAUSTED/.test(settlement.终局原因)
-          ? '昏迷'
+        const 战斗失能原因 = /TRAUMA_UNCONSCIOUS|UNCONSCIOUS|STAMINA_EXHAUSTED/.test(settlement.终局原因)
+          ? 'UNCONSCIOUS'
           : /SURRENDERED/.test(settlement.终局原因)
-            ? '投降'
+            ? 'SURRENDERED'
             : /SUBDUED/.test(settlement.终局原因)
-              ? '制服'
-              : '失去战斗力';
+              ? 'SUBDUED'
+              : 'INCAPACITATED';
         patches.push(
           { op: 'replace', path: `${participantPath}/属性/HP`, value: finalHp },
           { op: 'replace', path: `${participantPath}/状态/存活`, value: alive },
@@ -10269,7 +10258,7 @@
           { op: 'replace', path: `${participantPath}/存活`, value: alive },
         );
         if (settlement.终局类型 === 'incapacitated') {
-          patches.push({ op: 'replace', path: `${participantPath}/状态/行动`, value: 失能行动 });
+          patches.push({ op: 'replace', path: `${participantPath}/__战斗失能原因`, value: 战斗失能原因 });
         }
       }
     }
@@ -12059,7 +12048,7 @@
         content: [
           '你是 LWCS 角色锚点校对器。',
           '你的任务是根据 CharacterLibrary 锚点快照、当前角色状态和本档偏差账本，输出一个受限 JSONPatch 数组。',
-          '只允许校对身份、阵营、年龄投影、武魂状态。禁止修改背包、任务、位置、当前行动、伤势、死亡、临时状态、财富、关系、系统播报、world、sys、org。',
+          '只允许校对身份、阵营、年龄投影、武魂状态。禁止修改背包、任务、位置、伤势、死亡、临时状态、财富、关系、系统播报、world、sys、org。',
           '禁止直接用 CharacterLibrary 覆盖整名角色；只能输出必要的最小 patch。',
           '若当前偏差账本显示世界线已经确认偏移，应尊重本档事实，不要强行回滚。',
           '只输出 <JSONPatch>[...]</JSONPatch>，不要输出解释。',

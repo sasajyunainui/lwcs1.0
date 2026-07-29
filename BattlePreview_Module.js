@@ -691,14 +691,14 @@
   }
 
   function isBattleCapable(unit = {}) {
-    const actionState = String(unit?.状态?.行动 || '').trim();
     const directStamina = Number(unit?.vit);
     const stamina = Number.isFinite(directStamina) ? directStamina : readResource(unit, '体力');
-    const capable = !isDead(unit) && stamina > 0 && !/失去战斗力|昏迷|投降|制服/.test(actionState);
+    const incapacityReason = readIncapacityReason(unit);
+    const capable = !incapacityReason;
     recordPreviewDependency(`unit:${unitId(unit)}:state:__action`, {
       alive: !isDead(unit),
       stamina,
-      actionState,
+      incapacityReason,
       capable,
     });
     return capable;
@@ -1233,13 +1233,9 @@
 
   function readIncapacityReason(unit = {}) {
     if (isDead(unit)) return 'DEAD';
-    if (String(unit?.__战斗失能原因 || '').trim()) return String(unit.__战斗失能原因).trim();
+    const runtimeReason = String(unit?.__战斗失能原因 || '').trim();
+    if (runtimeReason) return runtimeReason;
     if (readResource(unit, '体力') <= 0) return 'STAMINA_EXHAUSTED';
-    const actionState = String(unit?.状态?.行动 || '').trim();
-    if (/昏迷/.test(actionState)) return 'UNCONSCIOUS';
-    if (/投降/.test(actionState)) return 'SURRENDERED';
-    if (/制服/.test(actionState)) return 'SUBDUED';
-    if (/失去战斗力/.test(actionState)) return 'INCAPACITATED';
     return '';
   }
 
@@ -2235,8 +2231,8 @@
       return compareCondition(equipment, expected, comparison === '==' ? '包含' : comparison);
     }
     if (type === '自身状态') {
-      const actionState = String(subject?.状态?.行动 || subject?.状态 || '').trim();
-      const present = normalizeConditionToken(actionState).includes(normalizeConditionToken(expected)) ||
+      const incapacityReason = String(subject?.__战斗失能原因 || '').trim();
+      const present = normalizeConditionToken(incapacityReason).includes(normalizeConditionToken(expected)) ||
         stateEntries(subject, 'CONDITION').some(([key, entry]) =>
           [key, stateName(entry)].some(value =>
             normalizeConditionToken(value).includes(normalizeConditionToken(expected))
@@ -3209,7 +3205,7 @@
         return {
           alive: !isDead(unit),
           stamina,
-          actionState: String(unit?.状态?.行动 || '').trim(),
+          incapacityReason: readIncapacityReason(unit),
           capable: isBattleCapable(unit),
         };
       }
@@ -3966,8 +3962,8 @@
           ];
           if (nonlethalIncapacitated || deterministicTrauma) {
             overlay.changeUnit(unitId(target), unit => {
-              if (nonlethalIncapacitated) unit.状态 = { ...(unit.状态 || {}), 行动: '失去战斗力' };
-              if (deterministicTrauma) unit.状态 = { ...(unit.状态 || {}), 行动: '昏迷' };
+              if (nonlethalIncapacitated) unit.__战斗失能原因 = 'INCAPACITATED';
+              if (deterministicTrauma) unit.__战斗失能原因 = 'UNCONSCIOUS';
             });
           }
           if (shieldAbsorb > 0) {
@@ -5098,7 +5094,7 @@
             str: Math.max(1, Math.floor(readCombatStat(actor, 'str') * inheritRatio)),
             def: Math.max(1, Math.floor(readCombatStat(actor, 'def') * inheritRatio)),
             agi: Math.max(1, Math.floor(readCombatStat(actor, 'agi') * inheritRatio)),
-            状态: { 存活: true, 行动: '战斗' },
+            状态: { 存活: true },
             状态效果: {},
             持续效果: {},
             技能列表: Array.isArray(effect?.技能列表) && effect.技能列表.length
@@ -5332,6 +5328,7 @@
     const supportedNoEffectActions = new Set([
       'DEFEND',
       'EVADE',
+      'OBSERVE',
       'PASS_OPPORTUNITY',
     ]);
     const supportedPrototypes = new Set([

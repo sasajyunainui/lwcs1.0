@@ -3544,7 +3544,7 @@
         stamina: number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0),
         staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
       },
-      actionState: text(unit?.actionState || unit?.状态?.行动 || unit?.行动状态 || '战斗'),
+      actionState: text(unit?.actionState || unit?.__战斗失能原因 || unit?.行动状态 || '战斗'),
       states: unique(states),
       summon: !!text(unit?.召唤键 || unit?.单位性质),
       hostName: playerSafeText(unit?.宿主名, directory),

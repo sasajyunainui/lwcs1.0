@@ -1573,7 +1573,8 @@
         str: Math.max(1, actorStats.combatBase * scale * systemScale.str),
         def: Math.max(1, actorStats.combatBase * scale * systemScale.def),
         agi: Math.max(1, actorStats.combatBase * scale * systemScale.agi),
-        状态: { 存活: beliefUnit.alive !== false, 行动: String(sourceUnit?.状态?.行动 || '').trim() },
+        状态: { 存活: beliefUnit.alive !== false },
+        __战斗失能原因: String(sourceUnit?.__战斗失能原因 || '').trim(),
         状态效果: states,
         技能列表: [],
       };
@@ -5065,7 +5066,7 @@
       recoveryLockRatio(unit, '魂力'),
       recoveryLockRatio(unit, '精神力'),
       Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0))),
-      String(unit?.状态?.行动 || '').trim(),
+      String(unit?.__战斗失能原因 || '').trim(),
       unit?.状态?.存活 !== false,
       String(unit?.时间段 || unit?.时间 || '').trim(),
       Number(unit?.final?.__体力衰减系数 ?? 1),
@@ -5183,7 +5184,7 @@
       recoveryLockRatio(unit, '魂力'),
       recoveryLockRatio(unit, '精神力'),
       Math.max(0, Math.floor(Number(unit?.魂核?.核心?.数量 || 0))),
-      String(unit?.状态?.行动 || '').trim(),
+      String(unit?.__战斗失能原因 || '').trim(),
       unit?.状态?.存活 !== false,
     ];
     if (catalogMeta.inventorySensitive) {
@@ -11093,7 +11094,7 @@
         else {
           const damage = Math.max(0, preview.readHp(unit) - hp);
           if (preview.shouldTriggerTraumaUnconscious(damage, hp, preview.readHpMax(unit))) {
-            next.状态 = { ...(next.状态 || {}), 行动: '昏迷' };
+            next.__战斗失能原因 = 'UNCONSCIOUS';
           }
         }
         return next;
@@ -16056,7 +16057,7 @@
             baseMaxHp: preview.readHpMax(unit),
             alive: preview.isPhysicallyAlive(unit),
             capable: preview.isBattleCapable(unit),
-            actionState: String(unit?.状态?.行动 || '').trim(),
+            actionState: String(unit?.__战斗失能原因 || '').trim(),
             resources: unitIds.has(unitId)
               ? Object.fromEntries(
                   ['魂力', '精神力', '体力'].map(resource => [
@@ -18937,7 +18938,7 @@
             hpMax: Number(preview.readHpMax(entry.unit).toFixed(8)),
             alive: preview.isPhysicallyAlive(entry.unit),
             capable: preview.isBattleCapable(entry.unit),
-            actionState: String(entry.unit?.状态?.行动 || '').trim(),
+            actionState: String(entry.unit?.__战斗失能原因 || '').trim(),
             resources: includeResources
               ? Object.fromEntries(['魂力', '精神力', '体力'].map(resource => [
                   resource,
@@ -19275,7 +19276,7 @@
         hpMax: Number(preview.readHpMax(entry.unit).toFixed(8)),
         alive: preview.isPhysicallyAlive(entry.unit),
         capable: preview.isBattleCapable(entry.unit),
-        actionState: String(entry.unit?.状态?.行动 || '').trim(),
+        actionState: String(entry.unit?.__战斗失能原因 || '').trim(),
         states: Object.entries(entry.unit?.状态效果 || {})
           .filter(([, state]) => state && typeof state === 'object')
           .map(([key, state]) => [
@@ -20539,7 +20540,7 @@
           hp: Number(preview.readHp(entry.unit).toFixed(8)),
           alive: preview.isPhysicallyAlive(entry.unit),
           capable: preview.isBattleCapable(entry.unit),
-          actionState: String(entry.unit?.状态?.行动 || '').trim(),
+          actionState: String(entry.unit?.__战斗失能原因 || '').trim(),
           states: Object.entries(entry.unit?.状态效果 || {})
             .filter(([, value]) => value && typeof value === 'object')
             .map(([key, value]) => [
@@ -25873,7 +25874,8 @@
       unit.属性.生命 = value;
     }
     if (value <= 0) {
-      unit.状态 = { ...(unit.状态 || {}), 存活: false, 行动: '死亡' };
+      unit.状态 = { ...(unit.状态 || {}), 存活: false };
+      unit.__战斗失能原因 = 'DEAD';
     }
   }
 
@@ -25975,7 +25977,7 @@
           baseMaxHp: Number(preview.readHpMax(entry.unit).toFixed(8)),
           alive: preview.isPhysicallyAlive(entry.unit),
           capable: preview.isBattleCapable(entry.unit),
-          actionState: String(entry.unit?.状态?.行动 || '').trim(),
+          actionState: String(entry.unit?.__战斗失能原因 || '').trim(),
           stamina: Number(
             Number.isFinite(Number(entry.unit?.vit))
               ? entry.unit.vit
@@ -32252,6 +32254,7 @@
     metricKey = 'r9v2PoolPreviewCalls',
     verifyMechanicalBasis = false,
     captureProjectedUnits = false,
+    useBeliefProbabilityResolvers = false,
   }) {
     const actor = findUnitInWorld(worldSnapshot, actorId);
     const actorSide = actor ? sideOf(worldSnapshot, actor) : '';
@@ -32296,6 +32299,23 @@
         revision,
         mechanicalProjectionContext,
         captureProjectedUnits,
+        hitProbabilityResolver:
+          useBeliefProbabilityResolvers
+            ? candidateHitProbabilityResolver({
+                beliefState,
+                actor,
+                candidate,
+                worldSnapshot,
+              })
+            : null,
+        applicationProbabilityResolver:
+          useBeliefProbabilityResolvers
+            ? candidateApplicationProbabilityResolver({
+                beliefState,
+                actor,
+                candidate,
+              })
+            : null,
       });
       r9v2Metric(state, 'r9v2MechanicalBasisEvaluations');
       const contributions = Object.freeze(
@@ -37545,6 +37565,475 @@
     return Object.freeze(proof);
   }
 
+  function r9v2InformationOpportunity(request = {}) {
+    const opportunity = request?.actionOpportunity || {};
+    if (
+      opportunity.futureHostileResponseAllowed === false ||
+      opportunity.noFutureOpportunity === true
+    ) {
+      return null;
+    }
+    const currentId = String(
+      opportunity?.opportunityId || '',
+    ).trim();
+    const opportunitySnapshot =
+      request?.evaluationContext?.opportunitySnapshot;
+    const opportunities = Array.isArray(opportunitySnapshot)
+      ? opportunitySnapshot
+      : Array.isArray(opportunitySnapshot?.opportunities)
+        ? opportunitySnapshot.opportunities
+        : opportunitySnapshot &&
+            typeof opportunitySnapshot === 'object'
+          ? [opportunitySnapshot]
+          : [];
+    const future = opportunities
+      .filter(record =>
+        String(record?.ownerId || '').trim() ===
+          request.actorId &&
+        String(record?.role || '').trim().toUpperCase() ===
+          'ACTIVE' &&
+        String(record?.opportunityId || '').trim() !== currentId &&
+        !['CONSUMED', 'EXPIRED', 'LOST', 'FATAL'].includes(
+          String(record?.status || '').trim().toUpperCase(),
+        )
+      )
+      .sort((left, right) =>
+        Number(
+          left?.createdAtSequence ?? left?.sequence ?? 0,
+        ) -
+          Number(
+            right?.createdAtSequence ?? right?.sequence ?? 0,
+          ) ||
+        String(left?.opportunityId || '').localeCompare(
+          String(right?.opportunityId || ''),
+        )
+      )[0];
+    const pendingNatural =
+      (opportunity?.pendingNaturalActorIds || []).some(
+        actorId =>
+          String(actorId || '').trim() === request.actorId,
+      );
+    const scheduled = (
+      request?.evaluationContext?.scheduledEvents || []
+    ).find(record =>
+      String(record?.ownerId || '').trim() === request.actorId &&
+      (
+        String(record?.expectedGrantType || '').trim().toUpperCase() ===
+          'NATURAL_ACTION' ||
+        String(record?.eventType || '').trim().toUpperCase() ===
+          'FUTURE_NATURAL_ACTION'
+      )
+    );
+    if (!future && !pendingNatural && !scheduled) return null;
+    return Object.freeze({
+      role: 'ACTIVE',
+      ownerId: request.actorId,
+      opportunityId: String(
+        future?.opportunityId ||
+          scheduled?.opportunityId ||
+          `projected:${request.actorId}:next`,
+      ).trim(),
+      round: Number(
+        future?.round ??
+          scheduled?.round ??
+          opportunity?.round ??
+          request?.visibleWorld?.回合 ??
+          0,
+      ),
+      sequence: Number(
+        future?.createdAtSequence ??
+          future?.sequence ??
+          scheduled?.sequence ??
+          Number(opportunity?.sequence || 0) + 1,
+      ),
+      status: String(future?.status || 'PENDING').trim(),
+      futureHostileResponseAllowed:
+        opportunity.futureHostileResponseAllowed !== false,
+      pendingNaturalActorIds:
+        opportunity?.pendingNaturalActorIds || [],
+      pendingHostileActorIds:
+        opportunity?.pendingHostileActorIds || [],
+      naturalActionBudget:
+        opportunity?.naturalActionBudget,
+      battleHorizon:
+        opportunity?.battleHorizon || {},
+    });
+  }
+
+  function r9v2InformationProjection({
+    request,
+    state,
+    pool,
+    entries,
+    proofs,
+    candidates,
+    mechanicalProjectionContext,
+    targetInterferenceRate,
+  }) {
+    const observeEntry = entries.find(entry =>
+      entry?.hardInvalid !== true &&
+      entry?.actionKind === 'OBSERVE'
+    );
+    if (
+      !observeEntry ||
+      request?.beliefState?.observationGranted !== true
+    ) {
+      return null;
+    }
+    const futureOpportunity =
+      r9v2InformationOpportunity(request);
+    if (!futureOpportunity) {
+      return Object.freeze({
+        candidateId: observeEntry.candidateId,
+        informationValueHEPP: 0,
+        reason: 'NO_FUTURE_OPPORTUNITY',
+        observations: Object.freeze([]),
+      });
+    }
+    const observeProof = proofs.find(proof =>
+      proof?.candidateId === observeEntry.candidateId
+    );
+    const ongoingProbability = Number(
+      observeProof?.terminalProjection?.ongoingProbability ?? 1,
+    );
+    if (!(ongoingProbability > 1e-9)) {
+      return Object.freeze({
+        candidateId: observeEntry.candidateId,
+        informationValueHEPP: 0,
+        reason: 'FIRST_TERMINAL_REACHED',
+        observations: Object.freeze([]),
+      });
+    }
+    const candidateById = new Map(
+      candidates.map(candidate => [
+        String(candidate?.candidateId || '').trim(),
+        candidate,
+      ]),
+    );
+    const entryById = new Map(
+      entries.map(entry => [entry.candidateId, entry]),
+    );
+    const proofById = new Map(
+      proofs.map(proof => [proof.candidateId, proof]),
+    );
+    const actor = findUnitInWorld(
+      request.visibleWorld,
+      request.actorId,
+    );
+    if (!actor) return null;
+    const viableRows = entries
+      .map(entry => ({
+        entry,
+        candidate: candidateById.get(entry.candidateId),
+        proof: proofById.get(entry.candidateId),
+      }))
+      .filter(row =>
+        row.candidate &&
+        row.proof &&
+        row.entry.hardInvalid !== true &&
+        row.entry.actionKind !== 'OBSERVE' &&
+        !row.proof.rejectionCode &&
+        (
+          !Array.isArray(row.proof.unsupportedOutcomeKinds) ||
+          row.proof.unsupportedOutcomeKinds.length === 0
+        )
+      )
+      .sort((left, right) =>
+        Number(right.proof.objectiveUtilityHEPP || 0) -
+          Number(left.proof.objectiveUtilityHEPP || 0) ||
+        String(left.entry.candidateId).localeCompare(
+          String(right.entry.candidateId),
+        )
+      );
+    const paretoRows = viableRows.filter(row =>
+      !viableRows.some(other =>
+        other !== row && r9v2Dominates(other, row)
+      )
+    );
+    const primary = paretoRows[0] || viableRows[0];
+    const backup = paretoRows.find(row =>
+      row.entry.candidateId !== primary?.entry?.candidateId
+    ) || viableRows.find(row =>
+      row.entry.candidateId !== primary?.entry?.candidateId
+    );
+    if (!primary || !backup) {
+      return Object.freeze({
+        candidateId: observeEntry.candidateId,
+        informationValueHEPP: 0,
+        reason: 'NO_DISTINCT_FUTURE_ROUTES',
+        observations: Object.freeze([]),
+      });
+    }
+    const observationsByCandidate = new Map(
+      viableRows.map(row => [
+        row.entry.candidateId,
+        buildMechanicObservations(
+          row.candidate,
+          actor,
+          request.visibleWorld,
+          request.beliefState,
+        ),
+      ]),
+    );
+    const observationGroups = new Map();
+    [primary, backup].forEach(row => {
+      (
+        observationsByCandidate.get(row.entry.candidateId) || []
+      ).forEach(observation => {
+        const probability = clamp(
+          Number(
+            observation?.posterior ??
+              observation?.estimatedProbability ??
+              0.5,
+          ),
+          0,
+          1,
+        );
+        if (probability <= 0.001 || probability >= 0.999) {
+          return;
+        }
+        const groupId = [
+          String(
+            observation?.adaptationKey ||
+              observation?.mechanicKey ||
+              '',
+          ).trim(),
+          String(observation?.targetId || '').trim(),
+          String(observation?.effectPrototype || '').trim(),
+        ].join('|');
+        if (!observationGroups.has(groupId)) {
+          observationGroups.set(groupId, observation);
+        }
+      });
+    });
+    if (!observationGroups.size) {
+      return Object.freeze({
+        candidateId: observeEntry.candidateId,
+        informationValueHEPP: 0,
+        reason: 'NO_UNCERTAIN_PUBLIC_OBSERVATION',
+        observations: Object.freeze([]),
+      });
+    }
+    const valueBefore = Number(
+      primary.proof.objectiveUtilityHEPP || 0,
+    );
+    const observations = [];
+    let bestGroupValue = 0;
+    observationGroups.forEach((observation, groupId) => {
+      const probability = clamp(
+        Number(
+          observation?.posterior ??
+            observation?.estimatedProbability ??
+            0.5,
+        ),
+        0,
+        1,
+      );
+      const changedKeys = new Set([
+        String(observation?.mechanicKey || '').trim(),
+        String(observation?.adaptationKey || '').trim(),
+      ].filter(Boolean));
+      const affectedCandidateIds = new Set(
+        viableRows
+          .filter(row =>
+            (
+              observationsByCandidate.get(
+                row.entry.candidateId,
+              ) || []
+            ).some(candidateObservation =>
+              changedKeys.has(
+                String(
+                  candidateObservation?.mechanicKey || '',
+                ).trim(),
+              ) ||
+              changedKeys.has(
+                String(
+                  candidateObservation?.adaptationKey || '',
+                ).trim(),
+              )
+            )
+          )
+          .map(row => row.entry.candidateId),
+      );
+      if (!affectedCandidateIds.size) return;
+      let expectedBestAfter = 0;
+      const outcomeRows = [true, false].map(success => {
+        const nextBelief = updateMechanicBelief(
+          request.beliefState,
+          { ...observation, success },
+        );
+        const nextEntries = entries.map(entry => {
+          if (!affectedCandidateIds.has(entry.candidateId)) {
+            return entry;
+          }
+          return r9v2BuildMechanicalEntry({
+            state,
+            worldSnapshot: request.visibleWorld,
+            actorId: request.actorId,
+            candidate: candidateById.get(entry.candidateId),
+            beliefState: nextBelief,
+            battleIntent: request.battleIntent,
+            actionOpportunity: futureOpportunity,
+            revision: [
+              'r9v2-information',
+              request.actorId,
+              groupId,
+              success ? 'success' : 'failure',
+              entry.candidateId,
+            ].join(':'),
+            mechanicalProjectionContext,
+            verifyMechanicalBasis: false,
+            useBeliefProbabilityResolvers: true,
+          });
+        });
+        const nextPool = {
+          ...pool,
+          unitEntries: new Map(pool.unitEntries),
+        };
+        nextPool.unitEntries.set(
+          request.actorId,
+          Object.freeze(nextEntries),
+        );
+        const nextRequest = {
+          ...request,
+          actionOpportunity: futureOpportunity,
+          beliefState: nextBelief,
+        };
+        const nextCache = {
+          bestHealthByUnit: new Map(),
+          behaviorPoolByIdentity: new Map(),
+          pendingNaturalActorIds: null,
+        };
+        const nextProofs = entries.map((entry, index) => {
+          if (!affectedCandidateIds.has(entry.candidateId)) {
+            return proofs[index];
+          }
+          return r9v2CandidateValueProof(
+            nextRequest,
+            nextPool,
+            nextEntries[index],
+            nextCache,
+          );
+        });
+        const resolvedProofs =
+          r9v2ApplyCurrentTargetResolution(
+            nextEntries,
+            nextProofs,
+            targetInterferenceRate,
+          );
+        const bestAfter = resolvedProofs.reduce(
+          (best, proof) => {
+            const entry = entryById.get(proof.candidateId);
+            if (
+              !entry ||
+              entry.actionKind === 'OBSERVE' ||
+              proof.rejectionCode ||
+              (
+                Array.isArray(proof.unsupportedOutcomeKinds) &&
+                proof.unsupportedOutcomeKinds.length
+              )
+            ) {
+              return best;
+            }
+            return Math.max(
+              best,
+              Number(proof.objectiveUtilityHEPP || 0),
+            );
+          },
+          Number.NEGATIVE_INFINITY,
+        );
+        const outcomeProbability = success
+          ? probability
+          : 1 - probability;
+        expectedBestAfter +=
+          outcomeProbability *
+          (
+            Number.isFinite(bestAfter)
+              ? bestAfter
+              : valueBefore
+          );
+        return Object.freeze({
+          observationResult: success
+            ? 'SUCCESS'
+            : 'FAILURE',
+          probability: outcomeProbability,
+          bestValueAfterHEPP: Number.isFinite(bestAfter)
+            ? bestAfter
+            : valueBefore,
+        });
+      });
+      const groupValue = Math.max(
+        0,
+        expectedBestAfter - valueBefore,
+      );
+      bestGroupValue = Math.max(bestGroupValue, groupValue);
+      observations.push(Object.freeze({
+        observationGroupId:
+          `${observeEntry.candidateId}|${groupId}`,
+        evidenceKeys: Object.freeze([...changedKeys]),
+        affectedCandidateIds: Object.freeze(
+          [...affectedCandidateIds].sort(),
+        ),
+        valueBeforeHEPP: valueBefore,
+        groupValueHEPP: groupValue,
+        outcomes: Object.freeze(outcomeRows),
+      }));
+    });
+    return Object.freeze({
+      candidateId: observeEntry.candidateId,
+      informationValueHEPP:
+        ongoingProbability * bestGroupValue,
+      reason: bestGroupValue > 1e-9
+        ? 'MINIMUM_EXPECTED_REGRET_REDUCED'
+        : 'NO_EXPECTED_REGRET_REDUCTION',
+      primaryCandidateId: primary.entry.candidateId,
+      backupCandidateId: backup.entry.candidateId,
+      valueBeforeHEPP: valueBefore,
+      ongoingProbability,
+      observations: Object.freeze(observations),
+    });
+  }
+
+  function r9v2BindInformationProjection(
+    proof,
+    informationProjection,
+  ) {
+    if (
+      !informationProjection ||
+      proof?.candidateId !== informationProjection.candidateId
+    ) {
+      return proof;
+    }
+    const informationValueHEPP = Math.max(
+      0,
+      Number(
+        informationProjection?.informationValueHEPP || 0,
+      ),
+    );
+    const objectiveUtilityHEPP =
+      Number(proof.goalUtilityDeltaHEPP || 0) +
+      informationValueHEPP;
+    const next = {
+      ...proof,
+      informationValueHEPP,
+      objectiveUtilityHEPP,
+      informationProjection,
+      sliceCoverage:
+        `${proof.sliceCoverage}_INFORMATION_VALUE_V1`,
+    };
+    Object.defineProperty(next, 'vector', {
+      value: Object.freeze({
+        ...(proof.vector || {}),
+        objectiveUtilityHEPP,
+        informationValueHEPP,
+      }),
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
+    return Object.freeze(next);
+  }
+
   function prepareR9v2ControlResourceSlice({
     sessionState,
     worldSnapshot,
@@ -37661,10 +38150,27 @@
             findUnitInWorld(worldSnapshot, actorId) || {},
           )
         : 0;
-    const proofs = r9v2ApplyCurrentTargetResolution(
+    const baseProofs = r9v2ApplyCurrentTargetResolution(
       currentEntries,
       directProofs,
       currentTargetInterferenceRate,
+    );
+    const informationProjection = r9v2InformationProjection({
+      request: requestLike,
+      state: prepared.state,
+      pool: prepared.pool,
+      entries: currentEntries,
+      proofs: baseProofs,
+      candidates: frozenCandidates,
+      mechanicalProjectionContext,
+      targetInterferenceRate:
+        currentTargetInterferenceRate,
+    });
+    const proofs = baseProofs.map(proof =>
+      r9v2BindInformationProjection(
+        proof,
+        informationProjection,
+      )
     );
     r9v2Metric(prepared.state, 'r9v2CandidateProofs', proofs.length);
     return Object.freeze({

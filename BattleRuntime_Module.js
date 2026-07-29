@@ -2273,7 +2273,7 @@
           previewRuntime.readCombatStat(unit, 'def'),
         );
         factHashes[`unit:${unitId}:state:__ACTION`] =
-          previewRuntime.stableHash(unit?.状态?.行动 || '');
+          previewRuntime.stableHash(unit?.__战斗失能原因 || '');
         factHashes[`unit:${unitId}:state:__SHIELD`] =
           previewRuntime.stableHash(previewRuntime.readShield(unit));
         resources.forEach(resource => {
@@ -2488,12 +2488,10 @@
       const level = Math.max(1, Number(unit?.lv ?? unit?.level ?? unit?.等级 ?? unit?.属性?.等级 ?? 1));
       const states = unit?.状态效果 && typeof unit.状态效果 === 'object' ? Object.entries(unit.状态效果) : [];
       const summonRuntime = unit?.__battleRuntime || {};
-      const explicitActionState = String(unit?.状态?.行动 || '').trim();
       const actionState = previewRuntime.isDead(unit)
-        ? '失去战斗力'
-        : /失去战斗力|昏迷|投降|制服|撤离/.test(explicitActionState)
-          ? explicitActionState
-          : previewRuntime.isBattleCapable(unit) ? explicitActionState : '失去战斗力';
+        ? 'DEAD'
+        : String(unit?.__战斗失能原因 || '').trim() ||
+          (previewRuntime.isBattleCapable(unit) ? '' : 'INCAPACITATED');
       return {
         name: previewRuntime.unitName(unit),
         lv: level,
@@ -5276,7 +5274,8 @@
           str: Math.max(1, Math.floor(previewRuntime.readCombatStat(host, 'str') * ratio('力量'))),
           def: Math.max(1, Math.floor(previewRuntime.readCombatStat(host, 'def') * ratio('防御'))),
           agi: Math.max(1, Math.floor(previewRuntime.readCombatStat(host, 'agi') * ratio('敏捷'))),
-          状态: { 存活: hp > 0, 行动: hp > 0 ? '战斗' : '失去战斗力' },
+          状态: { 存活: hp > 0 },
+          ...(hp > 0 ? {} : { __战斗失能原因: 'INCAPACITATED' }),
           状态效果: {},
           持续效果: {},
           技能列表: Array.isArray(mirror?.技能列表) && mirror.技能列表.length
@@ -6942,7 +6941,7 @@
         str: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'str') * inheritRatio)),
         def: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'def') * inheritRatio)),
         agi: Math.max(1, Math.floor(previewRuntime.readCombatStat(actor, 'agi') * inheritRatio)),
-        状态: { 存活: true, 行动: '战斗' }, 状态效果: {}, 持续效果: {},
+        状态: { 存活: true }, 状态效果: {}, 持续效果: {},
         __definitionHash: definitionHash,
         技能列表: Array.isArray(effect?.技能列表) && effect.技能列表.length
           ? cloneValue(effect.技能列表)
@@ -8417,7 +8416,7 @@
               const actionState = traumaUnconscious ? '昏迷' : '失去战斗力';
               const hpMax = previewRuntime.readHpMax(target);
               const beforeActionState = cloneValue(target?.状态 || {});
-              target.状态 = { ...(target.状态 || {}), 行动: actionState };
+              target.__战斗失能原因 = traumaUnconscious ? 'UNCONSCIOUS' : 'INCAPACITATED';
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'state_apply', round: Number(combatData?.回合 || 0),
                 actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
