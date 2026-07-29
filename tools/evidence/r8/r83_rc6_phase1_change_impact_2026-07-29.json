@@ -1,0 +1,280 @@
+{
+  "schemaVersion": "ChangeImpactManifestV1",
+  "changedPaths": [
+    "BattleDecision_Module.js",
+    "BattleRuntime_Module.js",
+    "tools/audit_r83_rc6_phase1_foundation.mjs",
+    "tools/build_r83_rc6_decision_replay_fixtures.mjs",
+    "tools/evidence/r8/r83_rc6_decision_replay/audit-index.json",
+    "tools/evidence/r8/r83_rc6_decision_replay/index.json",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/02/021b8f86d3ecc1760a35192355332bd9bcf21721159b7af0d89b58b5c54fe9e8.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/04/04d37484c686be677497778a0437d4ac27aeaa4983ff9f63bae398dea4f34941.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/09/09855fe0b8169fc65d026859160086f7f04bf2838d5972a8ab791d835c721a28.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/0c/0cc625b49ec016142a9b0e8e0bd7bb4fd455d9cdcd8186e995a226a05f4072b2.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/14/141b8056b315ce6a062bc598bce731e7b694c1ce2b627d888a209557411ef605.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/19/19813adba2bfd52a45f030714d75025035be98f365302040bfe90f93296c3784.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/2a/2aed1554f01402760068217fef67117e205c6c5962c1c8786e0d7cde91ade3eb.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/31/31da68b2f5232b319f84d6365e78e3bddb2baded64c8171ff71eea6edf757967.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/42/4298beac2572491d0293ec0181fc52e6c73dc95ed8d87814fbacff8016a5487d.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/43/4361390eeacc4887201504dde3657aeaa36ba960a19689cdd56e18bb1684717f.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/46/4649fb7c2e5932b5c937c217b4dd0ed590cabec66fe5c514068eca2eafd6500f.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/50/504b26d986fca8d73fc0cc9678ca730d961f76ce4414ae6f8f9137614a694bb2.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/63/632e4e5a95a8a1e3d5c22c93c74f91d0f3405f73653b358fc661858d069a1c23.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/66/66e99b9b0260389be7cd62e31320475ccea8a3390517fc82d508a5343a0086a2.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/6f/6f1076e5ba0baefa97d7858d04272bd7ac5b93795a76c071c86b2112460591f6.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/8f/8fdfbca23060ffe89620661cc4231a9ff1d954a4a54d657d798412c36585112c.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/92/920c02d8fe358a2dcd4ae52270c740e0ad40142e1eb8e6e88de363c8c5ff8beb.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/93/93c45835ff4cf4b49c1a8b59ccef4ac1efc122c6415513e12c714082fa929aa2.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/96/96db36996cc76d9f731989a064b00ee58598b94a0861620409ace8d5f8cc9f85.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/9b/9b239c7c665cefe77b8e0d5a5e9b022274e59880834f3e2e50a3f2c31487bc92.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/a2/a20d1f4c4db9cc1cb99970a58927bcb5c9f1320d496bccffc20cade60cf07f60.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/a4/a46a5bcf1245cb089b8f105bcb3b9c85e0fe8dd66b7e0c79cad0577a32db350f.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/b1/b18db4d6e7777bbc6309c39ce05aeda56905bbe2ea3359b12930227a684096e9.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/b6/b63272a512597a966155a2c0680d6741497a6dda1ce5e0a9cb4ed12d1ec27415.json.gz",
+    "tools/evidence/r8/r83_rc6_decision_replay/objects/e9/e9406e148b2bf5610b95daaee7dfc4173e70af77275012274b979f6d61e79a67.json.gz",
+    "tools/evidence/r8/r83_rc6_phase1_change_impact_2026-07-29.json",
+    "tools/evidence/r8/r83_rc6_phase1_foundation_audit_2026-07-29.json",
+    "tools/r83_rc6_battle_harness.mjs",
+    "tools/r83_rc6_change_impact.mjs",
+    "tools/r83_rc6_evidence_store.mjs"
+  ],
+  "classified": [
+    {
+      "path": "BattleDecision_Module.js",
+      "scopes": [
+        "DECISION_REPLAY",
+        "BEHAVIOR_ORACLE",
+        "AFFECTED_FULL_BATTLES"
+      ]
+    },
+    {
+      "path": "BattleRuntime_Module.js",
+      "scopes": [
+        "RUNTIME_ORACLE",
+        "DECISION_REPLAY",
+        "AFFECTED_FULL_BATTLES",
+        "FULL_CHAIN_HASH"
+      ]
+    },
+    {
+      "path": "tools/audit_r83_rc6_phase1_foundation.mjs",
+      "scopes": [
+        "AUDIT_TOOL_SELF_TEST"
+      ]
+    },
+    {
+      "path": "tools/build_r83_rc6_decision_replay_fixtures.mjs",
+      "scopes": [
+        "DECISION_REPLAY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/audit-index.json",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/index.json",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/02/021b8f86d3ecc1760a35192355332bd9bcf21721159b7af0d89b58b5c54fe9e8.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/04/04d37484c686be677497778a0437d4ac27aeaa4983ff9f63bae398dea4f34941.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/09/09855fe0b8169fc65d026859160086f7f04bf2838d5972a8ab791d835c721a28.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/0c/0cc625b49ec016142a9b0e8e0bd7bb4fd455d9cdcd8186e995a226a05f4072b2.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/14/141b8056b315ce6a062bc598bce731e7b694c1ce2b627d888a209557411ef605.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/19/19813adba2bfd52a45f030714d75025035be98f365302040bfe90f93296c3784.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/2a/2aed1554f01402760068217fef67117e205c6c5962c1c8786e0d7cde91ade3eb.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/31/31da68b2f5232b319f84d6365e78e3bddb2baded64c8171ff71eea6edf757967.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/42/4298beac2572491d0293ec0181fc52e6c73dc95ed8d87814fbacff8016a5487d.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/43/4361390eeacc4887201504dde3657aeaa36ba960a19689cdd56e18bb1684717f.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/46/4649fb7c2e5932b5c937c217b4dd0ed590cabec66fe5c514068eca2eafd6500f.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/50/504b26d986fca8d73fc0cc9678ca730d961f76ce4414ae6f8f9137614a694bb2.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/63/632e4e5a95a8a1e3d5c22c93c74f91d0f3405f73653b358fc661858d069a1c23.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/66/66e99b9b0260389be7cd62e31320475ccea8a3390517fc82d508a5343a0086a2.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/6f/6f1076e5ba0baefa97d7858d04272bd7ac5b93795a76c071c86b2112460591f6.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/8f/8fdfbca23060ffe89620661cc4231a9ff1d954a4a54d657d798412c36585112c.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/92/920c02d8fe358a2dcd4ae52270c740e0ad40142e1eb8e6e88de363c8c5ff8beb.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/93/93c45835ff4cf4b49c1a8b59ccef4ac1efc122c6415513e12c714082fa929aa2.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/96/96db36996cc76d9f731989a064b00ee58598b94a0861620409ace8d5f8cc9f85.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/9b/9b239c7c665cefe77b8e0d5a5e9b022274e59880834f3e2e50a3f2c31487bc92.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/a2/a20d1f4c4db9cc1cb99970a58927bcb5c9f1320d496bccffc20cade60cf07f60.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/a4/a46a5bcf1245cb089b8f105bcb3b9c85e0fe8dd66b7e0c79cad0577a32db350f.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/b1/b18db4d6e7777bbc6309c39ce05aeda56905bbe2ea3359b12930227a684096e9.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/b6/b63272a512597a966155a2c0680d6741497a6dda1ce5e0a9cb4ed12d1ec27415.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_decision_replay/objects/e9/e9406e148b2bf5610b95daaee7dfc4173e70af77275012274b979f6d61e79a67.json.gz",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_phase1_change_impact_2026-07-29.json",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/evidence/r8/r83_rc6_phase1_foundation_audit_2026-07-29.json",
+      "scopes": [
+        "EVIDENCE_ARTIFACT_ONLY"
+      ]
+    },
+    {
+      "path": "tools/r83_rc6_battle_harness.mjs",
+      "scopes": [
+        "AUDIT_TOOL_SELF_TEST"
+      ]
+    },
+    {
+      "path": "tools/r83_rc6_change_impact.mjs",
+      "scopes": [
+        "AUDIT_TOOL_SELF_TEST"
+      ]
+    },
+    {
+      "path": "tools/r83_rc6_evidence_store.mjs",
+      "scopes": [
+        "AUDIT_TOOL_SELF_TEST"
+      ]
+    }
+  ],
+  "unknownPaths": [],
+  "requiredScopes": [
+    "AFFECTED_FULL_BATTLES",
+    "AUDIT_TOOL_SELF_TEST",
+    "BEHAVIOR_ORACLE",
+    "DECISION_REPLAY",
+    "EVIDENCE_ARTIFACT_ONLY",
+    "FULL_CHAIN_HASH",
+    "RUNTIME_ORACLE"
+  ],
+  "failClosed": false,
+  "fatalCodes": [],
+  "base": "HEAD",
+  "cached": true,
+  "excludedPaths": [],
+  "diffHash": "43d9c6b4da14a2affe35c062ad56aa726011562ab4e6b33151f8427878b6a1e7"
+}

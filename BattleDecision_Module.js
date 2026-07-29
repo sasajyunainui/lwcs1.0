@@ -31068,6 +31068,9 @@
       strategyMemory: cloneValue(input?.strategyMemory || {}),
       analysisDepth: candidatesOnly ? 'CANDIDATES_ONLY' : 'FULL',
       baselineCreationFutureUseAudits,
+      ...(input?.collectDecisionReplayIdentity === true
+        ? { collectDecisionReplayIdentity: true }
+        : {}),
       seed: input?.seed ?? 1,
       objectiveCompactMode,
     };
@@ -37818,6 +37821,50 @@
         other !== row && r9v2Dominates(other, row)
       )
     );
+    const replayIdentity =
+      request?.collectDecisionReplayIdentity === true
+        ? (() => {
+            const paretoCandidateIds = paretoRows
+              .map(row =>
+                String(row.candidate.candidateId || '').trim()
+              )
+              .filter(Boolean)
+              .sort();
+            return Object.freeze({
+              schemaVersion: 'R9v2ReplayIdentityV1',
+              candidateHash: preview.stableHash(
+                candidates.map(candidate => ({
+                  candidateId: candidate.candidateId,
+                  declarationFingerprint:
+                    request.candidateFingerprintMap?.[
+                      candidate.candidateId
+                    ] || '',
+                })),
+              ),
+              mechanicalFactsHash: preview.stableHash(
+                prepared.entries.map(entry => ({
+                  candidateId: entry.candidateId,
+                  declarationFingerprint:
+                    entry.declarationFingerprint,
+                  actionKind: entry.actionKind,
+                  targetIds: entry.targetIds,
+                  contributions: entry.contributions,
+                  assetReserve: entry.assetReserve,
+                  hardInvalid: entry.hardInvalid === true,
+                })),
+              ),
+              candidateValueProofHash: preview.stableHash(
+                prepared.proofs.map(proof => ({
+                  ...proof,
+                  vector: proof.vector || {},
+                })),
+              ),
+              paretoCandidateIds:
+                Object.freeze(paretoCandidateIds),
+              paretoHash: preview.stableHash(paretoCandidateIds),
+            });
+          })()
+        : null;
     const ordered = paretoRows.slice().sort((left, right) =>
       Number(right.proof.objectiveUtilityHEPP || 0) -
         Number(left.proof.objectiveUtilityHEPP || 0) ||
@@ -37911,6 +37958,7 @@
         unsupportedOutcomeKinds: cloneValue(
           winner.proof.unsupportedOutcomeKinds,
         ),
+        ...(replayIdentity ? { replayIdentity } : {}),
       },
     };
   }

@@ -10966,6 +10966,8 @@
               providerId,
               verifyR9v2MechanicalBasis:
                 input?.settings?.verifyR9v2MechanicalBasis === true,
+              collectDecisionReplayIdentity:
+                input?.settings?.collectDecisionReplayIdentity === true,
               objectiveContract: combatData?.胜负条件 || {},
               analysisDepth: [
                 'legacy-baseline',
