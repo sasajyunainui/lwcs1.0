@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "RootCauseAnalysisV1",
+  "batchId": "R83RC6-R9V2-CREATION-ROUTE-PROJECTION-CACHE-001",
+  "generatedAt": "2026-07-29",
+  "status": "CONFIRMED_DEFECT",
+  "observationIds": [
+    "RC6-P3-CREATION-ROUTE-CANDIDATE-LOCAL-CACHE-001",
+    "RC6-P3-PROJECTED-POOL-REPEAT-001",
+    "RC6-P3-GLOBAL-CONTENT-CACHE-REJECTED-001"
+  ],
+  "evidenceHashes": {
+    "BattleDecision_Module.js": "d6cb6bb556afa3cc825438aefb32f581fd3c188e75b6b48ef618b1748c6e77c9",
+    "cpuProfileSummary": "19f5546547a7fac5412d754325301074146db38a6ffaaaa11970e00b6aa7682a",
+    "projectionReuseCeiling": "5977d3a7da211373d9f2dbe6b2d6f832f2d690b02388cba0ead29e2c884f0fbe",
+    "globalCacheCrossCase": "be28d6d7473e2d44a6847a700af52cbd9c8e80941179db87fa7a3248da6d7b79",
+    "routeLocalCacheScreen": "986d5d0151c5161b85685e2f0efaa37b55810fddc77b1db128408f0253fd2c70",
+    "routeLocalCacheInterleaved": "f0615f83ef416307af1ca04893d1f0b78e8bd03c8f16b08a836d35fd605bd54e"
+  },
+  "confirmedFacts": [
+    "raid_summon_heavy的196次正式决策中，prepareR9v2ControlResourceSlice独占正式决策热点；其中r9v2CandidateValueProof调用2594次，r9v2CreationConsumerProjection调用18次，r9v2BestCreationConsumerRoute调用36次。",
+    "r9v2BestCreationConsumerRoute当前为每个消费者候选分别创建bestHealthByUnit、behaviorPoolByIdentity和pendingNaturalActorIds缓存上下文。",
+    "同一次消费者路线内，worldSnapshot、recipientId、productId、beliefState、battleIntent和actionOpportunity固定；不同候选证明读取的基线行为池投影可以安全共享。",
+    "raid_summon_heavy记录到1460次r9v2ProjectedBehaviorPool调用，其中351次具有完全相同的来源中立输入，理论重复比例为24.041%。",
+    "Session级内容寻址缓存虽然在raid_summon_heavy命中351次并保持全链Hash相同，但在raid_control_heavy和raid_balanced分别回退5.6%和7.4%，原因是未命中调用仍支付大对象键成本。",
+    "创建投影和创建路线的跨Session内容寻址键在raid_summon_heavy均为零命中，不能形成有效优化。",
+    "仅把现有证明缓存提升到单个消费者路线作用域后，交错A/B三次中raid_summon_heavy逐对收益为14.8%、22.7%和27.2%，Draft、Report、Ledger、终局、正式选择和最终快照Hash全部相同。",
+    "同一变体在raid_control_heavy的中位收益为0.9%，在raid_balanced的中位变化为-1.6%；源码路径不新增计算或身份构造，后者作为负载噪声和正式P95保护门继续验证。"
+  ],
+  "counterexamples": [
+    {
+      "id": "global-session-content-addressed-cache",
+      "result": "全链Hash相同，但控制型和均衡型7v7端到端明显回退。",
+      "purpose": "排除通过大对象Hash建立Session级通用缓存的方案。"
+    },
+    {
+      "id": "creation-projection-content-cache",
+      "result": "18次调用、18个唯一键，零命中。",
+      "purpose": "排除缓存整个CreationConsumerProjection的方案。"
+    },
+    {
+      "id": "creation-route-content-cache",
+      "result": "36次调用、36个唯一键，零命中且端到端回退。",
+      "purpose": "排除跨路线缓存BestCreationConsumerRoute结果的方案。"
+    },
+    {
+      "id": "control-heavy-protection",
+      "result": "路线内共享变体保持所有正式Hash一致，耗时处于约正负2%的噪声区间。",
+      "purpose": "证明该修改不依赖召唤角色、技能名或场景特判。"
+    }
+  ],
+  "rejectedHypotheses": [
+    {
+      "hypothesis": "继续缩小B6失效范围即可解决当前性能门。",
+      "reasonRejected": "此前绝对上界实验消除90%以上Observer Pool机械评估仅节省约5%，且当前CPU热点包含候选证明内的递归行为池和造物消费者证明。"
+    },
+    {
+      "hypothesis": "使用Session级完整世界内容寻址键复用ProjectedBehaviorPool。",
+      "reasonRejected": "非召唤重案例的键计算成本超过命中收益，违反端到端至少3%的接受条件。"
+    },
+    {
+      "hypothesis": "缓存完整CreationConsumerProjection或BestCreationConsumerRoute。",
+      "reasonRejected": "实测键全部唯一，理论命中上界为0。"
+    },
+    {
+      "hypothesis": "减少消费者候选、行为变异、概率或路线数量。",
+      "reasonRejected": "违反全量候选和无降质约束，也没有必要解释已确认的重复计算。"
+    }
+  ],
+  "causalChain": [
+    "创建候选进入r9v2CreationConsumerProjection。",
+    "withoutProduct和withProduct分别进入r9v2BestCreationConsumerRoute。",
+    "每条消费者路线枚举完整合法候选并为每个候选构造CandidateValueProof。",
+    "当前实现为每个候选创建独立projectionCache。",
+    "同一路线内不同候选遇到相同未来行为变异时，behaviorPoolByIdentity无法复用前一候选的来源中立投影。",
+    "相同目标单位的完整未来候选池和MechanicalBasis被重复构建。",
+    "召唤与造物密集战斗放大该重复，形成数秒级端到端成本。"
+  ],
+  "firstDivergenceLayer": "BattleDecision_Module.js:r9v2BestCreationConsumerRoute projectionCache scope",
+  "responsibleModules": [
+    "BattleDecision_Module.js:r9v2BestCreationConsumerRoute",
+    "BattleDecision_Module.js:r9v2CandidateValueProof",
+    "BattleDecision_Module.js:r9v2ProjectedBehaviorPool"
+  ],
+  "classification": "CONFIRMED_DEFECT",
+  "confidence": 0.98,
+  "noChangeDecision": false,
+  "selectedRepairBoundary": {
+    "change": "在单次r9v2BestCreationConsumerRoute调用内创建一份projectionCache，并由该路线的全部合法消费者候选证明共享。",
+    "preserve": [
+      "缓存不跨消费者路线、不跨正式决策、不跨Evaluation Session、不跨战斗。",
+      "不改变候选枚举、MechanicalBasis、行为池身份、价值公式、因果所有权、Pareto或Runtime。",
+      "不新增Hash、世界扫描、技能名特判、Top-K或MVU字段。",
+      "withoutProduct和withProduct继续拥有相互独立的路线级缓存。"
+    ]
+  },
+  "requiredProtection": [
+    "候选Hash、机械事实Hash、CandidateValueProof Hash、Pareto集合和正式选择保持相同。",
+    "Ledger、终局、finalSnapshot、Draft和Report Hash保持相同。",
+    "因果守恒误差不超过1e-6。",
+    "raid_summon_heavy端到端中位收益至少3%。",
+    "raid_control_heavy和raid_balanced的正式P95不得回退超过3%。"
+  ],
+  "nextBatchDecision": "PROPOSE_ROUTE_SCOPED_PROJECTION_CACHE"
+}

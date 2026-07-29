@@ -32790,17 +32790,18 @@
       productId,
       revision,
     });
+    const projectionCache = {
+      bestHealthByUnit: new Map(),
+      behaviorPoolByIdentity: new Map(),
+      pendingNaturalActorIds: null,
+    };
     const proofs = built.entries
       .filter(entry => entry.hardInvalid !== true)
       .map(entry => r9v2CandidateValueProof(
         routeRequest,
         built.pool,
         entry,
-        {
-          bestHealthByUnit: new Map(),
-          behaviorPoolByIdentity: new Map(),
-          pendingNaturalActorIds: null,
-        },
+        projectionCache,
       ));
     const validProofs = proofs.filter(proof =>
       !Array.isArray(proof?.unsupportedOutcomeKinds) ||

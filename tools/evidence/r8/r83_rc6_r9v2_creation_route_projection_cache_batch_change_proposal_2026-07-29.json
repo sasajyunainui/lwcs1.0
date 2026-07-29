@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "BatchChangeProposalV1",
+  "proposalId": "R83RC6-R9V2-CREATION-ROUTE-PROJECTION-CACHE-001",
+  "rootCauseAnalysisId": "R83RC6-R9V2-CREATION-ROUTE-PROJECTION-CACHE-001",
+  "semanticDecisionId": "R83RC6-R9V2-CREATION-ROUTE-PROJECTION-CACHE-001",
+  "generatedAt": "2026-07-29",
+  "status": "APPROVED_FOR_IMPLEMENTATION",
+  "selectedDesign": {
+    "name": "CreationConsumerRouteScopedProjectionCacheV1",
+    "summary": "Create one existing projectionCache per fixed creation consumer route and share it across all full candidate proofs in that route."
+  },
+  "rejectedAlternatives": [
+    "Session-wide content-addressed ProjectedBehaviorPool reuse",
+    "CreationConsumerProjection result cache",
+    "BestCreationConsumerRoute result cache",
+    "Candidate pruning or Top-K",
+    "Skill, role or case-specific fast paths"
+  ],
+  "affectedModules": [
+    "BattleDecision_Module.js:r9v2BestCreationConsumerRoute"
+  ],
+  "exactDataFlow": [
+    "Build the full creation consumer candidate pool exactly as before.",
+    "Create bestHealthByUnit, behaviorPoolByIdentity and pendingNaturalActorIds once for the fixed route.",
+    "Pass the same route-local projectionCache to every supported candidate proof.",
+    "CandidateValueProof continues to bind candidate-specific facts and causal ownership after reading source-neutral cached projections.",
+    "Sort all valid proofs and select the best route exactly as before."
+  ],
+  "interfaceChanges": {
+    "publicDecisionInterfaceChanged": false,
+    "runtimeInterfaceChanged": false,
+    "reportInterfaceChanged": false,
+    "mvuPersistenceChanged": false,
+    "newPersistentFields": false,
+    "newCacheType": false,
+    "cacheScopeChanged": "candidate-local to creation-consumer-route-local"
+  },
+  "formulasAndAlgorithms": {
+    "candidateValueProof": "unchanged",
+    "creationRouteDelta": "unchanged",
+    "causalReconciliation": "unchanged",
+    "pareto": "unchanged"
+  },
+  "cacheAndInvalidationChanges": [
+    "Reuse is bounded to one r9v2BestCreationConsumerRoute invocation.",
+    "withoutProduct and withProduct calls retain separate caches.",
+    "The existing behaviorPoolByIdentity remains the reuse authority.",
+    "No FactDelta invalidation or Session cache is added."
+  ],
+  "sourceClosureChanges": {
+    "additions": [],
+    "deletions": [
+      "Per-candidate allocation of three projection-cache members inside r9v2BestCreationConsumerRoute"
+    ]
+  },
+  "deletionList": [
+    "Inline per-candidate projectionCache object literal"
+  ],
+  "positiveOracles": [
+    "raid_summon_heavy full transaction hash equality",
+    "Creation consumer full candidate proof coverage",
+    "CandidateValueProof objective equation",
+    "Causal reconciliation error <= 1e-6"
+  ],
+  "negativeOracles": [
+    "Different creation routes do not share a cache",
+    "withoutProduct and withProduct do not share a cache",
+    "Ordinary non-creation decisions remain unchanged",
+    "No hidden input or provider label enters the cache identity"
+  ],
+  "protectedBehaviors": [
+    "raid_control_heavy",
+    "raid_balanced",
+    "response and first-terminal projection",
+    "summon lifecycle",
+    "resource timeline",
+    "manual and free_narrative modes",
+    "Report projection and Seal"
+  ],
+  "expectedHashChanges": {
+    "mustChange": [
+      "BattleDecision_Module.js source hash",
+      "implementation audit and performance evidence hashes"
+    ],
+    "mustRemainEqual": [
+      "candidateHash",
+      "mechanicalFactsHash",
+      "candidateValueProofHash",
+      "paretoHash",
+      "formal selected candidate",
+      "Draft hash",
+      "Report hash",
+      "Ledger hash",
+      "terminal hash",
+      "finalSnapshot hash"
+    ]
+  },
+  "expectedWorkloadChange": {
+    "candidateEnumeration": "unchanged",
+    "candidateProofCount": "unchanged",
+    "projectedBehaviorPoolBuilds": "decrease only for repeated identities inside one creation consumer route",
+    "mechanicalBasisEvaluations": "decrease with avoided repeated projected pools",
+    "largeObjectHashWork": "unchanged",
+    "expectedAffectedCaseBenefit": "raid_summon_heavy median >= 3%",
+    "expectedProtectedCaseRegression": "< 3% P95"
+  },
+  "performanceBudget": {
+    "minimumAffectedMedianBenefitRatio": 0.03,
+    "maximumProtectedP95RegressionRatio": 0.03,
+    "formalTimerScope": "Draft -> Report.build -> auditProjection -> Seal -> verify"
+  },
+  "patchBudget": {
+    "businessFiles": 1,
+    "targetChangedLines": 15,
+    "newDependencies": 0
+  },
+  "rollbackCriteria": [
+    "Any formal or replay hash mismatch",
+    "Candidate proof count or coverage changes",
+    "Causal reconciliation mismatch",
+    "raid_summon_heavy median benefit below 3%",
+    "raid_control_heavy or raid_balanced P95 regression above 3% after repeated measurement",
+    "Any cache lifetime escapes the current creation consumer route"
+  ]
+}

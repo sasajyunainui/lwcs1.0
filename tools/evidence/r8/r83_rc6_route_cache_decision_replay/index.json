@@ -1,0 +1,300 @@
+{
+  "schemaVersion": "EvidenceArtifactIndexV1",
+  "generatedAt": "2026-07-29T10:34:26.750Z",
+  "providerId": "r9v2-shadow",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+    "BattleDecision_Module.js": "a7dfd36e7d40a95a8cdfd4f67049445a62545d33417823f03c0eaf151c4da7ab",
+    "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+    "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+  },
+  "fixtureCount": 6,
+  "entries": [
+    {
+      "caseId": "duel_agile_counter_options",
+      "sourceCaseId": "duel_agile_counter_options",
+      "unitCount": 2,
+      "rounds": 5,
+      "fixtureRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "DECISION_REPLAY_FIXTURE",
+        "contentHash": "5191dd4e1988c4af4229ad24ff360652742512f4799a3bd9b13881e3a3f6963f",
+        "byteLength": 18791,
+        "storedByteLength": 2730,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/51/5191dd4e1988c4af4229ad24ff360652742512f4799a3bd9b13881e3a3f6963f.json.gz"
+      },
+      "inputRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "BATTLE_INPUT",
+        "contentHash": "31da68b2f5232b319f84d6365e78e3bddb2baded64c8171ff71eea6edf757967",
+        "byteLength": 25309,
+        "storedByteLength": 4791,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/31/31da68b2f5232b319f84d6365e78e3bddb2baded64c8171ff71eea6edf757967.json.gz"
+      },
+      "fullDraftRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_DRAFT",
+        "contentHash": "0037657d3228479ae0f9e04ddc22f522eb1db0638aebf5028a1d6413964ff34c",
+        "byteLength": 1126818,
+        "storedByteLength": 57491,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/00/0037657d3228479ae0f9e04ddc22f522eb1db0638aebf5028a1d6413964ff34c.json.gz"
+      },
+      "reportRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_REPORT_DTO",
+        "contentHash": "53d52913709e6d03da0e91460e11fc546deab6f0b4d6f80fd7442983bd938e35",
+        "byteLength": 345166,
+        "storedByteLength": 14825,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/53/53d52913709e6d03da0e91460e11fc546deab6f0b4d6f80fd7442983bd938e35.json.gz"
+      },
+      "observedRoles": [
+        "ACTIVE",
+        "COUNTER",
+        "REACTION"
+      ]
+    },
+    {
+      "caseId": "duel_charge_defense_safer__lost_opportunity",
+      "sourceCaseId": "duel_charge_defense_safer",
+      "unitCount": 2,
+      "rounds": 4,
+      "fixtureRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "DECISION_REPLAY_FIXTURE",
+        "contentHash": "b18db4d6e7777bbc6309c39ce05aeda56905bbe2ea3359b12930227a684096e9",
+        "byteLength": 2855,
+        "storedByteLength": 1181,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/b1/b18db4d6e7777bbc6309c39ce05aeda56905bbe2ea3359b12930227a684096e9.json.gz"
+      },
+      "inputRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "BATTLE_INPUT",
+        "contentHash": "e9406e148b2bf5610b95daaee7dfc4173e70af77275012274b979f6d61e79a67",
+        "byteLength": 27100,
+        "storedByteLength": 5006,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/e9/e9406e148b2bf5610b95daaee7dfc4173e70af77275012274b979f6d61e79a67.json.gz"
+      },
+      "fullDraftRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_DRAFT",
+        "contentHash": "4298beac2572491d0293ec0181fc52e6c73dc95ed8d87814fbacff8016a5487d",
+        "byteLength": 187217,
+        "storedByteLength": 20169,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/42/4298beac2572491d0293ec0181fc52e6c73dc95ed8d87814fbacff8016a5487d.json.gz"
+      },
+      "reportRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_REPORT_DTO",
+        "contentHash": "19813adba2bfd52a45f030714d75025035be98f365302040bfe90f93296c3784",
+        "byteLength": 67442,
+        "storedByteLength": 6990,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/19/19813adba2bfd52a45f030714d75025035be98f365302040bfe90f93296c3784.json.gz"
+      },
+      "observedRoles": [
+        "ACTIVE",
+        "LOST"
+      ]
+    },
+    {
+      "caseId": "team_control_overlap",
+      "sourceCaseId": "team_control_overlap",
+      "unitCount": 6,
+      "rounds": 4,
+      "fixtureRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "DECISION_REPLAY_FIXTURE",
+        "contentHash": "3ca2a1d5348b9e15e7590418f069effcc5d04b6ba56a8a972e32634b133b57f5",
+        "byteLength": 32196,
+        "storedByteLength": 4588,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/3c/3ca2a1d5348b9e15e7590418f069effcc5d04b6ba56a8a972e32634b133b57f5.json.gz"
+      },
+      "inputRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "BATTLE_INPUT",
+        "contentHash": "9b239c7c665cefe77b8e0d5a5e9b022274e59880834f3e2e50a3f2c31487bc92",
+        "byteLength": 75388,
+        "storedByteLength": 10392,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/9b/9b239c7c665cefe77b8e0d5a5e9b022274e59880834f3e2e50a3f2c31487bc92.json.gz"
+      },
+      "fullDraftRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_DRAFT",
+        "contentHash": "a9624fa4d81f09f8f3ce5475dd430cd47101ef266c41867014bb4800992b4b40",
+        "byteLength": 3574132,
+        "storedByteLength": 232961,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/a9/a9624fa4d81f09f8f3ce5475dd430cd47101ef266c41867014bb4800992b4b40.json.gz"
+      },
+      "reportRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_REPORT_DTO",
+        "contentHash": "bc7ff955ce8ab5cf967afc5f2d4f4604efa328d9a96f4f0ba4d2e6f95e512865",
+        "byteLength": 1012756,
+        "storedByteLength": 49942,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/bc/bc7ff955ce8ab5cf967afc5f2d4f4604efa328d9a96f4f0ba4d2e6f95e512865.json.gz"
+      },
+      "observedRoles": [
+        "ACTIVE",
+        "COUNTER",
+        "LOST",
+        "PASS",
+        "REACTION"
+      ]
+    },
+    {
+      "caseId": "team_counter_coordination",
+      "sourceCaseId": "team_counter_coordination",
+      "unitCount": 6,
+      "rounds": 6,
+      "fixtureRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "DECISION_REPLAY_FIXTURE",
+        "contentHash": "2d34f2f0d9061b2519798a891adae6818b5d82006d885d01afc53a3cfa420a47",
+        "byteLength": 76675,
+        "storedByteLength": 8217,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/2d/2d34f2f0d9061b2519798a891adae6818b5d82006d885d01afc53a3cfa420a47.json.gz"
+      },
+      "inputRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "BATTLE_INPUT",
+        "contentHash": "4361390eeacc4887201504dde3657aeaa36ba960a19689cdd56e18bb1684717f",
+        "byteLength": 62315,
+        "storedByteLength": 8372,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/43/4361390eeacc4887201504dde3657aeaa36ba960a19689cdd56e18bb1684717f.json.gz"
+      },
+      "fullDraftRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_DRAFT",
+        "contentHash": "ccfe361d5bc83d62f914656534e1e3f393ee3ec13899bb3cc78246715bf0956d",
+        "byteLength": 7272303,
+        "storedByteLength": 464589,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/cc/ccfe361d5bc83d62f914656534e1e3f393ee3ec13899bb3cc78246715bf0956d.json.gz"
+      },
+      "reportRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_REPORT_DTO",
+        "contentHash": "ecf2aeddb8abb195c6b260980f24b1c3f6873ecefadf869b18c616418fa5f4f3",
+        "byteLength": 2303744,
+        "storedByteLength": 101398,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/ec/ecf2aeddb8abb195c6b260980f24b1c3f6873ecefadf869b18c616418fa5f4f3.json.gz"
+      },
+      "observedRoles": [
+        "ACTIVE",
+        "COUNTER",
+        "REACTION"
+      ]
+    },
+    {
+      "caseId": "raid_control_heavy",
+      "sourceCaseId": "raid_control_heavy",
+      "unitCount": 14,
+      "rounds": 5,
+      "fixtureRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "DECISION_REPLAY_FIXTURE",
+        "contentHash": "22c471a7c98611c49b32dd44a2ee4a88b29701162c445ecddb1f4bf3fccf7691",
+        "byteLength": 161901,
+        "storedByteLength": 18022,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/22/22c471a7c98611c49b32dd44a2ee4a88b29701162c445ecddb1f4bf3fccf7691.json.gz"
+      },
+      "inputRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "BATTLE_INPUT",
+        "contentHash": "8fdfbca23060ffe89620661cc4231a9ff1d954a4a54d657d798412c36585112c",
+        "byteLength": 152452,
+        "storedByteLength": 19547,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/8f/8fdfbca23060ffe89620661cc4231a9ff1d954a4a54d657d798412c36585112c.json.gz"
+      },
+      "fullDraftRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_DRAFT",
+        "contentHash": "1077368d5418551b26b3eebc5d13c0f2b33e85795b289b40a32198639e48c976",
+        "byteLength": 26543643,
+        "storedByteLength": 1603352,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/10/1077368d5418551b26b3eebc5d13c0f2b33e85795b289b40a32198639e48c976.json.gz"
+      },
+      "reportRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_REPORT_DTO",
+        "contentHash": "ecd73a600b2f93f5c40ec529f75ff00371f6befa2f7e5df2102ce9e8c9af9b0a",
+        "byteLength": 6697476,
+        "storedByteLength": 338849,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/ec/ecd73a600b2f93f5c40ec529f75ff00371f6befa2f7e5df2102ce9e8c9af9b0a.json.gz"
+      },
+      "observedRoles": [
+        "ACTIVE",
+        "COUNTER",
+        "LOST",
+        "PASS",
+        "REACTION"
+      ]
+    },
+    {
+      "caseId": "raid_balanced",
+      "sourceCaseId": "raid_balanced",
+      "unitCount": 14,
+      "rounds": 5,
+      "fixtureRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "DECISION_REPLAY_FIXTURE",
+        "contentHash": "4606e38170822d05daaca3ab5b5e5f3a86a37fe1364752c674f7127ffceb530c",
+        "byteLength": 174808,
+        "storedByteLength": 19036,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/46/4606e38170822d05daaca3ab5b5e5f3a86a37fe1364752c674f7127ffceb530c.json.gz"
+      },
+      "inputRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "BATTLE_INPUT",
+        "contentHash": "4649fb7c2e5932b5c937c217b4dd0ed590cabec66fe5c514068eca2eafd6500f",
+        "byteLength": 142318,
+        "storedByteLength": 18268,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/46/4649fb7c2e5932b5c937c217b4dd0ed590cabec66fe5c514068eca2eafd6500f.json.gz"
+      },
+      "fullDraftRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_DRAFT",
+        "contentHash": "ec4327010945b2e7f71ee61e7a4cf65848e6a533ebd6e78927b1410be89c3509",
+        "byteLength": 26771282,
+        "storedByteLength": 1579043,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/ec/ec4327010945b2e7f71ee61e7a4cf65848e6a533ebd6e78927b1410be89c3509.json.gz"
+      },
+      "reportRef": {
+        "schemaVersion": "ContentAddressedArtifactRefV1",
+        "artifactType": "FULL_REPORT_DTO",
+        "contentHash": "6c5e1777c9b8e8c82430e0322831a688cfea7a61597bfacc775d6ded5cacf802",
+        "byteLength": 6662060,
+        "storedByteLength": 329020,
+        "encoding": "gzip+utf8-json",
+        "relativePath": "objects/6c/6c5e1777c9b8e8c82430e0322831a688cfea7a61597bfacc775d6ded5cacf802.json.gz"
+      },
+      "observedRoles": [
+        "ACTIVE",
+        "COUNTER",
+        "PASS",
+        "REACTION"
+      ]
+    }
+  ]
+}

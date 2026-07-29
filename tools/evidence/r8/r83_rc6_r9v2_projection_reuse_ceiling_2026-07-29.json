@@ -1,0 +1,667 @@
+{
+  "schemaVersion": "R9v2ProjectionReuseCeilingEvidenceV1",
+  "generatedAt": "2026-07-29T10:00:35.796Z",
+  "providerId": "r9v2-shadow",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+    "BattleDecision_Module.js": "d6cb6bb556afa3cc825438aefb32f581fd3c188e75b6b48ef618b1748c6e77c9",
+    "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+    "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+  },
+  "toolHashes": {
+    "tools/probe_r83_rc6_r9v2_projection_reuse_ceiling.mjs": "1c6698fedf79e11ada5a193b224ed07ef24189bc09c9dbdb377fccb9a30e28cd",
+    "tools/r83_rc6_battle_harness.mjs": "8c1c643506a74cc1afe9d504e7e6010003f49f5f5c8f318e7fc4167f286ba53d"
+  },
+  "runConfig": {
+    "caseIds": [
+      "raid_summon_heavy"
+    ],
+    "warmupCount": 1,
+    "measurementCount": 3,
+    "singleProcess": true,
+    "collectDecisionReplayIdentity": false,
+    "timerScope": "Draft -> Report.build -> auditProjection -> Seal -> verify",
+    "reuseScope": "single battle transaction",
+    "minimumAcceptedEndToEndBenefitRatio": 0.03
+  },
+  "baseline": {
+    "label": "baseline",
+    "cases": [
+      {
+        "caseId": "raid_summon_heavy",
+        "summary": {
+          "elapsedMs": [
+            19404.03,
+            19281.272,
+            19189.227
+          ],
+          "medianMs": 19281.272,
+          "p95Ms": 19404.03
+        },
+        "referenceHashes": {
+          "draftHash": "r74-7d68db6eb064d694",
+          "reportHash": "r74-391c3ea4f59ea002",
+          "ledgerHash": "e4a1febb4ef4d4ba7ccb604cb40394579326d77d4d32d1aeed6e421088bd8c86",
+          "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+          "finalSnapshotHash": "ab45eb16b850d104d5feada8fc60064814d3b2ca516c1ab55fee965a08612238",
+          "selectedDecisionHash": "cec628b2feb1f301f8d6a289bcc34294a513c47fb9680581aca7b4f4d0d0bb4c"
+        },
+        "decisionCount": 196,
+        "ledgerEventCount": 751,
+        "stageProbe": null,
+        "reuseProbe": null
+      }
+    ]
+  },
+  "stageTiming": {
+    "label": "stage-timing",
+    "cases": [
+      {
+        "caseId": "raid_summon_heavy",
+        "summary": {
+          "elapsedMs": [
+            19263.071
+          ],
+          "medianMs": 19263.071,
+          "p95Ms": 19263.071
+        },
+        "referenceHashes": {
+          "draftHash": "r74-7d68db6eb064d694",
+          "reportHash": "r74-391c3ea4f59ea002",
+          "ledgerHash": "e4a1febb4ef4d4ba7ccb604cb40394579326d77d4d32d1aeed6e421088bd8c86",
+          "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+          "finalSnapshotHash": "ab45eb16b850d104d5feada8fc60064814d3b2ca516c1ab55fee965a08612238",
+          "selectedDecisionHash": "cec628b2feb1f301f8d6a289bcc34294a513c47fb9680581aca7b4f4d0d0bb4c"
+        },
+        "decisionCount": 196,
+        "ledgerEventCount": 751,
+        "stageProbe": {
+          "stages": {
+            "prepareR9v2ControlResourceSlice": {
+              "callCount": 196,
+              "inclusiveMs": 13477.724,
+              "exclusiveMs": 49.978,
+              "maxInclusiveMs": 2329.932
+            },
+            "r9v2BehaviorPoolDeltaProjection": {
+              "callCount": 2594,
+              "inclusiveMs": 5378.805,
+              "exclusiveMs": 106.725,
+              "maxInclusiveMs": 50.386
+            },
+            "r9v2BestCreationConsumerRoute": {
+              "callCount": 36,
+              "inclusiveMs": 4479.716,
+              "exclusiveMs": 36.621,
+              "maxInclusiveMs": 902.978
+            },
+            "r9v2BuildMechanicalEntry": {
+              "callCount": 61372,
+              "inclusiveMs": 11046.675,
+              "exclusiveMs": 11046.675,
+              "maxInclusiveMs": 10.172
+            },
+            "r9v2CandidateValueProof": {
+              "callCount": 2594,
+              "inclusiveMs": 11251.687,
+              "exclusiveMs": 266.281,
+              "maxInclusiveMs": 1736.79
+            },
+            "r9v2CreationConsumerProjection": {
+              "callCount": 18,
+              "inclusiveMs": 4481.671,
+              "exclusiveMs": 1.955,
+              "maxInclusiveMs": 1736.574
+            },
+            "r9v2CurrentIncomingResponseProjection": {
+              "callCount": 2594,
+              "inclusiveMs": 415.202,
+              "exclusiveMs": 317.096,
+              "maxInclusiveMs": 3.802
+            },
+            "r9v2PrepareCurrentIncomingProjection": {
+              "callCount": 196,
+              "inclusiveMs": 140.891,
+              "exclusiveMs": 100.527,
+              "maxInclusiveMs": 4.438
+            },
+            "r9v2PrepareObserverPool": {
+              "callCount": 196,
+              "inclusiveMs": 5994.441,
+              "exclusiveMs": 167.997,
+              "maxInclusiveMs": 49.235
+            },
+            "r9v2ProjectedBehaviorPool": {
+              "callCount": 1460,
+              "inclusiveMs": 5272.079,
+              "exclusiveMs": 601.094,
+              "maxInclusiveMs": 31.185
+            },
+            "r9v2ProjectHealthAndTerminal": {
+              "callCount": 4199,
+              "inclusiveMs": 766.811,
+              "exclusiveMs": 766.811,
+              "maxInclusiveMs": 2.173
+            },
+            "r9v2SummonWindowProjection": {
+              "callCount": 2594,
+              "inclusiveMs": 81.387,
+              "exclusiveMs": 15.965,
+              "maxInclusiveMs": 6.853
+            }
+          },
+          "keys": {}
+        },
+        "reuseProbe": null
+      }
+    ]
+  },
+  "keyRepetition": {
+    "label": "key-repetition",
+    "cases": [
+      {
+        "caseId": "raid_summon_heavy",
+        "summary": {
+          "elapsedMs": [
+            21237.642
+          ],
+          "medianMs": 21237.642,
+          "p95Ms": 21237.642
+        },
+        "referenceHashes": {
+          "draftHash": "r74-7d68db6eb064d694",
+          "reportHash": "r74-391c3ea4f59ea002",
+          "ledgerHash": "e4a1febb4ef4d4ba7ccb604cb40394579326d77d4d32d1aeed6e421088bd8c86",
+          "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+          "finalSnapshotHash": "ab45eb16b850d104d5feada8fc60064814d3b2ca516c1ab55fee965a08612238",
+          "selectedDecisionHash": "cec628b2feb1f301f8d6a289bcc34294a513c47fb9680581aca7b4f4d0d0bb4c"
+        },
+        "decisionCount": 196,
+        "ledgerEventCount": 751,
+        "stageProbe": {
+          "stages": {
+            "prepareR9v2ControlResourceSlice": {
+              "callCount": 196,
+              "inclusiveMs": 15378.869,
+              "exclusiveMs": 53.254,
+              "maxInclusiveMs": 2739.758
+            },
+            "r9v2BehaviorPoolDeltaProjection": {
+              "callCount": 2594,
+              "inclusiveMs": 6716.126,
+              "exclusiveMs": 1383.701,
+              "maxInclusiveMs": 66.799
+            },
+            "r9v2BestCreationConsumerRoute": {
+              "callCount": 36,
+              "inclusiveMs": 4913.296,
+              "exclusiveMs": 39.343,
+              "maxInclusiveMs": 981.268
+            },
+            "r9v2BuildMechanicalEntry": {
+              "callCount": 61372,
+              "inclusiveMs": 11278.761,
+              "exclusiveMs": 11278.761,
+              "maxInclusiveMs": 17.815
+            },
+            "r9v2CandidateValueProof": {
+              "callCount": 2594,
+              "inclusiveMs": 13417.724,
+              "exclusiveMs": 359.036,
+              "maxInclusiveMs": 1910.104
+            },
+            "r9v2CreationConsumerProjection": {
+              "callCount": 18,
+              "inclusiveMs": 5192.367,
+              "exclusiveMs": 279.071,
+              "maxInclusiveMs": 1906.672
+            },
+            "r9v2CurrentIncomingResponseProjection": {
+              "callCount": 2594,
+              "inclusiveMs": 427.231,
+              "exclusiveMs": 324.263,
+              "maxInclusiveMs": 4.177
+            },
+            "r9v2PrepareCurrentIncomingProjection": {
+              "callCount": 196,
+              "inclusiveMs": 140.615,
+              "exclusiveMs": 99.118,
+              "maxInclusiveMs": 2.291
+            },
+            "r9v2PrepareObserverPool": {
+              "callCount": 196,
+              "inclusiveMs": 6137.918,
+              "exclusiveMs": 170.199,
+              "maxInclusiveMs": 49.123
+            },
+            "r9v2ProjectedBehaviorPool": {
+              "callCount": 1460,
+              "inclusiveMs": 5332.425,
+              "exclusiveMs": 590.764,
+              "maxInclusiveMs": 21.692
+            },
+            "r9v2ProjectHealthAndTerminal": {
+              "callCount": 4199,
+              "inclusiveMs": 784.712,
+              "exclusiveMs": 784.712,
+              "maxInclusiveMs": 2.493
+            },
+            "r9v2SummonWindowProjection": {
+              "callCount": 2594,
+              "inclusiveMs": 82.718,
+              "exclusiveMs": 16.647,
+              "maxInclusiveMs": 6.82
+            }
+          },
+          "keys": {
+            "r9v2BestCreationConsumerRoute": {
+              "callCount": 36,
+              "uniqueKeyCount": 36,
+              "duplicateCallCount": 0,
+              "reuseCeilingRatio": 0,
+              "repeatedKeys": []
+            },
+            "r9v2CreationConsumerProjection": {
+              "callCount": 18,
+              "uniqueKeyCount": 18,
+              "duplicateCallCount": 0,
+              "reuseCeilingRatio": 0,
+              "repeatedKeys": []
+            },
+            "r9v2ProjectedBehaviorPool": {
+              "callCount": 1460,
+              "uniqueKeyCount": 1109,
+              "duplicateCallCount": 351,
+              "reuseCeilingRatio": 0.2404109589041096,
+              "repeatedKeys": [
+                {
+                  "key": "10bp3dj",
+                  "count": 7
+                },
+                {
+                  "key": "11auug5",
+                  "count": 7
+                },
+                {
+                  "key": "11hly10",
+                  "count": 7
+                },
+                {
+                  "key": "127gfzk",
+                  "count": 7
+                },
+                {
+                  "key": "12f4e3o",
+                  "count": 7
+                },
+                {
+                  "key": "13f0vlm",
+                  "count": 7
+                },
+                {
+                  "key": "15muskn",
+                  "count": 7
+                },
+                {
+                  "key": "15rdpr3",
+                  "count": 7
+                },
+                {
+                  "key": "17xh1xz",
+                  "count": 7
+                },
+                {
+                  "key": "181xngp",
+                  "count": 7
+                },
+                {
+                  "key": "18h5yen",
+                  "count": 7
+                },
+                {
+                  "key": "1co93ni",
+                  "count": 7
+                },
+                {
+                  "key": "1cxy0ac",
+                  "count": 7
+                },
+                {
+                  "key": "1fk70cb",
+                  "count": 7
+                },
+                {
+                  "key": "1i7qd3c",
+                  "count": 7
+                },
+                {
+                  "key": "1inz9s6",
+                  "count": 7
+                },
+                {
+                  "key": "1izg23t",
+                  "count": 7
+                },
+                {
+                  "key": "1lmsokp",
+                  "count": 7
+                },
+                {
+                  "key": "1nqgyt2",
+                  "count": 7
+                },
+                {
+                  "key": "1ozea6p",
+                  "count": 7
+                }
+              ]
+            }
+          }
+        },
+        "reuseProbe": null
+      }
+    ]
+  },
+  "reuseVariants": [
+    {
+      "label": "reuse:projected-pool",
+      "cases": [
+        {
+          "caseId": "raid_summon_heavy",
+          "summary": {
+            "elapsedMs": [
+              18379.421,
+              18395.959,
+              18316.719
+            ],
+            "medianMs": 18379.421,
+            "p95Ms": 18395.959
+          },
+          "referenceHashes": {
+            "draftHash": "r74-7d68db6eb064d694",
+            "reportHash": "r74-391c3ea4f59ea002",
+            "ledgerHash": "e4a1febb4ef4d4ba7ccb604cb40394579326d77d4d32d1aeed6e421088bd8c86",
+            "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+            "finalSnapshotHash": "ab45eb16b850d104d5feada8fc60064814d3b2ca516c1ab55fee965a08612238",
+            "selectedDecisionHash": "cec628b2feb1f301f8d6a289bcc34294a513c47fb9680581aca7b4f4d0d0bb4c"
+          },
+          "decisionCount": 196,
+          "ledgerEventCount": 751,
+          "stageProbe": null,
+          "reuseProbe": {
+            "mode": "projected-pool",
+            "counters": {
+              "projectedPoolCalls": 1460,
+              "projectedPoolHits": 351,
+              "creationProjectionCalls": 0,
+              "creationProjectionHits": 0,
+              "creationRouteCalls": 0,
+              "creationRouteHits": 0
+            },
+            "storeSizes": {
+              "projectedPool": 1109,
+              "creationProjection": 0,
+              "creationRoute": 0
+            }
+          },
+          "medianDeltaPercent": -4.677,
+          "medianBenefitRatio": 0.047,
+          "semanticHashesEqual": true
+        }
+      ],
+      "semanticEqualityRequired": true
+    },
+    {
+      "label": "reuse:creation-projection",
+      "cases": [
+        {
+          "caseId": "raid_summon_heavy",
+          "summary": {
+            "elapsedMs": [
+              18956.041,
+              19030.095,
+              18961.124
+            ],
+            "medianMs": 18961.124,
+            "p95Ms": 19030.095
+          },
+          "referenceHashes": {
+            "draftHash": "r74-7d68db6eb064d694",
+            "reportHash": "r74-391c3ea4f59ea002",
+            "ledgerHash": "e4a1febb4ef4d4ba7ccb604cb40394579326d77d4d32d1aeed6e421088bd8c86",
+            "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+            "finalSnapshotHash": "ab45eb16b850d104d5feada8fc60064814d3b2ca516c1ab55fee965a08612238",
+            "selectedDecisionHash": "cec628b2feb1f301f8d6a289bcc34294a513c47fb9680581aca7b4f4d0d0bb4c"
+          },
+          "decisionCount": 196,
+          "ledgerEventCount": 751,
+          "stageProbe": null,
+          "reuseProbe": {
+            "mode": "creation-projection",
+            "counters": {
+              "projectedPoolCalls": 0,
+              "projectedPoolHits": 0,
+              "creationProjectionCalls": 18,
+              "creationProjectionHits": 0,
+              "creationRouteCalls": 0,
+              "creationRouteHits": 0
+            },
+            "storeSizes": {
+              "projectedPool": 0,
+              "creationProjection": 18,
+              "creationRoute": 0
+            }
+          },
+          "medianDeltaPercent": -1.66,
+          "medianBenefitRatio": 0.017,
+          "semanticHashesEqual": true
+        }
+      ],
+      "semanticEqualityRequired": true
+    },
+    {
+      "label": "reuse:creation-route",
+      "cases": [
+        {
+          "caseId": "raid_summon_heavy",
+          "summary": {
+            "elapsedMs": [
+              19568.592,
+              19623.506,
+              19586.725
+            ],
+            "medianMs": 19586.725,
+            "p95Ms": 19623.506
+          },
+          "referenceHashes": {
+            "draftHash": "r74-7d68db6eb064d694",
+            "reportHash": "r74-391c3ea4f59ea002",
+            "ledgerHash": "e4a1febb4ef4d4ba7ccb604cb40394579326d77d4d32d1aeed6e421088bd8c86",
+            "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+            "finalSnapshotHash": "ab45eb16b850d104d5feada8fc60064814d3b2ca516c1ab55fee965a08612238",
+            "selectedDecisionHash": "cec628b2feb1f301f8d6a289bcc34294a513c47fb9680581aca7b4f4d0d0bb4c"
+          },
+          "decisionCount": 196,
+          "ledgerEventCount": 751,
+          "stageProbe": null,
+          "reuseProbe": {
+            "mode": "creation-route",
+            "counters": {
+              "projectedPoolCalls": 0,
+              "projectedPoolHits": 0,
+              "creationProjectionCalls": 0,
+              "creationProjectionHits": 0,
+              "creationRouteCalls": 36,
+              "creationRouteHits": 0
+            },
+            "storeSizes": {
+              "projectedPool": 0,
+              "creationProjection": 0,
+              "creationRoute": 36
+            }
+          },
+          "medianDeltaPercent": 1.584,
+          "medianBenefitRatio": -0.016,
+          "semanticHashesEqual": true
+        }
+      ],
+      "semanticEqualityRequired": true
+    },
+    {
+      "label": "reuse:combined",
+      "cases": [
+        {
+          "caseId": "raid_summon_heavy",
+          "summary": {
+            "elapsedMs": [
+              18668.104,
+              18889.543,
+              19108.864
+            ],
+            "medianMs": 18889.543,
+            "p95Ms": 19108.864
+          },
+          "referenceHashes": {
+            "draftHash": "r74-7d68db6eb064d694",
+            "reportHash": "r74-391c3ea4f59ea002",
+            "ledgerHash": "e4a1febb4ef4d4ba7ccb604cb40394579326d77d4d32d1aeed6e421088bd8c86",
+            "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+            "finalSnapshotHash": "ab45eb16b850d104d5feada8fc60064814d3b2ca516c1ab55fee965a08612238",
+            "selectedDecisionHash": "cec628b2feb1f301f8d6a289bcc34294a513c47fb9680581aca7b4f4d0d0bb4c"
+          },
+          "decisionCount": 196,
+          "ledgerEventCount": 751,
+          "stageProbe": null,
+          "reuseProbe": {
+            "mode": "combined",
+            "counters": {
+              "projectedPoolCalls": 1460,
+              "projectedPoolHits": 351,
+              "creationProjectionCalls": 18,
+              "creationProjectionHits": 0,
+              "creationRouteCalls": 36,
+              "creationRouteHits": 0
+            },
+            "storeSizes": {
+              "projectedPool": 1109,
+              "creationProjection": 18,
+              "creationRoute": 36
+            }
+          },
+          "medianDeltaPercent": -2.032,
+          "medianBenefitRatio": 0.02,
+          "semanticHashesEqual": true
+        }
+      ],
+      "semanticEqualityRequired": true
+    }
+  ],
+  "absoluteCeilingVariants": [
+    {
+      "label": "ceiling:no-behavior",
+      "cases": [
+        {
+          "caseId": "raid_summon_heavy",
+          "summary": {
+            "elapsedMs": [
+              14407.427,
+              14445.586,
+              14423.916
+            ],
+            "medianMs": 14423.916,
+            "p95Ms": 14445.586
+          },
+          "referenceHashes": {
+            "draftHash": "r74-ff44ed485c3d01a8",
+            "reportHash": "r74-243e57cb76354caa",
+            "ledgerHash": "fb26c10e6754b2666a9e27583ac5c798ea0f1405da325b271f9b610cc240afcd",
+            "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+            "finalSnapshotHash": "2af84c3cc1689566121f95092008a020725e0cddb5dcf449a88d104b47958011",
+            "selectedDecisionHash": "d34f02fd805aff4df9c714b0527d0eb1e595d4a559d64ba76ed449c60737efa3"
+          },
+          "decisionCount": 194,
+          "ledgerEventCount": 706,
+          "stageProbe": null,
+          "reuseProbe": null,
+          "medianDeltaPercent": -25.192,
+          "medianBenefitRatio": 0.252,
+          "semanticHashesEqual": false
+        }
+      ],
+      "semanticEqualityRequired": false
+    },
+    {
+      "label": "ceiling:no-creation",
+      "cases": [
+        {
+          "caseId": "raid_summon_heavy",
+          "summary": {
+            "elapsedMs": [
+              15533.28,
+              15441.753,
+              15281.703
+            ],
+            "medianMs": 15441.753,
+            "p95Ms": 15533.28
+          },
+          "referenceHashes": {
+            "draftHash": "r74-4095b2da85bc1929",
+            "reportHash": "r74-5b1d53df1cfa10dd",
+            "ledgerHash": "33a584d7e121297c3ec7959b3a88f576d5579d227655a5571a8e9eb5e5c83886",
+            "terminalHash": "f5fc67b0df580c3420af8f0d567d6f407ae414f139e9d6835ec1899cc8b8facf",
+            "finalSnapshotHash": "085a3acdd801a3ec8115a7a4b8057195073a70b7b72c82c4f96f340f8b219474",
+            "selectedDecisionHash": "4b824ca23ef706a6daaf96585ca653ce57c3325bc8b40cd1edb4003728b1ab39"
+          },
+          "decisionCount": 204,
+          "ledgerEventCount": 761,
+          "stageProbe": null,
+          "reuseProbe": null,
+          "medianDeltaPercent": -19.913,
+          "medianBenefitRatio": 0.199,
+          "semanticHashesEqual": false
+        }
+      ],
+      "semanticEqualityRequired": false
+    },
+    {
+      "label": "ceiling:no-behavior-or-creation",
+      "cases": [
+        {
+          "caseId": "raid_summon_heavy",
+          "summary": {
+            "elapsedMs": [
+              13358.674,
+              13301.972,
+              13189.692
+            ],
+            "medianMs": 13301.972,
+            "p95Ms": 13358.674
+          },
+          "referenceHashes": {
+            "draftHash": "r74-ae9056ad70046896",
+            "reportHash": "r74-1bc1fc32ad393ef9",
+            "ledgerHash": "fb26c10e6754b2666a9e27583ac5c798ea0f1405da325b271f9b610cc240afcd",
+            "terminalHash": "9d721668230d3b81a25302ff296233da5aae9019f1a5efd71bc719d1f3cf450a",
+            "finalSnapshotHash": "2af84c3cc1689566121f95092008a020725e0cddb5dcf449a88d104b47958011",
+            "selectedDecisionHash": "d34f02fd805aff4df9c714b0527d0eb1e595d4a559d64ba76ed449c60737efa3"
+          },
+          "decisionCount": 194,
+          "ledgerEventCount": 706,
+          "stageProbe": null,
+          "reuseProbe": null,
+          "medianDeltaPercent": -31.011,
+          "medianBenefitRatio": 0.31,
+          "semanticHashesEqual": false
+        }
+      ],
+      "semanticEqualityRequired": false
+    }
+  ],
+  "interpretationLimits": [
+    "绝对上界变体故意移除价值分支，Hash变化是预期结果，只用于证明该分支最多能节省多少时间。",
+    "复用变体使用内容寻址键并要求Draft、Report、Ledger、终局、选择和最终快照Hash全部相同。",
+    "本产物只输出调用、Hash、时间和重复率，不生成通过、合理或实施建议。"
+  ],
+  "factsOnly": true,
+  "automaticConclusionGenerated": false
+}
