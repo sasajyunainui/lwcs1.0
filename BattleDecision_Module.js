@@ -37727,6 +37727,9 @@
     if (!['REACTION', 'COUNTER'].includes(opportunityRole)) {
       return '';
     }
+    if (row?.candidate?.counterDeclineFallback === true) {
+      return '';
+    }
     const actionKind = String(
       row?.entry?.actionKind || '',
     ).trim().toUpperCase();
@@ -37900,27 +37903,38 @@
         row.providerRejectionCode
           ? 'HARD_INVALID'
           : 'VIABLE',
+      ...(row.candidate.counterDeclineFallback === true
+        ? { counterDeclineFallback: true }
+        : {}),
       selected: row === winner,
     });
     const selectedDeclaration = cloneValue(
       winner.candidate.declaration || {},
     );
-    const actionName = String(
-      selectedDeclaration?.skill?.name ||
-      selectedDeclaration?.skill?.魂技名 ||
-      selectedDeclaration?.actionKind ||
-      '',
-    ).trim();
+    const counterDecline =
+      winner.candidate.counterDeclineFallback === true;
+    const actionName = counterDecline
+      ? '放弃反击'
+      : String(
+          selectedDeclaration?.skill?.name ||
+          selectedDeclaration?.skill?.魂技名 ||
+          selectedDeclaration?.actionKind ||
+          '',
+        ).trim();
+    const selectionMode = winner.playerLocked
+      ? 'PLAYER_LOCKED'
+      : counterDecline
+        ? 'R9V2_COUNTER_DECLINE'
+        : 'R9V2_CONTROL_RESOURCE_PARETO';
     return {
       decisionEngine: 'R9V2_SHADOW',
       selected: {
         candidateId: winner.candidate.candidateId,
         declaration: selectedDeclaration,
         selectedActionName: actionName,
-        selectionMode: winner.playerLocked
-          ? 'PLAYER_LOCKED'
-          : 'R9V2_CONTROL_RESOURCE_PARETO',
+        selectionMode,
         playerLocked: winner.playerLocked === true,
+        ...(counterDecline ? { counterDeclineFallback: true } : {}),
         objectiveUtility:
           winner.proof.objectiveUtilityHEPP,
         objectiveUtilityHEPP:
@@ -37955,9 +37969,7 @@
       decisionProfile: {
         engine: 'R9V2_SHADOW',
         slice: 'CONTROL_RESOURCE_V1',
-        selectionMode: winner.playerLocked
-          ? 'PLAYER_LOCKED'
-          : 'R9V2_CONTROL_RESOURCE_PARETO',
+        selectionMode,
         workload: cloneValue(prepared.workload),
         rebuiltUnitIds: cloneValue(prepared.rebuiltUnitIds),
         unsupportedOutcomeKinds: cloneValue(

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "ImplementationSelfAuditV1",
+  "auditId": "R83RC6-R9V2-COUNTER-DECLINE-ISA-001",
+  "proposalId": "R83RC6-R9V2-COUNTER-DECLINE-001",
+  "generatedAt": "2026-07-29",
+  "status": "ACCEPTED",
+  "diffToProposal": {
+    "selectedDesignImplemented": true,
+    "providerRejection": {
+      "module": "BattleDecision_Module.js",
+      "function": "r9v2ProviderRejectionCode",
+      "implemented": true,
+      "scope": "REACTION or COUNTER opportunity after PLAYER_LOCKED handling",
+      "counterDeclineRejectionCode": "",
+      "realCounterZeroMarginalRulePreserved": true
+    },
+    "identityPropagation": {
+      "candidateAudit": "counterDeclineFallback is serialized only when true",
+      "selected": "counterDeclineFallback is serialized only when true",
+      "selectedActionName": "放弃反击",
+      "selectionMode": "R9V2_COUNTER_DECLINE",
+      "decisionProfileSelectionMode": "R9V2_COUNTER_DECLINE"
+    },
+    "candidateValueChanged": false,
+    "paretoFormulaChanged": false,
+    "previewOrRuntimeChanged": false,
+    "reportChanged": false
+  },
+  "unplannedBehaviorChange": {
+    "present": false,
+    "details": [
+      "False-valued counterDeclineFallback fields are not serialized on ordinary candidates or selections, preventing unrelated DecisionAudit hash churn.",
+      "No synthetic utility, causal fact, candidate, target, probability branch or role-specific mechanical rule was added."
+    ]
+  },
+  "actualModuleOwnership": {
+    "providerRejectionAndSelection": "BattleDecision_Module.js",
+    "counterDeclineRuntimeFact": "unchanged in BattleRuntime_Module.js",
+    "counterDeclineReportProjection": "unchanged in BattleReport_Module.js",
+    "replayProtection": "tools/audit_r83_rc6_r9v2_counter_decline_replay.mjs"
+  },
+  "sourceClosureImpact": {
+    "counterDeclineIdentityLostAtProviderBoundary": false,
+    "compatibilityDefendExecutedAsDefense": false,
+    "newRuntimeBranch": false,
+    "newReportInference": false,
+    "mvuPersistenceChanged": false
+  },
+  "obsoleteCodeRemoved": [
+    "R9v2 classifying COUNTER_DECLINE compatibility DEFEND as ZERO_MARGINAL_WITH_COST",
+    "R9v2 selected result dropping counterDeclineFallback before Runtime"
+  ],
+  "verification": {
+    "phase7": "223/223",
+    "phase3": "45/45",
+    "protectedReplay": {
+      "status": "PASSED",
+      "fixtureCount": 6,
+      "positiveCounterCount": 48,
+      "candidateHashEqual": true,
+      "mechanicalFactsHashEqual": true,
+      "candidateValueProofHashEqual": true,
+      "paretoHashEqual": true,
+      "selectedCandidateEqual": true,
+      "ledgerHashEqual": true,
+      "terminalHashEqual": true,
+      "finalSnapshotHashEqual": true,
+      "auditFileHash": "722fbeb12c56aee2e300d2b60db5a2576971cce555073c4709ed88e4de49a9d6"
+    },
+    "raidSummonHeavy": {
+      "evidenceHash": "bf0d2795ef1b10e3a8d4cbc308e84c341ec906946567aef4672006152ca06f90",
+      "draftHash": "5e9666b60d0d8738cee2ef7b00c15d36f8a4cdec28027d1cbc9207a52622c89b",
+      "reportHash": "de9c4ab37b06f6cd3992458dedd25cd960fb643658dc44b5a576f11ea35db3b1",
+      "readingDigestHash": "2e07da5eff9ae5655762ce3b3c76c6311949b2d301bfe8b5d8c5ab96387442ef",
+      "decisionCount": 196,
+      "counterDecisionCount": 22,
+      "positiveCounterCount": 19,
+      "counterDeclineCount": 3,
+      "counterDeclineOnlyFact": "counter/result=declined",
+      "counterDeclineUnexpectedMechanicalFactCount": 0,
+      "reportAuditPassed": true,
+      "sealStatus": true,
+      "runtimeFatalCount": 0,
+      "visibilityLeakCount": 0
+    }
+  },
+  "sourceHashesAfter": {
+    "BattleDecision_Module.js": "d6cb6bb556afa3cc825438aefb32f581fd3c188e75b6b48ef618b1748c6e77c9",
+    "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+    "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+    "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626",
+    "tools/audit_r83_rc6_r9v2_counter_decline_replay.mjs": "01abd0ae22400c4b7931ab0b027113bc87e1a9509e04002b3eff7379914eab26"
+  },
+  "rollbackRequired": false
+}

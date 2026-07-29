@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "BehaviorSemanticDecisionV2",
+  "decisionId": "R83RC6-R9V2-COUNTER-DECLINE-SEMANTIC-001",
+  "semanticDomain": "S2_S3_COUNTER_OPPORTUNITY_REFUSAL",
+  "publicInputs": [
+    "当前正式CONCRETE_OPPORTUNITY且role=COUNTER",
+    "冻结候选中的COUNTER_DECLINE正式身份",
+    "来源攻击者和当前行动者的公开存活、机会与目标信息",
+    "实际反击候选的CandidateValueProof与Pareto向量"
+  ],
+  "forbiddenHiddenInputs": [
+    "未公开技能、资源、抗性、被动或装备",
+    "事后随机实现结果",
+    "角色名、技能名、案例ID或固定拒绝频率",
+    "用Report文案反推Provider选择"
+  ],
+  "eventOrder": [
+    "正式COUNTER机会创建",
+    "prepareDecisionRequest冻结实际反击和COUNTER_DECLINE",
+    "全部候选建立机械与价值证明",
+    "Provider在完整可行集合上执行硬排除和Pareto",
+    "若选择COUNTER_DECLINE，则消费该COUNTER机会",
+    "Runtime写入唯一counter/result=declined事实",
+    "不创建防御姿态、不支付资源、不触发动作型反应"
+  ],
+  "formulasAndAlgorithms": [
+    "COUNTER_DECLINE是正式、无成本、零边际的反击拒绝基线，不是NO_OP，也不是DEFEND。",
+    "COUNTER_DECLINE不适用ZERO_MARGINAL_WITH_COST；真实反击仍按既有目标效用、因果、硬排除和Pareto评估。",
+    "正收益真实反击严格支配零值拒绝；零值或负值且无其他可行反击时允许拒绝。",
+    "兼容声明可以暂时保留DEFEND，但counterDeclineFallback是Provider、Runtime和Report共同使用的正式身份，必须端到端透传。",
+    "拒绝本身不产生goalUtilityDeltaHEPP、informationValueHEPP、assetReserve或任何名义分。"
+  ],
+  "hardExclusions": [
+    "COUNTER_DECLINE出现在非COUNTER机会",
+    "COUNTER_DECLINE建立防御、闪避、反击、资源或状态事实",
+    "真实反击以零边际且有成本时绕过ZERO_MARGINAL_WITH_COST",
+    "Provider通过角色、技能或案例特判选择拒绝",
+    "PLAYER_LOCKED合法实际反击被COUNTER_DECLINE覆盖"
+  ],
+  "allowedEquivalentStrategies": [
+    "未来可把兼容DEFEND声明替换为Provider中立COUNTER_DECLINE actionKind，但必须一次性迁移Runtime、Report、候选指纹和Oracle。",
+    "当前批次允许保留DEFEND兼容声明，只要counterDeclineFallback身份在候选、选择、Ledger和Report中完整且不会执行防御机械。"
+  ],
+  "factOwnership": {
+    "counterOpportunityAuthorization": "COUNTER_WINDOW_FACT",
+    "counterDecline": "COUNTER_WRAPPER_FACT",
+    "actualCounterHitAndDamage": "HIT_RESULT_AND_DAMAGE_RESULT",
+    "counterDeclineValue": "NONE"
+  },
+  "positiveCases": [
+    "零值实际反击与零值COUNTER_DECLINE并存时选择COUNTER_DECLINE并完成正式事务",
+    "负值或有成本且无收益的实际反击存在时允许选择COUNTER_DECLINE",
+    "COUNTER_DECLINE在Ledger中只写counter/result=declined",
+    "Report把该选择显示为放弃反击而非防御"
+  ],
+  "negativeCases": [
+    "COUNTER_DECLINE被ZERO_MARGINAL_WITH_COST排除",
+    "COUNTER_DECLINE被执行为DEFEND或建立防御姿态",
+    "COUNTER_DECLINE产生生命、资源、状态或信息价值",
+    "ACTIVE或REACTION机会枚举COUNTER_DECLINE"
+  ],
+  "protectedCases": [
+    "当前Hash六份R9v2回放中的48次正收益真实反击继续选择实际反击",
+    "PLAYER_LOCKED反击保持机械合法性优先",
+    "反击hit_result和damage_result继续唯一拥有生命事实",
+    "候选Hash、机械事实Hash和CandidateValueProof Hash不因身份透传而变化"
+  ],
+  "rejectedAlternatives": [
+    "给COUNTER_DECLINE增加正效用",
+    "删除真实反击的零边际硬排除",
+    "Runtime自动替Provider选择拒绝",
+    "把COUNTER_DECLINE当作DEFEND执行",
+    "按角色或案例添加fallback"
+  ]
+}
