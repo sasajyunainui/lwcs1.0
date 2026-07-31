@@ -3523,7 +3523,7 @@ function 格式化运行时tick日期文本_V1(tickValue = 0) {
 
 function 格式化运行时tick跨度文本_V1(tickValue = 0) {
   const safeTick = Math.max(0, Number(tickValue || 0));
-  const totalMinutes = Math.max(10, Math.round(safeTick * 10));
+  const totalMinutes = Math.round(safeTick * 10);
   const days = Math.floor(totalMinutes / (24 * 60));
   const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
   const mins = totalMinutes % 60;
