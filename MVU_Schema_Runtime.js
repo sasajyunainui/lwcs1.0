@@ -49,6 +49,47 @@ function 读取内置物品库_V1() {
   return {};
 }
 
+function 读取内置势力库_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 候选列表.push(globalThis.top); } catch (错误) {}
+  for (const 候选 of 候选列表) {
+    const 势力库 = 候选?.__LWCS_内置势力库__;
+    if (势力库 && typeof 势力库 === 'object' && 势力库.势力 && typeof 势力库.势力 === 'object') return 势力库;
+  }
+  return null;
+}
+
+function 读取内置地点库_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 候选列表.push(globalThis.top); } catch (错误) {}
+  for (const 候选 of 候选列表) {
+    const 地点库 = 候选?.__LWCS_内置地点库__;
+    if (地点库 && typeof 地点库 === 'object' && 地点库.地点 && typeof 地点库.地点 === 'object') return 地点库;
+  }
+  return null;
+}
+
+function 读取库运行时_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 候选列表.push(globalThis.top); } catch (错误) {}
+  for (const 候选 of 候选列表) {
+    const 运行时 = 候选?.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+    if (运行时 && typeof 运行时 === 'object') return 运行时;
+  }
+  return null;
+}
+
+function 记录库缺失错误_V1(类型 = '', 文本 = '') {
+  const 键 = `${类型}:${文本}`;
+  if (!globalThis.__LWCS_LIBRARY_RUNTIME_ERRORS_V1__) globalThis.__LWCS_LIBRARY_RUNTIME_ERRORS_V1__ = new Set();
+  if (globalThis.__LWCS_LIBRARY_RUNTIME_ERRORS_V1__.has(键)) return;
+  globalThis.__LWCS_LIBRARY_RUNTIME_ERRORS_V1__.add(键);
+  console.error(`[LWCS] ${文本}`);
+}
+
 function 记录运行时冷实体发送_V1(实体表 = {}) {
   const 载荷 = [];
   const 添加 = (类型 = '', 名称列表 = []) => {
@@ -2860,6 +2901,136 @@ function 归一化角色死亡状态_V1(角色 = {}, 当前tick = 0) {
   delete 角色.死亡类型;
 }
 
+function 应用内置势力实例化_V1(数据根 = {}, 选项 = {}) {
+  const 档案阻断 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__.势力 === true;
+  if (选项.禁止内置势力实例化 === true || 档案阻断) return { changed: false, changedNames: [], names: [], error: 'archive-unavailable' };
+  const 名称列表 = Array.isArray(选项.候选势力) ? 选项.候选势力 : [];
+  if (!数据根 || typeof 数据根 !== 'object' || !名称列表.length) return { changed: false, changedNames: [], names: [] };
+  const 运行时 = 读取库运行时_V1();
+  const 势力库 = 读取内置势力库_V1();
+  if (!运行时 || typeof 运行时.resolveFaction !== 'function' || typeof 运行时.buildFactionInstance !== 'function' || !势力库) {
+    记录库缺失错误_V1('势力', '势力库或库运行时缺失，已阻止新的势力实例化。');
+    return { changed: false, changedNames: [], names: [], error: 'library-missing' };
+  }
+  if (!数据根.org || typeof 数据根.org !== 'object' || Array.isArray(数据根.org)) 数据根.org = {};
+  const 禁止势力 = new Set(Array.isArray(选项.禁止势力) ? 选项.禁止势力.map(名称 => String(名称 || '').trim()).filter(Boolean) : []);
+  const 已写入 = [];
+  Array.from(new Set(名称列表.map(项目 => String(项目?.规范名 || 项目?.名称 || 项目?.记录ID || 项目 || '').trim()).filter(Boolean))).forEach(名称 => {
+    const 解析 = 运行时.resolveFaction(名称, { library: 势力库, allowKeyword: false });
+    if (解析.status !== 'resolved') {
+      记录库缺失错误_V1('势力解析', `势力“${名称}”无法唯一解析（${解析.status}），未创建候选实例。`);
+      return;
+    }
+    const 规范名 = 解析.canonicalName;
+    if (禁止势力.has(规范名)) return;
+    if (数据根.org[规范名] && typeof 数据根.org[规范名] === 'object' && !Array.isArray(数据根.org[规范名])) return;
+    try {
+      数据根.org[规范名] = 运行时.buildFactionInstance(规范名, {}, { library: 势力库 });
+      已写入.push(规范名);
+    } catch (错误) {
+      记录库缺失错误_V1('势力实例化', `势力“${规范名}”实例化失败，已阻止写入：${错误.message || 错误}`);
+    }
+  });
+  return { changed: 已写入.length > 0, changedNames: 已写入, names: 已写入 };
+}
+
+function 读取玩家当前位置_V1(数据根 = {}, 选项 = {}) {
+  const 明确位置 = 选项.当前位置;
+  if (明确位置 !== undefined) return String(明确位置 || '').trim();
+  const 玩家名 = String(数据根?.sys?.玩家名 || '').trim();
+  if (!玩家名) return '';
+  return String(数据根?.char?.[玩家名]?.状态?.位置 || '').trim();
+}
+
+function 解析内置地点位置_V1(位置 = '', 地点库 = {}, 运行时 = null) {
+  const 原文 = String(位置 || '').trim();
+  if (!原文 || ['无', '未知', '待生成'].includes(原文)) return { status: 'unresolved', reason: 'empty-sentinel' };
+  const 片段 = 原文.split('-').map(片段 => 片段.trim()).filter(Boolean);
+  const 直接路径 = 片段.length > 1 && typeof 运行时?.resolveLocation === 'function'
+    ? 运行时.resolveLocation(原文, 片段, { library: 地点库, allowKeyword: false })
+    : null;
+  if (直接路径?.status === 'resolved') return 直接路径;
+  if (片段.length > 1) {
+    const 叶节点 = 运行时.resolveLocation(片段[片段.length - 1], [], { library: 地点库, allowKeyword: false });
+    if (叶节点.status === 'resolved') return 叶节点;
+    if (叶节点.status === 'conflict') return 叶节点;
+  }
+  return 运行时.resolveLocation(原文, [], { library: 地点库, allowKeyword: false });
+}
+
+function 解析JSONPointer片段_V1(指针 = '') {
+  return String(指针 || '').split('/').slice(1).map(片段 => String(片段).replace(/~1/g, '/').replace(/~0/g, '~'));
+}
+
+function 应用地点实例化操作_V1(数据根 = {}, 操作 = {}) {
+  const 片段 = 解析JSONPointer片段_V1(操作.path);
+  if (片段[0] !== 'world' || 片段[1] !== '地点' || 片段.length < 3) return false;
+  let 容器 = 数据根.world.地点;
+  const 地点片段 = 片段.slice(2);
+  for (let index = 0; index < 地点片段.length; index += 1) {
+    const 名称 = 地点片段[index];
+    if (index === 地点片段.length - 1) {
+      if (操作.op === 'replace' || !Object.prototype.hasOwnProperty.call(容器, 名称)) 容器[名称] = _.cloneDeep(操作.value || {});
+      return true;
+    }
+    if (!容器[名称] || typeof 容器[名称] !== 'object' || Array.isArray(容器[名称])) 容器[名称] = {};
+    if (!容器[名称].子节点 || typeof 容器[名称].子节点 !== 'object' || Array.isArray(容器[名称].子节点)) 容器[名称].子节点 = {};
+    if (地点片段[index + 1] !== '子节点') return false;
+    容器 = 容器[名称].子节点;
+    index += 1;
+  }
+  return false;
+}
+
+function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
+  if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
+  const 档案阻断 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__.地点 === true;
+  if (选项.禁止内置地点实例化 === true || 档案阻断) return { changed: false, changedNames: [], names: [], error: 'archive-unavailable' };
+  const 运行时 = 读取库运行时_V1();
+  const 地点库 = 读取内置地点库_V1();
+  const 当前位置 = 读取玩家当前位置_V1(数据根, 选项);
+  const 名称列表 = Array.isArray(选项.候选地点) ? 选项.候选地点 : [];
+  const 禁止地点记录ID = new Set(Array.isArray(选项.禁止地点记录ID) ? 选项.禁止地点记录ID.map(名称 => String(名称 || '').trim()).filter(Boolean) : []);
+  const 禁止地点路径键 = new Set(Array.isArray(选项.禁止地点路径键) ? 选项.禁止地点路径键.map(路径 => typeof 路径 === 'string' ? 路径 : JSON.stringify(路径)).filter(Boolean) : []);
+  const 地点被阻断 = 解析 => !!解析 && (禁止地点记录ID.has(String(解析.recordId || '').trim()) || 禁止地点路径键.has(JSON.stringify(解析.path || [])));
+  if (!当前位置 && !名称列表.length) return { changed: false, changedNames: [], names: [] };
+  if (!运行时 || typeof 运行时.resolveLocation !== 'function' || typeof 运行时.buildLocationInstantiationOps !== 'function' || !地点库) {
+    记录库缺失错误_V1('地点', '地点库或库运行时缺失，已阻止新的地点实例化。');
+    return { changed: false, changedNames: [], names: [], error: 'library-missing' };
+  }
+  if (!数据根.world || typeof 数据根.world !== 'object') 数据根.world = {};
+  if (!数据根.world.地点 || typeof 数据根.world.地点 !== 'object' || Array.isArray(数据根.world.地点)) 数据根.world.地点 = {};
+  const 记录ID列表 = [];
+  if (当前位置 && !['无', '未知', '待生成'].includes(当前位置)) {
+    const 位置解析 = 解析内置地点位置_V1(当前位置, 地点库, 运行时);
+    if (位置解析.status === 'resolved') {
+      if (!地点被阻断(位置解析)) 记录ID列表.push(位置解析.recordId);
+    } else 记录库缺失错误_V1('地点解析', `玩家位置“${当前位置}”无法唯一解析（${位置解析.status}），保留原位置文本。`);
+  }
+  名称列表.forEach(项目 => {
+    const 名称 = String(项目?.规范名 || 项目?.名称 || 项目?.记录ID || 项目 || '').trim();
+    const 查询对象 = 项目 && typeof 项目 === 'object' ? 项目 : 名称;
+    if (!名称 && !项目?.记录ID) return;
+    const 解析 = 运行时.resolveLocation(查询对象, [], { library: 地点库, allowKeyword: false });
+    if (解析.status === 'resolved') {
+      if (!地点被阻断(解析)) 记录ID列表.push(解析.recordId);
+    } else 记录库缺失错误_V1('地点解析', `地点“${名称}”无法唯一解析（${解析.status}），未创建候选实例。`);
+  });
+  const 已写入 = [];
+  Array.from(new Set(记录ID列表)).forEach(记录ID => {
+    try {
+      const 操作列表 = 运行时.buildLocationInstantiationOps(记录ID, 数据根, { library: 地点库 });
+      操作列表.forEach(操作 => {
+        if (应用地点实例化操作_V1(数据根, 操作)) 已写入.push(记录ID);
+      });
+    } catch (错误) {
+      记录库缺失错误_V1('地点实例化', `地点记录“${记录ID}”实例化失败，已阻止写入：${错误.message || 错误}`);
+    }
+  });
+  const 变更记录 = Array.from(new Set(已写入));
+  return { changed: 变更记录.length > 0, changedNames: 变更记录, names: 变更记录 };
+}
+
 function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
   if (!数据根.char || typeof 数据根.char !== 'object' || Array.isArray(数据根.char)) 数据根.char = {};
@@ -2964,7 +3135,7 @@ function 角色存在空技能效果数组_V1(节点 = null) {
     return Object.values(节点).some(角色存在空技能效果数组_V1);
 }
 
-function 规范化Schema根转换_V1(data = {}) {
+function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     if (!data || typeof data !== 'object') data = {};
 
     const hasSchemaRootFields = value =>
@@ -3075,7 +3246,9 @@ function 规范化Schema根转换_V1(data = {}) {
       const 当前等级 = Math.max(0, Number(charData?.属性?.等级 || 0) || 0);
       if (原始等级 !== null && 当前等级 > 原始等级) 标记本轮等级上升角色_V1(charData, charName);
     });
-    应用内置角色实例化_V1(data);
+    应用内置角色实例化_V1(data, 选项);
+    应用内置势力实例化_V1(data, 选项);
+    应用内置地点实例化_V1(data, 选项);
     记录数据根非魂师角色_V1(data);
 
     if (typeof data.sys.玩家名 !== 'string' || !data.sys.玩家名.trim()) data.sys.玩家名 = '无名氏';
@@ -6160,6 +6333,11 @@ function 规范化Schema根转换_V1(data = {}) {
     };
 
     _(data.world.地点).forEach((cityData, cityName) => {
+      const 地点类型 = String(cityData?.类型 || '').trim();
+      const 已声明商店 = !!cityData && typeof cityData === 'object' && !Array.isArray(cityData)
+        && Object.prototype.hasOwnProperty.call(cityData, '商店');
+      const 城市类地点 = /城市|主城|首都|城镇|新城/.test(地点类型);
+      if (!已声明商店 && !城市类地点) return;
       const 城市商店 = 归一地点商店容器(cityData);
 
       const groceryStoreName = '城市杂货店';
@@ -7148,41 +7326,52 @@ function 规范化Schema根转换_V1(data = {}) {
         });
         return nextChar;
       };
-      const buildFactionReadOnlySummary = (sourceFaction = {}, detailLevel = 'public') =>
+      const buildFactionReadOnlySummary = (sourceFaction = {}, detailLevel = 'public', factionName = '') =>
         detailLevel === 'related'
           ? {
               核心战力: cloneValue(sourceFaction.战力统计, {}),
-              成员数量: Object.keys(sourceFaction.成员 || {}).length,
+              成员数量: Object.values(data.char || {}).filter(charData => Object.prototype.hasOwnProperty.call(charData?.社交?.势力 || {}, factionName)).length,
             }
           : null;
-      const sanitizeDisplayFaction = (sourceFaction = {}, detailLevel = 'public') => {
+      const sanitizeDisplayFaction = (sourceFaction = {}, detailLevel = 'public', factionName = '') => {
         const nextFaction = {
+          类型: sourceFaction.类型,
+          别名: cloneValue(sourceFaction.别名, undefined),
+          关键词: cloneValue(sourceFaction.关键词, undefined),
+          描述: sourceFaction.描述,
+          现状描述: sourceFaction.现状描述,
           影响力: Number(sourceFaction.影响力 || 0),
           规模: Number(sourceFaction.规模 || 0),
           状态: sourceFaction.状态 || '正常',
           上级势力: sourceFaction.上级势力 || '无',
           关系: cloneValue(sourceFaction.关系 || {}, {}),
         };
-        const summary = buildFactionReadOnlySummary(sourceFaction, detailLevel);
+        const summary = buildFactionReadOnlySummary(sourceFaction, detailLevel, factionName);
         if (summary) nextFaction._summary = summary;
         return nextFaction;
       };
       const sanitizeDisplayLocation = (locData = {}, includeFull = false) =>
         includeFull
           ? {
+              别名: locData.别名,
+              关键词: locData.关键词,
               掌控势力: locData.掌控势力,
               人口: locData.人口,
               守护军团: locData.守护军团,
               经济状况: locData.经济状况,
               类型: locData.类型,
               描述: locData.描述,
+              现状描述: locData.现状描述,
               状态: locData.状态,
               子节点: sanitizeDisplayLocationChildMap(locData.子节点 || {}),
               商店: Object.keys(locData.商店 || {}),
             }
           : {
+              别名: locData.别名,
+              关键词: locData.关键词,
               类型: locData.类型,
               描述: locData.描述,
+              现状描述: locData.现状描述,
               状态: locData.状态,
               已知子节点: Object.keys(locData.子节点 || {}),
             };
@@ -7191,8 +7380,11 @@ function 规范化Schema根转换_V1(data = {}) {
         Object.entries(childMap || {}).forEach(([childName, childData]) => {
           if (!childData || typeof childData !== 'object') return;
           const child = {
+            别名: childData.别名,
+            关键词: childData.关键词,
             类型: childData.类型,
             描述: childData.描述,
+            现状描述: childData.现状描述,
             状态: childData.状态,
             掌控势力: childData.掌控势力,
           };
@@ -7260,7 +7452,7 @@ function 规范化Schema根转换_V1(data = {}) {
       });
       _(data.org || {}).forEach((orgData, orgName) => {
         const detailLevel = relatedOrgNames.has(orgName) ? 'related' : 'public';
-        filtered_org[orgName] = sanitizeDisplayFaction(orgData, detailLevel);
+        filtered_org[orgName] = sanitizeDisplayFaction(orgData, detailLevel, orgName);
       });
 
       const filtered_sys = {
@@ -7497,6 +7689,18 @@ function 填充默认训练加成_V1(属性 = {}, 强制重算 = false) {
     属性.训练加成.体力上限 = Math.floor(基础属性.vit_max * 常规训练倍率);
     属性.训练加成.精神力上限 = Math.floor(基础属性.men_max * 精神训练倍率);
     return 属性;
+}
+
+function 应用永久属性提升_V1(角色 = {}, 属性名 = '', 数值 = 0) {
+    if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return { changed: false };
+    if (!角色.属性 || typeof 角色.属性 !== 'object' || Array.isArray(角色.属性)) 角色.属性 = {};
+    const amount = Number(数值);
+    const allowedAttributes = new Set(['力量', '防御', '敏捷', '体力上限', '精神力上限', '魂力上限']);
+    if (!allowedAttributes.has(属性名) || !Number.isInteger(amount) || amount <= 0) return { changed: false };
+    const trainingBonus = createNumericStatBonusMap(角色.属性.训练加成);
+    trainingBonus[属性名] = Math.max(0, Math.floor(Number(trainingBonus[属性名] || 0))) + amount;
+    角色.属性.训练加成 = trainingBonus;
+    return { changed: true, 属性: 属性名, 数值: amount, 训练加成: { ...trainingBonus } };
 }
 
 function 读取高天赋精神倍率_V1(属性 = {}) {
@@ -8593,10 +8797,12 @@ function 规范化角色Schema_V1(char) {
     final_agi = Math.floor(final_agi + goldenDragonPermanentBonus.敏捷);
     final_vit_max = Math.floor(final_vit_max + goldenDragonPermanentBonus.体力上限);
     final_men_max = Math.floor(final_men_max + goldenDragonPermanentBonus.精神力上限);
+    const 训练魂力上限加成 = Math.max(0, Math.floor(Number(char.属性?.训练加成?.魂力上限 || 0)));
     const 永久魂力来源加成 =
       ringBoneSoulPowerBonus +
       externalBoneBonus.sp_max +
-      getPersistentSoulPowerBonusFromPermanentRecords(char);
+      getPersistentSoulPowerBonusFromPermanentRecords(char) +
+      训练魂力上限加成;
     const 修为魂力基底 = Math.max(自然魂力上限, 既有魂力上限 - 永久魂力来源加成);
     final_sp_max = Math.max(1, Math.floor(修为魂力基底 + 永久魂力来源加成));
 
@@ -8866,6 +9072,11 @@ globalThis.__LWCS_MVU_SCHEMA_RUNTIME__ = {
   收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
   应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
   计算装备属性加成: 计算装备属性加成_V1,
+  应用永久属性提升: 应用永久属性提升_V1,
+  读取内置势力库: 读取内置势力库_V1,
+  读取内置地点库: 读取内置地点库_V1,
+  应用内置势力实例化: 应用内置势力实例化_V1,
+  应用内置地点实例化: 应用内置地点实例化_V1,
 };
 
 try {
@@ -8879,6 +9090,11 @@ try {
       收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
       应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
       计算装备属性加成: 计算装备属性加成_V1,
+      应用永久属性提升: 应用永久属性提升_V1,
+      读取内置势力库: 读取内置势力库_V1,
+      读取内置地点库: 读取内置地点库_V1,
+      应用内置势力实例化: 应用内置势力实例化_V1,
+      应用内置地点实例化: 应用内置地点实例化_V1,
     };
   }
 } catch (错误) {}
@@ -8894,6 +9110,11 @@ try {
       收集内置角色成长技能模板触发: 收集内置角色成长技能模板触发_V1,
       应用内置角色成长技能模板记录: 应用内置角色成长技能模板记录_V1,
       计算装备属性加成: 计算装备属性加成_V1,
+      应用永久属性提升: 应用永久属性提升_V1,
+      读取内置势力库: 读取内置势力库_V1,
+      读取内置地点库: 读取内置地点库_V1,
+      应用内置势力实例化: 应用内置势力实例化_V1,
+      应用内置地点实例化: 应用内置地点实例化_V1,
     };
   }
 } catch (错误) {}

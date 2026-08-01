@@ -539,6 +539,7 @@ const StatsSchema = z
         敏捷: z.coerce.number().prefault(0),
         体力上限: z.coerce.number().prefault(0),
         精神力上限: z.coerce.number().prefault(0),
+        魂力上限: z.coerce.number().prefault(0),
       })
       .prefault({}),
 
@@ -936,21 +937,69 @@ const CharacterSchema = z
 
 const FactionSchema = z
   .object({
-    影响力: z.coerce.number().prefault(0),
-    规模: z.coerce.number().prefault(0),
-    状态: z.string().prefault('正常'),
-    上级势力: z.string().prefault('无').describe('上级势力/从属关系，如：斗罗联邦'),
-    关系: z.record(z.string(), z.object({ 态度: z.string().prefault('中立') }).prefault({})).prefault({}),
-    成员: z.record(z.string(), z.object({ 职位: z.string().prefault('外围') }).prefault({})).prefault({}),
+    类型: z.string().describe('势力静态身份类型'),
+    别名: z.array(z.string()).optional(),
+    关键词: z.array(z.string()).optional(),
+    描述: z.string().describe('势力静态身份描述'),
+    现状描述: z.string().optional().describe('本档动态摘要，汇总当前多个方向的变化'),
+    影响力: z.coerce.number(),
+    规模: z.coerce.number(),
+    状态: z.enum(['正常', '鼎盛', '衰落', '隐世', '蛰伏', '戒备', '濒危']),
+    上级势力: z.string().describe('上级势力/从属关系，如：斗罗联邦'),
+    关系: z.record(z.string(), z.object({ 态度: z.string() }).strict()),
     战力统计: z
       .object({
-        极限斗罗: z.coerce.number().prefault(0).describe('极限斗罗数量'),
-        超级斗罗: z.coerce.number().prefault(0).describe('超级斗罗数量'),
-        封号斗罗: z.coerce.number().prefault(0).describe('普通封号斗罗数量'),
+        极限斗罗: z.coerce.number().describe('极限斗罗数量'),
+        超级斗罗: z.coerce.number().describe('超级斗罗数量'),
+        封号斗罗: z.coerce.number().describe('普通封号斗罗数量'),
       })
-      .prefault({}),
+      .strict(),
   })
-  .prefault({});
+  .strict();
+
+const LocationShopSchema_V1 = z.record(
+  z.string().describe('商店名，如：传灵塔分店'),
+  z
+    .object({
+      库存: z
+        .record(
+          z.string().describe('商品ID或名称'),
+          z
+            .object({
+              库存: z.coerce.number().prefault(0).describe('库存'),
+              价格倍率: z.coerce.number().prefault(1),
+              折扣: z.coerce.number().prefault(0),
+              需求声望: z.coerce.number().prefault(0).describe('声望要求'),
+              需求: z.record(z.string(), z.any()).prefault({}).describe('额外兑换条件'),
+              批次: z.array(z.any()).prefault([]),
+            })
+            .transform(规范化商店库存项Schema_V1)
+            .prefault({}),
+        )
+        .prefault({})
+        .describe('商品库存列表'),
+      _下次刷新tick: z.coerce.number().prefault(0).describe('下次刷新时间'),
+    }),
+);
+
+const LocationNodeSchema_V1 = z.lazy(() => z
+  .object({
+    类型: z.string(),
+    别名: z.array(z.string()).optional(),
+    关键词: z.array(z.string()).optional(),
+    描述: z.string(),
+    现状描述: z.string().optional(),
+    掌控势力: z.string(),
+    状态: z.string(),
+    人口: z.coerce.number().optional(),
+    守护军团: z.string().optional(),
+    经济状况: z.enum(['繁荣', '普通', '萧条', '未知']).optional(),
+    x: z.coerce.number().optional(),
+    y: z.coerce.number().optional(),
+    商店: LocationShopSchema_V1.optional(),
+    子节点: z.record(z.string(), LocationNodeSchema_V1).optional(),
+  })
+  .strict());
 
 const SchemaRootObject = z
   .object({
@@ -1049,51 +1098,7 @@ const SchemaRootObject = z
         特殊权限: z.record(z.string(), 特殊权限Schema_V1).prefault({}),
         赛事: z.record(z.string(), 赛事Schema_V1).prefault({}),
         地点: z
-          .record(
-            z.string().describe('地点名称'),
-            z
-              .object({
-                掌控势力: z.string().prefault('未知'),
-                人口: z.coerce.number().prefault(0),
-                守护军团: z.string().prefault('无'),
-                经济状况: z.enum(['繁荣', '普通', '萧条', '未知']).prefault('未知'),
-                x: z.coerce.number().prefault(-1),
-                y: z.coerce.number().prefault(-1),
-                类型: z.string().prefault('地图节点'),
-                描述: z.string().prefault('无'),
-                状态: z.string().prefault('intact'),
-                子节点: z.record(z.string(), z.any()).prefault({}),
-                商店: z
-                  .record(
-                    z.string().describe('商店名，如：传灵塔分店'),
-                    z
-                      .object({
-                        库存: z
-                          .record(
-                            z.string().describe('商品ID或名称'),
-                            z
-                              .object({
-                                库存: z.coerce.number().prefault(0).describe('库存'),
-                                价格倍率: z.coerce.number().prefault(1),
-                                折扣: z.coerce.number().prefault(0),
-                                需求声望: z.coerce.number().prefault(0).describe('声望要求'),
-                                需求: z.record(z.string(), z.any()).prefault({}).describe('额外兑换条件'),
-                                批次: z.array(z.any()).prefault([]),
-                              })
-                              .transform(规范化商店库存项Schema_V1)
-                              .prefault({}),
-                          )
-                          .prefault({})
-                          .describe('商品库存列表'),
-                        _下次刷新tick: z.coerce.number().prefault(0).describe('下次刷新时间'),
-                      })
-                      .prefault({}),
-                  )
-                  .prefault({})
-                  .describe('该城市拥有的商店列表'),
-              })
-              .prefault({}),
-          )
+          .record(z.string().describe('地点名称'), LocationNodeSchema_V1)
           .prefault({})
           .describe('世界主要地点的数据化索引'),
 
@@ -1103,11 +1108,14 @@ const SchemaRootObject = z
             z
               .object({
                 归属父节点: z.string().describe('归属父节点名称'),
+                类型: z.string().optional(),
                 描述: z.string().prefault('无'),
+                现状描述: z.string().optional(),
                 x: z.coerce.number().prefault(-1).describe('地图坐标X'),
                 y: z.coerce.number().prefault(-1).describe('地图坐标Y'),
                 势力: z.string().prefault('未知'),
                 状态: z.string().prefault('intact'),
+                商店: LocationShopSchema_V1.optional(),
               })
               .prefault({}),
           )

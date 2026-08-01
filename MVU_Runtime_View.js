@@ -137,6 +137,39 @@ function 读取内置物品库_V1() {
   return {};
 }
 
+function 读取内置库运行时_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 候选列表.push(globalThis.top); } catch (错误) {}
+  for (const 候选 of 候选列表) {
+    const 运行时 = 候选?.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+    if (运行时 && typeof 运行时 === 'object') return 运行时;
+  }
+  return null;
+}
+
+function 读取内置势力库_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 候选列表.push(globalThis.top); } catch (错误) {}
+  for (const 候选 of 候选列表) {
+    const 势力库 = 候选?.__LWCS_内置势力库__;
+    if (势力库 && typeof 势力库 === 'object' && 势力库.势力 && typeof 势力库.势力 === 'object') return 势力库;
+  }
+  return null;
+}
+
+function 读取内置地点库_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 候选列表.push(globalThis.top); } catch (错误) {}
+  for (const 候选 of 候选列表) {
+    const 地点库 = 候选?.__LWCS_内置地点库__;
+    if (地点库 && typeof 地点库 === 'object' && 地点库.地点 && typeof 地点库.地点 === 'object') return 地点库;
+  }
+  return null;
+}
+
 var 物品分类列表_V1 = Object.freeze([
   '锻造金属',
   '设计图纸',
@@ -900,18 +933,16 @@ function 构建运行时地点索引_V1(数据根 = {}) {
     if (typeof 节点.condition === 'function' && !节点.condition(数据根)) return;
     const 当前路径 = [...路径, 地点名];
     const 地点词 = new Set();
-    const 势力词 = new Set();
     const 商店词 = new Set();
     const 商品词 = new Set();
     添加运行时地点匹配词_V1(地点词, 地点名);
-    添加运行时地点匹配词_V1(势力词, 节点.掌控势力);
     Object.entries(节点.商店 || {}).forEach(([商店名, 商店数据]) => {
       添加运行时地点匹配词_V1(商店词, 商店名);
       Object.keys(商店数据?.库存 || {}).forEach(商品名 => 添加运行时地点匹配词_V1(商品词, 商品名));
     });
     收口运行时地点父级前缀污染_V1(地点词, 当前路径.slice(0, -1));
     收口运行时地点父级前缀污染_V1(商店词, 当前路径.slice(0, -1));
-    const 匹配词 = new Set([...地点词, ...势力词, ...商店词, ...商品词]);
+    const 匹配词 = new Set([...地点词, ...商店词, ...商品词]);
     静态地点.push({
       类型: '地点',
       名称: 地点名,
@@ -920,7 +951,6 @@ function 构建运行时地点索引_V1(数据根 = {}) {
       父节点: 当前路径.length >= 2 ? 当前路径[当前路径.length - 2] : '',
       顶层: 当前路径[0] || '',
       地点词: Array.from(地点词).filter(词 => 词.length >= 2),
-      势力词: Array.from(势力词).filter(词 => 词.length >= 2),
       商店词: Array.from(商店词).filter(词 => 词.length >= 2),
       商品词: Array.from(商品词).filter(词 => 词.length >= 2),
       匹配词: Array.from(匹配词).filter(词 => 词.length >= 2),
@@ -936,14 +966,12 @@ function 构建运行时地点索引_V1(数据根 = {}) {
     const 父节点 = String(地点数据.归属父节点 || '').trim();
     const 显示模型 = 解析运行时动态地点显示模型_V1(数据根, 地点名, 地点数据, 当前路径);
     const 地点词 = new Set();
-    const 势力词 = new Set();
     添加运行时地点匹配词_V1(地点词, 地点名);
     添加运行时地点匹配词_V1(地点词, 显示模型.displayLeaf);
     添加运行时地点匹配词_V1(地点词, 显示模型.fillTarget);
     添加运行时地点匹配词_V1(地点词, 显示模型.parentPath);
-    添加运行时地点匹配词_V1(势力词, 地点数据.势力);
     收口运行时地点父级前缀污染_V1(地点词, [...取运行时地点片段列表_V1(父节点), ...取运行时地点片段列表_V1(显示模型.parentPath)]);
-    const 匹配词 = new Set([...地点词, ...势力词]);
+    const 匹配词 = new Set(地点词);
     动态地点.push({
       类型: '动态地点',
       名称: 地点名,
@@ -952,7 +980,6 @@ function 构建运行时地点索引_V1(数据根 = {}) {
       显示叶名: 显示模型.displayLeaf,
       父级路径: 显示模型.parentPath,
       地点词: Array.from(地点词).filter(词 => 词.length >= 2),
-      势力词: Array.from(势力词).filter(词 => 词.length >= 2),
       商店词: [],
       商品词: [],
       匹配词: Array.from(匹配词).filter(词 => 词.length >= 2),
@@ -1043,21 +1070,19 @@ function 计算运行时地点命中_V1(条目 = {}, 文本 = '', 父级集合 =
       ['地点', 条目.地点词, 7],
       ['商店', 条目.商店词, 7],
       ['商品', 条目.商品词, 6],
-      ['势力', 条目.势力词, 3],
     ].forEach(([类别, 词列表, 基准分]) => {
       (Array.isArray(词列表) ? 词列表 : []).forEach(词 => {
         const 证据 = 计算运行时地点词证据_V1(捕获文本, 词, 父级集合);
         if (!证据) return;
         const 商品弱化 = 类别 === '商品' && !交易语义;
-        const 势力弱化 = 类别 === '势力';
-        if (证据.等级 === '完整' && !商品弱化 && !势力弱化) {
+        if (证据.等级 === '完整' && !商品弱化) {
           强证据 += 1;
           分数 += 基准分;
           来源.push(`${类别}完整:${词}`);
-        } else if (证据.等级 === '向量' || (证据.等级 === '完整' && (商品弱化 || 势力弱化))) {
-          中证据 += 商品弱化 || 势力弱化 ? 0 : 1;
-          弱证据 += 商品弱化 || 势力弱化 ? 1 : 0;
-          分数 += Math.max(2, Math.round(基准分 * (商品弱化 || 势力弱化 ? 0.45 : 0.7)));
+        } else if (证据.等级 === '向量' || (证据.等级 === '完整' && 商品弱化)) {
+          中证据 += 商品弱化 ? 0 : 1;
+          弱证据 += 商品弱化 ? 1 : 0;
+          分数 += Math.max(2, Math.round(基准分 * (商品弱化 ? 0.45 : 0.7)));
           来源.push(`${类别}向量:${词}/${证据.片段.slice(0, 3).join('/')}`);
         } else {
           弱证据 += 1;
@@ -1702,12 +1727,23 @@ function 构建运行时情报可见度索引_V1(数据根 = {}, 角色名集合
 
 function 收集运行时命中名称_V1(数据根 = {}, 文本 = '') {
   const 源文本 = 清理提示审计扫描文本_V1(文本);
-  const 结果 = { 角色: new Set(), 地点: new Set(), 动态地点: new Set(), 势力: new Set(), 物品: new Set() };
+  const 结果 = { 角色: new Set(), 地点: new Set(), 动态地点: new Set(), 势力: new Set(), 物品: new Set(), 内置势力: new Set(), 内置地点: new Set() };
   收集运行时命中键列表_V1(源文本, 数据根?.char || {}).forEach(名称 => 结果.角色.add(名称));
   收集运行时地图命中键列表_V1(数据根, 源文本).forEach(名称 => 结果.地点.add(名称));
   收集运行时父级限定动态地点命中_V1(数据根, 源文本, { 阈值: 1, 上限: 12 }).forEach(命中 => 结果.动态地点.add(命中.原名 || 命中.名称));
   收集运行时命中键列表_V1(源文本, 数据根?.org || {}).forEach(名称 => 结果.势力.add(名称));
   收集运行时命中键列表_V1(源文本, 构建运行时物品目录_V1(数据根), { 命中函数: 运行时文本命中商品名_V1 }).forEach(名称 => 结果.物品.add(名称));
+  const 库运行时 = 读取内置库运行时_V1();
+  const 势力库 = 读取内置势力库_V1();
+  const 地点库 = 读取内置地点库_V1();
+  if (库运行时 && 势力库 && typeof 库运行时.collectFactionHits === 'function') {
+    const 命中 = 库运行时.collectFactionHits(源文本, { library: 势力库, allowKeyword: true, contextText: 源文本 });
+    if (命中.status !== 'conflict') (命中.hits || []).forEach(项目 => (项目.candidates || []).forEach(名称 => 结果.内置势力.add(名称)));
+  }
+  if (库运行时 && 地点库 && typeof 库运行时.collectLocationHits === 'function') {
+    const 命中 = 库运行时.collectLocationHits(源文本, { library: 地点库, allowKeyword: true, contextText: 源文本 });
+    if (命中.status !== 'conflict') (命中.hits || []).forEach(项目 => (项目.candidates || []).forEach(记录ID => 结果.内置地点.add(记录ID)));
+  }
   return 结果;
 }
 
@@ -1733,7 +1769,9 @@ function 构建运行时统一实体命中_V1(数据根 = {}, 文本 = '', 选�
   const 内置物品 = 收集运行时命中候选名称_V1(源文本, 选项.内置物品 || {}, '物品');
   const 冷归档物品 = 收集运行时命中候选名称_V1(源文本, 选项.冷归档物品 || {}, '物品');
   const 冷归档动态地点 = 收集运行时命中候选名称_V1(源文本, 选项.冷归档动态地点 || {}, '动态地点');
-  return { 当前MVU, 内置角色, 冷归档角色, 内置物品, 冷归档物品, 冷归档动态地点 };
+  const 内置势力 = Array.from(当前MVU.内置势力 || []);
+  const 内置地点 = Array.from(当前MVU.内置地点 || []);
+  return { 当前MVU, 内置角色, 冷归档角色, 内置物品, 内置势力, 内置地点, 冷归档物品, 冷归档动态地点 };
 }
 
 function 构建运行时内置角色候选表_V1() {
@@ -1749,6 +1787,109 @@ function 构建运行时内置角色候选表_V1() {
     });
   });
   return 候选表;
+}
+
+function 构建内置库投影与候选_V1(数据根 = {}, 文本 = '', 运行时命中 = {}, 选项 = {}) {
+  const 运行时 = 读取内置库运行时_V1();
+  const 势力库 = 读取内置势力库_V1();
+  const 地点库 = 读取内置地点库_V1();
+  const 投影 = { 势力: [], 地点: [] };
+  const 候选实体 = [];
+  const 添加候选实体 = 候选 => {
+    if (!候选 || 候选实体.length >= 12) return;
+    if (JSON.stringify([...候选实体, 候选]).length > 1000) return;
+    候选实体.push(候选);
+  };
+  let 描述预算 = Math.max(0, Number(选项.描述预算 ?? 6000));
+  const 截断描述 = 文本值 => {
+    const 内容 = String(文本值 || '').trim();
+    if (!内容 || 描述预算 <= 0) return undefined;
+    const 片段 = 内容.slice(0, 描述预算);
+    描述预算 -= 片段.length;
+    return 片段;
+  };
+  const 添加势力投影 = (规范名, 来源记录 = {}, 来源 = '内置库') => {
+    if (!规范名 || 投影.势力.length >= 4) return;
+    const 当前 = 数据根?.org?.[规范名];
+    const 记录 = 来源 === '活动MVU' && 当前 ? 当前 : 来源记录;
+    if (!记录 || typeof 记录 !== 'object') return;
+    投影.势力.push({
+      规范名,
+      类型: 记录.类型,
+      别名: 记录.别名,
+      关键词: 记录.关键词,
+      描述: 截断描述(来源 === '活动MVU' ? 记录.现状描述 || 记录.描述 : 记录.描述),
+      ...(记录.现状描述 ? { 现状描述: 截断描述(记录.现状描述) } : {}),
+      ...(来源 === '活动MVU' ? {
+        状态: 记录.状态,
+        影响力: 记录.影响力,
+        规模: 记录.规模,
+        上级势力: 记录.上级势力,
+        关系: cloneJsonValue(记录.关系 || {}, {}),
+        战力统计: cloneJsonValue(记录.战力统计 || {}, {}),
+        来源,
+      } : {}),
+    });
+  };
+  const 活动势力 = new Set([
+    ...Array.from(运行时命中?.势力 || []),
+    ...Object.keys(数据根?.char?.[取运行时玩家名_V1(数据根)]?.社交?.势力 || {}),
+  ]);
+  活动势力.forEach(规范名 => {
+    if (数据根?.org?.[规范名]) 添加势力投影(规范名, 数据根.org[规范名], '活动MVU');
+  });
+  if (势力库) {
+    Array.from(运行时命中?.内置势力 || []).forEach(规范名 => {
+      if (!数据根?.org?.[规范名]) {
+        添加势力投影(规范名, 势力库.势力?.[规范名], '内置库');
+        添加候选实体({ 类型: '势力', 规范名, 记录ID: 规范名, 目标JSONPointer: 构建运行时JsonPointer路径_V1(['org', 规范名]), 实例化策略: 'insert' });
+      }
+    });
+  }
+  const 地点记录ID = [];
+  const 当前范围 = 取运行时当前范围_V1(数据根);
+  const 当前路径 = Array.isArray(当前范围?.当前地点信息?.path) ? 当前范围.当前地点信息.path : 取运行时地点片段列表_V1(当前范围?.当前地点 || '');
+  if (运行时 && 地点库 && typeof 运行时.resolveLocation === 'function') {
+    for (let index = 1; index <= 当前路径.length; index += 1) {
+      const 路径 = 当前路径.slice(0, index);
+      const 解析 = 运行时.resolveLocation(路径[路径.length - 1], 路径, { library: 地点库, allowKeyword: false });
+      if (解析.status === 'resolved') 地点记录ID.push(解析.recordId);
+    }
+  }
+  Array.from(运行时命中?.内置地点 || []).forEach(记录ID => 地点记录ID.push(记录ID));
+  const 唯一地点记录ID = Array.from(new Set(地点记录ID));
+  唯一地点记录ID.forEach((记录ID, index) => {
+    if (!地点库?.地点?.[记录ID]) return;
+    const 记录 = 地点库.地点[记录ID];
+    const 活动节点 = findMapNodeEntry(记录.目标路径.join('-'), 数据根)?.node;
+    const 来源 = 活动节点 ? '活动MVU' : '内置库';
+    if (投影.地点.length < (index < 当前路径.length ? 当前路径.length : 当前路径.length + 3)) {
+      const 节点 = 活动节点 || 记录.节点;
+     投影.地点.push({
+        记录ID,
+        规范名: 记录.规范名,
+        路径: 记录.目标路径,
+        类型: 节点.类型,
+        别名: 节点.别名,
+        关键词: 节点.关键词,
+        描述: 截断描述(来源 === '活动MVU' ? 节点.现状描述 || 节点.描述 : 节点.描述),
+        ...(节点.现状描述 ? { 现状描述: 截断描述(节点.现状描述) } : {}),
+        掌控势力: 节点.掌控势力,
+        状态: 节点.状态,
+        ...(来源 === '活动MVU' ? { 人口: 节点.人口, 守护军团: 节点.守护军团, 经济状况: 节点.经济状况, 来源 } : {}),
+      });
+    }
+    if (!活动节点) {
+      添加候选实体({
+        类型: '地点',
+        规范名: 记录.规范名,
+        记录ID,
+        目标JSONPointer: 构建运行时JsonPointer路径_V1(['world', '地点', ...记录.目标路径.flatMap((片段, 路径序号) => 路径序号 ? ['子节点', 片段] : [片段])]),
+        实例化策略: 记录.实例化策略,
+      });
+    }
+  });
+  return { 投影, 候选实体: 候选实体.slice(0, 12) };
 }
 
 function 构建更新前运行时草稿_V1(数据根 = {}, 命中文本 = '', 选项 = {}) {
@@ -1787,7 +1928,7 @@ function 格式化MVU更新结构命中列表_V1(名称集合 = new Set()) {
 }
 
 function 合并运行时命中集合_V1(...命中列表) {
-  const 结果 = { 角色: new Set(), 地点: new Set(), 动态地点: new Set(), 势力: new Set(), 物品: new Set() };
+  const 结果 = { 角色: new Set(), 地点: new Set(), 动态地点: new Set(), 势力: new Set(), 物品: new Set(), 内置势力: new Set(), 内置地点: new Set() };
   命中列表.forEach(命中 => {
     Object.keys(结果).forEach(类型 => {
       (命中?.[类型] instanceof Set ? Array.from(命中[类型]) : []).forEach(名称 => {
@@ -2843,10 +2984,248 @@ function tableOrEmptyForRuntimeView_V1(值) {
   return 值 && typeof 值 === 'object' && !Array.isArray(值) ? 值 : {};
 }
 
+const 内置势力静态字段_V1 = new Set(['类型', '别名', '关键词', '描述']);
+const 内置地点静态字段_V1 = new Set(['类型', '别名', '关键词', '描述']);
+const 内置势力动态字段_V1 = new Set(['现状描述', '影响力', '规模', '状态', '上级势力', '关系', '战力统计']);
+const 内置地点动态字段_V1 = new Set(['现状描述', '掌控势力', '人口', '守护军团', '经济状况', '状态', 'x', 'y', '商店']);
+
+function 读取内置库环境_V1() {
+  const 运行时 = 读取内置库运行时_V1();
+  return { 运行时, 势力库: 读取内置势力库_V1(), 地点库: 读取内置地点库_V1() };
+}
+
+function 解析内置地点补丁目标_V1(路径 = [], patch = {}, 环境 = {}) {
+  const 地点路径 = [];
+  const 原始地点路径 = 路径.slice(2);
+  for (let index = 0; index < 原始地点路径.length; index += 1) {
+    const 片段 = 原始地点路径[index];
+    if (片段 === '子节点') throw new Error(`地点JSONPatch路径不能以子节点作为地点名：${构建运行时JsonPointer路径_V1(路径)}`);
+    地点路径.push(片段);
+    if (index + 1 < 原始地点路径.length) {
+      if (原始地点路径[index + 1] !== '子节点') return null;
+      index += 1;
+    }
+  }
+  if (!地点路径.length || !环境.运行时 || !环境.地点库) return null;
+  const 记录ID提示 = String(patch.recordId || patch.记录ID || '').trim();
+  if (记录ID提示) {
+    const 记录 = 环境.地点库.地点[记录ID提示];
+    if (!记录) throw new Error(`地点记录ID不存在：${记录ID提示}`);
+    if (JSON.stringify(记录.目标路径) !== JSON.stringify(地点路径)) throw new Error(`地点记录ID与目标路径不一致：${记录ID提示}`);
+    return 记录ID提示;
+  }
+  const 解析 = 环境.运行时.resolveLocation(地点路径[地点路径.length - 1], 地点路径, { library: 环境.地点库, allowKeyword: false });
+  if (解析.status === 'resolved') return 解析.recordId;
+  if (解析.status === 'conflict') {
+    const insertCandidates = 解析.candidates.filter(记录ID => 环境.地点库.地点?.[记录ID]?.实例化策略 === 'insert');
+    if (insertCandidates.length === 1) return insertCandidates[0];
+    throw new Error(`地点路径存在未消解的记录冲突：${构建运行时地点路径名_V1(地点路径)}（${解析.candidates.join('、')}）`);
+  }
+  throw new Error(`地点路径不在内置地点库：${构建运行时地点路径名_V1(地点路径)}`);
+}
+
+function 清理内置实例化操作_V1(操作列表 = []) {
+  return (Array.isArray(操作列表) ? 操作列表 : []).map(操作 => ({ op: 操作.op, path: 操作.path, value: cloneJsonValue(操作.value, {}) }));
+}
+
+function 合并地点实例化补丁链_V1(操作列表 = [], 根 = {}) {
+  const 输出 = (Array.isArray(操作列表) ? 操作列表 : []).map(操作 => ({
+    ...操作,
+    value: cloneJsonValue(操作.value, {}),
+  }));
+  const 是前缀 = (前缀, 完整路径) => 前缀.length < 完整路径.length && 前缀.every((片段, 序号) => 片段 === 完整路径[序号]);
+  const 写入嵌套值 = (目标, 相对路径, 值) => {
+    let 当前 = 目标;
+    相对路径.forEach((片段, 序号) => {
+      if (序号 === 相对路径.length - 1) {
+        当前[片段] = cloneJsonValue(值, {});
+        return;
+      }
+      if (!当前[片段] || typeof 当前[片段] !== 'object' || Array.isArray(当前[片段])) 当前[片段] = {};
+      当前 = 当前[片段];
+    });
+  };
+  const 路径已存在 = 路径 => 运行时路径存在_V1(根, 路径);
+  for (let 当前序号 = 输出.length - 1; 当前序号 >= 0; 当前序号 -= 1) {
+    const 当前 = 输出[当前序号];
+    const 当前路径 = 解码运行时JsonPointer路径_V1(当前.path);
+    let 合并到序号 = -1;
+    for (let 候选序号 = 当前序号 - 1; 候选序号 >= 0; 候选序号 -= 1) {
+      const 候选路径 = 解码运行时JsonPointer路径_V1(输出[候选序号].path);
+      if (是前缀(候选路径, 当前路径)) {
+        合并到序号 = 候选序号;
+        break;
+      }
+    }
+    if (合并到序号 >= 0) {
+      const 候选路径 = 解码运行时JsonPointer路径_V1(输出[合并到序号].path);
+      写入嵌套值(输出[合并到序号].value, 当前路径.slice(候选路径.length), 当前.value);
+      输出.splice(当前序号, 1);
+      continue;
+    }
+    const 父路径 = 当前路径.slice(0, -1);
+    if (路径已存在(父路径)) continue;
+    let 首个缺失序号 = 0;
+    while (首个缺失序号 < 父路径.length && 路径已存在(父路径.slice(0, 首个缺失序号 + 1))) 首个缺失序号 += 1;
+    if (首个缺失序号 >= 父路径.length) continue;
+    const 新路径 = 当前路径.slice(0, 首个缺失序号 + 1);
+    当前.path = 构建运行时JsonPointer路径_V1(新路径);
+    当前.value = (() => {
+      let 值 = cloneJsonValue(当前.value, {});
+      const 相对路径 = 当前路径.slice(新路径.length);
+      for (let 序号 = 相对路径.length - 1; 序号 >= 0; 序号 -= 1) 值 = { [相对路径[序号]]: 值 };
+      return 值;
+    })();
+  }
+  return 输出;
+}
+
+function 合并势力实例化动态值_V1(规范名 = '', 值 = {}, 环境 = {}) {
+  if (!值 || typeof 值 !== 'object' || Array.isArray(值)) throw new Error(`势力实例值必须是对象：${规范名}`);
+  Object.keys(值).forEach(字段 => {
+    if (内置势力静态字段_V1.has(字段) || !内置势力动态字段_V1.has(字段)) throw new Error(`势力首次实例化禁止写入静态或未知字段：${规范名}.${字段}`);
+  });
+  return 环境.运行时.buildFactionInstance(规范名, 值, { library: 环境.势力库 });
+}
+
+function 合并地点实例化动态值_V1(值 = {}, 模板 = {}) {
+  if (!值 || typeof 值 !== 'object' || Array.isArray(值)) throw new Error('地点实例值必须是对象');
+  Object.keys(值).forEach(字段 => {
+    if (内置地点静态字段_V1.has(字段) || !内置地点动态字段_V1.has(字段)) throw new Error(`地点首次实例化禁止写入静态或未知字段：${字段}`);
+  });
+  return { ...cloneJsonValue(模板, {}), ...cloneJsonValue(值, {}) };
+}
+
+function 读取内置地点位置记录ID_V1(位置 = '', 环境 = {}) {
+  const 原文 = String(位置 || '').trim();
+  if (!原文 || ['无', '未知', '待生成'].includes(原文)) return null;
+  const 片段 = 原文.split('-').map(值 => 值.trim()).filter(Boolean);
+  const 直接 = 片段.length > 1
+    ? 环境.运行时.resolveLocation(原文, 片段, { library: 环境.地点库, allowKeyword: false })
+    : null;
+  if (直接?.status === 'resolved') return 直接.recordId;
+  if (片段.length > 1) {
+    const 叶节点 = 环境.运行时.resolveLocation(片段[片段.length - 1], [], { library: 环境.地点库, allowKeyword: false });
+    if (叶节点.status === 'resolved') return 叶节点.recordId;
+    if (叶节点.status === 'conflict') throw new Error(`玩家位置存在地点解析冲突：${原文}（${叶节点.candidates.join('、')}）`);
+  }
+  const 解析 = 环境.运行时.resolveLocation(原文, [], { library: 环境.地点库, allowKeyword: false });
+  if (解析.status === 'resolved') return 解析.recordId;
+  if (解析.status === 'conflict') throw new Error(`玩家位置存在地点解析冲突：${原文}（${解析.candidates.join('、')}）`);
+  return null;
+}
+
+function 构建玩家位置地点实例化补丁_V1(根 = {}, 位置 = '', 环境 = {}, 已注入路径 = new Set(), 选项 = {}) {
+  if (!环境.运行时 || !环境.地点库) throw new Error('地点库或库运行时缺失，已阻止玩家位置地点实例化。');
+  const 记录ID = 读取内置地点位置记录ID_V1(位置, 环境);
+  if (!记录ID) return [];
+  const 记录 = 环境.地点库.地点?.[记录ID];
+  const 禁止记录 = new Set(Array.isArray(选项.禁止地点记录ID) ? 选项.禁止地点记录ID.map(名称 => String(名称 || '').trim()).filter(Boolean) : []);
+  const 禁止路径 = new Set(Array.isArray(选项.禁止地点路径键) ? 选项.禁止地点路径键.map(路径 => typeof 路径 === 'string' ? 路径 : JSON.stringify(路径)).filter(Boolean) : []);
+  if (选项.禁止内置地点实例化 === true || 禁止记录.has(记录ID) || 禁止路径.has(JSON.stringify(记录?.目标路径 || []))) return [];
+  const 操作列表 = 环境.运行时.buildLocationInstantiationOps(记录ID, 根, { library: 环境.地点库 });
+  return 清理内置实例化操作_V1(操作列表).filter(操作 => {
+    if (已注入路径.has(操作.path)) return false;
+    已注入路径.add(操作.path);
+    return true;
+  });
+}
+
+function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = {}) {
+  const 环境 = 读取内置库环境_V1();
+  const 档案阻断 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && typeof globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ === 'object'
+    ? globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__
+    : {};
+  const 禁止势力 = new Set(Array.isArray(options.禁止势力) ? options.禁止势力.map(名称 => String(名称 || '').trim()).filter(Boolean) : []);
+  const 禁止地点记录ID = new Set(Array.isArray(options.禁止地点记录ID) ? options.禁止地点记录ID.map(名称 => String(名称 || '').trim()).filter(Boolean) : []);
+  const 禁止地点路径键 = new Set(Array.isArray(options.禁止地点路径键) ? options.禁止地点路径键.map(路径 => typeof 路径 === 'string' ? 路径 : JSON.stringify(路径)).filter(Boolean) : []);
+  const 地点被阻断 = 记录ID => {
+    const 记录 = 环境.地点库?.地点?.[记录ID];
+    return 禁止地点记录ID.has(String(记录ID || '').trim()) || 禁止地点路径键.has(JSON.stringify(记录?.目标路径 || []));
+  };
+  const 来源列表 = Array.isArray(patches) ? patches : [];
+  const 输出 = [];
+  const 已注入路径 = new Set();
+  const 玩家名 = String(根?.sys?.玩家名 || '').trim();
+  const 保护势力路径 = (路径, op) => {
+    if (路径[0] !== 'org' || 路径.length < 3) return;
+    if (内置势力静态字段_V1.has(路径[2]) && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op)) {
+      throw new Error(`JSONPatch禁止修改势力静态身份字段：${构建运行时JsonPointer路径_V1(路径)}`);
+    }
+  };
+  来源列表.forEach((patch, index) => {
+    if (!patch || typeof patch !== 'object' || typeof patch.path !== 'string' || !patch.path.startsWith('/')) {
+      输出.push(patch);
+      return;
+    }
+    const 路径 = 解码运行时JsonPointer路径_V1(patch.path);
+    const op = String(patch.op || '').trim();
+    保护势力路径(路径, op);
+    if (路径[0] === 'org' && 路径.length === 2) {
+      if ((options.禁止内置势力实例化 === true || 档案阻断.势力 === true || 禁止势力.has(路径[1])) && !根.org?.[路径[1]]) throw new Error(`JSONPatch[${index}]势力归档不可用，已阻止新势力实例化：${路径[1]}`);
+      if (!环境.运行时 || !环境.势力库 || typeof 环境.运行时.resolveFaction !== 'function') throw new Error(`JSONPatch[${index}]势力库或库运行时缺失，已阻止新势力实例化。`);
+      const 解析 = 环境.运行时.resolveFaction(路径[1], { library: 环境.势力库, allowKeyword: false });
+      if (解析.status !== 'resolved') throw new Error(`JSONPatch[${index}]势力路径无法唯一解析：${路径[1]}（${解析.status}）`);
+      const 规范名 = 解析.canonicalName;
+      if (禁止势力.has(规范名) && !根.org?.[规范名]) throw new Error(`JSONPatch[${index}]势力归档不可用，已阻止新势力实例化：${规范名}`);
+      if (op === 'remove' || (op === 'replace' && 根.org?.[规范名])) throw new Error(`JSONPatch禁止整体删除或覆盖活动势力：${规范名}`);
+      if (op === 'add' || op === 'insert' || (op === 'replace' && !根.org?.[规范名])) {
+        if (根.org?.[规范名]) return;
+        const 值 = 合并势力实例化动态值_V1(规范名, patch.value || {}, 环境);
+        输出.push({ op: 'add', path: 构建运行时JsonPointer路径_V1(['org', 规范名]), value: 值 });
+        return;
+      }
+    }
+    if (路径[0] === 'org' && 路径.length > 2 && !根.org?.[路径[1]]) throw new Error(`JSONPatch必须先以add创建势力完整实例：${路径[1]}`);
+    if (路径[0] === 'org' && 路径.length === 2 && op === 'remove') throw new Error(`JSONPatch禁止整体删除势力实例：${路径[1]}`);
+    if (路径[0] === 'world' && 路径[1] === '地点' && 环境.运行时 && 环境.地点库) {
+      const 地点路径 = 路径.slice(2);
+      const 是完整地点节点 = 地点路径.length > 0 && !内置地点动态字段_V1.has(地点路径[地点路径.length - 1]) && !地点路径.includes('子节点', 地点路径.length - 1);
+      const 是静态字段 = 地点路径.length > 1 && 内置地点静态字段_V1.has(地点路径[地点路径.length - 1]);
+      if (是静态字段 && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op)) throw new Error(`JSONPatch禁止修改地点静态身份字段：${patch.path}`);
+      if (是完整地点节点 && ['remove', 'replace', 'add', 'insert'].includes(op)) {
+        const 记录ID = 解析内置地点补丁目标_V1(路径, patch, 环境);
+        if ((options.禁止内置地点实例化 === true || 档案阻断.地点 === true || 地点被阻断(记录ID)) && !读取运行时路径值_V1(根, 路径)) throw new Error(`JSONPatch[${index}]地点归档不可用，已阻止新地点实例化：${构建运行时地点路径名_V1(地点路径)}`);
+        if (op === 'remove') throw new Error(`JSONPatch禁止整体删除地点实例：${记录ID}`);
+      const 操作列表 = 清理内置实例化操作_V1(环境.运行时.buildLocationInstantiationOps(记录ID, 根, { library: 环境.地点库 }))
+        .filter(操作 => {
+          if (已注入路径.has(操作.path)) return false;
+          已注入路径.add(操作.path);
+            return true;
+          });
+        if (!操作列表.length && patch.value && Object.keys(patch.value).length) throw new Error(`JSONPatch不能整体覆盖已活动地点：${记录ID}`);
+        if (操作列表.length) {
+          const 目标操作 = 操作列表.find(操作 => 操作.path === 构建运行时JsonPointer路径_V1(路径));
+          if (目标操作) 目标操作.value = 合并地点实例化动态值_V1(patch.value || {}, 目标操作.value);
+          输出.push(...合并地点实例化补丁链_V1(操作列表, 根));
+        }
+        return;
+      }
+    }
+    const 是玩家位置更新 = 路径[0] === 'char' && 路径[1] === 玩家名 && 路径[2] === '状态' && 路径[3] === '位置' && ['add', 'replace'].includes(op);
+    const 是玩家整体新增 = 路径[0] === 'char' && 路径.length === 2 && ['add', 'replace', 'insert'].includes(op) && patch.value?.状态?.位置;
+    if ((是玩家位置更新 || 是玩家整体新增) && 环境.运行时 && 环境.地点库) {
+      if (options.禁止内置地点实例化 === true || 档案阻断.地点 === true) {
+        输出.push(patch);
+        return;
+      }
+      const 位置 = 是玩家位置更新 ? String(patch.value || '').trim() : String(patch.value.状态.位置 || '').trim();
+      const 预览根 = cloneJsonValue(根, {});
+      if (!预览根.char || typeof 预览根.char !== 'object') 预览根.char = {};
+      if (!预览根.char[玩家名] || typeof 预览根.char[玩家名] !== 'object') 预览根.char[玩家名] = {};
+      if (!预览根.char[玩家名].状态 || typeof 预览根.char[玩家名].状态 !== 'object') 预览根.char[玩家名].状态 = {};
+      预览根.char[玩家名].状态.位置 = 位置;
+      输出.push(...合并地点实例化补丁链_V1(构建玩家位置地点实例化补丁_V1(预览根, 位置, 环境, 已注入路径, options), 根));
+    }
+    输出.push(patch);
+  });
+  return 输出;
+}
+
 function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options = {}) {
   const 根 = 读取运行时Mvu数据根_V1(数据输入) || {};
   const 赛事权限预处理结果 = 预处理特殊权限赛事补丁_V2(Array.isArray(patches) ? patches : [], 根);
-  const 来源列表 = 赛事权限预处理结果.补丁;
+  const 来源列表 = 预处理内置库实例化补丁_V1(赛事权限预处理结果.补丁, 根, options);
   const 路径索引 = 收集运行时真实路径索引_V1(根);
   const 前缀映射表 = new Map();
   const 本批新增路径集合 = new Set();
@@ -5322,6 +5701,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
   const 数据根 = 草稿上下文.数据根;
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
   const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 文本, 选项);
+  const 内置库上下文 = 构建内置库投影与候选_V1(数据根, 文本, 运行时命中上下文.运行时命中名称, { 描述预算: 6000 });
   const 运行时提示限流 = 创建运行时提示限流器_V1(选项.运行时提示已使用类型);
   const 注入数据根 = { ...数据根, __运行时提示限流__: 运行时提示限流 };
   const 角色名集合 = 选项.角色名集合 instanceof Set
@@ -5369,6 +5749,7 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
     org: {},
     char: {},
     物品: {},
+    候选实体: 内置库上下文.候选实体,
   };
   地点名集合.forEach(地点名 => {
     const 地图条目 = findMapNodeEntry(地点名, 数据根);
@@ -5456,8 +5837,10 @@ function 生成MVU更新视图_V1(数据输入 = null, userInput = '', 最后一
 function 生成MVU剧情视图_V1(数据输入 = null, userInput = '', 最后剧情文本 = '', 时间推进上下文 = null) {
   const 数据根 = 读取运行时Mvu数据根或最新_V1(数据输入) || {};
   const { 玩家名, 当前地点 } = 取运行时当前范围_V1(数据根);
-  const 文本 = String(userInput || '');
+  const 文本 = [userInput, 最后剧情文本].map(值 => String(值 || '').trim()).filter(Boolean).join('\n');
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
+  const 运行时命中上下文 = 构建运行时命中上下文_V1(数据根, 文本);
+  const 内置库上下文 = 构建内置库投影与候选_V1(数据根, 文本, 运行时命中上下文.运行时命中名称, { 描述预算: 6000 });
   const 时间跳跃资料 = 时间推进上下文
     ? 构建时间跳跃运行时资料_V1({
       ...时间推进上下文,
@@ -5488,13 +5871,15 @@ function 生成MVU剧情视图_V1(数据输入 = null, userInput = '', 最后剧
       _引导: {
         时间线预览: 构建运行时原著时间线预览文本_V1(视图tick, 20),
         ...(时间跳跃资料?.跨越概览 ? { 跨越期间原著概览: 时间跳跃资料.跨越概览 } : {}),
-        远端原著时间线候选: 构建远端原著时间线候选文本_V1(数据根, userInput, 20),
+      远端原著时间线候选: 构建远端原著时间线候选文本_V1(数据根, userInput, 20),
       },
       时间线: 构建运行时未来事件视图_V1(数据根?.world?.时间线 || {}, 8, { 派生时间文本: true, 当前tick: 视图tick }),
       委托板: 委托摘要,
       拍卖: 构建运行时拍卖薄片_V1(数据根?.world?.拍卖 || {}, 文本, 4),
       战斗: 战斗摘要,
       地点候选,
+      势力库候选: 内置库上下文.投影.势力,
+      地点库候选: 内置库上下文.投影.地点,
       内置角色档案命中: 内置角色摘要.length ? 内置角色摘要 : undefined,
       赛事与权限: 构建场景赛事权限钩子_V1(数据根, 当前地点, 文本),
     },

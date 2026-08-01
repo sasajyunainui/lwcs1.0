@@ -4687,6 +4687,8 @@
   const 角色归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 动态地点归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 物品归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
+  const 势力归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null, 读取失败: false, 错误: '' };
+  const 静态地点归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null, 读取失败: false, 错误: '' };
   const 冷归档楼层清理状态_桥接 = { chatKey: '', 最新楼层: -1, timer: 0, autoTimer: 0, 提交前自动归档Timer: 0, pollTimer: 0, promise: null, 已安装: false, 提交意图监听已安装: false, 变量更新中: false, 变量更新兜底计时器: 0, 已自动检查消息键表: new Set() };
   const 冷归档自动归档配置存储键_桥接 = 'LWCS_冷归档自动归档配置_v1';
   const 冷实体激活保护存储键_桥接 = 'LWCS_冷实体激活保护_v1';
@@ -4875,6 +4877,46 @@
   function 构建物品归档文件路径_桥接(chatKey = '', 物品名 = '') {
     const 名称 = toText(物品名, '').trim();
     return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/items/${规范化冷归档路径段_桥接(名称, 'item')}__${计算归档路径短哈希_桥接(名称)}_timeline.json`;
+  }
+
+  function 构建势力归档Manifest路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
+    return `${构建冷归档聊天路径_桥接(chatKey)}/factions/index.json`;
+  }
+
+  function 构建势力归档文件路径_桥接(chatKey = '', 势力名 = '') {
+    const 名称 = toText(势力名, '').trim();
+    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/factions/${规范化冷归档路径段_桥接(名称, 'faction')}__${计算归档路径短哈希_桥接(名称)}_timeline.json`;
+  }
+
+  function 规范化静态地点路径_桥接(输入 = '') {
+    if (Array.isArray(输入)) return 输入.map(片段 => toText(片段, '').trim()).filter(Boolean);
+    const 文本 = toText(输入, '').trim();
+    if (!文本) return [];
+    try {
+      const 解析 = JSON.parse(文本);
+      return Array.isArray(解析) ? 解析.map(片段 => toText(片段, '').trim()).filter(Boolean) : [];
+    } catch (错误) {
+      return [];
+    }
+  }
+
+  function 构建静态地点路径键_桥接(路径 = []) {
+    const 规范路径 = 规范化静态地点路径_桥接(路径);
+    return 规范路径.length ? JSON.stringify(规范路径) : '';
+  }
+
+  function 构建静态地点路径文本_桥接(路径 = []) {
+    return 规范化静态地点路径_桥接(路径).join(' / ');
+  }
+
+  function 构建静态地点归档Manifest路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
+    return `${构建冷归档聊天路径_桥接(chatKey)}/locations/index.json`;
+  }
+
+  function 构建静态地点归档文件路径_桥接(chatKey = '', 路径 = []) {
+    const 规范路径 = 规范化静态地点路径_桥接(路径);
+    const 路径键 = 构建静态地点路径键_桥接(规范路径);
+    return `${构建冷归档聊天路径_桥接(chatKey || 取当前聊天归档标识_桥接())}/locations/${规范化冷归档路径段_桥接(构建静态地点路径文本_桥接(规范路径), 'location')}__${计算归档路径短哈希_桥接(路径键)}_timeline.json`;
   }
 
   function 构建赛事归档Manifest路径_桥接(chatKey = 取当前聊天归档标识_桥接()) {
@@ -5408,7 +5450,7 @@
 
   function 规范化冷实体激活类型_桥接(类型 = '') {
     const 文本 = toText(类型, '').trim();
-    return ['角色', '动态地点', '物品'].includes(文本) ? 文本 : '';
+    return ['角色', '动态地点', '物品', '势力', '地点'].includes(文本) ? 文本 : '';
   }
 
   function 读取冷实体激活保护根_桥接() {
@@ -5429,7 +5471,7 @@
   function 读取当前冷实体激活保护表_桥接(chatKey = 取当前聊天归档标识_桥接()) {
     const 根 = 读取冷实体激活保护根_桥接();
     const 表 = 根[chatKey] && typeof 根[chatKey] === 'object' && !Array.isArray(根[chatKey]) ? 根[chatKey] : {};
-    ['角色', '动态地点', '物品'].forEach(类型 => {
+    ['角色', '动态地点', '物品', '势力', '地点'].forEach(类型 => {
       if (!表[类型] || typeof 表[类型] !== 'object' || Array.isArray(表[类型])) 表[类型] = {};
     });
     return { 根, 表 };
@@ -5512,6 +5554,24 @@
 
   function 创建空物品归档Manifest_桥接(chatKey = 取当前聊天归档标识_桥接()) {
     return { version: 冷归档Manifest版本_桥接, schema: 'object_timeline_index', chatKey, updatedAt: '', 物品索引: {} };
+  }
+
+  function 创建空势力归档Manifest_桥接(chatKey = 取当前聊天归档标识_桥接()) {
+    return { version: 冷归档Manifest版本_桥接, schema: 'object_timeline_index', chatKey, updatedAt: '', 势力索引: {} };
+  }
+
+  function 创建空静态地点归档Manifest_桥接(chatKey = 取当前聊天归档标识_桥接()) {
+    return { version: 冷归档Manifest版本_桥接, schema: 'object_timeline_index', chatKey, updatedAt: '', 地点索引: {} };
+  }
+
+  function 设置库归档阻断状态_桥接(类型 = '', 阻断 = false) {
+    const 当前 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && typeof globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ === 'object'
+      ? globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__
+      : {};
+    const 新状态 = { ...当前, [类型]: !!阻断 };
+    globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ = 新状态;
+    try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ = 新状态; } catch (错误) {}
+    try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ = 新状态; } catch (错误) {}
   }
 
   function 是冷归档普通对象_桥接(值) {
@@ -5638,9 +5698,10 @@
       版本数量: Math.max(0, Math.floor(Number(版本数量) || 0)),
       存储模式: 版本.模式 || '全量',
     };
-    ['角色名', '地点名', '物品名', '物品分类', '分类', '归属父节点', '势力', '品质', '装备槽位'].forEach(键 => {
+    ['角色名', '地点名', '物品名', '势力名', '地点路径', '地点路径文本', '记录ID', '物品分类', '分类', '归属父节点', '势力', '品质', '装备槽位'].forEach(键 => {
       if (版本[键] !== undefined && 版本[键] !== null && toText(版本[键], '').trim()) 输出[键] = 版本[键];
     });
+    if (Array.isArray(版本.原路径) && 版本.原路径.length) 输出.原路径 = [...版本.原路径];
     if (Array.isArray(版本.简称列表) && 版本.简称列表.length) 输出.简称列表 = [...版本.简称列表];
     if (Array.isArray(版本.关键词) && 版本.关键词.length) 输出.关键词 = [...版本.关键词];
     return 输出.path ? 输出 : null;
@@ -5799,6 +5860,34 @@
     物品归档状态_桥接.manifestPromise = null;
   }
 
+  function 清除势力归档缓存_桥接(chatKey = '') {
+    const 当前chatKey = toText(chatKey, '').trim();
+    const 当前存储键 = 取冷归档存储键_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    if (当前chatKey && 势力归档状态_桥接.chatKey && 当前chatKey === 势力归档状态_桥接.chatKey && 当前存储键 === 势力归档状态_桥接.存储键 && 当前楼层 === 势力归档状态_桥接.楼层) return;
+    势力归档状态_桥接.chatKey = 当前chatKey;
+    势力归档状态_桥接.存储键 = 当前存储键;
+    势力归档状态_桥接.楼层 = 当前楼层;
+    势力归档状态_桥接.manifest = null;
+    势力归档状态_桥接.manifestPromise = null;
+    势力归档状态_桥接.读取失败 = false;
+    势力归档状态_桥接.错误 = '';
+  }
+
+  function 清除静态地点归档缓存_桥接(chatKey = '') {
+    const 当前chatKey = toText(chatKey, '').trim();
+    const 当前存储键 = 取冷归档存储键_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
+    if (当前chatKey && 静态地点归档状态_桥接.chatKey && 当前chatKey === 静态地点归档状态_桥接.chatKey && 当前存储键 === 静态地点归档状态_桥接.存储键 && 当前楼层 === 静态地点归档状态_桥接.楼层) return;
+    静态地点归档状态_桥接.chatKey = 当前chatKey;
+    静态地点归档状态_桥接.存储键 = 当前存储键;
+    静态地点归档状态_桥接.楼层 = 当前楼层;
+    静态地点归档状态_桥接.manifest = null;
+    静态地点归档状态_桥接.manifestPromise = null;
+    静态地点归档状态_桥接.读取失败 = false;
+    静态地点归档状态_桥接.错误 = '';
+  }
+
   async function 读取角色归档Manifest_桥接(选项 = {}) {
     const chatKey = 取当前聊天归档标识_桥接();
     清除角色归档缓存_桥接(chatKey);
@@ -5901,6 +5990,92 @@
     return await 物品归档状态_桥接.manifestPromise;
   }
 
+  async function 读取势力归档Manifest_桥接(选项 = {}) {
+    const chatKey = 取当前聊天归档标识_桥接();
+    清除势力归档缓存_桥接(chatKey);
+    if (!选项.force && 势力归档状态_桥接.manifest) return 势力归档状态_桥接.manifest;
+    if (!选项.force && 势力归档状态_桥接.manifestPromise) return await 势力归档状态_桥接.manifestPromise;
+    势力归档状态_桥接.manifestPromise = (async () => {
+      try {
+        const manifest = await 读取冷归档Json文件_桥接(构建势力归档Manifest路径_桥接(chatKey));
+        if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('势力归档 manifest 版本不匹配。');
+        if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('势力归档 manifest 结构不匹配。');
+        if (manifest.chatKey !== chatKey) throw new Error('势力归档 manifest 不属于当前聊天。');
+        if (!manifest.势力索引 || typeof manifest.势力索引 !== 'object' || Array.isArray(manifest.势力索引)) manifest.势力索引 = {};
+        manifest.schema = 'object_timeline_index';
+        manifest.势力索引 = 规范化冷归档时间线索引表_桥接(manifest.势力索引);
+        势力归档状态_桥接.读取失败 = false;
+        势力归档状态_桥接.错误 = '';
+        设置库归档阻断状态_桥接('势力', false);
+        势力归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+        势力归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
+        势力归档状态_桥接.manifest = manifest;
+        return manifest;
+      } catch (错误) {
+        if (错误 && 错误.status === 404) {
+          const 空manifest = 创建空势力归档Manifest_桥接(chatKey);
+          势力归档状态_桥接.读取失败 = false;
+          势力归档状态_桥接.错误 = '';
+          设置库归档阻断状态_桥接('势力', false);
+          势力归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+          势力归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
+          势力归档状态_桥接.manifest = 空manifest;
+          return 空manifest;
+        }
+        势力归档状态_桥接.读取失败 = true;
+        势力归档状态_桥接.错误 = 错误 && 错误.message ? 错误.message : String(错误 || 'manifest_read_failed');
+        设置库归档阻断状态_桥接('势力', true);
+        throw 错误;
+      } finally {
+        势力归档状态_桥接.manifestPromise = null;
+      }
+    })();
+    return await 势力归档状态_桥接.manifestPromise;
+  }
+
+  async function 读取静态地点归档Manifest_桥接(选项 = {}) {
+    const chatKey = 取当前聊天归档标识_桥接();
+    清除静态地点归档缓存_桥接(chatKey);
+    if (!选项.force && 静态地点归档状态_桥接.manifest) return 静态地点归档状态_桥接.manifest;
+    if (!选项.force && 静态地点归档状态_桥接.manifestPromise) return await 静态地点归档状态_桥接.manifestPromise;
+    静态地点归档状态_桥接.manifestPromise = (async () => {
+      try {
+        const manifest = await 读取冷归档Json文件_桥接(构建静态地点归档Manifest路径_桥接(chatKey));
+        if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('静态地点归档 manifest 版本不匹配。');
+        if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('静态地点归档 manifest 结构不匹配。');
+        if (manifest.chatKey !== chatKey) throw new Error('静态地点归档 manifest 不属于当前聊天。');
+        if (!manifest.地点索引 || typeof manifest.地点索引 !== 'object' || Array.isArray(manifest.地点索引)) manifest.地点索引 = {};
+        manifest.schema = 'object_timeline_index';
+        manifest.地点索引 = 规范化冷归档时间线索引表_桥接(manifest.地点索引);
+        静态地点归档状态_桥接.读取失败 = false;
+        静态地点归档状态_桥接.错误 = '';
+        设置库归档阻断状态_桥接('地点', false);
+        静态地点归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+        静态地点归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
+        静态地点归档状态_桥接.manifest = manifest;
+        return manifest;
+      } catch (错误) {
+        if (错误 && 错误.status === 404) {
+          const 空manifest = 创建空静态地点归档Manifest_桥接(chatKey);
+          静态地点归档状态_桥接.读取失败 = false;
+          静态地点归档状态_桥接.错误 = '';
+          设置库归档阻断状态_桥接('地点', false);
+          静态地点归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+          静态地点归档状态_桥接.楼层 = 读取当前最新聊天楼层_桥接();
+          静态地点归档状态_桥接.manifest = 空manifest;
+          return 空manifest;
+        }
+        静态地点归档状态_桥接.读取失败 = true;
+        静态地点归档状态_桥接.错误 = 错误 && 错误.message ? 错误.message : String(错误 || 'manifest_read_failed');
+        设置库归档阻断状态_桥接('地点', true);
+        throw 错误;
+      } finally {
+        静态地点归档状态_桥接.manifestPromise = null;
+      }
+    })();
+    return await 静态地点归档状态_桥接.manifestPromise;
+  }
+
   async function 写入角色归档Manifest_桥接(manifest = {}, 选项 = {}) {
     const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
     const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
@@ -5964,7 +6139,66 @@
     return 缓存manifest;
   }
 
-  async function 写入冷归档聊天状态_桥接(角色Manifest = {}, 动态地点Manifest = {}, 物品Manifest = {}) {
+  async function 写入势力归档Manifest_桥接(manifest = {}, 选项 = {}) {
+    const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    const 势力索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.势力索引, 当前楼层);
+    const 待写入 = {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_index',
+      chatKey,
+      updatedAt: new Date().toISOString(),
+      势力索引,
+    };
+    await 上传冷归档Json文件_桥接(构建势力归档Manifest路径_桥接(chatKey), 待写入);
+    const 缓存manifest = { ...待写入, 势力索引: 规范化冷归档时间线索引表_桥接(势力索引, 当前楼层) };
+    势力归档状态_桥接.chatKey = chatKey;
+    势力归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+    势力归档状态_桥接.楼层 = 当前楼层;
+    势力归档状态_桥接.manifest = 缓存manifest;
+    势力归档状态_桥接.读取失败 = false;
+    势力归档状态_桥接.错误 = '';
+    势力归档状态_桥接.manifestPromise = null;
+    return 缓存manifest;
+  }
+
+  async function 写入静态地点归档Manifest_桥接(manifest = {}, 选项 = {}) {
+    const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
+    const 地点索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.地点索引, 当前楼层);
+    const 待写入 = {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_index',
+      chatKey,
+      updatedAt: new Date().toISOString(),
+      地点索引,
+    };
+    await 上传冷归档Json文件_桥接(构建静态地点归档Manifest路径_桥接(chatKey), 待写入);
+    const 缓存manifest = { ...待写入, 地点索引: 规范化冷归档时间线索引表_桥接(地点索引, 当前楼层) };
+    静态地点归档状态_桥接.chatKey = chatKey;
+    静态地点归档状态_桥接.存储键 = 取冷归档存储键_桥接();
+    静态地点归档状态_桥接.楼层 = 当前楼层;
+    静态地点归档状态_桥接.manifest = 缓存manifest;
+    静态地点归档状态_桥接.读取失败 = false;
+    静态地点归档状态_桥接.错误 = '';
+    静态地点归档状态_桥接.manifestPromise = null;
+    return 缓存manifest;
+  }
+
+  function 校验冷归档Manifest条目_桥接(实际条目 = null, 预期条目 = null, 名称字段 = '') {
+    if (!实际条目 || !预期条目) throw new Error('冷归档 manifest 条目缺失。');
+    for (const 字段 of ['path', 'checksum', 名称字段]) {
+      if (!字段 || toText(实际条目[字段], '').trim() !== toText(预期条目[字段], '').trim()) {
+        throw new Error(`冷归档 manifest 条目校验失败：${字段 || '字段'}`);
+      }
+    }
+    if (Number(实际条目.byteSize) !== Number(预期条目.byteSize)) {
+      throw new Error('冷归档 manifest 条目字节数校验失败。');
+    }
+    return true;
+  }
+
+  async function 写入冷归档聊天状态_桥接(角色Manifest = {}, 动态地点Manifest = {}, 物品Manifest = {}, 势力Manifest = {}, 静态地点Manifest = {}) {
     const chatKey = 取当前聊天归档标识_桥接();
     return await 上传冷归档Json文件_桥接(构建冷归档状态路径_桥接(chatKey), {
       version: 冷归档Manifest版本_桥接,
@@ -5973,6 +6207,8 @@
       角色数量: Object.keys(角色Manifest && 角色Manifest.角色索引 && typeof 角色Manifest.角色索引 === 'object' ? 角色Manifest.角色索引 : {}).length,
       动态地点数量: Object.keys(动态地点Manifest && 动态地点Manifest.动态地点索引 && typeof 动态地点Manifest.动态地点索引 === 'object' ? 动态地点Manifest.动态地点索引 : {}).length,
       物品数量: Object.keys(物品Manifest && 物品Manifest.物品索引 && typeof 物品Manifest.物品索引 === 'object' ? 物品Manifest.物品索引 : {}).length,
+      势力数量: Object.keys(势力Manifest && 势力Manifest.势力索引 && typeof 势力Manifest.势力索引 === 'object' ? 势力Manifest.势力索引 : {}).length,
+      静态地点数量: Object.keys(静态地点Manifest && 静态地点Manifest.地点索引 && typeof 静态地点Manifest.地点索引 === 'object' ? 静态地点Manifest.地点索引 : {}).length,
     });
   }
 
@@ -5983,6 +6219,14 @@
     动态地点归档状态_桥接.manifestPromise = null;
     物品归档状态_桥接.manifest = null;
     物品归档状态_桥接.manifestPromise = null;
+    势力归档状态_桥接.manifest = null;
+    势力归档状态_桥接.manifestPromise = null;
+    势力归档状态_桥接.读取失败 = false;
+    势力归档状态_桥接.错误 = '';
+    静态地点归档状态_桥接.manifest = null;
+    静态地点归档状态_桥接.manifestPromise = null;
+    静态地点归档状态_桥接.读取失败 = false;
+    静态地点归档状态_桥接.错误 = '';
   }
 
   async function 读取冷归档时间线原始Manifest_桥接(路径 = '', chatKey = '', 索引字段 = '') {
@@ -6072,6 +6316,8 @@
         { 路径: 构建角色归档Manifest路径_桥接(chatKey), 索引字段: '角色索引', 类型: '角色', 构建文件路径: 构建角色归档文件路径_桥接, 写入: 写入角色归档Manifest_桥接 },
         { 路径: 构建动态地点归档Manifest路径_桥接(chatKey), 索引字段: '动态地点索引', 类型: '动态地点', 构建文件路径: 构建动态地点归档文件路径_桥接, 写入: 写入动态地点归档Manifest_桥接 },
         { 路径: 构建物品归档Manifest路径_桥接(chatKey), 索引字段: '物品索引', 类型: '物品', 构建文件路径: 构建物品归档文件路径_桥接, 写入: 写入物品归档Manifest_桥接 },
+        { 路径: 构建势力归档Manifest路径_桥接(chatKey), 索引字段: '势力索引', 类型: '势力', 构建文件路径: 构建势力归档文件路径_桥接, 写入: 写入势力归档Manifest_桥接 },
+        { 路径: 构建静态地点归档Manifest路径_桥接(chatKey), 索引字段: '地点索引', 类型: '地点', 构建文件路径: (当前chatKey, 名称) => 构建静态地点归档文件路径_桥接(当前chatKey, 规范化静态地点路径_桥接(名称)), 写入: 写入静态地点归档Manifest_桥接 },
       ];
       const 结果列表 = [];
       for (const 配置 of 配置列表) {
@@ -6143,6 +6389,8 @@
       { 路径: 构建角色归档Manifest路径_桥接(chatKey), 索引字段: '角色索引', 类型: '角色', 构建文件路径: 构建角色归档文件路径_桥接, 写入: 写入角色归档Manifest_桥接 },
       { 路径: 构建动态地点归档Manifest路径_桥接(chatKey), 索引字段: '动态地点索引', 类型: '动态地点', 构建文件路径: 构建动态地点归档文件路径_桥接, 写入: 写入动态地点归档Manifest_桥接 },
       { 路径: 构建物品归档Manifest路径_桥接(chatKey), 索引字段: '物品索引', 类型: '物品', 构建文件路径: 构建物品归档文件路径_桥接, 写入: 写入物品归档Manifest_桥接 },
+      { 路径: 构建势力归档Manifest路径_桥接(chatKey), 索引字段: '势力索引', 类型: '势力', 构建文件路径: 构建势力归档文件路径_桥接, 写入: 写入势力归档Manifest_桥接 },
+      { 路径: 构建静态地点归档Manifest路径_桥接(chatKey), 索引字段: '地点索引', 类型: '地点', 构建文件路径: (当前chatKey, 名称) => 构建静态地点归档文件路径_桥接(当前chatKey, 规范化静态地点路径_桥接(名称)), 写入: 写入静态地点归档Manifest_桥接 },
     ];
     const 结果列表 = [];
     for (const 配置 of 配置列表) {
@@ -6413,6 +6661,18 @@
     return 物品归档状态_桥接.manifest;
   }
 
+  function 读取势力归档Manifest缓存_桥接() {
+    const chatKey = 取当前聊天归档标识_桥接();
+    清除势力归档缓存_桥接(chatKey);
+    return 势力归档状态_桥接.manifest;
+  }
+
+  function 读取静态地点归档Manifest缓存_桥接() {
+    const chatKey = 取当前聊天归档标识_桥接();
+    清除静态地点归档缓存_桥接(chatKey);
+    return 静态地点归档状态_桥接.manifest;
+  }
+
   function 预热冷归档Manifest_桥接(选项 = {}) {
     const 刷新视图 = () => {
       const 当前预览键 = currentUnifiedPreviewKey || currentModalPreviewKey;
@@ -6423,21 +6683,29 @@
     const 角色Manifest缓存 = 读取角色归档Manifest缓存_桥接();
     const 动态地点Manifest缓存 = 读取动态地点归档Manifest缓存_桥接();
     const 物品Manifest缓存 = 读取物品归档Manifest缓存_桥接();
+    const 势力Manifest缓存 = 读取势力归档Manifest缓存_桥接();
+    const 静态地点Manifest缓存 = 读取静态地点归档Manifest缓存_桥接();
     const 角色Manifest已缓存 = !!角色Manifest缓存;
     const 动态地点Manifest已缓存 = !!动态地点Manifest缓存;
     const 物品Manifest已缓存 = !!物品Manifest缓存;
+    const 势力Manifest已缓存 = !!势力Manifest缓存;
+    const 静态地点Manifest已缓存 = !!静态地点Manifest缓存;
     const Manifest已初始化 = manifest => !!toText(manifest && manifest.updatedAt, '').trim();
     if (
       !选项.force &&
       角色Manifest已缓存 &&
       动态地点Manifest已缓存 &&
       物品Manifest已缓存 &&
-      (!选项.初始化目录 || (Manifest已初始化(角色Manifest缓存) && Manifest已初始化(动态地点Manifest缓存) && Manifest已初始化(物品Manifest缓存)))
+      势力Manifest已缓存 &&
+      静态地点Manifest已缓存 &&
+      (!选项.初始化目录 || (Manifest已初始化(角色Manifest缓存) && Manifest已初始化(动态地点Manifest缓存) && Manifest已初始化(物品Manifest缓存) && Manifest已初始化(势力Manifest缓存) && Manifest已初始化(静态地点Manifest缓存)))
     ) return Promise.resolve();
     const 承诺 = Promise.allSettled([
       读取角色归档Manifest_桥接({ force: !!选项.force }),
       读取动态地点归档Manifest_桥接({ force: !!选项.force }),
       读取物品归档Manifest_桥接({ force: !!选项.force }),
+      读取势力归档Manifest_桥接({ force: !!选项.force }),
+      读取静态地点归档Manifest_桥接({ force: !!选项.force }),
     ])
       .then(async 结果列表 => {
         结果列表.forEach(结果 => {
@@ -6448,6 +6716,8 @@
           let 角色Manifest = 结果列表[0] && 结果列表[0].status === 'fulfilled' ? 结果列表[0].value : null;
           let 动态地点Manifest = 结果列表[1] && 结果列表[1].status === 'fulfilled' ? 结果列表[1].value : null;
           let 物品Manifest = 结果列表[2] && 结果列表[2].status === 'fulfilled' ? 结果列表[2].value : null;
+          let 势力Manifest = 结果列表[3] && 结果列表[3].status === 'fulfilled' ? 结果列表[3].value : null;
+          let 静态地点Manifest = 结果列表[4] && 结果列表[4].status === 'fulfilled' ? 结果列表[4].value : null;
           if (角色Manifest && !角色Manifest.updatedAt) {
             角色Manifest = await 写入角色归档Manifest_桥接(角色Manifest);
             已写入 = true;
@@ -6460,7 +6730,15 @@
             物品Manifest = await 写入物品归档Manifest_桥接(物品Manifest);
             已写入 = true;
           }
-          if (已写入 && 角色Manifest && 动态地点Manifest && 物品Manifest) await 写入冷归档聊天状态_桥接(角色Manifest, 动态地点Manifest, 物品Manifest);
+          if (势力Manifest && !势力Manifest.updatedAt) {
+            势力Manifest = await 写入势力归档Manifest_桥接(势力Manifest);
+            已写入 = true;
+          }
+          if (静态地点Manifest && !静态地点Manifest.updatedAt) {
+            静态地点Manifest = await 写入静态地点归档Manifest_桥接(静态地点Manifest);
+            已写入 = true;
+          }
+          if (已写入 && 角色Manifest && 动态地点Manifest && 物品Manifest && 势力Manifest && 静态地点Manifest) await 写入冷归档聊天状态_桥接(角色Manifest, 动态地点Manifest, 物品Manifest, 势力Manifest, 静态地点Manifest);
         }
         if (!选项.初始化目录 || 已写入 || 选项.force) 刷新视图();
       });
@@ -6864,6 +7142,18 @@
         await 上传冷归档Json文件_桥接(路径, 待写入时间线);
       }
     }
+    if (配置.写入后校验 === true) {
+      const 回读时间线 = await 读取冷归档对象时间线_桥接({ ...配置, chatKey, 名称, 路径 });
+      const 回读版本 = 取当前冷归档版本_桥接(回读时间线, 当前楼层);
+      if (!回读版本 || !回读版本.数据 || typeof 回读版本.数据 !== 'object') {
+        throw new Error(`冷归档对象回读失败：${名称}`);
+      }
+      const 预期校验 = await 计算冷归档校验_桥接(冷归档Json文本_桥接(数据));
+      const 回读校验 = await 计算冷归档校验_桥接(冷归档Json文本_桥接(回读版本.数据));
+      if (!回读版本.checksum || 回读版本.checksum !== 预期校验 || 回读版本.checksum !== 回读校验) {
+        throw new Error(`冷归档对象校验和不匹配：${名称}`);
+      }
+    }
     const 当前版本 = 取当前冷归档版本_桥接(待写入时间线, 当前楼层);
     const 索引条目 = 构建冷归档对象索引条目_桥接(当前版本, 路径, 待写入版本列表.length);
     if (!索引条目) throw new Error(`冷归档对象索引生成失败：${名称}`);
@@ -6924,6 +7214,113 @@
     });
   }
 
+  function 构建势力归档摘要_桥接(势力名 = '', 势力数据 = {}) {
+    return [
+      势力名,
+      toText(势力数据 && 势力数据.类型, ''),
+      toText(势力数据 && 势力数据.状态, ''),
+      toText(势力数据 && 势力数据.现状描述, ''),
+    ].filter(Boolean).join(' / ').slice(0, 240);
+  }
+
+  function 构建势力归档索引扩展_桥接(势力名 = '', 势力数据 = {}) {
+    return {
+      简称列表: Array.from(new Set([
+        势力名,
+        ...(Array.isArray(势力数据 && 势力数据.别名) ? 势力数据.别名 : []),
+      ].map(值 => toText(值, '').trim()).filter(Boolean))),
+      关键词: Array.from(new Set([
+        ...(Array.isArray(势力数据 && 势力数据.关键词) ? 势力数据.关键词 : []),
+        ...切分冷归档关键词_桥接(势力名, 势力数据 && 势力数据.类型),
+      ].map(值 => toText(值, '').trim()).filter(Boolean))).slice(0, 24),
+    };
+  }
+
+  function 构建静态地点归档摘要_桥接(路径 = [], 地点数据 = {}) {
+    return [
+      构建静态地点路径文本_桥接(路径),
+      toText(地点数据 && 地点数据.类型, ''),
+      toText(地点数据 && 地点数据.掌控势力, ''),
+      toText(地点数据 && 地点数据.状态, ''),
+      toText(地点数据 && 地点数据.现状描述, ''),
+    ].filter(Boolean).join(' / ').slice(0, 240);
+  }
+
+  function 构建静态地点归档索引扩展_桥接(路径 = [], 地点数据 = {}, 记录ID = '') {
+    const 规范路径 = 规范化静态地点路径_桥接(路径);
+    const 叶名 = 规范路径[规范路径.length - 1] || '';
+    return {
+      地点路径: 构建静态地点路径键_桥接(规范路径),
+      地点路径文本: 构建静态地点路径文本_桥接(规范路径),
+      原路径: 规范路径,
+      记录ID: toText(记录ID, '').trim(),
+      地点名: 叶名,
+      简称列表: Array.from(new Set([
+        叶名,
+        ...(Array.isArray(地点数据 && 地点数据.别名) ? 地点数据.别名 : []),
+      ].map(值 => toText(值, '').trim()).filter(Boolean))),
+      关键词: Array.from(new Set([
+        ...(Array.isArray(地点数据 && 地点数据.关键词) ? 地点数据.关键词 : []),
+        ...切分冷归档关键词_桥接(叶名, 地点数据 && 地点数据.类型),
+      ].map(值 => toText(值, '').trim()).filter(Boolean))).slice(0, 24),
+    };
+  }
+
+  function 推断静态地点记录ID_桥接(路径 = [], 地点数据 = {}) {
+    const 库 = 读取内置地点库_桥接();
+    if (!库 || !库.地点 || typeof 库.地点 !== 'object') return '';
+    const 目标路径键 = JSON.stringify(规范化静态地点路径_桥接(路径));
+    const 候选 = Object.entries(库.地点).filter(([, 记录]) => JSON.stringify(记录?.目标路径 || []) === 目标路径键);
+    if (!候选.length) return '';
+    const 静态字段 = ['类型', '别名', '关键词', '描述'];
+    const 完全匹配 = 候选.filter(([, 记录]) => 静态字段.every(字段 => JSON.stringify(记录?.节点?.[字段] ?? null) === JSON.stringify(地点数据?.[字段] ?? null)));
+    if (完全匹配.length === 1) return 完全匹配[0][0];
+    const 可插入 = 完全匹配.filter(([, 记录]) => 记录?.实例化策略 === 'insert');
+    if (可插入.length === 1) return 可插入[0][0];
+    return 候选.length === 1 ? 候选[0][0] : '';
+  }
+
+  async function 上传势力归档文件_桥接(势力名 = '', 势力数据 = {}, 上下文 = {}) {
+    const 数据 = cloneJsonValue(势力数据, {});
+    const chatKey = toText(上下文.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    return await 写入冷归档对象时间线版本_桥接({
+      chatKey,
+      类型: '势力',
+      名称字段: '势力名',
+      名称: 势力名,
+      路径: 构建势力归档文件路径_桥接(chatKey, 势力名),
+      楼层: 上下文.楼层,
+      归档tick: 上下文.归档tick ?? 0,
+      归档时间: 上下文.归档时间 || new Date().toISOString(),
+      摘要: 构建势力归档摘要_桥接(势力名, 数据),
+      数据,
+      扩展: 构建势力归档索引扩展_桥接(势力名, 数据),
+      写入后校验: true,
+    });
+  }
+
+  async function 上传静态地点归档文件_桥接(路径 = [], 地点数据 = {}, 上下文 = {}) {
+    const 规范路径 = 规范化静态地点路径_桥接(路径);
+    const 路径键 = 构建静态地点路径键_桥接(规范路径);
+    if (!路径键) throw new Error('静态地点归档路径为空。');
+    const 数据 = cloneJsonValue(地点数据, {});
+    const chatKey = toText(上下文.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    return await 写入冷归档对象时间线版本_桥接({
+      chatKey,
+      类型: '地点',
+      名称字段: '地点路径',
+      名称: 路径键,
+      路径: 构建静态地点归档文件路径_桥接(chatKey, 规范路径),
+      楼层: 上下文.楼层,
+      归档tick: 上下文.归档tick ?? 0,
+      归档时间: 上下文.归档时间 || new Date().toISOString(),
+      摘要: 构建静态地点归档摘要_桥接(规范路径, 数据),
+      数据,
+      扩展: 构建静态地点归档索引扩展_桥接(规范路径, 数据, 上下文.记录ID),
+      写入后校验: true,
+    });
+  }
+
   function 构建角色归档文件视图_桥接(角色名 = '', 版本 = {}, manifest = {}) {
     if (!版本 || typeof 版本 !== 'object') throw new Error('找不到角色归档版本。');
     return {
@@ -6977,6 +7374,49 @@
       checksum: 版本.checksum || '',
       byteSize: 版本.byteSize || 0,
       物品定义: 版本.数据 && typeof 版本.数据 === 'object' ? cloneJsonValue(版本.数据, {}) : null,
+    };
+  }
+
+  function 构建势力归档文件视图_桥接(势力名 = '', 版本 = {}, manifest = {}) {
+    if (!版本 || typeof 版本 !== 'object') throw new Error('找不到势力归档版本。');
+    return {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_diff',
+      chatKey: manifest && manifest.chatKey ? manifest.chatKey : 取当前聊天归档标识_桥接(),
+      势力名: toText(版本.势力名, 势力名).trim(),
+      简称列表: Array.isArray(版本.简称列表) ? [...版本.简称列表] : [],
+      关键词: Array.isArray(版本.关键词) ? [...版本.关键词] : [],
+      楼层: 规范化冷归档版本楼层_桥接(版本),
+      tick: 版本.tick ?? 版本.归档tick ?? 0,
+      归档tick: 版本.归档tick ?? 版本.tick ?? 0,
+      归档时间: 版本.归档时间 || '',
+      摘要: 版本.摘要 || '',
+      checksum: 版本.checksum || '',
+      byteSize: 版本.byteSize || 0,
+      势力数据: 版本.数据 && typeof 版本.数据 === 'object' ? cloneJsonValue(版本.数据, {}) : null,
+    };
+  }
+
+  function 构建静态地点归档文件视图_桥接(路径 = [], 版本 = {}, manifest = {}) {
+    if (!版本 || typeof 版本 !== 'object') throw new Error('找不到静态地点归档版本。');
+    const 原路径 = Array.isArray(版本.原路径) && 版本.原路径.length ? 版本.原路径 : 规范化静态地点路径_桥接(版本.地点路径);
+    return {
+      version: 冷归档Manifest版本_桥接,
+      schema: 'object_timeline_diff',
+      chatKey: manifest && manifest.chatKey ? manifest.chatKey : 取当前聊天归档标识_桥接(),
+      地点路径: 原路径,
+      地点路径文本: toText(版本.地点路径文本, 构建静态地点路径文本_桥接(原路径)),
+      记录ID: toText(版本.记录ID, '').trim(),
+      简称列表: Array.isArray(版本.简称列表) ? [...版本.简称列表] : [],
+      关键词: Array.isArray(版本.关键词) ? [...版本.关键词] : [],
+      楼层: 规范化冷归档版本楼层_桥接(版本),
+      tick: 版本.tick ?? 版本.归档tick ?? 0,
+      归档tick: 版本.归档tick ?? 版本.tick ?? 0,
+      归档时间: 版本.归档时间 || '',
+      摘要: 版本.摘要 || '',
+      checksum: 版本.checksum || '',
+      byteSize: 版本.byteSize || 0,
+      地点数据: 版本.数据 && typeof 版本.数据 === 'object' ? cloneJsonValue(版本.数据, {}) : null,
     };
   }
 
@@ -7044,6 +7484,332 @@
     const manifest = await 读取物品归档Manifest_桥接(选项);
     const 索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引[物品名] : null;
     return await 读取物品归档文件_桥接(索引 || { 物品名, path: 构建物品归档文件路径_桥接(manifest.chatKey, 物品名) }, { ...选项, chatKey: manifest.chatKey, 楼层: 当前楼层 });
+  }
+
+  async function 读取势力归档文件_桥接(输入 = '', 选项 = {}) {
+    const 指定楼层 = Math.floor(Number(选项.楼层));
+    const 当前楼层 = Number.isInteger(指定楼层) && 指定楼层 >= 0 ? 指定楼层 : 读取当前最新聊天楼层_桥接();
+    if (输入 && typeof 输入 === 'object') {
+      if (输入.数据 && typeof 输入.数据 === 'object') {
+        const 版本 = 取当前冷归档版本_桥接(输入, 当前楼层) || (当前楼层 < 0 || 规范化冷归档版本楼层_桥接(输入) <= 当前楼层 ? 输入 : null);
+        return 构建势力归档文件视图_桥接(toText(版本 && 版本.势力名, ''), 版本, {});
+      }
+      const 势力名 = toText(输入.势力名, '').trim();
+      const chatKey = toText(选项.chatKey || 输入.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+      const 路径 = toText(输入.path || 构建势力归档文件路径_桥接(chatKey, 势力名), '').trim();
+      const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: '势力', 名称: 势力名, 路径 });
+      const 版本 = 取当前冷归档版本_桥接(时间线, 当前楼层);
+      return 构建势力归档文件视图_桥接(toText(版本 && 版本.势力名, ''), 版本, {});
+    }
+    const 势力名 = toText(输入, '').trim();
+    if (!势力名) throw new Error('归档势力名为空。');
+    const manifest = await 读取势力归档Manifest_桥接(选项);
+    const 索引 = manifest && manifest.势力索引 && typeof manifest.势力索引 === 'object' ? manifest.势力索引[势力名] : null;
+    return await 读取势力归档文件_桥接(索引 || 势力名, { ...选项, chatKey: manifest.chatKey, 楼层: 当前楼层 });
+  }
+
+  async function 读取静态地点归档文件_桥接(输入 = '', 选项 = {}) {
+    const 指定楼层 = Math.floor(Number(选项.楼层));
+    const 当前楼层 = Number.isInteger(指定楼层) && 指定楼层 >= 0 ? 指定楼层 : 读取当前最新聊天楼层_桥接();
+    if (输入 && typeof 输入 === 'object') {
+      if (输入.数据 && typeof 输入.数据 === 'object') {
+        const 版本 = 取当前冷归档版本_桥接(输入, 当前楼层) || (当前楼层 < 0 || 规范化冷归档版本楼层_桥接(输入) <= 当前楼层 ? 输入 : null);
+        return 构建静态地点归档文件视图_桥接(版本 && 版本.原路径, 版本, {});
+      }
+      const 地点路径 = Array.isArray(输入.原路径) ? 输入.原路径 : 规范化静态地点路径_桥接(输入.地点路径);
+      const 路径键 = 构建静态地点路径键_桥接(地点路径);
+      const chatKey = toText(选项.chatKey || 输入.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+      const 路径 = toText(输入.path || 构建静态地点归档文件路径_桥接(chatKey, 地点路径), '').trim();
+      const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: '地点', 名称: 路径键, 路径 });
+      const 版本 = 取当前冷归档版本_桥接(时间线, 当前楼层);
+      return 构建静态地点归档文件视图_桥接(地点路径, 版本, {});
+    }
+    const 路径键 = toText(输入, '').trim();
+    if (!路径键) throw new Error('归档静态地点路径为空。');
+    const manifest = await 读取静态地点归档Manifest_桥接(选项);
+    const 索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引[路径键] : null;
+    return await 读取静态地点归档文件_桥接(索引 || { 地点路径: 路径键 }, { ...选项, chatKey: manifest.chatKey, 楼层: 当前楼层 });
+  }
+
+  function 读取库运行时_桥接() {
+    const 候选窗口 = [globalThis];
+    try { if (globalThis.window && globalThis.window !== globalThis) 候选窗口.push(globalThis.window); } catch (错误) {}
+    try { if (globalThis.parent && globalThis.parent !== globalThis) 候选窗口.push(globalThis.parent); } catch (错误) {}
+    try { if (globalThis.top && globalThis.top !== globalThis) 候选窗口.push(globalThis.top); } catch (错误) {}
+    return 候选窗口.map(候选 => 候选 && 候选.__LWCS_LIBRARY_DATA_RUNTIME_V1__).find(接口 => 接口 && typeof 接口.resolveFaction === 'function' && typeof 接口.resolveLocation === 'function') || null;
+  }
+
+  function 读取内置势力库_桥接() {
+    const 候选窗口 = [globalThis];
+    try { if (globalThis.window && globalThis.window !== globalThis) 候选窗口.push(globalThis.window); } catch (错误) {}
+    try { if (globalThis.parent && globalThis.parent !== globalThis) 候选窗口.push(globalThis.parent); } catch (错误) {}
+    try { if (globalThis.top && globalThis.top !== globalThis) 候选窗口.push(globalThis.top); } catch (错误) {}
+    return 候选窗口.map(候选 => 候选 && 候选.__LWCS_内置势力库__).find(库 => 库 && 库.势力 && typeof 库.势力 === 'object') || null;
+  }
+
+  function 读取内置地点库_桥接() {
+    const 候选窗口 = [globalThis];
+    try { if (globalThis.window && globalThis.window !== globalThis) 候选窗口.push(globalThis.window); } catch (错误) {}
+    try { if (globalThis.parent && globalThis.parent !== globalThis) 候选窗口.push(globalThis.parent); } catch (错误) {}
+    try { if (globalThis.top && globalThis.top !== globalThis) 候选窗口.push(globalThis.top); } catch (错误) {}
+    return 候选窗口.map(候选 => 候选 && 候选.__LWCS_内置地点库__).find(库 => 库 && 库.地点 && typeof 库.地点 === 'object') || null;
+  }
+
+  function 收集归档势力命中名称_桥接(索引表 = {}, 文本 = '') {
+    const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
+    if (!捕获文本.trim()) return [];
+    const 命中映射 = new Map();
+    Object.entries(索引表 && typeof 索引表 === 'object' ? 索引表 : {}).forEach(([势力名, 索引]) => {
+      const 关键词列表 = [势力名, ...(Array.isArray(索引 && 索引.简称列表) ? 索引.简称列表 : []), ...(Array.isArray(索引 && 索引.关键词) ? 索引.关键词 : [])]
+        .map(值 => toText(值, '').trim())
+        .filter(值 => 值 && 值.length >= 2);
+      关键词列表.forEach(关键词 => {
+        if (关键词.length < 2 || !捕获文本.includes(关键词)) return;
+        if (Array.isArray(索引 && 索引.关键词) && 索引.关键词.includes(关键词) && 捕获文本.trim().length <= 关键词.length + 2) return;
+        const 候选 = 命中映射.get(关键词) || new Set();
+        候选.add(势力名);
+        命中映射.set(关键词, 候选);
+      });
+    });
+    const 结果 = new Set();
+    命中映射.forEach((候选, 关键词) => {
+      if (候选.size === 1) [...候选].forEach(名称 => 结果.add(名称));
+      else console.warn('[LWCS] 势力归档命中冲突，已跳过：', 关键词, [...候选]);
+    });
+    return Array.from(结果);
+  }
+
+  function 收集归档静态地点路径键_桥接(索引表 = {}, 文本 = '') {
+    const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
+    if (!捕获文本.trim()) return [];
+    const 命中映射 = new Map();
+    Object.entries(索引表 && typeof 索引表 === 'object' ? 索引表 : {}).forEach(([路径键, 索引]) => {
+      const 路径文本 = toText(索引 && 索引.地点路径文本, '').trim();
+      const 关键词列表 = [路径文本, toText(索引 && 索引.地点名, ''), ...(Array.isArray(索引 && 索引.简称列表) ? 索引.简称列表 : []), ...(Array.isArray(索引 && 索引.关键词) ? 索引.关键词 : [])]
+        .map(值 => toText(值, '').trim())
+        .filter(值 => 值 && 值.length >= 2);
+      关键词列表.forEach(关键词 => {
+        if (!捕获文本.includes(关键词)) return;
+        if (Array.isArray(索引 && 索引.关键词) && 索引.关键词.includes(关键词) && 捕获文本.trim().length <= 关键词.length + 2) return;
+        const 候选 = 命中映射.get(关键词) || new Set();
+        候选.add(路径键);
+        命中映射.set(关键词, 候选);
+      });
+    });
+    const 结果 = new Set();
+    命中映射.forEach((候选, 关键词) => {
+      if (候选.size === 1) [...候选].forEach(路径键 => 结果.add(路径键));
+      else console.warn('[LWCS] 静态地点归档命中冲突，已跳过：', 关键词, [...候选]);
+    });
+    return Array.from(结果);
+  }
+
+  function 读取活动静态地点节点_桥接(statData = {}, 路径 = []) {
+    const 规范路径 = 规范化静态地点路径_桥接(路径);
+    let 容器 = statData && statData.world && statData.world.地点;
+    if (!容器 || typeof 容器 !== 'object') return null;
+    for (let index = 0; index < 规范路径.length; index += 1) {
+      const 节点 = 容器[规范路径[index]];
+      if (!节点 || typeof 节点 !== 'object' || Array.isArray(节点)) return null;
+      if (index === 规范路径.length - 1) return 节点;
+      容器 = 节点.子节点;
+      if (!容器 || typeof 容器 !== 'object' || Array.isArray(容器)) return null;
+    }
+    return null;
+  }
+
+  function 写入活动静态地点节点_桥接(statData = {}, 路径 = [], 节点数据 = {}) {
+    const 规范路径 = 规范化静态地点路径_桥接(路径);
+    if (!规范路径.length) return false;
+    if (!statData.world || typeof statData.world !== 'object') statData.world = {};
+    if (!statData.world.地点 || typeof statData.world.地点 !== 'object' || Array.isArray(statData.world.地点)) statData.world.地点 = {};
+    let 容器 = statData.world.地点;
+    for (let index = 0; index < 规范路径.length; index += 1) {
+      const 名称 = 规范路径[index];
+      if (index === 规范路径.length - 1) {
+        if (!Object.prototype.hasOwnProperty.call(容器, 名称)) 容器[名称] = cloneJsonValue(节点数据, {});
+        return true;
+      }
+      if (!容器[名称] || typeof 容器[名称] !== 'object' || Array.isArray(容器[名称])) 容器[名称] = {};
+      if (!容器[名称].子节点 || typeof 容器[名称].子节点 !== 'object' || Array.isArray(容器[名称].子节点)) 容器[名称].子节点 = {};
+      容器 = 容器[名称].子节点;
+    }
+    return false;
+  }
+
+  function 删除活动静态地点节点_桥接(statData = {}, 路径 = []) {
+    const 规范路径 = 规范化静态地点路径_桥接(路径);
+    if (!规范路径.length || !statData?.world?.地点) return false;
+    let 容器 = statData.world.地点;
+    for (let index = 0; index < 规范路径.length - 1; index += 1) {
+      const 节点 = 容器[规范路径[index]];
+      if (!节点 || typeof 节点 !== 'object' || Array.isArray(节点) || !节点.子节点 || typeof 节点.子节点 !== 'object') return false;
+      容器 = 节点.子节点;
+    }
+    if (!Object.prototype.hasOwnProperty.call(容器, 规范路径[规范路径.length - 1])) return false;
+    delete 容器[规范路径[规范路径.length - 1]];
+    return true;
+  }
+
+  function 解析静态地点路径_桥接(位置 = '') {
+    const 文本 = toText(位置, '').trim();
+    if (!文本 || ['无', '未知', '待生成'].includes(文本)) return [];
+    const 库 = 读取内置地点库_桥接();
+    const 运行时 = 读取库运行时_桥接();
+    if (!库 || !运行时) return [];
+    const 片段 = 文本.split('-').map(片段 => 片段.trim()).filter(Boolean);
+    const 直接 = 片段.length > 1 ? 运行时.resolveLocation(文本, 片段, { library: 库, allowKeyword: false }) : null;
+    if (直接?.status === 'resolved') return Array.isArray(直接.path) ? [...直接.path] : [];
+    const 叶节点 = 运行时.resolveLocation(片段[片段.length - 1], [], { library: 库, allowKeyword: false });
+    return 叶节点?.status === 'resolved' && Array.isArray(叶节点.path) ? [...叶节点.path] : [];
+  }
+
+  function 收集归档保护势力名_桥接(statData = {}) {
+    const 保护 = new Set();
+    const 添加 = 名称 => {
+      const 文本 = toText(名称, '').trim();
+      if (文本 && statData?.org?.[文本]) 保护.add(文本);
+    };
+    safeEntries(statData.char || {}).forEach(([, 角色数据]) => {
+      safeEntries(角色数据 && 角色数据.社交 && 角色数据.社交.势力).forEach(([势力名]) => 添加(势力名));
+    });
+    const 添加地点掌控势力 = 路径 => {
+      const 片段 = 解析静态地点路径_桥接(路径);
+      for (let index = 1; index <= 片段.length; index += 1) 添加(读取活动静态地点节点_桥接(statData, 片段.slice(0, index))?.掌控势力);
+    };
+    const 玩家名 = toText(deepGet(statData, 'sys.玩家名', ''), '').trim();
+    添加地点掌控势力(deepGet(statData, ['char', 玩家名, '状态', '位置'], ''));
+    添加地点掌控势力(deepGet(statData, '当前.地点', ''));
+    (Array.isArray(deepGet(statData, '相关实体索引.命中势力', [])) ? deepGet(statData, '相关实体索引.命中势力', []) : []).forEach(添加);
+    return 保护;
+  }
+
+  function 收集归档保护静态地点路径键_桥接(statData = {}, 索引表 = {}) {
+    const 保护 = new Set();
+    const 添加路径 = 路径输入 => {
+      const 路径 = 规范化静态地点路径_桥接(路径输入);
+      if (!路径.length) return;
+      for (let index = 1; index <= 路径.length; index += 1) 保护.add(构建静态地点路径键_桥接(路径.slice(0, index)));
+    };
+    const 添加位置 = 位置 => 添加路径(解析静态地点路径_桥接(位置));
+    safeEntries(statData.char || {}).forEach(([, 角色数据]) => 添加位置(deepGet(角色数据, '状态.位置', '')));
+    添加位置(deepGet(statData, '当前.地点', ''));
+    添加位置(deepGet(statData, 'world.战斗.环境.地点', ''));
+    const 相关地点 = [
+      deepGet(statData, '相关实体索引.命中地点', []),
+      deepGet(statData, '相关实体索引.地点', []),
+      deepGet(statData, '相关实体索引.命中静态地点', []),
+    ];
+    相关地点.flatMap(值 => Array.isArray(值) ? 值 : [值]).forEach(值 => {
+      const 记录 = 索引表 && 索引表[值];
+      if (记录 && Array.isArray(记录.原路径)) 添加路径(记录.原路径);
+      else 添加位置(值);
+    });
+    return 保护;
+  }
+
+  async function 归档MVU势力_桥接(势力名列表 = [], 选项 = {}) {
+    const 待归档名称 = Array.from(new Set((Array.isArray(势力名列表) ? 势力名列表 : [势力名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
+    if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+    const 当前MVU数据 = cloneJsonValue(mvuData, {});
+    const 原始MVU数据 = cloneJsonValue(当前MVU数据, {});
+    const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
+    const 势力集 = statData.org && typeof statData.org === 'object' ? statData.org : {};
+    const 保护势力 = 收集归档保护势力名_桥接(statData);
+    const 跳过 = [];
+    const 可归档 = 待归档名称.filter(势力名 => {
+      if (!势力集[势力名] || typeof 势力集[势力名] !== 'object') { 跳过.push({ 势力名, reason: 'missing' }); return false; }
+      if (!选项.强制 && 保护势力.has(势力名)) { 跳过.push({ 势力名, reason: 'protected' }); return false; }
+      return true;
+    });
+    if (!可归档.length) return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, statData, messageId };
+    const chatKey = 取当前聊天归档标识_桥接();
+    const 归档时间 = new Date().toISOString();
+    const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
+    const 上传索引 = [];
+    for (const 势力名 of 可归档) 上传索引.push(await 上传势力归档文件_桥接(势力名, 势力集[势力名], { chatKey, 归档时间, 归档tick, 楼层: 当前楼层 }));
+    const manifest = cloneJsonValue(await 读取势力归档Manifest_桥接({ force: true }), 创建空势力归档Manifest_桥接(chatKey));
+    if (!manifest.势力索引 || typeof manifest.势力索引 !== 'object') manifest.势力索引 = {};
+    上传索引.forEach(索引 => { const 势力名 = toText(索引 && 索引.势力名, '').trim(); if (势力名) manifest.势力索引[势力名] = 索引; });
+    await 写入势力归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
+    const 回读Manifest = await 读取势力归档Manifest_桥接({ force: true });
+    上传索引.forEach(索引 => {
+      const 势力名 = toText(索引 && 索引.势力名, '').trim();
+      校验冷归档Manifest条目_桥接(回读Manifest?.势力索引?.[势力名], 索引, '势力名');
+    });
+    可归档.forEach(势力名 => { delete 势力集[势力名]; });
+    当前MVU数据.stat_data = statData;
+    let 复读StatData;
+    try {
+      await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+      复读StatData = await 复读确认归档已移出热区_桥接(可归档, (数据, 名称列表) => 名称列表.filter(名称 => 数据?.org?.[名称]), '势力', 选项);
+    } catch (错误) {
+      try { await Promise.resolve(host.replaceMvuData(原始MVU数据, { type: 'message', message_id: messageId })); }
+      catch (回滚错误) { console.error('[DragonUI] 势力归档失败后回滚热区 MVU 失败', 回滚错误); }
+      throw new Error(`已生成势力归档副本但未完成热区移除，已尝试保留主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
+    }
+    writeMvuEditorStoreSnapshot(复读StatData, { messageId });
+    await refreshLiveSnapshot({ force: true });
+    return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
+  }
+
+  async function 归档MVU静态地点_桥接(地点路径列表 = [], 选项 = {}) {
+    const 待归档路径键 = Array.from(new Set((Array.isArray(地点路径列表) ? 地点路径列表 : [地点路径列表]).map(路径 => 构建静态地点路径键_桥接(路径)).filter(Boolean)));
+    if (!待归档路径键.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
+    const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+    const 当前MVU数据 = cloneJsonValue(mvuData, {});
+    const 原始MVU数据 = cloneJsonValue(当前MVU数据, {});
+    const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
+    const manifest当前 = await 读取静态地点归档Manifest_桥接({ force: true });
+    const 地点索引 = manifest当前 && manifest当前.地点索引 && typeof manifest当前.地点索引 === 'object' ? manifest当前.地点索引 : {};
+    const 保护地点 = 收集归档保护静态地点路径键_桥接(statData, 地点索引);
+    const 跳过 = [];
+    const 可归档 = [];
+    待归档路径键.forEach(路径键 => {
+      const 路径 = 规范化静态地点路径_桥接(路径键);
+      const 节点 = 读取活动静态地点节点_桥接(statData, 路径);
+      if (!节点) { 跳过.push({ 地点路径: 路径键, reason: 'missing' }); return; }
+      if (节点.子节点 && typeof 节点.子节点 === 'object' && Object.keys(节点.子节点).length) { 跳过.push({ 地点路径: 路径键, reason: 'has_active_children' }); return; }
+      if (!选项.强制 && 保护地点.has(路径键)) { 跳过.push({ 地点路径: 路径键, reason: 'protected' }); return; }
+      可归档.push({ 路径键, 路径 });
+    });
+    if (!可归档.length) return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, statData, messageId };
+    const chatKey = 取当前聊天归档标识_桥接();
+    const 归档时间 = new Date().toISOString();
+    const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+    const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
+    const 上传索引 = [];
+    for (const 项 of 可归档) {
+      const 记录 = 地点索引[项.路径键] || {};
+      const 节点数据 = 读取活动静态地点节点_桥接(statData, 项.路径);
+      const 记录ID = 记录.记录ID || 推断静态地点记录ID_桥接(项.路径, 节点数据);
+      上传索引.push(await 上传静态地点归档文件_桥接(项.路径, 节点数据, { chatKey, 归档时间, 归档tick, 楼层: 当前楼层, 记录ID }));
+    }
+    const manifest = cloneJsonValue(await 读取静态地点归档Manifest_桥接({ force: true }), 创建空静态地点归档Manifest_桥接(chatKey));
+    if (!manifest.地点索引 || typeof manifest.地点索引 !== 'object') manifest.地点索引 = {};
+    上传索引.forEach(索引 => { const 路径键 = toText(索引 && 索引.地点路径, '').trim(); if (路径键) manifest.地点索引[路径键] = 索引; });
+    await 写入静态地点归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
+    const 回读Manifest = await 读取静态地点归档Manifest_桥接({ force: true });
+    上传索引.forEach(索引 => {
+      const 路径键 = toText(索引 && 索引.地点路径, '').trim();
+      校验冷归档Manifest条目_桥接(回读Manifest?.地点索引?.[路径键], 索引, '地点路径');
+    });
+    可归档.forEach(项 => { 删除活动静态地点节点_桥接(statData, 项.路径); });
+    当前MVU数据.stat_data = statData;
+    let 复读StatData;
+    try {
+      await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+      复读StatData = await 复读确认归档已移出热区_桥接(可归档.map(项 => 项.路径键), (数据, 名称列表) => 名称列表.filter(路径键 => 读取活动静态地点节点_桥接(数据, 规范化静态地点路径_桥接(路径键))), '静态地点', 选项);
+    } catch (错误) {
+      try { await Promise.resolve(host.replaceMvuData(原始MVU数据, { type: 'message', message_id: messageId })); }
+      catch (回滚错误) { console.error('[DragonUI] 静态地点归档失败后回滚热区 MVU 失败', 回滚错误); }
+      throw new Error(`已生成静态地点归档副本但未完成热区移除，已尝试保留主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
+    }
+    writeMvuEditorStoreSnapshot(复读StatData, { messageId });
+    await refreshLiveSnapshot({ force: true });
+    return { changed: true, names: 可归档.map(项 => 项.路径键), archivedNames: 可归档.map(项 => 项.路径键), skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
   async function 归档MVU角色_桥接(角色名列表 = [], 选项 = {}) {
@@ -7298,6 +8064,144 @@
     }
   }
 
+  async function 恢复MVU归档势力_桥接(势力名列表 = [], 选项 = {}) {
+    const 待恢复名称 = Array.from(new Set((Array.isArray(势力名列表) ? 势力名列表 : [势力名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
+    if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
+    if (冷归档写回状态_桥接.正在归档) return { changed: false, names: [], restoredNames: [], skippedNames: 待恢复名称.map(势力名 => ({ 势力名, reason: 'archive_in_progress' })), reason: 'archive_in_progress' };
+    冷归档写回状态_桥接.正在恢复 = true;
+    try {
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+      const 外部StatData = 选项.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
+      const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
+      const manifest = await 读取势力归档Manifest_桥接();
+      const 势力索引 = manifest && manifest.势力索引 && typeof manifest.势力索引 === 'object' ? manifest.势力索引 : {};
+      const 当前MVU数据 = cloneJsonValue(mvuData, {});
+      const statData = 外部StatData || (当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {});
+      if (!statData.org || typeof statData.org !== 'object') statData.org = {};
+      const 跳过 = [];
+      const 已恢复 = [];
+      const 已阻断 = [];
+      for (const 势力名 of 待恢复名称) {
+        if (statData.org[势力名] && typeof statData.org[势力名] === 'object') { 跳过.push({ 势力名, reason: 'exists' }); continue; }
+        const 索引 = 势力索引[势力名];
+        const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+        if (!版本) {
+          if (索引) 已阻断.push(势力名);
+          跳过.push({ 势力名, reason: 'missing_archive' });
+          continue;
+        }
+        let 归档视图 = null;
+        try { 归档视图 = await 读取势力归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 }); }
+        catch (错误) { 已阻断.push(势力名); 跳过.push({ 势力名, reason: 'archive_read_failed', error: 错误 }); continue; }
+        if (toText(归档视图 && 归档视图.势力名, '').trim() !== 势力名 || !归档视图.势力数据 || typeof 归档视图.势力数据 !== 'object') {
+          已阻断.push(势力名);
+          跳过.push({ 势力名, reason: 'archive_mismatch' });
+          continue;
+        }
+        statData.org[势力名] = cloneJsonValue(归档视图.势力数据, {});
+        已恢复.push(势力名);
+      }
+      if (!已恢复.length) return { changed: false, names: [], restoredNames: [], blockedNames: 已阻断, skippedNames: 跳过, statData, messageId };
+      if (外部StatData) return { changed: true, names: 已恢复, restoredNames: 已恢复, blockedNames: 已阻断, skippedNames: 跳过, statData, messageId };
+      当前MVU数据.stat_data = statData;
+      await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档势力');
+      记录MVU冷实体激活_桥接(已恢复.map(势力名 => ({ 类型: '势力', 名称: 势力名 })));
+      writeMvuEditorStoreSnapshot(statData, { messageId });
+      await 按需刷新MVU快照_桥接(选项);
+      return { changed: true, names: 已恢复, restoredNames: 已恢复, blockedNames: 已阻断, skippedNames: 跳过, statData, messageId };
+    } finally {
+      冷归档写回状态_桥接.正在恢复 = false;
+    }
+  }
+
+  async function 恢复MVU归档静态地点_桥接(地点路径键列表 = [], 选项 = {}) {
+    const 待恢复路径键 = Array.from(new Set((Array.isArray(地点路径键列表) ? 地点路径键列表 : [地点路径键列表]).map(路径 => toText(路径, '').trim()).filter(Boolean)));
+    if (!待恢复路径键.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
+    if (冷归档写回状态_桥接.正在归档) return { changed: false, names: [], restoredNames: [], skippedNames: 待恢复路径键.map(地点路径 => ({ 地点路径, reason: 'archive_in_progress' })), reason: 'archive_in_progress' };
+    冷归档写回状态_桥接.正在恢复 = true;
+    try {
+      const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+      const 外部StatData = 选项.statData && typeof 选项.statData === 'object' ? 选项.statData : null;
+      const 当前楼层 = 读取当前最新聊天楼层_桥接(messageId);
+      const manifest = await 读取静态地点归档Manifest_桥接();
+      const 地点索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引 : {};
+      const 当前MVU数据 = cloneJsonValue(mvuData, {});
+      const statData = 外部StatData || (当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {});
+      const 库 = 读取内置地点库_桥接();
+      const 运行时 = 读取库运行时_桥接();
+      const 跳过 = [];
+      const 已恢复 = [];
+      const 已阻断 = [];
+      for (const 路径键 of 待恢复路径键) {
+        const 索引 = 地点索引[路径键];
+        const 路径 = Array.isArray(索引 && 索引.原路径) ? 索引.原路径 : 规范化静态地点路径_桥接(路径键);
+        if (!路径.length) { 跳过.push({ 地点路径: 路径键, reason: 'invalid_path' }); continue; }
+        if (读取活动静态地点节点_桥接(statData, 路径)) { 跳过.push({ 地点路径: 路径键, reason: 'exists' }); continue; }
+        const 版本 = 取当前冷归档版本_桥接(索引, 当前楼层);
+        if (!版本) {
+          if (索引) 已阻断.push(路径键);
+          跳过.push({ 地点路径: 路径键, reason: 'missing_archive' });
+          continue;
+        }
+        let 归档视图 = null;
+        try { 归档视图 = await 读取静态地点归档文件_桥接(版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 }); }
+        catch (错误) { 已阻断.push(路径键); 跳过.push({ 地点路径: 路径键, reason: 'archive_read_failed', error: 错误 }); continue; }
+        if (JSON.stringify(归档视图 && 归档视图.地点路径) !== JSON.stringify(路径) || !归档视图.地点数据 || typeof 归档视图.地点数据 !== 'object') {
+          已阻断.push(路径键);
+          跳过.push({ 地点路径: 路径键, reason: 'archive_mismatch' });
+          continue;
+        }
+        try {
+          for (let depth = 1; depth <= 路径.length; depth += 1) {
+            const 前缀 = 路径.slice(0, depth);
+            if (读取活动静态地点节点_桥接(statData, 前缀)) continue;
+            const 前缀键 = 构建静态地点路径键_桥接(前缀);
+            const 前缀索引 = 地点索引[前缀键];
+            let 节点数据 = null;
+            if (depth === 路径.length && 归档视图.地点数据) {
+              节点数据 = 归档视图.地点数据;
+            } else if (前缀索引) {
+              const 前缀版本 = 取当前冷归档版本_桥接(前缀索引, 当前楼层);
+              if (!前缀版本) throw new Error(`祖先地点归档版本缺失：${前缀键}`);
+              const 前缀归档 = await 读取静态地点归档文件_桥接(前缀版本, { chatKey: manifest.chatKey, 楼层: 当前楼层 });
+              if (JSON.stringify(前缀归档.地点路径) !== JSON.stringify(前缀) || !前缀归档.地点数据 || typeof 前缀归档.地点数据 !== 'object') throw new Error(`祖先地点归档损坏：${前缀键}`);
+              节点数据 = 前缀归档.地点数据;
+            } else {
+              if (!库 || !运行时) throw new Error('地点库或库运行时缺失，无法补齐静态地点祖先。');
+              let 记录ID = depth === 路径.length ? toText(索引 && 索引.记录ID, '').trim() : '';
+              if (!记录ID) {
+                const 解析 = 运行时.resolveLocation(前缀.join('/'), 前缀, { library: 库, allowKeyword: false });
+                if (解析.status === 'resolved') 记录ID = toText(解析.recordId, '').trim();
+                else if (解析.status === 'conflict') {
+                  const 可插入 = (解析.candidates || []).find(候选 => 库.地点[候选] && 库.地点[候选].实例化策略 === 'insert');
+                  记录ID = toText(可插入, '').trim();
+                }
+              }
+              if (!记录ID || !库.地点[记录ID]) throw new Error(`静态地点路径无法唯一解析：${前缀键}`);
+              节点数据 = 库.地点[记录ID].节点;
+            }
+            if (!写入活动静态地点节点_桥接(statData, 前缀, 节点数据)) throw new Error(`静态地点祖先写入失败：${前缀键}`);
+          }
+        } catch (错误) {
+          已阻断.push(路径键);
+          跳过.push({ 地点路径: 路径键, reason: 'restore_failed', error: 错误 });
+          continue;
+        }
+        已恢复.push(路径键);
+      }
+      if (!已恢复.length) return { changed: false, names: [], restoredNames: [], blockedNames: 已阻断, blockedRecordIds: 已阻断.map(路径键 => toText(地点索引[路径键]?.记录ID, '').trim()).filter(Boolean), skippedNames: 跳过, statData, messageId };
+      if (外部StatData) return { changed: true, names: 已恢复, restoredNames: 已恢复, blockedNames: 已阻断, blockedRecordIds: 已阻断.map(路径键 => toText(地点索引[路径键]?.记录ID, '').trim()).filter(Boolean), skippedNames: 跳过, statData, messageId };
+      当前MVU数据.stat_data = statData;
+      await 写回MVU数据并记录耗时_桥接(host, 当前MVU数据, { type: 'message', message_id: messageId }, 'MVU写回:恢复归档静态地点');
+      记录MVU冷实体激活_桥接(已恢复.map(地点路径 => ({ 类型: '地点', 名称: 地点路径 })));
+      writeMvuEditorStoreSnapshot(statData, { messageId });
+      await 按需刷新MVU快照_桥接(选项);
+      return { changed: true, names: 已恢复, restoredNames: 已恢复, blockedNames: 已阻断, blockedRecordIds: 已阻断.map(路径键 => toText(地点索引[路径键]?.记录ID, '').trim()).filter(Boolean), skippedNames: 跳过, statData, messageId };
+    } finally {
+      冷归档写回状态_桥接.正在恢复 = false;
+    }
+  }
+
   async function 恢复MVU归档物品定义_桥接(物品名列表 = [], 选项 = {}) {
     const 待恢复名称 = Array.from(new Set((Array.isArray(物品名列表) ? 物品名列表 : [物品名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
@@ -7432,6 +8336,26 @@
     return await 恢复MVU归档动态地点_桥接(命中名称, 选项);
   }
 
+  async function 按文本恢复归档势力_桥接(文本 = '', 选项 = {}) {
+    const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
+    if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
+    const manifest = await 读取势力归档Manifest_桥接();
+    const 势力索引 = manifest && manifest.势力索引 && typeof manifest.势力索引 === 'object' ? manifest.势力索引 : {};
+    const 命中名称 = 收集归档势力命中名称_桥接(势力索引, 捕获文本);
+    if (!命中名称.length) return await 读取冷归档空结果_桥接('no_match');
+    return await 恢复MVU归档势力_桥接(命中名称, 选项);
+  }
+
+  async function 按文本恢复归档静态地点_桥接(文本 = '', 选项 = {}) {
+    const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
+    if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
+    const manifest = await 读取静态地点归档Manifest_桥接();
+    const 地点索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引 : {};
+    const 命中路径 = 收集归档静态地点路径键_桥接(地点索引, 捕获文本);
+    if (!命中路径.length) return await 读取冷归档空结果_桥接('no_match');
+    return await 恢复MVU归档静态地点_桥接(命中路径, 选项);
+  }
+
   async function 按文本恢复归档物品定义_桥接(文本 = '', 选项 = {}) {
     const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim() && !收集归档物品候选名_桥接(选项).length) return await 读取冷归档空结果_桥接('empty_text');
@@ -7546,10 +8470,14 @@
     const 角色Manifest = 读取角色归档Manifest缓存_桥接();
     const 动态地点Manifest = 读取动态地点归档Manifest缓存_桥接();
     const 物品Manifest = 读取物品归档Manifest缓存_桥接();
+    const 势力Manifest = 读取势力归档Manifest缓存_桥接();
+    const 静态地点Manifest = 读取静态地点归档Manifest缓存_桥接();
     const 角色索引 = 角色Manifest && 角色Manifest.角色索引 && typeof 角色Manifest.角色索引 === 'object' ? 角色Manifest.角色索引 : {};
     const 动态地点索引 = 动态地点Manifest && 动态地点Manifest.动态地点索引 && typeof 动态地点Manifest.动态地点索引 === 'object' ? 动态地点Manifest.动态地点索引 : {};
     const 物品索引 = 物品Manifest && 物品Manifest.物品索引 && typeof 物品Manifest.物品索引 === 'object' ? 物品Manifest.物品索引 : {};
-    return !Object.keys(角色索引).length && !Object.keys(动态地点索引).length && !Object.keys(物品索引).length;
+    const 势力索引 = 势力Manifest && 势力Manifest.势力索引 && typeof 势力Manifest.势力索引 === 'object' ? 势力Manifest.势力索引 : {};
+    const 静态地点索引 = 静态地点Manifest && 静态地点Manifest.地点索引 && typeof 静态地点Manifest.地点索引 === 'object' ? 静态地点Manifest.地点索引 : {};
+    return !Object.keys(角色索引).length && !Object.keys(动态地点索引).length && !Object.keys(物品索引).length && !Object.keys(势力索引).length && !Object.keys(静态地点索引).length;
   }
 
   function 选择自动归档角色名_桥接(statData = {}, 文本 = '', 上限 = 冷归档自动归档批量硬上限_桥接, 选项 = {}) {
@@ -7770,6 +8698,60 @@
     `;
   }
 
+  function 构建势力归档选择行_桥接(势力名 = '', 势力数据 = {}, 选项 = {}) {
+    const 类型 = toText(势力数据 && 势力数据.类型, '势力');
+    const 状态 = toText(势力数据 && 势力数据.状态, '正常');
+    const 是否保护 = !!选项.保护;
+    return `
+      <label class="role-switch-tile mvu-cold-archive-row${是否保护 ? ' disabled' : ''}" data-switch-search="${escapeHtmlAttr([势力名, 类型, 状态, toText(势力数据 && 势力数据.现状描述, ''), '势力'].join(' ').toLowerCase())}">
+        <span class="role-switch-head"><b>${htmlEscape(势力名)}</b><span class="state-tag ${是否保护 ? 'warn' : ''}">${是否保护 ? '保护' : '热'}</span></span>
+        <span class="role-switch-meta">${htmlEscape(类型)}</span>
+        <span class="role-switch-meta">${htmlEscape(状态)}</span>
+        <span class="role-switch-actions"><input type="checkbox" data-faction-archive-hot="${escapeHtmlAttr(势力名)}"${是否保护 ? ' disabled data-faction-archive-protected="1"' : ''} /></span>
+      </label>
+    `;
+  }
+
+  function 构建势力归档索引行_桥接(势力名 = '', 索引 = {}) {
+    const 摘要 = toText(索引 && 索引.摘要, '已归档');
+    return `
+      <label class="role-switch-tile mvu-cold-archive-row archived" data-switch-search="${escapeHtmlAttr([势力名, 摘要, ...(Array.isArray(索引 && 索引.简称列表) ? 索引.简称列表 : []), '势力', '已归档'].join(' ').toLowerCase())}">
+        <span class="role-switch-head"><b>${htmlEscape(势力名)}</b><span class="state-tag warn">已归档</span></span>
+        <span class="role-switch-meta">${htmlEscape(摘要)}</span>
+        <span class="role-switch-meta">${htmlEscape(格式化冷归档时间_桥接(索引 && 索引.归档时间))}</span>
+        <span class="role-switch-actions"><input type="checkbox" data-faction-archive-cold="${escapeHtmlAttr(势力名)}" /><button type="button" class="tag-chip role-switch-action-btn" data-faction-archive-view="${escapeHtmlAttr(势力名)}">详情</button></span>
+      </label>
+    `;
+  }
+
+  function 构建静态地点归档选择行_桥接(路径键 = '', 地点数据 = {}, 索引 = {}, 选项 = {}) {
+    const 路径文本 = toText(索引 && 索引.地点路径文本, 构建静态地点路径文本_桥接(路径键));
+    const 类型 = toText(地点数据 && 地点数据.类型, '地点');
+    const 状态 = toText(地点数据 && 地点数据.状态, '未知');
+    const 是否保护 = !!选项.保护;
+    return `
+      <label class="role-switch-tile mvu-cold-archive-row${是否保护 ? ' disabled' : ''}" data-switch-search="${escapeHtmlAttr([路径文本, 类型, 状态, toText(地点数据 && 地点数据.掌控势力, ''), '地点'].join(' ').toLowerCase())}">
+        <span class="role-switch-head"><b>${htmlEscape(路径文本)}</b><span class="state-tag ${是否保护 ? 'warn' : ''}">${是否保护 ? '保护' : '热'}</span></span>
+        <span class="role-switch-meta">${htmlEscape(类型)}</span>
+        <span class="role-switch-meta">${htmlEscape(状态)}</span>
+        <span class="role-switch-actions"><input type="checkbox" data-static-location-archive-hot="${escapeHtmlAttr(路径键)}"${是否保护 ? ' disabled data-static-location-archive-protected="1"' : ''} /></span>
+      </label>
+    `;
+  }
+
+  function 构建静态地点归档索引行_桥接(路径键 = '', 索引 = {}) {
+    const 路径文本 = toText(索引 && 索引.地点路径文本, 构建静态地点路径文本_桥接(路径键));
+    const 摘要 = toText(索引 && 索引.摘要, '已归档');
+    return `
+      <label class="role-switch-tile mvu-cold-archive-row archived" data-switch-search="${escapeHtmlAttr([路径文本, 摘要, ...(Array.isArray(索引 && 索引.简称列表) ? 索引.简称列表 : []), '地点', '已归档'].join(' ').toLowerCase())}">
+        <span class="role-switch-head"><b>${htmlEscape(路径文本)}</b><span class="state-tag warn">已归档</span></span>
+        <span class="role-switch-meta">${htmlEscape(摘要)}</span>
+        <span class="role-switch-meta">${htmlEscape(格式化冷归档时间_桥接(索引 && 索引.归档时间))}</span>
+        <span class="role-switch-actions"><input type="checkbox" data-static-location-archive-cold="${escapeHtmlAttr(路径键)}" /><button type="button" class="tag-chip role-switch-action-btn" data-static-location-archive-view="${escapeHtmlAttr(路径键)}">详情</button></span>
+      </label>
+    `;
+  }
+
   function 构建物品归档选择行_桥接(物品名 = '', 物品定义 = {}, 选项 = {}) {
     const 分类 = 规范化物品定义分类_桥接(选项.分类 || 读取物品定义显式分类_桥接(物品定义, ''), '剧情杂物');
     const 品质 = toText(物品定义 && 物品定义.品质, '无');
@@ -7802,39 +8784,65 @@
 
   function 规范化冷归档页签_桥接(页签 = '') {
     const 文本 = toText(页签, '角色').trim();
-    return 文本 === '动态地点' || 文本 === '物品' ? 文本 : '角色';
+    return ['动态地点', '地点', '物品', '势力'].includes(文本) ? 文本 : '角色';
   }
 
   function 读取冷归档页签单位_桥接(页签 = '角色') {
     if (页签 === '动态地点') return '处动态地点';
+    if (页签 === '地点') return '处地点';
+    if (页签 === '势力') return '个势力';
     if (页签 === '物品') return '个物品';
     return '名角色';
   }
 
   function 读取冷归档页签标题_桥接(页签 = '角色') {
     if (页签 === '动态地点') return '动态地点列表';
+    if (页签 === '地点') return '地点列表';
+    if (页签 === '势力') return '势力列表';
     if (页签 === '物品') return '物品列表';
     return '角色列表';
   }
 
   function 读取冷归档页签搜索占位_桥接(页签 = '角色') {
     if (页签 === '动态地点') return '搜索动态地点 / 归属 / 势力';
+    if (页签 === '地点') return '搜索地点路径 / 类型 / 状态 / 势力';
+    if (页签 === '势力') return '搜索势力 / 类型 / 状态 / 当前摘要';
     if (页签 === '物品') return '搜索物品 / 类型 / 品质 / 槽位';
     return '搜索角色 / 身份 / 地点 / 状态';
+  }
+
+  function 收集活动静态地点条目_桥接(statData = {}) {
+    const 结果 = [];
+    const 访问 = (表, 父路径 = []) => {
+      safeEntries(表 && typeof 表 === 'object' ? 表 : {}).forEach(([名称, 节点]) => {
+        if (!节点 || typeof 节点 !== 'object' || Array.isArray(节点)) return;
+        const 路径 = [...父路径, 名称];
+        结果.push({ 路径键: 构建静态地点路径键_桥接(路径), 路径, 节点 });
+        if (节点.子节点 && typeof 节点.子节点 === 'object' && !Array.isArray(节点.子节点)) 访问(节点.子节点, 路径);
+      });
+    };
+    访问(deepGet(statData, 'world.地点', {}));
+    return 结果;
   }
 
   function 构建冷归档面板_桥接(snapshot = liveSnapshot || lastRenderableSnapshot || {}) {
     const rootData = snapshot && snapshot.rootData ? snapshot.rootData : {};
     const 当前页签 = 规范化冷归档页签_桥接(modalFocusState[`${冷归档预览键_桥接}::tab`]);
     const 角色集 = rootData.char && typeof rootData.char === 'object' ? rootData.char : {};
+    const 势力集 = rootData.org && typeof rootData.org === 'object' ? rootData.org : {};
+    const 静态地点条目 = 收集活动静态地点条目_桥接(rootData);
     const 动态地点 = deepGet(rootData, 'world.动态地点', {});
     const 物品定义条目列表 = 取物品定义条目列表_桥接(rootData);
     const 角色Manifest = 读取角色归档Manifest缓存_桥接();
     const 动态地点Manifest = 读取动态地点归档Manifest缓存_桥接();
     const 物品Manifest = 读取物品归档Manifest缓存_桥接();
+    const 势力Manifest = 读取势力归档Manifest缓存_桥接();
+    const 静态地点Manifest = 读取静态地点归档Manifest缓存_桥接();
     const 角色索引 = 角色Manifest && 角色Manifest.角色索引 && typeof 角色Manifest.角色索引 === 'object' ? 角色Manifest.角色索引 : {};
     const 动态地点索引 = 动态地点Manifest && 动态地点Manifest.动态地点索引 && typeof 动态地点Manifest.动态地点索引 === 'object' ? 动态地点Manifest.动态地点索引 : {};
     const 物品索引 = 物品Manifest && 物品Manifest.物品索引 && typeof 物品Manifest.物品索引 === 'object' ? 物品Manifest.物品索引 : {};
+    const 势力索引 = 势力Manifest && 势力Manifest.势力索引 && typeof 势力Manifest.势力索引 === 'object' ? 势力Manifest.势力索引 : {};
+    const 静态地点索引 = 静态地点Manifest && 静态地点Manifest.地点索引 && typeof 静态地点Manifest.地点索引 === 'object' ? 静态地点Manifest.地点索引 : {};
     const 自动归档配置 = 冷归档自动归档配置_桥接;
     const 归档服务标签 = 读取冷归档服务状态标签_桥接();
     const 归档服务可写 = 冷归档服务状态_桥接.可用 && 冷归档服务状态_桥接.可写;
@@ -7844,19 +8852,29 @@
     const 保护角色 = 收集归档保护角色名_桥接(rootData);
     const 保护动态地点 = 收集归档保护动态地点名_桥接(rootData);
     const 保护物品 = 收集归档保护物品名_桥接(rootData);
+    const 保护势力 = 收集归档保护势力名_桥接(rootData);
+    const 保护静态地点 = 收集归档保护静态地点路径键_桥接(rootData, 静态地点索引);
     const 排序名称 = 名称列表 => 名称列表.sort((左, 右) => 左.localeCompare(右, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }));
     const 热角色数量 = Object.keys(角色集).length;
     const 热地点数量 = Object.keys(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}).length;
     const 热物品数量 = 物品定义条目列表.length;
+    const 热势力数量 = Object.keys(势力集).length;
+    const 热静态地点数量 = 静态地点条目.length;
     const 热角色名集合 = new Set(Object.keys(角色集));
     const 热地点名集合 = new Set(Object.keys(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {}));
     const 热物品名集合 = new Set(物品定义条目列表.map(({ 物品名 }) => 物品名));
+    const 热势力名集合 = new Set(Object.keys(势力集));
+    const 热静态地点名集合 = new Set(静态地点条目.map(条目 => 条目.路径键));
     const 冷角色名称 = Object.keys(角色索引).filter(角色名 => !热角色名集合.has(角色名));
     const 冷地点名称 = Object.keys(动态地点索引).filter(地点名 => !热地点名集合.has(地点名));
     const 冷物品名称 = Object.keys(物品索引).filter(物品名 => !热物品名集合.has(物品名));
+    const 冷势力名称 = Object.keys(势力索引).filter(势力名 => !热势力名集合.has(势力名));
+    const 冷静态地点名称 = Object.keys(静态地点索引).filter(路径键 => !热静态地点名集合.has(路径键));
     const 冷角色数量 = 冷角色名称.length;
     const 冷地点数量 = 冷地点名称.length;
     const 冷物品数量 = 冷物品名称.length;
+    const 冷势力数量 = 冷势力名称.length;
+    const 冷静态地点数量 = 冷静态地点名称.length;
     const 热行 = 当前页签 === '角色'
       ? sortCharacterEntries(safeEntries(角色集), { playerName: toText(deepGet(rootData, 'sys.玩家名', ''), ''), currentName: snapshot.activeName })
         .map(([角色名, 角色数据]) => 构建角色归档选择行_桥接(角色名, 角色数据, { 保护: 保护角色.has(角色名) })).join('')
@@ -7864,19 +8882,35 @@
         ? safeEntries(动态地点 && typeof 动态地点 === 'object' ? 动态地点 : {})
           .sort((左, 右) => 左[0].localeCompare(右[0], 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
           .map(([地点名, 地点数据]) => 构建动态地点归档选择行_桥接(地点名, 地点数据, { 保护: 保护动态地点.has(地点名) })).join('')
-        : 物品定义条目列表
-          .sort((左, 右) => 左.物品名.localeCompare(右.物品名, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
-          .map(({ 物品名, 定义, 分类 }) => 构建物品归档选择行_桥接(物品名, 定义, { 分类, 保护: 保护物品.has(物品名) })).join('');
+        : 当前页签 === '势力'
+          ? safeEntries(势力集)
+            .sort((左, 右) => 左[0].localeCompare(右[0], 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+            .map(([势力名, 势力数据]) => 构建势力归档选择行_桥接(势力名, 势力数据, { 保护: 保护势力.has(势力名) })).join('')
+          : 当前页签 === '地点'
+            ? 静态地点条目
+              .sort((左, 右) => 左.路径.join('/').localeCompare(右.路径.join('/'), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+              .map(条目 => 构建静态地点归档选择行_桥接(条目.路径键, 条目.节点, {}, { 保护: 保护静态地点.has(条目.路径键) })).join('')
+            : 物品定义条目列表
+              .sort((左, 右) => 左.物品名.localeCompare(右.物品名, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+              .map(({ 物品名, 定义, 分类 }) => 构建物品归档选择行_桥接(物品名, 定义, { 分类, 保护: 保护物品.has(物品名) })).join('');
     const 冷行 = 当前页签 === '角色'
       ? 排序名称(冷角色名称).map(角色名 => 构建角色归档索引行_桥接(角色名, 角色索引[角色名])).join('')
       : 当前页签 === '动态地点'
         ? 排序名称(冷地点名称).map(地点名 => 构建动态地点归档索引行_桥接(地点名, 动态地点索引[地点名])).join('')
-        : 排序名称(冷物品名称).map(物品名 => 构建物品归档索引行_桥接(物品名, 物品索引[物品名])).join('');
+        : 当前页签 === '势力'
+          ? 排序名称(冷势力名称).map(势力名 => 构建势力归档索引行_桥接(势力名, 势力索引[势力名])).join('')
+          : 当前页签 === '地点'
+            ? 排序名称(冷静态地点名称).map(路径键 => 构建静态地点归档索引行_桥接(路径键, 静态地点索引[路径键])).join('')
+            : 排序名称(冷物品名称).map(物品名 => 构建物品归档索引行_桥接(物品名, 物品索引[物品名])).join('');
     const 聚焦角色名 = toText(modalFocusState[`${冷归档预览键_桥接}::character-focus`], '').trim();
     const 聚焦地点名 = toText(modalFocusState[`${冷归档预览键_桥接}::dynamic-location-focus`], '').trim();
+    const 聚焦势力名 = toText(modalFocusState[`${冷归档预览键_桥接}::faction-focus`], '').trim();
+    const 聚焦静态地点路径键 = toText(modalFocusState[`${冷归档预览键_桥接}::static-location-focus`], '').trim();
     const 聚焦物品名 = toText(modalFocusState[`${冷归档预览键_桥接}::item-focus`], '').trim();
     const 已读角色详情 = modalFocusState[`${冷归档预览键_桥接}::character-detail`];
     const 已读地点详情 = modalFocusState[`${冷归档预览键_桥接}::dynamic-location-detail`];
+    const 已读势力详情 = modalFocusState[`${冷归档预览键_桥接}::faction-detail`];
+    const 已读静态地点详情 = modalFocusState[`${冷归档预览键_桥接}::static-location-detail`];
     const 已读物品详情 = modalFocusState[`${冷归档预览键_桥接}::item-detail`];
     const 聚焦角色缓存 = (() => {
       if (已读角色详情 && toText(已读角色详情.角色名, '').trim() === 聚焦角色名) return 已读角色详情;
@@ -7886,12 +8920,22 @@
       if (已读地点详情 && toText(已读地点详情.地点名, '').trim() === 聚焦地点名) return 已读地点详情;
       try { return 聚焦地点名 && 动态地点索引[聚焦地点名] ? 构建动态地点归档文件视图_桥接(聚焦地点名, 动态地点索引[聚焦地点名], 动态地点Manifest) : null; } catch (错误) { return null; }
     })();
+    const 聚焦势力缓存 = (() => {
+      if (已读势力详情 && toText(已读势力详情.势力名, '').trim() === 聚焦势力名) return 已读势力详情;
+      try { return 聚焦势力名 && 势力索引[聚焦势力名] ? 构建势力归档文件视图_桥接(聚焦势力名, 势力索引[聚焦势力名], 势力Manifest) : null; } catch (错误) { return null; }
+    })();
+    const 聚焦静态地点缓存 = (() => {
+      if (已读静态地点详情 && toText(已读静态地点详情.地点路径文本, '').trim() === toText(静态地点索引[聚焦静态地点路径键]?.地点路径文本, '').trim()) return 已读静态地点详情;
+      try { return 聚焦静态地点路径键 && 静态地点索引[聚焦静态地点路径键] ? 构建静态地点归档文件视图_桥接(静态地点索引[聚焦静态地点路径键].原路径, 静态地点索引[聚焦静态地点路径键], 静态地点Manifest) : null; } catch (错误) { return null; }
+    })();
     const 聚焦物品缓存 = (() => {
       if (已读物品详情 && toText(已读物品详情.物品名, '').trim() === 聚焦物品名) return 已读物品详情;
       try { return 聚焦物品名 && 物品索引[聚焦物品名] ? 构建物品归档文件视图_桥接(聚焦物品名, 物品索引[聚焦物品名], 物品Manifest) : null; } catch (错误) { return null; }
     })();
     const 聚焦角色数据 = 聚焦角色缓存 && 聚焦角色缓存.角色数据 && typeof 聚焦角色缓存.角色数据 === 'object' ? 聚焦角色缓存.角色数据 : null;
     const 聚焦地点数据 = 聚焦地点缓存 && 聚焦地点缓存.地点数据 && typeof 聚焦地点缓存.地点数据 === 'object' ? 聚焦地点缓存.地点数据 : null;
+    const 聚焦势力数据 = 聚焦势力缓存 && 聚焦势力缓存.势力数据 && typeof 聚焦势力缓存.势力数据 === 'object' ? 聚焦势力缓存.势力数据 : null;
+    const 聚焦静态地点数据 = 聚焦静态地点缓存 && 聚焦静态地点缓存.地点数据 && typeof 聚焦静态地点缓存.地点数据 === 'object' ? 聚焦静态地点缓存.地点数据 : null;
     const 聚焦物品数据 = 聚焦物品缓存 && 聚焦物品缓存.物品定义 && typeof 聚焦物品缓存.物品定义 === 'object' ? 聚焦物品缓存.物品定义 : null;
     let 聚焦详情 = '';
     if (当前页签 === '角色') {
@@ -7915,6 +8959,29 @@
           ], 'two')
           : `<div class="role-switch-empty">${htmlEscape(`${聚焦地点名} / 未读取`)}</div>`
         : '<div class="role-switch-empty">未选择归档地点。</div>';
+    } else if (当前页签 === '势力') {
+      聚焦详情 = 聚焦势力名
+        ? 聚焦势力数据
+          ? makeTileGrid([
+            { label: '势力', value: 聚焦势力名 },
+            { label: '类型', value: toText(聚焦势力数据.类型, '未知') },
+            { label: '状态', value: toText(聚焦势力数据.状态, '未知') },
+            { label: '现状', value: toText(聚焦势力数据.现状描述, '无') },
+          ], 'two')
+          : `<div class="role-switch-empty">${htmlEscape(`${聚焦势力名} / 未读取`)}</div>`
+        : '<div class="role-switch-empty">未选择归档势力。</div>';
+    } else if (当前页签 === '地点') {
+      const 聚焦静态地点文本 = toText(静态地点索引[聚焦静态地点路径键]?.地点路径文本, 聚焦静态地点路径键);
+      聚焦详情 = 聚焦静态地点路径键
+        ? 聚焦静态地点数据
+          ? makeTileGrid([
+            { label: '地点', value: 聚焦静态地点文本 },
+            { label: '类型', value: toText(聚焦静态地点数据.类型, '未知') },
+            { label: '掌控', value: toText(聚焦静态地点数据.掌控势力, '未知') },
+            { label: '状态', value: toText(聚焦静态地点数据.状态, '未知') },
+          ], 'two')
+          : `<div class="role-switch-empty">${htmlEscape(`${聚焦静态地点文本} / 未读取`)}</div>`
+        : '<div class="role-switch-empty">未选择归档地点。</div>';
     } else {
       聚焦详情 = 聚焦物品名
         ? 聚焦物品数据
@@ -7927,8 +8994,8 @@
           : `<div class="role-switch-empty">${htmlEscape(`${聚焦物品名} / 未读取`)}</div>`
         : '<div class="role-switch-empty">未选择归档物品。</div>';
     }
-    const 热数量 = 当前页签 === '角色' ? 热角色数量 : 当前页签 === '动态地点' ? 热地点数量 : 热物品数量;
-    const 冷数量 = 当前页签 === '角色' ? 冷角色数量 : 当前页签 === '动态地点' ? 冷地点数量 : 冷物品数量;
+    const 热数量 = 当前页签 === '角色' ? Object.keys(角色集).length : 当前页签 === '动态地点' ? 热地点数量 : 当前页签 === '势力' ? 热势力数量 : 当前页签 === '地点' ? 热静态地点数量 : 热物品数量;
+    const 冷数量 = 当前页签 === '角色' ? 冷角色数量 : 当前页签 === '动态地点' ? 冷地点数量 : 当前页签 === '势力' ? 冷势力数量 : 当前页签 === '地点' ? 冷静态地点数量 : 冷物品数量;
     const 页签单位 = 读取冷归档页签单位_桥接(当前页签);
     return {
       title: 冷归档预览键_桥接,
@@ -7967,6 +9034,10 @@
               { label: '归档地点', value: `${冷地点数量} 处` },
               { label: '热物品', value: `${热物品数量} 个` },
               { label: '归档物品', value: `${冷物品数量} 个` },
+              { label: '热势力', value: `${热势力数量} 个` },
+              { label: '归档势力', value: `${冷势力数量} 个` },
+              { label: '热静态地点', value: `${热静态地点数量} 处` },
+              { label: '归档静态地点', value: `${冷静态地点数量} 处` },
             ], 'two')}
             <div class="mvu-detail-search-row">
               <button type="button" class="tag-chip" data-cold-archive-refresh="1">刷新</button>
@@ -8039,6 +9110,8 @@
             <div class="tag-cloud armory-quick-actions mvu-detail-toolbar">
               <button type="button" class="tag-chip ${当前页签 === '角色' ? 'live' : ''}" data-cold-archive-tab="角色">角色</button>
               <button type="button" class="tag-chip ${当前页签 === '动态地点' ? 'live' : ''}" data-cold-archive-tab="动态地点">动态地点</button>
+              <button type="button" class="tag-chip ${当前页签 === '地点' ? 'live' : ''}" data-cold-archive-tab="地点">地点</button>
+              <button type="button" class="tag-chip ${当前页签 === '势力' ? 'live' : ''}" data-cold-archive-tab="势力">势力</button>
               <button type="button" class="tag-chip ${当前页签 === '物品' ? 'live' : ''}" data-cold-archive-tab="物品">物品</button>
               <button type="button" class="tag-chip" data-cold-archive-suggest="1">建议归档</button>
               <button type="button" class="tag-chip warn" data-cold-archive-selected="1"${归档服务可写 ? '' : ' disabled'}>归档选中</button>
@@ -8073,6 +9146,10 @@
       冷角色: 读取('[data-character-archive-cold]'),
       热动态地点: 读取('[data-dynamic-location-archive-hot]'),
       冷动态地点: 读取('[data-dynamic-location-archive-cold]'),
+      热静态地点: 读取('[data-static-location-archive-hot]'),
+      冷静态地点: 读取('[data-static-location-archive-cold]'),
+      热势力: 读取('[data-faction-archive-hot]'),
+      冷势力: 读取('[data-faction-archive-cold]'),
       热物品: 读取('[data-item-archive-hot]'),
       冷物品: 读取('[data-item-archive-cold]'),
     };
@@ -8918,7 +9995,7 @@
       if (options && options.必须启用兜底 === true) throw new Error('AI JSONPatch路径兜底未加载，已拒绝写回。');
       return patches;
     }
-    return 预处理器(patches, statData, { 宽松新增: options && options.force === true });
+    return 预处理器(patches, statData, { ...(options && typeof options === 'object' ? options : {}), 宽松新增: options && options.force === true });
   }
 
   function 预处理桥接AIJsonPatch文本(text = '', mvuData = {}, options = {}) {
@@ -9074,7 +10151,45 @@
     const 需要在AI写回后清理结算锁 = 获取本轮模块结算路径键集合().size > 0 && !(写入选项 && 写入选项.force === true);
     try {
       return await mutateStatDataByEditor(async statData => {
-        const normalizedPatches = 规范化桥接JsonPatch列表(safePatches, statData, 写入选项);
+        const 目标势力 = Array.from(new Set(safePatches
+          .map(补丁 => decodeJsonPointerPath(补丁.path))
+          .filter(路径 => 路径[0] === 'org' && 路径[1])
+          .map(路径 => toText(路径[1], '').trim())
+          .filter(Boolean)));
+        const 地点节点字段 = new Set(['类型', '别名', '关键词', '描述', '现状描述', '掌控势力', '状态', '人口', '守护军团', '经济状况', 'x', 'y', '商店', '子节点']);
+        const 目标静态地点 = Array.from(new Set(safePatches
+          .map(补丁 => decodeJsonPointerPath(补丁.path))
+          .filter(路径 => 路径[0] === 'world' && 路径[1] === '地点' && 路径.length >= 3)
+          .map(路径 => {
+            const 原始路径 = [...路径.slice(2)];
+            if (地点节点字段.has(原始路径[原始路径.length - 1])) 原始路径.pop();
+            return 规范化静态地点路径_桥接(原始路径.filter(片段 => 片段 !== '子节点'));
+          })
+          .map(路径 => 构建静态地点路径键_桥接(路径))
+          .filter(Boolean)));
+        safePatches.forEach(补丁 => {
+          const 路径 = decodeJsonPointerPath(补丁.path);
+          if (路径[0] === 'char' && 路径[2] === '状态' && 路径[3] === '位置' && ['add', 'replace'].includes(补丁.op)) {
+            const 地点路径 = 解析静态地点路径_桥接(toText(补丁.value, ''));
+            const 路径键 = 构建静态地点路径键_桥接(地点路径);
+            if (路径键) 目标静态地点.push(路径键);
+          }
+        });
+        const 唯一目标静态地点 = Array.from(new Set(目标静态地点));
+        let 势力归档恢复结果 = { skippedNames: [] };
+        let 静态地点归档恢复结果 = { skippedNames: [] };
+        if (目标势力.length) 势力归档恢复结果 = await 恢复MVU归档势力_桥接(目标势力, { ...写入选项, statData });
+        if (唯一目标静态地点.length) 静态地点归档恢复结果 = await 恢复MVU归档静态地点_桥接(唯一目标静态地点, { ...写入选项, statData });
+        const 势力归档故障 = 势力归档状态_桥接.读取失败 === true;
+        const 静态地点归档故障 = 静态地点归档状态_桥接.读取失败 === true;
+        const normalizedPatches = 规范化桥接JsonPatch列表(safePatches, statData, {
+          ...写入选项,
+          禁止内置势力实例化: 势力归档故障 || 势力归档状态_桥接.读取失败,
+          禁止内置地点实例化: 静态地点归档故障 || 静态地点归档状态_桥接.读取失败,
+          禁止势力: Array.isArray(势力归档恢复结果.blockedNames) ? 势力归档恢复结果.blockedNames : [],
+          禁止地点记录ID: Array.isArray(静态地点归档恢复结果.blockedRecordIds) ? 静态地点归档恢复结果.blockedRecordIds : [],
+          禁止地点路径键: Array.isArray(静态地点归档恢复结果.blockedNames) ? 静态地点归档恢复结果.blockedNames : [],
+        });
         if (!(写入选项 && 写入选项.force === true)) 校验本轮模块结算补丁边界(normalizedPatches);
         const JsonPatch目标角色 = 收集JsonPatch目标角色名_桥接(normalizedPatches);
         const 可用冷档角色 = await 收集可用归档角色名_桥接(JsonPatch目标角色, 写入选项);
@@ -12419,19 +13534,6 @@
       {},
     );
     if (!当前StatData || typeof 当前StatData !== 'object') 当前StatData = {};
-    if (!捕获文本.trim()) {
-      return {
-        changed: false,
-        names: [],
-        statData: 当前StatData,
-        messageId: 消息编号,
-        textSignature: 文本签名,
-        命中角色: [],
-        命中物品: [],
-        命中动态地点: [],
-      };
-    }
-
     const 定位选项 = { ...(附加选项 && typeof 附加选项 === 'object' ? 附加选项 : {}), statData: 当前StatData };
     if (消息编号 !== null && 消息编号 !== undefined && 定位选项.message_id === undefined && 定位选项.消息编号 === undefined) {
       定位选项.message_id = 消息编号;
@@ -12441,11 +13543,18 @@
     const 已恢复角色 = [];
     const 已恢复物品 = [];
     const 已恢复动态地点 = [];
+    const 已恢复势力 = [];
+    const 已恢复静态地点 = [];
     const 已实例化角色 = [];
     const 已实例化物品 = [];
+    const 势力静态实例化阻断 = new Set();
+    const 地点静态实例化阻断路径键 = new Set();
+    const 地点静态实例化阻断记录ID = new Set();
     let 可用冷档角色 = new Set();
     let changed = false;
     let 角色归档检查失败 = false;
+    let 势力归档检查失败 = false;
+    let 静态地点归档检查失败 = false;
 
     let 归档角色命中 = [];
     try {
@@ -12459,6 +13568,33 @@
     } catch (错误) {
       角色归档检查失败 = true;
       console.warn('[LWCS] 本轮MVU上下文归档角色恢复失败:', 错误);
+    }
+
+    try {
+      const manifest = await 读取势力归档Manifest_桥接();
+      const 势力索引 = manifest && manifest.势力索引 && typeof manifest.势力索引 === 'object' ? manifest.势力索引 : {};
+      const 命中势力 = 收集归档势力命中名称_桥接(势力索引, 捕获文本);
+      const 恢复势力 = await 恢复MVU归档势力_桥接(命中势力, 定位选项);
+      (Array.isArray(恢复势力?.restoredNames) ? 恢复势力.restoredNames : []).forEach(势力名 => 已恢复势力.push(势力名));
+      (恢复势力.blockedNames || []).forEach(势力名 => 势力静态实例化阻断.add(势力名));
+      changed = changed || 恢复势力?.changed === true;
+    } catch (错误) {
+      势力归档检查失败 = true;
+      console.warn('[LWCS] 本轮MVU上下文归档势力恢复失败:', 错误);
+    }
+
+    try {
+      const manifest = await 读取静态地点归档Manifest_桥接();
+      const 地点索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引 : {};
+      const 命中地点 = 收集归档静态地点路径键_桥接(地点索引, 捕获文本);
+      const 恢复地点 = await 恢复MVU归档静态地点_桥接(命中地点, 定位选项);
+      (Array.isArray(恢复地点?.restoredNames) ? 恢复地点.restoredNames : []).forEach(地点路径 => 已恢复静态地点.push(地点路径));
+      (恢复地点.blockedNames || []).forEach(地点路径 => 地点静态实例化阻断路径键.add(地点路径));
+      (恢复地点.blockedRecordIds || []).forEach(记录ID => 地点静态实例化阻断记录ID.add(记录ID));
+      changed = changed || 恢复地点?.changed === true;
+    } catch (错误) {
+      静态地点归档检查失败 = true;
+      console.warn('[LWCS] 本轮MVU上下文归档静态地点恢复失败:', 错误);
     }
 
     try {
@@ -12503,6 +13639,29 @@
       }
     } catch (错误) {
       console.warn('[LWCS] 本轮MVU上下文内置物品入库失败:', 错误);
+    }
+
+    try {
+      const 接口 = 读取MVUSchema运行时接口_桥接();
+      const 候选势力 = (Array.isArray(定位选项.候选势力) ? 定位选项.候选势力 : []).filter(项目 => {
+        const 名称 = String(项目?.规范名 || 项目?.名称 || 项目?.记录ID || 项目 || '').trim();
+        return !势力静态实例化阻断.has(名称);
+      });
+      if (接口 && !势力归档检查失败 && typeof 接口.应用内置势力实例化 === 'function' && 候选势力.length) {
+        const 结果 = 接口.应用内置势力实例化(当前StatData, { ...定位选项, 候选势力, 禁止势力: Array.from(势力静态实例化阻断) });
+        changed = changed || 结果?.changed === true || (Array.isArray(结果?.changedNames) && 结果.changedNames.length > 0);
+      }
+      const 候选地点 = (Array.isArray(定位选项.候选地点) ? 定位选项.候选地点 : []).filter(项目 => {
+        const 记录ID = String(项目?.记录ID || '').trim();
+        const 路径键 = 项目?.目标路径 ? JSON.stringify(项目.目标路径) : '';
+        return !地点静态实例化阻断记录ID.has(记录ID) && !地点静态实例化阻断路径键.has(路径键);
+      });
+      if (接口 && !静态地点归档检查失败 && typeof 接口.应用内置地点实例化 === 'function') {
+        const 结果 = 接口.应用内置地点实例化(当前StatData, { ...定位选项, 候选地点, 禁止地点记录ID: Array.from(地点静态实例化阻断记录ID), 禁止地点路径键: Array.from(地点静态实例化阻断路径键) });
+        changed = changed || 结果?.changed === true || (Array.isArray(结果?.changedNames) && 结果.changedNames.length > 0);
+      }
+    } catch (错误) {
+      console.warn('[LWCS] 本轮MVU上下文内置势力/地点入库失败:', 错误);
     }
 
     try {
@@ -12551,6 +13710,8 @@
         ...已恢复角色.map(名称 => ({ 类型: '角色', 名称 })),
         ...已恢复物品.map(名称 => ({ 类型: '物品', 名称 })),
         ...已恢复动态地点.map(名称 => ({ 类型: '动态地点', 名称 })),
+        ...已恢复势力.map(名称 => ({ 类型: '势力', 名称 })),
+        ...已恢复静态地点.map(名称 => ({ 类型: '地点', 名称 })),
       ];
       if (激活条目.length) 记录MVU冷实体激活_桥接(激活条目);
       writeMvuEditorStoreSnapshot(当前StatData, { messageId: 消息编号 });
@@ -12559,12 +13720,12 @@
 
     return {
       changed,
-      names: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点, ...已实例化角色, ...已实例化物品])),
+      names: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点, ...已恢复势力, ...已恢复静态地点, ...已实例化角色, ...已实例化物品])),
       statData: 当前StatData,
       messageId: 消息编号,
       textSignature: 文本签名,
-      restoredNames: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点])),
-      changedNames: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点, ...已实例化角色, ...已实例化物品])),
+      restoredNames: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点, ...已恢复势力, ...已恢复静态地点])),
+      changedNames: Array.from(new Set([...已恢复角色, ...已恢复物品, ...已恢复动态地点, ...已恢复势力, ...已恢复静态地点, ...已实例化角色, ...已实例化物品])),
       命中角色: Array.from(前置命中.命中角色),
       命中物品: Array.from(前置命中.命中物品),
       命中动态地点: Array.from(前置命中.命中动态地点),
@@ -12573,6 +13734,8 @@
       已恢复物品,
       已实例化物品,
       已恢复动态地点,
+      已恢复势力,
+      已恢复静态地点,
     };
   }
 
@@ -28636,7 +29799,7 @@
   }
 
   function skillHasDailyMvuWritebackEffect(skill = {}) {
-    const 可写回原型 = new Set(['资源变化', '属性修正', '状态施加', '状态移除', '修炼增益', '战斗外复活', '灵物吸收', '护盾变化', '机制授予', '复制执行']);
+    const 可写回原型 = new Set(['资源变化', '属性修正', '状态施加', '状态移除', '修炼增益', '战斗外复活', '灵物吸收', '永久属性提升', '护盾变化', '机制授予', '复制执行']);
     const visit = effects =>
       (Array.isArray(effects) ? effects : []).some(effect => {
         if (!effect || typeof effect !== 'object') return false;
@@ -42447,6 +43610,14 @@
   window.__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS__ = (地点名列表, 选项 = {}) => 恢复MVU归档动态地点_桥接(地点名列表, 选项);
   window.__LWCS_RESTORE_ARCHIVED_MVU_DYNAMIC_LOCATIONS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本恢复归档动态地点_桥接(文本, 选项);
   window.__LWCS_READ_MVU_DYNAMIC_LOCATION_ARCHIVE__ = (输入 = '', 选项 = {}) => 读取MVU动态地点归档_桥接(输入, 选项);
+  window.__LWCS_ARCHIVE_MVU_FACTIONS__ = (势力名列表, 选项 = {}) => 归档MVU势力_桥接(势力名列表, 选项);
+  window.__LWCS_RESTORE_ARCHIVED_MVU_FACTIONS__ = (势力名列表, 选项 = {}) => 恢复MVU归档势力_桥接(势力名列表, 选项);
+  window.__LWCS_RESTORE_ARCHIVED_MVU_FACTIONS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本恢复归档势力_桥接(文本, 选项);
+  window.__LWCS_READ_MVU_FACTION_ARCHIVE__ = (输入 = '', 选项 = {}) => 读取势力归档文件_桥接(输入, 选项);
+  window.__LWCS_ARCHIVE_MVU_STATIC_LOCATIONS__ = (地点路径列表, 选项 = {}) => 归档MVU静态地点_桥接(地点路径列表, 选项);
+  window.__LWCS_RESTORE_ARCHIVED_MVU_STATIC_LOCATIONS__ = (地点路径列表, 选项 = {}) => 恢复MVU归档静态地点_桥接(地点路径列表, 选项);
+  window.__LWCS_RESTORE_ARCHIVED_MVU_STATIC_LOCATIONS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本恢复归档静态地点_桥接(文本, 选项);
+  window.__LWCS_READ_MVU_STATIC_LOCATION_ARCHIVE__ = (输入 = '', 选项 = {}) => 读取静态地点归档文件_桥接(输入, 选项);
   window.__LWCS_ARCHIVE_MVU_ITEMS__ = (物品名列表, 选项 = {}) => 归档MVU物品定义_桥接(物品名列表, 选项);
   window.__LWCS_RESTORE_ARCHIVED_MVU_ITEMS__ = (物品名列表, 选项 = {}) => 恢复MVU归档物品定义_桥接(物品名列表, 选项);
   window.__LWCS_RESTORE_ARCHIVED_MVU_ITEMS_FOR_TEXT__ = (文本, 选项 = {}) => 按文本恢复归档物品定义_桥接(文本, 选项);
@@ -46103,10 +47274,21 @@ ${播报文本}
     return 标题 ? `<battle_result>${标题}</battle_result>` : '';
   }
 
+  function 构建自动战斗结构化摘要(执行结果 = {}) {
+    const 摘要输入 = 执行结果?.reportDto?.aiStructuredSummary ||
+      执行结果?.reportDto?.aiSummaryInput ||
+      {};
+    return JSON.stringify(摘要输入);
+  }
+
   /* 完整因果链只在当轮存在，AI 读完即弃，不进聊天历史。 */
   function 构建自动战斗战报注入(执行结果 = {}) {
     const 战报 = toText(执行结果?.reportDto?.aiReport, '').trim();
-    return 战报 ? `<battle_report>\n${战报}\n</battle_report>` : '';
+    const 摘要 = 构建自动战斗结构化摘要(执行结果);
+    return [
+      摘要 ? `<battle_summary>\n${摘要}\n</battle_summary>` : '',
+      战报 ? `<battle_report>\n${战报}\n</battle_report>` : '',
+    ].filter(Boolean).join('\n');
   }
 
   function 构建战斗事务输入(combatData = {}, options = {}) {
@@ -52301,6 +53483,8 @@ ${播报文本}
       const 建议名称 = new Set(
         当前冷归档页签 === '动态地点'
           ? 选择自动归档动态地点名_桥接(数据根, '', 冷归档自动归档批量硬上限_桥接)
+          : 当前冷归档页签 === '地点' || 当前冷归档页签 === '势力'
+            ? []
           : 当前冷归档页签 === '物品'
             ? 选择自动归档物品名_桥接(数据根, '', 冷归档自动归档批量硬上限_桥接, 物品分类压力 && 物品分类压力.允许分类.length ? { 允许分类: 物品分类压力.允许分类 } : {})
             : 选择自动归档角色名_桥接(数据根, '', 冷归档自动归档批量硬上限_桥接),
@@ -52308,6 +53492,10 @@ ${播报文本}
       const 复选框列表 = Array.from(detailSurfaceHost.querySelectorAll(
         当前冷归档页签 === '动态地点'
           ? '[data-dynamic-location-archive-hot]'
+          : 当前冷归档页签 === '地点'
+            ? '[data-static-location-archive-hot]'
+            : 当前冷归档页签 === '势力'
+              ? '[data-faction-archive-hot]'
           : 当前冷归档页签 === '物品'
             ? '[data-item-archive-hot]'
             : '[data-character-archive-hot]',
@@ -52316,6 +53504,10 @@ ${播报文本}
         const 名称 = toText(
           当前冷归档页签 === '动态地点'
             ? 节点.getAttribute('data-dynamic-location-archive-hot')
+            : 当前冷归档页签 === '地点'
+              ? 节点.getAttribute('data-static-location-archive-hot')
+              : 当前冷归档页签 === '势力'
+                ? 节点.getAttribute('data-faction-archive-hot')
             : 当前冷归档页签 === '物品'
               ? 节点.getAttribute('data-item-archive-hot')
               : 节点.getAttribute('data-character-archive-hot'),
@@ -52331,8 +53523,8 @@ ${播报文本}
     if (归档选中按钮 && detailSurfaceHost.contains(归档选中按钮)) {
       event.preventDefault();
       event.stopPropagation();
-      const { 热角色, 热动态地点, 热物品 } = 读取冷归档面板选中_桥接(detailSurfaceHost);
-      const 待归档名称 = 当前冷归档页签 === '动态地点' ? 热动态地点 : 当前冷归档页签 === '物品' ? 热物品 : 热角色;
+      const { 热角色, 热动态地点, 热静态地点, 热势力, 热物品 } = 读取冷归档面板选中_桥接(detailSurfaceHost);
+      const 待归档名称 = 当前冷归档页签 === '动态地点' ? 热动态地点 : 当前冷归档页签 === '地点' ? 热静态地点 : 当前冷归档页签 === '势力' ? 热势力 : 当前冷归档页签 === '物品' ? 热物品 : 热角色;
       if (!待归档名称.length) {
         showUiToast(`未选择热${当前冷归档页签}。`, 'warning');
         return;
@@ -52349,6 +53541,10 @@ ${播报文本}
       try {
         const 结果 = 当前冷归档页签 === '动态地点'
           ? await 归档MVU动态地点_桥接(待归档名称)
+          : 当前冷归档页签 === '地点'
+            ? await 归档MVU静态地点_桥接(待归档名称)
+            : 当前冷归档页签 === '势力'
+              ? await 归档MVU势力_桥接(待归档名称)
           : 当前冷归档页签 === '物品'
             ? await 归档MVU物品定义_桥接(待归档名称)
           : await 归档MVU角色_桥接(待归档名称);
@@ -52367,8 +53563,8 @@ ${播报文本}
     if (恢复选中按钮 && detailSurfaceHost.contains(恢复选中按钮)) {
       event.preventDefault();
       event.stopPropagation();
-      const { 冷角色, 冷动态地点, 冷物品 } = 读取冷归档面板选中_桥接(detailSurfaceHost);
-      const 待恢复名称 = 当前冷归档页签 === '动态地点' ? 冷动态地点 : 当前冷归档页签 === '物品' ? 冷物品 : 冷角色;
+      const { 冷角色, 冷动态地点, 冷静态地点, 冷势力, 冷物品 } = 读取冷归档面板选中_桥接(detailSurfaceHost);
+      const 待恢复名称 = 当前冷归档页签 === '动态地点' ? 冷动态地点 : 当前冷归档页签 === '地点' ? 冷静态地点 : 当前冷归档页签 === '势力' ? 冷势力 : 当前冷归档页签 === '物品' ? 冷物品 : 冷角色;
       if (!待恢复名称.length) {
         showUiToast(`未选择归档${当前冷归档页签}。`, 'warning');
         return;
@@ -52384,6 +53580,10 @@ ${播报文本}
       try {
         const 结果 = 当前冷归档页签 === '动态地点'
           ? await 恢复MVU归档动态地点_桥接(待恢复名称)
+          : 当前冷归档页签 === '地点'
+            ? await 恢复MVU归档静态地点_桥接(待恢复名称)
+            : 当前冷归档页签 === '势力'
+              ? await 恢复MVU归档势力_桥接(待恢复名称)
           : 当前冷归档页签 === '物品'
             ? await 恢复MVU归档物品定义_桥接(待恢复名称)
           : await 恢复MVU归档角色_桥接(待恢复名称);
@@ -52455,6 +53655,46 @@ ${播报文本}
         rerenderDetailSurface(冷归档预览键_桥接, options);
       } catch (错误) {
         showUiToast(错误 && 错误.message ? 错误.message : '归档详情读取失败。', 'error');
+      }
+      return;
+    }
+
+    const 势力归档详情按钮 = eventTarget ? eventTarget.closest('[data-faction-archive-view]') : null;
+    if (势力归档详情按钮 && detailSurfaceHost.contains(势力归档详情按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 势力名 = toText(势力归档详情按钮.getAttribute('data-faction-archive-view'), '').trim();
+      if (!势力名) return;
+      try {
+        const manifest = await 读取势力归档Manifest_桥接();
+        const 索引 = manifest && manifest.势力索引 ? manifest.势力索引[势力名] : null;
+        if (!取当前冷归档版本_桥接(索引)) throw new Error('找不到势力归档索引。');
+        modalFocusState[`${冷归档预览键_桥接}::faction-detail`] = await 读取势力归档文件_桥接(索引, { chatKey: manifest.chatKey });
+        modalFocusState[`${冷归档预览键_桥接}::tab`] = '势力';
+        modalFocusState[`${冷归档预览键_桥接}::faction-focus`] = 势力名;
+        rerenderDetailSurface(冷归档预览键_桥接, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '势力归档详情读取失败。', 'error');
+      }
+      return;
+    }
+
+    const 静态地点归档详情按钮 = eventTarget ? eventTarget.closest('[data-static-location-archive-view]') : null;
+    if (静态地点归档详情按钮 && detailSurfaceHost.contains(静态地点归档详情按钮)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const 路径键 = toText(静态地点归档详情按钮.getAttribute('data-static-location-archive-view'), '').trim();
+      if (!路径键) return;
+      try {
+        const manifest = await 读取静态地点归档Manifest_桥接();
+        const 索引 = manifest && manifest.地点索引 ? manifest.地点索引[路径键] : null;
+        if (!取当前冷归档版本_桥接(索引)) throw new Error('找不到静态地点归档索引。');
+        modalFocusState[`${冷归档预览键_桥接}::static-location-detail`] = await 读取静态地点归档文件_桥接(索引, { chatKey: manifest.chatKey });
+        modalFocusState[`${冷归档预览键_桥接}::tab`] = '地点';
+        modalFocusState[`${冷归档预览键_桥接}::static-location-focus`] = 路径键;
+        rerenderDetailSurface(冷归档预览键_桥接, options);
+      } catch (错误) {
+        showUiToast(错误 && 错误.message ? 错误.message : '静态地点归档详情读取失败。', 'error');
       }
       return;
     }
@@ -54500,6 +55740,17 @@ ${播报文本}
           },
         };
       }
+      if (prototype === '永久属性提升') {
+        return {
+          target,
+          type: 'permanent_stat_bonus',
+          description: description || '永久提升指定属性上限',
+          value: {
+            属性: toText(effect['属性'], ''),
+            数值: Number(effect['数值']),
+          },
+        };
+      }
       if (prototype === '状态移除') {
         return {
           target,
@@ -54599,6 +55850,7 @@ ${播报文本}
       if (usableEffect.type === 'durability_repair') return false;
       if (usableEffect.type === 'state_set') return this.applyInventoryStateSetEffect(charData, usableEffect, logs);
       if (usableEffect.type === 'talent_tier_up') return this.applyTalentTierUpEffect(charData, usableEffect, logs);
+      if (usableEffect.type === 'permanent_stat_bonus') return this.applyPermanentStatBonusEffect(charData, usableEffect, logs);
       if (usableEffect.type === 'state_remove') return this.applyInventoryStateRemoveEffect(charData, usableEffect, logs);
       if (['buff', 'debuff', 'shield', 'custom', 'mechanism_grant', 'cultivation_gain'].includes(String(usableEffect.type || '')))
         return this.appendInventoryStatusEffect(charData.属性.状态效果, itemName, usableEffect, index, logs, 当前tick, charData);
@@ -54624,6 +55876,22 @@ ${播报文本}
       charData.属性.天赋梯队 = 天赋梯队序列[目标序号];
       delete charData.__mvu_显式天赋梯队;
       logs.push(`天赋梯队 ${当前梯队}→${天赋梯队序列[目标序号]}`);
+      return true;
+    },
+
+    applyPermanentStatBonusEffect(charData = {}, effect = {}, logs = []) {
+      const value = effect && typeof effect === 'object' ? effect.value || {} : {};
+      const sourceAttribute = toText(value.属性, '').trim();
+      const targetAttribute = sourceAttribute === '生命上限' ? '体力上限' : sourceAttribute;
+      const allowedAttributes = new Set(['力量', '防御', '敏捷', '体力上限', '精神力上限', '魂力上限']);
+      const amount = Number(value.数值);
+      if (!allowedAttributes.has(targetAttribute) || !Number.isInteger(amount) || amount <= 0) return false;
+      if (!charData.属性 || typeof charData.属性 !== 'object' || Array.isArray(charData.属性)) charData.属性 = {};
+      const runtime = 读取MVUSchema运行时接口_桥接();
+      if (!runtime || typeof runtime.应用永久属性提升 !== 'function') throw new Error('MVU Schema 永久属性提升消费者未加载');
+      const result = runtime.应用永久属性提升(charData, targetAttribute, amount);
+      if (!result || result.changed !== true) return false;
+      logs.push(`永久属性提升 ${sourceAttribute || targetAttribute}+${amount}`);
       return true;
     },
 
