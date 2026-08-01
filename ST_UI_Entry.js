@@ -22,7 +22,7 @@
   宿主窗口[加载器键] = true;
   const 最大启动重试次数 = 2;
 
-  const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@40824ccf8937ad861424dc0ff399f93aa8c6cd28/';
+  const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@59458553d84912c07c6352a64ae5eeeb7d55b5f7/';
   const 资源基础地址 = (() => {
     const 覆盖地址 = String(宿主窗口.__LWCS_资源基础地址__ || window.__LWCS_资源基础地址__ || '').trim();
     if (!覆盖地址) return 默认资源基础地址;
@@ -50,8 +50,11 @@
     魂环引擎样式: { 类型: 'css', 地址: 资源基础地址 + 'soul_ring_engine.css' + 资源版本后缀, 关键: true, 分组: 'core' },
     Vue核心: { 类型: 'remote-js', 地址: Vue远程地址, 关键: true, 分组: 'core' },
     壳层运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    历法与库运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'LibraryData_Runtime.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     内置角色库: { 类型: 'inline-js', 地址: 资源基础地址 + 'CharacterLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     内置物品库: { 类型: 'inline-js', 地址: 资源基础地址 + 'ItemLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    内置势力库: { 类型: 'inline-js', 地址: 资源基础地址 + 'FactionLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    内置地点库: { 类型: 'inline-js', 地址: 资源基础地址 + 'LocationLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     魂技机制注册表: { 类型: 'wait-global', 全局键: '__LWCS_SKILL_MECHANISM_REGISTRY__', 值类型: 'object', 关键: true, 分组: 'core' },
     变量运行时视图: { 类型: 'wait-global', 全局键: '__LWCS_MVU_RUNTIME_VIEW__', 值类型: 'object', 关键: true, 分组: 'core' },
     变量规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_MVU_STAT_DATA__', 值类型: 'function', 关键: true, 分组: 'core' },
@@ -93,10 +96,10 @@
     'JSONPatch规范化接口',
     'JSONPatch文本预处理接口',
   ]);
-  const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库']);
-  const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
-  const 热更新重置模块顺序 = Object.freeze(['内置角色库', '内置物品库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '赛事权限模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块', '数据库模块']);
-  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '内置角色库', '内置物品库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '地图模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
+  const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库']);
+  const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
+  const 热更新重置模块顺序 = Object.freeze(['历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '赛事权限模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块', '数据库模块']);
+  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '地图模块', '战斗预估运行时', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
   const 正常启动追踪模块顺序 = Object.freeze(Array.from(new Set([
     ...核心模块顺序,
     '请求监控挂件',
@@ -110,8 +113,11 @@
   ])));
   const 热更新追踪模块顺序 = Object.freeze([
     '样式核心',
+    '历法与库运行时',
     '内置角色库',
     '内置物品库',
+    '内置势力库',
+    '内置地点库',
     ...变量运行时接口模块顺序,
     '逻辑桥接',
     '请求监控挂件',
@@ -126,6 +132,7 @@
   const 当前启动追踪模块顺序 = 调试热更新模式 ? 热更新追踪模块顺序 : 正常启动追踪模块顺序;
   const 启动预取资源列表 = Object.freeze([
     'MVU_ZOD_Entry.js',
+    'LibraryData_Runtime.js',
     'MVU_Skill_Runtime.js',
     'MVU_Schema_Runtime.js',
     'MVU_Competition_Runtime.js',
@@ -541,8 +548,11 @@
         模块状态表[模块名].状态 = 'pending';
         模块状态表[模块名].错误 = '';
       });
+      await 确保模块已加载('历法与库运行时', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('内置角色库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('内置物品库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('内置势力库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('内置地点库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块组已加载(变量运行时接口模块顺序, { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('逻辑桥接', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('请求监控挂件', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
