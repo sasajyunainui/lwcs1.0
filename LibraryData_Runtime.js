@@ -1,7 +1,7 @@
 !(function (global) {
   'use strict';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
   const MINUTES_PER_DAY = 24 * 60;
   const DAYS_PER_MONTH = 30;
   const MONTHS_PER_YEAR = 12;
