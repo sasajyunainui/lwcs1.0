@@ -1,7 +1,7 @@
 !(function (global) {
   'use strict';
 
-const VERSION = '1.1.0';
+const VERSION = '1.0.0';
   const MINUTES_PER_DAY = 24 * 60;
   const DAYS_PER_MONTH = 30;
   const MONTHS_PER_YEAR = 12;
@@ -728,10 +728,11 @@ const VERSION = '1.1.0';
 
   const existing = global.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
   if (existing && existing.version !== VERSION) throw new Error(`LibraryData_Runtime版本不符: ${existing.version}`);
-  global.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = API;
+  const runtime = existing || API;
+  global.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = runtime;
   if (!global.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ || typeof global.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__.then !== 'function') {
-    global.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = Promise.resolve(API);
+    global.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = Promise.resolve(runtime);
   }
-  try { if (global.parent && global.parent !== global) global.parent.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = API; } catch (error) {}
-  try { if (global.top && global.top !== global) global.top.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = API; } catch (error) {}
+  try { if (global.parent && global.parent !== global) global.parent.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = runtime; } catch (error) {}
+  try { if (global.top && global.top !== global) global.top.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = runtime; } catch (error) {}
 })(typeof globalThis !== 'undefined' ? globalThis : window);

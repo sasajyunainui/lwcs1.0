@@ -463,25 +463,51 @@
   }
 
   async function 加载内联脚本(地址, 状态 = null) {
-    const 脚本标记 = 取内联脚本标记(地址);
-    const 旧脚本 = 宿主文档.getElementById(脚本标记);
-    if (旧脚本 && !调试热更新模式) return 地址;
-    if (旧脚本) 旧脚本.remove();
+    const 执行内联加载 = async () => {
+      const 脚本标记 = 取内联脚本标记(地址);
+      const 旧脚本 = 宿主文档.getElementById(脚本标记);
+      if (旧脚本 && !调试热更新模式) return 地址;
+      if (旧脚本) 旧脚本.remove();
 
-    if (状态) {
-      状态.阶段 = '下载中';
-      刷新加载追踪面板();
+      if (状态) {
+        状态.阶段 = '下载中';
+        刷新加载追踪面板();
+      }
+      const 代码文本 = await 读取文本资源(地址, 'JS load failed');
+      if (状态) {
+        状态.阶段 = '执行中';
+        刷新加载追踪面板();
+      }
+      const 脚本节点 = 宿主文档.createElement('script');
+      脚本节点.id = 脚本标记;
+      脚本节点.text = `${代码文本}\n//# sourceURL=${地址}`;
+      (宿主文档.body || 宿主文档.documentElement).appendChild(脚本节点);
+      return 地址;
+    };
+    if (!/LibraryData_Runtime\.js(?:[?#]|$)/.test(地址)) return 执行内联加载();
+    const 运行时宿主 = 宿主窗口;
+    const 已就绪 = 运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || window.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+    if (已就绪 && 已就绪.version === '1.0.0') return 地址;
+    const 已有加载 = 运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ || window.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
+    if (已有加载 && typeof 已有加载.then === 'function') {
+      await 已有加载;
+      return 地址;
     }
-    const 代码文本 = await 读取文本资源(地址, 'JS load failed');
-    if (状态) {
-      状态.阶段 = '执行中';
-      刷新加载追踪面板();
+    const 加载承诺 = 执行内联加载().then(() => {
+      const 运行时 = 运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || window.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+      if (!运行时 || 运行时.version !== '1.0.0') throw new Error('LibraryData_Runtime未暴露1.0.0接口');
+      return 运行时;
+    });
+    运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
+    window.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
+    try {
+      await 加载承诺;
+      return 地址;
+    } catch (错误) {
+      if (运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ === 加载承诺) delete 运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
+      if (window.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ === 加载承诺) delete window.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
+      throw 错误;
     }
-    const 脚本节点 = 宿主文档.createElement('script');
-    脚本节点.id = 脚本标记;
-    脚本节点.text = `${代码文本}\n//# sourceURL=${地址}`;
-    (宿主文档.body || 宿主文档.documentElement).appendChild(脚本节点);
-    return 地址;
   }
 
   function 加载模块脚本(地址, 状态 = null) {

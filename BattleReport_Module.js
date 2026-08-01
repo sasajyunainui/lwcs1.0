@@ -496,8 +496,12 @@
       push(eventNumberToken(event, '最终伤害', appliedDamage, 'HP', 'SETTLEMENT', 'SET', visibilityMode));
     }
     const delta = number(event?.delta ?? meta?.delta, NaN);
-    if (Number.isFinite(delta) && delta !== 0 && kind !== 'action_cost') {
-      push(eventNumberToken(event, '资源变化', delta, resourceName(event), 'RESOURCE', 'ADD', visibilityMode));
+    if (Number.isFinite(delta) && delta !== 0 && kind === 'resource_change') {
+      const operation = text(event?.operation || meta?.operation).toUpperCase();
+      push(eventNumberToken(event, '资源变化', delta, resourceName(event), 'RESOURCE', operation, visibilityMode));
+    }
+    if (Number.isFinite(delta) && delta !== 0 && kind === 'item_consume') {
+      push(eventNumberToken(event, '物品数量变化', delta, '件', 'ITEM', 'ITEM_CONSUME', visibilityMode));
     }
     const shieldAmount = number(meta?.amount ?? event?.amount, NaN);
     if (kind === 'shield_create' && Number.isFinite(shieldAmount) && shieldAmount > 0) {
@@ -537,6 +541,15 @@
     const duration = number(event?.duration ?? meta?.duration, NaN);
     if (Number.isFinite(duration) && duration > 0 && /state|summon|shield|effect/.test(kind)) {
       push(eventNumberToken(event, '持续时间', duration, '回合', 'WINDOW', 'SET', visibilityMode));
+    }
+    if (['state_apply', 'state_replace'].includes(kind)) {
+      const evidence = meta?.evidence && typeof meta.evidence === 'object' ? meta.evidence : {};
+      const after = meta?.after && typeof meta.after === 'object' ? meta.after : {};
+      const adjustment = text(evidence?.value || after?.数值);
+      const match = adjustment.match(/^([+-]?\d+(?:\.\d+)?)\s*%$/);
+      if (match) {
+        push(eventNumberToken(event, '状态效果调整', Number(match[1]), '%', 'STATE', 'ADD', visibilityMode));
+      }
     }
     const quantity = number(event?.quantity ?? event?.count ?? meta?.quantity ?? meta?.count, NaN);
     if (Number.isFinite(quantity) && quantity > 0 && /item|creation|summon/.test(kind)) {
@@ -591,6 +604,64 @@
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return '';
     return numeric > 0 ? `+${displayNumber(numeric)}` : displayNumber(numeric);
+  }
+
+  function playerStateName(value = '', directory = new Map()) {
+    const raw = playerSafeText(value, directory);
+    const labels = {
+      '命中判定修正': '命中能力调整',
+      '反应判定修正': '反应能力调整',
+      '受到伤害结算修正': '承伤效果调整',
+      '防御剥夺结算修正': '防御效果调整',
+      '技能效果(冰)结算修正': '冰系技能效果调整',
+      '位移执行': '位置调整',
+    };
+    return labels[raw] || raw;
+  }
+
+  function playerStateDescription(event = {}, directory = new Map()) {
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    const evidence = meta?.evidence && typeof meta.evidence === 'object' ? meta.evidence : {};
+    const after = meta?.after && typeof meta.after === 'object' ? meta.after : {};
+    const combatEffect = evidence?.combatEffect && typeof evidence.combatEffect === 'object'
+      ? evidence.combatEffect
+      : after?.战斗效果 && typeof after.战斗效果 === 'object'
+        ? after.战斗效果
+        : {};
+    const rate = (value, label, direction) => {
+      const numeric = Number(value || 0);
+      return numeric > 0 ? `${label}${direction}${percentText(numeric)}` : '';
+    };
+    const descriptions = [
+      rate(combatEffect.hit_bonus, '命中率', '提高'),
+      rate(combatEffect.hit_penalty, '命中率', '降低'),
+      rate(combatEffect.dodge_bonus, '闪避率', '提高'),
+      rate(combatEffect.dodge_penalty, '闪避率', '降低'),
+      rate(combatEffect.reaction_bonus, '即时反应成功率', '提高'),
+      rate(combatEffect.reaction_penalty, '即时反应成功率', '降低'),
+      rate(combatEffect.damage_bonus, '造成伤害', '提高'),
+      rate(combatEffect.damage_reduction, '承受伤害', '降低'),
+      rate(combatEffect.armor_pen, '防御效果', '削弱'),
+    ].filter(Boolean);
+    if (Number(combatEffect.skill_effect_mult || 0) > 0) {
+      const element = text(evidence?.element || after?.限定元素);
+      descriptions.push(`${element ? `${element}系` : ''}技能效果提高${percentText(Number(combatEffect.skill_effect_mult) - 1)}`);
+    }
+    const positionType = text(evidence?.positionType || combatEffect?.position_type);
+    if (positionType) {
+      const projection = text(evidence?.projection || combatEffect?.position_projection);
+      descriptions.push(`${positionType}位置${projection ? `，影响后续${projection}` : ''}`);
+    }
+    const attribute = playerSafeText(evidence?.attribute || after?.属性 || after?.属性名称, directory);
+    const value = signedValueText(evidence?.value || after?.数值);
+    if (attribute && value) descriptions.push(`${attribute}${value.startsWith('-') ? '降低' : '提高'}${value.replace(/^[+-]/, '')}`);
+    const label = playerStateName(stateName(event), directory);
+    return descriptions.length ? `${label}：${unique(descriptions).join('，')}` : label;
+  }
+
+  function isTerminalCancellation(event = {}) {
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    return text(event?.ruleCode || meta?.reasonCode || meta?.reason).toUpperCase() === 'BATTLE_TERMINAL';
   }
 
   function describeEffectResolved(event = {}, actor = '行动者', target = '目标', action = '行动', directory = new Map()) {
@@ -727,9 +798,16 @@
     const delta = number(event?.delta ?? meta?.delta, 0);
     const shield = number(meta?.amount ?? event?.amount, 0);
     const duration = number(event?.duration ?? meta?.duration, 0);
-    const namedState = playerSafeText(stateName(event), directory);
-    if (kind === 'action_start') {
+    const namedState = playerStateDescription(event, directory);
+    if (kind === 'action_start' || kind === 'pass') {
       const actionType = text(event?.actionType).toUpperCase();
+      const actionRole = text(event?.actionRole).toUpperCase();
+      if (actionType === 'PASS_OPPORTUNITY') {
+        return ['REACTION', 'COUNTER'].includes(actionRole)
+          ? `${actor}没有采取额外应对`
+          : `${actor}主动让过这次行动机会`;
+      }
+      if (kind === 'pass') return `${actor}主动让过这次行动机会`;
       if (actionType === 'WITHDRAW') return `${actor}尝试撤离战场`;
       if (target === actor && ['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType)) return `${actor}采取【${action}】`;
       if (targets.length > 1) {
@@ -987,7 +1065,7 @@
       actionName: playerSafeText(event?.actionName || event?.finalActionName, directory),
       resultState: resultLabel(event),
       resultCategory: structuredResultCategory(event),
-      stateName: playerSafeText(stateName(event), directory),
+      stateName: playerStateName(stateName(event), directory),
       summary: summarizeEvent(event, directory),
       numericTokens: numericTokens(event, visibilityMode),
       castTimePoints: ['charge_start', 'charge_progress'].includes(text(event?.eventKind))
@@ -2094,11 +2172,17 @@
       const reasonCode = text(candidate?.rejectionCode);
       const isSelected = candidate?.selected === true ||
         (!!selectedId && text(candidate?.candidateId) === selectedId);
+      const projectedCandidate = publicCandidate(candidate, directory);
+      const goalProjection = candidate?.goalProjection || {};
+      const expectedCandidateUtility = number(goalProjection?.expectedCandidateUtility, 0);
+      const expectedNoOpUtility = number(goalProjection?.expectedNoOpUtility, 0);
       return {
-        name: candidateDisplayLabel(publicCandidate(candidate, directory)),
-        targetNames: unique((Array.isArray(candidate?.targetIds) ? candidate.targetIds : [])
-          .map(targetId => publicEntityName(directory, targetId, targetId))
-          .filter(Boolean)),
+        candidateId: text(candidate?.candidateId),
+        name: candidateDisplayLabel(projectedCandidate),
+        actionName: projectedCandidate.actionName,
+        actionKind: projectedCandidate.actionKind,
+        targetNames: [...projectedCandidate.targetNames],
+        outcomeKinds: unique(candidate?.primaryRoute?.outcomeKinds || []),
         status: isSelected ? 'SELECTED' : reasonCode ? 'EXCLUDED' : 'CONSIDERED',
         reasonCode,
         reasonText: rejectionReasonText(reasonCode),
@@ -2107,6 +2191,29 @@
         rank: Number.isFinite(Number(candidate?.normalizedUtility))
           ? Number(candidate.normalizedUtility)
           : null,
+        tradeoffVector: {
+          objectiveUtilityHEPP: number(
+            candidate?.objectiveUtilityHEPP ??
+              candidate?.objectiveUtility ??
+              candidate?.vector?.objectiveUtilityHEPP,
+            0,
+          ),
+          informationValueHEPP: number(candidate?.vector?.informationValueHEPP, 0),
+          assetReserve: number(candidate?.vector?.assetReserve, 0),
+          survivalLowerBound: number(candidate?.vector?.survivalLowerBound, 0),
+          worstTailLossHEPP: number(candidate?.vector?.worstTailLossHEPP, 0),
+          discardedOverkillPP: number(candidate?.vector?.discardedOverkillPP, 0),
+        },
+        publicProjection: {
+          expectedCandidateUtility,
+          expectedNoOpUtility,
+          goalUtilityDelta: expectedCandidateUtility - expectedNoOpUtility,
+          informationValue: number(
+            goalProjection?.informationValueHEPP ??
+              candidate?.vector?.informationValueHEPP,
+            0,
+          ),
+        },
       };
     });
 
@@ -2116,6 +2223,11 @@
       .sort((left, right) => right.rank - left.rank);
     const topRanked = ranked[0] || null;
     const selectedRow = rows.find(row => row.status === 'SELECTED') || null;
+    const topRankedTieCount = topRanked
+      ? ranked.filter(row =>
+          Math.abs(number(row.rank, 0) - number(topRanked.rank, 0)) <= 1e-9
+        ).length
+      : 0;
     const candidateCount = Math.max(rows.length, number(decision?.candidateCount, 0));
     const paretoCount = Math.max(0, number(decision?.paretoCount, 0));
 
@@ -2128,7 +2240,12 @@
         return counts;
       }, new Map())
       .entries()]
-      .map(([reasonCode, count]) => ({ reasonCode, reasonText: rejectionReasonText(reasonCode), count }))
+      .map(([reasonCode, count]) => ({
+        reasonCode,
+        reasonText: rejectionReasonText(reasonCode),
+        reasonPlayerText: rejectionReasonPlayerText(reasonCode),
+        count,
+      }))
       .sort((left, right) => right.count - left.count || left.reasonCode.localeCompare(right.reasonCode));
 
     const narrowing = [
@@ -2148,7 +2265,7 @@
     const selectionLabel = text(decision?.decisionProfile?.selectionMode);
     const wasOptimal = !selectedRow || !topRanked
       ? null
-      : selectedRow.name === topRanked.name ||
+      : selectedRow.candidateId === topRanked.candidateId ||
         Math.abs(number(selectedRow.rank, 0) - number(topRanked.rank, 0)) <= 1e-9;
 
     return {
@@ -2160,6 +2277,9 @@
       /* 引擎选中的是不是它自己排第一的候选。false 表示引擎明知有更高排名者，
          战报必须如实说明这是在可接受范围内的取舍，不能说成"因为它更好"。 */
       wasOptimal,
+      topRankedTieCount,
+      selectedTiedAtTop: !!selectedRow && !!topRanked &&
+        Math.abs(number(selectedRow.rank, 0) - number(topRanked.rank, 0)) <= 1e-9,
       topRankedName: wasOptimal === false ? text(topRanked?.name) : '',
       rankGap: wasOptimal === false && selectedRow && topRanked
         ? Number((number(topRanked.rank, 0) - number(selectedRow.rank, 0)).toFixed(4))
@@ -2176,6 +2296,9 @@
   function publicCandidate(candidate = {}, directory = new Map()) {
     const declaration = candidate?.declaration || {};
     const isCounterDecline = candidate?.counterDeclineFallback === true;
+    const displayTargetIds = text(declaration?.creationRecipientId)
+      ? [declaration.creationRecipientId]
+      : unique(candidate?.targetIds || declaration?.targetIds || []);
     const rawActionName = text(
       candidate?.actionName ||
       candidate?.sourceActionName ||
@@ -2192,14 +2315,14 @@
       targetIds: isCounterDecline
         ? []
         : unique(
-            unique(candidate?.targetIds || declaration?.targetIds || [])
+            displayTargetIds
               .map(value => publicEntityId(directory, value))
               .filter(Boolean),
           ),
       targetNames: isCounterDecline
         ? []
         : unique(
-            unique(candidate?.targetIds || declaration?.targetIds || [])
+            displayTargetIds
               .map(value => publicEntityName(directory, value, value))
               .filter(Boolean),
           ),
@@ -2877,7 +3000,7 @@
       const resource = text(meta?.resource) || '资源';
       if (!amount) return '';
       return number(meta?.delta, 0) > 0
-        ? `${actor}恢复了${amount}点${resource}`
+        ? `${target || actor}恢复了${amount}点${resource}`
         : `${actor}消耗${amount}点${resource}`;
     }
     if (kind === 'charge_start' || kind === 'charge_progress') {
@@ -2887,11 +3010,29 @@
         : `${actor}正在蓄力【${action}】`;
     }
     if (kind === 'charge_interrupt') return `${actor}的蓄力被打断了`;
-    if (kind === 'lost_opportunity' || kind === 'blocked_action') return `${actor}这次没能行动`;
+    if (kind === 'lost_opportunity' || kind === 'blocked_action') {
+      const reasonCode = text(
+        meta?.reasonCode ||
+        meta?.reason ||
+        rawEvent?.ruleCode,
+      ).toUpperCase();
+      if (reasonCode === 'REACTION_NO_EFFECTIVE_ACTION') {
+        return `${actor}找不到有效的即时应对，只能放弃这次反应`;
+      }
+      if (reasonCode === 'BATTLE_TERMINAL') {
+        return `${actor}还没来得及行动，战斗就已结束`;
+      }
+      return `${actor}这次没能行动`;
+    }
 
     if (kind === 'action_start' || kind === 'pass') {
       const actionType = text(rawEvent?.actionType).toUpperCase();
-      if (actionType === 'PASS_OPPORTUNITY') return `${actor}按兵不动`;
+      const actionRole = text(rawEvent?.actionRole).toUpperCase();
+      if (actionType === 'PASS_OPPORTUNITY') {
+        return ['REACTION', 'COUNTER'].includes(actionRole)
+          ? `${actor}没有采取额外应对`
+          : `${actor}主动让过这次行动机会`;
+      }
       if (actionType === 'WITHDRAW') return `${actor}想要脱身`;
       if (['DEFEND', 'EVADE', 'OBSERVE'].includes(actionType) || !target || target === actor) {
         return `${actor}摆开【${action}】的架势`;
@@ -2905,7 +3046,7 @@
     if (kind === 'state_apply' || kind === 'state_replace') {
       const outcome = resultLabel(rawEvent);
       const receiver = target || actor;
-      const state = playerSafeText(stateName(rawEvent), new Map()) || '某种状态';
+      const state = playerStateDescription(rawEvent, new Map()) || '某种状态';
       const dur = number(rawEvent?.duration ?? meta?.duration, 0);
       if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
         return `${receiver}扛住了【${state}】，没有中招`;
@@ -3358,12 +3499,7 @@
         lines.push(`  未选${candidate.name}：${candidate.reasonText}`);
       });
       if (全部排除.length > 2) {
-        lines.push(`  另有${全部排除.length - 2}个候选被排除（详见判定依据）`);
-      }
-
-      /* 引擎明知有更高排名却选了别的，必须如实说明，不能包装成"因为它更好"。 */
-      if (node?.decision?.wasOptimal === false && node.decision.topRankedName) {
-        lines.push(`  注：引擎评分更高的是${node.decision.topRankedName}，本次在可接受范围内选了当前动作`);
+        lines.push(`  另有${全部排除.length - 2}个行动方案未采用（详见判定依据）`);
       }
 
       /* 按真实时序逐步输出，一步一行。回应方的步骤加"对此"前缀，
@@ -3521,9 +3657,10 @@
     };
   }
 
-  function unitStateFromSnapshot(unit = {}, side = '', directory = new Map()) {
+  function unitStateFromSnapshot(unit = {}, side = '', directory = new Map(), visibilityMode = 'DEVELOPER') {
     const id = publicEntityId(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称);
     const name = publicEntityName(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称, unit?.name || unit?.名称);
+    const hidePrivateResources = visibilityMode === 'PLAYER' && side === 'enemy';
     const states = Array.isArray(unit?.状态效果)
       ? unit.状态效果.map(state => text(state?.name || state?.状态 || state?.状态名称)).filter(Boolean)
       : Object.entries(unit?.状态效果 || {}).map(([stateKey, state]) =>
@@ -3536,7 +3673,8 @@
       hp: number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0),
       hpMax: Math.max(1, number(unit?.hp_max ?? unit?.HP上限 ?? unit?.属性?.HP上限, 1)),
       shield: Math.max(0, number(unit?.shield ?? unit?.护盾, 0)),
-      resources: {
+      resourceVisibility: hidePrivateResources ? 'HIDDEN' : 'PUBLIC',
+      resources: hidePrivateResources ? null : {
         soul: number(unit?.sp ?? unit?.魂力 ?? unit?.属性?.魂力, 0),
         soulMax: Math.max(0, number(unit?.sp_max ?? unit?.魂力上限 ?? unit?.属性?.魂力上限, 0)),
         spirit: number(unit?.men ?? unit?.精神力 ?? unit?.属性?.精神力, 0),
@@ -3545,7 +3683,7 @@
         staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
       },
       actionState: text(unit?.actionState || unit?.__战斗失能原因 || unit?.行动状态 || '战斗'),
-      states: unique(states),
+      states: unique(states.map(state => playerStateName(state, directory))),
       summon: !!text(unit?.召唤键 || unit?.单位性质),
       hostName: playerSafeText(unit?.宿主名, directory),
       remainingWindows: Math.max(0, number(unit?.剩余窗口, 0)),
@@ -3605,6 +3743,28 @@
       player: uniqueStates.filter(unit => unit.side === 'player').map(cloneValue),
       enemy: uniqueStates.filter(unit => unit.side === 'enemy').map(cloneValue),
     };
+  }
+
+  function projectUnitStateForVisibility(unit = {}, visibilityMode = 'PLAYER') {
+    const projected = cloneValue(unit);
+    if (visibilityMode === 'PLAYER' && text(projected?.side).toLowerCase() === 'enemy') {
+      projected.resourceVisibility = 'HIDDEN';
+      projected.resources = null;
+    }
+    return projected;
+  }
+
+  function projectRoundOverviewForVisibility(rows = [], visibilityMode = 'PLAYER') {
+    if (visibilityMode === 'DEVELOPER') return rows;
+    return (Array.isArray(rows) ? rows : []).map(row => ({
+      ...row,
+      units: {
+        player: (Array.isArray(row?.units?.player) ? row.units.player : [])
+          .map(unit => projectUnitStateForVisibility(unit, visibilityMode)),
+        enemy: (Array.isArray(row?.units?.enemy) ? row.units.enemy : [])
+          .map(unit => projectUnitStateForVisibility(unit, visibilityMode)),
+      },
+    }));
   }
 
   function opportunityFactKey(event = {}, fact = {}) {
@@ -3686,13 +3846,16 @@
           if (token.label === '护盾损耗') shieldBySide[side].lost += amount;
         });
       });
-      const resourceDeltaBySide = { player: 0, enemy: 0 };
+      const resourceDeltaBySide = { player: {}, enemy: {} };
       resourceEvents.forEach(event => {
         const fact = factsById.get(event.factId);
         const side = ['player', 'enemy'].includes(fact?.targetSide)
           ? fact.targetSide
           : fact?.actorSide;
-        if (side) resourceDeltaBySide[side] += number(event.token?.value, 0);
+        if (!side || !resourceDeltaBySide[side]) return;
+        const resource = text(event.token?.unit || event.token?.resource || '未标明资源').trim() || '未标明资源';
+        resourceDeltaBySide[side][resource] =
+          number(resourceDeltaBySide[side][resource], 0) + number(event.token?.value, 0);
       });
       const assetEvents = roundFacts.filter(fact => ['create', 'item_consume'].includes(fact.eventKind));
       const createdItemCount = assetEvents
@@ -3751,10 +3914,14 @@
         values.lost > values.absorbed ? `${label}另有${values.lost - values.absorbed}点护盾消散` : '',
       ]).filter(Boolean);
       if (shieldParts.length) summaryParts.push(shieldParts.join('，'));
-      const resourceParts = [
-        resourceDeltaBySide.player ? `我方资源净变化${resourceDeltaBySide.player > 0 ? '+' : ''}${resourceDeltaBySide.player}` : '',
-        resourceDeltaBySide.enemy ? `敌方资源净变化${resourceDeltaBySide.enemy > 0 ? '+' : ''}${resourceDeltaBySide.enemy}` : '',
-      ].filter(Boolean);
+      const resourceParts = Object.entries(resourceDeltaBySide).flatMap(([side, resources]) => {
+        const sideLabel = side === 'player' ? '我方' : '敌方';
+        return Object.entries(resources)
+          .filter(([, delta]) => number(delta, 0) !== 0)
+          .map(([resource, delta]) =>
+            `${sideLabel}${resource}净变化${number(delta, 0) > 0 ? '+' : ''}${displayNumber(number(delta, 0))}点`,
+          );
+      });
       if (resourceEvents.length) {
         summaryParts.push(resourceParts.length ? resourceParts.join('，') : `发生${resourceEvents.length}项资源变化`);
       }
@@ -3796,8 +3963,8 @@
     return rows;
   }
 
-  function finalSide(snapshot = {}, side = 'player', directory = new Map()) {
-    return snapshotTeam(snapshot, side).map(unit => unitStateFromSnapshot(unit, side, directory));
+  function finalSide(snapshot = {}, side = 'player', directory = new Map(), visibilityMode = 'DEVELOPER') {
+    return snapshotTeam(snapshot, side).map(unit => unitStateFromSnapshot(unit, side, directory, visibilityMode));
   }
 
   function projectPlayerValue(value, directory = new Map(), key = '') {
@@ -3827,20 +3994,26 @@
     return projectPlayerValue(terminal || {}, directory, 'terminalResult');
   }
 
-  function sideMetric(units = []) {
+  function sideMetric(units = [], includeResources = true) {
     const alive = units.filter(unit => unit.hp > 0 && !/死亡|失去战斗力|昏迷/.test(unit.actionState)).length;
     const hpRatio = units.length
       ? units.reduce((sum, unit) => sum + unit.hp / Math.max(1, unit.hpMax), 0) / units.length
       : 0;
-    const resourceRatio = units.length
+    const resourceRatio = includeResources && units.length
       ? units.reduce((sum, unit) => {
           const soul = unit.resources.soulMax > 0 ? unit.resources.soul / unit.resources.soulMax : 1;
           const spirit = unit.resources.spiritMax > 0 ? unit.resources.spirit / unit.resources.spiritMax : 1;
           const stamina = unit.resources.staminaMax > 0 ? unit.resources.stamina / unit.resources.staminaMax : 1;
           return sum + (soul + spirit + stamina) / 3;
         }, 0) / units.length
-      : 0;
-    return { alive, total: units.length, hpRatio, resourceRatio, score: alive * 100 + hpRatio * 60 + resourceRatio * 20 };
+      : null;
+    return {
+      alive,
+      total: units.length,
+      hpRatio,
+      resourceRatio,
+      score: alive * 100 + hpRatio * 60 + (resourceRatio === null ? 0 : resourceRatio * 20),
+    };
   }
 
   function terminalText(terminal = {}) {
@@ -3909,24 +4082,43 @@
     const protect = publicEntityName(directory, latest?.teamIntent?.protectTarget, latest?.teamIntent?.protectTarget);
     if (protect) return `优先保护${protect}并降低下一次回应风险`;
     if (focus) return `继续围绕${focus}寻找有效推进`;
-    return `延续“${problemLabels[text(latest?.problems?.[0]?.problemId)] || '当前局势'}”策略`;
+    return problemLabels[text(latest?.problems?.[0]?.problemId)]
+      ? `继续处理${problemLabels[text(latest?.problems?.[0]?.problemId)]}`
+      : '继续根据当前公开战况选择行动';
   }
 
-  function buildFinalSummary(draft = {}, roundOverview = [], directory = new Map()) {
+  function buildFinalSummary(
+    draft = {},
+    roundOverview = [],
+    directory = new Map(),
+    terminalInterruptions = [],
+    visibilityMode = 'PLAYER',
+  ) {
     const snapshot = draft?.finalSnapshot || {};
-    const terminal = projectTerminalResult(draft?.terminalResult || {}, 'PLAYER', directory);
-    const playerUnits = finalSide(snapshot, 'player', directory);
-    const enemyUnits = finalSide(snapshot, 'enemy', directory);
+    const terminal = projectTerminalResult(draft?.terminalResult || {}, visibilityMode, directory);
+    const playerUnits = finalSide(snapshot, 'player', directory, visibilityMode);
+    const enemyUnits = finalSide(snapshot, 'enemy', directory, visibilityMode);
     const summons = snapshotSummons(snapshot).map(unit => unitStateFromSnapshot(
       unit,
       text(unit?.side || unit?.阵营).toLowerCase().includes('enemy') ? 'enemy' : 'player',
       directory,
+      visibilityMode,
     ));
-    const playerMetric = sideMetric(playerUnits);
-    const enemyMetric = sideMetric(enemyUnits);
-    const advantageDelta = playerMetric.score - enemyMetric.score;
-    const advantage = Math.abs(advantageDelta) < 8 ? '双方总体容量接近'
-      : advantageDelta > 0 ? '我方保有更高的当前战斗容量' : '敌方保有更高的当前战斗容量';
+    const includeResourcesInMetric = visibilityMode === 'DEVELOPER';
+    const playerMetric = sideMetric(playerUnits, includeResourcesInMetric);
+    const enemyMetric = sideMetric(enemyUnits, includeResourcesInMetric);
+    const playerAverageHp = displayNumber(playerMetric.hpRatio * 100);
+    const enemyAverageHp = displayNumber(enemyMetric.hpRatio * 100);
+    const publicHpDelta = playerMetric.hpRatio - enemyMetric.hpRatio;
+    const publicAliveDelta = playerMetric.alive - enemyMetric.alive;
+    const publicRelation = publicAliveDelta === 0 && Math.abs(publicHpDelta) < 0.08
+      ? '双方当前公开生命状态接近'
+      : publicAliveDelta > 0 || (publicAliveDelta === 0 && publicHpDelta > 0)
+        ? '我方当前公开生命状态更有利'
+        : '敌方当前公开生命状态更有利';
+    const advantage =
+      `存活人数（我方${playerMetric.alive}/${playerMetric.total}，敌方${enemyMetric.alive}/${enemyMetric.total}）；` +
+      `平均生命比例（我方${playerAverageHp}%，敌方${enemyAverageHp}%）；${publicRelation}`;
     const recent = roundOverview.slice(-2);
     const recentPlayerDamage = recent.reduce((sum, row) => sum + number(row?.damageBySide?.player, 0), 0);
     const recentEnemyDamage = recent.reduce((sum, row) => sum + number(row?.damageBySide?.enemy, 0), 0);
@@ -3946,12 +4138,16 @@
         risks.push(`${unit.name}魂力接近耗尽`);
       }
     });
-    enemyUnits
-      .filter(unit => !/死亡|失去战斗力|昏迷/.test(unit.actionState))
-      .filter(unit => unit.hp > 0)
-      .forEach(unit => {
-        risks.push(`敌方仍有可行动威胁：${unit.name}`);
-      });
+    if (terminal?.terminal === true) {
+      risks.push('终局已确认，本场不再继续产生行动或伤害');
+    } else {
+      enemyUnits
+        .filter(unit => !/死亡|失去战斗力|昏迷/.test(unit.actionState))
+        .filter(unit => unit.hp > 0)
+        .forEach(unit => {
+          risks.push(`敌方仍有可行动威胁：${unit.name}`);
+        });
+    }
     if (!risks.length) risks.push('当前没有单位进入明确生命或魂力危机');
     const tacticalWindows = [];
     [...playerUnits, ...enemyUnits].forEach(unit => {
@@ -3965,15 +4161,24 @@
       enemy: latestSideIntent(decisions, enemyUnits, directory, terminal, 'enemy'),
     };
     const terminalDetail = terminalConditionText(terminal);
-    const formatUnit = unit => `${unit.name} HP ${unit.hp}/${unit.hpMax}，魂力 ${unit.resources.soul}/${unit.resources.soulMax}，体力 ${unit.resources.stamina}/${unit.resources.staminaMax}，精神力 ${unit.resources.spirit}/${unit.resources.spiritMax}${unit.actionState && unit.actionState !== '战斗' ? `，行动状态：${unit.actionState}` : ''}${unit.states.length ? `，状态：${unit.states.join('、')}` : ''}`;
+    const formatUnit = unit => {
+      const resources = unit.resourceVisibility === 'HIDDEN'
+        ? '，资源未公开'
+        : `，魂力 ${unit.resources.soul}/${unit.resources.soulMax}，体力 ${unit.resources.stamina}/${unit.resources.staminaMax}，精神力 ${unit.resources.spirit}/${unit.resources.spiritMax}`;
+      return `${unit.name} HP ${unit.hp}/${unit.hpMax}${resources}${unit.actionState && unit.actionState !== '战斗' ? `，行动状态：${unit.actionState}` : ''}${unit.states.length ? `，状态：${unit.states.join('、')}` : ''}`;
+    };
+    const terminalInterruptionText = terminal?.terminal === true && terminalInterruptions.length
+      ? `终局收束：目标达成后，${terminalInterruptions.map(item => item.actorName).filter(Boolean).join('、')}尚未开始的行动已取消。`
+      : '';
     const textSummary = [
       `战至第${number(draft?.actualRoundCount, 0)}回合，${terminalText(terminal)}${terminalDetail ? `，终局条件：${terminalDetail}` : ''}。`,
       `我方：${playerUnits.map(formatUnit).join('；') || '无可用单位'}。`,
       `敌方：${enemyUnits.map(formatUnit).join('；') || '无可用单位'}。`,
       `战局：${advantage}；${trend}。`,
       `下一意图：我方${nextIntents.player}；敌方${nextIntents.enemy}。`,
+      terminalInterruptionText,
       `最大风险：${risks[0]}。`,
-    ].join('\n');
+    ].filter(Boolean).join('\n');
     return {
       terminalResult: terminal,
       headline: terminalText(terminal),
@@ -3987,6 +4192,7 @@
       advantage,
       trend,
       risks,
+      terminalInterruptions: terminalInterruptions.map(cloneValue),
       tacticalWindows,
       nextIntents,
       text: textSummary,
@@ -3999,7 +4205,8 @@
       hp: unit.hp,
       hpMax: unit.hpMax,
       shield: unit.shield,
-      resources: cloneValue(unit.resources),
+      resourceVisibility: unit.resourceVisibility,
+      resources: unit.resourceVisibility === 'HIDDEN' ? null : cloneValue(unit.resources),
       states: [...unit.states],
       actionState: unit.actionState,
     });
@@ -4023,6 +4230,459 @@
       nextIntents: cloneValue(finalSummary?.nextIntents || {}),
       recentRoundSummaries: roundOverview.slice(-3).map(row => ({ round: row.round, summary: row.summary })),
     };
+  }
+
+  const playerDecisionStageLabels = Object.freeze({
+    候选生成: '可用行动',
+    硬排除: '排除不可行动作',
+    非支配筛选: '保留有真实取舍的方案',
+    选择: '最终选择',
+  });
+  const publicGeneralActionKinds = new Set([
+    'BASIC_ATTACK',
+    'DEFEND',
+    'EVADE',
+    'PASS_OPPORTUNITY',
+    'WITHDRAW',
+    'OBSERVE',
+    'COUNTER_DECLINE',
+  ]);
+  const playerActionKindDescriptions = Object.freeze({
+    BASIC_ATTACK: '普通攻击直接争取生命优势',
+    DEFEND: '防御以承受并减轻来袭为主',
+    EVADE: '闪避以完全避开来袭为主',
+    PASS_OPPORTUNITY: '让过行动不建立动作效果',
+    WITHDRAW: '撤离以脱离战斗为目标',
+    OBSERVE: '观察以获取可见信息为主',
+    COUNTER_DECLINE: '放弃反击会保留当前状态但不造成回应效果',
+    RELEASE_SKILL: '技能按其公开效果改变当前局面',
+  });
+
+  function compareDecisionCandidates(selected = {}, alternative = {}, includeValueTradeoffs = true) {
+    const directReason = text(alternative?.reasonPlayerText || alternative?.reasonText);
+    if (directReason) return { reason: directReason, categories: ['future'] };
+
+    const selectedAdvantages = [];
+    const alternativeAdvantages = [];
+    const categories = new Set();
+    const epsilon = 1e-9;
+    if (includeValueTradeoffs) {
+      const dimensions = [
+        ['objectiveUtilityHEPP', true, '对当前目标的预期推进更高', 'objective'],
+        ['informationValueHEPP', true, '能带来更多可观察信息', 'future'],
+        ['assetReserve', true, '保留的资源余量更多', 'resource'],
+        ['survivalLowerBound', true, '最坏情况下的生存底线更高', 'risk'],
+        ['worstTailLossHEPP', false, '灾难性结果的风险更低', 'risk'],
+        ['discardedOverkillPP', false, '无效的过量效果更少', 'objective'],
+      ];
+      dimensions.forEach(([key, higherIsBetter, label, category]) => {
+        const selectedValue = number(selected?.tradeoffVector?.[key], 0);
+        const alternativeValue = number(alternative?.tradeoffVector?.[key], 0);
+        if (Math.abs(selectedValue - alternativeValue) <= epsilon) return;
+        const selectedIsBetter = higherIsBetter
+          ? selectedValue > alternativeValue
+          : selectedValue < alternativeValue;
+        (selectedIsBetter ? selectedAdvantages : alternativeAdvantages).push(label);
+        categories.add(category);
+      });
+    }
+
+    const clauses = [];
+    if (selectedAdvantages.length) clauses.push(`所选方案${selectedAdvantages.join('、')}`);
+    if (alternativeAdvantages.length) clauses.push(`替代方案${alternativeAdvantages.join('、')}`);
+    const selectedTargets = unique(selected?.targetNames || []);
+    const alternativeTargets = unique(alternative?.targetNames || []);
+    if (JSON.stringify(selectedTargets) !== JSON.stringify(alternativeTargets)) {
+      clauses.push(
+        `作用目标不同（所选：${selectedTargets.join('、') || '无指定目标'}；替代：${alternativeTargets.join('、') || '无指定目标'}）`,
+      );
+      categories.add('objective');
+    } else if (text(selected?.actionName) !== text(alternative?.actionName)) {
+      const selectedDescription = text(playerActionKindDescriptions[text(selected?.actionKind)]);
+      const alternativeDescription = text(playerActionKindDescriptions[text(alternative?.actionKind)]);
+      clauses.push(
+        selectedDescription && alternativeDescription
+          ? `${selectedDescription}；${alternativeDescription}`
+          : `动作不同（所选：${text(selected?.actionName)}；替代：${text(alternative?.actionName)}）`,
+      );
+      categories.add('future');
+    }
+    if (!clauses.length) clauses.push('两者在当前公开信息下的目标推进、风险和资源取舍接近');
+    return { reason: clauses.join('；'), categories: [...categories] };
+  }
+
+  const decisionComparisonDimensions = Object.freeze([
+    ['goalUtilityDelta', 'publicProjection', '目标推进差', '目标百分点', 'objective-progress', true],
+    ['informationValue', 'publicProjection', '观察收益差', '目标百分点', 'observation-value', true],
+    ['survivalLowerBound', 'tradeoffVector', '生存底线差', '%', 'survival-floor', true],
+    ['assetReserve', 'tradeoffVector', '资源余量差', '%', 'resource-reserve', true],
+    ['worstTailLossHEPP', 'tradeoffVector', '灾难分支损失差', '目标百分点', 'tail-risk', false],
+    ['discardedOverkillPP', 'tradeoffVector', '阈值过量差', '生命百分点', 'threshold-overflow', false],
+  ]);
+
+  function decisionProjectionNumbers(
+    explanationId,
+    selectedCandidate,
+    comparisonRows,
+    visibilityMode,
+    publicEvidenceAvailable,
+  ) {
+    if (!publicEvidenceAvailable) return [];
+    const round = value => Number(number(value, 0).toFixed(4));
+    const token = ({ key, label, value, unit, subject, operation, operands, rule, consequence }) => {
+      const sourceFactId = `${explanationId}:prediction:${key}`;
+      return {
+        tokenId: `${sourceFactId}:number`,
+        label,
+        value: round(value),
+        unit,
+        subject,
+        sourceName: '决策时公开路线推演',
+        sourceType: 'DECISION_TIME_PUBLIC_PROJECTION',
+        operation,
+        sourceEventId: explanationId,
+        sourceFactId,
+        visibility: visibilityMode,
+        operands: operands.map(operand => ({
+          ...operand,
+          value: round(operand.value),
+          unit,
+        })),
+        derivationRule: rule,
+        tacticalConsequence: consequence,
+      };
+    };
+    const selectedProjection = selectedCandidate?.publicProjection || {};
+    const selectedGoal = number(selectedProjection?.expectedCandidateUtility, 0);
+    const noOpGoal = number(selectedProjection?.expectedNoOpUtility, 0);
+    const goalDelta = selectedGoal - noOpGoal;
+    const numbers = [token({
+      key: 'selected-objective-progress',
+      label: '相对不行动的目标推进',
+      value: goalDelta,
+      unit: '目标百分点',
+      subject: '所选方案',
+      operation: 'SUBTRACT',
+      operands: [
+        { name: '所选方案的目标轨迹预估', value: selectedGoal },
+        { name: '不行动的目标轨迹预估', value: noOpGoal },
+      ],
+      rule: '所选方案的目标轨迹预估 - 不行动的目标轨迹预估',
+      consequence: goalDelta > 0
+        ? '正值表示预计推进当前目标'
+        : goalDelta < 0
+          ? '负值表示预计使当前目标倒退'
+          : '预计不改变当前目标进度',
+    })];
+    const informationValue = number(selectedProjection?.informationValue, 0);
+    if (informationValue > 1e-9) {
+      numbers.push(token({
+        key: 'selected-combined-benefit',
+        label: '含观察收益的综合预期',
+        value: goalDelta + informationValue,
+        unit: '目标百分点',
+        subject: '所选方案',
+        operation: 'ADD',
+        operands: [
+          { name: '相对不行动的目标推进', value: goalDelta },
+          { name: '观察带来的后续判断收益', value: informationValue },
+        ],
+        rule: '相对不行动的目标推进 + 观察带来的后续判断收益',
+        consequence: '观察结果可在后续行动中改变可选路线',
+      }));
+    }
+    comparisonRows
+      .filter(row => text(row?.candidate?.status) !== 'EXCLUDED')
+      .forEach((row, alternativeIndex) => {
+        const alternative = row.candidate;
+        const alternativeName = text(alternative?.name || `替代方案${alternativeIndex + 1}`);
+        decisionComparisonDimensions.forEach(([
+          key,
+          owner,
+          label,
+          unit,
+          sourceKey,
+          higherIsBetter,
+        ]) => {
+          const selectedValue = number(selectedCandidate?.[owner]?.[key], 0);
+          const alternativeValue = number(alternative?.[owner]?.[key], 0);
+          const difference = selectedValue - alternativeValue;
+          if (Math.abs(difference) <= 1e-9) return;
+          const selectedFavored = higherIsBetter ? difference > 0 : difference < 0;
+          numbers.push(token({
+            key: `alternative-${alternativeIndex + 1}-${sourceKey}`,
+            label,
+            value: difference,
+            unit,
+            subject: `所选方案与${alternativeName}`,
+            operation: 'SUBTRACT',
+            operands: [
+              { name: '所选方案', value: selectedValue },
+              { name: alternativeName, value: alternativeValue },
+            ],
+            rule: `所选方案 - ${alternativeName}`,
+            consequence: selectedFavored
+              ? `该维度更支持所选方案`
+              : `该维度更支持${alternativeName}`,
+          }));
+        });
+      });
+    return numbers;
+  }
+
+  function projectDecisionTraceForVisibility(
+    trace = {},
+    visibilityMode = 'PLAYER',
+    actorSide = '',
+  ) {
+    if (visibilityMode === 'DEVELOPER') return cloneValue(trace);
+    const visibleCandidates = (Array.isArray(trace?.candidates) ? trace.candidates : [])
+      .filter(candidate =>
+        actorSide !== 'enemy' ||
+        text(candidate?.status) === 'SELECTED' ||
+        publicGeneralActionKinds.has(text(candidate?.actionKind))
+      );
+    return {
+      candidateCount: actorSide === 'enemy'
+        ? visibleCandidates.length
+        : Math.max(0, number(trace?.candidateCount, 0)),
+      candidates: visibleCandidates.map(candidate => ({
+        name: text(candidate?.name),
+        targetNames: unique(candidate?.targetNames || []).map(text).filter(Boolean),
+        status: text(candidate?.status),
+        reason: text(candidate?.reasonPlayerText),
+      })),
+      narrowing: actorSide === 'enemy'
+        ? []
+        : (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => ({
+        stage: playerDecisionStageLabels[text(stage?.stage)] || text(stage?.stage),
+        before: Math.max(0, number(stage?.before, 0)),
+        after: Math.max(0, number(stage?.after, 0)),
+        droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
+          .map(reason => ({
+            reason: text(reason?.reasonPlayerText || reason?.reasonText),
+            count: Math.max(0, number(reason?.count, 0)),
+          }))
+          .filter(reason => reason.reason),
+          })),
+    };
+  }
+
+  function projectNarrativeChainForVisibility(
+    narrativeChain = [],
+    visibilityMode = 'PLAYER',
+    directory = new Map(),
+  ) {
+    return (Array.isArray(narrativeChain) ? narrativeChain : []).map(node => {
+      const projected = cloneValue(node);
+      const primaryActorSide = text(entityEntry(directory, node?.actorId)?.side);
+      projected.decision = node?.decision
+        ? projectDecisionTraceForVisibility(node.decision, visibilityMode, primaryActorSide)
+        : null;
+      projected.decisions = (Array.isArray(node?.decisions) ? node.decisions : []).map(row => {
+        const actorId = text(row?.actorId);
+        return {
+          actorId,
+          actorName: text(row?.actorName),
+          isPrimary: row?.isPrimary === true,
+          kind: text(row?.kind),
+          trace: projectDecisionTraceForVisibility(
+            row?.trace || {},
+            visibilityMode,
+            text(entityEntry(directory, actorId)?.side),
+          ),
+          lostOpportunityReason: text(row?.lostOpportunityReason),
+        };
+      });
+      return projected;
+    });
+  }
+
+  function buildDecisionTimeExplanations(
+    narrativeChain = [],
+    visibilityMode = 'PLAYER',
+    directory = new Map(),
+  ) {
+    let explanationIndex = 0;
+    return (Array.isArray(narrativeChain) ? narrativeChain : []).flatMap(node => {
+      const decisionRows = Array.isArray(node?.decisions) && node.decisions.length
+        ? node.decisions
+        : node?.decision
+          ? [{ actorId: node?.actorId, actorName: node?.actorName, kind: 'CHOICE', trace: node.decision }]
+          : [];
+      return decisionRows.map(row => {
+        const trace = row?.trace && typeof row.trace === 'object' ? row.trace : {};
+        const actorId = text(row?.actorId || node?.actorId);
+        const actorSide = text(entityEntry(directory, actorId)?.side);
+        const hideEnemyPrivateCandidates = visibilityMode === 'PLAYER' && actorSide === 'enemy';
+        const candidates = (Array.isArray(trace?.candidates) ? trace.candidates : [])
+          .filter(candidate =>
+            !hideEnemyPrivateCandidates ||
+            text(candidate?.status) === 'SELECTED' ||
+            publicGeneralActionKinds.has(text(candidate?.actionKind))
+          );
+        const selectedCandidate = candidates.find(candidate =>
+          text(candidate?.status).toUpperCase() === 'SELECTED'
+        ) || null;
+        const consideredCandidates = candidates
+          .filter(candidate => text(candidate?.status).toUpperCase() === 'CONSIDERED')
+          .sort((left, right) => {
+            const leftRank = Number.isFinite(Number(left?.rank)) ? Number(left.rank) : -Infinity;
+            const rightRank = Number.isFinite(Number(right?.rank)) ? Number(right.rank) : -Infinity;
+            return rightRank - leftRank;
+          });
+        const excludedCandidates = candidates.filter(candidate =>
+          text(candidate?.status).toUpperCase() === 'EXCLUDED'
+        );
+        const steps = Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [];
+        const actualNumericTokens = steps.flatMap(step =>
+          Array.isArray(step?.numericTokens)
+            ? step.numericTokens.map(token => cloneValue(token))
+            : []
+        );
+        const decisionKind = text(row?.kind || 'CHOICE');
+        const selectedName = decisionKind === 'LOST_OPPORTUNITY'
+          ? '未能行动'
+          : text(
+              selectedCandidate?.name ||
+              node?.action?.name ||
+              node?.settlement?.declarationSummary ||
+              '未记录动作',
+            );
+        const includeValueTradeoffs = visibilityMode === 'DEVELOPER' || actorSide === 'player';
+        const comparisonRows = [...consideredCandidates, ...excludedCandidates]
+          .slice(0, 2)
+          .map(candidate => ({
+            candidate,
+            comparison: compareDecisionCandidates(
+              selectedCandidate || {},
+              candidate,
+              includeValueTradeoffs,
+            ),
+          }));
+        const alternatives = comparisonRows.map(({ candidate, comparison }) => ({
+          name: text(candidate?.name),
+          targetNames: unique(candidate?.targetNames || []).map(text).filter(Boolean),
+          status: text(candidate?.status),
+          reason: text(comparison.reason),
+          ...(visibilityMode === 'DEVELOPER'
+            ? { reasonCode: text(candidate?.reasonCode) }
+            : {}),
+        }));
+        const firstComparison = text(comparisonRows[0]?.comparison?.reason);
+        let selectionReason;
+        if (decisionKind === 'PLAYER_LOCKED') {
+          selectionReason = `玩家锁定了${selectedName}；系统只检查动作是否合法，没有改用AI候选`;
+        } else if (decisionKind === 'FORCED') {
+          selectionReason = `${selectedName}由当前强制行动约束决定`;
+        } else if (decisionKind === 'LOST_OPPORTUNITY') {
+          selectionReason = text(row?.lostOpportunityReason || '这次行动机会已经失去');
+        } else if (decisionKind === 'DECLINED') {
+          selectionReason = `放弃本次回应机会；${firstComparison || '没有可兑现的回应收益'}`;
+        } else if (trace?.wasOptimal === false) {
+          selectionReason = `本次在可行方案中按固定随机规则选择了${selectedName}，没有固定采用预估最高项；${firstComparison || '主要方案各有取舍'}`;
+        } else if (trace?.selectedTiedAtTop === true && number(trace?.topRankedTieCount, 0) > 1) {
+          selectionReason = `${selectedName}与${number(trace.topRankedTieCount, 0) - 1}个方案在当前公开评估中并列最高，按固定种子规则选择；${firstComparison || '并列方案的目标推进、风险和资源取舍相同'}`;
+        } else if (firstComparison) {
+          selectionReason = `选择${selectedName}；相较主要替代项，${firstComparison}`;
+        } else {
+          selectionReason = `选择${selectedName}；没有其他可行替代项`;
+        }
+        const explanationId = `decision-explanation:${++explanationIndex}:${text(node?.chainId) || 'unknown'}`;
+        const publicEvidenceAvailable = decisionKind !== 'LOST_OPPORTUNITY' &&
+          !!selectedCandidate &&
+          !hideEnemyPrivateCandidates;
+        const predictedNumbers = decisionProjectionNumbers(
+          explanationId,
+          selectedCandidate,
+          comparisonRows,
+          visibilityMode,
+          publicEvidenceAvailable,
+        );
+        const publicNarrowing = (Array.isArray(trace?.narrowing) ? trace.narrowing : [])
+          .filter(() => !hideEnemyPrivateCandidates)
+          .map(stage => ({
+            stage: visibilityMode === 'PLAYER'
+              ? playerDecisionStageLabels[text(stage?.stage)] || text(stage?.stage)
+              : text(stage?.stage),
+            before: Math.max(0, number(stage?.before, 0)),
+            after: Math.max(0, number(stage?.after, 0)),
+            droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
+              .map(reason => ({
+                reason: text(reason?.reasonPlayerText || reason?.reasonText),
+                count: Math.max(0, number(reason?.count, 0)),
+              }))
+              .filter(reason => reason.reason),
+          }));
+        return {
+          schemaVersion: 'DecisionTimeExplanationV1',
+          explanationId,
+          chainId: text(node?.chainId),
+          round: Math.max(0, number(node?.round, 0)),
+          actorId,
+          actorName: text(row?.actorName || node?.actorName),
+          decisionKind,
+          visibleContext: {
+            candidateCount: hideEnemyPrivateCandidates
+              ? candidates.length
+              : Math.max(0, number(trace?.candidateCount, candidates.length)),
+            narrowing: publicNarrowing,
+          },
+          selected: {
+            name: selectedName,
+            targetNames: decisionKind === 'LOST_OPPORTUNITY'
+              ? []
+              : unique(
+                  selectedCandidate?.targetNames ||
+                  node?.targetNames ||
+                  node?.targetIds ||
+                  [],
+                ).map(text).filter(Boolean),
+            status: decisionKind === 'LOST_OPPORTUNITY'
+              ? 'LOST_OPPORTUNITY'
+              : 'SELECTED',
+          },
+          alternatives,
+          objectiveTradeoffs: unique(comparisonRows
+            .filter(row => row.comparison.categories.includes('objective'))
+            .map(row => row.comparison.reason)),
+          riskTradeoffs: unique(comparisonRows
+            .filter(row => row.comparison.categories.includes('risk'))
+            .map(row => row.comparison.reason)),
+          resourceTradeoffs: unique(comparisonRows
+            .filter(row => row.comparison.categories.includes('resource'))
+            .map(row => row.comparison.reason)),
+          futurePoolTradeoffs: unique(comparisonRows
+            .filter(row => row.comparison.categories.includes('future'))
+            .map(row => row.comparison.reason)),
+          comparisonEvidence: {
+            comparisonId: `decision-comparison:${explanationIndex}`,
+            changedComponents: alternatives.map(candidate => ({
+              alternativeAction: candidate.name,
+              reason: candidate.reason,
+            })),
+            explanation: selectionReason,
+          },
+          predicted: {
+            publicEvidenceAvailable,
+            numbers: predictedNumbers,
+          },
+          actual: {
+            numericTokens: actualNumericTokens,
+            factIds: steps.map(step => text(step?.factId)).filter(Boolean),
+          },
+          ...(visibilityMode === 'DEVELOPER'
+            ? {
+                selectionLabel: text(trace?.selectionLabel),
+                candidateIds: candidates
+                  .map(candidate => text(candidate?.candidateId))
+                  .filter(Boolean),
+                causalValueFacts: [],
+              }
+            : {}),
+        };
+      });
+    });
   }
 
   function build(input = {}) {
@@ -4050,6 +4710,7 @@
     const exchangeMap = new Map();
     const roundCanonicalFactIds = new Map();
     const finalCanonicalFactIds = [];
+    const terminalInterruptions = [];
     ledger.forEach(event => {
       const factId = text(event?.eventId);
       const fact = factsById.get(factId);
@@ -4066,6 +4727,18 @@
       if (kind === 'battle_objective_resolved') {
         fact.canonicalFactOwner = 'final-summary';
         finalCanonicalFactIds.push(factId);
+        return;
+      }
+      if (isTerminalCancellation(event)) {
+        fact.canonicalFactOwner = 'final-summary';
+        finalCanonicalFactIds.push(factId);
+        terminalInterruptions.push({
+          sourceFactId: factId,
+          round,
+          actorName: fact.actorName,
+          actionRole: fact.actionRole,
+          summary: fact.summary,
+        });
         return;
       }
       if (
@@ -4108,12 +4781,19 @@
         number(ledgerOrderByFactId.get(text(left.factIds[0])), Number.MAX_SAFE_INTEGER) -
           number(ledgerOrderByFactId.get(text(right.factIds[0])), Number.MAX_SAFE_INTEGER)
       );
-    const roundOverview = buildRoundOverview(draft, ledger, factsById, exchanges, directory);
-    roundOverview.forEach(row => {
+    const rawRoundOverview = buildRoundOverview(draft, ledger, factsById, exchanges, directory);
+    rawRoundOverview.forEach(row => {
       row.canonicalFactIds = roundCanonicalFactIds.get(row.round) || [];
     });
+    const roundOverview = projectRoundOverviewForVisibility(rawRoundOverview, visibilityMode);
     const sourceDecisionCount = Array.isArray(draft?.decisionAudit) ? draft.decisionAudit.length : 0;
-    const finalSummary = buildFinalSummary(draft, roundOverview, directory);
+    const finalSummary = buildFinalSummary(
+      draft,
+      roundOverview,
+      directory,
+      terminalInterruptions,
+      visibilityMode,
+    );
     finalSummary.canonicalFactIds = finalCanonicalFactIds;
     const aiSummaryInput = buildAiSummaryInput(finalSummary, roundOverview);
 
@@ -4130,6 +4810,16 @@
       remainingHpById: buildRemainingHpIndex(draft),
     });
     const pipelineStats = buildPipelineStats(narrativeChain);
+    const decisionExplanations = buildDecisionTimeExplanations(
+      narrativeChain,
+      visibilityMode,
+      directory,
+    );
+    const projectedNarrativeChain = projectNarrativeChainForVisibility(
+      narrativeChain,
+      visibilityMode,
+      directory,
+    );
     /* 决策投影完整性不变量：draft 里每一条决策都必须在因果链上找到落点。
        这条检查原先挂在 adjudications 上（DECISION_ADJUDICATION_MISSING），
        它正是发现"一次交锋挂多个决策时反应方被丢弃"那个 bug 的检查，
@@ -4171,7 +4861,12 @@
       exchanges,
       finalSummary,
       aiSummaryInput,
-      narrativeChain,
+      aiStructuredSummary: {
+        schemaVersion: 'AIPlayerSummaryV1',
+        ...cloneValue(aiSummaryInput),
+      },
+      decisionExplanations,
+      narrativeChain: projectedNarrativeChain,
       pipelineStats,
       aiReport,
       battleHeadline,
@@ -4204,6 +4899,17 @@
         ) {
           pushFatal('REPORT_NUMBER_SOURCE_MISSING', { factId, tokenIndex });
         }
+        if (
+          (text(token?.label) === '资源变化' && text(fact?.eventKind) !== 'resource_change') ||
+          (text(token?.label) === '物品数量变化' && text(fact?.eventKind) !== 'item_consume')
+        ) {
+          pushFatal('REPORT_NUMBER_SEMANTIC_MISMATCH', {
+            factId,
+            tokenIndex,
+            eventKind: text(fact?.eventKind),
+            label: text(token?.label),
+          });
+        }
       });
       if (report?.visibilityMode === 'PLAYER' && fact?.developerDetail !== undefined) {
         pushFatal('REPORT_VISIBILITY_LEAK', { factId, reason: 'DEVELOPER_DETAIL_IN_PLAYER_REPORT' });
@@ -4225,6 +4931,228 @@
         sourceDecisionCount: Number(report.sourceDecisionCount),
         projectedDecisionCount: Number(report.projectedDecisionCount),
       });
+    }
+    const decisionExplanations = Array.isArray(report?.decisionExplanations)
+      ? report.decisionExplanations
+      : [];
+    if (decisionExplanations.length !== Number(report?.projectedDecisionCount || 0)) {
+      pushFatal('REPORT_FACT_MISSING', {
+        reason: 'DECISION_EXPLANATION_COUNT_MISMATCH',
+        expected: Number(report?.projectedDecisionCount || 0),
+        actual: decisionExplanations.length,
+      });
+    }
+    decisionExplanations.forEach((explanation, index) => {
+      if (text(explanation?.schemaVersion) !== 'DecisionTimeExplanationV1') {
+        pushFatal('REPORT_FACT_MISSING', {
+          reason: 'DECISION_EXPLANATION_SCHEMA_MISSING',
+          index,
+        });
+      }
+      (Array.isArray(explanation?.actual?.numericTokens)
+        ? explanation.actual.numericTokens
+        : []
+      ).forEach((token, tokenIndex) => {
+        const factId = text(token?.sourceFactId || token?.sourceEventId);
+        if (!factsById.has(factId)) {
+          pushFatal('REPORT_FACT_INVENTED', {
+            reason: 'DECISION_EXPLANATION_NUMBER_FACT_MISSING',
+            index,
+            tokenIndex,
+            factId,
+          });
+        }
+      });
+      const predictedNumbers = Array.isArray(explanation?.predicted?.numbers)
+        ? explanation.predicted.numbers
+        : [];
+      if (
+        explanation?.predicted?.publicEvidenceAvailable === true &&
+        predictedNumbers.length === 0
+      ) {
+        pushFatal('REPORT_NUMBER_SOURCE_MISSING', {
+          reason: 'DECISION_PUBLIC_PREDICTION_MISSING',
+          index,
+        });
+      }
+      predictedNumbers.forEach((token, tokenIndex) => {
+        const explanationId = text(explanation?.explanationId);
+        const operands = Array.isArray(token?.operands) ? token.operands : [];
+        if (
+          !Number.isFinite(Number(token?.value)) ||
+          text(token?.sourceType) !== 'DECISION_TIME_PUBLIC_PROJECTION' ||
+          !['ADD', 'SUBTRACT'].includes(text(token?.operation)) ||
+          text(token?.sourceEventId) !== explanationId ||
+          !text(token?.sourceFactId).startsWith(`${explanationId}:prediction:`) ||
+          !text(token?.label) ||
+          !text(token?.unit) ||
+          !text(token?.derivationRule) ||
+          !text(token?.tacticalConsequence) ||
+          operands.length < 2 ||
+          operands.some(operand =>
+            !text(operand?.name) ||
+            !Number.isFinite(Number(operand?.value)) ||
+            !text(operand?.unit)
+          )
+        ) {
+          pushFatal('REPORT_NUMBER_SOURCE_MISSING', {
+            reason: 'DECISION_PREDICTION_SOURCE_INCOMPLETE',
+            index,
+            tokenIndex,
+          });
+        }
+        if (
+          report?.visibilityMode === 'PLAYER' &&
+          /HEPP|Pareto|normalizedUtility|candidateId|routeKey|dependencyKey/i.test(
+            JSON.stringify(token),
+          )
+        ) {
+          pushFatal('REPORT_VISIBILITY_LEAK', {
+            reason: 'DECISION_PREDICTION_INTERNAL_TERM',
+            index,
+            tokenIndex,
+          });
+        }
+      });
+      if (
+        text(explanation?.decisionKind) === 'LOST_OPPORTUNITY' &&
+        (
+          text(explanation?.selected?.name) !== '未能行动' ||
+          text(explanation?.selected?.status) !== 'LOST_OPPORTUNITY' ||
+          (Array.isArray(explanation?.selected?.targetNames) &&
+            explanation.selected.targetNames.length > 0) ||
+          predictedNumbers.length > 0
+        )
+      ) {
+        pushFatal('REPORT_FACT_INVENTED', {
+          reason: 'LOST_OPPORTUNITY_SELECTED_ACTION_CONTRADICTION',
+          index,
+        });
+      }
+      if (
+        report?.visibilityMode === 'PLAYER' &&
+        Object.hasOwn(explanation, 'candidateIds')
+      ) {
+        pushFatal('REPORT_VISIBILITY_LEAK', {
+          reason: 'DECISION_EXPLANATION_CANDIDATE_IDS',
+          index,
+        });
+      }
+      const alternatives = Array.isArray(explanation?.alternatives)
+        ? explanation.alternatives
+        : [];
+      if (alternatives.some(alternative => !text(alternative?.reason))) {
+        pushFatal('REPORT_FACT_MISSING', {
+          reason: 'DECISION_ALTERNATIVE_DIFFERENCE_MISSING',
+          index,
+        });
+      }
+      if (/^在当时可见的候选中选择了/.test(text(explanation?.comparisonEvidence?.explanation))) {
+        pushFatal('REPORT_FACT_MISSING', {
+          reason: 'DECISION_EXPLANATION_GENERIC_ONLY',
+          index,
+        });
+      }
+    });
+    if (report?.visibilityMode === 'PLAYER') {
+      const decisionTraceProjection = JSON.stringify(
+        (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
+          .map(node => ({ decision: node?.decision, decisions: node?.decisions })),
+      );
+      if (/"(?:engineLabel|selectionLabel|rank|rankGap|reasonCode|reasonChecked|tradeoffVector|candidateId)"/.test(decisionTraceProjection)) {
+        pushFatal('REPORT_VISIBILITY_LEAK', {
+          reason: 'PLAYER_DECISION_TRACE_INTERNAL_FIELD',
+        });
+      }
+      if (/非支配筛选/.test(decisionTraceProjection)) {
+        pushFatal('REPORT_VISIBILITY_LEAK', {
+          reason: 'PLAYER_DECISION_TRACE_INTERNAL_TERM',
+        });
+      }
+
+      const leakedResourceLocations = [];
+      const inspectVisibleUnits = (units, location) => {
+        (Array.isArray(units) ? units : []).forEach((unit, index) => {
+          const isEnemy = text(unit?.side).toLowerCase() === 'enemy';
+          if (!isEnemy) return;
+          if (text(unit?.resourceVisibility) !== 'HIDDEN' || unit?.resources !== null) {
+            leakedResourceLocations.push(`${location}[${index}]`);
+          }
+        });
+      };
+      inspectVisibleUnits(report?.finalSummary?.sides?.enemy?.units, 'finalSummary.enemy.units');
+      inspectVisibleUnits(report?.finalSummary?.summons, 'finalSummary.summons');
+      (Array.isArray(report?.roundOverview) ? report.roundOverview : []).forEach((row, rowIndex) => {
+        inspectVisibleUnits(row?.units?.enemy, `roundOverview[${rowIndex}].enemy.units`);
+      });
+      inspectVisibleUnits(report?.aiSummaryInput?.sides?.enemy?.units, 'aiSummaryInput.enemy.units');
+      const metricLocations = [
+        ['finalSummary.sides.player.metric', report?.finalSummary?.sides?.player?.metric],
+        ['finalSummary.sides.enemy.metric', report?.finalSummary?.sides?.enemy?.metric],
+      ];
+      metricLocations.forEach(([location, metric]) => {
+        if (metric && metric.resourceRatio !== null && metric.resourceRatio !== undefined) {
+          leakedResourceLocations.push(location);
+        }
+      });
+      if (/(?:敌方：|敌方单位)[^\n]*(?:魂力|体力|精神力)\s*[+-]?\d/u.test(text(report?.finalSummary?.text))) {
+        leakedResourceLocations.push('finalSummary.text');
+      }
+      if (leakedResourceLocations.length) {
+        pushFatal('REPORT_VISIBILITY_LEAK', {
+          reason: 'PLAYER_HIDDEN_RESOURCE_SNAPSHOT',
+          locations: leakedResourceLocations,
+        });
+      }
+      const summaryTermText = [
+        text(report?.finalSummary?.text),
+        text(report?.finalSummary?.advantage),
+        text(report?.finalSummary?.nextIntents?.player),
+        text(report?.finalSummary?.nextIntents?.enemy),
+      ].join('\n');
+      if (/(?:总体容量|当前战斗容量|当前局势)/u.test(summaryTermText)) {
+        pushFatal('REPORT_TERM_UNDEFINED', {
+          reason: 'PLAYER_SUMMARY_UNDEFINED_TERM',
+        });
+      }
+      const invalidResourceSummaryLocations = [];
+      (Array.isArray(report?.roundOverview) ? report.roundOverview : []).forEach((row, rowIndex) => {
+        if (/资源净变化[+-]?\d/u.test(text(row?.summary))) {
+          invalidResourceSummaryLocations.push(`roundOverview[${rowIndex}].summary`);
+        }
+        const bySide = row?.resourceDeltaBySide;
+        if (!bySide || typeof bySide !== 'object' || Array.isArray(bySide)) {
+          invalidResourceSummaryLocations.push(`roundOverview[${rowIndex}].resourceDeltaBySide`);
+          return;
+        }
+        for (const side of ['player', 'enemy']) {
+          const resources = bySide[side];
+          if (!resources || typeof resources !== 'object' || Array.isArray(resources)) {
+            invalidResourceSummaryLocations.push(`roundOverview[${rowIndex}].resourceDeltaBySide.${side}`);
+            continue;
+          }
+          Object.entries(resources).forEach(([resource, delta]) => {
+            if (!resource || resource === '未标明资源' || !Number.isFinite(Number(delta))) {
+              invalidResourceSummaryLocations.push(`roundOverview[${rowIndex}].resourceDeltaBySide.${side}`);
+            }
+          });
+        }
+        if (/未标明资源/u.test(text(row?.summary))) {
+          invalidResourceSummaryLocations.push(`roundOverview[${rowIndex}].summary`);
+        }
+      });
+      if (invalidResourceSummaryLocations.length) {
+        pushFatal('REPORT_NUMBER_SOURCE_MISSING', {
+          reason: 'PLAYER_RESOURCE_DIMENSION_OR_SOURCE_MISSING',
+          locations: invalidResourceSummaryLocations,
+        });
+      }
+      const playerReportText = text(report?.aiReport);
+      if (/(?:引擎评分|可接受范围内选了当前动作|topRankedName|rankGap|normalizedUtility)/i.test(playerReportText)) {
+        pushFatal('REPORT_DECISION_POSTHOC_JUSTIFICATION', {
+          reason: 'PLAYER_INTERNAL_RANKING_OR_POSTHOC_SELECTION_TEXT',
+        });
+      }
     }
     const actualRounds = (Array.isArray(report?.roundOverview) ? report.roundOverview : []).map(row => number(row?.round, 0));
     const registryRounds = [...new Set(
@@ -4466,6 +5394,16 @@
     if (/scoreAudit|candidateId|ruleCode|formulaTrace|normalizedUtility|objectiveUtility|rawDecision/i.test(aiSerialized)) {
       pushFatal('AI_SUMMARY_INTERNAL_DATA_LEAK');
     }
+    const structuredSummary = report?.aiStructuredSummary;
+    if (
+      !structuredSummary ||
+      text(structuredSummary?.schemaVersion) !== 'AIPlayerSummaryV1' ||
+      JSON.stringify(structuredSummary).includes('candidateId')
+    ) {
+      pushFatal('AI_SUMMARY_INTERNAL_DATA_LEAK', {
+        reason: 'STRUCTURED_SUMMARY_INVALID',
+      });
+    }
     /*
      * 链路诊断门禁。
      *
@@ -4575,6 +5513,8 @@
     buildThreatContext,
     buildRemainingHpIndex,
     buildNarrativeChain,
+    buildDecisionTimeExplanations,
+    projectNarrativeChainForVisibility,
     renderChainForAI,
     buildPipelineStats,
     buildBattleHeadline,

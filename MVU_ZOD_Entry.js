@@ -2,6 +2,7 @@ const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', import.meta.url);
 const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
+  'LibraryData_Runtime.js',
   'MVU_Skill_Runtime.js',
   'MVU_Schema_Runtime.js',
   'MVU_Competition_Runtime.js',
@@ -210,11 +211,60 @@ async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
   }
 }
 
+async function 确保库数据运行时_V1() {
+  const 宿主 = MVU共享宿主窗口_V1;
+  const 就绪 = 宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+  if (就绪 && 就绪.version === '1.0.0') return 就绪;
+  const 已有加载 = 宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
+  if (已有加载 && typeof 已有加载.then === 'function') return await 已有加载;
+  const 文档 = 宿主.document || globalThis.document;
+  if (!文档 || !文档.createElement) throw new Error('LibraryData_Runtime加载缺少document');
+  const 加载承诺 = (async () => {
+    发布MVU模块状态_V1('LibraryData_Runtime.js', 'loading', '下载并执行');
+    const 错误列表 = [];
+    let 地址 = '';
+    let 代码文本 = '';
+    for (const 候选地址 of 构建MVU候选资源地址列表_V1('LibraryData_Runtime.js')) {
+      try {
+        const 响应 = await MVU_FETCH_V1(候选地址);
+        if (!响应.ok) throw new Error(`[${响应.status}]`);
+        地址 = 候选地址;
+        代码文本 = await 响应.text();
+        break;
+      } catch (错误) {
+        错误列表.push(`${候选地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
+      }
+    }
+    if (!代码文本) throw new Error(`LibraryData_Runtime加载失败：${错误列表.join(' | ')}`);
+    const 标记 = 'lwcs-library-data-runtime-v1';
+    文档.getElementById(标记)?.remove();
+    const 脚本 = 文档.createElement('script');
+    脚本.id = 标记;
+    脚本.text = `${代码文本}\n//# sourceURL=${地址}`;
+    (文档.body || 文档.documentElement).appendChild(脚本);
+    const 运行时 = 宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+    if (!运行时 || 运行时.version !== '1.0.0') throw new Error('LibraryData_Runtime未暴露1.0.0接口');
+    发布MVU模块状态_V1('LibraryData_Runtime.js', 'loaded', '完成');
+    return 运行时;
+  })();
+  宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
+  globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
+  try {
+    return await 加载承诺;
+  } catch (错误) {
+    if (宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ === 加载承诺) delete 宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
+    if (globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ === 加载承诺) delete globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
+    发布MVU模块状态_V1('LibraryData_Runtime.js', 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
+    throw 错误;
+  }
+}
+
 if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mvu');
 if (typeof eventOn !== 'function') throw new Error('MVU_ZOD_Entry 需要酒馆助手 eventOn 接口');
 
-加载MVU数据源模块_V1('timeline.js', 'TimelineEvents', '时间线开始时间', '时间线完成时间', '时间线错误');
-加载MVU数据源模块_V1('IntelEvents.js', 'IntelEvents', '情报开始时间', '情报完成时间', '情报错误');
+await 确保库数据运行时_V1();
+await 加载MVU数据源模块_V1('timeline.js', 'TimelineEvents', '时间线开始时间', '时间线完成时间', '时间线错误');
+await 加载MVU数据源模块_V1('IntelEvents.js', 'IntelEvents', '情报开始时间', '情报完成时间', '情报错误');
 
 await 加载MVU经典依赖_V1('MVU_Skill_Runtime.js', () =>
   typeof 角色穿搭上装待补全文案_V1 === 'string' &&

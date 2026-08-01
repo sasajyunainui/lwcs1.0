@@ -820,19 +820,8 @@ const CharacterSchema = z
             z
               .object({
                 关系: z.string().prefault('陌生'),
-                好感度: z.coerce.number().prefault(0),
-                关系路线: z.string().prefault('朋友线').describe('终极分支: 朋友线/恋人线'),
+                好感度: z.coerce.number().transform(值 => Math.max(-100, Math.min(100, 值))).prefault(0),
                 对方身份: z.string().prefault('无'),
-                _关系阶段: z.string().prefault('陌生').describe('结构化关系阶段，默认与关系称谓同步'),
-                _下一阶段: z.string().prefault('认识').describe('下一阶段名称'),
-                _下一阶段阈值: z.coerce.number().prefault(11).describe('达到下一阶段所需最低好感度'),
-                _可切线: z.boolean().prefault(false).describe('当前是否允许切入恋人线等特殊路线'),
-                _切线限制原因: z.string().prefault('好感度不足').describe('路线切换受限时的原因'),
-                _推进提示: z.string().prefault('无').describe('当前关系推进提示'),
-                _维护优先级: z.string().prefault('未知').describe('关系维护优先级：高风险/待接触/可接触/优先维护'),
-                _当前关系加成: z.string().prefault('无').describe('当前已激活的关系加成说明'),
-                _下档解锁加成: z.string().prefault('无').describe('下一档可解锁的羁绊加成说明'),
-                _下档解锁阈值: z.coerce.number().prefault(30).describe('下一档羁绊加成所需好感度'),
                 武魂相关度基础: z
                   .union([z.coerce.number(), z.string()])
                   .prefault(武魂相关度基础待补全提示词)
@@ -840,31 +829,6 @@ const CharacterSchema = z
               })
               .prefault({}),
           )
-          .prefault({}),
-        关系分析: z
-          .object({
-            摘要: z.string().prefault('当前尚未积累足够的人物关系数据。'),
-            关注对象: z.string().prefault('无'),
-            重点对象: z
-              .any()
-              .transform(规范化关系分析重点对象Schema_V1)
-              .prefault([]),
-            恋爱候选: z.array(z.string()).prefault([]),
-            信任对象: z.array(z.string()).prefault([]),
-            风险对象: z.array(z.string()).prefault([]),
-            受阻对象: z
-              .array(
-                z
-                  .object({
-                    对象: z.string().prefault('无'),
-                    原因: z.string().prefault('无'),
-                  })
-                  .prefault({}),
-              )
-              .prefault([]),
-            同地对象: z.array(z.string()).prefault([]),
-            可联络对象: z.array(z.string()).prefault([]),
-          })
           .prefault({}),
       })
       .prefault({})

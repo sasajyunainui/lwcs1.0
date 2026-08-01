@@ -410,6 +410,26 @@
     return value;
   }
 
+  function normalizedResourceKeys(resource = '') {
+    const values = (Array.isArray(resource) ? resource : String(resource || '').split(/[、,，/|｜；;+\s]+/g))
+      .map(value => String(value || '').trim())
+      .filter(Boolean);
+    const text = values.join('、');
+    const keys = [];
+    values.forEach(value => {
+      if (/生命|HP|hp/i.test(value)) keys.push('hp');
+      else if (/体力|vit|sta/i.test(value)) keys.push('vit');
+      else if (/精神|men/i.test(value)) keys.push('men');
+      else if (/魂力|sp/i.test(value)) keys.push('sp');
+    });
+    if (/双|混合|全部/.test(text)) keys.push('sp', 'men');
+    return keys.length ? [...new Set(keys)] : ['sp'];
+  }
+
+  function resourceLabel(resourceKey = '') {
+    return { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey] || '魂力';
+  }
+
   function staminaScaleForUnit(unit = {}) {
     const sources = [
       unit,
@@ -2646,7 +2666,11 @@
     addOutcome(input = {}) {
       const outcomeKind = String(input?.outcomeKind || '').trim();
       if (!outcomeComponents[outcomeKind]) throw new Error(`battle_preview_outcome_kind_unsupported:${outcomeKind}`);
-      const semanticKey = [input.rootActionId, input.effectInstanceId, input.targetId, outcomeKind, input.windowId || 'NOW']
+      const resourceKey = String(input?.resourceKey || '').trim();
+      const semanticKeyParts = [input.rootActionId, input.effectInstanceId, input.targetId, outcomeKind];
+      if (resourceKey) semanticKeyParts.push(resourceKey);
+      semanticKeyParts.push(input.windowId || 'NOW');
+      const semanticKey = semanticKeyParts
         .map(value => String(value || '').trim() || 'NONE').join('|');
       if (this.semanticKeys.has(semanticKey)) throw new Error(`battle_preview_duplicate_causal_value:${semanticKey}`);
       const windowKey = `${String(input.rootActionId || '')}|${String(input.targetId || '')}|${String(input.windowId || 'NOW')}`;
@@ -2687,6 +2711,7 @@
           '',
         ).trim().toUpperCase(),
         effectInstanceId: String(input.effectInstanceId || '').trim(),
+        ...(resourceKey ? { resourceKey } : {}),
         targetId: String(input.targetId || '').trim(),
         windowId: String(input.windowId || 'NOW').trim(),
         windowKey,
@@ -2866,11 +2891,19 @@
       } else if (settlement === '治疗') {
         if (signedValue >= 0) combatEffect.heal_bonus = Math.max(Number(combatEffect.heal_bonus || 0), magnitude);
         else combatEffect.heal_reduction = Math.max(Number(combatEffect.heal_reduction || 0), magnitude);
+      } else if (settlement === '技能效果') {
+        combatEffect.skill_effect_mult = clamp(1 + signedValue, 0, 4);
       } else if (settlement === '消耗') {
-        combatEffect.cost_delta_ratio = Math.max(Number(combatEffect.cost_delta_ratio || 0), magnitude) * (signedValue >= 0 ? 1 : -1);
-      } else if (settlement === '蓄力') {
-        const key = signedValue >= 0 ? 'cast_speed_bonus' : 'cast_speed_penalty';
-        combatEffect[key] = Math.max(Number(combatEffect[key] || 0), magnitude);
+        combatEffect.cost_ratio = clamp(1 + signedValue, 0, 4);
+      } else if (settlement === '前摇' || settlement === '蓄力') {
+        combatEffect.windup_ratio = clamp(1 + signedValue, 0, 4);
+        const correctedKey = signedValue <= 0
+          ? 'cast_speed_bonus'
+          : 'cast_speed_penalty';
+        combatEffect[correctedKey] = Math.max(
+          Number(combatEffect[correctedKey] || 0),
+          magnitude,
+        );
       } else if (settlement === '反伤') {
         combatEffect.counter_attack_ratio = Math.max(Number(combatEffect.counter_attack_ratio || 0), magnitude);
       }
@@ -2965,8 +2998,220 @@
       const attributes = (Array.isArray(effect?.属性) ? effect.属性 : [effect?.属性]).map(value => String(value || '').trim()).filter(Boolean);
       return `${attributes.join('、') || '属性'}修正`;
     }
-    if (prototype === '判定修正') return `${String(effect?.判定 || '判定').trim() || '判定'}判定修正`;
+    const element = (Array.isArray(effect?.限定元素)
+      ? effect.限定元素
+      : [effect?.限定元素]
+    ).map(value => String(value || '').trim()).filter(Boolean).join('、');
+    const elementSuffix = element ? `(${element})` : '';
+    if (prototype === '判定修正') {
+      return `${String(effect?.判定 || '判定').trim() || '判定'}${elementSuffix}判定修正`;
+    }
+    if (prototype === '结算修正') {
+      return `${String(effect?.结算 || '结算').trim() || '结算'}${elementSuffix}结算修正`;
+    }
     return String(effect?.判定 || prototype).trim();
+  }
+
+  function normalizedElementTokens(value) {
+    const source = Array.isArray(value) ? value : [value];
+    return [...new Set(source.flatMap(entry =>
+      String(entry || '')
+        .split(/[、,，/|+\s]+/)
+        .map(token => token.trim())
+        .filter(Boolean)
+    ))];
+  }
+
+  function skillMatchesLimitedElements(skill = {}, limitation = '') {
+    const required = normalizedElementTokens(limitation);
+    if (!required.length) return true;
+    const attached = new Set(normalizedElementTokens(
+      [
+        skill?.附带属性,
+        skill?.属性,
+        skill?.元素,
+      ],
+    ));
+    if (!attached.size) return false;
+    const expanded = new Set();
+    required.forEach(token => {
+      if (token === '元素类') {
+        ['水', '火', '风', '土', '光', '暗']
+          .forEach(element => expanded.add(element));
+      } else if (token === '五行类') {
+        ['金', '木', '水', '火', '土']
+          .forEach(element => expanded.add(element));
+      } else {
+        expanded.add(token);
+      }
+    });
+    return [...expanded].some(element => attached.has(element));
+  }
+
+  function scaledSkillNumber(value, multiplier) {
+    const text = String(value ?? '').trim();
+    const numeric = Number.parseFloat(text);
+    if (!Number.isFinite(numeric)) return value;
+    const scaled = Number((numeric * multiplier).toFixed(6));
+    if (typeof value === 'number') return scaled;
+    const sign = text.startsWith('+') && scaled >= 0 ? '+' : '';
+    return `${sign}${scaled}${text.includes('%') ? '%' : ''}`;
+  }
+
+  function scaleSkillEffectTree(value, multiplier) {
+    if (Array.isArray(value)) {
+      return value.map(entry => scaleSkillEffectTree(entry, multiplier));
+    }
+    if (!value || typeof value !== 'object') return value;
+    const next = Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [
+        key,
+        scaleSkillEffectTree(child, multiplier),
+      ]),
+    );
+    if (!String(value?.原型 || '').trim()) return next;
+    [
+      '威力倍率',
+      '每回合伤害',
+      '持续伤害',
+      '护盾值',
+      '恢复量',
+      '治疗量',
+      '伤害量',
+      '引爆倍率',
+      '数值',
+      '副数值',
+    ].forEach(key => {
+      if (value[key] !== undefined) {
+        next[key] = scaledSkillNumber(value[key], multiplier);
+      }
+    });
+    return next;
+  }
+
+  function scaleSkillCosts(value, multiplier) {
+    if (typeof value === 'string') {
+      return value.replace(
+        /(魂力|精神力|体力)\s*([:：])\s*([+-]?\d+(?:\.\d+)?)(%?)/g,
+        (match, resource, separator, numeric, percent) =>
+          `${resource}${separator}${Math.max(
+            0,
+            Number((Number(numeric) * multiplier).toFixed(6)),
+          )}${percent}`,
+      );
+    }
+    if (Array.isArray(value)) {
+      return value.map(entry => scaleSkillCosts(entry, multiplier));
+    }
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [
+        key,
+        ['魂力', '精神力', '体力', 'sp', 'men', 'vit'].includes(key) &&
+          Number.isFinite(Number(child))
+          ? Math.max(
+              0,
+              Number((Number(child) * multiplier).toFixed(6)),
+            )
+          : scaleSkillCosts(child, multiplier),
+      ]),
+    );
+  }
+
+  function applySkillSettlementModifiers(unit = {}, skill = {}) {
+    const modifiers = stateEntries(unit)
+      .map(([, state]) => state)
+      .filter(state =>
+        state &&
+        typeof state === 'object' &&
+        Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 1)) > 0 &&
+        String(state?.原型 || '').trim() === '结算修正' &&
+        skillMatchesLimitedElements(skill, state?.限定元素)
+      );
+    let skillEffectMultiplier = 1;
+    let costMultiplier = 1;
+    let windupMultiplier = 1;
+    modifiers.forEach(state => {
+      const settlement = String(state?.结算 || '').trim();
+      const effectKey = settlement === '技能效果'
+        ? 'skill_effect_mult'
+        : settlement === '消耗'
+          ? 'cost_ratio'
+          : 'windup_ratio';
+      const storedMultiplier = Number(state?.战斗效果?.[effectKey]);
+      const multiplier = clamp(
+        Number.isFinite(storedMultiplier)
+          ? storedMultiplier
+          : 1 + parseSignedValue(state?.数值, 1),
+        0,
+        4,
+      );
+      if (settlement === '技能效果') {
+        skillEffectMultiplier *= multiplier;
+      } else if (settlement === '消耗') {
+        costMultiplier *= multiplier;
+      } else if (settlement === '前摇' || settlement === '蓄力') {
+        windupMultiplier *= multiplier;
+      }
+    });
+    if (
+      Math.abs(skillEffectMultiplier - 1) <= 1e-12 &&
+      Math.abs(costMultiplier - 1) <= 1e-12 &&
+      Math.abs(windupMultiplier - 1) <= 1e-12
+    ) {
+      return Object.freeze({
+        skill,
+        skillEffectMultiplier: 1,
+        costMultiplier: 1,
+        windupMultiplier: 1,
+        sourceCount: 0,
+      });
+    }
+    const effectiveSkill = cloneValue(skill);
+    if (
+      Math.abs(skillEffectMultiplier - 1) > 1e-12 &&
+      Array.isArray(effectiveSkill?._效果数组)
+    ) {
+      effectiveSkill._效果数组 = scaleSkillEffectTree(
+        effectiveSkill._效果数组,
+        skillEffectMultiplier,
+      );
+    }
+    if (
+      Math.abs(costMultiplier - 1) > 1e-12 &&
+      effectiveSkill?.消耗 !== undefined
+    ) {
+      effectiveSkill.消耗 = scaleSkillCosts(
+        effectiveSkill.消耗,
+        costMultiplier,
+      );
+    }
+    [
+      ['魂力消耗', costMultiplier],
+      ['精神力消耗', costMultiplier],
+      ['体力消耗', costMultiplier],
+      ['前摇', windupMultiplier],
+      ['cast_time', windupMultiplier],
+    ].forEach(([key, multiplier]) => {
+      if (
+        effectiveSkill[key] !== undefined &&
+        Number.isFinite(Number(effectiveSkill[key]))
+      ) {
+        effectiveSkill[key] = Math.max(
+          0,
+          Number(
+            (Number(effectiveSkill[key]) * multiplier).toFixed(6),
+          ),
+        );
+      }
+    });
+    return Object.freeze({
+      skill: effectiveSkill,
+      skillEffectMultiplier,
+      costMultiplier,
+      windupMultiplier,
+      sourceCount: modifiers.length,
+    });
   }
 
   function findStateEntry(unit = {}, effect = {}) {
@@ -3002,7 +3247,12 @@
       状态: stateName,
       状态名称: stateName,
       类型: effect?.类型 || '',
+      原型: String(effect?.原型 || '').trim(),
+      判定: String(effect?.判定 || '').trim(),
+      结算: String(effect?.结算 || '').trim(),
+      限定元素: cloneValue(effect?.限定元素 ?? ''),
       duration: requestedDuration,
+      持续回合: requestedDuration,
       数值: effect?.数值 ?? '',
       强度: effect?.强度 ?? '',
       __previewApplicationProbability: clamp(Number(effect?.__previewApplicationProbability ?? 1), 0, 1),
@@ -3465,63 +3715,70 @@
 
   function resourceOutcome(effect, target, overlay, ledger, context) {
     const currentTarget = overlay.readUnit(unitId(target));
-    const resource = String(effect?.资源 || '魂力').trim();
-    const current = /生命|HP/i.test(resource) ? readHp(currentTarget) : readResource(currentTarget, resource);
-    const maximum = readResourceMax(currentTarget, resource);
+    const resourceKeys = normalizedResourceKeys(effect?.资源 || '魂力');
+    const multiResource = resourceKeys.length > 1;
     const probabilityProfile = effectProbabilityProfile(
       context,
       unitId(target),
     );
     const applicationProbability =
       probabilityProfile.applicationProbability;
-    const realizedNext = clamp(current + parseSignedValue(effect?.数值, maximum), 0, maximum);
-    const realizedDelta = realizedNext - current;
-    const delta = realizedDelta * applicationProbability;
-    const next = clamp(current + delta, 0, maximum);
-    overlay.changeUnit(unitId(target), unit => {
-      setResourceValue(unit, resource, next);
-    });
-    const outcomeDistribution = conditionalDeterministicOutcomeDistribution(
-      context,
-      unitId(target),
-      realizedDelta,
-    );
-    ledger.addOutcome({
-      ...context,
-      targetId: unitId(target),
-      outcomeKind: /生命|HP/i.test(resource) ? 'HP_DELTA' : 'RESOURCE_OPTION_CHANGED',
-      threatValue: /生命|HP/i.test(resource) ? (next - current) / readHpMax(currentTarget) * 100 : 0,
-      evidence: {
-        resource,
-        current,
-        next,
-        delta: next - current,
+    resourceKeys.forEach(resourceKey => {
+      const resource = resourceLabel(resourceKey);
+      const isHp = resourceKey === 'hp';
+      const current = isHp ? readHp(currentTarget) : readResource(currentTarget, resource);
+      const maximum = isHp ? readHpMax(currentTarget) : readResourceMax(currentTarget, resource);
+      const realizedNext = clamp(current + parseSignedValue(effect?.数值, maximum), 0, maximum);
+      const realizedDelta = realizedNext - current;
+      const delta = realizedDelta * applicationProbability;
+      const next = clamp(current + delta, 0, maximum);
+      overlay.changeUnit(unitId(target), unit => {
+        setResourceValue(unit, resource, next);
+      });
+      const outcomeDistribution = conditionalDeterministicOutcomeDistribution(
+        context,
+        unitId(target),
         realizedDelta,
-        applicationProbability,
-        ownApplicationProbability:
-          probabilityProfile.ownApplicationProbability,
-        ...outcomeDependencyEvidence(context, unitId(target)),
-        probabilityGroupKey: [
-          context.rootActionId,
-          context.effectInstanceId,
-          context.windowId,
-          unitId(target),
-        ].join('|'),
-        ...(outcomeDistribution.length
-          ? {
-              outcomeDistribution,
-              distributionGroupKey: String(
-                context?.outcomeAssignmentKeyByTarget?.get?.(unitId(target)) ||
-                [
-                  context.rootActionId,
-                  context.effectInstanceId,
-                  context.windowId,
-                  unitId(target),
-                ].join('|')
-              ).trim(),
-            }
-          : {}),
-      },
+      );
+      ledger.addOutcome({
+        ...context,
+        ...(multiResource ? { resourceKey } : {}),
+        targetId: unitId(target),
+        outcomeKind: isHp ? 'HP_DELTA' : 'RESOURCE_OPTION_CHANGED',
+        threatValue: isHp ? (next - current) / readHpMax(currentTarget) * 100 : 0,
+        evidence: {
+          resource,
+          ...(multiResource ? { resourceKey } : {}),
+          current,
+          next,
+          delta: next - current,
+          realizedDelta,
+          applicationProbability,
+          ownApplicationProbability:
+            probabilityProfile.ownApplicationProbability,
+          ...outcomeDependencyEvidence(context, unitId(target)),
+          probabilityGroupKey: [
+            context.rootActionId,
+            context.effectInstanceId,
+            context.windowId,
+            unitId(target),
+          ].join('|'),
+          ...(outcomeDistribution.length
+            ? {
+                outcomeDistribution,
+                distributionGroupKey: String(
+                  context?.outcomeAssignmentKeyByTarget?.get?.(unitId(target)) ||
+                  [
+                    context.rootActionId,
+                    context.effectInstanceId,
+                    context.windowId,
+                    unitId(target),
+                  ].join('|')
+                ).trim(),
+              }
+            : {}),
+        },
+      });
     });
   }
 
@@ -5889,40 +6146,40 @@
           return;
         }
         if (prototype === '资源变化') {
-          const resource = String(effect?.资源 || '魂力').trim();
-          const current = /生命|HP/i.test(resource)
-            ? readHp(target)
-            : readProjectedResource(target, resource);
-          const maximum = readResourceMax(target, resource);
-          const realizedNext = clamp(
-            current + parseSignedValue(effect?.数值, maximum),
-            0,
-            maximum,
-          );
-          const delta = realizedNext - current;
-          if (!/生命|HP/i.test(resource)) {
-            writeProjectedResource(target, resource, realizedNext);
-          }
-          contributions.push(Object.freeze({
-            targetId,
-            outcomeKind: /生命|HP/i.test(resource)
-              ? 'HP_DELTA'
-              : 'RESOURCE_OPTION_CHANGED',
-            windowId,
-            expectedDelta: delta,
-            evidence: Object.freeze({
-              resource,
-              current,
-              next: realizedNext,
-              delta,
-              realizedDelta: delta,
-              applicationProbability: 1,
-              ownApplicationProbability: 1,
-            }),
-          }));
-          if (Math.abs(delta) > 1e-9) {
-            changedUnitIds.add(targetId);
-          }
+          const resourceKeys = normalizedResourceKeys(effect?.资源 || '魂力');
+          const multiResource = resourceKeys.length > 1;
+          resourceKeys.forEach(resourceKey => {
+            const resource = resourceLabel(resourceKey);
+            const isHp = resourceKey === 'hp';
+            const current = isHp
+              ? readHp(target)
+              : readProjectedResource(target, resource);
+            const maximum = isHp ? readHpMax(target) : readResourceMax(target, resource);
+            const realizedNext = clamp(
+              current + parseSignedValue(effect?.数值, maximum),
+              0,
+              maximum,
+            );
+            const delta = realizedNext - current;
+            if (!isHp) writeProjectedResource(target, resource, realizedNext);
+            contributions.push(Object.freeze({
+              targetId,
+              outcomeKind: isHp ? 'HP_DELTA' : 'RESOURCE_OPTION_CHANGED',
+              windowId,
+              expectedDelta: delta,
+              evidence: Object.freeze({
+                resource,
+                ...(multiResource ? { resourceKey } : {}),
+                current,
+                next: realizedNext,
+                delta,
+                realizedDelta: delta,
+                applicationProbability: 1,
+                ownApplicationProbability: 1,
+              }),
+            }));
+            if (Math.abs(delta) > 1e-9) changedUnitIds.add(targetId);
+          });
           return;
         }
         if (prototype === '状态施加') {
@@ -9416,6 +9673,8 @@
     compileMechanicalProjectionContext,
     evaluateMechanicalBasis,
     deriveStateCombatEffect,
+    skillMatchesLimitedElements,
+    applySkillSettlementModifiers,
     actorSuppressesEffect,
     pendingGrantedEffects,
     normalizeBattleObjectives,

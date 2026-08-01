@@ -1171,27 +1171,6 @@ function pruneDynamicLocationStorageFields(locData = {}) {
   return locData;
 }
 
-function normalizeRelationAnalysisTopTargetsInput(value = []) {
-  const normalizeItem = item => ({
-    对象: String(item?.对象 || '无').trim() || '无',
-    关系: String(item?.关系 || '陌生').trim() || '陌生',
-    好感度: Number(item?.好感度 || 0),
-    路线: String(item?.路线 || '朋友线').trim() || '朋友线',
-    原因: String(item?.原因 || '无').trim() || '无',
-    建议行动: String(item?.建议行动 || '继续观察').trim() || '继续观察',
-  });
-  if (Array.isArray(value)) return value.filter(item => item && typeof item === 'object').map(normalizeItem);
-  if (value && typeof value === 'object') {
-    if ('对象' in value || '原因' in value || '建议行动' in value) {
-      return [normalizeItem(value)];
-    }
-    return Object.values(value)
-      .filter(item => item && typeof item === 'object')
-      .map(normalizeItem);
-  }
-  return [];
-}
-
 var 初始化魂灵预算倍率记录_V1 = new WeakMap();
 
 var BaseProductPool = {
@@ -7086,13 +7065,8 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           relationCards.push({
             目标: targetName,
             关系: relData.关系 || '陌生',
-            可接触性: relData._维护优先级 || '未知',
-            推进提示: relData._推进提示 || '无',
-            当前关系加成: relData._当前关系加成 || '无',
-            下一档解锁奖励: relData._下档解锁加成 || '无',
-            下一档解锁门槛: Number(relData._下档解锁阈值 || 0),
-            路线可切换: !!relData._可切线,
-            路线受限原因: relData._切线限制原因 || '无',
+            好感度: Number(relData.好感度 || 0),
+            对方身份: relData.对方身份 || '无',
           });
         });
 
@@ -7210,8 +7184,6 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           });
         }
 
-        const 关系分析数据 = sourceChar.社交?.关系分析 || {};
-
         const summary = {
           精神境界: sourceChar.属性?.精神境界 || '无',
           名望等级: sourceChar.社交?.名望等级 || '籍籍无名',
@@ -7221,12 +7193,6 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           体力上限: Number(sourceChar.属性?.体力上限 || 0),
           魂力上限: Number(sourceChar.属性?.魂力上限 || 0),
           精神上限: Number(sourceChar.属性?.精神力上限 || 0),
-          社交恋爱候选: cloneValue(关系分析数据.恋爱候选, []),
-          社交信任对象: cloneValue(关系分析数据.信任对象, []),
-          社交高风险对象: cloneValue(关系分析数据.风险对象, []),
-          社交同地可接触: cloneValue(关系分析数据.同地对象, []),
-          社交可联络对象: cloneValue(关系分析数据.可联络对象, []),
-          社交路线受阻对象: cloneValue(关系分析数据.受阻对象, []),
           社交关系卡片: relationCards,
           魂灵战力摘要: spiritCombatSummary,
           副职业摘要: jobSummary,
@@ -7270,6 +7236,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         _(nextChar.社交?.关系 || {}).forEach(relData => {
           if (!relData || typeof relData !== 'object') return;
           delete relData.关系;
+          delete relData.关系路线;
           delete relData._关系阶段;
           delete relData._下一阶段;
           delete relData._下一阶段阈值;
@@ -7283,21 +7250,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         });
         if (nextChar.社交) {
           delete nextChar.社交.名望等级;
-          const rawRelationAnalysis =
-            nextChar.社交.关系分析 && typeof nextChar.社交.关系分析 === 'object'
-              ? nextChar.社交.关系分析
-              : {};
-          nextChar.社交.关系分析 =
-            pruneSummaryValue({
-              关注对象: toText(rawRelationAnalysis.关注对象, '无'),
-              重点对象: normalizeRelationAnalysisTopTargetsInput(rawRelationAnalysis.重点对象)
-                .slice(0, 3)
-                .map(item => ({
-                  对象: toText(item && item.对象, '无'),
-                  原因: toText(item && item.原因, '无'),
-                  建议行动: toText(item && item.建议行动, '继续观察'),
-                })),
-            }) || {};
+          delete nextChar.社交.关系分析;
         }
         _(nextChar.背包 || {}).forEach(itemData => {
           if (itemData && typeof itemData === 'object') {
@@ -7418,33 +7371,6 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           visibleChars[charName] = fakeCharData;
         }
       });
-      if (protagonist?.社交?.关系分析) {
-        const relationWeight = name => Number(protagonist?.社交?.关系?.[name]?.好感度 || 0);
-        const sameLocationTargets = Object.keys(关系)
-          .filter(name => {
-            if (name === PLAYER_NAME) return false;
-            const target = data.char[name];
-            return !!target && target.状态?.位置 && isLocationCompatible(currentLoc, target.状态.位置);
-          })
-          .sort((a, b) => relationWeight(b) - relationWeight(a));
-        const contactableTargets = Object.keys(关系)
-          .filter(name => {
-            if (name === PLAYER_NAME) return false;
-            const target = data.char[name];
-            return !!target && target.状态?.存活 !== false;
-          })
-          .sort((a, b) => relationWeight(b) - relationWeight(a));
-
-        protagonist.社交.关系分析.同地对象 = sameLocationTargets;
-        protagonist.社交.关系分析.可联络对象 = contactableTargets;
-        if (visibleChars[PLAYER_NAME]) {
-          const playerSummary = buildCharReadOnlySummary(protagonist, visibleChars[PLAYER_NAME]);
-          if (playerSummary && Object.keys(playerSummary).length > 0)
-            visibleChars[PLAYER_NAME]._summary = playerSummary;
-          else delete visibleChars[PLAYER_NAME]._summary;
-        }
-      }
-
       const filtered_org = {};
       const relatedOrgNames = new Set(Object.keys(protagonist?.社交?.势力 || {}));
       Object.values(visibleChars).forEach(visibleChar => {
@@ -7560,7 +7486,10 @@ function 规范化技能结构Schema_V1(skill) {
     if (String(skill.承载方式 || '').trim() !== '造物承载' && !是造物承载效果数组_V1(skill._效果数组)) delete skill.产物描述;
     // v3 阶段 7：旧档迁移——_效果数组 内 状态:'沉默' 自动转为 '封技'（沉默与封技语义重合，统一）
     迁移沉默到封技_V1(skill._效果数组);
-    return 收口技能执行结构_V1(skill, { 目标: '单体' });
+    return 收口技能执行结构_V1(skill, {
+      目标: '单体',
+      passiveMode: String(skill.承载方式 || '').trim() === '被动',
+    });
 
 }
 
@@ -7866,155 +7795,40 @@ function 规范化功法Schema_V1(功法表) {
       
 }
 
-function 规范化关系分析重点对象Schema_V1(value) {
-  return normalizeRelationAnalysisTopTargetsInput(value);
-}
-
 function 规范化社交Schema_V1(社交) {
-        社交.名望等级 = 社交.名望等级 || '籍籍无名';
-        社交.主身份 = String(社交.主身份 || '').trim() || AI_TODO_MAIN_IDENTITY;
-        const 家世描述 = String(社交.家世描述 || '').trim();
-        社交.家世描述 = 家世描述 && 家世描述 !== '无' ? 家世描述 : AI_TODO_FAMILY_BACKGROUND;
+  社交 = 社交 && typeof 社交 === 'object' && !Array.isArray(社交) ? 社交 : {};
+  社交.名望等级 = 社交.名望等级 || '籍籍无名';
+  社交.主身份 = String(社交.主身份 || '').trim() || AI_TODO_MAIN_IDENTITY;
+  const 家世描述 = String(社交.家世描述 || '').trim();
+  社交.家世描述 = 家世描述 && 家世描述 !== '无' ? 家世描述 : AI_TODO_FAMILY_BACKGROUND;
 
-        const topTargets = [];
-        const romanceCandidates = [];
-        const trustTargets = [];
-        const riskTargets = [];
-        const blockedTargets = [];
+  Object.entries(社交.关系 && typeof 社交.关系 === 'object' ? 社交.关系 : {}).forEach(([对象, 关系数据]) => {
+    if (!关系数据 || typeof 关系数据 !== 'object' || Array.isArray(关系数据)) {
+      delete 社交.关系[对象];
+      return;
+    }
+    关系数据.关系 = String(关系数据.关系 || '陌生').trim() || '陌生';
+    const 好感度 = Number(关系数据.好感度);
+    关系数据.好感度 = Number.isFinite(好感度) ? Math.max(-100, Math.min(100, 好感度)) : 0;
+    关系数据.对方身份 = String(关系数据.对方身份 || '无').trim() || '无';
+    规范武魂相关度基础字段(关系数据);
+    [
+      '关系路线',
+      '_关系阶段',
+      '_下一阶段',
+      '_下一阶段阈值',
+      '_可切线',
+      '_切线限制原因',
+      '_推进提示',
+      '_维护优先级',
+      '_当前关系加成',
+      '_下档解锁加成',
+      '_下档解锁阈值',
+    ].forEach(字段 => delete 关系数据[字段]);
+  });
 
-        _(社交.关系).forEach((relData, targetName) => {
-          const val = Number(relData.好感度 || 0);
-          let route = relData.关系路线 || '朋友线';
-          const currentRelationLabel = String(relData.关系 || relData._关系阶段 || '陌生').trim() || '陌生';
-          let nextStage = '已达当前路线终点';
-          let nextStageThreshold = 999;
-          let progressNote = '维持当前关系即可。';
-          let recommendedAction = '继续观察';
-          let nextUnlockThreshold = 999;
-          let nextUnlockBonus = '无';
-
-          if (val <= -50) {
-            nextStage = '敌视';
-            nextStageThreshold = -10;
-            progressNote = '当前处于强烈敌对状态，优先避免正面刺激。';
-            recommendedAction = '先缓和冲突或制造间接修复契机';
-            nextUnlockThreshold = -10;
-            nextUnlockBonus = '脱离仇敌阶段';
-          } else if (val <= -10) {
-            nextStage = '陌生';
-            nextStageThreshold = 11;
-            progressNote = '关系紧张，任何互动都可能继续恶化。';
-            recommendedAction = '减少高压对抗，尝试中性接触';
-            nextUnlockThreshold = 11;
-            nextUnlockBonus = '恢复基础接触';
-          } else if (val <= 10) {
-            nextStage = '认识';
-            nextStageThreshold = 11;
-            progressNote = '刚建立认知，适合轻量互动试探反应。';
-            recommendedAction = '从闲聊、短接触或小帮助开始';
-            nextUnlockThreshold = 30;
-            nextUnlockBonus = '进入稳定认识阶段';
-          } else if (val <= 30) {
-            nextStage = '朋友';
-            nextStageThreshold = 31;
-            progressNote = '关系刚起步，需要持续建立信任。';
-            recommendedAction = '通过同行、帮忙、请教等方式加深印象';
-            nextUnlockThreshold = 60;
-            nextUnlockBonus = '进入稳定朋友阶段';
-          } else if (val <= 60) {
-            nextStage = '亲密';
-            nextStageThreshold = 61;
-            progressNote = route === '恋人线' ? '已经具备推进暧昧关系的基础。' : '已经形成可靠伙伴关系。';
-            recommendedAction = route === '恋人线' ? '增加私下互动或专属事件' : '安排并肩行动巩固信任';
-            nextUnlockThreshold = 80;
-            nextUnlockBonus = route === '恋人线' ? '进入暧昧阶段判定' : '进入高强度羁绊阶段';
-          } else if (val <= 80) {
-            nextStage = route === '恋人线' ? '暧昧' : '挚友';
-            nextStageThreshold = 81;
-            progressNote =
-              route === '恋人线' ? '关系已进入高敏感阶段，适合关键表态。' : '已是核心伙伴，可承担高风险协作。';
-            recommendedAction = route === '恋人线' ? '准备表白或专属确认事件' : '安排重大共同经历';
-            nextUnlockThreshold = 95;
-            nextUnlockBonus = route === '恋人线' ? '确认恋人关系' : '确认生死之交';
-          } else {
-            progressNote = route === '恋人线' ? '关系已接近或进入恋人阶段。' : '关系已接近或进入生死之交阶段。';
-            recommendedAction = route === '恋人线' ? '维护专属陪伴与排他性事件' : '作为核心盟友长期经营';
-          }
-
-          relData._关系阶段 = currentRelationLabel;
-          relData._下一阶段 = nextStage;
-          relData._下一阶段阈值 = nextStageThreshold;
-          relData._可切线 = route !== '恋人线' && val >= 60;
-          relData._切线限制原因 = relData._可切线
-            ? '无'
-            : route === '恋人线'
-              ? '当前已处于恋人线'
-              : '好感度需达到 60 后才能稳定切入恋人线';
-          relData._推进提示 = progressNote;
-          relData._维护优先级 = val <= -10 ? '高风险' : val <= 10 ? '待接触' : val <= 60 ? '可接触' : '优先维护';
-          relData._当前关系加成 = '无';
-          relData._下档解锁加成 = nextUnlockBonus;
-          relData._下档解锁阈值 = nextUnlockThreshold;
-          规范武魂相关度基础字段(relData);
-
-          topTargets.push({
-            对象: targetName,
-            关系: currentRelationLabel,
-            好感度: val,
-            路线: route,
-            原因: progressNote,
-            建议行动: recommendedAction,
-          });
-
-          if (val >= 60) trustTargets.push(targetName);
-          if (route === '恋人线' && val >= 60) romanceCandidates.push(targetName);
-          if (val <= -10) riskTargets.push(targetName);
-          if (!relData._可切线 && route !== '恋人线' && val < 60) {
-            blockedTargets.push({ 对象: targetName, 原因: relData._切线限制原因 });
-          }
-        });
-
-        const sortedTopTargets = topTargets.sort((a, b) => Number(b.好感度 || 0) - Number(a.好感度 || 0));
-        const fallbackFocusTarget = sortedTopTargets[0]?.对象 || '无';
-        const existingTopTargets = Array.isArray(社交.关系分析.重点对象)
-          ? 社交.关系分析.重点对象
-          : [];
-        const shouldFillFocusTarget =
-          !String(社交.关系分析.关注对象 || '').trim() ||
-          String(社交.关系分析.关注对象 || '').trim() === '无' ||
-          isAiTodoText(社交.关系分析.关注对象);
-        const shouldFillTopTargets =
-          existingTopTargets.length === 0 ||
-          existingTopTargets.every(
-            item => !String(item?.对象 || '').trim() || String(item?.对象 || '').trim() === '无',
-          );
-        if (shouldFillFocusTarget) 社交.关系分析.关注对象 = fallbackFocusTarget;
-        if (shouldFillTopTargets) 社交.关系分析.重点对象 = sortedTopTargets.slice(0, 5);
-        if (
-          !String(社交.关系分析.摘要 || '').trim() ||
-          社交.关系分析.摘要 === '当前尚未积累足够的人物关系数据。'
-        ) {
-          社交.关系分析.摘要 = sortedTopTargets.length
-            ? `当前最应关注的关系对象为${fallbackFocusTarget}，优先推进${sortedTopTargets
-                .slice(0, 2)
-                .map(item => item.对象)
-                .join('、')}。`
-            : '当前尚未积累足够的人物关系数据。';
-        }
-        社交.关系分析.恋爱候选 = romanceCandidates.sort(
-          (a, b) => Number((社交.关系[b] || {}).好感度 || 0) - Number((社交.关系[a] || {}).好感度 || 0),
-        );
-        社交.关系分析.信任对象 = trustTargets.sort(
-          (a, b) => Number((社交.关系[b] || {}).好感度 || 0) - Number((社交.关系[a] || {}).好感度 || 0),
-        );
-        社交.关系分析.风险对象 = riskTargets.sort(
-          (a, b) => Number((社交.关系[a] || {}).好感度 || 0) - Number((社交.关系[b] || {}).好感度 || 0),
-        );
-        社交.关系分析.受阻对象 = blockedTargets;
-        社交.关系分析.同地对象 = 社交.关系分析.同地对象 || [];
-        社交.关系分析.可联络对象 = 社交.关系分析.可联络对象 || [];
-
-        return 社交;
+  delete 社交.关系分析;
+  return 社交;
       
 }
 

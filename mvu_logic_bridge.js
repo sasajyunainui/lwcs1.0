@@ -261,10 +261,10 @@
     },
     人物关系详细页: {
       title: '人物关系',
-      summary: '由“关系摘要”芯片进入，承接重型 社交.关系 结构。',
+      summary: '由“关系摘要”芯片进入，展示已经成立的人物关系事实。',
       fields: ['activeChar.社交.关系'],
-      duties: ['显示好感度与阶段', '显示关系路线与推进提示', '展示对方身份、相关度与分析结果'],
-      actions: ['查看关系路线', '查看关系推进重点', '闲聊 / 送礼 / 请教 / 切磋 / 表白'],
+      duties: ['显示关系与好感度', '展示对方身份与所在位置', '展示武魂协同摘要'],
+      actions: ['检索关系对象', '查看关系档案'],
     },
     情报库详细页: {
       title: '情报库',
@@ -1529,14 +1529,10 @@
                     <span>同步中</span>
                   </div>
                 </div>
-                <div class="relation-dossier-body relation-dossier-split-layout">
+                <div class="relation-dossier-body relation-dossier-split-layout relation-dossier-readonly-layout">
                   <section class="relation-dossier-intel-column">
                     <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">档案与属性</div></section>
-                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">维护与记录</div></section>
-                  </section>
-                  <section class="relation-dossier-action-column">
-                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">态势与推演</div></section>
-                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">交互终端</div></section>
+                    <section class="relation-dossier-flow"><div class="relation-dossier-flow-title">武魂协同</div></section>
                   </section>
                 </div>
               </div>
@@ -4653,15 +4649,6 @@
         名称集合.forEach(名称 => {
           delete 关系[名称];
         });
-      }
-      const 关系分析 = deepGet(角色数据, '社交.关系分析', null);
-      if (!关系分析 || typeof 关系分析 !== 'object' || Array.isArray(关系分析)) return;
-      ['恋爱候选', '信任对象', '风险对象', '同地对象', '可联络对象', '重点对象'].forEach(字段 => {
-        if (Array.isArray(关系分析[字段])) 关系分析[字段] = 关系分析[字段].filter(名称 => !名称集合.has(toText(名称, '').trim()));
-      });
-      if (名称集合.has(toText(关系分析.关注对象, '').trim())) 关系分析.关注对象 = '无';
-      if (Array.isArray(关系分析.受阻对象)) {
-        关系分析.受阻对象 = 关系分析.受阻对象.filter(条目 => !名称集合.has(toText(条目 && 条目.对象, 条目).trim()));
       }
     });
     const 索引角色 = deepGet(数据根, '相关实体索引.角色', null);
@@ -31149,9 +31136,8 @@
         ? deepGet(activeChar, ['社交', '关系', targetKey], deepGet(activeChar, ['社交', '关系', targetName], null))
         : null;
       const relation = toText(rel && rel.关系, '陌生');
-      const relationRoute = toText(rel && rel.关系路线, '');
       const favor = toNumber(rel && rel.好感度, 0);
-      if (/敌对|死敌|宿敌|对手|仇敌/.test(`${relation}${relationRoute}`)) return true;
+      if (/敌对|死敌|宿敌|对手|仇敌/.test(relation)) return true;
       return favor >= 30 && !/陌生|普通|路人/.test(relation);
     }
     return activeRep >= Math.floor(targetRep * 0.35);
@@ -31517,7 +31503,6 @@
       primaryFaction,
       topRelation,
       pendingSoulRing,
-      关系分析: deepGet(activeChar, '社交.关系分析', {}),
 
       questRecordCount,
       当前任务名称,
@@ -33041,7 +33026,6 @@
     const 核心羁绊 = snapshot.topRelation
       ? `${shortenText(snapshot.topRelation[0], 10)} · ${toText(deepGet(snapshot.topRelation[1], '关系', '陌生'), '陌生')}`
       : '暂无核心羁绊';
-    const 羁绊路线 = snapshot.topRelation ? toText(deepGet(snapshot.topRelation[1], '关系路线', '朋友线'), '朋友线') : '未建立';
     const 身份 = summarizeShellIdentityText(社交.主身份, { limit: 16 }) || toText(社交.主身份, '未记录');
     return `
         <div class="mvu-archive-social-stack">
@@ -33058,7 +33042,7 @@
             <div class="mvu-archive-social-window-head"><span>羁绊</span><b>${htmlEscape(`${关系数量} 人`)}</b></div>
             <div class="mvu-archive-social-window-body">
               <span><b>核心</b><em>${htmlEscape(shortenText(核心羁绊, 18))}</em></span>
-              <span><b>路线</b><em>${htmlEscape(shortenText(羁绊路线, 18))}</em></span>
+              <span><b>好感</b><em>${htmlEscape(snapshot.topRelation ? String(toNumber(deepGet(snapshot.topRelation[1], '好感度', 0), 0)) : '暂无')}</em></span>
             </div>
           </div>
         </div>
@@ -35202,8 +35186,8 @@
               <div class="mvu-shell-lite-list">${buildShellLiteItemList(
                 (snapshot.relations || []).slice(0, 5).map(([name, rel]) => ({
                   title: name,
-                  meta: `${toText(deepGet(rel, '关系', '陌生'), '陌生')} · ${toNumber(deepGet(rel, '好感度', 0), 0)}`,
-                  note: toText(deepGet(rel, '_推进提示', ''), ''),
+                  meta: `${toText(deepGet(rel, '关系', '陌生'), '陌生')} · 好感 ${toNumber(deepGet(rel, '好感度', 0), 0)}`,
+                  note: toText(deepGet(rel, '对方身份', ''), ''),
                 })),
                 '暂无关系',
               )}</div>
@@ -39013,29 +38997,23 @@
     }
 
     if (previewKey === '人物关系详细页') {
-      const activeCharKey =
-        resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
       const currentLocFull = toText(
         deepGet(snapshot, 'activeChar.状态.位置', snapshot.currentLoc || '未知地点'),
         snapshot.currentLoc || '未知地点',
       );
-      const relationFocusTargets = Array.isArray(deepGet(snapshot, '关系分析.重点对象', []))
-        ? deepGet(snapshot, '关系分析.重点对象', [])
-        : [];
-      const sameLocationTargets = Array.isArray(deepGet(snapshot, '关系分析.同地对象', []))
-        ? deepGet(snapshot, '关系分析.同地对象', [])
-        : [];
-      const trustTargets = Array.isArray(deepGet(snapshot, '关系分析.信任对象', []))
-        ? deepGet(snapshot, '关系分析.信任对象', [])
-        : [];
-      const 读取关系路线类 = (关系数据 = {}) => {
-        const 路线文本 = toText(关系数据 && 关系数据['关系路线'], '');
+      const relationFocusTargets = snapshot.relations.slice(0, 5).map(([对象, 关系]) => ({ 对象, 关系 }));
+      const sameLocationTargets = snapshot.relations
+        .filter(([name]) => {
+          const target = resolveSnapshotCharacter(snapshot, name);
+          return !!target.char && isLocationCompatible(currentLocFull, deepGet(target.char, '状态.位置', ''));
+        })
+        .map(([name]) => name);
+      const 读取关系类型类 = (关系数据 = {}) => {
         const 关系文本 = toText(关系数据 && 关系数据['关系'], '');
-        const 合并文本 = `${路线文本}${关系文本}`;
-        if (/敌对|死敌|宿敌|仇敌|危险|厌恶/.test(合并文本)) return 'relation-route-hostile';
-        if (/恋人|暧昧|伴侣/.test(合并文本)) return 'relation-route-romance';
-        if (/朋友|友善|亲密|信任/.test(合并文本)) return 'relation-route-friendly';
-        return 'relation-route-neutral';
+        if (/敌对|死敌|宿敌|仇敌|危险|厌恶/.test(关系文本)) return 'relation-kind-hostile';
+        if (/恋人|暧昧|伴侣/.test(关系文本)) return 'relation-kind-romance';
+        if (/朋友|友善|亲密|信任/.test(关系文本)) return 'relation-kind-friendly';
+        return 'relation-kind-neutral';
       };
       const 构建关系情报行 = (标签, 值HTML, 附加类 = '') => {
         const 空状态类 = 是空状态值(值HTML) ? ' is-empty-state' : '';
@@ -39052,23 +39030,11 @@
           ${内容HTML}
         </section>
       `;
-      const 构建关系分析行 = (标签, 文本) => {
-        const 空状态类 = 是空状态值(文本) ? ' is-empty-state' : '';
-        return `
-        <div class="relation-analysis-line${空状态类}">
-          <b>${htmlEscape(标签)}</b>
-          <span class="${空状态类.trim()}">${htmlEscape(toText(文本, '暂无'))}</span>
-        </div>
-      `;
-      };
       const relationFocusStateKey = `${previewKey}::relation-focus`;
-      const 默认重点对象名 = toText(
-        deepGet(relationFocusTargets, '0.对象', deepGet(relationFocusTargets, '0.target', '')),
-        '',
-      );
+      const 默认重点对象名 = toText(relationFocusTargets[0]?.对象, '');
       let relationDetailName = toText(
         modalFocusState[relationFocusStateKey],
-        toText(deepGet(snapshot, '关系分析.关注对象', 默认重点对象名), 默认重点对象名),
+        默认重点对象名,
       );
       if (!snapshot.relations.some(([entryName]) => entryName === relationDetailName))
         relationDetailName = snapshot.relations[0] ? snapshot.relations[0][0] : '';
@@ -39102,7 +39068,6 @@
       };
       relationFocusTargets.forEach(item => 推入拓扑候选(toText(item && (item.对象 || item.target), '')));
       sameLocationTargets.forEach(推入拓扑候选);
-      trustTargets.forEach(推入拓扑候选);
       snapshot.relations.forEach(([name]) => 推入拓扑候选(name));
       const 拓扑显示名称 = 拓扑候选名称.slice(0, 拓扑最大对象数);
       if (relationDetailName && !拓扑显示名称.includes(relationDetailName)) {
@@ -39130,35 +39095,23 @@
         .map(([name, rel], index) => {
           const pos = 读取拓扑节点位置(name, index);
           const 相关度视图 = 构建关系相关度视图数据_桥接(rel);
-          const 相关度文本 = `相关度 ${相关度视图.总分值} / 基础 ${相关度视图.基础显示值}`;
-          const 路线类 = 读取关系路线类(rel);
+          const 相关度文本 = `协同 ${相关度视图.总分值} / 基础 ${相关度视图.基础显示值}`;
+          const 关系类型类 = 读取关系类型类(rel);
           const 选中类 = name === relationDetailName ? 'is-active' : '';
           return `
-            <button type="button" class="topology-node interactive-ring relation-node--person ${路线类} ${pos.className} ${选中类}" data-relation-focus="${escapeHtmlAttr(name)}" data-relation-node="${escapeHtmlAttr(name)}" aria-pressed="${name === relationDetailName ? 'true' : 'false'}" style="left:${pos.left}%;top:${pos.top}%">
+            <button type="button" class="topology-node interactive-ring relation-node--person ${关系类型类} ${pos.className} ${选中类}" data-relation-focus="${escapeHtmlAttr(name)}" data-relation-node="${escapeHtmlAttr(name)}" aria-pressed="${name === relationDetailName ? 'true' : 'false'}" style="left:${pos.left}%;top:${pos.top}%">
               <b>${htmlEscape(name)}</b><span>${htmlEscape(toText(rel && rel['关系'], '陌生'))}</span>
               <div class="relation-hover-card">
                 <span class="relation-hover-title">${htmlEscape(name)}</span>
-                <span class="relation-hover-desc">${htmlEscape(`${toText(rel && rel['关系'], '陌生')} / ${toText(rel && rel['关系路线'], '朋友线')}`)}</span>
+                <span class="relation-hover-desc">${htmlEscape(toText(rel && rel['关系'], '陌生'))}</span>
                 <div class="relation-hover-tags">
                   <span class="relation-hover-chip">${htmlEscape(`好感 ${相关度视图.好感度}`)}</span>
                   <span class="relation-hover-chip">${htmlEscape(toText(rel && rel['对方身份'], '未知身份'))}</span>
                   <span class="relation-hover-chip">${htmlEscape(相关度文本)}</span>
                 </div>
                 <div class="relation-hover-skill">
-                  <span>${htmlEscape(`推进 ${toText(rel && rel['_推进提示'], '暂无')}`)}</span>
-                  <span>${htmlEscape(`阶段 ${toText(rel && rel['_下一阶段'], '无')} / ${toNumber(rel && rel['_下一阶段阈值'], 0)}`)}</span>
-                  <span>${htmlEscape(`当前 ${toText(rel && rel['_当前关系加成'], '无')}`)}</span>
-                  <span>${htmlEscape(`解锁 ${toText(rel && rel['_下档解锁加成'], '无')}`)}</span>
-                  <span>${htmlEscape(`维护 ${toText(rel && rel['_维护优先级'], '未知')} / ${toText(rel && rel['_切线限制原因'], '无')}`)}</span>
-                  <span>${htmlEscape(相关度文本)}</span>
-                  <span>${htmlEscape(`融合 ${相关度视图.融合触发状态} / 阈值70`)}</span>
+                   <span>${htmlEscape(`融合 ${相关度视图.融合触发状态}`)}</span>
                   <span>${htmlEscape(`同修 x${相关度视图.同修效率倍率}`)}</span>
-                </div>
-                <div class="energy-stack">
-                  <div class="energy-row-block">
-                    <div class="energy-headline"><b>好感度</b><span>${htmlEscape(`${相关度视图.好感度} / ${toText(rel && rel['关系'], '陌生')}`)}</span></div>
-                    <div class="energy-track"><div class="energy-fill ${相关度视图.好感度 >= 80 ? 'red' : 相关度视图.好感度 >= 50 ? 'gold' : 'cyan'}" style="width:${Math.max(5, Math.min(100, 相关度视图.好感度))}%"></div></div>
-                  </div>
                 </div>
               </div>
             </button>
@@ -39178,8 +39131,6 @@
         ? snapshot.relations.find(([entryName]) => entryName === relationDetailName)
         : null;
       const relationDetail = relationDetailEntry && relationDetailEntry[1];
-      const relationDetailPath =
-        relationDetailName && activeCharKey ? ['char', activeCharKey, '社交', '关系', relationDetailName] : [];
       const resolvedTarget = relationDetailName
         ? resolveSnapshotCharacter(snapshot, relationDetailName)
         : { key: '', displayName: '', char: null };
@@ -39189,221 +39140,75 @@
         ? relationTargetLoc.replace(/^斗罗大陆-/, '').replace(/^斗灵大陆-/, '')
         : '未知地点';
       const 关系相关度视图 = 构建关系相关度视图数据_桥接(relationDetail);
-      const relationFavor = 关系相关度视图.好感度;
-      const relationRoute = toText(relationDetail && relationDetail['关系路线'], '朋友线');
+      const relationFavor = Math.max(-100, Math.min(100, toNumber(关系相关度视图.好感度, 0)));
       const 武魂相关度基础值 = 关系相关度视图.基础值;
       const 武魂相关度基础显示值 = 关系相关度视图.基础显示值;
       const 武魂相关度总分值 = 关系相关度视图.总分值;
       const 融合触发状态值 = 关系相关度视图.融合触发状态;
       const 同修效率倍率值 = 关系相关度视图.同修效率倍率;
-      const 武魂相关度基础值HTML = relationDetailPath.length
-        ? 武魂相关度基础值 == null
-          ? makeInlineEditableValue(武魂相关度基础显示值, {
-              path: [...relationDetailPath, '武魂相关度基础'],
-              kind: 'string',
-              rawValue: 武魂相关度基础显示值,
-            })
-          : makeInlineEditableValue(String(武魂相关度基础值), {
-              path: [...relationDetailPath, '武魂相关度基础'],
-              kind: 'number',
-              rawValue: 武魂相关度基础值,
-              editorMeta: { min: 0, max: 100, integer: true, hint: '0-100整数' },
-            })
-        : htmlEscape(武魂相关度基础显示值);
+      const 武魂相关度基础值HTML = htmlEscape(武魂相关度基础显示值);
       const 武魂相关度HTML = `总 ${htmlEscape(String(武魂相关度总分值))} / 基础 ${武魂相关度基础值HTML}`;
-      const 好感度值HTML = relationDetailPath.length
-        ? makeInlineEditableValue(String(relationFavor), {
-            path: [...relationDetailPath, '好感度'],
-            kind: 'number',
-            rawValue: relationFavor,
-            editorMeta: { integer: true, hint: '整数 · 可正可负 · 不设硬上下限' },
-          })
-        : htmlEscape(String(relationFavor));
-      const 好感度百分比 = Math.max(0, Math.min(100, relationFavor));
-      const 好感度等级类 = relationFavor >= 80 ? 'is-high' : relationFavor >= 50 ? 'is-mid' : relationFavor < 0 ? 'is-low' : 'is-base';
+      const 好感度等级类 = relationFavor < 0 ? 'is-negative' : relationFavor > 0 ? 'is-positive' : 'is-neutral';
+      const 负值宽度 = Math.max(0, -relationFavor) / 2;
+      const 正值宽度 = Math.max(0, relationFavor) / 2;
       const 好感度条HTML = `
         <div class="relation-favor-meter ${好感度等级类}">
           <div class="relation-favor-head">
             <b>好感度</b>
-            <span>${好感度值HTML} / 100</span>
+            <span>${htmlEscape(`${relationFavor >= 0 ? '+' : ''}${relationFavor} / 100`)}</span>
           </div>
-          <div class="relation-favor-track" aria-hidden="true"><i style="width:${好感度百分比}%"></i></div>
+          <div class="relation-favor-scale"><span>-100</span><span>0</span><span>+100</span></div>
+          <div class="relation-favor-track" aria-hidden="true">
+            <i class="relation-favor-fill relation-favor-fill--negative" style="width:${负值宽度}%"></i>
+            <i class="relation-favor-fill relation-favor-fill--positive" style="width:${正值宽度}%"></i>
+            <b class="relation-favor-zero"></b>
+          </div>
         </div>
       `;
-      const routeSwitchable = !!deepGet(relationDetail, '_可切线', false);
-      const isContactable = !!relationTargetChar && deepGet(relationTargetChar, '状态.存活', true) !== false;
-      const isSameLocation = !!relationTargetChar && isLocationCompatible(currentLocFull, relationTargetLoc);
-      const isPlayerControlled = isSnapshotPlayerControlled(snapshot);
-      const canTalk = isSameLocation && isContactable;
-      const canAsk = isSameLocation && isContactable && relationFavor >= 30;
-      const canBattle = isSameLocation && isContactable;
-      const canConfess =
-        isSameLocation && isContactable && (relationRoute === '恋人线' || routeSwitchable || relationFavor >= 80);
-      const canDual = isSameLocation && isContactable && relationRoute === '恋人线' && relationFavor >= 80;
-      const giftableItems = (snapshot.inventoryEntries || [])
-        .filter(([, item]) => 读取背包总数量_桥接(item) > 0)
-        .slice(0, 30);
-      const canGift = isSameLocation && isContactable && giftableItems.length > 0;
-      const giftOptionsHtml = giftableItems.length
-        ? giftableItems
-            .map(
-              ([itemName, item]) =>
-                `<option value="${escapeHtmlAttr(itemName)}">${htmlEscape(`${itemName} ×${读取背包总数量_桥接(item)}`)}</option>`,
-            )
-            .join('')
-        : '<option value="">暂无可送物品</option>';
-
-      const 建议行动列表 = Array.from(
-        new Set(relationFocusTargets.map(item => toText(item && item.建议行动, '')).filter(Boolean)),
-      ).slice(0, 3);
-      const 系统建议文本 = 建议行动列表.slice(0, 3).join(' / ') || '继续观察';
+      const 当前关系原值 = toText(relationDetail && relationDetail['关系'], '陌生');
+      const 对方身份原值 = toText(relationDetail && relationDetail['对方身份'], '无');
+      const 关系类型类 = 读取关系类型类(relationDetail);
+      const 当前关系HTML = htmlEscape(当前关系原值);
+      const 对方身份HTML = htmlEscape(对方身份原值);
+      const 位置HTML = htmlEscape(relationTargetLocLabel);
       const 关系概览标签HTML = makeDossierTags(
         [
           { text: `对象 ${snapshot.relations.length}`, className: snapshot.relations.length ? 'live' : 'warn' },
           sameLocationTargets.length ? { text: `同地 ${sameLocationTargets.length}`, className: 'live' } : null,
-          trustTargets.length ? { text: `信任 ${trustTargets.length}`, className: 'live' } : null,
         ].filter(Boolean),
         'dossier-head-actions relation-head-actions',
       );
-      const 当前关系原值 = toText(relationDetail && relationDetail['关系'], '陌生');
-      const 对方身份原值 = toText(relationDetail && relationDetail['对方身份'], '无');
-      const 当前关系HTML =
-        relationDetail && relationDetailPath.length
-          ? makeInlineEditableValue(当前关系原值, {
-              path: [...relationDetailPath, '关系'],
-              kind: 'string',
-              rawValue: 当前关系原值,
-            })
-          : htmlEscape(当前关系原值);
-      const 关系路线HTML =
-        relationDetail && relationDetailPath.length
-          ? makeInlineEditableValue(relationRoute, {
-              path: [...relationDetailPath, '关系路线'],
-              kind: 'enum_select',
-              rawValue: relationRoute,
-              editorMeta: { options: ['朋友线', '恋人线'] },
-            })
-          : htmlEscape(relationRoute);
-      const 对方身份HTML =
-        relationDetail && relationDetailPath.length
-          ? makeInlineEditableValue(对方身份原值, {
-              path: [...relationDetailPath, '对方身份'],
-              kind: 'string',
-              rawValue: 对方身份原值,
-            })
-          : htmlEscape(对方身份原值);
-      const 位置状态文本 = `${relationTargetLocLabel} / ${
-        isSameLocation ? '同地可接触' : isContactable ? '远端可联系' : '当前不可接触'
-      }`;
-      const 下一阶段文本 = `${toText(relationDetail && relationDetail['_下一阶段'], '无')} / ${toNumber(
-        relationDetail && relationDetail['_下一阶段阈值'],
-        0,
-      )}`;
-      const 当前加成文本 = toText(relationDetail && relationDetail['_当前关系加成'], '无');
-      const 下一解锁文本 = toText(relationDetail && relationDetail['_下档解锁加成'], '无');
-      const 关系状态胶囊HTML = relationDetail
-        ? `
-          <div class="relation-status-capsules relation-status-capsules--console">
-            <span class="${isSameLocation ? 'is-live' : 'is-warn'}">${htmlEscape(isSameLocation ? '同地可接触' : '非同地')}</span>
-            <span class="${isContactable ? 'is-live' : 'is-warn'}">${htmlEscape(isContactable ? '可接触' : '不可接触')}</span>
-            <span>${htmlEscape(relationRoute)}</span>
-          </div>
-        `
-        : '';
-      const 关系操作汇总HTML = relationDetail
-        ? isPlayerControlled
-          ? `
-                <div class="relation-action-toolbar">
-                  <button type="button" class="relation-action-btn action-primary" data-relation-action="talk" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canTalk ? 'disabled' : ''}>闲聊</button>
-                  <button type="button" class="relation-action-btn action-primary" data-relation-action="ask" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canAsk ? 'disabled' : ''}>请教</button>
-                  <button type="button" class="relation-action-btn action-warn" data-relation-action="battle" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canBattle ? 'disabled' : ''}>切磋</button>
-                  <button type="button" class="relation-action-btn action-accent" data-relation-action="confess" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canConfess ? 'disabled' : ''}>表白</button>
-                  <button type="button" class="relation-action-btn action-accent" data-relation-action="dual" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canDual ? 'disabled' : ''}>双修</button>
-                </div>
-                <div class="relation-gift-row dossier-form-row">
-                  <select class="relation-gift-select" ${!canGift ? 'disabled' : ''}>
-                    ${giftOptionsHtml}
-                  </select>
-                  <button type="button" class="relation-action-btn action-primary" data-relation-action="gift" data-relation-target="${escapeHtmlAttr(relationDetailName)}" ${!canGift ? 'disabled' : ''}>送礼</button>
-                </div>
-              `
-          : `
-                ${makeDossierTags(
-                  [
-                    { text: relationRoute },
-                    { text: isSameLocation ? '同地可见' : '远端观察', className: isSameLocation ? 'live' : 'warn' },
-                  ],
-                  'dossier-tag-row--wrap',
-                )}
-              `
-        : '<div class="dossier-empty-note">当前没有可操作的关系目标。</div>';
-      const 维护状态文本 = `${toText(relationDetail && relationDetail['_维护优先级'], '未知')} / ${toText(
-        relationDetail && relationDetail['_切线限制原因'],
-        '无',
-      )}`;
-      const 推进提示文本 = toText(relationDetail && relationDetail['_推进提示'], '暂无推进建议');
-      const 去重建议行动列表 = 建议行动列表.filter(建议 => 建议 !== 推进提示文本);
-      const 关系建议文本 = 去重建议行动列表.slice(0, 3).join(' / ') || '继续观察';
       const 关系情报聚合HTML = relationDetail
         ? `
-          <section class="relation-dossier-intel-column ${读取关系路线类(relationDetail)}">
+          <section class="relation-dossier-intel-column ${关系类型类}">
             ${好感度条HTML}
             ${构建关系情报组(
-              '档案与属性',
+              '关系事实',
               `
                 <div class="relation-dossier-line-list">
-                  ${构建关系情报行('当前关系', `${当前关系HTML}<span class="relation-inline-punctuation">（</span>${关系路线HTML}<span class="relation-inline-punctuation">）</span>`)}
+                  ${构建关系情报行('当前关系', 当前关系HTML)}
                   ${构建关系情报行('对方身份', 对方身份HTML)}
-                  ${构建关系情报行('当前位置', htmlEscape(位置状态文本))}
-                  ${构建关系情报行('武魂共鸣', 武魂相关度HTML)}
-                  ${构建关系情报行('融合触发', htmlEscape(`${融合触发状态值} / 阈值70`))}
-                  ${构建关系情报行('同修效率', htmlEscape(`x${同修效率倍率值}`))}
+                  ${构建关系情报行('所在位置', 位置HTML)}
                 </div>
               `,
             )}
             ${构建关系情报组(
-              '维护与记录',
+              '武魂协同',
               `
                 <div class="relation-dossier-line-list">
-                  ${构建关系情报行('推进限制', htmlEscape(维护状态文本), 'relation-dossier-line--wide')}
-                  ${构建关系情报行('当前加成', htmlEscape(当前加成文本), 'relation-dossier-line--wide')}
-                  ${构建关系情报行('下一解锁', htmlEscape(下一解锁文本), 'relation-dossier-line--wide')}
-                  ${构建关系情报行('阶段目标', htmlEscape(下一阶段文本), 'relation-dossier-line--wide')}
+                  ${构建关系情报行('相关度', 武魂相关度HTML)}
+                  ${构建关系情报行('融合状态', htmlEscape(融合触发状态值))}
+                  ${构建关系情报行('同修效率', htmlEscape(`x${同修效率倍率值}`))}
                 </div>
               `,
             )}
           </section>
         `
         : '<section class="relation-dossier-intel-column"><div class="dossier-empty-note">先从上方拓扑选择一个目标。</div></section>';
-      const 关系行动聚合HTML = `
-        <section class="relation-dossier-action-column">
-          ${构建关系情报组(
-            '态势与推演',
-            relationDetail
-              ? `
-                <div class="relation-analysis-panel">
-                  ${构建关系分析行('情报', 推进提示文本)}
-                  ${构建关系分析行('建议', 关系建议文本)}
-                  ${构建关系分析行('目标', 下一阶段文本)}
-                </div>
-              `
-              : '<div class="dossier-empty-note">先从上方拓扑选择一个目标。</div>',
-            'relation-dossier-flow--analysis',
-          )}
-          ${构建关系情报组(
-            isPlayerControlled ? '交互终端' : '观察备注',
-            `
-              ${关系状态胶囊HTML}
-              ${关系操作汇总HTML}
-            `,
-            'relation-dossier-flow--terminal',
-          )}
-        </section>
-      `;
 
       return {
         title: '人物关系',
-        summary: '全局社会链路扫描、当前重点对象监控与智能关系行动推荐。',
+        summary: '查看已经成立的人物关系事实与武魂协同信息。',
         body: `
             <div class="archive-modal-grid dossier-shell dossier-shell--relation">
               <div class="archive-card dossier-card dossier-card--relation-overview relation-network-zone full">
@@ -39435,12 +39240,11 @@
                 <div class="archive-card-head relation-dossier-head">
                   <div class="relation-dossier-title">
                     <div class="archive-card-title">${htmlEscape(relationDetailName || '目标卷宗')}</div>
-                    <span>${htmlEscape(relationDetail ? toText(relationDetail && relationDetail['对方身份'], '未知身份') : '未选中目标')}</span>
+                    <span>${htmlEscape(relationDetail ? `${当前关系原值} · ${对方身份原值}` : '未选中目标')}</span>
                   </div>
                 </div>
-                <div class="relation-dossier-body relation-dossier-split-layout">
+                <div class="relation-dossier-body relation-dossier-split-layout relation-dossier-readonly-layout">
                   ${关系情报聚合HTML}
-                  ${关系行动聚合HTML}
                 </div>
               </div>
             </div>
@@ -44038,29 +43842,6 @@
     return 当前路径.startsWith(`${目标路径}-`) || 目标路径.startsWith(`${当前路径}-`);
   }
 
-  function buildRelationInteractRequest(snapshot, actionType, rawTargetName, options = {}) {
-    const currentLoc = toText(snapshot && snapshot.currentLoc, '未知地点');
-    return buildMapInteractDispatchRequest(snapshot, {
-      action: actionType,
-      npcTarget: rawTargetName,
-      target: currentLoc,
-      currentLoc,
-      itemUsed: toText(options.itemUsed, '无'),
-      sourceLabel: '人物关系页社交互动',
-      requestKind: 'relation_interaction',
-    });
-  }
-
-  function buildRelationBattleInitRequest(snapshot, rawTargetName) {
-    const currentLoc = toText(snapshot && snapshot.currentLoc, '未知地点');
-    return buildMapBattleInitRequest(snapshot, {
-      npcTarget: rawTargetName,
-      target: currentLoc,
-      currentLoc,
-      requestKind: 'relation_sparring',
-    });
-  }
-
   function 读取武魂相关度基础值_桥接(关系数据 = {}) {
     const 原值 = Number(关系数据 && 关系数据['武魂相关度基础']);
     if (!Number.isFinite(原值)) return null;
@@ -47750,7 +47531,7 @@ ${播报文本}
       relationMap && typeof relationMap === 'object' ? relationMap[targetName] || relationMap[targetKey] || {} : {};
     const relationSummary =
       relationData && typeof relationData === 'object'
-        ? `${toText(relationData['关系'], '陌生')} / ${toText(relationData['关系路线'], '朋友线')} / 好感 ${toNumber(relationData['好感度'], 0)}`
+        ? `${toText(relationData['关系'], '陌生')} / 好感 ${toNumber(relationData['好感度'], 0)}`
         : '暂无明确关系记录';
     const activeLoc = toText(deepGet(activeChar, '状态.位置', arenaName), arenaName || '未知地点');
     const targetLoc = toText(deepGet(targetChar, '状态.位置', arenaName), arenaName || '未知地点');
@@ -47822,11 +47603,6 @@ ${播报文本}
     const targetLoc = toText(deepGet(targetChar, '状态.位置', '未知地点'), '未知地点');
     const activeFactions = Object.keys(deepGet(activeChar, '社交.势力', {})).filter(Boolean);
     const targetFactions = Object.keys(deepGet(targetChar, '社交.势力', {})).filter(Boolean);
-    const progressNote =
-      relationData && typeof relationData === 'object'
-        ? toText(deepGet(relationData, '_推进提示', '暂无'), '暂无')
-        : '暂无';
-    const routeSwitchable = !!deepGet(relationData, '_可切线', false);
     const sourceLabel = toText(detail.sourceLabel, '地图 NPC 互动');
     const actionPromptMap = {
       talk: `我想在【${arenaName}】和【${targetName}】闲聊。`,
@@ -47843,7 +47619,7 @@ ${播报文本}
 
     const relationSummary =
       relationData && typeof relationData === 'object'
-        ? `${toText(relationData['关系'], '陌生')} / 路线 ${toText(relationData['关系路线'], '朋友线')} / 好感 ${toNumber(relationData['好感度'], 0)}`
+        ? `${toText(relationData['关系'], '陌生')} / 好感 ${toNumber(relationData['好感度'], 0)}`
         : '暂无已知关系记录';
 
     const systemPrompt = `以下内容属于前端代发的${sourceLabel}请求，请直接承接剧情推进，不要输出 JSON 块或变量维护指令。
@@ -47856,12 +47632,10 @@ ${播报文本}
 [角色补充]
 发起者：${activeName} / 身份 ${activeIdentity} / 性格 ${activePersonality} / 所属势力 ${activeFactions.join(' / ') || '无'} / 所在地 ${activeLoc}
 目标：${targetName} / 身份 ${targetIdentity} / 性格 ${targetPersonality} / 所属势力 ${targetFactions.join(' / ') || '无'} / 所在地 ${targetLoc}
-推进提示：${progressNote}
-当前是否可切恋人线：${routeSwitchable ? '是' : '否'}
 预计耗时：${currentTick >= 0 ? '约 2 tick' : '短时互动'}
 
 [互动裁定原则]
-请综合考虑基础好感、当前关系阶段与路线、双方性格、身份与现实压力、所属势力带来的立场影响、当前地点是否适合展开该互动。若互动无法成立，请在剧情里自然给出原因。${interactAction === '送礼' ? ` 送礼物品为【${itemUsed}】；请判断这份礼物是否对目标性格、身份、处境与当下气氛对口。` : ''}${interactAction === '表白' ? ' 表白时请区分“试着交往/进入暧昧推进”与“正式确认关系”两种结果。' : ''}${interactAction === '双修' ? ' 双修属于高亲密度互动，若人物状态、性格、场景或关系阶段不匹配，应明确写出无法成立的理由。' : ''}${interactAction === '请教' ? ' 请教不仅看好感，也要看目标是否愿意传授、双方当前关系是否适合，以及当下场景是否便于认真交流。' : ''}`;
+请综合考虑当前好感、当前关系称谓、双方性格、身份与现实压力、所属势力带来的立场影响、当前地点是否适合展开该互动。若互动无法成立，请在剧情里自然给出原因。${interactAction === '送礼' ? ` 送礼物品为【${itemUsed}】；请判断这份礼物是否对目标性格、身份、处境与当下气氛对口。` : ''}${interactAction === '表白' ? ' 表白结果必须由当前剧情与人物反应决定，不自动改变关系称谓。' : ''}${interactAction === '双修' ? ' 双修属于高亲密度互动，若人物状态、性格、场景或关系不匹配，应明确写出无法成立的理由。' : ''}${interactAction === '请教' ? ' 请教不仅看好感，也要看目标是否愿意传授、双方当前关系是否适合，以及当下场景是否便于认真交流。' : ''}`;
 
     return {
       playerInput: actionPromptMap[action] || `我想在【${arenaName}】与【${targetName}】互动。`,
@@ -53184,83 +52958,6 @@ ${播报文本}
       return;
     }
 
-    const relationActionBtn = eventTarget
-      ? eventTarget.closest('.relation-action-btn[data-relation-action][data-relation-target]')
-      : null;
-    if (relationActionBtn && detailSurfaceHost.contains(relationActionBtn)) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!isSnapshotPlayerControlled(liveSnapshot)) {
-        showUiToast('旁观视角不可操作。', 'error');
-        return;
-      }
-
-      const actionType = relationActionBtn.getAttribute('data-relation-action') || '';
-      const targetName = relationActionBtn.getAttribute('data-relation-target') || '';
-      const resolvedTarget = resolveSnapshotCharacter(liveSnapshot, targetName);
-      if (!resolvedTarget.char) {
-        showUiToast(`找不到关系对象【${targetName}】。`, 'error');
-        return;
-      }
-
-      const currentLocFull = toText(
-        deepGet(liveSnapshot, 'activeChar.状态.位置', liveSnapshot.currentLoc || ''),
-        liveSnapshot.currentLoc || '',
-      );
-      const targetLoc = toText(deepGet(resolvedTarget.char, '状态.位置', ''), '');
-      const isSameLocation = isLocationCompatible(currentLocFull, targetLoc);
-      const isContactable = deepGet(resolvedTarget.char, '状态.存活', true) !== false;
-      const relationMap = deepGet(liveSnapshot, 'activeChar.社交.关系', {});
-      const relationData =
-        relationMap && typeof relationMap === 'object'
-          ? relationMap[targetName] || relationMap[resolvedTarget.key] || {}
-          : {};
-      const favor = toNumber(relationData && relationData['好感度'], 0);
-      const route = toText(relationData && relationData['关系路线'], '朋友线');
-      const routeSwitchable = !!deepGet(relationData, '_可切线', false);
-
-      if (!isContactable || !isSameLocation) {
-        showUiToast(`【${targetName}】当前不在你身边，无法进行当面关系互动。`, 'error');
-        return;
-      }
-      if (actionType === 'ask' && favor < 30) {
-        showUiToast(`向【${targetName}】请教需要好感度达到 30。`, 'error');
-        return;
-      }
-      if (actionType === 'confess' && !(route === '恋人线' || routeSwitchable || favor >= 80)) {
-        showUiToast(`【${targetName}】当前尚未达到适合表白的关系阶段。`, 'error');
-        return;
-      }
-      if (actionType === 'dual' && !(route === '恋人线' && favor >= 80)) {
-        showUiToast('双修仅在高好感恋人线关系下开放。', 'error');
-        return;
-      }
-
-      let actionData = null;
-      if (actionType === 'battle') {
-        actionData = buildRelationBattleInitRequest(liveSnapshot, targetName);
-      } else {
-        let itemUsed = '无';
-        if (actionType === 'gift') {
-          const actionPanel = relationActionBtn.closest('.relation-action-panel') || detailSurfaceHost;
-          const giftSelect = actionPanel ? actionPanel.querySelector('.relation-gift-select') : null;
-          itemUsed = toText(giftSelect && giftSelect.value, '');
-          if (!itemUsed) {
-            showUiToast('请先选择要赠送的物品。', 'error');
-            return;
-          }
-        }
-        actionData = buildRelationInteractRequest(liveSnapshot, actionType, targetName, { itemUsed });
-      }
-
-      if (actionData)
-        dispatchUiAiRequest(actionData.playerInput, actionData.systemPrompt, {
-          requestKind: actionData.requestKind,
-          patchOps: actionData.patchOps,
-        });
-      return;
-    }
-
     const questTabBtn = eventTarget ? eventTarget.closest('[data-quest-tab]') : null;
     if (questTabBtn && detailSurfaceHost.contains(questTabBtn)) {
       event.preventDefault();
@@ -55429,6 +55126,22 @@ ${播报文本}
       return true;
     },
 
+    applyInventorySelfDamageEffect(charData = {}, effect = {}, logs = []) {
+      const value = effect && typeof effect === 'object' ? effect.value || {} : {};
+      const ratio = Math.max(0, Math.min(1, toNumber(value.比例, 0)));
+      if (!(ratio > 0) || !charData || typeof charData !== 'object') return false;
+      if (!charData.属性 || typeof charData.属性 !== 'object' || Array.isArray(charData.属性)) charData.属性 = {};
+      const stats = charData.属性;
+      const maxValue = Math.max(1, toNumber(stats.体力上限 ?? stats.HP上限, 1));
+      const currentKey = Number.isFinite(Number(stats.体力)) ? '体力' : 'HP';
+      const currentValue = Math.max(0, toNumber(stats[currentKey], maxValue));
+      const delta = Math.max(1, Math.round(maxValue * ratio));
+      stats[currentKey] = Math.max(0, currentValue - delta);
+      if (currentKey === '体力' && Number.isFinite(Number(stats.HP))) stats.HP = Math.max(0, Number(stats.HP) - delta);
+      logs.push(`生命献祭-${formatNumber(delta)}`);
+      return true;
+    },
+
     applyInventoryStateSetEffect(charData = {}, effect = {}, logs = []) {
       const value = effect && typeof effect === 'object' ? effect.value || {} : {};
       const 属性 = toText(value.属性, '')
@@ -55692,7 +55405,17 @@ ${播报文本}
         value,
       };
     }
-      if (prototype === '伤害结算') return null;
+      if (prototype === '伤害结算') {
+        if (target !== '自身') return null;
+        const ratio = Math.max(0, Math.min(1, toNumber(effect['威力倍率'], 0) / 100));
+        if (!(ratio > 0)) return null;
+        return {
+          target: '自身',
+          type: 'self_damage',
+          description,
+          value: { 比例: ratio, 伤害类型: toText(effect['伤害类型'], '真实攻击') },
+        };
+      }
       if (prototype === '耐久修复') {
         return {
           target: '自身',
@@ -55846,6 +55569,7 @@ ${播报文本}
       if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
       if (!charData.属性.状态效果 || typeof charData.属性.状态效果 !== 'object' || Array.isArray(charData.属性.状态效果))
         charData.属性.状态效果 = {};
+      if (usableEffect.type === 'self_damage') return this.applyInventorySelfDamageEffect(charData, usableEffect, logs);
       if (usableEffect.type === 'heal') return this.applyInventoryHealEffect(charData.属性, usableEffect, logs);
       if (usableEffect.type === 'durability_repair') return false;
       if (usableEffect.type === 'state_set') return this.applyInventoryStateSetEffect(charData, usableEffect, logs);

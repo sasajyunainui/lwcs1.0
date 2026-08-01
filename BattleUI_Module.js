@@ -4392,10 +4392,14 @@ class BattleUIComponent {
           dryRun,
           commit: !dryRun,
         });
-        const commitReceipt = transactionResult?.commitReceipt || null;
-        if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');
-        const reportDto = transactionResult.reportDto;
-        const output = {
+          const commitReceipt = transactionResult?.commitReceipt || null;
+          if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');
+          const reportDto = transactionResult.reportDto;
+        const aiStructuredSummary = reportDto?.aiStructuredSummary ||
+          reportDto?.aiSummaryInput ||
+          {};
+        const aiStructuredSummaryText = JSON.stringify(aiStructuredSummary);
+          const output = {
           ...transactionResult,
           preview: dryRun,
           committed: !dryRun,
@@ -4426,7 +4430,7 @@ class BattleUIComponent {
           output.battleSettlementContext = settlementContext;
           sendToAI(
             `<battle_result>${战果标题}</battle_result>`,
-            `<battle_report>\n${reportDto.aiReport}\n</battle_report>`,
+            `<battle_summary>\n${aiStructuredSummaryText}\n</battle_summary>\n<battle_report>\n${reportDto.aiReport}\n</battle_report>`,
             {
               mvuUpdate: commitReceipt,
               requestKind: 'battle_settlement_plot',
@@ -5716,7 +5720,7 @@ class BattleUIComponent {
               autoContinueConfig,
               pendingTowerSettlement,
               activeBattleRecordTab: previousState.activeBattleRecordTab === 'preview' ? 'preview' : 'actual',
-              activeBattleRecordView: ['chain', 'summary'].includes(previousState.activeBattleRecordView) ? previousState.activeBattleRecordView : 'chain',
+              activeBattleRecordView: ['report', 'round', 'decision', 'summary'].includes(previousState.activeBattleRecordView) ? previousState.activeBattleRecordView : 'report',
               activeBattleDecisionRound: Math.max(0, Number(previousState.activeBattleDecisionRound || 0)),
               activeBattleDecisionActionId: String(previousState.activeBattleDecisionActionId || '').trim(),
               battleRecordCollapsed: previousState.battleRecordCollapsed !== false,
@@ -5892,11 +5896,11 @@ class BattleUIComponent {
 
         function 读取战斗记录视图() {
           const view = String(window.BattleUI?.state?.activeBattleRecordView || '').trim();
-          return ['chain', 'summary'].includes(view) ? view : 'chain';
+          return ['report', 'round', 'decision', 'summary'].includes(view) ? view : 'report';
         }
 
-        function 设置战斗记录视图(view = 'chain') {
-          const activeView = ['chain', 'summary'].includes(view) ? view : 'chain';
+        function 设置战斗记录视图(view = 'report') {
+          const activeView = ['report', 'round', 'decision', 'summary'].includes(view) ? view : 'report';
           if (window.BattleUI?.state) window.BattleUI.state.activeBattleRecordView = activeView;
           渲染战斗记录面板();
           读取战斗记录面板节点()?.querySelector(`[data-battle-record-view="${activeView}"]`)?.focus();
@@ -9606,7 +9610,10 @@ class BattleUIComponent {
             ? units.map(unit => {
                 const states = (Array.isArray(unit?.states) ? unit.states : []).map(state => `${state?.name || '状态'}(${Math.max(0, Number(state?.duration || 0))})`).filter(Boolean);
                 const resources = unit?.resources || {};
-                return `<div class="battle-final-summary-unit"><b>${htmlEscapeText(unit?.name || '单位')}</b><span>HP ${Math.max(0, Number(unit?.hp || 0))}/${Math.max(1, Number(unit?.hpMax || 1))}</span><span>魂力 ${Math.max(0, Number(unit?.sp ?? resources.soul ?? 0))}/${Math.max(1, Number(unit?.spMax ?? resources.soulMax ?? 1))}</span><span>体力 ${Math.max(0, Number(unit?.vit ?? resources.stamina ?? 0))}/${Math.max(1, Number(unit?.vitMax ?? resources.staminaMax ?? 1))}</span><span>精神力 ${Math.max(0, Number(unit?.men ?? resources.spirit ?? 0))}/${Math.max(1, Number(unit?.menMax ?? resources.spiritMax ?? 1))}</span>${states.length ? `<em>${htmlEscapeText(states.join('、'))}</em>` : ''}</div>`;
+                const resourceText = String(unit?.resourceVisibility || 'PUBLIC').toUpperCase() === 'HIDDEN'
+                  ? '<span>资源未公开</span>'
+                  : `<span>魂力 ${Math.max(0, Number(unit?.sp ?? resources.soul ?? 0))}/${Math.max(1, Number(unit?.spMax ?? resources.soulMax ?? 1))}</span><span>体力 ${Math.max(0, Number(unit?.vit ?? resources.stamina ?? 0))}/${Math.max(1, Number(unit?.vitMax ?? resources.staminaMax ?? 1))}</span><span>精神力 ${Math.max(0, Number(unit?.men ?? resources.spirit ?? 0))}/${Math.max(1, Number(unit?.menMax ?? resources.spiritMax ?? 1))}</span>`;
+                return `<div class="battle-final-summary-unit"><b>${htmlEscapeText(unit?.name || '单位')}</b><span>HP ${Math.max(0, Number(unit?.hp || 0))}/${Math.max(1, Number(unit?.hpMax || 1))}</span>${resourceText}${states.length ? `<em>${htmlEscapeText(states.join('、'))}</em>` : ''}</div>`;
               }).join('')
             : '<p class="battle-final-summary-empty">无可行动单位</p>'}</section>`;
           const renderList = (title, items = []) => `<section class="battle-final-summary-list"><h4>${htmlEscapeText(title)}</h4>${(Array.isArray(items) ? items : []).length
@@ -9627,44 +9634,78 @@ class BattleUIComponent {
           `;
         }
 
+        function ReportDto数字来源类型(value = '') {
+          const labels = {
+            DECISION_TIME_PUBLIC_PROJECTION: '决策时公开信息推演',
+            PROBABILITY: '概率事实',
+            RANDOM: '随机判定',
+            RESOURCE: '资源事实',
+            REACTION: '回应事实',
+            SETTLEMENT: '结算事实',
+            WINDOW: '行动窗口事实',
+            STATE: '状态事实',
+          };
+          return labels[String(value || '').trim().toUpperCase()] || '战斗事实';
+        }
+
+        function ReportDto数字计算操作(value = '') {
+          const labels = {
+            ADD: '相加',
+            SUBTRACT: '相减',
+            SET: '记录实际值',
+          };
+          return labels[String(value || '').trim().toUpperCase()] || '记录';
+        }
+
+        function 格式化ReportDto数字值(value, unit = '') {
+          const numeric = Number(value);
+          if (!Number.isFinite(numeric)) return '';
+          return `${numeric.toFixed(Math.abs(numeric) < 10 ? 2 : 0)}${unit || ''}`;
+        }
+
+        function 格式化ReportDto操作数(operands = []) {
+          return (Array.isArray(operands) ? operands : [])
+            .filter(operand => Number.isFinite(Number(operand?.value)))
+            .map(operand => `${String(operand?.name || '数值').trim()} ${格式化ReportDto数字值(operand.value, operand?.unit || '')}`)
+            .join('；');
+        }
+
         function 渲染ReportDto数字(token = {}) {
           if (!Number.isFinite(Number(token?.value))) return '';
           const sourceEventId = String(token?.sourceEventId || '').trim();
           const sourceFactId = String(token?.sourceFactId || '').trim();
+          const operands = 格式化ReportDto操作数(token?.operands);
           const attrs = [
             sourceEventId ? `data-source-event-id="${htmlEscapeText(sourceEventId)}"` : '',
             sourceFactId ? `data-source-fact-id="${htmlEscapeText(sourceFactId)}"` : '',
             token?.sourceName ? `data-source-name="${htmlEscapeText(token.sourceName)}"` : '',
             token?.sourceType ? `data-source-type="${htmlEscapeText(token.sourceType)}"` : '',
             token?.operation ? `data-source-operation="${htmlEscapeText(token.operation)}"` : '',
-            token?.comparisonId ? `data-comparison-id="${htmlEscapeText(token.comparisonId)}"` : '',
-            token?.sourceDetail ? `data-source-detail="${htmlEscapeText(token.sourceDetail)}"` : '',
+            operands ? `data-source-operands="${htmlEscapeText(operands)}"` : '',
+            token?.derivationRule ? `data-source-derivation-rule="${htmlEscapeText(token.derivationRule)}"` : '',
+            token?.tacticalConsequence ? `data-source-tactical-consequence="${htmlEscapeText(token.tacticalConsequence)}"` : '',
           ].filter(Boolean).join(' ');
-          return `<button class="battle-preview-report-badge battle-preview-report-badge--resource" type="button"${attrs ? ` ${attrs}` : ''} aria-haspopup="true">${htmlEscapeText(`${token.label} ${Number(token.value).toFixed(Math.abs(Number(token.value)) < 10 ? 2 : 0)}${token.unit || ''}`)}</button>`;
+          return `<button class="battle-preview-report-badge battle-preview-report-badge--resource" type="button"${attrs ? ` ${attrs}` : ''} aria-haspopup="true">${htmlEscapeText(`${token.label} ${格式化ReportDto数字值(token.value, token.unit || '')}`)}</button>`;
         }
 
         function 显示ReportDto数字来源(button) {
           const tooltip = 读取技能悬浮节点();
           if (!tooltip || !button) return;
           const sourceName = String(button.getAttribute('data-source-name') || '战斗事实').trim();
-          const sourceType = String(button.getAttribute('data-source-type') || '事实').trim();
-          const operation = String(button.getAttribute('data-source-operation') || '读取').trim();
-          const eventId = String(button.getAttribute('data-source-event-id') || '').trim();
-          const factId = String(button.getAttribute('data-source-fact-id') || '').trim();
-          const comparisonId = String(button.getAttribute('data-comparison-id') || '').trim();
-          const sourceDetail = String(button.getAttribute('data-source-detail') || '').trim();
+          const sourceType = ReportDto数字来源类型(button.getAttribute('data-source-type'));
+          const operation = ReportDto数字计算操作(button.getAttribute('data-source-operation'));
+          const operands = String(button.getAttribute('data-source-operands') || '').trim();
+          const derivationRule = String(button.getAttribute('data-source-derivation-rule') || '').trim();
+          const tacticalConsequence = String(button.getAttribute('data-source-tactical-consequence') || '').trim();
           tooltip.setAttribute('role', 'tooltip');
           tooltip.innerHTML = `
             <div class="battle-ring-tooltip-title"><strong>数字来源</strong><span>${htmlEscapeText(sourceName)}</span></div>
             <div class="battle-ring-tooltip-meta">
-              <span class="battle-ring-tooltip-meta-row"><em>来源类型</em><strong>${htmlEscapeText(sourceType)}</strong></span>
-              <span class="battle-ring-tooltip-meta-row"><em>计算操作</em><strong>${htmlEscapeText(operation)}</strong></span>
-              <span class="battle-ring-tooltip-meta-row"><em>事件</em><strong>${htmlEscapeText(eventId || '未登记')}</strong></span>
-              <span class="battle-ring-tooltip-meta-row"><em>事实</em><strong>${htmlEscapeText(factId || '未登记')}</strong></span>
-              ${comparisonId || sourceDetail
-                ? `<span class="battle-ring-tooltip-meta-row"><em>比较依据</em><strong>${htmlEscapeText(comparisonId || '候选比较')}</strong></span>
-                   <span class="battle-ring-tooltip-meta-row battle-ring-tooltip-meta-row--detail"><em>比较明细</em><strong>${htmlEscapeText(sourceDetail || '未登记')}</strong></span>`
-                : ''}
+                <span class="battle-ring-tooltip-meta-row"><em>来源类型</em><strong>${htmlEscapeText(sourceType)}</strong></span>
+                <span class="battle-ring-tooltip-meta-row"><em>计算操作</em><strong>${htmlEscapeText(operation)}</strong></span>
+              ${operands ? `<span class="battle-ring-tooltip-meta-row battle-ring-tooltip-meta-row--detail"><em>比较数值</em><strong>${htmlEscapeText(operands)}</strong></span>` : ''}
+              ${derivationRule ? `<span class="battle-ring-tooltip-meta-row battle-ring-tooltip-meta-row--detail"><em>怎么算</em><strong>${htmlEscapeText(derivationRule)}</strong></span>` : ''}
+              ${tacticalConsequence ? `<span class="battle-ring-tooltip-meta-row battle-ring-tooltip-meta-row--detail"><em>这意味着</em><strong>${htmlEscapeText(tacticalConsequence)}</strong></span>` : ''}
             </div>
           `;
           button.setAttribute('aria-describedby', tooltip.id || 'ui-skill-tooltip');
@@ -9940,9 +9981,56 @@ class BattleUIComponent {
             + '</article>';
         }
 
-        function 渲染ReportDto记录视图(reportDto = {}, activeView = 'chain') {
+        function 渲染ReportDto回合视图(roundOverview = []) {
+          const rows = Array.isArray(roundOverview) ? roundOverview : [];
+          if (!rows.length) return '<div class="battle-preview-empty">暂无回合结算</div>';
+          return `<div class="battle-report-round-overview">${rows.map(row => `
+            <article class="battle-report-round-overview-row">
+              <header><b>第${Math.max(0, Number(row?.round || 0))}回合</b><span>${htmlEscapeText(String(row?.headline || row?.summary || '回合结算').trim())}</span></header>
+              ${String(row?.summary || '').trim() ? `<p>${htmlEscapeText(String(row.summary).trim())}</p>` : ''}
+              <small>已登记 ${Array.isArray(row?.factIds) ? row.factIds.length : 0} 条事实</small>
+            </article>
+          `).join('')}</div>`;
+        }
+
+        function 渲染ReportDto决策视图(explanations = []) {
+          const rows = Array.isArray(explanations) ? explanations : [];
+          if (!rows.length) return '<div class="battle-preview-empty">暂无决策解释</div>';
+          return `<div class="battle-report-decision-explanations">${rows.map(row => {
+            const selected = row?.selected || {};
+            const alternatives = Array.isArray(row?.alternatives) ? row.alternatives : [];
+            const actualTokens = Array.isArray(row?.actual?.numericTokens) ? row.actual.numericTokens : [];
+            const predictedTokens = Array.isArray(row?.predicted?.numbers) ? row.predicted.numbers : [];
+            const alternativeHTML = alternatives.length
+              ? `<ul>${alternatives.map(candidate => `
+                  <li><b>${htmlEscapeText(candidate?.name || '替代动作')}</b>${candidate?.reason ? `：${htmlEscapeText(candidate.reason)}` : ''}</li>
+                `).join('')}</ul>`
+              : '<p>没有登记可比较的替代动作。</p>';
+            return `
+              <article class="battle-report-decision-explanation">
+                <header><span>第${Math.max(0, Number(row?.round || 0))}回合 · ${htmlEscapeText(row?.actorName || '行动者')}</span><b>${htmlEscapeText(selected?.name || '未记录动作')}</b></header>
+                ${row?.comparisonEvidence?.explanation ? `<p>${htmlEscapeText(row.comparisonEvidence.explanation)}</p>` : ''}
+                <section class="battle-report-decision-alternatives"><h4>主要替代方案</h4>${alternativeHTML}</section>
+                <section class="battle-report-decision-numbers" aria-label="预演预测">
+                  ${predictedTokens.length ? predictedTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">暂无可公开的预测数字</span>'}
+                </section>
+                <section class="battle-report-decision-numbers" aria-label="实际结算">
+                  ${actualTokens.length ? actualTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">暂无数值事实</span>'}
+                </section>
+              </article>
+            `;
+          }).join('')}</div>`;
+        }
+
+        function 渲染ReportDto记录视图(reportDto = {}, activeView = 'report') {
           if (activeView === 'summary') {
             return 渲染战斗总结HTML(reportDto?.finalSummary) || '<div class="battle-preview-empty">暂无总结</div>';
+          }
+          if (activeView === 'round') {
+            return 渲染ReportDto回合视图(reportDto?.roundOverview);
+          }
+          if (activeView === 'decision') {
+            return 渲染ReportDto决策视图(reportDto?.decisionExplanations);
           }
           const chain = Array.isArray(reportDto?.narrativeChain) ? reportDto.narrativeChain : [];
           if (!chain.length) return '<div class="battle-preview-empty">暂无战报</div>';
@@ -10125,7 +10213,7 @@ class BattleUIComponent {
           }
           if (result?.reportDto && typeof result.reportDto === 'object') {
             const activeView = 读取战斗记录视图();
-            const 视图标签 = { chain: '战报', summary: '总结' };
+            const 视图标签 = { round: '回合', report: '战报', decision: '判定', summary: '总结' };
             node.hidden = false;
             node.innerHTML = `
               <div class="battle-preview-head">
@@ -10169,7 +10257,7 @@ class BattleUIComponent {
             result?.combatData || context?.combatData || null,
           ).finalBattleReport;
           const activeView = 读取战斗记录视图();
-          const 视图标签 = { chain: '战报', summary: '总结' };
+          const 视图标签 = { round: '回合', report: '战报', decision: '判定', summary: '总结' };
           let 视图内容 = '';
           if (activeView === 'round') {
             视图内容 = 渲染回合速览HTML(回合速览) || '<div class="battle-preview-empty">暂无回合结算</div>';

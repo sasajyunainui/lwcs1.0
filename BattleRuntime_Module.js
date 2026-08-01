@@ -648,38 +648,51 @@
       return finish(appliedDamage > 0 ? `[延迟效果] ${label}受到${appliedDamage}点${damageType}。` : '');
     }
     if (prototype === '资源变化') {
-      const resourceText = String(effect?.资源 || '').trim();
-      const resourceKey = /生命|HP|hp/i.test(resourceText) ? 'hp' : /体力|vit|sta/i.test(resourceText) ? 'vit' : /精神|men/i.test(resourceText) ? 'men' : 'sp';
-      const resourceLabel = { hp: '生命', vit: '体力', sp: '魂力', men: '精神力' }[resourceKey];
-      const current = resourceKey === 'hp' ? previewRuntime.readHp(unit) : previewRuntime.readResource(unit, resourceLabel);
-      const maximum = resourceKey === 'hp' ? previewRuntime.readHpMax(unit) : previewRuntime.readResourceMax(unit, resourceLabel);
-      const delta = /%$/.test(valueText) || Math.abs(value) <= 1 ? Math.floor(maximum * value) : Math.floor(value);
-      const next = Math.max(0, Math.min(maximum, current + delta));
-      const actual = next - current;
-      if (!actual) return finish('');
-      if (findResourceSuppression(unit, resourceLabel)) {
-        return finish(`[机制抹消] ${label}对【资源变化 资源:${resourceLabel}】存在封锁，延迟资源变化未能落地。`);
-      }
-      writeCombatResource(unit, resourceKey, next);
-      writeFact({
-        eventKind: 'resource_change',
-        result: actual > 0 ? 'gain' : 'loss',
-        resultState: actual > 0 ? 'GAIN' : 'LOSS',
-        factType: 'RESOURCE',
-        primaryOutcome: actual > 0 ? 'resource_restored' : 'resource_reduced',
-        operation: actual > 0 ? 'RESTORE' : 'REDUCE',
-        meta: {
-          source: 'delayed_effect_settlement',
-          resource: resourceLabel,
-          resourceKey,
-          before: current,
-          after: next,
-          delta: actual,
-          amount: Math.abs(actual),
+      const resourceText = Array.isArray(effect?.资源)
+        ? effect.资源.map(value => String(value || '').trim()).filter(Boolean).join('、')
+        : String(effect?.资源 || '').trim();
+      const resourceKeys = persistentResourceKeys(effect?.资源 || '');
+      const logs = [];
+      resourceKeys.forEach(resourceKey => {
+        const resourceLabel = persistentResourceLabel(resourceKey);
+        const current = resourceKey === 'hp'
+          ? previewRuntime.readHp(unit)
+          : previewRuntime.readResource(unit, resourceLabel);
+        const maximum = resourceKey === 'hp'
+          ? previewRuntime.readHpMax(unit)
+          : previewRuntime.readResourceMax(unit, resourceLabel);
+        const delta = /%$/.test(valueText) || Math.abs(value) <= 1
+          ? Math.floor(maximum * value)
+          : Math.floor(value);
+        const next = Math.max(0, Math.min(maximum, current + delta));
+        const actual = next - current;
+        if (!actual) return;
+        if (findResourceSuppression(unit, resourceLabel)) {
+          logs.push(`[机制抹消] ${label}对【资源变化 资源:${resourceLabel}】存在封锁，延迟资源变化未能落地。`);
+          return;
+        }
+        writeCombatResource(unit, resourceKey, next);
+        writeFact({
+          eventKind: 'resource_change',
+          result: actual > 0 ? 'gain' : 'loss',
+          resultState: actual > 0 ? 'GAIN' : 'LOSS',
+          factType: 'RESOURCE',
+          primaryOutcome: actual > 0 ? 'resource_restored' : 'resource_reduced',
           operation: actual > 0 ? 'RESTORE' : 'REDUCE',
-        },
+          meta: {
+            source: 'delayed_effect_settlement',
+            resource: resourceLabel,
+            resourceKey,
+            before: current,
+            after: next,
+            delta: actual,
+            amount: Math.abs(actual),
+            operation: actual > 0 ? 'RESTORE' : 'REDUCE',
+          },
+        });
+        logs.push(`[延迟效果] ${label}${actual >= 0 ? '恢复' : '损失'}${Math.abs(actual)}点${resourceLabel}。`);
       });
-      return finish(`[延迟效果] ${label}${actual >= 0 ? '恢复' : '损失'}${Math.abs(actual)}点${resourceText || '资源'}。`);
+      return finish(logs.join(' ') || (resourceText ? '' : ''));
     }
     if (prototype === '护盾变化') {
       if (findPrototypeSuppression(unit, prototype)) {
@@ -871,7 +884,7 @@
     const matchedPrototype = String(effect?.匹配原型 || '').trim();
     if (!matchedPrototype || matchedPrototype === '无') return true;
     const combatEffects = condition?.战斗效果 || {};
-    if (matchedPrototype === '资源变化' && String(effect?.资源 || '').trim() === '生命') {
+    if (matchedPrototype === '资源变化' && persistentResourceKeys(effect?.资源 || '').includes('hp')) {
       const hasDamage = Number(combatEffects.dot_damage || 0) > 0 || Number(combatEffects.dot_damage_ratio || 0) > 0;
       const hasHealing = Number(combatEffects.hot_heal_ratio || 0) > 0;
       const direction = String(effect?.数值方向 || '任意').trim() || '任意';
@@ -3173,14 +3186,25 @@
   }
 
   function resolveDeclaredSkill(declaration = {}, actor = {}) {
+    if (String(declaration?.actionKind || '').trim() !== 'RELEASE_SKILL') return declaration;
     const rawSkill = declaration?.skill;
-    const skills = [
-      ...(Array.isArray(actor?.技能列表) ? actor.技能列表 : []),
-      ...(Array.isArray(actor?.skills) ? actor.skills : []),
-    ].filter(skill => skill && typeof skill === 'object');
-    const rawSkillKey = typeof rawSkill === 'string'
-      ? rawSkill.trim()
-      : String(rawSkill?.id || rawSkill?.技能ID || '').trim();
+    const skills = decisionRuntime.collectSkills(actor)
+      .filter(skill => skill && typeof skill === 'object');
+    const rawSkillKeys = new Set(
+      (typeof rawSkill === 'string'
+        ? [rawSkill]
+        : [
+            rawSkill?.id,
+            rawSkill?.技能ID,
+            rawSkill?.name,
+            rawSkill?.技能名称,
+            rawSkill?.技能名,
+            rawSkill?.魂技名,
+            rawSkill?.名称,
+          ])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
     const skill = skills.find(candidate => {
       const candidateKeys = [
         candidate?.id,
@@ -3190,11 +3214,19 @@
         candidate?.技能名,
         candidate?.魂技名,
         candidate?.名称,
-      ].map(value => String(value || '').trim());
-      return rawSkillKey && candidateKeys.includes(rawSkillKey);
-    }) || (rawSkill && typeof rawSkill === 'object' ? rawSkill : null);
-    if (!skill) return declaration;
-    const resolvedSkill = cloneValue(skill);
+      ].map(value => String(value || '').trim()).filter(Boolean);
+      return candidateKeys.some(key => rawSkillKeys.has(key));
+    });
+    const declaredSkill = skill ||
+      (rawSkill && typeof rawSkill === 'object' ? rawSkill : null);
+    if (!declaredSkill) return declaration;
+    const effectiveSkill = skill
+      ? previewRuntime.applySkillSettlementModifiers(
+          actor,
+          skill,
+        ).skill
+      : declaredSkill;
+    const resolvedSkill = cloneValue(effectiveSkill);
     const displayName = String(
       resolvedSkill?.name ||
       resolvedSkill?.技能名称 ||
@@ -8454,126 +8486,121 @@
           return;
         }
         if (prototype === '资源变化') {
-          const resourceText = String(effect?.资源 || '魂力').trim();
-          const key = /生命|HP/i.test(resourceText) ? 'hp' : /体力/.test(resourceText) ? 'vit' : /精神/.test(resourceText) ? 'men' : 'sp';
-          const before = persistentResourceValue(target, key);
-          const delta = previewRuntime.sampleSignedValue(
-            effect?.数值,
-            persistentResourceMax(target, key),
-            Math.random,
-          );
-          // 账本操作码必须取自 resourceOperations 注册表（RESTORE/REDUCE，:45 将其映射到
-          // 合同相位 RESOURCE_RESTORE）。此前此处写 RESOURCE_RESTORE/RESOURCE_REDUCE，
-          // 是唯一偏离注册表的写入器——r8 从不经此路径给非自身目标恢复生命，
-          // r9 首次高频触发后被 RESOURCE_TIMELINE_OPERATION_MISSING 审计拦下。
-          const operation = delta >= 0 ? 'RESTORE' : 'REDUCE';
-          const resourceSample = sampleEffectOutcome({
-            effect,
-            effectIndex,
-            targetId: previewRuntime.unitId(target),
-            operation,
-          });
-          if (resourceSample.succeeded) {
-            writeCombatResource(target, key, before + delta);
-          }
-          const actual = persistentResourceValue(target, key) - before;
-          const resourceFact = writeStructuredResourceFact(
-            combatData,
-            actor,
-            target,
-            action,
-            actionEvent,
-            key,
-            actual,
-            actionRole,
-            actual > 0 ? 'RESTORE' : 'REDUCE',
-            {
-              before,
-              after: before + actual,
-              sourceEffectId,
-              effectPrototype: prototype,
-              factType: 'RESOURCE',
-            },
-          ) || (
-            !resourceSample.succeeded
-              ? writeLedgerEvent(combatData, {
-                  eventKind: 'resource_change',
-                  round: Number(combatData?.回合 || 0),
-                  actorId: previewRuntime.unitId(actor),
-                  actorName: previewRuntime.unitName(actor),
-                  targetId: previewRuntime.unitId(target),
-                  targetName: previewRuntime.unitName(target),
-                  actionName,
-                  actionType: actionKind,
-                  actorControl,
-                  actionRole,
-                  actionId: actionEvent.actionId,
-                  sourceActionId: actionEvent.actionId,
-                  parentNodeId: actionEvent.chainNodeId || '',
-                  sourceNodeId: actionEvent.chainNodeId || '',
-                  result: 'failed',
-                  resultState: 'FAILURE',
-                  primaryOutcome: 'resource_effect_failed',
-                  effectPrototype: prototype,
-                  factType: 'RESOURCE',
-                  sourceEffectId,
-                  operation: delta >= 0 ? 'RESTORE' : 'REDUCE',
-                  meta: {
-                    source: 'structured_runtime',
-                    resource: resourceText,
-                    resourceKey: key,
-                    delta: 0,
-                    amount: 0,
-                    operation: delta >= 0 ? 'RESTORE' : 'REDUCE',
-                    before,
-                    after: before,
-                    requestedDelta: delta,
-                  },
-                })
-              : null
-          );
-          if (resourceFact) {
-            resourceFact.groupKey = resourceSample.groupKey;
-            resourceFact.outcomeId = resourceSample.outcomeId;
-            resourceFact.probability = resourceSample.probability;
-            resourceFact.roll = resourceSample.roll;
-            resourceFact.operation = operation;
-            resourceFact.position = outcomePosition(operation, effectIndex);
-            resourceFact.result = resourceSample.succeeded
-              ? resourceFact.result
-              : 'failed';
-            resourceFact.resultState = resourceSample.succeeded
-              ? resourceFact.resultState
-              : 'FAILURE';
-            resourceFact.primaryOutcome = resourceSample.succeeded
-              ? resourceFact.primaryOutcome
-              : 'resource_effect_failed';
-            resourceFact.meta = {
-              ...(resourceFact.meta || {}),
-              groupKey: resourceSample.groupKey,
-              outcomeId: resourceSample.outcomeId,
-              probability: resourceSample.probability,
-              successRate: resourceSample.probability,
-              roll: resourceSample.roll,
+          const resourceText = Array.isArray(effect?.资源)
+            ? effect.资源.map(value => String(value || '').trim()).filter(Boolean).join('、')
+            : String(effect?.资源 || '魂力').trim();
+          const resourceKeys = persistentResourceKeys(effect?.资源 || '魂力');
+          let primaryResolved = false;
+          resourceKeys.forEach(key => {
+            const before = persistentResourceValue(target, key);
+            const delta = previewRuntime.sampleSignedValue(
+              effect?.数值,
+              persistentResourceMax(target, key),
+              Math.random,
+            );
+            // 一个效果的多资源维度共享同一 outcomeSamples 记录，保持相关概率不被拆散。
+            const operation = delta >= 0 ? 'RESTORE' : 'REDUCE';
+            const resourceSample = sampleEffectOutcome({
+              effect,
+              effectIndex,
+              targetId: previewRuntime.unitId(target),
               operation,
-              position: outcomePosition(operation, effectIndex),
-              requestedDelta: delta,
-              delta: actual,
-            };
-            facts.push(resourceFact);
-          }
+            });
+            if (resourceSample.succeeded) writeCombatResource(target, key, before + delta);
+            const actual = persistentResourceValue(target, key) - before;
+            const resourceFact = writeStructuredResourceFact(
+              combatData,
+              actor,
+              target,
+              action,
+              actionEvent,
+              key,
+              actual,
+              actionRole,
+              actual > 0 ? 'RESTORE' : 'REDUCE',
+              {
+                before,
+                after: before + actual,
+                sourceEffectId,
+                effectPrototype: prototype,
+                factType: 'RESOURCE',
+              },
+            ) || (
+              !resourceSample.succeeded
+                ? writeLedgerEvent(combatData, {
+                    eventKind: 'resource_change',
+                    round: Number(combatData?.回合 || 0),
+                    actorId: previewRuntime.unitId(actor),
+                    actorName: previewRuntime.unitName(actor),
+                    targetId: previewRuntime.unitId(target),
+                    targetName: previewRuntime.unitName(target),
+                    actionName,
+                    actionType: actionKind,
+                    actorControl,
+                    actionRole,
+                    actionId: actionEvent.actionId,
+                    sourceActionId: actionEvent.actionId,
+                    parentNodeId: actionEvent.chainNodeId || '',
+                    sourceNodeId: actionEvent.chainNodeId || '',
+                    result: 'failed',
+                    resultState: 'FAILURE',
+                    primaryOutcome: 'resource_effect_failed',
+                    effectPrototype: prototype,
+                    factType: 'RESOURCE',
+                    sourceEffectId,
+                    operation,
+                    meta: {
+                      source: 'structured_runtime',
+                      resource: persistentResourceLabel(key),
+                      resourceKey: key,
+                      delta: 0,
+                      amount: 0,
+                      operation,
+                      before,
+                      after: before,
+                      requestedDelta: delta,
+                    },
+                  })
+                : null
+            );
+            if (resourceFact) {
+              resourceFact.groupKey = resourceSample.groupKey;
+              resourceFact.outcomeId = resourceSample.outcomeId;
+              resourceFact.probability = resourceSample.probability;
+              resourceFact.roll = resourceSample.roll;
+              resourceFact.operation = operation;
+              resourceFact.position = outcomePosition(operation, effectIndex);
+              resourceFact.result = resourceSample.succeeded
+                ? resourceFact.result
+                : 'failed';
+              resourceFact.resultState = resourceSample.succeeded
+                ? resourceFact.resultState
+                : 'FAILURE';
+              resourceFact.primaryOutcome = resourceSample.succeeded
+                ? resourceFact.primaryOutcome
+                : 'resource_effect_failed';
+              resourceFact.meta = {
+                ...(resourceFact.meta || {}),
+                resourceKey: key,
+                resource: persistentResourceLabel(key),
+                groupKey: resourceSample.groupKey,
+                outcomeId: resourceSample.outcomeId,
+                probability: resourceSample.probability,
+                successRate: resourceSample.probability,
+                roll: resourceSample.roll,
+                operation,
+                position: outcomePosition(operation, effectIndex),
+                requestedDelta: delta,
+                delta: actual,
+              };
+              facts.push(resourceFact);
+            }
+            primaryResolved = primaryResolved || (resourceSample.succeeded && Math.abs(actual) > 1e-9);
+          });
           if (isPrimaryEffect) {
             const targetId = previewRuntime.unitId(target);
-            primaryResolutionByTarget.set(
-              targetId,
-              resourceSample.succeeded && Math.abs(actual) > 1e-9,
-            );
-            primaryOutcomeByTarget.set(
-              targetId,
-              resourceSample.succeeded && Math.abs(actual) > 1e-9
-                ? 'HIT'
-                : 'MISS',
-            );
+            primaryResolutionByTarget.set(targetId, primaryResolved);
+            primaryOutcomeByTarget.set(targetId, primaryResolved ? 'HIT' : 'MISS');
           }
           return;
         }
@@ -10639,6 +10666,7 @@
           const contextPreparedAt = performanceNow();
           let decisionResult;
           let decisionTiming = {};
+          let decisionRuntimeSnapshot = null;
           if (providerId) {
             const snapshotStartedAt = performanceNow();
             // r9 无 session、无路线目录缓存（:7826/:8892 门），身份记账全为白算。
@@ -10667,7 +10695,7 @@
               routeCacheSource = selected?.[0] || '';
               routeCache = selected?.[1] || null;
             }
-            const decisionRuntimeSnapshot = buildDecisionRuntimeSnapshot(
+            decisionRuntimeSnapshot = buildDecisionRuntimeSnapshot(
               combatData,
               actorId,
               decisionInput.actionOpportunity,
@@ -11022,13 +11050,10 @@
             });
             const requestPreparedAt = performanceNow();
             if (evaluationSession) {
-              const sessionMetrics =
-                decisionRuntime.readEvaluationSessionMetrics(
+              evaluationSessionObservation.request =
+                decisionRuntime.readLatestEvaluationSessionRequestRecord(
                   evaluationSession,
                 );
-              evaluationSessionObservation.request = cloneValue(
-                sessionMetrics?.requestRecords?.at(-1) || {},
-              );
             }
             if (routeCatalogCacheEnabled && ['r8-shadow', 'r8'].includes(providerId)) {
               const preparedRouteCache =
@@ -11251,6 +11276,10 @@
               actorControl: extras.playerLockedDeclaration ? 'PLAYER_LOCKED' : node.actorControl,
               nodeKind: String(node?.nodeKind || '').trim(),
               timing: decisionTiming,
+              decisionTimePublicContext:
+                buildDecisionTimePublicContext(
+                  decisionRuntimeSnapshot,
+                ),
             };
             recordDecisionPerformance(decisionResult, {
               ...decisionAuditFields,
@@ -11330,6 +11359,10 @@
             actorControl: extras.playerLockedDeclaration ? 'PLAYER_LOCKED' : node.actorControl,
             nodeKind: String(node?.nodeKind || '').trim(),
             timing: decisionTiming,
+            decisionTimePublicContext:
+              buildDecisionTimePublicContext(
+                decisionRuntimeSnapshot,
+              ),
           };
           recordDecisionPerformance(decisionResult, {
             ...decisionAuditFields,
@@ -12600,6 +12633,33 @@
   function cloneAuditSnapshot(value, depth = 0) {
     if (value == null || typeof value !== 'object') return value;
     if (depth >= 6) {
+      if (
+        Object.hasOwn(value, 'lower') &&
+        Object.hasOwn(value, 'upper')
+      ) {
+        const lower = Number(value.lower);
+        const upper = Number(value.upper);
+        return {
+          lower: Number.isFinite(lower) ? lower : 0,
+          upper: Number.isFinite(upper) ? upper : 0,
+        };
+      }
+      if (
+        Object.hasOwn(value, 'actionId') &&
+        Object.hasOwn(value, 'actorId') &&
+        Object.hasOwn(value, 'actionKind') &&
+        Array.isArray(value.targetIds)
+      ) {
+        return {
+          actionId: String(value.actionId || '').trim(),
+          actorId: String(value.actorId || '').trim(),
+          actionKind: String(value.actionKind || '').trim(),
+          targetIds: value.targetIds
+            .slice(0, 120)
+            .map(item => String(item || '').trim())
+            .filter(Boolean),
+        };
+      }
       if (Object.hasOwn(value, 'groupKey')) {
         return {
           groupKey: String(value.groupKey || '').trim(),
@@ -14357,9 +14417,9 @@
     const balanceDeltas = new Map();
     const addBalanceDelta = (name, side, resource, delta, eventId) => {
       const normalizedResource = normalizeBalanceResourceKey(resource);
-      const amount = Math.round(Number(delta || 0));
+      const amount = Number(delta || 0);
       const unit = findBalanceUnit(name, side);
-      if (!unit || !normalizedResource || !amount) return;
+      if (!unit || !normalizedResource || !Number.isFinite(amount) || amount === 0) return;
       const key = `${unit.key}|${normalizedResource}`;
       const entry = balanceDeltas.get(key) || { delta: 0, eventIds: [] };
       entry.delta += amount;
@@ -14453,7 +14513,8 @@
           const initialValue = initialUnit.values[resource];
           const finalValue = finalUnit.values[resource];
           const balance = balanceDeltas.get(`${initialUnit.key}|${resource}`) || { delta: 0, eventIds: [] };
-          const expectedFinalValue = initialValue + balance.delta;
+          const exactExpectedFinalValue = initialValue + balance.delta;
+          const expectedFinalValue = Math.round(exactExpectedFinalValue);
           if (finalValue !== expectedFinalValue) {
             pushFatal('LEDGER_CONSERVATION_MISMATCH', {
               unit: initialUnit.name,
@@ -14462,6 +14523,7 @@
               initialValue,
               finalValue,
               ledgerDelta: balance.delta,
+              exactExpectedFinalValue,
               expectedFinalValue,
               eventIds: balance.eventIds,
             });
@@ -15411,6 +15473,53 @@
     };
   }
 
+  function buildDecisionTimePublicContext(runtimeSnapshot = {}) {
+    const scheduledEvents = (
+      Array.isArray(runtimeSnapshot?.scheduledEvents)
+        ? runtimeSnapshot.scheduledEvents
+        : []
+    )
+      .filter(event =>
+        ['FUTURE_NATURAL_ACTION', 'VISIBLE_CHARGE_RELEASE'].includes(
+          String(event?.eventType || '').trim().toUpperCase(),
+        )
+      )
+      .map(event => ({
+        descriptorId: String(
+          event?.descriptorId || event?.scheduleId || '',
+        ).trim(),
+        ownerId: String(event?.ownerId || '').trim(),
+        sourceActorId: String(event?.sourceActorId || '').trim(),
+        targetId: String(event?.targetId || '').trim(),
+        expectedGrantType: String(
+          event?.expectedGrantType || '',
+        ).trim(),
+        eventType: String(event?.eventType || '').trim(),
+        round: Math.max(
+          0,
+          Number(event?.round ?? event?.scheduledRound ?? 0),
+        ),
+        creationSequence: Math.max(
+          0,
+          Number(event?.creationSequence || 0),
+        ),
+        expirySequence: Math.max(
+          0,
+          Number(event?.expirySequence || 0),
+        ),
+        threat: event?.threat === true,
+      }))
+      .filter(event => event.descriptorId)
+      .sort((left, right) =>
+        left.creationSequence - right.creationSequence ||
+        left.descriptorId.localeCompare(right.descriptorId)
+      );
+    return {
+      schemaVersion: 'DecisionTimePublicContextV1',
+      scheduledEvents,
+    };
+  }
+
   function buildDecisionAuditRecord(decision = {}) {
     const selected = decision?.selected && typeof decision.selected === 'object'
       ? decision.selected
@@ -15548,6 +15657,11 @@
       lostOpportunity: decision?.lostOpportunity || null,
       beliefState: decision?.beliefState || {},
       teamIntent: decision?.teamIntent || {},
+      decisionTimePublicContext:
+        decision?.decisionTimePublicContext || {
+          schemaVersion: 'DecisionTimePublicContextV1',
+          scheduledEvents: [],
+        },
       problems: Array.isArray(decision?.problems) ? decision.problems : [],
       strategicSignature: String(decision?.strategicSignature || '').trim(),
       stalemate: decision?.stalemate || null,
