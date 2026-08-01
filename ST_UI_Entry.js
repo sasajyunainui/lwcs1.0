@@ -22,7 +22,7 @@
   宿主窗口[加载器键] = true;
   const 最大启动重试次数 = 2;
 
-  const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@59458553d84912c07c6352a64ae5eeeb7d55b5f7/';
+  const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@31f774266c42aa9a6f993ac44effef260579efae/';
   const 资源基础地址 = (() => {
     const 覆盖地址 = String(宿主窗口.__LWCS_资源基础地址__ || window.__LWCS_资源基础地址__ || '').trim();
     if (!覆盖地址) return 默认资源基础地址;
