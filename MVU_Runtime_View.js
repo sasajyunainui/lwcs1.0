@@ -3161,7 +3161,11 @@ function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = 
     const 路径 = 解码运行时JsonPointer路径_V1(patch.path);
     const op = String(patch.op || '').trim();
     保护势力路径(路径, op);
+    if (路径[0] === 'org' && 路径.length === 1 && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op)) {
+      throw new Error(`JSONPatch禁止整体覆盖或删除势力表：${patch.path}`);
+    }
     if (路径[0] === 'org' && 路径.length === 2) {
+      if (!['add', 'insert', 'replace'].includes(op)) throw new Error(`JSONPatch只允许用add创建新势力实例：${patch.path}`);
       if ((options.禁止内置势力实例化 === true || 档案阻断.势力 === true || 禁止势力.has(路径[1])) && !根.org?.[路径[1]]) throw new Error(`JSONPatch[${index}]势力归档不可用，已阻止新势力实例化：${路径[1]}`);
       if (!环境.运行时 || !环境.势力库 || typeof 环境.运行时.resolveFaction !== 'function') throw new Error(`JSONPatch[${index}]势力库或库运行时缺失，已阻止新势力实例化。`);
       const 解析 = 环境.运行时.resolveFaction(路径[1], { library: 环境.势力库, allowKeyword: false });
@@ -3177,12 +3181,21 @@ function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = 
       }
     }
     if (路径[0] === 'org' && 路径.length > 2 && !根.org?.[路径[1]]) throw new Error(`JSONPatch必须先以add创建势力完整实例：${路径[1]}`);
-    if (路径[0] === 'org' && 路径.length === 2 && op === 'remove') throw new Error(`JSONPatch禁止整体删除势力实例：${路径[1]}`);
-    if (路径[0] === 'world' && 路径[1] === '地点' && 环境.运行时 && 环境.地点库) {
-      const 地点路径 = 路径.slice(2);
-      const 是完整地点节点 = 地点路径.length > 0 && !内置地点动态字段_V1.has(地点路径[地点路径.length - 1]) && !地点路径.includes('子节点', 地点路径.length - 1);
-      const 是静态字段 = 地点路径.length > 1 && 内置地点静态字段_V1.has(地点路径[地点路径.length - 1]);
+    if (路径[0] === 'world' && 路径[1] === '地点' && 路径.length === 2 && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op)) {
+      throw new Error(`JSONPatch禁止整体覆盖或删除地点表：${patch.path}`);
+    }
+    const 是地点路径 = 路径[0] === 'world' && 路径[1] === '地点';
+    const 地点路径 = 是地点路径 ? 路径.slice(2) : [];
+    const 是完整地点节点 = 地点路径.length > 0 && !内置地点动态字段_V1.has(地点路径[地点路径.length - 1]) && !地点路径.includes('子节点', 地点路径.length - 1);
+    const 是静态字段 = 地点路径.length > 1 && 内置地点静态字段_V1.has(地点路径[地点路径.length - 1]);
+    if (是地点路径) {
       if (是静态字段 && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op)) throw new Error(`JSONPatch禁止修改地点静态身份字段：${patch.path}`);
+      if (是完整地点节点 && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op) && (!环境.运行时 || !环境.地点库)) {
+        throw new Error(`JSONPatch[${index}]地点库或库运行时缺失，已阻止新地点实例化：${patch.path}`);
+      }
+      if (是完整地点节点 && op === 'delta') throw new Error(`JSONPatch禁止对地点实例使用delta：${patch.path}`);
+    }
+    if (是地点路径 && 环境.运行时 && 环境.地点库) {
       if (是完整地点节点 && ['remove', 'replace', 'add', 'insert'].includes(op)) {
         const 记录ID = 解析内置地点补丁目标_V1(路径, patch, 环境);
         if ((options.禁止内置地点实例化 === true || 档案阻断.地点 === true || 地点被阻断(记录ID)) && !读取运行时路径值_V1(根, 路径)) throw new Error(`JSONPatch[${index}]地点归档不可用，已阻止新地点实例化：${构建运行时地点路径名_V1(地点路径)}`);
