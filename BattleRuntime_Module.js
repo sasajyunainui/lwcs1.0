@@ -15365,7 +15365,7 @@
       ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) &&
       normalizeActionRole(event?.actionRole || 'ACTIVE') === 'ACTIVE'
     );
-    const terminalKinds = new Set(['hit_result', 'state_apply', 'state_replace', 'resource_change', 'item_consume', 'create', 'summon_create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'complete', 'blocked_action', 'failed_action', 'target_fail']);
+    const terminalKinds = new Set(['hit_result', 'state_apply', 'state_replace', 'resource_change', 'item_consume', 'create', 'summon_create', 'shield_create', 'support', 'defend', 'dodge', 'pass', 'complete', 'blocked_action', 'blocked_settlement', 'failed_action', 'target_fail']);
     activeStarts.forEach(start => {
       if (String(start?.eventKind || '').trim() === 'charge_start') return;
       const terminal = eventLedger.find(event =>
