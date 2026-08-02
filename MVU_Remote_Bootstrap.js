@@ -11,6 +11,9 @@ const GitHub请求超时毫秒 = 8000;
 const 入口文件名 = 'MVU_ZOD_Entry.js';
 const MVU追踪模块顺序 = Object.freeze([
   'MVU_ZOD_Entry.js',
+  'LibraryData_Runtime.js',
+  'FactionLibrary.js',
+  'LocationLibrary.js',
   'MVU_Skill_Runtime.js',
   'MVU_Schema_Runtime.js',
   'MVU_Competition_Runtime.js',
@@ -21,6 +24,9 @@ const MVU追踪模块顺序 = Object.freeze([
   'IntelEvents.js',
 ]);
 const 启动预取资源列表 = Object.freeze([
+  'LibraryData_Runtime.js',
+  'FactionLibrary.js',
+  'LocationLibrary.js',
   'MVU_Skill_Runtime.js',
   'MVU_Schema_Runtime.js',
   'MVU_Competition_Runtime.js',

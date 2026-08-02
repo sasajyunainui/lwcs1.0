@@ -9608,12 +9608,18 @@ class BattleUIComponent {
           if (!report || typeof report !== 'object') return '';
           const renderUnits = (label, units = []) => `<section class="battle-final-summary-side"><h4>${htmlEscapeText(label)}</h4>${(Array.isArray(units) ? units : []).length
             ? units.map(unit => {
+                const formatSummaryNumber = (value, minimum = 0) => {
+                  const numeric = Number(value);
+                  return 格式化ReportDto数字值(
+                    Number.isFinite(numeric) ? Math.max(minimum, numeric) : minimum,
+                  );
+                };
                 const states = (Array.isArray(unit?.states) ? unit.states : []).map(state => `${state?.name || '状态'}(${Math.max(0, Number(state?.duration || 0))})`).filter(Boolean);
                 const resources = unit?.resources || {};
                 const resourceText = String(unit?.resourceVisibility || 'PUBLIC').toUpperCase() === 'HIDDEN'
                   ? '<span>资源未公开</span>'
-                  : `<span>魂力 ${Math.max(0, Number(unit?.sp ?? resources.soul ?? 0))}/${Math.max(1, Number(unit?.spMax ?? resources.soulMax ?? 1))}</span><span>体力 ${Math.max(0, Number(unit?.vit ?? resources.stamina ?? 0))}/${Math.max(1, Number(unit?.vitMax ?? resources.staminaMax ?? 1))}</span><span>精神力 ${Math.max(0, Number(unit?.men ?? resources.spirit ?? 0))}/${Math.max(1, Number(unit?.menMax ?? resources.spiritMax ?? 1))}</span>`;
-                return `<div class="battle-final-summary-unit"><b>${htmlEscapeText(unit?.name || '单位')}</b><span>HP ${Math.max(0, Number(unit?.hp || 0))}/${Math.max(1, Number(unit?.hpMax || 1))}</span>${resourceText}${states.length ? `<em>${htmlEscapeText(states.join('、'))}</em>` : ''}</div>`;
+                  : `<span>魂力 ${formatSummaryNumber(unit?.sp ?? resources.soul ?? 0)}/${formatSummaryNumber(unit?.spMax ?? resources.soulMax ?? 1, 1)}</span><span>体力 ${formatSummaryNumber(unit?.vit ?? resources.stamina ?? 0)}/${formatSummaryNumber(unit?.vitMax ?? resources.staminaMax ?? 1, 1)}</span><span>精神力 ${formatSummaryNumber(unit?.men ?? resources.spirit ?? 0)}/${formatSummaryNumber(unit?.menMax ?? resources.spiritMax ?? 1, 1)}</span>`;
+                return `<div class="battle-final-summary-unit"><b>${htmlEscapeText(unit?.name || '单位')}</b><span>HP ${formatSummaryNumber(unit?.hp || 0)}/${formatSummaryNumber(unit?.hpMax || 1, 1)}</span>${resourceText}${states.length ? `<em>${htmlEscapeText(states.join('、'))}</em>` : ''}</div>`;
               }).join('')
             : '<p class="battle-final-summary-empty">无可行动单位</p>'}</section>`;
           const renderList = (title, items = []) => `<section class="battle-final-summary-list"><h4>${htmlEscapeText(title)}</h4>${(Array.isArray(items) ? items : []).length
@@ -9988,7 +9994,6 @@ class BattleUIComponent {
             <article class="battle-report-round-overview-row">
               <header><b>第${Math.max(0, Number(row?.round || 0))}回合</b><span>${htmlEscapeText(String(row?.headline || row?.summary || '回合结算').trim())}</span></header>
               ${String(row?.summary || '').trim() ? `<p>${htmlEscapeText(String(row.summary).trim())}</p>` : ''}
-              <small>已登记 ${Array.isArray(row?.factIds) ? row.factIds.length : 0} 条事实</small>
             </article>
           `).join('')}</div>`;
         }

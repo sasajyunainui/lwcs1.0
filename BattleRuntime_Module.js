@@ -12700,6 +12700,21 @@
     const result = {};
     Object.entries(value).slice(0, 120).forEach(([key, item]) => {
       if (blockedKeys.has(key) || typeof item === 'function' || typeof item === 'undefined') return;
+      if (
+        key === 'targetIds' &&
+        Array.isArray(item) &&
+        !Object.hasOwn(value, 'eventId') &&
+        !Object.hasOwn(value, 'eventKind') &&
+        String(value?.actionId || '').trim() &&
+        String(value?.actorId || '').trim() &&
+        String(value?.actionKind || '').trim()
+      ) {
+        result[key] = item
+          .slice(0, 120)
+          .map(targetId => String(targetId || '').trim())
+          .filter(Boolean);
+        return;
+      }
       if ((key === 'skill' || key === '技能') && item && typeof item === 'object') return;
       result[key] = cloneAuditSnapshot(item, depth + 1);
     });

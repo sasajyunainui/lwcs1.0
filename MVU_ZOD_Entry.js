@@ -3,6 +3,8 @@ const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   'LibraryData_Runtime.js',
+  'FactionLibrary.js',
+  'LocationLibrary.js',
   'MVU_Skill_Runtime.js',
   'MVU_Schema_Runtime.js',
   'MVU_Competition_Runtime.js',
@@ -263,6 +265,22 @@ if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mv
 if (typeof eventOn !== 'function') throw new Error('MVU_ZOD_Entry 需要酒馆助手 eventOn 接口');
 
 await 确保库数据运行时_V1();
+const MVU执行上下文库运行时_V1 = MVU共享宿主窗口_V1.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+if (MVU执行上下文库运行时_V1) globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = MVU执行上下文库运行时_V1;
+await 加载MVU经典依赖_V1('FactionLibrary.js', () => {
+  const 势力库 = MVU共享宿主窗口_V1.__LWCS_内置势力库__ || globalThis.__LWCS_内置势力库__;
+  return !!势力库
+    && 势力库.版本 === 1
+    && 势力库.势力
+    && typeof 势力库.势力 === 'object';
+});
+await 加载MVU经典依赖_V1('LocationLibrary.js', () => {
+  const 地点库 = MVU共享宿主窗口_V1.__LWCS_内置地点库__ || globalThis.__LWCS_内置地点库__;
+  return !!地点库
+    && 地点库.版本 === 1
+    && 地点库.地点
+    && typeof 地点库.地点 === 'object';
+});
 await 加载MVU数据源模块_V1('timeline.js', 'TimelineEvents', '时间线开始时间', '时间线完成时间', '时间线错误');
 await 加载MVU数据源模块_V1('IntelEvents.js', 'IntelEvents', '情报开始时间', '情报完成时间', '情报错误');
 
