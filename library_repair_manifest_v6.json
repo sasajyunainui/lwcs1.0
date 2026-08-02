@@ -1186,6 +1186,100 @@
         ],
         "note": "跨部角色 年龄/等级 标定已应用（18 角色；证据见 cross_book_character_registry_v6.json + 斗罗IV 原文 full_utf8.txt）"
       }
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "fusions",
+      "profileId": "zjdl",
+      "contract": "3.1.0",
+      "entries": [],
+      "applied": {
+        "at": "2026-08-02",
+        "operations": [
+          {
+            "recordId": "fusions-mode-a8e0467ff64a909d",
+            "role": "白秀秀",
+            "where": "快照[2].武魂融合技.深蓝凝视",
+            "融合模式": "partner",
+            "op": "tag",
+            "confidence": 1,
+            "evidence": "双人武魂融合技（蓝轩宇+白秀秀/冻千秋）；场域化定身"
+          },
+          {
+            "recordId": "fusions-mode-50005ab69ed5d9b8",
+            "role": "唐舞麟",
+            "where": "快照[0].武魂融合技.神龙变",
+            "融合模式": "partner",
+            "op": "tag+restructure",
+            "confidence": 1,
+            "evidence": "双人武魂融合技（唐舞麟金龙王+古月娜银龙王）；容器重构为{融合模式,融合对象,用法模式,来源武魂,融合参与者,技能数据}，技能数据嵌套"
+          },
+          {
+            "recordId": "fusions-mode-6dedd0108ebfc899",
+            "role": "古月娜",
+            "where": "快照[0].武魂融合技.神龙变",
+            "融合模式": "partner",
+            "op": "tag+restructure",
+            "confidence": 1,
+            "evidence": "双人武魂融合技（古月娜银龙王+唐舞麟金龙王）；容器重构为MVU container 形状"
+          },
+          {
+            "recordId": "fusions-mode-e7288260c54c20ff",
+            "role": "蓝轩宇",
+            "where": "成长技能模板.龙神变",
+            "融合模式": "self",
+            "op": "tag",
+            "confidence": 1,
+            "evidence": "自体双血脉（金纹+银纹）融合；ch1739「一人同时掌控金银双力完成龙神变」"
+          },
+          {
+            "recordId": "fusions-mode-95d4ddc4f4ac055e",
+            "role": "蓝梦琴",
+            "where": "成长技能模板.翡翠凤凰之舞",
+            "融合模式": "self",
+            "op": "tag",
+            "confidence": 0.9,
+            "evidence": "自体武魂融合技；玉凰琴+翡翠 单人施展"
+          },
+          {
+            "recordId": "fusions-mode-4a2009ad4e140af6",
+            "role": "原恩辉辉",
+            "where": "成长技能模板.大五行精灵箭",
+            "融合模式": "partner",
+            "op": "tag",
+            "confidence": 1,
+            "evidence": "双人武魂融合技（原恩辉辉+唐雨格）；唐雨格注入大五行神光"
+          },
+          {
+            "recordId": "fusions-mode-de47e3a619d1dade",
+            "role": "唐雨格",
+            "where": "成长技能模板.大五行精灵箭",
+            "融合模式": "partner",
+            "op": "tag",
+            "confidence": 1,
+            "evidence": "双人武魂融合技（唐雨格+原恩辉辉）；注入大五行神光"
+          },
+          {
+            "recordId": "fusions-mode-f35675567543f341",
+            "role": "白秀秀",
+            "where": "成长技能模板.天蓝冰噬龙真身",
+            "融合模式": "self",
+            "op": "tag",
+            "confidence": 0.85,
+            "evidence": "自体武魂进化真身（深渊冰魔龙→天蓝冰噬龙）；非双人"
+          },
+          {
+            "recordId": "fusions-mode-2e9e43b587823f39",
+            "role": "白秀秀",
+            "where": "成长技能模板.深蓝凝视",
+            "融合模式": "partner",
+            "op": "tag",
+            "confidence": 1,
+            "evidence": "双人武魂融合技（蓝轩宇+白秀秀）"
+          }
+        ],
+        "note": "武魂融合技 融合模式 补标（3 快照容器 + 6 模板项）；神龙变 容器重构为 MVU container 形状（技能数据嵌套）。9 容器全部 partner/self 就位。大五行神光/五行护体 为普通魂技（非融合容器），不动。"
+      }
     }
   ]
 }
