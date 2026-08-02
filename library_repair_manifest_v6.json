@@ -333,6 +333,127 @@
           ]
         }
       ]
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "fusions",
+      "profileId": "dldl",
+      "contract": "3.1.0",
+      "entries": [
+        {
+          "recordId": "fusion-dde23d42720162a0",
+          "profileId": "dldl",
+          "path": "成长技能模板.黄金圣龙.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=三人武魂融合技——以罗三炮为寄体融合弗兰德飞行能力与柳二龙火龙本源。消耗：魂力:90% | 三人各自90%。；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-cf1ca28cbc66d93c",
+          "profileId": "dldl",
+          "path": "成长技能模板.黄金圣龙飞翔之角.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=三人武魂融合技中弗兰德提供飞行能力与空战机动性。消耗：魂力:90%。；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-2d62a0bcd9ee8d47",
+          "profileId": "dldl",
+          "path": "成长技能模板.两级静止领域.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [
+            "菊斗罗",
+            "鬼斗罗"
+          ],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实2人武魂融合技，归属=菊斗罗与鬼斗罗武魂融合技。消耗：魂力:80% | 精神力:50%。；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-1a404488487d4eb5",
+          "profileId": "dldl",
+          "path": "成长技能模板.妖魅.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [
+            "邪月"
+          ],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实1人武魂融合技，归属=与邪月武魂融合技。消耗：魂力:60% | 精神力:40%。；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-5361c24801b8f5f7",
+          "profileId": "dldl",
+          "path": "技能注册表.幽冥白虎.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [
+            "戴沐白",
+            "朱竹清"
+          ],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实2人武魂融合技，归属=戴沐白&朱竹清；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-template-key-3ce277226110ee18",
+          "profileId": "dldl",
+          "path": "内置角色成长技能模板.菊斗罗月关 → 菊斗罗",
+          "action": "fix-template-key",
+          "before": "菊斗罗月关",
+          "after": "菊斗罗",
+          "classification": "partner",
+          "participants": [
+            "菊斗罗",
+            "鬼斗罗"
+          ],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "角色.菊斗罗.成长技能模板 引用内置角色成长技能模板.菊斗罗，但模板块 key 为 菊斗罗月关 → 模板 5 项（含武魂融合技 两级静止领域）运行时落空。修正块 key 使模板挂载，skillCount 1487→1492",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        }
+      ]
     }
   ]
 }
