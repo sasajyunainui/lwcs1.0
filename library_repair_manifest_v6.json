@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 6,
+  "contract": "3.1.0",
+  "generatedAt": "2026-08-02T10:35:47.158Z",
+  "profiles": {
+    "order": [
+      "dldl",
+      "jueshitangmen",
+      "current",
+      "zjdl"
+    ]
+  },
+  "batches": [
+    {
+      "schemaVersion": 6,
+      "concern": "ages-levels",
+      "profileId": "dldl",
+      "contract": "3.1.0",
+      "entries": [
+        {
+          "recordId": "ages-178e609504381878",
+          "profileId": "dldl",
+          "path": "$.角色.阿银.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "90",
+          "evidence": "十万年蓝银皇，献祭唐昊成全其第九魂环",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "十万年魂兽对标封号斗罗90级",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-07536e55aecf037a",
+          "profileId": "dldl",
+          "path": "$.角色.阿银.快照[1].角色.属性.等级",
+          "before": "0",
+          "after": "90",
+          "evidence": "十万年蓝银皇（6岁节点为修为年份投影）",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "十万年魂兽对标封号斗罗90级",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-0084b435f5d48225",
+          "profileId": "dldl",
+          "path": "$.角色.翠花.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "酒馆招待，无魂力",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "无魂力普通人",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-66a715ee25248ee7",
+          "profileId": "dldl",
+          "path": "$.角色.大明.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "90",
+          "evidence": "星斗大森林之王天青牛蟒，十万年修为",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "十万年魂兽对标封号斗罗90级",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-e0583299d429bbe6",
+          "profileId": "dldl",
+          "path": "$.角色.二明.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "90",
+          "evidence": "星斗大森林泰坦巨猿，十万年修为",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "十万年魂兽对标封号斗罗90级",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-e77eace026620c61",
+          "profileId": "dldl",
+          "path": "$.角色.老杰克.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "圣魂村村长，无魂力",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "无魂力普通人",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-667e74e15ba8a62c",
+          "profileId": "dldl",
+          "path": "$.角色.凌风.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "圣魂村少年",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "无魂力普通人",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-2ca87c2256795556",
+          "profileId": "dldl",
+          "path": "$.角色.柳龙.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "圣魂村少年",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "无魂力普通人",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-d6e5e6ce2b131de4",
+          "profileId": "dldl",
+          "path": "$.角色.楼高.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "75",
+          "evidence": "神匠/铁匠协会会长；其弟子思龙为70余级器魂师",
+          "evidenceType": "inference",
+          "confidence": "low",
+          "reason": "器魂师身份对标魂圣；原文未明言本人等级，待批次LLM复核",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-075f89ac6fd34b27",
+          "profileId": "dldl",
+          "path": "$.角色.墨痕.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "诺丁学院食堂厨师",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "无魂力普通人",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-6edcfd1b8eef28aa",
+          "profileId": "dldl",
+          "path": "$.角色.萨拉斯.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "75",
+          "evidence": "武魂殿白金主教/天斗城武魂圣殿殿主",
+          "evidenceType": "inference",
+          "confidence": "low",
+          "reason": "白金主教按武魂殿阶层对标魂圣；原文未明言，待批次LLM复核",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-22e636332f28e40f",
+          "profileId": "dldl",
+          "path": "$.角色.深海魔鲸王.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "99",
+          "evidence": "百万年修为魂兽，唐三第九魂环来源，接近成神",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "百万年魂兽对标极限斗罗99级",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-8d538a8a96bf73c5",
+          "profileId": "dldl",
+          "path": "$.角色.石三.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "铁匠铺铁匠",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "无魂力普通人",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-eddcfa2d81a11ce7",
+          "profileId": "dldl",
+          "path": "$.角色.丝丝.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "铁匠铺/酒馆普通女仆",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "无魂力普通人",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-40273476e35f9cab",
+          "profileId": "dldl",
+          "path": "$.角色.苏主任.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "诺丁学院行政人员",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "无魂力普通人",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-ae65c4b512762e34",
+          "profileId": "dldl",
+          "path": "$.角色.唐三.快照[3].角色.属性.等级",
+          "before": "59",
+          "after": "43",
+          "evidence": "原文：唐三四十三级（大赛晋级赛后、总决赛前）",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "大赛结束（33年11月）唐三43级，库内59级为跨海神岛后的过度值",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-1b1f4de906d06601",
+          "profileId": "dldl",
+          "path": "$.角色.唐甜甜.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "唐门少儿（唐龙之女），原著无魂力描写",
+          "evidenceType": "novel-quote",
+          "confidence": "medium",
+          "reason": "儿童非战斗角色",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-84f771773218b88d",
+          "profileId": "dldl",
+          "path": "$.角色.小白.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "90",
+          "evidence": "海神岛护岛神兽魔魂大白鲨王，十万年修为",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "十万年魂兽对标封号斗罗90级",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-391d0b966d26d59f",
+          "profileId": "dldl",
+          "path": "$.角色.小舞.快照[3].角色.属性.等级",
+          "before": "0",
+          "after": "39",
+          "evidence": "原文：小舞三十九级（晋级赛、赴总决赛时均39级，总决赛前未突破40级）",
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "大赛后小舞39级（三环魂尊），献祭时方达60级",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-07aeb2063381446f",
+          "profileId": "dldl",
+          "path": "$.角色.雪珂.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "天斗帝国公主，月轩音乐学员，原著无魂力描写",
+          "evidenceType": "novel-quote",
+          "confidence": "medium",
+          "reason": "非战斗贵族角色",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        },
+        {
+          "recordId": "ages-df4ad659c7e84d57",
+          "profileId": "dldl",
+          "path": "$.角色.雪夜大帝.快照[0].角色.属性.等级",
+          "before": "0",
+          "after": "\"无\"",
+          "evidence": "原文无魂力修为描写，中毒体弱、无战斗场面",
+          "evidenceType": "novel-quote",
+          "confidence": "medium",
+          "reason": "天斗皇帝非战斗角色，原著未给魂力等级",
+          "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.等级",
+          "tests": [
+            "T-AGE-LEVEL-001"
+          ]
+        }
+      ]
+    }
+  ]
+}
