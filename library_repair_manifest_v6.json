@@ -454,6 +454,13 @@
           ]
         }
       ]
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "personality",
+      "profileId": "dldl",
+      "contract": "3.1.0",
+      "entries": []
     }
   ]
 }
