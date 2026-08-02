@@ -1011,6 +1011,181 @@
           ]
         }
       ]
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "ages-levels-crossbook",
+      "profileId": "zjdl",
+      "contract": "3.1.0",
+      "entries": [],
+      "applied": {
+        "at": "2026-08-02",
+        "operations": [
+          {
+            "recordId": "ages-levels-crossbook-f5ca3af8138eb08b",
+            "role": "唐三",
+            "op": "calibrate",
+            "年龄": 30000,
+            "等级": 150,
+            "confidence": 1,
+            "evidence": "神王/修罗神+海神双神位；部次差30000-0"
+          },
+          {
+            "recordId": "ages-levels-crossbook-b59008f8f97a4ab5",
+            "role": "小舞",
+            "op": "calibrate",
+            "年龄": 30000,
+            "等级": 125,
+            "confidence": 0.9,
+            "evidence": "神王之妻，可一定程度动用神王之力——非神王，一级神；部次差"
+          },
+          {
+            "recordId": "ages-levels-crossbook-9bc9418e6f80b5e6",
+            "role": "霍雨浩",
+            "op": "calibrate",
+            "年龄": 20000,
+            "等级": 125,
+            "confidence": 0.85,
+            "evidence": "情绪之神一级神（初登场30014年未成神王）；部次差30000-10000"
+          },
+          {
+            "recordId": "ages-levels-crossbook-ab59d644a13e1db8",
+            "role": "唐舞桐",
+            "op": "calibrate",
+            "年龄": 20000,
+            "等级": 125,
+            "confidence": 0.85,
+            "evidence": "龙蝶斗罗，情绪之神之妻，一级神；部次差"
+          },
+          {
+            "recordId": "ages-levels-crossbook-89384bc29d407b2c",
+            "role": "帝天",
+            "op": "calibrate",
+            "年龄": 800000,
+            "等级": 99,
+            "confidence": 0.85,
+            "evidence": "8次天劫约80万年修为；渡劫前被法则压制极限99级（失败化蓝轩宇魂灵）"
+          },
+          {
+            "recordId": "ages-levels-crossbook-e5387a8328b7c058",
+            "role": "大明",
+            "op": "calibrate",
+            "年龄": 100000,
+            "等级": 115,
+            "confidence": 0.8,
+            "evidence": "神级兽王青帝（天青牛蟒），强于渡劫前帝天；十万年魂兽成神"
+          },
+          {
+            "recordId": "ages-levels-crossbook-0de621ceb9661c81",
+            "role": "二明",
+            "op": "calibrate",
+            "年龄": 100000,
+            "等级": 115,
+            "confidence": 0.8,
+            "evidence": "神级兽王（泰坦巨猿），十万年魂兽成神"
+          },
+          {
+            "recordId": "ages-levels-crossbook-c647d2dff89409e9",
+            "role": "修罗神",
+            "op": "calibrate",
+            "年龄": 30000,
+            "等级": 150,
+            "confidence": 0.9,
+            "evidence": "五大神王之一；唐三成神后神位"
+          },
+          {
+            "recordId": "ages-levels-crossbook-6641760455dae282",
+            "role": "善良之神",
+            "op": "calibrate",
+            "年龄": 30000,
+            "等级": 150,
+            "confidence": 0.8,
+            "evidence": "神界神王（烈焰），部次差同唐三"
+          },
+          {
+            "recordId": "ages-levels-crossbook-a246ae456bc5e5ba",
+            "role": "邪恶之神",
+            "op": "calibrate",
+            "年龄": 30000,
+            "等级": 150,
+            "confidence": 0.8,
+            "evidence": "神界神王（姬动），部次差同唐三"
+          },
+          {
+            "recordId": "ages-levels-crossbook-7aec2067779e169e",
+            "role": "凌梓晨",
+            "op": "calibrate",
+            "年龄": null,
+            "等级": 115,
+            "confidence": 0.85,
+            "evidence": "真神级110-119（凌梓晨+依子尘双真神级神识）；年龄10000保留"
+          },
+          {
+            "recordId": "ages-levels-crossbook-12e6e4955e096075",
+            "role": "千古清风",
+            "op": "calibrate",
+            "年龄": null,
+            "等级": 105,
+            "confidence": 0.8,
+            "evidence": "成就神级（三级神100-109）；年龄10000保留"
+          },
+          {
+            "recordId": "ages-levels-crossbook-ee7f6284a4cb7304",
+            "role": "金老",
+            "op": "calibrate",
+            "年龄": 100000,
+            "等级": 99,
+            "confidence": 0.7,
+            "evidence": "植物系化形大佬，未入神级（99）；修为逾十万年"
+          },
+          {
+            "recordId": "ages-levels-crossbook-65239d21ecaacc32",
+            "role": "黑皇",
+            "op": "calibrate",
+            "年龄": 10000,
+            "等级": 140,
+            "confidence": 0.8,
+            "evidence": "深红之域母上坐下第七皇，远超超神级→准神王140"
+          },
+          {
+            "recordId": "ages-levels-crossbook-482abe74b30c2f79",
+            "role": "魅皇",
+            "op": "calibrate",
+            "年龄": 10000,
+            "等级": 140,
+            "confidence": 0.8,
+            "evidence": "深红之域皇（主母坐下），同黑皇层级准神王140"
+          },
+          {
+            "recordId": "ages-levels-crossbook-06ab94b63db48a08",
+            "role": "深渊圣君",
+            "op": "calibrate",
+            "年龄": null,
+            "等级": 125,
+            "confidence": 0.85,
+            "evidence": "超神级120-129（勉强超神级）；年龄10000保留"
+          },
+          {
+            "recordId": "ages-levels-crossbook-108a47ed619a0796",
+            "role": "依子尘",
+            "op": "calibrate",
+            "年龄": 10000,
+            "等级": 115,
+            "confidence": 0.85,
+            "evidence": "真神级110-119；万年前外院弟子→部次差10000"
+          },
+          {
+            "recordId": "ages-levels-crossbook-f3beec5e57522c15",
+            "role": "龙神残余神识",
+            "op": "calibrate",
+            "年龄": 30000,
+            "等级": 150,
+            "confidence": 0.8,
+            "evidence": "神王巅峰（龙神）；部次差同唐三"
+          }
+        ],
+        "note": "跨部角色 年龄/等级 标定已应用（18 角色；证据见 cross_book_character_registry_v6.json + 斗罗IV 原文 full_utf8.txt）"
+      }
     }
   ]
 }

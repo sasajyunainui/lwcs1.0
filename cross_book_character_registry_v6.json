@@ -3,63 +3,157 @@
   "contract": "3.1.0",
   "purpose": "跨部角色年龄/等级/辈分标定登记表（数据语义轨批次0）。依据：部次差公式（角色在斗M年龄≈斗M起始年−所属部起始年）、神级等级（神王150/一级神120-129/二级神110-119/三级神100-109）、魂兽年限对标（斗二60万年≈98级、斗三40万年≈99级）。供批次1-5 作标定依据，与 v5 轨共享 evidence 出处。",
   "books": {
-    "dldl": { "bookId": "斗罗大陆I", "startYear": 0 },
-    "jueshitangmen": { "bookId": "斗罗大陆II绝世唐门", "startYear": 10000 },
-    "current": { "bookId": "斗罗大陆III龙王传说", "startYear": 20000 },
-    "zjdl": { "bookId": "斗罗大陆IV终极斗罗", "startYear": 30000 }
+    "dldl": {
+      "bookId": "斗罗大陆I",
+      "startYear": 0
+    },
+    "jueshitangmen": {
+      "bookId": "斗罗大陆II绝世唐门",
+      "startYear": 10000
+    },
+    "current": {
+      "bookId": "斗罗大陆III龙王传说",
+      "startYear": 20000
+    },
+    "zjdl": {
+      "bookId": "斗罗大陆IV终极斗罗",
+      "startYear": 30000
+    }
   },
   "framework": {
     "神王": 150,
-    "一级神/超神级": [120, 129],
-    "二级神/真神级": [110, 119],
-    "三级神/普通神级": [100, 109],
-    "凶兽对标": { "jueshitangmen": "60万年≈98级", "current": "40万年≈99级" }
+    "一级神/超神级": [
+      120,
+      129
+    ],
+    "二级神/真神级": [
+      110,
+      119
+    ],
+    "三级神/普通神级": [
+      100,
+      109
+    ],
+    "凶兽对标": {
+      "jueshitangmen": "60万年≈98级",
+      "current": "40万年≈99级"
+    }
   },
   "characters": [
     {
       "recordKey": "唐三",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen", "zjdl"],
+      "books": [
+        "dldl",
+        "jueshitangmen",
+        "zjdl"
+      ],
       "与唐三辈分": "anchor",
       "年龄标定": {
-        "dldl": { "值": null, "说明": "本部按原文（出生0岁快照正确；成神时约20余岁）", "evidenceType": "sentinel" },
-        "jueshitangmen": { "值": 10000, "说明": "部次差 10000−0", "evidenceType": "formula" },
-        "zjdl": { "值": 30000, "说明": "部次差 30000−0（神界现身）", "evidenceType": "formula" }
+        "dldl": {
+          "值": null,
+          "说明": "本部按原文（出生0岁快照正确；成神时约20余岁）",
+          "evidenceType": "sentinel"
+        },
+        "jueshitangmen": {
+          "值": 10000,
+          "说明": "部次差 10000−0",
+          "evidenceType": "formula"
+        },
+        "zjdl": {
+          "值": 30000,
+          "说明": "部次差 30000−0（神界现身）",
+          "evidenceType": "formula"
+        }
       },
       "等级标定": {
-        "jueshitangmen": { "值": 150, "说明": "海神→神王", "evidenceType": "framework" },
-        "zjdl": { "值": 150, "说明": "修罗神/神王", "evidenceType": "framework" }
+        "jueshitangmen": {
+          "值": 150,
+          "说明": "海神→神王",
+          "evidenceType": "framework"
+        },
+        "zjdl": {
+          "值": 150,
+          "说明": "修罗神/神王",
+          "evidenceType": "framework"
+        }
       },
       "confidence": "high"
     },
     {
       "recordKey": "小舞",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen", "zjdl"],
+      "books": [
+        "dldl",
+        "jueshitangmen",
+        "zjdl"
+      ],
       "与唐三辈分": "同辈",
       "年龄标定": {
-        "dldl": { "值": null, "说明": "本部按原文（出生0岁快照正确）", "evidenceType": "sentinel" },
-        "jueshitangmen": { "值": 10000, "说明": "部次差（随唐三同辈）", "evidenceType": "formula" },
-        "zjdl": { "值": 30000, "说明": "部次差", "evidenceType": "formula" }
+        "dldl": {
+          "值": null,
+          "说明": "本部按原文（出生0岁快照正确）",
+          "evidenceType": "sentinel"
+        },
+        "jueshitangmen": {
+          "值": 10000,
+          "说明": "部次差（随唐三同辈）",
+          "evidenceType": "formula"
+        },
+        "zjdl": {
+          "值": 30000,
+          "说明": "部次差",
+          "evidenceType": "formula"
+        }
       },
       "等级标定": {
-        "jueshitangmen": { "值": 150, "说明": "神级（唐三之妻，修罗神/一级神，实施时按原文确认位阶）", "evidenceType": "framework" },
-        "zjdl": { "值": 150, "说明": "神级", "evidenceType": "framework" }
+        "jueshitangmen": {
+          "值": 150,
+          "说明": "神级（唐三之妻，修罗神/一级神，实施时按原文确认位阶）",
+          "evidenceType": "framework"
+        },
+        "zjdl": {
+          "值": 125,
+          "说明": "一级神（原文：神王之妻，可一定程度动用神王之力——非神王）",
+          "evidenceType": "novel-quote"
+        }
       },
       "confidence": "medium"
     },
     {
       "recordKey": "霍雨浩",
       "所属部": "jueshitangmen",
-      "books": ["jueshitangmen", "zjdl"],
+      "books": [
+        "jueshitangmen",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
       "年龄标定": {
-        "jueshitangmen": { "值": null, "说明": "本部按原文（出生快照/修行成长）", "evidenceType": "sentinel" },
-        "zjdl": { "值": 20000, "说明": "部次差 30000−10000（情绪之神）", "evidenceType": "formula" }
+        "jueshitangmen": {
+          "值": null,
+          "说明": "本部按原文（出生快照/修行成长）",
+          "evidenceType": "sentinel"
+        },
+        "zjdl": {
+          "值": 20000,
+          "说明": "部次差 30000−10000（情绪之神）",
+          "evidenceType": "formula"
+        }
       },
       "等级标定": {
-        "jueshitangmen": { "值": null, "说明": "本部按原文（99级极限斗罗→神）", "evidenceType": "sentinel" },
-        "zjdl": { "值": [120, 129], "说明": "情绪之神，一级神（常见认定；实施时核对位阶）", "evidenceType": "framework" }
+        "jueshitangmen": {
+          "值": null,
+          "说明": "本部按原文（99级极限斗罗→神）",
+          "evidenceType": "sentinel"
+        },
+        "zjdl": {
+          "值": [
+            120,
+            129
+          ],
+          "说明": "情绪之神，一级神（常见认定；实施时核对位阶）",
+          "evidenceType": "framework"
+        }
       },
       "confidence": "medium",
       "note": "唐三之女婿（唐舞桐之夫）"
@@ -67,15 +161,37 @@
     {
       "recordKey": "唐舞桐",
       "所属部": "jueshitangmen",
-      "books": ["jueshitangmen", "zjdl"],
+      "books": [
+        "jueshitangmen",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
       "年龄标定": {
-        "jueshitangmen": { "值": null, "说明": "本部按原文", "evidenceType": "sentinel" },
-        "zjdl": { "值": 20000, "说明": "部次差（随霍雨浩）", "evidenceType": "formula" }
+        "jueshitangmen": {
+          "值": null,
+          "说明": "本部按原文",
+          "evidenceType": "sentinel"
+        },
+        "zjdl": {
+          "值": 20000,
+          "说明": "部次差（随霍雨浩）",
+          "evidenceType": "formula"
+        }
       },
       "等级标定": {
-        "jueshitangmen": { "值": null, "说明": "本部按原文", "evidenceType": "sentinel" },
-        "zjdl": { "值": [120, 129], "说明": "情绪之神同阶", "evidenceType": "framework" }
+        "jueshitangmen": {
+          "值": null,
+          "说明": "本部按原文",
+          "evidenceType": "sentinel"
+        },
+        "zjdl": {
+          "值": [
+            120,
+            129
+          ],
+          "说明": "情绪之神同阶",
+          "evidenceType": "framework"
+        }
       },
       "confidence": "medium",
       "note": "唐三之女，霍雨浩之妻"
@@ -83,15 +199,34 @@
     {
       "recordKey": "唐舞麟",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
       "年龄标定": {
-        "current": { "值": null, "说明": "本部按原文（初生/成长）", "evidenceType": "sentinel" },
-        "zjdl": { "值": 10000, "说明": "部次差 30000−20000（解冻·唐乐 30000年4月21日）", "evidenceType": "formula" }
+        "current": {
+          "值": null,
+          "说明": "本部按原文（初生/成长）",
+          "evidenceType": "sentinel"
+        },
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差 30000−20000（解冻·唐乐 30000年4月21日）",
+          "evidenceType": "formula"
+        }
       },
       "等级标定": {
-        "current": { "值": null, "说明": "本部按原文（金龙王+银龙王力量）", "evidenceType": "sentinel" },
-        "zjdl": { "值": 150, "说明": "神王（龙神半身，金龙王血脉）", "evidenceType": "framework" }
+        "current": {
+          "值": null,
+          "说明": "本部按原文（金龙王+银龙王力量）",
+          "evidenceType": "sentinel"
+        },
+        "zjdl": {
+          "值": 150,
+          "说明": "神王（龙神半身，金龙王血脉）",
+          "evidenceType": "framework"
+        }
       },
       "confidence": "high",
       "note": "唐三之子"
@@ -99,15 +234,34 @@
     {
       "recordKey": "古月娜",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
       "年龄标定": {
-        "current": { "值": null, "说明": "本部按原文（银龙王/娜娜）", "evidenceType": "sentinel" },
-        "zjdl": { "值": 10000, "说明": "部次差（解冻复生 30000年4月20日；用户明确按10000岁）", "evidenceType": "formula" }
+        "current": {
+          "值": null,
+          "说明": "本部按原文（银龙王/娜娜）",
+          "evidenceType": "sentinel"
+        },
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差（解冻复生 30000年4月20日；用户明确按10000岁）",
+          "evidenceType": "formula"
+        }
       },
       "等级标定": {
-        "current": { "值": null, "说明": "本部按原文（银龙王）", "evidenceType": "sentinel" },
-        "zjdl": { "值": 150, "说明": "神王（银龙王，龙神半身）", "evidenceType": "framework" }
+        "current": {
+          "值": null,
+          "说明": "本部按原文（银龙王）",
+          "evidenceType": "sentinel"
+        },
+        "zjdl": {
+          "值": 150,
+          "说明": "神王（银龙王，龙神半身）",
+          "evidenceType": "framework"
+        }
       },
       "confidence": "high",
       "note": "唐舞麟之妻，银龙王；别名 娜娜"
@@ -115,16 +269,40 @@
     {
       "recordKey": "帝天",
       "所属部": "jueshitangmen",
-      "books": ["jueshitangmen", "current", "zjdl"],
+      "books": [
+        "jueshitangmen",
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
       "年龄标定": {
-        "jueshitangmen": { "值": null, "说明": "凶兽按修为（金眼黑龙王，~80万年）", "evidenceType": "novel-quote" },
-        "current": { "值": null, "说明": "凶兽按修为（斗三40万年≈99级标准）", "evidenceType": "framework" },
-        "zjdl": { "值": null, "说明": "斗四 30018年 状态待原文核实（兽神 复活/神级）", "evidenceType": "novel-quote" }
+        "jueshitangmen": {
+          "值": null,
+          "说明": "凶兽按修为（金眼黑龙王，~80万年）",
+          "evidenceType": "novel-quote"
+        },
+        "current": {
+          "值": null,
+          "说明": "凶兽按修为（斗三40万年≈99级标准）",
+          "evidenceType": "framework"
+        },
+        "zjdl": {
+          "值": null,
+          "说明": "斗四 30018年 状态待原文核实（兽神 复活/神级）",
+          "evidenceType": "novel-quote"
+        }
       },
       "等级标定": {
-        "jueshitangmen": { "值": 98, "说明": "斗二60万年≈98级", "evidenceType": "framework" },
-        "current": { "值": 99, "说明": "斗三40万年≈99级", "evidenceType": "framework" }
+        "jueshitangmen": {
+          "值": 98,
+          "说明": "斗二60万年≈98级",
+          "evidenceType": "framework"
+        },
+        "current": {
+          "值": 99,
+          "说明": "斗三40万年≈99级",
+          "evidenceType": "framework"
+        }
       },
       "confidence": "low",
       "note": "古月娜之追随者，金眼黑龙王，别名 兽神"
@@ -132,16 +310,40 @@
     {
       "recordKey": "大明",
       "所属部": "dldl",
-      "books": ["dldl", "current", "zjdl"],
+      "books": [
+        "dldl",
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "同辈",
       "年龄标定": {
-        "dldl": { "值": null, "说明": "本部十万年魂兽（天青牛蟒）按修为", "evidenceType": "sentinel" },
-        "current": { "值": null, "说明": "凶兽按修为（斗三标准）", "evidenceType": "framework" },
-        "zjdl": { "值": null, "说明": "凶兽按修为（斗四标准）", "evidenceType": "framework" }
+        "dldl": {
+          "值": null,
+          "说明": "本部十万年魂兽（天青牛蟒）按修为",
+          "evidenceType": "sentinel"
+        },
+        "current": {
+          "值": null,
+          "说明": "凶兽按修为（斗三标准）",
+          "evidenceType": "framework"
+        },
+        "zjdl": {
+          "值": null,
+          "说明": "凶兽按修为（斗四标准）",
+          "evidenceType": "framework"
+        }
       },
       "等级标定": {
-        "current": { "值": 99, "说明": "斗三40万年≈99级", "evidenceType": "framework" },
-        "zjdl": { "值": null, "说明": "实施时按原文", "evidenceType": "novel-quote" }
+        "current": {
+          "值": 99,
+          "说明": "斗三40万年≈99级",
+          "evidenceType": "framework"
+        },
+        "zjdl": {
+          "值": null,
+          "说明": "实施时按原文",
+          "evidenceType": "novel-quote"
+        }
       },
       "confidence": "medium",
       "note": "唐三结拜兄长；别名 天青牛蟒"
@@ -149,16 +351,40 @@
     {
       "recordKey": "二明",
       "所属部": "dldl",
-      "books": ["dldl", "current", "zjdl"],
+      "books": [
+        "dldl",
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "同辈",
       "年龄标定": {
-        "dldl": { "值": null, "说明": "本部十万年魂兽（泰坦巨猿）按修为", "evidenceType": "sentinel" },
-        "current": { "值": null, "说明": "凶兽按修为", "evidenceType": "framework" },
-        "zjdl": { "值": null, "说明": "凶兽按修为", "evidenceType": "framework" }
+        "dldl": {
+          "值": null,
+          "说明": "本部十万年魂兽（泰坦巨猿）按修为",
+          "evidenceType": "sentinel"
+        },
+        "current": {
+          "值": null,
+          "说明": "凶兽按修为",
+          "evidenceType": "framework"
+        },
+        "zjdl": {
+          "值": null,
+          "说明": "凶兽按修为",
+          "evidenceType": "framework"
+        }
       },
       "等级标定": {
-        "current": { "值": 99, "说明": "斗三40万年≈99级", "evidenceType": "framework" },
-        "zjdl": { "值": null, "说明": "实施时按原文", "evidenceType": "novel-quote" }
+        "current": {
+          "值": 99,
+          "说明": "斗三40万年≈99级",
+          "evidenceType": "framework"
+        },
+        "zjdl": {
+          "值": null,
+          "说明": "实施时按原文",
+          "evidenceType": "novel-quote"
+        }
       },
       "confidence": "medium",
       "note": "唐三结拜兄长；别名 泰坦巨猿"
@@ -166,180 +392,426 @@
     {
       "recordKey": "修罗神",
       "所属部": "dldl",
-      "books": ["jueshitangmen", "zjdl"],
+      "books": [
+        "jueshitangmen",
+        "zjdl"
+      ],
       "与唐三辈分": "anchor",
-      "年龄标定": { "jueshitangmen": { "值": 10000, "说明": "部次差（唐三神位）", "evidenceType": "formula" }, "zjdl": { "值": 30000, "说明": "部次差", "evidenceType": "formula" } },
-      "等级标定": { "jueshitangmen": { "值": 150, "说明": "神王", "evidenceType": "framework" }, "zjdl": { "值": 150, "说明": "神王", "evidenceType": "framework" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": 10000,
+          "说明": "部次差（唐三神位）",
+          "evidenceType": "formula"
+        },
+        "zjdl": {
+          "值": 30000,
+          "说明": "部次差",
+          "evidenceType": "formula"
+        }
+      },
+      "等级标定": {
+        "jueshitangmen": {
+          "值": 150,
+          "说明": "神王",
+          "evidenceType": "framework"
+        },
+        "zjdl": {
+          "值": 150,
+          "说明": "神王",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "high",
       "note": "唐三成神后神位"
     },
     {
       "recordKey": "戴沐白",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen"],
+      "books": [
+        "dldl",
+        "jueshitangmen"
+      ],
       "与唐三辈分": "同辈",
-      "年龄标定": { "jueshitangmen": { "值": 10000, "说明": "部次差（神界战神）", "evidenceType": "formula" } },
-      "等级标定": { "jueshitangmen": { "值": [120, 129], "说明": "战神，一级神", "evidenceType": "framework" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": 10000,
+          "说明": "部次差（神界战神）",
+          "evidenceType": "formula"
+        }
+      },
+      "等级标定": {
+        "jueshitangmen": {
+          "值": [
+            120,
+            129
+          ],
+          "说明": "战神，一级神",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "medium",
       "note": "史莱克七怪；神界战神"
     },
     {
       "recordKey": "朱竹清",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen"],
+      "books": [
+        "dldl",
+        "jueshitangmen"
+      ],
       "与唐三辈分": "同辈",
-      "年龄标定": { "jueshitangmen": { "值": 10000, "说明": "部次差（神界速度之神）", "evidenceType": "formula" } },
-      "等级标定": { "jueshitangmen": { "值": [120, 129], "说明": "速度之神，一级神", "evidenceType": "framework" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": 10000,
+          "说明": "部次差（神界速度之神）",
+          "evidenceType": "formula"
+        }
+      },
+      "等级标定": {
+        "jueshitangmen": {
+          "值": [
+            120,
+            129
+          ],
+          "说明": "速度之神，一级神",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "medium"
     },
     {
       "recordKey": "马红俊",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen"],
+      "books": [
+        "dldl",
+        "jueshitangmen"
+      ],
       "与唐三辈分": "同辈",
-      "年龄标定": { "jueshitangmen": { "值": 10000, "说明": "部次差（神界凤凰之神）", "evidenceType": "formula" } },
-      "等级标定": { "jueshitangmen": { "值": [120, 129], "说明": "凤凰之神，一级神", "evidenceType": "framework" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": 10000,
+          "说明": "部次差（神界凤凰之神）",
+          "evidenceType": "formula"
+        }
+      },
+      "等级标定": {
+        "jueshitangmen": {
+          "值": [
+            120,
+            129
+          ],
+          "说明": "凤凰之神，一级神",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "medium"
     },
     {
       "recordKey": "奥斯卡",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen"],
+      "books": [
+        "dldl",
+        "jueshitangmen"
+      ],
       "与唐三辈分": "同辈",
-      "年龄标定": { "jueshitangmen": { "值": 10000, "说明": "部次差（神界食神）", "evidenceType": "formula" } },
-      "等级标定": { "jueshitangmen": { "值": [120, 129], "说明": "食神，一级神", "evidenceType": "framework" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": 10000,
+          "说明": "部次差（神界食神）",
+          "evidenceType": "formula"
+        }
+      },
+      "等级标定": {
+        "jueshitangmen": {
+          "值": [
+            120,
+            129
+          ],
+          "说明": "食神，一级神",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "medium"
     },
     {
       "recordKey": "宁荣荣",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen"],
+      "books": [
+        "dldl",
+        "jueshitangmen"
+      ],
       "与唐三辈分": "同辈",
-      "年龄标定": { "jueshitangmen": { "值": 10000, "说明": "部次差（神界九彩神女）", "evidenceType": "formula" } },
-      "等级标定": { "jueshitangmen": { "值": [120, 129], "说明": "九彩神女，一级神", "evidenceType": "framework" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": 10000,
+          "说明": "部次差（神界九彩神女）",
+          "evidenceType": "formula"
+        }
+      },
+      "等级标定": {
+        "jueshitangmen": {
+          "值": [
+            120,
+            129
+          ],
+          "说明": "九彩神女，一级神",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "medium"
     },
     {
       "recordKey": "弗兰德",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen"],
+      "books": [
+        "dldl",
+        "jueshitangmen"
+      ],
       "与唐三辈分": "前辈",
-      "年龄标定": { "jueshitangmen": { "值": null, "说明": "斗一人类未成神，斗二为史莱克先祖（故去），按历史人物处理", "evidenceType": "novel-quote" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": null,
+          "说明": "斗一人类未成神，斗二为史莱克先祖（故去），按历史人物处理",
+          "evidenceType": "novel-quote"
+        }
+      },
       "confidence": "medium",
       "note": "史莱克学院创始院长"
     },
     {
       "recordKey": "柳二龙",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen"],
+      "books": [
+        "dldl",
+        "jueshitangmen"
+      ],
       "与唐三辈分": "前辈",
-      "年龄标定": { "jueshitangmen": { "值": null, "说明": "斗一人类未成神，斗二按历史人物处理", "evidenceType": "novel-quote" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": null,
+          "说明": "斗一人类未成神，斗二按历史人物处理",
+          "evidenceType": "novel-quote"
+        }
+      },
       "confidence": "medium"
     },
     {
       "recordKey": "泰坦",
       "所属部": "dldl",
-      "books": ["dldl", "jueshitangmen"],
+      "books": [
+        "dldl",
+        "jueshitangmen"
+      ],
       "与唐三辈分": "前辈",
-      "年龄标定": { "jueshitangmen": { "值": null, "说明": "斗一人类未成神，斗二按历史人物处理", "evidenceType": "novel-quote" } },
+      "年龄标定": {
+        "jueshitangmen": {
+          "值": null,
+          "说明": "斗一人类未成神，斗二按历史人物处理",
+          "evidenceType": "novel-quote"
+        }
+      },
       "confidence": "medium",
       "note": "力之一族族长"
     },
     {
       "recordKey": "小白",
       "所属部": "dldl",
-      "books": ["dldl", "current"],
+      "books": [
+        "dldl",
+        "current"
+      ],
       "与唐三辈分": "同辈",
-      "年龄标定": { "current": { "值": null, "说明": "魂兽按修为（斗三标准）", "evidenceType": "framework" } },
+      "年龄标定": {
+        "current": {
+          "值": null,
+          "说明": "魂兽按修为（斗三标准）",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "low",
       "note": "斗一魂兽（海魂兽），实施时核对"
     },
     {
       "recordKey": "凌梓晨",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "zjdl": { "值": 10000, "说明": "部次差（斗四=10000）", "evidenceType": "formula" } },
+      "年龄标定": {
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差（斗四=10000）",
+          "evidenceType": "formula"
+        }
+      },
       "confidence": "medium",
       "note": "斗三人类（斗铠/海神阁），实施时核对等级"
     },
     {
       "recordKey": "碧姬",
       "所属部": "jueshitangmen",
-      "books": ["jueshitangmen", "current", "zjdl"],
+      "books": [
+        "jueshitangmen",
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "current": { "值": null, "说明": "凶兽按修为", "evidenceType": "framework" } },
+      "年龄标定": {
+        "current": {
+          "值": null,
+          "说明": "凶兽按修为",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "low",
       "note": "凶兽（翡翠天鹅），实施时核对"
     },
     {
       "recordKey": "万妖王",
       "所属部": "jueshitangmen",
-      "books": ["jueshitangmen", "current", "zjdl"],
+      "books": [
+        "jueshitangmen",
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "current": { "值": null, "说明": "凶兽按修为", "evidenceType": "framework" } },
+      "年龄标定": {
+        "current": {
+          "值": null,
+          "说明": "凶兽按修为",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "low"
     },
     {
       "recordKey": "熊君",
       "所属部": "jueshitangmen",
-      "books": ["jueshitangmen", "current"],
+      "books": [
+        "jueshitangmen",
+        "current"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "current": { "值": null, "说明": "凶兽按修为", "evidenceType": "framework" } },
+      "年龄标定": {
+        "current": {
+          "值": null,
+          "说明": "凶兽按修为",
+          "evidenceType": "framework"
+        }
+      },
       "confidence": "low"
     },
     {
       "recordKey": "千古清风",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "zjdl": { "值": 10000, "说明": "部次差", "evidenceType": "formula" } },
+      "年龄标定": {
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差",
+          "evidenceType": "formula"
+        }
+      },
       "confidence": "low"
     },
     {
       "recordKey": "金老",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "zjdl": { "值": 10000, "说明": "部次差", "evidenceType": "formula" } },
+      "年龄标定": {
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差",
+          "evidenceType": "formula"
+        }
+      },
       "confidence": "low"
     },
     {
       "recordKey": "黑皇",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "zjdl": { "值": 10000, "说明": "部次差（凶兽按修为）", "evidenceType": "formula" } },
+      "年龄标定": {
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差（凶兽按修为）",
+          "evidenceType": "formula"
+        }
+      },
       "confidence": "low"
     },
     {
       "recordKey": "魅皇",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "zjdl": { "值": 10000, "说明": "部次差（凶兽按修为）", "evidenceType": "formula" } },
+      "年龄标定": {
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差（凶兽按修为）",
+          "evidenceType": "formula"
+        }
+      },
       "confidence": "low"
     },
     {
       "recordKey": "深渊圣君",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "zjdl": { "值": 10000, "说明": "部次差（深渊位面）", "evidenceType": "formula" } },
+      "年龄标定": {
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差（深渊位面）",
+          "evidenceType": "formula"
+        }
+      },
       "confidence": "low"
     },
     {
       "recordKey": "依子尘",
       "所属部": "current",
-      "books": ["current", "zjdl"],
+      "books": [
+        "current",
+        "zjdl"
+      ],
       "与唐三辈分": "晚辈",
-      "年龄标定": { "zjdl": { "值": 10000, "说明": "部次差", "evidenceType": "formula" } },
+      "年龄标定": {
+        "zjdl": {
+          "值": 10000,
+          "说明": "部次差",
+          "evidenceType": "formula"
+        }
+      },
       "confidence": "low"
     },
     {
       "recordKey": "蔡媚儿",
       "所属部": "jueshitangmen",
-      "books": ["jueshitangmen", "current"],
+      "books": [
+        "jueshitangmen",
+        "current"
+      ],
       "与唐三辈分": "晚辈",
       "note": "待批次核实归属与标定（龙皇斗罗关联人物）",
       "confidence": "low"
@@ -347,17 +819,87 @@
     {
       "recordKey": "龙皇斗罗",
       "所属部": "jueshitangmen",
-      "books": ["jueshitangmen", "current"],
+      "books": [
+        "jueshitangmen",
+        "current"
+      ],
       "与唐三辈分": "晚辈",
       "note": "待批次核实归属与标定",
       "confidence": "low"
+    },
+    {
+      "recordKey": "善良之神",
+      "所属部": "jueshitangmen",
+      "books": [
+        "zjdl"
+      ],
+      "与唐三辈分": "前辈",
+      "年龄标定": {
+        "zjdl": {
+          "值": 30000,
+          "说明": "神界神王，部次差同唐三"
+        }
+      },
+      "等级标定": {
+        "zjdl": {
+          "值": 150,
+          "说明": "神界神王"
+        }
+      },
+      "evidenceType": "novel-quote",
+      "confidence": "medium",
+      "note": "神界神王，烈焰"
+    },
+    {
+      "recordKey": "邪恶之神",
+      "所属部": "jueshitangmen",
+      "books": [
+        "zjdl"
+      ],
+      "与唐三辈分": "前辈",
+      "年龄标定": {
+        "zjdl": {
+          "值": 30000,
+          "说明": "神界神王，部次差同唐三"
+        }
+      },
+      "等级标定": {
+        "zjdl": {
+          "值": 150,
+          "说明": "神界神王"
+        }
+      },
+      "evidenceType": "novel-quote",
+      "confidence": "medium",
+      "note": "神界神王，姬动"
+    },
+    {
+      "recordKey": "龙神残余神识",
+      "所属部": "zjdl",
+      "books": [
+        "zjdl"
+      ],
+      "与唐三辈分": "anchor",
+      "年龄标定": {
+        "zjdl": {
+          "值": 30000,
+          "说明": "神界神王，部次差同唐三"
+        }
+      },
+      "等级标定": {
+        "zjdl": {
+          "值": 150,
+          "说明": "神王巅峰（原文：龙神无疑是神王巅峰的存在）"
+        }
+      },
+      "evidenceType": "novel-quote",
+      "confidence": "medium",
+      "note": "龙神被斩后残余神识/血脉"
     }
   ],
   "待核清单": [
-    "帝天 斗四 30018年状态（复活/神级）",
-    "小舞 神级位阶（神王 vs 一级神）",
-    "霍雨浩 情绪之神位阶（一级神 vs 二级神）",
     "current 库缺 唐三/小舞/霍雨浩/唐舞桐 记录（规范登记，批次3 空操作）",
-    "白秀秀/冻千秋 为斗四本部角色（不入跨部登记，批次4 按快照时间线处理）"
+    "白秀秀/冻千秋 为斗四本部角色（不入跨部登记，批次4 按快照时间线处理）",
+    "（批次4c 已解决）小舞=一级神125 / 霍雨浩初登场一级神125（30022年才跨神王）/ 帝天=80万年99级（渡劫失败化蓝轩宇魂灵）"
   ]
 }
