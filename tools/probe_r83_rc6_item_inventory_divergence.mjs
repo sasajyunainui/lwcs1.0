@@ -14,7 +14,8 @@ import {
 const toolPath = fileURLToPath(import.meta.url);
 const outputPath = path.resolve(
   repoRoot,
-  'tools/evidence/r8/r83_rc6_r8_item_inventory_divergence_probe_2026-07-29.json',
+  process.argv.find(value => value.startsWith('--output='))?.slice(9) ||
+    'tools/evidence/r8/r83_rc6_r8_item_inventory_divergence_probe_2026-07-29.json',
 );
 const previewPath = path.join(repoRoot, 'BattlePreview_Module.js');
 const previewSource = fs.readFileSync(previewPath, 'utf8');

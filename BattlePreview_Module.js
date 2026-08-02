@@ -1255,6 +1255,13 @@
     if (isDead(unit)) return 'DEAD';
     const runtimeReason = String(unit?.__战斗失能原因 || '').trim();
     if (runtimeReason) return runtimeReason;
+    const actionState = String(
+      unit?.状态?.行动 || unit?.actionState || unit?.行动状态 || '',
+    ).trim();
+    if (/昏迷|UNCONSCIOUS/i.test(actionState)) return 'UNCONSCIOUS';
+    if (/失去战斗力|投降|制服|INCAPACITATED/i.test(actionState)) {
+      return 'INCAPACITATED';
+    }
     if (readResource(unit, '体力') <= 0) return 'STAMINA_EXHAUSTED';
     return '';
   }
@@ -5717,6 +5724,10 @@
           '召唤生成',
         ].includes(prototype) ||
         (
+          prototype === '资源变化' &&
+          effects.length > 1
+        ) ||
+        (
           Array.isArray(effect?.条件分支) &&
           effect.条件分支.length > 0
         ) ||
@@ -5753,6 +5764,22 @@
       inspectEffect(effect, String(index));
     });
     if (
+      paymentMode === 'FORMAL' &&
+      Object.values(
+        declaration?.resourceCosts &&
+        typeof declaration.resourceCosts === 'object'
+          ? declaration.resourceCosts
+          : {},
+      ).some(rawCost =>
+        Math.max(
+          0,
+          Number.parseFloat(String(rawCost ?? '').trim()) || 0,
+        ) > 1e-9
+      )
+    ) {
+      requiresSequentialProjection = true;
+    }
+    if (
       declaration?.irreversibleAsset &&
       typeof declaration.irreversibleAsset === 'object'
     ) {
@@ -5761,6 +5788,22 @@
     const targetIds = Object.freeze(
       (Array.isArray(declaration?.targetIds)
         ? declaration.targetIds
+        : []
+      )
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const fusionParticipantIds = Object.freeze(
+      (Array.isArray(declaration?.fusionParticipantIds)
+        ? declaration.fusionParticipantIds
+        : []
+      )
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const fusionPartnerIds = Object.freeze(
+      (Array.isArray(declaration?.fusionPartnerIds)
+        ? declaration.fusionPartnerIds
         : []
       )
         .map(value => String(value || '').trim())
@@ -5778,9 +5821,12 @@
           declaration?.resourceCosts &&
           typeof declaration.resourceCosts === 'object'
             ? declaration.resourceCosts
-            : {}
+          : {}
         ),
       }),
+      fusionKey: String(declaration?.fusionKey || '').trim(),
+      fusionParticipantIds,
+      fusionPartnerIds,
       skill: Object.freeze({
         ...(
           declaration?.skill &&
@@ -5809,6 +5855,9 @@
           targetIds,
           paymentMode,
           resourceCosts: declarationView.resourceCosts,
+          fusionKey: declarationView.fusionKey,
+          fusionParticipantIds: declarationView.fusionParticipantIds,
+          fusionPartnerIds: declarationView.fusionPartnerIds,
           effects: frozenEffects,
         })}`,
       ).trim(),
@@ -6458,6 +6507,38 @@
         'R9V2_MECHANICAL_BASIS_UNSUPPORTED:GRANTED_EFFECTS',
       );
     }
+    if (
+      basis.paymentMode === 'FORMAL' &&
+      Array.isArray(basis.declaration?.fusionPartnerIds) &&
+      basis.declaration.fusionPartnerIds.length
+    ) {
+      const currentRound = Math.max(
+        0,
+        Number(worldSnapshot?.回合 || 0),
+      );
+      for (const partnerId of basis.declaration.fusionPartnerIds) {
+        const partner = findUnit(worldSnapshot, partnerId);
+        if (!partner) {
+          throw new Error('battle_preview_fusion_partner_missing');
+        }
+        if (sideOf(worldSnapshot, partner) !== sideOf(worldSnapshot, actor)) {
+          throw new Error('battle_preview_fusion_partner_hostile');
+        }
+        if (!isBattleCapable(partner)) {
+          throw new Error('battle_preview_fusion_partner_unavailable');
+        }
+        const opportunity = partner?.__battleRuntime?.naturalOpportunity;
+        if (
+          !opportunity ||
+          Number(opportunity?.round || 0) !== currentRound ||
+          String(opportunity?.status || '').trim() !== 'PENDING'
+        ) {
+          throw new Error(
+            'battle_preview_fusion_partner_opportunity_unavailable',
+          );
+        }
+      }
+    }
     const damageMultiplierOverrides =
       input?.damageMultiplierByTarget instanceof Map
         ? input.damageMultiplierByTarget.size
@@ -6504,47 +6585,66 @@
     const ledger = new ContributionLedger();
     const changedUnitIds = new Set();
     if (basis.paymentMode === 'FORMAL') {
-      Object.entries(basis.declaration.resourceCosts || {})
-        .forEach(([resource, rawCost], index) => {
-          const costText = String(rawCost ?? '').trim();
-          const numericCost = Math.max(
-            0,
-            Number.parseFloat(costText) || 0,
-          );
-          if (!(numericCost > 1e-9)) return;
-          const cost = costText.includes('%')
-            ? readResourceMax(actor, resource) * numericCost / 100
-            : numericCost;
-          const currentActor = overlay.readUnit(actorId);
-          const before = readResource(currentActor, resource);
-          if (before + 1e-9 < cost) {
-            throw new Error(
-              `battle_preview_resource_insufficient:${resource}`,
+      const paymentPayerIds = (
+        Array.isArray(basis.declaration?.fusionParticipantIds) &&
+        basis.declaration.fusionParticipantIds.length
+          ? basis.declaration.fusionParticipantIds
+          : [actorId]
+      ).map(value => String(value || '').trim()).filter(Boolean);
+      paymentPayerIds.forEach((payerId, payerIndex) => {
+        Object.entries(basis.declaration.resourceCosts || {})
+          .forEach(([resource, rawCost], resourceIndex) => {
+            const payer =
+              projectionContext?.unitById?.get(payerId) ||
+              findUnit(worldSnapshot, payerId);
+            if (!payer) {
+              throw new Error(
+                `R9V2_MECHANICAL_BASIS_FUSION_PARTICIPANT_UNAVAILABLE:${payerId}`,
+              );
+            }
+            const costText = String(rawCost ?? '').trim();
+            const numericCost = Math.max(
+              0,
+              Number.parseFloat(costText) || 0,
             );
-          }
-          const next = before - cost;
-          overlay.changeUnit(actorId, unit => {
-            setResourceValue(unit, resource, next);
+            if (!(numericCost > 1e-9)) return;
+            const currentPayer = overlay.readUnit(payerId) || payer;
+            const cost = costText.includes('%')
+              ? readResourceMax(currentPayer, resource) * numericCost / 100
+              : numericCost;
+            const before = readResource(currentPayer, resource);
+            if (before + 1e-9 < cost) {
+              throw new Error(
+                `battle_preview_resource_insufficient:${resource}`,
+              );
+            }
+            const next = before - cost;
+            overlay.changeUnit(payerId, unit => {
+              setResourceValue(unit, resource, next);
+            });
+            changedUnitIds.add(payerId);
+            ledger.addOutcome({
+              rootActionId,
+              sourceActionId: rootActionId,
+              actor: payer,
+              declaration: basis.declaration,
+              effectInstanceId:
+                `${rootActionId}:cost:${payerIndex}:${resourceIndex}`,
+              targetId: payerId,
+              outcomeKind: 'RESOURCE_OPTION_CHANGED',
+              windowId: 'ACTION_COST',
+              threatValue: 0,
+              evidence: {
+                resource,
+                before,
+                next,
+                delta: -cost,
+                payerIndex,
+                fusionKey: basis.declaration?.fusionKey || '',
+              },
+            });
           });
-          changedUnitIds.add(actorId);
-          ledger.addOutcome({
-            rootActionId,
-            sourceActionId: rootActionId,
-            actor,
-            declaration: basis.declaration,
-            effectInstanceId: `${rootActionId}:cost:0:${index}`,
-            targetId: actorId,
-            outcomeKind: 'RESOURCE_OPTION_CHANGED',
-            windowId: 'ACTION_COST',
-            threatValue: 0,
-            evidence: {
-              resource,
-              before,
-              next,
-              delta: -cost,
-            },
-          });
-        });
+      });
     }
     const primarySuccessProbability = new Map();
     const primaryOutcomeKeyByTarget = new Map();
@@ -6555,6 +6655,13 @@
       activeFingerprints: new Set(),
     };
     basis.effects.forEach((effect, effectIndex) => {
+      if (
+        !String(effect?.原型 || '').trim() &&
+        Array.isArray(effect?.使用效果) &&
+        effect.使用效果.length
+      ) {
+        return;
+      }
       const effectWorldSnapshot = overlay.snapshot();
       const effectActor = overlay.readUnit(actorId) || actor;
       const targets = resolveTargets(
@@ -6591,6 +6698,8 @@
           input?.evadeProbabilityByTarget || {},
         damageMultiplierResolver:
           input?.damageMultiplierResolver,
+        applicationProbabilityResolver:
+          input?.applicationProbabilityResolver,
         hitProbabilityResolver:
           input?.hitProbabilityResolver,
         primarySucceeded: false,
@@ -6823,6 +6932,38 @@
           );
         }
       });
+    });
+    basis.creationCarriers.forEach(carrier => {
+      const recipientId = String(carrier?.recipientId || '').trim();
+      if (!recipientId) return;
+      const effectIndex = Math.max(
+        0,
+        Number.parseInt(String(carrier?.effectIndex ?? 0), 10) || 0,
+      );
+      const effectInstanceId = `${rootActionId}:effect:${effectIndex}`;
+      ledger.addOutcome({
+        rootActionId,
+        sourceActionId: rootActionId,
+        actor,
+        declaration: basis.declaration,
+        effectInstanceId,
+        targetId: recipientId,
+        outcomeKind: 'NEXT_ACTION_QUALITY_CHANGED',
+        windowId:
+          `round:${Number(worldSnapshot?.回合 || 0)}:effect:${effectIndex}`,
+        threatValue: 0,
+        evidence: {
+          delta: 1,
+          productId: String(carrier?.productId || '').trim(),
+          quantity: Math.max(1, Number(carrier?.quantity || 1)),
+          recipientId,
+          useEffectCount: Array.isArray(carrier?.useEffects)
+            ? carrier.useEffects.length
+            : 0,
+          useEffects: cloneValue(carrier?.useEffects || []),
+        },
+      });
+      changedUnitIds.add(recipientId);
     });
     settleImmediateCooperativeSummons({
       overlay,

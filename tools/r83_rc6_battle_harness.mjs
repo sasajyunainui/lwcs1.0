@@ -120,6 +120,7 @@ export function loadBattleSandbox(options = {}) {
   sandbox.self = sandbox;
   vm.createContext(sandbox);
   [
+    'LibraryData_Runtime.js',
     'CharacterLibrary.js',
     'MVU_Skill_Runtime.js',
     'BattlePreview_Module.js',
