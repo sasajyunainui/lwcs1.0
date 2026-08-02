@@ -946,7 +946,71 @@
       "concern": "snapshots",
       "profileId": "zjdl",
       "contract": "3.1.0",
-      "entries": []
+      "entries": [],
+      "applied": {
+        "at": "2026-08-02",
+        "operations": [
+          {
+            "recordId": "snapshots-9build-b7ce1a22481d9d2e",
+            "role": "蓝轩宇",
+            "op": "rebuild",
+            "confidence": 0.85
+          },
+          {
+            "recordId": "snapshots-9build-bdc939bc8019047a",
+            "role": "钱磊",
+            "op": "rebuild",
+            "confidence": 0.7
+          },
+          {
+            "recordId": "snapshots-9build-df9223a3c6e47bf8",
+            "role": "刘锋",
+            "op": "rebuild",
+            "confidence": 0.7
+          },
+          {
+            "recordId": "snapshots-9build-0dd9eb5539922941",
+            "role": "白秀秀",
+            "op": "rebuild",
+            "confidence": 0.6
+          },
+          {
+            "recordId": "snapshots-9build-451da791eee9eba9",
+            "role": "原恩辉辉",
+            "op": "rebuild",
+            "confidence": 0.7
+          },
+          {
+            "recordId": "snapshots-9build-176901b3843b38cc",
+            "role": "蓝梦琴",
+            "op": "rebuild",
+            "confidence": 0.85
+          },
+          {
+            "recordId": "snapshots-9build-f998ba7eb952dde0",
+            "role": "唐雨格",
+            "op": "rebuild",
+            "confidence": 0.85
+          }
+        ],
+        "note": "9 人快照重建已应用（证据见 library_audit/evidence/snapshots_v6_repair.json）"
+      },
+      "manualFixes": [
+        {
+          "recordId": "snapshots-9build-liufeng-manual-7a1e66e995deb67d",
+          "role": "刘锋",
+          "op": "manual",
+          "concern": "snapshots",
+          "at": "2026-08-02",
+          "summary": "修复 opRebuildClone 替换 快照[1] 导致的两技能丢失 + 数据质量问题",
+          "fixes": [
+            "零丢失: 白龙王(3环,白龙挑终极进化) 与 瞬移(5环,龙源星空间技) 原被克隆替换抹掉 → 补入 成长技能模板(原著发生时间30015) + 成长技能效果补录",
+            "快照[0]8岁(1环) 删除 第2魂环[白龙返](2环错位，白龙返仍在快照[1]11岁保留)",
+            "快照[1]11岁 删除 第2魂灵.第2魂环[蛮力横扫](假技，全文检索0命中；已在模板+补录)",
+            "快照[1]11岁 状态 由 龙源星(15岁错位) 改为 天罗星-史莱克学院城-史莱克学院外院/史莱克初测"
+          ]
+        }
+      ]
     }
   ]
 }
