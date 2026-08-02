@@ -461,6 +461,191 @@
       "profileId": "dldl",
       "contract": "3.1.0",
       "entries": []
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "ages-levels",
+      "profileId": "jueshitangmen",
+      "contract": "3.1.0",
+      "entries": []
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "fusions",
+      "profileId": "jueshitangmen",
+      "contract": "3.1.0",
+      "entries": [
+        {
+          "recordId": "fusion-6fe1e1f0dbb907e3",
+          "profileId": "jueshitangmen",
+          "path": "成长技能效果补录.武魂融合技|武魂融合技.璀璨中的凋零黄金之路|璀璨中的凋零黄金之路.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-c0e97d0c7916477e",
+          "profileId": "jueshitangmen",
+          "path": "成长技能效果补录.武魂融合技|武魂融合技.天帝之锤|天帝之锤.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-5698d92d6a1db2ad",
+          "profileId": "jueshitangmen",
+          "path": "成长技能效果补录.武魂融合技|武魂融合技.虚无中的真言心灵风暴|虚无中的真言心灵风暴.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-e772f34270555905",
+          "profileId": "jueshitangmen",
+          "path": "成长技能效果补录.武魂融合技|武魂融合技.冰霜中的独舞光之霓裳|冰霜中的独舞光之霓裳.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-8d77eac712c1ea10",
+          "profileId": "jueshitangmen",
+          "path": "成长技能效果补录.武魂融合技|武魂融合技.天罗地网|天罗地网.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-35c526be0fee9580",
+          "profileId": "jueshitangmen",
+          "path": "成长技能效果补录.武魂融合技|武魂融合技.幽冥白虎|幽冥白虎.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-4562fef31b1591cc",
+          "profileId": "jueshitangmen",
+          "path": "成长技能效果补录.武魂融合技|武魂融合技.命运之龙吟|命运之龙吟.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-517b2db8310dfcde",
+          "profileId": "jueshitangmen",
+          "path": "角色.霍雨浩.快照[1].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-f155f3ce8ac98fbd",
+          "profileId": "jueshitangmen",
+          "path": "角色.戴华斌.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-e211463f9d4affce",
+          "profileId": "jueshitangmen",
+          "path": "角色.朱露.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        }
+      ]
     }
   ]
 }

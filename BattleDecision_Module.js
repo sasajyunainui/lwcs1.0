@@ -38755,6 +38755,14 @@
             if (summonProjectedIndexes.has(index)) {
               return false;
             }
+            const creationProjected =
+              kind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+              creationProjection?.complete === true &&
+              String(contribution?.evidence?.productId || '').trim() ===
+                String(creationProjection?.productId || '').trim() &&
+              String(contribution?.evidence?.recipientId || '').trim() ===
+                String(creationProjection?.recipientId || '').trim();
+            if (creationProjected) return false;
             if (
               kind === 'STATE_CHANGED' ||
               kind === 'NEXT_ACTION_QUALITY_CHANGED'

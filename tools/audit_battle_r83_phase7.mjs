@@ -37,6 +37,7 @@ sandbox.globalThis = sandbox;
 sandbox.self = sandbox;
 vm.createContext(sandbox);
 for (const fileName of [
+  'LibraryData_Runtime.js',
   'CharacterLibrary.js',
   'MVU_Skill_Runtime.js',
   'BattlePreview_Module.js',
@@ -136,7 +137,7 @@ const negativeReactionExclusion = decision.r8CandidateExclusion(
   },
   route(),
   {
-    objectiveUtilityHEPP: -1,
+    objectiveUtilityHEPP: 0,
     directTrajectoryHEPP: 0,
     actionPoolDeltas: [],
     terminal: { terminal: false },
@@ -3726,6 +3727,23 @@ const pressureOnlyCandidateRoute = route({
     rootActionId: 'pressure-only-candidate',
   }],
 });
+const pressureOnlyWorld = structuredClone(futureWindowThreatWorld);
+pressureOnlyWorld.参战者.team_player = pressureOnlyWorld.参战者.team_player
+  .filter(entry => preview.unitId(entry) === 'survival-actor');
+const pressureOnlyProjectedWorld = structuredClone(futureWindowThreatProjectedWorld);
+pressureOnlyProjectedWorld.参战者.team_player = pressureOnlyProjectedWorld.参战者.team_player
+  .filter(entry => preview.unitId(entry) === 'survival-actor');
+const pressureOnlyRouteCatalog = {
+  'survival-actor': {
+    primaryRoute: route({
+      routeKey: 'route:survival-actor-follow-up',
+      candidateId: 'survival-actor:attack',
+      health: [hp('survival-enemy', -25, 'actor-follow-up')],
+    }),
+  },
+  'survival-enemy': futureWindowThreatRouteCatalog['survival-enemy'],
+  'survival-healer': futureWindowThreatRouteCatalog['survival-healer'],
+};
 const pressureOnlyMetrics = {
   rebuildCount: 0,
   previewCalls: 0,
@@ -3749,17 +3767,17 @@ const pressureOnlyMetrics = {
   unknownStateDependencyKeys: {},
 };
 const pressureOnlyEnvelope = decision.buildR8CandidateEnvelopeDeltas({
-  worldSnapshot: futureWindowThreatWorld,
+  worldSnapshot: pressureOnlyWorld,
   actorSide: 'team_player',
-  routeCatalog: futureWindowThreatRouteCatalog,
+  routeCatalog: pressureOnlyRouteCatalog,
   fullRoutesByUnit: Object.fromEntries(
-    Object.entries(futureWindowThreatRouteCatalog).map(([unitId, envelope]) => [
+    Object.entries(pressureOnlyRouteCatalog).map(([unitId, envelope]) => [
       unitId,
       [envelope.primaryRoute].filter(Boolean),
     ]),
   ),
   projectedWorlds: {
-    'pressure-only-candidate': futureWindowThreatProjectedWorld,
+    'pressure-only-candidate': pressureOnlyProjectedWorld,
   },
   projectedWorldRevisions: {
     'pressure-only-candidate': 'pressure-only-projected',
@@ -3773,8 +3791,8 @@ const pressureOnlyEnvelope = decision.buildR8CandidateEnvelopeDeltas({
   },
   opportunitySnapshot: [
     {
-      opportunityId: 'natural:survival-ally:1',
-      ownerId: 'survival-ally',
+      opportunityId: 'natural:survival-actor:2',
+      ownerId: 'survival-actor',
       sequence: 2,
       status: 'PENDING',
     },
