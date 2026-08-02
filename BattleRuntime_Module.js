@@ -6666,6 +6666,9 @@
       worldSnapshot: combatData,
       worldRevision: `runtime:${String(actionEvent?.actionId || '').trim()}`,
       beliefRevision: 'runtime',
+      snapshotRevision: `runtime:${String(actionEvent?.actionId || '').trim()}`,
+      basisView: 'RUNTIME_ACTUAL',
+      captureDamageBasisTrace: true,
       actorId: previewRuntime.unitId(actor),
       declaration: previewDeclaration,
       actionFingerprint: `runtime:${String(actionEvent?.actionId || '').trim()}:effect:${effectIndex}`,
@@ -8259,37 +8262,58 @@
         const reaction = input?.reactionByTarget?.[previewRuntime.unitId(target)] || null;
         if (prototype === '伤害结算') {
           const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 || effect?.段数 || 1)) || 1);
+          const reactionDamageMultiplier = Math.max(
+            0,
+            Math.min(1, Number(reaction?.damageMultiplier ?? 1)),
+          );
+          const actualSnapshotRevision = `runtime:${String(actionEvent?.actionId || '').trim()}`;
+          const actualDamageBasis = previewRuntime.buildDamageBasis(
+            effect,
+            actor,
+            target,
+            null,
+            {
+              basisView: 'RUNTIME_ACTUAL',
+              effectInstanceId: sourceEffectId,
+              sourceEffectId,
+              sourceActionId: actionEvent.actionId,
+              snapshotRevision: actualSnapshotRevision,
+              actionDamageMultiplier,
+              reactionDamageMultiplier,
+            },
+          );
+          previewRuntime.assertDamageBasis(actualDamageBasis, {
+            basisView: 'RUNTIME_ACTUAL',
+            actorId: previewRuntime.unitId(actor),
+            targetId: previewRuntime.unitId(target),
+            effectInstanceId: sourceEffectId,
+            sourceEffectId,
+            sourceActionId: actionEvent.actionId,
+            snapshotRevision: actualSnapshotRevision,
+          });
+          const actualDamageBasisMetadata = previewRuntime.damageBasisMetadata(
+            actualDamageBasis,
+            { includeFormulaTrace: true },
+          );
+          const actualDamageBasisReference = Object.freeze({
+            schemaVersion: actualDamageBasis.schemaVersion,
+            basisView: actualDamageBasis.basisView,
+            formulaVersion: actualDamageBasis.formulaVersion,
+            basisHash: actualDamageBasis.basisHash,
+            identity: actualDamageBasisMetadata.identity,
+            publicOperands: actualDamageBasisMetadata.publicOperands,
+          });
           const totalDamage = Math.max(
             0,
-            previewRuntime.calculateBaseDamage(effect, actor, target) * actionDamageMultiplier,
+            Number(actualDamageBasis.operands.rawDamage || 0),
           );
           const segmentDamage = totalDamage / segments;
           const hitProbability = Math.max(0, Math.min(1, previewRuntime.estimateHitProbability(actor, target, effect)));
-          const damageTypeText = String(effect?.伤害类型 || '').trim();
-          const damageClass = /真实/.test(damageTypeText)
-            ? 'TRUE'
-            : /精神/.test(damageTypeText)
-              ? 'MENTAL'
-              : /远程/.test(damageTypeText)
-                ? 'RANGED'
-                : 'MELEE';
-          const formulaAttackValue = damageClass === 'MENTAL'
-            ? previewRuntime.readCombatStat(actor, 'men')
-            : previewRuntime.readCombatStat(actor, 'str');
-          const rawDefenseValue = damageClass === 'MENTAL'
-            ? previewRuntime.readCombatStat(target, 'men')
-            : previewRuntime.readCombatStat(target, 'def');
-          const penetration = previewRuntime.calculateDefensePenetration(
-            effect,
-            actor,
-            rawDefenseValue,
-          );
-          const formulaDefenseValue = Math.max(
-            1,
-            rawDefenseValue - penetration.penetrationValue,
-          );
           let anySegmentHit = false;
           for (let segment = 0; segment < segments; segment += 1) {
+            const damageBasisForFact = segment === 0
+              ? actualDamageBasisMetadata
+              : actualDamageBasisReference;
             if (reaction?.evaded === true) {
               facts.push(writeLedgerEvent(combatData, {
                 eventKind: 'hit_result', round: Number(combatData?.回合 || 0),
@@ -8307,6 +8331,8 @@
                   hitProbability,
                   roll: null,
                   appliedDamage: 0,
+                  basisHash: actualDamageBasis.basisHash,
+                  damageBasis: damageBasisForFact,
                   reactionEventId: String(reaction?.event?.eventId || '').trim(),
                   dodgeRate: reaction?.event?.meta?.dodgeRate,
                   dodgeRoll: reaction?.event?.meta?.dodgeRoll,
@@ -8345,6 +8371,8 @@
                   hitProbability,
                   roll,
                   appliedDamage: 0,
+                  basisHash: actualDamageBasis.basisHash,
+                  damageBasis: damageBasisForFact,
                   reactionEventId: String(reaction?.event?.eventId || '').trim(),
                   before: previewRuntime.readHp(target),
                   after: previewRuntime.readHp(target),
@@ -8355,7 +8383,6 @@
             }
             const before = previewRuntime.readHp(target);
             const nonlethal = /点到为止|切磋|训练|非致命/.test(String(combatData?.战斗意图 || '').trim());
-            const defenseMultiplier = Math.max(0, Math.min(1, Number(reaction?.damageMultiplier ?? 1)));
             const shieldBefore = currentShieldTotal(target);
             const nonlethalHpFloor = nonlethal
               ? previewRuntime.calculateNonlethalHpFloor(combatData, target, {
@@ -8366,7 +8393,7 @@
             const hpDamageLimit = nonlethal ? Math.max(0, before - nonlethalHpFloor) : before;
             const incomingDamage = Math.max(0, Math.min(
               shieldBefore + hpDamageLimit,
-              previewRuntime.calculateSettledSegmentDamage(totalDamage, segments, defenseMultiplier),
+              previewRuntime.calculateSettledSegmentDamage(totalDamage, segments, reactionDamageMultiplier),
             ));
             const shieldResult = absorbRuntimeShield(target, incomingDamage);
             const damage = Math.max(0, Math.min(hpDamageLimit, shieldResult.remainingDamage));
@@ -8414,28 +8441,19 @@
               meta: {
                 source: 'structured_runtime', effectIndex, segment: segment + 1, segments, hitProbability, roll,
                 rawDamage: segmentDamage,
+                rawDamageTotal: totalDamage,
                 incomingDamage,
-                defenseMultiplier,
+                defenseMultiplier: reactionDamageMultiplier,
                 shieldAbsorb: shieldResult.absorbed,
                 appliedDamage: damage,
                 damageType: effect?.伤害类型 || '',
-                formulaTrace: {
-                  damageClass,
-                  attackValue: formulaAttackValue,
-                  defenseValue: formulaDefenseValue,
-                  rawDefenseValue,
-                  flatPenetrationValue:
-                    penetration.flatPenetrationValue,
-                  stateArmorPenRatio:
-                    penetration.stateArmorPenRatio,
-                  stateArmorPenetrationValue:
-                    penetration.stateArmorPenetrationValue,
-                  penetrationValue: penetration.penetrationValue,
-                },
+                basisHash: actualDamageBasis.basisHash,
+                damageBasis: damageBasisForFact,
+                formulaTrace: actualDamageBasis.formulaTrace,
                 intentLethalPrevented: nonlethal && damage < previewRuntime.calculateSettledSegmentDamage(
                   totalDamage,
                   segments,
-                  defenseMultiplier,
+                  reactionDamageMultiplier,
                 ),
                 reactionEventId: String(reaction?.event?.eventId || '').trim(),
                 before,
@@ -12632,6 +12650,42 @@
 
   function cloneAuditSnapshot(value, depth = 0) {
     if (value == null || typeof value !== 'object') return value;
+    if (value.schemaVersion === 'DamageBasisV1') {
+      const identity = value.identity && typeof value.identity === 'object'
+        ? value.identity
+        : {};
+      const publicOperands = value.publicOperands &&
+        typeof value.publicOperands === 'object'
+        ? value.publicOperands
+        : {};
+      const operandKeys = [
+        'damageClass',
+        'damageType',
+        'power',
+        'powerRatio',
+        'segments',
+        'actionDamageMultiplier',
+      ];
+      return {
+        schemaVersion: 'DamageBasisV1',
+        basisView: String(value.basisView || '').trim().toUpperCase(),
+        formulaVersion: String(value.formulaVersion || '').trim(),
+        basisHash: String(value.basisHash || '').trim(),
+        identity: {
+          effectInstanceId: String(identity.effectInstanceId || '').trim(),
+          sourceEffectId: String(identity.sourceEffectId || '').trim(),
+          sourceActionId: String(identity.sourceActionId || '').trim(),
+          actorId: String(identity.actorId || '').trim(),
+          targetId: String(identity.targetId || '').trim(),
+          snapshotRevision: String(identity.snapshotRevision || '').trim(),
+        },
+        publicOperands: Object.fromEntries(
+          operandKeys
+            .filter(key => Object.hasOwn(publicOperands, key))
+            .map(key => [key, publicOperands[key]]),
+        ),
+      };
+    }
     if (depth >= 6) {
       if (
         Object.hasOwn(value, 'lower') &&

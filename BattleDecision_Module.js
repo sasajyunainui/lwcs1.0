@@ -2694,6 +2694,40 @@
       ].forEach(key => {
         if (evidence[key] !== undefined && evidence[key] !== null) publicEvidence[key] = evidence[key];
       });
+      const rawDamageBasis = evidence?.damageBasis && typeof evidence.damageBasis === 'object'
+        ? evidence.damageBasis
+        : null;
+      const safeDamageBasis = rawDamageBasis
+        ? {
+            schemaVersion: String(rawDamageBasis.schemaVersion || '').trim(),
+            basisView: String(rawDamageBasis.basisView || '').trim().toUpperCase(),
+            formulaVersion: String(rawDamageBasis.formulaVersion || '').trim(),
+            basisHash: String(rawDamageBasis.basisHash || '').trim(),
+            identity: {
+              effectInstanceId: String(rawDamageBasis.identity?.effectInstanceId || '').trim(),
+              sourceEffectId: String(rawDamageBasis.identity?.sourceEffectId || '').trim(),
+              sourceActionId: String(rawDamageBasis.identity?.sourceActionId || '').trim(),
+              actorId: String(rawDamageBasis.identity?.actorId || '').trim(),
+              targetId: String(rawDamageBasis.identity?.targetId || '').trim(),
+              snapshotRevision: String(rawDamageBasis.identity?.snapshotRevision || '').trim(),
+            },
+            publicOperands: Object.fromEntries(
+              [
+                'damageClass',
+                'damageType',
+                'power',
+                'powerRatio',
+                'segments',
+                'actionDamageMultiplier',
+              ]
+                .filter(key => rawDamageBasis.publicOperands?.[key] !== undefined)
+                .map(key => [key, rawDamageBasis.publicOperands[key]]),
+            ),
+          }
+        : null;
+      if (safeDamageBasis?.basisHash && safeDamageBasis?.schemaVersion === 'DamageBasisV1') {
+        publicEvidence.damageBasis = Object.freeze(safeDamageBasis);
+      }
       if (outcomeKind === 'HP_DELTA' && Number.isFinite(expectedDelta)) {
         if (expectedDelta < 0) publicEvidence.expectedDamage = Math.abs(expectedDelta);
         if (expectedDelta > 0) publicEvidence.delta = expectedDelta;
@@ -2714,6 +2748,15 @@
         ), 0, 1),
         reactionDamageMultiplier: clamp(Number(evidence?.reactionDamageMultiplier ?? 1), 0, 1),
         damageType: String(evidence?.damageType || '').trim(),
+        ...(safeDamageBasis?.basisHash
+          ? {
+              basisHash: safeDamageBasis.basisHash,
+              basisView: safeDamageBasis.basisView,
+              formulaVersion: safeDamageBasis.formulaVersion,
+              snapshotRevision: safeDamageBasis.identity.snapshotRevision,
+              publicOperands: Object.freeze(safeDamageBasis.publicOperands),
+            }
+          : {}),
         sourceEffectId: String(entry?.effectInstanceId || '').trim(),
         evidence: Object.freeze(publicEvidence),
         executionRole: /:summon-assist(?::|$)/i.test(String(entry?.effectInstanceId || '').trim())
@@ -19766,6 +19809,9 @@
       const terminal = r8TerminalUtility(
         {
           ...objectiveRequest,
+          terminalProjectionMode: routeHasProbabilisticOutcome
+            ? 'FULL'
+            : 'SUMMARY',
           terminalCallOrigin: 'RESOURCE_OPPORTUNITY_PLAN',
         },
         conditionedRoute,
@@ -19951,6 +19997,9 @@
           consumedOpportunityIds: Object.freeze(consumedOpportunityIds),
         });
       });
+      const deterministicActionPoolContext =
+        !routeHasProbabilisticBehavior &&
+        behaviorProjections.every(entry => entry?.probabilistic !== true);
       const nonObjectiveBehavior = storedActionPoolDeltas.length
         ? behaviorProjections.reduce(
             (sum, entry) => sum + Number(entry?.expectedUtilityHEPP || 0),
@@ -19996,11 +20045,31 @@
         0,
         1,
       );
+      const exactHealthBranchWorlds = [
+        ...(Array.isArray(terminal?.terminalBranchWorlds)
+          ? terminal.terminalBranchWorlds
+          : []),
+        ...(Array.isArray(terminal?.ongoingBranchWorlds)
+          ? terminal.ongoingBranchWorlds
+          : []),
+      ];
+      const exactHealthBranchWorldsValid =
+        exactHealthBranchWorlds.length > 0 &&
+        exactHealthBranchWorlds.every(branch => {
+          const probability = Number(branch?.probability);
+          return Number.isFinite(probability) &&
+            probability >= -1e-12 &&
+            probability <= 1 + 1e-12;
+        });
+      const exactHealthBranchMass = exactHealthBranchWorlds.reduce(
+        (sum, branch) => sum + Number(branch?.probability || 0),
+        0,
+      );
       const exactHealthProbabilityBranchesEligible =
         routeHasProbabilisticOutcome &&
-        storedActionPoolDeltas.length === 0 &&
-        Array.isArray(terminal?.ongoingBranchWorlds) &&
-        Array.isArray(terminal?.terminalBranchWorlds);
+        deterministicActionPoolContext &&
+        exactHealthBranchWorldsValid &&
+        Math.abs(exactHealthBranchMass - 1) <= 1e-9;
       const operationStateBranches = operationBranches.map(branch => {
         return Object.freeze({
           branchKey: Object.entries(branch?.outcomeIds || {})
@@ -26716,6 +26785,12 @@
       expectedDiscardedOverkillPP: Number(
         distribution?.expectedDiscardedOverkillPP || 0,
       ),
+      terminalProjectionMode: String(
+        distribution?.terminalProjectionMode || 'FULL',
+      ).trim().toUpperCase(),
+      terminalBranchCount: Number(distribution?.terminalBranchCount || 0),
+      ongoingBranchCount: Number(distribution?.ongoingBranchCount || 0),
+      branchWorldMass: Number(distribution?.branchWorldMass || 0),
       terminalPathSlots: distribution?.terminalPathSlots || [],
     });
   }
@@ -26986,14 +27061,31 @@
       cacheIdentity?.semanticCacheKey ||
       '',
     ).trim();
+    const terminalProjectionMode = String(
+      cacheIdentity?.terminalProjectionMode || 'FULL',
+    ).trim().toUpperCase();
     const worldDependencyHash = String(
       cacheIdentity?.worldDependencyHash || '',
     ).trim();
     const routeSignature = String(
       cacheIdentity?.routeSignature || '',
     );
+    const terminalBranchWorlds = Array.isArray(terminal?.terminalBranchWorlds)
+      ? terminal.terminalBranchWorlds
+      : [];
+    const ongoingBranchWorlds = Array.isArray(terminal?.ongoingBranchWorlds)
+      ? terminal.ongoingBranchWorlds
+      : [];
+    const branchWorldMass = [
+      ...terminalBranchWorlds,
+      ...ongoingBranchWorlds,
+    ].reduce(
+      (sum, branch) => sum + Number(branch?.probability || 0),
+      0,
+    );
     const core = {
       schemaVersion: 'MechanicalTerminalDistributionV1',
+      terminalProjectionMode,
       worldDependencyHash,
       routeMechanicalHash: routeSignature,
       firstTerminalSequence:
@@ -27026,6 +27118,9 @@
       expectedDiscardedOverkillPP: Number(
         terminal?.expectedDiscardedOverkillPP || 0,
       ),
+      terminalBranchCount: terminalBranchWorlds.length,
+      ongoingBranchCount: ongoingBranchWorlds.length,
+      branchWorldMass,
       terminalPathSlots,
       sourceNeutralEvents: terminalPathSlots,
       branchAssignments: Object.freeze([]),
@@ -27045,8 +27140,13 @@
       core.expectedDiscardedOverkillPP,
       terminalPathSlots,
     ]);
-    const resolvedDistributionIdentity =
-      distributionIdentity || fallbackDistributionIdentity;
+    const resolvedDistributionIdentity = preview.stableHash({
+      distributionIdentity: distributionIdentity || fallbackDistributionIdentity,
+      terminalProjectionMode,
+      terminalBranchCount: terminalBranchWorlds.length,
+      ongoingBranchCount: ongoingBranchWorlds.length,
+      branchWorldMass,
+    });
     const distribution = {
       ...core,
       distributionHash:
@@ -27369,6 +27469,7 @@
           semanticCacheKey,
           distributionIdentity,
           worldDependencyHash: terminalWorldDependencyHash,
+          terminalProjectionMode,
           routeSignature: [
             routeMechanicalSignature,
             utilityMechanicalSignature,

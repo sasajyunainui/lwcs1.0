@@ -1674,11 +1674,12 @@
     return clamp(Math.pow(Math.max(0.01, actorMax / Math.max(1, targetMax)), 0.45), 0.35, 1.85);
   }
 
-  function calculateBaseDamage(
+  function calculateDamageFormula(
     effect = {},
     actor = {},
     target = {},
     projectionContext = null,
+    actionDamageMultiplier = 1,
   ) {
     const damageClass = classifyDamageType(effect?.伤害类型);
     const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0));
@@ -1743,7 +1744,242 @@
             Math.max(0, 1 - clamp(Number(combatEffect?.damage_reduction || 0), 0, 1));
         }, 1);
     const perSegment = total * actorMultiplier * targetMultiplier / segments;
-    return Math.max(0, perSegment * segments);
+    const baseRawDamage = Math.max(0, perSegment * segments);
+    const normalizedActionMultiplier = Math.max(
+      0,
+      Number(actionDamageMultiplier || 1),
+    );
+    const resourceName = damageClass === 'MENTAL' ? '精神力' : '魂力';
+    const actorResourceMax = Number.isFinite(Number(actorProfile?.resourceMax?.[resourceName]))
+      ? Number(actorProfile.resourceMax[resourceName])
+      : readResourceMax(actor, resourceName);
+    const targetResourceMax = Number.isFinite(Number(targetProfile?.resourceMax?.[resourceName]))
+      ? Number(targetProfile.resourceMax[resourceName])
+      : readResourceMax(target, resourceName);
+    const resourceRatio = Math.max(
+      0.01,
+      actorResourceMax / Math.max(1, targetResourceMax),
+    );
+    const resourceDrive = resourceDriveScale(
+      actor,
+      target,
+      resourceName,
+      projectionContext,
+    );
+    return Object.freeze({
+      damageClass,
+      damageType: String(effect?.伤害类型 || '').trim(),
+      power,
+      powerRatio,
+      attack,
+      rawDefense,
+      penetration: Object.freeze({ ...penetration }),
+      defense,
+      segments,
+      actorMultiplier,
+      targetMultiplier,
+      resourceName,
+      actorResourceMax,
+      targetResourceMax,
+      resourceRatio,
+      resourceDrive,
+      baseRawDamage,
+      actionDamageMultiplier: normalizedActionMultiplier,
+      rawDamage: Math.max(0, baseRawDamage * normalizedActionMultiplier),
+    });
+  }
+
+  function buildDamageBasis(
+    effect = {},
+    actor = {},
+    target = {},
+    projectionContext = null,
+    options = {},
+  ) {
+    const basisView = String(options?.basisView || '').trim().toUpperCase();
+    if (!['DECISION_VISIBLE', 'BELIEF', 'RUNTIME_ACTUAL'].includes(basisView)) {
+      throw new Error(`DAMAGE_BASIS_VIEW_INVALID:${basisView || 'missing'}`);
+    }
+    const formulaVersion = 'R8_DAMAGE_FORMULA_V1';
+    const formula = calculateDamageFormula(
+      effect,
+      actor,
+      target,
+      projectionContext,
+      options?.actionDamageMultiplier,
+    );
+    const reactionDamageMultiplier = clamp(
+      Number(options?.reactionDamageMultiplier ?? 1),
+      0,
+      1,
+    );
+    const identity = Object.freeze({
+      effectInstanceId: String(options?.effectInstanceId || '').trim(),
+      sourceEffectId: String(options?.sourceEffectId || options?.effectInstanceId || '').trim(),
+      sourceActionId: String(options?.sourceActionId || '').trim(),
+      actorId: unitId(actor),
+      targetId: unitId(target),
+      snapshotRevision: String(options?.snapshotRevision || '').trim(),
+    });
+    const operands = Object.freeze({
+      damageClass: formula.damageClass,
+      damageType: formula.damageType,
+      power: formula.power,
+      powerRatio: formula.powerRatio,
+      attack: formula.attack,
+      rawDefense: formula.rawDefense,
+      penetration: formula.penetration,
+      defense: formula.defense,
+      segments: formula.segments,
+      actorMultiplier: formula.actorMultiplier,
+      targetMultiplier: formula.targetMultiplier,
+      resourceName: formula.resourceName,
+      actorResourceMax: formula.actorResourceMax,
+      targetResourceMax: formula.targetResourceMax,
+      resourceRatio: formula.resourceRatio,
+      resourceDrive: formula.resourceDrive,
+      actionDamageMultiplier: formula.actionDamageMultiplier,
+      reactionDamageMultiplier,
+      baseRawDamage: formula.baseRawDamage,
+      rawDamage: formula.rawDamage,
+    });
+    const publicOperands = Object.freeze({
+      damageClass: formula.damageClass,
+      damageType: formula.damageType,
+      power: formula.power,
+      powerRatio: formula.powerRatio,
+      segments: formula.segments,
+      actionDamageMultiplier: formula.actionDamageMultiplier,
+    });
+    const basisHash = stableHash({
+      schemaVersion: 'DamageBasisV1',
+      formulaVersion,
+      basisView,
+      identity,
+      operands,
+    });
+    return Object.freeze({
+      schemaVersion: 'DamageBasisV1',
+      basisView,
+      formulaVersion,
+      basisHash,
+      identity,
+      operands,
+      publicOperands,
+      formulaTrace: Object.freeze({
+        formulaVersion,
+        rawDamage: formula.rawDamage,
+        baseRawDamage: formula.baseRawDamage,
+        reactionDamageMultiplier,
+        damageClass: formula.damageClass,
+        damageType: formula.damageType,
+        attackValue: formula.attack,
+        defenseValue: formula.defense,
+        rawDefenseValue: formula.rawDefense,
+        flatPenetrationValue: formula.penetration.flatPenetrationValue,
+        stateArmorPenRatio: formula.penetration.stateArmorPenRatio,
+        stateArmorPenetrationValue: formula.penetration.stateArmorPenetrationValue,
+        penetrationValue: formula.penetration.penetrationValue,
+        perSegmentDamage: calculateSettledSegmentDamage(
+          formula.rawDamage,
+          formula.segments,
+          reactionDamageMultiplier,
+        ),
+        ...operands,
+      }),
+    });
+  }
+
+  function assertDamageBasis(basis = {}, expected = {}) {
+    if (!basis || typeof basis !== 'object' || Array.isArray(basis)) {
+      throw new TypeError('DAMAGE_BASIS_INVALID');
+    }
+    if (basis.schemaVersion !== 'DamageBasisV1') {
+      throw new Error(`DAMAGE_BASIS_SCHEMA_INVALID:${String(basis.schemaVersion || '')}`);
+    }
+    if (!['DECISION_VISIBLE', 'BELIEF', 'RUNTIME_ACTUAL'].includes(String(basis.basisView || '').trim())) {
+      throw new Error(`DAMAGE_BASIS_VIEW_INVALID:${String(basis.basisView || '')}`);
+    }
+    if (basis.formulaVersion !== 'R8_DAMAGE_FORMULA_V1') {
+      throw new Error(`DAMAGE_BASIS_FORMULA_VERSION_INVALID:${String(basis.formulaVersion || '')}`);
+    }
+    const identity = basis.identity;
+    const operands = basis.operands;
+    if (!identity || typeof identity !== 'object' || !operands || typeof operands !== 'object') {
+      throw new Error('DAMAGE_BASIS_PAYLOAD_MISSING');
+    }
+    ['actorId', 'targetId', 'effectInstanceId', 'sourceEffectId', 'sourceActionId', 'snapshotRevision']
+      .forEach(key => {
+        if (typeof identity[key] !== 'string') {
+          throw new Error(`DAMAGE_BASIS_IDENTITY_INVALID:${key}`);
+        }
+      });
+    if (!identity.actorId || !identity.targetId || !identity.effectInstanceId || !identity.sourceActionId || !identity.snapshotRevision) {
+      throw new Error('DAMAGE_BASIS_IDENTITY_INCOMPLETE');
+    }
+    if (typeof basis.basisHash !== 'string' || !basis.basisHash) {
+      throw new Error('DAMAGE_BASIS_HASH_MISSING');
+    }
+    const expectedHash = stableHash({
+      schemaVersion: 'DamageBasisV1',
+      formulaVersion: basis.formulaVersion,
+      basisView: basis.basisView,
+      identity,
+      operands,
+    });
+    if (basis.basisHash !== expectedHash) {
+      throw new Error('DAMAGE_BASIS_HASH_MISMATCH');
+    }
+    const expectedView = String(expected?.basisView || '').trim().toUpperCase();
+    if (expectedView && basis.basisView !== expectedView) {
+      throw new Error(`DAMAGE_BASIS_SCOPE_MISMATCH:${expectedView}:${basis.basisView}`);
+    }
+    ['actorId', 'targetId', 'effectInstanceId', 'sourceEffectId', 'sourceActionId', 'snapshotRevision']
+      .forEach(key => {
+        const expectedValue = expected?.[key];
+        if (expectedValue !== undefined && String(expectedValue || '').trim() !== identity[key]) {
+          throw new Error(`DAMAGE_BASIS_IDENTITY_MISMATCH:${key}`);
+        }
+      });
+    return true;
+  }
+
+  function damageBasisMetadata(basis = {}, options = {}) {
+    assertDamageBasis(basis);
+    const identity = Object.freeze({
+      effectInstanceId: basis.identity.effectInstanceId,
+      sourceEffectId: basis.identity.sourceEffectId,
+      sourceActionId: basis.identity.sourceActionId,
+      actorId: basis.identity.actorId,
+      targetId: basis.identity.targetId,
+      snapshotRevision: basis.identity.snapshotRevision,
+    });
+    const metadata = {
+      schemaVersion: basis.schemaVersion,
+      basisView: basis.basisView,
+      formulaVersion: basis.formulaVersion,
+      basisHash: basis.basisHash,
+      identity,
+      publicOperands: Object.freeze({ ...basis.publicOperands }),
+    };
+    const includeHiddenTrace = options?.includeFormulaTrace === true && (
+      basis.basisView === 'RUNTIME_ACTUAL' ||
+      options?.diagnostic === true
+    );
+    if (includeHiddenTrace) {
+      metadata.operands = basis.operands;
+      metadata.formulaTrace = basis.formulaTrace;
+    }
+    return Object.freeze(metadata);
+  }
+
+  function calculateBaseDamage(
+    effect = {},
+    actor = {},
+    target = {},
+    projectionContext = null,
+  ) {
+    return calculateDamageFormula(effect, actor, target, projectionContext).rawDamage;
   }
 
   function calculateDefensePenetration(
@@ -4037,8 +4273,6 @@
       if (prototype === '伤害结算') {
         targets.forEach(target => {
           const currentTarget = overlay.readUnit(unitId(target));
-          const rawDamage = calculateBaseDamage(effect, actor, currentTarget) *
-            Math.max(0, Number(context?.actionDamageMultiplier || 1));
           const baseHitProbability = estimateHitProbability(actor, currentTarget, effect);
           const resolvedHitProbability = typeof context?.hitProbabilityResolver === 'function'
             ? context.hitProbabilityResolver({
@@ -4084,6 +4318,34 @@
             context?.damageMultiplierByTarget?.get?.(unitId(target)) ??
             1
           ), 0, 1);
+          const damageBasis = buildDamageBasis(
+            effect,
+            actor,
+            currentTarget,
+            context?.projectionContext || null,
+            {
+              basisView: context?.basisView || 'DECISION_VISIBLE',
+              effectInstanceId: context.effectInstanceId,
+              sourceEffectId: context.effectInstanceId,
+              sourceActionId: context.rootActionId,
+              snapshotRevision: context.snapshotRevision,
+              actionDamageMultiplier: context?.actionDamageMultiplier,
+              reactionDamageMultiplier,
+            },
+          );
+          assertDamageBasis(damageBasis, {
+            basisView: context?.basisView || 'DECISION_VISIBLE',
+            actorId: unitId(actor),
+            targetId: unitId(currentTarget),
+            effectInstanceId: context.effectInstanceId,
+            sourceActionId: context.rootActionId,
+            snapshotRevision: context.snapshotRevision,
+          });
+          const rawDamage = damageBasis.operands.rawDamage;
+          const damageBasisEvidence = damageBasisMetadata(damageBasis, {
+            includeFormulaTrace: context?.captureDamageBasisTrace === true,
+            diagnostic: context?.captureDamageBasisTrace === true,
+          });
           const nonlethalIntent = /点到为止|切磋|训练|非致命/.test(String(context?.battleIntent?.mode || context?.battleIntent || '').trim());
           const nonlethalHpFloor = nonlethalIntent
             ? calculateNonlethalHpFloor(overlay.snapshot(), currentTarget, context?.battleIntent || {})
@@ -4262,6 +4524,7 @@
               fullHitIncoming: damageExpectation.fullHitIncoming,
               fullHitShieldAbsorb: damageExpectation.fullHitShieldAbsorb,
               fullHitDamage,
+              damageBasis: damageBasisEvidence,
               outcomeDistribution: Object.freeze(outcomeDistribution.map(Object.freeze)),
               distributionGroupKey: String(
                 outcomeAssignmentKey ||
@@ -5476,10 +5739,16 @@
     worldSnapshot,
     nodeBudget,
     battleIntent,
+    basisView = 'DECISION_VISIBLE',
+    snapshotRevision,
+    projectionContext = null,
+    captureDamageBasisTrace = false,
     damageMultiplierByTarget,
     evadeProbabilityByTarget,
     damageMultiplierResolver,
+    applicationProbabilityResolver,
     hitProbabilityResolver,
+    forcedApplicationProbabilityByEffect = {},
   }) {
     const summonEvents = overlay.mergedScheduledEvents().filter(event =>
       event?.type === 'SUMMON_CREATE' &&
@@ -5508,6 +5777,12 @@
           .map(targetId => hostileUnits.find(unit => unitId(unit) === targetId))
           .find(Boolean);
         const target = preferredTarget || hostileUnits[0] || null;
+        const targetId = target ? unitId(target) : '';
+        const summonApplicationProbability = clamp(
+          Number(event?.applicationProbability ?? 1),
+          0,
+          1,
+        );
         const skill = Array.isArray(summon?.技能列表) ? summon.技能列表[0] : null;
         const damageEffects = Array.isArray(skill?._效果数组)
           ? skill._效果数组.filter(effect => String(effect?.原型 || '').trim() === '伤害结算')
@@ -5536,10 +5811,20 @@
               effectInstanceId: `${rootActionId}:summon-assist:${summonIndex + 1}:effect:${effectIndex}`,
               windowId: `${summonId}:window:1`,
               battleIntent,
+              basisView,
+              snapshotRevision,
+              projectionContext,
+              captureDamageBasisTrace,
+              applicationProbability: summonApplicationProbability,
+              applicationProbabilityByTarget: new Map([
+                [targetId, summonApplicationProbability],
+              ]),
               damageMultiplierByTarget,
               evadeProbabilityByTarget,
               damageMultiplierResolver,
+              applicationProbabilityResolver,
               hitProbabilityResolver,
+              forcedApplicationProbabilityByEffect,
             }, 1);
           });
         }
@@ -5924,6 +6209,9 @@
     actor,
     actorProfile,
     battleIntent,
+    basisView = 'DECISION_VISIBLE',
+    snapshotRevision = '',
+    captureDamageBasisTrace = false,
   }) {
     const contributions = [];
     const changedUnitIds = new Set();
@@ -6043,12 +6331,27 @@
         const windowId =
           `round:${Number(worldSnapshot?.回合 || 0)}:effect:${effectIndex}`;
         if (prototype === '伤害结算') {
-          const rawDamage = calculateBaseDamage(
+          const damageBasis = buildDamageBasis(
             effect,
             actor,
             target,
             projectionContext,
+            {
+              basisView,
+              effectInstanceId: `${String(basis.identity || basis.declaration?.actionId || 'mechanical').trim()}:effect:${effectIndex}`,
+              sourceEffectId: String(effect?.effectId || effect?.效果ID || '').trim() || `${String(basis.identity || basis.declaration?.actionId || 'mechanical').trim()}:effect:${effectIndex}`,
+              sourceActionId: String(basis.declaration?.actionId || basis.identity || 'mechanical').trim(),
+              snapshotRevision: String(snapshotRevision || basis.identity || '').trim(),
+              actionDamageMultiplier: 1,
+              reactionDamageMultiplier: 1,
+            },
           );
+          assertDamageBasis(damageBasis, { basisView });
+          const rawDamage = damageBasis.operands.rawDamage;
+          const damageBasisEvidence = damageBasisMetadata(damageBasis, {
+            includeFormulaTrace: captureDamageBasisTrace === true,
+            diagnostic: captureDamageBasisTrace === true,
+          });
           const hitProbability = estimateHitProbability(
             actor,
             target,
@@ -6130,6 +6433,7 @@
               fullHitShieldAbsorb:
                 damageExpectation.fullHitShieldAbsorb,
               fullHitDamage: damageExpectation.fullHitHpDamage,
+              damageBasis: damageBasisEvidence,
               outcomeDistribution:
                 damageExpectation.outcomeDistribution,
               delta: -expectedDamage,
@@ -6464,6 +6768,22 @@
     if (!worldSnapshot || typeof worldSnapshot !== 'object') {
       throw new TypeError('R9V2_MECHANICAL_BASIS_WORLD_MISSING');
     }
+    const resolvedSnapshotRevision = String(
+      input?.snapshotRevision ||
+      [
+        input?.revision ||
+        basis.identity ||
+        `world:${stableHash(worldSnapshot)}`,
+        input?.beliefRevision || '',
+      ]
+        .filter(Boolean)
+        .join('|'),
+    ).trim();
+    const basisView = String(
+      input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
+    ).trim().toUpperCase();
+    const snapshotRevision = resolvedSnapshotRevision;
+    const captureDamageBasisTrace = input?.captureDamageBasisTrace === true;
     if (
       projectionContext &&
       (
@@ -6562,6 +6882,9 @@
         actor,
         actorProfile,
         battleIntent: input?.battleIntent || {},
+        basisView: input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
+        snapshotRevision: resolvedSnapshotRevision,
+        captureDamageBasisTrace: input?.captureDamageBasisTrace === true,
       });
     }
     const rootActionId = String(
@@ -6702,6 +7025,10 @@
           input?.applicationProbabilityResolver,
         hitProbabilityResolver:
           input?.hitProbabilityResolver,
+        basisView: input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
+        snapshotRevision: resolvedSnapshotRevision,
+        projectionContext,
+        captureDamageBasisTrace: input?.captureDamageBasisTrace === true,
         primarySucceeded: false,
         primaryOutcomeKeyByTarget,
         primaryOutcomeDistributionByTarget,
@@ -6973,11 +7300,18 @@
       worldSnapshot,
       nodeBudget,
       battleIntent: input?.battleIntent || {},
+      basisView,
+      snapshotRevision,
+      projectionContext,
+      captureDamageBasisTrace,
       damageMultiplierByTarget: input?.damageMultiplierByTarget || {},
       evadeProbabilityByTarget:
         input?.evadeProbabilityByTarget || {},
       damageMultiplierResolver: input?.damageMultiplierResolver,
+      applicationProbabilityResolver: input?.applicationProbabilityResolver,
       hitProbabilityResolver: input?.hitProbabilityResolver,
+      forcedApplicationProbabilityByEffect:
+        input?.forcedApplicationProbabilityByEffect || {},
     });
     ledger.entries.forEach(entry => {
       const targetId = String(entry?.targetId || '').trim();
@@ -7251,6 +7585,15 @@
   }
 
   function buildCacheKey(input = {}) {
+    const cacheBasisView = String(
+      input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
+    ).trim().toUpperCase();
+    const cacheSnapshotRevision = String(
+      input?.snapshotRevision ||
+      [input?.worldRevision || stableHash(input?.worldSnapshot || {}), input?.beliefRevision || '']
+        .filter(Boolean)
+        .join('|'),
+    ).trim();
     const damageMultiplierKey = Object.entries(input.damageMultiplierByTarget || {})
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([targetId, multiplier]) => `${JSON.stringify(targetId)}:${JSON.stringify(Number(multiplier) || 0)}`)
@@ -7273,6 +7616,9 @@
       input.collectProbabilityBranches === true ? 'collect-probability-branches' : '',
       String(input.paymentMode || 'FORMAL').trim().toUpperCase(),
       input.horizon || 'SHALLOW',
+      cacheBasisView,
+      cacheSnapshotRevision,
+      input.captureDamageBasisTrace === true ? 'capture-damage-basis-trace' : '',
     ].join('|');
   }
 
@@ -7302,6 +7648,18 @@
     const actor = findUnit(worldSnapshot, input?.actorId || declaration?.actorId);
     if (!actor) throw new Error('battle_preview_actor_missing');
     if (!isAlive(actor)) throw new Error('battle_preview_actor_unavailable');
+    const basisView = String(
+      input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
+    ).trim().toUpperCase();
+    if (!['DECISION_VISIBLE', 'BELIEF', 'RUNTIME_ACTUAL'].includes(basisView)) {
+      throw new Error(`DAMAGE_BASIS_VIEW_INVALID:${basisView || 'missing'}`);
+    }
+    const snapshotRevision = String(
+      input?.snapshotRevision ||
+      [input?.worldRevision || stableHash(worldSnapshot), input?.beliefRevision || ''].filter(Boolean).join('|'),
+    ).trim();
+    const projectionContext = input?.projectionContext || input?.mechanicalProjectionContext || null;
+    const captureDamageBasisTrace = input?.captureDamageBasisTrace === true;
     const paymentMode = String(input?.paymentMode || 'FORMAL').trim().toUpperCase();
     if (!['FORMAL', 'EXTERNAL_TIMELINE'].includes(paymentMode)) {
       throw new Error(`BATTLE_PREVIEW_PAYMENT_MODE_INVALID:${paymentMode || 'missing'}`);
@@ -7466,6 +7824,10 @@
         damageMultiplierResolver: input?.damageMultiplierResolver,
         hitProbabilityResolver: input?.hitProbabilityResolver,
         applicationProbabilityResolver: input?.applicationProbabilityResolver,
+        basisView,
+        snapshotRevision,
+        projectionContext,
+        captureDamageBasisTrace,
         forcedApplicationProbabilityByEffect:
           input?.forcedApplicationProbabilityByEffect || {},
         actionDamageMultiplier,
@@ -7715,11 +8077,18 @@
       worldSnapshot,
       nodeBudget,
       battleIntent: input?.battleIntent || {},
+      basisView,
+      snapshotRevision,
+      projectionContext,
+      captureDamageBasisTrace,
       damageMultiplierByTarget: input?.damageMultiplierByTarget || {},
       evadeProbabilityByTarget:
         input?.evadeProbabilityByTarget || {},
       damageMultiplierResolver: input?.damageMultiplierResolver,
+      applicationProbabilityResolver: input?.applicationProbabilityResolver,
       hitProbabilityResolver: input?.hitProbabilityResolver,
+      forcedApplicationProbabilityByEffect:
+        input?.forcedApplicationProbabilityByEffect || {},
     });
     metrics.maxNodesObserved = Math.max(metrics.maxNodesObserved, nodeBudget.count);
     const resultValue = {
@@ -9794,6 +10163,10 @@
     resolveFusionAction,
     effectConditionEnabled,
     resolveConditionalEffectPlan,
+    calculateDamageFormula,
+    buildDamageBasis,
+    assertDamageBasis,
+    damageBasisMetadata,
     calculateBaseDamage,
     estimateHitProbability,
     expectedSegmentedDamageOutcome,
