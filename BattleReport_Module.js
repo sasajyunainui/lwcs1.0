@@ -4377,7 +4377,9 @@
       const alternativeDescription = text(playerActionKindDescriptions[text(alternative?.actionKind)]);
       clauses.push(
         selectedDescription && alternativeDescription
-          ? `${selectedDescription}；${alternativeDescription}`
+          ? selectedDescription === alternativeDescription
+            ? `两项动作名称不同，公开效果需分别比较（所选：${text(selected?.actionName)}；替代：${text(alternative?.actionName)}）`
+            : `${selectedDescription}；${alternativeDescription}`
           : `动作不同（所选：${text(selected?.actionName)}；替代：${text(alternative?.actionName)}）`,
       );
       categories.add('future');
@@ -4788,9 +4790,9 @@
         } else if (decisionKind === 'DECLINED') {
           selectionReason = `放弃本次回应机会；${firstComparison || '没有可兑现的回应收益'}`;
         } else if (trace?.wasOptimal === false) {
-          selectionReason = `本次在可行方案中按固定随机规则选择了${selectedName}，没有固定采用预估最高项；${firstComparison || '主要方案各有取舍'}`;
+          selectionReason = `当前仍有多个可行方案，选择了${selectedName}；${firstComparison || '公开信息下无法进一步区分这些方案的取舍'}`;
         } else if (trace?.selectedTiedAtTop === true && number(trace?.topRankedTieCount, 0) > 1) {
-          selectionReason = `${selectedName}与${number(trace.topRankedTieCount, 0) - 1}个方案在当前公开评估中并列最高，按固定种子规则选择；${firstComparison || '并列方案的目标推进、风险和资源取舍相同'}`;
+          selectionReason = `${selectedName}与${number(trace.topRankedTieCount, 0) - 1}个方案在当前公开评估中并列最高，本次选择了该方案；${firstComparison || '并列方案的目标推进、风险和资源取舍相同'}`;
         } else if (firstComparison) {
           selectionReason = `选择${selectedName}；相较主要替代项，${firstComparison}`;
         } else {

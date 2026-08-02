@@ -646,6 +646,300 @@
           ]
         }
       ]
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "ages-levels",
+      "profileId": "current",
+      "contract": "3.1.0",
+      "entries": []
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "fusions",
+      "profileId": "current",
+      "contract": "3.1.0",
+      "entries": [
+        {
+          "recordId": "fusion-a1a08b607d9a3b5f",
+          "profileId": "current",
+          "path": "成长技能效果补录.武魂融合技|武魂融合技.神龙变|神龙变.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-dc53eeaa7630a613",
+          "profileId": "current",
+          "path": "角色.张扬子.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-0f7d3b9fc730a0eb",
+          "profileId": "current",
+          "path": "角色.王金玺.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-62c54348fe002e3d",
+          "profileId": "current",
+          "path": "角色.舞丝朵.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-90b6376ae88b3ad6",
+          "profileId": "current",
+          "path": "角色.臧鑫.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-6ad0370b3cf5c871",
+          "profileId": "current",
+          "path": "角色.曹德智.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-7375b5e9eb3bd8bd",
+          "profileId": "current",
+          "path": "角色.敖锐.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-ba3a453fe927e0aa",
+          "profileId": "current",
+          "path": "角色.龙天舞.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-75a83ee1fb0f4f65",
+          "profileId": "current",
+          "path": "角色.莫梓鸿.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-c363dc4bd78dbfb0",
+          "profileId": "current",
+          "path": "角色.苏梦君.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-e7105a8f39fdac64",
+          "profileId": "current",
+          "path": "角色.李梦阳.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-37ebc5b507e70372",
+          "profileId": "current",
+          "path": "角色.李梦甜.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-509206a6862e6d27",
+          "profileId": "current",
+          "path": "角色.简默晨.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-40c9d934b7ff3d25",
+          "profileId": "current",
+          "path": "角色.狂战天.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-dbcea7b226b2e388",
+          "profileId": "current",
+          "path": "角色.周寒幽.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        },
+        {
+          "recordId": "fusion-5c48ac365c9c6c81",
+          "profileId": "current",
+          "path": "角色.周天儿.快照[0].角色.武魂融合技.融合模式",
+          "action": "add-fusion-mode",
+          "before": null,
+          "after": "partner",
+          "classification": "partner",
+          "participants": [],
+          "evidenceType": "novel-quote",
+          "confidence": "high",
+          "reason": "真实0人武魂融合技，归属=人工确认双人；按 current 容器惯例补标 融合模式",
+          "tests": [
+            "T-FUSION-001",
+            "T-FUSION-002"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "personality",
+      "profileId": "current",
+      "contract": "3.1.0",
+      "entries": []
     }
   ]
 }

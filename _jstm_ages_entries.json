@@ -1,0 +1,302 @@
+[
+  {
+    "recordId": "ages-b9fc2bc03539333b",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.霍云儿.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "霍雨浩之母，公爵府丫鬟，无魂力",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "无魂力普通人",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-10bbd81bf6231ba8",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.公爵夫人.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "星罗帝国皇帝幼女、公爵夫人，无魂力",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "无魂力普通人",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-2bb16a7e90811195",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.宿舍楼老人.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "史莱克宿舍门口老人，宿管，无魂力",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "无魂力普通人",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-3a9dbcbe374380b9",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.林大娘.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "史莱克食堂后勤，无魂力",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "无魂力普通人",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-4ca20ad95b24dd87",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.徐云瀚.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "徐天然橘子之子、满月立为太子，婴儿",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "婴儿无魂力",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-0e4bd5bbe4d6f724",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.清雅.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "星光拍卖行紫级拍卖师，无魂力",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "无魂力普通人",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-2a284e91ffdbc9d6",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.阿金.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "魂导器大赛司仪，无魂力",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "无魂力普通人",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-664b8958061048c4",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.陈文.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "徐三石贴身书童，武魂觉醒后并无魂力伴生",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "无魂力普通人",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-6888d86856ce011d",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.王小殿.快照[0].角色.属性.等级",
+    "before": 0,
+    "after": "无",
+    "evidence": "霍雨浩营中新兵，无魂力",
+    "evidenceType": "novel-quote",
+    "confidence": "high",
+    "reason": "无魂力普通人",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-a478421922cc6ced",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.小舞.快照[0].角色.属性.年龄",
+    "before": 200,
+    "after": 10000,
+    "evidence": "部次差 10000−0（随唐三同辈）",
+    "evidenceType": "formula",
+    "confidence": "high",
+    "reason": "跨部年龄按登记表",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-5dd3c323112f560f",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.小舞.快照[0].角色.属性.等级",
+    "before": 99,
+    "after": 150,
+    "evidence": "神级（唐三之妻，神界）",
+    "evidenceType": "framework",
+    "confidence": "medium",
+    "reason": "跨部等级按登记表（神级框架）",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-575bfedd668bac23",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.唐三.快照[0].角色.属性.等级",
+    "before": 99,
+    "after": 150,
+    "evidence": "海神→神王，神界海神",
+    "evidenceType": "framework",
+    "confidence": "medium",
+    "reason": "跨部等级按登记表（神王150）",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-57eb5736bf0c7891",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.戴沐白.快照[0].角色.属性.等级",
+    "before": 99,
+    "after": 129,
+    "evidence": "战神，一级神",
+    "evidenceType": "framework",
+    "confidence": "medium",
+    "reason": "跨部等级按登记表（一级神120-129）",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-716845d431d4361d",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.朱竹清.快照[0].角色.属性.等级",
+    "before": 99,
+    "after": 129,
+    "evidence": "速度之神，一级神",
+    "evidenceType": "framework",
+    "confidence": "medium",
+    "reason": "跨部等级按登记表（一级神120-129）",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-bb892a2a331f711f",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.马红俊.快照[0].角色.属性.年龄",
+    "before": 80,
+    "after": 10000,
+    "evidence": "部次差 10000−0（神界凤凰之神）",
+    "evidenceType": "formula",
+    "confidence": "high",
+    "reason": "跨部年龄按登记表",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-6f7df04689a5205f",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.马红俊.快照[0].角色.属性.等级",
+    "before": 99,
+    "after": 129,
+    "evidence": "凤凰之神，一级神",
+    "evidenceType": "framework",
+    "confidence": "medium",
+    "reason": "跨部等级按登记表（一级神120-129）",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-b41f3398e099d779",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.奥斯卡.快照[0].角色.属性.年龄",
+    "before": 80,
+    "after": 10000,
+    "evidence": "部次差 10000−0（神界食神）",
+    "evidenceType": "formula",
+    "confidence": "high",
+    "reason": "跨部年龄按登记表",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-1582b3cd8fec18e4",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.奥斯卡.快照[0].角色.属性.等级",
+    "before": 99,
+    "after": 129,
+    "evidence": "食神，一级神",
+    "evidenceType": "framework",
+    "confidence": "medium",
+    "reason": "跨部等级按登记表（一级神120-129）",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-7c0485eb6f6555a4",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.宁荣荣.快照[0].角色.属性.年龄",
+    "before": 80,
+    "after": 10000,
+    "evidence": "部次差 10000−0（神界九彩神女）",
+    "evidenceType": "formula",
+    "confidence": "high",
+    "reason": "跨部年龄按登记表",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  },
+  {
+    "recordId": "ages-8280611e7b9387e6",
+    "profileId": "jueshitangmen",
+    "path": "$.角色.宁荣荣.快照[0].角色.属性.等级",
+    "before": 99,
+    "after": 129,
+    "evidence": "九彩神女，一级神",
+    "evidenceType": "framework",
+    "confidence": "medium",
+    "reason": "跨部等级按登记表（一级神120-129）",
+    "runtimeConsumer": "MVU_Schema_Runtime.js:构建内置角色实例_V1 -> 属性.年龄/等级",
+    "tests": [
+      "T-AGE-LEVEL-001"
+    ]
+  }
+]
