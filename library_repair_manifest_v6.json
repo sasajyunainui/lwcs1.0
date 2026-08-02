@@ -940,6 +940,13 @@
       "profileId": "current",
       "contract": "3.1.0",
       "entries": []
+    },
+    {
+      "schemaVersion": 6,
+      "concern": "snapshots",
+      "profileId": "zjdl",
+      "contract": "3.1.0",
+      "entries": []
     }
   ]
 }
