@@ -33781,6 +33781,167 @@
     });
   }
 
+  function r9v2CandidateDependencyUnitIds(entry = {}) {
+    return new Set([
+      entry?.actorId,
+      ...(entry?.targetIds || []),
+      ...(entry?.changedUnitIds || []),
+      ...(entry?.contributions || []).map(contribution =>
+        contribution?.targetId
+      ),
+      ...(entry?.projectedUnitSnapshots || []).map(snapshot =>
+        snapshot?.unitId
+      ),
+      ...(entry?.summonDefinitions || []).flatMap(definition => [
+        definition?.sourceUnitId,
+        definition?.hostId,
+        definition?.ownerId,
+        definition?.summonId,
+        definition?.targetId,
+      ]),
+      entry?.creationCarrier?.recipientId,
+    ].map(value => String(value || '').trim()).filter(Boolean));
+  }
+
+  function r9v2CandidateBeliefKeys(entry = {}) {
+    return new Set(
+      (entry?.mechanicObservations || []).flatMap(observation => [
+        observation?.mechanicKey,
+        observation?.adaptationKey,
+      ]).map(value => String(value || '').trim()).filter(Boolean),
+    );
+  }
+
+  function r9v2CatalogMatchesEntries(entries = [], candidates = []) {
+    if (entries.length !== candidates.length) return false;
+    return candidates.every((candidate, index) => {
+      const entry = entries[index];
+      const fingerprint = String(
+        candidate?.declarationFingerprint || '',
+      ).trim() || declarationFingerprint(candidate?.declaration || {});
+      return (
+        String(entry?.candidateId || '').trim() ===
+          String(candidate?.candidateId || '').trim() &&
+        String(entry?.declarationFingerprint || '').trim() === fingerprint
+      );
+    });
+  }
+
+  function r9v2BuildDirtyFutureUnitPool({
+    state,
+    pool,
+    worldSnapshot,
+    observerSide,
+    unitId,
+    beliefState,
+    battleIntent,
+    actionOpportunity,
+    mechanicalProjectionContext,
+    changedUnitIds = new Set(),
+    changedBeliefKeys = new Set(),
+  }) {
+    const unit = findUnitInWorld(worldSnapshot, unitId);
+    if (!unit || !preview.isAlive(unit)) {
+      pool.unitEntries.delete(unitId);
+      pool.targetInterferenceRateByUnit?.delete(unitId);
+      return {
+        fullUnitFallback: false,
+        rebuiltCandidateCount: 0,
+        reusedCandidateCount: 0,
+      };
+    }
+    const targetInterferenceRate = visibleTargetInterferenceRate(unit);
+    const unitBelief = targetInterferenceRate > 1e-12
+      ? {
+          ...beliefState,
+          targetInterferencePossible: true,
+          targetInterferenceRate,
+        }
+      : beliefState;
+    const catalog = r9v2DeclarationCatalog({
+      state,
+      worldSnapshot,
+      observerSide,
+      unitId,
+      beliefState: unitBelief,
+      battleIntent,
+      actionOpportunity,
+    });
+    const existingEntries = pool.unitEntries.get(unitId) || [];
+    if (!r9v2CatalogMatchesEntries(existingEntries, catalog.candidates)) {
+      return {
+        fullUnitFallback: true,
+        fallbackReason: 'CANDIDATE_CATALOG_CHANGED',
+        rebuiltCandidateCount: 0,
+        reusedCandidateCount: 0,
+      };
+    }
+    if (
+      changedUnitIds.size > 0 &&
+      existingEntries.some(entry =>
+        String(entry?.actionKind || '').trim().toUpperCase() ===
+          'WITHDRAW'
+      )
+    ) {
+      return {
+        fullUnitFallback: true,
+        fallbackReason: 'GLOBAL_MECHANIC_DEPENDENCY',
+        rebuiltCandidateCount: 0,
+        reusedCandidateCount: 0,
+      };
+    }
+    const revision = [
+      'r9v2-pool',
+      pool.observerActorId,
+      pool.generation,
+      pool.factDeltaCount,
+      unitId,
+    ].join(':');
+    let rebuiltCandidateCount = 0;
+    let reusedCandidateCount = 0;
+    const entries = Object.freeze(
+      catalog.candidates.map((candidate, index) => {
+        const existingEntry = existingEntries[index];
+        const readsChangedUnit = [
+          ...r9v2CandidateDependencyUnitIds(existingEntry),
+        ].some(dependencyId => changedUnitIds.has(dependencyId));
+        const readsChangedBelief = [
+          ...r9v2CandidateBeliefKeys(existingEntry),
+        ].some(key => changedBeliefKeys.has(key));
+        if (!readsChangedUnit && !readsChangedBelief) {
+          reusedCandidateCount += 1;
+          return existingEntry;
+        }
+        rebuiltCandidateCount += 1;
+        return r9v2BuildMechanicalEntry({
+          state,
+          worldSnapshot,
+          actorId: unitId,
+          candidate,
+          beliefState: unitBelief,
+          battleIntent,
+          actionOpportunity: {
+            role: 'ACTIVE',
+            battleHorizon: actionOpportunity?.battleHorizon || {},
+          },
+          revision,
+          mechanicalProjectionContext,
+          verifyMechanicalBasis: false,
+        });
+      }),
+    );
+    pool.unitEntries.set(unitId, entries);
+    pool.targetInterferenceRateByUnit.set(
+      unitId,
+      targetInterferenceRate,
+    );
+    return {
+      fullUnitFallback: false,
+      rebuiltCandidateCount,
+      reusedCandidateCount,
+    };
+  }
+
   function r9v2BuildFutureUnitPool({
     state,
     pool,
@@ -33997,6 +34158,9 @@
     const projectionCache = {
       bestHealthByUnit: new Map(),
       behaviorPoolByIdentity: new Map(),
+      behaviorPoolByScope: new Map(),
+      projectionObjectHashes: new WeakMap(),
+      projectionUnitFingerprints: new WeakMap(),
       pendingNaturalActorIds: null,
       normalizedContributionStore,
     };
@@ -35261,6 +35425,118 @@
     ].join('\u0000');
   }
 
+  function r9v2ProjectionObjectHash(cache, value) {
+    if (!value || typeof value !== 'object') {
+      return preview.stableHash(value);
+    }
+    const hashes = cache?.projectionObjectHashes;
+    if (hashes instanceof WeakMap && hashes.has(value)) {
+      return hashes.get(value);
+    }
+    const hash = preview.stableHash(value);
+    if (hashes instanceof WeakMap) hashes.set(value, hash);
+    return hash;
+  }
+
+  function r9v2ProjectionUnitFingerprint(
+    worldSnapshot,
+    unitId,
+    cache,
+  ) {
+    const normalizedId = String(unitId || '').trim();
+    if (!normalizedId) return '';
+    const fingerprints = cache?.projectionUnitFingerprints;
+    let byUnit = fingerprints instanceof WeakMap
+      ? fingerprints.get(worldSnapshot)
+      : null;
+    if (!byUnit) {
+      byUnit = new Map();
+      if (fingerprints instanceof WeakMap) {
+        fingerprints.set(worldSnapshot, byUnit);
+      }
+    }
+    if (byUnit.has(normalizedId)) return byUnit.get(normalizedId);
+    const unit = findUnitInWorld(worldSnapshot, normalizedId);
+    const fingerprint = preview.stableHash(unit || null);
+    byUnit.set(normalizedId, fingerprint);
+    return fingerprint;
+  }
+
+  function r9v2ProjectionBeliefSignature(
+    beliefState,
+    beliefKeys = [],
+  ) {
+    const keys = [
+      ...new Set(
+        beliefKeys
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+      ),
+    ].sort();
+    const mechanics = Object.fromEntries(keys.map(key => [
+      key,
+      beliefState?.mechanics?.[key] || null,
+    ]));
+    return preview.stableHash({
+      observationGranted: beliefState?.observationGranted === true,
+      confidence: Number(beliefState?.confidence ?? 1),
+      targetInterferencePossible:
+        beliefState?.targetInterferencePossible === true,
+      confused: beliefState?.confused === true,
+      mechanics,
+    });
+  }
+
+  function r9v2ProjectionBehaviorDependencyUnitIds(
+    targetId,
+    entries = [],
+  ) {
+    const dependencyIds = new Set([
+      String(targetId || '').trim(),
+    ].filter(Boolean));
+    entries.forEach(entry => {
+      r9v2CandidateDependencyUnitIds(entry).forEach(unitId =>
+        dependencyIds.add(unitId)
+      );
+    });
+    return [...dependencyIds].sort();
+  }
+
+  function r9v2ProjectionBehaviorCacheMatches({
+    record,
+    request,
+    projectedWorld,
+    beliefState,
+    cache,
+  }) {
+    if (!record) return false;
+    if (
+      record.actionOpportunityHash !==
+      r9v2ProjectionObjectHash(cache, request?.actionOpportunity || {})
+    ) {
+      return false;
+    }
+    if (
+      record.battleIntentHash !==
+      r9v2ProjectionObjectHash(cache, request?.battleIntent || {})
+    ) {
+      return false;
+    }
+    if (
+      record.beliefSignature !==
+      r9v2ProjectionBeliefSignature(beliefState, record.beliefKeys)
+    ) {
+      return false;
+    }
+    return record.unitFingerprints.every(([unitId, fingerprint]) =>
+      r9v2ProjectionUnitFingerprint(
+        projectedWorld,
+        unitId,
+        cache,
+      ) === fingerprint
+    );
+  }
+
   function r9v2TargetResolutionActionIdentity(entry = {}) {
     const declaration = entry?.declaration || {};
     return [
@@ -35699,6 +35975,45 @@
     const cached =
       cache?.behaviorPoolByIdentity?.get(cacheIdentity);
     if (cached) return cached;
+    const scopedCache = cache?.enableBehaviorPoolScope === true
+      ? cache?.behaviorPoolByScope
+      : null;
+    const actionOpportunityHash = scopedCache instanceof Map
+      ? r9v2ProjectionObjectHash(
+          cache,
+          request?.actionOpportunity || {},
+        )
+      : '';
+    const battleIntentHash = scopedCache instanceof Map
+      ? r9v2ProjectionObjectHash(
+          cache,
+          request?.battleIntent || {},
+        )
+      : '';
+    const beliefStateHash = scopedCache instanceof Map
+      ? r9v2ProjectionObjectHash(cache, beliefState || {})
+      : '';
+    const scopedContextKey = scopedCache instanceof Map
+      ? [
+          cacheIdentity,
+          actionOpportunityHash,
+          battleIntentHash,
+          beliefStateHash,
+        ].join('\u0000')
+      : '';
+    const scopedRecords = scopedCache instanceof Map
+      ? scopedCache.get(scopedContextKey) || []
+      : [];
+    const scopedCached = scopedRecords.find(record =>
+      r9v2ProjectionBehaviorCacheMatches({
+        record,
+        request,
+        projectedWorld,
+        beliefState,
+        cache,
+      })
+    );
+    if (scopedCached) return scopedCached.result;
     const state = r9v2EphemeralState(
       normalizedContributionStore ||
         cache?.normalizedContributionStore,
@@ -35793,8 +36108,46 @@
         targetResolutionProjection.bestUtilityHEPP,
       bestCandidateId:
         targetResolutionProjection.bestCandidateId,
-      targetResolutionProjection,
+        targetResolutionProjection,
     });
+    const dependencyUnitIds =
+      r9v2ProjectionBehaviorDependencyUnitIds(
+        targetId,
+        entries,
+      );
+    const beliefKeys = [
+      ...new Set(
+        entries.flatMap(entry => [
+          ...r9v2CandidateBeliefKeys(entry),
+        ]),
+      ),
+    ].sort();
+    const scopedRecord = Object.freeze({
+      result,
+      actionOpportunityHash,
+      battleIntentHash,
+      beliefKeys: Object.freeze(beliefKeys),
+      beliefSignature: r9v2ProjectionBeliefSignature(
+        beliefState,
+        beliefKeys,
+      ),
+      unitFingerprints: Object.freeze(
+        dependencyUnitIds.map(unitId => [
+          unitId,
+          r9v2ProjectionUnitFingerprint(
+            projectedWorld,
+            unitId,
+            cache,
+          ),
+        ]),
+      ),
+    });
+    if (scopedCache instanceof Map) {
+      scopedCache.set(scopedContextKey, [
+        ...scopedRecords,
+        scopedRecord,
+      ]);
+    }
     cache?.behaviorPoolByIdentity?.set(cacheIdentity, result);
     return result;
   }
@@ -37699,12 +38052,13 @@
         `R9V2_TERMINAL_PROBABILITY_INVALID:${probabilityTotal}`,
       );
     }
-    const terminalIdentity =
-      r9v2TerminalIdentityFromEntry(
-        request,
-        entry,
-        terminalProbability,
-      );
+    const terminalIdentity = terminalProbability > 1e-12
+      ? r9v2TerminalIdentityFromEntry(
+          request,
+          entry,
+          terminalProbability,
+        )
+      : null;
     const withdrawalRows = withdrawalContestByTarget
       ? [...withdrawalContestByTarget.entries()]
       : [];
@@ -39887,11 +40241,14 @@
   function r9v2InformationBranchProjection({
     request,
     pool,
+    baseFuturePool = null,
     branchWorld,
     branchBelief,
     futureOpportunity,
     changedUnitIds,
+    changedBeliefKeys = [],
     identity,
+    sharedProjectionCache = null,
   }) {
     const terminal = preview.evaluateBattleObjectives(
       branchWorld,
@@ -39927,19 +40284,20 @@
         rebuiltUnitIds: Object.freeze([]),
       });
     }
+    const branchPoolSource = baseFuturePool || pool;
     const branchState = r9v2EphemeralState(
-      pool?.r9v2NormalizedContributionStore,
+      branchPoolSource?.r9v2NormalizedContributionStore,
     );
     const branchPool = {
-      ...pool,
+      ...branchPoolSource,
       observerActorId: request.actorId,
       observerSide: request.actorSide,
-      generation: Number(pool?.generation || 0) + 1,
+      generation: Number(branchPoolSource?.generation || 0) + 1,
       factDeltaCount: 0,
-      unitEntries: new Map(pool?.unitEntries || []),
+      unitEntries: new Map(branchPoolSource?.unitEntries || []),
       targetSourceUnitIds: new Map(),
       targetInterferenceRateByUnit: new Map(
-        pool?.targetInterferenceRateByUnit || [],
+        branchPoolSource?.targetInterferenceRateByUnit || [],
       ),
     };
     const currentUnitIds = new Set(
@@ -39953,12 +40311,13 @@
         branchPool.targetInterferenceRateByUnit.delete(unitId);
       }
     });
-    const rebuildUnitIds = new Set([
+    const changedUnitIdSet = new Set([
       request.actorId,
       ...(changedUnitIds || []),
-    ]);
-    (changedUnitIds || []).forEach(targetId => {
-      (pool?.targetSourceUnitIds?.get(targetId) || [])
+    ].map(value => String(value || '').trim()).filter(Boolean));
+    const rebuildUnitIds = new Set(changedUnitIdSet);
+    [...changedUnitIdSet].forEach(targetId => {
+      (branchPoolSource?.targetSourceUnitIds?.get(targetId) || [])
         .forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
     });
     currentUnitIds.forEach(unitId => {
@@ -39971,8 +40330,8 @@
     [...rebuildUnitIds]
       .filter(unitId => currentUnitIds.has(unitId))
       .sort()
-      .forEach(unitId =>
-        r9v2BuildFutureUnitPool({
+      .forEach(unitId => {
+        const result = r9v2BuildDirtyFutureUnitPool({
           state: branchState,
           pool: branchPool,
           worldSnapshot: branchWorld,
@@ -39982,9 +40341,28 @@
           battleIntent: request.battleIntent,
           actionOpportunity: futureOpportunity,
           mechanicalProjectionContext,
-          verifyMechanicalBasis: false,
-        })
-      );
+          changedUnitIds: changedUnitIdSet,
+          changedBeliefKeys: new Set(
+            (changedBeliefKeys || [])
+              .map(value => String(value || '').trim())
+              .filter(Boolean),
+          ),
+        });
+        if (result.fullUnitFallback === true) {
+          r9v2BuildFutureUnitPool({
+            state: branchState,
+            pool: branchPool,
+            worldSnapshot: branchWorld,
+            observerSide: request.actorSide,
+            unitId,
+            beliefState: branchBelief,
+            battleIntent: request.battleIntent,
+            actionOpportunity: futureOpportunity,
+            mechanicalProjectionContext,
+            verifyMechanicalBasis: false,
+          });
+        }
+      });
     r9v2ReindexTargets(branchPool);
     const entries = branchPool.unitEntries.get(request.actorId) || [];
     const branchRequest = {
@@ -39996,6 +40374,14 @@
     const projectionCache = {
       bestHealthByUnit: new Map(),
       behaviorPoolByIdentity: new Map(),
+      enableBehaviorPoolScope:
+        sharedProjectionCache?.enableBehaviorPoolScope === true,
+      behaviorPoolByScope:
+        sharedProjectionCache?.behaviorPoolByScope || new Map(),
+      projectionObjectHashes:
+        sharedProjectionCache?.projectionObjectHashes || new WeakMap(),
+      projectionUnitFingerprints:
+        sharedProjectionCache?.projectionUnitFingerprints || new WeakMap(),
       pendingNaturalActorIds: null,
       normalizedContributionStore:
         pool?.r9v2NormalizedContributionStore,
@@ -40093,6 +40479,51 @@
     );
     const futureOpportunity =
       r9v2InformationOpportunity(request);
+    const sharedProjectionCache = {
+      enableBehaviorPoolScope: true,
+      behaviorPoolByScope: new Map(),
+      projectionObjectHashes: new WeakMap(),
+      projectionUnitFingerprints: new WeakMap(),
+    };
+    const baselineFutureState = r9v2EphemeralState(
+      pool?.r9v2NormalizedContributionStore,
+    );
+    const baselineFuturePool = {
+      ...pool,
+      observerActorId: request.actorId,
+      observerSide: request.actorSide,
+      generation: Number(pool?.generation || 0) + 1,
+      factDeltaCount: 0,
+      unitEntries: new Map(),
+      targetSourceUnitIds: new Map(),
+      targetInterferenceRateByUnit: new Map(),
+    };
+    if (futureOpportunity) {
+      const futureMechanicalProjectionContext =
+        preview.compileMechanicalProjectionContext(
+          request.visibleWorld,
+        );
+      const currentUnitIds = new Set(
+        aliveEntries(request.visibleWorld).map(entry =>
+          preview.unitId(entry.unit)
+        ),
+      );
+      [...currentUnitIds].sort().forEach(unitId =>
+        r9v2BuildFutureUnitPool({
+          state: baselineFutureState,
+          pool: baselineFuturePool,
+          worldSnapshot: request.visibleWorld,
+          observerSide: request.actorSide,
+          unitId,
+          beliefState: request.beliefState,
+          battleIntent: request.battleIntent,
+          actionOpportunity: futureOpportunity,
+          mechanicalProjectionContext: futureMechanicalProjectionContext,
+          verifyMechanicalBasis: false,
+        })
+      );
+      r9v2ReindexTargets(baselineFuturePool);
+    }
     const projections = {};
     entries.forEach(entry => {
       if (entry?.hardInvalid === true) return;
@@ -40222,11 +40653,17 @@
             r9v2InformationBranchProjection({
               request,
               pool,
+              baseFuturePool: baselineFuturePool,
               branchWorld,
               branchBelief,
               futureOpportunity,
               changedUnitIds:
                 branchEntry.changedUnitIds || [],
+              changedBeliefKeys: [
+                observation?.mechanicKey,
+                observation?.adaptationKey,
+              ],
+              sharedProjectionCache,
               identity: [
                 entry.candidateId,
                 groupId,
@@ -40455,6 +40892,9 @@
     const projectionCache = {
       bestHealthByUnit: new Map(),
       behaviorPoolByIdentity: new Map(),
+      behaviorPoolByScope: new Map(),
+      projectionObjectHashes: new WeakMap(),
+      projectionUnitFingerprints: new WeakMap(),
       pendingNaturalActorIds: null,
       normalizedContributionStore:
         prepared.state.r9v2NormalizedContributionStore,
