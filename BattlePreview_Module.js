@@ -5798,7 +5798,15 @@
           damageEffects.forEach((damageEffect, effectIndex) => {
             const assistSnapshot = overlay.snapshot();
             const assistActor = overlay.readUnit(summonId);
-            const targets = resolveTargets(assistSnapshot, assistActor, assistDeclaration, damageEffect);
+            const assistProjectionContext =
+              compileMechanicalProjectionContext(assistSnapshot);
+            const targets = resolveTargets(
+              assistSnapshot,
+              assistActor,
+              assistDeclaration,
+              damageEffect,
+              assistProjectionContext,
+            );
             if (!targets.length) return;
             applyEffect(damageEffect, targets, overlay, ledger, {
               actor: assistActor,
@@ -5813,7 +5821,7 @@
               battleIntent,
               basisView,
               snapshotRevision,
-              projectionContext,
+              projectionContext: assistProjectionContext,
               captureDamageBasisTrace,
               applicationProbability: summonApplicationProbability,
               applicationProbabilityByTarget: new Map([
@@ -6215,6 +6223,26 @@
   }) {
     const contributions = [];
     const changedUnitIds = new Set();
+    const rootActionId = String(
+      basis.declaration?.actionId ||
+      basis.declaration?.candidateId ||
+      basis.identity ||
+      'mechanical',
+    ).trim();
+    const sourceActionId = rootActionId;
+    const addContribution = (effectInstanceId, contribution) => {
+      const resolvedEffectInstanceId = String(effectInstanceId || '').trim();
+      if (!resolvedEffectInstanceId) {
+        throw new Error('R9V2_PREVIEW_EFFECT_IDENTITY_MISSING');
+      }
+      contributions.push(Object.freeze({
+        ...contribution,
+        rootActionId,
+        sourceActionId,
+        actorId: unitId(actor),
+        effectInstanceId: resolvedEffectInstanceId,
+      }));
+    };
     const resourceOverrides = new Map();
     const readProjectedResource = (unit, resource) => {
       const key = `${unitId(unit)}\u0000${resource}`;
@@ -6254,7 +6282,7 @@
           const next = before - cost;
           writeProjectedResource(actor, resource, next);
           changedUnitIds.add(unitId(actor));
-          contributions.push(Object.freeze({
+          addContribution(`${rootActionId}:cost:${resource}`, {
             targetId: unitId(actor),
             outcomeKind: 'RESOURCE_OPTION_CHANGED',
             windowId: 'ACTION_COST',
@@ -6265,7 +6293,7 @@
               next,
               delta: -cost,
             }),
-          }));
+          });
         });
     }
     if (basis.actionKind === 'WITHDRAW') {
@@ -6309,6 +6337,11 @@
       ) {
         return;
       }
+      const effectInstanceId = String(
+        effect?.effectId ||
+        effect?.效果ID ||
+        `${rootActionId}:effect:${effectIndex}`,
+      ).trim();
       const targets = resolveTargets(
         worldSnapshot,
         actor,
@@ -6338,9 +6371,9 @@
             projectionContext,
             {
               basisView,
-              effectInstanceId: `${String(basis.identity || basis.declaration?.actionId || 'mechanical').trim()}:effect:${effectIndex}`,
-              sourceEffectId: String(effect?.effectId || effect?.效果ID || '').trim() || `${String(basis.identity || basis.declaration?.actionId || 'mechanical').trim()}:effect:${effectIndex}`,
-              sourceActionId: String(basis.declaration?.actionId || basis.identity || 'mechanical').trim(),
+              effectInstanceId,
+              sourceEffectId: String(effect?.effectId || effect?.效果ID || '').trim() || effectInstanceId,
+              sourceActionId,
               snapshotRevision: String(snapshotRevision || basis.identity || '').trim(),
               actionDamageMultiplier: 1,
               reactionDamageMultiplier: 1,
@@ -6400,7 +6433,7 @@
             damageExpectation.expectedShieldAbsorb;
           const expectedDamage = damageExpectation.expectedHpDamage;
           if (shieldAbsorb > 0) {
-            contributions.push(Object.freeze({
+            addContribution(effectInstanceId, {
               targetId,
               outcomeKind: 'SHIELD_DELTA',
               windowId,
@@ -6411,9 +6444,9 @@
                 delta: -shieldAbsorb,
                 absorbedDamage: shieldAbsorb,
               }),
-            }));
+            });
           }
-          contributions.push(Object.freeze({
+          addContribution(effectInstanceId, {
             targetId,
             outcomeKind: 'HP_DELTA',
             windowId,
@@ -6440,7 +6473,7 @@
               current: readHp(target),
               next: Math.max(0, readHp(target) - expectedDamage),
             }),
-          }));
+          });
           const traumaBranches =
             damageExpectation.outcomeDistribution.filter(branch =>
               shouldTriggerTraumaUnconscious(
@@ -6460,7 +6493,7 @@
             hpDamageLimit > 0 &&
             expectedDamage >= hpDamageLimit - 1e-9;
           if (nonlethalIncapacitated) {
-            contributions.push(Object.freeze({
+            addContribution(effectInstanceId, {
               targetId,
               outcomeKind: 'ACTION_CANCELLED',
               windowId: 'NONLETHAL_INCAPACITATION',
@@ -6469,10 +6502,10 @@
                 hpFloor: nonlethalHpFloor,
                 hitProbability,
               }),
-            }));
+            });
           }
           if (traumaProbability > 1e-9) {
-            contributions.push(Object.freeze({
+            addContribution(effectInstanceId, {
               targetId,
               outcomeKind: 'ACTION_CANCELLED',
               windowId: 'TRAUMA_UNCONSCIOUS',
@@ -6488,7 +6521,7 @@
                   damageExpectation.fullHitHpDamage,
                 hpMax: readHpMax(target),
               }),
-            }));
+            });
           }
           if (
             expectedDamage > 1e-9 ||
@@ -6515,7 +6548,7 @@
             );
             const delta = realizedNext - current;
             if (!isHp) writeProjectedResource(target, resource, realizedNext);
-            contributions.push(Object.freeze({
+            addContribution(effectInstanceId, {
               targetId,
               outcomeKind: isHp ? 'HP_DELTA' : 'RESOURCE_OPTION_CHANGED',
               windowId,
@@ -6530,7 +6563,7 @@
                 applicationProbability: 1,
                 ownApplicationProbability: 1,
               }),
-            }));
+            });
             if (Math.abs(delta) > 1e-9) changedUnitIds.add(targetId);
           });
           return;
@@ -6583,18 +6616,13 @@
             effect?.刷新 === true ||
             effect?.可刷新 === true ||
             requestedDuration > existingDuration;
-          const effectInstanceId = String(
-            effect?.effectId ||
-            effect?.效果ID ||
-            `${basis.declaration.actionId}:effect:${effectIndex}`,
-          ).trim();
           const applicationGroupKey = [
             basis.identity,
             effectInstanceId,
             targetId,
             'state-application',
           ].join('|');
-          contributions.push(Object.freeze({
+          addContribution(effectInstanceId, {
             targetId,
             outcomeKind: cancelsAction
               ? 'ACTION_CANCELLED'
@@ -6615,7 +6643,7 @@
                 ...combatEffect,
               }),
             }),
-          }));
+          });
           const damagePerTick = Math.max(
             0,
             Number(combatEffect?.dot_damage || 0) +
@@ -6671,7 +6699,7 @@
                 expectedHealing - expectedDamage;
               const scheduledEffectInstanceId =
                 `${effectInstanceId}:scheduled-dot`;
-              contributions.push(Object.freeze({
+              addContribution(`${effectInstanceId}:scheduled-dot`, {
                 targetId,
                 outcomeKind: 'SCHEDULED_HP_DELTA',
                 windowId: [
@@ -6713,7 +6741,7 @@
                   ]),
                   distributionGroupKey: applicationGroupKey,
                 }),
-              }));
+              });
             }
           }
           if (marginal) changedUnitIds.add(targetId);
@@ -6723,7 +6751,12 @@
     basis.creationCarriers.forEach(carrier => {
       const recipientId = String(carrier?.recipientId || '').trim();
       if (!recipientId) return;
-      contributions.push(Object.freeze({
+      addContribution(
+        `${rootActionId}:effect:${Math.max(
+          0,
+          Number(carrier?.effectIndex || 0),
+        )}:creation`,
+        {
         targetId: recipientId,
         outcomeKind: 'NEXT_ACTION_QUALITY_CHANGED',
         windowId:
@@ -6741,7 +6774,8 @@
             : 0,
           useEffects: cloneValue(carrier?.useEffects || []),
         }),
-      }));
+        },
+      );
       changedUnitIds.add(recipientId);
     });
     return Object.freeze({
@@ -6987,11 +7021,14 @@
       }
       const effectWorldSnapshot = overlay.snapshot();
       const effectActor = overlay.readUnit(actorId) || actor;
+      const effectProjectionContext =
+        compileMechanicalProjectionContext(effectWorldSnapshot);
       const targets = resolveTargets(
         effectWorldSnapshot,
         effectActor,
         basis.declaration,
         effect,
+        effectProjectionContext,
       );
       if (!targets.length) return;
       const followsPrimary =
@@ -7027,7 +7064,7 @@
           input?.hitProbabilityResolver,
         basisView: input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
         snapshotRevision: resolvedSnapshotRevision,
-        projectionContext,
+        projectionContext: effectProjectionContext,
         captureDamageBasisTrace: input?.captureDamageBasisTrace === true,
         primarySucceeded: false,
         primaryOutcomeKeyByTarget,

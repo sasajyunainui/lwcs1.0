@@ -12338,6 +12338,7 @@
         publicReportBlocks,
         reportBlocks,
         scoringAudit,
+        r9v2DecisionAudits: decisionAudits,
         scoringMutationDetected: false,
         combatData,
         initialSnapshot,
@@ -12685,6 +12686,13 @@
             .map(key => [key, publicOperands[key]]),
         ),
       };
+    }
+    if (
+      depth >= 6 &&
+      Array.isArray(value) &&
+      value.every(item => item == null || typeof item !== 'object')
+    ) {
+      return value.slice(0, 120);
     }
     if (depth >= 6) {
       if (
@@ -14331,6 +14339,9 @@
     const combatData = payload.combatData && typeof payload.combatData === 'object' ? payload.combatData : {};
     const scoringAudit = Array.isArray(payload.scoringAudit) ? payload.scoringAudit.filter(Boolean) : [];
     const factRegistry = Array.isArray(payload.factRegistry) ? payload.factRegistry.filter(Boolean) : [];
+    const r9v2DecisionAudits = Array.isArray(payload.r9v2DecisionAudits)
+      ? payload.r9v2DecisionAudits.filter(Boolean)
+      : [];
     const transactionAudit = payload.transactionAudit && typeof payload.transactionAudit === 'object' ? payload.transactionAudit : null;
     const visibilityAudit = payload.visibilityAudit && typeof payload.visibilityAudit === 'object' ? payload.visibilityAudit : null;
     const beliefAudit = payload.beliefAudit && typeof payload.beliefAudit === 'object' ? payload.beliefAudit : null;
@@ -15415,6 +15426,257 @@
       }
     });
 
+    const r9v2OwnerTypes = new Set([
+      'STATE_DELTA',
+      'ACTION_POOL_DELTA',
+      'TERMINAL_DELTA',
+    ]);
+    const normalizeCandidateIds = value =>
+      Array.isArray(value)
+        ? value.map(item => String(item || '').trim()).filter(Boolean).sort()
+        : null;
+    const sameCandidateIds = (left, right) =>
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((candidateId, index) => candidateId === right[index]);
+    r9v2DecisionAudits.forEach((decisionAudit, actionIndex) => {
+      if (
+        String(decisionAudit?.decisionEngine || '').trim().toUpperCase() !==
+        'R9V2_SHADOW'
+      ) {
+        return;
+      }
+      const r9v2CausalFactIds = new Map();
+      const rows = Array.isArray(decisionAudit?.candidateAudit)
+        ? decisionAudit.candidateAudit.filter(Boolean)
+        : [];
+      const frozenCandidateIds = normalizeCandidateIds(
+        decisionAudit?.frozenCandidateIds,
+      );
+      const preparedEntryCandidateIds = normalizeCandidateIds(
+        decisionAudit?.preparedEntryCandidateIds,
+      );
+      const preparedProofCandidateIds = normalizeCandidateIds(
+        decisionAudit?.preparedProofCandidateIds,
+      );
+      const observedCandidateIds = rows
+        .map(row => String(row?.candidateId || '').trim())
+        .filter(Boolean)
+        .sort();
+      if (
+        rows.length > 0 &&
+        (!sameCandidateIds(frozenCandidateIds, observedCandidateIds) ||
+          !sameCandidateIds(frozenCandidateIds, preparedEntryCandidateIds) ||
+          !sameCandidateIds(frozenCandidateIds, preparedProofCandidateIds) ||
+          String(decisionAudit?.candidateCoverage?.status || '').trim() !==
+            'CLOSED')
+      ) {
+        pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+          actionIndex,
+          kind: 'R9V2_CANDIDATE_COVERAGE',
+          frozenCandidateIds,
+          observedCandidateIds,
+          preparedEntryCandidateIds,
+          preparedProofCandidateIds,
+          candidateCoverage: decisionAudit?.candidateCoverage || null,
+        });
+      }
+      rows.forEach((row, candidateIndex) => {
+        const candidateId = String(row?.candidateId || '').trim();
+        const proof = row?.candidateValueProof;
+        if (!candidateId || !proof || typeof proof !== 'object') {
+          pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+            actionIndex,
+            candidateIndex,
+            candidateId,
+            kind: 'R9V2_PROOF_MISSING',
+          });
+          return;
+        }
+        const facts = Array.isArray(proof?.causalValueFacts)
+          ? proof.causalValueFacts
+          : [];
+        let causalTotal = 0;
+        facts.forEach((fact, factIndex) => {
+          const factId = String(fact?.factId || '').trim();
+          const ownerType = String(fact?.ownerType || '').trim();
+          const valueHEPP = Number(fact?.valueHEPP);
+          if (!factId || r9v2CausalFactIds.has(factId)) {
+            pushFatal('DUPLICATE_CAUSAL_VALUE', {
+              actionIndex,
+              candidateIndex,
+              factIndex,
+              factId,
+              duplicateOf: r9v2CausalFactIds.get(factId) || null,
+            });
+          } else {
+            r9v2CausalFactIds.set(factId, {
+              actionIndex,
+              candidateIndex,
+              candidateId,
+            });
+          }
+          if (!r9v2OwnerTypes.has(ownerType) || !Number.isFinite(valueHEPP)) {
+            pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+              actionIndex,
+              candidateIndex,
+              factIndex,
+              candidateId,
+              factId,
+              ownerType,
+              valueHEPP,
+            });
+          }
+          causalTotal += Number.isFinite(valueHEPP) ? valueHEPP : 0;
+          if (String(fact?.sourceOutcomeKind || '').trim() === 'INCOMING_HEALTH_DELTA') {
+            const sourceActorId = String(fact?.sourceActorId || '').trim();
+            const sourceActorIds = Array.isArray(fact?.sourceActorIds)
+              ? fact.sourceActorIds.map(value => String(value || '').trim()).filter(Boolean)
+              : [];
+            const sourceDescriptorIds = Array.isArray(fact?.sourceDescriptorIds)
+              ? fact.sourceDescriptorIds.map(value => String(value || '').trim()).filter(Boolean)
+              : [];
+            if (
+              ownerType !== 'STATE_DELTA' ||
+              (!sourceActorId && sourceActorIds.length === 0) ||
+              sourceDescriptorIds.length === 0
+            ) {
+              pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+                actionIndex,
+                candidateIndex,
+                factIndex,
+                candidateId,
+                factId,
+                ownerType,
+                sourceActorId,
+                sourceActorIds,
+                sourceDescriptorIds,
+              });
+            }
+          }
+          if (ownerType === 'TERMINAL_DELTA') {
+            const terminalProjection = proof?.terminalProjection || {};
+            const terminalProbability = Number(
+              fact?.terminalProbability ??
+              terminalProjection?.terminalProbability ??
+              0,
+            );
+            const terminalIdentities = [
+              ...(Array.isArray(fact?.terminalAfterEffectInstanceIds)
+                ? fact.terminalAfterEffectInstanceIds
+                : []),
+              fact?.terminalAfterEffectInstanceId,
+              fact?.terminalEventId,
+              ...(Array.isArray(fact?.terminalAtomicKeys)
+                ? fact.terminalAtomicKeys
+                : []),
+              fact?.terminalAtomicKey,
+              ...(Array.isArray(
+                fact?.candidateTerminalAfterEffectInstanceIds,
+              )
+                ? fact.candidateTerminalAfterEffectInstanceIds
+                : []),
+              ...(Array.isArray(fact?.candidateTerminalAtomicKeys)
+                ? fact.candidateTerminalAtomicKeys
+                : []),
+              ...(Array.isArray(
+                terminalProjection?.terminalAfterEffectInstanceIds,
+              )
+                ? terminalProjection.terminalAfterEffectInstanceIds
+                : []),
+              terminalProjection?.terminalAfterEffectInstanceId,
+              terminalProjection?.terminalEventId,
+              ...(Array.isArray(terminalProjection?.terminalAtomicKeys)
+                ? terminalProjection.terminalAtomicKeys
+                : []),
+              terminalProjection?.terminalAtomicKey,
+            ]
+              .map(value => String(value || '').trim())
+              .filter((value, index, values) =>
+                value && values.indexOf(value) === index
+              );
+            const terminalPaths = [
+              ...(Array.isArray(fact?.candidateTerminalPaths)
+                ? fact.candidateTerminalPaths
+                : []),
+              ...(Array.isArray(fact?.terminalPaths)
+                ? fact.terminalPaths
+                : []),
+              ...(Array.isArray(terminalProjection?.terminalPaths)
+                ? terminalProjection.terminalPaths
+                : []),
+            ];
+            const invalidTerminalPath = terminalPaths.some(path =>
+              !String(
+                path?.terminalAfterEffectInstanceId ||
+                path?.terminalEventId ||
+                path?.terminalAtomicKey ||
+                '',
+              ).trim()
+            );
+            if (
+              !(terminalProbability > 1e-12) ||
+              !terminalIdentities.length ||
+              invalidTerminalPath
+            ) {
+              pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+                actionIndex,
+                candidateIndex,
+                factIndex,
+                candidateId,
+                factId,
+                kind: 'R9V2_TERMINAL_BINDING',
+                terminalProbability,
+                terminalIdentities,
+                terminalPathCount: terminalPaths.length,
+                invalidTerminalPath,
+              });
+            }
+          }
+        });
+        if (
+          Math.abs(
+            Number(proof?.objectiveUtilityHEPP || 0) -
+              Number(proof?.goalUtilityDeltaHEPP || 0) -
+              Number(proof?.informationValueHEPP || 0)
+          ) > 1e-6 ||
+          Math.abs(causalTotal - Number(proof?.goalUtilityDeltaHEPP || 0)) > 1e-6 ||
+          Math.abs(Number(proof?.reconciliationError || 0)) > 1e-6
+        ) {
+          pushFatal('CAUSAL_RECONCILIATION_MISMATCH', {
+            actionIndex,
+            candidateIndex,
+            candidateId,
+            causalTotal,
+            goalUtilityDeltaHEPP: Number(proof?.goalUtilityDeltaHEPP || 0),
+            informationValueHEPP: Number(proof?.informationValueHEPP || 0),
+            objectiveUtilityHEPP: Number(proof?.objectiveUtilityHEPP || 0),
+            reconciliationError: Number(proof?.reconciliationError || 0),
+          });
+        }
+        if (String(row?.rejectionCode || '').trim()) return;
+        const witness = row?.paretoWitness;
+        if (row?.pareto === true) {
+          if (String(witness?.kind || '').trim() !== 'NON_DOMINATED') {
+            pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+              actionIndex,
+              candidateIndex,
+              candidateId,
+              kind: 'R9V2_PARETO_WITNESS_MISSING',
+            });
+          }
+        } else if (!String(witness?.dominatorCandidateId || '').trim()) {
+          pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+            actionIndex,
+            candidateIndex,
+            candidateId,
+            kind: 'R9V2_DOMINATOR_WITNESS_MISSING',
+          });
+        }
+      });
+    });
+
     const activeStarts = eventLedger.filter(event =>
       ['action_start', 'charge_start'].includes(String(event?.eventKind || '').trim()) &&
       normalizeActionRole(event?.actionRole || 'ACTIVE') === 'ACTIVE'
@@ -15593,6 +15855,10 @@
     const selected = decision?.selected && typeof decision.selected === 'object'
       ? decision.selected
       : null;
+    const normalizeCandidateIdList = value =>
+      Array.isArray(value)
+        ? value.map(item => String(item || '').trim()).filter(Boolean).sort()
+        : [];
     const normalizeScoreCandidate = candidate => {
       const declaration = candidate?.declaration || {};
       return {
@@ -15630,6 +15896,14 @@
       opportunitySequence: Math.max(0, Number(decision?.opportunitySequence || 0)),
       continuation: decision?.continuation === true,
       candidateCount: Math.max(0, Number(decision?.candidateCount || 0)),
+      frozenCandidateIds: normalizeCandidateIdList(decision?.frozenCandidateIds),
+      preparedEntryCandidateIds: normalizeCandidateIdList(
+        decision?.preparedEntryCandidateIds,
+      ),
+      preparedProofCandidateIds: normalizeCandidateIdList(
+        decision?.preparedProofCandidateIds,
+      ),
+      candidateCoverage: decision?.candidateCoverage || null,
       paretoCount: Math.max(0, Number(decision?.paretoCount || 0)),
       selected: selected
         ? {

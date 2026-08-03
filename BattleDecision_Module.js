@@ -36776,6 +36776,336 @@
     });
   }
 
+  function r9v2TerminalIdentityFromEntry(
+    request = {},
+    entry = {},
+    expectedTerminalProbability = null,
+  ) {
+    const orderedContributions = (entry?.contributions || [])
+      .map((contribution, contributionIndex) => ({
+        contribution,
+        contributionIndex,
+        outcomeKind: String(
+          contribution?.outcomeKind || '',
+        ).trim(),
+        sourceEffectInstanceId: String(
+          contribution?.effectInstanceId ||
+          contribution?.sourceEffectId ||
+          '',
+        ).trim(),
+      }))
+      .filter(row =>
+        ['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(row.outcomeKind),
+      );
+    const sourceEffectIds = [
+      ...new Set(
+        orderedContributions
+          .map(row => row.sourceEffectInstanceId)
+          .filter(Boolean),
+      ),
+    ];
+    const emptyIdentity = Object.freeze({
+      terminalAfterEffectInstanceId: '',
+      terminalAtomicKey: '',
+      terminalAfterEffectInstanceIds: Object.freeze([]),
+      terminalAtomicKeys: Object.freeze([]),
+      terminalPaths: Object.freeze([]),
+      sourceEffectIds: Object.freeze(sourceEffectIds),
+    });
+    if (sourceEffectIds.length <= 1) {
+      if (sourceEffectIds.length !== 1) return emptyIdentity;
+      const terminalAfterEffectInstanceId = sourceEffectIds[0];
+      const terminalAtomicKey = [
+        String(entry?.candidateId || '').trim(),
+        terminalAfterEffectInstanceId,
+        'FIRST_TERMINAL',
+      ].join('|');
+      return Object.freeze({
+        terminalAfterEffectInstanceId,
+        terminalAtomicKey,
+        terminalAfterEffectInstanceIds: Object.freeze([
+          terminalAfterEffectInstanceId,
+        ]),
+        terminalAtomicKeys: Object.freeze([terminalAtomicKey]),
+        terminalPaths: Object.freeze([]),
+        sourceEffectIds: Object.freeze(sourceEffectIds),
+      });
+    }
+
+    const worldSnapshot = request?.visibleWorld || {};
+    const rawObjectives =
+      request?.objectiveContract ||
+      request?.battleIntent?.objectives ||
+      request?.battleIntent?.胜负条件 ||
+      worldSnapshot?.胜负条件 ||
+      {};
+    const normalizedObjectives =
+      preview.normalizeBattleObjectives(rawObjectives, worldSnapshot);
+    const objectives = {
+      ...normalizedObjectives,
+      __worldSnapshot: worldSnapshot,
+    };
+    const conditionRows = [
+      ...(objectives.victory?.conditions || []).map(condition => ({
+        group: 'VICTORY',
+        condition,
+      })),
+      ...(objectives.defeat?.conditions || []).map(condition => ({
+        group: 'DEFEAT',
+        condition,
+      })),
+    ].map(row => Object.freeze({
+      ...row,
+      staticMatch: r9v2StaticObjectiveConditionMatch(
+        worldSnapshot,
+        row.condition,
+      ),
+      unitIds: r9v2ObjectiveConditionUnitIds(
+        worldSnapshot,
+        row.condition,
+      ),
+    }));
+    const targetIds = [
+      ...new Set([
+        ...orderedContributions
+          .map(row => String(row.contribution?.targetId || '').trim())
+          .filter(Boolean),
+        ...conditionRows.flatMap(row => [...row.unitIds]),
+      ]),
+    ].sort();
+    const initialHpByTarget = new Map(
+      targetIds.map(targetId => {
+        const unit = findUnitInWorld(worldSnapshot, targetId);
+        return [
+          targetId,
+          unit ? Number(preview.readHp(unit)) : 0,
+        ];
+      }),
+    );
+    const stateForTarget = (hpByTarget, targetId) => {
+      const unit = findUnitInWorld(worldSnapshot, targetId);
+      const hp = Number(
+        hpByTarget.get(targetId) ??
+        (unit ? preview.readHp(unit) : 0),
+      );
+      if (!unit) {
+        return { hp, alive: false, capable: false };
+      }
+      const alive = preview.isAlive(unit) && hp > 1e-9;
+      return {
+        hp,
+        alive,
+        capable: preview.isBattleCapable(unit) && alive,
+      };
+    };
+    const conditionMatches = (row, hpByTarget) => {
+      if (row.staticMatch !== null) return row.staticMatch === true;
+      const matches = [...row.unitIds].map(targetId => {
+        const unit = findUnitInWorld(worldSnapshot, targetId);
+        return unit
+          ? r9v2UnitMatchesObjectiveCondition(
+              unit,
+              stateForTarget(hpByTarget, targetId),
+              row.condition,
+            )
+          : false;
+      });
+      if (!matches.length) return false;
+      return String(row.condition?.scope || 'ANY').trim().toUpperCase() ===
+        'ALL'
+        ? matches.every(Boolean)
+        : matches.some(Boolean);
+    };
+    const objectiveStatus = hpByTarget => {
+      const victoryMatches = conditionRows
+        .filter(row => row.group === 'VICTORY')
+        .map(row => conditionMatches(row, hpByTarget));
+      const defeatMatches = conditionRows
+        .filter(row => row.group === 'DEFEAT')
+        .map(row => conditionMatches(row, hpByTarget));
+      const victoryMatched = victoryMatches.length > 0 &&
+        (objectives.victory?.logic === 'ALL'
+          ? victoryMatches.every(Boolean)
+          : victoryMatches.some(Boolean));
+      const defeatMatched = defeatMatches.length > 0 &&
+        (objectives.defeat?.logic === 'ALL'
+          ? defeatMatches.every(Boolean)
+          : defeatMatches.some(Boolean));
+      if (victoryMatched && defeatMatched) {
+        return objectives.resolutionPriority === 'DRAW_ON_CONFLICT'
+          ? 'DRAW'
+          : 'ENEMY_WIN';
+      }
+      if (victoryMatched) return 'PLAYER_WIN';
+      if (defeatMatched) return 'ENEMY_WIN';
+      return 'ONGOING';
+    };
+    const stateKey = state => [
+      state.terminalStatus,
+      state.terminalOwner,
+      targetIds.map(targetId =>
+        `${targetId}:${Number(state.hpByTarget.get(targetId) || 0).toFixed(9)}`
+      ).join('|'),
+    ].join('\u0000');
+    let states = new Map();
+    const initialState = {
+      probability: 1,
+      hpByTarget: initialHpByTarget,
+      terminalStatus: objectiveStatus(initialHpByTarget),
+      terminalOwner: '',
+    };
+    states.set(stateKey(initialState), initialState);
+    orderedContributions.forEach(row => {
+      const distribution = row.outcomeKind === 'SCHEDULED_HP_DELTA'
+        ? r9v2ScheduledHpDistribution(row.contribution)
+        : r9v2ContributionHpDistribution(row.contribution);
+      const next = new Map();
+      states.forEach(state => {
+        if (state.terminalStatus !== 'ONGOING') {
+          const key = stateKey(state);
+          const current = next.get(key);
+          if (current) {
+            current.probability += state.probability;
+          } else {
+            next.set(key, {
+              ...state,
+              hpByTarget: new Map(state.hpByTarget),
+            });
+          }
+          return;
+        }
+        distribution.forEach(outcome => {
+          const probability =
+            Number(state.probability || 0) *
+            Number(outcome?.probability || 0);
+          if (!(probability > 1e-15)) return;
+          const hpByTarget = new Map(state.hpByTarget);
+          const targetId = String(
+            row.contribution?.targetId || '',
+          ).trim();
+          if (targetId) {
+            const unit = findUnitInWorld(worldSnapshot, targetId);
+            const hpMax = Math.max(
+              1,
+              unit ? preview.readHpMax(unit) : 1,
+            );
+            hpByTarget.set(
+              targetId,
+              clamp(
+                Number(hpByTarget.get(targetId) || 0) +
+                  Number(outcome?.delta || 0),
+                0,
+                hpMax,
+              ),
+            );
+          }
+          const terminalStatus = objectiveStatus(hpByTarget);
+          const terminalOwner = terminalStatus === 'ONGOING'
+            ? ''
+            : row.sourceEffectInstanceId;
+          const nextState = {
+            probability,
+            hpByTarget,
+            terminalStatus,
+            terminalOwner,
+          };
+          const key = stateKey(nextState);
+          const current = next.get(key);
+          if (current) {
+            current.probability += probability;
+          } else {
+            next.set(key, nextState);
+          }
+        });
+      });
+      states = next;
+    });
+    const terminalPathsByKey = new Map();
+    states.forEach(state => {
+      if (state.terminalStatus === 'ONGOING') return;
+      const terminalAfterEffectInstanceId = String(
+        state.terminalOwner || '',
+      ).trim();
+      const terminalAtomicKey = terminalAfterEffectInstanceId
+        ? [
+            String(entry?.candidateId || '').trim(),
+            terminalAfterEffectInstanceId,
+            'FIRST_TERMINAL',
+          ].join('|')
+        : '';
+      const key = [
+        state.terminalStatus,
+        terminalAfterEffectInstanceId,
+        terminalAtomicKey,
+      ].join('\u0000');
+      const current = terminalPathsByKey.get(key);
+      if (current) {
+        current.probability += Number(state.probability || 0);
+      } else {
+        terminalPathsByKey.set(key, {
+          probability: Number(state.probability || 0),
+          status: state.terminalStatus,
+          terminalAfterEffectInstanceId,
+          terminalAtomicKey,
+        });
+      }
+    });
+    const terminalPaths = [...terminalPathsByKey.values()]
+      .filter(path => Number(path.probability || 0) > 1e-15)
+      .map(path => Object.freeze(path));
+    const terminalPathMass = terminalPaths.reduce(
+      (sum, path) => sum + Number(path.probability || 0),
+      0,
+    );
+    if (
+      Number.isFinite(Number(expectedTerminalProbability)) &&
+      Math.abs(
+        terminalPathMass - Number(expectedTerminalProbability),
+      ) > 1e-9
+    ) {
+      throw new Error(
+        `R9V2_TERMINAL_PATH_PROBABILITY_MISMATCH:${terminalPathMass}:${expectedTerminalProbability}`,
+      );
+    }
+    const terminalAfterEffectInstanceIds = [
+      ...new Set(
+        terminalPaths
+          .map(path => path.terminalAfterEffectInstanceId)
+          .filter(Boolean),
+      ),
+    ];
+    const terminalAtomicKeys = [
+      ...new Set(
+        terminalPaths
+          .map(path => path.terminalAtomicKey)
+          .filter(Boolean),
+      ),
+    ];
+    return Object.freeze({
+      terminalAfterEffectInstanceId:
+        terminalAfterEffectInstanceIds.length === 1 &&
+        terminalPaths.every(path =>
+          path.terminalAfterEffectInstanceId ===
+            terminalAfterEffectInstanceIds[0]
+        )
+          ? terminalAfterEffectInstanceIds[0]
+          : '',
+      terminalAtomicKey:
+        terminalAtomicKeys.length === 1 &&
+        terminalPaths.every(path =>
+          path.terminalAtomicKey === terminalAtomicKeys[0]
+        )
+          ? terminalAtomicKeys[0]
+          : '',
+      terminalAfterEffectInstanceIds: Object.freeze(
+        terminalAfterEffectInstanceIds,
+      ),
+      terminalAtomicKeys: Object.freeze(terminalAtomicKeys),
+      terminalPaths: Object.freeze(terminalPaths),
+      sourceEffectIds: Object.freeze(sourceEffectIds),
+    });
+  }
+
   function r9v2ProjectHealthAndTerminal(request = {}, entry = {}) {
     const worldSnapshot = request.visibleWorld;
     const rawObjectives =
@@ -37246,23 +37576,6 @@
           } else {
             delete trajectoryTotals[unitId];
           }
-          const previousValue = r8UniqueObjectiveTrajectoryValue(
-            request,
-            objectiveGroupsForState,
-            objectiveTrajectories(previousTrajectoryTotals),
-            objectiveContextForState,
-          );
-          const nextValue = r8UniqueObjectiveTrajectoryValue(
-            request,
-            objectiveGroupsForState,
-            objectiveTrajectories(trajectoryTotals),
-            objectiveContextForState,
-          );
-          objectiveDirectValueByTarget.set(
-            unitId,
-            Number(objectiveDirectValueByTarget.get(unitId) || 0) +
-              probability * (nextValue - previousValue),
-          );
           const key = [
             bits.map(value => value ? '1' : '0').join(''),
             objectiveStateIdentity(trajectoryTotals),
@@ -37324,6 +37637,33 @@
       );
       expectedDirectHealthHEPP += probability * objectiveValue;
       if (status === 'ONGOING') {
+        let previousTrajectoryTotals = {};
+        objectiveProjectionUnitOrder.forEach(targetId => {
+          const deltaPP = Number(trajectoryTotals?.[targetId] || 0);
+          if (Math.abs(deltaPP) <= 1e-12) return;
+          const nextTrajectoryTotals = {
+            ...previousTrajectoryTotals,
+            [targetId]: deltaPP,
+          };
+          const previousValue = r8UniqueObjectiveTrajectoryValue(
+            request,
+            objectiveGroups,
+            objectiveTrajectories(previousTrajectoryTotals),
+            objectiveContextForState,
+          );
+          const nextValue = r8UniqueObjectiveTrajectoryValue(
+            request,
+            objectiveGroups,
+            objectiveTrajectories(nextTrajectoryTotals),
+            objectiveContextForState,
+          );
+          objectiveDirectValueByTarget.set(
+            targetId,
+            Number(objectiveDirectValueByTarget.get(targetId) || 0) +
+              probability * (nextValue - previousValue),
+          );
+          previousTrajectoryTotals = nextTrajectoryTotals;
+        });
         ongoingProbability += probability;
         expectedOngoingDirectHealthHEPP +=
           probability * objectiveValue;
@@ -37359,6 +37699,12 @@
         `R9V2_TERMINAL_PROBABILITY_INVALID:${probabilityTotal}`,
       );
     }
+    const terminalIdentity =
+      r9v2TerminalIdentityFromEntry(
+        request,
+        entry,
+        terminalProbability,
+      );
     const withdrawalRows = withdrawalContestByTarget
       ? [...withdrawalContestByTarget.entries()]
       : [];
@@ -37449,6 +37795,26 @@
       lossProbability,
       drawProbability,
       ongoingProbability,
+      terminalAfterEffectInstanceId:
+        terminalProbability > 1e-12
+          ? terminalIdentity.terminalAfterEffectInstanceId
+          : '',
+      terminalAtomicKey:
+        terminalProbability > 1e-12
+          ? terminalIdentity.terminalAtomicKey
+          : '',
+      terminalAfterEffectInstanceIds:
+        terminalProbability > 1e-12
+          ? terminalIdentity.terminalAfterEffectInstanceIds
+          : Object.freeze([]),
+      terminalAtomicKeys:
+        terminalProbability > 1e-12
+          ? terminalIdentity.terminalAtomicKeys
+          : Object.freeze([]),
+      terminalPaths:
+        terminalProbability > 1e-12
+          ? terminalIdentity.terminalPaths
+          : Object.freeze([]),
       responseProjection,
       targetSummaries,
       objectiveDirectValueByTarget,
@@ -38437,6 +38803,62 @@
         Number(
           candidateProjection?.expectedTerminalUtility || 0,
         ),
+      baselineTerminalProbability: Number(
+        baselineProjection?.terminalProbability || 0,
+      ),
+      candidateTerminalProbability: Number(
+        candidateProjection?.terminalProbability || 0,
+      ),
+      baselineTerminalAfterEffectInstanceId: String(
+        baselineProjection?.terminalAfterEffectInstanceId || '',
+      ).trim(),
+      candidateTerminalAfterEffectInstanceId: String(
+        candidateProjection?.terminalAfterEffectInstanceId || '',
+      ).trim(),
+      baselineTerminalAfterEffectInstanceIds: Object.freeze([
+        ...(baselineProjection?.terminalAfterEffectInstanceIds || []),
+        baselineProjection?.terminalAfterEffectInstanceId,
+      ]
+        .map(value => String(value || '').trim())
+        .filter((value, index, values) =>
+          value && values.indexOf(value) === index
+        )),
+      candidateTerminalAfterEffectInstanceIds: Object.freeze([
+        ...(candidateProjection?.terminalAfterEffectInstanceIds || []),
+        candidateProjection?.terminalAfterEffectInstanceId,
+      ]
+        .map(value => String(value || '').trim())
+        .filter((value, index, values) =>
+          value && values.indexOf(value) === index
+        )),
+      baselineTerminalAtomicKey: String(
+        baselineProjection?.terminalAtomicKey || '',
+      ).trim(),
+      candidateTerminalAtomicKey: String(
+        candidateProjection?.terminalAtomicKey || '',
+      ).trim(),
+      baselineTerminalAtomicKeys: Object.freeze([
+        ...(baselineProjection?.terminalAtomicKeys || []),
+        baselineProjection?.terminalAtomicKey,
+      ]
+        .map(value => String(value || '').trim())
+        .filter((value, index, values) =>
+          value && values.indexOf(value) === index
+        )),
+      candidateTerminalAtomicKeys: Object.freeze([
+        ...(candidateProjection?.terminalAtomicKeys || []),
+        candidateProjection?.terminalAtomicKey,
+      ]
+        .map(value => String(value || '').trim())
+        .filter((value, index, values) =>
+          value && values.indexOf(value) === index
+        )),
+      baselineTerminalPaths: Object.freeze([
+        ...(baselineProjection?.terminalPaths || []),
+      ]),
+      candidateTerminalPaths: Object.freeze([
+        ...(candidateProjection?.terminalPaths || []),
+      ]),
       baselineActorBaseHpPP:
         baselineActorSurvival.baseHpPP,
       baselineActorSurvivalLowerBoundPP:
@@ -38541,18 +38963,93 @@
             : 'HP_DELTA',
       }));
     });
+    const directTerminalDeltaHEPP = Number(
+      healthProjection?.expectedTerminalUtility || 0,
+    );
+    if (Math.abs(directTerminalDeltaHEPP) > 1e-9) {
+      const terminalAfterEffectInstanceIds = [
+        ...(healthProjection?.terminalAfterEffectInstanceIds || []),
+        healthProjection?.terminalAfterEffectInstanceId,
+      ]
+        .map(value => String(value || '').trim())
+        .filter((value, index, values) =>
+          value && values.indexOf(value) === index
+        );
+      const terminalAtomicKeys = [
+        ...(healthProjection?.terminalAtomicKeys || []),
+        healthProjection?.terminalAtomicKey,
+      ]
+        .map(value => String(value || '').trim())
+        .filter((value, index, values) =>
+          value && values.indexOf(value) === index
+        );
+      if (
+        Number(healthProjection?.terminalProbability || 0) <= 1e-12 ||
+        !terminalAfterEffectInstanceIds.length
+      ) {
+        throw new Error(
+          `R9V2_TERMINAL_IDENTITY_MISSING:${entry.candidateId}`,
+        );
+      }
+      causalValueFacts.push(Object.freeze({
+        factId: `${entry.candidateId}:terminal:first`,
+        ownerType: 'TERMINAL_DELTA',
+        targetId: request.actorId,
+        valueHEPP: directTerminalDeltaHEPP,
+        sourceOutcomeKind: 'FIRST_TERMINAL',
+        terminalProbability:
+          healthProjection.terminalProbability,
+        ...(terminalAfterEffectInstanceIds.length === 1
+          ? {
+              terminalAfterEffectInstanceId:
+                terminalAfterEffectInstanceIds[0],
+            }
+          : {}),
+        terminalAfterEffectInstanceIds: Object.freeze(
+          terminalAfterEffectInstanceIds,
+        ),
+        ...(terminalAtomicKeys.length === 1
+          ? { terminalAtomicKey: terminalAtomicKeys[0] }
+          : {}),
+        terminalAtomicKeys: Object.freeze(terminalAtomicKeys),
+        terminalPaths: Object.freeze([
+          ...(healthProjection?.terminalPaths || []),
+        ]),
+        winProbability:
+          healthProjection.winProbability,
+        lossProbability:
+          healthProjection.lossProbability,
+        drawProbability:
+          healthProjection.drawProbability,
+      }));
+    }
+    const incomingSourceActorIds = [
+      ...new Set(
+        (incomingResponseProjection?.sourceActorIds || [])
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+      ),
+    ];
+    const incomingSourceDescriptorIds = [
+      ...new Set(
+        (incomingResponseProjection?.sourceDescriptorIds || [])
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+      ),
+    ];
     if (Math.abs(incomingResponseDirectDeltaHEPP) > 1e-9) {
       causalValueFacts.push(Object.freeze({
         factId: `${entry.candidateId}:incoming:direct`,
-        ownerType: 'ACTION_POOL_DELTA',
+        ownerType: 'STATE_DELTA',
         targetId: request.actorId,
         valueHEPP: incomingResponseDirectDeltaHEPP,
         sourceOutcomeKind: 'INCOMING_HEALTH_DELTA',
         dependencyRole: 'OPPORTUNITY_EXECUTE',
-        sourceActorId:
-          String(
-            incomingResponseProjection?.sourceActorId || '',
-          ).trim(),
+        ...(incomingSourceActorIds.length === 1
+          ? { sourceActorId: incomingSourceActorIds[0] }
+          : {}),
+        sourceActorIds: Object.freeze(incomingSourceActorIds),
+        sourceDescriptorIds: Object.freeze(incomingSourceDescriptorIds),
         baselineExpectedDirectHealthHEPP:
           Number(
             incomingResponseProjection
@@ -38564,6 +39061,119 @@
               ?.candidateExpectedDirectHealthHEPP || 0,
           ),
       }));
+    }
+    if (Math.abs(incomingResponseTerminalDeltaHEPP) > 1e-9) {
+      const baselineTerminalProbability = Number(
+        incomingResponseProjection?.baselineTerminalProbability || 0,
+      );
+      const candidateTerminalProbability = Number(
+        incomingResponseProjection?.candidateTerminalProbability || 0,
+      );
+      const terminalAfterEffectInstanceIds = [
+        ...(incomingResponseProjection
+          ?.baselineTerminalAfterEffectInstanceIds || []),
+        ...(incomingResponseProjection
+          ?.candidateTerminalAfterEffectInstanceIds || []),
+        incomingResponseProjection
+          ?.baselineTerminalAfterEffectInstanceId,
+        incomingResponseProjection
+          ?.candidateTerminalAfterEffectInstanceId,
+      ]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .filter((value, index, values) => values.indexOf(value) === index);
+      const terminalAtomicKeys = [
+        ...(incomingResponseProjection?.baselineTerminalAtomicKeys || []),
+        ...(incomingResponseProjection?.candidateTerminalAtomicKeys || []),
+        incomingResponseProjection?.baselineTerminalAtomicKey,
+        incomingResponseProjection?.candidateTerminalAtomicKey,
+      ]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .filter((value, index, values) => values.indexOf(value) === index);
+      if (
+        Math.max(
+          baselineTerminalProbability,
+          candidateTerminalProbability,
+        ) > 1e-12
+      ) {
+        if (!terminalAfterEffectInstanceIds.length) {
+          throw new Error(
+            `R9V2_TERMINAL_IDENTITY_MISSING:${entry.candidateId}:incoming`,
+          );
+        }
+        causalValueFacts.push(Object.freeze({
+          factId: `${entry.candidateId}:incoming:terminal`,
+          ownerType: 'TERMINAL_DELTA',
+          targetId: request.actorId,
+          valueHEPP: incomingResponseTerminalDeltaHEPP,
+          sourceOutcomeKind: 'FIRST_TERMINAL',
+          dependencyRole: 'OPPORTUNITY_EXECUTE',
+          ...(terminalAfterEffectInstanceIds.length === 1
+            ? {
+                terminalAfterEffectInstanceId:
+                  terminalAfterEffectInstanceIds[0],
+              }
+            : {}),
+          terminalAfterEffectInstanceIds: Object.freeze(
+            terminalAfterEffectInstanceIds,
+          ),
+          terminalAtomicKeys: Object.freeze(terminalAtomicKeys),
+          baselineTerminalAfterEffectInstanceIds: Object.freeze([
+            ...(incomingResponseProjection
+              ?.baselineTerminalAfterEffectInstanceIds || []),
+          ]),
+          candidateTerminalAfterEffectInstanceIds: Object.freeze([
+            ...(incomingResponseProjection
+              ?.candidateTerminalAfterEffectInstanceIds || []),
+          ]),
+          baselineTerminalAtomicKeys: Object.freeze([
+            ...(incomingResponseProjection?.baselineTerminalAtomicKeys || []),
+          ]),
+          candidateTerminalAtomicKeys: Object.freeze([
+            ...(incomingResponseProjection?.candidateTerminalAtomicKeys || []),
+          ]),
+          baselineTerminalPaths: Object.freeze([
+            ...(incomingResponseProjection?.baselineTerminalPaths || []),
+          ]),
+          candidateTerminalPaths: Object.freeze([
+            ...(incomingResponseProjection?.candidateTerminalPaths || []),
+          ]),
+          terminalPaths: Object.freeze([
+            ...(incomingResponseProjection?.candidateTerminalPaths || []),
+          ]),
+          terminalProbability: Math.max(
+            candidateTerminalProbability,
+          ),
+          baselineTerminalProbability,
+          candidateTerminalProbability,
+          sourceActorIds: Object.freeze(incomingSourceActorIds),
+          sourceDescriptorIds: Object.freeze(
+            incomingSourceDescriptorIds,
+          ),
+        }));
+      } else {
+        causalValueFacts.push(Object.freeze({
+          factId: `${entry.candidateId}:incoming:terminal-risk`,
+          ownerType: 'ACTION_POOL_DELTA',
+          targetId: request.actorId,
+          valueHEPP: incomingResponseTerminalDeltaHEPP,
+          sourceOutcomeKind: 'INCOMING_TERMINAL_RISK',
+          dependencyRole: 'OPPORTUNITY_EXECUTE',
+          sourceActorIds: Object.freeze(incomingSourceActorIds),
+          sourceDescriptorIds: Object.freeze(
+            incomingSourceDescriptorIds,
+          ),
+          baselineExpectedTerminalUtility: Number(
+            incomingResponseProjection
+              ?.baselineExpectedTerminalUtility || 0,
+          ),
+          candidateExpectedTerminalUtility: Number(
+            incomingResponseProjection
+              ?.candidateExpectedTerminalUtility || 0,
+          ),
+        }));
+      }
     }
 
     const cancellationByTarget = new Map();
@@ -38801,25 +39411,15 @@
       (sum, fact) => sum + Number(fact.valueHEPP || 0),
       0,
     );
-    const terminalDeltaHEPP = goalUtilityDeltaHEPP - reconciled;
-    if (Math.abs(terminalDeltaHEPP) > 1e-9) {
-      causalValueFacts.push(Object.freeze({
-        factId: `${entry.candidateId}:terminal:first`,
-        ownerType: 'TERMINAL_DELTA',
-        targetId: request.actorId,
-        valueHEPP: terminalDeltaHEPP,
-        sourceOutcomeKind: 'FIRST_TERMINAL',
-        terminalProbability:
-          healthProjection.terminalProbability,
-        winProbability: healthProjection.winProbability,
-        lossProbability: healthProjection.lossProbability,
-        drawProbability: healthProjection.drawProbability,
-      }));
-      reconciled += terminalDeltaHEPP;
+    const unattributedDeltaHEPP = goalUtilityDeltaHEPP - reconciled;
+    if (Math.abs(unattributedDeltaHEPP) > 1e-6) {
+      throw new Error(
+        `R9V2_CAUSAL_UNATTRIBUTED_VALUE:${entry.candidateId}:${unattributedDeltaHEPP}`,
+      );
     }
-    if (Math.abs(reconciled - goalUtilityDeltaHEPP) > 1e-6) {
-      throw new Error('CAUSAL_RECONCILIATION_MISMATCH');
-    }
+    const terminalDeltaHEPP = causalValueFacts
+      .filter(fact => fact.ownerType === 'TERMINAL_DELTA')
+      .reduce((sum, fact) => sum + Number(fact.valueHEPP || 0), 0);
     const supported = new Set([
       'HP_DELTA',
       'SCHEDULED_HP_DELTA',
@@ -38957,13 +39557,56 @@
       futureThreatUpperHEPP,
       survivalLowerBound,
     });
+    const terminalFacts = causalValueFacts.filter(
+      fact => fact.ownerType === 'TERMINAL_DELTA',
+    );
+    const terminalAfterEffectInstanceIds = [
+      ...new Set([
+        ...terminalFacts.flatMap(fact =>
+          Array.isArray(fact?.candidateTerminalAfterEffectInstanceIds)
+            ? fact.candidateTerminalAfterEffectInstanceIds
+            : Array.isArray(fact?.terminalAfterEffectInstanceIds)
+              ? fact.terminalAfterEffectInstanceIds
+            : []
+        ),
+        ...terminalFacts.map(fact =>
+          fact?.candidateTerminalAfterEffectInstanceId ||
+          fact?.terminalAfterEffectInstanceId
+        ),
+        ...(healthProjection?.terminalAfterEffectInstanceIds || []),
+        healthProjection?.terminalAfterEffectInstanceId,
+      ]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)),
+    ];
+    const terminalAtomicKeys = [
+      ...new Set([
+        ...terminalFacts.flatMap(fact =>
+          Array.isArray(fact?.candidateTerminalAtomicKeys)
+            ? fact.candidateTerminalAtomicKeys
+            : Array.isArray(fact?.terminalAtomicKeys)
+              ? fact.terminalAtomicKeys
+            : []
+        ),
+        ...terminalFacts.map(fact =>
+          fact?.candidateTerminalAtomicKey || fact?.terminalAtomicKey
+        ),
+        ...(healthProjection?.terminalAtomicKeys || []),
+        healthProjection?.terminalAtomicKey,
+      ]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)),
+    ];
     const terminalProjection =
-      healthProjection.terminalProbability > 1e-12 ||
-      Math.abs(terminalDeltaHEPP) > 1e-12 ||
+      terminalFacts.length > 0 ||
       healthProjection.expectedDiscardedOverkillPP > 1e-12
         ? Object.freeze({
-            terminalProbability:
-              healthProjection.terminalProbability,
+            terminalProbability: Math.max(
+              Number(healthProjection.terminalProbability || 0),
+              ...terminalFacts.map(fact =>
+                Number(fact?.terminalProbability || 0),
+              ),
+            ),
             winProbability: healthProjection.winProbability,
             lossProbability: healthProjection.lossProbability,
             drawProbability: healthProjection.drawProbability,
@@ -38973,6 +39616,28 @@
             expectedOngoingTrajectoryUtility:
               healthProjection.expectedOngoingDirectHealthHEPP,
             terminalDeltaHEPP,
+            terminalAfterEffectInstanceId:
+              terminalAfterEffectInstanceIds.length === 1
+                ? terminalAfterEffectInstanceIds[0]
+                : '',
+            terminalAtomicKey:
+              terminalAtomicKeys.length === 1
+                ? terminalAtomicKeys[0]
+                : '',
+            terminalAfterEffectInstanceIds: Object.freeze(
+              terminalAfterEffectInstanceIds,
+            ),
+            terminalAtomicKeys: Object.freeze(terminalAtomicKeys),
+            terminalPaths: Object.freeze([
+              ...(healthProjection?.terminalPaths || []),
+              ...terminalFacts.flatMap(fact =>
+                Array.isArray(fact?.candidateTerminalPaths)
+                  ? fact.candidateTerminalPaths
+                  : Array.isArray(fact?.terminalPaths)
+                    ? fact.terminalPaths
+                  : []
+              ),
+            ]),
             ...(healthProjection?.withdrawalProjection
               ? {
                   withdrawalSuccessProbability:
@@ -39819,7 +40484,24 @@
       directProofs,
       currentTargetInterferenceRate,
     );
-    const proofs = baseProofs;
+    const informationProjectionByCandidate =
+      r9v2InformationProjectionByCandidate({
+        request: requestLike,
+        state: prepared.state,
+        pool: prepared.pool,
+        entries: currentEntries,
+        proofs: baseProofs,
+        candidates: frozenCandidates,
+        mechanicalProjectionContext,
+      });
+    const proofs = Object.freeze(
+      baseProofs.map(proof =>
+        r9v2BindInformationProjection(
+          proof,
+          informationProjectionByCandidate,
+        )
+      ),
+    );
     r9v2Metric(prepared.state, 'r9v2CandidateProofs', proofs.length);
     return Object.freeze({
       schemaVersion: 'PreparedR9v2ControlResourceSliceV1',
@@ -39831,7 +40513,8 @@
       ].join(':'),
       actorId,
       entries: Object.freeze(currentEntries),
-      proofs: Object.freeze(proofs),
+      proofs,
+      informationProjectionStatus: 'CONNECTED_INFORMATION_VALUE_V2',
       rebuiltUnitIds: Object.freeze(prepared.rebuiltUnitIds),
       workload: Object.freeze({
         observerPoolUnitCount: prepared.pool.unitEntries.size,
@@ -39917,26 +40600,66 @@
         },
       };
     }
+    const frozenCandidateIds = candidates.map(candidate =>
+      String(candidate?.candidateId || '').trim(),
+    );
+    if (
+      frozenCandidateIds.some(candidateId => !candidateId) ||
+      frozenCandidateIds.length !== new Set(frozenCandidateIds).size
+    ) {
+      throw new Error('R9V2_CANDIDATE_COVERAGE_MISMATCH:FROZEN_IDS');
+    }
     const proofByCandidate = new Map(
       prepared.proofs.map(proof => [proof.candidateId, proof]),
     );
     const entryByCandidate = new Map(
       prepared.entries.map(entry => [entry.candidateId, entry]),
     );
-    const auditableRows = candidates.map(candidate => ({
-      candidate,
-      entry: entryByCandidate.get(candidate.candidateId),
-      proof: proofByCandidate.get(candidate.candidateId),
-      playerLocked: false,
-    })).filter(row =>
-      row.entry &&
-      row.proof &&
-      row.entry.hardInvalid !== true
-    ).map(row => ({
-      ...row,
-      providerRejectionCode:
-        r9v2ProviderRejectionCode(request, row),
-    }));
+    const preparedEntryCandidateIds = [...entryByCandidate.keys()];
+    const preparedProofCandidateIds = [...proofByCandidate.keys()];
+    const sameCandidateIds = (left, right) => {
+      const leftSorted = [...left].sort();
+      const rightSorted = [...right].sort();
+      return leftSorted.length === rightSorted.length &&
+        leftSorted.every((candidateId, index) =>
+          candidateId === rightSorted[index],
+        );
+    };
+    if (
+      !sameCandidateIds(frozenCandidateIds, preparedEntryCandidateIds) ||
+      !sameCandidateIds(frozenCandidateIds, preparedProofCandidateIds)
+    ) {
+      throw new Error(
+        `R9V2_CANDIDATE_COVERAGE_MISMATCH:${JSON.stringify({
+          frozenCandidateIds,
+          preparedEntryCandidateIds,
+          preparedProofCandidateIds,
+        })}`,
+      );
+    }
+    const auditableRows = candidates.map(candidate => {
+      const entry = entryByCandidate.get(candidate.candidateId);
+      const proof = proofByCandidate.get(candidate.candidateId);
+      if (!entry || !proof) {
+        throw new Error(
+          `R9V2_CANDIDATE_COVERAGE_MISMATCH:${candidate.candidateId}`,
+        );
+      }
+      const providerRejectionCode = entry.hardInvalid === true
+        ? 'R9V2_MECHANICAL_CANDIDATE_INVALID'
+        : r9v2ProviderRejectionCode(request, {
+            candidate,
+            entry,
+            proof,
+          });
+      return {
+        candidate,
+        entry,
+        proof,
+        playerLocked: false,
+        providerRejectionCode,
+      };
+    });
     if (!auditableRows.length) {
       throw new Error('R9V2_ALL_CANDIDATES_INVALID');
     }
@@ -39975,7 +40698,21 @@
         const eligible = rows.filter(row =>
           row.entry.targetIds.includes(counterSourceId)
         );
-        if (eligible.length) rows = eligible;
+        if (eligible.length) {
+          const eligibleIds = new Set(
+            eligible.map(row => row.candidate.candidateId),
+          );
+          auditableRows.forEach(row => {
+            if (
+              !eligibleIds.has(row.candidate.candidateId) &&
+              !row.providerRejectionCode
+            ) {
+              row.providerRejectionCode =
+                'R9V2_COUNTER_WINDOW_INELIGIBLE';
+            }
+          });
+          rows = eligible;
+        }
       }
     }
 
@@ -39984,6 +40721,27 @@
         other !== row && r9v2Dominates(other, row)
       )
     );
+    const paretoWitnessByCandidate = new Map();
+    paretoRows.forEach(row => {
+      paretoWitnessByCandidate.set(row.candidate.candidateId, {
+        kind: 'NON_DOMINATED',
+      });
+    });
+    rows.forEach(row => {
+      if (paretoRows.includes(row)) return;
+      const dominator = rows.find(other =>
+        other !== row && r9v2Dominates(other, row),
+      );
+      if (!dominator) {
+        throw new Error(
+          `R9V2_PARETO_DOMINATOR_MISSING:${row.candidate.candidateId}`,
+        );
+      }
+      paretoWitnessByCandidate.set(row.candidate.candidateId, {
+        kind: 'DOMINATED',
+        dominatorCandidateId: dominator.candidate.candidateId,
+      });
+    });
     const replayIdentity =
       request?.collectDecisionReplayIdentity === true
         ? (() => {
@@ -40068,6 +40826,12 @@
           ? 'HARD_INVALID'
           : 'VIABLE',
       pareto: paretoRows.includes(row),
+      paretoWitness: row.providerRejectionCode
+        ? null
+        : cloneValue(
+            paretoWitnessByCandidate.get(row.candidate.candidateId) ||
+              null,
+          ),
       ...(row.candidate.counterDeclineFallback === true
         ? { counterDeclineFallback: true }
         : {}),
@@ -40121,6 +40885,19 @@
       scoreAudit: ordered.slice(0, 3).map(auditRow),
       candidateAudit: auditableRows.map(auditRow),
       candidateCount: candidates.length,
+      frozenCandidateIds: Object.freeze([...frozenCandidateIds]),
+      preparedEntryCandidateIds: Object.freeze(
+        [...preparedEntryCandidateIds].sort(),
+      ),
+      preparedProofCandidateIds: Object.freeze(
+        [...preparedProofCandidateIds].sort(),
+      ),
+      candidateCoverage: Object.freeze({
+        status: 'CLOSED',
+        frozenCount: frozenCandidateIds.length,
+        preparedEntryCount: preparedEntryCandidateIds.length,
+        preparedProofCount: preparedProofCandidateIds.length,
+      }),
       paretoCount: paretoRows.length,
       beliefState: cloneValue(request?.beliefState || {}),
       strategyMemory: cloneValue(request?.strategyMemory || {}),
@@ -40140,7 +40917,8 @@
         slice: 'CONTROL_RESOURCE_V1',
         selectionMode,
         informationProjectionStatus:
-          'PENDING_INFORMATION_VALUE_KERNEL_V1',
+          prepared.informationProjectionStatus ||
+          'CONNECTED_INFORMATION_VALUE_V2',
         workload: cloneValue(prepared.workload),
         rebuiltUnitIds: cloneValue(prepared.rebuiltUnitIds),
         unsupportedOutcomeKinds: cloneValue(
