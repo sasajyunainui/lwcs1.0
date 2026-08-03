@@ -860,9 +860,9 @@
     },
     {
       "char": "刘锋",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 15,
-      "talentCurrent": null
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "金翔",
@@ -908,9 +908,9 @@
     },
     {
       "char": "原恩辉辉",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 22,
-      "talentCurrent": null
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "羽天",
@@ -932,9 +932,9 @@
     },
     {
       "char": "唐雨格",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 29,
-      "talentCurrent": null
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "李思奇",
@@ -950,9 +950,9 @@
     },
     {
       "char": "唐月",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 9,
-      "talentCurrent": null
+      "talentCurrent": "天才"
     },
     {
       "char": "司马仙",
@@ -986,9 +986,9 @@
     },
     {
       "char": "郑龙江",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 8,
-      "talentCurrent": null
+      "talentCurrent": "正常"
     },
     {
       "char": "王占航",
@@ -1016,9 +1016,9 @@
     },
     {
       "char": "蓝冰",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 9,
-      "talentCurrent": null
+      "talentCurrent": "天才"
     },
     {
       "char": "容玉泫",
@@ -1070,9 +1070,9 @@
     },
     {
       "char": "清萝",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 8,
-      "talentCurrent": null
+      "talentCurrent": "天才"
     },
     {
       "char": "暗羽",
@@ -1094,9 +1094,9 @@
     },
     {
       "char": "羽沐辰",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 8,
-      "talentCurrent": null
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "谭小刀",
@@ -1136,9 +1136,9 @@
     },
     {
       "char": "叶陌勇",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 8,
-      "talentCurrent": null
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "张圆圆",
@@ -1178,9 +1178,9 @@
     },
     {
       "char": "张楚佳",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 16,
-      "talentCurrent": null
+      "talentCurrent": "绝世妖孽"
     },
     {
       "char": "蓝波",
@@ -1190,9 +1190,9 @@
     },
     {
       "char": "天和皇",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 9,
-      "talentCurrent": null
+      "talentCurrent": "天才"
     },
     {
       "char": "黑皇",
@@ -1250,21 +1250,21 @@
     },
     {
       "char": "白秀秀",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 36,
-      "talentCurrent": null
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "唐舞麟",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 24,
-      "talentCurrent": null
+      "talentCurrent": "绝世妖孽"
     },
     {
       "char": "古月娜",
-      "talentNeeded": true,
+      "talentNeeded": false,
       "skillCount": 26,
-      "talentCurrent": null
+      "talentCurrent": "绝世妖孽"
     }
   ]
 }
