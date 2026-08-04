@@ -9771,7 +9771,7 @@
     const logs = [];
     const initialSnapshot = getBattleSnapshot(combatData);
     const eventOwnedEvaluationEnabled =
-      providerId === 'r9v2-shadow' &&
+      ['r9v2-shadow', 'r9v2'].includes(providerId) &&
       input?.settings?.disableEventOwnedFactDelta !== true;
     const verifyEventOwnedFactDelta =
       eventOwnedEvaluationEnabled &&
@@ -9795,7 +9795,7 @@
       return nextBelief;
     };
     const evaluationSessionEnabled =
-      ['r8-shadow', 'r8', 'r9v2-shadow'].includes(providerId) &&
+      ['r8-shadow', 'r8', 'r9v2-shadow', 'r9v2'].includes(providerId) &&
       input?.settings?.disableEvaluationSession !== true &&
       typeof decisionRuntime.createEvaluationSession === 'function' &&
       typeof decisionRuntime.advanceEvaluationSession === 'function' &&
@@ -10690,7 +10690,7 @@
             // r9 无 session、无路线目录缓存（:7826/:8892 门），身份记账全为白算。
             const identityLite =
               providerId === 'r9' ||
-              providerId === 'r9v2-shadow';
+              ['r9v2-shadow', 'r9v2'].includes(providerId);
             const currentBelief = beliefByActor.get(actorId) || initialBeliefFor(actorId);
             const beliefContextHash = identityLite
               ? `belief-lite:${actorId}`
@@ -11019,6 +11019,7 @@
                 'r74-next-baseline',
                 'r9',
                 'r9v2-shadow',
+                'r9v2',
               ].includes(providerId)
                 ? 'CANDIDATES_ONLY'
                 : 'FULL',
@@ -11065,6 +11066,10 @@
                 input?.settings?.collectBehaviorIdentityObservations === true,
               disableCompactObjectiveFastPath:
                 input?.settings?.disableCompactObjectiveFastPath === true,
+              r9v2InformationValueOnly:
+                typeof input?.r9v2InformationValueOnly === 'boolean'
+                  ? input.r9v2InformationValueOnly
+                  : undefined,
             });
             const requestPreparedAt = performanceNow();
             if (evaluationSession) {
@@ -15197,7 +15202,7 @@
           }
           return;
         }
-        if (actionDecisionEngine === 'R9V2_SHADOW') {
+        if (['R9V2_SHADOW', 'R9V2_TARGET'].includes(actionDecisionEngine)) {
           const proof = candidate?.candidateValueProof;
           const r9v2Fields = [
             'candidateId',
@@ -15441,10 +15446,12 @@
       left.length === right.length &&
       left.every((candidateId, index) => candidateId === right[index]);
     r9v2DecisionAudits.forEach((decisionAudit, actionIndex) => {
-      if (
-        String(decisionAudit?.decisionEngine || '').trim().toUpperCase() !==
-        'R9V2_SHADOW'
-      ) {
+      if (![
+        'R9V2_SHADOW',
+        'R9V2_TARGET',
+      ].includes(
+        String(decisionAudit?.decisionEngine || '').trim().toUpperCase(),
+      )) {
         return;
       }
       const r9v2CausalFactIds = new Map();
@@ -16182,6 +16189,7 @@
       'r8',
       'r9',
       'r9v2-shadow',
+      'r9v2',
     ].includes(providerId)) {
       throw new Error(`battle_runtime_r8_provider_invalid:${providerId || 'missing'}`);
     }

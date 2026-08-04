@@ -29,6 +29,7 @@
   let r8CandidateOpportunityCancellationCache = new WeakMap();
   let evaluationSessionSequence = 0;
   let r9v2PrepareSequence = 0;
+  let r9v2ProjectionRevisionSequence = 0;
   let baseActionValueCache = new WeakMap();
   let unitSkillCache = new WeakMap();
   let stateEntriesCache = new WeakMap();
@@ -294,6 +295,10 @@
           state.r9v2DeclarationCatalogs.size,
         r9v2MechanicalBasisStore:
           state.r9v2MechanicalBasisStore.size,
+        r9v2FutureBehaviorPools:
+          state.r9v2FutureBehaviorPools.size,
+        r9v2ProofComponentStore:
+          state.r9v2ProofComponentStore.size,
       },
     });
   }
@@ -499,6 +504,10 @@
       r9v2ObserverPools: new Map(),
       r9v2DeclarationCatalogs: new Map(),
       r9v2MechanicalBasisStore: new Map(),
+      r9v2FutureBehaviorPools: new Map(),
+      r9v2ProofComponentStore: new Map(),
+      r9v2DependencyOwners: new Map(),
+      r9v2MechanicalKeyObjectHashes: new WeakMap(),
       r9v2NormalizedContributionStore:
         r9v2CreateNormalizedContributionStore(),
       latestFactDelta: null,
@@ -572,11 +581,23 @@
         r9v2CandidateProofs: 0,
         r9v2DeclarationCatalogBuilds: 0,
         r9v2DeclarationCatalogEntries: 0,
+        r9v2PoolFullRebuilds: 0,
+        r9v2PoolUnitFallbacks: 0,
+        r9v2PoolEntryRebuilds: 0,
+        r9v2PoolEntryReuses: 0,
+        r9v2ProofComponentBuilds: 0,
+        r9v2ProofComponentHits: 0,
+        r9v2ProofComponentEvictions: 0,
+        r9v2InformationProofComponentReuseAttempts: 0,
+        r9v2InformationProofComponentReuseHits: 0,
         r9v2MechanicalBasisCompiles: 0,
         r9v2MechanicalBasisEvaluations: 0,
         r9v2MechanicalBasisOracleChecks: 0,
         r9v2MechanicalBasisOracleMismatches: 0,
         r9v2MechanicalBasisUnsupported: 0,
+        r9v2FuturePoolBuilds: 0,
+        r9v2FuturePoolHits: 0,
+        r9v2FuturePoolKeyMismatches: 0,
       },
     });
     return handle;
@@ -32147,7 +32168,9 @@
         );
     const preparedR9v2Slice =
       candidatesOnly &&
-      String(input?.providerId || '').trim() === 'r9v2-shadow'
+      ['r9v2-shadow', 'r9v2'].includes(
+        String(input?.providerId || '').trim(),
+      )
         ? prepareR9v2ControlResourceSlice({
             sessionState,
             worldSnapshot: visibleWorld,
@@ -32161,6 +32184,10 @@
             evaluationContext,
             verifyMechanicalBasis:
               input?.verifyR9v2MechanicalBasis === true,
+            targetKernel:
+              String(input?.providerId || '').trim() === 'r9v2',
+            informationValueOnly:
+              input?.r9v2InformationValueOnly !== false,
           })
         : null;
     requestPayload.candidateEnvelopeMetrics = Object.freeze({
@@ -32327,18 +32354,138 @@
 
   function r9v2EphemeralState(
     normalizedContributionStore = null,
+    sharedStores = null,
   ) {
+    const stores = sharedStores && typeof sharedStores === 'object'
+      ? sharedStores
+      : {};
     return {
       sessionId: `r9v2-ephemeral:${++r9v2PrepareSequence}`,
       factDeltaRecords: [],
       r9v2ObserverPools: new Map(),
-      r9v2DeclarationCatalogs: new Map(),
-      r9v2MechanicalBasisStore: new Map(),
+      r9v2DeclarationCatalogs:
+        stores.declarationCatalogs instanceof Map
+          ? stores.declarationCatalogs
+          : new Map(),
+      r9v2MechanicalBasisStore:
+        stores.mechanicalBasisStore instanceof Map
+          ? stores.mechanicalBasisStore
+          : new Map(),
+      r9v2MechanicalEntryStore:
+        stores.mechanicalEntryStore instanceof Map
+          ? stores.mechanicalEntryStore
+          : new Map(),
+      r9v2FutureBehaviorPools:
+        stores.futureBehaviorPools instanceof Map
+          ? stores.futureBehaviorPools
+          : new Map(),
+      r9v2ProofComponentStore:
+        stores.proofComponentStore instanceof Map
+          ? stores.proofComponentStore
+          : new Map(),
+      r9v2MechanicalKeyObjectHashes:
+        stores.mechanicalKeyObjectHashes instanceof WeakMap
+          ? stores.mechanicalKeyObjectHashes
+          : new WeakMap(),
+      r9v2DependencyOwners:
+        stores.dependencyOwners instanceof Map
+          ? stores.dependencyOwners
+          : new Map(),
+      r9v2MechanicalEntryCacheEnabled:
+        stores.mechanicalEntryCacheEnabled === true,
+      r9v2MechanicalEntryCacheActive:
+        stores.mechanicalEntryCacheActive === true,
       r9v2NormalizedContributionStore:
         normalizedContributionStore?.values instanceof Map
           ? normalizedContributionStore
           : r9v2CreateNormalizedContributionStore(),
       metrics: {},
+    };
+  }
+
+  function r9v2SharedStoresFor(state = null) {
+    return {
+      declarationCatalogs:
+        state?.r9v2DeclarationCatalogs instanceof Map
+          ? state.r9v2DeclarationCatalogs
+          : new Map(),
+      mechanicalBasisStore:
+        state?.r9v2MechanicalBasisStore instanceof Map
+          ? state.r9v2MechanicalBasisStore
+          : new Map(),
+      mechanicalEntryStore:
+        state?.r9v2MechanicalEntryStore instanceof Map
+          ? state.r9v2MechanicalEntryStore
+          : new Map(),
+      futureBehaviorPools:
+        state?.r9v2FutureBehaviorPools instanceof Map
+          ? state.r9v2FutureBehaviorPools
+          : new Map(),
+      proofComponentStore:
+        state?.r9v2ProofComponentStore instanceof Map
+          ? state.r9v2ProofComponentStore
+          : new Map(),
+      mechanicalKeyObjectHashes:
+        state?.r9v2MechanicalKeyObjectHashes instanceof WeakMap
+          ? state.r9v2MechanicalKeyObjectHashes
+          : new WeakMap(),
+      dependencyOwners:
+        state?.r9v2DependencyOwners instanceof Map
+          ? state.r9v2DependencyOwners
+          : new Map(),
+      mechanicalEntryCacheEnabled:
+        state?.r9v2MechanicalEntryCacheEnabled === true,
+      mechanicalEntryCacheActive:
+        state?.r9v2MechanicalEntryCacheActive === true,
+    };
+  }
+
+  function r9v2ObserverPoolContextKey({
+    state,
+    observerActorId,
+    observerSide,
+    worldSnapshot,
+    beliefState,
+    battleIntent,
+    actionOpportunity,
+    sharedObserverScope = false,
+  }) {
+    const revisionState = state?.revisionState || {};
+    const objectives =
+      battleIntent?.objectives ||
+      battleIntent?.胜负条件 ||
+      worldSnapshot?.胜负条件 ||
+      {};
+    const context = {
+      schemaVersion: 'R9v2ObserverPoolContextV1',
+      observerSide: String(observerSide || '').trim(),
+      battleIntent: {
+        mode: String(battleIntent?.mode || '').trim(),
+        withdrawAllowed: battleIntent?.withdrawAllowed === true,
+        objectivesHash: String(
+          revisionState.objectiveHash || preview.stableHash(objectives),
+        ).trim(),
+      },
+      ...(sharedObserverScope
+        ? {}
+        : { observerActorId: String(observerActorId || '').trim() }),
+    };
+    return `r9v2-observer-pool:${preview.stableHash(context)}`;
+  }
+
+  function r9v2FutureOpportunityContext(actionOpportunity = {}) {
+    return {
+      role: 'ACTIVE',
+      futureHostileResponseAllowed:
+        actionOpportunity?.futureHostileResponseAllowed === true,
+      pendingNaturalActorIds: [
+        ...(actionOpportunity?.pendingNaturalActorIds || []),
+      ].map(value => String(value || '').trim()).filter(Boolean).sort(),
+      pendingHostileActorIds: [
+        ...(actionOpportunity?.pendingHostileActorIds || []),
+      ].map(value => String(value || '').trim()).filter(Boolean).sort(),
+      naturalActionBudget: actionOpportunity?.naturalActionBudget,
+      battleHorizon: actionOpportunity?.battleHorizon || {},
     };
   }
 
@@ -33364,6 +33511,191 @@
     });
   }
 
+  function r9v2MechanicalEntryDependencyUnitIds({
+    worldSnapshot,
+    actorId,
+    candidate,
+  }) {
+    const declaration = candidate?.declaration || {};
+    const actionKind = String(
+      declaration?.actionKind || '',
+    ).trim().toUpperCase();
+    const dependencyIds = new Set([
+      actorId,
+      ...(Array.isArray(declaration?.targetIds)
+        ? declaration.targetIds
+        : []),
+      candidate?.creation?.recipientId,
+      candidate?.creationCarrier?.recipientId,
+    ].map(value => String(value || '').trim()).filter(Boolean));
+    if (actionKind === 'WITHDRAW') {
+      aliveEntries(worldSnapshot || {}).forEach(entry => {
+        dependencyIds.add(preview.unitId(entry.unit));
+      });
+    }
+    return [...dependencyIds].filter(Boolean).sort();
+  }
+
+  function r9v2MechanicalKeyHash(state, value) {
+    if (!value || typeof value !== 'object') {
+      return preview.stableHash(value);
+    }
+    const hashes = state?.r9v2MechanicalKeyObjectHashes;
+    if (hashes instanceof WeakMap && hashes.has(value)) {
+      return hashes.get(value);
+    }
+    const hash = preview.stableHash(value);
+    if (hashes instanceof WeakMap) hashes.set(value, hash);
+    return hash;
+  }
+
+  function r9v2MechanicalEntryCacheKey({
+    state,
+    worldSnapshot,
+    actorId,
+    candidate,
+    beliefState,
+    battleIntent,
+    actionOpportunity,
+    mechanicalProjectionContext,
+    mechanicObservations,
+    captureProjectedUnits,
+    forcedMechanicObservation,
+    forcedMechanicSuccess,
+    useBeliefProbabilityResolvers,
+  }) {
+    const dependencyUnitIds =
+      r9v2MechanicalEntryDependencyUnitIds({
+        worldSnapshot,
+        actorId,
+        candidate,
+      });
+    const dependencyRows = dependencyUnitIds.map(unitId => [
+      unitId,
+      r9v2MechanicalKeyHash(
+        state,
+        findUnitInWorld(worldSnapshot || {}, unitId) || null,
+      ),
+      r9v2MechanicalKeyHash(
+        state,
+        mechanicalProjectionContext?.profileById?.get(unitId) || null,
+      ),
+    ]);
+    const beliefKeys = [
+      ...new Set(
+        (mechanicObservations || []).flatMap(observation => [
+          observation?.mechanicKey,
+          observation?.adaptationKey,
+        ]).map(value => String(value || '').trim()).filter(Boolean),
+      ),
+    ].sort();
+    return JSON.stringify({
+      schemaVersion: 'R9v2MechanicalEntryCacheKeyV1',
+      actorId: String(actorId || '').trim(),
+      candidateId: String(candidate?.candidateId || '').trim(),
+      declarationFingerprint: String(
+        candidate?.declarationFingerprint || '',
+      ).trim() || declarationFingerprint(candidate?.declaration || {}),
+      resourcePotentialOnly: candidate?.resourcePotentialOnly === true,
+      dependencyRows,
+      beliefRows: beliefKeys.map(key => [
+        key,
+        r9v2MechanicalKeyHash(
+          state,
+          beliefState?.mechanics?.[key] || null,
+        ),
+      ]),
+      beliefMode: {
+        observationGranted: beliefState?.observationGranted === true,
+        confidence: Number(beliefState?.confidence ?? 1),
+        targetInterferencePossible:
+          beliefState?.targetInterferencePossible === true,
+        targetInterferenceRate:
+          Number(beliefState?.targetInterferenceRate || 0),
+        confused: beliefState?.confused === true,
+      },
+      battleIntentHash: r9v2MechanicalKeyHash(state, battleIntent || {}),
+      actionOpportunityHash: r9v2MechanicalKeyHash(
+        state,
+        actionOpportunity || {},
+      ),
+      round: Number(worldSnapshot?.回合 || 0),
+      mechanicObservationsHash: r9v2MechanicalKeyHash(
+        state,
+        mechanicObservations || [],
+      ),
+      captureProjectedUnits: captureProjectedUnits === true,
+      forcedMechanicObservationHash: r9v2MechanicalKeyHash(
+        state,
+        forcedMechanicObservation || null,
+      ),
+      forcedMechanicSuccess:
+        forcedMechanicSuccess === true
+          ? true
+          : forcedMechanicSuccess === false
+            ? false
+            : null,
+      useBeliefProbabilityResolvers:
+        useBeliefProbabilityResolvers === true,
+    });
+  }
+
+  function r9v2ForcedApplicationProbabilityByEffect(
+    basis,
+    observation,
+    success,
+  ) {
+    if (
+      !basis ||
+      !observation ||
+      typeof observation !== 'object' ||
+      (success !== true && success !== false)
+    ) {
+      return {};
+    }
+    const prototype = String(
+      observation?.effectPrototype || '',
+    ).trim();
+    const targetId = String(observation?.targetId || '').trim();
+    if (!prototype || !targetId) return {};
+    const expectedState = String(
+      observation?.stateName || '',
+    ).trim();
+    const expectedEffectIndex =
+      Number.isInteger(Number(observation?.effectIndex))
+        ? Number(observation.effectIndex)
+        : null;
+    const rootActionId = String(
+      basis?.declaration?.actionId ||
+      basis?.declaration?.candidateId ||
+      basis?.identity ||
+      'mechanical',
+    ).trim();
+    const overrides = {};
+    (Array.isArray(basis?.effects) ? basis.effects : [])
+      .forEach((effect, effectIndex) => {
+        if (String(effect?.原型 || '').trim() !== prototype) return;
+        if (
+          expectedEffectIndex !== null &&
+          expectedEffectIndex !== effectIndex
+        ) return;
+        if (
+          expectedState &&
+          String(effect?.状态 || effect?.状态名称 || '').trim() !==
+            expectedState
+        ) return;
+        const effectInstanceId = String(
+          effect?.effectId ||
+          effect?.效果ID ||
+          `${rootActionId}:effect:${effectIndex}`,
+        ).trim();
+        if (!effectInstanceId) return;
+        overrides[`${effectInstanceId}|${targetId}`] =
+          success ? 1 : 0;
+      });
+    return overrides;
+  }
+
   function r9v2BuildMechanicalEntry({
     state,
     worldSnapshot,
@@ -33377,7 +33709,10 @@
     metricKey = 'r9v2PoolPreviewCalls',
     verifyMechanicalBasis = false,
     captureProjectedUnits = false,
+    forcedMechanicObservation = null,
+    forcedMechanicSuccess = null,
     useBeliefProbabilityResolvers = false,
+    captureDependencyKeys = false,
   }) {
     const actor = findUnitInWorld(worldSnapshot, actorId);
     const actorSide = actor ? sideOf(worldSnapshot, actor) : '';
@@ -33411,6 +33746,42 @@
           withdrawalProfile?.targetId || '',
         )
       : Object.freeze([]);
+    const mechanicalEntryCacheEnabled =
+      state?.r9v2MechanicalEntryCacheEnabled === true &&
+      state?.r9v2MechanicalEntryCacheActive === true &&
+      verifyMechanicalBasis !== true;
+    let mechanicalEntryStore = null;
+    let mechanicalEntryCacheKey = '';
+    if (mechanicalEntryCacheEnabled) {
+      mechanicalEntryStore =
+        state.r9v2MechanicalEntryStore instanceof Map
+          ? state.r9v2MechanicalEntryStore
+          : new Map();
+      state.r9v2MechanicalEntryStore = mechanicalEntryStore;
+      mechanicalEntryCacheKey = r9v2MechanicalEntryCacheKey({
+        state,
+        worldSnapshot,
+        actorId,
+        candidate,
+        beliefState,
+        battleIntent,
+        actionOpportunity,
+        mechanicalProjectionContext,
+        mechanicObservations,
+        captureProjectedUnits,
+        forcedMechanicObservation,
+        forcedMechanicSuccess,
+        useBeliefProbabilityResolvers,
+      });
+      const cachedEntry = mechanicalEntryStore.get(
+        mechanicalEntryCacheKey,
+      );
+      if (cachedEntry) {
+        r9v2Metric(state, 'r9v2MechanicalEntryCacheHits');
+        return cachedEntry;
+      }
+      r9v2Metric(state, 'r9v2MechanicalEntryCacheMisses');
+    }
     const learnedBeliefResolver =
       useBeliefProbabilityResolvers ||
       mechanicObservations.some(observation =>
@@ -33446,7 +33817,11 @@
       candidate?.resourcePotentialOnly === true
         ? 'EXTERNAL_TIMELINE'
         : 'FORMAL';
-    const basisKey = `${fingerprint}\u0000${paymentMode}`;
+    const basisKey = [
+      String(actorId || '').trim(),
+      fingerprint,
+      paymentMode,
+    ].join('\u0000');
     const basisStore =
       state.r9v2MechanicalBasisStore instanceof Map
         ? state.r9v2MechanicalBasisStore
@@ -33464,8 +33839,21 @@
       basisStore.set(basisKey, basis);
       r9v2Metric(state, 'r9v2MechanicalBasisCompiles');
     }
+    const mechanicalDependencyScopes =
+      r9v2MechanicalEntryDependencyScopes({
+        worldSnapshot,
+        actorId,
+        candidate,
+        basis,
+      });
     let entry;
     try {
+      const forcedApplicationProbabilityByEffect =
+        r9v2ForcedApplicationProbabilityByEffect(
+          basis,
+          forcedMechanicObservation,
+          forcedMechanicSuccess,
+        );
       const projection = preview.evaluateMechanicalBasis({
         basis,
         worldSnapshot,
@@ -33476,9 +33864,11 @@
         revision,
         mechanicalProjectionContext,
         captureProjectedUnits,
+        captureDependencyKeys,
         hitProbabilityResolver: learnedHitProbabilityResolver,
         applicationProbabilityResolver:
           learnedApplicationProbabilityResolver,
+        forcedApplicationProbabilityByEffect,
       });
       r9v2Metric(state, 'r9v2MechanicalBasisEvaluations');
       const contributions = Object.freeze(
@@ -33542,6 +33932,14 @@
         changedUnitIds: Object.freeze([
           ...(projection?.changedUnitIds || []),
         ]),
+        mechanicalDependencyKeys: Object.freeze(
+          [...new Set(
+            (projection?.dependencyReads || [])
+              .map(row => String(row?.[0] || '').trim())
+              .filter(Boolean),
+          )].sort(),
+        ),
+        mechanicalDependencyScopes,
         ...(Array.isArray(projection?.projectedUnitSnapshots)
           ? {
               projectedUnitSnapshots: Object.freeze(
@@ -33599,6 +33997,7 @@
         directGoalUtilityHEPP: Number.NEGATIVE_INFINITY,
         assetReserve: 0,
         changedUnitIds: Object.freeze([]),
+        mechanicalDependencyScopes,
         hardInvalid: true,
         previewError: message,
       });
@@ -33631,6 +34030,19 @@
         );
         throw error;
       }
+    }
+    if (mechanicalEntryStore && mechanicalEntryCacheKey) {
+      while (mechanicalEntryStore.size >= 16384) {
+        const oldestKey = mechanicalEntryStore.keys().next().value;
+        if (oldestKey === undefined) break;
+        mechanicalEntryStore.delete(oldestKey);
+        r9v2Metric(state, 'r9v2MechanicalEntryCacheEvictions');
+      }
+      mechanicalEntryStore.set(
+        mechanicalEntryCacheKey,
+        entry,
+      );
+      r9v2Metric(state, 'r9v2MechanicalEntryCacheStores');
     }
     return entry;
   }
@@ -33721,6 +34133,22 @@
         ).trim(),
       ).join(','),
     ].join('#')).join('|');
+    const battleIntentKey = [
+      String(battleIntent?.mode || '').trim(),
+      battleIntent?.withdrawAllowed === true ? 'WITHDRAW' : 'NO_WITHDRAW',
+      String(
+        state?.revisionState?.objectiveHash ||
+        preview.stableHash(
+          battleIntent?.objectives ||
+          battleIntent?.胜负条件 ||
+          worldSnapshot?.胜负条件 ||
+          {},
+        ),
+      ).trim(),
+    ].join(':');
+    const actionOpportunityKey = preview.stableHash(
+      r9v2FutureOpportunityContext(actionOpportunity),
+    );
     const catalogKey = [
       String(observerSide || '').trim(),
       unitId,
@@ -33728,6 +34156,8 @@
       restrictionSignature,
       beliefCandidateMode,
       skillDefinitionIdentity,
+      battleIntentKey,
+      actionOpportunityKey,
     ].join('\u0000');
     const catalogs =
       state.r9v2DeclarationCatalogs instanceof Map
@@ -33781,6 +34211,31 @@
     });
   }
 
+  function r9v2BuildDependencyOwners(pool) {
+    const dependencyOwners = new Map();
+    const addOwner = (dependencyKey, sourceUnitId) => {
+      const key = String(dependencyKey || '').trim();
+      const ownerId = String(sourceUnitId || '').trim();
+      if (!key || !ownerId) return;
+      if (!dependencyOwners.has(key)) {
+        dependencyOwners.set(key, new Set());
+      }
+      dependencyOwners.get(key).add(ownerId);
+    };
+    pool?.unitEntries?.forEach((entries, sourceUnitId) => {
+      (entries || []).forEach(entry => {
+        r9v2CandidateInputDependencyUnitIds(entry).forEach(unitId =>
+          addOwner(unitId, sourceUnitId)
+        );
+        r9v2CandidateBeliefKeys(entry).forEach(beliefKey =>
+          addOwner(`belief:${beliefKey}`, sourceUnitId)
+        );
+      });
+    });
+    pool.dependencyOwners = dependencyOwners;
+    return dependencyOwners;
+  }
+
   function r9v2CandidateDependencyUnitIds(entry = {}) {
     return new Set([
       entry?.actorId,
@@ -33803,6 +34258,32 @@
     ].map(value => String(value || '').trim()).filter(Boolean));
   }
 
+  function r9v2CandidateInputDependencyUnitIds(entry = {}) {
+    const dependencyIds = new Set([
+      entry?.actorId,
+      ...(entry?.targetIds || []),
+      ...(entry?.contributions || []).flatMap(contribution => [
+        contribution?.targetId,
+        contribution?.evidence?.sourceActorId,
+        contribution?.evidence?.hostId,
+        contribution?.evidence?.ownerId,
+      ]),
+      ...(entry?.summonDefinitions || []).flatMap(definition => [
+        definition?.sourceUnitId,
+        definition?.hostId,
+        definition?.ownerId,
+        definition?.summonId,
+        definition?.targetId,
+      ]),
+      entry?.creationCarrier?.recipientId,
+    ]);
+    return new Set(
+      [...dependencyIds]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+  }
+
   function r9v2CandidateBeliefKeys(entry = {}) {
     return new Set(
       (entry?.mechanicObservations || []).flatMap(observation => [
@@ -33810,6 +34291,316 @@
         observation?.adaptationKey,
       ]).map(value => String(value || '').trim()).filter(Boolean),
     );
+  }
+
+  const R9V2_MECHANICAL_FACT_SCOPES = Object.freeze([
+    'HEALTH',
+    'STATE',
+    'RESOURCE',
+    'OPPORTUNITY',
+    'INVENTORY',
+  ]);
+
+  function r9v2MechanicalEntryDependencyScopes({
+    worldSnapshot,
+    actorId,
+    candidate,
+    basis,
+    entry = null,
+  }) {
+    const dependencies = new Map();
+    const addDependency = (unitId, scopes) => {
+      const normalizedId = String(unitId || '').trim();
+      if (!normalizedId) return;
+      const current = dependencies.get(normalizedId) || new Set();
+      (scopes || R9V2_MECHANICAL_FACT_SCOPES).forEach(scope => {
+        const normalizedScope = String(scope || '').trim().toUpperCase();
+        if (R9V2_MECHANICAL_FACT_SCOPES.includes(normalizedScope)) {
+          current.add(normalizedScope);
+        }
+      });
+      dependencies.set(normalizedId, current);
+    };
+    const addAllDependencies = unitId =>
+      addDependency(unitId, R9V2_MECHANICAL_FACT_SCOPES);
+    const declaration = basis?.declaration || candidate?.declaration || {};
+    const actionKind = String(
+      declaration?.actionKind || '',
+    ).trim().toUpperCase();
+    const normalizedActorId = String(actorId || '').trim();
+    const targetIds = [
+      ...(Array.isArray(declaration?.targetIds)
+        ? declaration.targetIds
+        : []),
+    ].map(value => String(value || '').trim()).filter(Boolean);
+    const effects = Array.isArray(basis?.effects)
+      ? basis.effects
+      : Array.isArray(declaration?.skill?._效果数组)
+        ? declaration.skill._效果数组
+        : [];
+
+    // Every mechanical evaluation reads the actor's current state/profile.
+    addDependency(normalizedActorId, ['STATE']);
+    targetIds.forEach(targetId =>
+      addDependency(targetId, ['HEALTH', 'STATE'])
+    );
+
+    effects.forEach(effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      const effectTargets = targetIds.length
+        ? targetIds
+        : aliveEntries(worldSnapshot || {})
+            .map(item => preview.unitId(item.unit))
+            .filter(Boolean);
+      if (!effectTargets.length) return;
+      if (prototype === '资源变化') {
+        const resourceText = String(effect?.资源 || '').trim().toLowerCase();
+        const hpResource = /hp|生命|生命值/.test(resourceText);
+        effectTargets.forEach(targetId =>
+          addDependency(targetId, hpResource ? ['HEALTH'] : ['RESOURCE'])
+        );
+        return;
+      }
+      if (prototype === '召唤生成') {
+        effectTargets.forEach(addAllDependencies);
+        return;
+      }
+      effectTargets.forEach(targetId =>
+        addDependency(targetId, ['HEALTH', 'STATE'])
+      );
+    });
+
+    if (actionKind === 'WITHDRAW') {
+      aliveEntries(worldSnapshot || {}).forEach(item => {
+        const targetId = preview.unitId(item.unit);
+        if (targetId && targetId !== normalizedActorId) {
+          addAllDependencies(targetId);
+        }
+      });
+      addDependency(normalizedActorId, ['HEALTH', 'OPPORTUNITY']);
+    }
+
+    const resourceCosts = declaration?.resourceCosts || {};
+    if (
+      Object.values(resourceCosts).some(rawCost =>
+        Math.max(0, Number.parseFloat(String(rawCost ?? '')) || 0) > 1e-9
+      )
+    ) {
+      addDependency(normalizedActorId, ['RESOURCE']);
+    }
+    if (
+      actionKind === 'USE_ITEM' ||
+      actionKind === 'EQUIP' ||
+      candidate?.irreversibleAsset ||
+      declaration?.irreversibleAsset
+    ) {
+      addDependency(normalizedActorId, ['INVENTORY']);
+    }
+    [
+      ...(Array.isArray(declaration?.fusionParticipantIds)
+        ? declaration.fusionParticipantIds
+        : []),
+      ...(Array.isArray(declaration?.fusionPartnerIds)
+        ? declaration.fusionPartnerIds
+        : []),
+    ].forEach(participantId =>
+      addDependency(participantId, [
+        'STATE',
+        'RESOURCE',
+        'OPPORTUNITY',
+      ])
+    );
+
+    if (entry) {
+      (entry?.contributions || []).forEach(contribution => {
+        const targetId = String(contribution?.targetId || '').trim();
+        const outcomeKind = String(
+          contribution?.outcomeKind || '',
+        ).trim();
+        if (!targetId) return;
+        if (['HP_DELTA', 'SCHEDULED_HP_DELTA', 'SHIELD_DELTA']
+          .includes(outcomeKind)) {
+          addDependency(targetId, ['HEALTH']);
+        } else if (outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+          const resource = String(
+            contribution?.evidence?.resource || '',
+          ).trim().toLowerCase();
+          addDependency(
+            targetId,
+            /hp|生命|生命值/.test(resource)
+              ? ['HEALTH']
+              : ['RESOURCE'],
+          );
+        } else if (
+          ['STATE_CHANGED', 'ACTION_CANCELLED'].includes(outcomeKind)
+        ) {
+          addDependency(targetId, ['STATE', 'OPPORTUNITY']);
+        } else if (outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED') {
+          addDependency(targetId, ['INVENTORY', 'OPPORTUNITY']);
+        } else if (outcomeKind === 'SUMMON_WINDOW') {
+          addAllDependencies(targetId);
+        }
+      });
+      r9v2CandidateInputDependencyUnitIds(entry).forEach(unitId => {
+        if (!dependencies.has(unitId)) addAllDependencies(unitId);
+      });
+    }
+
+    return Object.freeze(
+      Object.fromEntries(
+        [...dependencies.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([unitId, scopes]) => [
+            unitId,
+            Object.freeze([...scopes].sort()),
+          ]),
+      ),
+    );
+  }
+
+  function r9v2MechanicalChangedUnitScopesFromBatches(batches = []) {
+    const scopesByUnit = new Map();
+    const add = (unitId, scopes) => {
+      const normalizedId = String(unitId || '').trim();
+      if (!normalizedId) return;
+      const current = scopesByUnit.get(normalizedId) || new Set();
+      (scopes || R9V2_MECHANICAL_FACT_SCOPES).forEach(scope =>
+        current.add(String(scope || '').trim().toUpperCase())
+      );
+      scopesByUnit.set(normalizedId, current);
+    };
+    (batches || []).forEach(batch => {
+      (batch?.changedFactKeys || []).forEach(rawKey => {
+        const key = String(rawKey || '').trim();
+        const unitMatch = key.match(/^unit:([^:]+):(.+)$/);
+        const targetMatch = key.match(/^target:([^:]+):(.+)$/);
+        const match = unitMatch || targetMatch;
+        if (!match?.[1]) return;
+        const field = String(match[2] || '').trim().toLowerCase();
+        if (field.startsWith('resource:')) {
+          add(match[1], ['RESOURCE']);
+        } else if (field === 'hp' || field === 'basemaxhp') {
+          add(match[1], ['HEALTH']);
+        } else if (field.startsWith('state:')) {
+          add(match[1], ['STATE']);
+        } else if (field === 'defense') {
+          add(match[1], ['STATE']);
+        } else {
+          add(match[1]);
+        }
+      });
+    });
+    return scopesByUnit;
+  }
+
+  function r9v2MechanicalEntryReadsChanged({
+    entry,
+    changedUnitIds = new Set(),
+    changedUnitScopes = null,
+    baselineWorld = null,
+    branchWorld = null,
+  }) {
+    const changed = new Set(
+      [...(changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    if (!changed.size) return false;
+    const dependencyKeys = [
+      ...(entry?.mechanicalDependencyKeys || []),
+    ].map(value => String(value || '').trim()).filter(Boolean);
+    if (
+      dependencyKeys.length > 0 &&
+      baselineWorld &&
+      branchWorld
+    ) {
+      return dependencyKeys.some(key =>
+        preview.stableHash(
+          preview.dependencyValueForKey(baselineWorld, key),
+        ) !==
+        preview.stableHash(
+          preview.dependencyValueForKey(branchWorld, key),
+        )
+      );
+    }
+    const dependencyScopes = entry?.mechanicalDependencyScopes;
+    if (!dependencyScopes || typeof dependencyScopes !== 'object') {
+      return [...r9v2CandidateInputDependencyUnitIds(entry)]
+        .some(unitId => changed.has(unitId));
+    }
+    for (const unitId of changed) {
+      const scopes = changedUnitScopes instanceof Map
+        ? changedUnitScopes.get(unitId)
+        : null;
+      if (!(scopes instanceof Set)) {
+        if (Object.hasOwn(dependencyScopes, unitId)) return true;
+        continue;
+      }
+      const dependency = dependencyScopes[unitId];
+      if (
+        Array.isArray(dependency) &&
+        dependency.some(scope => scopes.has(scope))
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function r9v2ProofComponentBeliefKeys({
+    component,
+    pool,
+    entry,
+  }) {
+    const beliefKeys = r9v2CandidateBeliefKeys(entry);
+    if (!['BEHAVIOR_POOL', 'SUMMON_WINDOW'].includes(component)) {
+      return beliefKeys;
+    }
+    const pendingUnitIds = [];
+    const queuedUnitIds = new Set();
+    const queueUnitId = unitId => {
+      const normalizedId = String(unitId || '').trim();
+      if (!normalizedId || queuedUnitIds.has(normalizedId)) return;
+      queuedUnitIds.add(normalizedId);
+      pendingUnitIds.push(normalizedId);
+    };
+    (entry?.contributions || []).forEach(contribution => {
+      const outcomeKind = String(
+        contribution?.outcomeKind || '',
+      ).trim();
+      if (
+        r9v2BehaviorMutationKind(contribution) ||
+        outcomeKind === 'SUMMON_WINDOW'
+      ) {
+        queueUnitId(contribution?.targetId);
+        queueUnitId(contribution?.evidence?.hostId);
+        queueUnitId(contribution?.evidence?.ownerId);
+      }
+    });
+    (entry?.summonDefinitions || []).forEach(definition => {
+      queueUnitId(definition?.hostId);
+      queueUnitId(definition?.ownerId);
+      queueUnitId(definition?.summonId);
+      queueUnitId(definition?.targetId);
+    });
+    const visitedUnitIds = new Set();
+    while (pendingUnitIds.length) {
+      const unitId = pendingUnitIds.shift();
+      if (visitedUnitIds.has(unitId)) continue;
+      visitedUnitIds.add(unitId);
+      const targetEntries = pool?.unitEntries?.get(unitId) || [];
+      targetEntries.forEach(targetEntry => {
+        r9v2CandidateBeliefKeys(targetEntry).forEach(key =>
+          beliefKeys.add(key)
+        );
+        (targetEntry?.contributions || []).forEach(contribution => {
+          if (r9v2BehaviorMutationKind(contribution)) {
+            queueUnitId(contribution?.targetId);
+          }
+        });
+      });
+    }
+    return beliefKeys;
   }
 
   function r9v2CatalogMatchesEntries(entries = [], candidates = []) {
@@ -33838,7 +34629,9 @@
     actionOpportunity,
     mechanicalProjectionContext,
     changedUnitIds = new Set(),
+    changedUnitScopes = null,
     changedBeliefKeys = new Set(),
+    dependencyBaselineWorld = null,
   }) {
     const unit = findUnitInWorld(worldSnapshot, unitId);
     if (!unit || !preview.isAlive(unit)) {
@@ -33851,6 +34644,12 @@
       };
     }
     const targetInterferenceRate = visibleTargetInterferenceRate(unit);
+    const previousTargetInterferenceRate = Number(
+      pool.targetInterferenceRateByUnit?.get(unitId) || 0,
+    );
+    const targetInterferenceRateChanged =
+      Math.abs(previousTargetInterferenceRate - targetInterferenceRate) >
+      1e-12;
     const unitBelief = targetInterferenceRate > 1e-12
       ? {
           ...beliefState,
@@ -33876,20 +34675,6 @@
         reusedCandidateCount: 0,
       };
     }
-    if (
-      changedUnitIds.size > 0 &&
-      existingEntries.some(entry =>
-        String(entry?.actionKind || '').trim().toUpperCase() ===
-          'WITHDRAW'
-      )
-    ) {
-      return {
-        fullUnitFallback: true,
-        fallbackReason: 'GLOBAL_MECHANIC_DEPENDENCY',
-        rebuiltCandidateCount: 0,
-        reusedCandidateCount: 0,
-      };
-    }
     const revision = [
       'r9v2-pool',
       pool.observerActorId,
@@ -33902,13 +34687,28 @@
     const entries = Object.freeze(
       catalog.candidates.map((candidate, index) => {
         const existingEntry = existingEntries[index];
-        const readsChangedUnit = [
-          ...r9v2CandidateDependencyUnitIds(existingEntry),
-        ].some(dependencyId => changedUnitIds.has(dependencyId));
+        const readsChangedUnit = r9v2MechanicalEntryReadsChanged({
+          entry: existingEntry,
+          changedUnitIds,
+          changedUnitScopes,
+          baselineWorld: dependencyBaselineWorld,
+          branchWorld: worldSnapshot,
+        });
         const readsChangedBelief = [
           ...r9v2CandidateBeliefKeys(existingEntry),
         ].some(key => changedBeliefKeys.has(key));
-        if (!readsChangedUnit && !readsChangedBelief) {
+        // Withdrawal estimation scans the hostile world, so invalidate only
+        // that candidate when a branch changes any unit; ordinary candidates
+        // keep using their narrower input dependency set.
+        const readsChangedWithdrawalWorld =
+          changedUnitIds.size > 0 &&
+          String(existingEntry?.actionKind || '').trim().toUpperCase() ===
+            'WITHDRAW';
+        if (
+          !readsChangedUnit &&
+          !readsChangedBelief &&
+          !readsChangedWithdrawalWorld
+        ) {
           reusedCandidateCount += 1;
           return existingEntry;
         }
@@ -33926,8 +34726,10 @@
           },
           revision,
           mechanicalProjectionContext,
-          verifyMechanicalBasis: false,
-        });
+        verifyMechanicalBasis: false,
+        captureDependencyKeys:
+          state?.r9v2MechanicalEntryCacheEnabled === true,
+      });
       }),
     );
     pool.unitEntries.set(unitId, entries);
@@ -33935,6 +34737,20 @@
       unitId,
       targetInterferenceRate,
     );
+    if (!(pool.unitValueRevisions instanceof Map)) {
+      pool.unitValueRevisions = new Map();
+    }
+    if (
+      rebuiltCandidateCount > 0 ||
+      targetInterferenceRateChanged ||
+      !pool.unitValueRevisions.has(unitId)
+    ) {
+      pool.unitValueRevisions.set(
+        unitId,
+        Number(pool.unitValueRevisions.get(unitId) || 0) + 1,
+      );
+    }
+    pool.valueRevision = Number(pool.valueRevision || 0) + 1;
     return {
       fullUnitFallback: false,
       rebuiltCandidateCount,
@@ -33953,6 +34769,7 @@
     actionOpportunity,
     mechanicalProjectionContext,
     verifyMechanicalBasis,
+    captureDependencyKeys = false,
   }) {
     const unit = findUnitInWorld(worldSnapshot, unitId);
     if (!unit || !preview.isAlive(unit)) {
@@ -34001,6 +34818,9 @@
         revision,
         mechanicalProjectionContext,
         verifyMechanicalBasis,
+        captureDependencyKeys:
+          captureDependencyKeys === true ||
+          state?.r9v2MechanicalEntryCacheEnabled === true,
       })
     ));
     pool.unitEntries.set(unitId, entries);
@@ -34008,6 +34828,14 @@
       unitId,
       targetInterferenceRate,
     );
+    if (!(pool.unitValueRevisions instanceof Map)) {
+      pool.unitValueRevisions = new Map();
+    }
+    pool.unitValueRevisions.set(
+      unitId,
+      Number(pool.unitValueRevisions.get(unitId) || 0) + 1,
+    );
+    pool.valueRevision = Number(pool.valueRevision || 0) + 1;
     r9v2Metric(state, 'r9v2PoolUnitBuilds');
     r9v2Metric(state, 'r9v2PoolEntryCount', entries.length);
   }
@@ -34061,6 +34889,7 @@
       generation: 1,
       factDeltaCount: 0,
       unitEntries: new Map(),
+      unitValueRevisions: new Map(),
       targetSourceUnitIds: new Map(),
       targetInterferenceRateByUnit: new Map(),
       r9v2NormalizedContributionStore:
@@ -34157,10 +34986,12 @@
     });
     const projectionCache = {
       bestHealthByUnit: new Map(),
+      bestAffordableUtilityByWorld: new Map(),
       behaviorPoolByIdentity: new Map(),
       behaviorPoolByScope: new Map(),
       projectionObjectHashes: new WeakMap(),
       projectionUnitFingerprints: new WeakMap(),
+      componentDependencyByEntry: new WeakMap(),
       pendingNaturalActorIds: null,
       normalizedContributionStore,
     };
@@ -34384,16 +35215,23 @@
 
   function r9v2ChangedScope(pool, batches = []) {
     const rebuildUnits = new Set();
+    const changedUnitIds = new Set();
+    const changedBeliefKeys = new Set();
     const changedTargets = new Set();
     let rebuildAll = false;
     let observerBeliefChanged = false;
     batches.forEach(batch => {
       (batch?.visibleBeliefChanges || []).forEach(change => {
+        const beliefActorId = String(
+          change?.id || change?.actorId || '',
+        ).trim();
         if (
-          String(change?.actorId || '').trim() === pool.observerActorId
+          pool.sharedObserverScope === true ||
+          beliefActorId === pool.observerActorId
         ) {
           observerBeliefChanged = true;
         }
+        if (beliefActorId) changedBeliefKeys.add(`belief:${beliefActorId}`);
       });
       (batch?.changedFactKeys || []).forEach(rawKey => {
         const key = String(rawKey || '').trim();
@@ -34407,11 +35245,13 @@
         const unitMatch = key.match(/^unit:([^:]+):/);
         const targetMatch = key.match(/^target:([^:]+):/);
         if (unitMatch?.[1]) {
+          changedUnitIds.add(unitMatch[1]);
           rebuildUnits.add(unitMatch[1]);
           changedTargets.add(unitMatch[1]);
           return;
         }
         if (targetMatch?.[1]) {
+          changedUnitIds.add(targetMatch[1]);
           changedTargets.add(targetMatch[1]);
           return;
         }
@@ -34420,7 +35260,7 @@
     });
     changedTargets.forEach(targetId => {
       (pool.targetSourceUnitIds.get(targetId) || []).forEach(unitId =>
-        rebuildUnits.add(unitId)
+        rebuildUnits.add(unitId),
       );
     });
     return {
@@ -34428,6 +35268,10 @@
       observerBeliefChanged,
       unscopedRebuild: rebuildAll,
       rebuildUnits,
+      changedUnitIds,
+      changedUnitScopes:
+        r9v2MechanicalChangedUnitScopesFromBatches(batches),
+      changedBeliefKeys,
     };
   }
 
@@ -34441,24 +35285,63 @@
     actionOpportunity,
     mechanicalProjectionContext,
     verifyMechanicalBasis = false,
+    poolScopeKey = '',
+    sharedObserverScope = false,
   }) {
     const state = sessionState || r9v2EphemeralState();
-    let pool = state.r9v2ObserverPools.get(observerActorId);
+    const normalizedPoolScopeKey = String(
+      poolScopeKey ||
+      (sharedObserverScope
+        ? r9v2ObserverPoolContextKey({
+            state,
+            observerActorId,
+            observerSide,
+            worldSnapshot,
+            beliefState,
+            battleIntent,
+            actionOpportunity,
+            sharedObserverScope: true,
+          })
+        : `r9v2-observer:${String(observerActorId || '').trim()}`),
+    ).trim();
+    let pool = state.r9v2ObserverPools.get(normalizedPoolScopeKey);
     const currentUnitIds = new Set(
       aliveEntries(worldSnapshot).map(entry => preview.unitId(entry.unit)),
     );
     if (!pool) {
       pool = {
         schemaVersion: 'BehaviorPoolSessionV1',
+        worldRevision: String(
+          state?.revisionState?.visibleWorldRevision ||
+          worldRevisionFor(worldSnapshot),
+        ).trim(),
+        beliefRevision: String(
+          state?.revisionState?.beliefRevision ||
+          beliefRevisionFor(beliefState || {}),
+        ).trim(),
+        opportunityRevision: String(
+          state?.revisionState?.opportunityRevision || '',
+        ).trim(),
         observerActorId,
         observerSide,
+        observerPoolKey: normalizedPoolScopeKey,
+        sharedObserverScope: sharedObserverScope === true,
         generation: 1,
+        valueRevision: 1,
         factDeltaCount: state.factDeltaRecords.length,
         unitEntries: new Map(),
+        unitValueRevisions: new Map(),
         targetSourceUnitIds: new Map(),
+        declarationCatalogs: state.r9v2DeclarationCatalogs,
+        mechanicalBasisStore: state.r9v2MechanicalBasisStore,
+        dependencyOwners: new Map(),
+        proofComponentStore: state.r9v2ProofComponentStore,
+        factDeltas: state.factDeltaRecords,
+        metrics: state.metrics,
         targetInterferenceRateByUnit: new Map(),
         r9v2NormalizedContributionStore:
           state.r9v2NormalizedContributionStore,
+        r9v2SharedStores: r9v2SharedStoresFor(state),
       };
       currentUnitIds.forEach(unitId =>
         r9v2BuildFutureUnitPool({
@@ -34475,7 +35358,8 @@
         })
       );
       r9v2ReindexTargets(pool);
-      state.r9v2ObserverPools.set(observerActorId, pool);
+      r9v2BuildDependencyOwners(pool);
+      state.r9v2ObserverPools.set(normalizedPoolScopeKey, pool);
       r9v2Metric(state, 'r9v2PoolBuilds');
       return { state, pool, rebuiltUnitIds: [...currentUnitIds].sort() };
     }
@@ -34504,21 +35388,78 @@
       r9v2Metric(state, 'r9v2UnscopedSliceRebuilds');
     }
     pool.generation += 1;
+    pool.worldRevision = String(
+      state?.revisionState?.visibleWorldRevision ||
+      worldRevisionFor(worldSnapshot),
+    ).trim();
+    pool.beliefRevision = String(
+      state?.revisionState?.beliefRevision ||
+      beliefRevisionFor(beliefState || {}),
+    ).trim();
+    pool.opportunityRevision = String(
+      state?.revisionState?.opportunityRevision || '',
+    ).trim();
     pool.factDeltaCount = state.factDeltaRecords.length;
-    [...rebuildUnitIds].sort().forEach(unitId =>
-      r9v2BuildFutureUnitPool({
-        state,
-        pool,
-        worldSnapshot,
-        observerSide,
-        unitId,
-        beliefState,
-        battleIntent,
-        actionOpportunity,
-        mechanicalProjectionContext,
-        verifyMechanicalBasis,
-      })
-    );
+    pool.factDeltas = state.factDeltaRecords;
+    if (scope.rebuildAll) {
+      [...rebuildUnitIds].sort().forEach(unitId =>
+        r9v2BuildFutureUnitPool({
+          state,
+          pool,
+          worldSnapshot,
+          observerSide,
+          unitId,
+          beliefState,
+          battleIntent,
+          actionOpportunity,
+          mechanicalProjectionContext,
+          verifyMechanicalBasis,
+        })
+      );
+      r9v2Metric(state, 'r9v2PoolFullRebuilds');
+    } else {
+      [...rebuildUnitIds].sort().forEach(unitId => {
+        const result = r9v2BuildDirtyFutureUnitPool({
+          state,
+          pool,
+          worldSnapshot,
+          observerSide,
+          unitId,
+          beliefState,
+          battleIntent,
+          actionOpportunity,
+          mechanicalProjectionContext,
+          changedUnitIds: scope.changedUnitIds,
+          changedUnitScopes: scope.changedUnitScopes,
+          changedBeliefKeys: scope.changedBeliefKeys,
+        });
+        r9v2Metric(
+          state,
+          'r9v2PoolEntryRebuilds',
+          result.rebuiltCandidateCount,
+        );
+        r9v2Metric(
+          state,
+          'r9v2PoolEntryReuses',
+          result.reusedCandidateCount,
+        );
+        if (result.fullUnitFallback === true) {
+          r9v2BuildFutureUnitPool({
+            state,
+            pool,
+            worldSnapshot,
+            observerSide,
+            unitId,
+            beliefState,
+            battleIntent,
+            actionOpportunity,
+            mechanicalProjectionContext,
+            verifyMechanicalBasis,
+          });
+          r9v2Metric(state, 'r9v2PoolUnitFallbacks');
+        }
+      });
+    }
     if (rebuildUnitIds.size || newBatches.length) r9v2ReindexTargets(pool);
     r9v2Metric(
       state,
@@ -34558,27 +35499,50 @@
     pool,
     unitId,
     resourceOverrides = {},
+    projectionCache = null,
   ) {
+    const targetInterferenceRate = Number(
+      pool?.targetInterferenceRateByUnit?.get(unitId) || 0,
+    );
+    const cacheByWorld = projectionCache?.bestAffordableUtilityByWorld;
+    const cacheKey = [
+      String(unitId || '').trim(),
+      String(pool?.valueRevision ?? ''),
+      targetInterferenceRate,
+      ...Object.entries(resourceOverrides || {})
+        .map(([resource, amount]) => [
+          String(resource || '').trim(),
+          Number(amount || 0),
+        ])
+        .sort(([left], [right]) => left.localeCompare(right))
+        .flat(),
+    ].join('\u0000');
+    const cachedByKey = cacheByWorld instanceof Map
+      ? cacheByWorld.get(worldSnapshot)
+      : null;
+    if (cachedByKey?.has(cacheKey)) return cachedByKey.get(cacheKey);
     const entries = r9v2AffordablePoolEntries(
       worldSnapshot,
       pool,
       unitId,
       resourceOverrides,
     );
-    const targetInterferenceRate = Number(
-      pool?.targetInterferenceRateByUnit?.get(unitId) || 0,
-    );
-    if (targetInterferenceRate > 1e-12) {
-      return r9v2TargetResolutionPoolProjection(
+    const value = targetInterferenceRate > 1e-12
+      ? r9v2TargetResolutionPoolProjection(
         entries,
         targetInterferenceRate,
-      ).bestUtilityHEPP;
+      ).bestUtilityHEPP
+      : entries.reduce(
+          (best, entry) =>
+            Math.max(best, Number(entry.directGoalUtilityHEPP || 0)),
+          0,
+        );
+    if (cacheByWorld instanceof Map) {
+      const targetCache = cachedByKey || new Map();
+      targetCache.set(cacheKey, value);
+      cacheByWorld.set(worldSnapshot, targetCache);
     }
-    return entries.reduce(
-      (best, entry) =>
-        Math.max(best, Number(entry.directGoalUtilityHEPP || 0)),
-      0,
-    );
+    return value;
   }
 
   function r9v2RealizableActiveOpportunityCount(request, targetId) {
@@ -35425,9 +36389,47 @@
     ].join('\u0000');
   }
 
+  function r9v2ProjectionObjectRevision(cache, value) {
+    if (!value || typeof value !== 'object') {
+      return preview.stableHash(value);
+    }
+    const revisions = cache?.projectionObjectRevisions;
+    if (!(revisions instanceof WeakMap)) {
+      return preview.stableHash(value);
+    }
+    const cached = revisions.get(value);
+    if (cached) return cached;
+    const revision = `r9v2-object-revision:${++r9v2ProjectionRevisionSequence}`;
+    revisions.set(value, revision);
+    return revision;
+  }
+
+  function r9v2ProjectionUnitRevision(cache, unitId, unit) {
+    const revision = r9v2ProjectionObjectRevision(cache, unit || null);
+    const changedUnitIds = cache?.revisionChangedUnitIds;
+    const branchKey = String(cache?.revisionBranchKey || '').trim();
+    return changedUnitIds instanceof Set &&
+      changedUnitIds.has(String(unitId || '').trim()) &&
+      branchKey
+      ? `${revision}\u0000branch:${branchKey}`
+      : revision;
+  }
+
   function r9v2ProjectionObjectHash(cache, value) {
     if (!value || typeof value !== 'object') {
       return preview.stableHash(value);
+    }
+    if (cache?.useValueKeys === true) {
+      const hashes = cache?.projectionObjectHashes;
+      if (hashes instanceof WeakMap && hashes.has(value)) {
+        return hashes.get(value);
+      }
+      const hash = preview.stableHash(value);
+      if (hashes instanceof WeakMap) hashes.set(value, hash);
+      return hash;
+    }
+    if (cache?.useRevisionKeys === true) {
+      return r9v2ProjectionObjectRevision(cache, value);
     }
     const hashes = cache?.projectionObjectHashes;
     if (hashes instanceof WeakMap && hashes.has(value)) {
@@ -35457,7 +36459,11 @@
     }
     if (byUnit.has(normalizedId)) return byUnit.get(normalizedId);
     const unit = findUnitInWorld(worldSnapshot, normalizedId);
-    const fingerprint = preview.stableHash(unit || null);
+    const fingerprint = cache?.useValueKeys === true
+      ? preview.stableHash(unit || null)
+      : cache?.useRevisionKeys === true
+        ? r9v2ProjectionUnitRevision(cache, normalizedId, unit)
+        : preview.stableHash(unit || null);
     byUnit.set(normalizedId, fingerprint);
     return fingerprint;
   }
@@ -35465,6 +36471,7 @@
   function r9v2ProjectionBeliefSignature(
     beliefState,
     beliefKeys = [],
+    cache = null,
   ) {
     const keys = [
       ...new Set(
@@ -35473,11 +36480,50 @@
           .filter(Boolean),
       ),
     ].sort();
+    if (cache?.useValueKeys === true) {
+      const mechanics = Object.fromEntries(keys.map(key => [
+        key,
+        beliefState?.mechanics?.[key] || null,
+      ]));
+      return preview.stableHash({
+        schemaVersion: 'R9v2BeliefDependencyValueV1',
+        keys,
+        observationGranted: beliefState?.observationGranted === true,
+        confidence: Number(beliefState?.confidence ?? 1),
+        targetInterferencePossible:
+          beliefState?.targetInterferencePossible === true,
+        targetInterferenceRate:
+          Number(beliefState?.targetInterferenceRate || 0),
+        confused: beliefState?.confused === true,
+        mechanics,
+      });
+    }
+    if (
+      cache?.useRevisionKeys === true &&
+      beliefState &&
+      typeof beliefState === 'object' &&
+      cache?.projectionBeliefRevisions instanceof WeakMap
+    ) {
+      let byKey = cache.projectionBeliefRevisions.get(beliefState);
+      if (!byKey) {
+        byKey = new Map();
+        cache.projectionBeliefRevisions.set(beliefState, byKey);
+      }
+      const keySignature = keys.join('\u0000');
+      if (byKey.has(keySignature)) return byKey.get(keySignature);
+      const revision = [
+        r9v2ProjectionObjectRevision(cache, beliefState),
+        keySignature,
+      ].join('\u0000');
+      byKey.set(keySignature, revision);
+      return revision;
+    }
     const mechanics = Object.fromEntries(keys.map(key => [
       key,
       beliefState?.mechanics?.[key] || null,
     ]));
     return preview.stableHash({
+      beliefStateHash: preview.stableHash(beliefState || null),
       observationGranted: beliefState?.observationGranted === true,
       confidence: Number(beliefState?.confidence ?? 1),
       targetInterferencePossible:
@@ -35487,19 +36533,183 @@
     });
   }
 
-  function r9v2ProjectionBehaviorDependencyUnitIds(
+  function r9v2ProjectionObjectiveTruthKey(
+    cache,
+    worldSnapshot,
+    request,
+    unitId,
+  ) {
+    if (cache?.useValueKeys === true) {
+      return preview.stableHash(
+        r9v2InformationObjectiveTruthSignature(
+          worldSnapshot || {},
+          request,
+          unitId,
+        ),
+      );
+    }
+    const normalizedId = String(unitId || '').trim();
+    if (
+      cache?.useRevisionKeys === true &&
+      cache?.objectiveTruthRevisions instanceof WeakMap
+    ) {
+      let byUnit = cache.objectiveTruthRevisions.get(worldSnapshot);
+      if (!byUnit) {
+        byUnit = new Map();
+        cache.objectiveTruthRevisions.set(worldSnapshot, byUnit);
+      }
+      if (byUnit.has(normalizedId)) return byUnit.get(normalizedId);
+      const revision = `r9v2-objective-truth:${++r9v2ProjectionRevisionSequence}`;
+      byUnit.set(normalizedId, revision);
+      return revision;
+    }
+    return preview.stableHash(
+      r9v2InformationObjectiveTruthSignature(
+        worldSnapshot || {},
+        request,
+        normalizedId,
+      ),
+    );
+  }
+
+  function r9v2ProjectionBehaviorDependencyScopes(
     targetId,
     entries = [],
   ) {
-    const dependencyIds = new Set([
-      String(targetId || '').trim(),
-    ].filter(Boolean));
+    const dependencyScopes = new Map();
+    const add = (unitId, scopes) => {
+      const normalizedId = String(unitId || '').trim();
+      if (!normalizedId) return;
+      const current = dependencyScopes.get(normalizedId) || new Set();
+      (scopes || R9V2_MECHANICAL_FACT_SCOPES).forEach(scope =>
+        current.add(String(scope || '').trim().toUpperCase())
+      );
+      dependencyScopes.set(normalizedId, current);
+    };
+    add(targetId);
     entries.forEach(entry => {
-      r9v2CandidateDependencyUnitIds(entry).forEach(unitId =>
-        dependencyIds.add(unitId)
+      const scopes = entry?.mechanicalDependencyScopes;
+      if (scopes && typeof scopes === 'object') {
+        Object.entries(scopes).forEach(([unitId, unitScopes]) =>
+          add(unitId, unitScopes)
+        );
+        return;
+      }
+      r9v2CandidateInputDependencyUnitIds(entry).forEach(unitId =>
+        add(unitId)
       );
     });
-    return [...dependencyIds].sort();
+    return [...dependencyScopes.entries()]
+      .sort(([left], [right]) => left.localeCompare(right));
+  }
+
+  function r9v2ProjectionUnitScopeSignature(unit, scopes) {
+    return {
+      HEALTH: scopes.includes('HEALTH')
+        ? [
+            preview.readHp(unit),
+            preview.readHpMax(unit),
+            preview.readShield(unit),
+            preview.isAlive(unit),
+            preview.isBattleCapable(unit),
+            unit?.状态?.存活 !== false,
+            String(unit?.__战斗失能原因 || '').trim(),
+          ]
+        : null,
+      STATE: scopes.includes('STATE')
+        ? {
+            attributes: unit?.属性 || null,
+            states: unit?.状态 || null,
+            stateEffects: unit?.状态效果 || null,
+            ongoingEffects: unit?.持续效果 || null,
+            final: unit?.final || null,
+          }
+        : null,
+      RESOURCE: scopes.includes('RESOURCE')
+        ? {
+            魂力: preview.readResource(unit, '魂力'),
+            魂力上限: preview.readResourceMax(unit, '魂力'),
+            精神力: preview.readResource(unit, '精神力'),
+            精神力上限: preview.readResourceMax(unit, '精神力'),
+            体力: preview.readResource(unit, '体力'),
+            体力上限: preview.readResourceMax(unit, '体力'),
+          }
+        : null,
+      OPPORTUNITY: scopes.includes('OPPORTUNITY')
+        ? {
+            naturalOpportunity: unit?.__battleRuntime?.naturalOpportunity || null,
+            fusionUsageKeys: unit?.__battleRuntime?.fusionUsageKeys || [],
+            time: unit?.时间段 || unit?.时间 || '',
+          }
+        : null,
+      INVENTORY: scopes.includes('INVENTORY')
+        ? collectInventory(unit)
+        : null,
+    };
+  }
+
+  function r9v2ProjectionUnitScopeFingerprint(
+    worldSnapshot,
+    unitId,
+    scopes,
+    cache,
+  ) {
+    const normalizedId = String(unitId || '').trim();
+    const normalizedScopes = [
+      ...new Set(
+        (scopes || R9V2_MECHANICAL_FACT_SCOPES)
+          .map(scope => String(scope || '').trim().toUpperCase())
+          .filter(scope => R9V2_MECHANICAL_FACT_SCOPES.includes(scope)),
+      ),
+    ].sort();
+    const unit = findUnitInWorld(worldSnapshot || {}, normalizedId);
+    if (!unit) return preview.stableHash(null);
+    const signature = r9v2ProjectionUnitScopeSignature(
+      unit,
+      normalizedScopes,
+    );
+    const value = {
+      unitId: normalizedId,
+      scopes: normalizedScopes,
+      signature,
+    };
+    if (
+      cache?.useRevisionKeys === true &&
+      cache?.projectionUnitScopeFingerprints instanceof WeakMap
+    ) {
+      let byUnit = cache.projectionUnitScopeFingerprints.get(worldSnapshot);
+      if (!byUnit) {
+        byUnit = new Map();
+        cache.projectionUnitScopeFingerprints.set(worldSnapshot, byUnit);
+      }
+      const scopeKey = [normalizedId, ...normalizedScopes].join('\u0000');
+      if (byUnit.has(scopeKey)) return byUnit.get(scopeKey);
+      if (
+        cache?.useValueKeys === true &&
+        cache?.projectionUnitValueScopeFingerprints instanceof WeakMap
+      ) {
+        let byObject = cache.projectionUnitValueScopeFingerprints.get(unit);
+        if (!byObject) {
+          byObject = new Map();
+          cache.projectionUnitValueScopeFingerprints.set(unit, byObject);
+        }
+        if (byObject.has(scopeKey)) {
+          const fingerprint = byObject.get(scopeKey);
+          byUnit.set(scopeKey, fingerprint);
+          return fingerprint;
+        }
+        const fingerprint = preview.stableHash(value);
+        byObject.set(scopeKey, fingerprint);
+        byUnit.set(scopeKey, fingerprint);
+        return fingerprint;
+      }
+      const fingerprint = cache?.useValueKeys === true
+        ? preview.stableHash(value)
+        : r9v2ProjectionUnitRevision(cache, normalizedId, unit);
+      byUnit.set(scopeKey, fingerprint);
+      return fingerprint;
+    }
+    return r9v2ProjectionObjectHash(cache, value);
   }
 
   function r9v2ProjectionBehaviorCacheMatches({
@@ -35524,17 +36734,38 @@
     }
     if (
       record.beliefSignature !==
-      r9v2ProjectionBeliefSignature(beliefState, record.beliefKeys)
+      r9v2ProjectionBeliefSignature(
+        beliefState,
+        record.beliefKeys,
+        cache,
+      )
     ) {
       return false;
     }
-    return record.unitFingerprints.every(([unitId, fingerprint]) =>
-      r9v2ProjectionUnitFingerprint(
-        projectedWorld,
-        unitId,
-        cache,
-      ) === fingerprint
-    );
+    if (
+      cache?.enableExactComponentDependencies !== true &&
+      record.beliefStateHash &&
+      record.beliefStateHash !== preview.stableHash(beliefState || null)
+    ) {
+      return false;
+    }
+    return record.unitFingerprints.every(row => {
+      const unitId = row?.[0];
+      const fingerprint = row?.[1];
+      const scopes = row?.[2];
+      return scopes
+        ? r9v2ProjectionUnitScopeFingerprint(
+            projectedWorld,
+            unitId,
+            scopes,
+            cache,
+          ) === fingerprint
+        : r9v2ProjectionUnitFingerprint(
+            projectedWorld,
+            unitId,
+            cache,
+          ) === fingerprint;
+    });
   }
 
   function r9v2TargetResolutionActionIdentity(entry = {}) {
@@ -35710,9 +36941,11 @@
     entries = [],
     proofs = [],
     randomTargetRate = 0,
+    options = null,
   ) {
     const rate = clamp(Number(randomTargetRate || 0), 0, 1);
     if (!(rate > 1e-12)) return proofs;
+    const valueOnly = options?.valueOnly === true;
     const utilityByCandidate = new Map(
       proofs.map(proof => [
         String(proof?.candidateId || '').trim(),
@@ -35761,6 +36994,39 @@
         entry.candidateId === candidateId
       );
       if (!group || !variant) return proof;
+      if (valueOnly) {
+        const directGoalUtilityHEPP = Number(
+          proof.goalUtilityDeltaHEPP || 0,
+        );
+        const goalUtilityDeltaHEPP = Number(
+          projection.expectedUtilityByCandidate[candidateId] || 0,
+        );
+        const objectiveUtilityHEPP =
+          goalUtilityDeltaHEPP +
+          Number(proof.informationValueHEPP || 0);
+        const next = {
+          ...proof,
+          goalUtilityDeltaHEPP,
+          objectiveUtilityHEPP,
+          components: Object.freeze({
+            ...(proof.components || {}),
+            targetResolutionDeltaHEPP:
+              goalUtilityDeltaHEPP - directGoalUtilityHEPP,
+          }),
+          reconciliationError: 0,
+          valueOnly: true,
+        };
+        Object.defineProperty(next, 'vector', {
+          value: Object.freeze({
+            ...(proof.vector || {}),
+            objectiveUtilityHEPP,
+          }),
+          enumerable: false,
+          writable: false,
+          configurable: false,
+        });
+        return Object.freeze(next);
+      }
       const bestProofByTarget = new Map();
       group.variants.forEach(groupVariant => {
         const targetId =
@@ -35959,6 +37225,9 @@
     cache,
     identity,
     beliefState = request?.beliefState,
+    basePool = null,
+    baseWorld = request?.visibleWorld,
+    baseBeliefState = request?.beliefState,
     normalizedContributionStore = null,
   }) {
     const target = findUnitInWorld(projectedWorld, targetId);
@@ -35972,9 +37241,22 @@
       `target-interference:${targetInterferenceRate}`,
       `creation-product:${creationProductId}`,
     ].join('\u0000');
+    const metricsState = cache?.metricsState || null;
     const cached =
       cache?.behaviorPoolByIdentity?.get(cacheIdentity);
-    if (cached) return cached;
+    if (
+      cached?.record &&
+      r9v2ProjectionBehaviorCacheMatches({
+        record: cached.record,
+        request,
+        projectedWorld,
+        beliefState,
+        cache,
+      })
+    ) {
+      r9v2Metric(metricsState, 'r9v2ProjectedBehaviorPoolCacheHits');
+      return cached.result;
+    }
     const scopedCache = cache?.enableBehaviorPoolScope === true
       ? cache?.behaviorPoolByScope
       : null;
@@ -35990,9 +37272,11 @@
           request?.battleIntent || {},
         )
       : '';
-    const beliefStateHash = scopedCache instanceof Map
-      ? r9v2ProjectionObjectHash(cache, beliefState || {})
-      : '';
+    const beliefStateHash =
+      scopedCache instanceof Map &&
+      cache?.enableExactComponentDependencies !== true
+        ? r9v2ProjectionObjectHash(cache, beliefState || {})
+        : '';
     const scopedContextKey = scopedCache instanceof Map
       ? [
           cacheIdentity,
@@ -36013,11 +37297,23 @@
         cache,
       })
     );
-    if (scopedCached) return scopedCached.result;
+    if (scopedCached) {
+      r9v2Metric(
+        metricsState,
+        'r9v2ProjectedBehaviorPoolScopedCacheHits',
+      );
+      return scopedCached.result;
+    }
+    r9v2Metric(metricsState, 'r9v2ProjectedBehaviorPoolCacheMisses');
     const state = r9v2EphemeralState(
       normalizedContributionStore ||
         cache?.normalizedContributionStore,
+      cache?.sharedStores,
     );
+    if (cache?.enableExactComponentDependencies === true) {
+      state.r9v2MechanicalEntryCacheEnabled = true;
+      state.r9v2MechanicalEntryCacheActive = true;
+    }
     const pool = {
       schemaVersion: 'BehaviorPoolSessionV1',
       observerActorId: request.actorId,
@@ -36025,6 +37321,7 @@
       generation: 1,
       factDeltaCount: 0,
       unitEntries: new Map(),
+      unitValueRevisions: new Map(),
       targetSourceUnitIds: new Map(),
       targetInterferenceRateByUnit: new Map(),
       r9v2NormalizedContributionStore:
@@ -36051,47 +37348,114 @@
           targetInterferenceRate,
         }
       : beliefState;
-    const rawCandidates = r9v2FutureCandidates({
+    const catalog = r9v2DeclarationCatalog({
+      state,
       worldSnapshot: projectedWorld,
+      observerSide: request.actorSide,
       unitId: targetId,
       beliefState: targetBelief,
       battleIntent: request.battleIntent,
       actionOpportunity: request.actionOpportunity,
     });
     const candidates = creationProductId
-      ? rawCandidates.map(candidate =>
+      ? catalog.candidates.map(candidate =>
           r9v2CreationConsumerCandidate(
             candidate,
             creationProductId,
           )
         )
-      : rawCandidates;
-    const mechanicalProjectionContext =
-      preview.compileMechanicalProjectionContext(projectedWorld);
-    const entries = Object.freeze(candidates.map(candidate =>
-      r9v2BuildMechanicalEntry({
+      : catalog.candidates;
+    const baseEntries = basePool?.unitEntries?.get(targetId) || [];
+    const canReuseBasePool =
+      baseEntries.length > 0 &&
+      r9v2CatalogMatchesEntries(baseEntries, candidates);
+    if (canReuseBasePool) {
+      pool.unitEntries.set(targetId, baseEntries);
+      pool.targetInterferenceRateByUnit.set(
+        targetId,
+        Number(
+          basePool?.targetInterferenceRateByUnit?.get(targetId) || 0,
+        ),
+      );
+      const changedUnitIds = new Set([targetId]);
+      const changedUnitScopes = r9v2InformationUnitFactScopes({
+        baseWorld,
+        branchWorld: projectedWorld,
+        changedUnitIds,
+      });
+      const baseBeliefHash = preview.stableHash(baseBeliefState || null);
+      const projectedBeliefHash = preview.stableHash(beliefState || null);
+      const changedBeliefKeys = new Set();
+      if (baseBeliefHash !== projectedBeliefHash) {
+        baseEntries.forEach(baseEntry =>
+          r9v2CandidateBeliefKeys(baseEntry).forEach(key =>
+            changedBeliefKeys.add(key)
+          )
+        );
+      }
+      const mechanicalProjectionContext =
+        preview.compileMechanicalProjectionContext(projectedWorld);
+      const incremental = r9v2BuildDirtyFutureUnitPool({
         state,
+        pool,
         worldSnapshot: projectedWorld,
-        actorId: targetId,
-        candidate,
+        observerSide: request.actorSide,
+        unitId: targetId,
         beliefState: targetBelief,
         battleIntent: request.battleIntent,
-        actionOpportunity: {
-          ...request.actionOpportunity,
-          role: 'ACTIVE',
-          ownerId: targetId,
-        },
-        revision: `behavior-mutation:${identity}`,
+        actionOpportunity: request.actionOpportunity,
+        mechanicalProjectionContext,
+        changedUnitIds,
+        changedUnitScopes,
+        changedBeliefKeys,
+        dependencyBaselineWorld: baseWorld,
+      });
+      if (incremental.fullUnitFallback === true) {
+        r9v2BuildFutureUnitPool({
+          state,
+          pool,
+          worldSnapshot: projectedWorld,
+          observerSide: request.actorSide,
+          unitId: targetId,
+          beliefState: targetBelief,
+          battleIntent: request.battleIntent,
+          actionOpportunity: request.actionOpportunity,
+          mechanicalProjectionContext,
+          verifyMechanicalBasis: false,
+        });
+      }
+      r9v2Metric(
+        metricsState,
+        'r9v2ProjectedBehaviorPoolEntryRebuilds',
+        incremental.rebuiltCandidateCount,
+      );
+      r9v2Metric(
+        metricsState,
+        'r9v2ProjectedBehaviorPoolEntryReuses',
+        incremental.reusedCandidateCount,
+      );
+    } else {
+      const mechanicalProjectionContext =
+        preview.compileMechanicalProjectionContext(projectedWorld);
+      r9v2BuildFutureUnitPool({
+        state,
+        pool,
+        worldSnapshot: projectedWorld,
+        observerSide: request.actorSide,
+        unitId: targetId,
+        beliefState: targetBelief,
+        battleIntent: request.battleIntent,
+        actionOpportunity: request.actionOpportunity,
         mechanicalProjectionContext,
         verifyMechanicalBasis: false,
-      })
-    ));
-    pool.unitEntries.set(targetId, entries);
-    pool.targetInterferenceRateByUnit.set(
-      targetId,
-      targetInterferenceRate,
-    );
+      });
+      r9v2Metric(
+        metricsState,
+        'r9v2ProjectedBehaviorPoolCatalogFallbacks',
+      );
+    }
     r9v2ReindexTargets(pool);
+    const entries = pool.unitEntries.get(targetId) || [];
     const supported = entries.filter(entry =>
       entry.hardInvalid !== true
     );
@@ -36110,8 +37474,8 @@
         targetResolutionProjection.bestCandidateId,
         targetResolutionProjection,
     });
-    const dependencyUnitIds =
-      r9v2ProjectionBehaviorDependencyUnitIds(
+    const dependencyScopes =
+      r9v2ProjectionBehaviorDependencyScopes(
         targetId,
         entries,
       );
@@ -36130,15 +37494,21 @@
       beliefSignature: r9v2ProjectionBeliefSignature(
         beliefState,
         beliefKeys,
+        cache,
       ),
+      ...(cache?.enableExactComponentDependencies === true
+        ? {}
+        : { beliefStateHash: preview.stableHash(beliefState || null) }),
       unitFingerprints: Object.freeze(
-        dependencyUnitIds.map(unitId => [
+        dependencyScopes.map(([unitId, scopes]) => [
           unitId,
-          r9v2ProjectionUnitFingerprint(
+          r9v2ProjectionUnitScopeFingerprint(
             projectedWorld,
             unitId,
+            [...scopes],
             cache,
           ),
+          Object.freeze([...scopes].sort()),
         ]),
       ),
     });
@@ -36148,7 +37518,11 @@
         scopedRecord,
       ]);
     }
-    cache?.behaviorPoolByIdentity?.set(cacheIdentity, result);
+    cache?.behaviorPoolByIdentity?.set(cacheIdentity, Object.freeze({
+      result,
+      record: scopedRecord,
+    }));
+    r9v2Metric(metricsState, 'r9v2ProjectedBehaviorPoolBuilds');
     return result;
   }
 
@@ -36253,6 +37627,9 @@
         cache,
         identity,
         beliefState: projectedBelief,
+        basePool: pool,
+        baseWorld: request.visibleWorld,
+        baseBeliefState: request.beliefState,
         normalizedContributionStore:
           pool?.r9v2NormalizedContributionStore,
       });
@@ -36291,6 +37668,8 @@
         request.visibleWorld,
         pool,
         targetId,
+        {},
+        cache,
       );
       const afterBest = projected.bestUtilityHEPP;
       const targetSide = sideOf(request.visibleWorld, target);
@@ -37459,7 +38838,11 @@
     });
   }
 
-  function r9v2ProjectHealthAndTerminal(request = {}, entry = {}) {
+  function r9v2ProjectHealthAndTerminal(
+    request = {},
+    entry = {},
+    options = {},
+  ) {
     const worldSnapshot = request.visibleWorld;
     const rawObjectives =
       request?.objectiveContract ||
@@ -38052,7 +39435,8 @@
         `R9V2_TERMINAL_PROBABILITY_INVALID:${probabilityTotal}`,
       );
     }
-    const terminalIdentity = terminalProbability > 1e-12
+    const includeTerminalIdentity = options?.includeTerminalIdentity !== false;
+    const terminalIdentity = includeTerminalIdentity && terminalProbability > 1e-12
       ? r9v2TerminalIdentityFromEntry(
           request,
           entry,
@@ -38150,23 +39534,23 @@
       drawProbability,
       ongoingProbability,
       terminalAfterEffectInstanceId:
-        terminalProbability > 1e-12
+        terminalProbability > 1e-12 && terminalIdentity
           ? terminalIdentity.terminalAfterEffectInstanceId
           : '',
       terminalAtomicKey:
-        terminalProbability > 1e-12
+        terminalProbability > 1e-12 && terminalIdentity
           ? terminalIdentity.terminalAtomicKey
           : '',
       terminalAfterEffectInstanceIds:
-        terminalProbability > 1e-12
+        terminalProbability > 1e-12 && terminalIdentity
           ? terminalIdentity.terminalAfterEffectInstanceIds
           : Object.freeze([]),
       terminalAtomicKeys:
-        terminalProbability > 1e-12
+        terminalProbability > 1e-12 && terminalIdentity
           ? terminalIdentity.terminalAtomicKeys
           : Object.freeze([]),
       terminalPaths:
-        terminalProbability > 1e-12
+        terminalProbability > 1e-12 && terminalIdentity
           ? terminalIdentity.terminalPaths
           : Object.freeze([]),
       responseProjection,
@@ -38533,6 +39917,7 @@
         observerActorId: summonIdValue,
         observerSide: summonSide,
         unitEntries: new Map(pool?.unitEntries || []),
+        unitValueRevisions: new Map(pool?.unitValueRevisions || []),
         targetSourceUnitIds: new Map(),
         targetInterferenceRateByUnit:
           new Map(pool?.targetInterferenceRateByUnit || []),
@@ -39239,25 +40624,296 @@
     });
   }
 
+  function r9v2ProofComponentRead({
+    request,
+    pool,
+    entry,
+    projectionCache,
+    component,
+    dependencies = [],
+    extra = null,
+    extraKey = null,
+    build,
+  }) {
+    if (
+      projectionCache?.bypassProofComponentCache instanceof Set &&
+      projectionCache.bypassProofComponentCache.has(component)
+    ) {
+      r9v2Metric(
+        projectionCache?.metricsState,
+        'r9v2ProofComponentCacheBypasses',
+      );
+      return build();
+    }
+    const store = projectionCache?.proofComponentStore;
+    if (!(store instanceof Map)) return build();
+    const exactDependencies =
+      projectionCache?.enableExactComponentDependencies === true;
+    let componentDependency = null;
+    if (exactDependencies) {
+      const dependencyCache =
+        projectionCache?.componentDependencyByEntry;
+      if (dependencyCache instanceof WeakMap) {
+        componentDependency = dependencyCache.get(entry)?.[component] || null;
+      }
+      if (!componentDependency) {
+        componentDependency =
+          r9v2InformationProofComponentDependencies({
+            request,
+            pool,
+            entry,
+            component,
+          });
+        if (dependencyCache instanceof WeakMap) {
+          const existing = dependencyCache.get(entry) || {};
+          dependencyCache.set(entry, {
+            ...existing,
+            [component]: componentDependency,
+          });
+        }
+      }
+    }
+    const dependencyUnitIds = [
+      ...(componentDependency?.unitIds ||
+        r9v2CandidateDependencyUnitIds(entry)),
+    ].sort();
+    const objectiveTruthSignatures = [
+      ...(componentDependency?.objectiveUnitIds || []),
+    ].sort().map(unitId => [
+      unitId,
+      r9v2ProjectionObjectiveTruthKey(
+        projectionCache,
+        request?.visibleWorld || {},
+        request,
+        unitId,
+      ),
+    ]);
+    const unitFingerprints = dependencyUnitIds.map(unitId => [
+      unitId,
+      r9v2ProjectionUnitFingerprint(
+        request?.visibleWorld,
+        unitId,
+        projectionCache,
+      ),
+    ]);
+    const poolSensitive = new Set([
+      'STATE_OPPORTUNITY',
+      'BEHAVIOR_POOL',
+      'CREATION_CONSUMER',
+      'SUMMON_WINDOW',
+    ]).has(component);
+    const beliefSensitive = componentDependency
+      ? Number(
+          componentDependency.beliefKeys?.size ||
+          componentDependency.beliefKeys?.length ||
+          0,
+        ) > 0
+      : new Set([
+          'BEHAVIOR_POOL',
+          'SUMMON_WINDOW',
+        ]).has(component);
+    const beliefKeys = beliefSensitive
+      ? (componentDependency?.beliefKeys ||
+          r9v2ProofComponentBeliefKeys({
+            component,
+            pool,
+            entry,
+          }))
+      : new Set();
+    const dependencyRevisions = poolSensitive
+      ? dependencyUnitIds.map(unitId => [
+          unitId,
+          Number(pool?.unitValueRevisions?.get(unitId) || 0),
+        ])
+      : [];
+    const contextPayload = {
+      schemaVersion: 'R9v2ProofComponentContextV2',
+      component,
+      actorId: String(request?.actorId || '').trim(),
+      actorSide: String(request?.actorSide || '').trim(),
+      objectiveHash: r9v2ProjectionObjectHash(
+        projectionCache,
+        request?.objectiveContract ||
+          request?.battleIntent?.objectives ||
+          request?.battleIntent?.胜负条件 ||
+          {},
+      ),
+      actionOpportunityHash: r9v2ProjectionObjectHash(
+        projectionCache,
+        request?.actionOpportunity || {},
+      ),
+      evaluationContextHash: r9v2ProjectionObjectHash(
+        projectionCache,
+        request?.evaluationContext || {},
+      ),
+      unitFingerprints,
+      objectiveTruthSignatures,
+      entryComponentSignature: exactDependencies
+        ? r9v2CachedProofComponentEntrySignature(
+            projectionCache,
+            component,
+            entry,
+          )
+        : '',
+      ...(beliefSensitive
+        ? {
+            beliefHash: r9v2ProjectionBeliefSignature(
+              request?.beliefState || {},
+              [...beliefKeys],
+              projectionCache,
+            ),
+          }
+        : {}),
+      ...(poolSensitive
+        ? {
+            poolKey: String(pool?.observerPoolKey || '').trim(),
+            dependencyRevisions,
+          }
+        : {}),
+    };
+    const contextHash = projectionCache?.useRevisionKeys === true
+      ? [
+          'R9v2ProofComponentContextRevisionV1',
+          contextPayload.schemaVersion,
+          contextPayload.component,
+          contextPayload.actorId,
+          contextPayload.actorSide,
+          contextPayload.objectiveHash,
+          contextPayload.actionOpportunityHash,
+          contextPayload.evaluationContextHash,
+          JSON.stringify(contextPayload.unitFingerprints),
+          JSON.stringify(contextPayload.objectiveTruthSignatures),
+          contextPayload.entryComponentSignature,
+          contextPayload.beliefHash || '',
+          contextPayload.poolKey || '',
+          JSON.stringify(contextPayload.dependencyRevisions),
+        ].join('\u0000')
+      : preview.stableHash(contextPayload);
+    const key = [
+      'r9v2-proof-component',
+      component,
+      contextHash,
+      exactDependencies
+        ? r9v2CachedProofComponentEntrySignature(
+            projectionCache,
+            component,
+            entry,
+          )
+        : r9v2ProjectionObjectHash(projectionCache, entry),
+      extraKey === null
+        ? r9v2ProjectionObjectHash(projectionCache, extra || null)
+        : String(extraKey),
+    ].join('\u0000');
+    const cached = store.get(key);
+    if (cached?.schemaVersion === 'R9v2ProofComponentCacheEntryV1') {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2ProofComponentHits',
+      );
+      r9v2Metric(
+        projectionCache.metricsState,
+        `r9v2ProofComponentHits:${component}`,
+      );
+      return cached.value;
+    }
+    const value = build();
+    while (store.size >= 8192) {
+      const oldestKey = store.keys().next().value;
+      if (oldestKey === undefined) break;
+      store.delete(oldestKey);
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2ProofComponentEvictions',
+      );
+    }
+    store.set(key, Object.freeze({
+      schemaVersion: 'R9v2ProofComponentCacheEntryV1',
+      component,
+      dependencies: Object.freeze([
+        ...new Set(
+          [
+            ...dependencies,
+            ...[...beliefKeys].map(key => `belief:${key}`),
+          ].map(value => String(value || '').trim())
+            .filter(Boolean),
+        ),
+      ].sort()),
+      value,
+    }));
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2ProofComponentBuilds',
+    );
+    r9v2Metric(
+      projectionCache.metricsState,
+      `r9v2ProofComponentBuilds:${component}`,
+    );
+    return value;
+  }
+
   function r9v2CandidateValueProof(
     request,
     pool,
     entry,
     projectionCache = null,
+    reuseProjectionBundle = null,
+    proofOptions = null,
   ) {
+    if (proofOptions?.mode === 'VALUE_ONLY') {
+      return r9v2CandidateValueOnlyProof(
+        request,
+        pool,
+        entry,
+        projectionCache,
+        reuseProjectionBundle,
+      );
+    }
     const worldSnapshot = request.visibleWorld;
     const actorSide = request.actorSide;
-    const healthProjection = r9v2ProjectHealthAndTerminal(
-      request,
-      entry,
-    );
-    const incomingResponseProjection =
-      r9v2IncomingResponseProjection(
+    const reusable = reuseProjectionBundle &&
+      typeof reuseProjectionBundle === 'object'
+      ? reuseProjectionBundle
+      : {};
+    const healthProjection = reusable.HEALTH_TERMINAL ||
+      r9v2ProofComponentRead({
         request,
+        pool,
         entry,
-        healthProjection,
-        projectionCache?.currentIncoming || null,
-      );
+        projectionCache,
+        component: 'HEALTH_TERMINAL',
+        dependencies: ['world', 'objective', 'entry'],
+        build: () => r9v2ProjectHealthAndTerminal(request, entry),
+      });
+    const incomingResponseProjection = reusable.INCOMING_RESPONSE ||
+      r9v2ProofComponentRead({
+        request,
+        pool,
+        entry,
+        projectionCache,
+        component: 'INCOMING_RESPONSE',
+        dependencies: ['world', 'opportunity', 'entry', 'health'],
+        extra: {
+          currentIncoming: projectionCache?.currentIncoming || null,
+          healthSignature: r9v2ProjectionObjectHash(
+            projectionCache,
+            healthProjection,
+          ),
+        },
+        extraKey: [
+          'incoming-response',
+          r9v2ProjectionObjectHash(
+            projectionCache,
+            projectionCache?.currentIncoming || null,
+          ),
+          r9v2ProjectionObjectHash(projectionCache, healthProjection),
+        ].join('\u0000'),
+        build: () => r9v2IncomingResponseProjection(
+          request,
+          entry,
+          healthProjection,
+          projectionCache?.currentIncoming || null,
+        ),
+      });
     const incomingResponseDirectDeltaHEPP =
       Number(
         incomingResponseProjection?.directDeltaHEPP || 0,
@@ -39266,38 +40922,115 @@
       Number(
         incomingResponseProjection?.terminalDeltaHEPP || 0,
       );
-    const stateOpportunityProjection =
-      r9v2StateOpportunityProjection(
-        request,
-        pool,
-        entry,
-        projectionCache,
-      );
-    const behaviorPoolProjection =
-      r9v2BehaviorPoolDeltaProjection(
-        request,
-        pool,
-        entry,
-        projectionCache,
-      );
+    const hasStateOpportunityContribution = entry.contributions.some(
+      contribution => {
+        const outcomeKind = String(
+          contribution?.outcomeKind || '',
+        ).trim();
+        const prototype = String(
+          contribution?.evidence?.prototype || '',
+        ).trim();
+        return outcomeKind === 'STATE_CHANGED' ||
+          (outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+            ['位移执行', '判定修正'].includes(prototype));
+      },
+    );
+    const hasBehaviorMutation = entry.contributions.some(contribution =>
+      Boolean(r9v2BehaviorMutationKind(contribution))
+    );
+    const hasSummonWindowContribution = entry.contributions.some(
+      contribution => String(
+        contribution?.outcomeKind || '',
+      ).trim() === 'SUMMON_WINDOW',
+    );
+    const stateOpportunityProjection = reusable.STATE_OPPORTUNITY ||
+      (!hasStateOpportunityContribution
+        ? Object.freeze({
+            reactionOpportunityDeltaHEPP: 0,
+            castOrderDeltaHEPP: 0,
+            facts: Object.freeze([]),
+            diagnostics: Object.freeze([]),
+          })
+        : r9v2ProofComponentRead({
+            request,
+            pool,
+            entry,
+            projectionCache,
+            component: 'STATE_OPPORTUNITY',
+            dependencies: ['world', 'opportunity', 'resource', 'entry', 'pool'],
+            build: () => r9v2StateOpportunityProjection(
+              request,
+              pool,
+              entry,
+              projectionCache,
+            ),
+          }));
+    const behaviorPoolProjection = reusable.BEHAVIOR_POOL ||
+      (!hasBehaviorMutation
+        ? Object.freeze({
+            routeDeltaHEPP: 0,
+            facts: Object.freeze([]),
+            diagnostics: Object.freeze([]),
+            targetResolutionProjections: Object.freeze([]),
+            projectedContributionIndexes: Object.freeze([]),
+          })
+        : r9v2ProofComponentRead({
+            request,
+            pool,
+            entry,
+            projectionCache,
+            component: 'BEHAVIOR_POOL',
+            dependencies: ['world', 'belief', 'opportunity', 'entry', 'pool'],
+            build: () => r9v2BehaviorPoolDeltaProjection(
+              request,
+              pool,
+              entry,
+              projectionCache,
+            ),
+          }));
     const creationProjection = entry?.creationCarrier
-      ? r9v2CreationConsumerProjection(
-          request,
-          entry,
-          projectionCache?.normalizedContributionStore ||
-            pool?.r9v2NormalizedContributionStore,
-        )
+      ? reusable.CREATION_CONSUMER ||
+        r9v2ProofComponentRead({
+            request,
+            pool,
+            entry,
+            projectionCache,
+            component: 'CREATION_CONSUMER',
+            dependencies: ['world', 'opportunity', 'resource', 'entry', 'pool'],
+            build: () => r9v2CreationConsumerProjection(
+              request,
+              entry,
+              projectionCache?.normalizedContributionStore ||
+                pool?.r9v2NormalizedContributionStore,
+            ),
+          })
       : null;
     if (projectionCache && !projectionCache.summonWindowByIdentity) {
       projectionCache.summonWindowByIdentity = new Map();
     }
-    const summonWindowProjection =
-      r9v2SummonWindowProjection(
-        request,
-        pool,
-        entry,
-        projectionCache,
-      );
+    const summonWindowProjection = reusable.SUMMON_WINDOW ||
+      (!hasSummonWindowContribution
+        ? Object.freeze({
+            complete: true,
+            routeDeltaHEPP: 0,
+            facts: Object.freeze([]),
+            diagnostics: Object.freeze([]),
+            projectedContributionIndexes: Object.freeze([]),
+          })
+        : r9v2ProofComponentRead({
+            request,
+            pool,
+            entry,
+            projectionCache,
+            component: 'SUMMON_WINDOW',
+            dependencies: ['world', 'opportunity', 'entry', 'pool'],
+            build: () => r9v2SummonWindowProjection(
+              request,
+              pool,
+              entry,
+              projectionCache,
+            ),
+          }));
     const causalValueFacts = [];
     const withdrawalContestTargetId = String(
       healthProjection?.withdrawalContestTargetIds?.[0] || '',
@@ -39560,6 +41293,8 @@
         worldSnapshot,
         pool,
         targetId,
+        {},
+        projectionCache,
       );
       const targetSide = sideOf(worldSnapshot, target);
       const value =
@@ -39597,6 +41332,7 @@
         pool,
         targetId,
         overrides,
+        projectionCache,
       );
       const nextOverrides = { ...overrides, [resource]: next };
       const bestAfter = r9v2BestAffordableUtility(
@@ -39604,6 +41340,7 @@
         pool,
         targetId,
         nextOverrides,
+        projectionCache,
       );
       resourceOverridesByUnit.set(targetId, nextOverrides);
       const targetSide = sideOf(worldSnapshot, target);
@@ -39666,6 +41403,8 @@
         worldSnapshot,
         pool,
         targetId,
+        {},
+        projectionCache,
       );
       const targetSide = sideOf(worldSnapshot, target);
       const value =
@@ -40140,6 +41879,382 @@
       writable: false,
       configurable: false,
     });
+    Object.defineProperty(proof, 'r9v2ProjectionBundle', {
+      value: Object.freeze({
+        HEALTH_TERMINAL: healthProjection,
+        INCOMING_RESPONSE: incomingResponseProjection,
+        STATE_OPPORTUNITY: stateOpportunityProjection,
+        BEHAVIOR_POOL: behaviorPoolProjection,
+        CREATION_CONSUMER: creationProjection,
+        SUMMON_WINDOW: summonWindowProjection,
+      }),
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
+    return Object.freeze(proof);
+  }
+
+  function r9v2CandidateValueOnlyProof(
+    request,
+    pool,
+    entry,
+    projectionCache = null,
+    reuseProjectionBundle = null,
+  ) {
+    const worldSnapshot = request.visibleWorld;
+    const actorSide = request.actorSide;
+    const reusable = reuseProjectionBundle &&
+      typeof reuseProjectionBundle === 'object'
+      ? reuseProjectionBundle
+      : {};
+    const healthProjection = reusable.HEALTH_TERMINAL ||
+      r9v2ProofComponentRead({
+        request,
+        pool,
+        entry,
+        projectionCache,
+        component: 'HEALTH_TERMINAL',
+        dependencies: ['world', 'objective', 'entry'],
+        extraKey: 'VALUE_ONLY_NO_TERMINAL_IDENTITY_V1',
+        build: () => r9v2ProjectHealthAndTerminal(
+          request,
+          entry,
+          { includeTerminalIdentity: false },
+        ),
+      });
+    const incomingResponseProjection = reusable.INCOMING_RESPONSE ||
+      r9v2ProofComponentRead({
+        request,
+        pool,
+        entry,
+        projectionCache,
+        component: 'INCOMING_RESPONSE',
+        dependencies: ['world', 'opportunity', 'entry', 'health'],
+        extra: {
+          currentIncoming: projectionCache?.currentIncoming || null,
+          healthSignature: r9v2ProjectionObjectHash(
+            projectionCache,
+            healthProjection,
+          ),
+        },
+        extraKey: [
+          'incoming-response-value-only',
+          r9v2ProjectionObjectHash(
+            projectionCache,
+            projectionCache?.currentIncoming || null,
+          ),
+          r9v2ProjectionObjectHash(projectionCache, healthProjection),
+        ].join('\u0000'),
+        build: () => r9v2IncomingResponseProjection(
+          request,
+          entry,
+          healthProjection,
+          projectionCache?.currentIncoming || null,
+        ),
+      });
+    const hasStateOpportunityContribution = entry.contributions.some(
+      contribution => {
+        const outcomeKind = String(
+          contribution?.outcomeKind || '',
+        ).trim();
+        const prototype = String(
+          contribution?.evidence?.prototype || '',
+        ).trim();
+        return outcomeKind === 'STATE_CHANGED' ||
+          (outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+            ['位移执行', '判定修正'].includes(prototype));
+      },
+    );
+    const hasBehaviorMutation = entry.contributions.some(contribution =>
+      Boolean(r9v2BehaviorMutationKind(contribution))
+    );
+    const hasSummonWindowContribution = entry.contributions.some(
+      contribution => String(
+        contribution?.outcomeKind || '',
+      ).trim() === 'SUMMON_WINDOW',
+    );
+    const stateOpportunityProjection = reusable.STATE_OPPORTUNITY ||
+      (!hasStateOpportunityContribution
+        ? Object.freeze({
+            reactionOpportunityDeltaHEPP: 0,
+            castOrderDeltaHEPP: 0,
+            diagnostics: Object.freeze([]),
+          })
+        : r9v2ProofComponentRead({
+            request,
+            pool,
+            entry,
+            projectionCache,
+            component: 'STATE_OPPORTUNITY',
+            dependencies: ['world', 'opportunity', 'resource', 'entry', 'pool'],
+            build: () => r9v2StateOpportunityProjection(
+              request,
+              pool,
+              entry,
+              projectionCache,
+            ),
+          }));
+    const behaviorPoolProjection = reusable.BEHAVIOR_POOL ||
+      (!hasBehaviorMutation
+        ? Object.freeze({
+            routeDeltaHEPP: 0,
+            diagnostics: Object.freeze([]),
+            projectedContributionIndexes: Object.freeze([]),
+          })
+        : r9v2ProofComponentRead({
+            request,
+            pool,
+            entry,
+            projectionCache,
+            component: 'BEHAVIOR_POOL',
+            dependencies: ['world', 'belief', 'opportunity', 'entry', 'pool'],
+            build: () => r9v2BehaviorPoolDeltaProjection(
+              request,
+              pool,
+              entry,
+              projectionCache,
+            ),
+          }));
+    const creationProjection = entry?.creationCarrier
+      ? reusable.CREATION_CONSUMER ||
+        r9v2ProofComponentRead({
+            request,
+            pool,
+            entry,
+            projectionCache,
+            component: 'CREATION_CONSUMER',
+            dependencies: ['world', 'opportunity', 'resource', 'entry', 'pool'],
+            build: () => r9v2CreationConsumerProjection(
+              request,
+              entry,
+              projectionCache?.normalizedContributionStore ||
+                pool?.r9v2NormalizedContributionStore,
+            ),
+          })
+      : null;
+    if (projectionCache && !projectionCache.summonWindowByIdentity) {
+      projectionCache.summonWindowByIdentity = new Map();
+    }
+    const summonWindowProjection = reusable.SUMMON_WINDOW ||
+      (!hasSummonWindowContribution
+        ? Object.freeze({
+            complete: true,
+            routeDeltaHEPP: 0,
+            diagnostics: Object.freeze([]),
+            projectedContributionIndexes: Object.freeze([]),
+          })
+        : r9v2ProofComponentRead({
+            request,
+            pool,
+            entry,
+            projectionCache,
+            component: 'SUMMON_WINDOW',
+            dependencies: ['world', 'opportunity', 'entry', 'pool'],
+            build: () => r9v2SummonWindowProjection(
+              request,
+              pool,
+              entry,
+              projectionCache,
+            ),
+          }));
+    const cancellationByTarget = new Map();
+    entry.contributions.forEach(contribution => {
+      if (contribution.outcomeKind !== 'ACTION_CANCELLED') return;
+      const current = cancellationByTarget.get(contribution.targetId) || {
+        probability: 0,
+        duration: 0,
+      };
+      current.probability = Math.max(
+        current.probability,
+        Number(contribution.probability || 0),
+      );
+      current.duration = Math.max(
+        current.duration,
+        Math.max(1, Number(contribution?.evidence?.duration || 1)),
+      );
+      cancellationByTarget.set(contribution.targetId, current);
+    });
+    let controlOpportunityDeltaHEPP = 0;
+    cancellationByTarget.forEach((cancellation, targetId) => {
+      const target = findUnitInWorld(worldSnapshot, targetId);
+      if (!target || !preview.isBattleCapable(target)) return;
+      const opportunityCount = Math.min(
+        cancellation.duration,
+        r9v2RealizableActiveOpportunityCount(request, targetId),
+      );
+      if (!(opportunityCount > 0)) return;
+      const targetBest = r9v2BestAffordableUtility(
+        worldSnapshot,
+        pool,
+        targetId,
+        {},
+        projectionCache,
+      );
+      const targetSide = sideOf(worldSnapshot, target);
+      controlOpportunityDeltaHEPP +=
+        (targetSide === actorSide ? -1 : 1) *
+        targetBest *
+        cancellation.probability *
+        opportunityCount;
+    });
+    const resourceOverridesByUnit = new Map();
+    let resourceFrontierDeltaHEPP = 0;
+    entry.contributions.forEach(contribution => {
+      if (contribution.outcomeKind !== 'RESOURCE_OPTION_CHANGED') return;
+      const targetId = contribution.targetId;
+      const resource = String(
+        contribution?.evidence?.resource || '',
+      ).trim();
+      const target = findUnitInWorld(worldSnapshot, targetId);
+      if (!target || !resource) return;
+      const overrides = resourceOverridesByUnit.get(targetId) || {};
+      const current = Object.hasOwn(overrides, resource)
+        ? Number(overrides[resource])
+        : Number.isFinite(Number(contribution?.evidence?.before))
+          ? Number(contribution.evidence.before)
+          : Number.isFinite(Number(contribution?.evidence?.current))
+            ? Number(contribution.evidence.current)
+            : preview.readResource(target, resource);
+      const next = Number.isFinite(Number(contribution?.evidence?.next))
+        ? Number(contribution.evidence.next)
+        : current + Number(contribution.expectedDelta || 0);
+      if (Math.abs(next - current) <= 1e-9) return;
+      const bestBefore = r9v2BestAffordableUtility(
+        worldSnapshot,
+        pool,
+        targetId,
+        overrides,
+        projectionCache,
+      );
+      const nextOverrides = { ...overrides, [resource]: next };
+      const bestAfter = r9v2BestAffordableUtility(
+        worldSnapshot,
+        pool,
+        targetId,
+        nextOverrides,
+        projectionCache,
+      );
+      resourceOverridesByUnit.set(targetId, nextOverrides);
+      const targetSide = sideOf(worldSnapshot, target);
+      resourceFrontierDeltaHEPP +=
+        (targetSide === actorSide ? 1 : -1) *
+        (bestAfter - bestBefore);
+    });
+    const ongoingProbability = Number(
+      healthProjection.ongoingProbability || 0,
+    );
+    const goalUtilityDeltaHEPP =
+      Number(healthProjection.expectedTerminalUtility || 0) +
+      Number(healthProjection.expectedOngoingDirectHealthHEPP || 0) +
+      controlOpportunityDeltaHEPP * ongoingProbability +
+      resourceFrontierDeltaHEPP * ongoingProbability +
+      Number(stateOpportunityProjection?.reactionOpportunityDeltaHEPP || 0) *
+        ongoingProbability +
+      Number(stateOpportunityProjection?.castOrderDeltaHEPP || 0) *
+        ongoingProbability +
+      Number(behaviorPoolProjection?.routeDeltaHEPP || 0) *
+        ongoingProbability +
+      Number(creationProjection?.complete
+        ? creationProjection.routeDeltaHEPP
+        : 0) * ongoingProbability +
+      Number(summonWindowProjection?.complete
+        ? summonWindowProjection.routeDeltaHEPP
+        : 0) * ongoingProbability +
+      Number(incomingResponseProjection?.directDeltaHEPP || 0) +
+      Number(incomingResponseProjection?.terminalDeltaHEPP || 0);
+    const supported = new Set([
+      'HP_DELTA',
+      'SCHEDULED_HP_DELTA',
+      'ACTION_CANCELLED',
+      'RESOURCE_OPTION_CHANGED',
+      'SHIELD_DELTA',
+    ]);
+    if (healthProjection?.withdrawalProjection) {
+      supported.add('WITHDRAWAL_CONTEST');
+    }
+    if (creationProjection?.complete) {
+      supported.add('NEXT_ACTION_QUALITY_CHANGED');
+    }
+    if (summonWindowProjection?.complete) {
+      supported.add('SUMMON_WINDOW');
+    }
+    const behaviorProjectedIndexes = new Set(
+      behaviorPoolProjection?.projectedContributionIndexes || [],
+    );
+    const summonProjectedIndexes = new Set(
+      summonWindowProjection?.projectedContributionIndexes || [],
+    );
+    const unsupportedOutcomeKinds = [
+      ...new Set(
+        entry.contributions
+          .filter((contribution, index) => {
+            const kind = String(
+              contribution?.outcomeKind || '',
+            ).trim();
+            if (!kind) return false;
+            if (behaviorProjectedIndexes.has(index)) return false;
+            if (summonProjectedIndexes.has(index)) return false;
+            const creationProjected =
+              kind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+              creationProjection?.complete === true &&
+              String(contribution?.evidence?.productId || '').trim() ===
+                String(creationProjection?.productId || '').trim() &&
+              String(contribution?.evidence?.recipientId || '').trim() ===
+                String(creationProjection?.recipientId || '').trim();
+            if (creationProjected) return false;
+            if (
+              kind === 'STATE_CHANGED' ||
+              kind === 'NEXT_ACTION_QUALITY_CHANGED'
+            ) {
+              return !r9v2StateContributionFullyProjected(contribution);
+            }
+            return !supported.has(kind);
+          })
+          .map(contribution => contribution.outcomeKind),
+      ),
+    ].sort();
+    const actionKind = String(
+      entry?.actionKind || '',
+    ).trim().toUpperCase();
+    const rejectionCode =
+      ['DEFEND', 'EVADE'].includes(actionKind) &&
+      !hasDefenseWindow(request)
+        ? 'ACTIVE_DEFENSE_WITHOUT_WINDOW_VALUED'
+        : '';
+    const proof = {
+      schemaVersion: 'CandidateValueProofV1',
+      candidateId: entry.candidateId,
+      goalUtilityDeltaHEPP,
+      informationValueHEPP: 0,
+      objectiveUtilityHEPP: goalUtilityDeltaHEPP,
+      rejectionCode,
+      unsupportedOutcomeKinds: Object.freeze(unsupportedOutcomeKinds),
+      valueOnly: true,
+    };
+    Object.defineProperty(proof, 'vector', {
+      value: Object.freeze({
+        objectiveUtilityHEPP: goalUtilityDeltaHEPP,
+        informationValueHEPP: 0,
+        assetReserve: Number(entry.assetReserve || 0),
+      }),
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
+    Object.defineProperty(proof, 'r9v2ProjectionBundle', {
+      value: Object.freeze({
+        HEALTH_TERMINAL: healthProjection,
+        INCOMING_RESPONSE: incomingResponseProjection,
+        STATE_OPPORTUNITY: stateOpportunityProjection,
+        BEHAVIOR_POOL: behaviorPoolProjection,
+        CREATION_CONSUMER: creationProjection,
+        SUMMON_WINDOW: summonWindowProjection,
+      }),
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
     return Object.freeze(proof);
   }
 
@@ -40238,6 +42353,1185 @@
     });
   }
 
+  function r9v2FuturePoolContextKey({
+    state,
+    request,
+    futureOpportunity,
+  }) {
+    const context = request?.evaluationContext || {};
+    const revisionState = state?.revisionState || {};
+    const visibleWorldRevision = String(
+      context.visibleWorldRevision ||
+      revisionState.visibleWorldRevision ||
+      `world:${preview.stableHash(request?.visibleWorld || {})}`,
+    ).trim();
+    return `r9v2-future-pool:${preview.stableHash({
+      schemaVersion: 'R9v2FuturePoolContextV1',
+      observerActorId: String(request?.actorId || '').trim(),
+      observerSide: String(request?.actorSide || '').trim(),
+      visibleWorldRevision,
+      beliefRevision: String(
+        context.beliefRevision ||
+        revisionState.beliefRevision ||
+        beliefRevisionFor(request?.beliefState || {}),
+      ).trim(),
+      opportunityRevision: String(
+        context.opportunityRevision ||
+        revisionState.opportunityRevision ||
+        '',
+      ).trim(),
+      resourceTimelineRevision: String(
+        context.resourceTimelineRevision ||
+        revisionState.resourceTimelineRevision ||
+        '',
+      ).trim(),
+      scheduleRevision: String(
+        context.scheduleRevision ||
+        revisionState.scheduleRevision ||
+        '',
+      ).trim(),
+      factDeltaCount: Array.isArray(state?.factDeltaRecords)
+        ? state.factDeltaRecords.length
+        : 0,
+      futureOpportunity,
+      objectiveHash: String(
+        context.objectiveHash ||
+        revisionState.objectiveHash ||
+        '',
+      ).trim(),
+    })}`;
+  }
+
+  function r9v2InformationProofRelevantUnitIds({
+    request,
+    pool,
+    entry,
+  }) {
+    const relevantUnitIds = new Set(
+      r9v2CandidateInputDependencyUnitIds(entry),
+    );
+    const addUnitId = unitId => {
+      const normalizedId = String(unitId || '').trim();
+      if (normalizedId) relevantUnitIds.add(normalizedId);
+    };
+    (entry?.targetIds || []).forEach(addUnitId);
+    (entry?.contributions || []).forEach(contribution => {
+      addUnitId(contribution?.targetId);
+      addUnitId(contribution?.evidence?.sourceActorId);
+      addUnitId(contribution?.evidence?.hostId);
+      addUnitId(contribution?.evidence?.ownerId);
+    });
+    (entry?.summonDefinitions || []).forEach(definition => {
+      addUnitId(definition?.sourceUnitId);
+      addUnitId(definition?.hostId);
+      addUnitId(definition?.ownerId);
+      addUnitId(definition?.summonId);
+      addUnitId(definition?.targetId);
+    });
+    const targetIds = [
+      ...relevantUnitIds,
+    ];
+    targetIds.forEach(targetId => {
+      (pool?.targetSourceUnitIds?.get(targetId) || [])
+        .forEach(sourceUnitId => addUnitId(sourceUnitId));
+    });
+    const opportunity = request?.actionOpportunity || {};
+    [
+      opportunity?.sourceActorId,
+      opportunity?.targetId,
+      opportunity?.ownerId,
+      ...(opportunity?.pendingNaturalActorIds || []),
+      ...(opportunity?.pendingHostileActorIds || []),
+    ].forEach(addUnitId);
+    if (
+      String(entry?.actionKind || '').trim().toUpperCase() === 'WITHDRAW'
+    ) {
+      aliveEntries(request?.visibleWorld || {}).forEach(item =>
+        addUnitId(preview.unitId(item.unit))
+      );
+    }
+    return relevantUnitIds;
+  }
+
+  function r9v2InformationObjectiveDependencyUnitIds({
+    request,
+  }) {
+    const worldSnapshot = request?.visibleWorld || {};
+    const objectives = preview.normalizeBattleObjectives(
+      request?.objectiveContract ||
+        request?.battleIntent?.objectives ||
+        request?.battleIntent?.胜负条件 ||
+        worldSnapshot?.胜负条件 ||
+        {},
+      worldSnapshot,
+    );
+    const unitIds = new Set();
+    [
+      ...(objectives?.victory?.conditions || []),
+      ...(objectives?.defeat?.conditions || []),
+    ].forEach(condition => {
+      const type = String(condition?.type || '').trim().toUpperCase();
+      if (['ROUND_REACHED', 'WITHDRAW_SUCCESS'].includes(type)) return;
+      r9v2ObjectiveConditionUnitIds(
+        worldSnapshot,
+        condition,
+      ).forEach(unitId => unitIds.add(unitId));
+    });
+    return unitIds;
+  }
+
+  function r9v2InformationProofBeliefKeys({
+    pool,
+    entry,
+  }) {
+    const beliefKeys = new Set(r9v2CandidateBeliefKeys(entry));
+    ['BEHAVIOR_POOL', 'SUMMON_WINDOW'].forEach(component => {
+      r9v2ProofComponentBeliefKeys({
+        component,
+        pool,
+        entry,
+      }).forEach(key => beliefKeys.add(key));
+    });
+    return beliefKeys;
+  }
+
+  function r9v2InformationProofComponentDependencies({
+    request,
+    pool,
+    entry,
+    component,
+  }) {
+    const normalizedComponent = String(component || '').trim().toUpperCase();
+    const unitIds = new Set();
+    const beliefKeys = new Set();
+    const objectiveUnitIds = new Set();
+    const addUnitId = unitId => {
+      const normalizedId = String(unitId || '').trim();
+      if (normalizedId) unitIds.add(normalizedId);
+    };
+    const addEntryDependencies = candidateEntry => {
+      r9v2CandidateInputDependencyUnitIds(candidateEntry).forEach(addUnitId);
+    };
+    const addPoolEntryDependencies = unitId => {
+      (pool?.unitEntries?.get(String(unitId || '').trim()) || [])
+        .forEach(addEntryDependencies);
+    };
+    const addContributionDependencies = contribution => {
+      addUnitId(contribution?.targetId);
+      addUnitId(contribution?.evidence?.sourceActorId);
+      addUnitId(contribution?.evidence?.hostId);
+      addUnitId(contribution?.evidence?.ownerId);
+    };
+
+    if (['INCOMING_RESPONSE', 'SUMMON_WINDOW']
+      .includes(normalizedComponent)) {
+      r9v2InformationProofRelevantUnitIds({
+        request,
+        pool,
+        entry,
+      }).forEach(addUnitId);
+    } else if (![
+      'BEHAVIOR_POOL',
+      'STATE_OPPORTUNITY',
+      'HEALTH_TERMINAL',
+    ].includes(normalizedComponent)) {
+      addEntryDependencies(entry);
+      (entry?.contributions || []).forEach(addContributionDependencies);
+      (entry?.summonDefinitions || []).forEach(definition => {
+        addUnitId(definition?.sourceUnitId);
+        addUnitId(definition?.hostId);
+        addUnitId(definition?.ownerId);
+        addUnitId(definition?.summonId);
+        addUnitId(definition?.targetId);
+      });
+      const opportunity = request?.actionOpportunity || {};
+      [
+        opportunity?.sourceActorId,
+        opportunity?.targetId,
+        opportunity?.ownerId,
+      ].forEach(addUnitId);
+    } else if (normalizedComponent === 'STATE_OPPORTUNITY') {
+      (entry?.contributions || [])
+        .filter(contribution => [
+          'STATE_CHANGED',
+          'NEXT_ACTION_QUALITY_CHANGED',
+        ].includes(String(contribution?.outcomeKind || '').trim()))
+        .forEach(addContributionDependencies);
+    }
+
+    if (
+      normalizedComponent === 'HEALTH_TERMINAL' ||
+      normalizedComponent === 'INCOMING_RESPONSE'
+    ) {
+      r9v2InformationObjectiveDependencyUnitIds({
+        request,
+      }).forEach(unitId => objectiveUnitIds.add(unitId));
+    }
+
+    if (normalizedComponent === 'HEALTH_TERMINAL') {
+      (entry?.contributions || []).forEach(addContributionDependencies);
+      Object.keys(request?.beliefState?.publicResponses || {})
+        .forEach(addUnitId);
+    }
+
+    if (normalizedComponent === 'STATE_OPPORTUNITY') {
+      const opportunity = request?.actionOpportunity || {};
+      [
+        ...(opportunity?.pendingNaturalActorIds || []),
+        ...(opportunity?.pendingHostileActorIds || []),
+      ].forEach(addUnitId);
+      (entry?.contributions || [])
+        .filter(contribution => [
+          'ACTION_CANCELLED',
+          'RESOURCE_OPTION_CHANGED',
+        ].includes(String(contribution?.outcomeKind || '').trim()))
+        .forEach(contribution => {
+          addPoolEntryDependencies(contribution?.targetId);
+          (pool?.targetSourceUnitIds?.get(
+            String(contribution?.targetId || '').trim(),
+          ) || []).forEach(addUnitId);
+        });
+    }
+
+    if (normalizedComponent === 'BEHAVIOR_POOL') {
+      (entry?.contributions || [])
+        .filter(contribution => r9v2BehaviorMutationKind(contribution))
+        .forEach(contribution => {
+          const targetId = String(
+            contribution?.targetId || '',
+          ).trim();
+          addUnitId(targetId);
+          addPoolEntryDependencies(targetId);
+          (pool?.targetSourceUnitIds?.get(targetId) || [])
+            .forEach(addUnitId);
+        });
+    }
+
+    if (normalizedComponent === 'CREATION_CONSUMER') {
+      addUnitId(entry?.creationCarrier?.recipientId);
+      addPoolEntryDependencies(entry?.creationCarrier?.recipientId);
+    }
+
+    const candidateBeliefKeys = r9v2CandidateBeliefKeys(entry);
+    candidateBeliefKeys.forEach(key => beliefKeys.add(key));
+    if (['BEHAVIOR_POOL', 'SUMMON_WINDOW'].includes(normalizedComponent)) {
+      r9v2ProofComponentBeliefKeys({
+        component: normalizedComponent,
+        pool,
+        entry,
+      }).forEach(key => beliefKeys.add(key));
+    }
+    return { unitIds, beliefKeys, objectiveUnitIds };
+  }
+
+  function r9v2CachedProofComponentEntrySignature(
+    cache,
+    component,
+    entry,
+  ) {
+    const signatures = cache?.entryComponentSignatures;
+    if (!(signatures instanceof WeakMap) || !entry || typeof entry !== 'object') {
+      return r9v2ProofComponentEntrySignature(component, entry);
+    }
+    let byComponent = signatures.get(entry);
+    if (!byComponent) {
+      byComponent = new Map();
+      signatures.set(entry, byComponent);
+    }
+    const normalizedComponent = String(component || '').trim().toUpperCase();
+    if (byComponent.has(normalizedComponent)) {
+      return byComponent.get(normalizedComponent);
+    }
+    const signature = r9v2ProofComponentEntrySignature(component, entry);
+    byComponent.set(normalizedComponent, signature);
+    return signature;
+  }
+
+  function r9v2ProofComponentEntrySignature(
+    component,
+    entry = {},
+  ) {
+    const common = {
+      candidateId: String(entry?.candidateId || '').trim(),
+      declarationFingerprint: String(
+        entry?.declarationFingerprint || '',
+      ).trim(),
+      actorId: String(entry?.actorId || '').trim(),
+      actorSide: String(entry?.actorSide || '').trim(),
+      actionKind: String(entry?.actionKind || '').trim(),
+      targetIds: [...(entry?.targetIds || [])],
+    };
+    const contributions = entry?.contributions || [];
+    const contributionRows = outcomeKinds => contributions.filter(row =>
+      outcomeKinds.has(String(row?.outcomeKind || '').trim())
+    );
+    const normalizedComponent = String(component || '').trim().toUpperCase();
+    if (normalizedComponent === 'HEALTH_TERMINAL') {
+      return preview.stableHash({
+        ...common,
+        contributions: contributionRows(new Set([
+          'HP_DELTA',
+          'SCHEDULED_HP_DELTA',
+          'WITHDRAWAL_CONTEST',
+          'SHIELD_DELTA',
+        ])),
+      });
+    }
+    if (normalizedComponent === 'INCOMING_RESPONSE') {
+      return preview.stableHash({
+        ...common,
+        contributions: contributionRows(new Set([
+          'HP_DELTA',
+          'SCHEDULED_HP_DELTA',
+          'WITHDRAWAL_CONTEST',
+          'SHIELD_DELTA',
+        ])),
+        projectedUnitSnapshots: entry?.projectedUnitSnapshots || [],
+      });
+    }
+    if (normalizedComponent === 'STATE_OPPORTUNITY') {
+      return preview.stableHash({
+        ...common,
+        contributions: contributions.filter(row =>
+          [
+            'ACTION_CANCELLED',
+            'RESOURCE_OPTION_CHANGED',
+            'STATE_CHANGED',
+            'NEXT_ACTION_QUALITY_CHANGED',
+          ].includes(String(row?.outcomeKind || '').trim())
+        ),
+      });
+    }
+    if (normalizedComponent === 'BEHAVIOR_POOL') {
+      return preview.stableHash({
+        ...common,
+        contributions: contributions.filter(row =>
+          Boolean(r9v2BehaviorMutationKind(row))
+        ),
+      });
+    }
+    if (normalizedComponent === 'CREATION_CONSUMER') {
+      return preview.stableHash({
+        ...common,
+        creationCarrier: entry?.creationCarrier || null,
+        resourceCosts: entry?.resourceCosts || {},
+      });
+    }
+    if (normalizedComponent === 'SUMMON_WINDOW') {
+      return preview.stableHash({
+        ...common,
+        contributions: contributionRows(new Set(['SUMMON_WINDOW'])),
+        summonDefinitions: entry?.summonDefinitions || [],
+      });
+    }
+    return preview.stableHash(entry);
+  }
+
+  function r9v2InformationObjectiveTruthSignature(
+    worldSnapshot,
+    request,
+    unitId,
+  ) {
+    const objectives = preview.normalizeBattleObjectives(
+      request?.objectiveContract ||
+        request?.battleIntent?.objectives ||
+        request?.battleIntent?.胜负条件 ||
+        worldSnapshot?.胜负条件 ||
+        {},
+      worldSnapshot,
+    );
+    const unit = findUnitInWorld(worldSnapshot || {}, unitId);
+    const state = unit
+      ? {
+          hp: Number(preview.readHp(unit) || 0),
+          alive: preview.isAlive(unit) &&
+            Number(preview.readHp(unit) || 0) > 1e-9,
+          capable: preview.isBattleCapable(unit) &&
+            preview.isAlive(unit) &&
+            Number(preview.readHp(unit) || 0) > 1e-9,
+        }
+      : { hp: 0, alive: false, capable: false };
+    const rows = [
+      ...(objectives?.victory?.conditions || []).map(condition => [
+        'VICTORY',
+        condition,
+      ]),
+      ...(objectives?.defeat?.conditions || []).map(condition => [
+        'DEFEAT',
+        condition,
+      ]),
+    ];
+    return rows.map(([group, condition], index) => {
+      const unitIds = r9v2ObjectiveConditionUnitIds(
+        worldSnapshot,
+        condition,
+      );
+      if (!unitIds.has(unitId)) return [group, index, null];
+      const staticMatch = r9v2StaticObjectiveConditionMatch(
+        worldSnapshot,
+        condition,
+      );
+      return [
+        group,
+        index,
+        staticMatch === null
+          ? unit
+            ? r9v2UnitMatchesObjectiveCondition(unit, state, condition)
+            : false
+          : staticMatch === true,
+      ];
+    });
+  }
+
+  function r9v2InformationObjectiveStatesEquivalent({
+    baseWorld,
+    branchWorld,
+    request,
+    changedUnitIds,
+  }) {
+    return [...(changedUnitIds || [])].every(unitId =>
+      JSON.stringify(
+        r9v2InformationObjectiveTruthSignature(
+          baseWorld,
+          request,
+          unitId,
+        ),
+      ) === JSON.stringify(
+        r9v2InformationObjectiveTruthSignature(
+          branchWorld,
+          request,
+          unitId,
+        ),
+      )
+    );
+  }
+
+  function r9v2InformationProofComponentTargetIds({
+    entry,
+    component,
+  }) {
+    const normalizedComponent = String(component || '').trim().toUpperCase();
+    const targetIds = new Set();
+    const addTargetId = value => {
+      const targetId = String(value || '').trim();
+      if (targetId) targetIds.add(targetId);
+    };
+    const addContributionTarget = contribution =>
+      addTargetId(contribution?.targetId);
+    if (normalizedComponent === 'STATE_OPPORTUNITY') {
+      (entry?.contributions || [])
+        .filter(contribution => [
+          'ACTION_CANCELLED',
+          'RESOURCE_OPTION_CHANGED',
+        ].includes(String(contribution?.outcomeKind || '').trim()))
+        .forEach(addContributionTarget);
+      return targetIds;
+    }
+    if (normalizedComponent === 'BEHAVIOR_POOL') {
+      (entry?.contributions || [])
+        .filter(contribution => r9v2BehaviorMutationKind(contribution))
+        .forEach(addContributionTarget);
+      return targetIds;
+    }
+    if (normalizedComponent === 'SUMMON_WINDOW') {
+      (entry?.contributions || [])
+        .filter(contribution =>
+          String(contribution?.outcomeKind || '').trim() ===
+            'SUMMON_WINDOW'
+        )
+        .forEach(addContributionTarget);
+      (entry?.summonDefinitions || []).forEach(definition => {
+        addTargetId(definition?.hostId);
+        addTargetId(definition?.ownerId);
+        addTargetId(definition?.summonId);
+        addTargetId(definition?.targetId);
+      });
+      return targetIds;
+    }
+    return targetIds;
+  }
+
+  function r9v2InformationProofDependencyProfile({
+    request,
+    pool,
+    entry,
+    signatureCache = null,
+  }) {
+    const components = {};
+    [
+      'HEALTH_TERMINAL',
+      'INCOMING_RESPONSE',
+      'STATE_OPPORTUNITY',
+      'BEHAVIOR_POOL',
+      'CREATION_CONSUMER',
+      'SUMMON_WINDOW',
+    ].forEach(component => {
+      const dependencies =
+        r9v2InformationProofComponentDependencies({
+          request,
+          pool,
+          entry,
+          component,
+        });
+      const componentTargetIds =
+        r9v2InformationProofComponentTargetIds({
+          entry,
+          component,
+        });
+      const componentTargetSourceUnitIds = Object.fromEntries(
+        [...componentTargetIds].sort().map(targetId => [
+          targetId,
+          [
+            ...(pool?.targetSourceUnitIds?.get(targetId) || []),
+          ].map(value => String(value || '').trim())
+            .filter(Boolean)
+            .sort(),
+        ]),
+      );
+      components[component] = Object.freeze({
+        entrySignature:
+          r9v2CachedProofComponentEntrySignature(
+            signatureCache,
+            component,
+            entry,
+          ),
+        unitIds: Object.freeze(
+          [...dependencies.unitIds].sort(),
+        ),
+        beliefKeys: Object.freeze(
+          [...dependencies.beliefKeys].sort(),
+        ),
+        objectiveUnitIds: Object.freeze(
+          [...dependencies.objectiveUnitIds].sort(),
+        ),
+        targetIds: Object.freeze([...componentTargetIds].sort()),
+        targetSourceUnitIds: Object.freeze(
+          componentTargetSourceUnitIds,
+        ),
+      });
+    });
+    return Object.freeze({
+      schemaVersion: 'R9v2InformationProofDependencyProfileV2',
+      candidateId: String(entry?.candidateId || '').trim(),
+      components: Object.freeze(components),
+    });
+  }
+
+  const R9V2_INFORMATION_COMPONENT_SCOPES = Object.freeze({
+    HEALTH_TERMINAL: Object.freeze([
+      'HEALTH',
+      'STATE',
+      'OPPORTUNITY',
+    ]),
+    INCOMING_RESPONSE: Object.freeze([
+      'HEALTH',
+      'STATE',
+      'OPPORTUNITY',
+    ]),
+    STATE_OPPORTUNITY: Object.freeze([
+      'STATE',
+      'RESOURCE',
+      'OPPORTUNITY',
+    ]),
+    BEHAVIOR_POOL: Object.freeze([
+      'HEALTH',
+      'STATE',
+      'RESOURCE',
+      'OPPORTUNITY',
+      'INVENTORY',
+    ]),
+    CREATION_CONSUMER: Object.freeze([
+      'STATE',
+      'RESOURCE',
+      'OPPORTUNITY',
+      'INVENTORY',
+    ]),
+    SUMMON_WINDOW: Object.freeze([
+      'HEALTH',
+      'STATE',
+      'RESOURCE',
+      'OPPORTUNITY',
+      'INVENTORY',
+    ]),
+  });
+
+  function r9v2InformationHealthWorldChangeIsIrrelevant({
+    request,
+    baseWorld,
+    branchWorld,
+    entry,
+    changedUnitIds = [],
+    changedUnitScopes = null,
+  }) {
+    if (!(changedUnitScopes instanceof Map)) return false;
+    const healthOutcomes = new Set([
+      'HP_DELTA',
+      'SCHEDULED_HP_DELTA',
+      'WITHDRAWAL_CONTEST',
+      'SHIELD_DELTA',
+    ]);
+    const healthTargets = new Set(
+      (entry?.contributions || [])
+        .filter(contribution => healthOutcomes.has(
+          String(contribution?.outcomeKind || '').trim(),
+        ))
+        .map(contribution => String(contribution?.targetId || '').trim())
+        .filter(Boolean),
+    );
+    return [...new Set(
+      [...(changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    )].every(unitId => {
+      const scopes = changedUnitScopes.get(unitId);
+      if (
+        !(scopes instanceof Set) ||
+        [...scopes].some(scope => scope !== 'HEALTH')
+      ) {
+        return false;
+      }
+      if (unitId === String(entry?.actorId || '').trim()) return false;
+      if (healthTargets.has(unitId)) return false;
+      return r9v2InformationObjectiveStatesEquivalent({
+        baseWorld,
+        branchWorld,
+        request,
+        changedUnitIds: [unitId],
+      });
+    });
+  }
+
+  function r9v2InformationUnitFactScopes({
+    baseWorld,
+    branchWorld,
+    changedUnitIds = [],
+  }) {
+    const result = new Map();
+    const allScopes = [
+      'HEALTH',
+      'STATE',
+      'RESOURCE',
+      'OPPORTUNITY',
+      'INVENTORY',
+    ];
+    const unitScopeSignature = unit => ({
+      health: [
+        preview.readHp(unit),
+        preview.readHpMax(unit),
+        preview.readShield(unit),
+        preview.isAlive(unit),
+        preview.isBattleCapable(unit),
+        unit?.状态?.存活 !== false,
+        String(unit?.__战斗失能原因 || '').trim(),
+      ],
+      state: [
+        preview.stableHash(unit?.状态 || null),
+        preview.stableHash(unit?.状态效果 || null),
+        preview.stableHash(unit?.持续效果 || null),
+        preview.stableHash(unit?.final || null),
+      ],
+      resource: [
+        preview.readResource(unit, '魂力'),
+        preview.readResourceMax(unit, '魂力'),
+        preview.readResource(unit, '精神力'),
+        preview.readResourceMax(unit, '精神力'),
+        preview.readResource(unit, '体力'),
+        preview.readResourceMax(unit, '体力'),
+      ],
+      opportunity: preview.stableHash({
+        naturalOpportunity: unit?.__battleRuntime?.naturalOpportunity || null,
+        fusionUsageKeys: unit?.__battleRuntime?.fusionUsageKeys || [],
+        time: unit?.时间段 || unit?.时间 || '',
+      }),
+      inventory: preview.stableHash(collectInventory(unit)),
+    });
+    [...new Set(
+      [...(changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    )].forEach(unitId => {
+      const baseUnit = findUnitInWorld(baseWorld || {}, unitId);
+      const branchUnit = findUnitInWorld(branchWorld || {}, unitId);
+      const scopes = new Set();
+      if (!baseUnit || !branchUnit) {
+        allScopes.forEach(scope => scopes.add(scope));
+      } else {
+        const baseSignature = unitScopeSignature(baseUnit);
+        const branchSignature = unitScopeSignature(branchUnit);
+        if (preview.stableHash(baseSignature.health) !==
+            preview.stableHash(branchSignature.health)) {
+          scopes.add('HEALTH');
+        }
+        if (preview.stableHash(baseSignature.state) !==
+            preview.stableHash(branchSignature.state)) {
+          scopes.add('STATE');
+        }
+        if (preview.stableHash(baseSignature.resource) !==
+            preview.stableHash(branchSignature.resource)) {
+          scopes.add('RESOURCE');
+        }
+        if (baseSignature.opportunity !== branchSignature.opportunity) {
+          scopes.add('OPPORTUNITY');
+        }
+        if (baseSignature.inventory !== branchSignature.inventory) {
+          scopes.add('INVENTORY');
+        }
+      }
+      if (scopes.size) result.set(unitId, scopes);
+    });
+    return result;
+  }
+
+  function r9v2InformationProofReusableComponentNamesFromProfile({
+    profile,
+    request,
+    baseWorld,
+    branchWorld,
+    basePool,
+    pool,
+    entry,
+    baselineEntry,
+    changedUnitIds = [],
+    changedBeliefKeys = [],
+    changedUnitScopes = null,
+    metricsState = null,
+    signatureCache = null,
+  }) {
+    if (!profile || !entry || !baselineEntry) return [];
+    const changedUnits = new Set(
+      [...(changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const changedBeliefs = new Set(
+      [...(changedBeliefKeys || [])]
+        .map(value => String(value || '').trim())
+      .filter(Boolean),
+    );
+    const changedUnitsForComponent = (component, dependency) => {
+      if (
+        ['HEALTH_TERMINAL', 'INCOMING_RESPONSE'].includes(component) &&
+        r9v2InformationHealthWorldChangeIsIrrelevant({
+          request,
+          baseWorld,
+          branchWorld,
+          entry,
+          changedUnitIds: changedUnits,
+          changedUnitScopes,
+        })
+      ) {
+        return new Set();
+      }
+      if (!(changedUnitScopes instanceof Map)) {
+        return new Set(
+          [...(dependency?.unitIds || [])]
+            .filter(unitId => changedUnits.has(unitId)),
+        );
+      }
+      const allowedScopes = new Set(
+        R9V2_INFORMATION_COMPONENT_SCOPES[component] || [],
+      );
+      return new Set(
+        [
+          ...(dependency?.unitIds || []),
+          ...(
+            ['HEALTH_TERMINAL', 'INCOMING_RESPONSE'].includes(component) &&
+            changedUnitScopes.get(String(request?.actorId || '').trim())
+              ?.has('STATE')
+              ? [String(request?.actorId || '').trim()]
+              : []
+          ),
+        ].filter((unitId, index, unitIds) =>
+          unitIds.indexOf(unitId) === index
+        ).filter(unitId => {
+          const scopes = changedUnitScopes.get(unitId);
+          return scopes instanceof Set &&
+            [...scopes].some(scope => allowedScopes.has(scope));
+        }),
+      );
+    };
+    const reusable = [];
+    Object.entries(profile.components || {}).forEach(([
+      component,
+      dependency,
+    ]) => {
+      if (
+        r9v2CachedProofComponentEntrySignature(
+          signatureCache,
+          component,
+          entry,
+        ) !==
+        dependency.entrySignature
+      ) {
+        r9v2Metric(
+          metricsState,
+          `r9v2InformationBaselineReuseReason:${component}:ENTRY_SIGNATURE`,
+        );
+        return;
+      }
+      const targetSourceChanged = Object.entries(
+        dependency.targetSourceUnitIds || {},
+      ).some(([targetId, sourceUnitIds]) =>
+        [...(pool?.targetSourceUnitIds?.get(targetId) || [])]
+          .map(value => String(value || '').trim())
+          .filter(Boolean)
+          .sort()
+          .join('\u0000') !==
+        [...(basePool?.targetSourceUnitIds?.get(targetId) || [])]
+          .map(value => String(value || '').trim())
+          .filter(Boolean)
+          .sort()
+          .join('\u0000')
+      );
+      if (targetSourceChanged) {
+        r9v2Metric(
+          metricsState,
+          `r9v2InformationBaselineReuseReason:${component}:TARGET_SOURCES`,
+        );
+        return;
+      }
+      const componentChangedUnits =
+        changedUnitsForComponent(component, dependency);
+      const objectiveChanged = [
+        'HEALTH_TERMINAL',
+        'INCOMING_RESPONSE',
+      ].includes(component) &&
+        [...(dependency.objectiveUnitIds || [])]
+          .some(unitId => componentChangedUnits.has(unitId)) &&
+        !r9v2InformationObjectiveStatesEquivalent({
+          baseWorld,
+          branchWorld,
+          request,
+          changedUnitIds: [...componentChangedUnits].filter(unitId =>
+            dependency.objectiveUnitIds?.includes(unitId)
+          ),
+        });
+      const unitChanged = objectiveChanged ||
+        componentChangedUnits.size > 0;
+      const beliefChanged = [...(dependency.beliefKeys || [])]
+        .some(key => changedBeliefs.has(key));
+      if (objectiveChanged) {
+        r9v2Metric(
+          metricsState,
+          `r9v2InformationBaselineReuseReason:${component}:OBJECTIVE`,
+        );
+      } else if (componentChangedUnits.size > 0) {
+        r9v2Metric(
+          metricsState,
+          `r9v2InformationBaselineReuseReason:${component}:FACT_SCOPE`,
+        );
+      } else if (beliefChanged) {
+        r9v2Metric(
+          metricsState,
+          `r9v2InformationBaselineReuseReason:${component}:BELIEF`,
+        );
+      }
+      if (!unitChanged && !beliefChanged) reusable.push(component);
+    });
+    return reusable;
+  }
+
+  function r9v2InformationReusableProofComponents({
+    request,
+    baseWorld,
+    branchWorld,
+    basePool = null,
+    pool,
+    entry,
+    baselineEntry,
+    baselineProof,
+    changedUnitIds = [],
+    changedBeliefKeys = [],
+    changedUnitScopes = null,
+    dependencyProfile = null,
+    metricsState = null,
+    signatureCache = null,
+  }) {
+    const baselineBundle = baselineProof?.r9v2ProjectionBundle;
+    if (!baselineBundle || !entry || !baselineEntry) return null;
+    const changedUnits = new Set(
+      [...(changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const changedBeliefs = new Set(
+      [...(changedBeliefKeys || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const reusable = {};
+    if (dependencyProfile) {
+      r9v2InformationProofReusableComponentNamesFromProfile({
+        profile: dependencyProfile,
+        request,
+        baseWorld,
+        branchWorld,
+        basePool,
+        pool,
+        entry,
+        baselineEntry,
+        changedUnitIds,
+        changedBeliefKeys,
+        changedUnitScopes,
+        metricsState,
+        signatureCache,
+      }).forEach(component => {
+        const value = baselineBundle[component];
+        if (value === undefined) return;
+        reusable[component] = value;
+        r9v2Metric(
+          metricsState,
+          'r9v2InformationProofComponentReuseAttempts',
+        );
+        r9v2Metric(
+          metricsState,
+          `r9v2InformationProofReuseAttempts:${component}`,
+        );
+        r9v2Metric(
+          metricsState,
+          'r9v2InformationProofComponentReuseHits',
+        );
+        r9v2Metric(
+          metricsState,
+          `r9v2InformationProofReuseHits:${component}`,
+        );
+      });
+      return Object.keys(reusable).length ? reusable : null;
+    }
+    [
+      'HEALTH_TERMINAL',
+      'INCOMING_RESPONSE',
+      'STATE_OPPORTUNITY',
+      'BEHAVIOR_POOL',
+      'CREATION_CONSUMER',
+      'SUMMON_WINDOW',
+    ].forEach(component => {
+      const value = baselineBundle[component];
+      if (value === undefined) return;
+      if (
+        r9v2CachedProofComponentEntrySignature(
+          signatureCache,
+          component,
+          entry,
+        ) !==
+        r9v2CachedProofComponentEntrySignature(
+          signatureCache,
+          component,
+          baselineEntry,
+        )
+      ) {
+        return;
+      }
+      r9v2Metric(
+        metricsState,
+        'r9v2InformationProofComponentReuseAttempts',
+      );
+      r9v2Metric(
+        metricsState,
+        `r9v2InformationProofReuseAttempts:${component}`,
+      );
+      const dependencies = r9v2InformationProofComponentDependencies({
+        request,
+        pool,
+        entry,
+        component,
+      });
+      const objectiveChanged = [
+        'HEALTH_TERMINAL',
+        'INCOMING_RESPONSE',
+      ].includes(component) &&
+        !r9v2InformationObjectiveStatesEquivalent({
+          baseWorld,
+          branchWorld,
+          request,
+          changedUnitIds: changedUnits,
+        });
+      const unitChanged = objectiveChanged || [...dependencies.unitIds]
+        .some(unitId => changedUnits.has(unitId));
+      const beliefChanged = [...dependencies.beliefKeys]
+        .some(key => changedBeliefs.has(key));
+      if (unitChanged || beliefChanged) return;
+      reusable[component] = value;
+      r9v2Metric(
+        metricsState,
+        'r9v2InformationProofComponentReuseHits',
+      );
+      r9v2Metric(
+        metricsState,
+        `r9v2InformationProofReuseHits:${component}`,
+      );
+    });
+    return Object.keys(reusable).length ? reusable : null;
+  }
+
+  function r9v2InformationProofCanReuseBaseline({
+    request,
+    pool,
+    basePool = null,
+    entry,
+    baselineEntry,
+    changedUnitIds,
+    changedBeliefKeys,
+    baseWorld = null,
+    branchWorld = null,
+    changedUnitScopes = null,
+    dependencyProfile = null,
+    metricsState = null,
+    signatureCache = null,
+  }) {
+    if (!entry || !baselineEntry) return false;
+    if (dependencyProfile) {
+      const changedUnits = new Set(
+        [...(changedUnitIds || [])]
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+      );
+      const changedBeliefs = new Set(
+        [...(changedBeliefKeys || [])]
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+      );
+      const reusableComponents =
+        r9v2InformationProofReusableComponentNamesFromProfile({
+        profile: dependencyProfile,
+        request,
+        baseWorld,
+        branchWorld,
+        basePool: basePool || pool,
+        pool,
+          entry,
+          baselineEntry,
+          changedUnitIds: changedUnits,
+          changedBeliefKeys: changedBeliefs,
+          changedUnitScopes,
+          metricsState,
+          signatureCache,
+        });
+      [
+        'HEALTH_TERMINAL',
+        'INCOMING_RESPONSE',
+        'STATE_OPPORTUNITY',
+        'BEHAVIOR_POOL',
+        'CREATION_CONSUMER',
+        'SUMMON_WINDOW',
+      ].filter(component => !reusableComponents.includes(component))
+        .forEach(component =>
+          r9v2Metric(
+            metricsState,
+            `r9v2InformationBaselineReuseMiss:${component}`,
+          )
+        );
+      return reusableComponents.length === 6;
+    }
+    const changedUnits = new Set(
+      [...(changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const changedBeliefs = new Set(
+      [...(changedBeliefKeys || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const relevantUnitIds = r9v2InformationProofRelevantUnitIds({
+      request,
+      pool,
+      entry,
+    });
+    if ([...relevantUnitIds].some(unitId => changedUnits.has(unitId))) {
+      return false;
+    }
+    if (
+      baseWorld &&
+      branchWorld &&
+      !r9v2InformationObjectiveStatesEquivalent({
+        baseWorld,
+        branchWorld,
+        request,
+        changedUnitIds: changedUnits,
+      })
+    ) {
+      return false;
+    }
+    const relevantBeliefKeys = r9v2InformationProofBeliefKeys({
+      pool,
+      entry,
+    });
+    return ![...relevantBeliefKeys].some(key =>
+      changedBeliefs.has(key)
+    );
+  }
+
+  function r9v2PrepareSharedFuturePool({
+    state,
+    pool,
+    request,
+    futureOpportunity,
+  }) {
+    const stores = r9v2SharedStoresFor(state);
+    const futurePools = stores.futureBehaviorPools;
+    const key = r9v2FuturePoolContextKey({
+      state,
+      request,
+      futureOpportunity,
+    });
+    const existing = futurePools.get(key);
+    if (existing) {
+      r9v2Metric(state, 'r9v2FuturePoolHits');
+      return existing;
+    }
+    const futurePool = {
+      ...pool,
+      schemaVersion: 'BehaviorPoolSessionV1',
+      generation: Number(pool?.generation || 0) + 1,
+      factDeltaCount: Array.isArray(state?.factDeltaRecords)
+        ? state.factDeltaRecords.length
+        : 0,
+      unitEntries: new Map(),
+      unitValueRevisions: new Map(),
+      targetSourceUnitIds: new Map(),
+      targetInterferenceRateByUnit: new Map(),
+      dependencyOwners: new Map(),
+      futurePoolContextKey: key,
+      r9v2GlobalObjectiveUnitDependency:
+        /TEAM_/.test(
+          JSON.stringify(
+            request?.objectiveContract ||
+            request?.battleIntent?.objectives ||
+            request?.battleIntent?.胜负条件 ||
+            {},
+          ),
+        ),
+      r9v2SharedStores: stores,
+    };
+    const currentUnitIds = new Set(
+      aliveEntries(request.visibleWorld).map(entry =>
+        preview.unitId(entry.unit),
+      ),
+    );
+    const mechanicalProjectionContext =
+      preview.compileMechanicalProjectionContext(request.visibleWorld);
+    [...currentUnitIds].sort().forEach(unitId =>
+      r9v2BuildFutureUnitPool({
+        state,
+        pool: futurePool,
+        worldSnapshot: request.visibleWorld,
+        observerSide: request.actorSide,
+        unitId,
+        beliefState: request.beliefState,
+        battleIntent: request.battleIntent,
+        actionOpportunity: futureOpportunity,
+        mechanicalProjectionContext,
+        verifyMechanicalBasis: false,
+      }),
+    );
+    r9v2ReindexTargets(futurePool);
+    r9v2BuildDependencyOwners(futurePool);
+    futurePools.set(key, futurePool);
+    r9v2Metric(state, 'r9v2FuturePoolBuilds');
+    return futurePool;
+  }
+
   function r9v2InformationBranchProjection({
     request,
     pool,
@@ -40247,9 +43541,21 @@
     futureOpportunity,
     changedUnitIds,
     changedBeliefKeys = [],
+    baseEntryByCandidate = null,
+    baseProofByCandidate = null,
+    targetKernel = false,
+    informationValueOnly = false,
     identity,
     sharedProjectionCache = null,
   }) {
+    const debugDisableBaselineReuse =
+      root?.__LWCS_R9V2_DISABLE_INFORMATION_BASELINE_REUSE__ === true;
+    const debugDisableComponentReuse =
+      root?.__LWCS_R9V2_DISABLE_INFORMATION_COMPONENT_REUSE__ === true;
+    const debugDisabledComponents =
+      root?.__LWCS_R9V2_DISABLED_INFORMATION_COMPONENTS__ instanceof Set
+        ? root.__LWCS_R9V2_DISABLED_INFORMATION_COMPONENTS__
+        : new Set();
     const terminal = preview.evaluateBattleObjectives(
       branchWorld,
       preview.normalizeBattleObjectives(
@@ -40287,7 +43593,12 @@
     const branchPoolSource = baseFuturePool || pool;
     const branchState = r9v2EphemeralState(
       branchPoolSource?.r9v2NormalizedContributionStore,
+      branchPoolSource?.r9v2SharedStores || pool?.r9v2SharedStores,
     );
+    branchState.metrics =
+      branchPoolSource?.metrics || pool?.metrics || branchState.metrics;
+    branchState.r9v2MechanicalEntryCacheEnabled = true;
+    branchState.r9v2MechanicalEntryCacheActive = true;
     const branchPool = {
       ...branchPoolSource,
       observerActorId: request.actorId,
@@ -40295,9 +43606,15 @@
       generation: Number(branchPoolSource?.generation || 0) + 1,
       factDeltaCount: 0,
       unitEntries: new Map(branchPoolSource?.unitEntries || []),
+      unitValueRevisions: new Map(
+        branchPoolSource?.unitValueRevisions || [],
+      ),
       targetSourceUnitIds: new Map(),
       targetInterferenceRateByUnit: new Map(
         branchPoolSource?.targetInterferenceRateByUnit || [],
+      ),
+      dependencyOwners: new Map(
+        branchPoolSource?.dependencyOwners || [],
       ),
     };
     const currentUnitIds = new Set(
@@ -40311,14 +43628,97 @@
         branchPool.targetInterferenceRateByUnit.delete(unitId);
       }
     });
-    const changedUnitIdSet = new Set([
+    const changedUnitIdSet = new Set(
+      (changedUnitIds || [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const baseActor = findUnitInWorld(
+      request.visibleWorld,
       request.actorId,
-      ...(changedUnitIds || []),
-    ].map(value => String(value || '').trim()).filter(Boolean));
+    );
+    const branchActor = findUnitInWorld(
+      branchWorld,
+      request.actorId,
+    );
+    if (baseActor !== branchActor) {
+      changedUnitIdSet.add(
+        String(request.actorId || '').trim(),
+      );
+    }
+    const normalizedChangedBeliefKeys = new Set(
+      (changedBeliefKeys || [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const changedUnitScopes = r9v2InformationUnitFactScopes({
+      baseWorld: request.visibleWorld,
+      branchWorld,
+      changedUnitIds: changedUnitIdSet,
+    });
+    changedUnitScopes.forEach((scopes, unitId) => {
+      r9v2Metric(
+        branchState,
+        `r9v2InformationChangedScopeUnits:${[...scopes].sort().join('+')}`,
+      );
+      r9v2Metric(
+        branchState,
+        'r9v2InformationChangedScopeUnitCount',
+      );
+      if (unitId === request.actorId) {
+        r9v2Metric(
+          branchState,
+          'r9v2InformationChangedActorScopeCount',
+        );
+      }
+    });
+    branchPool.branchKey = String(identity || '').trim();
+    branchPool.branchFactDelta = Object.freeze({
+      schemaVersion: 'R9v2BranchFactDeltaV1',
+      branchKey: String(identity || '').trim(),
+      changedUnitIds: Object.freeze(
+        [...changedUnitIdSet].sort(),
+      ),
+      changedBeliefKeys: Object.freeze(
+        [...normalizedChangedBeliefKeys].sort(),
+      ),
+      changedUnitFingerprints: Object.freeze(
+        [...changedUnitIdSet].sort().map(unitId => [
+          unitId,
+          preview.stableHash(
+            findUnitInWorld(branchWorld, unitId) || null,
+          ),
+        ]),
+      ),
+      changedUnitScopes: Object.freeze(
+        Object.fromEntries(
+          [...changedUnitScopes.entries()]
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([unitId, scopes]) => [
+              unitId,
+              Object.freeze([...scopes].sort()),
+            ]),
+        ),
+      ),
+      changedBeliefValues: Object.freeze(
+        [...normalizedChangedBeliefKeys].sort().map(key => [
+          key,
+          branchBelief?.mechanics?.[key] || null,
+        ]),
+      ),
+    });
     const rebuildUnitIds = new Set(changedUnitIdSet);
     [...changedUnitIdSet].forEach(targetId => {
       (branchPoolSource?.targetSourceUnitIds?.get(targetId) || [])
         .forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
+      (
+        branchPoolSource?.dependencyOwners?.get(targetId) || []
+      ).forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
+    });
+    [...normalizedChangedBeliefKeys].forEach(beliefKey => {
+      (
+        branchPoolSource?.dependencyOwners?.get(`belief:${beliefKey}`) || []
+      ).forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
     });
     currentUnitIds.forEach(unitId => {
       if (!branchPool.unitEntries.has(unitId)) {
@@ -40327,9 +43727,15 @@
     });
     const mechanicalProjectionContext =
       preview.compileMechanicalProjectionContext(branchWorld);
-    [...rebuildUnitIds]
+    const dirtyScanUnitIds = [...rebuildUnitIds]
       .filter(unitId => currentUnitIds.has(unitId))
-      .sort()
+      .sort();
+    r9v2Metric(
+      branchState,
+      'r9v2InformationBranchDependencyScanUnits',
+      dirtyScanUnitIds.length,
+    );
+    dirtyScanUnitIds
       .forEach(unitId => {
         const result = r9v2BuildDirtyFutureUnitPool({
           state: branchState,
@@ -40342,11 +43748,8 @@
           actionOpportunity: futureOpportunity,
           mechanicalProjectionContext,
           changedUnitIds: changedUnitIdSet,
-          changedBeliefKeys: new Set(
-            (changedBeliefKeys || [])
-              .map(value => String(value || '').trim())
-              .filter(Boolean),
-          ),
+          changedUnitScopes,
+          changedBeliefKeys: normalizedChangedBeliefKeys,
         });
         if (result.fullUnitFallback === true) {
           r9v2BuildFutureUnitPool({
@@ -40365,6 +43768,11 @@
       });
     r9v2ReindexTargets(branchPool);
     const entries = branchPool.unitEntries.get(request.actorId) || [];
+    r9v2Metric(
+      branchState,
+      'r9v2InformationBranchCandidateProofCount',
+      entries.length,
+    );
     const branchRequest = {
       ...request,
       visibleWorld: branchWorld,
@@ -40373,15 +43781,68 @@
     };
     const projectionCache = {
       bestHealthByUnit: new Map(),
-      behaviorPoolByIdentity: new Map(),
+      bestAffordableUtilityByWorld: new Map(),
+      behaviorPoolByIdentity:
+        sharedProjectionCache?.behaviorPoolByIdentity || new Map(),
       enableBehaviorPoolScope:
         sharedProjectionCache?.enableBehaviorPoolScope === true,
+      enableExactComponentDependencies:
+        sharedProjectionCache?.enableExactComponentDependencies === true,
       behaviorPoolByScope:
         sharedProjectionCache?.behaviorPoolByScope || new Map(),
       projectionObjectHashes:
         sharedProjectionCache?.projectionObjectHashes || new WeakMap(),
+      projectionObjectRevisions:
+        sharedProjectionCache?.projectionObjectRevisions || new WeakMap(),
       projectionUnitFingerprints:
         sharedProjectionCache?.projectionUnitFingerprints || new WeakMap(),
+      projectionUnitScopeFingerprints:
+        sharedProjectionCache?.projectionUnitScopeFingerprints ||
+        new WeakMap(),
+      projectionUnitValueScopeFingerprints:
+        sharedProjectionCache?.projectionUnitValueScopeFingerprints ||
+        new WeakMap(),
+      objectiveTruthRevisions:
+        sharedProjectionCache?.objectiveTruthRevisions || new WeakMap(),
+      projectionBeliefRevisions:
+        sharedProjectionCache?.projectionBeliefRevisions || new WeakMap(),
+      entryComponentSignatures:
+        sharedProjectionCache?.entryComponentSignatures || new WeakMap(),
+      projectionRevisionNamespace:
+        sharedProjectionCache?.projectionRevisionNamespace ||
+        `r9v2-projection:${++r9v2ProjectionRevisionSequence}`,
+      revisionBranchKey: String(identity || '').trim(),
+      revisionChangedUnitIds: changedUnitIdSet,
+      useRevisionKeys: targetKernel === true,
+      useValueKeys: targetKernel === true,
+      componentDependencyByEntry:
+        sharedProjectionCache?.componentDependencyByEntry || new WeakMap(),
+      informationDependencyProfiles:
+        sharedProjectionCache?.informationDependencyProfiles || new Map(),
+      bypassProofComponentCache: targetKernel && debugDisableComponentReuse
+        ? new Set([
+            'HEALTH_TERMINAL',
+            'INCOMING_RESPONSE',
+            'STATE_OPPORTUNITY',
+            'BEHAVIOR_POOL',
+            'CREATION_CONSUMER',
+            'SUMMON_WINDOW',
+          ])
+        : targetKernel
+        ? new Set(debugDisabledComponents)
+        : new Set([
+            'HEALTH_TERMINAL',
+            'INCOMING_RESPONSE',
+            'STATE_OPPORTUNITY',
+            'SUMMON_WINDOW',
+          ]),
+      sharedStores:
+        r9v2SharedStoresFor(branchState),
+      proofComponentStore:
+        sharedProjectionCache?.proofComponentStore ||
+        branchState.r9v2ProofComponentStore,
+      metricsState:
+        sharedProjectionCache?.metricsState || branchState,
       pendingNaturalActorIds: null,
       normalizedContributionStore:
         pool?.r9v2NormalizedContributionStore,
@@ -40389,12 +43850,86 @@
     const directProofs = entries.map(entry =>
       entry.hardInvalid === true
         ? null
-        : r9v2CandidateValueProof(
-            branchRequest,
-            branchPool,
-            entry,
-            projectionCache,
-          )
+        : (() => {
+            const baselineEntry =
+              baseEntryByCandidate?.get(entry.candidateId) || null;
+            const baselineProof =
+              baseProofByCandidate?.get(entry.candidateId) || null;
+            if (
+              targetKernel &&
+              !debugDisableBaselineReuse &&
+              r9v2InformationProofCanReuseBaseline({
+                request: branchRequest,
+                pool: branchPool,
+                basePool: baseFuturePool,
+                entry,
+                baselineEntry,
+                changedUnitIds: changedUnitIdSet,
+                changedBeliefKeys: normalizedChangedBeliefKeys,
+                baseWorld: request.visibleWorld,
+                branchWorld,
+                dependencyProfile:
+                  sharedProjectionCache?.informationDependencyProfiles
+                    ?.get(entry.candidateId) || null,
+                changedUnitScopes,
+                metricsState: projectionCache.metricsState,
+                signatureCache: sharedProjectionCache,
+              }) &&
+              baselineProof
+            ) {
+              r9v2Metric(
+                projectionCache.metricsState,
+                'r9v2InformationBaselineProofHits',
+              );
+              return baselineProof;
+            }
+            r9v2Metric(
+              projectionCache.metricsState,
+              'r9v2InformationBaselineProofMisses',
+            );
+            const reusableProjectionBundle = targetKernel &&
+              !debugDisableComponentReuse
+              ? (() => {
+                  const bundle = r9v2InformationReusableProofComponents({
+                request: branchRequest,
+                baseWorld: request.visibleWorld,
+                branchWorld,
+                  basePool: baseFuturePool,
+                  pool: branchPool,
+                  entry,
+                  baselineEntry,
+                  baselineProof,
+                  changedUnitIds: changedUnitIdSet,
+                  changedBeliefKeys: normalizedChangedBeliefKeys,
+                  changedUnitScopes,
+                  dependencyProfile:
+                    sharedProjectionCache?.informationDependencyProfiles
+                      ?.get(entry.candidateId) || null,
+                  metricsState: projectionCache.metricsState,
+                  signatureCache: sharedProjectionCache,
+                  });
+                  if (!bundle || !debugDisabledComponents.size) {
+                    return bundle;
+                  }
+                  return Object.fromEntries(
+                    Object.entries(bundle).filter(([component]) =>
+                      !debugDisabledComponents.has(component)
+                    ),
+                  );
+                })()
+              : null;
+            const branchProof = r9v2CandidateValueProof(
+              branchRequest,
+              branchPool,
+              entry,
+              projectionCache,
+              reusableProjectionBundle,
+              informationValueOnly
+                ? { mode: 'VALUE_ONLY' }
+                : null,
+            );
+            return branchProof;
+          })()
     );
     const resolvedProofs = r9v2ApplyCurrentTargetResolution(
       entries,
@@ -40411,6 +43946,9 @@
         })
       ),
       visibleTargetInterferenceRate(actor),
+      informationValueOnly
+        ? { valueOnly: true }
+        : null,
     );
     const complete =
       entries.every(entry => entry.hardInvalid !== true) &&
@@ -40467,7 +44005,12 @@
     proofs,
     candidates,
     mechanicalProjectionContext,
+    targetKernel = false,
+    informationValueOnly = false,
+    sharedProjectionCacheBase = null,
   }) {
+    const useInformationValueOnly =
+      targetKernel && informationValueOnly === true;
     const candidateById = new Map(
       candidates.map(candidate => [
         String(candidate?.candidateId || '').trim(),
@@ -40481,50 +44024,256 @@
       r9v2InformationOpportunity(request);
     const sharedProjectionCache = {
       enableBehaviorPoolScope: true,
+      enableExactComponentDependencies: targetKernel === true,
+      behaviorPoolByIdentity: new Map(),
       behaviorPoolByScope: new Map(),
-      projectionObjectHashes: new WeakMap(),
-      projectionUnitFingerprints: new WeakMap(),
+      projectionObjectHashes:
+        sharedProjectionCacheBase?.projectionObjectHashes || new WeakMap(),
+      projectionObjectRevisions:
+        sharedProjectionCacheBase?.projectionObjectRevisions || new WeakMap(),
+      projectionUnitFingerprints:
+        sharedProjectionCacheBase?.projectionUnitFingerprints || new WeakMap(),
+      projectionUnitScopeFingerprints:
+        sharedProjectionCacheBase?.projectionUnitScopeFingerprints ||
+        new WeakMap(),
+      projectionUnitValueScopeFingerprints:
+        sharedProjectionCacheBase?.projectionUnitValueScopeFingerprints ||
+        new WeakMap(),
+      objectiveTruthRevisions:
+        sharedProjectionCacheBase?.objectiveTruthRevisions || new WeakMap(),
+      projectionBeliefRevisions:
+        sharedProjectionCacheBase?.projectionBeliefRevisions || new WeakMap(),
+      entryComponentSignatures:
+        sharedProjectionCacheBase?.entryComponentSignatures || new WeakMap(),
+      projectionRevisionNamespace:
+        sharedProjectionCacheBase?.projectionRevisionNamespace ||
+        `r9v2-projection:${++r9v2ProjectionRevisionSequence}`,
+      useRevisionKeys: targetKernel === true,
+      useValueKeys: targetKernel === true,
+      componentDependencyByEntry:
+        sharedProjectionCacheBase?.componentDependencyByEntry || new WeakMap(),
+      informationDependencyProfiles: new Map(),
+      sharedStores: targetKernel
+        ? r9v2SharedStoresFor(state)
+        : null,
+      proofComponentStore: targetKernel
+        ? state.r9v2ProofComponentStore
+        : null,
+      metricsState: state,
     };
-    const baselineFutureState = r9v2EphemeralState(
-      pool?.r9v2NormalizedContributionStore,
-    );
-    const baselineFuturePool = {
-      ...pool,
-      observerActorId: request.actorId,
-      observerSide: request.actorSide,
-      generation: Number(pool?.generation || 0) + 1,
-      factDeltaCount: 0,
-      unitEntries: new Map(),
-      targetSourceUnitIds: new Map(),
-      targetInterferenceRateByUnit: new Map(),
-    };
-    if (futureOpportunity) {
-      const futureMechanicalProjectionContext =
-        preview.compileMechanicalProjectionContext(
-          request.visibleWorld,
+    const baselineFuturePool = futureOpportunity
+      ? targetKernel
+        ? r9v2PrepareSharedFuturePool({
+            state,
+            pool,
+            request,
+            futureOpportunity,
+          })
+        : (() => {
+            const baselineFutureState = r9v2EphemeralState(
+              pool?.r9v2NormalizedContributionStore,
+            );
+            const nextPool = {
+              ...pool,
+              observerActorId: request.actorId,
+              observerSide: request.actorSide,
+              generation: Number(pool?.generation || 0) + 1,
+              factDeltaCount: 0,
+              unitEntries: new Map(),
+              unitValueRevisions: new Map(),
+              targetSourceUnitIds: new Map(),
+              targetInterferenceRateByUnit: new Map(),
+              r9v2GlobalObjectiveUnitDependency:
+                /TEAM_/.test(
+                  JSON.stringify(
+                    request?.objectiveContract ||
+                    request?.battleIntent?.objectives ||
+                    request?.battleIntent?.胜负条件 ||
+                    {},
+                  ),
+                ),
+            };
+            const futureMechanicalProjectionContext =
+              preview.compileMechanicalProjectionContext(
+                request.visibleWorld,
+              );
+            const currentUnitIds = new Set(
+              aliveEntries(request.visibleWorld).map(entry =>
+                preview.unitId(entry.unit),
+              ),
+            );
+            [...currentUnitIds].sort().forEach(unitId =>
+              r9v2BuildFutureUnitPool({
+                state: baselineFutureState,
+                pool: nextPool,
+                worldSnapshot: request.visibleWorld,
+                observerSide: request.actorSide,
+                unitId,
+                beliefState: request.beliefState,
+                battleIntent: request.battleIntent,
+                actionOpportunity: futureOpportunity,
+                mechanicalProjectionContext: futureMechanicalProjectionContext,
+                verifyMechanicalBasis: false,
+              }),
+            );
+            r9v2ReindexTargets(nextPool);
+            return nextPool;
+          })()
+      : null;
+    const baselineFutureEntryByCandidate = new Map();
+    const baselineFutureProofByCandidate = new Map();
+    if (targetKernel && baselineFuturePool) {
+      const baselineFutureEntries =
+        baselineFuturePool.unitEntries.get(request.actorId) || [];
+      baselineFutureEntries.forEach(entry => {
+        baselineFutureEntryByCandidate.set(
+          entry.candidateId,
+          entry,
         );
-      const currentUnitIds = new Set(
-        aliveEntries(request.visibleWorld).map(entry =>
-          preview.unitId(entry.unit)
-        ),
-      );
-      [...currentUnitIds].sort().forEach(unitId =>
-        r9v2BuildFutureUnitPool({
-          state: baselineFutureState,
-          pool: baselineFuturePool,
-          worldSnapshot: request.visibleWorld,
-          observerSide: request.actorSide,
-          unitId,
-          beliefState: request.beliefState,
-          battleIntent: request.battleIntent,
-          actionOpportunity: futureOpportunity,
-          mechanicalProjectionContext: futureMechanicalProjectionContext,
-          verifyMechanicalBasis: false,
-        })
-      );
-      r9v2ReindexTargets(baselineFuturePool);
+      });
     }
     const projections = {};
+    r9v2Metric(
+      state,
+      'r9v2InformationObservedCandidateCount',
+      entries.filter(entry =>
+        Array.isArray(entry?.mechanicObservations) &&
+        entry.mechanicObservations.length > 0
+      ).length,
+    );
+    const baselineFutureRequest = targetKernel && baselineFuturePool
+      ? {
+          ...request,
+          actionOpportunity: futureOpportunity,
+        }
+      : null;
+    const baselineFutureProjectionCache = targetKernel && baselineFuturePool
+      ? {
+          ...sharedProjectionCache,
+          bestHealthByUnit: new Map(),
+          bestAffordableUtilityByWorld: new Map(),
+          pendingNaturalActorIds: null,
+          normalizedContributionStore:
+            baselineFuturePool.r9v2NormalizedContributionStore,
+        }
+      : null;
+    if (
+      targetKernel &&
+      baselineFuturePool &&
+      baselineFutureRequest
+    ) {
+      baselineFutureEntryByCandidate.forEach((entry, candidateId) => {
+        sharedProjectionCache.informationDependencyProfiles.set(
+          candidateId,
+          r9v2InformationProofDependencyProfile({
+            request: baselineFutureRequest,
+            pool: baselineFuturePool,
+            entry,
+            signatureCache: sharedProjectionCache,
+          }),
+        );
+      });
+    }
+    const ensureBaselineProofForBranch = ({
+      candidateId,
+      changedUnitIds = [],
+      changedBeliefKeys = [],
+      branchWorld = null,
+    }) => {
+      if (
+        !targetKernel ||
+        !baselineFuturePool ||
+        baselineFutureProofByCandidate.has(candidateId)
+      ) {
+        return baselineFutureProofByCandidate.get(candidateId) || null;
+      }
+      const baselineEntry =
+        baselineFutureEntryByCandidate.get(candidateId) || null;
+      if (!baselineEntry || baselineEntry.hardInvalid === true) return null;
+      const dependencyProfile =
+        sharedProjectionCache.informationDependencyProfiles.get(
+          candidateId,
+        );
+      if (dependencyProfile) {
+        const changedUnitScopes = r9v2InformationUnitFactScopes({
+          baseWorld: request.visibleWorld,
+          branchWorld: branchWorld || request.visibleWorld,
+          changedUnitIds,
+        });
+        const reusableComponents =
+          r9v2InformationProofReusableComponentNamesFromProfile({
+            profile: dependencyProfile,
+            request: baselineFutureRequest,
+            baseWorld: request.visibleWorld,
+            branchWorld: branchWorld || request.visibleWorld,
+            basePool: baselineFuturePool,
+            pool: baselineFuturePool,
+            entry: baselineEntry,
+            baselineEntry,
+            changedUnitIds,
+            changedBeliefKeys,
+            changedUnitScopes,
+            signatureCache: sharedProjectionCache,
+          });
+        if (!reusableComponents.length) return null;
+      } else {
+      const changedUnits = new Set(
+        changedUnitIds
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+      );
+      const changedBeliefs = new Set(
+        changedBeliefKeys
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+      );
+      const relevantUnits = r9v2InformationProofRelevantUnitIds({
+        request: baselineFutureRequest,
+        pool: baselineFuturePool,
+        entry: baselineEntry,
+      });
+      if ([...relevantUnits].some(unitId => changedUnits.has(unitId))) {
+        return null;
+      }
+      if (
+        branchWorld &&
+        !r9v2InformationObjectiveStatesEquivalent({
+          baseWorld: request.visibleWorld,
+          branchWorld,
+          request: baselineFutureRequest,
+          changedUnitIds: changedUnits,
+        })
+      ) {
+        return null;
+      }
+      const relevantBeliefs = r9v2InformationProofBeliefKeys({
+        pool: baselineFuturePool,
+        entry: baselineEntry,
+      });
+      if ([...relevantBeliefs].some(key => changedBeliefs.has(key))) {
+        return null;
+      }
+      }
+      const baselineProof = informationValueOnly
+        ? r9v2CandidateValueOnlyProof(
+            baselineFutureRequest,
+            baselineFuturePool,
+            baselineEntry,
+            baselineFutureProjectionCache,
+          )
+        : r9v2CandidateValueProof(
+            baselineFutureRequest,
+            baselineFuturePool,
+            baselineEntry,
+            baselineFutureProjectionCache,
+          );
+      baselineFutureProofByCandidate.set(candidateId, baselineProof);
+      r9v2Metric(
+        state,
+        'r9v2InformationBaselineProofLazyBuilds',
+      );
+      return baselineProof;
+    };
     entries.forEach(entry => {
       if (entry?.hardInvalid === true) return;
       const proof = proofById.get(entry.candidateId);
@@ -40596,6 +44345,11 @@
           zeroProjection('NO_SUPPORTED_UNCERTAIN_OBSERVATION');
         return;
       }
+      r9v2Metric(
+        state,
+        'r9v2InformationObservationGroupCount',
+        observationGroups.size,
+      );
       const groupRows = [];
       let bestGroupValue = 0;
       observationGroups.forEach((observation, groupId) => {
@@ -40608,7 +44362,24 @@
           0,
           1,
         );
+        const branchBeliefKeys = [
+          observation?.mechanicKey,
+          observation?.adaptationKey,
+          observation?.mechanicKey ||
+            mechanicKey({
+              ...observation,
+              beliefState: request.beliefState,
+            }),
+        ].map(value => String(value || '').trim())
+          .filter(Boolean)
+          .filter((value, index, values) =>
+            values.indexOf(value) === index
+          );
         const outcomes = [true, false].map(success => {
+          r9v2Metric(
+            state,
+            'r9v2InformationBranchProjectionCalls',
+          );
           const branchEntry = r9v2BuildMechanicalEntry({
             state,
             worldSnapshot: request.visibleWorld,
@@ -40649,6 +44420,19 @@
             request.beliefState,
             { ...observation, success },
           );
+          if (
+            targetKernel &&
+            baselineFuturePool
+          ) {
+            baselineFutureEntryByCandidate.forEach(baselineEntry => {
+              ensureBaselineProofForBranch({
+                candidateId: baselineEntry.candidateId,
+                changedUnitIds: branchEntry.changedUnitIds || [],
+                changedBeliefKeys: branchBeliefKeys,
+                branchWorld,
+              });
+            });
+          }
           const branchProjection =
             r9v2InformationBranchProjection({
               request,
@@ -40659,11 +44443,14 @@
               futureOpportunity,
               changedUnitIds:
                 branchEntry.changedUnitIds || [],
-              changedBeliefKeys: [
-                observation?.mechanicKey,
-                observation?.adaptationKey,
-              ],
+              changedBeliefKeys: branchBeliefKeys,
+              baseEntryByCandidate:
+                baselineFutureEntryByCandidate,
+              baseProofByCandidate:
+                baselineFutureProofByCandidate,
               sharedProjectionCache,
+              targetKernel,
+              informationValueOnly: useInformationValueOnly,
               identity: [
                 entry.candidateId,
                 groupId,
@@ -40751,6 +44538,19 @@
         observations: Object.freeze(groupRows),
       });
     });
+    const informationProjectionTestSink =
+      globalThis?.__LWCS_R9V2_INFORMATION_PROJECTION_TEST_SINK__;
+    if (
+      informationProjectionTestSink &&
+      Array.isArray(informationProjectionTestSink.rows)
+    ) {
+      informationProjectionTestSink.rows.push(cloneValue({
+        actorId: request.actorId,
+        targetKernel,
+        informationValueOnly: useInformationValueOnly,
+        projections,
+      }));
+    }
     return Object.freeze(projections);
   }
 
@@ -40808,7 +44608,19 @@
     actionOpportunity,
     evaluationContext,
     verifyMechanicalBasis = false,
+    targetKernel = false,
+    informationValueOnly = true,
   }) {
+    const useInformationValueOnly =
+      targetKernel && informationValueOnly !== false;
+    if (
+      targetKernel &&
+      sessionState &&
+      typeof sessionState === 'object'
+    ) {
+      sessionState.r9v2MechanicalEntryCacheEnabled = true;
+      sessionState.r9v2MechanicalEntryCacheActive = true;
+    }
     const mechanicalProjectionContext =
       preview.compileMechanicalProjectionContext(worldSnapshot);
     const prepared = r9v2PrepareObserverPool({
@@ -40821,7 +44633,24 @@
       actionOpportunity,
       mechanicalProjectionContext,
       verifyMechanicalBasis,
+      poolScopeKey: targetKernel
+        ? r9v2ObserverPoolContextKey({
+            state: sessionState,
+            observerActorId: actorId,
+            observerSide: actorSide,
+            worldSnapshot,
+            beliefState,
+            battleIntent,
+            actionOpportunity,
+            sharedObserverScope: false,
+          })
+        : `r9v2-observer:${String(actorId || '').trim()}`,
+      sharedObserverScope: false,
     });
+    if (targetKernel && prepared?.state) {
+      prepared.state.r9v2MechanicalEntryCacheEnabled = true;
+      prepared.state.r9v2MechanicalEntryCacheActive = true;
+    }
     const activePoolEntries = prepared.pool.unitEntries.get(actorId) || [];
     const activeByCandidate = new Map(
       activePoolEntries.map(entry => [entry.candidateId, entry]),
@@ -40885,17 +44714,38 @@
       actorSide,
       actionOpportunity,
       evaluationContext,
+      r9v2InformationValueOnly: useInformationValueOnly,
       beliefState,
       battleIntent,
       objectiveContract,
     };
     const projectionCache = {
       bestHealthByUnit: new Map(),
+      bestAffordableUtilityByWorld: new Map(),
       behaviorPoolByIdentity: new Map(),
       behaviorPoolByScope: new Map(),
       projectionObjectHashes: new WeakMap(),
+      projectionObjectRevisions: new WeakMap(),
       projectionUnitFingerprints: new WeakMap(),
+      projectionUnitScopeFingerprints: new WeakMap(),
+      projectionUnitValueScopeFingerprints: new WeakMap(),
+      objectiveTruthRevisions: new WeakMap(),
+      projectionBeliefRevisions: new WeakMap(),
+      entryComponentSignatures: new WeakMap(),
+      projectionRevisionNamespace:
+        `r9v2-projection:${++r9v2ProjectionRevisionSequence}`,
+      useRevisionKeys: targetKernel === true,
+      useValueKeys: targetKernel === true,
+      enableExactComponentDependencies: targetKernel === true,
+      componentDependencyByEntry: new WeakMap(),
       pendingNaturalActorIds: null,
+      sharedStores: targetKernel
+        ? r9v2SharedStoresFor(prepared.state)
+        : null,
+      proofComponentStore: targetKernel
+        ? prepared.state.r9v2ProofComponentStore
+        : null,
+      metricsState: prepared.state,
       normalizedContributionStore:
         prepared.state.r9v2NormalizedContributionStore,
     };
@@ -40933,6 +44783,9 @@
         proofs: baseProofs,
         candidates: frozenCandidates,
         mechanicalProjectionContext,
+        targetKernel,
+        informationValueOnly: useInformationValueOnly,
+        sharedProjectionCacheBase: projectionCache,
       });
     const proofs = Object.freeze(
       baseProofs.map(proof =>
@@ -40944,7 +44797,9 @@
     );
     r9v2Metric(prepared.state, 'r9v2CandidateProofs', proofs.length);
     return Object.freeze({
-      schemaVersion: 'PreparedR9v2ControlResourceSliceV1',
+      schemaVersion: targetKernel
+        ? 'PreparedR9v2TargetKernelSliceV1'
+        : 'PreparedR9v2ControlResourceSliceV1',
       sliceRevision: [
         'r9v2-slice',
         actorId,
@@ -40955,6 +44810,7 @@
       entries: Object.freeze(currentEntries),
       proofs,
       informationProjectionStatus: 'CONNECTED_INFORMATION_VALUE_V2',
+      kernelMode: targetKernel ? 'TARGET' : 'SHADOW',
       rebuiltUnitIds: Object.freeze(prepared.rebuiltUnitIds),
       workload: Object.freeze({
         observerPoolUnitCount: prepared.pool.unitEntries.size,
@@ -41019,15 +44875,23 @@
       : '';
   }
 
-  function runR9v2ShadowProvider(request = {}) {
+  function runR9v2PreparedProvider(
+    request = {},
+    providerId = 'r9v2-shadow',
+  ) {
+    const targetKernel = providerId === 'r9v2';
+    const engine = targetKernel ? 'R9V2_TARGET' : 'R9V2_SHADOW';
     const prepared = preparedR9v2Slices.get(request);
     if (!prepared) {
       throw new Error('R9V2_PREPARED_SLICE_MISSING');
     }
+    if (targetKernel && prepared.kernelMode !== 'TARGET') {
+      throw new Error('R9V2_TARGET_KERNEL_SLICE_MISSING');
+    }
     const candidates = request.frozenCandidates || [];
     if (!candidates.length) {
       return {
-        decisionEngine: 'R9V2_SHADOW',
+        decisionEngine: engine,
         lostOpportunity: {
           reasonCode: 'R9V2_NO_CANDIDATES',
           reasonText: '无机械合法候选',
@@ -41035,7 +44899,7 @@
         beliefState: cloneValue(request?.beliefState || {}),
         strategyMemory: cloneValue(request?.strategyMemory || {}),
         decisionProfile: {
-          engine: 'R9V2_SHADOW',
+          engine,
           selectionMode: 'LOST_OPPORTUNITY',
         },
       };
@@ -41215,10 +45079,17 @@
                 })),
               ),
               candidateValueProofHash: preview.stableHash(
-                prepared.proofs.map(proof => ({
-                  ...proof,
-                  vector: proof.vector || {},
-                })),
+                prepared.proofs
+                  .slice()
+                  .sort((left, right) =>
+                    String(left?.candidateId || '').localeCompare(
+                      String(right?.candidateId || ''),
+                    )
+                  )
+                  .map(proof => ({
+                    ...proof,
+                    vector: proof.vector || {},
+                  })),
               ),
               paretoCandidateIds:
                 Object.freeze(paretoCandidateIds),
@@ -41296,7 +45167,7 @@
         ? 'R9V2_COUNTER_DECLINE'
         : 'R9V2_CONTROL_RESOURCE_PARETO';
     return {
-      decisionEngine: 'R9V2_SHADOW',
+      decisionEngine: engine,
       actorId: request.actorId,
       selected: {
         candidateId: winner.candidate.candidateId,
@@ -41342,7 +45213,7 @@
       beliefState: cloneValue(request?.beliefState || {}),
       strategyMemory: cloneValue(request?.strategyMemory || {}),
       strategicSignature:
-        `r9v2-shadow:${request.requestHash}`,
+        `${providerId}:${request.requestHash}`,
       stateCapacityTotal: Math.max(
         0,
         Number(winner.proof.objectiveUtilityHEPP || 0),
@@ -41353,8 +45224,10 @@
         winner.proof.components.resourceFrontierDeltaHEPP !== 0 ||
         winner.proof.components.behaviorPoolDeltaHEPP !== 0,
       decisionProfile: {
-        engine: 'R9V2_SHADOW',
-        slice: 'CONTROL_RESOURCE_V1',
+        engine,
+        slice: targetKernel
+          ? 'TARGET_KERNEL_V1'
+          : 'CONTROL_RESOURCE_V1',
         selectionMode,
         informationProjectionStatus:
           prepared.informationProjectionStatus ||
@@ -41367,6 +45240,14 @@
         ...(replayIdentity ? { replayIdentity } : {}),
       },
     };
+  }
+
+  function runR9v2ShadowProvider(request = {}) {
+    return runR9v2PreparedProvider(request, 'r9v2-shadow');
+  }
+
+  function runR9v2TargetProvider(request = {}) {
+    return runR9v2PreparedProvider(request, 'r9v2');
   }
 
   // ===== R9 双层引擎（v0：Tier-1 廉价筛选骨架）=====
@@ -41617,6 +45498,7 @@
     r8: request => runR8Provider(request),
     r9: request => runR9Provider(request),
     'r9v2-shadow': request => runR9v2ShadowProvider(request),
+    r9v2: request => runR9v2TargetProvider(request),
   });
 
   function runProvider(input = {}) {

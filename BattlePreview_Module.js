@@ -6788,7 +6788,7 @@
     });
   }
 
-  function evaluateMechanicalBasis(input = {}) {
+  function evaluateMechanicalBasisImpl(input = {}) {
     const basis = input?.basis;
     const worldSnapshot = input?.worldSnapshot;
     const projectionContext =
@@ -7062,6 +7062,8 @@
           input?.applicationProbabilityResolver,
         hitProbabilityResolver:
           input?.hitProbabilityResolver,
+        forcedApplicationProbabilityByEffect:
+          input?.forcedApplicationProbabilityByEffect || {},
         basisView: input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
         snapshotRevision: resolvedSnapshotRevision,
         projectionContext: effectProjectionContext,
@@ -7618,6 +7620,36 @@
         });
     } finally {
       context.nodeBudget.activeFingerprints.delete(activeFingerprint);
+    }
+  }
+
+  function evaluateMechanicalBasis(input = {}) {
+    if (input?.captureDependencyKeys !== true) {
+      return evaluateMechanicalBasisImpl(input);
+    }
+    const dependencyCapture = { reads: new Map(), recorder: null };
+    dependencyCaptureStack.push(dependencyCapture);
+    try {
+      const result = evaluateMechanicalBasisImpl(input);
+      if (!result || typeof result !== 'object') return result;
+      const withDependencies = { ...result };
+      Object.defineProperty(withDependencies, 'dependencyReads', {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: Object.freeze(
+          [...dependencyCapture.reads.entries()].map(([key, value]) =>
+            Object.freeze([key, cloneValue(value)])
+          ),
+        ),
+      });
+      return Object.freeze(withDependencies);
+    } finally {
+      const popped = dependencyCaptureStack.pop();
+      if (popped !== dependencyCapture) {
+        dependencyCaptureStack.length = 0;
+        throw new Error('R9V2_MECHANICAL_DEPENDENCY_CAPTURE_STACK_INVALID');
+      }
     }
   }
 
