@@ -15134,7 +15134,16 @@
     scoringAudit.forEach((actionAudit, actionIndex) => {
       const candidates = Array.isArray(actionAudit?.candidates) ? actionAudit.candidates.filter(Boolean) : [];
       const actionDecisionEngine = String(actionAudit?.decisionEngine || 'LEGACY').trim().toUpperCase();
-      if (candidates.length > 3) pushFatal('SCORING_AUDIT_OVERSIZED', { actionIndex, candidateCount: candidates.length });
+      if (
+        actionDecisionEngine !== 'R9V2_TARGET' &&
+        candidates.length > 3
+      ) {
+        pushFatal('SCORING_AUDIT_OVERSIZED', {
+          actionIndex,
+          candidateCount: candidates.length,
+          decisionEngine: actionDecisionEngine,
+        });
+      }
       candidates.forEach((candidate, candidateIndex) => {
         if (actionDecisionEngine === 'R8') {
           const r8Fields = [
@@ -15526,6 +15535,16 @@
       const proofCoverageClosed =
         String(proofCoverage?.status || '').trim() ===
         'REQUIRED_SUBSET_CLOSED';
+      const hasValidParetoWitness = row => {
+        const witness = row?.paretoWitness;
+        const kind = String(witness?.kind || '').trim();
+        if (row?.pareto === true) return kind === 'NON_DOMINATED';
+        if (kind === 'HARD_EXCLUDED') {
+          return Array.isArray(witness?.hardExclusionCodes) &&
+            witness.hardExclusionCodes.length > 0;
+        }
+        return !!String(witness?.dominatorCandidateId || '').trim();
+      };
       const requiredProofSubset =
         targetAudit &&
         Array.isArray(requiredProofCandidateIds) &&
@@ -15585,18 +15604,17 @@
               kind: 'R9V2_PROOF_MISSING',
             });
           }
+          if (String(row?.rejectionCode || '').trim()) return;
           const witness = row?.paretoWitness;
-          if (
-            row?.pareto === true
-              ? String(witness?.kind || '').trim() !== 'NON_DOMINATED'
-              : !String(witness?.dominatorCandidateId || '').trim()
-          ) {
+          if (!hasValidParetoWitness(row)) {
             pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
               actionIndex,
               candidateIndex,
               candidateId,
               kind: row?.pareto === true
                 ? 'R9V2_PARETO_WITNESS_MISSING'
+                : String(witness?.kind || '').trim() === 'HARD_EXCLUDED'
+                  ? 'R9V2_HARD_EXCLUSION_WITNESS_MISSING'
                 : 'R9V2_DOMINATOR_WITNESS_MISSING',
             });
           }
@@ -15665,11 +15683,19 @@
           }
           if (ownerType === 'TERMINAL_DELTA') {
             const terminalProjection = proof?.terminalProjection || {};
-            const terminalProbability = Number(
-              fact?.terminalProbability ??
-              terminalProjection?.terminalProbability ??
-              0,
-            );
+            const terminalProbabilityValues = [
+              fact?.terminalProbability,
+              fact?.baselineTerminalProbability,
+              fact?.candidateTerminalProbability,
+              terminalProjection?.terminalProbability,
+              terminalProjection?.baselineTerminalProbability,
+              terminalProjection?.candidateTerminalProbability,
+            ]
+              .filter(value => value !== undefined && value !== null)
+              .map(value => Number(value));
+            const terminalProbability = terminalProbabilityValues.length
+              ? Math.max(...terminalProbabilityValues)
+              : 0;
             const terminalIdentities = [
               ...(Array.isArray(fact?.terminalAfterEffectInstanceIds)
                 ? fact.terminalAfterEffectInstanceIds
@@ -15764,22 +15790,17 @@
           });
         }
         if (String(row?.rejectionCode || '').trim()) return;
-        const witness = row?.paretoWitness;
-        if (row?.pareto === true) {
-          if (String(witness?.kind || '').trim() !== 'NON_DOMINATED') {
-            pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
-              actionIndex,
-              candidateIndex,
-              candidateId,
-              kind: 'R9V2_PARETO_WITNESS_MISSING',
-            });
-          }
-        } else if (!String(witness?.dominatorCandidateId || '').trim()) {
+        if (!hasValidParetoWitness(row)) {
+          const witness = row?.paretoWitness;
           pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
             actionIndex,
             candidateIndex,
             candidateId,
-            kind: 'R9V2_DOMINATOR_WITNESS_MISSING',
+            kind: row?.pareto === true
+              ? 'R9V2_PARETO_WITNESS_MISSING'
+              : String(witness?.kind || '').trim() === 'HARD_EXCLUDED'
+                ? 'R9V2_HARD_EXCLUSION_WITNESS_MISSING'
+                : 'R9V2_DOMINATOR_WITNESS_MISSING',
           });
         }
       });

@@ -11744,16 +11744,23 @@
         ...cloneValue(effect),
         目标: String(effect?.目标 || '').trim() === '自身' ? '单体' : effect?.目标,
       }));
-      const futureUseGain = (candidate.creation.consumerIds || []).reduce((bestGain, targetId) => {
+      const futureUseConsumerIds = [
+        candidate.creation.recipientId ||
+        candidate.declaration?.creationRecipientId ||
+        context.actorId,
+      ]
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+      const futureUseGain = futureUseConsumerIds.reduce((bestGain, targetId) => {
         const futureUse = preview.previewAction({
           worldSnapshot: futureUseWorld,
           worldRevision: `${context.worldRevision}:paid:${candidate.candidateId}`,
           beliefSnapshot: context.beliefState,
           beliefRevision: context.beliefRevision,
-          actorId: context.actorId,
+          actorId: targetId,
           declaration: {
             actionId: `${candidate.candidateId}:future-use:${targetId}`,
-            actorId: context.actorId,
+            actorId: targetId,
             actionKind: 'USE_ITEM',
             targetIds: [targetId],
             skill: { id: `${candidate.candidateId}:product`, name: candidate.creation.productId, _效果数组: futureUseEffects },
@@ -44598,6 +44605,822 @@
     return Object.freeze(next);
   }
 
+  function r9v2TargetKernelApi() {
+    const kernel = root.__LWCS_BATTLE_R9V2_KERNEL__;
+    if (
+      !kernel ||
+      typeof kernel.createSession !== 'function' ||
+      typeof kernel.evaluateAllCandidates !== 'function' ||
+      typeof kernel.materializeProof !== 'function'
+    ) {
+      throw new Error('R9V2_TARGET_KERNEL_NOT_LOADED');
+    }
+    return kernel;
+  }
+
+  function r9v2TargetFinite(value, code, detail = '') {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      throw new Error(`${code}${detail ? `:${detail}` : ''}`);
+    }
+    return Object.is(number, -0) ? 0 : number;
+  }
+
+  function r9v2TargetExplicitHeppValue(contribution = {}) {
+    const evidence = contribution?.evidence || {};
+    for (const key of [
+      'actionPoolDeltaHEPP',
+      'routeDeltaHEPP',
+      'objectiveDeltaHEPP',
+      'terminalDeltaHEPP',
+      'terminalValueHEPP',
+    ]) {
+      if (Object.hasOwn(evidence, key)) {
+        const value = Number(evidence[key]);
+        if (!Number.isFinite(value)) {
+          throw new Error(`R9V2_KERNEL_EXPLICIT_VALUE_NON_FINITE:${key}`);
+        }
+        return { key, value: Object.is(value, -0) ? 0 : value };
+      }
+    }
+    return null;
+  }
+
+  function r9v2TargetHealthFacts(request, entry) {
+    const grouped = new Map();
+    const futureFacts = [];
+    const healthKinds = new Set([
+      'HP_DELTA',
+      'SCHEDULED_HP_DELTA',
+      'WITHDRAWAL_CONTEST',
+      'SHIELD_DELTA',
+    ]);
+    (entry?.contributions || []).forEach((contribution, index) => {
+      const outcomeKind = String(contribution?.outcomeKind || '').trim();
+      if (!healthKinds.has(outcomeKind)) return;
+      const targetId = String(contribution?.targetId || '').trim();
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      const futureTarget = !target
+        ? (entry?.summonDefinitions || []).find(definition =>
+            String(
+              definition?.id ||
+              definition?.召唤键 ||
+              definition?.summonId ||
+              '',
+            ).trim() === targetId,
+          )
+        : null;
+      if (!targetId || (!target && !futureTarget)) {
+        throw new Error(
+          `R9V2_KERNEL_HEALTH_TARGET_MISSING:${entry?.candidateId || ''}:${index}`,
+        );
+      }
+      const delta = r9v2TargetFinite(
+        contribution?.expectedDelta ?? contribution?.evidence?.delta ?? 0,
+        'R9V2_KERNEL_HEALTH_DELTA_NON_FINITE',
+        `${entry.candidateId}:${index}`,
+      );
+      if (futureTarget) {
+        const maxHp = Math.max(
+          1,
+          Number(
+            futureTarget?.hp_max ||
+            futureTarget?.HP上限 ||
+            futureTarget?.vit_max ||
+            1,
+          ),
+        );
+        const futureSide = String(
+          futureTarget?.side ||
+          futureTarget?.阵营 ||
+          '',
+        ).trim() || request.actorSide;
+        const rawValue = 100 * delta / maxHp;
+        futureFacts.push({
+          targetId,
+          value: r9v2TargetFinite(
+            futureSide === request.actorSide ? rawValue : -rawValue,
+            'R9V2_KERNEL_FUTURE_STATE_VALUE_NON_FINITE',
+            `${entry.candidateId}:${index}`,
+          ),
+          sourceEventId: String(
+            contribution?.sourceActionId ||
+            contribution?.effectInstanceId ||
+            `${entry.candidateId}:future-state:${index}`,
+          ).trim(),
+          sourceIndex: index,
+          outcomeKind,
+        });
+        return;
+      }
+      const row = grouped.get(targetId) || {
+        targetId,
+        delta: 0,
+        sourceEventId: String(
+          contribution?.sourceActionId ||
+          contribution?.effectInstanceId ||
+          `${entry.candidateId}:health`,
+        ).trim(),
+        sourceIndexes: [],
+      };
+      row.delta += delta;
+      row.sourceIndexes.push(index);
+      grouped.set(targetId, row);
+    });
+    const trajectories = [...grouped.values()].map(row => {
+      const target = findUnitInWorld(request.visibleWorld, row.targetId);
+      return {
+        targetId: row.targetId,
+        healthDeltaPP: 100 * row.delta /
+          Math.max(1, preview.readHpMax(target)),
+      };
+    });
+    const objectiveGroups = r8ObjectiveGroups(request);
+    const hasExplicitObjective = Boolean(
+      request?.objectiveContract &&
+      typeof request.objectiveContract === 'object' &&
+      Object.keys(request.objectiveContract).length,
+    );
+    const values = new Map();
+    grouped.forEach(row => {
+      const target = findUnitInWorld(request.visibleWorld, row.targetId);
+      const trajectory = trajectories.find(item => item.targetId === row.targetId);
+      const rawValue = trajectory?.healthDeltaPP || 0;
+      const targetSide = sideOf(request.visibleWorld, target);
+      const value = hasExplicitObjective
+        ? r8UniqueObjectiveTrajectoryValue(
+            request,
+            objectiveGroups,
+            [trajectory],
+          )
+        : targetSide === request.actorSide
+          ? rawValue
+          : -rawValue;
+      values.set(row.targetId, {
+        ...row,
+        value: r9v2TargetFinite(
+          value,
+          'R9V2_KERNEL_HEALTH_VALUE_NON_FINITE',
+          `${entry.candidateId}:${row.targetId}`,
+        ),
+      });
+    });
+    let discardedOverkillPP = 0;
+    if (hasExplicitObjective && trajectories.length) {
+      discardedOverkillPP = r9v2TargetFinite(
+        r8ThresholdOverkill(request, {
+          healthTrajectoryByTarget: trajectories,
+        }),
+        'R9V2_KERNEL_OVERKILL_NON_FINITE',
+        entry.candidateId,
+      );
+    }
+    return {
+      facts: [...values.values()],
+      futureFacts,
+      stateDeltaTotal: values.size
+        ? [...values.values()].reduce((total, row) => total + row.value, 0)
+        : 0,
+      discardedOverkillPP,
+    };
+  }
+
+  function r9v2TargetValueFacts(request, entry) {
+    const causalFacts = [];
+    const unsupportedOutcomeKinds = new Set();
+    const health = r9v2TargetHealthFacts(request, entry);
+    health.facts.forEach((row, index) => {
+      causalFacts.push({
+        componentCode: 'S1_STATE_TRAJECTORY',
+        causalOwnerType: 'STATE_DELTA',
+        valueHEPP: row.value,
+        sourceEventId: row.sourceEventId || `${entry.candidateId}:state:event`,
+        sourceFactId: `${entry.candidateId}:state:${row.targetId}`,
+        targetUnitId: row.targetId,
+        sequence: index,
+      });
+    });
+    let actionPoolDeltaTotal = 0;
+    let terminalDeltaTotal = 0;
+    (health.futureFacts || []).forEach((row, index) => {
+      if (Math.abs(row.value) <= 1e-9) return;
+      actionPoolDeltaTotal += row.value;
+      causalFacts.push({
+        componentCode: 'S5_FUTURE_STATE',
+        causalOwnerType: 'ACTION_POOL_DELTA',
+        valueHEPP: row.value,
+        sourceEventId: row.sourceEventId,
+        sourceFactId: `${entry.candidateId}:future-state:${row.sourceIndex ?? index}`,
+        targetUnitId: row.targetId,
+        sequence: row.sourceIndex ?? index,
+      });
+    });
+    const duplicateCancellationTargets =
+      r9v2TargetDuplicateCancellationTargets(entry);
+    (entry?.contributions || []).forEach((contribution, index) => {
+      const outcomeKind = String(contribution?.outcomeKind || '').trim();
+      if (
+        ['HP_DELTA', 'SCHEDULED_HP_DELTA', 'WITHDRAWAL_CONTEST', 'SHIELD_DELTA']
+          .includes(outcomeKind)
+      ) return;
+      const explicit = r9v2TargetExplicitHeppValue(contribution);
+      if (explicit?.key === 'terminalDeltaHEPP' || explicit?.key === 'terminalValueHEPP') {
+        const evidence = contribution?.evidence || {};
+        const terminalId = String(
+          evidence?.terminalAfterEffectInstanceId ||
+          evidence?.terminalAtomicKey ||
+          evidence?.terminalIdentity ||
+          '',
+        ).trim();
+        if (explicit.value && !terminalId) {
+          throw new Error(
+            `R9V2_KERNEL_TERMINAL_IDENTITY_MISSING:${entry.candidateId}:${index}`,
+          );
+        }
+        if (explicit.value) {
+          terminalDeltaTotal += explicit.value;
+          causalFacts.push({
+            componentCode: 'S1_FIRST_TERMINAL',
+            causalOwnerType: 'TERMINAL_DELTA',
+            valueHEPP: explicit.value,
+            sourceEventId: String(
+              contribution?.sourceActionId ||
+              contribution?.effectInstanceId ||
+              `${entry.candidateId}:terminal:event`,
+            ).trim(),
+            sourceFactId: `${entry.candidateId}:terminal:${index}`,
+            targetUnitId: String(contribution?.targetId || entry.actorId).trim(),
+            sequence: index,
+          });
+        }
+        return;
+      }
+      if (explicit) {
+        actionPoolDeltaTotal += explicit.value;
+        causalFacts.push({
+          componentCode: 'S2_EXPLICIT_ACTION_POOL',
+          causalOwnerType: 'ACTION_POOL_DELTA',
+          valueHEPP: explicit.value,
+          sourceEventId: String(
+            contribution?.sourceActionId ||
+            contribution?.effectInstanceId ||
+            `${entry.candidateId}:action-pool:event`,
+          ).trim(),
+          sourceFactId: `${entry.candidateId}:action-pool:${index}`,
+          targetUnitId: String(contribution?.targetId || entry.actorId).trim(),
+          sequence: index,
+        });
+        return;
+      }
+      if (
+        outcomeKind === 'ACTION_CANCELLED' &&
+        duplicateCancellationTargets.has(
+          String(contribution?.targetId || '').trim(),
+        )
+      ) {
+        return;
+      }
+      if (outcomeKind === 'SUMMON_WINDOW') {
+        const targetId = String(contribution?.targetId || '').trim();
+        const summon = (entry?.summonDefinitions || []).find(definition =>
+          String(
+            definition?.id ||
+            definition?.召唤键 ||
+            definition?.summonId ||
+            '',
+          ).trim() === targetId,
+        );
+        const evidence = contribution?.evidence || {};
+        const windows = Math.max(
+          1,
+          Number(evidence?.duration || 0),
+          Number(evidence?.remainingWindows || 0) +
+            (evidence?.immediateWindowConsumed === true ? 1 : 0),
+        );
+        const potential = r9v2TargetFinite(
+          evidence?.actionPotential ?? 0,
+          'R9V2_KERNEL_SUMMON_POTENTIAL_NON_FINITE',
+          `${entry.candidateId}:${index}`,
+        );
+        if (Math.abs(potential) > 1e-9) {
+          const side = String(
+            summon?.side || summon?.阵营 || '',
+          ).trim() || request.actorSide;
+          const value = potential * windows *
+            Number(contribution?.probability ?? 1) *
+            (side === request.actorSide ? 1 : -1);
+          actionPoolDeltaTotal += value;
+          causalFacts.push({
+            componentCode: 'S5_SUMMON_WINDOW',
+            causalOwnerType: 'ACTION_POOL_DELTA',
+            valueHEPP: r9v2TargetFinite(
+              value,
+              'R9V2_KERNEL_SUMMON_VALUE_NON_FINITE',
+              `${entry.candidateId}:${index}`,
+            ),
+            sourceEventId: String(
+              contribution?.sourceActionId ||
+              contribution?.effectInstanceId ||
+              `${entry.candidateId}:summon:${index}`,
+            ).trim(),
+            sourceFactId: `${entry.candidateId}:summon:${index}`,
+            targetUnitId: targetId || entry.actorId,
+            sequence: index,
+          });
+        }
+        return;
+      }
+      if (
+        outcomeKind === 'RESOURCE_OPTION_CHANGED' &&
+        String(contribution?.windowId || '').trim() === 'ACTION_COST'
+      ) {
+        const routeDelta = Number(contribution?.evidence?.routeDeltaPP);
+        if (Number.isFinite(routeDelta) && Math.abs(routeDelta) > 1e-9) {
+          actionPoolDeltaTotal += routeDelta;
+          causalFacts.push({
+            componentCode: 'S2_RESOURCE_FRONTIER',
+            causalOwnerType: 'ACTION_POOL_DELTA',
+            valueHEPP: routeDelta,
+            sourceEventId: String(
+              contribution?.sourceActionId ||
+              contribution?.effectInstanceId ||
+              `${entry.candidateId}:resource:${index}`,
+            ).trim(),
+            sourceFactId: `${entry.candidateId}:resource:${index}`,
+            targetUnitId: String(
+              contribution?.targetId || entry.actorId,
+            ).trim(),
+            sequence: index,
+          });
+        }
+        return;
+      }
+      const evidence = contribution?.evidence || {};
+      const marginal = evidence?.marginal;
+      const noOpFact = marginal === false ||
+        Number(contribution?.expectedDelta || 0) === 0 &&
+        ['STATE_CHANGED', 'NEXT_ACTION_QUALITY_CHANGED'].includes(outcomeKind) &&
+        evidence?.marginal !== true;
+      if (!noOpFact && outcomeKind) unsupportedOutcomeKinds.add(outcomeKind);
+    });
+    const informationGroups = Array.isArray(entry?.informationGroups)
+      ? entry.informationGroups
+      : [];
+    return {
+      causalFacts,
+      stateDeltaTotal: r9v2TargetFinite(
+        health.stateDeltaTotal,
+        'R9V2_KERNEL_STATE_DELTA_NON_FINITE',
+        entry.candidateId,
+      ),
+      actionPoolDeltaTotal: r9v2TargetFinite(
+        actionPoolDeltaTotal,
+        'R9V2_KERNEL_ACTION_POOL_DELTA_NON_FINITE',
+        entry.candidateId,
+      ),
+      terminalDeltaTotal: r9v2TargetFinite(
+        terminalDeltaTotal,
+        'R9V2_KERNEL_TERMINAL_DELTA_NON_FINITE',
+        entry.candidateId,
+      ),
+      informationGroups,
+      discardedOverkillPP: health.discardedOverkillPP,
+      unsupportedOutcomeKinds: [...unsupportedOutcomeKinds].sort(),
+    };
+  }
+
+  function r9v2TargetDuplicateCancellationTargets(entry = {}) {
+    const healthEffectIds = new Set(
+      (entry?.contributions || [])
+        .filter(contribution =>
+          ['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(
+            String(contribution?.outcomeKind || '').trim(),
+          ) &&
+          Number(
+            contribution?.expectedDelta ?? contribution?.evidence?.delta ?? 0,
+          ) < -1e-9,
+        )
+        .map(contribution => String(contribution?.effectInstanceId || '').trim())
+        .filter(Boolean),
+    );
+    return new Set(
+      (entry?.contributions || [])
+        .filter(contribution =>
+          String(contribution?.outcomeKind || '').trim() ===
+            'ACTION_CANCELLED' &&
+          healthEffectIds.has(
+            String(contribution?.effectInstanceId || '').trim(),
+          ),
+        )
+        .map(contribution => String(contribution?.targetId || '').trim())
+        .filter(Boolean),
+    );
+  }
+
+  function r9v2TargetValuesFromProjectionProof(entry, proof) {
+    const duplicateCancellationTargets =
+      r9v2TargetDuplicateCancellationTargets(entry);
+    const causalFacts = (Array.isArray(proof?.causalValueFacts)
+      ? proof.causalValueFacts
+      : [])
+      .filter(fact => !(
+        String(fact?.sourceOutcomeKind || '').trim() ===
+          'ACTION_CANCELLED' &&
+        duplicateCancellationTargets.has(
+          String(fact?.targetId || fact?.targetUnitId || '').trim(),
+        )
+      ))
+      .map((fact, index) => {
+        const sourceFactId = String(
+          fact?.sourceFactId || fact?.factId ||
+          `${entry.candidateId}:target-fact:${index}`,
+        ).trim();
+        const sourceEventId = String(
+          fact?.sourceEventId || fact?.effectInstanceId ||
+          fact?.sourceActionId || `${entry.candidateId}:target-event:${index}`,
+        ).trim();
+        return {
+          ...cloneValue(fact),
+          componentCode: String(
+            fact?.componentCode || fact?.sourceOutcomeKind || 'R9V2_TARGET_FACT',
+          ).trim(),
+          causalOwnerType: String(
+            fact?.causalOwnerType || fact?.ownerType || '',
+          ).trim(),
+          valueHEPP: r9v2TargetFinite(
+            fact?.valueHEPP,
+            'R9V2_KERNEL_PROOF_VALUE_NON_FINITE',
+            `${entry.candidateId}:${index}`,
+          ),
+          sourceEventId,
+          sourceFactId,
+          factId: sourceFactId,
+          targetId: String(
+            fact?.targetId || fact?.targetUnitId || entry.actorId || '',
+          ).trim(),
+          targetUnitId: String(
+            fact?.targetUnitId || fact?.targetId || entry.actorId || '',
+          ).trim(),
+          sequence: Number.isFinite(Number(fact?.sequence))
+            ? Number(fact.sequence)
+            : index,
+        };
+      });
+    const totals = causalFacts.reduce((result, fact) => {
+      const ownerType = fact.causalOwnerType;
+      if (ownerType === 'STATE_DELTA') result.state += fact.valueHEPP;
+      if (ownerType === 'ACTION_POOL_DELTA') result.actionPool += fact.valueHEPP;
+      if (ownerType === 'TERMINAL_DELTA') result.terminal += fact.valueHEPP;
+      return result;
+    }, { state: 0, actionPool: 0, terminal: 0 });
+    return {
+      causalFacts,
+      stateDeltaTotal: r9v2TargetFinite(
+        totals.state,
+        'R9V2_KERNEL_PROOF_STATE_TOTAL_NON_FINITE',
+        entry.candidateId,
+      ),
+      actionPoolDeltaTotal: r9v2TargetFinite(
+        totals.actionPool,
+        'R9V2_KERNEL_PROOF_ACTION_POOL_TOTAL_NON_FINITE',
+        entry.candidateId,
+      ),
+      terminalDeltaTotal: r9v2TargetFinite(
+        totals.terminal,
+        'R9V2_KERNEL_PROOF_TERMINAL_TOTAL_NON_FINITE',
+        entry.candidateId,
+      ),
+      informationGroups: Array.isArray(entry?.informationGroups)
+        ? entry.informationGroups
+        : [],
+      discardedOverkillPP: r9v2TargetFinite(
+        proof?.vector?.discardedOverkillPP ??
+          proof?.discardedOverkillPP ?? 0,
+        'R9V2_KERNEL_PROOF_OVERKILL_NON_FINITE',
+        entry.candidateId,
+      ),
+      unsupportedOutcomeKinds: Array.isArray(proof?.unsupportedOutcomeKinds)
+        ? [...proof.unsupportedOutcomeKinds].map(value => String(value).trim()).filter(Boolean).sort()
+        : [],
+    };
+  }
+
+  function r9v2TargetKernelCandidateRow({
+    request,
+    candidate,
+    entry,
+    targetProof = null,
+  }) {
+    const actionId = String(
+      candidate?.declaration?.actionId ||
+      candidate?.candidateId ||
+      '',
+    ).trim();
+    const dependencyTokens = [
+      ...(entry?.mechanicalDependencyKeys || []),
+      `actor:${request.actorId}`,
+      ...(entry?.targetIds || []).map(targetId => `unit:${targetId}`),
+    ]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .sort();
+    if (entry?.hardInvalid === true) {
+      return {
+        candidateId: candidate.candidateId,
+        actionId,
+        actorId: request.actorId,
+        targetSet: [...(entry.targetIds || [])],
+        paymentMode: entry.resourcePotentialOnly ? 'EXTERNAL_TIMELINE' : 'FORMAL',
+        dependencyTokens,
+        directFacts: [],
+        scheduledFacts: [],
+        resourceCosts: entry.resourceCosts || {},
+        successProbability: 0,
+        stateDeltaTotal: 0,
+        actionPoolDeltaTotal: 0,
+        terminalDeltaTotal: 0,
+        informationGroups: [],
+        causalFacts: [],
+        legal: false,
+        hardExclusionCodes: ['R9V2_MECHANICAL_CANDIDATE_INVALID'],
+        discardedOverkillPP: 0,
+        worstTailUtilityHEPP: 0,
+        survivalUtilityHEPP: 0,
+        assetReserveHEPP: 0,
+      };
+    }
+    const values = targetProof
+      ? r9v2TargetValuesFromProjectionProof(entry, targetProof)
+      : r9v2TargetValueFacts(request, entry);
+    const hardExclusionCodes = values.unsupportedOutcomeKinds.map(kind =>
+      `R9V2_KERNEL_UNSUPPORTED_FACT:${kind}`,
+    );
+    const directFacts = values.causalFacts.filter(fact =>
+      fact.causalOwnerType === 'STATE_DELTA',
+    );
+    const scheduledFacts = (entry.contributions || [])
+      .filter(contribution =>
+        String(contribution?.outcomeKind || '').trim() === 'SCHEDULED_HP_DELTA',
+      )
+      .map((contribution, index) => ({
+        sourceFactId: `${candidate.candidateId}:scheduled:${index}`,
+        sourceEventId: String(
+          contribution?.sourceActionId || contribution?.effectInstanceId || '',
+        ).trim(),
+      }));
+    return {
+      candidateId: candidate.candidateId,
+      actionId,
+      actorId: request.actorId,
+      targetSet: [...(entry.targetIds || [])],
+      paymentMode: entry.resourcePotentialOnly ? 'EXTERNAL_TIMELINE' : 'FORMAL',
+      dependencyTokens,
+      directFacts,
+      scheduledFacts,
+      resourceCosts: entry.resourceCosts || {},
+      successProbability: 1,
+      stateDeltaTotal: values.stateDeltaTotal,
+      actionPoolDeltaTotal: values.actionPoolDeltaTotal,
+      terminalDeltaTotal: values.terminalDeltaTotal,
+      informationGroups: values.informationGroups,
+      causalFacts: values.causalFacts,
+      legal: true,
+      hardExclusionCodes,
+      discardedOverkillPP: values.discardedOverkillPP,
+      worstTailUtilityHEPP: 0,
+      survivalUtilityHEPP: 0,
+      assetReserveHEPP: Number(entry.assetReserve || 0),
+    };
+  }
+
+  function r9v2TargetKernelProof(kernelProof, entry, unsupportedOutcomeKinds = []) {
+    const vector = kernelProof?.vector || {};
+    const vectorView = Object.freeze({
+      ...cloneValue(vector),
+      objectiveUtilityHEPP: Number(vector.objectiveUtilityHEPP || 0),
+      informationValueHEPP: Number(vector.informationValueHEPP || 0),
+      assetReserve: Number(vector.assetReserveHEPP || 0),
+      survivalLowerBound: Number(vector.survivalUtilityHEPP || 0),
+      worstTailLossHEPP: -Number(vector.worstTailUtilityHEPP || 0),
+      discardedOverkillPP: Number(vector.discardedOverkillPP || 0),
+      components: Object.freeze({
+        stateDeltaTotal: Number(vector.stateDeltaTotal || 0),
+        actionPoolDeltaTotal: Number(vector.actionPoolDeltaTotal || 0),
+        terminalDeltaTotal: Number(vector.terminalDeltaTotal || 0),
+        controlOpportunityDeltaHEPP: 0,
+        resourceFrontierDeltaHEPP: 0,
+        behaviorPoolDeltaHEPP: 0,
+      }),
+    });
+    const causalValueFacts = (kernelProof?.causalValueFacts || []).map(
+      (fact, index) => {
+        const sourceFactId = String(
+          fact?.sourceFactId || fact?.factId ||
+          `${kernelProof?.candidateId || 'candidate'}:fact:${index}`,
+        ).trim();
+        return {
+          ...cloneValue(fact),
+          factId: sourceFactId,
+          ownerType: String(
+            fact?.causalOwnerType || fact?.ownerType || '',
+          ).trim(),
+          valueHEPP: Number(fact?.valueHEPP || 0),
+          sourceOutcomeKind: String(
+            fact?.sourceOutcomeKind || fact?.componentCode || '',
+          ).trim(),
+          sourceEventId: String(
+            fact?.sourceEventId || fact?.effectInstanceId || '',
+          ).trim(),
+          sourceFactId,
+          targetId: String(
+            fact?.targetId || fact?.targetUnitId || '',
+          ).trim(),
+          targetUnitId: String(
+            fact?.targetUnitId || fact?.targetId || '',
+          ).trim(),
+          sequence: Number.isFinite(Number(fact?.sequence))
+            ? Number(fact.sequence)
+            : index,
+        };
+      },
+    );
+    const causalTotal = causalValueFacts.reduce(
+      (total, fact) => total + Number(fact.valueHEPP || 0),
+      0,
+    );
+    const goalUtilityDeltaHEPP = Number(kernelProof?.goalUtilityDeltaHEPP || 0);
+    const reconciliationError = causalTotal - goalUtilityDeltaHEPP;
+    if (Math.abs(reconciliationError) > 1e-6) {
+      throw new Error(`CAUSAL_RECONCILIATION_MISMATCH:${kernelProof?.candidateId || ''}`);
+    }
+    return Object.freeze({
+      schemaVersion: 'CandidateValueProofV1',
+      candidateId: String(kernelProof?.candidateId || '').trim(),
+      goalUtilityDeltaHEPP,
+      informationValueHEPP: Number(kernelProof?.informationValueHEPP || 0),
+      objectiveUtilityHEPP: Number(kernelProof?.objectiveUtilityHEPP || 0),
+      causalValueFacts: Object.freeze(causalValueFacts),
+      reconciliationError,
+      vector: vectorView,
+      components: vectorView.components,
+      unsupportedOutcomeKinds: Object.freeze([...unsupportedOutcomeKinds]),
+      source: cloneValue(kernelProof?.source || {}),
+      entryFacts: Object.freeze({
+        actionKind: String(entry?.actionKind || '').trim(),
+        targetIds: Object.freeze([...(entry?.targetIds || [])]),
+      }),
+    });
+  }
+
+  function r9v2TargetKernelPrepareSlice({
+    prepared,
+    worldSnapshot,
+    actorId,
+    actorSide,
+    frozenCandidates,
+    beliefState,
+    battleIntent,
+    objectiveContract,
+    actionOpportunity,
+    evaluationContext,
+    currentEntries,
+  }) {
+    const kernel = r9v2TargetKernelApi();
+    const requestLike = {
+      visibleWorld: worldSnapshot,
+      actorId,
+      actorSide,
+      actionOpportunity,
+      evaluationContext,
+      r9v2InformationValueOnly: true,
+      beliefState,
+      battleIntent,
+      objectiveContract,
+    };
+    const projectionCache = {
+      bestHealthByUnit: new Map(),
+      bestAffordableUtilityByWorld: new Map(),
+      behaviorPoolByIdentity: new Map(),
+      behaviorPoolByScope: new Map(),
+      projectionObjectHashes: new WeakMap(),
+      projectionObjectRevisions: new WeakMap(),
+      projectionUnitFingerprints: new WeakMap(),
+      projectionUnitScopeFingerprints: new WeakMap(),
+      projectionUnitValueScopeFingerprints: new WeakMap(),
+      objectiveTruthRevisions: new WeakMap(),
+      projectionBeliefRevisions: new WeakMap(),
+      entryComponentSignatures: new WeakMap(),
+      projectionRevisionNamespace:
+        `r9v2-target-projection:${++r9v2ProjectionRevisionSequence}`,
+      useRevisionKeys: true,
+      useValueKeys: true,
+      enableExactComponentDependencies: true,
+      componentDependencyByEntry: new WeakMap(),
+      pendingNaturalActorIds: null,
+      sharedStores: r9v2SharedStoresFor(prepared.state),
+      proofComponentStore: prepared.state.r9v2ProofComponentStore,
+      metricsState: prepared.state,
+      normalizedContributionStore:
+        prepared.state.r9v2NormalizedContributionStore,
+    };
+    projectionCache.currentIncoming =
+      r9v2PrepareIncomingProjectionSequence({
+        state: prepared.state,
+        request: requestLike,
+        mechanicalProjectionContext: preview.compileMechanicalProjectionContext(
+          worldSnapshot,
+        ),
+      });
+    const targetProofByCandidate = new Map(
+      currentEntries.map(entry => [
+        entry.candidateId,
+        r9v2CandidateValueProof(
+          requestLike,
+          prepared.pool,
+          entry,
+          projectionCache,
+        ),
+      ]),
+    );
+    const rows = frozenCandidates.map(candidate =>
+      r9v2TargetKernelCandidateRow({
+        request: requestLike,
+        candidate,
+        entry: currentEntries.find(entry =>
+          entry.candidateId === candidate.candidateId,
+        ),
+        targetProof: targetProofByCandidate.get(candidate.candidateId) || null,
+      })
+    );
+    const visibleHpRatios = {};
+    const visibleStatesById = {};
+    worldEntries(worldSnapshot).forEach(worldEntry => {
+      const unitId = preview.unitId(worldEntry.unit);
+      visibleHpRatios[unitId] = preview.readHp(worldEntry.unit) /
+        Math.max(1, preview.readHpMax(worldEntry.unit));
+      visibleStatesById[unitId] = visibleStatesById[unitId] ||
+        visibleStates(worldEntry.unit);
+    });
+    const session = kernel.createSession({
+      worldRevision: evaluationContext.worldRevision,
+      beliefRevision: evaluationContext.beliefRevision,
+      opportunityRevision: evaluationContext.opportunityRevision,
+      observerId: actorId,
+      beliefOverlay: {
+        observerId: actorId,
+        beliefRevision: evaluationContext.beliefRevision,
+        visibleHpRatios,
+        visibleStates: visibleStatesById,
+        revealedAbilityIds: [],
+        observableDeclarations: frozenCandidates.map(candidate =>
+          cloneValue(candidate.declaration || {}),
+        ),
+        posteriorParameters: {},
+        visibilityTokens: Object.keys(visibleHpRatios),
+      },
+      candidates: rows,
+    });
+    const vectors = kernel.evaluateAllCandidates(session, actorId);
+    const vectorByCandidate = new Map(
+      vectors.map(vector => [vector.candidateId, vector]),
+    );
+    const targetKernelTestSink = root.__LWCS_R9V2_TARGET_KERNEL_TEST_SINK__;
+    if (targetKernelTestSink && Array.isArray(targetKernelTestSink.slices)) {
+      targetKernelTestSink.slices.push({
+        rows: cloneValue(rows),
+        vectors: cloneValue(vectors),
+      });
+    }
+    r9v2Metric(prepared.state, 'r9v2TargetKernelVectorEvaluations', vectors.length);
+    return Object.freeze({
+      schemaVersion: 'PreparedR9v2TargetKernelSliceV2',
+      sliceRevision: [
+        'r9v2-target-kernel',
+        actorId,
+        prepared.pool.factDeltaCount,
+        prepared.pool.generation,
+      ].join(':'),
+      actorId,
+      entries: Object.freeze(currentEntries),
+      kernel,
+      session,
+      rows: Object.freeze(rows),
+      vectors: Object.freeze(vectors),
+      vectorByCandidate,
+      informationProjectionStatus: 'TARGET_KERNEL_INPUT_ONLY',
+      kernelMode: 'TARGET',
+      rebuiltUnitIds: Object.freeze(prepared.rebuiltUnitIds),
+      workload: Object.freeze({
+        observerPoolUnitCount: prepared.pool.unitEntries.size,
+        observerPoolEntryCount: [...prepared.pool.unitEntries.values()]
+          .reduce((sum, entries) => sum + entries.length, 0),
+        rebuiltUnitCount: prepared.rebuiltUnitIds.length,
+        currentCandidateCount: currentEntries.length,
+      }),
+    });
+  }
+
   function prepareR9v2ControlResourceSlice({
     sessionState,
     worldSnapshot,
@@ -44710,6 +45533,21 @@
         captureProjectedUnits,
       });
     });
+    if (targetKernel) {
+      return r9v2TargetKernelPrepareSlice({
+        prepared,
+        worldSnapshot,
+        actorId,
+        actorSide,
+        frozenCandidates,
+        beliefState,
+        battleIntent,
+        objectiveContract,
+        actionOpportunity,
+        evaluationContext,
+        currentEntries,
+      });
+    }
     const requestLike = {
       visibleWorld: worldSnapshot,
       actorId,
@@ -44877,6 +45715,340 @@
       : '';
   }
 
+  function r9v2TargetCompareUtf16(left, right) {
+    const leftValue = String(left || '');
+    const rightValue = String(right || '');
+    return leftValue < rightValue ? -1 : leftValue > rightValue ? 1 : 0;
+  }
+
+  function r9v2TargetKernelProvider(request, prepared) {
+    const kernel = prepared?.kernel || r9v2TargetKernelApi();
+    const candidates = Array.isArray(request?.frozenCandidates)
+      ? request.frozenCandidates
+      : [];
+    const entries = Array.isArray(prepared?.entries)
+      ? prepared.entries
+      : [];
+    const vectors = Array.isArray(prepared?.vectors)
+      ? prepared.vectors
+      : [];
+    if (!candidates.length) {
+      return {
+        schemaVersion: 'DecisionAuditV2',
+        decisionEngine: 'R9V2_TARGET',
+        lostOpportunity: {
+          reasonCode: 'R9V2_NO_CANDIDATES',
+          reasonText: '无机械合法候选',
+        },
+        beliefState: cloneValue(request?.beliefState || {}),
+        strategyMemory: cloneValue(request?.strategyMemory || {}),
+        decisionProfile: {
+          engine: 'R9V2_TARGET',
+          selectionMode: 'LOST_OPPORTUNITY',
+        },
+      };
+    }
+    const frozenCandidateIds = candidates.map(candidate =>
+      String(candidate?.candidateId || '').trim(),
+    );
+    const entryByCandidate = new Map(
+      entries.map(entry => [entry.candidateId, entry]),
+    );
+    const vectorByCandidate = new Map(
+      vectors.map(vector => [vector.candidateId, vector]),
+    );
+    const sameCandidateIds = (left, right) => {
+      const leftSorted = [...left].sort(r9v2TargetCompareUtf16);
+      const rightSorted = [...right].sort(r9v2TargetCompareUtf16);
+      return leftSorted.length === rightSorted.length &&
+        leftSorted.every((candidateId, index) => candidateId === rightSorted[index]);
+    };
+    const preparedEntryCandidateIds = [...entryByCandidate.keys()];
+    const preparedVectorCandidateIds = [...vectorByCandidate.keys()];
+    if (
+      !sameCandidateIds(frozenCandidateIds, preparedEntryCandidateIds) ||
+      !sameCandidateIds(frozenCandidateIds, preparedVectorCandidateIds)
+    ) {
+      throw new Error(`R9V2_CANDIDATE_COVERAGE_MISMATCH:${JSON.stringify({
+        frozenCandidateIds,
+        preparedEntryCandidateIds,
+        preparedVectorCandidateIds,
+      })}`);
+    }
+    const auditableRows = candidates.map(candidate => {
+      const entry = entryByCandidate.get(candidate.candidateId);
+      const vector = vectorByCandidate.get(candidate.candidateId);
+      const hardExclusions = Array.isArray(vector?.hardExclusionCodes)
+        ? vector.hardExclusionCodes
+        : [];
+      return {
+        candidate,
+        entry,
+        vector,
+        proof: null,
+        playerLocked: false,
+        providerRejectionCode: entry?.hardInvalid === true
+          ? 'R9V2_MECHANICAL_CANDIDATE_INVALID'
+          : hardExclusions[0] || '',
+      };
+    });
+    const locked = request?.playerLockedDeclaration || null;
+    let rows;
+    if (locked) {
+      const lockedRow = auditableRows.find(row =>
+        row.entry?.hardInvalid !== true &&
+        matchesPlayerLockedDeclaration(
+          row.candidate,
+          locked,
+          request.visibleWorld,
+        )
+      );
+      if (!lockedRow) throw new Error('R9V2_PLAYER_LOCKED_CANDIDATE_MISSING');
+      lockedRow.playerLocked = true;
+      // manual只允许机械合法的玩家动作，内核无法估值的部分记录为REVIEW警告。
+      lockedRow.providerRejectionCode = '';
+      rows = [lockedRow];
+    } else {
+      rows = auditableRows.filter(row => !row.providerRejectionCode);
+      const opportunity = request?.actionOpportunity || {};
+      const counterSourceId = String(opportunity?.sourceActorId || '').trim();
+      const counterWindow = counterSourceId && (
+        String(opportunity?.role || '').trim().toUpperCase() === 'COUNTER' ||
+        opportunity?.counterWindow === true
+      );
+      if (counterWindow) {
+        const eligible = rows.filter(row =>
+          row.entry?.targetIds?.includes(counterSourceId),
+        );
+        if (eligible.length) {
+          const eligibleIds = new Set(
+            eligible.map(row => row.candidate.candidateId),
+          );
+          auditableRows.forEach(row => {
+            if (!eligibleIds.has(row.candidate.candidateId) && !row.providerRejectionCode) {
+              row.providerRejectionCode = 'R9V2_COUNTER_WINDOW_INELIGIBLE';
+            }
+          });
+          rows = eligible;
+        }
+      }
+    }
+    if (!rows.length) throw new Error('R9V2_ALL_CANDIDATES_REJECTED');
+    const paretoRows = locked
+      ? rows
+      : rows.filter(row =>
+          String(row.vector?.paretoWitness?.kind || '').trim() === 'NON_DOMINATED',
+        );
+    if (!paretoRows.length) throw new Error('R9V2_PARETO_FRONT_EMPTY');
+    const formalRankDimensions = [
+      ['objectiveUtilityHEPP', 1],
+      ['worstTailUtilityHEPP', 1],
+      ['survivalUtilityHEPP', 1],
+      ['assetReserveHEPP', 1],
+      ['informationValueHEPP', 1],
+      ['discardedOverkillPP', -1],
+    ];
+    const formalValue = (row, field) => {
+      const value = Number(row?.vector?.paretoDimensions?.[field]);
+      if (!Number.isFinite(value)) {
+        throw new Error(`R9V2_NON_FINITE_RANK_VALUE:${row?.candidate?.candidateId || ''}:${field}`);
+      }
+      return Object.is(value, -0) ? 0 : value;
+    };
+    const formalRankCompare = (left, right) => {
+      for (const [field, direction] of formalRankDimensions) {
+        const delta = formalValue(left, field) - formalValue(right, field);
+        if (delta !== 0) return direction > 0 ? -delta : delta;
+      }
+      return r9v2TargetCompareUtf16(
+        left?.candidate?.candidateId,
+        right?.candidate?.candidateId,
+      );
+    };
+    const ordered = paretoRows.slice().sort(formalRankCompare);
+    const winner = ordered[0];
+    const structurallyDifferent = (left, right) =>
+      String(left?.candidate?.declaration?.actionId || '').trim() !==
+        String(right?.candidate?.declaration?.actionId || '').trim() ||
+      JSON.stringify(left?.entry?.targetIds || []) !==
+        JSON.stringify(right?.entry?.targetIds || []) ||
+      (left?.entry?.resourcePotentialOnly === true) !==
+        (right?.entry?.resourcePotentialOnly === true);
+    const normalizedL1Distance = (row, pool) => {
+      let distance = 0;
+      for (const [field] of formalRankDimensions) {
+        const values = pool.map(item => formalValue(item, field));
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        const span = maximum - minimum;
+        if (span === 0) continue;
+        const current = formalValue(row, field);
+        const oriented = field === 'discardedOverkillPP'
+          ? (maximum - current) / span
+          : (current - minimum) / span;
+        if (!Number.isFinite(oriented)) {
+          throw new Error(`R9V2_NON_FINITE_L1_DISTANCE:${row?.candidate?.candidateId || ''}:${field}`);
+        }
+        distance += Math.abs(oriented);
+      }
+      return distance;
+    };
+    const alternative1 = locked
+      ? null
+      : ordered.find(row => row !== winner && structurallyDifferent(row, winner)) || null;
+    const alternativePool = ordered.filter(row => row !== winner && row !== alternative1);
+    const alternative2 = !locked && alternativePool.length
+      ? alternativePool.slice().sort((left, right) =>
+          normalizedL1Distance(right, ordered) - normalizedL1Distance(left, ordered) ||
+          formalRankCompare(left, right),
+        )[0]
+      : null;
+    const alternativeRows = [alternative1, alternative2].filter(Boolean);
+    const requiredProofIdSet = new Set([
+      winner,
+      ...alternativeRows,
+    ].map(row => row.candidate.candidateId));
+    const requiredProofCandidateIds = [...requiredProofIdSet]
+      .sort(r9v2TargetCompareUtf16);
+    const proofByCandidate = new Map();
+    for (const row of [winner, ...alternativeRows]) {
+      const kernelProof = kernel.materializeProof(
+        prepared.session,
+        row.candidate.candidateId,
+      );
+      row.proof = r9v2TargetKernelProof(
+        kernelProof,
+        row.entry,
+        row.vector?.hardExclusionCodes || [],
+      );
+      proofByCandidate.set(row.candidate.candidateId, row.proof);
+    }
+    const auditRow = row => {
+      const proof = proofByCandidate.get(row.candidate.candidateId);
+      const vector = row.vector;
+      const audit = {
+        candidateId: row.candidate.candidateId,
+        actionKind: row.entry?.actionKind || '',
+        actorId: request.actorId,
+        targetIds: cloneValue(row.entry?.targetIds || []),
+        declaration: {
+          actionId: String(
+            row.candidate?.declaration?.actionId ||
+            row.candidate?.candidateId ||
+            '',
+          ).trim(),
+          actorId: request.actorId,
+          actionKind: row.entry?.actionKind || '',
+          targetIds: cloneValue(row.entry?.targetIds || []),
+        },
+        objectiveUtility: Number(vector.objectiveUtilityHEPP || 0),
+        objectiveUtilityHEPP: Number(vector.objectiveUtilityHEPP || 0),
+        vector: cloneValue({
+          ...vector,
+          assetReserve: Number(vector.assetReserveHEPP || 0),
+          survivalLowerBound: Number(vector.survivalUtilityHEPP || 0),
+          worstTailLossHEPP: -Number(vector.worstTailUtilityHEPP || 0),
+          discardedOverkillPP: Number(
+            vector.paretoDimensions?.discardedOverkillPP,
+          ),
+        }),
+        mechanicObservations: cloneValue(row.entry?.mechanicObservations || []),
+        rejectionCode: row.providerRejectionCode,
+        classification: row.providerRejectionCode ? 'HARD_INVALID' : 'VIABLE',
+        pareto: locked
+          ? String(row.vector?.paretoWitness?.kind || '').trim() ===
+            'NON_DOMINATED'
+          : paretoRows.includes(row),
+        paretoWitness: cloneValue(vector.paretoWitness || null),
+        selected: row === winner,
+      };
+      if (proof) audit.candidateValueProof = cloneValue(proof);
+      return audit;
+    };
+    const selectedProof = proofByCandidate.get(winner.candidate.candidateId);
+    const selectedDeclaration = cloneValue(winner.candidate.declaration || {});
+    const counterDecline = winner.candidate.counterDeclineFallback === true;
+    const actionName = counterDecline
+      ? '放弃反击'
+      : String(
+          selectedDeclaration?.skill?.name ||
+          selectedDeclaration?.skill?.魂技名 ||
+          selectedDeclaration?.actionKind ||
+          '',
+        ).trim();
+    const selectionMode = winner.playerLocked
+      ? 'PLAYER_LOCKED'
+      : counterDecline
+        ? 'R9V2_COUNTER_DECLINE'
+        : 'R9V2_TARGET_KERNEL_PARETO';
+    return {
+      schemaVersion: 'DecisionAuditV2',
+      decisionEngine: 'R9V2_TARGET',
+      actorId: request.actorId,
+      selected: {
+        candidateId: winner.candidate.candidateId,
+        declaration: selectedDeclaration,
+        selectedActionName: actionName,
+        selectionMode,
+        playerLocked: winner.playerLocked === true,
+        ...(counterDecline ? { counterDeclineFallback: true } : {}),
+        objectiveUtility: selectedProof.objectiveUtilityHEPP,
+        objectiveUtilityHEPP: selectedProof.objectiveUtilityHEPP,
+        goalUtilityDeltaHEPP: selectedProof.goalUtilityDeltaHEPP,
+        informationValueHEPP: selectedProof.informationValueHEPP,
+        vector: cloneValue(selectedProof.vector),
+        mechanicObservations: cloneValue(winner.entry?.mechanicObservations || []),
+        causalValueFacts: cloneValue(selectedProof.causalValueFacts),
+        candidateValueProof: cloneValue(selectedProof),
+      },
+      scoreAudit: auditableRows.map(auditRow),
+      candidateAudit: auditableRows.map(auditRow),
+      alternatives: alternativeRows.map(auditRow),
+      candidateCount: candidates.length,
+      frozenCandidateIds: Object.freeze([...frozenCandidateIds]),
+      preparedEntryCandidateIds: Object.freeze(
+        [...preparedEntryCandidateIds].sort(r9v2TargetCompareUtf16),
+      ),
+      preparedProofCandidateIds: Object.freeze([...requiredProofCandidateIds]),
+      requiredProofCandidateIds: Object.freeze([...requiredProofCandidateIds]),
+      materializedProofCandidateIds: Object.freeze([...requiredProofCandidateIds]),
+      vectorCoverage: Object.freeze({
+        status: 'CLOSED',
+        frozenCount: frozenCandidateIds.length,
+        observedCount: auditableRows.length,
+        preparedEntryCount: preparedEntryCandidateIds.length,
+      }),
+      proofCoverage: Object.freeze({
+        status: 'REQUIRED_SUBSET_CLOSED',
+        requiredCount: requiredProofCandidateIds.length,
+        materializedCount: requiredProofCandidateIds.length,
+      }),
+      candidateCoverage: Object.freeze({
+        status: 'CLOSED',
+        frozenCount: frozenCandidateIds.length,
+        preparedEntryCount: preparedEntryCandidateIds.length,
+        preparedProofCount: requiredProofCandidateIds.length,
+      }),
+      paretoCount: paretoRows.length,
+      beliefState: cloneValue(request?.beliefState || {}),
+      strategyMemory: cloneValue(request?.strategyMemory || {}),
+      strategicSignature: `r9v2:${request.requestHash}`,
+      stateCapacityTotal: Math.max(0, Number(selectedProof.objectiveUtilityHEPP || 0)),
+      beliefRevision: request.evaluationContext.beliefRevision,
+      pendingStrategicEffect:
+        Number(selectedProof.vector?.actionPoolDeltaTotal || 0) !== 0,
+      decisionProfile: {
+        engine: 'R9V2_TARGET',
+        slice: 'TARGET_KERNEL_V2',
+        selectionMode,
+        informationProjectionStatus: prepared.informationProjectionStatus,
+        workload: cloneValue(prepared.workload),
+        rebuiltUnitIds: cloneValue(prepared.rebuiltUnitIds),
+        unsupportedOutcomeKinds: cloneValue(selectedProof.unsupportedOutcomeKinds),
+      },
+    };
+  }
+
   function runR9v2PreparedProvider(
     request = {},
     providerId = 'r9v2-shadow',
@@ -44889,6 +46061,9 @@
     }
     if (targetKernel && prepared.kernelMode !== 'TARGET') {
       throw new Error('R9V2_TARGET_KERNEL_SLICE_MISSING');
+    }
+    if (targetKernel && prepared.schemaVersion === 'PreparedR9v2TargetKernelSliceV2') {
+      return r9v2TargetKernelProvider(request, prepared);
     }
     const candidates = request.frozenCandidates || [];
     if (!candidates.length) {
@@ -45625,7 +46800,6 @@
     r8: request => runR8Provider(request),
     r9: request => runR9Provider(request),
     'r9v2-shadow': request => runR9v2ShadowProvider(request),
-    r9v2: request => runR9v2TargetProvider(request),
   });
 
   function runProvider(input = {}) {
@@ -45820,6 +46994,7 @@
     r8NormalizeUtilities,
     selectR8Candidate,
     runR8Provider,
+    runR9v2TargetProviderForTest: request => runR9v2TargetProvider(request),
     prepareDecisionRequest,
     runProvider,
     providerIds: Object.freeze(Object.keys(providerRegistry)),

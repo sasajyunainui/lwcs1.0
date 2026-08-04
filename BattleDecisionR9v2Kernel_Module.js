@@ -157,7 +157,8 @@
       seen.add(sourceFactId);
       const causalOwnerType = stringValue(fact.causalOwnerType, 'R9V2_KERNEL_CAUSAL_OWNER_MISSING');
       if (!OWNER_TYPES.has(causalOwnerType)) fatal('R9V2_KERNEL_UNKNOWN_CAUSAL_OWNER', causalOwnerType);
-      return freeze({
+      const normalized = {
+        ...clone(fact),
         componentCode: stringValue(fact.componentCode || 'unassigned', 'R9V2_KERNEL_COMPONENT_CODE_MISSING'),
         causalOwnerType,
         valueHEPP: finite(fact.valueHEPP, 'R9V2_KERNEL_CAUSAL_VALUE_NON_FINITE', sourceFactId),
@@ -165,7 +166,65 @@
         sourceFactId,
         targetUnitId: stringValue(fact.targetUnitId, 'R9V2_KERNEL_CAUSAL_TARGET_MISSING'),
         sequence: finite(fact.sequence ?? 0, 'R9V2_KERNEL_CAUSAL_SEQUENCE_NON_FINITE', sourceFactId),
-      });
+      };
+      if (Object.hasOwn(fact, 'sourceOutcomeKind')) {
+        normalized.sourceOutcomeKind = stringValue(
+          fact.sourceOutcomeKind,
+          'R9V2_KERNEL_CAUSAL_OUTCOME_KIND_MISSING',
+        );
+      }
+      for (const key of ['sourceActorId', 'sourceActionId', 'effectInstanceId']) {
+        if (Object.hasOwn(fact, key)) {
+          normalized[key] = stringValue(
+            fact[key],
+            `R9V2_KERNEL_CAUSAL_${key.toUpperCase()}_MISSING`,
+          );
+        }
+      }
+      for (const key of [
+        'sourceActorIds',
+        'sourceDescriptorIds',
+        'terminalAfterEffectInstanceIds',
+        'terminalAtomicKeys',
+        'candidateTerminalAfterEffectInstanceIds',
+        'candidateTerminalAtomicKeys',
+      ]) {
+        if (Object.hasOwn(fact, key)) {
+          if (!Array.isArray(fact[key])) {
+            fatal('R9V2_KERNEL_CAUSAL_METADATA_NOT_ARRAY', `${candidateId}:${key}`);
+          }
+          normalized[key] = Object.freeze(
+            fact[key].map(value => String(value ?? '').trim()).filter(Boolean),
+          );
+        }
+      }
+      if (Object.hasOwn(fact, 'terminalProbability')) {
+        normalized.terminalProbability = finite(
+          fact.terminalProbability,
+          'R9V2_KERNEL_CAUSAL_TERMINAL_PROBABILITY_NON_FINITE',
+          sourceFactId,
+        );
+      }
+      for (const key of [
+        'terminalAfterEffectInstanceId',
+        'terminalEventId',
+        'terminalAtomicKey',
+        'candidateTerminalAfterEffectInstanceId',
+        'candidateTerminalAtomicKey',
+      ]) {
+        if (Object.hasOwn(fact, key)) {
+          normalized[key] = String(fact[key] ?? '').trim();
+        }
+      }
+      for (const key of ['terminalPaths', 'candidateTerminalPaths']) {
+        if (Object.hasOwn(fact, key)) {
+          if (!Array.isArray(fact[key])) {
+            fatal('R9V2_KERNEL_CAUSAL_METADATA_NOT_ARRAY', `${candidateId}:${key}`);
+          }
+          normalized[key] = clone(fact[key]);
+        }
+      }
+      return freeze(normalized);
     }));
   }
 

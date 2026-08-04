@@ -119,6 +119,16 @@ export function loadBattleSandbox(options = {}) {
   sandbox.globalThis = sandbox;
   sandbox.self = sandbox;
   vm.createContext(sandbox);
+  if (options.includeTargetKernel === true) {
+    vm.runInContext(
+      fs.readFileSync(
+        path.join(repoRoot, 'BattleDecisionR9v2Kernel_Module.js'),
+        'utf8',
+      ),
+      sandbox,
+      { filename: 'BattleDecisionR9v2Kernel_Module.js' },
+    );
+  }
   [
     'LibraryData_Runtime.js',
     'CharacterLibrary.js',
