@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "M2K13TargetKernelPerformanceGateV1",
+  "status": "PASSED",
+  "scope": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY",
+  "formalRuntimeTransaction": "NOT_MEASURED_BEFORE_M4",
+  "formalProvider": "r8",
+  "targetProvider": "r9v2_unregistered",
+  "sevenVsSevenTimeoutPolicyMs": 12000,
+  "measurements": [
+    {
+      "id": "cold-single-decision",
+      "target": "<=800ms",
+      "result": {
+        "schemaVersion": "M2K13TargetKernelPerformanceWorkerV1",
+        "status": "COMPLETED",
+        "caseId": "duel_overmatch_lethal",
+        "rounds": 1,
+        "decisionCount": 1,
+        "decision": {
+          "count": 1,
+          "minMs": 21.54400000000001,
+          "medianMs": 21.54400000000001,
+          "p95Ms": 21.54400000000001,
+          "maxMs": 21.54400000000001
+        },
+        "totalMs": 21.723900000000015,
+        "scope": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY"
+      },
+      "gate": {
+        "status": "PASSED",
+        "observedMs": 21.723900000000015,
+        "targetMs": 800
+      }
+    },
+    {
+      "id": "twenty-four-decisions",
+      "target": "<=1200ms-total",
+      "result": {
+        "schemaVersion": "M2K13TargetKernelPerformanceWorkerV1",
+        "status": "COMPLETED",
+        "caseId": "duel_overmatch_lethal",
+        "rounds": 24,
+        "decisionCount": 24,
+        "decision": {
+          "count": 24,
+          "minMs": 1.015199999999993,
+          "medianMs": 1.557299999999998,
+          "p95Ms": 13.193699999999978,
+          "maxMs": 23.098299999999995
+        },
+        "totalMs": 69.76339999999999,
+        "scope": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY"
+      },
+      "gate": {
+        "status": "PASSED",
+        "observedMs": 69.76339999999999,
+        "targetMs": 1200
+      }
+    },
+    {
+      "id": "three-v-three-three-rounds",
+      "target": "<=6000ms-total",
+      "result": {
+        "schemaVersion": "M2K13TargetKernelPerformanceWorkerV1",
+        "status": "COMPLETED",
+        "caseId": "team_focus_without_overkill",
+        "rounds": 3,
+        "decisionCount": 18,
+        "decision": {
+          "count": 18,
+          "minMs": 1.816000000000031,
+          "medianMs": 2.9972999999999956,
+          "p95Ms": 63.8193,
+          "maxMs": 63.8193
+        },
+        "totalMs": 179.6096,
+        "scope": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY"
+      },
+      "gate": {
+        "status": "PASSED",
+        "observedMs": 179.6096,
+        "targetMs": 6000
+      }
+    },
+    {
+      "id": "raid_control_heavy-five-round-scout",
+      "target": "<=10000ms-single-sample",
+      "result": {
+        "schemaVersion": "M2K13TargetKernelPerformanceWorkerV1",
+        "status": "COMPLETED",
+        "caseId": "raid_control_heavy",
+        "rounds": 5,
+        "decisionCount": 70,
+        "decision": {
+          "count": 70,
+          "minMs": 2.404600000000073,
+          "medianMs": 5.296799999999848,
+          "p95Ms": 27.4144,
+          "maxMs": 226.3648
+        },
+        "totalMs": 1095.8451,
+        "scope": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY"
+      },
+      "gate": {
+        "status": "PASSED",
+        "observedMs": 1095.8451,
+        "targetMs": 10000
+      }
+    },
+    {
+      "id": "raid_summon_heavy-five-round-scout",
+      "target": "<=10000ms-single-sample",
+      "result": {
+        "schemaVersion": "M2K13TargetKernelPerformanceWorkerV1",
+        "status": "COMPLETED",
+        "caseId": "raid_summon_heavy",
+        "rounds": 5,
+        "decisionCount": 70,
+        "decision": {
+          "count": 70,
+          "minMs": 1.958699999999908,
+          "medianMs": 5.2823000000000775,
+          "p95Ms": 25.375499999999988,
+          "maxMs": 218.60530000000003
+        },
+        "totalMs": 930.3825999999999,
+        "scope": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY"
+      },
+      "gate": {
+        "status": "PASSED",
+        "observedMs": 930.3825999999999,
+        "targetMs": 10000
+      }
+    },
+    {
+      "id": "raid_balanced-five-round-scout",
+      "target": "<=10000ms-single-sample",
+      "result": {
+        "schemaVersion": "M2K13TargetKernelPerformanceWorkerV1",
+        "status": "COMPLETED",
+        "caseId": "raid_balanced",
+        "rounds": 5,
+        "decisionCount": 70,
+        "decision": {
+          "count": 70,
+          "minMs": 2.378900000000044,
+          "medianMs": 5.13900000000001,
+          "p95Ms": 22.37790000000001,
+          "maxMs": 188.4773
+        },
+        "totalMs": 878.3214,
+        "scope": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY"
+      },
+      "gate": {
+        "status": "PASSED",
+        "observedMs": 878.3214,
+        "targetMs": 10000
+      }
+    }
+  ],
+  "sourceHashes": {
+    "decision": "2135d8ea298888729e79ecdf6b657b2db317585e73b73d377f8bf3f0547d7bb9",
+    "kernel": "4ce4ab6eadb81bc72edb6160dcee06b610b284a09dbbbe428c3bd6cca38e2157",
+    "harness": "bfd429bcbd9b6171ad5a1b42543aa5ee8e45b99878055a104959dcbdb1c33dbf"
+  }
+}

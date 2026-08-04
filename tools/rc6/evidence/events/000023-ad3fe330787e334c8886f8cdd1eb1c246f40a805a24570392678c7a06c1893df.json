@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 23,
+  "previousEventHash": "a0dd30cf5402ef0bbf2158734fdf3b5e4ac29a1c6418b05bd254a036214f1787",
+  "milestoneId": "M3",
+  "taskId": "M3-B01",
+  "eventType": "MILESTONE_STARTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "2135d8ea298888729e79ecdf6b657b2db317585e73b73d377f8bf3f0547d7bb9",
+    "BattleRuntime_Module.js": "b1827f1b104d24b245c9966b61058255c446a04553ee57588a92b67cb2c59561",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "formalProvider": "r8",
+    "targetProvider": "r9v2_unregistered_test_registry_only",
+    "fullR8SevenVsSeven": "NOT_RUN",
+    "nextExitCondition": "At least 10 current-hash target behavior facts, target full-transaction cases, and first observed responsibility layer recorded without behavior conclusions prefilled"
+  },
+  "reason": "M2 completed; begin target-kernel behavior evidence using an in-memory r9v2 registry adapter while production registration remains unchanged.",
+  "recordedAt": "2026-08-04T16:02:30.373Z",
+  "repository": {
+    "branch": "master",
+    "head": "15d620906ff392aa17b199b6379ddbdd79275bda"
+  },
+  "eventHash": "ad3fe330787e334c8886f8cdd1eb1c246f40a805a24570392678c7a06c1893df"
+}

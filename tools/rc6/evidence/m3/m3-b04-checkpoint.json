@@ -1,0 +1,940 @@
+{
+  "schemaVersion": "M3B04CheckpointV1",
+  "status": "BLOCKED_INPUT_GAP",
+  "milestoneId": "M3",
+  "taskId": "M3-B04",
+  "formalProvider": "r8",
+  "targetProvider": "r9v2_unregistered_test_registry_only",
+  "checks": {
+    "behaviorOracleCount": 54,
+    "behaviorOracleExpected": 54,
+    "behaviorOracleSmokePassed": 54,
+    "behaviorOracleFailures": [],
+    "referenceCaseCount": 20,
+    "referenceCaseExpected": 20,
+    "referenceCasesPassed": 20,
+    "referenceFailures": [],
+    "componentCount": 23,
+    "componentExpected": 23,
+    "targetFullTransactionCaseCount": 12,
+    "targetFullTransactionExpectedMinimum": 10,
+    "requiredSevenVsSevenCompleted": 5,
+    "requiredSevenVsSevenExpected": 5,
+    "pathCoverage": {
+      "status": "MISSING_FIXTURE",
+      "fixture": null,
+      "observedCount": 0,
+      "expectedCount": 621,
+      "searched": [
+        "tools/rc6/cases/BehaviorPathIndexV1.json",
+        "tools/rc6/cases/BehaviorPathManifestV1.json",
+        "tools/rc6/cases/KernelPathCasesV1.json"
+      ]
+    }
+  },
+  "targetSevenVsSevenEvidence": {
+    "file": "tools/rc6/evidence/m3/b01-target-behavior-v3.json",
+    "sourceHash": "c842898404424e57182b967da02549aab589d97bdeb710fc5481458e1f9d00cc",
+    "cases": [
+      {
+        "caseId": "raid_balanced",
+        "rounds": 5,
+        "decisionCount": 138,
+        "reportProjectionStatus": "PASSED",
+        "reportAuditStatus": "PASSED"
+      },
+      {
+        "caseId": "raid_level_gap",
+        "rounds": 5,
+        "decisionCount": 40,
+        "reportProjectionStatus": "PASSED",
+        "reportAuditStatus": "PASSED"
+      },
+      {
+        "caseId": "raid_control_heavy",
+        "rounds": 5,
+        "decisionCount": 141,
+        "reportProjectionStatus": "PASSED",
+        "reportAuditStatus": "PASSED"
+      },
+      {
+        "caseId": "raid_summon_heavy",
+        "rounds": 5,
+        "decisionCount": 132,
+        "reportProjectionStatus": "PASSED",
+        "reportAuditStatus": "PASSED"
+      },
+      {
+        "caseId": "raid_response_terminal_information",
+        "rounds": 5,
+        "decisionCount": 128,
+        "reportProjectionStatus": "PASSED",
+        "reportAuditStatus": "PASSED"
+      }
+    ]
+  },
+  "referenceRows": [
+    {
+      "caseId": "ref-s1-threshold-truncation",
+      "semanticDomain": "S1",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "threshold-attack"
+    },
+    {
+      "caseId": "ref-s1-first-terminal",
+      "semanticDomain": "S1",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "lethal-first"
+    },
+    {
+      "caseId": "ref-s1-any-all",
+      "semanticDomain": "S1",
+      "phase": "REACTION",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "any-highest"
+    },
+    {
+      "caseId": "ref-s2-opportunity-schedule",
+      "semanticDomain": "S2",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "scheduled-control"
+    },
+    {
+      "caseId": "ref-s2-pass-lost",
+      "semanticDomain": "S2",
+      "phase": "PASS",
+      "mode": "auto",
+      "candidateCount": 3,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "legal-attack"
+    },
+    {
+      "caseId": "ref-s2-resource-order",
+      "semanticDomain": "S2",
+      "phase": "COUNTER",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 1,
+      "paretoCount": 1,
+      "selectedCandidateId": "affordable-response"
+    },
+    {
+      "caseId": "ref-s3-control-overlap",
+      "semanticDomain": "S3",
+      "phase": "REACTION",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "control-route"
+    },
+    {
+      "caseId": "ref-s3-protect-critical",
+      "semanticDomain": "S3",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "protect-ally"
+    },
+    {
+      "caseId": "ref-s3-dodge-counter",
+      "semanticDomain": "S3",
+      "phase": "COUNTER",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "evade-window"
+    },
+    {
+      "caseId": "ref-s4-public-belief",
+      "semanticDomain": "S4",
+      "phase": "REACTION",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 1,
+      "paretoCount": 1,
+      "selectedCandidateId": "public-response"
+    },
+    {
+      "caseId": "ref-s4-information-positive",
+      "semanticDomain": "S4",
+      "phase": "REACTION",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "observe-then-act"
+    },
+    {
+      "caseId": "ref-s4-information-zero",
+      "semanticDomain": "S4",
+      "phase": "REACTION",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "stable-attack"
+    },
+    {
+      "caseId": "ref-s5-dot-hot-expiry",
+      "semanticDomain": "S5",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 1,
+      "paretoCount": 1,
+      "selectedCandidateId": "dot-window"
+    },
+    {
+      "caseId": "ref-s5-summon-host-death",
+      "semanticDomain": "S5",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 3,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "summon-window"
+    },
+    {
+      "caseId": "ref-s5-creation-consumer",
+      "semanticDomain": "S5",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 3,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "create-with-consumer"
+    },
+    {
+      "caseId": "ref-s6-causal-state-owner",
+      "semanticDomain": "S6",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "state-owned"
+    },
+    {
+      "caseId": "ref-s6-causal-action-owner",
+      "semanticDomain": "S6",
+      "phase": "COUNTER",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "pool-owned"
+    },
+    {
+      "caseId": "ref-s6-pareto-hard-exclusion",
+      "semanticDomain": "S6",
+      "phase": "ACTIVE",
+      "mode": "auto",
+      "candidateCount": 2,
+      "eligibleCount": 1,
+      "paretoCount": 1,
+      "selectedCandidateId": "valid-safe"
+    },
+    {
+      "caseId": "ref-manual-locked",
+      "semanticDomain": "S6",
+      "phase": "ACTIVE",
+      "mode": "manual",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "player-choice"
+    },
+    {
+      "caseId": "ref-lost-opportunity",
+      "semanticDomain": "S2",
+      "phase": "LOST",
+      "mode": "auto",
+      "candidateCount": 3,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "fallback"
+    }
+  ],
+  "oracleSmokeRows": [
+    {
+      "oracleId": "oracle:c01_hit_bonus_positive",
+      "caseId": "c01_hit_bonus_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c01_hit_bonus_negative",
+      "caseId": "c01_hit_bonus_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c01_hit_bonus_mutation",
+      "caseId": "c01_hit_bonus_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c02_evasion_reduction_positive",
+      "caseId": "c02_evasion_reduction_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c02_evasion_reduction_negative",
+      "caseId": "c02_evasion_reduction_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c02_evasion_reduction_mutation",
+      "caseId": "c02_evasion_reduction_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c03_defense_positive",
+      "caseId": "c03_defense_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c03_defense_negative",
+      "caseId": "c03_defense_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c03_defense_mutation",
+      "caseId": "c03_defense_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c04_evade_counter_positive",
+      "caseId": "c04_evade_counter_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c04_evade_counter_negative",
+      "caseId": "c04_evade_counter_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c04_evade_counter_mutation",
+      "caseId": "c04_evade_counter_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c05_hard_control_positive",
+      "caseId": "c05_hard_control_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c05_hard_control_negative",
+      "caseId": "c05_hard_control_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c05_hard_control_mutation",
+      "caseId": "c05_hard_control_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c06_control_overlap_positive",
+      "caseId": "c06_control_overlap_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c06_control_overlap_negative",
+      "caseId": "c06_control_overlap_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c06_control_overlap_mutation",
+      "caseId": "c06_control_overlap_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c07_slow_axis_positive",
+      "caseId": "c07_slow_axis_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c07_slow_axis_negative",
+      "caseId": "c07_slow_axis_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c07_slow_axis_mutation",
+      "caseId": "c07_slow_axis_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c08_resource_block_positive",
+      "caseId": "c08_resource_block_positive",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c08_resource_block_negative",
+      "caseId": "c08_resource_block_negative",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c08_resource_block_mutation",
+      "caseId": "c08_resource_block_mutation",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c09_resource_no_consumer_positive",
+      "caseId": "c09_resource_no_consumer_positive",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c09_resource_no_consumer_negative",
+      "caseId": "c09_resource_no_consumer_negative",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c09_resource_no_consumer_mutation",
+      "caseId": "c09_resource_no_consumer_mutation",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c10_resource_consumers_positive",
+      "caseId": "c10_resource_consumers_positive",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c10_resource_consumers_negative",
+      "caseId": "c10_resource_consumers_negative",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c10_resource_consumers_mutation",
+      "caseId": "c10_resource_consumers_mutation",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c11_resource_recovery_positive",
+      "caseId": "c11_resource_recovery_positive",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c11_resource_recovery_negative",
+      "caseId": "c11_resource_recovery_negative",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c11_resource_recovery_mutation",
+      "caseId": "c11_resource_recovery_mutation",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c12_defensive_windows_positive",
+      "caseId": "c12_defensive_windows_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c12_defensive_windows_negative",
+      "caseId": "c12_defensive_windows_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c12_defensive_windows_mutation",
+      "caseId": "c12_defensive_windows_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c13_dot_positive",
+      "caseId": "c13_dot_positive",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c13_dot_negative",
+      "caseId": "c13_dot_negative",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c13_dot_mutation",
+      "caseId": "c13_dot_mutation",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c14_summon_positive",
+      "caseId": "c14_summon_positive",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c14_summon_negative",
+      "caseId": "c14_summon_negative",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c14_summon_mutation",
+      "caseId": "c14_summon_mutation",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c15_information_positive",
+      "caseId": "c15_information_positive",
+      "smokeCaseId": "ref-s4-public-belief",
+      "selectedCandidateId": "public-response",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c15_information_negative",
+      "caseId": "c15_information_negative",
+      "smokeCaseId": "ref-s4-public-belief",
+      "selectedCandidateId": "public-response",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c15_information_mutation",
+      "caseId": "c15_information_mutation",
+      "smokeCaseId": "ref-s4-public-belief",
+      "selectedCandidateId": "public-response",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c16_objectives_positive",
+      "caseId": "c16_objectives_positive",
+      "smokeCaseId": "ref-s1-threshold-truncation",
+      "selectedCandidateId": "threshold-attack",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c16_objectives_negative",
+      "caseId": "c16_objectives_negative",
+      "smokeCaseId": "ref-s1-threshold-truncation",
+      "selectedCandidateId": "threshold-attack",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:c16_objectives_mutation",
+      "caseId": "c16_objectives_mutation",
+      "smokeCaseId": "ref-s1-threshold-truncation",
+      "selectedCandidateId": "threshold-attack",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:x01_resource_recovery_timing_three_factor_1",
+      "caseId": "x01_resource_recovery_timing_three_factor_1",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:x02_slow_axis_duration_three_factor_2",
+      "caseId": "x02_slow_axis_duration_three_factor_2",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:x03_defense_multihit_reflect_three_factor_3",
+      "caseId": "x03_defense_multihit_reflect_three_factor_3",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:x04_control_ally_dot_three_factor_4",
+      "caseId": "x04_control_ally_dot_three_factor_4",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:x05_summon_host_deadline_three_factor_5",
+      "caseId": "x05_summon_host_deadline_three_factor_5",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    },
+    {
+      "oracleId": "oracle:x06_antiheal_food_crisis_three_factor_6",
+      "caseId": "x06_antiheal_food_crisis_three_factor_6",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ]
+    }
+  ],
+  "sourceHashes": {
+    "tools/rc6/contracts/BehaviorPlanningContractV1.json": "5dd857f3585eaeefc59367ed526d8a5d4361a2ec594585d2a8a21c6abc060986",
+    "tools/rc6/contracts/KernelComponentRegistryV1.json": "fe809efa3596422a8bf0395c58c44a00cf7c6894ab812def8761b12f14acf07d",
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "42343f9f06f9435634f9ff61d861082a4042d36767ec208381cc501067c4db5d",
+    "tools/rc6/cases/BehaviorOracleV2IndexV1.json": "cf0b9b7652f659447b703b7ddf7fad109af9279fc5dd6f405d8647b265c4aae4",
+    "tools/rc6/harness/run-m3-b04-checkpoint.mjs": "b4401f75fa6b596edac9ec6fa58e9fb5e28f9209df1ff6ed12d411ae971111b4"
+  },
+  "blockers": [
+    "No current tracked BehaviorPathIndexV1/BehaviorPathManifestV1/KernelPathCasesV1 fixture exists.",
+    "Historical R8 artifacts containing the number 621 are not accepted as R9v2 path coverage.",
+    "Do not mark M3 complete until a source-owned 621-path fixture or an explicit contract correction exists."
+  ]
+}

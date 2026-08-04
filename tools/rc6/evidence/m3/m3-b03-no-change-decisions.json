@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "M3B03RootCauseTriageV1",
+  "milestoneId": "M3",
+  "taskId": "M3-B03",
+  "status": "NO_PRODUCTION_CHANGE",
+  "source": "tools/rc6/evidence/m3/m3-b02-observation-index-v2.json",
+  "clusters": [
+    {
+      "clusterId": "B02-C01",
+      "classification": "REPORT_ONLY",
+      "rootCauseStatus": "DEFERRED_TO_M4",
+      "responsibilityChain": ["BattleReport.buildDecisionTimeExplanations", "BattleReport.auditProjection"],
+      "noChangeDecision": true,
+      "reason": "The observed alternative and comparison text is generated after the target decision and does not establish an engine behavior defect. Fixing it in Decision or Runtime would mask the actual projection owner."
+    },
+    {
+      "clusterId": "B02-C02",
+      "classification": "REPORT_ONLY",
+      "rootCauseStatus": "DEFERRED_TO_M4",
+      "responsibilityChain": ["BattleReport.numericTokens", "BattleReport PLAYER display projection"],
+      "noChangeDecision": true,
+      "reason": "Source bindings exist in the current DTO; precision and player-facing labels belong to Report V2. No arithmetic or causal fact should be changed from this observation."
+    }
+  ],
+  "counterexamples": {
+    "kernelCandidateSetChanged": false,
+    "runtimeFactChanged": false,
+    "hiddenBeliefRead": false,
+    "manualLockOverridden": false,
+    "reportProjectionIsFirstObservedLayer": true
+  },
+  "implementation": {
+    "filesChanged": [],
+    "productionCodeChanged": false,
+    "mvuFieldsAdded": false,
+    "nextResponsibleMilestone": "M4"
+  },
+  "exitCondition": "All current B02 clusters have an explicit noChangeDecision or a separate owner; no behavior batch is authorized from these report observations."
+}

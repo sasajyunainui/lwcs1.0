@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 19,
+  "previousEventHash": "2d9a98eea6d875870b7293deeb45270e29de7209f26e40ad4dfffe51dcde1f30",
+  "milestoneId": "M2",
+  "taskId": "M2-K13",
+  "eventType": "SUBTASK_STARTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "2135d8ea298888729e79ecdf6b657b2db317585e73b73d377f8bf3f0547d7bb9",
+    "BattleRuntime_Module.js": "b1827f1b104d24b245c9966b61058255c446a04553ee57588a92b67cb2c59561",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "Cold session, 24 decisions, one-round and three five-round target-kernel measurements with one scout profile on first over-12-second case",
+    "formalProvider": "r8",
+    "targetProvider": "r9v2_unregistered",
+    "fullR8SevenVsSeven": "NOT_RUN"
+  },
+  "reason": "M2-K13 started: target-kernel performance feasibility uses only the new adapter and bounded observation cases; no full 7v7 run before the scout",
+  "recordedAt": "2026-08-04T15:49:09.327Z",
+  "repository": {
+    "branch": "master",
+    "head": "15d620906ff392aa17b199b6379ddbdd79275bda"
+  },
+  "eventHash": "819a03f4d00b0972d34bcfa8ee0f4d72a9b032a83b37b1e3bea3891898e6582d"
+}

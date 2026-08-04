@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 26,
+  "previousEventHash": "ea21cd56300df010ad176aaf1dceeb22a11ed2c2c2fa5f0fc4c441f9a9f34268",
+  "milestoneId": "M3",
+  "taskId": "M3-B02",
+  "eventType": "EVIDENCE_SUPERSEDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "b602f2fd1502820fdbd15fa712d70b4854729a446a81fc088e3c3c988f2e23ff",
+    "BattleRuntime_Module.js": "97302685eb032cd0013f5ad9f896b24f92b430e2e3aeee647914a9d5a0ad1911",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m3-b01-target-behavior.mjs": "78acf981463e7251805d37822c5374f1f047329fbbeb86c4a0ac10b7b19e7788"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "c842898404424e57182b967da02549aab589d97bdeb710fc5481458e1f9d00cc",
+    "008d788b12d8393f21945b9a9c480bc82c1d6803f2dfd9bf7ac8e43f0cf3474e",
+    "9dc1518b93b333d076af55342fac4b28367034ff8adc6d63b08b4dbe43ded1cb"
+  ],
+  "invalidatedObjectHashes": [
+    "5ed308826a8fe031885439c12f6580cb17813ac98cbe7f615937d2bbfd3d9f07",
+    "511fb2e58d7df38125c1ca00db9b86be6eea1286e08ae5f59c092f50e86692f0"
+  ],
+  "details": {
+    "supersededBy": [
+      "tools/rc6/evidence/m3/b01-target-behavior-v3.json",
+      "tools/rc6/evidence/m3/m3-b02-observation-index-v2.json",
+      "tools/rc6/evidence/m3/m3-b01-batch-audit-bundle-v2.json"
+    ],
+    "nextExitCondition": "B02 report and behavior facts classified; no naturalness verdicts prefilled.",
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "Supersede B01 evidence collected before authenticated PLAYER projection and B02 index collected before the flat PLAYER DTO fallback; v3 reads reportAudit.reportDto and stores compact reading facts.",
+  "recordedAt": "2026-08-04T17:58:14.416Z",
+  "repository": {
+    "branch": "master",
+    "head": "b1936b5b6cba3ccd21a19c661345f4444c0fb6ac"
+  },
+  "eventHash": "55cb8bbbc8ee037e6f22b29dbeaeefebb038754011b4033bf10a52e4c58f8a14"
+}

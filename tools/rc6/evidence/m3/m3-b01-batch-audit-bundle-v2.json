@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "BatchAuditBundleV1",
+  "bundleId": "M3-B01-RUNTIME-COUNTER-WITNESS-001-V2",
+  "supersedes": [
+    "tools/rc6/evidence/m3/m3-b01-batch-audit-bundle.json",
+    "tools/rc6/evidence/m3/b01-target-behavior.json"
+  ],
+  "milestoneId": "M3",
+  "taskId": "M3-B01",
+  "status": "ACCEPTED",
+  "decisionType": "KERNEL_IMPLEMENTATION_DEFECT_NOT_CONTRACT_DEFECT",
+  "evidence": {
+    "file": "tools/rc6/evidence/m3/b01-target-behavior-v3.json",
+    "status": "COMPLETED_FACT_CAPTURE",
+    "observationCount": 12,
+    "completedCaseCount": 12,
+    "requiredSevenVsSevenCaseCount": 5,
+    "missingSevenVsSevenFixtures": [],
+    "authenticatedPlayerProjection": "PASSED",
+    "reportAuditPassedCaseCount": 12,
+    "readingDigestIncluded": true,
+    "behaviorConclusion": "NOT_FILLED_IN_B01"
+  },
+  "rootCauseAnalysis": {
+    "schemaVersion": "RootCauseAnalysisV1",
+    "category": "RUNTIME_REALIZATION_DEFECT",
+    "firstDivergenceLayer": "BattleRuntime target DecisionAudit validation",
+    "failingFacts": [
+      { "caseId": "raid_summon_heavy", "rounds": 3, "actionIndex": 100, "candidateId": "谢邂:COUNTER_DECLINE", "rejectionContext": "R9V2_COUNTER_WINDOW_INELIGIBLE", "fatalKind": "R9V2_DOMINATOR_WITNESS_MISSING" },
+      { "caseId": "raid_summon_heavy", "rounds": 3, "actionIndex": 118, "candidateId": "腾腾:COUNTER_DECLINE", "rejectionContext": "R9V2_COUNTER_WINDOW_INELIGIBLE", "fatalKind": "R9V2_DOMINATOR_WITNESS_MISSING" }
+    ],
+    "cause": "The no-Proof Runtime branch required a Pareto witness even after a candidate had been rejected from the active counter-window pool. Such a candidate has no valid dominator in that pool.",
+    "excludedAlternatives": ["candidate enumeration defect", "kernel value defect", "Report projection defect", "hidden information leak"]
+  },
+  "semanticDecision": {
+    "schemaVersion": "BehaviorSemanticDecisionV2",
+    "decisionId": "M3-B01-RUNTIME-REJECTED-CANDIDATE-WITNESS-001",
+    "supersedes": [],
+    "contractChange": false,
+    "rule": "A rejected target-provider candidate without required Proof does not require a Pareto witness. Required Proof remains fatal when missing, and non-rejected candidates retain witness validation.",
+    "candidateSetUnchanged": true,
+    "probabilityBranchesUnchanged": true,
+    "roundSemanticsUnchanged": true
+  },
+  "changeImpact": {
+    "schemaVersion": "ChangeImpactManifestV1",
+    "changedFiles": ["BattleRuntime_Module.js"],
+    "changedBranch": "target DecisionAudit validation no-Proof branch",
+    "affectedCondition": "non-empty row.rejectionCode and absent candidateValueProof",
+    "revalidatedCaseCount": 12,
+    "revalidatedSevenVsSevenCaseCount": 5,
+    "reportProjectionCodeChanged": false,
+    "decisionCodeChangedAfterRootFix": false,
+    "performanceAssessment": "DEFERRED_TO_M5"
+  },
+  "implementationSelfAudit": {
+    "schemaVersion": "ImplementationSelfAuditV1",
+    "requiredProofMissingStillFatal": true,
+    "nonRejectedWitnessStillValidated": true,
+    "candidateEnumerationReduced": false,
+    "probabilityBranchReduced": false,
+    "hiddenInformationRead": false,
+    "r8FormalProviderChanged": false,
+    "mvuSchemaChanged": false,
+    "syntaxAndDiffChecks": "PASS",
+    "utf8AndMojibakeScan": "PASS",
+    "raidSummonThreeRound": "PASS",
+    "raidSummonFiveRound": "PASS",
+    "b01CurrentHash": "12/12 PASS"
+  },
+  "resultAnalysis": {
+    "schemaVersion": "BatchResultAnalysisV1",
+    "result": "ACCEPT",
+    "newConfirmedDefect": false,
+    "newConfirmedUnnatural": "NOT_ASSESSED",
+    "reportFindings": "Recorded separately as M3-B02 Report-only clusters; no Report code changed in this batch.",
+    "nextTask": "M3-B02",
+    "nextExitCondition": "Current-hash PLAYER reading facts classified without prefilled naturalness verdicts."
+  },
+  "sourceHashes": {
+    "BattleDecision_Module.js": "b602f2fd1502820fdbd15fa712d70b4854729a446a81fc088e3c3c988f2e23ff",
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleRuntime_Module.js": "97302685eb032cd0013f5ad9f896b24f92b430e2e3aeee647914a9d5a0ad1911",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "tools/rc6/harness/run-m3-b01-target-behavior.mjs": "78acf981463e7251805d37822c5374f1f047329fbbeb86c4a0ac10b7b19e7788",
+    "tools/battle_r63_manual_cases.mjs": "a0aab43948c1aa356cb35d03944a2768c338a63f4a0b9225e50fc8fbb63d44e3"
+  }
+}

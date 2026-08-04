@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "M2K12TargetKernelAdapterGateV1",
+  "status": "PASSED",
+  "kernelVersion": "9v2-kernel-1.0.0",
+  "decisionVersion": "7.3-R6.3-decision-2",
+  "caseCount": 4,
+  "rows": [
+    {
+      "caseId": "duel_overmatch_lethal",
+      "candidateCount": 4,
+      "selectedCandidateId": "云冥:DEFEND",
+      "requiredProofCandidateIds": [
+        "云冥:DEFEND",
+        "云冥:EVADE",
+        "云冥:PASS_OPPORTUNITY"
+      ],
+      "nonRequiredVectorCount": 1,
+      "unsupportedCandidateCount": 1,
+      "slice": "TARGET_KERNEL_V2"
+    },
+    {
+      "caseId": "duel_peer_unknown_probe",
+      "candidateCount": 10,
+      "selectedCandidateId": "谢邂:DEFEND",
+      "requiredProofCandidateIds": [
+        "谢邂:DEFEND",
+        "谢邂:EVADE",
+        "谢邂:PASS_OPPORTUNITY"
+      ],
+      "nonRequiredVectorCount": 7,
+      "unsupportedCandidateCount": 7,
+      "slice": "TARGET_KERNEL_V2"
+    },
+    {
+      "caseId": "team_focus_without_overkill",
+      "candidateCount": 10,
+      "selectedCandidateId": "唐舞麟:DEFEND",
+      "requiredProofCandidateIds": [
+        "唐舞麟:DEFEND",
+        "唐舞麟:EVADE",
+        "唐舞麟:PASS_OPPORTUNITY"
+      ],
+      "nonRequiredVectorCount": 7,
+      "unsupportedCandidateCount": 7,
+      "slice": "TARGET_KERNEL_V2"
+    },
+    {
+      "caseId": "team_control_overlap",
+      "candidateCount": 8,
+      "selectedCandidateId": "古月:DEFEND",
+      "requiredProofCandidateIds": [
+        "古月:DEFEND",
+        "古月:EVADE",
+        "古月:PASS_OPPORTUNITY"
+      ],
+      "nonRequiredVectorCount": 5,
+      "unsupportedCandidateCount": 5,
+      "slice": "TARGET_KERNEL_V2"
+    }
+  ],
+  "targetKernelUsed": true,
+  "fieldLevelReferenceAB": true,
+  "targetAdapterSourceGuard": true,
+  "oldShadowProofPathNotUsedByTargetSlice": true,
+  "harnessHash": "e5eedf468f95efa37497619ae93b082f174cf71c586e5d293df95d43b8ba7a7d",
+  "decisionHash": "b7a65a82e95fe31f95b6cc4a08f01223801fbc5c126a9e776f21c3aaa1346c73",
+  "kernelHash": "4ce4ab6eadb81bc72edb6160dcee06b610b284a09dbbbe428c3bd6cca38e2157"
+}

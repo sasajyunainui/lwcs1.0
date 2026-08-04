@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 20,
+  "previousEventHash": "819a03f4d00b0972d34bcfa8ee0f4d72a9b032a83b37b1e3bea3891898e6582d",
+  "milestoneId": "M2",
+  "taskId": "M2-K13",
+  "eventType": "SUBTASK_GATE_FAILED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "2135d8ea298888729e79ecdf6b657b2db317585e73b73d377f8bf3f0547d7bb9",
+    "BattleRuntime_Module.js": "b1827f1b104d24b245c9966b61058255c446a04553ee57588a92b67cb2c59561",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k13-target-performance.mjs": "f8ae68f528ea4acd652585c6e69db500aecc74eab6f95e78013d94a909092d3a"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "5edc423281ad348cf52190a99a7feebb537245a1a92be7f60076fdc3e0d4bbad"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "gate": "R9V2_TARGET_KERNEL_SCOUT_OVER_TARGET",
+    "scope": "PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY",
+    "formalRuntimeTransaction": "NOT_MEASURED_BEFORE_M4",
+    "observedMs": {
+      "raid_control_heavy": 11442.3106,
+      "raid_summon_heavy": 10599.0613,
+      "raid_balanced": 9845.9311
+    },
+    "failedCases": [
+      "raid_control_heavy",
+      "raid_summon_heavy"
+    ],
+    "coldSingleMs": 23.65,
+    "twentyFourDecisionMs": 107.6379,
+    "threeVThreeThreeRoundsMs": 449.1136,
+    "nextExitCondition": "One bounded hotspot audit of the target-kernel selection path; identify the largest end-to-end removable block before any micro-optimization"
+  },
+  "reason": "M2-K13 strict target classification fixed; target selection chain is near but not within the 10s gate in two raid cases, so M2 remains open without declaring an architecture block.",
+  "recordedAt": "2026-08-04T15:55:41.279Z",
+  "repository": {
+    "branch": "master",
+    "head": "15d620906ff392aa17b199b6379ddbdd79275bda"
+  },
+  "eventHash": "e7640c2c99af9de19db94879cfc7e74b9d910c916409bf967ac47a9ef23d50df"
+}

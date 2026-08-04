@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 25,
+  "previousEventHash": "2b6dbc43751bad3d98eb63614722b241e23b9cb254c704c750a6a7e2158bce7d",
+  "milestoneId": "M3",
+  "taskId": "M3-B02",
+  "eventType": "SUBTASK_STARTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "b602f2fd1502820fdbd15fa712d70b4854729a446a81fc088e3c3c988f2e23ff",
+    "BattleRuntime_Module.js": "97302685eb032cd0013f5ad9f896b24f92b430e2e3aeee647914a9d5a0ad1911",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m3-b01-target-behavior.mjs": "e826f1e4992d2f9bb49cc2dee98db7e9e6ac2f802b2fae384075ed450a08e320"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "At least 10 current-hash PLAYER facts have been read; each observation is classified without prefilled naturalness conclusions and responsibility clusters are capped at six.",
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "M3-B01 accepted; begin B02 first reading and root-cause clustering on the current target-provider behavior evidence.",
+  "recordedAt": "2026-08-04T17:36:16.188Z",
+  "repository": {
+    "branch": "master",
+    "head": "b1936b5b6cba3ccd21a19c661345f4444c0fb6ac"
+  },
+  "eventHash": "ea21cd56300df010ad176aaf1dceeb22a11ed2c2c2fa5f0fc4c441f9a9f34268"
+}
