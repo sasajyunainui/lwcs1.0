@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "KernelReferenceCaseV1.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "caseId",
+    "semanticDomain",
+    "mode",
+    "phase",
+    "candidates",
+    "expected"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "KernelReferenceCaseV1"
+    },
+    "caseId": {
+      "type": "string"
+    },
+    "semanticDomain": {
+      "enum": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "auto",
+        "manual"
+      ]
+    },
+    "phase": {
+      "enum": [
+        "ACTIVE",
+        "REACTION",
+        "COUNTER",
+        "PASS",
+        "LOST"
+      ]
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1
+    },
+    "expected": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

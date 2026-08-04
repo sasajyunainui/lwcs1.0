@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "KernelComponentDefinitionV1.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "componentCode",
+    "semanticDomain",
+    "causalOwnerType",
+    "inputColumnCodes",
+    "dependencyKinds",
+    "materializerId"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "KernelComponentDefinitionV1"
+    },
+    "componentCode": {
+      "type": "string"
+    },
+    "semanticDomain": {
+      "enum": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6"
+      ]
+    },
+    "causalOwnerType": {
+      "enum": [
+        "STATE_DELTA",
+        "ACTION_POOL_DELTA",
+        "TERMINAL_DELTA",
+        "NONE"
+      ]
+    },
+    "inputColumnCodes": {
+      "type": "array"
+    },
+    "dependencyKinds": {
+      "type": "array"
+    },
+    "materializerId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

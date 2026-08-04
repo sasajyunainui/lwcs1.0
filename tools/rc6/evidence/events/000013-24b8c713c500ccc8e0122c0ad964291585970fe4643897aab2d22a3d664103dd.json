@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 13,
+  "previousEventHash": "bff99a51602b6909d0d375aa06910ad9302370795f8ad1dfc3296b63ee2a7a2a",
+  "milestoneId": "M1",
+  "taskId": "M1-S10",
+  "eventType": "MILESTONE_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/reference/build-m1-contracts.mjs": "04f2294f8b375194c2e60555f0e476d6a1ecef917488b6f39213eba336987a23",
+    "tools/rc6/reference/reference-value-evaluator.mjs": "5261b10071f4449c7538c81e13f253b7a49f9a41a164ccd796da460b514c644f",
+    "tools/rc6/reference/run-m1-contract-gate.mjs": "18ce96a2a353532f64b9fe3a545cf966b0880fcf7e3d657a1a3f5f3b0654a96f",
+    "tools/rc6/reduce-status.mjs": "d21114dbe29617562a7bdcfbdb4ab896f3c1c479c38bb7ad243aba5160f0bb19"
+  },
+  "fixtureHashes": {
+    "tools/rc6/contracts/BehaviorPlanningContractV1.json": "5dd857f3585eaeefc59367ed526d8a5d4361a2ec594585d2a8a21c6abc060986",
+    "tools/rc6/contracts/SemanticAssertionsV1.json": "5102357793a57e38842e52a2ec1442111117d577fbc33bcbf1b236c513ab5767",
+    "tools/rc6/contracts/KernelComponentRegistryV1.json": "fe809efa3596422a8bf0395c58c44a00cf7c6894ab812def8761b12f14acf07d",
+    "tools/rc6/contracts/SelectionPolicyV1.json": "d005fa563e4ca1a3da2e59653ae0b14bf6fe1444cb2f82ca13a7b7ee60b8f277",
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "42343f9f06f9435634f9ff61d861082a4042d36767ec208381cc501067c4db5d",
+    "tools/rc6/cases/BehaviorOracleV2IndexV1.json": "cf0b9b7652f659447b703b7ddf7fad109af9279fc5dd6f405d8647b265c4aae4",
+    "tools/rc6/evidence/m1/m1-contract-gate.json": "967150fb2b1ef61b0972d8561c98a268f109834d5732d851f9ea7d46d2672b32"
+  },
+  "acceptedObjectHashes": [
+    "967150fb2b1ef61b0972d8561c98a268f109834d5732d851f9ea7d46d2672b32",
+    "5dd857f3585eaeefc59367ed526d8a5d4361a2ec594585d2a8a21c6abc060986",
+    "5102357793a57e38842e52a2ec1442111117d577fbc33bcbf1b236c513ab5767",
+    "fe809efa3596422a8bf0395c58c44a00cf7c6894ab812def8761b12f14acf07d",
+    "d005fa563e4ca1a3da2e59653ae0b14bf6fe1444cb2f82ca13a7b7ee60b8f277",
+    "42343f9f06f9435634f9ff61d861082a4042d36767ec208381cc501067c4db5d",
+    "cf0b9b7652f659447b703b7ddf7fad109af9279fc5dd6f405d8647b265c4aae4"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "M2-K01 module skeleton and loading contract",
+    "counts": {
+      "assertions": 61,
+      "prototypes": 23,
+      "referenceCases": 20,
+      "oracles": 54
+    },
+    "contractBlockingUnresolved": 0,
+    "referenceEvaluator": "PASSED_NO_PRODUCTION_IMPORTS",
+    "selectionPolicy": "FROZEN",
+    "phaseCoverage": [
+      "ACTIVE",
+      "REACTION",
+      "COUNTER",
+      "PASS",
+      "LOST"
+    ],
+    "modeCoverage": [
+      "auto",
+      "manual"
+    ],
+    "productionCodeChanged": false,
+    "delegatedAgents": "closed_without_result"
+  },
+  "reason": "M1 S1-S6 semantic and scalar reference contract freeze passed",
+  "recordedAt": "2026-08-04T14:59:04.323Z",
+  "repository": {
+    "branch": "master",
+    "head": "092ec32f4ed37eec6a07e53740c4fa3920c83384"
+  },
+  "eventHash": "24b8c713c500ccc8e0122c0ad964291585970fe4643897aab2d22a3d664103dd"
+}

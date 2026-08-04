@@ -35,8 +35,12 @@ const status = {
   overallStatus: 'NOT_COMPLETE',
   formalProvider: 'r8',
   targetProvider: 'r9v2',
-  activeAgents: [],
-  activeProcesses: [],
+  activeAgents: Array.isArray(latest?.details?.activeAgents)
+    ? latest.details.activeAgents
+    : [],
+  activeProcesses: Array.isArray(latest?.details?.activeProcesses)
+    ? latest.details.activeProcesses
+    : [],
   milestones: milestoneIds.map(id => ({
     id,
     status: completedMilestones.has(id)

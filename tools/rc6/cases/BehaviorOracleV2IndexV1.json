@@ -1,0 +1,819 @@
+{
+  "schemaVersion": "BehaviorOracleV2IndexV1",
+  "status": "FROZEN_EXECUTABLE_REFERENCE_INDEX",
+  "sourcePath": "tools/evidence/r8/r83_rc2_behavior_oracle_v2_draft.json",
+  "sourceHash": "b44d89789a9f1ceb4f2c11eb0bb582728b3ae3588590562e432b428bd259bda8",
+  "count": 54,
+  "oracles": [
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c01_hit_bonus_positive",
+      "caseId": "c01_hit_bonus_positive",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c01_hit_bonus_negative",
+      "caseId": "c01_hit_bonus_negative",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c01_hit_bonus_mutation",
+      "caseId": "c01_hit_bonus_mutation",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c02_evasion_reduction_positive",
+      "caseId": "c02_evasion_reduction_positive",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c02_evasion_reduction_negative",
+      "caseId": "c02_evasion_reduction_negative",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c02_evasion_reduction_mutation",
+      "caseId": "c02_evasion_reduction_mutation",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c03_defense_positive",
+      "caseId": "c03_defense_positive",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c03_defense_negative",
+      "caseId": "c03_defense_negative",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c03_defense_mutation",
+      "caseId": "c03_defense_mutation",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c04_evade_counter_positive",
+      "caseId": "c04_evade_counter_positive",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c04_evade_counter_negative",
+      "caseId": "c04_evade_counter_negative",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c04_evade_counter_mutation",
+      "caseId": "c04_evade_counter_mutation",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c05_hard_control_positive",
+      "caseId": "c05_hard_control_positive",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c05_hard_control_negative",
+      "caseId": "c05_hard_control_negative",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c05_hard_control_mutation",
+      "caseId": "c05_hard_control_mutation",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c06_control_overlap_positive",
+      "caseId": "c06_control_overlap_positive",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c06_control_overlap_negative",
+      "caseId": "c06_control_overlap_negative",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c06_control_overlap_mutation",
+      "caseId": "c06_control_overlap_mutation",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c07_slow_axis_positive",
+      "caseId": "c07_slow_axis_positive",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c07_slow_axis_negative",
+      "caseId": "c07_slow_axis_negative",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c07_slow_axis_mutation",
+      "caseId": "c07_slow_axis_mutation",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c08_resource_block_positive",
+      "caseId": "c08_resource_block_positive",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c08_resource_block_negative",
+      "caseId": "c08_resource_block_negative",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c08_resource_block_mutation",
+      "caseId": "c08_resource_block_mutation",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c09_resource_no_consumer_positive",
+      "caseId": "c09_resource_no_consumer_positive",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c09_resource_no_consumer_negative",
+      "caseId": "c09_resource_no_consumer_negative",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c09_resource_no_consumer_mutation",
+      "caseId": "c09_resource_no_consumer_mutation",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c10_resource_consumers_positive",
+      "caseId": "c10_resource_consumers_positive",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c10_resource_consumers_negative",
+      "caseId": "c10_resource_consumers_negative",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c10_resource_consumers_mutation",
+      "caseId": "c10_resource_consumers_mutation",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c11_resource_recovery_positive",
+      "caseId": "c11_resource_recovery_positive",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c11_resource_recovery_negative",
+      "caseId": "c11_resource_recovery_negative",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c11_resource_recovery_mutation",
+      "caseId": "c11_resource_recovery_mutation",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c12_defensive_windows_positive",
+      "caseId": "c12_defensive_windows_positive",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c12_defensive_windows_negative",
+      "caseId": "c12_defensive_windows_negative",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c12_defensive_windows_mutation",
+      "caseId": "c12_defensive_windows_mutation",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c13_dot_positive",
+      "caseId": "c13_dot_positive",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c13_dot_negative",
+      "caseId": "c13_dot_negative",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c13_dot_mutation",
+      "caseId": "c13_dot_mutation",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c14_summon_positive",
+      "caseId": "c14_summon_positive",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c14_summon_negative",
+      "caseId": "c14_summon_negative",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c14_summon_mutation",
+      "caseId": "c14_summon_mutation",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c15_information_positive",
+      "caseId": "c15_information_positive",
+      "semanticDomain": "S4",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c15_information_negative",
+      "caseId": "c15_information_negative",
+      "semanticDomain": "S4",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c15_information_mutation",
+      "caseId": "c15_information_mutation",
+      "semanticDomain": "S4",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c16_objectives_positive",
+      "caseId": "c16_objectives_positive",
+      "semanticDomain": "S1",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c16_objectives_negative",
+      "caseId": "c16_objectives_negative",
+      "semanticDomain": "S1",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:c16_objectives_mutation",
+      "caseId": "c16_objectives_mutation",
+      "semanticDomain": "S1",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:x01_resource_recovery_timing_three_factor_1",
+      "caseId": "x01_resource_recovery_timing_three_factor_1",
+      "semanticDomain": "S2",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:x02_slow_axis_duration_three_factor_2",
+      "caseId": "x02_slow_axis_duration_three_factor_2",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:x03_defense_multihit_reflect_three_factor_3",
+      "caseId": "x03_defense_multihit_reflect_three_factor_3",
+      "semanticDomain": "S3",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:x04_control_ally_dot_three_factor_4",
+      "caseId": "x04_control_ally_dot_three_factor_4",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:x05_summon_host_deadline_three_factor_5",
+      "caseId": "x05_summon_host_deadline_three_factor_5",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    },
+    {
+      "schemaVersion": "BehaviorOracleV2",
+      "oracleId": "oracle:x06_antiheal_food_crisis_three_factor_6",
+      "caseId": "x06_antiheal_food_crisis_three_factor_6",
+      "semanticDomain": "S5",
+      "historicalSourceStatus": "INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY",
+      "executableStatus": "EXECUTABLE_REFERENCE_ONLY",
+      "executableChecks": [
+        "candidate_set_shape",
+        "finite_numeric_contract",
+        "causal_reconciliation",
+        "domain_contract"
+      ],
+      "sourceAssertionsRetainedAs": "CASE_EXPECTATION_UNTIL_RUNTIME_BINDING"
+    }
+  ]
+}

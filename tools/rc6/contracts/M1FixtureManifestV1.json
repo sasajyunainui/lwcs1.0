@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "M1FixtureManifestV1",
+  "contractId": "R83-RC6-M1-FROZEN-2026-08-04",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "generatedFiles": [
+    "tools/rc6/contracts/BehaviorPlanningContractV1.json",
+    "tools/rc6/contracts/SemanticAssertionsV1.json",
+    "tools/rc6/contracts/KernelComponentRegistryV1.json",
+    "tools/rc6/contracts/SelectionPolicyV1.json",
+    "tools/rc6/cases/KernelReferenceCasesV1.json",
+    "tools/rc6/cases/BehaviorOracleV2IndexV1.json",
+    "tools/rc6/contracts/BehaviorPlanningContractV1.schema.json",
+    "tools/rc6/contracts/SemanticAssertionV1.schema.json",
+    "tools/rc6/contracts/KernelComponentDefinitionV1.schema.json",
+    "tools/rc6/contracts/KernelReferenceCaseV1.schema.json",
+    "tools/rc6/contracts/BehaviorOracleV2IndexV1.schema.json"
+  ],
+  "counts": {
+    "assertions": 61,
+    "prototypes": 23,
+    "referenceCases": 20,
+    "oracles": 54
+  },
+  "historicalInputs": [
+    {
+      "path": "tools/evidence/r8/r83_rc2_behavior_oracle_v2_draft.json",
+      "sha256": "b44d89789a9f1ceb4f2c11eb0bb582728b3ae3588590562e432b428bd259bda8"
+    }
+  ]
+}

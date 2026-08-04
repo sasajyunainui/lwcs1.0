@@ -1,0 +1,964 @@
+{
+  "schemaVersion": "M1ContractGateV1",
+  "status": "PASSED",
+  "contractId": "R83-RC6-M1-FROZEN-2026-08-04",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "counts": {
+    "assertions": 61,
+    "prototypes": 23,
+    "referenceCases": 20,
+    "oracles": 54
+  },
+  "contractBlockingUnresolved": [],
+  "independentReferenceEvaluator": "PASSED_NO_PRODUCTION_IMPORTS",
+  "assertionResults": [
+    {
+      "assertionId": "S1-01",
+      "executableCheck": "target_health_percentage",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-02",
+      "executableCheck": "any_projection",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-03",
+      "executableCheck": "all_projection",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-04",
+      "executableCheck": "threshold_clamp",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-05",
+      "executableCheck": "overkill_discard",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-06",
+      "executableCheck": "first_victory",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-07",
+      "executableCheck": "first_failure",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-08",
+      "executableCheck": "draw_terminal",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-09",
+      "executableCheck": "post_terminal_zero",
+      "passed": true
+    },
+    {
+      "assertionId": "S1-10",
+      "executableCheck": "terminal_owner",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-01",
+      "executableCheck": "opportunity_kind",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-02",
+      "executableCheck": "opportunity_kind",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-03",
+      "executableCheck": "opportunity_kind",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-04",
+      "executableCheck": "pass_semantics",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-05",
+      "executableCheck": "lost_semantics",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-06",
+      "executableCheck": "resource_order",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-07",
+      "executableCheck": "payment_ownership",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-08",
+      "executableCheck": "no_op_semantics",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-09",
+      "executableCheck": "lost_semantics",
+      "passed": true
+    },
+    {
+      "assertionId": "S2-10",
+      "executableCheck": "resource_consumer",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-01",
+      "executableCheck": "pool_closure",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-02",
+      "executableCheck": "affected_unit_closure",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-03",
+      "executableCheck": "future_route_delta",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-04",
+      "executableCheck": "state_delta_owner",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-05",
+      "executableCheck": "probability_branch",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-06",
+      "executableCheck": "response_fact",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-07",
+      "executableCheck": "support_consumer",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-08",
+      "executableCheck": "heal_conditioning",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-09",
+      "executableCheck": "duplicate_causal_fact",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-10",
+      "executableCheck": "no_name_branch",
+      "passed": true
+    },
+    {
+      "assertionId": "S3-11",
+      "executableCheck": "pool_closure",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-01",
+      "executableCheck": "public_visibility",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-02",
+      "executableCheck": "hidden_visibility",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-03",
+      "executableCheck": "public_visibility",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-04",
+      "executableCheck": "public_visibility",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-05",
+      "executableCheck": "response_branch_shape",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-06",
+      "executableCheck": "hidden_visibility",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-07",
+      "executableCheck": "adaptive_value",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-08",
+      "executableCheck": "committed_value",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-09",
+      "executableCheck": "information_endpoint",
+      "passed": true
+    },
+    {
+      "assertionId": "S4-10",
+      "executableCheck": "information_route_change",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-01",
+      "executableCheck": "scheduled_effect",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-02",
+      "executableCheck": "scheduled_effect",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-03",
+      "executableCheck": "expiry",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-04",
+      "executableCheck": "summon_lifecycle",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-05",
+      "executableCheck": "summon_lifecycle",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-06",
+      "executableCheck": "expiry",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-07",
+      "executableCheck": "creation_consumer",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-08",
+      "executableCheck": "inventory_fact",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-09",
+      "executableCheck": "equipment_window",
+      "passed": true
+    },
+    {
+      "assertionId": "S5-10",
+      "executableCheck": "post_terminal_zero",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-01",
+      "executableCheck": "causal_owner",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-02",
+      "executableCheck": "causal_owner",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-03",
+      "executableCheck": "causal_owner",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-04",
+      "executableCheck": "causal_reconciliation",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-05",
+      "executableCheck": "pareto_dimensions",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-06",
+      "executableCheck": "hard_exclusion",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-07",
+      "executableCheck": "manual_lock",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-08",
+      "executableCheck": "alternative_one",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-09",
+      "executableCheck": "alternative_two",
+      "passed": true
+    },
+    {
+      "assertionId": "S6-10",
+      "executableCheck": "utf16_sort",
+      "passed": true
+    }
+  ],
+  "caseResults": [
+    {
+      "caseId": "ref-s1-threshold-truncation",
+      "semanticDomain": "S1",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "threshold-attack",
+      "alternatives": [
+        "threshold-defend",
+        "threshold-defend"
+      ]
+    },
+    {
+      "caseId": "ref-s1-first-terminal",
+      "semanticDomain": "S1",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "lethal-first",
+      "alternatives": [
+        "nonlethal-safe",
+        "nonlethal-safe"
+      ]
+    },
+    {
+      "caseId": "ref-s1-any-all",
+      "semanticDomain": "S1",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "any-highest",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s2-opportunity-schedule",
+      "semanticDomain": "S2",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "scheduled-control",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s2-pass-lost",
+      "semanticDomain": "S2",
+      "mode": "auto",
+      "phase": "PASS",
+      "candidateCount": 3,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "legal-attack",
+      "alternatives": [
+        "active-pass",
+        "active-pass"
+      ]
+    },
+    {
+      "caseId": "ref-s2-resource-order",
+      "semanticDomain": "S2",
+      "mode": "auto",
+      "phase": "COUNTER",
+      "candidateCount": 2,
+      "eligibleCount": 1,
+      "paretoCount": 1,
+      "selectedCandidateId": "affordable-response",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s3-control-overlap",
+      "semanticDomain": "S3",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "control-route",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s3-protect-critical",
+      "semanticDomain": "S3",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "protect-ally",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s3-dodge-counter",
+      "semanticDomain": "S3",
+      "mode": "auto",
+      "phase": "COUNTER",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "evade-window",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s4-public-belief",
+      "semanticDomain": "S4",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "eligibleCount": 1,
+      "paretoCount": 1,
+      "selectedCandidateId": "public-response",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s4-information-positive",
+      "semanticDomain": "S4",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "observe-then-act",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s4-information-zero",
+      "semanticDomain": "S4",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "stable-attack",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s5-dot-hot-expiry",
+      "semanticDomain": "S5",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "eligibleCount": 1,
+      "paretoCount": 1,
+      "selectedCandidateId": "dot-window",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s5-summon-host-death",
+      "semanticDomain": "S5",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 3,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "summon-window",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s5-creation-consumer",
+      "semanticDomain": "S5",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 3,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "create-with-consumer",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s6-causal-state-owner",
+      "semanticDomain": "S6",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "state-owned",
+      "alternatives": [
+        "less-state",
+        "less-state"
+      ]
+    },
+    {
+      "caseId": "ref-s6-causal-action-owner",
+      "semanticDomain": "S6",
+      "mode": "auto",
+      "phase": "COUNTER",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "pool-owned",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-s6-pareto-hard-exclusion",
+      "semanticDomain": "S6",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "eligibleCount": 1,
+      "paretoCount": 1,
+      "selectedCandidateId": "valid-safe",
+      "alternatives": []
+    },
+    {
+      "caseId": "ref-manual-locked",
+      "semanticDomain": "S6",
+      "mode": "manual",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "player-choice",
+      "alternatives": [
+        "ai-preferred",
+        "ai-preferred"
+      ]
+    },
+    {
+      "caseId": "ref-lost-opportunity",
+      "semanticDomain": "S2",
+      "mode": "auto",
+      "phase": "LOST",
+      "candidateCount": 3,
+      "eligibleCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "fallback",
+      "alternatives": [
+        "pass-real",
+        "pass-real"
+      ]
+    }
+  ],
+  "oracleResults": [
+    {
+      "oracleId": "oracle:c01_hit_bonus_positive",
+      "caseId": "c01_hit_bonus_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c01_hit_bonus_negative",
+      "caseId": "c01_hit_bonus_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c01_hit_bonus_mutation",
+      "caseId": "c01_hit_bonus_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c02_evasion_reduction_positive",
+      "caseId": "c02_evasion_reduction_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c02_evasion_reduction_negative",
+      "caseId": "c02_evasion_reduction_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c02_evasion_reduction_mutation",
+      "caseId": "c02_evasion_reduction_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c03_defense_positive",
+      "caseId": "c03_defense_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c03_defense_negative",
+      "caseId": "c03_defense_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c03_defense_mutation",
+      "caseId": "c03_defense_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c04_evade_counter_positive",
+      "caseId": "c04_evade_counter_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c04_evade_counter_negative",
+      "caseId": "c04_evade_counter_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c04_evade_counter_mutation",
+      "caseId": "c04_evade_counter_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c05_hard_control_positive",
+      "caseId": "c05_hard_control_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c05_hard_control_negative",
+      "caseId": "c05_hard_control_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c05_hard_control_mutation",
+      "caseId": "c05_hard_control_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c06_control_overlap_positive",
+      "caseId": "c06_control_overlap_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c06_control_overlap_negative",
+      "caseId": "c06_control_overlap_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c06_control_overlap_mutation",
+      "caseId": "c06_control_overlap_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c07_slow_axis_positive",
+      "caseId": "c07_slow_axis_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c07_slow_axis_negative",
+      "caseId": "c07_slow_axis_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c07_slow_axis_mutation",
+      "caseId": "c07_slow_axis_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c08_resource_block_positive",
+      "caseId": "c08_resource_block_positive",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c08_resource_block_negative",
+      "caseId": "c08_resource_block_negative",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c08_resource_block_mutation",
+      "caseId": "c08_resource_block_mutation",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c09_resource_no_consumer_positive",
+      "caseId": "c09_resource_no_consumer_positive",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c09_resource_no_consumer_negative",
+      "caseId": "c09_resource_no_consumer_negative",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c09_resource_no_consumer_mutation",
+      "caseId": "c09_resource_no_consumer_mutation",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c10_resource_consumers_positive",
+      "caseId": "c10_resource_consumers_positive",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c10_resource_consumers_negative",
+      "caseId": "c10_resource_consumers_negative",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c10_resource_consumers_mutation",
+      "caseId": "c10_resource_consumers_mutation",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c11_resource_recovery_positive",
+      "caseId": "c11_resource_recovery_positive",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c11_resource_recovery_negative",
+      "caseId": "c11_resource_recovery_negative",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c11_resource_recovery_mutation",
+      "caseId": "c11_resource_recovery_mutation",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c12_defensive_windows_positive",
+      "caseId": "c12_defensive_windows_positive",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c12_defensive_windows_negative",
+      "caseId": "c12_defensive_windows_negative",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c12_defensive_windows_mutation",
+      "caseId": "c12_defensive_windows_mutation",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c13_dot_positive",
+      "caseId": "c13_dot_positive",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c13_dot_negative",
+      "caseId": "c13_dot_negative",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c13_dot_mutation",
+      "caseId": "c13_dot_mutation",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c14_summon_positive",
+      "caseId": "c14_summon_positive",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c14_summon_negative",
+      "caseId": "c14_summon_negative",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c14_summon_mutation",
+      "caseId": "c14_summon_mutation",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c15_information_positive",
+      "caseId": "c15_information_positive",
+      "smokeCaseId": "ref-s4-public-belief",
+      "selectedCandidateId": "public-response",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c15_information_negative",
+      "caseId": "c15_information_negative",
+      "smokeCaseId": "ref-s4-public-belief",
+      "selectedCandidateId": "public-response",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c15_information_mutation",
+      "caseId": "c15_information_mutation",
+      "smokeCaseId": "ref-s4-public-belief",
+      "selectedCandidateId": "public-response",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c16_objectives_positive",
+      "caseId": "c16_objectives_positive",
+      "smokeCaseId": "ref-s1-threshold-truncation",
+      "selectedCandidateId": "threshold-attack",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c16_objectives_negative",
+      "caseId": "c16_objectives_negative",
+      "smokeCaseId": "ref-s1-threshold-truncation",
+      "selectedCandidateId": "threshold-attack",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:c16_objectives_mutation",
+      "caseId": "c16_objectives_mutation",
+      "smokeCaseId": "ref-s1-threshold-truncation",
+      "selectedCandidateId": "threshold-attack",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:x01_resource_recovery_timing_three_factor_1",
+      "caseId": "x01_resource_recovery_timing_three_factor_1",
+      "smokeCaseId": "ref-s2-opportunity-schedule",
+      "selectedCandidateId": "scheduled-control",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:x02_slow_axis_duration_three_factor_2",
+      "caseId": "x02_slow_axis_duration_three_factor_2",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:x03_defense_multihit_reflect_three_factor_3",
+      "caseId": "x03_defense_multihit_reflect_three_factor_3",
+      "smokeCaseId": "ref-s3-control-overlap",
+      "selectedCandidateId": "control-route",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:x04_control_ally_dot_three_factor_4",
+      "caseId": "x04_control_ally_dot_three_factor_4",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:x05_summon_host_deadline_three_factor_5",
+      "caseId": "x05_summon_host_deadline_three_factor_5",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    },
+    {
+      "oracleId": "oracle:x06_antiheal_food_crisis_three_factor_6",
+      "caseId": "x06_antiheal_food_crisis_three_factor_6",
+      "smokeCaseId": "ref-s5-dot-hot-expiry",
+      "selectedCandidateId": "dot-window",
+      "executable": true
+    }
+  ],
+  "trackedInputs": {
+    "contractHash": "e45c12e09316bf6a0acab571578d9dbdd51a1b486965fbfbf5a082d5f2382a14",
+    "assertionsHash": "e89ce46aff7b4b446e6cd7ea4afca1b0781f2f1f091008ceefbfa0c71023d73b",
+    "componentsHash": "48b80be294f263e96c332d360585997f93d67681fe8c9339c40bc4b816687b24",
+    "selectionPolicyHash": "ce79876b0756bb7a0eb1697e2e8eceb14a5797cff1daaa2a2a29f58784156607",
+    "casesHash": "7e0b45200c4c8344d3a3ad481a4444d57d82969a33277b3b9d1c4f31cb9d1841",
+    "oracleIndexHash": "f7264eba004b2a4c47f9fc93cf4ad378afdc173ae63f1105882e255c762481f6",
+    "schemaHashes": {
+      "BehaviorPlanningContractV1.schema.json": "b87cb57c992bffbe384e6aa435a07fee49078ef8a72ef9aa812fbfd3b2cc0b78",
+      "SemanticAssertionV1.schema.json": "bf0eba016adeabf958af6d51bec1b79c274f5fb32c9c0f1ac1bce5c28f17ab84",
+      "KernelComponentDefinitionV1.schema.json": "b95855f27764a2f3ae299c26e105dbf28ac7031068fc66efcf19a39122e735bc",
+      "KernelReferenceCaseV1.schema.json": "aa9fa42cbc65522daace4f9e4d1e60bcdd77c35e5ca73a435825e17f88b9a8c5",
+      "BehaviorOracleV2IndexV1.schema.json": "59f426003dbb7f5d83bc8216a8f73c7f8706a5a5a01a79d4823fd34a1d9ca0d1"
+    }
+  }
+}

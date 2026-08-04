@@ -1,0 +1,156 @@
+{
+  "schemaVersion": "BehaviorPlanningContractV1",
+  "contractId": "R83-RC6-M1-FROZEN-2026-08-04",
+  "status": "FROZEN",
+  "authority": {
+    "order": [
+      "ORIGINAL_R8_3_SPEC",
+      "USER_APPROVED_RC6_V24",
+      "EXPLICIT_SUPERSEDES_BEHAVIOR_SEMANTIC_DECISION_V2",
+      "BEHAVIOR_PLANNING_CONTRACT_V1",
+      "BEHAVIOR_ORACLE_V2",
+      "IMPLEMENTATION_AND_HISTORICAL_REPORTS_AS_EVIDENCE_ONLY"
+    ],
+    "supersedes": [
+      "r83_rc6_behavior_planning_contract_current_2026-08-01.json",
+      "r83_rc2_behavior_oracle_v2_draft.json"
+    ],
+    "ambiguousRule": "SPEC_AMBIGUOUS_WHEN_PUBLIC_COUNTEREXAMPLES_CANNOT_DISTINGUISH_RULES"
+  },
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "providerRoles": {
+    "r8": "production_provider_and_small_mechanical_reference_only",
+    "r9": "historical_handwritten_executor_evidence_only",
+    "r9v2-shadow": "historical_experimental_evidence_only",
+    "r9v2": "target_provider_not_registered_before_M7"
+  },
+  "modes": {
+    "auto": "provider_handles_unlocked_opportunities_only",
+    "manual": "legal_player_locked_action_executes_and_ai_cannot_override",
+    "free_narrative": "no_action_queue_draft_ledger_report_snapshot_or_provider_call"
+  },
+  "scalarContract": {
+    "goalUtilityDeltaHEPP": "neumaier(stateDeltaTotal + actionPoolDeltaTotal + terminalDeltaTotal)",
+    "objectiveUtilityHEPP": "goalUtilityDeltaHEPP + informationValueHEPP",
+    "causalReconciliation": {
+      "tolerance": 0.000001,
+      "ownerTypes": [
+        "STATE_DELTA",
+        "ACTION_POOL_DELTA",
+        "TERMINAL_DELTA"
+      ]
+    },
+    "terminal": {
+      "victory": 100,
+      "failure": -100,
+      "draw": 0,
+      "firstOnly": true,
+      "postTerminalValue": 0
+    },
+    "threshold": {
+      "lifeBasis": "target_base_max_health_percentage",
+      "countOnlyToThreshold": true,
+      "overkillField": "discardedOverkillPP"
+    },
+    "information": {
+      "adaptive": "sum(outcomeProbability * bestLegalFutureRouteValue)",
+      "committed": "best_expected_value_in_stable_candidate_identity_intersection",
+      "value": "max(0, adaptiveValue - committedValue)",
+      "stableIntersectionEmptyUses": "NO_OP_ONLY",
+      "zeroOnlyAtExactProbability": [
+        0,
+        1
+      ],
+      "multipleObservationGroups": "maximum_single_group_value_without_combining_correlated_groups"
+    }
+  },
+  "pareto": {
+    "dimensions": [
+      {
+        "code": "objectiveUtilityHEPP",
+        "direction": "MAXIMIZE"
+      },
+      {
+        "code": "worstTailUtilityHEPP",
+        "direction": "MAXIMIZE"
+      },
+      {
+        "code": "survivalUtilityHEPP",
+        "direction": "MAXIMIZE"
+      },
+      {
+        "code": "assetReserveHEPP",
+        "direction": "MAXIMIZE"
+      },
+      {
+        "code": "informationValueHEPP",
+        "direction": "MAXIMIZE"
+      },
+      {
+        "code": "discardedOverkillPP",
+        "direction": "MINIMIZE"
+      }
+    ],
+    "tieBreak": "candidateId_UTF16_CODE_UNIT_ASCENDING",
+    "hardExclusionsBeforeComparison": true
+  },
+  "alternatives": {
+    "first": "first_formal_rank_candidate_with_different_action_target_set_or_payment_mode",
+    "second": "maximum_normalized_L1_distance_among_remaining_pareto_candidates",
+    "zeroSpanContribution": 0,
+    "nonFinite": "FATAL"
+  },
+  "visibility": {
+    "allowed": [
+      "publicHpRatios",
+      "publicStates",
+      "publicDeclarations",
+      "revealedAbilityIds",
+      "observableResults"
+    ],
+    "forbidden": [
+      "hiddenExactHp",
+      "hiddenResistance",
+      "hiddenInventory",
+      "hiddenAbility",
+      "unobservedPosterior"
+    ]
+  },
+  "semanticDomains": {
+    "S1": {
+      "title": "objective-life-terminal",
+      "status": "FROZEN"
+    },
+    "S2": {
+      "title": "opportunity-resource-schedule",
+      "status": "FROZEN"
+    },
+    "S3": {
+      "title": "team-behavior-pool",
+      "status": "FROZEN"
+    },
+    "S4": {
+      "title": "response-belief-information",
+      "status": "FROZEN"
+    },
+    "S5": {
+      "title": "long-window-effects",
+      "status": "FROZEN"
+    },
+    "S6": {
+      "title": "causal-pareto-selection",
+      "status": "FROZEN"
+    }
+  },
+  "assertionCount": 61,
+  "prototypeCount": 23,
+  "referenceCaseCount": 20
+}

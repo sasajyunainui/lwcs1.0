@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "BehaviorOracleV2IndexV1.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "status",
+    "sourcePath",
+    "sourceHash",
+    "count",
+    "oracles"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "BehaviorOracleV2IndexV1"
+    },
+    "status": {
+      "const": "FROZEN_EXECUTABLE_REFERENCE_INDEX"
+    },
+    "sourcePath": {
+      "type": "string"
+    },
+    "sourceHash": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "count": {
+      "const": 54
+    },
+    "oracles": {
+      "type": "array",
+      "minItems": 54,
+      "maxItems": 54
+    }
+  },
+  "additionalProperties": true
+}
