@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 9,
+  "previousEventHash": "7b92250916638093b38467debaec3db30c9276fb170b39895a404779bdc67f92",
+  "milestoneId": "M0",
+  "taskId": "M0-E05",
+  "eventType": "CLEAN_BASELINE_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/clean-baseline.mjs": "41e63611005555a3dfe28b4dcdca63b03d37ed2de9df010b4821883dc64891ab",
+    "tools/rc6/capture-runtime-boundary.mjs": "3bf3fa3712c574ba9836ac8a8bedc6ad4f7407097237105d242a2fe8724145b5",
+    "tools/rc6/capture-r8-smoke.mjs": "0440a3b049d150f04b1d74d3c4af84b0e6c26f8c6bfd8ac7d2975e1b1d0fd55d",
+    "tools/rc6/audit-control-writers.mjs": "aacddd45b7c60d97d3869c38499a00be58c8bb45e8a04d11c276f4c2bd027d80",
+    "tools/rc6/verify-legacy-quarantine.mjs": "cd009ed515d3eda7e559a7340e3510790b235aecb5493758dfb2beec0379beef"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "103e6896e0e6177368f9847fa414b4290a9ca10b4ebe96f81c891cf1bf398734",
+    "8cc6747d4be6284f11654fd34a128468a05d40f32991083269283050d3d19603",
+    "03aeb7db885ce0218e8da24bbe68193f91447b01282ee99e071469e076d19eb7",
+    "008cd5bb601a3f72b82b038dcad7a8c485344c5933e0b6401fec180bcceac250",
+    "152ec1d8f9c32d87f539f873110e4d8bf68722b1d591fd2a102fdcabc281a8d4"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "taskStatus": "COMPLETED",
+    "nextExitCondition": "Record M0 completion and create clean baseline commit",
+    "result": "5 KEEP hunks remain; 30 non-KEEP hunks removed",
+    "nodeCheck": "PASS",
+    "gitDiffCheck": "PASS",
+    "r8FormalSmoke": "PASS_7_OF_7",
+    "formalProvider": "r8",
+    "tmpTouched": false
+  },
+  "reason": "E05 clean baseline ready: experimental and unproven hunk classes removed, KEEP probes and formal r8 smoke pass",
+  "recordedAt": "2026-08-04T14:36:52.850Z",
+  "repository": {
+    "branch": "master",
+    "head": "8a0245e729302a2e95eaafea823da56628a7e158"
+  },
+  "eventHash": "bbebd64a90e147dd2ce4a823e63c3139228bbe6129648a0564384f905594fe33"
+}

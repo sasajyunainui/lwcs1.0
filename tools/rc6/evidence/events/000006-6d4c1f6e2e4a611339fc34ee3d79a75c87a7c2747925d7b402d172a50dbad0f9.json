@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 6,
+  "previousEventHash": "80408260998a835c14f9fab5385e61fce30048b788398ad4a21baa4af83684e6",
+  "milestoneId": "M0",
+  "taskId": "M0-E03",
+  "eventType": "E03_SINGLE_WRITER_CONTROL_ACCEPTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/audit-control-writers.mjs": "aacddd45b7c60d97d3869c38499a00be58c8bb45e8a04d11c276f4c2bd027d80",
+    "tools/rc6/verify-legacy-quarantine.mjs": "cd009ed515d3eda7e559a7340e3510790b235aecb5493758dfb2beec0379beef"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "4f1eec1bdafd17dc349249479e5ea286001d6734961f8706c83cd8e8ac18825e",
+    "52ce460034d352f37918de9c0afe5f15f419fb59ea2c6e6b7993c1ab6936fad8"
+  ],
+  "invalidatedObjectHashes": [
+    "7701557db7cd420aca942bbb678e3827aae1a94fcf4b6a261feac78bf34f147e"
+  ],
+  "details": {
+    "supersedesEventSequence": 5,
+    "taskStatus": "COMPLETED",
+    "nextExitCondition": "E04 35-hunk ownership accepted and E05 clean baseline checks complete",
+    "unauthorizedNewAuthorityWriters": 0,
+    "legacyStatusWriterCount": 18,
+    "legacyQuarantine": "PASS_QUARANTINED",
+    "productionReferenceCount": 0,
+    "newAuthorityReferenceCount": 0
+  },
+  "reason": "E03 accepted after full tools scan: only record-evidence-event writes events and only reduce-status writes reduced state; 18 old writers are hash-pinned and unreachable from production/v24 authority",
+  "recordedAt": "2026-08-04T14:33:27.407Z",
+  "repository": {
+    "branch": "master",
+    "head": "8a0245e729302a2e95eaafea823da56628a7e158"
+  },
+  "eventHash": "6d4c1f6e2e4a611339fc34ee3d79a75c87a7c2747925d7b402d172a50dbad0f9"
+}

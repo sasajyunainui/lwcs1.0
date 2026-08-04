@@ -33537,6 +33537,7 @@
   }
 
   function r9v2MechanicalKeyHash(state, value) {
+    if (value === undefined) return preview.stableHash(null);
     if (!value || typeof value !== 'object') {
       return preview.stableHash(value);
     }
@@ -34514,14 +34515,15 @@
       baselineWorld &&
       branchWorld
     ) {
-      return dependencyKeys.some(key =>
+      const dependencyValueChanged = dependencyKeys.some(key =>
         preview.stableHash(
-          preview.dependencyValueForKey(baselineWorld, key),
+          preview.dependencyValueForKey(baselineWorld, key) ?? null,
         ) !==
         preview.stableHash(
-          preview.dependencyValueForKey(branchWorld, key),
+          preview.dependencyValueForKey(branchWorld, key) ?? null,
         )
       );
+      if (dependencyValueChanged) return true;
     }
     const dependencyScopes = entry?.mechanicalDependencyScopes;
     if (!dependencyScopes || typeof dependencyScopes !== 'object') {

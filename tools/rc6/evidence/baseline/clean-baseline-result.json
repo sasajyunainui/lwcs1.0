@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "CleanBaselineResultV1",
+  "planId": "BattleUI-R8.3-RC6",
+  "planRevision": 24,
+  "generatedAt": "2026-08-04T14:28:50.363Z",
+  "sourcePatchSha256": "81cfac898924f54ccbdbc4a92c2f9bbb644124cb35b386772786c39dac12209f",
+  "selectiveInputPatchSha256": null,
+  "resultingPatchSha256": "a84d0fdacc30ddbc5412ff7a595e2c9ef4dbac2cb2dc4610dd786c9b3b381592",
+  "originalHunkCount": 35,
+  "resultingHunkCount": 5,
+  "keptHunks": [
+    {
+      "hunkId": "patch-hunk-001-690efdad9c6d",
+      "classification": "KEEP"
+    },
+    {
+      "hunkId": "patch-hunk-003-a9dafa404806",
+      "classification": "KEEP"
+    },
+    {
+      "hunkId": "patch-hunk-004-44f1882d7938",
+      "classification": "KEEP"
+    },
+    {
+      "hunkId": "patch-hunk-005-6a9ac2d58863",
+      "classification": "KEEP"
+    },
+    {
+      "hunkId": "patch-hunk-006-82d2d6107aee",
+      "classification": "KEEP"
+    }
+  ],
+  "removedHunks": [
+    {
+      "hunkId": "patch-hunk-002-c13caffba4a0",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-007-a58009c4fc80",
+      "classification": "REMOVE"
+    },
+    {
+      "hunkId": "patch-hunk-008-5c6110363591",
+      "classification": "COUNTEREXAMPLE_REQUIRED"
+    },
+    {
+      "hunkId": "patch-hunk-009-40686d536626",
+      "classification": "COUNTEREXAMPLE_REQUIRED"
+    },
+    {
+      "hunkId": "patch-hunk-010-df054225b25e",
+      "classification": "COUNTEREXAMPLE_REQUIRED"
+    },
+    {
+      "hunkId": "patch-hunk-011-1f02f6b1a521",
+      "classification": "COUNTEREXAMPLE_REQUIRED"
+    },
+    {
+      "hunkId": "patch-hunk-012-f092c6c4e1b7",
+      "classification": "REMOVE"
+    },
+    {
+      "hunkId": "patch-hunk-013-91c21e498f9e",
+      "classification": "REMOVE"
+    },
+    {
+      "hunkId": "patch-hunk-014-c435ec44a706",
+      "classification": "REMOVE"
+    },
+    {
+      "hunkId": "patch-hunk-015-a7f23d00c0e6",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-016-979d730b151e",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-017-5caaf62179bf",
+      "classification": "REMOVE"
+    },
+    {
+      "hunkId": "patch-hunk-018-ac459e17e4c8",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-019-033455569d3e",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-020-fa3baa79cfdd",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-021-07992ce2e04b",
+      "classification": "COUNTEREXAMPLE_REQUIRED"
+    },
+    {
+      "hunkId": "patch-hunk-022-30b105ef6f48",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-023-73e42d03dfee",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-024-75a10fe27067",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-025-8c14a43faa20",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-026-184e97677bc4",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-027-dc1362dc317a",
+      "classification": "COUNTEREXAMPLE_REQUIRED"
+    },
+    {
+      "hunkId": "patch-hunk-028-633b1506e157",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-029-a998c7ce866a",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-030-f092f52703e4",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-031-adf5c1b6f6e1",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-032-44715ba7c315",
+      "classification": "MIGRATE"
+    },
+    {
+      "hunkId": "patch-hunk-033-4c2120e9eaf3",
+      "classification": "REMOVE"
+    },
+    {
+      "hunkId": "patch-hunk-034-6581a7f0b97a",
+      "classification": "REMOVE"
+    },
+    {
+      "hunkId": "patch-hunk-035-bc875abc52c4",
+      "classification": "REMOVE"
+    }
+  ],
+  "removedPatchArtifact": "tools/rc6/evidence/baseline/removed-nonkeep.patch",
+  "verification": {
+    "selectiveReverseApplied": true,
+    "reusedExistingCleanState": true,
+    "headReset": false,
+    "checkoutUsed": false,
+    "tmpTouched": false,
+    "formalProvider": "r8",
+    "status": "CLEAN_BASELINE_READY_FOR_KEEP_PROBES"
+  },
+  "resultHash": "103e6896e0e6177368f9847fa414b4290a9ca10b4ebe96f81c891cf1bf398734"
+}

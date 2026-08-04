@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 11,
+  "previousEventHash": "495ec62902a630f149847e6f3e418eb2f531bac323d87dc1681f8a158f2131e9",
+  "milestoneId": "M0",
+  "taskId": "M0",
+  "eventType": "EVIDENCE_OBJECTS_COMPACTED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "c8de80f808d97c1fa9b2ca1b3fede6e6504e132c183155b1f94a505e23769054",
+    "9a63809ca816c401b3311f79486b57f6b27d3be0d787889b8eeb4a323996b788",
+    "585fdf73608c7e9254ec33a2dc19d60b832ca859082f915d39ee02ed6fa98fff",
+    "f47b3f6ae24b6abfb7e213ce877d23ec073bdb117ade59c0dd05519454f9ee39",
+    "1b85563e9f20a28c37700864be250bcf3c09490d4453ef8dcb3097a46c93b8c3"
+  ],
+  "invalidatedObjectHashes": [
+    "77fb246abf28512636bd75a719644606f281172a10a1906e335addc615501aec",
+    "1d88f20cb71d7e058b79dc4388ed1113a4a24d684562f50561fee6ed24a23",
+    "03aeb7db885ce0218e8da24bbe68193f91447b01282ee99e071469e076d19eb7",
+    "008cd5bb601a3f72b82b038dcad7a8c485344c5933e0b6401fec180bcceac250",
+    "152ec1d8f9c32d87f539f873110e4d8bf68722b1d591fd2a102fdcabc281a8d4"
+  ],
+  "details": {
+    "nextExitCondition": "M1-S01 61 assertions and S1-S6 contract freeze",
+    "status": "COMPLETED",
+    "reason": "Evidence objects compacted to facts-only summaries; no acceptance or semantic claim changed",
+    "r8Smoke": "PASS_7_OF_7",
+    "hunkCount": 35,
+    "unownedHunks": 0,
+    "legacyWritersQuarantined": 18
+  },
+  "reason": "M0 evidence objects compacted to facts-only tracked summaries; large Report and repeated per-hunk metadata removed",
+  "recordedAt": "2026-08-04T14:39:26.919Z",
+  "repository": {
+    "branch": "master",
+    "head": "8a0245e729302a2e95eaafea823da56628a7e158"
+  },
+  "eventHash": "3982f80a29e282d49e9b724b629a89adbe348dc4d2177cab1685d1d896473358"
+}

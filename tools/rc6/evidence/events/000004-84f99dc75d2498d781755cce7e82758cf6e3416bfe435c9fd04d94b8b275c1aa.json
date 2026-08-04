@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 4,
+  "previousEventHash": "7800c0688f5667d0f7a2d85804440697361d6eb66d4828192275140d87aeb9ef",
+  "milestoneId": "M0",
+  "taskId": "M0-E02",
+  "eventType": "E02_EVIDENCE_ACCEPTANCE_REVOKED",
+  "status": "BLOCKED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/audit-evidence-authenticity.mjs": "fc1d3e50721b67c33450bbc77ca2144ac4ef76a86fb335cdf2f9551183c1d975"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "c0e6e351793e82512dfc094592ad28957638512b9df38c1218e7b0b9f662113f"
+  ],
+  "invalidatedObjectHashes": [
+    "bd26903e15100c9cfad0162bb1c4143f75dfb5334a9b08d0389b62debd946296",
+    "79107237154d240b817552f728f083a7525ef52eec59e017732c20e99a93c34a"
+  ],
+  "details": {
+    "supersedesEventSequence": 2,
+    "taskStatus": "BLOCKED",
+    "nextExitCondition": "Rebuild acceptance index with immutable artifactContentSha256 and parse all seven malformed JSON objects",
+    "baselineReference": "tools/rc6/evidence/baseline/manifest.json",
+    "authenticityManifest": "tools/rc6/evidence/invalidated-evidence-manifest.json",
+    "parseFailures": 7,
+    "acceptedCandidateCount": 26,
+    "inheritableCount": 0,
+    "k1PathOverwriteDetected": true
+  },
+  "reason": "E02 revoked prior acceptance: accepted records lacked artifact content hashes, K1 path was overwritten to raid_control_heavy, and seven evidence JSON files are malformed",
+  "recordedAt": "2026-08-04T14:30:34.740Z",
+  "repository": {
+    "branch": "master",
+    "head": "8a0245e729302a2e95eaafea823da56628a7e158"
+  },
+  "eventHash": "84f99dc75d2498d781755cce7e82758cf6e3416bfe435c9fd04d94b8b275c1aa"
+}

@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "LegacyWriterQuarantineV1",
+  "generatedAt": "2026-08-04T14:39:06.847Z",
+  "legacyStatusPath": "tools/evidence/r8/r83_rc6_current_task_status.json",
+  "authorityPath": "tools/rc6/generated/current-task-status.json",
+  "legacyWriters": [
+    {
+      "file": "tools/audit_r83_rc6_phase5_exit_audit_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "70640e3959dc97733ef33eb937d52937a07a05749359e1db10ff33b2cd1d5279"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s3_s4_phase5_semantic_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "3dea1857cb16811f9bb0a6ff9c840d79529065d8ad054f809ffc3fa0dcf67ba4"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s4_defense_status_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "2747263a7a1be1ec8ad89502d16e851d146c9d94eca37986fd9eca6d3f19ed7a"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s4_source_fact_boundary_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "36ab5afe9661a4abf45487d049e3f1f5f317e76357448c0b10e146bd8deb6cfe"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s5_affected_slices_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "c0d2c643b1229a18e57323071678fb1ce6b6cf2913303303cbc7950fb64991b2"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s5_atomic_matrix_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "7d28a2a80fc81d9989e705d950e47843c97b98064d4b20fc83677ebbb50e99fb"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s5_entry_batch_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "46713c73c784ebf47be3ec61d417c2060a232a738e9a2da8db0763e0c4d44489"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s5_host_cutoff_after_terminal_audit_fix_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "5027e258543b1ce08302ad5075f2b165bd386316a680b5e9d4fb28df1719b7b2"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s5_host_incapacity_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "f38a4621e35ba929f755d4605bb2c07d4f176b26b81d61d808ab0ad042b6b5a1"
+    },
+    {
+      "file": "tools/closeout_r83_rc6_s5_long_window_combination_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "d86723c2d742ec6abd471c179754fb6d1feb8baa1ddab46924ade8e9a2a40c52"
+    },
+    {
+      "file": "tools/reconcile_r83_rc6_current_baseline.mjs",
+      "exists": true,
+      "sha256": "b0817512c6b23ad5a71eace894bbef826fc7732ad1c463450146c348719c2b40"
+    },
+    {
+      "file": "tools/reconcile_r83_rc6_current_task_status.mjs",
+      "exists": true,
+      "sha256": "9e37aed86b011e707972f61e2cfa620fd4a1f14513b7ce3b7e63a619f8dee49d"
+    },
+    {
+      "file": "tools/record_r83_rc6_s3_resource_support_realized_consumer_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "b25fe53cae8393cc7fd8e363ca58b6728f69fdc17c4f3227a38e116f31844525"
+    },
+    {
+      "file": "tools/record_r83_rc6_s3_resource_support_smoke_bundle_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "1be34adfec0aab6cb4458bf44b9b137f4e65fd69aca126d9c7f859a8995928fa"
+    },
+    {
+      "file": "tools/record_r83_rc6_s3_s4_current_hash_slice_rebase_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "7f7c4c6a83e94a5a45946cf76a61d3c37a964d4b6fb1583fd56e753c45d5b917"
+    },
+    {
+      "file": "tools/record_r83_rc6_s5_full_long_window_bundle_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "1ac14606e48ba87df54a166ee938f3ba9bbeba06c472622d49490b7066ac11d0"
+    },
+    {
+      "file": "tools/record_r83_rc6_s6_causal_pareto_hard_exclusion_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "c7aaac358b281cbc49f066395d68ad439ad7b856bcaf14e67ac6493a9eb4bcaa"
+    },
+    {
+      "file": "tools/record_r83_rc6_s6_creation_wrapper_ownership_current_hash_2026-08-02.mjs",
+      "exists": true,
+      "sha256": "40000c1bc49d76a2ddfa76fe1dbc61488dde30f024297b757db528bc9105b62e"
+    }
+  ],
+  "checks": {
+    "legacyWriterCount": 18,
+    "allWriterFilesPresent": true,
+    "productionReferencesLegacyStatus": [],
+    "newAuthorityReferencesLegacyStatus": [],
+    "newAuthorityEventWriter": "tools/rc6/record-evidence-event.mjs",
+    "newAuthorityStateWriter": "tools/rc6/reduce-status.mjs"
+  },
+  "policy": "Legacy status writers are historical-only and are not accepted as v24 state inputs. v24 state is read only from EvidenceEventV1 and reduced output.",
+  "status": "PASS_QUARANTINED",
+  "quarantineHash": "1b85563e9f20a28c37700864be250bcf3c09490d4453ef8dcb3097a46c93b8c3"
+}

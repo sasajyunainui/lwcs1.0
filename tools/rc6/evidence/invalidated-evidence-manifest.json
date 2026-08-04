@@ -1,0 +1,871 @@
+{
+  "schemaVersion": "InvalidatedEvidenceManifestV1",
+  "planId": "BattleUI-R8.3-RC6",
+  "planRevision": 24,
+  "generatedAt": "2026-08-04T14:39:05.674Z",
+  "baselineManifest": "tools/rc6/evidence/baseline/manifest.json",
+  "baselineManifestHash": "da4ef21aaf51e9ec0381fc24694543b61beb1d83ff117f04ccaacd91ab9f825e",
+  "repository": {
+    "name": "lwcs",
+    "branch": "master",
+    "head": "8a0245e729302a2e95eaafea823da56628a7e158",
+    "status": [
+      {
+        "indexStatus": " ",
+        "worktreeStatus": "M",
+        "path": "BattleDecision_Module.js"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_final_candidates.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_final_candidates_a2.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_final_candidates_a2_result.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_final_candidates_result.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_finalize_overrides.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_finalized_a.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_missed_check.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_b_candidates.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_b_candidates2.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_b_candidates3.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_b_results.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_b_results_r1.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_b_results_r2.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_b_results_r3.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_candidates.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_jobs.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/_tune_results_a.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/batch_current_manifest_pre.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/cost_batch_current/"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/cost_batch_dldl/"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tmp/pre_results.json"
+      },
+      {
+        "indexStatus": "?",
+        "worktreeStatus": "?",
+        "path": "tools/rc6/"
+      }
+    ]
+  },
+  "scan": {
+    "evidenceRoot": "tools/evidence/r8",
+    "jsonArtifactCount": 2329,
+    "parseFailureCount": 7,
+    "parseFailures": [
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_after_context_fix_2026-07-31_summary.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_current_2026-07-31_summary.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_diagnostic_2026-07-31_summary.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_phase8_report_ui_projection_after_v3_2026-07-31.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_target_kernel_duel_k1_formal_2026-08-03.json",
+        "contentSha256": "940a07612629fede032c361fcb64367e0335ee60b5814d4d15e508db8a4a7ea6",
+        "error": "Unexpected non-whitespace character after JSON at position 1351 (line 44 column 2)"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_target_kernel_team_control_k1_formal_2026-08-03.json",
+        "contentSha256": "ec8a490a976bc2193a1e6e1a4cb28f6da2a0889cc37cc90706943e11b77b68fb",
+        "error": "Unexpected non-whitespace character after JSON at position 3913 (line 139 column 2)"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc_schedule_non_equivalent_overlap_oracle_before_2026-07-23.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      }
+    ],
+    "acceptedCandidateCount": 26,
+    "summary": {
+      "EVIDENCE_GAP_ACCEPTANCE_UNBOUND": 26
+    },
+    "status": "PASS_WITH_EXPLICIT_HISTORICAL_INVALIDATIONS",
+    "invalidationClosed": true
+  },
+  "currentSourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "683a703ed8267d44e354e7e755437b7743ef940cd1f92fc369977f460f8f90e1",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "reviewedArtifacts": [
+    {
+      "artifact": "tools/evidence/r8/r83_rc2_r9v2_reaction_pass_runtime_implementation_self_audit_2026-07-29.json",
+      "artifactContentSha256": "e7cdf2c766f134b296ac0b40dbe8697492b29b25a6bfb59b6c5ed123af88a747",
+      "artifactGeneratedAt": "2026-07-29",
+      "referenceStatus": "ACCEPTED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "ACCEPTED",
+      "sourceHashLocations": [],
+      "declaredSourceHashes": {},
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_NOT_BOUND_TO_CORE_FILE"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc2_s2s4_followup_batch_change_proposal_amendment_2026-07-27.json",
+      "artifactContentSha256": "32268b1fede6df34fa91656cbc3b4bc8fc12cc2523ccba2db35f63b2da6b4c0b",
+      "artifactGeneratedAt": null,
+      "referenceStatus": "ACCEPTED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "ACCEPTED",
+      "sourceHashLocations": [],
+      "declaredSourceHashes": {},
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_NOT_BOUND_TO_CORE_FILE"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_decision_replay/audit-index.json",
+      "artifactContentSha256": "ad9e2b2899f58ce30cfccac759d8b8d77dccb467a8a2f3df1933139bedb09732",
+      "artifactGeneratedAt": "2026-07-29T06:15:47.556Z",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+        "BattleDecision_Module.js": "b0bf052bb14bb4fa6f684011059b7db2c8ccf32477efa3e2bc8542c3336f98be",
+        "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+        "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_decision_replay_current_hash_2026-08-02/audit-index.json",
+      "artifactContentSha256": "204c393dede45b11b3d9b30a5e1231805e49704d2d899bed2f93268055f043e5",
+      "artifactGeneratedAt": "2026-08-02T11:19:52.604Z",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "f226abf9cb660408a8d0c77c8d40a9ebb72c1ac0a9118a974033ceff5e68bcaa",
+        "BattleDecision_Module.js": "caa622768168f2218ba1bf2dba4b148323d3dd5c9a8c9e73006fa0baf8851642",
+        "BattleRuntime_Module.js": "811307d3de862405e6c86c735b997baf2f1b6be140dee02e3d1c9d582c04a3a4",
+        "BattleReport_Module.js": "8050c0fbaef7c0c86b5f2f86269dae7fc5582a9e79ac8286cc97aeaa08b2ba4a"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_phase0_patch_ownership_manifest_audit_2026-07-29.json",
+      "artifactContentSha256": "19e048c526d06dca65cda71ead51726d876245dc575ed91bd349c8b6d85ae095",
+      "artifactGeneratedAt": null,
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [],
+      "declaredSourceHashes": {},
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_NOT_BOUND_TO_CORE_FILE"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_phase1_foundation_audit_2026-07-29.json",
+      "artifactContentSha256": "8faf15646e8cb13dc899941f3f15f58685ac658d079ecf17bb343e6e4098265a",
+      "artifactGeneratedAt": "2026-07-29T06:15:47.556Z",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+        "BattleDecision_Module.js": "b0bf052bb14bb4fa6f684011059b7db2c8ccf32477efa3e2bc8542c3336f98be",
+        "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+        "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_phase1_foundation_audit_current_hash_2026-08-02.json",
+      "artifactContentSha256": "1eb7d9ce72e004f494c1015e2559845b6562b1e61c33c11fa9a3cdf8b72c2d0d",
+      "artifactGeneratedAt": "2026-08-02T11:19:52.604Z",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "f226abf9cb660408a8d0c77c8d40a9ebb72c1ac0a9118a974033ceff5e68bcaa",
+        "BattleDecision_Module.js": "caa622768168f2218ba1bf2dba4b148323d3dd5c9a8c9e73006fa0baf8851642",
+        "BattleRuntime_Module.js": "811307d3de862405e6c86c735b997baf2f1b6be140dee02e3d1c9d582c04a3a4",
+        "BattleReport_Module.js": "8050c0fbaef7c0c86b5f2f86269dae7fc5582a9e79ac8286cc97aeaa08b2ba4a"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_phase5_public_review_projection_implementation_self_audit_2026-07-31.json",
+      "artifactContentSha256": "40a9fe9e62cf56c7c844f0e75c3b8d79a78d1d197eb23c4e78319fdf137f36c2",
+      "artifactGeneratedAt": "2026-07-31",
+      "referenceStatus": "ACCEPTED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "ACCEPTED",
+      "sourceHashLocations": [],
+      "declaredSourceHashes": {},
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_NOT_BOUND_TO_CORE_FILE"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_public_item_response_implementation_self_audit_2026-07-29.json",
+      "artifactContentSha256": "2dbd94e09e4ddcca4f66b874ac166db1ea5e16eba8198850272f47fd1b7d8607",
+      "artifactGeneratedAt": "2026-07-29",
+      "referenceStatus": "ACCEPTED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "ACCEPTED",
+      "sourceHashLocations": [],
+      "declaredSourceHashes": {},
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_NOT_BOUND_TO_CORE_FILE"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_r9v2_counter_decline_implementation_self_audit_2026-07-29.json",
+      "artifactContentSha256": "f3dfe5981a4feb0aea90f1d0ee752973b25ca483753940985ff5cd6a17770ffd",
+      "artifactGeneratedAt": "2026-07-29",
+      "referenceStatus": "ACCEPTED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "ACCEPTED",
+      "sourceHashLocations": [],
+      "declaredSourceHashes": {},
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_NOT_BOUND_TO_CORE_FILE"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_r9v2_counter_decline_phase3_summary_2026-07-29.json",
+      "artifactContentSha256": "1afe055b4beda32a2620954c2300d5db1af91b91dedabfd3d8b805630b1e9260",
+      "artifactGeneratedAt": "2026-07-29",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+        "BattleDecision_Module.js": "d6cb6bb556afa3cc825438aefb32f581fd3c188e75b6b48ef618b1748c6e77c9",
+        "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+        "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_r9v2_counter_decline_replay_audit_2026-07-29.json",
+      "artifactContentSha256": "e60348a81820e6ee82745b40880382a41441c73164288f8c02fed6edb6fe5ca6",
+      "artifactGeneratedAt": "2026-07-29T08:59:59.519Z",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+        "BattleDecision_Module.js": "d6cb6bb556afa3cc825438aefb32f581fd3c188e75b6b48ef618b1748c6e77c9",
+        "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+        "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_r9v2_information_semantic_delta_current_2026-07-29.json",
+      "artifactContentSha256": "608968e93a14333858c21160108d44fbed115a2b7b50315e81fe2039d7b2619a",
+      "artifactGeneratedAt": "2026-07-29",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "54d3f5c1d4526a8059620ad62787c653e804b1da75e0f0955b99ab987c6a5a33",
+        "BattleDecision_Module.js": "1a4b13f1f82410369684cf1842410785fe440ba769cb9af95b54104608146e9f",
+        "BattleRuntime_Module.js": "73b0e79665ae102e39852486265191e64951658c4dcd4d1bc2d2b4cb69261e46",
+        "BattleReport_Module.js": "33e9f9d2b3f69dcd81fa4a341e7567a06b171b48d6dbdfecc185d77edb8d20de"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_r9v2_information_semantic_delta_final_source_2026-07-29.json",
+      "artifactContentSha256": "ea5d6bb7f8769e5e0777c511f215a4aceadbaebd4b1eb0fac789661f02fd606e",
+      "artifactGeneratedAt": "2026-07-29",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "54d3f5c1d4526a8059620ad62787c653e804b1da75e0f0955b99ab987c6a5a33",
+        "BattleDecision_Module.js": "d2d6a2a94735055442022d710b1c7527b70af4ac51669d193c337f0975cfaecd",
+        "BattleRuntime_Module.js": "73b0e79665ae102e39852486265191e64951658c4dcd4d1bc2d2b4cb69261e46",
+        "BattleReport_Module.js": "33e9f9d2b3f69dcd81fa4a341e7567a06b171b48d6dbdfecc185d77edb8d20de"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_r9v2_information_value_replay_2026-07-29.json",
+      "artifactContentSha256": "f9d31cd3d34e4c06be7d59b8dbd220ba49323713fe90652178bf73627c5f7383",
+      "artifactGeneratedAt": "2026-07-29",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "0f7f7e290964019fba58d7f856f554d24cee9717bac2268e89b9d7d0cc43442d",
+        "BattleDecision_Module.js": "7f7b4fc1c509acce7552dc7154ff73335ba25860b6e180cc17e64b5d163395bd",
+        "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+        "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_route_cache_decision_replay/audit-index.json",
+      "artifactContentSha256": "3794330db46acb025a109d3334d0b5bbb562e13fd46844ef83c7289fd72a0b00",
+      "artifactGeneratedAt": "2026-07-29T10:35:59.115Z",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+        "BattleDecision_Module.js": "a7dfd36e7d40a95a8cdfd4f67049445a62545d33417823f03c0eaf151c4da7ab",
+        "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+        "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_route_cache_phase1_replay_audit_current_2026-07-29.json",
+      "artifactContentSha256": "84872c81de52d4dc29d9d5751eabd529a1f04bb1f64aa9ca27d96f11ab4a30a0",
+      "artifactGeneratedAt": "2026-07-29T10:35:59.115Z",
+      "referenceStatus": "PASSED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASSED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "a07845c7a1b7b578ad1f6427afcf8ef8023c86e623c3a3f5ef334269ffed6450",
+        "BattleDecision_Module.js": "a7dfd36e7d40a95a8cdfd4f67049445a62545d33417823f03c0eaf151c4da7ab",
+        "BattleRuntime_Module.js": "e51930e5054b334beb24b222902ae78f65a77c712c561c5aab643eaaca0c209a",
+        "BattleReport_Module.js": "8a034038a3b1f89b32d5ff5812641cb1d44ed1ebab6f0b3afd396175f843b626"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_k1_ab_current.json",
+      "artifactContentSha256": "79107237154d240b817552f728f083a7525ef52eec59e017732c20e99a93c34a",
+      "artifactGeneratedAt": "2026-08-04T09:04:18.766Z",
+      "referenceStatus": "PASS",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASS",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+        "BattleDecision_Module.js": "683a703ed8267d44e354e7e755437b7743ef940cd1f92fc369977f460f8f90e1",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+        "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_k4_audit_current.json",
+      "artifactContentSha256": "b81cfce8f954a24bba74c8aea98f1da72566b42a80a0ff4aaa502f514093b5b2",
+      "artifactGeneratedAt": "2026-08-04T06:41:13.283Z",
+      "referenceStatus": "PASS",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASS",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattleDecision_Module.js": "b022723ac3590421a9c938e4cf4ddcbfe5092afa36ee88ce988b597aba22b8bd",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_m1_7v7_gate_current.json",
+      "artifactContentSha256": "6e20992cf3811513d88dec5254359d7b37c6da5d9a53d3924d3fdb7e7ce32574",
+      "artifactGeneratedAt": "2026-08-04T08:51:59.824Z",
+      "referenceStatus": "FAIL",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "FAIL",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+        "BattleDecision_Module.js": "683a703ed8267d44e354e7e755437b7743ef940cd1f92fc369977f460f8f90e1",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+        "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ARTIFACT_STATUS_NOT_ACCEPTED",
+        "ACCEPTANCE_CONTENT_HASH_MISSING"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_m1_blocker_current_hash_rebound_2026-08-04.json",
+      "artifactContentSha256": "c0d3f7608f3a04e563e399ac2a3a08722b1bb73cf57babf9f80cf8c83c0cdc65",
+      "artifactGeneratedAt": "2026-08-04T08:53:59.2093009Z",
+      "referenceStatus": "R9V2_TARGET_KERNEL_BLOCKED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "R9V2_TARGET_KERNEL_BLOCKED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+        "BattleDecision_Module.js": "683a703ed8267d44e354e7e755437b7743ef940cd1f92fc369977f460f8f90e1",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+        "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ARTIFACT_STATUS_NOT_ACCEPTED",
+        "ACCEPTANCE_CONTENT_HASH_MISSING"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_m1_full_vs_incremental_current.json",
+      "artifactContentSha256": "038ae2a0706c27ad37381f4d4c53a45995ddf619a344f2a9975e5abacf875058",
+      "artifactGeneratedAt": "2026-08-04T07:12:11.844Z",
+      "referenceStatus": "PASS",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASS",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattleDecision_Module.js": "44a9a0dfcf7d9158c2155bc766748f24712c4bb949ed2052f4ce23edef32ee53",
+        "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+        "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_m1_information_branch_delta_probe_current.json",
+      "artifactContentSha256": "42dcb071e05d018ae9a42590b9cd8d8cdbc3bc43814b563bcb452137856381b0",
+      "artifactGeneratedAt": "2026-08-04T07:30:09.031Z",
+      "referenceStatus": "COMPLETED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": "team_protect_critical_ally",
+      "artifactStatus": "COMPLETED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+        "BattleDecision_Module.js": "e2526c301cff3e0e96491d472ce0b384906fb2a399b931f472eb5ce184f88b66",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+        "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_m1_information_branch_delta_probe_r9v2-shadow_team_protect_critical_ally.json",
+      "artifactContentSha256": "22a4f25f97ec6194f83776ae02788c4606020f5756624077e45d5708b20ff68d",
+      "artifactGeneratedAt": "2026-08-04T07:56:33.783Z",
+      "referenceStatus": "COMPLETED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": "team_protect_critical_ally",
+      "artifactStatus": "COMPLETED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+        "BattleDecision_Module.js": "e2526c301cff3e0e96491d472ce0b384906fb2a399b931f472eb5ce184f88b66",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+        "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_m1_information_branch_delta_probe_r9v2_team_protect_critical_ally.json",
+      "artifactContentSha256": "76768b35ac6e2887da9d45406869738c77ead54f507380b9fe9158cffbe9b86b",
+      "artifactGeneratedAt": "2026-08-04T07:55:56.187Z",
+      "referenceStatus": "COMPLETED",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": "team_protect_critical_ally",
+      "artifactStatus": "COMPLETED",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+        "BattleDecision_Module.js": "e2526c301cff3e0e96491d472ce0b384906fb2a399b931f472eb5ce184f88b66",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+        "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    },
+    {
+      "artifact": "tools/evidence/r8/r83_rc6_target_kernel_m1_information_value_only_equivalence_current.json",
+      "artifactContentSha256": "905469a4d18b88e154a4531404d46e8394c705830f3d7ea50706560e4323ceb4",
+      "artifactGeneratedAt": "2026-08-04T03:25:52.756Z",
+      "referenceStatus": "PASS",
+      "referenceArtifactContentSha256": null,
+      "referenceGeneratedAt": null,
+      "referenceCases": [],
+      "artifactCaseId": null,
+      "artifactStatus": "PASS",
+      "sourceHashLocations": [
+        "sourceHashes"
+      ],
+      "declaredSourceHashes": {
+        "BattlePreview_Module.js": "3c46b708c95d6ce168984a122310d7f32c99877b2cfd5b28e0da50749b287986",
+        "BattleDecision_Module.js": "e7fa3b56404048a9be90a2cca1b0b2e89d135acc02d50ef9f819e89b523fa9f4",
+        "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+        "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba"
+      },
+      "classification": "EVIDENCE_GAP_ACCEPTANCE_UNBOUND",
+      "reasons": [
+        "ACCEPTANCE_CONTENT_HASH_MISSING",
+        "SOURCE_HASH_MISMATCH"
+      ]
+    }
+  ],
+  "inheritance": {
+    "policy": "Only AUTHENTIC_CURRENT_HASH artifacts may be inherited; all other evidence is historical or requires re-generation.",
+    "inherited": [],
+    "invalidated": [
+      "tools/evidence/r8/r83_rc2_r9v2_reaction_pass_runtime_implementation_self_audit_2026-07-29.json",
+      "tools/evidence/r8/r83_rc2_s2s4_followup_batch_change_proposal_amendment_2026-07-27.json",
+      "tools/evidence/r8/r83_rc6_decision_replay/audit-index.json",
+      "tools/evidence/r8/r83_rc6_decision_replay_current_hash_2026-08-02/audit-index.json",
+      "tools/evidence/r8/r83_rc6_phase0_patch_ownership_manifest_audit_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_phase1_foundation_audit_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_phase1_foundation_audit_current_hash_2026-08-02.json",
+      "tools/evidence/r8/r83_rc6_phase5_public_review_projection_implementation_self_audit_2026-07-31.json",
+      "tools/evidence/r8/r83_rc6_public_item_response_implementation_self_audit_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_r9v2_counter_decline_implementation_self_audit_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_r9v2_counter_decline_phase3_summary_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_r9v2_counter_decline_replay_audit_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_r9v2_information_semantic_delta_current_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_r9v2_information_semantic_delta_final_source_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_r9v2_information_value_replay_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_route_cache_decision_replay/audit-index.json",
+      "tools/evidence/r8/r83_rc6_route_cache_phase1_replay_audit_current_2026-07-29.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_k1_ab_current.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_k4_audit_current.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_m1_7v7_gate_current.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_m1_blocker_current_hash_rebound_2026-08-04.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_m1_full_vs_incremental_current.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_m1_information_branch_delta_probe_current.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_m1_information_branch_delta_probe_r9v2-shadow_team_protect_critical_ally.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_m1_information_branch_delta_probe_r9v2_team_protect_critical_ally.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_m1_information_value_only_equivalence_current.json",
+      "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_after_context_fix_2026-07-31_summary.json",
+      "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_current_2026-07-31_summary.json",
+      "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_diagnostic_2026-07-31_summary.json",
+      "tools/evidence/r8/r83_rc6_phase8_report_ui_projection_after_v3_2026-07-31.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_duel_k1_formal_2026-08-03.json",
+      "tools/evidence/r8/r83_rc6_target_kernel_team_control_k1_formal_2026-08-03.json",
+      "tools/evidence/r8/r83_rc_schedule_non_equivalent_overlap_oracle_before_2026-07-23.json"
+    ],
+    "malformedArtifacts": [
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_after_context_fix_2026-07-31_summary.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_current_2026-07-31_summary.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_checkpoint_i_7v7_control_resource_diagnostic_2026-07-31_summary.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_phase8_report_ui_projection_after_v3_2026-07-31.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_target_kernel_duel_k1_formal_2026-08-03.json",
+        "contentSha256": "940a07612629fede032c361fcb64367e0335ee60b5814d4d15e508db8a4a7ea6",
+        "error": "Unexpected non-whitespace character after JSON at position 1351 (line 44 column 2)"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc6_target_kernel_team_control_k1_formal_2026-08-03.json",
+        "contentSha256": "ec8a490a976bc2193a1e6e1a4cb28f6da2a0889cc37cc90706943e11b77b68fb",
+        "error": "Unexpected non-whitespace character after JSON at position 3913 (line 139 column 2)"
+      },
+      {
+        "artifact": "tools/evidence/r8/r83_rc_schedule_non_equivalent_overlap_oracle_before_2026-07-23.json",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "error": "Unexpected end of JSON input"
+      }
+    ]
+  },
+  "manifestHash": "c8de80f808d97c1fa9b2ca1b3fede6e6504e132c183155b1f94a505e23769054"
+}
