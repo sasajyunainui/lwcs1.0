@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "ContractAmbiguityPackageV1",
+  "packageId": "M3-B04-621-R9V2-PATH-CONTRACT-001",
+  "milestoneId": "M3",
+  "taskId": "M3-B04",
+  "classification": "SPEC_AMBIGUOUS",
+  "status": "AWAITING_PRODUCT_RULING",
+  "noChangeDecision": true,
+  "scope": "M3-B04 path coverage gate only",
+  "formalProvider": "r8",
+  "targetProvider": "r9v2_unregistered_test_registry_only",
+  "rootCauseAnalysis": {
+    "schemaVersion": "RootCauseAnalysisV1",
+    "category": "SPEC_AMBIGUOUS",
+    "firstDivergenceLayer": "M3-B04 path coverage input contract",
+    "observedConflict": "The v24 execution text requires 23 prototypes / 621 paths, but no R9v2 path schema, generator, or source-owned fixture defines what those 621 paths are.",
+    "excludedAlternatives": [
+      "R9v2 kernel implementation defect",
+      "missing current-hash 7v7 transaction evidence",
+      "R8 historical counter accepted as R9v2 coverage",
+      "Report projection defect"
+    ],
+    "reasonNoImplementationChange": "Choosing a path meaning from the current implementation would make the implementation define its own acceptance contract, which is forbidden by the v24 authority order."
+  },
+  "contractEvidence": {
+    "planRequirement": {
+      "source": "BattleUI R8.3-RC6 execution specification v24",
+      "requiredCount": 621,
+      "requiredLabel": "23 prototypes / 621 paths",
+      "pathSchemaDefined": false,
+      "generatorDefined": false
+    },
+    "frozenM1Contract": {
+      "source": "tools/rc6/contracts/BehaviorPlanningContractV1.json",
+      "declaredCounts": {
+        "assertions": 61,
+        "prototypes": 23,
+        "referenceCases": 20
+      },
+      "pathCount": null,
+      "pathSchema": null
+    },
+    "frozenFixtureManifest": {
+      "source": "tools/rc6/contracts/M1FixtureManifestV1.json",
+      "declaredCounts": {
+        "assertions": 61,
+        "prototypes": 23,
+        "referenceCases": 20,
+        "oracles": 54
+      },
+      "pathCount": null
+    },
+    "r9v2KernelInput": {
+      "source": "BattleDecisionR9v2Kernel_Module.js",
+      "acceptedInput": "candidate rows, mechanical columns, belief overlay and FactDelta values",
+      "prototypeRegistryInput": false,
+      "pathEnumerationInput": false,
+      "pathCoverageOutput": false
+    }
+  },
+  "historicalOrigin": {
+    "source": "tools/audit_battle_r83_phase8.mjs",
+    "meaning": "The old R8.3 audit increments enumOptionCount while iterating fields and options from the R8 mechanism registry and calling R8 Preview.",
+    "notEquivalentTo": [
+      "R9v2 candidate path",
+      "R9v2 FactDelta path",
+      "R9v2 ReferenceValueEvaluator case",
+      "R9v2 full transaction"
+    ],
+    "acceptedAsR9v2Coverage": false
+  },
+  "currentCheckpoint": {
+    "source": "tools/rc6/evidence/m3/m3-b04-checkpoint.json",
+    "availableChecks": {
+      "behaviorOracle": "54/54",
+      "referenceCases": "20/20",
+      "kernelComponents": "23/23",
+      "targetFullTransactions": "12/12",
+      "targetSevenVsSeven": "5/5"
+    },
+    "pathCoverage": {
+      "observedCount": 0,
+      "expectedCount": 621,
+      "status": "MISSING_FIXTURE"
+    }
+  },
+  "candidateResolutions": [
+    {
+      "resolutionId": "DEFINE_R9V2_PATH_CONTRACT",
+      "effect": "Keep the 621 gate, but first add an explicit R9v2 path schema and a source-owned generator or fixture.",
+      "minimumRequirements": [
+        "Each path has a stable pathId and source input identity.",
+        "Each path is evaluated through the current R9v2 target input chain or the independent ReferenceValueEvaluator.",
+        "The generator and fixture hashes are recorded in the M3-B04 event.",
+        "The path set covers the declared 23 prototypes without importing R8 selection or hidden state."
+      ],
+      "evidenceEffect": "Invalidate only the current B04 gate result and rerun B04 after the fixture is accepted."
+    },
+    {
+      "resolutionId": "SUPERSEDE_LEGACY_621_GATE",
+      "effect": "Explicitly supersede the inherited 621 count as an R8-only audit metric and replace it with the already defined R9v2 coverage set.",
+      "replacementGate": [
+        "54 executable BehaviorOracleV2 checks",
+        "20 independent KernelReferenceCaseV1 cases",
+        "23 registered kernel components",
+        "12 current-hash target transactions including 5 required 7v7 transactions"
+      ],
+      "evidenceEffect": "Invalidate only the 621-path assertion and rerun B04 with the superseding contract."
+    }
+  ],
+  "decisionBoundary": {
+    "implementationMayChoose": false,
+    "requiredDecisionType": "EXPLICIT_SUPERSEDES_OR_PATH_CONTRACT_APPROVAL",
+    "m2EvidenceInvalidated": false,
+    "m3B01ToB03EvidenceInvalidated": false,
+    "m4MayStartBeforeDecision": false
+  },
+  "sourceHashes": {
+    "tools/rc6/contracts/BehaviorPlanningContractV1.json": "5dd857f3585eaeeefc59367ed526d8a5d4361a2ec594585d2a8a21c6abc060986",
+    "tools/rc6/contracts/M1FixtureManifestV1.json": "e53562ef73d828089f3e3699ce0ada26f490bac962d588e8f07b08ad76d24bcf",
+    "tools/rc6/contracts/KernelComponentRegistryV1.json": "fe809efa3596422a8bf0395c58c44a00cf7c6894ab812def8761b12f14acf07d",
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "42343f9f06f9435634f9ff61d861082a4042d36767ec208381cc501067c4db5d",
+    "tools/rc6/cases/BehaviorOracleV2IndexV1.json": "cf0b9b7652f659447b703b7ddf7fad109af9279fc5dd6f405d8647b265c4aae4",
+    "tools/rc6/reference/reference-value-evaluator.mjs": "5261b10071f4449c7538c81e13f253b7a49f9a41a164ccd796da460b514c644f",
+    "BattleDecisionR9v2Kernel_Module.js": "8a80a47b00c0479b1a73e5165bacecad6930097fd1e8ca60ed55e2d5489ba752",
+    "tools/rc6/harness/run-m3-b04-checkpoint.mjs": "b4401f75fa6b596edac9ec6fa58e9fb5e28f9209df1ff6ed12d411ae971111b4",
+    "tools/rc6/evidence/m3/m3-b04-checkpoint.json": "abb15b97eee81f66737892d10e046c0a13f805b0d5df20bc6f9ae30d3f7e8237",
+    "tools/audit_battle_r83_phase8.mjs": "728b40b40c719ee3d982409ce5079a7efcd480e2931aa53dab1d097791a50943"
+  }
+}

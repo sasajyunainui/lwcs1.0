@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 33,
+  "previousEventHash": "cd4306722964437ee66b84beae6bf34c12a53fc27ad0b6f802b649563bd78641",
+  "milestoneId": "M3",
+  "taskId": "M3-B04",
+  "eventType": "EVIDENCE_EVENT_CORRECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "b602f2fd1502820fdbd15fa712d70b4854729a446a81fc088e3c3c988f2e23ff",
+    "BattleRuntime_Module.js": "97302685eb032cd0013f5ad9f896b24f92b430e2e3aeee647914a9d5a0ad1911",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m3-b04-checkpoint.mjs": "b4401f75fa6b596edac9ec6fa58e9fb5e28f9209df1ff6ed12d411ae971111b4"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "8a0bdb7ec4e54059afdaf2f5bbb39f3ff1508f34bf3c49954b5e3eb1f72f9885"
+  ],
+  "invalidatedObjectHashes": [
+    "cd4306722964437ee66b84beae6bf34c12a53fc27ad0b6f802b649563bd78641"
+  ],
+  "details": {
+    "correctsEventSequence": 32,
+    "classification": "SPEC_AMBIGUOUS",
+    "package": "tools/rc6/evidence/m3/m3-b04-621-contract-ambiguity.json",
+    "legacyR8CountRejected": true,
+    "availableR9v2Coverage": {
+      "behaviorOracle": 54,
+      "referenceCases": 20,
+      "components": 23,
+      "targetTransactions": 12,
+      "requiredSevenVsSeven": 5
+    },
+    "nextExitCondition": "Obtain explicit supersedes approval for the legacy 621 gate or define and hash an R9v2 path schema/generator before rerunning B04"
+  },
+  "reason": "Correct event 32 command-output contamination. The contract ambiguity package is valid; event 32 is retained in the immutable chain but invalidated by this correction event.",
+  "recordedAt": "2026-08-04T18:11:03.724Z",
+  "repository": {
+    "branch": "master",
+    "head": "044912ad49641ccc55af532e675174d2400bc188"
+  },
+  "eventHash": "37d94ee4356cd4e6c71e04831cef274c02a22995cc1377b1b6e38177aad1e8f5"
+}
