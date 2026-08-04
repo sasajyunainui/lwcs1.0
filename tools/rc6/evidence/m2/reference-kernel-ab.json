@@ -1,0 +1,265 @@
+{
+  "schemaVersion": "M2ReferenceKernelABV1",
+  "status": "PASSED",
+  "referenceEvaluator": "tools/rc6/reference/reference-value-evaluator.mjs",
+  "referenceEvaluatorHash": "5261b10071f4449c7538c81e13f253b7a49f9a41a164ccd796da460b514c644f",
+  "kernelHash": "4ce4ab6eadb81bc72edb6160dcee06b610b284a09dbbbe428c3bd6cca38e2157",
+  "caseCount": 20,
+  "rows": [
+    {
+      "caseId": "ref-s1-threshold-truncation",
+      "semanticDomain": "S1",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "threshold-attack",
+      "proofCandidateIds": [
+        "threshold-attack",
+        "threshold-defend",
+        "threshold-defend"
+      ]
+    },
+    {
+      "caseId": "ref-s1-first-terminal",
+      "semanticDomain": "S1",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "lethal-first",
+      "proofCandidateIds": [
+        "lethal-first",
+        "nonlethal-safe",
+        "nonlethal-safe"
+      ]
+    },
+    {
+      "caseId": "ref-s1-any-all",
+      "semanticDomain": "S1",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "any-highest",
+      "proofCandidateIds": [
+        "any-highest"
+      ]
+    },
+    {
+      "caseId": "ref-s2-opportunity-schedule",
+      "semanticDomain": "S2",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "scheduled-control",
+      "proofCandidateIds": [
+        "scheduled-control"
+      ]
+    },
+    {
+      "caseId": "ref-s2-pass-lost",
+      "semanticDomain": "S2",
+      "mode": "auto",
+      "phase": "PASS",
+      "candidateCount": 3,
+      "paretoCount": 2,
+      "selectedCandidateId": "legal-attack",
+      "proofCandidateIds": [
+        "legal-attack",
+        "active-pass",
+        "active-pass"
+      ]
+    },
+    {
+      "caseId": "ref-s2-resource-order",
+      "semanticDomain": "S2",
+      "mode": "auto",
+      "phase": "COUNTER",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "affordable-response",
+      "proofCandidateIds": [
+        "affordable-response"
+      ]
+    },
+    {
+      "caseId": "ref-s3-control-overlap",
+      "semanticDomain": "S3",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "control-route",
+      "proofCandidateIds": [
+        "control-route"
+      ]
+    },
+    {
+      "caseId": "ref-s3-protect-critical",
+      "semanticDomain": "S3",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "protect-ally",
+      "proofCandidateIds": [
+        "protect-ally"
+      ]
+    },
+    {
+      "caseId": "ref-s3-dodge-counter",
+      "semanticDomain": "S3",
+      "mode": "auto",
+      "phase": "COUNTER",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "evade-window",
+      "proofCandidateIds": [
+        "evade-window"
+      ]
+    },
+    {
+      "caseId": "ref-s4-public-belief",
+      "semanticDomain": "S4",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "public-response",
+      "proofCandidateIds": [
+        "public-response"
+      ]
+    },
+    {
+      "caseId": "ref-s4-information-positive",
+      "semanticDomain": "S4",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "observe-then-act",
+      "proofCandidateIds": [
+        "observe-then-act"
+      ]
+    },
+    {
+      "caseId": "ref-s4-information-zero",
+      "semanticDomain": "S4",
+      "mode": "auto",
+      "phase": "REACTION",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "stable-attack",
+      "proofCandidateIds": [
+        "stable-attack"
+      ]
+    },
+    {
+      "caseId": "ref-s5-dot-hot-expiry",
+      "semanticDomain": "S5",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "dot-window",
+      "proofCandidateIds": [
+        "dot-window"
+      ]
+    },
+    {
+      "caseId": "ref-s5-summon-host-death",
+      "semanticDomain": "S5",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 3,
+      "paretoCount": 1,
+      "selectedCandidateId": "summon-window",
+      "proofCandidateIds": [
+        "summon-window"
+      ]
+    },
+    {
+      "caseId": "ref-s5-creation-consumer",
+      "semanticDomain": "S5",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 3,
+      "paretoCount": 1,
+      "selectedCandidateId": "create-with-consumer",
+      "proofCandidateIds": [
+        "create-with-consumer"
+      ]
+    },
+    {
+      "caseId": "ref-s6-causal-state-owner",
+      "semanticDomain": "S6",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "state-owned",
+      "proofCandidateIds": [
+        "state-owned",
+        "less-state",
+        "less-state"
+      ]
+    },
+    {
+      "caseId": "ref-s6-causal-action-owner",
+      "semanticDomain": "S6",
+      "mode": "auto",
+      "phase": "COUNTER",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "pool-owned",
+      "proofCandidateIds": [
+        "pool-owned"
+      ]
+    },
+    {
+      "caseId": "ref-s6-pareto-hard-exclusion",
+      "semanticDomain": "S6",
+      "mode": "auto",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "paretoCount": 1,
+      "selectedCandidateId": "valid-safe",
+      "proofCandidateIds": [
+        "valid-safe"
+      ]
+    },
+    {
+      "caseId": "ref-manual-locked",
+      "semanticDomain": "S6",
+      "mode": "manual",
+      "phase": "ACTIVE",
+      "candidateCount": 2,
+      "paretoCount": 2,
+      "selectedCandidateId": "player-choice",
+      "proofCandidateIds": [
+        "player-choice",
+        "ai-preferred",
+        "ai-preferred"
+      ]
+    },
+    {
+      "caseId": "ref-lost-opportunity",
+      "semanticDomain": "S2",
+      "mode": "auto",
+      "phase": "LOST",
+      "candidateCount": 3,
+      "paretoCount": 2,
+      "selectedCandidateId": "fallback",
+      "proofCandidateIds": [
+        "fallback",
+        "pass-real",
+        "pass-real"
+      ]
+    }
+  ],
+  "candidateIdsAndValuesEqual": true,
+  "paretoWitnessesEqual": true,
+  "proofsEqual": true
+}

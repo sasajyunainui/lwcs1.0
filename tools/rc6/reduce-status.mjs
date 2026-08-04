@@ -22,7 +22,16 @@ events.forEach((event, index) => {
 });
 const latest = events.at(-1) || null;
 const milestoneIds = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'];
-const completedMilestones = new Set(events.filter(event => event.status === 'COMPLETED').map(event => event.milestoneId));
+const completedMilestones = new Set(events
+  .filter(event => event.eventType === 'MILESTONE_COMPLETED' && event.status === 'COMPLETED')
+  .map(event => event.milestoneId));
+const latestMilestoneStatus = latest
+  ? latest.eventType === 'MILESTONE_COMPLETED' && latest.status === 'COMPLETED'
+    ? 'COMPLETED'
+    : latest.status === 'BLOCKED'
+      ? 'BLOCKED'
+      : 'IN_PROGRESS'
+  : 'PENDING';
 const status = {
   schemaVersion: 'RC6TaskStatusV1',
   statusSource: 'EvidenceEventV1_REDUCED',
@@ -31,7 +40,7 @@ const status = {
   latestEventHash: latest?.eventHash || null,
   currentMilestone: latest?.milestoneId || 'M0',
   currentTask: latest?.taskId || 'M0-E01',
-  milestoneStatus: latest?.status || 'PENDING',
+  milestoneStatus: latestMilestoneStatus,
   overallStatus: 'NOT_COMPLETE',
   formalProvider: 'r8',
   targetProvider: 'r9v2',
@@ -46,7 +55,7 @@ const status = {
     status: completedMilestones.has(id)
       ? 'COMPLETED'
       : id === (latest?.milestoneId || 'M0')
-        ? latest.status
+        ? latestMilestoneStatus
         : 'PENDING',
   })),
   nextExitCondition: latest?.details?.nextExitCondition || 'M0-E01 baseline event recorded',

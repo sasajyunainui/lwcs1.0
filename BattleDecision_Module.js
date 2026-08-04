@@ -44922,7 +44922,7 @@
       prepared.entries.map(entry => [entry.candidateId, entry]),
     );
     const preparedEntryCandidateIds = [...entryByCandidate.keys()];
-    const preparedProofCandidateIds = [...proofByCandidate.keys()];
+    const allPreparedProofCandidateIds = [...proofByCandidate.keys()];
     const sameCandidateIds = (left, right) => {
       const leftSorted = [...left].sort();
       const rightSorted = [...right].sort();
@@ -44933,13 +44933,14 @@
     };
     if (
       !sameCandidateIds(frozenCandidateIds, preparedEntryCandidateIds) ||
-      !sameCandidateIds(frozenCandidateIds, preparedProofCandidateIds)
+      (!targetKernel &&
+        !sameCandidateIds(frozenCandidateIds, allPreparedProofCandidateIds))
     ) {
       throw new Error(
         `R9V2_CANDIDATE_COVERAGE_MISMATCH:${JSON.stringify({
           frozenCandidateIds,
           preparedEntryCandidateIds,
-          preparedProofCandidateIds,
+          preparedProofCandidateIds: allPreparedProofCandidateIds,
         })}`,
       );
     }
@@ -45099,17 +45100,120 @@
             });
           })()
         : null;
-    const ordered = paretoRows.slice().sort((left, right) =>
-      Number(right.proof.objectiveUtilityHEPP || 0) -
-        Number(left.proof.objectiveUtilityHEPP || 0) ||
-      Number(right.proof.vector.assetReserve || 0) -
-        Number(left.proof.vector.assetReserve || 0) ||
-      String(left.candidate.candidateId).localeCompare(
-        String(right.candidate.candidateId),
-      )
+    const compareUtf16 = (left, right) => {
+      const leftValue = String(left || '');
+      const rightValue = String(right || '');
+      return leftValue < rightValue ? -1 : leftValue > rightValue ? 1 : 0;
+    };
+    const formalVectorValue = (row, field) => {
+      const vector = row?.proof?.vector || {};
+      const raw = field === 'worstTailUtilityHEPP'
+        ? -Number(vector.worstTailLossHEPP)
+        : field === 'survivalUtilityHEPP'
+          ? Number(vector.survivalLowerBound)
+          : field === 'assetReserveHEPP'
+            ? Number(vector.assetReserve)
+            : Number(vector[field]);
+      if (!Number.isFinite(raw)) {
+        throw new Error(`R9V2_NON_FINITE_RANK_VALUE:${row?.candidate?.candidateId || ''}:${field}`);
+      }
+      return Object.is(raw, -0) ? 0 : raw;
+    };
+    const formalRankDimensions = [
+      ['objectiveUtilityHEPP', 1],
+      ['worstTailUtilityHEPP', 1],
+      ['survivalUtilityHEPP', 1],
+      ['assetReserveHEPP', 1],
+      ['informationValueHEPP', 1],
+      ['discardedOverkillPP', -1],
+    ];
+    const formalRankCompare = (left, right) => {
+      for (const [field, direction] of formalRankDimensions) {
+        const delta = formalVectorValue(left, field) -
+          formalVectorValue(right, field);
+        if (delta !== 0) return direction > 0 ? -delta : delta;
+      }
+      return compareUtf16(
+        left?.candidate?.candidateId,
+        right?.candidate?.candidateId,
+      );
+    };
+    const ordered = paretoRows.slice().sort(
+      targetKernel
+        ? formalRankCompare
+        : (left, right) =>
+            Number(right.proof.objectiveUtilityHEPP || 0) -
+              Number(left.proof.objectiveUtilityHEPP || 0) ||
+            Number(right.proof.vector.assetReserve || 0) -
+              Number(left.proof.vector.assetReserve || 0) ||
+            compareUtf16(
+              left?.candidate?.candidateId,
+              right?.candidate?.candidateId,
+            ),
     );
     const winner = ordered[0];
-    const auditRow = row => ({
+    const structurallyDifferent = (left, right) =>
+      String(left?.candidate?.declaration?.actionId || '').trim() !==
+        String(right?.candidate?.declaration?.actionId || '').trim() ||
+      JSON.stringify(left?.entry?.targetIds || []) !==
+        JSON.stringify(right?.entry?.targetIds || []) ||
+      (left?.entry?.resourcePotentialOnly === true) !==
+        (right?.entry?.resourcePotentialOnly === true);
+    const normalizedL1Distance = (row, pool) => {
+      let distance = 0;
+      for (const [field] of formalRankDimensions) {
+        const values = pool.map(item => formalVectorValue(item, field));
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        const span = maximum - minimum;
+        if (span === 0) continue;
+        const normalized = formalVectorValue(row, field) - minimum;
+        const oriented = field === 'discardedOverkillPP'
+          ? (maximum - formalVectorValue(row, field)) / span
+          : normalized / span;
+        if (!Number.isFinite(oriented)) {
+          throw new Error(`R9V2_NON_FINITE_L1_DISTANCE:${row?.candidate?.candidateId || ''}:${field}`);
+        }
+        distance += Math.abs(oriented);
+      }
+      return distance;
+    };
+    const alternative1 = targetKernel
+      ? ordered.find(row =>
+          row !== winner && structurallyDifferent(row, winner),
+        ) || null
+      : null;
+    const alternativePool = ordered.filter(row =>
+      row !== winner && row !== alternative1,
+    );
+    const alternative2 = targetKernel && alternativePool.length
+      ? alternativePool
+          .slice()
+          .sort((left, right) =>
+            normalizedL1Distance(right, ordered) -
+              normalizedL1Distance(left, ordered) ||
+            formalRankCompare(left, right),
+          )[0]
+      : null;
+    const alternativeRows = [alternative1, alternative2].filter(Boolean);
+    const requiredProofIdSet = new Set(
+      targetKernel
+        ? [winner, ...alternativeRows].map(row =>
+            String(row?.candidate?.candidateId || '').trim(),
+          )
+        : allPreparedProofCandidateIds,
+    );
+    const requiredProofCandidateIds = [...requiredProofIdSet]
+      .filter(Boolean)
+      .sort(compareUtf16);
+    const materializedProofCandidateIds = [...requiredProofCandidateIds];
+    const preparedProofCandidateIds = targetKernel
+      ? materializedProofCandidateIds
+      : allPreparedProofCandidateIds.slice().sort(compareUtf16);
+    const auditRow = row => {
+      const candidateId = String(row?.candidate?.candidateId || '').trim();
+      const includeProof = requiredProofIdSet.has(candidateId);
+      const audit = {
       candidateId: row.candidate.candidateId,
       actionKind: row.entry.actionKind,
       actorId: request.actorId,
@@ -45132,7 +45236,6 @@
       mechanicObservations: cloneValue(
         row.entry.mechanicObservations || [],
       ),
-      candidateValueProof: cloneValue(row.proof),
       rejectionCode: row.providerRejectionCode,
       classification:
         row.providerRejectionCode
@@ -45149,7 +45252,10 @@
         ? { counterDeclineFallback: true }
         : {}),
       selected: row === winner,
-    });
+      };
+      if (includeProof) audit.candidateValueProof = cloneValue(row.proof);
+      return audit;
+    };
     const selectedDeclaration = cloneValue(
       winner.candidate.declaration || {},
     );
@@ -45169,6 +45275,7 @@
         ? 'R9V2_COUNTER_DECLINE'
         : 'R9V2_CONTROL_RESOURCE_PARETO';
     return {
+      schemaVersion: targetKernel ? 'DecisionAuditV2' : '',
       decisionEngine: engine,
       actorId: request.actorId,
       selected: {
@@ -45195,16 +45302,34 @@
         ),
         candidateValueProof: cloneValue(winner.proof),
       },
-      scoreAudit: ordered.slice(0, 3).map(auditRow),
+      scoreAudit: (targetKernel ? auditableRows : ordered.slice(0, 3)).map(auditRow),
       candidateAudit: auditableRows.map(auditRow),
+      alternatives: alternativeRows.map(auditRow),
       candidateCount: candidates.length,
       frozenCandidateIds: Object.freeze([...frozenCandidateIds]),
       preparedEntryCandidateIds: Object.freeze(
-        [...preparedEntryCandidateIds].sort(),
+        [...preparedEntryCandidateIds].sort(compareUtf16),
       ),
       preparedProofCandidateIds: Object.freeze(
-        [...preparedProofCandidateIds].sort(),
+        [...preparedProofCandidateIds],
       ),
+      requiredProofCandidateIds: Object.freeze(
+        [...requiredProofCandidateIds],
+      ),
+      materializedProofCandidateIds: Object.freeze(
+        [...materializedProofCandidateIds],
+      ),
+      vectorCoverage: Object.freeze({
+        status: 'CLOSED',
+        frozenCount: frozenCandidateIds.length,
+        observedCount: auditableRows.length,
+        preparedEntryCount: preparedEntryCandidateIds.length,
+      }),
+      proofCoverage: Object.freeze({
+        status: 'REQUIRED_SUBSET_CLOSED',
+        requiredCount: requiredProofCandidateIds.length,
+        materializedCount: materializedProofCandidateIds.length,
+      }),
       candidateCoverage: Object.freeze({
         status: 'CLOSED',
         frozenCount: frozenCandidateIds.length,

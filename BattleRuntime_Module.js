@@ -12330,7 +12330,26 @@
         selectedCandidateId: String(item?.selected?.candidateId || '').trim(),
         selectedActionName: resolveDecisionActionName(item, combatData),
         lostOpportunity: item?.lostOpportunity || null,
-        candidates: (Array.isArray(item?.scoreAudit) ? item.scoreAudit : []).map(candidate => cloneAuditSnapshot(candidate)),
+        candidates: (
+          ['R9V2_TARGET'].includes(
+            String(item?.decisionEngine || '').trim().toUpperCase(),
+          ) && Array.isArray(item?.candidateAudit)
+            ? item.candidateAudit
+            : (Array.isArray(item?.scoreAudit) ? item.scoreAudit : [])
+        ).map(candidate => cloneAuditSnapshot(candidate)),
+        frozenCandidateIds: cloneAuditSnapshot(item?.frozenCandidateIds || []),
+        preparedEntryCandidateIds: cloneAuditSnapshot(
+          item?.preparedEntryCandidateIds || [],
+        ),
+        requiredProofCandidateIds: cloneAuditSnapshot(
+          item?.requiredProofCandidateIds || [],
+        ),
+        materializedProofCandidateIds: cloneAuditSnapshot(
+          item?.materializedProofCandidateIds || [],
+        ),
+        vectorCoverage: cloneAuditSnapshot(item?.vectorCoverage || null),
+        proofCoverage: cloneAuditSnapshot(item?.proofCoverage || null),
+        candidateCoverage: cloneAuditSnapshot(item?.candidateCoverage || null),
       }));
       const finalSnapshot = getBattleSnapshot(combatData);
       const publicReportBlocks = projectPublicReportBlocks(ledger).map(cloneAuditSnapshot);
@@ -15203,6 +15222,17 @@
           return;
         }
         if (['R9V2_SHADOW', 'R9V2_TARGET'].includes(actionDecisionEngine)) {
+          const targetAudit = actionDecisionEngine === 'R9V2_TARGET';
+          const candidateId = String(candidate?.candidateId || '').trim();
+          const requiredProofCandidateIds = new Set(
+            targetAudit && Array.isArray(actionAudit?.requiredProofCandidateIds)
+              ? actionAudit.requiredProofCandidateIds
+                .map(value => String(value || '').trim())
+                .filter(Boolean)
+              : [],
+          );
+          const proofRequired = !targetAudit ||
+            requiredProofCandidateIds.has(candidateId);
           const proof = candidate?.candidateValueProof;
           const r9v2Fields = [
             'candidateId',
@@ -15211,7 +15241,6 @@
             'targetIds',
             'objectiveUtilityHEPP',
             'vector',
-            'candidateValueProof',
             'selected',
           ];
           const r9v2VectorFields = [
@@ -15247,7 +15276,10 @@
               )
               .map(key => `vector.${key}`));
           }
-          if (proof && typeof proof === 'object') {
+          if (proofRequired && (!proof || typeof proof !== 'object')) {
+            missing.push('candidateValueProof');
+          }
+          if (proofRequired && proof && typeof proof === 'object') {
             missing.push(...r9v2ProofFields
               .filter(key =>
                 proof[key] === undefined ||
@@ -15264,6 +15296,7 @@
             });
             return;
           }
+          if (!proofRequired) return;
           const invalidNumbers = [
             'objectiveUtilityHEPP',
           ].filter(key =>
@@ -15454,6 +15487,9 @@
       )) {
         return;
       }
+      const targetAudit =
+        String(decisionAudit?.decisionEngine || '').trim().toUpperCase() ===
+        'R9V2_TARGET';
       const r9v2CausalFactIds = new Map();
       const rows = Array.isArray(decisionAudit?.candidateAudit)
         ? decisionAudit.candidateAudit.filter(Boolean)
@@ -15467,38 +15503,103 @@
       const preparedProofCandidateIds = normalizeCandidateIds(
         decisionAudit?.preparedProofCandidateIds,
       );
+      const requiredProofCandidateIds = normalizeCandidateIds(
+        decisionAudit?.requiredProofCandidateIds,
+      );
+      const materializedProofCandidateIds = normalizeCandidateIds(
+        decisionAudit?.materializedProofCandidateIds,
+      );
       const observedCandidateIds = rows
         .map(row => String(row?.candidateId || '').trim())
         .filter(Boolean)
         .sort();
-      if (
-        rows.length > 0 &&
-        (!sameCandidateIds(frozenCandidateIds, observedCandidateIds) ||
+      const observedProofCandidateIds = rows
+        .filter(row => row?.candidateValueProof && typeof row.candidateValueProof === 'object')
+        .map(row => String(row?.candidateId || '').trim())
+        .filter(Boolean)
+        .sort();
+      const vectorCoverage = decisionAudit?.vectorCoverage ||
+        decisionAudit?.candidateCoverage || null;
+      const proofCoverage = decisionAudit?.proofCoverage || null;
+      const vectorCoverageClosed =
+        String(vectorCoverage?.status || '').trim() === 'CLOSED';
+      const proofCoverageClosed =
+        String(proofCoverage?.status || '').trim() ===
+        'REQUIRED_SUBSET_CLOSED';
+      const requiredProofSubset =
+        targetAudit &&
+        Array.isArray(requiredProofCandidateIds) &&
+        Array.isArray(frozenCandidateIds) &&
+        requiredProofCandidateIds.every(candidateId =>
+          frozenCandidateIds.includes(candidateId),
+        );
+      const coverageMismatch = targetAudit
+        ? !sameCandidateIds(frozenCandidateIds, observedCandidateIds) ||
+          !sameCandidateIds(frozenCandidateIds, preparedEntryCandidateIds) ||
+          !vectorCoverageClosed ||
+          !requiredProofSubset ||
+          !sameCandidateIds(requiredProofCandidateIds, materializedProofCandidateIds) ||
+          !sameCandidateIds(materializedProofCandidateIds, observedProofCandidateIds) ||
+          !proofCoverageClosed
+        : !sameCandidateIds(frozenCandidateIds, observedCandidateIds) ||
           !sameCandidateIds(frozenCandidateIds, preparedEntryCandidateIds) ||
           !sameCandidateIds(frozenCandidateIds, preparedProofCandidateIds) ||
-          String(decisionAudit?.candidateCoverage?.status || '').trim() !==
-            'CLOSED')
-      ) {
+          !vectorCoverageClosed;
+      if (rows.length > 0 && coverageMismatch) {
         pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
           actionIndex,
           kind: 'R9V2_CANDIDATE_COVERAGE',
+          targetAudit,
           frozenCandidateIds,
           observedCandidateIds,
           preparedEntryCandidateIds,
           preparedProofCandidateIds,
-          candidateCoverage: decisionAudit?.candidateCoverage || null,
+          requiredProofCandidateIds,
+          materializedProofCandidateIds,
+          observedProofCandidateIds,
+          vectorCoverage,
+          proofCoverage,
         });
       }
       rows.forEach((row, candidateIndex) => {
         const candidateId = String(row?.candidateId || '').trim();
         const proof = row?.candidateValueProof;
-        if (!candidateId || !proof || typeof proof !== 'object') {
+        const proofRequired = !targetAudit ||
+          (Array.isArray(requiredProofCandidateIds) &&
+            requiredProofCandidateIds.includes(candidateId));
+        if (!candidateId) {
           pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
             actionIndex,
             candidateIndex,
             candidateId,
-            kind: 'R9V2_PROOF_MISSING',
+            kind: 'R9V2_CANDIDATE_ID_MISSING',
           });
+          return;
+        }
+        if (!proof || typeof proof !== 'object') {
+          if (proofRequired) {
+            pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+              actionIndex,
+              candidateIndex,
+              candidateId,
+              kind: 'R9V2_PROOF_MISSING',
+            });
+          }
+          const witness = row?.paretoWitness;
+          if (
+            row?.pareto === true
+              ? String(witness?.kind || '').trim() !== 'NON_DOMINATED'
+              : !String(witness?.dominatorCandidateId || '').trim()
+          ) {
+            pushFatal('CAUSAL_RANGE_OWNER_CONFLICT', {
+              actionIndex,
+              candidateIndex,
+              candidateId,
+              kind: row?.pareto === true
+                ? 'R9V2_PARETO_WITNESS_MISSING'
+                : 'R9V2_DOMINATOR_WITNESS_MISSING',
+            });
+          }
           return;
         }
         const facts = Array.isArray(proof?.causalValueFacts)
@@ -15889,6 +15990,7 @@
     };
     return cloneValue({
       version: decision?.version || '',
+      schemaVersion: decision?.schemaVersion || '',
       decisionEngine: String(
         decision?.decisionEngine ||
         (/next/i.test(String(decision?.version || '')) ? 'NEXT' : 'LEGACY'),
@@ -15910,6 +16012,14 @@
       preparedProofCandidateIds: normalizeCandidateIdList(
         decision?.preparedProofCandidateIds,
       ),
+      requiredProofCandidateIds: normalizeCandidateIdList(
+        decision?.requiredProofCandidateIds,
+      ),
+      materializedProofCandidateIds: normalizeCandidateIdList(
+        decision?.materializedProofCandidateIds,
+      ),
+      vectorCoverage: decision?.vectorCoverage || null,
+      proofCoverage: decision?.proofCoverage || null,
       candidateCoverage: decision?.candidateCoverage || null,
       paretoCount: Math.max(0, Number(decision?.paretoCount || 0)),
       selected: selected

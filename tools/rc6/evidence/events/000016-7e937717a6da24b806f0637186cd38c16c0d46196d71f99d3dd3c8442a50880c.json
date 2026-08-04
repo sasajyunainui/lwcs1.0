@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 16,
+  "previousEventHash": "991780a8ecce3326abf5b95d20b862c7329c5dc709b1bc32b4ee8067c08fb028",
+  "milestoneId": "M2",
+  "taskId": "M2-K10",
+  "eventType": "SUBTASK_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "fbacc8d327e69b6ab139a7075c027650cee767b3b2d6787dea9e5ecd476e63d8",
+    "BattleRuntime_Module.js": "210927dec4ae9ba07a5fe8cb7b80e3c7b87e785a0bc0a1efbe4b5c7bb0426940",
+    "BattleReport_Module.js": "3ccc7ad40c5839ff8bd2bc19840a2a3c02140c46715469904b1563fd09161dba",
+    "BattleUI_Module.js": "aee75208441f091e47d4a58d06b686c6a62e986faa464abc9c18170fb52c05eb",
+    "mvu_logic_bridge.js": "c4e8f6f5bdfcd6410a0a130f3c08df1e1039c8cd1237631eb60c6c56b6942603",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "BattleDecisionR9v2Kernel_Module.js": "4ce4ab6eadb81bc72edb6160dcee06b610b284a09dbbbe428c3bd6cca38e2157",
+    "tools/rc6/harness/run-m2-k01.mjs": "c26273703642a2603dc42c9c3ce7622dac799fc2f8ce1d72895f0e15d57fe7a5",
+    "tools/rc6/harness/run-m2-reference-ab.mjs": "2fe0f54e13b978ea0c6ad9ed2b05ea5a66944572554f44b5404b849f5db0771d",
+    "tools/rc6/reference/reference-value-evaluator.mjs": "5261b10071f4449c7538c81e13f253b7a49f9a41a164ccd796da460b514c644f"
+  },
+  "fixtureHashes": {
+    "tools/rc6/evidence/m2/k01-kernel-skeleton.json": "93a425bb8a5ec138c0e88f0332473d7f7258f52aa92a30f9cd4be637a14cd1c6",
+    "tools/rc6/evidence/m2/reference-kernel-ab.json": "71812fc79bce133fde5715a2a82cc6169adcc616ea8953419dd24ce25295a347"
+  },
+  "acceptedObjectHashes": [
+    "93a425bb8a5ec138c0e88f0332473d7f7258f52aa92a30f9cd4be637a14cd1c6",
+    "71812fc79bce133fde5715a2a82cc6169adcc616ea8953419dd24ce25295a347"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "K11 Runtime and DecisionAuditV2 migration",
+    "k01ToK10": "PASSED_REFERENCE_SLICE",
+    "referenceCases": 20,
+    "candidateValueAndProofAB": "EXACT",
+    "formalProvider": "r8",
+    "targetProvider": "r9v2_not_registered"
+  },
+  "reason": "K02-K10 isolated kernel scalar slice passed against independent reference evaluator",
+  "recordedAt": "2026-08-04T15:08:42.071Z",
+  "repository": {
+    "branch": "master",
+    "head": "51bf1648444f91fa3c47d7b2b6ee5fe109361188"
+  },
+  "eventHash": "7e937717a6da24b806f0637186cd38c16c0d46196d71f99d3dd3c8442a50880c"
+}
