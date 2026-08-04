@@ -1,0 +1,1196 @@
+{
+  "schemaVersion": "M3B04PathSourceAuditV1",
+  "milestoneId": "M3",
+  "taskId": "M3-B04",
+  "status": "CURRENT_SOURCE_DOES_NOT_DEFINE_621",
+  "sourceKind": "CURRENT_MECHANISM_REGISTRY_ONLY",
+  "targetProvider": "r9v2_unregistered_test_registry_only",
+  "expectedFromOpenGate": {
+    "prototypeCount": 23,
+    "pathCount": 621
+  },
+  "observedCurrentSource": {
+    "prototypeCount": 27,
+    "optionPathCount": 712,
+    "rows": [
+      {
+        "prototype": "伤害结算",
+        "optionCount": 18,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "威力倍率",
+            "optionCount": 0
+          },
+          {
+            "field": "伤害类型",
+            "optionCount": 4
+          },
+          {
+            "field": "攻击段数",
+            "optionCount": 0
+          },
+          {
+            "field": "防御穿透",
+            "optionCount": 0
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          },
+          {
+            "field": "结算标签",
+            "optionCount": 2
+          },
+          {
+            "field": "抗性类型",
+            "optionCount": 5
+          },
+          {
+            "field": "延迟回合",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "资源变化",
+        "optionCount": 22,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 6
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "资源",
+            "optionCount": 4
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "触发限制",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "资源转移",
+        "optionCount": 25,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "资源",
+            "optionCount": 4
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "资源转移方式",
+            "optionCount": 4
+          },
+          {
+            "field": "转化比例",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          }
+        ]
+      },
+      {
+        "prototype": "护盾变化",
+        "optionCount": 20,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "护盾模式",
+            "optionCount": 3
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          },
+          {
+            "field": "延迟回合",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "属性修正",
+        "optionCount": 25,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 6
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "属性",
+            "optionCount": 7
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          },
+          {
+            "field": "延迟回合",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "判定修正",
+        "optionCount": 21,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 6
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "判定",
+            "optionCount": 3
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "打断效果",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "结算修正",
+        "optionCount": 63,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 6
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "结算",
+            "optionCount": 18
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "数量",
+            "optionCount": 0
+          },
+          {
+            "field": "转移对象",
+            "optionCount": 4
+          },
+          {
+            "field": "吸收来源",
+            "optionCount": 2
+          },
+          {
+            "field": "吸收资源",
+            "optionCount": 4
+          },
+          {
+            "field": "限定元素",
+            "optionCount": 17
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          }
+        ]
+      },
+      {
+        "prototype": "炸环",
+        "optionCount": 7,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "强化倍率",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "状态施加",
+        "optionCount": 55,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "状态",
+            "optionCount": 33
+          },
+          {
+            "field": "触发方式",
+            "optionCount": 3
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "副数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "延迟回合",
+            "optionCount": 0
+          },
+          {
+            "field": "触发限制",
+            "optionCount": 0
+          },
+          {
+            "field": "打断效果",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 5
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "时窗修正",
+        "optionCount": 24,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "调整字段",
+            "optionCount": 4
+          },
+          {
+            "field": "调整方式",
+            "optionCount": 2
+          },
+          {
+            "field": "调整回合",
+            "optionCount": 0
+          },
+          {
+            "field": "调整tick",
+            "optionCount": 0
+          },
+          {
+            "field": "调整次数",
+            "optionCount": 0
+          },
+          {
+            "field": "单日使用次数上限",
+            "optionCount": 0
+          },
+          {
+            "field": "结算倍率",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 4
+          }
+        ]
+      },
+      {
+        "prototype": "状态移除",
+        "optionCount": 62,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "状态",
+            "optionCount": 36
+          },
+          {
+            "field": "匹配原型",
+            "optionCount": 3
+          },
+          {
+            "field": "资源",
+            "optionCount": 1
+          },
+          {
+            "field": "数值方向",
+            "optionCount": 3
+          },
+          {
+            "field": "数量",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 5
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "规则防御",
+        "optionCount": 9,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "规则",
+            "optionCount": 2
+          },
+          {
+            "field": "次数",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "触发限制",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "状态转移",
+        "optionCount": 51,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "状态",
+            "optionCount": 36
+          },
+          {
+            "field": "来源",
+            "optionCount": 4
+          },
+          {
+            "field": "去向",
+            "optionCount": 4
+          },
+          {
+            "field": "数量",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "状态交换",
+        "optionCount": 33,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "状态",
+            "optionCount": 26
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "资源锁定",
+        "optionCount": 25,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "资源",
+            "optionCount": 4
+          },
+          {
+            "field": "锁定类型",
+            "optionCount": 3
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 4
+          }
+        ]
+      },
+      {
+        "prototype": "规则改写",
+        "optionCount": 19,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "规则",
+            "optionCount": 2
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          }
+        ]
+      },
+      {
+        "prototype": "机制抹消",
+        "optionCount": 17,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "抹消对象",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          }
+        ]
+      },
+      {
+        "prototype": "机制授予",
+        "optionCount": 21,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "授予效果",
+            "optionCount": 0
+          },
+          {
+            "field": "触发条件",
+            "optionCount": 2
+          },
+          {
+            "field": "触发限制",
+            "optionCount": 0
+          },
+          {
+            "field": "可用次数",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 5
+          }
+        ]
+      },
+      {
+        "prototype": "复制执行",
+        "optionCount": 22,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "复制类型",
+            "optionCount": 3
+          },
+          {
+            "field": "复制模式",
+            "optionCount": 2
+          },
+          {
+            "field": "保存上限",
+            "optionCount": 0
+          },
+          {
+            "field": "削减比例",
+            "optionCount": 0
+          },
+          {
+            "field": "可用次数",
+            "optionCount": 0
+          },
+          {
+            "field": "保留回合",
+            "optionCount": 0
+          },
+          {
+            "field": "保留时长tick",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          }
+        ]
+      },
+      {
+        "prototype": "时光回溯",
+        "optionCount": 18,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "发动方式",
+            "optionCount": 2
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 2
+          }
+        ]
+      },
+      {
+        "prototype": "位移执行",
+        "optionCount": 26,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "位移类型",
+            "optionCount": 5
+          },
+          {
+            "field": "位移对象",
+            "optionCount": 3
+          },
+          {
+            "field": "距离",
+            "optionCount": 0
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 4
+          }
+        ]
+      },
+      {
+        "prototype": "决策干扰",
+        "optionCount": 19,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "干扰",
+            "optionCount": 2
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "驱动属性",
+            "optionCount": 7
+          },
+          {
+            "field": "影响方向",
+            "optionCount": 3
+          }
+        ]
+      },
+      {
+        "prototype": "修炼增益",
+        "optionCount": 20,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "收益类型",
+            "optionCount": 2
+          },
+          {
+            "field": "修炼属性",
+            "optionCount": 6
+          },
+          {
+            "field": "训练方式",
+            "optionCount": 5
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "有效期tick",
+            "optionCount": 0
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "天赋提升",
+        "optionCount": 13,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "上限梯队",
+            "optionCount": 6
+          },
+          {
+            "field": "提升档数",
+            "optionCount": 0
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "永久属性提升",
+        "optionCount": 14,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "属性",
+            "optionCount": 7
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "对应等级",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "战斗外复活",
+        "optionCount": 44,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "数值",
+            "optionCount": 0
+          },
+          {
+            "field": "死亡时限tick",
+            "optionCount": 0
+          },
+          {
+            "field": "复活代价类型",
+            "optionCount": 4
+          },
+          {
+            "field": "复活代价对象",
+            "optionCount": 25
+          },
+          {
+            "field": "复活代价值",
+            "optionCount": 0
+          },
+          {
+            "field": "复活代价时限tick",
+            "optionCount": 0
+          },
+          {
+            "field": "复活后状态",
+            "optionCount": 8
+          },
+          {
+            "field": "复活后状态时限tick",
+            "optionCount": 0
+          }
+        ]
+      },
+      {
+        "prototype": "召唤生成",
+        "optionCount": 19,
+        "fields": [
+          {
+            "field": "目标",
+            "optionCount": 5
+          },
+          {
+            "field": "生效方式",
+            "optionCount": 2
+          },
+          {
+            "field": "条件分支",
+            "optionCount": 0
+          },
+          {
+            "field": "召唤单位类型",
+            "optionCount": 6
+          },
+          {
+            "field": "召唤物名称",
+            "optionCount": 0
+          },
+          {
+            "field": "数量",
+            "optionCount": 0
+          },
+          {
+            "field": "行动模式",
+            "optionCount": 3
+          },
+          {
+            "field": "继承属性比例",
+            "optionCount": 0
+          },
+          {
+            "field": "强度",
+            "optionCount": 0
+          },
+          {
+            "field": "持续回合",
+            "optionCount": 0
+          },
+          {
+            "field": "承伤规则",
+            "optionCount": 3
+          },
+          {
+            "field": "触发限制",
+            "optionCount": 0
+          }
+        ]
+      }
+    ]
+  },
+  "interpretation": {
+    "currentSourceDefines621": false,
+    "r9v2PathSchemaPresent": false,
+    "r9v2PathFixturePresent": false,
+    "oldR8EnumCountAccepted": false,
+    "sourceAuditIsPathCoverage": false
+  },
+  "historicalComparison": {
+    "source": "tools/audit_battle_r83_phase8.mjs",
+    "operation": "Enumerate the old R8 mechanism registry field options and call R8 Preview for each option.",
+    "provider": "r8",
+    "acceptedAsR9v2Coverage": false
+  },
+  "sourceHashes": {
+    "MVU_Skill_Runtime.js": "925711b139c5bde60014140a07e3bf2410b035cf26ae8f8728a67dd21aabdbd3",
+    "tools/audit_battle_r83_phase8.mjs": "728b40b40c719ee3d982409ce5079a7efcd480e2931aa53dab1d097791a50943",
+    "tools/rc6/contracts/BehaviorPlanningContractV1.json": "5dd857f3585eaeefc59367ed526d8a5d4361a2ec594585d2a8a21c6abc060986",
+    "tools/rc6/contracts/M1FixtureManifestV1.json": "e53562ef73d828089f3e3699ce0ada26f490bac962d588e8f07b08ad76d24bcf",
+    "tools/rc6/harness/audit-m3-b04-path-source.mjs": "f6862e098a6e2849f2eca0d7d2a263ca70af3fba2e6ec0d4ab453d7dfbbd1bad"
+  }
+}
