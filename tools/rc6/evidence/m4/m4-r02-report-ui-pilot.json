@@ -1,0 +1,240 @@
+{
+  "schemaVersion": "M4R02ReportUiPilotV1",
+  "status": "PASSED",
+  "caseIds": [
+    "duel_overmatch_lethal",
+    "intent_capture_vs_kill",
+    "team_control_overlap",
+    "team_protect_critical_ally"
+  ],
+  "caseCount": 4,
+  "projectionModes": [
+    "PLAYER",
+    "REVIEW",
+    "DEVELOPER"
+  ],
+  "rows": [
+    {
+      "caseId": "duel_overmatch_lethal",
+      "actorCount": 2,
+      "rounds": 4,
+      "draftHash": "r74-85c1446e9249d75c",
+      "projections": {
+        "PLAYER": {
+          "visibilityMode": "PLAYER",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-3544457e0d6f3e67",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-85c1446e9249d75c",
+          "hasDeveloperDetail": false,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": true
+        },
+        "REVIEW": {
+          "visibilityMode": "REVIEW",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-7db8c68fff706da0",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-85c1446e9249d75c",
+          "hasDeveloperDetail": false,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": true
+        },
+        "DEVELOPER": {
+          "visibilityMode": "DEVELOPER",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-e942a304a6bed697",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-85c1446e9249d75c",
+          "hasDeveloperDetail": true,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": false
+        }
+      },
+      "sealed": {
+        "schemaVersion": "8.3-sealed-1",
+        "reportSchemaVersion": "BattleReportDtoV2",
+        "visibilityMode": "PLAYER",
+        "projectionStatus": "PASSED"
+      },
+      "reviewSealError": "BATTLE_REPORT_DTO_CONTRACT_MISMATCH"
+    },
+    {
+      "caseId": "intent_capture_vs_kill",
+      "actorCount": 2,
+      "rounds": 6,
+      "draftHash": "r74-2e8237783e0f2703",
+      "projections": {
+        "PLAYER": {
+          "visibilityMode": "PLAYER",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-001f91c9a5bdb178",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-2e8237783e0f2703",
+          "hasDeveloperDetail": false,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": true
+        },
+        "REVIEW": {
+          "visibilityMode": "REVIEW",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-564bf2ee2b97200f",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-2e8237783e0f2703",
+          "hasDeveloperDetail": false,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": true
+        },
+        "DEVELOPER": {
+          "visibilityMode": "DEVELOPER",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-d607f02aba2dfb76",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-2e8237783e0f2703",
+          "hasDeveloperDetail": true,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": false
+        }
+      },
+      "sealed": {
+        "schemaVersion": "8.3-sealed-1",
+        "reportSchemaVersion": "BattleReportDtoV2",
+        "visibilityMode": "PLAYER",
+        "projectionStatus": "PASSED"
+      },
+      "reviewSealError": "BATTLE_REPORT_DTO_CONTRACT_MISMATCH"
+    },
+    {
+      "caseId": "team_control_overlap",
+      "actorCount": 6,
+      "rounds": 4,
+      "draftHash": "r74-120f10821576feb7",
+      "projections": {
+        "PLAYER": {
+          "visibilityMode": "PLAYER",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-eb0260ecb31d06b5",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-120f10821576feb7",
+          "hasDeveloperDetail": false,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": true
+        },
+        "REVIEW": {
+          "visibilityMode": "REVIEW",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-ce5defd9226fb4c0",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-120f10821576feb7",
+          "hasDeveloperDetail": false,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": true
+        },
+        "DEVELOPER": {
+          "visibilityMode": "DEVELOPER",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-172b9d71c19c8185",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-120f10821576feb7",
+          "hasDeveloperDetail": true,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": false
+        }
+      },
+      "sealed": {
+        "schemaVersion": "8.3-sealed-1",
+        "reportSchemaVersion": "BattleReportDtoV2",
+        "visibilityMode": "PLAYER",
+        "projectionStatus": "PASSED"
+      },
+      "reviewSealError": "BATTLE_REPORT_DTO_CONTRACT_MISMATCH"
+    },
+    {
+      "caseId": "team_protect_critical_ally",
+      "actorCount": 6,
+      "rounds": 4,
+      "draftHash": "r74-284db17041e9e0cd",
+      "projections": {
+        "PLAYER": {
+          "visibilityMode": "PLAYER",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-1c6392b73682957a",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-284db17041e9e0cd",
+          "hasDeveloperDetail": false,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": true
+        },
+        "REVIEW": {
+          "visibilityMode": "REVIEW",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-ccec29d05ebeebd5",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-284db17041e9e0cd",
+          "hasDeveloperDetail": false,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": true
+        },
+        "DEVELOPER": {
+          "visibilityMode": "DEVELOPER",
+          "passed": true,
+          "fatalCount": 0,
+          "reportHash": "r74-47b1dce0c1ef31c3",
+          "schemaVersion": "BattleReportDtoV2",
+          "projectionStatus": "PASSED",
+          "sourceDraftHash": "r74-284db17041e9e0cd",
+          "hasDeveloperDetail": true,
+          "hasLegacyAiReport": false,
+          "enemyResourcesHidden": false
+        }
+      },
+      "sealed": {
+        "schemaVersion": "8.3-sealed-1",
+        "reportSchemaVersion": "BattleReportDtoV2",
+        "visibilityMode": "PLAYER",
+        "projectionStatus": "PASSED"
+      },
+      "reviewSealError": "BATTLE_REPORT_DTO_CONTRACT_MISMATCH"
+    }
+  ],
+  "uiContract": {
+    "hasPlayerDtoGuard": true,
+    "checksV2Schema": true,
+    "checksPlayerVisibility": true,
+    "checksPassedProjection": true,
+    "hasFailClosedText": true,
+    "panelHasNoLedgerFallback": true,
+    "hasNoRuntimeReportBuilderCalls": true,
+    "aiUsesStructuredSummaryOnly": true
+  },
+  "sourceHashes": {
+    "report": "6e4768e121d854dc7a79315b0733fa2af8bfef3dba96d4bb5d397a94c370bfa5",
+    "runtime": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "ui": "c9eb08c6ee949d1ad79694c1e94f194a38d3a0575930f9cbd037f137dd581227",
+    "bridge": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "reportContract": "ed38f88249928e028b135e1afd2170e160603b1f2fc206701c0ba53d7f32fca4",
+    "termDictionary": "0efbcebee3d7307e6173d4e3703cd7e7e9c27cbfa723bf5e9a024d45fc349464"
+  }
+}

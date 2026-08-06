@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 64,
+  "previousEventHash": "c90869612a705b93efce8b55f1dbbe66a55e1483c54898510e5c808aceeccbfa",
+  "milestoneId": "M2",
+  "taskId": "M2-K04-CURRENT-HASH",
+  "eventType": "EVIDENCE_SUPERSEDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "d0c483649230f307dc848718140ff46e7ad31bf26a3fd4e42157b13f5de2b87d",
+    "BattleDecision_Module.js": "0063ef0f5db53db50af9272e5834ae12d8ab1f6efa58a43a3355ffbd8197a187",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "BattleDecisionR9v2Kernel_Module.js": "350c7e60be627f1c34847a2d0721b8b9c45dc88cf4f6b9ee4bded2657f5bcee1",
+    "tools/rc6/harness/run-m2-k04-target-fact-delta.mjs": "94e4cd8059947eb054ed1fdc29e6ead2cba86d3e1af2abbbfc94cbfb74baf1a6",
+    "tools/rc6/harness/run-m2-reference-v2.mjs": "8fddb365157a38e7b7bc4ff4d2a8eb632ca8c7b41c0c5d4f315f7aa16c80d5a6",
+    "tools/rc6/harness/run-m2-small-target-transactions.mjs": "148715315b2dec54cb3873af419ab73d2c3922fb9e4e35fdc975f5b8cc88f716",
+    "tools/rc6/harness/run-m5-p02-reuse-diagnostic.mjs": "f2e2c59bc865b0cab05a8a9123b1c11a65e6709b3c6ee7f2d2744ec1919d00fa",
+    "tools/rc6/reference/reference-value-evaluator-v2.mjs": "46ded19cd491c049d8dad51acbc00d1c5698438119bcbb67cecbe34bc7e2d2dc"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/KernelReferenceCasesV2.json": "c4f956983836983ee9cf4f09057bd214fe2a24a91fe58a0329bc7d08d9703f96"
+  },
+  "acceptedObjectHashes": [
+    "cc1915863230d04b5ac3d92c069cb7d6472d1eac7942a44b03124222a6be6e2d",
+    "1bacebc0a39c85f992362e10cd5b2f8697fa49489e8b91575420b0a610c5ad83",
+    "c5a832cfaf55a54c1d6c5991df0e675414583839f2a86f8afebea86a1bfeebdb",
+    "33bcf95e48455f582ef274ad094fe85e5f7b36a0b528178c70e7c139d9697e03"
+  ],
+  "invalidatedObjectHashes": [
+    "ec14875792d364bbd988e650a980636659e9c0c21ab4760e01ffc70bc00b572d",
+    "eb63aa68bb6fdd317a96f9ba12687f8e4cc73e99f28e1f1a5c2357d25c7de1bd",
+    "6c53ce920c80414733699a3881905a4c8f48ad1390b0e9d6d6d0d63000c07c8e",
+    "93a2791f32eb53fdebb5c11a2fd516aa55f99eb378b1178c15f1d9a0334782bd",
+    "b08eaa869a6fc7458e72e5975b8b8bd8dca1b16678a08b3493d6520347f94ed4"
+  ],
+  "details": {
+    "diagnosticOnly": true,
+    "m2Complete": false,
+    "formal7v7Run": false,
+    "nextExitCondition": "Fix and verify preparation-chain duplication before M2 target-kernel exit"
+  },
+  "reason": "Current-hash M2 diagnostic evidence supersedes stale event 62/63 objects; target kernel remains IN_PROGRESS and no formal 7v7 performance gate is claimed.",
+  "recordedAt": "2026-08-05T14:55:08.935Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "5741702360aa902f3a67d58cb8b3a483e3805398c09360f2f7cb8ab4e2cd0f0f"
+}

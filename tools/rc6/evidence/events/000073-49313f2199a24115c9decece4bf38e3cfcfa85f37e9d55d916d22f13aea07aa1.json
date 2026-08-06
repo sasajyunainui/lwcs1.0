@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 73,
+  "previousEventHash": "9f4d4ebfa3e3679ed6d4db66f39b25f51523970390ac24b3f62aa36ac7fb5f8a",
+  "milestoneId": "M2",
+  "taskId": "M2-TARGET-KERNEL-REWORK",
+  "eventType": "MILESTONE_REOPENED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "da6169945d12196e99b18769013e66b5a3f4255b502710ff1865452a81d911e5",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "Implement shared future-route value representation and prove field-level Reference A/B before rerunning K13",
+    "unacceptedDiagnosticChanges": [
+      "current WeakMap dependency index",
+      "payment-only dependency boundary"
+    ],
+    "quarantinedOutOfScopeChanges": [
+      "BattleReport_Module.js",
+      "BattleUI_Module.js",
+      "mvu_logic_bridge.js",
+      "M3/M4 harness and evidence"
+    ],
+    "performanceGate": "K13_BLOCKED",
+    "formalProvider": "r8",
+    "targetProvider": "r9v2_UNREGISTERED",
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "Reopened M2 for target-kernel structural work. Current dependency-index and payment-only batches preserve semantics but have no stable end-to-end gain; post-event worktree changes are recorded as unaccepted until scope and hashes are reconciled.",
+  "recordedAt": "2026-08-05T22:35:14.322Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "49313f2199a24115c9decece4bf38e3cfcfa85f37e9d55d916d22f13aea07aa1"
+}

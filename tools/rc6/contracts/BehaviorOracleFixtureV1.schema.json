@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "BehaviorOracleFixtureV1.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "fixtureId",
+    "oracleId",
+    "sourceCaseId",
+    "semanticDomain",
+    "variant",
+    "input",
+    "checks",
+    "expectedSource"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "BehaviorOracleFixtureV1" },
+    "fixtureId": { "type": "string", "minLength": 1 },
+    "oracleId": { "type": "string", "minLength": 1 },
+    "sourceCaseId": { "type": "string", "minLength": 1 },
+    "semanticDomain": { "enum": ["S1", "S2", "S3", "S4", "S5", "S6"] },
+    "variant": { "enum": ["positive", "negative", "mutation", "single"] },
+    "input": { "type": "object" },
+    "checks": { "type": "array", "minItems": 1 },
+    "expectedSource": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": true
+}

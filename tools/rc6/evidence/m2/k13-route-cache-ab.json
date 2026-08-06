@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "M2K13TargetRouteCacheABV1",
+  "status": "PASSED",
+  "scope": "CURRENT_HASH_SINGLE_ROUND_TARGET_KERNEL_SELECTION_ONLY",
+  "caseId": "raid_control_heavy",
+  "current": {
+    "label": "current",
+    "elapsedMs": 20666.794,
+    "decisionHashes": [
+      "80f940a6921ad8537136f2f03748f025b048595e221f8ceb87d57f6774196da5",
+      "842ed6fa4b63a6bd95934eb7e6da1446a8677ba5d697dfafa21333991e346ab7",
+      "13d7218a5a7b5051ac08c0553a66b632ff08562efa9166c3e2f3cd866a22f291",
+      "b14a69055fc01549e689c62d6d55d55f0d0ce768d9675787d6b52d5d7c9057ba",
+      "5dc4ed08d0a768105d0de600c3579ddbf5147dbb8f357daa8b9e9d1538489347",
+      "dd1fbc90a17e03e3c3274d366d6c7efd111d51b3fc166500d84e60662c22ffb8",
+      "bd5c5c0ae7cc37bb3e85e6391e9d96e28cddc65969d91b7955c1d64456038522",
+      "0448ddac2f66f431b80c601683a1b6a9bcdd093fd7a22ed6c5868377059281fc",
+      "eefe1bd3a24c412682abb2fdd48e06cf23b46d37aec7bfc5c8b82c502de46188",
+      "6e61b9e848d6608f8fcfe0c291c8299e42a36a8d212b00d7d9a27c4ad1aa709c",
+      "62bb4f46fd0bc59b11511fd79516f31aae272609df3e16bf4bc85f1ce776bb85",
+      "0f8ae57300fd4028b9f7eec06103c9f7b01db582e06c1271e5324fd2a5509e99",
+      "27597fbf51c8843ffbeb77edddc6222a49d2dac31596b059c94dbeb8b5b86a5f",
+      "3f4ecc9fb607542ce6e8cda7e4a0ce1df23ae02605bd02aa494254a4e24ecf9d"
+    ],
+    "metrics": {
+      "requestCount": 14,
+      "poolUnitBuilds": 28,
+      "poolEntryCount": 480,
+      "poolUnitFallbacks": 0,
+      "mechanicalBasisCompiles": 333,
+      "mechanicalBasisEvaluations": 480,
+      "mechanicalEntryCacheHits": 126,
+      "mechanicalEntryCacheMisses": 480,
+      "targetKernelVectorEvaluations": 330,
+      "targetKernelSliceHits": 0,
+      "targetKernelSliceMisses": 0,
+      "routeHits": 345,
+      "routeMisses": 123,
+      "routeEntryHits": 96,
+      "routeEntryMisses": 41,
+      "routeValueReuseGateReasons": {
+        "r9v2InformationBranchRouteValueReuseGate:ELIGIBLE": 888
+      }
+    },
+    "storeSizes": {
+      "operationGraphStore": 0,
+      "fullRoutesByUnit": 0,
+      "routeFactOwnershipIndex": 14,
+      "behaviorEnvelopeStore": 0,
+      "resourcePlanStore": 0,
+      "terminalDistributionStore": 0,
+      "attributionStore": 0,
+      "paretoGraphByUnit": 0,
+      "r9v2ObserverPools": 2,
+      "r9v2TargetKernelSlices": 0,
+      "r9v2TargetKernelSessions": 0,
+      "r9v2TargetKernelSessionCatalog": 14,
+      "r9v2DeclarationCatalogs": 28,
+      "r9v2MechanicalBasisStore": 333,
+      "r9v2FutureBehaviorPools": 0,
+      "r9v2ProofComponentStore": 1403,
+      "r9v2TargetRouteEntriesByKey": 41,
+      "r9v2TargetRouteTablesByKey": 1025,
+      "r9v2TargetRouteBestByKey": 123
+    }
+  },
+  "noRouteCache": {
+    "label": "no-route-cache",
+    "elapsedMs": 22082.703,
+    "decisionHashes": [
+      "80f940a6921ad8537136f2f03748f025b048595e221f8ceb87d57f6774196da5",
+      "842ed6fa4b63a6bd95934eb7e6da1446a8677ba5d697dfafa21333991e346ab7",
+      "13d7218a5a7b5051ac08c0553a66b632ff08562efa9166c3e2f3cd866a22f291",
+      "b14a69055fc01549e689c62d6d55d55f0d0ce768d9675787d6b52d5d7c9057ba",
+      "5dc4ed08d0a768105d0de600c3579ddbf5147dbb8f357daa8b9e9d1538489347",
+      "dd1fbc90a17e03e3c3274d366d6c7efd111d51b3fc166500d84e60662c22ffb8",
+      "bd5c5c0ae7cc37bb3e85e6391e9d96e28cddc65969d91b7955c1d64456038522",
+      "0448ddac2f66f431b80c601683a1b6a9bcdd093fd7a22ed6c5868377059281fc",
+      "eefe1bd3a24c412682abb2fdd48e06cf23b46d37aec7bfc5c8b82c502de46188",
+      "6e61b9e848d6608f8fcfe0c291c8299e42a36a8d212b00d7d9a27c4ad1aa709c",
+      "62bb4f46fd0bc59b11511fd79516f31aae272609df3e16bf4bc85f1ce776bb85",
+      "0f8ae57300fd4028b9f7eec06103c9f7b01db582e06c1271e5324fd2a5509e99",
+      "27597fbf51c8843ffbeb77edddc6222a49d2dac31596b059c94dbeb8b5b86a5f",
+      "3f4ecc9fb607542ce6e8cda7e4a0ce1df23ae02605bd02aa494254a4e24ecf9d"
+    ],
+    "metrics": {
+      "requestCount": 14,
+      "poolUnitBuilds": 28,
+      "poolEntryCount": 480,
+      "poolUnitFallbacks": 0,
+      "mechanicalBasisCompiles": 333,
+      "mechanicalBasisEvaluations": 480,
+      "mechanicalEntryCacheHits": 126,
+      "mechanicalEntryCacheMisses": 480,
+      "targetKernelVectorEvaluations": 330,
+      "targetKernelSliceHits": 0,
+      "targetKernelSliceMisses": 0,
+      "routeHits": 0,
+      "routeMisses": 0,
+      "routeEntryHits": 0,
+      "routeEntryMisses": 0,
+      "routeValueReuseGateReasons": {
+        "r9v2InformationBranchRouteValueReuseGate:ELIGIBLE": 888
+      }
+    },
+    "storeSizes": {
+      "operationGraphStore": 0,
+      "fullRoutesByUnit": 0,
+      "routeFactOwnershipIndex": 14,
+      "behaviorEnvelopeStore": 0,
+      "resourcePlanStore": 0,
+      "terminalDistributionStore": 0,
+      "attributionStore": 0,
+      "paretoGraphByUnit": 0,
+      "r9v2ObserverPools": 2,
+      "r9v2TargetKernelSlices": 0,
+      "r9v2TargetKernelSessions": 0,
+      "r9v2TargetKernelSessionCatalog": 14,
+      "r9v2DeclarationCatalogs": 28,
+      "r9v2MechanicalBasisStore": 333,
+      "r9v2FutureBehaviorPools": 0,
+      "r9v2ProofComponentStore": 1403,
+      "r9v2TargetRouteEntriesByKey": 0,
+      "r9v2TargetRouteTablesByKey": 0,
+      "r9v2TargetRouteBestByKey": 0
+    }
+  },
+  "comparison": {
+    "elapsedGainPercent": 6.412,
+    "decisionHashEqual": true,
+    "repeatedHotPathCountsEqual": true
+  },
+  "sourceHashes": {
+    "decision": "d4cd5bedb5ddf2a99ea2670d730884eb555897f8fe44fc2b4cfd1028924f810f",
+    "noRouteCacheDecision": "49db2d02442eda1f200f460651ffa0dd5beeb5fcf3f890e3dd9651f250d38b63",
+    "harness": "979e676171d43e420e45944b758b65b6836ce75dea68c627823ca81263ed3627"
+  }
+}

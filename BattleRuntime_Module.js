@@ -16410,9 +16410,12 @@
       !reportHash ||
       !reportRuntime ||
       typeof reportRuntime.verifyProjectionAttestation !== 'function' ||
-      reportRuntime.verifyProjectionAttestation(reportAudit, draftHash) !== true
+      reportRuntime.verifyProjectionAttestation(reportAudit, draftHash) !== true ||
+      String(reportDto?.schemaVersion || '').trim() !== 'BattleReportDtoV2' ||
+      String(reportDto?.visibilityMode || '').trim() !== 'PLAYER' ||
+      String(reportDto?.projectionStatus || '').trim() !== 'PASSED'
     ) {
-      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:report');
+      throw new Error('BATTLE_REPORT_DTO_CONTRACT_MISMATCH');
     }
     const sealedPackage = Object.freeze({
       schemaVersion: '8.3-sealed-1',
@@ -16422,7 +16425,6 @@
       terminalResult: draft.terminalResult,
       finalSnapshot: draft.finalSnapshot,
       reportDto,
-      aiSummaryInput: reportDto.aiSummaryInput || null,
     });
     sealedBattlePackageAttestations.add(sealedPackage);
     return sealedPackage;
@@ -16447,6 +16449,8 @@
       !sealedBattlePackageAttestations.has(sealedPackage) ||
       !Object.isFrozen(sealedPackage) ||
       String(reportDto?.sourceDraftHash || '').trim() !== draftHash ||
+      String(reportDto?.schemaVersion || '').trim() !== 'BattleReportDtoV2' ||
+      String(reportDto?.visibilityMode || '').trim() !== 'PLAYER' ||
       String(reportDto?.projectionStatus || '').trim() !== 'PASSED'
     ) {
       throw new Error('BATTLE_COMMIT_HASH_MISMATCH:package');

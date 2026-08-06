@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 43,
+  "previousEventHash": "245042f5497f8d8d121be6126d7a35c00e82120a1541f296551c8a891daaff10",
+  "milestoneId": "M4",
+  "taskId": "M4-R02",
+  "eventType": "EVIDENCE_ACCEPTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "691b689b6cf304a54c3d5989e6e64cc3ed816581fd0d4d7c97bfefd3b0e6ab86",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "6e4768e121d854dc7a79315b0733fa2af8bfef3dba96d4bb5d397a94c370bfa5",
+    "BattleUI_Module.js": "7ef9be949fdfd5c6af2552a9be2bcf82286fe5771f789445f7ccafa32c48685f",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m4-r02-report-ui-pilot.mjs": "c2e2428b5fabbdc1f45b0d75d80731f5443692d0f91ebed6fd36400332ab5dc3"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "5d2b590f439510678b8cbdb11d7a3721e48a8629b9c1a57b8dfd20c9221dfd9a",
+    "c2e2428b5fabbdc1f45b0d75d80731f5443692d0f91ebed6fd36400332ab5dc3"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "supersedesEvent": 41,
+    "status": "PASSED",
+    "caseCount": 4,
+    "aiInput": "PLAYER.aiStructuredSummary only",
+    "nextExitCondition": "Complete M4-R04 consumer migration and fail-closed UI closure"
+  },
+  "reason": "Current-hash M4-R02 pilot accepted after AI consumer closure: four same-draft three-layer reports pass, PLAYER seal passes, REVIEW seal rejects, and AI receives no report chain.",
+  "recordedAt": "2026-08-05T02:58:10.413Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "708517cf69bb5af1c2443fe6f24629afa6a8567758e9e99495676176213741b2"
+}

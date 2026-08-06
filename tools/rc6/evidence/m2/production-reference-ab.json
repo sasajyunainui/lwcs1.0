@@ -1,0 +1,746 @@
+{
+  "schemaVersion": "M2ProductionReferenceABV1",
+  "status": "PASSED",
+  "scope": "PRODUCTION_TARGET_KERNEL_FULL_CANDIDATE_FIELD_AB",
+  "caseCount": 8,
+  "rows": [
+    {
+      "caseId": "duel_overmatch_lethal",
+      "candidateCount": 4,
+      "supportedCandidateCount": 4,
+      "unsupportedCandidateCount": 0,
+      "referenceParetoCandidateIds": [
+        "云冥:basic:韦小枫"
+      ],
+      "targetParetoCandidateIds": [
+        "云冥:basic:韦小枫"
+      ],
+      "referenceSelectedCandidateId": "云冥:basic:韦小枫",
+      "targetSelectedCandidateId": "云冥:basic:韦小枫",
+      "requiredProofCandidateIds": [
+        "云冥:basic:韦小枫"
+      ],
+      "supported": [
+        {
+          "candidateId": "云冥:basic:韦小枫",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "云冥:PASS_OPPORTUNITY",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "云冥:DEFEND",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "云冥:EVADE",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        }
+      ],
+      "unsupported": [],
+      "fullCaseSelectionAB": true
+    },
+    {
+      "caseId": "duel_peer_unknown_probe",
+      "candidateCount": 10,
+      "supportedCandidateCount": 10,
+      "unsupportedCandidateCount": 0,
+      "referenceParetoCandidateIds": [
+        "谢邂:basic:韦小枫"
+      ],
+      "targetParetoCandidateIds": [
+        "谢邂:basic:韦小枫"
+      ],
+      "referenceSelectedCandidateId": "谢邂:basic:韦小枫",
+      "targetSelectedCandidateId": "谢邂:basic:韦小枫",
+      "requiredProofCandidateIds": [
+        "谢邂:basic:韦小枫"
+      ],
+      "supported": [
+        {
+          "candidateId": "谢邂:basic:韦小枫",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:PASS_OPPORTUNITY",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:DEFEND",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:EVADE",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:skill:光龙刃:0",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:skill:光龙风暴:0",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:skill:光龙分身:0",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:skill:影龙刃:0",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:skill:影龙风暴:0",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "谢邂:skill:影龙分身:0",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        }
+      ],
+      "unsupported": [],
+      "fullCaseSelectionAB": true
+    },
+    {
+      "caseId": "team_focus_without_overkill",
+      "candidateCount": 10,
+      "supportedCandidateCount": 10,
+      "unsupportedCandidateCount": 0,
+      "referenceParetoCandidateIds": [
+        "唐舞麟:DEFEND",
+        "唐舞麟:EVADE",
+        "唐舞麟:PASS_OPPORTUNITY",
+        "唐舞麟:basic:张扬子",
+        "唐舞麟:basic:王金玺",
+        "唐舞麟:basic:韦小枫",
+        "唐舞麟:skill:蓝银突刺阵:0",
+        "唐舞麟:skill:蓝银缠绕:0",
+        "唐舞麟:skill:蓝银缠绕:1",
+        "唐舞麟:skill:蓝银缠绕:2"
+      ],
+      "targetParetoCandidateIds": [
+        "唐舞麟:DEFEND",
+        "唐舞麟:EVADE",
+        "唐舞麟:PASS_OPPORTUNITY",
+        "唐舞麟:basic:张扬子",
+        "唐舞麟:basic:王金玺",
+        "唐舞麟:basic:韦小枫",
+        "唐舞麟:skill:蓝银突刺阵:0",
+        "唐舞麟:skill:蓝银缠绕:0",
+        "唐舞麟:skill:蓝银缠绕:1",
+        "唐舞麟:skill:蓝银缠绕:2"
+      ],
+      "referenceSelectedCandidateId": "唐舞麟:DEFEND",
+      "targetSelectedCandidateId": "唐舞麟:DEFEND",
+      "requiredProofCandidateIds": [
+        "唐舞麟:DEFEND",
+        "唐舞麟:EVADE",
+        "唐舞麟:PASS_OPPORTUNITY"
+      ],
+      "supported": [
+        {
+          "candidateId": "唐舞麟:basic:张扬子",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:basic:王金玺",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:basic:韦小枫",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:PASS_OPPORTUNITY",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:DEFEND",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:EVADE",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:0",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:1",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:2",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银突刺阵:0",
+          "componentFactCount": 3,
+          "valuesEqual": true
+        }
+      ],
+      "unsupported": [],
+      "fullCaseSelectionAB": true
+    },
+    {
+      "caseId": "team_control_overlap",
+      "candidateCount": 8,
+      "supportedCandidateCount": 8,
+      "unsupportedCandidateCount": 0,
+      "referenceParetoCandidateIds": [
+        "古月:DEFEND",
+        "古月:EVADE",
+        "古月:PASS_OPPORTUNITY",
+        "古月:basic:戴月炎",
+        "古月:basic:苏沐",
+        "古月:basic:龙跃",
+        "古月:skill:元素同调:0",
+        "古月:skill:元素调律:0"
+      ],
+      "targetParetoCandidateIds": [
+        "古月:DEFEND",
+        "古月:EVADE",
+        "古月:PASS_OPPORTUNITY",
+        "古月:basic:戴月炎",
+        "古月:basic:苏沐",
+        "古月:basic:龙跃",
+        "古月:skill:元素同调:0",
+        "古月:skill:元素调律:0"
+      ],
+      "referenceSelectedCandidateId": "古月:DEFEND",
+      "targetSelectedCandidateId": "古月:DEFEND",
+      "requiredProofCandidateIds": [
+        "古月:DEFEND",
+        "古月:EVADE",
+        "古月:PASS_OPPORTUNITY"
+      ],
+      "supported": [
+        {
+          "candidateId": "古月:basic:龙跃",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "古月:basic:戴月炎",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "古月:basic:苏沐",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "古月:PASS_OPPORTUNITY",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "古月:DEFEND",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "古月:EVADE",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "古月:skill:元素调律:0",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "古月:skill:元素同调:0",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        }
+      ],
+      "unsupported": [],
+      "fullCaseSelectionAB": true
+    },
+    {
+      "caseId": "summon_one_window",
+      "candidateCount": 6,
+      "supportedCandidateCount": 6,
+      "unsupportedCandidateCount": 0,
+      "referenceParetoCandidateIds": [
+        "韦小枫:basic:谢邂"
+      ],
+      "targetParetoCandidateIds": [
+        "韦小枫:basic:谢邂"
+      ],
+      "referenceSelectedCandidateId": "韦小枫:basic:谢邂",
+      "targetSelectedCandidateId": "韦小枫:basic:谢邂",
+      "requiredProofCandidateIds": [
+        "韦小枫:basic:谢邂"
+      ],
+      "supported": [
+        {
+          "candidateId": "韦小枫:basic:谢邂",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:PASS_OPPORTUNITY",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:DEFEND",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:EVADE",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影叠:0",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影蛇群:0",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        }
+      ],
+      "unsupported": [],
+      "fullCaseSelectionAB": true
+    },
+    {
+      "caseId": "item_creation_consumption",
+      "candidateCount": 10,
+      "supportedCandidateCount": 10,
+      "unsupportedCandidateCount": 0,
+      "referenceParetoCandidateIds": [
+        "徐笠智:skill:恢复大肉包:0:recipient:古月",
+        "徐笠智:skill:恢复大肉包:0:recipient:唐舞麟"
+      ],
+      "targetParetoCandidateIds": [
+        "徐笠智:skill:恢复大肉包:0:recipient:古月",
+        "徐笠智:skill:恢复大肉包:0:recipient:唐舞麟"
+      ],
+      "referenceSelectedCandidateId": "徐笠智:skill:恢复大肉包:0:recipient:古月",
+      "targetSelectedCandidateId": "徐笠智:skill:恢复大肉包:0:recipient:古月",
+      "requiredProofCandidateIds": [
+        "徐笠智:skill:恢复大肉包:0:recipient:古月",
+        "徐笠智:skill:恢复大肉包:0:recipient:唐舞麟"
+      ],
+      "supported": [
+        {
+          "candidateId": "徐笠智:basic:龙跃",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:basic:戴月炎",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:basic:苏沐",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:PASS_OPPORTUNITY",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:DEFEND",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:EVADE",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:skill:恢复大肉包:0:recipient:唐舞麟",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:skill:恢复大肉包:0:recipient:古月",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:skill:轻灵小笼包:0:recipient:徐笠智",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "徐笠智:skill:嗜血豆沙包:0:recipient:徐笠智",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        }
+      ],
+      "unsupported": [],
+      "fullCaseSelectionAB": true
+    },
+    {
+      "caseId": "raid_summon_heavy",
+      "candidateCount": 24,
+      "supportedCandidateCount": 24,
+      "unsupportedCandidateCount": 0,
+      "referenceParetoCandidateIds": [
+        "韦小枫:DEFEND",
+        "韦小枫:EVADE",
+        "韦小枫:PASS_OPPORTUNITY",
+        "韦小枫:basic:乐正宇",
+        "韦小枫:basic:原恩夜辉",
+        "韦小枫:basic:叶星澜",
+        "韦小枫:basic:戴月炎",
+        "韦小枫:basic:王金玺",
+        "韦小枫:basic:苏沐",
+        "韦小枫:basic:龙跃",
+        "韦小枫:skill:青影叠:0",
+        "韦小枫:skill:青影叠:1",
+        "韦小枫:skill:青影叠:2",
+        "韦小枫:skill:青影叠:3",
+        "韦小枫:skill:青影叠:4",
+        "韦小枫:skill:青影叠:5",
+        "韦小枫:skill:青影叠:6"
+      ],
+      "targetParetoCandidateIds": [
+        "韦小枫:DEFEND",
+        "韦小枫:EVADE",
+        "韦小枫:PASS_OPPORTUNITY",
+        "韦小枫:basic:乐正宇",
+        "韦小枫:basic:原恩夜辉",
+        "韦小枫:basic:叶星澜",
+        "韦小枫:basic:戴月炎",
+        "韦小枫:basic:王金玺",
+        "韦小枫:basic:苏沐",
+        "韦小枫:basic:龙跃",
+        "韦小枫:skill:青影叠:0",
+        "韦小枫:skill:青影叠:1",
+        "韦小枫:skill:青影叠:2",
+        "韦小枫:skill:青影叠:3",
+        "韦小枫:skill:青影叠:4",
+        "韦小枫:skill:青影叠:5",
+        "韦小枫:skill:青影叠:6"
+      ],
+      "referenceSelectedCandidateId": "韦小枫:DEFEND",
+      "targetSelectedCandidateId": "韦小枫:DEFEND",
+      "requiredProofCandidateIds": [
+        "韦小枫:DEFEND",
+        "韦小枫:EVADE",
+        "韦小枫:PASS_OPPORTUNITY"
+      ],
+      "supported": [
+        {
+          "candidateId": "韦小枫:basic:龙跃",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:basic:戴月炎",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:basic:苏沐",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:basic:王金玺",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:basic:叶星澜",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:basic:原恩夜辉",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:basic:乐正宇",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:PASS_OPPORTUNITY",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:DEFEND",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:EVADE",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影叠:0",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影叠:1",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影叠:2",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影叠:3",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影叠:4",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影叠:5",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影叠:6",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影蛇群:0",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影蛇群:1",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影蛇群:2",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影蛇群:3",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影蛇群:4",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影蛇群:5",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "韦小枫:skill:青影蛇群:6",
+          "componentFactCount": 2,
+          "valuesEqual": true
+        }
+      ],
+      "unsupported": [],
+      "fullCaseSelectionAB": true
+    },
+    {
+      "caseId": "raid_response_terminal_information",
+      "candidateCount": 18,
+      "supportedCandidateCount": 18,
+      "unsupportedCandidateCount": 0,
+      "referenceParetoCandidateIds": [
+        "唐舞麟:DEFEND",
+        "唐舞麟:EVADE",
+        "唐舞麟:PASS_OPPORTUNITY",
+        "唐舞麟:basic:乐正宇",
+        "唐舞麟:basic:张扬子",
+        "唐舞麟:basic:戴月炎",
+        "唐舞麟:basic:王金玺",
+        "唐舞麟:basic:苏沐",
+        "唐舞麟:basic:韦小枫",
+        "唐舞麟:basic:龙跃",
+        "唐舞麟:skill:蓝银突刺阵:0",
+        "唐舞麟:skill:蓝银缠绕:0",
+        "唐舞麟:skill:蓝银缠绕:1",
+        "唐舞麟:skill:蓝银缠绕:2",
+        "唐舞麟:skill:蓝银缠绕:3",
+        "唐舞麟:skill:蓝银缠绕:4",
+        "唐舞麟:skill:蓝银缠绕:5",
+        "唐舞麟:skill:蓝银缠绕:6"
+      ],
+      "targetParetoCandidateIds": [
+        "唐舞麟:DEFEND",
+        "唐舞麟:EVADE",
+        "唐舞麟:PASS_OPPORTUNITY",
+        "唐舞麟:basic:乐正宇",
+        "唐舞麟:basic:张扬子",
+        "唐舞麟:basic:戴月炎",
+        "唐舞麟:basic:王金玺",
+        "唐舞麟:basic:苏沐",
+        "唐舞麟:basic:韦小枫",
+        "唐舞麟:basic:龙跃",
+        "唐舞麟:skill:蓝银突刺阵:0",
+        "唐舞麟:skill:蓝银缠绕:0",
+        "唐舞麟:skill:蓝银缠绕:1",
+        "唐舞麟:skill:蓝银缠绕:2",
+        "唐舞麟:skill:蓝银缠绕:3",
+        "唐舞麟:skill:蓝银缠绕:4",
+        "唐舞麟:skill:蓝银缠绕:5",
+        "唐舞麟:skill:蓝银缠绕:6"
+      ],
+      "referenceSelectedCandidateId": "唐舞麟:DEFEND",
+      "targetSelectedCandidateId": "唐舞麟:DEFEND",
+      "requiredProofCandidateIds": [
+        "唐舞麟:DEFEND",
+        "唐舞麟:EVADE",
+        "唐舞麟:PASS_OPPORTUNITY"
+      ],
+      "supported": [
+        {
+          "candidateId": "唐舞麟:basic:龙跃",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:basic:戴月炎",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:basic:苏沐",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:basic:王金玺",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:basic:张扬子",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:basic:韦小枫",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:basic:乐正宇",
+          "componentFactCount": 1,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:PASS_OPPORTUNITY",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:DEFEND",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:EVADE",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:0",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:1",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:2",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:3",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:4",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:5",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银缠绕:6",
+          "componentFactCount": 0,
+          "valuesEqual": true
+        },
+        {
+          "candidateId": "唐舞麟:skill:蓝银突刺阵:0",
+          "componentFactCount": 7,
+          "valuesEqual": true
+        }
+      ],
+      "unsupported": [],
+      "fullCaseSelectionAB": true
+    }
+  ],
+  "candidateValueFieldsEqual": true,
+  "causalFactsEqual": true,
+  "paretoAndSelectionEqual": true,
+  "requiredProofCoverageEqual": true,
+  "fullCaseSelectionAB": true,
+  "targetProductionAdapterAB": true,
+  "closureStatus": "CLOSED",
+  "kernelHash": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+  "decisionHash": "386c02150470692c5137245da52872af3254d5d58f3d09825a628f2fab017b5d",
+  "referenceHash": "18cc70237d18e4c9da77745ce581b0133c2e34e374413a180c8de004e8a4e470",
+  "harnessHash": "381c034155bdfc3023d068b552d31ee7a0c3cbfb26332bcfedc11c556f7a6ee7"
+}

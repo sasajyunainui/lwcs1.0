@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 77,
+  "previousEventHash": "0272c4bfd0f8ba01097ea46c74b98131f07fde0e94b6a106e0d2c11aeaf736be",
+  "milestoneId": "M2",
+  "taskId": "M2-S4-ROUTE-VALUE-REUSE",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "64d98b5388dee03cebc37f8d51b538974eb28300555a9ca3de692aa9538a60fd",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k14-s4-route-value-reuse-ab.mjs": "5369cdb054822bc7f4722bae2bfd6f00a4099dd30b2bf2be43bca960a53655d4",
+    "tools/rc6/harness/run-m2-k14-s4-semantics.mjs": "6cf0da28322312f615fd6bda6ea96522a16dbed54a1a9e50e3bfb8eaee7ebb8f",
+    "tools/rc6/harness/run-m5-p02-reuse-diagnostic.mjs": "e7a7a6db031a874eb881e832fcff5235f235375e3726441cfda025e07a436406"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/S4RouteValueReuseCasesV1.json": "b2ad2d474cc1daf2d4dcf0ce14ab1eef2d246cfb87202475f3fcdd3e069c38c1",
+    "tools/rc6/cases/S4TargetSemanticProbesV1.json": "ce052980408f3bce7cac51c3008ef45a8bf41f51a009bc085b8d8457a2734a46"
+  },
+  "acceptedObjectHashes": [
+    "4ba5728c25cf7166e50f9f67e73fc92c9b0d04215d3d7266f4b14fc74a2be55",
+    "3edbe7ea49f21d696f41f4e0c9cda1baa0dc4588e9c9ba3d9a67c5b1a86a970",
+    "d2746155c63d77f297ca62689a4c9f05be30cd519787c15a05cdb5692b465ac3"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "change": "Moved branch pool Map copying and dead-unit cleanup after the route-only return; full fallback branch still materializes its local pool.",
+    "semanticGate": "PASSED",
+    "diagnostic": "CAPTURED",
+    "performanceGate": "OPEN",
+    "nextExitCondition": "Identify and remove the largest target-kernel prepare repetition without changing candidate, branch, probability, fact, vector or proof semantics."
+  },
+  "reason": "S4 route-only path no longer pays branch-wide pool copying; semantic A/B remains equal, but target transaction remains about 16.26s with prepare about 15.54s, so the next root cause is target-kernel prepare/proof repetition.",
+  "recordedAt": "2026-08-06T01:32:55.741Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "eeb363f5acf803693b532dbb31ab02ca203ad02e683d90879f9b9ea87032bebf"
+}

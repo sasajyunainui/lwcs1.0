@@ -47048,28 +47048,21 @@ ${播报文本}
     return { ok: true, combatData };
   }
 
-  /* 楼层只留一行战果：它会永久留在聊天历史里，必须既是玩家能读的结论，
-     又不占上下文。完整因果链走 inject（见 构建自动战斗战报注入）。 */
+  /* 楼层只留一行战果；AI 注入只使用 PLAYER 结构化摘要。 */
   function 构建自动战斗战果标题(执行结果 = {}) {
     const 标题 = toText(执行结果?.reportDto?.battleHeadline, '').trim();
     return 标题 ? `<battle_result>${标题}</battle_result>` : '';
   }
 
   function 构建自动战斗结构化摘要(执行结果 = {}) {
-    const 摘要输入 = 执行结果?.reportDto?.aiStructuredSummary ||
-      执行结果?.reportDto?.aiSummaryInput ||
-      {};
+    const 摘要输入 = 执行结果?.reportDto?.aiStructuredSummary || {};
     return JSON.stringify(摘要输入);
   }
 
-  /* 完整因果链只在当轮存在，AI 读完即弃，不进聊天历史。 */
+  /* AI 只读取 PLAYER 级结构化摘要；Report 内部因果链不进入 AI 消息。 */
   function 构建自动战斗战报注入(执行结果 = {}) {
-    const 战报 = toText(执行结果?.reportDto?.aiReport, '').trim();
     const 摘要 = 构建自动战斗结构化摘要(执行结果);
-    return [
-      摘要 ? `<battle_summary>\n${摘要}\n</battle_summary>` : '',
-      战报 ? `<battle_report>\n${战报}\n</battle_report>` : '',
-    ].filter(Boolean).join('\n');
+    return 摘要 ? `<battle_summary>\n${摘要}\n</battle_summary>` : '';
   }
 
   function 构建战斗事务输入(combatData = {}, options = {}) {
@@ -47109,10 +47102,9 @@ ${播报文本}
       throw new Error('battle_report_module_missing');
     }
     const source = cloneJsonValue(input, {});
-    const visibilityMode = toText(source.visibilityMode, 'PLAYER').trim().toUpperCase() || 'PLAYER';
     delete source.visibilityMode;
     const draft = runtime.executeBattleDraftR8(source);
-    const reportDto = report.build({ draft, visibilityMode });
+    const reportDto = report.build({ draft, visibilityMode: 'PLAYER' });
     const reportAudit = report.auditProjection(reportDto);
     const sealedPackage = runtime.sealBattleResult({ draft, reportAudit });
     return runtime.verifySealedBattlePackage(sealedPackage);

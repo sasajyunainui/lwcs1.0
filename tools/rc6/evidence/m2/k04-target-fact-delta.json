@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "M2K04TargetFactDeltaGateV1",
+  "status": "PASSED",
+  "caseId": "duel_overmatch_lethal",
+  "candidateId": "云冥:basic:韦小枫",
+  "fieldCode": "contributions.expectedDelta:云冥:basic:韦小枫:effect:0",
+  "beforeValue": -11048.875199999999,
+  "afterValue": -5524.437599999999,
+  "dirtyCandidateIds": [
+    "云冥:basic:韦小枫"
+  ],
+  "fullRebuildRequired": false,
+  "targetStateDeltaBefore": 98.99999999999999,
+  "targetStateDeltaAfter": 49.49999999999999,
+  "unrelatedCandidatesStable": true,
+  "proofMatchesUpdatedVector": true,
+  "kernelHash": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+  "decisionHash": "dad0fc24d7f39c3011d74141eb0032342b77832ca5dcd54de9667ace8bf83fdb",
+  "harnessHash": "94e4cd8059947eb054ed1fdc29e6ead2cba86d3e1af2abbbfc94cbfb74baf1a6"
+}

@@ -1,0 +1,202 @@
+{
+  "schemaVersion": "RC6CurrentDirectionAuditV1",
+  "status": "RECONCILED_NOT_ACCEPTANCE",
+  "auditScope": "v24_direction_and_execution_reconciliation",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41",
+    "formalProvider": "r8",
+    "targetProvider": "r9v2",
+    "overallStatus": "NOT_COMPLETE"
+  },
+  "currentTask": {
+    "milestoneId": "M2",
+    "taskId": "M2-OWNERSHIP-AND-DIRECTION-AUDIT",
+    "status": "IN_PROGRESS",
+    "blocker": "TARGET_COMPONENT_OWNERSHIP_AND_K12_FULL_FIELD_LEVEL_AB_PENDING"
+  },
+  "ownershipReconciliation": {
+    "status": "RECORDED_AND_STABLE",
+    "ownershipManifestHash": "c9fadd4e73efb6e99a1f7f0be133892d293e2a427c208100eb15e897938e71a2",
+    "impactManifestHash": "8b1ef2f1a2c6fbd22689f0c0763cd5d848b7fc7696741273d2d55e3fceed4968",
+    "inputPathCount": 79,
+    "allInputsClassified": true,
+    "eventChainExcludedFromWorkingTreeInput": true,
+    "m2AcceptanceReady": false,
+    "deferredProductionPaths": [
+      "BattlePreview_Module.js",
+      "BattleReport_Module.js",
+      "BattleUI_Module.js",
+      "mvu_logic_bridge.js"
+    ],
+    "deferredProductionImpact": "These current-hash changes remain quarantined from M2 implementation evidence and require their own M4 or transaction-boundary impact review."
+  },
+  "directionAssessment": {
+    "overall": "ALIGNED_BUT_EXECUTION_BOUNDARIES_OPEN",
+    "r8Role": "small_shared_mechanics_diagnostics_only",
+    "r9v2Role": "unregistered_target_kernel_and_test_path_only",
+    "formalProviderSwitchAllowed": false,
+    "completeClaimAllowed": false
+  },
+  "inheritanceChecks": {
+    "M0": {
+      "status": "COMPLETED_BY_EVENT_CHAIN",
+      "note": "M0 history and clean-baseline commit remain recorded; current-tree ownership is now reconciled, while deferred production changes remain outside M2 evidence."
+    },
+    "M1": {
+      "status": "VALID_FOR_CURRENT_HASHES",
+      "checks": {
+        "toolHashesMatchEvent079": true,
+        "fixtureHashesMatchEvent079": true,
+        "assertions": 61,
+        "prototypes": 23,
+        "referenceCases": 20,
+        "oracles": 54,
+        "independentReferenceEvaluator": true
+      }
+    },
+    "M2": {
+      "status": "IN_PROGRESS_NOT_ACCEPTED",
+      "k12TargetAdapter": {
+        "status": "DIAGNOSTIC_ONLY",
+        "fieldLevelReferenceAB": false,
+        "caseCount": 4
+      },
+      "productionReferenceAB": {
+        "status": "DIAGNOSTIC_ONLY",
+        "scope": "PRODUCTION_MECHANICAL_ENTRY_S1_REFERENCEABLE_SLICE",
+        "caseCount": 8,
+        "fullDraftLedgerSnapshotSealEquality": false
+      },
+      "requiredNext": "Accept the stable ownership/impact manifests, then complete full field-level A/B before any M2 exit or performance acceptance."
+    },
+    "downstream": {
+      "M3": "PENDING; existing PASSED files are unaccepted historical evidence",
+      "M4": "PENDING; existing PASSED files are unaccepted historical evidence",
+      "M5": "PENDING; existing scout/profile files are diagnostic only",
+      "M6": "PENDING",
+      "M7": "PENDING"
+    }
+  },
+  "executionReconciliation": {
+    "k00": {
+      "recordedStatus": "PASSED_HISTORICAL_OBJECT_INVALIDATED",
+      "currentStatus": "PASSED_CURRENT_CONTRACT_RUN",
+      "historicalRecordedKernelHash": "2890a2b9195153deeb6e1e4048f131346bd6e990259ad19dbafbffbce28f5231",
+      "historicalRecordedHarnessHash": "6f412e36221defe52ecd5ed62f0de9fcea275d5b0ab6465694a092ca59ae10d0",
+      "currentKernelHash": "b955c8b6476daf32612710123cfb4413457786397581cd055a6f8f2634a3b9ce",
+      "currentHarnessHash": "dee6f6a5746a39bc6af3452eac6efbd7b7f8f844a71948c6593bd050cc915ec1",
+      "currentEvidenceHash": "39607d94deb7e4a8fb5ce93de5822f2a34a04bdba54563f9f509b73dbeb663a6",
+      "historicalFailure": "EXPECTED_R9V2_KERNEL_PRECOMPUTED_VALUE_INPUT_GOT_R9V2_KERNEL_COMPONENT_REGISTRY_MISSING",
+      "observedFailure": null,
+      "acceptedForM2": false,
+      "action": "Accept the current-contract K00 as a technical kernel fixture only; keep M2 open until the concrete S1-S6 implementation boundary is explicitly accepted and full K12 runs."
+    },
+    "performance": {
+      "status": "DIAGNOSTIC_ONLY",
+      "scope": "TARGET_KERNEL_SELECTION_SCOUT_NOT_FORMAL_TRANSACTION",
+      "architectureConclusion": "R9_DESIGN_DIRECTION_NOT_DISPROVED_TARGET_KERNEL_INCOMPLETE",
+      "formalProviderAffected": false,
+      "action": "Do not call this an R8 or final R9v2 performance gate; defer rerun until K12 and target-kernel lifecycle are closed."
+    },
+    "downstreamArtifacts": {
+      "m3M4M5": "PRESENT_BUT_UNACCEPTED",
+      "action": "Keep existing files as historical diagnostics and do not advance the milestone from their PASSED labels."
+    }
+  },
+  "findings": [
+    {
+      "id": "DIR-001",
+      "severity": "HIGH",
+      "classification": "DEFERRED_OUT_OF_SCOPE_PRODUCTION",
+      "status": "RESOLVED_AS_SCOPE_CLASSIFICATION",
+      "fact": "The working tree changes BattlePreview_Module.js, BattleReport_Module.js, BattleUI_Module.js and mvu_logic_bridge.js while M2 v24 allows only the target kernel, Decision adapter, Runtime DecisionAudit validation and M2 tools.",
+      "impact": "These files are now explicitly listed in the current-hash impact manifest, but they remain quarantined and cannot be used as M2 implementation evidence.",
+      "action": "Leave the user changes intact; defer their review to the responsible M4 or transaction-boundary task and keep M2 acceptance closed until the impact boundary is honored."
+    },
+    {
+      "id": "DIR-002",
+      "severity": "HIGH",
+      "classification": "KERNEL_OWNERSHIP_UNPROVEN",
+      "fact": "BattleDecisionR9v2Kernel_Module.js orchestrates sessions, invalidation, vector assembly and proof materialization, while the concrete TARGET_S1..TARGET_S6 calculation is supplied by r9v2TargetKernelComponentRegistry.evaluateComponents in BattleDecision_Module.js.",
+      "impact": "The K00 assertion that component evaluation is kernel-owned is not sufficient to prove the v24 target-kernel ownership boundary; the injected registry may be a valid adapter, but that responsibility is currently not explicitly accepted.",
+      "action": "Treat the registry as a candidate provider-neutral component implementation boundary only after an explicit ownership decision; keep M2 open until that decision and full A/B agree."
+    },
+    {
+      "id": "DIR-003",
+      "severity": "HIGH",
+      "classification": "PARTIAL_AB_ONLY",
+      "fact": "k12-target-adapter.json has fieldLevelReferenceAB=false; production-reference-ab.json covers only the S1-referenceable mechanical slice.",
+      "impact": "Candidate identity through Seal, including six components, owner totals, information value, Pareto, alternatives, Proof, DecisionAudit, Draft, Ledger, Snapshot and Seal, is not closed.",
+      "action": "Run the single complete K12 A/B harness against the independent ReferenceValueEvaluator and the v24 required field list."
+    },
+    {
+      "id": "DIR-004",
+      "severity": "MEDIUM",
+      "classification": "UNACCEPTED_FUTURE_EVIDENCE_PRESENT",
+      "fact": "M3/M4/M5 evidence and harness files exist in the working tree, but event 78 invalidated downstream evidence and event 81 accepted no M2 diagnostic object.",
+      "impact": "Their PASSED or profile labels cannot advance the task and must not be used for progress reporting.",
+      "action": "Treat them as quarantined historical/diagnostic objects until a matching future event explicitly accepts them."
+    },
+    {
+      "id": "DIR-005",
+      "severity": "MEDIUM",
+      "classification": "HISTORICAL_MANIFEST_RETAINED",
+      "status": "RESOLVED_BY_CURRENT_HASH_MANIFEST",
+      "fact": "tools/rc6/evidence/patch-ownership-manifest.json remains a historical 35-hunk snapshot and is not used for current acceptance.",
+      "impact": "Current responsibility and impact are now represented by the stable current-hash manifests.",
+      "action": "Use current-tree-ownership-manifest.json and current-change-impact-manifest.json for M2 scope decisions; do not reinterpret the historical manifest."
+    },
+    {
+      "id": "DIR-006",
+      "severity": "HIGH",
+      "classification": "STALE_GATE_EVIDENCE",
+      "status": "RESOLVED_BY_CURRENT_RUN",
+      "fact": "The historical K00 result used a different kernel and harness and is invalidated. The current-contract fixture now passes with evaluateComponents, componentDefinitions, FactDelta reevaluation and on-demand Proof materialization.",
+      "impact": "The current K00 proves the generic kernel contract, but it still does not prove that the concrete Decision-side S1-S6 registry is an accepted provider-neutral target-kernel boundary.",
+      "action": "Record the current hash-matched K00 object as technical evidence; keep production ownership and full K12 acceptance open."
+    },
+    {
+      "id": "DIR-007",
+      "severity": "HIGH",
+      "classification": "M2_IMPLEMENTATION_BOUNDARY_DEVIATION",
+      "status": "OPEN",
+      "fact": "The isolated kernel module orchestrates the lifecycle, but the concrete TARGET_S1..TARGET_S6 calculations remain in r9v2TargetKernelComponentRegistry inside BattleDecision_Module.js; the current K00 only tests a generic callback and does not prove this provider-specific registry is an accepted provider-neutral boundary.",
+      "impact": "Continuing K12 or performance work without resolving this would make the reference comparison certify an ambiguous implementation boundary rather than the v24 target numerical kernel.",
+      "action": "Make one explicit ownership decision before K12: move the component implementation into the isolated target-kernel boundary, or formally define and prove a provider-neutral registry adapter with no shadow/legacy computation dependency."
+    },
+    {
+      "id": "DIR-008",
+      "severity": "MEDIUM",
+      "classification": "DOWNSTREAM_WORK_STARTED_BEFORE_M2_CLOSURE",
+      "status": "RECORDED_NO_ACCEPTANCE",
+      "fact": "M3/M4/M5 diagnostic harnesses and outputs were created before M2 ownership and full K12 field-level A/B were accepted.",
+      "impact": "This did not advance any milestone because the event reducer quarantines those objects, but it caused downstream work and performance interpretation to occur against an unclosed target-kernel boundary.",
+      "action": "Stop downstream implementation and formal performance work; after M2 closes, rerun only the affected checks under the accepted target-kernel Hash."
+    }
+  ],
+  "allowedNextWork": [
+    "record the current-contract K00 result as technical evidence without treating it as production ownership acceptance",
+    "resolve the provider-neutral component registry ownership decision",
+    "full K12 field-level A/B using the independent reference evaluator",
+    "keep deferred Preview/Report/UI/Bridge changes outside M2 evidence"
+  ],
+  "blockedUntil": [
+    "do not treat K00 alone as production S1-S6 ownership acceptance",
+    "do not certify the Decision-module component registry as target-kernel ownership without an explicit boundary decision",
+    "do not run formal R9v2 performance acceptance",
+    "do not perform M3 behavior closure",
+    "do not perform M4 Report/UI acceptance",
+    "do not perform M5 formal performance",
+    "do not switch the formal Provider"
+  ],
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "db3c2260fa5c18ef708a3ddfad70e7e6be3df1763b21162b7698029632a50bdb",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "M2K14S4TargetSemanticGateV1",
+  "status": "PASSED",
+  "probeCount": 2,
+  "rows": [
+    {
+      "probeId": "stable-identity-intersection",
+      "referenceInformationValueHEPP": 5,
+      "kernelInformationValueHEPP": 5,
+      "expectedInformationValueHEPP": 5,
+      "fieldEqual": true
+    },
+    {
+      "probeId": "exact-probability-endpoint",
+      "referenceInformationValueHEPP": 0,
+      "kernelInformationValueHEPP": 0,
+      "expectedInformationValueHEPP": 0,
+      "fieldEqual": true
+    }
+  ],
+  "referenceEvaluatorIndependent": true,
+  "fixtureHash": "ce052980408f3bce7cac51c3008ef45a8bf41f51a009bc085b8d8457a2734a46",
+  "referenceHash": "9caa685f720fd9bd064657d12799f9221f4aa3a2694165df8de247d6aaffc82e",
+  "kernelHash": "4cdfc3a8407ab99dbeabd55306aa3244a43a092c6d8488570e257aa0b19186cc",
+  "harnessHash": "6cf0da28322312f615fd6bda6ea96522a16dbed54a1a9e50e3bfb8eaee7ebb8f"
+}

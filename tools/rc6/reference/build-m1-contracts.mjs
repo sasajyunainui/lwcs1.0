@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { oracleIndexBindingHash } from './oracle-fixture-hash.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const contractsDir = path.join(repoRoot, 'tools', 'rc6', 'contracts');
@@ -22,7 +23,7 @@ const writeJson = (fileName, value) => {
   fs.writeFileSync(fileName, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 };
 const hashFile = fileName => sha256(fs.readFileSync(path.join(repoRoot, fileName)));
-const sourceHashes = Object.fromEntries(coreFiles.map(fileName => [fileName, hashFile(fileName)]));
+const historicalProductionSourceHashes = Object.fromEntries(coreFiles.map(fileName => [fileName, hashFile(fileName)]));
 
 const domainTitles = {
   S1: 'objective-life-terminal',
@@ -158,16 +159,6 @@ const componentDefinitions = [
   materializerId: `reference_materialize_${componentCode}`,
 }));
 
-const fact = (componentCode, causalOwnerType, valueHEPP, id) => ({
-  componentCode,
-  causalOwnerType,
-  valueHEPP,
-  sourceEventId: `${id}:${componentCode}:event`,
-  sourceFactId: `${id}:${componentCode}:fact`,
-  targetUnitId: 'target-1',
-  sequence: 1,
-});
-
 const candidate = ({
   candidateId,
   actionId,
@@ -185,7 +176,6 @@ const candidate = ({
   legal = true,
   playerLocked = false,
   informationGroups = [],
-  causalFacts,
 }) => ({
   candidateId,
   actionId,
@@ -195,30 +185,99 @@ const candidate = ({
   legal,
   playerLocked,
   hardExclusionCodes,
-  stateDeltaTotal: state,
-  actionPoolDeltaTotal: pool,
-  terminalDeltaTotal: terminal,
-  discardedOverkillPP: overkill,
-  survivalUtilityHEPP: survival,
-  assetReserveHEPP: reserve,
-  worstTailUtilityHEPP: tail,
+  actorSide: 'PLAYER',
+  targetProfiles: overkill > 0 ? [{ targetId: 'target-1', side: 'ENEMY', currentHpPP: 80 }] : [],
+  objectiveContract: overkill > 0 ? {
+    victory: {
+      logic: 'ANY',
+      conditions: [{ type: 'HP_RATIO_AT_OR_BELOW', threshold: 0.5, targetIds: ['target-1'], side: 'ENEMY' }],
+    },
+    defeat: { logic: 'ANY', conditions: [] },
+  } : null,
   informationGroups,
-  causalFacts: causalFacts || [
-    ...(state ? [fact('target_trajectory', 'STATE_DELTA', state, candidateId)] : []),
-    ...(pool ? [fact('response', 'ACTION_POOL_DELTA', pool, candidateId)] : []),
-    ...(terminal ? [fact('terminal', 'TERMINAL_DELTA', terminal, candidateId)] : []),
+  riskInputs: {
+    actorMaxHp: 100,
+    actorHp: Math.max(0, Math.min(100, Number(survival || 0))),
+    actorOutcomeDeltas: tail < 0 ? [{ deltas: [tail] }] : [],
+    shieldFacts: reserve > 0 ? [{ deltaHp: reserve, maxHp: 100, side: 'PLAYER' }] : [],
+    actorSide: 'PLAYER',
+  },
+  rawFacts: [
+    ...(state ? [{
+      componentCode: 'S1_HEALTH',
+      formula: 'HEALTH_PP',
+      deltaHp: -(state + overkill),
+      maxHp: 100,
+      polarity: -1,
+      sourceEventId: `${candidateId}:S1_HEALTH:event`,
+      sourceFactId: `${candidateId}:S1_HEALTH:fact`,
+      targetUnitId: 'target-1',
+      sequence: 0,
+    }] : []),
+    ...(pool ? [{
+      componentCode: 'S2_ROUTE',
+      formula: 'ROUTE_DELTA',
+      beforeRouteHEPP: 0,
+      afterRouteHEPP: pool,
+      applicationProbability: 1,
+      polarity: 1,
+      sourceEventId: `${candidateId}:S2_ROUTE:event`,
+      sourceFactId: `${candidateId}:S2_ROUTE:fact`,
+      targetUnitId: 'target-1',
+      sequence: 1,
+    }] : []),
+    ...(terminal ? [{
+      componentCode: 'S1_TERMINAL',
+      formula: 'TERMINAL_OUTCOME',
+      winProbability: terminal > 0 ? 1 : 0,
+      lossProbability: terminal < 0 ? 1 : 0,
+      drawProbability: terminal === 0 ? 1 : 0,
+      sourceEventId: `${candidateId}:S1_TERMINAL:event`,
+      sourceFactId: `${candidateId}:S1_TERMINAL:fact`,
+      targetUnitId: 'target-1',
+      sequence: 2,
+    }] : []),
   ],
 });
 
 const info = (groupId, adaptiveValue, committedValue, outcomes = 2) => ({
   groupId,
-  outcomes: Array.from({ length: outcomes }, (_, index) => ({
-    outcomeId: `${groupId}:o${index + 1}`,
-    probability: 1 / outcomes,
-    bestFutureRouteValueHEPP: adaptiveValue,
-  })),
-  adaptiveValueHEPP: adaptiveValue,
-  committedValueHEPP: committedValue,
+  outcomes: adaptiveValue === committedValue
+    ? Array.from({ length: outcomes }, (_, index) => ({
+      outcomeId: `${groupId}:o${index + 1}`,
+      probability: 1 / outcomes,
+      futureCandidateRouteVector: {
+        candidateIds: ['common-route'],
+        beforeRouteHEPP: [0],
+        afterRouteHEPP: [committedValue],
+        applicationProbability: [1],
+        polarity: [1],
+      },
+    }))
+    : [
+      {
+        outcomeId: `${groupId}:o1`,
+        probability: 0.5,
+        futureCandidateRouteVector: {
+          candidateIds: ['common-route', 'observed-route'],
+          beforeRouteHEPP: [0, 0],
+          afterRouteHEPP: [committedValue, Math.max(committedValue, 2 * adaptiveValue - committedValue)],
+          applicationProbability: [1, 1],
+          polarity: [1, 1],
+        },
+      },
+      {
+        outcomeId: `${groupId}:o2`,
+        probability: 0.5,
+        futureCandidateRouteVector: {
+          candidateIds: ['common-route', 'alternate-route'],
+          beforeRouteHEPP: [0, 0],
+          afterRouteHEPP: [committedValue, 0],
+          applicationProbability: [1, 1],
+          polarity: [1, 1],
+        },
+      },
+    ],
 });
 
 const refCase = ({ caseId, domain, mode = 'auto', phase, candidates, expectedSelectedCandidateId, playerLockedCandidateId = null }) => ({
@@ -304,7 +363,7 @@ const cases = [
     candidate({ candidateId: 'direct-action', actionId: 'attack', actionKind: 'ATTACK', state: 34, tail: 4 }),
   ], expectedSelectedCandidateId: 'create-with-consumer' }),
   refCase({ caseId: 'ref-s6-causal-state-owner', domain: 'S6', phase: 'ACTIVE', candidates: [
-    candidate({ candidateId: 'state-owned', actionId: 'attack', actionKind: 'ATTACK', state: 25, pool: 4, terminal: 0, causalFacts: [fact('target_trajectory', 'STATE_DELTA', 25, 'state-owned:s'), fact('response', 'ACTION_POOL_DELTA', 4, 'state-owned:p')] }),
+    candidate({ candidateId: 'state-owned', actionId: 'attack', actionKind: 'ATTACK', state: 25, pool: 4, terminal: 0 }),
     candidate({ candidateId: 'less-state', actionId: 'defend', actionKind: 'DEFEND', state: 10, survival: 8 }),
   ], expectedSelectedCandidateId: 'state-owned' }),
   refCase({ caseId: 'ref-s6-causal-action-owner', domain: 'S6', phase: 'COUNTER', candidates: [
@@ -345,7 +404,12 @@ const planningContract = {
     ],
     ambiguousRule: 'SPEC_AMBIGUOUS_WHEN_PUBLIC_COUNTEREXAMPLES_CANNOT_DISTINGUISH_RULES',
   },
-  sourceHashes,
+  sourceHashes: historicalProductionSourceHashes,
+  sourceHashPolicy: {
+    productionFilesMutableAfterM1: true,
+    productionHashesAreHistoricalSnapshots: true,
+    m1GatePrerequisite: 'REFERENCE_INPUTS_AND_TOOLS_ONLY',
+  },
   providerRoles: {
     r8: 'production_provider_and_small_mechanical_reference_only',
     r9: 'historical_handwritten_executor_evidence_only',
@@ -403,6 +467,16 @@ const planningContract = {
 const oracleSourcePath = 'tools/evidence/r8/r83_rc2_behavior_oracle_v2_draft.json';
 const oracleSource = JSON.parse(fs.readFileSync(path.join(repoRoot, oracleSourcePath), 'utf8'));
 const oracleSourceHash = sha256(fs.readFileSync(path.join(repoRoot, oracleSourcePath)));
+const fixtureManifestPath = 'tools/rc6/cases/BehaviorOracleFixtureManifestV1.json';
+const existingFixtureManifest = fs.existsSync(path.join(repoRoot, fixtureManifestPath))
+  ? JSON.parse(fs.readFileSync(path.join(repoRoot, fixtureManifestPath), 'utf8'))
+  : null;
+const fixtureByOracleId = new Map(
+  (existingFixtureManifest?.fixtures || []).map(fixture => [fixture.oracleId, fixture]),
+);
+const fixtureBindingsReady = existingFixtureManifest?.status === 'FROZEN_EXECUTABLE_FIXTURES' &&
+  existingFixtureManifest?.count === oracleSource.oracles.length &&
+  fixtureByOracleId.size === oracleSource.oracles.length;
 const domainForCategory = category => {
   if (category === 'c15_information') return 'S4';
   if (category === 'c16_objectives') return 'S1';
@@ -415,21 +489,27 @@ const domainForCategory = category => {
 };
 const oracleIndex = {
   schemaVersion: 'BehaviorOracleV2IndexV1',
-  status: 'FROZEN_EXECUTABLE_REFERENCE_INDEX',
+  status: 'FROZEN_EXECUTABLE_FIXTURE_INDEX',
   sourcePath: oracleSourcePath,
   sourceHash: oracleSourceHash,
   count: oracleSource.oracles.length,
+  oracleIndexBindingHash: null,
+  fixtureManifestPath,
+  fixtureManifestHash: fixtureBindingsReady ? sha256(JSON.stringify(existingFixtureManifest)) : null,
   oracles: oracleSource.oracles.map(oracle => ({
     schemaVersion: 'BehaviorOracleV2',
     oracleId: oracle.oracleId,
     caseId: oracle.caseId,
     semanticDomain: domainForCategory(oracle.semanticDomain),
     historicalSourceStatus: 'INPUT_ONLY_OLD_DRAFT_NOT_SEMANTIC_AUTHORITY',
-    executableStatus: 'EXECUTABLE_REFERENCE_ONLY',
+    executableStatus: fixtureBindingsReady ? 'EXECUTABLE_FIXTURE_BOUND' : 'EVIDENCE_GAP',
+    fixtureStatus: fixtureBindingsReady ? 'EXECUTABLE' : 'UNBOUND',
+    fixtureId: fixtureByOracleId.get(oracle.oracleId)?.fixtureId || null,
     executableChecks: ['candidate_set_shape', 'finite_numeric_contract', 'causal_reconciliation', 'domain_contract'],
     sourceAssertionsRetainedAs: 'CASE_EXPECTATION_UNTIL_RUNTIME_BINDING',
   })),
 };
+oracleIndex.oracleIndexBindingHash = oracleIndexBindingHash(oracleIndex);
 
 writeJson(path.join(contractsDir, 'BehaviorPlanningContractV1.json'), planningContract);
 writeJson(path.join(contractsDir, 'SemanticAssertionsV1.json'), {
@@ -466,7 +546,13 @@ writeJson(path.join(casesDir, 'BehaviorOracleV2IndexV1.json'), oracleIndex);
 writeJson(path.join(contractsDir, 'M1FixtureManifestV1.json'), {
   schemaVersion: 'M1FixtureManifestV1',
   contractId: planningContract.contractId,
-  sourceHashes,
+  fixtureManifestHash: fixtureBindingsReady ? sha256(JSON.stringify(existingFixtureManifest)) : null,
+  historicalProductionSourceHashes,
+  sourceHashPolicy: {
+    productionFilesMutableAfterM1: true,
+    productionHashesAreHistoricalSnapshots: true,
+    m1GatePrerequisite: 'REFERENCE_INPUTS_AND_TOOLS_ONLY',
+  },
   generatedFiles: [
     'tools/rc6/contracts/BehaviorPlanningContractV1.json',
     'tools/rc6/contracts/SemanticAssertionsV1.json',
@@ -479,8 +565,11 @@ writeJson(path.join(contractsDir, 'M1FixtureManifestV1.json'), {
     'tools/rc6/contracts/KernelComponentDefinitionV1.schema.json',
     'tools/rc6/contracts/KernelReferenceCaseV1.schema.json',
     'tools/rc6/contracts/BehaviorOracleV2IndexV1.schema.json',
+    'tools/rc6/contracts/BehaviorOracleFixtureV1.schema.json',
+    'tools/rc6/cases/BehaviorOracleFixtureManifestV1.json',
   ],
   counts: { assertions: assertions.length, prototypes: componentDefinitions.length, referenceCases: cases.length, oracles: oracleSource.oracles.length },
+  oracleIndexBindingHash: oracleIndex.oracleIndexBindingHash,
   historicalInputs: [{ path: oracleSourcePath, sha256: oracleSourceHash }],
 });
 
@@ -522,7 +611,7 @@ const schemas = {
     $id: 'BehaviorOracleV2IndexV1.schema.json',
     type: 'object',
     required: ['schemaVersion', 'status', 'sourcePath', 'sourceHash', 'count', 'oracles'],
-    properties: { schemaVersion: { const: 'BehaviorOracleV2IndexV1' }, status: { const: 'FROZEN_EXECUTABLE_REFERENCE_INDEX' }, sourcePath: { type: 'string' }, sourceHash: { type: 'string', minLength: 64, maxLength: 64 }, count: { const: 54 }, oracles: { type: 'array', minItems: 54, maxItems: 54 } },
+  properties: { schemaVersion: { const: 'BehaviorOracleV2IndexV1' }, status: { const: 'FROZEN_EXECUTABLE_FIXTURE_INDEX' }, sourcePath: { type: 'string' }, sourceHash: { type: 'string', minLength: 64, maxLength: 64 }, count: { const: 54 }, oracles: { type: 'array', minItems: 54, maxItems: 54 } },
     additionalProperties: true,
   },
 };

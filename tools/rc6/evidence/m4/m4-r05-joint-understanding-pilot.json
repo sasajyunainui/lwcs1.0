@@ -1,0 +1,623 @@
+{
+  "schemaVersion": "M4R05JointUnderstandingPilotV1",
+  "status": "PASSED",
+  "caseIds": [
+    "duel_overmatch_lethal",
+    "intent_capture_vs_kill",
+    "team_control_overlap",
+    "team_protect_critical_ally"
+  ],
+  "caseCount": 4,
+  "reviewScope": [
+    "谁做了什么",
+    "实际发生结果",
+    "决策当时理由",
+    "主要替代方案及差异",
+    "数字来源、操作数、单位和推导规则",
+    "理由与事后结果分离"
+  ],
+  "rows": [
+    {
+      "caseId": "duel_overmatch_lethal",
+      "draftHash": "r74-85c1446e9249d75c",
+      "reportHash": "r74-249958f1832a7b63",
+      "projectionStatus": "PASSED",
+      "decisionCount": 2,
+      "failureCount": 0,
+      "failures": [],
+      "failureRows": [],
+      "samples": [
+        {
+          "round": 1,
+          "actorName": "云冥",
+          "selected": {
+            "name": "【普通攻击】（目标：韦小枫）",
+            "targetNames": [
+              "韦小枫"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 2,
+            "text": [
+              "云冥朝韦小枫使出【普通攻击】",
+              "云冥使用【普通攻击】指向韦小枫",
+              "韦小枫尝试闪避云冥的攻势，但未能直接避开"
+            ]
+          },
+          "reason": "选择【普通攻击】（目标：韦小枫）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 3,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 4,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "韦小枫",
+          "selected": {
+            "name": "【闪避】",
+            "targetNames": [
+              "韦小枫"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 1,
+            "text": [
+              "云冥朝韦小枫使出【普通攻击】",
+              "云冥使用【普通攻击】指向韦小枫",
+              "韦小枫尝试闪避云冥的攻势，但未能直接避开"
+            ]
+          },
+          "reason": "选择【闪避】；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 2,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "caseId": "intent_capture_vs_kill",
+      "draftHash": "r74-6fa5c8e87e557ca3",
+      "reportHash": "r74-22630735820cb717",
+      "projectionStatus": "PASSED",
+      "decisionCount": 2,
+      "failureCount": 0,
+      "failures": [],
+      "failureRows": [],
+      "samples": [
+        {
+          "round": 1,
+          "actorName": "舞长空",
+          "selected": {
+            "name": "【天霜斩】（目标：韦小枫）",
+            "targetNames": [
+              "韦小枫"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 4,
+            "text": [
+              "舞长空朝韦小枫使出【天霜斩】",
+              "舞长空使用【天霜斩】指向韦小枫",
+              "韦小枫架住了舞长空的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【天霜斩】（目标：韦小枫）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 6,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 10,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "韦小枫",
+          "selected": {
+            "name": "【防御】",
+            "targetNames": [
+              "韦小枫"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 2,
+            "text": [
+              "舞长空朝韦小枫使出【天霜斩】",
+              "舞长空使用【天霜斩】指向韦小枫",
+              "韦小枫架住了舞长空的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【防御】；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 3,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "caseId": "team_control_overlap",
+      "draftHash": "r74-b66bb48d9fcf8048",
+      "reportHash": "r74-95aaa4af277e8282",
+      "projectionStatus": "PASSED",
+      "decisionCount": 47,
+      "failureCount": 0,
+      "failures": [],
+      "failureRows": [],
+      "samples": [
+        {
+          "round": 1,
+          "actorName": "古月",
+          "selected": {
+            "name": "【普通攻击】（目标：戴月炎）",
+            "targetNames": [
+              "戴月炎"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 2,
+            "text": [
+              "古月朝戴月炎使出【普通攻击】",
+              "古月使用【普通攻击】指向戴月炎",
+              "戴月炎架住了古月的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【普通攻击】（目标：戴月炎）；相较主要替代项，作用目标不同（所选：戴月炎；替代：龙跃）",
+          "alternatives": [
+            {
+              "name": "【普通攻击】（目标：龙跃）",
+              "targetNames": [
+                "龙跃"
+              ],
+              "reason": "作用目标不同（所选：戴月炎；替代：龙跃）"
+            },
+            {
+              "name": "【普通攻击】（目标：苏沐）",
+              "targetNames": [
+                "苏沐"
+              ],
+              "reason": "作用目标不同（所选：戴月炎；替代：苏沐）"
+            }
+          ],
+          "numberCount": 2,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 8,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "戴月炎",
+          "selected": {
+            "name": "【防御】",
+            "targetNames": [
+              "戴月炎"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 1,
+            "text": [
+              "古月朝戴月炎使出【普通攻击】",
+              "古月使用【普通攻击】指向戴月炎",
+              "戴月炎架住了古月的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【防御】；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 1,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "许小言",
+          "selected": {
+            "name": "【冰矛 / 星光反馈】（目标：龙跃）",
+            "targetNames": [
+              "龙跃"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 4,
+            "text": [
+              "许小言朝龙跃使出【冰矛 / 星光反馈】",
+              "许小言使用【冰矛 / 星光反馈】指向龙跃",
+              "龙跃架住了许小言的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【冰矛 / 星光反馈】（目标：龙跃）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 6,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 12,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "龙跃",
+          "selected": {
+            "name": "【防御】",
+            "targetNames": [
+              "龙跃"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 2,
+            "text": [
+              "许小言朝龙跃使出【冰矛 / 星光反馈】",
+              "许小言使用【冰矛 / 星光反馈】指向龙跃",
+              "龙跃架住了许小言的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【防御】；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 1,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "舞长空",
+          "selected": {
+            "name": "【天霜斩】（目标：苏沐）",
+            "targetNames": [
+              "苏沐"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 5,
+            "text": [
+              "舞长空朝苏沐使出【天霜斩】",
+              "舞长空使用【天霜斩】指向苏沐",
+              "苏沐摆开【逆转光环】的架势"
+            ]
+          },
+          "reason": "选择【天霜斩】（目标：苏沐）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 9,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 18,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "苏沐",
+          "selected": {
+            "name": "【逆转光环】（目标：苏沐）",
+            "targetNames": [
+              "苏沐"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 4,
+            "text": [
+              "舞长空朝苏沐使出【天霜斩】",
+              "舞长空使用【天霜斩】指向苏沐",
+              "苏沐摆开【逆转光环】的架势"
+            ]
+          },
+          "reason": "选择【逆转光环】（目标：苏沐）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 4,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "戴月炎",
+          "selected": {
+            "name": "【白虎破魔杀】（目标：古月）",
+            "targetNames": [
+              "古月"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 3,
+            "text": [
+              "戴月炎朝古月使出【白虎破魔杀】",
+              "戴月炎使用【白虎破魔杀】指向古月",
+              "古月架住了戴月炎的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【白虎破魔杀】（目标：古月）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 4,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "古月",
+          "selected": {
+            "name": "【防御】",
+            "targetNames": [
+              "古月"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 4,
+            "text": [
+              "戴月炎朝古月使出【白虎破魔杀】",
+              "戴月炎使用【白虎破魔杀】指向古月",
+              "古月架住了戴月炎的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【防御】；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 6,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 3,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "caseId": "team_protect_critical_ally",
+      "draftHash": "r74-d89b8bab6b4159bc",
+      "reportHash": "r74-37f0e1cbbb351177",
+      "projectionStatus": "PASSED",
+      "decisionCount": 37,
+      "failureCount": 0,
+      "failures": [],
+      "failureRows": [],
+      "samples": [
+        {
+          "round": 1,
+          "actorName": "雅莉",
+          "selected": {
+            "name": "【第八魂技】（目标：舞长空、雅莉、唐舞麟）",
+            "targetNames": [
+              "舞长空",
+              "雅莉",
+              "唐舞麟"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 7,
+            "text": [
+              "雅莉朝3个目标放出【第八魂技】",
+              "雅莉使用【第八魂技】作用于己方3个目标",
+              "雅莉消耗73035点魂力"
+            ]
+          },
+          "reason": "选择【第八魂技】（目标：舞长空、雅莉、唐舞麟）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 8,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 7,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "舞长空",
+          "selected": {
+            "name": "【霜语冰轮】（目标：龙跃）",
+            "targetNames": [
+              "龙跃"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 13,
+            "text": [
+              "舞长空朝龙跃使出【霜语冰轮】",
+              "舞长空使用【霜语冰轮】指向龙跃",
+              "龙跃架住了舞长空的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【霜语冰轮】（目标：龙跃）；相较主要替代项，作用目标不同（所选：龙跃；替代：戴月炎）",
+          "alternatives": [
+            {
+              "name": "【霜语冰轮】（目标：戴月炎）",
+              "targetNames": [
+                "戴月炎"
+              ],
+              "reason": "作用目标不同（所选：龙跃；替代：戴月炎）"
+            },
+            {
+              "name": "【霜语冰轮】（目标：苏沐）",
+              "targetNames": [
+                "苏沐"
+              ],
+              "reason": "作用目标不同（所选：龙跃；替代：苏沐）"
+            }
+          ],
+          "numberCount": 31,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 18,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "龙跃",
+          "selected": {
+            "name": "【防御】",
+            "targetNames": [
+              "龙跃"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 1,
+            "text": [
+              "舞长空朝龙跃使出【霜语冰轮】",
+              "舞长空使用【霜语冰轮】指向龙跃",
+              "龙跃架住了舞长空的攻击，能挡下一部分伤害"
+            ]
+          },
+          "reason": "选择【防御】；相较主要替代项，防御以承受并减轻来袭为主；闪避以完全避开来袭为主",
+          "alternatives": [
+            {
+              "name": "【闪避】",
+              "targetNames": [
+                "龙跃"
+              ],
+              "reason": "防御以承受并减轻来袭为主；闪避以完全避开来袭为主"
+            },
+            {
+              "name": "【让过行动】（目标：龙跃）",
+              "targetNames": [
+                "龙跃"
+              ],
+              "reason": "防御以承受并减轻来袭为主；让过行动不建立动作效果"
+            }
+          ],
+          "numberCount": 1,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "唐舞麟",
+          "selected": {
+            "name": "【防御】",
+            "targetNames": [
+              "唐舞麟"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 2,
+            "text": [
+              "唐舞麟摆开【防御】的架势",
+              "唐舞麟采取【防御】",
+              "唐舞麟摆出防御架势"
+            ]
+          },
+          "reason": "选择【防御】；相较主要替代项，防御以承受并减轻来袭为主；闪避以完全避开来袭为主",
+          "alternatives": [
+            {
+              "name": "【闪避】",
+              "targetNames": [
+                "唐舞麟"
+              ],
+              "reason": "防御以承受并减轻来袭为主；闪避以完全避开来袭为主"
+            },
+            {
+              "name": "【让过行动】（目标：唐舞麟）",
+              "targetNames": [
+                "唐舞麟"
+              ],
+              "reason": "防御以承受并减轻来袭为主；让过行动不建立动作效果"
+            }
+          ],
+          "numberCount": 0,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 10,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "戴月炎",
+          "selected": {
+            "name": "【白虎破魔杀】（目标：舞长空）",
+            "targetNames": [
+              "舞长空"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 4,
+            "text": [
+              "戴月炎朝舞长空使出【白虎破魔杀】",
+              "戴月炎使用【白虎破魔杀】指向舞长空",
+              "舞长空尝试闪避戴月炎的攻势，但未能直接避开"
+            ]
+          },
+          "reason": "选择【白虎破魔杀】（目标：舞长空）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 6,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "舞长空",
+          "selected": {
+            "name": "【闪避】",
+            "targetNames": [
+              "舞长空"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 1,
+            "text": [
+              "戴月炎朝舞长空使出【白虎破魔杀】",
+              "戴月炎使用【白虎破魔杀】指向舞长空",
+              "舞长空尝试闪避戴月炎的攻势，但未能直接避开"
+            ]
+          },
+          "reason": "选择【闪避】；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 2,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 3,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "苏沐",
+          "selected": {
+            "name": "【吞噬光环】（目标：舞长空、雅莉、唐舞麟）",
+            "targetNames": [
+              "舞长空",
+              "雅莉",
+              "唐舞麟"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 16,
+            "text": [
+              "苏沐朝3个目标放出【吞噬光环】",
+              "苏沐使用【吞噬光环】作用于敌方3个目标",
+              "舞长空架住了苏沐的攻击，能挡下大约一半伤害"
+            ]
+          },
+          "reason": "选择【吞噬光环】（目标：舞长空、雅莉、唐舞麟）；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 30,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 0,
+          "failures": []
+        },
+        {
+          "round": 1,
+          "actorName": "舞长空",
+          "selected": {
+            "name": "【防御】",
+            "targetNames": [
+              "舞长空"
+            ]
+          },
+          "result": {
+            "sourceFactCount": 1,
+            "text": [
+              "苏沐朝3个目标放出【吞噬光环】",
+              "苏沐使用【吞噬光环】作用于敌方3个目标",
+              "舞长空架住了苏沐的攻击，能挡下大约一半伤害"
+            ]
+          },
+          "reason": "选择【防御】；当前公开情况没有留下需要并列说明的另一条路线",
+          "alternatives": [],
+          "numberCount": 1,
+          "predictedNumberCount": 0,
+          "legalCandidateCount": 3,
+          "failures": []
+        }
+      ]
+    }
+  ],
+  "failureCount": 0,
+  "failures": [],
+  "sourceHashes": {
+    "BattleDecision_Module.js": "64b8983ac34bedef6c3b544a8cd5896f42c12c632733806bb21aff7b949a1213",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a"
+  },
+  "toolHash": "c41d7e32785638598fa7131445f0ef8ea7f2db0dd7a92de0f61b2292f283d4ba"
+}

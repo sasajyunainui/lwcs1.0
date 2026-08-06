@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 60,
+  "previousEventHash": "839a231534bf101370512ce21210ea24e79b575cf5bb5c2393feddd95ff27a25",
+  "milestoneId": "M2",
+  "taskId": "M2-K02-K08-TARGET-COMPONENT-CLOSURE",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "d0c483649230f307dc848718140ff46e7ad31bf26a3fd4e42157b13f5de2b87d",
+    "BattleDecision_Module.js": "8eadd24a9e6edbc33cd54d60e7b53e14bfb5cc89f70cb0fde8fe83509f5a505f",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k12-target-adapter.mjs": "5392e6959a994fedce84cb3fcb2aed48632274aec96c627f79ca7673fc36f696",
+    "tools/rc6/harness/run-m2-reference-v2.mjs": "8fddb365157a38e7b7bc4ff4d2a8eb632ca8c7b41c0c5d4f315f7aa16c80d5a6",
+    "tools/rc6/harness/run-m2-small-target-transactions.mjs": "148715315b2dec54cb3873af419ab73d2c3922fb9e4e35fdc975f5b8cc88f716"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "B8B5B3B59131E4B2B3FFF80D873F16140EC5B5CC2023664C708ED6E867AC56EC",
+    "B564ACC377B46E93AB3459C15F0B4DF1B8E18334457F6B1CD84D11D1F9D5A8C5",
+    "FA82D8851F45F66764C75E17BA617EF291130E6BD7A1F7BA8757A6F015650B14"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "Extend independent production ReferenceEvaluator mapping to RESOURCE_OPTION_CHANGED, STATE_CHANGED, NEXT_ACTION_QUALITY_CHANGED, SUMMON_WINDOW and implement raw S4/S6 coverage; do not run 7v7 performance yet.",
+    "legacyComponentReachabilityClosed": true,
+    "genericReferenceAB": true,
+    "smallTransactions": true
+  },
+  "reason": "Target component path no longer reaches legacy projection functions; S1-S6 target-owned route, behavior, summon and risk paths now run in small isolated transactions. Production field-level Reference AB remains blocked by unmapped S2-S5 raw facts.",
+  "recordedAt": "2026-08-05T13:25:47.939Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "d6a26f973b8d5f2c63b6c026025fe627a32ec573f26b48eb5297e60a8a3171a7"
+}

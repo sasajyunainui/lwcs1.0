@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 72,
+  "previousEventHash": "af9309e7faa87062646289008fb1a1810146f577bacf3994755f98b0c5f42bb8",
+  "milestoneId": "M2",
+  "taskId": "M2-K13-PAYMENT-DEPENDENCY-AB",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "BLOCKED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "647642472d8322d145fc222409ed2109fb3daa78f2b720243c92dda7e0168b71",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-production-reference-ab.mjs": "977f9ec758d538ee4629071d4adee80e7cdb4f203ad65f47bb54c5296c92a5d9",
+    "tools/rc6/harness/run-m2-small-target-transactions.mjs": "148715315b2dec54cb3873af419ab73d2c3922fb9e4e35fdc975f5b8cc88f716",
+    "tools/rc6/harness/run-m2-k14-s4-semantics.mjs": "6cf0da28322312f615fd6bda6ea96522a16dbed54a1a9e50e3bfb8eaee7ebb8f",
+    "tools/rc6/harness/run-m2-reference-v2.mjs": "8fddb365157a38e7b7bc4ff4d2a8eb632ca8c7b41c0c5d4f315f7aa16c80d5a6"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "314497509a5ecfbaa3b32beb11d2f4a8091b2b51d80220e6af4bc55aa716c7e8",
+    "d5726ab9000ccdc7f3cd3fb61427ffda214b1a7e8bf1630708b013085858d6e4",
+    "8743355bd8c732339c80ce6b8256c40a9587cfb153213feb54710d03addd9127",
+    "e04605221d43cff4d3b62631523db1cd90ac39d26707c4df43337fac1eda237c",
+    "c81ab6f57b49a73cc631d18f83c39ecaca586dfa223ee9bea4d55db207d98076"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "Replace repeated S4 future-route branch preparation with a shared future-route value representation; prove field-level A/B before rerunning K13.",
+    "semanticBoundary": "PAYMENT_AFFORDABILITY roles captured only for resource/resourceMax dependencies; mixed mechanical roles remain conservative.",
+    "performanceAcceptance": false,
+    "performanceDiagnostic": "Order-reversed inline A/B produced opposite end-to-end directions; payment-only reuse is not accepted as a K13 optimization.",
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "Current-hash semantic and small-transaction checks pass. Payment-only dependency roles are recorded conservatively, but order-reversed A/B does not establish stable end-to-end gain; the remaining blocker is shared S4 future-route value representation.",
+  "recordedAt": "2026-08-05T22:22:54.229Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "9f4d4ebfa3e3679ed6d4db66f39b25f51523970390ac24b3f62aa36ac7fb5f8a"
+}

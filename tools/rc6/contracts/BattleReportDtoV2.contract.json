@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "BattleReportDtoV2",
+  "visibilityModes": [
+    "PLAYER",
+    "REVIEW",
+    "DEVELOPER"
+  ],
+  "requiredCommonFields": [
+    "schemaVersion",
+    "termDictionaryVersion",
+    "visibilityMode",
+    "projectionStatus",
+    "sourceDraftHash",
+    "actualRoundCount",
+    "terminalResult",
+    "factRegistry",
+    "roundOverview",
+    "exchanges",
+    "finalSummary",
+    "decisionExplanations",
+    "narrativeChain",
+    "aiStructuredSummary",
+    "battleHeadline"
+  ],
+  "playerContract": {
+    "visibilityMode": "PLAYER",
+    "projectionStatus": "PASSED",
+    "allowedSources": [
+      "PLAYER"
+    ],
+    "forbiddenSources": [
+      "Ledger",
+      "logs",
+      "trace",
+      "DEVELOPER"
+    ],
+    "numericTokenRequiredFields": [
+      "displayName",
+      "value",
+      "unit",
+      "sourceEventId",
+      "sourceFactId",
+      "derivationRule",
+      "tacticalConsequence",
+      "operands"
+    ]
+  },
+  "reviewContract": {
+    "visibilityMode": "REVIEW",
+    "projectionStatus": "PASSED",
+    "mayContain": [
+      "anonymousPublicDecisionContext",
+      "publicCandidateTradeoffs",
+      "numericOperandsAndSources"
+    ],
+    "mustNotContain": [
+      "hiddenResources",
+      "hiddenAbilities",
+      "hiddenResistances",
+      "rawInternalIds",
+      "postHocJustification"
+    ]
+  },
+  "developerContract": {
+    "visibilityMode": "DEVELOPER",
+    "mayContain": [
+      "provider",
+      "formula",
+      "randomSource",
+      "causalOwnership",
+      "dependencyAndCacheDiagnostics"
+    ]
+  }
+}

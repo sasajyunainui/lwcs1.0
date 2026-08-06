@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 91,
+  "previousEventHash": "5d49fda8a590ad835f6fca83b59bb909cc868a95e97b9b5ce4161584e66fd418",
+  "milestoneId": "M2",
+  "taskId": "M2-OWNERSHIP-AND-DIRECTION-AUDIT",
+  "eventType": "EVIDENCE_RECONCILIATION_CORRECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "db3c2260fa5c18ef708a3ddfad70e7e6be3df1763b21162b7698029632a50bdb",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/audit-current-tree-ownership.mjs": "79ed9a7aa5f1688db75bc4e4de81d7a7feba7d499772e750325f44287f9ed266"
+  },
+  "fixtureHashes": {
+    "tools/rc6/evidence/m2/current-tree-ownership-manifest.json": "aae8e66aeecc5f776aacdfd9aed758100ce31eeae454eb7a1152af9bc215b033",
+    "tools/rc6/evidence/m2/current-change-impact-manifest.json": "037caa0303294080579e561dfb85e93b6b002569c8055cf88a6f8751d16ce4ff",
+    "tools/rc6/evidence/m2/current-direction-audit.json": "243b0821d72e717e2e9f949aa730d701c1e09cb83ec9a85a60d5127d7b1a4676"
+  },
+  "acceptedObjectHashes": [
+    "aae8e66aeecc5f776aacdfd9aed758100ce31eeae454eb7a1152af9bc215b033",
+    "037caa0303294080579e561dfb85e93b6b002569c8055cf88a6f8751d16ce4ff",
+    "243b0821d72e717e2e9f949aa730d701c1e09cb83ec9a85a60d5127d7b1a4676"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "ownershipManifestHash": "be89e9fe2b2995b986aa732d0c91ca0acf7cd758d9094b3efec2a4d4e2b644c7",
+    "impactManifestHash": "3e8839d4a64bbc87d72e656b5c958380c89ae652ed186060d3f37eab9d9dd392",
+    "inputPathCount": 79,
+    "unassignedCount": 0,
+    "outOfScopeProductionCount": 4,
+    "m2AcceptanceReady": false,
+    "k00": "CURRENT_CONTRACT_PASS_RECORDED",
+    "downstream": "UNACCEPTED_QUARANTINED"
+  },
+  "reason": "Refresh current-hash ownership and impact manifests after accepting the current-contract K00 rerun; M2 remains blocked by target component ownership and full K12 A/B.",
+  "recordedAt": "2026-08-06T05:23:11.906Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "dc9b111dab7ae0242d9ae1e435d97b93270de5540a6e41a30f03a1423b7ced16"
+}

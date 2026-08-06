@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 74,
+  "previousEventHash": "49313f2199a24115c9decece4bf38e3cfcfa85f37e9d55d916d22f13aea07aa1",
+  "milestoneId": "M2",
+  "taskId": "M2-PATH-TARGET-KERNEL-ACTIVATION",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "da6169945d12196e99b18769013e66b5a3f4255b502710ff1865452a81d911e5",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-target-path-audit.mjs": "f783107a0864e9685de0705737716f651f61d21b6d5ea8997af6f4fe00833902"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "166a4165e2063222e5767cd072ecbcab9a0fd48486574d5d3a18206367e0ecc5"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "Fix full-transaction metric collection, then implement shared target-kernel session and compact future-route value representation before rerunning K13",
+    "pathAudit": "PASSED",
+    "invalidatedEvidence": "M5-P02 targetKernelVectorEvaluations field is incomplete until targetKernelMetrics is collected"
+  },
+  "reason": "M2 path audit proves full Runtime decisions use R9V2_TARGET/TARGET_KERNEL_V2; previous zero-vector reading came from an incomplete metric projection.",
+  "recordedAt": "2026-08-05T22:50:18.736Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "e4664793956e4e299a54ffd7f4dd86c42c1e3257a262362395c3c61a44d8621b"
+}

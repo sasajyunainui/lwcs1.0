@@ -57,6 +57,7 @@ if (worker) {
   const decisionMs = [];
   let decisionCount = 0;
   const startedAt = performance.now();
+  let workerOutput;
   try {
     for (let round = 0; round < rounds; round += 1) {
       for (const actor of actors) {
@@ -88,20 +89,23 @@ if (worker) {
         decisionCount += 1;
       }
     }
+    const evaluationSessionMetrics =
+      decision.readEvaluationSessionMetrics(session);
+    workerOutput = {
+      schemaVersion: 'M2K13TargetKernelPerformanceWorkerV1',
+      status: 'COMPLETED',
+      caseId,
+      rounds,
+      decisionCount,
+      decision: summarize(decisionMs),
+      totalMs: performance.now() - startedAt,
+      scope: PERFORMANCE_SCOPE,
+      evaluationSessionMetrics,
+    };
   } finally {
     decision.disposeEvaluationSession(session);
   }
-  const totalMs = performance.now() - startedAt;
-  process.stdout.write(JSON.stringify({
-    schemaVersion: 'M2K13TargetKernelPerformanceWorkerV1',
-    status: 'COMPLETED',
-    caseId,
-    rounds,
-    decisionCount,
-    decision: summarize(decisionMs),
-    totalMs,
-    scope: PERFORMANCE_SCOPE,
-  }));
+  process.stdout.write(JSON.stringify(workerOutput));
   process.exit(0);
 }
 

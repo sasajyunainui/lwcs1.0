@@ -1,8 +1,8 @@
 {
   "schemaVersion": "M2K01K04KernelGateV1",
   "status": "PASSED",
-  "moduleHash": "4ce4ab6eadb81bc72edb6160dcee06b610b284a09dbbbe428c3bd6cca38e2157",
-  "kernelVersion": "9v2-kernel-1.0.0",
+  "moduleHash": "b955c8b6476daf32612710123cfb4413457786397581cd055a6f8f2634a3b9ce",
+  "kernelVersion": "9v2-kernel-1.3.0",
   "schemaVersionExposed": "ValueKernelSessionV1",
   "candidateCount": 2,
   "vectorCount": 2,

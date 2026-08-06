@@ -198,13 +198,21 @@ export const evaluateCase = (input = {}) => {
     selected = rankedPareto[0];
   }
   const alternative1 = rankedPareto.find(candidate => candidate.candidateId !== selected.candidateId && structurallyDifferent(candidate, selected)) || null;
-  const remaining = rankedPareto.filter(candidate => candidate.candidateId !== selected.candidateId);
+  const remaining = rankedPareto.filter(candidate =>
+    candidate.candidateId !== selected.candidateId && candidate !== alternative1,
+  );
   const alternative2 = remaining.length
     ? remaining.slice().sort((left, right) => {
       const delta = normalizeParetoDistance(right, rankedPareto) - normalizeParetoDistance(left, rankedPareto);
       return delta || rankCompare(left, right);
     })[0]
     : null;
+  const alternativeIds = [alternative1, alternative2]
+    .filter(Boolean)
+    .map(candidate => candidate.candidateId);
+  if (new Set(alternativeIds).size !== alternativeIds.length) {
+    fatal('REFERENCE_DUPLICATE_ALTERNATIVE', input.caseId);
+  }
   return {
     caseId: String(input.caseId || ''),
     mode: String(input.mode || 'auto'),

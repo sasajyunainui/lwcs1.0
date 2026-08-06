@@ -1,0 +1,5670 @@
+{
+  "schemaVersion": "BehaviorOracleFixtureManifestV1",
+  "status": "FROZEN_EXECUTABLE_FIXTURES",
+  "contractId": "R83-RC6-M1-FROZEN-2026-08-06",
+  "count": 54,
+  "sourceHashes": {
+    "tools/evidence/r8/r83_rc2_behavior_oracle_v2_draft.json": "b44d89789a9f1ceb4f2c11eb0bb582728b3ae3588590562e432b428bd259bda8"
+  },
+  "oracleIndexBindingHash": "8bcb1d0b83b45b24cf33f44d763d2e2ff3fddfdd6e77dfe8be251a8bc7f43570",
+  "fixtures": [
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c01_hit_bonus_positive",
+      "oracleId": "oracle:c01_hit_bonus_positive",
+      "sourceCaseId": "c01_hit_bonus_positive",
+      "concept": "c01",
+      "semanticDomain": "S3",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c01:positive",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c01-effect",
+            "actionId": "c01-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_BASIC_HIT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c01-effect:event:0",
+                "sourceFactId": "c01-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c01-baseline",
+            "actionId": "c01-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_BASIC_HIT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c01-baseline:event:0",
+                "sourceFactId": "c01-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c01-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c01-effect",
+          "field": "stateDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c01-effect",
+          "owner": "STATE_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c01_hit_bonus_negative",
+      "oracleId": "oracle:c01_hit_bonus_negative",
+      "sourceCaseId": "c01_hit_bonus_negative",
+      "concept": "c01",
+      "semanticDomain": "S3",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c01:negative",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c01-effect",
+            "actionId": "c01-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_BASIC_HIT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c01-effect:event:0",
+                "sourceFactId": "c01-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c01-baseline",
+            "actionId": "c01-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_BASIC_HIT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c01-baseline:event:0",
+                "sourceFactId": "c01-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c01-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c01-effect",
+          "field": "stateDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c01-effect",
+          "owner": "STATE_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c01_hit_bonus_mutation",
+      "oracleId": "oracle:c01_hit_bonus_mutation",
+      "sourceCaseId": "c01_hit_bonus_mutation",
+      "concept": "c01",
+      "semanticDomain": "S3",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c01:mutation",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c01-effect",
+            "actionId": "c01-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_BASIC_HIT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c01-effect:event:0",
+                "sourceFactId": "c01-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c01-baseline",
+            "actionId": "c01-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_BASIC_HIT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c01-baseline:event:0",
+                "sourceFactId": "c01-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c01-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c01-effect",
+          "field": "stateDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c01-effect",
+          "owner": "STATE_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c02_evasion_reduction_positive",
+      "oracleId": "oracle:c02_evasion_reduction_positive",
+      "sourceCaseId": "c02_evasion_reduction_positive",
+      "concept": "c02",
+      "semanticDomain": "S3",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c02:positive",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c02-effect",
+            "actionId": "c02-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_EVASION",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c02-effect:event:0",
+                "sourceFactId": "c02-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c02-baseline",
+            "actionId": "c02-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_EVASION",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c02-baseline:event:0",
+                "sourceFactId": "c02-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c02-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c02-effect",
+          "field": "stateDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c02-effect",
+          "owner": "STATE_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c02_evasion_reduction_negative",
+      "oracleId": "oracle:c02_evasion_reduction_negative",
+      "sourceCaseId": "c02_evasion_reduction_negative",
+      "concept": "c02",
+      "semanticDomain": "S3",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c02:negative",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c02-effect",
+            "actionId": "c02-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_EVASION",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c02-effect:event:0",
+                "sourceFactId": "c02-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c02-baseline",
+            "actionId": "c02-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_EVASION",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c02-baseline:event:0",
+                "sourceFactId": "c02-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c02-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c02-effect",
+          "field": "stateDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c02-effect",
+          "owner": "STATE_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c02_evasion_reduction_mutation",
+      "oracleId": "oracle:c02_evasion_reduction_mutation",
+      "sourceCaseId": "c02_evasion_reduction_mutation",
+      "concept": "c02",
+      "semanticDomain": "S3",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c02:mutation",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c02-effect",
+            "actionId": "c02-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_EVASION",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c02-effect:event:0",
+                "sourceFactId": "c02-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c02-baseline",
+            "actionId": "c02-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_EVASION",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c02-baseline:event:0",
+                "sourceFactId": "c02-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c02-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c02-effect",
+          "field": "stateDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c02-effect",
+          "owner": "STATE_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c03_defense_positive",
+      "oracleId": "oracle:c03_defense_positive",
+      "sourceCaseId": "c03_defense_positive",
+      "concept": "c03",
+      "semanticDomain": "S3",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c03:positive",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c03-effect",
+            "actionId": "c03-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c03-effect:event:0",
+                "sourceFactId": "c03-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c03-baseline",
+            "actionId": "c03-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c03-baseline:event:0",
+                "sourceFactId": "c03-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c03-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c03-effect",
+          "field": "stateDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c03-effect",
+          "owner": "STATE_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c03_defense_negative",
+      "oracleId": "oracle:c03_defense_negative",
+      "sourceCaseId": "c03_defense_negative",
+      "concept": "c03",
+      "semanticDomain": "S3",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c03:negative",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c03-effect",
+            "actionId": "c03-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c03-effect:event:0",
+                "sourceFactId": "c03-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c03-baseline",
+            "actionId": "c03-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c03-baseline:event:0",
+                "sourceFactId": "c03-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c03-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c03-effect",
+          "field": "stateDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c03-effect",
+          "owner": "STATE_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c03_defense_mutation",
+      "oracleId": "oracle:c03_defense_mutation",
+      "sourceCaseId": "c03_defense_mutation",
+      "concept": "c03",
+      "semanticDomain": "S3",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c03:mutation",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c03-effect",
+            "actionId": "c03-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c03-effect:event:0",
+                "sourceFactId": "c03-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c03-baseline",
+            "actionId": "c03-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c03-baseline:event:0",
+                "sourceFactId": "c03-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c03-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c03-effect",
+          "field": "stateDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c03-effect",
+          "owner": "STATE_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c04_evade_counter_positive",
+      "oracleId": "oracle:c04_evade_counter_positive",
+      "sourceCaseId": "c04_evade_counter_positive",
+      "concept": "c04",
+      "semanticDomain": "S3",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c04:positive",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c04-effect",
+            "actionId": "c04-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_COUNTER",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c04-effect:event:0",
+                "sourceFactId": "c04-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c04-baseline",
+            "actionId": "c04-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_COUNTER",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c04-baseline:event:0",
+                "sourceFactId": "c04-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c04-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c04-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c04-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c04_evade_counter_negative",
+      "oracleId": "oracle:c04_evade_counter_negative",
+      "sourceCaseId": "c04_evade_counter_negative",
+      "concept": "c04",
+      "semanticDomain": "S3",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c04:negative",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c04-effect",
+            "actionId": "c04-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_COUNTER",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c04-effect:event:0",
+                "sourceFactId": "c04-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c04-baseline",
+            "actionId": "c04-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_COUNTER",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c04-baseline:event:0",
+                "sourceFactId": "c04-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c04-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c04-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c04-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c04_evade_counter_mutation",
+      "oracleId": "oracle:c04_evade_counter_mutation",
+      "sourceCaseId": "c04_evade_counter_mutation",
+      "concept": "c04",
+      "semanticDomain": "S3",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c04:mutation",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c04-effect",
+            "actionId": "c04-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_COUNTER",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c04-effect:event:0",
+                "sourceFactId": "c04-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c04-baseline",
+            "actionId": "c04-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_COUNTER",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c04-baseline:event:0",
+                "sourceFactId": "c04-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c04-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c04-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c04-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c05_hard_control_positive",
+      "oracleId": "oracle:c05_hard_control_positive",
+      "sourceCaseId": "c05_hard_control_positive",
+      "concept": "c05",
+      "semanticDomain": "S3",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c05:positive",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c05-effect",
+            "actionId": "c05-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HARD_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c05-effect:event:0",
+                "sourceFactId": "c05-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c05-baseline",
+            "actionId": "c05-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HARD_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c05-baseline:event:0",
+                "sourceFactId": "c05-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c05-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c05-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c05-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c05_hard_control_negative",
+      "oracleId": "oracle:c05_hard_control_negative",
+      "sourceCaseId": "c05_hard_control_negative",
+      "concept": "c05",
+      "semanticDomain": "S3",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c05:negative",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c05-effect",
+            "actionId": "c05-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HARD_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c05-effect:event:0",
+                "sourceFactId": "c05-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c05-baseline",
+            "actionId": "c05-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HARD_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c05-baseline:event:0",
+                "sourceFactId": "c05-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c05-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c05-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c05-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c05_hard_control_mutation",
+      "oracleId": "oracle:c05_hard_control_mutation",
+      "sourceCaseId": "c05_hard_control_mutation",
+      "concept": "c05",
+      "semanticDomain": "S3",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c05:mutation",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c05-effect",
+            "actionId": "c05-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HARD_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c05-effect:event:0",
+                "sourceFactId": "c05-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c05-baseline",
+            "actionId": "c05-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HARD_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c05-baseline:event:0",
+                "sourceFactId": "c05-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c05-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c05-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c05-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c06_control_overlap_positive",
+      "oracleId": "oracle:c06_control_overlap_positive",
+      "sourceCaseId": "c06_control_overlap_positive",
+      "concept": "c06",
+      "semanticDomain": "S3",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c06:positive",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c06-effect",
+            "actionId": "c06-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c06-effect:event:0",
+                "sourceFactId": "c06-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c06-baseline",
+            "actionId": "c06-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c06-baseline:event:0",
+                "sourceFactId": "c06-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c06-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c06-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c06-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c06_control_overlap_negative",
+      "oracleId": "oracle:c06_control_overlap_negative",
+      "sourceCaseId": "c06_control_overlap_negative",
+      "concept": "c06",
+      "semanticDomain": "S3",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c06:negative",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c06-effect",
+            "actionId": "c06-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c06-effect:event:0",
+                "sourceFactId": "c06-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c06-baseline",
+            "actionId": "c06-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c06-baseline:event:0",
+                "sourceFactId": "c06-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c06-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c06-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c06-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c06_control_overlap_mutation",
+      "oracleId": "oracle:c06_control_overlap_mutation",
+      "sourceCaseId": "c06_control_overlap_mutation",
+      "concept": "c06",
+      "semanticDomain": "S3",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c06:mutation",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c06-effect",
+            "actionId": "c06-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c06-effect:event:0",
+                "sourceFactId": "c06-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c06-baseline",
+            "actionId": "c06-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c06-baseline:event:0",
+                "sourceFactId": "c06-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c06-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c06-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c06-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c07_slow_axis_positive",
+      "oracleId": "oracle:c07_slow_axis_positive",
+      "sourceCaseId": "c07_slow_axis_positive",
+      "concept": "c07",
+      "semanticDomain": "S3",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c07:positive",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c07-effect",
+            "actionId": "c07-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c07-effect:event:0",
+                "sourceFactId": "c07-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c07-baseline",
+            "actionId": "c07-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c07-baseline:event:0",
+                "sourceFactId": "c07-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c07-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c07-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c07-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c07_slow_axis_negative",
+      "oracleId": "oracle:c07_slow_axis_negative",
+      "sourceCaseId": "c07_slow_axis_negative",
+      "concept": "c07",
+      "semanticDomain": "S3",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c07:negative",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c07-effect",
+            "actionId": "c07-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c07-effect:event:0",
+                "sourceFactId": "c07-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c07-baseline",
+            "actionId": "c07-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c07-baseline:event:0",
+                "sourceFactId": "c07-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c07-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c07-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c07-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c07_slow_axis_mutation",
+      "oracleId": "oracle:c07_slow_axis_mutation",
+      "sourceCaseId": "c07_slow_axis_mutation",
+      "concept": "c07",
+      "semanticDomain": "S3",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c07:mutation",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c07-effect",
+            "actionId": "c07-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c07-effect:event:0",
+                "sourceFactId": "c07-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c07-baseline",
+            "actionId": "c07-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c07-baseline:event:0",
+                "sourceFactId": "c07-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c07-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c07-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c07-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c08_resource_block_positive",
+      "oracleId": "oracle:c08_resource_block_positive",
+      "sourceCaseId": "c08_resource_block_positive",
+      "concept": "c08",
+      "semanticDomain": "S2",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c08:positive",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c08-effect",
+            "actionId": "c08-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c08-effect:event:0",
+                "sourceFactId": "c08-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c08-baseline",
+            "actionId": "c08-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c08-baseline:event:0",
+                "sourceFactId": "c08-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c08-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c08-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c08-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c08_resource_block_negative",
+      "oracleId": "oracle:c08_resource_block_negative",
+      "sourceCaseId": "c08_resource_block_negative",
+      "concept": "c08",
+      "semanticDomain": "S2",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c08:negative",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c08-effect",
+            "actionId": "c08-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c08-effect:event:0",
+                "sourceFactId": "c08-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c08-baseline",
+            "actionId": "c08-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 1,
+                "sourceEventId": "c08-baseline:event:0",
+                "sourceFactId": "c08-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c08-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c08-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c08-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c08_resource_block_mutation",
+      "oracleId": "oracle:c08_resource_block_mutation",
+      "sourceCaseId": "c08_resource_block_mutation",
+      "concept": "c08",
+      "semanticDomain": "S2",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c08:mutation",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c08-effect",
+            "actionId": "c08-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c08-effect:event:0",
+                "sourceFactId": "c08-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c08-baseline",
+            "actionId": "c08-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c08-baseline:event:0",
+                "sourceFactId": "c08-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c08-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c08-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c08-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c09_resource_no_consumer_positive",
+      "oracleId": "oracle:c09_resource_no_consumer_positive",
+      "sourceCaseId": "c09_resource_no_consumer_positive",
+      "concept": "c09",
+      "semanticDomain": "S2",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c09:positive",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c09-effect",
+            "actionId": "c09-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c09-effect:event:0",
+                "sourceFactId": "c09-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c09-baseline",
+            "actionId": "c09-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 1,
+                "sourceEventId": "c09-baseline:event:0",
+                "sourceFactId": "c09-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c09-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c09-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c09-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c09_resource_no_consumer_negative",
+      "oracleId": "oracle:c09_resource_no_consumer_negative",
+      "sourceCaseId": "c09_resource_no_consumer_negative",
+      "concept": "c09",
+      "semanticDomain": "S2",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c09:negative",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c09-effect",
+            "actionId": "c09-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c09-effect:event:0",
+                "sourceFactId": "c09-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c09-baseline",
+            "actionId": "c09-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 1,
+                "sourceEventId": "c09-baseline:event:0",
+                "sourceFactId": "c09-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c09-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c09-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c09-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c09_resource_no_consumer_mutation",
+      "oracleId": "oracle:c09_resource_no_consumer_mutation",
+      "sourceCaseId": "c09_resource_no_consumer_mutation",
+      "concept": "c09",
+      "semanticDomain": "S2",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c09:mutation",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c09-effect",
+            "actionId": "c09-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c09-effect:event:0",
+                "sourceFactId": "c09-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c09-baseline",
+            "actionId": "c09-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 1,
+                "sourceEventId": "c09-baseline:event:0",
+                "sourceFactId": "c09-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c09-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c09-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c09-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c10_resource_consumers_positive",
+      "oracleId": "oracle:c10_resource_consumers_positive",
+      "sourceCaseId": "c10_resource_consumers_positive",
+      "concept": "c10",
+      "semanticDomain": "S2",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c10:positive",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c10-effect",
+            "actionId": "c10-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c10-effect:event:0",
+                "sourceFactId": "c10-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c10-baseline",
+            "actionId": "c10-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c10-baseline:event:0",
+                "sourceFactId": "c10-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c10-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c10-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c10-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c10_resource_consumers_negative",
+      "oracleId": "oracle:c10_resource_consumers_negative",
+      "sourceCaseId": "c10_resource_consumers_negative",
+      "concept": "c10",
+      "semanticDomain": "S2",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c10:negative",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c10-effect",
+            "actionId": "c10-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c10-effect:event:0",
+                "sourceFactId": "c10-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c10-baseline",
+            "actionId": "c10-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c10-baseline:event:0",
+                "sourceFactId": "c10-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c10-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c10-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c10-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c10_resource_consumers_mutation",
+      "oracleId": "oracle:c10_resource_consumers_mutation",
+      "sourceCaseId": "c10_resource_consumers_mutation",
+      "concept": "c10",
+      "semanticDomain": "S2",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c10:mutation",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c10-effect",
+            "actionId": "c10-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c10-effect:event:0",
+                "sourceFactId": "c10-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c10-baseline",
+            "actionId": "c10-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c10-baseline:event:0",
+                "sourceFactId": "c10-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c10-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c10-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c10-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c11_resource_recovery_positive",
+      "oracleId": "oracle:c11_resource_recovery_positive",
+      "sourceCaseId": "c11_resource_recovery_positive",
+      "concept": "c11",
+      "semanticDomain": "S2",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c11:positive",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c11-effect",
+            "actionId": "c11-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c11-effect:event:0",
+                "sourceFactId": "c11-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c11-baseline",
+            "actionId": "c11-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c11-baseline:event:0",
+                "sourceFactId": "c11-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c11-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c11-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c11-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c11_resource_recovery_negative",
+      "oracleId": "oracle:c11_resource_recovery_negative",
+      "sourceCaseId": "c11_resource_recovery_negative",
+      "concept": "c11",
+      "semanticDomain": "S2",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c11:negative",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c11-effect",
+            "actionId": "c11-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c11-effect:event:0",
+                "sourceFactId": "c11-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c11-baseline",
+            "actionId": "c11-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 1,
+                "sourceEventId": "c11-baseline:event:0",
+                "sourceFactId": "c11-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c11-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c11-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c11-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c11_resource_recovery_mutation",
+      "oracleId": "oracle:c11_resource_recovery_mutation",
+      "sourceCaseId": "c11_resource_recovery_mutation",
+      "concept": "c11",
+      "semanticDomain": "S2",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c11:mutation",
+        "semanticDomain": "S2",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c11-effect",
+            "actionId": "c11-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c11-effect:event:0",
+                "sourceFactId": "c11-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c11-baseline",
+            "actionId": "c11-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c11-baseline:event:0",
+                "sourceFactId": "c11-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c11-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c11-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c11-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c12_defensive_windows_positive",
+      "oracleId": "oracle:c12_defensive_windows_positive",
+      "sourceCaseId": "c12_defensive_windows_positive",
+      "concept": "c12",
+      "semanticDomain": "S3",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c12:positive",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c12-effect",
+            "actionId": "c12-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c12-effect:event:0",
+                "sourceFactId": "c12-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c12-baseline",
+            "actionId": "c12-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c12-baseline:event:0",
+                "sourceFactId": "c12-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c12-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c12-effect",
+          "field": "stateDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c12-effect",
+          "owner": "STATE_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c12_defensive_windows_negative",
+      "oracleId": "oracle:c12_defensive_windows_negative",
+      "sourceCaseId": "c12_defensive_windows_negative",
+      "concept": "c12",
+      "semanticDomain": "S3",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c12:negative",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c12-effect",
+            "actionId": "c12-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c12-effect:event:0",
+                "sourceFactId": "c12-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c12-baseline",
+            "actionId": "c12-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 1,
+                "sourceEventId": "c12-baseline:event:0",
+                "sourceFactId": "c12-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c12-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c12-effect",
+          "field": "stateDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c12-effect",
+          "owner": "STATE_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c12_defensive_windows_mutation",
+      "oracleId": "oracle:c12_defensive_windows_mutation",
+      "sourceCaseId": "c12_defensive_windows_mutation",
+      "concept": "c12",
+      "semanticDomain": "S3",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c12:mutation",
+        "semanticDomain": "S3",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c12-effect",
+            "actionId": "c12-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c12-effect:event:0",
+                "sourceFactId": "c12-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c12-baseline",
+            "actionId": "c12-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c12-baseline:event:0",
+                "sourceFactId": "c12-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c12-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c12-effect",
+          "field": "stateDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c12-effect",
+          "owner": "STATE_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c13_dot_positive",
+      "oracleId": "oracle:c13_dot_positive",
+      "sourceCaseId": "c13_dot_positive",
+      "concept": "c13",
+      "semanticDomain": "S5",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c13:positive",
+        "semanticDomain": "S5",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c13-effect",
+            "actionId": "c13-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_DOT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c13-effect:event:0",
+                "sourceFactId": "c13-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c13-baseline",
+            "actionId": "c13-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_DOT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c13-baseline:event:0",
+                "sourceFactId": "c13-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c13-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c13-effect",
+          "field": "stateDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c13-effect",
+          "owner": "STATE_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c13_dot_negative",
+      "oracleId": "oracle:c13_dot_negative",
+      "sourceCaseId": "c13_dot_negative",
+      "concept": "c13",
+      "semanticDomain": "S5",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c13:negative",
+        "semanticDomain": "S5",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c13-effect",
+            "actionId": "c13-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_DOT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c13-effect:event:0",
+                "sourceFactId": "c13-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c13-baseline",
+            "actionId": "c13-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_DOT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c13-baseline:event:0",
+                "sourceFactId": "c13-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c13-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c13-effect",
+          "field": "stateDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c13-effect",
+          "owner": "STATE_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c13_dot_mutation",
+      "oracleId": "oracle:c13_dot_mutation",
+      "sourceCaseId": "c13_dot_mutation",
+      "concept": "c13",
+      "semanticDomain": "S5",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c13:mutation",
+        "semanticDomain": "S5",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c13-effect",
+            "actionId": "c13-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_DOT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c13-effect:event:0",
+                "sourceFactId": "c13-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c13-baseline",
+            "actionId": "c13-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_DOT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c13-baseline:event:0",
+                "sourceFactId": "c13-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c13-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c13-effect",
+          "field": "stateDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c13-effect",
+          "owner": "STATE_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c14_summon_positive",
+      "oracleId": "oracle:c14_summon_positive",
+      "sourceCaseId": "c14_summon_positive",
+      "concept": "c14",
+      "semanticDomain": "S5",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c14:positive",
+        "semanticDomain": "S5",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c14-effect",
+            "actionId": "c14-positive-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_SUMMON_WINDOW",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c14-effect:event:0",
+                "sourceFactId": "c14-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c14-baseline",
+            "actionId": "c14-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_SUMMON_WINDOW",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c14-baseline:event:0",
+                "sourceFactId": "c14-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c14-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c14-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 20
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c14-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 20
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c14_summon_negative",
+      "oracleId": "oracle:c14_summon_negative",
+      "sourceCaseId": "c14_summon_negative",
+      "concept": "c14",
+      "semanticDomain": "S5",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c14:negative",
+        "semanticDomain": "S5",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c14-effect",
+            "actionId": "c14-negative-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": false,
+            "hardExclusionCodes": [
+              "HOST_DEAD"
+            ],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_SUMMON_WINDOW",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c14-effect:event:0",
+                "sourceFactId": "c14-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c14-baseline",
+            "actionId": "c14-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_SUMMON_WINDOW",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c14-baseline:event:0",
+                "sourceFactId": "c14-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c14-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c14-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 0
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c14-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c14_summon_mutation",
+      "oracleId": "oracle:c14_summon_mutation",
+      "sourceCaseId": "c14_summon_mutation",
+      "concept": "c14",
+      "semanticDomain": "S5",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c14:mutation",
+        "semanticDomain": "S5",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c14-effect",
+            "actionId": "c14-mutation-effect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_SUMMON_WINDOW",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 30,
+                "sourceEventId": "c14-effect:event:0",
+                "sourceFactId": "c14-effect:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c14-baseline",
+            "actionId": "c14-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_SUMMON_WINDOW",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "c14-baseline:event:0",
+                "sourceFactId": "c14-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c14-effect"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c14-effect",
+          "field": "actionPoolDeltaTotal",
+          "value": 30
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "c14-effect",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 30
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c15_information_positive",
+      "oracleId": "oracle:c15_information_positive",
+      "sourceCaseId": "c15_information_positive",
+      "concept": "c15",
+      "semanticDomain": "S4",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c15:positive",
+        "semanticDomain": "S4",
+        "mode": "auto",
+        "phase": "REACTION",
+        "candidates": [
+          {
+            "candidateId": "c15-information",
+            "actionId": "c15-positive-observe",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c15-information:event:0",
+                "sourceFactId": "c15-information:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [
+              {
+                "groupId": "c15:positive",
+                "outcomes": [
+                  {
+                    "probability": 0.5,
+                    "futureCandidateRouteVector": {
+                      "candidateIds": [
+                        "future-a",
+                        "future-b"
+                      ],
+                      "beforeRouteHEPP": [
+                        0,
+                        0
+                      ],
+                      "afterRouteHEPP": [
+                        60,
+                        10
+                      ],
+                      "applicationProbability": [
+                        1,
+                        1
+                      ],
+                      "polarity": [
+                        1,
+                        1
+                      ]
+                    }
+                  },
+                  {
+                    "probability": 0.5,
+                    "futureCandidateRouteVector": {
+                      "candidateIds": [
+                        "future-a",
+                        "future-b"
+                      ],
+                      "beforeRouteHEPP": [
+                        0,
+                        0
+                      ],
+                      "afterRouteHEPP": [
+                        10,
+                        60
+                      ],
+                      "applicationProbability": [
+                        1,
+                        1
+                      ],
+                      "polarity": [
+                        1,
+                        1
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c15-baseline",
+            "actionId": "c15-positive-commit",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c15-baseline:event:0",
+                "sourceFactId": "c15-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c15-information"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldGreaterThan",
+          "candidateId": "c15-information",
+          "field": "informationValueHEPP",
+          "value": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c15_information_negative",
+      "oracleId": "oracle:c15_information_negative",
+      "sourceCaseId": "c15_information_negative",
+      "concept": "c15",
+      "semanticDomain": "S4",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c15:negative",
+        "semanticDomain": "S4",
+        "mode": "auto",
+        "phase": "REACTION",
+        "candidates": [
+          {
+            "candidateId": "c15-information",
+            "actionId": "c15-negative-observe",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c15-information:event:0",
+                "sourceFactId": "c15-information:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [
+              {
+                "groupId": "c15:negative",
+                "outcomes": [
+                  {
+                    "probability": 0.5,
+                    "futureCandidateRouteVector": {
+                      "candidateIds": [
+                        "future-a",
+                        "future-b"
+                      ],
+                      "beforeRouteHEPP": [
+                        0,
+                        0
+                      ],
+                      "afterRouteHEPP": [
+                        20,
+                        20
+                      ],
+                      "applicationProbability": [
+                        1,
+                        1
+                      ],
+                      "polarity": [
+                        1,
+                        1
+                      ]
+                    }
+                  },
+                  {
+                    "probability": 0.5,
+                    "futureCandidateRouteVector": {
+                      "candidateIds": [
+                        "future-a",
+                        "future-b"
+                      ],
+                      "beforeRouteHEPP": [
+                        0,
+                        0
+                      ],
+                      "afterRouteHEPP": [
+                        20,
+                        20
+                      ],
+                      "applicationProbability": [
+                        1,
+                        1
+                      ],
+                      "polarity": [
+                        1,
+                        1
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c15-baseline",
+            "actionId": "c15-negative-commit",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 1,
+                "sourceEventId": "c15-baseline:event:0",
+                "sourceFactId": "c15-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c15-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldEquals",
+          "candidateId": "c15-information",
+          "field": "informationValueHEPP",
+          "value": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c15_information_mutation",
+      "oracleId": "oracle:c15_information_mutation",
+      "sourceCaseId": "c15_information_mutation",
+      "concept": "c15",
+      "semanticDomain": "S4",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c15:mutation",
+        "semanticDomain": "S4",
+        "mode": "auto",
+        "phase": "REACTION",
+        "candidates": [
+          {
+            "candidateId": "c15-information",
+            "actionId": "c15-mutation-observe",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c15-information:event:0",
+                "sourceFactId": "c15-information:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [
+              {
+                "groupId": "c15:mutation",
+                "outcomes": [
+                  {
+                    "probability": 0.9,
+                    "futureCandidateRouteVector": {
+                      "candidateIds": [
+                        "future-a",
+                        "future-b"
+                      ],
+                      "beforeRouteHEPP": [
+                        0,
+                        0
+                      ],
+                      "afterRouteHEPP": [
+                        40,
+                        20
+                      ],
+                      "applicationProbability": [
+                        1,
+                        1
+                      ],
+                      "polarity": [
+                        1,
+                        1
+                      ]
+                    }
+                  },
+                  {
+                    "probability": 0.1,
+                    "futureCandidateRouteVector": {
+                      "candidateIds": [
+                        "future-a",
+                        "future-b"
+                      ],
+                      "beforeRouteHEPP": [
+                        0,
+                        0
+                      ],
+                      "afterRouteHEPP": [
+                        10,
+                        20
+                      ],
+                      "applicationProbability": [
+                        1,
+                        1
+                      ],
+                      "polarity": [
+                        1,
+                        1
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "c15-baseline",
+            "actionId": "c15-mutation-commit",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "c15-baseline:event:0",
+                "sourceFactId": "c15-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c15-information"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldGreaterThan",
+          "candidateId": "c15-information",
+          "field": "informationValueHEPP",
+          "value": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c16_objectives_positive",
+      "oracleId": "oracle:c16_objectives_positive",
+      "sourceCaseId": "c16_objectives_positive",
+      "concept": "c16",
+      "semanticDomain": "S1",
+      "variant": "positive",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c16:positive",
+        "semanticDomain": "S1",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c16-objective",
+            "actionId": "c16-positive-objective",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S1_HEALTH",
+                "formula": "HEALTH_PP",
+                "deltaHp": -600,
+                "maxHp": 1000,
+                "polarity": 1,
+                "sourceEventId": "c16-objective:event:0",
+                "sourceFactId": "c16-objective:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            },
+            "targetProfiles": [
+              {
+                "targetId": "target-1",
+                "side": "ENEMY",
+                "currentHpPP": 80
+              }
+            ],
+            "objectiveContract": {
+              "victory": {
+                "logic": "ANY",
+                "conditions": [
+                  {
+                    "type": "HP_RATIO_AT_OR_BELOW",
+                    "threshold": 0.3,
+                    "targetIds": [
+                      "target-1"
+                    ],
+                    "scope": "ANY"
+                  }
+                ]
+              },
+              "defeat": {
+                "logic": "ANY",
+                "conditions": []
+              }
+            }
+          },
+          {
+            "candidateId": "c16-baseline",
+            "actionId": "c16-positive-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c16-baseline:event:0",
+                "sourceFactId": "c16-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            },
+            "targetProfiles": [
+              {
+                "targetId": "target-1",
+                "side": "ENEMY",
+                "currentHpPP": 80
+              }
+            ],
+            "objectiveContract": {
+              "victory": {
+                "logic": "ANY",
+                "conditions": [
+                  {
+                    "type": "HP_RATIO_AT_OR_BELOW",
+                    "threshold": 0.3,
+                    "targetIds": [
+                      "target-1"
+                    ],
+                    "scope": "ANY"
+                  }
+                ]
+              },
+              "defeat": {
+                "logic": "ANY",
+                "conditions": []
+              }
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c16-objective"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldGreaterThan",
+          "candidateId": "c16-objective",
+          "field": "stateDeltaTotal",
+          "value": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c16_objectives_negative",
+      "oracleId": "oracle:c16_objectives_negative",
+      "sourceCaseId": "c16_objectives_negative",
+      "concept": "c16",
+      "semanticDomain": "S1",
+      "variant": "negative",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c16:negative",
+        "semanticDomain": "S1",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c16-objective",
+            "actionId": "c16-negative-objective",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S1_HEALTH",
+                "formula": "HEALTH_PP",
+                "deltaHp": 0,
+                "maxHp": 1000,
+                "polarity": 1,
+                "sourceEventId": "c16-objective:event:0",
+                "sourceFactId": "c16-objective:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            },
+            "targetProfiles": [
+              {
+                "targetId": "target-1",
+                "side": "ENEMY",
+                "currentHpPP": 80
+              }
+            ],
+            "objectiveContract": {
+              "victory": {
+                "logic": "ANY",
+                "conditions": [
+                  {
+                    "type": "HP_RATIO_AT_OR_BELOW",
+                    "threshold": 0.3,
+                    "targetIds": [
+                      "target-1"
+                    ],
+                    "scope": "ANY"
+                  }
+                ]
+              },
+              "defeat": {
+                "logic": "ANY",
+                "conditions": []
+              }
+            }
+          },
+          {
+            "candidateId": "c16-baseline",
+            "actionId": "c16-negative-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "c16-baseline:event:0",
+                "sourceFactId": "c16-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 800,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            },
+            "targetProfiles": [
+              {
+                "targetId": "target-1",
+                "side": "ENEMY",
+                "currentHpPP": 80
+              }
+            ],
+            "objectiveContract": {
+              "victory": {
+                "logic": "ANY",
+                "conditions": [
+                  {
+                    "type": "HP_RATIO_AT_OR_BELOW",
+                    "threshold": 0.3,
+                    "targetIds": [
+                      "target-1"
+                    ],
+                    "scope": "ANY"
+                  }
+                ]
+              },
+              "defeat": {
+                "logic": "ANY",
+                "conditions": []
+              }
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c16-baseline"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldLessThanOrEqual",
+          "candidateId": "c16-objective",
+          "field": "stateDeltaTotal",
+          "value": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:c16_objectives_mutation",
+      "oracleId": "oracle:c16_objectives_mutation",
+      "sourceCaseId": "c16_objectives_mutation",
+      "concept": "c16",
+      "semanticDomain": "S1",
+      "variant": "mutation",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:c16:mutation",
+        "semanticDomain": "S1",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "c16-objective",
+            "actionId": "c16-mutation-objective",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S1_HEALTH",
+                "formula": "HEALTH_PP",
+                "deltaHp": -800,
+                "maxHp": 1000,
+                "polarity": 1,
+                "sourceEventId": "c16-objective:event:0",
+                "sourceFactId": "c16-objective:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            },
+            "targetProfiles": [
+              {
+                "targetId": "target-1",
+                "side": "ENEMY",
+                "currentHpPP": 80
+              }
+            ],
+            "objectiveContract": {
+              "victory": {
+                "logic": "ANY",
+                "conditions": [
+                  {
+                    "type": "HP_RATIO_AT_OR_BELOW",
+                    "threshold": 0.3,
+                    "targetIds": [
+                      "target-1"
+                    ],
+                    "scope": "ANY"
+                  }
+                ]
+              },
+              "defeat": {
+                "logic": "ANY",
+                "conditions": []
+              }
+            }
+          },
+          {
+            "candidateId": "c16-baseline",
+            "actionId": "c16-mutation-baseline",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_CONSTANT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "c16-baseline:event:0",
+                "sourceFactId": "c16-baseline:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            },
+            "targetProfiles": [
+              {
+                "targetId": "target-1",
+                "side": "ENEMY",
+                "currentHpPP": 80
+              }
+            ],
+            "objectiveContract": {
+              "victory": {
+                "logic": "ANY",
+                "conditions": [
+                  {
+                    "type": "HP_RATIO_AT_OR_BELOW",
+                    "threshold": 0.3,
+                    "targetIds": [
+                      "target-1"
+                    ],
+                    "scope": "ANY"
+                  }
+                ]
+              },
+              "defeat": {
+                "logic": "ANY",
+                "conditions": []
+              }
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "c16-objective"
+        }
+      },
+      "checks": [
+        {
+          "type": "fieldGreaterThan",
+          "candidateId": "c16-objective",
+          "field": "discardedOverkillPP",
+          "value": 0
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:x01_resource_recovery_timing_three_factor_1",
+      "oracleId": "oracle:x01_resource_recovery_timing_three_factor_1",
+      "sourceCaseId": "x01_resource_recovery_timing_three_factor_1",
+      "concept": "x01",
+      "semanticDomain": "S2",
+      "variant": "single",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:x01",
+        "mode": "auto",
+        "phase": "COUNTER",
+        "candidates": [
+          {
+            "candidateId": "x01-timed-consumer",
+            "actionId": "x01-consume",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 22,
+                "sourceEventId": "x01-timed-consumer:event:0",
+                "sourceFactId": "x01-timed-consumer:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "x01-no-consumer",
+            "actionId": "x01-wait",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S2_ROUTE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "x01-no-consumer:event:0",
+                "sourceFactId": "x01-no-consumer:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "x01-timed-consumer"
+        }
+      },
+      "checks": [
+        {
+          "type": "ownerValue",
+          "candidateId": "x01-timed-consumer",
+          "owner": "ACTION_POOL_DELTA",
+          "minimum": 22
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:x02_slow_axis_duration_three_factor_2",
+      "oracleId": "oracle:x02_slow_axis_duration_three_factor_2",
+      "sourceCaseId": "x02_slow_axis_duration_three_factor_2",
+      "concept": "x02",
+      "semanticDomain": "S3",
+      "variant": "single",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:x02",
+        "mode": "auto",
+        "phase": "REACTION",
+        "candidates": [
+          {
+            "candidateId": "x02-in-window",
+            "actionId": "x02-slow",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 18,
+                "sourceEventId": "x02-in-window:event:0",
+                "sourceFactId": "x02-in-window:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0,
+                "expiresBefore": "ally-action-1"
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "x02-expired",
+            "actionId": "x02-wait",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_SOFT_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "x02-expired:event:0",
+                "sourceFactId": "x02-expired:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "x02-in-window"
+        }
+      },
+      "checks": [
+        {
+          "type": "factProperty",
+          "candidateId": "x02-in-window",
+          "property": "expiresBefore",
+          "value": "ally-action-1"
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:x03_defense_multihit_reflect_three_factor_3",
+      "oracleId": "oracle:x03_defense_multihit_reflect_three_factor_3",
+      "sourceCaseId": "x03_defense_multihit_reflect_three_factor_3",
+      "concept": "x03",
+      "semanticDomain": "S3",
+      "variant": "single",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:x03",
+        "mode": "auto",
+        "phase": "REACTION",
+        "candidates": [
+          {
+            "candidateId": "x03-multihit",
+            "actionId": "x03-defend-reflect",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 8,
+                "sourceEventId": "x03-multihit:event:0",
+                "sourceFactId": "x03-multihit:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              },
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 7,
+                "sourceEventId": "x03-multihit:event:1",
+                "sourceFactId": "x03-multihit:fact:1",
+                "targetUnitId": "target-1",
+                "sequence": 1
+              },
+              {
+                "componentCode": "S3_COUNTER",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 5,
+                "sourceEventId": "x03-multihit:event:2",
+                "sourceFactId": "x03-multihit:fact:2",
+                "targetUnitId": "target-1",
+                "sequence": 2
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "x03-label-only",
+            "actionId": "x03-defend",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_DEFENSE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "x03-label-only:event:0",
+                "sourceFactId": "x03-label-only:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "x03-multihit"
+        }
+      },
+      "checks": [
+        {
+          "type": "ownerValue",
+          "candidateId": "x03-multihit",
+          "owner": "STATE_DELTA",
+          "equals": 15
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "x03-multihit",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 5
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:x04_control_ally_dot_three_factor_4",
+      "oracleId": "oracle:x04_control_ally_dot_three_factor_4",
+      "sourceCaseId": "x04_control_ally_dot_three_factor_4",
+      "concept": "x04",
+      "semanticDomain": "S5",
+      "variant": "single",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:x04",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "x04-control-dot",
+            "actionId": "x04-control",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HARD_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "x04-control-dot:event:0",
+                "sourceFactId": "x04-control-dot:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              },
+              {
+                "componentCode": "S5_DOT",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 6,
+                "sourceEventId": "x04-control-dot:event:1",
+                "sourceFactId": "x04-control-dot:fact:1",
+                "targetUnitId": "target-1",
+                "sequence": 1
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "x04-control-only",
+            "actionId": "x04-control-only",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HARD_CONTROL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 10,
+                "sourceEventId": "x04-control-only:event:0",
+                "sourceFactId": "x04-control-only:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "x04-control-dot"
+        }
+      },
+      "checks": [
+        {
+          "type": "ownerValue",
+          "candidateId": "x04-control-dot",
+          "owner": "STATE_DELTA",
+          "equals": 6
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "x04-control-dot",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 10
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:x05_summon_host_deadline_three_factor_5",
+      "oracleId": "oracle:x05_summon_host_deadline_three_factor_5",
+      "sourceCaseId": "x05_summon_host_deadline_three_factor_5",
+      "concept": "x05",
+      "semanticDomain": "S5",
+      "variant": "single",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:x05",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "x05-live-summon",
+            "actionId": "x05-summon",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_SUMMON_WINDOW",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 20,
+                "sourceEventId": "x05-live-summon:event:0",
+                "sourceFactId": "x05-live-summon:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0,
+                "expiresAt": "round-2"
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "x05-host-dead",
+            "actionId": "x05-summon-late",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": false,
+            "hardExclusionCodes": [
+              "HOST_DEAD"
+            ],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S5_SUMMON_WINDOW",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 50,
+                "sourceEventId": "x05-host-dead:event:0",
+                "sourceFactId": "x05-host-dead:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "x05-live-summon"
+        }
+      },
+      "checks": [
+        {
+          "type": "factProperty",
+          "candidateId": "x05-live-summon",
+          "property": "expiresAt",
+          "value": "round-2"
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    },
+    {
+      "schemaVersion": "BehaviorOracleFixtureV1",
+      "fixtureId": "fixture:x06_antiheal_food_crisis_three_factor_6",
+      "oracleId": "oracle:x06_antiheal_food_crisis_three_factor_6",
+      "sourceCaseId": "x06_antiheal_food_crisis_three_factor_6",
+      "concept": "x06",
+      "semanticDomain": "S5",
+      "variant": "single",
+      "input": {
+        "schemaVersion": "KernelRawReferenceCaseV1",
+        "caseId": "oracle-fixture:x06",
+        "mode": "auto",
+        "phase": "ACTIVE",
+        "candidates": [
+          {
+            "candidateId": "x06-block-recovery",
+            "actionId": "x06-antiheal",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HEAL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 18,
+                "sourceEventId": "x06-block-recovery:event:0",
+                "sourceFactId": "x06-block-recovery:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              },
+              {
+                "componentCode": "S3_SUPPORT_RESOURCE",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 7,
+                "sourceEventId": "x06-block-recovery:event:1",
+                "sourceFactId": "x06-block-recovery:fact:1",
+                "targetUnitId": "target-1",
+                "sequence": 1
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          },
+          {
+            "candidateId": "x06-no-window",
+            "actionId": "x06-wait",
+            "targetSet": [
+              "target-1"
+            ],
+            "paymentMode": "FULL",
+            "legal": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "rawFacts": [
+              {
+                "componentCode": "S3_HEAL",
+                "formula": "CONSTANT_HEPP",
+                "amountHEPP": 0,
+                "sourceEventId": "x06-no-window:event:0",
+                "sourceFactId": "x06-no-window:fact:0",
+                "targetUnitId": "target-1",
+                "sequence": 0
+              }
+            ],
+            "informationGroups": [],
+            "riskInputs": {
+              "actorMaxHp": 1000,
+              "actorHp": 0,
+              "actorSide": "PLAYER",
+              "actorOutcomeDeltas": [],
+              "shieldFacts": [],
+              "negativeTerminal": false
+            }
+          }
+        ],
+        "expected": {
+          "selectedCandidateId": "x06-block-recovery"
+        }
+      },
+      "checks": [
+        {
+          "type": "ownerValue",
+          "candidateId": "x06-block-recovery",
+          "owner": "STATE_DELTA",
+          "equals": 18
+        },
+        {
+          "type": "ownerValue",
+          "candidateId": "x06-block-recovery",
+          "owner": "ACTION_POOL_DELTA",
+          "equals": 7
+        }
+      ],
+      "expectedSource": "RC6_V24_CONTRACT_AND_EXPLICIT_REFERENCE_FACTS",
+      "historicalSourceStatus": "REQUIRES_SEMANTIC_FREEZE"
+    }
+  ]
+}

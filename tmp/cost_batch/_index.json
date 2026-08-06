@@ -16,13 +16,13 @@
       "char": "阿银",
       "talentNeeded": false,
       "skillCount": 2,
-      "talentCurrent": "十万年魂兽"
+      "talentCurrent": "天才"
     },
     {
       "char": "大师",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "普通"
+      "talentCurrent": "正常"
     },
     {
       "char": "弗兰德",
@@ -52,19 +52,19 @@
       "char": "独孤博",
       "talentNeeded": false,
       "skillCount": 5,
-      "talentCurrent": "顶尖"
+      "talentCurrent": "天才"
     },
     {
       "char": "千道流",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "绝世妖孽"
+      "talentCurrent": "天才"
     },
     {
       "char": "波赛西",
       "talentNeeded": false,
       "skillCount": 6,
-      "talentCurrent": "绝世妖孽"
+      "talentCurrent": "天才"
     },
     {
       "char": "唐晨",
@@ -82,61 +82,61 @@
       "char": "宁风致",
       "talentNeeded": false,
       "skillCount": 5,
-      "talentCurrent": "顶尖"
+      "talentCurrent": "天才"
     },
     {
       "char": "尘心",
       "talentNeeded": false,
       "skillCount": 1,
-      "talentCurrent": "顶尖"
+      "talentCurrent": "天才"
     },
     {
       "char": "古榕",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "顶尖"
+      "talentCurrent": "天才"
     },
     {
       "char": "唐啸",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "顶尖"
+      "talentCurrent": "天才"
     },
     {
       "char": "胡列娜",
       "talentNeeded": false,
       "skillCount": 4,
-      "talentCurrent": "超级天才"
+      "talentCurrent": "天才"
     },
     {
       "char": "邪月",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "超级天才"
+      "talentCurrent": "天才"
     },
     {
       "char": "焱",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "超级天才"
+      "talentCurrent": "天才"
     },
     {
       "char": "菊斗罗",
       "talentNeeded": false,
       "skillCount": 4,
-      "talentCurrent": "顶尖"
+      "talentCurrent": "天才"
     },
     {
       "char": "鬼斗罗",
       "talentNeeded": false,
       "skillCount": 4,
-      "talentCurrent": "顶尖"
+      "talentCurrent": "天才"
     },
     {
       "char": "泰坦",
       "talentNeeded": false,
       "skillCount": 4,
-      "talentCurrent": "顶尖"
+      "talentCurrent": "天才"
     },
     {
       "char": "秦明",
@@ -148,13 +148,13 @@
       "char": "火舞",
       "talentNeeded": false,
       "skillCount": 4,
-      "talentCurrent": "超级天才"
+      "talentCurrent": "天才"
     },
     {
       "char": "风笑天",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "超级天才"
+      "talentCurrent": "天才"
     },
     {
       "char": "玉天恒",
@@ -166,7 +166,7 @@
       "char": "金鳄斗罗",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "绝世妖孽"
+      "talentCurrent": "天才"
     },
     {
       "char": "泰隆",
@@ -184,198 +184,30 @@
       "char": "大明",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "十万年魂兽"
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "二明",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "十万年魂兽"
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "小白",
       "talentNeeded": false,
       "skillCount": 3,
-      "talentCurrent": "十万年魂兽"
+      "talentCurrent": "天才"
     }
   ],
   "jueshitangmen": [
     {
-      "char": "霍雨浩",
-      "talentNeeded": false,
-      "skillCount": 5,
-      "talentCurrent": "绝世妖孽"
-    },
-    {
       "char": "白虎公爵",
       "talentNeeded": false,
-      "skillCount": 5,
+      "skillCount": 1,
       "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "帆羽",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
     },
     {
       "char": "徐三石",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "江楠楠",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "马小桃",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "玄老",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "宁天",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "邪幻月",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "王秋儿",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "绝世妖孽"
-    },
-    {
-      "char": "徐天然",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "言少哲",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "轩梓文",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "张乐萱",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "绝世妖孽"
-    },
-    {
-      "char": "镜红尘",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "戴华斌",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "仙琳儿",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "穆恩",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "绝世妖孽"
-    },
-    {
-      "char": "戴钥衡",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "许久久",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "钟离乌",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "龙逍遥",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "叶夕水",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "娜娜",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "泰坦",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "墨轩",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "张鹏",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "庄老",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "崔雅洁",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "万魂斗罗",
       "talentNeeded": false,
       "skillCount": 1,
       "talentCurrent": "顶级天才"
@@ -385,265 +217,61 @@
     {
       "char": "唐舞麟",
       "talentNeeded": false,
-      "skillCount": 45,
+      "skillCount": 22,
       "talentCurrent": "绝世妖孽"
     },
     {
       "char": "古月",
       "talentNeeded": false,
-      "skillCount": 6,
+      "skillCount": 3,
       "talentCurrent": "绝世妖孽"
     },
     {
       "char": "谢邂",
       "talentNeeded": false,
-      "skillCount": 18,
+      "skillCount": 5,
       "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "张扬子",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "王金玺",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
     },
     {
       "char": "许小言",
       "talentNeeded": false,
-      "skillCount": 14,
+      "skillCount": 8,
       "talentCurrent": "顶级天才"
     },
     {
       "char": "叶星澜",
       "talentNeeded": false,
-      "skillCount": 15,
+      "skillCount": 4,
       "talentCurrent": "顶级天才"
     },
     {
       "char": "徐笠智",
       "talentNeeded": false,
-      "skillCount": 11,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "舞长空",
-      "talentNeeded": false,
-      "skillCount": 6,
+      "skillCount": 2,
       "talentCurrent": "顶级天才"
     },
     {
       "char": "原恩夜辉",
       "talentNeeded": false,
-      "skillCount": 20,
+      "skillCount": 10,
       "talentCurrent": "顶级天才"
     },
     {
       "char": "乐正宇",
       "talentNeeded": false,
-      "skillCount": 15,
+      "skillCount": 8,
       "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "舞丝朵",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
     },
     {
       "char": "骆桂星",
       "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "杨念夏",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "郑怡然",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "徐愉程",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "臧鑫",
-      "talentNeeded": false,
-      "skillCount": 4,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "曹德智",
-      "talentNeeded": false,
       "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "浊世",
-      "talentNeeded": false,
-      "skillCount": 4,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "千古清风",
-      "talentNeeded": false,
-      "skillCount": 4,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "戴云儿",
-      "talentNeeded": false,
-      "skillCount": 6,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "戴月炎",
-      "talentNeeded": false,
-      "skillCount": 5,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "龙跃",
-      "talentNeeded": false,
-      "skillCount": 7,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "苏沐",
-      "talentNeeded": false,
-      "skillCount": 4,
-      "talentCurrent": "顶级天才"
+      "talentCurrent": "天才"
     },
     {
       "char": "华蓝堂",
       "talentNeeded": false,
-      "skillCount": 7,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "叶芷",
-      "talentNeeded": false,
-      "skillCount": 5,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "林三",
-      "talentNeeded": false,
-      "skillCount": 5,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "腾腾",
-      "talentNeeded": false,
-      "skillCount": 4,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "冥帝",
-      "talentNeeded": false,
       "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "黑暗血魔",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "娜娜莉",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "原恩震天",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "张戈洋",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "夏筝冷",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "大摩",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "云天恒",
-      "talentNeeded": false,
-      "skillCount": 4,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "敖锐",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "龙天舞",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "罗宇航",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "莫梓鸿",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "姜战恒",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "李梦洁",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "苏梦君",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "南宫逸",
-      "talentNeeded": false,
-      "skillCount": 2,
       "talentCurrent": "顶级天才"
     },
     {
@@ -653,617 +281,245 @@
       "talentCurrent": "优秀"
     },
     {
-      "char": "许晓语",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "云小",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "正常"
-    },
-    {
-      "char": "光飙",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "雅莉",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "何筱澎",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "白寒樱",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "断魂宵",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "吴睿",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "墨珏",
-      "talentNeeded": false,
-      "skillCount": 4,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "李梦阳",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
-    },
-    {
       "char": "蓝木子",
       "talentNeeded": false,
-      "skillCount": 8,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "司马金驰",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "桐宇",
-      "talentNeeded": false,
-      "skillCount": 7,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "李维斯",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "郭镇峰",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "冷雨莱",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "黑暗蜂鸟",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "韦小枫",
-      "talentNeeded": false,
       "skillCount": 1,
       "talentCurrent": "天才"
-    },
-    {
-      "char": "简默晨",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "毕然",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "武宇涵",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "雷俊",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "周寒幽",
-      "talentNeeded": false,
-      "skillCount": 3,
-      "talentCurrent": "天才"
-    },
-    {
-      "char": "周天儿",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "王东琪",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "肖天天",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "叶子书",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "古天明",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "张熙宁",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "李瑶瑶",
-      "talentNeeded": false,
-      "skillCount": 1,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "寒羽裳",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "优秀"
     }
   ],
   "zjdl": [
     {
-      "char": "蓝轩宇",
-      "talentNeeded": false,
-      "skillCount": 35,
-      "talentCurrent": "绝世妖孽"
-    },
-    {
-      "char": "叶灵瞳",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "优秀"
-    },
-    {
       "char": "钱磊",
       "talentNeeded": false,
-      "skillCount": 19,
+      "skillCount": 1,
       "talentCurrent": "天才"
     },
     {
       "char": "刘锋",
       "talentNeeded": false,
-      "skillCount": 15,
+      "skillCount": 2,
       "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "金翔",
-      "talentNeeded": true,
-      "skillCount": 1,
-      "talentCurrent": null
-    },
-    {
-      "char": "吕千寻",
-      "talentNeeded": true,
-      "skillCount": 2,
-      "talentCurrent": null
-    },
-    {
-      "char": "常剑逸",
-      "talentNeeded": false,
-      "skillCount": 2,
-      "talentCurrent": "优秀"
-    },
-    {
-      "char": "冰天梁",
-      "talentNeeded": true,
-      "skillCount": 3,
-      "talentCurrent": null
-    },
-    {
-      "char": "梁淑诗",
-      "talentNeeded": true,
-      "skillCount": 3,
-      "talentCurrent": null
     },
     {
       "char": "蓝梦琴",
       "talentNeeded": false,
-      "skillCount": 26,
+      "skillCount": 1,
       "talentCurrent": "顶级天才"
-    },
-    {
-      "char": "李瀚",
-      "talentNeeded": true,
-      "skillCount": 4,
-      "talentCurrent": null
     },
     {
       "char": "原恩辉辉",
       "talentNeeded": false,
-      "skillCount": 22,
+      "skillCount": 3,
       "talentCurrent": "顶级天才"
     },
     {
-      "char": "羽天",
-      "talentNeeded": true,
-      "skillCount": 3,
-      "talentCurrent": null
-    },
-    {
-      "char": "林东晖",
-      "talentNeeded": true,
-      "skillCount": 3,
-      "talentCurrent": null
-    },
-    {
       "char": "钮一伟",
-      "talentNeeded": true,
-      "skillCount": 3,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "优秀"
     },
     {
       "char": "唐雨格",
       "talentNeeded": false,
-      "skillCount": 29,
+      "skillCount": 2,
       "talentCurrent": "顶级天才"
     },
     {
-      "char": "李思奇",
-      "talentNeeded": true,
-      "skillCount": 5,
-      "talentCurrent": null
-    },
-    {
-      "char": "李思明",
-      "talentNeeded": true,
-      "skillCount": 5,
-      "talentCurrent": null
-    },
-    {
-      "char": "唐月",
+      "char": "刘宝川",
       "talentNeeded": false,
-      "skillCount": 9,
+      "skillCount": 1,
       "talentCurrent": "天才"
     },
     {
-      "char": "司马仙",
-      "talentNeeded": true,
-      "skillCount": 5,
-      "talentCurrent": null
-    },
-    {
-      "char": "袁睿",
-      "talentNeeded": true,
-      "skillCount": 4,
-      "talentCurrent": null
-    },
-    {
-      "char": "邓博",
-      "talentNeeded": true,
-      "skillCount": 8,
-      "talentCurrent": null
-    },
-    {
-      "char": "刘宝川",
-      "talentNeeded": true,
-      "skillCount": 5,
-      "talentCurrent": null
-    },
-    {
       "char": "花霖寒",
-      "talentNeeded": true,
-      "skillCount": 6,
-      "talentCurrent": null
-    },
-    {
-      "char": "郑龙江",
       "talentNeeded": false,
-      "skillCount": 8,
-      "talentCurrent": "正常"
+      "skillCount": 1,
+      "talentCurrent": "天才"
     },
     {
       "char": "王占航",
-      "talentNeeded": true,
-      "skillCount": 3,
-      "talentCurrent": null
-    },
-    {
-      "char": "冰梦雪",
-      "talentNeeded": true,
-      "skillCount": 4,
-      "talentCurrent": null
-    },
-    {
-      "char": "南宫洛洛",
-      "talentNeeded": true,
-      "skillCount": 4,
-      "talentCurrent": null
-    },
-    {
-      "char": "南宫伊菱",
-      "talentNeeded": true,
-      "skillCount": 4,
-      "talentCurrent": null
-    },
-    {
-      "char": "蓝冰",
       "talentNeeded": false,
-      "skillCount": 9,
+      "skillCount": 1,
       "talentCurrent": "天才"
     },
     {
       "char": "容玉泫",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
-    },
-    {
-      "char": "周鹏展",
-      "talentNeeded": true,
-      "skillCount": 6,
-      "talentCurrent": null
-    },
-    {
-      "char": "慕容殇",
-      "talentNeeded": true,
-      "skillCount": 6,
-      "talentCurrent": null
-    },
-    {
-      "char": "薛雨冰",
-      "talentNeeded": true,
-      "skillCount": 6,
-      "talentCurrent": null
-    },
-    {
-      "char": "闫凯伦",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
-    },
-    {
-      "char": "梦飞",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
-    },
-    {
-      "char": "许家铭",
-      "talentNeeded": true,
-      "skillCount": 3,
-      "talentCurrent": null
-    },
-    {
-      "char": "吴治谦",
-      "talentNeeded": true,
-      "skillCount": 4,
-      "talentCurrent": null
-    },
-    {
-      "char": "清萝",
       "talentNeeded": false,
-      "skillCount": 8,
+      "skillCount": 1,
       "talentCurrent": "天才"
     },
     {
+      "char": "梦飞",
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
+    },
+    {
+      "char": "许家铭",
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "优秀"
+    },
+    {
       "char": "暗羽",
-      "talentNeeded": true,
-      "skillCount": 6,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "天才"
     },
     {
       "char": "天龙",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "依子尘",
-      "talentNeeded": true,
-      "skillCount": 5,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 4,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "羽沐辰",
       "talentNeeded": false,
-      "skillCount": 8,
+      "skillCount": 1,
       "talentCurrent": "顶级天才"
     },
     {
-      "char": "谭小刀",
-      "talentNeeded": true,
-      "skillCount": 5,
-      "talentCurrent": null
-    },
-    {
       "char": "烈前辈",
-      "talentNeeded": true,
-      "skillCount": 6,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 3,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "徐言莫",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "张元榕",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "天才"
     },
     {
       "char": "唐秀玲",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "陈舞烛",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "叶陌勇",
       "talentNeeded": false,
-      "skillCount": 8,
+      "skillCount": 1,
       "talentCurrent": "顶级天才"
     },
     {
-      "char": "张圆圆",
-      "talentNeeded": true,
-      "skillCount": 9,
-      "talentCurrent": null
-    },
-    {
-      "char": "余颖欣",
-      "talentNeeded": true,
-      "skillCount": 8,
-      "talentCurrent": null
-    },
-    {
       "char": "凌雨墨",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "田泽锋",
-      "talentNeeded": true,
-      "skillCount": 8,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "龙天养",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "首座座龙",
-      "talentNeeded": true,
-      "skillCount": 8,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "张楚佳",
       "talentNeeded": false,
-      "skillCount": 16,
-      "talentCurrent": "绝世妖孽"
-    },
-    {
-      "char": "蓝波",
-      "talentNeeded": true,
-      "skillCount": 8,
-      "talentCurrent": null
-    },
-    {
-      "char": "天和皇",
-      "talentNeeded": false,
-      "skillCount": 9,
-      "talentCurrent": "天才"
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "黑皇",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "心灵王",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "天才"
     },
     {
       "char": "凌梓晨",
-      "talentNeeded": true,
-      "skillCount": 6,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 4,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "嘉琳",
-      "talentNeeded": true,
-      "skillCount": 8,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "深渊圣君",
-      "talentNeeded": true,
-      "skillCount": 6,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 3,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "霍雨浩",
-      "talentNeeded": true,
-      "skillCount": 8,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "绝世妖孽"
     },
     {
       "char": "雷翔",
-      "talentNeeded": true,
-      "skillCount": 8,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 1,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "海龙",
-      "talentNeeded": true,
-      "skillCount": 7,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 2,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "江炜强",
-      "talentNeeded": true,
-      "skillCount": 5,
-      "talentCurrent": null
+      "talentNeeded": false,
+      "skillCount": 4,
+      "talentCurrent": "顶级天才"
     },
     {
       "char": "白秀秀",
       "talentNeeded": false,
-      "skillCount": 36,
+      "skillCount": 4,
       "talentCurrent": "顶级天才"
     },
     {
       "char": "唐舞麟",
       "talentNeeded": false,
-      "skillCount": 24,
+      "skillCount": 2,
       "talentCurrent": "绝世妖孽"
     },
     {
       "char": "古月娜",
       "talentNeeded": false,
-      "skillCount": 26,
+      "skillCount": 5,
       "talentCurrent": "绝世妖孽"
     }
   ]

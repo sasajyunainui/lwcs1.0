@@ -30,23 +30,58 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 30,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 45,
-          "survivalUtilityHEPP": 5,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": -5,
-          "informationGroups": [],
-          "causalFacts": [
+          "actorSide": "PLAYER",
+          "targetProfiles": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 30,
-              "sourceEventId": "threshold-attack:target_trajectory:event",
-              "sourceFactId": "threshold-attack:target_trajectory:fact",
+              "targetId": "target-1",
+              "side": "ENEMY",
+              "currentHpPP": 80
+            }
+          ],
+          "objectiveContract": {
+            "victory": {
+              "logic": "ANY",
+              "conditions": [
+                {
+                  "type": "HP_RATIO_AT_OR_BELOW",
+                  "threshold": 0.5,
+                  "targetIds": [
+                    "target-1"
+                  ],
+                  "side": "ENEMY"
+                }
+              ]
+            },
+            "defeat": {
+              "logic": "ANY",
+              "conditions": []
+            }
+          },
+          "informationGroups": [],
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 5,
+            "actorOutcomeDeltas": [
+              {
+                "deltas": [
+                  -5
+                ]
+              }
+            ],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
+            {
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -75,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "threshold-attack:S1_HEALTH:event",
+              "sourceFactId": "threshold-attack:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -61,15 +96,24 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 12,
-          "assetReserveHEPP": 4,
-          "worstTailUtilityHEPP": 2,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": []
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 12,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [
+              {
+                "deltaHp": 4,
+                "maxHp": 100,
+                "side": "PLAYER"
+              }
+            ],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": []
         }
       ],
       "playerLockedCandidateId": null,
@@ -105,32 +149,45 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 60,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 100,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 1,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": -20,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 1,
+            "actorOutcomeDeltas": [
+              {
+                "deltas": [
+                  -20
+                ]
+              }
+            ],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 60,
-              "sourceEventId": "lethal-first:target_trajectory:event",
-              "sourceFactId": "lethal-first:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -60,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "lethal-first:S1_HEALTH:event",
+              "sourceFactId": "lethal-first:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             },
             {
-              "componentCode": "terminal",
-              "causalOwnerType": "TERMINAL_DELTA",
-              "valueHEPP": 100,
-              "sourceEventId": "lethal-first:terminal:event",
-              "sourceFactId": "lethal-first:terminal:fact",
+              "componentCode": "S1_TERMINAL",
+              "formula": "TERMINAL_OUTCOME",
+              "winProbability": 1,
+              "lossProbability": 0,
+              "drawProbability": 0,
+              "sourceEventId": "lethal-first:S1_TERMINAL:event",
+              "sourceFactId": "lethal-first:S1_TERMINAL:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 2
             }
           ]
         },
@@ -145,23 +202,34 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 20,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 35,
-          "assetReserveHEPP": 8,
-          "worstTailUtilityHEPP": 15,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 35,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [
+              {
+                "deltaHp": 8,
+                "maxHp": 100,
+                "side": "PLAYER"
+              }
+            ],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 20,
-              "sourceEventId": "nonlethal-safe:target_trajectory:event",
-              "sourceFactId": "nonlethal-safe:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -20,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "nonlethal-safe:S1_HEALTH:event",
+              "sourceFactId": "nonlethal-safe:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -199,23 +267,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 40,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 28,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 18,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 28,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 40,
-              "sourceEventId": "any-highest:target_trajectory:event",
-              "sourceFactId": "any-highest:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -40,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "any-highest:S1_HEALTH:event",
+              "sourceFactId": "any-highest:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -230,23 +303,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 32,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 16,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 10,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 16,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 32,
-              "sourceEventId": "all-bottleneck:target_trajectory:event",
-              "sourceFactId": "all-bottleneck:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -32,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "all-bottleneck:S1_HEALTH:event",
+              "sourceFactId": "all-bottleneck:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -284,30 +362,38 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 8,
-          "actionPoolDeltaTotal": 35,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 9,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 8,
-              "sourceEventId": "scheduled-control:target_trajectory:event",
-              "sourceFactId": "scheduled-control:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -8,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "scheduled-control:S1_HEALTH:event",
+              "sourceFactId": "scheduled-control:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             },
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 35,
-              "sourceEventId": "scheduled-control:response:event",
-              "sourceFactId": "scheduled-control:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 35,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "scheduled-control:S2_ROUTE:event",
+              "sourceFactId": "scheduled-control:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -324,23 +410,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 25,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 4,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 25,
-              "sourceEventId": "direct-hit:target_trajectory:event",
-              "sourceFactId": "direct-hit:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -25,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "direct-hit:S1_HEALTH:event",
+              "sourceFactId": "direct-hit:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -378,21 +469,33 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 4,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 15,
-          "worstTailUtilityHEPP": 8,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [
+              {
+                "deltaHp": 15,
+                "maxHp": 100,
+                "side": "PLAYER"
+              }
+            ],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 4,
-              "sourceEventId": "active-pass:response:event",
-              "sourceFactId": "active-pass:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 4,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "active-pass:S2_ROUTE:event",
+              "sourceFactId": "active-pass:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -411,21 +514,27 @@
           "hardExclusionCodes": [
             "LOST_OPPORTUNITY"
           ],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 20,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 20,
-              "sourceEventId": "lost-action:response:event",
-              "sourceFactId": "lost-action:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 20,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "lost-action:S2_ROUTE:event",
+              "sourceFactId": "lost-action:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -442,23 +551,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 18,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 2,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 18,
-              "sourceEventId": "legal-attack:target_trajectory:event",
-              "sourceFactId": "legal-attack:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -18,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "legal-attack:S1_HEALTH:event",
+              "sourceFactId": "legal-attack:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -496,30 +610,44 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 5,
-          "actionPoolDeltaTotal": 28,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 3,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [
+              {
+                "deltaHp": 3,
+                "maxHp": 100,
+                "side": "PLAYER"
+              }
+            ],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 5,
-              "sourceEventId": "affordable-response:target_trajectory:event",
-              "sourceFactId": "affordable-response:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -5,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "affordable-response:S1_HEALTH:event",
+              "sourceFactId": "affordable-response:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             },
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 28,
-              "sourceEventId": "affordable-response:response:event",
-              "sourceFactId": "affordable-response:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 28,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "affordable-response:S2_ROUTE:event",
+              "sourceFactId": "affordable-response:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -538,21 +666,27 @@
           "hardExclusionCodes": [
             "RESOURCE_UNAVAILABLE"
           ],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 80,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 80,
-              "sourceEventId": "unaffordable-response:response:event",
-              "sourceFactId": "unaffordable-response:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 80,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "unaffordable-response:S2_ROUTE:event",
+              "sourceFactId": "unaffordable-response:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -592,21 +726,27 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 42,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 10,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 12,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 10,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 42,
-              "sourceEventId": "control-route:response:event",
-              "sourceFactId": "control-route:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 42,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "control-route:S2_ROUTE:event",
+              "sourceFactId": "control-route:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -623,23 +763,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 35,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 5,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 35,
-              "sourceEventId": "damage-route:target_trajectory:event",
-              "sourceFactId": "damage-route:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -35,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "damage-route:S1_HEALTH:event",
+              "sourceFactId": "damage-route:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -677,21 +822,27 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 62,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 50,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 30,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 50,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 62,
-              "sourceEventId": "protect-ally:response:event",
-              "sourceFactId": "protect-ally:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 62,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "protect-ally:S2_ROUTE:event",
+              "sourceFactId": "protect-ally:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -708,23 +859,34 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 55,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": -18,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [
+              {
+                "deltas": [
+                  -18
+                ]
+              }
+            ],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 55,
-              "sourceEventId": "focus-enemy:target_trajectory:event",
-              "sourceFactId": "focus-enemy:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -55,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "focus-enemy:S1_HEALTH:event",
+              "sourceFactId": "focus-enemy:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -762,21 +924,27 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 40,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 33,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 22,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 33,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 40,
-              "sourceEventId": "evade-window:response:event",
-              "sourceFactId": "evade-window:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 40,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "evade-window:S2_ROUTE:event",
+              "sourceFactId": "evade-window:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -793,30 +961,38 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 28,
-          "actionPoolDeltaTotal": 5,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 3,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 28,
-              "sourceEventId": "counter-shot:target_trajectory:event",
-              "sourceFactId": "counter-shot:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -28,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "counter-shot:S1_HEALTH:event",
+              "sourceFactId": "counter-shot:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             },
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 5,
-              "sourceEventId": "counter-shot:response:event",
-              "sourceFactId": "counter-shot:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 5,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "counter-shot:S2_ROUTE:event",
+              "sourceFactId": "counter-shot:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -856,21 +1032,27 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 24,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 12,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 8,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 12,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 24,
-              "sourceEventId": "public-response:response:event",
-              "sourceFactId": "public-response:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 24,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "public-response:S2_ROUTE:event",
+              "sourceFactId": "public-response:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -889,21 +1071,27 @@
           "hardExclusionCodes": [
             "HIDDEN_INFORMATION"
           ],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 99,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 99,
-              "sourceEventId": "hidden-read:response:event",
-              "sourceFactId": "hidden-read:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 99,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "hidden-read:S2_ROUTE:event",
+              "sourceFactId": "hidden-read:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -943,13 +1131,9 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 5,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 6,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [
             {
               "groupId": "target-check",
@@ -957,27 +1141,76 @@
                 {
                   "outcomeId": "target-check:o1",
                   "probability": 0.5,
-                  "bestFutureRouteValueHEPP": 50
+                  "futureCandidateRouteVector": {
+                    "candidateIds": [
+                      "common-route",
+                      "observed-route"
+                    ],
+                    "beforeRouteHEPP": [
+                      0,
+                      0
+                    ],
+                    "afterRouteHEPP": [
+                      20,
+                      80
+                    ],
+                    "applicationProbability": [
+                      1,
+                      1
+                    ],
+                    "polarity": [
+                      1,
+                      1
+                    ]
+                  }
                 },
                 {
                   "outcomeId": "target-check:o2",
                   "probability": 0.5,
-                  "bestFutureRouteValueHEPP": 50
+                  "futureCandidateRouteVector": {
+                    "candidateIds": [
+                      "common-route",
+                      "alternate-route"
+                    ],
+                    "beforeRouteHEPP": [
+                      0,
+                      0
+                    ],
+                    "afterRouteHEPP": [
+                      20,
+                      0
+                    ],
+                    "applicationProbability": [
+                      1,
+                      1
+                    ],
+                    "polarity": [
+                      1,
+                      1
+                    ]
+                  }
                 }
-              ],
-              "adaptiveValueHEPP": 50,
-              "committedValueHEPP": 20
+              ]
             }
           ],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 5,
-              "sourceEventId": "observe-then-act:target_trajectory:event",
-              "sourceFactId": "observe-then-act:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -5,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "observe-then-act:S1_HEALTH:event",
+              "sourceFactId": "observe-then-act:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -992,23 +1225,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 25,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 2,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 25,
-              "sourceEventId": "commit-now:target_trajectory:event",
-              "sourceFactId": "commit-now:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -25,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "commit-now:S1_HEALTH:event",
+              "sourceFactId": "commit-now:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -1046,13 +1284,9 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 5,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 2,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [
             {
               "groupId": "same-route",
@@ -1060,27 +1294,66 @@
                 {
                   "outcomeId": "same-route:o1",
                   "probability": 0.5,
-                  "bestFutureRouteValueHEPP": 20
+                  "futureCandidateRouteVector": {
+                    "candidateIds": [
+                      "common-route"
+                    ],
+                    "beforeRouteHEPP": [
+                      0
+                    ],
+                    "afterRouteHEPP": [
+                      20
+                    ],
+                    "applicationProbability": [
+                      1
+                    ],
+                    "polarity": [
+                      1
+                    ]
+                  }
                 },
                 {
                   "outcomeId": "same-route:o2",
                   "probability": 0.5,
-                  "bestFutureRouteValueHEPP": 20
+                  "futureCandidateRouteVector": {
+                    "candidateIds": [
+                      "common-route"
+                    ],
+                    "beforeRouteHEPP": [
+                      0
+                    ],
+                    "afterRouteHEPP": [
+                      20
+                    ],
+                    "applicationProbability": [
+                      1
+                    ],
+                    "polarity": [
+                      1
+                    ]
+                  }
                 }
-              ],
-              "adaptiveValueHEPP": 20,
-              "committedValueHEPP": 20
+              ]
             }
           ],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 5,
-              "sourceEventId": "redundant-observe:target_trajectory:event",
-              "sourceFactId": "redundant-observe:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -5,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "redundant-observe:S1_HEALTH:event",
+              "sourceFactId": "redundant-observe:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -1095,23 +1368,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 22,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 5,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 22,
-              "sourceEventId": "stable-attack:target_trajectory:event",
-              "sourceFactId": "stable-attack:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -22,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "stable-attack:S1_HEALTH:event",
+              "sourceFactId": "stable-attack:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -1149,30 +1427,38 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 4,
-          "actionPoolDeltaTotal": 31,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 7,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 4,
-              "sourceEventId": "dot-window:target_trajectory:event",
-              "sourceFactId": "dot-window:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -4,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "dot-window:S1_HEALTH:event",
+              "sourceFactId": "dot-window:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             },
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 31,
-              "sourceEventId": "dot-window:response:event",
-              "sourceFactId": "dot-window:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 31,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "dot-window:S2_ROUTE:event",
+              "sourceFactId": "dot-window:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1191,21 +1477,27 @@
           "hardExclusionCodes": [
             "EXPIRED"
           ],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 50,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 50,
-              "sourceEventId": "expired-dot:response:event",
-              "sourceFactId": "expired-dot:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 50,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "expired-dot:S2_ROUTE:event",
+              "sourceFactId": "expired-dot:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1245,21 +1537,27 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 38,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 12,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 9,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 12,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 38,
-              "sourceEventId": "summon-window:response:event",
-              "sourceFactId": "summon-window:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 38,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "summon-window:S2_ROUTE:event",
+              "sourceFactId": "summon-window:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1278,21 +1576,27 @@
           "hardExclusionCodes": [
             "HOST_DEAD"
           ],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 70,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 70,
-              "sourceEventId": "summon-after-host-death:response:event",
-              "sourceFactId": "summon-after-host-death:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 70,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "summon-after-host-death:S2_ROUTE:event",
+              "sourceFactId": "summon-after-host-death:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1309,23 +1613,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 30,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 4,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 30,
-              "sourceEventId": "direct-safe:target_trajectory:event",
-              "sourceFactId": "direct-safe:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -30,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "direct-safe:S1_HEALTH:event",
+              "sourceFactId": "direct-safe:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -1363,21 +1672,33 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 44,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 6,
-          "worstTailUtilityHEPP": 10,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [
+              {
+                "deltaHp": 6,
+                "maxHp": 100,
+                "side": "PLAYER"
+              }
+            ],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 44,
-              "sourceEventId": "create-with-consumer:response:event",
-              "sourceFactId": "create-with-consumer:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 44,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "create-with-consumer:S2_ROUTE:event",
+              "sourceFactId": "create-with-consumer:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1396,21 +1717,27 @@
           "hardExclusionCodes": [
             "NO_CONSUMER"
           ],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 44,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 44,
-              "sourceEventId": "create-without-consumer:response:event",
-              "sourceFactId": "create-without-consumer:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 44,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "create-without-consumer:S2_ROUTE:event",
+              "sourceFactId": "create-without-consumer:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1427,23 +1754,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 34,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 4,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 34,
-              "sourceEventId": "direct-action:target_trajectory:event",
-              "sourceFactId": "direct-action:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -34,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "direct-action:S1_HEALTH:event",
+              "sourceFactId": "direct-action:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -1481,30 +1813,38 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 25,
-          "actionPoolDeltaTotal": 4,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 25,
-              "sourceEventId": "state-owned:s:target_trajectory:event",
-              "sourceFactId": "state-owned:s:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -25,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "state-owned:S1_HEALTH:event",
+              "sourceFactId": "state-owned:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             },
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 4,
-              "sourceEventId": "state-owned:p:response:event",
-              "sourceFactId": "state-owned:p:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 4,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "state-owned:S2_ROUTE:event",
+              "sourceFactId": "state-owned:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1521,23 +1861,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 10,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 8,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 8,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 10,
-              "sourceEventId": "less-state:target_trajectory:event",
-              "sourceFactId": "less-state:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -10,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "less-state:S1_HEALTH:event",
+              "sourceFactId": "less-state:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -1575,21 +1920,27 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 36,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 5,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 5,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 36,
-              "sourceEventId": "pool-owned:response:event",
-              "sourceFactId": "pool-owned:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 36,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "pool-owned:S2_ROUTE:event",
+              "sourceFactId": "pool-owned:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1606,23 +1957,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 30,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 2,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 2,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 30,
-              "sourceEventId": "state-only:target_trajectory:event",
-              "sourceFactId": "state-only:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -30,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "state-only:S1_HEALTH:event",
+              "sourceFactId": "state-only:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -1662,23 +2018,28 @@
           "hardExclusionCodes": [
             "MECHANICAL_INVALID"
           ],
-          "stateDeltaTotal": 100,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 100,
-              "sourceEventId": "invalid-high-value:target_trajectory:event",
-              "sourceFactId": "invalid-high-value:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -100,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "invalid-high-value:S1_HEALTH:event",
+              "sourceFactId": "invalid-high-value:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -1693,23 +2054,34 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 28,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 35,
-          "assetReserveHEPP": 10,
-          "worstTailUtilityHEPP": 20,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 35,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [
+              {
+                "deltaHp": 10,
+                "maxHp": 100,
+                "side": "PLAYER"
+              }
+            ],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 28,
-              "sourceEventId": "valid-safe:target_trajectory:event",
-              "sourceFactId": "valid-safe:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -28,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "valid-safe:S1_HEALTH:event",
+              "sourceFactId": "valid-safe:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }
@@ -1747,23 +2119,28 @@
           "legal": true,
           "playerLocked": true,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 5,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 8,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 8,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 5,
-              "sourceEventId": "player-choice:target_trajectory:event",
-              "sourceFactId": "player-choice:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -5,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "player-choice:S1_HEALTH:event",
+              "sourceFactId": "player-choice:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -1778,32 +2155,39 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 80,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 100,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 80,
-              "sourceEventId": "ai-preferred:target_trajectory:event",
-              "sourceFactId": "ai-preferred:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -80,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "ai-preferred:S1_HEALTH:event",
+              "sourceFactId": "ai-preferred:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             },
             {
-              "componentCode": "terminal",
-              "causalOwnerType": "TERMINAL_DELTA",
-              "valueHEPP": 100,
-              "sourceEventId": "ai-preferred:terminal:event",
-              "sourceFactId": "ai-preferred:terminal:fact",
+              "componentCode": "S1_TERMINAL",
+              "formula": "TERMINAL_OUTCOME",
+              "winProbability": 1,
+              "lossProbability": 0,
+              "drawProbability": 0,
+              "sourceEventId": "ai-preferred:S1_TERMINAL:event",
+              "sourceFactId": "ai-preferred:S1_TERMINAL:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 2
             }
           ]
         }
@@ -1843,21 +2227,27 @@
           "hardExclusionCodes": [
             "LOST_OPPORTUNITY"
           ],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 20,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 0,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "response",
-              "causalOwnerType": "ACTION_POOL_DELTA",
-              "valueHEPP": 20,
-              "sourceEventId": "lost-fact:response:event",
-              "sourceFactId": "lost-fact:response:fact",
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 20,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "lost-fact:S2_ROUTE:event",
+              "sourceFactId": "lost-fact:S2_ROUTE:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1874,15 +2264,24 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 0,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 12,
-          "worstTailUtilityHEPP": 4,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": []
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [
+              {
+                "deltaHp": 12,
+                "maxHp": 100,
+                "side": "PLAYER"
+              }
+            ],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": []
         },
         {
           "candidateId": "fallback",
@@ -1895,23 +2294,28 @@
           "legal": true,
           "playerLocked": false,
           "hardExclusionCodes": [],
-          "stateDeltaTotal": 15,
-          "actionPoolDeltaTotal": 0,
-          "terminalDeltaTotal": 0,
-          "discardedOverkillPP": 0,
-          "survivalUtilityHEPP": 0,
-          "assetReserveHEPP": 0,
-          "worstTailUtilityHEPP": 3,
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
           "informationGroups": [],
-          "causalFacts": [
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
             {
-              "componentCode": "target_trajectory",
-              "causalOwnerType": "STATE_DELTA",
-              "valueHEPP": 15,
-              "sourceEventId": "fallback:target_trajectory:event",
-              "sourceFactId": "fallback:target_trajectory:fact",
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -15,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "fallback:S1_HEALTH:event",
+              "sourceFactId": "fallback:S1_HEALTH:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         }

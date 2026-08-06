@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 70,
+  "previousEventHash": "e8f1bbf4b97a3697376dc99d57e4482504dab9e12e5b0a2b1f2de095dd9d7897",
+  "milestoneId": "M2",
+  "taskId": "M2-K13-TARGET-KERNEL-PERFORMANCE",
+  "eventType": "MILESTONE_BLOCKED",
+  "status": "BLOCKED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "d1b51337da3875d10df46362f6564bb94f36174c2210dc62c0afb47c1ce3fdd3",
+    "BattleDecision_Module.js": "1df676bb6e99cbe6bf7a8a8768bf3cac953ebc633d63607e575051b529c72e66",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k13-target-performance.mjs": "828bd704fdb1d7b86e5f9bd396c96149629a904b695616550a41f5423e3f4b9d",
+    "tools/rc6/harness/run-m2-k13-route-cache-ab.mjs": "750cb970397a7829b6955484e1eb6b457a6ec77992a68a61f2471f7d2f44e587",
+    "tools/rc6/harness/run-m2-k04-target-fact-delta.mjs": "94e4cd8059947eb054ed1fdc29e6ead2cba86d3e1af2abbbfc94cbfb74baf1a6",
+    "tools/rc6/harness/run-m2-k14-s4-semantics.mjs": "6cf0da28322312f615fd6bda6ea96522a16dbed54a1a9e50e3bfb8eaee7ebb8f",
+    "tools/rc6/harness/run-m2-reference-v2.mjs": "8fddb365157a38e7b7bc4ff4d2a8eb632ca8c7b41c0c5d4f315f7aa16c80d5a6",
+    "tools/rc6/harness/run-m2-k12-target-adapter.mjs": "5392e6959a994fedce84cb3fcb2aed48632274aec96c627f79ca7673fc36f696",
+    "tools/rc6/harness/run-m2-small-target-transactions.mjs": "148715315b2dec54cb3873af419ab73d2c3922fb9e4e35fdc975f5b8cc88f716"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "3E815CB741E0390B4C0D73F8F95A037E2FDB9C7186221CB1605EE92B2C17FB3A",
+    "8743355BD8C732339C80CE6B8256C40A9587CFB153213FEB54710D03ADDD9127",
+    "E04605221D43CFF4D3B62631523DB1CD90AC39D26707C4DF43337FAC1EDA237C",
+    "0A0C031C1FC92206101C50EF3271678E95C7481B8C825DBC712A7A06A2FD755E",
+    "98CD075DF83C388643B60DF521852DAF011E806FBE6CCFA69B16D1564922DDD7",
+    "2967E423650340DA7BE365F347570F28A52CA76E366FA7A5375E218F46F5F6E2",
+    "E580CBF95DD4CEA308A4821956EAB2F3EBD12E771561D8E74AC89A6DB19400C9",
+    "A094B6AB0D50735FD7F30FD28A3E2C066351B51B5BADCED52059AA0D8D96D2D9"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "k13Status": "R9V2_TARGET_KERNEL_SCOUT_BLOCKED",
+    "architectureVerdict": "R9_DESIGN_DIRECTION_NOT_DISPROVED_TARGET_KERNEL_S4_ARCHITECTURE_BLOCKED",
+    "formalRuntimeTransaction": "NOT_MEASURED",
+    "m3ToM7": "STOPPED",
+    "fieldLevelReferenceAB": "PENDING",
+    "nextExitCondition": "Redesign shared S4 future-route value representation before rerunning K13"
+  },
+  "reason": "K13 target-kernel scout timed out on all three five-round raid cases after route dependency correction; the correction preserved hashes but did not remove S4 branch route expansion. M3-M7 remain stopped and formal Provider remains r8.",
+  "recordedAt": "2026-08-05T20:36:08.614Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "6c9506ee96b8dd01fe7138a5d05a055011f1ad6c6dc66c9699a6fda634782e14"
+}

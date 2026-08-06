@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "S4TargetSemanticProbesV1",
+  "probes": [
+    {
+      "probeId": "stable-identity-intersection",
+      "expectedInformationValueHEPP": 5,
+      "candidate": {
+        "candidateId": "probe-stable-intersection",
+        "actionId": "probe-observe",
+        "actorId": "actor-1",
+        "targetSet": ["enemy-1"],
+        "paymentMode": "FULL",
+        "dependencyTokens": ["probe:stable-intersection"],
+        "rawFacts": [],
+        "informationGroups": [
+          {
+            "groupId": "probe:stable-intersection:group",
+            "outcomes": [
+            {
+              "probability": 0.5,
+              "futureCandidateRouteVector": {
+                "candidateIds": ["future-a", "future-b"],
+                "beforeRouteHEPP": [0, 0],
+                "afterRouteHEPP": [40, 20],
+                "applicationProbability": [1, 1],
+                "polarity": [1, 1]
+              }
+            },
+            {
+              "probability": 0.5,
+              "futureCandidateRouteVector": {
+                "candidateIds": ["future-a", "future-b"],
+                "beforeRouteHEPP": [0, 0],
+                "afterRouteHEPP": [10, 20],
+                "applicationProbability": [1, 1],
+                "polarity": [1, 1]
+              }
+            }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "probeId": "exact-probability-endpoint",
+      "expectedInformationValueHEPP": 0,
+      "candidate": {
+        "candidateId": "probe-exact-endpoint",
+        "actionId": "probe-observe",
+        "actorId": "actor-1",
+        "targetSet": ["enemy-1"],
+        "paymentMode": "FULL",
+        "dependencyTokens": ["probe:exact-endpoint"],
+        "rawFacts": [],
+        "informationGroups": [
+          {
+            "groupId": "probe:exact-endpoint:group",
+            "outcomes": [
+            {
+              "probability": 1,
+              "futureCandidateRouteVector": {
+                "candidateIds": ["future-certain"],
+                "beforeRouteHEPP": [0],
+                "afterRouteHEPP": [40],
+                "applicationProbability": [1],
+                "polarity": [1]
+              }
+            },
+            {
+              "probability": 0,
+              "futureCandidateRouteVector": {
+                "candidateIds": ["future-other"],
+                "beforeRouteHEPP": [0],
+                "afterRouteHEPP": [0],
+                "applicationProbability": [1],
+                "polarity": [1]
+              }
+            }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

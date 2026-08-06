@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "PerformanceBlockerReportV1",
+  "milestoneId": "M2",
+  "taskId": "M2-K13-TARGET-KERNEL-PERFORMANCE",
+  "status": "R9V2_TARGET_KERNEL_BLOCKED",
+  "overallStatus": "NOT_COMPLETE",
+  "formalProvider": "r8",
+  "targetProvider": "r9v2_unregistered",
+  "architectureVerdict": "R9_DESIGN_DIRECTION_NOT_DISPROVED_TARGET_KERNEL_INCOMPLETE",
+  "scope": {
+    "measured": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY",
+    "formalRuntimeTransaction": false,
+    "reportSealVerifyMeasured": false,
+    "decisionPathUsesTargetKernel": true,
+    "r8CompleteSevenVsSevenMeasured": false
+  },
+  "gate": {
+    "scoutTimeoutMs": 12000,
+    "targetSevenVsSevenSingleSampleMs": 10000,
+    "result": "BLOCKED",
+    "reason": "All three target-kernel five-round raid scouts timed out before completing a decision."
+  },
+  "measurements": {
+    "coldSingleDecision": {
+      "caseId": "duel_overmatch_lethal",
+      "totalMs": 36.138,
+      "gate": "PASSED"
+    },
+    "twentyFourDecisions": {
+      "caseId": "duel_overmatch_lethal",
+      "totalMs": 134.413,
+      "gate": "PASSED"
+    },
+    "threeVsThreeThreeRounds": {
+      "caseId": "team_focus_without_overkill",
+      "totalMs": 1347.398,
+      "gate": "PASSED"
+    },
+    "raidControlHeavyFiveRounds": {
+      "caseId": "raid_control_heavy",
+      "status": "TIMEOUT",
+      "timeoutMs": 12000
+    },
+    "raidSummonHeavyFiveRounds": {
+      "caseId": "raid_summon_heavy",
+      "status": "TIMEOUT",
+      "timeoutMs": 12000
+    },
+    "raidBalancedFiveRounds": {
+      "caseId": "raid_balanced",
+      "status": "TIMEOUT",
+      "timeoutMs": 12000
+    }
+  },
+  "currentHashDiagnostics": {
+    "raidControlHeavySingleRoundWithRouteCacheMs": 45211.324,
+    "raidControlHeavySingleRoundWithoutRouteCacheMs": 50360.256,
+    "routeCacheEndToEndGainPercent": 10.224,
+    "decisionHashesEqualWithAndWithoutRouteCache": true,
+    "requestCount": 14,
+    "poolUnitBuilds": 28,
+    "poolEntryCount": 480,
+    "poolUnitFallbacks": 0,
+    "mechanicalBasisCompiles": 333,
+    "mechanicalBasisEvaluations": 480,
+    "mechanicalEntryCacheMisses": 480,
+    "targetKernelVectorEvaluations": 330,
+    "targetKernelSliceCacheHits": 0,
+    "targetKernelSliceCacheMisses": 0,
+    "futurePoolBuilds": 0,
+    "futurePoolHits": 0,
+    "routeTableHits": 345,
+    "routeTableMisses": 123,
+    "routeEntryHits": 96,
+    "routeEntryMisses": 929
+  },
+  "rootCause": {
+    "layer": "S4_FUTURE_ROUTE_BRANCH_EXPANSION",
+    "firstObservedDeviation": "Observation branches still materialize and evaluate large future-route tables row by row; route reuse does not remove the branch-wide route-value work.",
+    "confirmedBy": [
+      "The three target-kernel five-round raid scouts all hit the 12000ms hard timeout.",
+      "The route-cache A/B preserves every decision hash but reduces end-to-end time by only 10.224 percent.",
+      "The route-cache A/B leaves mechanical-basis evaluations at 480 and target-kernel vector evaluations at 330.",
+      "The route-value dependency correction preserves candidate, branch and semantic outputs but does not remove the S4 route-table expansion."
+    ],
+    "notRootCause": [
+      "R8 complete-battle performance",
+      "BattleReport projection, Seal or Verify",
+      "Route-cache correctness",
+      "A missing candidate, probability branch, response branch or round"
+    ]
+  },
+  "acceptedEvidence": [
+    {
+      "path": "tools/rc6/evidence/m2/k13-target-performance.json",
+      "scope": "target-kernel-selection-scout",
+      "status": "R9V2_TARGET_KERNEL_SCOUT_BLOCKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k13-route-cache-ab.json",
+      "scope": "current-hash-route-cache-ab",
+      "status": "PASSED",
+      "use": "subordinate optimization only"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k04-target-fact-delta.json",
+      "scope": "target-kernel-fact-delta",
+      "status": "PASSED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/s4-target-semantics.json",
+      "scope": "s4-semantic-probes",
+      "status": "PASSED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k12-target-adapter.json",
+      "scope": "target-kernel-adapter",
+      "status": "PASSED_WITH_FIELD_REFERENCE_AB_PENDING"
+    }
+  ],
+  "sourceHashes": {
+    "BattleDecision_Module.js": "1df676bb6e99cbe6bf7a8a8768bf3cac953ebc633d63607e575051b529c72e66",
+    "BattleDecisionR9v2Kernel_Module.js": "2eb0efad1467b8c21cf2445aed24fe0bd9b0a9a6586e796c81a3eebc50825a62",
+    "BattlePreview_Module.js": "d1b51337da3875d10df46362f6564bb94f36174c2210dc62c0afb47c1ce3fdd3",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "run-m2-k13-target-performance.mjs": "828bd704fdb1d7b86e5f9bd396c96149629a904b695616550a41f5423e3f4b9d",
+    "run-m2-k13-route-cache-ab.mjs": "750cb970397a7829b6955484e1eb6b457a6ec77992a68a61f2471f7d2f44e587"
+  },
+  "decision": {
+    "requiredNextArchitecture": "Implement a shared BehaviorPoolSession and target-kernel session/vector lifecycle across requests; drive applyFactDelta from real world transitions; rebuild only dependency-intersecting components; assemble full vectors, information value, causal totals and Pareto per branch.",
+    "prohibitedNextActions": [
+      "Do not add another route or slice cache.",
+      "Do not reduce candidates, targets, responses, probabilities or rounds.",
+      "Do not run M3-M7 or switch the formal Provider.",
+      "Do not claim the measured selection scope is the final R9v2 full-transaction performance gate."
+    ],
+    "nextExitCondition": "A target-kernel lifecycle implementation produces field-identical output and materially reuses shared pool, mechanical entries and proof components before K13 is rerun."
+  }
+}

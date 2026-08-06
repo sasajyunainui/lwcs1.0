@@ -1,0 +1,1751 @@
+[
+  {
+    "recordId": "cost-a57e8c3aa592379d",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.古月娜.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 250,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "元素融合",
+    "evidenceType": "budget-calibration",
+    "evidence": "绝世妖孽(+12)带=[23.94,25.2]。原威力110实际COST14.46低于下限；威力250后实际COST24.58落带",
+    "confidence": "high",
+    "reason": "威力110→250补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-47c9d8c70b351a74",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.古月娜.快照[0].角色.第1武魂.第5魂灵.第5魂环.第5魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 260,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "元素共鸣",
+    "evidenceType": "budget-calibration",
+    "evidence": "绝世妖孽(+12)带=[44.18,46.5]。原威力180实际COST35.78低于下限；威力260后实际COST45.38落带",
+    "confidence": "high",
+    "reason": "威力180→260补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-1d73c8f197f863a8",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.古月娜.快照[0].角色.武魂融合技.神龙变.技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "体力上限",
+          "数值": "+270%",
+          "持续回合": 4
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "体力上限",
+          "数值": "+80%",
+          "持续回合": 4
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-42%",
+          "副数值": "-24%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "神龙变",
+    "evidenceType": "novel-quote",
+    "evidence": "原著'武魂真身化为神龙变，都应该可以在太空之中飞行，自成循环'（full_utf8.txt:52734）；神龙变为消耗魂力80%/精神力90%/体力80%的极限爆发技。绝世妖孽(+12)带=[755.38,795.14]。原COST375.01低于下限；属性修正+145%/+45%→+270%/+80%且持续3→4回合、威压-24%→-42%后实际COST769.32落带",
+    "confidence": "high",
+    "reason": "极限爆发技按模型大幅提高主导属性修正与威压数值落带（与唐舞麟副本同值）",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-66cb5d8793c8c211",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.古月娜.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "资源": "生命",
+          "数值": "+13%"
+        }
+      ]
+    },
+    "skill": "生命之链",
+    "evidenceType": "budget-calibration",
+    "evidence": "绝世妖孽(+12)带=[23.94,25.2]。原生命+10%实际COST19低于下限；+13%后实际COST24.7落带",
+    "confidence": "high",
+    "reason": "生命回复+10%→+13%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-f31bd6bdce530ef4",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.古月娜.成长技能模板[6].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "资源": "生命",
+          "数值": "+70%"
+        }
+      ]
+    },
+    "skill": "生死逆转",
+    "evidenceType": "budget-calibration",
+    "evidence": "绝世妖孽(+12)带=[94.76,99.75]。原生命+50%实际COST70低于下限；+70%后实际COST98落带",
+    "confidence": "high",
+    "reason": "逆转治疗+50%→+70%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-a2554610529e79bc",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.唐舞麟.快照[0].角色.武魂融合技.神龙变.技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "体力上限",
+          "数值": "+270%",
+          "持续回合": 4
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "体力上限",
+          "数值": "+80%",
+          "持续回合": 4
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-42%",
+          "副数值": "-24%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "神龙变",
+    "evidenceType": "novel-quote",
+    "evidence": "原著'武魂真身化为神龙变，都应该可以在太空之中飞行，自成循环'（full_utf8.txt:52734）；神龙变为消耗魂力80%/精神力90%/体力80%的极限爆发技。绝世妖孽(+12)带=[755.38,795.14]。原COST375.01低于下限；属性修正+145%/+45%→+270%/+80%且持续3→4回合、威压-24%→-42%后实际COST769.32落带",
+    "confidence": "high",
+    "reason": "极限爆发技按模型大幅提高主导属性修正与威压数值落带（与古月娜副本同值）",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fd6fff5fb63d3c1f",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.唐舞麟.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 250,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "龙神之怒",
+    "evidenceType": "novel-quote",
+    "evidence": "原著'龙神咆哮带来的，乃是龙神之怒'（full_utf8.txt:55394）。绝世妖孽(+12)带=[23.94,25.2]。原威力110实际COST14.46低于下限；威力250后实际COST24.58落带",
+    "confidence": "high",
+    "reason": "龙神之怒威力110→250补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-299202b72774d3fd",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.霍雨浩.快照[0].角色.第1武魂.第5魂灵.第5魂环.第5魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-26%"
+        }
+      ]
+    },
+    "skill": "精神领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "绝世妖孽(+12)带=[65.89,69.36]。原标记-20%实际COST51.84低于下限；-26%后实际COST67.39落带",
+    "confidence": "high",
+    "reason": "精神领域标记-20%→-26%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-05f8b27874076167",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.江炜强.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 108,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "狮王咆哮",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[13.05,14.5]。原威力70实际COST10.8低于下限；威力108后实际COST14.29落带",
+    "confidence": "high",
+    "reason": "威力70→108补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-6873beea3537ac28",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.江炜强.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 220,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "炽焰利爪",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[21.06,23.4]。原威力110实际COST14.46低于下限；威力220后实际COST22.63落带",
+    "confidence": "high",
+    "reason": "威力110→220补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-ac84b3fc11bb054b",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.江炜强.快照[0].角色.第1武魂.第5魂灵.第5魂环.第5魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "灼烧",
+          "触发方式": "立即触发",
+          "持续回合": 4,
+          "数值": "-19%"
+        }
+      ]
+    },
+    "skill": "炽焰领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[59.4,66]。原灼烧-15%实际COST49.81低于下限；-19%后实际COST63.1落带",
+    "confidence": "high",
+    "reason": "炽焰领域灼烧-15%→-19%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-7ab3932f34590755",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.江炜强.快照[0].角色.第1武魂.第7魂灵.第7魂环.第7魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 360,
+          "伤害类型": "远程攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "灼烧",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-25%"
+        }
+      ]
+    },
+    "skill": "焚天狮吼",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[86.49,96.1]。原威力250+灼烧-20%实际COST70.34低于下限；威力360+灼烧-25%后实际COST88.62落带",
+    "confidence": "high",
+    "reason": "威力250→360、灼烧-20%→-25%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-34dba012f8b43558",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.依子尘.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 108,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "星河流转",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[13.05,14.5]。原威力70实际COST10.8低于下限；威力108后实际COST14.29落带",
+    "confidence": "high",
+    "reason": "威力70→108补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-94f2bde0000d6f15",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.依子尘.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 220,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "星爆",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[21.06,23.4]。原威力110实际COST14.46低于下限；威力220后实际COST22.63落带",
+    "confidence": "high",
+    "reason": "威力110→220补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-ef73e385f60791bc",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.依子尘.快照[0].角色.第1武魂.第6魂灵.第6魂环.第6魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+45%",
+          "持续回合": 4
+        }
+      ]
+    },
+    "skill": "星域",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[72.63,80.7]。原力量+40%实际COST69.7低于下限；+45%后实际COST78.41落带",
+    "confidence": "high",
+    "reason": "星域力量增幅+40%→+45%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-b52af6907016d757",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.烈前辈.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 108,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "凤翼斩",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[13.05,14.5]。原威力70实际COST10.8低于下限；威力108后实际COST14.29落带",
+    "confidence": "high",
+    "reason": "威力70→108补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-90f52ccc18bbce36",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.烈前辈.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 220,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "赤炎暴",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[21.06,23.4]。原威力110实际COST14.46低于下限；威力220后实际COST22.63落带",
+    "confidence": "high",
+    "reason": "威力110→220补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-919a99e08c9df5ae",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.烈前辈.快照[0].角色.第1武魂.第7魂灵.第7魂环.第7魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 360,
+          "伤害类型": "远程攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "灼烧",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-25%"
+        }
+      ]
+    },
+    "skill": "赤炎焚天",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[86.49,96.1]。原威力250+灼烧-20%实际COST70.34低于下限；威力360+灼烧-25%后实际COST88.62落带",
+    "confidence": "high",
+    "reason": "威力250→360、灼烧-20%→-25%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-acfb34fc8860e80e",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.凌梓晨.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 195,
+          "伤害类型": "精神攻击"
+        }
+      ]
+    },
+    "skill": "虚空裂隙",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[21.06,23.4]。原威力110实际COST15.4低于下限；威力195后实际COST22.29落带",
+    "confidence": "high",
+    "reason": "精神攻击威力110→195补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-c02e9b8c6b26705d",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.凌梓晨.快照[0].角色.第1武魂.第5魂灵.第5魂环.第5魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-24%"
+        }
+      ]
+    },
+    "skill": "虚瞳领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[59.4,66]。原标记-20%实际COST51.84低于下限；-24%后实际COST62.21落带",
+    "confidence": "high",
+    "reason": "虚瞳领域标记-20%→-24%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fb9dfb354c7abe6b",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.凌梓晨.快照[0].角色.第1武魂.第7魂灵.第7魂环.第7魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "护盾",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-36%"
+        }
+      ]
+    },
+    "skill": "虚无吞噬",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9)带=[86.49,96.1]。原护盾-30%实际COST74.38低于下限；-36%后实际COST89.26落带",
+    "confidence": "high",
+    "reason": "虚无吞噬护盾-30%→-36%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-f9bf87ccc43bf3a2",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.原恩辉辉.成长技能模板[12].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 260,
+          "伤害类型": "远程攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "光灵必杀",
+    "evidenceType": "novel-quote",
+    "evidence": "第6魂技光灵必杀\"最快的一箭，效果，破甲穿透\"\"像是长了眼睛一般瞬间抵达\"（行58082-58100），追踪必杀箭，威力260+标记2回合对应追踪不死不休",
+    "confidence": "high",
+    "reason": "提高威力200→260并把追踪标记持续1→2回合，实际COST 68.71 落入 [62.1, 69]",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-cde37da59a335eb4",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.原恩辉辉.成长技能模板[13].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 300,
+          "伤害类型": "远程攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "冻伤",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-35%"
+        }
+      ]
+    },
+    "skill": "冰灵寒砺",
+    "evidenceType": "novel-quote",
+    "evidence": "第8魂技冰灵寒砺\"冻结、封印...带有极致之冰的恐怖低温\"（行58168、58332），冰属性终极箭",
+    "confidence": "high",
+    "reason": "提高威力250→300、冻伤-25%→-35%强化冻结封印，实际COST 75.86 落入 [73.4, 81.55]",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fdb72e3f520a7833",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.梦飞.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 110,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "双匕连刺",
+    "evidenceType": "budget-calibration",
+    "evidence": "梦飞=唐门副门主、斗罗殿殿主95级封号斗罗（行32759），顶级天才；近身单体2环带 [13.05, 14.5]，威力110→实际COST 13.39",
+    "confidence": "high",
+    "reason": "双匕连刺威力70→110抬回带内（近身攻击单位成本略低于远程，故取110）",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-473dedc0931176c5",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.梦飞.快照[0].角色.第1武魂.第7魂灵.第7魂环.第7魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "位移执行",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "位移类型": "瞬移",
+          "位移对象": "目标"
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 530,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "暗杀之王",
+    "evidenceType": "budget-calibration",
+    "evidence": "暗杀之王=绝对隐匿必杀一击，位移瞬移≈50原始COST；7环带 [86.49, 96.1]，威力530+瞬移→实际COST 86.98",
+    "confidence": "high",
+    "reason": "暗杀必杀威力250→530（次线性0.65幂），实际COST 86.98 落入带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-c4348f000ba53eeb",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.天龙.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 105,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "暗龙爪",
+    "evidenceType": "budget-calibration",
+    "evidence": "天龙=龙马星系第一强者超神级120级（行43223\"化为一片暗红色光影直奔娜娜撞来\"），顶级天才；2环带 [13.05, 14.5]，威力105→实际COST 14.03",
+    "confidence": "high",
+    "reason": "暗龙爪威力70→105抬回带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-360dc18f31a1eb93",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.天龙.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 210,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "源龙吞噬",
+    "evidenceType": "budget-calibration",
+    "evidence": "源龙吞噬对应源龙摄取能量（行30993-30995源龙晶吞噬提纯）；3环带 [21.06, 23.4]，威力210→实际COST 21.96",
+    "confidence": "high",
+    "reason": "吞噬技威力110→210抬回带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0f90355578d0f53f",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.徐言莫.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 105,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "毒雾吐息",
+    "evidenceType": "budget-calibration",
+    "evidence": "徐言莫=傲天龙骑士大弟子、上位龙族血脉105级（行53034-53042），顶级天才；2环带 [13.05, 14.5]，威力105→实际COST 14.03",
+    "confidence": "high",
+    "reason": "毒雾吐息威力70→105抬回带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fd0ec56e4a7a03ae",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.徐言莫.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 210,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "翡翠龙爪",
+    "evidenceType": "budget-calibration",
+    "evidence": "翡翠龙爪龙族撕裂技；3环带 [21.06, 23.4]，威力210→实际COST 21.96",
+    "confidence": "high",
+    "reason": "龙爪威力110→210抬回带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-bdbd0965e67751ed",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.陈舞烛.快照[0].角色.第1武魂.第4魂灵.第4魂环.第4魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "护盾变化",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "数值": "+40%",
+          "护盾模式": "正向护盾"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "状态": "灼烧",
+          "触发方式": "立即触发",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "莲台护体",
+    "evidenceType": "budget-calibration",
+    "evidence": "红莲魔女陈舞烛、史莱克内院第一（行58267-58277），顶级天才；4环带 [35.28, 39.2]，护盾+40%→实际COST 36",
+    "confidence": "high",
+    "reason": "莲台护盾+35%→+40%，实际COST 36 落入带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-1e74682307865d85",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.陈舞烛.快照[0].角色.第1武魂.第9魂灵.第9魂环.第9魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "生命上限",
+          "数值": "+50%",
+          "持续回合": 3
+        },
+        {
+          "原型": "状态施加",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "状态": "灼烧",
+          "触发方式": "立即触发",
+          "持续回合": 1
+        }
+      ]
+    },
+    "skill": "红莲涅槃",
+    "evidenceType": "budget-calibration",
+    "evidence": "红莲涅槃=浴火重生形态（火+神圣），陈舞烛9环极限封号斗罗；9环带 [97.24, 108.05]，生命上限+50%→实际COST 103.5",
+    "confidence": "high",
+    "reason": "涅槃生命上限+40%→+50%，实际COST 103.5 落入带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-dec2397be318350f",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.龙天养.快照[0].角色.第1武魂.第8魂灵.第8魂环.第8魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 350,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "跟随主原型",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-25%"
+        }
+      ]
+    },
+    "skill": "星陨天裂",
+    "evidenceType": "budget-calibration",
+    "evidence": "龙天养=双星生命核心、天马星主（行60987、61001-61003），神级；8环带 [102.57, 113.97]，威力350→实际COST 103.11",
+    "confidence": "high",
+    "reason": "星陨天裂威力300→350，实际COST 103.11 落入带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2f5836d5336d5ee7",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.龙天养.快照[0].角色.第1武魂.第9魂灵.第9魂环.第9魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 660,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "光速永恒",
+    "evidenceType": "budget-calibration",
+    "evidence": "光速永恒=超越光速终极技，天马星翼永恒光芒；神级9环带 [119.29, 132.55]，威力660→实际COST 120.2",
+    "confidence": "high",
+    "reason": "神级终极技威力400→660（0.65次幂次线性需大幅提高），实际COST 120.2 落入带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-e9afc4a4615cca13",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.张楚佳.成长技能模板[4].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 1
+        },
+        {
+          "原型": "资源变化",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "资源": "生命",
+          "数值": "+5%"
+        }
+      ]
+    },
+    "skill": "圣光净化",
+    "evidenceType": "budget-calibration",
+    "evidence": "张楚佳=神火龙骑士、天龙次座、龙族第一美女5000岁（行66242、66367），顶级天才；5环带 [59.4, 66]，标记+圣光微疗+5%→实际COST 63",
+    "confidence": "high",
+    "reason": "圣光净化补+5%群体治疗副作用（净化并滋养），实际COST 63 落入带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-18c4593e61622bc9",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.张楚佳.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "资源": "生命",
+          "数值": "+12%"
+        }
+      ]
+    },
+    "skill": "圣光洗礼",
+    "evidenceType": "budget-calibration",
+    "evidence": "圣光洗礼=群体治愈；3环带 [21.06, 23.4]，生命+12%→实际COST 21.6",
+    "confidence": "high",
+    "reason": "群体治愈+8%→+12%，实际COST 21.6 落入带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-8e0cf5376ddb10de",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.黑皇.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 105,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "深渊侵蚀",
+    "evidenceType": "budget-calibration",
+    "evidence": "黑皇=深红之母坐下第七皇、超神级（行69941、69959-69961），顶级天才；2环带 [13.05, 14.5]，威力105→实际COST 14.03",
+    "confidence": "high",
+    "reason": "深渊侵蚀威力70→105抬回带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-4f6f48fb05187072",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.黑皇.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 210,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "黑龙之爪",
+    "evidenceType": "budget-calibration",
+    "evidence": "黑龙之爪=暗龙撕裂；3环带 [21.06, 23.4]，威力210→实际COST 21.96",
+    "confidence": "high",
+    "reason": "黑龙之爪威力110→210抬回带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-54c946148e601a9b",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.深渊圣君.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 210,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "深渊裂痕",
+    "evidenceType": "budget-calibration",
+    "evidence": "深渊圣君=深渊位面之主（行44882、58817），天圣裂渊戟吞噬可媲美黑洞；3环带 [21.06, 23.4]，威力210→实际COST 21.96",
+    "confidence": "high",
+    "reason": "深渊裂痕威力110→210抬回带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-cefc9e7031e5729b",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.深渊圣君.快照[0].角色.第1武魂.第6魂灵.第6魂环.第6魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "虚弱",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-30%"
+        }
+      ]
+    },
+    "skill": "深渊领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "深渊领域=方圆百米暗黑能量笼罩；深渊位面之主6环带 [72.63, 80.7]，虚弱-30%→实际COST 77.76",
+    "confidence": "high",
+    "reason": "领域虚弱-25%→-30%，实际COST 77.76 落入带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-248ae77a1dd96e89",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.海龙.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 105,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "棒扫千军",
+    "evidenceType": "novel-quote",
+    "evidence": "仙帝海龙持金箍棒（超神器之首，排名还在海神三叉戟之上），千钧棒法棍影化为一击（行79477-79513）；2环带 [13.05, 14.5]，威力105→实际COST 14.03",
+    "confidence": "high",
+    "reason": "棒扫千军威力70→105抬回带内，与金箍棒第一超神器战力相符",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-145e177147997836",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.海龙.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 210,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "海啸翻涌",
+    "evidenceType": "budget-calibration",
+    "evidence": "海啸翻涌=千钧棒引动海水巨浪；仙帝级3环带 [21.06, 23.4]，威力210→实际COST 21.96",
+    "confidence": "high",
+    "reason": "海啸翻涌威力110→210抬回带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-1689121375595b77",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.钱磊.成长技能模板[11].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "护盾变化",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "数值": "+65%",
+          "护盾模式": "正向护盾"
+        }
+      ]
+    },
+    "skill": "不动如山",
+    "evidenceType": "budget-calibration",
+    "evidence": "天才(+6) helper实跑运转基准56/代价能量1.119，带=[53.25,62.65]。原护盾+50%实际COST45低于下限；护盾+65%后实际COST58.5落带",
+    "confidence": "high",
+    "reason": "护盾+50%→+65%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-ff240e89688c7873",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.刘锋.成长技能模板[9].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 220,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-25%"
+        }
+      ]
+    },
+    "skill": "白龙无双",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准59/代价能量0.9，带=[47.79,53.1]。原威力180+标记-18%实际COST39.29低于下限；威力220+标记-25%后实际COST49.95落带。原著白龙无双为连续枪击（正文57857行）",
+    "confidence": "high",
+    "reason": "威力180→220、标记-18%→-25%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-d575af817537687d",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.蓝梦琴.快照[1].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 100,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "冰锥突刺",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准29/代价能量0.5，带=[13.05,14.5]。原威力70实际COST10.8低于下限；威力100后实际COST13.6落带",
+    "confidence": "high",
+    "reason": "威力70→100补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-63e2475704f0de38",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.刘宝川.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 160,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "七灵连斩",
+    "evidenceType": "budget-calibration",
+    "evidence": "天才(+6) helper实跑运转基准36/代价能量0.5，带=[15.3,18]。原威力110实际COST13.39低于下限；威力160后实际COST17.06落带",
+    "confidence": "high",
+    "reason": "威力110→160补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-f660ebf74b20f8f8",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.王占航.快照[0].角色.第1武魂.第2魂灵.第2魂环.第2魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 120,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "鼎击",
+    "evidenceType": "budget-calibration",
+    "evidence": "天才(+6) helper实跑运转基准26/代价能量0.6，带=[13.26,15.6]。原威力70实际COST10.8低于下限；威力120后实际COST15.3落带",
+    "confidence": "high",
+    "reason": "威力70→120补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-53b14fbecd0fdb60",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.许家铭.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 170,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "星辰裂空",
+    "evidenceType": "budget-calibration",
+    "evidence": "优秀(+3) helper实跑运转基准33/代价能量0.6，带=[16.24,19.8]。原威力110实际COST14.46低于下限；威力170后实际COST19.16落带",
+    "confidence": "high",
+    "reason": "威力110→170补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-e735e3070ef341c4",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.暗羽.快照[0].角色.第1武魂.第7魂灵.第7魂环.第7魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 250,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-35%"
+        }
+      ]
+    },
+    "skill": "影魔噬灭",
+    "evidenceType": "budget-calibration",
+    "evidence": "天才(+6) helper实跑运转基准76/代价能量1.032，带=[66.69,78.45]。原标记-28%实际COST63.08低于下限；标记-35%后实际COST73.16落带",
+    "confidence": "high",
+    "reason": "标记-28%→-35%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-d4618311489ba613",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.羽沐辰.快照[0].角色.第1武魂.第6魂灵.第6魂环.第6魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "位移执行",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "位移类型": "瞬移",
+          "位移对象": "目标"
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 330,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "光翼天舞",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准69/代价能量1.17，带=[72.63,80.7]。原威力200实际COST69.7低于下限；威力330后实际COST77.23落带",
+    "confidence": "high",
+    "reason": "威力200→330补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-270b50ebf7790c40",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.张元榕.快照[0].角色.第1武魂.第6魂灵.第6魂环.第6魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-24%"
+        }
+      ]
+    },
+    "skill": "虹炫迷阵",
+    "evidenceType": "budget-calibration",
+    "evidence": "天才(+6) helper实跑运转基准66/代价能量1，带=[56.1,66]。原标记-20%实际COST51.84低于下限；标记-24%后实际COST62.21落带",
+    "confidence": "high",
+    "reason": "标记-20%→-24%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-5ffbbc57250da177",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.唐秀玲.快照[0].角色.第1武魂.第5魂灵.第5魂环.第5魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 180,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-28%"
+        }
+      ]
+    },
+    "skill": "天雷破",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准59/代价能量0.9，带=[47.79,53.1]。原标记-20%实际COST41.61低于下限；标记-28%后实际COST50.89落带",
+    "confidence": "high",
+    "reason": "标记-20%→-28%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-cd0d08c20356d729",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.叶陌勇.快照[0].角色.第1武魂.第6魂灵.第6魂环.第6魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 250,
+          "伤害类型": "远程攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-35%"
+        }
+      ]
+    },
+    "skill": "一剑破万法",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准69/代价能量1，带=[62.1,69]。原威力200+标记-30%实际COST56.08低于下限；威力250+标记-35%后实际COST65.18落带",
+    "confidence": "high",
+    "reason": "威力200→250、标记-30%→-35%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-aaedf455578bbd26",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.凌雨墨.快照[0].角色.第1武魂.第5魂灵.第5魂环.第5魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-24%"
+        }
+      ]
+    },
+    "skill": "雨魔领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准59/代价能量1.119，带=[59.4,66]。原标记-20%实际COST51.84低于下限；标记-24%后实际COST62.21落带",
+    "confidence": "high",
+    "reason": "标记-20%→-24%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-8fabf29b3e76e7b6",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.田泽锋.快照[0].角色.第1武魂.第6魂灵.第6魂环.第6魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 320,
+          "伤害类型": "远程攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-30%"
+        }
+      ]
+    },
+    "skill": "无形之刃",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准69/代价能量1，带=[62.1,69]。原威力200+标记固定无数值实际COST51.28低于下限；威力320+标记-30%持续2后实际COST63.63落带",
+    "confidence": "high",
+    "reason": "威力200→320、标记补-30%数值并持续1→2回合补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-71c32497a13e457e",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.首座座龙.快照[0].角色.第1武魂.第7魂灵.第7魂环.第7魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "机制授予",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "授予效果": [
+            {
+              "原型": "状态施加",
+              "目标": "自身",
+              "状态": "标记",
+              "触发方式": "立即触发"
+            }
+          ],
+          "触发条件": "主动触发",
+          "可用次数": 1,
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "亡者复苏",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准79/代价能量1.216，带=[86.49,96.1]。原机制授予持续1回合实际COST75低于下限；持续2回合后实际COST95.25落带（贴门禁）",
+    "confidence": "medium",
+    "reason": "机制授予持续1→2回合补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-3a7ede38a7835588",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.心灵王.快照[0].角色.第1武魂.第6魂灵.第6魂环.第6魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 4,
+          "数值": "-24%"
+        }
+      ]
+    },
+    "skill": "心灵领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "天才(+6) helper实跑运转基准66/代价能量1.17，带=[65.61,77.19]。原标记-20%实际COST59.04低于下限；标记-24%后实际COST70.85落带",
+    "confidence": "high",
+    "reason": "标记-20%→-24%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-22a899f3c553c79b",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.嘉琳.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-19%"
+        }
+      ]
+    },
+    "skill": "精神侵蚀",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准39/代价能量0.6，带=[21.06,23.4]。原标记-16%实际COST18.56低于下限；标记-19%后实际COST22.04落带",
+    "confidence": "high",
+    "reason": "标记-16%→-19%补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-314fc6d7573f4e57",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.雷翔.快照[0].角色.第1武魂.第3魂灵.第3魂环.第3魂技",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 220,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "雷霆万钧",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准39/代价能量0.6，带=[21.06,23.4]。原威力110实际COST14.46低于下限；威力220后实际COST22.63落带。原著以雷霆万钧之势横扫（正文65831行等）",
+    "confidence": "high",
+    "reason": "威力110→220补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-e726ab8184b80b1e",
+    "concern": "cost",
+    "profileId": "zjdl",
+    "path": "$.角色.白秀秀.快照[2].角色.武魂.魂技[6]",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": [
+            "力量",
+            "防御",
+            "敏捷",
+            "生命上限",
+            "体力上限",
+            "魂力上限",
+            "精神力上限"
+          ],
+          "数值": "+1%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "冰魔龙躯",
+    "evidenceType": "budget-calibration",
+    "evidence": "顶级天才(+9) helper实跑运转基准19/代价能量0.5，带=[8.55,9.5]。原+1%持续1回合实际COST5.3低于下限；+1%持续3回合后实际COST9.54落带（贴门禁，符合效果描述「持续较长时间」）",
+    "confidence": "medium",
+    "reason": "全属性强化持续1→3回合补足下限缺口",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  }
+]

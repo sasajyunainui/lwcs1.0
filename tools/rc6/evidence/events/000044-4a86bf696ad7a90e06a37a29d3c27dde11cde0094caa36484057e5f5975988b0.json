@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 44,
+  "previousEventHash": "708517cf69bb5af1c2443fe6f24629afa6a8567758e9e99495676176213741b2",
+  "milestoneId": "M4",
+  "taskId": "M4-R02",
+  "eventType": "EVIDENCE_SUPERSEDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "691b689b6cf304a54c3d5989e6e64cc3ed816581fd0d4d7c97bfefd3b0e6ab86",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "6e4768e121d854dc7a79315b0733fa2af8bfef3dba96d4bb5d397a94c370bfa5",
+    "BattleUI_Module.js": "18608fcc9cb23bf89cbf9b5fa1722f003c520aa7757aa30fddb9cdb32ff0fe1a",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m4-r02-report-ui-pilot.mjs": "cb441ac869e852f8a1cb0304113b51d844b0f8624aa5bbbf520fe986a773a0c6"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [
+    "5d2b590f439510678b8cbdb11d7a3721e48a8629b9c1a57b8dfd20c9221dfd9a"
+  ],
+  "details": {
+    "supersedesEvent": 43,
+    "reason": "UI legacy report fallback was removed after the previous accepted pilot; current evidence must include panel closure."
+  },
+  "reason": "Supersede the M4-R02 pilot after removing the unreachable UI ledger fallback and adding its closure assertion.",
+  "recordedAt": "2026-08-05T03:03:32.589Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "4a86bf696ad7a90e06a37a29d3c27dde11cde0094caa36484057e5f5975988b0"
+}

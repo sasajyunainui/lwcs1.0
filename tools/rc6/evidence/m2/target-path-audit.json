@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "M2TargetKernelPathAuditV1",
+  "status": "PASSED",
+  "milestoneId": "M2",
+  "taskId": "M2-PATH-TARGET-KERNEL-ACTIVATION",
+  "scope": "FULL_RUNTIME_DECISION_PATH_NO_REPORT_SEAL",
+  "formalProvider": "r8",
+  "targetProvider": "r9v2_test_registry_only",
+  "cases": [
+    {
+      "caseId": "duel_overmatch_lethal",
+      "elapsedMs": 113.673,
+      "decisionCount": 2,
+      "targetDecisionCount": 2,
+      "targetKernelMetrics": {
+        "sessionCount": 2,
+        "candidateCount": 7,
+        "fullRebuilds": 0,
+        "dirtyCandidateRebuilds": 0,
+        "candidateEvaluations": 7,
+        "candidateCacheHits": 0,
+        "vectorMaterializations": 7,
+        "vectorCacheHits": 0,
+        "paretoReassemblies": 2,
+        "proofsMaterialized": 4,
+        "factDeltaApplications": 0,
+        "candidateSnapshotDeltas": 0,
+        "contextInvalidations": 0,
+        "componentEvaluations": 42,
+        "componentCacheHits": 0,
+        "componentInvalidations": 0,
+        "r9v2TargetKernelCandidateEvaluations": 7,
+        "r9v2TargetKernelVectorEvaluations": 7
+      },
+      "evaluationMetrics": {
+        "requestCount": 2,
+        "r9v2PoolBuilds": 2,
+        "r9v2ProofComponentBuilds": 22
+      },
+      "profiles": [
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        }
+      ],
+      "fatalCount": 0
+    },
+    {
+      "caseId": "team_focus_without_overkill",
+      "elapsedMs": 2055.09,
+      "decisionCount": 6,
+      "targetDecisionCount": 6,
+      "targetKernelMetrics": {
+        "sessionCount": 6,
+        "candidateCount": 69,
+        "fullRebuilds": 0,
+        "dirtyCandidateRebuilds": 0,
+        "candidateEvaluations": 69,
+        "candidateCacheHits": 0,
+        "vectorMaterializations": 69,
+        "vectorCacheHits": 0,
+        "paretoReassemblies": 6,
+        "proofsMaterialized": 18,
+        "factDeltaApplications": 0,
+        "candidateSnapshotDeltas": 0,
+        "contextInvalidations": 0,
+        "componentEvaluations": 414,
+        "componentCacheHits": 0,
+        "componentInvalidations": 0,
+        "r9v2TargetKernelCandidateEvaluations": 69,
+        "r9v2TargetKernelVectorEvaluations": 69
+      },
+      "evaluationMetrics": {
+        "requestCount": 6,
+        "r9v2PoolBuilds": 2,
+        "r9v2ProofComponentBuilds": 282
+      },
+      "profiles": [
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        }
+      ],
+      "fatalCount": 0
+    }
+  ],
+  "sourceHashes": {
+    "decision": "db3c2260fa5c18ef708a3ddfad70e7e6be3df1763b21162b7698029632a50bdb",
+    "kernel": "b955c8b6476daf32612710123cfb4413457786397581cd055a6f8f2634a3b9ce",
+    "runtime": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "harness": "f783107a0864e9685de0705737716f651f61d21b6d5ea8997af6f4fe00833902"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "M2K13PaymentDependencyABV1",
+  "status": "DIAGNOSTIC_CAPTURED",
+  "scope": "THREE_ROUND_TARGET_KERNEL_SELECTION_ONLY",
+  "caseId": "team_focus_without_overkill",
+  "decisionCount": 18,
+  "semanticSelectionEqual": true,
+  "semanticHashAcceptance": "NOT_APPLICABLE_TO_INLINE_DIAGNOSTIC",
+  "orderReversedRuns": [
+    {
+      "runId": "current_then_baseline",
+      "current": {
+        "elapsedMs": 1741.354,
+        "targetS4Ms": 991.598,
+        "routeEntryPreparationMs": 645.123,
+        "paymentOnlyEntryReuseMetric": 320
+      },
+      "baseline": {
+        "elapsedMs": 2016.112,
+        "targetS4Ms": 1059.07,
+        "routeEntryPreparationMs": 680.054,
+        "paymentOnlyEntryReuseMetric": 134
+      },
+      "currentGainPercent": 13.628
+    },
+    {
+      "runId": "baseline_then_current",
+      "current": {
+        "elapsedMs": 2101.082,
+        "targetS4Ms": 1120.031,
+        "routeEntryPreparationMs": 720.649,
+        "paymentOnlyEntryReuseMetric": 320
+      },
+      "baseline": {
+        "elapsedMs": 1751.313,
+        "targetS4Ms": 1004.218,
+        "routeEntryPreparationMs": 645.281,
+        "paymentOnlyEntryReuseMetric": 134
+      },
+      "currentGainPercent": -19.972
+    }
+  ],
+  "performanceAcceptance": false,
+  "conclusion": "The payment-only dependency boundary preserves selections, but the two order-reversed runs have opposite end-to-end results. It is not accepted as a performance optimization and must not be used to pass K13.",
+  "sourceHash": "647642472d8322d145fc222409ed2109fb3daa78f2b720243c92dda7e0168b71"
+}

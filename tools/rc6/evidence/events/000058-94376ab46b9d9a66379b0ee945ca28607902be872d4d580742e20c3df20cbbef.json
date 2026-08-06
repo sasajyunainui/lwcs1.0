@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 58,
+  "previousEventHash": "6ebb359f7d452c454338148ed056b24dbeb1e1861fc333c3d679037c866ae970",
+  "milestoneId": "M5",
+  "taskId": "M5-P01",
+  "eventType": "SUBTASK_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "64b8983ac34bedef6c3b544a8cd5896f42c12c632733806bb21aff7b949a1213",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m5-p01-target-transaction-profile.mjs": "674a70d92eb46932d52337929382b123aad5b20dc1f2382fd6c182c03024a6a7"
+  },
+  "fixtureHashes": {
+    "tools/rc6/evidence/m5/m5-p01-target-transaction-profile.json": "8bbe8fd4e1691f168914fc74a5ee9f20f3fbd85cac24b8ce6c6fefae610700c6"
+  },
+  "acceptedObjectHashes": [
+    "8bbe8fd4e1691f168914fc74a5ee9f20f3fbd85cac24b8ce6c6fefae610700c6"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "status": "SCOUT_OVER_TARGET",
+    "oneVOneMs": 107.032,
+    "threeVThreeMs": 5140.34,
+    "firstRaid": "raid_balanced",
+    "firstRaidStatus": "TIMEOUT",
+    "timeoutMs": 12000,
+    "dominantCompletedStage": "Draft",
+    "nextExitCondition": "Run one full target-provider CPU/stage profile; do not expand raid matrix"
+  },
+  "reason": "M5 P01 target full-transaction scout exceeded the 7v7 cutoff; stop matrix expansion and profile Draft",
+  "recordedAt": "2026-08-05T03:45:07.539Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "94376ab46b9d9a66379b0ee945ca28607902be872d4d580742e20c3df20cbbef"
+}

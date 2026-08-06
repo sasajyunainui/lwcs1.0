@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 80,
+  "previousEventHash": "d385dab838066574a58e5831a611364cfcaeff47a994014dd6cd19342212c58d",
+  "milestoneId": "M1",
+  "taskId": "M1-S10",
+  "eventType": "STATUS_REDUCER_UPGRADED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0cd0836fc5bba7a8d43881dfc5cea5aad5955ddd6a8cab66c06df19e417f850a",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/reduce-status.mjs": "8432b3e65be7306d4697910ac3d46ae87c30734478cfc49724da468aa0372bd6",
+    "tools/rc6/record-evidence-event.mjs": "bfd02c0819ebdd209a69fbfe2d8b46c44096cf79fa3cc1e43d8bed3f45a2e646"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "Begin M2-K01 target-kernel implementation from the accepted raw contract; do not reuse invalidated performance evidence.",
+    "currentBlocker": null,
+    "warnings": [
+      "HISTORICAL_MALFORMED_EVIDENCE_REFERENCES_RETAINED"
+    ]
+  },
+  "reason": "Status reducer now exposes v24 task fields, reaccepts later attestations, and reports malformed historical evidence references without rewriting history.",
+  "recordedAt": "2026-08-06T03:44:56.711Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "5b5e8da56ca219afedf18f64cbd7eefbe0415d4faa5e9a0a0cc5def53de82716"
+}

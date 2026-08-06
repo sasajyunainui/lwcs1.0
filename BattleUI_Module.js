@@ -3944,8 +3944,9 @@ class BattleUIComponent {
       const resolutionTrace = BATTLE_RUNTIME.collectResolutionTrace(combatData);
       const snapshot = BATTLE_RUNTIME.getBattleSnapshot(combatData);
       const actionChains = BATTLE_RUNTIME.buildActionChains(ledger, resolutionTrace);
-      const reportBlocks = BATTLE_RUNTIME.buildReportBlocks(ledger, decisionTrace, publicEntries);
-      const { finalBattleReport, aiSummaryInput } = BATTLE_RUNTIME.buildFinalSummary(ledger, decisionTrace, snapshot, combatData);
+      const reportBlocks = [];
+      const finalBattleReport = null;
+      const aiSummaryInput = null;
       return {
         publicReportBlocks: publicEntries.map(item => BATTLE_RUNTIME.cloneAuditSnapshot(item)),
         decisionTrace,
@@ -4014,8 +4015,9 @@ class BattleUIComponent {
       const decisionTrace = BATTLE_RUNTIME.collectDecisionTrace(combatData);
       const resolutionTrace = BATTLE_RUNTIME.collectResolutionTrace(combatData);
       const actionChains = BATTLE_RUNTIME.buildActionChains(resolvedEventLedger, resolutionTrace);
-      const reportBlocks = BATTLE_RUNTIME.buildReportBlocks(resolvedEventLedger, decisionTrace, resolvedPublicReportBlocks);
-      const { finalBattleReport, aiSummaryInput } = BATTLE_RUNTIME.buildFinalSummary(resolvedEventLedger, decisionTrace, snapshot, combatData);
+      const reportBlocks = [];
+      const finalBattleReport = null;
+      const aiSummaryInput = null;
       const llmBattleSummary = BATTLE_RUNTIME.buildAiNarrativeSummary(aiSummaryInput, { maxRounds: 3 });
       const result = {
         preview: true,
@@ -4395,9 +4397,7 @@ class BattleUIComponent {
           const commitReceipt = transactionResult?.commitReceipt || null;
           if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');
           const reportDto = transactionResult.reportDto;
-        const aiStructuredSummary = reportDto?.aiStructuredSummary ||
-          reportDto?.aiSummaryInput ||
-          {};
+        const aiStructuredSummary = reportDto?.aiStructuredSummary || {};
         const aiStructuredSummaryText = JSON.stringify(aiStructuredSummary);
           const output = {
           ...transactionResult,
@@ -4409,18 +4409,14 @@ class BattleUIComponent {
           roundsExecuted: Number(reportDto?.actualRoundCount || 0),
           reportDto,
           finalBattleReport: reportDto?.finalSummary || null,
-          aiSummaryInput: transactionResult.aiSummaryInput,
+          aiStructuredSummary: reportDto?.aiStructuredSummary || null,
           llmBattleSummary: String(reportDto?.finalSummary?.text || ''),
           commitReceipt,
         };
-        if (!dryRun && reportDto?.aiReport) {
-          /* 投递分两路：
-             楼层只留一行战果（玩家可读、且永久留在聊天历史里也不占上下文）；
-             完整因果链走 inject，只在当轮存在，读完即弃，不进历史。
-             这样 AI 有足够的事实扩写战斗，而长战斗的全量细节不会成为永久噪音。 */
+        if (!dryRun && reportDto?.aiStructuredSummary) {
+          /* AI 只接收经过 PLAYER 投影和审计的结构化摘要；完整因果链不再绕过 Report DTO 注入。 */
           const 战果标题 = String(reportDto.battleHeadline || '战斗已结算');
-          /* 裁断卷宗与 battle_report 是两个不同的注入点，不能塞同样的内容：
-             卷宗只承载"不可改写的终局事实"，完整因果链由 inject 提供。 */
+          /* 永久战果只保存终局标题；结构化摘要作为本轮唯一 AI 输入。 */
           const settlementContext = registerBattleSettlementContext({
             id: `battle-${Date.now()}`,
             结构化摘要: 战果标题,
@@ -4430,7 +4426,7 @@ class BattleUIComponent {
           output.battleSettlementContext = settlementContext;
           sendToAI(
             `<battle_result>${战果标题}</battle_result>`,
-            `<battle_summary>\n${aiStructuredSummaryText}\n</battle_summary>\n<battle_report>\n${reportDto.aiReport}\n</battle_report>`,
+            `<battle_summary>\n${aiStructuredSummaryText}\n</battle_summary>`,
             {
               mvuUpdate: commitReceipt,
               requestKind: 'battle_settlement_plot',
@@ -9450,11 +9446,7 @@ class BattleUIComponent {
         function 提取战斗结果结构化战报Blocks(result = null) {
           const source = Array.isArray(result?.reportBlocks) && result.reportBlocks.length
             ? result.reportBlocks
-            : BATTLE_RUNTIME.buildReportBlocks(
-                result?.eventLedger || result?.combatData?.__battleEventLedger || [],
-                result?.decisionTrace || [],
-                提取战斗结果战报Blocks(result),
-              );
+            : [];
           return source
             .filter(block => block && typeof block === 'object')
             .filter(block => !['ROUND_SUMMARY', 'FINAL_SUMMARY'].includes(String(block?.blockType || '').trim()))
@@ -9678,12 +9670,9 @@ class BattleUIComponent {
 
         function 渲染ReportDto数字(token = {}) {
           if (!Number.isFinite(Number(token?.value))) return '';
-          const sourceEventId = String(token?.sourceEventId || '').trim();
-          const sourceFactId = String(token?.sourceFactId || '').trim();
           const operands = 格式化ReportDto操作数(token?.operands);
           const attrs = [
-            sourceEventId ? `data-source-event-id="${htmlEscapeText(sourceEventId)}"` : '',
-            sourceFactId ? `data-source-fact-id="${htmlEscapeText(sourceFactId)}"` : '',
+            'data-report-number-source="true"',
             token?.sourceName ? `data-source-name="${htmlEscapeText(token.sourceName)}"` : '',
             token?.sourceType ? `data-source-type="${htmlEscapeText(token.sourceType)}"` : '',
             token?.operation ? `data-source-operation="${htmlEscapeText(token.operation)}"` : '',
@@ -9719,7 +9708,7 @@ class BattleUIComponent {
         }
 
         function 绑定ReportDto数字来源(node) {
-          node?.querySelectorAll?.('[data-source-event-id][data-source-fact-id]').forEach(button => {
+          node?.querySelectorAll?.('[data-report-number-source="true"]').forEach(button => {
             button.addEventListener('mouseenter', () => 显示ReportDto数字来源(button));
             button.addEventListener('focus', () => 显示ReportDto数字来源(button));
             button.addEventListener('click', () => 显示ReportDto数字来源(button));
@@ -10160,37 +10149,58 @@ class BattleUIComponent {
         }
 
         function 导出战斗记录可见文本(result = null, activeTab = 'preview') {
-          if (!result) return '';
-          const logs = Array.isArray(result.logs) ? result.logs : [];
-          const context = 构建战斗结果展示上下文(result);
-          context.eventLedger = result?.eventLedger || result?.combatData?.__battleEventLedger || [];
-          const 战报Blocks = 提取战斗结果结构化战报Blocks(result);
-          const 原始战报 = 战报Blocks.map(序列化结构化战报Block).filter(Boolean);
-          context.publicBattleLines = 原始战报;
-          const 审计条目 = 过滤已在摘要出现的结算条目([
-            ...构建因果链行动区块条目(Array.isArray(result.resolutionTrace) ? result.resolutionTrace : [], Array.isArray(result.decisionTrace) ? result.decisionTrace : []),
-            ...构建判定流程展示数据(Array.isArray(result.decisionTrace) ? result.decisionTrace : [], logs, context),
-            ...构建结算链侧写条目(logs, { ...context, eventLedger: result?.eventLedger || [] }),
-          ], 原始战报);
-          const 战报 = 战报Blocks.map(序列化结构化战报Block).filter(Boolean);
-          const 流程HTML = 渲染分回合判定流程(审计条目);
-          const 回合速览 = BATTLE_RUNTIME.buildRoundOverview(result, context);
-          const finalSnapshot = result?.snapshot || BATTLE_RUNTIME.getBattleSnapshot(result?.combatData || context?.combatData || {});
-          const finalBattleReport = result?.finalBattleReport || BATTLE_RUNTIME.buildFinalSummary(
-            result?.eventLedger || result?.combatData?.__battleEventLedger || [],
-            result?.decisionTrace || [],
-            finalSnapshot,
-            result?.combatData || context?.combatData || null,
-          ).finalBattleReport;
-          const 头部行 = [
+          if (!result || !isRenderablePlayerReportDto(result.reportDto)) return '';
+          const reportDto = result.reportDto;
+          const lines = [
             activeTab === 'preview' ? '预演结果' : '实战结果',
             格式化战斗模式显示文本(result.modeLabel, result.battleMode, result.mode),
-            `推进${Math.max(0, Number(result.roundsExecuted || 0))}回合`,
+            `推进${Math.max(0, Number(reportDto.actualRoundCount || 0))}回合`,
           ].filter(Boolean);
-          const 判定流程行 = ['判定流程', ...提取战斗预演HTML可见文本(流程HTML)];
-          const 总结行 = String(finalBattleReport?.text || '').trim() ? ['总结', String(finalBattleReport.text).trim()] : [];
-          return [...头部行, ...序列化回合速览行(回合速览), ...战报, ...判定流程行, ...总结行].join('\n').trim();
+          if (activeTab === 'summary') {
+            if (String(reportDto?.finalSummary?.text || '').trim()) lines.push('总结', String(reportDto.finalSummary.text).trim());
+            return lines.join('\n').trim();
+          }
+          if (activeTab === 'round') {
+            (Array.isArray(reportDto.roundOverview) ? reportDto.roundOverview : []).forEach(row => {
+              const summary = String(row?.summary || row?.headline || '').trim();
+              if (summary) lines.push(`第${Math.max(0, Number(row?.round || 0))}回合：${summary}`);
+            });
+            return lines.join('\n').trim();
+          }
+          if (activeTab === 'decision') {
+            (Array.isArray(reportDto.decisionExplanations) ? reportDto.decisionExplanations : []).forEach(row => {
+              const selected = String(row?.selected?.name || '未记录动作').trim();
+              const alternatives = (Array.isArray(row?.alternatives) ? row.alternatives : [])
+                .map(item => `${String(item?.name || '替代方案').trim()}：${String(item?.reason || '').trim()}`)
+                .filter(item => !item.endsWith('：'));
+              lines.push(`第${Math.max(0, Number(row?.round || 0))}回合 ${String(row?.actorName || '行动者').trim()}选择【${selected}】`);
+              if (String(row?.comparisonEvidence?.explanation || '').trim()) lines.push(`  理由：${String(row.comparisonEvidence.explanation).trim()}`);
+              alternatives.forEach(item => lines.push(`  替代：${item}`));
+            });
+            return lines.join('\n').trim();
+          }
+          (Array.isArray(reportDto.narrativeChain) ? reportDto.narrativeChain : []).forEach(node => {
+            const actor = String(node?.actorName || '行动者').trim();
+            const action = String(node?.action?.name || node?.settlement?.declarationSummary || '行动').trim();
+            lines.push(`第${Math.max(0, Number(node?.round || 0))}回合 ${actor}：${action}`);
+            (Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [])
+              .map(step => String(step?.playerText || '').trim())
+              .filter(Boolean)
+              .forEach(step => lines.push(`  ${step}`));
+          });
+          return lines.join('\n').trim();
         }
+
+        function isRenderablePlayerReportDto(reportDto = {}) {
+          return Boolean(
+            reportDto &&
+            typeof reportDto === 'object' &&
+            String(reportDto.schemaVersion || '').trim() === 'BattleReportDtoV2' &&
+            String(reportDto.visibilityMode || '').trim() === 'PLAYER' &&
+            String(reportDto.projectionStatus || '').trim() === 'PASSED',
+          );
+        }
+
         function 渲染战斗记录面板() {
           const node = 读取战斗记录面板节点();
           if (!node) return;
@@ -10216,7 +10226,19 @@ class BattleUIComponent {
             `;
             return;
           }
-          if (result?.reportDto && typeof result.reportDto === 'object') {
+          if (!isRenderablePlayerReportDto(result?.reportDto)) {
+            node.hidden = false;
+            node.innerHTML = `
+              <div class="battle-preview-head">
+                <span>${activeTab === 'preview' ? '预演记录' : '实战记录'}</span>
+                <b>战报暂不可用</b>
+                <em>等待经过审计的玩家战报</em>
+              </div>
+              <div class="battle-preview-empty">本次结果没有可展示的 BattleReportDtoV2 玩家投影。</div>
+            `;
+            return;
+          }
+          if (isRenderablePlayerReportDto(result.reportDto)) {
             const activeView = 读取战斗记录视图();
             const 视图标签 = { round: '回合', report: '战报', decision: '判定', summary: '总结' };
             node.hidden = false;
@@ -10235,134 +10257,7 @@ class BattleUIComponent {
             绑定ReportDto数字来源(node);
             return;
           }
-          const logs = Array.isArray(result.logs) ? result.logs : [];
-          const context = 构建战斗结果展示上下文(result);
-          context.eventLedger = result?.eventLedger || result?.combatData?.__battleEventLedger || [];
-          const 战报Blocks = 提取战斗结果结构化战报Blocks(result);
-          const 原始战报 = 战报Blocks.map(序列化结构化战报Block).filter(Boolean);
-          context.publicBattleLines = 原始战报;
-          const 审计条目 = 过滤已在摘要出现的结算条目([
-            ...构建因果链行动区块条目(Array.isArray(result.resolutionTrace) ? result.resolutionTrace : [], Array.isArray(result.decisionTrace) ? result.decisionTrace : []),
-            ...构建判定流程展示数据(Array.isArray(result.decisionTrace) ? result.decisionTrace : [], logs, context),
-            ...构建结算链侧写条目(logs, { ...context, eventLedger: result?.eventLedger || [] }),
-          ], 原始战报);
-          const 回合速览 = BATTLE_RUNTIME.buildRoundOverview(result, context);
-          const 战报展示上下文 = { ...context, combatData: context?.combatData || result?.combatData || {} };
-          const 战报单位上下文 = 读取战报上下文单位(战报展示上下文);
-          战报展示上下文.units = [
-            ...战报单位上下文.playerUnits,
-            ...战报单位上下文.enemyUnits,
-            ...(Array.isArray(context?.units) ? context.units : []),
-          ];
-          const finalSnapshot = result?.snapshot || BATTLE_RUNTIME.getBattleSnapshot(result?.combatData || context?.combatData || {});
-          const finalBattleReport = result?.finalBattleReport || BATTLE_RUNTIME.buildFinalSummary(
-            result?.eventLedger || result?.combatData?.__battleEventLedger || [],
-            result?.decisionTrace || [],
-            finalSnapshot,
-            result?.combatData || context?.combatData || null,
-          ).finalBattleReport;
-          const activeView = 读取战斗记录视图();
-          const 视图标签 = { round: '回合', report: '战报', decision: '判定', summary: '总结' };
-          let 视图内容 = '';
-          if (activeView === 'round') {
-            视图内容 = 渲染回合速览HTML(回合速览) || '<div class="battle-preview-empty">暂无回合结算</div>';
-          } else if (activeView === 'report') {
-            视图内容 = `<div class="battle-preview-report">${战报Blocks.length
-              ? 渲染结构化回合战报HTML(战报Blocks, 战报展示上下文)
-              : '<p>暂无战报</p>'}</div>`;
-          } else if (activeView === 'summary') {
-            视图内容 = 渲染战斗总结HTML(finalBattleReport) || '<div class="battle-preview-empty">暂无总结</div>';
-          } else {
-            const 动作筛选项 = 读取判定动作筛选项(审计条目);
-            const 回合列表 = Array.from(new Set(动作筛选项.map(item => item.round))).sort((a, b) => a - b);
-            let activeRound = Math.max(0, Number(state.activeBattleDecisionRound || 0));
-            if (!回合列表.includes(activeRound)) activeRound = 回合列表[0] || 0;
-            let 当回合动作 = 动作筛选项.filter(item => item.round === activeRound);
-            let activeActionId = String(state.activeBattleDecisionActionId || '').trim();
-            if (!当回合动作.some(item => item.actionId === activeActionId)) activeActionId = String(当回合动作[0]?.actionId || '').trim();
-            state.activeBattleDecisionRound = activeRound;
-            state.activeBattleDecisionActionId = activeActionId;
-            const 筛选后条目 = 筛选判定流程条目(审计条目, activeRound, activeActionId);
-            视图内容 = `
-              <div class="battle-decision-filter" aria-label="判定筛选">
-                <label><span>回合</span><select data-battle-decision-round>${回合列表.map(round => `<option value="${round}"${round === activeRound ? ' selected' : ''}>第${round}回合</option>`).join('')}</select></label>
-                <label><span>动作</span><select data-battle-decision-action>${当回合动作.map(item => `<option value="${htmlEscapeText(item.actionId)}"${item.actionId === activeActionId ? ' selected' : ''}>${htmlEscapeText(`${item.actorName} · ${item.actionName}`)}</option>`).join('')}</select></label>
-              </div>
-              <div class="battle-preview-trace">${渲染分回合判定流程(筛选后条目)}</div>
-            `;
-          }
-          node.hidden = false;
-          node.innerHTML = `
-            <div class="battle-preview-head">
-              <span>${activeTab === 'preview' ? '预演结果' : '实战结果'}</span>
-              <b>${htmlEscapeText(格式化战斗模式显示文本(result.modeLabel, result.battleMode, result.mode))}</b>
-              <em>${htmlEscapeText(`推进${Math.max(0, Number(result.roundsExecuted || 0))}回合`)}</em>
-            </div>
-            <div class="battle-record-view-tabs" role="tablist" aria-label="记录视图">
-              ${Object.entries(视图标签).map(([view, label]) => `<button class="battle-record-view-tab${view === activeView ? ' active' : ''}" type="button" role="tab" data-battle-record-view="${view}" aria-selected="${view === activeView ? 'true' : 'false'}" tabindex="${view === activeView ? '0' : '-1'}">${label}</button>`).join('')}
-            </div>
-            <section class="battle-record-view" role="tabpanel" aria-label="${htmlEscapeText(视图标签[activeView])}">${视图内容}</section>
-          `;
-          绑定分段控件键盘导航(node.querySelector('.battle-record-view-tabs'), 'data-battle-record-view', activeView, 设置战斗记录视图);
-          const roundSelect = node.querySelector('[data-battle-decision-round]');
-          if (roundSelect) roundSelect.addEventListener('change', () => {
-            state.activeBattleDecisionRound = Math.max(0, Number(roundSelect.value || 0));
-            state.activeBattleDecisionActionId = '';
-            渲染战斗记录面板();
-          });
-          const actionSelect = node.querySelector('[data-battle-decision-action]');
-          if (actionSelect) actionSelect.addEventListener('change', () => {
-            state.activeBattleDecisionActionId = String(actionSelect.value || '').trim();
-            渲染战斗记录面板();
-          });
-          node.querySelectorAll('[data-battle-report-skill]').forEach(button => {
-            const skillName = String(button.getAttribute('data-skill-name') || '').trim();
-            const actorName = String(button.getAttribute('data-actor-name') || '').trim();
-            const skillSlot = String(button.getAttribute('data-skill-slot') || '').trim();
-            const sourceContext = { ...context, combatData: context?.combatData || result?.combatData || {} };
-            const actorUnit = actorName ? 查找战报上下文单位(sourceContext, actorName) : null;
-            const resolvedSkill = actorUnit ? (按名称解析角色战斗魂技_战报(actorUnit, skillSlot || skillName) || 按名称解析角色战斗魂技_战报(actorUnit, skillName)) : null;
-            const basicActionTypes = {
-              普通攻击: '普通攻击',
-              防御: '防御',
-              闪避: '闪避',
-              反击: '普通攻击',
-              护卫: '防御',
-              撤退: '撤离',
-              观察: '观察',
-            };
-            if (!resolvedSkill && !basicActionTypes[skillName]) return;
-            const action = resolvedSkill ? {
-              id: `report_hover_${String(actorName || 'unknown').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}_${String(skillName || '').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}`,
-              type: 'skill',
-              action_type: '释放魂技',
-              name: normalizeBattleActionDisplayName(resolvedSkill?.name || resolvedSkill?.魂技名 || skillName),
-              category: '魂技',
-              source_detail: String(resolvedSkill?.__战斗来源明细 || resolvedSkill?.__战斗来源类别 || '魂技').trim() || '魂技',
-              cast_time: findUiSkillCastTime(resolvedSkill),
-              cost_text: findUiSkillCost(resolvedSkill),
-              raw_skill: resolvedSkill,
-              skill: resolvedSkill,
-            } : {
-              id: `report_hover_${String(actorName || 'unknown').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}_${String(skillName || '').replace(/[^\w\u4e00-\u9fa5-]+/g, '_')}`,
-              type: 'action',
-              action_type: basicActionTypes[skillName],
-              name: skillName,
-              category: '战术',
-              source_detail: '基础行动',
-              cast_time: 0,
-              cost_text: '无',
-              reason: skillName === '普通攻击' || skillName === '反击' ? '以当前攻击属性进行一次基础进攻' : `${skillName}行动`,
-            };
-            button.addEventListener('mouseenter', () => 显示技能悬浮(button, action));
-            button.addEventListener('focus', () => 显示技能悬浮(button, action));
-            button.addEventListener('mouseleave', () => {
-              const 悬浮节点 = 读取技能悬浮节点();
-              if (!悬浮节点) return;
-              if (!悬浮节点.matches(':hover')) 关闭技能悬浮();
-            });
-            button.addEventListener('blur', 关闭技能悬浮);
-          });
+          return;
         }
 
         function 渲染战斗预演面板(result = null) {
@@ -10373,7 +10268,7 @@ class BattleUIComponent {
         }
 
         function renderReport(reportDto = {}, options = {}) {
-          if (!reportDto || typeof reportDto !== 'object') throw new TypeError('battle_report_dto_invalid');
+          if (!isRenderablePlayerReportDto(reportDto)) throw new TypeError('battle_report_dto_not_ready');
           const preview = options.preview === true;
           const result = {
             preview,
@@ -10383,7 +10278,7 @@ class BattleUIComponent {
             roundsExecuted: Math.max(0, Number(reportDto.actualRoundCount || 0)),
             reportDto,
             finalBattleReport: reportDto.finalSummary || null,
-            aiSummaryInput: reportDto.aiSummaryInput || null,
+            aiStructuredSummary: reportDto.aiStructuredSummary || null,
             llmBattleSummary: String(reportDto?.finalSummary?.text || ''),
           };
           if (window.BattleUI?.state) {

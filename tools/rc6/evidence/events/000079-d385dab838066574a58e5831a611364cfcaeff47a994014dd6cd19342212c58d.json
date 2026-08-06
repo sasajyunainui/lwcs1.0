@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 79,
+  "previousEventHash": "a894985ee24f301dc978bca04d990aa3bdb34b99f32015edfabc1c4493bf1534",
+  "milestoneId": "M1",
+  "taskId": "M1-S10",
+  "eventType": "MILESTONE_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0cd0836fc5bba7a8d43881dfc5cea5aad5955ddd6a8cab66c06df19e417f850a",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/reference/oracle-fixture-hash.mjs": "0487d849fe716cb779b08c48f484dbf9c5316a1532208da795207b97bb7f652f",
+    "tools/rc6/reference/build-m1-contracts.mjs": "7b1efafbdf6edcf4658993d1be87253d051a55da7766205b3ced72bc643bc851",
+    "tools/rc6/reference/build-oracle-fixtures.mjs": "3e56d945c768f7adec448c2a8135f26466c3123a0d94beb4833444a3f7be88f7",
+    "tools/rc6/reference/run-m1-contract-gate.mjs": "c9f5f25d6c66eec87cdbb2633520e5dc4b716ea6fe29c2c9f50b4a7710ef86da",
+    "tools/rc6/reference/reference-value-evaluator-v2.mjs": "18cc70237d18e4c9da77745ce581b0133c2e34e374413a180c8de004e8a4e470",
+    "tools/rc6/record-evidence-event.mjs": "bfd02c0819ebdd209a69fbfe2d8b46c44096cf79fa3cc1e43d8bed3f45a2e646"
+  },
+  "fixtureHashes": {
+    "tools/rc6/evidence/m1/m1-contract-gate.json": "f261253115f6f1689b3279ae44baa9310852b255d0efabfa8dc2f102a1f9b896",
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "ff5f8274d14243fc9e1d9c0c94df3df0df969782adb027f6e25a12c837a0400a",
+    "tools/rc6/cases/BehaviorOracleV2IndexV1.json": "4ed7e6392e77a14504bb141a95baa78ad5c69d256b2ec53995635ca35176b79e",
+    "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json": "5681031622167b282c0bd073fdf72a3ff8359034f536676e2bd731ab51e44fc8",
+    "tools/rc6/contracts/M1FixtureManifestV1.json": "142bd06cedacd6ed0b5183ab05e0a221c6bc73681085ba69314bafff8f422605"
+  },
+  "acceptedObjectHashes": [
+    "f261253115f6f1689b3279ae44baa9310852b255d0efabfa8dc2f102a1f9b896",
+    "aa04b286d49f216452add169e7a6f37382374bae94ec8e8fba07ebc3a72e50cc",
+    "ff5f8274d14243fc9e1d9c0c94df3df0df969782adb027f6e25a12c837a0400a",
+    "4ed7e6392e77a14504bb141a95baa78ad5c69d256b2ec53995635ca35176b79e",
+    "5681031622167b282c0bd073fdf72a3ff8359034f536676e2bd731ab51e44fc8",
+    "142bd06cedacd6ed0b5183ab05e0a221c6bc73681085ba69314bafff8f422605",
+    "0487d849fe716cb779b08c48f484dbf9c5316a1532208da795207b97bb7f652f",
+    "7b1efafbdf6edcf4658993d1be87253d051a55da7766205b3ced72bc643bc851",
+    "3e56d945c768f7adec448c2a8135f26466c3123a0d94beb4833444a3f7be88f7",
+    "c9f5f25d6c66eec87cdbb2633520e5dc4b716ea6fe29c2c9f50b4a7710ef86da",
+    "18cc70237d18e4c9da77745ce581b0133c2e34e374413a180c8de004e8a4e470"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "Begin M2-K01 target-kernel implementation from the accepted raw contract; do not reuse invalidated performance evidence.",
+    "m1Exit": {
+      "assertions": 61,
+      "prototypes": 23,
+      "referenceCases": 20,
+      "oracles": 54,
+      "oracleFixtures": "54_UNIQUE_FIXTURE_INPUTS_16_TRIPLETS_6_SINGLE_CASES",
+      "referenceEvaluator": "V2_RAW_INDEPENDENT"
+    }
+  },
+  "reason": "M1 raw ReferenceCase and Oracle fixture closure passed; downstream M2-M7 remain pending and historical downstream evidence stays invalidated.",
+  "recordedAt": "2026-08-06T03:42:19.747Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "d385dab838066574a58e5831a611364cfcaeff47a994014dd6cd19342212c58d"
+}

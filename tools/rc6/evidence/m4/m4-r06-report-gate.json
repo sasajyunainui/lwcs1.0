@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "M4R06ReportGateV1",
+  "status": "PASSED",
+  "caseIds": [
+    "duel_overmatch_lethal",
+    "intent_capture_vs_kill",
+    "team_control_overlap",
+    "team_protect_critical_ally"
+  ],
+  "caseCount": 4,
+  "scope": [
+    "PLAYER projectionStatus and schema",
+    "sealed PLAYER package verification",
+    "PLAYER visible text internal-term and source-reference scan",
+    "AI PLAYER structured summary boundary",
+    "UI fail-closed consumer contract",
+    "small Report build and audit timing sample"
+  ],
+  "rows": [
+    {
+      "caseId": "duel_overmatch_lethal",
+      "rounds": 4,
+      "draftHash": "r74-85c1446e9249d75c",
+      "reportHash": "r74-249958f1832a7b63",
+      "projectionStatus": "PASSED",
+      "decisionCount": 2,
+      "factCount": 6,
+      "internalReferenceCount": 6,
+      "visibleTextLength": 1409,
+      "uiSourceIdAttributes": true,
+      "aiSummaryLength": 2665,
+      "reportTimingMs": {
+        "samples": [
+          5.146,
+          4.689,
+          4.617
+        ],
+        "median": 4.689,
+        "p95": 5.146
+      },
+      "failureCount": 0,
+      "failures": []
+    },
+    {
+      "caseId": "intent_capture_vs_kill",
+      "rounds": 6,
+      "draftHash": "r74-6fa5c8e87e557ca3",
+      "reportHash": "r74-22630735820cb717",
+      "projectionStatus": "PASSED",
+      "decisionCount": 2,
+      "factCount": 11,
+      "internalReferenceCount": 11,
+      "visibleTextLength": 2682,
+      "uiSourceIdAttributes": true,
+      "aiSummaryLength": 2387,
+      "reportTimingMs": {
+        "samples": [
+          8.037,
+          6.159,
+          6.232
+        ],
+        "median": 6.232,
+        "p95": 8.037
+      },
+      "failureCount": 0,
+      "failures": []
+    },
+    {
+      "caseId": "team_control_overlap",
+      "rounds": 4,
+      "draftHash": "r74-b66bb48d9fcf8048",
+      "reportHash": "r74-95aaa4af277e8282",
+      "projectionStatus": "PASSED",
+      "decisionCount": 47,
+      "factCount": 219,
+      "internalReferenceCount": 219,
+      "visibleTextLength": 55798,
+      "uiSourceIdAttributes": true,
+      "aiSummaryLength": 3225,
+      "reportTimingMs": {
+        "samples": [
+          105.647,
+          104.47,
+          104.045
+        ],
+        "median": 104.47,
+        "p95": 105.647
+      },
+      "failureCount": 0,
+      "failures": []
+    },
+    {
+      "caseId": "team_protect_critical_ally",
+      "rounds": 4,
+      "draftHash": "r74-d89b8bab6b4159bc",
+      "reportHash": "r74-37f0e1cbbb351177",
+      "projectionStatus": "PASSED",
+      "decisionCount": 37,
+      "factCount": 262,
+      "internalReferenceCount": 262,
+      "visibleTextLength": 74939,
+      "uiSourceIdAttributes": true,
+      "aiSummaryLength": 4028,
+      "reportTimingMs": {
+        "samples": [
+          131.84,
+          129.504,
+          126.754
+        ],
+        "median": 129.504,
+        "p95": 131.84
+      },
+      "failureCount": 0,
+      "failures": []
+    }
+  ],
+  "uiContract": {
+    "hasPlayerDtoGuard": true,
+    "checksV2Schema": true,
+    "checksPlayerVisibility": true,
+    "checksPassedProjection": true,
+    "hasFailClosedText": true,
+    "hasNoRuntimeReportBuilderCalls": true,
+    "aiUsesStructuredSummaryOnly": true,
+    "reportNumberUsesOpaqueBinding": true,
+    "reportNumberBindingUsesOpaqueMarker": true
+  },
+  "failureCount": 0,
+  "failures": [],
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "64b8983ac34bedef6c3b544a8cd5896f42c12c632733806bb21aff7b949a1213",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a"
+  },
+  "toolHash": "5c5611fb313845e2c3daf999fef2ad67c0feb7f1a027c1a8d3ce9df8a7ffd488"
+}

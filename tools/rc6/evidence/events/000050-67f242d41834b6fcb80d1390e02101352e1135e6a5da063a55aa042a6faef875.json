@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 50,
+  "previousEventHash": "524a01d61153c29e4a197abc53d5f6246e41fb1a57b8d493a525455f401df888",
+  "milestoneId": "M0",
+  "taskId": "M0-E01",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "64b8983ac34bedef6c3b544a8cd5896f42c12c632733806bb21aff7b949a1213",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c9eb08c6ee949d1ad79694c1e94f194a38d3a0575930f9cbd037f137dd581227",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {},
+  "reason": "",
+  "recordedAt": "2026-08-05T03:34:49.778Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "67f242d41834b6fcb80d1390e02101352e1135e6a5da063a55aa042a6faef875"
+}

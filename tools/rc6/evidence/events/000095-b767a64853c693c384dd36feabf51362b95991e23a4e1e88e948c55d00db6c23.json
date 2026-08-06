@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 95,
+  "previousEventHash": "c43ce678e639260e37d318038b5be6895979e2a34752e6a8e4bd20210bd2f5dd",
+  "milestoneId": "M2",
+  "taskId": "M2-K12-GENERIC-KERNEL-AB",
+  "eventType": "M2_GENERIC_KERNEL_AB_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "db3c2260fa5c18ef708a3ddfad70e7e6be3df1763b21162b7698029632a50bdb",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-reference-v2.mjs": "040981e0dccd052a973248aceed1927167da4877149105a360c79a4b48bc6eef"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "ff5f8274d14243fc9e1d9c0c94df3df0df969782adb027f6e25a12c837a0400a",
+    "tools/rc6/reference/reference-value-evaluator-v2.mjs": "18cc70237d18e4c9da77745ce581b0133c2e34e374413a180c8de004e8a4e470"
+  },
+  "acceptedObjectHashes": [
+    "bf5e10d4b03b6dbc7e0f6f6688e137fa7013ed3fa1c711b192af29a0705c1bb6"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "caseCount": 20,
+    "scope": "GENERIC_KERNEL_RAW_COMPONENT_CONTRACT",
+    "productionAdapterAB": false,
+    "next": "Resolve concrete component ownership and run production full-field K12."
+  },
+  "reason": "Current ValueKernelSessionV1 harness now covers all 20 formal reference cases; production target adapter and full transaction artifact equality remain open.",
+  "recordedAt": "2026-08-06T15:35:09.911Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "b767a64853c693c384dd36feabf51362b95991e23a4e1e88e948c55d00db6c23"
+}

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 69,
+  "previousEventHash": "ca6834250684da6416c68bf30cd655bfe645c446ee608ec15c8240ff5de860bb",
+  "milestoneId": "M2",
+  "taskId": "M2-K14-TARGET-KERNEL-LIFECYCLE",
+  "eventType": "MILESTONE_REOPENED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "d1b51337da3875d10df46362f6564bb94f36174c2210dc62c0afb47c1ce3fdd3",
+    "BattleDecision_Module.js": "773c01695778c379bac6633361399dee1cb2ba6b1bd76eb21586182507b50bd2",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k13-target-performance.mjs": "bfd429bcbd9b6171ad5a1b42543aa5ee8e45b99878055a104959dcbdb1c33dbf",
+    "tools/rc6/harness/run-m2-k12-target-adapter.mjs": "5392e6959a994fedce84cb3fcb2aed48632274aec96c627f79ca7673fc36f696"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "previousBlocker": "R9V2_TARGET_KERNEL_SCOUT_BLOCKED",
+    "correction": "shared BehaviorPoolSession and cross-request target-kernel session/vector lifecycle",
+    "scope": "BattleDecisionR9v2Kernel_Module.js and target-kernel adapter only",
+    "nextExitCondition": "field-identical reference A/B and target-kernel K13 scout within the v24 gate"
+  },
+  "reason": "User continuation authorizes a focused M2 architecture correction; reopen the blocked target-kernel milestone without entering M3-M7.",
+  "recordedAt": "2026-08-05T17:51:33.829Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "e8f1bbf4b97a3697376dc99d57e4482504dab9e12e5b0a2b1f2de095dd9d7897"
+}

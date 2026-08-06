@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 55,
+  "previousEventHash": "f0ed24cf172c4b3d2d378e703813ac6b87a502b11fc8fa855d343482c2605aad",
+  "milestoneId": "M4",
+  "taskId": "M4-R06",
+  "eventType": "SUBTASK_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "64b8983ac34bedef6c3b544a8cd5896f42c12c632733806bb21aff7b949a1213",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m4-r06-report-gate.mjs": "5c5611fb313845e2c3daf999fef2ad67c0feb7f1a027c1a8d3ce9df8a7ffd488"
+  },
+  "fixtureHashes": {
+    "tools/rc6/evidence/m4/m4-r06-report-gate.json": "10b3a043b7174ba165a93d48dd8324c29a57a2278532eebc700f8847b4507dbf"
+  },
+  "acceptedObjectHashes": [
+    "10b3a043b7174ba165a93d48dd8324c29a57a2278532eebc700f8847b4507dbf"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "status": "PASSED",
+    "caseCount": 4,
+    "decisionCount": 88,
+    "failureCount": 0,
+    "reportTimingObservationMs": {
+      "maxMedian": 129.504,
+      "maxP95": 131.84
+    },
+    "uiSourceIdAttributes": "removed_from_report_number_dom",
+    "nextExitCondition": "M4 Report gate closed; prepare M5 target-provider performance baseline"
+  },
+  "reason": "M4-R06 full PLAYER Report gate passed for current-hash cases and sealed package verification",
+  "recordedAt": "2026-08-05T03:41:46.569Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "9ee785e938c6e4f3e0264282b843749686e698850329f544bfbcf9d9aaa6bf0b"
+}

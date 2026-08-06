@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 83,
+  "previousEventHash": "ca725fb8e95c0577f530a0b7823805b624399fcdfc2a983d44b252689b9b9da4",
+  "milestoneId": "M2",
+  "taskId": "M2-OWNERSHIP-AND-DIRECTION-AUDIT",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "db3c2260fa5c18ef708a3ddfad70e7e6be3df1763b21162b7698029632a50bdb",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/audit-current-tree-ownership.mjs": "79ed9a7aa5f1688db75bc4e4de81d7a7feba7d499772e750325f44287f9ed266"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "cabaf26fdc89094197dc115d32fa29d2b089ae13c8bc385b0020974f0853600b",
+    "a49664e5b0632001f442769d926606ac9a1dfee2004f84a7026fbc3d5f08c067",
+    "4fb1868267b2e877e14555ead40ef79e510d82d4d8ee159d957eaab219c8da15"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "ownershipManifestHash": "8f19801eebca5e53f8cdf6a08354ca59e571d51ca8fa286efae1233c3f1c2519",
+    "impactManifestHash": "8c417ad1c41d660ccbcaf5aeffe31336587c9269194981393b4b4050fda53355",
+    "inputPathCount": 79,
+    "allInputsClassified": true,
+    "m2AcceptanceReady": false,
+    "deferredProductionPaths": [
+      "BattlePreview_Module.js",
+      "BattleReport_Module.js",
+      "BattleUI_Module.js",
+      "mvu_logic_bridge.js"
+    ],
+    "currentBlocker": "K12_FULL_FIELD_LEVEL_AB_AND_DEFERRED_PRODUCTION_SCOPE_PENDING",
+    "nextExitCondition": "Complete full K12 field-level A/B and keep deferred production changes outside M2 evidence."
+  },
+  "reason": "Ownership and direction reconciliation is stable after excluding audit outputs and immutable event-chain files from the working-tree input; M2 remains open and downstream evidence remains quarantined.",
+  "recordedAt": "2026-08-06T04:47:40.204Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "7f38bb17a523c4e41676ffea71a463bd6e592632740feef9bf1381364c3577d5"
+}

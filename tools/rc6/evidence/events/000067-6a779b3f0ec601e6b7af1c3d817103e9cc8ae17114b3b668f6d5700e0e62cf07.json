@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 67,
+  "previousEventHash": "c7f6b864a66b63027c20f800af6331fea0c8131669ff2187844c82e838b35ead",
+  "milestoneId": "M2",
+  "taskId": "M2-K13-TARGET-ROUTE-CACHE-AB",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "d1b51337da3875d10df46362f6564bb94f36174c2210dc62c0afb47c1ce3fdd3",
+    "BattleDecision_Module.js": "a342c795e1b37fd1aeb229575c3c79cd9ba0698c3542b18c22b27232d228b205",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k13-route-cache-ab.mjs": "750cb970397a7829b6955484e1eb6b457a6ec77992a68a61f2471f7d2f44e587"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "029F5C83B243FB8639147A285A976094797686AB1EA8695152C171B316353100"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "status": "PASSED",
+    "elapsedGainPercent": 21.135,
+    "decisionHashEqual": true,
+    "repeatedHotPathCountsEqual": true,
+    "nextExitCondition": "Implement shared baseline BehaviorPoolSession and target-kernel session/vector lifecycle; route cache remains a subordinate accepted optimization."
+  },
+  "reason": "Current-hash A/B proves route cache preserves all 14 decision output hashes and reduces one raid_control_heavy round from 11122.267ms to 8771.631ms, but pool and mechanical rebuild counts remain unchanged; main architecture correction is still required.",
+  "recordedAt": "2026-08-05T17:29:11.892Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "6a779b3f0ec601e6b7af1c3d817103e9cc8ae17114b3b668f6d5700e0e62cf07"
+}

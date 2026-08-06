@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "M5P01TargetTransactionProfileV1",
+  "status": "SCOUT_OVER_TARGET",
+  "scope": "R9V2_TARGET_FULL_TRANSACTION_DRAFT_REPORT_AUDIT_SEAL_VERIFY",
+  "formalProvider": "r8_not_measured",
+  "targetProvider": "r9v2",
+  "timeoutMs": 12000,
+  "stopRule": "Stop raid scout after first timeout, failure, or completed sample above 10 seconds.",
+  "raidScoutStopped": true,
+  "measurements": [
+    {
+      "schemaVersion": "M5P01TargetTransactionWorkerV1",
+      "status": "COMPLETED",
+      "caseId": "duel_overmatch_lethal",
+      "rounds": 4,
+      "actorCount": 2,
+      "totalMs": 120.121,
+      "stageMs": {
+        "draft": 108.474,
+        "report": 6.859,
+        "audit": 4.657,
+        "seal": 0.092,
+        "verify": 0.029
+      },
+      "draftHash": "r74-bba795c6f540ac93",
+      "reportHash": "r74-37b4a83fa8e877e1",
+      "reportProjectionStatus": "PASSED",
+      "targetProvider": "r9v2",
+      "formalProviderUsed": "r8_not_used"
+    },
+    {
+      "schemaVersion": "M5P01TargetTransactionWorkerV1",
+      "status": "TIMEOUT",
+      "caseId": "team_control_overlap",
+      "timeoutMs": 12000,
+      "targetProvider": "r9v2"
+    },
+    {
+      "schemaVersion": "M5P01TargetTransactionWorkerV1",
+      "status": "TIMEOUT",
+      "caseId": "raid_balanced",
+      "timeoutMs": 12000,
+      "targetProvider": "r9v2"
+    }
+  ],
+  "completedCount": 1,
+  "overTargetCaseIds": [],
+  "timeoutCaseIds": [
+    "team_control_overlap",
+    "raid_balanced"
+  ],
+  "failedCaseIds": [],
+  "sourceHashes": {
+    "decision": "d1ca237509b18b2173e3f43941f938b4c50a276b9f9097f4d029b147d73a38b2",
+    "kernel": "4cdfc3a8407ab99dbeabd55306aa3244a43a092c6d8488570e257aa0b19186cc",
+    "runtime": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "report": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "harness": "2e092db433f75e24947d2e39ed900872d0bac56ae1dcabb4d127aaad50f90a08"
+  },
+  "toolHash": "674a70d92eb46932d52337929382b123aad5b20dc1f2382fd6c182c03024a6a7"
+}

@@ -1,0 +1,641 @@
+{
+  "schemaVersion": "ChangeImpactManifestV1",
+  "planId": "BattleUI-R8.3-RC6",
+  "planRevision": 24,
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "ownershipManifestHash": "c9fadd4e73efb6e99a1f7f0be133892d293e2a427c208100eb15e897938e71a2",
+  "rules": {
+    "m1HashMatch": "M1 evidence may be inherited only when tool/fixture hash matches the M1 completion event.",
+    "m2Production": "M2 evidence is limited to the target kernel, Decision adapter, Runtime audit validation and M2 tools.",
+    "downstream": "M3-M5 objects are quarantined until their own milestone event accepts them.",
+    "outOfScopeProduction": "Any current production file outside the M2 write set blocks M2 acceptance until classified."
+  },
+  "impacts": [
+    {
+      "path": "BattleDecisionR9v2Kernel_Module.js",
+      "classification": "M2_ALLOWED_PRODUCTION",
+      "impact": "RERUN_AFFECTED_M2",
+      "rerunScope": [
+        "K12_FULL_FIELD_LEVEL_AB",
+        "AFFECTED_M2_CHECKS"
+      ]
+    },
+    {
+      "path": "BattleDecision_Module.js",
+      "classification": "M2_ALLOWED_PRODUCTION",
+      "impact": "RERUN_AFFECTED_M2",
+      "rerunScope": [
+        "K12_FULL_FIELD_LEVEL_AB",
+        "AFFECTED_M2_CHECKS"
+      ]
+    },
+    {
+      "path": "BattlePreview_Module.js",
+      "classification": "OUT_OF_SCOPE_PRODUCTION",
+      "impact": "BLOCK_M2_ACCEPTANCE_UNTIL_CLASSIFIED",
+      "rerunScope": [
+        "OWNERSHIP_RECONCILIATION_REQUIRED"
+      ]
+    },
+    {
+      "path": "BattleReport_Module.js",
+      "classification": "OUT_OF_SCOPE_PRODUCTION",
+      "impact": "BLOCK_M2_ACCEPTANCE_UNTIL_CLASSIFIED",
+      "rerunScope": [
+        "OWNERSHIP_RECONCILIATION_REQUIRED"
+      ]
+    },
+    {
+      "path": "BattleRuntime_Module.js",
+      "classification": "M2_ALLOWED_PRODUCTION",
+      "impact": "RERUN_AFFECTED_M2",
+      "rerunScope": [
+        "K12_FULL_FIELD_LEVEL_AB",
+        "AFFECTED_M2_CHECKS"
+      ]
+    },
+    {
+      "path": "BattleUI_Module.js",
+      "classification": "OUT_OF_SCOPE_PRODUCTION",
+      "impact": "BLOCK_M2_ACCEPTANCE_UNTIL_CLASSIFIED",
+      "rerunScope": [
+        "OWNERSHIP_RECONCILIATION_REQUIRED"
+      ]
+    },
+    {
+      "path": "mvu_logic_bridge.js",
+      "classification": "OUT_OF_SCOPE_PRODUCTION",
+      "impact": "BLOCK_M2_ACCEPTANCE_UNTIL_CLASSIFIED",
+      "rerunScope": [
+        "OWNERSHIP_RECONCILIATION_REQUIRED"
+      ]
+    },
+    {
+      "path": "tools/rc6/audit-current-tree-ownership.mjs",
+      "classification": "RC6_CONTROL_TOOL",
+      "impact": "STATIC_CONTROL_REVIEW",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/cases/BattleMechanismPrototypeScopeV1.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    },
+    {
+      "path": "tools/rc6/cases/BehaviorOracleV2IndexV1.json",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    },
+    {
+      "path": "tools/rc6/cases/KernelReferenceCasesV1.json",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    },
+    {
+      "path": "tools/rc6/cases/KernelReferenceCasesV2.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/cases/S4RouteValueReuseCasesV1.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/cases/S4TargetSemanticProbesV1.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/contracts/BattleReportDtoV2.contract.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/contracts/BehaviorOracleFixtureV1.schema.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/contracts/BehaviorOracleV2IndexV1.schema.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/contracts/BehaviorPlanningContractV1.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/contracts/M1FixtureManifestV1.json",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    },
+    {
+      "path": "tools/rc6/contracts/ReportTermDictionaryV1.json",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m1/m1-contract-gate.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k00-kernel-ownership.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k01-kernel-skeleton.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k04-target-fact-delta.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k11-decision-audit-v2.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k12-target-adapter.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k13-payment-dependency-ab.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k13-route-cache-ab.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k13-route-value-reuse-ab.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k13-s4-route-dependency-index-ab.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k13-target-cache-regression.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k13-target-performance.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k14-s4-route-value-reuse-ab.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/kernel-incremental-fixture.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/m2-target-kernel-route-reuse-diagnostic.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/performance-blocker-report-v1.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/production-reference-ab.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/reference-kernel-ab-v2.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/reference-kernel-ab.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/s4-target-semantics.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/small-target-transactions.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m2/target-path-audit.json",
+      "classification": "M2_OR_FUTURE_EVIDENCE",
+      "impact": "REVIEW_BEFORE_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m3/m3-b04-checkpoint.json",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m3/m3-b04-r9v2-path-coverage.json",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m4/m4-r02-report-ui-pilot.json",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m4/m4-r05-joint-understanding-pilot.json",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m4/m4-r06-report-gate.json",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m5/m5-p01-target-transaction-profile.json",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/evidence/m5/m5-p02-reuse-diagnostic.json",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k00-kernel-ownership-gate.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k01.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k04-target-fact-delta.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k12-target-adapter.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k13-route-cache-ab.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k13-target-cache-regression.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k13-target-performance.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k14-s4-route-value-reuse-ab.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k14-s4-semantics.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-kernel-incremental-fixture.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-production-reference-ab.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-reference-v2.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-small-target-transactions.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-target-path-audit.mjs",
+      "classification": "M2_TOOL_OR_FIXTURE",
+      "impact": "RERUN_OR_REVIEW_M2",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m3-b04-checkpoint.mjs",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m3-b04-r9v2-path-coverage.mjs",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m4-r02-report-ui-pilot.mjs",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m4-r05-joint-understanding-pilot.mjs",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m4-r06-report-gate.mjs",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m5-p01-target-transaction-profile.mjs",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/harness/run-m5-p02-reuse-diagnostic.mjs",
+      "classification": "UNACCEPTED_DOWNSTREAM_EVIDENCE",
+      "impact": "QUARANTINE_NO_ACCEPTANCE",
+      "rerunScope": [
+        "NO_CURRENT_ACCEPTANCE"
+      ]
+    },
+    {
+      "path": "tools/rc6/record-evidence-event.mjs",
+      "classification": "RC6_CONTROL_TOOL",
+      "impact": "STATIC_CONTROL_REVIEW",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/reduce-status.mjs",
+      "classification": "RC6_CONTROL_TOOL",
+      "impact": "STATIC_CONTROL_REVIEW",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/reference/build-m1-contracts.mjs",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    },
+    {
+      "path": "tools/rc6/reference/build-oracle-fixtures.mjs",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    },
+    {
+      "path": "tools/rc6/reference/oracle-fixture-hash.mjs",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    },
+    {
+      "path": "tools/rc6/reference/reference-value-evaluator-v2.mjs",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    },
+    {
+      "path": "tools/rc6/reference/reference-value-evaluator.mjs",
+      "classification": "M2_OR_FUTURE_FIXTURE",
+      "impact": "REVIEW_BEFORE_M2_ACCEPTANCE",
+      "rerunScope": [
+        "REVIEW_AS_NEEDED"
+      ]
+    },
+    {
+      "path": "tools/rc6/reference/run-m1-contract-gate.mjs",
+      "classification": "M1_ACCEPTED_CURRENT_HASH",
+      "impact": "NO_M1_INVALIDATION",
+      "rerunScope": []
+    }
+  ],
+  "exit": {
+    "ownershipReconciliationClosed": true,
+    "m2ProductionWriteSetClosed": false,
+    "status": "BLOCKED_PENDING_CURRENT_TREE_CLASSIFICATION"
+  },
+  "manifestHash": "8b1ef2f1a2c6fbd22689f0c0763cd5d848b7fc7696741273d2d55e3fceed4968"
+}

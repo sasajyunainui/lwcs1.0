@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 90,
+  "previousEventHash": "2316bb04570e117c1ef373414069ade941bdfcb3cdc14257c0f17b7aa0e16a6d",
+  "milestoneId": "M2",
+  "taskId": "M2-OWNERSHIP-AND-DIRECTION-AUDIT",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "db3c2260fa5c18ef708a3ddfad70e7e6be3df1763b21162b7698029632a50bdb",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "BattleDecisionR9v2Kernel_Module.js": "b955c8b6476daf32612710123cfb4413457786397581cd055a6f8f2634a3b9ce",
+    "tools/rc6/harness/run-m2-k00-kernel-ownership-gate.mjs": "dee6f6a5746a39bc6af3452eac6efbd7b7f8f844a71948c6593bd050cc915ec1"
+  },
+  "fixtureHashes": {
+    "tools/rc6/evidence/m2/k00-kernel-ownership.json": "39607d94deb7e4a8fb5ce93de5822f2a34a04bdba54563f9f509b73dbeb663a6"
+  },
+  "acceptedObjectHashes": [
+    "39607d94deb7e4a8fb5ce93de5822f2a34a04bdba54563f9f509b73dbeb663a6"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "direction": "ALIGNED_BUT_EXECUTION_BOUNDARIES_OPEN",
+    "k00": {
+      "status": "PASSED_CURRENT_CONTRACT_RUN",
+      "productionOwnershipAccepted": false,
+      "kernelHash": "b955c8b6476daf32612710123cfb4413457786397581cd055a6f8f2634a3b9ce",
+      "harnessHash": "dee6f6a5746a39bc6af3452eac6efbd7b7f8f844a71948c6593bd050cc915ec1",
+      "evidenceHash": "39607d94deb7e4a8fb5ce93de5822f2a34a04bdba54563f9f509b73dbeb663a6"
+    },
+    "currentBlocker": "TARGET_COMPONENT_OWNERSHIP_AND_K12_FULL_FIELD_LEVEL_AB_PENDING",
+    "nextExitCondition": "Resolve the concrete S1-S6 ownership boundary, then complete full K12 field-level A/B including Draft/Ledger/Snapshot/Seal.",
+    "downstream": {
+      "m3": "UNACCEPTED",
+      "m4": "UNACCEPTED",
+      "m5": "DIAGNOSTIC_ONLY"
+    }
+  },
+  "reason": "Current-contract K00 rerun passed; correct the stale reconciliation while retaining the M2 ownership and full K12 blockers.",
+  "recordedAt": "2026-08-06T05:20:40.307Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "5d49fda8a590ad835f6fca83b59bb909cc868a95e97b9b5ce4161584e66fd418"
+}

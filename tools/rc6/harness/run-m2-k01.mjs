@@ -14,7 +14,7 @@ const assert = (condition, code) => {
 delete globalThis.__LWCS_BATTLE_R9V2_KERNEL__;
 await import(pathToFileURL(modulePath).href);
 const kernel = globalThis.__LWCS_BATTLE_R9V2_KERNEL__;
-assert(kernel?.version === '9v2-kernel-1.0.0', 'K01_VERSION_MISMATCH');
+assert(kernel?.version === '9v2-kernel-1.3.0', 'K01_VERSION_MISMATCH');
 assert(typeof kernel.createSession === 'function', 'K01_CREATE_SESSION_MISSING');
 assert(typeof kernel.evaluateAllCandidates === 'function', 'K01_EVALUATE_ALL_MISSING');
 assert(typeof kernel.applyFactDelta === 'function', 'K01_APPLY_DELTA_MISSING');

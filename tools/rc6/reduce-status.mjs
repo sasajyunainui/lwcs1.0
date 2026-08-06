@@ -22,15 +22,102 @@ events.forEach((event, index) => {
 });
 const latest = events.at(-1) || null;
 const milestoneIds = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'];
-const completedMilestones = new Set(events
-  .filter(event => event.eventType === 'MILESTONE_COMPLETED' && event.status === 'COMPLETED')
-  .map(event => event.milestoneId));
+const milestoneIndex = new Map(milestoneIds.map((id, index) => [id, index]));
+const milestoneStatuses = Object.fromEntries(milestoneIds.map(id => [id, 'PENDING']));
+const completedMilestones = new Set();
+const invalidatedObjectHashes = new Set();
+const acceptedObjectHashes = new Set();
+const malformedEvidenceReferences = new Set();
+const evidenceOwners = new Map();
+const invalidatedMilestones = new Set();
+const hashPattern = /^[a-f0-9]{64}$/iu;
+const requirePriorMilestones = milestoneId => {
+  const index = milestoneIndex.get(milestoneId);
+  if (index === undefined) throw new Error(`RC6_UNKNOWN_MILESTONE:${milestoneId}`);
+  return milestoneIds.slice(0, index);
+};
+const clearMilestoneAndDownstream = (milestoneId, includeSelf = true) => {
+  const index = milestoneIndex.get(milestoneId);
+  if (index === undefined) throw new Error(`RC6_UNKNOWN_MILESTONE:${milestoneId}`);
+  const first = includeSelf ? index : index + 1;
+  milestoneIds.slice(first).forEach(id => {
+    completedMilestones.delete(id);
+    if (milestoneStatuses[id] === 'COMPLETED') milestoneStatuses[id] = 'PENDING';
+  });
+};
+events.forEach(event => {
+  const accepted = Array.isArray(event.acceptedObjectHashes) ? event.acceptedObjectHashes : [];
+  const invalidated = Array.isArray(event.invalidatedObjectHashes) ? event.invalidatedObjectHashes : [];
+  accepted.forEach(hash => {
+    if (!hashPattern.test(String(hash))) {
+      malformedEvidenceReferences.add(String(hash));
+      return;
+    }
+    const normalizedHash = String(hash).toLowerCase();
+    evidenceOwners.set(normalizedHash, event.milestoneId);
+    acceptedObjectHashes.add(normalizedHash);
+    // A later accepted event is a new attestation of the same content hash.
+    invalidatedObjectHashes.delete(normalizedHash);
+  });
+  invalidated.forEach(hash => {
+    if (!hashPattern.test(String(hash))) {
+      malformedEvidenceReferences.add(String(hash));
+      return;
+    }
+    const normalizedHash = String(hash).toLowerCase();
+    invalidatedObjectHashes.add(normalizedHash);
+    acceptedObjectHashes.delete(normalizedHash);
+  });
+
+  if (event.eventType === 'MILESTONE_REOPENED' || event.eventType === 'MILESTONE_BLOCKED') {
+    clearMilestoneAndDownstream(event.milestoneId, true);
+    invalidatedMilestones.add(event.milestoneId);
+    milestoneStatuses[event.milestoneId] = event.eventType === 'MILESTONE_BLOCKED' || event.status === 'BLOCKED'
+      ? 'BLOCKED'
+      : 'IN_PROGRESS';
+  }
+
+  if (event.eventType === 'EVIDENCE_INVALIDATED' || event.eventType === 'EVIDENCE_SUPERSEDED') {
+    invalidated.forEach(hash => {
+      const owner = evidenceOwners.get(hash);
+      if (owner) {
+        invalidatedMilestones.add(owner);
+        clearMilestoneAndDownstream(owner, true);
+      }
+    });
+  }
+
+  if (event.eventType === 'MILESTONE_COMPLETED' && event.status === 'COMPLETED') {
+    const milestoneEvidenceInvalid = accepted.some(hash => invalidatedObjectHashes.has(hash));
+    if (milestoneEvidenceInvalid) {
+      invalidatedMilestones.add(event.milestoneId);
+      clearMilestoneAndDownstream(event.milestoneId, true);
+    } else {
+      const missingDependency = requirePriorMilestones(event.milestoneId)
+        .find(id => !completedMilestones.has(id));
+      if (missingDependency) {
+        throw new Error(`RC6_MILESTONE_DEPENDENCY_INVALID:${event.milestoneId}:${missingDependency}`);
+      }
+      completedMilestones.add(event.milestoneId);
+      milestoneStatuses[event.milestoneId] = 'COMPLETED';
+      invalidatedMilestones.delete(event.milestoneId);
+    }
+  }
+
+  if (event.eventType === 'MILESTONE_STARTED') {
+    clearMilestoneAndDownstream(event.milestoneId, false);
+    milestoneStatuses[event.milestoneId] = 'IN_PROGRESS';
+  }
+});
+
 const latestMilestoneStatus = latest
   ? latest.eventType === 'MILESTONE_COMPLETED' && latest.status === 'COMPLETED'
-    ? 'COMPLETED'
-    : latest.status === 'BLOCKED'
+    ? milestoneStatuses[latest.milestoneId] || 'COMPLETED'
+    : latest.eventType === 'MILESTONE_BLOCKED' || latest.status === 'BLOCKED'
       ? 'BLOCKED'
-      : 'IN_PROGRESS'
+      : milestoneStatuses[latest.milestoneId] === 'COMPLETED'
+        ? 'COMPLETED'
+        : 'IN_PROGRESS'
   : 'PENDING';
 const status = {
   schemaVersion: 'RC6TaskStatusV1',
@@ -38,6 +125,7 @@ const status = {
   generatedAt: new Date().toISOString(),
   eventCount: events.length,
   latestEventHash: latest?.eventHash || null,
+  milestoneId: latest?.milestoneId || 'M0',
   currentMilestone: latest?.milestoneId || 'M0',
   currentTask: latest?.taskId || 'M0-E01',
   milestoneStatus: latestMilestoneStatus,
@@ -50,14 +138,22 @@ const status = {
   activeProcesses: Array.isArray(latest?.details?.activeProcesses)
     ? latest.details.activeProcesses
     : [],
+  sourceHashes: latest?.sourceHashes || {},
+  currentBlocker: latest?.details?.currentBlocker ||
+    (latest?.status === 'BLOCKED' ? latest.reason || null : null),
   milestones: milestoneIds.map(id => ({
     id,
-    status: completedMilestones.has(id)
+    status: milestoneStatuses[id] === 'COMPLETED'
       ? 'COMPLETED'
       : id === (latest?.milestoneId || 'M0')
         ? latestMilestoneStatus
         : 'PENDING',
   })),
+  acceptedEvidence: [...acceptedObjectHashes],
+  invalidatedEvidence: [...invalidatedObjectHashes],
+  invalidatedObjectHashes: [...invalidatedObjectHashes],
+  malformedEvidenceReferences: [...malformedEvidenceReferences],
+  invalidatedMilestones: [...invalidatedMilestones],
   nextExitCondition: latest?.details?.nextExitCondition || 'M0-E01 baseline event recorded',
   lastMeaningfulChange: latest?.reason || null,
 };

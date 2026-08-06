@@ -4,6 +4,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  process.stdout.write([
+    'Usage: node tools/rc6/record-evidence-event.mjs [options]',
+    'Options: --milestone --task --event-type --status --tool --fixture',
+    '         --accepted --invalidated --details --reason',
+  ].join('\n') + '\n');
+  process.exit(0);
+}
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const eventDir = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'events');
 const coreFiles = [
@@ -17,6 +26,7 @@ const coreFiles = [
 ];
 
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
+const HASH_PATTERN = /^[a-f0-9]{64}$/iu;
 const git = args => execFileSync('git', args, {
   cwd: repoRoot,
   encoding: 'utf8',
@@ -31,6 +41,12 @@ const listArgument = name => process.argv.flatMap((value, index) => {
   if (value.startsWith(`--${name}=`)) return [value.slice(name.length + 3).trim()];
   return [];
 }).filter(Boolean);
+const hashListArgument = name => {
+  const values = listArgument(name);
+  const invalid = values.find(value => !HASH_PATTERN.test(value));
+  if (invalid) throw new Error(`RC6_EVENT_OBJECT_HASH_INVALID:${name}:${invalid}`);
+  return values.map(value => value.toLowerCase());
+};
 const readJsonArgument = name => {
   const value = argument(name);
   if (!value) return {};
@@ -81,8 +97,8 @@ const eventCore = {
   sourceHashes: hashFiles(coreFiles),
   toolHashes: Object.fromEntries(listArgument('tool').map(fileName => [fileName, sha256(fs.readFileSync(path.join(repoRoot, fileName)))])),
   fixtureHashes: Object.fromEntries(listArgument('fixture').map(fileName => [fileName, sha256(fs.readFileSync(path.join(repoRoot, fileName)))])),
-  acceptedObjectHashes: listArgument('accepted'),
-  invalidatedObjectHashes: listArgument('invalidated'),
+  acceptedObjectHashes: hashListArgument('accepted'),
+  invalidatedObjectHashes: hashListArgument('invalidated'),
   details: readJsonArgument('details'),
   reason: argument('reason'),
   recordedAt: new Date().toISOString(),

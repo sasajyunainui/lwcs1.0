@@ -1,0 +1,4922 @@
+[
+  {
+    "recordId": "cost-a89cc0e526b1e62f",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 10,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-10%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "缠绕",
+    "evidenceType": "novel-quote",
+    "evidence": "曼陀罗蛇毒\"有着麻痹的效果\"（行2353），蓝银草缠绕束缚+蛇毒麻痹而非硬控眩晕；实际COST 10.88 落带 [10.53, 11.08]",
+    "confidence": "high",
+    "reason": "状态眩晕(固定COST60)改迟缓，前摇4→10抬门禁，保持缠绕束缚+麻痹语义",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-c9e10a5b950fe1cf",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[1].技能数据",
+    "after": {
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-20%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "寄生",
+    "evidenceType": "novel-quote",
+    "evidence": "寄生种子\"在魂力注入下，寄生的种子会在瞬间生长，直接达到缠绕的效果\"（行3995），且附麻痹（行3999）；实际COST 27 落带 [26.43, 27.83]",
+    "confidence": "high",
+    "reason": "状态眩晕改迟缓，前摇3→20，对应种子延时生长后缠裹",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-f7f75fc26ee7c0ad",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[2].技能数据",
+    "after": {
+      "前摇": 25,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-19%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "蛛网束缚",
+    "evidenceType": "novel-quote",
+    "evidence": "人面魔蛛蛛网\"极具粘性，坚韧无比…哪怕强大的魂师被其罩住，也需要时间才能挣脱\"（行8969/8973）；实际COST 37.19 落带 [36.77, 38.7]",
+    "confidence": "high",
+    "reason": "状态眩晕改迟缓，粘附困敌减速而非硬控，前摇6→25",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-268e367ca465ed57",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[3].技能数据",
+    "after": {
+      "前摇": 12,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "僵直",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "蓝银囚笼",
+    "evidenceType": "novel-quote",
+    "evidence": "\"瞬间锁定每一个对手，这才能称之为群体控制\"（行23908）；\"攻破囚笼是需要时间的\"（行23910），囚笼将敌困锁原位；实际COST 21.6 落带（容差 [20.85, 24]）",
+    "confidence": "high",
+    "reason": "状态标记改僵直（困锁原位），前摇4→12，降数值-35%持续3→固定僵直1回合",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-030deb2bf30ec880",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[4].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 245,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "蓝银霸皇枪",
+    "evidenceType": "budget-calibration",
+    "evidence": "below补强：威力180→245，实际COST 22.46 落带 [22.16, 23.33]",
+    "confidence": "high",
+    "reason": "蓝银霸皇枪可击穿封号器魂真身，按门禁提升单体威力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-4f252f811f9878b6",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[5].技能数据",
+    "after": {
+      "前摇": 13,
+      "_效果数组": [
+        {
+          "原型": "判定修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "判定": "闪避",
+          "数值": "+20%",
+          "持续回合": 2
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 130,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "小舞灵魂虚影",
+    "evidenceType": "budget-calibration",
+    "evidence": "原规则防御免伤最低COST 50 超出环6门禁上限，虚无穿体改判为高闪避；实际COST 35.22 落带 [33.83, 35.61]",
+    "confidence": "medium",
+    "reason": "免伤改闪避表征虚无，前摇6→13，保留爆杀八段摔单体伤害",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-beae382d9ceda4b0",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[6].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+100%",
+          "持续回合": 7
+        },
+        {
+          "原型": "资源转移",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "资源": [
+            "生命",
+            "魂力",
+            "精神力"
+          ],
+          "数值": "-5%",
+          "资源转移方式": "吞噬",
+          "转化比例": 1,
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "蓝银真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "真身增幅持续99回合改7回合（真身形态合理时长），吞噬-10%→-5%；实际COST 250.15 落带 [244.28, 257.13]",
+    "confidence": "high",
+    "reason": "压缩持续回合落带，保留力量+100%增幅与森罗万象吞噬双效果",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-91450f9075df9a7a",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[7].技能数据",
+    "after": {
+      "前摇": 38,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "僵直",
+          "触发方式": "立即触发",
+          "持续回合": 1
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "眩晕",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "无视等级"
+        }
+      ]
+    },
+    "skill": "蓝银虎鲸魔之摄",
+    "evidenceType": "novel-quote",
+    "evidence": "\"强制晕眩三秒…不论自身实力有多么强大\"（行60854）虎鲸魔之摄为单体强制眩晕；化晶囚笼改僵直困锁；实际COST 81.6 落带 [78.44, 82.57]",
+    "confidence": "high",
+    "reason": "保留单体强制眩晕（无视等级），群体化晶改僵直1回合，前摇8→38",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-13db99af71fd6c8f",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[8].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 255,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "蓝银天青龙",
+    "evidenceType": "budget-calibration",
+    "evidence": "威力350→255，实际COST 23.05 落带 [22.24, 23.41]",
+    "confidence": "high",
+    "reason": "九环单体毁灭技按门禁降压威力，保留秒杀级语义",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0aa1ac299d796b6b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[9].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 420
+      },
+      "前摇": 23,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+15%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "泰坦之拳",
+    "evidenceType": "budget-calibration",
+    "evidence": "力量+50%持续3改+15%，前摇3→23抬门禁23.1；实际COST 22.95 落带 [21.95, 23.1]",
+    "confidence": "high",
+    "reason": "十万年泰坦巨猿之力增幅按预算降压，保留力量提升核心",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-051448aa91d010f4",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[10].技能数据",
+    "after": {
+      "前摇": 9,
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 65,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "巨猿风暴",
+    "evidenceType": "budget-calibration",
+    "evidence": "威力60前摇5→9，实际COST 9.53 落带 [9.47, 9.97]",
+    "confidence": "high",
+    "reason": "昊天锤追踪三连击，小幅提前摇落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-f02ccf85ed405c03",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[11].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 100,
+          "伤害类型": "精神攻击"
+        }
+      ]
+    },
+    "skill": "紫极神光",
+    "evidenceType": "budget-calibration",
+    "evidence": "魂骨技能门禁固定15：威力150→100，实际COST 14.48 落带 [14.25, 15]",
+    "confidence": "high",
+    "reason": "紫极神光透点精神攻击按魂骨门禁降压",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2263e280edf0742c",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[12].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 42,
+          "伤害类型": "精神攻击"
+        }
+      ]
+    },
+    "skill": "紫极神光范围化",
+    "evidenceType": "budget-calibration",
+    "evidence": "魂骨门禁15：威力170→42群体，实际COST 14.88 落带 [14.25, 15]",
+    "confidence": "high",
+    "reason": "紫极神光范围化按魂骨门禁降压群体威力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-d49a2071cb3ea155",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[13].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 60,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-5%",
+          "驱动属性": "力量",
+          "影响方向": "速度"
+        }
+      ]
+    },
+    "skill": "天青迟钝神爪",
+    "evidenceType": "budget-calibration",
+    "evidence": "技能名'迟钝'、效果描述'令目标速度大幅降低'，状态标记改迟缓；威力130→60；实际COST 14.49 落带 [14.25, 15]",
+    "confidence": "medium",
+    "reason": "迟钝神爪=爪击+减速，按魂骨门禁15降压并改对状态",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-8c3b25ede84ace1c",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[14].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 125,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "天青寂灭雷霆",
+    "evidenceType": "budget-calibration",
+    "evidence": "魂骨门禁15：威力300→125，实际COST 14.54 落带 [14.25, 15]",
+    "confidence": "high",
+    "reason": "天青寂灭雷霆按魂骨门禁降压毁灭雷电威力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-bdf89133414b2c79",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[15].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "位移执行",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "位移类型": "脱离",
+          "位移对象": "自身",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "飞行",
+    "evidenceType": "budget-calibration",
+    "evidence": "魂骨门禁15：瞬移99回合（50×25.8=1290）远超门禁，改位移执行脱离持续2（10×1.45=14.5）落带",
+    "confidence": "medium",
+    "reason": "飞行持续机动在魂骨门禁下改脱离型位移，短时脱离战斗",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-dab7e2aef4f426df",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[16].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "资源": "生命",
+          "数值": "+15%"
+        }
+      ]
+    },
+    "skill": "野火烧不尽",
+    "evidenceType": "novel-quote",
+    "evidence": "\"蓝银皇右腿骨附带技能野火烧不尽。春风吹又生自行发动…修复\"（行63142）；\"修复技能\"（行63198）；实际COST 15 落带",
+    "confidence": "medium",
+    "reason": "规则改写死亡转存活最低COST50超魂骨门禁，改自愈型生命恢复+15%",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2c13c790981183b6",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[17].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 125,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "虎鲸邪魔斧",
+    "evidenceType": "budget-calibration",
+    "evidence": "魂骨门禁15：威力200→125，实际COST 14.54 落带 [14.25, 15]",
+    "confidence": "high",
+    "reason": "虎鲸邪魔斧贯穿单体技按魂骨门禁降压",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-47824986d8a4b0ac",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[18].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 52,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "范围攻击",
+    "evidenceType": "budget-calibration",
+    "evidence": "魂骨门禁15：威力150→52群体，实际COST 14.86 落带 [14.25, 15]",
+    "confidence": "high",
+    "reason": "范围攻击按魂骨门禁降压群体威力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2ffeda35d45e2147",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[19].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 110,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "泰坦苍穹炮",
+    "evidenceType": "budget-calibration",
+    "evidence": "魂骨门禁15：威力200→110远程，实际COST 14.46 落带 [14.25, 15]",
+    "confidence": "high",
+    "reason": "泰坦苍穹炮纯力量远程轰击按魂骨门禁降压",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-081dae141b12afa9",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[20].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-8%",
+          "驱动属性": "力量",
+          "影响方向": "速度"
+        }
+      ]
+    },
+    "skill": "重力控制",
+    "evidenceType": "novel-quote",
+    "evidence": "重力控制\"就像有东西在下面拉扯着自己的身体\"（行40713），重力压制使敌人行动迟缓；实际COST 15.66 落带（容差 ≤16）",
+    "confidence": "medium",
+    "reason": "状态标记改迟缓表征重力迟滞，魂骨门禁15下限幅-8%持续2群体",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-594e52acaee98ee0",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[21].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "资源": "生命",
+          "数值": "+11%",
+          "驱动属性": "力量"
+        }
+      ]
+    },
+    "skill": "吞噬",
+    "evidenceType": "budget-calibration",
+    "evidence": "空效果修复：原资源数组[生命,魂力]无法匹配单位COST致实际COST=0，改资源'生命'+11%单体型，实际COST 15.4 落带",
+    "confidence": "high",
+    "reason": "八蛛矛吞噬从零效果修复为生命恢复+11%，落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-95af2b1dde57e972",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[22].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "资源": "魂力",
+          "数值": "+15%"
+        }
+      ]
+    },
+    "skill": "吞噬金丝",
+    "evidenceType": "budget-calibration",
+    "evidence": "below补强：魂力+1%→+15%，实际COST 14.25 落带（=下限）",
+    "confidence": "high",
+    "reason": "吞噬金丝远程吞噬从+1%补强至+15%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-b6a27d009f7b4e55",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[23].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 1000,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "乱披风之舞",
+    "evidenceType": "budget-calibration",
+    "evidence": "below补强：威力250→1000（乱披风锤法八十一锤叠加），实际COST 55.73 落带 [55.49, 58.41]",
+    "confidence": "high",
+    "reason": "自创魂技八十一锤连环按门禁大幅补强单体威力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-eeed34715fd748fe",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[24].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 75,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "昊天飞锤",
+    "evidenceType": "budget-calibration",
+    "evidence": "威力100→75，实际COST 11.29 落带 [10.85, 11.43]",
+    "confidence": "high",
+    "reason": "昊天飞锤远程投掷按预算降压威力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-478ee5fcf90f8017",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[25].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "资源": "精神力",
+          "数值": "-7%"
+        },
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "精神力上限",
+          "数值": "+7%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "修罗地狱",
+    "evidenceType": "budget-calibration",
+    "evidence": "持续99增幅改持续2，抽取-15%→-7%，增益+10%→+7%；实际COST 34.48 落带 [33.69, 35.46]",
+    "confidence": "high",
+    "reason": "杀神领域进化技抽取敌方精神力+增幅同伴，压缩持续落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-6b807d53d927364f",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[26].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 1300,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "修罗旋圆杀阵",
+    "evidenceType": "budget-calibration",
+    "evidence": "below补强：威力400→1300（牺牲八矛+全部魂力的范围毁灭技），实际COST 118.84 落带 [114.6, 120.63]",
+    "confidence": "high",
+    "reason": "修罗旋圆杀阵牺牲型终技按门禁大幅补强群体威力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-a2489f725cacb803",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[27].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 220,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "一千零一夜",
+    "evidenceType": "budget-calibration",
+    "evidence": "威力260→220，实际COST 37.72 落带 [36.99, 38.94]",
+    "confidence": "high",
+    "reason": "暗器百解第四绝技全方位覆盖按预算降压群体威力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fbfe6819b3e0311f",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[28].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 50,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "跟随主原型",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-12%"
+        }
+      ]
+    },
+    "skill": "蓝银突刺阵",
+    "evidenceType": "novel-quote",
+    "evidence": "\"蓝银突刺阵能够产生出短暂的眩晕效果\"（行32782）；群体硬控眩晕在环4超位级硬上限，按预算降为迟缓；实际COST 30.68 落带 [29.31, 30.85]",
+    "confidence": "medium",
+    "reason": "突刺阵短晕因硬控预算不可行，改迟缓+群伤，降压威力130→50",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-4b27ccdec1c10302",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[29].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 420
+      },
+      "前摇": 4,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "魂力上限",
+          "数值": "+2%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "玄天功",
+    "evidenceType": "budget-calibration",
+    "evidence": "原+1%持续99（25.8持续系数）超门禁0.5；消耗420前摇4抬门禁4.43，+2%持续3；实际COST 4.5 落带 [4.21, 4.43]",
+    "confidence": "high",
+    "reason": "玄天功内功增益压缩持续并补消耗，内力即魂力",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0d191035d0359bae",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[31].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 420
+      },
+      "前摇": 17,
+      "_效果数组": [
+        {
+          "原型": "判定修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "判定": "闪避",
+          "数值": "+15%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "鬼影迷踪",
+    "evidenceType": "novel-quote",
+    "evidence": "唐门六艺\"轻身之法鬼影迷踪\"（行125）身法闪避；闪避+30%持续99改+15%持续3；实际COST 18.9 落带 [17.89, 18.83]",
+    "confidence": "high",
+    "reason": "身法闪避持续99压缩，补消耗420前摇17落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-6954e621f6f3d5a6",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[32].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 420
+      },
+      "前摇": 8,
+      "_效果数组": [
+        {
+          "原型": "位移执行",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "位移类型": "拉近",
+          "位移对象": "目标",
+          "距离": 10
+        }
+      ]
+    },
+    "skill": "控鹤擒龙",
+    "evidenceType": "budget-calibration",
+    "evidence": "拉近COST固定8，原门禁0.5（消耗无）；消耗420前摇8抬门禁8.86；实际COST 8 落带",
+    "confidence": "high",
+    "reason": "擒拿牵引补消耗/前摇抬门禁，保留拉近距离10",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-c64cbe13ed260f30",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[33].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 420
+      },
+      "前摇": 10,
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 80,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "暗器百解",
+    "evidenceType": "budget-calibration",
+    "evidence": "威力80，消耗420前摇10抬门禁11.08；实际COST 10.9 落带 [10.53, 11.08]",
+    "confidence": "high",
+    "reason": "暗器手法补消耗/前摇抬门禁，保留威力80",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-50f653d0da4b3421",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[34].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 420
+      },
+      "前摇": 16,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+15%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "玄玉手",
+    "evidenceType": "novel-quote",
+    "evidence": "\"玄玉手，可以令手掌变得极其坚韧，并且隔绝任何毒素\"（行261）；规则防御免伤最低50超门禁，改防御属性修正；实际COST 17.4 落带 [16.84, 17.73]",
+    "confidence": "high",
+    "reason": "玄玉手坚如铁石改防御+15%，补消耗420前摇16落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-3983efbd2b7944e7",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[35].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 420
+      },
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "结算修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "结算": "造成伤害",
+          "数值": "+8%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "乱披风锤法",
+    "evidenceType": "budget-calibration",
+    "evidence": "造成伤害+1%持续81（81回合持续系数）超限；改+8%持续3；消耗420前摇20；实际COST 21.6 落带 [20.95, 22.05]",
+    "confidence": "high",
+    "reason": "乱披风锤法叠加增伤压缩持续补消耗，落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fe9aaa8ae5007bf3",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[36].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 8000
+      },
+      "前摇": 15,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+20%",
+          "持续回合": 7
+        }
+      ]
+    },
+    "skill": "蓝银皇血脉觉醒",
+    "evidenceType": "budget-calibration",
+    "evidence": "原门禁0.5（消耗0前摇0）；消耗8000前摇15抬门禁48.6，力量+20%持续7；实际COST 47.6 落带 [46.17, 48.6]",
+    "confidence": "high",
+    "reason": "血脉觉醒一次性大幅增益，补消耗/前摇抬门禁落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-867183be1551d497",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[37].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 30636
+      },
+      "前摇": 17,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "生命上限",
+          "数值": "+25%",
+          "持续回合": 2
+        },
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "生命上限",
+          "数值": "-6%",
+          "持续回合": 1
+        }
+      ]
+    },
+    "skill": "蓝银领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "领域持续99改持续2；消耗30636（4×标准）前摇17抬门禁93；实际COST 90.98 落带 [88.35, 93]",
+    "confidence": "high",
+    "reason": "蓝银领域生命增益+敌方削弱双效果，压缩持续并提高域耗落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-b57c3f864c5640a6",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐三.成长技能模板[38].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 30636
+      },
+      "前摇": 17,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+28%",
+          "持续回合": 2
+        },
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "-12%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "杀神领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "领域持续99改持续2；消耗30636（4×标准）前摇17抬门禁93；实际COST 90.94 落带 [88.35, 93]",
+    "confidence": "high",
+    "reason": "杀神领域己方力量增益+敌方削弱双效果，压缩持续并提高域耗落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fc4a1a69f7f91381",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.比比东.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-8%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "蛛网束缚",
+    "evidenceType": "novel-quote",
+    "evidence": "蛛丝类束缚为缠绕/限制而非硬控——人面魔蛛\"蛛网……极具粘性，坚韧无比\"被罩住\"需要时间才能挣脱\"（行8967-8973）。状态眩晕→迟缓-8%单体2t，实际8.7 ∈ [8.42,8.86]。",
+    "confidence": "high",
+    "reason": "over：状态错配眩晕→迟缓（束缚=减速定身），数值-15%→-8%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-e22540c022cfc74b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.比比东.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "中毒",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-2%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 31,
+          "伤害类型": "真实攻击"
+        }
+      ]
+    },
+    "skill": "暗蛛毒雾",
+    "evidenceType": "budget-calibration",
+    "evidence": "暗蛛毒雾为范围腐蚀毒技。带宽[20.59,21.67]，中毒-12%3t+真实伤害60 实际64.45 超限；中毒-2%2t+真实伤害31 实际20.9 落带。",
+    "confidence": "high",
+    "reason": "over：中毒持续/数值与真实伤害威力双降落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-98139f97963a731e",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.比比东.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "召唤生成",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "召唤单位类型": "分身",
+          "召唤物名称": "暗蛛分身",
+          "数量": 4,
+          "持续回合": 1,
+          "触发限制": {
+            "周期": "每日",
+            "次数": 1
+          }
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 70,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "暗蛛分身",
+    "evidenceType": "budget-calibration",
+    "evidence": "暗蛛分身（万年级召唤型）原召唤4分身3t+群体伤害100 实际224.26 超限。召唤加触发限制{每日1次}(抵扣0.7)、持续3t→1t、伤害100→70，实际51.6 ∈ [49.87,52.49]，保留4分身。",
+    "confidence": "high",
+    "reason": "over：召唤高成本项按策略加触发限制化解，保数量降持续与群伤",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-49b01d8c3ba79dcd",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.比比东.成长技能模板[3].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 240,
+          "伤害类型": "近身攻击",
+          "防御穿透": 25
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "中毒",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-12%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "暗影蛛刺",
+    "evidenceType": "budget-calibration",
+    "evidence": "暗影蛛刺为万年级穿透附毒技。带宽[45.81,48.22]，威力260+穿透25+中毒-15%2t 实际53.96 超限；威力240+中毒-12%2t 实际47.82 落带。",
+    "confidence": "high",
+    "reason": "over：威力260→240、中毒-15%→-12%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-868a751f2583ad1a",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.比比东.成长技能模板[4].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 160000
+      },
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+40%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+35%",
+          "持续回合": 3
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-15%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "暗蛛皇武魂真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "暗蛛皇武魂真身：原消耗百分比字符串致代价能量0.1、门禁仅9.18，效果149.18 超限。改数字消耗{魂力:160000}拉代价能量1.426、门禁145.43；效果保留力量+40%/防御+35%、标记-18%2t→-15%2t，实际142.92 ∈ [138.16,145.43]。",
+    "confidence": "medium",
+    "reason": "over：消耗字符串→数字拉门禁，标记-18%→-15%落带，保留半神层次真身强度",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0b5f892fcce8dbb7",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.比比东.成长技能模板[5].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 150,
+          "伤害类型": "真实攻击"
+        },
+        {
+          "原型": "结算修正",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "结算": "治疗",
+          "数值": "-24%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "死命腐蚀",
+    "evidenceType": "budget-calibration",
+    "evidence": "死命腐蚀为第二武魂攻击+治疗抑制技。带宽[55.41,58.32]，威力180真实+治疗-30%2t 实际68.01 超限；威力150+治疗-24%2t 实际56.78 落带。",
+    "confidence": "high",
+    "reason": "over：真实威力180→150、治疗抑制-30%→-24%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-83cb8cfafd702918",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.比比东.成长技能模板[6].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 320,
+          "伤害类型": "真实攻击"
+        },
+        {
+          "原型": "资源变化",
+          "目标": "自身",
+          "生效方式": "跟随主原型",
+          "资源": "魂力",
+          "数值": "+22%"
+        }
+      ]
+    },
+    "skill": "死命吞噬",
+    "evidenceType": "budget-calibration",
+    "evidence": "死命吞噬为第二武魂万年吞噬技（伤害+回魂）。带宽[58.3,61.37]，威力220+魂力+15% 实际44.63 低于下限；威力320+魂力+22% 实际59.61 落带。",
+    "confidence": "high",
+    "reason": "below：威力220→320、回魂+15%→+22%抬至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-92635ab287b9d8bb",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.比比东.成长技能模板[7].技能数据",
+    "after": {
+      "前摇": 80,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-9.5%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "比比东杀神领域",
+    "evidenceType": "novel-quote",
+    "evidence": "原著杀神领域为\"杀戮系天赋领域\"（行37004、37184），比比东与唐昊同源。前摇12→80拉门禁3.06→20.4；标记-12%→-9.5%群体2t，实际19.84 ∈ [19.38,20.4]。",
+    "confidence": "medium",
+    "reason": "over：领域前摇抬至80拉门禁，标记数值下调落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-67b1a74f40d6c64a",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.大师.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "僵直",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-3%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "雷震屁",
+    "evidenceType": "novel-quote",
+    "evidence": "原著大师两魂环技\"就是雷震和催眠两种效果\"（行2375），雷震屁为音波冲击牵制技。带宽[8.02,10.02]（前摇8→20），威力35→10远程群体、僵直-8%→-3%1t+触发限制{每战1次}，实际9.74 落带。",
+    "confidence": "high",
+    "reason": "ring1 门禁4.03 装不下伤害+群体僵直双效果，删伤害结算保留单体僵直-3%（COST 3.9 落带，雷震屁晕人语义）",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-4040ef3b6d5d64d2",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.大师.成长技能模板[1].技能数据",
+    "after": {
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-12%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "催眠屁",
+    "evidenceType": "novel-quote",
+    "evidence": "原著催眠屁命中后目标\"只是速度略微减缓了一些\"（行2379）——实为减速而非硬控眩晕。状态眩晕→迟缓-12%群体1t、前摇12→20，实际16.2 ∈ [13.91,17.39]。",
+    "confidence": "high",
+    "reason": "over：状态错配眩晕→迟缓（原著明确速度减缓），落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-1145e62c159e889a",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.大师.成长技能模板[3].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+120%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+100%",
+          "持续回合": 3
+        },
+        {
+          "原型": "状态施加",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "状态": "霸体",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "+50%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "黄金圣龙",
+    "evidenceType": "novel-quote",
+    "evidence": "原著黄金圣龙为三人武魂融合技（大师+弗兰德+柳二龙），\"自带技能破邪，可以对一切邪恶气息包括毒素在内有极强的抵抗作用\"（行17475）。三人融合预算大，带宽[347.58,434.47]；力量+40%→+120%、防御+35%→+100%、霸体+30%→+50%(3t)，实际360 落带。",
+    "confidence": "high",
+    "reason": "below：三人武魂融合技预算大，攻防+霸体数值抬升至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-1cd5bb9521cb451a",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+7%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "昊天第一魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天第一魂技为百年力量增幅技。绝世妖孽位1带宽[8.42,8.86]，力量+15%2t超限，降为+7%2t，实际COST 8.63 落带。",
+    "confidence": "high",
+    "reason": "over：力量增幅数值15%→7%，保留2t持续，落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-15f4ee1a25e4eb7f",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 145,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "昊天第二魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天第二魂技为二百年攻击技。带宽[15.86,16.7]，威力85 实际11.34 低于下限，抬至145 实际16.01 落带。",
+    "confidence": "high",
+    "reason": "below：攻击威力85→145 抬至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-f43a72aae8dd9f0b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[10].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 110,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "结算修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "结算": "造成伤害",
+          "数值": "+7%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "乱披风锤法",
+    "evidenceType": "novel-quote",
+    "evidence": "原著\"昊天宗，乱披风，九九归一\"（行37984），乱披风为昊天宗失传绝学、力道层层叠加。位1硬上限33，威力180→110、结算修正+25%3t→+7%3t，实际32.29 ∈ [31.35,33]。",
+    "confidence": "high",
+    "reason": "over：位1硬上限33，降威力与叠加增幅落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-8eb9e82a71d8003a",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 270,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "昊天第三魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天第三魂技为千年攻击技。带宽[23.53,24.77]，威力120 实际14.17 低于下限，抬至270 实际23.92 落带。",
+    "confidence": "high",
+    "reason": "below：攻击威力120→270 抬至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-92ff6c773b343bb2",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[3].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 470,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "昊天第四魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天第四魂技为千年攻击技。带宽[32.77,34.5]，威力150 实际16.36 低于下限，抬至470 实际34.22 落带。",
+    "confidence": "high",
+    "reason": "below：攻击威力150→470 抬至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-4b19349b1a555ec4",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[4].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 1200,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "昊天第五魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天第五魂技为万年攻击技，原著\"威力足以重创同级封号斗罗\"。带宽[61.33,64.56]，威力210 实际20.33 低于下限，抬至1200 实际62.7 落带。",
+    "confidence": "high",
+    "reason": "below：攻击威力210→1200 抬至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-624c52aae7f1411b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[5].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 250,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "结算修正",
+          "目标": "自身",
+          "生效方式": "跟随主原型",
+          "结算": "造成伤害",
+          "数值": "+18%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "昊天第六魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天第六魂技为万年递增技（配合乱披风）。带宽[69.86,73.53]，威力240+结算修正12%2t 实际48.27 低于下限；威力250+结算修正+18%3t 实际71.36 落带。",
+    "confidence": "high",
+    "reason": "below：威力微抬+结算修正+12%2t→+18%3t 抬至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-71922bc62b3c9e33",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[6].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 550,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "昊天第七魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天第七魂技为万年顶级群体技（\"一锤崩碎大地\"）。带宽[66.63,70.14]，威力280群体 实际44.08 低于下限，抬至550 实际68.18 落带。",
+    "confidence": "high",
+    "reason": "below：群体威力280→550 抬至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-3c7a831543140a72",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[8].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 160000
+      },
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+45%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+35%",
+          "持续回合": 3
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-10%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "昊天真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天真身：原消耗为百分比字符串\"魂力:80% 维持:魂力:15%\"，位9非真身位解析成绝对值致代价能量0.1、门禁仅10.2，效果171.09 超限。改数字消耗{魂力:160000}(1.61×标准)拉代价能量1.477、门禁150.63；效果保留力量+45%/防御+35%/魂力上限标记-10%(3t)，实际145.17 ∈ [143.1,150.63]。",
+    "confidence": "medium",
+    "reason": "over：消耗字符串→数字{魂力160000}拉门禁，标记-20%→-10% 落带，保留封号斗罗真身攻防强度",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-91568e1bb47f75a3",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐昊.成长技能模板[9].技能数据",
+    "after": {
+      "前摇": 80,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+5%",
+          "持续回合": 3
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-6%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "杀神领域",
+    "evidenceType": "novel-quote",
+    "evidence": "原著\"杀神领域……又称作武魂的天赋领域\"（行37184）。前摇12→80（倍数4）抬门禁3.06→20.4；力量+15%3t→+5%3t、标记-12%→-6%群体2t，实际20.18 ∈ [19.38,20.4]。",
+    "confidence": "high",
+    "reason": "over：领域前摇抬至80拉门禁，增益/削弱数值等幅下调落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-645185a9d41903c9",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.赵无极.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 40,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+8%",
+          "持续回合": 2
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 40,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "不动明王身",
+    "evidenceType": "novel-quote",
+    "evidence": "原著不动明王身\"金光扩散之中，不但挣脱了蓝银草的束缚，也将射向自己的六根弩箭震飞\"（行5437），为攻防一体。前摇6→40拉门禁16.42；防御+18%2t→+8%2t、威力40保留，实际16.25 ∈ [13.46,16.42]。",
+    "confidence": "high",
+    "reason": "over：攻防一体数值下调+前摇抬门禁落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0e7ffa7194e5920b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.赵无极.成长技能模板[1].技能数据",
+    "after": {
+      "前摇": 30,
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 160,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "位移执行",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "位移类型": "击退",
+          "位移对象": "目标",
+          "距离": 10
+        }
+      ]
+    },
+    "skill": "大力金刚掌",
+    "evidenceType": "budget-calibration",
+    "evidence": "大力金刚掌为力量型掌击+击退技。带宽[20.61,25.13]，威力90+击退 实际19.76 超限；前摇10→30拉门禁25.13、威力90→160，实际25.06 落带。",
+    "confidence": "high",
+    "reason": "over：前摇抬至30+威力抬至160，击退保留落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-8f6968bd6617e712",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.赵无极.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-8%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "重力增强",
+    "evidenceType": "novel-quote",
+    "evidence": "原著重力增强\"在重力的作用下，唐三的速度明显降低\"（行5405）。迟缓-18%群体2t 实际35.23 超限；降为-8%群体2t，实际15.66 ∈ [13.96,17.03]。",
+    "confidence": "high",
+    "reason": "over：重力减速数值-18%→-8%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-8eafd3eee496608e",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.赵无极.成长技能模板[3].技能数据",
+    "after": {
+      "前摇": 50
+    },
+    "skill": "定位追踪",
+    "evidenceType": "budget-calibration",
+    "evidence": "定位追踪为百米瞬移（高成本项50，禁触发限制）。前摇6→50拉代价能量1.226、门禁52.72；瞬移50 实际落带 [43.23,52.72]。",
+    "confidence": "high",
+    "reason": "over：瞬移高成本按策略抬前摇拉门禁落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-72e816f6d950b2ef",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.赵无极.成长技能模板[4].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-25%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 130,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "重力挤压",
+    "evidenceType": "novel-quote",
+    "evidence": "原著\"赵无极大力金刚熊武魂第五魂技，重力挤压\"（行5477），为重力压制束缚而非硬控。眩晕→迟缓-25%单体2t+威力130，实际42.1 ∈ [36.79,44.87]。",
+    "confidence": "high",
+    "reason": "over：状态错配眩晕→迟缓（重力挤压=压制），落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-79e9002707a5addf",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.赵无极.成长技能模板[5].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 900,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "赵无极第六魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "赵无极第六魂技为万年攻击技。带宽[47.17,57.52]，威力200 实际19.7 低于下限，抬至900 实际52.06 落带。",
+    "confidence": "high",
+    "reason": "below：单体威力200→900抬至带内",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-3ac19533875d9056",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.赵无极.成长技能模板[6].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+95%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+85%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "大力金刚熊真身",
+    "evidenceType": "novel-quote",
+    "evidence": "原著武魂真身为第七魂技、\"大力金刚熊的武魂真身还附加着防御提升百分之二百的恐怖属性\"（行8753-8755）。力量+35%→+95%、防御+30%→+85%(3t)，实际267.75 ∈ [224.25,273.47]。",
+    "confidence": "high",
+    "reason": "below：真身攻防数值抬升至带内（攻防倍增语义）",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-6b0d2a28112738f1",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千仞雪.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 16
+    },
+    "skill": "天使之光",
+    "evidenceType": "budget-calibration",
+    "evidence": "天使之光 实际COST 17.24 超门禁 8.86（消耗倍数1.007×前摇0.4→代价能量0.403）。前摇 8→16 使代价能量升至 0.806，门禁 17.73，实际COST 17.24 落带 [16.84, 17.73]。净化+光系攻击效果原样保留。",
+    "confidence": "high",
+    "reason": "首魂技伤害+净化超带，提前摇到 16 抬门禁落带，效果不动",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-7a6674e5fd13d7f5",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千仞雪.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 200,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "天使裁决",
+    "evidenceType": "budget-calibration",
+    "evidence": "天使裁决 实际COST 16.11 低于下限 20.59。威力倍率 130→200 后实际COST 21.28 落带 [20.59, 21.67]。威力对 COST 次线性（0.65 次幂），200/70 处 10×(200/70)^0.65×1.08≈21.3。",
+    "confidence": "high",
+    "reason": "三环单体强攻低于下限，威力 130→200 拉入带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-9e89eb608d74d8f2",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千仞雪.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 310,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "天使圣光斩",
+    "evidenceType": "budget-calibration",
+    "evidence": "天使圣光斩 实际COST 35.78 低于下限 49.87。威力倍率 180→310 后实际COST 50.84 落带 [49.87, 52.49]。",
+    "confidence": "high",
+    "reason": "五环万年级群攻低于下限，威力 180→310 拉入带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-e4957c5c94cc3e99",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千仞雪.成长技能模板[3].技能数据",
+    "after": {
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "护盾变化",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "数值": 900,
+          "持续回合": 2,
+          "护盾模式": "正向护盾"
+        },
+        {
+          "原型": "资源变化",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "资源": "魂力",
+          "数值": "+10%"
+        }
+      ]
+    },
+    "skill": "天使守护",
+    "evidenceType": "budget-calibration",
+    "evidence": "天使守护 实际COST 396.17 超门禁 43.83。护盾绝对值按 30 点/COST 计价，8000 点→约 386.67；降护盾值 8000→900、前摇 16→20 后实际COST 53.0 落带 [52.04, 54.78]。",
+    "confidence": "high",
+    "reason": "六环万年级护盾绝对值超带，护盾值大降+前摇提到标准 20 落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-a0dce272f0db245b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千仞雪.成长技能模板[4].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+125%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "敏捷",
+          "数值": "+110%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "六翼天使真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "六翼天使真身（武魂真身特殊预算 运转基准 238.7、代价能量 1.587、门禁 378.91）实际COST 86.4 低于下限 359.97。力量+30%→+125%、敏捷+25%→+110% 后实际COST 369.45 落带 [359.97, 378.91]。",
+    "confidence": "high",
+    "reason": "武魂真身增幅低于下限，全属性增幅数值抬高落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-8d2981e5bd46e492",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千仞雪.成长技能模板[5].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 28000
+      },
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "魂力上限",
+          "数值": "+18%",
+          "持续回合": 3
+        },
+        {
+          "原型": "结算修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "结算": "造成伤害",
+          "数值": "-10%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "天使领域",
+    "evidenceType": "novel-quote",
+    "evidence": "原著第一百九十二章『杀神领域VS天使领域』（行 50689/50741）：天使领域乃需武魂真身配合方能完全发挥的天赋领域。原消耗 1800 远低于七环标准（约 28060），代价能量仅 0.038 致门禁 3.16 而效果 66.15 超限。消耗提到七环标准 28000、前摇 12→20 后门禁 81.82，魂力上限+12%→+18% 后实际COST 79.65 落带 [77.73, 81.82]。",
+    "confidence": "high",
+    "reason": "七环领域低消耗致门禁畸小，提消耗到标准、小幅抬增幅落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-6898ad03fe8ea889",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.波赛西.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "资源": "魂力",
+          "数值": "+30%"
+        },
+        {
+          "原型": "属性修正",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "属性": "魂力上限",
+          "数值": "+15%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "海神之力",
+    "evidenceType": "budget-calibration",
+    "evidence": "海神之力 实际COST 118.65 超门禁 92.17。魂力上限+25%→+15% 后实际COST 87.15 落带 [78.35, 92.17]；资源魂力+30% 保留。",
+    "confidence": "high",
+    "reason": "九环神赐之力超带，魂力上限增幅 25%→15% 落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-cb98dbd88f788c74",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.波赛西.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 85,
+          "伤害类型": "远程攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "跟随主原型",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-3%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "海神之怒",
+    "evidenceType": "budget-calibration",
+    "evidence": "海神之怒 实际COST 86.66 超门禁 26.67。威力 350→85、压制标记 -22%→-3% 持续1 后实际COST 26.36 落带 [22.67, 26.67]。",
+    "confidence": "high",
+    "reason": "九环权杖群攻+压制超带，威力与标记数值同降落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-b6b0189eb3d24455",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.波赛西.成长技能模板[2].技能数据",
+    "after": {
+      "前摇": 40,
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "资源": "魂力",
+          "数值": "+7%"
+        },
+        {
+          "原型": "状态移除",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "任意负面",
+          "数量": 2
+        }
+      ]
+    },
+    "skill": "海神庇护",
+    "evidenceType": "budget-calibration",
+    "evidence": "海神庇护 实际COST 50.5 超门禁 11.59。群体回复+群体净化效果成本高（资源+20%≈36.1、状态移除≈15.2）；前摇 16→40（祭司长仪式）、资源+20%→+7% 后实际COST 27.03 落带 [24.64, 28.99]，群体净化保留。",
+    "confidence": "high",
+    "reason": "九环群体回复+净化超带，前摇拉长至仪式级并降回复数值落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-a164739c8e737c3b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.波赛西.成长技能模板[3].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "属性": "魂力上限",
+          "数值": "+2%",
+          "持续回合": 99
+        }
+      ]
+    },
+    "skill": "神赐魂环",
+    "evidenceType": "novel-quote",
+    "evidence": "原著第二百二十二章『神赐魂环』（行 57023）：『神赐魂环会赋予你们最需要的魂技以及所能承受最大程度的等级魂环』——神赐魂环是赐予魂环的神迹仪式。成本主因是持续 99 回合（持续系数 25.8），+30% 持续99 实际COST 1354.5 超门禁 101.08。保留 99 回合持久性、数值 +30%→+2% 后实际COST 90.3 落带 [85.92, 101.08]。",
+    "confidence": "medium",
+    "reason": "神迹赐予为永久性小幅度增幅，压数值保持久落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2603891dcd3496c7",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.波赛西.成长技能模板[4].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-1%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "海神威压",
+    "evidenceType": "budget-calibration",
+    "evidence": "海神威压为被动（消耗无/前摇0），代价能量 0.003，门禁与下限同为 0.5（退化带：任何非零效果都无法严格落入）。原 -20% 持续2 实际COST 41.76 严重超限；降为 -1% 持续1 后实际COST 1.44（探针 PASS 容差 [0,1.5]），仅保留近似无害的被动压制。",
+    "confidence": "medium",
+    "reason": "被动零消耗门禁退化到 0.5，威压降为近零数值近似无害",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-b7591a85a16fd62f",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.波赛西.成长技能模板[5].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 53000
+      },
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+30%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "精神力上限",
+          "数值": "+18%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "波赛西真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "波赛西真身在库内为九环槽（非七环真身识别），百分比消耗『魂力:25% 维持:魂力:8%』被按角色魂力上限折算后 消耗倍数取地板 0.05，代价能量 0.09，门禁仅 8.64，效果 126 超限。改固定消耗 53000 后代价能量 0.96、门禁 92.17；力量+40%→+30%、精神力上限+30%→+18% 后实际COST 84.78 落带 [78.35, 92.17]。",
+    "confidence": "high",
+    "reason": "九环真身百分比消耗被折算出地板致门禁畸小，改固定大消耗并降增幅落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-661612417dbb5a36",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.独孤博.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "中毒",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-15%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度",
+          "触发限制": {
+            "周期": "每日",
+            "次数": 1
+          }
+        }
+      ]
+    },
+    "skill": "碧磷毒雾",
+    "evidenceType": "budget-calibration",
+    "evidence": "碧磷毒雾 实际COST 51.03 超门禁 15.92。保持 -15% 持续3 的剧毒强度，挂触发限制 {每日,1}（抵扣率 0.70）后实际COST 15.31 落带 [13.54, 15.92]。",
+    "confidence": "high",
+    "reason": "剧毒范围雾超带，用每日一次的绝技触发限制压成本保毒效",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-1b1ff0b3ef8f5ed9",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.独孤博.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-12%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "状态": "中毒",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-12%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "蛇皇缠绕",
+    "evidenceType": "budget-calibration",
+    "evidence": "蛇皇缠绕 画面描述为『束缚+淬毒』，原控制错标为「眩晕」（固定COST 60×硬控持续2 系数 2.5=150，不可负担）。状态类型改对为「迟缓」（束缚-减速语义），数值 -20%→-12%、持续2；中毒-12% 持续3 保留。实际COST 35.73 落带 [31.34, 36.87]。",
+    "confidence": "high",
+    "reason": "束缚控制错标眩晕致成本不可负担，改对迟缓状态并降数值落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0af04b24332a10d0",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.独孤博.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "僵直",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-22%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "时光凝固",
+    "evidenceType": "novel-quote",
+    "evidence": "原著（行 17573）：『第八魂技时光凝固』，范围时间停滞。原「眩晕」固定COST 60×群体 1.8=108 超门禁 56.87；状态改对为「僵直」（时停冻结语义），数值 -30%→-22%、持续1 后实际COST 51.48 落带 [48.34, 56.87]。",
+    "confidence": "high",
+    "reason": "八环范围时停错标眩晕致超带，改对僵直并降数值落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-bc357545969423e2",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.独孤博.成长技能模板[3].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "僵直",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-10%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "美杜莎的凝望",
+    "evidenceType": "novel-quote",
+    "evidence": "原著（行 17531）：美杜莎头部魂骨『美杜莎的凝望能够连能量都化为石头』——石化即短暂冻结。魂骨技能门禁固定 15（年限<1000）；原「眩晕」固定COST 60×硬控持续2 系数2.5=150 严重超限。改对「僵直」（石化语义），数值 -25%→-10%、持续1 后实际COST 13.0 落带 [12.75, 15]。",
+    "confidence": "high",
+    "reason": "石化控制错标眩晕成本 150 远超魂骨门禁 15，改对僵直降数值落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-10ca375219bd517b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.独孤博.成长技能模板[4].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 53000
+      },
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "中毒",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-18%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 80,
+          "伤害类型": "真实攻击"
+        }
+      ]
+    },
+    "skill": "碧磷蛇皇真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "碧磷蛇皇真身在库内为九环槽，百分比消耗折算地板 0.05 致门禁仅 7.68，效果 116.08 超限。改固定消耗 53000 后门禁 81.93；中毒 -20%→-18% 持续3→2、真实伤害威力 180→80 后实际COST 77.78 落带 [69.64, 81.93]。",
+    "confidence": "high",
+    "reason": "九环真身百分比消耗折算地板致门禁畸小，改固定大消耗并降毒伤落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-b2ea7e7bd1914124",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐晨.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 1000,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "裂空锤",
+    "evidenceType": "budget-calibration",
+    "evidence": "裂空锤（绝世斗罗级强攻）实际COST 22.76 低于下限 55.41。威力 250→1000 后实际COST 55.73 落带 [55.41, 58.32]。威力对 COST 次线性，需高威力方达带。",
+    "confidence": "high",
+    "reason": "五环绝世级强攻低于下限，威力 250→1000 拉入带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-09a84f9cf751aae1",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐晨.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 260,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "跟随主原型",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-12%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "灭世锤击",
+    "evidenceType": "budget-calibration",
+    "evidence": "灭世锤击 实际COST 76.85 超门禁 61.37。威力 320→260、压制标记 -20%→-12% 持续1 后实际COST 59.3 落带 [58.3, 61.37]。",
+    "confidence": "high",
+    "reason": "七环暗金群攻超带，威力与标记数值同降落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-a0074df0d67ff393",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐晨.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 180,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "跟随主原型",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-25%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "昊天锤绝世",
+    "evidenceType": "budget-calibration",
+    "evidence": "昊天锤绝世 实际COST 107.7 超门禁 70.22。威力 400→180、压制标记保持 -25% 但持续 2→1 后实际COST 69.13 落带 [66.71, 70.22]。",
+    "confidence": "high",
+    "reason": "九十九级全力一击超带，降威力并缩短压制持续落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-b541ae797c7b900b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐晨.成长技能模板[3].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 53000
+      },
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+35%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+20%",
+          "持续回合": 3
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-10%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "唐晨昊天真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "唐晨昊天真身在库内为九环槽，百分比消耗折算地板 0.05 致门禁仅 10.2，效果 198.9 超限。改固定消耗 53000 后门禁 104.22；力量+50%→+35%、防御+40%→+20%、压制标记 -25%→-10% 持续3→2 后实际COST 103.23 落带 [99.01, 104.22]。",
+    "confidence": "high",
+    "reason": "九环真身百分比消耗折算地板致门禁畸小，改固定大消耗并降增幅落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-7bb63eb62fe0cf99",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐晨.成长技能模板[4].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 280,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "结算修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "结算": "造成伤害",
+          "数值": "+3%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "唐晨乱披风锤法",
+    "evidenceType": "budget-calibration",
+    "evidence": "唐晨乱披风锤法（一环，代价能量已封顶 1.857，位级硬上限 33）实际COST 127.77 超门禁 33。结算修正+35% 持续3 成本 94.5 为主因；威力 450→280、结算修正 +35%→+3% 持续3 后实际COST 32.59 落带 [31.35, 33]。",
+    "confidence": "high",
+    "reason": "九九归一锤法超带，结算修正大降并缩威力落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-d6eb14c63e904f3f",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.宁风致.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+3%",
+          "持续回合": 1
+        }
+      ]
+    },
+    "skill": "力量增幅",
+    "evidenceType": "budget-calibration",
+    "evidence": "力量增幅（辅助系群体 目标系数 1.8）实际COST 82.62 超门禁 4.83（一环低成本位）。力量+30% 持续3 成本 82.6 远超位带；+30%→+3% 持续3→1 后实际COST 4.59 落带 [4.11, 4.83]。",
+    "confidence": "high",
+    "reason": "一环群体辅助增幅超带，数值降幅并缩持续落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-e5528759d5540eee",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.宁风致.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "敏捷",
+          "数值": "+4%",
+          "持续回合": 1
+        }
+      ]
+    },
+    "skill": "速度增幅",
+    "evidenceType": "budget-calibration",
+    "evidence": "速度增幅 实际COST 87.48 超门禁 6.78（二环带）。敏捷+30%→+4%、持续 3→1 后实际COST 6.48 落带 [5.77, 6.78]。",
+    "confidence": "high",
+    "reason": "二环群体速度增幅超带，降数值缩持续落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-371f4068a0068833",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.宁风致.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "资源": "魂力",
+          "数值": "+4%"
+        }
+      ]
+    },
+    "skill": "魂力增幅",
+    "evidenceType": "budget-calibration",
+    "evidence": "魂力增幅 实际COST 20.52 超门禁 7.96（三环带）。魂力+12%→+4% 后实际COST 6.84 落带 [6.77, 7.96]。",
+    "confidence": "high",
+    "reason": "三环群体魂力恢复超带，回复数值 12%→4% 落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-453fe036808c61b7",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.宁风致.成长技能模板[3].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+7%",
+          "持续回合": 1
+        }
+      ]
+    },
+    "skill": "防御增幅",
+    "evidenceType": "budget-calibration",
+    "evidence": "防御增幅 实际COST 77.76 超门禁 10.17（四环带）。防御+30%→+7%、持续 3→1 后实际COST 10.08 落带 [8.65, 10.17]。",
+    "confidence": "high",
+    "reason": "四环群体防御增幅超带，降数值缩持续落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-222c4a814be85300",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.宁风致.成长技能模板[4].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 28000
+      },
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+9%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "敏捷",
+          "数值": "+9%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+9%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "七宝琉璃塔全属性增幅",
+    "evidenceType": "budget-calibration",
+    "evidence": "七宝琉璃塔全属性增幅 实际COST 165.24 超门禁 11.7（原消耗 7200 仅三环当量）。消耗提到七环标准 28000、前摇 12→20 后门禁 75.84；三属性 +20%→+9% 持续3 后实际COST 74.36 落带 [64.46, 75.84]。",
+    "confidence": "high",
+    "reason": "七环塔之全属性增幅低消耗致门禁畸小，提消耗到标准并降增幅落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-cf87298806ccd3ec",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.风笑天.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "敏捷",
+          "数值": "+80%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+45%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+35%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "疾风双头狼真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "疾风双头狼真身（武魂真身特殊预算 运转基准 181.72、门禁 254.59）实际COST 64.8 低于下限 216.4。敏捷+40% 单独不足填带；增补力量+45%、防御+35%、敏捷+40%→+80% 后实际COST 248.85 落带 [216.4, 254.59]。",
+    "confidence": "high",
+    "reason": "武魂真身低于下限，敏捷专精扩为全属性增幅落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-852f37e7bf5dcb10",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.胡列娜.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "精神紊乱",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-4%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "魅惑之眼",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：精神紊乱单体持续1 数值-12%→-4%，实跑 实际COST 5.6 落带 [5.48, 6.45]（运转基准16 代价能量0.403）。",
+    "confidence": "high",
+    "reason": "降精神紊乱数值至-4%落入一环带宽。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-d5225c33b2301c03",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.胡列娜.成长技能模板[1].技能数据",
+    "after": {
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "决策干扰",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "干扰": "判断干扰",
+          "持续回合": 2,
+          "数值": "15%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "狐火幻境",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：前摇12→20，判断干扰15%不变，实跑 实际COST 24.79 落带 [22.56, 26.54]（消耗倍数0.737 前摇1.0）。",
+    "confidence": "high",
+    "reason": "提前摇扩门禁，保住三环群体幻境干扰强度。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-6c4f2046bcbd594b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.胡列娜.成长技能模板[2].技能数据",
+    "after": {
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "精神紊乱",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-5%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "天狐魅惑",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：精神紊乱单体持续2 数值-18%→-5%且前摇12→20，实跑 实际COST 17.5 落带 [15.86, 18.66]（持续2封禁系数2.5）。",
+    "confidence": "high",
+    "reason": "降魅惑数值并提前摇，五环强力魅惑落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-709f8405dbdd3799",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.胡列娜.成长技能模板[3].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "结算修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "结算": "造成伤害",
+          "数值": "-60%",
+          "持续回合": 2
+        },
+        {
+          "原型": "判定修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "判定": "命中",
+          "数值": "-60%",
+          "持续回合": 2
+        },
+        {
+          "原型": "判定修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "判定": "闪避",
+          "数值": "-60%",
+          "持续回合": 2
+        },
+        {
+          "原型": "决策干扰",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "干扰": "判断干扰",
+          "持续回合": 2,
+          "数值": "60%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "妖魅",
+    "evidenceType": "novel-quote",
+    "evidence": "原著《斗罗大陆》第32986行：『妖魅技能控制范围内，所有人的感官都将被降低百分之五十』。四通道感官削弱（造成伤害/命中/闪避/判断）从-50%校准至-60%拉入带，实跑 实际COST 537.66 落带 [507.58, 597.15]。",
+    "confidence": "high",
+    "reason": "武魂融合技 below：按原著感官削弱语义扩为四通道并上调数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0d52e4c41779fecd",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.菊斗罗.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "护盾变化",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "数值": 250,
+          "持续回合": 2,
+          "护盾模式": "正向护盾"
+        }
+      ]
+    },
+    "skill": "菊花屏障",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：正向护盾5000→250（自身持续2），实跑 实际COST 12.08 落带 [11.28, 13.27]。",
+    "confidence": "high",
+    "reason": "三环防护盾绝对值压降落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-431252c35c15ae19",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.菊斗罗.成长技能模板[2].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 40000
+      },
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+15%",
+          "持续回合": 2
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 150,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "菊花武魂屏障与攻击",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：消耗10200→40000、前摇18→20、防御+25%→+15%、威力180→150，实跑 实际COST 35.07 落带 [32.85, 38.65]。",
+    "confidence": "high",
+    "reason": "提消耗/前摇并降攻防数值，九环屏障与攻击落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fc40d4494562bfb9",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.菊斗罗.成长技能模板[3].技能数据",
+    "after": {
+      "前摇": 40,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+3%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+3%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "菊花真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：九环真身（非真身位，消耗倍数钉0.05）只能提前摇，28→40 后 防御+35%/力量+25%→+3%/+3%，实跑 实际COST 8.91 落带 [8.16, 9.6]。",
+    "confidence": "medium",
+    "reason": "位9真身门禁极小，提前摇并大幅压降属性数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-028117dc56354ff8",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.菊斗罗.成长技能模板[4].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "眩晕",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-28%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "精神紊乱",
+          "触发方式": "立即触发",
+          "持续回合": 1,
+          "数值": "-60%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-50%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "属性修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "属性": "敏捷",
+          "数值": "-40%",
+          "持续回合": 3
+        },
+        {
+          "原型": "判定修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "判定": "命中",
+          "数值": "-40%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "两级静止领域",
+    "evidenceType": "novel-quote",
+    "evidence": "原著第43172行：『两级静止领域，也就是一个双属性领域。可以同时静止对手的技能与行动』。按'静止技能与行动'重组为五通道压制（眩晕1回合+精神紊乱+迟缓+敏捷+命中），眩晕持续2→1规避群体硬控>1必挂触发限制，实跑 实际COST 568.62 落带 [558.66, 657.25]。",
+    "confidence": "high",
+    "reason": "武魂融合技 below：按原著双属性领域语义扩为多通道压制并上调落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-298d4a79c942eb51",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.鬼斗罗.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 8,
+      "_效果数组": [
+        {
+          "原型": "位移执行",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "位移类型": "拉近",
+          "位移对象": "目标",
+          "距离": 20
+        },
+        {
+          "原型": "判定修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "判定": "闪避",
+          "数值": "+2%",
+          "持续回合": 1
+        }
+      ]
+    },
+    "skill": "鬼影穿行",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：位移执行 瞬移→拉近（50→8）、闪避+20%→+2%、前摇4→8，实跑 实际COST 9.4 落带 [9.02, 10.62]。",
+    "confidence": "high",
+    "reason": "高成本瞬移改拉近并压降闪避数值，三环位移落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-3b1dc9bd4eec59ef",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.鬼斗罗.成长技能模板[1].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 50000
+      },
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "状态": "隐匿",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "+18%",
+          "驱动属性": "敏捷",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "鬼魅隐形",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：消耗3200→50000、前摇6→20，隐匿+25%→+18%（持续2不变），实跑 实际COST 46.98 落带 [41.06, 48.31]。",
+    "confidence": "high",
+    "reason": "提消耗/前摇扩门禁，九环核心隐匿能力保留持续2。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-f70281c7b5f7b989",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.鬼斗罗.成长技能模板[2].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 50000
+      },
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "位移执行",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "位移类型": "拉近",
+          "位移对象": "目标",
+          "距离": 30
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 450,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "鬼魅突袭",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：瞬移→拉近、威力200→450、消耗10200→50000、前摇8→20，实跑 实际COST 41.27 落带 [41.06, 48.31]。",
+    "confidence": "high",
+    "reason": "瞬移改拉近并提消耗/前摇扩门禁，九环敏攻突袭落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2fcd8a7ed092e811",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.鬼斗罗.成长技能模板[3].技能数据",
+    "after": {
+      "前摇": 32,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "敏捷",
+          "数值": "+3%",
+          "持续回合": 3
+        },
+        {
+          "原型": "判定修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "判定": "闪避",
+          "数值": "+2%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "鬼魅真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：九环真身（非真身位）前摇24→32，敏捷+40%→+3%、闪避+30%→+2%，实跑 实际COST 7.38 落带 [6.53, 7.68]。",
+    "confidence": "medium",
+    "reason": "位9真身门禁极小，提前摇并大幅压降数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0ff74b89e16ce8ea",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.火舞.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 10,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+6%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "火影附体",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：前摇6→10，力量+12%→+6%（持续2不变），实跑 实际COST 7.39 落带 [6.85, 8.06]。",
+    "confidence": "high",
+    "reason": "提前摇并压降附体增幅数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-d127ea05ef8a9a29",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.火舞.成长技能模板[1].技能数据",
+    "after": {
+      "前摇": 16,
+      "_效果数组": [
+        {
+          "原型": "位移执行",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "位移类型": "击退",
+          "位移对象": "目标",
+          "距离": 8
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+5%",
+          "持续回合": 1
+        }
+      ]
+    },
+    "skill": "抗拒火环",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：前摇10→16，防御+15%→+5%（击退不变），实跑 实际COST 18.4 落带 [18.05, 21.23]。",
+    "confidence": "high",
+    "reason": "提前摇并压降防御附加数值，保留群体弹开。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-ee776e6c71c27ea9",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.火舞.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 270,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "耀阳",
+    "evidenceType": "budget-calibration",
+    "evidence": "低于下限修复：威力120→270（次线性0.646幂），实跑 实际COST 25.83 落带 [23.06, 27.13]。",
+    "confidence": "high",
+    "reason": "四环白炽攻击按预算大幅上调威力落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-0e0a028968b433f4",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.火舞.成长技能模板[3].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 960,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "融环",
+    "evidenceType": "novel-quote",
+    "evidence": "原著第29872行：『在融环的情况下，自身魂力输出最大化，此时再使用的魂技威力无疑也会倍增』。自创魂技一次性爆发，威力200→960，实跑 实际COST 58.62 落带 [56.34, 66.29]。",
+    "confidence": "high",
+    "reason": "融环 below：按原著魂力最大化爆发大幅上调威力落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-9a08a9fed98fb210",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千道流.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 40,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+3%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "敏捷",
+          "数值": "+3%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "千道流天使真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：九环真身（非真身位，消耗倍数钉0.05）前摇36→40，力量+45%/敏捷+35%→+3%/+3%，实跑 实际COST 9.45 落带 [8.16, 9.6]。",
+    "confidence": "medium",
+    "reason": "位9真身门禁极小，提前摇并大幅压降属性数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-b69ad22d8f109b23",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千道流.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 235,
+          "伤害类型": "远程攻击"
+        },
+        {
+          "原型": "状态移除",
+          "目标": "群体",
+          "生效方式": "跟随主原型",
+          "状态": "任意增益",
+          "数量": 2
+        }
+      ]
+    },
+    "skill": "天使裁判",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：威力380→235（保留净化状态移除），实跑 实际COST 58.71 落带 [49.93, 58.74]。",
+    "confidence": "high",
+    "reason": "九环群攻压降威力至门禁内。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-c100faca7cd1e704",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.千道流.成长技能模板[2].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 80000
+      },
+      "前摇": 16,
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-18%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "魂力上限",
+          "数值": "+10%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "千道流天使领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：消耗3000→80000、前摇12→16，魂力上限+15%→+10%（标记-18%保留），实跑 实际COST 60.08 落带 [52.56, 61.84]。",
+    "confidence": "high",
+    "reason": "提消耗/前摇扩门禁，九环天使领域压制+增幅保留。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-092ca8fbb00c0535",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.柳二龙.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 20,
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 85,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "龙炎喷射",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：前摇12→20（威力85不变），实跑 实际COST 22.04 落带 [19.95, 24.33]。",
+    "confidence": "high",
+    "reason": "提前摇扩门禁，三环龙炎范围攻击保留强度。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-07015c487bc90f58",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.柳二龙.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 250,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "龙爪撕裂",
+    "evidenceType": "budget-calibration",
+    "evidence": "低于下限修复：万年级龙爪威力150→250，实跑 实际COST 22.76 落带 [20.44, 24.93]。",
+    "confidence": "high",
+    "reason": "五环近战撕裂按预算上调威力落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-ac955e767fa0aff9",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.柳二龙.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+70%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+70%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "变异火龙真身",
+    "evidenceType": "novel-quote",
+    "evidence": "原著第29016行柳二龙以武魂真身发威。七环真身 below：力量+30%/防御+25%→+70%/+70%（真身位消耗倍数2.5 门禁222.11），实跑 实际COST 207.9 落带 [182.13, 222.11]。",
+    "confidence": "high",
+    "reason": "变异火龙真身 below：杀戮之角真身大幅上调属性数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-39cbe2b034ab091d",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.古榕.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 16,
+      "_效果数组": [
+        {
+          "原型": "护盾变化",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "数值": 600,
+          "持续回合": 2,
+          "护盾模式": "正向护盾"
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+10%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "骨甲防御",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：护盾8000→600、防御+20%→+10%、前摇10→16，实跑 实际COST 40.6 落带 [35.82, 42.14]。",
+    "confidence": "high",
+    "reason": "五环骨甲护盾绝对值压降并提前摇落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-4155fa560cfc03a1",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.古榕.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+90%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+70%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "龙骨真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "低于下限修复：七环真身（真身位消耗倍数2.5）防御+35%/力量+25%→+90%/+70%，实跑 实际COST 236.7 落带 [222.77, 262.09]。",
+    "confidence": "high",
+    "reason": "龙骨真身 below：骨龙形态大幅上调属性数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-ddf662306e0cf18c",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.古榕.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 280,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+10%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "骨化神龙",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：威力300→280、防御+30%→+10%，实跑 实际COST 55.68 落带 [49.93, 58.74]。",
+    "confidence": "high",
+    "reason": "九环骨龙冲击压降威力与防御增幅落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-39835eeb68ac988d",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐啸.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 700,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "啸天锤击",
+    "evidenceType": "novel-quote",
+    "evidence": "原著第76798行：『那是昊天宗宗主唐啸的昊天锤。只是一锤，就将那名供奉逼迫的快速后退』。七环 below：封号斗罗级强攻威力260→700，实跑 实际COST 44.26 落带 [41.44, 48.75]。",
+    "confidence": "high",
+    "reason": "啸天锤击 below：按宗主级昊天锤强度大幅上调威力落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-5186517895543bc0",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐啸.成长技能模板[1].技能数据",
+    "after": {
+      "前摇": 40,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+3%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+3%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "唐啸昊天真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：九环真身（非真身位）前摇36→40，力量+40%/防御+30%→+3%/+3%，实跑 实际COST 8.91 落带 [8.16, 9.6]。",
+    "confidence": "medium",
+    "reason": "位9真身门禁极小，提前摇并大幅压降属性数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-54d047627fa95a32",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.唐啸.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 75,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "结算修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "结算": "造成伤害",
+          "数值": "+5%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "唐啸乱披风锤法",
+    "evidenceType": "novel-quote",
+    "evidence": "原著第3363行乱披风锤法：『借力用力，能够最完美的将铁匠的力量发挥出来』连续递击。超限修复：威力300→75、造成伤害+25%→+5%，保留递增叠加语义，实跑 实际COST 23.96 落带 [20.4, 24]。",
+    "confidence": "high",
+    "reason": "一环锤法压降威力与递增倍率，保留叠加机制落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-d19af35d122c705a",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.邪月.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 22,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "月光斩",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：快速斩击威力60→22（保留前摇6的快速语义），实跑 实际COST 4.73 落带 [4.11, 4.83]。",
+    "confidence": "high",
+    "reason": "一环月刃斩压降威力落带，保持快速斩击。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-fc3565a65c3fc824",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.邪月.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 40,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "血月旋斩",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：三环范围旋斩威力80→40，实跑 实际COST 12.54 落带 [11.28, 13.27]。",
+    "confidence": "high",
+    "reason": "三环旋斩压降威力落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-22851f037d2b81c1",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.邪月.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 60,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "月刃强攻",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：五环月刃强攻威力110→60，实跑 实际COST 9.05 落带 [8.08, 9.51]。",
+    "confidence": "high",
+    "reason": "五环月刃强攻压降威力落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-34b083c4750f39af",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.泰坦.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "判定修正",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "判定": "命中",
+          "数值": "-1%",
+          "持续回合": 1
+        }
+      ]
+    },
+    "skill": "气势威压",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：被动威压带宽退化为 [0.5, 0.5]（消耗'无' 代价能量0.003），无法由任何整数效果恰好落带；改挂判定修正命中-1%群体（威压压敌命中语义），实跑 实际COST 1.08，探针容差(±1)内落带。",
+    "confidence": "medium",
+    "reason": "被动零消耗带宽退化，压降为象征性群体命中压制。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-784c547841dc4547",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.泰坦.成长技能模板[2].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 30000
+      },
+      "前摇": 16,
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 120,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "位移执行",
+          "目标": "群体",
+          "生效方式": "跟随主原型",
+          "位移类型": "击退",
+          "位移对象": "目标",
+          "距离": 5
+        }
+      ]
+    },
+    "skill": "震波踏地",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：消耗10200→30000、前摇14→16、威力130→120（击退保留），实跑 实际COST 39.9 落带 [36.03, 42.39]。",
+    "confidence": "high",
+    "reason": "八环震波提消耗/前摇并压降威力落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-f8993c2b3774fb72",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.泰坦.成长技能模板[3].技能数据",
+    "after": {
+      "前摇": 36,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+3%",
+          "持续回合": 3
+        },
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+2%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "大力猩猩真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "超限修复：八环真身（非真身位，消耗倍数钉0.05）前摇28→36，力量+40%/防御+25%→+3%/+2%，实跑 实际COST 7.47 落带 [6.58, 7.74]。",
+    "confidence": "medium",
+    "reason": "非真身位八环真身门禁极小，提前摇并大幅压降数值落带。",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2830bd4b6da852e7",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.大明.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "标记",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-40%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "天青牛蟒领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [77.42, 86.02]（顶级天才+9，运转基准81.5×代价能量1.055）；原标记-25%群2轮=52.2 低于下限，改-40% 实际COST 83.52 落带",
+    "confidence": "high",
+    "reason": "十万年领域标记-25%过低，提至-40%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-717241b61807e5c7",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.大明.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-25%",
+          "驱动属性": "力量",
+          "影响方向": "效果强度"
+        },
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 280,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "天青绞杀",
+    "evidenceType": "novel-quote",
+    "evidence": "原著64438'天青牛蟒庞大身躯缠绕而上束缚'——缠绕束缚是降机动非眩晕硬控，改迟缓；伤害200%→280%。改后 实际COST 51.67 落带 [48.87, 54.3]",
+    "confidence": "high",
+    "reason": "眩晕改迟缓（缠绕束缚语义）并提伤害至280%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-ce29b55d270e0434",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.大明.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "中毒",
+          "触发方式": "立即触发",
+          "持续回合": 3,
+          "数值": "-15%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "天青毒息",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [48.3, 53.67]（顶级天才+9，运转基准81.5×代价能量0.658）；原中毒-18%群3轮=61.24 超门禁，降至-15% 实际COST 51.03 落带",
+    "confidence": "high",
+    "reason": "毒息中毒-18%超限，降至-15%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-c8c45ef76ae919c2",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.二明.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 620,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "泰坦之力",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [39.1, 43.44]（顶级天才+9，运转基准81.5×代价能量0.533）；原威力280%=24.49 低于下限，提至620% 实际COST 40.92 落带",
+    "confidence": "high",
+    "reason": "十万年纯力量攻击威力280%过低，提至620%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-c48d193a1f9b25b2",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.二明.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 550,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "位移执行",
+          "目标": "群体",
+          "生效方式": "跟随主原型",
+          "位移类型": "击退",
+          "位移对象": "目标",
+          "距离": 10
+        }
+      ]
+    },
+    "skill": "泰坦冲击",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [77.42, 86.02]（顶级天才+9，运转基准81.5×代价能量1.055）；原威力200%+击退=49.87 低于下限，提至550% 实际COST 82.58 落带",
+    "confidence": "high",
+    "reason": "范围冲击威力200%过低，提至550%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-a04eb345f630beb9",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.二明.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+19%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "巨猿坚壁",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [20.7, 23]（顶级天才+9，运转基准81.5×代价能量0.282）；原防御+35%2轮=40.6 超门禁，降至+19% 实际COST 22.04 落带",
+    "confidence": "high",
+    "reason": "巨猿坚壁防御+35%超限，降至+19%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-de4911c8d5b39f53",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.小白.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 480,
+          "伤害类型": "精神攻击"
+        }
+      ]
+    },
+    "skill": "绝望光波",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [68.16, 80.19]（天才+6，运转基准78.5×代价能量1.022）；原威力150%精神群攻=33.87 低于下限，提至480% 实际COST 71.8 落带",
+    "confidence": "high",
+    "reason": "十万年魔鲨精神群攻威力150%过低，提至480%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-e730fbbaf4c5b560",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.小白.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-40%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "魔鲨领域",
+    "evidenceType": "novel-quote",
+    "evidence": "原著55673'魔魂大白鲨以魔力固化海水封锁通路'——固化海水是封锁降机动非眩晕硬控；原眩晕-20%群2轮=270 远超门禁88.05，改迟缓-40% 实际COST 78.3 落带 [74.84, 88.05]",
+    "confidence": "high",
+    "reason": "眩晕改迟缓（固化海水封锁语义）数值调至-40%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-7d359308763bee74",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.小白.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 600,
+          "伤害类型": "近身攻击",
+          "防御穿透": 20
+        },
+        {
+          "原型": "状态施加",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-25%",
+          "驱动属性": "精神力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "魔鲨之牙",
+    "evidenceType": "novel-quote",
+    "evidence": "原著'空间锁定'（画面描述）——獠牙斩击空间锁定附带迟缓；原威力220%穿透20=26.19 低于下限，提至600%并附迟缓-25% 实际COST 77.27 落带 [74.14, 87.22]",
+    "confidence": "high",
+    "reason": "空间锁定斩击威力220%过低，提至600%并附迟缓-25%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-00c214f04f7ff894",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.阿银.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 24,
+      "_效果数组": [
+        {
+          "原型": "资源变化",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "资源": "魂力",
+          "数值": "+15%"
+        },
+        {
+          "原型": "属性修正",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "属性": "魂力上限",
+          "数值": "+30%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "野火吹不尽",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [100.09, 117.75]（天才+6，消耗99999×前摇24→代价能量1.687）；原魂力+100%+魂力上限+50%99轮=2390.5 远超预算，降为+15%/+30%3轮并加前摇24，改后 实际COST 114.45 落带",
+    "confidence": "high",
+    "reason": "献祭级增益+100%/+50%99轮远超预算，降为+15%/+30%3轮加前摇24落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2ecda2dedcaf22fd",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.阿银.成长技能模板[1].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 7200
+      },
+      "_效果数组": [
+        {
+          "原型": "结算修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "结算": "治疗",
+          "数值": "+13%",
+          "持续回合": 3
+        },
+        {
+          "原型": "状态施加",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "状态": "迟缓",
+          "触发方式": "立即触发",
+          "持续回合": 2,
+          "数值": "-10%",
+          "驱动属性": "魂力上限",
+          "影响方向": "效果强度"
+        }
+      ]
+    },
+    "skill": "蓝银领域",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [37.66, 44.31]（天才+6，消耗1500→7200 代价能量0.564）；原治疗+20%3轮=53.78 超门禁9.23，治疗降+13%并提消耗至7200，改后 实际COST 41.8 落带",
+    "confidence": "high",
+    "reason": "蓝银领域治疗+20%超限，降+13%并提消耗至7200落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-79730d523380ef93",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.弗兰德.成长技能模板[0].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 15000
+      },
+      "前摇": 36
+    },
+    "skill": "飞行系战魂师",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [57.6, 70.24]（优秀+3，运转基准73；消耗15000+前摇36→代价能量0.962）；原瞬移+130%伤害=64.92 超门禁5.0，拉高代价能量扩带至70.24，实际COST 64.92 落带",
+    "confidence": "high",
+    "reason": "飞行瞬移+俯冲机制保留，消耗15000+前摇36扩带落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-a06ed0466bee7799",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.弗兰德.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "敏捷",
+          "数值": "+200%",
+          "持续回合": 3
+        },
+        {
+          "原型": "判定修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "判定": "闪避",
+          "数值": "+80%",
+          "持续回合": 3
+        },
+        {
+          "原型": "判定修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "判定": "反应",
+          "数值": "+60%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "黄金圣龙飞翔之角",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [475.02, 579.29]（优秀+3，运转基准300×代价能量1.931）；原敏捷+35%=56.7 远低于下限，提至敏捷+200%+闪避+80%+反应+60% 实际COST 527.4 落带",
+    "confidence": "high",
+    "reason": "武魂融合技飞行赋予加成过低，提至敏捷+200%+闪避+80%+反应+60%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2adeac390a62724f",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.焱.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 16
+    },
+    "skill": "烈焰喷射",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [18.05, 21.23]（天才+6，前摇12→16 代价能量0.59）；原威力75%群=20.33 超门禁15.92，加前摇16扩带，实际COST 20.33 落带",
+    "confidence": "high",
+    "reason": "烈焰喷射威力75%群攻超限，加前摇16扩带落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-49c76df9a371bf8b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.焱.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 220,
+          "伤害类型": "远程攻击"
+        }
+      ]
+    },
+    "skill": "烈焰风暴",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [40.3, 47.41]（天才+6，运转基准56×代价能量0.847）；原威力130%群=29 低于下限，提至220% 实际COST 40.74 落带",
+    "confidence": "high",
+    "reason": "万年级烈焰风暴威力130%过低，提至220%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-297c622f286bc73e",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.秦明.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "群体",
+          "生效方式": "独立生效",
+          "威力倍率": 180,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "烈焰旋风",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [32.71, 39.89]（优秀+3，运转基准53×代价能量0.753）；原威力120%群=25.5 低于下限，提至180% 实际COST 33.13 落带",
+    "confidence": "high",
+    "reason": "万年级烈焰旋风威力120%过低，提至180%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-e85db7bf3975bfdc",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.秦明.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 500,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "秦明第六魂技",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [35.38, 43.14]（优秀+3，运转基准63×代价能量0.685）；原威力160%=17.06 低于下限，提至500% 实际COST 35.61 落带",
+    "confidence": "high",
+    "reason": "第六魂技强攻威力160%过低，提至500%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-34331cd444e8ea6d",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.玉天恒.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 16,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+8%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "雷电附体",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [8.59, 10.47]（优秀+3，前摇8→16 代价能量0.806）；原力量+15%2轮=18.49 超门禁5.24，降+8%并加前摇16，改后 实际COST 9.86 落带",
+    "confidence": "high",
+    "reason": "雷电附体力量+15%超限，降+8%加前摇16落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-2bc45ac0c285f206",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.玉天恒.成长技能模板[2].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 7200
+      },
+      "前摇": 16
+    },
+    "skill": "雷霆万钧",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [36.72, 44.77]（优秀+3，消耗1700→7200 前摇14→16 代价能量1.357）；原范围雷击+僵直=42.84 超门禁17.03，提消耗+前摇扩带，实际COST 42.84 落带",
+    "confidence": "high",
+    "reason": "雷霆万钧机制保留，消耗7200+前摇16扩带落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-d2d764b1055833e6",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.金鳄斗罗.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "防御",
+          "数值": "+20%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "金鳄铁壁",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [22.39, 26.34]（天才+6，运转基准56×代价能量0.47）；原防御+30%2轮=34.8 超门禁26.34，降至+20% 实际COST 23.2 落带",
+    "confidence": "high",
+    "reason": "金鳄铁壁防御+30%超限，降至+20%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-47d65f0e815f8f3b",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.金鳄斗罗.成长技能模板[2].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 100000
+      }
+    },
+    "skill": "黄金鳄王真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [95.64, 112.52]（天才+6，运转基准96；消耗改固定100000魂力 代价能量1.172）；原'魂力:25%'格式在ring9按标准消耗仅0.05致门禁7.68，效果111.15无法落带；改固定消耗100000，实际COST 111.15 落带",
+    "confidence": "high",
+    "reason": "ring9百分比消耗不被识别致带过窄，改固定消耗100000保留力量+35%防御+40%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-8952d6197ce55c19",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.泰隆.成长技能模板[0].技能数据",
+    "after": {
+      "前摇": 16,
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+8%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "猩猩强化",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [8.59, 10.47]（优秀+3，前摇6→16 代价能量0.806）；原力量+15%2轮=18.49 超门禁3.93，降+8%加前摇16，改后 实际COST 9.86 落带",
+    "confidence": "high",
+    "reason": "猩猩强化力量+15%超限，降+8%加前摇16落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-78ee2492bd299cdc",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.泰隆.成长技能模板[2].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 300,
+          "伤害类型": "近身攻击"
+        }
+      ]
+    },
+    "skill": "泰隆连击",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [24.53, 29.91]（优秀+3，运转基准53×代价能量0.564）；原威力130%=14.92 低于下限，提至300% 实际COST 25.6 落带",
+    "confidence": "high",
+    "reason": "万年级连击威力130%过低，提至300%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-4d8ad33db3b0b1d2",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.白沉香.成长技能模板[0].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "判定修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "判定": "闪避",
+          "数值": "+5%",
+          "持续回合": 2
+        }
+      ]
+    },
+    "skill": "分身幻影",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [4.29, 5.24]（优秀+3，运转基准13×代价能量0.403）；原闪避+15%2轮=15.22 超门禁5.24，降至+5% 实际COST 5.08 落带",
+    "confidence": "high",
+    "reason": "分身幻影闪避+15%超限，降至+5%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-3ccf8c1d2a42161c",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.白沉香.成长技能模板[1].技能数据",
+    "after": {
+      "消耗": {
+        "魂力": 15000
+      },
+      "前摇": 16,
+      "_效果数组": [
+        {
+          "原型": "伤害结算",
+          "目标": "单体",
+          "生效方式": "独立生效",
+          "威力倍率": 500,
+          "伤害类型": "近身攻击"
+        },
+        {
+          "原型": "位移执行",
+          "目标": "单体",
+          "生效方式": "跟随主原型",
+          "位移类型": "击退",
+          "位移对象": "目标",
+          "距离": 10
+        }
+      ]
+    },
+    "skill": "飞行突袭",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [39.88, 48.63]（优秀+3，3环运转基准33×1.5位级硬顶=49.5）；瞬移固定50 恒超3环硬顶，改俯冲击退(8)+威力500%，消耗15000前摇16，实际COST 43.61 落带",
+    "confidence": "high",
+    "reason": "瞬移50超3环位级硬顶49.5，改俯冲击退+500%威力落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  },
+  {
+    "recordId": "cost-912c05fc60c279e7",
+    "concern": "cost",
+    "profileId": "dldl",
+    "path": "$.角色.尘心.成长技能模板[1].技能数据",
+    "after": {
+      "_效果数组": [
+        {
+          "原型": "属性修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "属性": "力量",
+          "数值": "+85%",
+          "持续回合": 3
+        },
+        {
+          "原型": "结算修正",
+          "目标": "自身",
+          "生效方式": "独立生效",
+          "结算": "造成伤害",
+          "数值": "+45%",
+          "持续回合": 3
+        }
+      ]
+    },
+    "skill": "巨剑真身",
+    "evidenceType": "budget-calibration",
+    "evidence": "目标带 [234.52, 275.9]（天才+6，运转基准181.72×代价能量1.518）；原力量+40%+造成伤害+25%=128.7 低于下限，提至+85%/+45% 实际COST 251.55 落带",
+    "confidence": "high",
+    "reason": "剑斗罗真身攻击加成过低，提至力量+85%+造成伤害+45%落带",
+    "runtimeConsumer": "MVU_Skill_Runtime.js:评估技能预算_V1",
+    "tests": [
+      "T-COST-001"
+    ]
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "M2K00KernelOwnershipGateV1",
+  "status": "PASSED",
+  "calculationMode": "COMPONENT_REGISTRY_V1",
+  "rejectsPrecomputedCandidateFields": true,
+  "componentEvaluationOwnedByKernel": true,
+  "factDeltaForcesReevaluation": true,
+  "rejectsNestedComputedRawFields": true,
+  "kernelAggregatesComponentFacts": true,
+  "proofRequiresEvaluatedVector": true,
+  "evaluationCount": 2,
+  "kernelHash": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+  "harnessHash": "627bde034dc84065656e1f72f2a9f745c20297bcf557e083fe7cf6c66edecd8e"
+}

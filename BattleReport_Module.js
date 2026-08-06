@@ -9,8 +9,30 @@
     throw new Error(`battle_report_runtime_version_mismatch:${runtime?.version || 'missing'}`);
   }
 
-  const visibilityModes = Object.freeze(['PLAYER', 'DEVELOPER']);
-  const reportSchemaVersion = '8.3-report-1';
+  const visibilityModes = Object.freeze(['PLAYER', 'REVIEW', 'DEVELOPER']);
+  const reportSchemaVersion = 'BattleReportDtoV2';
+  const reportTermDictionaryVersion = 'ReportTermDictionaryV1';
+  const reportTermDictionary = Object.freeze({
+    schemaVersion: reportTermDictionaryVersion,
+    playerTerms: Object.freeze([
+      '目标推进',
+      '观察收益',
+      '生存底线',
+      '资源余量',
+      '阈值过量',
+      '数字来源',
+    ]),
+    forbiddenPlayerTerms: Object.freeze([
+      'HEPP',
+      'Pareto',
+      'objectiveUtility',
+      'candidateId',
+      'routeKey',
+      'dependencyKey',
+      'rawDecision',
+      'scoreAudit',
+    ]),
+  });
   const reportAuditAttestations = new WeakMap();
   const internalSummonPattern = /(?:structured-summon|battle-summon|summon-instance|preview-summon):[^\s,，。；;|]+/gi;
   const internalSummonIdPattern = /^(?:structured-summon|battle-summon|summon-instance|preview-summon):/i;
@@ -510,17 +532,23 @@
   function eventNumberToken(event, label, value, unit, sourceType, operation, visibilityMode, extra = {}) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return null;
+    const displayName = text(label);
+    const displayUnit = text(unit);
     return {
       tokenId: `${text(event?.eventId)}:number:${text(label)}:${text(unit)}`,
-      label: text(label),
+      displayName,
+      label: displayName,
       value: numeric,
-      unit: text(unit),
+      unit: displayUnit,
       sourceName: text(event?.actionName || event?.finalActionName || event?.eventKind || '战斗结算'),
       sourceType: text(sourceType),
       operation: text(operation),
       sourceEventId: text(event?.eventId),
       sourceFactId: text(event?.eventId),
       visibility: visibilityMode,
+      operands: [{ name: '来源事实记录值', value: numeric, unit: displayUnit }],
+      derivationRule: `按来源事实记录的${displayName}实际值`,
+      tacticalConsequence: `用于说明${displayName}对当前战斗的实际影响`,
       ...extra,
     };
   }
@@ -2219,10 +2247,12 @@
       const expectedNoOpUtility = number(goalProjection?.expectedNoOpUtility, 0);
       return {
         candidateId: text(candidate?.candidateId),
+        actionId: text(candidate?.declaration?.actionId || candidate?.candidateId),
         name: candidateDisplayLabel(projectedCandidate),
         actionName: projectedCandidate.actionName,
         actionKind: projectedCandidate.actionKind,
         targetNames: [...projectedCandidate.targetNames],
+        pareto: candidate?.pareto !== false,
         outcomeKinds: unique(candidate?.primaryRoute?.outcomeKinds || []),
         status: isSelected ? 'SELECTED' : reasonCode ? 'EXCLUDED' : 'CONSIDERED',
         reasonCode,
@@ -2255,8 +2285,20 @@
             0,
           ),
         },
+        publicProjectionAvailable: Boolean(
+          goalProjection &&
+          typeof goalProjection === 'object' &&
+          Object.hasOwn(goalProjection, 'expectedCandidateUtility') &&
+          Object.hasOwn(goalProjection, 'expectedNoOpUtility'),
+        ),
       };
     });
+
+    const formalAlternativeCandidateIds = Array.isArray(decision?.alternatives)
+      ? decision.alternatives
+        .map(candidate => text(candidate?.candidateId))
+        .filter(Boolean)
+      : [];
 
     const viable = rows.filter(row => row.status !== 'EXCLUDED');
     const ranked = viable
@@ -2325,6 +2367,8 @@
       rankGap: wasOptimal === false && selectedRow && topRanked
         ? Number((number(topRanked.rank, 0) - number(selectedRow.rank, 0)).toFixed(4))
         : null,
+      alternativeSelection: Array.isArray(decision?.alternatives) ? 'FORMAL' : 'PARETO_FALLBACK',
+      formalAlternativeCandidateIds: Object.freeze(formalAlternativeCandidateIds),
     };
   }
 
@@ -3700,7 +3744,7 @@
   function unitStateFromSnapshot(unit = {}, side = '', directory = new Map(), visibilityMode = 'DEVELOPER') {
     const id = publicEntityId(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称);
     const name = publicEntityName(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称, unit?.name || unit?.名称);
-    const hidePrivateResources = visibilityMode === 'PLAYER' && side === 'enemy';
+    const hidePrivateResources = visibilityMode !== 'DEVELOPER' && side === 'enemy';
     const states = Array.isArray(unit?.状态效果)
       ? unit.状态效果.map(state => text(state?.name || state?.状态 || state?.状态名称)).filter(Boolean)
       : Object.entries(unit?.状态效果 || {}).map(([stateKey, state]) =>
@@ -3787,7 +3831,7 @@
 
   function projectUnitStateForVisibility(unit = {}, visibilityMode = 'PLAYER') {
     const projected = cloneValue(unit);
-    if (visibilityMode === 'PLAYER' && text(projected?.side).toLowerCase() === 'enemy') {
+    if (visibilityMode !== 'DEVELOPER' && text(projected?.side).toLowerCase() === 'enemy') {
       projected.resourceVisibility = 'HIDDEN';
       projected.resources = null;
     }
@@ -3886,10 +3930,10 @@
             token: fact.numericTokens.find(token => token.sourceType === 'RESOURCE'),
           };
         });
-      const visibleResourceEvents = visibilityMode === 'PLAYER'
+      const visibleResourceEvents = visibilityMode !== 'DEVELOPER'
         ? rawResourceEvents.filter(event => event.targetSide === 'player')
         : rawResourceEvents;
-      const resourceEvents = visibilityMode === 'PLAYER'
+      const resourceEvents = visibilityMode !== 'DEVELOPER'
         ? visibleResourceEvents.map(({ actorSide, targetSide, ...event }) => event)
         : visibleResourceEvents;
       const rawEventsById = new Map(events.map(event => [text(event?.eventId), event]));
@@ -4482,6 +4526,7 @@
       const sourceFactId = `${explanationId}:prediction:${key}`;
       return {
         tokenId: `${sourceFactId}:number`,
+        displayName: label,
         label,
         value: round(value),
         unit,
@@ -4700,7 +4745,7 @@
         const trace = row?.trace && typeof row.trace === 'object' ? row.trace : {};
         const actorId = text(row?.actorId || node?.actorId);
         const actorSide = text(entityEntry(directory, actorId)?.side);
-        const hideEnemyPrivateCandidates = visibilityMode === 'PLAYER' && actorSide === 'enemy';
+        const hideEnemyPrivateCandidates = visibilityMode !== 'DEVELOPER' && actorSide === 'enemy';
         const candidates = (Array.isArray(trace?.candidates) ? trace.candidates : [])
           .filter(candidate =>
             !hideEnemyPrivateCandidates ||
@@ -4748,9 +4793,16 @@
               '未记录动作',
             );
         const includeValueTradeoffs = visibilityMode === 'DEVELOPER' || actorSide === 'player';
+        const formalAlternativeIds = new Set(
+          Array.isArray(trace?.formalAlternativeCandidateIds)
+            ? trace.formalAlternativeCandidateIds.map(text).filter(Boolean)
+            : [],
+        );
         const alternativeCandidates = decisionKind === 'LOST_OPPORTUNITY'
           ? candidates.filter(candidate => text(candidate?.actionKind) !== 'PASS_OPPORTUNITY')
-          : candidates;
+          : trace?.alternativeSelection === 'FORMAL'
+            ? candidates.filter(candidate => formalAlternativeIds.has(text(candidate?.candidateId)))
+            : candidates.filter(candidate => candidate?.pareto !== false);
         const alternativeConsideredCandidates = alternativeCandidates.filter(candidate =>
           text(candidate?.status).toUpperCase() === 'CONSIDERED',
         );
@@ -4796,12 +4848,18 @@
         } else if (firstComparison) {
           selectionReason = `选择${selectedName}；相较主要替代项，${firstComparison}`;
         } else {
-          selectionReason = `选择${selectedName}；没有其他可行替代项`;
+          const hasOtherConsideredCandidates = candidates.some(candidate =>
+            text(candidate?.status).toUpperCase() === 'CONSIDERED',
+          );
+          selectionReason = hasOtherConsideredCandidates
+            ? `选择${selectedName}；当前公开情况没有留下需要并列说明的另一条路线`
+            : `选择${selectedName}；没有其他可行替代项`;
         }
         const explanationId = `decision-explanation:${++explanationIndex}:${text(node?.chainId) || 'unknown'}`;
         const publicEvidenceAvailable = decisionKind !== 'LOST_OPPORTUNITY' &&
           !!selectedCandidate &&
-          !hideEnemyPrivateCandidates;
+          !hideEnemyPrivateCandidates &&
+          selectedCandidate.publicProjectionAvailable === true;
         const predictedNumbers = decisionProjectionNumbers(
           explanationId,
           selectedCandidate,
@@ -4812,9 +4870,9 @@
         const publicNarrowing = (Array.isArray(trace?.narrowing) ? trace.narrowing : [])
           .filter(() => !hideEnemyPrivateCandidates)
           .map(stage => ({
-            stage: visibilityMode === 'PLAYER'
-              ? playerDecisionStageLabels[text(stage?.stage)] || text(stage?.stage)
-              : text(stage?.stage),
+            stage: visibilityMode === 'DEVELOPER'
+              ? text(stage?.stage)
+              : playerDecisionStageLabels[text(stage?.stage)] || text(stage?.stage),
             before: Math.max(0, number(stage?.before, 0)),
             after: Math.max(0, number(stage?.after, 0)),
             droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
@@ -5055,7 +5113,6 @@
         enemy: finalSummary?.sides?.enemy?.units || [],
       },
     };
-    const aiReport = renderChainForAI(chainRenderInput);
     const battleHeadline = buildBattleHeadline(chainRenderInput);
     factRegistry.forEach(fact => {
       fact.projectionRefs.push({ ownerId: fact.canonicalFactOwner, projection: 'DETAIL' });
@@ -5065,6 +5122,7 @@
     });
     return {
       schemaVersion: reportSchemaVersion,
+      termDictionaryVersion: reportTermDictionaryVersion,
       visibilityMode,
       actualRoundCount: Math.max(0, number(draft?.actualRoundCount, 0)),
       terminalResult: projectedTerminal,
@@ -5077,7 +5135,6 @@
       roundOverview,
       exchanges,
       finalSummary,
-      aiSummaryInput,
       aiStructuredSummary: {
         schemaVersion: 'AIPlayerSummaryV1',
         ...cloneValue(aiSummaryInput),
@@ -5085,8 +5142,36 @@
       decisionExplanations,
       narrativeChain: projectedNarrativeChain,
       pipelineStats,
-      aiReport,
       battleHeadline,
+    };
+  }
+
+  function buildProjectionSet(input = {}) {
+    const sourceDraft = input?.draft && typeof input.draft === 'object' ? input.draft : null;
+    if (!sourceDraft || text(sourceDraft?.status) !== 'DRAFT') throw new Error('battle_report_draft_invalid');
+    const draftHash = text(sourceDraft?.draftHash);
+    if (!draftHash || runtime.verifyBattleDraftAttestation(sourceDraft) !== true) {
+      throw new Error('BATTLE_COMMIT_HASH_MISMATCH:draft');
+    }
+    const projections = {};
+    visibilityModes.forEach(visibilityMode => {
+      const reportDto = build({ draft: sourceDraft, visibilityMode });
+      const reportAudit = auditProjection(reportDto);
+      projections[visibilityMode] = {
+        visibilityMode,
+        passed: reportAudit?.passed === true,
+        fatalCount: Math.max(0, number(reportAudit?.fatalCount, 0)),
+        fatals: cloneValue(reportAudit?.fatals || []),
+        diagnostics: cloneValue(reportAudit?.diagnostics || {}),
+        reportHash: text(reportAudit?.reportHash),
+        reportDto: reportAudit?.reportDto || null,
+      };
+    });
+    return {
+      schemaVersion: 'BattleReportProjectionSetV1',
+      sourceDraftHash: draftHash,
+      projectionModes: [...visibilityModes],
+      projections,
     };
   }
 
@@ -5094,6 +5179,24 @@
     const report = reportDto && typeof reportDto === 'object' ? { ...reportDto } : {};
     const fatals = [];
     const pushFatal = (code, detail = {}) => fatals.push({ code, ...detail });
+    const publicProjection = report?.visibilityMode !== 'DEVELOPER';
+    if (text(report?.schemaVersion) !== reportSchemaVersion) {
+      pushFatal('REPORT_SCHEMA_VERSION_INVALID', {
+        expected: reportSchemaVersion,
+        actual: text(report?.schemaVersion),
+      });
+    }
+    if (!visibilityModes.includes(text(report?.visibilityMode).toUpperCase())) {
+      pushFatal('REPORT_VISIBILITY_MODE_INVALID', {
+        actual: text(report?.visibilityMode),
+      });
+    }
+    if (text(report?.termDictionaryVersion) !== reportTermDictionaryVersion) {
+      pushFatal('REPORT_TERM_DICTIONARY_INVALID', {
+        expected: reportTermDictionaryVersion,
+        actual: text(report?.termDictionaryVersion),
+      });
+    }
     const projectionDirectory = new Map();
     const registry = Array.isArray(report?.factRegistry) ? report.factRegistry : [];
     const factsById = new Map();
@@ -5116,6 +5219,26 @@
         ) {
           pushFatal('REPORT_NUMBER_SOURCE_MISSING', { factId, tokenIndex });
         }
+        if (
+          publicProjection &&
+          (!text(token?.displayName || token?.label) ||
+            !text(token?.unit) ||
+            !text(token?.derivationRule) ||
+            !text(token?.tacticalConsequence) ||
+            !Array.isArray(token?.operands) ||
+            token.operands.length < 1 ||
+            token.operands.some(operand =>
+              !text(operand?.name) ||
+              !Number.isFinite(Number(operand?.value)) ||
+              !text(operand?.unit)
+            ))
+        ) {
+          pushFatal('REPORT_NUMBER_SOURCE_MISSING', {
+            factId,
+            tokenIndex,
+            reason: 'PUBLIC_NUMBER_EXPLANATION_INCOMPLETE',
+          });
+        }
         const eventKind = text(fact?.eventKind);
         const resourceToken = text(token?.sourceType) === 'RESOURCE';
         const genericResourceLabel = text(token?.label) === '资源变化';
@@ -5136,7 +5259,7 @@
           });
         }
       });
-      if (report?.visibilityMode === 'PLAYER' && fact?.developerDetail !== undefined) {
+      if (publicProjection && fact?.developerDetail !== undefined) {
         pushFatal('REPORT_VISIBILITY_LEAK', { factId, reason: 'DEVELOPER_DETAIL_IN_PLAYER_REPORT' });
       }
     });
@@ -5227,7 +5350,7 @@
           });
         }
         if (
-          report?.visibilityMode === 'PLAYER' &&
+          publicProjection &&
           /HEPP|Pareto|normalizedUtility|candidateId|routeKey|dependencyKey/i.test(
             JSON.stringify(token),
           )
@@ -5275,7 +5398,7 @@
         }
       }
       if (
-        report?.visibilityMode === 'PLAYER' &&
+          publicProjection &&
         Object.hasOwn(explanation, 'candidateIds')
       ) {
         pushFatal('REPORT_VISIBILITY_LEAK', {
@@ -5299,7 +5422,7 @@
         });
       }
     });
-    if (report?.visibilityMode === 'PLAYER') {
+    if (publicProjection) {
       const decisionTraceProjection = JSON.stringify(
         (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
           .map(node => ({ decision: node?.decision, decisions: node?.decisions })),
@@ -5330,7 +5453,7 @@
       (Array.isArray(report?.roundOverview) ? report.roundOverview : []).forEach((row, rowIndex) => {
         inspectVisibleUnits(row?.units?.enemy, `roundOverview[${rowIndex}].enemy.units`);
       });
-      inspectVisibleUnits(report?.aiSummaryInput?.sides?.enemy?.units, 'aiSummaryInput.enemy.units');
+      inspectVisibleUnits(report?.aiStructuredSummary?.sides?.enemy?.units, 'aiStructuredSummary.enemy.units');
       const hiddenRoundResourceLocations = [];
       (Array.isArray(report?.roundOverview) ? report.roundOverview : []).forEach((row, rowIndex) => {
         const enemyDelta = row?.resourceDeltaBySide?.enemy;
@@ -5463,7 +5586,11 @@
           locations: [...new Set(longDecimalLocations)].slice(0, 64),
         });
       }
-      const playerReportText = text(report?.aiReport);
+      const playerReportText = [
+        text(report?.battleHeadline),
+        text(report?.finalSummary?.text),
+        JSON.stringify(report?.aiStructuredSummary || {}),
+      ].join('\n');
       if (/(?:引擎评分|可接受范围内选了当前动作|topRankedName|rankGap|normalizedUtility)/i.test(playerReportText)) {
         pushFatal('REPORT_DECISION_POSTHOC_JUSTIFICATION', {
           reason: 'PLAYER_INTERNAL_RANKING_OR_POSTHOC_SELECTION_TEXT',
@@ -5665,7 +5792,7 @@
         pushFatal('REPORT_FACT_OWNER_CONFLICT', { factId, reason: 'DETAIL_REFERENCE_INVALID' });
       }
     });
-    if (report?.visibilityMode === 'PLAYER') {
+    if (publicProjection) {
       const serialized = JSON.stringify(report);
       /* internalSummonIdPattern 带 ^ 锚，对整段序列化串 .test() 永不命中——
          该门禁此前形同虚设。改用非锚定形式扫描嵌入出现。 */
@@ -5697,7 +5824,8 @@
           ...(Array.isArray(node?.decision?.candidates) ? node.decision.candidates : [])
             .flatMap(candidate => [candidate?.reasonText, candidate?.reasonPlayerText]),
         ]),
-        text(report?.aiReport),
+        text(report?.battleHeadline),
+        text(report?.finalSummary?.text),
       ].map(text).join('\n');
       if (/\b(?:PENDING|DECLARED|SUCCESS|FAILURE|FAILED|ABORTED|BLOCKED|LOST|COMPLETED|NO_EFFECT|RESISTED|IMMUNE)\b/.test(projectedText)) {
         pushFatal('PLAYER_INTERNAL_RESULT_LEAK', { reason: 'UNRESOLVED_RESULT_STATE' });
@@ -5706,7 +5834,7 @@
         pushFatal('PLAYER_INTERNAL_RESULT_LEAK', { reason: 'RAW_INCAPACITY_REASON' });
       }
     }
-    const aiSerialized = JSON.stringify(report?.aiSummaryInput || {});
+    const aiSerialized = JSON.stringify(report?.aiStructuredSummary || {});
     if (/scoreAudit|candidateId|ruleCode|formulaTrace|normalizedUtility|objectiveUtility|rawDecision/i.test(aiSerialized)) {
       pushFatal('AI_SUMMARY_INTERNAL_DATA_LEAK');
     }
@@ -5820,7 +5948,9 @@
   root.__LWCS_BATTLE_REPORT__ = Object.freeze({
     version: reportSchemaVersion,
     visibilityModes,
+    reportTermDictionary,
     build,
+    buildProjectionSet,
     auditProjection,
     verifyProjectionAttestation,
     candidateDisplayLabel,

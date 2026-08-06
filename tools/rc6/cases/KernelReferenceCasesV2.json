@@ -1,0 +1,342 @@
+{
+  "schemaVersion": "KernelReferenceCasesV2",
+  "ownerResolution": "COMPONENT_CODE_V1",
+  "cases": [
+    {
+      "caseId": "raw-s1-health",
+      "mode": "auto",
+      "expected": { "selectedCandidateId": "health-route" },
+      "candidates": [
+        {
+          "candidateId": "health-route",
+          "actionId": "attack-health",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s1-health", "candidate:health-route"],
+          "rawFacts": [
+            {
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -250,
+              "maxHp": 1000,
+              "polarity": -1,
+              "sourceEventId": "raw-s1-health:event:health",
+              "sourceFactId": "raw-s1-health:fact:health",
+              "targetUnitId": "enemy-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        },
+        {
+          "candidateId": "safe-route",
+          "actionId": "defend-safe",
+          "actorId": "actor-1",
+          "targetSet": ["actor-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s1-health", "candidate:safe-route"],
+          "rawFacts": [
+            {
+              "componentCode": "S2_CONSTANT",
+              "formula": "CONSTANT_HEPP",
+              "amountHEPP": 5,
+              "sourceEventId": "raw-s1-health:event:safe",
+              "sourceFactId": "raw-s1-health:fact:safe",
+              "targetUnitId": "actor-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        }
+      ]
+    },
+    {
+      "caseId": "raw-s1-terminal",
+      "mode": "auto",
+      "expected": { "selectedCandidateId": "terminal-first" },
+      "candidates": [
+        {
+          "candidateId": "terminal-first",
+          "actionId": "finish-terminal",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s1-terminal", "candidate:terminal-first"],
+          "rawFacts": [
+            {
+              "componentCode": "S1_TERMINAL",
+              "formula": "TERMINAL_OUTCOME",
+              "winProbability": 0.6,
+              "lossProbability": 0.4,
+              "drawProbability": 0,
+              "sourceEventId": "raw-s1-terminal:event:terminal",
+              "sourceFactId": "raw-s1-terminal:fact:terminal",
+              "targetUnitId": "enemy-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        },
+        {
+          "candidateId": "continue-safe",
+          "actionId": "continue-safe",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s1-terminal", "candidate:continue-safe"],
+          "rawFacts": [
+            {
+              "componentCode": "S2_CONSTANT",
+              "formula": "CONSTANT_HEPP",
+              "amountHEPP": 10,
+              "sourceEventId": "raw-s1-terminal:event:safe",
+              "sourceFactId": "raw-s1-terminal:fact:safe",
+              "targetUnitId": "enemy-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        }
+      ]
+    },
+    {
+      "caseId": "raw-s2-route",
+      "mode": "auto",
+      "expected": { "selectedCandidateId": "route-change" },
+      "candidates": [
+        {
+          "candidateId": "route-change",
+          "actionId": "control-route",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s2-route", "candidate:route-change"],
+          "rawFacts": [
+            {
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 10,
+              "afterRouteHEPP": 40,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "raw-s2-route:event:route",
+              "sourceFactId": "raw-s2-route:fact:route",
+              "targetUnitId": "enemy-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        },
+        {
+          "candidateId": "route-pass",
+          "actionId": "pass-route",
+          "actorId": "actor-1",
+          "targetSet": [],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s2-route", "candidate:route-pass"],
+          "rawFacts": [
+            {
+              "componentCode": "S2_CONSTANT",
+              "formula": "CONSTANT_HEPP",
+              "amountHEPP": 5,
+              "sourceEventId": "raw-s2-route:event:pass",
+              "sourceFactId": "raw-s2-route:fact:pass",
+              "targetUnitId": "actor-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        }
+      ]
+    },
+    {
+      "caseId": "raw-s3-mixed-owner",
+      "mode": "auto",
+      "expected": { "selectedCandidateId": "mixed-route" },
+      "candidates": [
+        {
+          "candidateId": "mixed-route",
+          "actionId": "protect-and-route",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1", "ally-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s3-mixed-owner", "candidate:mixed-route"],
+          "rawFacts": [
+            {
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -100,
+              "maxHp": 1000,
+              "polarity": -1,
+              "sourceEventId": "raw-s3-mixed-owner:event:health",
+              "sourceFactId": "raw-s3-mixed-owner:fact:health",
+              "targetUnitId": "enemy-1",
+              "sequence": 0
+            },
+            {
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 20,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "raw-s3-mixed-owner:event:route",
+              "sourceFactId": "raw-s3-mixed-owner:fact:route",
+              "targetUnitId": "ally-1",
+              "sequence": 1
+            }
+          ],
+          "informationGroups": []
+        },
+        {
+          "candidateId": "health-only",
+          "actionId": "attack-only",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s3-mixed-owner", "candidate:health-only"],
+          "rawFacts": [
+            {
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -100,
+              "maxHp": 1000,
+              "polarity": -1,
+              "sourceEventId": "raw-s3-mixed-owner:event:health-only",
+              "sourceFactId": "raw-s3-mixed-owner:fact:health-only",
+              "targetUnitId": "enemy-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        }
+      ]
+    },
+    {
+      "caseId": "raw-s4-information",
+      "mode": "auto",
+      "expected": { "selectedCandidateId": "observe-route" },
+      "candidates": [
+        {
+          "candidateId": "observe-route",
+          "actionId": "observe-then-act",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s4-information", "candidate:observe-route"],
+          "rawFacts": [],
+          "informationGroups": [
+            {
+              "groupId": "raw-s4-information:group",
+              "outcomes": [
+                {
+                  "probability": 0.5,
+                  "futureCandidateRouteVector": {
+                    "schemaVersion": "FutureCandidateRouteVectorV1",
+                    "candidateIds": ["future-success"],
+                    "beforeRouteHEPP": [0],
+                    "afterRouteHEPP": [40],
+                    "applicationProbability": [1],
+                    "polarity": [1]
+                  }
+                },
+                {
+                  "probability": 0.5,
+                  "futureCandidateRouteVector": {
+                    "schemaVersion": "FutureCandidateRouteVectorV1",
+                    "candidateIds": ["future-failure"],
+                    "beforeRouteHEPP": [0],
+                    "afterRouteHEPP": [0],
+                    "applicationProbability": [1],
+                    "polarity": [1]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "candidateId": "stable-route",
+          "actionId": "stable-attack",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s4-information", "candidate:stable-route"],
+          "rawFacts": [
+            {
+              "componentCode": "S2_CONSTANT",
+              "formula": "CONSTANT_HEPP",
+              "amountHEPP": 5,
+              "sourceEventId": "raw-s4-information:event:stable",
+              "sourceFactId": "raw-s4-information:fact:stable",
+              "targetUnitId": "enemy-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        }
+      ]
+    },
+    {
+      "caseId": "raw-s6-hard-exclusion-manual",
+      "mode": "manual",
+      "playerLockedCandidateId": "locked-safe",
+      "expected": { "selectedCandidateId": "locked-safe" },
+      "candidates": [
+        {
+          "candidateId": "invalid-route",
+          "actionId": "invalid-action",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "legal": false,
+          "hardExclusionCodes": ["MECHANICAL_INVALID"],
+          "dependencyTokens": ["case:raw-s6-hard-exclusion-manual", "candidate:invalid-route"],
+          "rawFacts": [],
+          "informationGroups": []
+        },
+        {
+          "candidateId": "ai-preferred",
+          "actionId": "ai-action",
+          "actorId": "actor-1",
+          "targetSet": ["enemy-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s6-hard-exclusion-manual", "candidate:ai-preferred"],
+          "rawFacts": [
+            {
+              "componentCode": "S2_CONSTANT",
+              "formula": "CONSTANT_HEPP",
+              "amountHEPP": 50,
+              "sourceEventId": "raw-s6-hard-exclusion-manual:event:ai",
+              "sourceFactId": "raw-s6-hard-exclusion-manual:fact:ai",
+              "targetUnitId": "enemy-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        },
+        {
+          "candidateId": "locked-safe",
+          "actionId": "player-action",
+          "actorId": "actor-1",
+          "targetSet": ["ally-1"],
+          "paymentMode": "FULL",
+          "dependencyTokens": ["case:raw-s6-hard-exclusion-manual", "candidate:locked-safe"],
+          "rawFacts": [
+            {
+              "componentCode": "S2_CONSTANT",
+              "formula": "CONSTANT_HEPP",
+              "amountHEPP": 10,
+              "sourceEventId": "raw-s6-hard-exclusion-manual:event:locked",
+              "sourceFactId": "raw-s6-hard-exclusion-manual:fact:locked",
+              "targetUnitId": "ally-1",
+              "sequence": 0
+            }
+          ],
+          "informationGroups": []
+        }
+      ]
+    }
+  ]
+}

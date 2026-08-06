@@ -1,34 +1,30 @@
 {
   "schemaVersion": "M2K12TargetKernelAdapterGateV1",
   "status": "PASSED",
-  "kernelVersion": "9v2-kernel-1.0.0",
+  "kernelVersion": "9v2-kernel-1.3.0",
   "decisionVersion": "7.3-R6.3-decision-2",
   "caseCount": 4,
   "rows": [
     {
       "caseId": "duel_overmatch_lethal",
       "candidateCount": 4,
-      "selectedCandidateId": "云冥:DEFEND",
+      "selectedCandidateId": "云冥:basic:韦小枫",
       "requiredProofCandidateIds": [
-        "云冥:DEFEND",
-        "云冥:EVADE",
-        "云冥:PASS_OPPORTUNITY"
+        "云冥:basic:韦小枫"
       ],
-      "nonRequiredVectorCount": 1,
-      "unsupportedCandidateCount": 1,
+      "nonRequiredVectorCount": 3,
+      "unsupportedCandidateCount": 0,
       "slice": "TARGET_KERNEL_V2"
     },
     {
       "caseId": "duel_peer_unknown_probe",
       "candidateCount": 10,
-      "selectedCandidateId": "谢邂:DEFEND",
+      "selectedCandidateId": "谢邂:basic:韦小枫",
       "requiredProofCandidateIds": [
-        "谢邂:DEFEND",
-        "谢邂:EVADE",
-        "谢邂:PASS_OPPORTUNITY"
+        "谢邂:basic:韦小枫"
       ],
-      "nonRequiredVectorCount": 7,
-      "unsupportedCandidateCount": 7,
+      "nonRequiredVectorCount": 9,
+      "unsupportedCandidateCount": 0,
       "slice": "TARGET_KERNEL_V2"
     },
     {
@@ -41,7 +37,7 @@
         "唐舞麟:PASS_OPPORTUNITY"
       ],
       "nonRequiredVectorCount": 7,
-      "unsupportedCandidateCount": 7,
+      "unsupportedCandidateCount": 0,
       "slice": "TARGET_KERNEL_V2"
     },
     {
@@ -54,15 +50,22 @@
         "古月:PASS_OPPORTUNITY"
       ],
       "nonRequiredVectorCount": 5,
-      "unsupportedCandidateCount": 5,
+      "unsupportedCandidateCount": 0,
       "slice": "TARGET_KERNEL_V2"
     }
   ],
   "targetKernelUsed": true,
   "fieldLevelReferenceAB": true,
+  "productionReferenceABStatus": "PASSED",
+  "productionReferenceABHash": "ecce248c43b07f33d805e3f55511addf5c8dd5c1ba1809f1d4daf43666e053ac",
+  "rawInputComputedFieldLeakCount": 0,
   "targetAdapterSourceGuard": true,
+  "targetBranchSourceGuard": true,
+  "targetValueSourceGuard": true,
   "oldShadowProofPathNotUsedByTargetSlice": true,
-  "harnessHash": "e5eedf468f95efa37497619ae93b082f174cf71c586e5d293df95d43b8ba7a7d",
-  "decisionHash": "b7a65a82e95fe31f95b6cc4a08f01223801fbc5c126a9e776f21c3aaa1346c73",
-  "kernelHash": "4ce4ab6eadb81bc72edb6160dcee06b610b284a09dbbbe428c3bd6cca38e2157"
+  "legacyComponentReachabilityClosed": true,
+  "legacyComponentCalls": [],
+  "harnessHash": "b0507a6652f8a5cd22cd4782ca5963928840030c42d9361c299ac8fbcd1c4aaf",
+  "decisionHash": "dad0fc24d7f39c3011d74141eb0032342b77832ca5dcd54de9667ace8bf83fdb",
+  "kernelHash": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9"
 }

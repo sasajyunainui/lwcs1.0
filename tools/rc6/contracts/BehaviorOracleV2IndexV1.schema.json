@@ -15,7 +15,7 @@
       "const": "BehaviorOracleV2IndexV1"
     },
     "status": {
-      "const": "FROZEN_EXECUTABLE_REFERENCE_INDEX"
+      "const": "FROZEN_EXECUTABLE_FIXTURE_INDEX"
     },
     "sourcePath": {
       "type": "string"

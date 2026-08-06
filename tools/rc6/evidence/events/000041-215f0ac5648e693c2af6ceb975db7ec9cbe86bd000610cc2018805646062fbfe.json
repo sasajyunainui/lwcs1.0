@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 41,
+  "previousEventHash": "14bf1b7a03c40ba9343ef3aca807565959dc93dc3be192a4edcb74ec400d5a69",
+  "milestoneId": "M4",
+  "taskId": "M4-R02",
+  "eventType": "SUBTASK_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "7395f2a4449cc27a8d95d6ab9be3e66675a041d7b0927fbbeecd26b6311c0e82",
+    "BattleDecision_Module.js": "691b689b6cf304a54c3d5989e6e64cc3ed816581fd0d4d7c97bfefd3b0e6ab86",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "7b88b60e270e18f934348258044c4f531bf4a3aef13850a251ab05b1431a2f5c",
+    "BattleUI_Module.js": "df6d5a7ea9d7d4c010d286c7692b0beccaa29f27cc63c786525b7aeff477ee37",
+    "mvu_logic_bridge.js": "1cce118ef9fe990f8571b7ed882af052dc2cfcd1d0bc551ddca429e4f8717d65",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m4-r02-report-ui-pilot.mjs": "7ae5c98977547479bf5c5a11dd2cbcc6d6eb236fd7f322e83a357ae1498b8b7b"
+  },
+  "fixtureHashes": {
+    "tools/rc6/contracts/BattleReportDtoV2.contract.json": "ed38f88249928e028b135e1afd2170e160603b1f2fc206701c0ba53d7f32fca4"
+  },
+  "acceptedObjectHashes": [
+    "db2c79c1374a5610db96dc449df5b03dda17c53476c45e5ffb22506bb7362e16",
+    "7ae5c98977547479bf5c5a11dd2cbcc6d6eb236fd7f322e83a357ae1498b8b7b"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "Complete M4-R04 consumer migration and fail-closed UI closure",
+    "cases": [
+      "duel_overmatch_lethal",
+      "intent_capture_vs_kill",
+      "team_control_overlap",
+      "team_protect_critical_ally"
+    ],
+    "projectionModes": [
+      "PLAYER",
+      "REVIEW",
+      "DEVELOPER"
+    ],
+    "sealedMode": "PLAYER"
+  },
+  "reason": "M4-R02 same-draft three-layer projection and four-case report/UI pilot passed; UI accepts only BattleReportDtoV2 PLAYER PASSED and REVIEW sealing is rejected.",
+  "recordedAt": "2026-08-05T02:54:54.812Z",
+  "repository": {
+    "branch": "master",
+    "head": "343d01cc4f851515daaa355e80708585639f3b41"
+  },
+  "eventHash": "215f0ac5648e693c2af6ceb975db7ec9cbe86bd000610cc2018805646062fbfe"
+}

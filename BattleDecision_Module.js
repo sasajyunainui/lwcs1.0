@@ -30,6 +30,9 @@
   let evaluationSessionSequence = 0;
   let r9v2PrepareSequence = 0;
   let r9v2ProjectionRevisionSequence = 0;
+  let r9v2ProjectedMutationSequence = 0;
+  const r9v2ProjectedMutationTokens = new WeakMap();
+  const r9v2ProjectedUnitHints = new WeakMap();
   let baseActionValueCache = new WeakMap();
   let unitSkillCache = new WeakMap();
   let stateEntriesCache = new WeakMap();
@@ -264,12 +267,32 @@
   }
 
   function evaluationSessionMetricsSnapshot(state) {
+    const targetKernelMetrics = {
+      sessionCount: 0,
+    };
+    if (state.r9v2TargetKernelSessionCatalog instanceof Map) {
+      state.r9v2TargetKernelSessionCatalog.forEach(lifecycle => {
+        const metrics = lifecycle?.session?.metrics;
+        if (!metrics || typeof metrics !== 'object') return;
+        targetKernelMetrics.sessionCount += 1;
+        Object.entries(metrics).forEach(([key, value]) => {
+          if (!Number.isFinite(Number(value))) return;
+          targetKernelMetrics[key] =
+            Number(targetKernelMetrics[key] || 0) + Number(value);
+        });
+      });
+    }
+    targetKernelMetrics.r9v2TargetKernelCandidateEvaluations =
+      Number(targetKernelMetrics.candidateEvaluations || 0);
+    targetKernelMetrics.r9v2TargetKernelVectorEvaluations =
+      Number(targetKernelMetrics.vectorMaterializations || 0);
     return deepFreeze({
       schemaVersion: '8.3-evaluation-session-metrics-1',
       sessionId: state.sessionId,
       status: state.disposed ? 'DISPOSED' : 'ACTIVE',
       revisionState: cloneValue(state.revisionState),
       metrics: cloneValue(state.metrics),
+      targetKernelMetrics,
       latestFactDelta: state.latestFactDelta
         ? cloneValue(state.latestFactDelta)
         : null,
@@ -291,6 +314,10 @@
         attributionStore: state.attributionStore.size,
         paretoGraphByUnit: state.paretoGraphByUnit.size,
         r9v2ObserverPools: state.r9v2ObserverPools.size,
+        r9v2TargetKernelSlices: state.r9v2TargetKernelSlices.size,
+        r9v2TargetKernelSessions: state.r9v2TargetKernelSessions.size,
+        r9v2TargetKernelSessionCatalog:
+          state.r9v2TargetKernelSessionCatalog.size,
         r9v2DeclarationCatalogs:
           state.r9v2DeclarationCatalogs.size,
         r9v2MechanicalBasisStore:
@@ -299,6 +326,12 @@
           state.r9v2FutureBehaviorPools.size,
         r9v2ProofComponentStore:
           state.r9v2ProofComponentStore.size,
+        r9v2TargetRouteEntriesByKey:
+          state.r9v2TargetRouteEntriesByKey.size,
+        r9v2TargetRouteTablesByKey:
+          state.r9v2TargetRouteTablesByKey.size,
+        r9v2TargetRouteBestByKey:
+          state.r9v2TargetRouteBestByKey.size,
       },
     });
   }
@@ -502,10 +535,16 @@
       attributionStore: new Map(),
       paretoGraphByUnit: new Map(),
       r9v2ObserverPools: new Map(),
+        r9v2TargetKernelSlices: new Map(),
+        r9v2TargetKernelSessions: new Map(),
+      r9v2TargetKernelSessionCatalog: new Map(),
       r9v2DeclarationCatalogs: new Map(),
       r9v2MechanicalBasisStore: new Map(),
       r9v2FutureBehaviorPools: new Map(),
       r9v2ProofComponentStore: new Map(),
+      r9v2TargetRouteEntriesByKey: new Map(),
+      r9v2TargetRouteTablesByKey: new Map(),
+      r9v2TargetRouteBestByKey: new Map(),
       r9v2DependencyOwners: new Map(),
       r9v2MechanicalKeyObjectHashes: new WeakMap(),
       r9v2NormalizedContributionStore:
@@ -585,8 +624,10 @@
         r9v2PoolUnitFallbacks: 0,
         r9v2PoolEntryRebuilds: 0,
         r9v2PoolEntryReuses: 0,
+        r9v2MechanicalEntryBuildMs: 0,
         r9v2ProofComponentBuilds: 0,
         r9v2ProofComponentHits: 0,
+        r9v2ProofComponentBuildMs: 0,
         r9v2ProofComponentEvictions: 0,
         r9v2InformationProofComponentReuseAttempts: 0,
         r9v2InformationProofComponentReuseHits: 0,
@@ -598,6 +639,29 @@
         r9v2FuturePoolBuilds: 0,
         r9v2FuturePoolHits: 0,
         r9v2FuturePoolKeyMismatches: 0,
+        r9v2TargetKernelSliceCacheHits: 0,
+        r9v2TargetKernelSliceCacheMisses: 0,
+        r9v2TargetKernelSliceCacheInvalidations: 0,
+        r9v2TargetKernelSessionCreates: 0,
+        r9v2TargetKernelSessionReuses: 0,
+        r9v2TargetKernelStableSessionCreates: 0,
+        r9v2TargetKernelStableSessionReuses: 0,
+        r9v2TargetKernelCandidateSnapshotDeltas: 0,
+        r9v2TargetKernelContextInvalidations: 0,
+        r9v2TargetKernelRowReuses: 0,
+        r9v2TargetKernelSliceBuildMs: 0,
+        r9v2TargetRouteCacheHits: 0,
+        r9v2TargetRouteCacheMisses: 0,
+        r9v2TargetRouteEntryCacheHits: 0,
+        r9v2TargetRouteEntryCacheMisses: 0,
+        r9v2InformationBranchDirtyUnits: 0,
+        r9v2InformationBranchRebuiltCandidateRows: 0,
+        r9v2InformationBranchReusedCandidateRows: 0,
+        r9v2InformationBranchMaterializedRouteViews: 0,
+        r9v2InformationBranchRebuiltRouteRows: 0,
+        r9v2InformationBranchReusedRouteRows: 0,
+        r9v2InformationBranchReusedRouteValueTables: 0,
+        r9v2InformationBranchReusedRouteValueRows: 0,
       },
     });
     return handle;
@@ -31741,6 +31805,9 @@
         runtimeSnapshot.opportunitySnapshotHash ||
         preview.stableHash(opportunitySnapshot)
       }`,
+      opportunitySemanticRevision: r9v2ContextSemanticRevision(
+        opportunitySnapshot,
+      ),
       resourceTimelineRevision:
         runtimeSnapshot.resourceTimelineRevision ||
         `resource:${
@@ -31753,6 +31820,9 @@
         runtimeSnapshot.scheduledEventsHash ||
         preview.stableHash(scheduledEvents)
       }`,
+      scheduleSemanticRevision: r9v2ContextSemanticRevision(
+        scheduledEvents,
+      ),
       runtimeEvaluationRevision: String(
         runtimeSnapshot.evaluationRevision ||
         `runtime-evaluation:${preview.stableHash({
@@ -32370,6 +32440,9 @@
       sessionId: `r9v2-ephemeral:${++r9v2PrepareSequence}`,
       factDeltaRecords: [],
       r9v2ObserverPools: new Map(),
+      r9v2TargetKernelSlices: new Map(),
+      r9v2TargetKernelSessions: new Map(),
+      r9v2TargetKernelSessionCatalog: new Map(),
       r9v2DeclarationCatalogs:
         stores.declarationCatalogs instanceof Map
           ? stores.declarationCatalogs
@@ -32389,6 +32462,18 @@
       r9v2ProofComponentStore:
         stores.proofComponentStore instanceof Map
           ? stores.proofComponentStore
+          : new Map(),
+      r9v2TargetRouteEntriesByKey:
+        stores.targetRouteEntriesByKey instanceof Map
+          ? stores.targetRouteEntriesByKey
+          : new Map(),
+      r9v2TargetRouteTablesByKey:
+        stores.targetRouteTablesByKey instanceof Map
+          ? stores.targetRouteTablesByKey
+          : new Map(),
+      r9v2TargetRouteBestByKey:
+        stores.targetRouteBestByKey instanceof Map
+          ? stores.targetRouteBestByKey
           : new Map(),
       r9v2MechanicalKeyObjectHashes:
         stores.mechanicalKeyObjectHashes instanceof WeakMap
@@ -32432,6 +32517,18 @@
         state?.r9v2ProofComponentStore instanceof Map
           ? state.r9v2ProofComponentStore
           : new Map(),
+      targetRouteEntriesByKey:
+        state?.r9v2TargetRouteEntriesByKey instanceof Map
+          ? state.r9v2TargetRouteEntriesByKey
+          : new Map(),
+      targetRouteTablesByKey:
+        state?.r9v2TargetRouteTablesByKey instanceof Map
+          ? state.r9v2TargetRouteTablesByKey
+          : new Map(),
+      targetRouteBestByKey:
+        state?.r9v2TargetRouteBestByKey instanceof Map
+          ? state.r9v2TargetRouteBestByKey
+          : new Map(),
       mechanicalKeyObjectHashes:
         state?.r9v2MechanicalKeyObjectHashes instanceof WeakMap
           ? state.r9v2MechanicalKeyObjectHashes
@@ -32445,6 +32542,57 @@
       mechanicalEntryCacheActive:
         state?.r9v2MechanicalEntryCacheActive === true,
     };
+  }
+
+  function r9v2OpportunityIdentityContext(actionOpportunity = {}) {
+    return Object.freeze({
+      schemaVersion: 'R9v2OpportunityBindingV1',
+      opportunityId: String(actionOpportunity?.opportunityId || '').trim(),
+      grantId: String(actionOpportunity?.grantId || '').trim(),
+      descriptorId: String(actionOpportunity?.descriptorId || '').trim(),
+      eventId: String(actionOpportunity?.eventId || '').trim(),
+      sourceEventId: String(actionOpportunity?.sourceEventId || '').trim(),
+      sourceActionId: String(actionOpportunity?.sourceActionId || '').trim(),
+      ownerId: String(actionOpportunity?.ownerId || '').trim(),
+      sourceActorId: String(actionOpportunity?.sourceActorId || '').trim(),
+      sequence: Number(actionOpportunity?.sequence ?? 0),
+      opportunitySequence: Number(actionOpportunity?.opportunitySequence ?? 0),
+      createdAtSequence: Number(actionOpportunity?.createdAtSequence ?? 0),
+    });
+  }
+
+  function r9v2OpportunitySemanticContext(actionOpportunity = {}) {
+    const semantic = cloneValue(actionOpportunity || {});
+    [
+      'opportunityId',
+      'grantId',
+      'descriptorId',
+      'eventId',
+      'sourceEventId',
+      'sourceActionId',
+    ].forEach(field => {
+      delete semantic[field];
+    });
+    return Object.freeze(semantic);
+  }
+
+  function r9v2MechanicalCandidateOpportunityContext(actionOpportunity = {}) {
+    return Object.freeze({
+      role: 'ACTIVE',
+      naturalActionBudget: actionOpportunity?.naturalActionBudget,
+      battleHorizon: cloneValue(actionOpportunity?.battleHorizon || {}),
+    });
+  }
+
+  function r9v2ContextSemanticRevision(value = []) {
+    const records = Array.isArray(value)
+      ? value
+      : value && typeof value === 'object'
+        ? [value]
+        : [];
+    return `semantic:${preview.stableHash(
+      records.map(record => r9v2OpportunitySemanticContext(record)),
+    )}`;
   }
 
   function r9v2ObserverPoolContextKey({
@@ -32464,7 +32612,7 @@
       worldSnapshot?.胜负条件 ||
       {};
     const context = {
-      schemaVersion: 'R9v2ObserverPoolContextV1',
+      schemaVersion: 'R9v2ObserverPoolContextV2',
       observerSide: String(observerSide || '').trim(),
       battleIntent: {
         mode: String(battleIntent?.mode || '').trim(),
@@ -32473,6 +32621,8 @@
           revisionState.objectiveHash || preview.stableHash(objectives),
         ).trim(),
       },
+      mechanicalCandidateOpportunityContext:
+        r9v2MechanicalCandidateOpportunityContext(actionOpportunity),
       ...(sharedObserverScope
         ? {}
         : { observerActorId: String(observerActorId || '').trim() }),
@@ -32517,6 +32667,42 @@
         )
         .sort(([left], [right]) => left.localeCompare(right)),
     ));
+  }
+
+  function r9v2MechanicalDependencyRoleRows(projection = null) {
+    const rows = Array.isArray(projection?.dependencyRoles)
+      ? projection.dependencyRoles
+      : [];
+    return Object.freeze(
+      rows
+        .map(row => {
+          const key = String(row?.[0] || '').trim();
+          if (!key) return null;
+          const roles = [
+            ...new Set(
+              (Array.isArray(row?.[1]) ? row[1] : [])
+                .map(value => String(value || '').trim().toUpperCase())
+                .filter(Boolean),
+            ),
+          ].sort();
+          return Object.freeze([key, Object.freeze(roles)]);
+        })
+        .filter(Boolean)
+        .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0),
+    );
+  }
+
+  function r9v2MechanicalPaymentDependencyKeys(roleRows = []) {
+    return Object.freeze(
+      roleRows
+        .filter(([key, roles]) =>
+          /^unit:[^:]+:resource(?:Max)?:[^:]+$/u.test(key) &&
+          roles.length > 0 &&
+          roles.every(role => role === 'PAYMENT_AFFORDABILITY'),
+        )
+        .map(([key]) => key)
+        .sort(),
+    );
   }
 
   function r9v2ContributionProbability(contribution = {}) {
@@ -32589,6 +32775,23 @@
 
   function r9v2NormalizedContributionUncached(contribution = {}) {
     const evidence = contribution?.evidence || {};
+    const outcomeKind = String(contribution?.outcomeKind || '').trim();
+    const isIrreversibleAssetLoss =
+      outcomeKind === 'IRREVERSIBLE_ASSET_LOST';
+    const normalizedAssetCost = isIrreversibleAssetLoss
+      ? Number.isFinite(Number(evidence?.cost))
+        ? Math.max(0, Number(evidence.cost))
+        : Number.isFinite(Number(contribution?.threatValue))
+          ? Math.max(0, Number(contribution.threatValue))
+          : null
+      : null;
+    const normalizedAssetQuantityBefore = isIrreversibleAssetLoss &&
+      Number.isFinite(Number(evidence?.quantityBefore))
+      ? Math.max(0, Number(evidence.quantityBefore))
+      : null;
+    const normalizedAssetId = isIrreversibleAssetLoss
+      ? String(evidence?.assetId || '').trim()
+      : '';
     const projectedEffect =
       evidence?.projectedEffect &&
       typeof evidence.projectedEffect === 'object'
@@ -32666,9 +32869,7 @@
           : {}
       ),
     };
-    const withdrawalContest =
-      String(contribution?.outcomeKind || '').trim() ===
-        'WITHDRAWAL_CONTEST';
+    const withdrawalContest = outcomeKind === 'WITHDRAWAL_CONTEST';
     const outcomeDistribution = Object.freeze(
       (Array.isArray(evidence?.outcomeDistribution)
         ? evidence.outcomeDistribution
@@ -32719,7 +32920,7 @@
         contribution?.effectInstanceId || '',
       ).trim(),
       targetId: String(contribution?.targetId || '').trim(),
-      outcomeKind: String(contribution?.outcomeKind || '').trim(),
+      outcomeKind,
       windowId: String(contribution?.windowId || '').trim(),
       expectedDelta: Number.isFinite(Number(contribution?.expectedDelta))
         ? Number(contribution.expectedDelta)
@@ -32987,6 +33188,13 @@
         )
           ? Math.max(0, Number(evidence.productionWindow))
           : null,
+        ...(isIrreversibleAssetLoss
+          ? {
+              assetId: normalizedAssetId,
+              quantityBefore: normalizedAssetQuantityBefore,
+              cost: normalizedAssetCost,
+            }
+          : {}),
         outcomeDistribution,
       }),
     });
@@ -33548,6 +33756,15 @@
     if (!value || typeof value !== 'object') {
       return preview.stableHash(value);
     }
+    const projectedHint = r9v2ProjectedUnitHints.get(value);
+    if (projectedHint) {
+      const baseHash = r9v2MechanicalKeyHash(state, projectedHint.baseUnit);
+      return [
+        'r9v2-projected-unit-mechanical-key-v1',
+        baseHash,
+        projectedHint.mutationToken,
+      ].join('\u0000');
+    }
     const hashes = state?.r9v2MechanicalKeyObjectHashes;
     if (hashes instanceof WeakMap && hashes.has(value)) {
       return hashes.get(value);
@@ -33555,6 +33772,26 @@
     const hash = preview.stableHash(value);
     if (hashes instanceof WeakMap) hashes.set(value, hash);
     return hash;
+  }
+
+  function r9v2MechanicalSnapshotRevision({
+    state,
+    worldSnapshot,
+    beliefState,
+  }) {
+    const worldRevision = String(
+      state?.revisionState?.visibleWorldRevision ||
+      worldRevisionFor(worldSnapshot),
+    ).trim();
+    const beliefRevision = String(
+      state?.revisionState?.beliefRevision ||
+      beliefRevisionFor(beliefState || {}),
+    ).trim();
+    return [
+      'r9v2-mechanical-snapshot-v2',
+      worldRevision,
+      beliefRevision,
+    ].join('|');
   }
 
   function r9v2MechanicalEntryCacheKey({
@@ -33571,6 +33808,7 @@
     forcedMechanicObservation,
     forcedMechanicSuccess,
     useBeliefProbabilityResolvers,
+    captureDependencyKeys = false,
   }) {
     const dependencyUnitIds =
       r9v2MechanicalEntryDependencyUnitIds({
@@ -33622,11 +33860,25 @@
           Number(beliefState?.targetInterferenceRate || 0),
         confused: beliefState?.confused === true,
       },
-      battleIntentHash: r9v2MechanicalKeyHash(state, battleIntent || {}),
-      actionOpportunityHash: r9v2MechanicalKeyHash(
-        state,
+      actionOpportunity: r9v2MechanicalCandidateOpportunityContext(
         actionOpportunity || {},
       ),
+      revisionState: {
+        visibleWorldRevision: String(
+          state?.revisionState?.visibleWorldRevision || '',
+        ).trim(),
+        beliefRevision: String(state?.revisionState?.beliefRevision || '').trim(),
+        opportunityRevision: String(
+          state?.revisionState?.opportunityRevision || '',
+        ).trim(),
+        resourceTimelineRevision: String(
+          state?.revisionState?.resourceTimelineRevision || '',
+        ).trim(),
+        scheduleRevision: String(
+          state?.revisionState?.scheduleRevision || '',
+        ).trim(),
+      },
+      battleIntentHash: r9v2MechanicalKeyHash(state, battleIntent || {}),
       round: Number(worldSnapshot?.回合 || 0),
       mechanicObservationsHash: r9v2MechanicalKeyHash(
         state,
@@ -33645,6 +33897,7 @@
             : null,
       useBeliefProbabilityResolvers:
         useBeliefProbabilityResolvers === true,
+      captureDependencyKeys: captureDependencyKeys === true,
     });
   }
 
@@ -33780,6 +34033,7 @@
         forcedMechanicObservation,
         forcedMechanicSuccess,
         useBeliefProbabilityResolvers,
+        captureDependencyKeys,
       });
       const cachedEntry = mechanicalEntryStore.get(
         mechanicalEntryCacheKey,
@@ -33854,7 +34108,13 @@
         candidate,
         basis,
       });
+    let mechanicalDependencyRoles = Object.freeze([]);
+    let mechanicalPaymentDependencyKeys = Object.freeze([]);
     let entry;
+    const mechanicalEntryBuildStartedAt =
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
     try {
       const forcedApplicationProbabilityByEffect =
         r9v2ForcedApplicationProbabilityByEffect(
@@ -33878,6 +34138,10 @@
           learnedApplicationProbabilityResolver,
         forcedApplicationProbabilityByEffect,
       });
+      mechanicalDependencyRoles =
+        r9v2MechanicalDependencyRoleRows(projection);
+      mechanicalPaymentDependencyKeys =
+        r9v2MechanicalPaymentDependencyKeys(mechanicalDependencyRoles);
       r9v2Metric(state, 'r9v2MechanicalBasisEvaluations');
       const contributions = Object.freeze(
         (projection?.contributions || [])
@@ -33947,20 +34211,39 @@
               .filter(Boolean),
           )].sort(),
         ),
+        mechanicalDependencyRoles,
+        mechanicalPaymentDependencyKeys,
         mechanicalDependencyScopes,
         ...(Array.isArray(projection?.projectedUnitSnapshots)
           ? {
               projectedUnitSnapshots: Object.freeze(
-                projection.projectedUnitSnapshots.map(snapshot =>
-                  Object.freeze({
-                    unitId: String(
-                      snapshot?.unitId || '',
-                    ).trim(),
-                    unit: Object.freeze(
-                      cloneValue(snapshot?.unit || {}),
-                    ),
-                  })
-                ),
+                projection.projectedUnitSnapshots.map(snapshot => {
+                  const sourceUnit = snapshot?.unit || {};
+                  const projectedUnit = cloneValue(sourceUnit);
+                  const projectedHint = r9v2ProjectedUnitHints.get(
+                    sourceUnit,
+                  );
+                  if (projectedHint) {
+                    r9v2ProjectedUnitHints.set(projectedUnit, projectedHint);
+                  } else {
+                    const baseUnit = findUnitInWorld(
+                      worldSnapshot,
+                      snapshot?.unitId,
+                    );
+                    if (baseUnit && baseUnit !== sourceUnit) {
+                      r9v2ProjectedUnitHints.set(projectedUnit, {
+                        baseUnit,
+                        mutationToken: `r9v2-projected-snapshot:${preview.stableHash(
+                          projectedUnit,
+                        )}`,
+                      });
+                    }
+                  }
+                  return Object.freeze({
+                    unitId: String(snapshot?.unitId || '').trim(),
+                    unit: Object.freeze(projectedUnit),
+                  });
+                }),
               ),
             }
           : {}),
@@ -34005,11 +34288,23 @@
         directGoalUtilityHEPP: Number.NEGATIVE_INFINITY,
         assetReserve: 0,
         changedUnitIds: Object.freeze([]),
+        mechanicalDependencyRoles,
+        mechanicalPaymentDependencyKeys,
+        mechanicalDependencyKeys: Object.freeze([]),
         mechanicalDependencyScopes,
         hardInvalid: true,
         previewError: message,
       });
     }
+    const mechanicalEntryBuildEndedAt =
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+    r9v2Metric(
+      state,
+      'r9v2MechanicalEntryBuildMs',
+      mechanicalEntryBuildEndedAt - mechanicalEntryBuildStartedAt,
+    );
     if (verifyMechanicalBasis && entry.hardInvalid !== true) {
       const previewEntry = r9v2BuildPreviewEntry({
         state,
@@ -34141,6 +34436,21 @@
         ).trim(),
       ).join(','),
     ].join('#')).join('|');
+    const inventoryIdentity = preview.stableHash(
+      collectInventory(unit)
+        .map(entry => ({
+          id: String(entry?.id || '').trim(),
+          quantity: Math.max(0, Number(entry?.quantity || 0)),
+          item: cloneValue(entry?.item || {}),
+        }))
+        .sort((left, right) => {
+          const leftId = String(left.id);
+          const rightId = String(right.id);
+          if (leftId < rightId) return -1;
+          if (leftId > rightId) return 1;
+          return Number(left.quantity) - Number(right.quantity);
+        }),
+    );
     const battleIntentKey = [
       String(battleIntent?.mode || '').trim(),
       battleIntent?.withdrawAllowed === true ? 'WITHDRAW' : 'NO_WITHDRAW',
@@ -34155,7 +34465,7 @@
       ).trim(),
     ].join(':');
     const actionOpportunityKey = preview.stableHash(
-      r9v2FutureOpportunityContext(actionOpportunity),
+      r9v2MechanicalCandidateOpportunityContext(actionOpportunity),
     );
     const catalogKey = [
       String(observerSide || '').trim(),
@@ -34164,6 +34474,7 @@
       restrictionSignature,
       beliefCandidateMode,
       skillDefinitionIdentity,
+      inventoryIdentity,
       battleIntentKey,
       actionOpportunityKey,
     ].join('\u0000');
@@ -34221,6 +34532,7 @@
 
   function r9v2BuildDependencyOwners(pool) {
     const dependencyOwners = new Map();
+    const dependencyCandidateOwners = new Map();
     const addOwner = (dependencyKey, sourceUnitId) => {
       const key = String(dependencyKey || '').trim();
       const ownerId = String(sourceUnitId || '').trim();
@@ -34230,18 +34542,121 @@
       }
       dependencyOwners.get(key).add(ownerId);
     };
+    const addCandidateOwner = (
+      dependencyKey,
+      sourceUnitId,
+      candidateId,
+    ) => {
+      const key = String(dependencyKey || '').trim();
+      const ownerId = String(sourceUnitId || '').trim();
+      const normalizedCandidateId = String(candidateId || '').trim();
+      if (!key || !ownerId || !normalizedCandidateId) return;
+      if (!dependencyCandidateOwners.has(key)) {
+        dependencyCandidateOwners.set(key, new Set());
+      }
+      dependencyCandidateOwners.get(key).add(
+        `${ownerId}\u0000${normalizedCandidateId}`,
+      );
+    };
     pool?.unitEntries?.forEach((entries, sourceUnitId) => {
       (entries || []).forEach(entry => {
-        r9v2CandidateInputDependencyUnitIds(entry).forEach(unitId =>
-          addOwner(unitId, sourceUnitId)
-        );
-        r9v2CandidateBeliefKeys(entry).forEach(beliefKey =>
-          addOwner(`belief:${beliefKey}`, sourceUnitId)
-        );
+        const candidateId = entry?.candidateId;
+        r9v2CandidateInputDependencyUnitIds(entry).forEach(unitId => {
+          addOwner(unitId, sourceUnitId);
+          addCandidateOwner(unitId, sourceUnitId, candidateId);
+        });
+        r9v2CandidateBeliefKeys(entry).forEach(beliefKey => {
+          addOwner(`belief:${beliefKey}`, sourceUnitId);
+          addCandidateOwner(`belief:${beliefKey}`, sourceUnitId, candidateId);
+        });
+        Object.keys(entry?.mechanicalDependencyScopes || {}).forEach(unitId => {
+          addCandidateOwner(unitId, sourceUnitId, candidateId);
+        });
+        (entry?.mechanicalDependencyKeys || []).forEach(dependencyKey => {
+          addCandidateOwner(
+            dependencyKey,
+            sourceUnitId,
+            candidateId,
+          );
+          const match = String(dependencyKey || '').match(
+            /^(?:unit|target):([^:]+)/u,
+          );
+          if (match?.[1]) {
+            addCandidateOwner(match[1], sourceUnitId, candidateId);
+          }
+        });
+        if (String(entry?.actionKind || '').trim().toUpperCase() === 'WITHDRAW') {
+          addCandidateOwner('__WITHDRAW__', sourceUnitId, candidateId);
+        }
       });
     });
     pool.dependencyOwners = dependencyOwners;
+    pool.dependencyCandidateOwners = dependencyCandidateOwners;
     return dependencyOwners;
+  }
+
+  function r9v2BeliefDependencyValue(beliefState = {}, key = '') {
+    const normalizedKey = String(key || '').trim();
+    if (!normalizedKey) return null;
+    return beliefState?.mechanics?.[normalizedKey] ??
+      beliefState?.mechanicPosteriors?.[normalizedKey] ??
+      beliefState?.[normalizedKey] ??
+      null;
+  }
+
+  function r9v2BeliefModeSignature(beliefState = {}) {
+    return preview.stableHash({
+      observationEligible:
+        beliefState?.observationGranted === true &&
+        Number(beliefState?.confidence ?? 1) < 1,
+      confused: beliefState?.confused === true,
+    });
+  }
+
+  function r9v2PoolBeliefDependencyHashes(pool, beliefState = {}) {
+    const keys = new Set();
+    pool?.dependencyOwners?.forEach((_owners, dependencyKey) => {
+      const normalizedKey = String(dependencyKey || '').trim();
+      if (normalizedKey.startsWith('belief:')) {
+        keys.add(normalizedKey.slice('belief:'.length));
+      }
+    });
+    return new Map(
+      [...keys].sort().map(key => [
+        key,
+        preview.stableHash(r9v2BeliefDependencyValue(beliefState, key)),
+      ]),
+    );
+  }
+
+  function r9v2ChangedPoolBeliefDependencies(pool, beliefState = {}) {
+    const previousHashes = pool?.beliefDependencyHashes;
+    if (!(previousHashes instanceof Map)) {
+      return {
+        requiresFullRebuild: true,
+        modeChanged: true,
+        changedKeys: new Set(),
+        currentHashes: new Map(),
+      };
+    }
+    const currentHashes = r9v2PoolBeliefDependencyHashes(pool, beliefState);
+    const changedKeys = new Set();
+    new Set([...previousHashes.keys(), ...currentHashes.keys()]).forEach(key => {
+      if (previousHashes.get(key) !== currentHashes.get(key)) {
+        changedKeys.add(key);
+      }
+    });
+    const currentModeSignature = r9v2BeliefModeSignature(beliefState);
+    const modeChanged =
+      !String(pool?.beliefModeSignature || '').trim() ||
+      pool.beliefModeSignature !== currentModeSignature;
+    return {
+      requiresFullRebuild: modeChanged,
+      modeChanged,
+      changedKeys,
+      currentHashes,
+      currentModeSignature,
+    };
   }
 
   function r9v2CandidateDependencyUnitIds(entry = {}) {
@@ -34508,31 +34923,109 @@
     baselineWorld = null,
     branchWorld = null,
   }) {
-    const changed = new Set(
-      [...(changedUnitIds || [])]
-        .map(value => String(value || '').trim())
-        .filter(Boolean),
-    );
+    const changed = changedUnitIds instanceof Set
+      ? changedUnitIds
+      : new Set(
+          [...(changedUnitIds || [])]
+            .map(value => String(value || '').trim())
+            .filter(Boolean),
+        );
     if (!changed.size) return false;
-    const dependencyKeys = [
-      ...(entry?.mechanicalDependencyKeys || []),
-    ].map(value => String(value || '').trim()).filter(Boolean);
+    const dependencyKeys = Array.isArray(entry?.mechanicalDependencyKeys)
+      ? entry.mechanicalDependencyKeys
+      : [];
+    const dependencyScopes = entry?.mechanicalDependencyScopes;
     if (
       dependencyKeys.length > 0 &&
       baselineWorld &&
-      branchWorld
+      branchWorld &&
+      changedUnitScopes instanceof Map
     ) {
-      const dependencyValueChanged = dependencyKeys.some(key =>
-        preview.stableHash(
-          preview.dependencyValueForKey(baselineWorld, key) ?? null,
-        ) !==
-        preview.stableHash(
-          preview.dependencyValueForKey(branchWorld, key) ?? null,
-        )
-      );
-      if (dependencyValueChanged) return true;
+      let unknownChangedDependency = false;
+      for (const key of dependencyKeys) {
+        const normalizedKey = String(key || '').trim();
+        const unitMatch = normalizedKey.match(
+          /^unit:(.+):(hp|baseMaxHp|resource:[^:]+|resourceMax:[^:]+|stat:[^:]+|state:.+)$/u,
+        );
+        const targetMatch = normalizedKey.match(/^target:(.+):defense$/u);
+        const match = unitMatch || targetMatch;
+        if (!match) continue;
+        const unitId = String(match[1] || '').trim();
+        if (!changed.has(unitId)) continue;
+        const changedScopes = changedUnitScopes.get(unitId);
+        if (!(changedScopes instanceof Set)) {
+          unknownChangedDependency = true;
+          continue;
+        }
+        const field = targetMatch
+          ? 'defense'
+          : String(match[2] || '').trim();
+        const fieldScopes = field === 'defense'
+          ? ['STATE']
+          : field === 'hp' || field === 'baseMaxHp'
+            ? ['HEALTH']
+            : field.startsWith('resource:') || field.startsWith('resourceMax:')
+              ? ['RESOURCE']
+              : field === 'state:__action'
+                ? ['HEALTH', 'RESOURCE', 'STATE']
+                : field.startsWith('state:')
+                  ? ['STATE']
+                  : ['STATE'];
+        if (!fieldScopes.some(scope => changedScopes.has(scope))) continue;
+        const baselineValue = preview.dependencyValueForKey(
+          baselineWorld,
+          normalizedKey,
+        );
+        const branchValue = preview.dependencyValueForKey(
+          branchWorld,
+          normalizedKey,
+        );
+        if (baselineValue === undefined || branchValue === undefined) {
+          unknownChangedDependency = true;
+          continue;
+        }
+        if (
+          preview.stableHash(baselineValue ?? null) !==
+          preview.stableHash(branchValue ?? null)
+        ) {
+          return true;
+        }
+      }
+      if (!unknownChangedDependency) return false;
     }
-    const dependencyScopes = entry?.mechanicalDependencyScopes;
+    if (
+      dependencyScopes &&
+      typeof dependencyScopes === 'object' &&
+      changedUnitScopes instanceof Map
+    ) {
+      const dependencyUnitIds = new Set(
+        [
+          ...Object.keys(dependencyScopes),
+          ...dependencyKeys.flatMap(key => {
+            const match = String(key || '').match(/^(?:unit|target):([^:]+)/u);
+            return match?.[1] ? [match[1]] : [];
+          }),
+        ],
+      );
+      let unresolvedChangedDependency = false;
+      for (const unitId of changed) {
+        const dependency = dependencyScopes[unitId];
+        if (Array.isArray(dependency)) {
+          const scopes = changedUnitScopes.get(unitId);
+          if (
+            scopes instanceof Set &&
+            dependency.some(scope => scopes.has(scope))
+          ) {
+            return true;
+          }
+          continue;
+        }
+        if (dependencyUnitIds.has(unitId)) {
+          unresolvedChangedDependency = true;
+        }
+      }
+      if (!unresolvedChangedDependency) return false;
+    }
     if (!dependencyScopes || typeof dependencyScopes !== 'object') {
       return [...r9v2CandidateInputDependencyUnitIds(entry)]
         .some(unitId => changed.has(unitId));
@@ -34554,6 +35047,279 @@
       }
     }
     return false;
+  }
+
+  function r9v2TargetRouteMechanicalEntryReadsChanged(args = {}) {
+    const entry = args?.entry || {};
+    const paymentOnlyKeys = new Set(
+      (Array.isArray(entry?.mechanicalPaymentDependencyKeys)
+        ? entry.mechanicalPaymentDependencyKeys
+        : []
+      )
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const roleRows = Array.isArray(entry?.mechanicalDependencyRoles)
+      ? entry.mechanicalDependencyRoles
+      : [];
+    if (!paymentOnlyKeys.size || !roleRows.length) {
+      return r9v2MechanicalEntryReadsChanged(args);
+    }
+    const dependencyKeys = Array.isArray(entry?.mechanicalDependencyKeys)
+      ? entry.mechanicalDependencyKeys
+      : [];
+    const resourceKeysByUnit = new Map();
+    dependencyKeys.forEach(rawKey => {
+      const key = String(rawKey || '').trim();
+      const match = key.match(
+        /^unit:([^:]+):resource(?:Max)?:[^:]+$/u,
+      );
+      if (!match?.[1]) return;
+      const unitId = String(match[1]).trim();
+      const keys = resourceKeysByUnit.get(unitId) || [];
+      keys.push(key);
+      resourceKeysByUnit.set(unitId, keys);
+    });
+    const removablePaymentKeys = new Set();
+    const paymentOnlyResourceUnits = new Set();
+    resourceKeysByUnit.forEach((keys, unitId) => {
+      keys.forEach(key => {
+        if (
+          paymentOnlyKeys.has(key) &&
+          /^unit:[^:]+:resource:[^:]+$/u.test(key)
+        ) {
+          removablePaymentKeys.add(key);
+        }
+      });
+      if (
+        keys.length > 0 &&
+        keys.every(key => paymentOnlyKeys.has(key)) &&
+        !keys.some(key => /:resourceMax:/u.test(key))
+      ) {
+        paymentOnlyResourceUnits.add(unitId);
+      }
+    });
+    if (!removablePaymentKeys.size) {
+      return r9v2MechanicalEntryReadsChanged(args);
+    }
+    let adjustedScopes = entry?.mechanicalDependencyScopes;
+    if (
+      adjustedScopes &&
+      typeof adjustedScopes === 'object' &&
+      !Array.isArray(adjustedScopes)
+    ) {
+      adjustedScopes = Object.fromEntries(
+        Object.entries(adjustedScopes).map(([unitId, rawScopes]) => {
+          const scopes = Array.isArray(rawScopes)
+            ? rawScopes.map(scope => String(scope || '').trim().toUpperCase())
+            : rawScopes;
+          if (
+            !paymentOnlyResourceUnits.has(String(unitId).trim()) ||
+            !Array.isArray(scopes)
+          ) {
+            return [unitId, scopes];
+          }
+          return [
+            unitId,
+            scopes.filter(scope => scope !== 'RESOURCE'),
+          ];
+        }),
+      );
+    }
+    return r9v2MechanicalEntryReadsChanged({
+      ...args,
+      entry: {
+        ...entry,
+        mechanicalDependencyKeys: dependencyKeys.filter(
+          key => !removablePaymentKeys.has(String(key || '').trim()),
+        ),
+        mechanicalDependencyScopes: adjustedScopes,
+      },
+    });
+  }
+
+  function r9v2TargetRouteDependencyDescriptor(dependencyKey = '') {
+    const normalizedKey = String(dependencyKey || '').trim();
+    const unitMatch = normalizedKey.match(
+      /^unit:(.+):(hp|baseMaxHp|resource:[^:]+|resourceMax:[^:]+|stat:[^:]+|state:.+)$/u,
+    );
+    const targetMatch = normalizedKey.match(/^target:(.+):defense$/u);
+    const match = unitMatch || targetMatch;
+    if (!match?.[1]) return null;
+    const field = targetMatch
+      ? 'defense'
+      : String(match[2] || '').trim();
+    const fieldScopes = targetMatch
+      ? ['STATE']
+      : field === 'hp' || field === 'baseMaxHp'
+        ? ['HEALTH']
+        : field.startsWith('resource:') || field.startsWith('resourceMax:')
+          ? ['RESOURCE']
+          : field === 'state:__action'
+            ? ['HEALTH', 'RESOURCE', 'STATE']
+            : field.startsWith('state:')
+              ? ['STATE']
+              : ['STATE'];
+    return {
+      unitId: String(match[1] || '').trim(),
+      fieldScopes,
+    };
+  }
+
+  function r9v2TargetRouteDependencyIndex(pool, entries = []) {
+    if (!pool || !Array.isArray(entries)) return null;
+    let cache = pool.r9v2TargetRouteDependencyIndexByEntries;
+    if (!(cache instanceof WeakMap)) {
+      cache = new WeakMap();
+      pool.r9v2TargetRouteDependencyIndexByEntries = cache;
+    }
+    const cached = cache.get(entries);
+    if (cached) return cached;
+    const byDependency = new Map();
+    const byBelief = new Map();
+    const add = (map, key, candidateKey) => {
+      const normalizedKey = String(key || '').trim();
+      if (!normalizedKey) return;
+      const owners = map.get(normalizedKey) || new Set();
+      owners.add(candidateKey);
+      map.set(normalizedKey, owners);
+    };
+    entries.forEach(entry => {
+      const candidateKey = `${String(entry?.actorId || '').trim()}\u0000${String(
+        entry?.candidateId || '',
+      ).trim()}`;
+      if (!candidateKey) return;
+      (entry?.mechanicalDependencyKeys || []).forEach(dependencyKey =>
+        add(byDependency, dependencyKey, candidateKey)
+      );
+      r9v2CandidateBeliefKeys(entry).forEach(beliefKey =>
+        add(byBelief, beliefKey, candidateKey)
+      );
+    });
+    const index = Object.freeze({ byDependency, byBelief });
+    cache.set(entries, index);
+    return index;
+  }
+
+  function r9v2TargetRouteIndexedDependencyState({
+    pool,
+    entries = [],
+    changedUnitIds = new Set(),
+    changedUnitScopes = null,
+    changedBeliefKeys = new Set(),
+    baselineWorld = null,
+    branchWorld = null,
+  }) {
+    const dependencyIndex = r9v2TargetRouteDependencyIndex(pool, entries);
+    if (!dependencyIndex) return null;
+    const owners = dependencyIndex.byDependency;
+    const changed = changedUnitIds instanceof Set
+      ? changedUnitIds
+      : new Set(changedUnitIds || []);
+    const beliefs = changedBeliefKeys instanceof Set
+      ? changedBeliefKeys
+      : new Set(changedBeliefKeys || []);
+    const dirtyCandidateKeys = new Set();
+    const fallbackCandidateKeys = new Set();
+    const entryByKey = new Map(
+      (entries || []).map(entry => [
+        `${String(entry?.actorId || '').trim()}\u0000${String(
+          entry?.candidateId || '',
+        ).trim()}`,
+        entry,
+      ]),
+    );
+    const addOwners = ownerValues => {
+      (ownerValues || []).forEach(ownerKey => {
+        const normalized = String(ownerKey || '').trim();
+        if (normalized && entryByKey.has(normalized)) {
+          dirtyCandidateKeys.add(normalized);
+        }
+      });
+    };
+    const hasOwner = (dependencyKey, candidateKey) =>
+      owners.get(dependencyKey) instanceof Set &&
+      owners.get(dependencyKey).has(candidateKey);
+
+    owners.forEach((candidateOwners, dependencyKey) => {
+      const descriptor = r9v2TargetRouteDependencyDescriptor(dependencyKey);
+      if (!descriptor || !changed.has(descriptor.unitId)) return;
+      const scopes = changedUnitScopes instanceof Map
+        ? changedUnitScopes.get(descriptor.unitId)
+        : null;
+      if (!(scopes instanceof Set)) {
+        addOwners(candidateOwners);
+        return;
+      }
+      if (!descriptor.fieldScopes.some(scope => scopes.has(scope))) return;
+      const baselineValue = preview.dependencyValueForKey(
+        baselineWorld,
+        dependencyKey,
+      );
+      const branchValue = preview.dependencyValueForKey(
+        branchWorld,
+        dependencyKey,
+      );
+      if (baselineValue === undefined || branchValue === undefined) {
+        addOwners(candidateOwners);
+        return;
+      }
+      if (
+        preview.stableHash(baselineValue ?? null) !==
+        preview.stableHash(branchValue ?? null)
+      ) {
+        addOwners(candidateOwners);
+      }
+    });
+    beliefs.forEach(beliefKey =>
+      addOwners(dependencyIndex.byBelief.get(String(beliefKey || '').trim()))
+    );
+    if (changed.size) addOwners(owners.get('__WITHDRAW__'));
+
+    (entries || []).forEach(entry => {
+      const candidateKey = `${String(entry?.actorId || '').trim()}\u0000${String(
+        entry?.candidateId || '',
+      ).trim()}`;
+      if (!candidateKey || !entryByKey.has(candidateKey)) return;
+      const dependencyKeys = Array.isArray(entry?.mechanicalDependencyKeys)
+        ? entry.mechanicalDependencyKeys.map(value => String(value || '').trim())
+        : [];
+      if (!dependencyKeys.length && changed.size) {
+        fallbackCandidateKeys.add(candidateKey);
+      }
+      changed.forEach(changedId => {
+        const normalizedId = String(changedId || '').trim();
+        if (!normalizedId) return;
+        const scopes = entry?.mechanicalDependencyScopes?.[normalizedId];
+        const inputDepends =
+          r9v2CandidateInputDependencyUnitIds(entry).has(normalizedId) ||
+          Array.isArray(scopes);
+        if (!inputDepends) return;
+        const hasIndexedKey = dependencyKeys.some(key => {
+          const descriptor = r9v2TargetRouteDependencyDescriptor(key);
+          return descriptor?.unitId === normalizedId &&
+            hasOwner(key, candidateKey);
+        });
+        if (!hasIndexedKey) fallbackCandidateKeys.add(candidateKey);
+      });
+      beliefs.forEach(beliefKey => {
+        const normalizedKey = String(beliefKey || '').trim();
+        if (!normalizedKey || !r9v2CandidateBeliefKeys(entry).has(normalizedKey)) return;
+        if (!dependencyIndex.byBelief.get(normalizedKey)?.has(candidateKey)) {
+          fallbackCandidateKeys.add(candidateKey);
+        }
+      });
+      if (
+        changed.size &&
+        String(entry?.actionKind || '').trim().toUpperCase() === 'WITHDRAW'
+      ) {
+        fallbackCandidateKeys.add(candidateKey);
+      }
+    });
+    return {
+      dirtyCandidateKeys,
+      fallbackCandidateKeys,
+    };
   }
 
   function r9v2ProofComponentBeliefKeys({
@@ -34641,6 +35407,7 @@
     changedUnitScopes = null,
     changedBeliefKeys = new Set(),
     dependencyBaselineWorld = null,
+    candidateOverride = null,
   }) {
     const unit = findUnitInWorld(worldSnapshot, unitId);
     if (!unit || !preview.isAlive(unit)) {
@@ -34666,17 +35433,22 @@
           targetInterferenceRate,
         }
       : beliefState;
-    const catalog = r9v2DeclarationCatalog({
-      state,
-      worldSnapshot,
-      observerSide,
-      unitId,
-      beliefState: unitBelief,
-      battleIntent,
-      actionOpportunity,
-    });
+    const catalog = Array.isArray(candidateOverride)
+      ? null
+      : r9v2DeclarationCatalog({
+          state,
+          worldSnapshot,
+          observerSide,
+          unitId,
+          beliefState: unitBelief,
+          battleIntent,
+          actionOpportunity,
+        });
+    const candidates = Array.isArray(candidateOverride)
+      ? candidateOverride
+      : catalog.candidates;
     const existingEntries = pool.unitEntries.get(unitId) || [];
-    if (!r9v2CatalogMatchesEntries(existingEntries, catalog.candidates)) {
+    if (!r9v2CatalogMatchesEntries(existingEntries, candidates)) {
       return {
         fullUnitFallback: true,
         fallbackReason: 'CANDIDATE_CATALOG_CHANGED',
@@ -34684,18 +35456,41 @@
         reusedCandidateCount: 0,
       };
     }
-    const revision = [
-      'r9v2-pool',
-      pool.observerActorId,
-      pool.generation,
-      pool.factDeltaCount,
-      unitId,
-    ].join(':');
+    const dependencyCandidateOwners = pool?.dependencyCandidateOwners;
+    const indexedCandidateKeys = new Set();
+    const addIndexedCandidates = dependencyKey => {
+      if (!(dependencyCandidateOwners instanceof Map)) return;
+      (dependencyCandidateOwners.get(String(dependencyKey || '').trim()) || [])
+        .forEach(candidateKey => indexedCandidateKeys.add(candidateKey));
+    };
+    changedUnitIds.forEach(unitId => addIndexedCandidates(unitId));
+    changedBeliefKeys.forEach(beliefKey =>
+      addIndexedCandidates(`belief:${beliefKey}`)
+    );
+    if (changedUnitIds.size > 0) addIndexedCandidates('__WITHDRAW__');
+    const dependencyIndexAvailable =
+      dependencyCandidateOwners instanceof Map;
+    const revision = r9v2MechanicalSnapshotRevision({
+      state,
+      worldSnapshot,
+      beliefState: unitBelief,
+    });
     let rebuiltCandidateCount = 0;
     let reusedCandidateCount = 0;
     const entries = Object.freeze(
-      catalog.candidates.map((candidate, index) => {
+      candidates.map((candidate, index) => {
         const existingEntry = existingEntries[index];
+        const candidateKey = `${unitId}\u0000${String(
+          existingEntry?.candidateId || candidate?.candidateId || '',
+        ).trim()}`;
+        const candidateMayBeDirty =
+          !dependencyIndexAvailable ||
+          targetInterferenceRateChanged ||
+          indexedCandidateKeys.has(candidateKey);
+        if (!candidateMayBeDirty) {
+          reusedCandidateCount += 1;
+          return existingEntry;
+        }
         const readsChangedUnit = r9v2MechanicalEntryReadsChanged({
           entry: existingEntry,
           changedUnitIds,
@@ -34716,6 +35511,7 @@
         if (
           !readsChangedUnit &&
           !readsChangedBelief &&
+          !targetInterferenceRateChanged &&
           !readsChangedWithdrawalWorld
         ) {
           reusedCandidateCount += 1;
@@ -34779,6 +35575,7 @@
     mechanicalProjectionContext,
     verifyMechanicalBasis,
     captureDependencyKeys = false,
+    candidateOverride = null,
   }) {
     const unit = findUnitInWorld(worldSnapshot, unitId);
     if (!unit || !preview.isAlive(unit)) {
@@ -34804,14 +35601,14 @@
       battleIntent,
       actionOpportunity,
     });
-    const candidates = catalog.candidates;
-    const revision = [
-      'r9v2-pool',
-      pool.observerActorId,
-      pool.generation,
-      pool.factDeltaCount,
-      unitId,
-    ].join(':');
+    const candidates = Array.isArray(candidateOverride)
+      ? candidateOverride
+      : catalog.candidates;
+    const revision = r9v2MechanicalSnapshotRevision({
+      state,
+      worldSnapshot,
+      beliefState: unitBelief,
+    });
     const entries = Object.freeze(candidates.map(candidate =>
       r9v2BuildMechanicalEntry({
         state,
@@ -35222,7 +36019,7 @@
     });
   }
 
-  function r9v2ChangedScope(pool, batches = []) {
+  function r9v2ChangedScope(pool, batches = [], beliefState = {}) {
     const rebuildUnits = new Set();
     const changedUnitIds = new Set();
     const changedBeliefKeys = new Set();
@@ -35240,7 +36037,6 @@
         ) {
           observerBeliefChanged = true;
         }
-        if (beliefActorId) changedBeliefKeys.add(`belief:${beliefActorId}`);
       });
       (batch?.changedFactKeys || []).forEach(rawKey => {
         const key = String(rawKey || '').trim();
@@ -35272,9 +36068,25 @@
         rebuildUnits.add(unitId),
       );
     });
+    const beliefDependencies = observerBeliefChanged
+      ? r9v2ChangedPoolBeliefDependencies(pool, beliefState)
+      : null;
+    if (beliefDependencies) {
+      beliefDependencies.changedKeys.forEach(key => {
+        changedBeliefKeys.add(key);
+        (pool.dependencyOwners.get(`belief:${key}`) || []).forEach(unitId =>
+          rebuildUnits.add(unitId),
+        );
+      });
+      if (beliefDependencies.requiresFullRebuild) rebuildAll = true;
+    }
     return {
-      rebuildAll: rebuildAll || observerBeliefChanged,
+      rebuildAll,
       observerBeliefChanged,
+      beliefModeChanged: beliefDependencies?.modeChanged === true,
+      beliefDependencyFallback:
+        beliefDependencies?.requiresFullRebuild === true &&
+        beliefDependencies?.modeChanged !== true,
       unscopedRebuild: rebuildAll,
       rebuildUnits,
       changedUnitIds,
@@ -35296,8 +36108,15 @@
     verifyMechanicalBasis = false,
     poolScopeKey = '',
     sharedObserverScope = false,
+    requestedUnitIds = null,
+    deferUnitPoolBuild = false,
+    preserveExistingUnitEntries = false,
   }) {
     const state = sessionState || r9v2EphemeralState();
+    const currentOpportunityBinding =
+      r9v2OpportunityIdentityContext(actionOpportunity);
+    const currentOpportunitySemanticContext =
+      r9v2OpportunitySemanticContext(actionOpportunity);
     const normalizedPoolScopeKey = String(
       poolScopeKey ||
       (sharedObserverScope
@@ -35314,9 +36133,22 @@
         : `r9v2-observer:${String(observerActorId || '').trim()}`),
     ).trim();
     let pool = state.r9v2ObserverPools.get(normalizedPoolScopeKey);
-    const currentUnitIds = new Set(
+    const aliveUnitIds = new Set(
       aliveEntries(worldSnapshot).map(entry => preview.unitId(entry.unit)),
     );
+    const requestedIds = requestedUnitIds instanceof Set
+      ? new Set(
+          [...requestedUnitIds]
+            .map(value => String(value || '').trim())
+            .filter(unitId => aliveUnitIds.has(unitId)),
+        )
+      : null;
+    const currentUnitIds = requestedIds || aliveUnitIds;
+    if (preserveExistingUnitEntries && pool) {
+      pool.unitEntries.forEach((_entries, unitId) => {
+        if (aliveUnitIds.has(unitId)) currentUnitIds.add(unitId);
+      });
+    }
     if (!pool) {
       pool = {
         schemaVersion: 'BehaviorPoolSessionV1',
@@ -35334,6 +36166,8 @@
         observerActorId,
         observerSide,
         observerPoolKey: normalizedPoolScopeKey,
+        currentOpportunityBinding,
+        currentOpportunitySemanticContext,
         sharedObserverScope: sharedObserverScope === true,
         generation: 1,
         valueRevision: 1,
@@ -35348,10 +36182,16 @@
         factDeltas: state.factDeltaRecords,
         metrics: state.metrics,
         targetInterferenceRateByUnit: new Map(),
+        beliefDependencyHashes: new Map(),
+        beliefModeSignature: r9v2BeliefModeSignature(beliefState),
         r9v2NormalizedContributionStore:
           state.r9v2NormalizedContributionStore,
         r9v2SharedStores: r9v2SharedStoresFor(state),
       };
+      state.r9v2ObserverPools.set(normalizedPoolScopeKey, pool);
+      if (deferUnitPoolBuild) {
+        return { state, pool, rebuiltUnitIds: [] };
+      }
       currentUnitIds.forEach(unitId =>
         r9v2BuildFutureUnitPool({
           state,
@@ -35368,18 +36208,37 @@
       );
       r9v2ReindexTargets(pool);
       r9v2BuildDependencyOwners(pool);
-      state.r9v2ObserverPools.set(normalizedPoolScopeKey, pool);
+      pool.beliefDependencyHashes =
+        r9v2PoolBeliefDependencyHashes(pool, beliefState);
       r9v2Metric(state, 'r9v2PoolBuilds');
       return { state, pool, rebuiltUnitIds: [...currentUnitIds].sort() };
     }
 
+    const previousOpportunityBindingHash = preview.stableHash(
+      pool.currentOpportunityBinding || {},
+    );
+    pool.currentOpportunityBinding = currentOpportunityBinding;
+    pool.currentOpportunitySemanticContext = currentOpportunitySemanticContext;
+    if (
+      previousOpportunityBindingHash !==
+      preview.stableHash(currentOpportunityBinding)
+    ) {
+      r9v2Metric(state, 'r9v2ObserverPoolIdentityRebinds');
+    }
+
+    if (deferUnitPoolBuild) {
+      return { state, pool, rebuiltUnitIds: [] };
+    }
+
     const newBatches = state.factDeltaRecords.slice(pool.factDeltaCount);
-    const scope = r9v2ChangedScope(pool, newBatches);
+    const scope = r9v2ChangedScope(pool, newBatches, beliefState);
     const rebuildUnitIds = scope.rebuildAll
       ? new Set(currentUnitIds)
-      : new Set(scope.rebuildUnits);
+      : new Set(
+          [...scope.rebuildUnits].filter(unitId => currentUnitIds.has(unitId)),
+        );
     [...pool.unitEntries.keys()].forEach(unitId => {
-      if (!currentUnitIds.has(unitId)) {
+      if (!preserveExistingUnitEntries && !currentUnitIds.has(unitId)) {
         pool.unitEntries.delete(unitId);
         pool.targetInterferenceRateByUnit.delete(unitId);
       }
@@ -35387,6 +36246,22 @@
     currentUnitIds.forEach(unitId => {
       if (!pool.unitEntries.has(unitId)) rebuildUnitIds.add(unitId);
     });
+    if (
+      preserveExistingUnitEntries &&
+      state?.r9v2MechanicalEntryCacheEnabled === true
+    ) {
+      pool.unitEntries.forEach((entries, unitId) => {
+        if (
+          currentUnitIds.has(unitId) &&
+          entries.some(entry =>
+            !Array.isArray(entry?.mechanicalDependencyKeys) ||
+            entry.mechanicalDependencyKeys.length === 0
+          )
+        ) {
+          rebuildUnitIds.add(unitId);
+        }
+      });
+    }
     if (newBatches.length) {
       r9v2Metric(state, 'r9v2IncrementalBatches', newBatches.length);
     }
@@ -35396,7 +36271,13 @@
     if (scope.unscopedRebuild && newBatches.length) {
       r9v2Metric(state, 'r9v2UnscopedSliceRebuilds');
     }
-    pool.generation += 1;
+    // Generation tracks pool contents. A new opportunity binding alone does
+    // not change mechanical entries and must not invalidate route materialization.
+    const poolContentsChanged =
+      scope.rebuildAll ||
+      rebuildUnitIds.size > 0 ||
+      newBatches.length > 0;
+    if (poolContentsChanged) pool.generation += 1;
     pool.worldRevision = String(
       state?.revisionState?.visibleWorldRevision ||
       worldRevisionFor(worldSnapshot),
@@ -35428,6 +36309,24 @@
       r9v2Metric(state, 'r9v2PoolFullRebuilds');
     } else {
       [...rebuildUnitIds].sort().forEach(unitId => {
+        // A unit that is not in the pool has no prior catalog to diff against.
+        // Build its baseline directly; routing it through the dirty path only
+        // creates a guaranteed catalog-mismatch fallback.
+        if (!pool.unitEntries.has(unitId)) {
+          r9v2BuildFutureUnitPool({
+            state,
+            pool,
+            worldSnapshot,
+            observerSide,
+            unitId,
+            beliefState,
+            battleIntent,
+            actionOpportunity,
+            mechanicalProjectionContext,
+            verifyMechanicalBasis,
+          });
+          return;
+        }
         const result = r9v2BuildDirtyFutureUnitPool({
           state,
           pool,
@@ -35469,7 +36368,15 @@
         }
       });
     }
-    if (rebuildUnitIds.size || newBatches.length) r9v2ReindexTargets(pool);
+    if (rebuildUnitIds.size || newBatches.length) {
+      r9v2ReindexTargets(pool);
+      r9v2BuildDependencyOwners(pool);
+    }
+    if (scope.observerBeliefChanged) {
+      pool.beliefDependencyHashes =
+        r9v2PoolBeliefDependencyHashes(pool, beliefState);
+      pool.beliefModeSignature = r9v2BeliefModeSignature(beliefState);
+    }
     r9v2Metric(
       state,
       'r9v2IncrementalUnitRebuilds',
@@ -35557,12 +36464,29 @@
   function r9v2RealizableActiveOpportunityCount(request, targetId) {
     const ids = new Set();
     const current = request?.actionOpportunity || {};
-    (current.pendingNaturalActorIds || []).forEach(unitId => {
+    const pendingNaturalActorIds = Array.isArray(current.pendingNaturalActorIds)
+      ? current.pendingNaturalActorIds
+      : [];
+    const opportunitySnapshotValue = request?.evaluationContext?.opportunitySnapshot;
+    const opportunitySnapshot = Array.isArray(opportunitySnapshotValue)
+      ? opportunitySnapshotValue
+      : Array.isArray(opportunitySnapshotValue?.opportunities)
+        ? opportunitySnapshotValue.opportunities
+        : opportunitySnapshotValue && typeof opportunitySnapshotValue === 'object'
+          ? [opportunitySnapshotValue]
+          : [];
+    const scheduledEventsValue = request?.evaluationContext?.scheduledEvents;
+    const scheduledEvents = Array.isArray(scheduledEventsValue)
+      ? scheduledEventsValue
+      : scheduledEventsValue && typeof scheduledEventsValue === 'object'
+        ? [scheduledEventsValue]
+        : [];
+    pendingNaturalActorIds.forEach(unitId => {
       if (String(unitId || '').trim() === targetId) {
         ids.add(`pending:${targetId}`);
       }
     });
-    (request?.evaluationContext?.opportunitySnapshot || []).forEach(record => {
+    opportunitySnapshot.forEach(record => {
       if (
         String(record?.ownerId || '').trim() === targetId &&
         String(record?.role || '').trim().toUpperCase() === 'ACTIVE' &&
@@ -35575,7 +36499,7 @@
         ));
       }
     });
-    (request?.evaluationContext?.scheduledEvents || []).forEach(record => {
+    scheduledEvents.forEach(record => {
       if (
         String(record?.ownerId || '').trim() === targetId &&
         (
@@ -35596,14 +36520,33 @@
   function r9v2PendingNaturalActorIds(request = {}) {
     const sequenceById = new Map();
     const currentActorId = String(request?.actorId || '').trim();
-    (request?.actionOpportunity?.pendingNaturalActorIds || [])
+    const pendingNaturalActorIds = Array.isArray(
+      request?.actionOpportunity?.pendingNaturalActorIds,
+    )
+      ? request.actionOpportunity.pendingNaturalActorIds
+      : [];
+    const opportunitySnapshotValue = request?.evaluationContext?.opportunitySnapshot;
+    const opportunitySnapshot = Array.isArray(opportunitySnapshotValue)
+      ? opportunitySnapshotValue
+      : Array.isArray(opportunitySnapshotValue?.opportunities)
+        ? opportunitySnapshotValue.opportunities
+        : opportunitySnapshotValue && typeof opportunitySnapshotValue === 'object'
+          ? [opportunitySnapshotValue]
+          : [];
+    const scheduledEventsValue = request?.evaluationContext?.scheduledEvents;
+    const scheduledEvents = Array.isArray(scheduledEventsValue)
+      ? scheduledEventsValue
+      : scheduledEventsValue && typeof scheduledEventsValue === 'object'
+        ? [scheduledEventsValue]
+        : [];
+    pendingNaturalActorIds
       .forEach((unitId, index) => {
         const normalizedId = String(unitId || '').trim();
         if (normalizedId && !sequenceById.has(normalizedId)) {
           sequenceById.set(normalizedId, index + 1);
         }
       });
-    (request?.evaluationContext?.opportunitySnapshot || [])
+    opportunitySnapshot
       .forEach(record => {
         if (
           String(record?.role || '').trim().toUpperCase() !==
@@ -35630,7 +36573,7 @@
           sequenceById.set(ownerId, sequence);
         }
       });
-    (request?.evaluationContext?.scheduledEvents || [])
+    scheduledEvents
       .forEach(record => {
         if (
           String(record?.expectedGrantType || '').trim() !==
@@ -36285,7 +37228,11 @@
       kind === 'CHECK_MODIFIER' ||
       kind === 'SETTLEMENT_MODIFIER'
     ) {
-      return r9v2ProjectedStateUnit(unit, contribution);
+      return r9v2RememberProjectedUnit(
+        unit,
+        r9v2ProjectedStateUnit(unit, contribution),
+        contribution,
+      );
     }
     if (kind !== 'STATE_REMOVE') return null;
     const removedKeys = new Set(
@@ -36309,7 +37256,7 @@
           Object.entries(sourceStates || {})
             .filter(([key]) => !removedKeys.has(String(key).trim())),
         );
-    return {
+    return r9v2RememberProjectedUnit(unit, {
       ...unit,
       状态效果: nextStates,
       ...(unit?.属性 && typeof unit.属性 === 'object'
@@ -36320,7 +37267,7 @@
             },
           }
         : {}),
-    };
+    }, contribution);
   }
 
   function r9v2BehaviorMutationBelief(
@@ -36398,6 +37345,56 @@
     ].join('\u0000');
   }
 
+  function r9v2ProjectedMutationToken(contribution = {}) {
+    if (!contribution || typeof contribution !== 'object') return '';
+    const cached = r9v2ProjectedMutationTokens.get(contribution);
+    if (cached) return cached;
+    const token = `r9v2-fact-delta:${++r9v2ProjectedMutationSequence}`;
+    r9v2ProjectedMutationTokens.set(contribution, token);
+    return token;
+  }
+
+  function r9v2RememberProjectedUnit(
+    baseUnit = null,
+    projectedUnit = null,
+    contribution = {},
+  ) {
+    if (
+      !baseUnit ||
+      typeof baseUnit !== 'object' ||
+      !projectedUnit ||
+      typeof projectedUnit !== 'object'
+    ) {
+      return projectedUnit;
+    }
+    r9v2ProjectedUnitHints.set(projectedUnit, {
+      baseUnit,
+      mutationToken: r9v2ProjectedMutationToken(contribution),
+    });
+    return projectedUnit;
+  }
+
+  function r9v2ProjectedUnitValueKey(cache, unit, scopeKey = '') {
+    if (!unit || typeof unit !== 'object') return '';
+    const hint = r9v2ProjectedUnitHints.get(unit);
+    if (
+      !hint ||
+      !(cache?.projectionObjectRevisions instanceof WeakMap)
+    ) {
+      return '';
+    }
+    const baseRevision = r9v2ProjectionObjectRevision(
+      cache,
+      hint.baseUnit,
+    );
+    return [
+      'r9v2-projected-unit-value-key-v1',
+      baseRevision,
+      hint.mutationToken,
+      String(scopeKey || '').trim(),
+    ].join('\u0000');
+  }
+
   function r9v2ProjectionObjectRevision(cache, value) {
     if (!value || typeof value !== 'object') {
       return preview.stableHash(value);
@@ -36428,6 +37425,8 @@
     if (!value || typeof value !== 'object') {
       return preview.stableHash(value);
     }
+    const projectedUnitKey = r9v2ProjectedUnitValueKey(cache, value);
+    if (projectedUnitKey) return projectedUnitKey;
     if (cache?.useValueKeys === true) {
       const hashes = cache?.projectionObjectHashes;
       if (hashes instanceof WeakMap && hashes.has(value)) {
@@ -36468,11 +37467,14 @@
     }
     if (byUnit.has(normalizedId)) return byUnit.get(normalizedId);
     const unit = findUnitInWorld(worldSnapshot, normalizedId);
-    const fingerprint = cache?.useValueKeys === true
-      ? preview.stableHash(unit || null)
-      : cache?.useRevisionKeys === true
-        ? r9v2ProjectionUnitRevision(cache, normalizedId, unit)
-        : preview.stableHash(unit || null);
+    const projectedUnitKey = r9v2ProjectedUnitValueKey(cache, unit);
+    const fingerprint = projectedUnitKey || (
+      cache?.useValueKeys === true
+        ? preview.stableHash(unit || null)
+        : cache?.useRevisionKeys === true
+          ? r9v2ProjectionUnitRevision(cache, normalizedId, unit)
+          : preview.stableHash(unit || null)
+    );
     byUnit.set(normalizedId, fingerprint);
     return fingerprint;
   }
@@ -36673,6 +37675,13 @@
     ].sort();
     const unit = findUnitInWorld(worldSnapshot || {}, normalizedId);
     if (!unit) return preview.stableHash(null);
+    const scopeKey = [normalizedId, ...normalizedScopes].join('\u0000');
+    const projectedUnitKey = r9v2ProjectedUnitValueKey(
+      cache,
+      unit,
+      scopeKey,
+    );
+    if (projectedUnitKey) return projectedUnitKey;
     const signature = r9v2ProjectionUnitScopeSignature(
       unit,
       normalizedScopes,
@@ -36691,7 +37700,6 @@
         byUnit = new Map();
         cache.projectionUnitScopeFingerprints.set(worldSnapshot, byUnit);
       }
-      const scopeKey = [normalizedId, ...normalizedScopes].join('\u0000');
       if (byUnit.has(scopeKey)) return byUnit.get(scopeKey);
       if (
         cache?.useValueKeys === true &&
@@ -37378,6 +38386,15 @@
     const canReuseBasePool =
       baseEntries.length > 0 &&
       r9v2CatalogMatchesEntries(baseEntries, candidates);
+    const mechanicalProjectionContext =
+      cache?.mechanicalProjectionContext?.worldSnapshot === baseWorld &&
+      typeof preview.deriveMechanicalProjectionContext === 'function'
+        ? preview.deriveMechanicalProjectionContext(
+            cache.mechanicalProjectionContext,
+            projectedWorld,
+            [targetId],
+          )
+        : preview.compileMechanicalProjectionContext(projectedWorld);
     if (canReuseBasePool) {
       pool.unitEntries.set(targetId, baseEntries);
       pool.targetInterferenceRateByUnit.set(
@@ -37402,8 +38419,6 @@
           )
         );
       }
-      const mechanicalProjectionContext =
-        preview.compileMechanicalProjectionContext(projectedWorld);
       const incremental = r9v2BuildDirtyFutureUnitPool({
         state,
         pool,
@@ -37418,6 +38433,7 @@
         changedUnitScopes,
         changedBeliefKeys,
         dependencyBaselineWorld: baseWorld,
+        candidateOverride: candidates,
       });
       if (incremental.fullUnitFallback === true) {
         r9v2BuildFutureUnitPool({
@@ -37431,6 +38447,7 @@
           actionOpportunity: request.actionOpportunity,
           mechanicalProjectionContext,
           verifyMechanicalBasis: false,
+          candidateOverride: candidates,
         });
       }
       r9v2Metric(
@@ -37444,8 +38461,6 @@
         incremental.reusedCandidateCount,
       );
     } else {
-      const mechanicalProjectionContext =
-        preview.compileMechanicalProjectionContext(projectedWorld);
       r9v2BuildFutureUnitPool({
         state,
         pool,
@@ -37457,6 +38472,7 @@
         actionOpportunity: request.actionOpportunity,
         mechanicalProjectionContext,
         verifyMechanicalBasis: false,
+        candidateOverride: candidates,
       });
       r9v2Metric(
         metricsState,
@@ -38375,8 +39391,8 @@
 
   function r9v2ObjectiveSide(value = '') {
     const text = String(value || '').trim().toUpperCase();
-    if (/ENEMY|敌方|对方/.test(text)) return 'ENEMY';
-    if (/PLAYER|玩家|己方|友方/.test(text)) return 'PLAYER';
+    if (/^(?:TEAM_)?ENEMY$|敌方|对方/.test(text)) return 'ENEMY';
+    if (/^(?:TEAM_)?PLAYER$|玩家|己方|友方/.test(text)) return 'PLAYER';
     return text;
   }
 
@@ -39948,35 +40964,121 @@
         ...(projectionCache || {}),
         summonProjectionDepth: depth + 1,
       };
-      const proofs = entries
-        .filter(futureEntry => futureEntry.hardInvalid !== true)
-        .map(futureEntry =>
-          r9v2CandidateValueProof(
-            futureRequest,
-            temporaryPool,
-            futureEntry,
-            childCache,
-          )
-        );
-      const supportedProofs = proofs.filter(proof =>
-        !Array.isArray(proof?.unsupportedOutcomeKinds) ||
-        proof.unsupportedOutcomeKinds.length === 0
+      const futureEntryByCandidate = new Map(
+        entries.map(futureEntry => [futureEntry.candidateId, futureEntry]),
       );
-      const poolComplete =
-        candidates.length === supportedProofs.length &&
-        entries.every(futureEntry => futureEntry.hardInvalid !== true);
-      const bestProof = supportedProofs
+      const futureRows = [];
+      const unsupportedCandidates = [];
+      candidates.forEach(candidate => {
+        const futureEntry = futureEntryByCandidate.get(candidate.candidateId);
+        if (!futureEntry) return;
+        try {
+          futureRows.push(
+            r9v2TargetKernelCandidateRow({
+              request: futureRequest,
+              candidate,
+              entry: futureEntry,
+              pool: temporaryPool,
+              projectionCache: childCache,
+            }),
+          );
+        } catch (error) {
+          const message = String(error?.message || error);
+          if (!message.startsWith('R9V2_KERNEL_UNSUPPORTED_FACT:')) {
+            throw error;
+          }
+          unsupportedCandidates.push({
+            candidateId: candidate.candidateId,
+            error: message,
+          });
+        }
+      });
+      const futureVectors = futureRows.length === candidates.length
+        ? (() => {
+            const kernel = r9v2TargetKernelApi();
+            const futureSession = kernel.createSession({
+              worldRevision:
+                futureRequest.evaluationContext?.worldRevision ||
+                `summon-world:${identity}`,
+              beliefRevision:
+                futureRequest.evaluationContext?.beliefRevision || '1',
+              opportunityRevision:
+                futureRequest.evaluationContext?.opportunityRevision ||
+                `summon-opportunity:${identity}`,
+              observerId: summonIdValue,
+              beliefOverlay: {
+                observerId: summonIdValue,
+                beliefRevision:
+                  futureRequest.evaluationContext?.beliefRevision || '1',
+                visibleHpRatios: {},
+                visibleStates: {},
+                revealedAbilityIds: [],
+                observableDeclarations: candidates.map(candidate =>
+                  cloneValue(candidate.declaration || {}),
+                ),
+                posteriorParameters: {},
+                visibilityTokens: [],
+              },
+              calculationMode: 'COMPONENT_REGISTRY_V1',
+              componentRegistry: r9v2TargetKernelComponentRegistry({
+                request: futureRequest,
+                pool: temporaryPool,
+                projectionCache: childCache,
+              }),
+              candidates: futureRows,
+            });
+            return kernel.evaluateAllCandidates(
+              futureSession,
+              summonIdValue,
+            );
+          })()
+        : [];
+      const rankFields = [
+        ['objectiveUtilityHEPP', 1],
+        ['worstTailUtilityHEPP', 1],
+        ['survivalUtilityHEPP', 1],
+        ['assetReserveHEPP', 1],
+        ['informationValueHEPP', 1],
+        ['discardedOverkillPP', -1],
+      ];
+      const compareFutureVectors = (left, right) => {
+        for (const [field, direction] of rankFields) {
+          const leftValue = Number(left?.paretoDimensions?.[field]);
+          const rightValue = Number(right?.paretoDimensions?.[field]);
+          if (!Number.isFinite(leftValue) || !Number.isFinite(rightValue)) {
+            throw new Error(
+              `R9V2_KERNEL_SUMMON_RANK_NON_FINITE:${field}`,
+            );
+          }
+          if (leftValue !== rightValue) {
+            return direction > 0
+              ? rightValue - leftValue
+              : leftValue - rightValue;
+          }
+        }
+        return r9v2TargetCompareUtf16(
+          left?.candidateId,
+          right?.candidateId,
+        );
+      };
+      const supportedVectors = futureVectors.filter(vector =>
+        vector.legal === true &&
+        (!Array.isArray(vector.hardExclusionCodes) ||
+          vector.hardExclusionCodes.length === 0) &&
+        vector.paretoWitness?.kind === 'NON_DOMINATED'
+      );
+      const bestVector = supportedVectors
         .slice()
-        .sort((left, right) =>
-          Number(right?.objectiveUtilityHEPP || 0) -
-            Number(left?.objectiveUtilityHEPP || 0) ||
-          String(left?.candidateId || '').localeCompare(
-            String(right?.candidateId || ''),
-          )
-        )[0] || null;
+        .sort(compareFutureVectors)[0] || null;
+      const supportedCandidateCount = futureRows.length;
+      const poolComplete =
+        candidates.length === futureRows.length &&
+        unsupportedCandidates.length === 0 &&
+        supportedVectors.length > 0 &&
+        entries.every(futureEntry => futureEntry.hardInvalid !== true);
       const signedRouteDelta =
         (summonSide === request.actorSide ? 1 : -1) *
-        Number(bestProof?.objectiveUtilityHEPP || 0) *
+        Number(bestVector?.objectiveUtilityHEPP || 0) *
         applicationProbability;
       const fact = poolComplete && Math.abs(signedRouteDelta) > 1e-9
         ? Object.freeze({
@@ -39990,10 +41092,10 @@
             remainingWindows,
             realizableWindows,
             applicationProbability,
-            bestCandidateId:
-              String(bestProof?.candidateId || '').trim(),
-            bestRouteUtilityHEPP:
-              Number(bestProof?.objectiveUtilityHEPP || 0),
+            bestCandidateId: String(bestVector?.candidateId || '').trim(),
+            bestRouteUtilityHEPP: Number(
+              bestVector?.objectiveUtilityHEPP || 0,
+            ),
           })
         : null;
       const cachedResult = Object.freeze({
@@ -40007,11 +41109,12 @@
             ? ''
             : 'SUMMON_BEHAVIOR_POOL_INCOMPLETE',
           candidateCount: candidates.length,
-          supportedCandidateCount: supportedProofs.length,
-          bestCandidateId:
-            String(bestProof?.candidateId || '').trim(),
-          bestRouteUtilityHEPP:
-            Number(bestProof?.objectiveUtilityHEPP || 0),
+          supportedCandidateCount,
+          unsupportedCandidates,
+          bestCandidateId: String(bestVector?.candidateId || '').trim(),
+          bestRouteUtilityHEPP: Number(
+            bestVector?.objectiveUtilityHEPP || 0,
+          ),
           realizableWindows,
         },
       });
@@ -40633,6 +41736,45 @@
     });
   }
 
+  function r9v2TargetKernelComponentCacheRequest(request = {}) {
+    const context = request?.evaluationContext || {};
+    const semanticRows = value => Array.isArray(value)
+      ? value.map(row => r9v2OpportunitySemanticContext(row))
+      : [];
+    const opportunityRevision = String(
+      context.opportunitySemanticRevision ||
+      context.opportunityRevision ||
+      '',
+    ).trim();
+    const scheduleRevision = String(
+      context.scheduleSemanticRevision ||
+      context.scheduleRevision ||
+      '',
+    ).trim();
+    return {
+      ...request,
+      actionOpportunity: r9v2OpportunitySemanticContext(
+        request?.actionOpportunity || {},
+      ),
+      evaluationContext: {
+        schemaVersion: context.schemaVersion,
+        worldRevision: context.worldRevision,
+        visibleWorldRevision: context.visibleWorldRevision,
+        beliefRevision: context.beliefRevision,
+        objectiveHash: context.objectiveHash,
+        opportunityRevision,
+        opportunitySemanticRevision: opportunityRevision,
+        resourceTimelineRevision: context.resourceTimelineRevision,
+        scheduleRevision,
+        scheduleSemanticRevision: scheduleRevision,
+        opportunitySnapshot: semanticRows(context.opportunitySnapshot),
+        resourceTimeline: cloneValue(context.resourceTimeline || []),
+        scheduledEvents: semanticRows(context.scheduledEvents),
+        horizon: cloneValue(context.horizon || {}),
+      },
+    };
+  }
+
   function r9v2ProofComponentRead({
     request,
     pool,
@@ -40710,6 +41852,10 @@
       'BEHAVIOR_POOL',
       'CREATION_CONSUMER',
       'SUMMON_WINDOW',
+      'TARGET_S2',
+      'TARGET_S3',
+      'TARGET_S4',
+      'TARGET_S5',
     ]).has(component);
     const beliefSensitive = componentDependency
       ? Number(
@@ -40720,6 +41866,9 @@
       : new Set([
           'BEHAVIOR_POOL',
           'SUMMON_WINDOW',
+          'TARGET_S3',
+          'TARGET_S4',
+          'TARGET_S5',
         ]).has(component);
     const beliefKeys = beliefSensitive
       ? (componentDependency?.beliefKeys ||
@@ -40735,28 +41884,23 @@
           Number(pool?.unitValueRevisions?.get(unitId) || 0),
         ])
       : [];
+    const cacheRequest = projectionCache?.targetKernel === true
+      ? r9v2TargetKernelComponentCacheRequest(request)
+      : request;
+    const dependencyCodes = new Set(
+      (dependencies || [])
+        .map(value => String(value || '').trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const hasDependency = code => dependencyCodes.has(code);
+    const evaluationContext = cacheRequest?.evaluationContext || {};
     const contextPayload = {
       schemaVersion: 'R9v2ProofComponentContextV2',
+      targetKernel: projectionCache?.targetKernel === true,
       component,
-      actorId: String(request?.actorId || '').trim(),
-      actorSide: String(request?.actorSide || '').trim(),
-      objectiveHash: r9v2ProjectionObjectHash(
-        projectionCache,
-        request?.objectiveContract ||
-          request?.battleIntent?.objectives ||
-          request?.battleIntent?.胜负条件 ||
-          {},
-      ),
-      actionOpportunityHash: r9v2ProjectionObjectHash(
-        projectionCache,
-        request?.actionOpportunity || {},
-      ),
-      evaluationContextHash: r9v2ProjectionObjectHash(
-        projectionCache,
-        request?.evaluationContext || {},
-      ),
+      actorId: String(cacheRequest?.actorId || '').trim(),
+      actorSide: String(cacheRequest?.actorSide || '').trim(),
       unitFingerprints,
-      objectiveTruthSignatures,
       entryComponentSignature: exactDependencies
         ? r9v2CachedProofComponentEntrySignature(
             projectionCache,
@@ -40764,10 +41908,66 @@
             entry,
           )
         : '',
-      ...(beliefSensitive
+      ...(hasDependency('objective')
         ? {
+            objectiveHash: r9v2ProjectionObjectHash(
+              projectionCache,
+              cacheRequest?.objectiveContract ||
+                cacheRequest?.battleIntent?.objectives ||
+                cacheRequest?.battleIntent?.胜负条件 ||
+                {},
+            ),
+            objectiveTruthSignatures,
+          }
+        : {}),
+      ...(hasDependency('opportunity')
+        ? {
+            opportunityContextHash: r9v2ProjectionObjectHash(
+              projectionCache,
+              {
+                actionOpportunity: cacheRequest?.actionOpportunity || {},
+                opportunityRevision: String(
+                  evaluationContext.opportunitySemanticRevision ||
+                  evaluationContext.opportunityRevision ||
+                  '',
+                ).trim(),
+                opportunitySnapshot:
+                  evaluationContext.opportunitySnapshot || [],
+              },
+            ),
+          }
+        : {}),
+      ...(hasDependency('resource')
+        ? {
+            resourceContextHash: r9v2ProjectionObjectHash(
+              projectionCache,
+              {
+                resourceTimelineRevision:
+                  evaluationContext.resourceTimelineRevision || '',
+                resourceTimeline: evaluationContext.resourceTimeline || [],
+              },
+            ),
+          }
+        : {}),
+      ...(hasDependency('schedule')
+        ? {
+            scheduleContextHash: r9v2ProjectionObjectHash(
+              projectionCache,
+              {
+                scheduleRevision: String(
+                  evaluationContext.scheduleSemanticRevision ||
+                  evaluationContext.scheduleRevision ||
+                  '',
+                ).trim(),
+                scheduledEvents: evaluationContext.scheduledEvents || [],
+              },
+            ),
+          }
+        : {}),
+      ...(beliefSensitive
+          ? {
             beliefHash: r9v2ProjectionBeliefSignature(
-              request?.beliefState || {},
+              cacheRequest?.beliefState || {},
               [...beliefKeys],
               projectionCache,
             ),
@@ -40787,11 +41987,13 @@
           contextPayload.component,
           contextPayload.actorId,
           contextPayload.actorSide,
-          contextPayload.objectiveHash,
-          contextPayload.actionOpportunityHash,
-          contextPayload.evaluationContextHash,
+          contextPayload.targetKernel,
+          contextPayload.objectiveHash || '',
+          contextPayload.opportunityContextHash || '',
+          contextPayload.resourceContextHash || '',
+          contextPayload.scheduleContextHash || '',
           JSON.stringify(contextPayload.unitFingerprints),
-          JSON.stringify(contextPayload.objectiveTruthSignatures),
+          JSON.stringify(contextPayload.objectiveTruthSignatures || []),
           contextPayload.entryComponentSignature,
           contextPayload.beliefHash || '',
           contextPayload.poolKey || '',
@@ -40825,7 +42027,25 @@
       );
       return cached.value;
     }
+    const proofBuildStartedAt =
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
     const value = build();
+    const proofBuildEndedAt =
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2ProofComponentBuildMs',
+      proofBuildEndedAt - proofBuildStartedAt,
+    );
+    r9v2Metric(
+      projectionCache.metricsState,
+      `r9v2ProofComponentBuildMs:${component}`,
+      proofBuildEndedAt - proofBuildStartedAt,
+    );
     while (store.size >= 8192) {
       const oldestKey = store.keys().next().value;
       if (oldestKey === undefined) break;
@@ -40868,6 +42088,13 @@
     reuseProjectionBundle = null,
     proofOptions = null,
   ) {
+    if (projectionCache?.targetKernel === true) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetKernelLegacyProofCalls',
+      );
+      throw new Error('R9V2_TARGET_KERNEL_LEGACY_PROOF_REACHED');
+    }
     if (proofOptions?.mode === 'VALUE_ONLY') {
       return r9v2CandidateValueOnlyProof(
         request,
@@ -41911,6 +43138,13 @@
     projectionCache = null,
     reuseProjectionBundle = null,
   ) {
+    if (projectionCache?.targetKernel === true) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetKernelLegacyProofCalls',
+      );
+      throw new Error('R9V2_TARGET_KERNEL_LEGACY_PROOF_REACHED');
+    }
     const worldSnapshot = request.visibleWorld;
     const actorSide = request.actorSide;
     const reusable = reuseProjectionBundle &&
@@ -42369,13 +43603,15 @@
   }) {
     const context = request?.evaluationContext || {};
     const revisionState = state?.revisionState || {};
+    const futureOpportunitySemanticContext =
+      r9v2FutureOpportunityContext(futureOpportunity);
     const visibleWorldRevision = String(
       context.visibleWorldRevision ||
       revisionState.visibleWorldRevision ||
       `world:${preview.stableHash(request?.visibleWorld || {})}`,
     ).trim();
     return `r9v2-future-pool:${preview.stableHash({
-      schemaVersion: 'R9v2FuturePoolContextV1',
+      schemaVersion: 'R9v2FuturePoolContextV2',
       observerActorId: String(request?.actorId || '').trim(),
       observerSide: String(request?.actorSide || '').trim(),
       visibleWorldRevision,
@@ -42385,9 +43621,9 @@
         beliefRevisionFor(request?.beliefState || {}),
       ).trim(),
       opportunityRevision: String(
-        context.opportunityRevision ||
+        context.opportunitySemanticRevision ||
         revisionState.opportunityRevision ||
-        '',
+        r9v2ContextSemanticRevision(context.opportunitySnapshot),
       ).trim(),
       resourceTimelineRevision: String(
         context.resourceTimelineRevision ||
@@ -42395,14 +43631,14 @@
         '',
       ).trim(),
       scheduleRevision: String(
-        context.scheduleRevision ||
+        context.scheduleSemanticRevision ||
         revisionState.scheduleRevision ||
-        '',
+        r9v2ContextSemanticRevision(context.scheduledEvents),
       ).trim(),
       factDeltaCount: Array.isArray(state?.factDeltaRecords)
         ? state.factDeltaRecords.length
         : 0,
-      futureOpportunity,
+      futureOpportunity: futureOpportunitySemanticContext,
       objectiveHash: String(
         context.objectiveHash ||
         revisionState.objectiveHash ||
@@ -43479,6 +44715,10 @@
   }) {
     const stores = r9v2SharedStoresFor(state);
     const futurePools = stores.futureBehaviorPools;
+    const futureOpportunitySemanticContext =
+      r9v2FutureOpportunityContext(futureOpportunity);
+    const futureOpportunityBinding =
+      r9v2OpportunityIdentityContext(futureOpportunity);
     const key = r9v2FuturePoolContextKey({
       state,
       request,
@@ -43486,9 +44726,24 @@
     });
     const existing = futurePools.get(key);
     if (existing) {
+      const previousBindingHash = preview.stableHash(
+        existing.futureOpportunityBinding || {},
+      );
+      existing.futureOpportunityBinding = futureOpportunityBinding;
+      existing.futureOpportunitySemanticContext =
+        futureOpportunitySemanticContext;
+      if (
+        previousBindingHash !== preview.stableHash(futureOpportunityBinding)
+      ) {
+        r9v2Metric(state, 'r9v2FuturePoolIdentityRebinds');
+      }
       r9v2Metric(state, 'r9v2FuturePoolHits');
       return existing;
     }
+    const futurePoolBuildStartedAt =
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
     const futurePool = {
       ...pool,
       schemaVersion: 'BehaviorPoolSessionV1',
@@ -43502,6 +44757,8 @@
       targetInterferenceRateByUnit: new Map(),
       dependencyOwners: new Map(),
       futurePoolContextKey: key,
+      futureOpportunityBinding,
+      futureOpportunitySemanticContext,
       r9v2GlobalObjectiveUnitDependency:
         /TEAM_/.test(
           JSON.stringify(
@@ -43536,6 +44793,15 @@
     );
     r9v2ReindexTargets(futurePool);
     r9v2BuildDependencyOwners(futurePool);
+    const futurePoolBuildEndedAt =
+      typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+    r9v2Metric(
+      state,
+      'r9v2FuturePoolBuildMs',
+      futurePoolBuildEndedAt - futurePoolBuildStartedAt,
+    );
     futurePools.set(key, futurePool);
     r9v2Metric(state, 'r9v2FuturePoolBuilds');
     return futurePool;
@@ -43552,6 +44818,7 @@
     changedBeliefKeys = [],
     baseEntryByCandidate = null,
     baseProofByCandidate = null,
+    mechanicalProjectionContext = null,
     targetKernel = false,
     informationValueOnly = false,
     identity,
@@ -43625,6 +44892,13 @@
       dependencyOwners: new Map(
         branchPoolSource?.dependencyOwners || [],
       ),
+      // Candidate ownership is immutable for a branch overlay. Reusing the
+      // baseline index lets dirty-pool construction jump directly to the
+      // affected candidate rows instead of scanning every row per branch.
+      dependencyCandidateOwners:
+        branchPoolSource?.dependencyCandidateOwners instanceof Map
+          ? branchPoolSource.dependencyCandidateOwners
+          : new Map(),
     };
     const currentUnitIds = new Set(
       aliveEntries(branchWorld).map(entry =>
@@ -43734,8 +45008,15 @@
         rebuildUnitIds.add(unitId);
       }
     });
-    const mechanicalProjectionContext =
-      preview.compileMechanicalProjectionContext(branchWorld);
+    const branchMechanicalProjectionContext =
+      mechanicalProjectionContext?.worldSnapshot === request.visibleWorld &&
+      typeof preview.deriveMechanicalProjectionContext === 'function'
+        ? preview.deriveMechanicalProjectionContext(
+            mechanicalProjectionContext,
+            branchWorld,
+            changedUnitIdSet,
+          )
+        : preview.compileMechanicalProjectionContext(branchWorld);
     const dirtyScanUnitIds = [...rebuildUnitIds]
       .filter(unitId => currentUnitIds.has(unitId))
       .sort();
@@ -43755,7 +45036,7 @@
           beliefState: branchBelief,
           battleIntent: request.battleIntent,
           actionOpportunity: futureOpportunity,
-          mechanicalProjectionContext,
+          mechanicalProjectionContext: branchMechanicalProjectionContext,
           changedUnitIds: changedUnitIdSet,
           changedUnitScopes,
           changedBeliefKeys: normalizedChangedBeliefKeys,
@@ -43770,7 +45051,7 @@
             beliefState: branchBelief,
             battleIntent: request.battleIntent,
             actionOpportunity: futureOpportunity,
-            mechanicalProjectionContext,
+            mechanicalProjectionContext: branchMechanicalProjectionContext,
             verifyMechanicalBasis: false,
           });
         }
@@ -43853,6 +45134,9 @@
       metricsState:
         sharedProjectionCache?.metricsState || branchState,
       pendingNaturalActorIds: null,
+      mechanicalProjectionContext:
+        sharedProjectionCache?.mechanicalProjectionContext ||
+        branchMechanicalProjectionContext,
       normalizedContributionStore:
         pool?.r9v2NormalizedContributionStore,
     };
@@ -44054,6 +45338,7 @@
         sharedProjectionCacheBase?.projectionBeliefRevisions || new WeakMap(),
       entryComponentSignatures:
         sharedProjectionCacheBase?.entryComponentSignatures || new WeakMap(),
+      mechanicalProjectionContext,
       projectionRevisionNamespace:
         sharedProjectionCacheBase?.projectionRevisionNamespace ||
         `r9v2-projection:${++r9v2ProjectionRevisionSequence}`,
@@ -44457,6 +45742,7 @@
                 baselineFutureEntryByCandidate,
               baseProofByCandidate:
                 baselineFutureProofByCandidate,
+              mechanicalProjectionContext,
               sharedProjectionCache,
               targetKernel,
               informationValueOnly: useInformationValueOnly,
@@ -44611,6 +45897,7 @@
       !kernel ||
       typeof kernel.createSession !== 'function' ||
       typeof kernel.evaluateAllCandidates !== 'function' ||
+      typeof kernel.applyFactDelta !== 'function' ||
       typeof kernel.materializeProof !== 'function'
     ) {
       throw new Error('R9V2_TARGET_KERNEL_NOT_LOADED');
@@ -44646,7 +45933,304 @@
     return null;
   }
 
-  function r9v2TargetHealthFacts(request, entry) {
+  function r9v2TargetObjectiveGroups(request = {}) {
+    return preview.normalizeBattleObjectives(
+      request?.objectiveContract ||
+        request?.battleIntent?.objectives ||
+        request?.battleIntent?.胜负条件 ||
+        request?.visibleWorld?.胜负条件 ||
+        {},
+      request?.visibleWorld || {},
+    );
+  }
+
+  function r9v2TargetObjectiveUnits(request = {}, condition = {}) {
+    const targetIds = new Set(
+      (Array.isArray(condition?.targetIds) ? condition.targetIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const expectedSide = r9v2ObjectiveSide(condition?.side);
+    return worldEntries(request.visibleWorld || {})
+      .filter(({ unit }) => {
+        const id = String(preview.unitId(unit) || '').trim();
+        const name = String(preview.unitName(unit) || '').trim();
+        const targetMatch = !targetIds.size ||
+          targetIds.has(id) ||
+          targetIds.has(name);
+        const sideMatch = !expectedSide ||
+          r9v2ObjectiveSide(sideOf(request.visibleWorld, unit)) ===
+            expectedSide;
+        return targetMatch && sideMatch;
+      })
+      .map(({ unit }) => unit);
+  }
+
+  function r9v2TargetObjectiveEvaluationContext(request = {}) {
+    const world = request?.visibleWorld || {};
+    const groups = preview.normalizeBattleObjectives(
+      request?.objectiveContract ||
+        request?.battleIntent?.objectives ||
+        request?.battleIntent?.胜负条件 ||
+        world?.胜负条件 ||
+        {},
+      world,
+    );
+    const unitsById = new Map();
+    const currentPPById = new Map();
+    worldEntries(world).forEach(({ unit }) => {
+      const unitId = String(preview.unitId(unit) || '').trim();
+      if (!unitId) return;
+      unitsById.set(unitId, unit);
+      currentPPById.set(
+        unitId,
+        100 * preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)),
+      );
+    });
+    const conditionUnits = new Map();
+    const conditionRowsByTarget = new Map();
+    const conditions = [
+      ...(groups?.victory?.conditions || []),
+      ...(groups?.defeat?.conditions || []),
+    ];
+    conditions.forEach(condition => {
+      const rows = r9v2TargetObjectiveUnits(
+        { ...request, visibleWorld: world },
+        condition,
+      ).map(unit => ({
+        unit,
+        targetId: String(preview.unitId(unit) || '').trim(),
+        currentPP: currentPPById.get(String(preview.unitId(unit) || '').trim()) || 0,
+        side: r9v2ObjectiveSide(sideOf(world, unit)),
+      }));
+      conditionUnits.set(condition, rows);
+      conditionRowsByTarget.set(
+        condition,
+        new Map(rows.map(row => [row.targetId, row])),
+      );
+    });
+    return {
+      world,
+      groups,
+      unitsById,
+      currentPPById,
+      conditionUnits,
+      conditionRowsByTarget,
+      actorSide: r9v2ObjectiveSide(request?.actorSide),
+    };
+  }
+
+  function r9v2TargetObjectiveContextUnits(
+    request,
+    condition,
+    objectiveContext = null,
+  ) {
+    const cached = objectiveContext?.conditionUnits?.get(condition);
+    if (Array.isArray(cached)) return cached;
+    const world = request?.visibleWorld || {};
+    return r9v2TargetObjectiveUnits(request, condition).map(unit => ({
+      unit,
+      targetId: String(preview.unitId(unit) || '').trim(),
+      currentPP: 100 * preview.readHp(unit) /
+        Math.max(1, preview.readHpMax(unit)),
+      side: r9v2ObjectiveSide(sideOf(world, unit)),
+    }));
+  }
+
+  function r9v2TargetObjectiveConditionValue(
+    request,
+    condition,
+    trajectoryByTarget,
+    groupRole,
+    objectiveContext = null,
+  ) {
+    const type = String(condition?.type || '').trim().toUpperCase();
+    const values = [];
+    const thresholdPP = 100 * Number(condition?.threshold || 0);
+    const evaluateRow = (row, deltaPP) => {
+      const targetId = row.targetId;
+      const currentPP = row.currentPP;
+      const afterPP = clamp(currentPP + deltaPP, 0, 100);
+      const ownTarget = row.side === (
+        objectiveContext?.actorSide ??
+        r9v2ObjectiveSide(request.actorSide)
+      );
+      let value = 0;
+      if (groupRole === 'DEFEAT') {
+        if (!ownTarget) return;
+        value = type === 'HP_RATIO_AT_OR_BELOW'
+          ? Math.max(0, afterPP - thresholdPP) -
+            Math.max(0, currentPP - thresholdPP)
+          : afterPP - currentPP;
+      } else if (type === 'ROUND_REACHED' || type === 'WITHDRAW_SUCCESS') {
+        if (ownTarget) value = afterPP - currentPP;
+      } else if (ownTarget) {
+        return;
+      } else {
+        value = type === 'HP_RATIO_AT_OR_BELOW'
+          ? Math.max(0, currentPP - thresholdPP) -
+            Math.max(0, afterPP - thresholdPP)
+          : currentPP - afterPP;
+      }
+      values.push(value);
+    };
+    const conditionRows = objectiveContext?.conditionRowsByTarget?.get(condition);
+    if (conditionRows instanceof Map) {
+      conditionRows.forEach(row => {
+        evaluateRow(
+          row,
+          Number(trajectoryByTarget.get(row.targetId) || 0),
+        );
+      });
+    } else {
+      r9v2TargetObjectiveContextUnits(
+        request,
+        condition,
+        objectiveContext,
+      ).forEach(row => evaluateRow(
+        row,
+        Number(trajectoryByTarget.get(row.targetId) || 0),
+      ));
+    }
+    if (!values.length) return 0;
+    return String(condition?.scope || 'ANY').trim().toUpperCase() === 'ALL'
+      ? Math.min(...values)
+      : Math.max(...values);
+  }
+
+  function r9v2TargetObjectiveGroupValue(
+    request,
+    group,
+    trajectoryByTarget,
+    groupRole,
+    objectiveContext = null,
+  ) {
+    const values = (group?.conditions || []).map(condition =>
+      r9v2TargetObjectiveConditionValue(
+        request,
+        condition,
+        trajectoryByTarget,
+        groupRole,
+        objectiveContext,
+      )
+    );
+    if (!values.length) return 0;
+    return String(group?.logic || 'ANY').trim().toUpperCase() === 'ALL'
+      ? Math.min(...values)
+      : Math.max(...values);
+  }
+
+  function r9v2TargetObjectiveValue(
+    request,
+    trajectories = [],
+    objectiveContext = null,
+  ) {
+    const context = objectiveContext ||
+      r9v2TargetObjectiveEvaluationContext(request);
+    const trajectoryByTarget = new Map();
+    trajectories.forEach(trajectory => {
+      const targetId = String(trajectory?.targetId || '').trim();
+      if (!targetId) return;
+      trajectoryByTarget.set(
+        targetId,
+        Number(trajectoryByTarget.get(targetId) || 0) +
+        Number(trajectory?.healthDeltaPP || 0),
+      );
+    });
+    const groups = context.groups;
+    const victory = r9v2TargetObjectiveGroupValue(
+      request,
+      groups.victory,
+      trajectoryByTarget,
+      'VICTORY',
+      context,
+    );
+    const defeat = r9v2TargetObjectiveGroupValue(
+      request,
+      groups.defeat,
+      trajectoryByTarget,
+      'DEFEAT',
+      context,
+    );
+    if (
+      Math.sign(victory) !== Math.sign(defeat) ||
+      Math.abs(victory) <= 1e-9 ||
+      Math.abs(defeat) <= 1e-9
+    ) return victory + defeat;
+    const victoryTargets = new Set(
+      (groups.victory?.conditions || []).flatMap(condition =>
+        r9v2TargetObjectiveContextUnits(request, condition, context)
+          .map(row => row.targetId)
+      ),
+    );
+    const sharesTarget = (groups.defeat?.conditions || []).some(condition =>
+      r9v2TargetObjectiveContextUnits(request, condition, context).some(row =>
+        victoryTargets.has(row.targetId)
+      )
+    );
+    if (!sharesTarget) return victory + defeat;
+    return victory + defeat -
+      Math.sign(victory) * Math.min(Math.abs(victory), Math.abs(defeat));
+  }
+
+  function r9v2TargetDiscardedOverkillPP(
+    request,
+    trajectories = [],
+    objectiveContext = null,
+  ) {
+    const context = objectiveContext ||
+      r9v2TargetObjectiveEvaluationContext(request);
+    const groups = context.groups;
+    let discarded = 0;
+    trajectories.forEach(trajectory => {
+      const targetId = String(trajectory?.targetId || '').trim();
+      const target = context.unitsById.get(targetId) ||
+        findUnitInWorld(request.visibleWorld, targetId);
+      if (!target) return;
+      const damagePP = Math.max(0, -Number(trajectory?.healthDeltaPP || 0));
+      if (!(damagePP > 0)) return;
+      const matches = (groups.victory?.conditions || []).filter(condition =>
+        String(condition?.type || '').trim().toUpperCase() ===
+          'HP_RATIO_AT_OR_BELOW' &&
+        r9v2TargetObjectiveContextUnits(request, condition, context).some(row =>
+          row.targetId === targetId
+        )
+      );
+      if (!matches.length) return;
+      const requiresKill = (groups.victory?.conditions || []).some(condition =>
+        ['TEAM_DEAD', 'UNIT_DEAD'].includes(
+          String(condition?.type || '').trim().toUpperCase(),
+        ) &&
+        r9v2TargetObjectiveContextUnits(request, condition, context).some(row =>
+          row.targetId === targetId
+        )
+      );
+      if (requiresKill) return;
+      const currentPP = context.currentPPById instanceof Map &&
+        context.currentPPById.has(targetId)
+        ? context.currentPPById.get(targetId)
+        : 100 * preview.readHp(target) /
+          Math.max(1, preview.readHpMax(target));
+      const countablePP = Math.max(...matches.map(condition =>
+        Math.max(0, currentPP - 100 * Number(condition?.threshold || 0))
+      ));
+      discarded += Math.max(
+        0,
+        damagePP - Math.min(damagePP, countablePP),
+      );
+    });
+    return r9v2TargetFinite(
+      discarded,
+      'R9V2_KERNEL_OVERKILL_NON_FINITE',
+      'target-objective',
+    );
+  }
+
+  function r9v2TargetHealthFacts(
+    request,
+    entry,
+    objectiveContext = null,
+  ) {
     const grouped = new Map();
     const futureFacts = [];
     const healthKinds = new Set([
@@ -44698,6 +46282,8 @@
         const rawValue = 100 * delta / maxHp;
         futureFacts.push({
           targetId,
+          formalComponentCode: 'summon',
+          causalOwnerType: 'ACTION_POOL_DELTA',
           value: r9v2TargetFinite(
             futureSide === request.actorSide ? rawValue : -rawValue,
             'R9V2_KERNEL_FUTURE_STATE_VALUE_NON_FINITE',
@@ -44735,27 +46321,14 @@
           Math.max(1, preview.readHpMax(target)),
       };
     });
-    const objectiveGroups = r8ObjectiveGroups(request);
-    const hasExplicitObjective = Boolean(
-      request?.objectiveContract &&
-      typeof request.objectiveContract === 'object' &&
-      Object.keys(request.objectiveContract).length,
-    );
     const values = new Map();
     grouped.forEach(row => {
-      const target = findUnitInWorld(request.visibleWorld, row.targetId);
       const trajectory = trajectories.find(item => item.targetId === row.targetId);
-      const rawValue = trajectory?.healthDeltaPP || 0;
-      const targetSide = sideOf(request.visibleWorld, target);
-      const value = hasExplicitObjective
-        ? r8UniqueObjectiveTrajectoryValue(
-            request,
-            objectiveGroups,
-            [trajectory],
-          )
-        : targetSide === request.actorSide
-          ? rawValue
-          : -rawValue;
+      const value = r9v2TargetObjectiveValue(
+        request,
+        [trajectory],
+        objectiveContext,
+      );
       values.set(row.targetId, {
         ...row,
         value: r9v2TargetFinite(
@@ -44766,13 +46339,11 @@
       });
     });
     let discardedOverkillPP = 0;
-    if (hasExplicitObjective && trajectories.length) {
-      discardedOverkillPP = r9v2TargetFinite(
-        r8ThresholdOverkill(request, {
-          healthTrajectoryByTarget: trajectories,
-        }),
-        'R9V2_KERNEL_OVERKILL_NON_FINITE',
-        entry.candidateId,
+    if (trajectories.length) {
+      discardedOverkillPP = r9v2TargetDiscardedOverkillPP(
+        request,
+        trajectories,
+        objectiveContext,
       );
     }
     return {
@@ -44785,10 +46356,3146 @@
     };
   }
 
-  function r9v2TargetValueFacts(request, entry) {
+  function r9v2TargetNormalizeComponentFacts(entry, componentCode, facts = []) {
+    return facts.reduce((normalized, fact, index) => {
+      const value = r9v2TargetFinite(
+        fact?.valueHEPP,
+        'R9V2_KERNEL_COMPONENT_VALUE_NON_FINITE',
+        `${entry.candidateId}:${componentCode}:${index}`,
+      );
+      if (Math.abs(value) <= 1e-9) return normalized;
+      const ownerType = String(
+        fact?.causalOwnerType || fact?.ownerType || 'ACTION_POOL_DELTA',
+      ).trim();
+      normalized.push({
+        ...fact,
+        componentCode,
+        causalOwnerType: ownerType,
+        valueHEPP: value,
+        sourceEventId: String(
+          fact?.sourceEventId || fact?.effectInstanceId ||
+          `${entry.candidateId}:${componentCode}:event:${index}`,
+        ).trim(),
+        sourceFactId: String(
+          fact?.sourceFactId || fact?.factId ||
+          `${entry.candidateId}:${componentCode}:${index}`,
+        ).trim(),
+        targetUnitId: String(
+          fact?.targetUnitId || fact?.targetId || entry.actorId || '',
+        ).trim(),
+        sequence: Number.isFinite(Number(fact?.sequence))
+          ? Number(fact.sequence)
+          : index,
+      });
+      return normalized;
+    }, []);
+  }
+
+  function r9v2TargetS1Components(
+    request,
+    entry,
+    objectiveContext = null,
+  ) {
+    const health = r9v2TargetHealthFacts(
+      request,
+      entry,
+      objectiveContext,
+    );
+    const facts = health.facts.map((row, index) => ({
+      componentCode: 'S1_STATE_TRAJECTORY',
+      causalOwnerType: 'STATE_DELTA',
+      valueHEPP: row.value,
+      sourceEventId: row.sourceEventId || `${entry.candidateId}:state:event`,
+      sourceFactId: `${entry.candidateId}:state:${row.targetId}`,
+      targetUnitId: row.targetId,
+      sequence: index,
+    }));
+    const handledContributionIndexes = new Set();
+    (entry?.contributions || []).forEach((contribution, index) => {
+      const outcomeKind = String(contribution?.outcomeKind || '').trim();
+      if (
+        ['HP_DELTA', 'SCHEDULED_HP_DELTA', 'WITHDRAWAL_CONTEST', 'SHIELD_DELTA']
+          .includes(outcomeKind)
+      ) {
+        handledContributionIndexes.add(index);
+        return;
+      }
+      const explicit = r9v2TargetExplicitHeppValue(contribution);
+      if (!explicit || ![
+        'terminalDeltaHEPP',
+        'terminalValueHEPP',
+      ].includes(explicit.key)) return;
+      handledContributionIndexes.add(index);
+      const evidence = contribution?.evidence || {};
+      const terminalId = String(
+        evidence?.terminalAfterEffectInstanceId ||
+        evidence?.terminalAtomicKey ||
+        evidence?.terminalIdentity ||
+        '',
+      ).trim();
+      if (explicit.value && !terminalId) {
+        throw new Error(
+          `R9V2_KERNEL_TERMINAL_IDENTITY_MISSING:${entry.candidateId}:${index}`,
+        );
+      }
+      if (Math.abs(explicit.value) <= 1e-9) return;
+      facts.push({
+        componentCode: 'S1_FIRST_TERMINAL',
+        causalOwnerType: 'TERMINAL_DELTA',
+        valueHEPP: explicit.value,
+        sourceEventId: String(
+          contribution?.sourceActionId ||
+          contribution?.effectInstanceId ||
+          `${entry.candidateId}:terminal:event`,
+        ).trim(),
+        sourceFactId: `${entry.candidateId}:terminal:${index}`,
+        targetUnitId: String(
+          contribution?.targetId || entry.actorId,
+        ).trim(),
+        sequence: index,
+      });
+    });
+    return {
+      facts,
+      health,
+      discardedOverkillPP: health.discardedOverkillPP,
+      handledContributionIndexes,
+    };
+  }
+
+  function r9v2TargetRouteValueReadsChanged({
+    entry,
+    changedUnitIds = new Set(),
+    baselineWorld = null,
+    branchWorld = null,
+  }) {
+    const healthKinds = new Set([
+      'HP_DELTA',
+      'SCHEDULED_HP_DELTA',
+      'WITHDRAWAL_CONTEST',
+      'SHIELD_DELTA',
+    ]);
+    const routeTargetIds = new Set(
+      (entry?.contributions || [])
+        .filter(contribution => healthKinds.has(
+          String(contribution?.outcomeKind || '').trim(),
+        ))
+        .map(contribution => String(contribution?.targetId || '').trim())
+        .filter(Boolean),
+    );
+    const changed = changedUnitIds instanceof Set
+      ? changedUnitIds
+      : new Set(changedUnitIds || []);
+    const relevantChangedIds = [...changed]
+      .map(value => String(value || '').trim())
+      .filter(unitId => unitId && routeTargetIds.has(unitId));
+    if (!relevantChangedIds.length) return false;
+    const healthSignature = (world, unitId) => {
+      const unit = findUnitInWorld(world || {}, unitId);
+      if (!unit) return null;
+      return [
+        preview.readHp(unit),
+        preview.readHpMax(unit),
+        preview.readShield(unit),
+        preview.isAlive(unit),
+        preview.isBattleCapable(unit),
+        r9v2ObjectiveSide(sideOf(world, unit)),
+      ];
+    };
+    return relevantChangedIds.some(unitId =>
+      JSON.stringify(healthSignature(baselineWorld, unitId)) !==
+      JSON.stringify(healthSignature(branchWorld, unitId))
+    );
+  }
+
+  function r9v2TargetRouteValueProfile(
+    request,
+    entry,
+    unitId,
+    worldSnapshot,
+    objectiveContext = null,
+  ) {
+    const world = worldSnapshot || request.visibleWorld;
+    const unit = findUnitInWorld(world, unitId);
+    if (!unit || !preview.isBattleCapable(unit) || entry?.hardInvalid === true) {
+      return Object.freeze({
+        complete: false,
+        targetFacts: Object.freeze([]),
+        staticValue: 0,
+        valueHEPP: 0,
+      });
+    }
+    const routeRequest = {
+      ...request,
+      visibleWorld: world,
+      actorId: unitId,
+      actorSide: sideOf(world, unit) || request.actorSide,
+    };
+    const s1 = r9v2TargetS1Components(
+      routeRequest,
+      entry,
+      objectiveContext || r9v2TargetObjectiveEvaluationContext(routeRequest),
+    );
+    const targetFacts = Object.freeze(
+      (s1.health?.facts || []).map((fact, index) => ({
+        targetId: String(fact?.targetId || '').trim(),
+        delta: r9v2TargetFinite(
+          fact?.delta,
+          'R9V2_KERNEL_ROUTE_PROFILE_DELTA_NON_FINITE',
+          `${entry?.candidateId || ''}:${index}`,
+        ),
+        value: r9v2TargetFinite(
+          fact?.value,
+          'R9V2_KERNEL_ROUTE_PROFILE_VALUE_NON_FINITE',
+          `${entry?.candidateId || ''}:${index}`,
+        ),
+      })).filter(fact => fact.targetId),
+    );
+    let staticValue = s1.facts.reduce(
+      (total, fact) => total + (
+        fact.causalOwnerType === 'TERMINAL_DELTA'
+          ? Number(fact.valueHEPP || 0)
+          : 0
+      ),
+      0,
+    );
+    (entry?.contributions || []).forEach(contribution => {
+      const explicit = r9v2TargetExplicitHeppValue(contribution);
+      if (!explicit || ['terminalDeltaHEPP', 'terminalValueHEPP'].includes(explicit.key)) {
+        return;
+      }
+      staticValue += explicit.value;
+    });
+    const valueHEPP = targetFacts.reduce(
+      (total, fact) => total + fact.value,
+      staticValue,
+    );
+    return Object.freeze({
+      complete: true,
+      candidateId: String(entry?.candidateId || '').trim(),
+      targetFacts,
+      staticValue: r9v2TargetFinite(
+        staticValue,
+        'R9V2_KERNEL_ROUTE_PROFILE_STATIC_NON_FINITE',
+        `${entry?.candidateId || ''}:${unitId}`,
+      ),
+      valueHEPP: r9v2TargetFinite(
+        valueHEPP,
+        'R9V2_KERNEL_ROUTE_VALUE_NON_FINITE',
+        `${entry?.candidateId || ''}:${unitId}`,
+      ),
+    });
+  }
+
+  function r9v2TargetRouteValueFromProfile({
+    request,
+    profile,
+    unitId,
+    worldSnapshot,
+    objectiveContext = null,
+    changedUnitIds = new Set(),
+  }) {
+    if (!profile?.complete) return null;
+    const world = worldSnapshot || request.visibleWorld;
+    const unit = findUnitInWorld(world, unitId);
+    if (!unit || !preview.isBattleCapable(unit)) return null;
+    const routeRequest = {
+      ...request,
+      visibleWorld: world,
+      actorId: unitId,
+      actorSide: sideOf(world, unit) || request.actorSide,
+    };
+    const changed = changedUnitIds instanceof Set
+      ? changedUnitIds
+      : new Set(changedUnitIds || []);
+    let value = profile.staticValue;
+    profile.targetFacts.forEach(fact => {
+      if (!changed.has(fact.targetId)) {
+        value += fact.value;
+        return;
+      }
+      const target = findUnitInWorld(world, fact.targetId);
+      if (!target) return;
+      const healthDeltaPP = 100 * fact.delta /
+        Math.max(1, preview.readHpMax(target));
+      value += r9v2TargetObjectiveValue(
+        routeRequest,
+        [{ targetId: fact.targetId, healthDeltaPP }],
+        objectiveContext || r9v2TargetObjectiveEvaluationContext(routeRequest),
+      );
+    });
+    return r9v2TargetFinite(
+      value,
+      'R9V2_KERNEL_ROUTE_VALUE_NON_FINITE',
+      `${profile?.candidateId || ''}:${unitId}`,
+    );
+  }
+
+  function r9v2TargetRouteEntryValue(
+    request,
+    entry,
+    unitId,
+    worldSnapshot,
+    objectiveContext = null,
+  ) {
+    return r9v2TargetRouteValueProfile(
+      request,
+      entry,
+      unitId,
+      worldSnapshot,
+      objectiveContext,
+    ).valueHEPP;
+  }
+
+  function r9v2TargetRouteWorldKey({
+    request,
+    worldSnapshot,
+    projectionCache,
+    reuseContext = null,
+    changedUnitScopes = null,
+  }) {
+    const baselineWorld = reuseContext?.baselineWorld || request?.visibleWorld;
+    const changedUnitIds = reuseContext?.changedUnitIds instanceof Set
+      ? reuseContext.changedUnitIds
+      : new Set();
+    if (
+      !worldSnapshot ||
+      !baselineWorld ||
+      worldSnapshot === baselineWorld ||
+      changedUnitIds.size === 0
+    ) {
+      return r9v2ProjectionObjectHash(
+        projectionCache,
+        worldSnapshot || {},
+      );
+    }
+    const unitIds = worldEntries(worldSnapshot)
+      .map(({ unit }) => String(preview.unitId(unit) || '').trim())
+      .filter(Boolean)
+      .sort(r9v2TargetCompareUtf16);
+    const changedUnitFingerprints = [...changedUnitIds]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .sort(r9v2TargetCompareUtf16)
+      .map(unitId => {
+        const scopes = changedUnitScopes instanceof Map
+          ? changedUnitScopes.get(unitId)
+          : null;
+        const fingerprint = scopes instanceof Set && scopes.size > 0
+          ? r9v2ProjectionUnitScopeFingerprint(
+              worldSnapshot,
+              unitId,
+              [...scopes],
+              projectionCache,
+            )
+          : r9v2ProjectionUnitFingerprint(
+              worldSnapshot,
+              unitId,
+              projectionCache,
+            );
+        return [unitId, fingerprint];
+      });
+    r9v2Metric(
+      projectionCache?.metricsState,
+      'r9v2TargetRouteWorldDeltaKeyBuilds',
+    );
+    return [
+      'R9v2TargetRouteWorldDeltaKeyV1',
+      r9v2ProjectionObjectRevision(projectionCache, baselineWorld),
+      Number(worldSnapshot?.回合 ?? worldSnapshot?.round ?? 0),
+      preview.stableHash(worldSnapshot?.胜负条件 || {}),
+      unitIds.join(','),
+      JSON.stringify(changedUnitFingerprints),
+    ].join('\u0000');
+  }
+
+  function r9v2TargetRouteCacheKey({
+    request,
+    pool,
+    unitId,
+    worldSnapshot,
+    projectionCache,
+    resourceOverrides = null,
+    forceRebuild = false,
+    reuseContext = null,
+  }) {
+    if (projectionCache?.targetKernel !== true) return '';
+    const startedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const unitRevisions = pool?.unitValueRevisions;
+    const unitRevision = unitRevisions instanceof Map
+      ? Number(unitRevisions.get(String(unitId || '').trim()) || 0)
+      : 0;
+    const key = [
+      'R9v2TargetRouteCacheV1',
+      String(unitId || '').trim(),
+      r9v2TargetRouteWorldKey({
+        request,
+      worldSnapshot,
+      projectionCache,
+      reuseContext,
+      changedUnitScopes: reuseContext?.changedUnitScopes || null,
+    }),
+      r9v2ProjectionObjectHash(
+        projectionCache,
+        request?.beliefState || {},
+      ),
+      r9v2ProjectionObjectHash(
+        projectionCache,
+        request?.battleIntent || {},
+      ),
+      r9v2ProjectionObjectHash(
+        projectionCache,
+        request?.objectiveContract || {},
+      ),
+      r9v2ProjectionObjectHash(
+        projectionCache,
+        request?.actionOpportunity || {},
+      ),
+      String(
+        pool?.observerPoolKey ||
+        pool?.poolKey ||
+        '',
+      ).trim(),
+      Number(pool?.generation || 0),
+      Number(pool?.factDeltaCount || 0),
+      Number(pool?.valueRevision || 0),
+      unitRevision,
+      preview.stableHash(resourceOverrides || {}),
+      forceRebuild === true ? 'FORCE_REBUILD' : 'BASE_WORLD',
+    ].join('\u0000');
+    const endedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetRouteCacheKeyBuilds',
+    );
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetRouteCacheKeyBuildMs',
+      endedAt - startedAt,
+    );
+    return key;
+  }
+
+  function r9v2TargetRouteCacheSet(cache, key, value, limit = 2048) {
+    if (!(cache instanceof Map) || !key) return;
+    while (cache.size >= limit) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey === undefined) break;
+      cache.delete(oldestKey);
+    }
+    cache.set(key, value);
+  }
+
+  function r9v2TargetRouteEntryCatalogReuseSafe({
+    baselineWorld = null,
+    branchWorld = null,
+    actorId = '',
+    baselineEntries = [],
+    changedUnitIds = new Set(),
+    changedUnitScopes = null,
+    changedBeliefKeys = new Set(),
+  }) {
+    if (
+      !baselineWorld ||
+      !branchWorld ||
+      baselineWorld === branchWorld ||
+      !Array.isArray(baselineEntries) ||
+      !baselineEntries.length ||
+      !(changedUnitScopes instanceof Map)
+    ) {
+      return false;
+    }
+    const normalizedActorId = String(actorId || '').trim();
+    const changedIds = [...(changedUnitIds || [])]
+      .map(value => String(value || '').trim())
+      .filter(Boolean);
+    if (!changedIds.length) {
+      return false;
+    }
+    if (changedIds.some(unitId => {
+      const scopes = changedUnitScopes.get(unitId);
+      if (!(scopes instanceof Set) || scopes.size !== 1 || !scopes.has('HEALTH')) {
+        return true;
+      }
+      const baselineUnit = findUnitInWorld(baselineWorld, unitId);
+      const branchUnit = findUnitInWorld(branchWorld, unitId);
+      if (!baselineUnit || !branchUnit) return true;
+      return preview.readHpMax(baselineUnit) !== preview.readHpMax(branchUnit) ||
+        preview.readShield(baselineUnit) !== preview.readShield(branchUnit) ||
+        preview.isAlive(baselineUnit) !== preview.isAlive(branchUnit) ||
+        preview.isBattleCapable(baselineUnit) !== preview.isBattleCapable(branchUnit);
+    })) {
+      return false;
+    }
+    const changedBeliefs = changedBeliefKeys instanceof Set
+      ? changedBeliefKeys
+      : new Set(changedBeliefKeys || []);
+    if (
+      changedBeliefs.size &&
+      baselineEntries.some(entry =>
+        [...r9v2CandidateBeliefKeys(entry)].some(key => changedBeliefs.has(key))
+      )
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  function r9v2TargetRouteEntriesForWorld(
+    request,
+    pool,
+    unitId,
+    worldSnapshot,
+    projectionCache,
+    forceRebuild = false,
+    reuseContext = null,
+  ) {
+    const cache = projectionCache?.targetRouteEntriesByKey;
+    const cacheKey = r9v2TargetRouteCacheKey({
+      request,
+      pool,
+      unitId,
+      worldSnapshot,
+      projectionCache,
+      forceRebuild,
+      reuseContext,
+    });
+    if (cacheKey && cache instanceof Map && cache.has(cacheKey)) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetRouteEntryCacheHits',
+      );
+      return cache.get(cacheKey);
+    }
+    if (cacheKey && cache instanceof Map) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetRouteEntryCacheMisses',
+      );
+    }
+    if (typeof pool?.r9v2EnsureUnitEntries === 'function') {
+      pool.r9v2EnsureUnitEntries(unitId);
+    }
+    const baseEntries = pool?.unitEntries?.get(unitId) || [];
+    if (!baseEntries.length) {
+      const empty = { entries: [], complete: false };
+      r9v2TargetRouteCacheSet(cache, cacheKey, empty);
+      return empty;
+    }
+    const routePoolIsBaseline =
+      reuseContext?.baselinePool && pool === reuseContext.baselinePool;
+    if (
+      !forceRebuild &&
+      (!worldSnapshot || worldSnapshot === request.visibleWorld) &&
+      !routePoolIsBaseline
+    ) {
+      const result = { entries: baseEntries, complete: true };
+      r9v2TargetRouteCacheSet(cache, cacheKey, result);
+      if (pool?.r9v2MaterializedWorldSnapshot === worldSnapshot) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchMaterializedRouteViews',
+        );
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchMaterializedCandidateRows',
+          baseEntries.length,
+        );
+      }
+      return result;
+    }
+    if (
+      !forceRebuild &&
+      worldSnapshot &&
+      worldSnapshot === pool?.r9v2MaterializedWorldSnapshot
+    ) {
+      const result = {
+        entries: baseEntries,
+        complete: baseEntries.every(entry => entry?.hardInvalid !== true),
+      };
+      r9v2TargetRouteCacheSet(cache, cacheKey, result);
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchMaterializedRouteViews',
+      );
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchMaterializedCandidateRows',
+        baseEntries.length,
+      );
+      return result;
+    }
+    if (!forceRebuild && pool?.r9v2MaterializedWorldSnapshot) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchMaterializedRouteViewChecks',
+      );
+      if (worldSnapshot !== pool.r9v2MaterializedWorldSnapshot) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchMaterializedRouteViewWorldIdentityMisses',
+        );
+      }
+    }
+    const unit = findUnitInWorld(worldSnapshot, unitId);
+    if (!unit || !preview.isBattleCapable(unit)) {
+      const unavailable = { entries: [], complete: false };
+      r9v2TargetRouteCacheSet(cache, cacheKey, unavailable);
+      return unavailable;
+    }
+    const state = r9v2EphemeralState(
+      pool?.r9v2NormalizedContributionStore ||
+        projectionCache?.normalizedContributionStore,
+      projectionCache?.sharedStores,
+    );
+    state.r9v2MechanicalEntryCacheEnabled = true;
+    state.r9v2MechanicalEntryCacheActive = true;
+    const mechanicalProjectionContext =
+      preview.compileMechanicalProjectionContext(worldSnapshot);
+    const actorSide = sideOf(worldSnapshot, unit) || request.actorSide;
+    const actionOpportunity = {
+      ...cloneValue(request.actionOpportunity || {}),
+      role: 'ACTIVE',
+      ownerId: unitId,
+    };
+    const baselineEntriesByCandidate = new Map(
+      (
+        reuseContext?.baselinePool?.unitEntries?.get(unitId) || []
+      ).map(entry => [String(entry?.candidateId || '').trim(), entry]),
+    );
+    const changedUnitIds = new Set(
+      [...(reuseContext?.changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const changedBeliefKeys = new Set(
+      [...(reuseContext?.changedBeliefKeys || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const dependencyStateStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const indexedDependencyState = routePoolIsBaseline
+      ? r9v2TargetRouteIndexedDependencyState({
+          pool,
+          entries: baseEntries,
+          changedUnitIds,
+          changedUnitScopes: reuseContext?.changedUnitScopes || null,
+          changedBeliefKeys,
+          baselineWorld: reuseContext?.baselineWorld || request.visibleWorld,
+          branchWorld: worldSnapshot,
+        })
+      : null;
+    const dependencyStateEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetRouteDependencyStateMs',
+      dependencyStateEndedAt - dependencyStateStartedAt,
+    );
+    const baselineEntryCatalog = reuseContext?.baselinePool?.unitEntries?.get(unitId) || [];
+    if (
+      routePoolIsBaseline &&
+      !forceRebuild &&
+      r9v2TargetRouteEntryCatalogReuseSafe({
+        baselineWorld: reuseContext?.baselineWorld,
+        branchWorld: worldSnapshot,
+        actorId: unitId,
+        baselineEntries: baselineEntryCatalog,
+        changedUnitIds,
+        changedUnitScopes: reuseContext?.changedUnitScopes || null,
+        changedBeliefKeys,
+      })
+    ) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchReusedRouteEntryCatalogs',
+      );
+      const result = {
+        entries: baseEntries,
+        complete: baseEntries.every(entry => entry?.hardInvalid !== true),
+      };
+      r9v2TargetRouteCacheSet(cache, cacheKey, result);
+      return result;
+    }
+    const canReuseBaselineEntry = baseEntry => {
+      if (forceRebuild !== false || !baselineEntriesByCandidate.size) {
+        return null;
+      }
+      const candidateId = String(baseEntry?.candidateId || '').trim();
+      const baselineEntry = baselineEntriesByCandidate.get(candidateId);
+      if (!baselineEntry) return null;
+      const candidateKey = `${unitId}\u0000${candidateId}`;
+      if (
+        indexedDependencyState &&
+        !indexedDependencyState.dirtyCandidateKeys.has(candidateKey) &&
+        !indexedDependencyState.fallbackCandidateKeys.has(candidateKey)
+      ) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2TargetRouteIndexedCandidateSkips',
+        );
+        return baselineEntry;
+      }
+      if (
+        indexedDependencyState?.fallbackCandidateKeys.has(candidateKey)
+      ) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2TargetRouteIndexedFallbacks',
+        );
+      }
+      const dependencyChangeInput = {
+        entry: baselineEntry,
+        changedUnitIds,
+        changedUnitScopes: reuseContext?.changedUnitScopes || null,
+        baselineWorld: reuseContext?.baselineWorld || request.visibleWorld,
+        branchWorld: worldSnapshot,
+      };
+      const dependencyCheckStartedAt = typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+      const dependencyReadsChanged =
+        r9v2TargetRouteMechanicalEntryReadsChanged(dependencyChangeInput);
+      const dependencyCheckEndedAt = typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetRouteDependencyChecks',
+      );
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetRouteDependencyCheckMs',
+        dependencyCheckEndedAt - dependencyCheckStartedAt,
+      );
+      if (dependencyReadsChanged) {
+        return null;
+      }
+      if (
+        Array.isArray(baselineEntry?.mechanicalPaymentDependencyKeys) &&
+        baselineEntry.mechanicalPaymentDependencyKeys.length > 0
+      ) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2TargetRoutePaymentOnlyEntryReuses',
+        );
+      }
+      if ([...r9v2CandidateBeliefKeys(baselineEntry)]
+        .some(key => changedBeliefKeys.has(key))) {
+        return null;
+      }
+      return baselineEntry;
+    };
+    const entryMaterializationStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const entries = baseEntries.map(baseEntry =>
+      canReuseBaselineEntry(baseEntry) ||
+      r9v2BuildMechanicalEntry({
+        state,
+        worldSnapshot,
+        actorId: unitId,
+        candidate: {
+          candidateId: baseEntry.candidateId,
+          declaration: cloneValue(baseEntry.declaration || {}),
+          declarationFingerprint: baseEntry.declarationFingerprint,
+          resourcePotentialOnly: baseEntry.resourcePotentialOnly === true,
+        },
+        beliefState: request.beliefState,
+        battleIntent: request.battleIntent,
+        actionOpportunity,
+        revision: `r9v2-target-route:${unitId}:${baseEntry.candidateId}`,
+        mechanicalProjectionContext,
+        verifyMechanicalBasis: false,
+        captureDependencyKeys: true,
+      }),
+    );
+    const entryMaterializationEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetRouteEntryMaterializationMs',
+      entryMaterializationEndedAt - entryMaterializationStartedAt,
+    );
+    const result = {
+      entries,
+      complete: entries.length === baseEntries.length &&
+        entries.every(entry => entry && entry.hardInvalid !== true),
+    };
+    r9v2TargetRouteCacheSet(cache, cacheKey, result);
+    return result;
+  }
+
+  function r9v2TargetFutureRouteTable(
+    request,
+    pool,
+    unitId,
+    resourceOverrides = {},
+    worldSnapshot,
+    projectionCache,
+    forceRebuild = false,
+    reuseContext = null,
+  ) {
+    const cache = projectionCache?.targetRouteTablesByKey;
+    const cacheKey = r9v2TargetRouteCacheKey({
+      request,
+      pool,
+      unitId,
+      worldSnapshot,
+      projectionCache,
+      resourceOverrides,
+      forceRebuild,
+      reuseContext,
+    });
+    if (cacheKey && cache instanceof Map && cache.has(cacheKey)) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetFutureRouteTableCacheHits',
+      );
+      return cache.get(cacheKey);
+    }
+    if (cacheKey && cache instanceof Map) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetFutureRouteTableCacheMisses',
+      );
+    }
+    const world = worldSnapshot || request.visibleWorld;
+    const unit = findUnitInWorld(world, unitId);
+    const routeRequest = unit
+      ? {
+          ...request,
+          visibleWorld: world,
+          actorId: unitId,
+          actorSide: sideOf(world, unit) || request.actorSide,
+        }
+      : request;
+    const objectiveContext = unit
+      ? r9v2TargetObjectiveEvaluationContext(routeRequest)
+      : null;
+    const baselineTable = reuseContext?.baselineTable;
+    const baselinePool = reuseContext?.baselinePool;
+    const baselineEntries = baselinePool?.unitEntries instanceof Map
+      ? baselinePool.unitEntries.get(unitId) || []
+      : [];
+    const routeChangedUnitIds = new Set(
+      [...(reuseContext?.changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const branchChangedUnitScopes = reuseContext?.changedUnitScopes instanceof Map
+      ? reuseContext.changedUnitScopes
+      : null;
+    const branchChangedBeliefKeys = reuseContext?.changedBeliefKeys instanceof Set
+      ? reuseContext.changedBeliefKeys
+      : new Set(reuseContext?.changedBeliefKeys || []);
+    const routeBaselineUnitIds = new Set(
+      worldEntries(reuseContext?.baselineWorld || {})
+        .map(({ unit: baselineUnit }) => String(preview.unitId(baselineUnit) || '').trim())
+        .filter(Boolean),
+    );
+    const routeBranchUnitIds = new Set(
+      worldEntries(worldSnapshot || {})
+        .map(({ unit: branchUnit }) => String(preview.unitId(branchUnit) || '').trim())
+        .filter(Boolean),
+    );
+    const routeWorldTopologyStable =
+      routeBaselineUnitIds.size === routeBranchUnitIds.size &&
+      [...routeBaselineUnitIds].every(candidateUnitId =>
+        routeBranchUnitIds.has(candidateUnitId)
+      );
+    const routeValueEntries = baselineEntries.filter(entry =>
+      entry && entry.hardInvalid !== true,
+    );
+    const routeDependenciesComplete = routeValueEntries.every(entry =>
+      Array.isArray(entry?.mechanicalDependencyKeys) &&
+      entry?.mechanicalDependencyScopes &&
+      typeof entry.mechanicalDependencyScopes === 'object' &&
+      !Array.isArray(entry.mechanicalDependencyScopes)
+    );
+    const healthOnlyRouteDelta = routeWorldTopologyStable &&
+      r9v2TargetRouteEntryCatalogReuseSafe({
+        baselineWorld: reuseContext?.baselineWorld,
+        branchWorld: worldSnapshot,
+        actorId: unitId,
+        baselineEntries,
+        changedUnitIds: routeChangedUnitIds,
+        changedUnitScopes: branchChangedUnitScopes,
+        changedBeliefKeys: branchChangedBeliefKeys,
+      });
+    const routeValueReuseGateReason = (() => {
+      if (forceRebuild) return 'FORCE_REBUILD';
+      if (Object.keys(resourceOverrides || {}).length) {
+        return 'RESOURCE_OVERRIDES';
+      }
+      if (!worldSnapshot || !reuseContext?.baselineWorld ||
+          worldSnapshot === reuseContext.baselineWorld) {
+        return 'WORLD_NOT_BRANCH';
+      }
+      if (!unit) return 'UNIT_MISSING';
+      if (!preview.isBattleCapable(unit)) return 'UNIT_NOT_CAPABLE';
+      if (baselineTable?.complete !== true) return 'BASELINE_INCOMPLETE';
+      if (!Array.isArray(baselineTable.rows) || !baselineTable.rows.length) {
+        return 'BASELINE_ROWS_EMPTY';
+      }
+      if (!baselineEntries.length) return 'BASELINE_ENTRIES_EMPTY';
+      if (!routeWorldTopologyStable) return 'TOPOLOGY_CHANGED';
+      if (!routeDependenciesComplete) return 'DEPENDENCIES_INCOMPLETE';
+      if (!(branchChangedUnitScopes instanceof Map)) return 'SCOPES_MISSING';
+      return 'ELIGIBLE';
+    })();
+    if (reuseContext) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        `r9v2InformationBranchRouteValueReuseGate:${routeValueReuseGateReason}`,
+      );
+    }
+    const canReuseBaselineRouteValues =
+      routeValueReuseGateReason === 'ELIGIBLE';
+    const isRouteEntryAffordable = entry =>
+      Object.entries(entry?.resourceCosts || {}).every(([resource, amount]) => {
+        const available = Object.hasOwn(resourceOverrides, resource)
+          ? Number(resourceOverrides[resource])
+          : preview.readResource(unit, resource);
+        return Number.isFinite(available) &&
+          available + 1e-9 >= Number(amount || 0);
+      });
+    if (reuseContext) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchRouteValueReuseAttempts',
+      );
+      if (!routeWorldTopologyStable) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedTopology',
+        );
+      }
+      if (!routeDependenciesComplete) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedDependencies',
+        );
+      }
+      if (!(branchChangedUnitScopes instanceof Map)) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedScopes',
+        );
+      }
+      if (baselineTable?.complete !== true || !baselineTable?.rows?.length) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedBaseline',
+        );
+      }
+      if (forceRebuild) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedForce',
+        );
+      }
+      if (Object.keys(resourceOverrides || {}).length) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedResources',
+        );
+      }
+      if (!worldSnapshot || !reuseContext?.baselineWorld ||
+          worldSnapshot === reuseContext.baselineWorld) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedWorld',
+        );
+      }
+      if (!unit || !preview.isBattleCapable(unit)) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedUnit',
+        );
+      }
+      if (!baselineEntries.length) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRouteValueReuseRejectedEntries',
+        );
+      }
+    }
+    if (canReuseBaselineRouteValues) {
+      const baselineEntriesByCandidate = new Map(
+        baselineEntries.map(entry => [
+          String(entry?.candidateId || '').trim(),
+          entry,
+        ]),
+      );
+      const rows = [];
+      const allRows = [];
+      let reusable = true;
+      let reusedRows = 0;
+      let rebuiltRows = 0;
+      let routeState = null;
+      let routeMechanicalProjectionContext = null;
+      const routeActionOpportunity = {
+        ...cloneValue(routeRequest.actionOpportunity || {}),
+        role: 'ACTIVE',
+        ownerId: unitId,
+      };
+      const baselineRouteRows = baselineTable.allRows || baselineTable.rows;
+      const changedHealthUnitIds = new Set(
+        [...routeChangedUnitIds].filter(changedUnitId => {
+          const scopes = branchChangedUnitScopes?.get(changedUnitId);
+          return scopes instanceof Set &&
+            scopes.size === 1 &&
+            scopes.has('HEALTH') &&
+            changedUnitId !== String(unitId || '').trim();
+        }),
+      );
+      const healthOnlyRouteWorldSafe =
+        routeWorldTopologyStable &&
+        changedHealthUnitIds.size === routeChangedUnitIds.size &&
+        changedHealthUnitIds.size > 0 &&
+        r9v2InformationObjectiveStatesEquivalent({
+          baseWorld: reuseContext?.baselineWorld,
+          branchWorld: world,
+          request: routeRequest,
+          changedUnitIds: [...changedHealthUnitIds],
+        });
+      for (const baselineRow of baselineRouteRows) {
+        const candidateId = String(baselineRow?.candidateId || '').trim();
+        const baselineEntry = baselineEntriesByCandidate.get(candidateId);
+        if (!candidateId || !baselineEntry) {
+          r9v2Metric(
+            projectionCache.metricsState,
+            'r9v2InformationBranchRouteValueReuseRejectedRowIdentity',
+          );
+          reusable = false;
+          break;
+        }
+        const beliefChanged = [...r9v2CandidateBeliefKeys(baselineEntry)]
+          .some(key => branchChangedBeliefKeys.has(key));
+        const healthRouteTargetIds = new Set(
+          (baselineEntry.contributions || [])
+            .filter(contribution => [
+              'HP_DELTA',
+              'SCHEDULED_HP_DELTA',
+              'WITHDRAWAL_CONTEST',
+              'SHIELD_DELTA',
+            ].includes(String(contribution?.outcomeKind || '').trim()))
+            .map(contribution => String(contribution?.targetId || '').trim())
+            .filter(Boolean),
+        );
+        if (
+          healthOnlyRouteWorldSafe &&
+          !beliefChanged &&
+          ![...changedHealthUnitIds].some(unitId =>
+            healthRouteTargetIds.has(unitId)
+          )
+        ) {
+          reusedRows += 1;
+          allRows.push(baselineRow);
+          if (isRouteEntryAffordable(baselineEntry)) {
+            rows.push(baselineRow);
+          }
+          r9v2Metric(
+            projectionCache.metricsState,
+            'r9v2InformationBranchWholeRouteRowReuses',
+          );
+          continue;
+        }
+        const mechanicalChanged = !healthOnlyRouteDelta &&
+          r9v2TargetRouteMechanicalEntryReadsChanged({
+            entry: baselineEntry,
+            changedUnitIds: routeChangedUnitIds,
+            changedUnitScopes: branchChangedUnitScopes,
+            baselineWorld: reuseContext.baselineWorld,
+            branchWorld: worldSnapshot,
+          });
+        let entry = baselineEntry;
+        let profile = baselineRow?.__r9v2TargetRouteValueProfile;
+        if (beliefChanged || mechanicalChanged) {
+          routeState ||= r9v2EphemeralState(
+            baselinePool?.r9v2NormalizedContributionStore ||
+              projectionCache?.normalizedContributionStore,
+            projectionCache?.sharedStores,
+          );
+          routeState.r9v2MechanicalEntryCacheEnabled = true;
+          routeState.r9v2MechanicalEntryCacheActive = true;
+          routeMechanicalProjectionContext ||=
+            preview.compileMechanicalProjectionContext(world);
+          entry = r9v2BuildMechanicalEntry({
+            state: routeState,
+            worldSnapshot: world,
+            actorId: unitId,
+            candidate: {
+              candidateId: baselineEntry.candidateId,
+              declaration: cloneValue(baselineEntry.declaration || {}),
+              declarationFingerprint: baselineEntry.declarationFingerprint,
+              resourcePotentialOnly:
+                baselineEntry.resourcePotentialOnly === true,
+            },
+            beliefState: routeRequest.beliefState,
+            battleIntent: routeRequest.battleIntent,
+            actionOpportunity: routeActionOpportunity,
+            revision: `r9v2-target-route-delta:${unitId}:${candidateId}`,
+            mechanicalProjectionContext: routeMechanicalProjectionContext,
+            verifyMechanicalBasis: false,
+            captureDependencyKeys: true,
+          });
+          if (entry?.hardInvalid === true) continue;
+          profile = r9v2TargetRouteValueProfile(
+            routeRequest,
+            entry,
+            unitId,
+            world,
+            objectiveContext,
+          );
+          rebuiltRows += 1;
+        } else {
+          reusedRows += 1;
+        }
+        if (!profile?.complete) {
+          r9v2Metric(
+            projectionCache.metricsState,
+            'r9v2InformationBranchRouteValueReuseRejectedProfile',
+          );
+          reusable = false;
+          break;
+        }
+        const valueHEPP = healthOnlyRouteDelta || !mechanicalChanged
+          ? r9v2TargetRouteValueFromProfile({
+              request: routeRequest,
+              profile,
+              unitId,
+              worldSnapshot: world,
+              objectiveContext,
+              changedUnitIds: routeChangedUnitIds,
+            })
+          : profile.valueHEPP;
+        if (valueHEPP === null) {
+          r9v2Metric(
+            projectionCache.metricsState,
+            'r9v2InformationBranchRouteValueReuseRejectedValue',
+          );
+          reusable = false;
+          break;
+        }
+        const row = Object.freeze({
+          ...baselineRow,
+          valueHEPP,
+          __r9v2TargetRouteValueProfile: profile,
+        });
+        allRows.push(row);
+        if (isRouteEntryAffordable(entry)) rows.push(row);
+      }
+      if (reusable) {
+        rows.sort((left, right) =>
+          Number(right.valueHEPP || 0) - Number(left.valueHEPP || 0) ||
+          r9v2TargetCompareUtf16(left.candidateId, right.candidateId),
+        );
+        const result = {
+          complete: true,
+          rows: Object.freeze(rows),
+          best: rows[0] || null,
+        };
+        Object.defineProperty(result, 'allRows', {
+          value: Object.freeze(allRows),
+          enumerable: false,
+        });
+        Object.freeze(result);
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchReusedRouteValueTables',
+        );
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchReusedRouteValueRows',
+          reusedRows,
+        );
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchRebuiltRouteRows',
+          rebuiltRows,
+        );
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2TargetFutureRouteTableBuilds',
+        );
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2TargetFutureRouteTableRows',
+          rows.length,
+        );
+        r9v2TargetRouteCacheSet(cache, cacheKey, result);
+        return result;
+      }
+    }
+    const routeEntriesStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const routeEntries = r9v2TargetRouteEntriesForWorld(
+      request,
+      pool,
+      unitId,
+      world,
+      projectionCache,
+      forceRebuild,
+      reuseContext,
+    );
+    const routeEntriesEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetRouteEntryPreparationMs',
+      routeEntriesEndedAt - routeEntriesStartedAt,
+    );
+    if (!unit || !preview.isBattleCapable(unit) || !routeEntries.complete) {
+      const incomplete = { complete: false, rows: [], best: null };
+      r9v2TargetRouteCacheSet(cache, cacheKey, incomplete);
+      return incomplete;
+    }
+    const baselineRowsByCandidate = new Map(
+      (
+        reuseContext?.baselineTable?.allRows ||
+        reuseContext?.baselineTable?.rows ||
+        []
+      ).map(row => [
+        String(row?.candidateId || '').trim(),
+        row,
+      ]),
+    );
+    const baselineEntriesByCandidate = new Map(
+      (
+        reuseContext?.baselinePool?.unitEntries?.get(unitId) || []
+      ).map(entry => [String(entry?.candidateId || '').trim(), entry]),
+    );
+    const changedUnitIds = new Set(
+      [...(reuseContext?.changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const changedBeliefKeys = new Set(
+      [...(reuseContext?.changedBeliefKeys || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const canReuseBaselineRow = entry => {
+      if (!reuseContext || !baselineRowsByCandidate.size) return null;
+      const candidateId = String(entry?.candidateId || '').trim();
+      const baselineEntry = baselineEntriesByCandidate.get(candidateId);
+      const baselineRow = baselineRowsByCandidate.get(candidateId);
+      if (!baselineEntry || !baselineRow || baselineEntry !== entry) {
+        return null;
+      }
+      if (
+        r9v2TargetRouteValueReadsChanged({
+          entry: baselineEntry,
+          changedUnitIds,
+          baselineWorld: reuseContext.baselineWorld,
+          branchWorld: world,
+        })
+      ) {
+        return null;
+      }
+      if ([...r9v2CandidateBeliefKeys(baselineEntry)]
+        .some(key => changedBeliefKeys.has(key))) {
+        return null;
+      }
+      return baselineRow;
+    };
+    const routeRowsStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const routeEntriesByCandidate = new Map(
+      routeEntries.entries.map(entry => [
+        String(entry?.candidateId || '').trim(),
+        entry,
+      ]),
+    );
+    const allRows = routeEntries.entries
+      .filter(entry => entry?.hardInvalid !== true)
+      .map(entry => {
+        const reusedRow = canReuseBaselineRow(entry);
+        if (reusedRow) {
+          r9v2Metric(
+            projectionCache.metricsState,
+            'r9v2InformationBranchReusedRouteRows',
+          );
+          return reusedRow;
+        }
+        const candidateId = String(entry?.candidateId || '').trim();
+        const baselineEntry = baselineEntriesByCandidate.get(candidateId);
+        const baselineRow = baselineRowsByCandidate.get(candidateId);
+        const canUseProfile =
+          root.__LWCS_R9V2_DISABLE_ROUTE_VALUE_PROFILE__ !== true &&
+          baselineEntry === entry &&
+          baselineRow?.__r9v2TargetRouteValueProfile?.complete === true;
+        let valueHEPP = canUseProfile
+          ? r9v2TargetRouteValueFromProfile({
+              request: routeRequest,
+              profile: baselineRow.__r9v2TargetRouteValueProfile,
+              unitId,
+              worldSnapshot: world,
+              objectiveContext,
+              changedUnitIds,
+            })
+          : null;
+        const routeValueProfile = canUseProfile
+          ? baselineRow.__r9v2TargetRouteValueProfile
+          : r9v2TargetRouteValueProfile(
+              routeRequest,
+              entry,
+              unitId,
+              world,
+              objectiveContext,
+            );
+        if (valueHEPP === null) valueHEPP = routeValueProfile.valueHEPP;
+        return Object.freeze({
+          candidateId,
+          legal: entry.hardInvalid !== true,
+          valueHEPP,
+          __r9v2TargetRouteValueProfile: routeValueProfile,
+        });
+      })
+      .filter(row => row.candidateId && row.legal)
+      .sort((left, right) =>
+        Number(right.valueHEPP || 0) - Number(left.valueHEPP || 0) ||
+        r9v2TargetCompareUtf16(left.candidateId, right.candidateId),
+      );
+    const rows = allRows.filter(row =>
+      isRouteEntryAffordable(routeEntriesByCandidate.get(row.candidateId)),
+    );
+    if (reuseContext) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchRebuiltRouteRows',
+        allRows.length,
+      );
+    }
+    const routeRowsEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetRouteRowsBuildMs',
+      routeRowsEndedAt - routeRowsStartedAt,
+    );
+    const result = {
+      complete: true,
+      rows: Object.freeze(rows),
+      best: rows[0] || null,
+    };
+    Object.defineProperty(result, 'allRows', {
+      value: Object.freeze(allRows),
+      enumerable: false,
+    });
+    Object.freeze(result);
+    r9v2TargetRouteCacheSet(cache, cacheKey, result);
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetFutureRouteTableBuilds',
+    );
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetFutureRouteTableRows',
+      rows.length,
+    );
+    return result;
+  }
+
+  function r9v2TargetBestAffordableRoute(
+    request,
+    pool,
+    unitId,
+    resourceOverrides = {},
+    worldSnapshot,
+    projectionCache,
+    forceRebuild = false,
+  ) {
+    const cache = projectionCache?.targetRouteBestByKey;
+    const cacheKey = r9v2TargetRouteCacheKey({
+      request,
+      pool,
+      unitId,
+      worldSnapshot,
+      projectionCache,
+      resourceOverrides,
+      forceRebuild,
+    });
+    if (cacheKey && cache instanceof Map && cache.has(cacheKey)) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetRouteCacheHits',
+      );
+      return cache.get(cacheKey);
+    }
+    if (cacheKey && cache instanceof Map) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetRouteCacheMisses',
+      );
+    }
+    const table = r9v2TargetFutureRouteTable(
+      request,
+      pool,
+      unitId,
+      resourceOverrides,
+      worldSnapshot,
+      projectionCache,
+      forceRebuild,
+    );
+    if (!table.complete) {
+      const incomplete = {
+        complete: false,
+        valueHEPP: 0,
+        candidateId: '',
+      };
+      if (cacheKey && cache instanceof Map) cache.set(cacheKey, incomplete);
+      return incomplete;
+    }
+    const result = {
+      complete: true,
+      valueHEPP: table.best?.valueHEPP || 0,
+      candidateId: table.best?.candidateId || '',
+    };
+    if (cacheKey && cache instanceof Map) cache.set(cacheKey, result);
+    return result;
+  }
+
+  function r9v2TargetS2Components(request, entry, pool, projectionCache, handledByS1) {
+    const facts = [];
+    const handledContributionIndexes = new Set(handledByS1 || []);
+    const duplicateCancellationTargets =
+      r9v2TargetDuplicateCancellationTargets(entry);
+    const cancellationByTarget = new Map();
+    (entry?.contributions || []).forEach((contribution, index) => {
+      const outcomeKind = String(contribution?.outcomeKind || '').trim();
+      if (handledContributionIndexes.has(index)) return;
+      const explicit = r9v2TargetExplicitHeppValue(contribution);
+      if (explicit && ![
+        'terminalDeltaHEPP',
+        'terminalValueHEPP',
+      ].includes(explicit.key)) {
+        handledContributionIndexes.add(index);
+        if (Math.abs(explicit.value) <= 1e-9) return;
+        facts.push({
+          componentCode: 'S2_EXPLICIT_ACTION_POOL',
+          causalOwnerType: 'ACTION_POOL_DELTA',
+          valueHEPP: explicit.value,
+          sourceEventId: String(
+            contribution?.sourceActionId ||
+            contribution?.effectInstanceId ||
+            `${entry.candidateId}:action-pool:event`,
+          ).trim(),
+          sourceFactId: `${entry.candidateId}:action-pool:${index}`,
+          targetUnitId: String(
+            contribution?.targetId || entry.actorId,
+          ).trim(),
+          sourceOutcomeKind: outcomeKind,
+          sequence: index,
+        });
+        return;
+      }
+      if (outcomeKind !== 'ACTION_CANCELLED') return;
+      handledContributionIndexes.add(index);
+      const targetId = String(contribution?.targetId || '').trim();
+      if (!targetId || duplicateCancellationTargets.has(targetId)) return;
+      const probability = r9v2ContributionProbability(contribution);
+      const rawDuration = Number(contribution?.evidence?.duration ?? 1);
+      if (!Number.isFinite(rawDuration)) {
+        throw new Error(
+          `R9V2_KERNEL_CANCEL_DURATION_NON_FINITE:${entry.candidateId}:${targetId}`,
+        );
+      }
+      const current = cancellationByTarget.get(targetId) || {
+        probability: 0,
+        duration: 0,
+      };
+      current.probability = Math.max(current.probability, probability);
+      current.duration = Math.max(current.duration, Math.max(1, rawDuration));
+      cancellationByTarget.set(targetId, current);
+    });
+    cancellationByTarget.forEach((cancellation, targetId) => {
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      if (!target || !preview.isBattleCapable(target)) {
+        throw new Error(
+          `R9V2_KERNEL_CANCEL_TARGET_MISSING:${entry.candidateId}:${targetId}`,
+        );
+      }
+      const opportunityCount = Math.min(
+        cancellation.duration,
+        r9v2RealizableActiveOpportunityCount(request, targetId),
+      );
+      if (!(opportunityCount > 0) || !(cancellation.probability > 1e-12)) return;
+      if (!pool) {
+        throw new Error(
+          `R9V2_KERNEL_CANCEL_POOL_MISSING:${entry.candidateId}:${targetId}`,
+        );
+      }
+      const targetRoute = r9v2TargetBestAffordableRoute(
+        request,
+        pool,
+        targetId,
+        {},
+        request.visibleWorld,
+        projectionCache,
+      );
+      if (!targetRoute.complete) {
+        throw new Error(
+          `R9V2_KERNEL_CANCEL_ROUTE_INCOMPLETE:${entry.candidateId}:${targetId}`,
+        );
+      }
+      const targetBest = targetRoute.valueHEPP;
+      const targetSide = sideOf(request.visibleWorld, target);
+      const value = r9v2TargetFinite(
+        (targetSide === request.actorSide ? -1 : 1) *
+          targetBest * cancellation.probability * opportunityCount,
+        'R9V2_KERNEL_CANCEL_VALUE_NON_FINITE',
+        `${entry.candidateId}:${targetId}`,
+      );
+      if (Math.abs(value) <= 1e-9) return;
+      facts.push({
+        componentCode: 'hard_control',
+        causalOwnerType: 'ACTION_POOL_DELTA',
+        valueHEPP: value,
+        sourceEventId: `${entry.candidateId}:cancel:${targetId}`,
+        sourceFactId: `${entry.candidateId}:cancel:${targetId}`,
+        targetUnitId: targetId,
+        sourceOutcomeKind: 'ACTION_CANCELLED',
+        opportunityCount,
+        applicationProbability: cancellation.probability,
+        beforeBestRouteHEPP: targetBest,
+        afterBestRouteHEPP: 0,
+      });
+    });
+    const resourceProjectionByIndex = new Set();
+    const resourceOverridesByUnit = new Map();
+    (entry?.contributions || []).forEach((contribution, index) => {
+      if (
+        String(contribution?.outcomeKind || '').trim() !==
+        'RESOURCE_OPTION_CHANGED'
+      ) return;
+      const targetId = String(contribution?.targetId || '').trim();
+      const resource = String(contribution?.evidence?.resource || '').trim();
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      if (!target || !resource) return;
+      handledContributionIndexes.add(index);
+      const overrides = resourceOverridesByUnit.get(targetId) || {};
+      const current = Object.hasOwn(overrides, resource)
+        ? Number(overrides[resource])
+        : Number.isFinite(Number(contribution?.evidence?.before))
+          ? Number(contribution.evidence.before)
+          : Number.isFinite(Number(contribution?.evidence?.current))
+            ? Number(contribution.evidence.current)
+            : preview.readResource(target, resource);
+      const expectedDelta = Number(contribution?.expectedDelta ?? 0);
+      const next = Number.isFinite(Number(contribution?.evidence?.next))
+        ? Number(contribution.evidence.next)
+        : current + expectedDelta;
+      if (!Number.isFinite(current) || !Number.isFinite(next)) {
+        throw new Error(
+          `R9V2_KERNEL_RESOURCE_VALUE_NON_FINITE:${entry.candidateId}:${index}`,
+        );
+      }
+      resourceProjectionByIndex.add(index);
+      if (Math.abs(next - current) <= 1e-9) return;
+      if (!pool) {
+        throw new Error(
+          `R9V2_KERNEL_RESOURCE_POOL_MISSING:${entry.candidateId}:${index}`,
+        );
+      }
+      const bestBeforeRoute = r9v2TargetBestAffordableRoute(
+        request,
+        pool,
+        targetId,
+        overrides,
+        request.visibleWorld,
+        projectionCache,
+      );
+      if (!bestBeforeRoute.complete) {
+        throw new Error(
+          `R9V2_KERNEL_RESOURCE_ROUTE_INCOMPLETE:${entry.candidateId}:${index}:before`,
+        );
+      }
+      const bestBefore = bestBeforeRoute.valueHEPP;
+      const nextOverrides = { ...overrides, [resource]: next };
+      const bestAfterRoute = r9v2TargetBestAffordableRoute(
+        request,
+        pool,
+        targetId,
+        nextOverrides,
+        request.visibleWorld,
+        projectionCache,
+      );
+      if (!bestAfterRoute.complete) {
+        throw new Error(
+          `R9V2_KERNEL_RESOURCE_ROUTE_INCOMPLETE:${entry.candidateId}:${index}:after`,
+        );
+      }
+      const bestAfter = bestAfterRoute.valueHEPP;
+      resourceOverridesByUnit.set(targetId, nextOverrides);
+      const targetSide = sideOf(request.visibleWorld, target);
+      const probability = r9v2ContributionProbability(contribution);
+      const value = r9v2TargetFinite(
+        (targetSide === request.actorSide ? 1 : -1) *
+          (bestAfter - bestBefore) * probability,
+        'R9V2_KERNEL_RESOURCE_VALUE_NON_FINITE',
+        `${entry.candidateId}:${index}`,
+      );
+      if (Math.abs(value) <= 1e-9) return;
+      facts.push({
+        componentCode: 'support_resource',
+        causalOwnerType: 'ACTION_POOL_DELTA',
+        valueHEPP: value,
+        sourceEventId: String(
+          contribution?.sourceActionId ||
+          contribution?.effectInstanceId ||
+          `${entry.candidateId}:resource:event:${index}`,
+        ).trim(),
+        sourceFactId: `${entry.candidateId}:resource:${index}`,
+        targetUnitId: targetId,
+        sourceOutcomeKind: 'RESOURCE_OPTION_CHANGED',
+        resource,
+        beforeResource: current,
+        afterResource: next,
+        beforeBestRouteHEPP: bestBefore,
+        afterBestRouteHEPP: bestAfter,
+        applicationProbability: probability,
+        sequence: index,
+      });
+    });
+    return {
+      facts,
+      handledContributionIndexes,
+      resourceProjectionByIndex,
+    };
+  }
+
+  function r9v2TargetS3Components(request, entry, pool, projectionCache) {
+    const facts = [];
+    const handledContributionIndexes = new Set();
+    if (!pool) return { facts, handledContributionIndexes };
+    (entry.contributions || []).forEach((contribution, index) => {
+      const mutationKind = r9v2BehaviorMutationKind(contribution);
+      if (!mutationKind) return;
+      const targetId = String(contribution?.targetId || '').trim();
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      if (!target || !preview.isBattleCapable(target)) return;
+      const applicationProbability = clamp(
+        Number(
+          contribution?.evidence?.applicationProbability ??
+          contribution?.evidence?.ownApplicationProbability ??
+          contribution?.probability ??
+          1,
+        ),
+        0,
+        1,
+      );
+      if (
+        contribution?.evidence?.marginal === false ||
+        applicationProbability <= 1e-12
+      ) {
+        handledContributionIndexes.add(index);
+        return;
+      }
+      if (!(r9v2RealizableActiveOpportunityCount(request, targetId) > 0)) {
+        handledContributionIndexes.add(index);
+        return;
+      }
+      const projectedTarget = r9v2UnitAfterBehaviorMutation(
+        target,
+        contribution,
+      );
+      if (!projectedTarget) return;
+      const beforeRoute = r9v2TargetBestAffordableRoute(
+        request,
+        pool,
+        targetId,
+        {},
+        request.visibleWorld,
+        projectionCache,
+      );
+      const projectedWorld = replaceWorldUnit(
+        request.visibleWorld,
+        targetId,
+        projectedTarget,
+      );
+      const projectedRequest = {
+        ...request,
+        visibleWorld: projectedWorld,
+        beliefState: r9v2BehaviorMutationBelief(
+          request,
+          targetId,
+          contribution,
+        ),
+      };
+      const afterRoute = r9v2TargetBestAffordableRoute(
+        projectedRequest,
+        pool,
+        targetId,
+        {},
+        projectedWorld,
+        projectionCache,
+      );
+      if (!beforeRoute.complete || !afterRoute.complete) return;
+      handledContributionIndexes.add(index);
+      const targetSide = sideOf(request.visibleWorld, target);
+      const value = r9v2TargetFinite(
+        (targetSide === request.actorSide ? 1 : -1) *
+          (afterRoute.valueHEPP - beforeRoute.valueHEPP) *
+          applicationProbability,
+        'R9V2_KERNEL_BEHAVIOR_VALUE_NON_FINITE',
+        `${entry.candidateId}:${index}`,
+      );
+      if (Math.abs(value) <= 1e-9) return;
+      facts.push({
+        componentCode: 'S3_BEHAVIOR_POOL',
+        causalOwnerType: 'ACTION_POOL_DELTA',
+        valueHEPP: value,
+        sourceEventId: String(
+          contribution?.sourceActionId ||
+          contribution?.effectInstanceId ||
+          `${entry.candidateId}:behavior:${index}`,
+        ).trim(),
+        sourceFactId: `${entry.candidateId}:behavior:${targetId}:${index}`,
+        targetUnitId: targetId,
+        sourceOutcomeKind: contribution.outcomeKind,
+        prototype: String(contribution?.evidence?.prototype || '').trim(),
+        mutationKind,
+        beforeBestRouteHEPP: beforeRoute.valueHEPP,
+        afterBestRouteHEPP: afterRoute.valueHEPP,
+        beforeBestCandidateId: beforeRoute.candidateId,
+        afterBestCandidateId: afterRoute.candidateId,
+        applicationProbability,
+        sequence: index,
+      });
+    });
+    return { facts, handledContributionIndexes };
+  }
+
+  function r9v2TargetInformationBranch({
+    request,
+    entry,
+    observation,
+    success,
+    groupId,
+    pool,
+    futurePool = null,
+    projectionCache,
+    baselineTable = null,
+  }) {
+    const cache = projectionCache?.targetInformationBranchesByKey;
+    const branchKey = [
+      'R9v2TargetInformationBranchV2',
+      String(entry?.candidateId || '').trim(),
+      String(entry?.declarationFingerprint || '').trim(),
+      String(groupId || '').trim(),
+      success ? 'success' : 'failure',
+      r9v2ProjectionObjectHash(projectionCache, request.visibleWorld),
+      r9v2ProjectionObjectHash(projectionCache, request.beliefState || {}),
+      r9v2ProjectionObjectHash(projectionCache, request.battleIntent || {}),
+      r9v2ProjectionObjectHash(projectionCache, request.actionOpportunity || {}),
+      preview.stableHash(observation || {}),
+    ].join('\u0000');
+    if (cache instanceof Map && cache.has(branchKey)) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetInformationBranchCacheHits',
+      );
+      return cache.get(branchKey);
+    }
+    const branchStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const branchState = r9v2EphemeralState(
+      pool?.r9v2NormalizedContributionStore,
+      projectionCache?.sharedStores,
+    );
+    branchState.metrics = projectionCache?.metricsState || branchState.metrics;
+    branchState.r9v2MechanicalEntryCacheEnabled = true;
+    branchState.r9v2MechanicalEntryCacheActive = true;
+    const branchMechanicalStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const branchEntry = r9v2BuildMechanicalEntry({
+      state: branchState,
+      worldSnapshot: request.visibleWorld,
+      actorId: request.actorId,
+      candidate: {
+        candidateId: entry.candidateId,
+        declaration: cloneValue(entry.declaration || {}),
+        declarationFingerprint: entry.declarationFingerprint,
+        resourcePotentialOnly: entry.resourcePotentialOnly === true,
+      },
+      beliefState: request.beliefState,
+      battleIntent: request.battleIntent,
+      actionOpportunity: request.actionOpportunity,
+      revision: `r9v2-target-information:${branchKey}`,
+      mechanicalProjectionContext: projectionCache?.mechanicalProjectionContext,
+      verifyMechanicalBasis: false,
+      captureProjectedUnits: true,
+      forcedMechanicObservation: observation,
+      forcedMechanicSuccess: success,
+    });
+    const branchMechanicalEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchMechanicalBuildMs',
+      branchMechanicalEndedAt - branchMechanicalStartedAt,
+    );
+    const branchBelief = updateMechanicBelief(
+      request.beliefState || {},
+      { ...cloneValue(observation), success },
+    );
+    if (
+      branchEntry.hardInvalid === true ||
+      !Array.isArray(branchEntry.projectedUnitSnapshots)
+    ) {
+      const unavailable = Object.freeze({
+        complete: false,
+        changedUnitIds: Object.freeze([]),
+        branchWorld: null,
+        branchBelief,
+        table: null,
+      });
+      if (cache instanceof Map) cache.set(branchKey, unavailable);
+      return unavailable;
+    }
+    const branchWorldStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const branchWorld = r9v2WorldWithProjectedUnits(
+      request.visibleWorld,
+      branchEntry.projectedUnitSnapshots,
+    );
+    const branchWorldEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchWorldBuildMs',
+      branchWorldEndedAt - branchWorldStartedAt,
+    );
+    const branchPoolStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const branchRequest = {
+      ...request,
+      visibleWorld: branchWorld,
+      beliefState: branchBelief,
+      actionOpportunity: r9v2FutureOpportunityContext(
+        request.actionOpportunity || {},
+      ),
+    };
+    const routePool = futurePool || pool;
+    const changedUnitIdSet = new Set(
+      (branchEntry.changedUnitIds || [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    const baseActor = findUnitInWorld(request.visibleWorld, request.actorId);
+    const branchActor = findUnitInWorld(branchWorld, request.actorId);
+    if (
+      preview.stableHash(baseActor || null) !==
+      preview.stableHash(branchActor || null)
+    ) {
+      changedUnitIdSet.add(String(request.actorId || '').trim());
+    }
+    const changedBeliefKeys = new Set([
+      observation?.mechanicKey,
+      observation?.adaptationKey,
+      mechanicKey({
+        ...observation,
+        beliefState: request.beliefState,
+      }),
+    ].map(value => String(value || '').trim()).filter(Boolean));
+    const scopeStartedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    const changedUnitScopes = r9v2InformationUnitFactScopes({
+      baseWorld: request.visibleWorld,
+      branchWorld,
+      changedUnitIds: changedUnitIdSet,
+    });
+    const changedScopeSignature = [...changedUnitScopes.values()]
+      .map(scopes => [...scopes].sort().join('+'))
+      .sort()
+      .join('|') || 'NONE';
+    r9v2Metric(
+      projectionCache.metricsState,
+      `r9v2InformationBranchScopeSignature:${changedScopeSignature}`,
+    );
+    const scopeEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchScopeCalculationMs',
+      scopeEndedAt - scopeStartedAt,
+    );
+    // S4 only needs the actor's future route table. Keep the branch world,
+    // belief and dependency checks exact, but avoid rebuilding unrelated pool
+    // units that cannot contribute to that table.
+    if (root?.__LWCS_R9V2_DISABLE_ROUTE_ONLY_BRANCH__ !== true) {
+      const branchRouteStartedAt = typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+      const routeOnlyTable = r9v2TargetFutureRouteTable(
+        branchRequest,
+        routePool,
+        request.actorId,
+        {},
+        branchWorld,
+        projectionCache,
+        false,
+        {
+          baselineTable,
+          baselinePool: routePool,
+          baselineWorld: request.visibleWorld,
+          changedUnitIds: changedUnitIdSet,
+          changedUnitScopes,
+          changedBeliefKeys,
+        },
+      );
+      const branchRouteEndedAt = typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchRouteBuildMs',
+        branchRouteEndedAt - branchRouteStartedAt,
+      );
+      const routeOnlyResult = Object.freeze({
+        complete: routeOnlyTable.complete,
+        changedUnitIds: Object.freeze(
+          [...changedUnitIdSet].sort(),
+        ),
+        branchWorld,
+        branchBelief,
+        table: routeOnlyTable,
+      });
+      if (cache instanceof Map) {
+        while (cache.size >= 512) {
+          const oldestKey = cache.keys().next().value;
+          if (oldestKey === undefined) break;
+          cache.delete(oldestKey);
+        }
+        cache.set(branchKey, routeOnlyResult);
+      }
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetInformationBranchRouteOnlyBuilds',
+      );
+      return routeOnlyResult;
+    }
+    const branchPool = {
+      ...routePool,
+      generation: Number(pool?.generation || 0) + 1,
+      factDeltaCount: 0,
+      unitEntries: new Map(routePool?.unitEntries || []),
+      unitValueRevisions: new Map(routePool?.unitValueRevisions || []),
+      targetSourceUnitIds: new Map(routePool?.targetSourceUnitIds || []),
+      targetInterferenceRateByUnit: new Map(
+        routePool?.targetInterferenceRateByUnit || [],
+      ),
+      dependencyOwners: new Map(routePool?.dependencyOwners || []),
+      // Branch overlays share the baseline dependency topology. The rebuilt
+      // entries remain branch-local, while this immutable index avoids a full
+      // candidate scan for every observation outcome.
+      dependencyCandidateOwners:
+        routePool?.dependencyCandidateOwners instanceof Map
+          ? routePool.dependencyCandidateOwners
+          : new Map(),
+      r9v2MaterializedWorldSnapshot: branchWorld,
+      r9v2MaterializedBeliefState: branchBelief,
+      r9v2MaterializedActionOpportunity: branchRequest.actionOpportunity,
+    };
+    const currentUnitIds = new Set(
+      aliveEntries(branchWorld).map(worldEntry =>
+        preview.unitId(worldEntry.unit),
+      ),
+    );
+    [...branchPool.unitEntries.keys()].forEach(unitId => {
+      if (!currentUnitIds.has(unitId)) {
+        branchPool.unitEntries.delete(unitId);
+        branchPool.targetInterferenceRateByUnit.delete(unitId);
+      }
+    });
+    const rebuildUnitIds = new Set(changedUnitIdSet);
+    changedUnitIdSet.forEach(unitId => {
+      (pool?.targetSourceUnitIds?.get(unitId) || [])
+        .forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
+      (pool?.dependencyOwners?.get(unitId) || [])
+        .forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
+    });
+    changedBeliefKeys.forEach(beliefKey => {
+      (pool?.dependencyOwners?.get(`belief:${beliefKey}`) || [])
+        .forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
+    });
+    const branchMechanicalProjectionContext =
+      projectionCache?.mechanicalProjectionContext?.worldSnapshot ===
+        request.visibleWorld &&
+      typeof preview.deriveMechanicalProjectionContext === 'function'
+        ? preview.deriveMechanicalProjectionContext(
+            projectionCache.mechanicalProjectionContext,
+            branchWorld,
+            changedUnitIdSet,
+          )
+        : preview.compileMechanicalProjectionContext(branchWorld);
+    const dirtyScanUnitIds = [...rebuildUnitIds]
+      .filter(unitId => currentUnitIds.has(unitId))
+      .sort();
+    const baselineUnitIds = new Set(
+      aliveEntries(request.visibleWorld).map(worldEntry =>
+        preview.unitId(worldEntry.unit),
+      ),
+    );
+    const aliveCatalogScopeUnchanged =
+      baselineUnitIds.size === currentUnitIds.size &&
+      [...baselineUnitIds].every(unitId => currentUnitIds.has(unitId));
+    const catalogBeliefModeUnchanged =
+      r9v2BeliefModeSignature(request.beliefState) ===
+      r9v2BeliefModeSignature(branchBelief);
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchPlannedDirtyUnits',
+      dirtyScanUnitIds.length,
+    );
+    const materializedBranchUnitIds = new Set();
+    const materializeBranchUnit = unitId => {
+      const normalizedUnitId = String(unitId || '').trim();
+      if (
+        !normalizedUnitId ||
+        materializedBranchUnitIds.has(normalizedUnitId)
+      ) {
+        return;
+      }
+      materializedBranchUnitIds.add(normalizedUnitId);
+      if (
+        !currentUnitIds.has(normalizedUnitId) ||
+        !rebuildUnitIds.has(normalizedUnitId)
+      ) {
+        return;
+      }
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchDirtyUnits',
+      );
+      const dirtyStartedAt = typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+      const unitScopes = changedUnitScopes.get(normalizedUnitId) || new Set();
+      const catalogCanReuse = aliveCatalogScopeUnchanged &&
+        catalogBeliefModeUnchanged &&
+        !['STATE', 'INVENTORY', 'OPPORTUNITY'].some(scope =>
+          unitScopes.has(scope)
+        );
+      const candidateOverride = catalogCanReuse
+        ? (branchPool.unitEntries.get(normalizedUnitId) || []).map(existingEntry => ({
+            candidateId: existingEntry.candidateId,
+            declaration: existingEntry.declaration,
+            declarationFingerprint: existingEntry.declarationFingerprint,
+            resourcePotentialOnly:
+              existingEntry.resourcePotentialOnly === true,
+          }))
+        : null;
+      const result = r9v2BuildDirtyFutureUnitPool({
+        state: branchState,
+        pool: branchPool,
+        worldSnapshot: branchWorld,
+        observerSide: request.actorSide,
+        unitId: normalizedUnitId,
+        beliefState: branchBelief,
+        battleIntent: request.battleIntent,
+        actionOpportunity: branchRequest.actionOpportunity,
+        mechanicalProjectionContext: branchMechanicalProjectionContext,
+        changedUnitIds: changedUnitIdSet,
+        changedUnitScopes,
+        changedBeliefKeys,
+        dependencyBaselineWorld: request.visibleWorld,
+        candidateOverride,
+      });
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchRebuiltCandidateRows',
+        result.rebuiltCandidateCount,
+      );
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchReusedCandidateRows',
+        result.reusedCandidateCount,
+      );
+      if (result.fullUnitFallback === true) {
+        r9v2BuildFutureUnitPool({
+          state: branchState,
+          pool: branchPool,
+          worldSnapshot: branchWorld,
+          observerSide: request.actorSide,
+          unitId: normalizedUnitId,
+          beliefState: branchBelief,
+          battleIntent: request.battleIntent,
+          actionOpportunity: branchRequest.actionOpportunity,
+          mechanicalProjectionContext: branchMechanicalProjectionContext,
+          verifyMechanicalBasis: false,
+          captureDependencyKeys: true,
+        });
+      }
+      const dirtyEndedAt = typeof globalThis?.performance?.now === 'function'
+        ? globalThis.performance.now()
+        : Date.now();
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchDirtyPoolBuildMs',
+        dirtyEndedAt - dirtyStartedAt,
+      );
+    };
+    branchPool.r9v2EnsureUnitEntries = materializeBranchUnit;
+    const branchPoolEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchPoolPreparationMs',
+      branchPoolEndedAt - branchPoolStartedAt,
+    );
+    const branchRouteStartedAt = branchPoolEndedAt;
+    const table = r9v2TargetFutureRouteTable(
+      branchRequest,
+      branchPool,
+      request.actorId,
+      {},
+      branchWorld,
+      projectionCache,
+      false,
+      {
+        baselineTable,
+        baselinePool: pool,
+        baselineWorld: request.visibleWorld,
+        changedUnitIds: changedUnitIdSet,
+        changedUnitScopes,
+        changedBeliefKeys,
+      },
+    );
+    const branchRouteEndedAt = typeof globalThis?.performance?.now === 'function'
+      ? globalThis.performance.now()
+      : Date.now();
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchRouteTableMs',
+      branchRouteEndedAt - branchRouteStartedAt,
+    );
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchTotalMs',
+      branchRouteEndedAt - branchStartedAt,
+    );
+    const result = Object.freeze({
+      complete: table.complete,
+      changedUnitIds: Object.freeze([
+        ...(branchEntry.changedUnitIds || []),
+      ].map(value => String(value || '').trim()).filter(Boolean).sort()),
+      branchWorld,
+      branchBelief,
+      table,
+    });
+    if (cache instanceof Map) {
+      while (cache.size >= 512) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey === undefined) break;
+        cache.delete(oldestKey);
+      }
+      cache.set(branchKey, result);
+    }
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2TargetInformationBranchBuilds',
+    );
+    return result;
+  }
+
+  function r9v2TargetS4Components(request, entry, pool, projectionCache) {
+    const observations = Array.isArray(entry?.mechanicObservations)
+      ? entry.mechanicObservations
+      : [];
+    if (!observations.length || !pool) {
+      return { informationComponents: [] };
+    }
+    const futureOpportunity = r9v2FutureOpportunityContext(
+      request.actionOpportunity || {},
+    );
+    const targetSession = projectionCache?.targetKernelSession;
+    const futurePoolStore = targetSession?.futureRoutePoolStore;
+    const futurePoolKey = projectionCache?.targetKernel === true
+      ? r9v2FuturePoolContextKey({
+          state: projectionCache.metricsState,
+          request,
+          futureOpportunity,
+        })
+      : '';
+    let futurePool = futurePoolStore instanceof Map && futurePoolKey
+      ? futurePoolStore.get(futurePoolKey) || null
+      : null;
+    if (futurePool) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetInformationFuturePoolSessionHits',
+      );
+    } else if (projectionCache?.targetKernel === true) {
+      futurePool = r9v2PrepareSharedFuturePool({
+        state: projectionCache.metricsState,
+        pool,
+        request,
+        futureOpportunity,
+      });
+      if (futurePoolStore instanceof Map && futurePoolKey) {
+        futurePoolStore.set(futurePoolKey, futurePool);
+      }
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2TargetInformationFuturePoolSessionCreates',
+      );
+    }
+    const routePool = futurePool || pool;
+    const futureRequest = {
+      ...request,
+      actionOpportunity: futureOpportunity,
+    };
+    const baselineTable = r9v2TargetFutureRouteTable(
+      futureRequest,
+      routePool,
+      request.actorId,
+      {},
+      request.visibleWorld,
+      projectionCache,
+      false,
+    );
+    if (!baselineTable.complete) return { informationComponents: [] };
+    const observationGroups = new Map();
+    observations.forEach((observation, index) => {
+      const groupId = [
+        String(
+          observation?.mechanicKey ||
+          observation?.adaptationKey ||
+          `${entry.candidateId}:observation:${index}`,
+        ).trim(),
+        String(observation?.targetId || '').trim(),
+        String(observation?.effectPrototype || '').trim(),
+        Number(observation?.effectIndex ?? -1),
+        String(observation?.stateName || '').trim(),
+      ].join('|');
+      if (!observationGroups.has(groupId)) {
+        observationGroups.set(groupId, observation);
+      }
+    });
+    const informationComponents = [];
+    observationGroups.forEach((observation, groupId) => {
+      const probability = r9v2TargetFinite(
+        observation?.posterior ?? observation?.estimatedProbability,
+        'R9V2_KERNEL_INFORMATION_PROBABILITY_NON_FINITE',
+        `${entry.candidateId}:${groupId}`,
+      );
+      if (probability < 0 || probability > 1) {
+        throw new Error(
+          `R9V2_KERNEL_INFORMATION_PROBABILITY_RANGE:${entry.candidateId}:${groupId}`,
+        );
+      }
+      if (probability === 0 || probability === 1) {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2TargetInformationEndpointGroups',
+        );
+        return;
+      }
+      const outcomes = [true, false].map(success => {
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2TargetInformationBranchProjectionCalls',
+        );
+        const branch = r9v2TargetInformationBranch({
+          request,
+          entry,
+          observation,
+          success,
+          groupId,
+          pool,
+          futurePool: routePool,
+          projectionCache,
+          baselineTable,
+        });
+        if (!branch.complete || !branch.table) return null;
+        return {
+          probability: success ? probability : 1 - probability,
+          futureCandidateRouteVector: {
+            schemaVersion: 'FutureCandidateRouteVectorV1',
+            candidateIds: branch.table.rows.map(row => row.candidateId),
+            beforeRouteHEPP: branch.table.rows.map(() => 0),
+            afterRouteHEPP: branch.table.rows.map(row => Number(row.valueHEPP || 0)),
+            applicationProbability: branch.table.rows.map(() => 1),
+            polarity: branch.table.rows.map(() => 1),
+          },
+        };
+      });
+      if (outcomes.some(outcome => !outcome)) return;
+      informationComponents.push({
+        schemaVersion: 'InformationComponentV2',
+        groupId,
+        sourceFactId: `${entry.candidateId}:observation:${groupId}`,
+        baselineCandidateId: baselineTable.best?.candidateId || '',
+        outcomes,
+      });
+    });
+    return { informationComponents };
+  }
+
+  function r9v2TargetCreationConsumerProjection(
+    request,
+    entry,
+    pool,
+    projectionCache,
+    contribution,
+    index,
+  ) {
+    const evidence = contribution?.evidence || {};
+    const carrier = entry?.creationCarrier || {};
+    const productId = String(
+      carrier?.productId || evidence?.productId || '',
+    ).trim();
+    const useEffects = Array.isArray(carrier?.useEffects) && carrier.useEffects.length
+      ? carrier.useEffects
+      : Array.isArray(evidence?.useEffects)
+        ? evidence.useEffects
+        : [];
+    const recipientId = String(
+      carrier?.recipientId ||
+      evidence?.recipientId ||
+      contribution?.targetId ||
+      entry?.declaration?.creationRecipientId ||
+      '',
+    ).trim();
+    if (!productId || !recipientId || !useEffects.length) {
+      throw new Error(
+        `R9V2_KERNEL_CREATION_METADATA_MISSING:${entry?.candidateId || ''}:${index}`,
+      );
+    }
+    const recipient = findUnitInWorld(request.visibleWorld, recipientId);
+    if (!recipient || !preview.isBattleCapable(recipient)) {
+      return {
+        handled: true,
+        valueHEPP: 0,
+        recipientId,
+        productId,
+        productionWindow: 0,
+        remainingOpportunities: 0,
+      };
+    }
+    const rawProductionWindow = carrier?.productionWindow ??
+      evidence?.productionWindow ??
+      Math.ceil(Number(entry?.declaration?.skill?.前摇 || 0) / 40);
+    const productionWindow = Math.max(
+      1,
+      r9v2TargetFinite(
+        rawProductionWindow || 1,
+        'R9V2_KERNEL_CREATION_WINDOW_NON_FINITE',
+        `${entry?.candidateId || ''}:${index}`,
+      ),
+    );
+    const remainingOpportunities = availableNaturalOpportunityCount(
+      request.visibleWorld,
+      recipient,
+      { currentOpportunityConsumedFor: new Set([request.actorId]) },
+    );
+    if (remainingOpportunities < productionWindow) {
+      return {
+        handled: true,
+        valueHEPP: 0,
+        recipientId,
+        productId,
+        productionWindow,
+        remainingOpportunities,
+      };
+    }
+    const quantity = Math.max(
+      1,
+      r9v2TargetFinite(
+        carrier?.quantity ?? evidence?.quantity ?? 1,
+        'R9V2_KERNEL_CREATION_QUANTITY_NON_FINITE',
+        `${entry?.candidateId || ''}:${index}`,
+      ),
+    );
+    const paidWorld = snapshotAfterResourceCosts(
+      request.visibleWorld,
+      entry.actorId,
+      entry.resourceCosts || {},
+    );
+    const creation = {
+      productId,
+      quantity,
+      recipientId,
+      productionWindow,
+      useEffects: cloneValue(useEffects),
+    };
+    const withProductWorld = snapshotAfterCreation(
+      paidWorld,
+      entry.actorId,
+      creation,
+    );
+    const currentOpportunity = request.actionOpportunity || {};
+    const futureActionOpportunity = {
+      ...cloneValue(currentOpportunity),
+      role: 'ACTIVE',
+      ownerId: recipientId,
+      sequence: Number(
+        currentOpportunity?.sequence ??
+        currentOpportunity?.opportunitySequence ??
+        0,
+      ) + productionWindow,
+      pendingNaturalActorIds: (
+        currentOpportunity?.pendingNaturalActorIds || []
+      ).filter(unitId => String(unitId || '').trim() !== recipientId),
+    };
+    const recipientSide = sideOf(request.visibleWorld, recipient);
+    const withoutProductRequest = {
+      ...request,
+      visibleWorld: paidWorld,
+      actorId: recipientId,
+      actorSide: recipientSide,
+      actionOpportunity: futureActionOpportunity,
+    };
+    const withoutProduct = r9v2TargetBestAffordableRoute(
+      withoutProductRequest,
+      pool,
+      recipientId,
+      {},
+      paidWorld,
+      projectionCache,
+    );
+    const withProductRequest = {
+      ...withoutProductRequest,
+      visibleWorld: withProductWorld,
+      creationProductId: productId,
+    };
+    const projected = r9v2ProjectedBehaviorPool({
+      request: withProductRequest,
+      targetId: recipientId,
+      projectedWorld: withProductWorld,
+      cache: projectionCache,
+      identity: `creation-consumer:${entry.candidateId}:${index}`,
+      beliefState: request.beliefState,
+      basePool: pool,
+      baseWorld: paidWorld,
+      baseBeliefState: request.beliefState,
+      normalizedContributionStore:
+        pool?.r9v2NormalizedContributionStore,
+    });
+    const withProduct = projected?.pool
+      ? r9v2TargetBestAffordableRoute(
+          withProductRequest,
+          projected.pool,
+          recipientId,
+          {},
+          withProductWorld,
+          projectionCache,
+        )
+      : { complete: false, valueHEPP: 0, candidateId: '' };
+    if (
+      !withoutProduct.complete ||
+      !withProduct.complete ||
+      projected.supportedCandidateCount !== projected.candidateCount
+    ) {
+      throw new Error(
+        `R9V2_KERNEL_CREATION_ROUTE_INCOMPLETE:${entry?.candidateId || ''}:${index}:${JSON.stringify({
+          withoutProductComplete: withoutProduct.complete === true,
+          withProductComplete: withProduct.complete === true,
+          projectedCandidateCount: projected.candidateCount,
+          projectedSupportedCandidateCount: projected.supportedCandidateCount,
+        })}`,
+      );
+    }
+    const valueHEPP = r9v2TargetFinite(
+      (recipientSide === request.actorSide ? 1 : -1) *
+        (withProduct.valueHEPP - withoutProduct.valueHEPP),
+      'R9V2_KERNEL_CREATION_VALUE_NON_FINITE',
+      `${entry?.candidateId || ''}:${index}`,
+    );
+    return {
+      handled: true,
+      valueHEPP,
+      recipientId,
+      productId,
+      productionWindow,
+      remainingOpportunities,
+      beforeBestRouteHEPP: withoutProduct.valueHEPP,
+      afterBestRouteHEPP: withProduct.valueHEPP,
+      beforeBestCandidateId: withoutProduct.candidateId,
+      afterBestCandidateId: withProduct.candidateId,
+    };
+  }
+
+  function r9v2TargetS5Components(request, entry, pool, projectionCache, health) {
+    const facts = [];
+    const handledContributionIndexes = new Set();
+    (health?.futureFacts || []).forEach((row, index) => {
+      if (Math.abs(row.value) <= 1e-9) return;
+      facts.push({
+        componentCode: 'S5_FUTURE_STATE',
+        causalOwnerType: row.causalOwnerType || 'STATE_DELTA',
+        valueHEPP: row.value,
+        sourceEventId: row.sourceEventId,
+        sourceFactId: `${entry.candidateId}:future-state:${row.sourceIndex ?? index}`,
+        targetUnitId: row.targetId,
+        formalComponentCode: row.formalComponentCode || '',
+        sourceOutcomeKind: row.outcomeKind,
+        sequence: row.sourceIndex ?? index,
+      });
+    });
+    (entry?.contributions || []).forEach((contribution, index) => {
+      if (
+        String(contribution?.outcomeKind || '').trim() ===
+          'IRREVERSIBLE_ASSET_LOST'
+      ) {
+        const evidence = contribution?.evidence || {};
+        const rawCost = Object.hasOwn(contribution, 'threatValue')
+          ? contribution.threatValue
+          : evidence?.cost;
+        const cost = Math.max(
+          0,
+          r9v2TargetFinite(
+            rawCost ?? 0,
+            'R9V2_KERNEL_ASSET_COST_NON_FINITE',
+            `${entry.candidateId}:${index}`,
+          ),
+        );
+        const targetId = String(
+          contribution?.targetId || entry.actorId || '',
+        ).trim();
+        const target = findUnitInWorld(request.visibleWorld, targetId);
+        const targetSide = target
+          ? sideOf(request.visibleWorld, target)
+          : request.actorSide;
+        handledContributionIndexes.add(index);
+        const valueHEPP = r9v2TargetFinite(
+          targetSide === request.actorSide ? -cost : cost,
+          'R9V2_KERNEL_ASSET_VALUE_NON_FINITE',
+          `${entry.candidateId}:${index}`,
+        );
+        facts.push({
+          componentCode: 'S5_ITEM_CONSUMPTION',
+          causalOwnerType: 'ACTION_POOL_DELTA',
+          valueHEPP,
+          sourceEventId: String(
+            contribution?.sourceActionId ||
+            contribution?.effectInstanceId ||
+            `${entry.candidateId}:asset:event:${index}`,
+          ).trim(),
+          sourceFactId: `${entry.candidateId}:asset:${index}`,
+          targetUnitId: targetId,
+          sourceOutcomeKind: 'IRREVERSIBLE_ASSET_LOST',
+          assetId: String(evidence?.assetId || '').trim(),
+          quantityBefore: Number(evidence?.quantityBefore ?? 0),
+          assetCostHEPP: cost,
+          sequence: index,
+        });
+        return;
+      }
+      const creationEvidence = contribution?.evidence || {};
+      const hasCreationConsumer = Boolean(
+        String(creationEvidence?.productId || '').trim() &&
+        Array.isArray(creationEvidence?.useEffects) &&
+        creationEvidence.useEffects.length,
+      );
+      if (hasCreationConsumer) {
+        const projection = r9v2TargetCreationConsumerProjection(
+          request,
+          entry,
+          pool,
+          projectionCache,
+          contribution,
+          index,
+        );
+        handledContributionIndexes.add(index);
+        if (Math.abs(projection.valueHEPP) <= 1e-9) return;
+        facts.push({
+          componentCode: 'S5_CREATION_CONSUMER',
+          causalOwnerType: 'ACTION_POOL_DELTA',
+          valueHEPP: projection.valueHEPP,
+          sourceEventId: String(
+            contribution?.sourceActionId ||
+            contribution?.effectInstanceId ||
+            `${entry.candidateId}:creation:${index}`,
+          ).trim(),
+          sourceFactId: `${entry.candidateId}:creation-consumer:${index}`,
+          targetUnitId: projection.recipientId,
+          sourceOutcomeKind: contribution?.outcomeKind,
+          productId: projection.productId,
+          productionWindow: projection.productionWindow,
+          remainingOpportunities: projection.remainingOpportunities,
+          beforeBestRouteHEPP: projection.beforeBestRouteHEPP,
+          afterBestRouteHEPP: projection.afterBestRouteHEPP,
+          beforeBestCandidateId: projection.beforeBestCandidateId,
+          afterBestCandidateId: projection.afterBestCandidateId,
+          sequence: index,
+        });
+        return;
+      }
+      if (
+        String(contribution?.outcomeKind || '').trim() !== 'SUMMON_WINDOW' ||
+        handledContributionIndexes.has(index)
+      ) return;
+      const targetId = String(contribution?.targetId || '').trim();
+      const summon = (entry?.summonDefinitions || []).find(definition =>
+        String(
+          definition?.id ||
+          definition?.召唤键 ||
+          definition?.summonId ||
+          '',
+        ).trim() === targetId,
+      );
+      const evidence = contribution?.evidence || {};
+      const windows = Math.max(
+        1,
+        Number(evidence?.duration || 0),
+        Number(evidence?.remainingWindows || 0) +
+          (evidence?.immediateWindowConsumed === true ? 1 : 0),
+      );
+      if (!Object.hasOwn(evidence, 'actionPotential')) return;
+      const potential = r9v2TargetFinite(
+        evidence?.actionPotential ?? 0,
+        'R9V2_KERNEL_SUMMON_POTENTIAL_NON_FINITE',
+        `${entry.candidateId}:${index}`,
+      );
+      handledContributionIndexes.add(index);
+      if (Math.abs(potential) <= 1e-9) return;
+      const side = String(
+        summon?.side || summon?.阵营 || '',
+      ).trim() || request.actorSide;
+      const applicationProbability = r9v2ContributionProbability(
+        contribution,
+      );
+      const value = r9v2TargetFinite(
+        potential * windows *
+          applicationProbability *
+          (side === request.actorSide ? 1 : -1),
+        'R9V2_KERNEL_SUMMON_VALUE_NON_FINITE',
+        `${entry.candidateId}:${index}`,
+      );
+      if (Math.abs(value) <= 1e-9) return;
+      facts.push({
+        componentCode: 'S5_SUMMON_WINDOW',
+        causalOwnerType: 'ACTION_POOL_DELTA',
+        valueHEPP: value,
+        sourceEventId: String(
+          contribution?.sourceActionId ||
+          contribution?.effectInstanceId ||
+          `${entry.candidateId}:summon:${index}`,
+        ).trim(),
+        sourceFactId: `${entry.candidateId}:summon:${index}`,
+        targetUnitId: targetId || entry.actorId,
+        sourceOutcomeKind: 'SUMMON_WINDOW',
+        remainingWindows: windows,
+        applicationProbability,
+        sequence: index,
+      });
+    });
+    return { facts, handledContributionIndexes };
+  }
+
+  function r9v2TargetRiskComponents(request, entry) {
+    const actor = findUnitInWorld(request.visibleWorld, request.actorId);
+    if (!actor) {
+      return {
+        worstTailUtilityHEPP: 0,
+        survivalUtilityHEPP: 0,
+      };
+    }
+    const actorMaxHp = Math.max(1, preview.readHpMax(actor));
+    const baseHpPP = 100 * preview.readHp(actor) / actorMaxHp;
+    let lowerBoundPP = baseHpPP;
+    let worstTailLossPP = 0;
+    (entry?.contributions || []).forEach(contribution => {
+      const targetId = String(contribution?.targetId || '').trim();
+      if (targetId !== String(request.actorId || '').trim()) return;
+      const outcomeKind = String(contribution?.outcomeKind || '').trim();
+      if (![
+        'HP_DELTA',
+        'SCHEDULED_HP_DELTA',
+        'WITHDRAWAL_CONTEST',
+        'SHIELD_DELTA',
+      ].includes(outcomeKind)) return;
+      const evidence = contribution?.evidence || {};
+      const outcomes = Array.isArray(evidence?.outcomeDistribution) &&
+        evidence.outcomeDistribution.length
+        ? evidence.outcomeDistribution
+        : [
+            {
+              delta: Number(
+                contribution?.expectedDelta ?? evidence?.delta ?? 0,
+              ),
+            },
+          ];
+      const deltas = outcomes.map(outcome => {
+        if (outcomeKind === 'WITHDRAWAL_CONTEST') {
+          const damage = Number(
+            outcome?.pursuitDamage ?? outcome?.hpDamage ?? 0,
+          );
+          return -Math.max(0, damage);
+        }
+        if (Number.isFinite(Number(outcome?.delta))) {
+          return Number(outcome.delta);
+        }
+        return Number(outcome?.hpDamage || 0) * -1;
+      }).filter(Number.isFinite);
+      if (!deltas.length) return;
+      const minimumDeltaPP = 100 * Math.min(...deltas) / actorMaxHp;
+      lowerBoundPP = clamp(
+        lowerBoundPP + minimumDeltaPP,
+        0,
+        100,
+      );
+      worstTailLossPP = Math.max(
+        worstTailLossPP,
+        Math.max(0, -minimumDeltaPP),
+      );
+    });
+    (entry?.contributions || []).forEach(contribution => {
+      const explicit = r9v2TargetExplicitHeppValue(contribution);
+      if (
+        explicit &&
+        ['terminalDeltaHEPP', 'terminalValueHEPP'].includes(explicit.key) &&
+        explicit.value < 0
+      ) {
+        worstTailLossPP = Math.max(worstTailLossPP, 100);
+        lowerBoundPP = 0;
+      }
+    });
+    return {
+      worstTailUtilityHEPP: r9v2TargetFinite(
+        -worstTailLossPP,
+        'R9V2_KERNEL_WORST_TAIL_NON_FINITE',
+        entry.candidateId,
+      ),
+      survivalUtilityHEPP: r9v2TargetFinite(
+        lowerBoundPP,
+        'R9V2_KERNEL_SURVIVAL_NON_FINITE',
+        entry.candidateId,
+      ),
+    };
+  }
+
+  function r9v2TargetS6Components(
+    request,
+    entry,
+    handledContributionIndexes,
+    discardedOverkillPP,
+  ) {
+    const unsupportedOutcomeKinds = new Set();
+    const handled = new Set(handledContributionIndexes || []);
+    const risk = r9v2TargetRiskComponents(request, entry);
+    (entry?.contributions || []).forEach((contribution, index) => {
+      if (handled.has(index)) return;
+      const outcomeKind = String(contribution?.outcomeKind || '').trim();
+      const explicit = r9v2TargetExplicitHeppValue(contribution);
+      if (explicit) return;
+      const noOpFact = contribution?.evidence?.marginal === false ||
+        Number(contribution?.expectedDelta || 0) === 0 &&
+        ['STATE_CHANGED', 'NEXT_ACTION_QUALITY_CHANGED'].includes(outcomeKind) &&
+        contribution?.evidence?.marginal !== true;
+      if (!noOpFact && outcomeKind) unsupportedOutcomeKinds.add(outcomeKind);
+    });
+    return {
+      unsupportedOutcomeKinds: [...unsupportedOutcomeKinds].sort(),
+      paretoComponents: [
+        {
+          dimensionCode: 'worstTailUtilityHEPP',
+          value: risk.worstTailUtilityHEPP,
+        },
+        {
+          dimensionCode: 'survivalUtilityHEPP',
+          value: risk.survivalUtilityHEPP,
+        },
+        {
+          dimensionCode: 'assetReserveHEPP',
+          value: r9v2AssetReserve(
+            request.visibleWorld,
+            request.actorSide,
+            entry.contributions,
+          ),
+        },
+        { dimensionCode: 'discardedOverkillPP', value: discardedOverkillPP },
+      ],
+    };
+  }
+
+  const R9V2_TARGET_COMPONENT_DEFINITIONS = Object.freeze([
+    ['basic_hit', 'S3', 'STATE_DELTA', ['candidateIds', 'actorIds', 'targetUnitIds'], ['world', 'opportunity'], true, true, 'reference_materialize_basic_hit'],
+    ['evasion', 'S3', 'STATE_DELTA', ['candidateIds', 'targetUnitIds', 'successProbabilities'], ['world', 'belief'], true, true, 'reference_materialize_evasion'],
+    ['defense', 'S3', 'STATE_DELTA', ['candidateIds', 'targetUnitIds', 'directFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_defense'],
+    ['counter', 'S3', 'ACTION_POOL_DELTA', ['candidateIds', 'scheduledFactRanges'], ['world', 'opportunity', 'belief'], true, true, 'reference_materialize_counter'],
+    ['hard_control', 'S3', 'ACTION_POOL_DELTA', ['candidateIds', 'scheduledFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_hard_control'],
+    ['soft_control', 'S3', 'ACTION_POOL_DELTA', ['candidateIds', 'scheduledFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_soft_control'],
+    ['heal', 'S3', 'STATE_DELTA', ['candidateIds', 'targetUnitIds', 'successProbabilities'], ['world', 'opportunity'], true, true, 'reference_materialize_heal'],
+    ['support_resource', 'S2', 'ACTION_POOL_DELTA', ['candidateIds', 'resourceCosts', 'scheduledFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_support_resource'],
+    ['pass', 'S2', 'ACTION_POOL_DELTA', ['candidateIds', 'opportunityRevision'], ['opportunity'], true, true, 'reference_materialize_pass'],
+    ['lost_opportunity', 'S2', 'NONE', ['candidateIds', 'opportunityRevision'], ['world', 'opportunity'], false, false, 'reference_materialize_lost_opportunity'],
+    ['dot', 'S5', 'STATE_DELTA', ['candidateIds', 'scheduledFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_dot'],
+    ['hot', 'S5', 'STATE_DELTA', ['candidateIds', 'scheduledFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_hot'],
+    ['delayed_effect', 'S5', 'STATE_DELTA', ['candidateIds', 'scheduledFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_delayed_effect'],
+    ['summon', 'S5', 'ACTION_POOL_DELTA', ['candidateIds', 'scheduledFactRanges', 'targetUnitIds'], ['world', 'opportunity'], true, true, 'reference_materialize_summon'],
+    ['creation', 'S5', 'ACTION_POOL_DELTA', ['candidateIds', 'scheduledFactRanges', 'targetUnitIds'], ['world', 'opportunity'], true, true, 'reference_materialize_creation'],
+    ['item', 'S5', 'ACTION_POOL_DELTA', ['candidateIds', 'resourceCosts', 'scheduledFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_item'],
+    ['equipment', 'S5', 'ACTION_POOL_DELTA', ['candidateIds', 'scheduledFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_equipment'],
+    ['target_trajectory', 'S1', 'STATE_DELTA', ['candidateIds', 'targetUnitIds', 'directFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_target_trajectory'],
+    ['response', 'S4', 'ACTION_POOL_DELTA', ['candidateIds', 'successProbabilities', 'scheduledFactRanges'], ['world', 'opportunity', 'belief'], true, true, 'reference_materialize_response'],
+    ['information_observation', 'S4', 'NONE', ['candidateIds', 'successProbabilities'], ['belief', 'opportunity'], true, true, 'reference_materialize_information_observation'],
+    ['terminal', 'S1', 'TERMINAL_DELTA', ['candidateIds', 'targetUnitIds', 'directFactRanges'], ['world', 'opportunity'], true, true, 'reference_materialize_terminal'],
+    ['causal_ownership', 'S6', 'NONE', ['candidateIds', 'directFactRanges', 'scheduledFactRanges'], ['world', 'opportunity'], true, false, 'reference_materialize_causal_ownership'],
+    ['pareto_selection', 'S6', 'NONE', ['candidateIds'], ['world', 'belief', 'opportunity'], true, true, 'reference_materialize_pareto_selection'],
+  ].map(([componentCode, semanticDomain, causalOwnerType, inputColumnCodes, dependencyKinds, contributesToGoal, contributesToPareto, materializerId]) => Object.freeze({
+    componentCode,
+    semanticDomain,
+    causalOwnerType,
+    inputColumnCodes: Object.freeze(inputColumnCodes),
+    dependencyKinds: Object.freeze(dependencyKinds),
+    contributesToGoal,
+    contributesToPareto,
+    materializerId,
+    requires: Object.freeze([]),
+  })));
+
+  function r9v2TargetFormalComponentCode(fact = {}) {
+    const source = String(fact.componentCode || '').trim();
+    if (source === 'S1_STATE_TRAJECTORY') return 'target_trajectory';
+    if (source === 'S1_FIRST_TERMINAL') return 'terminal';
+    if (source === 'hard_control') return 'hard_control';
+    if (source === 'support_resource') return 'support_resource';
+    if (source === 'S5_SUMMON_WINDOW') return 'summon';
+    if (source === 'S5_CREATION_CONSUMER') return 'creation';
+    if (source === 'S5_ITEM_CONSUMPTION') return 'item';
+    if (source === 'S5_FUTURE_STATE') {
+      if (fact.formalComponentCode) return fact.formalComponentCode;
+      if (fact.sourceOutcomeKind === 'SUMMON_WINDOW') return 'summon';
+      if (fact.sourceOutcomeKind === 'SCHEDULED_HP_DELTA') {
+        return Number(fact.valueHEPP || 0) < 0 ? 'dot' : 'hot';
+      }
+      return 'delayed_effect';
+    }
+    if (source === 'S3_BEHAVIOR_POOL') {
+      const prototype = String(fact.prototype || '').trim();
+      if (prototype === '规则防御') return 'defense';
+      if (prototype === '闪避' || prototype === '回避') return 'evasion';
+      if (prototype === '反击') return 'counter';
+      return 'soft_control';
+    }
+    if (source === 'S2_EXPLICIT_ACTION_POOL') {
+      const outcomeKind = String(fact.sourceOutcomeKind || '').trim();
+      if (outcomeKind === 'RESOURCE_OPTION_CHANGED') return 'support_resource';
+      if (outcomeKind === 'PASS_OPPORTUNITY' || outcomeKind === 'PASS') return 'pass';
+      if (outcomeKind === 'LOST_OPPORTUNITY') return 'lost_opportunity';
+      if (outcomeKind === 'COUNTER_AUTHORIZATION') return 'counter';
+      if (outcomeKind === 'RESPONSE_CONSUMPTION_ACTION_POOL' || outcomeKind === 'FUTURE_RESPONSE_ROUTE_DELTA') return 'response';
+      return 'response';
+    }
+    return null;
+  }
+
+  function r9v2TargetEmptyFormalComponent() {
+    return {
+      facts: [],
+      informationComponents: [],
+      paretoComponents: [],
+      unsupportedOutcomeKinds: [],
+    };
+  }
+
+  function r9v2TargetKernelComponentEvaluation({
+    request,
+    entry,
+    pool,
+    projectionCache,
+    componentCodes = R9V2_TARGET_COMPONENT_DEFINITIONS.map(definition => definition.componentCode),
+  }) {
+    const requested = new Set(componentCodes);
+    const needsS6 = requested.has('causal_ownership') || requested.has('pareto_selection');
+    const needsS1 = needsS6 || [
+      'target_trajectory',
+      'terminal',
+      'dot',
+      'hot',
+      'delayed_effect',
+      'summon',
+      'creation',
+      'item',
+      'equipment',
+    ].some(code => requested.has(code));
+    const needsS2 = needsS6 || [
+      'support_resource',
+      'pass',
+      'lost_opportunity',
+      'response',
+      'hard_control',
+    ].some(code => requested.has(code));
+    const needsS3 = needsS6 || [
+      'basic_hit',
+      'evasion',
+      'defense',
+      'counter',
+      'hard_control',
+      'soft_control',
+      'heal',
+    ].some(code => requested.has(code));
+    const needsS4 = needsS6 || requested.has('response') || requested.has('information_observation');
+    const needsS5 = needsS6 || [
+      'dot',
+      'hot',
+      'delayed_effect',
+      'summon',
+      'creation',
+      'item',
+      'equipment',
+    ].some(code => requested.has(code));
+    const cacheRead = ({
+      component,
+      dependencies,
+      extraKey = null,
+      build,
+    }) => r9v2ProofComponentRead({
+      request,
+      pool,
+      entry,
+      projectionCache,
+      component,
+      dependencies,
+      ...(extraKey === null ? {} : { extraKey }),
+      build,
+    });
+    const s1 = needsS1
+      ? cacheRead({
+          component: 'TARGET_S1',
+          dependencies: ['world', 'objective', 'entry'],
+          build: () => r9v2TargetS1Components(request, entry),
+        })
+      : null;
+    const s2 = needsS2
+      ? cacheRead({
+          component: 'TARGET_S2',
+          dependencies: ['world', 'opportunity', 'resource', 'entry', 'pool'],
+          extraKey: JSON.stringify([
+            ...(s1?.handledContributionIndexes || []),
+          ]),
+          build: () => r9v2TargetS2Components(
+            request,
+            entry,
+            pool,
+            projectionCache,
+            s1?.handledContributionIndexes || [],
+          ),
+        })
+      : null;
+    const hasBehaviorMutation = (entry?.contributions || []).some(
+      contribution => Boolean(r9v2BehaviorMutationKind(contribution)),
+    );
+    const s3 = needsS3 && hasBehaviorMutation
+      ? cacheRead({
+          component: 'TARGET_S3',
+          dependencies: ['world', 'belief', 'opportunity', 'entry', 'pool'],
+          build: () => r9v2TargetS3Components(
+            request,
+            entry,
+            pool,
+            projectionCache,
+          ),
+        })
+      : { facts: [], handledContributionIndexes: [] };
+    const s5 = needsS5
+      ? cacheRead({
+          component: 'TARGET_S5',
+          dependencies: ['world', 'opportunity', 'resource', 'entry', 'pool'],
+          extraKey: preview.stableHash(s1?.health || {}),
+          build: () => r9v2TargetS5Components(
+            request,
+            entry,
+            pool,
+            projectionCache,
+            s1?.health || {},
+          ),
+        })
+      : null;
+    const handled = new Set([
+      ...(s1?.handledContributionIndexes || []),
+      ...(s2?.handledContributionIndexes || []),
+      ...s3.handledContributionIndexes,
+      ...(s5?.handledContributionIndexes || []),
+    ]);
+    const s6 = needsS6
+      ? r9v2TargetS6Components(
+          request,
+          entry,
+          handled,
+          s1?.discardedOverkillPP || 0,
+        )
+      : null;
+    const s4 = needsS4 && (entry?.mechanicObservations || []).length
+      ? cacheRead({
+          component: 'TARGET_S4',
+          dependencies: ['world', 'belief', 'opportunity', 'entry', 'pool'],
+          build: () => r9v2TargetS4Components(
+            request,
+            entry,
+            pool,
+            projectionCache,
+          ),
+        })
+      : { informationComponents: [] };
+    const components = Object.fromEntries(
+      componentCodes.map(componentCode => [
+        componentCode,
+        r9v2TargetEmptyFormalComponent(),
+      ]),
+    );
+    const appendFacts = (facts = []) => facts.forEach(fact => {
+      const componentCode = r9v2TargetFormalComponentCode(fact);
+      if (!componentCode) {
+        throw new Error(`R9V2_KERNEL_UNSUPPORTED_FACT:${entry.candidateId}:${fact.componentCode || ''}`);
+      }
+      if (!components[componentCode]) return;
+      components[componentCode].facts.push({ ...fact, componentCode });
+    });
+    appendFacts(s1?.facts || []);
+    appendFacts(s2?.facts || []);
+    appendFacts(s3?.facts || []);
+    appendFacts(s5?.facts || []);
+    if (components.information_observation) {
+      components.information_observation.informationComponents = s4?.informationComponents || [];
+    }
+    if (components.pareto_selection) {
+      components.pareto_selection.paretoComponents = s6?.paretoComponents || [];
+    }
+    if (components.causal_ownership) {
+      components.causal_ownership.unsupportedOutcomeKinds = s6?.unsupportedOutcomeKinds || [];
+    }
+    const componentValues = Object.values(components);
+    return {
+      components,
+      componentFacts: componentValues.flatMap(value => value.facts || []),
+      informationComponents: componentValues.flatMap(value => value.informationComponents || []),
+      paretoComponents: componentValues.flatMap(value => value.paretoComponents || []),
+      unsupportedOutcomeKinds: componentValues.flatMap(value => value.unsupportedOutcomeKinds || []),
+    };
+  }
+
+  function r9v2TargetValueFacts(request, entry, componentContext = null) {
     const causalFacts = [];
     const unsupportedOutcomeKinds = new Set();
     const health = r9v2TargetHealthFacts(request, entry);
+    const pool = componentContext?.pool || null;
+    const projectionCache = componentContext?.projectionCache || null;
+    const projectedContributionIndexes = new Set();
+    const projectedComponentFacts = [];
+    const appendProjectedFacts = (componentCode, facts = []) => {
+      facts.forEach((fact, index) => {
+        const value = r9v2TargetFinite(
+          fact?.valueHEPP,
+          'R9V2_KERNEL_COMPONENT_VALUE_NON_FINITE',
+          `${entry.candidateId}:${componentCode}:${index}`,
+        );
+        if (Math.abs(value) <= 1e-9) return;
+        const ownerType = String(
+          fact?.causalOwnerType || fact?.ownerType || 'ACTION_POOL_DELTA',
+        ).trim();
+        projectedComponentFacts.push({
+          ...fact,
+          componentCode,
+          causalOwnerType: ownerType,
+          valueHEPP: value,
+          sourceEventId: String(
+            fact?.sourceEventId || fact?.effectInstanceId ||
+            `${entry.candidateId}:${componentCode}:event:${index}`,
+          ).trim(),
+          sourceFactId: String(
+            fact?.sourceFactId || fact?.factId ||
+            `${entry.candidateId}:${componentCode}:${index}`,
+          ).trim(),
+          targetUnitId: String(
+            fact?.targetUnitId || fact?.targetId || entry.actorId || '',
+          ).trim(),
+          sequence: Number.isFinite(Number(fact?.sequence))
+            ? Number(fact.sequence)
+            : index,
+        });
+      });
+    };
+    if (pool && projectionCache) {
+      const hasStateOpportunityContribution = (entry.contributions || []).some(
+        contribution => {
+          const outcomeKind = String(contribution?.outcomeKind || '').trim();
+          const prototype = String(contribution?.evidence?.prototype || '').trim();
+          return outcomeKind === 'STATE_CHANGED' ||
+            (outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+              ['位移执行', '判定修正'].includes(prototype));
+        },
+      );
+      if (hasStateOpportunityContribution) {
+        const projection = r9v2StateOpportunityProjection(
+          request,
+          pool,
+          entry,
+          projectionCache,
+        );
+        appendProjectedFacts('S3_STATE_OPPORTUNITY', projection.facts);
+        (entry.contributions || []).forEach((contribution, index) => {
+          const kind = String(contribution?.outcomeKind || '').trim();
+          const prototype = String(contribution?.evidence?.prototype || '').trim();
+          if (
+            (kind === 'STATE_CHANGED' ||
+              (kind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+                ['位移执行', '判定修正'].includes(prototype))) &&
+            r9v2StateContributionFullyProjected(contribution)
+          ) {
+            projectedContributionIndexes.add(index);
+          }
+        });
+      }
+      const hasBehaviorMutation = (entry.contributions || []).some(
+        contribution => Boolean(r9v2BehaviorMutationKind(contribution)),
+      );
+      if (hasBehaviorMutation) {
+        const projection = r9v2BehaviorPoolDeltaProjection(
+          request,
+          pool,
+          entry,
+          projectionCache,
+        );
+        appendProjectedFacts('S3_BEHAVIOR_POOL', projection.facts);
+        (projection.projectedContributionIndexes || []).forEach(index =>
+          projectedContributionIndexes.add(Number(index)),
+        );
+      }
+      const hasSummonWindow = (entry.contributions || []).some(
+        contribution =>
+          String(contribution?.outcomeKind || '').trim() === 'SUMMON_WINDOW',
+      );
+      if (hasSummonWindow) {
+        const projection = r9v2SummonWindowProjection(
+          request,
+          pool,
+          entry,
+          projectionCache,
+        );
+        appendProjectedFacts('S5_SUMMON_WINDOW', projection.facts);
+        (projection.projectedContributionIndexes || []).forEach(index =>
+          projectedContributionIndexes.add(Number(index)),
+        );
+      }
+    }
     health.facts.forEach((row, index) => {
       causalFacts.push({
         componentCode: 'S1_STATE_TRAJECTORY',
@@ -44815,8 +49522,194 @@
         sequence: row.sourceIndex ?? index,
       });
     });
+    projectedComponentFacts.forEach(fact => {
+      actionPoolDeltaTotal += fact.valueHEPP;
+      causalFacts.push(fact);
+    });
     const duplicateCancellationTargets =
       r9v2TargetDuplicateCancellationTargets(entry);
+    const cancellationByTarget = new Map();
+    const handledCancellationTargets = new Set();
+    (entry?.contributions || []).forEach(contribution => {
+      if (
+        String(contribution?.outcomeKind || '').trim() !==
+        'ACTION_CANCELLED'
+      ) return;
+      const targetId = String(contribution?.targetId || '').trim();
+      if (!targetId || duplicateCancellationTargets.has(targetId)) return;
+      const probability = r9v2ContributionProbability(contribution);
+      const rawDuration = Number(contribution?.evidence?.duration ?? 1);
+      if (!Number.isFinite(rawDuration)) {
+        throw new Error(
+          `R9V2_KERNEL_CANCEL_DURATION_NON_FINITE:${entry.candidateId}:${targetId}`,
+        );
+      }
+      const current = cancellationByTarget.get(targetId) || {
+        probability: 0,
+        duration: 0,
+      };
+      current.probability = Math.max(current.probability, probability);
+      current.duration = Math.max(current.duration, Math.max(1, rawDuration));
+      cancellationByTarget.set(targetId, current);
+    });
+    cancellationByTarget.forEach((cancellation, targetId) => {
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      if (!target || !preview.isBattleCapable(target)) {
+        throw new Error(
+          `R9V2_KERNEL_CANCEL_TARGET_MISSING:${entry.candidateId}:${targetId}`,
+        );
+      }
+      const opportunityCount = Math.min(
+        cancellation.duration,
+        r9v2RealizableActiveOpportunityCount(request, targetId),
+      );
+      handledCancellationTargets.add(targetId);
+      if (!(opportunityCount > 0) || !(cancellation.probability > 1e-12)) {
+        return;
+      }
+      if (!pool) {
+        throw new Error(
+          `R9V2_KERNEL_CANCEL_POOL_MISSING:${entry.candidateId}:${targetId}`,
+        );
+      }
+      const targetBest = r9v2TargetFinite(
+        r9v2BestAffordableUtility(
+          request.visibleWorld,
+          pool,
+          targetId,
+          {},
+          projectionCache,
+        ),
+        'R9V2_KERNEL_CANCEL_ROUTE_NON_FINITE',
+        `${entry.candidateId}:${targetId}`,
+      );
+      const targetSide = sideOf(request.visibleWorld, target);
+      const value = r9v2TargetFinite(
+        (targetSide === request.actorSide ? -1 : 1) *
+          targetBest * cancellation.probability * opportunityCount,
+        'R9V2_KERNEL_CANCEL_VALUE_NON_FINITE',
+        `${entry.candidateId}:${targetId}`,
+      );
+      if (Math.abs(value) <= 1e-9) return;
+      actionPoolDeltaTotal += value;
+      causalFacts.push({
+        componentCode: 'hard_control',
+        causalOwnerType: 'ACTION_POOL_DELTA',
+        valueHEPP: value,
+        sourceEventId: String(
+          `${entry.candidateId}:cancel:${targetId}`,
+        ).trim(),
+        sourceFactId: `${entry.candidateId}:cancel:${targetId}`,
+        targetUnitId: targetId,
+        sourceOutcomeKind: 'ACTION_CANCELLED',
+        opportunityCount,
+        applicationProbability: cancellation.probability,
+        beforeBestRouteHEPP: targetBest,
+        afterBestRouteHEPP: 0,
+      });
+    });
+    const resourceProjectionByIndex = new Map();
+    const resourceOverridesByUnit = new Map();
+    (entry?.contributions || []).forEach((contribution, index) => {
+      if (
+        String(contribution?.outcomeKind || '').trim() !==
+        'RESOURCE_OPTION_CHANGED'
+      ) return;
+      const targetId = String(contribution?.targetId || '').trim();
+      const resource = String(contribution?.evidence?.resource || '').trim();
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      if (!target || !resource) return;
+      const overrides = resourceOverridesByUnit.get(targetId) || {};
+      const current = Object.hasOwn(overrides, resource)
+        ? Number(overrides[resource])
+        : Number.isFinite(Number(contribution?.evidence?.before))
+          ? Number(contribution.evidence.before)
+          : Number.isFinite(Number(contribution?.evidence?.current))
+            ? Number(contribution.evidence.current)
+            : preview.readResource(target, resource);
+      const expectedDelta = Number(contribution?.expectedDelta ?? 0);
+      const next = Number.isFinite(Number(contribution?.evidence?.next))
+        ? Number(contribution.evidence.next)
+        : current + expectedDelta;
+      if (!Number.isFinite(current) || !Number.isFinite(next)) {
+        throw new Error(
+          `R9V2_KERNEL_RESOURCE_VALUE_NON_FINITE:${entry.candidateId}:${index}`,
+        );
+      }
+      const projection = {
+        handled: true,
+        targetId,
+        resource,
+        before: current,
+        next,
+        value: 0,
+      };
+      resourceProjectionByIndex.set(index, projection);
+      if (Math.abs(next - current) <= 1e-9) return;
+      if (!pool) {
+        throw new Error(
+          `R9V2_KERNEL_RESOURCE_POOL_MISSING:${entry.candidateId}:${index}`,
+        );
+      }
+      const bestBefore = r9v2TargetFinite(
+        r9v2BestAffordableUtility(
+          request.visibleWorld,
+          pool,
+          targetId,
+          overrides,
+          projectionCache,
+        ),
+        'R9V2_KERNEL_RESOURCE_ROUTE_NON_FINITE',
+        `${entry.candidateId}:${index}:before`,
+      );
+      const nextOverrides = { ...overrides, [resource]: next };
+      const bestAfter = r9v2TargetFinite(
+        r9v2BestAffordableUtility(
+          request.visibleWorld,
+          pool,
+          targetId,
+          nextOverrides,
+          projectionCache,
+        ),
+        'R9V2_KERNEL_RESOURCE_ROUTE_NON_FINITE',
+        `${entry.candidateId}:${index}:after`,
+      );
+      resourceOverridesByUnit.set(targetId, nextOverrides);
+      const targetSide = sideOf(request.visibleWorld, target);
+      const probability = r9v2ContributionProbability(contribution);
+      const value = r9v2TargetFinite(
+        (targetSide === request.actorSide ? 1 : -1) *
+          (bestAfter - bestBefore) * probability,
+        'R9V2_KERNEL_RESOURCE_VALUE_NON_FINITE',
+        `${entry.candidateId}:${index}`,
+      );
+      projection.value = value;
+      projection.beforeBestRouteHEPP = bestBefore;
+      projection.afterBestRouteHEPP = bestAfter;
+      projection.applicationProbability = probability;
+      if (Math.abs(value) <= 1e-9) return;
+      actionPoolDeltaTotal += value;
+      causalFacts.push({
+        componentCode: 'support_resource',
+        causalOwnerType: 'ACTION_POOL_DELTA',
+        valueHEPP: value,
+        sourceEventId: String(
+          contribution?.sourceActionId ||
+          contribution?.effectInstanceId ||
+          `${entry.candidateId}:resource:event:${index}`,
+        ).trim(),
+        sourceFactId: `${entry.candidateId}:resource:${index}`,
+        targetUnitId: targetId,
+        sourceOutcomeKind: 'RESOURCE_OPTION_CHANGED',
+        resource,
+        beforeResource: current,
+        afterResource: next,
+        beforeBestRouteHEPP: bestBefore,
+        afterBestRouteHEPP: bestAfter,
+        applicationProbability: probability,
+        sequence: index,
+      });
+    });
     (entry?.contributions || []).forEach((contribution, index) => {
       const outcomeKind = String(contribution?.outcomeKind || '').trim();
       if (
@@ -44880,6 +49773,13 @@
       ) {
         return;
       }
+      if (outcomeKind === 'ACTION_CANCELLED') {
+        const targetId = String(contribution?.targetId || '').trim();
+        if (handledCancellationTargets.has(targetId)) return;
+        unsupportedOutcomeKinds.add(outcomeKind);
+        return;
+      }
+      if (projectedContributionIndexes.has(index)) return;
       if (outcomeKind === 'SUMMON_WINDOW') {
         const targetId = String(contribution?.targetId || '').trim();
         const summon = (entry?.summonDefinitions || []).find(definition =>
@@ -44930,29 +49830,9 @@
         }
         return;
       }
-      if (
-        outcomeKind === 'RESOURCE_OPTION_CHANGED' &&
-        String(contribution?.windowId || '').trim() === 'ACTION_COST'
-      ) {
-        const routeDelta = Number(contribution?.evidence?.routeDeltaPP);
-        if (Number.isFinite(routeDelta) && Math.abs(routeDelta) > 1e-9) {
-          actionPoolDeltaTotal += routeDelta;
-          causalFacts.push({
-            componentCode: 'S2_RESOURCE_FRONTIER',
-            causalOwnerType: 'ACTION_POOL_DELTA',
-            valueHEPP: routeDelta,
-            sourceEventId: String(
-              contribution?.sourceActionId ||
-              contribution?.effectInstanceId ||
-              `${entry.candidateId}:resource:${index}`,
-            ).trim(),
-            sourceFactId: `${entry.candidateId}:resource:${index}`,
-            targetUnitId: String(
-              contribution?.targetId || entry.actorId,
-            ).trim(),
-            sequence: index,
-          });
-        }
+      if (outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+        if (resourceProjectionByIndex.has(index)) return;
+        unsupportedOutcomeKinds.add(outcomeKind);
         return;
       }
       const evidence = contribution?.evidence || {};
@@ -45109,7 +49989,8 @@
     request,
     candidate,
     entry,
-    targetProof = null,
+    pool = null,
+    projectionCache = null,
   }) {
     const actionId = String(
       candidate?.declaration?.actionId ||
@@ -45118,6 +49999,7 @@
     ).trim();
     const dependencyTokens = [
       ...(entry?.mechanicalDependencyKeys || []),
+      `candidate:${candidate.candidateId}`,
       `actor:${request.actorId}`,
       ...(entry?.targetIds || []).map(targetId => `unit:${targetId}`),
     ]
@@ -45137,28 +50019,33 @@
         scheduledFacts: [],
         resourceCosts: entry.resourceCosts || {},
         successProbability: 0,
-        stateDeltaTotal: 0,
-        actionPoolDeltaTotal: 0,
-        terminalDeltaTotal: 0,
-        informationGroups: [],
-        causalFacts: [],
+        rawInput: {
+          schemaVersion: 'KernelCandidateRawInputV1',
+          mechanicalEntry: r9v2TargetKernelRawMechanicalEntry(entry),
+        },
+        valueSource: 'TARGET_KERNEL_COMPONENTS_V1',
+        mechanicalSource: 'SHARED_MECHANICAL_ENTRY_V1',
         legal: false,
         hardExclusionCodes: ['R9V2_MECHANICAL_CANDIDATE_INVALID'],
-        discardedOverkillPP: 0,
-        worstTailUtilityHEPP: 0,
-        survivalUtilityHEPP: 0,
-        assetReserveHEPP: 0,
       };
     }
-    const values = targetProof
-      ? r9v2TargetValuesFromProjectionProof(entry, targetProof)
-      : r9v2TargetValueFacts(request, entry);
-    const hardExclusionCodes = values.unsupportedOutcomeKinds.map(kind =>
-      `R9V2_KERNEL_UNSUPPORTED_FACT:${kind}`,
-    );
-    const directFacts = values.causalFacts.filter(fact =>
-      fact.causalOwnerType === 'STATE_DELTA',
-    );
+    const directFacts = (entry.contributions || [])
+      .filter(contribution => [
+        'HP_DELTA',
+        'SCHEDULED_HP_DELTA',
+        'WITHDRAWAL_CONTEST',
+        'SHIELD_DELTA',
+      ].includes(String(contribution?.outcomeKind || '').trim()))
+      .map((contribution, index) => ({
+        sourceFactId: `${candidate.candidateId}:mechanical:${index}`,
+        sourceEventId: String(
+          contribution?.sourceActionId ||
+          contribution?.effectInstanceId ||
+          `${candidate.candidateId}:mechanical:${index}`,
+        ).trim(),
+        outcomeKind: String(contribution?.outcomeKind || '').trim(),
+        targetId: String(contribution?.targetId || '').trim(),
+      }));
     const scheduledFacts = (entry.contributions || [])
       .filter(contribution =>
         String(contribution?.outcomeKind || '').trim() === 'SCHEDULED_HP_DELTA',
@@ -45180,18 +50067,229 @@
       scheduledFacts,
       resourceCosts: entry.resourceCosts || {},
       successProbability: 1,
-      stateDeltaTotal: values.stateDeltaTotal,
-      actionPoolDeltaTotal: values.actionPoolDeltaTotal,
-      terminalDeltaTotal: values.terminalDeltaTotal,
-      informationGroups: values.informationGroups,
-      causalFacts: values.causalFacts,
+      rawInput: {
+        schemaVersion: 'KernelCandidateRawInputV1',
+        mechanicalEntry: r9v2TargetKernelRawMechanicalEntry(entry),
+      },
+      valueSource: 'TARGET_KERNEL_COMPONENTS_V1',
       legal: true,
-      hardExclusionCodes,
-      discardedOverkillPP: values.discardedOverkillPP,
-      worstTailUtilityHEPP: 0,
-      survivalUtilityHEPP: 0,
-      assetReserveHEPP: Number(entry.assetReserve || 0),
+      mechanicalSource: 'SHARED_MECHANICAL_ENTRY_V1',
     };
+  }
+
+  function r9v2TargetKernelRawMechanicalEntry(entry = {}) {
+    const rawEntry = {
+      schemaVersion: String(entry?.schemaVersion || '').trim(),
+      actorId: String(entry?.actorId || '').trim(),
+      actorSide: String(entry?.actorSide || '').trim(),
+      candidateId: String(entry?.candidateId || '').trim(),
+      declarationFingerprint: String(
+        entry?.declarationFingerprint || '',
+      ).trim(),
+      declaration: cloneValue(entry?.declaration || {}),
+      creationCarrier: cloneValue(entry?.creationCarrier || null),
+      summonDefinitions: cloneValue(entry?.summonDefinitions || []),
+      actionKind: String(entry?.actionKind || '').trim(),
+      targetIds: cloneValue(entry?.targetIds || []),
+      resourceCosts: cloneValue(entry?.resourceCosts || {}),
+      resourcePotentialOnly: entry?.resourcePotentialOnly === true,
+      mechanicObservations: cloneValue(entry?.mechanicObservations || []),
+      contributions: cloneValue(entry?.contributions || []),
+      changedUnitIds: cloneValue(entry?.changedUnitIds || []),
+      mechanicalDependencyKeys: cloneValue(
+        entry?.mechanicalDependencyKeys || [],
+      ),
+      mechanicalDependencyScopes: cloneValue(
+        entry?.mechanicalDependencyScopes || {},
+      ),
+      mechanicalDependencyRoles: cloneValue(
+        entry?.mechanicalDependencyRoles || [],
+      ),
+      mechanicalPaymentDependencyKeys: cloneValue(
+        entry?.mechanicalPaymentDependencyKeys || [],
+      ),
+      hardInvalid: entry?.hardInvalid === true,
+      previewError: String(entry?.previewError || '').trim(),
+    };
+    if (Array.isArray(entry?.projectedUnitSnapshots)) {
+      rawEntry.projectedUnitSnapshots = cloneValue(
+        entry.projectedUnitSnapshots,
+      );
+    }
+    return rawEntry;
+  }
+
+  function r9v2TargetKernelMechanicalEntryFingerprint(entry = {}) {
+    return preview.stableHash({
+      schemaVersion: 'R9v2TargetKernelMechanicalEntryFingerprintV1',
+      entry: r9v2TargetKernelRawMechanicalEntry(entry),
+    });
+  }
+
+  function r9v2TargetKernelComponentRegistry({
+    request,
+    pool,
+    projectionCache,
+  }) {
+    const componentDefinitions = R9V2_TARGET_COMPONENT_DEFINITIONS;
+    const canApplyFactDelta = delta => {
+      const operation = String(delta?.operation || '').trim().toUpperCase();
+      const entityType = String(delta?.entityType || '').trim().toUpperCase();
+      const fieldCode = String(delta?.fieldCode || '').trim();
+      return (
+        ['SET', 'ADD'].includes(operation) &&
+        (
+          entityType === 'TARGET_KERNEL_CONTEXT' ||
+          (
+            entityType === 'MECHANICAL_ENTRY' &&
+            (
+              fieldCode === 'candidateSnapshot' ||
+              /^contributions\.expectedDelta:.+$/u.test(fieldCode)
+            )
+          )
+        )
+      );
+    };
+    const componentCodesForFactDelta = delta => {
+      if (Array.isArray(delta?.componentCodes)) {
+        return [...new Set(delta.componentCodes.map(value => String(value || '').trim()).filter(Boolean))];
+      }
+      const operation = String(delta?.operation || '').trim().toUpperCase();
+      const entityType = String(delta?.entityType || '').trim().toUpperCase();
+      const fieldCode = String(delta?.fieldCode || '').trim();
+      if (entityType === 'TARGET_KERNEL_CONTEXT' && operation === 'SET') {
+        return componentDefinitions.map(definition => definition.componentCode);
+      }
+      if (
+        entityType === 'MECHANICAL_ENTRY' &&
+        ['SET', 'ADD'].includes(operation) &&
+        (
+          fieldCode === 'candidateSnapshot' ||
+          /^contributions\.expectedDelta:.+$/u.test(fieldCode)
+        )
+      ) {
+        return componentDefinitions.map(definition => definition.componentCode);
+      }
+      if (entityType === 'UNIT' && /^hp(?:Ratio|Percent)?$/iu.test(fieldCode)) {
+        return componentDefinitions.map(definition => definition.componentCode);
+      }
+      return null;
+    };
+    return Object.freeze({
+      schemaVersion: 'KernelComponentRegistryRuntimeV1',
+      componentDefinitions,
+      validateFactDelta: canApplyFactDelta,
+      componentCodesForFactDelta,
+      evaluateComponents: ({
+        candidate,
+        factDeltas = [],
+        session = null,
+        componentCodes = componentDefinitions.map(definition => definition.componentCode),
+      }) => {
+        projectionCache.targetKernelSession = session;
+        const originalEntry = candidate?.rawInput?.mechanicalEntry;
+        const entry = r9v2TargetKernelApplyFactDeltas(
+          originalEntry,
+          candidate.candidateId,
+          factDeltas,
+          canApplyFactDelta,
+        );
+        if (!entry || typeof entry !== 'object') {
+          throw new Error(
+            `R9V2_KERNEL_RAW_MECHANICAL_ENTRY_MISSING:${candidate?.candidateId || ''}`,
+          );
+        }
+        const values = r9v2TargetKernelComponentEvaluation({
+          request,
+          entry,
+          pool,
+          projectionCache,
+          componentCodes,
+        });
+        if (values.unsupportedOutcomeKinds.length) {
+          throw new Error(
+            `R9V2_KERNEL_UNSUPPORTED_FACT:${entry.candidateId}:${values.unsupportedOutcomeKinds.join(',')}`,
+          );
+        }
+        return {
+          candidateId: candidate.candidateId,
+          components: values.components,
+        };
+      },
+    });
+  }
+
+  function r9v2TargetKernelApplyFactDeltas(
+    entry,
+    candidateId,
+    factDeltas = [],
+    canApplyFactDelta = null,
+  ) {
+    const nextEntry = cloneValue(entry || {});
+    (factDeltas || []).forEach(delta => {
+      const dependencies = Array.isArray(delta?.dependencyTokens)
+        ? delta.dependencyTokens.map(value => String(value || '').trim())
+        : [];
+      const candidateToken = `candidate:${candidateId}`;
+      if (!dependencies.includes(candidateToken)) return;
+      if (typeof canApplyFactDelta === 'function' && !canApplyFactDelta(delta)) {
+        throw new Error(
+          `R9V2_KERNEL_FACT_DELTA_UNEXPRESSIBLE:${delta?.entityType || ''}:${delta?.fieldCode || ''}`,
+        );
+      }
+      const fieldCode = String(delta?.fieldCode || '').trim();
+      if (
+        String(delta?.entityType || '').trim().toUpperCase() ===
+          'TARGET_KERNEL_CONTEXT'
+      ) {
+        return;
+      }
+      if (fieldCode === 'candidateSnapshot') {
+        if (String(delta?.entityId || '').trim() !== candidateId) return;
+        const nextRawEntry = delta?.afterValue;
+        if (!nextRawEntry || typeof nextRawEntry !== 'object') {
+          throw new Error(
+            `R9V2_KERNEL_FACT_DELTA_SNAPSHOT_MISSING:${candidateId}`,
+          );
+        }
+        return Object.assign(nextEntry, cloneValue(nextRawEntry));
+      }
+      const effectInstanceId = fieldCode.slice(
+        'contributions.expectedDelta:'.length,
+      ).trim();
+      const contribution = (nextEntry.contributions || []).find(row =>
+        String(row?.effectInstanceId || '').trim() === effectInstanceId,
+      );
+      if (!contribution) {
+        throw new Error(
+          `R9V2_KERNEL_FACT_DELTA_TARGET_MISSING:${candidateId}:${effectInstanceId}`,
+        );
+      }
+      const before = Number(contribution.expectedDelta ?? 0);
+      const expectedBefore = Number(delta?.beforeValue);
+      if (
+        Number.isFinite(expectedBefore) &&
+        Math.abs(before - expectedBefore) > 1e-9
+      ) {
+        throw new Error(
+          `R9V2_KERNEL_FACT_DELTA_BEFORE_MISMATCH:${candidateId}:${effectInstanceId}`,
+        );
+      }
+      const operation = String(delta?.operation || '').trim().toUpperCase();
+      const after = operation === 'ADD'
+        ? before + Number(delta?.afterValue)
+        : Number(delta?.afterValue);
+      if (!Number.isFinite(after)) {
+        throw new Error(
+          `R9V2_KERNEL_FACT_DELTA_VALUE_NON_FINITE:${candidateId}:${effectInstanceId}`,
+        );
+      }
+      contribution.expectedDelta = after;
+      if (contribution.evidence && typeof contribution.evidence === 'object') {
+        contribution.evidence.delta = after;
+      }
+    });
+    return nextEntry;
   }
 
   function r9v2TargetKernelProof(kernelProof, entry, unsupportedOutcomeKinds = []) {
@@ -45273,8 +50371,373 @@
     });
   }
 
+  function r9v2TargetKernelSemanticRecord(value = {}) {
+    const ids = field => (Array.isArray(value?.[field])
+      ? value[field].map(item => String(item || '').trim()).filter(Boolean)
+      : []);
+    return {
+      ownerId: String(value?.ownerId || '').trim(),
+      role: String(value?.role || '').trim().toUpperCase(),
+      status: String(value?.status || '').trim().toUpperCase(),
+      grantType: String(value?.grantType || '').trim().toUpperCase(),
+      expectedGrantType: String(value?.expectedGrantType || '').trim().toUpperCase(),
+      eventType: String(value?.eventType || '').trim().toUpperCase(),
+      sourceActorId: String(value?.sourceActorId || '').trim(),
+      sourceActionId: String(value?.sourceActionId || '').trim(),
+      targetId: String(value?.targetId || '').trim(),
+      targetIds: ids('targetIds'),
+      validTargetIds: ids('validTargetIds'),
+      round: Number(value?.round ?? value?.scheduledRound ?? 0),
+      sequence: Number(value?.sequence ?? 0),
+      opportunitySequence: Number(value?.opportunitySequence ?? 0),
+      createdAtSequence: Number(value?.createdAtSequence ?? 0),
+      windowId: String(value?.windowId || '').trim(),
+      futureHostileResponseAllowed:
+        value?.futureHostileResponseAllowed === true,
+      counterWindow: value?.counterWindow === true,
+      noFutureOpportunity: value?.noFutureOpportunity === true,
+      naturalActionBudget: cloneValue(value?.naturalActionBudget),
+      pendingNaturalActorIds: ids('pendingNaturalActorIds').sort(),
+      pendingHostileActorIds: ids('pendingHostileActorIds').sort(),
+      battleHorizon: cloneValue(value?.battleHorizon || {}),
+      incomingAction: cloneValue(value?.incomingAction || null),
+    };
+  }
+
+  function r9v2TargetKernelSemanticRecords(value) {
+    const records = Array.isArray(value)
+      ? value
+      : value && typeof value === 'object'
+        ? [value]
+        : [];
+    return records
+      .map(record => r9v2TargetKernelSemanticRecord(record))
+      .sort((left, right) =>
+        r9v2TargetCompareUtf16(JSON.stringify(left), JSON.stringify(right))
+      );
+  }
+
+  function r9v2TargetKernelStableSessionKey({
+    actorId,
+    actorSide,
+    poolScopeKey,
+    frozenCandidates = [],
+    battleIntent = {},
+    objectiveContract = {},
+    actionOpportunity = {},
+    informationValueOnly = true,
+  }) {
+    // Opportunity shape is a revision input, not a session identity. The
+    // frozen candidate set still separates ACTIVE/REACTION/COUNTER routes;
+    // retaining this shape here would allocate a new kernel session whenever
+    // a valid opportunity changed and would bypass FactDelta invalidation.
+    return `r9v2-target-kernel-session:${preview.stableHash({
+      schemaVersion: 'R9v2TargetKernelStableSessionKeyV1',
+      actorId: String(actorId || '').trim(),
+      actorSide: String(actorSide || '').trim(),
+      poolScopeKey: String(poolScopeKey || '').trim(),
+      battleIntent: {
+        mode: String(battleIntent?.mode || '').trim(),
+        withdrawAllowed: battleIntent?.withdrawAllowed === true,
+      },
+      objectiveContract: cloneValue(objectiveContract || {}),
+      informationValueOnly: informationValueOnly !== false,
+      candidates: frozenCandidates.map(candidate => ({
+        candidateId: String(candidate?.candidateId || '').trim(),
+        declarationFingerprint: String(
+          candidate?.declarationFingerprint || '',
+        ).trim(),
+        resourcePotentialOnly: candidate?.resourcePotentialOnly === true,
+        legal: candidate?.legal !== false,
+      })),
+    })}`;
+  }
+
+  function r9v2TargetKernelRowsByCandidate(rows = []) {
+    return new Map(
+      rows.map(row => [String(row?.candidateId || '').trim(), row]),
+    );
+  }
+
+  function r9v2TargetKernelEntriesByCandidate(entries = []) {
+    return new Map(
+      entries.map(entry => [String(entry?.candidateId || '').trim(), entry]),
+    );
+  }
+
+  function r9v2TargetKernelAllCandidateTokens(rows = []) {
+    return [
+      ...new Set(
+        rows.flatMap(row =>
+          Array.isArray(row?.dependencyTokens)
+            ? row.dependencyTokens
+            : [],
+        ),
+      ),
+    ].map(value => String(value || '').trim()).filter(Boolean).sort();
+  }
+
+  function r9v2TargetKernelContextFingerprints({
+    rows = [],
+    pool = null,
+    sharedContextFingerprint = '',
+  }) {
+    const unitValueRevisions = pool?.unitValueRevisions instanceof Map
+      ? pool.unitValueRevisions
+      : new Map();
+    const poolRevision = Number(pool?.valueRevision || 0);
+    return new Map(rows.map(row => {
+      const dependencyRevisions = (Array.isArray(row?.dependencyTokens)
+        ? row.dependencyTokens
+        : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .map(token => {
+          if (token.startsWith('unit:')) {
+            const unitId = token.slice('unit:'.length).trim();
+            return [token, Number(unitValueRevisions.get(unitId) || 0)];
+          }
+          if (token.startsWith('actor:')) {
+            const unitId = token.slice('actor:'.length).trim();
+            return [token, Number(unitValueRevisions.get(unitId) || 0)];
+          }
+          if (token.startsWith('candidate:') || token.startsWith('belief:')) {
+            return [token, 'CONTEXT_REVISION'];
+          }
+          return [token, poolRevision];
+        })
+        .sort(([left], [right]) => r9v2TargetCompareUtf16(left, right));
+      const candidateId = String(row?.candidateId || '').trim();
+      return [candidateId, preview.stableHash({
+        schemaVersion: 'R9v2TargetKernelCandidateContextFingerprintV1',
+        sharedContextFingerprint,
+        dependencyRevisions,
+      })];
+    }));
+  }
+
+  function r9v2TargetKernelCacheKey({
+    state,
+    worldSnapshot,
+    actorId,
+    actorSide,
+    frozenCandidates,
+    beliefState,
+    battleIntent,
+    objectiveContract,
+    actionOpportunity,
+    evaluationContext,
+    pool,
+    informationValueOnly,
+    verifyMechanicalBasis,
+    rawRowsHash = '',
+  }) {
+    const worldUnits = worldEntries(worldSnapshot || {})
+      .map(({ unit }) => {
+        const unitId = String(preview.unitId(unit) || '').trim();
+        return [unitId, r9v2MechanicalKeyHash(state, unit)];
+      })
+      .filter(([unitId]) => unitId)
+      .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+    const context = evaluationContext || {};
+    const opportunitySnapshot = r9v2TargetKernelSemanticRecords(
+      context.opportunitySnapshot,
+    );
+    const scheduledEvents = r9v2TargetKernelSemanticRecords(
+      context.scheduledEvents,
+    );
+    const semanticContext = {
+      schemaVersion: 'R9v2TargetKernelSemanticContextV1',
+      actorId: String(actorId || '').trim(),
+      actorSide: String(actorSide || '').trim(),
+      worldRound: Number(worldSnapshot?.回合 ?? worldSnapshot?.round ?? 0),
+      worldUnits,
+      objectiveContract: cloneValue(objectiveContract || {}),
+      battleIntent: {
+        mode: String(battleIntent?.mode || '').trim(),
+        withdrawAllowed: battleIntent?.withdrawAllowed === true,
+        objectives: cloneValue(
+          battleIntent?.objectives ||
+          battleIntent?.胜负条件 ||
+          {},
+        ),
+      },
+      beliefState: cloneValue(beliefState || {}),
+      candidates: (frozenCandidates || []).map(candidate => ({
+        candidateId: String(candidate?.candidateId || '').trim(),
+        declarationFingerprint: String(
+          candidate?.declarationFingerprint || '',
+        ).trim(),
+        resourcePotentialOnly: candidate?.resourcePotentialOnly === true,
+        counterDeclineFallback: candidate?.counterDeclineFallback === true,
+        legal: candidate?.legal !== false,
+      })),
+      actionOpportunitySemanticContext:
+        r9v2OpportunitySemanticContext(actionOpportunity),
+      rawRowsHash: String(rawRowsHash || '').trim(),
+      evaluationContext: {
+        beliefRevision: String(context.beliefRevision || '').trim(),
+        opportunityRevision: preview.stableHash(opportunitySnapshot),
+        resourceTimelineRevision: preview.stableHash(
+          context.resourceTimeline || [],
+        ),
+        scheduleRevision: preview.stableHash(scheduledEvents),
+        opportunitySnapshot,
+        resourceTimeline: cloneValue(context.resourceTimeline || []),
+        scheduledEvents,
+        horizon: cloneValue(context.horizon || {}),
+      },
+      pool: {
+        observerPoolKey: String(pool?.observerPoolKey || '').trim(),
+        valueRevision: Number(pool?.valueRevision || 0),
+        factDeltaCount: Number(pool?.factDeltaCount || 0),
+      },
+      informationValueOnly: informationValueOnly !== false,
+      verifyMechanicalBasis: verifyMechanicalBasis === true,
+    };
+    return `r9v2-target-kernel-slice:${preview.stableHash(semanticContext)}`;
+  }
+
+  function r9v2TargetKernelCacheRead({
+    state,
+    key,
+    pool,
+    frozenCandidates,
+    rawRowsHash = '',
+  }) {
+    const store = state?.r9v2TargetKernelSlices;
+    if (!(store instanceof Map) || !key) return null;
+    const cached = store.get(key);
+    if (!cached) {
+      r9v2Metric(state, 'r9v2TargetKernelSliceCacheMisses');
+      return null;
+    }
+    const candidateIds = (frozenCandidates || [])
+      .map(candidate => String(candidate?.candidateId || '').trim())
+      .sort(r9v2TargetCompareUtf16);
+    const requiredUnitIds = Array.isArray(cached.requiredUnitIds)
+      ? cached.requiredUnitIds
+      : [];
+    const poolMatches =
+      String(cached.poolKey || '') === String(pool?.observerPoolKey || '') &&
+      Number(cached.poolValueRevision || 0) ===
+        Number(pool?.valueRevision || 0) &&
+      requiredUnitIds.every(unitId => pool?.unitEntries?.has(unitId));
+    const candidateMatch = JSON.stringify(candidateIds) ===
+      JSON.stringify(cached.candidateIds || []);
+    const rawRowsMatch = String(cached.rawRowsHash || '') ===
+      String(rawRowsHash || '');
+    const session = state?.r9v2TargetKernelSessions?.get(key);
+    const sessionMatches = !!session && session === cached.slice?.session;
+    if (!poolMatches || !candidateMatch || !rawRowsMatch || !sessionMatches) {
+      store.delete(key);
+      state?.r9v2TargetKernelSessions?.delete(key);
+      r9v2Metric(state, 'r9v2TargetKernelSliceCacheInvalidations');
+      r9v2Metric(state, 'r9v2TargetKernelSliceCacheMisses');
+      return null;
+    }
+    store.delete(key);
+    store.set(key, cached);
+    r9v2Metric(state, 'r9v2TargetKernelSliceCacheHits');
+    r9v2Metric(state, 'r9v2TargetKernelSessionReuses');
+    return cached;
+  }
+
+  function r9v2TargetKernelRefreshCachedSession(session, evaluationContext) {
+    if (!session || typeof session !== 'object') return;
+    session.worldRevision = String(
+      evaluationContext?.worldRevision || session.worldRevision || '',
+    ).trim();
+    session.beliefRevision = String(
+      evaluationContext?.beliefRevision || session.beliefRevision || '',
+    ).trim();
+    session.opportunityRevision = String(
+      evaluationContext?.opportunityRevision ||
+      session.opportunityRevision ||
+      '',
+    ).trim();
+  }
+
+  function r9v2TargetKernelReuseSlice({
+    cached,
+    prepared,
+    actorId,
+    frozenCandidates,
+    evaluationContext,
+  }) {
+    const slice = cached.slice;
+    const targetKernelTestSink = root.__LWCS_R9V2_TARGET_KERNEL_TEST_SINK__;
+    if (targetKernelTestSink && Array.isArray(targetKernelTestSink.slices)) {
+      targetKernelTestSink.slices.push({
+        rows: cloneValue(slice.rows),
+        vectors: cloneValue(slice.vectors),
+        session: slice.session,
+        kernel: slice.kernel,
+        reused: true,
+      });
+    }
+    return Object.freeze({
+      ...slice,
+      sliceRevision: [
+        'r9v2-target-kernel',
+        actorId,
+        prepared.pool.factDeltaCount,
+        prepared.pool.generation,
+        'REUSED',
+      ].join(':'),
+      rebuiltUnitIds: Object.freeze([]),
+      workload: Object.freeze({
+        ...slice.workload,
+        rebuiltUnitCount: 0,
+        currentCandidateCount: frozenCandidates.length,
+      }),
+    });
+  }
+
+  function r9v2TargetKernelCacheStore({
+    state,
+    key,
+    pool,
+    frozenCandidates,
+    requiredUnitIds,
+    slice,
+    rawRowsHash = '',
+  }) {
+    const store = state?.r9v2TargetKernelSlices;
+    if (!(store instanceof Map) || !key) return;
+    while (store.size >= 128) {
+      const oldestKey = store.keys().next().value;
+      if (oldestKey === undefined) break;
+      store.delete(oldestKey);
+      state?.r9v2TargetKernelSessions?.delete(oldestKey);
+    }
+    store.set(key, Object.freeze({
+      schemaVersion: 'R9v2TargetKernelSliceCacheEntryV1',
+      poolKey: String(pool?.observerPoolKey || '').trim(),
+      poolValueRevision: Number(pool?.valueRevision || 0),
+      candidateIds: Object.freeze(
+        frozenCandidates
+          .map(candidate => String(candidate?.candidateId || '').trim())
+          .sort(r9v2TargetCompareUtf16),
+      ),
+      requiredUnitIds: Object.freeze(
+        [...new Set(requiredUnitIds || [])]
+          .map(value => String(value || '').trim())
+          .filter(Boolean)
+          .sort(r9v2TargetCompareUtf16),
+      ),
+      rawRowsHash: String(rawRowsHash || '').trim(),
+      slice,
+    }));
+    if (state?.r9v2TargetKernelSessions instanceof Map) {
+      state.r9v2TargetKernelSessions.set(key, slice.session);
+    }
+    r9v2Metric(state, 'r9v2TargetKernelSessionCreates');
+  }
+
   function r9v2TargetKernelPrepareSlice({
     prepared,
+    sessionState = null,
     worldSnapshot,
     actorId,
     actorSide,
@@ -45285,6 +50748,12 @@
     actionOpportunity,
     evaluationContext,
     currentEntries,
+    mechanicalProjectionContext = null,
+    targetKernelCacheKey = '',
+    targetKernelCacheEnabled = false,
+    rawRowsHash = '',
+    requiredUnitIds = new Set(),
+    targetKernelSessionKey = '',
   }) {
     const kernel = r9v2TargetKernelApi();
     const requestLike = {
@@ -45311,6 +50780,14 @@
       objectiveTruthRevisions: new WeakMap(),
       projectionBeliefRevisions: new WeakMap(),
       entryComponentSignatures: new WeakMap(),
+      targetKernel: true,
+      targetRouteEntriesByKey:
+        prepared.state.r9v2TargetRouteEntriesByKey,
+      targetRouteBestByKey:
+        prepared.state.r9v2TargetRouteBestByKey,
+      targetRouteTablesByKey:
+        prepared.state.r9v2TargetRouteTablesByKey,
+      targetInformationBranchesByKey: new Map(),
       projectionRevisionNamespace:
         `r9v2-target-projection:${++r9v2ProjectionRevisionSequence}`,
       useRevisionKeys: true,
@@ -45318,41 +50795,77 @@
       enableExactComponentDependencies: true,
       componentDependencyByEntry: new WeakMap(),
       pendingNaturalActorIds: null,
+      mechanicalProjectionContext,
       sharedStores: r9v2SharedStoresFor(prepared.state),
       proofComponentStore: prepared.state.r9v2ProofComponentStore,
       metricsState: prepared.state,
       normalizedContributionStore:
         prepared.state.r9v2NormalizedContributionStore,
     };
-    projectionCache.currentIncoming =
-      r9v2PrepareIncomingProjectionSequence({
-        state: prepared.state,
-        request: requestLike,
-        mechanicalProjectionContext: preview.compileMechanicalProjectionContext(
-          worldSnapshot,
-        ),
-      });
-    const targetProofByCandidate = new Map(
-      currentEntries.map(entry => [
-        entry.candidateId,
-        r9v2CandidateValueProof(
-          requestLike,
-          prepared.pool,
-          entry,
-          projectionCache,
-        ),
+    const componentRegistry = r9v2TargetKernelComponentRegistry({
+      request: requestLike,
+      pool: prepared.pool,
+      projectionCache,
+    });
+    const stableSessionStore = sessionState?.r9v2TargetKernelSessionCatalog;
+    const stableKey = String(targetKernelSessionKey || '').trim();
+    const previousLifecycle = stableSessionStore instanceof Map && stableKey
+      ? stableSessionStore.get(stableKey)
+      : null;
+    const previousEntriesByCandidate =
+      previousLifecycle?.entriesByCandidate instanceof Map
+        ? previousLifecycle.entriesByCandidate
+        : null;
+    const previousRowsByCandidate =
+      previousLifecycle?.rowsByCandidate instanceof Map
+        ? previousLifecycle.rowsByCandidate
+        : null;
+    const currentEntriesByCandidate =
+      r9v2TargetKernelEntriesByCandidate(currentEntries);
+    const previousEntryFingerprints =
+      previousLifecycle?.entryFingerprintsByCandidate instanceof Map
+        ? previousLifecycle.entryFingerprintsByCandidate
+        : null;
+    const currentEntryFingerprints = new Map(
+      [...currentEntriesByCandidate.entries()].map(([candidateId, entry]) => [
+        candidateId,
+        r9v2TargetKernelMechanicalEntryFingerprint(entry),
       ]),
     );
-    const rows = frozenCandidates.map(candidate =>
+    const builtRows = frozenCandidates.map(candidate =>
       r9v2TargetKernelCandidateRow({
         request: requestLike,
         candidate,
-        entry: currentEntries.find(entry =>
-          entry.candidateId === candidate.candidateId,
-        ),
-        targetProof: targetProofByCandidate.get(candidate.candidateId) || null,
+        entry: currentEntriesByCandidate.get(candidate.candidateId),
+        pool: prepared.pool,
+        projectionCache,
       })
     );
+    const rows = builtRows.map(row => {
+      const candidateId = String(row?.candidateId || '').trim();
+      const previousEntry = previousEntriesByCandidate?.get(candidateId);
+      const currentEntry = currentEntriesByCandidate.get(candidateId);
+      const previousEntryFingerprint =
+        previousEntryFingerprints?.get(candidateId) || '';
+      const currentEntryFingerprint =
+        currentEntryFingerprints.get(candidateId) || '';
+      const previousRow = previousRowsByCandidate?.get(candidateId);
+      const dependencyTokensEqual = previousRow &&
+        JSON.stringify(previousRow.dependencyTokens || []) ===
+          JSON.stringify(row.dependencyTokens || []);
+      const entrySemanticallyEqual = previousEntryFingerprint
+        ? previousEntryFingerprint === currentEntryFingerprint
+        : previousEntry === currentEntry;
+      if (
+        previousRow &&
+        entrySemanticallyEqual &&
+        dependencyTokensEqual
+      ) {
+        r9v2Metric(prepared.state, 'r9v2TargetKernelRowReuses');
+        return previousRow;
+      }
+      return row;
+    });
     const visibleHpRatios = {};
     const visibleStatesById = {};
     worldEntries(worldSnapshot).forEach(worldEntry => {
@@ -45362,26 +50875,171 @@
       visibleStatesById[unitId] = visibleStatesById[unitId] ||
         visibleStates(worldEntry.unit);
     });
-    const session = kernel.createSession({
+    const beliefOverlay = Object.freeze({
+      schemaVersion: 'BeliefOverlayV1',
+      observerId: actorId,
+      beliefRevision: evaluationContext.beliefRevision,
+      visibleHpRatios,
+      visibleStates: visibleStatesById,
+      revealedAbilityIds: [],
+      observableDeclarations: frozenCandidates.map(candidate =>
+        cloneValue(candidate.declaration || {}),
+      ),
+      posteriorParameters: {},
+      visibilityTokens: Object.keys(visibleHpRatios),
+    });
+    const contextFingerprint = preview.stableHash({
+      schemaVersion: 'R9v2TargetKernelContextFingerprintV1',
+      worldRevision: evaluationContext.worldRevision,
+      visibleWorldRevision: evaluationContext.visibleWorldRevision,
+      beliefRevision: evaluationContext.beliefRevision,
+      opportunityRevision:
+        evaluationContext.opportunitySemanticRevision ||
+        evaluationContext.opportunityRevision,
+      opportunitySemanticContext:
+        r9v2OpportunitySemanticContext(actionOpportunity),
+      resourceTimelineRevision: evaluationContext.resourceTimelineRevision,
+      scheduleRevision:
+        evaluationContext.scheduleSemanticRevision ||
+        evaluationContext.scheduleRevision,
+    });
+    const contextFingerprintByCandidate =
+      r9v2TargetKernelContextFingerprints({
+        rows,
+        pool: prepared.pool,
+        sharedContextFingerprint: contextFingerprint,
+      });
+    const session = previousLifecycle?.session || kernel.createSession({
       worldRevision: evaluationContext.worldRevision,
       beliefRevision: evaluationContext.beliefRevision,
       opportunityRevision: evaluationContext.opportunityRevision,
       observerId: actorId,
-      beliefOverlay: {
-        observerId: actorId,
-        beliefRevision: evaluationContext.beliefRevision,
-        visibleHpRatios,
-        visibleStates: visibleStatesById,
-        revealedAbilityIds: [],
-        observableDeclarations: frozenCandidates.map(candidate =>
-          cloneValue(candidate.declaration || {}),
-        ),
-        posteriorParameters: {},
-        visibilityTokens: Object.keys(visibleHpRatios),
-      },
+      beliefOverlay,
+      calculationMode: 'COMPONENT_REGISTRY_V1',
+      componentRegistry,
       candidates: rows,
     });
+    let stableSessionReused = !!previousLifecycle?.session;
+    if (stableSessionReused) {
+      session.componentRegistry = componentRegistry;
+      session.beliefOverlay = beliefOverlay;
+      session.worldRevision = evaluationContext.worldRevision;
+      session.beliefRevision = evaluationContext.beliefRevision;
+      session.opportunityRevision = evaluationContext.opportunityRevision;
+      const previousContextFingerprint = String(
+        previousLifecycle.contextFingerprint || '',
+      );
+      const previousContextFingerprintByCandidate =
+        previousLifecycle.contextFingerprintByCandidate instanceof Map
+          ? previousLifecycle.contextFingerprintByCandidate
+          : null;
+      const changedContextRecords = previousContextFingerprintByCandidate
+        ? rows
+          .map(row => {
+            const candidateId = String(row?.candidateId || '').trim();
+            const before = String(
+              previousContextFingerprintByCandidate.get(candidateId) || '',
+            );
+            const after = String(
+              contextFingerprintByCandidate.get(candidateId) || '',
+            );
+            return before !== after
+              ? { candidateId, before, after }
+              : null;
+          })
+          .filter(Boolean)
+        : previousContextFingerprint !== contextFingerprint
+          ? rows.map(row => ({
+              candidateId: String(row?.candidateId || '').trim(),
+              before: previousContextFingerprint,
+              after: contextFingerprint,
+            }))
+          : [];
+      if (changedContextRecords.length) {
+        const changedCandidateTokens = changedContextRecords.map(record =>
+          `candidate:${record.candidateId}`,
+        );
+        kernel.applyFactDelta(session, session.revision, {
+          operation: 'SET',
+          entityType: 'TARGET_KERNEL_CONTEXT',
+          entityId: actorId,
+          fieldCode: 'revision',
+          beforeValue: changedContextRecords,
+          afterValue: contextFingerprint,
+          sourceEventId: `target-kernel-context:${actorId}`,
+          sourceFactId: `target-kernel-context:${contextFingerprint}`,
+          dependencyTokens: changedCandidateTokens,
+        });
+        r9v2Metric(
+          prepared.state,
+          'r9v2TargetKernelContextInvalidations',
+        );
+      }
+      const previousEntries = previousEntriesByCandidate || new Map();
+      currentEntriesByCandidate.forEach((entry, candidateId) => {
+        const previousEntryFingerprint =
+          previousEntryFingerprints?.get(candidateId) || '';
+        const currentEntryFingerprint =
+          currentEntryFingerprints.get(candidateId) || '';
+        const entrySemanticallyEqual = previousEntryFingerprint
+          ? previousEntryFingerprint === currentEntryFingerprint
+          : previousEntries.get(candidateId) === entry;
+        if (entrySemanticallyEqual) return;
+        const row = r9v2TargetKernelRowsByCandidate(rows).get(candidateId);
+        if (!row) return;
+        kernel.applyFactDelta(session, session.revision, {
+          operation: 'SET',
+          entityType: 'MECHANICAL_ENTRY',
+          entityId: candidateId,
+          fieldCode: 'candidateSnapshot',
+          beforeValue: r9v2TargetKernelRawMechanicalEntry(
+            previousEntries.get(candidateId) || {},
+          ),
+          afterValue: r9v2TargetKernelRawMechanicalEntry(entry),
+          sourceEventId: `target-kernel-entry:${candidateId}`,
+          sourceFactId: `target-kernel-entry:${candidateId}:${contextFingerprint}`,
+          dependencyTokens: row.dependencyTokens,
+        });
+        r9v2Metric(
+          prepared.state,
+          'r9v2TargetKernelCandidateSnapshotDeltas',
+        );
+      });
+      r9v2Metric(prepared.state, 'r9v2TargetKernelStableSessionReuses');
+    } else {
+      r9v2Metric(prepared.state, 'r9v2TargetKernelStableSessionCreates');
+    }
+    if (stableSessionStore instanceof Map && stableKey) {
+      stableSessionStore.set(stableKey, {
+        schemaVersion: 'R9v2TargetKernelStableSessionV1',
+        key: stableKey,
+        session,
+        actorId,
+        candidateIds: Object.freeze(
+          frozenCandidates.map(candidate => candidate.candidateId),
+        ),
+        entriesByCandidate: currentEntriesByCandidate,
+        entryFingerprintsByCandidate: currentEntryFingerprints,
+        rowsByCandidate: r9v2TargetKernelRowsByCandidate(rows),
+        contextFingerprint,
+        contextFingerprintByCandidate,
+      });
+    }
     const vectors = kernel.evaluateAllCandidates(session, actorId);
+    const invalidValueSource = rows.find(row =>
+      row.mechanicalSource !== 'SHARED_MECHANICAL_ENTRY_V1',
+    );
+    if (invalidValueSource) {
+      throw new Error(
+        `R9V2_TARGET_KERNEL_VALUE_SOURCE_MISMATCH:${invalidValueSource.candidateId}`,
+      );
+    }
+    const legacyProofCalls = Number(
+      prepared.state?.metrics?.r9v2TargetKernelLegacyProofCalls || 0,
+    );
+    if (legacyProofCalls !== 0) {
+      throw new Error(`R9V2_TARGET_KERNEL_LEGACY_PROOF_COUNT:${legacyProofCalls}`);
+    }
     const vectorByCandidate = new Map(
       vectors.map(vector => [vector.candidateId, vector]),
     );
@@ -45390,10 +51048,12 @@
       targetKernelTestSink.slices.push({
         rows: cloneValue(rows),
         vectors: cloneValue(vectors),
+        session,
+        kernel,
       });
     }
     r9v2Metric(prepared.state, 'r9v2TargetKernelVectorEvaluations', vectors.length);
-    return Object.freeze({
+    const slice = Object.freeze({
       schemaVersion: 'PreparedR9v2TargetKernelSliceV2',
       sliceRevision: [
         'r9v2-target-kernel',
@@ -45408,8 +51068,15 @@
       rows: Object.freeze(rows),
       vectors: Object.freeze(vectors),
       vectorByCandidate,
-      informationProjectionStatus: 'TARGET_KERNEL_INPUT_ONLY',
+      informationProjectionStatus: 'TARGET_KERNEL_VALUE_V2',
       kernelMode: 'TARGET',
+      targetKernelCoverage: Object.freeze({
+        vectorCoverage: 'CLOSED',
+        valueSource: 'TARGET_KERNEL_COMPONENTS_V1',
+        calculationMode: 'COMPONENT_REGISTRY_V1',
+        mechanicalSource: 'SHARED_MECHANICAL_ENTRY_V1',
+        legacyProofCalls,
+      }),
       rebuiltUnitIds: Object.freeze(prepared.rebuiltUnitIds),
       workload: Object.freeze({
         observerPoolUnitCount: prepared.pool.unitEntries.size,
@@ -45419,6 +51086,57 @@
         currentCandidateCount: currentEntries.length,
       }),
     });
+    if (targetKernelCacheEnabled) {
+      r9v2TargetKernelCacheStore({
+        state: prepared.state,
+        key: targetKernelCacheKey,
+        pool: prepared.pool,
+        frozenCandidates,
+        requiredUnitIds,
+        slice,
+        rawRowsHash,
+      });
+    }
+    return slice;
+  }
+
+  function r9v2TargetRequiredPoolUnitIds(entries = [], actorId = '') {
+    const required = new Set();
+    const add = value => {
+      const normalized = String(value || '').trim();
+      if (normalized) required.add(normalized);
+    };
+    (entries || []).forEach(entry => {
+      if (Array.isArray(entry?.mechanicObservations) &&
+        entry.mechanicObservations.length) {
+        add(actorId);
+      }
+      (entry?.contributions || []).forEach(contribution => {
+        const outcomeKind = String(
+          contribution?.outcomeKind || '',
+        ).trim();
+        if (['ACTION_CANCELLED', 'RESOURCE_OPTION_CHANGED'].includes(outcomeKind)) {
+          add(contribution?.targetId);
+          return;
+        }
+        if (r9v2BehaviorMutationKind(contribution)) {
+          add(contribution?.targetId);
+          return;
+        }
+        const evidence = contribution?.evidence || {};
+        if (
+          String(evidence?.productId || '').trim() &&
+          Array.isArray(evidence?.useEffects) &&
+          evidence.useEffects.length
+        ) {
+          add(
+            evidence?.recipientId ||
+            entry?.creationCarrier?.recipientId,
+          );
+        }
+      });
+    });
+    return required;
   }
 
   function prepareR9v2ControlResourceSlice({
@@ -45448,94 +51166,210 @@
     }
     const mechanicalProjectionContext =
       preview.compileMechanicalProjectionContext(worldSnapshot);
-    const prepared = r9v2PrepareObserverPool({
+    const targetPoolOpportunity = targetKernel
+      ? r9v2FutureOpportunityContext(actionOpportunity)
+      : actionOpportunity;
+    const targetPoolScopeKey = targetKernel
+      // The pool identity is the stable session family. World and belief
+      // revisions are invalidation inputs, not pool identities; embedding
+      // them here made every runtime transition allocate a new pool before
+      // r9v2ChangedScope could apply its FactDelta.
+      ? r9v2ObserverPoolContextKey({
+          state: sessionState,
+          observerActorId: '',
+          observerSide: actorSide,
+          worldSnapshot,
+          beliefState,
+          battleIntent,
+          // Opportunity changes are revision inputs handled by FactDelta;
+          // they must not create a new shared pool identity.
+          actionOpportunity: { role: 'ACTIVE' },
+          sharedObserverScope: true,
+        })
+      : '';
+    const poolInput = {
       sessionState,
       worldSnapshot,
       observerActorId: actorId,
       observerSide: actorSide,
       beliefState,
       battleIntent,
-      actionOpportunity,
+      actionOpportunity: targetPoolOpportunity,
       mechanicalProjectionContext,
       verifyMechanicalBasis,
       poolScopeKey: targetKernel
-        ? r9v2ObserverPoolContextKey({
-            state: sessionState,
-            observerActorId: actorId,
-            observerSide: actorSide,
+        ? targetPoolScopeKey
+        : `r9v2-observer:${String(actorId || '').trim()}`,
+      sharedObserverScope: targetKernel,
+    };
+    const buildCurrentEntries = (preparedState, allowPoolReuse) => {
+      const activePoolEntries = allowPoolReuse
+        ? preparedState.pool.unitEntries.get(actorId) || []
+        : [];
+      const activeByCandidate = new Map(
+        activePoolEntries.map(entry => [entry.candidateId, entry]),
+      );
+      const currentRole =
+        String(actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+      const captureProjectedUnits =
+        !!actionOpportunity?.incomingAction;
+      return frozenCandidates.map(candidate => {
+        const cached = activeByCandidate.get(candidate.candidateId);
+        const cachedDependencyKeysReady =
+          Array.isArray(cached?.mechanicalDependencyKeys) &&
+          cached.mechanicalDependencyKeys.length > 0;
+        if (
+          allowPoolReuse &&
+          currentRole === 'ACTIVE' &&
+          !captureProjectedUnits &&
+          cached &&
+          (!targetKernel || cachedDependencyKeysReady) &&
+          cached.declarationFingerprint ===
+            candidate.declarationFingerprint &&
+          cached.resourcePotentialOnly ===
+            (candidate?.resourcePotentialOnly === true)
+        ) {
+          r9v2Metric(preparedState.state, 'r9v2CurrentCandidatePoolHits');
+          return cached;
+        }
+        if (
+          allowPoolReuse &&
+          currentRole === 'ACTIVE' &&
+          !captureProjectedUnits &&
+          cached &&
+          cached.declarationFingerprint ===
+            candidate.declarationFingerprint &&
+          cached.resourcePotentialOnly !==
+            (candidate?.resourcePotentialOnly === true)
+        ) {
+          r9v2Metric(
+            preparedState.state,
+            'r9v2CurrentCandidatePoolPaymentModeMisses',
+          );
+        }
+        return r9v2BuildMechanicalEntry({
+          state: preparedState.state,
+          worldSnapshot,
+          actorId,
+          candidate,
+          beliefState,
+          battleIntent,
+          actionOpportunity,
+          revision: r9v2MechanicalSnapshotRevision({
+            state: preparedState.state,
             worldSnapshot,
             beliefState,
-            battleIntent,
-            actionOpportunity,
-            sharedObserverScope: false,
-          })
-        : `r9v2-observer:${String(actorId || '').trim()}`,
-      sharedObserverScope: false,
+          }),
+          mechanicalProjectionContext,
+          metricKey: 'r9v2CurrentCandidatePreviewCalls',
+          verifyMechanicalBasis,
+          captureProjectedUnits,
+          captureDependencyKeys: targetKernel,
+        });
+      });
+    };
+    let prepared = r9v2PrepareObserverPool({
+      ...poolInput,
+      requestedUnitIds: targetKernel
+        ? new Set([actorId])
+        : null,
+      deferUnitPoolBuild: false,
+      preserveExistingUnitEntries: targetKernel,
     });
     if (targetKernel && prepared?.state) {
       prepared.state.r9v2MechanicalEntryCacheEnabled = true;
       prepared.state.r9v2MechanicalEntryCacheActive = true;
     }
-    const activePoolEntries = prepared.pool.unitEntries.get(actorId) || [];
-    const activeByCandidate = new Map(
-      activePoolEntries.map(entry => [entry.candidateId, entry]),
-    );
-    const currentRole =
-      String(actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
-    const captureProjectedUnits =
-      !!actionOpportunity?.incomingAction;
-    const currentEntries = frozenCandidates.map(candidate => {
-      const cached = activeByCandidate.get(candidate.candidateId);
-      if (
-        currentRole === 'ACTIVE' &&
-        !captureProjectedUnits &&
-        cached &&
-        cached.declarationFingerprint ===
-          candidate.declarationFingerprint &&
-        cached.resourcePotentialOnly ===
-          (candidate?.resourcePotentialOnly === true)
-      ) {
-        r9v2Metric(prepared.state, 'r9v2CurrentCandidatePoolHits');
-        return cached;
-      }
-      if (
-        currentRole === 'ACTIVE' &&
-        !captureProjectedUnits &&
-        cached &&
-        cached.declarationFingerprint ===
-          candidate.declarationFingerprint &&
-        cached.resourcePotentialOnly !==
-          (candidate?.resourcePotentialOnly === true)
-      ) {
-        r9v2Metric(
-          prepared.state,
-          'r9v2CurrentCandidatePoolPaymentModeMisses',
-        );
-      }
-      return r9v2BuildMechanicalEntry({
-        state: prepared.state,
-        worldSnapshot,
-        actorId,
-        candidate,
-        beliefState,
-        battleIntent,
-        actionOpportunity,
-        revision: [
-          'r9v2-current',
+    const targetKernelStableSessionEnabled =
+      targetKernel &&
+      sessionState?.r9v2TargetKernelSessionCatalog instanceof Map;
+    const targetKernelSessionKey = targetKernelStableSessionEnabled
+      ? r9v2TargetKernelStableSessionKey({
           actorId,
-          prepared.pool.generation,
-          prepared.pool.factDeltaCount,
-          candidate.candidateId,
-        ].join(':'),
-        mechanicalProjectionContext,
-        metricKey: 'r9v2CurrentCandidatePreviewCalls',
-        verifyMechanicalBasis,
-        captureProjectedUnits,
+          actorSide,
+          poolScopeKey: targetPoolScopeKey,
+          frozenCandidates,
+          battleIntent,
+          objectiveContract,
+          actionOpportunity,
+          informationValueOnly,
+        })
+      : '';
+    const targetKernelCacheEnabled =
+      targetKernel &&
+      !targetKernelStableSessionEnabled &&
+      verifyMechanicalBasis !== true;
+    let targetKernelCacheKey = '';
+    let rawRowsHash = '';
+    let requiredUnitIds = targetKernel
+      ? r9v2TargetRequiredPoolUnitIds(
+          buildCurrentEntries(prepared, true),
+          actorId,
+        )
+      : new Set();
+    let currentEntries = buildCurrentEntries(prepared, targetKernel);
+    if (targetKernel && requiredUnitIds.size) {
+      const requestedUnitIds = new Set([actorId, ...requiredUnitIds]);
+      prepared = r9v2PrepareObserverPool({
+        ...poolInput,
+        requestedUnitIds,
+        deferUnitPoolBuild: false,
+        preserveExistingUnitEntries: true,
       });
-    });
+      prepared.state.r9v2MechanicalEntryCacheEnabled = true;
+      prepared.state.r9v2MechanicalEntryCacheActive = true;
+      currentEntries = buildCurrentEntries(prepared, true);
+      requiredUnitIds = new Set(prepared.pool.unitEntries.keys());
+    }
     if (targetKernel) {
-      return r9v2TargetKernelPrepareSlice({
+      if (targetKernelCacheEnabled) {
+        rawRowsHash = preview.stableHash({
+          schemaVersion: 'R9v2TargetKernelRawRowsV1',
+          candidates: frozenCandidates,
+          entries: currentEntries.map(entry =>
+            r9v2TargetKernelRawMechanicalEntry(entry),
+          ),
+        });
+        targetKernelCacheKey = r9v2TargetKernelCacheKey({
+          state: prepared.state,
+          worldSnapshot,
+          actorId,
+          actorSide,
+          frozenCandidates,
+          beliefState,
+          battleIntent,
+          objectiveContract,
+          actionOpportunity,
+          evaluationContext,
+          pool: prepared.pool,
+          informationValueOnly,
+          verifyMechanicalBasis,
+          rawRowsHash,
+        });
+        const cached = r9v2TargetKernelCacheRead({
+          state: prepared.state,
+          key: targetKernelCacheKey,
+          pool: prepared.pool,
+          frozenCandidates,
+          rawRowsHash,
+        });
+        if (cached) {
+          return r9v2TargetKernelReuseSlice({
+            cached,
+            prepared,
+            actorId,
+            frozenCandidates,
+            evaluationContext,
+          });
+        }
+      }
+      const targetKernelSliceBuildStartedAt =
+        typeof globalThis?.performance?.now === 'function'
+          ? globalThis.performance.now()
+          : Date.now();
+      const targetKernelSlice = r9v2TargetKernelPrepareSlice({
         prepared,
+        sessionState,
         worldSnapshot,
         actorId,
         actorSide,
@@ -45546,7 +51380,23 @@
         actionOpportunity,
         evaluationContext,
         currentEntries,
+        mechanicalProjectionContext,
+        targetKernelCacheKey,
+        targetKernelCacheEnabled,
+        rawRowsHash,
+        requiredUnitIds,
+        targetKernelSessionKey,
       });
+      const targetKernelSliceBuildEndedAt =
+        typeof globalThis?.performance?.now === 'function'
+          ? globalThis.performance.now()
+          : Date.now();
+      r9v2Metric(
+        prepared.state,
+        'r9v2TargetKernelSliceBuildMs',
+        targetKernelSliceBuildEndedAt - targetKernelSliceBuildStartedAt,
+      );
+      return targetKernelSlice;
     }
     const requestLike = {
       visibleWorld: worldSnapshot,
@@ -45579,6 +51429,7 @@
       enableExactComponentDependencies: targetKernel === true,
       componentDependencyByEntry: new WeakMap(),
       pendingNaturalActorIds: null,
+      mechanicalProjectionContext,
       sharedStores: targetKernel
         ? r9v2SharedStoresFor(prepared.state)
         : null,
@@ -45928,6 +51779,7 @@
       const vector = row.vector;
       const audit = {
         candidateId: row.candidate.candidateId,
+        actionName: candidateActionName(row.candidate),
         actionKind: row.entry?.actionKind || '',
         actorId: request.actorId,
         targetIds: cloneValue(row.entry?.targetIds || []),
@@ -46062,7 +51914,10 @@
     if (targetKernel && prepared.kernelMode !== 'TARGET') {
       throw new Error('R9V2_TARGET_KERNEL_SLICE_MISSING');
     }
-    if (targetKernel && prepared.schemaVersion === 'PreparedR9v2TargetKernelSliceV2') {
+    if (targetKernel) {
+      if (prepared.schemaVersion !== 'PreparedR9v2TargetKernelSliceV2') {
+        throw new Error('R9V2_TARGET_KERNEL_SCHEMA_MISMATCH');
+      }
       return r9v2TargetKernelProvider(request, prepared);
     }
     const candidates = request.frozenCandidates || [];
@@ -46390,6 +52245,7 @@
       const includeProof = requiredProofIdSet.has(candidateId);
       const audit = {
       candidateId: row.candidate.candidateId,
+      actionName: candidateActionName(row.candidate),
       actionKind: row.entry.actionKind,
       actorId: request.actorId,
       targetIds: cloneValue(row.entry.targetIds),

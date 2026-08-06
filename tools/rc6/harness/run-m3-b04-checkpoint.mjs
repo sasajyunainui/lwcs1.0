@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertReferenceCase } from '../reference/reference-value-evaluator.mjs';
+import { assertRawCase } from '../reference/reference-value-evaluator-v2.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const evidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm3', 'm3-b04-checkpoint.json');
@@ -20,12 +20,13 @@ const components = readJson('tools/rc6/contracts/KernelComponentRegistryV1.json'
 const cases = readJson('tools/rc6/cases/KernelReferenceCasesV1.json');
 const oracleIndex = readJson('tools/rc6/cases/BehaviorOracleV2IndexV1.json');
 const b01 = readJson('tools/rc6/evidence/m3/b01-target-behavior-v3.json');
+const targetPathCoverageEvidencePath = 'tools/rc6/evidence/m3/m3-b04-r9v2-path-coverage.json';
 
 const referenceResults = [];
 const referenceFailures = [];
 for (const input of cases.cases) {
   try {
-    const result = assertReferenceCase(input);
+    const result = assertRawCase(input);
     referenceResults.push({
       caseId: input.caseId,
       semanticDomain: input.semanticDomain,
@@ -54,7 +55,7 @@ for (const oracle of oracleIndex.oracles) {
     continue;
   }
   try {
-    const result = assertReferenceCase(smokeCase);
+    const result = assertRawCase(smokeCase);
     oracleSmokeResults.push({
       oracleId: oracle.oracleId,
       caseId: oracle.caseId,
@@ -67,31 +68,57 @@ for (const oracle of oracleIndex.oracles) {
   }
 }
 
-const pathFixture = existingPathFixtureCandidates.find(relativePath =>
-  fs.existsSync(path.join(repoRoot, relativePath)),
+const targetPathCoverage = fs.existsSync(
+  path.join(repoRoot, targetPathCoverageEvidencePath),
+)
+  ? readJson(targetPathCoverageEvidencePath)
+  : null;
+const pathCoverageSourceFiles = [
+  'MVU_Skill_Runtime.js',
+  'BattlePreview_Module.js',
+  'BattleDecision_Module.js',
+  'BattleRuntime_Module.js',
+  'BattleDecisionR9v2Kernel_Module.js',
+  'tools/rc6/cases/BattleMechanismPrototypeScopeV1.json',
+  'tools/rc6/harness/run-m3-b04-r9v2-path-coverage.mjs',
+];
+const pathCoverageSourceHashMismatches = targetPathCoverage
+  ? pathCoverageSourceFiles
+      .filter(relativePath =>
+        targetPathCoverage.sourceHashes?.[relativePath] !== hashFile(relativePath),
+      )
+  : pathCoverageSourceFiles;
+const pathCoverageExecution = targetPathCoverage?.executed || {};
+const pathCoverageIsCurrent = Boolean(
+  targetPathCoverage?.schemaVersion === 'M3B04R9v2PathCoverageV1' &&
+  targetPathCoverage?.status === 'PASSED' &&
+  targetPathCoverage?.sourceOwned === true &&
+  targetPathCoverage?.scope?.includedPrototypeCount === 23 &&
+  targetPathCoverage?.scope?.expectedPathCount === 621 &&
+  targetPathCoverage?.scope?.observedPathCount === 621 &&
+  pathCoverageExecution.pathCount === 621 &&
+  pathCoverageExecution.passedCount === 621 &&
+  pathCoverageExecution.failedCount === 0 &&
+  pathCoverageExecution.fullCoverage === true &&
+  pathCoverageSourceHashMismatches.length === 0,
 );
-const pathCoverage = pathFixture
-  ? (() => {
-      const document = readJson(pathFixture);
-      const paths = Array.isArray(document.paths)
-        ? document.paths
-        : Array.isArray(document.cases)
-          ? document.cases
-          : [];
-      return {
-        status: paths.length === 621 ? 'AVAILABLE' : 'COUNT_MISMATCH',
-        fixture: pathFixture,
-        observedCount: paths.length,
-        expectedCount: 621,
-      };
-    })()
-  : {
-      status: 'MISSING_FIXTURE',
-      fixture: null,
-      observedCount: 0,
-      expectedCount: 621,
-      searched: existingPathFixtureCandidates,
-    };
+const pathCoverage = {
+  status: pathCoverageIsCurrent
+    ? 'AVAILABLE'
+    : targetPathCoverage
+      ? targetPathCoverage.status === 'PASSED'
+        ? 'STALE_OR_INVALID'
+        : 'FAILED_EVIDENCE'
+      : 'MISSING_FIXTURE',
+  fixture: targetPathCoverage ? targetPathCoverageEvidencePath : null,
+  observedCount: Number(targetPathCoverage?.scope?.observedPathCount || 0),
+  expectedCount: 621,
+  executedCount: Number(pathCoverageExecution.pathCount || 0),
+  passedCount: Number(pathCoverageExecution.passedCount || 0),
+  failedCount: Number(pathCoverageExecution.failedCount || 0),
+  sourceHashMismatches: pathCoverageSourceHashMismatches,
+  searched: targetPathCoverage ? undefined : [targetPathCoverageEvidencePath, ...existingPathFixtureCandidates],
+};
 
 const targetRows = Array.isArray(b01.rows) ? b01.rows : [];
 const completedTargetRows = targetRows.filter(row => row.status === 'COMPLETED');
@@ -145,12 +172,15 @@ const output = {
     'tools/rc6/cases/KernelReferenceCasesV1.json': hashFile('tools/rc6/cases/KernelReferenceCasesV1.json'),
     'tools/rc6/cases/BehaviorOracleV2IndexV1.json': hashFile('tools/rc6/cases/BehaviorOracleV2IndexV1.json'),
     'tools/rc6/harness/run-m3-b04-checkpoint.mjs': hashFile('tools/rc6/harness/run-m3-b04-checkpoint.mjs'),
+    [targetPathCoverageEvidencePath]: targetPathCoverage
+      ? hashFile(targetPathCoverageEvidencePath)
+      : null,
   },
-  blockers: pathCoverage.status === 'MISSING_FIXTURE'
+  blockers: pathCoverage.status !== 'AVAILABLE'
     ? [
-        'No current tracked BehaviorPathIndexV1/BehaviorPathManifestV1/KernelPathCasesV1 fixture exists.',
-        'Historical R8 artifacts containing the number 621 are not accepted as R9v2 path coverage.',
-        'Do not mark M3 complete until a source-owned 621-path fixture or an explicit contract correction exists.',
+        'Current R9v2 path coverage evidence is missing, failed, stale, or incomplete.',
+        `Observed ${pathCoverage.passedCount}/621 current target-provider paths; do not accept historical R8 path counts.`,
+        `Source hash mismatches: ${pathCoverage.sourceHashMismatches.join(', ') || 'none recorded'}.`,
       ]
     : [],
 };

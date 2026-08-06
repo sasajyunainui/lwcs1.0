@@ -87,6 +87,8 @@
   const dependencyCaptureStack = [];
   // 预演自造召唤物的依赖键：这些实体随路线重放重新生成，不构成对外部世界的依赖
   const PREVIEW_SUMMON_DEPENDENCY_KEY = /^(?:unit|target):preview-summon:/;
+  const PAYMENT_ROLE_DEPENDENCY_KEY =
+    /^unit:[^:]+:resource(?:Max)?:[^:]+$/u;
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, Number(value) || 0));
@@ -97,7 +99,11 @@
     return JSON.parse(JSON.stringify(value));
   }
 
-  function recordPreviewDependency(key = '', value = null) {
+  function recordPreviewDependency(
+    key = '',
+    value = null,
+    dependencyRole = 'MECHANICAL',
+  ) {
     const capture = dependencyCaptureStack[dependencyCaptureStack.length - 1];
     const normalizedKey = String(key || '').trim();
     if (!capture || !normalizedKey) return;
@@ -108,8 +114,31 @@
     if (!capture.reads.has(normalizedKey)) {
       capture.reads.set(normalizedKey, cloneValue(value));
     }
+    if (PAYMENT_ROLE_DEPENDENCY_KEY.test(normalizedKey)) {
+      const role = String(
+        capture?.roleStack?.[capture.roleStack.length - 1] || dependencyRole,
+      ).trim().toUpperCase() || 'MECHANICAL';
+      if (!(capture.dependencyRoles instanceof Map)) {
+        capture.dependencyRoles = new Map();
+      }
+      const roles = capture.dependencyRoles.get(normalizedKey) || new Set();
+      roles.add(role);
+      capture.dependencyRoles.set(normalizedKey, roles);
+    }
     if (typeof capture.recorder === 'function') {
       capture.recorder(normalizedKey, value);
+    }
+  }
+
+  function withPreviewDependencyRole(role, callback) {
+    const capture = dependencyCaptureStack[dependencyCaptureStack.length - 1];
+    if (!capture || typeof callback !== 'function') return callback();
+    if (!Array.isArray(capture.roleStack)) capture.roleStack = [];
+    capture.roleStack.push(String(role || 'MECHANICAL').trim().toUpperCase());
+    try {
+      return callback();
+    } finally {
+      capture.roleStack.pop();
     }
   }
 
@@ -597,90 +626,133 @@
     return listUnits(worldSnapshot).find(entry => unitId(entry.unit) === id)?.side || '';
   }
 
-  function compileMechanicalProjectionContext(worldSnapshot = {}) {
+  function buildMechanicalProjectionProfile(unit = {}, side = '') {
+    const states = collectStateEntries(unit);
+    const outgoingDamageMultiplier = states.reduce((multiplier, [, state]) => {
+      const combatEffect = state?.战斗效果 || {};
+      return multiplier *
+        Math.max(0, Number(combatEffect?.final_damage_mult ?? 1)) *
+        Math.max(
+          0,
+          1 + Number(
+            combatEffect?.damage_bonus ||
+            combatEffect?.final_damage_bonus ||
+            0,
+          ),
+        );
+    }, 1);
+    const incomingDamageMultiplier = states.reduce((multiplier, [, state]) => {
+      const combatEffect = state?.战斗效果 || {};
+      return multiplier *
+        Math.max(0, Number(combatEffect?.received_damage_mult ?? 1)) *
+        Math.max(
+          0,
+          1 - clamp(Number(combatEffect?.damage_reduction || 0), 0, 1),
+        );
+    }, 1);
+    const outgoingHitAdjustment = states.reduce((sum, [, state]) => {
+      const combatEffect = state?.战斗效果 || {};
+      return sum +
+        Number(combatEffect?.hit_bonus || 0) -
+        Number(combatEffect?.hit_penalty || 0);
+    }, 0);
+    const outgoingArmorPenRatio = clamp(
+      states.reduce((sum, [, state]) =>
+        sum + Math.max(0, Number(state?.战斗效果?.armor_pen || 0)),
+      0),
+      0,
+      1,
+    );
+    const incomingAvoidanceAdjustment = states.reduce((sum, [, state]) => {
+      const combatEffect = state?.战斗效果 || {};
+      return sum +
+        Number(combatEffect?.dodge_bonus || 0) -
+        Math.max(
+          Number(combatEffect?.dodge_penalty || 0),
+          Number(combatEffect?.lock_level || 0),
+        );
+    }, 0);
+    return Object.freeze({
+      unit,
+      id: unitId(unit),
+      side,
+      physicallyAlive: isPhysicallyAlive(unit),
+      battleCapable: isBattleCapable(unit),
+      hasPendingGrantedEffects: states.some(([, state]) =>
+        /下次行动/.test(String(state?.授予触发条件 || '').trim()) &&
+        Array.isArray(state?.授予效果) &&
+        state.授予效果.length > 0
+      ),
+      stats: Object.freeze({
+        str: readCombatStat(unit, 'str'),
+        def: readCombatStat(unit, 'def'),
+        agi: readCombatStat(unit, 'agi'),
+        men: readCombatStat(unit, 'men'),
+      }),
+      resourceMax: Object.freeze({
+        魂力: readResourceMax(unit, '魂力'),
+        精神力: readResourceMax(unit, '精神力'),
+      }),
+      outgoingDamageMultiplier,
+      incomingDamageMultiplier,
+      outgoingHitAdjustment,
+      outgoingArmorPenRatio,
+      incomingAvoidanceAdjustment,
+    });
+  }
+
+  function buildMechanicalProjectionContextEntries(
+    worldSnapshot = {},
+    baseContext = null,
+    changedUnitIds = new Set(),
+  ) {
     const entries = listUnits(worldSnapshot);
-    const unitById = new Map();
-    const profileById = new Map();
-    const projectedEntries = entries.map(entry => {
+    const baseEntryById = new Map(
+      (baseContext?.entries || []).map(entry => [unitId(entry?.unit), entry]),
+    );
+    const changed = new Set(
+      [...(changedUnitIds || [])]
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+    );
+    return entries.map(entry => {
       const unit = entry.unit;
       const id = unitId(unit);
-      const states = collectStateEntries(unit);
-      const outgoingDamageMultiplier = states.reduce((multiplier, [, state]) => {
-        const combatEffect = state?.战斗效果 || {};
-        return multiplier *
-          Math.max(0, Number(combatEffect?.final_damage_mult ?? 1)) *
-          Math.max(
-            0,
-            1 + Number(
-              combatEffect?.damage_bonus ||
-              combatEffect?.final_damage_bonus ||
-              0,
-            ),
-          );
-      }, 1);
-      const incomingDamageMultiplier = states.reduce((multiplier, [, state]) => {
-        const combatEffect = state?.战斗效果 || {};
-        return multiplier *
-          Math.max(0, Number(combatEffect?.received_damage_mult ?? 1)) *
-          Math.max(
-            0,
-            1 - clamp(Number(combatEffect?.damage_reduction || 0), 0, 1),
-          );
-      }, 1);
-      const outgoingHitAdjustment = states.reduce((sum, [, state]) => {
-        const combatEffect = state?.战斗效果 || {};
-        return sum +
-          Number(combatEffect?.hit_bonus || 0) -
-          Number(combatEffect?.hit_penalty || 0);
-      }, 0);
-      const outgoingArmorPenRatio = clamp(
-        states.reduce((sum, [, state]) =>
-          sum + Math.max(0, Number(state?.战斗效果?.armor_pen || 0)),
-        0),
-        0,
-        1,
-      );
-      const incomingAvoidanceAdjustment = states.reduce((sum, [, state]) => {
-        const combatEffect = state?.战斗效果 || {};
-        return sum +
-          Number(combatEffect?.dodge_bonus || 0) -
-          Math.max(
-            Number(combatEffect?.dodge_penalty || 0),
-            Number(combatEffect?.lock_level || 0),
-          );
-      }, 0);
-      const profile = Object.freeze({
+      const baseEntry = baseEntryById.get(id);
+      if (
+        baseEntry &&
+        !changed.has(id) &&
+        baseEntry.side === entry.side
+      ) {
+        return baseEntry;
+      }
+      return Object.freeze({
         unit,
-        id,
         side: entry.side,
-        physicallyAlive: isPhysicallyAlive(unit),
-        battleCapable: isBattleCapable(unit),
-        hasPendingGrantedEffects: states.some(([, state]) =>
-          /下次行动/.test(String(state?.授予触发条件 || '').trim()) &&
-          Array.isArray(state?.授予效果) &&
-          state.授予效果.length > 0
-        ),
-        stats: Object.freeze({
-          str: readCombatStat(unit, 'str'),
-          def: readCombatStat(unit, 'def'),
-          agi: readCombatStat(unit, 'agi'),
-          men: readCombatStat(unit, 'men'),
-        }),
-        resourceMax: Object.freeze({
-          魂力: readResourceMax(unit, '魂力'),
-          精神力: readResourceMax(unit, '精神力'),
-        }),
-        outgoingDamageMultiplier,
-        incomingDamageMultiplier,
-        outgoingHitAdjustment,
-        outgoingArmorPenRatio,
-        incomingAvoidanceAdjustment,
+        profile: buildMechanicalProjectionProfile(unit, entry.side),
       });
+    });
+  }
+
+  function buildMechanicalProjectionContext(
+    worldSnapshot = {},
+    baseContext = null,
+    changedUnitIds = new Set(),
+  ) {
+    const projectedEntries = buildMechanicalProjectionContextEntries(
+      worldSnapshot,
+      baseContext,
+      changedUnitIds,
+    );
+    const unitById = new Map();
+    const profileById = new Map();
+    projectedEntries.forEach(entry => {
+      const unit = entry.unit;
+      const id = unitId(unit);
       unitById.set(id, unit);
       const name = unitName(unit);
       if (name && !unitById.has(name)) unitById.set(name, unit);
-      profileById.set(id, profile);
-      return Object.freeze({ unit, side: entry.side, profile });
+      profileById.set(id, entry.profile);
     });
     return Object.freeze({
       schemaVersion: 'MechanicalProjectionContextV1',
@@ -689,6 +761,31 @@
       unitById,
       profileById,
     });
+  }
+
+  function compileMechanicalProjectionContext(worldSnapshot = {}) {
+    return buildMechanicalProjectionContext(worldSnapshot);
+  }
+
+  function deriveMechanicalProjectionContext(
+    baseContext = null,
+    worldSnapshot = {},
+    changedUnitIds = [],
+  ) {
+    if (
+      !baseContext ||
+      baseContext.schemaVersion !== 'MechanicalProjectionContextV1' ||
+      !baseContext.worldSnapshot ||
+      !worldSnapshot ||
+      typeof worldSnapshot !== 'object'
+    ) {
+      return compileMechanicalProjectionContext(worldSnapshot);
+    }
+    return buildMechanicalProjectionContext(
+      worldSnapshot,
+      baseContext,
+      changedUnitIds,
+    );
   }
 
   function mechanicalProjectionProfile(context, unit = {}) {
@@ -939,11 +1036,18 @@
         : {};
       for (const participant of [actor, ...partners]) {
         for (const [resource, rawCost] of Object.entries(resourceCosts)) {
-          const maximum = readResourceMax(participant, resource);
+          const maximum = withPreviewDependencyRole(
+            'PAYMENT_AFFORDABILITY',
+            () => readResourceMax(participant, resource),
+          );
           const text = String(rawCost ?? '').trim();
           const numeric = Math.max(0, Number.parseFloat(text) || 0);
           const cost = text.includes('%') ? maximum * numeric / 100 : numeric;
-          if (readResource(participant, resource) + 1e-9 < cost) {
+          const available = withPreviewDependencyRole(
+            'PAYMENT_AFFORDABILITY',
+            () => readResource(participant, resource),
+          );
+          if (available + 1e-9 < cost) {
             return Object.freeze({
               required: true,
               valid: false,
@@ -6076,7 +6180,9 @@
       declaration?.irreversibleAsset &&
       typeof declaration.irreversibleAsset === 'object'
     ) {
-      unsupportedReasons.push('IRREVERSIBLE_ASSET');
+      // Inventory consumption changes the projected unit and must be evaluated
+      // through the sequential overlay, just like a formal resource payment.
+      requiresSequentialProjection = true;
     }
     const targetIds = Object.freeze(
       (Array.isArray(declaration?.targetIds)
@@ -6120,6 +6226,12 @@
       fusionKey: String(declaration?.fusionKey || '').trim(),
       fusionParticipantIds,
       fusionPartnerIds,
+      irreversibleAsset:
+        declaration?.irreversibleAsset &&
+        typeof declaration.irreversibleAsset === 'object'
+          ? Object.freeze(cloneValue(declaration.irreversibleAsset))
+          : null,
+      __skipInventoryConsume: declaration?.__skipInventoryConsume === true,
       skill: Object.freeze({
         ...(
           declaration?.skill &&
@@ -6256,6 +6368,19 @@
         value,
       );
     };
+    const irreversibleAssetOutcome =
+      buildMechanicalIrreversibleAssetOutcome(
+        actor,
+        basis.declaration,
+        rootActionId,
+      );
+    if (irreversibleAssetOutcome) {
+      addContribution(
+        irreversibleAssetOutcome.effectInstanceId,
+        irreversibleAssetOutcome,
+      );
+      changedUnitIds.add(unitId(actor));
+    }
     if (basis.paymentMode === 'FORMAL') {
       Object.entries(basis.declaration.resourceCosts || {})
         .forEach(([resource, rawCost]) => {
@@ -6269,11 +6394,17 @@
             Number(actorProfile?.resourceMax?.[resource]),
           )
             ? Number(actorProfile.resourceMax[resource])
-            : readResourceMax(actor, resource);
+            : withPreviewDependencyRole(
+                'PAYMENT_AFFORDABILITY',
+                () => readResourceMax(actor, resource),
+              );
           const cost = costText.includes('%')
             ? maximum * numericCost / 100
             : numericCost;
-          const before = readProjectedResource(actor, resource);
+          const before = withPreviewDependencyRole(
+            'PAYMENT_AFFORDABILITY',
+            () => readProjectedResource(actor, resource),
+          );
           if (before + 1e-9 < cost) {
             throw new Error(
               `battle_preview_resource_insufficient:${resource}`,
@@ -6941,6 +7072,57 @@
     );
     const ledger = new ContributionLedger();
     const changedUnitIds = new Set();
+    const irreversibleAssetOutcome =
+      buildMechanicalIrreversibleAssetOutcome(
+        actor,
+        basis.declaration,
+        rootActionId,
+      );
+    if (irreversibleAssetOutcome) {
+      ledger.addOutcome({
+        rootActionId,
+        sourceActionId: rootActionId,
+        actor,
+        declaration: basis.declaration,
+        ...irreversibleAssetOutcome,
+      });
+      if (
+        String(basis.declaration?.actionKind || '').trim().toUpperCase() ===
+          'USE_ITEM' &&
+        basis.declaration?.__skipInventoryConsume !== true
+      ) {
+        overlay.changeUnit(actorId, unit => {
+          const inventoryItem = findInventoryEntry(
+            unit,
+            basis.declaration,
+          );
+          const quantityBefore = Math.max(
+            0,
+            Number(inventoryItem?.数量 ?? inventoryItem?.quantity ?? 0),
+          );
+          if (!inventoryItem || quantityBefore < 1) {
+            throw new Error(
+              `battle_preview_item_unavailable:${String(
+                basis.declaration?.irreversibleAsset?.assetId ||
+                  basis.declaration?.skill?.name ||
+                  '',
+              ).trim()}`,
+            );
+          }
+          const remainingQuantity = quantityBefore - 1;
+          if (
+            inventoryItem.数量 !== undefined ||
+            inventoryItem.quantity === undefined
+          ) {
+            inventoryItem.数量 = remainingQuantity;
+          }
+          if (inventoryItem.quantity !== undefined) {
+            inventoryItem.quantity = remainingQuantity;
+          }
+        });
+      }
+      changedUnitIds.add(actorId);
+    }
     if (basis.paymentMode === 'FORMAL') {
       const paymentPayerIds = (
         Array.isArray(basis.declaration?.fusionParticipantIds) &&
@@ -6967,9 +7149,15 @@
             if (!(numericCost > 1e-9)) return;
             const currentPayer = overlay.readUnit(payerId) || payer;
             const cost = costText.includes('%')
-              ? readResourceMax(currentPayer, resource) * numericCost / 100
+              ? withPreviewDependencyRole(
+                  'PAYMENT_AFFORDABILITY',
+                  () => readResourceMax(currentPayer, resource),
+                ) * numericCost / 100
               : numericCost;
-            const before = readResource(currentPayer, resource);
+            const before = withPreviewDependencyRole(
+              'PAYMENT_AFFORDABILITY',
+              () => readResource(currentPayer, resource),
+            );
             if (before + 1e-9 < cost) {
               throw new Error(
                 `battle_preview_resource_insufficient:${resource}`,
@@ -7544,6 +7732,41 @@
     return found;
   }
 
+  function buildMechanicalIrreversibleAssetOutcome(
+    actor = {},
+    declaration = {},
+    rootActionId = '',
+  ) {
+    const asset = declaration?.irreversibleAsset;
+    if (!asset || typeof asset !== 'object') return null;
+    if (
+      String(declaration?.actionKind || '').trim().toUpperCase() ===
+        'USE_ITEM' &&
+      declaration?.__skipInventoryConsume !== true
+    ) {
+      const inventoryItem = findInventoryEntry(actor, declaration);
+      const quantityBefore = Math.max(
+        0,
+        Number(inventoryItem?.数量 ?? inventoryItem?.quantity ?? 0),
+      );
+      if (!inventoryItem || quantityBefore < 1) {
+        throw new Error(
+          `battle_preview_item_unavailable:${String(
+            asset?.assetId || declaration?.skill?.name || '',
+          ).trim()}`,
+        );
+      }
+    }
+    return Object.freeze({
+      effectInstanceId: `${String(rootActionId || '').trim()}:asset`,
+      targetId: unitId(actor),
+      windowId: 'ACTION_COST',
+      outcomeKind: 'IRREVERSIBLE_ASSET_LOST',
+      threatValue: Math.max(0, Number(asset.cost || 0)),
+      evidence: cloneValue(asset),
+    });
+  }
+
   function previewCreationCarrier(effect, overlay, ledger, context) {
     const useEffects = Array.isArray(effect?.使用效果) ? effect.使用效果 : [];
     if (!useEffects.length) throw new Error('battle_preview_creation_effects_missing');
@@ -7627,7 +7850,12 @@
     if (input?.captureDependencyKeys !== true) {
       return evaluateMechanicalBasisImpl(input);
     }
-    const dependencyCapture = { reads: new Map(), recorder: null };
+    const dependencyCapture = {
+      reads: new Map(),
+      recorder: null,
+      dependencyRoles: new Map(),
+      roleStack: [],
+    };
     dependencyCaptureStack.push(dependencyCapture);
     try {
       const result = evaluateMechanicalBasisImpl(input);
@@ -7641,6 +7869,18 @@
           [...dependencyCapture.reads.entries()].map(([key, value]) =>
             Object.freeze([key, cloneValue(value)])
           ),
+        ),
+      });
+      Object.defineProperty(withDependencies, 'dependencyRoles', {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: Object.freeze(
+          [...dependencyCapture.dependencyRoles.entries()]
+            .map(([key, roles]) => Object.freeze([
+              key,
+              Object.freeze([...roles].sort()),
+            ])),
         ),
       });
       return Object.freeze(withDependencies);
@@ -7711,6 +7951,8 @@
     const dependencyCapture = {
       recorder: input?.dependencyRecorder,
       reads: new Map(),
+      dependencyRoles: new Map(),
+      roleStack: [],
     };
     dependencyCaptureStack.push(dependencyCapture);
     try {
@@ -7744,7 +7986,19 @@
       // 决策18 达 4.6 万条，值含 afterSnapshot 整世界 ≈ 40MB/决策滞留）。
       previewCache.delete(cacheKey);
       previewCache.set(cacheKey, cached);
+      const cachedRoles = new Map(
+        Array.isArray(cached?.dependencyRoles)
+          ? cached.dependencyRoles
+          : [],
+      );
       (cached?.dependencyReads || []).forEach(([key, value]) => {
+        const roles = cachedRoles.get(key);
+        if (Array.isArray(roles) && roles.length) {
+          roles.forEach(role =>
+            recordPreviewDependency(key, value, role)
+          );
+          return;
+        }
         recordPreviewDependency(key, value);
       });
       return cached;
@@ -7803,9 +8057,15 @@
           if (!(numericCost > 1e-9)) return;
           const currentPayer = overlay.readUnit(unitId(payer));
           const cost = costText.includes('%')
-            ? readResourceMax(currentPayer, resource) * numericCost / 100
+            ? withPreviewDependencyRole(
+                'PAYMENT_AFFORDABILITY',
+                () => readResourceMax(currentPayer, resource),
+              ) * numericCost / 100
             : numericCost;
-          const before = readResource(currentPayer, resource);
+          const before = withPreviewDependencyRole(
+            'PAYMENT_AFFORDABILITY',
+            () => readResource(currentPayer, resource),
+          );
           if (before + 1e-9 < cost) throw new Error(`battle_preview_resource_insufficient:${resource}`);
           overlay.changeUnit(unitId(payer), unit => setResourceValue(unit, resource, before - cost));
           ledger.addOutcome({
@@ -8198,6 +8458,18 @@
       value: Object.freeze([...dependencyCapture.reads.entries()].map(([key, value]) =>
         Object.freeze([key, cloneValue(value)])
       )),
+    });
+    Object.defineProperty(resultValue, 'dependencyRoles', {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: Object.freeze(
+        [...dependencyCapture.dependencyRoles.entries()]
+          .map(([key, roles]) => Object.freeze([
+            key,
+            Object.freeze([...roles].sort()),
+          ])),
+      ),
     });
     Object.defineProperty(resultValue, 'operationGraph', {
       configurable: false,
@@ -10254,6 +10526,7 @@
     calculateDodgeProbability,
     compileMechanicalBasis,
     compileMechanicalProjectionContext,
+    deriveMechanicalProjectionContext,
     evaluateMechanicalBasis,
     deriveStateCombatEffect,
     skillMatchesLimitedElements,
