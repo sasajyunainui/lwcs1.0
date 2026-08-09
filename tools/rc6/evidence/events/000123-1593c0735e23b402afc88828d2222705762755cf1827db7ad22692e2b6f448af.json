@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 123,
+  "previousEventHash": "e1c671f65c0d82031a0db2668a2a73950cce0985abaf9dbb92b4cd129762d427",
+  "milestoneId": "M3",
+  "taskId": "M3-B02",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m3-b01-target-behavior.mjs": "c2e94e5509ce5af39a87c5a8fa28993f1848aa764d1e0b2c1a3d3f3540bf622f"
+  },
+  "fixtureHashes": {
+    "tools/battle_r63_manual_cases.mjs": "a0aab43948c1aa356cb35d03944a2768c338a63f4a0b9225e50fc8fbb63d44e3"
+  },
+  "acceptedObjectHashes": [
+    "930021cee6c7cc0705970da68025ee88b5d4315fcaa76520c6910bc8edd243c0"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "observationCount": 14,
+    "humanVerdictStatus": "NOT_FILLED",
+    "reportOnlyFindings": 5,
+    "evidenceGaps": 2,
+    "naturalnessAssessment": "NOT_ASSESSED",
+    "nextExitCondition": "Read agent digests and close M3-B02 classification without prefilled naturalness verdicts",
+    "formalProviderChanged": false,
+    "performanceDebt": "K13_DEFERRED_TO_M5"
+  },
+  "reason": "M3-B02 current-hash PLAYER-first fact capture recorded: 14 observations, report-only structure findings separated from behavior naturalness, and no human verdict prefilled.",
+  "recordedAt": "2026-08-09T03:37:19.657Z",
+  "repository": {
+    "branch": "master",
+    "head": "a33c032cea70ce697d676802ce2edac56dedc933"
+  },
+  "eventHash": "1593c0735e23b402afc88828d2222705762755cf1827db7ad22692e2b6f448af"
+}

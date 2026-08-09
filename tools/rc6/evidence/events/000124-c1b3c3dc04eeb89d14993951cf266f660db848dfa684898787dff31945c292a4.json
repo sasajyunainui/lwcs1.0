@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 124,
+  "previousEventHash": "1593c0735e23b402afc88828d2222705762755cf1827db7ad22692e2b6f448af",
+  "milestoneId": "M3",
+  "taskId": "M3-B04",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m3-b04-checkpoint.mjs": "6e435a9040b74e94c3e677fee4262c7fe7c4463a307cfce2b7f93deca84aa978",
+    "tools/rc6/harness/run-m3-b04-r9v2-path-coverage.mjs": "6d578a3e772e64b750ac3ef43071bb6d52dfafe7f10743ca67e573df1c158c73",
+    "tools/rc6/harness/run-m2-k02-k03.mjs": "217274e94d3650c6b04e332cbb6c72447509d531750d4e1c129e22ded9bb64ac"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/BehaviorOracleV2IndexV1.json": "2cc4fd1da931d91ec97d2bd36735e37c68b9a98ac9559fca112489a67ea5c343",
+    "tools/rc6/cases/BattleMechanismPrototypeScopeV1.json": "67b80a4f73093dce565f87ab9ea7e939808491f38e4ad373bcbb0b2c3e579aa1"
+  },
+  "acceptedObjectHashes": [
+    "62d647e9bca583e8c403829e8a5abddb966019f3686e104322e1d2a1950b4065"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "behaviorOracle": "54/54",
+    "referenceCases": "20/20",
+    "prototypePaths": "23/23 and 621/621",
+    "targetBehaviorScope": "6 foreground transactions + 2 single-round transactions + 5 frozen opportunities",
+    "hiddenBelief": "current-hash rejection and observer isolation passed",
+    "naturalnessAssessment": "NOT_ASSESSED",
+    "performanceDebt": "K13_DEFERRED_TO_M5",
+    "nextExitCondition": "Complete B02 agent digests and resolve only confirmed mechanical/report classifications"
+  },
+  "reason": "M3-B04 current target checkpoint passed under v27 scope; 54 Oracle smoke, 20 Reference, 23 prototypes/621 paths and current hidden-belief checks are closed without running full five-round 7v7.",
+  "recordedAt": "2026-08-09T03:40:57.282Z",
+  "repository": {
+    "branch": "master",
+    "head": "a33c032cea70ce697d676802ce2edac56dedc933"
+  },
+  "eventHash": "c1b3c3dc04eeb89d14993951cf266f660db848dfa684898787dff31945c292a4"
+}

@@ -10,7 +10,9 @@ import {
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const harnessPath = fileURLToPath(import.meta.url);
 const scopePath = path.join(repoRoot, 'tools', 'rc6', 'cases', 'BattleMechanismPrototypeScopeV1.json');
-const evidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm3', 'm3-b04-r9v2-path-coverage.json');
+const evidencePath = process.env.RC6_EVIDENCE_PATH
+  ? path.resolve(repoRoot, process.env.RC6_EVIDENCE_PATH)
+  : path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm3', 'm3-b04-r9v2-path-coverage.json');
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 const hashJson = value => sha256(JSON.stringify(value));
 const read = relativePath => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');

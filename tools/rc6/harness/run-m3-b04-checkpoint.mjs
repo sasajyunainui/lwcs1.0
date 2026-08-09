@@ -5,10 +5,15 @@ import { fileURLToPath } from 'node:url';
 import { assertRawCase } from '../reference/reference-value-evaluator-v2.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const evidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm3', 'm3-b04-checkpoint.json');
+const evidencePath = process.env.RC6_EVIDENCE_PATH
+  ? path.resolve(repoRoot, process.env.RC6_EVIDENCE_PATH)
+  : path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm3', 'm3-b04-checkpoint.json');
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
-const readJson = relativePath => JSON.parse(fs.readFileSync(path.join(repoRoot, relativePath), 'utf8'));
-const hashFile = relativePath => sha256(fs.readFileSync(path.join(repoRoot, relativePath)));
+const resolvePath = relativePath => path.isAbsolute(relativePath)
+  ? relativePath
+  : path.join(repoRoot, relativePath);
+const readJson = relativePath => JSON.parse(fs.readFileSync(resolvePath(relativePath), 'utf8'));
+const hashFile = relativePath => sha256(fs.readFileSync(resolvePath(relativePath)));
 const existingPathFixtureCandidates = [
   'tools/rc6/cases/BehaviorPathIndexV1.json',
   'tools/rc6/cases/BehaviorPathManifestV1.json',
@@ -19,8 +24,14 @@ const contract = readJson('tools/rc6/contracts/BehaviorPlanningContractV1.json')
 const components = readJson('tools/rc6/contracts/KernelComponentRegistryV1.json');
 const cases = readJson('tools/rc6/cases/KernelReferenceCasesV1.json');
 const oracleIndex = readJson('tools/rc6/cases/BehaviorOracleV2IndexV1.json');
-const b01 = readJson('tools/rc6/evidence/m3/b01-target-behavior-v3.json');
-const targetPathCoverageEvidencePath = 'tools/rc6/evidence/m3/m3-b04-r9v2-path-coverage.json';
+const transactionEvidencePath = process.env.RC6_B01_TRANSACTION_PATH ||
+  'artifacts/rc6/m3/20260809/m3-b01-transactions-20260809.json';
+const opportunityEvidencePath = process.env.RC6_B01_OPPORTUNITY_PATH ||
+  'artifacts/rc6/m3/20260809/m3-b01-frozen-opportunities-20260809.json';
+const transactions = readJson(transactionEvidencePath);
+const opportunities = readJson(opportunityEvidencePath);
+const targetPathCoverageEvidencePath = process.env.RC6_PATH_COVERAGE_PATH ||
+  'artifacts/rc6/m3/20260809/m3-b04-r9v2-path-coverage-20260809.json';
 
 const referenceResults = [];
 const referenceFailures = [];
@@ -120,16 +131,22 @@ const pathCoverage = {
   searched: targetPathCoverage ? undefined : [targetPathCoverageEvidencePath, ...existingPathFixtureCandidates],
 };
 
-const targetRows = Array.isArray(b01.rows) ? b01.rows : [];
+const targetRows = Array.isArray(transactions.rows) ? transactions.rows : [];
 const completedTargetRows = targetRows.filter(row => row.status === 'COMPLETED');
-const sevenVsSevenRows = completedTargetRows.filter(row =>
-  String(row.caseId || '').startsWith('raid_'),
-);
+const singleRoundCaseIds = new Set(transactions.singleRoundCaseIds || []);
+const foregroundRows = completedTargetRows.filter(row => !singleRoundCaseIds.has(row.caseId));
+const singleRoundRows = completedTargetRows.filter(row => singleRoundCaseIds.has(row.caseId));
+const sevenVsSevenRows = (Array.isArray(opportunities.rows) ? opportunities.rows : [])
+  .filter(row => row.status === 'COMPLETED');
+const targetBehaviorCountsCurrent =
+  foregroundRows.length === 6 &&
+  singleRoundRows.length === 2 &&
+  sevenVsSevenRows.length === 5;
 const output = {
   schemaVersion: 'M3B04CheckpointV1',
   status: referenceFailures.length || oracleFailures.length
     ? 'FAILED_REFERENCE_COVERAGE'
-    : pathCoverage.status === 'AVAILABLE'
+    : pathCoverage.status === 'AVAILABLE' && targetBehaviorCountsCurrent
       ? 'PASSED'
       : 'BLOCKED_INPUT_GAP',
   milestoneId: 'M3',
@@ -147,21 +164,25 @@ const output = {
     referenceFailures,
     componentCount: components.components.length,
     componentExpected: 23,
-    targetFullTransactionCaseCount: completedTargetRows.length,
-    targetFullTransactionExpectedMinimum: 10,
-    requiredSevenVsSevenCompleted: sevenVsSevenRows.length,
-    requiredSevenVsSevenExpected: 5,
+      targetForegroundTransactionCaseCount: foregroundRows.length,
+      targetForegroundTransactionExpected: 6,
+      targetSingleRoundTransactionCaseCount: singleRoundRows.length,
+      targetSingleRoundTransactionExpected: 2,
+      requiredSevenVsSevenCompleted: sevenVsSevenRows.length,
+      requiredSevenVsSevenExpected: 5,
+      targetBehaviorCountsCurrent,
     pathCoverage,
   },
   targetSevenVsSevenEvidence: {
-    file: 'tools/rc6/evidence/m3/b01-target-behavior-v3.json',
-    sourceHash: hashFile('tools/rc6/evidence/m3/b01-target-behavior-v3.json'),
+    file: opportunityEvidencePath,
+    sourceHash: hashFile(opportunityEvidencePath),
     cases: sevenVsSevenRows.map(row => ({
       caseId: row.caseId,
-      rounds: row.rounds,
+      rounds: 'DECISION_ONLY_FROZEN_OPPORTUNITY',
       decisionCount: row.decisionCount,
-      reportProjectionStatus: row.player?.projectionStatus,
-      reportAuditStatus: row.developerReveal?.reportAuditStatus,
+      fatalCount: row.fatalCount,
+      reportProjectionStatus: 'NOT_IN_SCOPE',
+      reportAuditStatus: 'NOT_IN_SCOPE',
     })),
   },
   referenceRows: referenceResults,
