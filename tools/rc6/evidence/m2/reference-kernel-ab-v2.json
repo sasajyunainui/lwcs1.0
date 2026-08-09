@@ -25,7 +25,7 @@
     {
       "caseId": "ref-s1-first-terminal",
       "semanticDomain": "S1",
-      "candidateCount": 2,
+      "candidateCount": 4,
       "paretoCandidateIds": [
         "lethal-first",
         "nonlethal-safe"
@@ -344,8 +344,8 @@
   "referenceEvaluatorIndependent": true,
   "targetProductionAdapterAB": false,
   "productionAdapterABPending": "Run the separate production 2x1v1 + 2x3v3 + 2x7v7 full-field harness after ownership acceptance.",
-  "fixtureHash": "ff5f8274d14243fc9e1d9c0c94df3df0df969782adb027f6e25a12c837a0400a",
-  "referenceHash": "18cc70237d18e4c9da77745ce581b0133c2e34e374413a180c8de004e8a4e470",
+  "fixtureHash": "aac9591365c0cec540173f634f2d6dad1671f2a36ee1aea3966e6fdbbb602ca1",
+  "referenceHash": "b558bf25977463a41724ac4b83588672b0157ca9bf0267d59d4b4522a1cd80d9",
   "kernelHash": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
-  "harnessHash": "464b2a579b0e8e1da932e670f3c125092fe1e0585ace92d93a34ab1e6c514266"
+  "harnessHash": "c1c04401b9a4f022b9b3f631c75c8463740200c44c074d81964329b6abdc0d83"
 }

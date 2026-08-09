@@ -14,16 +14,16 @@
       "caseId": "duel_overmatch_lethal",
       "rounds": 4,
       "actorCount": 2,
-      "totalMs": 120.121,
+      "totalMs": 118.978,
       "stageMs": {
-        "draft": 108.474,
-        "report": 6.859,
-        "audit": 4.657,
-        "seal": 0.092,
-        "verify": 0.029
+        "draft": 107.341,
+        "report": 6.661,
+        "audit": 4.788,
+        "seal": 0.107,
+        "verify": 0.065
       },
-      "draftHash": "r74-bba795c6f540ac93",
-      "reportHash": "r74-37b4a83fa8e877e1",
+      "draftHash": "r74-f48204626b49600d",
+      "reportHash": "r74-4bee43da994d7f28",
       "reportProjectionStatus": "PASSED",
       "targetProvider": "r9v2",
       "formalProviderUsed": "r8_not_used"
@@ -51,8 +51,8 @@
   ],
   "failedCaseIds": [],
   "sourceHashes": {
-    "decision": "d1ca237509b18b2173e3f43941f938b4c50a276b9f9097f4d029b147d73a38b2",
-    "kernel": "4cdfc3a8407ab99dbeabd55306aa3244a43a092c6d8488570e257aa0b19186cc",
+    "decision": "46e8e9d2f54e1676a638b6b0c6df1a301b812932054ffe4a82eb1e6cbc2623e9",
+    "kernel": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
     "runtime": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
     "report": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
     "harness": "2e092db433f75e24947d2e39ed900872d0bac56ae1dcabb4d127aaad50f90a08"

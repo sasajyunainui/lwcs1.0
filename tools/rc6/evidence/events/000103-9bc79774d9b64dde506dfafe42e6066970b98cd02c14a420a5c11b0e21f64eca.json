@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 103,
+  "previousEventHash": "1271e8b7e3e5f55009047693f3eb96b1e59ad12e0558f9ae3687acf032344266",
+  "milestoneId": "M2",
+  "taskId": "M2-K02-K03",
+  "eventType": "TASK_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "4a610ca8b55f64d26b8ce7ee4f885aebbf6f8ddf0205d57afe4ec8776c959cc0",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k02-k03.mjs": "aa4ffede3c12a72730f84430b2c293f8bc5cbef3449155a0ac323b5fc36f258a"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "aac9591365c0cec540173f634f2d6dad1671f2a36ee1aea3966e6fdbbb602ca1"
+  },
+  "acceptedObjectHashes": [
+    "531bce152701528b6ff66a70956cfb1161018af8c279720ded915f8c1f91342b"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": null,
+    "nextExitCondition": "K04 FactDelta operation and exact invalidation closure on the current M1 contract",
+    "acceptedGate": "K02 20-case MechanicalColumnsV1 field equality and immutability; K03 hidden-field rejection, observer isolation and posterior revision isolation",
+    "directionCorrection": "K13 artifacts generated after event 102 remain diagnostic-only and do not consume the formal attempt budget before K02-K12 close",
+    "formalProviderChanged": false,
+    "registryChanged": false
+  },
+  "reason": "M2 direction corrected to the event-chain critical path; K02 mechanical columns and K03 public belief overlay passed on 20 current-contract reference cases",
+  "recordedAt": "2026-08-07T02:27:14.137Z",
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "eventHash": "9bc79774d9b64dde506dfafe42e6066970b98cd02c14a420a5c11b0e21f64eca"
+}

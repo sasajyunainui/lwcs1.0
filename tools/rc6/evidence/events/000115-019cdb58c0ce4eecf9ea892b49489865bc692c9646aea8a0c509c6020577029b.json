@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 115,
+  "previousEventHash": "735bf17b71a8a3bf75b7373c549834464f025db75e6f46af6b28a2d932048d97",
+  "milestoneId": "M2",
+  "taskId": "M2-K10",
+  "eventType": "TASK_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "3b507d01a96d8c436b8de9bef3726c6c7869c97be9f58ce77f44e31b8387ba53",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-target-path-audit.mjs": "f783107a0864e9685de0705737716f651f61d21b6d5ea8997af6f4fe00833902",
+    "tools/rc6/harness/run-m2-production-reference-ab.mjs": "ae5f79938a5a5564f6d85fb76ea3e84ceaa36b594ad5d080454aa5a3aedb514f"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "45078e75cbb807ae6a93ac89f8a13e2d33ccdbff5970a5392f88e9f1f9386bd9",
+    "98b03ec41b4dffa3bd7c3e5357972efab23363164842585b85e749ce83560f4e"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": null,
+    "nextExitCondition": "M2-K11 DecisionAuditV2 required-subset closure",
+    "acceptedGate": "Selected candidate and actual alternatives materialize complete Proof; full target Runtime path reports zero Fatal",
+    "formalProviderChanged": false,
+    "registryChanged": false,
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "M2-K10 passed: on-demand Proof materialization is closed for selected and actual alternative candidates in the full target-provider path and production A/B.",
+  "recordedAt": "2026-08-08T04:02:10.671Z",
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "eventHash": "019cdb58c0ce4eecf9ea892b49489865bc692c9646aea8a0c509c6020577029b"
+}

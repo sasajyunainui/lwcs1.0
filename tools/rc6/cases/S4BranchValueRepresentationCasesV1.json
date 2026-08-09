@@ -1,0 +1,163 @@
+{
+  "schemaVersion": "S4BranchValueRepresentationCasesV1",
+  "cases": [
+    {
+      "caseId": "any_threshold",
+      "objective": {
+        "mode": "ANY",
+        "targets": {
+          "alpha": { "progress": 20, "threshold": 50 },
+          "beta": { "progress": 0, "threshold": 50 }
+        }
+      },
+      "actorResource": 10,
+      "expectedInformationValueHEPP": 0,
+      "rows": [
+        {
+          "candidateId": "route-a",
+          "dependencies": ["alpha"],
+          "resourceCost": 4,
+          "effects": { "alpha": 25 }
+        },
+        {
+          "candidateId": "route-b",
+          "dependencies": ["beta"],
+          "resourceCost": 4,
+          "effects": { "beta": 40 }
+        },
+        {
+          "candidateId": "route-c",
+          "dependencies": ["alpha", "beta"],
+          "resourceCost": 8,
+          "effects": { "alpha": 10, "beta": 10 }
+        }
+      ],
+      "branches": [
+        {
+          "branchId": "success",
+          "probability": 0.6,
+          "changedUnitIds": [],
+          "world": {
+            "alpha": { "progress": 20, "threshold": 50 },
+            "beta": { "progress": 0, "threshold": 50 }
+          }
+        },
+        {
+          "branchId": "failure",
+          "probability": 0.4,
+          "changedUnitIds": ["alpha"],
+          "world": {
+            "alpha": { "progress": 35, "threshold": 50 },
+            "beta": { "progress": 0, "threshold": 50 }
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "all_threshold",
+      "objective": {
+        "mode": "ALL",
+        "targets": {
+          "alpha": { "progress": 20, "threshold": 50 },
+          "beta": { "progress": 10, "threshold": 50 }
+        }
+      },
+      "actorResource": 10,
+      "expectedInformationValueHEPP": 0,
+      "rows": [
+        {
+          "candidateId": "route-a",
+          "dependencies": ["alpha"],
+          "resourceCost": 4,
+          "effects": { "alpha": 25 }
+        },
+        {
+          "candidateId": "route-b",
+          "dependencies": ["beta"],
+          "resourceCost": 4,
+          "effects": { "beta": 35 }
+        },
+        {
+          "candidateId": "route-c",
+          "dependencies": ["alpha", "beta"],
+          "resourceCost": 8,
+          "effects": { "alpha": 20, "beta": 20 }
+        }
+      ],
+      "branches": [
+        {
+          "branchId": "success",
+          "probability": 0.5,
+          "changedUnitIds": [],
+          "world": {
+            "alpha": { "progress": 20, "threshold": 50 },
+            "beta": { "progress": 10, "threshold": 50 }
+          }
+        },
+        {
+          "branchId": "failure",
+          "probability": 0.5,
+          "changedUnitIds": ["beta"],
+          "world": {
+            "alpha": { "progress": 20, "threshold": 50 },
+            "beta": { "progress": 25, "threshold": 50 }
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "route_intersection_and_affordability",
+      "objective": {
+        "mode": "ANY",
+        "targets": {
+          "alpha": { "progress": 0, "threshold": 100 },
+          "beta": { "progress": 0, "threshold": 100 }
+        }
+      },
+      "actorResource": 6,
+      "expectedInformationValueHEPP": 7,
+      "rows": [
+        {
+          "candidateId": "route-a",
+          "dependencies": ["alpha"],
+          "resourceCost": 4,
+          "effects": { "alpha": 10 }
+        },
+        {
+          "candidateId": "route-b",
+          "dependencies": ["beta"],
+          "resourceCost": 6,
+          "effects": { "beta": 20 }
+        },
+        {
+          "candidateId": "route-c",
+          "dependencies": ["alpha", "beta"],
+          "resourceCost": 8,
+          "effects": { "alpha": 50, "beta": 50 }
+        }
+      ],
+      "branches": [
+        {
+          "branchId": "known-alpha",
+          "probability": 0.7,
+          "changedUnitIds": ["alpha"],
+          "actorResource": 6,
+          "world": {
+            "alpha": { "progress": 40, "threshold": 100 },
+            "beta": { "progress": 0, "threshold": 100 }
+          }
+        },
+        {
+          "branchId": "known-beta",
+          "probability": 0.3,
+          "changedUnitIds": ["beta"],
+          "actorResource": 5,
+          "world": {
+            "alpha": { "progress": 0, "threshold": 100 },
+            "beta": { "progress": 40, "threshold": 100 }
+          }
+        }
+      ]
+    }
+  ]
+}

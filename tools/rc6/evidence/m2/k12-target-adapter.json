@@ -30,13 +30,11 @@
     {
       "caseId": "team_focus_without_overkill",
       "candidateCount": 10,
-      "selectedCandidateId": "唐舞麟:DEFEND",
+      "selectedCandidateId": "唐舞麟:skill:蓝银突刺阵:0",
       "requiredProofCandidateIds": [
-        "唐舞麟:DEFEND",
-        "唐舞麟:EVADE",
-        "唐舞麟:PASS_OPPORTUNITY"
+        "唐舞麟:skill:蓝银突刺阵:0"
       ],
-      "nonRequiredVectorCount": 7,
+      "nonRequiredVectorCount": 9,
       "unsupportedCandidateCount": 0,
       "slice": "TARGET_KERNEL_V2"
     },
@@ -57,7 +55,7 @@
   "targetKernelUsed": true,
   "fieldLevelReferenceAB": true,
   "productionReferenceABStatus": "PASSED",
-  "productionReferenceABHash": "ecce248c43b07f33d805e3f55511addf5c8dd5c1ba1809f1d4daf43666e053ac",
+  "productionReferenceABHash": "98b03ec41b4dffa3bd7c3e5357972efab23363164842585b85e749ce83560f4e",
   "rawInputComputedFieldLeakCount": 0,
   "targetAdapterSourceGuard": true,
   "targetBranchSourceGuard": true,
@@ -66,6 +64,6 @@
   "legacyComponentReachabilityClosed": true,
   "legacyComponentCalls": [],
   "harnessHash": "b0507a6652f8a5cd22cd4782ca5963928840030c42d9361c299ac8fbcd1c4aaf",
-  "decisionHash": "dad0fc24d7f39c3011d74141eb0032342b77832ca5dcd54de9667ace8bf83fdb",
+  "decisionHash": "3b507d01a96d8c436b8de9bef3726c6c7869c97be9f58ce77f44e31b8387ba53",
   "kernelHash": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9"
 }

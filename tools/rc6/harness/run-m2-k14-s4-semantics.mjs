@@ -8,6 +8,7 @@ import {
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const casesPath = path.join(repoRoot, 'tools', 'rc6', 'cases', 'S4TargetSemanticProbesV1.json');
+const registryPath = path.join(repoRoot, 'tools', 'rc6', 'contracts', 'KernelComponentRegistryV1.json');
 const kernelPath = path.join(repoRoot, 'BattleDecisionR9v2Kernel_Module.js');
 const referencePath = path.join(repoRoot, 'tools', 'rc6', 'reference', 'reference-value-evaluator-v2.mjs');
 const evidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm2', 's4-target-semantics.json');
@@ -25,6 +26,9 @@ const OWNER_BY_COMPONENT = Object.freeze({
   S5_CREATION_CONSUMER: 'ACTION_POOL_DELTA',
   S5_SUMMON_WINDOW: 'ACTION_POOL_DELTA',
 });
+const componentDefinitions = JSON.parse(
+  fs.readFileSync(registryPath, 'utf8'),
+).components.map(definition => ({ ...definition, requires: [] }));
 
 const rawFactValue = fact => {
   if (fact.formula === 'CONSTANT_HEPP') return Number(fact.amountHEPP);
@@ -68,30 +72,30 @@ for (const probe of fixture.probes) {
     `S4_PROBE_REFERENCE_EXPECTATION_MISMATCH:${probe.probeId}`,
   );
   const registry = {
-    canApplyFactDelta: () => false,
-    evaluateCandidate: ({ candidate: rawCandidate }) => ({
-      candidateId: rawCandidate.candidateId,
-      componentFacts: rawCandidate.rawInput.rawFacts.map((fact, index) => ({
-        componentCode: fact.componentCode,
-        causalOwnerType: OWNER_BY_COMPONENT[fact.componentCode],
-        valueHEPP: rawFactValue(fact),
-        sourceEventId: fact.sourceEventId || `${rawCandidate.candidateId}:event:${index}`,
-        sourceFactId: fact.sourceFactId || `${rawCandidate.candidateId}:fact:${index}`,
-        targetUnitId: fact.targetUnitId || rawCandidate.actorId,
-        sequence: fact.sequence ?? index,
-      })),
-      informationComponents: clone(rawCandidate.rawInput.informationComponents || []),
-      paretoComponents: [
-        { dimensionCode: 'worstTailUtilityHEPP', value: 0 },
-        { dimensionCode: 'survivalUtilityHEPP', value: 0 },
-        { dimensionCode: 'assetReserveHEPP', value: 0 },
-        { dimensionCode: 'discardedOverkillPP', value: 0 },
-      ],
-      valueSource: 'S4_TARGET_SEMANTIC_PROBE',
-      mechanicalSource: 'S4_TARGET_SEMANTIC_PROBE_RAW',
-      legal: rawCandidate.legal !== false,
-      hardExclusionCodes: clone(rawCandidate.hardExclusionCodes || []),
-    }),
+    schemaVersion: 'KernelComponentRegistryRuntimeV1',
+    componentDefinitions,
+    componentCodesForFactDelta: () => [],
+    evaluateComponents: ({ candidate: rawCandidate, componentCodes }) => {
+      const components = Object.fromEntries(componentCodes.map(componentCode => [
+        componentCode,
+        {
+          facts: [],
+          informationComponents: componentCode === 'information_observation'
+            ? clone(rawCandidate.rawInput.informationComponents || [])
+            : [],
+          paretoComponents: componentCode === 'pareto_selection'
+            ? [
+                { dimensionCode: 'worstTailUtilityHEPP', value: 0 },
+                { dimensionCode: 'survivalUtilityHEPP', value: 0 },
+                { dimensionCode: 'assetReserveHEPP', value: 0 },
+                { dimensionCode: 'discardedOverkillPP', value: 0 },
+              ]
+            : [],
+          unsupportedOutcomeKinds: [],
+        },
+      ]));
+      return { candidateId: rawCandidate.candidateId, components };
+    },
   };
   const session = kernel.createSession({
     calculationMode: kernel.rawCalculationMode,

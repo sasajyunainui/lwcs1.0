@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 119,
+  "previousEventHash": "b6b14d46482c12201e2e3195d6b0ad7304a4ea2afae517001d5f7ac4ec810b4b",
+  "milestoneId": "M2",
+  "taskId": "M2-C06",
+  "eventType": "MILESTONE_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "3b507d01a96d8c436b8de9bef3726c6c7869c97be9f58ce77f44e31b8387ba53",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k00-kernel-ownership-gate.mjs": "627bde034dc84065656e1f72f2a9f745c20297bcf557e083fe7cf6c66edecd8e",
+    "tools/rc6/harness/run-m2-k12-target-adapter.mjs": "b0507a6652f8a5cd22cd4782ca5963928840030c42d9361c299ac8fbcd1c4aaf",
+    "tools/rc6/harness/run-m2-small-target-transactions.mjs": "148715315b2dec54cb3873af419ab73d2c3922fb9e4e35fdc975f5b8cc88f716",
+    "tools/rc6/harness/run-m2-target-path-audit.mjs": "f783107a0864e9685de0705737716f651f61d21b6d5ea8997af6f4fe00833902"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "aac9591365c0cec540173f634f2d6dad1671f2a36ee1aea3966e6fdbbb602ca1",
+    "tools/rc6/contracts/R9v2TargetKernelComponentRegistryAdapterV1.json": "cf71f6b4b111204f510b4ce56b01a930a3084520da14fc555121bdd12baedfb0"
+  },
+  "acceptedObjectHashes": [
+    "df22e8f88a75a3d1e469824607085c7216cbfda7caaf79f8106a120c439d50b1",
+    "4dff3cc149f2a4da69cbb47a08e3cc5a2b6e34266a56c9c55d8f4a58d5378127",
+    "531bce152701528b6ff66a70956cfb1161018af8c279720ded915f8c1f91342b",
+    "91cc8cbac64ab213742d3363f8d3ff9b6dc6d458a190053c59e2e4e7f25085ed",
+    "395cbe5f5d0474a73da584fc665e400661d823d2348b44ee0864124d6c59b54b",
+    "2020de4782eb6579dbe9791a4b9d99ba0837d9c8289d60ad7713c3d0faeefd03",
+    "cee40d76a493b484b30714ee540dfeccfd586e66f719469959aaba7aef658cd5",
+    "45078e75cbb807ae6a93ac89f8a13e2d33ccdbff5970a5392f88e9f1f9386bd9",
+    "75815c45b360b698d1c82f93b21a65533eb92dca177172d150f859ff40a6bde4",
+    "4d53d5507503256a2d64e31920790aec2b75c61ca8303550efb5d737ccdb360c",
+    "98b03ec41b4dffa3bd7c3e5357972efab23363164842585b85e749ce83560f4e",
+    "48e061978b229baa2a4aee643b736212c388f9800abf6b252ba12fc73f7bef5d",
+    "dff4c536eb21e477b508f224469d99f22c556e57da5163aa947c4506a6209070",
+    "cf71f6b4b111204f510b4ce56b01a930a3084520da14fc555121bdd12baedfb0"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": null,
+    "nextExitCondition": "M3-B01 current-hash target behavior evidence",
+    "formalProviderChanged": false,
+    "registryChanged": false,
+    "activeAgents": [],
+    "activeProcesses": [],
+    "performanceDebt": "K13_DEFERRED_TO_M5"
+  },
+  "reason": "M2 functional target kernel closure accepted; K13 remains explicit performance debt for M5.",
+  "recordedAt": "2026-08-09T02:52:39.793Z",
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "eventHash": "8f7def644cb481aa722034b7e235e9dda270c8d2ec612653c64e89d03da64a35"
+}

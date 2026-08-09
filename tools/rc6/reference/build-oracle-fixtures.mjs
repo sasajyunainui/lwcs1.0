@@ -88,8 +88,8 @@ const amountFact = (componentCode, amountHEPP, id, sequence = 0, extra = {}) => 
   ...extra,
 });
 
-const healthFact = (deltaHp, maxHp, id, sequence = 0, polarity = 1) => ({
-  componentCode: 'S1_HEALTH',
+const healthFact = (deltaHp, maxHp, id, sequence = 0, polarity = 1, componentCode = 'S1_HEALTH', extra = {}) => ({
+  componentCode,
   formula: 'HEALTH_PP',
   deltaHp,
   maxHp,
@@ -98,7 +98,39 @@ const healthFact = (deltaHp, maxHp, id, sequence = 0, polarity = 1) => ({
   sourceFactId: `${id}:fact:${sequence}`,
   targetUnitId: 'target-1',
   sequence,
+  ...extra,
 });
+
+const routeFact = (componentCode, amountHEPP, id, sequence = 0, extra = {}) => ({
+  componentCode,
+  formula: 'ROUTE_DELTA',
+  beforeRouteHEPP: 0,
+  afterRouteHEPP: amountHEPP,
+  applicationProbability: 1,
+  polarity: 1,
+  sourceEventId: `${id}:event:${sequence}`,
+  sourceFactId: `${id}:fact:${sequence}`,
+  targetUnitId: 'target-1',
+  sequence,
+  ...extra,
+});
+
+const stateComponents = new Set([
+  'S3_BASIC_HIT', 'S3_EVASION', 'S3_DEFENSE', 'S3_HEAL',
+  'S5_DOT', 'S5_HOT', 'S5_DELAYED_EFFECT',
+]);
+const routeComponents = new Set([
+  'S2_ROUTE', 'S3_COUNTER', 'S3_HARD_CONTROL', 'S3_SOFT_CONTROL',
+  'S3_SUPPORT_RESOURCE', 'S5_SUMMON_WINDOW', 'S5_CREATION_CONSUMER',
+  'S5_ITEM', 'S5_EQUIPMENT',
+]);
+const mechanicalFact = (componentCode, amountHEPP, id, sequence = 0, extra = {}) => {
+  if (stateComponents.has(componentCode)) {
+    return healthFact(amountHEPP * 10, 1000, id, sequence, 1, componentCode, extra);
+  }
+  if (routeComponents.has(componentCode)) return routeFact(componentCode, amountHEPP, id, sequence, extra);
+  return amountFact(componentCode, amountHEPP, id, sequence, extra);
+};
 
 const terminalFact = (winProbability, lossProbability, id, sequence = 0) => ({
   componentCode: 'S1_TERMINAL',
@@ -174,7 +206,7 @@ const candidate = ({
   legal,
   hardExclusionCodes,
   actorSide,
-  rawFacts: rawFacts || [amountFact(componentCode, amount, candidateId)],
+  rawFacts: rawFacts || [mechanicalFact(componentCode, amount, candidateId)],
   informationGroups,
   riskInputs: riskInputs(false),
   ...(targetProfiles ? { targetProfiles } : {}),
@@ -191,6 +223,13 @@ const genericTriplet = (concept, domain, componentCode, options = {}) => {
       actionId: `${concept}-${variant}-effect`,
       componentCode,
       amount,
+      rawFacts: extra.subject?.rawFacts || [mechanicalFact(
+        componentCode,
+        amount,
+        subject,
+        0,
+        extra.subject?.factExtra || {},
+      )],
       ...extra.subject,
     });
     const baselineCandidate = candidate({
@@ -198,6 +237,13 @@ const genericTriplet = (concept, domain, componentCode, options = {}) => {
       actionId: `${concept}-${variant}-baseline`,
       componentCode: options.baselineComponentCode || componentCode,
       amount: baseAmount,
+      rawFacts: extra.baseline?.rawFacts || [mechanicalFact(
+        options.baselineComponentCode || componentCode,
+        baseAmount,
+        baseline,
+        0,
+        extra.baseline?.factExtra || {},
+      )],
       ...extra.baseline,
     });
     return {
@@ -309,7 +355,7 @@ const xFixtures = {
     input: {
       schemaVersion: 'KernelRawReferenceCaseV1', caseId: 'oracle-fixture:x02', mode: 'auto', phase: 'REACTION',
       candidates: [
-        candidate({ candidateId: 'x02-in-window', actionId: 'x02-slow', componentCode: 'S3_SOFT_CONTROL', amount: 18, rawFacts: [amountFact('S3_SOFT_CONTROL', 18, 'x02-in-window', 0, { expiresBefore: 'ally-action-1' })] }),
+        candidate({ candidateId: 'x02-in-window', actionId: 'x02-slow', componentCode: 'S3_SOFT_CONTROL', amount: 18, rawFacts: [mechanicalFact('S3_SOFT_CONTROL', 18, 'x02-in-window', 0, { expiresBefore: 'ally-action-1' })] }),
         candidate({ candidateId: 'x02-expired', actionId: 'x02-wait', componentCode: 'S3_SOFT_CONTROL', amount: 0 }),
       ], expected: { selectedCandidateId: 'x02-in-window' },
     },
@@ -321,9 +367,9 @@ const xFixtures = {
       schemaVersion: 'KernelRawReferenceCaseV1', caseId: 'oracle-fixture:x03', mode: 'auto', phase: 'REACTION',
       candidates: [
         candidate({ candidateId: 'x03-multihit', actionId: 'x03-defend-reflect', rawFacts: [
-          amountFact('S3_DEFENSE', 8, 'x03-multihit', 0),
-          amountFact('S3_DEFENSE', 7, 'x03-multihit', 1),
-          amountFact('S3_COUNTER', 5, 'x03-multihit', 2),
+          mechanicalFact('S3_DEFENSE', 8, 'x03-multihit', 0),
+          mechanicalFact('S3_DEFENSE', 7, 'x03-multihit', 1),
+          mechanicalFact('S3_COUNTER', 5, 'x03-multihit', 2),
         ] }),
         candidate({ candidateId: 'x03-label-only', actionId: 'x03-defend', componentCode: 'S3_DEFENSE', amount: 0 }),
       ], expected: { selectedCandidateId: 'x03-multihit' },
@@ -339,8 +385,8 @@ const xFixtures = {
       schemaVersion: 'KernelRawReferenceCaseV1', caseId: 'oracle-fixture:x04', mode: 'auto', phase: 'ACTIVE',
       candidates: [
         candidate({ candidateId: 'x04-control-dot', actionId: 'x04-control', rawFacts: [
-          amountFact('S3_HARD_CONTROL', 10, 'x04-control-dot', 0),
-          amountFact('S5_DOT', 6, 'x04-control-dot', 1),
+          mechanicalFact('S3_HARD_CONTROL', 10, 'x04-control-dot', 0),
+          mechanicalFact('S5_DOT', 6, 'x04-control-dot', 1),
         ] }),
         candidate({ candidateId: 'x04-control-only', actionId: 'x04-control-only', componentCode: 'S3_HARD_CONTROL', amount: 10 }),
       ], expected: { selectedCandidateId: 'x04-control-dot' },
@@ -355,7 +401,7 @@ const xFixtures = {
     input: {
       schemaVersion: 'KernelRawReferenceCaseV1', caseId: 'oracle-fixture:x05', mode: 'auto', phase: 'ACTIVE',
       candidates: [
-        candidate({ candidateId: 'x05-live-summon', actionId: 'x05-summon', componentCode: 'S5_SUMMON_WINDOW', amount: 20, rawFacts: [amountFact('S5_SUMMON_WINDOW', 20, 'x05-live-summon', 0, { expiresAt: 'round-2' })] }),
+        candidate({ candidateId: 'x05-live-summon', actionId: 'x05-summon', componentCode: 'S5_SUMMON_WINDOW', amount: 20, rawFacts: [mechanicalFact('S5_SUMMON_WINDOW', 20, 'x05-live-summon', 0, { expiresAt: 'round-2' })] }),
         candidate({ candidateId: 'x05-host-dead', actionId: 'x05-summon-late', componentCode: 'S5_SUMMON_WINDOW', amount: 50, legal: false, hardExclusionCodes: ['HOST_DEAD'] }),
       ], expected: { selectedCandidateId: 'x05-live-summon' },
     },
@@ -367,8 +413,8 @@ const xFixtures = {
       schemaVersion: 'KernelRawReferenceCaseV1', caseId: 'oracle-fixture:x06', mode: 'auto', phase: 'ACTIVE',
       candidates: [
         candidate({ candidateId: 'x06-block-recovery', actionId: 'x06-antiheal', rawFacts: [
-          amountFact('S3_HEAL', 18, 'x06-block-recovery', 0),
-          amountFact('S3_SUPPORT_RESOURCE', 7, 'x06-block-recovery', 1),
+          mechanicalFact('S3_HEAL', 18, 'x06-block-recovery', 0),
+          mechanicalFact('S3_SUPPORT_RESOURCE', 7, 'x06-block-recovery', 1),
         ] }),
         candidate({ candidateId: 'x06-no-window', actionId: 'x06-wait', componentCode: 'S3_HEAL', amount: 0 }),
       ], expected: { selectedCandidateId: 'x06-block-recovery' },

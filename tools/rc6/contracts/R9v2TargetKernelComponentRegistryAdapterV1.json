@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "R9v2TargetKernelComponentRegistryAdapterV1",
+  "contractId": "R83-RC6-M2-TARGET-ADAPTER-2026-08-09",
+  "status": "ACCEPTED_FOR_M2",
+  "boundary": {
+    "orchestrator": "BattleDecisionR9v2Kernel_Module.js",
+    "adapter": "BattleDecision_Module.js:r9v2TargetKernelComponentRegistry",
+    "orchestratorOwns": [
+      "ValueKernelSessionV1",
+      "MechanicalColumnsV1",
+      "BeliefOverlayV1",
+      "FactDeltaV1",
+      "dependency invalidation",
+      "CandidateValueVectorV1 assembly",
+      "Pareto and selection inputs",
+      "on-demand Proof materialization"
+    ],
+    "adapterOwns": [
+      "provider-neutral componentDefinitions",
+      "componentCodesForFactDelta",
+      "validateFactDelta",
+      "raw mechanical entry to component facts",
+      "S1-S6 component materialization"
+    ],
+    "formalProviderRegistration": false
+  },
+  "adapterInputContract": {
+    "allowed": [
+      "raw mechanical candidate fields",
+      "frozen MechanicalColumnsV1",
+      "public BeliefOverlayV1",
+      "FactDeltaV1",
+      "registered component codes"
+    ],
+    "forbidden": [
+      "precomputed goalUtilityHEPP",
+      "precomputed informationValueHEPP",
+      "precomputed objectiveUtilityHEPP",
+      "precomputed causalFacts",
+      "hidden state",
+      "legacy shadow proof",
+      "legacy scorer",
+      "role-name or skill-name branch"
+    ]
+  },
+  "adapterOutputContract": {
+    "perCandidate": [
+      "component facts",
+      "component owner types",
+      "unsupported outcome kinds"
+    ],
+    "orchestratorOnly": [
+      "goalUtilityDeltaHEPP",
+      "informationValueHEPP",
+      "objectiveUtilityHEPP",
+      "causal owner totals",
+      "Pareto witness",
+      "final selection"
+    ]
+  },
+  "failurePolicy": {
+    "unknownDependency": "FULL_REBUILD_OR_FATAL",
+    "unexpressibleFactDelta": "FULL_REBUILD_OR_FATAL",
+    "missingComponent": "FATAL",
+    "nonFiniteValue": "FATAL",
+    "legacyReachability": "FATAL"
+  },
+  "evidence": [
+    "tools/rc6/evidence/m2/k00-kernel-ownership.json",
+    "tools/rc6/evidence/m2/k12-target-adapter.json",
+    "tools/rc6/evidence/m2/target-path-audit.json",
+    "tools/rc6/evidence/m2/small-target-transactions.json"
+  ]
+}

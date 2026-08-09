@@ -19,7 +19,7 @@
   },
   "sourceHashes": {
     "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
-    "BattleDecision_Module.js": "0cd0836fc5bba7a8d43881dfc5cea5aad5955ddd6a8cab66c06df19e417f850a",
+    "BattleDecision_Module.js": "386c02150470692c5137245da52872af3254d5d58f3d09825a628f2fab017b5d",
     "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
     "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
     "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
@@ -115,9 +115,9 @@
   },
   "visibility": {
     "allowed": [
-      "publicHpRatios",
+      "visibleHpRatios",
       "publicStates",
-      "publicDeclarations",
+      "observableDeclarations",
       "revealedAbilityIds",
       "observableResults"
     ],

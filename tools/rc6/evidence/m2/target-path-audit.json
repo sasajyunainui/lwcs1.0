@@ -9,7 +9,7 @@
   "cases": [
     {
       "caseId": "duel_overmatch_lethal",
-      "elapsedMs": 113.673,
+      "elapsedMs": 114.192,
       "decisionCount": 2,
       "targetDecisionCount": 2,
       "targetKernelMetrics": {
@@ -26,7 +26,7 @@
         "factDeltaApplications": 0,
         "candidateSnapshotDeltas": 0,
         "contextInvalidations": 0,
-        "componentEvaluations": 42,
+        "componentEvaluations": 161,
         "componentCacheHits": 0,
         "componentInvalidations": 0,
         "r9v2TargetKernelCandidateEvaluations": 7,
@@ -53,35 +53,75 @@
     },
     {
       "caseId": "team_focus_without_overkill",
-      "elapsedMs": 2055.09,
-      "decisionCount": 6,
-      "targetDecisionCount": 6,
+      "elapsedMs": 3675.21,
+      "decisionCount": 14,
+      "targetDecisionCount": 14,
       "targetKernelMetrics": {
-        "sessionCount": 6,
-        "candidateCount": 69,
+        "sessionCount": 11,
+        "candidateCount": 82,
         "fullRebuilds": 0,
-        "dirtyCandidateRebuilds": 0,
-        "candidateEvaluations": 69,
+        "dirtyCandidateRebuilds": 9,
+        "candidateEvaluations": 91,
         "candidateCacheHits": 0,
-        "vectorMaterializations": 69,
+        "vectorMaterializations": 91,
         "vectorCacheHits": 0,
-        "paretoReassemblies": 6,
-        "proofsMaterialized": 18,
-        "factDeltaApplications": 0,
+        "paretoReassemblies": 14,
+        "proofsMaterialized": 34,
+        "factDeltaApplications": 3,
         "candidateSnapshotDeltas": 0,
-        "contextInvalidations": 0,
-        "componentEvaluations": 414,
+        "contextInvalidations": 3,
+        "componentEvaluations": 2093,
         "componentCacheHits": 0,
-        "componentInvalidations": 0,
-        "r9v2TargetKernelCandidateEvaluations": 69,
-        "r9v2TargetKernelVectorEvaluations": 69
+        "componentInvalidations": 207,
+        "r9v2TargetKernelCandidateEvaluations": 91,
+        "r9v2TargetKernelVectorEvaluations": 91
       },
       "evaluationMetrics": {
-        "requestCount": 6,
+        "requestCount": 14,
         "r9v2PoolBuilds": 2,
-        "r9v2ProofComponentBuilds": 282
+        "r9v2ProofComponentBuilds": 350
       },
       "profiles": [
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
+        {
+          "providerId": "r9v2",
+          "engine": "R9V2_TARGET",
+          "slice": "TARGET_KERNEL_V2"
+        },
         {
           "providerId": "r9v2",
           "engine": "R9V2_TARGET",
@@ -117,8 +157,8 @@
     }
   ],
   "sourceHashes": {
-    "decision": "db3c2260fa5c18ef708a3ddfad70e7e6be3df1763b21162b7698029632a50bdb",
-    "kernel": "b955c8b6476daf32612710123cfb4413457786397581cd055a6f8f2634a3b9ce",
+    "decision": "3b507d01a96d8c436b8de9bef3726c6c7869c97be9f58ce77f44e31b8387ba53",
+    "kernel": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
     "runtime": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
     "harness": "f783107a0864e9685de0705737716f651f61d21b6d5ea8997af6f4fe00833902"
   }

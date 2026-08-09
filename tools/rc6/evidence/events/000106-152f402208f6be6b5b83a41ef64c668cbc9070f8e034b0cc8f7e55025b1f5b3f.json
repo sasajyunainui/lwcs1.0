@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 106,
+  "previousEventHash": "0b1f9ac8c4f7315a32b77ed7339061ac0c72574fdf2a9780f03b909b7d6fe1fd",
+  "milestoneId": "M2",
+  "taskId": "M2-K06",
+  "eventType": "SUBTASK_STARTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "4a610ca8b55f64d26b8ce7ee4f885aebbf6f8ddf0205d57afe4ec8776c959cc0",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "K06 S3 team behavior-pool vector components and dirty-unit scope",
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "M2-K06 started: validate S3 behavior-pool consumers, affected-unit closure, and route-value orientation before production changes.",
+  "recordedAt": "2026-08-07T14:10:37.304Z",
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "eventHash": "152f402208f6be6b5b83a41ef64c668cbc9070f8e034b0cc8f7e55025b1f5b3f"
+}

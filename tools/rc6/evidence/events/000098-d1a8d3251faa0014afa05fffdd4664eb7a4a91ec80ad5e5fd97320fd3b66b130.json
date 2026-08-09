@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 98,
+  "previousEventHash": "ae33193c21be14f708acbf3db6751dfa89bde5bb74b9f0668cdc24918a970bf0",
+  "milestoneId": "M2",
+  "taskId": "M2-K13-TARGET-KERNEL-PERFORMANCE",
+  "eventType": "MILESTONE_BLOCKED",
+  "status": "BLOCKED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "386c02150470692c5137245da52872af3254d5d58f3d09825a628f2fab017b5d",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k13-target-performance.mjs": "d00787fc30b47abd137f1567e309321799795f604b0284e55c06750ad149422b",
+    "tools/rc6/harness/run-m2-production-reference-ab.mjs": "381c034155bdfc3023d068b552d31ee7a0c3cbfb26332bcfedc11c556f7a6ee7",
+    "tools/rc6/harness/run-m2-k12-target-adapter.mjs": "b0507a6652f8a5cd22cd4782ca5963928840030c42d9361c299ac8fbcd1c4aaf",
+    "tools/rc6/harness/run-m2-small-target-transactions.mjs": "148715315b2dec54cb3873af419ab73d2c3922fb9e4e35fdc975f5b8cc88f716"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "ff5f8274d14243fc9e1d9c0c94df3df0df969782adb027f6e25a12c837a0400a"
+  },
+  "acceptedObjectHashes": [
+    "adcc90da333e42852cd88e51b7f23915f0e04bb6fb3fb8d6b9f88daec47647a1",
+    "d02e10edb600783a3fa15c81d8f3267c41a62f0227729b24c1dff0a562f1425c",
+    "81c7e5ecde460c50d1d78f4df400e2bc3902097de6d5852995de23b85c722fb8",
+    "826411b1405312da7fb4f723c3e6480826aa8314ace266889df72d2a6fb2f0d4",
+    "39131da08dbf9cd424ebdcc5b65a326892bd5df58c91b0f4eeefdc532a14c966",
+    "44a1646dc2dae5fa21be4923525d35efa9f800892bbfc67c721c1bb115c736cd"
+  ],
+  "invalidatedObjectHashes": [
+    "df22e8f88a75a3d1e469824607085c7216cbfda7caaf79f8106a120c439d50b1",
+    "4c918ff0d8733efac2da1f515a3f78205725b35de82c0db5336f2474a689bbd8",
+    "1e19d1262aca7e24925ad1031c6f67bfaf56185f631fb25a8e7e735c3368b511",
+    "85dd3c50d557585498c29695f78ebaa5605a529f10d3663b07117fd6f6250f89",
+    "ecce248c43b07f33d805e3f55511addf5c8dd5c1ba1809f1d4daf43666e053ac",
+    "1f12b3f04495f0b8198f4e70756ed2eae57083385ac67a62f94b039280509373"
+  ],
+  "details": {
+    "currentBlocker": "R9V2_TARGET_KERNEL_BLOCKED",
+    "nextExitCondition": "New S4 branch-value representation must pass independent reference A/B before another K13 run.",
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "Current-hash full-transaction K13 remains over gate; S4 branch expansion is the blocker. The attempted sparse-row and scalar-objective changes were rejected and rolled back.",
+  "recordedAt": "2026-08-06T17:14:50.002Z",
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "eventHash": "d1a8d3251faa0014afa05fffdd4664eb7a4a91ec80ad5e5fd97320fd3b66b130"
+}

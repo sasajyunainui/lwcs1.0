@@ -382,14 +382,28 @@ const evaluateFacts = (candidate, candidateId) => {
     TERMINAL_DELTA: [],
   };
   const healthByTarget = new Map();
-  facts.forEach((fact, index) => {
-    const sourceFactId = string(
+  const healthSourceFactIds = new Set();
+  const orderedFacts = facts.map((fact, index) => ({
+    fact,
+    index,
+    sourceFactId: string(
       fact?.sourceFactId,
       'REFERENCE_V2_SOURCE_FACT_ID_MISSING',
       candidateId,
-    );
+    ),
+    sequence: finite(
+      fact?.sequence ?? index,
+      'REFERENCE_V2_SEQUENCE_NON_FINITE',
+      candidateId,
+    ),
+  })).sort((left, right) => left.sequence - right.sequence || left.index - right.index);
+  orderedFacts.forEach(({ fact, index, sourceFactId, sequence }) => {
     if (sourceFactIds.has(sourceFactId)) fatal('REFERENCE_V2_DUPLICATE_SOURCE_FACT', sourceFactId);
     sourceFactIds.add(sourceFactId);
+  });
+  let terminalReached = false;
+  orderedFacts.forEach(({ fact, index, sourceFactId, sequence }) => {
+    if (terminalReached) return;
     if (Object.hasOwn(fact, 'causalOwnerType') || Object.hasOwn(fact, 'valueHEPP')) {
       fatal('REFERENCE_V2_RAW_OWNER_VALUE_INPUT', sourceFactId);
     }
@@ -403,6 +417,7 @@ const evaluateFacts = (candidate, candidateId) => {
     if (!OWNER_TYPES.has(ownerType)) fatal('REFERENCE_V2_OWNER_TYPE_UNKNOWN', ownerType);
     const valueHEPP = factValue(fact, candidateId);
     if (String(fact?.formula || '').trim() === 'HEALTH_PP') {
+      healthSourceFactIds.add(sourceFactId);
       const targetId = string(
         fact?.targetUnitId,
         'REFERENCE_V2_HEALTH_TARGET_ID_MISSING',
@@ -433,10 +448,13 @@ const evaluateFacts = (candidate, candidateId) => {
       sourceEventId: string(fact?.sourceEventId, 'REFERENCE_V2_SOURCE_EVENT_ID_MISSING', sourceFactId),
       sourceFactId,
       targetUnitId: string(fact?.targetUnitId, 'REFERENCE_V2_TARGET_UNIT_ID_MISSING', sourceFactId),
-      sequence: finite(fact?.sequence ?? index, 'REFERENCE_V2_SEQUENCE_NON_FINITE', sourceFactId),
+      sequence,
     };
     causalFacts.push(normalized);
     totals[ownerType].push(valueHEPP);
+    if (String(fact?.formula || '').trim() === 'TERMINAL_OUTCOME') {
+      terminalReached = true;
+    }
   });
   return {
     causalFacts,
@@ -444,6 +462,7 @@ const evaluateFacts = (candidate, candidateId) => {
     actionPoolDeltaTotal: neumaierSum(totals.ACTION_POOL_DELTA),
     terminalDeltaTotal: neumaierSum(totals.TERMINAL_DELTA),
     healthByTarget,
+    healthSourceFactIds,
   };
 };
 
@@ -580,34 +599,24 @@ export const evaluateRawCandidate = (candidate = {}) => {
     candidate,
     facts.healthByTarget,
   );
+  const objectiveHealthSources = facts.causalFacts.filter(fact =>
+    facts.healthSourceFactIds.has(fact.sourceFactId),
+  );
   const causalFacts = (
     objectiveStateValue === null
       ? facts.causalFacts
       : facts.causalFacts
-        .filter(fact => fact.componentCode !== 'S1_HEALTH')
-        .concat(
-          [...facts.healthByTarget.entries()]
-            .map(([targetId]) => {
-              const valueHEPP = objectiveHealthValue(
-                candidate,
-                new Map([[targetId, facts.healthByTarget.get(targetId)]]),
-              );
-              const source = facts.causalFacts.find(fact =>
-                fact.componentCode === 'S1_HEALTH' &&
-                fact.targetUnitId === targetId,
-              );
-              return {
-                componentCode: 'S1_HEALTH',
-                causalOwnerType: 'STATE_DELTA',
-                valueHEPP,
-                sourceEventId: source?.sourceEventId ||
-                  `${candidateId}:state:${targetId}`,
-                sourceFactId: `${candidateId}:state:${targetId}`,
-                targetUnitId: targetId,
-                sequence: Number(source?.sequence || 0),
-              };
-            }),
-        )
+        .filter(fact => !facts.healthSourceFactIds.has(fact.sourceFactId))
+        .concat(objectiveHealthSources.length ? [{
+          componentCode: 'S1_HEALTH',
+          causalOwnerType: 'STATE_DELTA',
+          valueHEPP: objectiveStateValue,
+          sourceEventId: objectiveHealthSources[0].sourceEventId,
+          sourceFactId: `${candidateId}:objective-state`,
+          sourceFactIds: objectiveHealthSources.map(fact => fact.sourceFactId),
+          targetUnitId: objectiveHealthSources.map(fact => fact.targetUnitId).sort().join('|'),
+          sequence: Math.min(...objectiveHealthSources.map(fact => Number(fact.sequence || 0))),
+        }] : [])
   );
   const stateDeltaTotal = objectiveStateValue === null
     ? facts.stateDeltaTotal
@@ -691,7 +700,7 @@ const structurallyDifferent = (left, right) =>
   JSON.stringify(left.targetSet) !== JSON.stringify(right.targetSet) ||
   left.paymentMode !== right.paymentMode;
 
-const normalizedDistance = (candidate, pool) => {
+const normalizedDistance = (candidate, selected, pool) => {
   let distance = 0;
   for (const [field, direction] of PARETO_DIMENSIONS) {
     const values = pool.map(item => item.vector[field]);
@@ -703,8 +712,14 @@ const normalizedDistance = (candidate, pool) => {
     const normalized = direction === 'MAXIMIZE'
       ? (value - minimum) / span
       : (maximum - value) / span;
-    if (!Number.isFinite(normalized)) fatal('REFERENCE_V2_NON_FINITE_L1_DISTANCE', field);
-    distance += Math.abs(normalized);
+    const selectedValue = selected.vector[field];
+    const selectedNormalized = direction === 'MAXIMIZE'
+      ? (selectedValue - minimum) / span
+      : (maximum - selectedValue) / span;
+    if (!Number.isFinite(normalized) || !Number.isFinite(selectedNormalized)) {
+      fatal('REFERENCE_V2_NON_FINITE_L1_DISTANCE', field);
+    }
+    distance += Math.abs(normalized - selectedNormalized);
   }
   return distance;
 };
@@ -737,7 +752,7 @@ export const evaluateRawCase = (input = {}) => {
   );
   const alternative2 = remaining.length
     ? remaining.slice().sort((left, right) =>
-        normalizedDistance(right, pareto) - normalizedDistance(left, pareto) ||
+        normalizedDistance(right, selected, pareto) - normalizedDistance(left, selected, pareto) ||
         rankCompare(left, right),
       )[0]
     : null;

@@ -6,16 +6,19 @@ import { fileURLToPath } from 'node:url';
 import {
   readJson,
 } from './reference-value-evaluator.mjs';
-import { assertRawCase } from './reference-value-evaluator-v2.mjs';
+import {
+  assertRawCase,
+  evaluateRawCase,
+  evaluateRawCandidate,
+} from './reference-value-evaluator-v2.mjs';
+import { runM1SemanticGuards } from './m1-semantic-guards.mjs';
 import { hashJson, oracleIndexBindingHash } from './oracle-fixture-hash.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const contractsDir = path.join(repoRoot, 'tools', 'rc6', 'contracts');
-const casesDir = path.join(repoRoot, 'tools', 'rc6', 'cases');
 const evidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm1', 'm1-contract-gate.json');
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 const json = fileName => readJson(path.join(repoRoot, fileName));
-const finite = value => Number.isFinite(Number(value));
 const fail = (code, detail = '') => {
   throw new Error(`${code}${detail ? `:${detail}` : ''}`);
 };
@@ -180,56 +183,19 @@ for (const input of casesDoc.cases) {
   });
 }
 
-const contractRuleChecks = {
-  target_health_percentage: () => contract.scalarContract.threshold.lifeBasis === 'target_base_max_health_percentage',
-  any_projection: () => contract.semanticDomains.S1.status === 'FROZEN',
-  all_projection: () => contract.semanticDomains.S1.status === 'FROZEN',
-  threshold_clamp: () => caseById.get('ref-s1-threshold-truncation').evaluated.some(candidate => candidate.discardedOverkillPP > 0),
-  overkill_discard: () => Boolean(contract.scalarContract.threshold.overkillField),
-  first_victory: () => contract.scalarContract.terminal.victory === 100,
-  first_failure: () => contract.scalarContract.terminal.failure === -100,
-  draw_terminal: () => contract.scalarContract.terminal.draw === 0,
-  post_terminal_zero: () => contract.scalarContract.terminal.postTerminalValue === 0,
-  terminal_owner: () => contract.scalarContract.causalReconciliation.ownerTypes.includes('TERMINAL_DELTA'),
-  opportunity_kind: () => contract.semanticDomains.S2.status === 'FROZEN',
-  pass_semantics: () => caseById.get('ref-s2-pass-lost').evaluated.some(candidate => candidate.actionKind === 'PASS_OPPORTUNITY'),
-  lost_semantics: () => caseById.get('ref-lost-opportunity').evaluated.some(candidate => candidate.actionKind === 'LOST_OPPORTUNITY'),
-  resource_order: () => contract.semanticDomains.S2.status === 'FROZEN',
-  payment_ownership: () => contract.semanticDomains.S2.status === 'FROZEN',
-  no_op_semantics: () => contract.scalarContract.information.stableIntersectionEmptyUses === 'NO_OP_ONLY',
-  resource_consumer: () => caseById.get('ref-s5-creation-consumer').selected.candidateId === 'create-with-consumer',
-  pool_closure: () => contract.components === undefined && contract.semanticDomains.S3.status === 'FROZEN',
-  affected_unit_closure: () => contract.semanticDomains.S3.status === 'FROZEN',
-  future_route_delta: () => contract.scalarContract.goalUtilityDeltaHEPP.includes('actionPoolDeltaTotal'),
-  state_delta_owner: () => contract.scalarContract.causalReconciliation.ownerTypes.includes('STATE_DELTA'),
-  probability_branch: () => contract.semanticDomains.S3.status === 'FROZEN',
-  response_fact: () => contract.scalarContract.causalReconciliation.ownerTypes.includes('ACTION_POOL_DELTA'),
-  support_consumer: () => contract.semanticDomains.S3.status === 'FROZEN',
-  heal_conditioning: () => contract.semanticDomains.S3.status === 'FROZEN',
-  duplicate_causal_fact: () => caseById.get('ref-s6-causal-state-owner').selected.causalFacts.length === 2,
-  no_name_branch: () => !JSON.stringify(contract).includes('roleName'),
-  public_visibility: () => contract.visibility.allowed.includes('publicHpRatios') || contract.visibility.allowed.includes('publicStates'),
-  hidden_visibility: () => contract.visibility.forbidden.includes('hiddenExactHp'),
-  response_branch_shape: () => contract.semanticDomains.S4.status === 'FROZEN',
-  adaptive_value: () => contract.scalarContract.information.adaptive.includes('outcomeProbability'),
-  committed_value: () => contract.scalarContract.information.committed.includes('stable_candidate_identity_intersection'),
-  information_endpoint: () => contract.scalarContract.information.zeroOnlyAtExactProbability.join(',') === '0,1',
-  information_route_change: () => caseById.get('ref-s4-information-positive').selected.informationValueHEPP > 0,
-  scheduled_effect: () => contract.semanticDomains.S5.status === 'FROZEN',
-  expiry: () => contract.semanticDomains.S5.status === 'FROZEN',
-  summon_lifecycle: () => caseById.get('ref-s5-summon-host-death').evaluated.some(candidate => candidate.hardExclusionCodes.includes('HOST_DEAD')),
-  creation_consumer: () => caseById.get('ref-s5-creation-consumer').selected.candidateId === 'create-with-consumer',
-  inventory_fact: () => contract.semanticDomains.S5.status === 'FROZEN',
-  equipment_window: () => contract.semanticDomains.S5.status === 'FROZEN',
-  causal_owner: () => contract.scalarContract.causalReconciliation.ownerTypes.length === 3,
-  causal_reconciliation: () => contract.scalarContract.causalReconciliation.tolerance === 1e-6,
-  pareto_dimensions: () => contract.pareto.dimensions.length === 6,
-  hard_exclusion: () => caseById.get('ref-s6-pareto-hard-exclusion').selected.candidateId === 'valid-safe',
-  manual_lock: () => caseById.get('ref-manual-locked').selected.candidateId === 'player-choice',
-  alternative_one: () => caseResults.some(result => result.alternatives.length > 0),
-  alternative_two: () => contract.alternatives.second.includes('maximum_normalized_L1_distance'),
-  utf16_sort: () => contract.pareto.tieBreak === 'candidateId_UTF16_CODE_UNIT_ASCENDING',
-};
+const semanticGuardResults = runM1SemanticGuards({
+  contract,
+  cases: casesDoc.cases,
+  caseById,
+  evaluateRawCase,
+  evaluateRawCandidate,
+});
+const contractRuleChecks = Object.fromEntries(
+  assertionsDoc.assertions.map(assertion => [
+    assertion.executableCheck,
+    () => semanticGuardResults[assertion.executableCheck] === true,
+  ]),
+);
 
 const assertionResults = assertionsDoc.assertions.map(assertion => {
   const check = contractRuleChecks[assertion.executableCheck];
@@ -281,6 +247,21 @@ const oracleResults = oracleIndex.oracles.map((oracle, index) => {
   };
 });
 
+const mechanicalOracleConcepts = new Set([
+  'c01', 'c02', 'c03', 'c04', 'c05', 'c06', 'c07',
+  'c08', 'c09', 'c10', 'c11', 'c12', 'c13', 'c14',
+  'x01', 'x02', 'x03', 'x04', 'x05', 'x06',
+]);
+fixtureManifest.fixtures.forEach(fixture => {
+  if (!mechanicalOracleConcepts.has(fixture.concept)) return;
+  const formulas = fixture.input.candidates.flatMap(candidate =>
+    candidate.rawFacts.map(fact => fact.formula),
+  );
+  if (formulas.includes('CONSTANT_HEPP')) {
+    fail('M1_ORACLE_MECHANICAL_CONSTANT_PLACEHOLDER', fixture.fixtureId);
+  }
+});
+
 const fixtureVariantsByConcept = new Map();
 fixtureManifest.fixtures.forEach(fixture => {
   if (!fixtureVariantsByConcept.has(fixture.concept)) fixtureVariantsByConcept.set(fixture.concept, new Set());
@@ -297,10 +278,12 @@ for (const concept of ['x01', 'x02', 'x03', 'x04', 'x05', 'x06']) {
   if (!variants || variants.size !== 1 || !variants.has('single')) fail('M1_ORACLE_SINGLE_FIXTURE_INCOMPLETE', concept);
 }
 
-for (const evaluatorFile of [
+const referenceToolFiles = [
   'tools/rc6/reference/reference-value-evaluator.mjs',
   'tools/rc6/reference/reference-value-evaluator-v2.mjs',
-]) {
+  'tools/rc6/reference/m1-semantic-guards.mjs',
+];
+for (const evaluatorFile of referenceToolFiles) {
   const evaluatorSource = fs.readFileSync(path.join(repoRoot, evaluatorFile), 'utf8');
   for (const forbidden of ['BattleDecision_Module', 'BattlePreview_Module', 'BattleRuntime_Module', 'BattleReport_Module', 'r9v2']) {
     if (evaluatorSource.includes(forbidden)) fail('M1_REFERENCE_EVALUATOR_DEPENDENCY_LEAK', `${evaluatorFile}:${forbidden}`);
@@ -329,6 +312,7 @@ const output = {
   contractBlockingUnresolved: assertionsDoc.assertions.filter(assertion => assertion.resolutionStatus !== 'FROZEN').map(assertion => assertion.assertionId),
   independentReferenceEvaluator: 'PASSED_NO_PRODUCTION_IMPORTS_V2_RAW_CASES',
   oracleFixtureExecution: '54_UNIQUE_FIXTURE_INPUTS_16_TRIPLETS_6_SINGLE_CASES',
+  semanticGuardResults,
   assertionResults,
   caseResults,
   oracleResults,
@@ -339,6 +323,10 @@ const output = {
     selectionPolicyHash: sha256(JSON.stringify(selectionPolicy)),
     casesHash: sha256(JSON.stringify(casesDoc)),
     oracleIndexHash: sha256(JSON.stringify(oracleIndex)),
+    referenceToolHashes: Object.fromEntries(referenceToolFiles.map(fileName => [
+      fileName,
+      sha256(fs.readFileSync(path.join(repoRoot, fileName))),
+    ])),
     schemaHashes: Object.fromEntries(schemaFiles.map(fileName => [fileName, sha256(fs.readFileSync(path.join(contractsDir, fileName)))])),
   },
 };

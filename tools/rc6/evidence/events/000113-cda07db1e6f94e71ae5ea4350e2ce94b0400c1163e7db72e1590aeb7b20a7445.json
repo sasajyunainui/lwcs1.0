@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 113,
+  "previousEventHash": "0deb9c079e5d817f58dfb1efbd974132b0cb5c2eeecb365b723c61744601c23e",
+  "milestoneId": "M2",
+  "taskId": "M2-K09",
+  "eventType": "TARGET_PATH_FAILURE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0d50c8357a2791bfd2d3bef95ab356db179174fc6794d6d289e286f592432f78",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-target-path-audit.mjs": "f783107a0864e9685de0705737716f651f61d21b6d5ea8997af6f4fe00833902"
+  },
+  "fixtureHashes": {
+    "tools/r83_rc6_battle_harness.mjs": "2e092db433f75e24947d2e39ed900872d0bac56ae1dcabb4d127aaad50f90a08"
+  },
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "caseId": "team_focus_without_overkill",
+    "phase": "one_round_full_runtime_target_provider",
+    "candidateId": "张扬子:skill:黑暗天幕:0",
+    "outcomeKind": "NEXT_ACTION_QUALITY_CHANGED",
+    "classification": "KERNEL_IMPLEMENTATION_DEFECT",
+    "ownerCandidate": "S3_BEHAVIOR_POOL"
+  },
+  "reason": "Full target-provider Runtime path exposed an unhandled NEXT_ACTION_QUALITY_CHANGED contribution; retain fatal until the fact has a proven S3 owner and conservation gate.",
+  "recordedAt": "2026-08-08T03:26:18.798Z",
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "eventHash": "cda07db1e6f94e71ae5ea4350e2ce94b0400c1163e7db72e1590aeb7b20a7445"
+}

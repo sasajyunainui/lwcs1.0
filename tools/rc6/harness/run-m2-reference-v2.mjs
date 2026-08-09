@@ -90,11 +90,22 @@ const normalizedDistance = (candidate, pool) => {
 
 const componentCodeForFact = componentCode => {
   const code = String(componentCode || '').trim();
-  if (code === 'S1_TERMINAL') return 'terminal';
-  if (code.startsWith('S1_')) return 'target_trajectory';
-  if (code.startsWith('S2_')) return 'support_resource';
-  if (code.startsWith('S3_')) return 'soft_control';
-  if (code.startsWith('S5_')) return 'delayed_effect';
+  const exact = {
+    S1_HEALTH: 'target_trajectory',
+    S1_TERMINAL: 'terminal',
+    S2_ROUTE: 'response',
+    S3_COUNTER: 'counter',
+    S3_DEFENSE: 'defense',
+    S3_EVASION: 'evasion',
+    S3_HARD_CONTROL: 'hard_control',
+    S3_SUPPORT_RESOURCE: 'support_resource',
+    S5_CREATION_CONSUMER: 'creation',
+    S5_DELAYED_EFFECT: 'delayed_effect',
+    S5_DOT: 'dot',
+    S5_HOT: 'hot',
+    S5_SUMMON_WINDOW: 'summon',
+  };
+  if (Object.hasOwn(exact, code)) return exact[code];
   return null;
 };
 

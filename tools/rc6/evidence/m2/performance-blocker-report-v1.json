@@ -6,134 +6,156 @@
   "overallStatus": "NOT_COMPLETE",
   "formalProvider": "r8",
   "targetProvider": "r9v2_unregistered",
-  "architectureVerdict": "R9_DESIGN_DIRECTION_NOT_DISPROVED_TARGET_KERNEL_INCOMPLETE",
+  "architectureVerdict": "R9_DIRECTION_NOT_DISPROVED_CURRENT_S4_TARGET_KERNEL_STILL_OVER_FIVE_ROUND_GATE",
   "scope": {
-    "measured": "SESSION_REUSED_PREPARE_TO_TARGET_KERNEL_SELECTION_ONLY",
-    "formalRuntimeTransaction": false,
-    "reportSealVerifyMeasured": false,
+    "kernelScout": "SESSION_BUILD_AND_TARGET_SELECTION",
+    "transaction": "DRAFT_REPORT_AUDIT_SEAL_VERIFY",
+    "formalRuntimeTransactionMeasured": true,
+    "reportSealVerifyMeasured": true,
     "decisionPathUsesTargetKernel": true,
     "r8CompleteSevenVsSevenMeasured": false
   },
   "gate": {
     "scoutTimeoutMs": 12000,
-    "targetSevenVsSevenSingleSampleMs": 10000,
+    "targetFiveRoundDraftMedianMs": 8000,
+    "targetFiveRoundFullTransactionMaximumMs": 10000,
     "result": "BLOCKED",
-    "reason": "All three target-kernel five-round raid scouts timed out before completing a decision."
+    "reason": "raid_control_heavy still did not complete the five-round target-kernel transaction within the 12000ms hard cutoff after the allowed architecture-level change and targeted correction."
   },
-  "measurements": {
-    "coldSingleDecision": {
+  "currentHashMeasurements": {
+    "coldSessionAndFirstDecision": {
       "caseId": "duel_overmatch_lethal",
-      "totalMs": 36.138,
-      "gate": "PASSED"
+      "totalMs": 41.5566,
+      "gateMs": 800,
+      "passed": true
     },
-    "twentyFourDecisions": {
+    "twentyFourFrozenDecisions": {
       "caseId": "duel_overmatch_lethal",
-      "totalMs": 134.413,
-      "gate": "PASSED"
+      "totalMs": 3.5861,
+      "gateMs": 1200,
+      "passed": true
     },
-    "threeVsThreeThreeRounds": {
+    "threeVsThreeOneRoundFullTransaction": {
       "caseId": "team_focus_without_overkill",
-      "totalMs": 1347.398,
-      "gate": "PASSED"
+      "totalMs": 2254.8716,
+      "gateMs": 2500,
+      "passed": true
     },
-    "raidControlHeavyFiveRounds": {
+    "threeVsThreeThreeRoundFullTransaction": {
+      "caseId": "team_focus_without_overkill",
+      "totalMs": 5093.3118,
+      "gateMs": 6000,
+      "passed": true
+    },
+    "raidControlHeavyFiveRoundFullTransaction": {
       "caseId": "raid_control_heavy",
-      "status": "TIMEOUT",
-      "timeoutMs": 12000
-    },
-    "raidSummonHeavyFiveRounds": {
-      "caseId": "raid_summon_heavy",
-      "status": "TIMEOUT",
-      "timeoutMs": 12000
-    },
-    "raidBalancedFiveRounds": {
-      "caseId": "raid_balanced",
       "status": "TIMEOUT",
       "timeoutMs": 12000
     }
   },
-  "currentHashDiagnostics": {
-    "raidControlHeavySingleRoundWithRouteCacheMs": 45211.324,
-    "raidControlHeavySingleRoundWithoutRouteCacheMs": 50360.256,
-    "routeCacheEndToEndGainPercent": 10.224,
-    "decisionHashesEqualWithAndWithoutRouteCache": true,
-    "requestCount": 14,
-    "poolUnitBuilds": 28,
-    "poolEntryCount": 480,
-    "poolUnitFallbacks": 0,
-    "mechanicalBasisCompiles": 333,
-    "mechanicalBasisEvaluations": 480,
-    "mechanicalEntryCacheMisses": 480,
-    "targetKernelVectorEvaluations": 330,
-    "targetKernelSliceCacheHits": 0,
-    "targetKernelSliceCacheMisses": 0,
-    "futurePoolBuilds": 0,
-    "futurePoolHits": 0,
-    "routeTableHits": 345,
-    "routeTableMisses": 123,
-    "routeEntryHits": 96,
-    "routeEntryMisses": 929
+  "acceptedArchitectureAttempt": {
+    "attempt": "S4_BRANCH_VALUE_COLUMNS_AND_SPARSE_DELTAS",
+    "representation": "Build branch-invariant route columns once, compare each dependency key once per observation branch, rebuild only dirty candidate rows, and emit candidate value vectors without materializing per-branch route tables.",
+    "semanticEvidence": {
+      "independentReferenceCases": 3,
+      "productionMutationScenarios": 5,
+      "productionReferenceCases": 8,
+      "smallFullTransactions": 4,
+      "fieldEqual": true
+    },
+    "measuredEffect": {
+      "threeRoundBeforeMs": 6993.1152,
+      "threeRoundAfterMs": 5093.3118,
+      "threeRoundImprovementPercent": 27.17,
+      "raidFirstDecisionBeforeMs": 1206.6908,
+      "raidFirstDecisionAfterMs": 1048.5449,
+      "raidFirstDecisionImprovementPercent": 13.11,
+      "fiveRoundResult": "TIMEOUT_AT_12000_MS"
+    },
+    "disposition": "KEEP_AS_SEMANTICALLY_EQUIVALENT_PARTIAL_ARCHITECTURE_GAIN_M2_NOT_ACCEPTED"
+  },
+  "largestRemainingCost": {
+    "caseId": "raid_control_heavy",
+    "scope": "FIRST_TARGET_DECISION",
+    "decisionMs": 1048.5449,
+    "targetS4Ms": 833.3173,
+    "targetS4SharePercent": 79.47,
+    "informationBranchProjectionCalls": 98,
+    "branchValueVectorRows": 2352,
+    "dirtyBranchValueRows": 294,
+    "branchMechanicalBuildMs": 145.1018
   },
   "rootCause": {
-    "layer": "S4_FUTURE_ROUTE_BRANCH_EXPANSION",
-    "firstObservedDeviation": "Observation branches still materialize and evaluate large future-route tables row by row; route reuse does not remove the branch-wide route-value work.",
+    "layer": "S4_OBSERVATION_BRANCH_MECHANICAL_REALIZATION",
+    "firstObservedDeviation": "The branch-value representation removed per-branch route-table materialization, but each observation outcome still requires the current candidate branch realization and 294 dependency-proven dirty future mechanical rows in the control-heavy scout.",
     "confirmedBy": [
-      "The three target-kernel five-round raid scouts all hit the 12000ms hard timeout.",
-      "The route-cache A/B preserves every decision hash but reduces end-to-end time by only 10.224 percent.",
-      "The route-cache A/B leaves mechanical-basis evaluations at 480 and target-kernel vector evaluations at 330.",
-      "The route-value dependency correction preserves candidate, branch and semantic outputs but does not remove the S4 route-table expansion."
+      "The three-round full transaction now passes at 5093.3118ms, proving the shared branch-value representation removes substantial repeated work.",
+      "The five-round raid still exceeds the 12000ms hard cutoff.",
+      "About 79.47 percent of the first raid decision remains in TARGET_S4.",
+      "Field-level A/B, the independent S4 reference, production reference cases and four small full transactions pass at the current source hash."
     ],
     "notRootCause": [
       "R8 complete-battle performance",
       "BattleReport projection, Seal or Verify",
-      "Route-cache correctness",
-      "A missing candidate, probability branch, response branch or round"
+      "Final Pareto selection",
+      "Unchanged route-profile projection",
+      "Candidate, probability, response or round count"
     ]
   },
-  "acceptedEvidence": [
+  "attemptDisposition": [
+    {
+      "attempt": "FUTURE_ROUTE_VALUE_BASIS_AND_SPARSE_ROW_INVALIDATION",
+      "result": "REJECTED_AND_ROLLED_BACK",
+      "reason": "The earlier route-table-local attempt changed less than one percent of the first decision and regressed the three-round transaction."
+    },
+    {
+      "attempt": "SINGLE_TRAJECTORY_OBJECTIVE_SCALARIZATION",
+      "result": "REJECTED_AND_ROLLED_BACK",
+      "reason": "Production Reference A/B changed informationValueHEPP for duel_peer_unknown_probe."
+    },
+    {
+      "attempt": "S4_BRANCH_VALUE_COLUMNS_AND_SPARSE_DELTAS",
+      "result": "SEMANTICALLY_ACCEPTED_PERFORMANCE_GATE_STILL_FAILED",
+      "reason": "The change produced a 27.17 percent three-round improvement and preserved current semantic evidence, but raid_control_heavy still timed out at 12000ms."
+    }
+  ],
+  "acceptedCurrentHashEvidence": [
+    {
+      "path": "tools/rc6/evidence/m2/k14-s4-branch-value-reference.json",
+      "status": "PASSED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k14-s4-route-value-reuse-ab.json",
+      "status": "PASSED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/production-reference-ab.json",
+      "status": "PASSED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/small-target-transactions.json",
+      "status": "PASSED"
+    },
     {
       "path": "tools/rc6/evidence/m2/k13-target-performance.json",
-      "scope": "target-kernel-selection-scout",
-      "status": "R9V2_TARGET_KERNEL_SCOUT_BLOCKED"
-    },
-    {
-      "path": "tools/rc6/evidence/m2/k13-route-cache-ab.json",
-      "scope": "current-hash-route-cache-ab",
-      "status": "PASSED",
-      "use": "subordinate optimization only"
-    },
-    {
-      "path": "tools/rc6/evidence/m2/k04-target-fact-delta.json",
-      "scope": "target-kernel-fact-delta",
-      "status": "PASSED"
-    },
-    {
-      "path": "tools/rc6/evidence/m2/s4-target-semantics.json",
-      "scope": "s4-semantic-probes",
-      "status": "PASSED"
-    },
-    {
-      "path": "tools/rc6/evidence/m2/k12-target-adapter.json",
-      "scope": "target-kernel-adapter",
-      "status": "PASSED_WITH_FIELD_REFERENCE_AB_PENDING"
+      "status": "R9V2_TARGET_KERNEL_BLOCKED"
     }
   ],
   "sourceHashes": {
-    "BattleDecision_Module.js": "1df676bb6e99cbe6bf7a8a8768bf3cac953ebc633d63607e575051b529c72e66",
-    "BattleDecisionR9v2Kernel_Module.js": "2eb0efad1467b8c21cf2445aed24fe0bd9b0a9a6586e796c81a3eebc50825a62",
-    "BattlePreview_Module.js": "d1b51337da3875d10df46362f6564bb94f36174c2210dc62c0afb47c1ce3fdd3",
+    "BattleDecision_Module.js": "4a610ca8b55f64d26b8ce7ee4f885aebbf6f8ddf0205d57afe4ec8776c959cc0",
+    "BattleDecisionR9v2Kernel_Module.js": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
     "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
-    "run-m2-k13-target-performance.mjs": "828bd704fdb1d7b86e5f9bd396c96149629a904b695616550a41f5423e3f4b9d",
-    "run-m2-k13-route-cache-ab.mjs": "750cb970397a7829b6955484e1eb6b457a6ec77992a68a61f2471f7d2f44e587"
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961"
   },
   "decision": {
-    "requiredNextArchitecture": "Implement a shared BehaviorPoolSession and target-kernel session/vector lifecycle across requests; drive applyFactDelta from real world transitions; rebuild only dependency-intersecting components; assemble full vectors, information value, causal totals and Pareto per branch.",
+    "attemptBudgetConsumed": true,
+    "requiredNextArchitecture": "A new product or architecture decision is required before more implementation: either isolate S4 branch mechanics into a delta-evaluable numeric kernel that avoids rebuilding the 294 dirty mechanical rows, or revise the M2 five-round gate. This cannot be another cache or local timing patch.",
     "prohibitedNextActions": [
-      "Do not add another route or slice cache.",
-      "Do not reduce candidates, targets, responses, probabilities or rounds.",
-      "Do not run M3-M7 or switch the formal Provider.",
-      "Do not claim the measured selection scope is the final R9v2 full-transaction performance gate."
+      "Do not add another cache or local millisecond optimization to the current S4 path.",
+      "Do not reduce candidates, targets, responses, probabilities, facts or rounds.",
+      "Do not enter M3-M7 or switch the formal Provider.",
+      "Do not claim the passing three-round gate closes M2."
     ],
-    "nextExitCondition": "A target-kernel lifecycle implementation produces field-identical output and materially reuses shared pool, mechanical entries and proof components before K13 is rerun."
+    "nextExitCondition": "An explicitly approved new architecture or gate decision supersedes the exhausted K13 attempt budget."
   }
 }

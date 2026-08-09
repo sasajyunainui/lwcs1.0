@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 110,
+  "previousEventHash": "3a793b176195e5747791b3eb5037c1048189d0a326cfe56be40395d33b3f4eec",
+  "milestoneId": "M2",
+  "taskId": "M2-K08",
+  "eventType": "SUBTASK_STARTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0d50c8357a2791bfd2d3bef95ab356db179174fc6794d6d289e286f592432f78",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": null,
+    "nextExitCondition": "K08 S5 long-window effects, summons, creation, items and equipment",
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "M2-K08 started: validate long-window DOT/HOT, delayed effects, summon lifecycle, creation consumers, items and equipment on the target kernel.",
+  "recordedAt": "2026-08-08T03:10:54.746Z",
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "eventHash": "37d5014c74ae7e4badf37b51b79eeca017880f08501db45ae9043f44b549da0d"
+}

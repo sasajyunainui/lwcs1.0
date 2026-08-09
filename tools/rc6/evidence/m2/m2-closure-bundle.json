@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "M2ClosureBundleV1",
+  "milestoneId": "M2",
+  "status": "FUNCTIONAL_CLOSED_PERFORMANCE_DEBT_OPEN",
+  "planRevision": 27,
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "provider": {
+    "formal": "r8",
+    "target": "r9v2",
+    "targetRegistration": "TEST_ADAPTER_ONLY"
+  },
+  "ownershipDecision": {
+    "contract": "tools/rc6/contracts/R9v2TargetKernelComponentRegistryAdapterV1.json",
+    "decision": "KERNEL_ORCHESTRATOR_WITH_PROVIDER_NEUTRAL_COMPONENT_ADAPTER",
+    "legacyComponentReachability": "CLOSED",
+    "shadowProviderExecution": false,
+    "formalProviderChanged": false
+  },
+  "sourceHashes": {
+    "BattleDecision_Module.js": "3b507d01a96d8c436b8de9bef3726c6c7869c97be9f58ce77f44e31b8387ba53",
+    "BattleDecisionR9v2Kernel_Module.js": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961"
+  },
+  "acceptedGates": {
+    "K00": "CURRENT_HASH_PASSED",
+    "K01_K08": "CURRENT_HASH_ACCEPTED",
+    "K09_K11": "CURRENT_HASH_ACCEPTED",
+    "K12": "CURRENT_HASH_FIELD_LEVEL_AB_PASSED",
+    "TARGET_PATH": "CURRENT_HASH_PASSED",
+    "SMALL_TARGET_TRANSACTIONS": "4_CASES_PASSED_DRAFT_REPORT_AUDIT_SEAL_VERIFY"
+  },
+  "performanceDebt": {
+    "status": "OPEN_FOR_M5",
+    "currentK13Status": "R9V2_TARGET_KERNEL_BLOCKED",
+    "raidControlHeavyFiveRound": "TIMEOUT_AT_12000_MS",
+    "formalPerformanceAccepted": false,
+    "nextOwner": "M5",
+    "forbiddenInterpretation": "NOT_AN_R8_PERFORMANCE_RESULT_AND_NOT_A_FINAL_R9V2_PERFORMANCE_PASS"
+  },
+  "quarantinedEvidence": [
+    {
+      "path": "tools/rc6/evidence/m2/current-direction-audit.json",
+      "reason": "OLDER_HEAD_AND_SOURCE_HASH; retained as historical diagnostic"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/performance-blocker-report-v1.json",
+      "reason": "OLDER_DECISION_HASH; retained as historical performance evidence"
+    }
+  ],
+  "nextExitCondition": "M3-B01 current-hash target behavior evidence; no formal provider switch"
+}

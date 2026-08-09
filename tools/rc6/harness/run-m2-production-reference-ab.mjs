@@ -858,7 +858,7 @@ function compareCandidate(reference, vector, caseId) {
     assert(
       fact.sourceFactId === expected.sourceFactId &&
         fact.causalOwnerType === expected.causalOwnerType,
-      `PRODUCTION_AB_CAUSAL_ID_MISMATCH:${caseId}:${reference.candidateId}:${index}`,
+      `PRODUCTION_AB_CAUSAL_ID_MISMATCH:${caseId}:${reference.candidateId}:${index}:${JSON.stringify({ actual: actualFacts.map(item => [item.sourceFactId, item.causalOwnerType, item.valueHEPP]), expected: expectedFacts.map(item => [item.sourceFactId, item.causalOwnerType, item.valueHEPP]) })}`,
     );
     approx(
       fact.valueHEPP,
@@ -889,6 +889,7 @@ const caseIds = [
   'team_control_overlap',
   'summon_one_window',
   'item_creation_consumption',
+  'equipment_switch_no_loop',
   'raid_summon_heavy',
   'raid_response_terminal_information',
 ];

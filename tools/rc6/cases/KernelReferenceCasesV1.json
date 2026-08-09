@@ -117,6 +117,7 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {},
       "expected": {
         "selectedCandidateId": "threshold-attack",
         "causalTolerance": 0.000001
@@ -168,26 +169,49 @@
           },
           "rawFacts": [
             {
-              "componentCode": "S1_HEALTH",
-              "formula": "HEALTH_PP",
-              "deltaHp": -60,
-              "maxHp": 100,
-              "polarity": -1,
-              "sourceEventId": "lethal-first:S1_HEALTH:event",
-              "sourceFactId": "lethal-first:S1_HEALTH:fact",
-              "targetUnitId": "target-1",
-              "sequence": 0
-            },
-            {
               "componentCode": "S1_TERMINAL",
               "formula": "TERMINAL_OUTCOME",
               "winProbability": 1,
               "lossProbability": 0,
               "drawProbability": 0,
-              "sourceEventId": "lethal-first:S1_TERMINAL:event",
-              "sourceFactId": "lethal-first:S1_TERMINAL:fact",
+              "sourceEventId": "lethal-first:terminal:event",
+              "sourceFactId": "lethal-first:terminal:fact",
+              "targetUnitId": "target-1",
+              "sequence": 0
+            },
+            {
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -80,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "lethal-first:health:1:event",
+              "sourceFactId": "lethal-first:health:1:fact",
+              "targetUnitId": "target-1",
+              "sequence": 1
+            },
+            {
+              "componentCode": "S2_ROUTE",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 40,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "lethal-first:route:2:event",
+              "sourceFactId": "lethal-first:route:2:fact",
               "targetUnitId": "target-1",
               "sequence": 2
+            },
+            {
+              "componentCode": "S5_DOT",
+              "formula": "HEALTH_PP",
+              "deltaHp": -20,
+              "maxHp": 100,
+              "polarity": -1,
+              "sourceEventId": "lethal-first:health:3:event",
+              "sourceFactId": "lethal-first:health:3:fact",
+              "targetUnitId": "target-1",
+              "sequence": 3
             }
           ]
         },
@@ -232,9 +256,82 @@
               "sequence": 0
             }
           ]
+        },
+        {
+          "candidateId": "terminal-failure",
+          "actionId": "withdraw-failure",
+          "actionKind": "WITHDRAW",
+          "targetSet": [
+            "target-1"
+          ],
+          "paymentMode": "FULL",
+          "legal": true,
+          "playerLocked": false,
+          "hardExclusionCodes": [],
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
+          "informationGroups": [],
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
+            {
+              "componentCode": "S1_TERMINAL",
+              "formula": "TERMINAL_OUTCOME",
+              "winProbability": 0,
+              "lossProbability": 1,
+              "drawProbability": 0,
+              "sourceEventId": "terminal-failure:terminal:event",
+              "sourceFactId": "terminal-failure:terminal:fact",
+              "targetUnitId": "target-1",
+              "sequence": 0
+            }
+          ]
+        },
+        {
+          "candidateId": "terminal-draw",
+          "actionId": "stalemate",
+          "actionKind": "PASS_OPPORTUNITY",
+          "targetSet": [
+            "target-1"
+          ],
+          "paymentMode": "FULL",
+          "legal": true,
+          "playerLocked": false,
+          "hardExclusionCodes": [],
+          "actorSide": "PLAYER",
+          "targetProfiles": [],
+          "objectiveContract": null,
+          "informationGroups": [],
+          "riskInputs": {
+            "actorMaxHp": 100,
+            "actorHp": 0,
+            "actorOutcomeDeltas": [],
+            "shieldFacts": [],
+            "actorSide": "PLAYER"
+          },
+          "rawFacts": [
+            {
+              "componentCode": "S1_TERMINAL",
+              "formula": "TERMINAL_OUTCOME",
+              "winProbability": 0,
+              "lossProbability": 0,
+              "drawProbability": 1,
+              "sourceEventId": "terminal-draw:terminal:event",
+              "sourceFactId": "terminal-draw:terminal:fact",
+              "targetUnitId": "target-1",
+              "sequence": 0
+            }
+          ]
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {},
       "expected": {
         "selectedCandidateId": "lethal-first",
         "causalTolerance": 0.000001
@@ -268,12 +365,43 @@
           "playerLocked": false,
           "hardExclusionCodes": [],
           "actorSide": "PLAYER",
-          "targetProfiles": [],
-          "objectiveContract": null,
+          "targetProfiles": [
+            {
+              "targetId": "target-1",
+              "side": "ENEMY",
+              "currentHpPP": 80
+            },
+            {
+              "targetId": "target-2",
+              "side": "ENEMY",
+              "currentHpPP": 80
+            }
+          ],
+          "objectiveContract": {
+            "victory": {
+              "logic": "ANY",
+              "conditions": [
+                {
+                  "type": "HP_RATIO_AT_OR_BELOW",
+                  "threshold": 0.5,
+                  "targetIds": [
+                    "target-1",
+                    "target-2"
+                  ],
+                  "side": "ENEMY",
+                  "scope": "ANY"
+                }
+              ]
+            },
+            "defeat": {
+              "logic": "ANY",
+              "conditions": []
+            }
+          },
           "informationGroups": [],
           "riskInputs": {
             "actorMaxHp": 100,
-            "actorHp": 28,
+            "actorHp": 0,
             "actorOutcomeDeltas": [],
             "shieldFacts": [],
             "actorSide": "PLAYER"
@@ -282,13 +410,24 @@
             {
               "componentCode": "S1_HEALTH",
               "formula": "HEALTH_PP",
-              "deltaHp": -40,
-              "maxHp": 100,
+              "deltaHp": -200,
+              "maxHp": 2000,
               "polarity": -1,
-              "sourceEventId": "any-highest:S1_HEALTH:event",
-              "sourceFactId": "any-highest:S1_HEALTH:fact",
+              "sourceEventId": "any-highest:health:0:event",
+              "sourceFactId": "any-highest:health:0:fact",
               "targetUnitId": "target-1",
               "sequence": 0
+            },
+            {
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -300,
+              "maxHp": 1000,
+              "polarity": -1,
+              "sourceEventId": "any-highest:health:1:event",
+              "sourceFactId": "any-highest:health:1:fact",
+              "targetUnitId": "target-2",
+              "sequence": 1
             }
           ]
         },
@@ -304,12 +443,43 @@
           "playerLocked": false,
           "hardExclusionCodes": [],
           "actorSide": "PLAYER",
-          "targetProfiles": [],
-          "objectiveContract": null,
+          "targetProfiles": [
+            {
+              "targetId": "target-1",
+              "side": "ENEMY",
+              "currentHpPP": 80
+            },
+            {
+              "targetId": "target-2",
+              "side": "ENEMY",
+              "currentHpPP": 80
+            }
+          ],
+          "objectiveContract": {
+            "victory": {
+              "logic": "ANY",
+              "conditions": [
+                {
+                  "type": "HP_RATIO_AT_OR_BELOW",
+                  "threshold": 0.5,
+                  "targetIds": [
+                    "target-1",
+                    "target-2"
+                  ],
+                  "side": "ENEMY",
+                  "scope": "ALL"
+                }
+              ]
+            },
+            "defeat": {
+              "logic": "ANY",
+              "conditions": []
+            }
+          },
           "informationGroups": [],
           "riskInputs": {
             "actorMaxHp": 100,
-            "actorHp": 16,
+            "actorHp": 0,
             "actorOutcomeDeltas": [],
             "shieldFacts": [],
             "actorSide": "PLAYER"
@@ -318,18 +488,30 @@
             {
               "componentCode": "S1_HEALTH",
               "formula": "HEALTH_PP",
-              "deltaHp": -32,
-              "maxHp": 100,
+              "deltaHp": -200,
+              "maxHp": 2000,
               "polarity": -1,
-              "sourceEventId": "all-bottleneck:S1_HEALTH:event",
-              "sourceFactId": "all-bottleneck:S1_HEALTH:fact",
+              "sourceEventId": "all-bottleneck:health:0:event",
+              "sourceFactId": "all-bottleneck:health:0:fact",
               "targetUnitId": "target-1",
               "sequence": 0
+            },
+            {
+              "componentCode": "S1_HEALTH",
+              "formula": "HEALTH_PP",
+              "deltaHp": -300,
+              "maxHp": 1000,
+              "polarity": -1,
+              "sourceEventId": "all-bottleneck:health:1:event",
+              "sourceFactId": "all-bottleneck:health:1:fact",
+              "targetUnitId": "target-2",
+              "sequence": 1
             }
           ]
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {},
       "expected": {
         "selectedCandidateId": "any-highest",
         "causalTolerance": 0.000001
@@ -437,6 +619,25 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "opportunityFacts": [
+          {
+            "kind": "CONCRETE_OPPORTUNITY",
+            "formalOpportunity": true,
+            "responseOnly": false
+          },
+          {
+            "kind": "SCHEDULE_DESCRIPTOR",
+            "formalOpportunity": false,
+            "responseOnly": false
+          },
+          {
+            "kind": "PROJECTED_RESPONSE",
+            "formalOpportunity": false,
+            "responseOnly": true
+          }
+        ]
+      },
       "expected": {
         "selectedCandidateId": "scheduled-control",
         "causalTolerance": 0.000001
@@ -578,6 +779,11 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "passCandidateId": "active-pass",
+        "lostCandidateId": "lost-action",
+        "noOpCandidateId": "NO_OP"
+      },
       "expected": {
         "selectedCandidateId": "legal-attack",
         "causalTolerance": 0.000001
@@ -694,6 +900,47 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "resourceTimeline": {
+          "events": [
+            {
+              "eventId": "e3",
+              "round": 1,
+              "opportunitySequence": 2,
+              "actionSequence": 1,
+              "phasePriority": 0,
+              "effectSequence": 0,
+              "ownerType": "PAYMENT",
+              "sourceFactId": "fact-e3"
+            },
+            {
+              "eventId": "e1",
+              "round": 1,
+              "opportunitySequence": 1,
+              "actionSequence": 2,
+              "phasePriority": 0,
+              "effectSequence": 0,
+              "ownerType": "PAYMENT",
+              "sourceFactId": "fact-e1"
+            },
+            {
+              "eventId": "e2",
+              "round": 1,
+              "opportunitySequence": 1,
+              "actionSequence": 2,
+              "phasePriority": 1,
+              "effectSequence": 0,
+              "ownerType": "REFUND",
+              "sourceFactId": "fact-e2"
+            }
+          ],
+          "expectedOrder": [
+            "e1",
+            "e2",
+            "e3"
+          ]
+        }
+      },
       "expected": {
         "selectedCandidateId": "affordable-response",
         "causalTolerance": 0.000001
@@ -739,16 +986,16 @@
           },
           "rawFacts": [
             {
-              "componentCode": "S2_ROUTE",
+              "componentCode": "S3_HARD_CONTROL",
               "formula": "ROUTE_DELTA",
               "beforeRouteHEPP": 0,
               "afterRouteHEPP": 42,
               "applicationProbability": 1,
               "polarity": 1,
-              "sourceEventId": "control-route:S2_ROUTE:event",
-              "sourceFactId": "control-route:S2_ROUTE:fact",
+              "sourceEventId": "control-route:route:0:event",
+              "sourceFactId": "control-route:route:0:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -790,6 +1037,28 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "legalRouteIds": [
+          "control-route",
+          "damage-route"
+        ],
+        "behaviorPoolCandidateIds": [
+          "control-route",
+          "damage-route"
+        ],
+        "affectedUnitIds": [
+          "ally-critical",
+          "enemy-controller"
+        ],
+        "invalidatedUnitIds": [
+          "ally-critical",
+          "enemy-controller"
+        ],
+        "futureRoute": {
+          "before": 0,
+          "after": 42
+        }
+      },
       "expected": {
         "selectedCandidateId": "control-route",
         "causalTolerance": 0.000001
@@ -835,14 +1104,25 @@
           },
           "rawFacts": [
             {
-              "componentCode": "S2_ROUTE",
+              "componentCode": "S3_DEFENSE",
+              "formula": "HEALTH_PP",
+              "deltaHp": 50,
+              "maxHp": 100,
+              "polarity": 1,
+              "sourceEventId": "protect-ally:health:0:event",
+              "sourceFactId": "protect-ally:health:0:fact",
+              "targetUnitId": "ally-critical",
+              "sequence": 0
+            },
+            {
+              "componentCode": "S3_SUPPORT_RESOURCE",
               "formula": "ROUTE_DELTA",
               "beforeRouteHEPP": 0,
-              "afterRouteHEPP": 62,
+              "afterRouteHEPP": 12,
               "applicationProbability": 1,
               "polarity": 1,
-              "sourceEventId": "protect-ally:S2_ROUTE:event",
-              "sourceFactId": "protect-ally:S2_ROUTE:fact",
+              "sourceEventId": "protect-ally:route:1:event",
+              "sourceFactId": "protect-ally:route:1:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -892,6 +1172,21 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "actualAbsorption": {
+          "preventedDamage": 50,
+          "stateDeltaHEPP": 50
+        },
+        "supportConsumer": {
+          "affectedUnitId": "ally-critical",
+          "observable": true
+        },
+        "healConditioning": {
+          "currentHpPP": 20,
+          "thresholdPP": 50,
+          "terminal": false
+        }
+      },
       "expected": {
         "selectedCandidateId": "protect-ally",
         "causalTolerance": 0.000001
@@ -937,14 +1232,25 @@
           },
           "rawFacts": [
             {
-              "componentCode": "S2_ROUTE",
+              "componentCode": "S3_EVASION",
+              "formula": "HEALTH_PP",
+              "deltaHp": 30,
+              "maxHp": 100,
+              "polarity": 1,
+              "sourceEventId": "evade-window:health:0:event",
+              "sourceFactId": "evade-window:health:0:fact",
+              "targetUnitId": "target-1",
+              "sequence": 0
+            },
+            {
+              "componentCode": "S3_COUNTER",
               "formula": "ROUTE_DELTA",
               "beforeRouteHEPP": 0,
-              "afterRouteHEPP": 40,
+              "afterRouteHEPP": 10,
               "applicationProbability": 1,
               "polarity": 1,
-              "sourceEventId": "evade-window:S2_ROUTE:event",
-              "sourceFactId": "evade-window:S2_ROUTE:fact",
+              "sourceEventId": "evade-window:route:1:event",
+              "sourceFactId": "evade-window:route:1:fact",
               "targetUnitId": "target-1",
               "sequence": 1
             }
@@ -1000,6 +1306,21 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "probabilityBranch": {
+          "successProbability": 0.75,
+          "branches": [
+            0.75,
+            0.25
+          ],
+          "routeChanges": true
+        },
+        "responseFact": {
+          "kind": "CONCRETE_OPPORTUNITY",
+          "responseProbability": 0.4,
+          "sourceFactId": "counter-response-fact"
+        }
+      },
       "expected": {
         "selectedCandidateId": "evade-window",
         "causalTolerance": 0.000001
@@ -1099,6 +1420,26 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "publicEvidence": [
+          "visibleHpRatios",
+          "publicStates",
+          "revealedAbilityIds",
+          "observableDeclarations"
+        ],
+        "hiddenEvidence": [
+          "hiddenExactHp",
+          "hiddenResistance",
+          "hiddenInventory",
+          "hiddenAbility",
+          "unobservedPosterior"
+        ],
+        "responseBranches": {
+          "publicEvidenceBranches": 2,
+          "catastrophicTail": 1,
+          "hiddenPlanFields": 0
+        }
+      },
       "expected": {
         "selectedCandidateId": "public-response",
         "causalTolerance": 0.000001
@@ -1252,6 +1593,21 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "expectedInformation": {
+          "adaptive": 50,
+          "committed": 20,
+          "value": 30
+        },
+        "multipleGroupValues": [
+          30,
+          8
+        ],
+        "endpointProbes": [
+          0,
+          1
+        ]
+      },
       "expected": {
         "selectedCandidateId": "observe-then-act",
         "causalTolerance": 0.000001
@@ -1395,6 +1751,12 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "endpointProbes": [
+          0,
+          1
+        ]
+      },
       "expected": {
         "selectedCandidateId": "stable-attack",
         "causalTolerance": 0.000001
@@ -1440,27 +1802,38 @@
           },
           "rawFacts": [
             {
-              "componentCode": "S1_HEALTH",
+              "componentCode": "S5_DOT",
               "formula": "HEALTH_PP",
-              "deltaHp": -4,
+              "deltaHp": -12,
               "maxHp": 100,
               "polarity": -1,
-              "sourceEventId": "dot-window:S1_HEALTH:event",
-              "sourceFactId": "dot-window:S1_HEALTH:fact",
+              "sourceEventId": "dot-window:health:0:event",
+              "sourceFactId": "dot-window:health:0:fact",
               "targetUnitId": "target-1",
               "sequence": 0
             },
             {
-              "componentCode": "S2_ROUTE",
-              "formula": "ROUTE_DELTA",
-              "beforeRouteHEPP": 0,
-              "afterRouteHEPP": 31,
-              "applicationProbability": 1,
+              "componentCode": "S5_HOT",
+              "formula": "HEALTH_PP",
+              "deltaHp": 6,
+              "maxHp": 100,
               "polarity": 1,
-              "sourceEventId": "dot-window:S2_ROUTE:event",
-              "sourceFactId": "dot-window:S2_ROUTE:fact",
+              "sourceEventId": "dot-window:health:1:event",
+              "sourceFactId": "dot-window:health:1:fact",
               "targetUnitId": "target-1",
               "sequence": 1
+            },
+            {
+              "componentCode": "S5_DELAYED_EFFECT",
+              "formula": "ROUTE_DELTA",
+              "beforeRouteHEPP": 0,
+              "afterRouteHEPP": 15,
+              "applicationProbability": 1,
+              "polarity": 1,
+              "sourceEventId": "dot-window:route:2:event",
+              "sourceFactId": "dot-window:route:2:fact",
+              "targetUnitId": "target-1",
+              "sequence": 2
             }
           ]
         },
@@ -1505,6 +1878,31 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "scheduledEffects": [
+          {
+            "componentCode": "S5_DOT",
+            "startsAt": 1,
+            "expiresAt": 3,
+            "observedAt": 2,
+            "contributes": true
+          },
+          {
+            "componentCode": "S5_HOT",
+            "startsAt": 1,
+            "expiresAt": 3,
+            "observedAt": 4,
+            "contributes": false
+          },
+          {
+            "componentCode": "S5_DELAYED_EFFECT",
+            "startsAt": 2,
+            "expiresAt": 4,
+            "observedAt": 3,
+            "contributes": true
+          }
+        ]
+      },
       "expected": {
         "selectedCandidateId": "dot-window",
         "causalTolerance": 0.000001
@@ -1550,16 +1948,16 @@
           },
           "rawFacts": [
             {
-              "componentCode": "S2_ROUTE",
+              "componentCode": "S5_SUMMON_WINDOW",
               "formula": "ROUTE_DELTA",
               "beforeRouteHEPP": 0,
               "afterRouteHEPP": 38,
               "applicationProbability": 1,
               "polarity": 1,
-              "sourceEventId": "summon-window:S2_ROUTE:event",
-              "sourceFactId": "summon-window:S2_ROUTE:fact",
+              "sourceEventId": "summon-window:route:0:event",
+              "sourceFactId": "summon-window:route:0:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -1640,6 +2038,14 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "summonLifecycle": {
+          "birthEvent": "spawn-1",
+          "hostDeathEvent": "death-1",
+          "routeStopsAt": "death-1",
+          "lateCandidateId": "summon-after-host-death"
+        }
+      },
       "expected": {
         "selectedCandidateId": "summon-window",
         "causalTolerance": 0.000001
@@ -1691,16 +2097,16 @@
           },
           "rawFacts": [
             {
-              "componentCode": "S2_ROUTE",
+              "componentCode": "S5_CREATION_CONSUMER",
               "formula": "ROUTE_DELTA",
               "beforeRouteHEPP": 0,
               "afterRouteHEPP": 44,
               "applicationProbability": 1,
               "polarity": 1,
-              "sourceEventId": "create-with-consumer:S2_ROUTE:event",
-              "sourceFactId": "create-with-consumer:S2_ROUTE:fact",
+              "sourceEventId": "create-with-consumer:route:0:event",
+              "sourceFactId": "create-with-consumer:route:0:fact",
               "targetUnitId": "target-1",
-              "sequence": 1
+              "sequence": 0
             }
           ]
         },
@@ -1781,6 +2187,25 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "creationConsumer": {
+          "producerCandidateId": "create-with-consumer",
+          "consumerId": "ally-consumer",
+          "observable": true,
+          "windowOpen": true
+        },
+        "inventoryFact": {
+          "created": 1,
+          "consumed": 1,
+          "hiddenSourceRead": false
+        },
+        "equipmentWindow": {
+          "startsAt": 1,
+          "expiresAt": 3,
+          "consumerId": "ally-consumer",
+          "observedAt": 2
+        }
+      },
       "expected": {
         "selectedCandidateId": "create-with-consumer",
         "causalTolerance": 0.000001
@@ -1888,6 +2313,12 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "expectedOwners": [
+          "STATE_DELTA",
+          "ACTION_POOL_DELTA"
+        ]
+      },
       "expected": {
         "selectedCandidateId": "state-owned",
         "causalTolerance": 0.000001
@@ -1984,6 +2415,12 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "expectedOwners": [
+          "STATE_DELTA",
+          "ACTION_POOL_DELTA"
+        ]
+      },
       "expected": {
         "selectedCandidateId": "pool-owned",
         "causalTolerance": 0.000001
@@ -2087,6 +2524,14 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {
+        "legalBeforePareto": [
+          "valid-safe"
+        ],
+        "excludedBeforePareto": [
+          "invalid-high-value"
+        ]
+      },
       "expected": {
         "selectedCandidateId": "valid-safe",
         "causalTolerance": 0.000001
@@ -2193,6 +2638,7 @@
         }
       ],
       "playerLockedCandidateId": "player-choice",
+      "verification": {},
       "expected": {
         "selectedCandidateId": "player-choice",
         "causalTolerance": 0.000001
@@ -2321,6 +2767,7 @@
         }
       ],
       "playerLockedCandidateId": null,
+      "verification": {},
       "expected": {
         "selectedCandidateId": "fallback",
         "causalTolerance": 0.000001

@@ -167,6 +167,15 @@ const metricView = metrics => ({
   rebuiltRouteRows: Number(
     metrics?.r9v2InformationBranchRebuiltRouteRows || 0,
   ),
+  branchValueVectors: Number(
+    metrics?.r9v2InformationBranchValueVectorBuilds || 0,
+  ),
+  branchValueVectorRows: Number(
+    metrics?.r9v2InformationBranchValueVectorRows || 0,
+  ),
+  branchValueVectorDirtyRows: Number(
+    metrics?.r9v2InformationBranchValueVectorDirtyRows || 0,
+  ),
   routeEntryPreparationMs: Number(
     metrics?.r9v2TargetRouteEntryPreparationMs || 0,
   ),
@@ -179,18 +188,12 @@ const metricView = metrics => ({
   ),
 });
 
-const disableRouteValueReuse = source => {
-  const gatePattern = /const canReuseBaselineRouteValues\s*=\s*routeValueReuseGateReason === 'ELIGIBLE';/u;
-  const patchedGate = source.replace(
-    gatePattern,
-    'const canReuseBaselineRouteValues = false;',
-  );
-  const patched = patchedGate.replace(
-    /root\.__LWCS_R9V2_DISABLE_ROUTE_VALUE_PROFILE__ !== true/g,
+const disableBranchValueVector = source => {
+  const patched = source.replace(
+    /root\?\.__LWCS_R9V2_DISABLE_S4_BRANCH_VALUE_VECTOR__ !== true/u,
     'false',
   );
-  assert(patchedGate !== source, 'K14_ROUTE_REUSE_GATE_PATCH_MISSED');
-  assert(patched !== patchedGate, 'K14_ROUTE_PROFILE_PATCH_MISSED');
+  assert(patched !== source, 'K14_S4_BRANCH_VALUE_GATE_PATCH_MISSED');
   return patched;
 };
 
@@ -310,7 +313,7 @@ const fixtureText = readUtf8(fixturePath);
 const fixture = JSON.parse(fixtureText);
 assert(fixture.schemaVersion === 'S4RouteValueReuseCasesV1', 'K14_FIXTURE_SCHEMA_MISMATCH');
 const currentSource = readUtf8(decisionPath);
-const fullRebuildSource = disableRouteValueReuse(currentSource);
+const fullRebuildSource = disableBranchValueVector(currentSource);
 const rows = fixture.scenarios.map(scenario => {
   const current = runVariant({
     source: currentSource,
@@ -331,22 +334,22 @@ const rows = fixture.scenarios.map(scenario => {
     fullRebuild,
   };
 });
-const reuseObserved = rows.some(row =>
-  row.current.metrics.reusedRouteValueTables > 0 &&
-  row.current.metrics.reusedRouteValueRows > 0 &&
-  row.fullRebuild.metrics.reusedRouteValueTables === 0,
+const vectorObserved = rows.some(row =>
+  row.current.metrics.branchValueVectors > 0 &&
+  row.current.metrics.branchValueVectorRows > 0 &&
+  row.fullRebuild.metrics.branchValueVectors === 0,
 );
 const allEqual = rows.every(row => row.semanticEqual);
 const output = {
-  schemaVersion: 'M2K14S4RouteValueReuseABV1',
-  status: allEqual && reuseObserved ? 'PASSED' : 'REJECTED',
-  scope: 'TARGET_KERNEL_SINGLE_DECISION_S4_ROUTE_VALUE_REUSE_SEMANTIC_DIFFERENTIAL',
+  schemaVersion: 'M2K14S4BranchValueABV1',
+  status: allEqual && vectorObserved ? 'PASSED' : 'REJECTED',
+  scope: 'TARGET_KERNEL_SINGLE_DECISION_S4_BRANCH_VALUE_SEMANTIC_DIFFERENTIAL',
   caseId: fixture.caseId,
   actorId: fixture.actorId,
   scenarioCount: rows.length,
   rows,
   semanticEqual: allEqual,
-  reuseObserved,
+  vectorObserved,
   sourceHashes: {
     decision: sha256(currentSource),
     fullRebuildDecision: sha256(fullRebuildSource),
@@ -357,4 +360,4 @@ const output = {
 fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
 fs.writeFileSync(evidencePath, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
 process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
-assert(output.status === 'PASSED', 'K14_ROUTE_VALUE_REUSE_SEMANTIC_MISMATCH');
+assert(output.status === 'PASSED', 'K14_S4_BRANCH_VALUE_SEMANTIC_MISMATCH');

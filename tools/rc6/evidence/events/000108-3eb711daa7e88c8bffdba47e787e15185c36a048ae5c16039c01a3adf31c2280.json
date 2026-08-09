@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 108,
+  "previousEventHash": "017809fcf9507dfe4cddddff5955cde838ff75ec4475b87e31b6361c689e2765",
+  "milestoneId": "M2",
+  "taskId": "M2-K07",
+  "eventType": "SUBTASK_STARTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0d50c8357a2791bfd2d3bef95ab356db179174fc6794d6d289e286f592432f78",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": null,
+    "nextExitCondition": "K07 S4 response, public cognition, exact branch values and information value",
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "M2-K07 started: validate S4 response branches, public-information boundaries and exact nonzero information value on the target kernel.",
+  "recordedAt": "2026-08-08T03:04:44.149Z",
+  "repository": {
+    "branch": "master",
+    "head": "f6cde814e4671aeb6c4d093e4ce8b4b6dbf2b78f"
+  },
+  "eventHash": "3eb711daa7e88c8bffdba47e787e15185c36a048ae5c16039c01a3adf31c2280"
+}

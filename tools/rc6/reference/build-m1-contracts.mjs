@@ -176,6 +176,9 @@ const candidate = ({
   legal = true,
   playerLocked = false,
   informationGroups = [],
+  rawFacts = null,
+  targetProfiles = null,
+  objectiveContract = null,
 }) => ({
   candidateId,
   actionId,
@@ -186,14 +189,14 @@ const candidate = ({
   playerLocked,
   hardExclusionCodes,
   actorSide: 'PLAYER',
-  targetProfiles: overkill > 0 ? [{ targetId: 'target-1', side: 'ENEMY', currentHpPP: 80 }] : [],
-  objectiveContract: overkill > 0 ? {
+  targetProfiles: targetProfiles || (overkill > 0 ? [{ targetId: 'target-1', side: 'ENEMY', currentHpPP: 80 }] : []),
+  objectiveContract: objectiveContract || (overkill > 0 ? {
     victory: {
       logic: 'ANY',
       conditions: [{ type: 'HP_RATIO_AT_OR_BELOW', threshold: 0.5, targetIds: ['target-1'], side: 'ENEMY' }],
     },
     defeat: { logic: 'ANY', conditions: [] },
-  } : null,
+  } : null),
   informationGroups,
   riskInputs: {
     actorMaxHp: 100,
@@ -202,7 +205,7 @@ const candidate = ({
     shieldFacts: reserve > 0 ? [{ deltaHp: reserve, maxHp: 100, side: 'PLAYER' }] : [],
     actorSide: 'PLAYER',
   },
-  rawFacts: [
+  rawFacts: rawFacts || [
     ...(state ? [{
       componentCode: 'S1_HEALTH',
       formula: 'HEALTH_PP',
@@ -280,7 +283,7 @@ const info = (groupId, adaptiveValue, committedValue, outcomes = 2) => ({
     ],
 });
 
-const refCase = ({ caseId, domain, mode = 'auto', phase, candidates, expectedSelectedCandidateId, playerLockedCandidateId = null }) => ({
+const refCase = ({ caseId, domain, mode = 'auto', phase, candidates, expectedSelectedCandidateId, playerLockedCandidateId = null, verification = {} }) => ({
   schemaVersion: 'KernelReferenceCaseV1',
   caseId,
   semanticDomain: domain,
@@ -292,6 +295,7 @@ const refCase = ({ caseId, domain, mode = 'auto', phase, candidates, expectedSel
   publicFields: ['visibleHpRatios', 'visibleStates', 'revealedAbilityIds', 'observableDeclarations'],
   candidates,
   playerLockedCandidateId,
+  verification,
   expected: {
     selectedCandidateId: expectedSelectedCandidateId,
     causalTolerance: 1e-6,
@@ -385,6 +389,221 @@ const cases = [
   ], expectedSelectedCandidateId: 'fallback' }),
 ];
 
+const healthFact = (candidateId, targetUnitId, deltaHp, maxHp, sequence, componentCode = 'S1_HEALTH') => ({
+  componentCode,
+  formula: 'HEALTH_PP',
+  deltaHp,
+  maxHp,
+  polarity: deltaHp <= 0 ? -1 : 1,
+  sourceEventId: `${candidateId}:health:${sequence}:event`,
+  sourceFactId: `${candidateId}:health:${sequence}:fact`,
+  targetUnitId,
+  sequence,
+});
+
+const routeFact = (candidateId, componentCode, amountHEPP, sequence) => ({
+  componentCode,
+  formula: 'ROUTE_DELTA',
+  beforeRouteHEPP: 0,
+  afterRouteHEPP: amountHEPP,
+  applicationProbability: 1,
+  polarity: 1,
+  sourceEventId: `${candidateId}:route:${sequence}:event`,
+  sourceFactId: `${candidateId}:route:${sequence}:fact`,
+  targetUnitId: 'target-1',
+  sequence,
+});
+
+const terminalFact = (candidateId, outcome, sequence = 0) => ({
+  componentCode: 'S1_TERMINAL',
+  formula: 'TERMINAL_OUTCOME',
+  winProbability: outcome === 'WIN' ? 1 : 0,
+  lossProbability: outcome === 'LOSS' ? 1 : 0,
+  drawProbability: outcome === 'DRAW' ? 1 : 0,
+  sourceEventId: `${candidateId}:terminal:event`,
+  sourceFactId: `${candidateId}:terminal:fact`,
+  targetUnitId: 'target-1',
+  sequence,
+});
+
+const s1AnyAll = cases.find(item => item.caseId === 'ref-s1-any-all');
+const objectiveForScope = scope => ({
+  victory: {
+    logic: 'ANY',
+    conditions: [{
+      type: 'HP_RATIO_AT_OR_BELOW',
+      threshold: 0.5,
+      targetIds: ['target-1', 'target-2'],
+      side: 'ENEMY',
+      scope,
+    }],
+  },
+  defeat: { logic: 'ANY', conditions: [] },
+});
+const twoTargetProfiles = [
+  { targetId: 'target-1', side: 'ENEMY', currentHpPP: 80 },
+  { targetId: 'target-2', side: 'ENEMY', currentHpPP: 80 },
+];
+const twoTargetHealthFacts = candidateId => [
+  healthFact(candidateId, 'target-1', -200, 2000, 0),
+  healthFact(candidateId, 'target-2', -300, 1000, 1),
+];
+Object.assign(s1AnyAll.candidates[0], {
+  targetProfiles: twoTargetProfiles,
+  objectiveContract: objectiveForScope('ANY'),
+  rawFacts: twoTargetHealthFacts('any-highest'),
+  riskInputs: { actorMaxHp: 100, actorHp: 0, actorOutcomeDeltas: [], shieldFacts: [], actorSide: 'PLAYER' },
+});
+Object.assign(s1AnyAll.candidates[1], {
+  targetProfiles: twoTargetProfiles,
+  objectiveContract: objectiveForScope('ALL'),
+  rawFacts: twoTargetHealthFacts('all-bottleneck'),
+  riskInputs: { actorMaxHp: 100, actorHp: 0, actorOutcomeDeltas: [], shieldFacts: [], actorSide: 'PLAYER' },
+});
+
+const firstTerminal = cases.find(item => item.caseId === 'ref-s1-first-terminal');
+Object.assign(firstTerminal.candidates[0], {
+  rawFacts: [
+    terminalFact('lethal-first', 'WIN', 0),
+    healthFact('lethal-first', 'target-1', -80, 100, 1),
+    routeFact('lethal-first', 'S2_ROUTE', 40, 2),
+    healthFact('lethal-first', 'target-1', -20, 100, 3, 'S5_DOT'),
+  ],
+});
+firstTerminal.candidates.push(
+  candidate({
+    candidateId: 'terminal-failure',
+    actionId: 'withdraw-failure',
+    actionKind: 'WITHDRAW',
+    rawFacts: [terminalFact('terminal-failure', 'LOSS')],
+    riskInputs: { actorMaxHp: 100, actorHp: 0, actorOutcomeDeltas: [], shieldFacts: [], actorSide: 'PLAYER' },
+  }),
+  candidate({
+    candidateId: 'terminal-draw',
+    actionId: 'stalemate',
+    actionKind: 'PASS_OPPORTUNITY',
+    rawFacts: [terminalFact('terminal-draw', 'DRAW')],
+    riskInputs: { actorMaxHp: 100, actorHp: 0, actorOutcomeDeltas: [], shieldFacts: [], actorSide: 'PLAYER' },
+  }),
+);
+
+const dotWindow = cases.find(item => item.caseId === 'ref-s5-dot-hot-expiry');
+Object.assign(dotWindow.candidates[0], {
+  rawFacts: [
+    healthFact('dot-window', 'target-1', -12, 100, 0, 'S5_DOT'),
+    healthFact('dot-window', 'target-1', 6, 100, 1, 'S5_HOT'),
+    routeFact('dot-window', 'S5_DELAYED_EFFECT', 15, 2),
+  ],
+});
+const summonWindow = cases.find(item => item.caseId === 'ref-s5-summon-host-death');
+Object.assign(summonWindow.candidates[0], {
+  rawFacts: [routeFact('summon-window', 'S5_SUMMON_WINDOW', 38, 0)],
+});
+const creationConsumer = cases.find(item => item.caseId === 'ref-s5-creation-consumer');
+Object.assign(creationConsumer.candidates[0], {
+  rawFacts: [routeFact('create-with-consumer', 'S5_CREATION_CONSUMER', 44, 0)],
+});
+const controlOverlap = cases.find(item => item.caseId === 'ref-s3-control-overlap');
+Object.assign(controlOverlap.candidates[0], {
+  rawFacts: [routeFact('control-route', 'S3_HARD_CONTROL', 42, 0)],
+});
+const protectCritical = cases.find(item => item.caseId === 'ref-s3-protect-critical');
+Object.assign(protectCritical.candidates[0], {
+  rawFacts: [
+    healthFact('protect-ally', 'ally-critical', 50, 100, 0, 'S3_DEFENSE'),
+    routeFact('protect-ally', 'S3_SUPPORT_RESOURCE', 12, 1),
+  ],
+});
+const dodgeCounter = cases.find(item => item.caseId === 'ref-s3-dodge-counter');
+Object.assign(dodgeCounter.candidates[0], {
+  rawFacts: [
+    healthFact('evade-window', 'target-1', 30, 100, 0, 'S3_EVASION'),
+    routeFact('evade-window', 'S3_COUNTER', 10, 1),
+  ],
+});
+
+const verificationByCase = {
+  'ref-s2-opportunity-schedule': {
+    opportunityFacts: [
+      { kind: 'CONCRETE_OPPORTUNITY', formalOpportunity: true, responseOnly: false },
+      { kind: 'SCHEDULE_DESCRIPTOR', formalOpportunity: false, responseOnly: false },
+      { kind: 'PROJECTED_RESPONSE', formalOpportunity: false, responseOnly: true },
+    ],
+  },
+  'ref-s2-pass-lost': {
+    passCandidateId: 'active-pass',
+    lostCandidateId: 'lost-action',
+    noOpCandidateId: 'NO_OP',
+  },
+  'ref-s2-resource-order': {
+    resourceTimeline: {
+      events: [
+        { eventId: 'e3', round: 1, opportunitySequence: 2, actionSequence: 1, phasePriority: 0, effectSequence: 0, ownerType: 'PAYMENT', sourceFactId: 'fact-e3' },
+        { eventId: 'e1', round: 1, opportunitySequence: 1, actionSequence: 2, phasePriority: 0, effectSequence: 0, ownerType: 'PAYMENT', sourceFactId: 'fact-e1' },
+        { eventId: 'e2', round: 1, opportunitySequence: 1, actionSequence: 2, phasePriority: 1, effectSequence: 0, ownerType: 'REFUND', sourceFactId: 'fact-e2' },
+      ],
+      expectedOrder: ['e1', 'e2', 'e3'],
+    },
+  },
+  'ref-s3-control-overlap': {
+    legalRouteIds: ['control-route', 'damage-route'],
+    behaviorPoolCandidateIds: ['control-route', 'damage-route'],
+    affectedUnitIds: ['ally-critical', 'enemy-controller'],
+    invalidatedUnitIds: ['ally-critical', 'enemy-controller'],
+    futureRoute: { before: 0, after: 42 },
+  },
+  'ref-s3-protect-critical': {
+    actualAbsorption: { preventedDamage: 50, stateDeltaHEPP: 50 },
+    supportConsumer: { affectedUnitId: 'ally-critical', observable: true },
+    healConditioning: { currentHpPP: 20, thresholdPP: 50, terminal: false },
+  },
+  'ref-s3-dodge-counter': {
+    probabilityBranch: { successProbability: 0.75, branches: [0.75, 0.25], routeChanges: true },
+    responseFact: { kind: 'CONCRETE_OPPORTUNITY', responseProbability: 0.4, sourceFactId: 'counter-response-fact' },
+  },
+  'ref-s4-public-belief': {
+    publicEvidence: ['visibleHpRatios', 'publicStates', 'revealedAbilityIds', 'observableDeclarations'],
+    hiddenEvidence: ['hiddenExactHp', 'hiddenResistance', 'hiddenInventory', 'hiddenAbility', 'unobservedPosterior'],
+    responseBranches: { publicEvidenceBranches: 2, catastrophicTail: 1, hiddenPlanFields: 0 },
+  },
+  'ref-s4-information-positive': {
+    expectedInformation: { adaptive: 50, committed: 20, value: 30 },
+    multipleGroupValues: [30, 8],
+    endpointProbes: [0, 1],
+  },
+  'ref-s4-information-zero': {
+    endpointProbes: [0, 1],
+  },
+  'ref-s5-dot-hot-expiry': {
+    scheduledEffects: [
+      { componentCode: 'S5_DOT', startsAt: 1, expiresAt: 3, observedAt: 2, contributes: true },
+      { componentCode: 'S5_HOT', startsAt: 1, expiresAt: 3, observedAt: 4, contributes: false },
+      { componentCode: 'S5_DELAYED_EFFECT', startsAt: 2, expiresAt: 4, observedAt: 3, contributes: true },
+    ],
+  },
+  'ref-s5-summon-host-death': {
+    summonLifecycle: { birthEvent: 'spawn-1', hostDeathEvent: 'death-1', routeStopsAt: 'death-1', lateCandidateId: 'summon-after-host-death' },
+  },
+  'ref-s5-creation-consumer': {
+    creationConsumer: { producerCandidateId: 'create-with-consumer', consumerId: 'ally-consumer', observable: true, windowOpen: true },
+    inventoryFact: { created: 1, consumed: 1, hiddenSourceRead: false },
+    equipmentWindow: { startsAt: 1, expiresAt: 3, consumerId: 'ally-consumer', observedAt: 2 },
+  },
+  'ref-s6-causal-state-owner': {
+    expectedOwners: ['STATE_DELTA', 'ACTION_POOL_DELTA'],
+  },
+  'ref-s6-causal-action-owner': {
+    expectedOwners: ['STATE_DELTA', 'ACTION_POOL_DELTA'],
+  },
+  'ref-s6-pareto-hard-exclusion': {
+    legalBeforePareto: ['valid-safe'],
+    excludedBeforePareto: ['invalid-high-value'],
+  },
+};
+Object.entries(verificationByCase).forEach(([caseId, verification]) => {
+  Object.assign(cases.find(item => item.caseId === caseId).verification, verification);
+});
+
 const planningContract = {
   schemaVersion: 'BehaviorPlanningContractV1',
   contractId: 'R83-RC6-M1-FROZEN-2026-08-04',
@@ -455,7 +674,7 @@ const planningContract = {
     nonFinite: 'FATAL',
   },
   visibility: {
-    allowed: ['publicHpRatios', 'publicStates', 'publicDeclarations', 'revealedAbilityIds', 'observableResults'],
+    allowed: ['visibleHpRatios', 'publicStates', 'observableDeclarations', 'revealedAbilityIds', 'observableResults'],
     forbidden: ['hiddenExactHp', 'hiddenResistance', 'hiddenInventory', 'hiddenAbility', 'unobservedPosterior'],
   },
   semanticDomains: Object.fromEntries(Object.entries(domainTitles).map(([id, title]) => [id, { title, status: 'FROZEN' }])),

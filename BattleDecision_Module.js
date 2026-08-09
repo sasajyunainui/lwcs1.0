@@ -34530,6 +34530,44 @@
     });
   }
 
+  function r9v2TargetS3RouteOwnerUnitIds(pool, targetId) {
+    const normalizedTargetId = String(targetId || '').trim();
+    const owners = new Set();
+    if (!normalizedTargetId) return owners;
+    owners.add(normalizedTargetId);
+    const addOwners = values => (values || []).forEach(value => {
+      const ownerId = String(value || '').trim();
+      if (ownerId) owners.add(ownerId);
+    });
+    addOwners(pool?.targetSourceUnitIds?.get(normalizedTargetId));
+    [
+      normalizedTargetId,
+      `unit:${normalizedTargetId}`,
+      `target:${normalizedTargetId}`,
+    ].forEach(key => addOwners(pool?.dependencyOwners?.get(key)));
+    const dependencyCandidateOwners = pool?.dependencyCandidateOwners;
+    if (dependencyCandidateOwners instanceof Map) {
+      dependencyCandidateOwners.forEach((candidateOwners, dependencyKey) => {
+        const descriptor = r9v2TargetRouteDependencyDescriptor(dependencyKey);
+        if (
+          String(dependencyKey || '').trim() !== normalizedTargetId &&
+          descriptor?.unitId !== normalizedTargetId
+        ) {
+          return;
+        }
+        (candidateOwners || []).forEach(candidateKey => {
+          const ownerId = String(candidateKey || '').split('\u0000', 1)[0].trim();
+          if (ownerId) owners.add(ownerId);
+        });
+      });
+    }
+    const routeDependencyOwners = pool?.r9v2TargetRouteDependencyOwners;
+    if (routeDependencyOwners instanceof Map) {
+      addOwners(routeDependencyOwners.get(normalizedTargetId));
+    }
+    return owners;
+  }
+
   function r9v2BuildDependencyOwners(pool) {
     const dependencyOwners = new Map();
     const dependencyCandidateOwners = new Map();
@@ -34570,6 +34608,7 @@
           addCandidateOwner(`belief:${beliefKey}`, sourceUnitId, candidateId);
         });
         Object.keys(entry?.mechanicalDependencyScopes || {}).forEach(unitId => {
+          addOwner(unitId, sourceUnitId);
           addCandidateOwner(unitId, sourceUnitId, candidateId);
         });
         (entry?.mechanicalDependencyKeys || []).forEach(dependencyKey => {
@@ -34578,10 +34617,12 @@
             sourceUnitId,
             candidateId,
           );
+          addOwner(dependencyKey, sourceUnitId);
           const match = String(dependencyKey || '').match(
             /^(?:unit|target):([^:]+)/u,
           );
           if (match?.[1]) {
+            addOwner(match[1], sourceUnitId);
             addCandidateOwner(match[1], sourceUnitId, candidateId);
           }
         });
@@ -35328,7 +35369,7 @@
     entry,
   }) {
     const beliefKeys = r9v2CandidateBeliefKeys(entry);
-    if (!['BEHAVIOR_POOL', 'SUMMON_WINDOW'].includes(component)) {
+    if (!['BEHAVIOR_POOL', 'TARGET_S3', 'SUMMON_WINDOW'].includes(component)) {
       return beliefKeys;
     }
     const pendingUnitIds = [];
@@ -36064,7 +36105,7 @@
       });
     });
     changedTargets.forEach(targetId => {
-      (pool.targetSourceUnitIds.get(targetId) || []).forEach(unitId =>
+      r9v2TargetS3RouteOwnerUnitIds(pool, targetId).forEach(unitId =>
         rebuildUnits.add(unitId),
       );
     });
@@ -41977,6 +42018,9 @@
         ? {
             poolKey: String(pool?.observerPoolKey || '').trim(),
             dependencyRevisions,
+            ...(component === 'TARGET_S3'
+              ? { poolValueRevision: Number(pool?.valueRevision || 0) }
+              : {}),
           }
         : {}),
     };
@@ -41997,6 +42041,7 @@
           contextPayload.entryComponentSignature,
           contextPayload.beliefHash || '',
           contextPayload.poolKey || '',
+          contextPayload.poolValueRevision || 0,
           JSON.stringify(contextPayload.dependencyRevisions),
         ].join('\u0000')
       : preview.stableHash(contextPayload);
@@ -43838,17 +43883,16 @@
         });
     }
 
-    if (normalizedComponent === 'BEHAVIOR_POOL') {
+    if (['BEHAVIOR_POOL', 'TARGET_S3'].includes(normalizedComponent)) {
       (entry?.contributions || [])
         .filter(contribution => r9v2BehaviorMutationKind(contribution))
         .forEach(contribution => {
           const targetId = String(
             contribution?.targetId || '',
           ).trim();
-          addUnitId(targetId);
-          addPoolEntryDependencies(targetId);
-          (pool?.targetSourceUnitIds?.get(targetId) || [])
+          r9v2TargetS3RouteOwnerUnitIds(pool, targetId)
             .forEach(addUnitId);
+          addPoolEntryDependencies(targetId);
         });
     }
 
@@ -43859,7 +43903,8 @@
 
     const candidateBeliefKeys = r9v2CandidateBeliefKeys(entry);
     candidateBeliefKeys.forEach(key => beliefKeys.add(key));
-    if (['BEHAVIOR_POOL', 'SUMMON_WINDOW'].includes(normalizedComponent)) {
+    if (['BEHAVIOR_POOL', 'TARGET_S3', 'SUMMON_WINDOW']
+      .includes(normalizedComponent)) {
       r9v2ProofComponentBeliefKeys({
         component: normalizedComponent,
         pool,
@@ -44759,6 +44804,9 @@
       futurePoolContextKey: key,
       futureOpportunityBinding,
       futureOpportunitySemanticContext,
+      r9v2MaterializedWorldSnapshot: request.visibleWorld,
+      r9v2MaterializedBeliefState: request.beliefState,
+      r9v2MaterializedActionOpportunity: futureOpportunity,
       r9v2GlobalObjectiveUnitDependency:
         /TEAM_/.test(
           JSON.stringify(
@@ -44992,7 +45040,7 @@
     });
     const rebuildUnitIds = new Set(changedUnitIdSet);
     [...changedUnitIdSet].forEach(targetId => {
-      (branchPoolSource?.targetSourceUnitIds?.get(targetId) || [])
+      r9v2TargetS3RouteOwnerUnitIds(branchPoolSource, targetId)
         .forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
       (
         branchPoolSource?.dependencyOwners?.get(targetId) || []
@@ -45968,7 +46016,7 @@
 
   function r9v2TargetObjectiveEvaluationContext(request = {}) {
     const world = request?.visibleWorld || {};
-    const groups = preview.normalizeBattleObjectives(
+    const normalizedGroups = preview.normalizeBattleObjectives(
       request?.objectiveContract ||
         request?.battleIntent?.objectives ||
         request?.battleIntent?.胜负条件 ||
@@ -45976,6 +46024,14 @@
         {},
       world,
     );
+    const actorSide = r9v2ObjectiveSide(request?.actorSide);
+    const groups = actorSide === 'ENEMY'
+      ? {
+          ...normalizedGroups,
+          victory: normalizedGroups.defeat,
+          defeat: normalizedGroups.victory,
+        }
+      : normalizedGroups;
     const unitsById = new Map();
     const currentPPById = new Map();
     worldEntries(world).forEach(({ unit }) => {
@@ -46016,7 +46072,7 @@
       currentPPById,
       conditionUnits,
       conditionRowsByTarget,
-      actorSide: r9v2ObjectiveSide(request?.actorSide),
+      actorSide,
     };
   }
 
@@ -46321,23 +46377,51 @@
           Math.max(1, preview.readHpMax(target)),
       };
     });
-    const values = new Map();
-    grouped.forEach(row => {
-      const trajectory = trajectories.find(item => item.targetId === row.targetId);
-      const value = r9v2TargetObjectiveValue(
+    const objectiveValue = r9v2TargetFinite(
+      r9v2TargetObjectiveValue(
         request,
-        [trajectory],
+        trajectories,
         objectiveContext,
-      );
-      values.set(row.targetId, {
-        ...row,
-        value: r9v2TargetFinite(
-          value,
-          'R9V2_KERNEL_HEALTH_VALUE_NON_FINITE',
-          `${entry.candidateId}:${row.targetId}`,
+      ),
+      'R9V2_KERNEL_HEALTH_VALUE_NON_FINITE',
+      entry.candidateId,
+    );
+    const healthRows = [...grouped.values()];
+    const facts = healthRows.map(row => ({
+      ...row,
+      value: r9v2TargetFinite(
+        r9v2TargetObjectiveValue(
+          request,
+          [trajectories.find(item => item.targetId === row.targetId)],
+          objectiveContext,
         ),
-      });
-    });
+        'R9V2_KERNEL_HEALTH_VALUE_NON_FINITE',
+        `${entry.candidateId}:${row.targetId}`,
+      ),
+    }));
+    const objectiveFacts = healthRows.length && (
+      request?.objectiveContract &&
+      typeof request.objectiveContract === 'object' &&
+      !Array.isArray(request.objectiveContract)
+    )
+      ? [{
+          targetId: healthRows
+            .map(row => row.targetId)
+            .sort()
+            .join('|'),
+          value: objectiveValue,
+          sourceEventId: healthRows[0].sourceEventId,
+          sourceFactIds: healthRows.flatMap(row =>
+            `${entry.candidateId}:state:${row.targetId}`,
+          ),
+          sourceIndexes: healthRows.flatMap(row => row.sourceIndexes),
+          sourceOutcomeKinds: healthRows.flatMap(row =>
+            row.sourceIndexes.map(index =>
+              String(entry.contributions[index]?.outcomeKind || '').trim(),
+            )
+          ),
+        }]
+      : facts;
     let discardedOverkillPP = 0;
     if (trajectories.length) {
       discardedOverkillPP = r9v2TargetDiscardedOverkillPP(
@@ -46347,11 +46431,10 @@
       );
     }
     return {
-      facts: [...values.values()],
+      facts,
+      objectiveFacts,
       futureFacts,
-      stateDeltaTotal: values.size
-        ? [...values.values()].reduce((total, row) => total + row.value, 0)
-        : 0,
+      stateDeltaTotal: objectiveFacts.reduce((total, row) => total + row.value, 0),
       discardedOverkillPP,
     };
   }
@@ -46401,12 +46484,15 @@
       entry,
       objectiveContext,
     );
-    const facts = health.facts.map((row, index) => ({
+    const facts = (health.objectiveFacts || health.facts).map((row, index) => ({
       componentCode: 'S1_STATE_TRAJECTORY',
       causalOwnerType: 'STATE_DELTA',
       valueHEPP: row.value,
       sourceEventId: row.sourceEventId || `${entry.candidateId}:state:event`,
-      sourceFactId: `${entry.candidateId}:state:${row.targetId}`,
+      sourceFactId: row.sourceFactIds?.length
+        ? `${entry.candidateId}:objective-state`
+        : `${entry.candidateId}:state:${row.targetId}`,
+      ...(row.sourceFactIds?.length ? { sourceFactIds: row.sourceFactIds } : {}),
       targetUnitId: row.targetId,
       sequence: index,
     }));
@@ -46890,32 +46976,12 @@
       reuseContext?.baselinePool && pool === reuseContext.baselinePool;
     if (
       !forceRebuild &&
-      (!worldSnapshot || worldSnapshot === request.visibleWorld) &&
-      !routePoolIsBaseline
-    ) {
-      const result = { entries: baseEntries, complete: true };
-      r9v2TargetRouteCacheSet(cache, cacheKey, result);
-      if (pool?.r9v2MaterializedWorldSnapshot === worldSnapshot) {
-        r9v2Metric(
-          projectionCache.metricsState,
-          'r9v2InformationBranchMaterializedRouteViews',
-        );
-        r9v2Metric(
-          projectionCache.metricsState,
-          'r9v2InformationBranchMaterializedCandidateRows',
-          baseEntries.length,
-        );
-      }
-      return result;
-    }
-    if (
-      !forceRebuild &&
       worldSnapshot &&
       worldSnapshot === pool?.r9v2MaterializedWorldSnapshot
     ) {
       const result = {
         entries: baseEntries,
-        complete: baseEntries.every(entry => entry?.hardInvalid !== true),
+        complete: baseEntries.every(Boolean),
       };
       r9v2TargetRouteCacheSet(cache, cacheKey, result);
       r9v2Metric(
@@ -47019,7 +47085,7 @@
       );
       const result = {
         entries: baseEntries,
-        complete: baseEntries.every(entry => entry?.hardInvalid !== true),
+        complete: baseEntries.every(Boolean),
       };
       r9v2TargetRouteCacheSet(cache, cacheKey, result);
       return result;
@@ -47128,7 +47194,7 @@
     const result = {
       entries,
       complete: entries.length === baseEntries.length &&
-        entries.every(entry => entry && entry.hardInvalid !== true),
+        entries.every(Boolean),
     };
     r9v2TargetRouteCacheSet(cache, cacheKey, result);
     return result;
@@ -47770,6 +47836,303 @@
     return result;
   }
 
+  function r9v2TargetInformationBranchValueBasis({
+    request,
+    pool,
+    unitId,
+    baselineTable,
+  }) {
+    const baselineEntries = pool?.unitEntries?.get(unitId) || [];
+    const baselineRows = baselineTable?.allRows || baselineTable?.rows || [];
+    if (!baselineEntries.length || !baselineRows.length) return null;
+    const entryByCandidate = new Map(
+      baselineEntries.map(entry => [
+        String(entry?.candidateId || '').trim(),
+        entry,
+      ]),
+    );
+    const objectiveContext = r9v2TargetObjectiveEvaluationContext(request);
+    const rows = [];
+    for (const row of baselineRows) {
+      const candidateId = String(row?.candidateId || '').trim();
+      const entry = entryByCandidate.get(candidateId);
+      if (!candidateId || !entry || entry.hardInvalid === true) continue;
+      const profile = row?.__r9v2TargetRouteValueProfile?.complete === true
+        ? row.__r9v2TargetRouteValueProfile
+        : r9v2TargetRouteValueProfile(
+            request,
+            entry,
+            unitId,
+            request.visibleWorld,
+            objectiveContext,
+          );
+      if (!profile?.complete) return null;
+      rows.push(Object.freeze({
+        candidateId,
+        entry,
+        profile,
+      }));
+    }
+    if (!rows.length) return null;
+    return Object.freeze({
+      schemaVersion: 'R9v2S4BranchValueBasisV1',
+      unitId: String(unitId || '').trim(),
+      rows: Object.freeze(rows),
+    });
+  }
+
+  function r9v2TargetInformationBranchValueVector({
+    request,
+    branchRequest,
+    routePool,
+    branchWorld,
+    branchBelief,
+    changedUnitIds = new Set(),
+    changedUnitScopes = null,
+    changedBeliefKeys = new Set(),
+    basis,
+    projectionCache,
+  }) {
+    if (!basis || !branchWorld || !request.visibleWorld) return null;
+    const baselineUnitIds = new Set(
+      worldEntries(request.visibleWorld)
+        .map(({ unit }) => String(preview.unitId(unit) || '').trim())
+        .filter(Boolean),
+    );
+    const branchUnitIds = new Set(
+      worldEntries(branchWorld)
+        .map(({ unit }) => String(preview.unitId(unit) || '').trim())
+        .filter(Boolean),
+    );
+    if (
+      baselineUnitIds.size !== branchUnitIds.size ||
+      [...baselineUnitIds].some(unitId => !branchUnitIds.has(unitId))
+    ) {
+      return null;
+    }
+    const unitId = String(basis.unitId || '').trim();
+    const unit = findUnitInWorld(branchWorld, unitId);
+    if (!unit || !preview.isBattleCapable(unit)) return null;
+    if (!(changedUnitScopes instanceof Map)) return null;
+    const effectiveDependencyKeysByEntry = new WeakMap();
+    const effectiveDependencyKeys = entry => {
+      const cached = effectiveDependencyKeysByEntry.get(entry);
+      if (cached) return cached;
+      const dependencyKeys = Array.isArray(entry?.mechanicalDependencyKeys)
+        ? entry.mechanicalDependencyKeys
+            .map(key => String(key || '').trim())
+            .filter(Boolean)
+        : [];
+      const paymentOnlyKeys = new Set(
+        (Array.isArray(entry?.mechanicalPaymentDependencyKeys)
+          ? entry.mechanicalPaymentDependencyKeys
+          : []
+        )
+          .map(key => String(key || '').trim())
+          .filter(Boolean),
+      );
+      const roleRows = Array.isArray(entry?.mechanicalDependencyRoles)
+        ? entry.mechanicalDependencyRoles
+        : [];
+      if (!paymentOnlyKeys.size || !roleRows.length) {
+        effectiveDependencyKeysByEntry.set(entry, dependencyKeys);
+        return dependencyKeys;
+      }
+      const removablePaymentKeys = new Set(
+        dependencyKeys.filter(key =>
+          paymentOnlyKeys.has(key) &&
+          /^unit:[^:]+:resource:[^:]+$/u.test(key)
+        ),
+      );
+      const result = removablePaymentKeys.size
+        ? dependencyKeys.filter(key => !removablePaymentKeys.has(key))
+        : dependencyKeys;
+      effectiveDependencyKeysByEntry.set(entry, result);
+      return result;
+    };
+    const changedDependencyKeys = new Set();
+    const unknownDependencyKeys = new Set();
+    const dependencyKeys = new Set();
+    basis.rows.forEach(row => {
+      effectiveDependencyKeys(row.entry).forEach(key => {
+        dependencyKeys.add(String(key || '').trim());
+      });
+    });
+    dependencyKeys.forEach(dependencyKey => {
+      const descriptor = r9v2TargetRouteDependencyDescriptor(dependencyKey);
+      if (!descriptor || !changedUnitIds.has(descriptor.unitId)) return;
+      const scopes = changedUnitScopes.get(descriptor.unitId);
+      if (!(scopes instanceof Set)) {
+        unknownDependencyKeys.add(dependencyKey);
+        return;
+      }
+      if (!descriptor.fieldScopes.some(scope => scopes.has(scope))) return;
+      const baselineValue = preview.dependencyValueForKey(
+        request.visibleWorld,
+        dependencyKey,
+      );
+      const branchValue = preview.dependencyValueForKey(
+        branchWorld,
+        dependencyKey,
+      );
+      if (baselineValue === undefined || branchValue === undefined) {
+        unknownDependencyKeys.add(dependencyKey);
+        return;
+      }
+      if (
+        preview.stableHash(baselineValue ?? null) !==
+        preview.stableHash(branchValue ?? null)
+      ) {
+        changedDependencyKeys.add(dependencyKey);
+      }
+    });
+    const dirtyCandidateKeys = new Set();
+    basis.rows.forEach(row => {
+      const beliefChanged = [...r9v2CandidateBeliefKeys(row.entry)]
+        .some(key => changedBeliefKeys.has(key));
+      const rowDependencyKeys = effectiveDependencyKeys(row.entry);
+      let dependencyChanged = false;
+      let dependencyFallbackRequired = rowDependencyKeys.length === 0;
+      rowDependencyKeys.forEach(dependencyKey => {
+        const descriptor = r9v2TargetRouteDependencyDescriptor(dependencyKey);
+        if (!descriptor || !changedUnitIds.has(descriptor.unitId)) return;
+        const scopes = changedUnitScopes.get(descriptor.unitId);
+        if (!(scopes instanceof Set)) {
+          dependencyFallbackRequired = true;
+          return;
+        }
+        if (!descriptor.fieldScopes.some(scope => scopes.has(scope))) return;
+        if (changedDependencyKeys.has(dependencyKey)) {
+          dependencyChanged = true;
+          return;
+        }
+        if (unknownDependencyKeys.has(dependencyKey)) {
+          dependencyFallbackRequired = true;
+        }
+      });
+      if (!dependencyChanged && dependencyFallbackRequired) {
+        dependencyChanged = r9v2TargetRouteMechanicalEntryReadsChanged({
+          entry: row.entry,
+          changedUnitIds,
+          changedUnitScopes,
+          baselineWorld: request.visibleWorld,
+          branchWorld,
+        });
+      }
+      if (beliefChanged || dependencyChanged) {
+        dirtyCandidateKeys.add(`${unitId}\u0000${row.candidateId}`);
+      }
+    });
+    const routeState = r9v2EphemeralState(
+      routePool?.r9v2NormalizedContributionStore ||
+        projectionCache?.normalizedContributionStore,
+      projectionCache?.sharedStores,
+    );
+    routeState.metrics = projectionCache?.metricsState || routeState.metrics;
+    routeState.r9v2MechanicalEntryCacheEnabled = true;
+    routeState.r9v2MechanicalEntryCacheActive = true;
+    const objectiveContext = r9v2TargetObjectiveEvaluationContext(branchRequest);
+    const mechanicalProjectionContext = dirtyCandidateKeys.size
+      ? preview.compileMechanicalProjectionContext(branchWorld)
+      : null;
+    const actionOpportunity = {
+      ...cloneValue(branchRequest.actionOpportunity || {}),
+      role: 'ACTIVE',
+      ownerId: unitId,
+    };
+    const isAffordable = entry => Object.entries(entry?.resourceCosts || {})
+      .every(([resource, amount]) => {
+        const available = preview.readResource(unit, resource);
+        return Number.isFinite(available) &&
+          available + 1e-9 >= Number(amount || 0);
+      });
+    const rows = [];
+    for (const basisRow of basis.rows) {
+      const candidateKey = `${unitId}\u0000${basisRow.candidateId}`;
+      let entry = basisRow.entry;
+      let valueHEPP;
+      if (dirtyCandidateKeys.has(candidateKey)) {
+        entry = r9v2BuildMechanicalEntry({
+          state: routeState,
+          worldSnapshot: branchWorld,
+          actorId: unitId,
+          candidate: {
+            candidateId: basisRow.entry.candidateId,
+            declaration: cloneValue(basisRow.entry.declaration || {}),
+            declarationFingerprint: basisRow.entry.declarationFingerprint,
+            resourcePotentialOnly:
+              basisRow.entry.resourcePotentialOnly === true,
+          },
+          beliefState: branchBelief,
+          battleIntent: branchRequest.battleIntent,
+          actionOpportunity,
+          revision: `r9v2-s4-branch:${unitId}:${basisRow.candidateId}`,
+          mechanicalProjectionContext,
+          verifyMechanicalBasis: false,
+          captureDependencyKeys: true,
+        });
+        if (!entry || entry.hardInvalid === true) continue;
+        const profile = r9v2TargetRouteValueProfile(
+          branchRequest,
+          entry,
+          unitId,
+          branchWorld,
+          objectiveContext,
+        );
+        if (!profile.complete) return null;
+        valueHEPP = profile.valueHEPP;
+      } else {
+        valueHEPP = r9v2TargetRouteValueFromProfile({
+          request: branchRequest,
+          profile: basisRow.profile,
+          unitId,
+          worldSnapshot: branchWorld,
+          objectiveContext,
+          changedUnitIds,
+        });
+        if (valueHEPP === null) return null;
+      }
+      if (!isAffordable(entry)) continue;
+      rows.push({
+        candidateId: basisRow.candidateId,
+        valueHEPP: r9v2TargetFinite(
+          valueHEPP,
+          'R9V2_KERNEL_S4_BRANCH_VALUE_NON_FINITE',
+          basisRow.candidateId,
+        ),
+      });
+    }
+    rows.sort((left, right) =>
+      Number(right.valueHEPP || 0) - Number(left.valueHEPP || 0) ||
+      r9v2TargetCompareUtf16(left.candidateId, right.candidateId),
+    );
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchValueVectorBuilds',
+    );
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchValueVectorRows',
+      rows.length,
+    );
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2InformationBranchValueVectorDirtyRows',
+      dirtyCandidateKeys.size,
+    );
+    return Object.freeze({
+      schemaVersion: 'R9v2S4BranchValueVectorV1',
+      complete: true,
+      candidateIds: Object.freeze(rows.map(row => row.candidateId)),
+      beforeRouteHEPP: Object.freeze(rows.map(() => 0)),
+      afterRouteHEPP: Object.freeze(rows.map(row => row.valueHEPP)),
+      applicationProbability: Object.freeze(rows.map(() => 1)),
+      polarity: Object.freeze(rows.map(() => 1)),
+      bestCandidateId: String(rows[0]?.candidateId || '').trim(),
+      bestValueHEPP: Number(rows[0]?.valueHEPP || 0),
+    });
+  }
+
   function r9v2TargetS2Components(request, entry, pool, projectionCache, handledByS1) {
     const facts = [];
     const handledContributionIndexes = new Set(handledByS1 || []);
@@ -47983,6 +48346,36 @@
     const facts = [];
     const handledContributionIndexes = new Set();
     if (!pool) return { facts, handledContributionIndexes };
+    const futureOpportunity = r9v2FutureOpportunityContext(
+      request.actionOpportunity || {},
+    );
+    const targetSession = projectionCache?.targetKernelSession;
+    const futurePoolStore = targetSession?.futureRoutePoolStore;
+    const futurePoolKey = projectionCache?.targetKernel === true
+      ? r9v2FuturePoolContextKey({
+          state: projectionCache.metricsState,
+          request,
+          futureOpportunity,
+        })
+      : '';
+    let routePool = futurePoolStore instanceof Map && futurePoolKey
+      ? futurePoolStore.get(futurePoolKey) || null
+      : null;
+    if (!routePool && projectionCache?.targetKernel === true) {
+      routePool = r9v2PrepareSharedFuturePool({
+        state: projectionCache.metricsState,
+        pool,
+        request,
+        futureOpportunity,
+      });
+      if (futurePoolStore instanceof Map && futurePoolKey) {
+        futurePoolStore.set(futurePoolKey, routePool);
+      }
+    }
+    routePool = routePool || pool;
+    const routeRequest = routePool === pool
+      ? request
+      : { ...request, actionOpportunity: futureOpportunity };
     (entry.contributions || []).forEach((contribution, index) => {
       const mutationKind = r9v2BehaviorMutationKind(contribution);
       if (!mutationKind) return;
@@ -48015,14 +48408,6 @@
         contribution,
       );
       if (!projectedTarget) return;
-      const beforeRoute = r9v2TargetBestAffordableRoute(
-        request,
-        pool,
-        targetId,
-        {},
-        request.visibleWorld,
-        projectionCache,
-      );
       const projectedWorld = replaceWorldUnit(
         request.visibleWorld,
         targetId,
@@ -48037,21 +48422,62 @@
           contribution,
         ),
       };
-      const afterRoute = r9v2TargetBestAffordableRoute(
-        projectedRequest,
-        pool,
+      const projectedRouteRequest = routePool === pool
+        ? projectedRequest
+        : { ...projectedRequest, actionOpportunity: futureOpportunity };
+      const routeOwners = [...r9v2TargetS3RouteOwnerUnitIds(
+        routePool,
         targetId,
-        {},
-        projectedWorld,
-        projectionCache,
-      );
-      if (!beforeRoute.complete || !afterRoute.complete) return;
+      )].filter(unitId => {
+        const routeUnit = findUnitInWorld(request.visibleWorld, unitId);
+        return routeUnit && preview.isBattleCapable(routeUnit);
+      }).sort(r9v2TargetCompareUtf16);
+      const routeRows = routeOwners.map(routeOwnerId => {
+        const beforeRoute = r9v2TargetBestAffordableRoute(
+          routeRequest,
+          routePool,
+          routeOwnerId,
+          {},
+          request.visibleWorld,
+          projectionCache,
+        );
+        const afterRoute = r9v2TargetBestAffordableRoute(
+          projectedRouteRequest,
+          routePool,
+          routeOwnerId,
+          {},
+          projectedWorld,
+          projectionCache,
+        );
+        const routeOwner = findUnitInWorld(
+          request.visibleWorld,
+          routeOwnerId,
+        );
+        const perspective = sideOf(request.visibleWorld, routeOwner) ===
+          request.actorSide
+          ? 1
+          : -1;
+        return {
+          routeOwnerId,
+          beforeRoute,
+          afterRoute,
+          perspective,
+        };
+      });
+      if (routeRows.some(row =>
+        !row.beforeRoute.complete || !row.afterRoute.complete
+      )) return;
       handledContributionIndexes.add(index);
-      const targetSide = sideOf(request.visibleWorld, target);
+      const beforeBestRouteHEPP = routeRows.reduce(
+        (total, row) => total + row.perspective * row.beforeRoute.valueHEPP,
+        0,
+      );
+      const afterBestRouteHEPP = routeRows.reduce(
+        (total, row) => total + row.perspective * row.afterRoute.valueHEPP,
+        0,
+      );
       const value = r9v2TargetFinite(
-        (targetSide === request.actorSide ? 1 : -1) *
-          (afterRoute.valueHEPP - beforeRoute.valueHEPP) *
-          applicationProbability,
+        (afterBestRouteHEPP - beforeBestRouteHEPP) * applicationProbability,
         'R9V2_KERNEL_BEHAVIOR_VALUE_NON_FINITE',
         `${entry.candidateId}:${index}`,
       );
@@ -48070,10 +48496,15 @@
         sourceOutcomeKind: contribution.outcomeKind,
         prototype: String(contribution?.evidence?.prototype || '').trim(),
         mutationKind,
-        beforeBestRouteHEPP: beforeRoute.valueHEPP,
-        afterBestRouteHEPP: afterRoute.valueHEPP,
-        beforeBestCandidateId: beforeRoute.candidateId,
-        afterBestCandidateId: afterRoute.candidateId,
+        beforeBestRouteHEPP,
+        afterBestRouteHEPP,
+        beforeBestCandidateId: routeRows.map(row =>
+          `${row.routeOwnerId}:${row.beforeRoute.candidateId}`,
+        ).join('|'),
+        afterBestCandidateId: routeRows.map(row =>
+          `${row.routeOwnerId}:${row.afterRoute.candidateId}`,
+        ).join('|'),
+        routeOwnerUnitIds: Object.freeze(routeOwners),
         applicationProbability,
         sequence: index,
       });
@@ -48091,6 +48522,7 @@
     futurePool = null,
     projectionCache,
     baselineTable = null,
+    branchValueBasis = null,
   }) {
     const cache = projectionCache?.targetInformationBranchesByKey;
     const branchKey = [
@@ -48243,6 +48675,49 @@
       'r9v2InformationBranchScopeCalculationMs',
       scopeEndedAt - scopeStartedAt,
     );
+    if (
+      projectionCache?.targetKernel === true &&
+      branchValueBasis &&
+      root?.__LWCS_R9V2_DISABLE_S4_BRANCH_VALUE_VECTOR__ !== true
+    ) {
+      const branchVector = r9v2TargetInformationBranchValueVector({
+        request,
+        branchRequest,
+        routePool,
+        branchWorld,
+        branchBelief,
+        changedUnitIds: changedUnitIdSet,
+        changedUnitScopes,
+        changedBeliefKeys,
+        basis: branchValueBasis,
+        projectionCache,
+      });
+      if (branchVector) {
+        const routeOnlyResult = Object.freeze({
+          complete: branchVector.complete === true,
+          changedUnitIds: Object.freeze(
+            [...changedUnitIdSet].sort(),
+          ),
+          branchWorld,
+          branchBelief,
+          routeVector: branchVector,
+          table: null,
+        });
+        if (cache instanceof Map) {
+          while (cache.size >= 512) {
+            const oldestKey = cache.keys().next().value;
+            if (oldestKey === undefined) break;
+            cache.delete(oldestKey);
+          }
+          cache.set(branchKey, routeOnlyResult);
+        }
+        return routeOnlyResult;
+      }
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2InformationBranchValueVectorFallbacks',
+      );
+    }
     // S4 only needs the actor's future route table. Keep the branch world,
     // belief and dependency checks exact, but avoid rebuilding unrelated pool
     // units that cannot contribute to that table.
@@ -48333,7 +48808,7 @@
     });
     const rebuildUnitIds = new Set(changedUnitIdSet);
     changedUnitIdSet.forEach(unitId => {
-      (pool?.targetSourceUnitIds?.get(unitId) || [])
+      r9v2TargetS3RouteOwnerUnitIds(pool, unitId)
         .forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
       (pool?.dependencyOwners?.get(unitId) || [])
         .forEach(sourceUnitId => rebuildUnitIds.add(sourceUnitId));
@@ -48580,6 +49055,21 @@
       false,
     );
     if (!baselineTable.complete) return { informationComponents: [] };
+    const basisCache = projectionCache?.targetInformationBranchValueBasisByTable;
+    let branchValueBasis = basisCache instanceof WeakMap
+      ? basisCache.get(baselineTable) || null
+      : null;
+    if (!branchValueBasis && projectionCache?.targetKernel === true) {
+      branchValueBasis = r9v2TargetInformationBranchValueBasis({
+        request: futureRequest,
+        pool: routePool,
+        unitId: request.actorId,
+        baselineTable,
+      });
+      if (branchValueBasis && basisCache instanceof WeakMap) {
+        basisCache.set(baselineTable, branchValueBasis);
+      }
+    }
     const observationGroups = new Map();
     observations.forEach((observation, index) => {
       const groupId = [
@@ -48631,17 +49121,29 @@
           futurePool: routePool,
           projectionCache,
           baselineTable,
+          branchValueBasis,
         });
-        if (!branch.complete || !branch.table) return null;
+        if (
+          !branch.complete ||
+          (!branch.routeVector && !branch.table)
+        ) return null;
+        const routeVector = branch.routeVector || {
+          schemaVersion: 'FutureCandidateRouteVectorV1',
+          candidateIds: branch.table.rows.map(row => row.candidateId),
+          beforeRouteHEPP: branch.table.rows.map(() => 0),
+          afterRouteHEPP: branch.table.rows.map(row => Number(row.valueHEPP || 0)),
+          applicationProbability: branch.table.rows.map(() => 1),
+          polarity: branch.table.rows.map(() => 1),
+        };
         return {
           probability: success ? probability : 1 - probability,
           futureCandidateRouteVector: {
             schemaVersion: 'FutureCandidateRouteVectorV1',
-            candidateIds: branch.table.rows.map(row => row.candidateId),
-            beforeRouteHEPP: branch.table.rows.map(() => 0),
-            afterRouteHEPP: branch.table.rows.map(row => Number(row.valueHEPP || 0)),
-            applicationProbability: branch.table.rows.map(() => 1),
-            polarity: branch.table.rows.map(() => 1),
+            candidateIds: routeVector.candidateIds,
+            beforeRouteHEPP: routeVector.beforeRouteHEPP,
+            afterRouteHEPP: routeVector.afterRouteHEPP,
+            applicationProbability: routeVector.applicationProbability,
+            polarity: routeVector.polarity,
           },
         };
       });
@@ -49496,13 +49998,16 @@
         );
       }
     }
-    health.facts.forEach((row, index) => {
+    (health.objectiveFacts || health.facts).forEach((row, index) => {
       causalFacts.push({
         componentCode: 'S1_STATE_TRAJECTORY',
         causalOwnerType: 'STATE_DELTA',
         valueHEPP: row.value,
         sourceEventId: row.sourceEventId || `${entry.candidateId}:state:event`,
-        sourceFactId: `${entry.candidateId}:state:${row.targetId}`,
+        sourceFactId: row.sourceFactIds?.length
+          ? `${entry.candidateId}:objective-state`
+          : `${entry.candidateId}:state:${row.targetId}`,
+        ...(row.sourceFactIds?.length ? { sourceFactIds: row.sourceFactIds } : {}),
         targetUnitId: row.targetId,
         sequence: index,
       });
@@ -50788,6 +51293,7 @@
       targetRouteTablesByKey:
         prepared.state.r9v2TargetRouteTablesByKey,
       targetInformationBranchesByKey: new Map(),
+      targetInformationBranchValueBasisByTable: new WeakMap(),
       projectionRevisionNamespace:
         `r9v2-target-projection:${++r9v2ProjectionRevisionSequence}`,
       useRevisionKeys: true,

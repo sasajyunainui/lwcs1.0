@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "M2K06S3BehaviorPoolGateV1",
+  "status": "PASSED",
+  "scope": "TARGET_OBJECTIVE_ORIENTATION_AND_S3_POLARITY",
+  "caseId": "duel_overmatch_lethal",
+  "playerId": "云冥",
+  "enemyId": "韦小枫",
+  "rows": [
+    {
+      "actorSide": "PLAYER",
+      "targetId": "韦小枫",
+      "healthDeltaPP": -20,
+      "valueHEPP": 20,
+      "victoryConditionCount": 1,
+      "defeatConditionCount": 1
+    },
+    {
+      "actorSide": "ENEMY",
+      "targetId": "云冥",
+      "healthDeltaPP": -20,
+      "valueHEPP": 20,
+      "victoryConditionCount": 1,
+      "defeatConditionCount": 1
+    },
+    {
+      "actorSide": "ENEMY",
+      "targetId": "韦小枫",
+      "healthDeltaPP": -20,
+      "valueHEPP": -20,
+      "victoryConditionCount": 1,
+      "defeatConditionCount": 1
+    },
+    {
+      "actorSide": "ENEMY",
+      "targetId": "云冥",
+      "healthDeltaPP": 20,
+      "valueHEPP": -20,
+      "victoryConditionCount": 1,
+      "defeatConditionCount": 1
+    }
+  ],
+  "protectedRouteRules": {
+    "s3PerspectiveSignPreserved": true,
+    "routeEntryGenerationUntouched": true,
+    "affordabilityFilteringUntouched": true
+  },
+  "affectedUnitClosure": [
+    "ally-critical",
+    "coarse-owner",
+    "enemy-controller",
+    "indexed-owner",
+    "state-owner",
+    "target-1"
+  ],
+  "activeCase": {
+    "caseId": "duel_agile_counter_options",
+    "selectedCandidateId": "谢邂:basic:王金玺",
+    "controlCandidateId": "谢邂:skill:k06-hit-lock:0",
+    "behaviorFact": {
+      "candidateId": "谢邂:skill:k06-hit-lock:0",
+      "valueHEPP": 6.915081456565048,
+      "targetUnitId": "王金玺",
+      "routeOwnerUnitIds": [
+        "王金玺",
+        "谢邂"
+      ],
+      "beforeBestRouteHEPP": -0.09028012828581211,
+      "afterBestRouteHEPP": 6.824801328279236
+    },
+    "noFutureSelectedCandidateId": "谢邂:basic:王金玺",
+    "noFutureBehaviorFactCount": 0
+  },
+  "sourceHashes": {
+    "decision": "3b507d01a96d8c436b8de9bef3726c6c7869c97be9f58ce77f44e31b8387ba53",
+    "kernel": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+    "harness": "c7af7fde6645b8d9713b7df9f201103b43b4c7b00a8b6f107c6857e680fa99a0"
+  }
+}
