@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 137,
+  "previousEventHash": "0503919b44b3586218e503c7e6c875da2574c042c0a4a83963e5d31497f9d623",
+  "milestoneId": "M5",
+  "taskId": "M5-P02",
+  "eventType": "NO_GAIN_REJECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "ed9ebd97d9167144cac22b2d6eb571b60ec290cc48ff13ca168ea46b87aa268c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m5-p02-reuse-diagnostic.mjs": "0f82ac3954651feb88ed8114fb249e5f328c919c2ab97f74bb628d03159bb71f"
+  },
+  "fixtureHashes": {
+    "tools/r83_rc6_battle_harness.mjs": "2e092db433f75e24947d2e39ed900872d0bac56ae1dcabb4d127aaad50f90a08"
+  },
+  "acceptedObjectHashes": [
+    "8fcc391f98b25a87d2ee112bae29c0b7480e98db445e1f0964367ab238a5833d"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "attemptId": "component-invalidation-02",
+    "result": "NO_GAIN_REJECTED",
+    "beforeTotalMs": 21485.172,
+    "afterTotalMs": 22219.154,
+    "componentEvaluationReduction": 0.001469,
+    "componentInvalidationReduction": 0.4155,
+    "proofBuildsBefore": 1395,
+    "proofBuildsAfter": 1395,
+    "nextDirection": "Trace and replace repeated S3/S4 future route matrix construction; no dependency invalidation retry"
+  },
+  "reason": "第二批精确组件失效映射仅减少12次组件评估，Proof构建与命中不变，端到端回退约3.42%，不满足3%门；转向S3/S4未来路线矩阵重复构建。",
+  "recordedAt": "2026-08-09T04:52:07.964Z",
+  "repository": {
+    "branch": "master",
+    "head": "983e7ebc79e4d6d19ae1dbb3726f67d93ce5fecb"
+  },
+  "eventHash": "af4bbf5dd0526ed350812f2af118c43236982fe6fc2df2b501e7ebfca3f26e77"
+}

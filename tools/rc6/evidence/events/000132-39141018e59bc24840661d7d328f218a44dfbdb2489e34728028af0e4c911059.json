@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 132,
+  "previousEventHash": "ad7524d84ecac923463e2816517e129e510e3a4d2fc8f5abdbe9575ee210f1f8",
+  "milestoneId": "M5",
+  "taskId": "M5-P01",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m5-p01-target-transaction-profile.mjs": "e0e268fac13d6592e81350f12bca6af92d4ef3ab64e66c8319214685ce60a42b"
+  },
+  "fixtureHashes": {
+    "tools/r83_rc6_battle_harness.mjs": "2e092db433f75e24947d2e39ed900872d0bac56ae1dcabb4d127aaad50f90a08"
+  },
+  "acceptedObjectHashes": [
+    "39e545fbdefa2615180c5a0c1ab25e314446930148d73c872faf8a971ea29f44"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "profileCaseId": "raid_control_heavy",
+    "profileRounds": 1,
+    "totalMs": 54617.948,
+    "draftMs": 54401.15,
+    "draftShare": 0.996031,
+    "decisionPrepareMs": 52310.84,
+    "targetKernelSliceMs": 45557.1305,
+    "mechanicalEntryMs": 6433.1263,
+    "futurePoolMs": 4923.8557,
+    "routePreparationMs": 13669.4885,
+    "proofComponentMs": 41015.9249,
+    "formalPerformanceGate": "DEFERRED_TO_M5_P05"
+  },
+  "reason": "M5-P01 complete transaction profile captured the current target-provider bottleneck; proceed to one macro revision-reuse attempt.",
+  "recordedAt": "2026-08-09T04:16:14.240Z",
+  "repository": {
+    "branch": "master",
+    "head": "983e7ebc79e4d6d19ae1dbb3726f67d93ce5fecb"
+  },
+  "eventHash": "39141018e59bc24840661d7d328f218a44dfbdb2489e34728028af0e4c911059"
+}

@@ -1,0 +1,165 @@
+{
+  "schemaVersion": "PerformanceBlockerReportV1",
+  "reportId": "m5-performance-blocker-20260809",
+  "milestoneId": "M5",
+  "taskId": "M5-P02",
+  "status": "R9V2_TARGET_KERNEL_PERFORMANCE_BLOCKED",
+  "overallStatus": "NOT_COMPLETE",
+  "formalProvider": {
+    "id": "r8",
+    "registryStatus": "FORMAL",
+    "measuredByThisReport": false
+  },
+  "targetProvider": {
+    "id": "r9v2",
+    "registryStatus": "UNREGISTERED",
+    "isolatedHarnessOnly": true
+  },
+  "architectureVerdict": "R9_DIRECTION_NOT_DISPROVED_CURRENT_TARGET_KERNEL_BLOCKED",
+  "sourceHashesAfterRollback": {
+    "BattleDecision_Module.js": "9029153e8868121426913a4560b96d81c41519eea593575ac64e9f6443920cfb",
+    "BattleDecisionR9v2Kernel_Module.js": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd"
+  },
+  "gate": {
+    "formalSevenVsSevenRounds": 5,
+    "formalSevenVsSevenMedianMs": 10000,
+    "formalSevenVsSevenP95Ms": 15000,
+    "scoutHardCutoffMs": 12000,
+    "firstMacroAttemptMinimumWorstCaseGain": 0.3,
+    "result": "BLOCKED",
+    "reason": "The target provider already exceeds the scout cutoff in a one-round raid transaction; no accepted macro change covers the remaining gap."
+  },
+  "acceptedBaselineMeasurement": {
+    "eventSequence": 132,
+    "profileObjectHash": "39e545fbdefa2615180c5a0c1ab25e314446930148d73c872faf8a971ea29f44",
+    "caseId": "raid_control_heavy",
+    "rounds": 1,
+    "actorCount": 14,
+    "totalMs": 54617.948,
+    "stageMs": {
+      "draft": 54401.15,
+      "report": 104.169,
+      "audit": 112.859,
+      "seal": 0.223,
+      "verify": 0.039
+    },
+    "decisionCount": 58,
+    "candidateEvaluations": 428,
+    "decisionPrepareMs": 52310.84,
+    "targetKernelSliceMs": 45557.1305,
+    "mechanicalEntryMs": 6433.1263,
+    "futurePoolMs": 4923.8557,
+    "routePreparationMs": 13669.4885,
+    "proofComponentMs": 41015.9249,
+    "fiveRoundMeasurement": "NOT_STARTED_AFTER_ONE_ROUND_SCOUT_EXCEEDED_CUTOFF"
+  },
+  "boundedDiagnostic": {
+    "caseId": "team_control_overlap",
+    "baselineTotalMs": 21485.172,
+    "routeScopedReuseTotalMs": 19038.517,
+    "routeScopedReuseGain": 0.113876,
+    "proofBuildsBefore": 1395,
+    "proofBuildsAfter": 1395,
+    "candidateEvaluationsBefore": 355,
+    "candidateEvaluationsAfter": 355
+  },
+  "attempts": [
+    {
+      "attemptId": "revision-reuse-value-revision-01",
+      "objectHash": "76313ece75736385d7615f3437e685b071d98c98b1bef3e6138ab38ac5234b0f",
+      "result": "REJECTED_NO_GAIN",
+      "endToEndGain": 0.009995,
+      "functionalAba": "PASSED",
+      "reason": "The complete transaction gained about one percent, below the acceptance gate."
+    },
+    {
+      "attemptId": "component-invalidation-01",
+      "objectHash": "aa9999f15f2b3d70e8c31304da76194d3919b3e54e9024a3ae246783174a2117",
+      "result": "REJECTED_REGRESSION",
+      "endToEndGain": -0.011865,
+      "componentInvalidationReduction": 0.415,
+      "componentEvaluationReduction": 0,
+      "proofBuildReduction": 0,
+      "functionalAba": "PASSED"
+    },
+    {
+      "attemptId": "component-invalidation-02",
+      "objectHash": "8fcc391f98b25a87d2ee112bae29c0b7480e98db445e1f0964367ab238a5833d",
+      "result": "REJECTED_REGRESSION",
+      "endToEndGain": -0.034164,
+      "componentEvaluationReduction": 0.001469,
+      "proofBuildReduction": 0,
+      "functionalAba": "PASSED"
+    },
+    {
+      "attemptId": "s3-route-scoped-reuse-20260809",
+      "objectHash": "7633722d073f72f84432c1abc157a323b25ea8e8b2320949d4ce1805b4e347de",
+      "result": "REJECTED_MACRO_GATE",
+      "boundedEndToEndGain": 0.113876,
+      "raidOneRoundEndToEndGain": 0.064757,
+      "requiredWorstCaseGain": 0.3,
+      "functionalAba": "PASSED",
+      "reason": "Route reuse does not cover the dominant target-kernel construction cost."
+    }
+  ],
+  "additionalRejectedScouts": [
+    {
+      "attemptId": "raw-ownership-and-deep-copy-20260809",
+      "result": "REJECTED_BELOW_ACCEPTANCE_GATE",
+      "observedRaidOneRoundTotalMs": 53286.9,
+      "approximateEndToEndGain": 0.024,
+      "reason": "A small kernel-side copy reduction preserved the tested fields but did not approach the macro gate; the code was fully rolled back."
+    },
+    {
+      "attemptId": "direct-route-dependency-index-20260809",
+      "result": "REJECTED_REGRESSION",
+      "observedRaidOneRoundTotalMs": 56354.5,
+      "reason": "Replacing the dependency scan with a direct index regressed the end-to-end transaction; the code was fully rolled back."
+    }
+  ],
+  "semanticSafety": {
+    "candidateReduction": false,
+    "branchReduction": false,
+    "probabilityReduction": false,
+    "roundReduction": false,
+    "factReduction": false,
+    "acceptedOptimizationChanges": false,
+    "functionalAbaForRecordedAttempts": "PASSED"
+  },
+  "rootCauseAssessment": {
+    "firstObservedCostLayer": "R9V2_TARGET_KERNEL_S4_AND_SHARED_ROUTE_PROOF_PREPARATION",
+    "dominantObservedWork": "Repeated target-kernel candidate, route and proof prerequisite construction across observation branches and decisions.",
+    "notDisproved": [
+      "R9v2 behavior contract",
+      "BehaviorPoolSession direction",
+      "S1-S6 semantic contracts"
+    ],
+    "disprovedForCurrentImplementation": [
+      "Local revision reuse as a sufficient fix",
+      "Bookkeeping-only component invalidation",
+      "Route-scoped reuse as a sufficient first macro architecture"
+    ],
+    "remainingGap": "The one-round raid draft is about 54.4 seconds while the complete five-round target is 10 seconds median and 15 seconds P95. The measured local gains do not cover the unresolved target-kernel construction gap."
+  },
+  "stopDecision": {
+    "milestoneStatus": "BLOCKED",
+    "nextMilestones": {
+      "M6": "PROHIBITED",
+      "M7": "PROHIBITED"
+    },
+    "providerSwitch": "PROHIBITED",
+    "formalProviderUnchanged": true,
+    "requiredNextDecision": "Approve a genuinely new batch/columnar S4 architecture or explicitly revise the performance gate. Do not retry another local cache or micro-optimization under the current contract."
+  },
+  "evidenceIntegrity": {
+    "rejectedExperimentCodeRolledBack": true,
+    "currentProductionRegistryChanged": false,
+    "fullFiveRoundSevenVsSevenClaim": false,
+    "r8CompleteSevenVsSevenMeasured": false,
+    "reportIsAStopReport": true
+  }
+}

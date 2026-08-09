@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 135,
+  "previousEventHash": "bebc4ea043d4ce87557c85004e9bd3171bb14cd9ab81d2e73ad4b9ea9fcb878e",
+  "milestoneId": "M5",
+  "taskId": "M5-P02",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "e52d5e299ce81bf352e1a586b2beb25c5be7fb0c787f1feeda68cb8ed398eca3",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m5-p02-reuse-diagnostic.mjs": "0f82ac3954651feb88ed8114fb249e5f328c919c2ab97f74bb628d03159bb71f"
+  },
+  "fixtureHashes": {
+    "tools/r83_rc6_battle_harness.mjs": "2e092db433f75e24947d2e39ed900872d0bac56ae1dcabb4d127aaad50f90a08"
+  },
+  "acceptedObjectHashes": [
+    "7da5fe3b260e125ac0b4319b483e37770d8ec8b304acae4cfed6fa7a32744837"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "attemptId": "proof-hotspot-diagnostic-01",
+    "result": "HOTSPOT_CONFIRMED",
+    "proofComponentShareOfTargetKernelSlice": 0.8379,
+    "nextExitCondition": "Implement exact formal component invalidation with cached prerequisite reassembly; then run functional A/B before any performance sample."
+  },
+  "reason": "A bounded diagnostic identified proof component construction as the dominant target-kernel cost; route cache reuse is not the next macro target.",
+  "recordedAt": "2026-08-09T04:30:58.652Z",
+  "repository": {
+    "branch": "master",
+    "head": "983e7ebc79e4d6d19ae1dbb3726f67d93ce5fecb"
+  },
+  "eventHash": "0ee1da70358ecefda97d5fd4ba2d0f2244ec6fbcd6411f2a623ec4a323f4a6f1"
+}

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 136,
+  "previousEventHash": "0ee1da70358ecefda97d5fd4ba2d0f2244ec6fbcd6411f2a623ec4a323f4a6f1",
+  "milestoneId": "M5",
+  "taskId": "M5-P02",
+  "eventType": "NO_GAIN_REJECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "61a9a45ff1c419b842f281fe3221195516d4da9379984f757f4b1a91607809dd",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m5-p02-reuse-diagnostic.mjs": "0f82ac3954651feb88ed8114fb249e5f328c919c2ab97f74bb628d03159bb71f"
+  },
+  "fixtureHashes": {
+    "tools/r83_rc6_battle_harness.mjs": "2e092db433f75e24947d2e39ed900872d0bac56ae1dcabb4d127aaad50f90a08"
+  },
+  "acceptedObjectHashes": [
+    "aa9999f15f2b3d70e8c31304da76194d3919b3e54e9024a3ae246783174a2117"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "attemptId": "component-invalidation-01",
+    "result": "NO_GAIN_REJECTED",
+    "beforeTotalMs": 21485.172,
+    "afterTotalMs": 21739.979,
+    "componentInvalidationReduction": 0.415,
+    "componentEvaluationsBefore": 8165,
+    "componentEvaluationsAfter": 8165,
+    "proofBuildsBefore": 1395,
+    "proofBuildsAfter": 1395,
+    "nextDirection": "Trace target S4/Provider for repeated route/Proof prerequisite construction; no invalidation retry"
+  },
+  "reason": "精确失效只减少登记量，未减少组件/Proof构建，端到端回退约1.19%，不满足3%门；转向目标S4/Provider重复路线前置构建审计。",
+  "recordedAt": "2026-08-09T04:42:13.000Z",
+  "repository": {
+    "branch": "master",
+    "head": "983e7ebc79e4d6d19ae1dbb3726f67d93ce5fecb"
+  },
+  "eventHash": "0503919b44b3586218e503c7e6c875da2574c042c0a4a83963e5d31497f9d623"
+}
