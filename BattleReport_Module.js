@@ -534,6 +534,49 @@
     if (!Number.isFinite(numeric)) return null;
     const displayName = text(label);
     const displayUnit = text(unit);
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    const readFinite = (...values) => {
+      const candidate = values.find(item => item !== undefined && item !== null && item !== '');
+      return Number.isFinite(Number(candidate)) ? Number(candidate) : null;
+    };
+    const before = readFinite(
+      event?.before,
+      meta?.before,
+      event?.previousValue,
+      meta?.previousValue,
+      event?.beforeValue,
+      meta?.beforeValue,
+    );
+    const after = readFinite(
+      event?.after,
+      meta?.after,
+      event?.currentValue,
+      meta?.currentValue,
+      event?.afterValue,
+      meta?.afterValue,
+    );
+    const hasStatePair = before !== null && after !== null && before !== after;
+    const isDecreaseFact = /伤害|损耗|吸收|消耗/.test(displayName) ||
+      (text(sourceType) === 'SETTLEMENT' && displayUnit === 'HP');
+    const derivedOperands = hasStatePair
+      ? isDecreaseFact
+        ? [
+            { name: `${text(event?.targetName || '目标')}行动前${displayUnit || displayName}`, value: before, unit: displayUnit },
+            { name: `${text(event?.targetName || '目标')}行动后${displayUnit || displayName}`, value: after, unit: displayUnit },
+          ]
+        : [
+            { name: `${text(event?.targetName || '对象')}行动后${displayUnit || displayName}`, value: after, unit: displayUnit },
+            { name: `${text(event?.targetName || '对象')}行动前${displayUnit || displayName}`, value: before, unit: displayUnit },
+          ]
+      : [{ name: '来源事实记录值', value: numeric, unit: displayUnit }];
+    const derivedOperation = hasStatePair && text(sourceType) !== 'RESOURCE'
+      ? 'SUBTRACT'
+      : text(operation);
+    const derivedRule = hasStatePair
+      ? isDecreaseFact
+        ? '行动前值 - 行动后值'
+        : '行动后值 - 行动前值'
+      : `按来源事实记录的${displayName}实际值`;
     return {
       tokenId: `${text(event?.eventId)}:number:${text(label)}:${text(unit)}`,
       displayName,
@@ -542,12 +585,15 @@
       unit: displayUnit,
       sourceName: text(event?.actionName || event?.finalActionName || event?.eventKind || '战斗结算'),
       sourceType: text(sourceType),
-      operation: text(operation),
+      operation: derivedOperation,
       sourceEventId: text(event?.eventId),
       sourceFactId: text(event?.eventId),
       visibility: visibilityMode,
-      operands: [{ name: '来源事实记录值', value: numeric, unit: displayUnit }],
-      derivationRule: `按来源事实记录的${displayName}实际值`,
+      operands: Array.isArray(extra?.operands) ? extra.operands : derivedOperands,
+      ...(hasStatePair && !Array.isArray(extra?.operands)
+        ? { leftOperand: derivedOperands[0], rightOperand: derivedOperands[1] }
+        : {}),
+      derivationRule: text(extra?.derivationRule) || derivedRule,
       tacticalConsequence: `用于说明${displayName}对当前战斗的实际影响`,
       ...extra,
     };
@@ -4953,6 +4999,278 @@
     });
   }
 
+  function publicNumericToken(token = {}) {
+    return {
+      displayName: text(token?.displayName || token?.label),
+      label: text(token?.label || token?.displayName),
+      value: number(token?.value, 0),
+      unit: text(token?.unit),
+      sourceName: text(token?.sourceName || '战斗事实'),
+      sourceType: text(token?.sourceType || 'SETTLEMENT'),
+      operation: text(token?.operation || 'SET'),
+      sourceEventId: text(token?.sourceEventId),
+      sourceFactId: text(token?.sourceFactId),
+      operands: (Array.isArray(token?.operands) ? token.operands : [])
+        .filter(operand => Number.isFinite(Number(operand?.value)))
+        .map(operand => ({
+          name: text(operand?.name || '来源事实记录值'),
+          value: number(operand?.value, 0),
+          unit: text(operand?.unit || token?.unit),
+        })),
+      derivationRule: text(token?.derivationRule || '按来源事实记录值说明实际结算'),
+      tacticalConsequence: text(token?.tacticalConsequence || '用于说明这次事实对战斗的实际影响'),
+    };
+  }
+
+  function publicDecisionTrace(trace = {}) {
+    if (!trace || typeof trace !== 'object') return null;
+    return {
+      candidateCount: Math.max(0, number(trace?.candidateCount, 0)),
+      candidates: (Array.isArray(trace?.candidates) ? trace.candidates : []).map(candidate => ({
+        name: text(candidate?.name),
+        targetNames: unique(candidate?.targetNames || []).map(text).filter(Boolean),
+        status: text(candidate?.status),
+        reason: text(candidate?.reason || candidate?.reasonPlayerText || candidate?.reasonText),
+      })),
+      narrowing: (Array.isArray(trace?.narrowing) ? trace.narrowing : []).map(stage => ({
+        stage: text(stage?.stage),
+        before: Math.max(0, number(stage?.before, 0)),
+        after: Math.max(0, number(stage?.after, 0)),
+        droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
+          .map(reason => ({
+            reason: text(reason?.reason || reason?.reasonPlayerText || reason?.reasonText),
+            count: Math.max(0, number(reason?.count, 0)),
+          }))
+          .filter(reason => reason.reason),
+      })),
+    };
+  }
+
+  function publicReconciliation(row = {}) {
+    return {
+      kind: text(row?.kind),
+      status: text(row?.status),
+      targetName: text(row?.targetName),
+      expected: {
+        stateName: text(row?.expected?.stateName),
+      },
+    };
+  }
+
+  function publicSettlementStep(step = {}) {
+    return {
+      stepRole: text(step?.stepRole),
+      actorName: text(step?.actorName),
+      targetName: text(step?.targetName),
+      byResponder: step?.byResponder === true,
+      text: text(step?.text),
+      playerText: text(step?.playerText || step?.text),
+      numericTokens: (Array.isArray(step?.numericTokens) ? step.numericTokens : [])
+        .map(publicNumericToken),
+    };
+  }
+
+  function publicNarrativeNode(node = {}) {
+    const decisions = (Array.isArray(node?.decisions) ? node.decisions : []).map(row => ({
+      actorName: text(row?.actorName),
+      isPrimary: row?.isPrimary === true,
+      kind: text(row?.kind),
+      trace: publicDecisionTrace(row?.trace),
+      lostOpportunityReason: text(row?.lostOpportunityReason),
+    }));
+    return {
+      round: Math.max(0, number(node?.round, 0)),
+      actorName: text(node?.actorName),
+      action: {
+        name: text(node?.action?.name || '行动'),
+      },
+      targetNames: unique(node?.targetNames || []).map(text).filter(Boolean),
+      context: {
+        pendingCharges: (Array.isArray(node?.context?.pendingCharges) ? node.context.pendingCharges : [])
+          .map(charge => ({
+            actorName: text(charge?.actorName),
+            actionName: text(charge?.actionName),
+            imminent: charge?.imminent === true,
+          })),
+      },
+      decisionKind: text(node?.decisionKind),
+      decision: publicDecisionTrace(node?.decision),
+      decisions,
+      lostOpportunityReason: text(node?.lostOpportunityReason),
+      settlement: {
+        declarationSummary: text(node?.settlement?.declarationSummary),
+        steps: (Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [])
+          .map(publicSettlementStep),
+      },
+      reconciliation: (Array.isArray(node?.reconciliation) ? node.reconciliation : [])
+        .map(publicReconciliation),
+      reconciliationSummary: text(node?.reconciliationSummary),
+      isLostOpportunity: text(node?.decisionKind) === 'LOST_OPPORTUNITY',
+    };
+  }
+
+  function publicExchange(exchange = {}) {
+    return {
+      round: Math.max(0, number(exchange?.round, 0)),
+      actorName: text(exchange?.actorName),
+      targetGroups: (Array.isArray(exchange?.targetGroups) ? exchange.targetGroups : []).map(group => ({
+        targetName: text(group?.targetName),
+        text: text(group?.text),
+        responseSummary: text(group?.responseSummary),
+        resultSummary: text(group?.resultSummary),
+        continuationSummary: text(group?.continuationSummary),
+      })),
+      text: text(exchange?.text),
+      responseSummary: text(exchange?.responseSummary),
+      resultSummary: text(exchange?.resultSummary),
+      continuationSummary: text(exchange?.continuationSummary),
+    };
+  }
+
+  function publicRoundSummary(row = {}) {
+    return {
+      round: Math.max(0, number(row?.round, 0)),
+      headline: text(row?.headline),
+      summary: text(row?.summary),
+      passiveSummary: text(row?.passiveSummary),
+    };
+  }
+
+  function publicTerminalResult(terminal = {}) {
+    return {
+      terminal: terminal?.terminal === true,
+      winner: text(terminal?.winner || 'unfinished'),
+      status: text(terminal?.status),
+      terminalReason: text(terminal?.terminalReason || terminalText(terminal)),
+      timeLimitReached: terminal?.timeLimitReached === true,
+    };
+  }
+
+  function publicFinalSummary(summary = {}) {
+    const result = cloneValue(summary || {});
+    delete result.canonicalFactIds;
+    delete result.pipelineStats;
+    if (result.terminalResult) result.terminalResult = publicTerminalResult(result.terminalResult);
+    return result;
+  }
+
+  function publicAiSummary(summary = {}, roundOverview = []) {
+    const compactUnit = unit => ({
+      name: text(unit?.name),
+      hp: number(unit?.hp, 0),
+      hpMax: number(unit?.hpMax, 0),
+      shield: number(unit?.shield, 0),
+      resourceVisibility: text(unit?.resourceVisibility || 'PUBLIC'),
+      resources: text(unit?.resourceVisibility).toUpperCase() === 'HIDDEN'
+        ? null
+        : cloneValue(unit?.resources || {}),
+      states: (Array.isArray(unit?.states) ? unit.states : []).map(state => ({
+        name: text(state?.name),
+        duration: Math.max(0, number(state?.duration, 0)),
+      })),
+      actionState: text(unit?.actionState),
+    });
+    return {
+      schemaVersion: 'AIPlayerSummaryV1',
+      headline: text(summary?.headline || summary?.outcomeSummary),
+      outcomeSummary: text(summary?.outcomeSummary || summary?.text),
+      actualRoundCount: Math.max(0, number(summary?.round, 0)),
+      sides: {
+        player: (summary?.sides?.player?.units || []).map(compactUnit),
+        enemy: (summary?.sides?.enemy?.units || []).map(compactUnit),
+      },
+      advantage: text(summary?.advantage),
+      trend: text(summary?.trend),
+      risks: [...(summary?.risks || [])].map(text).filter(Boolean),
+      tacticalWindows: [...(summary?.tacticalWindows || [])].map(text).filter(Boolean),
+      nextIntents: {
+        player: text(summary?.nextIntents?.player),
+        enemy: text(summary?.nextIntents?.enemy),
+      },
+      recentRoundSummaries: (Array.isArray(roundOverview) ? roundOverview : [])
+        .slice(-3)
+        .map(row => ({
+          round: Math.max(0, number(row?.round, 0)),
+          summary: text(row?.summary),
+        })),
+    };
+  }
+
+  function publicDecisionExplanation(explanation = {}) {
+    return {
+      decisionId: text(explanation?.explanationId),
+      round: Math.max(0, number(explanation?.round, 0)),
+      actorName: text(explanation?.actorName),
+      decisionKind: text(explanation?.decisionKind),
+      visibleContext: {
+        candidateCount: Math.max(0, number(explanation?.visibleContext?.candidateCount, 0)),
+        narrowing: cloneValue(explanation?.visibleContext?.narrowing || []),
+      },
+      selected: cloneValue(explanation?.selected || {}),
+      alternatives: (Array.isArray(explanation?.alternatives) ? explanation.alternatives : []).map(alternative => ({
+        name: text(alternative?.name),
+        targetNames: unique(alternative?.targetNames || []).map(text).filter(Boolean),
+        status: text(alternative?.status),
+        reason: text(alternative?.reason),
+      })),
+      objectiveTradeoffs: [...(explanation?.objectiveTradeoffs || [])].map(text).filter(Boolean),
+      riskTradeoffs: [...(explanation?.riskTradeoffs || [])].map(text).filter(Boolean),
+      resourceTradeoffs: [...(explanation?.resourceTradeoffs || [])].map(text).filter(Boolean),
+      futurePoolTradeoffs: [...(explanation?.futurePoolTradeoffs || [])].map(text).filter(Boolean),
+      comparisonEvidence: {
+        explanation: text(explanation?.comparisonEvidence?.explanation),
+      },
+      predicted: {
+        publicEvidenceAvailable: explanation?.predicted?.publicEvidenceAvailable === true,
+        numbers: (Array.isArray(explanation?.predicted?.numbers) ? explanation.predicted.numbers : [])
+          .map(publicNumericToken),
+      },
+      actual: {
+        numericTokens: (Array.isArray(explanation?.actual?.numericTokens) ? explanation.actual.numericTokens : [])
+          .map(publicNumericToken),
+      },
+    };
+  }
+
+  function buildPublicReportDto(report = {}) {
+    const roundOverview = (Array.isArray(report?.roundOverview) ? report.roundOverview : [])
+      .map(publicRoundSummary);
+    const finalSummary = publicFinalSummary(report?.finalSummary || {});
+    const exchanges = (Array.isArray(report?.exchanges) ? report.exchanges : []).map(publicExchange);
+    return {
+      schemaVersion: reportSchemaVersion,
+      battleId: text(report?.battleId || report?.sourceDraftHash),
+      draftHash: text(report?.sourceDraftHash),
+      sourceDraftHash: text(report?.sourceDraftHash),
+      visibilityMode: text(report?.visibilityMode),
+      projectionStatus: text(report?.projectionStatus),
+      actualRoundCount: Math.max(0, number(report?.actualRoundCount, 0)),
+      terminalResult: publicTerminalResult(report?.terminalResult || {}),
+      objectiveSummary: {
+        headline: text(finalSummary?.headline),
+        outcomeSummary: text(finalSummary?.outcomeSummary || finalSummary?.text),
+        advantage: text(finalSummary?.advantage),
+        trend: text(finalSummary?.trend),
+      },
+      roundSummaries: roundOverview,
+      roundOverview,
+      decisionExplanations: (Array.isArray(report?.decisionExplanations) ? report.decisionExplanations : [])
+        .map(publicDecisionExplanation),
+      realizedOutcomes: exchanges,
+      resourceTimeline: roundOverview.map(row => ({
+        round: row.round,
+        summary: row.summary,
+      })),
+      finalResult: finalSummary,
+      finalSummary,
+      exchanges,
+      narrativeChain: (Array.isArray(report?.narrativeChain) ? report.narrativeChain : [])
+        .map(publicNarrativeNode),
+      aiStructuredSummary: publicAiSummary(finalSummary, roundOverview),
+      battleHeadline: text(report?.battleHeadline),
+    };
+  }
+
   function build(input = {}) {
     const sourceDraft = input?.draft && typeof input.draft === 'object' ? input.draft : null;
     if (!sourceDraft || text(sourceDraft?.status) !== 'DRAFT') throw new Error('battle_report_draft_invalid');
@@ -5905,8 +6223,11 @@
     }
 
     report.projectionStatus = fatals.length ? 'FAILED' : 'PASSED';
-    const reportHash = runtime.hashBattleValue(report);
-    const sealedReportDto = runtime.freezeBattleValue(report);
+    const sealedProjection = publicProjection
+      ? buildPublicReportDto(report)
+      : report;
+    const reportHash = runtime.hashBattleValue(sealedProjection);
+    const sealedReportDto = runtime.freezeBattleValue(sealedProjection);
     const reportAudit = runtime.freezeBattleValue({
       passed: fatals.length === 0,
       fatalCount: fatals.length,

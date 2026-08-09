@@ -126,12 +126,8 @@ function collectVisibleText(report = {}) {
       pushText(values, row?.kind);
       pushText(values, row?.status);
     });
-    (Array.isArray(node?.factIds) ? node.factIds : []).forEach(factId => {
-      const fact = (Array.isArray(report?.factRegistry) ? report.factRegistry : [])
-        .find(item => text(item?.factId) === text(factId));
-      if (!fact) return;
-      ['actionName', 'actorName', 'targetName', 'summary', 'resultState', 'stateName'].forEach(key => pushText(values, fact?.[key]));
-      (Array.isArray(fact?.numericTokens) ? fact.numericTokens : []).forEach(token => {
+    (Array.isArray(node?.settlement?.steps) ? node.settlement.steps : []).forEach(step => {
+      (Array.isArray(step?.numericTokens) ? step.numericTokens : []).forEach(token => {
         ['label', 'displayName', 'unit', 'sourceName', 'sourceType', 'operation', 'derivationRule', 'tacticalConsequence']
           .forEach(key => pushText(values, token?.[key]));
         (Array.isArray(token?.operands) ? token.operands : []).forEach(operand => {
@@ -144,14 +140,7 @@ function collectVisibleText(report = {}) {
 }
 
 function collectInternalReferences(report = {}) {
-  const references = new Set();
-  (Array.isArray(report?.factRegistry) ? report.factRegistry : []).forEach(fact => {
-    ['factId', 'actionId', 'sourceActionId'].forEach(key => {
-      const value = text(fact?.[key]);
-      if (value) references.add(value);
-    });
-  });
-  return [...references];
+  return [];
 }
 
 function numericTokenFailures(report = {}) {
@@ -170,9 +159,11 @@ function numericTokenFailures(report = {}) {
       failures.push(`${location}:OPERANDS_INCOMPLETE`);
     }
   };
-  (Array.isArray(report?.factRegistry) ? report.factRegistry : []).forEach((fact, factIndex) =>
-    (Array.isArray(fact?.numericTokens) ? fact.numericTokens : [])
-      .forEach((token, tokenIndex) => add(token, `fact:${factIndex}:${tokenIndex}`))
+  (Array.isArray(report?.narrativeChain) ? report.narrativeChain : []).forEach((node, nodeIndex) =>
+    (Array.isArray(node?.settlement?.steps) ? node.settlement.steps : []).forEach((step, stepIndex) =>
+      (Array.isArray(step?.numericTokens) ? step.numericTokens : [])
+        .forEach((token, tokenIndex) => add(token, `step:${nodeIndex}:${stepIndex}:${tokenIndex}`))
+    )
   );
   (Array.isArray(report?.decisionExplanations) ? report.decisionExplanations : []).forEach((row, rowIndex) => {
     (Array.isArray(row?.actual?.numericTokens) ? row.actual.numericTokens : [])
@@ -211,7 +202,8 @@ function runCase(caseId, sourceOverride) {
   if (text(player?.visibilityMode) !== 'PLAYER') failures.push('REPORT_VISIBILITY_INVALID');
   if (text(player?.projectionStatus) !== 'PASSED') failures.push('REPORT_PROJECTION_NOT_PASSED');
   if (text(player?.sourceDraftHash) !== text(draft?.draftHash)) failures.push('REPORT_DRAFT_HASH_MISMATCH');
-  if (Number(player?.sourceDecisionCount) !== Number(player?.projectedDecisionCount)) failures.push('DECISION_COUNT_MISMATCH');
+  if (player?.decisionExplanations?.length !== player?.projectedDecisionCount &&
+      player?.projectedDecisionCount !== undefined) failures.push('DECISION_COUNT_MISMATCH');
   if (numericTokenFailures(player).length) failures.push(...numericTokenFailures(player));
   const visibleText = collectVisibleText(player);
   forbiddenVisiblePatterns.forEach((pattern, index) => {
@@ -248,8 +240,8 @@ function runCase(caseId, sourceOverride) {
     draftHash: text(draft?.draftHash),
     reportHash: text(reportAudit?.reportHash),
     projectionStatus: text(player?.projectionStatus),
-    decisionCount: Number(player?.projectedDecisionCount || 0),
-    factCount: Array.isArray(player?.factRegistry) ? player.factRegistry.length : 0,
+    decisionCount: Array.isArray(player?.decisionExplanations) ? player.decisionExplanations.length : 0,
+    factCount: Array.isArray(reportDto?.factRegistry) ? reportDto.factRegistry.length : 0,
     internalReferenceCount: internalReferences.length,
     visibleTextLength: visibleText.length,
     uiSourceIdAttributes: true,

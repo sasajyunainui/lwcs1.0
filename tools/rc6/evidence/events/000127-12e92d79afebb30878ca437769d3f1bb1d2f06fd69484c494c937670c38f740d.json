@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 127,
+  "previousEventHash": "b16c8c5ecf3823224b677578be49c7fc9fc2a5d223f35d1123a3da4293a2ac78",
+  "milestoneId": "M3",
+  "taskId": "M3-B05",
+  "eventType": "MILESTONE_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "3cd489b540a4c4faaf24c8fd1323841a020aec2a659d3731af989b75c833b3f5"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "naturalness": "DEFERRED_TO_M6",
+    "reportFindings": "M4_REQUIRED",
+    "performance": "K13_DEFERRED_TO_M5",
+    "nextExitCondition": "M4-R01 BattleReportDtoV2 contract freeze"
+  },
+  "reason": "M3 behavior implementation and current-hash evidence checkpoint closed; final naturalness, Report comprehension, and formal performance remain open.",
+  "recordedAt": "2026-08-09T03:48:48.479Z",
+  "repository": {
+    "branch": "master",
+    "head": "d4883fcf11e58dafbb3f8ad0907892a658ffeb7d"
+  },
+  "eventHash": "12e92d79afebb30878ca437769d3f1bb1d2f06fd69484c494c937670c38f740d"
+}

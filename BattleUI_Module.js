@@ -9832,8 +9832,8 @@ class BattleUIComponent {
               .map(candidate => {
                 const status = String(candidate?.status || '').trim();
                 const 状态文本 = status === 'SELECTED' ? '选中' : status === 'EXCLUDED' ? '排除' : '可选';
-                const 原因 = candidate?.reasonText
-                  ? `<span class="battle-chain-candidate-reason">${htmlEscapeText(candidate.reasonText)}</span>`
+                const 原因 = candidate?.reason || candidate?.reasonText
+                  ? `<span class="battle-chain-candidate-reason">${htmlEscapeText(candidate.reason || candidate.reasonText)}</span>`
                   : '';
                 /* 排除码背后"引擎检查了什么"必须能展开，否则结论只是换个说法重复一遍。 */
                 const 检查 = candidate?.reasonChecked
@@ -9889,7 +9889,7 @@ class BattleUIComponent {
 
           /* 局面只报会在下一个窗口兑现、且不是行动者自己的蓄力；其余是噪音。 */
           const 威胁 = (node?.context?.pendingCharges || [])
-            .filter(charge => charge?.imminent && String(charge?.actorId || '') !== String(node?.actorId || ''))
+            .filter(charge => charge?.imminent && String(charge?.actorName || '') !== 行动者)
             .map(charge => `<li>${htmlEscapeText(charge.actorName)}蓄力中【${htmlEscapeText(charge.actionName)}】，下个行动窗口即可打出</li>`)
             .join('');
 
@@ -9897,10 +9897,10 @@ class BattleUIComponent {
              只列两条，但**必须告知截断**——否则排除了 8 个和排除了 2 个在界面上没有区别，
              可疑的排除会被静默藏在截断线以下。 */
           const 全部排除 = (Array.isArray(node?.decision?.candidates) ? node.decision.candidates : [])
-            .filter(candidate => candidate?.status === 'EXCLUDED' && (candidate?.reasonPlayerText || candidate?.reasonText));
+            .filter(candidate => candidate?.status === 'EXCLUDED' && (candidate?.reason || candidate?.reasonPlayerText || candidate?.reasonText));
           const 排除 = [
             ...全部排除.slice(0, 2).map(candidate =>
-              `<li>没选${htmlEscapeText(candidate.name)}：${htmlEscapeText(candidate.reasonPlayerText || candidate.reasonText)}</li>`),
+              `<li>没选${htmlEscapeText(candidate.name)}：${htmlEscapeText(candidate.reason || candidate.reasonPlayerText || candidate.reasonText)}</li>`),
             全部排除.length > 2
               ? `<li class="battle-chain-more">另有${全部排除.length - 2}个选项被排除，展开判定依据可看全部</li>`
               : '',
@@ -9952,11 +9952,8 @@ class BattleUIComponent {
 
           /* 每个数字都必须能查到来源事实。数字令牌带 data-source-* 属性，
              由 绑定ReportDto数字来源 挂上悬浮/点击展开"数字来源"面板。 */
-          const 数字 = (Array.isArray(node?.factIds) ? node.factIds : [])
-            .flatMap(factId => {
-              const fact = factsById.get(String(factId || ''));
-              return Array.isArray(fact?.numericTokens) ? fact.numericTokens : [];
-            })
+          const 数字 = 可叙述
+            .flatMap(step => Array.isArray(step?.numericTokens) ? step.numericTokens : [])
             .map(渲染ReportDto数字)
             .filter(Boolean)
             .join('');
@@ -10028,10 +10025,6 @@ class BattleUIComponent {
           }
           const chain = Array.isArray(reportDto?.narrativeChain) ? reportDto.narrativeChain : [];
           if (!chain.length) return '<div class="battle-preview-empty">暂无战报</div>';
-          const factsById = new Map(
-            (Array.isArray(reportDto?.factRegistry) ? reportDto.factRegistry : [])
-              .map(fact => [String(fact?.factId || ''), fact]),
-          );
           /* 单一因果链时间线：按回合分段，每次行动一张卡，卡内顺序即因果顺序。 */
           const 分段 = [];
           let 当前回合 = null;
@@ -10041,7 +10034,7 @@ class BattleUIComponent {
               当前回合 = 回合;
               分段.push(`<h3 class="battle-chain-round">第${回合}回合</h3>`);
             }
-            分段.push(渲染因果链节点(node, factsById));
+            分段.push(渲染因果链节点(node));
           });
           return `<div class="battle-preview-report battle-chain">${分段.join('')}</div>`;
         }

@@ -7,21 +7,47 @@
   ],
   "requiredCommonFields": [
     "schemaVersion",
-    "termDictionaryVersion",
     "visibilityMode",
     "projectionStatus",
+    "draftHash",
     "sourceDraftHash",
     "actualRoundCount",
     "terminalResult",
-    "factRegistry",
+    "objectiveSummary",
+    "roundSummaries",
     "roundOverview",
-    "exchanges",
-    "finalSummary",
     "decisionExplanations",
+    "realizedOutcomes",
+    "resourceTimeline",
+    "finalResult",
+    "finalSummary",
+    "exchanges",
     "narrativeChain",
     "aiStructuredSummary",
     "battleHeadline"
   ],
+  "playerProjection": {
+    "visibilityMode": "PLAYER",
+    "projectionStatus": "PASSED",
+    "requiredFields": [
+      "battleId",
+      "draftHash",
+      "objectiveSummary",
+      "roundSummaries",
+      "decisionExplanations",
+      "realizedOutcomes",
+      "resourceTimeline",
+      "finalResult",
+      "aiStructuredSummary"
+    ],
+    "forbiddenTopLevelFields": [
+      "factRegistry",
+      "pipelineStats",
+      "sourceLedgerCount",
+      "sourceDecisionCount",
+      "termDictionaryVersion"
+    ]
+  },
   "playerContract": {
     "visibilityMode": "PLAYER",
     "projectionStatus": "PASSED",

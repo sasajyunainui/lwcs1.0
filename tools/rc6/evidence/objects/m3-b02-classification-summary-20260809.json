@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "M3B02ClassificationSummaryV1",
+  "summaryId": "M3-B02-CURRENT-HASH-CLASSIFICATION-20260809",
+  "milestoneId": "M3",
+  "taskId": "M3-B02",
+  "status": "CLASSIFIED_WITH_OPEN_HUMAN_VERDICTS",
+  "humanVerdictStatus": "NOT_FILLED",
+  "sourceObservationIndex": "tools/rc6/evidence/objects/m3-b02-current-observation-index-20260809.json",
+  "sourceObservationIndexHash": "930021cee6c7cc0705970da68025ee88b5d4315fcaa76520c6910bc8edd243c0",
+  "caseReviews": [
+    {
+      "caseId": "duel_overmatch_lethal",
+      "behaviorClassification": "EVIDENCE_GAP",
+      "reportClassification": "REPORT_ONLY",
+      "firstBehaviorDivergenceLayer": "NONE_OBSERVED",
+      "reportFindings": ["no public prediction numbers", "PLAYER contains internal projection keys"],
+      "naturalnessVerdict": "NOT_FILLED"
+    },
+    {
+      "caseId": "duel_peer_unknown_probe",
+      "behaviorClassification": "EVIDENCE_GAP",
+      "reportClassification": "REPORT_ONLY",
+      "firstBehaviorDivergenceLayer": "NONE_OBSERVED",
+      "reportFindings": ["no public prediction numbers", "PLAYER contains internal projection keys"],
+      "naturalnessVerdict": "NOT_FILLED"
+    },
+    {
+      "caseId": "team_focus_without_overkill",
+      "behaviorClassification": "EVIDENCE_GAP",
+      "reportClassification": "REPORT_ONLY",
+      "firstBehaviorDivergenceLayer": "NONE_OBSERVED",
+      "reportFindings": ["generic alternative wording", "grouped exchange wording needs a readability counterexample", "PLAYER contains internal projection keys"],
+      "naturalnessVerdict": "NOT_FILLED"
+    },
+    {
+      "caseId": "team_protect_critical_ally",
+      "behaviorClassification": "EVIDENCE_GAP",
+      "reportClassification": "REPORT_ONLY",
+      "firstBehaviorDivergenceLayer": "NONE_OBSERVED_AFTER_COMPONENT_FIX",
+      "reportFindings": ["no public prediction numbers", "PLAYER contains internal projection keys"],
+      "naturalnessVerdict": "NOT_FILLED"
+    },
+    {
+      "caseId": "team_heal_crisis",
+      "behaviorClassification": "EVIDENCE_GAP",
+      "reportClassification": "REPORT_ONLY",
+      "firstBehaviorDivergenceLayer": "NONE_OBSERVED",
+      "reportFindings": ["action-category reasons do not expose current crisis tradeoff", "no public prediction numbers"],
+      "naturalnessVerdict": "NOT_FILLED"
+    },
+    {
+      "caseId": "team_control_overlap",
+      "behaviorClassification": "EVIDENCE_GAP",
+      "reportClassification": "REPORT_ONLY",
+      "firstBehaviorDivergenceLayer": "NONE_OBSERVED",
+      "reportFindings": ["control-overlap tradeoff is not explicit in PLAYER explanation", "no public prediction numbers"],
+      "naturalnessVerdict": "NOT_FILLED"
+    },
+    {
+      "caseId": "raid_control_heavy",
+      "behaviorClassification": "EVIDENCE_GAP",
+      "reportClassification": "REPORT_ONLY",
+      "firstBehaviorDivergenceLayer": "NONE_OBSERVED_IN_SINGLE_ROUND_SCOPE",
+      "reportFindings": ["single-round scope cannot support full-behavior judgment", "resource/route tradeoff is not explicit", "no public prediction numbers"],
+      "naturalnessVerdict": "NOT_FILLED"
+    },
+    {
+      "caseId": "raid_response_terminal_information",
+      "behaviorClassification": "EVIDENCE_GAP",
+      "reportClassification": "REPORT_ONLY",
+      "firstBehaviorDivergenceLayer": "NONE_OBSERVED_IN_SINGLE_ROUND_SCOPE",
+      "reportFindings": ["response opportunity value is not explicit", "single-round scope cannot support full-behavior judgment", "no public prediction numbers"],
+      "naturalnessVerdict": "NOT_FILLED"
+    }
+  ],
+  "aggregate": {
+    "caseCount": 8,
+    "confirmedMechanicalDefects": 0,
+    "confirmedUnnatural": 0,
+    "unexplainedConfirmedUnnatural": 0,
+    "reportOnlyCaseCount": 8,
+    "behaviorEvidenceGapCaseCount": 8,
+    "hiddenInformationLeak": 0,
+    "naturalnessAssessment": "DEFERRED_TO_FINAL_HUMAN_REVIEW",
+    "performanceAssessment": "DEFERRED_TO_M5"
+  },
+  "nextWork": {
+    "M3": "checkpoint completed; no new production behavior change authorized by this summary",
+    "M4": "replace PLAYER projection shape, add decision-time public derivations and nonempty PLAYER AI summary",
+    "M6": "perform final naturalness and comprehension verdicts after Report V2 freeze"
+  },
+  "sourceHashes": {
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a",
+    "BattleDecisionR9v2Kernel_Module.js": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9"
+  }
+}

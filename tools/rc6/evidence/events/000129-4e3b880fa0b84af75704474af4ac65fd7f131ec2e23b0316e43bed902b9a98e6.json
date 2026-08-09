@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 129,
+  "previousEventHash": "909c9f0671b01cb4d91f542348bcf5aca8dccc7cd7689ce64d1085ed8edc3b80",
+  "milestoneId": "M4",
+  "taskId": "M4-R06",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "b05a5cf5904e4ee7251e518c58df07ee7f030dc396fac6f87422898b561b1845"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "r02": "PASSED",
+    "r05": "PASSED",
+    "r06": "PASSED",
+    "decisionCount": 82,
+    "failureCount": 0,
+    "reportMedianMsMax": 108.42,
+    "reportP95MsMax": 109.381,
+    "nextExitCondition": "M4 milestone completion"
+  },
+  "reason": "M4 Report/UI/AI evidence passed on current hashes with public DTO whitelist and DTO-only UI rendering.",
+  "recordedAt": "2026-08-09T04:04:22.706Z",
+  "repository": {
+    "branch": "master",
+    "head": "d4883fcf11e58dafbb3f8ad0907892a658ffeb7d"
+  },
+  "eventHash": "4e3b880fa0b84af75704474af4ac65fd7f131ec2e23b0316e43bed902b9a98e6"
+}

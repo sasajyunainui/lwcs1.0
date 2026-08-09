@@ -68,7 +68,7 @@ function runCase(caseId) {
     schemaVersion: text(row?.reportDto?.schemaVersion),
     projectionStatus: text(row?.reportDto?.projectionStatus),
     sourceDraftHash: text(row?.reportDto?.sourceDraftHash),
-    hasDeveloperDetail: Boolean(row?.reportDto?.factRegistry?.some(fact => fact?.developerDetail !== undefined)),
+    hasDeveloperDetail: Object.hasOwn(row?.reportDto || {}, 'factRegistry'),
     hasLegacyAiReport: Object.hasOwn(row?.reportDto || {}, 'aiReport') || Object.hasOwn(row?.reportDto || {}, 'aiSummaryInput'),
     enemyResourcesHidden: (row?.reportDto?.finalSummary?.sides?.enemy?.units || [])
       .every(unit => unit?.resourceVisibility === 'HIDDEN' && unit?.resources === null),
@@ -80,6 +80,9 @@ function runCase(caseId) {
     assert(row?.projectionStatus === 'PASSED', `M4_PROJECTION_STATUS_MISMATCH:${caseId}:${mode}`);
     assert(row?.sourceDraftHash === text(draft.draftHash), `M4_PROJECTION_SOURCE_MISMATCH:${caseId}:${mode}`);
     assert(row?.reportHash, `M4_PROJECTION_HASH_MISSING:${caseId}:${mode}`);
+  }
+  for (const key of ['factRegistry', 'pipelineStats', 'sourceLedgerCount', 'sourceDecisionCount', 'termDictionaryVersion']) {
+    assert(!Object.hasOwn(projections.PLAYER || {}, key), `M4_PLAYER_INTERNAL_FIELD:${caseId}:${key}`);
   }
   assert(projections.PLAYER.passed && projections.REVIEW.passed && projections.DEVELOPER.passed, `M4_PROJECTION_AUDIT_FAILED:${caseId}`);
   assert(projections.PLAYER.hasDeveloperDetail === false, `M4_PLAYER_DEVELOPER_DETAIL:${caseId}`);

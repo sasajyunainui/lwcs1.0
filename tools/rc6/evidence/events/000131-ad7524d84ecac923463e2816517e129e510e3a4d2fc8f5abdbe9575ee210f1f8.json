@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 131,
+  "previousEventHash": "219977bc21dcf0c472dc2933b4801fef2fb6dd3ddb5f3ecb918890e1fd7aea2c",
+  "milestoneId": "M5",
+  "taskId": "M5-P01",
+  "eventType": "MILESTONE_STARTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "performanceDebt": "K13_DEFERRED_TO_M5",
+    "scope": "complete target transaction only",
+    "nextExitCondition": "Measure end-to-end stage proportions for raid_control_heavy"
+  },
+  "reason": "M5 started after M4 projection and consumer closure.",
+  "recordedAt": "2026-08-09T04:04:23.708Z",
+  "repository": {
+    "branch": "master",
+    "head": "d4883fcf11e58dafbb3f8ad0907892a658ffeb7d"
+  },
+  "eventHash": "ad7524d84ecac923463e2816517e129e510e3a4d2fc8f5abdbe9575ee210f1f8"
+}
