@@ -16,14 +16,16 @@ const fixturePath = path.join(
   'cases',
   'S4RouteValueReuseCasesV1.json',
 );
-const evidencePath = path.join(
-  repoRoot,
-  'tools',
-  'rc6',
-  'evidence',
-  'm2',
-  'k14-s4-route-value-reuse-ab.json',
-);
+const evidencePath = process.env.RC6_EVIDENCE_PATH
+  ? path.resolve(repoRoot, process.env.RC6_EVIDENCE_PATH)
+  : path.join(
+      repoRoot,
+      'tools',
+      'rc6',
+      'evidence',
+      'm2',
+      'k14-s4-route-value-reuse-ab.json',
+    );
 const decisionPath = path.join(repoRoot, 'BattleDecision_Module.js');
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 const assert = (condition, code) => {

@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 121,
+  "previousEventHash": "44ca134817c293d1f47f57ede3362d8ef33aa3713f1805ebdc40a31829bdc324",
+  "milestoneId": "M3",
+  "taskId": "M3-B03",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m3-b01-target-behavior.mjs": "c2e94e5509ce5af39a87c5a8fa28993f1848aa764d1e0b2c1a3d3f3540bf622f",
+    "tools/rc6/harness/run-m2-k04-target-fact-delta.mjs": "614384485caa6853e32a68325a29d9036221c52be68becabb16945a4b2ac95fd",
+    "tools/rc6/harness/run-m2-k14-s4-route-value-reuse-ab.mjs": "ee351945c9be84383a6f4abfef1696eb64c8041c900ac2344c76d9771d1147c6"
+  },
+  "fixtureHashes": {
+    "tools/battle_r63_manual_cases.mjs": "a0aab43948c1aa356cb35d03944a2768c338a63f4a0b9225e50fc8fbb63d44e3"
+  },
+  "acceptedObjectHashes": [
+    "3e52118100da6cd247438e23c7153dec05e6938bd76eed144898a3b44338f32f",
+    "0ff25520123a90de8eeeb36f28358768a50c1ed46d99180c1ad1a0cc354862d7",
+    "4796369712dcadd02830ac513dfc3cbffa90d31b17225303a69ebdcb72c2102c",
+    "4cb1f1bfec7cdd2ad5c9586b83c8f3063867f23c6feaa315061fbd5bee0f40f3",
+    "93485aa161a5ab944e0e26b38b81b6e5c5ffe0e2ae41067daff017b968ecdbce"
+  ],
+  "invalidatedObjectHashes": [
+    "91cc8cbac64ab213742d3363f8d3ff9b6dc6d458a190053c59e2e4e7f25085ed",
+    "4d53d5507503256a2d64e31920790aec2b75c61ca8303550efb5d737ccdb360c",
+    "081fc31147626efd83a820dc979ef2ed2ded68e87467216784c1a2c2999c4c94"
+  ],
+  "details": {
+    "rootCauseBatch": "M3-B03-KERNEL-STATE-OPPORTUNITY-COMPONENT-001",
+    "currentBlocker": null,
+    "nextExitCondition": "M3-B02 current-hash PLAYER reading and classification without prefilled naturalness verdicts",
+    "formalProviderChanged": false,
+    "targetProvider": "r9v2_test_registry_only",
+    "performanceDebt": "K13_DEFERRED_TO_M5",
+    "naturalnessAssessment": "NOT_ASSESSED",
+    "historicalRedProbe": "tools/rc6/evidence/m3/m3-b01-current-hash-20260809.json"
+  },
+  "reason": "M3 state-opportunity component ownership fix and current-hash K04/K14 provenance re-attestation accepted; behavior naturalness and performance remain open.",
+  "recordedAt": "2026-08-09T03:26:47.719Z",
+  "repository": {
+    "branch": "master",
+    "head": "5750f410ebcbeea46767b28a68cd8a0642eda2bc"
+  },
+  "eventHash": "e3a78b8b8dd93b3987358930178a140bf1051fa7650fe3853d1dbf0e3830e934"
+}

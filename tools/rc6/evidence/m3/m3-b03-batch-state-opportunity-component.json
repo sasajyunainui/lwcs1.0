@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "BatchAuditBundleV1",
+  "bundleId": "M3-B03-KERNEL-STATE-OPPORTUNITY-COMPONENT-001",
+  "supersedes": [],
+  "milestoneId": "M3",
+  "taskId": "M3-B03",
+  "status": "ACCEPTED_MECHANICAL_FIX",
+  "decisionType": "KERNEL_IMPLEMENTATION_DEFECT",
+  "evidence": {
+    "redProbe": {
+      "file": "artifacts/rc6/m3/20260809/m3-b01-current-hash-20260809.json",
+      "contentHash": "56abb223bd821a2e9ce2c1ff3b59dda260c905818d0612f2460b300c206b5b7e",
+      "caseId": "team_protect_critical_ally",
+      "failureCode": "STRUCTURED_SHADOW_NODE_FAILED:R9V2_KERNEL_UNSUPPORTED_FACT:唐舞麟:skill:蓝银缠绕:0:NEXT_ACTION_QUALITY_CHANGED,STATE_CHANGED",
+      "sourceDecisionHash": "3b507d01a96d8c436b8de9bef3726c6c7869c97be9f58ce77f44e31b8387ba53",
+      "role": "HISTORICAL_RED_PROBE"
+    },
+    "fixedTransactionEvidence": {
+      "file": "artifacts/rc6/m3/20260809/m3-b01-transactions-20260809.json",
+      "contentHash": "3e52118100da6cd247438e23c7153dec05e6938bd76eed144898a3b44338f32f",
+      "summaryFile": "tools/rc6/evidence/objects/m3-b01-transactions-summary-20260809.json",
+      "summaryHash": "1359de78682b4f8fdddc97cbb54c850249c7e46d1a13ec9e29e5275024692011",
+      "status": "PASSED",
+      "revalidatedCases": [
+        "team_protect_critical_ally",
+        "team_control_overlap",
+        "team_heal_crisis",
+        "team_focus_without_overkill"
+      ],
+      "reportAuditAndSeal": "PASSED"
+    },
+    "fixedOpportunityEvidence": {
+      "file": "artifacts/rc6/m3/20260809/m3-b01-frozen-opportunities-20260809.json",
+      "contentHash": "0ff25520123a90de8eeeb36f28358768a50c1ed46d99180c1ad1a0cc354862d7",
+      "summaryFile": "tools/rc6/evidence/objects/m3-b01-frozen-opportunities-summary-20260809.json",
+      "summaryHash": "cfc55b69aec2ab95039ebf59faa9d78964ab0e485005bd65fc1bc3a7b298de4c",
+      "status": "PASSED",
+      "caseCount": 5,
+      "decisionCount": 70,
+      "fatalCount": 0
+    },
+    "currentHashProvenance": [
+      {
+        "file": "tools/rc6/evidence/m3/k04-target-fact-delta-m3-current.json",
+        "contentHash": "4796369712dcadd02830ac513dfc3cbffa90d31b17225303a69ebdcb72c2102c",
+        "status": "PASSED",
+        "decisionHash": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455"
+      },
+      {
+        "file": "artifacts/rc6/m3/20260809/k14-s4-route-value-reuse-ab-m3-current.json",
+        "contentHash": "4cb1f1bfec7cdd2ad5c9586b83c8f3063867f23c6feaa315061fbd5bee0f40f3",
+        "summaryFile": "tools/rc6/evidence/objects/m3-k14-s4-route-value-reuse-summary-20260809.json",
+        "summaryHash": "7b657ab7285192a59f0e9088e12468606cf1b0f6166aecf4c7bcfe288a1fc4f0",
+        "status": "PASSED",
+        "decisionHash": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455"
+      }
+    ]
+  },
+  "rootCauseAnalysis": {
+    "schemaVersion": "RootCauseAnalysisV1",
+    "category": "KERNEL_IMPLEMENTATION_DEFECT",
+    "firstDivergenceLayer": "BattleDecision_Module.js r9v2TargetS3Components / r9v2TargetValueFacts",
+    "repeatedPhenomenon": "A mechanical state-opportunity contribution was exposed by a legal candidate but was not represented in the target provider S3 handled-component set.",
+    "cause": "State-opportunity facts were projected into the target value path without marking their outcome indexes as handled by S3. The remaining behavior projection then reported NEXT_ACTION_QUALITY_CHANGED and STATE_CHANGED as unsupported facts.",
+    "excludedAlternatives": [
+      "candidate enumeration defect",
+      "Preview mechanical fact defect",
+      "Runtime realization defect",
+      "Report projection defect",
+      "hidden information leak",
+      "contract change"
+    ],
+    "counterexampleCoverage": {
+      "positive": "team_protect_critical_ally now completes the same target-provider transaction with Report audit, Seal and Verify passing.",
+      "counterexample": "team_control_overlap completes without the state-opportunity fix being used as a blanket candidate or branch reduction.",
+      "adjacentProtection": [
+        "team_heal_crisis",
+        "team_focus_without_overkill"
+      ]
+    }
+  },
+  "semanticDecision": {
+    "schemaVersion": "BehaviorSemanticDecisionV2",
+    "decisionId": "M3-B03-STATE-OPPORTUNITY-HANDLED-COMPONENT-001",
+    "supersedes": [],
+    "contractChange": false,
+    "rule": "A state-opportunity contribution fully projected by S3 must be recorded as handled for its projected outcome indexes, and must not be projected again by the generic behavior loop.",
+    "candidateSetUnchanged": true,
+    "targetSetUnchanged": true,
+    "probabilityBranchesUnchanged": true,
+    "factSemanticsUnchanged": true,
+    "roundSemanticsUnchanged": true,
+    "naturalnessAssessment": "NOT_ASSESSED"
+  },
+  "changeImpact": {
+    "schemaVersion": "ChangeImpactManifestV1",
+    "changedFiles": [
+      "BattleDecision_Module.js",
+      "tools/rc6/harness/run-m3-b01-target-behavior.mjs",
+      "tools/rc6/harness/run-m2-k04-target-fact-delta.mjs",
+      "tools/rc6/harness/run-m2-k14-s4-route-value-reuse-ab.mjs"
+    ],
+    "changedBranch": "target S3 state-opportunity component accounting and current-hash evidence output paths",
+    "affectedConditions": [
+      "S3_STATE_OPPORTUNITY",
+      "NEXT_ACTION_QUALITY_CHANGED",
+      "STATE_CHANGED"
+    ],
+    "revalidatedTransactions": 8,
+    "revalidatedFrozenOpportunities": 5,
+    "reportProjectionCodeChanged": false,
+    "runtimeCodeChanged": false,
+    "performanceAssessment": "DEFERRED_TO_M5"
+  },
+  "implementationSelfAudit": {
+    "stateOpportunityFactsHaveOwner": true,
+    "fullyProjectedIndexesExcludedFromGenericBehaviorLoop": true,
+    "candidateEnumerationReduced": false,
+    "targetEnumerationReduced": false,
+    "probabilityBranchReduced": false,
+    "roundCountReduced": false,
+    "hiddenInformationRead": false,
+    "roleOrSkillSpecialCaseAdded": false,
+    "r8FormalProviderChanged": false,
+    "mvuSchemaChanged": false,
+    "syntaxAndDiffChecks": "PASS",
+    "utf8AndMojibakeScan": "PENDING_COMMIT_RECHECK",
+    "transactionEvidence": "8/8 PASS",
+    "frozenOpportunityEvidence": "5/5 PASS",
+    "k04CurrentHash": "PASS",
+    "k14CurrentHash": "PASS"
+  },
+  "resultAnalysis": {
+    "schemaVersion": "BatchResultAnalysisV1",
+    "result": "ACCEPT",
+    "newConfirmedDefect": false,
+    "newConfirmedUnnatural": "NOT_ASSESSED",
+    "reportFindings": "No Report code was changed. PLAYER naturalness and report comprehension remain M3 reading and M4 projection work.",
+    "performanceFinding": "No performance claim; K13 remains PERFORMANCE_DEBT_OPEN and is deferred to M5.",
+    "nextTask": "M3-B02",
+    "nextExitCondition": "Current-hash PLAYER observations are read and classified without prefilled naturalness verdicts."
+  },
+  "sourceHashes": {
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a",
+    "BattleDecisionR9v2Kernel_Module.js": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+    "tools/rc6/harness/run-m3-b01-target-behavior.mjs": "c2e94e5509ce5af39a87c5a8fa28993f1848aa764d1e0b2c1a3d3f3540bf622f",
+    "tools/battle_r63_manual_cases.mjs": "a0aab43948c1aa356cb35d03944a2768c338a63f4a0b9225e50fc8fbb63d44e3"
+  }
+}

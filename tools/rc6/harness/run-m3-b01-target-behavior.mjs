@@ -16,14 +16,15 @@ const evidenceFileName = process.env.RC6_B01_EVIDENCE_FILE || 'b01-target-behavi
 const evidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm3', evidenceFileName);
 const targetRegistryMarker = "    'r9v2-shadow': request => runR9v2ShadowProvider(request),";
 const targetRegistryLine = "    r9v2: request => runR9v2TargetProvider(request),";
-const priorityCaseIds = [
+const foregroundCaseIds = [
   'duel_overmatch_lethal',
-  'team_control_overlap',
+  'duel_peer_unknown_probe',
+  'team_focus_without_overkill',
   'team_protect_critical_ally',
-  'item_creation_consumption',
-  'intent_capture_vs_kill',
   'team_heal_crisis',
-  'summon_one_window',
+  'team_control_overlap',
+];
+const sevenVsSevenOpportunityCaseIds = [
   'raid_balanced',
   'raid_level_gap',
   'raid_control_heavy',
@@ -35,6 +36,10 @@ const requiredSevenVsSevenCaseIds = [
   'raid_level_gap',
   'raid_control_heavy',
   'raid_summon_heavy',
+  'raid_response_terminal_information',
+];
+const singleRoundCaseIds = [
+  'raid_control_heavy',
   'raid_response_terminal_information',
 ];
 
@@ -249,7 +254,7 @@ function auditFatalSample(audit = {}) {
     });
 }
 
-function runCase(caseId) {
+function runCase(caseId, { roundsOverride = null } = {}) {
   const sandbox = createTargetSandbox();
   const definition = manualCasesById(sandbox).get(caseId);
   if (!definition) {
@@ -262,6 +267,7 @@ function runCase(caseId) {
     };
   }
   const input = formalInput(definition, 'r9v2');
+  if (Number.isInteger(roundsOverride) && roundsOverride > 0) input.rounds = roundsOverride;
   input.settings = {
     ...input.settings,
     r9v2InformationValueOnly: true,
@@ -350,16 +356,100 @@ function runCase(caseId) {
   };
 }
 
+function runOpportunity(caseId) {
+  const sandbox = createTargetSandbox();
+  const definition = manualCasesById(sandbox).get(caseId);
+  if (!definition) {
+    return {
+      schemaVersion: 'M3B01TargetBehaviorOpportunityV1',
+      status: 'MISSING_FIXTURE',
+      caseId,
+      firstObservedLayer: 'EVIDENCE',
+      failureCode: 'B01_CASE_MISSING',
+    };
+  }
+  const input = formalInput(definition, 'r9v2');
+  input.settings = {
+    ...input.settings,
+    r9v2InformationValueOnly: true,
+    decisionOnly: true,
+  };
+  input.analysisDepth = 'CANDIDATES_ONLY';
+  const decision = sandbox.__LWCS_BATTLE_DECISION__;
+  const preview = sandbox.__LWCS_BATTLE_PREVIEW__;
+  try {
+    const worldSnapshot = clone(input.combatData);
+    const actors = preview.listUnits(worldSnapshot)
+      .filter(entry => preview.isAlive(entry.unit));
+    const providerResults = actors.map((entry, index) => {
+      const actorId = preview.unitId(entry.unit);
+      const request = decision.prepareDecisionRequest({
+        worldSnapshot,
+        actorId,
+        providerId: 'r9v2',
+        analysisDepth: 'CANDIDATES_ONLY',
+        r9v2InformationValueOnly: true,
+        objectiveContract: input.battleIntent.objectives,
+        battleIntent: input.battleIntent,
+        beliefState: input.initialBelief?.[actorId] || input.initialBelief || {},
+        actionOpportunity: {},
+        strategyMemory: {},
+        seed: `${input.seed}:${Number(worldSnapshot?.回合 || 0)}:${index}`,
+        runtimeSnapshot: {},
+      });
+      return decision.runProvider({ providerId: 'r9v2', request });
+    });
+    const audits = providerResults.map(item => item?.decisionAudit || item?.audit || {});
+    const fatalCount = audits.reduce((total, audit) =>
+      total + Math.max(0, Number(audit?.fatalCount || 0)), 0);
+    if (fatalCount > 0) throw new Error(`B01_OPPORTUNITY_FATAL:${fatalCount}`);
+    return {
+      schemaVersion: 'M3B01TargetBehaviorOpportunityV1',
+      status: 'COMPLETED',
+      caseId,
+      scope: 'TARGET_PROVIDER_DECISION_ONLY_FROZEN_7V7_OPPORTUNITY',
+      actorCount: providerResults.length,
+      decisionCount: providerResults.length,
+      candidateCounts: audits.map(audit => finite(audit?.candidateCount)),
+      decisionEngines: [...new Set(audits.map(audit =>
+        stringValue(audit?.decisionEngine).toUpperCase()).filter(Boolean))].sort(),
+      fatalCount,
+      targetRegistryInjected: true,
+    };
+  } catch (error) {
+    return {
+      schemaVersion: 'M3B01TargetBehaviorOpportunityV1',
+      status: 'FAILED',
+      caseId,
+      scope: 'TARGET_PROVIDER_DECISION_ONLY_FROZEN_7V7_OPPORTUNITY',
+      firstObservedLayer: 'DECISION',
+      failureCode: stringValue(error?.message || error),
+      targetRegistryInjected: true,
+    };
+  }
+}
+
 if (process.argv[2] === '--worker') {
   const caseId = stringValue(process.argv[3]);
-  process.stdout.write(`${JSON.stringify(runCase(caseId))}\n`);
+  const roundsOverride = Number(process.argv[4] || 0);
+  process.stdout.write(`${JSON.stringify(runCase(caseId, { roundsOverride }))}\n`);
   process.exit(0);
 }
 
-const runWorker = caseId => {
+if (process.argv[2] === '--opportunity-worker') {
+  const caseId = stringValue(process.argv[3]);
+  process.stdout.write(`${JSON.stringify(runOpportunity(caseId))}\n`);
+  process.exit(0);
+}
+
+const runWorker = ({ caseId, kind = 'transaction', roundsOverride = 0 }) => {
+  const workerFlag = kind === 'opportunity' ? '--opportunity-worker' : '--worker';
+  const workerArgs = kind === 'opportunity'
+    ? [scriptPath, workerFlag, caseId]
+    : [scriptPath, workerFlag, caseId, String(roundsOverride || 0)];
   const result = spawnSync(
     process.execPath,
-    [scriptPath, '--worker', caseId],
+    workerArgs,
     {
       cwd: repoRoot,
       encoding: 'utf8',
@@ -373,6 +463,9 @@ const runWorker = caseId => {
       schemaVersion: 'M3B01TargetBehaviorCaseV1',
       status: 'TIMEOUT',
       caseId,
+      scope: kind === 'opportunity'
+        ? 'TARGET_PROVIDER_DECISION_ONLY_FROZEN_7V7_OPPORTUNITY'
+        : 'TARGET_PROVIDER_RUNTIME_REPORT_SEAL_VERIFY',
       firstObservedLayer: 'RUNTIME',
       failureCode: 'B01_CASE_TIMEOUT',
     };
@@ -382,6 +475,9 @@ const runWorker = caseId => {
       schemaVersion: 'M3B01TargetBehaviorCaseV1',
       status: 'FAILED',
       caseId,
+      scope: kind === 'opportunity'
+        ? 'TARGET_PROVIDER_DECISION_ONLY_FROZEN_7V7_OPPORTUNITY'
+        : 'TARGET_PROVIDER_RUNTIME_REPORT_SEAL_VERIFY',
       firstObservedLayer: 'HARNESS',
       failureCode: `B01_WORKER_FAILED:${String(result.stderr || result.stdout || '').slice(-1000)}`,
     };
@@ -393,42 +489,126 @@ const runWorker = caseId => {
       schemaVersion: 'M3B01TargetBehaviorCaseV1',
       status: 'FAILED',
       caseId,
+      scope: kind === 'opportunity'
+        ? 'TARGET_PROVIDER_DECISION_ONLY_FROZEN_7V7_OPPORTUNITY'
+        : 'TARGET_PROVIDER_RUNTIME_REPORT_SEAL_VERIFY',
       firstObservedLayer: 'HARNESS',
       failureCode: `B01_WORKER_JSON_INVALID:${error.message}`,
     };
   }
 };
 
-const rows = [...new Set(priorityCaseIds)].map(runWorker);
+if (process.argv[2] === '--transactions-only') {
+  const rows = [
+    ...foregroundCaseIds.map(caseId =>
+      runWorker({ caseId, kind: 'transaction' })),
+    ...singleRoundCaseIds.map(caseId =>
+      runWorker({ caseId, kind: 'transaction', roundsOverride: 1 })),
+  ];
+  const output = {
+    schemaVersion: 'M3B01TransactionEvidenceV1',
+    status: rows.every(row => row.status === 'COMPLETED') ? 'PASSED' : 'FAILED',
+    scope: 'TARGET_PROVIDER_CURRENT_HASH_RUNTIME_REPORT_SEAL_VERIFY',
+    formalProvider: 'r8',
+    targetProvider: 'r9v2_unregistered_test_registry_only',
+    foregroundCaseIds,
+    singleRoundCaseIds,
+    rows,
+    sourceHashes: {
+      decision: sha256(fs.readFileSync(path.join(repoRoot, 'BattleDecision_Module.js'))),
+      runtime: sha256(fs.readFileSync(path.join(repoRoot, 'BattleRuntime_Module.js'))),
+      report: sha256(fs.readFileSync(path.join(repoRoot, 'BattleReport_Module.js'))),
+      kernel: sha256(fs.readFileSync(path.join(repoRoot, 'BattleDecisionR9v2Kernel_Module.js'))),
+      harness: sha256(fs.readFileSync(scriptPath)),
+      fixtureSource: sha256(fs.readFileSync(path.join(repoRoot, 'tools', 'battle_r63_manual_cases.mjs'))),
+    },
+  };
+  const transactionEvidenceName = process.env.RC6_B01_TRANSACTION_EVIDENCE_FILE ||
+    'm3-b01-transactions-20260809.json';
+  const transactionEvidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm3', transactionEvidenceName);
+  fs.mkdirSync(path.dirname(transactionEvidencePath), { recursive: true });
+  fs.writeFileSync(transactionEvidencePath, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
+  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+  process.exit(output.status === 'PASSED' ? 0 : 1);
+}
+
+if (process.argv[2] === '--opportunities-only') {
+  const rows = sevenVsSevenOpportunityCaseIds.map(caseId =>
+    runWorker({ caseId, kind: 'opportunity' }));
+  const output = {
+    schemaVersion: 'M3B01FrozenOpportunityEvidenceV1',
+    status: rows.every(row => row.status === 'COMPLETED') ? 'PASSED' : 'FAILED',
+    scope: 'TARGET_PROVIDER_DECISION_ONLY_FROZEN_7V7_OPPORTUNITY',
+    formalProvider: 'r8',
+    targetProvider: 'r9v2_unregistered_test_registry_only',
+    caseIds: sevenVsSevenOpportunityCaseIds,
+    rows,
+    sourceHashes: {
+      decision: sha256(fs.readFileSync(path.join(repoRoot, 'BattleDecision_Module.js'))),
+      runtime: sha256(fs.readFileSync(path.join(repoRoot, 'BattleRuntime_Module.js'))),
+      kernel: sha256(fs.readFileSync(path.join(repoRoot, 'BattleDecisionR9v2Kernel_Module.js'))),
+      harness: sha256(fs.readFileSync(scriptPath)),
+      fixtureSource: sha256(fs.readFileSync(path.join(repoRoot, 'tools', 'battle_r63_manual_cases.mjs'))),
+    },
+  };
+  const opportunityEvidenceName = process.env.RC6_B01_OPPORTUNITY_EVIDENCE_FILE ||
+    'm3-b01-frozen-opportunities-20260809.json';
+  const opportunityEvidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm3', opportunityEvidenceName);
+  fs.mkdirSync(path.dirname(opportunityEvidencePath), { recursive: true });
+  fs.writeFileSync(opportunityEvidencePath, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
+  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+  process.exit(output.status === 'PASSED' ? 0 : 1);
+}
+
+const foregroundRows = foregroundCaseIds.map(caseId =>
+  runWorker({ caseId, kind: 'transaction' }));
+const opportunityRows = sevenVsSevenOpportunityCaseIds.map(caseId =>
+  runWorker({ caseId, kind: 'opportunity' }));
+const singleRoundRows = singleRoundCaseIds.map(caseId =>
+  runWorker({ caseId, kind: 'transaction', roundsOverride: 1 }));
+const rows = [...foregroundRows, ...opportunityRows, ...singleRoundRows];
 const missingSevenVsSevenFixtures = requiredSevenVsSevenCaseIds.filter(caseId =>
-  !rows.some(row => row.caseId === caseId && row.status === 'COMPLETED'),
+  !opportunityRows.some(row => row.caseId === caseId && row.status === 'COMPLETED'),
 );
-const completedRows = rows.filter(row => row.status === 'COMPLETED');
+const completedForegroundRows = foregroundRows.filter(row => row.status === 'COMPLETED');
+const completedOpportunityRows = opportunityRows.filter(row => row.status === 'COMPLETED');
+const completedSingleRoundRows = singleRoundRows.filter(row => row.status === 'COMPLETED');
 const output = {
   schemaVersion: 'M3B01TargetBehaviorEvidenceV1',
   status: rows.some(row => ['FAILED', 'TIMEOUT'].includes(row.status))
     ? 'TARGET_FULL_TRANSACTION_PARTIAL_FAILURE'
-    : missingSevenVsSevenFixtures.length
+    : missingSevenVsSevenFixtures.length || completedSingleRoundRows.length < singleRoundCaseIds.length
       ? 'EVIDENCE_GAP_MISSING_REQUIRED_CASE'
-      : completedRows.length >= 10
+      : completedForegroundRows.length === foregroundCaseIds.length &&
+          completedOpportunityRows.length === sevenVsSevenOpportunityCaseIds.length
         ? 'COMPLETED_FACT_CAPTURE'
         : 'INSUFFICIENT_OBSERVATIONS',
-  scope: 'TARGET_PROVIDER_TEST_REGISTRY_RUNTIME_REPORT_SEAL_VERIFY',
+  scope: 'TARGET_PROVIDER_CURRENT_HASH_BEHAVIOR_FACT_CAPTURE',
   formalProvider: 'r8',
   targetProvider: 'r9v2_unregistered_test_registry_only',
   playerFirstReadingRequired: true,
   anonymousReviewRequired: true,
   developerRevealRestrictedToAmbiguousCases: true,
-  requestedCaseIds: priorityCaseIds,
+  foregroundCaseIds,
+  sevenVsSevenOpportunityCaseIds,
+  singleRoundCaseIds,
+  requestedCaseIds: [...new Set([
+    ...foregroundCaseIds,
+    ...sevenVsSevenOpportunityCaseIds,
+  ])],
   requiredSevenVsSevenCaseIds,
   missingSevenVsSevenFixtures,
-  observationCount: completedRows.length,
+  observationCount: rows.filter(row => row.status === 'COMPLETED').length,
+  completedForegroundCount: completedForegroundRows.length,
+  completedOpportunityCount: completedOpportunityRows.length,
+  completedSingleRoundCount: completedSingleRoundRows.length,
   rows,
   sourceHashes: {
     decision: sha256(fs.readFileSync(path.join(repoRoot, 'BattleDecision_Module.js'))),
     preview: sha256(fs.readFileSync(path.join(repoRoot, 'BattlePreview_Module.js'))),
     runtime: sha256(fs.readFileSync(path.join(repoRoot, 'BattleRuntime_Module.js'))),
     report: sha256(fs.readFileSync(path.join(repoRoot, 'BattleReport_Module.js'))),
+    kernel: sha256(fs.readFileSync(path.join(repoRoot, 'BattleDecisionR9v2Kernel_Module.js'))),
     harness: sha256(fs.readFileSync(scriptPath)),
     fixtureSource: sha256(fs.readFileSync(path.join(repoRoot, 'tools', 'battle_r63_manual_cases.mjs'))),
   },

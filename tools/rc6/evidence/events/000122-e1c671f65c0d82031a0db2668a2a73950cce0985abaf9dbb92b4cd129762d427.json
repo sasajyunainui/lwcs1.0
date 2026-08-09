@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 122,
+  "previousEventHash": "e3a78b8b8dd93b3987358930178a140bf1051fa7650fe3853d1dbf0e3830e934",
+  "milestoneId": "M3",
+  "taskId": "M3-B03",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "a8a804afc1868bf30af33d395853df5d88839a91b6d3b32d8324664ba7428961",
+    "BattleUI_Module.js": "c5ad6150b07c6b851d098cbfe858d8d47ddc2dc2db813d8ea8c7628cb21928a6",
+    "mvu_logic_bridge.js": "980b6553df3a9be2a0bb5b356e3afbddeb679bac129bc3180018d3dd2aec9f3a",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m3-b01-target-behavior.mjs": "c2e94e5509ce5af39a87c5a8fa28993f1848aa764d1e0b2c1a3d3f3540bf622f",
+    "tools/rc6/harness/run-m2-k14-s4-route-value-reuse-ab.mjs": "ee351945c9be84383a6f4abfef1696eb64c8041c900ac2344c76d9771d1147c6"
+  },
+  "fixtureHashes": {
+    "tools/battle_r63_manual_cases.mjs": "a0aab43948c1aa356cb35d03944a2768c338a63f4a0b9225e50fc8fbb63d44e3"
+  },
+  "acceptedObjectHashes": [
+    "1359de78682b4f8fdddc97cbb54c850249c7e46d1a13ec9e29e5275024692011",
+    "cfc55b69aec2ab95039ebf59faa9d78964ab0e485005bd65fc1bc3a7b298de4c",
+    "7b657ab7285192a59f0e9088e12468606cf1b0f6166aecf4c7bcfe288a1fc4f0",
+    "6166b6067d332e2ccf6888ccf33497569bbced7786ffa2627420641883903c25"
+  ],
+  "invalidatedObjectHashes": [
+    "3e52118100da6cd247438e23c7153dec05e6938bd76eed144898a3b44338f32f",
+    "0ff25520123a90de8eeeb36f28358768a50c1ed46d99180c1ad1a0cc354862d7",
+    "4cb1f1bfec7cdd2ad5c9586b83c8f3063867f23c6feaa315061fbd5bee0f40f3",
+    "93485aa161a5ab944e0e26b38b81b6e5c5ffe0e2ae41067daff017b968ecdbce"
+  ],
+  "details": {
+    "storageNormalization": "large transaction and A/B payloads moved to ignored artifacts/rc6; Git retains hash-bound summaries",
+    "acceptedSummaryObjects": [
+      "m3-b01-transactions-summary-20260809.json",
+      "m3-b01-frozen-opportunities-summary-20260809.json",
+      "m3-k14-s4-route-value-reuse-summary-20260809.json"
+    ],
+    "rawArtifactRetention": "HASHED",
+    "currentBlocker": null,
+    "nextExitCondition": "M3-B02 current-hash PLAYER reading and classification without prefilled naturalness verdicts",
+    "formalProviderChanged": false,
+    "performanceDebt": "K13_DEFERRED_TO_M5"
+  },
+  "reason": "Normalized M3 evidence storage without changing execution results: large payloads remain hash-addressed artifacts and small summaries are the accepted Git objects.",
+  "recordedAt": "2026-08-09T03:30:44.551Z",
+  "repository": {
+    "branch": "master",
+    "head": "5750f410ebcbeea46767b28a68cd8a0642eda2bc"
+  },
+  "eventHash": "e1c671f65c0d82031a0db2668a2a73950cce0985abaf9dbb92b4cd129762d427"
+}

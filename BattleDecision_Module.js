@@ -38597,6 +38597,7 @@
     pool,
     entry,
     cache,
+    excludedContributionIndexes = new Set(),
   ) {
     let routeDeltaHEPP = 0;
     const facts = [];
@@ -38604,6 +38605,7 @@
     const targetResolutionProjections = [];
     const projectedContributionIndexes = new Set();
     entry.contributions.forEach((contribution, index) => {
+      if (excludedContributionIndexes.has(index)) return;
       const kind = r9v2BehaviorMutationKind(contribution);
       if (!kind) return;
       const targetId = String(
@@ -48346,6 +48348,42 @@
     const facts = [];
     const handledContributionIndexes = new Set();
     if (!pool) return { facts, handledContributionIndexes };
+    const stateOpportunityContributionIndexes = new Set();
+    const hasStateOpportunityContribution = (entry.contributions || []).some(
+      contribution => {
+        const outcomeKind = String(contribution?.outcomeKind || '').trim();
+        const prototype = String(contribution?.evidence?.prototype || '').trim();
+        return outcomeKind === 'STATE_CHANGED' ||
+          (outcomeKind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+            ['位移执行', '判定修正'].includes(prototype));
+      },
+    );
+    if (hasStateOpportunityContribution) {
+      const projection = r9v2StateOpportunityProjection(
+        request,
+        pool,
+        entry,
+        projectionCache,
+      );
+      facts.push(...projection.facts.map(fact => ({
+        ...fact,
+        componentCode: 'S3_STATE_OPPORTUNITY',
+        causalOwnerType: 'ACTION_POOL_DELTA',
+      })));
+      (entry.contributions || []).forEach((contribution, index) => {
+        const kind = String(contribution?.outcomeKind || '').trim();
+        const prototype = String(contribution?.evidence?.prototype || '').trim();
+        if (
+          (kind === 'STATE_CHANGED' ||
+            (kind === 'NEXT_ACTION_QUALITY_CHANGED' &&
+              ['位移执行', '判定修正'].includes(prototype))) &&
+          r9v2StateContributionFullyProjected(contribution)
+        ) {
+          stateOpportunityContributionIndexes.add(index);
+          handledContributionIndexes.add(index);
+        }
+      });
+    }
     const futureOpportunity = r9v2FutureOpportunityContext(
       request.actionOpportunity || {},
     );
@@ -48377,6 +48415,7 @@
       ? request
       : { ...request, actionOpportunity: futureOpportunity };
     (entry.contributions || []).forEach((contribution, index) => {
+      if (stateOpportunityContributionIndexes.has(index)) return;
       const mutationKind = r9v2BehaviorMutationKind(contribution);
       if (!mutationKind) return;
       const targetId = String(contribution?.targetId || '').trim();
@@ -49677,6 +49716,7 @@
     const source = String(fact.componentCode || '').trim();
     if (source === 'S1_STATE_TRAJECTORY') return 'target_trajectory';
     if (source === 'S1_FIRST_TERMINAL') return 'terminal';
+    if (source === 'S3_STATE_OPPORTUNITY') return 'soft_control';
     if (source === 'hard_control') return 'hard_control';
     if (source === 'support_resource') return 'support_resource';
     if (source === 'S5_SUMMON_WINDOW') return 'summon';
@@ -49901,6 +49941,7 @@
     const pool = componentContext?.pool || null;
     const projectionCache = componentContext?.projectionCache || null;
     const projectedContributionIndexes = new Set();
+    const stateOpportunityContributionIndexes = new Set();
     const projectedComponentFacts = [];
     const appendProjectedFacts = (componentCode, facts = []) => {
       facts.forEach((fact, index) => {
@@ -49962,6 +50003,7 @@
                 ['位移执行', '判定修正'].includes(prototype))) &&
             r9v2StateContributionFullyProjected(contribution)
           ) {
+            stateOpportunityContributionIndexes.add(index);
             projectedContributionIndexes.add(index);
           }
         });
@@ -49975,6 +50017,7 @@
           pool,
           entry,
           projectionCache,
+          stateOpportunityContributionIndexes,
         );
         appendProjectedFacts('S3_BEHAVIOR_POOL', projection.facts);
         (projection.projectedContributionIndexes || []).forEach(index =>

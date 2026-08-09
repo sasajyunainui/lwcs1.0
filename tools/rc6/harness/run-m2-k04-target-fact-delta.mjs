@@ -9,7 +9,9 @@ import {
 } from '../../r83_rc6_battle_harness.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const evidencePath = path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm2', 'k04-target-fact-delta.json');
+const evidencePath = process.env.RC6_EVIDENCE_PATH
+  ? path.resolve(repoRoot, process.env.RC6_EVIDENCE_PATH)
+  : path.join(repoRoot, 'tools', 'rc6', 'evidence', 'm2', 'k04-target-fact-delta.json');
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 const assert = (condition, code) => {
   if (!condition) throw new Error(code);

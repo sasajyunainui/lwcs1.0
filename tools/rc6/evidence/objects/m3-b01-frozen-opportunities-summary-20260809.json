@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "M3B01FrozenOpportunityEvidenceSummaryV1",
+  "artifactPath": "artifacts/rc6/m3/20260809/m3-b01-frozen-opportunities-20260809.json",
+  "artifactHash": "0ff25520123a90de8eeeb36f28358768a50c1ed46d99180c1ad1a0cc354862d7",
+  "status": "PASSED",
+  "scope": "TARGET_PROVIDER_DECISION_ONLY_FROZEN_7V7_OPPORTUNITY",
+  "formalProvider": "r8",
+  "targetProvider": "r9v2_unregistered_test_registry_only",
+  "caseIds": [
+    "raid_balanced",
+    "raid_level_gap",
+    "raid_control_heavy",
+    "raid_summon_heavy",
+    "raid_response_terminal_information"
+  ],
+  "actorCountPerCase": 14,
+  "decisionCount": 70,
+  "fatalCount": 0,
+  "sourceHashes": {
+    "decision": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "runtime": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "kernel": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+    "harness": "c2e94e5509ce5af39a87c5a8fa28993f1848aa764d1e0b2c1a3d3f3540bf622f",
+    "fixtureSource": "a0aab43948c1aa356cb35d03944a2768c338a63f4a0b9225e50fc8fbb63d44e3"
+  }
+}
