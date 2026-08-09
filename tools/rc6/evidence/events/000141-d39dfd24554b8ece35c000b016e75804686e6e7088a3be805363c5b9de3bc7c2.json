@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 141,
+  "previousEventHash": "acc77c4ff0a455694eae32f3053ee517d121babb9bd3b3b9744236f3b4dcc10a",
+  "milestoneId": "M5",
+  "taskId": "M5-P02-S4-BRANCH-DELTA",
+  "eventType": "OPTIMIZATION_REJECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "cbb02b44a8015bf8fb852dd258bc305b78566a9498ff3e6dcd31837d642150b4",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k13-route-cache-ab.mjs": "979e676171d43e420e45944b758b65b6836ce75dea68c627823ca81263ed3627",
+    "tools/rc6/harness/run-m2-k14-s4-route-value-reuse-ab.mjs": "ee351945c9be84383a6f4abfef1696eb64c8041c900ac2344c76d9771d1147c6",
+    "tools/rc6/harness/run-m5-p02-reuse-diagnostic.mjs": "0f82ac3954651feb88ed8114fb249e5f328c919c2ab97f74bb628d03159bb71f"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/S4RouteValueReuseCasesV1.json": "b2ad2d474cc1daf2d4dcf0ce14ab1eef2d246cfb87202475f3fcdd3e069c38c1"
+  },
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [
+    "2ba4873338cde0ce2f6d10b994f73909a24ee0559f192b77ef9b6eee97a3f8b3",
+    "3ff74dcea2c7933e09fafc92c9d2889a7f3f759cfd6b7ee70d018d34332e8e88",
+    "466784e814eb513e9f51fe039977e90436d615d4496b77437b2074afd31e09e8"
+  ],
+  "details": {
+    "experiment": "cross-decision future-pool refresh plus dependency route-cache key",
+    "experimentSourceHash": "594e5de15b4f4a6b507d3a9808054cfb5dabe67a4cd106d2dc71ca0767a391fb",
+    "singleDecisionMs": 1337.099,
+    "selectionOnlyElapsedMs": 17548.668,
+    "selectionOnlyNoCacheMs": 19650.996,
+    "selectionOnlyGainPercent": 10.698,
+    "fullTransactionCase": "team_control_overlap",
+    "fullTransactionDecisions": 41,
+    "fullTransactionMs": 19204.17,
+    "futurePoolBuilds": 27,
+    "futurePoolHits": 0,
+    "acceptance": "REJECTED",
+    "reasonCode": "NO_CROSS_DECISION_HIT_AND_MACRO_GAIN_BELOW_GATE"
+  },
+  "reason": "跨决策未来池未命中；完整事务仍约19秒，选择-only总收益10.698%且未证明覆盖正式7v7缺口；撤回实验，保留为历史拒绝证据",
+  "recordedAt": "2026-08-09T09:50:06.786Z",
+  "repository": {
+    "branch": "master",
+    "head": "682a95ad2412be7b7122b5d7de2379002969240c"
+  },
+  "eventHash": "d39dfd24554b8ece35c000b016e75804686e6e7088a3be805363c5b9de3bc7c2"
+}
