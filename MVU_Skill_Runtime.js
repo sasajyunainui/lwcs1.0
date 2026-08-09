@@ -17721,7 +17721,9 @@ function applyHundredThousandSpiritHerbBonus_ACU(char = {}) {
     const nextTier = getUpgradedTalentTier_ACU(currentTier);
     if (nextTier && nextTier !== currentTier) {
       char.属性.天赋梯队 = nextTier;
+      char.属性.底子波动 = Number((0.95 + Math.random() * 0.1).toFixed(4));
       messages.push(`天赋由【${currentTier}】提升为【${nextTier}】`);
+      messages.push(`底子波动重抽为 ${char.属性.底子波动.toFixed(4)}`);
     }
   }
   return messages;

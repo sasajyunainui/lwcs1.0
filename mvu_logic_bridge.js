@@ -55588,10 +55588,18 @@ ${播报文本}
         if (上限序号 >= 0) 目标序号 = Math.min(目标序号, 上限序号);
       }
       目标序号 = Math.min(天赋梯队序列.length - 1, 目标序号);
-      if (目标序号 <= 当前序号) return false;
+      const 已达顶级天才上限 = 上限梯队 === '顶级天才' && ['顶级天才', '绝世妖孽'].includes(当前梯队);
+      if (目标序号 <= 当前序号) {
+        if (!已达顶级天才上限) return false;
+        charData.属性.底子波动 = 1.05;
+        logs.push('底子波动提升至1.0500');
+        return true;
+      }
       charData.属性.天赋梯队 = 天赋梯队序列[目标序号];
+      charData.属性.底子波动 = Number((0.95 + Math.random() * 0.1).toFixed(4));
       delete charData.__mvu_显式天赋梯队;
       logs.push(`天赋梯队 ${当前梯队}→${天赋梯队序列[目标序号]}`);
+      logs.push(`底子波动重抽为${charData.属性.底子波动.toFixed(4)}`);
       return true;
     },
 
