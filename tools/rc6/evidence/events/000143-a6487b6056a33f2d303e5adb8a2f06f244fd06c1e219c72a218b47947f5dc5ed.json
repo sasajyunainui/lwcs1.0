@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 143,
+  "previousEventHash": "496dd3cda603382b4694181b6fa801cc598724915fe8026de5074c61c83db7b5",
+  "milestoneId": "M5",
+  "taskId": "M5-P02-S4-BRANCH-DELTA",
+  "eventType": "DIRECTION_CORRECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "cbb02b44a8015bf8fb852dd258bc305b78566a9498ff3e6dcd31837d642150b4",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "b89af3993a45885dd7d1ddd9fe49584a13caccab43d9dfc1c53b3076fcef8f0b"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "activeAgents": [],
+    "activeProcesses": [],
+    "currentBlocker": "M5_TRUE_BRANCH_DELTA_NOT_IMPLEMENTED",
+    "nextExitCondition": "Complete isolated S4 BranchDeltaColumns field-level A/B and achieve at least 30% worst-decision end-to-end gain",
+    "executionDecision": "STAGED_REFACTOR",
+    "productionStageLineBudget": 200,
+    "full7v7AllowedBeforeSingleDecisionGate": false
+  },
+  "reason": "已纠正M5执行方向：停止缓存键、Hash与局部毫秒优化，改为事务级S4 BranchDeltaColumns分阶段重构；先过字段等价和最坏单决策30%宏观收益门，再允许完整事务。",
+  "recordedAt": "2026-08-09T10:38:11.746Z",
+  "repository": {
+    "branch": "master",
+    "head": "71edaa1675b5c10d4355c1a595b0a6df05b7d831"
+  },
+  "eventHash": "a6487b6056a33f2d303e5adb8a2f06f244fd06c1e219c72a218b47947f5dc5ed"
+}
