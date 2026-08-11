@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 228,
+  "previousEventHash": "aa06ce2ae7bff5e637a555d65791b6b1cbe14997695587652488ec0b92c740f6",
+  "milestoneId": "M5",
+  "taskId": "M5-P04-VECTOR-FIRST-PROOF-LATE",
+  "eventType": "M5_ARCHITECTURE_PROPOSAL_APPROVED",
+  "status": "BLOCKED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "328930bf9a76bd30fa1c93917c86b9ee35742aeb261e41994d003cfc2020c331"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "strictMilestoneOrder": true,
+    "firstBoundedGate": "team_control_overlap_worst_decision_gain_ge_40_percent",
+    "theoreticalDraftGainUpperBound": 0.644883568383076,
+    "architecture": "VectorFirstProofLateV1",
+    "proposal": "tools/rc6/evidence/m5/m5-p04-vector-first-proof-late-proposal-20260811.json",
+    "currentBlocker": "M5_STAGED_PROTOTYPE_NOT_STARTED",
+    "nextExitCondition": "implement_V1_kernel_dual_vector_proof_interface_and_pass_20_reference_cases"
+  },
+  "reason": "Approve one new M5 macro architecture: move all-candidate evaluation to validated columnar causal vectors and delay full proof objects until selection; do not repeat cache or route micro-optimizations.",
+  "recordedAt": "2026-08-11T04:01:37.119Z",
+  "repository": {
+    "branch": "master",
+    "head": "44242988fd2c04365ebe58bbba1e7ba3db8c38df"
+  },
+  "eventHash": "41280afb1a7c61f3cd73d5f79aa2781d6223876f73fb82990b5b0e6f153ec9b6"
+}

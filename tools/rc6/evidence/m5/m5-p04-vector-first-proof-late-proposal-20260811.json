@@ -1,0 +1,174 @@
+{
+  "schemaVersion": "M5VectorFirstProofLateArchitectureProposalV1",
+  "recordedDate": "2026-08-11",
+  "milestoneId": "M5",
+  "taskId": "M5-P04-VECTOR-FIRST-PROOF-LATE",
+  "status": "APPROVED_FOR_ONE_STAGED_PROTOTYPE",
+  "repository": {
+    "branch": "master",
+    "head": "44242988fd2c04365ebe58bbba1e7ba3db8c38df"
+  },
+  "problemStatement": {
+    "currentContract": "All candidates require CandidateValueVector and CausalOwnerTotals; only the selected candidate and actual alternatives require full causal facts and CandidateValueProof.",
+    "currentImplementation": "evaluateAllCandidates invokes the proof-oriented component registry for every candidate, normalizes and freezes complete fact arrays, then materializeProof returns the causal facts already stored in the vector.",
+    "firstResponsibilityDeviation": "The target kernel is proof-first rather than vector-first, so proof materialization cost is paid before Pareto and final selection can reduce the required proof set."
+  },
+  "architectureAudit": {
+    "mainProcessStaticFinding": "r9v2TargetKernelComponentEvaluation constructs fact arrays for every candidate, evaluateAllCandidates normalizes those facts before Pareto, and materializeProof returns vector.causalFacts that already exist.",
+    "independentEvidenceFinding": "Events 144-155 did not remove the proof-first component lifecycle; the registry batch retained object-oriented component and proof construction.",
+    "directionVerdict": "NEW_MACRO_OWNERSHIP_CHANGE_NOT_A_CACHE_RETRY"
+  },
+  "evidence": {
+    "event000142": {
+      "draftMs": 20684.416,
+      "proofComponentBuildMs": 16256.955,
+      "proofComponentShareOfDraft": 0.785951848966874,
+      "routeAuthorityReuseHits": 0,
+      "conclusion": "Proof component lifecycle, not provider ranking, dominated the measured Draft."
+    },
+    "representativeTransaction": {
+      "candidateEvaluations": 312,
+      "requiredProofsMaterialized": 56,
+      "requiredProofCandidateShare": 0.179487179487179,
+      "candidateProofWorkPotentiallyAvoidable": 0.82051282051282,
+      "source": "tools/rc6/evidence/m5/m5-p02-reuse-diagnostic.json",
+      "qualification": "Structural estimate from a representative transaction; it is not claimed as a same-run timing sample for event000142."
+    },
+    "theoreticalBound": {
+      "idealRemovedProofMs": 13339.04,
+      "idealDraftGain": 0.644883568383076,
+      "idealDraftAfterMs": 7345.376,
+      "expectedRange": "50%-64% Draft reduction if scalar evaluation costs no more than 0%-23% of the removed proof-first workload.",
+      "qualification": "ProofComponentBuild is an inclusive hotspot containing S4 route and mechanical work. The estimate is an architecture upper bound, not an additive sum of nested timers.",
+      "coversCurrentGap": true
+    }
+  },
+  "rejectedDirectionsNotRepeated": [
+    "route-scoped reuse",
+    "cross-decision future-pool cache",
+    "cross-decision route authority cache",
+    "WeakMap immutable-entry identity cache",
+    "transaction context and entry canonicalization without changing proof ownership",
+    "health-only branch route-value reuse",
+    "proof registry batching that still materializes all candidate facts",
+    "exact S4 objective delta layered over the proof-first pipeline"
+  ],
+  "targetArchitecture": {
+    "name": "VectorFirstProofLateV1",
+    "retainedAcceptedBase": "Keep the semantically accepted S4 branch-value columns and sparse dependency deltas; replace the remaining dirty-row mechanical realization and proof-first component lifecycle.",
+    "allCandidatePath": [
+      "MechanicalColumnsV1 and immutable mechanical entries",
+      "scalar component columns",
+      "CausalContributionColumnsV1 with integer source identities and owner codes",
+      "CausalOwnerTotalsV1",
+      "information route-value columns",
+      "CandidateValueVectorV1",
+      "Pareto and final selection"
+    ],
+    "requiredProofPath": [
+      "selected candidate plus actual alternative IDs",
+      "existing exact component fact materializers",
+      "CandidateValueProofV1",
+      "proof totals reconciled against the previously selected vector"
+    ],
+    "forbiddenInAllCandidatePath": [
+      "causal fact object arrays",
+      "component fact normalization and deep clone",
+      "proof-oriented stable hashes",
+      "full future-route row objects when only best scalar route values are required",
+      "complete Proof materialization before Pareto selection"
+    ],
+    "requiredScalarOutputs": {
+      "causalContributionColumns": [
+        "componentCodeIndex",
+        "causalOwnerTypeCode",
+        "sourceEventIndex",
+        "sourceFactIndex",
+        "targetUnitIndex",
+        "sequence",
+        "valueHEPP"
+      ],
+      "ownerTotals": [
+        "stateDeltaTotal",
+        "actionPoolDeltaTotal",
+        "terminalDeltaTotal"
+      ],
+      "pareto": [
+        "worstTailUtilityHEPP",
+        "survivalUtilityHEPP",
+        "assetReserveHEPP",
+        "discardedOverkillPP"
+      ],
+      "information": [
+        "outcome probabilities",
+        "adaptive best route values",
+        "stable candidate identity intersection committed value"
+      ],
+      "kernelValidation": [
+        "duplicate sourceFactIndex rejection",
+        "registered component and owner code validation",
+        "Neumaier summation inside the kernel",
+        "owner totals and goal reconciliation inside the kernel"
+      ]
+    }
+  },
+  "implementationStages": [
+    {
+      "id": "V1",
+      "scope": "BattleDecisionR9v2Kernel_Module.js",
+      "budget": "<=200 changed production lines",
+      "change": "Add a test-only vector component registry interface using columnar causal contributions and store CausalOwnerTotals separately from full causal fact objects; preserve the current proof-first interface as the A/B reference.",
+      "exit": "20 reference cases prove vector and proof paths remain field-equal with no production provider registration change."
+    },
+    {
+      "id": "V2",
+      "scope": "BattleDecision_Module.js S4 numeric route-value matrix",
+      "budget": "<=200 changed production lines per substage",
+      "change": "Use the new vector interface only for S4 first: build baseline and observation outcome route-value columns, apply exact dependency deltas, and compute adaptive/committed/information values without materializing full route rows or S4 proof facts for every branch.",
+      "exit": "The control-heavy first decision no longer rebuilds the 294 dirty mechanical rows as legacy objects; semantic cases are field-equal and worst-decision gain is at least 40%. Otherwise stop the architecture before scalarizing other domains."
+    },
+    {
+      "id": "V3",
+      "scope": "BattleDecision_Module.js scalar S1/S2/S3/S5/S6 materializers",
+      "budget": "one semantic domain per <=200-line stage",
+      "change": "After V2 clears the macro gate, compute remaining numeric owner totals and Pareto columns directly from canonical mechanical contributions without constructing causal fact objects.",
+      "exit": "All non-S4 vector fields are equal within 1e-9; current full proof remains identical for required candidates."
+    },
+    {
+      "id": "V4",
+      "scope": "Provider assembly and proof reconciliation",
+      "budget": "<=160 changed production lines",
+      "change": "Switch all-candidate evaluation to scalar vectors; materialize full proof only after alternatives are selected; fail if proof totals differ from vector totals by more than 1e-9.",
+      "exit": "DecisionAuditV2 vector coverage and required-subset proof coverage remain closed."
+    }
+  ],
+  "gates": {
+    "semantic": [
+      "20 KernelReferenceCase field equality",
+      "production Reference A/B equality",
+      "candidate IDs, Pareto set, selection and alternatives equal",
+      "goal, information and objective values within 1e-9",
+      "required proofs and causal facts identical",
+      "causal reconciliation error <=1e-6",
+      "duplicate causal source identities remain Fatal in the vector path",
+      "no hidden belief fields added"
+    ],
+    "workload": [
+      "all-candidate vector path materializes zero causal fact arrays",
+      "full proof component builds are limited to selected plus actual alternatives",
+      "no candidate, response, probability, fact or round reduction"
+    ],
+    "performance": {
+      "firstBoundedGate": "team_control_overlap worst decision gain >=40% and no duel regression greater than 3%",
+      "architectureAcceptanceGate": "current worst transaction Draft gain >=50% or a measured lower bound that still reaches the five-round 10-second target",
+      "formalGate": "v27 M5 matrix remains unchanged"
+    }
+  },
+  "stopAndRollback": [
+    "Any vector/proof mismatch rolls back the whole current stage.",
+    "If V2 plus V3 cannot demonstrate a measured >=40% bounded gain, stop before V4 and restore M5 BLOCKED.",
+    "If the scalar path requires hidden information, candidate reduction or approximate probabilities, reject the architecture.",
+    "Do not resume M6 until V4 and the formal M5 matrix complete."
+  ],
+  "decision": "REOPEN_M5_FOR_ONE_STAGED_MACRO_ARCHITECTURE_PROTOTYPE"
+}
