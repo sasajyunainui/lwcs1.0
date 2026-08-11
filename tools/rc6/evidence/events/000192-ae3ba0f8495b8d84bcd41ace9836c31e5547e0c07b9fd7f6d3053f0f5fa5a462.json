@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 192,
+  "previousEventHash": "d76c0809b679f6b4fefedfd4856a0225e116990b6f9523ed9dfca8e1d49d64e8",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW",
+  "eventType": "M6_A05_BLIND_CASES_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "d880c1e37314635b6a4b4cba23938d2803939e9722f1cfe499021cfe864979e7",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a05-blind-review.mjs": "3dae49fe7fd47f2b58996a6d738a67559e32079de1d3d1db58ee429e72715aef"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "db29c10b3352841674e5b6e02bc88fdff63799712475152d20f9ea05c0750ada",
+    "6d37a3c350df34a81df33426925783dd1ac0fa86f82d10247fbddde05a2399bc",
+    "eb14e4e31d8fc2047bde482fa50ae19cb445f264ef0773edb020a5c0999a9f8f"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "caseCount": 8,
+    "status": "READY_FOR_HUMAN_REVIEW",
+    "verdictsPrefilled": false,
+    "reviewerPackageProviderVisible": false,
+    "reviewerPackageCacheModeVisible": false,
+    "reviewerPackageResponsibilityModuleVisible": false,
+    "currentHash24PlayerReadAfterLatestReportProjection": "PENDING",
+    "naturalnessVerdicts": "NOT_FILLED",
+    "comprehensionVerdicts": "NOT_FILLED",
+    "m5": "DEFERRED",
+    "nextExitCondition": "perform_blind_human_review_and_recapture_current_hash_24_player_read_before_M6_close"
+  },
+  "reason": "8个冻结后的匿名盲审案例已生成；审阅包与协调器清单分离，Provider、缓存模式和责任模块未进入审阅包，未预填任何人工结论。",
+  "recordedAt": "2026-08-09T17:25:07.709Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "ae3ba0f8495b8d84bcd41ace9836c31e5547e0c07b9fd7f6d3053f0f5fa5a462"
+}

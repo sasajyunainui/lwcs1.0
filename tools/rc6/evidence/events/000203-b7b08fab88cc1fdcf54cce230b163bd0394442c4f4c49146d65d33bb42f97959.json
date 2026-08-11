@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 203,
+  "previousEventHash": "1e529bdc943b0afec98c8ae94f334b617295ddcb079115ef9b73c714b0d07776",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW",
+  "eventType": "M6_A05_CURRENT_HASH_PUBLIC_SLICE_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "83ac325ecd8e4913bdc27487510231b1615a3c8b6399a4c1298e33ad60b915b6",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a05-blind-review.mjs": "3dae49fe7fd47f2b58996a6d738a67559e32079de1d3d1db58ee429e72715aef",
+    "tools/rc6/harness/run-m6-a05-public-slice.mjs": "c208ed928847113768cbdf430379eb4caa477ddefccb895aec03a9daecefdbff"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "28c583f61457cfa445e34e8b00aa3f74fbf79caa1519e8fd63f1e5e7d1138e32"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": "{\"packageHash\":\"82bd64ff80febf9791cbeaf32d7b4ee893473112cc1235a1fc2e755e24c7ed4c\",\"manifestHash\":\"b7b6ccbecc6f434109d9aa1ba9ca34c4ab31a0197c9b31dd648a1242d4f720c5\",\"packageIndexHash\":\"28c583f61457cfa445e34e8b00aa3f74fbf79caa1519e8fd63f1e5e7d1138e32\",\"publicSliceHash\":\"0dde4986e72c86c8980da74b37c76c92e830468bf6b5e1d6f7c9e09d9ed68fab\",\"publicSliceIndexHash\":\"79706a05ef073ad327fb8d7808dcbc2ea3951c44ad51952716b2f88870bd1d45\",\"caseCount\":8,\"verdictsPrefilled\":false,\"reviewerRequirement\":\"two_independent_reviewers\",\"nextExitCondition\":\"complete_two_independent_8_case_reviews_and_record_battle_review_v2_verdicts\"}",
+  "reason": "Current_hash_public_blind_slice_ready",
+  "recordedAt": "2026-08-09T18:39:28.603Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "b7b08fab88cc1fdcf54cce230b163bd0394442c4f4c49146d65d33bb42f97959"
+}

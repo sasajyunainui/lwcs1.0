@@ -17,10 +17,10 @@
       "reportAuditPassed": true,
       "sealed": true,
       "verified": true,
-      "elapsedMs": 129.36,
-      "draftHash": "db30e6866a6ff0be197d63a3d35a4b4aff0aa244fa2682a0655bda5e16479f78",
-      "reportHash": "e3e4e76099d8ac042b0149be0b0884ba4cbc076b03186ed8875f458f4ee163ee",
-      "sealedHash": "59dee4e4f2607671209210e39ac506239780eaa5d3c46220af554c5118ef65fe"
+      "elapsedMs": 112.438,
+      "draftHash": "ec9418d10ea23ce4e352a6a22aaaf1d49daed66174f33229b0fca66f11430311",
+      "reportHash": "b83bfecf4cf28f96dd7e01500912d5602efb192bfbb7eac0662f6409a4fbddf5",
+      "sealedHash": "7c15b412ec430d486cc54ec3e51897151eb4b2bf531dfae2e3eefd69b8cca6ab"
     },
     {
       "caseId": "duel_peer_unknown_probe",
@@ -32,10 +32,10 @@
       "reportAuditPassed": true,
       "sealed": true,
       "verified": true,
-      "elapsedMs": 1983.397,
-      "draftHash": "af732161ecc98454153fbb89a3ef5901aa8efe8e735b3ea965748c6de0f55d95",
-      "reportHash": "b3f6c236cdd39575ad9a82f84cdc3f9942ab2433bd2793cc7bde110e451f4682",
-      "sealedHash": "aa16a44ec9bae47d2f488f76a66daca603b3b4f12979064961c433e5aeab64a5"
+      "elapsedMs": 1804.066,
+      "draftHash": "d8b20ccad09f915c1b98fe0fd5b0311d449d87ba21bc6e670beff3280cec28ac",
+      "reportHash": "d5825fe95b1699ac6aae8a9c14113ca2fbb28c02dd274bb42d98f157af02b29a",
+      "sealedHash": "bb97215229d8825ebed02d1cf0faa141447272506f0e1f59b3ce61f8d5ce9a4d"
     },
     {
       "caseId": "team_focus_without_overkill",
@@ -47,10 +47,10 @@
       "reportAuditPassed": true,
       "sealed": true,
       "verified": true,
-      "elapsedMs": 12141.617,
-      "draftHash": "8cdd073268b59bc5c4c87c5b1ce6cb5b7ad90384049f43b357a4dabbce77e120",
-      "reportHash": "f26d0663852cfaa96f17abec0bac05d7152ec272a6140c7b1d68efc5fd6afeb5",
-      "sealedHash": "b35f9369406db52f9df3d3780aea8dd00cadeda8f0f2cfe9531f95265029728d"
+      "elapsedMs": 10836.354,
+      "draftHash": "210ee7e117c3e2300e940c2f937ba15e41d756d0004759d2acde31b85d15d239",
+      "reportHash": "4c0ee25fbbeb18947a99c68a46567a8174900463cec949e1318e3056a064118b",
+      "sealedHash": "6a246b734f92da8df696e3cf0a72cad45b376e2a846441077a43f372fe37eef8"
     },
     {
       "caseId": "team_control_overlap",
@@ -62,15 +62,15 @@
       "reportAuditPassed": true,
       "sealed": true,
       "verified": true,
-      "elapsedMs": 24756.661,
-      "draftHash": "03c7fceba4c3503abeed3054c2bb5f448c4d5c1279a9868f7da9eea78ba6ed87",
-      "reportHash": "cbbd66b66a83fc60fd1e5170570119e08fc5e2eb158891a5739786eb6059ac3f",
-      "sealedHash": "d01b1376b9960238ac84e3a4a90576434e7a11eefb06122a24e05604946858f4"
+      "elapsedMs": 23047.969,
+      "draftHash": "19c48c8456fa52f2dddada160e37d753cdeaa9d498b8551bd7a990851b3326b4",
+      "reportHash": "25b9b72426e09a4564df74a69c33bcab468e0bad7bac44ccc83e573b598107ae",
+      "sealedHash": "dd9b79c04c8e02dce9355efd1455c7df6c52f7ded0d1344f3438a8889824e715"
     }
   ],
   "failures": [],
   "sourceHashes": {
-    "BattleDecision_Module.js": "3b507d01a96d8c436b8de9bef3726c6c7869c97be9f58ce77f44e31b8387ba53",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
     "BattleDecisionR9v2Kernel_Module.js": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9"
   },
   "harnessHash": "148715315b2dec54cb3873af419ab73d2c3922fb9e4e35fdc975f5b8cc88f716"

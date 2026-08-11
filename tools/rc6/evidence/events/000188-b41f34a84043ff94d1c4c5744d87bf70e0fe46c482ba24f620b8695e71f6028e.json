@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 188,
+  "previousEventHash": "c10444e38328d520ee0931c92b3afa042c1d1f6bf630a5b9871f84dd350d4f52",
+  "milestoneId": "M6",
+  "taskId": "M6-A04-JOINT-BEHAVIOR-REPORT-REVIEW",
+  "eventType": "M6_A03_PLAYER_READ_RECAPTURED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "87708a4037e419ee481430a7e017fcc1c3cd3c073aec7f50dd0d742be31f4abd",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "1034471240581f1a099d82bc2b8f81c040caaa6ac54251d065576798490d1d64",
+    "a997852d2f20989e9f88480c447bd6283a83dbbdd3e2ee3c179998ca51faff44"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "resolve_open_report_questions_without_prefilling_naturalness_then_generate_and_run_8_blind_cases",
+    "currentBlocker": null,
+    "activeAgents": [],
+    "activeProcesses": [],
+    "currentHashPlayerRead": "24_cases_complete",
+    "currentHashDeepRead": "8_cases_complete",
+    "openHumanThemes": 5,
+    "newConfirmedDefects": 0,
+    "performanceWork": "deferred_to_M5"
+  },
+  "reason": "当前Decision Hash下24场PLAYER全文复核完成，8场三层深审也已重读；仍有5类开放的人类自然性/理解性问题，未预填结论",
+  "recordedAt": "2026-08-09T16:45:17.249Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "b41f34a84043ff94d1c4c5744d87bf70e0fe46c482ba24f620b8695e71f6028e"
+}

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 148,
+  "previousEventHash": "c6e5b1c1f67e189e67d2fe8da2fec4bc9fbb04d9046e7dc8e0059cd8469b1ecc",
+  "milestoneId": "M5",
+  "taskId": "M5-P02-TARGET-KERNEL-CANONICALIZATION",
+  "eventType": "PERFORMANCE_EXPERIMENT_REJECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "82dfbafc374977c92a04da960034ff292a154b4432649b2596753433fe451e08",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "schemaVersion": "M5P02CanonicalizationExperimentResultV1",
+    "experiment": "immutable_entry_identity_cache",
+    "fieldEquality": {
+      "cases": [
+        "duel_peer_unknown_probe",
+        "team_control_overlap"
+      ],
+      "fields": [
+        "ledger",
+        "decisionAudit",
+        "runtimeAudit",
+        "terminalResult",
+        "initialSnapshot",
+        "finalSnapshot",
+        "draftHash"
+      ],
+      "result": "PASS"
+    },
+    "macroGate": {
+      "duel_peer_unknown_probe": {
+        "baselineMs": 482.0813,
+        "patchedMs": 429.7414,
+        "gainPercent": 10.8571
+      },
+      "team_control_overlap": {
+        "baselineMs": 4246.8536,
+        "patchedMs": 4242.0873,
+        "gainPercent": 0.1122
+      },
+      "requiredWorstDecisionGainPercent": 30,
+      "result": "FAIL"
+    },
+    "hotspotMetricsUnchanged": {
+      "duel": {
+        "baselineStableHashCalls": 3745,
+        "patchedStableHashCalls": 3745,
+        "baselineStableHashChars": 2320528,
+        "patchedStableHashChars": 2320528
+      },
+      "team": {
+        "baselineStableHashCalls": 41546,
+        "patchedStableHashCalls": 41546,
+        "baselineStableHashChars": 25416391,
+        "patchedStableHashChars": 25416391
+      }
+    },
+    "decision": "ROLLBACK",
+    "nextDirection": "transaction-owned canonical mechanical directory at entry-generation source; no further WeakMap identity-cache or S4 micro-optimization"
+  },
+  "reason": "Field equality passed, but worst-case transaction gain was 0.11% and the measured stable-hash workload was unchanged; rollback and retarget at mechanical-entry generation source.",
+  "recordedAt": "2026-08-09T11:41:43.562Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "8877b341e0b0d91e20fcb223bffb906e830c75e877386591a1ca54174a7278c6"
+}

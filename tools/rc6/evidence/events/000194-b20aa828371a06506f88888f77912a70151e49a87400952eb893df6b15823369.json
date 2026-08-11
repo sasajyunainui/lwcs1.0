@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 194,
+  "previousEventHash": "f91e8306723389cc036b41c4ce0421483b3ed51ebde29d4a359fd08d18f8b61f",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW",
+  "eventType": "M6_A05_BLIND_CASES_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "d880c1e37314635b6a4b4cba23938d2803939e9722f1cfe499021cfe864979e7",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a05-blind-review.mjs": "3dae49fe7fd47f2b58996a6d738a67559e32079de1d3d1db58ee429e72715aef"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "11e0981363afab7332b69b43f2b735f56392a5723f89b3076fdbbda9fef32a22",
+    "6df6a9bb80758eaaa2ce414cf43e45867655730851595a08122a139a05697169",
+    "db29c10b3352841674e5b6e02bc88fdff63799712475152d20f9ea05c0750ada",
+    "529d07b0ad00366e51b5b0d7f9bab7129a113f999766b68ff9769aaa6e88285e"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "caseCount": 8,
+    "verdictsPrefilled": false,
+    "providerHidden": true,
+    "cacheModeHidden": true,
+    "responsibilityHidden": true,
+    "latestReportReprojection": "PASSED",
+    "currentHash24PlayerRead": "PENDING",
+    "naturalnessAndHumanComprehension": "NOT_FILLED",
+    "m5": "DEFERRED",
+    "nextExitCondition": "perform_blind_human_review_and_recapture_current_hash_24_player_read_before_M6_close"
+  },
+  "reason": "盲审包与协调器清单的源码和Report Hash仍与最新重投影一致；8个案例可供人工盲审，未预填任何人工结论。",
+  "recordedAt": "2026-08-09T17:29:59.151Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "b20aa828371a06506f88888f77912a70151e49a87400952eb893df6b15823369"
+}

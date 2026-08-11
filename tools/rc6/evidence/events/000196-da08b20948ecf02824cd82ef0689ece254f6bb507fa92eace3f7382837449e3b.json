@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 196,
+  "previousEventHash": "e9fdfe210307e01f0f8cb81da9d8b740a6e9b43be74144c582c9c43179c12d56",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW",
+  "eventType": "M6_A05_BLIND_CASES_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "44f09e03476baf80bb8756cfcdedefebdf85911d8994b2f6280549d0c3e42588",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a05-blind-review.mjs": "3dae49fe7fd47f2b58996a6d738a67559e32079de1d3d1db58ee429e72715aef"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "2c870ab2047c4a9a398dc7312d797b93c9de9854433cbf6cd58d91f756a8968b",
+    "9f931b20a369b74f5eb01b2d1ec435f073ae26437ab65e3286602675bbdaca05",
+    "4ed0c8675808eb15b2e1bd2e04425f9c38f1ded1332303e6fc13b00666526ddd",
+    "fc3503a189137826c912d1d07be06874da7e9a58f878e3cc9f22fc59c4749fd2"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "caseCount": 8,
+    "verdictsPrefilled": false,
+    "providerHidden": true,
+    "cacheModeHidden": true,
+    "responsibilityHidden": true,
+    "latestReportFix": "HP_ZERO_WITH_ACTIVE_ACTION_STATE_FIXED",
+    "latestReportReprojection": "PASSED",
+    "currentHash24PlayerRead": "PENDING",
+    "naturalnessAndHumanComprehension": "NOT_FILLED",
+    "m5": "DEFERRED",
+    "nextExitCondition": "perform_blind_human_review_and_recapture_current_hash_24_player_read_before_M6_close"
+  },
+  "reason": "基于最新Report事实投影修复重新生成8个匿名盲审案例；PLAYER和REVIEW不含Provider、缓存模式或责任模块，未预填任何人工结论。",
+  "recordedAt": "2026-08-09T17:39:16.887Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "da08b20948ecf02824cd82ef0689ece254f6bb507fa92eace3f7382837449e3b"
+}

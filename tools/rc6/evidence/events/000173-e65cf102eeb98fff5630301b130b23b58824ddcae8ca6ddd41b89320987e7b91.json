@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 173,
+  "previousEventHash": "65173d16b98e527ccb8641f19600a842e6201fd110f62ec50f68274099c20e39",
+  "milestoneId": "M6",
+  "taskId": "M6-A03-PLAYER-READ-24-CASES",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0883e54a3a31e097880fa8ed81416559196bd6bbb053928d221e6a9dc91ffa19",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "ca1c4ff6f29298d283c7bc0f6644834b362ffad8ca98b7868c5d547a52a5d42d",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a02-current-hash-facts.mjs": "6c3cbb407f20197e42535e3e15f1bfe9bc51ed40fd45772863323a25511f1919",
+    "tools/rc6/harness/run-m6-a02-current-hash-raid-short-window.mjs": "5acad9a18430fec63a68d8a5e1bb95e28a1744cf03c0369c68645b859e2f2796"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "b2207af1af212e6487e2c62cca99f77ec51c2c9c3bc32f35b8af40534f7d16c4",
+    "887a920abc8ac2b607d08fa65a595fd55c79113a790350f599e3dc4961e51dc0",
+    "99e3d4f3b93bdd59c08b3945a0ad922b1713d5a510495a5574120e298345d55b",
+    "9b7d2640a886852f811ad081c8c8d6bf6454aa32fb165af1d3420cf2235c5727",
+    "d56a3b3f1d41b817d6b3d48b2903189e415176df8e13846502b862f6298ce6ec"
+  ],
+  "invalidatedObjectHashes": [
+    "3848a4abda81f9c15163cb0d7940b4a51d7e276b1e885e86cbcb73336adbd118",
+    "86827d64dbdca109d95d70eb199e6d3af5c9e56adb070d05cc778164f3644b86"
+  ],
+  "details": {
+    "factCoverage": {
+      "nonRaidCases": 20,
+      "nonRaidDecisions": 551,
+      "raidShortWindowCases": 4,
+      "raidShortWindowDecisions": 199,
+      "reportAuditPassed": 24
+    },
+    "sourceDecisionHash": "0883e54a3a31e097880fa8ed81416559196bd6bbb053928d221e6a9dc91ffa19",
+    "humanReview": "NOT_STARTED",
+    "performance": "M5_BLOCKED_DEFERRED",
+    "nextExitCondition": "read_player_layer_24_cases_then_select_8_deep_review_cases",
+    "impactNote": "recipient-display patch verified; numeric gates rerun separately"
+  },
+  "reason": "Current-hash 24-case facts rebuilt; recipient-display patch verified; PLAYER reading resumes while M5 performance remains deferred.",
+  "recordedAt": "2026-08-09T15:07:12.848Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "e65cf102eeb98fff5630301b130b23b58824ddcae8ca6ddd41b89320987e7b91"
+}

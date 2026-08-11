@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 154,
+  "previousEventHash": "4f8d61c476256231080abf7720244823db0ca5ef27e5fdbe000437666de75825",
+  "milestoneId": "M5",
+  "taskId": "M5-P02-TARGET-KERNEL-BATCH-COMPONENT-EVALUATION",
+  "eventType": "MILESTONE_BLOCKED",
+  "status": "BLOCKED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "82dfbafc374977c92a04da960034ff292a154b4432649b2596753433fe451e08",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-production-reference-ab.mjs": "ae5f79938a5a5564f6d85fb76ea3e84ceaa36b594ad5d080454aa5a3aedb514f",
+    "tools/rc6/harness/run-m5-p03-transaction-profile.mjs": "017061cbd77da2ffeab910667ce936ed9c165816494c4dcdc5db5affeb3747bc"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": "R9V2_TARGET_KERNEL_BATCH_ARCHITECTURE_BLOCKED",
+    "nextExitCondition": "Implement a new exact columnar S4 branch evaluator that clears the worst-decision macro gate, or explicitly revise the gate; do not continue local micro-optimizations",
+    "stopM6M7": true,
+    "formalProvider": "r8",
+    "targetProvider": "r9v2",
+    "targetBatchAttempt": {
+      "registryBatchInterface": true,
+      "s3RouteDependencyBatch": true,
+      "candidateAndBranchReduction": false
+    },
+    "semanticGate": {
+      "status": "PASS",
+      "referenceCases": 9,
+      "fieldLevelEqual": true,
+      "causalFactsEqual": true,
+      "paretoAndSelectionEqual": true,
+      "requiredProofCoverageEqual": true
+    },
+    "macroGate": {
+      "requiredWorstDecisionGain": 0.3,
+      "teamControlOverlap": {
+        "headWorstDecisionMedianMs": 1478.85,
+        "patchedWorstDecisionMedianMs": 1376.945,
+        "gain": 0.0689
+      },
+      "duelPeerUnknownProbe": {
+        "headWorstDecisionMedianMs": 291.421,
+        "patchedWorstDecisionMedianMs": 217.361,
+        "gain": 0.2543
+      },
+      "status": "FAIL"
+    },
+    "rollback": "BattleDecision_Module.js and BattleDecisionR9v2Kernel_Module.js restored to pre-experiment bytes; no production diff retained"
+  },
+  "reason": "The first genuine target-kernel registry batch attempt preserved exact semantics but did not clear the worst-decision macro gate. The team case gained only about 6.9 percent and the duel case about 25.4 percent; stop M5 rather than continue micro-optimization. This blocks current implementation, not the R9 semantic direction.",
+  "recordedAt": "2026-08-09T13:04:43.399Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "1ecd07671d4f21f9b0ab6470dee722677d06aecb3f7c7eea0dbdf175145df929"
+}

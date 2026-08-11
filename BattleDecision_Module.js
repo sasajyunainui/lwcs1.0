@@ -15,6 +15,11 @@
   const MAX_SEQUENCE_PROFILES_PER_CATALOG = 256;
   const MAX_R8_TERMINAL_CANONICAL_ROUTE_KEYS = 8192;
   const MAX_R8_TERMINAL_IDENTITY_OBSERVATIONS = 16384;
+  const compareUtf16 = (left, right) => {
+    const leftValue = String(left || '');
+    const rightValue = String(right || '');
+    return leftValue < rightValue ? -1 : leftValue > rightValue ? 1 : 0;
+  };
   const skillRootCache = new WeakMap();
   const effectFingerprintCache = new WeakMap();
   const skillCostCache = new WeakMap();
@@ -32756,7 +32761,7 @@
     });
     return Object.freeze(
       [...byId.values()].sort((left, right) =>
-        String(left?.id || '').localeCompare(String(right?.id || ''))
+        compareUtf16(left?.id, right?.id)
       ),
     );
   }
@@ -35857,9 +35862,7 @@
     const bestProof = validProofs.slice().sort((left, right) =>
       Number(right?.objectiveUtilityHEPP || 0) -
         Number(left?.objectiveUtilityHEPP || 0) ||
-      String(left?.candidateId || '').localeCompare(
-        String(right?.candidateId || ''),
-      )
+      compareUtf16(left?.candidateId, right?.candidateId)
     )[0] || null;
     return Object.freeze({
       bestProof,
@@ -37902,16 +37905,14 @@
               utilityFor(entry) -
               utilityFor(current),
             ) <= 1e-9 &&
-            String(entry?.candidateId || '').localeCompare(
-              String(current?.candidateId || ''),
-            ) < 0
+            compareUtf16(entry?.candidateId, current?.candidateId) < 0
           )
         ) {
           bestByTarget.set(targetId, entry);
         }
       });
       const targetEntries = [...bestByTarget.entries()]
-        .sort(([left], [right]) => left.localeCompare(right));
+        .sort(([left], [right]) => compareUtf16(left, right));
       if (!targetEntries.length) return;
       const targetSetIds =
         targetEntries.map(([targetId]) => targetId);
@@ -37940,9 +37941,7 @@
           expectedUtilityHEPP,
         });
       }).sort((left, right) =>
-        String(left.candidateId).localeCompare(
-          String(right.candidateId),
-        )
+        compareUtf16(left.candidateId, right.candidateId)
       );
       groupRows.push(Object.freeze({
         actionIdentity,
@@ -37964,9 +37963,7 @@
     }).sort((left, right) =>
       Number(right.utilityHEPP || 0) -
         Number(left.utilityHEPP || 0) ||
-      String(left?.entry?.candidateId || '').localeCompare(
-        String(right?.entry?.candidateId || ''),
-      )
+      compareUtf16(left?.entry?.candidateId, right?.entry?.candidateId)
     );
     const best = ranked[0] || null;
     return Object.freeze({
@@ -37982,15 +37979,11 @@
       expectedUtilityByCandidate: Object.freeze(
         Object.fromEntries(
           [...expectedByCandidate.entries()]
-            .sort(([left], [right]) =>
-              left.localeCompare(right)
-            ),
+            .sort(([left], [right]) => compareUtf16(left, right)),
         ),
       ),
       groups: Object.freeze(groupRows.sort((left, right) =>
-        String(left.actionIdentity).localeCompare(
-          String(right.actionIdentity),
-        )
+        compareUtf16(left.actionIdentity, right.actionIdentity)
       )),
     });
   }
@@ -38102,10 +38095,7 @@
               Number(variantProof.goalUtilityDeltaHEPP || 0) -
                 Number(current.goalUtilityDeltaHEPP || 0),
             ) <= 1e-9 &&
-            String(variantProof.candidateId || '')
-              .localeCompare(
-                String(current.candidateId || ''),
-              ) < 0
+            compareUtf16(variantProof.candidateId, current.candidateId) < 0
           )
         ) {
           bestProofByTarget.set(targetId, variantProof);
@@ -45309,9 +45299,7 @@
     const ordered = viable.slice().sort((left, right) =>
       Number(right?.objectiveUtilityHEPP || 0) -
         Number(left?.objectiveUtilityHEPP || 0) ||
-      String(left?.candidateId || '').localeCompare(
-        String(right?.candidateId || ''),
-      )
+      compareUtf16(left?.candidateId, right?.candidateId)
     );
     return Object.freeze({
       complete,
@@ -46441,6 +46429,40 @@
     };
   }
 
+  function r9v2TargetPublicImmediateProjection(request, entry) {
+    const objectiveContext = r9v2TargetObjectiveEvaluationContext(request);
+    const health = r9v2TargetHealthFacts(request, entry, objectiveContext);
+    const sourceEventIds = [];
+    const sourceFactIds = [];
+    (entry?.contributions || []).forEach((contribution, index) => {
+      const sourceEventId = String(
+        contribution?.sourceActionId ||
+        contribution?.effectInstanceId ||
+        `${entry.candidateId}:mechanical:${index}`,
+      ).trim();
+      sourceEventIds.push(sourceEventId);
+      sourceFactIds.push(`${entry.candidateId}:mechanical:${index}`);
+    });
+    const expectedCandidateUtility = r9v2TargetFinite(
+      health.stateDeltaTotal,
+      'R9V2_KERNEL_PUBLIC_PROJECTION_NON_FINITE',
+      entry.candidateId,
+    );
+    if (Math.abs(expectedCandidateUtility) <= 1e-9) return null;
+    return Object.freeze({
+      schemaVersion: 'PublicImmediateProjectionV1',
+      scope: 'IMMEDIATE_MECHANICAL',
+      sourceType: 'VISIBLE_MECHANICAL_FACTS',
+      expectedCandidateUtility,
+      expectedNoOpUtility: 0,
+      informationValueHEPP: 0,
+      sourceEventIds: Object.freeze([...new Set(sourceEventIds.filter(Boolean))]),
+      sourceFactIds: Object.freeze([...new Set(sourceFactIds.filter(Boolean))]),
+      derivationRule:
+        '按行动当时公开机械事实计算即时目标生命轨迹；不包含后续路线、信息价值或终局奖励',
+    });
+  }
+
   function r9v2TargetNormalizeComponentFacts(entry, componentCode, facts = []) {
     return facts.reduce((normalized, fact, index) => {
       const value = r9v2TargetFinite(
@@ -46797,6 +46819,78 @@
     ].join('\u0000');
   }
 
+  function r9v2TargetResourceOverrideWorld(
+    worldSnapshot,
+    unitId,
+    resourceOverrides = {},
+  ) {
+    if (!worldSnapshot || typeof worldSnapshot !== 'object') return worldSnapshot;
+    const overrides = Object.entries(resourceOverrides || {})
+      .map(([resource, value]) => [
+        String(resource || '').trim(),
+        Number(value),
+      ])
+      .filter(([resource, value]) => resource && Number.isFinite(value));
+    if (!overrides.length) return worldSnapshot;
+    const unit = findUnitInWorld(worldSnapshot, unitId);
+    if (!unit) return worldSnapshot;
+    const changed = overrides.some(([resource, value]) =>
+      Math.abs(preview.readResource(unit, resource) - value) > 1e-9,
+    );
+    if (!changed) return worldSnapshot;
+    if (typeof preview.PreviewOverlay !== 'function') {
+      throw new Error('R9V2_KERNEL_RESOURCE_OVERRIDE_WORLD_UNAVAILABLE');
+    }
+    const overlay = new preview.PreviewOverlay(
+      worldSnapshot,
+      `r9v2-resource-route:${String(unitId || '').trim()}`,
+    );
+    overlay.changeUnit(unitId, nextUnit => {
+      overrides.forEach(([resource, value]) => {
+        const bounded = clamp(
+          value,
+          0,
+          preview.readResourceMax(nextUnit, resource),
+        );
+        if (/生命|HP/i.test(resource)) {
+          if ('hp' in nextUnit || !('HP' in nextUnit)) nextUnit.hp = bounded;
+          if ('HP' in nextUnit) nextUnit.HP = bounded;
+          if (nextUnit.属性 && typeof nextUnit.属性 === 'object') {
+            if ('HP' in nextUnit.属性) nextUnit.属性.HP = bounded;
+            else if ('生命' in nextUnit.属性) nextUnit.属性.生命 = bounded;
+          }
+          return;
+        }
+        if (/体力/.test(resource)) {
+          if ('vit' in nextUnit || !('体力' in nextUnit)) nextUnit.vit = bounded;
+          if ('sta' in nextUnit) nextUnit.sta = bounded;
+          if (!('vit' in nextUnit) && !('sta' in nextUnit)) nextUnit.体力 = bounded;
+          if (nextUnit.属性 && typeof nextUnit.属性 === 'object') {
+            nextUnit.属性.体力 = bounded;
+          }
+          if (typeof preview.refreshStaminaAdjustedFinal === 'function') {
+            preview.refreshStaminaAdjustedFinal(nextUnit);
+          }
+          return;
+        }
+        if (/精神/.test(resource)) {
+          if ('men' in nextUnit || !('精神力' in nextUnit)) nextUnit.men = bounded;
+          if (!('men' in nextUnit)) nextUnit.精神力 = bounded;
+          if (nextUnit.属性 && typeof nextUnit.属性 === 'object') {
+            nextUnit.属性.精神力 = bounded;
+          }
+          return;
+        }
+        if ('sp' in nextUnit || !('魂力' in nextUnit)) nextUnit.sp = bounded;
+        if (!('sp' in nextUnit)) nextUnit.魂力 = bounded;
+        if (nextUnit.属性 && typeof nextUnit.属性 === 'object') {
+          nextUnit.属性.魂力 = bounded;
+        }
+      });
+    });
+    return overlay.snapshot();
+  }
+
   function r9v2TargetRouteCacheKey({
     request,
     pool,
@@ -46970,7 +47064,11 @@
     }
     const baseEntries = pool?.unitEntries?.get(unitId) || [];
     if (!baseEntries.length) {
-      const empty = { entries: [], complete: false };
+      const unavailableUnit = findUnitInWorld(worldSnapshot || {}, unitId);
+      const empty = {
+        entries: [],
+        complete: !!unavailableUnit && !preview.isBattleCapable(unavailableUnit),
+      };
       r9v2TargetRouteCacheSet(cache, cacheKey, empty);
       return empty;
     }
@@ -47011,7 +47109,7 @@
     }
     const unit = findUnitInWorld(worldSnapshot, unitId);
     if (!unit || !preview.isBattleCapable(unit)) {
-      const unavailable = { entries: [], complete: false };
+      const unavailable = { entries: [], complete: !!unit };
       r9v2TargetRouteCacheSet(cache, cacheKey, unavailable);
       return unavailable;
     }
@@ -47236,7 +47334,11 @@
         'r9v2TargetFutureRouteTableCacheMisses',
       );
     }
-    const world = worldSnapshot || request.visibleWorld;
+    const world = r9v2TargetResourceOverrideWorld(
+      worldSnapshot || request.visibleWorld,
+      unitId,
+      resourceOverrides,
+    );
     const unit = findUnitInWorld(world, unitId);
     const routeRequest = unit
       ? {
@@ -47625,7 +47727,19 @@
       'r9v2TargetRouteEntryPreparationMs',
       routeEntriesEndedAt - routeEntriesStartedAt,
     );
-    if (!unit || !preview.isBattleCapable(unit) || !routeEntries.complete) {
+    if (!unit || !preview.isBattleCapable(unit)) {
+      const incomplete = { complete: false, rows: [], best: null };
+      if (unit) {
+        incomplete.complete = true;
+        Object.defineProperty(incomplete, 'allRows', {
+          value: Object.freeze([]),
+          enumerable: false,
+        });
+      }
+      r9v2TargetRouteCacheSet(cache, cacheKey, incomplete);
+      return incomplete;
+    }
+    if (!routeEntries.complete) {
       const incomplete = { complete: false, rows: [], best: null };
       r9v2TargetRouteCacheSet(cache, cacheKey, incomplete);
       return incomplete;
@@ -52316,6 +52430,8 @@
         prepared.session,
         row.candidate.candidateId,
       );
+      row.publicImmediateProjection =
+        r9v2TargetPublicImmediateProjection(request, row.entry);
       row.proof = r9v2TargetKernelProof(
         kernelProof,
         row.entry,
@@ -52326,6 +52442,9 @@
     const auditRow = row => {
       const proof = proofByCandidate.get(row.candidate.candidateId);
       const vector = row.vector;
+      const creationRecipientId = String(
+        row.candidate?.declaration?.creationRecipientId || '',
+      ).trim();
       const audit = {
         candidateId: row.candidate.candidateId,
         actionName: candidateActionName(row.candidate),
@@ -52341,6 +52460,7 @@
           actorId: request.actorId,
           actionKind: row.entry?.actionKind || '',
           targetIds: cloneValue(row.entry?.targetIds || []),
+          ...(creationRecipientId ? { creationRecipientId } : {}),
         },
         objectiveUtility: Number(vector.objectiveUtilityHEPP || 0),
         objectiveUtilityHEPP: Number(vector.objectiveUtilityHEPP || 0),
@@ -52363,7 +52483,12 @@
         paretoWitness: cloneValue(vector.paretoWitness || null),
         selected: row === winner,
       };
-      if (proof) audit.candidateValueProof = cloneValue(proof);
+      if (proof) {
+        audit.candidateValueProof = cloneValue(proof);
+        if (row.publicImmediateProjection) {
+          audit.goalProjection = cloneValue(row.publicImmediateProjection);
+        }
+      }
       return audit;
     };
     const selectedProof = proofByCandidate.get(winner.candidate.candidateId);
@@ -52401,6 +52526,9 @@
         mechanicObservations: cloneValue(winner.entry?.mechanicObservations || []),
         causalValueFacts: cloneValue(selectedProof.causalValueFacts),
         candidateValueProof: cloneValue(selectedProof),
+        ...(winner.publicImmediateProjection
+          ? { goalProjection: cloneValue(winner.publicImmediateProjection) }
+          : {}),
       },
       scoreAudit: auditableRows.map(auditRow),
       candidateAudit: auditableRows.map(auditRow),
@@ -52663,11 +52791,10 @@
               candidateValueProofHash: preview.stableHash(
                 prepared.proofs
                   .slice()
-                  .sort((left, right) =>
-                    String(left?.candidateId || '').localeCompare(
-                      String(right?.candidateId || ''),
-                    )
-                  )
+                  .sort((left, right) => compareUtf16(
+                    left?.candidateId,
+                    right?.candidateId,
+                  ))
                   .map(proof => ({
                     ...proof,
                     vector: proof.vector || {},
@@ -52679,11 +52806,6 @@
             });
           })()
         : null;
-    const compareUtf16 = (left, right) => {
-      const leftValue = String(left || '');
-      const rightValue = String(right || '');
-      return leftValue < rightValue ? -1 : leftValue > rightValue ? 1 : 0;
-    };
     const formalVectorValue = (row, field) => {
       const vector = row?.proof?.vector || {};
       const raw = field === 'worstTailUtilityHEPP'

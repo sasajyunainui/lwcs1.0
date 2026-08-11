@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 204,
+  "previousEventHash": "b7b08fab88cc1fdcf54cce230b163bd0394442c4f4c49146d65d33bb42f97959",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW",
+  "eventType": "M6_A05_PUBLIC_CASE_SLICES_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "83ac325ecd8e4913bdc27487510231b1615a3c8b6399a4c1298e33ad60b915b6",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a05-public-slice.mjs": "25b5b31b42e91dc60bbcd42e13ce8998badead297e1d171f13cab43db4935512"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "24b649c66cbf4c8b7afcbd9e1b818a650f69c0d7d22cb2bcfc0462655299aafb",
+    "28c583f61457cfa445e34e8b00aa3f74fbf79caa1519e8fd63f1e5e7d1138e32"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "packageHash": "82bd64ff80febf9791cbeaf32d7b4ee893473112cc1235a1fc2e755e24c7ed4c",
+    "packageIndexHash": "28c583f61457cfa445e34e8b00aa3f74fbf79caa1519e8fd63f1e5e7d1138e32",
+    "publicSliceHash": "ca912c383cd3e0c7d835d00f7bf07f21fa1cf9945c38c01266742bf114f2ae71",
+    "publicSliceIndexHash": "24b649c66cbf4c8b7afcbd9e1b818a650f69c0d7d22cb2bcfc0462655299aafb",
+    "caseCount": 8,
+    "caseFileCount": 8,
+    "verdictsPrefilled": false,
+    "reviewerDispatch": "two_waves_of_four_read_only_agents",
+    "nextExitCondition": "complete_two_independent_8_case_reviews_and_record_battle_review_v2_verdicts"
+  },
+  "reason": "Public_blind_case_slices_ready",
+  "recordedAt": "2026-08-09T18:40:47.694Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "d7062760ca56232f940e442b94962905b8b86d74536a956fbcc48485dacb15e9"
+}

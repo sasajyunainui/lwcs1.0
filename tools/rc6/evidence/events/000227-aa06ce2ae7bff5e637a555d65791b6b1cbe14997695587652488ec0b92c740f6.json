@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 227,
+  "previousEventHash": "ed9e26106563295618806da4c7dc90f46a7c1b26fa1bca5b7a7c97b833ecc2c8",
+  "milestoneId": "M5",
+  "taskId": "M5-ARCHITECTURE-DECISION",
+  "eventType": "MILESTONE_BLOCKED",
+  "status": "BLOCKED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/reduce-status.mjs": "bca9042458fe51e8a3372ac5b40be50855efa848ec51103b4fff15478219c829"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "82a8a842270d599c6139769b90ca689cfe9731159f685c0620afb7f18d646b37",
+    "3cc54f222d0baeafc9905761231bde23a6de42d469d25ab7190ab6a8c7fa3236",
+    "b89af3993a45885dd7d1ddd9fe49584a13caccab43d9dfc1c53b3076fcef8f0b",
+    "d2746155c63d77f297ca62689a4c9f05be30cd519787c15a05cdb5692b465ac3"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "rejectedDirections": [
+      "cross_decision_actual_fact_cache",
+      "route_authority_reuse",
+      "current_branch_delta_attempts_without_formal_gate"
+    ],
+    "priorBlockEvent": 154,
+    "downstream": {
+      "M6": "PENDING",
+      "M7": "PENDING"
+    },
+    "nextExitCondition": "new_macro_architecture_proposal_with_measured_end_to_end_upper_bound_or_explicit_user_supersedes_v27_performance_contract",
+    "strictMilestoneOrder": true,
+    "currentBlocker": "R9V2_FORMAL_PERFORMANCE_ARCHITECTURE_GAP"
+  },
+  "reason": "Restore the v27 hard gate: existing macro performance attempts did not establish enough end-to-end headroom, so final M6 and M7 remain stopped until a new architecture proposal or an explicit contract supersession.",
+  "recordedAt": "2026-08-11T03:44:12.227Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "aa06ce2ae7bff5e637a555d65791b6b1cbe14997695587652488ec0b92c740f6"
+}

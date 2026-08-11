@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "RC6ExecutionDirectionCorrectionV1",
+  "recordedDate": "2026-08-10",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "sourceHashes": {
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleDecisionR9v2Kernel_Module.js": "da6e11a12b8398c77e3691cd08a3ddaa20c8d8285bca171a431ab8356b11c1b9",
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b"
+  },
+  "observedState": {
+    "M0": "COMPLETED",
+    "M1": "COMPLETED",
+    "M2": "COMPLETED",
+    "M3": "SEMANTIC_GATES_PASSED_CURRENT_HASH_BUT_UNCOMMITTED",
+    "M4": "REPORT_GATES_PASSED_CURRENT_HASH_BUT_UNCOMMITTED",
+    "M5": "BLOCKED_BY_EVENT_000154",
+    "M6": "INVALID_DOWNSTREAM_PROVISIONAL_REVIEW",
+    "M7": "PENDING"
+  },
+  "findings": [
+    {
+      "severity": "P0",
+      "code": "FINAL_ACCEPTANCE_BEFORE_PERFORMANCE_FREEZE",
+      "finding": "M6 was treated as the active final acceptance milestone while M5 remained incomplete. Any accepted M5 change to Decision or Kernel would invalidate the behavior and report hashes used by M6."
+    },
+    {
+      "severity": "P1",
+      "code": "M6_BLOCKER_STALE",
+      "finding": "INDEPENDENT_REVIEW_AGENT_UNAVAILABLE is not a current architecture blocker and must not control milestone ordering. Independent review resumes only after M5 freezes the final source hashes."
+    },
+    {
+      "severity": "P1",
+      "code": "M6_EVIDENCE_CLASSIFICATION",
+      "finding": "Existing M6 output remains useful as pre-acceptance diagnostic evidence that found Report defects, but it is not final acceptance evidence under v27."
+    }
+  ],
+  "directionDecision": {
+    "activeMilestone": "M4",
+    "milestoneStatus": "IN_PROGRESS",
+    "activeTask": "M4-CURRENT-HASH-BASELINE-CLOSURE",
+    "M3Disposition": "KEEP_CURRENT_HASH_GATES_AND_INCLUDE_DEPENDENCY_CHANGES_IN_CLOSURE",
+    "M4Disposition": "REOPEN_FOR_REPRODUCIBLE_GIT_CLOSURE",
+    "M5Disposition": "RETURN_TO_BLOCKED_ARCHITECTURE_DECISION_AFTER_M4_CLOSURE",
+    "M6Disposition": "PAUSE_AND_INVALIDATE_FINAL_ACCEPTANCE_STATUS",
+    "M7Disposition": "KEEP_PENDING",
+    "strictMilestoneOrder": true
+  },
+  "executionRules": [
+    "Do not run additional blind or deep review before M5 completes.",
+    "First close the current M3 and M4 production changes, current-hash gates and event history into a reproducible baseline.",
+    "Do not repeat the existing profiles or rejected route-cache experiments without a new architecture hypothesis.",
+    "Only reopen implementation for a macro optimization whose measured upper bound covers the meaningful remaining gap.",
+    "After M5 freezes source hashes, regenerate only the M6 evidence invalidated by Kernel, Decision, Report or UI changes.",
+    "Do not reopen M2 or M3 unless the M5 equivalence gates expose a semantic or contract defect."
+  ],
+  "nextExitCondition": "Current M3 and M4 production changes and their current-hash evidence are classified and committed without M5 logs or provisional M6 artifacts; then M5 returns to the blocked architecture decision."
+}

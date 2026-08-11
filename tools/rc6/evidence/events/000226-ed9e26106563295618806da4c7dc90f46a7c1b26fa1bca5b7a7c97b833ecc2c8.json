@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 226,
+  "previousEventHash": "ba562fcf58154c90881e05b4682de5ac5a7cb27adaf0be8957127c03bb03bead",
+  "milestoneId": "M4",
+  "taskId": "M4-CURRENT-HASH-BASELINE-CLOSURE",
+  "eventType": "MILESTONE_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/reduce-status.mjs": "bca9042458fe51e8a3372ac5b40be50855efa848ec51103b4fff15478219c829"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "b52b970fcef79b322c6c07d785c0ca1c82de298a60f6d843baf0799269f0e49b",
+    "b2321fd5dbf57916d4683737bc613c20cf4a8b25dacc67252bc748f06820ee84",
+    "748d38c4265a77415c211e5f8f4dd077215ccaf8f7545e64114a6332c4f06725",
+    "830e61ad086d6e8f5d52626ab60444d571a4957a03738940e2e19b7f58cc319b",
+    "02acc857ce849582517f429830a438c23d51dbaf6fd6b51317e191cff035d8fc",
+    "029d7af9491e1165ca010c29c4d66c64bf33995b38d9ed583d21742e21dcb92c",
+    "49df09e29a20282e609b2d799e786e0f22d7aaab2e86c967c0f492226144483e",
+    "700cc4d50f14255bb696afac1df4691c98b70de9e681776fdf2a6144e1ac673f"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "strictMilestoneOrder": true,
+    "closureManifest": "tools/rc6/evidence/m4/m4-current-hash-baseline-closure-20260811.json",
+    "nextExitCondition": "record_M5_architecture_blocker_and_require_new_macro_proposal_before_implementation",
+    "currentHashGates": {
+      "reportGate": "PASSED",
+      "productionReferenceAB": "PASSED",
+      "pathCoverage": "621/621",
+      "smallTransactions": "PASSED"
+    }
+  },
+  "reason": "Current M3/M4 source hashes, reference gates, 621-path evidence and Report gates are classified for a reproducible closure; rejected M5 diagnostics and provisional M6 material remain excluded.",
+  "recordedAt": "2026-08-11T03:44:11.970Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "ed9e26106563295618806da4c7dc90f46a7c1b26fa1bca5b7a7c97b833ecc2c8"
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 170,
+  "previousEventHash": "115697154c1f65006c9bb6a44f48991b76871653e5d761275245370f5faf1658",
+  "milestoneId": "M6",
+  "taskId": "M6-A02-CURRENT-HASH-PLAYER-FACTS-RECAPTURE",
+  "eventType": "MILESTONE_STARTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0743f778b11137c95aaf0cf725bf51d79109baebfce86dc9f6dc8a3d76279cc4",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "ca1c4ff6f29298d283c7bc0f6644834b362ffad8ca98b7868c5d547a52a5d42d",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "nextExitCondition": "recapture_20_nonraid_plus_4_raid_short_window_player_facts_then_read_player_layer",
+    "currentBlocker": null,
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "M4战报公开即时投影已通过；重新进入M6前先按当前Hash重生成24场事实，不启动五回合性能，也不提前进行深审或盲审。",
+  "recordedAt": "2026-08-09T14:37:08.264Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "92166c3915dc73bae7123d8afb2eed36cedd901ab67bf84e87875377a09bb997"
+}

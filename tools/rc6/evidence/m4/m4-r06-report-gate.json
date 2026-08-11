@@ -20,23 +20,23 @@
     {
       "caseId": "duel_overmatch_lethal",
       "rounds": 4,
-      "draftHash": "r74-f48204626b49600d",
-      "reportHash": "r74-4db80cc892de74fb",
+      "draftHash": "r74-6a3cffc46a09eedd",
+      "reportHash": "r74-3c0f94efc504ace6",
       "projectionStatus": "PASSED",
       "decisionCount": 2,
       "factCount": 6,
       "internalReferenceCount": 0,
-      "visibleTextLength": 1347,
+      "visibleTextLength": 1555,
       "uiSourceIdAttributes": true,
-      "aiSummaryLength": 1077,
+      "aiSummaryLength": 1171,
       "reportTimingMs": {
         "samples": [
-          3.591,
-          3.545,
-          3.104
+          3.442,
+          3.13,
+          2.836
         ],
-        "median": 3.545,
-        "p95": 3.591
+        "median": 3.13,
+        "p95": 3.442
       },
       "failureCount": 0,
       "failures": []
@@ -44,23 +44,23 @@
     {
       "caseId": "intent_capture_vs_kill",
       "rounds": 6,
-      "draftHash": "r74-37d6ad599a0130ce",
-      "reportHash": "r74-ef033727f546ae6f",
+      "draftHash": "r74-3da671014b5ba136",
+      "reportHash": "r74-eada59c5d585a869",
       "projectionStatus": "PASSED",
       "decisionCount": 2,
       "factCount": 11,
       "internalReferenceCount": 0,
-      "visibleTextLength": 2423,
+      "visibleTextLength": 2488,
       "uiSourceIdAttributes": true,
-      "aiSummaryLength": 1126,
+      "aiSummaryLength": 1206,
       "reportTimingMs": {
         "samples": [
-          4.302,
-          4.644,
-          4.208
+          3.993,
+          4.03,
+          3.782
         ],
-        "median": 4.302,
-        "p95": 4.644
+        "median": 3.993,
+        "p95": 4.03
       },
       "failureCount": 0,
       "failures": []
@@ -68,23 +68,23 @@
     {
       "caseId": "team_control_overlap",
       "rounds": 4,
-      "draftHash": "r74-1f2827da62117685",
-      "reportHash": "r74-2d9c99194bb83fae",
+      "draftHash": "r74-1da871fedb5b0af5",
+      "reportHash": "r74-f2b4e73460816443",
       "projectionStatus": "PASSED",
       "decisionCount": 41,
       "factCount": 227,
       "internalReferenceCount": 0,
-      "visibleTextLength": 52016,
+      "visibleTextLength": 50385,
       "uiSourceIdAttributes": true,
-      "aiSummaryLength": 2234,
+      "aiSummaryLength": 2314,
       "reportTimingMs": {
         "samples": [
-          80.784,
-          78.342,
-          76.535
+          89.021,
+          89.892,
+          85.494
         ],
-        "median": 78.342,
-        "p95": 80.784
+        "median": 89.021,
+        "p95": 89.892
       },
       "failureCount": 0,
       "failures": []
@@ -92,23 +92,23 @@
     {
       "caseId": "team_protect_critical_ally",
       "rounds": 4,
-      "draftHash": "r74-60a04c4e110de6d3",
-      "reportHash": "r74-e476b20274f54542",
+      "draftHash": "r74-9511c09a0e17af37",
+      "reportHash": "r74-df4ef2e47e9224f6",
       "projectionStatus": "PASSED",
       "decisionCount": 37,
       "factCount": 262,
       "internalReferenceCount": 0,
-      "visibleTextLength": 70187,
+      "visibleTextLength": 67805,
       "uiSourceIdAttributes": true,
-      "aiSummaryLength": 2429,
+      "aiSummaryLength": 2509,
       "reportTimingMs": {
         "samples": [
-          79.123,
-          86.265,
-          87.418
+          112.602,
+          102.784,
+          108.285
         ],
-        "median": 86.265,
-        "p95": 87.418
+        "median": 108.285,
+        "p95": 112.602
       },
       "failureCount": 0,
       "failures": []
@@ -129,11 +129,11 @@
   "failures": [],
   "sourceHashes": {
     "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
-    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
     "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
-    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
-    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
     "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e"
   },
-  "toolHash": "d1f688de45e9886469e2f55921243a303926ade0a266868196cacd125164fe06"
+  "toolHash": "d422fc39f193b291440f4be37fba9e98b58dfc30da1b8203cdfb8f2ba0fa5d57"
 }

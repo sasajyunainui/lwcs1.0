@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 218,
+  "previousEventHash": "4a1c83bc84edb8fec17f8195b034ba21adbe12b1329ca13f63199849244b35ca",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW-R2",
+  "eventType": "M5_DEFERRED_NON_BLOCKING",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "deferredMilestones": [
+      "M5"
+    ],
+    "deferredReason": "Formal performance is not on the current behavior/report acceptance critical path.",
+    "currentBlocker": "INDEPENDENT_REVIEW_AGENT_UNAVAILABLE",
+    "nextExitCondition": "product_acceptance_of_alternate_review_protocol_or_available_independent_review_channel"
+  },
+  "reason": "Represent M5 as deferred non-blocking instead of blocked while M6 behavior/report acceptance continues; M7 still requires M5 completion.",
+  "recordedAt": "2026-08-09T19:50:20.957Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "7b79462f3752573c599f3bf61c424b3f215c25c5931090fca3ab0109867a3186"
+}

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 150,
+  "previousEventHash": "08b9226f71abf72090f53f2c1c51c6cbdc11191e923ab917907cbfce2c1b8ed9",
+  "milestoneId": "M5",
+  "taskId": "M5-P02-TARGET-KERNEL-CANONICALIZATION",
+  "eventType": "PERFORMANCE_DIRECTION_CORRECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "82dfbafc374977c92a04da960034ff292a154b4432649b2596753433fe451e08",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "rejectedDirection": "end-of-pipeline object identity cache / S4 local optimization",
+    "correctedDirection": "transaction-boundary target-kernel batch evaluation",
+    "primaryMeasuredCost": "per-candidate legacy component/proof wrapper plus repeated context/entry projection",
+    "firstImplementationScope": [
+      "shared context columns",
+      "canonical mechanical-entry directory at entry generation",
+      "component-row batch store with exact revision invalidation"
+    ],
+    "forbiddenNextExperiments": [
+      "WeakMap identity cache",
+      "S4-only micro optimization",
+      "full 7v7 before macro gate"
+    ],
+    "macroGate": {
+      "worstDecisionEndToEndGainMin": 0.3,
+      "fieldEqualityRequired": true
+    },
+    "formalProvider": "r8",
+    "targetProvider": "r9v2"
+  },
+  "reason": "Correct M5 after the rejected identity-cache experiment; the measured dominant cost is target-kernel per-candidate legacy wrapping, not the raw entry object identity.",
+  "recordedAt": "2026-08-09T11:53:04.129Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "0fe166dca1acad0f261fac68367d17aec2e38f35fc63837e5f71f363fb951897"
+}

@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 197,
+  "previousEventHash": "da08b20948ecf02824cd82ef0689ece254f6bb507fa92eace3f7382837449e3b",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW",
+  "eventType": "M6_A05_BLIND_REVIEW_FIRST_PASS",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "44f09e03476baf80bb8756cfcdedefebdf85911d8994b2f6280549d0c3e42588",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "4ed0c8675808eb15b2e1bd2e04425f9c38f1ded1332303e6fc13b00666526ddd"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "reviewerId": "main-process-blind-review-1",
+    "reviewMode": "PLAYER_THEN_SANITIZED_REVIEW",
+    "providerVisible": false,
+    "cacheModeVisible": false,
+    "responsibilityVisible": false,
+    "caseCount": 8,
+    "verdictsPrefilledByScript": false,
+    "caseReviews": [
+      {
+        "caseId": "blind-01-threshold-window",
+        "behavior": "PASS_WITH_NOTE",
+        "report": "PASS_WITH_NOTE",
+        "openThemes": [
+          "reaction rationale is generic but mechanically legible"
+        ]
+      },
+      {
+        "caseId": "blind-02-hidden-info",
+        "behavior": "OPEN",
+        "report": "OPEN",
+        "openThemes": [
+          "repeated symmetric actions do not explain adaptation or lack of adaptation",
+          "long-horizon public-information interpretation remains weak"
+        ]
+      },
+      {
+        "caseId": "blind-03-charge-interrupt",
+        "behavior": "PASS_WITH_NOTE",
+        "report": "OPEN",
+        "openThemes": [
+          "the exchange explains the revealed charge interruption, but the decision-time reason does not state that purpose",
+          "multi-hit result is readable in exchange but numeric list is repetitive"
+        ]
+      },
+      {
+        "caseId": "blind-04-control-overlap",
+        "behavior": "OPEN",
+        "report": "OPEN",
+        "openThemes": [
+          "team-wide control and repeated defensive responses are dense",
+          "decision reason does not identify the team coordination tradeoff"
+        ]
+      },
+      {
+        "caseId": "blind-05-public-adaptation",
+        "behavior": "OPEN",
+        "report": "OPEN",
+        "openThemes": [
+          "incapacitated actor and lost opportunity are visible but adaptation rationale is not explicit",
+          "repeated candidate-summary wording"
+        ]
+      },
+      {
+        "caseId": "blind-06-item-objective",
+        "behavior": "PASS_WITH_NOTE",
+        "report": "PASS",
+        "openThemes": [
+          "objective is understandable despite enemy HP advantage",
+          "item creation and consumption are traceable through action name and facts"
+        ]
+      },
+      {
+        "caseId": "blind-07-summon-lifecycle",
+        "behavior": "PASS",
+        "report": "PASS_WITH_NOTE",
+        "openThemes": [
+          "summon creation, one action window and departure are explicit"
+        ]
+      },
+      {
+        "caseId": "blind-08-dense-response",
+        "behavior": "PASS_WITH_NOTE",
+        "report": "PASS_WITH_NOTE",
+        "openThemes": [
+          "team-wide response is dense but grouped exchange text remains traceable",
+          "HP-zero state now projects as unable to fight"
+        ]
+      }
+    ],
+    "confirmedDefects": [],
+    "openHumanThemes": [
+      "decision-time rationale for revealed-charge interruption",
+      "public adaptation explanation",
+      "dense team coordination readability",
+      "repeated generic alternative wording",
+      "second independent blind verdict"
+    ],
+    "consensus": "PENDING_SECOND_INDEPENDENT_REVIEW",
+    "m5": "DEFERRED",
+    "m7": "NOT_STARTED"
+  },
+  "reason": "完成第一轮匿名盲审：仅阅读PLAYER和脱敏REVIEW，未读取协调器清单，未预填脚本结论。发现的开放项保留为人工裁决，不自动回退或切换Provider。",
+  "recordedAt": "2026-08-09T17:41:24.115Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "023fd03bf9c26a11b4b71af9f0d223f423c348b9d9a21a69705628a37e0e4b41"
+}

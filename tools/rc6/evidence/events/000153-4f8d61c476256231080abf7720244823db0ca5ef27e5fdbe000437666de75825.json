@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 153,
+  "previousEventHash": "899cb93064d4534161033b339cacd3a0716f96491b7e2b244b6ef236b2547d5b",
+  "milestoneId": "M5",
+  "taskId": "M5-P02-TARGET-KERNEL-BATCH-COMPONENT-EVALUATION",
+  "eventType": "PERFORMANCE_EXPERIMENT_REJECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "82dfbafc374977c92a04da960034ff292a154b4432649b2596753433fe451e08",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m2-k14-s4-route-value-reuse-ab.mjs": "ee351945c9be84383a6f4abfef1696eb64c8041c900ac2344c76d9771d1147c6"
+  },
+  "fixtureHashes": {
+    "tools/rc6/evidence/m2/k14-s4-route-value-reuse-ab.json": "8adce07b196bce877491e6037b031471ab4a1f9b3256f9b2bfe69773e5fb8a7f"
+  },
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [
+    "8adce07b196bce877491e6037b031471ab4a1f9b3256f9b2bfe69773e5fb8a7f"
+  ],
+  "details": {
+    "experiment": "health_only_branch_route_value_reuse",
+    "semanticGate": {
+      "status": "PASS",
+      "fieldLevelEqual": true,
+      "referenceCase": "team_control_overlap",
+      "scenarios": 5
+    },
+    "macroGate": {
+      "requiredWorstDecisionGain": 0.3,
+      "teamControlOverlap": {
+        "patchedMeanMs": 4055.75,
+        "headMeanMs": 4196.77,
+        "observedGain": 0.0336,
+        "worstDecisionGain": 0.0121
+      },
+      "duelPeerUnknownProbe": {
+        "patchedMeanMs": 411.91,
+        "headMeanMs": 394.32,
+        "observedGain": -0.0446,
+        "worstDecisionGain": -0.0632
+      },
+      "status": "FAIL"
+    },
+    "rollback": "BattleDecision_Module.js restored to HEAD bytes; patch not retained",
+    "currentBlocker": "M5_TARGET_KERNEL_BATCH_COMPONENT_EVALUATION_REQUIRED",
+    "nextExitCondition": "Identify and implement transaction-owned cross-candidate component/proof batch at the target-kernel registry boundary; prove field equality and at least 30 percent worst-decision end-to-end gain before any full 7v7",
+    "nextDirection": "Profile and redesign proofComponentRead/evaluateAllCandidates ownership; no more branch-row micro-reuse"
+  },
+  "reason": "Reject health-only branch route reuse: semantic equality passed, but the worst-decision macro gate failed and the patch regressed the small-case protection probe.",
+  "recordedAt": "2026-08-09T12:27:24.299Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "4f8d61c476256231080abf7720244823db0ca5ef27e5fdbe000437666de75825"
+}

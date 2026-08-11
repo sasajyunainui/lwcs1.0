@@ -16,10 +16,13 @@
     "referenceFailures": [],
     "componentCount": 23,
     "componentExpected": 23,
-    "targetFullTransactionCaseCount": 12,
-    "targetFullTransactionExpectedMinimum": 10,
+    "targetForegroundTransactionCaseCount": 6,
+    "targetForegroundTransactionExpected": 6,
+    "targetSingleRoundTransactionCaseCount": 2,
+    "targetSingleRoundTransactionExpected": 2,
     "requiredSevenVsSevenCompleted": 5,
     "requiredSevenVsSevenExpected": 5,
+    "targetBehaviorCountsCurrent": true,
     "pathCoverage": {
       "status": "AVAILABLE",
       "fixture": "tools/rc6/evidence/m3/m3-b04-r9v2-path-coverage.json",
@@ -32,43 +35,48 @@
     }
   },
   "targetSevenVsSevenEvidence": {
-    "file": "tools/rc6/evidence/m3/b01-target-behavior-v3.json",
-    "sourceHash": "c842898404424e57182b967da02549aab589d97bdeb710fc5481458e1f9d00cc",
+    "file": "artifacts/rc6/m3/20260809/m3-b01-frozen-opportunities-20260809.json",
+    "sourceHash": "0ff25520123a90de8eeeb36f28358768a50c1ed46d99180c1ad1a0cc354862d7",
     "cases": [
       {
         "caseId": "raid_balanced",
-        "rounds": 5,
-        "decisionCount": 138,
-        "reportProjectionStatus": "PASSED",
-        "reportAuditStatus": "PASSED"
+        "rounds": "DECISION_ONLY_FROZEN_OPPORTUNITY",
+        "decisionCount": 14,
+        "fatalCount": 0,
+        "reportProjectionStatus": "NOT_IN_SCOPE",
+        "reportAuditStatus": "NOT_IN_SCOPE"
       },
       {
         "caseId": "raid_level_gap",
-        "rounds": 5,
-        "decisionCount": 40,
-        "reportProjectionStatus": "PASSED",
-        "reportAuditStatus": "PASSED"
+        "rounds": "DECISION_ONLY_FROZEN_OPPORTUNITY",
+        "decisionCount": 14,
+        "fatalCount": 0,
+        "reportProjectionStatus": "NOT_IN_SCOPE",
+        "reportAuditStatus": "NOT_IN_SCOPE"
       },
       {
         "caseId": "raid_control_heavy",
-        "rounds": 5,
-        "decisionCount": 141,
-        "reportProjectionStatus": "PASSED",
-        "reportAuditStatus": "PASSED"
+        "rounds": "DECISION_ONLY_FROZEN_OPPORTUNITY",
+        "decisionCount": 14,
+        "fatalCount": 0,
+        "reportProjectionStatus": "NOT_IN_SCOPE",
+        "reportAuditStatus": "NOT_IN_SCOPE"
       },
       {
         "caseId": "raid_summon_heavy",
-        "rounds": 5,
-        "decisionCount": 132,
-        "reportProjectionStatus": "PASSED",
-        "reportAuditStatus": "PASSED"
+        "rounds": "DECISION_ONLY_FROZEN_OPPORTUNITY",
+        "decisionCount": 14,
+        "fatalCount": 0,
+        "reportProjectionStatus": "NOT_IN_SCOPE",
+        "reportAuditStatus": "NOT_IN_SCOPE"
       },
       {
         "caseId": "raid_response_terminal_information",
-        "rounds": 5,
-        "decisionCount": 128,
-        "reportProjectionStatus": "PASSED",
-        "reportAuditStatus": "PASSED"
+        "rounds": "DECISION_ONLY_FROZEN_OPPORTUNITY",
+        "decisionCount": 14,
+        "fatalCount": 0,
+        "reportProjectionStatus": "NOT_IN_SCOPE",
+        "reportAuditStatus": "NOT_IN_SCOPE"
       }
     ]
   },
@@ -88,8 +96,8 @@
       "semanticDomain": "S1",
       "phase": "ACTIVE",
       "mode": "auto",
-      "candidateCount": 2,
-      "eligibleCount": 2,
+      "candidateCount": 4,
+      "eligibleCount": 4,
       "paretoCount": 2,
       "selectedCandidateId": "lethal-first"
     },
@@ -925,12 +933,12 @@
     }
   ],
   "sourceHashes": {
-    "tools/rc6/contracts/BehaviorPlanningContractV1.json": "5dd857f3585eaeefc59367ed526d8a5d4361a2ec594585d2a8a21c6abc060986",
+    "tools/rc6/contracts/BehaviorPlanningContractV1.json": "7da7ec3f04738a81d62184d61f4c54709d61533a236cbc48e3fed7bbc86c9526",
     "tools/rc6/contracts/KernelComponentRegistryV1.json": "fe809efa3596422a8bf0395c58c44a00cf7c6894ab812def8761b12f14acf07d",
-    "tools/rc6/cases/KernelReferenceCasesV1.json": "42343f9f06f9435634f9ff61d861082a4042d36767ec208381cc501067c4db5d",
-    "tools/rc6/cases/BehaviorOracleV2IndexV1.json": "cf0b9b7652f659447b703b7ddf7fad109af9279fc5dd6f405d8647b265c4aae4",
-    "tools/rc6/harness/run-m3-b04-checkpoint.mjs": "96c4096c281d8a7ecb6e1bef8fa1f2b42380886644f11f219a48d73ac2a38f8e",
-    "tools/rc6/evidence/m3/m3-b04-r9v2-path-coverage.json": "5fac0648022609f044bc36ef5d592283dc5991e4109ac91674f8909f134a7069"
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "aac9591365c0cec540173f634f2d6dad1671f2a36ee1aea3966e6fdbbb602ca1",
+    "tools/rc6/cases/BehaviorOracleV2IndexV1.json": "2cc4fd1da931d91ec97d2bd36735e37c68b9a98ac9559fca112489a67ea5c343",
+    "tools/rc6/harness/run-m3-b04-checkpoint.mjs": "6e435a9040b74e94c3e677fee4262c7fe7c4463a307cfce2b7f93deca84aa978",
+    "tools/rc6/evidence/m3/m3-b04-r9v2-path-coverage.json": "02acc857ce849582517f429830a438c23d51dbaf6fd6b51317e191cff035d8fc"
   },
   "blockers": []
 }

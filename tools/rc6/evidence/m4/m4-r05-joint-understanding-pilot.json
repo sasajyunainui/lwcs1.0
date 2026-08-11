@@ -19,8 +19,8 @@
   "rows": [
     {
       "caseId": "duel_overmatch_lethal",
-      "draftHash": "r74-f48204626b49600d",
-      "reportHash": "r74-4db80cc892de74fb",
+      "draftHash": "r74-6a3cffc46a09eedd",
+      "reportHash": "r74-3c0f94efc504ace6",
       "projectionStatus": "PASSED",
       "decisionCount": 2,
       "failureCount": 0,
@@ -44,10 +44,10 @@
               "韦小枫架住了云冥的攻击，能挡下一部分伤害"
             ]
           },
-          "reason": "选择【普通攻击】（目标：韦小枫）；当前公开情况没有留下需要并列说明的另一条路线",
+          "reason": "选择【普通攻击】（目标：韦小枫）；另有3项当前公开且机械合法的候选已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。",
           "alternatives": [],
-          "numberCount": 3,
-          "predictedNumberCount": 0,
+          "numberCount": 4,
+          "predictedNumberCount": 1,
           "legalCandidateCount": 4,
           "failures": []
         },
@@ -94,8 +94,8 @@
     },
     {
       "caseId": "intent_capture_vs_kill",
-      "draftHash": "r74-37d6ad599a0130ce",
-      "reportHash": "r74-ef033727f546ae6f",
+      "draftHash": "r74-3da671014b5ba136",
+      "reportHash": "r74-eada59c5d585a869",
       "projectionStatus": "PASSED",
       "decisionCount": 2,
       "failureCount": 0,
@@ -119,10 +119,10 @@
               "韦小枫架住了舞长空的攻击，能挡下一部分伤害"
             ]
           },
-          "reason": "选择【天霜斩】（目标：韦小枫）；当前公开情况没有留下需要并列说明的另一条路线",
+          "reason": "选择【天霜斩】（目标：韦小枫）；另有9项当前公开且机械合法的候选已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。",
           "alternatives": [],
-          "numberCount": 6,
-          "predictedNumberCount": 0,
+          "numberCount": 7,
+          "predictedNumberCount": 1,
           "legalCandidateCount": 10,
           "failures": []
         },
@@ -160,7 +160,7 @@
               "reason": "防御以承受并减轻来袭为主；让过行动不建立动作效果"
             }
           ],
-          "numberCount": 3,
+          "numberCount": 1,
           "predictedNumberCount": 0,
           "legalCandidateCount": 0,
           "failures": []
@@ -169,8 +169,8 @@
     },
     {
       "caseId": "team_control_overlap",
-      "draftHash": "r74-1f2827da62117685",
-      "reportHash": "r74-2d9c99194bb83fae",
+      "draftHash": "r74-1da871fedb5b0af5",
+      "reportHash": "r74-f2b4e73460816443",
       "projectionStatus": "PASSED",
       "decisionCount": 41,
       "failureCount": 0,
@@ -274,10 +274,10 @@
               "苏沐摆出防御架势"
             ]
           },
-          "reason": "选择【霜痕】（目标：龙跃、戴月炎、苏沐）；当前公开情况没有留下需要并列说明的另一条路线",
+          "reason": "选择【霜痕】（目标：龙跃、戴月炎、苏沐）；另有17项当前公开且机械合法的候选已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。",
           "alternatives": [],
-          "numberCount": 21,
-          "predictedNumberCount": 0,
+          "numberCount": 22,
+          "predictedNumberCount": 1,
           "legalCandidateCount": 18,
           "failures": []
         },
@@ -354,7 +354,7 @@
               "reason": "防御以承受并减轻来袭为主；让过行动不建立动作效果"
             }
           ],
-          "numberCount": 3,
+          "numberCount": 1,
           "predictedNumberCount": 0,
           "legalCandidateCount": 0,
           "failures": []
@@ -376,7 +376,7 @@
               "苏沐摆出防御架势"
             ]
           },
-          "reason": "选择【逆转光环】（目标：苏沐）；当前公开情况没有留下需要并列说明的另一条路线",
+          "reason": "选择【逆转光环】（目标：苏沐）；另有3项当前可公开说明且机械合法的候选已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。",
           "alternatives": [],
           "numberCount": 4,
           "predictedNumberCount": 0,
@@ -400,7 +400,7 @@
               "苏沐摆出防御架势"
             ]
           },
-          "reason": "选择【已显露蓄力重击】（目标：古月）；没有其他可行替代项",
+          "reason": "选择【已显露蓄力重击】（目标：古月）；当前可公开说明且机械合法的候选中，没有另一项可行动作可供比较。",
           "alternatives": [],
           "numberCount": 4,
           "predictedNumberCount": 0,
@@ -424,7 +424,7 @@
               "苏沐摆出防御架势"
             ]
           },
-          "reason": "选择【普通攻击】（目标：古月）；当前公开情况没有留下需要并列说明的另一条路线",
+          "reason": "选择【普通攻击】（目标：古月）；另有5项当前可公开说明且机械合法的候选已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。",
           "alternatives": [],
           "numberCount": 3,
           "predictedNumberCount": 0,
@@ -435,8 +435,8 @@
     },
     {
       "caseId": "team_protect_critical_ally",
-      "draftHash": "r74-60a04c4e110de6d3",
-      "reportHash": "r74-e476b20274f54542",
+      "draftHash": "r74-9511c09a0e17af37",
+      "reportHash": "r74-df4ef2e47e9224f6",
       "projectionStatus": "PASSED",
       "decisionCount": 37,
       "failureCount": 0,
@@ -462,10 +462,10 @@
               "舞长空架住了苏沐的攻击，能挡下一部分伤害"
             ]
           },
-          "reason": "选择【第八魂技】（目标：舞长空、雅莉、唐舞麟）；当前公开情况没有留下需要并列说明的另一条路线",
+          "reason": "选择【第八魂技】（目标：舞长空、雅莉、唐舞麟）；另有6项当前公开且机械合法的候选已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。",
           "alternatives": [],
-          "numberCount": 8,
-          "predictedNumberCount": 0,
+          "numberCount": 9,
+          "predictedNumberCount": 1,
           "legalCandidateCount": 7,
           "failures": []
         },
@@ -603,7 +603,7 @@
               "舞长空架住了苏沐的攻击，能挡下一部分伤害"
             ]
           },
-          "reason": "选择【白虎破魔杀】（目标：舞长空）；当前公开情况没有留下需要并列说明的另一条路线",
+          "reason": "选择【白虎破魔杀】（目标：舞长空）；另有6项当前可公开说明且机械合法的候选已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。",
           "alternatives": [],
           "numberCount": 6,
           "predictedNumberCount": 0,
@@ -668,7 +668,7 @@
               "舞长空架住了苏沐的攻击，能挡下一部分伤害"
             ]
           },
-          "reason": "选择【吞噬光环】（目标：舞长空、雅莉、唐舞麟）；当前公开情况没有留下需要并列说明的另一条路线",
+          "reason": "选择【吞噬光环】（目标：舞长空、雅莉、唐舞麟）；另有6项当前可公开说明且机械合法的候选已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。",
           "alternatives": [],
           "numberCount": 33,
           "predictedNumberCount": 0,
@@ -720,10 +720,10 @@
   "failureCount": 0,
   "failures": [],
   "sourceHashes": {
-    "BattleDecision_Module.js": "85a81a2d3248f104fa14e505c67f939f7e8b158d3f3a89f935c0a45a2066a455",
-    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
     "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
-    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
     "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e"
   },
   "toolHash": "c41d7e32785638598fa7131445f0ef8ea7f2db0dd7a92de0f61b2292f283d4ba"

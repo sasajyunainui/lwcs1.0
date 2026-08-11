@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 211,
+  "previousEventHash": "2b87a70b7dacc1f58de18f9ac6cc30c31e8034b6e74fc4ad8bf4ce1e55543b88",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW-R2",
+  "eventType": "M6_A05_BLIND_PACKAGE_R2_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a05-blind-review.mjs": "3dae49fe7fd47f2b58996a6d738a67559e32079de1d3d1db58ee429e72715aef",
+    "tools/rc6/harness/run-m6-a05-public-slice.mjs": "aa3a73148535f9b1e55cbf8b844aff11e2df9ff4d4deea9dcab4d13196985b60"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "c17dfb82ca5b6dd51fa310d903b1bd1a9dec8217e6ae1ca82ef1b87d5bd54889",
+    "be923ed9d82b5a8cae51f98c31ed8d4a2421118d88f2214355299432bdb8a0b5"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "sourceReportHash": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "packageHash": "2f0a302dbcbf851d9e6fd7e5706f344f6de32dd6baa6b21981958b0addf59c0d",
+    "publicSliceHash": "cb4ecb59b3920dd26b5b5cfa57d57827bd2e77c698dfd0f70f5ed05f89b8e973",
+    "caseCount": 8,
+    "verdictsPrefilled": false,
+    "stateProjection": "named states; unspecified duration remains null",
+    "nextExitCondition": "complete_two_independent_8_case_reviews_and_record_battle_review_v2_verdicts"
+  },
+  "reason": "Regenerated blind package and public slice against the corrected Report hash; no verdicts are prefilled.",
+  "recordedAt": "2026-08-09T19:08:53.287Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "2ed0747e28980c55d79dbaaaf12344fd700ce216058cf3bd3383bf7269f46223"
+}

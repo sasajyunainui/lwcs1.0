@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 166,
+  "previousEventHash": "f83ceeba54f0e91a2e15cb64ddc20c7e772a1025f5943dc74fe40aca02fb26a5",
+  "milestoneId": "M6",
+  "taskId": "M6-A02-RAID-SHORT-WINDOW-FACTS",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "8f15848513c576f733951ce0dfebb3e883cbc2066793bdc0ef5a74210f891d0d",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a02-current-hash-raid-short-window.mjs": "5acad9a18430fec63a68d8a5e1bb95e28a1744cf03c0369c68645b859e2f2796"
+  },
+  "fixtureHashes": {
+    "tools/battle_r63_manual_cases.mjs": "a0aab43948c1aa356cb35d03944a2768c338a63f4a0b9225e50fc8fbb63d44e3"
+  },
+  "acceptedObjectHashes": [
+    "8ffc4fa022f09cd3376e29d9bc0a21d0cd7316412e358ef654415d5d180f726e"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "raidFacts": "4/4",
+    "decisionCount": 199,
+    "reportAudits": "4/4",
+    "humanReview": "OPEN",
+    "fullFiveRoundJudgment": "DEFERRED_TO_M5",
+    "nextExitCondition": "read_20_nonraid_and_4_raid_player_facts_then_record_joint_review_findings"
+  },
+  "reason": "Current-hash bounded raid slices completed for behavior/report review preparation; no five-round performance claim.",
+  "recordedAt": "2026-08-09T14:20:32.343Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "e59e574cb3aa354b8a05c79eff6e5323c6f98fd4f1608d389d915a0e209ab418"
+}

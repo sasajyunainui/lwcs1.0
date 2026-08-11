@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 210,
+  "previousEventHash": "3b202a8848d2bbc753bce76b075290c69a50346f4c78ac80ee208f6b64e5dc78",
+  "milestoneId": "M6",
+  "taskId": "M6-A02-24-PLAYER-FACTS-R3",
+  "eventType": "M6_A02_CURRENT_HASH_24_PLAYER_FACTS_R3_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a02-current-hash-facts.mjs": "6c3cbb407f20197e42535e3e15f1bfe9bc51ed40fd45772863323a25511f1919",
+    "tools/rc6/harness/run-m6-a02-current-hash-raid-short-window.mjs": "5acad9a18430fec63a68d8a5e1bb95e28a1744cf03c0369c68645b859e2f2796"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "84bdfb8526d20b94c1541ffa36fd2452b8d846a0deaf756688676a03158864df"
+  ],
+  "invalidatedObjectHashes": [
+    "0bcacd16464936a8f06033f68a3fe5170bccc0c63c691bcc860740a01bddaac3"
+  ],
+  "details": {
+    "sourceReportHash": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "caseCount": 24,
+    "decisionCount": 750,
+    "reportAuditPassedCount": 24,
+    "failedCount": 0,
+    "humanVerdicts": "NOT_FILLED",
+    "nextExitCondition": "regenerate_current_hash_blind_package_and_complete_two_independent_8_case_reviews"
+  },
+  "reason": "Recaptured all 24 PLAYER fact cases after the Report alive/combatReady correction; previous facts were invalidated by source hash change.",
+  "recordedAt": "2026-08-09T19:08:43.586Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "2b87a70b7dacc1f58de18f9ac6cc30c31e8034b6e74fc4ad8bf4ce1e55543b88"
+}

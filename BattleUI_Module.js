@@ -9996,7 +9996,7 @@ class BattleUIComponent {
               ? `<ul>${alternatives.map(candidate => `
                   <li><b>${htmlEscapeText(candidate?.name || '替代动作')}</b>${candidate?.reason ? `：${htmlEscapeText(candidate.reason)}` : ''}</li>
                 `).join('')}</ul>`
-              : '<p>没有登记可比较的替代动作。</p>';
+              : `<p>${htmlEscapeText(row?.comparisonEvidence?.alternativeSummary || '没有登记可比较的替代动作。')}</p>`;
             return `
               <article class="battle-report-decision-explanation">
                 <header><span>第${Math.max(0, Number(row?.round || 0))}回合 · ${htmlEscapeText(row?.actorName || '行动者')}</span><b>${htmlEscapeText(selected?.name || '未记录动作')}</b></header>

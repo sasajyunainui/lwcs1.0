@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 147,
+  "previousEventHash": "d101320ca8355bfbd5bf908ae08f7e24127654899fa9b68dafa5a844f8bc21ab",
+  "milestoneId": "M5",
+  "taskId": "M5-P02-TARGET-KERNEL-CANONICALIZATION",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "cbb02b44a8015bf8fb852dd258bc305b78566a9498ff3e6dcd31837d642150b4",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "965f16d0f271c23a5cec69eb0b1fdd3e1ba600da2996af0268f6b5c95a4a63f4",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m5-p03-transaction-profile.mjs": "017061cbd77da2ffeab910667ce936ed9c165816494c4dcdc5db5affeb3747bc"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/KernelReferenceCasesV2.json": "7c21524c48b008d96661a1d14827b67b81b956c9c76cd59caca6eab1d7e369b3"
+  },
+  "acceptedObjectHashes": [
+    "721a1775c6d6767f38566c1dbeef7bd2593a367856827fe8246cd3f63f557f54"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": "M5_TARGET_KERNEL_CANONICALIZATION_REQUIRED",
+    "nextExitCondition": "Implement transaction-owned immutable mechanical-entry raw views and component signatures; prove field-level equality and at least 30 percent worst-decision end-to-end gain before any full 7v7",
+    "executionDecision": "P02_RETARGET_AFTER_FUNCTION_PROFILE",
+    "full7v7Allowed": false,
+    "activeAgents": [],
+    "activeProcesses": []
+  },
+  "reason": "Normalize reducer state after hotspot direction correction; S4 branch delta is not the current dominant path",
+  "recordedAt": "2026-08-09T11:33:03.060Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "c6e5b1c1f67e189e67d2fe8da2fec4bc9fbb04d9046e7dc8e0059cd8469b1ecc"
+}

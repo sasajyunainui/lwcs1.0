@@ -204,6 +204,32 @@ function runCase(caseId, sourceOverride) {
   if (text(player?.sourceDraftHash) !== text(draft?.draftHash)) failures.push('REPORT_DRAFT_HASH_MISMATCH');
   if (player?.decisionExplanations?.length !== player?.projectedDecisionCount &&
       player?.projectedDecisionCount !== undefined) failures.push('DECISION_COUNT_MISMATCH');
+  if (Number(player?.aiStructuredSummary?.actualRoundCount) !== Number(player?.actualRoundCount)) {
+    failures.push('REPORT_AI_SUMMARY_ROUND_COUNT_MISMATCH');
+  }
+  for (const side of ['player', 'enemy']) {
+    const metric = player?.finalResult?.sides?.[side]?.metric || {};
+    const units = Array.isArray(player?.finalResult?.sides?.[side]?.units)
+      ? player.finalResult.sides[side].units
+      : [];
+    const expectedAlive = units.filter(unit =>
+      Number(unit?.hp || 0) > 0 && !/死亡/iu.test(text(unit?.actionState))
+    ).length;
+    const expectedCombatReady = units.filter(unit =>
+      Number(unit?.hp || 0) > 0 && !/死亡|失去战斗力|昏迷/iu.test(text(unit?.actionState))
+    ).length;
+    if (Number(metric?.alive) !== expectedAlive) {
+      failures.push(`REPORT_FACT_INCONSISTENCY:ALIVE_COUNT:${side}`);
+    }
+    if (Number(metric?.combatReady) !== expectedCombatReady) {
+      failures.push(`REPORT_FACT_INCONSISTENCY:COMBAT_READY_COUNT:${side}`);
+    }
+    units.forEach((unit, index) => {
+      if (Number(unit?.hp || 0) <= 0 && /^(?:ACTIVE|READY|战斗)$/iu.test(text(unit?.actionState))) {
+        failures.push(`REPORT_FACT_INCONSISTENCY:HP_ZERO_ACTIVE_STATE:${side}:${index}`);
+      }
+    });
+  }
   if (numericTokenFailures(player).length) failures.push(...numericTokenFailures(player));
   const visibleText = collectVisibleText(player);
   forbiddenVisiblePatterns.forEach((pattern, index) => {

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 202,
+  "previousEventHash": "2876830c76acd207907fb35d39216879ca97821142ffce924b780262177aba71",
+  "milestoneId": "M6",
+  "taskId": "M6-A02-24-PLAYER-FACTS-R2",
+  "eventType": "M6_A02_CURRENT_HASH_24_PLAYER_FACTS_R2_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "83ac325ecd8e4913bdc27487510231b1615a3c8b6399a4c1298e33ad60b915b6",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m6-a02-current-hash-facts.mjs": "6c3cbb407f20197e42535e3e15f1bfe9bc51ed40fd45772863323a25511f1919",
+    "tools/rc6/harness/run-m6-a02-current-hash-raid-short-window.mjs": "5acad9a18430fec63a68d8a5e1bb95e28a1744cf03c0369c68645b859e2f2796"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "0bcacd16464936a8f06033f68a3fe5170bccc0c63c691bcc860740a01bddaac3"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "reportSourceHash": "83ac325ecd8e4913bdc27487510231b1615a3c8b6399a4c1298e33ad60b915b6",
+    "nonRaid": {
+      "cases": 20,
+      "decisions": 551,
+      "reportAuditPassed": 20,
+      "failed": 0,
+      "artifactHash": "ca13de8daef8c096b1f1368aeda567bd94c9ad541ac6a1cdaf539fe5c9b399c6"
+    },
+    "raidShortWindow": {
+      "cases": 4,
+      "decisions": 199,
+      "reportAuditPassed": 4,
+      "failed": 0,
+      "artifactHash": "ca56363ee851b6824f12ece93e86f66475e0c15470f7fc474642fba02135d060"
+    },
+    "total": {
+      "cases": 24,
+      "decisions": 750,
+      "reportAuditPassed": 24,
+      "failed": 0
+    },
+    "humanVerdicts": "NOT_FILLED",
+    "fullFiveRoundJudgment": "DEFERRED_TO_M5",
+    "nextExitCondition": "regenerate_current_hash_blind_package_and_complete_two_independent_8_case_reviews"
+  },
+  "reason": "Current_hash_24_player_facts_recaptured_after_report_fix",
+  "recordedAt": "2026-08-09T18:24:22.095Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "1e529bdc943b0afec98c8ae94f334b617295ddcb079115ef9b73c714b0d07776"
+}

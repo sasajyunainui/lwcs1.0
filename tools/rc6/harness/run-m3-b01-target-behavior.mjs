@@ -190,6 +190,13 @@ function playerReading(reportDto = {}) {
     ? reportDto.exchanges
     : [];
   const finalSummary = reportDto?.finalSummary || {};
+  const exchangeReadings = exchanges.map(exchange => ({
+    text: stringValue(exchange?.text),
+    responseSummary: stringValue(exchange?.responseSummary),
+    resultSummary: stringValue(exchange?.resultSummary),
+    continuationSummary: stringValue(exchange?.continuationSummary),
+  }));
+  const decisionReadings = decisions.map(playerDecisionReading);
   return {
     headline: stringValue(reportDto?.battleHeadline),
     finalSummaryText: stringValue(finalSummary?.text),
@@ -202,14 +209,10 @@ function playerReading(reportDto = {}) {
       : [],
     exchangeCount: exchanges.length,
     exchangeTextSamples: [
-      ...exchanges.slice(0, 2),
-      ...(exchanges.length > 2 ? [exchanges.at(-1)] : []),
-    ].map(exchange => ({
-      text: stringValue(exchange?.text),
-      responseSummary: stringValue(exchange?.responseSummary),
-      resultSummary: stringValue(exchange?.resultSummary),
-      continuationSummary: stringValue(exchange?.continuationSummary),
-    })),
+      ...exchangeReadings.slice(0, 2),
+      ...(exchangeReadings.length > 2 ? [exchangeReadings.at(-1)] : []),
+    ],
+    exchangeReadings,
     decisionExplanationCount: decisions.length,
     decisionExplanationsWithAlternatives: decisions.filter(decision =>
       Array.isArray(decision?.alternatives) && decision.alternatives.length > 0,
@@ -221,10 +224,11 @@ function playerReading(reportDto = {}) {
       Array.isArray(decision?.actual?.numericTokens) &&
       decision.actual.numericTokens.length > 0,
     ).length,
+    decisionReadings,
     decisionSamples: [
-      ...decisions.slice(0, 2),
-      ...(decisions.length > 2 ? [decisions.at(-1)] : []),
-    ].map(playerDecisionReading),
+      ...decisionReadings.slice(0, 2),
+      ...(decisionReadings.length > 2 ? [decisionReadings.at(-1)] : []),
+    ],
     aiReportSample: stringValue(reportDto?.aiReport).slice(0, 4000),
   };
 }

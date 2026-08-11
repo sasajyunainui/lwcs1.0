@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 214,
+  "previousEventHash": "a04fb436d4befbae4211c4627a6be399e2ac733a72f5e28ae6337366b6612341",
+  "milestoneId": "M6",
+  "taskId": "M6-A05-BLIND-REVIEW-R2",
+  "eventType": "M6_EXECUTION_DIRECTION_CORRECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "m5": "DEFERRED_NON_BLOCKING",
+    "m6": "CRITICAL_PATH",
+    "formalPerformance": "FINAL_R9V2_ONLY_AFTER_BEHAVIOR_REPORT_FREEZE",
+    "legacyR8Full7v7": "NOT_RUN",
+    "shadowLong7v7": "HISTORICAL_DIAGNOSTIC_ONLY",
+    "next": "COMPLETE_TWO_INDEPENDENT_BLIND_REVIEW_PASSES"
+  },
+  "reason": "M5 performance debt does not prevent current M6 behavior/report acceptance; remove it from the critical path and reserve formal timing for the frozen final r9v2 transaction.",
+  "recordedAt": "2026-08-09T19:36:33.058Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "e16f178797c7f927016542805e597058671106fb997dbf38ec8ae8dbc3b828ea"
+}

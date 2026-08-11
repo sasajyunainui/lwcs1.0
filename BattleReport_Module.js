@@ -151,6 +151,12 @@
     return String(value ?? '').trim();
   }
 
+  function compareUtf16(left = '', right = '') {
+    const leftText = text(left);
+    const rightText = text(right);
+    return leftText < rightText ? -1 : leftText > rightText ? 1 : 0;
+  }
+
   function number(value, fallback = 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -532,6 +538,7 @@
   function eventNumberToken(event, label, value, unit, sourceType, operation, visibilityMode, extra = {}) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return null;
+    const deriveStatePair = extra?.deriveStatePair === true;
     const displayName = text(label);
     const displayUnit = text(unit);
     const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
@@ -555,7 +562,7 @@
       event?.afterValue,
       meta?.afterValue,
     );
-    const hasStatePair = before !== null && after !== null && before !== after;
+    const hasStatePair = deriveStatePair && before !== null && after !== null && before !== after;
     const isDecreaseFact = /伤害|损耗|吸收|消耗/.test(displayName) ||
       (text(sourceType) === 'SETTLEMENT' && displayUnit === 'HP');
     const derivedOperands = hasStatePair
@@ -595,7 +602,7 @@
         : {}),
       derivationRule: text(extra?.derivationRule) || derivedRule,
       tacticalConsequence: `用于说明${displayName}对当前战斗的实际影响`,
-      ...extra,
+      ...Object.fromEntries(Object.entries(extra).filter(([key]) => key !== 'deriveStatePair')),
     };
   }
 
@@ -610,7 +617,9 @@
     };
     const appliedDamage = number(event?.appliedDamage ?? meta?.appliedDamage ?? event?.damage ?? meta?.damage, NaN);
     if (Number.isFinite(appliedDamage) && appliedDamage > 0 && ['hit_result', 'state_tick', 'reflect_damage', 'self_damage'].includes(kind)) {
-      push(eventNumberToken(event, '最终伤害', appliedDamage, 'HP', 'SETTLEMENT', 'SET', visibilityMode));
+      push(eventNumberToken(event, '最终伤害', appliedDamage, 'HP', 'SETTLEMENT', 'SET', visibilityMode, {
+        deriveStatePair: true,
+      }));
     }
     const delta = number(event?.delta ?? meta?.delta, NaN);
     if (Number.isFinite(delta) && delta !== 0 && kind === 'resource_change') {
@@ -625,7 +634,9 @@
       push(eventNumberToken(event, '护盾增加', shieldAmount, '护盾', 'SHIELD', 'ADD', visibilityMode));
     }
     if (kind === 'shield_break' && Number.isFinite(shieldAmount) && shieldAmount > 0) {
-      push(eventNumberToken(event, '护盾损耗', shieldAmount, '护盾', 'SHIELD', 'SUBTRACT', visibilityMode));
+      push(eventNumberToken(event, '护盾损耗', shieldAmount, '护盾', 'SHIELD', 'SUBTRACT', visibilityMode, {
+        deriveStatePair: true,
+      }));
       const remainingShield = number(meta?.remainingShield, NaN);
       if (Number.isFinite(remainingShield) && remainingShield >= 0) {
         push(eventNumberToken(event, '剩余护盾', remainingShield, '护盾', 'SHIELD', 'SET', visibilityMode));
@@ -633,7 +644,9 @@
     }
     const shieldAbsorb = number(meta?.shieldAbsorb, NaN);
     if (Number.isFinite(shieldAbsorb) && shieldAbsorb > 0) {
-      push(eventNumberToken(event, '护盾吸收', shieldAbsorb, '护盾', 'SHIELD', 'SUBTRACT', visibilityMode));
+      push(eventNumberToken(event, '护盾吸收', shieldAbsorb, '护盾', 'SHIELD', 'SUBTRACT', visibilityMode, {
+        deriveStatePair: true,
+      }));
     }
     const damageMultiplier = number(meta?.damageMultiplier, NaN);
     if (Number.isFinite(damageMultiplier) && damageMultiplier >= 0 && damageMultiplier <= 1 && ['defend', 'guard'].includes(kind)) {
@@ -734,6 +747,21 @@
       '位移执行': '位置调整',
     };
     return labels[raw] || raw;
+  }
+
+  function playerActionStateName(value = '', directory = new Map()) {
+    const raw = playerSafeText(value, directory);
+    const labels = {
+      ACTIVE: '战斗',
+      READY: '战斗',
+      UNCONSCIOUS: '昏迷',
+      INCAPACITATED: '失去战斗力',
+      DEAD: '死亡',
+      SUBDUED: '被制服',
+      CONTROLLED: '受控制',
+      UNAVAILABLE: '暂时无法行动',
+    };
+    return labels[raw.toUpperCase()] || raw;
   }
 
   function playerStateDescription(event = {}, directory = new Map()) {
@@ -2275,6 +2303,7 @@
   function rejectionReasonPlayerText(reasonCode = '') {
     const code = text(reasonCode);
     if (!code) return '';
+    if (/^R9V2_/i.test(code)) return '当前公开条件下未满足这条回应路线';
     return text(r8RejectionChecks[code]?.player) || rejectionReasonText(code);
   }
 
@@ -2322,6 +2351,8 @@
           discardedOverkillPP: number(candidate?.vector?.discardedOverkillPP, 0),
         },
         publicProjection: {
+          scope: text(goalProjection?.scope),
+          sourceType: text(goalProjection?.sourceType),
           expectedCandidateUtility,
           expectedNoOpUtility,
           goalUtilityDelta: expectedCandidateUtility - expectedNoOpUtility,
@@ -3351,6 +3382,13 @@
         actorName: publicEntityName(directory, item.decision?.actorId, item.decision?.actorId),
         isPrimary: item === primary,
         kind: decisionKindOf(item.decision),
+        /* 只供本次构建内部按决策归属事实；projectNarrativeChainForVisibility 会丢弃这些字段。 */
+        anchorFactId: text(item.anchor?.factId),
+        anchorEventKind: text(rawEventOf(item.anchor?.factId)?.eventKind || item.anchor?.eventKind),
+        anchorActionId: text(rawEventOf(item.anchor?.factId)?.actionId || item.anchor?.actionId),
+        anchorSourceActionId: text(
+          rawEventOf(item.anchor?.factId)?.sourceActionId || item.anchor?.sourceActionId,
+        ),
         trace: adaptDecisionTrace(item.decision, directory),
         lostOpportunityReason: item.decision?.lostOpportunity?.reasonCode
           ? playerSafeText(
@@ -3791,6 +3829,13 @@
     const id = publicEntityId(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称);
     const name = publicEntityName(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称, unit?.name || unit?.名称);
     const hidePrivateResources = visibilityMode !== 'DEVELOPER' && side === 'enemy';
+    const hp = number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0);
+    const rawActionState = text(
+      unit?.actionState || unit?.__战斗失能原因 || unit?.行动状态,
+    );
+    const actionState = hp <= 0 && !/(?:DEAD|UNCONSCIOUS|INCAPACITATED|SUBDUED|CONTROLLED|UNAVAILABLE|死亡|昏迷|失去战斗力|被制服|受控制|暂时无法行动)/iu.test(rawActionState)
+      ? 'INCAPACITATED'
+      : (rawActionState || 'ACTIVE');
     const states = Array.isArray(unit?.状态效果)
       ? unit.状态效果.map(state => text(state?.name || state?.状态 || state?.状态名称)).filter(Boolean)
       : Object.entries(unit?.状态效果 || {}).map(([stateKey, state]) =>
@@ -3800,7 +3845,7 @@
       id,
       name,
       side,
-      hp: number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0),
+      hp,
       hpMax: Math.max(1, number(unit?.hp_max ?? unit?.HP上限 ?? unit?.属性?.HP上限, 1)),
       shield: Math.max(0, number(unit?.shield ?? unit?.护盾, 0)),
       resourceVisibility: hidePrivateResources ? 'HIDDEN' : 'PUBLIC',
@@ -3812,7 +3857,10 @@
         stamina: number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0),
         staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
       },
-      actionState: text(unit?.actionState || unit?.__战斗失能原因 || unit?.行动状态 || '战斗'),
+      actionState: playerActionStateName(
+        actionState,
+        directory,
+      ),
       states: unique(states.map(state => playerStateName(state, directory))),
       summon: !!text(unit?.召唤键 || unit?.单位性质),
       hostName: playerSafeText(unit?.宿主名, directory),
@@ -4147,7 +4195,10 @@
   }
 
   function sideMetric(units = [], includeResources = true) {
-    const alive = units.filter(unit => unit.hp > 0 && !/死亡|失去战斗力|昏迷/.test(unit.actionState)).length;
+    const alive = units.filter(unit => unit.hp > 0 && !/死亡/.test(unit.actionState)).length;
+    const combatReady = units.filter(unit =>
+      unit.hp > 0 && !/死亡|失去战斗力|昏迷/.test(unit.actionState)
+    ).length;
     const hpRatio = units.length
       ? units.reduce((sum, unit) => sum + unit.hp / Math.max(1, unit.hpMax), 0) / units.length
       : 0;
@@ -4161,10 +4212,11 @@
       : null;
     return {
       alive,
+      combatReady,
       total: units.length,
       hpRatio,
       resourceRatio,
-      score: alive * 100 + hpRatio * 60 + (resourceRatio === null ? 0 : resourceRatio * 20),
+      score: combatReady * 100 + hpRatio * 60 + (resourceRatio === null ? 0 : resourceRatio * 20),
     };
   }
 
@@ -4269,7 +4321,8 @@
         ? '我方当前公开生命状态更有利'
         : '敌方当前公开生命状态更有利';
     const advantage =
-      `存活人数（我方${playerMetric.alive}/${playerMetric.total}，敌方${enemyMetric.alive}/${enemyMetric.total}）；` +
+      `存活人数（HP仍大于0：我方${playerMetric.alive}/${playerMetric.total}，敌方${enemyMetric.alive}/${enemyMetric.total}）；` +
+      `可行动人数（未死亡、未失去战斗力或昏迷：我方${playerMetric.combatReady}/${playerMetric.total}，敌方${enemyMetric.combatReady}/${enemyMetric.total}）；` +
       `平均生命比例（我方${playerAverageHp}%，敌方${enemyAverageHp}%）；${publicRelation}`;
     const recent = roundOverview.slice(-2);
     const recentPlayerDamage = recent.reduce((sum, row) => sum + number(row?.damageBySide?.player, 0), 0);
@@ -4497,7 +4550,7 @@
       number(rightVector?.assetReserve, 0) - number(leftVector?.assetReserve, 0) ||
       number(leftVector?.worstTailLossHEPP, 0) - number(rightVector?.worstTailLossHEPP, 0) ||
       number(leftVector?.discardedOverkillPP, 0) - number(rightVector?.discardedOverkillPP, 0) ||
-      text(left?.candidateId).localeCompare(text(right?.candidateId));
+      compareUtf16(left?.candidateId, right?.candidateId);
   }
 
   function publicAlternativeDistance(left = {}, right = {}) {
@@ -4568,6 +4621,9 @@
     if (!publicEvidenceAvailable) return [];
     const round = value => Number(number(value, 0).toFixed(4));
     const selectedIsIncomingMitigation = isIncomingMitigationAction(selectedCandidate?.actionKind);
+    const selectedProjection = selectedCandidate?.publicProjection || {};
+    const immediateMechanicalProjection =
+      text(selectedProjection?.scope).toUpperCase() === 'IMMEDIATE_MECHANICAL';
     const token = ({ key, label, value, unit, subject, operation, operands, rule, consequence }) => {
       const sourceFactId = `${explanationId}:prediction:${key}`;
       return {
@@ -4577,7 +4633,9 @@
         value: round(value),
         unit,
         subject,
-        sourceName: '决策时公开路线推演',
+        sourceName: immediateMechanicalProjection
+          ? '行动时公开机械事实'
+          : '决策时公开路线推演',
         sourceType: 'DECISION_TIME_PUBLIC_PROJECTION',
         operation,
         sourceEventId: explanationId,
@@ -4592,23 +4650,36 @@
         tacticalConsequence: consequence,
       };
     };
-    const selectedProjection = selectedCandidate?.publicProjection || {};
     const selectedGoal = number(selectedProjection?.expectedCandidateUtility, 0);
     const noOpGoal = number(selectedProjection?.expectedNoOpUtility, 0);
     const goalDelta = selectedGoal - noOpGoal;
-    const selectedGoalLabel = selectedIsIncomingMitigation
+    const selectedGoalLabel = immediateMechanicalProjection
+      ? '相对不行动的即时公开目标进度'
+      : selectedIsIncomingMitigation
       ? '相对不应对的来袭损失改善'
       : '相对不行动的目标推进';
-    const selectedGoalOperand = selectedIsIncomingMitigation
+    const selectedGoalOperand = immediateMechanicalProjection
+      ? '所选方案的即时公开目标进度'
+      : selectedIsIncomingMitigation
       ? '所选应对方案的目标结果预估'
       : '所选方案的目标轨迹预估';
-    const noOpGoalOperand = selectedIsIncomingMitigation
+    const noOpGoalOperand = immediateMechanicalProjection
+      ? '不行动的即时公开目标进度'
+      : selectedIsIncomingMitigation
       ? '不应对的目标结果预估'
       : '不行动的目标轨迹预估';
-    const selectedGoalRule = selectedIsIncomingMitigation
+    const selectedGoalRule = immediateMechanicalProjection
+      ? '所选方案的即时公开目标进度 - 不行动的即时公开目标进度'
+      : selectedIsIncomingMitigation
       ? '所选应对方案的目标结果预估 - 不应对的目标结果预估'
       : '所选方案的目标轨迹预估 - 不行动的目标轨迹预估';
-    const selectedGoalConsequence = selectedIsIncomingMitigation
+    const selectedGoalConsequence = immediateMechanicalProjection
+      ? goalDelta > 0
+        ? '正值表示按行动当时可见的机械事实直接推进当前目标；不含后续路线价值'
+        : goalDelta < 0
+          ? '负值表示按行动当时可见的机械事实使当前目标进度倒退；不含后续路线价值'
+          : '表示这次行动没有直接改变公开目标进度；其后续控制、资源或路线价值另行判断'
+      : selectedIsIncomingMitigation
       ? goalDelta > 0
         ? '正值表示预计减少来袭造成的损失或失败风险'
         : goalDelta < 0
@@ -4815,9 +4886,24 @@
         const steps = Array.isArray(node?.settlement?.steps) ? node.settlement.steps : [];
         const primaryDecision = row?.isPrimary === true ||
           (!Object.hasOwn(row, 'isPrimary') && actorId === text(node?.actorId));
+        const anchorFactId = text(row?.anchorFactId);
+        const anchorEventKind = text(row?.anchorEventKind);
+        const anchorActionId = text(row?.anchorActionId);
+        const actionScopedAnchor =
+          ['action_start', 'charge_start'].includes(anchorEventKind) &&
+          Boolean(anchorActionId);
+        const stepBelongsToDecision = step => {
+          if (actionScopedAnchor) {
+            return [step?.actionId, step?.sourceActionId]
+              .map(text)
+              .some(actionId => actionId === anchorActionId);
+          }
+          return anchorFactId ? text(step?.factId) === anchorFactId : true;
+        };
         const ownedSteps = steps.filter(step => {
           const stepActorId = text(step?.actorId);
           const eventKind = text(step?.eventKind);
+          if (!stepBelongsToDecision(step)) return false;
           if (decisionKind === 'LOST_OPPORTUNITY') {
             return stepActorId === actorId &&
               ['lost_opportunity', 'blocked_action'].includes(eventKind);
@@ -4878,6 +4964,23 @@
             : {}),
         }));
         const firstComparison = text(comparisonRows[0]?.comparison?.reason);
+        const selectedCandidateId = text(selectedCandidate?.candidateId);
+        const otherConsideredCandidates = consideredCandidates.filter(candidate =>
+          text(candidate?.candidateId) !== selectedCandidateId,
+        );
+        const publicCandidateLabel = hideEnemyPrivateCandidates
+          ? '当前可公开说明且机械合法的候选'
+          : '当前公开且机械合法的候选';
+        const alternativeSummary = [
+          'PLAYER_LOCKED',
+          'FORCED',
+          'LOST_OPPORTUNITY',
+          'DECLINED',
+        ].includes(decisionKind) || comparisonRows.length
+          ? ''
+          : otherConsideredCandidates.length
+            ? `另有${otherConsideredCandidates.length}项${publicCandidateLabel}已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。`
+            : `${publicCandidateLabel}中，没有另一项可行动作可供比较。`;
         let selectionReason;
         if (decisionKind === 'PLAYER_LOCKED') {
           selectionReason = `玩家锁定了${selectedName}；系统只检查动作是否合法，没有改用AI候选`;
@@ -4888,18 +4991,13 @@
         } else if (decisionKind === 'DECLINED') {
           selectionReason = `放弃本次回应机会；${firstComparison || '没有可兑现的回应收益'}`;
         } else if (trace?.wasOptimal === false) {
-          selectionReason = `当前仍有多个可行方案，选择了${selectedName}；${firstComparison || '公开信息下无法进一步区分这些方案的取舍'}`;
+          selectionReason = `当前仍有多个可行方案，选择了${selectedName}；${firstComparison || alternativeSummary || '公开信息下无法进一步区分这些方案的取舍'}`;
         } else if (trace?.selectedTiedAtTop === true && number(trace?.topRankedTieCount, 0) > 1) {
-          selectionReason = `${selectedName}与${number(trace.topRankedTieCount, 0) - 1}个方案在当前公开评估中并列最高，本次选择了该方案；${firstComparison || '并列方案的目标推进、风险和资源取舍相同'}`;
+          selectionReason = `${selectedName}与${number(trace.topRankedTieCount, 0) - 1}个方案在当前公开评估中并列最高，本次选择了该方案；${firstComparison || alternativeSummary || '并列方案的目标推进、风险和资源取舍相同'}`;
         } else if (firstComparison) {
           selectionReason = `选择${selectedName}；相较主要替代项，${firstComparison}`;
         } else {
-          const hasOtherConsideredCandidates = candidates.some(candidate =>
-            text(candidate?.status).toUpperCase() === 'CONSIDERED',
-          );
-          selectionReason = hasOtherConsideredCandidates
-            ? `选择${selectedName}；当前公开情况没有留下需要并列说明的另一条路线`
-            : `选择${selectedName}；没有其他可行替代项`;
+          selectionReason = `选择${selectedName}；${alternativeSummary}`;
         }
         const explanationId = `decision-explanation:${++explanationIndex}:${text(node?.chainId) || 'unknown'}`;
         const publicEvidenceAvailable = decisionKind !== 'LOST_OPPORTUNITY' &&
@@ -4976,6 +5074,7 @@
               reason: candidate.reason,
             })),
             explanation: selectionReason,
+            alternativeSummary,
           },
           predicted: {
             publicEvidenceAvailable,
@@ -4999,6 +5098,15 @@
     });
   }
 
+  function publicFactReference(value = '', prefix = '事实') {
+    const raw = text(value);
+    if (!raw) return '';
+    const digest = text(runtime.hashBattleValue(raw))
+      .replace(/[^0-9a-z]/gi, '')
+      .slice(-8);
+    return `${prefix}-${digest || '已记录'}`;
+  }
+
   function publicNumericToken(token = {}) {
     return {
       displayName: text(token?.displayName || token?.label),
@@ -5008,8 +5116,8 @@
       sourceName: text(token?.sourceName || '战斗事实'),
       sourceType: text(token?.sourceType || 'SETTLEMENT'),
       operation: text(token?.operation || 'SET'),
-      sourceEventId: text(token?.sourceEventId),
-      sourceFactId: text(token?.sourceFactId),
+      sourceEventId: publicFactReference(token?.sourceEventId, '事件'),
+      sourceFactId: publicFactReference(token?.sourceFactId, '事实'),
       operands: (Array.isArray(token?.operands) ? token.operands : [])
         .filter(operand => Number.isFinite(Number(operand?.value)))
         .map(operand => ({
@@ -5150,6 +5258,7 @@
     const result = cloneValue(summary || {});
     delete result.canonicalFactIds;
     delete result.pipelineStats;
+    delete result.terminalInterruptions;
     if (result.terminalResult) result.terminalResult = publicTerminalResult(result.terminalResult);
     return result;
   }
@@ -5174,7 +5283,7 @@
       schemaVersion: 'AIPlayerSummaryV1',
       headline: text(summary?.headline || summary?.outcomeSummary),
       outcomeSummary: text(summary?.outcomeSummary || summary?.text),
-      actualRoundCount: Math.max(0, number(summary?.round, 0)),
+      actualRoundCount: Math.max(0, number(summary?.roundCount, 0)),
       sides: {
         player: (summary?.sides?.player?.units || []).map(compactUnit),
         enemy: (summary?.sides?.enemy?.units || []).map(compactUnit),
@@ -5196,9 +5305,9 @@
     };
   }
 
-  function publicDecisionExplanation(explanation = {}) {
+  function publicDecisionExplanation(explanation = {}, index = 0) {
     return {
-      decisionId: text(explanation?.explanationId),
+      decisionId: `决策-${index + 1}`,
       round: Math.max(0, number(explanation?.round, 0)),
       actorName: text(explanation?.actorName),
       decisionKind: text(explanation?.decisionKind),
@@ -5219,6 +5328,7 @@
       futurePoolTradeoffs: [...(explanation?.futurePoolTradeoffs || [])].map(text).filter(Boolean),
       comparisonEvidence: {
         explanation: text(explanation?.comparisonEvidence?.explanation),
+        alternativeSummary: text(explanation?.comparisonEvidence?.alternativeSummary),
       },
       predicted: {
         publicEvidenceAvailable: explanation?.predicted?.publicEvidenceAvailable === true,
@@ -5255,7 +5365,7 @@
       roundSummaries: roundOverview,
       roundOverview,
       decisionExplanations: (Array.isArray(report?.decisionExplanations) ? report.decisionExplanations : [])
-        .map(publicDecisionExplanation),
+        .map((explanation, index) => publicDecisionExplanation(explanation, index)),
       realizedOutcomes: exchanges,
       resourceTimeline: roundOverview.map(row => ({
         round: row.round,
@@ -5561,19 +5671,30 @@
         const resourceToken = text(token?.sourceType) === 'RESOURCE';
         const genericResourceLabel = text(token?.label) === '资源变化';
         const expectedResourceLabel = resourceTokenLabelFromParts(token?.unit, token?.operation);
+        const numericLabel = text(token?.label);
+        const numericOperation = text(token?.operation);
+        const expectedDirectOperation = new Map([
+          ['成功率', 'SET'],
+          ['随机值', 'SET'],
+          ['持续时间', 'SET'],
+          ['护盾增加', 'ADD'],
+          ['剩余护盾', 'SET'],
+        ]).get(numericLabel);
         if (
           (resourceToken && eventKind !== 'resource_change') ||
           (resourceToken && text(token?.label) !== expectedResourceLabel) ||
           (genericResourceLabel && (!resourceToken || eventKind !== 'resource_change')) ||
-          (text(token?.label) === '物品数量变化' && eventKind !== 'item_consume')
+          (numericLabel === '物品数量变化' && eventKind !== 'item_consume') ||
+          (expectedDirectOperation && numericOperation !== expectedDirectOperation)
         ) {
           pushFatal('REPORT_NUMBER_SEMANTIC_MISMATCH', {
             factId,
             tokenIndex,
             eventKind,
-            label: text(token?.label),
+            label: numericLabel,
             expectedLabel: resourceToken ? expectedResourceLabel : '',
-            operation: text(token?.operation),
+            operation: numericOperation,
+            expectedOperation: expectedDirectOperation || '',
           });
         }
       });
@@ -5615,6 +5736,13 @@
           index,
         });
       }
+      const actualFactIds = new Set(
+        (Array.isArray(explanation?.actual?.factIds)
+          ? explanation.actual.factIds
+          : [])
+          .map(text)
+          .filter(Boolean),
+      );
       (Array.isArray(explanation?.actual?.numericTokens)
         ? explanation.actual.numericTokens
         : []
@@ -5626,6 +5754,15 @@
             index,
             tokenIndex,
             factId,
+          });
+        }
+        if (factId && actualFactIds.size && !actualFactIds.has(factId)) {
+          pushFatal('REPORT_FACT_OWNER_CONFLICT', {
+            reason: 'DECISION_NUMBER_FACT_OUT_OF_SCOPE',
+            index,
+            tokenIndex,
+            factId,
+            actualFactIds: [...actualFactIds],
           });
         }
       });

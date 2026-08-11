@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 180,
+  "previousEventHash": "e09bf63afb879c5ca15384cc2831ed36941bfb592dab682b2d02b6596a55b11d",
+  "milestoneId": "M6",
+  "taskId": "M6-A03-PLAYER-READ-24-CASES",
+  "eventType": "TASK_STATUS_UPDATED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0883e54a3a31e097880fa8ed81416559196bd6bbb053928d221e6a9dc91ffa19",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "008e567151054b48e131a2d6cdf39469ac438fde1eb9ba146b4cd91ba2724b19",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": null,
+    "nextExitCondition": "read_all_player_readings_then_select_8_deep_review_cases",
+    "manualReview": {
+      "status": "IN_PROGRESS",
+      "factsReady": true,
+      "verdictsMustBeAddedByReviewer": true
+    },
+    "performance": "M5_BLOCKED_DEFERRED"
+  },
+  "reason": "Keep the parent TASK on the corrected M6-A03 path after current-hash recapture; the next gate is manual PLAYER reading, not M0 or performance.",
+  "recordedAt": "2026-08-09T15:53:47.920Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "8e703ebe803ecd3f3df0f17c96150eb65e4b7426e4ccd70c7815b201e2a9eb47"
+}

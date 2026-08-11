@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 176,
+  "previousEventHash": "14c98b6d6f1eab3449ef222e8262ac1d2b61ca6225414501dcb29a7d34a54084",
+  "milestoneId": "M6",
+  "taskId": "M6-A02-FULL-PLAYER-READING-CAPTURE",
+  "eventType": "EVIDENCE_INVALIDATED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "0883e54a3a31e097880fa8ed81416559196bd6bbb053928d221e6a9dc91ffa19",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "0a500beb8bc9cd0c85cf021673f9b16447cca8e105232f805d7b579799435baa",
+    "BattleUI_Module.js": "92ebb4e82925c5db7f9e558b874ee510ddad8ee34ae9bcb2d7ef4d6d68bb34cd",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [
+    "024196f51a81b6872400edf28e3fe9d4a5e4c4a7cac9e670ac09464414dd566c",
+    "3ec7eed8c27eb54bc17cdce36b34aec0484aeda986448b6694234ce8a3df963d",
+    "99e3d4f3b93bdd59c08b3945a0ad922b1713d5a510495a5574120e298345d55b",
+    "9b7d2640a886852f811ad081c8c8d6bf6454aa32fb165af1d3420cf2235c5727"
+  ],
+  "details": {
+    "reasonCode": "REPORT_DECISION_FACT_OWNERSHIP_FIX",
+    "oldCoverage": "full_player_capture_before_action_anchor_scoping",
+    "newCoverage": "full_player_capture_after_action_anchor_scoping",
+    "affectedLayer": "BattleReport decision actual numeric tokens",
+    "confirmedIssue": "same-actor-multi-decision exchange facts were merged",
+    "nextExitCondition": "recapture_current_hash_24_cases_then_validate_no_cross_decision_actual_facts"
+  },
+  "reason": "Report action-anchor ownership fix changed PLAYER actual numeric projection; old M6 facts and prior Report-gate hashes are invalid.",
+  "recordedAt": "2026-08-09T15:22:49.301Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "4be70b035496cc5a2ddd1641ca5e6b0576f79fd2702ebaa68fec56657e45205c"
+}

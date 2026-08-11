@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 208,
+  "previousEventHash": "44f36a8ce3f4af0bd12161dca681a4560f9bd627b1ba5548e692914d3fca5d22",
+  "milestoneId": "M4",
+  "taskId": "M4-R06-REPORT-ALIVE-COMBAT-READY",
+  "eventType": "MILESTONE_COMPLETED",
+  "status": "COMPLETED",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "tools/rc6/harness/run-m4-r06-report-gate.mjs": "d422fc39f193b291440f4be37fba9e98b58dfc30da1b8203cdfb8f2ba0fa5d57"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "2e3cee7360a3da810321ff68547830ec9605f77fba52537d535afd44d6b74535",
+    "029d7af9491e1165ca010c29c4d66c64bf33995b38d9ed583d21742e21dcb92c",
+    "49df09e29a20282e609b2d799e786e0f22d7aaab2e86c967c0f492226144483e",
+    "700cc4d50f14255bb696afac1df4691c98b70de9e681776fdf2a6144e1ac673f"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "reportHash": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "r02": "PASSED",
+    "r05": "PASSED",
+    "r06": "PASSED",
+    "nextMilestone": "M6",
+    "nextExitCondition": "recapture_current_hash_24_player_facts_and_regenerate_blind_package"
+  },
+  "reason": "M4 Report fix verified by syntax, UI pilot, joint understanding pilot and Report gate.",
+  "recordedAt": "2026-08-09T19:01:44.055Z",
+  "repository": {
+    "branch": "master",
+    "head": "cc01f0d44c3c911a7c9d263f6f5ba9a635c7cf04"
+  },
+  "eventHash": "2f1fb194ef0a9255c7cdba4589f63522062236cc16ad83e4eec680aba7d219e6"
+}

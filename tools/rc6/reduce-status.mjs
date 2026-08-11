@@ -25,11 +25,14 @@ const milestoneIds = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'];
 const milestoneIndex = new Map(milestoneIds.map((id, index) => [id, index]));
 const milestoneStatuses = Object.fromEntries(milestoneIds.map(id => [id, 'PENDING']));
 const completedMilestones = new Set();
+const deferredNonBlockingMilestones = new Set();
 const invalidatedObjectHashes = new Set();
 const acceptedObjectHashes = new Set();
 const malformedEvidenceReferences = new Set();
 const evidenceOwners = new Map();
 const invalidatedMilestones = new Set();
+let nextExitCondition = 'M0-E01 baseline event recorded';
+let strictMilestoneOrder = false;
 const hashPattern = /^[a-f0-9]{64}$/iu;
 const requirePriorMilestones = milestoneId => {
   const index = milestoneIndex.get(milestoneId);
@@ -42,12 +45,26 @@ const clearMilestoneAndDownstream = (milestoneId, includeSelf = true) => {
   const first = includeSelf ? index : index + 1;
   milestoneIds.slice(first).forEach(id => {
     completedMilestones.delete(id);
-    if (milestoneStatuses[id] === 'COMPLETED') milestoneStatuses[id] = 'PENDING';
+    deferredNonBlockingMilestones.delete(id);
+    milestoneStatuses[id] = 'PENDING';
   });
 };
 events.forEach(event => {
+  if (event?.details?.strictMilestoneOrder === true) strictMilestoneOrder = true;
+  const eventNextExitCondition = String(event?.details?.nextExitCondition || '').trim();
+  if (eventNextExitCondition) nextExitCondition = eventNextExitCondition;
   const accepted = Array.isArray(event.acceptedObjectHashes) ? event.acceptedObjectHashes : [];
   const invalidated = Array.isArray(event.invalidatedObjectHashes) ? event.invalidatedObjectHashes : [];
+  const deferredMilestones = Array.isArray(event?.details?.deferredMilestones)
+    ? event.details.deferredMilestones.map(value => String(value))
+    : [];
+  deferredMilestones.forEach(id => {
+    if (!milestoneIndex.has(id)) throw new Error(`RC6_UNKNOWN_MILESTONE:${id}`);
+    if (!completedMilestones.has(id)) {
+      deferredNonBlockingMilestones.add(id);
+      milestoneStatuses[id] = 'DEFERRED_NON_BLOCKING';
+    }
+  });
   accepted.forEach(hash => {
     if (!hashPattern.test(String(hash))) {
       malformedEvidenceReferences.add(String(hash));
@@ -71,6 +88,7 @@ events.forEach(event => {
 
   if (event.eventType === 'MILESTONE_REOPENED' || event.eventType === 'MILESTONE_BLOCKED') {
     clearMilestoneAndDownstream(event.milestoneId, true);
+    deferredNonBlockingMilestones.delete(event.milestoneId);
     invalidatedMilestones.add(event.milestoneId);
     milestoneStatuses[event.milestoneId] = event.eventType === 'MILESTONE_BLOCKED' || event.status === 'BLOCKED'
       ? 'BLOCKED'
@@ -100,12 +118,21 @@ events.forEach(event => {
       }
       completedMilestones.add(event.milestoneId);
       milestoneStatuses[event.milestoneId] = 'COMPLETED';
+      deferredNonBlockingMilestones.delete(event.milestoneId);
       invalidatedMilestones.delete(event.milestoneId);
     }
   }
 
   if (event.eventType === 'MILESTONE_STARTED') {
+    if (strictMilestoneOrder) {
+      const missingDependency = requirePriorMilestones(event.milestoneId)
+        .find(id => !completedMilestones.has(id));
+      if (missingDependency) {
+        throw new Error(`RC6_MILESTONE_START_DEPENDENCY_INVALID:${event.milestoneId}:${missingDependency}`);
+      }
+    }
     clearMilestoneAndDownstream(event.milestoneId, false);
+    deferredNonBlockingMilestones.delete(event.milestoneId);
     milestoneStatuses[event.milestoneId] = 'IN_PROGRESS';
   }
 });
@@ -147,18 +174,28 @@ const status = {
       ? 'COMPLETED'
       : id === (latest?.milestoneId || 'M0')
         ? latestMilestoneStatus
-        : 'PENDING',
+        : milestoneStatuses[id] || 'PENDING',
   })),
+  deferredNonBlockingMilestones: [...deferredNonBlockingMilestones],
+  strictMilestoneOrder,
   acceptedEvidence: [...acceptedObjectHashes],
   invalidatedEvidence: [...invalidatedObjectHashes],
   invalidatedObjectHashes: [...invalidatedObjectHashes],
   malformedEvidenceReferences: [...malformedEvidenceReferences],
   invalidatedMilestones: [...invalidatedMilestones],
-  nextExitCondition: latest?.details?.nextExitCondition || 'M0-E01 baseline event recorded',
+  nextExitCondition,
   lastMeaningfulChange: latest?.reason || null,
 };
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 const temporaryPath = `${outputPath}.${process.pid}.tmp`;
 fs.writeFileSync(temporaryPath, `${JSON.stringify(status, null, 2)}\n`, 'utf8');
-fs.renameSync(temporaryPath, outputPath);
+try {
+  fs.renameSync(temporaryPath, outputPath);
+} catch (error) {
+  if (error?.code !== 'EPERM' && error?.code !== 'EEXIST') throw error;
+  // Windows cannot replace an existing file with renameSync. Keep the
+  // event chain authoritative and use the prepared file as the fallback.
+  fs.copyFileSync(temporaryPath, outputPath);
+  fs.unlinkSync(temporaryPath);
+}
 process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);
