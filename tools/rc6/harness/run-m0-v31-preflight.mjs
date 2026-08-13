@@ -10,7 +10,7 @@ const baselineHead = 'a4fd078d485904ac322a40fd02dbc8366d04f39b';
 const hashPattern = /^[a-f0-9]{64}$/u;
 const headPattern = /^[a-f0-9]{40}$/u;
 const mojibakePattern = /\uFFFD|锟|Ã.|Â.|â(?:€|™|œ|ž)|ï»¿/u;
-const allowedGitCommands = new Set(['rev-parse', 'status', 'diff', 'merge-base']);
+const allowedGitCommands = new Set(['rev-parse', 'status', 'diff', 'merge-base', 'ls-files']);
 const readApis = new Set(['existsSync', 'readFileSync', 'readdirSync']);
 const writeApis = new Set(['appendFileSync', 'copyFileSync', 'createWriteStream', 'mkdirSync', 'openSync', 'renameSync', 'rmSync', 'truncateSync', 'unlinkSync', 'writeFileSync']);
 
@@ -192,14 +192,34 @@ const fsCalls = source => {
   }
   return calls;
 };
+const authorityBindings = source => {
+  const bindings = new Map();
+  const compact = source.replace(/\s+/gu, '');
+  const eventDirDeclaration = compact.match(/(?:const|let|var)([A-Za-z_$][\w$]*)=path\.join\([^;]*['"]evidence['"],['"]events['"]\)/u);
+  if (eventDirDeclaration) {
+    const eventDirName = eventDirDeclaration[1];
+    bindings.set(eventDirName, 'events');
+    const derivedPathPattern = new RegExp(`(?:const|let|var)([A-Za-z_$][\\w$]*)=path\\.join\\(${eventDirName},`, 'gu');
+    for (const match of compact.matchAll(derivedPathPattern)) bindings.set(match[1], 'events');
+    const derivedTemplatePattern = /(?:const|let|var)([A-Za-z_$][\w$]*)=\x60\$\{([A-Za-z_$][\w$]*)\}/gu;
+    for (const match of compact.matchAll(derivedTemplatePattern)) {
+      if (bindings.get(match[2]) === 'events') bindings.set(match[1], 'events');
+    }
+  }
+  const statusDeclaration = compact.match(/(?:const|let|var)([A-Za-z_$][\w$]*)=path\.join\([^;]*['"]generated['"],['"]current-task-status\.json['"]\)/u);
+  if (statusDeclaration) {
+    const outputName = statusDeclaration[1];
+    bindings.set(outputName, 'status');
+    const temporaryDeclaration = compact.match(new RegExp(`(?:const|let|var)([A-Za-z_$][\\w$]*)=\\x60\\x24\\{${outputName}\\}`, 'u'));
+    if (temporaryDeclaration) bindings.set(temporaryDeclaration[1], 'status');
+  }
+  return bindings;
+};
 const targetRole = (expression, source) => {
   const value = expression.replace(/\s+/gu, '');
-  const contentAddressedEventPath = /constoutputPath=path\.join\(eventDir,/u.test(source.replace(/\s+/gu, ''));
-  if (/current-task-status\.json/u.test(value)) return 'status';
-  if (/tools['"]?[,)]?['"]?rc6['"]?[,)]?['"]?evidence['"]?[,)]?['"]?events/u.test(value) || /evidence[\\/]events/u.test(value)) return 'events';
-  if (/^outputPath$/u.test(value)) return contentAddressedEventPath ? 'events' : 'status';
-  if (/^path\.dirname\(outputPath\)$/u.test(value)) return 'status';
-  if (/^(?:eventDir|temporaryPath|lockPath)\b/u.test(value)) return contentAddressedEventPath ? 'events' : 'status';
+  const bindings = authorityBindings(source);
+  if (/^path\.dirname\(([^)]+)\)$/u.test(value)) return bindings.get(value.match(/^path\.dirname\(([^)]+)\)$/u)[1]) || 'other';
+  if (/^[A-Za-z_$][\w$]*$/u.test(value)) return bindings.get(value) || 'other';
   return 'other';
 };
 const checkWriteBoundaries = root => {
@@ -216,12 +236,63 @@ const checkWriteBoundaries = root => {
   assert(reducerWrites.length > 0 && reducerTargets.every(role => role === 'status'), `STATUS_REDUCER_TARGET_INVALID:${reducerTargets.join(',')}`);
   return { writerApis: writerWrites.map(call => call.api), writerTargets, reducerApis: reducerWrites.map(call => call.api), reducerTargets };
 };
+const trackedRc6Sources = root => git(root, ['ls-files', '--', 'tools/rc6']).split(/\r?\n/u)
+  .filter(file => /\.(?:js|mjs)$/u.test(file))
+  .filter(file => !file.startsWith('tools/rc6/evidence/') && !file.startsWith('tools/rc6/generated/') && !file.startsWith('tools/rc6/history/') && !file.startsWith('tools/rc6/artifacts/') && file !== 'tools/rc6/harness/run-m0-v31-preflight.mjs');
+const actualAuthorityWrites = (root, file) => {
+  const source = readUtf8(path.resolve(root, file));
+  return fsCalls(source).filter(call => writeApis.has(call.api)).flatMap(call => {
+    const args = call.args.slice(0, call.api === 'renameSync' || call.api === 'copyFileSync' ? 2 : 1);
+    return args.map(expression => ({ api: call.api, role: targetRole(expression, source) }));
+  }).filter(call => call.role === 'events' || call.role === 'status');
+};
+const checkAuthoritySeparation = root => {
+  const allowed = {
+    events: 'tools/rc6/record-evidence-event.mjs',
+    status: 'tools/rc6/reduce-status.mjs',
+  };
+  const scanned = trackedRc6Sources(root).map(file => ({ file, writes: actualAuthorityWrites(root, file) }));
+  const violations = scanned.flatMap(item => Object.entries(allowed)
+    .filter(([role, owner]) => item.file !== owner && item.writes.some(write => write.role === role))
+    .map(([role]) => ({ file: item.file, role })));
+  assert(violations.length === 0, `AUTHORITY_SEPARATION_VIOLATION:${JSON.stringify(violations)}`);
+  assert(scanned.find(item => item.file === allowed.events)?.writes.some(write => write.role === 'events'), 'EVENT_AUTHORITY_WRITER_NOT_FOUND');
+  assert(scanned.find(item => item.file === allowed.status)?.writes.some(write => write.role === 'status'), 'STATUS_AUTHORITY_WRITER_NOT_FOUND');
+  return { scannedCount: scanned.length, authorityWriters: allowed, violations };
+};
+const checkProviderBoundary = (contract, closure) => {
+  const legacy = closure?.legacyBoundaries;
+  const rulings = closure?.coordinatorRulings;
+  assert(Array.isArray(legacy) && legacy.length > 0, 'PROVIDER_BOUNDARY_LEGACY_SCHEMA_MISSING');
+  assert(Array.isArray(rulings) && rulings.length > 0, 'PROVIDER_BOUNDARY_RULING_SCHEMA_MISSING');
+  const legacyText = legacy.join(' | ');
+  const rulingText = rulings.join(' | ');
+  const historicalFacts = [
+    ['R8', /\bR8\b|r8/iu.test(legacyText)],
+    ['registry', /registry|legacy-baseline|r8-shadow|r9v2-shadow/iu.test(legacyText)],
+    ['Runtime', /Runtime|runtime/iu.test(legacyText)],
+    ['Report', /report|Report/iu.test(legacyText)],
+  ];
+  assert(historicalFacts.every(([, present]) => present), `PROVIDER_BOUNDARY_HISTORICAL_FACT_MISSING:${historicalFacts.filter(([, present]) => !present).map(([name]) => name).join(',')}`);
+  assert(/M1/iu.test(rulingText) && /retire atomically/iu.test(rulingText), 'PROVIDER_BOUNDARY_M1_RETIREMENT_RULING_MISSING');
+  assert(/auto fails closed until R9_ACTIVE/iu.test(rulingText), 'PROVIDER_BOUNDARY_FAIL_CLOSED_RULING_MISSING');
+  assert(contract?.requiredDecisionSet?.initialProviderState?.decision === 'NO_FORMAL_PROVIDER', 'PROVIDER_BOUNDARY_INITIAL_STATE_INVALID');
+  assert(contract?.providerStateMachine?.initialState === 'NO_FORMAL_PROVIDER', 'PROVIDER_BOUNDARY_STATE_MACHINE_INVALID');
+  assert(contract?.providerStateMachine?.noImplicitPromotion === true, 'PROVIDER_BOUNDARY_IMPLICIT_PROMOTION_ALLOWED');
+  assert(contract?.providerStateMachine?.allowedTransitions?.some(transition => transition.from === 'NO_FORMAL_PROVIDER' && transition.to === 'R9_CANDIDATE'), 'PROVIDER_BOUNDARY_M1_TRANSITION_MISSING');
+  return {
+    legacyBoundaries: legacy,
+    coordinatorRulings: rulings,
+    legacyFacts: historicalFacts.map(([name]) => ({ name, state: 'PRE_M1/HISTORICAL' })),
+    m0Contract: { state: 'NO_FORMAL_PROVIDER', transition: 'NO_FORMAL_PROVIDER -> R9_CANDIDATE pending M1', implicitFallback: 'FORBIDDEN' },
+  };
+};
 const checkHarnessSource = () => {
   const source = readUtf8(scriptPath);
   const calls = fsCalls(source);
   const invalidFsCalls = calls.filter(call => !readApis.has(call.api));
   assert(invalidFsCalls.length === 0, `HARNESS_FS_WRITE_CALL:${invalidFsCalls.map(call => call.api).join(',')}`);
-  assert([...allowedGitCommands].every(command => ['rev-parse', 'status', 'diff', 'merge-base'].includes(command)), 'GIT_ALLOWLIST_INVALID');
+  assert([...allowedGitCommands].every(command => ['rev-parse', 'status', 'diff', 'merge-base', 'ls-files'].includes(command)), 'GIT_ALLOWLIST_INVALID');
   return { fsCalls: calls.map(call => call.api), gitCommands: [...allowedGitCommands] };
 };
 
@@ -243,6 +314,8 @@ const run = () => {
   runCheck('decisionDirtyHunks', () => checkDirtyHunks(root, closure));
   runCheck('eventChain', () => checkEvents(root));
   runCheck('writeBoundaries', () => checkWriteBoundaries(root));
+  runCheck('authoritySeparation', () => checkAuthoritySeparation(root));
+  runCheck('providerBoundary', () => checkProviderBoundary(contract, closure));
   runCheck('harnessReadOnly', checkHarnessSource);
   const result = { schemaVersion: 'M0V31PreflightResultV2', status: failures.length ? 'FAILED' : 'PASSED', verdict: failures.length ? 'M0_V31_PREFLIGHT_FAILED' : 'M0_V31_PREFLIGHT_PASSED', expectedBaselineHead: baselineHead, inputs: { repoRoot: actualGitRoot || root, contractPath: display(root, contractPath), closurePath: display(root, closurePath), actualHead }, checks, failures };
   process.stdout.write(`${JSON.stringify(result)}\n`);
