@@ -1,0 +1,523 @@
+{
+  "schemaVersion": "ReferenceValueEvaluatorV3RawInputV1",
+  "evaluator": "tools/rc6/reference/reference-value-evaluator-v3.mjs",
+  "count": 6,
+  "cases": [
+    {
+      "caseId": "v3-s1-threshold-terminal",
+      "semanticDomain": "S1",
+      "input": {
+        "mode": "auto",
+        "playerLockedCandidateId": null,
+        "candidates": [
+          {
+            "candidateId": "threshold-terminal",
+            "actionId": "finish",
+            "targetSet": ["enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": false,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 0,
+              "horizonTick": 1,
+              "units": [
+                { "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 },
+                { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 800, "maxHp": 1000 }
+              ],
+              "resources": [],
+              "states": [],
+              "inventory": [],
+              "summons": []
+            },
+            "objectiveContract": {
+              "victory": {
+                "logic": "ANY",
+                "conditions": [
+                  { "type": "HP_RATIO_AT_OR_BELOW", "threshold": 0.5, "targetIds": ["enemy-1"], "side": "ENEMY", "scope": "ANY" }
+                ]
+              },
+              "defeat": { "logic": "ANY", "conditions": [] }
+            },
+            "actionFacts": [
+              { "kind": "HEALTH_CHANGE", "factId": "s1-health", "eventId": "s1-event-health", "sequence": 0, "resolveTick": 0, "startTick": 0, "expireTick": 1, "targetUnitId": "enemy-1", "deltaHp": -650 },
+              { "kind": "TERMINAL_OUTCOME", "factId": "s1-terminal", "eventId": "s1-event-terminal", "sequence": 1, "resolveTick": 0, "startTick": 0, "expireTick": 1, "targetUnitId": "enemy-1", "winProbability": 1, "lossProbability": 0, "drawProbability": 0 },
+              { "kind": "HEALTH_CHANGE", "factId": "s1-after-terminal", "eventId": "s1-event-late", "sequence": 2, "resolveTick": 0, "startTick": 0, "expireTick": 1, "targetUnitId": "enemy-1", "deltaHp": -999 }
+            ],
+            "opportunities": [],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          }
+        ]
+      },
+      "expected": { "selectedCandidateId": "threshold-terminal", "objectiveUtilityHEPP": 130 }
+    },
+    {
+      "caseId": "v3-s2-opportunity-resource-schedule",
+      "semanticDomain": "S2",
+      "input": {
+        "mode": "auto",
+        "playerLockedCandidateId": null,
+        "candidates": [
+          {
+            "candidateId": "open-window",
+            "actionId": "restore-and-open",
+            "targetSet": ["actor-1", "enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": false,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 2,
+              "horizonTick": 3,
+              "units": [
+                { "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 },
+                { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }
+              ],
+              "resources": [{ "unitId": "actor-1", "resourceId": "SOUL", "current": 20, "maximum": 100 }],
+              "states": [],
+              "inventory": [],
+              "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [
+              { "kind": "RESOURCE_CHANGE", "factId": "s2-resource", "eventId": "s2-event-resource", "sequence": 0, "resolveTick": 2, "startTick": 2, "expireTick": 3, "targetUnitId": "actor-1", "resourceId": "SOUL", "delta": 50 }
+            ],
+            "opportunities": [
+              {
+                "opportunityId": "usable-strike", "actorUnitId": "actor-1", "startTick": 2, "expireTick": 4,
+                "resourceId": "SOUL", "resourceCost": 50,
+                "requiredStateUnitId": null, "requiredStateId": null,
+                "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                "affectedUnitIds": ["enemy-1"],
+                "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -200 }]
+              },
+              {
+                "opportunityId": "not-started", "actorUnitId": "actor-1", "startTick": 4, "expireTick": 5,
+                "resourceId": null, "resourceCost": 0,
+                "requiredStateUnitId": null, "requiredStateId": null,
+                "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                "affectedUnitIds": ["enemy-1"],
+                "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -900 }]
+              },
+              {
+                "opportunityId": "expired", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                "resourceId": null, "resourceCost": 0,
+                "requiredStateUnitId": null, "requiredStateId": null,
+                "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                "affectedUnitIds": ["enemy-1"],
+                "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -900 }]
+              },
+              {
+                "opportunityId": "resource-gated", "actorUnitId": "actor-1", "startTick": 2, "expireTick": 4,
+                "resourceId": "SOUL", "resourceCost": 80,
+                "requiredStateUnitId": null, "requiredStateId": null,
+                "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                "affectedUnitIds": ["enemy-1"],
+                "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -900 }]
+              }
+            ],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          }
+        ]
+      },
+      "expected": { "selectedCandidateId": "open-window", "objectiveUtilityHEPP": 70 }
+    },
+    {
+      "caseId": "v3-s3-behavior-consumers",
+      "semanticDomain": "S3",
+      "input": {
+        "mode": "auto",
+        "playerLockedCandidateId": null,
+        "candidates": [
+          {
+            "candidateId": "control-consumer",
+            "actionId": "bind-and-follow",
+            "targetSet": ["enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": false,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 0,
+              "horizonTick": 1,
+              "units": [
+                { "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 },
+                { "unitId": "ally-1", "side": "PLAYER", "currentHp": 800, "maxHp": 1000 },
+                { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }
+              ],
+              "resources": [],
+              "states": [],
+              "inventory": [],
+              "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [
+              { "kind": "STATE_CHANGE", "factId": "s3-control", "eventId": "s3-event-control", "sequence": 0, "resolveTick": 0, "startTick": 0, "expireTick": 4, "targetUnitId": "enemy-1", "stateId": "CONTROLLED", "operation": "ADD" }
+            ],
+            "opportunities": [
+              {
+                "opportunityId": "control-followup", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 3,
+                "resourceId": null, "resourceCost": 0,
+                "requiredStateUnitId": "enemy-1", "requiredStateId": "CONTROLLED",
+                "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                "affectedUnitIds": ["enemy-1", "ally-1"],
+                "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -100 }]
+              },
+              {
+                "opportunityId": "inspiration-followup", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 3,
+                "resourceId": null, "resourceCost": 0,
+                "requiredStateUnitId": "actor-1", "requiredStateId": "INSPIRED",
+                "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                "affectedUnitIds": ["enemy-1"],
+                "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -900 }]
+              }
+            ],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          }
+        ]
+      },
+      "expected": { "selectedCandidateId": "control-consumer", "objectiveUtilityHEPP": 30 }
+    },
+    {
+      "caseId": "v3-s4-raw-observation-branches",
+      "semanticDomain": "S4",
+      "input": {
+        "mode": "auto",
+        "playerLockedCandidateId": null,
+        "candidates": [
+          {
+            "candidateId": "observe",
+            "actionId": "inspect",
+            "targetSet": ["enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": false,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 0,
+              "horizonTick": 1,
+              "units": [
+                { "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 },
+                { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }
+              ],
+              "resources": [{ "unitId": "actor-1", "resourceId": "SOUL", "current": 0, "maximum": 100 }],
+              "states": [],
+              "inventory": [],
+              "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [],
+            "opportunities": [],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": [
+              {
+                "groupId": "endpoint",
+                "outcomes": [
+                  {
+                    "outcomeId": "certain", "probability": 1,
+                    "observations": [{ "kind": "RESOURCE_CHANGE", "targetUnitId": "actor-1", "resourceId": "SOUL", "delta": 20 }],
+                    "futureActions": [
+                      {
+                        "candidateId": "endpoint-a", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": "SOUL", "resourceCost": 20,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -200 }]
+                      }
+                    ]
+                  },
+                  {
+                    "outcomeId": "impossible", "probability": 0,
+                    "observations": [{ "kind": "RESOURCE_CHANGE", "targetUnitId": "actor-1", "resourceId": "SOUL", "delta": 100 }],
+                    "futureActions": [
+                      {
+                        "candidateId": "endpoint-b", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": "SOUL", "resourceCost": 100,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -1000 }]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "groupId": "near-endpoint",
+                "outcomes": [
+                  {
+                    "outcomeId": "likely", "probability": 0.99,
+                    "observations": [{ "kind": "RESOURCE_CHANGE", "targetUnitId": "actor-1", "resourceId": "SOUL", "delta": 20 }],
+                    "futureActions": [
+                      {
+                        "candidateId": "common", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": null, "resourceCost": 0,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -100 }]
+                      },
+                      {
+                        "candidateId": "likely-only", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": "SOUL", "resourceCost": 20,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -200 }]
+                      }
+                    ]
+                  },
+                  {
+                    "outcomeId": "rare", "probability": 0.01,
+                    "observations": [{ "kind": "RESOURCE_CHANGE", "targetUnitId": "actor-1", "resourceId": "SOUL", "delta": 100 }],
+                    "futureActions": [
+                      {
+                        "candidateId": "common", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": null, "resourceCost": 0,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -100 }]
+                      },
+                      {
+                        "candidateId": "rare-only", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": "SOUL", "resourceCost": 100,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -1000 }]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "groupId": "maximum-group",
+                "outcomes": [
+                  {
+                    "outcomeId": "left", "probability": 0.5,
+                    "observations": [{ "kind": "RESOURCE_CHANGE", "targetUnitId": "actor-1", "resourceId": "SOUL", "delta": 100 }],
+                    "futureActions": [
+                      {
+                        "candidateId": "common", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": null, "resourceCost": 0,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -100 }]
+                      },
+                      {
+                        "candidateId": "left-only", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": "SOUL", "resourceCost": 100,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -800 }]
+                      }
+                    ]
+                  },
+                  {
+                    "outcomeId": "right", "probability": 0.5,
+                    "observations": [{ "kind": "RESOURCE_CHANGE", "targetUnitId": "actor-1", "resourceId": "SOUL", "delta": 50 }],
+                    "futureActions": [
+                      {
+                        "candidateId": "common", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": null, "resourceCost": 0,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -100 }]
+                      },
+                      {
+                        "candidateId": "right-only", "actorUnitId": "actor-1", "startTick": 0, "expireTick": 2,
+                        "resourceId": "SOUL", "resourceCost": 50,
+                        "requiredStateUnitId": null, "requiredStateId": null, "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                        "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -400 }]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected": { "selectedCandidateId": "observe", "objectiveUtilityHEPP": 50 }
+    },
+    {
+      "caseId": "v3-s5-duration-consumers-terminal",
+      "semanticDomain": "S5",
+      "input": {
+        "mode": "auto",
+        "playerLockedCandidateId": null,
+        "candidates": [
+          {
+            "candidateId": "duration-consumers",
+            "actionId": "seed-field",
+            "targetSet": ["ally-1", "enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 2,
+              "horizonTick": 3,
+              "units": [
+                { "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 },
+                { "unitId": "ally-1", "side": "PLAYER", "currentHp": 700, "maxHp": 1000 },
+                { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }
+              ],
+              "resources": [], "states": [], "inventory": [], "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [
+              { "kind": "HEALTH_CHANGE", "factId": "s5-dot", "eventId": "s5-event-dot", "sequence": 0, "resolveTick": 3, "startTick": 2, "expireTick": 4, "targetUnitId": "enemy-1", "deltaHp": -120 },
+              { "kind": "HEALTH_CHANGE", "factId": "s5-hot", "eventId": "s5-event-hot", "sequence": 1, "resolveTick": 3, "startTick": 2, "expireTick": 4, "targetUnitId": "ally-1", "deltaHp": 60 },
+              { "kind": "HEALTH_CHANGE", "factId": "s5-expired", "eventId": "s5-event-expired", "sequence": 2, "resolveTick": 3, "startTick": 0, "expireTick": 2, "targetUnitId": "enemy-1", "deltaHp": -900 },
+              { "kind": "SUMMON", "factId": "s5-summon", "eventId": "s5-event-summon", "sequence": 3, "resolveTick": 2, "startTick": 2, "expireTick": 5, "targetUnitId": "wolf-1", "hostUnitId": "actor-1" },
+              { "kind": "CREATION", "factId": "s5-create", "eventId": "s5-event-create", "sequence": 4, "resolveTick": 2, "startTick": 2, "expireTick": 5, "targetUnitId": "actor-1", "itemId": "sigil-1", "quantity": 1 }
+            ],
+            "opportunities": [
+              {
+                "opportunityId": "summon-consumer", "actorUnitId": "actor-1", "startTick": 2, "expireTick": 5,
+                "resourceId": null, "resourceCost": 0,
+                "requiredStateUnitId": null, "requiredStateId": null,
+                "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": "wolf-1",
+                "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -50 }]
+              },
+              {
+                "opportunityId": "creation-consumer", "actorUnitId": "actor-1", "startTick": 2, "expireTick": 5,
+                "resourceId": null, "resourceCost": 0,
+                "requiredStateUnitId": null, "requiredStateId": null,
+                "requiredItemUnitId": "actor-1", "requiredItemId": "sigil-1", "requiredSummonId": null,
+                "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -50 }]
+              }
+            ],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          },
+          {
+            "candidateId": "first-terminal",
+            "actionId": "terminal-first",
+            "targetSet": ["enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": false,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 2,
+              "horizonTick": 3,
+              "units": [
+                { "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 },
+                { "unitId": "ally-1", "side": "PLAYER", "currentHp": 700, "maxHp": 1000 },
+                { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }
+              ],
+              "resources": [], "states": [], "inventory": [], "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [
+              { "kind": "TERMINAL_OUTCOME", "factId": "s5-terminal", "eventId": "s5-event-terminal", "sequence": 0, "resolveTick": 2, "startTick": 2, "expireTick": 3, "targetUnitId": "enemy-1", "winProbability": 1, "lossProbability": 0, "drawProbability": 0 },
+              { "kind": "HEALTH_CHANGE", "factId": "s5-after-terminal-dot", "eventId": "s5-event-after-terminal", "sequence": 1, "resolveTick": 3, "startTick": 2, "expireTick": 4, "targetUnitId": "enemy-1", "deltaHp": -900 },
+              { "kind": "CREATION", "factId": "s5-after-terminal-create", "eventId": "s5-event-after-create", "sequence": 2, "resolveTick": 2, "startTick": 2, "expireTick": 5, "targetUnitId": "actor-1", "itemId": "late-item", "quantity": 1 }
+            ],
+            "opportunities": [
+              {
+                "opportunityId": "terminal-late-route", "actorUnitId": "actor-1", "startTick": 2, "expireTick": 5,
+                "resourceId": null, "resourceCost": 0,
+                "requiredStateUnitId": null, "requiredStateId": null,
+                "requiredItemUnitId": null, "requiredItemId": null, "requiredSummonId": null,
+                "affectedUnitIds": ["enemy-1"], "effects": [{ "kind": "HEALTH_CHANGE", "targetUnitId": "enemy-1", "deltaHp": -900 }]
+              }
+            ],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          }
+        ]
+      },
+      "expected": { "selectedCandidateId": "first-terminal", "objectiveUtilityHEPP": 100 }
+    },
+    {
+      "caseId": "v3-s6-pareto-utf16",
+      "semanticDomain": "S6",
+      "input": {
+        "mode": "auto",
+        "playerLockedCandidateId": null,
+        "candidates": [
+          {
+            "candidateId": "𐀀",
+            "actionId": "tie-astral",
+            "targetSet": ["enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": false,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 0, "horizonTick": 1,
+              "units": [{ "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 }, { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }],
+              "resources": [], "states": [], "inventory": [], "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [{ "kind": "HEALTH_CHANGE", "factId": "s6-astral", "eventId": "s6-event-astral", "sequence": 0, "resolveTick": 0, "startTick": 0, "expireTick": 1, "targetUnitId": "enemy-1", "deltaHp": -500 }],
+            "opportunities": [],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          },
+          {
+            "candidateId": "",
+            "actionId": "tie-bmp",
+            "targetSet": ["enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": true,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 0, "horizonTick": 1,
+              "units": [{ "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 }, { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }],
+              "resources": [], "states": [], "inventory": [], "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [{ "kind": "HEALTH_CHANGE", "factId": "s6-bmp", "eventId": "s6-event-bmp", "sequence": 0, "resolveTick": 0, "startTick": 0, "expireTick": 1, "targetUnitId": "enemy-1", "deltaHp": -500 }],
+            "opportunities": [],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          },
+          {
+            "candidateId": "dominated",
+            "actionId": "lower",
+            "targetSet": ["enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": false,
+            "hardExclusionCodes": [],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 0, "horizonTick": 1,
+              "units": [{ "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 }, { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }],
+              "resources": [], "states": [], "inventory": [], "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [{ "kind": "HEALTH_CHANGE", "factId": "s6-lower", "eventId": "s6-event-lower", "sequence": 0, "resolveTick": 0, "startTick": 0, "expireTick": 1, "targetUnitId": "enemy-1", "deltaHp": -400 }],
+            "opportunities": [],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          },
+          {
+            "candidateId": "hard-excluded",
+            "actionId": "illegal-power",
+            "targetSet": ["enemy-1"],
+            "paymentMode": "FULL",
+            "legal": true,
+            "playerLocked": false,
+            "hardExclusionCodes": ["FORBIDDEN_TARGET"],
+            "actorSide": "PLAYER",
+            "world": {
+              "tick": 0, "horizonTick": 1,
+              "units": [{ "unitId": "actor-1", "side": "PLAYER", "currentHp": 1000, "maxHp": 1000 }, { "unitId": "enemy-1", "side": "ENEMY", "currentHp": 1000, "maxHp": 1000 }],
+              "resources": [], "states": [], "inventory": [], "summons": []
+            },
+            "objectiveContract": null,
+            "actionFacts": [{ "kind": "HEALTH_CHANGE", "factId": "s6-excluded", "eventId": "s6-event-excluded", "sequence": 0, "resolveTick": 0, "startTick": 0, "expireTick": 1, "targetUnitId": "enemy-1", "deltaHp": -900 }],
+            "opportunities": [],
+            "riskInputs": { "actorUnitId": "actor-1", "actorOutcomeDeltas": [{ "deltas": [-100] }], "shieldFacts": [], "negativeTerminal": false },
+            "informationGroups": []
+          }
+        ]
+      },
+      "expected": { "selectedCandidateId": "𐀀", "objectiveUtilityHEPP": 50 }
+    }
+  ]
+}

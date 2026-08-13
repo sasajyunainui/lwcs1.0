@@ -1,0 +1,324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "PrototypePathUniverseV1.schema.json",
+  "title": "PrototypePathUniverseV1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "universeId",
+    "authority",
+    "sourceFiles",
+    "sourceHashes",
+    "registrySummary",
+    "partitions",
+    "previewAdmission",
+    "formCounters",
+    "paths",
+    "unsupportedDecisionPaths",
+    "unsupportedDecisionPathCount"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "PrototypePathUniverseV1" },
+    "universeId": { "type": "string", "minLength": 1 },
+    "authority": {
+      "type": "object",
+      "required": [
+        "currentRegistryAndScopeOnly",
+        "currentBattlePreviewAdmissionOnly",
+        "historicalEvidenceUsed",
+        "productionDecisionOrKernelImported"
+      ],
+      "properties": {
+        "currentRegistryAndScopeOnly": { "const": true },
+        "currentBattlePreviewAdmissionOnly": { "const": true },
+        "historicalEvidenceUsed": { "const": false },
+        "productionDecisionOrKernelImported": { "const": false }
+      },
+      "additionalProperties": false
+    },
+    "sourceFiles": {
+      "type": "object",
+      "required": ["runtime", "previewAdmission", "scope"],
+      "properties": {
+        "runtime": { "const": "MVU_Skill_Runtime.js" },
+        "previewAdmission": { "const": "BattlePreview_Module.js" },
+        "scope": { "const": "tools/rc6/cases/BattleMechanismPrototypeScopeV1.json" }
+      },
+      "additionalProperties": false
+    },
+    "sourceHashes": {
+      "type": "object",
+      "required": ["MVU_Skill_Runtime.js", "BattlePreview_Module.js", "tools/rc6/cases/BattleMechanismPrototypeScopeV1.json"],
+      "properties": {
+        "MVU_Skill_Runtime.js": { "$ref": "#/$defs/sha256" },
+        "BattlePreview_Module.js": { "$ref": "#/$defs/sha256" },
+        "tools/rc6/cases/BattleMechanismPrototypeScopeV1.json": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "registrySummary": {
+      "type": "object",
+      "required": ["prototypeCount", "inBattlePrototypeCount", "outOfBattlePrototypeCount", "categoryCounts", "expected"],
+      "properties": {
+        "prototypeCount": { "const": 27 },
+        "inBattlePrototypeCount": { "const": 23 },
+        "outOfBattlePrototypeCount": { "const": 4 },
+        "categoryCounts": {
+          "type": "object",
+          "required": ["战斗结算", "行为推导", "战斗外"],
+          "properties": {
+            "战斗结算": { "const": 21 },
+            "行为推导": { "const": 2 },
+            "战斗外": { "const": 4 }
+          },
+          "additionalProperties": false
+        },
+        "expected": {
+          "type": "object",
+          "required": ["prototypeCount", "inBattlePrototypeCount", "outOfBattlePrototypeCount"],
+          "properties": {
+            "prototypeCount": { "const": 27 },
+            "inBattlePrototypeCount": { "const": 23 },
+            "outOfBattlePrototypeCount": { "const": 4 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "partitions": {
+      "type": "object",
+      "required": ["IN_BATTLE", "OUT_OF_BATTLE", "totalPathCount"],
+      "properties": {
+        "IN_BATTLE": {
+          "type": "object",
+          "required": ["prototypeCount", "pathCount"],
+          "properties": {
+            "prototypeCount": { "const": 23 },
+            "pathCount": { "const": 621 }
+          },
+          "additionalProperties": false
+        },
+        "OUT_OF_BATTLE": {
+          "type": "object",
+          "required": ["prototypeCount", "pathCount"],
+          "properties": {
+            "prototypeCount": { "const": 4 },
+            "pathCount": { "const": 91 }
+          },
+          "additionalProperties": false
+        },
+        "totalPathCount": { "const": 712 }
+      },
+      "additionalProperties": false
+    },
+    "previewAdmission": {
+      "type": "array",
+      "minItems": 27,
+      "maxItems": 27,
+      "items": { "$ref": "#/$defs/admission" }
+    },
+    "formCounters": { "$ref": "#/$defs/formCounters" },
+    "paths": { "type": "array", "minItems": 712, "maxItems": 712, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+    "unsupportedDecisionPaths": { "type": "array", "minItems": 247, "maxItems": 247, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+    "unsupportedDecisionPathCount": { "const": 247 }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "admission": {
+      "type": "object",
+      "required": ["prototype", "category", "partition", "evaluated", "admitted", "reasons"],
+      "properties": {
+        "prototype": { "type": "string", "minLength": 1 },
+        "category": { "enum": ["战斗结算", "行为推导", "战斗外"] },
+        "partition": { "enum": ["IN_BATTLE", "OUT_OF_BATTLE"] },
+        "evaluated": { "type": "boolean" },
+        "admitted": { "type": "boolean" },
+        "reasons": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "additionalProperties": false
+    },
+    "formCounters": {
+      "type": "object",
+      "required": ["finiteOption", "numeric", "text", "object", "condition", "boolean", "prototypeList", "nestedEffect", "structural", "totalFieldCount", "byType", "byPartition"],
+      "properties": {
+        "finiteOption": {
+          "type": "object",
+          "required": ["fieldCount", "pathCount", "byDeclaredType", "byPartition"],
+          "properties": {
+            "fieldCount": { "const": 136 },
+            "pathCount": { "const": 712 },
+            "byDeclaredType": {
+              "type": "object",
+              "required": ["枚举", "多枚举", "文本"],
+              "properties": { "枚举": { "const": 665 }, "多枚举": { "const": 44 }, "文本": { "const": 3 } },
+              "additionalProperties": false
+            },
+            "byPartition": {
+              "type": "object",
+              "required": ["IN_BATTLE", "OUT_OF_BATTLE"],
+              "properties": {
+                "IN_BATTLE": { "$ref": "#/$defs/finiteOptionPartitionInBattle" },
+                "OUT_OF_BATTLE": { "$ref": "#/$defs/finiteOptionPartitionOutOfBattle" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "numeric": {
+          "type": "object",
+          "required": ["fieldCount", "byType"],
+          "properties": {
+            "fieldCount": { "const": 71 },
+            "byType": {
+              "type": "object",
+              "required": ["数字", "整数", "带符号数值"],
+              "properties": { "数字": { "const": 15 }, "整数": { "const": 39 }, "带符号数值": { "const": 17 } },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "text": { "$ref": "#/$defs/textCounter" },
+        "object": { "$ref": "#/$defs/objectCounter" },
+        "condition": { "$ref": "#/$defs/conditionCounter" },
+        "boolean": { "$ref": "#/$defs/booleanCounter" },
+        "prototypeList": { "$ref": "#/$defs/prototypeListCounter" },
+        "nestedEffect": {
+          "type": "object",
+          "required": ["registryNestedEffectFields", "registryConditionBranchEffectFields", "registryEffectSlotFields"],
+          "properties": {
+            "registryNestedEffectFields": { "const": ["使用效果", "授予效果", "结算效果"] },
+            "registryConditionBranchEffectFields": { "const": ["替换效果", "追加效果"] },
+            "registryEffectSlotFields": { "const": ["_效果数组", "使用效果", "授予效果", "结算效果", "替换效果", "追加效果"] }
+          },
+          "additionalProperties": false
+        },
+        "structural": { "$ref": "#/$defs/structuralCounter" },
+        "totalFieldCount": { "const": 276 },
+        "byType": {
+          "type": "object",
+          "required": ["枚举", "条件分支", "数字", "整数", "多枚举", "带符号数值", "对象", "文本", "布尔", "原型列表"],
+          "properties": {
+            "枚举": { "const": 155 }, "条件分支": { "const": 27 }, "数字": { "const": 15 }, "整数": { "const": 39 },
+            "多枚举": { "const": 7 }, "带符号数值": { "const": 17 }, "对象": { "const": 6 }, "文本": { "const": 7 },
+            "布尔": { "const": 2 }, "原型列表": { "const": 1 }
+          },
+          "additionalProperties": false
+        },
+        "byPartition": {
+          "type": "object",
+          "required": ["IN_BATTLE", "OUT_OF_BATTLE"],
+          "properties": {
+            "IN_BATTLE": { "$ref": "#/$defs/formPartitionInBattle" },
+            "OUT_OF_BATTLE": { "$ref": "#/$defs/formPartitionOutOfBattle" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "finiteOptionPartitionInBattle": {
+      "type": "object", "required": ["fieldCount", "pathCount"],
+      "properties": { "fieldCount": { "const": 120 }, "pathCount": { "const": 621 } }, "additionalProperties": false
+    },
+    "finiteOptionPartitionOutOfBattle": {
+      "type": "object", "required": ["fieldCount", "pathCount"],
+      "properties": { "fieldCount": { "const": 16 }, "pathCount": { "const": 91 } }, "additionalProperties": false
+    },
+    "textCounter": {
+      "type": "object", "required": ["fieldCount", "finiteOptionFieldCount"],
+      "properties": { "fieldCount": { "const": 7 }, "finiteOptionFieldCount": { "const": 1 } }, "additionalProperties": false
+    },
+    "objectCounter": {
+      "type": "object", "required": ["fieldCount"], "properties": { "fieldCount": { "const": 6 } }, "additionalProperties": false
+    },
+    "conditionCounter": {
+      "type": "object", "required": ["fieldCount"], "properties": { "fieldCount": { "const": 27 } }, "additionalProperties": false
+    },
+    "booleanCounter": {
+      "type": "object", "required": ["fieldCount"], "properties": { "fieldCount": { "const": 2 } }, "additionalProperties": false
+    },
+    "prototypeListCounter": {
+      "type": "object", "required": ["fieldCount"], "properties": { "fieldCount": { "const": 1 } }, "additionalProperties": false
+    },
+    "structuralCounter": {
+      "type": "object", "required": ["fieldCount"], "properties": { "fieldCount": { "const": 27 } }, "additionalProperties": false
+    },
+    "formPartitionInBattle": {
+      "type": "object", "required": ["fieldCount", "finiteOptionFieldCount", "finiteOptionPathCount"],
+      "properties": { "fieldCount": { "const": 240 }, "finiteOptionFieldCount": { "const": 120 }, "finiteOptionPathCount": { "const": 621 } },
+      "additionalProperties": false
+    },
+    "formPartitionOutOfBattle": {
+      "type": "object", "required": ["fieldCount", "finiteOptionFieldCount", "finiteOptionPathCount"],
+      "properties": { "fieldCount": { "const": 36 }, "finiteOptionFieldCount": { "const": 16 }, "finiteOptionPathCount": { "const": 91 } },
+      "additionalProperties": false
+    },
+    "path": {
+      "type": "object",
+      "required": [
+        "pathId",
+        "scope",
+        "category",
+        "prototype",
+        "field",
+        "fieldType",
+        "optionIndex",
+        "option",
+        "finiteOption",
+        "sourcePointer",
+        "scopePointer",
+        "previewAdmission",
+        "supportStatus",
+        "reason",
+        "reasonByDimension"
+      ],
+      "properties": {
+        "pathId": { "type": "string", "minLength": 1 },
+        "scope": { "enum": ["IN_BATTLE", "OUT_OF_BATTLE"] },
+        "category": { "type": "string", "minLength": 1 },
+        "prototype": { "type": "string", "minLength": 1 },
+        "field": { "type": "string", "minLength": 1 },
+        "fieldType": { "type": "string", "minLength": 1 },
+        "optionIndex": { "type": "integer", "minimum": 0 },
+        "option": {},
+        "finiteOption": { "const": true },
+        "sourcePointer": { "type": "string", "minLength": 1 },
+        "scopePointer": { "type": "string", "minLength": 1 },
+        "previewAdmission": {
+          "type": "object",
+          "required": ["evaluated", "admitted"],
+          "properties": { "evaluated": { "type": "boolean" }, "admitted": { "type": "boolean" } },
+          "additionalProperties": false
+        },
+        "supportStatus": {
+          "type": "object",
+          "required": ["mechanics", "policy", "runtime", "report"],
+          "properties": {
+            "mechanics": { "enum": ["CURRENT_SUPPORTED", "CURRENT_UNSUPPORTED", "PENDING_M3"] },
+            "policy": { "enum": ["CURRENT_SUPPORTED", "CURRENT_UNSUPPORTED", "PENDING_M3"] },
+            "runtime": { "enum": ["CURRENT_SUPPORTED", "CURRENT_UNSUPPORTED", "PENDING_M3"] },
+            "report": { "enum": ["CURRENT_SUPPORTED", "CURRENT_UNSUPPORTED", "PENDING_M3"] }
+          },
+          "additionalProperties": false
+        },
+        "reason": { "type": "string", "minLength": 1 },
+        "reasonByDimension": {
+          "type": "object",
+          "required": ["mechanics", "policy", "runtime", "report"],
+          "properties": {
+            "mechanics": { "type": "string", "minLength": 1 },
+            "policy": { "type": "string", "minLength": 1 },
+            "runtime": { "type": "string", "minLength": 1 },
+            "report": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
