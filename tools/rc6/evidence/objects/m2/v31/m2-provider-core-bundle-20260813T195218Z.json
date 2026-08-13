@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "M2ProviderCoreBundleV1",
+  "taskId": "M2-PROVIDER-CORE",
+  "baseHead": "7611e9aff6ed46bbeef1ecd22aa23ea56330528a",
+  "verdict": "PROVIDER_CORE_GATES_PASSED",
+  "providerModule": {
+    "file": "BehaviorProvider_Module.js",
+    "sha256": "8A16E5D6645844B3FFDF7005F2435CEBBE981CDD91D11820F68ACB7A98008917"
+  },
+  "providerHarness": {
+    "file": "tools/rc6/harness/run-m2-v31-provider-only.mjs",
+    "sha256": "B4E356B9BCB8331030AD991D38C511B65FE21090A72A69831D84CDC905170CC5",
+    "assertions": 516,
+    "passed": 516,
+    "maxWork": 835
+  },
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-provider-core-7611e9a.patch",
+    "sha256": "5D7F8D968EC9E0CBA5E463C55905F251B6D15CD3FB8C6EE8DB6C3FF44C391D56",
+    "byteLength": 53139
+  },
+  "manifest": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-provider-core-7611e9a.manifest.json",
+    "sha256": "501F914F1CEC9C36EED088537F3E027AE4F02857CD85C7A6AACAFB9374AA261D"
+  },
+  "verification": {
+    "providerHarness": "516/516 PASSED",
+    "freezeHarness": "202/202 PASSED",
+    "m1Harness": "25/25 M1_V31_ACCEPTANCE_PASSED",
+    "nodeCheck": true,
+    "utf8Clean": true,
+    "diffCheck": true
+  },
+  "notClaimed": [
+    "adapter",
+    "581 business semantics",
+    "production wiring",
+    "formal registration",
+    "runtime integration"
+  ],
+  "invalidation": "NONE",
+  "createdAt": "2026-08-13T19:52:18Z"
+}

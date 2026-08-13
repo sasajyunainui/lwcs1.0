@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 243,
+  "previousEventHash": "42150ffda863944e12318ba5959ef4ddd7b2a7acef5f7f729f45e473117a3cf7",
+  "milestoneId": "M2",
+  "taskId": "M2-PROVIDER-CORE",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "29711bf760ed5e64745252356fd51fc56ad47c875a8b3d554bccfad303ea7a76",
+    "BattleDecision_Module.js": "895547dc149f61763216dded115f703509e18961f76d25467e978e946aadd51c",
+    "BattleRuntime_Module.js": "f75c111b0d8ab0b7d843bb19e3fbfc4879557fba1cd1ca1ac199b271a10524ce",
+    "BattleReport_Module.js": "4412b6f22ab0869e92e80ff60e353afd08f2cae5b378732e8c32db7b16b41135",
+    "BattleUI_Module.js": "264f6da37c162a8b64c1e13ca2cb49b437c9adc1f14d2a5b202a9a3c93357001",
+    "mvu_logic_bridge.js": "329f34961249df979dc39c4eb432f65bc8a35b55ff208c1f13ecbdc0d24a567f",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "4691fc959693c2a6b8bc6b28d4edeeb22b400398b5a771809cc2546b07ec93de"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "batch": "M2-PROVIDER-CORE",
+    "verdict": "PROVIDER_CORE_GATES_PASSED",
+    "implementationStatus": {
+      "BehaviorProvider_Module": "PROVIDER_CORE_GATES_PASSED",
+      "BehaviorPrototypeAdapter_Module": "NOT_COMMITTED"
+    },
+    "providerVerified": [
+      "F3 15 cases gold via select/evaluateVectors",
+      "516/516 assertions PASSED",
+      "maxWork 835",
+      "no RNG, no wall-clock",
+      "input immutable, output deepFrozen",
+      "selfCheck frozen contract revision",
+      "M1 regression 25/25",
+      "freeze contracts 202/202"
+    ],
+    "notClaimed": [
+      "adapter",
+      "581 business semantics",
+      "production wiring",
+      "formal registration",
+      "runtime integration"
+    ],
+    "countsNote": "581 is registry SUPPORTED classification count only; adapter not committed in this batch",
+    "nextExitCondition": "M2 DirectFact adapter contract and first semantic projection batch",
+    "invalidation": "NONE"
+  },
+  "reason": "Record M2 provider core candidate gates: BehaviorProvider_Module.js validated 516/516 by provider-only harness; adapter and mixed harness explicitly not committed.",
+  "recordedAt": "2026-08-13T19:57:35.775Z",
+  "repository": {
+    "branch": "",
+    "head": "7611e9aff6ed46bbeef1ecd22aa23ea56330528a"
+  },
+  "eventHash": "84a5ee2131ca0f090d72adea1f39c3322457b76ac986a7a1ad6bb4b504897616"
+}
