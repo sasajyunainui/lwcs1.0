@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 236,
+  "previousEventHash": "b656881ed17d80e326b02239ee37c6823823e47941235f0d6e5371966f43b700",
+  "milestoneId": "M5",
+  "taskId": "M5-P05-S4-FACT-DELTA-MACRO",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "e54363b8fad43eec0972c13a1edc80525ba93351bf7ab77aaf5ae68ecfa720d3",
+    "BattleDecision_Module.js": "f148f735ac86bfaf72bcad8c1b9d0ec2e7e66332b42ec411af538fe89ce196c0",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/harness/run-m5-p03-transaction-profile.mjs": "d961d34f7d9ea451787a1c2b6ede25a621128cca1ea5816d4cdc694d8e38fba6",
+    "tools/rc6/harness/run-m5-p04-v1-vector-proof-ab.mjs": "5ff705427a5a88d68e29d13773850b8c439d61ec5ddf81fa4f9f83bc92fd93e3",
+    "tools/rc6/harness/run-m2-k14-s4-semantics.mjs": "b7bfa1a3dc76bb5e15773c78fafa4a4513ebc938dc93bcc3985d794c9ac4a370",
+    "tools/rc6/harness/run-m2-production-reference-ab.mjs": "b2eeceec2a2bd8d028fdae343d07d40e1b5cc5929f4bfa5301b3d3dbbf0eb9d6"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/S4TargetSemanticProbesV1.json": "ce052980408f3bce7cac51c3008ef45a8bf41f51a009bc085b8d8457a2734a46"
+  },
+  "acceptedObjectHashes": [
+    "26e28f653e99684384fdafcd769b7529bfb7ff7ce9db1f2b2538a2a1e080e6ec"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "currentBlocker": "The bounded S4 macro gate passes, but the five formal 7v7 cases have not yet been scouted on the current source hash.",
+    "nextExitCondition": "Run one bounded current-hash scout for each formal 7v7 case; all must finish without Fatal and at or below the 15-second P95 ceiling before the formal matrix.",
+    "lastMeaningfulChange": "Replaced repeated S4 branch mechanical replay with FactDelta dependency invalidation and mixed-effect scalar projection; bounded transaction improved 44.16% with field equality.",
+    "boundedMacro": {
+      "caseId": "team_control_overlap",
+      "rounds": 1,
+      "transactionBaselineMs": 4778.641,
+      "transactionCurrentMs": 2668.162,
+      "transactionGainPercent": 44.16,
+      "totalBaselineMs": 5235.3979,
+      "totalCurrentMs": 3112.985,
+      "totalGainPercent": 40.54,
+      "mechanicalFallbacksBefore": 1138,
+      "mechanicalFallbacksAfter": 141
+    }
+  },
+  "reason": "Accept the bounded macro architecture batch only; keep the formal five-case 7v7 performance gate open.",
+  "recordedAt": "2026-08-12T10:49:35.097Z",
+  "repository": {
+    "branch": "master",
+    "head": "a4fd078d485904ac322a40fd02dbc8366d04f39b"
+  },
+  "eventHash": "46eae674b47530d18600143d1e85e6987ea6fb247d4422ec984e2656d83cd5c1"
+}

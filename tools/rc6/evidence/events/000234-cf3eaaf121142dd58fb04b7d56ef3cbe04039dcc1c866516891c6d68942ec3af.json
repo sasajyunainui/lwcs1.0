@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 234,
+  "previousEventHash": "c8d2f26af8c471a10af2a7de4bc18c32a7b75a0e9f6af4904addf6f9a68ae0b3",
+  "milestoneId": "M5",
+  "taskId": "M5-P04-DIRECTION-CORRECTION",
+  "eventType": "TASK_SCOPE_UPDATED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "strictMilestoneOrder": true,
+    "nextExitCondition": "P0_exact_probability_contract_then_P1_production_vector_first_cutover",
+    "currentBlocker": "V2_isolated_S4_gate_is_not_a_production_performance_measure;_target_path_still_builds_all_candidate_proofs_first",
+    "supersedesTask": "M5-P04-V2-ISOLATED-S4",
+    "architecture": "PRODUCTION_VECTOR_FIRST_PROOF_LATE",
+    "requiredSequence": [
+      "P0_S4_exact_0_1_endpoint_contract_red_probe_and_fix",
+      "P1_target_kernel_prepare_slice_vector_first_selection_and_required_proof_materialization",
+      "P2_end_to_end_bounded_profile",
+      "P3_only_if_profile_proves_S4_remains_dominant_apply_branch_delta_columns"
+    ],
+    "forbiddenUntilP2": [
+      "full_7v7",
+      "M6",
+      "M7",
+      "provider_switch",
+      "isolated_local_ms_gate"
+    ],
+    "reason": "V1 semantic A/B passed 20 cases, but production target path still calls legacy proof-first assembly for every candidate; the proposed isolated V2 S4 gate would not establish end-to-end benefit."
+  },
+  "reason": "Correct M5 execution order: fix exact probability endpoint semantics, cut production target slice to vector-first, then measure one complete transaction before any S4-only optimization.",
+  "recordedAt": "2026-08-11T10:19:04.757Z",
+  "repository": {
+    "branch": "master",
+    "head": "a4fd078d485904ac322a40fd02dbc8366d04f39b"
+  },
+  "eventHash": "cf3eaaf121142dd58fb04b7d56ef3cbe04039dcc1c866516891c6d68942ec3af"
+}

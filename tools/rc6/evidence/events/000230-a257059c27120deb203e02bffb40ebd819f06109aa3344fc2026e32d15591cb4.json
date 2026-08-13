@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 230,
+  "previousEventHash": "f593b7b99e942624d69b8915342e46fe28dba612a63ed864db7865c172bf27fa",
+  "milestoneId": "M5",
+  "taskId": "M5-STATE-GUARD-CORRECTION",
+  "eventType": "STATUS_REDUCER_REOPEN_DEPENDENCY_GUARD_READY",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/reduce-status.mjs": "51398b299b210e4ceb8b927d2a201f84f380b81238b53ea883bf476302586f68",
+    "tools/rc6/harness/run-state-reopen-dependency-guard.mjs": "dbd58028340e99c9a0f5f0215dfa2b1f35f26f4586c7be8da6297c747507a386"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "af758c2d0238ce18981a42fb9611fdf66394d3ec04c787777bb9ac85aa5368d3"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "allowedFiles": [
+      "tools/rc6/reduce-status.mjs",
+      "tools/rc6/harness/run-state-reopen-dependency-guard.mjs"
+    ],
+    "strictMilestoneOrder": true,
+    "currentBlocker": null,
+    "nextExitCondition": "V1_vector_proof_field_equality_on_20_reference_cases"
+  },
+  "reason": "Guard strict milestone ordering against downstream MILESTONE_REOPENED events before V1 acceptance.",
+  "recordedAt": "2026-08-11T08:46:04.960Z",
+  "repository": {
+    "branch": "master",
+    "head": "a4fd078d485904ac322a40fd02dbc8366d04f39b"
+  },
+  "eventHash": "a257059c27120deb203e02bffb40ebd819f06109aa3344fc2026e32d15591cb4"
+}

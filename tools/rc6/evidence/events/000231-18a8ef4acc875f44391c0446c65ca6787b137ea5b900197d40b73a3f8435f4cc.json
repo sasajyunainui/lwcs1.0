@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 231,
+  "previousEventHash": "a257059c27120deb203e02bffb40ebd819f06109aa3344fc2026e32d15591cb4",
+  "milestoneId": "M5",
+  "taskId": "M5-P04-V1-KERNEL-DUAL-INTERFACE",
+  "eventType": "M5_VECTOR_FIRST_PROOF_LATE_V1_PASSED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "09d37706da391f02abd6b45dbfe4d10e399e91ea365b068003ec189c020251bd",
+    "BattleDecision_Module.js": "1b9eb84e3821ce76152cb709cc05db5a0f4e4076e4ff49dc07ca1039f193f75c",
+    "BattleRuntime_Module.js": "91de3d9c883574d60f899d114ba3744e57f8e604e8710be3ee7b1c10851ac6c4",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "BattleDecisionR9v2Kernel_Module.js": "9fb6c79194edfb72e83e1f7440040789fded80f821fd461b14219c35161a5ca3",
+    "tools/rc6/harness/run-m5-p04-v1-vector-proof-ab.mjs": "78902b97752edffa7de3581bd93ec927efd7963e9c542fbd21827421188f0cd0"
+  },
+  "fixtureHashes": {
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "aac9591365c0cec540173f634f2d6dad1671f2a36ee1aea3966e6fdbbb602ca1"
+  },
+  "acceptedObjectHashes": [
+    "5ff7115be63fe5f2da6769aa814846503a43faf6d415630a81b1576814725ffa"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "forbiddenFiles": [
+      "BattleDecision_Module.js",
+      "BattlePreview_Module.js",
+      "BattleRuntime_Module.js",
+      "BattleReport_Module.js",
+      "BattleUI_Module.js",
+      "Provider Registry"
+    ],
+    "strictMilestoneOrder": true,
+    "nextExitCondition": "V2_S4_numeric_route_value_columns_field_equality_and_team_control_overlap_gain_at_least_40_percent",
+    "allowedFiles": [
+      "BattleDecisionR9v2Kernel_Module.js",
+      "tools/rc6/harness"
+    ],
+    "implementationStage": "V1_COMPLETED",
+    "architecture": "VectorFirstProofLateV1",
+    "currentBlocker": null,
+    "full7v7Allowed": false,
+    "m6Allowed": false
+  },
+  "reason": "V1 vector-first proof-late dual interface is field-equal on 20 reference cases; it is not a performance or M6 gate.",
+  "recordedAt": "2026-08-11T08:46:05.089Z",
+  "repository": {
+    "branch": "master",
+    "head": "a4fd078d485904ac322a40fd02dbc8366d04f39b"
+  },
+  "eventHash": "18a8ef4acc875f44391c0446c65ca6787b137ea5b900197d40b73a3f8435f4cc"
+}

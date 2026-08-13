@@ -1,0 +1,291 @@
+{
+  "schemaVersion": "M1ClosureBundleV1",
+  "baselineHead": "7161cc9b5e26d5b129f80064d46d45bea8aab51b",
+  "capturedHead": "7161cc9b5e26d5b129f80064d46d45bea8aab51b",
+  "gitRoot": "C:\\Users\\43516\\AppData\\Local\\Temp\\lwcs-m1-close-7161cc9",
+  "sharedGitRoot": "D:/silltyavern/tavern_helper_template-main/tavern_helper_template-main/lwcs",
+  "capturedStatusCommand": "git status --porcelain=v1 --untracked-files=all",
+  "capturedStatusCount": 49,
+  "worktreeInventoryCount": 49,
+  "worktreeInventory": [
+    {
+      "path": "BattleDecisionR9v2Kernel_Module.js",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "BattleDecision_Module.js",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "BattlePreview_Module.js",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "BattleRuntime_Module.js",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/contracts/BehaviorPlanningContractV1.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k12-target-adapter.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/k14-s4-route-value-reuse-ab.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/m2-target-kernel-route-reuse-diagnostic.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/production-reference-ab.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/reference-kernel-ab-v2.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/s4-target-semantics.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/small-target-transactions.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m2/target-path-audit.json",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-k12-target-adapter.mjs",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-production-reference-ab.mjs",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m2-target-path-audit.mjs",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/reduce-status.mjs",
+      "status": " M",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "isolate-0000000003F6A000-19748-v8.log",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "isolate-0000000003FB9000-26052-m5-s4-cpu-v8.log",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "isolate-000000000582E000-4216-isolate-m5-p03-v8.log",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tmp/m1-run-current.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tmp/m1-run-final.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/contracts/R9v2DirectBehaviorProfileV1.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/events/000230-a257059c27120deb203e02bffb40ebd819f06109aa3344fc2026e32d15591cb4.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/events/000231-18a8ef4acc875f44391c0446c65ca6787b137ea5b900197d40b73a3f8435f4cc.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/events/000232-5ed7c517ffdae035971503ce42f8990206ee3d8ab3a9abc457e522b5aaa4e20c.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/events/000233-c8d2f26af8c471a10af2a7de4bc18c32a7b75a0e9f6af4904addf6f9a68ae0b3.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/events/000234-cf3eaaf121142dd58fb04b7d56ef3cbe04039dcc1c866516891c6d68942ec3af.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/events/000235-b656881ed17d80e326b02239ee37c6823823e47941235f0d6e5371966f43b700.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/events/000236-46eae674b47530d18600143d1e85e6987ea6fb247d4422ec984e2656d83cd5c1.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m3/m3-b01-frozen-opportunities-20260809.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m3/m3-b01-transactions-20260809.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/evidence/m3/m6-current-hash-foreground-transactions.json",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m5-p03-transaction-profile.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m5-p04-v1-vector-proof-ab.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m6-a02-current-hash-facts.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m6-a02-current-hash-raid-short-window.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m6-a04-report-reprojection.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m6-a05-blind-review.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m6-a05-public-slice.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m6-a05-review-capsules.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m6-a05-review-cards.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-m6-a05-review-digests.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-r9v2-direct-profile-contract.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-r9v2-direct-raid-control-five-round-gate.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-r9v2-direct-reaction-opportunity-diagnostic.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-r9v2-independent-source-closure.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "tools/rc6/harness/run-state-reopen-dependency-guard.mjs",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    },
+    {
+      "path": "斗罗大陆1地图.png",
+      "status": "??",
+      "disposition": "PRESERVE_EXISTING_DIRTY_OR_UNTRACKED"
+    }
+  ],
+  "providerState": "NO_FORMAL_PROVIDER",
+  "m1Commit": "7161cc9b5e26d5b129f80064d46d45bea8aab51b",
+  "criticalSha256": {
+    "BattleDecision_Module_js": "895547dc149f61763216dded115f703509e18961f76d25467e978e946aadd51c",
+    "BattleRuntime_Module_js": "f75c111b0d8ab0b7d843bb19e3fbfc4879557fba1cd1ca1ac199b271a10524ce",
+    "mvu_logic_bridge_js": "329f34961249df979dc39c4eb432f65bc8a35b55ff208c1f13ecbdc0d24a567f",
+    "run_m1_v31_acceptance_mjs": "326a5ec13bcfa7576a75966b85c8b1d25aedcffeeaae5438f3270828f676aac2",
+    "m1_clean_provider_retirement_patch": "2b0438242d8d9d3741dfc03b9131942ca896ee2b6dc2478bd82eaf91cacc7051",
+    "m1_clean_provider_retirement_manifest_json": "2113238a5bea27f36714c97a880b2b4c02e15f2d0a9ebf326fd60374a4e77de1",
+    "ExecutionContractV31_json": "59829dd83608bc1b66f76b611cc5e59f1d40ee719c0333e6e46b9ea209f45858",
+    "record_evidence_event_mjs": "de4bda71e37c47497c9839e6fecb6016f645d8c2ae27f8b3a91de5aaa6c9cc4a",
+    "reduce_status_mjs": "1b60d6dfba21c29f4df1e31da2a1659cfb66951f74613d1a3b8730f89466eae6"
+  },
+  "acceptance": {
+    "verdict": "M1_V31_ACCEPTANCE_PASSED",
+    "checks": 25,
+    "failed": 0,
+    "diffStat": "184 insertions, 781 deletions across 3 files",
+    "harnessSha256": "46FFBF5FFE142ED3C90230F143CA1910692C49FDA4B212F2258F687EDD2CA0B8",
+    "patchSha256": "3A3856E808306B15A99CF1EA766670B3C5456A0DE160240AEAF3EF429E7CD5CB",
+    "manifestSha256": "625F97D19ADA272617FA7CFB296DC99DE50DBF9F5ED515F8406B70D3BC553C73"
+  },
+  "malformedLazyDeclaration": {
+    "correctedSequence": 78,
+    "classification": "COMMAND_OUTPUT_CONTAMINATION",
+    "values": [
+      "Exit",
+      "93475f4ddc6e78dcea61002eb72526443142dd0ef3fa94cc416f7d130e2cb07",
+      "4ba5728c25cf7166e50f9f67e73fc92c9b0d04215d3d7266f4b14fc74a2be55",
+      "3edbe7ea49f21d696f41f4e0c9cda1baa0dc4588e9c9ba3d9a67c5b1a86a970"
+    ],
+    "note": "seq32 Exit contamination already corrected by seq33 EVIDENCE_EVENT_CORRECTED; seq78 non-hash values are lazy command-output contamination, no object accept/invalidate."
+  },
+  "note": "This object itself is the only path added after inventory capture."
+}

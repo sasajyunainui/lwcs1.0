@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 238,
+  "previousEventHash": "e81f325ceac045478c5cdcb97b9ec74392027fdcb6ead535e44ae7d1cb110f94",
+  "milestoneId": "M1",
+  "taskId": "M1-EVIDENCE-CLOSURE-CORRECTION",
+  "eventType": "EVIDENCE_EVENT_CORRECTED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "29711bf760ed5e64745252356fd51fc56ad47c875a8b3d554bccfad303ea7a76",
+    "BattleDecision_Module.js": "895547dc149f61763216dded115f703509e18961f76d25467e978e946aadd51c",
+    "BattleRuntime_Module.js": "f75c111b0d8ab0b7d843bb19e3fbfc4879557fba1cd1ca1ac199b271a10524ce",
+    "BattleReport_Module.js": "4412b6f22ab0869e92e80ff60e353afd08f2cae5b378732e8c32db7b16b41135",
+    "BattleUI_Module.js": "264f6da37c162a8b64c1e13ca2cb49b437c9adc1f14d2a5b202a9a3c93357001",
+    "mvu_logic_bridge.js": "329f34961249df979dc39c4eb432f65bc8a35b55ff208c1f13ecbdc0d24a567f",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "correctedSequence": 78,
+    "classification": "COMMAND_OUTPUT_CONTAMINATION",
+    "malformedReferences": [
+      "Exit",
+      "93475f4ddc6e78dcea61002eb72526443142dd0ef3fa94cc416f7d130e2cb07",
+      "4ba5728c25cf7166e50f9f67e73fc92c9b0d04215d3d7266f4b14fc74a2be55",
+      "3edbe7ea49f21d696f41f4e0c9cda1baa0dc4588e9c9ba3d9a67c5b1a86a970"
+    ],
+    "priorCorrection": "seq32 already corrected by seq33; this event only archives seq78 lazy command-output contamination"
+  },
+  "reason": "Archive seq78 non-hash Exit and truncated hashes as lazy command-output contamination; seq32 already corrected by seq33; no accept/invalidate.",
+  "recordedAt": "2026-08-13T16:32:57.795Z",
+  "repository": {
+    "branch": "",
+    "head": "7161cc9b5e26d5b129f80064d46d45bea8aab51b"
+  },
+  "eventHash": "88e4eaae0a163e13a6a503e2deb348e6cecaf6f151e72228fc8b4a66b4930512"
+}
