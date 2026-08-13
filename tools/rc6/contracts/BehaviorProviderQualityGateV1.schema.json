@@ -1,0 +1,1103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "BehaviorProviderQualityGateV1.schema.json",
+  "title": "Behavior Provider Quality Gate V1",
+  "description": "Closed schema for BehaviorProviderQualityGateV1.json. No additional properties are admitted at any level.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractId",
+    "revision",
+    "status",
+    "encoding",
+    "previousRevisionHash",
+    "authority",
+    "qualityLabel",
+    "metrics",
+    "hardGates",
+    "splitPolicy",
+    "teacherLocality",
+    "diversityPolicy",
+    "studentFit",
+    "performance",
+    "stopConditions",
+    "references",
+    "sourceHashes",
+    "pendingHashPaths",
+    "validation"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "BehaviorProviderQualityGateV1"
+    },
+    "contractId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "const": "FROZEN"
+    },
+    "encoding": {
+      "const": "UTF-8"
+    },
+    "previousRevisionHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "milestone",
+        "providerState",
+        "governedBy",
+        "supersedes"
+      ],
+      "properties": {
+        "milestone": {
+          "const": "M2"
+        },
+        "providerState": {
+          "enum": [
+            "NO_FORMAL_PROVIDER",
+            "R9_CANDIDATE",
+            "R9_ACTIVE"
+          ]
+        },
+        "governedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "supersedes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "qualityLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "meaning",
+        "isCoveragePercentage",
+        "isAccuracyPercentage",
+        "isProbability",
+        "isPassRate",
+        "forbiddenUsage",
+        "metricBasis"
+      ],
+      "properties": {
+        "label": {
+          "const": "DIRECT_ATOMIC_90_PERCENT"
+        },
+        "meaning": {
+          "const": "DECLARED_SCOPE_LABEL_ONLY"
+        },
+        "isCoveragePercentage": {
+          "const": false
+        },
+        "isAccuracyPercentage": {
+          "const": false
+        },
+        "isProbability": {
+          "const": false
+        },
+        "isPassRate": {
+          "const": false
+        },
+        "forbiddenUsage": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "metricBasis": {
+          "const": "BEHAVIOR_PROVIDER_QUALITY_GATE_METRICS_BELOW"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "heldOutTop1StructuralEquivalence",
+        "teacherParetoMembership",
+        "kendallTau",
+        "perDomainFloor",
+        "mutationDirectionAgreement",
+        "composite"
+      ],
+      "properties": {
+        "heldOutTop1StructuralEquivalence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "threshold",
+            "identity",
+            "exactMatch",
+            "scope",
+            "scopeUnitCount"
+          ],
+          "properties": {
+            "threshold": {
+              "const": 0.9
+            },
+            "identity": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "actionKind",
+                  "targetSet",
+                  "paymentMode"
+                ]
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "exactMatch": {
+              "const": true
+            },
+            "scope": {
+              "const": "VALIDATION_AND_ACCEPTANCE_UNITS"
+            },
+            "scopeUnitCount": {
+              "const": 56
+            }
+          }
+        },
+        "teacherParetoMembership": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "threshold",
+            "scope",
+            "scopeUnitCount"
+          ],
+          "properties": {
+            "threshold": {
+              "const": 0.95
+            },
+            "scope": {
+              "const": "VALIDATION_AND_ACCEPTANCE_UNITS"
+            },
+            "scopeUnitCount": {
+              "const": 56
+            }
+          }
+        },
+        "kendallTau": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "threshold",
+            "tieHandling",
+            "scope",
+            "scopeUnitCount"
+          ],
+          "properties": {
+            "threshold": {
+              "const": 0.9
+            },
+            "tieHandling": {
+              "const": "TEACHER_RANK_WITH_UTF16_CANDIDATE_ID_ASCENDING"
+            },
+            "scope": {
+              "const": "VALIDATION_AND_ACCEPTANCE_UNITS"
+            },
+            "scopeUnitCount": {
+              "const": 56
+            }
+          }
+        },
+        "perDomainFloor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "threshold",
+            "domains",
+            "enforcedPerDomain",
+            "scope",
+            "scopeUnitCount"
+          ],
+          "properties": {
+            "threshold": {
+              "const": 0.85
+            },
+            "domains": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "S1",
+                  "S2",
+                  "S3",
+                  "S4",
+                  "S5",
+                  "S6"
+                ]
+              },
+              "minItems": 6,
+              "maxItems": 6,
+              "uniqueItems": true
+            },
+            "enforcedPerDomain": {
+              "const": true
+            },
+            "scope": {
+              "const": "NON_MUTATION_VALIDATION_AND_ACCEPTANCE_UNITS"
+            },
+            "scopeUnitCount": {
+              "const": 40
+            }
+          }
+        },
+        "mutationDirectionAgreement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "threshold",
+            "scope",
+            "scopeUnitCount",
+            "definition"
+          ],
+          "properties": {
+            "threshold": {
+              "const": 0.9
+            },
+            "scope": {
+              "const": "MUTATION_VALIDATION_UNITS"
+            },
+            "scopeUnitCount": {
+              "const": 16
+            },
+            "definition": {
+              "type": "string"
+            }
+          }
+        },
+        "composite": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "formula",
+            "threshold",
+            "role",
+            "gateEnforced"
+          ],
+          "properties": {
+            "formula": {
+              "type": "string"
+            },
+            "threshold": {
+              "const": 0.9
+            },
+            "role": {
+              "const": "REPORTING_ONLY"
+            },
+            "gateEnforced": {
+              "const": false
+            }
+          }
+        }
+      }
+    },
+    "hardGates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legality",
+        "publicInformation",
+        "determinism",
+        "causalReconciliation",
+        "noFutureRouteDerivation",
+        "enrollments"
+      ],
+      "properties": {
+        "legality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "checks"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "publicInformation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "allowedInputs",
+            "forbiddenInputs"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "allowedInputs": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "visibleHpRatios",
+                  "publicStates",
+                  "observableDeclarations",
+                  "revealedAbilityIds",
+                  "observableResults"
+                ]
+              },
+              "minItems": 5,
+              "maxItems": 5,
+              "uniqueItems": true
+            },
+            "forbiddenInputs": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "hiddenExactHp",
+                  "hiddenResistance",
+                  "hiddenInventory",
+                  "hiddenAbility",
+                  "unobservedPosterior"
+                ]
+              },
+              "minItems": 5,
+              "maxItems": 5,
+              "uniqueItems": true
+            }
+          }
+        },
+        "determinism": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "definition",
+            "doubleRunByteEquality"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "definition": {
+              "type": "string"
+            },
+            "doubleRunByteEquality": {
+              "const": true
+            }
+          }
+        },
+        "causalReconciliation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "tolerance",
+            "ownerTypes"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "tolerance": {
+              "const": 0.000001
+            },
+            "ownerTypes": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "STATE_DELTA",
+                  "ACTION_POOL_DELTA",
+                  "TERMINAL_DELTA"
+                ]
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "uniqueItems": true
+            }
+          }
+        },
+        "noFutureRouteDerivation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "forbidden"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "forbidden": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "enrollments": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "manifest",
+            "behaviorQualityCorpus",
+            "mechanicPathEnrollment"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "manifest": {
+              "const": "tools/rc6/cases/BehaviorProviderQualitySplitV1.json"
+            },
+            "behaviorQualityCorpus": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "unitCount",
+                "roles",
+                "exactCounts",
+                "selectionCasesExcluded"
+              ],
+              "properties": {
+                "unitCount": {
+                  "const": 80
+                },
+                "roles": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "train",
+                    "validation",
+                    "acceptance"
+                  ],
+                  "properties": {
+                    "train": {
+                      "const": 24
+                    },
+                    "validation": {
+                      "const": 30
+                    },
+                    "acceptance": {
+                      "const": 26
+                    }
+                  }
+                },
+                "exactCounts": {
+                  "const": true
+                },
+                "selectionCasesExcluded": {
+                  "const": "CONTRACT_UNIT_TEST_NOT_HELD_OUT_TEACHER_FIXTURE"
+                }
+              }
+            },
+            "mechanicPathEnrollment": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "supported",
+                "deferred",
+                "total",
+                "notBehaviorTrainingRows",
+                "exactCounts",
+                "supportedPathIdsEnumerated",
+                "supportedPathHash",
+                "supportedPathHashRule",
+                "deferredPathIdsHash",
+                "deferredPathIdsHashRule",
+                "hashSpec"
+              ],
+              "properties": {
+                "supported": {
+                  "const": 581
+                },
+                "deferred": {
+                  "const": 40
+                },
+                "total": {
+                  "const": 621
+                },
+                "notBehaviorTrainingRows": {
+                  "const": true
+                },
+                "exactCounts": {
+                  "const": true
+                },
+                "supportedPathIdsEnumerated": {
+                  "const": false
+                },
+                "supportedPathHash": {
+                  "const": "9aa28581f6e61df17efcf8d05ad8c9da079b4a79a387a6971bb03a48bd95af42"
+                },
+                "supportedPathHashRule": {
+                  "type": "string"
+                },
+                "deferredPathIdsHash": {
+                  "const": "c76bbf40ba410335a17ba16d7ba86cf18e8f6577c8bdd5a4e1b3e0a53ea985d2"
+                },
+                "deferredPathIdsHashRule": {
+                  "type": "string"
+                },
+                "hashSpec": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "supportedPath",
+                    "deferredPathIds"
+                  ],
+                  "properties": {
+                    "supportedPath": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sort",
+                        "separator",
+                        "fieldSeparator",
+                        "encoding",
+                        "includedFields",
+                        "entryCount"
+                      ],
+                      "properties": {
+                        "sort": {
+                          "const": "UTF16_CODE_UNIT_ASCENDING"
+                        },
+                        "separator": {
+                          "const": "newline 0x0A"
+                        },
+                        "fieldSeparator": {
+                          "const": ":"
+                        },
+                        "encoding": {
+                          "const": "UTF-8"
+                        },
+                        "includedFields": {
+                          "type": "array",
+                          "items": {
+                            "enum": [
+                              "prototype",
+                              "pathCount"
+                            ]
+                          },
+                          "minItems": 2,
+                          "maxItems": 2
+                        },
+                        "entryCount": {
+                          "const": 21
+                        }
+                      }
+                    },
+                    "deferredPathIds": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "sort",
+                        "separator",
+                        "encoding",
+                        "includedFields",
+                        "count"
+                      ],
+                      "properties": {
+                        "sort": {
+                          "const": "UTF16_CODE_UNIT_ASCENDING"
+                        },
+                        "separator": {
+                          "const": "newline 0x0A"
+                        },
+                        "encoding": {
+                          "const": "UTF-8"
+                        },
+                        "includedFields": {
+                          "type": "array",
+                          "items": {
+                            "const": "pathId"
+                          },
+                          "minItems": 1,
+                          "maxItems": 1
+                        },
+                        "count": {
+                          "const": 40
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "splitPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "isolation",
+        "roles",
+        "caseIdDisjointAcrossSupportedRoles",
+        "sourceCaseIdDisjointAcrossSupportedRoles",
+        "seedRule",
+        "deferredIsNotBehaviorRole",
+        "validationTuning",
+        "acceptanceUntouchedByTraining"
+      ],
+      "properties": {
+        "isolation": {
+          "const": "SEMANTIC_DOMAIN_AND_FIXTURE_FAMILY"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "train",
+              "validation",
+              "acceptance"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "caseIdDisjointAcrossSupportedRoles": {
+          "const": true
+        },
+        "sourceCaseIdDisjointAcrossSupportedRoles": {
+          "const": true
+        },
+        "seedRule": {
+          "type": "string"
+        },
+        "deferredIsNotBehaviorRole": {
+          "const": true
+        },
+        "validationTuning": {
+          "const": "FORBIDDEN"
+        },
+        "acceptanceUntouchedByTraining": {
+          "const": true
+        }
+      }
+    },
+    "teacherLocality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gateTimeOnly",
+        "productionTeacherVector",
+        "productionTeacherImport",
+        "productionTeacherCall",
+        "gateTimeTeacher"
+      ],
+      "properties": {
+        "gateTimeOnly": {
+          "const": true
+        },
+        "productionTeacherVector": {
+          "const": "FORBIDDEN"
+        },
+        "productionTeacherImport": {
+          "const": "FORBIDDEN"
+        },
+        "productionTeacherCall": {
+          "const": "FORBIDDEN"
+        },
+        "gateTimeTeacher": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "diversityPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "comparisonSet",
+        "obviousOptimumScenarioChange",
+        "metrics"
+      ],
+      "properties": {
+        "comparisonSet": {
+          "const": "TEACHER_ALLOWED_NEAR_EQUIVALENT_ACTION_SET"
+        },
+        "obviousOptimumScenarioChange": {
+          "const": "NOT_REQUIRED"
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "actionDistributionJSDivergence",
+            "effectiveDecisionTypeRatio",
+            "rareActionCoverage"
+          ],
+          "properties": {
+            "actionDistributionJSDivergence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "threshold",
+                "scope"
+              ],
+              "properties": {
+                "threshold": {
+                  "const": 0.05
+                },
+                "scope": {
+                  "const": "TEACHER_ALLOWED_NEAR_EQUIVALENT_ACTION_SET_ONLY"
+                }
+              }
+            },
+            "effectiveDecisionTypeRatio": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "minimum",
+                "maximum",
+                "identity",
+                "scope"
+              ],
+              "properties": {
+                "minimum": {
+                  "const": 0.85
+                },
+                "maximum": {
+                  "const": 1.15
+                },
+                "identity": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "actionKind",
+                      "targetSet",
+                      "paymentMode"
+                    ]
+                  },
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "scope": {
+                  "const": "TEACHER_ALLOWED_NEAR_EQUIVALENT_ACTION_SET_ONLY"
+                }
+              }
+            },
+            "rareActionCoverage": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "required",
+                "scope",
+                "definition"
+              ],
+              "properties": {
+                "required": {
+                  "const": true
+                },
+                "scope": {
+                  "const": "TEACHER_ALLOWED_NEAR_EQUIVALENT_ACTION_SET_ONLY"
+                },
+                "definition": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "studentFit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "perVectorExactFitting",
+        "exactFields",
+        "closedSetTolerance",
+        "behavioralValueCalibrationError",
+        "calibrationScope",
+        "calibrationMustNotFlipClosedSetSelection"
+      ],
+      "properties": {
+        "perVectorExactFitting": {
+          "const": "NOT_REQUIRED"
+        },
+        "exactFields": {
+          "const": "MECHANICAL_AND_CAUSAL_CLOSED_SET_FIELDS_ONLY"
+        },
+        "closedSetTolerance": {
+          "const": 1e-9
+        },
+        "behavioralValueCalibrationError": {
+          "const": "ALLOWED"
+        },
+        "calibrationScope": {
+          "const": "VALIDATION_SPLIT_ONLY"
+        },
+        "calibrationMustNotFlipClosedSetSelection": {
+          "const": true
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "m2Scope",
+        "singleDecisionComplexityBudget",
+        "boundedScout",
+        "fiveRoundSevenVsSevenFormalGate",
+        "oldK13Inheritance",
+        "fullPerformance",
+        "deferralBasis"
+      ],
+      "properties": {
+        "m2Scope": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "PROVIDER_SINGLE_DECISION_COMPLEXITY",
+              "BOUNDED_SCOUT"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "singleDecisionComplexityBudget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "elementaryOperations",
+            "candidateCap"
+          ],
+          "properties": {
+            "elementaryOperations": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "candidateCap": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "boundedScout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "branchCap",
+            "depthCap",
+            "multiRoundTraversal"
+          ],
+          "properties": {
+            "branchCap": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "depthCap": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "multiRoundTraversal": {
+              "const": "FORBIDDEN"
+            }
+          }
+        },
+        "fiveRoundSevenVsSevenFormalGate": {
+          "const": "FORBIDDEN"
+        },
+        "oldK13Inheritance": {
+          "const": "FORBIDDEN"
+        },
+        "fullPerformance": {
+          "const": "DEFERRED_TO_M5"
+        },
+        "deferralBasis": {
+          "const": "ExecutionContractV31.performanceGate.M5_FORMAL_PERFORMANCE"
+        }
+      }
+    },
+    "stopConditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trainingEarlyStop",
+        "acceptance",
+        "failureAction",
+        "forbiddenWorkarounds"
+      ],
+      "properties": {
+        "trainingEarlyStop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "criterion",
+            "validationSingleRunAfterFreeze"
+          ],
+          "properties": {
+            "criterion": {
+              "type": "string"
+            },
+            "validationSingleRunAfterFreeze": {
+              "const": true
+            }
+          }
+        },
+        "acceptance": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 5
+        },
+        "failureAction": {
+          "const": "FREEZE_CANDIDATE_AND_BLOCK_M3_AND_DOWNSTREAM"
+        },
+        "forbiddenWorkarounds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 4
+        }
+      }
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "split",
+        "v3Evaluator",
+        "oracleManifest",
+        "kernelReferenceCases",
+        "behaviorProvider",
+        "behaviorProviderSchema",
+        "selectionCases",
+        "adapterContract",
+        "adapterSchema",
+        "adapterCases",
+        "selectionPolicy"
+      ],
+      "properties": {
+        "schema": {
+          "const": "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json"
+        },
+        "split": {
+          "const": "tools/rc6/cases/BehaviorProviderQualitySplitV1.json"
+        },
+        "v3Evaluator": {
+          "const": "tools/rc6/reference/reference-value-evaluator-v3.mjs"
+        },
+        "oracleManifest": {
+          "const": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json"
+        },
+        "kernelReferenceCases": {
+          "const": "tools/rc6/cases/KernelReferenceCasesV1.json"
+        },
+        "behaviorProvider": {
+          "const": "tools/rc6/contracts/BehaviorProviderV1.json"
+        },
+        "behaviorProviderSchema": {
+          "const": "tools/rc6/contracts/BehaviorProviderV1.schema.json"
+        },
+        "selectionCases": {
+          "const": "tools/rc6/cases/BehaviorProviderSelectionCasesV1.json"
+        },
+        "adapterContract": {
+          "const": "tools/rc6/contracts/PrototypeDirectAdapterV1.json"
+        },
+        "adapterSchema": {
+          "const": "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json"
+        },
+        "adapterCases": {
+          "const": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json"
+        },
+        "selectionPolicy": {
+          "const": "tools/rc6/contracts/SelectionPolicyV1.json"
+        }
+      }
+    },
+    "sourceHashes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "minProperties": 15,
+      "propertyNames": {
+        "pattern": "^tools/rc6/"
+      }
+    },
+    "pendingHashPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^tools/rc6/"
+      },
+      "uniqueItems": true
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaClosed",
+        "selfConsistency"
+      ],
+      "properties": {
+        "schemaClosed": {
+          "const": true
+        },
+        "selfConsistency": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "status": {
+        "const": "FROZEN"
+      }
+    },
+    "required": [
+      "status"
+    ]
+  },
+  "then": {
+    "properties": {
+      "pendingHashPaths": {
+        "maxItems": 0
+      }
+    }
+  }
+}

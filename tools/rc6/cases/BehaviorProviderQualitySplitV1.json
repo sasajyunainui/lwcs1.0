@@ -1,0 +1,1043 @@
+{
+  "schemaVersion": "BehaviorProviderQualitySplitV1",
+  "contractId": "R83-RC6-M2-QUALITY-SPLIT-2026-08-14",
+  "revision": 4,
+  "status": "FROZEN",
+  "encoding": "UTF-8",
+  "previousRevisionHash": "d8df8a6f9a36d84b8d7d8d8733ecd446af804c0d093dd4e3f3d4277cde720f38",
+  "totals": {
+    "behaviorCorpusUnits": 80,
+    "mechanicPathSupported": 581,
+    "mechanicPathDeferred": 40,
+    "mechanicPathTotal": 621
+  },
+  "behaviorQualityCorpus": {
+    "unitCount": 80,
+    "roles": {
+      "train": 24,
+      "validation": 30,
+      "acceptance": 26
+    },
+    "families": {
+      "oracle_c01_c12_posneg": 24,
+      "oracle_c13_c16_posneg": 8,
+      "oracle_mutation_c01_c16": 16,
+      "oracle_x_supported": 6,
+      "kernel_reference_v1": 20,
+      "v3_raw": 6
+    },
+    "rolesEnum": [
+      "train",
+      "validation",
+      "acceptance"
+    ],
+    "deferredIsNotBehaviorRole": true,
+    "excludedContracts": [
+      {
+        "corpus": "tools/rc6/cases/BehaviorProviderSelectionCasesV1.json",
+        "contractId": "RC6-BEHAVIOR-PROVIDER-V1",
+        "caseCount": 15,
+        "reason": "CONTRACT_UNIT_TEST_NOT_HELD_OUT_TEACHER_FIXTURE"
+      }
+    ],
+    "generation": {
+      "rule": "One unit per real corpus fixture or case. Units are NOT expanded into probe rows; each unit contributes exactly one canonical decision evaluation to behavior metrics.",
+      "serialization": {
+        "rule": "canonicalUnitHash = SHA256(UTF8(stable JSON of the exact source case object))",
+        "stableJson": "object keys sorted recursively by UTF-16 code unit ascending; array order preserved; -0 normalized to 0; non-finite numbers rejected; compact JSON.stringify escaping",
+        "keySort": "UTF16_CODE_UNIT_ASCENDING",
+        "arrayOrder": "ORIGINAL_ORDER",
+        "negativeZero": "NORMALIZED_TO_ZERO",
+        "nonFinite": "FATAL",
+        "encoding": "UTF-8",
+        "hash": "SHA-256 lowercase hexadecimal"
+      },
+      "familyMapping": {
+        "oracle_c01_c12_posneg": "BehaviorOracleFixtureManifestV1 fixtures c01-c12 with variant positive or negative",
+        "oracle_c13_c16_posneg": "BehaviorOracleFixtureManifestV1 fixtures c13-c16 with variant positive or negative",
+        "oracle_mutation_c01_c16": "BehaviorOracleFixtureManifestV1 fixtures c01-c16 with variant mutation",
+        "oracle_x_supported": "BehaviorOracleFixtureManifestV1 fixtures x01-x06 (variant single)",
+        "kernel_reference_v1": "KernelReferenceCasesV1 cases (mode auto or manual)",
+        "v3_raw": "ReferenceValueEvaluatorV3RawCasesV1 cases"
+      },
+      "location": {
+        "oracle_c01_c12_posneg": {
+          "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+          "containerPointer": "/fixtures",
+          "idField": "sourceCaseId",
+          "idFallback": "oracleId with prefix oracle: stripped"
+        },
+        "oracle_c13_c16_posneg": {
+          "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+          "containerPointer": "/fixtures",
+          "idField": "sourceCaseId",
+          "idFallback": "oracleId with prefix oracle: stripped"
+        },
+        "oracle_mutation_c01_c16": {
+          "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+          "containerPointer": "/fixtures",
+          "idField": "sourceCaseId",
+          "idFallback": "oracleId with prefix oracle: stripped"
+        },
+        "oracle_x_supported": {
+          "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+          "containerPointer": "/fixtures",
+          "idField": "sourceCaseId",
+          "idFallback": "oracleId with prefix oracle: stripped"
+        },
+        "kernel_reference_v1": {
+          "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+          "containerPointer": "/cases",
+          "idField": "caseId"
+        },
+        "v3_raw": {
+          "corpus": "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json",
+          "containerPointer": "/cases",
+          "idField": "caseId"
+        }
+      },
+      "domainAssignment": {
+        "rule": "oracle units use fixture.semanticDomain; kernel_reference_v1 units use case.semanticDomain; v3_raw units use case.semanticDomain (also encoded in caseId v3-sN).",
+        "corpusDerivedUnits": 80
+      },
+      "variantAssignment": {
+        "rule": "oracle units use fixture.variant (positive/negative/mutation/single); kernel_reference_v1 units use case.mode; v3_raw units are positive."
+      }
+    },
+    "isolation": {
+      "policy": "SEMANTIC_DOMAIN_AND_FIXTURE_FAMILY",
+      "caseIdDisjointAcrossSupportedRoles": true,
+      "sourceCaseIdDisjointAcrossSupportedRoles": true,
+      "seedRule": "seedUint32 = parseInt(sha256(unitId).slice(0, 8), 16). UnitId uniqueness implies cross-role seed non-overlap; enumerated collision count is recorded below.",
+      "seedCollisionCount": 0,
+      "validationTuning": "FORBIDDEN",
+      "acceptanceUntouchedByTraining": true
+    },
+    "units": [
+      {
+        "unitId": "oracle:c01_hit_bonus_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c01_hit_bonus_negative",
+        "semanticDomain": "S3",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "336b8d2bfb25ace2f439eeae4c7fc162c39aa3dbc50a16f7cd0156f267c55bb1"
+      },
+      {
+        "unitId": "oracle:c01_hit_bonus_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c01_hit_bonus_positive",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "da30bb012f8d4224fbf2658c3c8e649bd1f04fe5f4cebcc56934ac81b42df65b"
+      },
+      {
+        "unitId": "oracle:c02_evasion_reduction_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c02_evasion_reduction_negative",
+        "semanticDomain": "S3",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "255526730d357010fff58f2f02a61b1cd5487b13f13113289c90c4aa62e6fab4"
+      },
+      {
+        "unitId": "oracle:c02_evasion_reduction_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c02_evasion_reduction_positive",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "3b03eac8040f371dec849f3427007b1f59ee061c72e4e8e433f5d0b78c431ef6"
+      },
+      {
+        "unitId": "oracle:c03_defense_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c03_defense_negative",
+        "semanticDomain": "S3",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "2760aa57cdb73bb4cbb2e089d0a0dab6520694f6ec296c2fa222fc2f44afa8a4"
+      },
+      {
+        "unitId": "oracle:c03_defense_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c03_defense_positive",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "b3669557a279306f9c41cb15a8e6e0d9e15f63354a35816a2baf247734d0024e"
+      },
+      {
+        "unitId": "oracle:c04_evade_counter_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c04_evade_counter_negative",
+        "semanticDomain": "S3",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "a02d85cf16163b1380c4c769f705b01c2b6d91eb77f27dab5eea2a0917ccb094"
+      },
+      {
+        "unitId": "oracle:c04_evade_counter_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c04_evade_counter_positive",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "a74c39bd151f016c86d9310ee0f1fef91ab171cb06eb059dba5970a197512ad8"
+      },
+      {
+        "unitId": "oracle:c05_hard_control_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c05_hard_control_negative",
+        "semanticDomain": "S3",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "d210b263e7fe8135c45d656698e671a82b097b1d952d533b8de7e7581b6416fd"
+      },
+      {
+        "unitId": "oracle:c05_hard_control_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c05_hard_control_positive",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "8ac3108b13867f7b1c081582407290fa015336c4a4cba057b257f0de49d94541"
+      },
+      {
+        "unitId": "oracle:c06_control_overlap_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c06_control_overlap_negative",
+        "semanticDomain": "S3",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "b5f54c33d05005e2916b067c5fa2863b6123e9c8a4c2df933f457e91c46693bd"
+      },
+      {
+        "unitId": "oracle:c06_control_overlap_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c06_control_overlap_positive",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "d6b72ff46e434fdcb55d6bbbe306c32200dff6d3bad053f52721d7eafe9acce5"
+      },
+      {
+        "unitId": "oracle:c07_slow_axis_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c07_slow_axis_negative",
+        "semanticDomain": "S3",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "2528520f56dcfce58ba256e746cde18793af6057756f37b38050e00da5ca6383"
+      },
+      {
+        "unitId": "oracle:c07_slow_axis_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c07_slow_axis_positive",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "c3b499d05d837a4eb5f23ae966bc315cd17ab3f20bb568eecc266f937e2e4a0e"
+      },
+      {
+        "unitId": "oracle:c08_resource_block_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c08_resource_block_negative",
+        "semanticDomain": "S2",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "8d2ce1f1422a37fa9e7cc3dfe5a9cbe1d1964481d2e5c7304aed47b346c215b4"
+      },
+      {
+        "unitId": "oracle:c08_resource_block_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c08_resource_block_positive",
+        "semanticDomain": "S2",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "178fed9d8665480d80aae233da09bd5192adc0b04468853dc5677d7d411d6825"
+      },
+      {
+        "unitId": "oracle:c09_resource_no_consumer_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c09_resource_no_consumer_negative",
+        "semanticDomain": "S2",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "9150489b26d89165448511b521e3bc254eed7ef7e897002f0ec9b72b6b58e3d4"
+      },
+      {
+        "unitId": "oracle:c09_resource_no_consumer_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c09_resource_no_consumer_positive",
+        "semanticDomain": "S2",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "4e2fab754960b1c69b03aa25395bf74f67d5ff9936e82cfa855bffcb4f884d14"
+      },
+      {
+        "unitId": "oracle:c10_resource_consumers_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c10_resource_consumers_negative",
+        "semanticDomain": "S2",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "96e7ca3758347d527bc92288e1ca4869a5a79da8dc1c1f151a28e1c94b0fa4b9"
+      },
+      {
+        "unitId": "oracle:c10_resource_consumers_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c10_resource_consumers_positive",
+        "semanticDomain": "S2",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "32b96b20beab0e44bde4dbf5b3ce8d640bee9242e3e63998c2c7b41ebfa2b825"
+      },
+      {
+        "unitId": "oracle:c11_resource_recovery_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c11_resource_recovery_negative",
+        "semanticDomain": "S2",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "a5dd993fc0bb14c8dd3612322049b44e0530c912d9b71b7c75c2e2fa4751bb6a"
+      },
+      {
+        "unitId": "oracle:c11_resource_recovery_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c11_resource_recovery_positive",
+        "semanticDomain": "S2",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "cc5390c2f2ab36eb4bd5bc10460143213da7aa3a127b35526e2dd891e5ff873a"
+      },
+      {
+        "unitId": "oracle:c12_defensive_windows_negative",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c12_defensive_windows_negative",
+        "semanticDomain": "S3",
+        "variant": "negative",
+        "splitRole": "train",
+        "sourceHash": "2a8f2e493bdeb1165b0378cfbb084b49695a73a077f2a0b60e4848c8e842d26c"
+      },
+      {
+        "unitId": "oracle:c12_defensive_windows_positive",
+        "family": "oracle_c01_c12_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c12_defensive_windows_positive",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "train",
+        "sourceHash": "6ca6683fadb86ffccfac85bc04a7cf4e91917a064cbda8260e3e1d7b993efb23"
+      },
+      {
+        "unitId": "oracle:c13_dot_negative",
+        "family": "oracle_c13_c16_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c13_dot_negative",
+        "semanticDomain": "S5",
+        "variant": "negative",
+        "splitRole": "validation",
+        "sourceHash": "80753bae3112b833a2d57cb2f2b8ab9eb815471fc04b78fb4e290ccad3fff88a"
+      },
+      {
+        "unitId": "oracle:c13_dot_positive",
+        "family": "oracle_c13_c16_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c13_dot_positive",
+        "semanticDomain": "S5",
+        "variant": "positive",
+        "splitRole": "validation",
+        "sourceHash": "37b715da6b5f0f90686aa5acc8a777e748599931aaeadc599e2fd846fa664d7b"
+      },
+      {
+        "unitId": "oracle:c14_summon_negative",
+        "family": "oracle_c13_c16_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c14_summon_negative",
+        "semanticDomain": "S5",
+        "variant": "negative",
+        "splitRole": "validation",
+        "sourceHash": "174c388cae461edb2087aa8f9ac804d73b001445d94eb892e2ed1948c5318d4e"
+      },
+      {
+        "unitId": "oracle:c14_summon_positive",
+        "family": "oracle_c13_c16_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c14_summon_positive",
+        "semanticDomain": "S5",
+        "variant": "positive",
+        "splitRole": "validation",
+        "sourceHash": "cc4f810c18b836d789c647b1b849caa7fcc7abad6319787e04d2ecc4d750422d"
+      },
+      {
+        "unitId": "oracle:c15_information_negative",
+        "family": "oracle_c13_c16_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c15_information_negative",
+        "semanticDomain": "S4",
+        "variant": "negative",
+        "splitRole": "validation",
+        "sourceHash": "7fb24c8104ff478ee9667e54052f38f9b418e863c0ec6f05da6a8ad5bfd60fb6"
+      },
+      {
+        "unitId": "oracle:c15_information_positive",
+        "family": "oracle_c13_c16_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c15_information_positive",
+        "semanticDomain": "S4",
+        "variant": "positive",
+        "splitRole": "validation",
+        "sourceHash": "1c69d123ebb859d5932a6021c8323727139d41f262080c2bfae6b83b0a8e972d"
+      },
+      {
+        "unitId": "oracle:c16_objectives_negative",
+        "family": "oracle_c13_c16_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c16_objectives_negative",
+        "semanticDomain": "S1",
+        "variant": "negative",
+        "splitRole": "validation",
+        "sourceHash": "825e593c4ae4e834162db3c1b64b8342d3ff1276fce7d5cce6c39f23fc1ba16a"
+      },
+      {
+        "unitId": "oracle:c16_objectives_positive",
+        "family": "oracle_c13_c16_posneg",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c16_objectives_positive",
+        "semanticDomain": "S1",
+        "variant": "positive",
+        "splitRole": "validation",
+        "sourceHash": "0661eacc581d52b018b9c371bca0493e7edfab5468d5531b627673cf8b84d542"
+      },
+      {
+        "unitId": "oracle:c01_hit_bonus_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c01_hit_bonus_mutation",
+        "semanticDomain": "S3",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "8255bb861e5a1639684da9dd41fc218e8f21433b76ea23225b0de93281fa3278"
+      },
+      {
+        "unitId": "oracle:c02_evasion_reduction_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c02_evasion_reduction_mutation",
+        "semanticDomain": "S3",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "e4df99a6c8a48f81ad9e6083a4b7721ae318eafa4293818fab8b6ad739397036"
+      },
+      {
+        "unitId": "oracle:c03_defense_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c03_defense_mutation",
+        "semanticDomain": "S3",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "eda331ccb8ccc72db23057c34251d530ea076a861533a1288dcdc0961f05eaa6"
+      },
+      {
+        "unitId": "oracle:c04_evade_counter_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c04_evade_counter_mutation",
+        "semanticDomain": "S3",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "38333edd0508663d43c28856af2f0d4716ade9b0b7a7be35a10d09c05de6304a"
+      },
+      {
+        "unitId": "oracle:c05_hard_control_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c05_hard_control_mutation",
+        "semanticDomain": "S3",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "33ed527bb86e99abf4c0279e504c2fa3bcfcf6f02c6a5921c80249b46668f96b"
+      },
+      {
+        "unitId": "oracle:c06_control_overlap_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c06_control_overlap_mutation",
+        "semanticDomain": "S3",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "89d5f9ec85314e4f1587890c356bb45e03144d9f14d3f8d8b6470752079ecad4"
+      },
+      {
+        "unitId": "oracle:c07_slow_axis_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c07_slow_axis_mutation",
+        "semanticDomain": "S3",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "adfa29c9e34ee8fbb3c5aa5966d738ec7954384ccc2fed629a1e2af76c31d7ec"
+      },
+      {
+        "unitId": "oracle:c08_resource_block_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c08_resource_block_mutation",
+        "semanticDomain": "S2",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "b871e03a374cd0aaea18c8c16f92667180b1b0c1b32b589284ad5c8ac87045e0"
+      },
+      {
+        "unitId": "oracle:c09_resource_no_consumer_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c09_resource_no_consumer_mutation",
+        "semanticDomain": "S2",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "27d9de95d89365f6c8dd28abe697593cbe30434a9eccef91240bce3e2311ed34"
+      },
+      {
+        "unitId": "oracle:c10_resource_consumers_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c10_resource_consumers_mutation",
+        "semanticDomain": "S2",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "cf3cb9ae48509501c24508cabb5c93a053e54f295bef6ad7e5b14a845156273b"
+      },
+      {
+        "unitId": "oracle:c11_resource_recovery_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c11_resource_recovery_mutation",
+        "semanticDomain": "S2",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "9328d1f35c2a3a3370f3311bb7ca8032e03d748d2f1c3a857fab4cbc627c0319"
+      },
+      {
+        "unitId": "oracle:c12_defensive_windows_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c12_defensive_windows_mutation",
+        "semanticDomain": "S3",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "dabc43fa15b1ef5f6f961e2410651264dc3e5a7f0c5110d4da9349af4f90cc03"
+      },
+      {
+        "unitId": "oracle:c13_dot_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c13_dot_mutation",
+        "semanticDomain": "S5",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "9cc88b579335305a0b6d896c5422ee16e3dadcf911c9b807ba308e951a2b3ead"
+      },
+      {
+        "unitId": "oracle:c14_summon_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c14_summon_mutation",
+        "semanticDomain": "S5",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "086b866468a486a3366a53fc0bfe2c329e7775a4f1c6db0f816a8b4266d15af7"
+      },
+      {
+        "unitId": "oracle:c15_information_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c15_information_mutation",
+        "semanticDomain": "S4",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "989013ce63eddd1dd2896e4c4a27401f6317baa0366606fce338173bfab87036"
+      },
+      {
+        "unitId": "oracle:c16_objectives_mutation",
+        "family": "oracle_mutation_c01_c16",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "c16_objectives_mutation",
+        "semanticDomain": "S1",
+        "variant": "mutation",
+        "splitRole": "validation",
+        "sourceHash": "f5c0cf98359d78584ae54cd6cc316615aa4af2de65c8ad3aee27eed68540d281"
+      },
+      {
+        "unitId": "oracle:x01_resource_recovery_timing_three_factor_1",
+        "family": "oracle_x_supported",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "x01_resource_recovery_timing_three_factor_1",
+        "semanticDomain": "S2",
+        "variant": "single",
+        "splitRole": "validation",
+        "sourceHash": "b3d2f5c2dd8ac838f597775f737fce38145cddaefb1e15c38f058e73ea99722d"
+      },
+      {
+        "unitId": "oracle:x02_slow_axis_duration_three_factor_2",
+        "family": "oracle_x_supported",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "x02_slow_axis_duration_three_factor_2",
+        "semanticDomain": "S3",
+        "variant": "single",
+        "splitRole": "validation",
+        "sourceHash": "9ebb0520a95fcce72d391ced153ab39cac62ae8f010ab368068dfa653be7b83d"
+      },
+      {
+        "unitId": "oracle:x03_defense_multihit_reflect_three_factor_3",
+        "family": "oracle_x_supported",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "x03_defense_multihit_reflect_three_factor_3",
+        "semanticDomain": "S3",
+        "variant": "single",
+        "splitRole": "validation",
+        "sourceHash": "5c44bdcbd46b19913cf6960a5765a2cb80566640cc0f7dbe11817b6f165eaf39"
+      },
+      {
+        "unitId": "oracle:x04_control_ally_dot_three_factor_4",
+        "family": "oracle_x_supported",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "x04_control_ally_dot_three_factor_4",
+        "semanticDomain": "S5",
+        "variant": "single",
+        "splitRole": "validation",
+        "sourceHash": "cc7ab9ef9c6dc213a86b147689311392d638bbd909976b4e32f1337ea1c9432d"
+      },
+      {
+        "unitId": "oracle:x05_summon_host_deadline_three_factor_5",
+        "family": "oracle_x_supported",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "x05_summon_host_deadline_three_factor_5",
+        "semanticDomain": "S5",
+        "variant": "single",
+        "splitRole": "validation",
+        "sourceHash": "b28489d7ce4f70ccf9ab1a3e4f841ea2e1396456db70db685cd0189bd3dca22d"
+      },
+      {
+        "unitId": "oracle:x06_antiheal_food_crisis_three_factor_6",
+        "family": "oracle_x_supported",
+        "corpus": "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json",
+        "sourceCaseId": "x06_antiheal_food_crisis_three_factor_6",
+        "semanticDomain": "S5",
+        "variant": "single",
+        "splitRole": "validation",
+        "sourceHash": "5cd9c145d35036e0c721655afc303c1743d8ed0022505e0c4fd74ddae2de9183"
+      },
+      {
+        "unitId": "kref:ref-lost-opportunity",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-lost-opportunity",
+        "semanticDomain": "S2",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "7499fed3fac360f7f880de52bb61ead4bd2001432a3cbf06776c52a693ab8600"
+      },
+      {
+        "unitId": "kref:ref-manual-locked",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-manual-locked",
+        "semanticDomain": "S6",
+        "variant": "manual",
+        "splitRole": "acceptance",
+        "sourceHash": "3b9c01f3f146590c89f73e91f06ef09d735f9f40d38b0f4bf8bc5226620334b9"
+      },
+      {
+        "unitId": "kref:ref-s1-any-all",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s1-any-all",
+        "semanticDomain": "S1",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "dea108c96813c97ab3919efba9e035c502111d7405314d41170aaedd6e79fed9"
+      },
+      {
+        "unitId": "kref:ref-s1-first-terminal",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s1-first-terminal",
+        "semanticDomain": "S1",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "9943c6d4db5f8531a8dca1f909a4854d28d4ce845f50b899e23df7b697a20cbd"
+      },
+      {
+        "unitId": "kref:ref-s1-threshold-truncation",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s1-threshold-truncation",
+        "semanticDomain": "S1",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "1f760eb5fd284e53adac035b9a63448e5ad1b0b03e95605b09afca7eaddd4647"
+      },
+      {
+        "unitId": "kref:ref-s2-opportunity-schedule",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s2-opportunity-schedule",
+        "semanticDomain": "S2",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "752840b4fc6de66e27240ffd218775bd5529b6e2752840a463bc85a52adf85cd"
+      },
+      {
+        "unitId": "kref:ref-s2-pass-lost",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s2-pass-lost",
+        "semanticDomain": "S2",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "e36cd83c2d527594fb78bca33c0db25725143d98c28794be64c80c551dd021c9"
+      },
+      {
+        "unitId": "kref:ref-s2-resource-order",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s2-resource-order",
+        "semanticDomain": "S2",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "4bb1340bb6d3db354bc85eaa6ddf099348339145c4bafb8ec0dd0c7abf36cfb2"
+      },
+      {
+        "unitId": "kref:ref-s3-control-overlap",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s3-control-overlap",
+        "semanticDomain": "S3",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "9b6328be820d78b27d7a0cbc075691cb9320a9db820ebd6fb2c8ad0f9c0de0da"
+      },
+      {
+        "unitId": "kref:ref-s3-dodge-counter",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s3-dodge-counter",
+        "semanticDomain": "S3",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "ea8d89421c53bcfb63cb9166be7eddff3cf26d4c335b6b9daefda06660bfa172"
+      },
+      {
+        "unitId": "kref:ref-s3-protect-critical",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s3-protect-critical",
+        "semanticDomain": "S3",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "615290d3bc4b08ac9b765a026657d4ada9f9c1c29d1d05c50148c0461691f7a6"
+      },
+      {
+        "unitId": "kref:ref-s4-information-positive",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s4-information-positive",
+        "semanticDomain": "S4",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "672ea8619b3a1ea392dd6a58c02e06e6ff6ca71a3cbb79a6b004bfe2a332f4b4"
+      },
+      {
+        "unitId": "kref:ref-s4-information-zero",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s4-information-zero",
+        "semanticDomain": "S4",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "5a4636efe55232d204be67a647c6320154fbe3aa5d3e8bcf5d5b0d685afa7205"
+      },
+      {
+        "unitId": "kref:ref-s4-public-belief",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s4-public-belief",
+        "semanticDomain": "S4",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "574d15fcd47fd6aeb3be5caadb10c8aec1126d95c28ba6212c54db042511870f"
+      },
+      {
+        "unitId": "kref:ref-s5-creation-consumer",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s5-creation-consumer",
+        "semanticDomain": "S5",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "89aec999077bf46988296d8db2f6777acdbdc9cec3e966cdb36b469701f2aa64"
+      },
+      {
+        "unitId": "kref:ref-s5-dot-hot-expiry",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s5-dot-hot-expiry",
+        "semanticDomain": "S5",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "7cca0b4170dda0d85aecbc31c7a37b9ebe0264a65f5d1ad7444867b533ffca79"
+      },
+      {
+        "unitId": "kref:ref-s5-summon-host-death",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s5-summon-host-death",
+        "semanticDomain": "S5",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "bbfcc33e70813083f6be9e7f6c9af96064861d14063dd71428e3c5d7cb416275"
+      },
+      {
+        "unitId": "kref:ref-s6-causal-action-owner",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s6-causal-action-owner",
+        "semanticDomain": "S6",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "7aa5c1390fcef7a5e0a0bb6f3c652806a42d50ef645e64b02e6f6629f1d95296"
+      },
+      {
+        "unitId": "kref:ref-s6-causal-state-owner",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s6-causal-state-owner",
+        "semanticDomain": "S6",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "26a3ec1a40b4627ff54c36271670fdb9cb0a124acdc61f6b41ec1e2bc4e6d047"
+      },
+      {
+        "unitId": "kref:ref-s6-pareto-hard-exclusion",
+        "family": "kernel_reference_v1",
+        "corpus": "tools/rc6/cases/KernelReferenceCasesV1.json",
+        "sourceCaseId": "ref-s6-pareto-hard-exclusion",
+        "semanticDomain": "S6",
+        "variant": "auto",
+        "splitRole": "acceptance",
+        "sourceHash": "e6d43c6b7fcd4e14ee781da67612ee01209108cfa294e81d9eb6e51a98fc810a"
+      },
+      {
+        "unitId": "v3:v3-s1-threshold-terminal",
+        "family": "v3_raw",
+        "corpus": "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json",
+        "sourceCaseId": "v3-s1-threshold-terminal",
+        "semanticDomain": "S1",
+        "variant": "positive",
+        "splitRole": "acceptance",
+        "sourceHash": "86456a3a7438c0e5befd73be356a7d055b9a97da78195d376e25b46d35086249"
+      },
+      {
+        "unitId": "v3:v3-s2-opportunity-resource-schedule",
+        "family": "v3_raw",
+        "corpus": "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json",
+        "sourceCaseId": "v3-s2-opportunity-resource-schedule",
+        "semanticDomain": "S2",
+        "variant": "positive",
+        "splitRole": "acceptance",
+        "sourceHash": "d252418c7150af251bce01f050a78073fc071e8ef83a616ac3e529738189855c"
+      },
+      {
+        "unitId": "v3:v3-s3-behavior-consumers",
+        "family": "v3_raw",
+        "corpus": "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json",
+        "sourceCaseId": "v3-s3-behavior-consumers",
+        "semanticDomain": "S3",
+        "variant": "positive",
+        "splitRole": "acceptance",
+        "sourceHash": "1bc2d14c851a2b23c61a394751eaf2dd394f6c6f951efd2bc9d0fc79cbdc0940"
+      },
+      {
+        "unitId": "v3:v3-s4-raw-observation-branches",
+        "family": "v3_raw",
+        "corpus": "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json",
+        "sourceCaseId": "v3-s4-raw-observation-branches",
+        "semanticDomain": "S4",
+        "variant": "positive",
+        "splitRole": "acceptance",
+        "sourceHash": "971c6422aeb9e4cce71081ba411d49673b528bdcd0f2c7de797acd4cc245d5a1"
+      },
+      {
+        "unitId": "v3:v3-s5-duration-consumers-terminal",
+        "family": "v3_raw",
+        "corpus": "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json",
+        "sourceCaseId": "v3-s5-duration-consumers-terminal",
+        "semanticDomain": "S5",
+        "variant": "positive",
+        "splitRole": "acceptance",
+        "sourceHash": "9cc3d3f453d9572c8bd29aa9aff0bd06ad1df1c54753574f052f46765516259b"
+      },
+      {
+        "unitId": "v3:v3-s6-pareto-utf16",
+        "family": "v3_raw",
+        "corpus": "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json",
+        "sourceCaseId": "v3-s6-pareto-utf16",
+        "semanticDomain": "S6",
+        "variant": "positive",
+        "splitRole": "acceptance",
+        "sourceHash": "5401e411ecefba19730ac0ba3b162604f409b240d4dcb0b2bf75f9874c5fc86c"
+      }
+    ]
+  },
+  "mechanicPathEnrollment": {
+    "purpose": "Mechanical path enrollment binds the final PrototypeDirectAdapter artifacts. It is NOT behavior training data and contributes no behavior metric rows.",
+    "reference": {
+      "contract": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+      "contractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
+      "contractHash": "20509a8a410f238a80090c052b820e1484fd270f47ad740881bea34fc2387d1a",
+      "countsManifest": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
+      "countsManifestContractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
+      "countsManifestHash": "8130e8adfddc4731e8d0ac970d24da30449a36d6c505eb965ded98eba35e571f"
+    },
+    "counts": {
+      "supported": 581,
+      "deferred": 40,
+      "total": 621,
+      "supportedByTier": {
+        "existingAdmitted": 374,
+        "t0": 166,
+        "t1": 41
+      },
+      "deferredByPrototype": {
+        "复制执行": 22,
+        "时光回溯": 18
+      }
+    },
+    "deferredPathIds": [
+      "PPU1:IN_BATTLE:复制执行:复制类型:0",
+      "PPU1:IN_BATTLE:复制执行:复制类型:1",
+      "PPU1:IN_BATTLE:复制执行:复制类型:2",
+      "PPU1:IN_BATTLE:复制执行:复制模式:0",
+      "PPU1:IN_BATTLE:复制执行:复制模式:1",
+      "PPU1:IN_BATTLE:复制执行:目标:0",
+      "PPU1:IN_BATTLE:复制执行:目标:1",
+      "PPU1:IN_BATTLE:复制执行:目标:2",
+      "PPU1:IN_BATTLE:复制执行:目标:3",
+      "PPU1:IN_BATTLE:复制执行:目标:4",
+      "PPU1:IN_BATTLE:复制执行:驱动属性:0",
+      "PPU1:IN_BATTLE:复制执行:驱动属性:1",
+      "PPU1:IN_BATTLE:复制执行:驱动属性:2",
+      "PPU1:IN_BATTLE:复制执行:驱动属性:3",
+      "PPU1:IN_BATTLE:复制执行:驱动属性:4",
+      "PPU1:IN_BATTLE:复制执行:驱动属性:5",
+      "PPU1:IN_BATTLE:复制执行:驱动属性:6",
+      "PPU1:IN_BATTLE:复制执行:生效方式:0",
+      "PPU1:IN_BATTLE:复制执行:生效方式:1",
+      "PPU1:IN_BATTLE:复制执行:影响方向:0",
+      "PPU1:IN_BATTLE:复制执行:影响方向:1",
+      "PPU1:IN_BATTLE:复制执行:影响方向:2",
+      "PPU1:IN_BATTLE:时光回溯:发动方式:0",
+      "PPU1:IN_BATTLE:时光回溯:发动方式:1",
+      "PPU1:IN_BATTLE:时光回溯:目标:0",
+      "PPU1:IN_BATTLE:时光回溯:目标:1",
+      "PPU1:IN_BATTLE:时光回溯:目标:2",
+      "PPU1:IN_BATTLE:时光回溯:目标:3",
+      "PPU1:IN_BATTLE:时光回溯:目标:4",
+      "PPU1:IN_BATTLE:时光回溯:驱动属性:0",
+      "PPU1:IN_BATTLE:时光回溯:驱动属性:1",
+      "PPU1:IN_BATTLE:时光回溯:驱动属性:2",
+      "PPU1:IN_BATTLE:时光回溯:驱动属性:3",
+      "PPU1:IN_BATTLE:时光回溯:驱动属性:4",
+      "PPU1:IN_BATTLE:时光回溯:驱动属性:5",
+      "PPU1:IN_BATTLE:时光回溯:驱动属性:6",
+      "PPU1:IN_BATTLE:时光回溯:生效方式:0",
+      "PPU1:IN_BATTLE:时光回溯:生效方式:1",
+      "PPU1:IN_BATTLE:时光回溯:影响方向:0",
+      "PPU1:IN_BATTLE:时光回溯:影响方向:1"
+    ],
+    "deferredPathIdsHash": "c76bbf40ba410335a17ba16d7ba86cf18e8f6577c8bdd5a4e1b3e0a53ea985d2",
+    "deferredPathIdsHashRule": "SHA256(UTF8(deferredPathIds sorted by UTF-16 code unit ascending, joined by the newline character (0x0A)))",
+    "deferredPathIdsSpec": {
+      "sort": "UTF16_CODE_UNIT_ASCENDING",
+      "separator": "newline 0x0A",
+      "encoding": "UTF-8",
+      "includedFields": [
+        "pathId"
+      ],
+      "count": 40
+    },
+    "deferredPathIdsMatchAdapterDeferredPaths": true,
+    "deferredPathIdsRule": "deferredPathIds copied verbatim from PrototypeDirectAdapterCasesV1.deferredPathIds and verified equal to PrototypeDirectAdapterV1.deferredPaths pathIds (both 40).",
+    "supportedPathIdsEnumerated": false,
+    "supportedPathEnrollmentRule": "The 581 supported path ids are not enumerated in the Prototype artifacts; the real enrollment is the per-prototype supported pathCount for the 21 SUPPORTED prototypes in PrototypeDirectAdapterCasesV1.counts.byPrototype.",
+    "supportedPathHash": "9aa28581f6e61df17efcf8d05ad8c9da079b4a79a387a6971bb03a48bd95af42",
+    "supportedPathHashRule": "SHA256(UTF8(entries sorted by UTF-16 code unit ascending, joined by the newline character (0x0A))) where each entry = prototype + \":\" + pathCount for the 21 SUPPORTED prototypes in counts.byPrototype",
+    "supportedPathHashSpec": {
+      "sort": "UTF16_CODE_UNIT_ASCENDING",
+      "separator": "newline 0x0A",
+      "fieldSeparator": ":",
+      "encoding": "UTF-8",
+      "includedFields": [
+        "prototype",
+        "pathCount"
+      ],
+      "entryCount": 21
+    },
+    "deferredIsNotBehaviorRole": true
+  },
+  "sourceHashes": {
+    "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json": "e1bd31f21dd1f8078730b56b402190854adefca1d46ae9b0ce62643fa3d58f1b",
+    "tools/rc6/cases/KernelReferenceCasesV1.json": "aac9591365c0cec540173f634f2d6dad1671f2a36ee1aea3966e6fdbbb602ca1",
+    "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json": "57580308fc7f89ecc390a50c70d997721102ca65e5d2f1dcaee8fb77cfb458dc",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "20509a8a410f238a80090c052b820e1484fd270f47ad740881bea34fc2387d1a",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "4b9aeb4d790d471d33e90cd7d59410f54703022a2205741eadd3d490cd549978",
+    "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "8130e8adfddc4731e8d0ac970d24da30449a36d6c505eb965ded98eba35e571f",
+    "tools/rc6/contracts/SelectionPolicyV1.json": "d005fa563e4ca1a3da2e59653ae0b14bf6fe1444cb2f82ca13a7b7ee60b8f277",
+    "tools/rc6/contracts/BehaviorProviderV1.json": "cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156",
+    "tools/rc6/contracts/BehaviorProviderV1.schema.json": "e2e771bc385c905fa3e2b033d05f1e9e226e4fdde5b215c27e820b4e0b778bd0",
+    "tools/rc6/cases/BehaviorProviderSelectionCasesV1.json": "d424a42451dcf22f36c958ebe8538a0bdafc7cb8792f5a5978b808f1c5715405"
+  },
+  "pendingHashPaths": [],
+  "validation": {
+    "assertions": [
+      "all sourceHashes paths exist and match",
+      "every unit sourceHash equals canonicalUnitHash of the located source object per the serialization and location rules",
+      "all 80 units locate their source object by the family location rule; no unit hash is fabricated",
+      "unitCount 80 and roles 24/30/26 and families match",
+      "unitIds and sourceCaseIds are unique and never span more than one supported role",
+      "no synthetic or unresolvable case ids exist in this manifest",
+      "mechanic deferredPathIds are the real 40 ids from the final Prototype cases manifest and match the adapter deferredPaths set",
+      "mechanic supportedPathHash and deferredPathIdsHash recompute exactly per their declared specs",
+      "BehaviorProviderSelectionCasesV1 is excluded from the behavior corpus as a contract unit test",
+      "pendingHashPaths is empty; Behavior sourceHashes are final-locked per confirmed stable hashes",
+      "seed collisions are 0"
+    ]
+  }
+}

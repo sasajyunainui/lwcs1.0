@@ -1,0 +1,471 @@
+{
+  "schemaVersion": "BehaviorProviderSelectionCasesV1",
+  "contractId": "RC6-BEHAVIOR-PROVIDER-V1",
+  "revision": 3,
+  "encoding": "UTF-8",
+  "closed": true,
+  "execution": {
+    "harness": "tools/rc6/harness/run-m2-v31-contract-freeze.mjs",
+    "stage0": "Reject forbidden input keys with their declared codes before any selection work.",
+    "expectKinds": {
+      "alwaysSelect": "selected candidateId for every declared random fact (and every run)",
+      "neverSelect": "candidateIds that must never be selected for any declared random fact",
+      "reachable": "every candidateId in the set is selected for at least one declared random fact",
+      "replay": "running the same case twice with the same declared random facts yields the same pick sequence and an identical recorded random fact",
+      "fatal": "expected fatal code",
+      "s4Checks": "S4 proxy outputs for the given (u, revealStrength, declaredEffectLow, declaredEffectHigh)",
+      "sameAsIgnoredDim": "selection is identical to a run in which the named dimension weight is zeroed",
+      "goldVector": "expected S1-S6 computed by the frozen component formulas",
+      "gold": "expected numeric reference values (weights, scores, margins, distributions, boundary picks) per the closed-form weight formula and the declared-fact draw",
+      "exclusionRecorded": "the excluded candidate appears in the decision record with reason and full S1-S6 vector",
+      "forbiddenMatrix": "per-run forbiddenKey/expectedCode probes: the harness adds exactly one forbidden key to an otherwise valid input and expects the declared stage-0 fatal code",
+      "runs": "per-run expectations with their own publicBelief, seededRandomFacts and/or frozenCandidates, or forbidden-key probes",
+      "consumesNoRandomFact": "selection is deterministic (|V| = 1) and consumes no declared random fact"
+    },
+    "minimumAssertions": {
+      "allCasesExecuted": true,
+      "allGoldFieldsChecked": true
+    }
+  },
+  "minimumCoverage": [
+    {"requirement": "dominance guard", "caseIds": ["BPV1-C01-DOMINANCE-GUARD"]},
+    {"requirement": "clear optimal", "caseIds": ["BPV1-C02-CLEAR-OPTIMAL"]},
+    {"requirement": "equivalence band diversity", "caseIds": ["BPV1-C03-BAND-DIVERSITY"]},
+    {"requirement": "replay", "caseIds": ["BPV1-C04-REPLAY"]},
+    {"requirement": "experience switch with closed-form gold values", "caseIds": ["BPV1-C05-EXPERIENCE-SWITCH"]},
+    {"requirement": "non-finite", "caseIds": ["BPV1-C06-NON-FINITE"]},
+    {"requirement": "zero span", "caseIds": ["BPV1-C07-ZERO-SPAN"]},
+    {"requirement": "delta protection", "caseIds": ["BPV1-C08-DELTA-PROTECTION"]},
+    {"requirement": "no route input rejection", "caseIds": ["BPV1-C09-ROUTE-REJECTION"]},
+    {"requirement": "teacher input rejection", "caseIds": ["BPV1-C10-TEACHER-REJECTION"]},
+    {"requirement": "S4 bounded proxy", "caseIds": ["BPV1-C11-S4-BOUNDED"]},
+    {"requirement": "hard exclusion retention", "caseIds": ["BPV1-C12-EXCLUSION-RETENTION"]},
+    {"requirement": "S1-S6 gold values", "caseIds": ["BPV1-C13-COMPONENT-GOLD"]},
+    {"requirement": "forbidden input matrix", "caseIds": ["BPV1-C14-FORBIDDEN-MATRIX"]},
+    {"requirement": "epsilon and delta boundaries", "caseIds": ["BPV1-C15-EPSILON-DELTA-BOUNDARY"]}
+  ],
+  "cases": [
+    {
+      "caseId": "BPV1-C01-DOMINANCE-GUARD",
+      "name": "dominance guard",
+      "description": "Candidate a strictly dominates b on every dimension; b must never be selected. |V| = 1 makes selection deterministic without consuming any declared random fact.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [1.0], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "b", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.9, "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 0.9, "revealStrength": 1.0, "resourceRatios": [0.9], "declaredOverkill": 0.1, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ]
+      },
+      "expect": {
+        "alwaysSelect": "a",
+        "neverSelect": ["b"],
+        "consumesNoRandomFact": true
+      }
+    },
+    {
+      "caseId": "BPV1-C02-CLEAR-OPTIMAL",
+      "name": "clear optimal",
+      "description": "Both candidates are on the Pareto frontier but the experience score margin 0.023649 exceeds epsilon 0.02; selection must be deterministic, equal to b for every declared random fact, and consumes no random fact.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.5], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [0.5, 0.5], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "b", "actionKind": "guard", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 0.6, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.1, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ]
+      },
+      "expect": {
+        "alwaysSelect": "b",
+        "neverSelect": ["a"],
+        "consumesNoRandomFact": true,
+        "gold": {"margin": 0.023649}
+      }
+    },
+    {
+      "caseId": "BPV1-C03-BAND-DIVERSITY",
+      "name": "equivalence band diversity",
+      "description": "Three nondominated near-equivalent candidates sit inside the equivalence band (margin 0.002838 below epsilon). The declared random facts must reach a, b and c; actualValue 0 pins the first candidate and 0.9999999999999999 pins the last candidate of the candidateId-ordered band.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.98], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [0.98, 0.98], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "b", "actionKind": "guard", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.98], "actorStatus": "NORMAL", "objectiveContribution": 0.98, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.52], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "c", "actionKind": "heal", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 0.98, "immediateBranchValues": [0.98, 0.98], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.52], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000000", "actualValue": 0},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000001", "actualValue": 0.1},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000002", "actualValue": 0.2},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000003", "actualValue": 0.3},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000004", "actualValue": 0.4},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000005", "actualValue": 0.5},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000006", "actualValue": 0.6},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000007", "actualValue": 0.7},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000008", "actualValue": 0.8},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000009", "actualValue": 0.9},
+          {"seed": "000000000000000000000000000000000000000000000000000000000000000a", "actualValue": 0.95},
+          {"seed": "000000000000000000000000000000000000000000000000000000000000000b", "actualValue": 0.9999999999999999}
+        ]
+      },
+      "expect": {
+        "reachable": ["a", "b", "c"],
+        "gold": {
+          "margin": 0.002838,
+          "distribution": {"a": 0.4536, "b": 0.2695, "c": 0.2769},
+          "boundaryPicks": {"0.0": "a", "0.9999999999999999": "c"},
+          "picks": {"0.0": "a", "0.1": "a", "0.2": "a", "0.3": "a", "0.4": "a", "0.5": "b", "0.6": "b", "0.7": "b", "0.8": "c", "0.9": "c", "0.95": "c", "0.9999999999999999": "c"}
+        }
+      }
+    },
+    {
+      "caseId": "BPV1-C04-REPLAY",
+      "name": "replay",
+      "description": "Running the same case twice with the same two declared random facts must reproduce the same pick sequence and identical recorded random facts.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.98], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [0.98, 0.98], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "b", "actionKind": "guard", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.98], "actorStatus": "NORMAL", "objectiveContribution": 0.98, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.52], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "c", "actionKind": "heal", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 0.98, "immediateBranchValues": [0.98, 0.98], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.52], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000000", "actualValue": 0.42},
+          {"seed": "0000000000000000000000000000000000000000000000000000000000000001", "actualValue": 0.8}
+        ]
+      },
+      "expect": {
+        "replay": true,
+        "gold": {
+          "margin": 0.002838,
+          "distribution": {"a": 0.4536, "b": 0.2695, "c": 0.2769},
+          "picks": {"0.42": "a", "0.8": "c"}
+        }
+      }
+    },
+    {
+      "caseId": "BPV1-C05-EXPERIENCE-SWITCH",
+      "name": "experience switch",
+      "description": "Raising confidence shifts the closed-form weights so the deterministic pick flips from the survival-heavy candidate to the objective-heavy candidate. Gold values are computed from the closed form in the contract weights section; both runs have |V| = 1 and consume no random fact.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.0], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [0.0, 0.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "b", "actionKind": "guard", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 0.2, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ],
+        "runs": [
+          {"label": "confidence-0.5", "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5}, "expect": {"alwaysSelect": "b", "consumesNoRandomFact": true}},
+          {"label": "confidence-0.9", "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.9, "uncertainty_width": 0.5}, "expect": {"alwaysSelect": "a", "consumesNoRandomFact": true}}
+        ]
+      },
+      "expect": {
+        "runs": [
+          {"label": "confidence-0.5", "alwaysSelect": "b", "consumesNoRandomFact": true, "gold": {"weights": [0.405405, 0.175676, 0.182432, 0.087838, 0.081081, 0.067568], "scores": {"a": 0.489865, "b": 0.523649}, "margin": 0.033784}},
+          {"label": "confidence-0.9", "alwaysSelect": "a", "consumesNoRandomFact": true, "gold": {"weights": [0.481651, 0.149083, 0.168578, 0.074541, 0.068807, 0.057339], "scores": {"a": 0.553326, "b": 0.485665}, "margin": 0.067661}}
+        ]
+      }
+    },
+    {
+      "caseId": "BPV1-C06-NON-FINITE",
+      "name": "non-finite fatal",
+      "description": "A candidate with a non-finite mechanical value must abort selection with NON_FINITE before any ranking.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.5], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [0.5, 0.5], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "b", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.5], "actorStatus": "NORMAL", "objectiveContribution": "NaN", "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.1, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ]
+      },
+      "expect": {
+        "fatal": "NON_FINITE"
+      }
+    },
+    {
+      "caseId": "BPV1-C07-ZERO-SPAN",
+      "name": "zero span",
+      "description": "All candidates share the same overkillDiscard value; selection must be identical to a run with that dimension weight zeroed and must not error. |V| = 1 consumes no random fact.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.6], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [0.6, 0.6], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "b", "actionKind": "guard", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.6], "actorStatus": "NORMAL", "objectiveContribution": 0.6, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "c", "actionKind": "heal", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 0.6, "immediateBranchValues": [0.6, 0.6], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ]
+      },
+      "expect": {
+        "alwaysSelect": "a",
+        "sameAsIgnoredDim": "overkillDiscard",
+        "consumesNoRandomFact": true
+      }
+    },
+    {
+      "caseId": "BPV1-C08-DELTA-PROTECTION",
+      "name": "delta protection",
+      "description": "Candidate d is nondominated and score-close (margin 0.002432 below epsilon) but sits more than delta below the optimum on S2 (0.84 vs 0.90); delta protection excludes d from the equivalence band, so selection stays deterministic on a for every declared random fact and consumes no fact.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.9, "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.1, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "d", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.92, "immediateBranchValues": [0.84, 0.84], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.1, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ]
+      },
+      "expect": {
+        "alwaysSelect": "a",
+        "neverSelect": ["d"],
+        "consumesNoRandomFact": true,
+        "gold": {"margin": 0.002432, "band": ["a"], "frontier": ["a", "d"]}
+      }
+    },
+    {
+      "caseId": "BPV1-C09-ROUTE-REJECTION",
+      "name": "no route input",
+      "description": "A route key in the input is rejected by stage 0 with ROUTE_INPUT_REJECTED before any selection work; the provider never consumes future route, branch or horizon data.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [1.0], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ],
+        "route": {"branches": 3.0}
+      },
+      "expect": {
+        "fatal": "ROUTE_INPUT_REJECTED"
+      }
+    },
+    {
+      "caseId": "BPV1-C10-TEACHER-REJECTION",
+      "name": "no teacher input",
+      "description": "A teacherOutput key in the input is rejected by stage 0 with TEACHER_INPUT_REJECTED; no teacher suggestion, override or choice may enter selection.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [1.0], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ],
+        "teacherOutput": {"suggestion": "a"}
+      },
+      "expect": {
+        "fatal": "TEACHER_INPUT_REJECTED"
+      }
+    },
+    {
+      "caseId": "BPV1-C11-S4-BOUNDED",
+      "name": "S4 bounded immediate proxy",
+      "description": "S4 uses only u, revealStrength, declaredEffectLow and declaredEffectHigh with capS4 = 1.0; it never consumes kernel route values. The four candidates vary only the S4 inputs, so the recorded S4 values must match the frozen formula and the candidate with the highest S4 must win; |V| = 1 consumes no random fact.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.6], "actorStatus": "NORMAL", "objectiveContribution": 0.6, "immediateBranchValues": [0.6, 0.6], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.6], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "b", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.6], "actorStatus": "NORMAL", "objectiveContribution": 0.6, "immediateBranchValues": [0.6, 0.6], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 0.4, "resourceRatios": [0.6], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "c", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.6], "actorStatus": "NORMAL", "objectiveContribution": 0.6, "immediateBranchValues": [0.6, 0.6], "declaredEffectLow": 0.2, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.6], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "d", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.6], "actorStatus": "NORMAL", "objectiveContribution": 0.6, "immediateBranchValues": [0.6, 0.6], "declaredEffectLow": 0.0, "declaredEffectHigh": 0.25, "revealStrength": 0.8, "resourceRatios": [0.6], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ]
+      },
+      "expect": {
+        "alwaysSelect": "a",
+        "consumesNoRandomFact": true,
+        "s4Checks": [
+          {"u": 0.5, "revealStrength": 1.0, "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "expected": 0.5},
+          {"u": 0.5, "revealStrength": 0.4, "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "expected": 0.2},
+          {"u": 0.5, "revealStrength": 1.0, "declaredEffectLow": 0.2, "declaredEffectHigh": 1.0, "expected": 0.4},
+          {"u": 0.5, "revealStrength": 0.8, "declaredEffectLow": 0.0, "declaredEffectHigh": 0.25, "expected": 0.1}
+        ]
+      }
+    },
+    {
+      "caseId": "BPV1-C12-EXCLUSION-RETENTION",
+      "name": "hard exclusion retention",
+      "description": "Candidate x violates legality and is excluded in stage 1 before Pareto; its full S1-S6 vector is still recorded with reason LEGALITY_VIOLATION, even though its raw score (0.888514) exceeds the legal winner a (0.868243). Excluded candidates never enter Pareto but never disappear from the decision record; |V| = 1 consumes no random fact.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 0.95, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [1.0], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+          {"candidateId": "x", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [1.0], "declaredOverkill": 0.0, "legalityFlags": ["LEGALITY_VIOLATION"], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ]
+      },
+      "expect": {
+        "alwaysSelect": "a",
+        "consumesNoRandomFact": true,
+        "exclusionRecorded": {"candidateId": "x", "reason": "LEGALITY_VIOLATION", "vector": [1.0, 1.0, 1.0, 0.5, 1.0, 0.0]}
+      }
+    },
+    {
+      "caseId": "BPV1-C13-COMPONENT-GOLD",
+      "name": "S1-S6 gold values",
+      "description": "A single candidate whose S1-S6 values must equal the frozen component formulas exactly: S1 0.75, S2 0.4 (min of branch values), S3 0.8 (mean HP ratio), S4 0.16 (u 0.5 times reveal 1.0 times spread 0.32), S5 0.7, S6 0.05.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.8], "actorStatus": "NORMAL", "objectiveContribution": 0.75, "immediateBranchValues": [0.4, 0.6], "declaredEffectLow": 0.0, "declaredEffectHigh": 0.32, "revealStrength": 1.0, "resourceRatios": [0.7], "declaredOverkill": 0.05, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ]
+      },
+      "expect": {
+        "alwaysSelect": "a",
+        "consumesNoRandomFact": true,
+        "goldVector": [0.75, 0.4, 0.8, 0.16, 0.7, 0.05]
+      }
+    },
+    {
+      "caseId": "BPV1-C14-FORBIDDEN-MATRIX",
+      "name": "forbidden input matrix",
+      "description": "The baseline input is valid and selects a deterministically without consuming a random fact. Each run adds exactly one forbidden key; stage 0 must return the declared fatal code for that key before any selection work.",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [1.0], "actorStatus": "NORMAL", "objectiveContribution": 1.0, "immediateBranchValues": [1.0, 1.0], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [1.0], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 0.5},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ],
+        "runs": [
+          {"label": "teacherOutput", "forbiddenKey": "teacherOutput", "expectedCode": "TEACHER_INPUT_REJECTED"},
+          {"label": "precomputedHEPP", "forbiddenKey": "precomputedHEPP", "expectedCode": "PRECOMPUTED_HEPP_REJECTED"},
+          {"label": "route", "forbiddenKey": "route", "expectedCode": "ROUTE_INPUT_REJECTED"},
+          {"label": "future", "forbiddenKey": "future", "expectedCode": "ROUTE_INPUT_REJECTED"},
+          {"label": "resultWorld", "forbiddenKey": "resultWorld", "expectedCode": "ROUTE_INPUT_REJECTED"},
+          {"label": "kernelRouteValue", "forbiddenKey": "kernelRouteValue", "expectedCode": "ROUTE_INPUT_REJECTED"},
+          {"label": "hiddenState", "forbiddenKey": "hiddenState", "expectedCode": "HIDDEN_STATE_REJECTED"},
+          {"label": "wallClock", "forbiddenKey": "wallClock", "expectedCode": "WALL_CLOCK_REJECTED"}
+        ]
+      },
+      "expect": {
+        "alwaysSelect": "a",
+        "consumesNoRandomFact": true,
+        "runs": [
+          {"label": "teacherOutput", "fatal": "TEACHER_INPUT_REJECTED"},
+          {"label": "precomputedHEPP", "fatal": "PRECOMPUTED_HEPP_REJECTED"},
+          {"label": "route", "fatal": "ROUTE_INPUT_REJECTED"},
+          {"label": "future", "fatal": "ROUTE_INPUT_REJECTED"},
+          {"label": "resultWorld", "fatal": "ROUTE_INPUT_REJECTED"},
+          {"label": "kernelRouteValue", "fatal": "ROUTE_INPUT_REJECTED"},
+          {"label": "hiddenState", "fatal": "HIDDEN_STATE_REJECTED"},
+          {"label": "wallClock", "fatal": "WALL_CLOCK_REJECTED"}
+        ]
+      }
+    },
+    {
+      "caseId": "BPV1-C15-EPSILON-DELTA-BOUNDARY",
+      "name": "epsilon and delta boundaries",
+      "description": "Four runs against the same anchor candidate a under belief u = 1.0: delta-in keeps d in the band (margin 0.012418, both reachable across the declared facts), delta-out blocks d on S2 (0.84 vs 0.90, margin 0.013464, only a selected, no fact consumed), eps-below keeps b in the band (margin 0.014118, both reachable), eps-above exceeds epsilon (margin 0.028824, deterministic a, no fact consumed).",
+      "input": {
+        "frozenCandidates": [
+          {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.95, "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.05, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+        ],
+        "publicBelief": {"belief_prior_strength": 0.5, "confidence": 0.5, "uncertainty_width": 1.0},
+        "battleIntentAndObjectives": {"mode": "raid", "objectives": {"win": true}},
+        "seededRandomFacts": [
+
+        ],
+        "runs": [
+          {
+            "label": "delta-in",
+            "seededRandomFacts": [
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000000", "actualValue": 0},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000001", "actualValue": 0.1},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000002", "actualValue": 0.5},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000003", "actualValue": 0.8},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000004", "actualValue": 0.9},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000005", "actualValue": 0.95},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000006", "actualValue": 0.9999999999999999}
+            ],
+            "frozenCandidates": [
+              {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.95, "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.05, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+              {"candidateId": "d", "actionKind": "heal", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.92, "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.04, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+            ],
+            "expect": {"reachable": ["a", "d"], "gold": {"margin": 0.012418, "distribution": {"a": 0.834, "d": 0.166}, "boundaryPicks": {"0.0": "a", "0.9999999999999999": "d"}, "picks": {"0.0": "a", "0.1": "a", "0.5": "a", "0.8": "a", "0.9": "d", "0.95": "d", "0.9999999999999999": "d"}}}
+          },
+          {
+            "label": "delta-out",
+            "seededRandomFacts": [
+
+            ],
+            "frozenCandidates": [
+              {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.95, "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.05, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+              {"candidateId": "d", "actionKind": "heal", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.95, "immediateBranchValues": [0.84, 0.84], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.0, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+            ],
+            "expect": {"alwaysSelect": "a", "neverSelect": ["d"], "consumesNoRandomFact": true, "gold": {"margin": 0.013464, "band": ["a"]}}
+          },
+          {
+            "label": "eps-below",
+            "seededRandomFacts": [
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000000", "actualValue": 0},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000001", "actualValue": 0.1},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000002", "actualValue": 0.5},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000003", "actualValue": 0.8},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000004", "actualValue": 0.9},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000005", "actualValue": 0.98},
+              {"seed": "0000000000000000000000000000000000000000000000000000000000000006", "actualValue": 0.9999999999999999}
+            ],
+            "frozenCandidates": [
+              {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.95, "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.05, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+              {"candidateId": "b", "actionKind": "guard", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.92, "immediateBranchValues": [0.89, 0.89], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.04, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+            ],
+            "expect": {"reachable": ["a", "b"], "gold": {"margin": 0.014118, "distribution": {"a": 0.8533, "b": 0.1467}, "boundaryPicks": {"0.0": "a", "0.9999999999999999": "b"}, "picks": {"0.0": "a", "0.1": "a", "0.5": "a", "0.8": "a", "0.9": "b", "0.98": "b", "0.9999999999999999": "b"}}}
+          },
+          {
+            "label": "eps-above",
+            "seededRandomFacts": [
+
+            ],
+            "frozenCandidates": [
+              {"candidateId": "a", "actionKind": "strike", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.9], "actorStatus": "NORMAL", "objectiveContribution": 0.95, "immediateBranchValues": [0.9, 0.9], "declaredEffectLow": 0.0, "declaredEffectHigh": 1.0, "revealStrength": 1.0, "resourceRatios": [0.5], "declaredOverkill": 0.05, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}},
+              {"candidateId": "b", "actionKind": "guard", "targetSet": ["e1"], "paymentMode": "FULL", "mechanical": {"visibleHpRatios": [0.87], "actorStatus": "NORMAL", "objectiveContribution": 0.92, "immediateBranchValues": [0.87, 0.87], "declaredEffectLow": 0.0, "declaredEffectHigh": 0.96, "revealStrength": 1.0, "resourceRatios": [0.48], "declaredOverkill": 0.04, "legalityFlags": [], "targetCount": 1, "paymentMode": "FULL"}}
+            ],
+            "expect": {"alwaysSelect": "a", "consumesNoRandomFact": true, "gold": {"margin": 0.028824, "band": ["a"]}}
+          }
+        ]
+      },
+      "expect": {
+        "runs": [
+          {"label": "delta-in", "reachable": ["a", "d"], "gold": {"margin": 0.012418, "distribution": {"a": 0.834, "d": 0.166}, "boundaryPicks": {"0.0": "a", "0.9999999999999999": "d"}, "picks": {"0.0": "a", "0.1": "a", "0.5": "a", "0.8": "a", "0.9": "d", "0.95": "d", "0.9999999999999999": "d"}}},
+          {"label": "delta-out", "alwaysSelect": "a", "neverSelect": ["d"], "consumesNoRandomFact": true, "gold": {"margin": 0.013464, "band": ["a"]}},
+          {"label": "eps-below", "reachable": ["a", "b"], "gold": {"margin": 0.014118, "distribution": {"a": 0.8533, "b": 0.1467}, "boundaryPicks": {"0.0": "a", "0.9999999999999999": "b"}, "picks": {"0.0": "a", "0.1": "a", "0.5": "a", "0.8": "a", "0.9": "b", "0.98": "b", "0.9999999999999999": "b"}}},
+          {"label": "eps-above", "alwaysSelect": "a", "consumesNoRandomFact": true, "gold": {"margin": 0.028824, "band": ["a"]}}
+        ]
+      }
+    }
+  ]
+}

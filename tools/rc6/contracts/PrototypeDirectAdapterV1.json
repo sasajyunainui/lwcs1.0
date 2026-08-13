@@ -1,0 +1,621 @@
+{
+  "schemaVersion": "PrototypeDirectAdapterV1",
+  "contractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
+  "status": "FROZEN",
+  "encoding": "UTF-8",
+  "authority": {
+    "adjudication": "M2-CONTRACT-ADJUDICATION-C",
+    "supersedes": [
+      "PrototypePathUniverseV1.supportStatus.mechanics as provider support oracle",
+      "BattlePreview_Module.js compileMechanicalBasis admission as provider support oracle"
+    ],
+    "previewAdmissionDecoupled": true,
+    "futureRouteDerivation": false,
+    "worldClone": false,
+    "silentZero": false,
+    "wholePrototypeExclusion": false
+  },
+  "interface": {
+    "adapterScope": "one adapter per prototype; admit/project dispatched per effect instance and per path; prototype status is a default only; unknown prototype rejected",
+    "unknownPrototypePolicy": {
+      "action": "REJECTED_INPUT",
+      "reasonCode": "UNKNOWN_PROTOTYPE_REJECTED"
+    },
+    "admit": {
+      "input": [
+        "effect",
+        "legalityContext"
+      ],
+      "output": {
+        "admitted": "boolean",
+        "reasons": "string[]"
+      },
+      "failureAction": "REJECTED_INPUT_WITH_REASON"
+    },
+    "project": {
+      "input": [
+        "effect",
+        "legalityContext"
+      ],
+      "output": {
+        "factColumns": "direct fact column contributions of MechanicalColumnsV1 (HP_DELTA, RESOURCE_OPTION_CHANGED, SHIELD_DELTA, STATE_DELTA, SCHEDULED_HP_DELTA, SUMMON_WINDOW, RESOURCE_TRANSFER, RULE_DEFENSE_COUNTER, POSITION_DELTA, COPY_EXECUTION, TIME_REWIND)",
+        "legalityModifiers": "target-legality modifiers derived from current public state only (taunt source constraint, control cancellation, disarm or silence rules, state migration and erasure of taunt or control)",
+        "opportunityModifiers": "opportunity identity and distribution modifiers (judgment rates, interference rates, resource locks) that enter candidate dependency tokens",
+        "scheduledFacts": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants)",
+        "unsupportedOutcomeKinds": "outcome kinds this adapter cannot project; non-empty only together with deferCode or an explicit reason code",
+        "deferCode": "per-path defer code; empty string when the path is fully supported"
+      },
+      "silentZero": false,
+      "candidateRetention": "deferred candidates retain vector coverage and candidateAudit reason"
+    },
+    "allowedDeferCodes": [
+      "DEFER_MECHANICS_PROJECTION",
+      "DEFER_LEGALITY_INJECTION",
+      "DEFER_REPORT_PROJECTION"
+    ],
+    "legalityContext": {
+      "source": "CURRENT_PUBLIC_STATE_ONLY",
+      "allowed": [
+        "visibleHpRatios",
+        "publicStates",
+        "observableDeclarations",
+        "revealedAbilityIds",
+        "observableResults"
+      ],
+      "forbidden": [
+        "hiddenExactHp",
+        "hiddenResistance",
+        "hiddenInventory",
+        "hiddenAbility",
+        "unobservedPosterior",
+        "worldClone",
+        "futureRouteEnumeration",
+        "resultEnumeration"
+      ],
+      "timing": "BEFORE_CANDIDATE_FREEZE",
+      "playerLocked": "SAME_GATE"
+    },
+    "dispatch": "PER_EFFECT_PATH_ADMIT_PROJECT"
+  },
+  "registry": {
+    "伤害结算": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 18,
+      "supportKind": "DIRECT_DAMAGE_FACT",
+      "reason": "existing admitted; direct HP_DELTA projection re-adjudicated as supported"
+    },
+    "资源变化": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 22,
+      "supportKind": "RESOURCE_DELTA_FACT",
+      "reason": "existing admitted; RESOURCE_OPTION_CHANGED projection re-adjudicated as supported"
+    },
+    "资源转移": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T1",
+      "pathCount": 25,
+      "supportKind": "RESOURCE_TRANSFER_FACT",
+      "reason": "T1 direct S2 resource transfer (吞噬/共享/转移/均分) projection"
+    },
+    "护盾变化": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 20,
+      "supportKind": "SHIELD_DELTA_FACT",
+      "reason": "existing admitted; SHIELD_DELTA projection re-adjudicated as supported"
+    },
+    "属性修正": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 25,
+      "supportKind": "STATE_DELTA_FACT",
+      "reason": "existing admitted; STATE_DELTA projection re-adjudicated as supported"
+    },
+    "判定修正": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 21,
+      "supportKind": "JUDGMENT_MODIFIER_FACT",
+      "reason": "existing admitted; judgment-rate modifier enters fact columns and dependency identity"
+    },
+    "结算修正": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 63,
+      "supportKind": "SETTLEMENT_MODIFIER_FACT",
+      "reason": "existing admitted; settlement modifier projection re-adjudicated as supported"
+    },
+    "炸环": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T1",
+      "pathCount": 7,
+      "supportKind": "STATE_DELTA_SELF_MULTIPLIER",
+      "reason": "T1 direct self multiplier STATE_DELTA projection"
+    },
+    "状态施加": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 55,
+      "supportKind": "STATE_APPLY_FACT",
+      "reason": "existing admitted; taunt and control carrier, legality injection source"
+    },
+    "时窗修正": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 24,
+      "supportKind": "SCHEDULED_WINDOW_ADJUST",
+      "reason": "existing admitted; S5 scheduled window adjust projection"
+    },
+    "状态移除": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 62,
+      "supportKind": "STATE_REMOVE_FACT",
+      "reason": "existing admitted; removes taunt or control, legality modifier source"
+    },
+    "规则防御": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T1",
+      "pathCount": 9,
+      "supportKind": "RULE_DEFENSE_COUNTER_FACT",
+      "reason": "T1 direct consumption-counter projection (免伤/免死 次数)"
+    },
+    "状态转移": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T0",
+      "pathCount": 51,
+      "supportKind": "STATE_MIGRATION_LEGALITY",
+      "reason": "T0 legality carrier; migrates taunt or control between units"
+    },
+    "状态交换": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T0",
+      "pathCount": 33,
+      "supportKind": "STATE_SWAP_LEGALITY",
+      "reason": "T0 legality carrier; swaps taunt or control between units"
+    },
+    "资源锁定": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T0",
+      "pathCount": 25,
+      "supportKind": "RESOURCE_LOCK_LEGALITY",
+      "reason": "T0 resource legality; locks resource pool, reply or conversion channels"
+    },
+    "规则改写": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T0",
+      "pathCount": 19,
+      "supportKind": "RULE_REWRITE_LEGALITY",
+      "reason": "T0 opportunity legality; disarm and silence rules gate basic attack and skill release"
+    },
+    "机制抹消": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T0",
+      "pathCount": 17,
+      "supportKind": "MECHANISM_ERASURE_LEGALITY",
+      "reason": "T0 legality carrier; erases taunt, control or interference mechanisms"
+    },
+    "机制授予": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "T0",
+      "pathCount": 21,
+      "supportKind": "GRANT_FOLLOWUP_POOL",
+      "reason": "T0 action-pool carrier; declared mandatory continuation grants (命中后追击/再行动) traceability"
+    },
+    "复制执行": {
+      "category": "战斗结算",
+      "status": "DEFERRED_EXPLICIT",
+      "tier": "T2",
+      "pathCount": 22,
+      "supportKind": "COPY_MIRROR_UNBOUNDED",
+      "reason": "path-level defer default; all 22 deferredPathIds liftable individually; candidate retained with reason",
+      "defaultDeferCode": "DEFER_MECHANICS_PROJECTION",
+      "deferredPathCount": 22
+    },
+    "时光回溯": {
+      "category": "战斗结算",
+      "status": "DEFERRED_EXPLICIT",
+      "tier": "T2",
+      "pathCount": 18,
+      "supportKind": "TIME_REWIND_ROLLBACK",
+      "reason": "path-level defer default; all 18 deferredPathIds liftable individually; candidate retained with reason",
+      "defaultDeferCode": "DEFER_MECHANICS_PROJECTION",
+      "deferredPathCount": 18
+    },
+    "位移执行": {
+      "category": "行为推导",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 26,
+      "supportKind": "POSITION_DELTA_FACT",
+      "reason": "existing admitted; POSITION_DELTA projection re-adjudicated as supported"
+    },
+    "决策干扰": {
+      "category": "行为推导",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 19,
+      "supportKind": "DECISION_INTERFERENCE_MODIFIER",
+      "reason": "existing admitted; interference rates enter opportunity modifiers and dependency identity"
+    },
+    "召唤生成": {
+      "category": "战斗结算",
+      "status": "SUPPORTED",
+      "tier": "EXISTING_ADMITTED",
+      "pathCount": 19,
+      "supportKind": "SUMMON_WINDOW_FACT",
+      "reason": "existing admitted; SUMMON_WINDOW scheduled fact re-adjudicated as supported"
+    },
+    "修炼增益": {
+      "category": "战斗外",
+      "status": "OUT_OF_BATTLE_SCOPE",
+      "tier": "NONE",
+      "supportKind": "OUT_OF_BATTLE_SCOPE",
+      "reason": "out-of-battle prototype; outside provider decision scope"
+    },
+    "天赋提升": {
+      "category": "战斗外",
+      "status": "OUT_OF_BATTLE_SCOPE",
+      "tier": "NONE",
+      "supportKind": "OUT_OF_BATTLE_SCOPE",
+      "reason": "out-of-battle prototype; outside provider decision scope"
+    },
+    "永久属性提升": {
+      "category": "战斗外",
+      "status": "OUT_OF_BATTLE_SCOPE",
+      "tier": "NONE",
+      "supportKind": "OUT_OF_BATTLE_SCOPE",
+      "reason": "out-of-battle prototype; outside provider decision scope"
+    },
+    "战斗外复活": {
+      "category": "战斗外",
+      "status": "OUT_OF_BATTLE_SCOPE",
+      "tier": "NONE",
+      "supportKind": "OUT_OF_BATTLE_SCOPE",
+      "reason": "out-of-battle prototype; outside provider decision scope"
+    }
+  },
+  "counts": {
+    "totalInBattlePathCount": 621,
+    "supportedPathCount": 581,
+    "deferredPathCount": 40,
+    "rejectedInputPathCount": 0,
+    "outOfBattleScopePathCount": 91,
+    "silentOmissionCount": 0,
+    "supportedByTier": {
+      "existingAdmitted": 374,
+      "t0": 166,
+      "t1": 41
+    },
+    "deferredByPrototype": {
+      "复制执行": 22,
+      "时光回溯": 18
+    },
+    "deferredPathIdsCount": 40
+  },
+  "constraints": [
+    "whole-prototype hard exclusion is forbidden; every prototype keeps at least path-level support or explicit defer",
+    "silent zero for unrepresentable mechanics is forbidden; every zero contribution carries a reason code",
+    "future-route enumeration, world clone, result enumeration and hidden-state reads are forbidden in admit/project and legalityContext",
+    "deferred candidates retain vector coverage and candidateAudit reason; prototype-level defaultDeferCode is a default only and is liftable per path",
+    "taunt and interference form legalityContext before candidate freeze; PLAYER_LOCKED passes the same gate",
+    "all 621 in-battle paths are covered as supported or deferred; zero silent omission"
+  ],
+  "validation": {
+    "schema": "PrototypeDirectAdapterV1.schema.json",
+    "utf8": "REQUIRED",
+    "mojibakeScan": [
+      "U+FFFD",
+      "CJK_MOJIBAKE_PREFIX",
+      "LATIN1_UTF8_SEQUENCE",
+      "UTF8_DECODE_REPLACEMENT"
+    ],
+    "casesContract": "PrototypeDirectAdapterCasesV1",
+    "selfChecks": {
+      "deferredPathIdsMatchUniverse": true,
+      "perPathDispatchRequired": true
+    }
+  },
+  "deferredPaths": [
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:复制类型:0",
+      "prototype": "复制执行",
+      "field": "复制类型",
+      "option": "复制技能",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:复制类型:1",
+      "prototype": "复制执行",
+      "field": "复制类型",
+      "option": "复制属性",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:复制类型:2",
+      "prototype": "复制执行",
+      "field": "复制类型",
+      "option": "复制全部",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:复制模式:0",
+      "prototype": "复制执行",
+      "field": "复制模式",
+      "option": "即时镜像",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:复制模式:1",
+      "prototype": "复制执行",
+      "field": "复制模式",
+      "option": "复刻友方",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:目标:0",
+      "prototype": "复制执行",
+      "field": "目标",
+      "option": "自身",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:目标:1",
+      "prototype": "复制执行",
+      "field": "目标",
+      "option": "单体",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:目标:2",
+      "prototype": "复制执行",
+      "field": "目标",
+      "option": "群体",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:目标:3",
+      "prototype": "复制执行",
+      "field": "目标",
+      "option": "全场",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:目标:4",
+      "prototype": "复制执行",
+      "field": "目标",
+      "option": "召唤物",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:驱动属性:0",
+      "prototype": "复制执行",
+      "field": "驱动属性",
+      "option": "无",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:驱动属性:1",
+      "prototype": "复制执行",
+      "field": "驱动属性",
+      "option": "力量",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:驱动属性:2",
+      "prototype": "复制执行",
+      "field": "驱动属性",
+      "option": "防御",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:驱动属性:3",
+      "prototype": "复制执行",
+      "field": "驱动属性",
+      "option": "敏捷",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:驱动属性:4",
+      "prototype": "复制执行",
+      "field": "驱动属性",
+      "option": "魂力上限",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:驱动属性:5",
+      "prototype": "复制执行",
+      "field": "驱动属性",
+      "option": "精神力上限",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:驱动属性:6",
+      "prototype": "复制执行",
+      "field": "驱动属性",
+      "option": "体力上限",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:生效方式:0",
+      "prototype": "复制执行",
+      "field": "生效方式",
+      "option": "独立生效",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:生效方式:1",
+      "prototype": "复制执行",
+      "field": "生效方式",
+      "option": "跟随主原型",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:影响方向:0",
+      "prototype": "复制执行",
+      "field": "影响方向",
+      "option": "效果强度",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:影响方向:1",
+      "prototype": "复制执行",
+      "field": "影响方向",
+      "option": "消耗",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:复制执行:影响方向:2",
+      "prototype": "复制执行",
+      "field": "影响方向",
+      "option": "前摇",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:发动方式:0",
+      "prototype": "时光回溯",
+      "field": "发动方式",
+      "option": "主动",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:发动方式:1",
+      "prototype": "时光回溯",
+      "field": "发动方式",
+      "option": "被动",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:目标:0",
+      "prototype": "时光回溯",
+      "field": "目标",
+      "option": "自身",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:目标:1",
+      "prototype": "时光回溯",
+      "field": "目标",
+      "option": "单体",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:目标:2",
+      "prototype": "时光回溯",
+      "field": "目标",
+      "option": "群体",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:目标:3",
+      "prototype": "时光回溯",
+      "field": "目标",
+      "option": "全场",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:目标:4",
+      "prototype": "时光回溯",
+      "field": "目标",
+      "option": "召唤物",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:驱动属性:0",
+      "prototype": "时光回溯",
+      "field": "驱动属性",
+      "option": "无",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:驱动属性:1",
+      "prototype": "时光回溯",
+      "field": "驱动属性",
+      "option": "力量",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:驱动属性:2",
+      "prototype": "时光回溯",
+      "field": "驱动属性",
+      "option": "防御",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:驱动属性:3",
+      "prototype": "时光回溯",
+      "field": "驱动属性",
+      "option": "敏捷",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:驱动属性:4",
+      "prototype": "时光回溯",
+      "field": "驱动属性",
+      "option": "魂力上限",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:驱动属性:5",
+      "prototype": "时光回溯",
+      "field": "驱动属性",
+      "option": "精神力上限",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:驱动属性:6",
+      "prototype": "时光回溯",
+      "field": "驱动属性",
+      "option": "体力上限",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:生效方式:0",
+      "prototype": "时光回溯",
+      "field": "生效方式",
+      "option": "独立生效",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:生效方式:1",
+      "prototype": "时光回溯",
+      "field": "生效方式",
+      "option": "跟随主原型",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:影响方向:0",
+      "prototype": "时光回溯",
+      "field": "影响方向",
+      "option": "成功率",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    },
+    {
+      "pathId": "PPU1:IN_BATTLE:时光回溯:影响方向:1",
+      "prototype": "时光回溯",
+      "field": "影响方向",
+      "option": "效果强度",
+      "deferCode": "DEFER_MECHANICS_PROJECTION"
+    }
+  ]
+}

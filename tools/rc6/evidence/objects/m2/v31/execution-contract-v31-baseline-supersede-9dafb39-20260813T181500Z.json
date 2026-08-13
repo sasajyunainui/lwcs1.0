@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "ExecutionContractV31BaselineSupersedeV1",
+  "contractId": "RC6-EXECUTION-V31",
+  "supersedesBaselineHead": "a4fd078d485904ac322a40fd02dbc8366d04f39b",
+  "supersededBaselineHeadMeaning": "M0 frozen snapshot only; historically valid, no longer the current execution baseline.",
+  "currentHead": "9dafb39cbc4cf995f2fef05edd13b03ca7774aa4",
+  "currentBaselineAuthority": "Append-only event/closure chain; ExecutionContractV31.worktreePolicy.baselineHead binds only the M0 freeze moment.",
+  "chainEvidence": [
+    {
+      "sequence": 237,
+      "eventType": "MILESTONE_REOPENED",
+      "repositoryHead": "cf488067f51616b490712dd0cb72b0b63acee481"
+    },
+    {
+      "sequence": 238,
+      "eventType": "EVIDENCE_EVENT_CORRECTED",
+      "repositoryHead": "7161cc9b5e26d5b129f80064d46d45bea8aab51b"
+    },
+    {
+      "sequence": 239,
+      "eventType": "MILESTONE_COMPLETED",
+      "repositoryHead": "7161cc9b5e26d5b129f80064d46d45bea8aab51b"
+    },
+    {
+      "sequence": 240,
+      "eventType": "MILESTONE_STARTED",
+      "repositoryHead": "7161cc9b5e26d5b129f80064d46d45bea8aab51b"
+    },
+    {
+      "sequence": 241,
+      "eventType": "EVIDENCE_RECORDED",
+      "repositoryHead": "9dafb39cbc4cf995f2fef05edd13b03ca7774aa4"
+    }
+  ],
+  "closureChain": [
+    {
+      "object": "tools/rc6/evidence/objects/m0/v31/m0-closure-a4fd078d-20260813T070000Z.json",
+      "baselineHead": "a4fd078d485904ac322a40fd02dbc8366d04f39b"
+    },
+    {
+      "object": "tools/rc6/evidence/objects/m1/v31/m1-closure-7161cc9-20260813T163131Z.json",
+      "baselineHead": "7161cc9b5e26d5b129f80064d46d45bea8aab51b"
+    }
+  ],
+  "invalidation": "NONE; no accepted or invalidated object hashes are touched by this supersede record.",
+  "contractHash": "9bea0afa329a96106343568764a73bf241f0891c924b3d1221ef4b45d449d72b",
+  "recordedAt": "20260813T181500Z"
+}

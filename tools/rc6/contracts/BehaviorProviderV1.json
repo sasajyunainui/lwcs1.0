@@ -1,0 +1,226 @@
+{
+  "schemaVersion": "BehaviorProviderV1",
+  "contractId": "RC6-BEHAVIOR-PROVIDER-V1",
+  "revision": 3,
+  "status": "FROZEN",
+  "encoding": "UTF-8",
+  "title": "RC6 provider-neutral selection provider: frozen candidates, immediate mechanical columns, closed-form experience weights, Pareto frontier with equivalence-band seeded variety.",
+  "authority": {
+    "supersedes": [
+      {
+        "contract": "SelectionPolicyV1",
+        "clause": "candidateTieBreak",
+        "scope": "WITHIN_PARETO_FRONTIER_EQUIVALENCE_BAND",
+        "replacement": "EQUIVALENCE_BAND_SEEDED_VARIETY_WITH_UTF16_FALLBACK",
+        "reason": "A fully deterministic frontier tie-break cannot satisfy the variety requirement: different battle experiences must approach the appropriate choice and must not always repeat the same move. The supersede is limited to the final selection among in-band non-dominated candidates; margin-protected unique optima stay deterministic."
+      }
+    ],
+    "inherits": [
+      "SelectionPolicyV1: every clause except candidateTieBreak within the Pareto frontier",
+      "ExecutionContractV31: providerStateMachine, modes, productionBoundary, gateCatalog, qualityGate, worktreePolicy, rollbackPolicy"
+    ],
+    "conflictRule": "Inherited clauses remain authoritative unless this contract states a stricter execution gate or the explicit supersede scope above. Experience, random facts and proof requirements are defined by this contract itself and are not inherited from ExecutionContractV31."
+  },
+  "providerIdentity": {
+    "providerId": "behavior-provider-v1",
+    "kind": "CANDIDATE_ONLY",
+    "formalRegistration": false,
+    "registrationGate": "M7_AND_EXPLICIT_APPROVAL",
+    "selectionScope": ["MECHANICAL_NEUTRAL_ONLY", "PROVIDER_PIPELINE"],
+    "stateToSelectionScope": {
+      "NO_FORMAL_PROVIDER": "MECHANICAL_NEUTRAL_ONLY",
+      "R9_CANDIDATE": "MECHANICAL_NEUTRAL_ONLY",
+      "R9_ACTIVE": "PROVIDER_PIPELINE"
+    },
+    "providerNeutral": true,
+    "legacyScorer": false,
+    "shadowProof": false,
+    "roleNameBranch": false
+  },
+  "inputSurface": {
+    "allowed": [
+      {"name": "frozenCandidates", "description": "Current legal action candidates enumerated from public state; each candidate carries its own immediate mechanical columns and identity."},
+      {"name": "immediateMechanicalColumns", "description": "The public column set per candidate defined in immediateMechanicalColumns; current turn only, no future construction."},
+      {"name": "publicBelief", "description": "Declared public belief fields: belief_prior_strength, confidence, uncertainty_width; sources are PUBLIC_DECLARED only."},
+      {"name": "battleIntentAndObjectives", "description": "battleIntent mode and objectives as declared public inputs."},
+      {"name": "experience", "description": "Deterministic vector e=(p,q,u) derived from publicBelief by this contract's experience section; never random, never teacher, never hidden."},
+      {"name": "seededRandomFact", "description": "One declared seeded random fact per selection: seed (64 hex) and actualValue in [0,1) declared by upstream; consumed only when the equivalence band has at least two members."}
+    ],
+    "forbidden": [
+      {"name": "teacherOutput", "code": "TEACHER_INPUT_REJECTED", "behavior": "FATAL", "description": "No teacher suggestion, override or choice may enter selection."},
+      {"name": "precomputedHEPP", "code": "PRECOMPUTED_HEPP_REJECTED", "behavior": "FATAL", "description": "S1-S6 are computed from immediate mechanical columns by this provider; precomputed HEPP vectors are not consumed."},
+      {"name": "route", "code": "ROUTE_INPUT_REJECTED", "behavior": "FATAL", "description": "No future route, branch enumeration or horizon data may enter selection."},
+      {"name": "future", "code": "ROUTE_INPUT_REJECTED", "behavior": "FATAL", "description": "No future state, future action or forecast may enter selection."},
+      {"name": "resultWorld", "code": "ROUTE_INPUT_REJECTED", "behavior": "FATAL", "description": "No result world or outcome enumeration may enter selection."},
+      {"name": "kernelRouteValue", "code": "ROUTE_INPUT_REJECTED", "behavior": "FATAL", "description": "No kernel route value, route-reuse value or prototype path value may enter selection or S4."},
+      {"name": "hiddenState", "code": "HIDDEN_STATE_REJECTED", "behavior": "FATAL", "description": "Hidden HP, resistance, inventory or unobserved posterior never enters selection."},
+      {"name": "wallClock", "code": "WALL_CLOCK_REJECTED", "behavior": "FATAL", "description": "No wall-clock time or nondeterministic source may enter selection."}
+    ]
+  },
+  "immediateMechanicalColumns": [
+    {"code": "visibleHpRatios", "unit": "ARRAY_RATIO_0_1", "source": "PUBLIC_STATE", "consumer": "S3"},
+    {"code": "actorStatus", "unit": "ENUM", "source": "PUBLIC_STATE", "consumer": "HARD_EXCLUSION"},
+    {"code": "objectiveContribution", "unit": "NORMALIZED_0_1", "source": "PUBLIC_DECLARED", "consumer": "S1"},
+    {"code": "immediateBranchValues", "unit": "ARRAY_NORMALIZED_0_1", "source": "PUBLIC_DECLARED", "consumer": "S2"},
+    {"code": "declaredEffectLow", "unit": "NORMALIZED_0_1", "source": "PUBLIC_DECLARED", "consumer": "S4"},
+    {"code": "declaredEffectHigh", "unit": "NORMALIZED_0_1", "source": "PUBLIC_DECLARED", "consumer": "S4"},
+    {"code": "revealStrength", "unit": "RATIO_0_1", "source": "PUBLIC_DECLARED", "consumer": "S4"},
+    {"code": "resourceRatios", "unit": "ARRAY_RATIO_0_1", "source": "PUBLIC_STATE", "consumer": "S5"},
+    {"code": "declaredOverkill", "unit": "NORMALIZED_0_1", "source": "PUBLIC_DECLARED", "consumer": "S6"},
+    {"code": "legalityFlags", "unit": "ENUM_ARRAY", "source": "PUBLIC_STATE", "consumer": "HARD_EXCLUSION"},
+    {"code": "targetCount", "unit": "COUNT", "source": "PUBLIC_STATE", "consumer": "HARD_EXCLUSION"},
+    {"code": "paymentMode", "unit": "ENUM", "source": "PUBLIC_DECLARED", "consumer": "CANDIDATE_IDENTITY"}
+  ],
+  "candidateIdentity": {
+    "fields": ["actionKind", "targetSet", "paymentMode"],
+    "usedBy": ["UTF16_FALLBACK", "EXPLICIT_ALTERNATIVES", "STRUCTURAL_EQUIVALENCE_METRICS"]
+  },
+  "components": [
+    {"code": "S1", "name": "objectiveUtility", "policyDimension": "objectiveUtilityHEPP", "direction": "MAXIMIZE", "formula": "clamp(objectiveContribution, 0, 1)", "unit": "NORMALIZED_0_1", "min": 0, "max": 1, "cap": 1, "causalOwner": "ACTION_POOL_DELTA", "computationOwner": "BehaviorProviderV1", "frozen": true},
+    {"code": "S2", "name": "worstTailUtility", "policyDimension": "worstTailUtilityHEPP", "direction": "MAXIMIZE", "formula": "clamp(min(immediateBranchValues), 0, 1); empty array contributes 0", "unit": "NORMALIZED_0_1", "min": 0, "max": 1, "cap": 1, "causalOwner": "STATE_DELTA", "computationOwner": "BehaviorProviderV1", "frozen": true},
+    {"code": "S3", "name": "survivalUtility", "policyDimension": "survivalUtilityHEPP", "direction": "MAXIMIZE", "formula": "clamp(mean(visibleHpRatios), 0, 1)", "unit": "NORMALIZED_0_1", "min": 0, "max": 1, "cap": 1, "causalOwner": "STATE_DELTA", "computationOwner": "BehaviorProviderV1", "frozen": true},
+    {"code": "S4", "name": "resultProxy", "policyDimension": "informationValueHEPP", "direction": "MAXIMIZE", "formula": "clamp(u * revealStrength * clamp((declaredEffectHigh - declaredEffectLow) / refSpread, 0, 1), 0, capS4)", "unit": "NORMALIZED_0_1", "min": 0, "max": 1, "cap": 1, "causalOwner": "NONE", "computationOwner": "BehaviorProviderV1", "frozen": true, "proxy": true, "bounded": true, "noFutureActions": true, "kernelRouteValues": "NEVER_CONSUMED"},
+    {"code": "S5", "name": "assetReserve", "policyDimension": "assetReserveHEPP", "direction": "MAXIMIZE", "formula": "clamp(mean(resourceRatios), 0, 1)", "unit": "NORMALIZED_0_1", "min": 0, "max": 1, "cap": 1, "causalOwner": "STATE_DELTA", "computationOwner": "BehaviorProviderV1", "frozen": true},
+    {"code": "S6", "name": "overkillDiscard", "policyDimension": "discardedOverkillPP", "direction": "MINIMIZE", "formula": "clamp(declaredOverkill, 0, 1)", "unit": "NORMALIZED_0_1", "min": 0, "max": 1, "cap": 1, "causalOwner": "ACTION_POOL_DELTA", "computationOwner": "BehaviorProviderV1", "frozen": true}
+  ],
+  "s4Proxy": {
+    "formula": "S4(c) = clamp(u * revealStrength(c) * spread(c), 0, capS4)",
+    "spread": "spread(c) = clamp((declaredEffectHigh(c) - declaredEffectLow(c)) / refSpread, 0, 1)",
+    "u": "u = uncertainty_width from publicBelief, clamped to [0, 1]; default 1 when the declared field is missing",
+    "immediateOnly": "S4 uses only declaredEffectLow, declaredEffectHigh, revealStrength and u; it is a strict current-turn proxy and never consumes kernel route values, route-reuse values or prototype path values",
+    "bounded": true,
+    "unit": "NORMALIZED_0_1",
+    "cap": "capS4 = 1.0",
+    "causalOwner": "NONE",
+    "computationOwner": "BehaviorProviderV1",
+    "noFutureActions": true,
+    "kernelRouteValues": "NEVER_CONSUMED",
+    "frozen": true
+  },
+  "experience": {
+    "selfContained": true,
+    "vector": "e = (p, q, u)",
+    "p": "clamp01(publicBelief.belief_prior_strength); missing field defaults to 0",
+    "q": "clamp01(publicBelief.confidence); missing field defaults to 0",
+    "u": "clamp01(publicBelief.uncertainty_width); missing field defaults to 1",
+    "range": [0, 1],
+    "sources": "PUBLIC_DECLARED_ONLY",
+    "deterministic": true,
+    "forbiddenSources": ["hidden_state", "teacher_input", "wall_clock", "battle_history_direct_read", "kernel_route_value"]
+  },
+  "weights": {
+    "closedForm": [
+      "w1 = a1 * (1 + alpha * q)",
+      "w2 = a2 * (1 + beta * p)",
+      "w3 = a3 * (1 + gamma * p + gammaPrime * q)",
+      "w4 = a4 * (1 + lambda * u)",
+      "w5 = a5 * (1 + mu * u)",
+      "w6 = a6",
+      "w_j := w_j / sum_k w_k"
+    ],
+    "constants": {
+      "a1": 0.30, "a2": 0.20, "a3": 0.20, "a4": 0.10, "a5": 0.10, "a6": 0.10,
+      "alpha": 2.0, "beta": 0.6, "gamma": 0.4, "gammaPrime": 0.3, "lambda": 0.6, "mu": 0.4
+    }
+  },
+  "selectionSemantics": {
+    "frontier": "F = nondominated subset of L over the six policy dimensions (direction-aware exact dominance); exact-duplicate vectors collapse to one class",
+    "optimal": "c* = argmax_{c in F} S(c); S ties broken by candidateId UTF-16 code unit ascending",
+    "margin": "m = S(c*) - max_{c in F, c != c*} S(c); a single-member frontier gives m = +infinity",
+    "marginRule": "m > epsilon => V = {c*} and the pick is deterministic; m <= epsilon => the equivalence band applies",
+    "equivalenceBand": "V = {c in F : S(c) >= S(c*) - epsilon and, for every dimension j, MAXIMIZE dims satisfy v_j(c) >= v_j(c*) - delta and MINIMIZE dims satisfy v_j(c) <= v_j(c*) + delta}",
+    "nonDominatedBand": "every band member is non-dominated by construction because V is a subset of F",
+    "deltaProtection": "a candidate more than delta away from c* in the worse direction of any dimension is excluded from V even when its score is within epsilon; the worse direction is below for MAXIMIZE and above for MINIMIZE",
+    "supersedeScope": "WITHIN_PARETO_FRONTIER_EQUIVALENCE_BAND"
+  },
+  "pipeline": [
+    {"stage": 1, "code": "HARD_EXCLUSION", "order": "BEFORE_PARETO", "rule": "Exclusion reasons are computed for every frozen candidate (non-empty legalityFlags maps to its codes; actorStatus DISABLED or TERMINAL maps to ACTOR_DISABLED or ACTOR_TERMINAL; targetCount < 1 maps to TARGET_EMPTY). Excluded candidates retain full S1-S6 vector coverage and their exclusion reason in the decision record; they never enter Pareto and never disappear."},
+    {"stage": 2, "code": "FULL_VECTOR", "rule": "Compute S1-S6 for every candidate in L and for every excluded candidate (coverage). Complete evaluation; no candidate reduction, no Top-K, no sampling before this stage."},
+    {"stage": 3, "code": "PARETO", "rule": "Exact nondominated frontier F over L and the six policy dimensions (direction-aware). Dominated candidates are never selected. Exact-duplicate vectors form one class."},
+    {"stage": 4, "code": "EXPERIENCE_WEIGHTING", "rule": "Weights w(e) by the closed form in weights; normalize to sum 1."},
+    {"stage": 5, "code": "SCORE", "rule": "S(c) = sum_j w_j * v_j(c) with v_j in NORMALIZED_0_1; non-finite any value is FATAL before ranking. Dimension direction is consumed by Pareto dominance (stage 3) and delta protection (stage 6); the score itself is a plain weighted sum of the frozen normalized components."},
+    {"stage": 6, "code": "EQUIVALENCE_BAND", "rule": "c* = argmax S with margin m; m > epsilon implies V = {c*}; otherwise V per selectionSemantics.equivalenceBand with per-dimension delta protection."},
+    {"stage": 7, "code": "SEEDED_VARIETY", "rule": "If |V| >= 2: order V by candidateId UTF-16 code unit ascending; mass(c) = (S(c) - min_V S + rho)^kappa; non-finite or non-positive total mass is FATAL; P(c) = mass(c) / sum over V of mass; consume the declared seededRandomFact (seed 64 hex, actualValue in [0,1)); pick the first candidate whose cumulative P strictly exceeds actualValue; the last candidate in the ordering absorbs any residual floating-point error; record distribution, actualValue and outcomeBranch."},
+    {"stage": 8, "code": "UTF16_FALLBACK", "rule": "Exact-duplicate vector classes and equal-P candidates resolve by candidateId UTF-16 code unit ascending; the draw never splits duplicate classes."}
+  ],
+  "protections": {
+    "dominatedNeverSelected": true,
+    "clearOptimalProtection": "margin m > epsilon forces V = {c*} and a deterministic pick without consuming any random fact",
+    "bandBounded": "selected candidate is within epsilon of the best experience score and within delta of c* in every normalized dimension",
+    "exclusionRecorded": true,
+    "noTopK": true,
+    "noWallClockBudget": true,
+    "noCandidateReduction": true,
+    "nonFinite": "FATAL"
+  },
+  "randomFact": {
+    "selfContained": true,
+    "factId": "selection.v1",
+    "model": "DECLARED_UPSTREAM_FACT",
+    "samplePolicy": "SAMPLE_ONCE_PER_DECLARED_RANDOM_FACT",
+    "seed": "seed is a 64-hex identifier declared by upstream as part of the fact; the provider never recomputes, re-derives or hashes it",
+    "actualValue": "actualValue in [0,1) is declared by upstream as the realized value of the fact; the provider consumes it directly in the inverse CDF draw",
+    "record": ["seed", "distribution", "actualValue", "outcomeBranch"],
+    "consumptionRule": "A declared random fact is consumed only when |V| >= 2; |V| = 1 selects deterministically and consumes no fact",
+    "noProviderRng": ["Math.random", "Date.now", "process.hrtime", "seed_recomputation", "any_other_nondeterministic_source"],
+    "replayRule": "Declaring the same seed and actualValue reproduces the same distribution, the same pick and the same outcomeBranch.",
+    "branchCoverage": "ALL_DECLARED_OUTCOME_PROBABILITIES",
+    "rerollAfterSelection": false,
+    "reportMayInventRandomValue": false
+  },
+  "proof": {
+    "selfContained": true,
+    "candidateEvaluation": "COMPLETE_VECTOR_FOR_EVERY_FROZEN_CANDIDATE",
+    "vectorCoverage": "S1_S6_FOR_ALL_FROZEN_CANDIDATES_INCLUDING_EXCLUDED",
+    "exclusionRecorded": true,
+    "proofMaterialization": "ON_DEMAND_AFTER_SELECTION",
+    "proofCandidates": "SELECTED_UNION_EXPLICIT_ALTERNATIVES_ONLY",
+    "vectorProofEquality": "REQUIRED",
+    "selectionProof": ["PARETO_MEMBERSHIP", "BAND_MEMBERSHIP", "SEEDED_DRAW_CDF", "RECORDED_RANDOM_FACT"]
+  },
+  "constants": {
+    "epsilon": 0.02,
+    "delta": 0.05,
+    "kappa": 2,
+    "rho": 0.01,
+    "refSpread": 1.0,
+    "capS4": 1.0,
+    "frozen": true
+  },
+  "stateBoundary": {
+    "NO_FORMAL_PROVIDER": {"formalProvider": null, "auto": "FAIL_CLOSED", "selection": "MECHANICAL_NEUTRAL_ONLY", "providerRole": "NOT_REGISTERED"},
+    "R9_CANDIDATE": {"formalProvider": null, "auto": "FAIL_CLOSED", "selection": "MECHANICAL_NEUTRAL_ONLY", "providerRole": "CANDIDATE", "registration": false},
+    "R9_ACTIVE": {"formalProvider": "r9v2", "auto": "ALLOWED", "selection": "PROVIDER_PIPELINE", "providerRole": "FORMAL_PROVIDER"},
+    "activationRule": "R9_ACTIVE only after M7 and every mandatory gate are accepted; M2 keeps the provider candidate-only.",
+    "noImplicitPromotion": true
+  },
+  "complexity": {
+    "expression": "O(C^2*D + C(F+T+P+K))",
+    "note": "D = 6 policy dimensions is a constant, so the expression simplifies to O(C^2 + C(F+T+P+K)); the derivation keeps D explicit.",
+    "terms": {"C": "frozen candidate count", "D": "policy dimensions (6)", "F": "immediate mechanical columns per candidate", "T": "target legality and constraint checks per candidate", "P": "score dimensions (6)", "K": "band and seeded draw operations"},
+    "derivation": {"hardExclusion": "O(C*T)", "fullVector": "O(C*F)", "score": "O(C*P)", "pareto": "O(C^2*D)", "band": "O(C*P)", "draw": "O(|V|*log|V|)"},
+    "noRoundHorizonBranchExponential": true
+  },
+  "validation": {
+    "jsonParse": "REQUIRED",
+    "utf8": "REQUIRED",
+    "mojibakeScan": ["U+FFFD", "CJK_MOJIBAKE_PREFIX", "LATIN1_UTF8_SEQUENCE", "UTF8_DECODE_REPLACEMENT"],
+    "selfConsistency": [
+      "schemaVersion equals BehaviorProviderV1.",
+      "components contains exactly S1..S6 with unique codes.",
+      "Every component policyDimension exists in SelectionPolicyV1 paretoDimensions.",
+      "Every component causalOwner is one of STATE_DELTA, ACTION_POOL_DELTA, TERMINAL_DELTA, NONE.",
+      "Every component formula references only columns in immediateMechanicalColumns and constants.",
+      "Constants satisfy 0 < epsilon <= 1, 0 < delta <= 1, kappa >= 1, rho > 0, capS4 > 0, refSpread > 0.",
+      "base weights sum to 1 and all influence constants are non-negative.",
+      "Pipeline stages are exactly 1..8 in order.",
+      "stateBoundary states match ExecutionContractV31 providerStateMachine states and selectionScope maps 1:1 to stateBoundary.selection values.",
+      "The score is a plain weighted sum of frozen normalized components; component direction is consumed by Pareto dominance and delta protection only.",
+      "The seeded draw consumes only the declared actualValue; the provider never calls Math.random, Date.now or process.hrtime and never recomputes the seed.",
+      "A declared random fact is consumed only when |V| >= 2; |V| = 1 consumes no fact.",
+      "The draw picks the first candidate whose cumulative probability strictly exceeds actualValue; the last candidate absorbs residual floating-point error.",
+      "inputSurface.forbidden names are disjoint from inputSurface.allowed names.",
+      "authority.supersedes scope is WITHIN_PARETO_FRONTIER_EQUIVALENCE_BAND."
+    ]
+  }
+}

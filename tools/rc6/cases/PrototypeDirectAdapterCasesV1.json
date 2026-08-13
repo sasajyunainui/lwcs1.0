@@ -1,0 +1,978 @@
+{
+  "schemaVersion": "PrototypeDirectAdapterCasesV1",
+  "contractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
+  "counts": {
+    "inBattlePathCount": 621,
+    "supportedPathCount": 581,
+    "deferredPathCount": 40,
+    "rejectedInputPathCount": 0,
+    "silentOmissionCount": 0,
+    "outOfBattlePrototypeCount": 4,
+    "outOfBattlePathCount": 91,
+    "byPrototype": {
+      "伤害结算": {
+        "status": "SUPPORTED",
+        "pathCount": 18
+      },
+      "资源变化": {
+        "status": "SUPPORTED",
+        "pathCount": 22
+      },
+      "资源转移": {
+        "status": "SUPPORTED",
+        "pathCount": 25
+      },
+      "护盾变化": {
+        "status": "SUPPORTED",
+        "pathCount": 20
+      },
+      "属性修正": {
+        "status": "SUPPORTED",
+        "pathCount": 25
+      },
+      "判定修正": {
+        "status": "SUPPORTED",
+        "pathCount": 21
+      },
+      "结算修正": {
+        "status": "SUPPORTED",
+        "pathCount": 63
+      },
+      "炸环": {
+        "status": "SUPPORTED",
+        "pathCount": 7
+      },
+      "状态施加": {
+        "status": "SUPPORTED",
+        "pathCount": 55
+      },
+      "时窗修正": {
+        "status": "SUPPORTED",
+        "pathCount": 24
+      },
+      "状态移除": {
+        "status": "SUPPORTED",
+        "pathCount": 62
+      },
+      "规则防御": {
+        "status": "SUPPORTED",
+        "pathCount": 9
+      },
+      "状态转移": {
+        "status": "SUPPORTED",
+        "pathCount": 51
+      },
+      "状态交换": {
+        "status": "SUPPORTED",
+        "pathCount": 33
+      },
+      "资源锁定": {
+        "status": "SUPPORTED",
+        "pathCount": 25
+      },
+      "规则改写": {
+        "status": "SUPPORTED",
+        "pathCount": 19
+      },
+      "机制抹消": {
+        "status": "SUPPORTED",
+        "pathCount": 17
+      },
+      "机制授予": {
+        "status": "SUPPORTED",
+        "pathCount": 21
+      },
+      "复制执行": {
+        "status": "DEFERRED_EXPLICIT",
+        "pathCount": 22
+      },
+      "时光回溯": {
+        "status": "DEFERRED_EXPLICIT",
+        "pathCount": 18
+      },
+      "位移执行": {
+        "status": "SUPPORTED",
+        "pathCount": 26
+      },
+      "决策干扰": {
+        "status": "SUPPORTED",
+        "pathCount": 19
+      },
+      "召唤生成": {
+        "status": "SUPPORTED",
+        "pathCount": 19
+      }
+    },
+    "deferredPathIdsCount": 40
+  },
+  "cases": [
+    {
+      "caseId": "pos-damage-direct",
+      "kind": "POSITIVE",
+      "prototype": "伤害结算",
+      "effect": {
+        "原型": "伤害结算",
+        "目标": "单体",
+        "威力倍率": 60,
+        "伤害类型": "近身攻击"
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "HP_DELTA"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-resource-change",
+      "kind": "POSITIVE",
+      "prototype": "资源变化",
+      "effect": {
+        "原型": "资源变化",
+        "目标": "自身",
+        "资源": "魂力",
+        "数值": "+10"
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "RESOURCE_OPTION_CHANGED"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-resource-transfer",
+      "kind": "POSITIVE",
+      "prototype": "资源转移",
+      "effect": {
+        "原型": "资源转移",
+        "目标": "单体",
+        "资源": "魂力",
+        "数值": "10",
+        "资源转移方式": "吞噬"
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "RESOURCE_TRANSFER"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-shield-change",
+      "kind": "POSITIVE",
+      "prototype": "护盾变化",
+      "effect": {
+        "原型": "护盾变化",
+        "目标": "自身",
+        "护盾模式": "正向护盾",
+        "数值": "+20"
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "SHIELD_DELTA"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-attribute-modifier",
+      "kind": "POSITIVE",
+      "prototype": "属性修正",
+      "effect": {
+        "原型": "属性修正",
+        "目标": "自身",
+        "属性": "力量",
+        "数值": "+10%",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "STATE_DELTA"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-judgment-modifier",
+      "kind": "POSITIVE",
+      "prototype": "判定修正",
+      "effect": {
+        "原型": "判定修正",
+        "目标": "自身",
+        "判定": "命中",
+        "数值": "+10%",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "STATE_DELTA"
+        ],
+        "legalityModifiers": {
+          "judgmentRates": [
+            {
+              "判定": "命中",
+              "数值": "+10%"
+            }
+          ]
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-settlement-modifier",
+      "kind": "POSITIVE",
+      "prototype": "结算修正",
+      "effect": {
+        "原型": "结算修正",
+        "目标": "自身",
+        "结算": "造成伤害",
+        "数值": "+10%",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "STATE_DELTA"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-ring-burst",
+      "kind": "POSITIVE",
+      "prototype": "炸环",
+      "effect": {
+        "原型": "炸环",
+        "目标": "自身",
+        "强化倍率": 1.5
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "STATE_DELTA"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-state-apply-taunt",
+      "kind": "POSITIVE",
+      "prototype": "状态施加",
+      "effect": {
+        "原型": "状态施加",
+        "目标": "单体",
+        "状态": "嘲讽",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "STATE_DELTA"
+        ],
+        "legalityModifiers": {
+          "taunt": {
+            "state": "嘲讽",
+            "target": "target"
+          }
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-window-adjust",
+      "kind": "POSITIVE",
+      "prototype": "时窗修正",
+      "effect": {
+        "原型": "时窗修正",
+        "目标": "单体",
+        "调整字段": "持续回合",
+        "调整方式": "延长",
+        "调整回合": 1
+      },
+      "expect": {
+        "admitted": true,
+        "scheduledFacts": [
+          {
+            "operation": "WINDOW_ADJUST",
+            "字段": "持续回合",
+            "方式": "延长"
+          }
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-state-remove-taunt",
+      "kind": "POSITIVE",
+      "prototype": "状态移除",
+      "effect": {
+        "原型": "状态移除",
+        "目标": "自身",
+        "状态": "嘲讽",
+        "数量": 1
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "STATE_DELTA"
+        ],
+        "legalityModifiers": {
+          "tauntRemoved": {
+            "state": "嘲讽"
+          }
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-rule-defense",
+      "kind": "POSITIVE",
+      "prototype": "规则防御",
+      "effect": {
+        "原型": "规则防御",
+        "目标": "自身",
+        "规则": "免伤",
+        "次数": 1
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "RULE_DEFENSE_COUNTER"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-state-migrate-taunt",
+      "kind": "POSITIVE",
+      "prototype": "状态转移",
+      "effect": {
+        "原型": "状态转移",
+        "目标": "单体",
+        "状态": "嘲讽",
+        "来源": "自身",
+        "去向": "目标",
+        "数量": 1
+      },
+      "expect": {
+        "admitted": true,
+        "legalityModifiers": {
+          "stateMigration": {
+            "state": "嘲讽",
+            "from": "自身",
+            "to": "目标"
+          }
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-state-swap",
+      "kind": "POSITIVE",
+      "prototype": "状态交换",
+      "effect": {
+        "原型": "状态交换",
+        "目标": "单体",
+        "状态": "嘲讽"
+      },
+      "expect": {
+        "admitted": true,
+        "legalityModifiers": {
+          "stateSwap": {
+            "state": "嘲讽"
+          }
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-resource-lock",
+      "kind": "POSITIVE",
+      "prototype": "资源锁定",
+      "effect": {
+        "原型": "资源锁定",
+        "目标": "单体",
+        "资源": "魂力",
+        "锁定类型": "资源池锁定",
+        "数值": "-50%"
+      },
+      "expect": {
+        "admitted": true,
+        "opportunityModifiers": {
+          "resourceLocks": [
+            {
+              "资源": "魂力",
+              "锁定类型": "资源池锁定"
+            }
+          ]
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-rule-rewrite-disarm",
+      "kind": "POSITIVE",
+      "prototype": "规则改写",
+      "effect": {
+        "原型": "规则改写",
+        "目标": "单体",
+        "规则": "缴械",
+        "数值": "+25%"
+      },
+      "expect": {
+        "admitted": true,
+        "opportunityModifiers": {
+          "opportunityConstraints": {
+            "basicAttackAllowed": false
+          }
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-mechanism-erasure",
+      "kind": "POSITIVE",
+      "prototype": "机制抹消",
+      "effect": {
+        "原型": "机制抹消",
+        "目标": "单体",
+        "抹消对象": {
+          "原型": "状态施加",
+          "状态": "眩晕"
+        }
+      },
+      "expect": {
+        "admitted": true,
+        "legalityModifiers": {
+          "mechanismRemoval": [
+            {
+              "原型": "状态施加",
+              "状态": "眩晕"
+            }
+          ]
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-grant-followup",
+      "kind": "POSITIVE",
+      "prototype": "机制授予",
+      "effect": {
+        "原型": "机制授予",
+        "目标": "自身",
+        "触发条件": "随下次行动触发",
+        "授予效果": [
+          {
+            "原型": "判定修正",
+            "目标": "自身",
+            "判定": "命中",
+            "数值": "+10%"
+          }
+        ]
+      },
+      "expect": {
+        "admitted": true,
+        "scheduledFacts": [
+          {
+            "grantType": "FOLLOW_UP",
+            "trigger": "命中后追击",
+            "maxActions": 1
+          }
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-displacement",
+      "kind": "POSITIVE",
+      "prototype": "位移执行",
+      "effect": {
+        "原型": "位移执行",
+        "目标": "单体",
+        "位移类型": "击退",
+        "位移对象": "目标",
+        "距离": 3
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "POSITION_DELTA"
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-decision-interference",
+      "kind": "POSITIVE",
+      "prototype": "决策干扰",
+      "effect": {
+        "原型": "决策干扰",
+        "目标": "群体",
+        "干扰": "索敌干扰",
+        "数值": "3%",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": true,
+        "opportunityModifiers": {
+          "interferenceRates": [
+            {
+              "干扰": "索敌干扰",
+              "数值": "3%"
+            }
+          ]
+        },
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "pos-summon",
+      "kind": "POSITIVE",
+      "prototype": "召唤生成",
+      "effect": {
+        "原型": "召唤生成",
+        "目标": "自身",
+        "召唤单位类型": "魂兽",
+        "召唤物名称": "审计召唤物",
+        "数量": 1,
+        "行动模式": "协同攻击",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": true,
+        "factColumns": [
+          "SUMMON_WINDOW"
+        ],
+        "scheduledFacts": [
+          {
+            "grantType": "SUMMON_WINDOW",
+            "行动模式": "协同攻击"
+          }
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      }
+    },
+    {
+      "caseId": "leg-taunt-before-freeze",
+      "kind": "LEGALITY",
+      "prototype": "状态施加",
+      "effect": {
+        "原型": "状态施加",
+        "目标": "单体",
+        "状态": "嘲讽",
+        "持续回合": 1
+      },
+      "legalityContext": {
+        "publicStates": {
+          "taunter": {
+            "嘲讽": true
+          }
+        },
+        "observerId": "attacker"
+      },
+      "expect": {
+        "admitted": true,
+        "legalityModifiers": {
+          "taunt": {
+            "state": "嘲讽",
+            "target": "taunter"
+          }
+        },
+        "reasonCode": "TAUNT_CONSTRAINS_LEGAL_SET"
+      }
+    },
+    {
+      "caseId": "leg-player-locked-same-gate",
+      "kind": "LEGALITY",
+      "prototype": "伤害结算",
+      "effect": {
+        "原型": "伤害结算",
+        "目标": "单体",
+        "威力倍率": 60,
+        "伤害类型": "近身攻击"
+      },
+      "legalityContext": {
+        "publicStates": {
+          "taunter": {
+            "嘲讽": true
+          }
+        },
+        "playerLockedTargetId": "other-enemy"
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "PLAYER_LOCKED_TAUNT_LEGALITY"
+      }
+    },
+    {
+      "caseId": "leg-interference-dependency",
+      "kind": "LEGALITY",
+      "prototype": "决策干扰",
+      "effect": {
+        "原型": "决策干扰",
+        "目标": "群体",
+        "干扰": "索敌干扰",
+        "数值": "3%",
+        "持续回合": 1
+      },
+      "legalityContext": {
+        "interferenceRevision": "i-2"
+      },
+      "expect": {
+        "admitted": true,
+        "opportunityModifiers": {
+          "dependencyTokens": [
+            "interference:索敌干扰:3%"
+          ]
+        },
+        "reasonCode": "INTERFERENCE_ENTER_DEPENDENCY"
+      }
+    },
+    {
+      "caseId": "def-copy-execution",
+      "kind": "DEFER",
+      "prototype": "复制执行",
+      "effect": {
+        "原型": "复制执行",
+        "目标": "单体",
+        "复制类型": "复制技能",
+        "复制模式": "即时镜像"
+      },
+      "expect": {
+        "admitted": true,
+        "deferCode": "DEFER_MECHANICS_PROJECTION",
+        "unsupportedOutcomeKinds": [
+          "COPY_EXECUTION"
+        ],
+        "retainedInCandidateAudit": true
+      }
+    },
+    {
+      "caseId": "def-time-rewind",
+      "kind": "DEFER",
+      "prototype": "时光回溯",
+      "effect": {
+        "原型": "时光回溯",
+        "目标": "自身",
+        "发动方式": "主动"
+      },
+      "expect": {
+        "admitted": true,
+        "deferCode": "DEFER_MECHANICS_PROJECTION",
+        "unsupportedOutcomeKinds": [
+          "TIME_REWIND"
+        ],
+        "retainedInCandidateAudit": true
+      }
+    },
+    {
+      "caseId": "def-retention-audit",
+      "kind": "DEFER",
+      "prototype": "复制执行",
+      "effect": {
+        "原型": "复制执行",
+        "目标": "单体",
+        "复制类型": "复制技能",
+        "复制模式": "即时镜像"
+      },
+      "expect": {
+        "admitted": true,
+        "deferCode": "DEFER_MECHANICS_PROJECTION",
+        "unsupportedOutcomeKinds": [
+          "COPY_EXECUTION"
+        ],
+        "retainedInCandidateAudit": true,
+        "reasonCode": "DEFERRED_CANDIDATE_RETAINED_WITH_REASON"
+      }
+    },
+    {
+      "caseId": "neg-unknown-prototype",
+      "kind": "NEGATIVE",
+      "prototype": "未知原型",
+      "effect": {
+        "原型": "未知原型",
+        "目标": "单体"
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "UNKNOWN_PROTOTYPE_REJECTED"
+      }
+    },
+    {
+      "caseId": "anti-whole-prototype-exclusion",
+      "kind": "ANTI_PATTERN",
+      "prototype": "机制授予",
+      "effect": {
+        "原型": "机制授予",
+        "目标": "自身",
+        "触发条件": "随下次行动触发",
+        "授予效果": [
+          {
+            "原型": "判定修正",
+            "目标": "自身",
+            "判定": "命中",
+            "数值": "+10%"
+          }
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "WHOLE_PROTOTYPE_EXCLUSION_FORBIDDEN"
+      },
+      "probe": "CONTRACT_POLICY"
+    },
+    {
+      "caseId": "anti-silent-zero",
+      "kind": "ANTI_PATTERN",
+      "prototype": "复制执行",
+      "effect": {
+        "原型": "复制执行",
+        "目标": "单体",
+        "复制类型": "复制技能",
+        "复制模式": "即时镜像"
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "SILENT_ZERO_FORBIDDEN"
+      },
+      "probe": "CONTRACT_POLICY"
+    },
+    {
+      "caseId": "anti-world-clone",
+      "kind": "ANTI_PATTERN",
+      "prototype": "伤害结算",
+      "effect": {
+        "原型": "伤害结算",
+        "目标": "单体",
+        "威力倍率": 60,
+        "伤害类型": "近身攻击"
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "WORLD_CLONE_FORBIDDEN"
+      },
+      "probe": "CONTRACT_POLICY"
+    },
+    {
+      "caseId": "anti-future-route",
+      "kind": "ANTI_PATTERN",
+      "prototype": "决策干扰",
+      "effect": {
+        "原型": "决策干扰",
+        "目标": "群体",
+        "干扰": "判断干扰",
+        "数值": "-20%",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "FUTURE_ROUTE_DERIVATION_FORBIDDEN"
+      },
+      "probe": "CONTRACT_POLICY"
+    },
+    {
+      "caseId": "anti-hidden-state-read",
+      "kind": "ANTI_PATTERN",
+      "prototype": "判定修正",
+      "effect": {
+        "原型": "判定修正",
+        "目标": "自身",
+        "判定": "命中",
+        "数值": "+10%"
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "HIDDEN_STATE_READ_FORBIDDEN"
+      },
+      "probe": "CONTRACT_POLICY"
+    },
+    {
+      "caseId": "anti-t0-unsupported",
+      "kind": "ANTI_PATTERN",
+      "prototype": "机制授予",
+      "effect": {
+        "原型": "机制授予",
+        "目标": "自身",
+        "触发条件": "随下次行动触发",
+        "授予效果": [
+          {
+            "原型": "判定修正",
+            "目标": "自身",
+            "判定": "命中",
+            "数值": "+10%"
+          }
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "T0_PATH_UNSUPPORTED_FORBIDDEN"
+      },
+      "probe": "CONTRACT_POLICY"
+    },
+    {
+      "caseId": "anti-prototype-level-defer",
+      "kind": "ANTI_PATTERN",
+      "prototype": "时光回溯",
+      "effect": {
+        "原型": "时光回溯",
+        "目标": "自身",
+        "发动方式": "主动"
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "PROTOTYPE_LEVEL_DEFER_FORBIDDEN"
+      },
+      "probe": "CONTRACT_POLICY"
+    },
+    {
+      "caseId": "pos-t0-path-supported",
+      "kind": "POSITIVE",
+      "prototype": "机制授予",
+      "pathId": "PPU1:IN_BATTLE:机制授予:目标:0",
+      "effect": {
+        "原型": "机制授予",
+        "目标": "自身",
+        "触发条件": "随下次行动触发",
+        "授予效果": [
+          {
+            "原型": "判定修正",
+            "目标": "自身",
+            "判定": "命中",
+            "数值": "+10%"
+          }
+        ]
+      },
+      "expect": {
+        "admitted": true,
+        "deferCode": "",
+        "unsupportedOutcomeKinds": [],
+        "retainedInCandidateAudit": true
+      }
+    },
+    {
+      "caseId": "def-per-path-liftable",
+      "kind": "DEFER",
+      "prototype": "复制执行",
+      "pathId": "PPU1:IN_BATTLE:复制执行:复制类型:0",
+      "effect": {
+        "原型": "复制执行",
+        "目标": "单体",
+        "复制类型": "复制技能",
+        "复制模式": "即时镜像"
+      },
+      "expect": {
+        "admitted": true,
+        "deferCode": "DEFER_MECHANICS_PROJECTION",
+        "unsupportedOutcomeKinds": [
+          "COPY_EXECUTION"
+        ],
+        "retainedInCandidateAudit": true,
+        "reasonCode": "PATH_DEFAULT_DEFER_LIFTABLE"
+      }
+    },
+    {
+      "caseId": "anti-result-enumeration",
+      "kind": "ANTI_PATTERN",
+      "probe": "CONTRACT_POLICY",
+      "prototype": "决策干扰",
+      "effect": {
+        "原型": "决策干扰",
+        "目标": "群体",
+        "干扰": "判断干扰",
+        "数值": "-20%",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "RESULT_ENUMERATION_FORBIDDEN"
+      }
+    },
+    {
+      "caseId": "anti-silent-defer",
+      "kind": "ANTI_PATTERN",
+      "probe": "CONTRACT_POLICY",
+      "prototype": "复制执行",
+      "effect": {
+        "原型": "复制执行",
+        "目标": "单体",
+        "复制类型": "复制技能",
+        "复制模式": "即时镜像"
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "SILENT_DEFER_FORBIDDEN"
+      }
+    }
+  ],
+  "deferredPathIds": [
+    "PPU1:IN_BATTLE:复制执行:复制类型:0",
+    "PPU1:IN_BATTLE:复制执行:复制类型:1",
+    "PPU1:IN_BATTLE:复制执行:复制类型:2",
+    "PPU1:IN_BATTLE:复制执行:复制模式:0",
+    "PPU1:IN_BATTLE:复制执行:复制模式:1",
+    "PPU1:IN_BATTLE:复制执行:目标:0",
+    "PPU1:IN_BATTLE:复制执行:目标:1",
+    "PPU1:IN_BATTLE:复制执行:目标:2",
+    "PPU1:IN_BATTLE:复制执行:目标:3",
+    "PPU1:IN_BATTLE:复制执行:目标:4",
+    "PPU1:IN_BATTLE:复制执行:驱动属性:0",
+    "PPU1:IN_BATTLE:复制执行:驱动属性:1",
+    "PPU1:IN_BATTLE:复制执行:驱动属性:2",
+    "PPU1:IN_BATTLE:复制执行:驱动属性:3",
+    "PPU1:IN_BATTLE:复制执行:驱动属性:4",
+    "PPU1:IN_BATTLE:复制执行:驱动属性:5",
+    "PPU1:IN_BATTLE:复制执行:驱动属性:6",
+    "PPU1:IN_BATTLE:复制执行:生效方式:0",
+    "PPU1:IN_BATTLE:复制执行:生效方式:1",
+    "PPU1:IN_BATTLE:复制执行:影响方向:0",
+    "PPU1:IN_BATTLE:复制执行:影响方向:1",
+    "PPU1:IN_BATTLE:复制执行:影响方向:2",
+    "PPU1:IN_BATTLE:时光回溯:发动方式:0",
+    "PPU1:IN_BATTLE:时光回溯:发动方式:1",
+    "PPU1:IN_BATTLE:时光回溯:目标:0",
+    "PPU1:IN_BATTLE:时光回溯:目标:1",
+    "PPU1:IN_BATTLE:时光回溯:目标:2",
+    "PPU1:IN_BATTLE:时光回溯:目标:3",
+    "PPU1:IN_BATTLE:时光回溯:目标:4",
+    "PPU1:IN_BATTLE:时光回溯:驱动属性:0",
+    "PPU1:IN_BATTLE:时光回溯:驱动属性:1",
+    "PPU1:IN_BATTLE:时光回溯:驱动属性:2",
+    "PPU1:IN_BATTLE:时光回溯:驱动属性:3",
+    "PPU1:IN_BATTLE:时光回溯:驱动属性:4",
+    "PPU1:IN_BATTLE:时光回溯:驱动属性:5",
+    "PPU1:IN_BATTLE:时光回溯:驱动属性:6",
+    "PPU1:IN_BATTLE:时光回溯:生效方式:0",
+    "PPU1:IN_BATTLE:时光回溯:生效方式:1",
+    "PPU1:IN_BATTLE:时光回溯:影响方向:0",
+    "PPU1:IN_BATTLE:时光回溯:影响方向:1"
+  ]
+}

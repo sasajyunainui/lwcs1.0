@@ -1,0 +1,660 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BehaviorProviderV1 closed schema (contract and selection cases)",
+  "description": "One file, two closed branches: contract documents validate against #/definitions/contract; case manifests validate against #/definitions/cases.",
+  "oneOf": [
+    {"$ref": "#/definitions/contract"},
+    {"$ref": "#/definitions/cases"}
+  ],
+  "definitions": {
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "contractId", "revision", "status", "encoding", "title", "authority", "providerIdentity", "inputSurface", "immediateMechanicalColumns", "candidateIdentity", "components", "s4Proxy", "experience", "weights", "selectionSemantics", "pipeline", "protections", "randomFact", "proof", "constants", "stateBoundary", "complexity", "validation"],
+      "properties": {
+        "schemaVersion": {"const": "BehaviorProviderV1"},
+        "contractId": {"type": "string", "minLength": 1},
+        "revision": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["FROZEN"]},
+        "encoding": {"const": "UTF-8"},
+        "title": {"type": "string", "minLength": 1},
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["supersedes", "inherits", "conflictRule"],
+          "properties": {
+            "supersedes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["contract", "clause", "scope", "replacement", "reason"],
+                "properties": {
+                  "contract": {"type": "string"},
+                  "clause": {"const": "candidateTieBreak"},
+                  "scope": {"const": "WITHIN_PARETO_FRONTIER_EQUIVALENCE_BAND"},
+                  "replacement": {"type": "string"},
+                  "reason": {"type": "string"}
+                }
+              }
+            },
+            "inherits": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+            "conflictRule": {"type": "string", "minLength": 1}
+          }
+        },
+        "providerIdentity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["providerId", "kind", "formalRegistration", "registrationGate", "selectionScope", "stateToSelectionScope", "providerNeutral", "legacyScorer", "shadowProof", "roleNameBranch"],
+          "properties": {
+            "providerId": {"const": "behavior-provider-v1"},
+            "kind": {"enum": ["CANDIDATE_ONLY"]},
+            "formalRegistration": {"const": false},
+            "registrationGate": {"type": "string", "minLength": 1},
+            "selectionScope": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {"enum": ["MECHANICAL_NEUTRAL_ONLY", "PROVIDER_PIPELINE"]}
+            },
+            "stateToSelectionScope": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["NO_FORMAL_PROVIDER", "R9_CANDIDATE", "R9_ACTIVE"],
+              "properties": {
+                "NO_FORMAL_PROVIDER": {"const": "MECHANICAL_NEUTRAL_ONLY"},
+                "R9_CANDIDATE": {"const": "MECHANICAL_NEUTRAL_ONLY"},
+                "R9_ACTIVE": {"const": "PROVIDER_PIPELINE"}
+              }
+            },
+            "providerNeutral": {"const": true},
+            "legacyScorer": {"const": false},
+            "shadowProof": {"const": false},
+            "roleNameBranch": {"const": false}
+          }
+        },
+        "inputSurface": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["allowed", "forbidden"],
+          "properties": {
+            "allowed": {
+              "type": "array",
+              "minItems": 6,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "description"],
+                "properties": {"name": {"type": "string"}, "description": {"type": "string"}}
+              }
+            },
+            "forbidden": {
+              "type": "array",
+              "minItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "code", "behavior", "description"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "code": {"enum": ["TEACHER_INPUT_REJECTED", "PRECOMPUTED_HEPP_REJECTED", "ROUTE_INPUT_REJECTED", "HIDDEN_STATE_REJECTED", "WALL_CLOCK_REJECTED"]},
+                  "behavior": {"const": "FATAL"},
+                  "description": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "immediateMechanicalColumns": {
+          "type": "array",
+          "minItems": 12,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "unit", "source", "consumer"],
+            "properties": {
+              "code": {"enum": ["visibleHpRatios", "actorStatus", "objectiveContribution", "immediateBranchValues", "declaredEffectLow", "declaredEffectHigh", "revealStrength", "resourceRatios", "declaredOverkill", "legalityFlags", "targetCount", "paymentMode"]},
+              "unit": {"type": "string"},
+              "source": {"enum": ["PUBLIC_STATE", "PUBLIC_DECLARED"]},
+              "consumer": {"type": "string"}
+            }
+          }
+        },
+        "candidateIdentity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fields", "usedBy"],
+          "properties": {
+            "fields": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"enum": ["actionKind", "targetSet", "paymentMode"]}},
+            "usedBy": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+          }
+        },
+        "components": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "name", "policyDimension", "direction", "formula", "unit", "min", "max", "cap", "causalOwner", "computationOwner", "frozen"],
+            "properties": {
+              "code": {"enum": ["S1", "S2", "S3", "S4", "S5", "S6"]},
+              "name": {"type": "string"},
+              "policyDimension": {"type": "string"},
+              "direction": {"enum": ["MAXIMIZE", "MINIMIZE"]},
+              "formula": {"type": "string"},
+              "unit": {"const": "NORMALIZED_0_1"},
+              "min": {"type": "number", "minimum": 0},
+              "max": {"type": "number", "minimum": 0},
+              "cap": {"type": "number", "minimum": 0},
+              "causalOwner": {"enum": ["STATE_DELTA", "ACTION_POOL_DELTA", "TERMINAL_DELTA", "NONE"]},
+              "computationOwner": {"const": "BehaviorProviderV1"},
+              "frozen": {"const": true},
+              "proxy": {"type": "boolean"},
+              "bounded": {"type": "boolean"},
+              "noFutureActions": {"type": "boolean"},
+              "kernelRouteValues": {"const": "NEVER_CONSUMED"}
+            }
+          }
+        },
+        "s4Proxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["formula", "spread", "u", "immediateOnly", "bounded", "unit", "cap", "causalOwner", "computationOwner", "noFutureActions", "frozen"],
+          "properties": {
+            "formula": {"type": "string"},
+            "spread": {"type": "string"},
+            "u": {"type": "string"},
+            "immediateOnly": {"type": "string"},
+            "bounded": {"const": true},
+            "unit": {"const": "NORMALIZED_0_1"},
+            "cap": {"type": "string"},
+            "causalOwner": {"const": "NONE"},
+            "computationOwner": {"const": "BehaviorProviderV1"},
+            "noFutureActions": {"const": true},
+            "kernelRouteValues": {"const": "NEVER_CONSUMED"},
+            "frozen": {"const": true}
+          }
+        },
+        "experience": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["selfContained", "vector", "p", "q", "u", "range", "sources", "deterministic", "forbiddenSources"],
+          "properties": {
+            "selfContained": {"const": true},
+            "vector": {"const": "e = (p, q, u)"},
+            "p": {"type": "string"},
+            "q": {"type": "string"},
+            "u": {"type": "string"},
+            "range": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number", "minimum": 0, "maximum": 1}},
+            "sources": {"const": "PUBLIC_DECLARED_ONLY"},
+            "deterministic": {"const": true},
+            "forbiddenSources": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+          }
+        },
+        "weights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["closedForm", "constants"],
+          "properties": {
+            "closedForm": {"type": "array", "minItems": 7, "items": {"type": "string"}},
+            "constants": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["a1", "a2", "a3", "a4", "a5", "a6", "alpha", "beta", "gamma", "gammaPrime", "lambda", "mu"],
+              "properties": {
+                "a1": {"type": "number", "minimum": 0, "maximum": 1},
+                "a2": {"type": "number", "minimum": 0, "maximum": 1},
+                "a3": {"type": "number", "minimum": 0, "maximum": 1},
+                "a4": {"type": "number", "minimum": 0, "maximum": 1},
+                "a5": {"type": "number", "minimum": 0, "maximum": 1},
+                "a6": {"type": "number", "minimum": 0, "maximum": 1},
+                "alpha": {"type": "number", "minimum": 0},
+                "beta": {"type": "number", "minimum": 0},
+                "gamma": {"type": "number", "minimum": 0},
+                "gammaPrime": {"type": "number", "minimum": 0},
+                "lambda": {"type": "number", "minimum": 0},
+                "mu": {"type": "number", "minimum": 0}
+              }
+            }
+          }
+        },
+        "selectionSemantics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["frontier", "optimal", "margin", "marginRule", "equivalenceBand", "nonDominatedBand", "deltaProtection", "supersedeScope"],
+          "properties": {
+            "frontier": {"type": "string"},
+            "optimal": {"type": "string"},
+            "margin": {"type": "string"},
+            "marginRule": {"type": "string"},
+            "equivalenceBand": {"type": "string"},
+            "nonDominatedBand": {"type": "string"},
+            "deltaProtection": {"type": "string"},
+            "supersedeScope": {"const": "WITHIN_PARETO_FRONTIER_EQUIVALENCE_BAND"}
+          }
+        },
+        "pipeline": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["stage", "code", "rule"],
+            "properties": {
+              "stage": {"type": "integer", "minimum": 1, "maximum": 8},
+              "code": {"type": "string"},
+              "order": {"type": "string"},
+              "rule": {"type": "string"}
+            }
+          }
+        },
+        "protections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dominatedNeverSelected", "clearOptimalProtection", "bandBounded", "exclusionRecorded", "noTopK", "noWallClockBudget", "noCandidateReduction", "nonFinite"],
+          "properties": {
+            "dominatedNeverSelected": {"const": true},
+            "clearOptimalProtection": {"type": "string"},
+            "bandBounded": {"type": "string"},
+            "exclusionRecorded": {"const": true},
+            "noTopK": {"const": true},
+            "noWallClockBudget": {"const": true},
+            "noCandidateReduction": {"const": true},
+            "nonFinite": {"const": "FATAL"}
+          }
+        },
+        "randomFact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["selfContained", "factId", "model", "samplePolicy", "seed", "actualValue", "record", "consumptionRule", "noProviderRng", "replayRule", "branchCoverage", "rerollAfterSelection", "reportMayInventRandomValue"],
+          "properties": {
+            "selfContained": {"const": true},
+            "factId": {"const": "selection.v1"},
+            "model": {"const": "DECLARED_UPSTREAM_FACT"},
+            "samplePolicy": {"const": "SAMPLE_ONCE_PER_DECLARED_RANDOM_FACT"},
+            "seed": {"type": "string"},
+            "actualValue": {"type": "string"},
+            "record": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"enum": ["seed", "distribution", "actualValue", "outcomeBranch"]}},
+            "consumptionRule": {"type": "string"},
+            "noProviderRng": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+            "replayRule": {"type": "string"},
+            "branchCoverage": {"const": "ALL_DECLARED_OUTCOME_PROBABILITIES"},
+            "rerollAfterSelection": {"const": false},
+            "reportMayInventRandomValue": {"const": false}
+          }
+        },
+        "proof": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["selfContained", "candidateEvaluation", "vectorCoverage", "exclusionRecorded", "proofMaterialization", "proofCandidates", "vectorProofEquality", "selectionProof"],
+          "properties": {
+            "selfContained": {"const": true},
+            "candidateEvaluation": {"const": "COMPLETE_VECTOR_FOR_EVERY_FROZEN_CANDIDATE"},
+            "vectorCoverage": {"const": "S1_S6_FOR_ALL_FROZEN_CANDIDATES_INCLUDING_EXCLUDED"},
+            "exclusionRecorded": {"const": true},
+            "proofMaterialization": {"const": "ON_DEMAND_AFTER_SELECTION"},
+            "proofCandidates": {"const": "SELECTED_UNION_EXPLICIT_ALTERNATIVES_ONLY"},
+            "vectorProofEquality": {"const": "REQUIRED"},
+            "selectionProof": {"type": "array", "minItems": 4, "items": {"type": "string"}}
+          }
+        },
+        "constants": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["epsilon", "delta", "kappa", "rho", "refSpread", "capS4", "frozen"],
+          "properties": {
+            "epsilon": {"type": "number", "minimum": 0.000001, "maximum": 1},
+            "delta": {"type": "number", "minimum": 0.000001, "maximum": 1},
+            "kappa": {"type": "number", "minimum": 1},
+            "rho": {"type": "number", "minimum": 0.000000001},
+            "refSpread": {"type": "number", "minimum": 0.000001},
+            "capS4": {"type": "number", "minimum": 0.000001},
+            "frozen": {"const": true}
+          }
+        },
+        "stateBoundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["NO_FORMAL_PROVIDER", "R9_CANDIDATE", "R9_ACTIVE", "activationRule", "noImplicitPromotion"],
+          "properties": {
+            "NO_FORMAL_PROVIDER": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["formalProvider", "auto", "selection", "providerRole"],
+              "properties": {
+                "formalProvider": {"type": "null"},
+                "auto": {"const": "FAIL_CLOSED"},
+                "selection": {"const": "MECHANICAL_NEUTRAL_ONLY"},
+                "providerRole": {"const": "NOT_REGISTERED"}
+              }
+            },
+            "R9_CANDIDATE": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["formalProvider", "auto", "selection", "providerRole", "registration"],
+              "properties": {
+                "formalProvider": {"type": "null"},
+                "auto": {"const": "FAIL_CLOSED"},
+                "selection": {"const": "MECHANICAL_NEUTRAL_ONLY"},
+                "providerRole": {"const": "CANDIDATE"},
+                "registration": {"const": false}
+              }
+            },
+            "R9_ACTIVE": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["formalProvider", "auto", "selection", "providerRole"],
+              "properties": {
+                "formalProvider": {"const": "r9v2"},
+                "auto": {"const": "ALLOWED"},
+                "selection": {"const": "PROVIDER_PIPELINE"},
+                "providerRole": {"const": "FORMAL_PROVIDER"}
+              }
+            },
+            "activationRule": {"type": "string"},
+            "noImplicitPromotion": {"const": true}
+          }
+        },
+        "complexity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expression", "note", "terms", "derivation", "noRoundHorizonBranchExponential"],
+          "properties": {
+            "expression": {"const": "O(C^2*D + C(F+T+P+K))"},
+            "note": {"type": "string"},
+            "terms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["C", "D", "F", "T", "P", "K"],
+              "properties": {"C": {"type": "string"}, "D": {"type": "string"}, "F": {"type": "string"}, "T": {"type": "string"}, "P": {"type": "string"}, "K": {"type": "string"}}
+            },
+            "derivation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["hardExclusion", "fullVector", "score", "pareto", "band", "draw"],
+              "properties": {"hardExclusion": {"type": "string"}, "fullVector": {"type": "string"}, "score": {"type": "string"}, "pareto": {"const": "O(C^2*D)"}, "band": {"type": "string"}, "draw": {"type": "string"}}
+            },
+            "noRoundHorizonBranchExponential": {"const": true}
+          }
+        },
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["jsonParse", "utf8", "mojibakeScan", "selfConsistency"],
+          "properties": {
+            "jsonParse": {"const": "REQUIRED"},
+            "utf8": {"const": "REQUIRED"},
+            "mojibakeScan": {"type": "array", "minItems": 4, "items": {"type": "string"}},
+            "selfConsistency": {"type": "array", "minItems": 11, "items": {"type": "string"}}
+          }
+        }
+      }
+    },
+    "cases": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "contractId", "revision", "encoding", "closed", "execution", "minimumCoverage", "cases"],
+      "properties": {
+        "schemaVersion": {"const": "BehaviorProviderSelectionCasesV1"},
+        "contractId": {"const": "RC6-BEHAVIOR-PROVIDER-V1"},
+        "revision": {"type": "integer", "minimum": 1},
+        "encoding": {"const": "UTF-8"},
+        "closed": {"const": true},
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["harness", "stage0", "expectKinds", "minimumAssertions"],
+          "properties": {
+            "harness": {"type": "string"},
+            "stage0": {"type": "string"},
+            "minimumAssertions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["allCasesExecuted", "allGoldFieldsChecked"],
+              "properties": {
+                "allCasesExecuted": {"const": true},
+                "allGoldFieldsChecked": {"const": true}
+              }
+            },
+            "expectKinds": {
+              "type": "object",
+              "additionalProperties": false,
+              "propertyNames": {"enum": ["alwaysSelect", "neverSelect", "reachable", "replay", "fatal", "s4Checks", "sameAsIgnoredDim", "goldVector", "gold", "exclusionRecorded", "forbiddenMatrix", "runs", "consumesNoRandomFact"]},
+              "properties": {
+                "alwaysSelect": {"type": "string"},
+                "neverSelect": {"type": "string"},
+                "reachable": {"type": "string"},
+                "replay": {"type": "string"},
+                "fatal": {"type": "string"},
+                "s4Checks": {"type": "string"},
+                "sameAsIgnoredDim": {"type": "string"},
+                "goldVector": {"type": "string"},
+                "gold": {"type": "string"},
+                "exclusionRecorded": {"type": "string"},
+                "forbiddenMatrix": {"type": "string"},
+                "runs": {"type": "string"},
+                "consumesNoRandomFact": {"type": "string"}
+              }
+            }
+          }
+        },
+        "minimumCoverage": {
+          "type": "array",
+          "minItems": 14,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["requirement", "caseIds"],
+            "properties": {
+              "requirement": {"type": "string"},
+              "caseIds": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+            }
+          }
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 14,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["caseId", "name", "description", "input", "expect"],
+            "properties": {
+              "caseId": {"type": "string", "minLength": 1},
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "input": {
+                "type": "object",
+                "required": ["frozenCandidates", "publicBelief", "battleIntentAndObjectives", "seededRandomFacts"],
+                "properties": {
+                  "frozenCandidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["candidateId", "actionKind", "targetSet", "paymentMode", "mechanical"],
+                      "properties": {
+                        "candidateId": {"type": "string"},
+                        "actionKind": {"type": "string"},
+                        "targetSet": {"type": "array", "items": {"type": "string"}},
+                        "paymentMode": {"type": "string"},
+                        "mechanical": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["visibleHpRatios", "actorStatus", "objectiveContribution", "immediateBranchValues", "declaredEffectLow", "declaredEffectHigh", "revealStrength", "resourceRatios", "declaredOverkill", "legalityFlags", "targetCount", "paymentMode"],
+                          "properties": {
+                            "visibleHpRatios": {"type": "array", "items": {"type": "number"}},
+                            "actorStatus": {"type": "string"},
+                            "objectiveContribution": {"type": ["number", "string"]},
+                            "immediateBranchValues": {"type": "array", "items": {"type": ["number", "string"]}},
+                            "declaredEffectLow": {"type": "number"},
+                            "declaredEffectHigh": {"type": "number"},
+                            "revealStrength": {"type": "number"},
+                            "resourceRatios": {"type": "array", "items": {"type": "number"}},
+                            "declaredOverkill": {"type": "number"},
+                            "legalityFlags": {"type": "array", "items": {"type": "string"}},
+                            "targetCount": {"type": "integer", "minimum": 0},
+                            "paymentMode": {"type": "string"}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "publicBelief": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["belief_prior_strength", "confidence", "uncertainty_width"],
+                    "properties": {
+                      "belief_prior_strength": {"type": "number", "minimum": 0, "maximum": 1},
+                      "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                      "uncertainty_width": {"type": "number", "minimum": 0, "maximum": 1}
+                    }
+                  },
+                  "battleIntentAndObjectives": {"type": "object"},
+                  "seededRandomFacts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["seed", "actualValue"],
+                      "properties": {
+                        "seed": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+                        "actualValue": {"type": "number", "minimum": 0, "maximum": 1, "exclusiveMaximum": true}
+                      }
+                    }
+                  },
+                  "runs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["label"],
+                      "properties": {
+                        "label": {"type": "string"},
+                        "publicBelief": {"type": "object"},
+                        "seededRandomFacts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["seed", "actualValue"],
+                            "properties": {
+                              "seed": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+                              "actualValue": {"type": "number", "minimum": 0, "maximum": 1, "exclusiveMaximum": true}
+                            }
+                          }
+                        },
+                        "frozenCandidates": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["candidateId", "actionKind", "targetSet", "paymentMode", "mechanical"],
+                            "properties": {
+                              "candidateId": {"type": "string"},
+                              "actionKind": {"type": "string"},
+                              "targetSet": {"type": "array", "items": {"type": "string"}},
+                              "paymentMode": {"type": "string"},
+                              "mechanical": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["visibleHpRatios", "actorStatus", "objectiveContribution", "immediateBranchValues", "declaredEffectLow", "declaredEffectHigh", "revealStrength", "resourceRatios", "declaredOverkill", "legalityFlags", "targetCount", "paymentMode"],
+                                "properties": {
+                                  "visibleHpRatios": {"type": "array", "items": {"type": "number"}},
+                                  "actorStatus": {"type": "string"},
+                                  "objectiveContribution": {"type": ["number", "string"]},
+                                  "immediateBranchValues": {"type": "array", "items": {"type": ["number", "string"]}},
+                                  "declaredEffectLow": {"type": "number"},
+                                  "declaredEffectHigh": {"type": "number"},
+                                  "revealStrength": {"type": "number"},
+                                  "resourceRatios": {"type": "array", "items": {"type": "number"}},
+                                  "declaredOverkill": {"type": "number"},
+                                  "legalityFlags": {"type": "array", "items": {"type": "string"}},
+                                  "targetCount": {"type": "integer", "minimum": 0},
+                                  "paymentMode": {"type": "string"}
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "expect": {"type": "object"},
+                        "forbiddenKey": {"type": "string"},
+                        "expectedCode": {"type": "string"}
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": {"type": "object"}
+              },
+              "expect": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "alwaysSelect": {"type": "string"},
+                  "neverSelect": {"type": "array", "items": {"type": "string"}},
+                  "consumesNoRandomFact": {"const": true},
+                  "reachable": {"type": "array", "items": {"type": "string"}},
+                  "replay": {"const": true},
+                  "fatal": {"type": "string"},
+                  "sameAsIgnoredDim": {"type": "string"},
+                  "goldVector": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"type": "number"}},
+                  "gold": {"type": "object"},
+                  "exclusionRecorded": {"type": "object"},
+                  "s4Checks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["u", "revealStrength", "declaredEffectLow", "declaredEffectHigh", "expected"],
+                      "properties": {
+                        "u": {"type": "number"},
+                        "revealStrength": {"type": "number"},
+                        "declaredEffectLow": {"type": "number"},
+                        "declaredEffectHigh": {"type": "number"},
+                        "expected": {"type": "number"}
+                      }
+                    }
+                  },
+                  "forbiddenMatrix": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["key", "expectedCode"],
+                      "properties": {
+                        "key": {"type": "string"},
+                        "expectedCode": {"type": "string"}
+                      }
+                    }
+                  },
+                  "runs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["label"],
+                      "properties": {
+                        "label": {"type": "string"},
+                        "alwaysSelect": {"type": "string"},
+                        "neverSelect": {"type": "array", "items": {"type": "string"}},
+                        "consumesNoRandomFact": {"const": true},
+                        "reachable": {"type": "array", "items": {"type": "string"}},
+                        "fatal": {"type": "string"},
+                        "replay": {"const": true},
+                        "gold": {"type": "object"},
+                        "exclusionRecorded": {"type": "object"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

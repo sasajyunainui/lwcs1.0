@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 242,
+  "previousEventHash": "93e093b43f73af00f29a7a91d94806e3c0881ac5570fb719f98b5cd04999d5b3",
+  "milestoneId": "M2",
+  "taskId": "M2-CONTRACT-FREEZE",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "29711bf760ed5e64745252356fd51fc56ad47c875a8b3d554bccfad303ea7a76",
+    "BattleDecision_Module.js": "895547dc149f61763216dded115f703509e18961f76d25467e978e946aadd51c",
+    "BattleRuntime_Module.js": "f75c111b0d8ab0b7d843bb19e3fbfc4879557fba1cd1ca1ac199b271a10524ce",
+    "BattleReport_Module.js": "4412b6f22ab0869e92e80ff60e353afd08f2cae5b378732e8c32db7b16b41135",
+    "BattleUI_Module.js": "264f6da37c162a8b64c1e13ca2cb49b437c9adc1f14d2a5b202a9a3c93357001",
+    "mvu_logic_bridge.js": "329f34961249df979dc39c4eb432f65bc8a35b55ff208c1f13ecbdc0d24a567f",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156",
+    "e2e771bc385c905fa3e2b033d05f1e9e226e4fdde5b215c27e820b4e0b778bd0",
+    "20509a8a410f238a80090c052b820e1484fd270f47ad740881bea34fc2387d1a",
+    "4b9aeb4d790d471d33e90cd7d59410f54703022a2205741eadd3d490cd549978",
+    "3c8319427190e215f06f25a59ee5cac1a4354390464b7d498021930ee8c95d37",
+    "7905f76ff5855b1b079d463f7b99cbe9b3116ac7a2ed833c4fa778588bec92d1",
+    "fc4d866a4bc0041cad3ad901d029ae73144aeaa9b409231cba81b0fd548c3d15",
+    "d424a42451dcf22f36c958ebe8538a0bdafc7cb8792f5a5978b808f1c5715405",
+    "8130e8adfddc4731e8d0ac970d24da30449a36d6c505eb965ded98eba35e571f",
+    "98e067a79f38c17a8a8ae466467ffc62f1efe2631ba1fef2f489faa051974afe"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "freeze": "M2_PROVIDER_NEUTRAL_BOUNDARY",
+    "files": [
+      "tools/rc6/contracts/BehaviorProviderV1.json",
+      "tools/rc6/contracts/BehaviorProviderV1.schema.json",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.json",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json",
+      "tools/rc6/cases/BehaviorProviderQualitySplitV1.json",
+      "tools/rc6/cases/BehaviorProviderSelectionCasesV1.json",
+      "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
+      "tools/rc6/harness/run-m2-v31-contract-freeze.mjs"
+    ],
+    "harnessChecks": 202,
+    "harnessPassed": 202,
+    "m1HarnessChecks": 25,
+    "m1HarnessPassed": 25,
+    "nextExitCondition": "M2 provider core candidate harness"
+  },
+  "reason": "Freeze lightweight provider-neutral contracts, schemas, cases and contract-freeze harness under M2_PROVIDER_NEUTRAL_BOUNDARY; M2 remains IN_PROGRESS.",
+  "recordedAt": "2026-08-13T18:15:48.404Z",
+  "repository": {
+    "branch": "",
+    "head": "9dafb39cbc4cf995f2fef05edd13b03ca7774aa4"
+  },
+  "eventHash": "42150ffda863944e12318ba5959ef4ddd7b2a7acef5f7f729f45e473117a3cf7"
+}
