@@ -47080,14 +47080,12 @@ ${播报文本}
       seed: Math.max(1, Math.floor(toNumber(runtimeState?.decisionSeed, 1))),
       combatData,
       mode: battleMode,
+      executionMode: 规范化战斗提交模式(options.executionMode),
       rounds: maxRounds,
       selectedAction: options.actionDeclaration || null,
       battleIntent: {
         mode: toText(options.intentMode || combatData?.战斗意图, '').trim(),
         objectives: cloneJsonValue(combatData?.胜负条件 || {}, {}),
-      },
-      settings: {
-        providerId: 'r8',
       },
     };
   }
@@ -47095,15 +47093,25 @@ ${播报文本}
   function 构建战斗提交包(input = {}) {
     const runtime = window.__LWCS_BATTLE_RUNTIME__;
     const report = window.__LWCS_BATTLE_REPORT__;
-    if (!runtime || typeof runtime.executeBattleDraftR8 !== 'function') {
-      throw new Error('battle_runtime_r8_draft_builder_missing');
+    if (
+      !runtime ||
+      typeof runtime.executeBattleDraft !== 'function' ||
+      typeof runtime.executePlayerLockedBattleSettlement !== 'function'
+    ) {
+      throw new Error('battle_runtime_provider_boundary_missing');
     }
     if (!report || typeof report.build !== 'function' || typeof report.auditProjection !== 'function') {
       throw new Error('battle_report_module_missing');
     }
     const source = cloneJsonValue(input, {});
     delete source.visibilityMode;
-    const draft = runtime.executeBattleDraftR8(source);
+    const executionMode = 规范化战斗提交模式(source.executionMode);
+    const draft = executionMode === 'auto'
+      ? runtime.executeBattleDraft(source)
+      : runtime.executePlayerLockedBattleSettlement({
+          ...source,
+          actionDeclaration: source.actionDeclaration || source.selectedAction,
+        });
     const reportDto = report.build({ draft, visibilityMode: 'PLAYER' });
     const reportAudit = report.auditProjection(reportDto);
     const sealedPackage = runtime.sealBattleResult({ draft, reportAudit });
@@ -47315,7 +47323,7 @@ ${播报文本}
     if (shouldCommit && 正式战斗事务执行中) throw new Error('BATTLE_TRANSACTION_IN_FLIGHT');
     if (shouldCommit) 正式战斗事务执行中 = true;
     try {
-      const transactionInput = 构建战斗事务输入(cloneJsonValue(combatData, {}), options);
+      const transactionInput = 构建战斗事务输入(cloneJsonValue(combatData, {}), { ...options, executionMode });
       const sealedPackage = 构建战斗提交包(transactionInput);
       if (!shouldCommit) {
         return {

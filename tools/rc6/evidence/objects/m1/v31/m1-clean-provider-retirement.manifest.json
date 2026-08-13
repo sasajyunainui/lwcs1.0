@@ -1,0 +1,264 @@
+{
+  "schemaVersion": "M1CleanProviderRetirementManifestV1",
+  "taskId": "M1-CLEAN-CORE",
+  "agent": "agent-pool-A",
+  "milestone": "M1 clean-core provider retirement",
+  "baseHead": "eebf3365dc009bdc885c0023964c3335cf46c1d8",
+  "baseHeadVerified": true,
+  "disposableWorktree": "codex-m1-v31-accept (detached HEAD eebf3365, removed after delivery)",
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m1/v31/m1-clean-provider-retirement.patch",
+    "sha256": "3A3856E808306B15A99CF1EA766670B3C5456A0DE160240AEAF3EF429E7CD5CB",
+    "byteLength": 55692,
+    "changedFiles": [
+      {
+        "file": "BattleDecision_Module.js",
+        "sha256After": "895547dc149f61763216dded115f703509e18961f76d25467e978e946aadd51c"
+      },
+      {
+        "file": "BattleRuntime_Module.js",
+        "sha256After": "f75c111b0d8ab0b7d843bb19e3fbfc4879557fba1cd1ca1ac199b271a10524ce"
+      },
+      {
+        "file": "mvu_logic_bridge.js",
+        "sha256After": "329f34961249df979dc39c4eb432f65bc8a35b55ff208c1f13ecbdc0d24a567f"
+      }
+    ],
+    "diffStat": "184 insertions, 781 deletions across 3 files"
+  },
+  "semantics": {
+    "emptyFormalProviderRegistry": true,
+    "formalProviderState": "NO_FORMAL_PROVIDER",
+    "providerIdAlwaysEmptyOrOmitted": true,
+    "autoFailsBeforeDraft": true,
+    "optionalOpportunitiesDeterministicPass": true,
+    "optionalPassReason": "NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED",
+    "playerLockedProviderNeutralSettlement": true,
+    "forcedFollowUpOnly": "player-locked declaration effects execute; any new choice-bearing node deterministically passes",
+    "nonLethalEnforced": "engine nonlethal HP floor via calculateNonlethalHpFloor; no AI follow-up damage",
+    "freeNarrativeUntouched": true,
+    "formalClosureClean": "no legacy provider edges, no future-route edges, all five closure roots present",
+    "executeDeclarationApiAvailable": true
+  },
+  "verification": {
+    "nodeCheck": {
+      "BattleDecision_Module.js": true,
+      "BattleRuntime_Module.js": true,
+      "mvu_logic_bridge.js": true
+    },
+    "diffCheck": {
+      "git diff --check": true
+    },
+    "patchApplyCheck": {
+      "git apply --check on fresh HEAD worktree": true,
+      "git apply + node --check": true,
+      "verifiedOn": [
+        "codex-m1-v31-final1",
+        "codex-m1-v31-final2"
+      ]
+    },
+    "acceptance": {
+      "harness": "tools/rc6/harness/run-m1-v31-acceptance.mjs",
+      "verdict": "M1_V31_ACCEPTANCE_PASSED",
+      "fatalCount": 0,
+      "allChecksPassed": [
+        "expected_head",
+        "source_chain_files_present",
+        "syntax_utf8_mojibake_fatal",
+        "static_legacy_provider_edges_zero",
+        "static_future_route_edges_zero",
+        "static_v3_import_edges_zero",
+        "bridge_no_hardcoded_r8",
+        "harness_self_contained",
+        "decision_formal_provider_state",
+        "decision_provider_ids_empty",
+        "runtime_provider_neutral_exports",
+        "runtime_no_legacy_r8_export",
+        "fixture_duel_overmatch_nonlethal",
+        "auto_no_formal_provider_before_artifacts",
+        "legal_player_locked_settles_one_round",
+        "illegal_player_locked_no_artifacts",
+        "free_narrative_no_artifacts",
+        "protection_provider_metadata_clean",
+        "protection_provider_id_call_rejected",
+        "protection_draft_hash_deterministic",
+        "protection_optional_opportunity_explicit_pass",
+        "protection_followup_only_declared",
+        "protection_followup_no_ghost_without_survivor",
+        "protection_nonlethal_not_killed_by_followup",
+        "dynamic_future_route_edges_zero"
+      ],
+      "reproducedOnFreshHeadCheckout": true,
+      "harnessSha256": "46FFBF5FFE142ED3C90230F143CA1910692C49FDA4B212F2258F687EDD2CA0B8",
+      "expectedHead": "eebf3365dc009bdc885c0023964c3335cf46c1d8",
+      "checkCount": 25,
+      "perGateResults": [
+        {
+          "id": "expected_head",
+          "passed": true
+        },
+        {
+          "id": "source_chain_files_present",
+          "passed": true
+        },
+        {
+          "id": "syntax_utf8_mojibake_fatal",
+          "passed": true
+        },
+        {
+          "id": "static_legacy_provider_edges_zero",
+          "passed": true
+        },
+        {
+          "id": "static_future_route_edges_zero",
+          "passed": true
+        },
+        {
+          "id": "static_v3_import_edges_zero",
+          "passed": true
+        },
+        {
+          "id": "bridge_no_hardcoded_r8",
+          "passed": true
+        },
+        {
+          "id": "harness_self_contained",
+          "passed": true
+        },
+        {
+          "id": "decision_formal_provider_state",
+          "passed": true
+        },
+        {
+          "id": "decision_provider_ids_empty",
+          "passed": true
+        },
+        {
+          "id": "runtime_provider_neutral_exports",
+          "passed": true
+        },
+        {
+          "id": "runtime_no_legacy_r8_export",
+          "passed": true
+        },
+        {
+          "id": "fixture_duel_overmatch_nonlethal",
+          "passed": true
+        },
+        {
+          "id": "auto_no_formal_provider_before_artifacts",
+          "passed": true
+        },
+        {
+          "id": "legal_player_locked_settles_one_round",
+          "passed": true
+        },
+        {
+          "id": "illegal_player_locked_no_artifacts",
+          "passed": true
+        },
+        {
+          "id": "free_narrative_no_artifacts",
+          "passed": true
+        },
+        {
+          "id": "protection_provider_metadata_clean",
+          "passed": true
+        },
+        {
+          "id": "protection_provider_id_call_rejected",
+          "passed": true
+        },
+        {
+          "id": "protection_draft_hash_deterministic",
+          "passed": true
+        },
+        {
+          "id": "protection_optional_opportunity_explicit_pass",
+          "passed": true
+        },
+        {
+          "id": "protection_followup_only_declared",
+          "passed": true
+        },
+        {
+          "id": "protection_followup_no_ghost_without_survivor",
+          "passed": true
+        },
+        {
+          "id": "protection_nonlethal_not_killed_by_followup",
+          "passed": true
+        },
+        {
+          "id": "dynamic_future_route_edges_zero",
+          "passed": true
+        }
+      ],
+      "runs": [
+        {
+          "run": 1,
+          "worktree": "codex-m1-v31-final1 (detached HEAD eebf3365, removed after delivery)",
+          "patchApplied": true,
+          "nodeCheck": true,
+          "diffCheck": true,
+          "harnessExit": 0,
+          "verdict": "M1_V31_ACCEPTANCE_PASSED",
+          "checks": 25,
+          "failed": 0
+        },
+        {
+          "run": 2,
+          "worktree": "codex-m1-v31-final2 (detached HEAD eebf3365, removed after delivery)",
+          "patchApplied": true,
+          "nodeCheck": true,
+          "diffCheck": true,
+          "harnessExit": 0,
+          "verdict": "M1_V31_ACCEPTANCE_PASSED",
+          "checks": 25,
+          "failed": 0
+        }
+      ]
+    },
+    "probes": {
+      "schemaVersion": "M1CleanCoreProbesV1",
+      "providerIdEmpty": true,
+      "sameSeedSameDraftHash": true,
+      "optionalOpportunityCount": 1,
+      "allNonLockedDeterministicPass": true,
+      "optionalOpportunitySample": {
+        "actorId": "韦小枫",
+        "actionRole": "REACTION",
+        "decisionEngine": "NO_FORMAL_PROVIDER",
+        "actionKind": "PASS_OPPORTUNITY",
+        "selectionMode": "NO_FORMAL_PROVIDER_PASS",
+        "selectionPath": "NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED"
+      },
+      "ghostAiActions": 0,
+      "aiDamageEvents": 0,
+      "enemyHpAfterSettlement": 6,
+      "nonLethalNotKilled": true,
+      "deadTargetNoGhostSettlement": true,
+      "executeDeclarationAvailableInPlayerLockedPath": true,
+      "patchCalls": 0,
+      "providerIdInjectionRejected": true,
+      "optionalPassReasonInDecisionAudit": "NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED",
+      "passReasonFields": [
+        "selected.reason",
+        "selected.reasonCode",
+        "entry.reasonCode",
+        "entry.passReason",
+        "decisionProfile.passReason"
+      ]
+    }
+  },
+  "writeScope": {
+    "allowed": [
+      "tools/rc6/evidence/objects/m1/v31/m1-clean-provider-retirement.patch",
+      "tools/rc6/evidence/objects/m1/v31/m1-clean-provider-retirement.manifest.json"
+    ],
+    "sharedProductionEdits": 0,
+    "staged": false,
+    "committed": false
+  },
+  "createdAt": "2026-08-14T00:00:00Z"
+}

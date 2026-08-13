@@ -53320,18 +53320,15 @@
     };
   }
 
-  const providerRegistry = Object.freeze({
-    'legacy-baseline': request => decide(providerInput(request)),
-    'r74-next-baseline': request => decideNext(providerInput(request)),
-    'r8-shadow': request => runR8Provider(request),
-    r8: request => runR8Provider(request),
-    r9: request => runR9Provider(request),
-    'r9v2-shadow': request => runR9v2ShadowProvider(request),
-  });
+  const formalProviderState = 'NO_FORMAL_PROVIDER';
+  const providerRegistry = Object.freeze({});
 
   function runProvider(input = {}) {
     const providerId = String(input?.providerId || '').trim();
     const request = input?.request;
+    if (formalProviderState === 'NO_FORMAL_PROVIDER') {
+      throw new Error('NO_FORMAL_PROVIDER');
+    }
     if (!Object.hasOwn(providerRegistry, providerId)) {
       throw new Error(`battle_decision_provider_unknown:${providerId || 'missing'}`);
     }
@@ -53421,6 +53418,7 @@
 
   root.__LWCS_BATTLE_DECISION__ = Object.freeze({
     version: VERSION,
+    formalProviderState,
     actionKinds,
     collectSkills,
     collectAvailableRings,
@@ -53520,8 +53518,6 @@
     r8ParetoFilter,
     r8NormalizeUtilities,
     selectR8Candidate,
-    runR8Provider,
-    runR9v2TargetProviderForTest: request => runR9v2TargetProvider(request),
     prepareDecisionRequest,
     runProvider,
     providerIds: Object.freeze(Object.keys(providerRegistry)),

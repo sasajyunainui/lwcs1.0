@@ -6181,6 +6181,12 @@
       caseId: input?.caseId || 'structured-declaration',
       seed,
       rounds: 1,
+      settings: {
+        ...input?.settings,
+        providerId: '',
+        decisionOnly: false,
+        playerLockedSettlement: true,
+      },
       selectedAction: {
         actorId,
         targetIds,
@@ -9532,44 +9538,9 @@
       providerId: String(input?.settings?.providerId || '').trim(),
       sourceBytes: sourceJson.length,
     });
-    const decisionEngine = String(input?.settings?.decisionEngine || 'legacy').trim().toLowerCase();
     const providerId = String(input?.settings?.providerId || '').trim();
-    const sessionReuseVerificationRequested =
-      input?.settings?.verifySessionMechanicalReuse === true ||
-      input?.settings?.verifySessionBehaviorReuse === true;
-    const routeCatalogCacheEnabled =
-      input?.settings?.disableRouteCatalogCache !== true &&
-      !sessionReuseVerificationRequested;
-    const sessionMechanicalReuseRequested =
-      ['r8-shadow', 'r8'].includes(providerId) &&
-      input?.settings?.disableEvaluationSession !== true &&
-      input?.settings?.disableSessionMechanicalReuse !== true &&
-      !routeCatalogCacheEnabled;
-    const sessionBehaviorReuseRequested =
-      ['r8-shadow', 'r8'].includes(providerId) &&
-      input?.settings?.disableEvaluationSession !== true &&
-      input?.settings?.disableSessionBehaviorReuse !== true &&
-      !routeCatalogCacheEnabled;
-    const routeCatalogCacheByActor = new Map();
-    const routeCatalogCacheByContext = new Map();
-    const routeCatalogCacheBySide = new Map();
-    const routeCatalogCacheByQueueContext = new Map();
-    const routeTargetUnitHash = unit => routeUnitHash(combatData, unit);
-    const directDecision = decisionEngine === 'next-shadow'
-      ? decisionRuntime.decideNext
-      : decisionRuntime.decide;
-    if (!providerId && typeof directDecision !== 'function') {
-      throw new Error(`battle_decision_engine_missing:${decisionEngine}`);
-    }
-    if (
-      providerId &&
-      (
-        typeof decisionRuntime.prepareDecisionRequest !== 'function' ||
-        typeof decisionRuntime.runProvider !== 'function'
-      )
-    ) {
-      throw new Error('battle_runtime_decision_coordinator_missing');
-    }
+    const playerLockedSettlement = input?.settings?.playerLockedSettlement === true;
+    if (providerId || !playerLockedSettlement) throw new Error('NO_FORMAL_PROVIDER');
     if (input?.battleIntent && typeof input.battleIntent === 'object') {
       if (input.battleIntent.mode !== undefined) combatData.战斗意图 = cloneValue(input.battleIntent.mode);
       if (input.battleIntent.objectives !== undefined) combatData.胜负条件 = cloneValue(input.battleIntent.objectives);
@@ -9770,9 +9741,7 @@
     const strategicHistoryByActor = new Map();
     const logs = [];
     const initialSnapshot = getBattleSnapshot(combatData);
-    const eventOwnedEvaluationEnabled =
-      ['r9v2-shadow', 'r9v2'].includes(providerId) &&
-      input?.settings?.disableEventOwnedFactDelta !== true;
+    const eventOwnedEvaluationEnabled = false;
     const verifyEventOwnedFactDelta =
       eventOwnedEvaluationEnabled &&
       input?.settings?.verifyEventOwnedFactDelta === true;
@@ -9794,13 +9763,7 @@
       }
       return nextBelief;
     };
-    const evaluationSessionEnabled =
-      ['r8-shadow', 'r8', 'r9v2-shadow', 'r9v2'].includes(providerId) &&
-      input?.settings?.disableEvaluationSession !== true &&
-      typeof decisionRuntime.createEvaluationSession === 'function' &&
-      typeof decisionRuntime.advanceEvaluationSession === 'function' &&
-      typeof decisionRuntime.readEvaluationSessionMetrics === 'function' &&
-      typeof decisionRuntime.disposeEvaluationSession === 'function';
+    const evaluationSessionEnabled = false;
     const initialEvaluationRuntimeSnapshot =
       evaluationSessionEnabled
         ? eventOwnedEvaluationEnabled
@@ -10685,525 +10648,76 @@
           let decisionResult;
           let decisionTiming = {};
           let decisionRuntimeSnapshot = null;
-          if (providerId) {
-            const snapshotStartedAt = performanceNow();
-            // r9 无 session、无路线目录缓存（:7826/:8892 门），身份记账全为白算。
-            const identityLite =
-              providerId === 'r9' ||
-              ['r9v2-shadow', 'r9v2'].includes(providerId);
-            const currentBelief = beliefByActor.get(actorId) || initialBeliefFor(actorId);
-            const beliefContextHash = identityLite
-              ? `belief-lite:${actorId}`
-              : previewRuntime.stableHash(currentBelief);
-            const routeCacheContextKey = [
-              actorSide,
-              beliefContextHash,
-            ].join('|');
-            const routeQueueContextKey = `belief:${beliefContextHash}`;
-            let routeCache = null;
-            let routeCacheSource = '';
-            if (routeCatalogCacheEnabled) {
-              const cacheCandidates = [
-                ['actor', routeCatalogCacheByActor.get(actorId)],
-                ['context', routeCatalogCacheByContext.get(routeCacheContextKey)],
-                ['queue-context', routeCatalogCacheByQueueContext.get(routeQueueContextKey)],
-                ['side', routeCatalogCacheBySide.get(actorSide)],
-              ];
-              const selected = cacheCandidates.find(([, candidate]) => !!candidate);
-              routeCacheSource = selected?.[0] || '';
-              routeCache = selected?.[1] || null;
-            }
-            decisionRuntimeSnapshot = buildDecisionRuntimeSnapshot(
-              combatData,
-              actorId,
-              decisionInput.actionOpportunity,
-              {
-                identityLite,
-                eventOwned: eventOwnedEvaluationEnabled,
-              },
-            );
-            const factDelta = advanceRuntimeEvaluationSession(
-              decisionRuntimeSnapshot,
-              false,
-            );
-            if (factDelta) {
-              evaluationSessionObservation.factDelta = cloneValue(factDelta);
-            }
-            const currentOpportunityHash = identityLite ? '' :
-              decisionRuntimeSnapshot.opportunityCacheHash ||
-              previewRuntime.stableHash({
-                opportunitySnapshot: decisionRuntimeSnapshot.opportunitySnapshot || [],
-                actionOpportunity: decisionInput.actionOpportunity || {},
-              });
-            const currentResourceTimelineHash = identityLite ? '' :
-              decisionRuntimeSnapshot.resourceTimelineHash ||
-              previewRuntime.stableHash(decisionRuntimeSnapshot.resourceTimeline || []);
-            const currentScheduleHash = identityLite ? '' :
-              decisionRuntimeSnapshot.scheduledEventsHash ||
-              previewRuntime.stableHash(decisionRuntimeSnapshot.scheduledEvents || []);
-            const currentOpportunityEntryHashes = identityLite ? {} : keyedRecordHashes(
-              decisionRuntimeSnapshot.opportunitySnapshot,
-              record => record?.opportunityId || record?.grantId,
-            );
-            const currentResourceDependencyHashes = identityLite ? {} : resourceDependencyHashes(
-              decisionRuntimeSnapshot.resourceTimeline,
-            );
-            const currentScheduleEntryHashes = identityLite ? {} : scheduleDependencyHashes(
-              decisionRuntimeSnapshot.scheduledEvents,
-            );
-            const currentRuleHashes = identityLite ? {} : Object.fromEntries(
-              Object.entries(combatData?.规则 || combatData?.battleRules || {})
-                .sort(([left], [right]) => left.localeCompare(right))
-                .map(([key, value]) => [key, previewRuntime.stableHash(value)]),
-            );
-            const currentUnitHashes = identityLite ? {} : Object.fromEntries(
-              [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)]
-                .map(unit => [previewRuntime.unitId(unit), fullRouteUnitHash(combatData, unit)])
-                .filter(([unitId]) => unitId),
-            );
-            const currentTargetUnitHashes = identityLite ? {} : Object.fromEntries(
-              [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)]
-                .map(unit => [previewRuntime.unitId(unit), routeTargetUnitHash(unit)])
-                .filter(([unitId]) => unitId),
-            );
-            const currentBeliefUnitHashes = identityLite ? {} : Object.fromEntries(
-              Object.entries(currentBelief?.units || {})
-                .map(([unitId, unitBelief]) => [unitId, previewRuntime.stableHash(unitBelief)]),
-            );
-            const currentPublicResponseHashes = identityLite ? {} : Object.fromEntries(
-              Object.entries(currentBelief?.publicResponses || {})
-                .map(([unitId, responses]) => [unitId, previewRuntime.stableHash(responses)]),
-            );
-            const affectedRouteUnitIds = new Set([actorId]);
-            const affectedRouteTargetUnitIds = new Set();
-            const affectedRouteKeysByUnit = new Map();
-            const routeInvalidationAudit = {
-              cachePresent: !!routeCache,
-              actorId,
-              changedRouteUnitIds: [],
-              changedTargetUnitIds: [],
-              changedBeliefUnitIds: [],
-              changedBeliefKeys: [],
-              changedOpportunityIds: [],
-              changedResourceKeys: [],
-              changedScheduleIds: [],
-              changedRuleKeys: [],
-              globalInvalidationReason: '',
-              affectedRouteUnitIds: [],
-              cacheSource: routeCacheSource,
-              invalidationContributors: [],
-            };
-            if (routeCache) {
-              const dependencyIndex = routeCache.dependencyReverseIndex?.exact || {};
-              const dependencyRouteIndex =
-                routeCache.dependencyReverseIndex?.routes || {};
-              const currentDependencyValueHashes =
-                buildRouteDependencyValueHashes(
-                  combatData,
-                  routeCache.dependencyReverseIndex,
-                );
-              const contributorOwners = (source, key, ownerIds = []) => {
-                const normalizedOwners = [...new Set(
-                  (Array.isArray(ownerIds) ? ownerIds : [])
-                    .map(value => String(value || '').trim())
-                    .filter(Boolean),
-                )].sort();
-                routeInvalidationAudit.invalidationContributors.push({
-                  source,
-                  key: String(key || '').trim(),
-                  ownerCount: normalizedOwners.length,
-                  ownerIds: normalizedOwners,
-                });
-                normalizedOwners.forEach(unitId => affectedRouteUnitIds.add(unitId));
-              };
-              const addDependencyRoutes = dependencyKey => {
-                const routeRefs = Array.isArray(dependencyRouteIndex[dependencyKey])
-                  ? dependencyRouteIndex[dependencyKey]
-                  : [];
-                routeRefs.forEach(routeRef => {
-                  const unitId = String(routeRef?.unitId || '').trim();
-                  const candidateId = String(routeRef?.candidateId || '').trim();
-                  if (!unitId || !candidateId) return;
-                  if (!affectedRouteKeysByUnit.has(unitId)) {
-                    affectedRouteKeysByUnit.set(unitId, new Set());
-                  }
-                  affectedRouteKeysByUnit.get(unitId).add(candidateId);
-                  affectedRouteUnitIds.add(unitId);
-                });
-                return routeRefs;
-              };
-              const addDependencyOwners = dependencyKey => {
-                const routeRefs = addDependencyRoutes(dependencyKey);
-                if (routeRefs.length) {
-                  contributorOwners(
-                    'DEPENDENCY_ROUTE_KEYS',
-                    dependencyKey,
-                    [...new Set(routeRefs.map(routeRef =>
-                      String(routeRef?.unitId || '').trim()
-                    ).filter(Boolean))],
-                  );
-                  return;
-                }
-                contributorOwners(
-                  'DEPENDENCY_KEY_FALLBACK',
-                  dependencyKey,
-                  dependencyIndex[dependencyKey] || [],
-                );
-              };
-              const addDependencyPrefixOwners = dependencyPrefix => {
-                const owners = new Set();
-                Object.entries(dependencyIndex).forEach(([dependencyKey, unitIds]) => {
-                  if (!dependencyKey.startsWith(dependencyPrefix)) return;
-                  unitIds.forEach(unitId => owners.add(unitId));
-                });
-                contributorOwners('DEPENDENCY_PREFIX', dependencyPrefix, [...owners]);
-              };
-              if (Object.keys(dependencyIndex).length) {
-                changedHashKeys(
-                  routeCache.dependencyValueHashes,
-                  currentDependencyValueHashes,
-                ).forEach(key => {
-                  addDependencyOwners(key);
-                  const targetMatch = String(key || '').match(
-                    /^target:([^:]+):/,
-                  );
-                  const unitMatch = String(key || '').match(
-                    /^unit:([^:]+):(hp|baseMaxHp|stat:def|state:__INCOMING[^:]*)$/,
-                  );
-                  const targetId = targetMatch?.[1] || unitMatch?.[1] || '';
-                  if (targetId) {
-                    routeInvalidationAudit.changedTargetUnitIds.push(targetId);
-                    affectedRouteTargetUnitIds.add(targetId);
-                  }
-                });
-              } else {
-                const allKnownUnitIds = new Set([
-                  ...Object.keys(routeCache.unitHashes || {}),
-                  ...Object.keys(currentUnitHashes),
-                ]);
-                allKnownUnitIds.forEach(unitId => {
-                  if (routeCache.unitHashes?.[unitId] !== currentUnitHashes[unitId]) {
-                    routeInvalidationAudit.changedRouteUnitIds.push(unitId);
-                    contributorOwners('UNIT_HASH_FALLBACK', `unit:${unitId}:`, [unitId]);
-                  }
-                  if (routeCache.targetUnitHashes?.[unitId] !== currentTargetUnitHashes[unitId]) {
-                    routeInvalidationAudit.changedTargetUnitIds.push(unitId);
-                    affectedRouteTargetUnitIds.add(unitId);
-                    contributorOwners('TARGET_HASH_FALLBACK', `target:${unitId}:`, [unitId]);
-                  }
-                });
-              }
-              const currentBeliefDependencyHashes = beliefDependencyHashes(
-                currentBelief,
-                routeCache.dependencyReverseIndex,
-              );
-              routeInvalidationAudit.changedBeliefKeys = changedHashKeys(
-                routeCache.beliefDependencyHashes,
-                currentBeliefDependencyHashes,
-              );
-              routeInvalidationAudit.changedBeliefKeys.forEach(key =>
-                addDependencyOwners(key)
-              );
-              const hasExactBeliefRouteRefs =
-                routeInvalidationAudit.changedBeliefKeys.some(key =>
-                  Array.isArray(dependencyRouteIndex[key]) &&
-                  dependencyRouteIndex[key].length > 0
-                );
-              if (!hasExactBeliefRouteRefs) {
-                const allBeliefUnitIds = new Set([
-                  ...Object.keys(routeCache.beliefUnitHashes || {}),
-                  ...Object.keys(currentBeliefUnitHashes),
-                  ...Object.keys(routeCache.publicResponseHashes || {}),
-                  ...Object.keys(currentPublicResponseHashes),
-                ]);
-                allBeliefUnitIds.forEach(unitId => {
-                  if (
-                    routeCache.beliefUnitHashes?.[unitId] !== currentBeliefUnitHashes[unitId] ||
-                    routeCache.publicResponseHashes?.[unitId] !== currentPublicResponseHashes[unitId]
-                  ) {
-                    routeInvalidationAudit.changedBeliefUnitIds.push(unitId);
-                    contributorOwners('BELIEF_UNIT_FALLBACK', `belief-unit:${unitId}`, [unitId]);
-                    affectedRouteTargetUnitIds.add(unitId);
-                  }
-                });
-              }
-              if (
-                routeCache.objectiveHash !== previewRuntime.stableHash(combatData?.胜负条件 || {})
-              ) {
-                routeInvalidationAudit.globalInvalidationReason =
-                  'OBJECTIVE_CHANGED';
-                contributorOwners(
-                  'OBJECTIVE_CHANGED',
-                  'objective:*',
-                  Object.keys(currentUnitHashes),
-                );
-                Object.keys(currentUnitHashes).forEach(unitId => affectedRouteTargetUnitIds.add(unitId));
-              } else {
-                routeInvalidationAudit.changedOpportunityIds = changedHashKeys(
-                  routeCache.opportunityEntryHashes,
-                  currentOpportunityEntryHashes,
-                );
-                routeInvalidationAudit.changedOpportunityIds.forEach(opportunityId =>
-                  addDependencyOwners(`opportunity:${opportunityId}`)
-                );
-                routeInvalidationAudit.changedResourceKeys = changedHashKeys(
-                  routeCache.resourceDependencyHashes,
-                  currentResourceDependencyHashes,
-                );
-                routeInvalidationAudit.changedResourceKeys.forEach(key => {
-                  const [unitId, resource] = key.split('\u0000');
-                  if (unitId && resource) {
-                    addDependencyOwners(`unit:${unitId}:resource:${resource}`);
-                  }
-                });
-                routeInvalidationAudit.changedScheduleIds = changedHashKeys(
-                  routeCache.scheduleEntryHashes,
-                  currentScheduleEntryHashes,
-                );
-                routeInvalidationAudit.changedScheduleIds.forEach(descriptorId =>
-                  addDependencyOwners(`schedule:${descriptorId}`)
-                );
-                routeInvalidationAudit.changedRuleKeys = changedHashKeys(
-                  routeCache.ruleHashes,
-                  currentRuleHashes,
-                );
-                routeInvalidationAudit.changedRuleKeys.forEach(ruleKey =>
-                  addDependencyOwners(`rule:${ruleKey}`)
-                );
-              }
-            }
-            routeInvalidationAudit.affectedRouteUnitIds =
-              [...affectedRouteUnitIds].sort();
-            for (const key of [
-              'changedRouteUnitIds',
-              'changedTargetUnitIds',
-              'changedBeliefUnitIds',
-              'changedBeliefKeys',
-              'changedOpportunityIds',
-              'changedResourceKeys',
-              'changedScheduleIds',
-              'changedRuleKeys',
-            ]) {
-              routeInvalidationAudit[key] = [
-                ...new Set((routeInvalidationAudit[key] || []).map(value => String(value || '').trim()).filter(Boolean)),
-              ].sort();
-            }
-            routeInvalidationAudit.affectedRouteKeyCount = [...affectedRouteKeysByUnit.values()]
-              .reduce((sum, routeKeys) => sum + routeKeys.size, 0);
-            if (
-              globalThis?.process?.env
-                ?.BATTLE_R8_ROUTE_INVALIDATION_TRACE === '1'
-            ) {
-              console.error(
-                `[r8-route-invalidation] ${JSON.stringify({
+          if (playerLockedSettlement) {
+            const lockedDeclaration = extras.playerLockedDeclaration && typeof extras.playerLockedDeclaration === 'object'
+              ? cloneValue(extras.playerLockedDeclaration)
+              : null;
+            const actionRole = normalizeActionRole(extras.role || node.actionRole);
+            const selectedForAudit = lockedDeclaration
+              ? {
+                  candidateId: actorId + ':PLAYER_LOCKED:' + String(lockedDeclaration?.actionKind || 'ACTION').trim(),
+                  actionKind: String(lockedDeclaration?.actionKind || '').trim(),
                   actorId,
-                  actorSide,
-                  cachePresent: !!routeCache,
-                  routeCacheContextKey,
-                  ...routeInvalidationAudit,
-                })}`,
-              );
-            }
-            const snapshotPreparedAt = performanceNow();
-            const request = decisionRuntime.prepareDecisionRequest({
-              ...decisionInput,
-              session: evaluationSession,
-              providerId,
-              verifyR9v2MechanicalBasis:
-                input?.settings?.verifyR9v2MechanicalBasis === true,
-              collectDecisionReplayIdentity:
-                input?.settings?.collectDecisionReplayIdentity === true,
-              objectiveContract: combatData?.胜负条件 || {},
-              analysisDepth: [
-                'legacy-baseline',
-                'r74-next-baseline',
-                'r9',
-                'r9v2-shadow',
-                'r9v2',
-              ].includes(providerId)
-                ? 'CANDIDATES_ONLY'
-                : 'FULL',
-              runtimeSnapshot: decisionRuntimeSnapshot,
-              previousRouteCatalog: routeCache?.catalog || null,
-              previousFullRoutesByUnit: routeCache?.fullRoutesByUnit || null,
-              previousActorCandidateRoutes:
-                routeCache?.actorCandidateRoutes || null,
-              previousActorProjectedWorlds:
-                routeCache?.actorProjectedWorlds || null,
-              previousActorProjectedWorldRevisions:
-                routeCache?.actorProjectedWorldRevisions || null,
-              previousActorPredictedOutcomeEvidence:
-                routeCache?.actorPredictedOutcomeEvidence || null,
-              previousActorCandidateEnvelopeDeltas:
-                routeCache?.actorCandidateEnvelopeDeltas || null,
-              previousComputationCache: null,
-              affectedRouteUnitIds: [...affectedRouteUnitIds],
-              affectedRouteTargetUnitIds: [...affectedRouteTargetUnitIds],
-              affectedRouteKeysByUnit: Object.fromEntries(
-                [...affectedRouteKeysByUnit.entries()]
-                  .sort(([left], [right]) => left.localeCompare(right))
-                  .map(([unitId, routeKeys]) => [
-                    unitId,
-                    [...routeKeys].sort(),
-                  ]),
-              ),
-              routeInvalidationAudit,
-              collectTargetPressureAudit:
-                input?.settings?.collectTargetPressureAudit === true,
-              disableObservationRouteReuse:
-                input?.settings?.disableObservationRouteReuse === true,
-              disableSessionMechanicalReuse:
-                !sessionMechanicalReuseRequested,
-              verifySessionMechanicalReuse:
-                input?.settings?.verifySessionMechanicalReuse === true,
-              disableSessionBehaviorReuse:
-                !sessionBehaviorReuseRequested,
-              verifySessionBehaviorReuse:
-                input?.settings?.verifySessionBehaviorReuse === true,
-              collectBehaviorLayerHashes:
-                input?.settings?.collectBehaviorLayerHashes === true,
-              collectBehaviorIdentityObservations:
-                input?.settings?.collectBehaviorIdentityObservations === true,
-              disableCompactObjectiveFastPath:
-                input?.settings?.disableCompactObjectiveFastPath === true,
-              r9v2InformationValueOnly:
-                typeof input?.r9v2InformationValueOnly === 'boolean'
-                  ? input.r9v2InformationValueOnly
-                  : undefined,
-            });
-            const requestPreparedAt = performanceNow();
-            if (evaluationSession) {
-              evaluationSessionObservation.request =
-                decisionRuntime.readLatestEvaluationSessionRequestRecord(
-                  evaluationSession,
-                );
-            }
-            if (routeCatalogCacheEnabled && ['r8-shadow', 'r8'].includes(providerId)) {
-              const preparedRouteCache =
-                decisionRuntime.preparedRouteCacheSnapshot(request);
-              const dependencyReverseIndex = buildRouteDependencyReverseIndex(
-                request.actionRouteCatalog,
-                preparedRouteCache.fullRoutesByUnit,
-              );
-              const nextRouteCache = {
-                catalog: request.actionRouteCatalog,
-                fullRoutesByUnit: preparedRouteCache.fullRoutesByUnit,
-                computationCache: null,
-                actorCandidateRoutes:
-                  preparedRouteCache.actorCandidateRoutes,
-                actorProjectedWorlds:
-                  preparedRouteCache.actorProjectedWorlds,
-                actorProjectedWorldRevisions:
-                  preparedRouteCache.actorProjectedWorldRevisions,
-                actorPredictedOutcomeEvidence:
-                  preparedRouteCache.actorPredictedOutcomeEvidence,
-                actorCandidateEnvelopeDeltas:
-                  preparedRouteCache.actorCandidateEnvelopeDeltas,
-                routeFactOwnershipIndex:
-                  preparedRouteCache.routeFactOwnershipIndex,
-                routeFactOwnershipSummary:
-                  preparedRouteCache.routeFactOwnershipSummary,
-                unitHashes: currentUnitHashes,
-                targetUnitHashes: currentTargetUnitHashes,
-                beliefUnitHashes: currentBeliefUnitHashes,
-                publicResponseHashes: currentPublicResponseHashes,
-                round: Number(combatData?.回合 || 0),
-                objectiveHash: previewRuntime.stableHash(combatData?.胜负条件 || {}),
-                opportunityHash: currentOpportunityHash,
-                resourceTimelineHash: currentResourceTimelineHash,
-                scheduleHash: currentScheduleHash,
-                opportunityEntryHashes: currentOpportunityEntryHashes,
-                resourceDependencyHashes: currentResourceDependencyHashes,
-                scheduleEntryHashes: currentScheduleEntryHashes,
-                ruleHashes: currentRuleHashes,
-                dependencyReverseIndex,
-                dependencyValueHashes: buildRouteDependencyValueHashes(
-                  combatData,
-                  dependencyReverseIndex,
-                ),
-                beliefDependencyHashes: beliefDependencyHashes(
-                  currentBelief,
-                  dependencyReverseIndex,
-                ),
-              };
-              routeCatalogCacheByActor.set(actorId, nextRouteCache);
-              routeCatalogCacheByContext.set(routeCacheContextKey, nextRouteCache);
-              routeCatalogCacheBySide.set(actorSide, nextRouteCache);
-              routeCatalogCacheByQueueContext.set(
-                routeQueueContextKey,
-                nextRouteCache,
-              );
-            }
-            if (['r8-shadow', 'r8'].includes(providerId)) {
-              const preparedRouteEvidence =
-                decisionRuntime.preparedRouteCacheSnapshot(request);
-              routeFactOwnershipSummary = cloneValue(
-                preparedRouteEvidence.routeFactOwnershipSummary || {},
-              );
-              behaviorLayerSemanticHashes = cloneValue(
-                preparedRouteEvidence.behaviorLayerSemanticHashes || {},
-              );
-            }
-            const providerStartedAt = performanceNow();
-            const providerResult = decisionRuntime.runProvider({ providerId, request });
-            const providerFinishedAt = performanceNow();
-            const lostOpportunity = providerResult.decisionAudit?.lostOpportunity || null;
-            decisionTiming = {
-              totalMs: Number((providerFinishedAt - decisionStartedAt).toFixed(3)),
-              contextBuildMs: Number((contextPreparedAt - decisionStartedAt).toFixed(3)),
-              runtimeSnapshotAndInvalidationMs: Number(
-                (snapshotPreparedAt - snapshotStartedAt).toFixed(3),
-              ),
-              prepareMs: Number((requestPreparedAt - snapshotPreparedAt).toFixed(3)),
-              providerMs: Number((providerFinishedAt - providerStartedAt).toFixed(3)),
-              queueDecisionIndex: decisionPerformanceDiagnostics.length,
-            };
+                  targetIds: Array.isArray(lockedDeclaration?.targetIds)
+                    ? cloneValue(lockedDeclaration.targetIds)
+                    : [],
+                  declaration: cloneValue(lockedDeclaration),
+                  selected: true,
+                  playerLocked: true,
+                  selectionMode: 'PLAYER_LOCKED',
+                }
+              : {
+                  candidateId: actorId + ':NO_FORMAL_PROVIDER_PASS',
+                  actionKind: 'PASS_OPPORTUNITY',
+                  actorId,
+                  targetIds: [],
+                  declaration: { actorId, actionKind: 'PASS_OPPORTUNITY', targetIds: [] },
+                  selected: true,
+                  playerLocked: false,
+                  selectionMode: 'NO_FORMAL_PROVIDER_PASS',
+                  passReason: 'NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED',
+                  reason: 'NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED',
+                  reasonCode: 'NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED',
+                  counterDeclineFallback: actionRole === 'COUNTER',
+                };
             decisionResult = {
-              ...cloneValue(providerResult.decisionAudit || {}),
-              providerId: providerResult.providerId,
-              requestHash: providerResult.requestHash,
-              routeCacheMetrics: cloneValue(request.routeCacheMetrics || {}),
-              candidateEnvelopeMetrics: cloneValue(request.candidateEnvelopeMetrics || {}),
-              selected: lostOpportunity
-                ? null
-                : {
-                    ...cloneValue(providerResult.decisionAudit?.selected || {}),
-                    candidateId: providerResult.selectedCandidateId,
-                    declaration: cloneValue(providerResult.selectedDeclaration),
-                  },
-              lostOpportunity: cloneValue(lostOpportunity),
-              beliefState: cloneValue(providerResult.beliefState || {}),
-              teamIntent: cloneValue(providerResult.teamIntent || {}),
-              strategyMemory: cloneValue(providerResult.strategyMemory || {}),
-              strategicSignature: providerResult.strategicSignature,
-              stateCapacityTotal: providerResult.stateCapacityTotal,
-              beliefRevision: providerResult.beliefRevision,
-              pendingStrategicEffect: providerResult.pendingStrategicEffect === true,
-              decisionProfile: cloneValue(providerResult.decisionProfile || {}),
-            };
-            performanceTrace('decision-end', {
+              schemaVersion: 'NO_FORMAL_PROVIDER_PLAYER_LOCKED_DECISION_V1',
+              decisionEngine: 'NO_FORMAL_PROVIDER',
+              providerId: '',
               round: Number(combatData?.回合 || 0),
               actorId,
-              actionRole: normalizeActionRole(extras.role || node.actionRole),
+              actionRole,
+              actorControl: lockedDeclaration ? 'PLAYER_LOCKED' : node.actorControl,
+              opportunityId: String(node?.opportunityId || '').trim(),
+              grantId: String(node?.grantId || '').trim(),
               opportunitySequence: decisionOpportunitySequence,
-              selectedCandidateId: String(providerResult.selectedCandidateId || '').trim(),
-              candidateCount: Number(providerResult?.decisionAudit?.candidateCount || 0),
-              decisionIndex: decisionPerformanceDiagnostics.length,
-              timing: decisionTiming,
-              routeCacheMetrics: cloneValue(request.routeCacheMetrics || {}),
-              candidateEnvelopeMetrics: cloneValue(
-                request.candidateEnvelopeMetrics || {},
-              ),
-            });
-          } else {
-            const directStartedAt = performanceNow();
-            decisionResult = directDecision(decisionInput);
+              candidateCount: 1,
+              beliefState: decisionInput.beliefState || {},
+              teamIntent: {},
+              strategyMemory: strategyByActor.get(actorId) || runtime.strategyMemory?.[actorId] || {},
+              candidateAudit: [cloneValue(selectedForAudit)],
+              scoreAudit: [cloneValue(selectedForAudit)],
+              selected: cloneValue(selectedForAudit),
+              lostOpportunity: null,
+              passReason: lockedDeclaration ? '' : 'NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED',
+              reasonCode: lockedDeclaration ? '' : 'NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED',
+              decisionProfile: {
+                engine: 'NO_FORMAL_PROVIDER',
+                selectionMode: lockedDeclaration ? 'PLAYER_LOCKED' : 'NO_FORMAL_PROVIDER_PASS',
+                selectionPath: lockedDeclaration ? 'PLAYER_LOCKED' : 'NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED',
+                passReason: lockedDeclaration ? '' : 'NO_FORMAL_PROVIDER_OPTIONAL_OPPORTUNITY_PASSED',
+              },
+              alternatives: [],
+            };
             decisionTiming = {
               totalMs: Number((performanceNow() - decisionStartedAt).toFixed(3)),
-              directDecisionMs: Number((performanceNow() - directStartedAt).toFixed(3)),
+              neutralDecisionMs: Number((performanceNow() - contextPreparedAt).toFixed(3)),
               queueDecisionIndex: decisionPerformanceDiagnostics.length,
             };
+          } else {
+            throw new Error('NO_FORMAL_PROVIDER');
           }
+
           decisionResult = decisionResult && typeof decisionResult === 'object'
             ? {
                 ...decisionResult,
@@ -13120,17 +12634,9 @@
       if (!actor) return `${actorName}已失去战斗能力，无法继续行动`;
       if (!opponents.length) return `${actorName}已结束交锋，转入收势与战后确认`;
       const focus = currentTargets.find(pair => isSameReportName(pair?.actor, actorName));
-      const before = JSON.stringify(combatData);
-      const decision = decisionRuntime.decide({
-        worldSnapshot: combatData,
-        actorId: previewRuntime.unitId(actor),
-        actionOpportunity: { role: 'ACTIVE', sequence: Number(combatData?.回合 || 0) + 1 },
-        strategyMemory: focus?.target ? { targetIds: [String(focus.target)] } : {},
-        beliefState: {},
-        seed: `summary:${Number(combatData?.回合 || 0)}:${label}`,
-      });
-      if (JSON.stringify(combatData) !== before) throw new Error('battle_summary_preview_mutated_state');
-      const selected = decision?.selected;
+      const selected = recentDecision?.selected && typeof recentDecision.selected === 'object'
+        ? recentDecision.selected
+        : null;
       if (!selected || selected.rejectionCode) return `${actorName}倾向防守并等待新的有效窗口`;
       const declaration = selected.declaration || {};
       const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '行动');
@@ -15145,6 +14651,20 @@
         });
       }
       candidates.forEach((candidate, candidateIndex) => {
+        if (actionDecisionEngine === 'NO_FORMAL_PROVIDER') {
+          const neutralFields = ['candidateId', 'actionKind', 'actorId', 'targetIds', 'selected'];
+          const missing = neutralFields
+            .filter(key => candidate?.[key] === undefined || candidate?.[key] === null);
+          if (missing.length) {
+            pushFatal('SCORING_COMPONENT_MISSING', {
+              actionIndex,
+              candidateIndex,
+              candidateId: candidate?.candidateId || '',
+              missing,
+            });
+          }
+          return;
+        }
         if (actionDecisionEngine === 'R8') {
           const r8Fields = [
             'candidateId',
@@ -15441,7 +14961,11 @@
       const lostOpportunity = actionAudit?.lostOpportunity && typeof actionAudit.lostOpportunity === 'object'
         ? actionAudit.lostOpportunity
         : null;
-      if (selectedCandidates.length !== 1 && !lostOpportunity?.reasonCode) {
+      if (
+        actionDecisionEngine !== 'NO_FORMAL_PROVIDER' &&
+        selectedCandidates.length !== 1 &&
+        !lostOpportunity?.reasonCode
+      ) {
         pushFatal('SCORING_SELECTED_MISSING', { actionIndex, selectedCandidateId: actionAudit?.selectedCandidateId || '', selectedCount: selectedCandidates.length });
       }
       const selected = selectedCandidates[0];
@@ -16162,117 +15686,7 @@
   }
 
   function runDecisionCase(input = {}) {
-    if (input?.settings?.decisionOnly !== true) return runStructuredBattle(input);
-    const decision = root.__LWCS_BATTLE_DECISION__;
-    const preview = root.__LWCS_BATTLE_PREVIEW__;
-    if (!decision || typeof decision.decide !== 'function' || !preview || typeof preview.listUnits !== 'function') {
-      throw new Error('battle_runtime_decision_runtime_missing');
-    }
-    const sourceCombatData = input.combatData && typeof input.combatData === 'object' ? input.combatData : {};
-    const sourceSnapshot = JSON.stringify(sourceCombatData);
-    const worldSnapshot = cloneValue(sourceCombatData);
-    const caseId = String(input.caseId || 'ad_hoc').trim() || 'ad_hoc';
-    const mode = String(input.mode || 'single_preview').trim();
-    const seed = Math.max(1, Math.floor(Number(input.seed || 1)));
-    const providerId = String(input?.settings?.providerId || '').trim();
-    if (providerId) {
-      if (
-        typeof decision.prepareDecisionRequest !== 'function' ||
-        typeof decision.runProvider !== 'function'
-      ) {
-        throw new Error('battle_runtime_decision_coordinator_missing');
-      }
-      const providerResults = preview.listUnits(worldSnapshot)
-        .filter(entry => preview.isAlive(entry.unit))
-        .map((entry, index) => {
-          const actorId = preview.unitId(entry.unit);
-          const actionOpportunity = input.actionOpportunity || {};
-          const request = decision.prepareDecisionRequest({
-            worldSnapshot,
-            actorId,
-            objectiveContract: input.objectiveContract || worldSnapshot?.胜负条件 || {},
-            battleIntent: input.battleIntent || {
-              mode: String(worldSnapshot?.战斗意图 || '').trim(),
-              objectives: worldSnapshot?.胜负条件 || {},
-            },
-            beliefState: input.initialBelief?.[actorId] || input.initialBelief || {},
-            actionOpportunity,
-            strategyMemory: input.strategyMemory || {},
-            seed: `${seed}:${Number(worldSnapshot?.回合 || 0)}:${index}`,
-            runtimeSnapshot: input.runtimeSnapshot && typeof input.runtimeSnapshot === 'object'
-              ? input.runtimeSnapshot
-              : buildDecisionRuntimeSnapshot(worldSnapshot, actorId, actionOpportunity),
-            disableObservationRouteReuse:
-              input?.settings?.disableObservationRouteReuse === true,
-            disableCompactObjectiveFastPath:
-              input?.settings?.disableCompactObjectiveFastPath === true,
-          });
-          return decision.runProvider({ providerId, request });
-        });
-      if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PROVIDER_MUTATED_STATE');
-      const decisionAudits = providerResults.map(result =>
-        buildDecisionAuditRecord(result.decisionAudit),
-      );
-      return {
-        caseId,
-        seed,
-        mode,
-        providerId,
-        ledger: [],
-        trace: [],
-        scoreAudit: decisionAudits.flatMap(item => item.scoreAudit),
-        actionChains: [],
-        reportBlocks: [],
-        roundOverview: [],
-        finalBattleReport: null,
-        aiSummaryInput: null,
-        initialSnapshot: cloneValue(worldSnapshot),
-        finalSnapshot: worldSnapshot,
-        decisions: decisionAudits,
-        providerResults,
-      };
-    }
-    const decisionEngine = String(input?.settings?.decisionEngine || 'legacy').trim().toLowerCase();
-    const decideOnceImpl = decisionEngine === 'next-shadow' ? decision.decideNext : decision.decide;
-    if (typeof decideOnceImpl !== 'function') throw new Error(`battle_decision_engine_missing:${decisionEngine}`);
-    const decideOnce = (payload, index = 0) => decideOnceImpl({
-      ...payload,
-      battleIntent: input.battleIntent || payload?.battleIntent || {
-        mode: String(payload?.worldSnapshot?.战斗意图 || worldSnapshot?.战斗意图 || '').trim(),
-        objectives: payload?.worldSnapshot?.胜负条件 || worldSnapshot?.胜负条件 || {},
-      },
-      beliefState: payload?.beliefState && Object.keys(payload.beliefState).length
-        ? payload.beliefState
-        : input.initialBelief?.[payload?.actorId] || input.initialBelief || {},
-      seed: `${seed}:${Number(payload?.worldSnapshot?.回合 || 0)}:${index}:${payload?.seedOffset || 0}`,
-    });
-    if (input.settings?.decisionOnly === true) {
-      const decisions = preview.listUnits(worldSnapshot)
-        .filter(entry => preview.isAlive(entry.unit))
-        .map((entry, index) => decideOnce({
-          worldSnapshot,
-          actorId: preview.unitId(entry.unit),
-          actionOpportunity: input.actionOpportunity || {},
-          strategyMemory: input.strategyMemory || {},
-        }, index));
-      if (JSON.stringify(sourceCombatData) !== sourceSnapshot) throw new Error('PREVIEW_MUTATED_STATE');
-      const decisionAudits = decisions.map(buildDecisionAuditRecord);
-      return {
-        caseId,
-        seed,
-        mode,
-        ledger: [],
-        trace: [],
-        scoreAudit: decisionAudits.flatMap(item => item.scoreAudit),
-        actionChains: [],
-        reportBlocks: [],
-        roundOverview: [],
-        finalBattleReport: null,
-        aiSummaryInput: null,
-        finalSnapshot: worldSnapshot,
-        decisions: decisionAudits,
-      };
-    }
+    throw new Error('NO_FORMAL_PROVIDER');
   }
 
   function runBattleCase(options = {}) {
@@ -16280,72 +15694,84 @@
   }
 
   function executeBattleDraft(input = {}) {
-    const source = input && typeof input === 'object' ? input : {};
-    const result = runDecisionCase(cloneValue(source));
-    if (Number(result?.audit?.fatalCount || 0) > 0) {
-      const codes = (Array.isArray(result?.audit?.fatals) ? result.audit.fatals : [])
-        .map(item => String(item?.code || '').trim())
-        .filter(Boolean);
-      throw new Error(`battle_draft_runtime_audit_failed:${codes.join(',') || 'unknown'}`);
-    }
-    const draft = {
-      schemaVersion: '7.3-R7.4-draft-1',
-      status: 'DRAFT',
-      caseId: String(result?.caseId || source?.caseId || '').trim(),
-      seed: result?.seed ?? source?.seed ?? 1,
-      mode: String(result?.mode || source?.mode || '').trim(),
-      roundsRequested: Math.max(0, Number(result?.roundsRequested || source?.rounds || 0)),
-      actualRoundCount: Math.max(0, Number(result?.roundsExecuted || 0)),
-      ledger: cloneValue(result?.ledger || result?.eventLedger || []),
-      trace: cloneValue(result?.trace || result?.resolutionTrace || []),
-      decisionAudit: cloneValue(result?.decisions || result?.decisionTrace || []),
-      actionQueueTrace: cloneValue(result?.actionQueueTrace || []),
-      terminalResult: cloneValue(result?.terminal || result?.objectiveResolution || {
-        terminal: result?.winner && result.winner !== 'unfinished',
-        winner: result?.winner || 'unfinished',
-      }),
-      initialSnapshot: cloneValue(source?.combatData || result?.initialSnapshot || null),
-      finalSnapshot: cloneValue(result?.combatData || result?.finalSnapshot || result?.snapshot || null),
-    };
-    return attestBattleDraft({ ...draft, draftHash: hashBattleValue(draft) });
+    throw new Error('NO_FORMAL_PROVIDER');
   }
 
-  function executeBattleDraftR8(input = {}) {
+  function executePlayerLockedBattleSettlement(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
-    const providerId = String(source?.settings?.providerId || '').trim();
-    if (![
-      'legacy-baseline',
-      'r74-next-baseline',
-      'r8-shadow',
-      'r8',
-      'r9',
-      'r9v2-shadow',
-      'r9v2',
-    ].includes(providerId)) {
-      throw new Error(`battle_runtime_r8_provider_invalid:${providerId || 'missing'}`);
+    const topLevelProviderId = String(source?.providerId ?? '').trim();
+    const settingsProviderId = String(source?.settings?.providerId ?? '').trim();
+    if (topLevelProviderId || settingsProviderId) {
+      throw new Error('NO_FORMAL_PROVIDER_PROVIDER_ID_REJECTED:' + (topLevelProviderId || settingsProviderId));
     }
-    const inputHash = hashBattleValue(source);
-    const result = runDecisionCase(source);
-    if (Number(result?.audit?.fatalCount || 0) > 0) {
-      const codes = (Array.isArray(result?.audit?.fatals) ? result.audit.fatals : [])
-        .map(item => String(item?.code || '').trim())
-        .filter(Boolean);
-      throw new Error(`battle_draft_runtime_audit_failed:${codes.join(',') || 'unknown'}`);
+    const requestedAction = source?.actionDeclaration || source?.selectedAction;
+    const actionDeclaration = requestedAction?.declaration && typeof requestedAction.declaration === 'object'
+      ? requestedAction.declaration
+      : requestedAction;
+    if (!actionDeclaration || typeof actionDeclaration !== 'object') {
+      throw new Error('battle_player_locked_declaration_missing');
     }
+    const combatData = source?.combatData && typeof source.combatData === 'object'
+      ? source.combatData
+      : null;
+    if (!combatData) throw new Error('battle_declaration_combat_data_missing');
+    const actorId = String(actionDeclaration?.actorId || '').trim();
+    if (!actorId) throw new Error('battle_declaration_actor_missing');
+    const actionKind = String(actionDeclaration?.actionKind || '').trim();
+    if (!actionKind) throw new Error('battle_player_locked_action_kind_missing');
+    const targetIds = Array.isArray(actionDeclaration?.targetIds)
+      ? actionDeclaration.targetIds.map(value => String(value || '').trim()).filter(Boolean)
+      : [];
+    if (!targetIds.length) throw new Error('battle_player_locked_target_missing');
+    const knownUnits = [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)];
+    if (!knownUnits.some(unit => isUnitIdentityMatch(unit, actorId))) {
+      throw new Error('battle_player_locked_actor_unknown:' + actorId);
+    }
+    const illegalTargets = targetIds.filter(targetId =>
+      !knownUnits.some(unit =>
+        isUnitIdentityMatch(unit, targetId) && previewRuntime.isBattleCapable(unit),
+      ),
+    );
+    if (illegalTargets.length) {
+      throw new Error('battle_player_locked_target_illegal:' + illegalTargets.join(','));
+    }
+    const result = runStructuredBattle({
+      ...source,
+      combatData,
+      rounds: 1,
+      mode: 'single_round',
+      settings: {
+        ...source.settings,
+        providerId: '',
+        decisionOnly: false,
+        playerLockedSettlement: true,
+      },
+      selectedAction: {
+        ...cloneValue(requestedAction || {}),
+        actorId,
+        actionKind,
+        targetIds,
+        declaration: cloneValue(actionDeclaration),
+      },
+    });
     const objectiveContract = source.objectiveContract ||
       source.battleIntent?.objectives ||
-      source.combatData?.胜负条件 ||
+      combatData?.胜负条件 ||
       {};
     const draft = {
       schemaVersion: '8.3-draft-1',
       status: 'DRAFT',
-      providerId,
-      inputHash,
+      providerId: '',
+      formalProviderState: 'NO_FORMAL_PROVIDER',
+      selectionMode: 'PLAYER_LOCKED',
+      actorControl: 'PLAYER_LOCKED',
+      decisionEngine: 'NO_FORMAL_PROVIDER',
+      inputHash: hashBattleValue(source),
       objectiveHash: hashBattleValue(objectiveContract),
       caseId: String(result?.caseId || source?.caseId || '').trim(),
       seed: result?.seed ?? source?.seed ?? 1,
-      mode: String(result?.mode || source?.mode || '').trim(),
-      roundsRequested: Math.max(0, Number(result?.roundsRequested || source?.rounds || 0)),
+      mode: 'single_round',
+      roundsRequested: 1,
       actualRoundCount: Math.max(0, Number(result?.roundsExecuted || 0)),
       executedRoundNumbers: cloneValue(result?.executedRoundNumbers || []),
       roundStart: result?.roundStart ?? null,
@@ -16353,40 +15779,13 @@
       ledger: cloneValue(result?.ledger || []),
       trace: cloneValue(result?.trace || []),
       actionQueueTrace: cloneValue(result?.actionQueueTrace || []),
-      decisionAudit: cloneValue(result?.providerResults || result?.decisions || []),
-      runtimeAudit: cloneValue(result?.audit || {
-        fatalCount: 0,
-        warningCount: 0,
-        fatals: [],
-        warnings: [],
-      }),
-      terminalResult: cloneValue(result?.terminal || {
-        terminal: false,
-        winner: 'unfinished',
-        reason: 'DECISION_ONLY',
-      }),
+      decisionAudit: cloneValue(result?.decisions || []),
+      runtimeAudit: cloneValue(result?.audit || { fatalCount: 0, warningCount: 0, fatals: [], warnings: [] }),
+      terminalResult: cloneValue(result?.terminal || { terminal: false, winner: 'unfinished', reason: 'PLAYER_LOCKED' }),
       initialSnapshot: cloneValue(source.combatData || result?.initialSnapshot || null),
-      finalSnapshot: cloneValue(result?.combatData || source.combatData || null),
+      finalSnapshot: cloneValue(result?.combatData || result?.finalSnapshot || null),
     };
-    const sealedDraft = {
-      ...draft,
-      draftHash: hashBattleValue(draft),
-    };
-    Object.defineProperty(sealedDraft, 'runtimeDiagnostics', {
-      enumerable: false,
-      configurable: false,
-      writable: false,
-      value: Object.freeze({
-        schemaVersion: '8.3-runtime-diagnostics-1',
-        decisionPerformanceDiagnostics: cloneValue(
-          result?.decisionPerformanceDiagnostics || [],
-        ),
-        evaluationSessionMetrics: cloneValue(
-          result?.evaluationSessionMetrics || null,
-        ),
-      }),
-    });
-    return attestBattleDraft(sealedDraft);
+    return attestBattleDraft({ ...draft, draftHash: hashBattleValue(draft) });
   }
 
   function sealBattleResult(input = {}) {
@@ -16566,7 +15965,7 @@
     runDecisionCase,
     runBattleCase,
     executeBattleDraft,
-    executeBattleDraftR8,
+    executePlayerLockedBattleSettlement,
     sealBattleResult,
     verifySealedBattlePackage,
     auditFacts,
