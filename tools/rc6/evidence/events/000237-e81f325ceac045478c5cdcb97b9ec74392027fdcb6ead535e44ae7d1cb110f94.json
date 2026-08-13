@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 237,
+  "previousEventHash": "46eae674b47530d18600143d1e85e6987ea6fb247d4422ec984e2656d83cd5c1",
+  "milestoneId": "M1",
+  "taskId": "M1-EVENT-REOPEN",
+  "eventType": "MILESTONE_REOPENED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "e54363b8fad43eec0972c13a1edc80525ba93351bf7ab77aaf5ae68ecfa720d3",
+    "BattleDecision_Module.js": "fa4f7cf94043b0a116fe22aef3eafe3204e34cf15537edf78021a5489f856618",
+    "BattleRuntime_Module.js": "a6ac4c8a3a297335d86fa6df3f322dbc430de223d73ae2d758a6a72f0eb2d061",
+    "BattleReport_Module.js": "1a4afe03b8a403c6672c26b5341941f0c9793b936adb86834433bdb3c83ddfea",
+    "BattleUI_Module.js": "a8fa5c3d0164240b7ac888683036b0f33d3b5b5c9785c56ce4b76263bb293b5b",
+    "mvu_logic_bridge.js": "fdc8361ac629a7150514277b5066ef32f69f5e8e745659b31032e01736ce2b7e",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {
+    "tools/rc6/contracts/ExecutionContractV31.json": "9bea0afa329a96106343568764a73bf241f0891c924b3d1221ef4b45d449d72b",
+    "tools/rc6/record-evidence-event.mjs": "f8750ac3264e652e3418480bf95b122ab57b42ffd8249d5532c7bc6f156854ea",
+    "tools/rc6/reduce-status.mjs": "51398b299b210e4ceb8b927d2a201f84f380b81238b53ea883bf476302586f68"
+  },
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "290227abae34eb1c299747b1f0e9ad2dcd938e38b7570a9c8e87d0a032216583"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "strictMilestoneOrder": true,
+    "invalidateDownstream": true,
+    "downstreamDisposition": {
+      "M2": "HISTORICAL_ACCEPTANCE_INVALIDATED",
+      "M3": "HISTORICAL_ACCEPTANCE_INVALIDATED",
+      "M4": "HISTORICAL_ACCEPTANCE_INVALIDATED",
+      "M5": "HISTORICAL_ACCEPTANCE_INVALIDATED"
+    },
+    "nextExitCondition": "M1 v31 closure under ExecutionContractV31"
+  },
+  "reason": "v31 supersedes historical M1/M2-M5 plan; R8/legacy providers retire atomically; independent V3/lightweight R9 route replaces old kernel expansion.",
+  "recordedAt": "2026-08-13T09:34:33.782Z",
+  "repository": {
+    "branch": "master",
+    "head": "cf488067f51616b490712dd0cb72b0b63acee481"
+  },
+  "eventHash": "e81f325ceac045478c5cdcb97b9ec74392027fdcb6ead535e44ae7d1cb110f94"
+}
