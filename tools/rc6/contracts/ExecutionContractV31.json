@@ -4,6 +4,14 @@
   "revision": 31,
   "status": "APPROVED",
   "encoding": "UTF-8",
+  "requiredDecisionSet": {
+    "contractStatus": {"decision": "APPROVED"},
+    "initialProviderState": {"decision": "NO_FORMAL_PROVIDER"},
+    "autoBeforeR9Active": {"decision": "FAIL_CLOSED"},
+    "preserveDirtyAndUntracked": {"decision": true},
+    "headChange": {"decision": "STOP_AND_ESCALATE"},
+    "writeBoundary": {"decision": ["tools/rc6/contracts/ExecutionContractV31.json"]}
+  },
   "authority": {
     "supersedes": [
       "BehaviorPlanningContractV1.providerRoles",
@@ -262,7 +270,8 @@
   },
   "worktreePolicy": {
     "repository": "lwcs",
-    "expectedHead": "a4fd078d485904ac322a40fd02dbc8366d04f39b",
+    "baselineHead": "a4fd078d485904ac322a40fd02dbc8366d04f39b",
+    "acceptanceHead": "M0_CLOSURE_CURRENT_SOURCE",
     "preserveDirtyAndUntracked": true,
     "targetMustBeAbsentBeforeCreate": true,
     "headChangeAction": "STOP_AND_ESCALATE",
