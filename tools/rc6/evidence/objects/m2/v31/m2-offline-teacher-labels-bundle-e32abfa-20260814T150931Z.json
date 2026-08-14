@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "M2OfflineTeacherLabelsBundleV1",
+  "taskId": "M2-OFFLINE-TEACHER-LABELS",
+  "baseHead": "e32abfac0e085a68e952224182ebbbcc63a28867",
+  "verdict": "OFFLINE_TEACHER_LABELS_ACCEPTED",
+  "files": [
+    {
+      "file": "tools/rc6/contracts/OfflineTeacherLabelingV1.json",
+      "sha256": "e3776ea58df5d33f956d3b7d20d0e0ad79543416c09acd9150bc91bdf069a899"
+    },
+    {
+      "file": "tools/rc6/contracts/OfflineTeacherLabelingV1.schema.json",
+      "sha256": "d8ddfddded15ca0a8b98fcf532f01b2ffc58068081358aa0f497d33342bf1bf6"
+    },
+    {
+      "file": "tools/rc6/cases/OfflineTeacherLabelsV1.json",
+      "sha256": "24ac930c68ce6b5a2d233e2c13815166649f000e6f6a0433379516fea384e243"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-teacher-label-offline.mjs",
+      "sha256": "44d9cc38dedc53a231b9c63bf6c37ca0c4d62bfcb20e1c5c1f1d087c26b80d29"
+    }
+  ],
+  "summary": {
+    "verdict": "OFFLINE_TEACHER_LABELS_ACCEPTED",
+    "unitCount": 80,
+    "teacherLabeled": 79,
+    "manualLockedAuditOnly": 1,
+    "manualUnit": "kref:ref-manual-locked",
+    "infoUnitsForcedNotPairable": 6,
+    "excludedTotal": 11,
+    "hardExcludedTotal": 11,
+    "labelsHash": "82be27a0da2b595259cb5ec5ce68df8b5677cf49de3fdd3017ddf60840250892",
+    "artifactHash": "24ac930c68ce6b5a2d233e2c13815166649f000e6f6a0433379516fea384e243",
+    "staticClosure": "no R8/v1/kernel/valueVector/reasoning imports; no dynamic module loading; v2/v3 self-contained"
+  },
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-offline-teacher-labels-e32abfa.patch",
+    "sha256": "9b3199cc97a8039ec8650507971a5d2109b5b4fa1864ab1ef46d1c58a317d16f",
+    "byteLength": 123620
+  },
+  "manifest": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-offline-teacher-labels-e32abfa.manifest.json",
+    "sha256": "5adfa4df6bbf96a7e38f3078782452e76e811a7555767577914889dddec57581",
+    "byteLength": 2844
+  },
+  "verification": {
+    "teacherHarness": "52/52 PASSED x2 deterministic",
+    "nodeCheck": true,
+    "utf8Clean": true,
+    "diffCheck": true
+  },
+  "notClaimed": [
+    "paired distillation dataset (NOT_GENERATED)",
+    "trained policy (DistilledBehaviorPolicyV1 NOT_TRAINED)",
+    "90% holdout agreement",
+    "formal Provider registration",
+    "production Provider wiring",
+    "performance claims",
+    "Report/UI integration"
+  ],
+  "invalidation": "NONE",
+  "createdAt": "2026-08-14T15:09:31Z"
+}

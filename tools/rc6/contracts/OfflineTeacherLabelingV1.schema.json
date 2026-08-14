@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rc6.local/schema/OfflineTeacherLabelingV1.schema.json",
+  "title": "OfflineTeacherLabelingV1 label artifact schema",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "revision",
+    "status",
+    "encoding",
+    "unitCount",
+    "units"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "OfflineTeacherLabelingV1"
+    },
+    "revision": {
+      "const": 1
+    },
+    "status": {
+      "const": "FROZEN"
+    },
+    "encoding": {
+      "const": "UTF-8"
+    },
+    "unitCount": {
+      "const": 80
+    },
+    "units": {
+      "type": "array",
+      "minItems": 80,
+      "maxItems": 80,
+      "items": {
+        "$ref": "#/$defs/unit"
+      }
+    }
+  },
+  "$defs": {
+    "idString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    },
+    "unit": {
+      "type": "object",
+      "required": [
+        "unitId",
+        "caseId",
+        "sourceHash",
+        "teacherVersion",
+        "mode",
+        "selected",
+        "pareto",
+        "alternatives",
+        "excluded",
+        "eligible",
+        "rankByCandidateId",
+        "hardExclusionByCandidateId",
+        "informationValuePresent",
+        "labelStatus",
+        "notPairableReasons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unitId": {
+          "$ref": "#/$defs/idString"
+        },
+        "caseId": {
+          "$ref": "#/$defs/idString"
+        },
+        "sourceHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "teacherVersion": {
+          "enum": [
+            "RVE2_ORACLE_EXPECTATION",
+            "RVE2_KERNEL",
+            "RVE3_RAW"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "auto",
+            "manual"
+          ]
+        },
+        "selected": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/idString"
+            }
+          ]
+        },
+        "pareto": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/idString"
+          }
+        },
+        "alternatives": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/idString"
+          }
+        },
+        "excluded": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/idString"
+          }
+        },
+        "eligible": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/idString"
+          }
+        },
+        "rankByCandidateId": {
+          "type": "object",
+          "patternProperties": {
+            "^[^\\u0000-\\u001F\\u007F]+$": {
+              "enum": [
+                0,
+                1,
+                2
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "hardExclusionByCandidateId": {
+          "type": "object",
+          "patternProperties": {
+            "^[^\\u0000-\\u001F\\u007F]+$": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "informationValuePresent": {
+          "type": "boolean"
+        },
+        "labelStatus": {
+          "enum": [
+            "TEACHER_LABELED",
+            "MANUAL_LOCKED_AUDIT_ONLY",
+            "EXPECTATION_MISMATCH_FAILED",
+            "GENERATION_ERROR"
+          ]
+        },
+        "notPairableReasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "INFORMATION_FEATURE_MISSING"
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "labelStatus": {
+                "const": "TEACHER_LABELED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "auto"
+              },
+              "selected": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rankByCandidateId": {
+                "minProperties": 1
+              },
+              "pareto": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "labelStatus": {
+                "const": "MANUAL_LOCKED_AUDIT_ONLY"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "manual"
+              },
+              "selected": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rankByCandidateId": {
+                "maxProperties": 0
+              },
+              "pareto": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "labelStatus": {
+                "enum": [
+                  "EXPECTATION_MISMATCH_FAILED",
+                  "GENERATION_ERROR"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected": {
+                "type": "null"
+              },
+              "pareto": {
+                "maxItems": 0
+              },
+              "alternatives": {
+                "maxItems": 0
+              },
+              "excluded": {
+                "maxItems": 0
+              },
+              "eligible": {
+                "maxItems": 0
+              },
+              "rankByCandidateId": {
+                "maxProperties": 0
+              },
+              "hardExclusionByCandidateId": {
+                "maxProperties": 0
+              },
+              "notPairableReasons": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "informationValuePresent": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "notPairableReasons": {
+                "minItems": 1,
+                "contains": {
+                  "const": "INFORMATION_FEATURE_MISSING"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "informationValuePresent": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "notPairableReasons": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
