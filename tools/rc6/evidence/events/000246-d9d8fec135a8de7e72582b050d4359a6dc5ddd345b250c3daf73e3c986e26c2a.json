@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 246,
+  "previousEventHash": "ebf1a4a6bae232ab6d4b8b432416e292fce1f34487a34f98a2f19742fe9a4376",
+  "milestoneId": "M2",
+  "taskId": "M2-IMMEDIATE-FEATURE",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "29711bf760ed5e64745252356fd51fc56ad47c875a8b3d554bccfad303ea7a76",
+    "BattleDecision_Module.js": "895547dc149f61763216dded115f703509e18961f76d25467e978e946aadd51c",
+    "BattleRuntime_Module.js": "f75c111b0d8ab0b7d843bb19e3fbfc4879557fba1cd1ca1ac199b271a10524ce",
+    "BattleReport_Module.js": "4412b6f22ab0869e92e80ff60e353afd08f2cae5b378732e8c32db7b16b41135",
+    "BattleUI_Module.js": "264f6da37c162a8b64c1e13ca2cb49b437c9adc1f14d2a5b202a9a3c93357001",
+    "mvu_logic_bridge.js": "329f34961249df979dc39c4eb432f65bc8a35b55ff208c1f13ecbdc0d24a567f",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "079c726b9bf2e2bcaff572169c995e32bb3383b8883042d7ddb403ece1e5df83"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "batch": "M2-IMMEDIATE-FEATURE",
+    "verdict": "IMMEDIATE_FEATURE_COMPILER_ACCEPTED_POLICY_NOT_TRAINED",
+    "rawFeatures": 23,
+    "cases": 39,
+    "work": "linear",
+    "futureRouteEnumeration": "NONE",
+    "policy": "CONTRACT_TARGET_NOT_TRAINED",
+    "pairedDistillationDataset": "NOT_GENERATED",
+    "top1": "NOT_MEASURABLE",
+    "providerWiring": "NONE",
+    "runtimeWiring": "NONE",
+    "loaderWiring": "NONE",
+    "registryWiring": "NONE",
+    "teacherProductionClosure": "NONE",
+    "normalizationConstants": "NONE",
+    "hiddenState": "NONE",
+    "skillRoleWeighting": "NONE",
+    "notClaimed": [
+      "trained policy",
+      "90% agreement",
+      "Provider selection",
+      "production wiring",
+      "full prototype coverage",
+      "battle behavior/performance",
+      "Report explanation"
+    ],
+    "nextExitCondition": "M2 paired distillation dataset, DecisionContributionTraceV1, LINEAR_SCORE training and 90% holdout gate",
+    "invalidation": "NONE"
+  },
+  "reason": "Record immediate feature compiler contracts: 23 raw features, 39 cases, linear work under IMMEDIATE_FEATURE_COMPILER_ACCEPTED_POLICY_NOT_TRAINED; policy target not trained, dataset not generated, top1 not measurable.",
+  "recordedAt": "2026-08-14T05:07:12.410Z",
+  "repository": {
+    "branch": "",
+    "head": "22495449eeb25557e5df07749c2453a58a3523ea"
+  },
+  "eventHash": "d9d8fec135a8de7e72582b050d4359a6dc5ddd345b250c3daf73e3c986e26c2a"
+}

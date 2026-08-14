@@ -1,0 +1,1050 @@
+{
+  "schemaVersion": "BehaviorImmediateFeatureV1",
+  "contractId": "RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-V1-2026-08-14",
+  "revision": 2,
+  "status": "FROZEN",
+  "encoding": "UTF-8",
+  "title": "public immediate mechanics to raw stable ordered features; CANDIDATES_ONLY inputs only; no future traversal; revision 2 freezes real ids (CJK/hyphen ok), actor identity (actorId/actorSide/sides), actor-only cost, explicit hit-check applicability, closed input contract, unordered-multiset SUBSET semantics.",
+  "authority": {
+    "milestone": "M2",
+    "governedBy": [
+      "BehaviorProviderV1",
+      "PrototypeDirectAdapterV1",
+      "PrototypeDirectAdapterV1.schema",
+      "DirectFactRowV1"
+    ],
+    "claim": "CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED",
+    "claimDetail": "freezes raw feature projection rules and first-batch five families (damage/resource/shield/attribute/judgment) minimum coverage; runtime feature compiler is not yet implemented.",
+    "declaredMagnitudeOnly": true,
+    "finalSettlement": "DEFERRED_TO_DOWNSTREAM_KERNEL",
+    "futureRouteDerivation": false,
+    "worldClone": false,
+    "runtimeFutureTraversal": false,
+    "resultWorldCartesian": false
+  },
+  "inputSurface": {
+    "mode": "CANDIDATES_ONLY",
+    "modeSource": "prepareDecisionRequest(analysisDepth=CANDIDATES_ONLY)",
+    "allowed": [
+      {
+        "name": "candidateIdentity",
+        "source": "prepareDecisionRequest(CANDIDATES_ONLY) candidate identity: candidateId/actorId/actorSide/actionKind/targetSet/paymentMode; provider/adapter never re-enumerates targets; actionKind/paymentMode are identity-only, no enum special-casing in the compiler",
+        "required": true,
+        "shape": {
+          "candidateId": "nonempty <=512, no C0/DEL control chars, UTF-16 code-unit ordering",
+          "actorId": "opaque nonempty unit id, same charset rule",
+          "actorSide": "opaque nonempty side id, same charset rule",
+          "actionKind": "nonempty string (identity only)",
+          "targetSet": "unique array of nonempty declared target ids",
+          "paymentMode": "nonempty string (identity only)"
+        }
+      },
+      {
+        "name": "publicSnapshot",
+        "source": "public world snapshot: units (unitId -> public numeric/resource/state fields incl hp/hp_max/sp/sp_max/men/men_max/vit/vit_max/def/agi/shield/状态效果), sides (unitId -> opaque side id; must contain actorId and every declared target id), actorStatus (NORMAL/DISABLED/TERMINAL/UNKNOWN, required)",
+        "required": true
+      },
+      {
+        "name": "atomicFacts",
+        "source": "Preview immediate atomic facts: eventId/sourceActionId/outcomeKind/expectedDelta + required hitCheckApplicability (APPLICABLE/NOT_APPLICABLE/UNKNOWN) + evidence.hitProbability (required when APPLICABLE); current turn direct projection only; no terminal/Pareto/roll",
+        "required": false
+      },
+      {
+        "name": "directFacts",
+        "source": "PrototypeDirectAdapterV1 directFacts (DirectFactRowV1 rows) + legalityModifiers + opportunityModifiers + scheduledFacts",
+        "required": false
+      },
+      {
+        "name": "publicCost",
+        "source": "declared public cost of the candidate (resource + amount), declared values only; resource enum 魂力/精神力/体力/生命; amount finite positive",
+        "required": false
+      },
+      {
+        "name": "publicProbability",
+        "source": "public probability: declared 命中概率/触发概率 or Preview estimateHitProbability result; unresolved non-degenerate conditional probability is UNKNOWN",
+        "required": false
+      },
+      {
+        "name": "publicDeclarations",
+        "source": "public declared axes: revealStrength, declaredOverkill, belief public fields (belief_prior_strength/confidence/uncertainty_width, PUBLIC_DECLARED only)",
+        "required": false
+      },
+      {
+        "name": "legalityFlags",
+        "source": "declared hard-exclusion codes; every code must be a member of hardExclusionCodes, otherwise reject INVALID_OPTION_VALUE",
+        "required": false
+      },
+      {
+        "name": "legalityModifiers",
+        "source": "adapter projection legalityModifiers; hardExclusions/legalityFlags code arrays restricted to hardExclusionCodes (outside => INVALID_OPTION_VALUE); judgmentRates/taunt/stateMigration/stateSwap/mechanismRemoval are metadata entries (counted, never projected)",
+        "required": false
+      },
+      {
+        "name": "opportunityModifiers",
+        "source": "adapter projection opportunityModifiers (resourceLocks/opportunityConstraints/interferenceRates/dependencyTokens); metadata entries (counted, never projected)",
+        "required": false
+      },
+      {
+        "name": "scheduledFacts",
+        "source": "adapter scheduledFacts entries; each entry requires entryId (missing => MISSING_SOURCE_REFERENCE); entries are never silent: they count into OUTSIDE_BATCH1_ROW_COUNT and their entryIds go to its sourceEventIds",
+        "required": false
+      }
+    ],
+    "forbidden": [
+      {
+        "name": "route",
+        "code": "ROUTE_INPUT_REJECTED",
+        "behavior": "FATAL",
+        "description": "no route/future horizon data may enter feature projection."
+      },
+      {
+        "name": "worldClone",
+        "code": "WORLD_CLONE_REJECTED",
+        "behavior": "FATAL",
+        "description": "no world clone/overlay snapshot as feature input."
+      },
+      {
+        "name": "resultWorldCartesian",
+        "code": "RESULT_WORLD_CARTESIAN_REJECTED",
+        "behavior": "FATAL",
+        "description": "no result-world cartesian product or branch world enumeration."
+      },
+      {
+        "name": "hidden",
+        "code": "HIDDEN_INPUT_REJECTED",
+        "behavior": "FATAL",
+        "description": "no hidden HP/resistance/state/roll/opponent intent."
+      },
+      {
+        "name": "wallClock",
+        "code": "WALL_CLOCK_REJECTED",
+        "behavior": "FATAL",
+        "description": "no wall clock or nondeterministic source."
+      },
+      {
+        "name": "skillRoleName",
+        "code": "SKILL_ROLE_NAME_SPECIAL_CASE_REJECTED",
+        "behavior": "FATAL",
+        "description": "no skill-name/role-name special casing; features keyed by mechanic featureCode only."
+      },
+      {
+        "name": "teacher",
+        "code": "TEACHER_INPUT_REJECTED",
+        "behavior": "FATAL",
+        "description": "no teacher output/suggestion may enter feature projection."
+      },
+      {
+        "name": "kernelRouteValue",
+        "code": "ROUTE_INPUT_REJECTED",
+        "behavior": "FATAL",
+        "description": "no kernel route value/route-reuse/prototype path value."
+      },
+      {
+        "name": "branchCombination",
+        "code": "BRANCH_COMBINATION_FORBIDDEN",
+        "behavior": "FATAL",
+        "description": "no conditional branch combination cross product; each fact row produces only its own features."
+      }
+    ]
+  },
+  "batch1PrototypeFamilies": {
+    "purpose": "first-batch five direct projection prototype families to feature family mapping; other admitted rows are counted only (OUTSIDE_BATCH1_ROW_COUNT), never silently dropped.",
+    "伤害结算": [
+      "DAMAGE_POWER",
+      "DAMAGE_SEGMENTS",
+      "DAMAGE_PENETRATION",
+      "DAMAGE_TYPE"
+    ],
+    "资源变化": [
+      "RESOURCE_DELTA"
+    ],
+    "护盾变化": [
+      "SHIELD_DELTA"
+    ],
+    "属性修正": [
+      "ATTRIBUTE_DELTA",
+      "STATE_DURATION"
+    ],
+    "判定修正": [
+      "JUDGMENT_DELTA",
+      "STATE_DURATION"
+    ],
+    "状态施加/状态移除": [
+      "STATE_PRESENCE",
+      "STATE_DURATION"
+    ]
+  },
+  "featureCatalog": [
+    {
+      "featureCode": "RELATION_TARGET_COUNT",
+      "scope": "CANDIDATE",
+      "unitFamily": "COUNT",
+      "valueKind": "number",
+      "statusModel": "KNOWN_ALWAYS",
+      "source": "unique declaration targetSet length; declaration targets only, never intersected with units and never claimed alive/actionable",
+      "meaning": "declared target count; unknown units still count; input targetSet uniqueItems"
+    },
+    {
+      "featureCode": "RELATION_TARGET_SIDE",
+      "scope": "CANDIDATE",
+      "unitFamily": "ENUM",
+      "valueKind": "string",
+      "statusModel": "KNOWN_OR_NOT_APPLICABLE",
+      "source": "sides-map equality rule only: t===actorId => SELF; sides[t]===actorSide => ALLY; sides[t] other value => ENEMY; distinct classes => MIXED; sides[t] missing for any declared target => UNKNOWN(SIDE_UNOBSERVED); empty target axis => NOT_APPLICABLE(NO_TARGET_AXIS)",
+      "meaning": "relation derived only from ID equality and sides equality; no id-prefix guessing, no neutral-side folding, no default ALLY"
+    },
+    {
+      "featureCode": "SUCCESS_PROBABILITY",
+      "scope": "CANDIDATE",
+      "unitFamily": "PROBABILITY_0_1",
+      "valueKind": "number",
+      "statusModel": "KNOWN_UNKNOWN_NOT_APPLICABLE",
+      "source": "declared publicProbability first; else atomicFacts with hitCheckApplicability=APPLICABLE and equal evidence.hitProbability => KNOWN, differing => UNKNOWN(CONDITIONAL_PROBABILITY_UNRESOLVED); all NOT_APPLICABLE => NOT_APPLICABLE(NO_HIT_AXIS); any UNKNOWN applicability => UNKNOWN(CONDITIONAL_PROBABILITY_UNRESOLVED); no atomic facts => UNKNOWN(MISSING_SOURCE_FACT); actionKind never special-cased",
+      "meaning": "current-turn success probability proxy; never impersonates realized hit; hitCheckApplicability is explicit per atomic fact"
+    },
+    {
+      "featureCode": "PUBLIC_HP_RATIO",
+      "scope": "CANDIDATE",
+      "unitFamily": "RATIO_0_1",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "public snapshot hp/hp_max per declared target, mean over declared targets; missing unit or field or hp_max<=0 => UNKNOWN(HIDDEN_AXIS_UNOBSERVED); empty target set => UNKNOWN(MISSING_SOURCE_FACT)",
+      "meaning": "mean current public HP ratio of target set (pre-settlement)."
+    },
+    {
+      "featureCode": "PUBLIC_RESOURCE_RATIO",
+      "scope": "CANDIDATE",
+      "unitFamily": "RATIO_0_1",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "public snapshot per declared target mean((sp/sp_max + men/men_max)/2); any target missing unit or sp/sp_max/men/men_max (or non-positive max) => UNKNOWN(HIDDEN_AXIS_UNOBSERVED); empty target set => UNKNOWN(MISSING_SOURCE_FACT)",
+      "meaning": "mean current public resource ratio of target set (pre-settlement)."
+    },
+    {
+      "featureCode": "COST_AFFORDABILITY",
+      "scope": "CANDIDATE",
+      "unitFamily": "RATIO_0_1",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_NOT_APPLICABLE",
+      "source": "publicSnapshot.units[actorId] only, never target units: per publicCost entry clamp(available/required,0,1), minimum over entries; frozen resource map 魂力->sp/sp_max, 精神力->men/men_max, 体力->vit/vit_max, 生命->hp/hp_max; actor unit missing or field missing => UNKNOWN(HIDDEN_AXIS_UNOBSERVED); resource outside map or non-positive amount => reject INVALID_OPTION_VALUE; no publicCost => NOT_APPLICABLE(NO_PUBLIC_COST)",
+      "meaning": "cost affordability of the acting unit only; target resources never consulted"
+    },
+    {
+      "featureCode": "REVEAL_STRENGTH",
+      "scope": "CANDIDATE",
+      "unitFamily": "RATIO_0_1",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "publicDeclarations.revealStrength; absent UNKNOWN(NO_PUBLIC_DECLARATION)",
+      "meaning": "publicly declared reveal strength."
+    },
+    {
+      "featureCode": "OVERKILL_AVAILABILITY",
+      "scope": "CANDIDATE",
+      "unitFamily": "BOOL",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "publicDeclarations.declaredOverkill>0 is 1 else 0; absent UNKNOWN(NO_PUBLIC_DECLARATION); POWER-vs-HP self conversion forbidden",
+      "meaning": "publicly declared overkill availability; never inferred when undeclared."
+    },
+    {
+      "featureCode": "HARD_EXCLUSION",
+      "scope": "CANDIDATE",
+      "unitFamily": "BOOL",
+      "valueKind": "number",
+      "statusModel": "KNOWN_ALWAYS",
+      "source": "legalityFlags/legalityModifiers.hardExclusions/legalityModifiers.legalityFlags non-empty (first enum member), actorStatus DISABLED/TERMINAL/UNKNOWN => ACTOR_DISABLED/ACTOR_TERMINAL/UNKNOWN_STATE, target set empty => TARGET_EMPTY; code outside the enum rejects INVALID_OPTION_VALUE",
+      "meaning": "hard exclusion bit: 1 excluded, 0 not; excluded candidates retain full feature coverage."
+    },
+    {
+      "featureCode": "HARD_EXCLUSION_REASON",
+      "scope": "CANDIDATE",
+      "unitFamily": "ENUM",
+      "valueKind": "string",
+      "statusModel": "KNOWN_OR_NOT_APPLICABLE",
+      "source": "same source as HARD_EXCLUSION",
+      "meaning": "exclusion code; NOT_APPLICABLE(NOT_EXCLUDED) when not excluded."
+    },
+    {
+      "featureCode": "SETTLEMENT_DAMAGE",
+      "scope": "CANDIDATE",
+      "unitFamily": "ABS",
+      "valueKind": "number",
+      "statusModel": "ALWAYS_UNKNOWN",
+      "source": "no source: settlement result is not a public immediate fact",
+      "meaning": "final damage axis always UNKNOWN(FINAL_SETTLEMENT_UNKNOWN); declared magnitude never impersonates settlement."
+    },
+    {
+      "featureCode": "ROLL_REALIZATION",
+      "scope": "CANDIDATE",
+      "unitFamily": "BOOL",
+      "valueKind": "number",
+      "statusModel": "ALWAYS_UNKNOWN",
+      "source": "no source: hit/evade realization belongs to the future",
+      "meaning": "hit realization axis always UNKNOWN(FUTURE_REALIZATION_UNKNOWN)."
+    },
+    {
+      "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+      "scope": "CANDIDATE",
+      "unitFamily": "COUNT",
+      "valueKind": "number",
+      "statusModel": "KNOWN_ALWAYS",
+      "source": "admitted directFacts rows not belonging to the first-batch five families plus every scheduledFacts entry; scheduled entryIds recorded in sourceEventIds; nothing silently dropped",
+      "meaning": "unprojected row count so nothing vanishes silently; default 0."
+    },
+    {
+      "featureCode": "DAMAGE_POWER",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "POWER",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts HP_DELTA row key empty or damage.power with unit=POWER",
+      "meaning": "declared 威力倍率 raw value."
+    },
+    {
+      "featureCode": "DAMAGE_SEGMENTS",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "COUNT",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts HP_DELTA row key damage.segments with unit=COUNT",
+      "meaning": "declared 攻击段数."
+    },
+    {
+      "featureCode": "DAMAGE_PENETRATION",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "PERCENT",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts HP_DELTA row key damage.penetration with unit=PERCENT",
+      "meaning": "declared 防御穿透 raw signed percent."
+    },
+    {
+      "featureCode": "DAMAGE_TYPE",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "BOOL",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts HP_DELTA row key damage.type with unit=BOOL",
+      "meaning": "damage type presence bit: 1 declared."
+    },
+    {
+      "featureCode": "RESOURCE_DELTA",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "ABS",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts RESOURCE_OPTION_CHANGED row key=resource name with unit=ABS",
+      "meaning": "declared resource delta (signed)."
+    },
+    {
+      "featureCode": "SHIELD_DELTA",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "ABS",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts SHIELD_DELTA row key=shield mode/name with unit=ABS",
+      "meaning": "declared shield delta (signed)."
+    },
+    {
+      "featureCode": "ATTRIBUTE_DELTA",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "PERCENT",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts STATE_DELTA row key=attribute name (力量/防御/敏捷/魂力上限/精神力上限/体力上限) with unit=PERCENT",
+      "meaning": "declared attribute modifier (signed percent)."
+    },
+    {
+      "featureCode": "JUDGMENT_DELTA",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "PERCENT",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts STATE_DELTA row key=judgment name (命中/闪避/反应) with unit=PERCENT; single source: only the directFacts row, legalityModifiers.judgmentRates are metadata and never a second magnitude",
+      "meaning": "declared judgment modifier (signed percent); judgment row and modifier single-source."
+    },
+    {
+      "featureCode": "STATE_PRESENCE",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "BOOL",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_UNKNOWN",
+      "source": "directFacts STATE_DELTA row with key not in attribute/judgment names and unit=BOOL => presence bit 1 (amount>0) or 0 (amount<=0, including removal rows which keep their row fact id in sourceFactIds); output domain strictly {0,1}; unit=COUNT => UNKNOWN(STATE_FORM_UNMAPPED) (direction not provable, COUNT never coerced to BOOL); other units => UNIT_FAMILY_MISMATCH",
+      "meaning": "state presence bit in {0,1}; only the provable BOOL form is projected as KNOWN; -1/other numbers are schema-rejected"
+    },
+    {
+      "featureCode": "STATE_DURATION",
+      "scope": "EFFECT_ROW",
+      "unitFamily": "TURNS",
+      "valueKind": "number",
+      "statusModel": "KNOWN_OR_NOT_APPLICABLE",
+      "source": "directFacts row durationTurns; 0 means NOT_APPLICABLE(NO_DURATION)",
+      "meaning": "duration in turns, raw; never multiplied into magnitude."
+    }
+  ],
+  "featureOrdering": {
+    "rule": "ascending (scopeRank, sourceEffectId, key, featureCode); scopeRank: CANDIDATE=0 (empty sourceEffectId/key), EFFECT_ROW=1; strings compared by UTF-16 code unit ascending; same input yields same stable order.",
+    "candidateScopeKeys": {
+      "sourceEffectId": "",
+      "key": ""
+    },
+    "rowFactIdRule": "row fact id = sourceEffectId + '::' + key (empty key uses sourceEffectId + '::'), used by sourceFactIds."
+  },
+  "valueRules": [
+    "value exists only when status=KNOWN; UNKNOWN/NOT_APPLICABLE must omit value; 0 placeholder forbidden (UNKNOWN_ZERO_PLACEHOLDER).",
+    "all numbers finite; NaN/Infinity input or output is NON_FINITE_REJECTED.",
+    "status=KNOWN carries reasonCode OK; UNKNOWN and NOT_APPLICABLE must carry the matching reasonCode.",
+    "same (sourceEffectId, key, featureCode) is unique; duplicates are DUPLICATE_FEATURE.",
+    "multi-target counted once: RELATION_TARGET_COUNT counts the unique declaration target set once; EFFECT_ROW features never expand per targetIds.",
+    "duration never multiplies magnitude: STATE_DURATION keeps durationTurns raw; pre-multiplied inputs are DURATION_MULTIPLIES_MAGNITUDE.",
+    "judgment row and modifier single-source: JUDGMENT_DELTA takes the directFacts row only.",
+    "declared magnitude never impersonates settlement: SETTLEMENT_DAMAGE/ROLL_REALIZATION always UNKNOWN.",
+    "EFFECT_ROW features require at least one sourceFactIds (row fact id); missing is MISSING_SOURCE_REFERENCE.",
+    "unit family isolation: ABS/POWER/PERCENT/COUNT/TURNS/BOOL/PROBABILITY_0_1/RATIO_0_1/ENUM never mix; RESOURCE_DELTA accepts ABS only, DAMAGE_POWER POWER only, DAMAGE_PENETRATION/ATTRIBUTE_DELTA/JUDGMENT_DELTA PERCENT only, DAMAGE_SEGMENTS COUNT only, STATE_DURATION TURNS only, STATE_PRESENCE/DAMAGE_TYPE/OVERKILL_AVAILABILITY/HARD_EXCLUSION BOOL only.",
+    "compiler never hardcodes normalization constants: RATIO_0_1/PROBABILITY_0_1 come only from same-family public divisions (current/max, available/cost, declared probability); constants such as 0.4/100/refSpread are forbidden; cross-family conversion requires a declared public fact, otherwise UNKNOWN.",
+    "UNKNOWN is never inferred from zero: missing/hidden/unsettled values are UNKNOWN, never coerced to 0.",
+    "identity ids (candidateId/actorId/actorSide/actionKind/paymentMode/target ids): nonempty, <=512, reject C0 and DEL control chars; equality/ordering by UTF-16 code unit; CJK/hyphen/space allowed.",
+    "relation side uses ID equality and sides equality only; id-prefix guessing, neutral-side folding and default ALLY are forbidden.",
+    "cost reads publicSnapshot.units[actorId] only; target resources are never consulted.",
+    "actionKind/paymentMode are identity-only; the compiler performs no enum special-casing on them.",
+    "scheduledFacts are never silent: every entry counts into OUTSIDE_BATCH1_ROW_COUNT with entryId recorded in sourceEventIds; missing entryId rejects MISSING_SOURCE_REFERENCE.",
+    "STATE_PRESENCE direction is frozen only for unit=BOOL rows (sign mapping); unit=COUNT rows are UNKNOWN(STATE_FORM_UNMAPPED) and never coerced to BOOL.",
+    "BOOL output domain is exactly {0,1} for every unitFamily=BOOL feature code (OVERKILL_AVAILABILITY/HARD_EXCLUSION/DAMAGE_TYPE/STATE_PRESENCE; ROLL_REALIZATION is ALWAYS_UNKNOWN): KNOWN value must be 0 or 1, anything else is schema-rejected (INVALID_STATUS_VALUE)."
+  ],
+  "unitFamilyIsolation": {
+    "families": [
+      "COUNT",
+      "ABS",
+      "POWER",
+      "PERCENT",
+      "RATIO_0_1",
+      "PROBABILITY_0_1",
+      "TURNS",
+      "BOOL",
+      "ENUM"
+    ],
+    "rawPreserved": [
+      "ABS",
+      "POWER",
+      "PERCENT",
+      "COUNT",
+      "TURNS"
+    ],
+    "rule": "raw values preserved in declared units; compiler only does same-family division and presence-bit mapping; no cross-family conversion; no conversion constant compiled in."
+  },
+  "statusReasonCodes": {
+    "KNOWN": [
+      "OK"
+    ],
+    "UNKNOWN": [
+      "NO_PUBLIC_DECLARATION",
+      "CONDITIONAL_PROBABILITY_UNRESOLVED",
+      "FINAL_SETTLEMENT_UNKNOWN",
+      "FUTURE_REALIZATION_UNKNOWN",
+      "HIDDEN_AXIS_UNOBSERVED",
+      "MISSING_SOURCE_FACT",
+      "SIDE_UNOBSERVED",
+      "STATE_FORM_UNMAPPED"
+    ],
+    "NOT_APPLICABLE": [
+      "NO_TARGET_AXIS",
+      "NO_HIT_AXIS",
+      "NO_PUBLIC_COST",
+      "NOT_EXCLUDED",
+      "NO_DURATION"
+    ]
+  },
+  "rejectionReasonCodes": [
+    "ROUTE_INPUT_REJECTED",
+    "WORLD_CLONE_REJECTED",
+    "RESULT_WORLD_CARTESIAN_REJECTED",
+    "HIDDEN_INPUT_REJECTED",
+    "WALL_CLOCK_REJECTED",
+    "SKILL_ROLE_NAME_SPECIAL_CASE_REJECTED",
+    "TEACHER_INPUT_REJECTED",
+    "BRANCH_COMBINATION_FORBIDDEN",
+    "NON_FINITE_REJECTED",
+    "DUPLICATE_FEATURE",
+    "UNIT_FAMILY_MISMATCH",
+    "UNKNOWN_ZERO_PLACEHOLDER",
+    "DURATION_MULTIPLIES_MAGNITUDE",
+    "UNKNOWN_FEATURE_CODE",
+    "UNKNOWN_UNIT_FAMILY",
+    "INVALID_STATUS_VALUE",
+    "MISSING_SOURCE_REFERENCE",
+    "INVALID_OPTION_VALUE"
+  ],
+  "hardExclusionCodes": [
+    "ACTOR_DISABLED",
+    "ACTOR_TERMINAL",
+    "TARGET_EMPTY",
+    "INVALID_OPTION_VALUE",
+    "MISSING_REQUIRED_FIELD",
+    "UNKNOWN_STATE",
+    "UNKNOWN_RULE",
+    "AMBIGUOUS_TAUNT_TARGET",
+    "ILLEGAL_TARGET",
+    "RESOURCE_INSUFFICIENT"
+  ],
+  "complexity": {
+    "expression": "O(C * (F0 + R_c + N_c))",
+    "note": "C=candidates; F0=fixed candidate-scope feature count (13); R_c=directFacts rows of candidate c; N_c=modifier/scheduled entries (each scheduledFacts entry counts as one entry). Each row yields at most its own 5 features; no cross-row/cross-branch combination product.",
+    "caps": {
+      "MAX_FEATURES_PER_CANDIDATE": 256,
+      "MAX_FACT_ROWS_PER_CANDIDATE": 128,
+      "MAX_MODIFIER_ENTRIES_PER_CANDIDATE": 64,
+      "branchCombination": false
+    }
+  },
+  "references": {
+    "featureSchema": "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json",
+    "featureCases": "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json",
+    "provider": "tools/rc6/contracts/BehaviorProviderV1.json",
+    "adapterContract": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+    "adapterSchema": "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+    "directFactRow": "tools/rc6/contracts/DirectFactRowV1.json"
+  },
+  "sourceHashes": {
+    "tools/rc6/contracts/BehaviorProviderV1.json": "cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "390d5f2efe0409301cfb894c30c4312e16d7d488a386aa943f008718e65fb0bb",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "ca17d0d8c1d526001fd65941768d4e996c2dfb6488d3e7b484c66343b3f85ed3",
+    "tools/rc6/contracts/DirectFactRowV1.json": "6a1951015a6bde4f00db502c8ce7805888942251f2c38507fe2769265f589fa1"
+  },
+  "validation": {
+    "jsonParse": "REQUIRED",
+    "utf8": "REQUIRED",
+    "mojibakeScan": [
+      "U+FFFD",
+      "CJK_MOJIBAKE_PREFIX",
+      "LATIN1_UTF8_SEQUENCE"
+    ],
+    "selfConsistency": [
+      "featureCatalog codes unique and equal to the featureCode enum in BehaviorImmediateFeatureV1.schema.json.",
+      "every unitFamily is inside unitFamilyIsolation.families.",
+      "every statusModel statuses agree with the statusReasonCodes vocabulary (incl SIDE_UNOBSERVED/STATE_FORM_UNMAPPED).",
+      "EFFECT_ROW feature sources all come from directFacts rows; candidate-scope sources all come from inputSurface.allowed.",
+      "batch1PrototypeFamilies mapping agrees with featureCatalog sources.",
+      "rejectionReasonCodes and hardExclusionCodes are each unique and disjoint.",
+      "inputSurface.forbidden names are disjoint from allowed names.",
+      "inputContract validates every POSITIVE case input; NEGATIVE/ANTI_PATTERN inputs are injection channels whose expected reject codes are in rejectionReasonCodes.",
+      "identityRules: sides[actorId]===actorSide; sides covers actorId and all declared targets; RELATION_TARGET_SIDE derived by ID equality + sides equality only; no prefix guessing/neutral folding/default ALLY.",
+      "COST_AFFORDABILITY reads units[actorId] only; resource map 魂力/精神力/体力/生命 frozen; cases include an actor-low-resource vs target-high-resource protection pair.",
+      "SUCCESS_PROBABILITY uses explicit hitCheckApplicability; actionKind is never special-cased.",
+      "RELATION_TARGET_COUNT = unique targetSet length; unknown units never dropped.",
+      "scheduledFacts never silent: counted into OUTSIDE_BATCH1_ROW_COUNT with entryIds in sourceEventIds; entryId required.",
+      "STATE_PRESENCE KNOWN only for unit=BOOL rows, value strictly in {0,1} (amount>0 => 1, amount<=0 => 0, removal keeps row fact id); COUNT rows are UNKNOWN(STATE_FORM_UNMAPPED); schema rejects any other BOOL value.",
+      "subsetSemantics is UNORDERED_MULTISET_WITH_COUNT_ASSERTIONS; expect order never represents output order; featureOrdering is the single global output order.",
+      "sourceHashes match disk SHA256(raw bytes).",
+      "complexity expression has fixed caps and no branch combination."
+    ]
+  },
+  "inputContract": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "BehaviorImmediateFeatureV1 input contract (revision 2, closed)",
+    "type": "object",
+    "required": [
+      "candidate",
+      "publicSnapshot"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "candidate": {
+        "type": "object",
+        "required": [
+          "candidateId",
+          "actorId",
+          "actorSide",
+          "actionKind",
+          "targetSet",
+          "paymentMode"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+          },
+          "actorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+          },
+          "actorSide": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+          },
+          "actionKind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+          },
+          "paymentMode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+          },
+          "targetSet": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            }
+          }
+        }
+      },
+      "publicSnapshot": {
+        "type": "object",
+        "required": [
+          "units",
+          "sides",
+          "actorStatus"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "units": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "hp": {
+                  "type": "number"
+                },
+                "hp_max": {
+                  "type": "number"
+                },
+                "sp": {
+                  "type": "number"
+                },
+                "sp_max": {
+                  "type": "number"
+                },
+                "men": {
+                  "type": "number"
+                },
+                "men_max": {
+                  "type": "number"
+                },
+                "vit": {
+                  "type": "number"
+                },
+                "vit_max": {
+                  "type": "number"
+                },
+                "def": {
+                  "type": "number"
+                },
+                "agi": {
+                  "type": "number"
+                },
+                "shield": {
+                  "type": "number"
+                },
+                "状态效果": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "sides": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "actorStatus": {
+            "enum": [
+              "NORMAL",
+              "DISABLED",
+              "TERMINAL",
+              "UNKNOWN"
+            ]
+          }
+        }
+      },
+      "atomicFacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "eventId",
+            "hitCheckApplicability"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "eventId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            },
+            "sourceActionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outcomeKind": {
+              "type": "string"
+            },
+            "expectedDelta": {
+              "type": "number"
+            },
+            "hitCheckApplicability": {
+              "enum": [
+                "APPLICABLE",
+                "NOT_APPLICABLE",
+                "UNKNOWN"
+              ]
+            },
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "hitProbability": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      },
+      "directFacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "schemaVersion",
+            "factType",
+            "key",
+            "sourceActionId",
+            "sourceActorId",
+            "sourceEffectId",
+            "targetIds",
+            "amount",
+            "unit",
+            "durationTurns"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "schemaVersion": {
+              "const": "DirectFactRowV1"
+            },
+            "factType": {
+              "enum": [
+                "HP_DELTA",
+                "RESOURCE_OPTION_CHANGED",
+                "SHIELD_DELTA",
+                "STATE_DELTA",
+                "SCHEDULED_HP_DELTA",
+                "SUMMON_WINDOW",
+                "RESOURCE_TRANSFER",
+                "RULE_DEFENSE_COUNTER",
+                "POSITION_DELTA",
+                "COPY_EXECUTION",
+                "TIME_REWIND"
+              ]
+            },
+            "key": {
+              "type": "string"
+            },
+            "sourceActionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceActorId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceEffectId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "targetIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "amount": {
+              "type": "number"
+            },
+            "unit": {
+              "enum": [
+                "POWER",
+                "ABS",
+                "PERCENT",
+                "RATIO",
+                "COUNT",
+                "TURNS",
+                "DISTANCE",
+                "BOOL"
+              ]
+            },
+            "durationTurns": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "legalityFlags": {
+        "type": "array",
+        "items": {
+          "enum": [
+            "ACTOR_DISABLED",
+            "ACTOR_TERMINAL",
+            "TARGET_EMPTY",
+            "INVALID_OPTION_VALUE",
+            "MISSING_REQUIRED_FIELD",
+            "UNKNOWN_STATE",
+            "UNKNOWN_RULE",
+            "AMBIGUOUS_TAUNT_TARGET",
+            "ILLEGAL_TARGET",
+            "RESOURCE_INSUFFICIENT"
+          ]
+        }
+      },
+      "legalityModifiers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "judgmentRates": {
+            "type": "array"
+          },
+          "taunt": {
+            "type": "object"
+          },
+          "tauntRemoved": {
+            "type": "object"
+          },
+          "stateMigration": {
+            "type": "object"
+          },
+          "stateSwap": {
+            "type": "object"
+          },
+          "mechanismRemoval": {
+            "type": "array"
+          },
+          "hardExclusions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "ACTOR_DISABLED",
+                "ACTOR_TERMINAL",
+                "TARGET_EMPTY",
+                "INVALID_OPTION_VALUE",
+                "MISSING_REQUIRED_FIELD",
+                "UNKNOWN_STATE",
+                "UNKNOWN_RULE",
+                "AMBIGUOUS_TAUNT_TARGET",
+                "ILLEGAL_TARGET",
+                "RESOURCE_INSUFFICIENT"
+              ]
+            }
+          },
+          "legalityFlags": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "ACTOR_DISABLED",
+                "ACTOR_TERMINAL",
+                "TARGET_EMPTY",
+                "INVALID_OPTION_VALUE",
+                "MISSING_REQUIRED_FIELD",
+                "UNKNOWN_STATE",
+                "UNKNOWN_RULE",
+                "AMBIGUOUS_TAUNT_TARGET",
+                "ILLEGAL_TARGET",
+                "RESOURCE_INSUFFICIENT"
+              ]
+            }
+          }
+        }
+      },
+      "opportunityModifiers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "resourceLocks": {
+            "type": "array"
+          },
+          "opportunityConstraints": {
+            "type": "object"
+          },
+          "interferenceRates": {
+            "type": "array"
+          },
+          "dependencyTokens": {
+            "type": "array"
+          }
+        }
+      },
+      "scheduledFacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "entryId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "entryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            },
+            "operation": {
+              "type": "string"
+            },
+            "triggerKey": {
+              "enum": [
+                "主动触发",
+                "随下次行动触发"
+              ]
+            },
+            "maxActions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "payload": {
+              "type": "array",
+              "items": {
+                "$ref": "#/properties/directFacts/items"
+              }
+            }
+          }
+        }
+      },
+      "publicCost": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "resource",
+            "amount"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "resource": {
+              "enum": [
+                "魂力",
+                "精神力",
+                "体力",
+                "生命"
+              ]
+            },
+            "amount": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      },
+      "publicProbability": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "hitProbability"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "hitProbability": {
+                "type": "number"
+              },
+              "source": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "resolved"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "resolved": {
+                "const": false
+              },
+              "unresolvedCondition": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "publicDeclarations": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "revealStrength": {
+            "type": "number"
+          },
+          "declaredOverkill": {
+            "type": "number"
+          }
+        }
+      },
+      "forbiddenFacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "enum": [
+                "ROUTE",
+                "WORLD_CLONE",
+                "RESULT_WORLD",
+                "HIDDEN",
+                "WALL_CLOCK",
+                "SKILL_ROLE_NAME",
+                "TEACHER"
+              ]
+            },
+            "fact": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "branchCombination": {
+        "const": true
+      },
+      "preMultiplied": {
+        "type": "object"
+      }
+    }
+  },
+  "identityRules": {
+    "charset": "candidateId/actorId/actorSide/actionKind/paymentMode/target ids: nonempty, max 512, reject C0 (U+0000-U+001F) and DEL (U+007F); any other code points allowed incl CJK/space/hyphen; equality/ordering by UTF-16 code unit",
+    "sidesCoverage": "publicSnapshot.sides must contain candidate.actorId and every id in candidate.targetSet; a missing side for any declared target makes RELATION_TARGET_SIDE UNKNOWN(SIDE_UNOBSERVED)",
+    "sidesConsistency": "publicSnapshot.sides[actorId] must equal candidate.actorSide (string equality); violation rejects MISSING_SOURCE_REFERENCE",
+    "targetCount": "RELATION_TARGET_COUNT = unique targetSet length (input targetSet is uniqueItems); unknown units are never dropped and never claimed alive/actionable",
+    "noGuessing": "forbidden: id-prefix guessing, neutral-side folding, default ALLY"
+  },
+  "subsetSemantics": {
+    "match": "UNORDERED_MULTISET_WITH_COUNT_ASSERTIONS",
+    "rule": "SUBSET cases match the emitted feature list as an unordered multiset: each expect.features entry must match some emitted feature by (featureCode,unitFamily,status,reasonCode,value?,sourceFactIds set,sourceEventIds set) with multiplicity; expect array order never represents output order; countAssertions additionally pin per-featureCode counts when multiplicity alone is ambiguous",
+    "featureOrdering": "featureOrdering stays the single global output order for EXACT cases and for any consumer that needs the emitted sequence"
+  }
+}

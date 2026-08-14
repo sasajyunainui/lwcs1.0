@@ -1,0 +1,772 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "DistilledBehaviorPolicyV1.schema.json",
+  "title": "DistilledBehaviorPolicyV1",
+  "description": "Distilled policy artifact schema. Closed: oneOf separates CONTRACT_TARGET_NOT_TRAINED (no fake pins/metrics/weights) from TRAINED_ARTIFACT (seven hash pins incl artifactSchemaHash, normalization, linear weights, training metrics with array fixture families). The two branches are absolutely mutually exclusive: CONTRACT_TARGET_NOT_TRAINED requires trainingStatus and forbids artifactId/artifactHashes/normalization/linear/training (metrics)/acceptance/determinism/closure; TRAINED_ARTIFACT forbids trainingStatus (not.required) and requires status != CONTRACT_TARGET_NOT_TRAINED plus every artifact pin. In the not-trained branch, gates/modelKind (if present) are target threshold / target model-kind declarations only, never an artifact. artifactSchemaHash must equal the artifactSchema.hash pinned in DistilledBehaviorPolicyV1.json (enforced by harness; the schema itself never pins the contract, avoiding a cycle); modelKind enum with no fake pass for SHALLOW_GBDT_V1; means/scales/coefficients are explicit property whitelists; additionalProperties false everywhere. All numbers must be finite (JSON schema plus runtime validator).",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "status"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "DistilledBehaviorPolicyV1"
+    },
+    "status": {
+      "enum": [
+        "CONTRACT_TARGET_NOT_TRAINED",
+        "ACCEPTED",
+        "NOT_ACCEPTED",
+        "PENDING_EVALUATION"
+      ]
+    },
+    "trainingStatus": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "const": "CONTRACT_TARGET_NOT_TRAINED"
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifactId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_:/.]{1,128}$"
+    },
+    "modelKind": {
+      "description": "In TRAINED_ARTIFACT this is the artifact model kind. In CONTRACT_TARGET_NOT_TRAINED (if present) it is only a target model-kind declaration, never an artifact and never an acceptance claim.",
+      "enum": [
+        "LINEAR_SCORE_V1",
+        "SHALLOW_GBDT_V1"
+      ]
+    },
+    "artifactHashes": {
+      "type": "object",
+      "required": [
+        "featureSchemaHash",
+        "teacherHash",
+        "trainingFixtureHash",
+        "holdoutHash",
+        "trainingAlgorithmHash",
+        "artifactSchemaHash",
+        "modelHash"
+      ],
+      "properties": {
+        "featureSchemaHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "teacherHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "trainingFixtureHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "holdoutHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "trainingAlgorithmHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "artifactSchemaHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "modelHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "normalization": {
+      "type": "object",
+      "required": [
+        "means",
+        "scales",
+        "missingMask"
+      ],
+      "properties": {
+        "means": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "RELATION_TARGET_COUNT",
+              "RELATION_TARGET_SIDE",
+              "SUCCESS_PROBABILITY",
+              "PUBLIC_HP_RATIO",
+              "PUBLIC_RESOURCE_RATIO",
+              "COST_AFFORDABILITY",
+              "REVEAL_STRENGTH",
+              "OVERKILL_AVAILABILITY",
+              "HARD_EXCLUSION",
+              "HARD_EXCLUSION_REASON",
+              "SETTLEMENT_DAMAGE",
+              "ROLL_REALIZATION",
+              "OUTSIDE_BATCH1_ROW_COUNT",
+              "DAMAGE_POWER",
+              "DAMAGE_SEGMENTS",
+              "DAMAGE_PENETRATION",
+              "DAMAGE_TYPE",
+              "RESOURCE_DELTA",
+              "SHIELD_DELTA",
+              "ATTRIBUTE_DELTA",
+              "JUDGMENT_DELTA",
+              "STATE_PRESENCE",
+              "STATE_DURATION"
+            ]
+          },
+          "properties": {
+            "RELATION_TARGET_COUNT": {
+              "type": "number"
+            },
+            "RELATION_TARGET_SIDE": {
+              "type": "number"
+            },
+            "SUCCESS_PROBABILITY": {
+              "type": "number"
+            },
+            "PUBLIC_HP_RATIO": {
+              "type": "number"
+            },
+            "PUBLIC_RESOURCE_RATIO": {
+              "type": "number"
+            },
+            "COST_AFFORDABILITY": {
+              "type": "number"
+            },
+            "REVEAL_STRENGTH": {
+              "type": "number"
+            },
+            "OVERKILL_AVAILABILITY": {
+              "type": "number"
+            },
+            "HARD_EXCLUSION": {
+              "type": "number"
+            },
+            "HARD_EXCLUSION_REASON": {
+              "type": "number"
+            },
+            "SETTLEMENT_DAMAGE": {
+              "type": "number"
+            },
+            "ROLL_REALIZATION": {
+              "type": "number"
+            },
+            "OUTSIDE_BATCH1_ROW_COUNT": {
+              "type": "number"
+            },
+            "DAMAGE_POWER": {
+              "type": "number"
+            },
+            "DAMAGE_SEGMENTS": {
+              "type": "number"
+            },
+            "DAMAGE_PENETRATION": {
+              "type": "number"
+            },
+            "DAMAGE_TYPE": {
+              "type": "number"
+            },
+            "RESOURCE_DELTA": {
+              "type": "number"
+            },
+            "SHIELD_DELTA": {
+              "type": "number"
+            },
+            "ATTRIBUTE_DELTA": {
+              "type": "number"
+            },
+            "JUDGMENT_DELTA": {
+              "type": "number"
+            },
+            "STATE_PRESENCE": {
+              "type": "number"
+            },
+            "STATE_DURATION": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "scales": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "RELATION_TARGET_COUNT",
+              "RELATION_TARGET_SIDE",
+              "SUCCESS_PROBABILITY",
+              "PUBLIC_HP_RATIO",
+              "PUBLIC_RESOURCE_RATIO",
+              "COST_AFFORDABILITY",
+              "REVEAL_STRENGTH",
+              "OVERKILL_AVAILABILITY",
+              "HARD_EXCLUSION",
+              "HARD_EXCLUSION_REASON",
+              "SETTLEMENT_DAMAGE",
+              "ROLL_REALIZATION",
+              "OUTSIDE_BATCH1_ROW_COUNT",
+              "DAMAGE_POWER",
+              "DAMAGE_SEGMENTS",
+              "DAMAGE_PENETRATION",
+              "DAMAGE_TYPE",
+              "RESOURCE_DELTA",
+              "SHIELD_DELTA",
+              "ATTRIBUTE_DELTA",
+              "JUDGMENT_DELTA",
+              "STATE_PRESENCE",
+              "STATE_DURATION"
+            ]
+          },
+          "properties": {
+            "RELATION_TARGET_COUNT": {
+              "type": "number"
+            },
+            "RELATION_TARGET_SIDE": {
+              "type": "number"
+            },
+            "SUCCESS_PROBABILITY": {
+              "type": "number"
+            },
+            "PUBLIC_HP_RATIO": {
+              "type": "number"
+            },
+            "PUBLIC_RESOURCE_RATIO": {
+              "type": "number"
+            },
+            "COST_AFFORDABILITY": {
+              "type": "number"
+            },
+            "REVEAL_STRENGTH": {
+              "type": "number"
+            },
+            "OVERKILL_AVAILABILITY": {
+              "type": "number"
+            },
+            "HARD_EXCLUSION": {
+              "type": "number"
+            },
+            "HARD_EXCLUSION_REASON": {
+              "type": "number"
+            },
+            "SETTLEMENT_DAMAGE": {
+              "type": "number"
+            },
+            "ROLL_REALIZATION": {
+              "type": "number"
+            },
+            "OUTSIDE_BATCH1_ROW_COUNT": {
+              "type": "number"
+            },
+            "DAMAGE_POWER": {
+              "type": "number"
+            },
+            "DAMAGE_SEGMENTS": {
+              "type": "number"
+            },
+            "DAMAGE_PENETRATION": {
+              "type": "number"
+            },
+            "DAMAGE_TYPE": {
+              "type": "number"
+            },
+            "RESOURCE_DELTA": {
+              "type": "number"
+            },
+            "SHIELD_DELTA": {
+              "type": "number"
+            },
+            "ATTRIBUTE_DELTA": {
+              "type": "number"
+            },
+            "JUDGMENT_DELTA": {
+              "type": "number"
+            },
+            "STATE_PRESENCE": {
+              "type": "number"
+            },
+            "STATE_DURATION": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "missingMask": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "RELATION_TARGET_COUNT",
+              "RELATION_TARGET_SIDE",
+              "SUCCESS_PROBABILITY",
+              "PUBLIC_HP_RATIO",
+              "PUBLIC_RESOURCE_RATIO",
+              "COST_AFFORDABILITY",
+              "REVEAL_STRENGTH",
+              "OVERKILL_AVAILABILITY",
+              "HARD_EXCLUSION",
+              "HARD_EXCLUSION_REASON",
+              "SETTLEMENT_DAMAGE",
+              "ROLL_REALIZATION",
+              "OUTSIDE_BATCH1_ROW_COUNT",
+              "DAMAGE_POWER",
+              "DAMAGE_SEGMENTS",
+              "DAMAGE_PENETRATION",
+              "DAMAGE_TYPE",
+              "RESOURCE_DELTA",
+              "SHIELD_DELTA",
+              "ATTRIBUTE_DELTA",
+              "JUDGMENT_DELTA",
+              "STATE_PRESENCE",
+              "STATE_DURATION"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "linear": {
+      "type": "object",
+      "required": [
+        "intercept",
+        "coefficients"
+      ],
+      "properties": {
+        "intercept": {
+          "type": "number"
+        },
+        "coefficients": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "RELATION_TARGET_COUNT",
+              "RELATION_TARGET_SIDE",
+              "SUCCESS_PROBABILITY",
+              "PUBLIC_HP_RATIO",
+              "PUBLIC_RESOURCE_RATIO",
+              "COST_AFFORDABILITY",
+              "REVEAL_STRENGTH",
+              "OVERKILL_AVAILABILITY",
+              "HARD_EXCLUSION",
+              "HARD_EXCLUSION_REASON",
+              "SETTLEMENT_DAMAGE",
+              "ROLL_REALIZATION",
+              "OUTSIDE_BATCH1_ROW_COUNT",
+              "DAMAGE_POWER",
+              "DAMAGE_SEGMENTS",
+              "DAMAGE_PENETRATION",
+              "DAMAGE_TYPE",
+              "RESOURCE_DELTA",
+              "SHIELD_DELTA",
+              "ATTRIBUTE_DELTA",
+              "JUDGMENT_DELTA",
+              "STATE_PRESENCE",
+              "STATE_DURATION"
+            ]
+          },
+          "properties": {
+            "RELATION_TARGET_COUNT": {
+              "type": "number"
+            },
+            "RELATION_TARGET_SIDE": {
+              "type": "number"
+            },
+            "SUCCESS_PROBABILITY": {
+              "type": "number"
+            },
+            "PUBLIC_HP_RATIO": {
+              "type": "number"
+            },
+            "PUBLIC_RESOURCE_RATIO": {
+              "type": "number"
+            },
+            "COST_AFFORDABILITY": {
+              "type": "number"
+            },
+            "REVEAL_STRENGTH": {
+              "type": "number"
+            },
+            "OVERKILL_AVAILABILITY": {
+              "type": "number"
+            },
+            "HARD_EXCLUSION": {
+              "type": "number"
+            },
+            "HARD_EXCLUSION_REASON": {
+              "type": "number"
+            },
+            "SETTLEMENT_DAMAGE": {
+              "type": "number"
+            },
+            "ROLL_REALIZATION": {
+              "type": "number"
+            },
+            "OUTSIDE_BATCH1_ROW_COUNT": {
+              "type": "number"
+            },
+            "DAMAGE_POWER": {
+              "type": "number"
+            },
+            "DAMAGE_SEGMENTS": {
+              "type": "number"
+            },
+            "DAMAGE_PENETRATION": {
+              "type": "number"
+            },
+            "DAMAGE_TYPE": {
+              "type": "number"
+            },
+            "RESOURCE_DELTA": {
+              "type": "number"
+            },
+            "SHIELD_DELTA": {
+              "type": "number"
+            },
+            "ATTRIBUTE_DELTA": {
+              "type": "number"
+            },
+            "JUDGMENT_DELTA": {
+              "type": "number"
+            },
+            "STATE_PRESENCE": {
+              "type": "number"
+            },
+            "STATE_DURATION": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "training": {
+      "type": "object",
+      "required": [
+        "trainFixtureFamilies",
+        "holdoutFixtureFamilies",
+        "splitRule",
+        "seedRule",
+        "pairingStatus",
+        "trainCaseCount",
+        "holdoutCaseCount",
+        "top1Holdout",
+        "top3Agreement",
+        "orderAgreement",
+        "hardExclusionConsistency"
+      ],
+      "properties": {
+        "trainFixtureFamilies": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "holdoutFixtureFamilies": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "splitRule": {
+          "const": "SEMANTIC_DOMAIN_FIXTURE_FAMILY_ISOLATION"
+        },
+        "seedRule": {
+          "const": "EXPLICIT_FAMILY_MAPPING"
+        },
+        "pairingStatus": {
+          "enum": [
+            "PAIRED",
+            "NOT_PAIRED"
+          ]
+        },
+        "trainCaseCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "holdoutCaseCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "top1Holdout": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "top3Agreement": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "orderAgreement": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "hardExclusionConsistency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "gates": {
+      "description": "Target thresholds only. In CONTRACT_TARGET_NOT_TRAINED (if present) this is a target declaration, not an artifact; gates never imply metrics, acceptance or registration.",
+      "type": "object",
+      "required": [
+        "top1Threshold",
+        "hardExclusionThreshold"
+      ],
+      "properties": {
+        "top1Threshold": {
+          "const": 0.9
+        },
+        "hardExclusionThreshold": {
+          "const": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "acceptance": {
+      "type": "object",
+      "required": [
+        "accepted",
+        "reasons"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "determinism": {
+      "type": "object",
+      "required": [
+        "pureFunction"
+      ],
+      "properties": {
+        "pureFunction": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "closure": {
+      "type": "object",
+      "required": [
+        "productionLoads",
+        "forbidden"
+      ],
+      "properties": {
+        "productionLoads": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "artifact",
+              "featureVector"
+            ]
+          }
+        },
+        "forbidden": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "title": "CONTRACT_TARGET_NOT_TRAINED",
+      "description": "Absolute mutual exclusion with TRAINED_ARTIFACT: this branch requires trainingStatus and forbids every trained-artifact field (artifactId/artifactHashes/normalization/linear/training(metrics)/acceptance/determinism/closure). gates/modelKind are allowed only as target threshold / target model-kind declarations, never as artifact fields, and never imply acceptance.",
+      "properties": {
+        "status": {
+          "const": "CONTRACT_TARGET_NOT_TRAINED"
+        },
+        "trainingStatus": {
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "CONTRACT_TARGET_NOT_TRAINED"
+            }
+          }
+        }
+      },
+      "required": [
+        "status",
+        "trainingStatus"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "artifactId"
+            ]
+          },
+          {
+            "required": [
+              "artifactHashes"
+            ]
+          },
+          {
+            "required": [
+              "normalization"
+            ]
+          },
+          {
+            "required": [
+              "linear"
+            ]
+          },
+          {
+            "required": [
+              "training"
+            ]
+          },
+          {
+            "required": [
+              "acceptance"
+            ]
+          },
+          {
+            "required": [
+              "determinism"
+            ]
+          },
+          {
+            "required": [
+              "closure"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "TRAINED_ARTIFACT",
+      "description": "A real trained artifact: status != CONTRACT_TARGET_NOT_TRAINED, every artifact pin required, and trainingStatus must be absent (not.required) so no document can be both trained and untrained.",
+      "properties": {
+        "status": {
+          "not": {
+            "const": "CONTRACT_TARGET_NOT_TRAINED"
+          }
+        }
+      },
+      "required": [
+        "status",
+        "artifactId",
+        "modelKind",
+        "artifactHashes",
+        "normalization",
+        "linear",
+        "training",
+        "gates",
+        "acceptance",
+        "determinism",
+        "closure"
+      ],
+      "not": {
+        "required": [
+          "trainingStatus"
+        ]
+      }
+    }
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ACCEPTED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "modelKind": {
+            "const": "LINEAR_SCORE_V1"
+          },
+          "acceptance": {
+            "properties": {
+              "accepted": {
+                "const": true
+              }
+            }
+          },
+          "training": {
+            "properties": {
+              "pairingStatus": {
+                "const": "PAIRED"
+              },
+              "top1Holdout": {
+                "minimum": 0.9
+              },
+              "hardExclusionConsistency": {
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "modelKind": {
+            "const": "SHALLOW_GBDT_V1"
+          }
+        },
+        "required": [
+          "modelKind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "not": {
+              "const": "ACCEPTED"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

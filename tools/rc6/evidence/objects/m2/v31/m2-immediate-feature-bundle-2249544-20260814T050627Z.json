@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "M2ImmediateFeatureBundleV1",
+  "taskId": "M2-IMMEDIATE-FEATURE",
+  "baseHead": "22495449eeb25557e5df07749c2453a58a3523ea",
+  "verdict": "IMMEDIATE_FEATURE_COMPILER_ACCEPTED_POLICY_NOT_TRAINED",
+  "files": [
+    {
+      "file": "BehaviorImmediateFeature_Module.js",
+      "sha256": "44568DCC492DE901DEEFBAC6ECF1667C3295B93E5E32EEDB1511283DF4A59878"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorImmediateFeatureV1.json",
+      "sha256": "5715F6125BEACD49234C5EDB2604286D5CE8828E23DA8A3A13A46F744A6683AD"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json",
+      "sha256": "E3036E6A5171EE512FBEA859268924C0EA696174CBB55854F8B6D0364F690015"
+    },
+    {
+      "file": "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json",
+      "sha256": "E5BEF21C6D76C94D989A921F55605193BFB0314359C44D28A0F93160EE4A3501"
+    },
+    {
+      "file": "tools/rc6/contracts/DistilledBehaviorPolicyV1.json",
+      "sha256": "ABAC2935300FD4A9A9CC0A623E1D8BE4516DF51E268B0F541205511F5F978679"
+    },
+    {
+      "file": "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json",
+      "sha256": "6314CC703DDAF56298331FB4C72E5BBF74DF3C1516B05912A20185A6ED90693C"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-immediate-feature.mjs",
+      "sha256": "A30C32C41A4889EED3738E3DDF98FBC26FB7848A1C8773F9EF8E56586D996347"
+    }
+  ],
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-immediate-feature-2249544.patch",
+    "sha256": "ED47CA2718CB65FCD5A8C74FBC11A1EEEDD273FA96A3E5D921807039AE834614",
+    "byteLength": 319702
+  },
+  "manifest": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-immediate-feature-2249544.manifest.json",
+    "sha256": "C86AB46887384FD7E7A75D91664CB39F3F25BC3BF2DDD7F6497FFD368CCFD171"
+  },
+  "verification": {
+    "immediateHarness": "1547/1547 PASSED",
+    "nodeCheck": true,
+    "utf8Clean": true,
+    "diffCheck": true,
+    "inheritedEvidenceEvent245": true
+  },
+  "notClaimed": [
+    "trained policy",
+    "90% agreement",
+    "Provider selection",
+    "production wiring",
+    "full prototype coverage",
+    "battle behavior/performance",
+    "Report explanation"
+  ],
+  "invalidation": "NONE",
+  "createdAt": "2026-08-14T05:06:27Z"
+}

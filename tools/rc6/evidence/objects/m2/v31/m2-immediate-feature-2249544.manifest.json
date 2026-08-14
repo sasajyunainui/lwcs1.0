@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "M2ImmediateFeatureManifestV1",
+  "taskId": "M2-IMMEDIATE-FEATURE",
+  "agent": "agent-pool-E",
+  "milestone": "M2 immediate feature compiler contracts",
+  "baseHead": "22495449eeb25557e5df07749c2453a58a3523ea",
+  "baseHeadVerified": true,
+  "disposableWorktree": "codex-m2-immediate (detached HEAD 2249544, removed after delivery)",
+  "changedFiles": [
+    {
+      "file": "BehaviorImmediateFeature_Module.js",
+      "sha256After": "44568DCC492DE901DEEFBAC6ECF1667C3295B93E5E32EEDB1511283DF4A59878"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorImmediateFeatureV1.json",
+      "sha256After": "5715F6125BEACD49234C5EDB2604286D5CE8828E23DA8A3A13A46F744A6683AD"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json",
+      "sha256After": "E3036E6A5171EE512FBEA859268924C0EA696174CBB55854F8B6D0364F690015"
+    },
+    {
+      "file": "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json",
+      "sha256After": "E5BEF21C6D76C94D989A921F55605193BFB0314359C44D28A0F93160EE4A3501"
+    },
+    {
+      "file": "tools/rc6/contracts/DistilledBehaviorPolicyV1.json",
+      "sha256After": "ABAC2935300FD4A9A9CC0A623E1D8BE4516DF51E268B0F541205511F5F978679"
+    },
+    {
+      "file": "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json",
+      "sha256After": "6314CC703DDAF56298331FB4C72E5BBF74DF3C1516B05912A20185A6ED90693C"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-immediate-feature.mjs",
+      "sha256After": "A30C32C41A4889EED3738E3DDF98FBC26FB7848A1C8773F9EF8E56586D996347"
+    }
+  ],
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-immediate-feature-2249544.patch",
+    "sha256": "ED47CA2718CB65FCD5A8C74FBC11A1EEEDD273FA96A3E5D921807039AE834614",
+    "byteLength": 319702,
+    "newFiles": 7,
+    "modifiedFiles": 0
+  },
+  "semantics": {
+    "verdict": "IMMEDIATE_FEATURE_COMPILER_ACCEPTED_POLICY_NOT_TRAINED",
+    "rawFeatures": 23,
+    "cases": 39,
+    "work": "linear",
+    "futureRouteEnumeration": "NONE",
+    "policy": "CONTRACT_TARGET_NOT_TRAINED",
+    "pairedDistillationDataset": "NOT_GENERATED",
+    "top1": "NOT_MEASURABLE",
+    "providerWiring": "NONE",
+    "runtimeWiring": "NONE",
+    "loaderWiring": "NONE",
+    "registryWiring": "NONE",
+    "teacherProductionClosure": "NONE",
+    "normalizationConstants": "NONE",
+    "hiddenState": "NONE",
+    "skillRoleWeighting": "NONE",
+    "notClaimed": [
+      "trained policy",
+      "90% agreement",
+      "Provider selection",
+      "production wiring",
+      "full prototype coverage",
+      "battle behavior/performance",
+      "Report explanation"
+    ]
+  },
+  "verification": {
+    "immediateHarness": "1547/1547 PASSED",
+    "nodeCheck": true,
+    "utf8Clean": true,
+    "diffCheck": true,
+    "inheritedEvidenceEvent245": true,
+    "inheritedGates": {
+      "freeze": "651/651",
+      "providerCore": "876/876",
+      "providerOnly": "516/516",
+      "m1": "25/25"
+    },
+    "inheritedFilesByteIdentical": true,
+    "reproducedOnFreshHeadCheckout": true
+  },
+  "writeScope": {
+    "allowed": [
+      "BehaviorImmediateFeature_Module.js",
+      "tools/rc6/contracts/BehaviorImmediateFeatureV1.json",
+      "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json",
+      "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json",
+      "tools/rc6/contracts/DistilledBehaviorPolicyV1.json",
+      "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json",
+      "tools/rc6/harness/run-m2-v31-immediate-feature.mjs",
+      "tools/rc6/evidence/objects/m2/v31/m2-immediate-feature-2249544.patch",
+      "tools/rc6/evidence/objects/m2/v31/m2-immediate-feature-2249544.manifest.json",
+      "tools/rc6/evidence/objects/m2/v31/m2-immediate-feature-bundle-2249544-20260814T050627Z.json",
+      "tools/rc6/evidence/events/000246-<event-hash>.json"
+    ],
+    "staged": false,
+    "committed": false
+  },
+  "createdAt": "2026-08-14T05:06:27Z"
+}
