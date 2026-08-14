@@ -1,7 +1,7 @@
 {
   "schemaVersion": "DistilledBehaviorPolicyV1",
   "contractId": "RC6-M2-DISTILLED-BEHAVIOR-POLICY-V1-2026-08-14",
-  "revision": 3,
+  "revision": 5,
   "status": "CONTRACT_TARGET_NOT_TRAINED",
   "encoding": "UTF-8",
   "title": "offline distilled behavior policy: CONTRACT_TARGET_NOT_TRAINED until a PairedDistillationDataset exists; canonical serialization; rankLabelDerivationV1 (auto-only pairwise ranks); splitRoleRemapV1 explicit family mapping; artifact schema binding by path+sha256.",
@@ -87,7 +87,7 @@
       },
       {
         "path": "tools/rc6/cases/BehaviorProviderQualitySplitV1.json",
-        "hash": "f18b01393a7333b3835c40352a4ee62f11379af8a53804aea3584bff642cda6e"
+        "hash": "1ea7faee92a61008505cb6b4ccf6e03cf8a7d586b140230897513e0e662512a9"
       },
       {
         "path": "tools/rc6/contracts/ReferenceValueEvaluatorV3RawInputV1.schema.json",
@@ -102,7 +102,7 @@
         "hash": "2f5369c4401ef19166ec23a0cfb591e0458819498025818f3abc9b70c269d117"
       }
     ],
-    "packageHash": "b8762be38b05814a2510602100b2cc68ed2b9b253737b170198272b840255658",
+    "packageHash": "81c3dc5f3ca2c718503f9c5bdbfce90470344301f5bcd93761abe34a5e5ee2e4",
     "teacherHashRule": "SHA256(UTF8(canonicalSerializationV1 of {members: [{path, hash}]} sorted by path UTF-16 ascending)); artifact.teacherHash must equal the package hash of the frozen package in force at training time",
     "memberHashRule": "member hash = SHA256(raw file bytes) of the pinned file, same rule as BehaviorImmediateFeatureV1.sourceHashes",
     "allowedTeachers": {
@@ -325,7 +325,8 @@
     "inputDocument": "BehaviorImmediateFeatureV1 feature vector (schemaVersion const BehaviorImmediateFeatureV1)",
     "featureCodeScope": "mechanicFeatureCodeOnly",
     "roleSkillNameWeighting": false,
-    "rule": "模型只按 mechanic featureCode 取特征；任何角色名/技能名/原型名作为权重的键都是 UNKNOWN_FEATURE_CODE。"
+    "rule": "模型只按 mechanic featureCode 取特征；任何角色名/技能名/原型名作为权重的键都是 UNKNOWN_FEATURE_CODE。coefficients/mean/scale/missingMask 覆盖 BehaviorImmediateFeatureV1 rev4 的 29-code catalog（含 STATE_DELTA_PERCENT/SETTLEMENT_MODIFIER_PERCENT/SUMMON_COUNT/SUMMON_STRENGTH/SUMMON_DURATION/RESOURCE_DELTA_PERCENT）。",
+    "featureCount": 29
   },
   "artifact": {
     "pins": [
@@ -339,7 +340,7 @@
     ],
     "artifactSchema": {
       "path": "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json",
-      "hash": "6314cc703ddaf56298331fb4c72e5bbf74df3c1516b05912a20185a6ed90693c"
+      "hash": "19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b"
     },
     "artifactSchemaBinding": "artifact.artifactSchemaHash must equal artifactSchema.hash; the schema never pins the contract (no cycle); equality is enforced by harness/self-check",
     "featureSchemaHashRule": "SHA256(raw file bytes) of tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json at training time",
@@ -358,7 +359,7 @@
     }
   },
   "modelKinds": {
-    "LINEAR_SCORE_V1": "SUPPORTED_REVISION_3",
+    "LINEAR_SCORE_V1": "SUPPORTED_REVISION_4",
     "SHALLOW_GBDT_V1": "FUTURE_NOT_COVERED",
     "rule": "本合同只定义 LINEAR_SCORE_V1 的工件与接受门；SHALLOW_GBDT_V1 属于未来独立升级，需要新 revision 定义其结构与门，本合同不伪造其通过。"
   },
@@ -445,9 +446,9 @@
     "qualitySplit": "tools/rc6/cases/BehaviorProviderQualitySplitV1.json"
   },
   "sourceHashes": {
-    "tools/rc6/contracts/BehaviorImmediateFeatureV1.json": "5715f6125beacd49234c5edb2604286d5ce8828e23da8a3a13a46f744a6683ad",
-    "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json": "e3036e6a5171ee512fbea859268924c0ea696174cbb55854f8b6d0364f690015",
-    "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json": "e5bef21c6d76c94d989a921f55605193bfb0314359c44d28a0f93160ee4a3501",
+    "tools/rc6/contracts/BehaviorImmediateFeatureV1.json": "5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd",
+    "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json": "686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937",
+    "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json": "9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18",
     "tools/rc6/contracts/BehaviorProviderV1.json": "cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156",
     "tools/rc6/reference/reference-value-evaluator-v2.mjs": "b558bf25977463a41724ac4b83588672b0157ca9bf0267d59d4b4522a1cd80d9",
     "tools/rc6/reference/reference-value-evaluator-v3.mjs": "3597fcf62eec2ea0059eea21b86ae573dff2afcd2de74e4233c4db0f6604a124",
@@ -455,7 +456,7 @@
     "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json": "e1bd31f21dd1f8078730b56b402190854adefca1d46ae9b0ce62643fa3d58f1b",
     "tools/rc6/cases/BehaviorOracleV2IndexV1.json": "2cc4fd1da931d91ec97d2bd36735e37c68b9a98ac9559fca112489a67ea5c343",
     "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json": "57580308fc7f89ecc390a50c70d997721102ca65e5d2f1dcaee8fb77cfb458dc",
-    "tools/rc6/cases/BehaviorProviderQualitySplitV1.json": "f18b01393a7333b3835c40352a4ee62f11379af8a53804aea3584bff642cda6e",
+    "tools/rc6/cases/BehaviorProviderQualitySplitV1.json": "1ea7faee92a61008505cb6b4ccf6e03cf8a7d586b140230897513e0e662512a9",
     "tools/rc6/contracts/ReferenceValueEvaluatorV3RawInputV1.schema.json": "fa7467c64312135c601f92f0a88c857c17d4bc6304c8f30dcd0f4c53b6e51980",
     "tools/rc6/contracts/BehaviorOracleV2IndexV1.schema.json": "abb5e53b613b2e573357fb9eaddf72e60f04c4a7c05075bdf7ff66dc8f10abb9",
     "tools/rc6/contracts/BehaviorOracleFixtureV1.schema.json": "2f5369c4401ef19166ec23a0cfb591e0458819498025818f3abc9b70c269d117"
@@ -706,5 +707,41 @@
         "hardExclusionThreshold": 1
       }
     }
+  },
+  "featureCoverageV1": {
+    "featureCodes": [
+      "RELATION_TARGET_COUNT",
+      "RELATION_TARGET_SIDE",
+      "SUCCESS_PROBABILITY",
+      "PUBLIC_HP_RATIO",
+      "PUBLIC_RESOURCE_RATIO",
+      "COST_AFFORDABILITY",
+      "REVEAL_STRENGTH",
+      "OVERKILL_AVAILABILITY",
+      "HARD_EXCLUSION",
+      "HARD_EXCLUSION_REASON",
+      "SETTLEMENT_DAMAGE",
+      "ROLL_REALIZATION",
+      "OUTSIDE_BATCH1_ROW_COUNT",
+      "DAMAGE_POWER",
+      "DAMAGE_SEGMENTS",
+      "DAMAGE_PENETRATION",
+      "DAMAGE_TYPE",
+      "RESOURCE_DELTA",
+      "SHIELD_DELTA",
+      "ATTRIBUTE_DELTA",
+      "JUDGMENT_DELTA",
+      "STATE_PRESENCE",
+      "STATE_DURATION",
+      "STATE_DELTA_PERCENT",
+      "SETTLEMENT_MODIFIER_PERCENT",
+      "SUMMON_COUNT",
+      "SUMMON_STRENGTH",
+      "SUMMON_DURATION",
+      "RESOURCE_DELTA_PERCENT"
+    ],
+    "featureCount": 29,
+    "scope": "normalization means/scales, missingMask and linear coefficients must use exactly these 29 codes; unknown featureCode => UNKNOWN_FEATURE_CODE",
+    "stillTargetOnly": "document stays CONTRACT_TARGET_NOT_TRAINED; no artifact, no metrics, no acceptance"
   }
 }

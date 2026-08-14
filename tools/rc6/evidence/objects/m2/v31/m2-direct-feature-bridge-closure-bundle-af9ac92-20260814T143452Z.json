@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "M2DirectFeatureBridgeClosureBundleV1",
+  "taskId": "M2-DIRECT-FEATURE-BRIDGE-CLOSURE",
+  "baseHead": "af9ac92d4cb8679b71015837f6bcbc461ec978a9",
+  "verdict": "DIRECT_FEATURE_BRIDGE_CLOSURE_ACCEPTED",
+  "summary": {
+    "contracts": 23,
+    "modules": 3,
+    "harnesses": 5,
+    "fileHashes": {
+      "BehaviorPrototypeAdapter_Module.js": "76915ef0fac57ea4fe141319540177b5024ce86ffc7919202b4463a337143147",
+      "BehaviorImmediateFeature_Module.js": "a3d2be20e871af70db9082a3b446a5cd1b882af236d5096ef1a0ae9e56151bcf",
+      "BehaviorCandidateFeatureBridge_Module.js": "3385145699856f2c063cad8400d208bf5f3993f833907e7e603650ee9916489b",
+      "tools/rc6/contracts/BehaviorImmediateFeatureV1.json": "5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd",
+      "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json": "686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937",
+      "tools/rc6/contracts/BehaviorPlanningContractV1.json": "37208acd45ce1d62acce9506d52a96773c2ae8f71401ddd5508919caca7276a2",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.json": "cf9eeaa3519db8084b55c340716a987c046f205c640ecfe39f1e224ae05c33c2",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json": "09e6a59bfb02c41cca6fb813aea5acca31349aed99c3363fe0c8a1293bb4744e",
+      "tools/rc6/contracts/DecisionContributionTraceV1.json": "efd196824263d85c7c17ebec4761b17ea70d04178429cb94f66b3d0f55ef9a99",
+      "tools/rc6/contracts/DecisionContributionTraceV1.schema.json": "983671b824cb65f9197a92383d6ee94e583a9a3e642415d18b88571534db3a7e",
+      "tools/rc6/contracts/DirectFactRowV1.json": "7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67",
+      "tools/rc6/contracts/DistilledBehaviorPolicyV1.json": "8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c",
+      "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json": "19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5",
+      "tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.json": "4466b80b568b8b7edee74ca18fdcbf40dca4e4d864785e18c0c0de0671655756",
+      "tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json": "a5d6b0dfc281ea23a612124f0e22210316a5a9fd8dad8dbf7cf1863e2eaae1f5",
+      "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json": "9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18",
+      "tools/rc6/cases/BehaviorProviderQualitySplitV1.json": "1ea7faee92a61008505cb6b4ccf6e03cf8a7d586b140230897513e0e662512a9",
+      "tools/rc6/cases/DecisionContributionTraceCasesV1.json": "0c39a1ed81031c994be7d6640f36d0ee90356591bf1eb2e9c9f25bad0d6972e0",
+      "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "f875433b372d925ee3e659449f06d98cbce566b02556f4f10e2811d3d1d0a164",
+      "tools/rc6/harness/run-m2-v31-contract-freeze.mjs": "ef165b2c11559057244a75fe7fa6f5c6d94163f017cf6475ea04c1187881ea9c",
+      "tools/rc6/harness/run-m2-v31-provider-core.mjs": "36ec8379ea5e08792d0d07d688861850dfd420c0410a1c9d9c5d880a89d04da2",
+      "tools/rc6/harness/run-m2-v31-immediate-feature.mjs": "d53dd8a5345e2e6cd62bb49348a5dcdeecec4e0dedc3c6dec27a27a72eb21990",
+      "tools/rc6/harness/run-m2-v31-decision-trace.mjs": "1c6271fd5b19dba15fd6c1f2824575e3d002ffc9df8c11186ba9784a88e9989a",
+      "tools/rc6/harness/run-m2-v31-pairability.mjs": "1dfa18fefd9049eea7f02947105498eb1c2f50092ffb91f91044b54ba653036d"
+    }
+  },
+  "testCounts": {
+    "freeze": "1146/1146",
+    "providerCore": "1611/1611",
+    "immediateFeature": "2862/2862",
+    "decisionTrace": "557/557",
+    "pairability": "1037/1037",
+    "pairabilityScope": {
+      "cases": 7,
+      "pdaEffectItems": 78,
+      "direct": 73,
+      "pending": 5,
+      "reject": 0,
+      "carrier": 0,
+      "bifCompiledTotal": 70,
+      "candidateTotal": 70
+    },
+    "determinismHash": "5c503402538e85977f512bcc6cb16f8a9421148bca0f865988c99bd70a41cf45"
+  },
+  "determinismHash": "5c503402538e85977f512bcc6cb16f8a9421148bca0f865988c99bd70a41cf45",
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-direct-feature-bridge-closure-af9ac92.patch",
+    "sha256": "7affc6ebeb834416c868d3ee1b14168a224cbfb33c4bc534aab0f383ad89545a",
+    "byteLength": 916870
+  },
+  "manifest": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-direct-feature-bridge-closure-af9ac92.manifest.json",
+    "sha256": "e38d0c66ac959e363a541a4ae3d112e28e04b2457a21ac23363587d4c9bd05ae",
+    "byteLength": 8547
+  },
+  "notClaimed": [
+    "trained policy (DistilledBehaviorPolicyV1 still NOT_TRAINED)",
+    "formal Provider registration",
+    "production Provider wiring",
+    "performance claims",
+    "90% holdout agreement",
+    "Report/UI integration",
+    "full battle behavior"
+  ],
+  "invalidation": "supersedes event246/247/248 bundles and event243 provider-core bundle",
+  "createdAt": "2026-08-14T14:34:52Z"
+}

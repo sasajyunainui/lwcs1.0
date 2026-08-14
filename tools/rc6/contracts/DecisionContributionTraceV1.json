@@ -1,7 +1,7 @@
 {
  "schemaVersion": "DecisionContributionTraceV1",
  "contractId": "RC6-M4-DECISION-CONTRIBUTION-TRACE-V1-2026-08-14",
- "revision": 2,
+ "revision": 6,
  "status": "FROZEN",
  "encoding": "UTF-8",
  "title": "per-candidate contribution trace serving model audit and M4 Chinese battle reports; score conservation, selected-vs-alternative delta decomposition, tactical concepts, PLAYER/REVIEW/DEVELOPER layers, decision-time facts only.",
@@ -15,7 +15,7 @@
    "BehaviorProviderV1"
   ],
   "claim": "CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED",
-  "claimDetail": "本合同冻结解释轨迹的字段、守恒、分组与中文战报规则；运行时轨迹生成器与 M4 中文渲染尚未实现。",
+  "claimDetail": "本合同冻结解释轨迹的字段、守恒、分组与中文战报规则；运行时轨迹生成器与 M4 中文渲染尚未实现。 revision 4: PLAYER 中文因果链硬要求 - 给人看的中文战斗理由（当前目标/局势 -> 关键公开事实 -> 支持所选 -> 相对主要替代的具体优势 -> 真实风险/不确定性），禁止套话/标签堆砌/内部术语/事后倒推，每个事实与比较必须精确回指 traceRefs。 revision 5: failClosedV1 为全部 10 个代码定义机器可查触发器并配 10 个 fragment probes；traceRefs 空 => UNBOUND_SENTENCE、悬空 => CAUSAL_CHAIN_BROKEN；DIFFERENTIATION 优先回指 DELTA:<featureId>，无 eligible alternative 时不造差异句；禁词扫描覆盖 sentence text 与 connective。",
   "serves": [
    "model-audit",
    "m4-chinese-battle-report"
@@ -104,7 +104,13 @@
    "ATTRIBUTE_DELTA": "防御",
    "JUDGMENT_DELTA": "风险",
    "STATE_PRESENCE": "控制",
-   "STATE_DURATION": "控制"
+   "STATE_DURATION": "控制",
+   "STATE_DELTA_PERCENT": "控制",
+   "SETTLEMENT_MODIFIER_PERCENT": "风险",
+   "SUMMON_COUNT": "机会",
+   "SUMMON_STRENGTH": "机会",
+   "SUMMON_DURATION": "机会",
+   "RESOURCE_DELTA_PERCENT": "资源"
   },
   "keyOverride": {
    "ATTRIBUTE_DELTA": {
@@ -135,7 +141,8 @@
    "RISK_COST",
    "CONCLUSION"
   ],
-  "eachSentenceBound": "every sentence binds at least one traceRef; traceRef grammar: featureId (selected contribution row), HARD_EXCLUSION:<code>, or DELTA:<featureId> (union delta row); an unbound or dangling ref is FAIL_CLOSED CAUSAL_CHAIN_BROKEN",
+  "eachSentenceBound": "every sentence must bind traceRefs (may be empty only to demonstrate UNBOUND_SENTENCE fail-closed); traceRef grammar: featureId (selected contribution row), HARD_EXCLUSION:<code>, or DELTA:<featureId> (selection.deltas union row); traceRefs empty => FAIL_CLOSED UNBOUND_SENTENCE; a dangling ref (non-empty but not resolving to any contribution/DELTA/hard-exclusion target) => FAIL_CLOSED CAUSAL_CHAIN_BROKEN",
+  "differentiationRef": "DIFFERENTIATION sentences must prefer DELTA:<featureId> refs into selection.deltas (the concrete selected-vs-alternative difference); a plain featureId ref is allowed only when the feature has no delta row; when no eligible alternative exists (ALTERNATIVE_NOT_AVAILABLE / no scoreDelta / no selection.deltas), no DIFFERENTIATION sentence may be fabricated (no invented differences)",
   "forbiddenTokens": [
    "weight",
    "权重",
@@ -163,7 +170,7 @@
    "线性",
    "系数"
   ],
-  "forbiddenTokenRule": "PLAYER text must not contain any forbidden token; a hit is FAIL_CLOSED FORBIDDEN_TOKEN (整体拒绝，不降级)",
+  "forbiddenTokenRule": "PLAYER text and sentence connective must not contain any forbidden token; a hit is FAIL_CLOSED FORBIDDEN_TOKEN (整体拒绝，不降级); the schema not-pattern already rejects the tokens in sentence.text, so a schema-valid probe demonstrates the token in connective, and the semantic scan covers text and connective alike",
   "numbers": "only decision-time public numbers with an explicit unit from REVIEW operands; spoken mapping is exact: RATIO_0_1/PROBABILITY_0_1 at 0.05 granularity (一成/一成半/两成/两成半/三成/三成半/四成/五成/六成/七成/八成/九成/满), PERCENT modifier as 成/成半 (25% => 两成半, 35% => 三成半), POWER as N倍 (integer or one decimal), COUNT as N段/N次/N点, TURNS as N回合, ABS as N点, BOOL as 有无, same-family ratios as 两倍/一半 only when the ratio is a declared public division; a number without unit/source or not derivable from trace/review is FAIL_CLOSED NUMBER_WITHOUT_UNIT; never write numbers the contributions cannot prove",
   "unknown": "UNKNOWN/ALWAYS_UNKNOWN axes may only be expressed as 不确定/证据不足/看不出/拿不准/只能赌; never as 0 and never as a magnitude; UNKNOWN_AS_ZERO is FAIL_CLOSED",
   "noResultBackward": "realizedOutcome never enters reason generation; any result-derived phrase is FAIL_CLOSED RESULT_BACKWARD_RATIONALIZATION",
@@ -171,7 +178,19 @@
   "exclusionBinding": "every mention of a hard-excluded candidate binds the exclusion code; excluded candidates are never explained via score contributions",
   "connectiveRules": "support and risk coexisting require a 转折 connective; differentiation names the primary alternative action; conclusion only at the tail",
   "sentenceLimit": "1..8 short natural Chinese sentences",
-  "skeletonRule": "full PLAYER text follows 当时目标/局势 -> 关键公开事实 -> 支持选择的因果 -> 相对主要替代差异 -> 风险/代价; steps may merge (FACTS may merge into SUPPORT) and a step may be omitted only when no bound fact exists for it, but the relative order of present steps is fixed and CONCLUSION appears only at the tail; a step appearing out of order is FAIL_CLOSED ORDER_VIOLATION"
+  "skeletonRule": "full PLAYER text follows 当时目标/局势 -> 关键公开事实 -> 支持选择的因果 -> 相对主要替代差异 -> 风险/代价; steps may merge (FACTS may merge into SUPPORT) and a step may be omitted only when no bound fact exists for it, but the relative order of present steps is fixed and CONCLUSION appears only at the tail; a step appearing out of order is FAIL_CLOSED ORDER_VIOLATION",
+  "humanChineseLogic": "PLAYER 是给人看的中文战斗理由，不是内部字段的中文翻译；语言自然、简洁，像懂战斗的人在解释",
+  "causalChain": {
+   "SITUATION": "当前目标或局势（公开可观察）",
+   "FACTS": "关键公开事实（数字带单位且来自 REVIEW operands）",
+   "SUPPORT": "这些事实为何支持所选行动（因果连接，不罗列标签）",
+   "DIFFERENTIATION": "相对主要替代项具体好在哪里（回指 DELTA 行）",
+   "RISK_COST": "真实风险或不确定性（UNKNOWN 只能说 不确定/证据不足/拿不准）",
+   "CONCLUSION": "短收尾"
+  },
+  "noCliche": "禁止套话（如 这手很强/稳赚不赔/必胜/无脑选 等无依据口号）；禁止标签堆砌（概念名罗列）；禁止把字段名/分数/权重写进 PLAYER",
+  "preciseTraceback": "每个事实与每个比较必须精确回指 DecisionContributionTrace（traceRefs 绑定贡献行/HARD_EXCLUSION/DELTA 行）；trace 证明不了的句子不得出现（凭空编理由 = FAIL_CLOSED CAUSAL_CHAIN_BROKEN）",
+  "antiPostHoc": "禁止事后用实际结果倒推当时理由（RESULT_BACKWARD_RATIONALIZATION）"
  },
  "reviewV1": {
   "keeps": [
@@ -205,6 +224,18 @@
    "UNBOUND_SENTENCE",
    "ORDER_VIOLATION"
   ],
+  "triggers": {
+   "CAUSAL_CHAIN_BROKEN": "a sentence has non-empty traceRefs but at least one ref resolves to no contribution featureId, no HARD_EXCLUSION code and no selection.deltas target",
+   "SOURCE_MISSING": "a KNOWN EFFECT_ROW contribution (DAMAGE_*/STATE_*/RESOURCE_DELTA/SHIELD_DELTA/ATTRIBUTE_DELTA/JUDGMENT_DELTA/SUMMON_*/SETTLEMENT_MODIFIER_PERCENT/STATE_DELTA_PERCENT/OUTSIDE_BATCH1_ROW_COUNT) carries both empty sourceFactIds and empty sourceEventIds: the claimed value has no row-fact source; candidate-scope rows (publicSnapshot-derived) are exempt",
+   "NUMBER_WITHOUT_UNIT": "a PLAYER number has no unit operand in REVIEW or is not derivable from trace/review operands",
+   "HIDDEN_INPUT": "a PLAYER sentence references a hidden axis (hidden HP/resistance/intent/roll)",
+   "RESULT_BACKWARD_RATIONALIZATION": "a PLAYER reason derives from realizedOutcome (result backward)",
+   "CONSERVATION_FAILED": "|score - (intercept + sum KNOWN-unmasked contributions)| > 1e-12, or |scoreDelta - sum union deltas| > 1e-12",
+   "FORBIDDEN_TOKEN": "sentence text or connective contains a forbidden token",
+   "UNKNOWN_AS_ZERO": "a sentence bound to an UNKNOWN/ALWAYS_UNKNOWN contribution states a definite number or zero (0/零/成数) for that axis instead of 不确定/证据不足/看不出/拿不准/只能赌",
+   "UNBOUND_SENTENCE": "a sentence carries no traceRefs at all (traceRefs empty)",
+   "ORDER_VIOLATION": "sentence kinds break the fixed skeleton order or CONCLUSION is not at the tail"
+  },
   "behavior": "generator refuses to emit the offending sentence/document; no degraded fallback that invents facts",
   "probeShape": "independent fragment probe, never a full Trace: {caseId, kind=FAIL_CLOSED_PROBE, validationPhase=FRAGMENT, probe:{target, fragment}, expect:{schemaPhase=PASS, semanticCheck=<code>}}; fragment keys are a subset of the trace document fields",
   "validationPhase": "TRACE_DOCUMENT or FRAGMENT: a full trace document validates against DecisionContributionTraceV1.schema.json first (shape only) then runs the semantic checks; a fragment probe validates against the fragmentProbe schema first and then triggers only the named semanticCheck",
@@ -226,11 +257,11 @@
   "traceCases": "tools/rc6/cases/DecisionContributionTraceCasesV1.json"
  },
  "sourceHashes": {
-  "tools/rc6/contracts/DistilledBehaviorPolicyV1.json": "abac2935300fd4a9a9cc0a623e1d8be4516df51e268b0f541205511f5f978679",
-  "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json": "6314cc703ddaf56298331fb4c72e5bbf74df3c1516b05912a20185a6ed90693c",
-  "tools/rc6/contracts/BehaviorImmediateFeatureV1.json": "5715f6125beacd49234c5edb2604286d5ce8828e23da8a3a13a46f744a6683ad",
-  "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json": "e3036e6a5171ee512fbea859268924c0ea696174cbb55854f8b6d0364f690015",
-  "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json": "e5bef21c6d76c94d989a921f55605193bfb0314359c44d28a0f93160ee4a3501",
+  "tools/rc6/contracts/DistilledBehaviorPolicyV1.json": "8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c",
+  "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json": "19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b",
+  "tools/rc6/contracts/BehaviorImmediateFeatureV1.json": "5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd",
+  "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json": "686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937",
+  "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json": "9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18",
   "tools/rc6/contracts/BehaviorProviderV1.json": "cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156"
  },
  "validation": {
@@ -248,10 +279,13 @@
    "selectionDeltaV1.topPositive/topNegative use |delta| descending with featureCode UTF-16 ascending tie-break.",
    "playerV1.forbiddenTokens contains weight/score/featureCode/HEPP/Pareto/internal ids; no token is a substring of a legal Chinese sentence.",
    "validationOrderV1 runs schema shape first, then semantic checks incl conservation recompute; failClosed fragment probes validate against #/$defs/fragmentProbe first and then trigger only the named semanticCheck (MISUSED_PROBE when a fragment impersonates a full Trace).",
-   "every failClosedV1 code has a machine-checkable trigger in this contract and a fragment probe case (DecisionContributionTraceCasesV1.json probes) naming target + semanticCheck.",
+   "every failClosedV1 code has a machine-checkable trigger in failClosedV1.triggers and exactly one fragment probe case (DecisionContributionTraceCasesV1.json probes, 10 codes / 10 probes) naming target + semanticCheck; probe fragments are schema-valid (schemaPhase PASS) and trigger only their named semanticCheck.",
+   "gold coverage is representative of tactical logic, not per-featureCode exhaustive coverage: tacticalConceptV1.mapping covers all 29 catalog codes, while the 13 golds cover representative scenarios (攻击/治疗/防御/控制/资源/信息/召唤pending/成本过高/近等价随机/替代差异/风险/硬排除/状态量); no gold is added merely to reach a feature-code count.",
    "realizedOutcomeV1 is independent; no reason input may read it.",
    "sourceHashes match disk SHA256(raw bytes).",
-   "schema closes every object with additionalProperties false; trace documents validate against DecisionContributionTraceV1.schema.json."
+   "schema closes every object with additionalProperties false; trace documents validate against DecisionContributionTraceV1.schema.json.",
+   "PLAYER 是中文因果逻辑不是字段翻译：套话/标签堆砌/内部术语禁止；每句事实与比较回指 traceRefs；gold cases 逐句可回指且通过中文合理性自审",
+   "schema sentence.text 用 not-pattern 拒绝内部术语（weight/score/featureCode/HEPP/Pareto/normalized/mean/scale/intercept/contribution/tacticalConcept/线性/系数 等）"
   ]
  },
  "validationOrderV1": {

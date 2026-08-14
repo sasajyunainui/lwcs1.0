@@ -1,0 +1,195 @@
+{
+  "schemaVersion": "M2DirectFeatureBridgeClosureManifestV1",
+  "taskId": "M2-DIRECT-FEATURE-BRIDGE-CLOSURE",
+  "agent": "agent-pool-E",
+  "milestone": "M2 direct feature bridge closure",
+  "baseHead": "af9ac92d4cb8679b71015837f6bcbc461ec978a9",
+  "baseHeadVerified": true,
+  "disposableWorktree": "codex-m2-bridge-closure (detached HEAD af9ac92, removed after delivery)",
+  "changedFiles": [
+    {
+      "file": "BehaviorPrototypeAdapter_Module.js",
+      "sha256After": "76915ef0fac57ea4fe141319540177b5024ce86ffc7919202b4463a337143147"
+    },
+    {
+      "file": "BehaviorImmediateFeature_Module.js",
+      "sha256After": "a3d2be20e871af70db9082a3b446a5cd1b882af236d5096ef1a0ae9e56151bcf"
+    },
+    {
+      "file": "BehaviorCandidateFeatureBridge_Module.js",
+      "sha256After": "3385145699856f2c063cad8400d208bf5f3993f833907e7e603650ee9916489b"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorImmediateFeatureV1.json",
+      "sha256After": "5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json",
+      "sha256After": "686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorPlanningContractV1.json",
+      "sha256After": "37208acd45ce1d62acce9506d52a96773c2ae8f71401ddd5508919caca7276a2"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorProviderQualityGateV1.json",
+      "sha256After": "cf9eeaa3519db8084b55c340716a987c046f205c640ecfe39f1e224ae05c33c2"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json",
+      "sha256After": "09e6a59bfb02c41cca6fb813aea5acca31349aed99c3363fe0c8a1293bb4744e"
+    },
+    {
+      "file": "tools/rc6/contracts/DecisionContributionTraceV1.json",
+      "sha256After": "efd196824263d85c7c17ebec4761b17ea70d04178429cb94f66b3d0f55ef9a99"
+    },
+    {
+      "file": "tools/rc6/contracts/DecisionContributionTraceV1.schema.json",
+      "sha256After": "983671b824cb65f9197a92383d6ee94e583a9a3e642415d18b88571534db3a7e"
+    },
+    {
+      "file": "tools/rc6/contracts/DirectFactRowV1.json",
+      "sha256After": "7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67"
+    },
+    {
+      "file": "tools/rc6/contracts/DistilledBehaviorPolicyV1.json",
+      "sha256After": "8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c"
+    },
+    {
+      "file": "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json",
+      "sha256After": "19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b"
+    },
+    {
+      "file": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+      "sha256After": "b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a"
+    },
+    {
+      "file": "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+      "sha256After": "9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.json",
+      "sha256After": "4466b80b568b8b7edee74ca18fdcbf40dca4e4d864785e18c0c0de0671655756"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json",
+      "sha256After": "a5d6b0dfc281ea23a612124f0e22210316a5a9fd8dad8dbf7cf1863e2eaae1f5"
+    },
+    {
+      "file": "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json",
+      "sha256After": "9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18"
+    },
+    {
+      "file": "tools/rc6/cases/BehaviorProviderQualitySplitV1.json",
+      "sha256After": "1ea7faee92a61008505cb6b4ccf6e03cf8a7d586b140230897513e0e662512a9"
+    },
+    {
+      "file": "tools/rc6/cases/DecisionContributionTraceCasesV1.json",
+      "sha256After": "0c39a1ed81031c994be7d6640f36d0ee90356591bf1eb2e9c9f25bad0d6972e0"
+    },
+    {
+      "file": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
+      "sha256After": "f875433b372d925ee3e659449f06d98cbce566b02556f4f10e2811d3d1d0a164"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-contract-freeze.mjs",
+      "sha256After": "ef165b2c11559057244a75fe7fa6f5c6d94163f017cf6475ea04c1187881ea9c"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-provider-core.mjs",
+      "sha256After": "36ec8379ea5e08792d0d07d688861850dfd420c0410a1c9d9c5d880a89d04da2"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-immediate-feature.mjs",
+      "sha256After": "d53dd8a5345e2e6cd62bb49348a5dcdeecec4e0dedc3c6dec27a27a72eb21990"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-decision-trace.mjs",
+      "sha256After": "1c6271fd5b19dba15fd6c1f2824575e3d002ffc9df8c11186ba9784a88e9989a"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-pairability.mjs",
+      "sha256After": "1dfa18fefd9049eea7f02947105498eb1c2f50092ffb91f91044b54ba653036d"
+    }
+  ],
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-direct-feature-bridge-closure-af9ac92.patch",
+    "sha256": "7AFFC6EBEB834416C868D3EE1B14168A224CBFB33C4BC534AAB0F383AD89545A",
+    "byteLength": 916870,
+    "newFiles": 4,
+    "modifiedFiles": 22
+  },
+  "semantics": {
+    "verdict": "DIRECT_FEATURE_BRIDGE_CLOSURE_ACCEPTED",
+    "contracts": 18,
+    "modules": 3,
+    "harnesses": 5,
+    "bridgeFlow": "bridgeCandidates() -> bifInput -> BIF.compileCandidate; no harness repack, no harness paymentMode, no scheduled repack, no metadata merge",
+    "notClaimed": [
+      "trained policy (DistilledBehaviorPolicyV1 still NOT_TRAINED)",
+      "formal Provider registration",
+      "production Provider wiring",
+      "performance claims",
+      "90% holdout agreement",
+      "Report/UI integration",
+      "full battle behavior"
+    ]
+  },
+  "verification": {
+    "freeze": "1146/1146 PASSED",
+    "providerCore": "1611/1611 PASSED",
+    "immediateFeature": "2862/2862 PASSED",
+    "decisionTrace": "557/557 PASSED",
+    "pairability": "1037/1037 PASSED",
+    "pairabilityCounts": "78 = 73 DIRECT + 5 PENDING + 0 REJECT / 70 BIF compiled",
+    "pairabilityCases": 7,
+    "determinismHash": "5c503402538e85977f512bcc6cb16f8a9421148bca0f865988c99bd70a41cf45",
+    "nodeCheck": true,
+    "utf8Clean": true,
+    "harnessMojiSentinel": "intentional detection constants (same pattern as freeze harness)",
+    "diffCheck": true,
+    "reproducedOnFreshHeadCheckout": true,
+    "crossBatchSourcePinsMirrored": [
+      "tools/rc6/evidence/m2/production-reference-ab.json",
+      "tools/rc6/evidence/m2/small-target-transactions.json",
+      "9 production library raw sources"
+    ]
+  },
+  "writeScope": {
+    "allowed": [
+      "BehaviorPrototypeAdapter_Module.js",
+      "BehaviorImmediateFeature_Module.js",
+      "BehaviorCandidateFeatureBridge_Module.js",
+      "tools/rc6/contracts/BehaviorImmediateFeatureV1.json",
+      "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json",
+      "tools/rc6/contracts/BehaviorPlanningContractV1.json",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.json",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json",
+      "tools/rc6/contracts/DecisionContributionTraceV1.json",
+      "tools/rc6/contracts/DecisionContributionTraceV1.schema.json",
+      "tools/rc6/contracts/DirectFactRowV1.json",
+      "tools/rc6/contracts/DistilledBehaviorPolicyV1.json",
+      "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+      "tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.json",
+      "tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json",
+      "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json",
+      "tools/rc6/cases/BehaviorProviderQualitySplitV1.json",
+      "tools/rc6/cases/DecisionContributionTraceCasesV1.json",
+      "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
+      "tools/rc6/harness/run-m2-v31-contract-freeze.mjs",
+      "tools/rc6/harness/run-m2-v31-provider-core.mjs",
+      "tools/rc6/harness/run-m2-v31-immediate-feature.mjs",
+      "tools/rc6/harness/run-m2-v31-decision-trace.mjs",
+      "tools/rc6/harness/run-m2-v31-pairability.mjs",
+      "tools/rc6/evidence/objects/m2/v31/m2-direct-feature-bridge-closure-af9ac92.patch",
+      "tools/rc6/evidence/objects/m2/v31/m2-direct-feature-bridge-closure-af9ac92.manifest.json",
+      "tools/rc6/evidence/objects/m2/v31/m2-direct-feature-bridge-closure-bundle-af9ac92-20260814T143452Z.json",
+      "tools/rc6/evidence/events/000249-<event-hash>.json"
+    ],
+    "staged": false,
+    "committed": false
+  },
+  "createdAt": "2026-08-14T14:34:52Z"
+}

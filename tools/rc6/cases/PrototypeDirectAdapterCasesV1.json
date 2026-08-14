@@ -1,6 +1,6 @@
 {
  "schemaVersion": "PrototypeDirectAdapterCasesV1",
- "revision": 4,
+ "revision": 5,
  "contractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
  "counts": {
   "inBattlePathCount": 621,
@@ -105,8 +105,8 @@
    }
   },
   "deferredPathIdsCount": 40,
-  "caseCount": 59,
-  "redProbeCount": 20
+  "caseCount": 85,
+  "redProbeCount": 24
  },
  "cases": [
   {
@@ -410,7 +410,8 @@
     "目标": "自身",
     "结算": "造成伤害",
     "数值": "+10%",
-    "持续回合": 1
+    "持续回合": 1,
+    "生效方式": "独立生效"
    },
    "expect": {
     "admitted": true,
@@ -420,7 +421,7 @@
      {
       "schemaVersion": "DirectFactRowV1",
       "factType": "STATE_DELTA",
-      "key": "造成伤害",
+      "key": "settlement.primary",
       "sourceActionId": "action:pos-settlement-modifier",
       "sourceActorId": "actor-1",
       "sourceEffectId": "effect:pos-settlement-modifier:0",
@@ -431,7 +432,22 @@
       "unit": "PERCENT",
       "durationTurns": 1
      }
-    ]
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-settlement-modifier:0",
+       "prototype": "结算修正"
+      }
+     ],
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-settlement-modifier:0",
+       "生效方式": "独立生效",
+       "结算": "造成伤害"
+      }
+     ]
+    }
    },
    "context": {
     "sourceActionId": "action:pos-settlement-modifier",
@@ -516,7 +532,15 @@
       "unit": "BOOL",
       "durationTurns": 1
      }
-    ]
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-state-apply-taunt:0",
+       "prototype": "状态施加"
+      }
+     ]
+    }
    },
    "context": {
     "sourceActionId": "action:pos-state-apply-taunt",
@@ -540,14 +564,14 @@
    },
    "expect": {
     "admitted": true,
-    "scheduledFacts": [
-     {
-      "operation": "WINDOW_ADJUST",
-      "key": "window.adjustTurns",
-      "字段": "持续回合",
-      "方式": "延长",
-      "调整回合": 1
-     }
+  "scheduledFacts": [
+   {
+    "entryId": "effect:pos-window-adjust:0:schedule:0",
+    "operation": "WINDOW_ADJUST",
+    "调整字段": "持续回合",
+    "调整方式": "延长",
+    "调整回合": 1
+   }
     ],
     "unsupportedOutcomeKinds": [],
     "deferCode": ""
@@ -824,10 +848,11 @@
    },
    "expect": {
     "admitted": true,
-    "scheduledFacts": [
-     {
-      "grantType": "FOLLOW_UP",
-      "triggerKey": "主动触发",
+  "scheduledFacts": [
+   {
+    "entryId": "effect:pos-grant-followup:0:schedule:0",
+    "grantType": "FOLLOW_UP",
+    "triggerKey": "主动触发",
       "maxActions": 2,
       "payloadDirectFacts": [
        {
@@ -878,10 +903,11 @@
    },
    "expect": {
     "admitted": true,
-    "scheduledFacts": [
-     {
-      "grantType": "FOLLOW_UP",
-      "triggerKey": "随下次行动触发",
+  "scheduledFacts": [
+   {
+    "entryId": "effect:pos-grant-followup-next-action:0:schedule:0",
+    "grantType": "FOLLOW_UP",
+    "triggerKey": "随下次行动触发",
       "payloadDirectFacts": [
        {
         "schemaVersion": "DirectFactRowV1",
@@ -997,15 +1023,19 @@
     "召唤物名称": "审计召唤物",
     "数量": 1,
     "行动模式": "协同攻击",
-    "持续回合": 1
+    "持续回合": 1,
+    "生效方式": "独立生效"
    },
    "expect": {
     "admitted": true,
     "scheduledFacts": [
      {
       "grantType": "SUMMON_WINDOW",
+      "召唤单位类型": "魂兽",
+      "召唤物名称": "审计召唤物",
       "行动模式": "协同攻击",
-      "durationTurns": 1
+      "durationTurns": 1,
+      "entryId": "effect:pos-summon:0:schedule:0"
      }
     ],
     "unsupportedOutcomeKinds": [],
@@ -1014,7 +1044,7 @@
      {
       "schemaVersion": "DirectFactRowV1",
       "factType": "SUMMON_WINDOW",
-      "key": "魂兽",
+      "key": "summon.count",
       "sourceActionId": "action:pos-summon",
       "sourceActorId": "actor-1",
       "sourceEffectId": "effect:pos-summon:0",
@@ -1024,8 +1054,36 @@
       "amount": 1,
       "unit": "COUNT",
       "durationTurns": 0
+     },
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.duration",
+      "sourceActionId": "action:pos-summon",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-summon:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 1,
+      "unit": "TURNS",
+      "durationTurns": 0
      }
-    ]
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-summon:0",
+       "prototype": "召唤生成"
+      }
+     ],
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-summon:0",
+       "生效方式": "独立生效"
+      }
+     ]
+    }
    },
    "context": {
     "sourceActionId": "action:pos-summon",
@@ -1441,8 +1499,7 @@
    "expect": {
     "admitted": true,
     "deferCode": "",
-    "unsupportedOutcomeKinds": [],
-    "retainedInCandidateAudit": true
+    "unsupportedOutcomeKinds": []
    },
    "context": {
     "sourceActionId": "action:pos-t0-path-supported",
@@ -1660,7 +1717,15 @@
       "unit": "PERCENT",
       "durationTurns": 2
      }
-    ]
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-state-multivalue:0",
+       "prototype": "状态施加"
+      }
+     ]
+    }
    },
    "context": {
     "sourceActionId": "action:pos-state-multivalue",
@@ -1685,19 +1750,19 @@
    },
    "expect": {
     "admitted": true,
-    "scheduledFacts": [
-     {
-      "operation": "WINDOW_ADJUST",
-      "key": "window.adjustTurns",
-      "字段": "持续回合",
-      "方式": "压缩",
-      "调整回合": 2
-     },
-     {
-      "operation": "SETTLEMENT_RATIO_ADJUST",
-      "key": "window.settlementRatio",
-      "结算倍率": 0.8
-     }
+  "scheduledFacts": [
+   {
+    "entryId": "effect:pos-window-multivalue:0:schedule:0",
+    "operation": "WINDOW_ADJUST",
+    "调整字段": "持续回合",
+    "调整方式": "压缩",
+    "调整回合": 2
+   },
+   {
+    "entryId": "effect:pos-window-multivalue:0:schedule:1",
+    "operation": "SETTLEMENT_RATIO_ADJUST",
+    "结算倍率": 0.8
+   }
     ],
     "unsupportedOutcomeKinds": [],
     "deferCode": ""
@@ -1790,13 +1855,15 @@
      }
     ],
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "效果:龙啸九天:0",
-      "生效方式": "独立生效",
-      "结算标签": "标准伤害",
-      "抗性类型": "精神抗性",
-      "对应等级": 89
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "效果:龙啸九天:0",
+       "生效方式": "独立生效",
+       "结算标签": "标准伤害",
+       "抗性类型": "精神抗性",
+       "对应等级": 89
+      }
+     ]
     }
    },
    "context": {
@@ -1840,10 +1907,12 @@
      }
     ],
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-damage-follow-main:0",
-      "生效方式": "跟随主原型"
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-damage-follow-main:0",
+       "生效方式": "跟随主原型"
+      }
+     ]
     }
    },
    "context": {
@@ -1973,12 +2042,14 @@
     "deferCode": "",
     "retainedInCandidateAudit": true,
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-damage-condition-pending:0",
-      "生效方式": "独立生效",
-      "结算标签": "标准伤害",
-      "抗性类型": "精神抗性"
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-damage-condition-pending:0",
+       "生效方式": "独立生效",
+       "结算标签": "标准伤害",
+       "抗性类型": "精神抗性"
+      }
+     ]
     }
    },
    "context": {
@@ -2041,12 +2112,14 @@
      }
     ],
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-resource-array:0",
-      "生效方式": "独立生效",
-      "驱动属性": "魂力上限",
-      "影响方向": "效果强度"
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-resource-array:0",
+       "生效方式": "独立生效",
+       "驱动属性": "魂力上限",
+       "影响方向": "效果强度"
+      }
+     ]
     }
    },
    "context": {
@@ -2091,10 +2164,12 @@
      }
     ],
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-resource-number-abs:0",
-      "生效方式": "独立生效"
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-resource-number-abs:0",
+       "生效方式": "独立生效"
+      }
+     ]
     }
    },
    "context": {
@@ -2142,13 +2217,15 @@
      }
     ],
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-shield-metadata:0",
-      "生效方式": "独立生效",
-      "驱动属性": "魂力上限",
-      "影响方向": "效果强度",
-      "对应等级": 65
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-shield-metadata:0",
+       "生效方式": "独立生效",
+       "驱动属性": "魂力上限",
+       "影响方向": "效果强度",
+       "对应等级": 65
+      }
+     ]
     }
    },
    "context": {
@@ -2210,10 +2287,12 @@
      }
     ],
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-attribute-array:0",
-      "生效方式": "独立生效"
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-attribute-array:0",
+       "生效方式": "独立生效"
+      }
+     ]
     }
    },
    "context": {
@@ -2270,13 +2349,15 @@
      }
     ],
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-judgment-metadata:0",
-      "生效方式": "跟随主原型",
-      "驱动属性": "敏捷",
-      "影响方向": "成功率",
-      "对应等级": 65
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-judgment-metadata:0",
+       "生效方式": "跟随主原型",
+       "驱动属性": "敏捷",
+       "影响方向": "成功率",
+       "对应等级": 65
+      }
+     ]
     }
    },
    "context": {
@@ -2309,10 +2390,12 @@
     "deferCode": "",
     "retainedInCandidateAudit": true,
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-attribute-bian-shen-duration:0",
-      "生效方式": "独立生效"
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-attribute-bian-shen-duration:0",
+       "生效方式": "独立生效"
+      }
+     ]
     }
    },
    "context": {
@@ -2352,10 +2435,12 @@
     "deferCode": "",
     "retainedInCandidateAudit": true,
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-resource-trigger-pending:0",
-      "生效方式": "独立生效"
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-resource-trigger-pending:0",
+       "生效方式": "独立生效"
+      }
+     ]
     }
    },
    "context": {
@@ -2399,10 +2484,12 @@
     "deferCode": "",
     "retainedInCandidateAudit": true,
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-resource-condition-pending:0",
-      "生效方式": "独立生效"
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-resource-condition-pending:0",
+       "生效方式": "独立生效"
+      }
+     ]
     }
    },
    "context": {
@@ -2502,10 +2589,12 @@
      }
     ],
     "opportunityModifiers": {
-     "mechanicMetadata": {
-      "sourceEffectId": "effect:pos-item-use-effect-damage:0",
-      "对应等级": 89
-     }
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-item-use-effect-damage:0",
+       "对应等级": 89
+      }
+     ]
     }
    },
    "context": {
@@ -2537,6 +2626,1265 @@
     "sourceActionId": "action:neg-lingwu-absorption-oob",
     "sourceActorId": "actor-1",
     "sourceEffectId": "effect:neg-lingwu-absorption-oob:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   }
+  },
+  {
+   "caseId": "pos-state-magnitude-single",
+   "kind": "POSITIVE",
+   "prototype": "状态施加",
+   "effect": {
+    "原型": "状态施加",
+    "目标": "单体",
+    "状态": "中毒",
+    "数值": "-5%",
+    "持续回合": 2,
+    "生效方式": "独立生效"
+   },
+   "context": {
+    "sourceActionId": "action:pos-state-magnitude-single",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-state-magnitude-single:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "state.primary",
+      "sourceActionId": "action:pos-state-magnitude-single",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-state-magnitude-single:0",
+      "targetIds": [
+       "enemy-1"
+      ],
+      "amount": -5,
+      "unit": "PERCENT",
+      "durationTurns": 2
+     }
+    ],
+    "legalityModifiers": {},
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-state-magnitude-single:0",
+       "prototype": "状态施加"
+      }
+     ],
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-state-magnitude-single:0",
+       "生效方式": "独立生效"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "neg-state-unsigned-percent",
+   "kind": "NEGATIVE",
+   "prototype": "状态施加",
+   "effect": {
+    "原型": "状态施加",
+    "目标": "单体",
+    "状态": "虚弱",
+    "数值": "10%",
+    "持续回合": 1
+   },
+   "context": {
+    "sourceActionId": "action:neg-state-unsigned-percent",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:neg-state-unsigned-percent:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_DIRECTION_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   }
+  },
+  {
+   "caseId": "neg-state-unknown-state",
+   "kind": "NEGATIVE",
+   "prototype": "状态施加",
+   "effect": {
+    "原型": "状态施加",
+    "目标": "单体",
+    "状态": "永冻",
+    "数值": "-10%"
+   },
+   "context": {
+    "sourceActionId": "action:neg-state-unknown-state",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:neg-state-unknown-state:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   },
+   "expect": {
+    "admitted": false,
+    "reasonCode": "UNKNOWN_STATE",
+    "unsupportedOutcomeKinds": [
+     "UNKNOWN_STATE"
+    ]
+   }
+  },
+  {
+   "caseId": "bd-state-no-secondary",
+   "kind": "BOUNDARY",
+   "prototype": "状态施加",
+   "effect": {
+    "原型": "状态施加",
+    "目标": "单体",
+    "状态": "灼烧",
+    "数值": "-10%"
+   },
+   "context": {
+    "sourceActionId": "action:bd-state-no-secondary",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-state-no-secondary:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "state.primary",
+      "sourceActionId": "action:bd-state-no-secondary",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-state-no-secondary:0",
+      "targetIds": [
+       "enemy-1"
+      ],
+      "amount": -10,
+      "unit": "PERCENT",
+      "durationTurns": 0
+     }
+    ],
+    "legalityModifiers": {},
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-state-no-secondary:0",
+       "prototype": "状态施加"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "bd-state-zero-magnitude",
+   "kind": "BOUNDARY",
+   "prototype": "状态施加",
+   "effect": {
+    "原型": "状态施加",
+    "目标": "单体",
+    "状态": "标记",
+    "数值": "0%",
+    "持续回合": 1
+   },
+   "context": {
+    "sourceActionId": "action:bd-state-zero-magnitude",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-state-zero-magnitude:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "state.primary",
+      "sourceActionId": "action:bd-state-zero-magnitude",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-state-zero-magnitude:0",
+      "targetIds": [
+       "enemy-1"
+      ],
+      "amount": 0,
+      "unit": "PERCENT",
+      "durationTurns": 1
+     }
+    ],
+    "legalityModifiers": {},
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-state-zero-magnitude:0",
+       "prototype": "状态施加"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "bd-state-bool-presence",
+   "kind": "BOUNDARY",
+   "prototype": "状态施加",
+   "effect": {
+    "原型": "状态施加",
+    "目标": "单体",
+    "状态": "霸体",
+    "持续回合": 3
+   },
+   "context": {
+    "sourceActionId": "action:bd-state-bool-presence",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-state-bool-presence:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "霸体",
+      "sourceActionId": "action:bd-state-bool-presence",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-state-bool-presence:0",
+      "targetIds": [
+       "enemy-1"
+      ],
+      "amount": 1,
+      "unit": "BOOL",
+      "durationTurns": 3
+     }
+    ],
+    "legalityModifiers": {},
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-state-bool-presence:0",
+       "prototype": "状态施加"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "pos-summon-full",
+   "kind": "POSITIVE",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "魂兽",
+    "召唤物名称": "审计召唤物",
+    "数量": 2,
+    "强度": 0.8,
+    "继承属性比例": 0.15,
+    "行动模式": "协同攻击",
+    "持续回合": 3,
+    "生效方式": "独立生效"
+   },
+   "context": {
+    "sourceActionId": "action:pos-summon-full",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-summon-full:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.count",
+      "sourceActionId": "action:pos-summon-full",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-summon-full:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 2,
+      "unit": "COUNT",
+      "durationTurns": 0
+     },
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.strength",
+      "sourceActionId": "action:pos-summon-full",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-summon-full:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 0.8,
+      "unit": "RATIO",
+      "durationTurns": 0
+     },
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.inheritRatio",
+      "sourceActionId": "action:pos-summon-full",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-summon-full:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 0.15,
+      "unit": "RATIO",
+      "durationTurns": 0
+     },
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.duration",
+      "sourceActionId": "action:pos-summon-full",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-summon-full:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 3,
+      "unit": "TURNS",
+      "durationTurns": 0
+     }
+    ],
+    "scheduledFacts": [
+     {
+      "grantType": "SUMMON_WINDOW",
+      "召唤单位类型": "魂兽",
+      "召唤物名称": "审计召唤物",
+      "行动模式": "协同攻击",
+      "durationTurns": 3,
+      "entryId": "effect:pos-summon-full:0:schedule:0"
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-summon-full:0",
+       "prototype": "召唤生成"
+      }
+     ],
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-summon-full:0",
+       "生效方式": "独立生效"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "pos-summon-minimal",
+   "kind": "POSITIVE",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "其他召唤生物",
+    "召唤物名称": "审计生物",
+    "数量": 1,
+    "行动模式": "独立作战",
+    "持续回合": 2
+   },
+   "context": {
+    "sourceActionId": "action:pos-summon-minimal",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-summon-minimal:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.count",
+      "sourceActionId": "action:pos-summon-minimal",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-summon-minimal:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 1,
+      "unit": "COUNT",
+      "durationTurns": 0
+     },
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.duration",
+      "sourceActionId": "action:pos-summon-minimal",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-summon-minimal:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 2,
+      "unit": "TURNS",
+      "durationTurns": 0
+     }
+    ],
+    "scheduledFacts": [
+     {
+      "grantType": "SUMMON_WINDOW",
+      "召唤单位类型": "其他召唤生物",
+      "召唤物名称": "审计生物",
+      "行动模式": "独立作战",
+      "durationTurns": 2,
+      "entryId": "effect:pos-summon-minimal:0:schedule:0"
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-summon-minimal:0",
+       "prototype": "召唤生成"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "neg-summon-nonpositive-count",
+   "kind": "NEGATIVE",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "魂兽",
+    "召唤物名称": "审计召唤物",
+    "数量": 0,
+    "行动模式": "协同攻击",
+    "持续回合": 1
+   },
+   "context": {
+    "sourceActionId": "action:neg-summon-nonpositive-count",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:neg-summon-nonpositive-count:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": false,
+    "reasonCode": "INVALID_OPTION_VALUE",
+    "unsupportedOutcomeKinds": [
+     "INVALID_OPTION_VALUE"
+    ]
+   }
+  },
+  {
+   "caseId": "neg-summon-trigger-limit",
+   "kind": "NEGATIVE",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "魂兽",
+    "召唤物名称": "审计召唤物",
+    "数量": 1,
+    "行动模式": "协同攻击",
+    "持续回合": 1,
+    "触发限制": {
+     "周期": "每日",
+     "次数": 1
+    }
+   },
+   "context": {
+    "sourceActionId": "action:neg-summon-trigger-limit",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:neg-summon-trigger-limit:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_TRIGGER_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   }
+  },
+  {
+   "caseId": "bd-summon-no-duration",
+   "kind": "BOUNDARY",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "魂兽",
+    "召唤物名称": "审计召唤物",
+    "数量": 1,
+    "行动模式": "协同攻击"
+   },
+   "context": {
+    "sourceActionId": "action:bd-summon-no-duration",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-summon-no-duration:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.count",
+      "sourceActionId": "action:bd-summon-no-duration",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-summon-no-duration:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 1,
+      "unit": "COUNT",
+      "durationTurns": 0
+     }
+    ],
+    "scheduledFacts": [
+     {
+      "grantType": "SUMMON_WINDOW",
+      "召唤单位类型": "魂兽",
+      "召唤物名称": "审计召唤物",
+      "行动模式": "协同攻击",
+      "entryId": "effect:bd-summon-no-duration:0:schedule:0"
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-summon-no-duration:0",
+       "prototype": "召唤生成"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [
+     "PENDING_DURATION_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   }
+  },
+  {
+   "caseId": "bd-summon-strength-gt1",
+   "kind": "BOUNDARY",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "深渊生物",
+    "召唤物名称": "审计深渊",
+    "数量": 1,
+    "强度": 5,
+    "行动模式": "独立作战",
+    "持续回合": 1
+   },
+   "context": {
+    "sourceActionId": "action:bd-summon-strength-gt1",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-summon-strength-gt1:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.count",
+      "sourceActionId": "action:bd-summon-strength-gt1",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-summon-strength-gt1:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 1,
+      "unit": "COUNT",
+      "durationTurns": 0
+     },
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.strength",
+      "sourceActionId": "action:bd-summon-strength-gt1",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-summon-strength-gt1:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 5,
+      "unit": "RATIO",
+      "durationTurns": 0
+     },
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.duration",
+      "sourceActionId": "action:bd-summon-strength-gt1",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-summon-strength-gt1:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 1,
+      "unit": "TURNS",
+      "durationTurns": 0
+     }
+    ],
+    "scheduledFacts": [
+     {
+      "grantType": "SUMMON_WINDOW",
+      "召唤单位类型": "深渊生物",
+      "召唤物名称": "审计深渊",
+      "行动模式": "独立作战",
+      "durationTurns": 1,
+      "entryId": "effect:bd-summon-strength-gt1:0:schedule:0"
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-summon-strength-gt1:0",
+       "prototype": "召唤生成"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "bd-summon-count-one",
+   "kind": "BOUNDARY",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "食物阵列",
+    "召唤物名称": "审计阵列",
+    "数量": 1,
+    "行动模式": "协同作战",
+    "持续回合": 1
+   },
+   "context": {
+    "sourceActionId": "action:bd-summon-count-one",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-summon-count-one:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.count",
+      "sourceActionId": "action:bd-summon-count-one",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-summon-count-one:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 1,
+      "unit": "COUNT",
+      "durationTurns": 0
+     },
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.duration",
+      "sourceActionId": "action:bd-summon-count-one",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-summon-count-one:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 1,
+      "unit": "TURNS",
+      "durationTurns": 0
+     }
+    ],
+    "scheduledFacts": [
+     {
+      "grantType": "SUMMON_WINDOW",
+      "召唤单位类型": "食物阵列",
+      "召唤物名称": "审计阵列",
+      "行动模式": "协同作战",
+      "durationTurns": 1,
+      "entryId": "effect:bd-summon-count-one:0:schedule:0"
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-summon-count-one:0",
+       "prototype": "召唤生成"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "pos-settlement-element-absorb",
+   "kind": "POSITIVE",
+   "prototype": "结算修正",
+   "effect": {
+    "原型": "结算修正",
+    "目标": "自身",
+    "结算": "伤害吸收",
+    "数值": "+20%",
+    "持续回合": 2,
+    "生效方式": "独立生效",
+    "限定元素": [
+     "雷",
+     "火"
+    ],
+    "吸收资源": "魂力",
+    "吸收来源": "受到伤害"
+   },
+   "context": {
+    "sourceActionId": "action:pos-settlement-element-absorb",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-settlement-element-absorb:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "settlement.primary",
+      "sourceActionId": "action:pos-settlement-element-absorb",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-settlement-element-absorb:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 20,
+      "unit": "PERCENT",
+      "durationTurns": 2
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-settlement-element-absorb:0",
+       "prototype": "结算修正"
+      }
+     ],
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:pos-settlement-element-absorb:0",
+       "生效方式": "独立生效",
+       "结算": "伤害吸收",
+       "限定元素": [
+        "火",
+        "雷"
+       ],
+       "吸收资源": "魂力",
+       "吸收来源": "受到伤害"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "pos-settlement-negative",
+   "kind": "POSITIVE",
+   "prototype": "结算修正",
+   "effect": {
+    "原型": "结算修正",
+    "目标": "自身",
+    "结算": "受到伤害",
+    "数值": "-15%",
+    "持续回合": 3
+   },
+   "context": {
+    "sourceActionId": "action:pos-settlement-negative",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-settlement-negative:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "settlement.primary",
+      "sourceActionId": "action:pos-settlement-negative",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:pos-settlement-negative:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": -15,
+      "unit": "PERCENT",
+      "durationTurns": 3
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:pos-settlement-negative:0",
+       "prototype": "结算修正"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "neg-settlement-unsigned",
+   "kind": "NEGATIVE",
+   "prototype": "结算修正",
+   "effect": {
+    "原型": "结算修正",
+    "目标": "自身",
+    "结算": "治疗",
+    "数值": "10%",
+    "持续回合": 1
+   },
+   "context": {
+    "sourceActionId": "action:neg-settlement-unsigned",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:neg-settlement-unsigned:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_DIRECTION_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   }
+  },
+  {
+   "caseId": "neg-settlement-condition",
+   "kind": "NEGATIVE",
+   "prototype": "结算修正",
+   "effect": {
+    "原型": "结算修正",
+    "目标": "自身",
+    "结算": "消耗",
+    "数值": "-10%",
+    "条件分支": [
+     {
+      "条件": [
+       {
+        "类型": "当前行动",
+        "对象": "自身",
+        "比较": "!=",
+        "值": "常规攻击"
+       }
+      ],
+      "处理": "禁用"
+     }
+    ]
+   },
+   "context": {
+    "sourceActionId": "action:neg-settlement-condition",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:neg-settlement-condition:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_CONDITIONAL_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   }
+  },
+  {
+   "caseId": "bd-settlement-no-duration",
+   "kind": "BOUNDARY",
+   "prototype": "结算修正",
+   "effect": {
+    "原型": "结算修正",
+    "目标": "自身",
+    "结算": "治疗",
+    "数值": "+5%"
+   },
+   "context": {
+    "sourceActionId": "action:bd-settlement-no-duration",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-settlement-no-duration:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "settlement.primary",
+      "sourceActionId": "action:bd-settlement-no-duration",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-settlement-no-duration:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 5,
+      "unit": "PERCENT",
+      "durationTurns": 0
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-settlement-no-duration:0",
+       "prototype": "结算修正"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "bd-settlement-element-single",
+   "kind": "BOUNDARY",
+   "prototype": "结算修正",
+   "effect": {
+    "原型": "结算修正",
+    "目标": "自身",
+    "结算": "反伤",
+    "数值": "+10%",
+    "持续回合": 1,
+    "限定元素": "火"
+   },
+   "context": {
+    "sourceActionId": "action:bd-settlement-element-single",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-settlement-element-single:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "settlement.primary",
+      "sourceActionId": "action:bd-settlement-element-single",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-settlement-element-single:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 10,
+      "unit": "PERCENT",
+      "durationTurns": 1
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-settlement-element-single:0",
+       "prototype": "结算修正"
+      }
+     ],
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:bd-settlement-element-single:0",
+       "限定元素": [
+        "火"
+       ]
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "caseId": "bd-settlement-absorb-source",
+   "kind": "BOUNDARY",
+   "prototype": "结算修正",
+   "effect": {
+    "原型": "结算修正",
+    "目标": "自身",
+    "结算": "消耗",
+    "数值": "-10%",
+    "持续回合": 1,
+    "吸收资源": "体力"
+   },
+   "context": {
+    "sourceActionId": "action:bd-settlement-absorb-source",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:bd-settlement-absorb-source:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "settlement.primary",
+      "sourceActionId": "action:bd-settlement-absorb-source",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:bd-settlement-absorb-source:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": -10,
+      "unit": "PERCENT",
+      "durationTurns": 1
+     }
+    ],
+    "opportunityModifiers": {
+     "projectionFamilies": [
+      {
+       "sourceEffectId": "effect:bd-settlement-absorb-source:0",
+       "prototype": "结算修正"
+      }
+     ],
+     "mechanicMetadataEntries": [
+      {
+       "sourceEffectId": "effect:bd-settlement-absorb-source:0",
+       "吸收资源": "体力"
+      }
+     ]
+    },
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   }
+  },
+  {
+   "kind": "POSITIVE",
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_DIRECT_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   },
+   "caseId": "pos-pending13-window-adjust",
+   "prototype": "时窗修正",
+   "effect": {
+    "原型": "时窗修正",
+    "目标": "单体",
+    "调整字段": "持续回合",
+    "调整方式": "延长"
+   },
+   "context": {
+    "sourceActionId": "action:pos-pending13-window-adjust",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-pending13-window-adjust:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   }
+  },
+  {
+   "kind": "POSITIVE",
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_DIRECT_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   },
+   "caseId": "pos-pending13-state-remove",
+   "prototype": "状态移除",
+   "effect": {
+    "原型": "状态移除",
+    "目标": "单体",
+    "状态": "任意增益",
+    "数量": 1
+   },
+   "context": {
+    "sourceActionId": "action:pos-pending13-state-remove",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-pending13-state-remove:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   }
+  },
+  {
+   "kind": "POSITIVE",
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_DIRECT_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   },
+   "caseId": "pos-pending13-decision-interference",
+   "prototype": "决策干扰",
+   "effect": {
+    "原型": "决策干扰",
+    "目标": "单体",
+    "干扰": "判断干扰",
+    "数值": "+10%"
+   },
+   "context": {
+    "sourceActionId": "action:pos-pending13-decision-interference",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-pending13-decision-interference:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   }
+  },
+  {
+   "caseId": "pos-real-baihanying-window",
+   "kind": "POSITIVE",
+   "prototype": "时窗修正",
+   "effect": {
+    "原型": "时窗修正",
+    "目标": "群体",
+    "生效方式": "独立生效",
+    "调整字段": "持续回合",
+    "调整方式": "延长",
+    "调整回合": 1,
+    "单日使用次数上限": 1
+   },
+   "expect": {
+    "admitted": true,
+    "scheduledFacts": [
+     {
+      "entryId": "effect:pos-real-baihanying-window:0:schedule:0",
+      "operation": "WINDOW_ADJUST",
+      "调整字段": "持续回合",
+      "调整方式": "延长",
+      "调整回合": 1
+     }
+    ],
+    "unsupportedOutcomeKinds": [],
+    "deferCode": ""
+   },
+   "context": {
+    "sourceActionId": "action:pos-real-baihanying-window",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-real-baihanying-window:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   }
+  },
+  {
+   "caseId": "pos-real-wuchangkong-decision-interference",
+   "kind": "POSITIVE",
+   "prototype": "决策干扰",
+   "effect": {
+    "原型": "决策干扰",
+    "目标": "群体",
+    "持续回合": 1,
+    "生效方式": "独立生效",
+    "干扰": "索敌干扰",
+    "数值": "3%",
+    "驱动属性": "魂力上限",
+    "影响方向": "成功率"
+   },
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_DIRECT_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   },
+   "context": {
+    "sourceActionId": "action:pos-real-wuchangkong-decision-interference",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-real-wuchangkong-decision-interference:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   }
+  },
+  {
+   "caseId": "pos-real-wuchangkong-state-remove",
+   "kind": "POSITIVE",
+   "prototype": "状态移除",
+   "effect": {
+    "原型": "状态移除",
+    "目标": "自身",
+    "生效方式": "独立生效",
+    "状态": "中毒"
+   },
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_DIRECT_PROJECTION"
+    ],
+    "deferCode": "",
+    "retainedInCandidateAudit": true
+   },
+   "context": {
+    "sourceActionId": "action:pos-real-wuchangkong-state-remove",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:pos-real-wuchangkong-state-remove:0",
     "candidateTargetIds": [
      "actor-1"
     ]
@@ -3075,6 +4423,148 @@
     "candidateTargetIds": [
      "actor-1"
     ]
+   }
+  },
+  {
+   "probeId": "probe-state-unsigned-percent",
+   "kind": "RED_PROBE",
+   "prototype": "状态施加",
+   "effect": {
+    "原型": "状态施加",
+    "目标": "单体",
+    "状态": "虚弱",
+    "数值": "10%",
+    "持续回合": 1
+   },
+   "context": {
+    "sourceActionId": "action:probe-state-unsigned-percent",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:probe-state-unsigned-percent:0",
+    "candidateTargetIds": [
+     "enemy-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "unsupportedOutcomeKinds": [
+     "PENDING_DIRECTION_PROJECTION"
+    ],
+    "retainedInCandidateAudit": true,
+    "reasonCode": "PENDING_DIRECTION_PROJECTION"
+   }
+  },
+  {
+   "probeId": "probe-summon-nonpositive-count",
+   "kind": "RED_PROBE",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "魂兽",
+    "召唤物名称": "审计召唤物",
+    "数量": -1,
+    "行动模式": "协同攻击",
+    "持续回合": 1
+   },
+   "context": {
+    "sourceActionId": "action:probe-summon-nonpositive-count",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:probe-summon-nonpositive-count:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": false,
+    "reasonCode": "INVALID_OPTION_VALUE"
+   }
+  },
+  {
+   "probeId": "probe-settlement-double-count",
+   "kind": "RED_PROBE",
+   "prototype": "结算修正",
+   "effect": {
+    "原型": "结算修正",
+    "目标": "自身",
+    "结算": "造成伤害",
+    "数值": "+10%",
+    "持续回合": 1,
+    "吸收资源": "魂力"
+   },
+   "context": {
+    "sourceActionId": "action:probe-settlement-double-count",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:probe-settlement-double-count:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "STATE_DELTA",
+      "key": "settlement.primary",
+      "sourceActionId": "action:probe-settlement-double-count",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:probe-settlement-double-count:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 10,
+      "unit": "PERCENT",
+      "durationTurns": 1
+     }
+    ],
+    "unsupportedOutcomeKinds": [],
+    "deferCode": "",
+    "noDoubleCount": true
+   }
+  },
+  {
+   "probeId": "probe-summon-missing-duration",
+   "kind": "RED_PROBE",
+   "prototype": "召唤生成",
+   "effect": {
+    "原型": "召唤生成",
+    "目标": "自身",
+    "召唤单位类型": "魂兽",
+    "召唤物名称": "审计召唤物",
+    "数量": 1,
+    "行动模式": "协同攻击"
+   },
+   "context": {
+    "sourceActionId": "action:probe-summon-missing-duration",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:probe-summon-missing-duration:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "directFacts": [
+     {
+      "schemaVersion": "DirectFactRowV1",
+      "factType": "SUMMON_WINDOW",
+      "key": "summon.count",
+      "sourceActionId": "action:probe-summon-missing-duration",
+      "sourceActorId": "actor-1",
+      "sourceEffectId": "effect:probe-summon-missing-duration:0",
+      "targetIds": [
+       "actor-1"
+      ],
+      "amount": 1,
+      "unit": "COUNT",
+      "durationTurns": 0
+     }
+    ],
+    "unsupportedOutcomeKinds": [
+     "PENDING_DURATION_PROJECTION"
+    ],
+    "retainedInCandidateAudit": true,
+    "reasonCode": "PENDING_DURATION_PROJECTION"
    }
   }
  ],

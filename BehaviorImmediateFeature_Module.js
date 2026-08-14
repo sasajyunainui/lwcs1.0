@@ -1,30 +1,53 @@
 // BehaviorImmediateFeature_Module.js
-// M2 immediate feature compiler writer F - revision 2 production candidate (R9_CANDIDATE_UNREGISTERED).
+// M2 immediate feature compiler writer F - revision 4 production candidate (R9_CANDIDATE_UNREGISTERED).
 // Contract authority (frozen, disk-verified):
-//   tools/rc6/contracts/BehaviorImmediateFeatureV1.json       5715f6125beacd49234c5edb2604286d5ce8828e23da8a3a13a46f744a6683ad
-//   tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json e3036e6a5171ee512fbea859268924c0ea696174cbb55854f8b6d0364f690015
-//   tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json       e5bef21c6d76c94d989a921f55605193bfb0314359c44d28a0f93160ee4a3501
-//   tools/rc6/contracts/DistilledBehaviorPolicyV1.json         abac2935300fd4a9a9cc0a623e1d8be4516df51e268b0f541205511f5f978679 (read-only, untrained)
-//   tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json  6314cc703ddaf56298331fb4c72e5bbf74df3c1516b05912a20185a6ed90693c (read-only, untrained)
+//   tools/rc6/contracts/BehaviorImmediateFeatureV1.json       5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd
+//   tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json 686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937
+//   tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json       9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18
+//   tools/rc6/contracts/DistilledBehaviorPolicyV1.json         8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c (read-only, untrained)
+//   tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json  19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b (read-only, untrained)
 // Governed frozen sources (read-only): BehaviorProviderV1 cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156;
-//   PrototypeDirectAdapterV1 390d5f2efe0409301cfb894c30c4312e16d7d488a386aa943f008718e65fb0bb;
-//   PrototypeDirectAdapterV1.schema ca17d0d8c1d526001fd65941768d4e996c2dfb6488d3e7b484c66343b3f85ed3;
-//   DirectFactRowV1 6a1951015a6bde4f00db502c8ce7805888942251f2c38507fe2769265f589fa1.
-// Revision 2 boundary: CANDIDATES_ONLY pure compiler; closed input contract; real ids (CJK/
-// hyphen/space ok, <=512, C0/DEL rejected); actor identity (actorId/actorSide/sides) with no
-// prefix guessing, no neutral folding, no default ALLY; cost reads units[actorId] only;
-// explicit hitCheckApplicability (no actionKind special casing); scheduledFacts never silent
-// (counted with entryId in sourceEventIds); STATE_PRESENCE KNOWN only for BOOL rows with
-// value in {0,1} (COUNT rows are UNKNOWN(STATE_FORM_UNMAPPED)); 23 raw features in stable
-// UTF-16 order; value exists only for KNOWN; raw units preserved; no normalization constants,
-// no scoring weights, no skill/prototype-name weighting; no Decision/Preview/Provider
-// invocation; no future-route/world-clone/result enumeration; no Runtime/loader wiring.
+//   PrototypeDirectAdapterV1 b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a;
+//   PrototypeDirectAdapterV1.schema 9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5;
+//   DirectFactRowV1 7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67;
+//   DirectFactRowV1.schema 0325e39cd33ecf1c925268d451f23c3bde4d75eca3b5405b614c255b931b0538.
+// Revision 4 final (cases 62): scheduledFacts closed four-shape per PDA rev5 schema
+// (WINDOW_ADJUST entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/
+// 结算倍率; SETTLEMENT_RATIO_ADJUST entryId/operation/结算倍率; FOLLOW_UP entryId/grantType/
+// triggerKey/payloadDirectFacts with maxActions only for 主动触发; SUMMON_WINDOW entryId/
+// grantType/召唤单位类型/召唤物名称/行动模式/durationTurns); private aliases key/字段/方式
+// are rejected; every entry requires entryId and counts into OUTSIDE_BATCH1_ROW_COUNT.
+// Revision 4 (batch-2 rev4): six raw feature codes pinned at fixed catalog positions 23-28
+// (STATE_DELTA_PERCENT/SETTLEMENT_MODIFIER_PERCENT/SUMMON_COUNT/SUMMON_STRENGTH/
+// SUMMON_DURATION/RESOURCE_DELTA_PERCENT);
+// STATE_DELTA rows route state.primary/state.secondary PERCENT to STATE_DELTA_PERCENT,
+// settlement.primary PERCENT to SETTLEMENT_MODIFIER_PERCENT (never HP/RESOURCE double rows),
+// other PERCENT keys to UNKNOWN(MISSING_SOURCE_FACT); RESOURCE_OPTION_CHANGED rows with
+// unit=PERCENT route key=resource name to RESOURCE_DELTA_PERCENT (raw signed percent,
+// never multiplied by duration; ABS rows keep RESOURCE_DELTA; unsigned percent rows stay
+// PENDING_DIRECTION_PROJECTION upstream in the adapter and never reach the compiler);
+// SUMMON_WINDOW rows route
+// summon.count/summon.strength/summon.duration (wrong unit => UNKNOWN with row fact id),
+// summon.inheritRatio maps to no feature code and only counts OUTSIDE_BATCH1_ROW_COUNT;
+// the summon family block (all three codes) is emitted per activating sourceEffectId
+// (routed row or projectionFamilies 召唤生成 entry); mechanicMetadataEntries (closed entries
+// array, one per effect instance) / projectionFamilies root inputs are closed audit/
+// routing-only bridges (per-prototype key subsets per PDA rev5Spec, values never enter
+// features, prototype names never weighted => PROTOTYPE_NAME_WEIGHTING_REJECTED);
+// SUMMON_WINDOW scheduledFacts entries carry grantType/召唤单位类型/召唤物名称/行动模式/
+// durationTurns and count into OUTSIDE with entryId in sourceEventIds; scheduled windows
+// never become KNOWN SUMMON_DURATION; formal caps (256 features / 128 rows / 64 modifier
+// entries / 200000 work units) throw CAP_EXCEEDED as whole-compile rejections. Revision 2
+// semantics stay (identity/sides/cost/
+// hitCheckApplicability/STATE_PRESENCE {0,1}/29 raw features base, no normalization
+// constants, no weights, no Decision/Preview/Provider invocation, no future-route/
+// world-clone/result enumeration, no Runtime/loader wiring).
 (function () {
   'use strict';
 
   var MOUNT_NAME = '__LWCS_BEHAVIOR_IMMEDIATE_FEATURE__';
   var ROLE = 'R9_CANDIDATE_UNREGISTERED';
-  var REVISION = 2;
+  var REVISION = 4;
   var REGISTRY_ID = 'RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-V1-2026-08-14';
   var SCHEMA_VERSION = 'BehaviorImmediateFeatureV1';
   var F0 = 13;
@@ -44,7 +67,9 @@
     'HARD_EXCLUSION_REASON', 'SETTLEMENT_DAMAGE', 'ROLL_REALIZATION',
     'OUTSIDE_BATCH1_ROW_COUNT', 'DAMAGE_POWER', 'DAMAGE_SEGMENTS',
     'DAMAGE_PENETRATION', 'DAMAGE_TYPE', 'RESOURCE_DELTA', 'SHIELD_DELTA',
-    'ATTRIBUTE_DELTA', 'JUDGMENT_DELTA', 'STATE_PRESENCE', 'STATE_DURATION'
+    'ATTRIBUTE_DELTA', 'JUDGMENT_DELTA', 'STATE_PRESENCE', 'STATE_DURATION',
+    'STATE_DELTA_PERCENT', 'SETTLEMENT_MODIFIER_PERCENT', 'SUMMON_COUNT',
+    'SUMMON_STRENGTH', 'SUMMON_DURATION', 'RESOURCE_DELTA_PERCENT'
   ];
   var CANDIDATE_CODES = FEATURE_CODES.slice(0, 13);
   var ROW_CODES = FEATURE_CODES.slice(13);
@@ -72,9 +97,15 @@
     'ATTRIBUTE_DELTA': 'PERCENT',
     'JUDGMENT_DELTA': 'PERCENT',
     'STATE_PRESENCE': 'BOOL',
-    'STATE_DURATION': 'TURNS'
+    'STATE_DURATION': 'TURNS',
+    'STATE_DELTA_PERCENT': 'PERCENT',
+    'SETTLEMENT_MODIFIER_PERCENT': 'PERCENT',
+    'SUMMON_COUNT': 'COUNT',
+    'SUMMON_STRENGTH': 'RATIO',
+    'SUMMON_DURATION': 'TURNS',
+    'RESOURCE_DELTA_PERCENT': 'PERCENT'
   };
-  var UNIT_FAMILIES = ['COUNT', 'ABS', 'POWER', 'PERCENT', 'RATIO_0_1', 'PROBABILITY_0_1', 'TURNS', 'BOOL', 'ENUM'];
+  var UNIT_FAMILIES = ['COUNT', 'ABS', 'POWER', 'PERCENT', 'RATIO_0_1', 'PROBABILITY_0_1', 'TURNS', 'BOOL', 'ENUM', 'RATIO'];
   var BOOL_CODES = ['OVERKILL_AVAILABILITY', 'HARD_EXCLUSION', 'DAMAGE_TYPE', 'STATE_PRESENCE'];
 
   var ATTRIBUTE_KEYS = ['力量', '防御', '敏捷', '魂力上限', '精神力上限', '体力上限'];
@@ -110,6 +141,34 @@
     '判定修正': ['JUDGMENT_DELTA', 'STATE_DURATION'],
     '状态施加/状态移除': ['STATE_PRESENCE', 'STATE_DURATION']
   };
+  var BATCH2_FAMILY = {
+    '状态施加': ['STATE_PRESENCE', 'STATE_DURATION', 'STATE_DELTA_PERCENT'],
+    '召唤生成': ['SUMMON_COUNT', 'SUMMON_STRENGTH', 'SUMMON_DURATION'],
+    '结算修正': ['SETTLEMENT_MODIFIER_PERCENT']
+  };
+  // Closed registry prototype names (same 27-name registry as PrototypeDirectAdapterV1).
+  // Used only to validate projectionFamilies routing identity; never weighted.
+  var REGISTRY_PROTOTYPE_NAMES = [
+    '伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '结算修正',
+    '炸环', '状态施加', '时窗修正', '状态移除', '规则防御', '状态转移', '状态交换',
+    '资源锁定', '规则改写', '机制抹消', '机制授予', '复制执行', '时光回溯', '位移执行',
+    '决策干扰', '召唤生成', '修炼增益', '天赋提升', '永久属性提升', '战斗外复活'
+  ];
+  var MECHANIC_METADATA_CLOSED_KEYS = [
+    'sourceEffectId', '生效方式', '结算标签', '抗性类型', '驱动属性', '影响方向',
+    '对应等级', '触发方式', '触发限制', '结算', '限定元素', '吸收资源', '吸收来源'
+  ];
+  var MECHANIC_METADATA_SUBSETS = {
+    '伤害结算': ['生效方式', '结算标签', '抗性类型', '对应等级'],
+    '资源变化': ['生效方式', '驱动属性', '影响方向', '对应等级'],
+    '护盾变化': ['生效方式', '驱动属性', '影响方向', '对应等级'],
+    '属性修正': ['生效方式', '驱动属性', '影响方向', '对应等级'],
+    '判定修正': ['生效方式', '驱动属性', '影响方向', '对应等级'],
+    '状态施加': ['生效方式', '驱动属性', '影响方向', '对应等级', '触发方式'],
+    '召唤生成': ['生效方式', '触发限制'],
+    '结算修正': ['生效方式', '结算', '限定元素', '吸收资源', '吸收来源', '影响方向', '驱动属性', '对应等级']
+  };
+  var GRANT_TYPES = ['SUMMON_WINDOW', 'FOLLOW_UP', 'WINDOW_ADJUST', 'SETTLEMENT_RATIO_ADJUST'];
 
   var FORBIDDEN_SOURCE_CODE = {
     'ROUTE': 'ROUTE_INPUT_REJECTED',
@@ -118,7 +177,8 @@
     'HIDDEN': 'HIDDEN_INPUT_REJECTED',
     'WALL_CLOCK': 'WALL_CLOCK_REJECTED',
     'SKILL_ROLE_NAME': 'SKILL_ROLE_NAME_SPECIAL_CASE_REJECTED',
-    'TEACHER': 'TEACHER_INPUT_REJECTED'
+    'TEACHER': 'TEACHER_INPUT_REJECTED',
+    'PROTOTYPE_NAME_WEIGHTING': 'PROTOTYPE_NAME_WEIGHTING_REJECTED'
   };
   var FORBIDDEN_TOP_KEY = {
     'route': 'ROUTE_INPUT_REJECTED',
@@ -128,14 +188,15 @@
     'wallClock': 'WALL_CLOCK_REJECTED',
     'skillRoleName': 'SKILL_ROLE_NAME_SPECIAL_CASE_REJECTED',
     'teacher': 'TEACHER_INPUT_REJECTED',
-    'kernelRouteValue': 'ROUTE_INPUT_REJECTED'
+    'kernelRouteValue': 'ROUTE_INPUT_REJECTED',
+    'prototypeNameWeighting': 'PROTOTYPE_NAME_WEIGHTING_REJECTED'
   };
 
   var INPUT_KEYS = [
     'candidate', 'publicSnapshot', 'atomicFacts', 'directFacts', 'legalityFlags',
     'legalityModifiers', 'opportunityModifiers', 'scheduledFacts', 'publicCost',
     'publicProbability', 'publicDeclarations', 'forbiddenFacts', 'branchCombination',
-    'preMultiplied'
+    'preMultiplied', 'mechanicMetadataEntries', 'projectionFamilies'
   ];
   var CANDIDATE_KEYS = ['candidateId', 'actorId', 'actorSide', 'actionKind', 'targetSet', 'paymentMode'];
   var SNAPSHOT_KEYS = ['units', 'sides', 'actorStatus'];
@@ -146,23 +207,28 @@
   var ROW_KEYS = ['schemaVersion', 'factType', 'key', 'sourceActionId', 'sourceActorId', 'sourceEffectId', 'targetIds', 'amount', 'unit', 'durationTurns'];
   var LM_KEYS = ['judgmentRates', 'taunt', 'tauntRemoved', 'stateMigration', 'stateSwap', 'mechanismRemoval', 'hardExclusions', 'legalityFlags'];
   var OM_KEYS = ['resourceLocks', 'opportunityConstraints', 'interferenceRates', 'dependencyTokens'];
-  var SCHED_KEYS = ['entryId', 'operation', 'triggerKey', 'maxActions', 'payload'];
+  var SCHED_SHAPES = {
+    WINDOW_ADJUST: ['entryId', 'operation', '调整字段', '调整方式', '调整回合', '调整tick', '调整次数', '结算倍率'],
+    SETTLEMENT_RATIO_ADJUST: ['entryId', 'operation', '结算倍率'],
+    FOLLOW_UP: ['entryId', 'grantType', 'triggerKey', 'maxActions', 'payloadDirectFacts'],
+    SUMMON_WINDOW: ['entryId', 'grantType', '召唤单位类型', '召唤物名称', '行动模式', 'durationTurns']
+  };
   var TRIGGER_ENUM = ['主动触发', '随下次行动触发'];
   var COST_KEYS = ['resource', 'amount'];
   var DECL_KEYS = ['revealStrength', 'declaredOverkill'];
   var FORBIDDEN_FACT_KEYS = ['source', 'fact'];
 
   var CONTRACT_HASHES = {
-    featureContract: '5715f6125beacd49234c5edb2604286d5ce8828e23da8a3a13a46f744a6683ad',
-    featureSchema: 'e3036e6a5171ee512fbea859268924c0ea696174cbb55854f8b6d0364f690015',
-    featureCases: 'e5bef21c6d76c94d989a921f55605193bfb0314359c44d28a0f93160ee4a3501',
-    policyContract: 'abac2935300fd4a9a9cc0a623e1d8be4516df51e268b0f541205511f5f978679',
-    policySchema: '6314cc703ddaf56298331fb4c72e5bbf74df3c1516b05912a20185a6ed90693c',
+    featureContract: '5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd',
+    featureSchema: '686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937',
+    featureCases: '9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18',
+    policyContract: '8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c',
+    policySchema: '19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b',
     governed: {
       provider: 'cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156',
-      adapterContract: '390d5f2efe0409301cfb894c30c4312e16d7d488a386aa943f008718e65fb0bb',
-      adapterSchema: 'ca17d0d8c1d526001fd65941768d4e996c2dfb6488d3e7b484c66343b3f85ed3',
-      directFactRow: '6a1951015a6bde4f00db502c8ce7805888942251f2c38507fe2769265f589fa1'
+      adapterContract: 'b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a',
+      adapterSchema: '9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5',
+      directFactRow: '7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67'
     }
   };
 
@@ -411,16 +477,156 @@
     for (var i = 0; i < sched.length; i += 1) {
       var e = sched[i];
       if (!e || typeof e !== 'object') throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[' + i + ']' });
-      rejectUnknownKeys(e, SCHED_KEYS, 'scheduledFacts[]');
       if (e.entryId === undefined) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].entryId' });
       validateIdString(e.entryId, 'scheduledFacts[].entryId');
-      if (e.operation !== undefined && (typeof e.operation !== 'string' || e.operation.length === 0)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].operation' });
-      if (e.triggerKey !== undefined && TRIGGER_ENUM.indexOf(e.triggerKey) < 0) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].triggerKey', value: String(e.triggerKey) });
-      if (e.maxActions !== undefined) {
-        var ma = toFiniteNumber(e.maxActions, 'scheduledFacts[].maxActions');
-        if (ma < 0 || Math.floor(ma) !== ma) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', value: ma });
+      var shape = null;
+      if (e.operation !== undefined) {
+        if (e.operation === 'WINDOW_ADJUST') shape = 'WINDOW_ADJUST';
+        else if (e.operation === 'SETTLEMENT_RATIO_ADJUST') shape = 'SETTLEMENT_RATIO_ADJUST';
+        else throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].operation', value: String(e.operation) });
+      } else if (e.grantType !== undefined) {
+        if (e.grantType === 'FOLLOW_UP') shape = 'FOLLOW_UP';
+        else if (e.grantType === 'SUMMON_WINDOW') shape = 'SUMMON_WINDOW';
+        else throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].grantType', value: String(e.grantType) });
+      } else {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[]', detail: 'operation or grantType required' });
       }
-      if (e.payload !== undefined && !Array.isArray(e.payload)) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].payload' });
+      rejectUnknownKeys(e, SCHED_SHAPES[shape], 'scheduledFacts[]');
+      if (shape === 'WINDOW_ADJUST') {
+        if (typeof e['调整字段'] !== 'string' || e['调整字段'].length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].调整字段' });
+        if (typeof e['调整方式'] !== 'string' || e['调整方式'].length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].调整方式' });
+        var wKeys = ['调整回合', '调整tick', '调整次数'];
+        for (var wf = 0; wf < wKeys.length; wf += 1) {
+          if (e[wKeys[wf]] !== undefined) {
+            var wv = toFiniteNumber(e[wKeys[wf]], 'scheduledFacts[].' + wKeys[wf]);
+            if (wv < 0 || Math.floor(wv) !== wv) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].' + wKeys[wf], value: wv });
+          }
+        }
+        if (e['结算倍率'] !== undefined) toFiniteNumber(e['结算倍率'], 'scheduledFacts[].结算倍率');
+      } else if (shape === 'SETTLEMENT_RATIO_ADJUST') {
+        if (e['结算倍率'] === undefined) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].结算倍率' });
+        toFiniteNumber(e['结算倍率'], 'scheduledFacts[].结算倍率');
+      } else if (shape === 'FOLLOW_UP') {
+        if (TRIGGER_ENUM.indexOf(e.triggerKey) < 0) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].triggerKey', value: String(e.triggerKey) });
+        if (!Array.isArray(e.payloadDirectFacts)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts' });
+        for (var pi = 0; pi < e.payloadDirectFacts.length; pi += 1) {
+          var prow = e.payloadDirectFacts[pi];
+          if (!prow || typeof prow !== 'object') throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts[' + pi + ']' });
+          rejectUnknownKeys(prow, ROW_KEYS, 'scheduledFacts[].payloadDirectFacts[]');
+          if (prow.schemaVersion !== 'DirectFactRowV1') throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].payloadDirectFacts[].schemaVersion' });
+          if (typeof prow.factType !== 'string' || FACT_TYPE_ENUM.indexOf(prow.factType) < 0) throw rejection('UNKNOWN_FEATURE_CODE', { field: 'scheduledFacts[].payloadDirectFacts[].factType' });
+          if (typeof prow.key !== 'string') throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts[].key' });
+          if (typeof prow.sourceActionId !== 'string' || prow.sourceActionId.length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts[].sourceActionId' });
+          if (typeof prow.sourceActorId !== 'string' || prow.sourceActorId.length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts[].sourceActorId' });
+          if (typeof prow.sourceEffectId !== 'string' || prow.sourceEffectId.length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts[].sourceEffectId' });
+          if (typeof prow.unit !== 'string' || UNIT_ENUM.indexOf(prow.unit) < 0) throw rejection('UNKNOWN_UNIT_FAMILY', { field: 'scheduledFacts[].payloadDirectFacts[].unit' });
+          toFiniteNumber(prow.amount, 'scheduledFacts[].payloadDirectFacts[].amount');
+          var pdur = toFiniteNumber(prow.durationTurns, 'scheduledFacts[].payloadDirectFacts[].durationTurns');
+          if (pdur < 0 || Math.floor(pdur) !== pdur) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].payloadDirectFacts[].durationTurns' });
+          if (!Array.isArray(prow.targetIds) || prow.targetIds.length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts[].targetIds' });
+          for (var tj = 0; tj < prow.targetIds.length; tj += 1) {
+            var t = prow.targetIds[tj];
+            if (typeof t !== 'string' || t.length === 0 || SYMBOLIC_TARGETS.indexOf(t) >= 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts[].targetIds', value: String(t) });
+          }
+        }
+        if (e.maxActions !== undefined) {
+          var ma = toFiniteNumber(e.maxActions, 'scheduledFacts[].maxActions');
+          if (ma < 0 || Math.floor(ma) !== ma) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', value: ma });
+          if (e.triggerKey !== '主动触发') throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', triggerKey: String(e.triggerKey) });
+        }
+      } else if (shape === 'SUMMON_WINDOW') {
+        if (typeof e['召唤单位类型'] !== 'string' || e['召唤单位类型'].length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].召唤单位类型' });
+        if (typeof e['召唤物名称'] !== 'string' || e['召唤物名称'].length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].召唤物名称' });
+        if (e['行动模式'] !== undefined && (typeof e['行动模式'] !== 'string' || e['行动模式'].length === 0)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].行动模式' });
+        if (e.durationTurns !== undefined) {
+          var dt = toFiniteNumber(e.durationTurns, 'scheduledFacts[].durationTurns');
+          if (dt < 0 || Math.floor(dt) !== dt) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].durationTurns', value: dt });
+        }
+      }
+    }
+  }
+
+  // ---- audit-only bridges: mechanicMetadataEntries / projectionFamilies (rev4) ----
+  function validateMechanicMetadataEntries(input) {
+    var mm = input.mechanicMetadataEntries;
+    if (mm === undefined) return;
+    if (!Array.isArray(mm)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'mechanicMetadataEntries' });
+    for (var e = 0; e < mm.length; e += 1) {
+      var entry = mm[e];
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'mechanicMetadataEntries[' + e + ']' });
+      rejectUnknownKeys(entry, MECHANIC_METADATA_CLOSED_KEYS, 'mechanicMetadataEntries[]');
+      if (entry.sourceEffectId === undefined) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'mechanicMetadataEntries[].sourceEffectId' });
+      validateIdString(entry.sourceEffectId, 'mechanicMetadataEntries[].sourceEffectId');
+      if (entry['生效方式'] !== undefined && ['独立生效', '跟随主原型'].indexOf(entry['生效方式']) < 0) throw rejection('INVALID_OPTION_VALUE', { field: 'mechanicMetadataEntries.生效方式', value: String(entry['生效方式']) });
+      if (entry['对应等级'] !== undefined) toFiniteNumber(entry['对应等级'], 'mechanicMetadataEntries.对应等级');
+      if (entry['限定元素'] !== undefined) {
+      if (!Array.isArray(entry['限定元素'])) throw rejection('INVALID_OPTION_VALUE', { field: 'mechanicMetadataEntries.限定元素' });
+      var seen = {};
+      for (var i = 0; i < entry['限定元素'].length; i += 1) {
+        var el = entry['限定元素'][i];
+        if (typeof el !== 'string' || el.length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'mechanicMetadata.限定元素[' + i + ']' });
+        if (hasOwn(seen, el)) throw rejection('INVALID_OPTION_VALUE', { field: 'mechanicMetadata.限定元素', duplicate: el });
+        seen[el] = true;
+      }
+      }
+      // 触发限制 is audit-only metadata: revision 4 inputContract closes it as a
+      // non-empty string OR a closed {周期: string, 次数: integer >= 1} object
+      // (unknown keys / zero count / missing 周期 rejected); its value never enters
+      // features (PDA keeps PENDING_TRIGGER_PROJECTION semantics upstream).
+      if (entry['触发限制'] !== undefined) {
+        var tl = entry['触发限制'];
+        if (typeof tl === 'string') {
+          if (tl.length === 0) throw rejection('INVALID_OPTION_VALUE', { field: 'mechanicMetadataEntries.触发限制' });
+        } else if (tl && typeof tl === 'object' && !Array.isArray(tl)) {
+          rejectUnknownKeys(tl, ['周期', '次数'], 'mechanicMetadataEntries.触发限制');
+          if (typeof tl['周期'] !== 'string' || tl['周期'].length === 0) {
+            throw rejection('INVALID_OPTION_VALUE', { field: 'mechanicMetadataEntries.触发限制.周期' });
+          }
+          if (typeof tl['次数'] !== 'number' || !isFinite(tl['次数']) || Math.floor(tl['次数']) !== tl['次数'] || tl['次数'] < 1) {
+            throw rejection('INVALID_OPTION_VALUE', { field: 'mechanicMetadataEntries.触发限制.次数' });
+          }
+        } else {
+          throw rejection('INVALID_OPTION_VALUE', { field: 'mechanicMetadataEntries.触发限制' });
+        }
+      }
+      var textKeys = ['结算标签', '抗性类型', '驱动属性', '影响方向', '触发方式', '结算', '吸收资源', '吸收来源'];
+      for (var t = 0; t < textKeys.length; t += 1) {
+        if (entry[textKeys[t]] !== undefined && (typeof entry[textKeys[t]] !== 'string' || entry[textKeys[t]].length === 0)) {
+          throw rejection('MISSING_SOURCE_REFERENCE', { field: 'mechanicMetadataEntries.' + textKeys[t] });
+        }
+      }
+      // Per-prototype subset violation: when projectionFamilies identifies the same
+      // sourceEffectId, metadata keys must stay inside that prototype's closed subset.
+      var pf = input.projectionFamilies;
+      if (Array.isArray(pf)) {
+        for (var p = 0; p < pf.length; p += 1) {
+          if (pf[p].sourceEffectId !== entry.sourceEffectId) continue;
+          var subset = MECHANIC_METADATA_SUBSETS[pf[p].prototype];
+          if (!subset) continue;
+          for (var k in entry) {
+            if (!hasOwn(entry, k)) continue;
+            if (k === 'sourceEffectId') continue;
+            if (subset.indexOf(k) < 0) throw rejection('INVALID_OPTION_VALUE', { field: 'mechanicMetadataEntries', prototype: pf[p].prototype, extraKey: k });
+          }
+        }
+      }
+    }
+  }
+  function validateProjectionFamilies(input) {
+    var pf = input.projectionFamilies;
+    if (pf === undefined) return;
+    if (!Array.isArray(pf)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'projectionFamilies' });
+    var seen = {};
+    for (var i = 0; i < pf.length; i += 1) {
+      var e = pf[i];
+      if (!e || typeof e !== 'object') throw rejection('MISSING_SOURCE_REFERENCE', { field: 'projectionFamilies[' + i + ']' });
+      rejectUnknownKeys(e, ['sourceEffectId', 'prototype'], 'projectionFamilies[]');
+      validateIdString(e.sourceEffectId, 'projectionFamilies[].sourceEffectId');
+      if (typeof e.prototype !== 'string' || e.prototype.length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'projectionFamilies[].prototype' });
+      if (REGISTRY_PROTOTYPE_NAMES.indexOf(e.prototype) < 0) throw rejection('INVALID_OPTION_VALUE', { field: 'projectionFamilies[].prototype', value: e.prototype });
+      var uid = e.sourceEffectId + '\u0000' + e.prototype;
+      if (hasOwn(seen, uid)) throw rejection('INVALID_OPTION_VALUE', { field: 'projectionFamilies', duplicate: uid });
+      seen[uid] = true;
     }
   }
 
@@ -477,6 +683,8 @@
     validateLegalityModifiers(input);
     validateOpportunityModifiers(input);
     validateScheduledFacts(input);
+    validateMechanicMetadataEntries(input);
+    validateProjectionFamilies(input);
     validatePublicCost(input);
     validatePublicProbability(input);
     validatePublicDeclarations(input);
@@ -509,29 +717,58 @@
         return null;
       }
     } else if (factType === 'RESOURCE_OPTION_CHANGED') {
-      expectUnit(unit, 'ABS');
-      out.push(kKnown('RESOURCE_DELTA', 'ABS', amount));
+      if (unit === 'ABS') {
+        out.push(kKnown('RESOURCE_DELTA', 'ABS', amount));
+      } else if (unit === 'PERCENT') {
+        out.push(kKnown('RESOURCE_DELTA_PERCENT', 'PERCENT', amount));
+      } else {
+        throw rejection('UNIT_FAMILY_MISMATCH', { factType: factType, key: key, unit: unit });
+      }
     } else if (factType === 'SHIELD_DELTA') {
       expectUnit(unit, 'ABS');
       out.push(kKnown('SHIELD_DELTA', 'ABS', amount));
     } else if (factType === 'STATE_DELTA') {
-      if (ATTRIBUTE_KEYS.indexOf(key) >= 0) {
+      if (key === 'settlement.primary') {
         expectUnit(unit, 'PERCENT');
-        out.push(kKnown('ATTRIBUTE_DELTA', 'PERCENT', amount));
-      } else if (JUDGMENT_KEYS.indexOf(key) >= 0) {
-        expectUnit(unit, 'PERCENT');
-        out.push(kKnown('JUDGMENT_DELTA', 'PERCENT', amount));
-      } else if (unit === 'BOOL') {
-        out.push(kKnown('STATE_PRESENCE', 'BOOL', amount > 0 ? 1 : 0));
-      } else if (unit === 'COUNT') {
-        out.push(kUnknown('STATE_PRESENCE', 'BOOL', 'STATE_FORM_UNMAPPED'));
+        out.push(kKnown('SETTLEMENT_MODIFIER_PERCENT', 'PERCENT', amount));
       } else {
-        throw rejection('UNIT_FAMILY_MISMATCH', { factType: factType, key: key, unit: unit });
+        if (ATTRIBUTE_KEYS.indexOf(key) >= 0) {
+          expectUnit(unit, 'PERCENT');
+          out.push(kKnown('ATTRIBUTE_DELTA', 'PERCENT', amount));
+        } else if (JUDGMENT_KEYS.indexOf(key) >= 0) {
+          expectUnit(unit, 'PERCENT');
+          out.push(kKnown('JUDGMENT_DELTA', 'PERCENT', amount));
+        } else if (key === 'state.primary' || key === 'state.secondary') {
+          expectUnit(unit, 'PERCENT');
+          out.push(kKnown('STATE_DELTA_PERCENT', 'PERCENT', amount));
+        } else if (unit === 'PERCENT') {
+          out.push(kUnknown('STATE_DELTA_PERCENT', 'PERCENT', 'MISSING_SOURCE_FACT'));
+        } else if (unit === 'BOOL') {
+          out.push(kKnown('STATE_PRESENCE', 'BOOL', amount > 0 ? 1 : 0));
+        } else if (unit === 'COUNT') {
+          out.push(kUnknown('STATE_PRESENCE', 'BOOL', 'STATE_FORM_UNMAPPED'));
+        } else {
+          throw rejection('UNIT_FAMILY_MISMATCH', { factType: factType, key: key, unit: unit });
+        }
+        if (dur === 0) {
+          out.push({ featureCode: 'STATE_DURATION', unitFamily: 'TURNS', status: 'NOT_APPLICABLE', reasonCode: 'NO_DURATION' });
+        } else {
+          out.push(kKnown('STATE_DURATION', 'TURNS', dur));
+        }
       }
-      if (dur === 0) {
-        out.push({ featureCode: 'STATE_DURATION', unitFamily: 'TURNS', status: 'NOT_APPLICABLE', reasonCode: 'NO_DURATION' });
+    } else if (factType === 'SUMMON_WINDOW') {
+      if (key === 'summon.count') {
+        if (unit === 'COUNT') out.push(kKnown('SUMMON_COUNT', 'COUNT', amount));
+        else out.push(kUnknown('SUMMON_COUNT', 'COUNT', 'MISSING_SOURCE_FACT'));
+      } else if (key === 'summon.strength') {
+        if (unit === 'RATIO') out.push(kKnown('SUMMON_STRENGTH', 'RATIO', amount));
+        else out.push(kUnknown('SUMMON_STRENGTH', 'RATIO', 'MISSING_SOURCE_FACT'));
+      } else if (key === 'summon.duration') {
+        if (unit === 'TURNS') out.push(kKnown('SUMMON_DURATION', 'TURNS', amount));
+        else out.push(kUnknown('SUMMON_DURATION', 'TURNS', 'MISSING_SOURCE_FACT'));
       } else {
-        out.push(kKnown('STATE_DURATION', 'TURNS', dur));
+        // summon.inheritRatio and unknown summon keys map to no feature code
+        return [];
       }
     } else {
       return null;
@@ -539,11 +776,42 @@
     return out;
   }
 
+  function summonFamilyBlock(recs, seid, block) {
+    var codes = [
+      ['SUMMON_COUNT', 'COUNT', 'summon.count'],
+      ['SUMMON_STRENGTH', 'RATIO', 'summon.strength'],
+      ['SUMMON_DURATION', 'TURNS', 'summon.duration']
+    ];
+    for (var c = 0; c < codes.length; c += 1) {
+      var code = codes[c][0];
+      var family = codes[c][1];
+      var key = codes[c][2];
+      var info = block[key];
+      if (info && info.unit === family) {
+        recs.push(rec(code, family, 'KNOWN', 'OK', info.amount, [info.factId], [], 1, seid, key));
+      } else if (info) {
+        recs.push(rec(code, family, 'UNKNOWN', 'MISSING_SOURCE_FACT', undefined, [info.factId], [], 1, seid, key));
+      } else {
+        recs.push(rec(code, family, 'UNKNOWN', 'MISSING_SOURCE_FACT', undefined, [], [], 1, seid, ''));
+      }
+    }
+  }
+
   function computeRows(input) {
     var recs = [];
     var outside = 0;
+    var outsideFactIds = [];
     var seen = {};
     var rows = input.directFacts || [];
+    var summonByEffect = {};
+    var summonActivated = {};
+    var pfSummon = {};
+    var pf = input.projectionFamilies;
+    if (Array.isArray(pf)) {
+      for (var f = 0; f < pf.length; f += 1) {
+        if (pf[f].prototype === '召唤生成') pfSummon[pf[f].sourceEffectId] = true;
+      }
+    }
     for (var i = 0; i < rows.length; i += 1) {
       var row = rows[i];
       var factType = row.factType;
@@ -553,14 +821,35 @@
       var rowFactId = row.sourceEffectId + '::' + key;
       if (hasOwn(seen, rowFactId)) throw rejection('DUPLICATE_FEATURE', { rowFactId: rowFactId });
       seen[rowFactId] = true;
+      if (factType === 'SUMMON_WINDOW') {
+        if (key === 'summon.count' || key === 'summon.strength' || key === 'summon.duration') {
+          if (!summonByEffect[row.sourceEffectId]) summonByEffect[row.sourceEffectId] = {};
+          summonByEffect[row.sourceEffectId][key] = { unit: row.unit, amount: amount, factId: rowFactId };
+          summonActivated[row.sourceEffectId] = true;
+        } else {
+          // summon.inheritRatio and unknown summon keys map to no feature code
+          outside += 1;
+          outsideFactIds.push(rowFactId);
+        }
+        continue;
+      }
       var projs = projectRow(factType, key, row.unit, amount, dur);
-      if (projs === null) { outside += 1; continue; }
+      if (projs === null || projs.length === 0) { outside += 1; outsideFactIds.push(rowFactId); continue; }
       for (var p = 0; p < projs.length; p += 1) {
         var pr = projs[p];
         recs.push(rec(pr.featureCode, pr.unitFamily, pr.status, pr.reasonCode, pr.value, [rowFactId], [], 1, row.sourceEffectId, key));
       }
     }
-    return { recs: recs, outsideCount: outside };
+    var summonEffects = Object.keys(summonActivated);
+    for (var se = 0; se < summonEffects.length; se += 1) {
+      summonFamilyBlock(recs, summonEffects[se], summonByEffect[summonEffects[se]]);
+    }
+    for (var pfk in pfSummon) {
+      if (hasOwn(pfSummon, pfk) && !hasOwn(summonActivated, pfk)) {
+        summonFamilyBlock(recs, pfk, {});
+      }
+    }
+    return { recs: recs, outsideCount: outside, outsideFactIds: outsideFactIds };
   }
 
   function targetSideRec(input) {
@@ -725,7 +1014,7 @@
     return out;
   }
 
-  function candidateFeatures(input, outsideCount) {
+  function candidateFeatures(input, outsideCount, outsideFactIds) {
     var out = [];
     out.push(known('RELATION_TARGET_COUNT', 'COUNT', input.candidate.targetSet.length));
     out.push(targetSideRec(input));
@@ -740,7 +1029,7 @@
     out.push(excl ? knownStr('HARD_EXCLUSION_REASON', 'ENUM', excl) : na('HARD_EXCLUSION_REASON', 'ENUM', 'NOT_EXCLUDED'));
     out.push(unk('SETTLEMENT_DAMAGE', 'ABS', 'FINAL_SETTLEMENT_UNKNOWN'));
     out.push(unk('ROLL_REALIZATION', 'BOOL', 'FUTURE_REALIZATION_UNKNOWN'));
-    out.push(rec('OUTSIDE_BATCH1_ROW_COUNT', 'COUNT', 'KNOWN', 'OK', outsideCount, [], scheduledEntryIds(input), 0, '', ''));
+    out.push(rec('OUTSIDE_BATCH1_ROW_COUNT', 'COUNT', 'KNOWN', 'OK', outsideCount, outsideFactIds || [], scheduledEntryIds(input), 0, '', ''));
     for (var j = 0; j < out.length; j += 1) {
       out[j]._scopeRank = 0;
       out[j]._seid = '';
@@ -825,7 +1114,7 @@
     var work = F0 + (Array.isArray(input.directFacts) ? input.directFacts.length : 0) + modCount + schedCount + atomicCount;
     if (work > CAPS.MAX_WORK_UNITS_PER_CALL) throw rejection('CAP_EXCEEDED', { work: work });
     var rowsOut = computeRows(input);
-    var candRecs = candidateFeatures(input, rowsOut.outsideCount + schedCount);
+    var candRecs = candidateFeatures(input, rowsOut.outsideCount + schedCount, rowsOut.outsideFactIds);
     var doc = assemble(input.candidate.candidateId, candRecs.concat(rowsOut.recs));
     var frozen = freezeDeep(doc);
     if (m) {
@@ -877,8 +1166,21 @@
       unitFamily: copyOf(UNIT_FAMILY),
       boolFeatureCodes: BOOL_CODES.slice(),
       batch1PrototypeFamilies: copyOf(BATCH1_FAMILY),
+      batch2PrototypeFamilies: copyOf(BATCH2_FAMILY),
+      fixedCatalogPositionsV1: {
+        'RELATION_TARGET_COUNT': 0, 'RELATION_TARGET_SIDE': 1, 'SUCCESS_PROBABILITY': 2,
+        'PUBLIC_HP_RATIO': 3, 'PUBLIC_RESOURCE_RATIO': 4, 'COST_AFFORDABILITY': 5,
+        'REVEAL_STRENGTH': 6, 'OVERKILL_AVAILABILITY': 7, 'HARD_EXCLUSION': 8,
+        'HARD_EXCLUSION_REASON': 9, 'SETTLEMENT_DAMAGE': 10, 'ROLL_REALIZATION': 11,
+        'OUTSIDE_BATCH1_ROW_COUNT': 12, 'DAMAGE_POWER': 13, 'DAMAGE_SEGMENTS': 14,
+        'DAMAGE_PENETRATION': 15, 'DAMAGE_TYPE': 16, 'RESOURCE_DELTA': 17,
+        'SHIELD_DELTA': 18, 'ATTRIBUTE_DELTA': 19, 'JUDGMENT_DELTA': 20,
+        'STATE_PRESENCE': 21, 'STATE_DURATION': 22, 'STATE_DELTA_PERCENT': 23,
+        'SETTLEMENT_MODIFIER_PERCENT': 24, 'SUMMON_COUNT': 25, 'SUMMON_STRENGTH': 26,
+        'SUMMON_DURATION': 27, 'RESOURCE_DELTA_PERCENT': 28
+      },
       caps: copyOf(CAPS),
-      workFormula: '13 (F0) + directFactsRows + modifierEntries + scheduledFactsEntries + atomicFactsCount',
+      workFormula: '13 (F0) + directFactsRows + modifierEntries + scheduledFactsEntries + atomicFactsCount (each row yields at most its own features; no cross-row/branch product); any breach throws CAP_EXCEEDED whole-compile',
       statusReasonCodes: { KNOWN: ['OK'], UNKNOWN: UNKNOWN_REASONS.slice(), NOT_APPLICABLE: NA_REASONS.slice() },
       hardExclusionCodes: HARD_EXCLUSION_CODES.slice(),
       rejectionReasonCodes: [
@@ -908,7 +1210,13 @@
         targetSide: 'sides-map equality only (SELF by id equality, ALLY by side equality, ENEMY otherwise, MIXED on distinct classes, SIDE_UNOBSERVED when any declared target side missing, NO_TARGET_AXIS on empty axis); no prefix guessing/default ALLY/neutral folding',
         successProbability: 'declared publicProbability first; else atomicFacts: any UNKNOWN applicability => UNKNOWN(CONDITIONAL_PROBABILITY_UNRESOLVED); all NOT_APPLICABLE => NOT_APPLICABLE(NO_HIT_AXIS); APPLICABLE equal hitProbability => KNOWN, differing => UNKNOWN(CONDITIONAL_PROBABILITY_UNRESOLVED); no atomic facts => UNKNOWN(MISSING_SOURCE_FACT); actionKind never special-cased',
         outsideRowCounting: 'rows outside the batch-1 families plus every scheduledFacts entry count into OUTSIDE_BATCH1_ROW_COUNT; scheduled entryIds recorded in sourceEventIds; nothing silently dropped',
-        statePresence: 'STATE_DELTA non-attribute/judgment key: unit=BOOL => KNOWN 1 (amount>0) or 0 (amount<=0); unit=COUNT => UNKNOWN(STATE_FORM_UNMAPPED), never coerced to BOOL; other units => UNIT_FAMILY_MISMATCH; BOOL KNOWN domain strictly {0,1}'
+        statePresence: 'STATE_DELTA non-attribute/judgment key: unit=BOOL => KNOWN 1 (amount>0) or 0 (amount<=0); unit=COUNT => UNKNOWN(STATE_FORM_UNMAPPED), never coerced to BOOL; other units => UNIT_FAMILY_MISMATCH; BOOL KNOWN domain strictly {0,1}',
+        batch2StateDeltaPercent: 'STATE_DELTA state.primary/state.secondary PERCENT => STATE_DELTA_PERCENT (signed declared magnitude, never multiplied by duration); other PERCENT keys => UNKNOWN(MISSING_SOURCE_FACT); other units/keys keep revision-2 STATE_PRESENCE/UNIT_FAMILY_MISMATCH rules',
+        resourceDeltaPercent: 'RESOURCE_OPTION_CHANGED key=resource name unit=PERCENT => RESOURCE_DELTA_PERCENT (raw signed percent, never multiplied by duration); ABS rows keep RESOURCE_DELTA; unsigned percent rows stay PENDING_DIRECTION_PROJECTION upstream and never reach the compiler',
+        batch2Settlement: 'STATE_DELTA settlement.primary PERCENT => SETTLEMENT_MODIFIER_PERCENT only (no STATE_DURATION, no HP/RESOURCE double rows from the same effect); SETTLEMENT_DAMAGE stays ALWAYS_UNKNOWN',
+        batch2Summon: 'SUMMON_WINDOW rows route summon.count/strength/duration (wrong unit => UNKNOWN(MISSING_SOURCE_FACT) with row fact id); summon.inheritRatio and unknown summon keys map to no feature code and count OUTSIDE_BATCH1_ROW_COUNT with row fact ids; the summon family block (all three codes) is emitted once per activating sourceEffectId (routed row or projectionFamilies 召唤生成); scheduled SUMMON_WINDOW entries never become KNOWN SUMMON_DURATION',
+        auditBridges: 'mechanicMetadataEntries (closed per-effect array with per-prototype key subsets per PDA rev5Spec) / projectionFamilies root inputs are the only admitted bridge (bridgeV1); strictly validated closed shapes; values never enter feature values; prototype names are routing/audit identity only (PROTOTYPE_NAME_WEIGHTING_REJECTED)',
+        formalCaps: 'MAX_FEATURES_PER_CANDIDATE=256, MAX_FACT_ROWS_PER_CANDIDATE=128, MAX_MODIFIER_ENTRIES_PER_CANDIDATE=64, MAX_WORK_UNITS_PER_CALL=200000; any breach throws CAP_EXCEEDED as a whole-compile rejection, never candidate pruning, never wall clock'
       }
     };
   }
@@ -934,12 +1242,14 @@
         legalityFlags: { required: false, shape: 'string[] every member in hardExclusionCodes' },
         legalityModifiers: { required: false, shape: 'judgmentRates/taunt/tauntRemoved/stateMigration/stateSwap/mechanismRemoval metadata; hardExclusions/legalityFlags code arrays restricted to hardExclusionCodes', closed: true },
         opportunityModifiers: { required: false, shape: 'resourceLocks/opportunityConstraints/interferenceRates/dependencyTokens metadata', closed: true },
-        scheduledFacts: { required: false, shape: [{ entryId: 'string nonempty <=512 no C0/DEL (required)', operation: 'string', triggerKey: 'enum 主动触发|随下次行动触发', maxActions: 'integer >=0', payload: 'array' }], closed: true },
+        scheduledFacts: { required: false, shape: 'closed four-shape: WINDOW_ADJUST {entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/结算倍率}, SETTLEMENT_RATIO_ADJUST {entryId/operation/结算倍率}, FOLLOW_UP {entryId/grantType/triggerKey/payloadDirectFacts, maxActions only for 主动触发}, SUMMON_WINDOW {entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns}; entryId required; private aliases key/字段/方式 rejected', closed: true },
+        mechanicMetadataEntries: { required: false, shape: 'closed entries array, one entry per effect instance: {sourceEffectId (required id) + prototype-allowed Chinese keys} per PDA rev5Spec perPrototypeSubsets (生效方式/结算标签/抗性类型/驱动属性/影响方向/对应等级/触发方式/触发限制/结算/限定元素/吸收资源/吸收来源); audit-only, values never enter features', closed: true },
+        projectionFamilies: { required: false, shape: '[{ sourceEffectId: id string, prototype: closed registry prototype enum }] unique; audit-only routing identity, never weighted', closed: true },
         publicCost: { required: false, shape: [{ resource: 'enum 魂力|精神力|体力|生命', amount: 'number finite positive' }], closed: true },
         publicProbability: { required: false, shape: '{ hitProbability: number finite, source?: string } or { resolved: false, unresolvedCondition?: string }', closed: true },
         publicDeclarations: { required: false, shape: { revealStrength: 'number finite', declaredOverkill: 'number finite' }, closed: true }
       },
-      forbiddenKeys: ['forbiddenFacts', 'branchCombination', 'preMultiplied', 'route', 'worldClone', 'resultWorld', 'hidden', 'wallClock', 'skillRoleName', 'teacher', 'kernelRouteValue'],
+      forbiddenKeys: ['forbiddenFacts', 'branchCombination', 'preMultiplied', 'route', 'worldClone', 'resultWorld', 'hidden', 'wallClock', 'skillRoleName', 'teacher', 'kernelRouteValue', 'prototypeNameWeighting'],
       note: 'pure compiler; closed input contract; never invokes Decision/Preview/Provider; never traverses future routes'
     };
   }
@@ -1038,12 +1348,14 @@
       fca.detail = { sourceScanned: true, forbiddenTokens: FORBIDDEN_CALL_TOKENS.slice(), hit: hit };
     }
     checks.push(fca);
-    add('featureCatalogClosed', FEATURE_CODES.length === 23 && CANDIDATE_CODES.length === 13 && ROW_CODES.length === 10, { total: FEATURE_CODES.length, candidate: CANDIDATE_CODES.length, row: ROW_CODES.length });
+    add('featureCatalogClosed', FEATURE_CODES.length === 29 && CANDIDATE_CODES.length === 13 && ROW_CODES.length === 16, { total: FEATURE_CODES.length, candidate: CANDIDATE_CODES.length, row: ROW_CODES.length });
+    var fixedOk = FEATURE_CODES.indexOf('STATE_DELTA_PERCENT') === 23 && FEATURE_CODES.indexOf('SETTLEMENT_MODIFIER_PERCENT') === 24 && FEATURE_CODES.indexOf('SUMMON_COUNT') === 25 && FEATURE_CODES.indexOf('SUMMON_STRENGTH') === 26 && FEATURE_CODES.indexOf('SUMMON_DURATION') === 27 && FEATURE_CODES.indexOf('RESOURCE_DELTA_PERCENT') === 28;
+    add('fixedCatalogPositions23to28', fixedOk, { positions: FEATURE_CODES.slice(23) });
     var familyOk = true;
     for (var fc = 0; fc < FEATURE_CODES.length; fc += 1) if (UNIT_FAMILIES.indexOf(UNIT_FAMILY[FEATURE_CODES[fc]]) < 0) familyOk = false;
-    add('unitFamilyClosed', familyOk, { families: UNIT_FAMILIES.slice() });
-    add('rejectionMappingComplete', Object.keys(FORBIDDEN_SOURCE_CODE).length === 7 && HARD_EXCLUSION_CODES.length === 10, { sources: Object.keys(FORBIDDEN_SOURCE_CODE).slice() });
-    add('batchFamilyMapping', Object.keys(BATCH1_FAMILY).length === 6 && BATCH1_FAMILY['状态施加/状态移除'].length === 2, { families: Object.keys(BATCH1_FAMILY).length });
+    add('unitFamilyClosed', familyOk && UNIT_FAMILY['SUMMON_STRENGTH'] === 'RATIO' && UNIT_FAMILIES.indexOf('RATIO') >= 0, { families: UNIT_FAMILIES.slice() });
+    add('rejectionMappingComplete', Object.keys(FORBIDDEN_SOURCE_CODE).length === 8 && HARD_EXCLUSION_CODES.length === 10 && FORBIDDEN_SOURCE_CODE['PROTOTYPE_NAME_WEIGHTING'] === 'PROTOTYPE_NAME_WEIGHTING_REJECTED', { sources: Object.keys(FORBIDDEN_SOURCE_CODE).slice() });
+    add('batchFamilyMapping', Object.keys(BATCH1_FAMILY).length === 6 && BATCH1_FAMILY['状态施加/状态移除'].length === 2 && Object.keys(BATCH2_FAMILY).length === 3 && BATCH2_FAMILY['状态施加'].length === 3 && BATCH2_FAMILY['召唤生成'].length === 3 && BATCH2_FAMILY['结算修正'].length === 1, { families: Object.keys(BATCH1_FAMILY).length, batch2: Object.keys(BATCH2_FAMILY).length });
     add('capsFixed', CAPS.MAX_FEATURES_PER_CANDIDATE === 256 && CAPS.MAX_FACT_ROWS_PER_CANDIDATE === 128 && CAPS.MAX_MODIFIER_ENTRIES_PER_CANDIDATE === 64 && CAPS.MAX_WORK_UNITS_PER_CALL === 200000 && F0 === 13, { caps: CAPS });
 
     var base = compileCore(baseInput(), freshMetrics());
@@ -1107,7 +1419,7 @@
     var schIn = {
       candidate: scCandidate('cand-sch', 'actor-1', 'side-blue', ['enemy-1']),
       publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }),
-      scheduledFacts: [{ entryId: 'sf:x', operation: 'WINDOW_ADJUST', triggerKey: '随下次行动触发', payload: [] }]
+      scheduledFacts: [{ entryId: 'sf:x', operation: 'WINDOW_ADJUST', 调整字段: '持续回合', 调整方式: '延长' }]
     };
     var schDoc = compileCore(schIn, freshMetrics());
     var schFeat = findFeature(schDoc, 'OUTSIDE_BATCH1_ROW_COUNT');
@@ -1151,6 +1463,106 @@
     var mismatchRow = { schemaVersion: 'DirectFactRowV1', factType: 'HP_DELTA', key: '', sourceActionId: 'action:sc', sourceActorId: 'other-1', sourceEffectId: 'effect:m:0', targetIds: ['enemy-1'], amount: 60, unit: 'POWER', durationTurns: 0 };
     rej.rowActorMismatch = expectReject({ candidate: plain.candidate, publicSnapshot: plain.publicSnapshot, directFacts: [mismatchRow] }, 'MISSING_SOURCE_REFERENCE');
     add('rejectionProbes', rej.route && rej.hidden && rej.branch && rej.preMultiplied && rej.nonFinite && rej.duplicate && rej.unitMismatch && rej.missingActorStatus && rej.unknownLegalityCode && rej.costInvalidResource && rej.scheduledMissingEntryId && rej.unknownTopKey && rej.controlCharId && rej.sidesInconsistent && rej.rowActorMismatch, rej);
+
+    // ---- revision 3 batch-2 probes (raw codes 23-27, audit bridges, summon family) ----
+    function b2In(rows, extra) {
+      var input = {
+        candidate: scCandidate('cand-b2', 'actor-1', 'side-blue', ['actor-1']),
+        publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100) }, { 'actor-1': 'side-blue' }),
+        directFacts: rows || []
+      };
+      if (extra) for (var k in extra) if (hasOwn(extra, k)) input[k] = extra[k];
+      return input;
+    }
+    var b2 = {};
+    var f1 = compileCore(b2In([scRow('STATE_DELTA', 'state.primary', -5, 'PERCENT', 2, 'effect:b2s:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2s:0', prototype: '状态施加' }], mechanicMetadataEntries: [{ sourceEffectId: 'effect:b2s:0', 生效方式: '独立生效' }] }), freshMetrics());
+    var f1d = findFeature(f1, 'STATE_DELTA_PERCENT');
+    var f1dur = findFeature(f1, 'STATE_DURATION');
+    var f1o = findFeature(f1, 'OUTSIDE_BATCH1_ROW_COUNT');
+    b2.statePrimary = f1d !== null && f1d.status === 'KNOWN' && f1d.value === -5 && f1d.sourceFactIds.length === 1 && f1dur !== null && f1dur.status === 'KNOWN' && f1dur.value === 2 && f1o !== null && f1o.value === 0;
+    var f2 = compileCore(b2In([scRow('STATE_DELTA', 'state.secondary', 10, 'PERCENT', 1, 'effect:b2s:1')], { projectionFamilies: [{ sourceEffectId: 'effect:b2s:1', prototype: '状态施加' }] }), freshMetrics());
+    var f2d = findFeature(f2, 'STATE_DELTA_PERCENT');
+    b2.stateSecondary = f2d !== null && f2d.status === 'KNOWN' && f2d.value === 10;
+    var f3 = compileCore(b2In([scRow('STATE_DELTA', 'settlement.primary', 10, 'PERCENT', 1, 'effect:b2m:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2m:0', prototype: '结算修正' }], mechanicMetadataEntries: [{ sourceEffectId: 'effect:b2m:0', 结算: '造成伤害' }] }), freshMetrics());
+    var f3s = findFeature(f3, 'SETTLEMENT_MODIFIER_PERCENT');
+    var f3dur = findFeature(f3, 'STATE_DURATION');
+    b2.settlement = f3s !== null && f3s.status === 'KNOWN' && f3s.value === 10 && f3dur === null && findFeature(f3, 'OUTSIDE_BATCH1_ROW_COUNT').value === 0;
+    var f4 = compileCore(b2In([scRow('SUMMON_WINDOW', 'summon.count', 2, 'COUNT', 0, 'effect:b2f:0'), scRow('SUMMON_WINDOW', 'summon.strength', 0.8, 'RATIO', 0, 'effect:b2f:0'), scRow('SUMMON_WINDOW', 'summon.duration', 3, 'TURNS', 0, 'effect:b2f:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2f:0', prototype: '召唤生成' }], scheduledFacts: [{ entryId: 'sf:1', grantType: 'SUMMON_WINDOW', 召唤单位类型: '魂兽', 召唤物名称: '审计召唤物', 行动模式: '协同攻击', durationTurns: 3 }] }), freshMetrics());
+    var f4c = findFeature(f4, 'SUMMON_COUNT');
+    var f4s = findFeature(f4, 'SUMMON_STRENGTH');
+    var f4d = findFeature(f4, 'SUMMON_DURATION');
+    var f4o = findFeature(f4, 'OUTSIDE_BATCH1_ROW_COUNT');
+    b2.summonFull = f4c !== null && f4c.status === 'KNOWN' && f4c.value === 2 && f4s !== null && f4s.status === 'KNOWN' && f4s.value === 0.8 && f4d !== null && f4d.status === 'KNOWN' && f4d.value === 3 && f4o !== null && f4o.value === 1 && f4o.sourceEventIds.length === 1 && f4o.sourceEventIds[0] === 'sf:1';
+    var f5 = compileCore(b2In([scRow('SUMMON_WINDOW', 'summon.count', 1, 'COUNT', 0, 'effect:b2m2:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2m2:0', prototype: '召唤生成' }] }), freshMetrics());
+    var f5s = findFeature(f5, 'SUMMON_STRENGTH');
+    var f5d = findFeature(f5, 'SUMMON_DURATION');
+    b2.summonMissingRowsUnknown = f5s !== null && f5s.status === 'UNKNOWN' && f5s.reasonCode === 'MISSING_SOURCE_FACT' && f5s.sourceFactIds.length === 0 && !hasOwn(f5s, 'value') && f5d !== null && f5d.status === 'UNKNOWN' && f5d.reasonCode === 'MISSING_SOURCE_FACT';
+    var f6 = compileCore(b2In([scRow('SUMMON_WINDOW', 'summon.count', 1, 'ABS', 0, 'effect:b2w:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2w:0', prototype: '召唤生成' }] }), freshMetrics());
+    var f6c = findFeature(f6, 'SUMMON_COUNT');
+    b2.summonWrongUnitUnknown = f6c !== null && f6c.status === 'UNKNOWN' && f6c.reasonCode === 'MISSING_SOURCE_FACT' && f6c.sourceFactIds.length === 1 && f6c.sourceFactIds[0] === 'effect:b2w:0::summon.count' && findFeature(f6, 'OUTSIDE_BATCH1_ROW_COUNT').value === 0;
+    var f7 = compileCore(b2In([scRow('SUMMON_WINDOW', 'summon.inheritRatio', 0.15, 'RATIO', 0, 'effect:b2i:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2i:0', prototype: '召唤生成' }] }), freshMetrics());
+    var f7o = findFeature(f7, 'OUTSIDE_BATCH1_ROW_COUNT');
+    var f7s = findFeature(f7, 'SUMMON_STRENGTH');
+    b2.inheritRatioOutside = f7s !== null && f7s.status === 'UNKNOWN' && f7s.reasonCode === 'MISSING_SOURCE_FACT' && f7s.sourceFactIds.length === 0 && f7o !== null && f7o.value === 1 && f7o.sourceFactIds.length === 1 && f7o.sourceFactIds[0] === 'effect:b2i:0::summon.inheritRatio';
+    var f8 = compileCore(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:b2sf:0', prototype: '召唤生成' }], scheduledFacts: [{ entryId: 'sf:8', grantType: 'SUMMON_WINDOW', 召唤单位类型: '魂兽', 召唤物名称: '审计召唤物', 行动模式: '协同攻击', durationTurns: 3 }] }), freshMetrics());
+    var f8c = findFeature(f8, 'SUMMON_COUNT');
+    var f8d = findFeature(f8, 'SUMMON_DURATION');
+    var f8o = findFeature(f8, 'OUTSIDE_BATCH1_ROW_COUNT');
+    b2.scheduledWindowNeverKnownDuration = f8c !== null && f8c.status === 'UNKNOWN' && f8c.reasonCode === 'MISSING_SOURCE_FACT' && f8d !== null && f8d.status === 'UNKNOWN' && f8d.reasonCode === 'MISSING_SOURCE_FACT' && f8o !== null && f8o.value === 1 && f8o.sourceEventIds.length === 1 && f8o.sourceEventIds[0] === 'sf:8';
+    var f9 = compileCore(b2In([scRow('STATE_DELTA', '中毒', -5, 'PERCENT', 1, 'effect:b2wk:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2wk:0', prototype: '状态施加' }] }), freshMetrics());
+    var f9d = findFeature(f9, 'STATE_DELTA_PERCENT');
+    var f9dur = findFeature(f9, 'STATE_DURATION');
+    b2.stateWrongKeyPercentUnknown = f9d !== null && f9d.status === 'UNKNOWN' && f9d.reasonCode === 'MISSING_SOURCE_FACT' && f9d.sourceFactIds.length === 1 && f9dur !== null && f9dur.status === 'KNOWN' && f9dur.value === 1 && findFeature(f9, 'OUTSIDE_BATCH1_ROW_COUNT').value === 0;
+    var metaBad = expectReject(b2In([], { mechanicMetadataEntries: [{ sourceEffectId: 'effect:x:0', 未知键: 1 }] }), 'INVALID_OPTION_VALUE');
+    var metaBadPf = expectReject(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:x:0', prototype: '状态施加' }], mechanicMetadataEntries: [{ sourceEffectId: 'effect:x:0', 结算: '造成伤害' }] }), 'INVALID_OPTION_VALUE');
+    var metaBadProto = expectReject(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:x:0', prototype: '不存在的原型' }] }), 'INVALID_OPTION_VALUE');
+    b2.metadataStrictValidation = metaBad && metaBadPf && metaBadProto;
+    var f10 = compileCore(b2In([scRow('STATE_DELTA', 'settlement.primary', 10, 'PERCENT', 1, 'effect:b2nv:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2nv:0', prototype: '结算修正' }], mechanicMetadataEntries: [{ sourceEffectId: 'effect:b2nv:0', 生效方式: '跟随主原型', 结算: '造成伤害' }] }), freshMetrics());
+    var f10s = findFeature(f10, 'SETTLEMENT_MODIFIER_PERCENT');
+    b2.metadataNeverValue = f10s !== null && f10s.status === 'KNOWN' && f10s.value === 10 && findFeature(f10, 'OUTSIDE_BATCH1_ROW_COUNT').value === 0;
+    b2.prototypeNameWeightingRejected = expectReject(b2In([], { prototypeNameWeighting: { 状态施加: 2 } }), 'PROTOTYPE_NAME_WEIGHTING_REJECTED');
+    var f11 = compileCore(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:b2tl:0', prototype: '召唤生成' }], mechanicMetadataEntries: [{ sourceEffectId: 'effect:b2tl:0', 生效方式: '独立生效', 触发限制: '仅触发一次' }] }), freshMetrics());
+    var f11c = findFeature(f11, 'SUMMON_COUNT');
+    b2.triggerLimitMetadataAccepted = f11c !== null && f11c.status === 'UNKNOWN' && f11c.reasonCode === 'MISSING_SOURCE_FACT' && findFeature(f11, 'OUTSIDE_BATCH1_ROW_COUNT').value === 0;
+    var f12 = compileCore(b2In([scRow('STATE_DELTA', 'settlement.primary', 10, 'PERCENT', 1, 'effect:b2sc:0')], { projectionFamilies: [{ sourceEffectId: 'effect:b2sc:0', prototype: '结算修正' }], mechanicMetadataEntries: [{ sourceEffectId: 'effect:b2sc:0' }] }), freshMetrics());
+    b2.settlementMetadataAbsent = findFeature(f12, 'SETTLEMENT_MODIFIER_PERCENT') !== null && findFeature(f12, 'SETTLEMENT_MODIFIER_PERCENT').status === 'KNOWN' && findFeature(f12, 'SETTLEMENT_MODIFIER_PERCENT').value === 10;
+    // Revision 4: 触发限制 is closed as a non-empty string OR a closed object
+    // {周期: string, 次数: integer >= 1}; unknown keys / zero count / missing 周期
+    // are rejected; values stay audit-only (never enter feature values).
+    var f13 = compileCore(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:b2tl2:0', prototype: '召唤生成' }], mechanicMetadataEntries: [{ sourceEffectId: 'effect:b2tl2:0', 触发限制: { 周期: '每战', 次数: 1 } }] }), freshMetrics());
+    b2.triggerLimitObjectAccepted = findFeature(f13, 'SUMMON_COUNT') !== null && findFeature(f13, 'SUMMON_COUNT').status === 'UNKNOWN';
+    b2.triggerLimitObjectUnknownKey = expectReject(b2In([], { mechanicMetadataEntries: [{ sourceEffectId: 'effect:x:0', 触发限制: { 周期: '每战', 次数: 1, 未知键: 1 } }] }), 'INVALID_OPTION_VALUE');
+    b2.triggerLimitZeroCount = expectReject(b2In([], { mechanicMetadataEntries: [{ sourceEffectId: 'effect:x:0', 触发限制: { 周期: '每战', 次数: 0 } }] }), 'INVALID_OPTION_VALUE');
+    b2.triggerLimitMissingPeriod = expectReject(b2In([], { mechanicMetadataEntries: [{ sourceEffectId: 'effect:x:0', 触发限制: { 次数: 1 } }] }), 'INVALID_OPTION_VALUE');
+    var f14 = compileCore(b2In([scRow('RESOURCE_OPTION_CHANGED', '魂力', 25, 'PERCENT', 0, 'effect:b2r:0')]), freshMetrics());
+    var f14p = findFeature(f14, 'RESOURCE_DELTA_PERCENT');
+    b2.resourcePercentRecover = f14p !== null && f14p.status === 'KNOWN' && f14p.value === 25 && f14p.unitFamily === 'PERCENT' && findFeature(f14, 'RESOURCE_DELTA') === null;
+    var f15 = compileCore(b2In([scRow('RESOURCE_OPTION_CHANGED', '体力', -10, 'PERCENT', 0, 'effect:b2r:1')]), freshMetrics());
+    var f15p = findFeature(f15, 'RESOURCE_DELTA_PERCENT');
+    b2.resourcePercentDrain = f15p !== null && f15p.status === 'KNOWN' && f15p.value === -10;
+    var f16 = compileCore(b2In([scRow('RESOURCE_OPTION_CHANGED', '魂力', 10, 'ABS', 0, 'effect:b2r:2')]), freshMetrics());
+    var f16d = findFeature(f16, 'RESOURCE_DELTA');
+    b2.resourceAbsKeepsDelta = f16d !== null && f16d.status === 'KNOWN' && f16d.value === 10 && findFeature(f16, 'RESOURCE_DELTA_PERCENT') === null;
+    var capIn = {
+      candidate: scCandidate('cand-cap', 'actor-1', 'side-blue', ['enemy-1']),
+      publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }),
+      directFacts: [scRow('HP_DELTA', 'damage.power', 60, 'POWER', 0, 'effect:b2cap:0')],
+      legalityModifiers: { hardExclusions: [] },
+      atomicFacts: [{ eventId: 'evt:cap', hitCheckApplicability: 'APPLICABLE', evidence: { hitProbability: 0.8 } }],
+      publicCost: [{ resource: '魂力', amount: 20 }],
+      publicProbability: { hitProbability: 0.8 }
+    };
+    for (var ci = 0; ci < 64; ci += 1) capIn.legalityModifiers.hardExclusions.push('ACTOR_DISABLED');
+    var capDoc = compileCore(capIn, freshMetrics());
+    b2.capWithinBounds = capDoc.featureCount === 14;
+    var capBad = {
+      candidate: scCandidate('cand-capb', 'actor-1', 'side-blue', ['enemy-1']),
+      publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }),
+      legalityModifiers: { hardExclusions: [] }
+    };
+    for (var cj = 0; cj < 65; cj += 1) capBad.legalityModifiers.hardExclusions.push('ACTOR_DISABLED');
+    b2.capModifiersExceeded = expectReject(capBad, 'CAP_EXCEEDED');
+    add('batch2FeatureProbes', b2.statePrimary && b2.stateSecondary && b2.settlement && b2.summonFull && b2.summonMissingRowsUnknown && b2.summonWrongUnitUnknown && b2.inheritRatioOutside && b2.scheduledWindowNeverKnownDuration && b2.stateWrongKeyPercentUnknown && b2.metadataStrictValidation && b2.metadataNeverValue && b2.prototypeNameWeightingRejected && b2.triggerLimitMetadataAccepted && b2.settlementMetadataAbsent && b2.triggerLimitObjectAccepted && b2.triggerLimitObjectUnknownKey && b2.triggerLimitZeroCount && b2.triggerLimitMissingPeriod && b2.resourcePercentRecover && b2.resourcePercentDrain && b2.resourceAbsKeepsDelta && b2.capWithinBounds && b2.capModifiersExceeded, b2);
 
     var passed = true;
     for (var c = 0; c < checks.length; c += 1) if (checks[c].counted && !checks[c].passed) passed = false;

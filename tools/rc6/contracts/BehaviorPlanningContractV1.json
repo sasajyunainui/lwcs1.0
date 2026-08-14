@@ -37,6 +37,19 @@
     "r9v2-shadow": "historical_experimental_evidence_only",
     "r9v2": "target_provider_not_registered_before_M7"
   },
+  "directProfileBoundary": {
+    "profileId": "DIRECT_ATOMIC_90_PERCENT",
+    "authorization": "USER_APPROVED",
+    "role": "NON_FORMAL_TARGET_SCOPE_LABEL_ONLY",
+    "qualityMeaning": "SCOPE_LABEL_NOT_CONTRACT_PERCENTAGE",
+    "capability": "NO_FUTURE_ROUTE_DERIVATION",
+    "mechanicalCorrectness": "EXACT_WITHIN_DECLARED_DIRECT_ATOMIC_SCOPE",
+    "formalProvider": "r8",
+    "formalProviderUnchanged": true,
+    "targetProvider": "r9v2",
+    "targetProviderRegistered": false,
+    "semanticDetailsSource": "R9v2DirectBehaviorProfileV1"
+  },
   "modes": {
     "auto": "provider_handles_unlocked_opportunities_only",
     "manual": "legal_player_locked_action_executes_and_ai_cannot_override",

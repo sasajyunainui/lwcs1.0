@@ -1,0 +1,1756 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "BehaviorCandidateFeatureBridgeV1.schema.json",
+  "title": "BehaviorCandidateFeatureBridgeV1",
+  "description": "Closed schema for the BehaviorCandidateFeatureBridgeV1 contract document (revision 1) and its frozen runtime bridge output ($defs.bridgeOutput). Transcription only: no selection/TopK, no future route, no result world, no hidden facts, no teacher in production closure. bifInput mirrors the production subset of the BehaviorImmediateFeatureV1 inputContract revision 4.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "contractId",
+    "revision",
+    "status",
+    "encoding",
+    "title",
+    "authority",
+    "inputSurface",
+    "paymentModeDerivationV1",
+    "perCandidateOutput",
+    "totals",
+    "untranscribedPolicy",
+    "publicDeclarationsPolicy",
+    "zeroProjectionPolicy",
+    "hardExclusionMapping",
+    "noOfficialEffectPolicy",
+    "durationPolicy",
+    "complexity",
+    "references",
+    "sourceHashes",
+    "validation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "BehaviorCandidateFeatureBridgeV1"
+    },
+    "contractId": {
+      "const": "BehaviorCandidateFeatureBridgeV1"
+    },
+    "revision": {
+      "const": 1
+    },
+    "status": {
+      "const": "FROZEN"
+    },
+    "encoding": {
+      "const": "UTF-8"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority": {
+      "type": "object",
+      "required": [
+        "milestone",
+        "governedBy",
+        "claim",
+        "claimDetail",
+        "futureRouteDerivation",
+        "worldClone",
+        "resultWorldEnumeration",
+        "hiddenInformationRead",
+        "selectionOrTopK",
+        "teacherInProductionClosure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "milestone": {
+          "const": "M2"
+        },
+        "governedBy": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "claim": {
+          "const": "CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED"
+        },
+        "claimDetail": {
+          "type": "string",
+          "minLength": 1
+        },
+        "futureRouteDerivation": {
+          "const": false
+        },
+        "worldClone": {
+          "const": false
+        },
+        "resultWorldEnumeration": {
+          "const": false
+        },
+        "hiddenInformationRead": {
+          "const": false
+        },
+        "selectionOrTopK": {
+          "const": false
+        },
+        "teacherInProductionClosure": {
+          "const": false
+        }
+      }
+    },
+    "inputSurface": {
+      "type": "object",
+      "required": [
+        "sources",
+        "forbidden",
+        "timing"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forbidden": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ROUTE",
+              "WORLD_CLONE",
+              "RESULT_WORLD",
+              "HIDDEN",
+              "WALL_CLOCK",
+              "RANDOM_SOURCE",
+              "R8",
+              "TEACHER",
+              "SKILL_ROLE_NAME"
+            ]
+          }
+        },
+        "timing": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "paymentModeDerivationV1": {
+      "type": "object",
+      "required": [
+        "rule",
+        "priority",
+        "note"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "candidate.paymentMode",
+              "declaration.paymentMode",
+              "candidate.resourcePotentialOnly===true => EXTERNAL_TIMELINE",
+              "FORMAL_DEFAULT"
+            ]
+          }
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "perCandidateOutput": {
+      "type": "object",
+      "required": [
+        "candidateId",
+        "bifInput",
+        "rejections",
+        "pdaPending",
+        "pdaDeferred",
+        "untranscribedPreviewFacts",
+        "noOfficialEffectMaterialization"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bifInput": {
+          "type": "object",
+          "required": [
+            "shape",
+            "lifting",
+            "testOnlyKeysNeverEmitted"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "shape": {
+              "type": "string",
+              "minLength": 1
+            },
+            "lifting": {
+              "type": "object",
+              "required": [
+                "mechanicMetadataEntries",
+                "projectionFamilies",
+                "scheduledFacts",
+                "opportunityModifiers"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "mechanicMetadataEntries": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "projectionFamilies": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "scheduledFacts": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "opportunityModifiers": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "testOnlyKeysNeverEmitted": {
+              "type": "array",
+              "minItems": 3,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "forbiddenFacts",
+                  "branchCombination",
+                  "preMultiplied"
+                ]
+              }
+            }
+          }
+        },
+        "rejections": {
+          "type": "object",
+          "required": [
+            "shape",
+            "items"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "shape": {
+              "type": "string",
+              "minLength": 1
+            },
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "uniqueItems": true,
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "code",
+                      "sourceEffectId"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "const": "REJECTED_INPUT_WITH_REASON"
+                      },
+                      "code": {
+                        "type": "array",
+                        "minItems": 8,
+                        "maxItems": 8,
+                        "uniqueItems": true,
+                        "items": {
+                          "enum": [
+                            "UNKNOWN_PROTOTYPE_REJECTED",
+                            "FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE",
+                            "MISSING_SOURCE_CONTEXT",
+                            "MISSING_TARGET_CONTEXT",
+                            "INVALID_OPTION_VALUE",
+                            "MISSING_REQUIRED_FIELD",
+                            "UNKNOWN_RULE",
+                            "AMBIGUOUS_TAUNT_TARGET"
+                          ]
+                        }
+                      },
+                      "sourceEffectId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "sourceEffectId"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "const": "UNSUPPORTED_CARRIER_REQUIRES_UNPACK"
+                      },
+                      "sourceEffectId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "pdaPending": {
+          "type": "object",
+          "required": [
+            "shape",
+            "kind"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "shape": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "PENDING_CONDITIONAL_PROJECTION",
+                  "PENDING_TRIGGER_PROJECTION",
+                  "PENDING_DURATION_PROJECTION",
+                  "PENDING_DIRECTION_PROJECTION",
+                  "PENDING_DIRECT_PROJECTION"
+                ]
+              }
+            }
+          }
+        },
+        "pdaDeferred": {
+          "type": "object",
+          "required": [
+            "shape",
+            "kinds"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "shape": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "DEFER_MECHANICS_PROJECTION",
+                  "DEFER_LEGALITY_INJECTION",
+                  "DEFER_REPORT_PROJECTION"
+                ]
+              }
+            }
+          }
+        },
+        "untranscribedPreviewFacts": {
+          "type": "object",
+          "required": [
+            "shape",
+            "reasons"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "shape": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reasons": {
+              "type": "array",
+              "minItems": 4,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "non-finite expectedDelta",
+                  "non-finite hitProbability",
+                  "missing outcomeKind",
+                  "missing eventId",
+                  "unmatched contribution source"
+                ]
+              }
+            }
+          }
+        },
+        "noOfficialEffectMaterialization": {
+          "type": "object",
+          "required": [
+            "shape",
+            "kinds",
+            "note"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "shape": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kinds": {
+              "type": "array",
+              "minItems": 4,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "BASIC_ATTACK",
+                  "DEFEND",
+                  "EVADE",
+                  "PASS"
+                ]
+              }
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "required": [
+        "shape",
+        "compiledCount"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shape": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compiledCount": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "untranscribedPolicy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "publicDeclarationsPolicy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "zeroProjectionPolicy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hardExclusionMapping": {
+      "type": "object",
+      "required": [
+        "rule",
+        "allowed",
+        "forbidden"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowed": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ACTOR_DISABLED",
+              "ACTOR_TERMINAL",
+              "TARGET_EMPTY",
+              "INVALID_OPTION_VALUE",
+              "MISSING_REQUIRED_FIELD",
+              "UNKNOWN_STATE",
+              "UNKNOWN_RULE",
+              "AMBIGUOUS_TAUNT_TARGET",
+              "ILLEGAL_TARGET",
+              "RESOURCE_INSUFFICIENT"
+            ]
+          }
+        },
+        "forbidden": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "noOfficialEffectPolicy": {
+      "type": "object",
+      "required": [
+        "kinds",
+        "action",
+        "never"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "BASIC_ATTACK",
+              "DEFEND",
+              "EVADE",
+              "PASS"
+            ]
+          }
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "never": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "durationPolicy": {
+      "type": "object",
+      "required": [
+        "transformationOnly",
+        "windowAdjust"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "transformationOnly": {
+          "type": "string",
+          "minLength": 1
+        },
+        "windowAdjust": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "complexity": {
+      "type": "object",
+      "required": [
+        "expression",
+        "note",
+        "caps"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "expression": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caps": {
+          "type": "object",
+          "required": [
+            "MAX_FEATURES_PER_CANDIDATE",
+            "MAX_FACT_ROWS_PER_CANDIDATE",
+            "MAX_MODIFIER_ENTRIES_PER_CANDIDATE",
+            "branchCombination"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "MAX_FEATURES_PER_CANDIDATE": {
+              "const": 256
+            },
+            "MAX_FACT_ROWS_PER_CANDIDATE": {
+              "const": 128
+            },
+            "MAX_MODIFIER_ENTRIES_PER_CANDIDATE": {
+              "const": 64
+            },
+            "MAX_WORK_UNITS_PER_CALL": {
+              "const": 200000
+            },
+            "branchCombination": {
+              "const": false
+            }
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "object",
+      "required": [
+        "featureContract",
+        "featureSchema",
+        "featureCases",
+        "adapterContract",
+        "adapterSchema",
+        "adapterCases",
+        "directFactRow",
+        "directFactSchema",
+        "policyContract",
+        "traceContract",
+        "bridgeSchema"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "featureContract": {
+          "const": "tools/rc6/contracts/BehaviorImmediateFeatureV1.json"
+        },
+        "featureSchema": {
+          "const": "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json"
+        },
+        "featureCases": {
+          "const": "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json"
+        },
+        "adapterContract": {
+          "const": "tools/rc6/contracts/PrototypeDirectAdapterV1.json"
+        },
+        "adapterSchema": {
+          "const": "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json"
+        },
+        "adapterCases": {
+          "const": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json"
+        },
+        "directFactRow": {
+          "const": "tools/rc6/contracts/DirectFactRowV1.json"
+        },
+        "directFactSchema": {
+          "const": "tools/rc6/contracts/DirectFactRowV1.schema.json"
+        },
+        "policyContract": {
+          "const": "tools/rc6/contracts/DistilledBehaviorPolicyV1.json"
+        },
+        "traceContract": {
+          "const": "tools/rc6/contracts/DecisionContributionTraceV1.json"
+        },
+        "bridgeSchema": {
+          "const": "tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json"
+        }
+      }
+    },
+    "sourceHashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^tools/rc6/(contracts|cases)/[A-Za-z0-9_./-]+\\.json$": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "jsonParse",
+        "utf8",
+        "mojibakeScan",
+        "selfConsistency"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "jsonParse": {
+          "const": "REQUIRED"
+        },
+        "utf8": {
+          "const": "REQUIRED"
+        },
+        "mojibakeScan": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "U+FFFD",
+              "CJK_MOJIBAKE_PREFIX",
+              "LATIN1_UTF8_SEQUENCE"
+            ]
+          }
+        },
+        "selfConsistency": {
+          "type": "array",
+          "minItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "idString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    },
+    "candidate": {
+      "type": "object",
+      "required": [
+        "candidateId",
+        "actorId",
+        "actorSide",
+        "actionKind",
+        "targetSet",
+        "paymentMode"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "candidateId": {
+          "$ref": "#/$defs/idString"
+        },
+        "actorId": {
+          "$ref": "#/$defs/idString"
+        },
+        "actorSide": {
+          "$ref": "#/$defs/idString"
+        },
+        "actionKind": {
+          "$ref": "#/$defs/idString"
+        },
+        "paymentMode": {
+          "$ref": "#/$defs/idString"
+        },
+        "targetSet": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/idString"
+          }
+        }
+      }
+    },
+    "publicSnapshot": {
+      "type": "object",
+      "required": [
+        "units",
+        "sides",
+        "actorStatus"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "units": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "hp": {
+                "type": "number"
+              },
+              "hp_max": {
+                "type": "number"
+              },
+              "sp": {
+                "type": "number"
+              },
+              "sp_max": {
+                "type": "number"
+              },
+              "men": {
+                "type": "number"
+              },
+              "men_max": {
+                "type": "number"
+              },
+              "vit": {
+                "type": "number"
+              },
+              "vit_max": {
+                "type": "number"
+              },
+              "def": {
+                "type": "number"
+              },
+              "agi": {
+                "type": "number"
+              },
+              "shield": {
+                "type": "number"
+              },
+              "状态效果": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "sides": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "actorStatus": {
+          "enum": [
+            "NORMAL",
+            "DISABLED",
+            "TERMINAL",
+            "UNKNOWN"
+          ]
+        }
+      }
+    },
+    "atomicFact": {
+      "type": "object",
+      "required": [
+        "eventId",
+        "hitCheckApplicability"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "$ref": "#/$defs/idString"
+        },
+        "sourceActionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcomeKind": {
+          "type": "string"
+        },
+        "expectedDelta": {
+          "type": "number"
+        },
+        "hitCheckApplicability": {
+          "enum": [
+            "APPLICABLE",
+            "NOT_APPLICABLE",
+            "UNKNOWN"
+          ]
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "hitProbability": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "directFactRow": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "factType",
+        "key",
+        "sourceActionId",
+        "sourceActorId",
+        "sourceEffectId",
+        "targetIds",
+        "amount",
+        "unit",
+        "durationTurns"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "const": "DirectFactRowV1"
+        },
+        "factType": {
+          "enum": [
+            "HP_DELTA",
+            "RESOURCE_OPTION_CHANGED",
+            "SHIELD_DELTA",
+            "STATE_DELTA",
+            "SCHEDULED_HP_DELTA",
+            "SUMMON_WINDOW",
+            "RESOURCE_TRANSFER",
+            "RULE_DEFENSE_COUNTER",
+            "POSITION_DELTA",
+            "COPY_EXECUTION",
+            "TIME_REWIND"
+          ]
+        },
+        "key": {
+          "type": "string"
+        },
+        "sourceActionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceActorId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceEffectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "amount": {
+          "type": "number"
+        },
+        "unit": {
+          "enum": [
+            "POWER",
+            "ABS",
+            "PERCENT",
+            "RATIO",
+            "COUNT",
+            "TURNS",
+            "DISTANCE",
+            "BOOL"
+          ]
+        },
+        "durationTurns": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "legalityModifiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "judgmentRates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "判定",
+              "数值"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "判定": {
+                "type": "string",
+                "minLength": 1
+              },
+              "数值": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "taunt": {
+          "type": "object"
+        },
+        "tauntRemoved": {
+          "type": "object"
+        },
+        "stateMigration": {
+          "type": "object"
+        },
+        "stateSwap": {
+          "type": "object"
+        },
+        "mechanismRemoval": {
+          "type": "array"
+        },
+        "hardExclusions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "ACTOR_DISABLED",
+              "ACTOR_TERMINAL",
+              "TARGET_EMPTY",
+              "INVALID_OPTION_VALUE",
+              "MISSING_REQUIRED_FIELD",
+              "UNKNOWN_STATE",
+              "UNKNOWN_RULE",
+              "AMBIGUOUS_TAUNT_TARGET",
+              "ILLEGAL_TARGET",
+              "RESOURCE_INSUFFICIENT"
+            ]
+          }
+        },
+        "legalityFlags": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "ACTOR_DISABLED",
+              "ACTOR_TERMINAL",
+              "TARGET_EMPTY",
+              "INVALID_OPTION_VALUE",
+              "MISSING_REQUIRED_FIELD",
+              "UNKNOWN_STATE",
+              "UNKNOWN_RULE",
+              "AMBIGUOUS_TAUNT_TARGET",
+              "ILLEGAL_TARGET",
+              "RESOURCE_INSUFFICIENT"
+            ]
+          }
+        }
+      }
+    },
+    "opportunityModifiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resourceLocks": {
+          "type": "array"
+        },
+        "opportunityConstraints": {
+          "type": "object"
+        },
+        "interferenceRates": {
+          "type": "array"
+        },
+        "dependencyTokens": {
+          "type": "array"
+        }
+      }
+    },
+    "scheduledFact": {
+      "oneOf": [
+        {
+          "title": "windowAdjust",
+          "type": "object",
+          "required": [
+            "entryId",
+            "operation",
+            "调整字段",
+            "调整方式"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "entryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            },
+            "operation": {
+              "const": "WINDOW_ADJUST"
+            },
+            "调整字段": {
+              "enum": [
+                "持续回合",
+                "有效期tick",
+                "触发次数",
+                "使用次数"
+              ]
+            },
+            "调整方式": {
+              "enum": [
+                "延长",
+                "压缩"
+              ]
+            },
+            "调整回合": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "调整tick": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "调整次数": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "结算倍率": {
+              "type": "number"
+            }
+          },
+          "description": "WINDOW_ADJUST scheduled fact; standard keys only: entryId/operation/调整字段/调整方式 plus, when present, 调整回合/调整tick/调整次数/结算倍率; private aliases key/字段/方式 are forbidden"
+        },
+        {
+          "title": "settlementRatioAdjust",
+          "type": "object",
+          "required": [
+            "entryId",
+            "operation",
+            "结算倍率"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "entryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            },
+            "operation": {
+              "const": "SETTLEMENT_RATIO_ADJUST"
+            },
+            "结算倍率": {
+              "type": "number"
+            }
+          },
+          "description": "SETTLEMENT_RATIO_ADJUST scheduled fact; standard keys: entryId/operation/结算倍率"
+        },
+        {
+          "title": "followUp",
+          "type": "object",
+          "required": [
+            "entryId",
+            "grantType",
+            "triggerKey",
+            "payloadDirectFacts"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "entryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            },
+            "grantType": {
+              "const": "FOLLOW_UP"
+            },
+            "triggerKey": {
+              "enum": [
+                "主动触发",
+                "随下次行动触发"
+              ]
+            },
+            "maxActions": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "payloadDirectFacts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/directFactRow"
+              }
+            }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "maxActions"
+              ],
+              "properties": {
+                "triggerKey": {
+                  "const": "主动触发"
+                }
+              }
+            },
+            {
+              "not": {
+                "required": [
+                  "maxActions"
+                ]
+              },
+              "properties": {
+                "triggerKey": {
+                  "const": "随下次行动触发"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "title": "summonWindow",
+          "type": "object",
+          "required": [
+            "entryId",
+            "grantType"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "entryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            },
+            "grantType": {
+              "const": "SUMMON_WINDOW"
+            },
+            "召唤单位类型": {
+              "type": "string",
+              "minLength": 1
+            },
+            "召唤物名称": {
+              "type": "string",
+              "minLength": 1
+            },
+            "行动模式": {
+              "type": "string",
+              "minLength": 1
+            },
+            "durationTurns": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "SUMMON_WINDOW scheduled fact; entryId is stable per effect instance: `${sourceEffectId}:schedule:${index}` where index is the 0-based position inside this effect instance's own scheduledFacts array"
+        }
+      ]
+    },
+    "mechanicMetadataEntry": {
+      "type": "object",
+      "required": [
+        "sourceEffectId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sourceEffectId": {
+          "$ref": "#/$defs/idString"
+        },
+        "生效方式": {
+          "enum": [
+            "独立生效",
+            "跟随主原型"
+          ]
+        },
+        "结算标签": {
+          "type": "string",
+          "minLength": 1
+        },
+        "抗性类型": {
+          "type": "string",
+          "minLength": 1
+        },
+        "驱动属性": {
+          "type": "string",
+          "minLength": 1
+        },
+        "影响方向": {
+          "type": "string",
+          "minLength": 1
+        },
+        "对应等级": {
+          "type": "number"
+        },
+        "触发方式": {
+          "type": "string",
+          "minLength": 1
+        },
+        "触发限制": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "required": [
+                "周期",
+                "次数"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "周期": {
+                  "type": "string"
+                },
+                "次数": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          ]
+        },
+        "结算": {
+          "type": "string",
+          "minLength": 1
+        },
+        "限定元素": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "吸收资源": {
+          "type": "string",
+          "minLength": 1
+        },
+        "吸收来源": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "projectionFamily": {
+      "type": "object",
+      "required": [
+        "sourceEffectId",
+        "prototype"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sourceEffectId": {
+          "$ref": "#/$defs/idString"
+        },
+        "prototype": {
+          "enum": [
+            "伤害结算",
+            "资源变化",
+            "资源转移",
+            "护盾变化",
+            "属性修正",
+            "判定修正",
+            "结算修正",
+            "炸环",
+            "状态施加",
+            "时窗修正",
+            "状态移除",
+            "规则防御",
+            "状态转移",
+            "状态交换",
+            "资源锁定",
+            "规则改写",
+            "机制抹消",
+            "机制授予",
+            "复制执行",
+            "时光回溯",
+            "位移执行",
+            "决策干扰",
+            "召唤生成",
+            "修炼增益",
+            "天赋提升",
+            "永久属性提升",
+            "战斗外复活"
+          ]
+        }
+      }
+    },
+    "publicCostItem": {
+      "type": "object",
+      "required": [
+        "resource",
+        "amount"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "resource": {
+          "enum": [
+            "魂力",
+            "精神力",
+            "体力",
+            "生命"
+          ]
+        },
+        "amount": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "publicProbability": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "hitProbability"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "hitProbability": {
+              "type": "number"
+            },
+            "source": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "resolved"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "resolved": {
+              "const": false
+            },
+            "unresolvedCondition": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "publicDeclarations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "revealStrength": {
+          "type": "number"
+        },
+        "declaredOverkill": {
+          "type": "number"
+        }
+      }
+    },
+    "bifInput": {
+      "type": "object",
+      "required": [
+        "candidate",
+        "publicSnapshot"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "candidate": {
+          "$ref": "#/$defs/candidate"
+        },
+        "publicSnapshot": {
+          "$ref": "#/$defs/publicSnapshot"
+        },
+        "atomicFacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/atomicFact"
+          }
+        },
+        "directFacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/directFactRow"
+          }
+        },
+        "legalityModifiers": {
+          "$ref": "#/$defs/legalityModifiers"
+        },
+        "opportunityModifiers": {
+          "$ref": "#/$defs/opportunityModifiers"
+        },
+        "scheduledFacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scheduledFact"
+          }
+        },
+        "mechanicMetadataEntries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mechanicMetadataEntry"
+          }
+        },
+        "projectionFamilies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/projectionFamily"
+          }
+        },
+        "publicCost": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/publicCostItem"
+          }
+        },
+        "publicProbability": {
+          "$ref": "#/$defs/publicProbability"
+        },
+        "publicDeclarations": {
+          "$ref": "#/$defs/publicDeclarations"
+        }
+      }
+    },
+    "rejectionRecord": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "code",
+            "sourceEffectId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "REJECTED_INPUT_WITH_REASON"
+            },
+            "code": {
+              "enum": [
+                "UNKNOWN_PROTOTYPE_REJECTED",
+                "FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE",
+                "MISSING_SOURCE_CONTEXT",
+                "MISSING_TARGET_CONTEXT"
+              ]
+            },
+            "sourceEffectId": {
+              "$ref": "#/$defs/idString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "sourceEffectId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "UNSUPPORTED_CARRIER_REQUIRES_UNPACK"
+            },
+            "sourceEffectId": {
+              "$ref": "#/$defs/idString"
+            }
+          }
+        }
+      ]
+    },
+    "pendingRecord": {
+      "type": "object",
+      "required": [
+        "kind",
+        "sourceEffectId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "PENDING_CONDITIONAL_PROJECTION",
+            "PENDING_TRIGGER_PROJECTION",
+            "PENDING_DURATION_PROJECTION",
+            "PENDING_DIRECTION_PROJECTION",
+            "PENDING_DIRECT_PROJECTION"
+          ]
+        },
+        "sourceEffectId": {
+          "$ref": "#/$defs/idString"
+        }
+      }
+    },
+    "deferredRecord": {
+      "type": "object",
+      "required": [
+        "kind",
+        "sourceEffectId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "DEFER_MECHANICS_PROJECTION",
+            "DEFER_LEGALITY_INJECTION",
+            "DEFER_REPORT_PROJECTION"
+          ]
+        },
+        "sourceEffectId": {
+          "$ref": "#/$defs/idString"
+        }
+      }
+    },
+    "fatalRecord": {
+      "type": "object",
+      "required": [
+        "kind",
+        "sourceEffectId",
+        "note"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "ZERO_SUPPORTED_PROJECTION"
+        },
+        "sourceEffectId": {
+          "$ref": "#/$defs/idString"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "noOfficialEffectRecord": {
+      "type": "object",
+      "required": [
+        "kind",
+        "note"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "BASIC_ATTACK",
+            "DEFEND",
+            "EVADE",
+            "PASS"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "untranscribedRecord": {
+      "type": "object",
+      "required": [
+        "count",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "perCandidate": {
+      "type": "object",
+      "required": [
+        "candidateId",
+        "bifInput",
+        "untranscribedPreviewFacts"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "candidateId": {
+          "$ref": "#/$defs/idString"
+        },
+        "bifInput": {
+          "$ref": "#/$defs/bifInput"
+        },
+        "rejections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rejectionRecord"
+          }
+        },
+        "pdaPending": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pendingRecord"
+          }
+        },
+        "pdaDeferred": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/deferredRecord"
+          }
+        },
+        "fatalViolations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fatalRecord"
+          }
+        },
+        "untranscribedPreviewFacts": {
+          "$ref": "#/$defs/untranscribedRecord"
+        },
+        "noOfficialEffectMaterialization": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/noOfficialEffectRecord"
+          }
+        }
+      }
+    },
+    "bridgeOutput": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "totals",
+        "perCandidate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "const": "BehaviorCandidateFeatureBridgeV1"
+        },
+        "totals": {
+          "type": "object",
+          "required": [
+            "candidateCount",
+            "pdaItems",
+            "compiledCount",
+            "rejectionSum",
+            "pendingSum",
+            "deferSum",
+            "fatalSum",
+            "untranscribedSum"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "candidateCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pdaItems": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "compiledCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rejectionSum": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pendingSum": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deferSum": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fatalSum": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "untranscribedSum": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "perCandidate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/perCandidate"
+          }
+        }
+      }
+    }
+  }
+}

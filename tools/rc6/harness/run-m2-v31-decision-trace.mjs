@@ -18,20 +18,26 @@ const P = {
   cases: ['cases/DecisionContributionTraceCasesV1.json', 'DecisionContributionTraceCasesV1'],
 };
 const PIN = {
-  contract: '175e3bfa2aadb60ea7d70097f470d4acef0123782e6e594bc3daee90cb688f0b',
-  schema: '7f7bf84c6c32ec3d61129130dee76d2fb304efc026c0167dc422b9805633ed4d',
-  cases: '7e55de9f19652ab76b6dac58b5cb5abeca0f7650fe405588cee760a4e156f9f2',
+  contract: 'efd196824263d85c7c17ebec4761b17ea70d04178429cb94f66b3d0f55ef9a99',
+  schema: '983671b824cb65f9197a92383d6ee94e583a9a3e642415d18b88571534db3a7e',
+  cases: '0c39a1ed81031c994be7d6640f36d0ee90356591bf1eb2e9c9f25bad0d6972e0',
 };
 const GOLD_IDS = ['gold-attack-finisher', 'gold-heal-sustain', 'gold-defense-shield', 'gold-control-taunt',
   'gold-resource-preserve', 'gold-information-probe', 'gold-summon-pending', 'gold-cost-too-high',
-  'gold-near-equivalent-random', 'gold-alternative-diff', 'gold-risk-gamble', 'gold-exclusion-forced'];
-const PROBE_IDS = ['fc-causal-chain-broken', 'fc-number-without-unit', 'fc-result-backward', 'fc-hidden-input', 'fc-conservation-failed'];
+  'gold-near-equivalent-random', 'gold-alternative-diff', 'gold-risk-gamble', 'gold-exclusion-forced', 'gold-state-magnitude', 'gold-resource-percent-recover'];
+const PROBE_IDS = ['fc-causal-chain-broken', 'fc-number-without-unit', 'fc-result-backward', 'fc-hidden-input', 'fc-conservation-failed',
+  'fc-source-missing', 'fc-forbidden-token', 'fc-unknown-as-zero', 'fc-unbound-sentence', 'fc-order-violation'];
 const PROBE_CODES = {
   'fc-causal-chain-broken': 'CAUSAL_CHAIN_BROKEN',
   'fc-number-without-unit': 'NUMBER_WITHOUT_UNIT',
   'fc-result-backward': 'RESULT_BACKWARD_RATIONALIZATION',
   'fc-hidden-input': 'HIDDEN_INPUT',
   'fc-conservation-failed': 'CONSERVATION_FAILED',
+  'fc-source-missing': 'SOURCE_MISSING',
+  'fc-forbidden-token': 'FORBIDDEN_TOKEN',
+  'fc-unknown-as-zero': 'UNKNOWN_AS_ZERO',
+  'fc-unbound-sentence': 'UNBOUND_SENTENCE',
+  'fc-order-violation': 'ORDER_VIOLATION',
 };
 const CONCEPTS = ['目标推进', '伤害压力', '生存', '控制', '防御', '资源', '信息', '代价', '风险', '机会'];
 const FT25 = ['weight', '权重', 'score', '分数', 'featureCode', 'HEPP', 'Pareto', '帕累托', 'candidateId', 'sourceEffectId',
@@ -151,6 +157,7 @@ function makeValidator(root, sub) {
     }
     if (node.enum !== undefined && !node.enum.some(x => eq(x, v))) return 'enum at ' + loc;
     if (node.const !== undefined && !eq(node.const, v)) return 'const at ' + loc;
+    if (node.not) { const e = check(v, node.not, loc, seen); if (!e) return 'not at ' + loc; }
     if (typeof v === 'string') {
       if (node.minLength !== undefined && v.length < node.minLength) return 'minLength at ' + loc;
       if (node.pattern && !new RegExp(node.pattern).test(v)) return 'pattern at ' + loc;
@@ -189,7 +196,7 @@ for (const [key, [p, tag]] of Object.entries(P)) {
 }
 
 // ---- block B: contract self-consistency ----
-ok('contract revision/frozen', contract.revision === 2 && contract.status === 'FROZEN' && contract.schemaVersion === 'DecisionContributionTraceV1');
+ok('contract revision/frozen', contract.revision === 6 && contract.status === 'FROZEN' && contract.schemaVersion === 'DecisionContributionTraceV1');
 ok('contract authority', contract.authority.claim === 'CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED'
   && contract.authority.decisionTimeOnly === true && contract.authority.realizedOutcomeIndependent === true
   && contract.authority.teacherAndRouteFree === true
@@ -225,7 +232,7 @@ ok('sourceHashes 6 on disk', (() => {
     return fs.existsSync(fp) && sha256(fs.readFileSync(fp)) === h;
   });
 })());
-ok('cases revision 3', cases.revision === 3 && cases.counts.goldCount === 12 && cases.counts.probeCount === 5 && cases.counts.total === 17);
+ok('cases revision 7', cases.revision === 7 && cases.counts.goldCount === 14 && cases.counts.probeCount === 10 && cases.counts.total === 24);
 ok('cases gold ids', JSON.stringify(cases.cases.map(c => c.caseId)) === JSON.stringify(GOLD_IDS));
 ok('cases gold kinds', cases.cases.every(c => c.kind === 'GOLD_PLAYER'));
 ok('cases probe ids', JSON.stringify((cases.probes || []).map(p => p.caseId)) === JSON.stringify(PROBE_IDS));
@@ -269,7 +276,8 @@ function extractNumbers(text) {
   let m;
   while ((m = NUM_RE.exec(text))) {
     const n = cnNum(m[1]);
-    if (n !== null) out.push({ num: m[2] === '半' ? n * 0.5 : n, unit: m[2] });
+    // "一次" is a generic measure word (一次爆发), not a provable count.
+    if (n !== null && !(m[2] === '次' && n === 1)) out.push({ num: m[2] === '半' ? n * 0.5 : n, unit: m[2] });
   }
   return out;
 }
@@ -297,7 +305,7 @@ function explainNum(num, word, pool) {
   if (word === '成' || word === '成半') {
     const v = word === '成半' ? num * 0.1 + 0.05 : num * 0.1;
     return pool.some(o => (o.unit === 'RATIO_0_1' || o.unit === 'PROBABILITY_0_1') && close(o.value, v))
-      || pool.some(o => o.unit === 'PERCENT' && close(o.value / 100, v));
+      || pool.some(o => o.unit === 'PERCENT' && close(Math.abs(o.value) / 100, v));
   }
   if (word === '点') return pool.some(o => (o.unit === 'ABS' || o.unit === 'COUNT') && close(Math.abs(o.value), num));
   if (word === '回合') return pool.some(o => o.unit === 'TURNS' && close(o.value, num));
@@ -334,16 +342,58 @@ function topByContribution(rows) {
 }
 function topByDelta(deltas) {
   const cmp = (a, b) => Math.abs(b.deltaContribution) - Math.abs(a.deltaContribution) || (a.featureCode < b.featureCode ? -1 : 1);
+  // B freezes an asymmetric masked-loss rule: topPositive is strictly delta > 0;
+  // topNegative additionally includes zero-delta rows whose selected side is
+  // UNKNOWN while the alternative is KNOWN (masked-loss rows, e.g.
+  // gold-resource-percent-recover DAMAGE_POWER delta 0); zero-delta rows with the
+  // selected side KNOWN never enter topPositive (e.g. gold-information-probe
+  // SUCCESS_PROBABILITY / OUTSIDE_BATCH1_ROW_COUNT).
+  const negSide = d => d.deltaContribution < 0 || (d.deltaContribution === 0 && d.zeroByMask === true && d.statusOfSelected === 'UNKNOWN' && d.statusOfAlternative === 'KNOWN');
+  const posSide = d => d.deltaContribution > 0;
   return {
-    pos: deltas.filter(d => d.deltaContribution > 0).sort(cmp).map(d => d.featureId),
-    neg: deltas.filter(d => d.deltaContribution < 0).sort(cmp).map(d => d.featureId),
+    pos: deltas.filter(posSide).sort(cmp).map(d => d.featureId),
+    neg: deltas.filter(negSide).sort(cmp).map(d => d.featureId),
   };
 }
 
-// ---- block D: 12 gold cases ----
+// ---- block D: 14 gold cases ----
 const MAPPING = contract.tacticalConceptV1.mapping;
 const SKELETON = contract.playerV1.skeleton;
 const OP_ENUM = ['rawValue', 'mean', 'scale', 'normalized', 'deltaContribution'];
+// Five-stage Chinese causal chain: every sentence kind must bind facts of its role.
+// SITUATION binds public situation/plan facts; SUPPORT binds substantive support and
+// never risk/uncertainty axes; DIFFERENTIATION must reference DELTA rows or name the
+// alternative; RISK_COST binds only public risk/resource/hit facts; CONCLUSION closes.
+const KIND_RULES = {
+  SITUATION: { allow: ['PUBLIC_HP_RATIO', 'PUBLIC_RESOURCE_RATIO', 'COST_AFFORDABILITY', 'STATE_DURATION', 'STATE_DELTA_PERCENT'], hard: true, label: '局势/计划' },
+  FACTS: { allow: null, hard: true, label: '公开事实' },
+  SUPPORT: { deny: ['SUCCESS_PROBABILITY', 'ROLL_REALIZATION', 'SETTLEMENT_DAMAGE'], hard: true, label: '实质支持' },
+  DIFFERENTIATION: { diff: true, hard: false, label: '差异比较' },
+  RISK_COST: { allow: ['SUCCESS_PROBABILITY', 'COST_AFFORDABILITY', 'RESOURCE_DELTA', 'PUBLIC_HP_RATIO', 'PUBLIC_RESOURCE_RATIO', 'ROLL_REALIZATION', 'SETTLEMENT_DAMAGE'], hard: false, label: '公开风险/资源/命中' },
+  CONCLUSION: { allow: null, hard: true, label: '结论' },
+};
+const DIFF_WORDS = ['另一手', '更', '比', '多', '少', '差', '没'];
+function chainIssuesFor(s, dec) {
+  const out = [];
+  const rule = KIND_RULES[s.kind];
+  if (!rule) { out.push(s.kind + ':unknown-kind'); return out; }
+  if (rule.diff) {
+    const hasDelta = s.traceRefs.some(r => r.startsWith('DELTA:'));
+    const hasWord = DIFF_WORDS.some(w => s.text.includes(w));
+    if (!hasDelta && !hasWord) out.push('DIFFERENTIATION without DELTA/另一手/比较词: ' + s.text);
+    return out;
+  }
+  for (const r of s.traceRefs) {
+    if (r.startsWith('DELTA:')) { out.push(r + ': DELTA only in DIFFERENTIATION'); continue; }
+    if (r.startsWith('HARD_EXCLUSION:')) { if (!rule.hard) out.push(r + ': HARD not allowed in ' + s.kind); continue; }
+    const row = dec.contributions.find(c => c.featureId === r);
+    if (!row) continue;
+    const code = row.featureCode;
+    if (rule.allow && !rule.allow.includes(code)) out.push(r + ':' + code + ': not in ' + s.kind + ' allow (' + rule.label + ')');
+    if (rule.deny && rule.deny.includes(code)) out.push(r + ':' + code + ': denied in ' + s.kind);
+  }
+  return out;
+}
 for (const cs of cases.cases) {
   const id = cs.caseId;
   const dec = cs.input.decomposition;
@@ -391,7 +441,8 @@ for (const cs of cases.cases) {
   const hc = new Set(hx.map(h => h.code));
   ok(id + ' traceRefs-bound', exp.player.sentences.every(s => s.traceRefs.every(r =>
     ids.has(r) || (r.startsWith('HARD_EXCLUSION:') && hc.has(r.slice(15))) || (r.startsWith('DELTA:') && dIds.has(r.slice(6))))));
-  const allText = exp.player.sentences.map(s => s.text).join('');
+  ok(id + ' sentences-bound', exp.player.sentences.every(s => Array.isArray(s.traceRefs) && s.traceRefs.length >= 1));
+  const allText = exp.player.sentences.map(s => s.text + (s.connective || '')).join('');
   const hits = FT25.filter(t => allText.includes(t));
   ok(id + ' forbiddenTokens', hits.length === 0, hits.join(','));
   const caseFT = exp.forbiddenTokens || [];
@@ -421,6 +472,13 @@ for (const cs of cases.cases) {
   }
   ok(id + ' skeleton-order', mono && kinds.length >= 1 && kinds.length <= 8, kinds.join('>'));
   ok(id + ' cjk-text', exp.player.sentences.every(s => /[\u4e00-\u9fff]/.test(s.text)));
+  const chainIssues = [];
+  for (const s of exp.player.sentences) chainIssues.push(...chainIssuesFor(s, dec));
+  if (dec.selection.reason === 'NO_ELIGIBLE_ALTERNATIVE'
+    && exp.player.sentences.some(s => s.kind === 'DIFFERENTIATION')) {
+    chainIssues.push('DIFFERENTIATION forged with NO_ELIGIBLE_ALTERNATIVE');
+  }
+  ok(id + ' five-stage-causal-chain', chainIssues.length === 0, chainIssues.join(' | '));
   const revIssues = [];
   for (const o of exp.reviewAssertions || []) {
     const row = dec.contributions.find(c => c.featureId === o.featureId);
@@ -440,7 +498,7 @@ for (const cs of cases.cases) {
   ok(id + ' expect-failClosed-null', exp.failClosed === null);
 }
 
-// ---- block E: 5 fragment probes ----
+// ---- block E: 10 fragment probes ----
 function probeTriggers(code, frag) {
   const sentences = frag.player ? frag.player.sentences : [];
   const texts = sentences.map(s => s.text);
@@ -463,6 +521,35 @@ function probeTriggers(code, frag) {
     const sum = (frag.contributions || []).filter(c => c.status === 'KNOWN' && c.missingMasked === false)
       .reduce((a, c) => a + c.contribution, 0);
     return Math.abs(frag.score - (frag.intercept + sum)) > 1e-12;
+  }
+  if (code === 'SOURCE_MISSING') {
+    return sentences.some(s => extractNumbers(s.text).length > 0
+      && !(frag.review && Array.isArray(frag.review.sources) && frag.review.sources.length > 0));
+  }
+  if (code === 'FORBIDDEN_TOKEN') {
+    return sentences.some(s => FT25.some(t => s.text.includes(t) || (s.connective || '').includes(t)));
+  }
+  if (code === 'UNKNOWN_AS_ZERO') {
+    return sentences.some(s => (/零/.test(s.text) || /(?:^|[^0-9])0(?:[^0-9]|$)/.test(s.text))
+      && s.traceRefs.some(r => {
+        const row = (frag.contributions || []).find(c => c.featureId === r);
+        return row && row.status !== 'KNOWN';
+      }));
+  }
+  if (code === 'UNBOUND_SENTENCE') {
+    return sentences.some(s => Array.isArray(s.traceRefs) && s.traceRefs.length === 0);
+  }
+  if (code === 'ORDER_VIOLATION') {
+    const kinds = sentences.map(s => s.kind);
+    const ci = kinds.indexOf('CONCLUSION');
+    if (ci !== -1 && ci !== kinds.length - 1) return true;
+    let last = -1;
+    for (const k of kinds.filter(k => k !== 'CONCLUSION')) {
+      const i = SKELETON.indexOf(k);
+      if (i < 0 || i <= last) return true;
+      last = i;
+    }
+    return false;
   }
   return false;
 }

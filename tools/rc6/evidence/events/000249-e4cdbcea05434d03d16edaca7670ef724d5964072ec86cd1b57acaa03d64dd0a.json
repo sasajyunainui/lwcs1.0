@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 249,
+  "previousEventHash": "400fab9685028128183fd5142dc4304d89358250f7455a1f38c36c9447273257",
+  "milestoneId": "M2",
+  "taskId": "M2-DIRECT-FEATURE-BRIDGE-CLOSURE",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "77e549c459f0397672433cdde429cf5115b3eaba4e6c8b5e6a21c9fec97c2b87",
+    "BattleDecision_Module.js": "32df47bc70378f1eee418f6b7309b7533dcdf25f1f2ebd8754269250c5555c50",
+    "BattleRuntime_Module.js": "1e199b010902ec825e19acf84663bf2ab781c14e2e2d0c7e0580f25b3f59f5db",
+    "BattleReport_Module.js": "576588a242f751649b8657566c7f22cb4fa1011db4fc5ec039c95adaac9d06d3",
+    "BattleUI_Module.js": "80a9cea2d4c39a0afe669fc322bde9c8e8f448c46f8ac634d72dcc197ab08534",
+    "mvu_logic_bridge.js": "1714996c3e8bae1ae7231c3a5696cea0c5836027667f45879edee97cc4af313c",
+    "ST_UI_Entry.js": "1fe16ca7525f37f0d0a3de6375d7a3c694bbcc67073c0aa2ca2f1f5a4d32bba4"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "32eb6e40113740e05d8d7466e21d765fed5fe2b434511b6b4d23ea4f257bad19"
+  ],
+  "invalidatedObjectHashes": [
+    "079c726b9bf2e2bcaff572169c995e32bb3383b8883042d7ddb403ece1e5df83",
+    "c9f7a2c53588680800ed0a7ed79cbda716127c4e8e06f022c3a9a27471ce0e55",
+    "8da5cae5c4861c8db2f70b870b8f2387361016f82410389fbd903f826c5c688e",
+    "4691fc959693c2a6b8bc6b28d4edeeb22b400398b5a771809cc2546b07ec93de"
+  ],
+  "details": {
+    "batch": "M2-DIRECT-FEATURE-BRIDGE-CLOSURE",
+    "verdict": "DIRECT_FEATURE_BRIDGE_CLOSURE_ACCEPTED",
+    "contracts": 18,
+    "modules": 3,
+    "harnesses": 5,
+    "pairability": {
+      "cases": 7,
+      "pdaEffectItems": 78,
+      "direct": 73,
+      "pending": 5,
+      "reject": 0,
+      "carrier": 0,
+      "bifCompiled": 70,
+      "candidateTotal": 70
+    },
+    "determinismHash": "5c503402538e85977f512bcc6cb16f8a9421148bca0f865988c99bd70a41cf45",
+    "testCounts": {
+      "freeze": 1146,
+      "providerCore": 1611,
+      "immediateFeature": 2862,
+      "decisionTrace": 557,
+      "pairability": 1037
+    },
+    "policy": "NOT_TRAINED",
+    "formalProvider": "NONE",
+    "performanceClaims": "NONE",
+    "notClaimed": [
+      "trained policy",
+      "formal Provider registration",
+      "production Provider wiring",
+      "performance claims",
+      "90% holdout agreement",
+      "Report/UI integration",
+      "full battle behavior"
+    ],
+    "nextExitCondition": "M2 remaining high-impact prototype projections, paired offline teacher dataset generation, LINEAR_SCORE training and 90% holdout gate",
+    "invalidation": {
+      "079c726b...": "event246 immediate-feature bundle superseded: BIF module, immediate contracts/cases and immediate harness updated in this batch",
+      "c9f7a2c5...": "event247 adapter rev4 bundle superseded: PDA module and adapter/quality contracts updated in this batch",
+      "8da5cae5...": "event248 trace bundle superseded: trace contract/cases and trace harness updated in this batch",
+      "4691fc95...": "event243 provider-core bundle superseded: provider-core harness and QualityGate/Split contracts updated in this batch"
+    }
+  },
+  "reason": "Close M2 direct feature bridge: 18 contracts (incl. 2 Bridge), 3 modules (PDA/BIF/Bridge), 5 harnesses all PASS (freeze 1146, core 1611, immediate 2862, trace 557, pairability 1037; 78 = 73D+5P+0R over 70 BIF candidates, 7 real cases, determinismHash 5c503402...); supersedes event246/247/248 bundles and event243 provider-core bundle; policy NOT_TRAINED, no formal Provider, no performance/90%/Report/UI claims.",
+  "recordedAt": "2026-08-14T14:36:32.403Z",
+  "repository": {
+    "branch": "",
+    "head": "af9ac92d4cb8679b71015837f6bcbc461ec978a9"
+  },
+  "eventHash": "e4cdbcea05434d03d16edaca7670ef724d5964072ec86cd1b57acaa03d64dd0a"
+}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "BehaviorImmediateFeatureCasesV1",
-  "revision": 3,
+  "revision": 8,
   "contractId": "RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-CASES-V1-2026-08-14",
   "encoding": "UTF-8",
   "contractsUnderTest": [
@@ -32,13 +32,18 @@
     "input.publicCost[].resource outside 魂力/精神力/体力/生命 or amount<=0": "INVALID_OPTION_VALUE",
     "input.scheduledFacts[].entryId missing": "MISSING_SOURCE_REFERENCE",
     "output STATE_PRESENCE KNOWN from unit=COUNT row (COUNT coerced to BOOL)": "INVALID_STATUS_VALUE",
-    "input.atomicFacts[].hitCheckApplicability missing": "MISSING_SOURCE_REFERENCE"
+    "input.atomicFacts[].hitCheckApplicability missing": "MISSING_SOURCE_REFERENCE",
+    "input.directFacts rows > MAX_FACT_ROWS_PER_CANDIDATE": "CAP_EXCEEDED",
+    "input modifier entries > MAX_MODIFIER_ENTRIES_PER_CANDIDATE": "CAP_EXCEEDED",
+    "work units (F0+rows+modifiers+scheduled+atomic) > MAX_WORK_UNITS_PER_CALL": "CAP_EXCEEDED",
+    "output features > MAX_FEATURES_PER_CANDIDATE": "CAP_EXCEEDED",
+    "input.scheduledFacts[] private alias key (key/字段/方式) or unknown operation": "INVALID_OPTION_VALUE"
   },
   "counts": {
-    "caseCount": 39,
-    "positiveCount": 24,
-    "negativeCount": 10,
-    "antiPatternCount": 5
+    "caseCount": 62,
+    "positiveCount": 38,
+    "negativeCount": 15,
+    "antiPatternCount": 9
   },
   "cases": [
     {
@@ -1821,10 +1826,11 @@
         },
         "scheduledFacts": [
           {
-            "entryId": "sf:1",
+            "entryId": "effect:pos-real-baihanying-window:0:schedule:0",
             "operation": "WINDOW_ADJUST",
-            "triggerKey": "随下次行动触发",
-            "payload": []
+            "调整字段": "持续回合",
+            "调整方式": "延长",
+            "调整回合": 1
           }
         ]
       },
@@ -1838,7 +1844,7 @@
             "reasonCode": "OK",
             "sourceFactIds": [],
             "sourceEventIds": [
-              "sf:1"
+              "effect:pos-real-baihanying-window:0:schedule:0"
             ],
             "value": 1
           }
@@ -2896,7 +2902,9 @@
         },
         "scheduledFacts": [
           {
-            "operation": "WINDOW_ADJUST"
+            "operation": "WINDOW_ADJUST",
+            "调整字段": "持续回合",
+            "调整方式": "延长"
           }
         ]
       },
@@ -3220,6 +3228,2372 @@
           "value": 3
         }
       }
+    },
+    {
+      "caseId": "pos-state-magnitude-primary",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-stp",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "enemy-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "state.primary",
+            "sourceActionId": "action:cand-stp",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-stp:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": -5,
+            "unit": "PERCENT",
+            "durationTurns": 2
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-stp:0",
+            "prototype": "状态施加"
+          }
+        ],
+        "mechanicMetadataEntries": [
+          {
+            "sourceEffectId": "effect:cand-stp:0",
+            "生效方式": "独立生效"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 3,
+        "features": [
+          {
+            "featureCode": "STATE_DELTA_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-stp:0::state.primary"
+            ],
+            "sourceEventIds": [],
+            "value": -5
+          },
+          {
+            "featureCode": "STATE_DURATION",
+            "unitFamily": "TURNS",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-stp:0::state.primary"
+            ],
+            "sourceEventIds": [],
+            "value": 2
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "pos-state-magnitude-secondary",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-sts",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "enemy-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "state.secondary",
+            "sourceActionId": "action:cand-sts",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-sts:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-sts:0",
+            "prototype": "状态施加"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 3,
+        "features": [
+          {
+            "featureCode": "STATE_DELTA_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sts:0::state.secondary"
+            ],
+            "sourceEventIds": [],
+            "value": 10
+          },
+          {
+            "featureCode": "STATE_DURATION",
+            "unitFamily": "TURNS",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sts:0::state.secondary"
+            ],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "pos-settlement-modifier-percent",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-sm",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "settlement.primary",
+            "sourceActionId": "action:cand-sm",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-sm:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-sm:0",
+            "prototype": "结算修正"
+          }
+        ],
+        "mechanicMetadataEntries": [
+          {
+            "sourceEffectId": "effect:cand-sm:0",
+            "结算": "造成伤害"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 2,
+        "features": [
+          {
+            "featureCode": "SETTLEMENT_MODIFIER_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sm:0::settlement.primary"
+            ],
+            "sourceEventIds": [],
+            "value": 10
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "pos-summon-full",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-sf",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "SUMMON_WINDOW",
+            "key": "summon.count",
+            "sourceActionId": "action:cand-sf",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-sf:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 2,
+            "unit": "COUNT",
+            "durationTurns": 0
+          },
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "SUMMON_WINDOW",
+            "key": "summon.strength",
+            "sourceActionId": "action:cand-sf",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-sf:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 0.8,
+            "unit": "RATIO",
+            "durationTurns": 0
+          },
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "SUMMON_WINDOW",
+            "key": "summon.duration",
+            "sourceActionId": "action:cand-sf",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-sf:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 3,
+            "unit": "TURNS",
+            "durationTurns": 0
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-sf:0",
+            "prototype": "召唤生成"
+          }
+        ],
+        "scheduledFacts": [
+          {
+            "entryId": "sf:1",
+            "grantType": "SUMMON_WINDOW",
+            "召唤单位类型": "魂兽",
+            "召唤物名称": "审计召唤物",
+            "行动模式": "协同攻击",
+            "durationTurns": 3
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 4,
+        "features": [
+          {
+            "featureCode": "SUMMON_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sf:0::summon.count"
+            ],
+            "sourceEventIds": [],
+            "value": 2
+          },
+          {
+            "featureCode": "SUMMON_STRENGTH",
+            "unitFamily": "RATIO",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sf:0::summon.strength"
+            ],
+            "sourceEventIds": [],
+            "value": 0.8
+          },
+          {
+            "featureCode": "SUMMON_DURATION",
+            "unitFamily": "TURNS",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sf:0::summon.duration"
+            ],
+            "sourceEventIds": [],
+            "value": 3
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [
+              "sf:1"
+            ],
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "pos-summon-minimal",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-sm2",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "SUMMON_WINDOW",
+            "key": "summon.count",
+            "sourceActionId": "action:cand-sm2",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-sm2:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 1,
+            "unit": "COUNT",
+            "durationTurns": 0
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-sm2:0",
+            "prototype": "召唤生成"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 4,
+        "features": [
+          {
+            "featureCode": "SUMMON_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sm2:0::summon.count"
+            ],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "SUMMON_STRENGTH",
+            "unitFamily": "RATIO",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_DURATION",
+            "unitFamily": "TURNS",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "neg-state-percent-wrong-key",
+      "kind": "NEGATIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-swk",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "enemy-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "中毒",
+            "sourceActionId": "action:cand-swk",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-swk:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": -5,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-swk:0",
+            "prototype": "状态施加"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 3,
+        "features": [
+          {
+            "featureCode": "STATE_DELTA_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [
+              "effect:cand-swk:0::中毒"
+            ],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "STATE_DURATION",
+            "unitFamily": "TURNS",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-swk:0::中毒"
+            ],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "neg-summon-wrong-unit",
+      "kind": "NEGATIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-swu",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "SUMMON_WINDOW",
+            "key": "summon.count",
+            "sourceActionId": "action:cand-swu",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-swu:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 1,
+            "unit": "ABS",
+            "durationTurns": 0
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-swu:0",
+            "prototype": "召唤生成"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 4,
+        "features": [
+          {
+            "featureCode": "SUMMON_COUNT",
+            "unitFamily": "COUNT",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [
+              "effect:cand-swu:0::summon.count"
+            ],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_STRENGTH",
+            "unitFamily": "RATIO",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_DURATION",
+            "unitFamily": "TURNS",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "neg-settlement-double-count",
+      "kind": "NEGATIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-sdc",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "settlement.primary",
+            "sourceActionId": "action:cand-sdc",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-sdc:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-sdc:0",
+            "prototype": "结算修正"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 2,
+        "features": [
+          {
+            "featureCode": "SETTLEMENT_MODIFIER_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sdc:0::settlement.primary"
+            ],
+            "sourceEventIds": [],
+            "value": 10
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "bd-summon-count-one",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-sco",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "SUMMON_WINDOW",
+            "key": "summon.count",
+            "sourceActionId": "action:cand-sco",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-sco:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 1,
+            "unit": "COUNT",
+            "durationTurns": 0
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-sco:0",
+            "prototype": "召唤生成"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 4,
+        "features": [
+          {
+            "featureCode": "SUMMON_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-sco:0::summon.count"
+            ],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "SUMMON_STRENGTH",
+            "unitFamily": "RATIO",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_DURATION",
+            "unitFamily": "TURNS",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "bd-state-percent-zero",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-spz",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "enemy-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "state.primary",
+            "sourceActionId": "action:cand-spz",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-spz:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 0,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-spz:0",
+            "prototype": "状态施加"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 3,
+        "features": [
+          {
+            "featureCode": "STATE_DELTA_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-spz:0::state.primary"
+            ],
+            "sourceEventIds": [],
+            "value": 0
+          },
+          {
+            "featureCode": "STATE_DURATION",
+            "unitFamily": "TURNS",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-spz:0::state.primary"
+            ],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "bd-settlement-percent-negative",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-spn",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "settlement.primary",
+            "sourceActionId": "action:cand-spn",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-spn:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": -15,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-spn:0",
+            "prototype": "结算修正"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 2,
+        "features": [
+          {
+            "featureCode": "SETTLEMENT_MODIFIER_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-spn:0::settlement.primary"
+            ],
+            "sourceEventIds": [],
+            "value": -15
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "anti-metadata-unknown-key",
+      "kind": "ANTI_PATTERN",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-muk",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "settlement.primary",
+            "sourceActionId": "action:cand-muk",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-muk:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ],
+        "mechanicMetadataEntries": [
+          {
+            "sourceEffectId": "effect:cand-muk:0",
+            "未知键": 1
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 0,
+        "reject": {
+          "reasonCode": "INVALID_OPTION_VALUE"
+        }
+      }
+    },
+    {
+      "caseId": "anti-metadata-never-value",
+      "kind": "ANTI_PATTERN",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-mnv",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "settlement.primary",
+            "sourceActionId": "action:cand-mnv",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-mnv:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ],
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-mnv:0",
+            "prototype": "结算修正"
+          }
+        ],
+        "mechanicMetadataEntries": [
+          {
+            "sourceEffectId": "effect:cand-mnv:0",
+            "生效方式": "跟随主原型",
+            "结算": "造成伤害"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 2,
+        "features": [
+          {
+            "featureCode": "SETTLEMENT_MODIFIER_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-mnv:0::settlement.primary"
+            ],
+            "sourceEventIds": [],
+            "value": 10
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "anti-scheduled-future-value",
+      "kind": "ANTI_PATTERN",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-sfv",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-sfv:0",
+            "prototype": "召唤生成"
+          }
+        ],
+        "scheduledFacts": [
+          {
+            "entryId": "sf:1",
+            "grantType": "SUMMON_WINDOW",
+            "召唤单位类型": "魂兽",
+            "召唤物名称": "审计召唤物",
+            "行动模式": "协同攻击",
+            "durationTurns": 3
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 4,
+        "features": [
+          {
+            "featureCode": "SUMMON_COUNT",
+            "unitFamily": "COUNT",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_STRENGTH",
+            "unitFamily": "RATIO",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_DURATION",
+            "unitFamily": "TURNS",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [
+              "sf:1"
+            ],
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "pos-summon-trigger-limit-metadata",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-stl",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-stl:0",
+            "prototype": "召唤生成"
+          }
+        ],
+        "mechanicMetadataEntries": [
+          {
+            "sourceEffectId": "effect:cand-stl:0",
+            "生效方式": "独立生效",
+            "触发限制": "仅触发一次"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 4,
+        "features": [
+          {
+            "featureCode": "SUMMON_COUNT",
+            "unitFamily": "COUNT",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_STRENGTH",
+            "unitFamily": "RATIO",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_DURATION",
+            "unitFamily": "TURNS",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "pos-resource-percent-recover",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-rpct",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "enemy-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "RESOURCE_OPTION_CHANGED",
+            "key": "魂力",
+            "sourceActionId": "action:cand-rpct",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-rpct:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 25,
+            "unit": "PERCENT",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 2,
+        "features": [
+          {
+            "featureCode": "RELATION_TARGET_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "RESOURCE_DELTA_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-rpct:0::魂力"
+            ],
+            "sourceEventIds": [],
+            "value": 25
+          }
+        ],
+        "countAssertions": [
+          {
+            "featureCode": "RESOURCE_DELTA_PERCENT",
+            "expectedCount": 1
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "pos-resource-percent-drain",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-rpctn",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "enemy-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "RESOURCE_OPTION_CHANGED",
+            "key": "体力",
+            "sourceActionId": "action:cand-rpctn",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-rpctn:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": -10,
+            "unit": "PERCENT",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 2,
+        "features": [
+          {
+            "featureCode": "RELATION_TARGET_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "RESOURCE_DELTA_PERCENT",
+            "unitFamily": "PERCENT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-rpctn:0::体力"
+            ],
+            "sourceEventIds": [],
+            "value": -10
+          }
+        ],
+        "countAssertions": [
+          {
+            "featureCode": "RESOURCE_DELTA_PERCENT",
+            "expectedCount": 1
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "pos-cap-within-bounds",
+      "kind": "POSITIVE",
+      "expectMode": "EXACT",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-cap-bounds",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "enemy-1": {
+              "hp": 80,
+              "hp_max": 100,
+              "sp": 60,
+              "sp_max": 100,
+              "men": 50,
+              "men_max": 100,
+              "def": 20,
+              "agi": 12,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 60,
+              "sp_max": 100,
+              "men": 50,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "atomicFacts": [
+          {
+            "eventId": "evt:cap:0",
+            "sourceActionId": "action:cand-cap-bounds",
+            "outcomeKind": "HP_DELTA",
+            "expectedDelta": -60,
+            "hitCheckApplicability": "APPLICABLE",
+            "evidence": {
+              "hitProbability": 0.8
+            }
+          }
+        ],
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "HP_DELTA",
+            "key": "damage.power",
+            "sourceActionId": "action:cand-cap-bounds",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:cand-cap-bounds:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 60,
+            "unit": "POWER",
+            "durationTurns": 0
+          }
+        ],
+        "legalityModifiers": {
+          "hardExclusions": [
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED"
+          ]
+        },
+        "publicCost": [
+          {
+            "resource": "魂力",
+            "amount": 20
+          }
+        ],
+        "publicProbability": {
+          "hitProbability": 0.8,
+          "source": "DECLARED"
+        }
+      },
+      "expect": {
+        "featureCount": 14,
+        "features": [
+          {
+            "featureCode": "COST_AFFORDABILITY",
+            "unitFamily": "RATIO_0_1",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "HARD_EXCLUSION",
+            "unitFamily": "BOOL",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "HARD_EXCLUSION_REASON",
+            "unitFamily": "ENUM",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": "ACTOR_DISABLED"
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          },
+          {
+            "featureCode": "OVERKILL_AVAILABILITY",
+            "unitFamily": "BOOL",
+            "status": "UNKNOWN",
+            "reasonCode": "NO_PUBLIC_DECLARATION",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "PUBLIC_HP_RATIO",
+            "unitFamily": "RATIO_0_1",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0.8
+          },
+          {
+            "featureCode": "PUBLIC_RESOURCE_RATIO",
+            "unitFamily": "RATIO_0_1",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0.55
+          },
+          {
+            "featureCode": "RELATION_TARGET_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 1
+          },
+          {
+            "featureCode": "RELATION_TARGET_SIDE",
+            "unitFamily": "ENUM",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": "ENEMY"
+          },
+          {
+            "featureCode": "REVEAL_STRENGTH",
+            "unitFamily": "RATIO_0_1",
+            "status": "UNKNOWN",
+            "reasonCode": "NO_PUBLIC_DECLARATION",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "ROLL_REALIZATION",
+            "unitFamily": "BOOL",
+            "status": "UNKNOWN",
+            "reasonCode": "FUTURE_REALIZATION_UNKNOWN",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SETTLEMENT_DAMAGE",
+            "unitFamily": "ABS",
+            "status": "UNKNOWN",
+            "reasonCode": "FINAL_SETTLEMENT_UNKNOWN",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUCCESS_PROBABILITY",
+            "unitFamily": "PROBABILITY_0_1",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [
+              "evt:cap:0"
+            ],
+            "value": 0.8
+          },
+          {
+            "featureCode": "DAMAGE_POWER",
+            "unitFamily": "POWER",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [
+              "effect:cand-cap-bounds:0::damage.power"
+            ],
+            "sourceEventIds": [],
+            "value": 60
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "neg-cap-modifiers-exceeded",
+      "kind": "NEGATIVE",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-cap-mod",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "enemy-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "legalityModifiers": {
+          "hardExclusions": [
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED",
+            "ACTOR_DISABLED"
+          ]
+        }
+      },
+      "expect": {
+        "featureCount": 0,
+        "reject": {
+          "reasonCode": "CAP_EXCEEDED"
+        }
+      }
+    },
+    {
+      "caseId": "pos-metadata-trigger-object",
+      "kind": "POSITIVE",
+      "expectMode": "SUBSET",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-mto",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "projectionFamilies": [
+          {
+            "sourceEffectId": "effect:cand-mto:0",
+            "prototype": "召唤生成"
+          }
+        ],
+        "mechanicMetadataEntries": [
+          {
+            "sourceEffectId": "effect:cand-mto:0",
+            "生效方式": "独立生效",
+            "触发限制": {
+              "周期": "每战",
+              "次数": 1
+            }
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 4,
+        "features": [
+          {
+            "featureCode": "SUMMON_COUNT",
+            "unitFamily": "COUNT",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_STRENGTH",
+            "unitFamily": "RATIO",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "SUMMON_DURATION",
+            "unitFamily": "TURNS",
+            "status": "UNKNOWN",
+            "reasonCode": "MISSING_SOURCE_FACT",
+            "sourceFactIds": [],
+            "sourceEventIds": []
+          },
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [],
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "anti-metadata-trigger-object-unknown-key",
+      "kind": "ANTI_PATTERN",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-mtou",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "mechanicMetadataEntries": [
+          {
+            "sourceEffectId": "effect:cand-mtou:0",
+            "触发限制": {
+              "周期": "每战",
+              "次数": 1,
+              "未知键": 1
+            }
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 0,
+        "reject": {
+          "reasonCode": "INVALID_OPTION_VALUE"
+        }
+      }
+    },
+    {
+      "caseId": "pos-followup-next-action",
+      "kind": "POSITIVE",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-followup",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "actor-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue"
+          }
+        },
+        "scheduledFacts": [
+          {
+            "entryId": "effect:pos-followup-next-action:0:schedule:0",
+            "grantType": "FOLLOW_UP",
+            "triggerKey": "随下次行动触发",
+            "payloadDirectFacts": [
+              {
+                "schemaVersion": "DirectFactRowV1",
+                "factType": "STATE_DELTA",
+                "key": "命中",
+                "sourceActionId": "action:pos-followup-next-action",
+                "sourceActorId": "actor-1",
+                "sourceEffectId": "effect:pos-followup-next-action:0",
+                "targetIds": [
+                  "actor-1"
+                ],
+                "amount": 10,
+                "unit": "PERCENT",
+                "durationTurns": 0
+              }
+            ]
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 1,
+        "features": [
+          {
+            "featureCode": "OUTSIDE_BATCH1_ROW_COUNT",
+            "unitFamily": "COUNT",
+            "status": "KNOWN",
+            "reasonCode": "OK",
+            "sourceFactIds": [],
+            "sourceEventIds": [
+              "effect:pos-followup-next-action:0:schedule:0"
+            ],
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "neg-scheduled-private-alias",
+      "kind": "NEGATIVE",
+      "input": {
+        "candidate": {
+          "candidateId": "cand-sched-alias",
+          "actorId": "actor-1",
+          "actorSide": "side-blue",
+          "actionKind": "RELEASE_SKILL",
+          "targetSet": [
+            "enemy-1"
+          ],
+          "paymentMode": "FORMAL"
+        },
+        "publicSnapshot": {
+          "actorStatus": "NORMAL",
+          "units": {
+            "enemy-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            },
+            "actor-1": {
+              "hp": 100,
+              "hp_max": 100,
+              "sp": 100,
+              "sp_max": 100,
+              "men": 100,
+              "men_max": 100,
+              "def": 20,
+              "agi": 10,
+              "shield": 0,
+              "状态效果": {}
+            }
+          },
+          "sides": {
+            "actor-1": "side-blue",
+            "enemy-1": "side-red"
+          }
+        },
+        "scheduledFacts": [
+          {
+            "entryId": "sf:1",
+            "operation": "WINDOW_ADJUST",
+            "字段": "持续回合",
+            "方式": "延长"
+          }
+        ]
+      },
+      "expect": {
+        "featureCount": 0,
+        "reject": {
+          "reasonCode": "INVALID_OPTION_VALUE"
+        }
+      }
     }
-  ]
+  ],
+  "revision3Delta": "revision 4 (feature contract rev3): five batch-2 raw feature codes STATE_DELTA_PERCENT/SETTLEMENT_MODIFIER_PERCENT/SUMMON_COUNT/SUMMON_STRENGTH/SUMMON_DURATION; mechanicMetadataEntries/projectionFamilies audit-only inputs strictly validated (values never enter features; prototype names never weighted); scheduled windows never become KNOWN summon duration; settlement modifier never double-counts into HP/RESOURCE features; unknown/NA never 0.",
+  "revision6Delta": "revision 6 (feature contract rev4 caps): CAP_EXCEEDED and MAX_WORK_UNITS_PER_CALL=200000 formalized; pos-cap-within-bounds (64 modifier entries, 14 features) and neg-cap-modifiers-exceeded (65 modifier entries, CAP_EXCEEDED) probes added; rejectionMapping gains the four cap-breach mappings; cap breach is a whole-compile rejection, never candidate pruning or wall clock.",
+  "revision7Delta": "revision 7 (PDA-form trigger limit): mechanicMetadataEntries[].触发限制 is oneOf non-empty string or closed object {周期: string, 次数: integer>=1} per PrototypeDirectAdapterV1 schema authority; pos-metadata-trigger-object (object form, audit-only, 4 features) and anti-metadata-trigger-object-unknown-key (object unknown key => INVALID_OPTION_VALUE) probes added; metadata values never enter features.",
+  "revision8Delta": "revision 8 (PDA-form scheduled four-shape): inputContract.scheduledFacts accepts exactly WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW closed shapes per PrototypeDirectAdapterV1 schema authority (standard keys only, private aliases key/字段/方式 rejected); pos-scheduled-counted rewritten to real 白寒樱 window shape; pos-followup-next-action added (随下次行动触发, no maxActions); neg-scheduled-private-alias added (private alias 字段/方式 => INVALID_OPTION_VALUE); rejectionMapping gains private-alias and unknown-operation mappings."
 }

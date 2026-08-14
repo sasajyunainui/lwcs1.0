@@ -20,7 +20,7 @@
     "constraints",
     "validation",
     "revision",
-    "rev4Spec"
+    "rev5Spec"
    ],
    "properties": {
     "schemaVersion": {
@@ -217,10 +217,11 @@
            "const": "target-legality modifiers derived from current public state only (taunt source constraint, control cancellation, disarm or silence rules, state migration and erasure of taunt or control); forced taunt target set is sorted UTF-16 ascending; unique-target mechanisms with more than one taunter reject AMBIGUOUS_TAUNT_TARGET"
           },
           "opportunityModifiers": {
-           "const": "opportunity identity and distribution modifiers (judgment rates, interference rates, resource locks) that enter candidate dependency tokens; declared magnitudes; mechanicMetadata holds per-effect-instance projection metadata (sourceEffectId plus prototype-allowed Chinese field-name keys 生效方式/结算标签/抗性类型/驱动属性/影响方向/对应等级) as verbatim normalized deep clones that are deep-frozen and never used for scoring/weighting"
+           "type": "string",
+           "minLength": 1
           },
           "scheduledFacts": {
-           "const": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants); 机制授予 carries triggerKey, maxActions and payload DirectFactRowV1 rows; triggerKey enum 主动触发/随下次行动触发 only; maxActions comes only from explicit 可用次数 (主动触发), missing 可用次数 rejects MISSING_REQUIRED_FIELD, 随下次行动触发 projects no maxActions; SUMMON_WINDOW carries durationTurns/strength; window adjust keys window.adjustTurns/window.settlementRatio"
+             "const": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants); every scheduled fact row carries stable entryId = ${sourceEffectId}:schedule:${index} where index is the 0-based position inside that effect instance's own scheduledFacts array, covering WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW; WINDOW_ADJUST uses only entryId/operation/调整字段/调整方式 plus, when present, 调整回合/调整tick/调整次数/结算倍率 (private aliases key/字段/方式 are forbidden); SETTLEMENT_RATIO_ADJUST uses entryId/operation/结算倍率; FOLLOW_UP uses entryId/grantType/triggerKey/maxActions (主动触发 only, from explicit 可用次数, missing 可用次数 rejects MISSING_REQUIRED_FIELD, 随下次行动触发 projects no maxActions)/payloadDirectFacts; SUMMON_WINDOW uses entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns when known"
           },
           "unsupportedOutcomeKinds": {
            "const": "outcome kinds this adapter cannot project; non-empty only together with deferCode or an explicit reason code"
@@ -569,7 +570,7 @@
     "constraints": {
      "type": "array",
      "minItems": 6,
-     "maxItems": 13,
+     "maxItems": 20,
      "uniqueItems": true,
      "items": {
       "type": "string",
@@ -633,8 +634,8 @@
         "windowMultiRowKeysAreScheduledFactKeys",
         "directFactRowSchemaDuplicateFrozenHarnessCompared",
         "idCharsetEnforced",
-        "mechanicMetadataClosed",
-        "mechanicMetadataNeverWeighted",
+        "mechanicMetadataEntriesClosed",
+        "mechanicMetadataEntriesNeverWeighted",
         "pendingProjectionExplicit",
         "unsignedPercentPendingDirection",
         "bianShenDurationPending",
@@ -645,7 +646,15 @@
         "unionIdentityDedupe",
         "lingwuOobClassification",
         "noFormalSampleDeclared",
-        "unregisteredFormalOobCountRecorded"
+        "unregisteredFormalOobCountRecorded",
+        "projectionFamiliesRoutingOnly",
+        "stateMagnitudeKeysFrozen",
+        "summonKeysPositiveCountNoFabricatedDuration",
+        "settlementSingleRowNoDoubleCount",
+        "batch2WhitelistsClosedByAInventory",
+        "batch2PendingFormsExplicit",
+        "summonCarrierNotRecursed",
+        "mechanismGrantNotInBatch2"
        ],
        "properties": {
         "deferredPathIdsMatchUniverse": {
@@ -705,10 +714,10 @@
         "idCharsetEnforced": {
          "const": true
         },
-        "mechanicMetadataClosed": {
+        "mechanicMetadataEntriesClosed": {
          "const": true
         },
-        "mechanicMetadataNeverWeighted": {
+        "mechanicMetadataEntriesNeverWeighted": {
          "const": true
         },
         "pendingProjectionExplicit": {
@@ -743,6 +752,30 @@
         },
         "unregisteredFormalOobCountRecorded": {
          "const": true
+        },
+        "projectionFamiliesRoutingOnly": {
+         "const": true
+        },
+        "stateMagnitudeKeysFrozen": {
+         "const": true
+        },
+        "summonKeysPositiveCountNoFabricatedDuration": {
+         "const": true
+        },
+        "settlementSingleRowNoDoubleCount": {
+         "const": true
+        },
+        "batch2WhitelistsClosedByAInventory": {
+         "const": true
+        },
+        "batch2PendingFormsExplicit": {
+         "const": true
+        },
+        "summonCarrierNotRecursed": {
+         "const": true
+        },
+        "mechanismGrantNotInBatch2": {
+         "const": true
         }
        },
        "additionalProperties": false
@@ -757,9 +790,9 @@
      "additionalProperties": false
     },
     "revision": {
-     "const": 4
+     "const": 5
     },
-    "rev4Spec": {
+    "rev5Spec": {
      "type": "object",
      "additionalProperties": false,
      "required": [
@@ -767,7 +800,7 @@
       "idRules",
       "numericForms",
       "pendingProjection",
-      "mechanicMetadata",
+      "mechanicMetadataEntries",
       "fieldWhitelists"
      ],
      "properties": {
@@ -983,7 +1016,10 @@
        "required": [
         "数值",
         "防御穿透",
-        "持续回合"
+        "持续回合",
+        "数量",
+        "强度",
+        "继承属性比例"
        ],
        "properties": {
         "数值": {
@@ -994,6 +1030,18 @@
         },
         "持续回合": {
          "type": "string"
+        },
+        "数量": {
+         "type": "string",
+         "minLength": 1
+        },
+        "强度": {
+         "type": "string",
+         "minLength": 1
+        },
+        "继承属性比例": {
+         "type": "string",
+         "minLength": 1
         }
        }
       },
@@ -1011,8 +1059,8 @@
          "items": {
           "type": "string"
          },
-         "minItems": 4,
-         "maxItems": 4
+         "minItems": 5,
+         "maxItems": 5
         },
         "policy": {
          "type": "string"
@@ -1022,7 +1070,176 @@
         }
        }
       },
-      "mechanicMetadata": {
+      "fieldWhitelists": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "uniqueItems": true
+       },
+       "propertyNames": {
+        "enum": [
+         "伤害结算",
+         "资源变化",
+         "护盾变化",
+         "属性修正",
+         "判定修正",
+         "状态施加",
+         "召唤生成",
+         "结算修正"
+        ]
+       }
+      },
+      "projectionFamilies": {
+       "type": "object",
+       "required": [
+        "location",
+        "element",
+        "purpose",
+        "closed",
+        "scope"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "location": {
+         "const": "opportunityModifiers.projectionFamilies"
+        },
+        "element": {
+         "type": "object",
+         "required": [
+          "sourceEffectId",
+          "prototype"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "sourceEffectId": {
+           "$ref": "#/$defs/idString"
+          },
+          "prototype": {
+           "type": "string",
+           "minLength": 1
+          }
+         }
+        },
+        "purpose": {
+         "type": "string",
+         "minLength": 1
+        },
+        "closed": {
+         "const": true
+        },
+        "scope": {
+         "type": "string",
+         "minLength": 1
+        }
+       }
+      },
+      "secondBatchProjectionV1": {
+       "type": "object",
+       "additionalProperties": true
+      },
+      "pending13Projection": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "prototypes",
+        "pendingCode",
+        "policy",
+        "registrySource",
+        "perPrototype",
+        "pathCountTotal",
+        "pathCountNote"
+       ],
+       "properties": {
+        "prototypes": {
+         "type": "array",
+         "minItems": 13,
+         "maxItems": 13,
+         "uniqueItems": true,
+         "items": {
+          "type": "string",
+          "minLength": 1
+         }
+        },
+        "pendingCode": {
+         "const": "PENDING_DIRECT_PROJECTION"
+        },
+        "policy": {
+         "type": "string",
+         "minLength": 1
+        },
+        "registrySource": {
+         "type": "string",
+         "minLength": 1
+        },
+        "perPrototype": {
+         "type": "object",
+         "additionalProperties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+           "allowed",
+           "required",
+           "pathCount",
+           "enums",
+           "valueTypes"
+          ],
+          "properties": {
+           "allowed": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+             "type": "string",
+             "minLength": 1
+            }
+           },
+           "required": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+             "type": "string",
+             "minLength": 1
+            }
+           },
+           "pathCount": {
+            "type": "integer",
+            "minimum": 1
+           },
+           "enums": {
+            "type": "object",
+            "additionalProperties": {
+             "type": "array",
+             "minItems": 1,
+             "uniqueItems": true,
+             "items": {
+              "type": "string",
+              "minLength": 1
+             }
+            }
+           },
+           "valueTypes": {
+            "type": "object",
+            "additionalProperties": {
+             "type": "string",
+             "minLength": 1
+            }
+           }
+          }
+         }
+        },
+        "pathCountTotal": {
+         "const": 338
+        },
+        "pathCountNote": {
+         "type": "string",
+         "minLength": 1
+        }
+       }
+      },
+      "mechanicMetadataEntries": {
        "type": "object",
        "additionalProperties": false,
        "required": [
@@ -1030,6 +1247,7 @@
         "keys",
         "sourceEffectId",
         "perPrototypeSubsets",
+        "entryShape",
         "valuePolicy"
        ],
        "properties": {
@@ -1058,26 +1276,11 @@
         },
         "valuePolicy": {
          "type": "string"
-        }
-       }
-      },
-      "fieldWhitelists": {
-       "type": "object",
-       "additionalProperties": {
-        "type": "array",
-        "items": {
-         "type": "string"
         },
-        "uniqueItems": true
-       },
-       "propertyNames": {
-        "enum": [
-         "伤害结算",
-         "资源变化",
-         "护盾变化",
-         "属性修正",
-         "判定修正"
-        ]
+        "entryShape": {
+         "type": "string",
+         "minLength": 1
+        }
        }
       }
      }
@@ -1176,7 +1379,7 @@
      }
     },
     "revision": {
-     "const": 4
+     "const": 5
     },
     "redProbes": {
      "type": "array",
@@ -1408,7 +1611,8 @@
     "outOfBattleScopePathCount",
     "silentOmissionCount",
     "supportedByTier",
-    "deferredByPrototype"
+    "deferredByPrototype",
+    "implementationTarget"
    ],
    "properties": {
     "totalInBattlePathCount": {
@@ -1467,6 +1671,63 @@
       }
      },
      "additionalProperties": false
+    },
+    "implementationTarget": {
+     "type": "object",
+     "required": [
+      "batch2Prototypes",
+      "batch2PathCount",
+      "batch2PathCounts",
+      "directProjectionPathCount",
+      "pendingPathCount",
+      "contractTargetOnly"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "batch2Prototypes": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "minItems": 3,
+       "maxItems": 3
+      },
+      "batch2PathCount": {
+       "const": 137
+      },
+      "batch2PathCounts": {
+       "type": "object",
+       "required": [
+        "状态施加",
+        "召唤生成",
+        "结算修正"
+       ],
+       "properties": {
+        "状态施加": {
+         "const": 55
+        },
+        "召唤生成": {
+         "const": 19
+        },
+        "结算修正": {
+         "const": 63
+        }
+       },
+       "additionalProperties": false
+      },
+      "directProjectionPathCount": {
+       "const": 243
+      },
+      "pendingPathCount": {
+       "const": 338
+      },
+      "contractTargetOnly": {
+       "const": true
+      },
+      "note": {
+       "type": "string"
+      }
+     }
     }
    },
    "additionalProperties": false
@@ -1612,7 +1873,8 @@
       "LEGALITY",
       "DEFER",
       "NEGATIVE",
-      "ANTI_PATTERN"
+      "ANTI_PATTERN",
+      "BOUNDARY"
      ]
     },
     "probe": {
@@ -1820,11 +2082,15 @@
   "scheduledFactGrant": {
    "type": "object",
    "required": [
+    "entryId",
     "grantType",
     "triggerKey",
     "payloadDirectFacts"
    ],
    "properties": {
+    "entryId": {
+     "$ref": "#/$defs/idString"
+    },
     "grantType": {
      "const": "FOLLOW_UP"
     },
@@ -1876,7 +2142,7 @@
    "type": "object",
    "required": [
     "grantType",
-    "durationTurns"
+    "entryId"
    ],
    "properties": {
     "grantType": {
@@ -1889,30 +2155,46 @@
     "行动模式": {
      "type": "string",
      "minLength": 1
+    },
+    "召唤单位类型": {
+     "type": "string",
+     "minLength": 1
+    },
+    "召唤物名称": {
+     "type": "string",
+     "minLength": 1
+    },
+    "entryId": {
+     "$ref": "#/$defs/idString"
     }
    },
-   "additionalProperties": false
+   "additionalProperties": false,
+   "description": "SUMMON_WINDOW scheduled fact; entryId is stable per effect instance: `${sourceEffectId}:schedule:${index}` where index is the 0-based position inside this effect instance's own scheduledFacts array"
   },
   "scheduledFactWindowAdjust": {
    "type": "object",
    "required": [
+    "entryId",
     "operation",
-    "key",
-    "字段",
-    "方式"
+    "调整字段",
+    "调整方式"
    ],
    "properties": {
+    "entryId": {
+     "$ref": "#/$defs/idString"
+    },
     "operation": {
      "const": "WINDOW_ADJUST"
     },
-    "key": {
-     "const": "window.adjustTurns"
+    "调整字段": {
+     "enum": [
+      "持续回合",
+      "有效期tick",
+      "触发次数",
+      "使用次数"
+     ]
     },
-    "字段": {
-     "type": "string",
-     "minLength": 1
-    },
-    "方式": {
+    "调整方式": {
      "enum": [
       "延长",
       "压缩"
@@ -1921,29 +2203,42 @@
     "调整回合": {
      "type": "integer",
      "minimum": 1
-    }
-   },
-   "additionalProperties": false
-  },
-  "scheduledFactSettlementRatio": {
-   "type": "object",
-   "required": [
-    "operation",
-    "key",
-    "结算倍率"
-   ],
-   "properties": {
-    "operation": {
-     "const": "SETTLEMENT_RATIO_ADJUST"
     },
-    "key": {
-     "const": "window.settlementRatio"
+    "调整tick": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "调整次数": {
+     "type": "integer",
+     "minimum": 1
     },
     "结算倍率": {
      "type": "number"
     }
    },
-   "additionalProperties": false
+   "additionalProperties": false,
+   "description": "WINDOW_ADJUST scheduled fact; standard keys only: entryId/operation/调整字段/调整方式 plus, when present, 调整回合/调整tick/调整次数/结算倍率; private aliases key/字段/方式 are forbidden"
+  },
+  "scheduledFactSettlementRatio": {
+   "type": "object",
+   "required": [
+    "entryId",
+    "operation",
+    "结算倍率"
+   ],
+   "properties": {
+    "entryId": {
+     "$ref": "#/$defs/idString"
+    },
+    "operation": {
+     "const": "SETTLEMENT_RATIO_ADJUST"
+    },
+    "结算倍率": {
+     "type": "number"
+    }
+   },
+   "additionalProperties": false,
+   "description": "SETTLEMENT_RATIO_ADJUST scheduled fact; standard keys: entryId/operation/结算倍率"
   },
   "sourceTargetContext": {
    "type": "object",
@@ -2264,21 +2559,43 @@
       "目标": {
        "type": "string"
       },
-      "资源": {
-       "type": "string"
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
       },
-      "数值": {
+      "资源": {
        "oneOf": [
         {
-         "type": "number"
+         "type": "string"
         },
         {
-         "type": "string",
-         "pattern": "^[+-]?[0-9]+(\\.[0-9]+)?%$"
+         "type": "array",
+         "minItems": 1,
+         "uniqueItems": true,
+         "items": {
+          "type": "string"
+         }
         }
        ]
       },
+      "数值": {
+       "$ref": "#/$defs/signedPercentOrNumber"
+      },
       "资源转移方式": {
+       "type": "string"
+      },
+      "转化比例": {
+       "type": "number"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
        "type": "string"
       }
      },
@@ -2610,6 +2927,40 @@
       },
       "持续回合": {
        "type": "number"
+      },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
+      "限定元素": {
+       "type": [
+        "string",
+        "array"
+       ],
+       "items": {
+        "type": "string"
+       },
+       "uniqueItems": true
+      },
+      "吸收资源": {
+       "type": "string"
+      },
+      "吸收来源": {
+       "type": "string"
+      },
+      "影响方向": {
+       "type": "string"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "对应等级": {
+       "type": "number"
+      },
+      "条件分支": {
+       "$ref": "#/$defs/conditionBranch"
       }
      },
      "required": [
@@ -2626,8 +2977,14 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "强化倍率": {
-       "type": "number"
+       "$ref": "#/$defs/signedPercentOrNumber"
       }
      },
      "required": [
@@ -2655,6 +3012,30 @@
       },
       "持续回合": {
        "type": "number"
+      },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
+      "触发方式": {
+       "type": "string"
+      },
+      "触发限制": {
+       "$ref": "#/$defs/triggerLimit"
+      },
+      "条件分支": {
+       "$ref": "#/$defs/conditionBranch"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
+       "type": "string"
+      },
+      "对应等级": {
+       "type": "number"
       }
      },
      "required": [
@@ -2671,6 +3052,12 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "调整字段": {
        "type": "string"
       },
@@ -2678,10 +3065,25 @@
        "type": "string"
       },
       "调整回合": {
-       "type": "number"
+       "type": "integer"
+      },
+      "调整tick": {
+       "type": "integer"
+      },
+      "调整次数": {
+       "type": "integer"
+      },
+      "单日使用次数上限": {
+       "type": "integer"
       },
       "结算倍率": {
-       "type": "number"
+       "$ref": "#/$defs/signedPercentOrNumber"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
+       "type": "string"
       }
      },
      "required": [
@@ -2698,10 +3100,49 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "状态": {
        "type": "string"
       },
+      "匹配原型": {
+       "type": "string"
+      },
+      "资源": {
+       "oneOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "array",
+         "minItems": 1,
+         "uniqueItems": true,
+         "items": {
+          "type": "string"
+         }
+        }
+       ]
+      },
+      "数值方向": {
+       "type": "string"
+      },
       "数量": {
+       "type": "integer"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
+       "type": "string"
+      },
+      "对应等级": {
        "type": "number"
       }
      },
@@ -2719,11 +3160,23 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "规则": {
        "type": "string"
       },
       "次数": {
-       "type": "number"
+       "type": "integer"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "触发限制": {
+       "$ref": "#/$defs/triggerLimit"
       }
      },
      "required": [
@@ -2740,6 +3193,12 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "状态": {
        "type": "string"
       },
@@ -2750,7 +3209,10 @@
        "type": "string"
       },
       "数量": {
-       "type": "number"
+       "type": "integer"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
       }
      },
      "required": [
@@ -2767,8 +3229,17 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "状态": {
        "type": "string"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
       }
      },
      "required": [
@@ -2785,13 +3256,40 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "资源": {
-       "type": "string"
+       "oneOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "array",
+         "minItems": 1,
+         "uniqueItems": true,
+         "items": {
+          "type": "string"
+         }
+        }
+       ]
       },
       "锁定类型": {
        "type": "string"
       },
       "数值": {
+       "$ref": "#/$defs/signedPercentOrNumber"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
        "type": "string"
       }
      },
@@ -2809,10 +3307,25 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "规则": {
        "type": "string"
       },
       "数值": {
+       "$ref": "#/$defs/signedPercentOrNumber"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
        "type": "string"
       }
      },
@@ -2830,8 +3343,23 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "抹消对象": {
-       "$ref": "#/$defs/effectErasureTarget"
+       "$ref": "#/$defs/mechanismErasureMatcher"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
+       "type": "string"
       }
      },
      "required": [
@@ -2848,20 +3376,36 @@
       "目标": {
        "type": "string"
       },
-      "触发条件": {
-       "type": "string"
-      },
-      "可用次数": {
-       "type": "number"
-      },
-      "持续回合": {
-       "type": "number"
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
       },
       "授予效果": {
        "type": "array",
+       "minItems": 1,
        "items": {
         "$ref": "#/$defs/grantPayload"
        }
+      },
+      "触发条件": {
+       "type": "string"
+      },
+      "触发限制": {
+       "$ref": "#/$defs/triggerLimit"
+      },
+      "可用次数": {
+       "type": "integer"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
+       "type": "string"
       }
      },
      "required": [
@@ -2917,6 +3461,12 @@
       "目标": {
        "type": "string"
       },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
       "位移类型": {
        "type": "string"
       },
@@ -2925,6 +3475,18 @@
       },
       "距离": {
        "type": "number"
+      },
+      "数值": {
+       "$ref": "#/$defs/signedPercentOrNumber"
+      },
+      "持续回合": {
+       "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "驱动属性": {
+       "type": "string"
+      },
+      "影响方向": {
+       "type": "string"
       }
      },
      "required": [
@@ -2936,19 +3498,38 @@
     {
      "properties": {
       "原型": {
-       "const": "决策干扰"
+      "const": "决策干扰"
       },
       "目标": {
-       "type": "string"
+      "type": "string"
+      },
+      "生效方式": {
+      "enum": [
+      "独立生效",
+      "跟随主原型"
+      ]
       },
       "干扰": {
-       "type": "string"
+      "enum": [
+      "判断干扰",
+      "索敌干扰"
+      ]
       },
       "数值": {
-       "type": "string"
+      "$ref": "#/$defs/signedPercentOrNumber"
       },
       "持续回合": {
-       "type": "number"
+      "$ref": "#/$defs/durationTurnsOrBianShen"
+      },
+      "驱动属性": {
+      "type": "string"
+      },
+      "影响方向": {
+      "enum": [
+      "成功率",
+      "消耗",
+      "前摇"
+      ]
       }
      },
      "required": [
@@ -2979,6 +3560,21 @@
       },
       "持续回合": {
        "type": "number"
+      },
+      "强度": {
+       "type": "number"
+      },
+      "继承属性比例": {
+       "type": "number"
+      },
+      "生效方式": {
+       "enum": [
+        "独立生效",
+        "跟随主原型"
+       ]
+      },
+      "触发限制": {
+       "$ref": "#/$defs/triggerLimit"
       }
      },
      "required": [
@@ -3262,8 +3858,32 @@
       "minLength": 1
      }
     },
-    "mechanicMetadata": {
-     "$ref": "#/$defs/mechanicMetadata"
+    "projectionFamilies": {
+     "type": "array",
+     "uniqueItems": true,
+     "items": {
+      "type": "object",
+      "required": [
+       "sourceEffectId",
+       "prototype"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "sourceEffectId": {
+        "$ref": "#/$defs/idString"
+       },
+       "prototype": {
+        "type": "string",
+        "minLength": 1
+       }
+      }
+     }
+    },
+    "mechanicMetadataEntries": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/mechanicMetadataEntriesEntry"
+     }
     }
    },
    "additionalProperties": false
@@ -3362,6 +3982,9 @@
       },
       "retainedInCandidateAudit": {
        "type": "boolean"
+      },
+      "noDoubleCount": {
+       "type": "boolean"
       }
      },
      "additionalProperties": false
@@ -3457,7 +4080,21 @@
    },
    "additionalProperties": false
   },
-  "mechanicMetadata": {
+  "mechanismErasureMatcher": {
+   "type": "object",
+   "required": [
+    "原型"
+   ],
+   "properties": {
+    "原型": {
+     "type": "string",
+     "minLength": 1
+    }
+   },
+   "additionalProperties": true,
+   "description": "机制抹消 抹消对象：机制链匹配器对象，必须携带非空字符串 原型；其余匹配字段由运行时 读取机制抹消可匹配字段_V1 对应原型表决定，adapter 仅校验 plain-object 与非空 原型。"
+  },
+  "mechanicMetadataEntriesEntry": {
    "type": "object",
    "required": [
     "sourceEffectId"
@@ -3486,10 +4123,33 @@
     },
     "对应等级": {
      "type": "number"
+    },
+    "触发方式": {
+     "type": "string"
+    },
+    "触发限制": {
+     "type": "string",
+     "minLength": 1
+    },
+    "结算": {
+     "type": "string"
+    },
+    "限定元素": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "uniqueItems": true
+    },
+    "吸收资源": {
+     "type": "string"
+    },
+    "吸收来源": {
+     "type": "string"
     }
    },
    "additionalProperties": false
   }
  },
- "revision": 4
+ "revision": 5
 }

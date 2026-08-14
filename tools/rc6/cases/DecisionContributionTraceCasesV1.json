@@ -1,6 +1,6 @@
 {
  "schemaVersion": "DecisionContributionTraceCasesV1",
- "revision": 3,
+ "revision": 7,
  "contractId": "RC6-M4-DECISION-CONTRIBUTION-TRACE-CASES-V1-2026-08-14",
  "encoding": "UTF-8",
  "contractsUnderTest": [
@@ -23,9 +23,9 @@
   "硬排除"
  ],
  "counts": {
-  "goldCount": 12,
-  "probeCount": 5,
-  "total": 17
+  "goldCount": 14,
+  "probeCount": 10,
+  "total": 24
  },
  "conservationRule": "|score - (intercept + sum KNOWN-unmasked contributions)| <= 1e-12 and |scoreDelta - sum union deltas| <= 1e-12; every gold trace satisfies both",
  "cases": [
@@ -244,7 +244,7 @@
        "kind": "DIFFERENTIATION",
        "text": "另一手伤害没这么足。",
        "traceRefs": [
-        "c::DAMAGE_POWER"
+        "DELTA:c::DAMAGE_POWER"
        ]
       },
       {
@@ -1168,7 +1168,7 @@
        "kind": "DIFFERENTIATION",
        "text": "另一手要耗四十点，这手省得多。",
        "traceRefs": [
-        "c::RESOURCE_DELTA"
+        "DELTA:c::RESOURCE_DELTA"
        ]
       },
       {
@@ -1406,7 +1406,7 @@
        "kind": "DIFFERENTIATION",
        "text": "另一手什么也试不出来，这手能试出他的应对。",
        "traceRefs": [
-        "c::REVEAL_STRENGTH"
+        "DELTA:c::REVEAL_STRENGTH"
        ]
       },
       {
@@ -1609,7 +1609,7 @@
       },
       {
        "kind": "DIFFERENTIATION",
-       "text": "另一手只是多打一轮，这手是多一个位置。",
+       "text": "另一手只是多打一轮，这手多一个召唤物。",
        "traceRefs": [
         "DELTA:c::DAMAGE_POWER",
         "DELTA:c::OUTSIDE_BATCH1_ROW_COUNT"
@@ -1959,7 +1959,7 @@
        "kind": "DIFFERENTIATION",
        "text": "我定左边这手，多挂一层减速。",
        "traceRefs": [
-        "c::STATE_PRESENCE"
+        "DELTA:c::STATE_PRESENCE"
        ]
       },
       {
@@ -2125,7 +2125,7 @@
        "kind": "DIFFERENTIATION",
        "text": "另一手没抬，命中只有五成半。",
        "traceRefs": [
-        "c::SUCCESS_PROBABILITY"
+        "DELTA:c::SUCCESS_PROBABILITY"
        ]
       },
       {
@@ -2554,6 +2554,496 @@
     ],
     "failClosed": null
    }
+  },
+  {
+   "caseId": "gold-state-magnitude",
+   "kind": "GOLD_PLAYER",
+   "scenario": "状态/控制",
+   "input": {
+    "decomposition": {
+     "schemaVersion": "DecisionContributionTraceV1",
+     "candidateId": "cand-poison",
+     "score": 0.2,
+     "intercept": 0.6,
+     "conservationError": 0,
+     "contributions": [
+      {
+       "featureId": "c::STATE_DELTA_PERCENT",
+       "featureCode": "STATE_DELTA_PERCENT",
+       "unitFamily": "PERCENT",
+       "status": "KNOWN",
+       "rawValue": -10,
+       "mean": -8,
+       "scale": 4,
+       "normalized": -0.5,
+       "weight": 0.6,
+       "contribution": -0.3,
+       "missingMasked": false,
+       "tacticalConcept": "控制",
+       "sourceFactIds": [
+        "effect:cand-poison:0::state.primary"
+       ],
+       "sourceEventIds": []
+      },
+      {
+       "featureId": "c::STATE_DURATION",
+       "featureCode": "STATE_DURATION",
+       "unitFamily": "TURNS",
+       "status": "KNOWN",
+       "rawValue": 2,
+       "mean": 1,
+       "scale": 1,
+       "normalized": 1,
+       "weight": 0.2,
+       "contribution": 0.2,
+       "missingMasked": false,
+       "tacticalConcept": "控制",
+       "sourceFactIds": [
+        "effect:cand-poison:0::state.primary"
+       ],
+       "sourceEventIds": []
+      },
+      {
+       "featureId": "c::SUCCESS_PROBABILITY",
+       "featureCode": "SUCCESS_PROBABILITY",
+       "unitFamily": "PROBABILITY_0_1",
+       "status": "KNOWN",
+       "rawValue": 0.5,
+       "mean": 0.7,
+       "scale": 0.2,
+       "normalized": -1,
+       "weight": 0.3,
+       "contribution": -0.3,
+       "missingMasked": false,
+       "tacticalConcept": "风险",
+       "sourceFactIds": [
+        "atomic:poison:hit"
+       ],
+       "sourceEventIds": []
+      }
+     ],
+     "missingMask": [
+      "SETTLEMENT_DAMAGE",
+      "ROLL_REALIZATION"
+     ],
+     "hardExclusions": [],
+     "selection": {
+      "selectedCandidateId": "cand-poison",
+      "alternativeCandidateId": "cand-burst",
+      "scoreDelta": 0.1,
+      "deltas": [
+       {
+        "featureId": "c::STATE_DELTA_PERCENT",
+        "featureCode": "STATE_DELTA_PERCENT",
+        "tacticalConcept": "控制",
+        "deltaContribution": -0.2,
+        "zeroByMask": false,
+        "statusOfSelected": "KNOWN",
+        "statusOfAlternative": "KNOWN"
+       },
+       {
+        "featureId": "c::STATE_DURATION",
+        "featureCode": "STATE_DURATION",
+        "tacticalConcept": "控制",
+        "deltaContribution": 0.2,
+        "zeroByMask": false,
+        "statusOfSelected": "KNOWN",
+        "statusOfAlternative": "KNOWN"
+       },
+       {
+        "featureId": "c::SUCCESS_PROBABILITY",
+        "featureCode": "SUCCESS_PROBABILITY",
+        "tacticalConcept": "风险",
+        "deltaContribution": 0.1,
+        "zeroByMask": false,
+        "statusOfSelected": "KNOWN",
+        "statusOfAlternative": "KNOWN"
+       }
+      ],
+      "topPositive": [
+       "c::STATE_DURATION",
+       "c::SUCCESS_PROBABILITY"
+      ],
+      "topNegative": [
+       "c::STATE_DELTA_PERCENT"
+      ],
+      "tieBreak": "DELTA_ABS_DESC_FEATURECODE_UTF16_ASC"
+     },
+     "topContributions": {
+      "topPositive": [
+       "c::STATE_DURATION"
+      ],
+      "topNegative": [
+       "c::STATE_DELTA_PERCENT",
+       "c::SUCCESS_PROBABILITY"
+      ],
+      "tieBreak": "CONTRIBUTION_ABS_DESC_FEATURECODE_UTF16_ASC",
+      "noneOmitted": true
+     }
+    }
+   },
+   "expect": {
+    "conservation": {
+     "holds": true,
+     "tolerance": 1e-12
+    },
+    "player": {
+     "skeleton": [
+      "SITUATION",
+      "FACTS",
+      "SUPPORT",
+      "DIFFERENTIATION",
+      "RISK_COST"
+     ],
+     "sentences": [
+      {
+       "kind": "SITUATION",
+       "text": "我打算挂中毒，两回合里每回合掉一成。",
+       "traceRefs": [
+        "c::STATE_DURATION",
+        "c::STATE_DELTA_PERCENT"
+       ]
+      },
+      {
+       "kind": "SUPPORT",
+       "text": "挂上之后每回合掉一成，比一次爆发更稳。",
+       "traceRefs": [
+        "c::STATE_DELTA_PERCENT"
+       ]
+      },
+      {
+       "kind": "DIFFERENTIATION",
+       "text": "另一手是一次爆发，这手能磨两回合。",
+       "traceRefs": [
+        "DELTA:c::STATE_DURATION"
+       ]
+      },
+      {
+       "kind": "RISK_COST",
+       "text": "命中只有五成，可能挂不上去。",
+       "traceRefs": [
+        "c::SUCCESS_PROBABILITY"
+       ]
+      },
+      {
+       "kind": "CONCLUSION",
+       "text": "先挂上。",
+       "traceRefs": [
+        "c::STATE_DELTA_PERCENT"
+       ]
+      }
+     ]
+    },
+    "forbiddenTokens": [
+     "weight",
+     "权重",
+     "score",
+     "分数",
+     "featureCode",
+     "HEPP",
+     "Pareto",
+     "帕累托",
+     "candidateId",
+     "sourceEffectId",
+     "seed",
+     "actualValue",
+     "normalized",
+     "mean",
+     "scale",
+     "intercept",
+     "contribution",
+     "tacticalConcept",
+     "margin",
+     "frontier",
+     "band",
+     "线性",
+     "系数"
+    ],
+    "reviewAssertions": [
+     {
+      "featureId": "c::STATE_DELTA_PERCENT",
+      "operand": "rawValue",
+      "value": -10,
+      "unit": "PERCENT"
+     },
+     {
+      "featureId": "c::STATE_DURATION",
+      "operand": "rawValue",
+      "value": 2,
+      "unit": "TURNS"
+     },
+     {
+      "featureId": "c::SUCCESS_PROBABILITY",
+      "operand": "rawValue",
+      "value": 0.5,
+      "unit": "PROBABILITY_0_1"
+     }
+    ],
+    "failClosed": null
+   }
+  },
+  {
+   "caseId": "gold-resource-percent-recover",
+   "kind": "GOLD_PLAYER",
+   "scenario": "资源/百分比恢复",
+   "input": {
+    "decomposition": {
+     "schemaVersion": "DecisionContributionTraceV1",
+     "candidateId": "cand-rpct",
+     "score": 0.7,
+     "intercept": 0.2,
+     "conservationError": 0,
+     "contributions": [
+      {
+       "featureId": "c::PUBLIC_RESOURCE_RATIO",
+       "featureCode": "PUBLIC_RESOURCE_RATIO",
+       "unitFamily": "RATIO_0_1",
+       "status": "KNOWN",
+       "rawValue": 0.2,
+       "mean": 0.5,
+       "scale": 0.25,
+       "normalized": -1.2,
+       "weight": 0.25,
+       "contribution": -0.3,
+       "missingMasked": false,
+       "tacticalConcept": "资源",
+       "sourceFactIds": [],
+       "sourceEventIds": []
+      },
+      {
+       "featureId": "c::RESOURCE_DELTA_PERCENT",
+       "featureCode": "RESOURCE_DELTA_PERCENT",
+       "unitFamily": "PERCENT",
+       "status": "KNOWN",
+       "rawValue": 25,
+       "mean": 0,
+       "scale": 50,
+       "normalized": 0.5,
+       "weight": 0.5,
+       "contribution": 0.25,
+       "missingMasked": false,
+       "tacticalConcept": "资源",
+       "sourceFactIds": [
+        "effect:cand-rpct:0::魂力"
+       ],
+       "sourceEventIds": []
+      },
+      {
+       "featureId": "c::RESOURCE_DELTA",
+       "featureCode": "RESOURCE_DELTA",
+       "unitFamily": "ABS",
+       "status": "KNOWN",
+       "rawValue": -10,
+       "mean": 0,
+       "scale": 50,
+       "normalized": -0.2,
+       "weight": 0.25,
+       "contribution": -0.05,
+       "missingMasked": false,
+       "tacticalConcept": "资源",
+       "sourceFactIds": [
+        "effect:cand-rpct:1::体力"
+       ],
+       "sourceEventIds": []
+      },
+      {
+       "featureId": "c::SUCCESS_PROBABILITY",
+       "featureCode": "SUCCESS_PROBABILITY",
+       "unitFamily": "PROBABILITY_0_1",
+       "status": "KNOWN",
+       "rawValue": 0.8,
+       "mean": 0.5,
+       "scale": 0.25,
+       "normalized": 1.2,
+       "weight": 0.5,
+       "contribution": 0.6,
+       "missingMasked": false,
+       "tacticalConcept": "风险",
+       "sourceFactIds": [],
+       "sourceEventIds": [
+        "ev:cand-rpct:0"
+       ]
+      }
+     ],
+     "missingMask": [
+      "SETTLEMENT_DAMAGE",
+      "ROLL_REALIZATION"
+     ],
+     "selection": {
+      "selectedCandidateId": "cand-rpct",
+      "alternativeCandidateId": "cand-burst",
+      "scoreDelta": 0.45,
+      "deltas": [
+       {
+        "featureId": "c::RESOURCE_DELTA_PERCENT",
+        "featureCode": "RESOURCE_DELTA_PERCENT",
+        "tacticalConcept": "资源",
+        "deltaContribution": 0.25,
+        "zeroByMask": false,
+        "statusOfSelected": "KNOWN",
+        "statusOfAlternative": "KNOWN"
+       },
+       {
+        "featureId": "c::PUBLIC_RESOURCE_RATIO",
+        "featureCode": "PUBLIC_RESOURCE_RATIO",
+        "tacticalConcept": "资源",
+        "deltaContribution": -0.3,
+        "zeroByMask": true,
+        "statusOfSelected": "KNOWN",
+        "statusOfAlternative": "UNKNOWN"
+       },
+       {
+        "featureId": "c::RESOURCE_DELTA",
+        "featureCode": "RESOURCE_DELTA",
+        "tacticalConcept": "资源",
+        "deltaContribution": 0.1,
+        "zeroByMask": false,
+        "statusOfSelected": "KNOWN",
+        "statusOfAlternative": "KNOWN"
+       },
+       {
+        "featureId": "c::SUCCESS_PROBABILITY",
+        "featureCode": "SUCCESS_PROBABILITY",
+        "tacticalConcept": "风险",
+        "deltaContribution": 0.4,
+        "zeroByMask": true,
+        "statusOfSelected": "KNOWN",
+        "statusOfAlternative": "UNKNOWN"
+       },
+       {
+        "featureId": "c::DAMAGE_POWER",
+        "featureCode": "DAMAGE_POWER",
+        "tacticalConcept": "伤害压力",
+        "deltaContribution": 0,
+        "zeroByMask": true,
+        "statusOfSelected": "UNKNOWN",
+        "statusOfAlternative": "KNOWN"
+       }
+      ],
+      "topPositive": [
+       "c::SUCCESS_PROBABILITY",
+       "c::RESOURCE_DELTA_PERCENT",
+       "c::RESOURCE_DELTA"
+      ],
+      "topNegative": [
+       "c::PUBLIC_RESOURCE_RATIO",
+       "c::DAMAGE_POWER"
+      ],
+      "tieBreak": "DELTA_ABS_DESC_FEATURECODE_UTF16_ASC"
+     },
+     "topContributions": {
+      "topPositive": [
+       "c::SUCCESS_PROBABILITY",
+       "c::RESOURCE_DELTA_PERCENT"
+      ],
+      "topNegative": [
+       "c::PUBLIC_RESOURCE_RATIO",
+       "c::RESOURCE_DELTA"
+      ],
+      "tieBreak": "CONTRIBUTION_ABS_DESC_FEATURECODE_UTF16_ASC",
+      "noneOmitted": true
+     }
+    }
+   },
+   "expect": {
+    "conservation": {
+     "holds": true,
+     "tolerance": 1e-12
+    },
+    "player": {
+     "skeleton": [
+      "SITUATION",
+      "FACTS",
+      "SUPPORT",
+      "DIFFERENTIATION",
+      "RISK_COST"
+     ],
+     "sentences": [
+      {
+       "kind": "SITUATION",
+       "text": "我魂力只剩两成。",
+       "traceRefs": [
+        "c::PUBLIC_RESOURCE_RATIO"
+       ]
+      },
+      {
+       "kind": "SUPPORT",
+       "text": "这手按公开比例回魂力，能回两成五。",
+       "traceRefs": [
+        "c::RESOURCE_DELTA_PERCENT"
+       ]
+      },
+      {
+       "kind": "DIFFERENTIATION",
+       "text": "另一手不回蓝，这手能回两成五。",
+       "traceRefs": [
+        "DELTA:c::RESOURCE_DELTA_PERCENT"
+       ]
+      },
+      {
+       "kind": "RISK_COST",
+       "text": "代价是花十点体力，命中八成。",
+       "traceRefs": [
+        "c::RESOURCE_DELTA",
+        "c::SUCCESS_PROBABILITY"
+       ]
+      },
+      {
+       "kind": "CONCLUSION",
+       "text": "先把蓝补回来。",
+       "traceRefs": [
+        "c::RESOURCE_DELTA_PERCENT"
+       ]
+      }
+     ]
+    },
+    "forbiddenTokens": [
+     "weight",
+     "权重",
+     "score",
+     "分数",
+     "featureCode",
+     "HEPP",
+     "Pareto",
+     "帕累托",
+     "candidateId",
+     "sourceEffectId",
+     "seed",
+     "actualValue",
+     "normalized",
+     "mean",
+     "scale",
+     "intercept",
+     "contribution",
+     "tacticalConcept",
+     "margin",
+     "frontier",
+     "band",
+     "线性",
+     "系数"
+    ],
+    "reviewAssertions": [
+     {
+      "featureId": "c::RESOURCE_DELTA_PERCENT",
+      "operand": "rawValue",
+      "value": 25,
+      "unit": "PERCENT"
+     },
+     {
+      "featureId": "c::RESOURCE_DELTA",
+      "operand": "rawValue",
+      "value": -10,
+      "unit": "ABS"
+     },
+     {
+      "featureId": "c::SUCCESS_PROBABILITY",
+      "operand": "rawValue",
+      "value": 0.8,
+      "unit": "PROBABILITY_0_1"
+     }
+    ],
+    "failClosed": null
+   }
   }
  ],
  "revision3Delta": "revision 3: failClosed probes moved to a top-level probes array with the independent fragment probe shape (kind FAIL_CLOSED_PROBE, validationPhase FRAGMENT, probe.target/fragment, expect.schemaPhase PASS + semanticCheck); validation order frozen: full trace documents validate against the trace schema first then semantic checks, fragments validate against #/$defs/fragmentProbe first then the named semantic check; a fragment never impersonates a full Trace; gold-cost-too-high hardExclusion reasonText corrected to the 0.5/0.25 numbers (大招需一半魂力); contract chapter renamed hardExclusionTraceV1 -> hardExclusions; counts restated as goldCount 12 / probeCount 5 / total 17.",
@@ -2771,6 +3261,206 @@
     "schemaPhase": "PASS",
     "semanticCheck": "CONSERVATION_FAILED"
    }
+  },
+  {
+   "caseId": "fc-source-missing",
+   "kind": "FAIL_CLOSED_PROBE",
+   "validationPhase": "FRAGMENT",
+   "probe": {
+    "target": "traceRefs",
+    "fragment": {
+     "contributions": [
+      {
+       "featureId": "c::DAMAGE_POWER",
+       "featureCode": "DAMAGE_POWER",
+       "unitFamily": "POWER",
+       "status": "KNOWN",
+       "rawValue": 60,
+       "mean": 50,
+       "scale": 20,
+       "normalized": 0.5,
+       "weight": 0.9,
+       "contribution": 0.45,
+       "missingMasked": false,
+       "tacticalConcept": "伤害压力",
+       "sourceFactIds": [],
+       "sourceEventIds": []
+      }
+     ],
+     "player": {
+      "skeleton": [
+       "SITUATION",
+       "FACTS",
+       "SUPPORT",
+       "DIFFERENTIATION",
+       "RISK_COST"
+      ],
+      "sentences": [
+       {
+        "kind": "SUPPORT",
+        "text": "这手六成威力。",
+        "traceRefs": [
+         "c::DAMAGE_POWER"
+        ]
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "schemaPhase": "PASS",
+    "semanticCheck": "SOURCE_MISSING"
+   }
+  },
+  {
+   "caseId": "fc-forbidden-token",
+   "kind": "FAIL_CLOSED_PROBE",
+   "validationPhase": "FRAGMENT",
+   "probe": {
+    "target": "player",
+    "fragment": {
+     "player": {
+      "skeleton": [
+       "SITUATION",
+       "FACTS",
+       "SUPPORT",
+       "DIFFERENTIATION",
+       "RISK_COST"
+      ],
+      "sentences": [
+       {
+        "kind": "SUPPORT",
+        "text": "这手很稳。",
+        "connective": "权重",
+        "traceRefs": [
+         "c::DAMAGE_POWER"
+        ]
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "schemaPhase": "PASS",
+    "semanticCheck": "FORBIDDEN_TOKEN"
+   }
+  },
+  {
+   "caseId": "fc-unknown-as-zero",
+   "kind": "FAIL_CLOSED_PROBE",
+   "validationPhase": "FRAGMENT",
+   "probe": {
+    "target": "player",
+    "fragment": {
+     "contributions": [
+      {
+       "featureId": "c::SUCCESS_PROBABILITY",
+       "featureCode": "SUCCESS_PROBABILITY",
+       "unitFamily": "PROBABILITY_0_1",
+       "status": "UNKNOWN",
+       "missingMasked": true,
+       "tacticalConcept": "风险",
+       "sourceFactIds": [],
+       "sourceEventIds": []
+      }
+     ],
+     "player": {
+      "skeleton": [
+       "SITUATION",
+       "FACTS",
+       "SUPPORT",
+       "DIFFERENTIATION",
+       "RISK_COST"
+      ],
+      "sentences": [
+       {
+        "kind": "RISK_COST",
+        "text": "命中率是零。",
+        "traceRefs": [
+         "c::SUCCESS_PROBABILITY"
+        ]
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "schemaPhase": "PASS",
+    "semanticCheck": "UNKNOWN_AS_ZERO"
+   }
+  },
+  {
+   "caseId": "fc-unbound-sentence",
+   "kind": "FAIL_CLOSED_PROBE",
+   "validationPhase": "FRAGMENT",
+   "probe": {
+    "target": "player",
+    "fragment": {
+     "player": {
+      "skeleton": [
+       "SITUATION",
+       "FACTS",
+       "SUPPORT",
+       "DIFFERENTIATION",
+       "RISK_COST"
+      ],
+      "sentences": [
+       {
+        "kind": "SUPPORT",
+        "text": "这手很有机会。",
+        "traceRefs": []
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "schemaPhase": "PASS",
+    "semanticCheck": "UNBOUND_SENTENCE"
+   }
+  },
+  {
+   "caseId": "fc-order-violation",
+   "kind": "FAIL_CLOSED_PROBE",
+   "validationPhase": "FRAGMENT",
+   "probe": {
+    "target": "player",
+    "fragment": {
+     "player": {
+      "skeleton": [
+       "SITUATION",
+       "FACTS",
+       "SUPPORT",
+       "DIFFERENTIATION",
+       "RISK_COST"
+      ],
+      "sentences": [
+       {
+        "kind": "CONCLUSION",
+        "text": "就这手。",
+        "traceRefs": [
+         "c::DAMAGE_POWER"
+        ]
+       },
+       {
+        "kind": "SITUATION",
+        "text": "对面血线只剩三成。",
+        "traceRefs": [
+         "c::PUBLIC_HP_RATIO"
+        ]
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "schemaPhase": "PASS",
+    "semanticCheck": "ORDER_VIOLATION"
+   }
   }
- ]
+ ],
+ "revision4Delta": "revision 4: feature catalog extended to 28 codes (STATE_DELTA_PERCENT/SETTLEMENT_MODIFIER_PERCENT/SUMMON_COUNT/SUMMON_STRENGTH/SUMMON_DURATION); tactical concepts 控制/风险/机会; one new natural Chinese gold (gold-state-magnitude) covering state magnitude with conserving deltas and trace-provable numbers (一成/两回合/五成).",
+ "revision5Delta": "revision 5: PLAYER 中文因果链收口 - 每句为自然中文战斗理由并按 目标/局势->事实->支持->替代差异->风险 因果链排列；gold-summon-pending 措辞改为可回指（多一个召唤物）；gold-state-magnitude 支持句与替代句分层回指（每回合掉一成 / 磨两回合 / 命中五成）；全部 13 gold 通过中文合理性自审；schema 拒绝内部术语于 PLAYER 文本。",
+ "revision6Delta": "revision 6: 10/10 failClosedV1 codes covered by fragment probes (added fc-source-missing/fc-forbidden-token/fc-unknown-as-zero/fc-unbound-sentence/fc-order-violation); sentence schema allows empty traceRefs so UNBOUND_SENTENCE is demonstrable; DIFFERENTIATION refs unified to DELTA:<featureId> (all 5 with eligible alternatives now resolve into selection.deltas); gold coverage stays representative (13 golds, mapping covers 28 codes), no per-code gold stuffing.",
+ "revision7Delta": "revision 7: RESOURCE_DELTA_PERCENT added as the 29th catalog code (mapping covers 29 codes); one new natural Chinese gold covers public percent resource change (14 golds, 10 probes), no per-code gold stuffing."
 }

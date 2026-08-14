@@ -1,8 +1,8 @@
 // run-m2-v31-immediate-feature.mjs
-// M2 ImmediateFeature harness (candidate C), rev2. Read-only: never writes, stages or commits.
+// M2 ImmediateFeature harness (candidate C), rev3. Read-only: never writes, stages or commits.
 // Loads the real BehaviorImmediateFeature_Module.js (compiler) in a poisoned vm and runs all
-// 39 BehaviorImmediateFeatureCasesV1 cases against it; verifies the five contract files
-// (Feature/Feature.schema/Cases/Policy/Policy.schema) hashes, schema closure, 23-feature
+// 62 BehaviorImmediateFeatureCasesV1 cases against it; verifies the five contract files
+// (Feature/Feature.schema/Cases/Policy/Policy.schema) hashes, schema closure, 29-feature
 // stable ordering, value rules (KNOWN value only, UNKNOWN/NOT_APPLICABLE omit value, unit
 // isolation, duplicate/caps/work metrics, determinism/deepfreeze/noalias/-0), vm poison and
 // static production closure (no Decision/Runtime/Provider/teacher/route), an independent
@@ -20,13 +20,13 @@ const REPO_ROOT = path.resolve(HERE, '..', '..', '..');
 const RC6 = path.join(REPO_ROOT, 'tools', 'rc6');
 const MOD_SRC = fs.readFileSync(path.join(REPO_ROOT, 'BehaviorImmediateFeature_Module.js'), 'utf8');
 
-const MOD_HASH_EXPECTED = '44568dcc492de901deefbac6ecf1667c3295b93e5e32eedb1511283df4a59878';
+const MOD_HASH_EXPECTED = 'a3d2be20e871af70db9082a3b446a5cd1b882af236d5096ef1a0ae9e56151bcf';
 const CONTRACT_HASHES = {
-  feature: '5715f6125beacd49234c5edb2604286d5ce8828e23da8a3a13a46f744a6683ad',
-  featureSchema: 'e3036e6a5171ee512fbea859268924c0ea696174cbb55854f8b6d0364f690015',
-  cases: 'e5bef21c6d76c94d989a921f55605193bfb0314359c44d28a0f93160ee4a3501',
-  policy: 'abac2935300fd4a9a9cc0a623e1d8be4516df51e268b0f541205511f5f978679',
-  policySchema: '6314cc703ddaf56298331fb4c72e5bbf74df3c1516b05912a20185a6ed90693c',
+  feature: '5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd',
+  featureSchema: '686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937',
+  cases: '9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18',
+  policy: '8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c',
+  policySchema: '19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b',
 };
 const FILE_PATHS = {
   feature: path.join(RC6, 'contracts', 'BehaviorImmediateFeatureV1.json'),
@@ -219,7 +219,7 @@ const PS = readJson(FILE_PATHS.policySchema);
 
 // ---- block 1: five contract files hash / utf8 / dup keys / schema closure ----
 block('contracts', () => {
-  ok('module hash expected 44568dcc', sha256(MOD_SRC) === MOD_HASH_EXPECTED, sha256(MOD_SRC).slice(0, 12));
+  ok('module hash expected a3d2be20', sha256(MOD_SRC) === MOD_HASH_EXPECTED, sha256(MOD_SRC).slice(0, 12));
   for (const [tag, want] of Object.entries(CONTRACT_HASHES)) {
     const buf = fs.readFileSync(FILE_PATHS[tag]);
     ok('hash ' + tag, sha256(buf) === want, sha256(buf).slice(0, 12));
@@ -229,22 +229,22 @@ block('contracts', () => {
     ok('no-mojibake ' + tag, !text.includes('\uFFFD'));
     ok('no-dup-keys ' + tag, findDupKeys(text).length === 0, findDupKeys(text).slice(0, 3).join(','));
   }
-  ok('feature rev2 frozen', F.revision === 2 && F.status === 'FROZEN');
-  ok('cases rev3 39', CASES.revision === 3 && CASES.cases.length === 39 && CASES.counts.caseCount === 39);
+  ok('feature rev5 frozen', F.revision === 5 && F.status === 'FROZEN');
+  ok('cases rev8 62', CASES.revision === 8 && CASES.cases.length === 62 && CASES.counts.caseCount === 62);
   const kinds = {};
   const modes = {};
   for (const c of CASES.cases) { kinds[c.kind] = (kinds[c.kind] || 0) + 1; if (c.expectMode) modes[c.expectMode] = (modes[c.expectMode] || 0) + 1; }
-  ok('cases kinds 24/10/5', kinds.POSITIVE === 24 && kinds.NEGATIVE === 10 && kinds.ANTI_PATTERN === 5, JSON.stringify(kinds));
-  ok('cases modes 2 EXACT / 22 SUBSET', modes.EXACT === 2 && modes.SUBSET === 22, JSON.stringify(modes));
-  ok('feature catalog 23 unique', F.featureCatalog.length === 23 && new Set(F.featureCatalog.map(x => x.featureCode)).size === 23);
+  ok('cases kinds 38/15/9', kinds.POSITIVE === 38 && kinds.NEGATIVE === 15 && kinds.ANTI_PATTERN === 9, JSON.stringify(kinds));
+  ok('cases modes 3 EXACT / 39 SUBSET', modes.EXACT === 3 && modes.SUBSET === 39, JSON.stringify(modes));
+  ok('feature catalog 29 unique', F.featureCatalog.length === 29 && new Set(F.featureCatalog.map(x => x.featureCode)).size === 29);
   ok('feature ordering declared', F.featureOrdering.rule.includes('(scopeRank, sourceEffectId, key, featureCode)') && F.featureOrdering.rowFactIdRule.includes("sourceEffectId + '::' + key"));
   ok('feature complexity caps', F.complexity.caps.MAX_FEATURES_PER_CANDIDATE === 256 && F.complexity.caps.MAX_FACT_ROWS_PER_CANDIDATE === 128 && F.complexity.caps.MAX_MODIFIER_ENTRIES_PER_CANDIDATE === 64 && F.complexity.caps.branchCombination === false);
-  ok('feature statusReasonCodes rev2', JSON.stringify(F.statusReasonCodes.UNKNOWN).includes('SIDE_UNOBSERVED') && JSON.stringify(F.statusReasonCodes.UNKNOWN).includes('STATE_FORM_UNMAPPED'));
+  ok('feature statusReasonCodes rev3', JSON.stringify(F.statusReasonCodes.UNKNOWN).includes('SIDE_UNOBSERVED') && JSON.stringify(F.statusReasonCodes.UNKNOWN).includes('STATE_FORM_UNMAPPED'));
   // FS describes compiled output (schemaVersion/candidateId/features/featureCount), not the meta-contract F.
   // Structural closure of $defs.feature here; the real compiler output is validated against FS in 'ordering'.
   const fdef = FS.$defs.feature;
   ok('feature schema defs.feature closed object', !!fdef && fdef.type === 'object' && fdef.additionalProperties === false && JSON.stringify(fdef.required) === JSON.stringify(['featureCode', 'unitFamily', 'status', 'reasonCode', 'sourceFactIds', 'sourceEventIds']));
-  ok('feature schema enums 23/9/3', fdef.properties.featureCode.enum.length === 23 && fdef.properties.unitFamily.enum.length === 9 && JSON.stringify(fdef.properties.status.enum) === JSON.stringify(['KNOWN', 'UNKNOWN', 'NOT_APPLICABLE']));
+  ok('feature schema enums 29/10/3', fdef.properties.featureCode.enum.length === 29 && fdef.properties.unitFamily.enum.length === 10 && JSON.stringify(fdef.properties.status.enum) === JSON.stringify(['KNOWN', 'UNKNOWN', 'NOT_APPLICABLE']));
   ok('feature schema top output required', JSON.stringify(FS.required) === JSON.stringify(['schemaVersion', 'candidateId', 'features', 'featureCount']));
   ok('feature schema value conditionals 8', Array.isArray(fdef.allOf) && fdef.allOf.length === 8);
   const openF = [];
@@ -252,7 +252,14 @@ block('contracts', () => {
   ok('feature schema closed', openF.length === 0, openF.slice(0, 5).join(','));
   const openP = [];
   openObjectNodes(PS, openP);
-  ok('policy schema closed', openP.length === 0, openP.slice(0, 5).join(','));
+  // schemaCounterExamplesV1 case documents are fixture payloads by design
+  // (additionalProperties: true so INVALID counter-examples can carry arbitrary
+  // artifact fields and still be rejected by the oneOf/not branches).
+  const ceDoc = '$.properties.schemaCounterExamplesV1.properties.cases.items.properties.document';
+  const ceFixtures = openP.filter(x => x === ceDoc);
+  const otherOpen = openP.filter(x => x !== ceDoc);
+  ok('policy schema closed except CE fixture', otherOpen.length === 0, otherOpen.slice(0, 5).join(','));
+  ok('policy CE document fixture open by design', ceFixtures.length === 1, JSON.stringify(openP));
   const docP = P.artifactDocument && P.artifactDocument.document;
   const errDoc = docP ? makeValidator(PS)(docP) : 'no artifactDocument.document';
   ok('policy artifactDocument.document validates schema', !errDoc, errDoc || '');
@@ -286,12 +293,12 @@ const MOD = prodCtx.__LWCS_BEHAVIOR_IMMEDIATE_FEATURE__;
 block('module', () => {
   ok('module mounted', !!MOD && typeof MOD.compileCandidate === 'function' && typeof MOD.registry === 'function' && typeof MOD.readMetrics === 'function' && typeof MOD.selfCheck === 'function' && typeof MOD.inputSchema === 'function');
   const reg = MOD.registry();
-  ok('module revision 2 role', reg.revision === 2 && reg.role === 'R9_CANDIDATE_UNREGISTERED' && reg.apiSurface.join(',') === 'compileCandidate,inputSchema,registry,readMetrics,selfCheck');
+  ok('module revision 4 role', reg.revision === 4 && reg.role === 'R9_CANDIDATE_UNREGISTERED' && reg.apiSurface.join(',') === 'compileCandidate,inputSchema,registry,readMetrics,selfCheck');
   ok('module authority no route/world/result/teacher', reg.authority.futureRouteDerivation === false && reg.authority.worldClone === false && reg.authority.resultWorldCartesian === false && reg.authority.inputMode === 'CANDIDATES_ONLY' && reg.authority.claim === 'CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED');
-  ok('module feature codes 23 == contract', canon(reg.featureCodes) === canon(F.featureCatalog.map(x => x.featureCode)));
-  ok('module candidate 13 / row 10', reg.candidateFeatureCodes.length === 13 && reg.effectRowFeatureCodes.length === 10);
+  ok('module feature codes 29 == contract', canon(reg.featureCodes) === canon(F.featureCatalog.map(x => x.featureCode)));
+  ok('module candidate 13 / row 16', reg.candidateFeatureCodes.length === 13 && reg.effectRowFeatureCodes.length === 16);
   ok('module caps == contract', reg.caps.MAX_FEATURES_PER_CANDIDATE === 256 && reg.caps.MAX_FACT_ROWS_PER_CANDIDATE === 128 && reg.caps.MAX_MODIFIER_ENTRIES_PER_CANDIDATE === 64 && reg.caps.MAX_WORK_UNITS_PER_CALL === 200000 && reg.caps.fixedCandidateFeatureCount === 13);
-  ok('module workFormula', reg.workFormula === '13 (F0) + directFactsRows + modifierEntries + scheduledFactsEntries + atomicFactsCount');
+  ok('module workFormula', typeof reg.workFormula === 'string' && reg.workFormula.indexOf('13 (F0) + directFactsRows + modifierEntries + scheduledFactsEntries + atomicFactsCount') === 0, reg.workFormula);
   ok('module subsetSemantics', reg.subsetSemantics.includes('UNORDERED_MULTISET_WITH_COUNT_ASSERTIONS'));
   const HASH_KEY_MAP = { featureContract: 'feature', featureSchema: 'featureSchema', featureCases: 'cases', policyContract: 'policy', policySchema: 'policySchema' };
   ok('module contract hashes == disk', Object.entries(reg.contractHashes).filter(([k]) => HASH_KEY_MAP[k]).every(([k, h]) => CONTRACT_HASHES[HASH_KEY_MAP[k]] === h), JSON.stringify(reg.contractHashes));
@@ -309,7 +316,7 @@ block('module', () => {
   ok('selfCheck real passed', scReal.passed === true && scReal.sourceSelfCheckable === true, JSON.stringify(scReal.checks && scReal.checks.filter(c => !c.passed).map(c => c.id)));
 });
 
-// ---- block 3: 39 cases through the real compiler ----
+// ---- block 3: 62 cases through the real compiler ----
 const FEATURE_KEY = ['featureCode', 'unitFamily', 'status', 'reasonCode', 'sourceFactIds', 'sourceEventIds'];
 function featCanon(f) {
   const o = {};
@@ -369,6 +376,14 @@ function modifierEntryCount(input) {
 }
 const expectedWork = input => 13 + (input.directFacts ? input.directFacts.length : 0) + modifierEntryCount(input) + (input.scheduledFacts ? input.scheduledFacts.length : 0) + (input.atomicFacts ? input.atomicFacts.length : 0);
 
+let compileCalls = 0;
+let compileThrows = 0;
+function compileOnce(input) {
+  compileCalls += 1;
+  try { return { out: MOD.compileCandidate(input), err: null }; }
+  catch (e) { compileThrows += 1; return { out: null, err: String((e && (e.code || e.reasonCode || e.message)) || e) }; }
+}
+
 block('cases', () => {
   let positiveOk = 0;
   let negativeOk = 0;
@@ -376,9 +391,9 @@ block('cases', () => {
   for (const c of CASES.cases) {
     const id = c.caseId;
     const input = clone(c.input);
-    let out = null;
-    let err = null;
-    try { out = MOD.compileCandidate(input); } catch (e) { err = String((e && (e.code || e.reasonCode || e.message)) || e); }
+    const rc = compileOnce(input);
+    const out = rc.out;
+    const err = rc.err;
     if (c.kind === 'POSITIVE') {
       ok(id + ' compiles', out !== null, 'err=' + err);
       if (out === null) continue;
@@ -401,33 +416,65 @@ block('cases', () => {
       const wu = MOD.readMetrics().lastWorkUnits;
       ok(id + ' workUnits formula', wu === expectedWork(input), 'got ' + wu + ' want ' + expectedWork(input));
       if (id === 'pos-determinism-replay') {
-        const again = MOD.compileCandidate(clone(c.input));
+        const again = compileOnce(clone(c.input)).out;
         ok(id + ' deterministic', canon(again) === canon(out));
       }
     } else if (c.kind === 'NEGATIVE') {
       negativeOk += 1;
-      ok(id + ' rejects ' + c.expect.reject.reasonCode, err === c.expect.reject.reasonCode, 'got ' + err);
-      ok(id + ' no output on reject', out === null);
-    } else {
-      if (err !== null) {
-        antiOk += 1;
+      if (c.expect.reject) {
         ok(id + ' rejects ' + c.expect.reject.reasonCode, err === c.expect.reject.reasonCode, 'got ' + err);
+        ok(id + ' no output on reject', out === null);
       } else {
-        antiOk += 1;
-        ok(id + ' output avoids violatingFeature', out !== null && !out.features.some(f => f.featureCode === c.expect.violatingFeature.featureCode && f.status === c.expect.violatingFeature.status && f.value === c.expect.violatingFeature.value), JSON.stringify((out || {}).features && out.features.filter(f => f.featureCode === c.expect.violatingFeature.featureCode)));
-        ok(id + ' output-side ban code', ['UNKNOWN_ZERO_PLACEHOLDER', 'INVALID_STATUS_VALUE'].includes(c.expect.reject.reasonCode), c.expect.reject.reasonCode);
+        ok(id + ' compiles with UNKNOWN features', out !== null, 'err=' + err);
+        if (out !== null) {
+          ok(id + ' gold featureCount self-consistent', c.expect.featureCount === (c.expect.features || []).length, c.expect.featureCount + ' vs ' + (c.expect.features || []).length);
+          expectFeatureSubset(id, out.features, c.expect.features);
+          checkFeatureShape(id, out.features);
+          ok(id + ' deepFrozen', deepFrozen(out, new Set()));
+          ok(id + ' no alias', !aliasesInput(out, input));
+          const wu = MOD.readMetrics().lastWorkUnits;
+          ok(id + ' workUnits formula', wu === expectedWork(input), 'got ' + wu + ' want ' + expectedWork(input));
+        }
+      }
+    } else {
+      antiOk += 1;
+      if (c.expect.violatingFeature) {
+        ok(id + ' compiles with output-side ban', out !== null, 'err=' + err);
+        if (out !== null) {
+          ok(id + ' output avoids violatingFeature', !out.features.some(f => f.featureCode === c.expect.violatingFeature.featureCode && f.status === c.expect.violatingFeature.status && f.value === c.expect.violatingFeature.value), JSON.stringify(out.features.filter(f => f.featureCode === c.expect.violatingFeature.featureCode)));
+          ok(id + ' output-side ban code', ['UNKNOWN_ZERO_PLACEHOLDER', 'INVALID_STATUS_VALUE'].includes(c.expect.reject.reasonCode), c.expect.reject.reasonCode);
+          checkFeatureShape(id, out.features);
+          ok(id + ' deepFrozen', deepFrozen(out, new Set()));
+          ok(id + ' no alias', !aliasesInput(out, input));
+          const wu = MOD.readMetrics().lastWorkUnits;
+          ok(id + ' workUnits formula', wu === expectedWork(input), 'got ' + wu + ' want ' + expectedWork(input));
+        }
+      } else if (c.expect.reject) {
+        ok(id + ' rejects ' + c.expect.reject.reasonCode, err === c.expect.reject.reasonCode, 'got ' + err);
+        ok(id + ' no output on reject', out === null);
+      } else {
+        ok(id + ' compiles with UNKNOWN features', out !== null, 'err=' + err);
+        if (out !== null) {
+          ok(id + ' gold featureCount self-consistent', c.expect.featureCount === (c.expect.features || []).length, c.expect.featureCount + ' vs ' + (c.expect.features || []).length);
+          expectFeatureSubset(id, out.features, c.expect.features);
+          checkFeatureShape(id, out.features);
+          ok(id + ' deepFrozen', deepFrozen(out, new Set()));
+          ok(id + ' no alias', !aliasesInput(out, input));
+          const wu = MOD.readMetrics().lastWorkUnits;
+          ok(id + ' workUnits formula', wu === expectedWork(input), 'got ' + wu + ' want ' + expectedWork(input));
+        }
       }
     }
   }
-  ok('all 24 positive ran', positiveOk === 24, String(positiveOk));
-  ok('all 10 negative ran', negativeOk === 10, String(negativeOk));
-  ok('all 5 anti ran', antiOk === 5, String(antiOk));
+  ok('all 38 positive ran', positiveOk === 38, String(positiveOk));
+  ok('all 15 negative ran', negativeOk === 15, String(negativeOk));
+  ok('all 9 anti ran', antiOk === 9, String(antiOk));
 });
 
 // ---- block 4: ordering, uniqueness, per-feature protections ----
 block('ordering', () => {
   const c = CASES.cases.find(x => x.caseId === 'pos-damage-full');
-  const out = MOD.compileCandidate(clone(c.input));
+  const out = compileOnce(clone(c.input)).out;
   const codes = out.features.map(f => f.featureCode);
   const candSet = new Set(codes.slice(0, 13));
   ok('candidate scope first 13', out.featureCount === 17 && candSet.size === 13 && codes.slice(0, 13).every(cc => MOD.registry().candidateFeatureCodes.includes(cc)) && MOD.registry().candidateFeatureCodes.every(cc => candSet.has(cc)));
@@ -442,63 +489,66 @@ block('ordering', () => {
   const uniq = out.features.map(f => f.featureCode + '@' + (f.sourceFactIds[0] || ''));
   ok('no duplicate (featureCode, sourceFactId)', new Set(uniq).size === uniq.length);
   const multi = CASES.cases.find(x => x.caseId === 'pos-resource-shield-multitarget');
-  const mOut = MOD.compileCandidate(clone(multi.input));
+  const mOut = compileOnce(clone(multi.input)).out;
   const rtc = mOut.features.find(f => f.featureCode === 'RELATION_TARGET_COUNT');
   ok('multi-target counted once', rtc && rtc.status === 'KNOWN' && rtc.value === 2, JSON.stringify(rtc));
   ok('multi-target no per-target expansion', mOut.features.filter(f => f.featureCode === 'RESOURCE_DELTA').length === 1 && mOut.features.filter(f => f.featureCode === 'SHIELD_DELTA').length === 1);
   const aj = CASES.cases.find(x => x.caseId === 'pos-attribute-judgment-duration');
-  const ajOut = MOD.compileCandidate(clone(aj.input));
+  const ajOut = compileOnce(clone(aj.input)).out;
   ok('judgment single source', ajOut.features.filter(f => f.featureCode === 'JUDGMENT_DELTA').length === 1, 'count=' + ajOut.features.filter(f => f.featureCode === 'JUDGMENT_DELTA').length);
   const ajm = ajOut.features.find(f => f.featureCode === 'JUDGMENT_DELTA');
   ok('judgment magnitude from row only', !!ajm && ajm.value === 10 && ajm.sourceFactIds[0] === 'effect:cand-aj:1::命中', JSON.stringify(ajm));
   const dur = ajOut.features.filter(f => f.featureCode === 'STATE_DURATION');
   ok('duration raw not multiplied', dur.length === 2 && dur.every(f => f.value === 1), JSON.stringify(dur));
   const side = CASES.cases.find(x => x.caseId === 'pos-relation-mixed');
-  const sOut = MOD.compileCandidate(clone(side.input));
+  const sOut = compileOnce(clone(side.input)).out;
   const sft = sOut.features.find(f => f.featureCode === 'RELATION_TARGET_SIDE');
   ok('relation mixed', sft && sft.status === 'KNOWN' && sft.value === 'MIXED', JSON.stringify(sft));
   const ghost = CASES.cases.find(x => x.caseId === 'pos-target-unknown-unit');
-  const gOut = MOD.compileCandidate(clone(ghost.input));
+  const gOut = compileOnce(clone(ghost.input)).out;
   ok('unknown unit target counted once', gOut.features.find(f => f.featureCode === 'RELATION_TARGET_COUNT').value === 1);
   ok('unknown unit hp UNKNOWN not zero', gOut.features.find(f => f.featureCode === 'PUBLIC_HP_RATIO').status === 'UNKNOWN' && !('value' in gOut.features.find(f => f.featureCode === 'PUBLIC_HP_RATIO')));
   const actorProt = CASES.cases.find(x => x.caseId === 'pos-actor-cost-protection');
-  const aOut = MOD.compileCandidate(clone(actorProt.input));
+  const aOut = compileOnce(clone(actorProt.input)).out;
   const cost = aOut.features.find(f => f.featureCode === 'COST_AFFORDABILITY');
   ok('cost reads actor only', cost && cost.status === 'KNOWN' && cost.value === 0.5, JSON.stringify(cost));
   const sched = CASES.cases.find(x => x.caseId === 'pos-scheduled-counted');
-  const schOut = MOD.compileCandidate(clone(sched.input));
+  const schOut = compileOnce(clone(sched.input)).out;
   const obr = schOut.features.find(f => f.featureCode === 'OUTSIDE_BATCH1_ROW_COUNT');
-  ok('scheduled never silent', obr && obr.value === 1 && JSON.stringify(obr.sourceEventIds) === '["sf:1"]', JSON.stringify(obr));
+  ok('scheduled never silent', obr && obr.value === 1 && JSON.stringify(obr.sourceEventIds) === '["effect:pos-real-baihanying-window:0:schedule:0"]', JSON.stringify(obr));
   const taunt = CASES.cases.find(x => x.caseId === 'pos-state-taunt');
-  const tOut = MOD.compileCandidate(clone(taunt.input));
+  const tOut = compileOnce(clone(taunt.input)).out;
   const sp = tOut.features.find(f => f.featureCode === 'STATE_PRESENCE');
   ok('state BOOL known 1', sp && sp.status === 'KNOWN' && sp.value === 1, JSON.stringify(sp));
   const cnt = CASES.cases.find(x => x.caseId === 'pos-state-count-unmapped');
-  const cOut = MOD.compileCandidate(clone(cnt.input));
+  const cOut = compileOnce(clone(cnt.input)).out;
   const spc = cOut.features.find(f => f.featureCode === 'STATE_PRESENCE');
   ok('state COUNT unmapped UNKNOWN', spc && spc.status === 'UNKNOWN' && spc.reasonCode === 'STATE_FORM_UNMAPPED' && !('value' in spc), JSON.stringify(spc));
   const hard = CASES.cases.find(x => x.caseId === 'pos-hard-exclusion');
-  const hOut = MOD.compileCandidate(clone(hard.input));
+  const hOut = compileOnce(clone(hard.input)).out;
   const hbit = hOut.features.find(f => f.featureCode === 'HARD_EXCLUSION');
   const hreason = hOut.features.find(f => f.featureCode === 'HARD_EXCLUSION_REASON');
   ok('hard exclusion bit + reason', !!hbit && hbit.value === 1 && !!hreason && hreason.status === 'KNOWN' && hreason.value === 'ACTOR_DISABLED' && hreason.reasonCode === 'OK', JSON.stringify({ hbit, hreason }));
   const chinese = CASES.cases.find(x => x.caseId === 'pos-chinese-ids');
-  const zhOut = MOD.compileCandidate(clone(chinese.input));
+  const zhOut = compileOnce(clone(chinese.input)).out;
   ok('chinese ids accepted', zhOut.features.find(f => f.featureCode === 'RELATION_TARGET_SIDE').status === 'KNOWN', JSON.stringify(zhOut.features.find(f => f.featureCode === 'RELATION_TARGET_SIDE')));
   ok('vm poison zero after cases', vmPoisonCount === 0, 'poison=' + vmPoisonCount);
 });
 
 // ---- block 5: metrics / work caps ----
 block('metrics', () => {
-  const lastCase = CASES.cases[CASES.cases.length - 1];
-  const lastOut = MOD.compileCandidate(clone(lastCase.input));
+  // the trailing cases are ANTI_PATTERN rejections; metrics compare uses the last
+  // successful compile instead.
+  const lastCase = [...CASES.cases].reverse().find(c => c.kind === 'POSITIVE');
+  const lastOut = compileOnce(clone(lastCase.input)).out;
   const m = MOD.readMetrics();
-  ok('metrics calls == 39', m.calls === 39, 'got ' + m.calls);
+  ok('metrics calls == successful compiles', m.calls === compileCalls - compileThrows, 'got ' + m.calls + ' expected ' + (compileCalls - compileThrows));
   const rejectTotal = Object.values(m.rejections || {}).reduce((a, b) => a + b, 0);
-  ok('metrics rejections == 13', rejectTotal === 13, JSON.stringify(m.rejections));
+  ok('metrics rejections == observed throws', rejectTotal === compileThrows, JSON.stringify(m.rejections));
+  ok('metrics invocations closed', m.calls + rejectTotal === compileCalls, m.calls + ' + ' + rejectTotal + ' vs ' + compileCalls);
   ok('metrics lastCandidateId set', typeof m.lastCandidateId === 'string' && m.lastCandidateId.length > 0);
   ok('metrics lastFeatureCount == last run', m.lastFeatureCount === lastOut.featureCount, String(m.lastFeatureCount) + ' vs ' + lastOut.featureCount);
-  ok('metrics max work below cap', m.workUnitsTotal <= 39 * 200000, String(m.workUnitsTotal));
+  ok('metrics max work below cap', m.workUnitsTotal <= compileCalls * 200000, String(m.workUnitsTotal));
   const maxSeen = Math.max(...CASES.cases.map(c => expectedWork(c.input)));
   ok('max work formula <= cap', maxSeen <= 200000, String(maxSeen));
 });

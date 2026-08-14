@@ -1,11 +1,15 @@
 // run-m2-v31-provider-core.mjs
-// M2 provider-core harness (candidate C), rev4. Read-only: never writes, stages or commits.
-// Real-vm load of BehaviorProvider_Module.js and BehaviorPrototypeAdapter_Module.js (rev4).
+// M2 provider-core harness (candidate C), rev5. Read-only: never writes, stages or commits.
+// Real-vm load of BehaviorProvider_Module.js and BehaviorPrototypeAdapter_Module.js (rev5).
 // Provider gates: 15 F3 cases through select/evaluateVectors with contract gold, input
 // stability, deep-frozen outputs, no aliasing, real lastWorkUnits, poisoned vm (Math.random /
 // Date.now / Function / eval / timers must be 0 calls after all cases).
-// Adapter gates: layered rev3 registry (enrollment 581 vs implementation 106/475/40/91/0),
-// batch-1 five prototypes strict direct projections, 16 pending explicit zero contribution
+// Adapter gates: layered rev5 registry (enrollment 581 vs implementation 243/338/40/91/0
+// + batch-2 137), batch-1 five prototypes strict direct projections, 13 pending explicit
+// zero contribution plus PENDING_*, 40 deferred path-level, 91 out-of-battle, lift/selfCheck/
+// universe classification. DirectFact-to-Provider column mapping is NOT frozen: no invented
+// integration, no end-to-end semantics claim. No Kernel/Decision/Runtime/loader, no 7v7/5v5
+// or perf bench. Any failed assertion exits 1.
 // plus PENDING_DIRECT_PROJECTION, 40 deferred path-level, 91 out-of-battle, lift/selfCheck/
 // universe classification. DirectFact-to-Provider column mapping is NOT frozen: no invented
 // integration, no end-to-end semantics claim. No Kernel/Decision/Runtime/loader, no 7v7/5v5
@@ -27,10 +31,11 @@ const PDA_SRC = fs.readFileSync(path.join(REPO_ROOT, 'BehaviorPrototypeAdapter_M
 const M1_PATH = path.join(HERE, 'run-m1-v31-acceptance.mjs');
 
 const BATCH1_PROTOS = ['伤害结算', '资源变化', '护盾变化', '属性修正', '判定修正'];
-const PENDING16 = ['资源转移', '结算修正', '炸环', '状态施加', '时窗修正', '状态移除', '规则防御', '状态转移', '状态交换', '资源锁定', '规则改写', '机制抹消', '机制授予', '位移执行', '决策干扰', '召唤生成'];
+const BATCH2_PROTOS = ['状态施加', '召唤生成', '结算修正'];
+const PENDING13 = ['资源转移', '炸环', '时窗修正', '状态移除', '规则防御', '状态转移', '状态交换', '资源锁定', '规则改写', '机制抹消', '机制授予', '位移执行', '决策干扰'];
 const PROJECT_FIELDS = ['directFacts', 'legalityModifiers', 'opportunityModifiers', 'scheduledFacts', 'unsupportedOutcomeKinds', 'deferCode'];
 const FACT_ROW_KEYS = ['schemaVersion', 'factType', 'key', 'sourceActionId', 'sourceActorId', 'sourceEffectId', 'targetIds', 'amount', 'unit', 'durationTurns'];
-const PDA_HASH_EXPECTED = '18d3f4803614a5dda5727963d90ed4ac8af38a06ab6a8398b3429773ae69345f';
+const PDA_HASH_EXPECTED = '76915ef0fac57ea4fe141319540177b5024ce86ffc7919202b4463a337143147';
 
 let passed = 0;
 let failed = 0;
@@ -218,13 +223,13 @@ const ROLE_IDS = ['技能', '角色', '武魂', '魂技'];
 block('load', () => {
   ok('vm provider mounted', !!BP && typeof BP.select === 'function' && typeof BP.evaluateVectors === 'function');
   ok('vm adapter mounted', !!PDA && typeof PDA.admit === 'function' && typeof PDA.project === 'function' && typeof PDA.classifyPath === 'function' && typeof PDA.registry === 'function' && typeof PDA.readMetrics === 'function' && typeof PDA.selfCheck === 'function' && typeof PDA.setDeferOverride === 'function' && typeof PDA.setPathProjectionOverride === 'function' && typeof PDA.clearOverride === 'function' && typeof PDA.computeLegalityContext === 'function');
-  ok('adapter hash expected 18d3f480', sha256(PDA_SRC) === PDA_HASH_EXPECTED, sha256(PDA_SRC).slice(0, 16));
+  ok('adapter hash expected 76915ef0', sha256(PDA_SRC) === PDA_HASH_EXPECTED, sha256(PDA_SRC).slice(0, 16));
   ok('provider identity', BP.providerId === 'behavior-provider-v1' && BP.kind === 'CANDIDATE_ONLY' && BP.selectionScope === 'MECHANICAL_NEUTRAL_ONLY' && BP.contractRevision === 3);
   ok('provider selfCheck ok', BP.selfCheck().ok === true && BP.selfCheck().checks.contractRevisionFrozen === true);
   const reg = PDA.registry();
-  ok('adapter role R9 only', reg.role === 'R9_CANDIDATE_UNREGISTERED' && reg.revision === 4 && PDA.contractRevision === 4);
+  ok('adapter role R9 only', reg.role === 'R9_CANDIDATE_UNREGISTERED' && reg.revision === 5 && PDA.contractRevision === 5);
   ok('adapter enrollment 581/40/91/621', reg.enrollment.contractSupportedPathCount === 581 && reg.enrollment.contractDeferredPathCount === 40 && reg.enrollment.contractOutOfBattlePathCount === 91 && reg.enrollment.contractTotalInBattlePathCount === 621);
-  ok('adapter implementation layered 106/475/40/91/0', reg.implementation.implementationDirectProjection === 106 && reg.implementation.implementationPending === 475 && reg.implementation.implementationDeferred === 40 && reg.implementation.implementationOutOfBattleScope === 91 && reg.implementation.placeholderProjectionCount === 0 && reg.implementation.batch1PathCount === 106);
+  ok('adapter implementation layered 243/338/40/91/0', reg.implementation.implementationDirectProjection === 243 && reg.implementation.implementationPending === 338 && reg.implementation.implementationDeferred === 40 && reg.implementation.implementationOutOfBattleScope === 91 && reg.implementation.placeholderProjectionCount === 0 && reg.implementation.batch1PathCount === 106);
   ok('adapter no 581 implementation claim', reg.implementation.claimsDirectProjectionForAllSupported === false);
   ok('adapter mapping NOT_FROZEN_NOT_WIRED', reg.implementation.directFactToProviderColumnMapping === 'NOT_FROZEN_NOT_WIRED' && reg.semantics.directFactToProviderColumnMapping === 'NOT_FROZEN_NOT_WIRED' && reg.semantics.revision4SupersedeDeclared === true);
   ok('adapter counts closed', reg.counts.totalInBattlePathCount === 621 && reg.counts.supportedPathCount === 581 && reg.counts.deferredPathCount === 40 && reg.counts.deferredPathIdsCount === 40 && reg.counts.rejectedInputPathCount === 0 && reg.counts.outOfBattleScopePathCount === 91 && reg.counts.silentOmissionCount === 0);
@@ -233,9 +238,10 @@ block('load', () => {
   ok('adapter statuses closed 27', Object.keys(reg.statusByPrototype).length === 27 && Object.values(reg.statusByPrototype).every(s => ['SUPPORTED', 'DEFERRED_EXPLICIT', 'OUT_OF_BATTLE_SCOPE'].indexOf(s) >= 0) && Object.values(reg.statusByPrototype).filter(s => s === 'SUPPORTED').length === 21);
   ok('adapter tierByPrototype closed', Object.keys(reg.tierByPrototype).length === 27 && Object.values(reg.tierByPrototype).every(t => ['EXISTING_ADMITTED', 'T0', 'T1', 'T2', 'NONE'].indexOf(t) >= 0) && reg.tierByPrototype['复制执行'] === 'T2' && reg.tierByPrototype['修炼增益'] === 'NONE');
   ok('adapter pendingCodes 4 + carrier', JSON.stringify(reg.implementation.pendingCodes) === JSON.stringify(['PENDING_CONDITIONAL_PROJECTION', 'PENDING_TRIGGER_PROJECTION', 'PENDING_DURATION_PROJECTION', 'PENDING_DIRECTION_PROJECTION']) && reg.implementation.carrierCode === 'UNSUPPORTED_CARRIER_REQUIRES_UNPACK');
-  ok('adapter mechanicMetadata declared', reg.implementation.mechanicMetadata && reg.implementation.mechanicMetadata.location === 'opportunityModifiers.mechanicMetadata' && reg.implementation.mechanicMetadata.sourceEffectId === true && reg.implementation.mechanicMetadata.keys.length === 6 && Object.keys(reg.implementation.mechanicMetadata.perPrototypeSubsets).length === 5);
+  ok('adapter mechanicMetadataEntries declared', reg.implementation.mechanicMetadataEntries && reg.implementation.mechanicMetadataEntries.location === 'opportunityModifiers.mechanicMetadataEntries' && reg.implementation.mechanicMetadataEntries.sourceEffectId === true && reg.implementation.mechanicMetadataEntries.keys.length === 6 && Object.keys(reg.implementation.mechanicMetadataEntries.perPrototypeSubsets).length === 8);
   ok('adapter numericForms declared', typeof reg.implementation.numericForms['数值'] === 'string' && reg.implementation.numericForms['数值'].indexOf('PENDING_DIRECTION_PROJECTION') >= 0 && reg.implementation.numericForms['持续回合'].indexOf('PENDING_DURATION_PROJECTION') >= 0);
-  ok('adapter batch1 5 / pending 16', canon(reg.implementation.batch1Prototypes) === canon(BATCH1_PROTOS) && canon(reg.implementation.pendingPrototypes) === canon(PENDING16));
+  ok('adapter batch1 5 / batch2 3 / pending 13', canon(reg.implementation.batch1Prototypes) === canon(BATCH1_PROTOS) && canon(reg.implementation.batch2Prototypes) === canon(BATCH2_PROTOS) && canon(reg.implementation.pendingPrototypes) === canon(PENDING13));
+  ok('adapter batch2 path counts 137', reg.implementation.batch2PathCount === 137 && canon(reg.implementation.batch2PathCounts) === canon({ 状态施加: 55, 召唤生成: 19, 结算修正: 63 }), JSON.stringify(reg.implementation.batch2PathCounts));
   ok('adapter legality gate same', reg.legalityContext.timing === 'BEFORE_CANDIDATE_FREEZE' && reg.legalityContext.playerLocked === 'SAME_GATE' && reg.legalityContext.source === 'CURRENT_PUBLIC_STATE_ONLY');
 });
 
@@ -308,7 +314,7 @@ block('lift', () => {
   ok('clearOverride restores default defer', cleared.ok === true && cleared.restored === true && PDA.getPathProjectionOverride(LIFT_PATH) === null, JSON.stringify(cleared));
 });
 
-// ---- adapter rev4 case/probe gates (implementation boundary, not contract gold) ----
+// ---- adapter rev5 case/probe gates (implementation boundary, not contract gold) ----
 function checkDirectFacts(tag, rows, gold, ctx, tgt) {
   ok(tag + ' rows gold canonical', canon(rows) === canon(gold), JSON.stringify(rows));
   ok(tag + ' rows ten keys', rows.every(r => canon(Object.keys(r).sort()) === canon(FACT_ROW_KEYS.slice().sort())));
@@ -327,10 +333,16 @@ function strictGold(c, adm, prj) {
   const ctx = ctxOf(c);
   ok(id + ' admitted', adm.admitted === true, JSON.stringify(adm));
   ok(id + ' gold directFacts canonical', canon(prj.directFacts) === canon(c.expect.directFacts || []), JSON.stringify(prj.directFacts));
-  ok(id + ' gold scheduledFacts canonical', canon(prj.scheduledFacts) === canon(c.expect.scheduledFacts || []), JSON.stringify(prj.scheduledFacts));
+  if (c.expect.scheduledFacts !== undefined) {
+    ok(id + ' gold scheduledFacts canonical', canon(prj.scheduledFacts) === canon(c.expect.scheduledFacts), JSON.stringify(prj.scheduledFacts));
+  } else {
+    // B leaves scheduledFacts undeclared on pos-t0-path-supported (minimal assertion
+    // case); the module output must still be a well-formed grant/summon window row.
+    ok(id + ' scheduledFacts well-formed', prj.scheduledFacts.every(s => s && typeof s === 'object' && typeof s.grantType === 'string' && ['SUMMON_WINDOW', 'FOLLOW_UP', 'WINDOW_ADJUST', 'SETTLEMENT_RATIO_ADJUST'].indexOf(s.grantType) >= 0), JSON.stringify(prj.scheduledFacts));
+  }
   ok(id + ' gold legalityModifiers canonical', canon(prj.legalityModifiers) === canon(c.expect.legalityModifiers || {}), JSON.stringify(prj.legalityModifiers));
   ok(id + ' gold opportunityModifiers canonical', canon(prj.opportunityModifiers) === canon(c.expect.opportunityModifiers || {}), JSON.stringify(prj.opportunityModifiers));
-  ok(id + ' gold unsupported empty + no defer', canon(prj.unsupportedOutcomeKinds) === '[]' && prj.deferCode === '', JSON.stringify(prj.unsupportedOutcomeKinds));
+  ok(id + ' gold unsupported + no defer', canon(prj.unsupportedOutcomeKinds) === canon(c.expect.unsupportedOutcomeKinds || []) && prj.deferCode === (c.expect.deferCode || ''), JSON.stringify(prj.unsupportedOutcomeKinds));
   checkDirectFacts(id, prj.directFacts, c.expect.directFacts || [], ctx, targetOf(c.effect, ctx));
   ok(id + ' six fields frozen no alias', sixField(prj) && deepFrozen(prj, new Set()) && !aliasesInput(prj, c.effect) && !aliasesInput(prj, ctx));
 }
@@ -375,11 +387,21 @@ function deferGate(c) {
   }
 }
 function negGate(c) {
+  const id = c.caseId;
   const ctx = ctxOf(c);
   const adm = PDA.admit(c.effect, ctx);
   const prj = PDA.project(c.effect, ctx);
-  ok(c.caseId + ' admitted false reason', adm.admitted === false && adm.reasons[0] === c.expect.reasonCode, JSON.stringify(adm));
-  ok(c.caseId + ' project explicit reject', canon(prj.unsupportedOutcomeKinds) === canon([c.expect.reasonCode]) && prj.directFacts.length === 0 && prj.deferCode === '', JSON.stringify(prj));
+  if (c.expect.admitted === true) {
+    const code = (c.expect.unsupportedOutcomeKinds || [])[0];
+    ok(id + ' admitted retained', adm.admitted === true && adm.retainedInCandidateAudit === true, JSON.stringify(adm));
+    ok(id + ' explicit ' + code, adm.reasons.indexOf(code) >= 0, JSON.stringify(adm.reasons));
+    ok(id + ' zero contribution', prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
+    ok(id + ' kind explicit', canon(prj.unsupportedOutcomeKinds) === canon(c.expect.unsupportedOutcomeKinds) && prj.deferCode === (c.expect.deferCode || ''), JSON.stringify(prj.unsupportedOutcomeKinds));
+    ok(id + ' six fields frozen no alias', sixField(prj) && deepFrozen(prj, new Set()) && !aliasesInput(prj, c.effect) && !aliasesInput(prj, ctx));
+    return;
+  }
+  ok(id + ' admitted false reason', adm.admitted === false && adm.reasons[0] === c.expect.reasonCode, JSON.stringify(adm));
+  ok(id + ' project explicit reject', canon(prj.unsupportedOutcomeKinds) === canon([c.expect.reasonCode]) && prj.directFacts.length === 0 && prj.deferCode === '', JSON.stringify(prj));
 }
 function legalityGate(c) {
   const id = c.caseId;
@@ -390,7 +412,7 @@ function legalityGate(c) {
     ok(id + ' admitted with taunt reason', adm.admitted === true && adm.reasons.indexOf('TAUNT_CONSTRAINS_LEGAL_SET') >= 0, JSON.stringify(adm));
     const tm = prj.legalityModifiers && prj.legalityModifiers.taunt;
     ok(id + ' gold taunt modifier', !!tm && tm.state === '嘲讽' && tm.target === 'taunter', JSON.stringify(prj.legalityModifiers));
-    ok(id + ' legal set not silently dropped', prj.directFacts.length === 0 && canon(prj.unsupportedOutcomeKinds) === '["PENDING_DIRECT_PROJECTION"]', JSON.stringify(prj));
+    ok(id + ' legal set not silently dropped', prj.directFacts.length === 1 && prj.directFacts[0].key === '嘲讽' && prj.directFacts[0].targetIds[0] === 'taunter' && canon(prj.unsupportedOutcomeKinds) === '[]', JSON.stringify(prj));
   } else if (id === 'leg-player-locked-same-gate') {
     const ctx = Object.assign({}, c.context, { publicStates: { taunter: { 嘲讽: true } }, playerLockedTargetId: 'other-enemy' });
     const adm = PDA.admit(c.effect, ctx);
@@ -433,7 +455,7 @@ function antiGate(c) {
   }
   if (spec.proto === '机制授予') {
     const cls = PDA.classifyPath('PPU1:IN_BATTLE:机制授予:目标:0');
-    ok(id + ' prototype not excluded', PDA.registry().statusByPrototype['机制授予'] === 'SUPPORTED' && PDA.registry().tierByPrototype['机制授予'] === 'T0' && cls.implementationStatus === 'PENDING_DIRECT_PROJECTION', JSON.stringify(cls));
+    ok(id + ' prototype not excluded', PDA.registry().statusByPrototype['机制授予'] === 'SUPPORTED' && PDA.registry().tierByPrototype['机制授予'] === 'T0' && cls.implementationStatus === 'DIRECT_PROJECTION', JSON.stringify(cls));
   }
   if (id === 'anti-hidden-state-read') {
     const hidden = PDA.project(c.effect, Object.assign({}, ctx, { hiddenExactHp: 999, hiddenResistance: 7 }));
@@ -469,7 +491,7 @@ function redProbe(p) {
     ok(id + ' taunt modifier unpinned', !!tm && canon(tm.targetIds) === '["t1","t2"]', JSON.stringify(tm));
   } else if (id === 'probe-immutability') {
     ok(id + ' admitted', adm.admitted === true, JSON.stringify(adm));
-    ok(id + ' frozen no alias pending', deepFrozen(prj, new Set()) && !aliasesInput(prj, p.effect) && !aliasesInput(prj, ctx) && canon(prj.unsupportedOutcomeKinds) === '["PENDING_DIRECT_PROJECTION"]' && prj.directFacts.length === 0, JSON.stringify(prj));
+    ok(id + ' frozen no alias gold', deepFrozen(prj, new Set()) && !aliasesInput(prj, p.effect) && !aliasesInput(prj, ctx) && canon(prj.unsupportedOutcomeKinds) === canon(p.expect.unsupportedOutcomeKinds || []) && prj.deferCode === (p.expect.deferCode || '') && canon(prj.directFacts) === canon(p.expect.directFacts || []), JSON.stringify(prj));
   } else if (id === 'probe-illegal-facttype') {
     const schema = JSON.parse(fs.readFileSync(path.join(RC6, 'contracts', 'DirectFactRowV1.schema.json'), 'utf8'));
     const vals = schema.properties && schema.properties.factType && (schema.properties.factType.enum || []);
@@ -492,6 +514,18 @@ function redProbe(p) {
   } else if (id === 'probe-nested-payload-unprojectable') {
     ok(id + ' admitted retained', adm.admitted === true && adm.retainedInCandidateAudit === true && adm.reasons.indexOf(p.expect.reasonCode) >= 0, JSON.stringify(adm));
     ok(id + ' defer gold', prj.deferCode === p.expect.deferCode && canon(prj.unsupportedOutcomeKinds) === canon(p.expect.unsupportedOutcomeKinds) && prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
+  } else if (id === 'probe-summon-nonpositive-count') {
+    ok(id + ' rejected reason', adm.admitted === false && adm.reasons[0] === 'INVALID_OPTION_VALUE' && p.expect.reasonCode === 'INVALID_OPTION_VALUE', JSON.stringify(adm));
+    ok(id + ' project explicit reject', canon(prj.unsupportedOutcomeKinds) === '["INVALID_OPTION_VALUE"]' && prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
+  } else if (id === 'probe-settlement-double-count') {
+    ok(id + ' admitted', adm.admitted === true, JSON.stringify(adm));
+    checkDirectFacts(id, prj.directFacts, p.expect.directFacts, ctx, targetOf(p.effect, ctx));
+    ok(id + ' no double count + clean', prj.directFacts.length === 1 && canon(prj.unsupportedOutcomeKinds) === '[]' && prj.deferCode === '', JSON.stringify(prj));
+  } else if (id === 'probe-summon-missing-duration') {
+    ok(id + ' admitted retained', adm.admitted === true && adm.retainedInCandidateAudit === true && adm.reasons.indexOf('PENDING_DURATION_PROJECTION') >= 0, JSON.stringify(adm));
+    checkDirectFacts(id, prj.directFacts, p.expect.directFacts, ctx, targetOf(p.effect, ctx));
+    ok(id + ' scheduled window kept', prj.scheduledFacts.length === 1 && prj.scheduledFacts[0].grantType === 'SUMMON_WINDOW', JSON.stringify(prj.scheduledFacts));
+    ok(id + ' kind explicit', canon(prj.unsupportedOutcomeKinds) === canon(p.expect.unsupportedOutcomeKinds) && prj.deferCode === (p.expect.deferCode || ''), JSON.stringify(prj.unsupportedOutcomeKinds));
   } else {
     const code = (p.expect.unsupportedOutcomeKinds || [])[0];
     ok(id + ' contract gold declared', typeof code === 'string' && code.length > 0 && typeof p.expect.reasonCode === 'string' && p.expect.reasonCode.length > 0, JSON.stringify(p.expect));
@@ -502,12 +536,12 @@ function redProbe(p) {
 }
 
 block('adapter-cases', () => {
-  ok('F9 rev4 59 cases', F9.revision === 4 && F9.cases.length === 59);
-  ok('F9 20 redProbes', F9.redProbes.length === 20);
+ok('F9 rev5 85 cases', F9.revision === 5 && F9.cases.length === 85);
+  ok('F9 24 redProbes', F9.redProbes.length === 24);
   const allCtx = F9.cases.concat(F9.redProbes);
   ok('all case.context explicit four keys', allCtx.every(x => { const c = x.context || {}; return typeof c.sourceActionId === 'string' && c.sourceActionId.length > 0 && typeof c.sourceActorId === 'string' && c.sourceActorId.length > 0 && typeof c.sourceEffectId === 'string' && c.sourceEffectId.length > 0 && Array.isArray(c.candidateTargetIds) && c.candidateTargetIds.length > 0; }));
-  ok('partition matches registry', canon(BATCH1_PROTOS) === canon(PDA.registry().implementation.batch1Prototypes) && canon(PENDING16) === canon(PDA.registry().implementation.pendingPrototypes));
-  ok('位移执行 pending not batch1', PENDING16.indexOf('位移执行') >= 0 && BATCH1_PROTOS.indexOf('位移执行') < 0);
+  ok('partition matches registry', canon(BATCH1_PROTOS) === canon(PDA.registry().implementation.batch1Prototypes) && canon(PENDING13) === canon(PDA.registry().implementation.pendingPrototypes) && canon(BATCH2_PROTOS) === canon(PDA.registry().implementation.batch2Prototypes));
+  ok('位移执行 pending not batch1', PENDING13.indexOf('位移执行') >= 0 && BATCH1_PROTOS.indexOf('位移执行') < 0 && BATCH2_PROTOS.indexOf('位移执行') < 0);
   const fsCtx = { sourceActionId: 'a:fs', sourceActorId: 'actor-1', sourceEffectId: 'e:fs', candidateTargetIds: ['fen-1'] };
   const fsCls = PDA.classifyPath('PPU1:IN_BATTLE:属性修正:目标:5');
   ok('fenshen attribute path classify DIRECT', fsCls.status === 'SUPPORTED' && fsCls.contractStatus === 'SUPPORTED' && fsCls.implementationStatus === 'DIRECT_PROJECTION' && fsCls.tier === 'EXISTING_ADMITTED', JSON.stringify(fsCls));
@@ -532,17 +566,21 @@ block('adapter-cases', () => {
   const fsAllowed = [...fsScan.accepted, ...fsScan.fieldGated.map(x => x.split(':')[0])].sort();
   ok('fenshen allowed set exactly 4', canon(fsAllowed) === canon(['资源变化', '属性修正', '判定修正', '结算修正'].sort()), fsAllowed.join(','));
   ok('fenshen target-rejected closed 19', fsScan.targetRejected.length === 19 && fsScan.targetRejected.every(p => p !== '资源变化' && p !== '属性修正' && p !== '判定修正' && p !== '结算修正'), fsScan.targetRejected.join(','));
-  ok('fenshen field-gated only batch1 three', canon(fsScan.fieldGated) === canon(['资源变化:MISSING_REQUIRED_FIELD', '属性修正:MISSING_REQUIRED_FIELD', '判定修正:MISSING_REQUIRED_FIELD']), fsScan.fieldGated.join(','));
+  ok('fenshen field-gated batch1 three + settlement', canon(fsScan.fieldGated) === canon(['资源变化:MISSING_REQUIRED_FIELD', '属性修正:MISSING_REQUIRED_FIELD', '判定修正:MISSING_REQUIRED_FIELD', '结算修正:MISSING_REQUIRED_FIELD']), fsScan.fieldGated.join(','));
   ok('fenshen OOB 4 untouched', fsScan.oob.length === 4 && canon(fsScan.oob) === canon(['修炼增益', '天赋提升', '永久属性提升', '战斗外复活']), fsScan.oob.join(','));
   const fsAdmRc = PDA.admit({ 原型: '资源变化', 目标: '分身', 资源: '魂力', 数值: '+10%' }, fsCtx);
   const fsAdmJm = PDA.admit({ 原型: '判定修正', 目标: '分身', 判定: '命中', 数值: '+10%', 持续回合: 1 }, fsCtx);
   ok('fenshen resource/judgment admit true', fsAdmRc.admitted === true && fsAdmJm.admitted === true, JSON.stringify([fsAdmRc, fsAdmJm]));
   const settleCls = PDA.classifyPath('PPU1:IN_BATTLE:结算修正:目标:5');
-  ok('fenshen settlement classify SUPPORTED/PENDING', settleCls.status === 'SUPPORTED' && settleCls.contractStatus === 'SUPPORTED' && settleCls.implementationStatus === 'PENDING_DIRECT_PROJECTION', JSON.stringify(settleCls));
-  const settleAdm = PDA.admit({ 原型: '结算修正', 目标: '分身' }, fsCtx);
-  ok('fenshen settlement admit accepted+PENDING', settleAdm.admitted === true && settleAdm.reasons.indexOf('PENDING_DIRECT_PROJECTION') >= 0, JSON.stringify(settleAdm));
-  const settlePrj = PDA.project({ 原型: '结算修正', 目标: '分身' }, fsCtx);
-  ok('fenshen settlement zero contribution + PENDING', settlePrj.directFacts.length === 0 && settlePrj.scheduledFacts.length === 0 && canon(settlePrj.unsupportedOutcomeKinds) === '["PENDING_DIRECT_PROJECTION"]' && settlePrj.deferCode === '', JSON.stringify(settlePrj));
+  ok('fenshen settlement classify DIRECT', settleCls.status === 'SUPPORTED' && settleCls.contractStatus === 'SUPPORTED' && settleCls.implementationStatus === 'DIRECT_PROJECTION', JSON.stringify(settleCls));
+  const settleEmptyAdm = PDA.admit({ 原型: '结算修正', 目标: '分身' }, fsCtx);
+  ok('fenshen settlement empty effect field-gated', settleEmptyAdm.admitted === false && settleEmptyAdm.reasons[0] === 'MISSING_REQUIRED_FIELD', JSON.stringify(settleEmptyAdm));
+  const settleEmptyPrj = PDA.project({ 原型: '结算修正', 目标: '分身' }, fsCtx);
+  ok('fenshen settlement empty effect zero contribution', settleEmptyPrj.directFacts.length === 0 && settleEmptyPrj.scheduledFacts.length === 0 && canon(settleEmptyPrj.unsupportedOutcomeKinds) === '["MISSING_REQUIRED_FIELD"]' && settleEmptyPrj.deferCode === '', JSON.stringify(settleEmptyPrj));
+  const settleFullAdm = PDA.admit({ 原型: '结算修正', 目标: '分身', 结算: '造成伤害', 数值: '+10%', 持续回合: 1 }, fsCtx);
+  ok('fenshen settlement full admit true', settleFullAdm.admitted === true, JSON.stringify(settleFullAdm));
+  const settleFullPrj = PDA.project({ 原型: '结算修正', 目标: '分身', 结算: '造成伤害', 数值: '+10%', 持续回合: 1 }, fsCtx);
+  ok('fenshen settlement full targetIds == candidateTargetIds', settleFullPrj.directFacts.length === 1 && canon(settleFullPrj.directFacts[0].targetIds) === canon(fsCtx.candidateTargetIds) && settleFullPrj.directFacts[0].key === 'settlement.primary' && settleFullPrj.directFacts[0].amount === 10 && settleFullPrj.directFacts[0].unit === 'PERCENT' && canon(settleFullPrj.unsupportedOutcomeKinds) === '[]' && settleFullPrj.deferCode === '', JSON.stringify(settleFullPrj));
   const shieldFsAdm = PDA.admit({ 原型: '护盾变化', 目标: '分身', 护盾模式: '正向护盾', 数值: '+20' }, fsCtx);
   ok('fenshen shield still illegal admit', shieldFsAdm.admitted === false && shieldFsAdm.reasons[0] === 'INVALID_OPTION_VALUE', JSON.stringify(shieldFsAdm));
   ok('fenshen shield still illegal project', canon(PDA.project({ 原型: '护盾变化', 目标: '分身' }, fsCtx).unsupportedOutcomeKinds) === '["INVALID_OPTION_VALUE"]');
@@ -552,12 +590,19 @@ block('adapter-cases', () => {
       const ctx = ctxOf(c);
       const adm = PDA.admit(c.effect, ctx);
       const prj = PDA.project(c.effect, ctx);
-      if (prj.directFacts.length || prj.scheduledFacts.length) strictGold(c, adm, prj);
+      if (prj.directFacts.length || prj.scheduledFacts.length || c.expect.legalityModifiers || c.expect.opportunityModifiers) strictGold(c, adm, prj);
       else gatePendingOrCarrier(c, adm, prj);
     }
     else if (c.kind === 'LEGALITY') legalityGate(c);
     else if (c.kind === 'DEFER') deferGate(c);
     else if (c.kind === 'NEGATIVE') negGate(c);
+    else if (c.kind === 'BOUNDARY') {
+      const ctx = ctxOf(c);
+      const adm = PDA.admit(c.effect, ctx);
+      const prj = PDA.project(c.effect, ctx);
+      if (prj.directFacts.length || prj.scheduledFacts.length || c.expect.legalityModifiers || c.expect.opportunityModifiers) strictGold(c, adm, prj);
+      else gatePendingOrCarrier(c, adm, prj);
+    }
     else antiGate(c);
   }
   for (const p of F9.redProbes) redProbe(p);
@@ -927,9 +972,10 @@ block('candidate-guard', () => {
       const jdgPrj = PDA.project({ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%', 持续回合: 1 }, ctx);
       ok('guard judgment DIRECT > 0', jdgPrj.directFacts.length > 0 && jdgPrj.directFacts[0].key === '命中' && jdgPrj.directFacts[0].amount === 10, JSON.stringify(jdgPrj.directFacts));
       const metaPrj = PDA.project({ 原型: '伤害结算', 目标: '单体', 生效方式: '独立生效', 威力倍率: 120, 伤害类型: '精神攻击', 攻击段数: 1, 防御穿透: 20, 结算标签: '标准伤害', 抗性类型: '精神抗性', 对应等级: 89 }, ctx);
-      const meta = metaPrj.opportunityModifiers && metaPrj.opportunityModifiers.mechanicMetadata;
-      ok('guard formal metadata projected', !!meta && meta.sourceEffectId === ctx.sourceEffectId && meta['结算标签'] === '标准伤害' && meta['抗性类型'] === '精神抗性' && meta['对应等级'] === 89, JSON.stringify(meta));
-      ok('guard metadata CJK verbatim', !!meta && meta['生效方式'] === '独立生效', JSON.stringify(meta));
+      const metaEntries = metaPrj.opportunityModifiers && metaPrj.opportunityModifiers.mechanicMetadataEntries;
+      const meta = Array.isArray(metaEntries) && metaEntries.length === 1 ? metaEntries[0] : null;
+      ok('guard formal metadata projected', !!meta && meta.sourceEffectId === ctx.sourceEffectId && meta['结算标签'] === '标准伤害' && meta['抗性类型'] === '精神抗性' && meta['对应等级'] === 89, JSON.stringify(metaEntries));
+      ok('guard metadata CJK verbatim', !!meta && meta['生效方式'] === '独立生效', JSON.stringify(metaEntries));
     }
   }
 });

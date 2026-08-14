@@ -532,7 +532,8 @@
         "supportedPathHashRule",
         "deferredPathIdsHash",
         "deferredPathIdsHashRule",
-        "hashSpec"
+        "hashSpec",
+        "implementationTarget"
        ],
        "properties": {
         "supported": {
@@ -551,10 +552,10 @@
          "const": true
         },
         "adapterCaseCount": {
-         "const": 59
+         "const": 79
         },
         "adapterRedProbeCount": {
-         "const": 20
+         "const": 24
         },
         "supportedPathIdsEnumerated": {
          "const": false
@@ -651,6 +652,42 @@
              "const": 40
             }
            }
+          }
+         }
+        },
+        "implementationTarget": {
+         "type": "object",
+         "required": [
+          "batch2Prototypes",
+          "batch2PathCount",
+          "directProjectionPathCount",
+          "pendingPathCount",
+          "contractTargetOnly"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "batch2Prototypes": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          },
+          "batch2PathCount": {
+           "const": 137
+          },
+          "directProjectionPathCount": {
+           "const": 243
+          },
+          "pendingPathCount": {
+           "const": 338
+          },
+          "contractTargetOnly": {
+           "const": true
+          },
+          "note": {
+           "type": "string"
           }
          }
         }
