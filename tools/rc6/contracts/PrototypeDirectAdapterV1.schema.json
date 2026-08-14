@@ -333,6 +333,7 @@
                   "required": [
                     "self",
                     "candidateSet",
+                    "fenshen",
                     "unknown"
                   ],
                   "properties": {
@@ -340,6 +341,9 @@
                       "const": "RESOLVES_TO_SOURCE_ACTOR_ID"
                     },
                     "candidateSet": {
+                      "const": "RESOLVES_TO_CANDIDATE_TARGET_IDS"
+                    },
+                    "fenshen": {
                       "const": "RESOLVES_TO_CANDIDATE_TARGET_IDS"
                     },
                     "unknown": {

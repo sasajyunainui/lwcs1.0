@@ -551,7 +551,7 @@
                   "const": true
                 },
                 "adapterCaseCount": {
-                  "const": 43
+                  "const": 44
                 },
                 "adapterRedProbeCount": {
                   "const": 14

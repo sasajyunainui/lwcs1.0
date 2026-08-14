@@ -93,6 +93,7 @@
       "targetResolution": {
         "self": "RESOLVES_TO_SOURCE_ACTOR_ID",
         "candidateSet": "RESOLVES_TO_CANDIDATE_TARGET_IDS",
+        "fenshen": "RESOLVES_TO_CANDIDATE_TARGET_IDS",
         "unknown": "INVALID_OPTION_VALUE"
       },
       "amountFinite": "RUNTIME_VALIDATOR_REQUIRED"
@@ -347,7 +348,7 @@
     "multi-taunt: the full forced taunt target set sorted by UTF-16 code unit ascending forms the legal target set; when the mechanism requires a unique taunt target and more than one exists, reject AMBIGUOUS_TAUNT_TARGET",
     "DirectFactRowV1 amount must be finite (JSON schema plus runtime validator); targetIds must be actual candidate target ids; empty or symbolic placeholders are rejected",
     "source and target context is required: sourceActionId/sourceActorId/sourceEffectId/candidateTargetIds missing in legalityContext reject admit with MISSING_SOURCE_CONTEXT or MISSING_TARGET_CONTEXT; explicit unsupported otherwise",
-    "target resolution: effect 目标 自身 resolves to [sourceActorId]; 单体/群体/全场/召唤物/目标 resolve to candidateTargetIds; unknown target value rejects INVALID_OPTION_VALUE"
+    "target resolution: effect 目标 自身 resolves to [sourceActorId]; 单体/群体/全场/召唤物/目标 and 分身 (for prototypes whose registry allows 分身) resolve to candidateTargetIds; Provider/adapter must not re-enumerate the candidate set; unknown target value rejects INVALID_OPTION_VALUE"
   ],
   "validation": {
     "schema": "PrototypeDirectAdapterV1.schema.json",

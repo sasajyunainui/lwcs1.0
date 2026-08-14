@@ -310,6 +310,47 @@
       }
     },
     {
+      "caseId": "pos-attribute-fenshen",
+      "kind": "POSITIVE",
+      "prototype": "属性修正",
+      "effect": {
+        "原型": "属性修正",
+        "目标": "分身",
+        "属性": "力量",
+        "数值": "+10%",
+        "持续回合": 1
+      },
+      "expect": {
+        "admitted": true,
+        "unsupportedOutcomeKinds": [],
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "力量",
+            "sourceActionId": "action:pos-attribute-fenshen",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-attribute-fenshen:0",
+            "targetIds": [
+              "fen-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-attribute-fenshen",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-attribute-fenshen:0",
+        "candidateTargetIds": [
+          "fen-1"
+        ]
+      }
+    },
+    {
       "caseId": "pos-judgment-modifier",
       "kind": "POSITIVE",
       "prototype": "判定修正",

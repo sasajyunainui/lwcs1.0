@@ -154,9 +154,9 @@
     "adapterCases": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json"
   },
   "sourceHashes": {
-    "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "4a523b3a97dec5f596b1111eeaf9dbb12ed8ecb6637f4bd77187072c0743a387",
-    "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "da24635ada44e4bbb0d7a677fc629e02301abb1ddc2a4eed14cbdc23d13e0979",
-    "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "5d359b44330d06181ea9e65d84c6091fa7112b51fc052adb15e737bc02bca977"
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "390d5f2efe0409301cfb894c30c4312e16d7d488a386aa943f008718e65fb0bb",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "ca17d0d8c1d526001fd65941768d4e996c2dfb6488d3e7b484c66343b3f85ed3",
+    "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "3fd9a6a13fb13226060ddc3afefc2314b4728becc4a1b6161b357b3c1a3108c9"
   },
   "validation": {
     "schema": "DirectFactRowV1.schema.json",

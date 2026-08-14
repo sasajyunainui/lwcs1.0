@@ -373,10 +373,10 @@ ok('F7 registry 27', Object.keys(F7.registry).length === 27 && Object.keys(F7.re
 
 // ---- block C2: DirectFactRowV1 pair + Prototype rev3 cases/probes (static contract reference only; adapter module is never loaded) ----
 const PIN = {
-  'tools/rc6/contracts/PrototypeDirectAdapterV1.json': '4a523b3a97dec5f596b1111eeaf9dbb12ed8ecb6637f4bd77187072c0743a387',
-  'tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json': 'da24635ada44e4bbb0d7a677fc629e02301abb1ddc2a4eed14cbdc23d13e0979',
-  'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json': '5d359b44330d06181ea9e65d84c6091fa7112b51fc052adb15e737bc02bca977',
-  'tools/rc6/contracts/DirectFactRowV1.json': 'fde8f2efe52653a3ab8692c62ce223459f1f44bb6f2224bce4ff14c61999eeff',
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.json': '390d5f2efe0409301cfb894c30c4312e16d7d488a386aa943f008718e65fb0bb',
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json': 'ca17d0d8c1d526001fd65941768d4e996c2dfb6488d3e7b484c66343b3f85ed3',
+  'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json': '3fd9a6a13fb13226060ddc3afefc2314b4728becc4a1b6161b357b3c1a3108c9',
+  'tools/rc6/contracts/DirectFactRowV1.json': '6a1951015a6bde4f00db502c8ce7805888942251f2c38507fe2769265f589fa1',
   'tools/rc6/contracts/DirectFactRowV1.schema.json': '1cf2490b90c0ebabcbcd163436dcc963209240d1fec049e7ba8815f1c4d49334',
 };
 ok('freeze pin rev3 contracts + DirectFact pair', Object.entries(PIN).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h));
@@ -407,20 +407,20 @@ ok('directfact declared magnitudes only', DF.authority.declaredMagnitudeOnly ===
 ok('directfact supersedes adapter revision 3', typeof DF.authority.supersedes === 'string' && DF.authority.supersedes.includes('revision 3'));
 ok('rev3 contract/schema/cases', DF.revision === 3 && F7.revision === 3 && F8.revision === 3 && F9.revision === 3);
 ok('directfact sourceHashes 3 match disk', Object.keys(DF.sourceHashes).length === 3 && Object.entries(DF.sourceHashes).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h));
-ok('prototype rev3 43 cases unique', F9.cases.length === 43 && new Set(F9.cases.map(c => c.caseId)).size === 43);
+ok('prototype rev3 44 cases unique', F9.cases.length === 44 && new Set(F9.cases.map(c => c.caseId)).size === 44);
 ok('prototype red probes 14 unique', F9.redProbes.length === 14 && new Set(F9.redProbes.map(p => p.probeId)).size === 14);
 const KINDS = ['POSITIVE', 'LEGALITY', 'DEFER', 'NEGATIVE', 'ANTI_PATTERN'];
 ok('prototype kinds closed', F9.cases.every(c => KINDS.includes(c.kind)));
 const kindCounts = {};
 for (const c of F9.cases) kindCounts[c.kind] = (kindCounts[c.kind] || 0) + 1;
-ok('prototype kind counts 26/3/4/1/9', kindCounts.POSITIVE === 26 && kindCounts.LEGALITY === 3 && kindCounts.DEFER === 4 && kindCounts.NEGATIVE === 1 && kindCounts.ANTI_PATTERN === 9, JSON.stringify(kindCounts));
+ok('prototype kind counts 27/3/4/1/9', kindCounts.POSITIVE === 27 && kindCounts.LEGALITY === 3 && kindCounts.DEFER === 4 && kindCounts.NEGATIVE === 1 && kindCounts.ANTI_PATTERN === 9, JSON.stringify(kindCounts));
 const ALL_ITEMS = [...F9.cases.map(c => ({ id: c.caseId, ctx: c.context, eff: c.effect, ex: c.expect })), ...F9.redProbes.map(p => ({ id: p.probeId, ctx: p.context, eff: p.effect, ex: p.expect }))];
-ok('all 57 context 4 keys explicit', ALL_ITEMS.every(x => ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof x.ctx[k] === 'string' && x.ctx[k].length > 0) && Array.isArray(x.ctx.candidateTargetIds) && x.ctx.candidateTargetIds.length > 0));
+ok('all 58 context 4 keys explicit', ALL_ITEMS.every(x => ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof x.ctx[k] === 'string' && x.ctx[k].length > 0) && Array.isArray(x.ctx.candidateTargetIds) && x.ctx.candidateTargetIds.length > 0));
 const bpSet = new Set(Object.keys(F9.counts.byPrototype));
 const resTarget = (eff, ctx) => {
   const t = eff && eff['目标'];
   if (t === '自身') return [ctx.sourceActorId];
-  if (['单体', '群体', '全场', '召唤物', '目标'].includes(t)) return ctx.candidateTargetIds;
+  if (['单体', '群体', '全场', '召唤物', '目标', '分身'].includes(t)) return ctx.candidateTargetIds;
   return null;
 };
 const sortedIds = a => JSON.stringify([...a].sort());
@@ -462,6 +462,18 @@ for (const p of F9.redProbes) {
   }
   if (ex.ambiguousTaunt !== undefined) ok(p.probeId + ' ambiguousTaunt', ex.ambiguousTaunt === true);
 }
+const trPA = F7.interface.sourceAndTargetContext.targetResolution;
+ok('PA targetResolution closed 4 incl fenshen', !!trPA && Object.keys(trPA).length === 4 && trPA.self === 'RESOLVES_TO_SOURCE_ACTOR_ID' && trPA.candidateSet === 'RESOLVES_TO_CANDIDATE_TARGET_IDS' && trPA.fenshen === 'RESOLVES_TO_CANDIDATE_TARGET_IDS' && trPA.unknown === 'INVALID_OPTION_VALUE', JSON.stringify(trPA));
+let trS = null;
+(function findTr(node) {
+  if (!node || typeof node !== 'object' || trS) return;
+  if (node.targetResolution && node.targetResolution.properties && node.targetResolution.properties.fenshen) trS = node.targetResolution;
+  for (const k of Object.keys(node)) findTr(node[k]);
+})(F8);
+ok('PAS targetResolution schema required+const', !!trS && JSON.stringify(trS.required) === JSON.stringify(['self', 'candidateSet', 'fenshen', 'unknown']) && trS.properties.self.const === 'RESOLVES_TO_SOURCE_ACTOR_ID' && trS.properties.candidateSet.const === 'RESOLVES_TO_CANDIDATE_TARGET_IDS' && trS.properties.fenshen.const === 'RESOLVES_TO_CANDIDATE_TARGET_IDS' && trS.properties.unknown.const === 'INVALID_OPTION_VALUE' && trS.additionalProperties === false, JSON.stringify(trS && trS.properties));
+const fenshenCase = F9.cases.find(c => c.caseId === 'pos-attribute-fenshen');
+ok('pos-attribute-fenshen present', !!fenshenCase && fenshenCase.kind === 'POSITIVE' && fenshenCase.prototype === '属性修正' && fenshenCase.effect['目标'] === '分身');
+ok('pos-attribute-fenshen context->targetIds', !!fenshenCase && fenshenCase.context.candidateTargetIds.length === 1 && fenshenCase.expect.directFacts.length === 1 && sortedIds(fenshenCase.expect.directFacts[0].targetIds) === sortedIds(fenshenCase.context.candidateTargetIds), JSON.stringify(fenshenCase && fenshenCase.expect.directFacts));
 ok('PA selfChecks rev3 flags', F7.validation.selfChecks.multiRowKeyVocabularyFrozen === true && F7.validation.selfChecks.rowUniquenessBySourceEffectIdAndKey === true && F7.validation.selfChecks.maxActionsExplicitOnly === true && F7.validation.selfChecks.triggerKeyRegistryEnumClosed === true && F7.validation.selfChecks.nestedPayloadRecursiveProjection === true);
 ok('PA grant triggerKey enum declared', /主动触发\/随下次行动触发 only/.test(F7.interface.project.output.scheduledFacts) && /随下次行动触发 projects no maxActions/.test(F7.interface.project.output.scheduledFacts) && /死亡时触发 is INVALID_OPTION_VALUE/.test(F7.constraints.join('\n')));
 ok('PA multiRow/window/damage declared', /damage\.power\/damage\.segments\/damage\.penetration\/damage\.type, state\.primary\/state\.secondary, window\.adjustTurns\/window\.settlementRatio/.test(F7.constraints.join('\n')) && /row uniqueness is \(sourceEffectId, key\)/.test(F7.constraints.join('\n')) && /攻击段数 must be a positive integer/.test(F7.constraints.join('\n')) && /结算倍率 is allowed only with 调整字段=持续回合 and 调整方式=压缩/.test(F7.constraints.join('\n')));

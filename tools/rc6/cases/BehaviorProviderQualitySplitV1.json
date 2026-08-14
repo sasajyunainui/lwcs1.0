@@ -921,11 +921,11 @@
     "reference": {
       "contract": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
       "contractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
-      "contractHash": "4a523b3a97dec5f596b1111eeaf9dbb12ed8ecb6637f4bd77187072c0743a387",
+      "contractHash": "390d5f2efe0409301cfb894c30c4312e16d7d488a386aa943f008718e65fb0bb",
       "countsManifest": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
       "countsManifestContractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
-      "countsManifestHash": "5d359b44330d06181ea9e65d84c6091fa7112b51fc052adb15e737bc02bca977",
-      "casesCount": 43,
+      "countsManifestHash": "3fd9a6a13fb13226060ddc3afefc2314b4728becc4a1b6161b357b3c1a3108c9",
+      "casesCount": 44,
       "redProbeCount": 14
     },
     "counts": {
@@ -1018,14 +1018,14 @@
     "tools/rc6/cases/BehaviorOracleFixtureManifestV1.json": "e1bd31f21dd1f8078730b56b402190854adefca1d46ae9b0ce62643fa3d58f1b",
     "tools/rc6/cases/KernelReferenceCasesV1.json": "aac9591365c0cec540173f634f2d6dad1671f2a36ee1aea3966e6fdbbb602ca1",
     "tools/rc6/cases/ReferenceValueEvaluatorV3RawCasesV1.json": "57580308fc7f89ecc390a50c70d997721102ca65e5d2f1dcaee8fb77cfb458dc",
- "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "4a523b3a97dec5f596b1111eeaf9dbb12ed8ecb6637f4bd77187072c0743a387",
- "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "da24635ada44e4bbb0d7a677fc629e02301abb1ddc2a4eed14cbdc23d13e0979",
- "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "5d359b44330d06181ea9e65d84c6091fa7112b51fc052adb15e737bc02bca977",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "390d5f2efe0409301cfb894c30c4312e16d7d488a386aa943f008718e65fb0bb",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "ca17d0d8c1d526001fd65941768d4e996c2dfb6488d3e7b484c66343b3f85ed3",
+    "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "3fd9a6a13fb13226060ddc3afefc2314b4728becc4a1b6161b357b3c1a3108c9",
     "tools/rc6/contracts/SelectionPolicyV1.json": "d005fa563e4ca1a3da2e59653ae0b14bf6fe1444cb2f82ca13a7b7ee60b8f277",
     "tools/rc6/contracts/BehaviorProviderV1.json": "cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156",
     "tools/rc6/contracts/BehaviorProviderV1.schema.json": "e2e771bc385c905fa3e2b033d05f1e9e226e4fdde5b215c27e820b4e0b778bd0",
     "tools/rc6/cases/BehaviorProviderSelectionCasesV1.json": "d424a42451dcf22f36c958ebe8538a0bdafc7cb8792f5a5978b808f1c5715405",
- "tools/rc6/contracts/DirectFactRowV1.json": "fde8f2efe52653a3ab8692c62ce223459f1f44bb6f2224bce4ff14c61999eeff",
+    "tools/rc6/contracts/DirectFactRowV1.json": "6a1951015a6bde4f00db502c8ce7805888942251f2c38507fe2769265f589fa1",
     "tools/rc6/contracts/DirectFactRowV1.schema.json": "1cf2490b90c0ebabcbcd163436dcc963209240d1fec049e7ba8815f1c4d49334"
   },
   "pendingHashPaths": [],
@@ -1039,7 +1039,7 @@
       "no synthetic or unresolvable case ids exist in this manifest",
       "mechanic deferredPathIds are the real 40 ids from the final Prototype cases manifest and match the adapter deferredPaths set",
       "mechanic supportedPathHash and deferredPathIdsHash recompute exactly per their declared specs",
-      "adapter casesCount 43 and redProbeCount 14 equal the final PrototypeDirectAdapterCasesV1 counts",
+      "adapter casesCount 44 and redProbeCount 14 equal the final PrototypeDirectAdapterCasesV1 counts",
       "BehaviorProviderSelectionCasesV1 is excluded from the behavior corpus as a contract unit test",
       "pendingHashPaths is empty; Behavior sourceHashes are final-locked per confirmed stable hashes",
       "seed collisions are 0"

@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "M2DirectFactBatch1ManifestV1",
+  "taskId": "M2-DIRECTFACT-BATCH1",
+  "agent": "agent-pool-E",
+  "milestone": "M2 first DirectFact projection batch",
+  "baseHead": "ff8bea99acc3cc668685cc04bd1d6de48d831bd3",
+  "baseHeadVerified": true,
+  "disposableWorktree": "codex-m2-directfact-b1 (detached HEAD ff8bea9, removed after delivery)",
+  "changedFiles": [
+    {
+      "file": "BehaviorPrototypeAdapter_Module.js",
+      "sha256After": "109F66E2D717E098B5009221F52CCF124DF447AC68FCD67207648020169EA2E6"
+    },
+    {
+      "file": "tools/rc6/contracts/DirectFactRowV1.json",
+      "sha256After": "6A1951015A6BDE4F00DB502C8CE7805888942251F2C38507FE2769265F589FA1"
+    },
+    {
+      "file": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+      "sha256After": "390D5F2EFE0409301CFB894C30C4312E16D7D488A386AA943F008718E65FB0BB"
+    },
+    {
+      "file": "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+      "sha256After": "CA17D0D8C1D526001FD65941768D4E996C2DFB6488D3E7B484C66343B3F85ED3"
+    },
+    {
+      "file": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
+      "sha256After": "3FD9A6A13FB13226060DDC3AFEFC2314B4728BECC4A1B6161B357B3C1A3108C9"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorProviderQualityGateV1.json",
+      "sha256After": "1A792E257BBE3662E4532F0E95EC464A9E3E224294D276A5347334CE8A6AE04B"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json",
+      "sha256After": "A85FB53D7F4441A0A8E6551589DF4D6B78A085002992667934362F5EC286383B"
+    },
+    {
+      "file": "tools/rc6/cases/BehaviorProviderQualitySplitV1.json",
+      "sha256After": "F18B01393A7333B3835C40352A4EE62F11379AF8A53804AEA3584BFF642CDA6E"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-contract-freeze.mjs",
+      "sha256After": "982CBD9D0C1A61317BD836502A6F7C9C5C747483D4E786C0ED51E6E7A4FA9D82"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-provider-core.mjs",
+      "sha256After": "0C4D306E2D8EC2174F811AB361B427B9F82BE9648039C4BA611763A4C96205FA"
+    }
+  ],
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-directfact-batch1-ff8bea9.patch",
+    "sha256": "636EA377891AA4E6555FF40A583706C962057835DF8443270BC0C1CD1A73A734",
+    "byteLength": 163322,
+    "newFiles": 1,
+    "modifiedFiles": 9
+  },
+  "semantics": {
+    "verdict": "FIRST_DIRECT_PROJECTION_BATCH_ACCEPTED",
+    "contractEnrollment": {
+      "total": 581,
+      "implementedDirect": 106,
+      "pending": 475,
+      "deferred": 40,
+      "outOfBattle": 91,
+      "placeholder": 0
+    },
+    "correctedFenshenTargetSemantics": true,
+    "directFactToProviderSemanticMapping": "NONE",
+    "runtimeWiring": "NONE",
+    "loaderWiring": "NONE",
+    "registryWiring": "NONE",
+    "formalWiring": "NONE",
+    "futureRouteEnumeration": "NONE",
+    "notClaimed": [
+      "581 full semantics",
+      "remaining 16 prototypes",
+      "production wiring",
+      "formal provider",
+      "runtime integration",
+      "full battle behavior/performance"
+    ]
+  },
+  "verification": {
+    "freeze": "651/651 PASSED",
+    "providerCore": "876/876 PASSED",
+    "providerOnly": "516/516 PASSED",
+    "m1": "25/25 PASSED",
+    "nodeCheck": true,
+    "utf8Clean": true,
+    "diffCheck": true,
+    "reproducedOnFreshHeadCheckout": true
+  },
+  "writeScope": {
+    "allowed": [
+      "BehaviorPrototypeAdapter_Module.js",
+      "tools/rc6/contracts/DirectFactRowV1.json",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+      "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.json",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json",
+      "tools/rc6/cases/BehaviorProviderQualitySplitV1.json",
+      "tools/rc6/harness/run-m2-v31-contract-freeze.mjs",
+      "tools/rc6/harness/run-m2-v31-provider-core.mjs",
+      "tools/rc6/evidence/objects/m2/v31/m2-directfact-batch1-ff8bea9.patch",
+      "tools/rc6/evidence/objects/m2/v31/m2-directfact-batch1-ff8bea9.manifest.json",
+      "tools/rc6/evidence/objects/m2/v31/m2-directfact-batch1-bundle-ff8bea9-20260814T022328Z.json",
+      "tools/rc6/evidence/events/000245-<event-hash>.json"
+    ],
+    "staged": false,
+    "committed": false
+  },
+  "createdAt": "2026-08-14T02:23:28Z"
+}
