@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 244,
+  "previousEventHash": "84a5ee2131ca0f090d72adea1f39c3322457b76ac986a7a1ad6bb4b504897616",
+  "milestoneId": "M2",
+  "taskId": "M2-DIRECTFACT-FREEZE",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "29711bf760ed5e64745252356fd51fc56ad47c875a8b3d554bccfad303ea7a76",
+    "BattleDecision_Module.js": "895547dc149f61763216dded115f703509e18961f76d25467e978e946aadd51c",
+    "BattleRuntime_Module.js": "f75c111b0d8ab0b7d843bb19e3fbfc4879557fba1cd1ca1ac199b271a10524ce",
+    "BattleReport_Module.js": "4412b6f22ab0869e92e80ff60e353afd08f2cae5b378732e8c32db7b16b41135",
+    "BattleUI_Module.js": "264f6da37c162a8b64c1e13ca2cb49b437c9adc1f14d2a5b202a9a3c93357001",
+    "mvu_logic_bridge.js": "329f34961249df979dc39c4eb432f65bc8a35b55ff208c1f13ecbdc0d24a567f",
+    "ST_UI_Entry.js": "56dc61dd810cfd780c17e81e8ee43318822791056b1c1b6a46dce3aa8c48eb4a"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "345e77098060c0d0255ce20427c62d601449058fe3142d28a451aba0b7a4e846"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "batch": "M2-DIRECTFACT-FREEZE",
+    "verdict": "CONTRACT_FROZEN_TARGET_NOT_IMPLEMENTED",
+    "contractSet": "nine originals + DirectFactRowV1 pair",
+    "files": [
+      "tools/rc6/contracts/DirectFactRowV1.json",
+      "tools/rc6/contracts/DirectFactRowV1.schema.json",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+      "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+      "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.json",
+      "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json",
+      "tools/rc6/cases/BehaviorProviderQualitySplitV1.json",
+      "tools/rc6/harness/run-m2-v31-contract-freeze.mjs"
+    ],
+    "freezeAssertions": "638/638 PASSED",
+    "providerHarness": "516/516 PASSED",
+    "m1Harness": "25/25 PASSED",
+    "notClaimed": [
+      "adapter business semantics",
+      "581 path semantics",
+      "production wiring",
+      "formal registration",
+      "runtime integration",
+      "DirectFact semantic projection"
+    ],
+    "nextExitCondition": "M2 DirectFact adapter and first semantic projection batch",
+    "invalidation": "NONE"
+  },
+  "reason": "Freeze DirectFactRowV1 rev3 contracts and refresh Prototype/Quality pins under CONTRACT_FROZEN_TARGET_NOT_IMPLEMENTED; adapter semantics not implemented in this batch.",
+  "recordedAt": "2026-08-14T00:58:44.335Z",
+  "repository": {
+    "branch": "",
+    "head": "9edb94260f9a99c9b070dd9ebfeeb51e71fa0592"
+  },
+  "eventHash": "dfa1657eeba44f2c32f71388009598a12889ac922667264c16257ec8a9673785"
+}

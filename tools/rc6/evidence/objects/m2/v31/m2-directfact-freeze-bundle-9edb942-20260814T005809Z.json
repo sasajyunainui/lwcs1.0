@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "M2DirectFactFreezeBundleV1",
+  "taskId": "M2-DIRECTFACT-FREEZE",
+  "baseHead": "9edb94260f9a99c9b070dd9ebfeeb51e71fa0592",
+  "verdict": "CONTRACT_FROZEN_TARGET_NOT_IMPLEMENTED",
+  "files": [
+    {
+      "file": "tools/rc6/contracts/DirectFactRowV1.json",
+      "sha256": "FDE8F2EFE52653A3AB8692C62CE223459F1F44BB6F2224BCE4FF14C61999EEFF"
+    },
+    {
+      "file": "tools/rc6/contracts/DirectFactRowV1.schema.json",
+      "sha256": "1CF2490B90C0EBABCBCD163436DCC963209240D1FEC049E7BA8815F1C4D49334"
+    },
+    {
+      "file": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+      "sha256": "4A523B3A97DEC5F596B1111EEAF9DBB12ED8ECB6637F4BD77187072C0743A387"
+    },
+    {
+      "file": "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+      "sha256": "DA24635ADA44E4BBB0D7A677FC629E02301ABB1DDC2A4EED14CBDC23D13E0979"
+    },
+    {
+      "file": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
+      "sha256": "5D359B44330D06181EA9E65D84C6091FA7112B51FC052ADB15E737BC02BCA977"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorProviderQualityGateV1.json",
+      "sha256": "ED2570AA9750904E44DFB23A2E32789A36B0DCBE855C94E7ABE5D151D59B08AB"
+    },
+    {
+      "file": "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json",
+      "sha256": "121B3F900A597B7C142790DF945C47AB82D515C1625B7DAE4BF69B7E53FE2362"
+    },
+    {
+      "file": "tools/rc6/cases/BehaviorProviderQualitySplitV1.json",
+      "sha256": "B701C05F1716754DB1D8E074E4FB4C80949216CE9A059531556B4AA48C386311"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-contract-freeze.mjs",
+      "sha256": "5BFBD3A7E52BF8B6641956AAEA90575BD91DDF4FAB57CC50276EB2A0FA2B9C38"
+    }
+  ],
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-directfact-freeze-9edb942.patch",
+    "sha256": "3882136A7BE7FA5897908044C0219614FA68A33ABE325C1C62BA670B11F2A5DD",
+    "byteLength": 179104
+  },
+  "manifest": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-directfact-freeze-9edb942.manifest.json",
+    "sha256": "034F027B7B683257929821F2CD8D667946DB799D71055D3CDA9BBFAFED297799"
+  },
+  "verification": {
+    "freeze": "638/638 PASSED",
+    "provider": "516/516 PASSED",
+    "m1": "25/25 PASSED",
+    "nodeCheck": true,
+    "utf8Clean": true,
+    "diffCheck": true
+  },
+  "notClaimed": [
+    "adapter business semantics",
+    "581 path semantics",
+    "production wiring",
+    "formal registration",
+    "runtime integration",
+    "DirectFact semantic projection"
+  ],
+  "invalidation": "NONE",
+  "createdAt": "2026-08-14T00:58:09Z"
+}

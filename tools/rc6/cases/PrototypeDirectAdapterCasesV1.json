@@ -1,5 +1,6 @@
 {
   "schemaVersion": "PrototypeDirectAdapterCasesV1",
+  "revision": 3,
   "contractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
   "counts": {
     "inBattlePathCount": 621,
@@ -118,11 +119,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "HP_DELTA"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "HP_DELTA",
+            "key": "",
+            "sourceActionId": "action:pos-damage-direct",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-damage-direct:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 60,
+            "unit": "POWER",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-damage-direct",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-damage-direct:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -137,11 +159,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "RESOURCE_OPTION_CHANGED"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "RESOURCE_OPTION_CHANGED",
+            "key": "魂力",
+            "sourceActionId": "action:pos-resource-change",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-resource-change:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 10,
+            "unit": "ABS",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-resource-change",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-resource-change:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -157,11 +200,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "RESOURCE_TRANSFER"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "RESOURCE_TRANSFER",
+            "key": "魂力",
+            "sourceActionId": "action:pos-resource-transfer",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-resource-transfer:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 10,
+            "unit": "ABS",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-resource-transfer",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-resource-transfer:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -176,11 +240,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "SHIELD_DELTA"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "SHIELD_DELTA",
+            "key": "正向护盾",
+            "sourceActionId": "action:pos-shield-change",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-shield-change:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 20,
+            "unit": "ABS",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-shield-change",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-shield-change:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -196,11 +281,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "STATE_DELTA"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "力量",
+            "sourceActionId": "action:pos-attribute-modifier",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-attribute-modifier:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-attribute-modifier",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-attribute-modifier:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -216,9 +322,6 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "STATE_DELTA"
-        ],
         "legalityModifiers": {
           "judgmentRates": [
             {
@@ -228,7 +331,31 @@
           ]
         },
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "命中",
+            "sourceActionId": "action:pos-judgment-modifier",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-judgment-modifier:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-judgment-modifier",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-judgment-modifier:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -244,11 +371,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "STATE_DELTA"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "造成伤害",
+            "sourceActionId": "action:pos-settlement-modifier",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-settlement-modifier:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 1
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-settlement-modifier",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-settlement-modifier:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -262,11 +410,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "STATE_DELTA"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "炸环",
+            "sourceActionId": "action:pos-ring-burst",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-ring-burst:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 1.5,
+            "unit": "RATIO",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-ring-burst",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-ring-burst:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -281,9 +450,6 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "STATE_DELTA"
-        ],
         "legalityModifiers": {
           "taunt": {
             "state": "嘲讽",
@@ -291,7 +457,31 @@
           }
         },
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "嘲讽",
+            "sourceActionId": "action:pos-state-apply-taunt",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-state-apply-taunt:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 1,
+            "unit": "BOOL",
+            "durationTurns": 1
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-state-apply-taunt",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-state-apply-taunt:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -310,12 +500,22 @@
         "scheduledFacts": [
           {
             "operation": "WINDOW_ADJUST",
+            "key": "window.adjustTurns",
             "字段": "持续回合",
-            "方式": "延长"
+            "方式": "延长",
+            "调整回合": 1
           }
         ],
         "unsupportedOutcomeKinds": [],
         "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-window-adjust",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-window-adjust:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -330,16 +530,37 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "STATE_DELTA"
-        ],
         "legalityModifiers": {
           "tauntRemoved": {
             "state": "嘲讽"
           }
         },
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "嘲讽",
+            "sourceActionId": "action:pos-state-remove-taunt",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-state-remove-taunt:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": -1,
+            "unit": "COUNT",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-state-remove-taunt",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-state-remove-taunt:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -354,11 +575,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "RULE_DEFENSE_COUNTER"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "RULE_DEFENSE_COUNTER",
+            "key": "免伤",
+            "sourceActionId": "action:pos-rule-defense",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-rule-defense:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 1,
+            "unit": "COUNT",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-rule-defense",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-rule-defense:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -384,6 +626,14 @@
         },
         "unsupportedOutcomeKinds": [],
         "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-state-migrate-taunt",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-state-migrate-taunt:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -404,6 +654,14 @@
         },
         "unsupportedOutcomeKinds": [],
         "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-state-swap",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-state-swap:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -429,6 +687,14 @@
         },
         "unsupportedOutcomeKinds": [],
         "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-resource-lock",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-resource-lock:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -450,6 +716,14 @@
         },
         "unsupportedOutcomeKinds": [],
         "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-rule-rewrite-disarm",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-rule-rewrite-disarm:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -476,10 +750,74 @@
         },
         "unsupportedOutcomeKinds": [],
         "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-mechanism-erasure",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-mechanism-erasure:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
       "caseId": "pos-grant-followup",
+      "kind": "POSITIVE",
+      "prototype": "机制授予",
+      "effect": {
+        "原型": "机制授予",
+        "目标": "自身",
+        "触发条件": "主动触发",
+        "可用次数": 2,
+        "持续回合": 3,
+        "授予效果": [
+          {
+            "原型": "判定修正",
+            "目标": "自身",
+            "判定": "命中",
+            "数值": "+10%"
+          }
+        ]
+      },
+      "expect": {
+        "admitted": true,
+        "scheduledFacts": [
+          {
+            "grantType": "FOLLOW_UP",
+            "triggerKey": "主动触发",
+            "maxActions": 2,
+            "payloadDirectFacts": [
+              {
+                "schemaVersion": "DirectFactRowV1",
+                "factType": "STATE_DELTA",
+                "key": "命中",
+                "sourceActionId": "action:pos-grant-followup",
+                "sourceActorId": "actor-1",
+                "sourceEffectId": "effect:pos-grant-followup:0",
+                "targetIds": [
+                  "actor-1"
+                ],
+                "amount": 10,
+                "unit": "PERCENT",
+                "durationTurns": 0
+              }
+            ]
+          }
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-grant-followup",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-grant-followup:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
+      }
+    },
+    {
+      "caseId": "pos-grant-followup-next-action",
       "kind": "POSITIVE",
       "prototype": "机制授予",
       "effect": {
@@ -500,12 +838,35 @@
         "scheduledFacts": [
           {
             "grantType": "FOLLOW_UP",
-            "trigger": "命中后追击",
-            "maxActions": 1
+            "triggerKey": "随下次行动触发",
+            "payloadDirectFacts": [
+              {
+                "schemaVersion": "DirectFactRowV1",
+                "factType": "STATE_DELTA",
+                "key": "命中",
+                "sourceActionId": "action:pos-grant-followup-next-action",
+                "sourceActorId": "actor-1",
+                "sourceEffectId": "effect:pos-grant-followup-next-action:0",
+                "targetIds": [
+                  "actor-1"
+                ],
+                "amount": 10,
+                "unit": "PERCENT",
+                "durationTurns": 0
+              }
+            ]
           }
         ],
         "unsupportedOutcomeKinds": [],
         "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-grant-followup-next-action",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-grant-followup-next-action:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -521,11 +882,32 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "POSITION_DELTA"
-        ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "POSITION_DELTA",
+            "key": "击退",
+            "sourceActionId": "action:pos-displacement",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-displacement:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 3,
+            "unit": "DISTANCE",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-displacement",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-displacement:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -551,6 +933,14 @@
         },
         "unsupportedOutcomeKinds": [],
         "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-decision-interference",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-decision-interference:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -568,17 +958,39 @@
       },
       "expect": {
         "admitted": true,
-        "factColumns": [
-          "SUMMON_WINDOW"
-        ],
         "scheduledFacts": [
           {
             "grantType": "SUMMON_WINDOW",
-            "行动模式": "协同攻击"
+            "行动模式": "协同攻击",
+            "durationTurns": 1
           }
         ],
         "unsupportedOutcomeKinds": [],
-        "deferCode": ""
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "SUMMON_WINDOW",
+            "key": "魂兽",
+            "sourceActionId": "action:pos-summon",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-summon:0",
+            "targetIds": [
+              "actor-1"
+            ],
+            "amount": 1,
+            "unit": "COUNT",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-summon",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-summon:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -591,14 +1003,6 @@
         "状态": "嘲讽",
         "持续回合": 1
       },
-      "legalityContext": {
-        "publicStates": {
-          "taunter": {
-            "嘲讽": true
-          }
-        },
-        "observerId": "attacker"
-      },
       "expect": {
         "admitted": true,
         "legalityModifiers": {
@@ -608,6 +1012,22 @@
           }
         },
         "reasonCode": "TAUNT_CONSTRAINS_LEGAL_SET"
+      },
+      "context": {
+        "sourceActionId": "action:leg-taunt-before-freeze",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:leg-taunt-before-freeze:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "legalityContext": {
+        "publicStates": {
+          "taunter": {
+            "嘲讽": true
+          }
+        },
+        "observerId": "attacker"
       }
     },
     {
@@ -620,6 +1040,18 @@
         "威力倍率": 60,
         "伤害类型": "近身攻击"
       },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "PLAYER_LOCKED_TAUNT_LEGALITY"
+      },
+      "context": {
+        "sourceActionId": "action:leg-player-locked-same-gate",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:leg-player-locked-same-gate:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
       "legalityContext": {
         "publicStates": {
           "taunter": {
@@ -627,10 +1059,6 @@
           }
         },
         "playerLockedTargetId": "other-enemy"
-      },
-      "expect": {
-        "admitted": false,
-        "reasonCode": "PLAYER_LOCKED_TAUNT_LEGALITY"
       }
     },
     {
@@ -644,9 +1072,6 @@
         "数值": "3%",
         "持续回合": 1
       },
-      "legalityContext": {
-        "interferenceRevision": "i-2"
-      },
       "expect": {
         "admitted": true,
         "opportunityModifiers": {
@@ -655,6 +1080,17 @@
           ]
         },
         "reasonCode": "INTERFERENCE_ENTER_DEPENDENCY"
+      },
+      "context": {
+        "sourceActionId": "action:leg-interference-dependency",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:leg-interference-dependency:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "legalityContext": {
+        "interferenceRevision": "i-2"
       }
     },
     {
@@ -674,6 +1110,14 @@
           "COPY_EXECUTION"
         ],
         "retainedInCandidateAudit": true
+      },
+      "context": {
+        "sourceActionId": "action:def-copy-execution",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:def-copy-execution:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -692,6 +1136,14 @@
           "TIME_REWIND"
         ],
         "retainedInCandidateAudit": true
+      },
+      "context": {
+        "sourceActionId": "action:def-time-rewind",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:def-time-rewind:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -712,6 +1164,14 @@
         ],
         "retainedInCandidateAudit": true,
         "reasonCode": "DEFERRED_CANDIDATE_RETAINED_WITH_REASON"
+      },
+      "context": {
+        "sourceActionId": "action:def-retention-audit",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:def-retention-audit:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -725,6 +1185,14 @@
       "expect": {
         "admitted": false,
         "reasonCode": "UNKNOWN_PROTOTYPE_REJECTED"
+      },
+      "context": {
+        "sourceActionId": "action:neg-unknown-prototype",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:neg-unknown-prototype:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -748,7 +1216,15 @@
         "admitted": false,
         "reasonCode": "WHOLE_PROTOTYPE_EXCLUSION_FORBIDDEN"
       },
-      "probe": "CONTRACT_POLICY"
+      "probe": "CONTRACT_POLICY",
+      "context": {
+        "sourceActionId": "action:anti-whole-prototype-exclusion",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-whole-prototype-exclusion:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
+      }
     },
     {
       "caseId": "anti-silent-zero",
@@ -764,7 +1240,15 @@
         "admitted": false,
         "reasonCode": "SILENT_ZERO_FORBIDDEN"
       },
-      "probe": "CONTRACT_POLICY"
+      "probe": "CONTRACT_POLICY",
+      "context": {
+        "sourceActionId": "action:anti-silent-zero",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-silent-zero:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      }
     },
     {
       "caseId": "anti-world-clone",
@@ -780,7 +1264,15 @@
         "admitted": false,
         "reasonCode": "WORLD_CLONE_FORBIDDEN"
       },
-      "probe": "CONTRACT_POLICY"
+      "probe": "CONTRACT_POLICY",
+      "context": {
+        "sourceActionId": "action:anti-world-clone",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-world-clone:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      }
     },
     {
       "caseId": "anti-future-route",
@@ -797,7 +1289,15 @@
         "admitted": false,
         "reasonCode": "FUTURE_ROUTE_DERIVATION_FORBIDDEN"
       },
-      "probe": "CONTRACT_POLICY"
+      "probe": "CONTRACT_POLICY",
+      "context": {
+        "sourceActionId": "action:anti-future-route",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-future-route:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      }
     },
     {
       "caseId": "anti-hidden-state-read",
@@ -813,7 +1313,15 @@
         "admitted": false,
         "reasonCode": "HIDDEN_STATE_READ_FORBIDDEN"
       },
-      "probe": "CONTRACT_POLICY"
+      "probe": "CONTRACT_POLICY",
+      "context": {
+        "sourceActionId": "action:anti-hidden-state-read",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-hidden-state-read:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
+      }
     },
     {
       "caseId": "anti-t0-unsupported",
@@ -836,7 +1344,15 @@
         "admitted": false,
         "reasonCode": "T0_PATH_UNSUPPORTED_FORBIDDEN"
       },
-      "probe": "CONTRACT_POLICY"
+      "probe": "CONTRACT_POLICY",
+      "context": {
+        "sourceActionId": "action:anti-t0-unsupported",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-t0-unsupported:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
+      }
     },
     {
       "caseId": "anti-prototype-level-defer",
@@ -851,7 +1367,15 @@
         "admitted": false,
         "reasonCode": "PROTOTYPE_LEVEL_DEFER_FORBIDDEN"
       },
-      "probe": "CONTRACT_POLICY"
+      "probe": "CONTRACT_POLICY",
+      "context": {
+        "sourceActionId": "action:anti-prototype-level-defer",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-prototype-level-defer:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
+      }
     },
     {
       "caseId": "pos-t0-path-supported",
@@ -876,6 +1400,14 @@
         "deferCode": "",
         "unsupportedOutcomeKinds": [],
         "retainedInCandidateAudit": true
+      },
+      "context": {
+        "sourceActionId": "action:pos-t0-path-supported",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-t0-path-supported:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
       }
     },
     {
@@ -897,6 +1429,14 @@
         ],
         "retainedInCandidateAudit": true,
         "reasonCode": "PATH_DEFAULT_DEFER_LIFTABLE"
+      },
+      "context": {
+        "sourceActionId": "action:def-per-path-liftable",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:def-per-path-liftable:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -914,6 +1454,14 @@
       "expect": {
         "admitted": false,
         "reasonCode": "RESULT_ENUMERATION_FORBIDDEN"
+      },
+      "context": {
+        "sourceActionId": "action:anti-result-enumeration",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-result-enumeration:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
       }
     },
     {
@@ -930,6 +1478,574 @@
       "expect": {
         "admitted": false,
         "reasonCode": "SILENT_DEFER_FORBIDDEN"
+      },
+      "context": {
+        "sourceActionId": "action:anti-silent-defer",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:anti-silent-defer:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      }
+    },
+    {
+      "caseId": "pos-damage-multivalue",
+      "kind": "POSITIVE",
+      "prototype": "伤害结算",
+      "effect": {
+        "原型": "伤害结算",
+        "目标": "单体",
+        "威力倍率": 60,
+        "攻击段数": 2,
+        "防御穿透": 20,
+        "伤害类型": "近身攻击"
+      },
+      "expect": {
+        "admitted": true,
+        "unsupportedOutcomeKinds": [],
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "HP_DELTA",
+            "key": "damage.power",
+            "sourceActionId": "action:pos-damage-multivalue",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-damage-multivalue:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 60,
+            "unit": "POWER",
+            "durationTurns": 0
+          },
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "HP_DELTA",
+            "key": "damage.segments",
+            "sourceActionId": "action:pos-damage-multivalue",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-damage-multivalue:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 2,
+            "unit": "COUNT",
+            "durationTurns": 0
+          },
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "HP_DELTA",
+            "key": "damage.penetration",
+            "sourceActionId": "action:pos-damage-multivalue",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-damage-multivalue:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 20,
+            "unit": "PERCENT",
+            "durationTurns": 0
+          },
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "HP_DELTA",
+            "key": "damage.type",
+            "sourceActionId": "action:pos-damage-multivalue",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-damage-multivalue:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 1,
+            "unit": "BOOL",
+            "durationTurns": 0
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-damage-multivalue",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-damage-multivalue:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      }
+    },
+    {
+      "caseId": "pos-state-multivalue",
+      "kind": "POSITIVE",
+      "prototype": "状态施加",
+      "effect": {
+        "原型": "状态施加",
+        "目标": "单体",
+        "状态": "中毒",
+        "数值": "-5%",
+        "副数值": "+10%",
+        "持续回合": 2
+      },
+      "expect": {
+        "admitted": true,
+        "unsupportedOutcomeKinds": [],
+        "deferCode": "",
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "state.primary",
+            "sourceActionId": "action:pos-state-multivalue",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-state-multivalue:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": -5,
+            "unit": "PERCENT",
+            "durationTurns": 2
+          },
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "STATE_DELTA",
+            "key": "state.secondary",
+            "sourceActionId": "action:pos-state-multivalue",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:pos-state-multivalue:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 10,
+            "unit": "PERCENT",
+            "durationTurns": 2
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:pos-state-multivalue",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-state-multivalue:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      }
+    },
+    {
+      "caseId": "pos-window-multivalue",
+      "kind": "POSITIVE",
+      "prototype": "时窗修正",
+      "effect": {
+        "原型": "时窗修正",
+        "目标": "单体",
+        "调整字段": "持续回合",
+        "调整方式": "压缩",
+        "调整回合": 2,
+        "结算倍率": 0.8
+      },
+      "expect": {
+        "admitted": true,
+        "scheduledFacts": [
+          {
+            "operation": "WINDOW_ADJUST",
+            "key": "window.adjustTurns",
+            "字段": "持续回合",
+            "方式": "压缩",
+            "调整回合": 2
+          },
+          {
+            "operation": "SETTLEMENT_RATIO_ADJUST",
+            "key": "window.settlementRatio",
+            "结算倍率": 0.8
+          }
+        ],
+        "unsupportedOutcomeKinds": [],
+        "deferCode": ""
+      },
+      "context": {
+        "sourceActionId": "action:pos-window-multivalue",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:pos-window-multivalue:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      }
+    }
+  ],
+  "redProbes": [
+    {
+      "probeId": "probe-damage-amount",
+      "kind": "RED_PROBE",
+      "prototype": "伤害结算",
+      "effect": {
+        "原型": "伤害结算",
+        "目标": "单体",
+        "威力倍率": 380,
+        "伤害类型": "近身攻击"
+      },
+      "context": {
+        "sourceActionId": "action:probe-damage-amount",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-damage-amount:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": true,
+        "directFacts": [
+          {
+            "schemaVersion": "DirectFactRowV1",
+            "factType": "HP_DELTA",
+            "key": "",
+            "sourceActionId": "action:probe-damage-amount",
+            "sourceActorId": "actor-1",
+            "sourceEffectId": "effect:probe-damage-amount:0",
+            "targetIds": [
+              "enemy-1"
+            ],
+            "amount": 380,
+            "unit": "POWER",
+            "durationTurns": 0
+          }
+        ]
+      }
+    },
+    {
+      "probeId": "probe-illegal-option",
+      "kind": "RED_PROBE",
+      "prototype": "伤害结算",
+      "effect": {
+        "原型": "伤害结算",
+        "目标": "单体",
+        "威力倍率": 60,
+        "伤害类型": "非法类型"
+      },
+      "context": {
+        "sourceActionId": "action:probe-illegal-option",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-illegal-option:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "INVALID_OPTION_VALUE"
+      }
+    },
+    {
+      "probeId": "probe-unknown-state",
+      "kind": "RED_PROBE",
+      "prototype": "状态施加",
+      "effect": {
+        "原型": "状态施加",
+        "目标": "单体",
+        "状态": "不存在状态"
+      },
+      "context": {
+        "sourceActionId": "action:probe-unknown-state",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-unknown-state:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "UNKNOWN_STATE"
+      }
+    },
+    {
+      "probeId": "probe-unknown-rule",
+      "kind": "RED_PROBE",
+      "prototype": "规则改写",
+      "effect": {
+        "原型": "规则改写",
+        "目标": "单体",
+        "规则": "规则X"
+      },
+      "context": {
+        "sourceActionId": "action:probe-unknown-rule",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-unknown-rule:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "UNKNOWN_RULE"
+      }
+    },
+    {
+      "probeId": "probe-trigger-variant",
+      "kind": "RED_PROBE",
+      "prototype": "机制授予",
+      "effect": {
+        "原型": "机制授予",
+        "目标": "自身",
+        "触发条件": "死亡时触发",
+        "授予效果": [
+          {
+            "原型": "判定修正",
+            "目标": "自身",
+            "判定": "命中",
+            "数值": "+10%"
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:probe-trigger-variant",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-trigger-variant:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "INVALID_OPTION_VALUE"
+      }
+    },
+    {
+      "probeId": "probe-illegal-facttype",
+      "kind": "RED_PROBE",
+      "prototype": "伤害结算",
+      "effect": {
+        "原型": "伤害结算",
+        "目标": "单体",
+        "威力倍率": 60,
+        "伤害类型": "近身攻击"
+      },
+      "context": {
+        "sourceActionId": "action:probe-illegal-facttype",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-illegal-facttype:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "schemaRejected": true,
+        "invalidFactType": "FAKE_TYPE"
+      }
+    },
+    {
+      "probeId": "probe-immutability",
+      "kind": "RED_PROBE",
+      "prototype": "机制抹消",
+      "effect": {
+        "原型": "机制抹消",
+        "目标": "单体",
+        "抹消对象": {
+          "原型": "状态施加",
+          "状态": "眩晕"
+        }
+      },
+      "context": {
+        "sourceActionId": "action:probe-immutability",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-immutability:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": true,
+        "noInputAliasing": true
+      }
+    },
+    {
+      "probeId": "probe-multi-taunt",
+      "kind": "RED_PROBE",
+      "prototype": "状态施加",
+      "effect": {
+        "原型": "状态施加",
+        "目标": "单体",
+        "状态": "嘲讽",
+        "持续回合": 1
+      },
+      "context": {
+        "sourceActionId": "action:probe-multi-taunt",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-multi-taunt:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "legalityContext": {
+        "publicStates": {
+          "t1": {
+            "嘲讽": true
+          },
+          "t2": {
+            "嘲讽": true
+          }
+        }
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "AMBIGUOUS_TAUNT_TARGET",
+        "ambiguousTaunt": true
+      }
+    },
+    {
+      "probeId": "probe-window-missing-field",
+      "kind": "RED_PROBE",
+      "prototype": "时窗修正",
+      "effect": {
+        "原型": "时窗修正",
+        "目标": "单体",
+        "调整方式": "延长"
+      },
+      "context": {
+        "sourceActionId": "action:probe-window-missing-field",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-window-missing-field:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "MISSING_REQUIRED_FIELD"
+      }
+    },
+    {
+      "probeId": "probe-grant-missing-usecount",
+      "kind": "RED_PROBE",
+      "prototype": "机制授予",
+      "effect": {
+        "原型": "机制授予",
+        "目标": "自身",
+        "触发条件": "主动触发",
+        "授予效果": [
+          {
+            "原型": "判定修正",
+            "目标": "自身",
+            "判定": "命中",
+            "数值": "+10%"
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:probe-grant-missing-usecount",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-grant-missing-usecount:0",
+        "candidateTargetIds": [
+          "actor-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "MISSING_REQUIRED_FIELD"
+      }
+    },
+    {
+      "probeId": "probe-nested-payload-unprojectable",
+      "kind": "RED_PROBE",
+      "prototype": "机制授予",
+      "effect": {
+        "原型": "机制授予",
+        "目标": "自身",
+        "触发条件": "主动触发",
+        "可用次数": 2,
+        "持续回合": 3,
+        "授予效果": [
+          {
+            "原型": "复制执行",
+            "目标": "单体",
+            "复制类型": "复制技能",
+            "复制模式": "即时镜像"
+          }
+        ]
+      },
+      "context": {
+        "sourceActionId": "action:probe-nested-payload-unprojectable",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-nested-payload-unprojectable:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": true,
+        "deferCode": "DEFER_MECHANICS_PROJECTION",
+        "unsupportedOutcomeKinds": [
+          "COPY_EXECUTION"
+        ],
+        "reasonCode": "PAYLOAD_UNPROJECTABLE_DEFERRED"
+      }
+    },
+    {
+      "probeId": "probe-damage-invalid-segments",
+      "kind": "RED_PROBE",
+      "prototype": "伤害结算",
+      "effect": {
+        "原型": "伤害结算",
+        "目标": "单体",
+        "威力倍率": 60,
+        "攻击段数": 0,
+        "伤害类型": "近身攻击"
+      },
+      "context": {
+        "sourceActionId": "action:probe-damage-invalid-segments",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-damage-invalid-segments:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "INVALID_OPTION_VALUE"
+      }
+    },
+    {
+      "probeId": "probe-state-secondary-invalid",
+      "kind": "RED_PROBE",
+      "prototype": "状态施加",
+      "effect": {
+        "原型": "状态施加",
+        "目标": "单体",
+        "状态": "嘲讽",
+        "副数值": "+10%"
+      },
+      "context": {
+        "sourceActionId": "action:probe-state-secondary-invalid",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-state-secondary-invalid:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "INVALID_OPTION_VALUE"
+      }
+    },
+    {
+      "probeId": "probe-window-settlement-ratio-with-extend",
+      "kind": "RED_PROBE",
+      "prototype": "时窗修正",
+      "effect": {
+        "原型": "时窗修正",
+        "目标": "单体",
+        "调整字段": "持续回合",
+        "调整方式": "延长",
+        "调整回合": 1,
+        "结算倍率": 0.8
+      },
+      "context": {
+        "sourceActionId": "action:probe-window-settlement-ratio-with-extend",
+        "sourceActorId": "actor-1",
+        "sourceEffectId": "effect:probe-window-settlement-ratio-with-extend:0",
+        "candidateTargetIds": [
+          "enemy-1"
+        ]
+      },
+      "expect": {
+        "admitted": false,
+        "reasonCode": "INVALID_OPTION_VALUE"
       }
     }
   ],

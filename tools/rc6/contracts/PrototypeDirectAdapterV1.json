@@ -1,5 +1,6 @@
 {
   "schemaVersion": "PrototypeDirectAdapterV1",
+  "revision": 3,
   "contractId": "RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14",
   "status": "FROZEN",
   "encoding": "UTF-8",
@@ -7,7 +8,8 @@
     "adjudication": "M2-CONTRACT-ADJUDICATION-C",
     "supersedes": [
       "PrototypePathUniverseV1.supportStatus.mechanics as provider support oracle",
-      "BattlePreview_Module.js compileMechanicalBasis admission as provider support oracle"
+      "BattlePreview_Module.js compileMechanicalBasis admission as provider support oracle",
+      "factColumns string placeholder superseded by directFacts DirectFactRowV1[] (PrototypeDirectAdapterV1 revision 3)"
     ],
     "previewAdmissionDecoupled": true,
     "futureRouteDerivation": false,
@@ -38,10 +40,10 @@
         "legalityContext"
       ],
       "output": {
-        "factColumns": "direct fact column contributions of MechanicalColumnsV1 (HP_DELTA, RESOURCE_OPTION_CHANGED, SHIELD_DELTA, STATE_DELTA, SCHEDULED_HP_DELTA, SUMMON_WINDOW, RESOURCE_TRANSFER, RULE_DEFENSE_COUNTER, POSITION_DELTA, COPY_EXECUTION, TIME_REWIND)",
-        "legalityModifiers": "target-legality modifiers derived from current public state only (taunt source constraint, control cancellation, disarm or silence rules, state migration and erasure of taunt or control)",
-        "opportunityModifiers": "opportunity identity and distribution modifiers (judgment rates, interference rates, resource locks) that enter candidate dependency tokens",
-        "scheduledFacts": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants)",
+        "directFacts": "DirectFactRowV1[] evaluable fact rows: schemaVersion, factType, key, sourceActionId, sourceActorId, sourceEffectId, targetIds, amount, unit, durationTurns; declared magnitudes only, no mitigation/hit final settlement; column-code strings are not contributions",
+        "legalityModifiers": "target-legality modifiers derived from current public state only (taunt source constraint, control cancellation, disarm or silence rules, state migration and erasure of taunt or control); forced taunt target set is sorted UTF-16 ascending; unique-target mechanisms with more than one taunter reject AMBIGUOUS_TAUNT_TARGET",
+        "opportunityModifiers": "opportunity identity and distribution modifiers (judgment rates, interference rates, resource locks) that enter candidate dependency tokens; declared magnitudes",
+        "scheduledFacts": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants); 机制授予 carries triggerKey, maxActions and payload DirectFactRowV1 rows; triggerKey enum 主动触发/随下次行动触发 only; maxActions comes only from explicit 可用次数 (主动触发), missing 可用次数 rejects MISSING_REQUIRED_FIELD, 随下次行动触发 projects no maxActions; SUMMON_WINDOW carries durationTurns/strength; window adjust keys window.adjustTurns/window.settlementRatio",
         "unsupportedOutcomeKinds": "outcome kinds this adapter cannot project; non-empty only together with deferCode or an explicit reason code",
         "deferCode": "per-path defer code; empty string when the path is fully supported"
       },
@@ -75,7 +77,26 @@
       "timing": "BEFORE_CANDIDATE_FREEZE",
       "playerLocked": "SAME_GATE"
     },
-    "dispatch": "PER_EFFECT_PATH_ADMIT_PROJECT"
+    "dispatch": "PER_EFFECT_PATH_ADMIT_PROJECT",
+    "sourceAndTargetContext": {
+      "required": [
+        "sourceActionId",
+        "sourceActorId",
+        "sourceEffectId",
+        "candidateTargetIds"
+      ],
+      "missingAction": "REJECTED_INPUT_WITH_REASON",
+      "reasonCodes": {
+        "missingSource": "MISSING_SOURCE_CONTEXT",
+        "missingTarget": "MISSING_TARGET_CONTEXT"
+      },
+      "targetResolution": {
+        "self": "RESOLVES_TO_SOURCE_ACTOR_ID",
+        "candidateSet": "RESOLVES_TO_CANDIDATE_TARGET_IDS",
+        "unknown": "INVALID_OPTION_VALUE"
+      },
+      "amountFinite": "RUNTIME_VALIDATOR_REQUIRED"
+    }
   },
   "registry": {
     "伤害结算": {
@@ -319,7 +340,14 @@
     "future-route enumeration, world clone, result enumeration and hidden-state reads are forbidden in admit/project and legalityContext",
     "deferred candidates retain vector coverage and candidateAudit reason; prototype-level defaultDeferCode is a default only and is liftable per path",
     "taunt and interference form legalityContext before candidate freeze; PLAYER_LOCKED passes the same gate",
-    "all 621 in-battle paths are covered as supported or deferred; zero silent omission"
+    "all 621 in-battle paths are covered as supported or deferred; zero silent omission",
+    "directFacts supersede factColumns (revision 3): every SUPPORTED effect projection must have at least one non-empty of directFacts/legalityModifiers/opportunityModifiers/scheduledFacts, otherwise unsupportedOutcomeKinds with an explicit reason code; column-name-only projection is forbidden; same-effect multi-values are separate rows with distinct frozen keys (damage.power/damage.segments/damage.penetration/damage.type, state.primary/state.secondary, window.adjustTurns/window.settlementRatio); row uniqueness is (sourceEffectId, key)",
+    "admit/project enforce strict per-prototype effect field whitelist, required fields, enum values and numeric form; 时窗修正 requires 调整字段; 伤害结算 攻击段数 must be a positive integer; 状态施加 数值/副数值 follow the registry allowance per state; 时窗修正 结算倍率 is allowed only with 调整字段=持续回合 and 调整方式=压缩; violations reject INVALID_OPTION_VALUE; missing required field is explicitly rejected (REJECTED_INPUT_WITH_REASON), no compatibility default",
+    "机制授予 scheduled fact carries triggerKey, maxActions and payload DirectFactRowV1 rows projected recursively from 授予效果; triggerKey follows the registry enum 主动触发/随下次行动触发 only (死亡时触发 is INVALID_OPTION_VALUE); maxActions comes only from explicit 可用次数 on 主动触发, missing 可用次数 rejects MISSING_REQUIRED_FIELD (no default 1), 随下次行动触发 forbids 可用次数 per runtime and projects no maxActions; unprojectable nested payload defers or marks unsupported with reason",
+    "multi-taunt: the full forced taunt target set sorted by UTF-16 code unit ascending forms the legal target set; when the mechanism requires a unique taunt target and more than one exists, reject AMBIGUOUS_TAUNT_TARGET",
+    "DirectFactRowV1 amount must be finite (JSON schema plus runtime validator); targetIds must be actual candidate target ids; empty or symbolic placeholders are rejected",
+    "source and target context is required: sourceActionId/sourceActorId/sourceEffectId/candidateTargetIds missing in legalityContext reject admit with MISSING_SOURCE_CONTEXT or MISSING_TARGET_CONTEXT; explicit unsupported otherwise",
+    "target resolution: effect 目标 自身 resolves to [sourceActorId]; 单体/群体/全场/召唤物/目标 resolve to candidateTargetIds; unknown target value rejects INVALID_OPTION_VALUE"
   ],
   "validation": {
     "schema": "PrototypeDirectAdapterV1.schema.json",
@@ -333,8 +361,26 @@
     "casesContract": "PrototypeDirectAdapterCasesV1",
     "selfChecks": {
       "deferredPathIdsMatchUniverse": true,
-      "perPathDispatchRequired": true
-    }
+      "perPathDispatchRequired": true,
+      "directFactsRowsValidateAgainstDirectFactRowV1": true,
+      "unitEnumClosed": true,
+      "factTypeEnumClosed": true,
+      "revision3SupersedeDeclared": true,
+      "targetIdsNoSymbolicPlaceholder": true,
+      "sourceContextRequired": true,
+      "windowAdjustFieldRequired": true,
+      "grantPayloadProjected": true,
+      "multiTauntLegalSetSorted": true,
+      "multiRowKeyVocabularyFrozen": true,
+      "rowUniquenessBySourceEffectIdAndKey": true,
+      "maxActionsExplicitOnly": true,
+      "triggerKeyRegistryEnumClosed": true,
+      "nestedPayloadRecursiveProjection": true,
+      "windowMultiRowKeysAreScheduledFactKeys": true,
+      "directFactRowSchemaDuplicateFrozenHarnessCompared": true
+    },
+    "directFactRowContract": "tools/rc6/contracts/DirectFactRowV1.json",
+    "directFactRowSchema": "tools/rc6/contracts/DirectFactRowV1.schema.json"
   },
   "deferredPaths": [
     {

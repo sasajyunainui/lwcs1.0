@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "DirectFactRowV1.schema.json",
+  "title": "DirectFactRowV1",
+  "description": "Evaluable direct fact row projected by PrototypeDirectAdapterV1 revision 3 (declared magnitudes only; no mitigation or hit final settlement). amount must be finite (JSON schema plus runtime validator); targetIds must be actual candidate target ids, empty or symbolic placeholders rejected.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "factType",
+    "key",
+    "sourceActionId",
+    "sourceActorId",
+    "sourceEffectId",
+    "targetIds",
+    "amount",
+    "unit",
+    "durationTurns"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "DirectFactRowV1"
+    },
+    "factType": {
+      "enum": [
+        "HP_DELTA",
+        "RESOURCE_OPTION_CHANGED",
+        "SHIELD_DELTA",
+        "STATE_DELTA",
+        "SCHEDULED_HP_DELTA",
+        "SUMMON_WINDOW",
+        "RESOURCE_TRANSFER",
+        "RULE_DEFENSE_COUNTER",
+        "POSITION_DELTA",
+        "COPY_EXECUTION",
+        "TIME_REWIND"
+      ]
+    },
+    "key": {
+      "type": "string",
+      "minLength": 0
+    },
+    "sourceActionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceActorId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceEffectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64,
+        "pattern": "^[A-Za-z0-9_\\-:/.]{1,64}$",
+        "not": {
+          "enum": [
+            "自身",
+            "单体",
+            "群体",
+            "全场",
+            "召唤物",
+            "目标",
+            "target",
+            "actor",
+            "self",
+            "all",
+            "any"
+          ]
+        }
+      }
+    },
+    "amount": {
+      "type": "number"
+    },
+    "unit": {
+      "enum": [
+        "POWER",
+        "ABS",
+        "PERCENT",
+        "RATIO",
+        "COUNT",
+        "TURNS",
+        "DISTANCE",
+        "BOOL"
+      ]
+    },
+    "durationTurns": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

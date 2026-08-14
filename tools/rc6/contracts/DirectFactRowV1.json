@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "DirectFactRowV1",
+  "contractId": "RC6-M2-DIRECT-FACT-ROW-V1-2026-08-14",
+  "revision": 3,
+  "status": "FROZEN",
+  "encoding": "UTF-8",
+  "authority": {
+    "milestone": "M2",
+    "governedBy": [
+      "PrototypeDirectAdapterV1",
+      "PrototypeDirectAdapterV1.schema"
+    ],
+    "claim": "CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED",
+    "claimDetail": "581/40 remain contract target/classification; this contract does not claim runtime implementation",
+    "supersedes": "PrototypeDirectAdapterV1 factColumns string placeholder (superseded at adapter revision 3)",
+    "declaredMagnitudeOnly": true,
+    "finalSettlement": "DEFERRED_TO_DOWNSTREAM_KERNEL",
+    "futureRouteDerivation": false,
+    "worldClone": false
+  },
+  "fields": {
+    "schemaVersion": {
+      "type": "string",
+      "required": true,
+      "closed": true,
+      "meaning": "const DirectFactRowV1"
+    },
+    "factType": {
+      "type": "string",
+      "required": true,
+      "closed": true,
+      "enum": [
+        "HP_DELTA",
+        "RESOURCE_OPTION_CHANGED",
+        "SHIELD_DELTA",
+        "STATE_DELTA",
+        "SCHEDULED_HP_DELTA",
+        "SUMMON_WINDOW",
+        "RESOURCE_TRANSFER",
+        "RULE_DEFENSE_COUNTER",
+        "POSITION_DELTA",
+        "COPY_EXECUTION",
+        "TIME_REWIND"
+      ],
+      "meaning": "MechanicalColumnsV1 fact column code"
+    },
+    "key": {
+      "type": "string",
+      "required": true,
+      "closed": true,
+      "meaning": "sub-identity: state/resource/judgment/settlement/rule/interference/summon-type name; multi-value dimensions use the frozen multiRowKeyVocabulary keys (damage.power/damage.segments/damage.penetration/damage.type, state.primary/state.secondary); window.adjustTurns/window.settlementRatio are scheduled-fact keys on 时窗修正 scheduledFacts entries, not DirectFactRow rows; empty allowed for plain damage"
+    },
+    "sourceActionId": {
+      "type": "string",
+      "required": true,
+      "closed": true,
+      "meaning": "candidate action/declaration id that produced the effect"
+    },
+    "sourceActorId": {
+      "type": "string",
+      "required": true,
+      "closed": true,
+      "meaning": "unit id of the acting unit"
+    },
+    "sourceEffectId": {
+      "type": "string",
+      "required": true,
+      "closed": true,
+      "meaning": "effect instance id (path identity); required for dependency/causality"
+    },
+    "targetIds": {
+      "type": "string[]",
+      "required": true,
+      "closed": true,
+      "meaning": "actual candidate target ids resolved from 目标 via sourceAndTargetContext.targetResolution; empty or symbolic placeholders rejected"
+    },
+    "amount": {
+      "type": "number",
+      "required": true,
+      "closed": true,
+      "meaning": "declared magnitude; finite enforced by JSON schema and runtime validator; direction by sign"
+    },
+    "unit": {
+      "type": "string",
+      "required": true,
+      "closed": true,
+      "enum": [
+        "POWER",
+        "ABS",
+        "PERCENT",
+        "RATIO",
+        "COUNT",
+        "TURNS",
+        "DISTANCE",
+        "BOOL"
+      ],
+      "meaning": "POWER=威力倍率 declared, ABS=resource absolute points, PERCENT, RATIO=倍率, COUNT, TURNS, DISTANCE, BOOL"
+    },
+    "durationTurns": {
+      "type": "integer",
+      "required": true,
+      "closed": true,
+      "meaning": "duration in turns; 0 when not applicable"
+    }
+  },
+  "factTypeEnum": [
+    "HP_DELTA",
+    "RESOURCE_OPTION_CHANGED",
+    "SHIELD_DELTA",
+    "STATE_DELTA",
+    "SCHEDULED_HP_DELTA",
+    "SUMMON_WINDOW",
+    "RESOURCE_TRANSFER",
+    "RULE_DEFENSE_COUNTER",
+    "POSITION_DELTA",
+    "COPY_EXECUTION",
+    "TIME_REWIND"
+  ],
+  "unitEnum": {
+    "POWER": "declared 威力倍率 magnitude",
+    "ABS": "resource absolute points (资源绝对值)",
+    "PERCENT": "percent modifier (signed)",
+    "RATIO": "multiplier ratio",
+    "COUNT": "count (e.g. 次数/数量)",
+    "TURNS": "duration in turns",
+    "DISTANCE": "position distance",
+    "BOOL": "presence flag (1 applied / 0 absent)"
+  },
+  "multiRowKeyVocabulary": {
+    "purpose": "same-effect multi-values are expressed as separate rows with distinct keys under the same sourceEffectId; DirectFactRowV1 rows use damage.* and state.* keys (row uniqueness (sourceEffectId, key)); window.* keys are NOT DirectFactRow rows - they are the key field on 时窗修正 scheduledFacts entries; this vocabulary is frozen",
+    "damage.power": "伤害结算 威力倍率 declared magnitude (unit POWER)",
+    "damage.segments": "伤害结算 攻击段数 hit count (unit COUNT, positive integer)",
+    "damage.penetration": "伤害结算 防御穿透 declared penetration (unit PERCENT)",
+    "damage.type": "伤害结算 伤害类型 presence flag (unit BOOL, 1 applied)",
+    "state.primary": "状态施加 数值 primary magnitude (unit PERCENT signed)",
+    "state.secondary": "状态施加 副数值 secondary magnitude (unit PERCENT signed)",
+    "window.adjustTurns": "时窗修正 scheduledFacts entry key (operation WINDOW_ADJUST); not a DirectFactRow row",
+    "window.settlementRatio": "时窗修正 scheduledFacts entry key (operation SETTLEMENT_RATIO_ADJUST); not a DirectFactRow row"
+  },
+  "invariants": [
+    "amount must be finite: JSON schema (type number) plus runtime validator rejecting NaN and Infinity",
+    "targetIds are actual candidate target ids; empty array and symbolic placeholders (自身/单体/群体/全场/召唤物/目标/target/actor/self) are rejected",
+    "sourceActionId/sourceActorId/sourceEffectId are required; missing source/context causes admit rejection (MISSING_SOURCE_CONTEXT) or explicit unsupported",
+    "rows carry declared magnitudes only; mitigation and hit final settlement are downstream kernel concerns, not projected here",
+    "SUPPORTED effects must produce at least one non-empty of directFacts/legalityModifiers/opportunityModifiers/scheduledFacts; otherwise unsupportedOutcomeKinds with explicit reason; column-name-only projection is forbidden",
+    "same-effect multi-values are separate rows with distinct frozen keys from multiRowKeyVocabulary under the same sourceEffectId; duplicate (sourceEffectId, key) rows are forbidden",
+    "机制授予 maxActions comes only from explicit 可用次数 on 主动触发; missing 可用次数 rejects MISSING_REQUIRED_FIELD, no default 1; 随下次行动触发 forbids 可用次数 per runtime and projects no maxActions",
+    "triggerKey follows the registry enum 主动触发/随下次行动触发 only; 死亡时触发 is INVALID_OPTION_VALUE",
+    "nested 授予效果 payload is recursively projected as DirectFactRowV1 rows or explicitly unsupported/defer"
+  ],
+  "references": {
+    "adapterContract": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+    "adapterSchema": "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+    "adapterCases": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json"
+  },
+  "sourceHashes": {
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "4a523b3a97dec5f596b1111eeaf9dbb12ed8ecb6637f4bd77187072c0743a387",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "da24635ada44e4bbb0d7a677fc629e02301abb1ddc2a4eed14cbdc23d13e0979",
+    "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "5d359b44330d06181ea9e65d84c6091fa7112b51fc052adb15e737bc02bca977"
+  },
+  "validation": {
+    "schema": "DirectFactRowV1.schema.json",
+    "utf8": "REQUIRED",
+    "selfChecks": [
+      "schema validates every directFacts row and probe row in PrototypeDirectAdapterCasesV1",
+      "unit enum closed: POWER/ABS/PERCENT/RATIO/COUNT/TURNS/DISTANCE/BOOL",
+      "factType enum closed: 11 MechanicalColumnsV1 codes",
+      "amount finite enforced at schema and runtime validator level",
+      "targetIds reject empty and symbolic placeholders",
+      "multiRow key vocabulary frozen; rows unique per (sourceEffectId, key)",
+      "maxActions explicit only; missing 可用次数 rejects; no default 1",
+      "triggerKey registry enum only"
+    ]
+  }
+}

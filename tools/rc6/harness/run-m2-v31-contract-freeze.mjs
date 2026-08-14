@@ -1,5 +1,5 @@
 // run-m2-v31-contract-freeze.mjs
-// M2 unified contract-freeze harness: read-only audit of the nine RC6 contracts.
+// M2 unified contract-freeze harness: read-only audit of the RC6 contract freeze set (nine originals + DirectFactRowV1 pair).
 // Fails (exit 1) on any failed assertion; prints the actual assertion count.
 // No contract file is written, staged or committed.
 import crypto from 'node:crypto';
@@ -65,7 +65,8 @@ function findDupKeys(text) {
   return dups;
 }
 const MOJI = ['\uFFFD', '\u9c4f\u65a4\u6253'];
-for (const [p, tag] of Object.values(NINE)) {
+const FREEZE_FILES = [...Object.values(NINE), ['contracts/DirectFactRowV1.json', 'DirectFactRowV1'], ['contracts/DirectFactRowV1.schema.json', 'DirectFactRowV1.schema']];
+for (const [p, tag] of FREEZE_FILES) {
   const buf = fs.readFileSync(path.join(rc6, p));
   const text = buf.toString('utf8');
   ok('utf8 ' + tag, utf8Strict(buf));
@@ -370,6 +371,161 @@ ok('F9 out-of-battle 4/91', F9.counts.outOfBattlePrototypeCount === 4 && F9.coun
 ok('F9 rejected/silent 0', F9.counts.rejectedInputPathCount === 0 && F9.counts.silentOmissionCount === 0);
 ok('F7 registry 27', Object.keys(F7.registry).length === 27 && Object.keys(F7.registry).every(p => bp[p] || ['修炼增益', '天赋提升', '永久属性提升', '战斗外复活'].includes(p)));
 
+// ---- block C2: DirectFactRowV1 pair + Prototype rev3 cases/probes (static contract reference only; adapter module is never loaded) ----
+const PIN = {
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.json': '4a523b3a97dec5f596b1111eeaf9dbb12ed8ecb6637f4bd77187072c0743a387',
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json': 'da24635ada44e4bbb0d7a677fc629e02301abb1ddc2a4eed14cbdc23d13e0979',
+  'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json': '5d359b44330d06181ea9e65d84c6091fa7112b51fc052adb15e737bc02bca977',
+  'tools/rc6/contracts/DirectFactRowV1.json': 'fde8f2efe52653a3ab8692c62ce223459f1f44bb6f2224bce4ff14c61999eeff',
+  'tools/rc6/contracts/DirectFactRowV1.schema.json': '1cf2490b90c0ebabcbcd163436dcc963209240d1fec049e7ba8815f1c4d49334',
+};
+ok('freeze pin rev3 contracts + DirectFact pair', Object.entries(PIN).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h));
+const DF = readJson('contracts/DirectFactRowV1.json');
+const DFS = readJson('contracts/DirectFactRowV1.schema.json');
+const F8 = readJson(NINE.F8[0]);
+const DF_VAL = makeValidator(DFS);
+const DFIELDS = ['schemaVersion', 'factType', 'key', 'sourceActionId', 'sourceActorId', 'sourceEffectId', 'targetIds', 'amount', 'unit', 'durationTurns'];
+const dKeys = Object.keys(DF.fields);
+ok('directfact fields exactly 10', dKeys.length === 10 && JSON.stringify(dKeys) === JSON.stringify(DFIELDS));
+ok('directfact schema required 10', JSON.stringify([...DFS.required].sort()) === JSON.stringify([...DFIELDS].sort()));
+ok('directfact schema properties closed', JSON.stringify(Object.keys(DFS.properties).sort()) === JSON.stringify([...DFIELDS].sort()) && DFS.additionalProperties === false);
+ok('directfact fields required+closed', DFIELDS.every(k => DF.fields[k] && DF.fields[k].required === true && DF.fields[k].closed === true));
+const ftS = [...DFS.properties.factType.enum].sort();
+ok('factType enum 11 closed', DF.fields.factType.enum.length === 11 && JSON.stringify(DF.fields.factType.enum) === JSON.stringify(DF.factTypeEnum) && JSON.stringify([...DF.factTypeEnum].sort()) === JSON.stringify(ftS));
+const unS = [...DFS.properties.unit.enum].sort();
+ok('unit enum 8 closed', DF.fields.unit.enum.length === 8 && JSON.stringify([...DF.fields.unit.enum].sort()) === JSON.stringify(unS) && JSON.stringify(Object.keys(DF.unitEnum).sort()) === JSON.stringify(unS));
+const dfOpen = [];
+openObjectNodes(DFS, dfOpen);
+ok('directfact schema closed no open objects', dfOpen.length === 0, dfOpen.slice(0, 5).join(','));
+ok('directfact source required minLength', ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => DFS.required.includes(k) && DFS.properties[k].minLength >= 1));
+const tgt = DFS.properties.targetIds;
+ok('directfact targetIds rules', tgt.minItems === 1 && tgt.uniqueItems === true && !!tgt.items.pattern && !!tgt.items.not && Array.isArray(tgt.items.not.enum) && tgt.items.not.enum.length === 11);
+ok('directfact amount finite + durationTurns', DFS.properties.amount.type === 'number' && DFS.properties.durationTurns.type === 'integer' && DFS.properties.durationTurns.minimum === 0);
+ok('directfact finite runtime rules declared', JSON.stringify(DF.invariants).includes('finite') && JSON.stringify(DF.validation.selfChecks).includes('finite') && F7.interface.sourceAndTargetContext.amountFinite === 'RUNTIME_VALIDATOR_REQUIRED');
+ok('directfact claim CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED', DF.authority.claim === 'CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED' && /581\/40/.test(DF.authority.claimDetail) && DF.authority.claimDetail.includes('contract target'));
+ok('directfact declared magnitudes only', DF.authority.declaredMagnitudeOnly === true && DF.authority.finalSettlement === 'DEFERRED_TO_DOWNSTREAM_KERNEL' && DF.authority.futureRouteDerivation === false && DF.authority.worldClone === false);
+ok('directfact supersedes adapter revision 3', typeof DF.authority.supersedes === 'string' && DF.authority.supersedes.includes('revision 3'));
+ok('rev3 contract/schema/cases', DF.revision === 3 && F7.revision === 3 && F8.revision === 3 && F9.revision === 3);
+ok('directfact sourceHashes 3 match disk', Object.keys(DF.sourceHashes).length === 3 && Object.entries(DF.sourceHashes).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h));
+ok('prototype rev3 43 cases unique', F9.cases.length === 43 && new Set(F9.cases.map(c => c.caseId)).size === 43);
+ok('prototype red probes 14 unique', F9.redProbes.length === 14 && new Set(F9.redProbes.map(p => p.probeId)).size === 14);
+const KINDS = ['POSITIVE', 'LEGALITY', 'DEFER', 'NEGATIVE', 'ANTI_PATTERN'];
+ok('prototype kinds closed', F9.cases.every(c => KINDS.includes(c.kind)));
+const kindCounts = {};
+for (const c of F9.cases) kindCounts[c.kind] = (kindCounts[c.kind] || 0) + 1;
+ok('prototype kind counts 26/3/4/1/9', kindCounts.POSITIVE === 26 && kindCounts.LEGALITY === 3 && kindCounts.DEFER === 4 && kindCounts.NEGATIVE === 1 && kindCounts.ANTI_PATTERN === 9, JSON.stringify(kindCounts));
+const ALL_ITEMS = [...F9.cases.map(c => ({ id: c.caseId, ctx: c.context, eff: c.effect, ex: c.expect })), ...F9.redProbes.map(p => ({ id: p.probeId, ctx: p.context, eff: p.effect, ex: p.expect }))];
+ok('all 57 context 4 keys explicit', ALL_ITEMS.every(x => ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof x.ctx[k] === 'string' && x.ctx[k].length > 0) && Array.isArray(x.ctx.candidateTargetIds) && x.ctx.candidateTargetIds.length > 0));
+const bpSet = new Set(Object.keys(F9.counts.byPrototype));
+const resTarget = (eff, ctx) => {
+  const t = eff && eff['目标'];
+  if (t === '自身') return [ctx.sourceActorId];
+  if (['单体', '群体', '全场', '召唤物', '目标'].includes(t)) return ctx.candidateTargetIds;
+  return null;
+};
+const sortedIds = a => JSON.stringify([...a].sort());
+const allRows = [];
+for (const c of F9.cases) {
+  const ex = c.expect, ctx = c.context || {};
+  ok(c.caseId + ' admitted bool', typeof ex.admitted === 'boolean');
+  ok(c.caseId + ' context source', ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof ctx[k] === 'string' && ctx[k].length > 0));
+  ok(c.caseId + ' context candidateTargetIds', Array.isArray(ctx.candidateTargetIds) && ctx.candidateTargetIds.length > 0);
+  ok(c.caseId + ' prototype registered', bpSet.has(c.prototype) || c.prototype === '未知原型');
+  if (ex.deferCode !== undefined) ok(c.caseId + ' deferCode allowed', ex.deferCode === '' || F7.interface.allowedDeferCodes.includes(ex.deferCode));
+  if (ex.unsupportedOutcomeKinds !== undefined) ok(c.caseId + ' unsupported kinds array', Array.isArray(ex.unsupportedOutcomeKinds));
+  if (c.kind === 'DEFER') ok(c.caseId + ' defer semantics', ex.admitted === true && ex.deferCode === 'DEFER_MECHANICS_PROJECTION' && Array.isArray(ex.unsupportedOutcomeKinds) && ex.unsupportedOutcomeKinds.length > 0 && ex.retainedInCandidateAudit === true);
+  if (ex.admitted === false && ex.reasonCode !== undefined) ok(c.caseId + ' reasonCode', typeof ex.reasonCode === 'string' && ex.reasonCode.length > 0);
+  if (ex.legalityModifiers !== undefined) ok(c.caseId + ' legalityModifiers nonempty', JSON.stringify(ex.legalityModifiers) !== '{}');
+  if (ex.opportunityModifiers !== undefined) ok(c.caseId + ' opportunityModifiers nonempty', JSON.stringify(ex.opportunityModifiers) !== '{}');
+  if (ex.scheduledFacts !== undefined) ok(c.caseId + ' scheduledFacts array', Array.isArray(ex.scheduledFacts) && ex.scheduledFacts.every(s => s && typeof s === 'object'));
+  const hasOut = (ex.directFacts && ex.directFacts.length) || ex.legalityModifiers !== undefined || ex.opportunityModifiers !== undefined || (ex.scheduledFacts && ex.scheduledFacts.length);
+  if (ex.admitted === true && !ex.deferCode && !hasOut) ok(c.caseId + ' retainedInCandidateAudit', ex.retainedInCandidateAudit === true);
+  for (const r of ex.directFacts || []) {
+    allRows.push(r);
+    ok(c.caseId + ' row DF schema', !DF_VAL(r));
+    ok(c.caseId + ' row source matches ctx', r.sourceActionId === ctx.sourceActionId && r.sourceActorId === ctx.sourceActorId && r.sourceEffectId === ctx.sourceEffectId);
+    const want = resTarget(c.effect, ctx);
+    ok(c.caseId + ' row targetIds resolve', want !== null && sortedIds(r.targetIds) === sortedIds(want), JSON.stringify(r.targetIds) + ' vs ' + JSON.stringify(want));
+  }
+}
+for (const p of F9.redProbes) {
+  const ex = p.expect;
+  ok(p.probeId + ' admitted bool', typeof ex.admitted === 'boolean');
+  ok(p.probeId + ' context', ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof p.context[k] === 'string' && p.context[k].length > 0) && Array.isArray(p.context.candidateTargetIds) && p.context.candidateTargetIds.length > 0);
+  if (ex.admitted === false) ok(p.probeId + ' reject evidence', (typeof ex.reasonCode === 'string' && ex.reasonCode.length > 0) || (ex.schemaRejected === true && typeof ex.invalidFactType === 'string' && ex.invalidFactType.length > 0), JSON.stringify(ex));
+  if (ex.admitted === true) ok(p.probeId + ' contract gold present', (ex.directFacts && ex.directFacts.length > 0) || (ex.scheduledFacts && ex.scheduledFacts.length > 0) || ex.noInputAliasing === true || (ex.deferCode && ex.unsupportedOutcomeKinds && ex.unsupportedOutcomeKinds.length > 0 && ex.reasonCode), JSON.stringify(ex));
+  if (ex.directFacts) for (const r of ex.directFacts) {
+    allRows.push(r);
+    ok(p.probeId + ' row DF schema', !DF_VAL(r));
+    const want = resTarget(p.effect, p.context);
+    ok(p.probeId + ' row targetIds resolve', want !== null && sortedIds(r.targetIds) === sortedIds(want));
+  }
+  if (ex.ambiguousTaunt !== undefined) ok(p.probeId + ' ambiguousTaunt', ex.ambiguousTaunt === true);
+}
+ok('PA selfChecks rev3 flags', F7.validation.selfChecks.multiRowKeyVocabularyFrozen === true && F7.validation.selfChecks.rowUniquenessBySourceEffectIdAndKey === true && F7.validation.selfChecks.maxActionsExplicitOnly === true && F7.validation.selfChecks.triggerKeyRegistryEnumClosed === true && F7.validation.selfChecks.nestedPayloadRecursiveProjection === true);
+ok('PA grant triggerKey enum declared', /主动触发\/随下次行动触发 only/.test(F7.interface.project.output.scheduledFacts) && /随下次行动触发 projects no maxActions/.test(F7.interface.project.output.scheduledFacts) && /死亡时触发 is INVALID_OPTION_VALUE/.test(F7.constraints.join('\n')));
+ok('PA multiRow/window/damage declared', /damage\.power\/damage\.segments\/damage\.penetration\/damage\.type, state\.primary\/state\.secondary, window\.adjustTurns\/window\.settlementRatio/.test(F7.constraints.join('\n')) && /row uniqueness is \(sourceEffectId, key\)/.test(F7.constraints.join('\n')) && /攻击段数 must be a positive integer/.test(F7.constraints.join('\n')) && /结算倍率 is allowed only with 调整字段=持续回合 and 调整方式=压缩/.test(F7.constraints.join('\n')));
+ok('DF selfChecks rev3 rules', JSON.stringify(DF.validation.selfChecks).includes('(sourceEffectId, key)') && JSON.stringify(DF.validation.selfChecks).includes('maxActions explicit only') && JSON.stringify(DF.validation.selfChecks).includes('triggerKey registry enum only'));
+const stripMeta = o => { const c = JSON.parse(JSON.stringify(o)); for (const k of ['$schema', '$id', 'title', 'description']) delete c[k]; return c; };
+ok('directFactRow embedded == authoritative schema', JSON.stringify(stripMeta(DFS)) === JSON.stringify(F8.$defs.directFactRow));
+ok('PA dup-compare + window-key selfChecks', F7.validation.selfChecks.directFactRowSchemaDuplicateFrozenHarnessCompared === true && F7.validation.selfChecks.windowMultiRowKeysAreScheduledFactKeys === true);
+ok('PAS no .* no-op', !/patternProperties/.test(fs.readFileSync(path.join(rc6, 'contracts/PrototypeDirectAdapterV1.schema.json'), 'utf8')) && !/"\.\*"/.test(fs.readFileSync(path.join(rc6, 'contracts/PrototypeDirectAdapterV1.schema.json'), 'utf8')));
+ok('PAS object defs all closed', Object.entries(F8.$defs || {}).filter(([, v]) => v && typeof v === 'object' && v.type === 'object').every(([, v]) => v.additionalProperties === false || !!v.propertyNames));
+const VOCAB = ['damage.power', 'damage.segments', 'damage.penetration', 'damage.type', 'state.primary', 'state.secondary', 'window.adjustTurns', 'window.settlementRatio'];
+const mkeys = [];
+for (const id of ['pos-damage-multivalue', 'pos-state-multivalue']) {
+  const c = F9.cases.find(x => x.caseId === id);
+  for (const r of c.expect.directFacts || []) {
+    mkeys.push({ id, key: r.key, row: r });
+  }
+  ok(id + ' multiRow keys nonempty + same sourceEffectId', (c.expect.directFacts || []).every(r => typeof r.key === 'string' && r.key.length > 0 && r.sourceEffectId === c.context.sourceEffectId));
+}
+const wmC = F9.cases.find(x => x.caseId === 'pos-window-multivalue');
+for (const sf of wmC.expect.scheduledFacts || []) mkeys.push({ id: 'pos-window-multivalue', key: sf.key, row: sf });
+ok('multiRow vocabulary exactly 8', mkeys.length === 8 && JSON.stringify(mkeys.map(m => m.key).sort()) === JSON.stringify([...VOCAB].sort()), mkeys.map(m => m.key).join(','));
+ok('multiRow (sourceEffectId,key) unique', new Set(mkeys.map(m => (m.row.sourceEffectId || 'sf') + '::' + m.key)).size === mkeys.length);
+const numPct = s => Number(String(s).replace(/[+%]/g, ''));
+const dmC = F9.cases.find(x => x.caseId === 'pos-damage-multivalue');
+const dmExp = { 'damage.power': [Number(dmC.effect['威力倍率']), 'POWER'], 'damage.segments': [Number(dmC.effect['攻击段数']), 'COUNT'], 'damage.penetration': [Number(dmC.effect['防御穿透']), 'PERCENT'], 'damage.type': [1, 'BOOL'] };
+for (const [k, [amt, unit]] of Object.entries(dmExp)) {
+  const r = (dmC.expect.directFacts || []).find(x => x.key === k);
+  ok('multiRow damage.' + k, r && r.amount === amt && r.unit === unit, JSON.stringify(r));
+}
+const smC = F9.cases.find(x => x.caseId === 'pos-state-multivalue');
+const smExp = { 'state.primary': [numPct(smC.effect['数值']), 'PERCENT', Number(smC.effect['持续回合'])], 'state.secondary': [numPct(smC.effect['副数值']), 'PERCENT', Number(smC.effect['持续回合'])] };
+for (const [k, [amt, unit, dur]] of Object.entries(smExp)) {
+  const r = (smC.expect.directFacts || []).find(x => x.key === k);
+  ok('multiRow state.' + k, r && r.amount === amt && r.unit === unit && r.durationTurns === dur, JSON.stringify(r));
+}
+ok('multiRow window facts', wmC.expect.scheduledFacts.some(x => x.key === 'window.adjustTurns' && x.operation === 'WINDOW_ADJUST' && x.调整回合 === 2 && x.方式 === '压缩') && wmC.expect.scheduledFacts.some(x => x.key === 'window.settlementRatio' && x.operation === 'SETTLEMENT_RATIO_ADJUST' && x.结算倍率 === 0.8));
+const TRIGGERS = ['主动触发', '随下次行动触发'];
+const followups = ALL_ITEMS.flatMap(x => (x.ex.scheduledFacts || []).filter(s => s && s.grantType === 'FOLLOW_UP').map(s => ({ fact: s, item: x })));
+ok('FOLLOW_UP triggerKey enum', followups.every(({ fact }) => TRIGGERS.includes(fact.triggerKey)), followups.map(({ fact }) => fact.triggerKey).join(','));
+ok('FOLLOW_UP maxActions explicit only', followups.every(({ fact, item }) => fact.triggerKey === '主动触发' ? fact.maxActions === Number(item.eff['可用次数']) : !('maxActions' in fact)));
+ok('FOLLOW_UP payload rows DF schema', followups.every(({ fact }) => !(fact.payloadDirectFacts && fact.payloadDirectFacts.some(r => DF_VAL(r)))));
+ok('随下次行动触发 no 可用次数', ALL_ITEMS.filter(x => x.eff && x.eff['触发条件'] === '随下次行动触发').every(x => x.eff['可用次数'] === undefined));
+const pgf = F9.cases.find(c => c.caseId === 'pos-grant-followup');
+ok('grant explicit count 2', pgf.expect.scheduledFacts[0].maxActions === 2 && pgf.expect.scheduledFacts[0].triggerKey === pgf.effect['触发条件'] && Number(pgf.effect['可用次数']) === 2);
+const pgm = F9.redProbes.find(p => p.probeId === 'probe-grant-missing-usecount');
+ok('grant missing count rejects', pgm.expect.admitted === false && pgm.expect.reasonCode === 'MISSING_REQUIRED_FIELD' && pgm.effect['可用次数'] === undefined && pgm.effect['触发条件'] === '主动触发');
+const ptv = F9.redProbes.find(p => p.probeId === 'probe-trigger-variant');
+ok('death trigger illegal', ptv.expect.admitted === false && ptv.expect.reasonCode === 'INVALID_OPTION_VALUE' && !TRIGGERS.includes(ptv.effect['触发条件']));
+const pnp = F9.redProbes.find(p => p.probeId === 'probe-nested-payload-unprojectable');
+ok('nested payload explicit defer', pnp.expect.admitted === true && pnp.expect.deferCode === 'DEFER_MECHANICS_PROJECTION' && pnp.expect.unsupportedOutcomeKinds.includes('COPY_EXECUTION') && pnp.expect.reasonCode === 'PAYLOAD_UNPROJECTABLE_DEFERRED');
+const pgn = F9.cases.find(c => c.caseId === 'pos-grant-followup-next-action');
+ok('next-action positive no maxActions', pgn.expect.admitted === true && pgn.effect['触发条件'] === '随下次行动触发' && pgn.effect['可用次数'] === undefined && pgn.expect.scheduledFacts.length === 1 && pgn.expect.scheduledFacts[0].triggerKey === '随下次行动触发' && !('maxActions' in pgn.expect.scheduledFacts[0]) && pgn.expect.scheduledFacts[0].payloadDirectFacts.length === 1);
+const pwm = F9.redProbes.find(p => p.probeId === 'probe-window-missing-field');
+ok('window missing 调整字段 rejects', pwm.expect.reasonCode === 'MISSING_REQUIRED_FIELD' && pwm.effect['调整字段'] === undefined);
+const pwr = F9.redProbes.find(p => p.probeId === 'probe-window-settlement-ratio-with-extend');
+ok('window ratio only with 压缩', pwr.expect.reasonCode === 'INVALID_OPTION_VALUE' && pwr.effect['调整方式'] === '延长' && pwr.effect['结算倍率'] !== undefined && wmC.effect['调整方式'] === '压缩' && wmC.expect.admitted === true);
+const pds = F9.redProbes.find(p => p.probeId === 'probe-damage-invalid-segments');
+ok('segments positive integer', pds.expect.reasonCode === 'INVALID_OPTION_VALUE' && Number(pds.effect['攻击段数']) === 0);
+const pss = F9.redProbes.find(p => p.probeId === 'probe-state-secondary-invalid');
+ok('state secondary golden reject', pss.expect.reasonCode === 'INVALID_OPTION_VALUE' && pss.effect['状态'] === '嘲讽' && pss.effect['副数值'] !== undefined);
+ok('all directFact rows finite + typed', allRows.length > 0 && allRows.every(r => r.schemaVersion === 'DirectFactRowV1' && Number.isFinite(r.amount) && Number.isInteger(r.durationTurns) && r.durationTurns >= 0 && Array.isArray(r.targetIds) && r.targetIds.length > 0), String(allRows.length));
+ok('581 not claimed implemented', F9.counts.supportedPathCount === 581 && Object.values(F9.counts.byPrototype).every(v => v.status === 'SUPPORTED' || v.status === 'DEFERRED_EXPLICIT'));
+ok('no IMPLEMENTED claim in rev3 texts', ['contracts/PrototypeDirectAdapterV1.json', 'contracts/PrototypeDirectAdapterV1.schema.json', 'cases/PrototypeDirectAdapterCasesV1.json'].every(p => !/implement/i.test(fs.readFileSync(path.join(rc6, p), 'utf8'))));
+ok('red probes contract-target-only', F9.redProbes.every(p => p.kind === 'RED_PROBE') && DF.authority.claim === 'CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED');
 // ---- block D: Quality split / canonical sourceHash / mechanic hashes ----
 const mech = F6.mechanicPathEnrollment;
 const units = F6.behaviorQualityCorpus.units;
@@ -412,10 +568,12 @@ ok('quality deferredPathIdsHash', sha256([...mech.deferredPathIds].sort().join('
 ok('quality mechanic totals 581/40/621', mech.counts.supported === 581 && mech.counts.deferred === 40 && mech.counts.total === 621);
 ok('quality deferred not behavior role', mech.deferredIsNotBehaviorRole === true && F6.behaviorQualityCorpus.deferredIsNotBehaviorRole === true);
 ok('quality F6 sourceHashes all match', Object.entries(F6.sourceHashes || {}).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h), String(Object.keys(F6.sourceHashes || {}).length));
+ok('quality F6 sourceHashes 12 + DirectFact pair', Object.keys(F6.sourceHashes || {}).length === 12 && Object.keys(F6.sourceHashes).includes('tools/rc6/contracts/DirectFactRowV1.json') && Object.keys(F6.sourceHashes).includes('tools/rc6/contracts/DirectFactRowV1.schema.json'));
 
 // ---- block E: cross-contract ----
-ok('cross F4 sourceHashes 15/15', Object.entries(F4.sourceHashes).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h), String(Object.keys(F4.sourceHashes).length));
-const govNames = { ExecutionContractV31: 'tools/rc6/contracts/ExecutionContractV31.json', BehaviorProviderV1: 'tools/rc6/contracts/BehaviorProviderV1.json', PrototypeDirectAdapterV1: 'tools/rc6/contracts/PrototypeDirectAdapterV1.json', SelectionPolicyV1: 'tools/rc6/contracts/SelectionPolicyV1.json' };
+ok('cross F4 sourceHashes all match disk', Object.entries(F4.sourceHashes).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h), String(Object.keys(F4.sourceHashes).length));
+ok('cross F4 sourceHashes 17 + DirectFact pair', Object.keys(F4.sourceHashes).length === 17 && Object.keys(F4.sourceHashes).includes('tools/rc6/contracts/DirectFactRowV1.json') && Object.keys(F4.sourceHashes).includes('tools/rc6/contracts/DirectFactRowV1.schema.json'));
+const govNames = { ExecutionContractV31: 'tools/rc6/contracts/ExecutionContractV31.json', BehaviorProviderV1: 'tools/rc6/contracts/BehaviorProviderV1.json', PrototypeDirectAdapterV1: 'tools/rc6/contracts/PrototypeDirectAdapterV1.json', SelectionPolicyV1: 'tools/rc6/contracts/SelectionPolicyV1.json', DirectFactRowV1: 'tools/rc6/contracts/DirectFactRowV1.json' };
 ok('cross governedBy exist+hashed', F4.authority.governedBy.every(g => govNames[g] && fs.existsSync(path.join(repoRoot, govNames[g])) && F4.sourceHashes[govNames[g]]));
 ok('cross status FROZEN', BP1.status === 'FROZEN' && F4.status === 'FROZEN' && F6.status === 'FROZEN' && F7.status === 'FROZEN', JSON.stringify({ F1: BP1.status, F4: F4.status, F6: F6.status, F7: F7.status }));
 ok('cross providerState R9_CANDIDATE', F4.authority.providerState === 'R9_CANDIDATE' && BP1.stateBoundary.R9_CANDIDATE.selection === 'MECHANICAL_NEUTRAL_ONLY' && BP1.stateBoundary.R9_CANDIDATE.registration === false);

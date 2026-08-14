@@ -525,6 +525,8 @@
                 "total",
                 "notBehaviorTrainingRows",
                 "exactCounts",
+                "adapterCaseCount",
+                "adapterRedProbeCount",
                 "supportedPathIdsEnumerated",
                 "supportedPathHash",
                 "supportedPathHashRule",
@@ -547,6 +549,12 @@
                 },
                 "exactCounts": {
                   "const": true
+                },
+                "adapterCaseCount": {
+                  "const": 43
+                },
+                "adapterRedProbeCount": {
+                  "const": 14
                 },
                 "supportedPathIdsEnumerated": {
                   "const": false
@@ -1002,7 +1010,9 @@
         "adapterContract",
         "adapterSchema",
         "adapterCases",
-        "selectionPolicy"
+        "selectionPolicy",
+        "directFactRow",
+        "directFactRowSchema"
       ],
       "properties": {
         "schema": {
@@ -1040,6 +1050,12 @@
         },
         "selectionPolicy": {
           "const": "tools/rc6/contracts/SelectionPolicyV1.json"
+        },
+        "directFactRow": {
+          "const": "tools/rc6/contracts/DirectFactRowV1.json"
+        },
+        "directFactRowSchema": {
+          "const": "tools/rc6/contracts/DirectFactRowV1.schema.json"
         }
       }
     },

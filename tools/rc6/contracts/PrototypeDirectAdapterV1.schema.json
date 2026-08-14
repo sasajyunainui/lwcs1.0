@@ -7,79 +7,213 @@
     {
       "title": "contract",
       "type": "object",
-      "required": ["schemaVersion", "contractId", "status", "encoding", "authority", "interface", "registry", "counts", "deferredPaths", "constraints", "validation"],
+      "required": [
+        "schemaVersion",
+        "contractId",
+        "status",
+        "encoding",
+        "authority",
+        "interface",
+        "registry",
+        "counts",
+        "deferredPaths",
+        "constraints",
+        "validation",
+        "revision"
+      ],
       "properties": {
-        "schemaVersion": { "const": "PrototypeDirectAdapterV1" },
-        "contractId": { "type": "string", "minLength": 1, "pattern": "^RC6-M2-" },
-        "status": { "enum": ["FROZEN"] },
-        "encoding": { "const": "UTF-8" },
+        "schemaVersion": {
+          "const": "PrototypeDirectAdapterV1"
+        },
+        "contractId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^RC6-M2-"
+        },
+        "status": {
+          "enum": [
+            "FROZEN"
+          ]
+        },
+        "encoding": {
+          "const": "UTF-8"
+        },
         "authority": {
           "type": "object",
-          "required": ["adjudication", "supersedes", "previewAdmissionDecoupled", "futureRouteDerivation", "worldClone", "silentZero", "wholePrototypeExclusion"],
+          "required": [
+            "adjudication",
+            "supersedes",
+            "previewAdmissionDecoupled",
+            "futureRouteDerivation",
+            "worldClone",
+            "silentZero",
+            "wholePrototypeExclusion"
+          ],
           "properties": {
-            "adjudication": { "const": "M2-CONTRACT-ADJUDICATION-C" },
-            "supersedes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-            "previewAdmissionDecoupled": { "const": true },
-            "futureRouteDerivation": { "const": false },
-            "worldClone": { "const": false },
-            "silentZero": { "const": false },
-            "wholePrototypeExclusion": { "const": false }
+            "adjudication": {
+              "const": "M2-CONTRACT-ADJUDICATION-C"
+            },
+            "supersedes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "previewAdmissionDecoupled": {
+              "const": true
+            },
+            "futureRouteDerivation": {
+              "const": false
+            },
+            "worldClone": {
+              "const": false
+            },
+            "silentZero": {
+              "const": false
+            },
+            "wholePrototypeExclusion": {
+              "const": false
+            }
           },
           "additionalProperties": false
         },
         "interface": {
           "type": "object",
-          "required": ["adapterScope", "dispatch", "unknownPrototypePolicy", "admit", "project", "allowedDeferCodes", "legalityContext"],
+          "required": [
+            "adapterScope",
+            "dispatch",
+            "unknownPrototypePolicy",
+            "admit",
+            "project",
+            "allowedDeferCodes",
+            "legalityContext"
+          ],
           "properties": {
-            "adapterScope": { "const": "one adapter per prototype; admit/project dispatched per effect instance and per path; prototype status is a default only; unknown prototype rejected" },
-            "dispatch": { "const": "PER_EFFECT_PATH_ADMIT_PROJECT" },
+            "adapterScope": {
+              "const": "one adapter per prototype; admit/project dispatched per effect instance and per path; prototype status is a default only; unknown prototype rejected"
+            },
+            "dispatch": {
+              "const": "PER_EFFECT_PATH_ADMIT_PROJECT"
+            },
             "unknownPrototypePolicy": {
               "type": "object",
-              "required": ["action", "reasonCode"],
+              "required": [
+                "action",
+                "reasonCode"
+              ],
               "properties": {
-                "action": { "const": "REJECTED_INPUT" },
-                "reasonCode": { "const": "UNKNOWN_PROTOTYPE_REJECTED" }
+                "action": {
+                  "const": "REJECTED_INPUT"
+                },
+                "reasonCode": {
+                  "const": "UNKNOWN_PROTOTYPE_REJECTED"
+                }
               },
               "additionalProperties": false
             },
             "admit": {
               "type": "object",
-              "required": ["input", "output", "failureAction"],
+              "required": [
+                "input",
+                "output",
+                "failureAction"
+              ],
               "properties": {
-                "input": { "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": { "enum": ["effect", "legalityContext"] } },
+                "input": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "effect",
+                      "legalityContext"
+                    ]
+                  }
+                },
                 "output": {
                   "type": "object",
-                  "required": ["admitted", "reasons"],
+                  "required": [
+                    "admitted",
+                    "reasons"
+                  ],
                   "properties": {
-                    "admitted": { "const": "boolean" },
-                    "reasons": { "const": "string[]" }
+                    "admitted": {
+                      "const": "boolean"
+                    },
+                    "reasons": {
+                      "const": "string[]"
+                    }
                   },
                   "additionalProperties": false
                 },
-                "failureAction": { "const": "REJECTED_INPUT_WITH_REASON" }
+                "failureAction": {
+                  "const": "REJECTED_INPUT_WITH_REASON"
+                }
               },
               "additionalProperties": false
             },
             "project": {
               "type": "object",
-              "required": ["input", "output", "silentZero", "candidateRetention"],
+              "required": [
+                "input",
+                "output",
+                "silentZero",
+                "candidateRetention"
+              ],
               "properties": {
-                "input": { "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": { "enum": ["effect", "legalityContext"] } },
+                "input": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "effect",
+                      "legalityContext"
+                    ]
+                  }
+                },
                 "output": {
                   "type": "object",
-                  "required": ["factColumns", "legalityModifiers", "opportunityModifiers", "scheduledFacts", "unsupportedOutcomeKinds", "deferCode"],
+                  "required": [
+                    "directFacts",
+                    "legalityModifiers",
+                    "opportunityModifiers",
+                    "scheduledFacts",
+                    "unsupportedOutcomeKinds",
+                    "deferCode"
+                  ],
                   "properties": {
-                    "factColumns": { "const": "direct fact column contributions of MechanicalColumnsV1 (HP_DELTA, RESOURCE_OPTION_CHANGED, SHIELD_DELTA, STATE_DELTA, SCHEDULED_HP_DELTA, SUMMON_WINDOW, RESOURCE_TRANSFER, RULE_DEFENSE_COUNTER, POSITION_DELTA, COPY_EXECUTION, TIME_REWIND)" },
-                    "legalityModifiers": { "const": "target-legality modifiers derived from current public state only (taunt source constraint, control cancellation, disarm or silence rules, state migration and erasure of taunt or control)" },
-                    "opportunityModifiers": { "const": "opportunity identity and distribution modifiers (judgment rates, interference rates, resource locks) that enter candidate dependency tokens" },
-                    "scheduledFacts": { "const": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants)" },
-                    "unsupportedOutcomeKinds": { "const": "outcome kinds this adapter cannot project; non-empty only together with deferCode or an explicit reason code" },
-                    "deferCode": { "const": "per-path defer code; empty string when the path is fully supported" }
+                    "directFacts": {
+                      "const": "DirectFactRowV1[] evaluable fact rows: schemaVersion, factType, key, sourceActionId, sourceActorId, sourceEffectId, targetIds, amount, unit, durationTurns; declared magnitudes only, no mitigation/hit final settlement; column-code strings are not contributions"
+                    },
+                    "legalityModifiers": {
+                      "const": "target-legality modifiers derived from current public state only (taunt source constraint, control cancellation, disarm or silence rules, state migration and erasure of taunt or control); forced taunt target set is sorted UTF-16 ascending; unique-target mechanisms with more than one taunter reject AMBIGUOUS_TAUNT_TARGET"
+                    },
+                    "opportunityModifiers": {
+                      "const": "opportunity identity and distribution modifiers (judgment rates, interference rates, resource locks) that enter candidate dependency tokens; declared magnitudes"
+                    },
+                    "scheduledFacts": {
+                      "const": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants); 机制授予 carries triggerKey, maxActions and payload DirectFactRowV1 rows; triggerKey enum 主动触发/随下次行动触发 only; maxActions comes only from explicit 可用次数 (主动触发), missing 可用次数 rejects MISSING_REQUIRED_FIELD, 随下次行动触发 projects no maxActions; SUMMON_WINDOW carries durationTurns/strength; window adjust keys window.adjustTurns/window.settlementRatio"
+                    },
+                    "unsupportedOutcomeKinds": {
+                      "const": "outcome kinds this adapter cannot project; non-empty only together with deferCode or an explicit reason code"
+                    },
+                    "deferCode": {
+                      "const": "per-path defer code; empty string when the path is fully supported"
+                    }
                   },
                   "additionalProperties": false
                 },
-                "silentZero": { "const": false },
-                "candidateRetention": { "const": "deferred candidates retain vector coverage and candidateAudit reason" }
+                "silentZero": {
+                  "const": false
+                },
+                "candidateRetention": {
+                  "const": "deferred candidates retain vector coverage and candidateAudit reason"
+                }
               },
               "additionalProperties": false
             },
@@ -88,29 +222,135 @@
               "minItems": 3,
               "maxItems": 3,
               "uniqueItems": true,
-              "items": { "enum": ["DEFER_MECHANICS_PROJECTION", "DEFER_LEGALITY_INJECTION", "DEFER_REPORT_PROJECTION"] }
+              "items": {
+                "enum": [
+                  "DEFER_MECHANICS_PROJECTION",
+                  "DEFER_LEGALITY_INJECTION",
+                  "DEFER_REPORT_PROJECTION"
+                ]
+              }
             },
             "legalityContext": {
               "type": "object",
-              "required": ["source", "allowed", "forbidden", "timing", "playerLocked"],
+              "required": [
+                "source",
+                "allowed",
+                "forbidden",
+                "timing",
+                "playerLocked"
+              ],
               "properties": {
-                "source": { "const": "CURRENT_PUBLIC_STATE_ONLY" },
+                "source": {
+                  "const": "CURRENT_PUBLIC_STATE_ONLY"
+                },
                 "allowed": {
                   "type": "array",
                   "minItems": 5,
                   "maxItems": 5,
                   "uniqueItems": true,
-                  "items": { "enum": ["visibleHpRatios", "publicStates", "observableDeclarations", "revealedAbilityIds", "observableResults"] }
+                  "items": {
+                    "enum": [
+                      "visibleHpRatios",
+                      "publicStates",
+                      "observableDeclarations",
+                      "revealedAbilityIds",
+                      "observableResults"
+                    ]
+                  }
                 },
                 "forbidden": {
                   "type": "array",
                   "minItems": 8,
                   "maxItems": 8,
                   "uniqueItems": true,
-                  "items": { "enum": ["hiddenExactHp", "hiddenResistance", "hiddenInventory", "hiddenAbility", "unobservedPosterior", "worldClone", "futureRouteEnumeration", "resultEnumeration"] }
+                  "items": {
+                    "enum": [
+                      "hiddenExactHp",
+                      "hiddenResistance",
+                      "hiddenInventory",
+                      "hiddenAbility",
+                      "unobservedPosterior",
+                      "worldClone",
+                      "futureRouteEnumeration",
+                      "resultEnumeration"
+                    ]
+                  }
                 },
-                "timing": { "const": "BEFORE_CANDIDATE_FREEZE" },
-                "playerLocked": { "const": "SAME_GATE" }
+                "timing": {
+                  "const": "BEFORE_CANDIDATE_FREEZE"
+                },
+                "playerLocked": {
+                  "const": "SAME_GATE"
+                }
+              },
+              "additionalProperties": false
+            },
+            "sourceAndTargetContext": {
+              "type": "object",
+              "required": [
+                "required",
+                "missingAction",
+                "reasonCodes",
+                "targetResolution",
+                "amountFinite"
+              ],
+              "properties": {
+                "required": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "sourceActionId",
+                      "sourceActorId",
+                      "sourceEffectId",
+                      "candidateTargetIds"
+                    ]
+                  }
+                },
+                "missingAction": {
+                  "const": "REJECTED_INPUT_WITH_REASON"
+                },
+                "reasonCodes": {
+                  "type": "object",
+                  "required": [
+                    "missingSource",
+                    "missingTarget"
+                  ],
+                  "properties": {
+                    "missingSource": {
+                      "const": "MISSING_SOURCE_CONTEXT"
+                    },
+                    "missingTarget": {
+                      "const": "MISSING_TARGET_CONTEXT"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "targetResolution": {
+                  "type": "object",
+                  "required": [
+                    "self",
+                    "candidateSet",
+                    "unknown"
+                  ],
+                  "properties": {
+                    "self": {
+                      "const": "RESOLVES_TO_SOURCE_ACTOR_ID"
+                    },
+                    "candidateSet": {
+                      "const": "RESOLVES_TO_CANDIDATE_TARGET_IDS"
+                    },
+                    "unknown": {
+                      "const": "INVALID_OPTION_VALUE"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "amountFinite": {
+                  "const": "RUNTIME_VALIDATOR_REQUIRED"
+                }
               },
               "additionalProperties": false
             }
@@ -119,78 +359,261 @@
         },
         "registry": {
           "type": "object",
-          "required": ["伤害结算","资源变化","资源转移","护盾变化","属性修正","判定修正","结算修正","炸环","状态施加","时窗修正","状态移除","规则防御","状态转移","状态交换","资源锁定","规则改写","机制抹消","机制授予","复制执行","时光回溯","位移执行","决策干扰","召唤生成","修炼增益","天赋提升","永久属性提升","战斗外复活"],
+          "required": [
+            "伤害结算",
+            "资源变化",
+            "资源转移",
+            "护盾变化",
+            "属性修正",
+            "判定修正",
+            "结算修正",
+            "炸环",
+            "状态施加",
+            "时窗修正",
+            "状态移除",
+            "规则防御",
+            "状态转移",
+            "状态交换",
+            "资源锁定",
+            "规则改写",
+            "机制抹消",
+            "机制授予",
+            "复制执行",
+            "时光回溯",
+            "位移执行",
+            "决策干扰",
+            "召唤生成",
+            "修炼增益",
+            "天赋提升",
+            "永久属性提升",
+            "战斗外复活"
+          ],
           "properties": {
-            "伤害结算": { "$ref": "#/$defs/registryEntry" },
-            "资源变化": { "$ref": "#/$defs/registryEntry" },
-            "资源转移": { "$ref": "#/$defs/registryEntry" },
-            "护盾变化": { "$ref": "#/$defs/registryEntry" },
-            "属性修正": { "$ref": "#/$defs/registryEntry" },
-            "判定修正": { "$ref": "#/$defs/registryEntry" },
-            "结算修正": { "$ref": "#/$defs/registryEntry" },
-            "炸环": { "$ref": "#/$defs/registryEntry" },
-            "状态施加": { "$ref": "#/$defs/registryEntry" },
-            "时窗修正": { "$ref": "#/$defs/registryEntry" },
-            "状态移除": { "$ref": "#/$defs/registryEntry" },
-            "规则防御": { "$ref": "#/$defs/registryEntry" },
-            "状态转移": { "$ref": "#/$defs/registryEntry" },
-            "状态交换": { "$ref": "#/$defs/registryEntry" },
-            "资源锁定": { "$ref": "#/$defs/registryEntry" },
-            "规则改写": { "$ref": "#/$defs/registryEntry" },
-            "机制抹消": { "$ref": "#/$defs/registryEntry" },
-            "机制授予": { "$ref": "#/$defs/registryEntry" },
-            "复制执行": { "$ref": "#/$defs/registryEntry" },
-            "时光回溯": { "$ref": "#/$defs/registryEntry" },
-            "位移执行": { "$ref": "#/$defs/registryEntry" },
-            "决策干扰": { "$ref": "#/$defs/registryEntry" },
-            "召唤生成": { "$ref": "#/$defs/registryEntry" },
-            "修炼增益": { "$ref": "#/$defs/registryEntry" },
-            "天赋提升": { "$ref": "#/$defs/registryEntry" },
-            "永久属性提升": { "$ref": "#/$defs/registryEntry" },
-            "战斗外复活": { "$ref": "#/$defs/registryEntry" }
+            "伤害结算": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "资源变化": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "资源转移": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "护盾变化": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "属性修正": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "判定修正": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "结算修正": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "炸环": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "状态施加": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "时窗修正": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "状态移除": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "规则防御": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "状态转移": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "状态交换": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "资源锁定": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "规则改写": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "机制抹消": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "机制授予": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "复制执行": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "时光回溯": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "位移执行": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "决策干扰": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "召唤生成": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "修炼增益": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "天赋提升": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "永久属性提升": {
+              "$ref": "#/$defs/registryEntry"
+            },
+            "战斗外复活": {
+              "$ref": "#/$defs/registryEntry"
+            }
           },
           "additionalProperties": false
         },
-        "counts": { "$ref": "#/$defs/counts" },
+        "counts": {
+          "$ref": "#/$defs/counts"
+        },
         "deferredPaths": {
           "type": "array",
           "minItems": 40,
           "maxItems": 40,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/deferredPath" }
+          "items": {
+            "$ref": "#/$defs/deferredPath"
+          }
         },
         "constraints": {
           "type": "array",
           "minItems": 6,
-          "maxItems": 6,
+          "maxItems": 13,
           "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "validation": {
           "type": "object",
-          "required": ["schema", "utf8", "mojibakeScan", "casesContract", "selfChecks"],
+          "required": [
+            "schema",
+            "utf8",
+            "mojibakeScan",
+            "casesContract",
+            "selfChecks",
+            "directFactRowContract",
+            "directFactRowSchema"
+          ],
           "properties": {
-            "schema": { "const": "PrototypeDirectAdapterV1.schema.json" },
-            "utf8": { "const": "REQUIRED" },
+            "schema": {
+              "const": "PrototypeDirectAdapterV1.schema.json"
+            },
+            "utf8": {
+              "const": "REQUIRED"
+            },
             "mojibakeScan": {
               "type": "array",
               "minItems": 4,
               "maxItems": 4,
               "uniqueItems": true,
-              "items": { "enum": ["U+FFFD", "CJK_MOJIBAKE_PREFIX", "LATIN1_UTF8_SEQUENCE", "UTF8_DECODE_REPLACEMENT"] }
+              "items": {
+                "enum": [
+                  "U+FFFD",
+                  "CJK_MOJIBAKE_PREFIX",
+                  "LATIN1_UTF8_SEQUENCE",
+                  "UTF8_DECODE_REPLACEMENT"
+                ]
+              }
             },
-            "casesContract": { "const": "PrototypeDirectAdapterCasesV1" },
+            "casesContract": {
+              "const": "PrototypeDirectAdapterCasesV1"
+            },
             "selfChecks": {
               "type": "object",
-              "required": ["deferredPathIdsMatchUniverse", "perPathDispatchRequired"],
+              "required": [
+                "deferredPathIdsMatchUniverse",
+                "perPathDispatchRequired",
+                "directFactsRowsValidateAgainstDirectFactRowV1",
+                "unitEnumClosed",
+                "factTypeEnumClosed",
+                "revision3SupersedeDeclared",
+                "targetIdsNoSymbolicPlaceholder",
+                "sourceContextRequired",
+                "windowAdjustFieldRequired",
+                "grantPayloadProjected",
+                "multiTauntLegalSetSorted"
+              ],
               "properties": {
-                "deferredPathIdsMatchUniverse": { "const": true },
-                "perPathDispatchRequired": { "const": true }
+                "deferredPathIdsMatchUniverse": {
+                  "const": true
+                },
+                "perPathDispatchRequired": {
+                  "const": true
+                },
+                "directFactsRowsValidateAgainstDirectFactRowV1": {
+                  "const": true
+                },
+                "unitEnumClosed": {
+                  "const": true
+                },
+                "factTypeEnumClosed": {
+                  "const": true
+                },
+                "revision3SupersedeDeclared": {
+                  "const": true
+                },
+                "targetIdsNoSymbolicPlaceholder": {
+                  "const": true
+                },
+                "sourceContextRequired": {
+                  "const": true
+                },
+                "windowAdjustFieldRequired": {
+                  "const": true
+                },
+                "grantPayloadProjected": {
+                  "const": true
+                },
+                "multiTauntLegalSetSorted": {
+                  "const": true
+                },
+                "multiRowKeyVocabularyFrozen": {
+                  "const": true
+                },
+                "rowUniquenessBySourceEffectIdAndKey": {
+                  "const": true
+                },
+                "maxActionsExplicitOnly": {
+                  "const": true
+                },
+                "triggerKeyRegistryEnumClosed": {
+                  "const": true
+                },
+                "nestedPayloadRecursiveProjection": {
+                  "const": true
+                },
+                "windowMultiRowKeysAreScheduledFactKeys": {
+                  "const": true
+                },
+                "directFactRowSchemaDuplicateFrozenHarnessCompared": {
+                  "const": true
+                }
               },
               "additionalProperties": false
+            },
+            "directFactRowContract": {
+              "const": "tools/rc6/contracts/DirectFactRowV1.json"
+            },
+            "directFactRowSchema": {
+              "const": "tools/rc6/contracts/DirectFactRowV1.schema.json"
             }
           },
           "additionalProperties": false
+        },
+        "revision": {
+          "const": 3
         }
       },
       "additionalProperties": false
@@ -198,23 +621,63 @@
     {
       "title": "cases",
       "type": "object",
-      "required": ["schemaVersion", "contractId", "counts", "deferredPathIds", "cases"],
+      "required": [
+        "schemaVersion",
+        "contractId",
+        "counts",
+        "deferredPathIds",
+        "cases"
+      ],
       "properties": {
-        "schemaVersion": { "const": "PrototypeDirectAdapterCasesV1" },
-        "contractId": { "type": "string", "minLength": 1, "pattern": "^RC6-M2-" },
+        "schemaVersion": {
+          "const": "PrototypeDirectAdapterCasesV1"
+        },
+        "contractId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^RC6-M2-"
+        },
         "counts": {
           "type": "object",
-          "required": ["inBattlePathCount", "supportedPathCount", "deferredPathCount", "deferredPathIdsCount", "rejectedInputPathCount", "silentOmissionCount", "outOfBattlePrototypeCount", "outOfBattlePathCount", "byPrototype"],
+          "required": [
+            "inBattlePathCount",
+            "supportedPathCount",
+            "deferredPathCount",
+            "deferredPathIdsCount",
+            "rejectedInputPathCount",
+            "silentOmissionCount",
+            "outOfBattlePrototypeCount",
+            "outOfBattlePathCount",
+            "byPrototype"
+          ],
           "properties": {
-            "inBattlePathCount": { "const": 621 },
-            "supportedPathCount": { "const": 581 },
-            "deferredPathCount": { "const": 40 },
-            "deferredPathIdsCount": { "const": 40 },
-            "rejectedInputPathCount": { "const": 0 },
-            "silentOmissionCount": { "const": 0 },
-            "outOfBattlePrototypeCount": { "const": 4 },
-            "outOfBattlePathCount": { "const": 91 },
-            "byPrototype": { "$ref": "#/$defs/pathCountsByPrototype" }
+            "inBattlePathCount": {
+              "const": 621
+            },
+            "supportedPathCount": {
+              "const": 581
+            },
+            "deferredPathCount": {
+              "const": 40
+            },
+            "deferredPathIdsCount": {
+              "const": 40
+            },
+            "rejectedInputPathCount": {
+              "const": 0
+            },
+            "silentOmissionCount": {
+              "const": 0
+            },
+            "outOfBattlePrototypeCount": {
+              "const": 4
+            },
+            "outOfBattlePathCount": {
+              "const": 91
+            },
+            "byPrototype": {
+              "$ref": "#/$defs/pathCountsByPrototype"
+            }
           },
           "additionalProperties": false
         },
@@ -223,12 +686,26 @@
           "minItems": 40,
           "maxItems": 40,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^PPU1:IN_BATTLE:(复制执行|时光回溯):[^:]+:[0-9]+$" }
+          "items": {
+            "type": "string",
+            "pattern": "^PPU1:IN_BATTLE:(复制执行|时光回溯):[^:]+:[0-9]+$"
+          }
         },
         "cases": {
           "type": "array",
           "minItems": 32,
-          "items": { "$ref": "#/$defs/case" }
+          "items": {
+            "$ref": "#/$defs/case"
+          }
+        },
+        "revision": {
+          "const": 3
+        },
+        "redProbes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/probe"
+          }
         }
       },
       "additionalProperties": false
@@ -237,103 +714,280 @@
   "$defs": {
     "supportedEntry": {
       "type": "object",
-      "required": ["category", "status", "tier", "pathCount", "supportKind", "reason"],
+      "required": [
+        "category",
+        "status",
+        "tier",
+        "pathCount",
+        "supportKind",
+        "reason"
+      ],
       "properties": {
-        "category": { "enum": ["战斗结算", "行为推导"] },
-        "status": { "const": "SUPPORTED" },
-        "tier": { "enum": ["T0", "T1", "EXISTING_ADMITTED"] },
-        "pathCount": { "type": "integer", "minimum": 1 },
-        "supportKind": { "type": "string", "minLength": 1 },
-        "reason": { "type": "string", "minLength": 1 }
+        "category": {
+          "enum": [
+            "战斗结算",
+            "行为推导"
+          ]
+        },
+        "status": {
+          "const": "SUPPORTED"
+        },
+        "tier": {
+          "enum": [
+            "T0",
+            "T1",
+            "EXISTING_ADMITTED"
+          ]
+        },
+        "pathCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "supportKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "additionalProperties": false
     },
     "deferredEntry": {
       "type": "object",
-      "required": ["category", "status", "tier", "pathCount", "defaultDeferCode", "deferredPathCount", "supportKind", "reason"],
+      "required": [
+        "category",
+        "status",
+        "tier",
+        "pathCount",
+        "defaultDeferCode",
+        "deferredPathCount",
+        "supportKind",
+        "reason"
+      ],
       "properties": {
-        "category": { "enum": ["战斗结算", "行为推导"] },
-        "status": { "const": "DEFERRED_EXPLICIT" },
-        "tier": { "const": "T2" },
-        "pathCount": { "type": "integer", "minimum": 1 },
-        "defaultDeferCode": { "enum": ["DEFER_MECHANICS_PROJECTION", "DEFER_LEGALITY_INJECTION", "DEFER_REPORT_PROJECTION"] },
-        "deferredPathCount": { "type": "integer", "minimum": 1 },
-        "supportKind": { "type": "string", "minLength": 1 },
-        "reason": { "type": "string", "minLength": 1 }
+        "category": {
+          "enum": [
+            "战斗结算",
+            "行为推导"
+          ]
+        },
+        "status": {
+          "const": "DEFERRED_EXPLICIT"
+        },
+        "tier": {
+          "const": "T2"
+        },
+        "pathCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "defaultDeferCode": {
+          "enum": [
+            "DEFER_MECHANICS_PROJECTION",
+            "DEFER_LEGALITY_INJECTION",
+            "DEFER_REPORT_PROJECTION"
+          ]
+        },
+        "deferredPathCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "supportKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "additionalProperties": false
     },
     "outOfBattleEntry": {
       "type": "object",
-      "required": ["category", "status", "tier", "supportKind", "reason"],
+      "required": [
+        "category",
+        "status",
+        "tier",
+        "supportKind",
+        "reason"
+      ],
       "properties": {
-        "category": { "const": "战斗外" },
-        "status": { "const": "OUT_OF_BATTLE_SCOPE" },
-        "tier": { "const": "NONE" },
-        "supportKind": { "type": "string", "minLength": 1 },
-        "reason": { "type": "string", "minLength": 1 }
+        "category": {
+          "const": "战斗外"
+        },
+        "status": {
+          "const": "OUT_OF_BATTLE_SCOPE"
+        },
+        "tier": {
+          "const": "NONE"
+        },
+        "supportKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "additionalProperties": false
     },
     "rejectedEntry": {
       "type": "object",
-      "required": ["category", "status", "tier", "supportKind", "reason"],
+      "required": [
+        "category",
+        "status",
+        "tier",
+        "supportKind",
+        "reason"
+      ],
       "properties": {
-        "category": { "enum": ["战斗结算", "行为推导", "战斗外"] },
-        "status": { "const": "REJECTED_INPUT" },
-        "tier": { "const": "NONE" },
-        "supportKind": { "type": "string", "minLength": 1 },
-        "reason": { "type": "string", "minLength": 1 }
+        "category": {
+          "enum": [
+            "战斗结算",
+            "行为推导",
+            "战斗外"
+          ]
+        },
+        "status": {
+          "const": "REJECTED_INPUT"
+        },
+        "tier": {
+          "const": "NONE"
+        },
+        "supportKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "additionalProperties": false
     },
     "registryEntry": {
       "oneOf": [
-        { "$ref": "#/$defs/supportedEntry" },
-        { "$ref": "#/$defs/deferredEntry" },
-        { "$ref": "#/$defs/outOfBattleEntry" },
-        { "$ref": "#/$defs/rejectedEntry" }
+        {
+          "$ref": "#/$defs/supportedEntry"
+        },
+        {
+          "$ref": "#/$defs/deferredEntry"
+        },
+        {
+          "$ref": "#/$defs/outOfBattleEntry"
+        },
+        {
+          "$ref": "#/$defs/rejectedEntry"
+        }
       ]
     },
     "deferredPath": {
       "type": "object",
-      "required": ["pathId", "prototype", "field", "option", "deferCode"],
+      "required": [
+        "pathId",
+        "prototype",
+        "field",
+        "option",
+        "deferCode"
+      ],
       "properties": {
-        "pathId": { "type": "string", "pattern": "^PPU1:IN_BATTLE:(复制执行|时光回溯):[^:]+:[0-9]+$" },
-        "prototype": { "enum": ["复制执行", "时光回溯"] },
-        "field": { "type": "string", "minLength": 1 },
+        "pathId": {
+          "type": "string",
+          "pattern": "^PPU1:IN_BATTLE:(复制执行|时光回溯):[^:]+:[0-9]+$"
+        },
+        "prototype": {
+          "enum": [
+            "复制执行",
+            "时光回溯"
+          ]
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
         "option": {},
-        "deferCode": { "enum": ["DEFER_MECHANICS_PROJECTION", "DEFER_LEGALITY_INJECTION", "DEFER_REPORT_PROJECTION"] }
+        "deferCode": {
+          "enum": [
+            "DEFER_MECHANICS_PROJECTION",
+            "DEFER_LEGALITY_INJECTION",
+            "DEFER_REPORT_PROJECTION"
+          ]
+        }
       },
       "additionalProperties": false
     },
     "counts": {
       "type": "object",
-      "required": ["totalInBattlePathCount", "supportedPathCount", "deferredPathCount", "deferredPathIdsCount", "rejectedInputPathCount", "outOfBattleScopePathCount", "silentOmissionCount", "supportedByTier", "deferredByPrototype"],
+      "required": [
+        "totalInBattlePathCount",
+        "supportedPathCount",
+        "deferredPathCount",
+        "deferredPathIdsCount",
+        "rejectedInputPathCount",
+        "outOfBattleScopePathCount",
+        "silentOmissionCount",
+        "supportedByTier",
+        "deferredByPrototype"
+      ],
       "properties": {
-        "totalInBattlePathCount": { "const": 621 },
-        "supportedPathCount": { "const": 581 },
-        "deferredPathCount": { "const": 40 },
-        "deferredPathIdsCount": { "const": 40 },
-        "rejectedInputPathCount": { "const": 0 },
-        "outOfBattleScopePathCount": { "const": 91 },
-        "silentOmissionCount": { "const": 0 },
+        "totalInBattlePathCount": {
+          "const": 621
+        },
+        "supportedPathCount": {
+          "const": 581
+        },
+        "deferredPathCount": {
+          "const": 40
+        },
+        "deferredPathIdsCount": {
+          "const": 40
+        },
+        "rejectedInputPathCount": {
+          "const": 0
+        },
+        "outOfBattleScopePathCount": {
+          "const": 91
+        },
+        "silentOmissionCount": {
+          "const": 0
+        },
         "supportedByTier": {
           "type": "object",
-          "required": ["existingAdmitted", "t0", "t1"],
+          "required": [
+            "existingAdmitted",
+            "t0",
+            "t1"
+          ],
           "properties": {
-            "existingAdmitted": { "const": 374 },
-            "t0": { "const": 166 },
-            "t1": { "const": 41 }
+            "existingAdmitted": {
+              "const": 374
+            },
+            "t0": {
+              "const": 166
+            },
+            "t1": {
+              "const": 41
+            }
           },
           "additionalProperties": false
         },
         "deferredByPrototype": {
           "type": "object",
-          "required": ["复制执行", "时光回溯"],
+          "required": [
+            "复制执行",
+            "时光回溯"
+          ],
           "properties": {
-            "复制执行": { "const": 22 },
-            "时光回溯": { "const": 18 }
+            "复制执行": {
+              "const": 22
+            },
+            "时光回溯": {
+              "const": 18
+            }
           },
           "additionalProperties": false
         }
@@ -342,72 +996,1407 @@
     },
     "pathCountsByPrototype": {
       "type": "object",
-      "required": ["伤害结算","资源变化","资源转移","护盾变化","属性修正","判定修正","结算修正","炸环","状态施加","时窗修正","状态移除","规则防御","状态转移","状态交换","资源锁定","规则改写","机制抹消","机制授予","复制执行","时光回溯","位移执行","决策干扰","召唤生成"],
+      "required": [
+        "伤害结算",
+        "资源变化",
+        "资源转移",
+        "护盾变化",
+        "属性修正",
+        "判定修正",
+        "结算修正",
+        "炸环",
+        "状态施加",
+        "时窗修正",
+        "状态移除",
+        "规则防御",
+        "状态转移",
+        "状态交换",
+        "资源锁定",
+        "规则改写",
+        "机制抹消",
+        "机制授予",
+        "复制执行",
+        "时光回溯",
+        "位移执行",
+        "决策干扰",
+        "召唤生成"
+      ],
       "properties": {
-        "伤害结算": { "$ref": "#/$defs/prototypePathCount" },
-        "资源变化": { "$ref": "#/$defs/prototypePathCount" },
-        "资源转移": { "$ref": "#/$defs/prototypePathCount" },
-        "护盾变化": { "$ref": "#/$defs/prototypePathCount" },
-        "属性修正": { "$ref": "#/$defs/prototypePathCount" },
-        "判定修正": { "$ref": "#/$defs/prototypePathCount" },
-        "结算修正": { "$ref": "#/$defs/prototypePathCount" },
-        "炸环": { "$ref": "#/$defs/prototypePathCount" },
-        "状态施加": { "$ref": "#/$defs/prototypePathCount" },
-        "时窗修正": { "$ref": "#/$defs/prototypePathCount" },
-        "状态移除": { "$ref": "#/$defs/prototypePathCount" },
-        "规则防御": { "$ref": "#/$defs/prototypePathCount" },
-        "状态转移": { "$ref": "#/$defs/prototypePathCount" },
-        "状态交换": { "$ref": "#/$defs/prototypePathCount" },
-        "资源锁定": { "$ref": "#/$defs/prototypePathCount" },
-        "规则改写": { "$ref": "#/$defs/prototypePathCount" },
-        "机制抹消": { "$ref": "#/$defs/prototypePathCount" },
-        "机制授予": { "$ref": "#/$defs/prototypePathCount" },
-        "复制执行": { "$ref": "#/$defs/prototypePathCount" },
-        "时光回溯": { "$ref": "#/$defs/prototypePathCount" },
-        "位移执行": { "$ref": "#/$defs/prototypePathCount" },
-        "决策干扰": { "$ref": "#/$defs/prototypePathCount" },
-        "召唤生成": { "$ref": "#/$defs/prototypePathCount" }
+        "伤害结算": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "资源变化": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "资源转移": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "护盾变化": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "属性修正": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "判定修正": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "结算修正": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "炸环": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "状态施加": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "时窗修正": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "状态移除": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "规则防御": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "状态转移": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "状态交换": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "资源锁定": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "规则改写": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "机制抹消": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "机制授予": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "复制执行": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "时光回溯": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "位移执行": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "决策干扰": {
+          "$ref": "#/$defs/prototypePathCount"
+        },
+        "召唤生成": {
+          "$ref": "#/$defs/prototypePathCount"
+        }
       },
       "additionalProperties": false
     },
     "prototypePathCount": {
       "type": "object",
-      "required": ["status", "pathCount"],
+      "required": [
+        "status",
+        "pathCount"
+      ],
       "properties": {
-        "status": { "enum": ["SUPPORTED", "DEFERRED_EXPLICIT"] },
-        "pathCount": { "type": "integer", "minimum": 1 }
+        "status": {
+          "enum": [
+            "SUPPORTED",
+            "DEFERRED_EXPLICIT"
+          ]
+        },
+        "pathCount": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
       "additionalProperties": false
     },
     "case": {
       "type": "object",
-      "required": ["caseId", "kind", "prototype", "effect", "expect"],
+      "required": [
+        "caseId",
+        "kind",
+        "prototype",
+        "effect",
+        "expect"
+      ],
       "properties": {
-        "caseId": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9-]+$" },
-        "kind": { "enum": ["POSITIVE", "LEGALITY", "DEFER", "NEGATIVE", "ANTI_PATTERN"] },
-        "probe": { "enum": ["CONTRACT_POLICY"] },
-        "pathId": { "type": "string", "pattern": "^PPU1:IN_BATTLE:" },
-        "prototype": { "type": "string", "minLength": 1 },
-        "effect": { "type": "object" },
-        "legalityContext": { "type": "object" },
+        "caseId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "kind": {
+          "enum": [
+            "POSITIVE",
+            "LEGALITY",
+            "DEFER",
+            "NEGATIVE",
+            "ANTI_PATTERN"
+          ]
+        },
+        "probe": {
+          "enum": [
+            "CONTRACT_POLICY"
+          ]
+        },
+        "pathId": {
+          "type": "string",
+          "pattern": "^PPU1:IN_BATTLE:"
+        },
+        "prototype": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effect": {
+          "$ref": "#/$defs/effect"
+        },
+        "legalityContext": {
+          "$ref": "#/$defs/legalityContext"
+        },
         "expect": {
           "type": "object",
-          "required": ["admitted"],
+          "required": [
+            "admitted"
+          ],
           "properties": {
-            "admitted": { "type": "boolean" },
-            "deferCode": { "enum": ["", "DEFER_MECHANICS_PROJECTION", "DEFER_LEGALITY_INJECTION", "DEFER_REPORT_PROJECTION"] },
-            "unsupportedOutcomeKinds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "factColumns": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "legalityModifiers": { "type": "object" },
-            "opportunityModifiers": { "type": "object" },
-            "scheduledFacts": { "type": "array", "items": { "type": "object" } },
-            "retainedInCandidateAudit": { "type": "boolean" },
-            "reasonCode": { "type": "string", "minLength": 1 }
+            "admitted": {
+              "type": "boolean"
+            },
+            "deferCode": {
+              "enum": [
+                "",
+                "DEFER_MECHANICS_PROJECTION",
+                "DEFER_LEGALITY_INJECTION",
+                "DEFER_REPORT_PROJECTION"
+              ]
+            },
+            "unsupportedOutcomeKinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "legalityModifiers": {
+              "$ref": "#/$defs/legalityModifiers"
+            },
+            "opportunityModifiers": {
+              "$ref": "#/$defs/opportunityModifiers"
+            },
+            "scheduledFacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/scheduledFact"
+              }
+            },
+            "retainedInCandidateAudit": {
+              "type": "boolean"
+            },
+            "reasonCode": {
+              "type": "string",
+              "minLength": 1
+            },
+            "directFacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/directFactRow"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "context": {
+          "$ref": "#/$defs/sourceTargetContext"
+        }
+      },
+      "additionalProperties": false
+    },
+    "directFactRow": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "factType",
+        "key",
+        "sourceActionId",
+        "sourceActorId",
+        "sourceEffectId",
+        "targetIds",
+        "amount",
+        "unit",
+        "durationTurns"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "DirectFactRowV1"
+        },
+        "factType": {
+          "enum": [
+            "HP_DELTA",
+            "RESOURCE_OPTION_CHANGED",
+            "SHIELD_DELTA",
+            "STATE_DELTA",
+            "SCHEDULED_HP_DELTA",
+            "SUMMON_WINDOW",
+            "RESOURCE_TRANSFER",
+            "RULE_DEFENSE_COUNTER",
+            "POSITION_DELTA",
+            "COPY_EXECUTION",
+            "TIME_REWIND"
+          ]
+        },
+        "key": {
+          "type": "string",
+          "minLength": 0
+        },
+        "sourceActionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceActorId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceEffectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9_\\-:/.]{1,64}$",
+            "not": {
+              "enum": [
+                "自身",
+                "单体",
+                "群体",
+                "全场",
+                "召唤物",
+                "目标",
+                "target",
+                "actor",
+                "self",
+                "all",
+                "any"
+              ]
+            }
+          }
+        },
+        "amount": {
+          "type": "number"
+        },
+        "unit": {
+          "enum": [
+            "POWER",
+            "ABS",
+            "PERCENT",
+            "RATIO",
+            "COUNT",
+            "TURNS",
+            "DISTANCE",
+            "BOOL"
+          ]
+        },
+        "durationTurns": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "scheduledFact": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/scheduledFactGrant"
+        },
+        {
+          "$ref": "#/$defs/scheduledFactSummon"
+        },
+        {
+          "$ref": "#/$defs/scheduledFactWindowAdjust"
+        },
+        {
+          "$ref": "#/$defs/scheduledFactSettlementRatio"
+        }
+      ]
+    },
+    "scheduledFactGrant": {
+      "type": "object",
+      "required": [
+        "grantType",
+        "triggerKey",
+        "payloadDirectFacts"
+      ],
+      "properties": {
+        "grantType": {
+          "const": "FOLLOW_UP"
+        },
+        "triggerKey": {
+          "enum": [
+            "主动触发",
+            "随下次行动触发"
+          ]
+        },
+        "maxActions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payloadDirectFacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/directFactRow"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "maxActions"
+          ],
+          "properties": {
+            "triggerKey": {
+              "const": "主动触发"
+            }
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "maxActions"
+            ]
+          },
+          "properties": {
+            "triggerKey": {
+              "const": "随下次行动触发"
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "scheduledFactSummon": {
+      "type": "object",
+      "required": [
+        "grantType",
+        "durationTurns"
+      ],
+      "properties": {
+        "grantType": {
+          "const": "SUMMON_WINDOW"
+        },
+        "durationTurns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "行动模式": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "scheduledFactWindowAdjust": {
+      "type": "object",
+      "required": [
+        "operation",
+        "key",
+        "字段",
+        "方式"
+      ],
+      "properties": {
+        "operation": {
+          "const": "WINDOW_ADJUST"
+        },
+        "key": {
+          "const": "window.adjustTurns"
+        },
+        "字段": {
+          "type": "string",
+          "minLength": 1
+        },
+        "方式": {
+          "enum": [
+            "延长",
+            "压缩"
+          ]
+        },
+        "调整回合": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "scheduledFactSettlementRatio": {
+      "type": "object",
+      "required": [
+        "operation",
+        "key",
+        "结算倍率"
+      ],
+      "properties": {
+        "operation": {
+          "const": "SETTLEMENT_RATIO_ADJUST"
+        },
+        "key": {
+          "const": "window.settlementRatio"
+        },
+        "结算倍率": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sourceTargetContext": {
+      "type": "object",
+      "required": [
+        "sourceActionId",
+        "sourceActorId",
+        "sourceEffectId",
+        "candidateTargetIds"
+      ],
+      "properties": {
+        "sourceActionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceActorId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceEffectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "candidateTargetIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "legalityContext": {
+      "type": "object",
+      "properties": {
+        "publicStates": {
+          "$ref": "#/$defs/publicStates"
+        },
+        "observerId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "playerLockedTargetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "interferenceRevision": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "publicStates": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_\\-:]{1,64}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": {
+          "pattern": "^[\u4e00-\u9fffA-Za-z0-9_\\-]{1,64}$"
+        },
+        "additionalProperties": {
+          "type": "boolean"
+        }
+      }
+    },
+    "effect": {
+      "oneOf": [
+        {
+          "properties": {
+            "原型": {
+              "const": "伤害结算"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "威力倍率": {
+              "type": "number"
+            },
+            "伤害类型": {
+              "type": "string"
+            },
+            "攻击段数": {
+              "type": "number"
+            },
+            "防御穿透": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "资源变化"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "资源": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "资源转移"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "资源": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            },
+            "资源转移方式": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "护盾变化"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "护盾模式": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "属性修正"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "属性": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            },
+            "持续回合": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "判定修正"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "判定": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            },
+            "持续回合": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "结算修正"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "结算": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            },
+            "持续回合": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "炸环"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "强化倍率": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "状态施加"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "状态": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            },
+            "副数值": {
+              "type": "string"
+            },
+            "持续回合": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "时窗修正"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "调整字段": {
+              "type": "string"
+            },
+            "调整方式": {
+              "type": "string"
+            },
+            "调整回合": {
+              "type": "number"
+            },
+            "结算倍率": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "状态移除"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "状态": {
+              "type": "string"
+            },
+            "数量": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "规则防御"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "规则": {
+              "type": "string"
+            },
+            "次数": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "状态转移"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "状态": {
+              "type": "string"
+            },
+            "来源": {
+              "type": "string"
+            },
+            "去向": {
+              "type": "string"
+            },
+            "数量": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "状态交换"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "状态": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "资源锁定"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "资源": {
+              "type": "string"
+            },
+            "锁定类型": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "规则改写"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "规则": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "机制抹消"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "抹消对象": {
+              "$ref": "#/$defs/effectErasureTarget"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "机制授予"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "触发条件": {
+              "type": "string"
+            },
+            "可用次数": {
+              "type": "number"
+            },
+            "持续回合": {
+              "type": "number"
+            },
+            "授予效果": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/grantPayload"
+              }
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "复制执行"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "复制类型": {
+              "type": "string"
+            },
+            "复制模式": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "时光回溯"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "发动方式": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "位移执行"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "位移类型": {
+              "type": "string"
+            },
+            "位移对象": {
+              "type": "string"
+            },
+            "距离": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "决策干扰"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "干扰": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            },
+            "持续回合": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "召唤生成"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "召唤单位类型": {
+              "type": "string"
+            },
+            "召唤物名称": {
+              "type": "string"
+            },
+            "数量": {
+              "type": "number"
+            },
+            "行动模式": {
+              "type": "string"
+            },
+            "持续回合": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "未知原型"
+            },
+            "目标": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "grantPayload": {
+      "oneOf": [
+        {
+          "properties": {
+            "原型": {
+              "const": "判定修正"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "判定": {
+              "type": "string"
+            },
+            "数值": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "原型": {
+              "const": "复制执行"
+            },
+            "目标": {
+              "type": "string"
+            },
+            "复制类型": {
+              "type": "string"
+            },
+            "复制模式": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "原型",
+            "目标"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "effectErasureTarget": {
+      "type": "object",
+      "required": [
+        "原型",
+        "状态"
+      ],
+      "properties": {
+        "原型": {
+          "const": "状态施加"
+        },
+        "状态": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "legalityModifiers": {
+      "type": "object",
+      "properties": {
+        "judgmentRates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "判定",
+              "数值"
+            ],
+            "properties": {
+              "判定": {
+                "type": "string"
+              },
+              "数值": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "taunt": {
+          "type": "object",
+          "required": [
+            "state",
+            "target"
+          ],
+          "properties": {
+            "state": {
+              "type": "string"
+            },
+            "target": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "tauntRemoved": {
+          "type": "object",
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "stateMigration": {
+          "type": "object",
+          "required": [
+            "state",
+            "from",
+            "to"
+          ],
+          "properties": {
+            "state": {
+              "type": "string"
+            },
+            "from": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "stateSwap": {
+          "type": "object",
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "mechanismRemoval": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "原型",
+              "状态"
+            ],
+            "properties": {
+              "原型": {
+                "type": "string"
+              },
+              "状态": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "opportunityModifiers": {
+      "type": "object",
+      "properties": {
+        "resourceLocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "资源",
+              "锁定类型"
+            ],
+            "properties": {
+              "资源": {
+                "type": "string"
+              },
+              "锁定类型": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "opportunityConstraints": {
+          "type": "object",
+          "required": [
+            "basicAttackAllowed"
+          ],
+          "properties": {
+            "basicAttackAllowed": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "interferenceRates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "干扰",
+              "数值"
+            ],
+            "properties": {
+              "干扰": {
+                "type": "string"
+              },
+              "数值": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "dependencyTokens": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "probe": {
+      "type": "object",
+      "required": [
+        "probeId",
+        "kind",
+        "prototype",
+        "effect",
+        "expect"
+      ],
+      "properties": {
+        "probeId": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "kind": {
+          "const": "RED_PROBE"
+        },
+        "prototype": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effect": {
+          "$ref": "#/$defs/effect"
+        },
+        "context": {
+          "$ref": "#/$defs/sourceTargetContext"
+        },
+        "legalityContext": {
+          "$ref": "#/$defs/legalityContext"
+        },
+        "expect": {
+          "type": "object",
+          "required": [
+            "admitted"
+          ],
+          "properties": {
+            "admitted": {
+              "type": "boolean"
+            },
+            "reasonCode": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unsupportedOutcomeKinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "directFacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/directFactRow"
+              }
+            },
+            "scheduledFacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/scheduledFact"
+              }
+            },
+            "noInputAliasing": {
+              "type": "boolean"
+            },
+            "ambiguousTaunt": {
+              "type": "boolean"
+            },
+            "deferCode": {
+              "enum": [
+                "",
+                "DEFER_MECHANICS_PROJECTION",
+                "DEFER_LEGALITY_INJECTION",
+                "DEFER_REPORT_PROJECTION"
+              ]
+            },
+            "schemaRejected": {
+              "type": "boolean"
+            },
+            "invalidFactType": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     }
-  }
+  },
+  "revision": 3
 }
