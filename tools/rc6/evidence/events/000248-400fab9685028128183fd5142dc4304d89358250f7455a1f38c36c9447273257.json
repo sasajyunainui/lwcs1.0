@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "EvidenceEventV1",
+  "sequence": 248,
+  "previousEventHash": "ecc03484353efabc1ad3e8c9cab4e35432939d60dd8bed4ef33ef3478b420f15",
+  "milestoneId": "M2",
+  "taskId": "M2-DECISION-CONTRIBUTION-TRACE",
+  "eventType": "EVIDENCE_RECORDED",
+  "status": "IN_PROGRESS",
+  "sourceHashes": {
+    "BattlePreview_Module.js": "77e549c459f0397672433cdde429cf5115b3eaba4e6c8b5e6a21c9fec97c2b87",
+    "BattleDecision_Module.js": "32df47bc70378f1eee418f6b7309b7533dcdf25f1f2ebd8754269250c5555c50",
+    "BattleRuntime_Module.js": "1e199b010902ec825e19acf84663bf2ab781c14e2e2d0c7e0580f25b3f59f5db",
+    "BattleReport_Module.js": "576588a242f751649b8657566c7f22cb4fa1011db4fc5ec039c95adaac9d06d3",
+    "BattleUI_Module.js": "80a9cea2d4c39a0afe669fc322bde9c8e8f448c46f8ac634d72dcc197ab08534",
+    "mvu_logic_bridge.js": "1714996c3e8bae1ae7231c3a5696cea0c5836027667f45879edee97cc4af313c",
+    "ST_UI_Entry.js": "1fe16ca7525f37f0d0a3de6375d7a3c694bbcc67073c0aa2ca2f1f5a4d32bba4"
+  },
+  "toolHashes": {},
+  "fixtureHashes": {},
+  "acceptedObjectHashes": [
+    "8da5cae5c4861c8db2f70b870b8f2387361016f82410389fbd903f826c5c688e"
+  ],
+  "invalidatedObjectHashes": [],
+  "details": {
+    "batch": "M2-DECISION-CONTRIBUTION-TRACE",
+    "verdict": "DECISION_CONTRIBUTION_TRACE_CONTRACT_ACCEPTED_NOT_IMPLEMENTED",
+    "scoreDeltaConservation": true,
+    "sourceRefs": 6,
+    "hardExclusions": true,
+    "unknownMask": true,
+    "playerLogic": "SKELETON_ONLY",
+    "chineseGold": "FAIL_CLOSED",
+    "fragment": "FAIL_CLOSED",
+    "hiddenTerms": "FORBIDDEN",
+    "resultBackwardTerms": "FORBIDDEN",
+    "internalTerms": "FORBIDDEN",
+    "notClaimed": [
+      "trace runtime implementation",
+      "trained policy",
+      "90% holdout agreement",
+      "Report/UI integration",
+      "production Provider wiring",
+      "full prototype coverage"
+    ],
+    "nextExitCondition": "M2 remaining high-impact prototype projections, adapter-to-feature metadata mapping, paired offline teacher dataset, trace implementation and LINEAR_SCORE 90% holdout gate",
+    "invalidation": "NONE"
+  },
+  "reason": "Freeze DecisionContributionTraceV1 contract: score/delta conservation, 6 source refs, hard exclusions, UNKNOWN mask, PLAYER logic skeleton only, Chinese gold/fragment fail-closed, no hidden/result-backward/internal terms under DECISION_CONTRIBUTION_TRACE_CONTRACT_ACCEPTED_NOT_IMPLEMENTED.",
+  "recordedAt": "2026-08-14T08:21:57.717Z",
+  "repository": {
+    "branch": "",
+    "head": "a20e9bf1a0bfd8d143471cc9c7a018ef8c32b635"
+  },
+  "eventHash": "400fab9685028128183fd5142dc4304d89358250f7455a1f38c36c9447273257"
+}

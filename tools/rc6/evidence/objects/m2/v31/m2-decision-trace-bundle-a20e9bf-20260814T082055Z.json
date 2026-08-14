@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "M2DecisionTraceBundleV1",
+  "taskId": "M2-DECISION-CONTRIBUTION-TRACE",
+  "baseHead": "a20e9bf1a0bfd8d143471cc9c7a018ef8c32b635",
+  "verdict": "DECISION_CONTRIBUTION_TRACE_CONTRACT_ACCEPTED_NOT_IMPLEMENTED",
+  "files": [
+    {
+      "file": "tools/rc6/contracts/DecisionContributionTraceV1.json",
+      "sha256": "175e3bfa2aadb60ea7d70097f470d4acef0123782e6e594bc3daee90cb688f0b"
+    },
+    {
+      "file": "tools/rc6/contracts/DecisionContributionTraceV1.schema.json",
+      "sha256": "7f7bf84c6c32ec3d61129130dee76d2fb304efc026c0167dc422b9805633ed4d"
+    },
+    {
+      "file": "tools/rc6/cases/DecisionContributionTraceCasesV1.json",
+      "sha256": "7e55de9f19652ab76b6dac58b5cb5abeca0f7650fe405588cee760a4e156f9f2"
+    },
+    {
+      "file": "tools/rc6/harness/run-m2-v31-decision-trace.mjs",
+      "sha256": "67f8c19976888c1ef5e0fa45db28a140545b86081cf0a4e7a14c473c54515d5f"
+    }
+  ],
+  "patch": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-decision-trace-a20e9bf.patch",
+    "sha256": "93134167B576596C0D62B297FE80B5636F61C5EC20A9AE3113E364F198F5E900",
+    "byteLength": 134250
+  },
+  "manifest": {
+    "path": "tools/rc6/evidence/objects/m2/v31/m2-decision-trace-a20e9bf.manifest.json",
+    "sha256": "BF62D17A7370B365DF198A66AA50C3BEA518353B774729E92C704FDA1AD36C0D",
+    "byteLength": 3401
+  },
+  "verification": {
+    "trace": "434/434 PASSED",
+    "nodeCheck": true,
+    "utf8Clean": true,
+    "diffCheck": true
+  },
+  "notClaimed": [
+    "trace runtime implementation",
+    "trained policy",
+    "90% holdout agreement",
+    "Report/UI integration",
+    "production Provider wiring",
+    "full prototype coverage"
+  ],
+  "invalidation": "NONE",
+  "createdAt": "2026-08-14T08:20:55Z"
+}

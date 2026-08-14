@@ -1,0 +1,829 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "DecisionContributionTraceV1.schema.json",
+ "title": "DecisionContributionTraceV1",
+ "description": "Per-candidate contribution trace document. Closed schema: contribution rows, selection delta decomposition over the selected/alternative feature union (zeroByMask when either side is not KNOWN-unmasked), tactical concepts, PLAYER/REVIEW/DEVELOPER layers, independent realizedOutcome. conservationError capped at 1e-12 for shape; conservation arithmetic is a semantic check run after schema validation. additionalProperties false everywhere. FailClosed fragment probes validate their container and partial fragment against #/$defs/fragmentProbe first, then the named semanticCheck; a fragment never impersonates a full Trace document. Canonical exclusion field name is hardExclusions.",
+ "type": "object",
+ "required": [
+  "schemaVersion",
+  "candidateId",
+  "score",
+  "intercept",
+  "conservationError",
+  "contributions",
+  "missingMask",
+  "selection",
+  "topContributions",
+  "player"
+ ],
+ "properties": {
+  "schemaVersion": {
+   "const": "DecisionContributionTraceV1"
+  },
+  "candidateId": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 512,
+   "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+  },
+  "score": {
+   "type": "number"
+  },
+  "intercept": {
+   "type": "number"
+  },
+  "conservationError": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 1e-12
+  },
+  "contributions": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 256,
+   "items": {
+    "$ref": "#/$defs/contribution"
+   }
+  },
+  "missingMask": {
+   "type": "array",
+   "uniqueItems": true,
+   "items": {
+    "enum": [
+     "RELATION_TARGET_COUNT",
+     "RELATION_TARGET_SIDE",
+     "SUCCESS_PROBABILITY",
+     "PUBLIC_HP_RATIO",
+     "PUBLIC_RESOURCE_RATIO",
+     "COST_AFFORDABILITY",
+     "REVEAL_STRENGTH",
+     "OVERKILL_AVAILABILITY",
+     "HARD_EXCLUSION",
+     "HARD_EXCLUSION_REASON",
+     "SETTLEMENT_DAMAGE",
+     "ROLL_REALIZATION",
+     "OUTSIDE_BATCH1_ROW_COUNT",
+     "DAMAGE_POWER",
+     "DAMAGE_SEGMENTS",
+     "DAMAGE_PENETRATION",
+     "DAMAGE_TYPE",
+     "RESOURCE_DELTA",
+     "SHIELD_DELTA",
+     "ATTRIBUTE_DELTA",
+     "JUDGMENT_DELTA",
+     "STATE_PRESENCE",
+     "STATE_DURATION"
+    ]
+   }
+  },
+  "hardExclusions": {
+   "type": "array",
+   "uniqueItems": true,
+   "items": {
+    "$ref": "#/$defs/exclusion"
+   }
+  },
+  "selection": {
+   "$ref": "#/$defs/selection"
+  },
+  "topContributions": {
+   "$ref": "#/$defs/topContributions"
+  },
+  "player": {
+   "$ref": "#/$defs/player"
+  },
+  "review": {
+   "$ref": "#/$defs/review"
+  },
+  "realizedOutcome": {
+   "$ref": "#/$defs/realizedOutcome"
+  }
+ },
+ "additionalProperties": false,
+ "$defs": {
+  "contribution": {
+   "type": "object",
+   "required": [
+    "featureId",
+    "featureCode",
+    "unitFamily",
+    "status",
+    "tacticalConcept",
+    "missingMasked",
+    "sourceFactIds",
+    "sourceEventIds"
+   ],
+   "properties": {
+    "featureId": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 512
+    },
+    "featureCode": {
+     "enum": [
+      "RELATION_TARGET_COUNT",
+      "RELATION_TARGET_SIDE",
+      "SUCCESS_PROBABILITY",
+      "PUBLIC_HP_RATIO",
+      "PUBLIC_RESOURCE_RATIO",
+      "COST_AFFORDABILITY",
+      "REVEAL_STRENGTH",
+      "OVERKILL_AVAILABILITY",
+      "HARD_EXCLUSION",
+      "HARD_EXCLUSION_REASON",
+      "SETTLEMENT_DAMAGE",
+      "ROLL_REALIZATION",
+      "OUTSIDE_BATCH1_ROW_COUNT",
+      "DAMAGE_POWER",
+      "DAMAGE_SEGMENTS",
+      "DAMAGE_PENETRATION",
+      "DAMAGE_TYPE",
+      "RESOURCE_DELTA",
+      "SHIELD_DELTA",
+      "ATTRIBUTE_DELTA",
+      "JUDGMENT_DELTA",
+      "STATE_PRESENCE",
+      "STATE_DURATION"
+     ]
+    },
+    "unitFamily": {
+     "enum": [
+      "COUNT",
+      "ABS",
+      "POWER",
+      "PERCENT",
+      "RATIO_0_1",
+      "PROBABILITY_0_1",
+      "TURNS",
+      "BOOL",
+      "ENUM"
+     ]
+    },
+    "status": {
+     "enum": [
+      "KNOWN",
+      "UNKNOWN",
+      "NOT_APPLICABLE",
+      "ALWAYS_UNKNOWN"
+     ]
+    },
+    "rawValue": {
+     "type": "number"
+    },
+    "mean": {
+     "type": "number"
+    },
+    "scale": {
+     "type": "number",
+     "exclusiveMinimum": 0
+    },
+    "normalized": {
+     "type": "number"
+    },
+    "weight": {
+     "type": "number"
+    },
+    "contribution": {
+     "type": "number"
+    },
+    "missingMasked": {
+     "type": "boolean"
+    },
+    "tacticalConcept": {
+     "enum": [
+      "目标推进",
+      "伤害压力",
+      "生存",
+      "控制",
+      "防御",
+      "资源",
+      "信息",
+      "代价",
+      "风险",
+      "机会"
+     ]
+    },
+    "sourceFactIds": {
+     "type": "array",
+     "uniqueItems": true,
+     "items": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+     }
+    },
+    "sourceEventIds": {
+     "type": "array",
+     "uniqueItems": true,
+     "items": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+     }
+    }
+   },
+   "additionalProperties": false,
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "status": {
+        "const": "KNOWN"
+       }
+      },
+      "required": [
+       "status"
+      ]
+     },
+     "then": {
+      "required": [
+       "rawValue",
+       "mean",
+       "scale",
+       "normalized",
+       "weight",
+       "contribution"
+      ],
+      "properties": {
+       "missingMasked": {
+        "const": false
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "missingMasked": {
+        "const": true
+       }
+      },
+      "required": [
+       "missingMasked"
+      ]
+     },
+     "then": {
+      "not": {
+       "required": [
+        "contribution",
+        "normalized",
+        "weight"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  "exclusion": {
+   "type": "object",
+   "required": [
+    "code",
+    "reasonText"
+   ],
+   "properties": {
+    "code": {
+     "enum": [
+      "ACTOR_DISABLED",
+      "ACTOR_TERMINAL",
+      "TARGET_EMPTY",
+      "INVALID_OPTION_VALUE",
+      "MISSING_REQUIRED_FIELD",
+      "UNKNOWN_STATE",
+      "UNKNOWN_RULE",
+      "AMBIGUOUS_TAUNT_TARGET",
+      "ILLEGAL_TARGET",
+      "RESOURCE_INSUFFICIENT"
+     ]
+    },
+    "reasonText": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 200
+    }
+   },
+   "additionalProperties": false
+  },
+  "delta": {
+   "type": "object",
+   "required": [
+    "featureId",
+    "featureCode",
+    "tacticalConcept",
+    "deltaContribution",
+    "zeroByMask",
+    "statusOfSelected",
+    "statusOfAlternative"
+   ],
+   "properties": {
+    "featureId": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 512
+    },
+    "featureCode": {
+     "enum": [
+      "RELATION_TARGET_COUNT",
+      "RELATION_TARGET_SIDE",
+      "SUCCESS_PROBABILITY",
+      "PUBLIC_HP_RATIO",
+      "PUBLIC_RESOURCE_RATIO",
+      "COST_AFFORDABILITY",
+      "REVEAL_STRENGTH",
+      "OVERKILL_AVAILABILITY",
+      "HARD_EXCLUSION",
+      "HARD_EXCLUSION_REASON",
+      "SETTLEMENT_DAMAGE",
+      "ROLL_REALIZATION",
+      "OUTSIDE_BATCH1_ROW_COUNT",
+      "DAMAGE_POWER",
+      "DAMAGE_SEGMENTS",
+      "DAMAGE_PENETRATION",
+      "DAMAGE_TYPE",
+      "RESOURCE_DELTA",
+      "SHIELD_DELTA",
+      "ATTRIBUTE_DELTA",
+      "JUDGMENT_DELTA",
+      "STATE_PRESENCE",
+      "STATE_DURATION"
+     ]
+    },
+    "tacticalConcept": {
+     "enum": [
+      "目标推进",
+      "伤害压力",
+      "生存",
+      "控制",
+      "防御",
+      "资源",
+      "信息",
+      "代价",
+      "风险",
+      "机会"
+     ]
+    },
+    "deltaContribution": {
+     "type": "number"
+    },
+    "statusOfSelected": {
+     "enum": [
+      "KNOWN",
+      "UNKNOWN",
+      "NOT_APPLICABLE",
+      "ALWAYS_UNKNOWN"
+     ]
+    },
+    "statusOfAlternative": {
+     "enum": [
+      "KNOWN",
+      "UNKNOWN",
+      "NOT_APPLICABLE",
+      "ALWAYS_UNKNOWN"
+     ]
+    },
+    "zeroByMask": {
+     "type": "boolean"
+    }
+   },
+   "additionalProperties": false
+  },
+  "selection": {
+   "oneOf": [
+    {
+     "title": "ALTERNATIVE_AVAILABLE",
+     "type": "object",
+     "required": [
+      "selectedCandidateId",
+      "alternativeCandidateId",
+      "scoreDelta",
+      "deltas",
+      "topPositive",
+      "topNegative",
+      "tieBreak"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "selectedCandidateId": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 512
+      },
+      "alternativeCandidateId": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 512
+      },
+      "scoreDelta": {
+       "type": "number"
+      },
+      "deltas": {
+       "type": "array",
+       "items": {
+        "$ref": "#/$defs/delta"
+       }
+      },
+      "topPositive": {
+       "type": "array",
+       "uniqueItems": true,
+       "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+       }
+      },
+      "topNegative": {
+       "type": "array",
+       "uniqueItems": true,
+       "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+       }
+      },
+      "tieBreak": {
+       "const": "DELTA_ABS_DESC_FEATURECODE_UTF16_ASC"
+      }
+     }
+    },
+    {
+     "title": "ALTERNATIVE_NOT_AVAILABLE",
+     "type": "object",
+     "required": [
+      "selectedCandidateId",
+      "reason"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "selectedCandidateId": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 512
+      },
+      "reason": {
+       "const": "NO_ELIGIBLE_ALTERNATIVE"
+      }
+     }
+    }
+   ]
+  },
+  "topContributions": {
+   "type": "object",
+   "required": [
+    "topPositive",
+    "topNegative",
+    "tieBreak",
+    "noneOmitted"
+   ],
+   "properties": {
+    "topPositive": {
+     "type": "array",
+     "uniqueItems": true,
+     "items": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+     }
+    },
+    "topNegative": {
+     "type": "array",
+     "uniqueItems": true,
+     "items": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+     }
+    },
+    "tieBreak": {
+     "const": "CONTRIBUTION_ABS_DESC_FEATURECODE_UTF16_ASC"
+    },
+    "noneOmitted": {
+     "const": true
+    }
+   },
+   "additionalProperties": false
+  },
+  "sentence": {
+   "type": "object",
+   "required": [
+    "kind",
+    "text",
+    "traceRefs"
+   ],
+   "properties": {
+    "kind": {
+     "enum": [
+      "SITUATION",
+      "FACTS",
+      "SUPPORT",
+      "DIFFERENTIATION",
+      "RISK_COST",
+      "CONCLUSION"
+     ]
+    },
+    "text": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 200
+    },
+    "traceRefs": {
+     "type": "array",
+     "minItems": 1,
+     "uniqueItems": true,
+     "items": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+     }
+    },
+    "connective": {
+     "type": "string",
+     "maxLength": 20
+    }
+   },
+   "additionalProperties": false
+  },
+  "player": {
+   "type": "object",
+   "required": [
+    "skeleton",
+    "sentences"
+   ],
+   "properties": {
+    "skeleton": {
+     "const": [
+      "SITUATION",
+      "FACTS",
+      "SUPPORT",
+      "DIFFERENTIATION",
+      "RISK_COST"
+     ]
+    },
+    "sentences": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 8,
+     "items": {
+      "$ref": "#/$defs/sentence"
+     }
+    }
+   },
+   "additionalProperties": false
+  },
+  "review": {
+   "type": "object",
+   "required": [
+    "operands",
+    "sources",
+    "rules"
+   ],
+   "properties": {
+    "operands": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "featureId",
+       "operand",
+       "value",
+       "unit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "featureId": {
+        "type": "string",
+        "minLength": 1
+       },
+       "operand": {
+        "enum": [
+         "rawValue",
+         "mean",
+         "scale",
+         "normalized",
+         "deltaContribution"
+        ]
+       },
+       "value": {
+        "type": "number"
+       },
+       "unit": {
+        "type": "string",
+        "minLength": 1
+       }
+      }
+     }
+    },
+    "sources": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "rules": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "minLength": 1
+     }
+    }
+   },
+   "additionalProperties": false
+  },
+  "realizedOutcome": {
+   "type": "object",
+   "required": [
+    "schemaVersion"
+   ],
+   "properties": {
+    "schemaVersion": {
+     "const": "RealizedOutcomeV1"
+    },
+    "round": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "outcomeKind": {
+     "type": "string"
+    },
+    "resultFacts": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+       "factType": {
+        "type": "string"
+       },
+       "targetId": {
+        "type": "string"
+       },
+       "amount": {
+        "type": "number"
+       },
+       "unit": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   },
+   "additionalProperties": false
+  },
+  "fragmentProbe": {
+   "type": "object",
+   "required": [
+    "caseId",
+    "kind",
+    "validationPhase",
+    "probe",
+    "expect"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "caseId": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 128
+    },
+    "kind": {
+     "const": "FAIL_CLOSED_PROBE"
+    },
+    "validationPhase": {
+     "const": "FRAGMENT"
+    },
+    "probe": {
+     "type": "object",
+     "required": [
+      "target",
+      "fragment"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "target": {
+       "enum": [
+        "player",
+        "traceRefs",
+        "realizedOutcome",
+        "conservation"
+       ]
+      },
+      "fragment": {
+       "type": "object",
+       "minProperties": 1,
+       "additionalProperties": false,
+       "properties": {
+        "schemaVersion": {
+         "const": "DecisionContributionTraceV1"
+        },
+        "candidateId": {
+         "type": "string",
+         "minLength": 1,
+         "maxLength": 512,
+         "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+        },
+        "score": {
+         "type": "number"
+        },
+        "intercept": {
+         "type": "number"
+        },
+        "conservationError": {
+         "type": "number",
+         "minimum": 0,
+         "maximum": 1e-12
+        },
+        "contributions": {
+         "type": "array",
+         "minItems": 1,
+         "maxItems": 256,
+         "items": {
+          "$ref": "#/$defs/contribution"
+         }
+        },
+        "missingMask": {
+         "type": "array",
+         "uniqueItems": true,
+         "items": {
+          "enum": [
+           "RELATION_TARGET_COUNT",
+           "RELATION_TARGET_SIDE",
+           "SUCCESS_PROBABILITY",
+           "PUBLIC_HP_RATIO",
+           "PUBLIC_RESOURCE_RATIO",
+           "COST_AFFORDABILITY",
+           "REVEAL_STRENGTH",
+           "OVERKILL_AVAILABILITY",
+           "HARD_EXCLUSION",
+           "HARD_EXCLUSION_REASON",
+           "SETTLEMENT_DAMAGE",
+           "ROLL_REALIZATION",
+           "OUTSIDE_BATCH1_ROW_COUNT",
+           "DAMAGE_POWER",
+           "DAMAGE_SEGMENTS",
+           "DAMAGE_PENETRATION",
+           "DAMAGE_TYPE",
+           "RESOURCE_DELTA",
+           "SHIELD_DELTA",
+           "ATTRIBUTE_DELTA",
+           "JUDGMENT_DELTA",
+           "STATE_PRESENCE",
+           "STATE_DURATION"
+          ]
+         }
+        },
+        "hardExclusions": {
+         "type": "array",
+         "uniqueItems": true,
+         "items": {
+          "$ref": "#/$defs/exclusion"
+         }
+        },
+        "selection": {
+         "$ref": "#/$defs/selection"
+        },
+        "topContributions": {
+         "$ref": "#/$defs/topContributions"
+        },
+        "player": {
+         "$ref": "#/$defs/player"
+        },
+        "review": {
+         "$ref": "#/$defs/review"
+        },
+        "realizedOutcome": {
+         "$ref": "#/$defs/realizedOutcome"
+        }
+       }
+      }
+     }
+    },
+    "expect": {
+     "type": "object",
+     "required": [
+      "schemaPhase",
+      "semanticCheck"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "schemaPhase": {
+       "const": "PASS"
+      },
+      "semanticCheck": {
+       "enum": [
+        "CAUSAL_CHAIN_BROKEN",
+        "SOURCE_MISSING",
+        "NUMBER_WITHOUT_UNIT",
+        "HIDDEN_INPUT",
+        "RESULT_BACKWARD_RATIONALIZATION",
+        "CONSERVATION_FAILED",
+        "FORBIDDEN_TOKEN",
+        "UNKNOWN_AS_ZERO",
+        "UNBOUND_SENTENCE",
+        "ORDER_VIOLATION"
+       ]
+      }
+     }
+    }
+   }
+  }
+ }
+}

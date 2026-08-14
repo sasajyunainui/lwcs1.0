@@ -1,0 +1,280 @@
+{
+ "schemaVersion": "DecisionContributionTraceV1",
+ "contractId": "RC6-M4-DECISION-CONTRIBUTION-TRACE-V1-2026-08-14",
+ "revision": 2,
+ "status": "FROZEN",
+ "encoding": "UTF-8",
+ "title": "per-candidate contribution trace serving model audit and M4 Chinese battle reports; score conservation, selected-vs-alternative delta decomposition, tactical concepts, PLAYER/REVIEW/DEVELOPER layers, decision-time facts only.",
+ "authority": {
+  "milestone": "M4",
+  "governedBy": [
+   "DistilledBehaviorPolicyV1",
+   "DistilledBehaviorPolicyV1.schema",
+   "BehaviorImmediateFeatureV1",
+   "BehaviorImmediateFeatureV1.schema",
+   "BehaviorProviderV1"
+  ],
+  "claim": "CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED",
+  "claimDetail": "本合同冻结解释轨迹的字段、守恒、分组与中文战报规则；运行时轨迹生成器与 M4 中文渲染尚未实现。",
+  "serves": [
+   "model-audit",
+   "m4-chinese-battle-report"
+  ],
+  "decisionTimeOnly": true,
+  "realizedOutcomeIndependent": true,
+  "teacherAndRouteFree": true
+ },
+ "scoreDecompositionV1": {
+  "perCandidateFields": [
+   "featureId",
+   "featureCode",
+   "unitFamily",
+   "status",
+   "rawValue",
+   "mean",
+   "scale",
+   "normalized",
+   "weight",
+   "contribution",
+   "missingMasked",
+   "sourceFactIds",
+   "sourceEventIds",
+   "tacticalConcept"
+  ],
+  "rawValue": "feature value when status=KNOWN, else omitted",
+  "meanScale": "from the pinned artifact normalization (training mean/scale); absent when the artifact is CONTRACT_TARGET_NOT_TRAINED",
+  "normalized": "(rawValue - mean) / scale for KNOWN unmasked, else omitted",
+  "weight": "artifact coefficient for the featureCode; masked features have no weight applied",
+  "contribution": "weight * normalized for KNOWN unmasked; omitted for UNKNOWN/NOT_APPLICABLE/ALWAYS_UNKNOWN; 0 only when a KNOWN unmasked contribution is exactly 0",
+  "missingMask": "every model feature whose status is not KNOWN (incl SETTLEMENT_DAMAGE/ROLL_REALIZATION which are ALWAYS_UNKNOWN); HARD_EXCLUSION/HARD_EXCLUSION_REASON are NOT part of the model missingMask - they are explained via hardExclusions only; masked features contribute nothing and are never explained as real 0",
+  "score": "intercept + sum over KNOWN unmasked contributions",
+  "summationOrder": "featureOrdering ascending: candidate scope first, then EFFECT_ROW by (sourceEffectId, key, featureCode) UTF-16; fixed order required for reproducibility",
+  "conservation": "|score - (intercept + sum contributions)| <= 1e-12; violation is FAIL_CLOSED CONSERVATION_FAILED"
+ },
+ "selectionDeltaV1": {
+  "primaryAlternative": "decision audit explicitAlternatives[0] when present, else highest-score eligible non-selected candidate; never an excluded candidate; when no eligible alternative exists the selection uses ALTERNATIVE_NOT_AVAILABLE with reason NO_ELIGIBLE_ALTERNATIVE and carries no scoreDelta",
+  "featureUnion": "delta decomposition covers the union of the selected and alternative feature sets; a feature present on only one side has the other side contribution treated as 0 (its model contribution is missing-masked), and the delta row keeps statusOfSelected/statusOfAlternative plus zeroByMask=true; rows are never omitted",
+  "deltaPerFeature": "delta = contrib_selected - contrib_alternative over the union, where a side not KNOWN-unmasked contributes 0 by mask; KNOWN-unmasked sides use their real contribution",
+  "scoreDelta": "score_selected - score_alternative; equals the sum of all union delta rows within 1e-12 (zeroByMask rows included as 0-side deltas)",
+  "topPositive": "deltas > 0 sorted by |delta| descending, tie-break featureCode UTF-16 ascending",
+  "topNegative": "deltas < 0 sorted by |delta| descending, tie-break featureCode UTF-16 ascending",
+  "noOmission": "every union delta row exists in the DEVELOPER layer; top lists are summary views only",
+  "alternativeNotAvailable": "a selection without a real alternative (e.g. all others hard-excluded) must use the NOT_AVAILABLE branch; a scoreDelta that cannot be conserved is forbidden"
+ },
+ "topContributionsV1": {
+  "perCandidateOrder": "sorted by |contribution| descending, tie-break featureCode UTF-16 ascending",
+  "topPositive": "contributions > 0",
+  "topNegative": "contributions < 0",
+  "stability": "same input yields the same order; no wall clock, no random",
+  "noOmission": "all KNOWN unmasked contributions retained in DEVELOPER rows"
+ },
+ "tacticalConceptV1": {
+  "concepts": [
+   "目标推进",
+   "伤害压力",
+   "生存",
+   "控制",
+   "防御",
+   "资源",
+   "信息",
+   "代价",
+   "风险",
+   "机会"
+  ],
+  "mapping": {
+   "RELATION_TARGET_COUNT": "目标推进",
+   "RELATION_TARGET_SIDE": "目标推进",
+   "SUCCESS_PROBABILITY": "风险",
+   "PUBLIC_HP_RATIO": "生存",
+   "PUBLIC_RESOURCE_RATIO": "资源",
+   "COST_AFFORDABILITY": "代价",
+   "REVEAL_STRENGTH": "信息",
+   "OVERKILL_AVAILABILITY": "机会",
+   "HARD_EXCLUSION": "风险",
+   "HARD_EXCLUSION_REASON": "风险",
+   "SETTLEMENT_DAMAGE": "风险",
+   "ROLL_REALIZATION": "风险",
+   "OUTSIDE_BATCH1_ROW_COUNT": "机会",
+   "DAMAGE_POWER": "伤害压力",
+   "DAMAGE_SEGMENTS": "伤害压力",
+   "DAMAGE_PENETRATION": "伤害压力",
+   "DAMAGE_TYPE": "伤害压力",
+   "RESOURCE_DELTA": "资源",
+   "SHIELD_DELTA": "防御",
+   "ATTRIBUTE_DELTA": "防御",
+   "JUDGMENT_DELTA": "风险",
+   "STATE_PRESENCE": "控制",
+   "STATE_DURATION": "控制"
+  },
+  "keyOverride": {
+   "ATTRIBUTE_DELTA": {
+    "力量": "伤害压力",
+    "敏捷": "生存",
+    "防御": "防御",
+    "魂力上限": "资源",
+    "精神力上限": "资源",
+    "体力上限": "资源"
+   }
+  },
+  "rule": "tacticalConcept comes from featureCode (plus key override for ATTRIBUTE_DELTA) only; never from action/actor/skill/prototype name; 角色/技能名分组禁止",
+  "noSkillRoleName": true
+ },
+ "playerV1": {
+  "skeleton": [
+   "SITUATION",
+   "FACTS",
+   "SUPPORT",
+   "DIFFERENTIATION",
+   "RISK_COST"
+  ],
+  "sentenceKinds": [
+   "SITUATION",
+   "FACTS",
+   "SUPPORT",
+   "DIFFERENTIATION",
+   "RISK_COST",
+   "CONCLUSION"
+  ],
+  "eachSentenceBound": "every sentence binds at least one traceRef; traceRef grammar: featureId (selected contribution row), HARD_EXCLUSION:<code>, or DELTA:<featureId> (union delta row); an unbound or dangling ref is FAIL_CLOSED CAUSAL_CHAIN_BROKEN",
+  "forbiddenTokens": [
+   "weight",
+   "权重",
+   "score",
+   "分数",
+   "featureCode",
+   "HEPP",
+   "Pareto",
+   "帕累托",
+   "candidateId",
+   "sourceEffectId",
+   "seed",
+   "actualValue",
+   "normalized",
+   "mean",
+   "scale",
+   "intercept",
+   "contribution",
+   "tacticalConcept",
+   "alpha",
+   "lambda",
+   "margin",
+   "frontier",
+   "band",
+   "线性",
+   "系数"
+  ],
+  "forbiddenTokenRule": "PLAYER text must not contain any forbidden token; a hit is FAIL_CLOSED FORBIDDEN_TOKEN (整体拒绝，不降级)",
+  "numbers": "only decision-time public numbers with an explicit unit from REVIEW operands; spoken mapping is exact: RATIO_0_1/PROBABILITY_0_1 at 0.05 granularity (一成/一成半/两成/两成半/三成/三成半/四成/五成/六成/七成/八成/九成/满), PERCENT modifier as 成/成半 (25% => 两成半, 35% => 三成半), POWER as N倍 (integer or one decimal), COUNT as N段/N次/N点, TURNS as N回合, ABS as N点, BOOL as 有无, same-family ratios as 两倍/一半 only when the ratio is a declared public division; a number without unit/source or not derivable from trace/review is FAIL_CLOSED NUMBER_WITHOUT_UNIT; never write numbers the contributions cannot prove",
+  "unknown": "UNKNOWN/ALWAYS_UNKNOWN axes may only be expressed as 不确定/证据不足/看不出/拿不准/只能赌; never as 0 and never as a magnitude; UNKNOWN_AS_ZERO is FAIL_CLOSED",
+  "noResultBackward": "realizedOutcome never enters reason generation; any result-derived phrase is FAIL_CLOSED RESULT_BACKWARD_RATIONALIZATION",
+  "noHidden": "hidden axes (hidden HP/resistance/intent/roll) cannot appear; FAIL_CLOSED HIDDEN_INPUT",
+  "exclusionBinding": "every mention of a hard-excluded candidate binds the exclusion code; excluded candidates are never explained via score contributions",
+  "connectiveRules": "support and risk coexisting require a 转折 connective; differentiation names the primary alternative action; conclusion only at the tail",
+  "sentenceLimit": "1..8 short natural Chinese sentences",
+  "skeletonRule": "full PLAYER text follows 当时目标/局势 -> 关键公开事实 -> 支持选择的因果 -> 相对主要替代差异 -> 风险/代价; steps may merge (FACTS may merge into SUPPORT) and a step may be omitted only when no bound fact exists for it, but the relative order of present steps is fixed and CONCLUSION appears only at the tail; a step appearing out of order is FAIL_CLOSED ORDER_VIOLATION"
+ },
+ "reviewV1": {
+  "keeps": [
+   "operand",
+   "unit",
+   "source",
+   "rule"
+  ],
+  "operand": "rawValue/mean/scale/normalized with unitFamily and value unit",
+  "source": "sourceFactIds/sourceEventIds plus the public snapshot path for candidate-scope rows",
+  "rule": "normalization formula and weight identity (featureCode) are REVIEW-level, never PLAYER-level"
+ },
+ "developerV1": {
+  "keeps": "complete contribution rows, deltas, exclusions, missingMask, conservationError, summationOrder, tieBreak evidence"
+ },
+ "realizedOutcomeV1": {
+  "independent": true,
+  "schemaVersionConst": "RealizedOutcomeV1",
+  "rule": "stored separately from reason inputs; writing it back into PLAYER/REVIEW text is FAIL_CLOSED RESULT_BACKWARD_RATIONALIZATION"
+ },
+ "failClosedV1": {
+  "codes": [
+   "CAUSAL_CHAIN_BROKEN",
+   "SOURCE_MISSING",
+   "NUMBER_WITHOUT_UNIT",
+   "HIDDEN_INPUT",
+   "RESULT_BACKWARD_RATIONALIZATION",
+   "CONSERVATION_FAILED",
+   "FORBIDDEN_TOKEN",
+   "UNKNOWN_AS_ZERO",
+   "UNBOUND_SENTENCE",
+   "ORDER_VIOLATION"
+  ],
+  "behavior": "generator refuses to emit the offending sentence/document; no degraded fallback that invents facts",
+  "probeShape": "independent fragment probe, never a full Trace: {caseId, kind=FAIL_CLOSED_PROBE, validationPhase=FRAGMENT, probe:{target, fragment}, expect:{schemaPhase=PASS, semanticCheck=<code>}}; fragment keys are a subset of the trace document fields",
+  "validationPhase": "TRACE_DOCUMENT or FRAGMENT: a full trace document validates against DecisionContributionTraceV1.schema.json first (shape only) then runs the semantic checks; a fragment probe validates against the fragmentProbe schema first and then triggers only the named semanticCheck",
+  "noImpersonation": "a fragment is never validated as, or reported as, a complete Trace; a probe whose fragment carries every top-level required field is MISUSED_PROBE and belongs in the gold corpus"
+ },
+ "complexity": {
+  "expression": "O(C * F)",
+  "note": "C=candidates; F=feature rows per candidate (bounded by BehaviorImmediateFeatureV1 caps). Decomposition is one pass per candidate; deltas one pass per alternative; no branch combination, no future traversal.",
+  "noRoundHorizonBranchExponential": true
+ },
+ "references": {
+  "policyContract": "tools/rc6/contracts/DistilledBehaviorPolicyV1.json",
+  "policySchema": "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json",
+  "featureContract": "tools/rc6/contracts/BehaviorImmediateFeatureV1.json",
+  "featureSchema": "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json",
+  "featureCases": "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json",
+  "provider": "tools/rc6/contracts/BehaviorProviderV1.json",
+  "traceSchema": "tools/rc6/contracts/DecisionContributionTraceV1.schema.json",
+  "traceCases": "tools/rc6/cases/DecisionContributionTraceCasesV1.json"
+ },
+ "sourceHashes": {
+  "tools/rc6/contracts/DistilledBehaviorPolicyV1.json": "abac2935300fd4a9a9cc0a623e1d8be4516df51e268b0f541205511f5f978679",
+  "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json": "6314cc703ddaf56298331fb4c72e5bbf74df3c1516b05912a20185a6ed90693c",
+  "tools/rc6/contracts/BehaviorImmediateFeatureV1.json": "5715f6125beacd49234c5edb2604286d5ce8828e23da8a3a13a46f744a6683ad",
+  "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json": "e3036e6a5171ee512fbea859268924c0ea696174cbb55854f8b6d0364f690015",
+  "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json": "e5bef21c6d76c94d989a921f55605193bfb0314359c44d28a0f93160ee4a3501",
+  "tools/rc6/contracts/BehaviorProviderV1.json": "cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156"
+ },
+ "validation": {
+  "jsonParse": "REQUIRED",
+  "utf8": "REQUIRED",
+  "mojibakeScan": [
+   "U+FFFD",
+   "CJK_MOJIBAKE_PREFIX",
+   "LATIN1_UTF8_SEQUENCE"
+  ],
+  "selfConsistency": [
+   "tacticalConceptV1.mapping covers every featureCode in BehaviorImmediateFeatureV1.json featureCatalog and every concept is in concepts.",
+   "scoreDecompositionV1 conservation tolerance is 1e-12; summation order is the frozen featureOrdering; missingMask excludes HARD_EXCLUSION/HARD_EXCLUSION_REASON (hardExclusions owns them).",
+   "selectionDeltaV1 covers the selected/alternative feature union; either side not KNOWN-unmasked => zeroByMask=true with sideStatus kept; rows never omitted; sum of union deltas equals scoreDelta within 1e-12; ALTERNATIVE_NOT_AVAILABLE carries no scoreDelta.",
+   "selectionDeltaV1.topPositive/topNegative use |delta| descending with featureCode UTF-16 ascending tie-break.",
+   "playerV1.forbiddenTokens contains weight/score/featureCode/HEPP/Pareto/internal ids; no token is a substring of a legal Chinese sentence.",
+   "validationOrderV1 runs schema shape first, then semantic checks incl conservation recompute; failClosed fragment probes validate against #/$defs/fragmentProbe first and then trigger only the named semanticCheck (MISUSED_PROBE when a fragment impersonates a full Trace).",
+   "every failClosedV1 code has a machine-checkable trigger in this contract and a fragment probe case (DecisionContributionTraceCasesV1.json probes) naming target + semanticCheck.",
+   "realizedOutcomeV1 is independent; no reason input may read it.",
+   "sourceHashes match disk SHA256(raw bytes).",
+   "schema closes every object with additionalProperties false; trace documents validate against DecisionContributionTraceV1.schema.json."
+  ]
+ },
+ "validationOrderV1": {
+  "order": [
+   "SCHEMA_SHAPE",
+   "SEMANTIC_CHECKS"
+  ],
+  "traceDocument": "a full trace document must validate against DecisionContributionTraceV1.schema.json first (shape only; conservationError is a record, not an arithmetic proof); semantic checks run only after schema passes",
+  "fragmentProbe": "a failClosed fragment probe must validate its container and fragment against #/$defs/fragmentProbe first (shape only), then trigger the named semanticCheck; fragments are never validated against the top-level required set and never reported as complete traces",
+  "semanticChecks": [
+   "conservation: recompute |score - (intercept + sum KNOWN-unmasked contributions)| and |scoreDelta - sum union deltas|; either beyond 1e-12 is CONSERVATION_FAILED even when the document is schema-valid",
+   "traceRefs bind real selected contribution featureIds, HARD_EXCLUSION:<code> entries, or DELTA:<featureId> union delta rows",
+   "forbidden tokens absent",
+   "numbers carry a unit from REVIEW operands",
+   "skeleton order respected; CONCLUSION only at tail",
+   "UNKNOWN spoken only as 不确定/证据不足/看不出/拿不准/只能赌"
+  ],
+  "frozen": true
+ },
+ "hardExclusions": {
+  "purpose": "hard exclusions live here, not in the model missingMask",
+  "versionNote": "revision 1 chapter name hardExclusionTraceV1; canonical field name is hardExclusions, matching the trace document field and schema property; no second field is retained",
+  "rule": "each excluded candidate (or forced-target constraint) carries code + reasonText; excluded candidates are never explained via score contributions; HARD_EXCLUSION/HARD_EXCLUSION_REASON feature rows in a feature vector are legality metadata, not model features, and never enter missingMask or the score sum",
+  "schema": "hardExclusions array in the trace document, each {code, reasonText}"
+ }
+}
