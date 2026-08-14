@@ -173,7 +173,9 @@ for (const tag of ['F2', 'F5', 'F8']) {
   const bad = tag === 'F2'
     ? open.filter(x => !x.startsWith('$.definitions.cases'))
     : tag === 'F8'
-      ? open.filter(x => x !== '$' && !x.startsWith('$.$defs.case'))
+      // rev4 map tables (scanCounts sourceA/B/union, mechanicMetadata.perPrototypeSubsets)
+      // are value-constrained dynamic maps (additionalProperties typed), not open objects.
+      ? open.filter(x => x !== '$' && !x.startsWith('$.$defs.case') && !x.startsWith('$.oneOf[0].properties.rev4Spec.properties.formalLibraryBasis.properties.scanCounts.properties.') && x !== '$.oneOf[0].properties.rev4Spec.properties.mechanicMetadata.properties.perPrototypeSubsets')
       : open;
   ok('schema-closed ' + tag, bad.length === 0, 'open=' + bad.slice(0, 5).join(','));
 }
@@ -373,13 +375,39 @@ ok('F7 registry 27', Object.keys(F7.registry).length === 27 && Object.keys(F7.re
 
 // ---- block C2: DirectFactRowV1 pair + Prototype rev3 cases/probes (static contract reference only; adapter module is never loaded) ----
 const PIN = {
-  'tools/rc6/contracts/PrototypeDirectAdapterV1.json': '390d5f2efe0409301cfb894c30c4312e16d7d488a386aa943f008718e65fb0bb',
-  'tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json': 'ca17d0d8c1d526001fd65941768d4e996c2dfb6488d3e7b484c66343b3f85ed3',
-  'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json': '3fd9a6a13fb13226060ddc3afefc2314b4728becc4a1b6161b357b3c1a3108c9',
-  'tools/rc6/contracts/DirectFactRowV1.json': '6a1951015a6bde4f00db502c8ce7805888942251f2c38507fe2769265f589fa1',
-  'tools/rc6/contracts/DirectFactRowV1.schema.json': '1cf2490b90c0ebabcbcd163436dcc963209240d1fec049e7ba8815f1c4d49334',
+  'tools/rc6/contracts/BehaviorProviderV1.json': 'cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156',
+  'tools/rc6/contracts/BehaviorProviderV1.schema.json': 'e2e771bc385c905fa3e2b033d05f1e9e226e4fdde5b215c27e820b4e0b778bd0',
+  'tools/rc6/cases/BehaviorProviderSelectionCasesV1.json': 'd424a42451dcf22f36c958ebe8538a0bdafc7cb8792f5a5978b808f1c5715405',
+  'tools/rc6/contracts/BehaviorProviderQualityGateV1.json': '01c25c808f7de28e8f42619f708a362170d7da9ea9cd5dbc6b96beec0c98c33b',
+  'tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json': '0ffc5014cea099934bf1e9272de14be0033dac677b11acec4c99c00ce2eef94d',
+  'tools/rc6/cases/BehaviorProviderQualitySplitV1.json': '7c29ec920ee951f1220a2d7c2c3e702b39091b008b68d16a632a05e93f195c38',
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.json': 'bac21f91fe8bc7ac14b9b12931705bb769664ac863e9177240f01d6882f7bf0f',
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json': '91f1f7d03c496ede41242c5d7aef5839414877957b59e04c37368973809ec0ec',
+  'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json': '96f185d5919daa799004a80fe18d0a912087c8823b70106592a9c18070888e32',
+  'tools/rc6/contracts/DirectFactRowV1.json': '4630e228977f164310f8733a3186d80bc4a3820b683a894cde974a35bdb2f595',
+  'tools/rc6/contracts/DirectFactRowV1.schema.json': '0325e39cd33ecf1c925268d451f23c3bde4d75eca3b5405b614c255b931b0538',
 };
-ok('freeze pin rev3 contracts + DirectFact pair', Object.entries(PIN).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h));
+ok('freeze pin rev4 nine-library raw + DirectFact pair', Object.entries(PIN).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h));
+// ---- rev4 formal-library A/B union scan: 9 source pins raw, counts, recomputed hashes ----
+const flb = F7.rev4Spec.formalLibraryBasis;
+ok('formalLibraryBasis present rev4', !!flb && F7.revision === 4 && typeof flb.basis === 'string' && flb.basis.length > 0);
+const basisObj = JSON.parse(flb.basis);
+ok('library sourcePins 9 raw match', Object.entries(basisObj.sourcePins).length === 9 && Object.entries(basisObj.sourcePins).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h), Object.keys(basisObj.sourcePins).length + ' pins');
+ok('scan classified sums A/B/union', Object.values(flb.scanCounts.sourceA).reduce((a, b) => a + b, 0) === 2571 && Object.values(flb.scanCounts.sourceB).reduce((a, b) => a + b, 0) === 486 && Object.values(flb.scanCounts.union).reduce((a, b) => a + b, 0) === 3057);
+ok('scanTotal 1916 == union first5', flb.scanTotal === 1916 && ['伤害结算', '资源变化', '护盾变化', '属性修正', '判定修正'].reduce((a, p) => a + flb.scanCounts.union[p], 0) === 1916, String(flb.scanTotal));
+for (const src of ['sourceA', 'sourceB', 'union']) {
+  const table = {};
+  for (const k of Object.keys(flb.scanCounts[src]).sort()) table[k] = flb.scanCounts[src][k];
+  const nonRegistryCount = { sourceA: 6, sourceB: 15, union: 21 }[src];
+  const want = sha256(JSON.stringify({ counts: table, nonRegistryCount }));
+  ok('scanHash ' + src + ' recomputed', want === flb.scanHash[src], want.slice(0, 12) + ' vs ' + flb.scanHash[src].slice(0, 12));
+}
+ok('scan nonRegistry 6/15/21 + oob 15', flb.unclassified.sourceA === 6 && flb.unclassified.sourceB === 15 && flb.unclassified.union === 21 && flb.unregisteredFormalOobCount === 15);
+ok('scan lingwu formal OOB classification', flb.formalOobClassification['灵物吸收'] && flb.formalOobClassification['灵物吸收'].classification === 'FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE' && flb.formalOobClassification['灵物吸收'].formalSampleCount === 15 && flb.formalOobClassification['灵物吸收'].registryPath === 'NO_REGISTRY_PATH_FABRICATED');
+ok('scan noFormalSample 4 + excluded 3', JSON.stringify(flb.noFormalSamplePrototypes) === JSON.stringify(['状态转移', '状态交换', '规则改写', '时光回溯']) && JSON.stringify(flb.excludedSources) === JSON.stringify(['tmp', 'partial', 'pre']));
+ok('scan firstBatchPathCount 106', flb.firstBatchPathCount === 106 && /伤害结算18[+]资源变化22[+]护盾变化20[+]属性修正25[+]判定修正21/.test(flb.firstBatchPathCountRule));
+const BS = String.fromCharCode(92);
+ok('scan idRules CJK/512/no C0', F7.rev4Spec.idRules.nonEmpty === true && F7.rev4Spec.idRules.maxLength === 512 && F7.rev4Spec.idRules.allow.indexOf('CJK') >= 0 && F7.rev4Spec.idRules.reject.indexOf('C0_CONTROL') >= 0 && F7.rev4Spec.idRules.pattern === '^[^' + BS + 'u0000-' + BS + 'u001F' + BS + 'u007F]+$', F7.rev4Spec.idRules.pattern);
 const DF = readJson('contracts/DirectFactRowV1.json');
 const DFS = readJson('contracts/DirectFactRowV1.schema.json');
 const F8 = readJson(NINE.F8[0]);
@@ -399,23 +427,24 @@ openObjectNodes(DFS, dfOpen);
 ok('directfact schema closed no open objects', dfOpen.length === 0, dfOpen.slice(0, 5).join(','));
 ok('directfact source required minLength', ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => DFS.required.includes(k) && DFS.properties[k].minLength >= 1));
 const tgt = DFS.properties.targetIds;
-ok('directfact targetIds rules', tgt.minItems === 1 && tgt.uniqueItems === true && !!tgt.items.pattern && !!tgt.items.not && Array.isArray(tgt.items.not.enum) && tgt.items.not.enum.length === 11);
+ok('directfact targetIds rules', tgt.minItems === 1 && tgt.uniqueItems === true && Array.isArray(tgt.items.allOf) && tgt.items.allOf.length === 2 && !!tgt.items.allOf[0].pattern && !!tgt.items.allOf[1].not && Array.isArray(tgt.items.allOf[1].not.enum) && tgt.items.allOf[1].not.enum.length === 11, JSON.stringify(tgt));
 ok('directfact amount finite + durationTurns', DFS.properties.amount.type === 'number' && DFS.properties.durationTurns.type === 'integer' && DFS.properties.durationTurns.minimum === 0);
 ok('directfact finite runtime rules declared', JSON.stringify(DF.invariants).includes('finite') && JSON.stringify(DF.validation.selfChecks).includes('finite') && F7.interface.sourceAndTargetContext.amountFinite === 'RUNTIME_VALIDATOR_REQUIRED');
 ok('directfact claim CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED', DF.authority.claim === 'CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED' && /581\/40/.test(DF.authority.claimDetail) && DF.authority.claimDetail.includes('contract target'));
 ok('directfact declared magnitudes only', DF.authority.declaredMagnitudeOnly === true && DF.authority.finalSettlement === 'DEFERRED_TO_DOWNSTREAM_KERNEL' && DF.authority.futureRouteDerivation === false && DF.authority.worldClone === false);
-ok('directfact supersedes adapter revision 3', typeof DF.authority.supersedes === 'string' && DF.authority.supersedes.includes('revision 3'));
-ok('rev3 contract/schema/cases', DF.revision === 3 && F7.revision === 3 && F8.revision === 3 && F9.revision === 3);
+ok('directfact supersedes revision 4 re-confirm', typeof DF.authority.supersedes === 'string' && DF.authority.supersedes.includes('revision 4 re-confirms rows'));
+ok('rev4 contract/schema/cases', DF.revision === 4 && F7.revision === 4 && F8.revision === 4 && F9.revision === 4);
 ok('directfact sourceHashes 3 match disk', Object.keys(DF.sourceHashes).length === 3 && Object.entries(DF.sourceHashes).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h));
-ok('prototype rev3 44 cases unique', F9.cases.length === 44 && new Set(F9.cases.map(c => c.caseId)).size === 44);
-ok('prototype red probes 14 unique', F9.redProbes.length === 14 && new Set(F9.redProbes.map(p => p.probeId)).size === 14);
+ok('prototype rev4 59 cases unique', F9.cases.length === 59 && new Set(F9.cases.map(c => c.caseId)).size === 59);
+ok('prototype red probes 20 unique', F9.redProbes.length === 20 && new Set(F9.redProbes.map(p => p.probeId)).size === 20);
 const KINDS = ['POSITIVE', 'LEGALITY', 'DEFER', 'NEGATIVE', 'ANTI_PATTERN'];
 ok('prototype kinds closed', F9.cases.every(c => KINDS.includes(c.kind)));
 const kindCounts = {};
 for (const c of F9.cases) kindCounts[c.kind] = (kindCounts[c.kind] || 0) + 1;
-ok('prototype kind counts 27/3/4/1/9', kindCounts.POSITIVE === 27 && kindCounts.LEGALITY === 3 && kindCounts.DEFER === 4 && kindCounts.NEGATIVE === 1 && kindCounts.ANTI_PATTERN === 9, JSON.stringify(kindCounts));
+ok('prototype kind counts 41/3/4/2/9', kindCounts.POSITIVE === 41 && kindCounts.LEGALITY === 3 && kindCounts.DEFER === 4 && kindCounts.NEGATIVE === 2 && kindCounts.ANTI_PATTERN === 9, JSON.stringify(kindCounts));
 const ALL_ITEMS = [...F9.cases.map(c => ({ id: c.caseId, ctx: c.context, eff: c.effect, ex: c.expect })), ...F9.redProbes.map(p => ({ id: p.probeId, ctx: p.context, eff: p.effect, ex: p.expect }))];
-ok('all 58 context 4 keys explicit', ALL_ITEMS.every(x => ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof x.ctx[k] === 'string' && x.ctx[k].length > 0) && Array.isArray(x.ctx.candidateTargetIds) && x.ctx.candidateTargetIds.length > 0));
+ok('all 79 context 4 keys explicit', ALL_ITEMS.every(x => ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof x.ctx[k] === 'string' && x.ctx[k].length > 0) && Array.isArray(x.ctx.candidateTargetIds) && x.ctx.candidateTargetIds.length > 0));
+ok('effectSource single item-use marker', ALL_ITEMS.filter(x => typeof x.ctx.effectSource === 'string' && x.ctx.effectSource.length > 0).length === 1);
 const bpSet = new Set(Object.keys(F9.counts.byPrototype));
 const resTarget = (eff, ctx) => {
   const t = eff && eff['目标'];
@@ -430,7 +459,7 @@ for (const c of F9.cases) {
   ok(c.caseId + ' admitted bool', typeof ex.admitted === 'boolean');
   ok(c.caseId + ' context source', ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof ctx[k] === 'string' && ctx[k].length > 0));
   ok(c.caseId + ' context candidateTargetIds', Array.isArray(ctx.candidateTargetIds) && ctx.candidateTargetIds.length > 0);
-  ok(c.caseId + ' prototype registered', bpSet.has(c.prototype) || c.prototype === '未知原型');
+  ok(c.caseId + ' prototype registered', bpSet.has(c.prototype) || c.prototype === '未知原型' || c.prototype === '灵物吸收');
   if (ex.deferCode !== undefined) ok(c.caseId + ' deferCode allowed', ex.deferCode === '' || F7.interface.allowedDeferCodes.includes(ex.deferCode));
   if (ex.unsupportedOutcomeKinds !== undefined) ok(c.caseId + ' unsupported kinds array', Array.isArray(ex.unsupportedOutcomeKinds));
   if (c.kind === 'DEFER') ok(c.caseId + ' defer semantics', ex.admitted === true && ex.deferCode === 'DEFER_MECHANICS_PROJECTION' && Array.isArray(ex.unsupportedOutcomeKinds) && ex.unsupportedOutcomeKinds.length > 0 && ex.retainedInCandidateAudit === true);
@@ -453,7 +482,7 @@ for (const p of F9.redProbes) {
   ok(p.probeId + ' admitted bool', typeof ex.admitted === 'boolean');
   ok(p.probeId + ' context', ['sourceActionId', 'sourceActorId', 'sourceEffectId'].every(k => typeof p.context[k] === 'string' && p.context[k].length > 0) && Array.isArray(p.context.candidateTargetIds) && p.context.candidateTargetIds.length > 0);
   if (ex.admitted === false) ok(p.probeId + ' reject evidence', (typeof ex.reasonCode === 'string' && ex.reasonCode.length > 0) || (ex.schemaRejected === true && typeof ex.invalidFactType === 'string' && ex.invalidFactType.length > 0), JSON.stringify(ex));
-  if (ex.admitted === true) ok(p.probeId + ' contract gold present', (ex.directFacts && ex.directFacts.length > 0) || (ex.scheduledFacts && ex.scheduledFacts.length > 0) || ex.noInputAliasing === true || (ex.deferCode && ex.unsupportedOutcomeKinds && ex.unsupportedOutcomeKinds.length > 0 && ex.reasonCode), JSON.stringify(ex));
+  if (ex.admitted === true) ok(p.probeId + ' contract gold present', (ex.directFacts && ex.directFacts.length > 0) || (ex.scheduledFacts && ex.scheduledFacts.length > 0) || ex.noInputAliasing === true || (Array.isArray(ex.unsupportedOutcomeKinds) && ex.unsupportedOutcomeKinds.length > 0 && typeof ex.reasonCode === 'string' && ex.reasonCode.length > 0) || (ex.deferCode && ex.deferCode.length > 0), JSON.stringify(ex));
   if (ex.directFacts) for (const r of ex.directFacts) {
     allRows.push(r);
     ok(p.probeId + ' row DF schema', !DF_VAL(r));
@@ -476,8 +505,10 @@ ok('pos-attribute-fenshen present', !!fenshenCase && fenshenCase.kind === 'POSIT
 ok('pos-attribute-fenshen context->targetIds', !!fenshenCase && fenshenCase.context.candidateTargetIds.length === 1 && fenshenCase.expect.directFacts.length === 1 && sortedIds(fenshenCase.expect.directFacts[0].targetIds) === sortedIds(fenshenCase.context.candidateTargetIds), JSON.stringify(fenshenCase && fenshenCase.expect.directFacts));
 ok('PA selfChecks rev3 flags', F7.validation.selfChecks.multiRowKeyVocabularyFrozen === true && F7.validation.selfChecks.rowUniquenessBySourceEffectIdAndKey === true && F7.validation.selfChecks.maxActionsExplicitOnly === true && F7.validation.selfChecks.triggerKeyRegistryEnumClosed === true && F7.validation.selfChecks.nestedPayloadRecursiveProjection === true);
 ok('PA grant triggerKey enum declared', /主动触发\/随下次行动触发 only/.test(F7.interface.project.output.scheduledFacts) && /随下次行动触发 projects no maxActions/.test(F7.interface.project.output.scheduledFacts) && /死亡时触发 is INVALID_OPTION_VALUE/.test(F7.constraints.join('\n')));
-ok('PA multiRow/window/damage declared', /damage\.power\/damage\.segments\/damage\.penetration\/damage\.type, state\.primary\/state\.secondary, window\.adjustTurns\/window\.settlementRatio/.test(F7.constraints.join('\n')) && /row uniqueness is \(sourceEffectId, key\)/.test(F7.constraints.join('\n')) && /攻击段数 must be a positive integer/.test(F7.constraints.join('\n')) && /结算倍率 is allowed only with 调整字段=持续回合 and 调整方式=压缩/.test(F7.constraints.join('\n')));
-ok('DF selfChecks rev3 rules', JSON.stringify(DF.validation.selfChecks).includes('(sourceEffectId, key)') && JSON.stringify(DF.validation.selfChecks).includes('maxActions explicit only') && JSON.stringify(DF.validation.selfChecks).includes('triggerKey registry enum only'));
+const F7C = F7.constraints.join(String.fromCharCode(10));
+ok('PA multiRow/window/damage declared', F7C.indexOf('damage.power/damage.segments/damage.penetration/damage.type, state.primary/state.secondary, window.adjustTurns/window.settlementRatio') >= 0 && F7C.indexOf('row uniqueness is (sourceEffectId, key)') >= 0 && F7C.indexOf('triggerKey follows the registry enum 主动触发/随下次行动触发 only') >= 0 && F7C.indexOf('随下次行动触发 forbids 可用次数') >= 0 && F7C.indexOf('死亡时触发 is INVALID_OPTION_VALUE') >= 0 && F7C.indexOf('UNSUPPORTED_CARRIER_REQUIRES_UNPACK') >= 0 && F7C.indexOf('对应等级 is a finite number only and generates no default when absent') >= 0);
+const DFSC = JSON.stringify(DF.validation.selfChecks);
+ok('DF selfChecks rev4 rules', DFSC.includes('id charset non-empty <=512, CJK/hyphen/space allowed, C0/DEL rejected') && DFSC.includes('pending projections never become rows') && DFSC.includes('adapter revision 4 supersede declared') && DFSC.includes('mechanicMetadata values verbatim normalized deep clones'));
 const stripMeta = o => { const c = JSON.parse(JSON.stringify(o)); for (const k of ['$schema', '$id', 'title', 'description']) delete c[k]; return c; };
 ok('directFactRow embedded == authoritative schema', JSON.stringify(stripMeta(DFS)) === JSON.stringify(F8.$defs.directFactRow));
 ok('PA dup-compare + window-key selfChecks', F7.validation.selfChecks.directFactRowSchemaDuplicateFrozenHarnessCompared === true && F7.validation.selfChecks.windowMultiRowKeysAreScheduledFactKeys === true);
@@ -536,8 +567,43 @@ const pss = F9.redProbes.find(p => p.probeId === 'probe-state-secondary-invalid'
 ok('state secondary golden reject', pss.expect.reasonCode === 'INVALID_OPTION_VALUE' && pss.effect['状态'] === '嘲讽' && pss.effect['副数值'] !== undefined);
 ok('all directFact rows finite + typed', allRows.length > 0 && allRows.every(r => r.schemaVersion === 'DirectFactRowV1' && Number.isFinite(r.amount) && Number.isInteger(r.durationTurns) && r.durationTurns >= 0 && Array.isArray(r.targetIds) && r.targetIds.length > 0), String(allRows.length));
 ok('581 not claimed implemented', F9.counts.supportedPathCount === 581 && Object.values(F9.counts.byPrototype).every(v => v.status === 'SUPPORTED' || v.status === 'DEFERRED_EXPLICIT'));
-ok('no IMPLEMENTED claim in rev3 texts', ['contracts/PrototypeDirectAdapterV1.json', 'contracts/PrototypeDirectAdapterV1.schema.json', 'cases/PrototypeDirectAdapterCasesV1.json'].every(p => !/implement/i.test(fs.readFileSync(path.join(rc6, p), 'utf8'))));
+ok('no IMPLEMENTED claim in rev4 texts', ['contracts/PrototypeDirectAdapterV1.json', 'contracts/PrototypeDirectAdapterV1.schema.json', 'cases/PrototypeDirectAdapterCasesV1.json'].every(p => !/implement/i.test(fs.readFileSync(path.join(rc6, p), 'utf8'))));
 ok('red probes contract-target-only', F9.redProbes.every(p => p.kind === 'RED_PROBE') && DF.authority.claim === 'CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED');
+// ---- rev4 additions: pending / carrier / metadata / array / numeric / lingwu / schemaRejected ----
+const PENDING_CODES = F7.rev4Spec.pendingProjection.codes;
+ok('rev4 pending codes exactly 4', JSON.stringify(PENDING_CODES) === JSON.stringify(['PENDING_CONDITIONAL_PROJECTION', 'PENDING_TRIGGER_PROJECTION', 'PENDING_DURATION_PROJECTION', 'PENDING_DIRECTION_PROJECTION']) && F7.rev4Spec.pendingProjection.carrierCode === 'UNSUPPORTED_CARRIER_REQUIRES_UNPACK');
+ok('schema pendingProjection codes 4', /"codes"s*:s*{s*"type"s*:s*"array"/.test(JSON.stringify(F8)) && /"minItems"s*:s*4,s*"maxItems"s*:s*4/.test(JSON.stringify(F8)));
+const pendCases = ALL_ITEMS.filter(x => Array.isArray(x.ex.unsupportedOutcomeKinds) && x.ex.unsupportedOutcomeKinds.length > 0 && String(x.ex.unsupportedOutcomeKinds[0]).indexOf('PENDING_') === 0);
+ok('pending gold cases explicit + retained', pendCases.length >= 4 && pendCases.every(x => x.ex.admitted === true && x.ex.retainedInCandidateAudit === true && PENDING_CODES.indexOf(x.ex.unsupportedOutcomeKinds[0]) >= 0), String(pendCases.length));
+ok('pending never INVALID_OPTION_VALUE', pendCases.every(x => x.ex.reasonCode !== 'INVALID_OPTION_VALUE'));
+const carrierItems = ALL_ITEMS.filter(x => (x.ex.unsupportedOutcomeKinds || []).indexOf('UNSUPPORTED_CARRIER_REQUIRES_UNPACK') >= 0);
+ok('carrier explicit 2+', carrierItems.length >= 2 && carrierItems.every(x => x.ex.admitted === true && x.ex.retainedInCandidateAudit === true && x.ex.reasonCode === 'UNSUPPORTED_CARRIER_REQUIRES_UNPACK'), String(carrierItems.length));
+const metaItems = ALL_ITEMS.filter(x => x.ex.opportunityModifiers && x.ex.opportunityModifiers.mechanicMetadata);
+ok('mechanicMetadata gold with sourceEffectId', metaItems.length >= 3 && metaItems.every(x => x.ex.opportunityModifiers.mechanicMetadata.sourceEffectId === x.ctx.sourceEffectId), String(metaItems.length));
+ok('mechanicMetadata keys within registry', metaItems.every(x => Object.keys(x.ex.opportunityModifiers.mechanicMetadata).filter(k => k !== 'sourceEffectId').every(k => F7.rev4Spec.mechanicMetadata.keys.indexOf(k) >= 0)));
+ok('mechanicMetadata per-prototype subsets 5', Object.keys(F7.rev4Spec.mechanicMetadata.perPrototypeSubsets).length === 5 && F7.rev4Spec.mechanicMetadata.location === 'opportunityModifiers.mechanicMetadata' && F7.rev4Spec.mechanicMetadata.sourceEffectId === true);
+const arrC = F9.cases.find(c => c.caseId === 'pos-resource-array');
+ok('array resource expands sorted rows', !!arrC && Array.isArray(arrC.effect['资源']) && arrC.effect['资源'].length === 2 && arrC.expect.directFacts.length === 2 && JSON.stringify(arrC.expect.directFacts.map(r => r.key)) === '["精神力","魂力"]', JSON.stringify(arrC && arrC.expect.directFacts));
+const absC = F9.cases.find(c => c.caseId === 'pos-resource-number-abs');
+ok('numeric number => ABS row', !!absC && absC.effect['数值'] === 100 && absC.expect.directFacts.length === 1 && absC.expect.directFacts[0].unit === 'ABS' && absC.expect.directFacts[0].amount === 100, JSON.stringify(absC && absC.expect.directFacts));
+const pctC = F9.cases.find(c => c.caseId === 'pos-damage-penetration-percent');
+ok('penetration percent string => PERCENT', !!pctC && pctC.effect['防御穿透'] === '+15%' && pctC.expect.directFacts.some(r => r.key === 'damage.penetration' && r.unit === 'PERCENT' && r.amount === 15));
+const bsdC = F9.cases.find(c => c.caseId === 'pos-attribute-bian-shen-duration');
+ok('bian-shen duration => PENDING_DURATION', !!bsdC && bsdC.effect['持续回合'] === '变身期间' && bsdC.expect.unsupportedOutcomeKinds[0] === 'PENDING_DURATION_PROJECTION' && bsdC.expect.retainedInCandidateAudit === true && bsdC.expect.opportunityModifiers.mechanicMetadata.sourceEffectId === bsdC.context.sourceEffectId);
+ok('numericForms rules closed', /plain numeric strings without unit rejected INVALID_OPTION_VALUE/.test(JSON.stringify(F7.rev4Spec.numericForms)) && /变身期间 => PENDING_DURATION_PROJECTION/.test(JSON.stringify(F7.rev4Spec.numericForms)) && /unsigned percent => PENDING_DIRECTION_PROJECTION/.test(JSON.stringify(F7.rev4Spec.numericForms)));
+const lwC = F9.cases.find(c => c.caseId === 'neg-lingwu-absorption-oob');
+ok('lingwu absorption OOB negative', !!lwC && lwC.prototype === '灵物吸收' && lwC.expect.admitted === false && lwC.expect.reasonCode === 'FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE');
+ok('lingwu no fabricated registry path', !(lwC.prototype in F7.registry) && flb.formalOobClassification['灵物吸收'].classification === 'FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE');
+const schemaRej = F9.redProbes.filter(p => p.expect.schemaRejected === true);
+ok('schemaRejected probes exactly 5', schemaRej.length === 5, String(schemaRej.length));
+const formRej = schemaRej.filter(p => typeof p.expect.rejectedField === 'string');
+ok('schemaRejected fields declared 4', formRej.length === 4 && formRej.every(p => typeof p.expect.rejectedField === 'string' && p.expect.rejectedField.length > 0 && p.expect.reasonCode === 'INVALID_OPTION_VALUE'), formRej.map(p => p.probeId + ':' + p.expect.rejectedField + ':' + p.expect.rejectedForm).join(','));
+ok('schemaRejected forms 2 declared', formRej.filter(p => typeof p.expect.rejectedForm === 'string' && p.expect.rejectedForm.length > 0).length === 2 && formRej.some(p => p.expect.rejectedForm === 'PLAIN_NUMERIC_STRING') && formRej.some(p => p.expect.rejectedForm === 'NON_NUMBER'));
+ok('schemaRejected invalidFactType 1', schemaRej.filter(p => typeof p.expect.invalidFactType === 'string' && p.expect.invalidFactType.length > 0).length === 1);
+ok('probe schema has rejectedField/rejectedForm', /"rejectedField"s*:s*{s*"type"s*:s*"string"/.test(JSON.stringify(F8)) && /"rejectedForm"s*:s*{s*"type"s*:s*"string"/.test(JSON.stringify(F8)));
+ok('delay/interrupt outside field whitelist', JSON.stringify(F7.rev4Spec.fieldWhitelists).indexOf('延迟回合') < 0 && JSON.stringify(F7.rev4Spec.fieldWhitelists).indexOf('打断效果') < 0);
+ok('对应等级 typed number in schema', /"对应等级"s*:s*{s*"type"s*:s*"number"/.test(JSON.stringify(F8)));
+ok('581/106 target not impersonated', F9.counts.supportedPathCount === 581 && F7.counts.supportedByTier.existingAdmitted === 374 && F7.counts.supportedByTier.t0 === 166 && F7.counts.supportedByTier.t1 === 41 && F7.rev4Spec.formalLibraryBasis.firstBatchPathCount === 106 && F9.counts.caseCount === 59 && F9.counts.redProbeCount === 20);
 // ---- block D: Quality split / canonical sourceHash / mechanic hashes ----
 const mech = F6.mechanicPathEnrollment;
 const units = F6.behaviorQualityCorpus.units;
@@ -578,6 +644,9 @@ const spEntries = Object.entries(bp).filter(([, v]) => v.status === 'SUPPORTED')
 ok('quality supportedPathHash', sha256(spEntries.join('\n')) === mech.supportedPathHash && mech.supportedPathHash === F4hard.enrollments.mechanicPathEnrollment.supportedPathHash, sha256(spEntries.join('\n')).slice(0, 16));
 ok('quality deferredPathIdsHash', sha256([...mech.deferredPathIds].sort().join('\n')) === mech.deferredPathIdsHash && mech.deferredPathIdsHash === F4hard.enrollments.mechanicPathEnrollment.deferredPathIdsHash, sha256([...mech.deferredPathIds].sort().join('\n')).slice(0, 16));
 ok('quality mechanic totals 581/40/621', mech.counts.supported === 581 && mech.counts.deferred === 40 && mech.counts.total === 621);
+ok('quality supportedByTier 374/166/41', mech.counts.supportedByTier && mech.counts.supportedByTier.existingAdmitted === 374 && mech.counts.supportedByTier.t0 === 166 && mech.counts.supportedByTier.t1 === 41);
+ok('quality deferredByPrototype 22/18', mech.counts.deferredByPrototype['复制执行'] === 22 && mech.counts.deferredByPrototype['时光回溯'] === 18);
+ok('F4 enrollment adapter 59/20', F4hard.enrollments.mechanicPathEnrollment.adapterCaseCount === 59 && F4hard.enrollments.mechanicPathEnrollment.adapterRedProbeCount === 20);
 ok('quality deferred not behavior role', mech.deferredIsNotBehaviorRole === true && F6.behaviorQualityCorpus.deferredIsNotBehaviorRole === true);
 ok('quality F6 sourceHashes all match', Object.entries(F6.sourceHashes || {}).every(([p, h]) => sha256(fs.readFileSync(path.join(repoRoot, p))) === h), String(Object.keys(F6.sourceHashes || {}).length));
 ok('quality F6 sourceHashes 12 + DirectFact pair', Object.keys(F6.sourceHashes || {}).length === 12 && Object.keys(F6.sourceHashes).includes('tools/rc6/contracts/DirectFactRowV1.json') && Object.keys(F6.sourceHashes).includes('tools/rc6/contracts/DirectFactRowV1.schema.json'));

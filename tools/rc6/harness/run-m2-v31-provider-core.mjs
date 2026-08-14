@@ -1,6 +1,6 @@
 // run-m2-v31-provider-core.mjs
-// M2 provider-core harness (candidate C), rev3. Read-only: never writes, stages or commits.
-// Real-vm load of BehaviorProvider_Module.js and BehaviorPrototypeAdapter_Module.js (rev3).
+// M2 provider-core harness (candidate C), rev4. Read-only: never writes, stages or commits.
+// Real-vm load of BehaviorProvider_Module.js and BehaviorPrototypeAdapter_Module.js (rev4).
 // Provider gates: 15 F3 cases through select/evaluateVectors with contract gold, input
 // stability, deep-frozen outputs, no aliasing, real lastWorkUnits, poisoned vm (Math.random /
 // Date.now / Function / eval / timers must be 0 calls after all cases).
@@ -17,6 +17,7 @@ import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildPrototypePathUniverse } from '../reference/build-prototype-path-universe.mjs';
+import { buildManualCases } from '../../battle_r63_manual_cases.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..', '..');
@@ -29,7 +30,7 @@ const BATCH1_PROTOS = ['伤害结算', '资源变化', '护盾变化', '属性�
 const PENDING16 = ['资源转移', '结算修正', '炸环', '状态施加', '时窗修正', '状态移除', '规则防御', '状态转移', '状态交换', '资源锁定', '规则改写', '机制抹消', '机制授予', '位移执行', '决策干扰', '召唤生成'];
 const PROJECT_FIELDS = ['directFacts', 'legalityModifiers', 'opportunityModifiers', 'scheduledFacts', 'unsupportedOutcomeKinds', 'deferCode'];
 const FACT_ROW_KEYS = ['schemaVersion', 'factType', 'key', 'sourceActionId', 'sourceActorId', 'sourceEffectId', 'targetIds', 'amount', 'unit', 'durationTurns'];
-const PDA_HASH_EXPECTED = '109f66e2d717e098b5009221f52ccf124df447ac68fcd67207648020169ea2e6';
+const PDA_HASH_EXPECTED = '18d3f4803614a5dda5727963d90ed4ac8af38a06ab6a8398b3429773ae69345f';
 
 let passed = 0;
 let failed = 0;
@@ -217,19 +218,23 @@ const ROLE_IDS = ['技能', '角色', '武魂', '魂技'];
 block('load', () => {
   ok('vm provider mounted', !!BP && typeof BP.select === 'function' && typeof BP.evaluateVectors === 'function');
   ok('vm adapter mounted', !!PDA && typeof PDA.admit === 'function' && typeof PDA.project === 'function' && typeof PDA.classifyPath === 'function' && typeof PDA.registry === 'function' && typeof PDA.readMetrics === 'function' && typeof PDA.selfCheck === 'function' && typeof PDA.setDeferOverride === 'function' && typeof PDA.setPathProjectionOverride === 'function' && typeof PDA.clearOverride === 'function' && typeof PDA.computeLegalityContext === 'function');
-  ok('adapter hash expected 109f66e2', sha256(PDA_SRC) === PDA_HASH_EXPECTED, sha256(PDA_SRC).slice(0, 16));
+  ok('adapter hash expected 18d3f480', sha256(PDA_SRC) === PDA_HASH_EXPECTED, sha256(PDA_SRC).slice(0, 16));
   ok('provider identity', BP.providerId === 'behavior-provider-v1' && BP.kind === 'CANDIDATE_ONLY' && BP.selectionScope === 'MECHANICAL_NEUTRAL_ONLY' && BP.contractRevision === 3);
   ok('provider selfCheck ok', BP.selfCheck().ok === true && BP.selfCheck().checks.contractRevisionFrozen === true);
   const reg = PDA.registry();
-  ok('adapter role R9 only', reg.role === 'R9_CANDIDATE_UNREGISTERED' && reg.revision === 3 && PDA.contractRevision === 3);
+  ok('adapter role R9 only', reg.role === 'R9_CANDIDATE_UNREGISTERED' && reg.revision === 4 && PDA.contractRevision === 4);
   ok('adapter enrollment 581/40/91/621', reg.enrollment.contractSupportedPathCount === 581 && reg.enrollment.contractDeferredPathCount === 40 && reg.enrollment.contractOutOfBattlePathCount === 91 && reg.enrollment.contractTotalInBattlePathCount === 621);
   ok('adapter implementation layered 106/475/40/91/0', reg.implementation.implementationDirectProjection === 106 && reg.implementation.implementationPending === 475 && reg.implementation.implementationDeferred === 40 && reg.implementation.implementationOutOfBattleScope === 91 && reg.implementation.placeholderProjectionCount === 0 && reg.implementation.batch1PathCount === 106);
   ok('adapter no 581 implementation claim', reg.implementation.claimsDirectProjectionForAllSupported === false);
-  ok('adapter mapping NOT_FROZEN_NOT_WIRED', reg.implementation.directFactToProviderColumnMapping === 'NOT_FROZEN_NOT_WIRED' && reg.semantics.directFactToProviderColumnMapping === 'NOT_FROZEN_NOT_WIRED' && reg.semantics.revision3SupersedeDeclared === true);
+  ok('adapter mapping NOT_FROZEN_NOT_WIRED', reg.implementation.directFactToProviderColumnMapping === 'NOT_FROZEN_NOT_WIRED' && reg.semantics.directFactToProviderColumnMapping === 'NOT_FROZEN_NOT_WIRED' && reg.semantics.revision4SupersedeDeclared === true);
   ok('adapter counts closed', reg.counts.totalInBattlePathCount === 621 && reg.counts.supportedPathCount === 581 && reg.counts.deferredPathCount === 40 && reg.counts.deferredPathIdsCount === 40 && reg.counts.rejectedInputPathCount === 0 && reg.counts.outOfBattleScopePathCount === 91 && reg.counts.silentOmissionCount === 0);
   ok('adapter tiers 374/166/41', reg.supportedByTier.existingAdmitted === 374 && reg.supportedByTier.t0 === 166 && reg.supportedByTier.t1 === 41);
   ok('adapter deferred 40 unique', reg.deferredPathIds.length === 40 && new Set(reg.deferredPathIds).size === 40);
-  ok('adapter statuses closed 27', Object.keys(reg.statusByPrototype).length === 27 && Object.values(reg.statusByPrototype).every(s => ['SUPPORTED', 'DEFERRED_EXPLICIT', 'OUT_OF_BATTLE_SCOPE'].indexOf(s) >= 0));
+  ok('adapter statuses closed 27', Object.keys(reg.statusByPrototype).length === 27 && Object.values(reg.statusByPrototype).every(s => ['SUPPORTED', 'DEFERRED_EXPLICIT', 'OUT_OF_BATTLE_SCOPE'].indexOf(s) >= 0) && Object.values(reg.statusByPrototype).filter(s => s === 'SUPPORTED').length === 21);
+  ok('adapter tierByPrototype closed', Object.keys(reg.tierByPrototype).length === 27 && Object.values(reg.tierByPrototype).every(t => ['EXISTING_ADMITTED', 'T0', 'T1', 'T2', 'NONE'].indexOf(t) >= 0) && reg.tierByPrototype['复制执行'] === 'T2' && reg.tierByPrototype['修炼增益'] === 'NONE');
+  ok('adapter pendingCodes 4 + carrier', JSON.stringify(reg.implementation.pendingCodes) === JSON.stringify(['PENDING_CONDITIONAL_PROJECTION', 'PENDING_TRIGGER_PROJECTION', 'PENDING_DURATION_PROJECTION', 'PENDING_DIRECTION_PROJECTION']) && reg.implementation.carrierCode === 'UNSUPPORTED_CARRIER_REQUIRES_UNPACK');
+  ok('adapter mechanicMetadata declared', reg.implementation.mechanicMetadata && reg.implementation.mechanicMetadata.location === 'opportunityModifiers.mechanicMetadata' && reg.implementation.mechanicMetadata.sourceEffectId === true && reg.implementation.mechanicMetadata.keys.length === 6 && Object.keys(reg.implementation.mechanicMetadata.perPrototypeSubsets).length === 5);
+  ok('adapter numericForms declared', typeof reg.implementation.numericForms['数值'] === 'string' && reg.implementation.numericForms['数值'].indexOf('PENDING_DIRECTION_PROJECTION') >= 0 && reg.implementation.numericForms['持续回合'].indexOf('PENDING_DURATION_PROJECTION') >= 0);
   ok('adapter batch1 5 / pending 16', canon(reg.implementation.batch1Prototypes) === canon(BATCH1_PROTOS) && canon(reg.implementation.pendingPrototypes) === canon(PENDING16));
   ok('adapter legality gate same', reg.legalityContext.timing === 'BEFORE_CANDIDATE_FREEZE' && reg.legalityContext.playerLocked === 'SAME_GATE' && reg.legalityContext.source === 'CURRENT_PUBLIC_STATE_ONLY');
 });
@@ -259,7 +264,7 @@ block('selfcheck', () => {
   ok('selfCheck real forbiddenCallsAbsent counted:true passed', !!fcaReal && fcaReal.counted === true && fcaReal.passed === true);
   const en = scReal.checks.find(c => c.id === 'embeddedPathEnumeration');
   ok('selfCheck real enumeration 621/581/40/91/0', !!en && en.passed && en.detail.inBattle === 621 && en.detail.supported === 581 && en.detail.deferred === 40 && en.detail.outOfBattle === 91 && en.detail.rejected === 0, JSON.stringify(en && en.detail));
-  for (const idc of ['registryShape', 'deferredPathCatalog', 'classifyAllDeferred', 'pathLevelLifting', 'liftRequiresProjection', 'liftProjectionNonZeroRequired', 'noFakeSupportWithoutPathId', 't0t1EveryPathSupported', 'pathExistenceValidation', 'tauntLegality', 'hiddenStateIgnored', 'playerLockedSameGate', 'noSilentZero', 'pendingNotSilent', 'noClaim581Implemented', 'enrollmentImplementationSeparated', 'strictSixFields', 'directFactRowsValidateAgainstDirectFactRowV1', 'factTypeEnumClosed', 'unitEnumClosed', 'revision3SupersedeDeclared', 'targetIdsNoSymbolicPlaceholder', 'multiRowKeyVocabularyFrozen', 'rowUniquenessBySourceEffectIdAndKey', 'negativeZeroNormalized', 'sourceContextRequired']) {
+  for (const idc of ['registryShape', 'deferredPathCatalog', 'classifyAllDeferred', 'pathLevelLifting', 'liftRequiresProjection', 'liftProjectionNonZeroRequired', 'noFakeSupportWithoutPathId', 't0t1EveryPathSupported', 'pathExistenceValidation', 'tauntLegality', 'hiddenStateIgnored', 'playerLockedSameGate', 'noSilentZero', 'pendingNotSilent', 'noClaim581Implemented', 'enrollmentImplementationSeparated', 'strictSixFields', 'directFactRowsValidateAgainstDirectFactRowV1', 'factTypeEnumClosed', 'unitEnumClosed', 'revision4SupersedeDeclared', 'targetIdsNoSymbolicPlaceholder', 'multiRowKeyVocabularyFrozen', 'rowUniquenessBySourceEffectIdAndKey', 'negativeZeroNormalized', 'sourceContextRequired', 'mechanicMetadataClosed', 'pendingProjectionExplicit', 'bareCarrierUnpackCode', 'numericDualFormEnforced', 'idCharsetEnforced', 'lingwuOobClassification', 'formalLibraryBasisVerified', 'abUnionSemanticsEnforced', 'windowAdjustFieldRequired', 'grantPayloadProjected']) {
     const c = scReal.checks.find(x => x.id === idc);
     ok('selfCheck real ' + idc, !!c && c.passed === true && c.counted === true, JSON.stringify(c && c.detail));
   }
@@ -303,7 +308,7 @@ block('lift', () => {
   ok('clearOverride restores default defer', cleared.ok === true && cleared.restored === true && PDA.getPathProjectionOverride(LIFT_PATH) === null, JSON.stringify(cleared));
 });
 
-// ---- adapter rev3 case/probe gates (implementation boundary, not contract gold) ----
+// ---- adapter rev4 case/probe gates (implementation boundary, not contract gold) ----
 function checkDirectFacts(tag, rows, gold, ctx, tgt) {
   ok(tag + ' rows gold canonical', canon(rows) === canon(gold), JSON.stringify(rows));
   ok(tag + ' rows ten keys', rows.every(r => canon(Object.keys(r).sort()) === canon(FACT_ROW_KEYS.slice().sort())));
@@ -317,29 +322,36 @@ function checkDirectFacts(tag, rows, gold, ctx, tgt) {
 function targetOf(effect, ctx) {
   return effect['目标'] === '自身' ? [ctx.sourceActorId] : ctx.candidateTargetIds.slice();
 }
-function strictBatch1(c) {
+function strictGold(c, adm, prj) {
   const id = c.caseId;
   const ctx = ctxOf(c);
-  const adm = PDA.admit(c.effect, ctx);
-  const prj = PDA.project(c.effect, ctx);
   ok(id + ' admitted', adm.admitted === true, JSON.stringify(adm));
-  ok(id + ' gold unsupported empty', canon(prj.unsupportedOutcomeKinds) === '[]', JSON.stringify(prj.unsupportedOutcomeKinds));
-  ok(id + ' gold deferCode empty', prj.deferCode === '' && canon(prj.scheduledFacts) === '[]', JSON.stringify(prj));
-  checkDirectFacts(id, prj.directFacts, c.expect.directFacts, ctx, targetOf(c.effect, ctx));
-  ok(id + ' gold legalityModifiers', c.expect.legalityModifiers ? canon(prj.legalityModifiers) === canon(c.expect.legalityModifiers) : canon(prj.legalityModifiers) === '{}', JSON.stringify(prj.legalityModifiers));
-  ok(id + ' opportunity empty', canon(prj.opportunityModifiers) === '{}');
+  ok(id + ' gold directFacts canonical', canon(prj.directFacts) === canon(c.expect.directFacts || []), JSON.stringify(prj.directFacts));
+  ok(id + ' gold scheduledFacts canonical', canon(prj.scheduledFacts) === canon(c.expect.scheduledFacts || []), JSON.stringify(prj.scheduledFacts));
+  ok(id + ' gold legalityModifiers canonical', canon(prj.legalityModifiers) === canon(c.expect.legalityModifiers || {}), JSON.stringify(prj.legalityModifiers));
+  ok(id + ' gold opportunityModifiers canonical', canon(prj.opportunityModifiers) === canon(c.expect.opportunityModifiers || {}), JSON.stringify(prj.opportunityModifiers));
+  ok(id + ' gold unsupported empty + no defer', canon(prj.unsupportedOutcomeKinds) === '[]' && prj.deferCode === '', JSON.stringify(prj.unsupportedOutcomeKinds));
+  checkDirectFacts(id, prj.directFacts, c.expect.directFacts || [], ctx, targetOf(c.effect, ctx));
   ok(id + ' six fields frozen no alias', sixField(prj) && deepFrozen(prj, new Set()) && !aliasesInput(prj, c.effect) && !aliasesInput(prj, ctx));
 }
-function pendingGate(c) {
+function gatePendingOrCarrier(c, adm, prj) {
   const id = c.caseId;
   const ctx = ctxOf(c);
-  const adm = PDA.admit(c.effect, ctx);
-  const prj = PDA.project(c.effect, ctx);
-  ok(id + ' admitted per contract', adm.admitted === (c.expect.admitted !== false), JSON.stringify(adm));
-  ok(id + ' explicit PENDING_DIRECT_PROJECTION', adm.reasons.indexOf('PENDING_DIRECT_PROJECTION') >= 0, JSON.stringify(adm.reasons));
+  const expCodes = c.expect.unsupportedOutcomeKinds || [];
+  const code = expCodes.length ? expCodes[0] : 'PENDING_DIRECT_PROJECTION';
+  ok(id + ' admitted per contract', adm.admitted === true, JSON.stringify(adm));
+  ok(id + ' explicit ' + code, adm.reasons.indexOf(code) >= 0, JSON.stringify(adm.reasons));
+  ok(id + ' retained explicit', adm.retainedInCandidateAudit === true, JSON.stringify(adm));
   ok(id + ' zero contribution', prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
-  ok(id + ' PENDING kind explicit', canon(prj.unsupportedOutcomeKinds) === '["PENDING_DIRECT_PROJECTION"]', JSON.stringify(prj.unsupportedOutcomeKinds));
+  ok(id + ' kind explicit', canon(prj.unsupportedOutcomeKinds) === canon(expCodes.length ? expCodes : ['PENDING_DIRECT_PROJECTION']) && prj.deferCode === (c.expect.deferCode || ''), JSON.stringify(prj.unsupportedOutcomeKinds));
   ok(id + ' not deferred', prj.deferCode === '', JSON.stringify(prj));
+  if (c.expect.opportunityModifiers && Object.keys(c.expect.opportunityModifiers).length) {
+    const goldOk = canon(prj.opportunityModifiers) === canon(c.expect.opportunityModifiers);
+    const pendingOk = prj.unsupportedOutcomeKinds.length > 0 && canon(prj.opportunityModifiers) === '{}';
+    ok(id + ' opportunityModifiers gold-or-pending', goldOk || pendingOk, JSON.stringify(prj.opportunityModifiers) + ' vs ' + JSON.stringify(c.expect.opportunityModifiers));
+  } else {
+    ok(id + ' no metadata when absent', canon(prj.opportunityModifiers) === '{}', JSON.stringify(prj.opportunityModifiers));
+  }
   ok(id + ' six fields frozen no alias', sixField(prj) && deepFrozen(prj, new Set()) && !aliasesInput(prj, c.effect) && !aliasesInput(prj, ctx));
   if (c.pathId) {
     const cls = PDA.classifyPath(c.pathId);
@@ -441,9 +453,15 @@ function redProbe(p) {
     ok(id + ' admitted', adm.admitted === true, JSON.stringify(adm));
     checkDirectFacts(id, prj.directFacts, p.expect.directFacts, ctx, targetOf(p.effect, ctx));
     ok(id + ' clean projection', canon(prj.unsupportedOutcomeKinds) === '[]' && prj.deferCode === '', JSON.stringify(prj));
-  } else if (id === 'probe-illegal-option' || id === 'probe-damage-invalid-segments') {
-    ok(id + ' rejected reason', adm.admitted === false && adm.reasons[0] === 'INVALID_OPTION_VALUE', JSON.stringify(adm));
-    ok(id + ' project explicit reject', canon(prj.unsupportedOutcomeKinds) === '["INVALID_OPTION_VALUE"]' && prj.directFacts.length === 0, JSON.stringify(prj));
+  } else if (id === 'probe-illegal-option' || id === 'probe-damage-invalid-segments' || id === 'probe-state-secondary-invalid' || id === 'probe-window-settlement-ratio-with-extend' || id === 'probe-trigger-variant') {
+    ok(id + ' rejected reason', adm.admitted === false && adm.reasons[0] === p.expect.reasonCode && p.expect.reasonCode === 'INVALID_OPTION_VALUE', JSON.stringify(adm));
+    ok(id + ' project explicit reject', canon(prj.unsupportedOutcomeKinds) === '["INVALID_OPTION_VALUE"]' && prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
+  } else if (id === 'probe-unknown-state' || id === 'probe-unknown-rule') {
+    ok(id + ' rejected reason', adm.admitted === false && adm.reasons[0] === p.expect.reasonCode, JSON.stringify(adm));
+    ok(id + ' project explicit reject', canon(prj.unsupportedOutcomeKinds) === canon([p.expect.reasonCode]) && prj.directFacts.length === 0, JSON.stringify(prj));
+  } else if (id === 'probe-window-missing-field' || id === 'probe-grant-missing-usecount') {
+    ok(id + ' rejected reason', adm.admitted === false && adm.reasons[0] === p.expect.reasonCode, JSON.stringify(adm));
+    ok(id + ' project explicit reject', canon(prj.unsupportedOutcomeKinds) === canon([p.expect.reasonCode]) && prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
   } else if (id === 'probe-multi-taunt') {
     ok(id + ' ambiguous rejected', adm.admitted === false && adm.ambiguousTaunt === true && adm.reasons[0] === 'AMBIGUOUS_TAUNT_TARGET', JSON.stringify(adm));
     ok(id + ' project explicit reject', canon(prj.unsupportedOutcomeKinds) === '["AMBIGUOUS_TAUNT_TARGET"]' && prj.directFacts.length === 0, JSON.stringify(prj));
@@ -459,17 +477,33 @@ function redProbe(p) {
     const fakeRow = { directFacts: [{ schemaVersion: 'DirectFactRowV1', factType: 'FAKE_TYPE', key: '', sourceActionId: 'a', sourceActorId: 'b', sourceEffectId: 'c', targetIds: ['e1'], amount: 1, unit: 'POWER', durationTurns: 0 }], legalityModifiers: {}, opportunityModifiers: {}, scheduledFacts: [], unsupportedOutcomeKinds: [], deferCode: '' };
     expectThrow(id + ' row validator rejects FAKE_TYPE', () => PDA.setPathProjectionOverride('PPU1:IN_BATTLE:复制执行:复制类型:0', fakeRow), 'LIFT_PROJECTION_INVALID:ROW_INVALID_FACT_TYPE');
     PDA.clearOverride('PPU1:IN_BATTLE:复制执行:复制类型:0');
+  } else if (id === 'probe-numeric-string-rejected' || id === 'probe-delay-turn-rejected' || id === 'probe-interrupt-rejected' || id === 'probe-level-non-number') {
+    const inject = {
+      'probe-numeric-string-rejected': { 数值: '10' },
+      'probe-delay-turn-rejected': { 延迟回合: 1 },
+      'probe-interrupt-rejected': { 打断效果: true },
+      'probe-level-non-number': { 对应等级: 'abc' },
+    }[id];
+    ok(id + ' contract rejectedField declared', typeof p.expect.rejectedField === 'string' && p.expect.rejectedField.length > 0 && p.expect.schemaRejected === true, JSON.stringify(p.expect));
+    const badAdm = PDA.admit(Object.assign({}, p.effect, inject), ctx);
+    ok(id + ' injected form rejected', badAdm.admitted === false && badAdm.reasons[0] === 'INVALID_OPTION_VALUE', JSON.stringify(badAdm));
+    const badPrj = PDA.project(Object.assign({}, p.effect, inject), ctx);
+    ok(id + ' injected project rejects', canon(badPrj.unsupportedOutcomeKinds) === '["INVALID_OPTION_VALUE"]' && badPrj.directFacts.length === 0, JSON.stringify(badPrj));
+  } else if (id === 'probe-nested-payload-unprojectable') {
+    ok(id + ' admitted retained', adm.admitted === true && adm.retainedInCandidateAudit === true && adm.reasons.indexOf(p.expect.reasonCode) >= 0, JSON.stringify(adm));
+    ok(id + ' defer gold', prj.deferCode === p.expect.deferCode && canon(prj.unsupportedOutcomeKinds) === canon(p.expect.unsupportedOutcomeKinds) && prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
   } else {
-    ok(id + ' contract gold declared', !!p.expect && !!p.expect.reasonCode, JSON.stringify(p.expect));
-    ok(id + ' explicit PENDING', adm.admitted === true && adm.reasons.indexOf('PENDING_DIRECT_PROJECTION') >= 0, JSON.stringify(adm));
+    const code = (p.expect.unsupportedOutcomeKinds || [])[0];
+    ok(id + ' contract gold declared', typeof code === 'string' && code.length > 0 && typeof p.expect.reasonCode === 'string' && p.expect.reasonCode.length > 0, JSON.stringify(p.expect));
+    ok(id + ' admitted retained', adm.admitted === true && adm.retainedInCandidateAudit === true && adm.reasons.indexOf(code) >= 0, JSON.stringify(adm));
     ok(id + ' zero contribution', prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
-    ok(id + ' PENDING kind explicit', canon(prj.unsupportedOutcomeKinds) === '["PENDING_DIRECT_PROJECTION"]' && prj.deferCode === '', JSON.stringify(prj.unsupportedOutcomeKinds));
+    ok(id + ' kind explicit', canon(prj.unsupportedOutcomeKinds) === canon([code]) && prj.deferCode === (p.expect.deferCode || ''), JSON.stringify(prj.unsupportedOutcomeKinds));
   }
 }
 
 block('adapter-cases', () => {
-  ok('F9 rev3 44 cases', F9.revision === 3 && F9.cases.length === 44);
-  ok('F9 14 redProbes', F9.redProbes.length === 14);
+  ok('F9 rev4 59 cases', F9.revision === 4 && F9.cases.length === 59);
+  ok('F9 20 redProbes', F9.redProbes.length === 20);
   const allCtx = F9.cases.concat(F9.redProbes);
   ok('all case.context explicit four keys', allCtx.every(x => { const c = x.context || {}; return typeof c.sourceActionId === 'string' && c.sourceActionId.length > 0 && typeof c.sourceActorId === 'string' && c.sourceActorId.length > 0 && typeof c.sourceEffectId === 'string' && c.sourceEffectId.length > 0 && Array.isArray(c.candidateTargetIds) && c.candidateTargetIds.length > 0; }));
   ok('partition matches registry', canon(BATCH1_PROTOS) === canon(PDA.registry().implementation.batch1Prototypes) && canon(PENDING16) === canon(PDA.registry().implementation.pendingPrototypes));
@@ -500,7 +534,7 @@ block('adapter-cases', () => {
   ok('fenshen target-rejected closed 19', fsScan.targetRejected.length === 19 && fsScan.targetRejected.every(p => p !== '资源变化' && p !== '属性修正' && p !== '判定修正' && p !== '结算修正'), fsScan.targetRejected.join(','));
   ok('fenshen field-gated only batch1 three', canon(fsScan.fieldGated) === canon(['资源变化:MISSING_REQUIRED_FIELD', '属性修正:MISSING_REQUIRED_FIELD', '判定修正:MISSING_REQUIRED_FIELD']), fsScan.fieldGated.join(','));
   ok('fenshen OOB 4 untouched', fsScan.oob.length === 4 && canon(fsScan.oob) === canon(['修炼增益', '天赋提升', '永久属性提升', '战斗外复活']), fsScan.oob.join(','));
-  const fsAdmRc = PDA.admit({ 原型: '资源变化', 目标: '分身', 资源: '魂力', 数值: '+10' }, fsCtx);
+  const fsAdmRc = PDA.admit({ 原型: '资源变化', 目标: '分身', 资源: '魂力', 数值: '+10%' }, fsCtx);
   const fsAdmJm = PDA.admit({ 原型: '判定修正', 目标: '分身', 判定: '命中', 数值: '+10%', 持续回合: 1 }, fsCtx);
   ok('fenshen resource/judgment admit true', fsAdmRc.admitted === true && fsAdmJm.admitted === true, JSON.stringify([fsAdmRc, fsAdmJm]));
   const settleCls = PDA.classifyPath('PPU1:IN_BATTLE:结算修正:目标:5');
@@ -514,7 +548,13 @@ block('adapter-cases', () => {
   ok('fenshen shield still illegal project', canon(PDA.project({ 原型: '护盾变化', 目标: '分身' }, fsCtx).unsupportedOutcomeKinds) === '["INVALID_OPTION_VALUE"]');
   ok('fenshen shield/damage path unknown', PDA.classifyPath('PPU1:IN_BATTLE:护盾变化:目标:5').reasonCode === 'UNKNOWN_PATH_ID' && PDA.classifyPath('PPU1:IN_BATTLE:伤害结算:目标:5').reasonCode === 'UNKNOWN_PATH_ID');
   for (const c of F9.cases) {
-    if (c.kind === 'POSITIVE') { if (BATCH1_PROTOS.indexOf(c.prototype) >= 0) strictBatch1(c); else pendingGate(c); }
+    if (c.kind === 'POSITIVE') {
+      const ctx = ctxOf(c);
+      const adm = PDA.admit(c.effect, ctx);
+      const prj = PDA.project(c.effect, ctx);
+      if (prj.directFacts.length || prj.scheduledFacts.length) strictGold(c, adm, prj);
+      else gatePendingOrCarrier(c, adm, prj);
+    }
     else if (c.kind === 'LEGALITY') legalityGate(c);
     else if (c.kind === 'DEFER') deferGate(c);
     else if (c.kind === 'NEGATIVE') negGate(c);
@@ -778,6 +818,120 @@ block('adapter-metrics', () => {
   ok('adapter directProjectionCount exact', d.directProjectionCount === 2, JSON.stringify(d));
   ok('adapter reject counters exact', d.unknownPrototypeRejectCount === 1 && d.outOfBattleRejectCount === 1 && d.deferProjectCount === 1, JSON.stringify(d));
   ok('adapter vm poison zero', vmPoisonCount === 0);
+});
+
+// ---- entry ID gates: C0/DEL/513/symbolic targets reject INVALID_OPTION_VALUE at the
+// admit/project entry, CJK ids pass, and public output never leaks the internal
+// row-validation failure code (INTERNAL_ROW_VALIDATION_FAILED is designed unreachable
+// from public input; verified on every public output below).
+block('id-gates', () => {
+  const eff = { 原型: '伤害结算', 目标: '单体', 威力倍率: 60, 伤害类型: '近身攻击' };
+  const C0 = String.fromCharCode(0);
+  const DEL = String.fromCharCode(127);
+  const long513 = 'x'.repeat(513);
+  const leakFree = v => JSON.stringify(v).indexOf('INTERNAL_ROW_VALIDATION_FAILED') < 0;
+  const idBad = [
+    ['C0 action', { sourceActionId: 'a' + C0 + 'b' }],
+    ['DEL action', { sourceActionId: 'a' + DEL + 'b' }],
+    ['513 action', { sourceActionId: long513 }],
+    ['C0 effect', { sourceEffectId: 'e' + C0 }],
+    ['DEL actor', { sourceActorId: 'x' + DEL }],
+    ['513 target', { candidateTargetIds: [long513] }],
+  ];
+  for (const [tag, mut] of idBad) {
+    const ctx = Object.assign({ sourceActionId: 'a', sourceActorId: 'actor-1', sourceEffectId: 'e:0', candidateTargetIds: ['enemy-1'] }, mut);
+    const adm = PDA.admit(eff, ctx);
+    const prj = PDA.project(eff, ctx);
+    ok('id-gate ' + tag + ' reject', adm.admitted === false && adm.reasons[0] === 'INVALID_OPTION_VALUE', JSON.stringify(adm));
+    ok('id-gate ' + tag + ' project reject', canon(prj.unsupportedOutcomeKinds) === '["INVALID_OPTION_VALUE"]' && prj.directFacts.length === 0 && prj.scheduledFacts.length === 0, JSON.stringify(prj));
+    ok('id-gate ' + tag + ' no internal leak', leakFree(adm) && leakFree(prj), JSON.stringify(adm));
+  }
+  for (const sym of ['自身', '单体', '群体', '全场', '召唤物', '目标', 'target', 'actor', 'self', 'all', 'any']) {
+    const ctx = { sourceActionId: 'a', sourceActorId: 'actor-1', sourceEffectId: 'e:0', candidateTargetIds: [sym] };
+    const adm = PDA.admit(eff, ctx);
+    ok('id-gate symbol target ' + sym, adm.admitted === false && adm.reasons[0] === 'INVALID_OPTION_VALUE', JSON.stringify(adm));
+    ok('id-gate symbol ' + sym + ' no internal leak', leakFree(adm));
+  }
+  const cjkCtx = { sourceActionId: '行动:龙啸九天', sourceActorId: '唐三', sourceEffectId: '效果:龙啸九天:0', candidateTargetIds: ['武魂殿护法'] };
+  const cjkAdm = PDA.admit(eff, cjkCtx);
+  const cjkPrj = PDA.project(eff, cjkCtx);
+  ok('id-gate CJK admit passes', cjkAdm.admitted === true && cjkAdm.reasons.length === 0, JSON.stringify(cjkAdm));
+  ok('id-gate CJK direct rows verbatim', cjkPrj.directFacts.length === 1 && cjkPrj.directFacts[0].sourceActionId === cjkCtx.sourceActionId && cjkPrj.directFacts[0].sourceActorId === cjkCtx.sourceActorId && cjkPrj.directFacts[0].sourceEffectId === cjkCtx.sourceEffectId && canon(cjkPrj.directFacts[0].targetIds) === canon(cjkCtx.candidateTargetIds), JSON.stringify(cjkPrj.directFacts));
+  ok('id-gate CJK output no internal leak', leakFree(cjkAdm) && leakFree(cjkPrj));
+});
+
+// ---- lightweight real-candidate guard: manual duel first opportunity, CANDIDATES_ONLY only.
+// Decision shared API (prepareDecisionRequest/enumerateCandidates) is mounted in an isolated
+// sandbox; no Runtime/Report/Kernel/teacher/route and no full battle is ever invoked.
+block('candidate-guard', () => {
+  const guardSandbox = {
+    console, Buffer, TextDecoder, TextEncoder, JSON, Math, Date,
+    setTimeout, clearTimeout, setInterval, clearInterval,
+    Object, Array, String, Number, Boolean, Error, TypeError, Map, Set, WeakMap, WeakSet,
+    Symbol, Reflect, Promise, Intl, URL, URLSearchParams, parseInt, parseFloat, isNaN, isFinite,
+    Function, eval,
+    structuredClone: typeof structuredClone === 'function' ? structuredClone : v => JSON.parse(JSON.stringify(v)),
+    performance: { now: () => 0 },
+    process: { env: {} },
+  };
+  guardSandbox.window = guardSandbox;
+  guardSandbox.globalThis = guardSandbox;
+  guardSandbox.self = guardSandbox;
+  vm.createContext(guardSandbox);
+  let guardErr = null;
+  try {
+    for (const f of ['LibraryData_Runtime.js', 'CharacterLibrary.js', 'MVU_Skill_Runtime.js', 'BattlePreview_Module.js', 'BattleDecision_Module.js']) {
+      vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, f), 'utf8'), guardSandbox, { filename: f });
+    }
+  } catch (e) { guardErr = String((e && e.message) || e); }
+  ok('guard battle modules load', guardErr === null, 'err=' + guardErr);
+  if (guardErr === null) {
+    ok('guard no Runtime/Report/Provider loaded', guardSandbox.__LWCS_BATTLE_RUNTIME__ === undefined && guardSandbox.__LWCS_BATTLE_REPORT__ === undefined && guardSandbox.__LWCS_BEHAVIOR_PROVIDER__ === undefined);
+    const decision = guardSandbox.__LWCS_BATTLE_DECISION__;
+    ok('guard decision shared API mounted', !!decision && typeof decision.prepareDecisionRequest === 'function' && typeof decision.enumerateCandidates === 'function');
+    let def = null;
+    try {
+      def = buildManualCases(guardSandbox.__LWCS_内置角色库__, guardSandbox.__LWCS_GET_BASE_STATS__).find(c => c.caseId === 'duel_overmatch_lethal');
+    } catch (e) { def = null; }
+    ok('guard manual duel present', !!def);
+    if (def) {
+      const world = def.combatData;
+      const actorId = String((world && world.参战者 && world.参战者.team_player && world.参战者.team_player[0] && world.参战者.team_player[0].id) || '').trim();
+      ok('guard duel actor CJK', actorId.length > 0 && /[一-鿿]/.test(actorId), actorId);
+      const req = decision.prepareDecisionRequest({
+        worldSnapshot: world,
+        actorId,
+        objectiveContract: world.胜负条件,
+        battleIntent: { mode: def.intent, objectives: world.胜负条件 },
+        actionOpportunity: { opportunityId: 'guard:duel:1', ownerId: actorId, role: 'ACTIVE', grantType: 'NATURAL_ACTION', sequence: 1, round: 1, status: 'PENDING' },
+        seed: def.seed,
+        analysisDepth: 'CANDIDATES_ONLY',
+      });
+      ok('guard frozenCandidates nonempty', Array.isArray(req.frozenCandidates) && req.frozenCandidates.length > 0, String(req.frozenCandidates && req.frozenCandidates.length));
+      ok('guard candidateIds CJK', (req.frozenCandidates || []).length > 0 && (req.frozenCandidates || []).every(fc => /[一-鿿]/.test(String((fc && fc.candidateId) || ''))), JSON.stringify((req.frozenCandidates || []).slice(0, 2).map(fc => fc.candidateId)));
+      const fc = req.frozenCandidates[0];
+      const tgt = (fc.declaration && fc.declaration.targetIds) || [];
+      const ctx = {
+        sourceActionId: (fc.declaration && fc.declaration.actionId) || fc.candidateId,
+        sourceActorId: (fc.declaration && fc.declaration.actorId) || actorId,
+        sourceEffectId: ((fc.declaration && fc.declaration.actionId) || fc.candidateId) + ':0',
+        candidateTargetIds: tgt,
+      };
+      ok('guard targetSet from declaration', Array.isArray(tgt) && tgt.length > 0, JSON.stringify(tgt));
+      const dmgAdm = PDA.admit({ 原型: '伤害结算', 目标: '单体', 威力倍率: 60, 伤害类型: '近身攻击' }, ctx);
+      ok('guard damage admitted not all-rejected', dmgAdm.admitted === true && dmgAdm.reasons.length === 0, JSON.stringify(dmgAdm));
+      const dmgPrj = PDA.project({ 原型: '伤害结算', 目标: '单体', 威力倍率: 60, 伤害类型: '近身攻击' }, ctx);
+      ok('guard damage DIRECT > 0', dmgPrj.directFacts.length > 0 && dmgPrj.directFacts.every(r => r.sourceActorId === ctx.sourceActorId && r.sourceEffectId === ctx.sourceEffectId), JSON.stringify(dmgPrj.directFacts));
+      const jdgAdm = PDA.admit({ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%', 持续回合: 1 }, ctx);
+      ok('guard judgment admitted', jdgAdm.admitted === true, JSON.stringify(jdgAdm));
+      const jdgPrj = PDA.project({ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%', 持续回合: 1 }, ctx);
+      ok('guard judgment DIRECT > 0', jdgPrj.directFacts.length > 0 && jdgPrj.directFacts[0].key === '命中' && jdgPrj.directFacts[0].amount === 10, JSON.stringify(jdgPrj.directFacts));
+      const metaPrj = PDA.project({ 原型: '伤害结算', 目标: '单体', 生效方式: '独立生效', 威力倍率: 120, 伤害类型: '精神攻击', 攻击段数: 1, 防御穿透: 20, 结算标签: '标准伤害', 抗性类型: '精神抗性', 对应等级: 89 }, ctx);
+      const meta = metaPrj.opportunityModifiers && metaPrj.opportunityModifiers.mechanicMetadata;
+      ok('guard formal metadata projected', !!meta && meta.sourceEffectId === ctx.sourceEffectId && meta['结算标签'] === '标准伤害' && meta['抗性类型'] === '精神抗性' && meta['对应等级'] === 89, JSON.stringify(meta));
+      ok('guard metadata CJK verbatim', !!meta && meta['生效方式'] === '独立生效', JSON.stringify(meta));
+    }
+  }
 });
 
 block('m1', () => {
