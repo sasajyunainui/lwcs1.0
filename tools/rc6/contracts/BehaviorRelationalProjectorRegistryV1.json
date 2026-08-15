@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "BehaviorRelationalProjectorRegistryV1",
+  "revision": 1,
+  "status": "FROZEN",
+  "encoding": "UTF-8",
+  "sourceContract": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
+  "sourceContractHash": "4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e",
+  "ordering": "entries 按 prototypeKind 的 UTF-16 code-unit 升序；prototypeKind 只使用 PDA registry key，不含角色名或技能名。",
+  "capabilityKinds": ["TEAM_EFFECT", "RESOURCE_SUPPLY", "FOLLOW_UP", "NOT_RELATIONAL"],
+  "projectorIds": {
+    "TEAM_EFFECT": "BRF_TEAM_EFFECT_V1",
+    "RESOURCE_SUPPLY": "BRF_RESOURCE_SUPPLY_V1",
+    "FOLLOW_UP": "BRF_EXPLICIT_FOLLOW_UP_V1",
+    "NOT_RELATIONAL": "BRF_NOT_RELATIONAL_V1"
+  },
+  "coverage": {
+    "battleScope": {"expected": 23, "mapped": 23},
+    "total": {"expected": 27, "mapped": 27},
+    "runtimeOnly": ["FOLLOW_UP"]
+  },
+  "entries": [
+    {"prototypeKind": "伤害结算", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "位移执行", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "修炼增益", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL", "reasonCode": "OUT_OF_BATTLE_SCOPE"},
+    {"prototypeKind": "决策干扰", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "判定修正", "projectorId": "BRF_TEAM_EFFECT_V1", "capabilityKind": "TEAM_EFFECT", "effectAxisCode": "JUDGMENT"},
+    {"prototypeKind": "召唤生成", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "复制执行", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "天赋提升", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL", "reasonCode": "OUT_OF_BATTLE_SCOPE"},
+    {"prototypeKind": "属性修正", "projectorId": "BRF_TEAM_EFFECT_V1", "capabilityKind": "TEAM_EFFECT", "effectAxisCode": "ATTRIBUTE"},
+    {"prototypeKind": "战斗外复活", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL", "reasonCode": "OUT_OF_BATTLE_SCOPE"},
+    {"prototypeKind": "护盾变化", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "时光回溯", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "时窗修正", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "机制抹消", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "机制授予", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "永久属性提升", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL", "reasonCode": "OUT_OF_BATTLE_SCOPE"},
+    {"prototypeKind": "炸环", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "状态交换", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "状态施加", "projectorId": "BRF_TEAM_EFFECT_V1", "capabilityKind": "TEAM_EFFECT", "effectAxisCode": "STATE_APPLY"},
+    {"prototypeKind": "状态移除", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "状态转移", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "结算修正", "projectorId": "BRF_TEAM_EFFECT_V1", "capabilityKind": "TEAM_EFFECT", "effectAxisCode": "SETTLEMENT"},
+    {"prototypeKind": "规则改写", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "规则防御", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "资源变化", "projectorId": "BRF_RESOURCE_SUPPLY_V1", "capabilityKind": "RESOURCE_SUPPLY"},
+    {"prototypeKind": "资源转移", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"},
+    {"prototypeKind": "资源锁定", "projectorId": "BRF_NOT_RELATIONAL_V1", "capabilityKind": "NOT_RELATIONAL"}
+  ]
+}

@@ -1,9 +1,9 @@
 // BehaviorPrototypeAdapter_Module.js
 // M2 adapter writer F - rev5 production candidate (R9_CANDIDATE_UNREGISTERED).
 // Contract authority:
-//   tools/rc6/contracts/PrototypeDirectAdapterV1.json       b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a
-//   tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json 9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5
-//   tools/rc6/cases/PrototypeDirectAdapterCasesV1.json       f875433b372d925ee3e659449f06d98cbce566b02556f4f10e2811d3d1d0a164
+//   tools/rc6/contracts/PrototypeDirectAdapterV1.json       4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e
+//   tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json 7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22
+//   tools/rc6/cases/PrototypeDirectAdapterCasesV1.json       f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d
 //   tools/rc6/contracts/DirectFactRowV1.json                 7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67
 //   tools/rc6/contracts/DirectFactRowV1.schema.json          0325e39cd33ecf1c925268d451f23c3bde4d75eca3b5405b614c255b931b0538
 // Boundary: batch-1 (伤害结算/资源变化/护盾变化/属性修正/判定修正, 106 paths) and
@@ -60,6 +60,7 @@
   var FORMAL_OOB_CODE = 'FORMAL_LIBRARY_OUT_OF_BATTLE_SCOPE';
   var ID_MAX_LENGTH = 512;
   var ID_PATTERN = /^[^\u0000-\u001F\u007F]+$/;
+  var FOLLOW_UP_KEY_MAX_LENGTH = 128;
   // Contract-global mechanicMetadata keys (rev5Spec.mechanicMetadata.keys). The closed
   // per-prototype subsets below carry the additional batch-2 keys (触发方式/结算/限定元素/
   // 吸收资源/吸收来源/触发限制) and are the only metadata emitted.
@@ -571,7 +572,7 @@
     '资源锁定': { allowed: ['原型', '目标', '生效方式', '资源', '锁定类型', '数值', '持续回合', '驱动属性', '影响方向'], required: ['资源', '锁定类型', '数值'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '资源': RESOURCE4, '锁定类型': ['资源池锁定', '回复锁定', '转化锁定'], '驱动属性': DRIVER7, '影响方向': DIRECTION4 }, types: { '数值': '带符号数值', '持续回合': '整数' } },
     '规则改写': { allowed: ['原型', '目标', '生效方式', '规则', '数值', '持续回合', '驱动属性', '影响方向'], required: ['规则'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '规则': ['缴械', '死亡转存活'], '驱动属性': DRIVER7, '影响方向': DIRECTION3 }, types: { '数值': '带符号数值', '持续回合': '整数' } },
     '机制抹消': { allowed: ['原型', '目标', '生效方式', '抹消对象', '持续回合', '驱动属性', '影响方向'], required: ['抹消对象'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '驱动属性': DRIVER7, '影响方向': DIRECTION3 }, types: { '抹消对象': '对象', '持续回合': '整数' } },
-    '机制授予': { allowed: ['原型', '目标', '生效方式', '授予效果', '触发条件', '触发限制', '可用次数', '持续回合', '驱动属性', '影响方向'], required: ['授予效果', '触发条件'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '触发条件': TRIGGER_OPTIONS, '驱动属性': DRIVER7, '影响方向': DIRECTION5 }, types: { '授予效果': '原型列表', '触发限制': '对象', '可用次数': '整数', '持续回合': '整数' } },
+    '机制授予': { allowed: ['原型', '目标', '生效方式', '授予效果', '触发条件', '跟进行动键', '触发限制', '可用次数', '持续回合', '驱动属性', '影响方向'], required: ['授予效果', '触发条件'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '触发条件': TRIGGER_OPTIONS, '驱动属性': DRIVER7, '影响方向': DIRECTION5 }, types: { '授予效果': '原型列表', '触发限制': '对象', '可用次数': '整数', '持续回合': '整数' } },
     '位移执行': { allowed: ['原型', '目标', '生效方式', '位移类型', '位移对象', '距离', '数值', '持续回合', '驱动属性', '影响方向'], required: ['位移类型', '位移对象'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '位移类型': ['拉近', '击退', '换位', '瞬移', '脱离'], '位移对象': ['自身', '目标', '自身与目标'], '驱动属性': DRIVER7, '影响方向': DIRECTION4 }, types: { '距离': '数字', '数值': '带符号数值', '持续回合': '整数' } },
     '决策干扰': { allowed: ['原型', '目标', '生效方式', '干扰', '数值', '持续回合', '驱动属性', '影响方向'], required: ['干扰', '数值'], enums: { '目标': TARGET5, '生效方式': EFFECT_MODE2, '干扰': ['判断干扰', '索敌干扰'], '驱动属性': DRIVER7, '影响方向': DIRECTION_INTERFERENCE }, types: { '数值': '带符号数值', '持续回合': '整数' } }
   };
@@ -597,12 +598,28 @@
     }
     return true;
   }
+  function followUpKeyReason(effect) {
+    if (!hasOwn(effect, '跟进行动键')) return 'FOLLOW_UP_KEY_MISSING';
+    var key = effect['跟进行动键'];
+    if (typeof key !== 'string' || key.length === 0 || key.length > FOLLOW_UP_KEY_MAX_LENGTH ||
+        !ID_PATTERN.test(key) || key.trim().length === 0) return 'FOLLOW_UP_KEY_INVALID';
+    return null;
+  }
+  function followUpRecipientReason(proto, legality) {
+    if (proto !== '机制授予') return null;
+    var targetIds = legality && legality.targetIds;
+    return Array.isArray(targetIds) && targetIds.length === 1 ? null : 'FOLLOW_UP_RECIPIENT_COUNT_INVALID';
+  }
   function validatePending13(effect, proto) {
     var spec = PENDING13_SPEC[proto];
     if (!spec) return { reason: 'UNKNOWN_PROTOTYPE_REJECTED' };
     for (var f in effect) {
       if (!hasOwn(effect, f)) continue;
       if (spec.allowed.indexOf(f) < 0) return { reason: 'INVALID_OPTION_VALUE' };
+    }
+    if (proto === '机制授予') {
+      var keyReason = followUpKeyReason(effect);
+      if (keyReason) return { reason: keyReason };
     }
     if (proto === '机制授予' && (!Array.isArray(effect['授予效果']) || effect['授予效果'].length === 0)) return { carrier: true };
     for (var rq = 0; rq < spec.required.length; rq += 1) {
@@ -741,6 +758,15 @@
       return projectionWithUnsupported(legality.reject, { legalityModifiers: legMods, opportunityModifiers: oppMods });
     }
     if (legality.tauntReason) legMods.taunt = tauntLegalityModifier(legality);
+    var recipientReason = followUpRecipientReason(proto, legality);
+    if (recipientReason) {
+      var recipientOut = emptyProjection();
+      recipientOut.legalityModifiers = legMods;
+      recipientOut.opportunityModifiers = oppMods;
+      recipientOut.deferCode = 'DEFER_MECHANICS_PROJECTION';
+      recipientOut.unsupportedOutcomeKinds = [recipientReason];
+      return recipientOut;
+    }
     var targetIds = effect['目标'] === '自身'
       ? [sc.sourceActorId]
       : (Array.isArray(sc.candidateTargetIds) ? sc.candidateTargetIds.slice() : []);
@@ -796,9 +822,15 @@
     } else if (proto === '机制授予') {
       var payload = [];
       var trigger = String(effect['触发条件']).trim();
+      var grantRowCtx = {
+        sourceActionId: rowCtx.sourceActionId,
+        sourceActorId: rowCtx.sourceActorId,
+        sourceEffectId: rowCtx.sourceEffectId,
+        targetIds: legality.targetIds.slice()
+      };
       var payloadOk = true;
       for (var gi = 0; gi < effect['授予效果'].length; gi += 1) {
-        var pr = grantPayloadRows(effect['授予效果'][gi], rowCtx);
+        var pr = grantPayloadRows(effect['授予效果'][gi], grantRowCtx);
         if (pr.error) { payloadOk = false; break; }
         for (var pri = 0; pri < pr.rows.length; pri += 1) payload.push(pr.rows[pri]);
       }
@@ -810,7 +842,14 @@
         gOut.unsupportedOutcomeKinds = [PENDING_KIND];
         return gOut;
       }
-      var follow = { entryId: String(rowCtx.sourceEffectId) + ':schedule:0', grantType: 'FOLLOW_UP', triggerKey: trigger, payloadDirectFacts: payload };
+      var follow = {
+        entryId: String(rowCtx.sourceEffectId) + ':schedule:0',
+        grantType: 'FOLLOW_UP',
+        triggerKey: trigger,
+        ownerId: legality.targetIds[0],
+        followUpKey: effect['跟进行动键'],
+        payloadDirectFacts: payload
+      };
       if (trigger === '主动触发') follow.maxActions = Number(effect['可用次数']);
       out.scheduledFacts = [follow];
     } else if (proto === '决策干扰') {
@@ -1709,6 +1748,12 @@
       metrics.rejectCount += 1;
       return { admitted: false, reasons: [p13v.reason] };
     }
+    var recipientReason = followUpRecipientReason(proto, legality);
+    if (recipientReason) {
+      metrics.payloadDeferCount += 1;
+      reasons.push(recipientReason);
+      return { admitted: true, reasons: reasons, retainedInCandidateAudit: true };
+    }
     if (p13v.payloadDeferCode) {
       metrics.payloadDeferCount += 1;
       reasons.push('PAYLOAD_UNPROJECTABLE_DEFERRED');
@@ -2173,14 +2218,25 @@
     add('unionIdentityDedupe', 1916 + 21 === reg.formalLibrary.unionFirstFiveCount + reg.formalLibrary.unclassifiedCount, { union: 1916, unclassified: 21 });
     var winMiss = runAdmit({ 原型: '时窗修正', 目标: '单体', 调整方式: '延长' }, baseCtx);
     add('windowAdjustFieldRequired', winMiss.admitted === false && winMiss.reasons[0] === 'MISSING_REQUIRED_FIELD', { reasons: winMiss.reasons });
-    var triggerBad = runAdmit({ 原型: '机制授予', 目标: '自身', 触发条件: '死亡时触发', 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx);
+    var followUpKey = 'follow-up-1';
+    var triggerBad = runAdmit({ 原型: '机制授予', 目标: '自身', 触发条件: '死亡时触发', 跟进行动键: followUpKey, 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx);
     add('triggerKeyRegistryEnumClosed', triggerBad.admitted === false && triggerBad.reasons[0] === 'INVALID_OPTION_VALUE' && TRIGGER_OPTIONS.length === 2, { reasons: triggerBad.reasons });
-    var useCountMiss = runAdmit({ 原型: '机制授予', 目标: '自身', 触发条件: '主动触发', 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx);
+    var useCountMiss = runAdmit({ 原型: '机制授予', 目标: '自身', 触发条件: '主动触发', 跟进行动键: followUpKey, 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx);
     add('maxActionsExplicitOnly', useCountMiss.admitted === false && useCountMiss.reasons[0] === 'MISSING_REQUIRED_FIELD', { reasons: useCountMiss.reasons });
-    var grantPayloadPrj = projectDispatched({ 原型: '机制授予', 目标: '自身', 触发条件: '主动触发', 可用次数: 2, 持续回合: 3, 授予效果: [{ 原型: '复制执行', 目标: '单体', 复制类型: '复制技能', 复制模式: '即时镜像' }] }, baseCtx, {}, {}, LIFT_MAP, PROJECTION_MAP);
+    var grantPayloadPrj = projectDispatched({ 原型: '机制授予', 目标: '自身', 触发条件: '主动触发', 跟进行动键: followUpKey, 可用次数: 2, 持续回合: 3, 授予效果: [{ 原型: '复制执行', 目标: '单体', 复制类型: '复制技能', 复制模式: '即时镜像' }] }, baseCtx, {}, {}, LIFT_MAP, PROJECTION_MAP);
     add('nestedPayloadRecursiveProjection', grantPayloadPrj.deferCode === 'DEFER_MECHANICS_PROJECTION' && grantPayloadPrj.unsupportedOutcomeKinds.indexOf('COPY_EXECUTION') >= 0, { deferCode: grantPayloadPrj.deferCode, kinds: grantPayloadPrj.unsupportedOutcomeKinds });
-    var grantOk = runAdmit({ 原型: '机制授予', 目标: '自身', 触发条件: '随下次行动触发', 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx);
+    var grantOk = runAdmit({ 原型: '机制授予', 目标: '自身', 触发条件: '随下次行动触发', 跟进行动键: followUpKey, 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx);
     add('grantPayloadProjected', grantOk.admitted === true && grantOk.reasons.indexOf(PENDING_KIND) < 0, { reasons: grantOk.reasons });
+    var grantIdentity = projectDispatched({ 原型: '机制授予', 目标: '自身', 触发条件: '随下次行动触发', 跟进行动键: followUpKey, 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx, {}, {}, LIFT_MAP, PROJECTION_MAP);
+    var grantRow = grantIdentity.scheduledFacts[0];
+    add('followUpIdentityProjection', !!grantRow && grantRow.ownerId === 'actor-1' && grantRow.followUpKey === followUpKey && grantRow.grantType === 'FOLLOW_UP' && grantRow.triggerKey === '随下次行动触发', { row: grantRow });
+    var missingGrantKey = projectDispatched({ 原型: '机制授予', 目标: '自身', 触发条件: '随下次行动触发', 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx, {}, {}, LIFT_MAP, PROJECTION_MAP);
+    add('followUpKeyMissingRejected', missingGrantKey.scheduledFacts.length === 0 && missingGrantKey.unsupportedOutcomeKinds[0] === 'FOLLOW_UP_KEY_MISSING', { projection: missingGrantKey });
+    var invalidGrantKey = projectDispatched({ 原型: '机制授予', 目标: '自身', 触发条件: '随下次行动触发', 跟进行动键: new Array(130).join('x'), 授予效果: [{ 原型: '判定修正', 目标: '自身', 判定: '命中', 数值: '+10%' }] }, baseCtx, {}, {}, LIFT_MAP, PROJECTION_MAP);
+    add('followUpKeyInvalidRejected', invalidGrantKey.scheduledFacts.length === 0 && invalidGrantKey.unsupportedOutcomeKinds[0] === 'FOLLOW_UP_KEY_INVALID', { projection: invalidGrantKey });
+    var multiGrantCtx = { sourceActionId: 'a', sourceActorId: 'actor-1', sourceEffectId: 'e', candidateTargetIds: ['enemy-1', 'enemy-2'] };
+    var multiGrant = projectDispatched({ 原型: '机制授予', 目标: '群体', 触发条件: '随下次行动触发', 跟进行动键: followUpKey, 授予效果: [{ 原型: '判定修正', 目标: '单体', 判定: '命中', 数值: '+10%' }] }, multiGrantCtx, {}, {}, LIFT_MAP, PROJECTION_MAP);
+    add('followUpMultipleRecipientsDeferred', multiGrant.scheduledFacts.length === 0 && multiGrant.deferCode === 'DEFER_MECHANICS_PROJECTION' && multiGrant.unsupportedOutcomeKinds[0] === 'FOLLOW_UP_RECIPIENT_COUNT_INVALID', { projection: multiGrant });
     add('windowMultiRowKeysAreScheduledFactKeys', PENDING13_SPEC['时窗修正'].allowed.indexOf('结算倍率') >= 0 && PENDING13_SPEC['时窗修正'].allowed.indexOf('调整字段') >= 0, { windowKeys: PENDING13_SPEC['时窗修正'].allowed });
 
     // ---- revision 5 batch-2 semantic probes (状态施加/召唤生成/结算修正) ----

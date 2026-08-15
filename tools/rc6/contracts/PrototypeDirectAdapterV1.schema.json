@@ -221,7 +221,7 @@
            "minLength": 1
           },
           "scheduledFacts": {
-             "const": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants); every scheduled fact row carries stable entryId = ${sourceEffectId}:schedule:${index} where index is the 0-based position inside that effect instance's own scheduledFacts array, covering WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW; WINDOW_ADJUST uses only entryId/operation/调整字段/调整方式 plus, when present, 调整回合/调整tick/调整次数/结算倍率 (private aliases key/字段/方式 are forbidden); SETTLEMENT_RATIO_ADJUST uses entryId/operation/结算倍率; FOLLOW_UP uses entryId/grantType/triggerKey/maxActions (主动触发 only, from explicit 可用次数, missing 可用次数 rejects MISSING_REQUIRED_FIELD, 随下次行动触发 projects no maxActions)/payloadDirectFacts; SUMMON_WINDOW uses entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns when known"
+             "const": "S5 scheduled and window facts (delayed triggers, duration adjustments, follow-up or summon window grants); every scheduled fact row carries stable entryId = ${sourceEffectId}:schedule:${index} where index is the 0-based position inside that effect instance's own scheduledFacts array, covering WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW; WINDOW_ADJUST uses only entryId/operation/调整字段/调整方式 plus, when present, 调整回合/调整tick/调整次数/结算倍率 (private aliases key/字段/方式 are forbidden); SETTLEMENT_RATIO_ADJUST uses entryId/operation/结算倍率; FOLLOW_UP uses entryId/grantType/ownerId/followUpKey/triggerKey/maxActions (ownerId is the unique targetId after effect target closure; V1 never fans out: zero or multiple targets are deferred/unsupported, with FOLLOW_UP_RECIPIENT_COUNT_INVALID and no grant row; followUpKey comes only from explicit 跟进行动键 and missing key is fail-closed as FOLLOW_UP_KEY_MISSING with no closed grant row; 主动触发 requires maxActions from explicit 可用次数, 随下次行动触发 projects no maxActions)/payloadDirectFacts; SUMMON_WINDOW uses entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns when known"
           },
           "unsupportedOutcomeKinds": {
            "const": "outcome kinds this adapter cannot project; non-empty only together with deferCode or an explicit reason code"
@@ -2084,6 +2084,8 @@
    "required": [
     "entryId",
     "grantType",
+    "ownerId",
+    "followUpKey",
     "triggerKey",
     "payloadDirectFacts"
    ],
@@ -2091,10 +2093,16 @@
     "entryId": {
      "$ref": "#/$defs/idString"
     },
-    "grantType": {
-     "const": "FOLLOW_UP"
-    },
-    "triggerKey": {
+   "grantType": {
+    "const": "FOLLOW_UP"
+   },
+   "ownerId": {
+    "$ref": "#/$defs/idString"
+   },
+   "followUpKey": {
+    "$ref": "#/$defs/idString"
+   },
+   "triggerKey": {
      "enum": [
       "主动触发",
       "随下次行动触发"
@@ -3391,6 +3399,9 @@
       },
       "触发条件": {
        "type": "string"
+      },
+      "跟进行动键": {
+       "$ref": "#/$defs/idString"
       },
       "触发限制": {
        "$ref": "#/$defs/triggerLimit"

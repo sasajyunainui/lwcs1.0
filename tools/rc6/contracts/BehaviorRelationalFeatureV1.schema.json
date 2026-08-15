@@ -1,0 +1,363 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "BehaviorRelationalFeatureV1.schema.json",
+  "title": "BehaviorRelationalFeatureV1 contract and runtime instances",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractId",
+    "revision",
+    "status",
+    "encoding",
+    "title",
+    "authority",
+    "inputShape",
+    "entryRules",
+    "formulaRules",
+    "outputShape",
+    "reasonCodes",
+    "validatorGates",
+    "canonicalInputExample",
+    "canonicalOutputExample"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "BehaviorRelationalFeatureV1"},
+    "contractId": {"const": "RC6-M2-BEHAVIOR-RELATIONAL-FEATURE-V1-REV4-2026-08-15"},
+    "revision": {"const": 4},
+    "status": {"const": "FROZEN"},
+    "encoding": {"const": "UTF-8"},
+    "title": {"const": "Source机械投影到固定五项生产即时关系特征"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "inputShape": {"$ref": "#/$defs/inputShape"},
+    "entryRules": {"$ref": "#/$defs/entryRules"},
+    "formulaRules": {"$ref": "#/$defs/formulaRules"},
+    "outputShape": {"$ref": "#/$defs/outputShape"},
+    "reasonCodes": {"const": ["OK", "AXIS_PARTIAL", "ACTION_CATALOG_PARTIAL", "NO_CANDIDATE_TEAM_EFFECT", "NO_RESOURCE_SUPPLY", "NO_RESOURCE_DEFICIT", "NO_RESOURCE_CONSUMER", "NO_FOLLOW_UP_GRANT"]},
+    "validatorGates": {"const": ["INPUT_TOP_LEVEL_EXACT", "FROZEN_CANDIDATE_ID_CLOSURE", "ENTRY_KIND_AND_IDENTITY_CLOSURE", "SOURCE_REF_CLOSURE", "SOURCE_REGISTRY_ATTESTATION_EXACT", "TEAM_EFFECT_TYPED_KEY", "RESOURCE_SUPPLY_PREVIEW_TARGET_CLOSURE", "PUBLIC_CONSUMER_COST_CLOSURE", "FEATURE_PREFIX_ORDER_AND_OPERANDS", "FORMULA_SCOPE_NO_CANDIDATE_COMPARISON"]},
+    "canonicalInputExample": {"$ref": "#/$defs/input"},
+    "canonicalOutputExample": {"$ref": "#/$defs/output"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "sourceFactIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "sourceEventIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "sourceRefCondition": {
+      "anyOf": [
+        {"type": "object", "required": ["sourceFactIds"], "properties": {"sourceFactIds": {"type": "array", "minItems": 1}}},
+        {"type": "object", "required": ["sourceEventIds"], "properties": {"sourceEventIds": {"type": "array", "minItems": 1}}}
+      ]
+    },
+    "timeBand": {"enum": ["NOW", "SCHEDULED"]},
+    "durationBand": {"enum": ["INSTANT", "SHORT", "MEDIUM", "LONG", "PERSISTENT"]},
+    "effectAxis": {"type": "string", "minLength": 1, "pattern": "^[A-Z][A-Z0-9_]*$"},
+    "effectKey": {"type": "string", "minLength": 1},
+    "teamEffectEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityKind", "ownerId", "targetId", "effectAxis", "effectKey", "timeBand", "durationBand", "sourceFactIds", "sourceEventIds"],
+      "properties": {
+        "capabilityKind": {"const": "TEAM_EFFECT"},
+        "ownerId": {"$ref": "#/$defs/id"},
+        "targetId": {"$ref": "#/$defs/id"},
+        "effectAxis": {"$ref": "#/$defs/effectAxis"},
+        "effectKey": {"$ref": "#/$defs/effectKey"},
+        "timeBand": {"$ref": "#/$defs/timeBand"},
+        "durationBand": {"$ref": "#/$defs/durationBand"},
+        "sourceFactIds": {"$ref": "#/$defs/sourceFactIds"},
+        "sourceEventIds": {"$ref": "#/$defs/sourceEventIds"}
+      },
+      "allOf": [{"$ref": "#/$defs/sourceRefCondition"}]
+    },
+    "resourceSupplyEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityKind", "ownerId", "targetId", "resourceKey", "timeBand", "supplyAmount", "publicMaxAmount", "sourceFactIds", "sourceEventIds"],
+      "properties": {
+        "capabilityKind": {"const": "RESOURCE_SUPPLY"},
+        "ownerId": {"$ref": "#/$defs/id"},
+        "targetId": {"$ref": "#/$defs/id"},
+        "resourceKey": {"$ref": "#/$defs/id"},
+        "timeBand": {"$ref": "#/$defs/timeBand"},
+        "supplyAmount": {"type": "number", "minimum": 0},
+        "publicMaxAmount": {"type": "number", "minimum": 0},
+        "sourceFactIds": {"$ref": "#/$defs/sourceFactIds"},
+        "sourceEventIds": {"$ref": "#/$defs/sourceEventIds"}
+      },
+      "allOf": [{"$ref": "#/$defs/sourceRefCondition"}]
+    },
+    "followUpEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityKind", "grantType", "ownerId", "followUpKey", "grantProofIds", "sourceFactIds", "sourceEventIds"],
+      "properties": {
+        "capabilityKind": {"const": "FOLLOW_UP"},
+        "grantType": {"const": "FOLLOW_UP"},
+        "ownerId": {"$ref": "#/$defs/id"},
+        "followUpKey": {"$ref": "#/$defs/id"},
+        "grantProofIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "sourceFactIds": {"$ref": "#/$defs/sourceFactIds"},
+        "sourceEventIds": {"$ref": "#/$defs/sourceEventIds"}
+      },
+      "allOf": [{"$ref": "#/$defs/sourceRefCondition"}]
+    },
+    "baselineEntry": {"$ref": "#/$defs/teamEffectEntry"},
+    "candidateEntry": {"oneOf": [{"$ref": "#/$defs/teamEffectEntry"}, {"$ref": "#/$defs/resourceSupplyEntry"}, {"$ref": "#/$defs/followUpEntry"}]},
+    "publicConsumer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["consumerId", "ownerId", "resourceKey", "currentAmount", "requiredAmount", "actionId", "followUpKeys", "sourceFactIds", "sourceEventIds"],
+      "properties": {
+        "consumerId": {"$ref": "#/$defs/id"},
+        "ownerId": {"$ref": "#/$defs/id"},
+        "resourceKey": {"$ref": "#/$defs/id"},
+        "currentAmount": {"type": "number", "minimum": 0},
+        "requiredAmount": {"type": "number", "exclusiveMinimum": 0},
+        "actionId": {"$ref": "#/$defs/id"},
+        "followUpKeys": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "sourceFactIds": {"$ref": "#/$defs/sourceFactIds"},
+        "sourceEventIds": {"$ref": "#/$defs/sourceEventIds"}
+      },
+      "allOf": [{"$ref": "#/$defs/sourceRefCondition"}]
+    },
+    "baselineCompleteness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["TEAM_EFFECT"],
+      "properties": {"TEAM_EFFECT": {"enum": ["COMPLETE", "PARTIAL"]}}
+    },
+    "candidateCompleteness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["TEAM_EFFECT", "RESOURCE_SUPPLY", "FOLLOW_UP"],
+      "properties": {
+        "TEAM_EFFECT": {"enum": ["COMPLETE", "PARTIAL"]},
+        "RESOURCE_SUPPLY": {"enum": ["COMPLETE", "PARTIAL"]},
+        "FOLLOW_UP": {"enum": ["COMPLETE", "PARTIAL"]}
+      }
+    },
+    "registryAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registryVersion", "registryHash", "mappedCount", "battleScopeCount", "exactMapping", "projectorIds"],
+      "properties": {
+        "registryVersion": {"const": "BehaviorRelationalProjectorRegistryV1"},
+        "registryHash": {"const": "85016b9198590c5deb6ac4675c4f95dd7fbae164692720a087af6188e4ff6586"},
+        "mappedCount": {"const": 27},
+        "battleScopeCount": {"const": 23},
+        "exactMapping": {"const": true},
+        "projectorIds": {"const": ["BRF_EXPLICIT_FOLLOW_UP_V1", "BRF_NOT_RELATIONAL_V1", "BRF_RESOURCE_SUPPLY_V1", "BRF_TEAM_EFFECT_V1"]}
+      }
+    },
+    "sourceClosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factIds", "eventIds", "closureHash"],
+      "properties": {
+        "factIds": {"$ref": "#/$defs/sourceFactIds"},
+        "eventIds": {"$ref": "#/$defs/sourceEventIds"},
+        "closureHash": {"$ref": "#/$defs/id"}
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "frozenCandidateIds", "baselineEntries", "candidateEntriesById", "publicConsumers", "baselineCompletenessByAxis", "candidateCompletenessByAxis", "actionCatalogCompleteness", "sourceClosure", "registryAttestation"],
+      "properties": {
+        "schemaVersion": {"const": "BehaviorRelationalFeatureV1"},
+        "frozenCandidateIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "baselineEntries": {"type": "array", "items": {"$ref": "#/$defs/baselineEntry"}},
+        "candidateEntriesById": {"type": "object", "minProperties": 1, "patternProperties": {"^.+$": {"type": "array", "items": {"$ref": "#/$defs/candidateEntry"}}}, "additionalProperties": false},
+        "publicConsumers": {"type": "array", "items": {"$ref": "#/$defs/publicConsumer"}},
+        "baselineCompletenessByAxis": {"$ref": "#/$defs/baselineCompleteness"},
+        "candidateCompletenessByAxis": {"type": "object", "minProperties": 1, "patternProperties": {"^.+$": {"$ref": "#/$defs/candidateCompleteness"}}, "additionalProperties": false},
+        "actionCatalogCompleteness": {"enum": ["COMPLETE", "PARTIAL"]},
+        "sourceClosure": {"$ref": "#/$defs/sourceClosure"},
+        "registryAttestation": {"$ref": "#/$defs/registryAttestation"}
+      }
+    },
+    "operand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value", "unit", "sourceFactIds", "sourceEventIds"],
+      "properties": {
+        "name": {"$ref": "#/$defs/id"},
+        "value": {"oneOf": [{"type": "number"}, {"type": "string", "minLength": 1}]},
+        "unit": {"$ref": "#/$defs/id"},
+        "sourceFactIds": {"$ref": "#/$defs/sourceFactIds"},
+        "sourceEventIds": {"$ref": "#/$defs/sourceEventIds"}
+      },
+      "allOf": [{"$ref": "#/$defs/sourceRefCondition"}]
+    },
+    "reasonCode": {"enum": ["OK", "AXIS_PARTIAL", "ACTION_CATALOG_PARTIAL", "NO_CANDIDATE_TEAM_EFFECT", "NO_RESOURCE_SUPPLY", "NO_RESOURCE_DEFICIT", "NO_RESOURCE_CONSUMER", "NO_FOLLOW_UP_GRANT"]},
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["featureCode", "status", "unit", "reasonCode", "operands", "sourceFactIds", "sourceEventIds"],
+      "properties": {
+        "featureCode": {"enum": ["TEAM_EFFECT_MARGINAL_GAIN", "TEAM_EFFECT_REDUNDANCY_RATIO", "RESOURCE_DEFICIT_COVERAGE", "RESOURCE_CONSUMER_FIT", "TEAM_FOLLOWUP_COVERAGE"]},
+        "status": {"enum": ["KNOWN", "UNKNOWN", "NOT_APPLICABLE"]},
+        "unit": {"const": "RATIO_0_1"},
+        "value": {"type": "number", "minimum": 0, "maximum": 1},
+        "reasonCode": {"$ref": "#/$defs/reasonCode"},
+        "operands": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/operand"}},
+        "sourceFactIds": {"$ref": "#/$defs/sourceFactIds"},
+        "sourceEventIds": {"$ref": "#/$defs/sourceEventIds"}
+      },
+      "allOf": [
+        {"$ref": "#/$defs/sourceRefCondition"},
+        {"if": {"properties": {"status": {"const": "KNOWN"}}, "required": ["status"]}, "then": {"required": ["value"], "properties": {"value": {"type": "number", "minimum": 0, "maximum": 1}, "reasonCode": {"const": "OK"}}}},
+        {"if": {"properties": {"status": {"const": "UNKNOWN"}}, "required": ["status"]}, "then": {"not": {"required": ["value"], "properties": {"value": {}}}, "properties": {"value": {}, "reasonCode": {"enum": ["AXIS_PARTIAL", "ACTION_CATALOG_PARTIAL"]}}}},
+        {"if": {"properties": {"status": {"const": "NOT_APPLICABLE"}}, "required": ["status"]}, "then": {"not": {"required": ["value"], "properties": {"value": {}}}, "properties": {"value": {}, "reasonCode": {"enum": ["NO_CANDIDATE_TEAM_EFFECT", "NO_RESOURCE_SUPPLY", "NO_RESOURCE_DEFICIT", "NO_RESOURCE_CONSUMER", "NO_FOLLOW_UP_GRANT"]}}}}
+      ]
+    },
+    "perCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "features"],
+      "properties": {
+        "candidateId": {"$ref": "#/$defs/id"},
+        "features": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "prefixItems": [
+            {"allOf": [{"$ref": "#/$defs/feature"}, {"type": "object", "properties": {"featureCode": {"const": "TEAM_EFFECT_MARGINAL_GAIN"}}}]},
+            {"allOf": [{"$ref": "#/$defs/feature"}, {"type": "object", "properties": {"featureCode": {"const": "TEAM_EFFECT_REDUNDANCY_RATIO"}}}]},
+            {"allOf": [{"$ref": "#/$defs/feature"}, {"type": "object", "properties": {"featureCode": {"const": "RESOURCE_DEFICIT_COVERAGE"}}}]},
+            {"allOf": [{"$ref": "#/$defs/feature"}, {"type": "object", "properties": {"featureCode": {"const": "RESOURCE_CONSUMER_FIT"}}}]},
+            {"allOf": [{"$ref": "#/$defs/feature"}, {"type": "object", "properties": {"featureCode": {"const": "TEAM_FOLLOWUP_COVERAGE"}}}]}
+          ],
+          "items": false
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "perCandidate"],
+      "properties": {
+        "schemaVersion": {"const": "BehaviorRelationalFeatureV1"},
+        "perCandidate": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/perCandidate"}}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["productionChain", "productionInputTrustBoundary", "inputTopLevelExactFields", "publicOnly", "selection", "scoring", "probabilityWeighting", "candidateVsCandidate", "futureTraversal", "teacherReasoning"],
+      "properties": {
+        "productionChain": {"const": "Source_MECHANICAL_PROJECTION -> Compiler_FIXED_FIVE_FEATURES"},
+        "productionInputTrustBoundary": {"type": "string", "minLength": 1},
+        "inputTopLevelExactFields": {"const": ["schemaVersion", "frozenCandidateIds", "baselineEntries", "candidateEntriesById", "publicConsumers", "baselineCompletenessByAxis", "candidateCompletenessByAxis", "actionCatalogCompleteness", "sourceClosure", "registryAttestation"]},
+        "publicOnly": {"const": true},
+        "selection": {"const": false},
+        "scoring": {"const": false},
+        "probabilityWeighting": {"const": false},
+        "candidateVsCandidate": {"const": false},
+        "futureTraversal": {"const": false},
+        "teacherReasoning": {"const": false}
+      }
+    },
+    "inputShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baselineEntryKinds", "candidateEntryKinds", "publicConsumerExactFields", "baselineCompletenessFields", "candidateCompletenessFields", "completenessValues", "actionCatalogCompletenessValues"],
+      "properties": {
+        "baselineEntryKinds": {"const": ["TEAM_EFFECT"]},
+        "candidateEntryKinds": {"const": ["TEAM_EFFECT", "RESOURCE_SUPPLY", "FOLLOW_UP"]},
+        "publicConsumerExactFields": {"const": ["consumerId", "ownerId", "resourceKey", "currentAmount", "requiredAmount", "actionId", "followUpKeys", "sourceFactIds", "sourceEventIds"]},
+        "baselineCompletenessFields": {"const": ["TEAM_EFFECT"]},
+        "candidateCompletenessFields": {"const": ["TEAM_EFFECT", "RESOURCE_SUPPLY", "FOLLOW_UP"]},
+        "completenessValues": {"const": ["COMPLETE", "PARTIAL"]},
+        "actionCatalogCompletenessValues": {"const": ["COMPLETE", "PARTIAL"]}
+      }
+    },
+    "entryRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceRefs", "TEAM_EFFECT", "RESOURCE_SUPPLY", "FOLLOW_UP", "publicConsumer", "sourceClosure", "registryAttestation"],
+      "properties": {
+        "sourceRefs": {"type": "string", "minLength": 1},
+        "TEAM_EFFECT": {"$ref": "#/$defs/teamRule"},
+        "RESOURCE_SUPPLY": {"$ref": "#/$defs/resourceRule"},
+        "FOLLOW_UP": {"$ref": "#/$defs/followUpRule"},
+        "publicConsumer": {"type": "string", "minLength": 1},
+        "sourceClosure": {"type": "string", "minLength": 1},
+        "registryAttestation": {"type": "string", "minLength": 1}
+      }
+    },
+    "formulaRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["teamEffect", "resourceDeficit", "resourceCoverage", "consumerFit", "followUp", "partialAndEmpty", "numeric"],
+      "properties": {
+        "teamEffect": {"type": "string", "minLength": 1},
+        "resourceDeficit": {"type": "string", "minLength": 1},
+        "resourceCoverage": {"type": "string", "minLength": 1},
+        "consumerFit": {"type": "string", "minLength": 1},
+        "followUp": {"type": "string", "minLength": 1},
+        "partialAndEmpty": {"type": "string", "minLength": 1},
+        "numeric": {"type": "string", "minLength": 1}
+      }
+    },
+    "outputShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topLevelExactFields", "featureOrder", "featureExactFields", "featureUnit", "operandExactFields", "knownValueRule", "additionalProperties"],
+      "properties": {
+        "topLevelExactFields": {"const": ["schemaVersion", "perCandidate"]},
+        "featureOrder": {"const": ["TEAM_EFFECT_MARGINAL_GAIN", "TEAM_EFFECT_REDUNDANCY_RATIO", "RESOURCE_DEFICIT_COVERAGE", "RESOURCE_CONSUMER_FIT", "TEAM_FOLLOWUP_COVERAGE"]},
+        "featureExactFields": {"const": ["featureCode", "status", "unit", "value", "reasonCode", "operands", "sourceFactIds", "sourceEventIds"]},
+        "featureUnit": {"const": "RATIO_0_1"},
+        "operandExactFields": {"const": ["name", "value", "unit", "sourceFactIds", "sourceEventIds"]},
+        "knownValueRule": {"type": "string", "minLength": 1},
+        "additionalProperties": {"const": false}
+      }
+    },
+    "teamRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields", "identity", "effectKey", "timeBand", "durationBand"],
+      "properties": {
+        "fields": {"const": ["capabilityKind", "ownerId", "targetId", "effectAxis", "effectKey", "timeBand", "durationBand", "sourceFactIds", "sourceEventIds"]},
+        "identity": {"type": "string", "minLength": 1},
+        "effectKey": {"type": "string", "minLength": 1},
+        "timeBand": {"type": "string", "minLength": 1},
+        "durationBand": {"type": "string", "minLength": 1}
+      }
+    },
+    "resourceRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields", "amount", "targetClosure", "currentAxis"],
+      "properties": {
+        "fields": {"const": ["capabilityKind", "ownerId", "targetId", "resourceKey", "timeBand", "supplyAmount", "publicMaxAmount", "sourceFactIds", "sourceEventIds"]},
+        "amount": {"type": "string", "minLength": 1},
+        "targetClosure": {"type": "string", "minLength": 1},
+        "currentAxis": {"type": "string", "minLength": 1}
+      }
+    },
+    "followUpRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields", "rule"],
+      "properties": {
+        "fields": {"const": ["capabilityKind", "grantType", "ownerId", "followUpKey", "grantProofIds", "sourceFactIds", "sourceEventIds"]},
+        "rule": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

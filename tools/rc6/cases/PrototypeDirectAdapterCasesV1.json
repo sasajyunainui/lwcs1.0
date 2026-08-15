@@ -105,7 +105,7 @@
    }
   },
   "deferredPathIdsCount": 40,
-  "caseCount": 85,
+  "caseCount": 87,
   "redProbeCount": 24
  },
  "cases": [
@@ -835,6 +835,7 @@
     "原型": "机制授予",
     "目标": "自身",
     "触发条件": "主动触发",
+    "跟进行动键": "follow-1",
     "可用次数": 2,
     "持续回合": 3,
     "授予效果": [
@@ -852,6 +853,8 @@
    {
     "entryId": "effect:pos-grant-followup:0:schedule:0",
     "grantType": "FOLLOW_UP",
+    "ownerId": "actor-1",
+    "followUpKey": "follow-1",
     "triggerKey": "主动触发",
       "maxActions": 2,
       "payloadDirectFacts": [
@@ -892,6 +895,7 @@
     "原型": "机制授予",
     "目标": "自身",
     "触发条件": "随下次行动触发",
+    "跟进行动键": "follow-1",
     "授予效果": [
      {
       "原型": "判定修正",
@@ -907,6 +911,8 @@
    {
     "entryId": "effect:pos-grant-followup-next-action:0:schedule:0",
     "grantType": "FOLLOW_UP",
+    "ownerId": "actor-1",
+    "followUpKey": "follow-1",
     "triggerKey": "随下次行动触发",
       "payloadDirectFacts": [
        {
@@ -3887,6 +3893,83 @@
     "sourceEffectId": "effect:pos-real-wuchangkong-state-remove:0",
     "candidateTargetIds": [
      "actor-1"
+    ]
+   }
+  },
+  {
+   "caseId": "defer-grant-missing-followup-key",
+   "kind": "DEFER",
+   "prototype": "机制授予",
+   "effect": {
+    "原型": "机制授予",
+    "目标": "自身",
+    "触发条件": "主动触发",
+    "可用次数": 2,
+    "持续回合": 3,
+    "授予效果": [
+     {
+      "原型": "判定修正",
+      "目标": "自身",
+      "判定": "命中",
+      "数值": "+10%"
+     }
+    ]
+   },
+   "expect": {
+    "admitted": false,
+    "scheduledFacts": [],
+    "unsupportedOutcomeKinds": [
+     "FOLLOW_UP_KEY_MISSING"
+    ],
+    "deferCode": "",
+    "reasonCode": "FOLLOW_UP_KEY_MISSING"
+   },
+   "context": {
+    "sourceActionId": "action:defer-grant-missing-followup-key",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:defer-grant-missing-followup-key:0",
+    "candidateTargetIds": [
+     "actor-1"
+    ]
+   }
+  },
+  {
+   "caseId": "defer-grant-multiple-recipients",
+   "kind": "DEFER",
+   "prototype": "机制授予",
+   "effect": {
+    "原型": "机制授予",
+    "目标": "群体",
+    "触发条件": "主动触发",
+    "跟进行动键": "follow-1",
+    "可用次数": 2,
+    "持续回合": 3,
+    "授予效果": [
+     {
+      "原型": "判定修正",
+      "目标": "自身",
+      "判定": "命中",
+      "数值": "+10%"
+     }
+    ]
+   },
+   "expect": {
+    "admitted": true,
+    "scheduledFacts": [],
+    "unsupportedOutcomeKinds": [
+     "FOLLOW_UP_RECIPIENT_COUNT_INVALID"
+    ],
+    "deferCode": "DEFER_MECHANICS_PROJECTION",
+    "reasonCode": "FOLLOW_UP_RECIPIENT_COUNT_INVALID",
+    "retainedInCandidateAudit": true
+   },
+   "context": {
+    "sourceActionId": "action:defer-grant-multiple-recipients",
+    "sourceActorId": "actor-1",
+    "sourceEffectId": "effect:defer-grant-multiple-recipients:0",
+    "candidateTargetIds": [
+     "actor-1",
+     "ally-1"
     ]
    }
   }
