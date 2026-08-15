@@ -31715,6 +31715,50 @@
     const beliefState = buildInitialBelief(worldSnapshot, actorId, input?.beliefState || {});
     tracePrepareStage('belief-built');
     const visibleWorld = buildDecisionWorld(worldSnapshot, actorId, beliefState);
+    Object.values(visibleWorld?.参战者 || {}).forEach(value => {
+      const units = Array.isArray(value)
+        ? value
+        : value && typeof value === 'object'
+          ? Object.values(value)
+          : [];
+      units.forEach(unit => {
+        if (!unit || typeof unit !== 'object' || Array.isArray(unit)) {
+          throw new TypeError('battle_decision_visible_unit_invalid');
+        }
+        ['状态效果', '持续效果'].forEach(field => {
+          if (unit[field] === undefined) {
+            unit[field] = {};
+            return;
+          }
+          const container = unit[field];
+          const prototype = container && typeof container === 'object'
+            ? Object.getPrototypeOf(container)
+            : null;
+          const plainObject = prototype === null || (
+            Object.prototype.hasOwnProperty.call(prototype, 'constructor') &&
+            typeof prototype.constructor === 'function' &&
+            prototype.constructor.name === 'Object' &&
+            prototype.constructor.prototype === prototype
+          );
+          if (
+            !container ||
+            typeof container !== 'object' ||
+            Array.isArray(container) ||
+            !plainObject
+          ) {
+            throw new TypeError(`battle_decision_visible_unit_container_invalid:${field}`);
+          }
+        });
+      });
+    });
+    [
+      input?.runtimeSnapshot?.scheduledEvents,
+      input?.scheduledEvents,
+    ].forEach(value => {
+      if (value !== undefined && !Array.isArray(value)) {
+        throw new TypeError('battle_decision_scheduled_events_invalid');
+      }
+    });
     tracePrepareStage('visible-world-built');
     const visibleActor = findUnitInWorld(visibleWorld, actorId);
     const actorSide = sideOf(visibleWorld, visibleActor);
