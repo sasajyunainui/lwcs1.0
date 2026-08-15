@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "BehaviorCandidateFeatureBridgeV1.schema.json",
   "title": "BehaviorCandidateFeatureBridgeV1",
-  "description": "Closed schema for the BehaviorCandidateFeatureBridgeV1 contract document (revision 1) and its frozen runtime bridge output ($defs.bridgeOutput). Transcription only: no selection/TopK, no future route, no result world, no hidden facts, no teacher in production closure. bifInput mirrors the production subset of the BehaviorImmediateFeatureV1 inputContract revision 4.",
+  "description": "Closed schema for the BehaviorCandidateFeatureBridgeV1 contract document (revision 2) and its frozen runtime bridge output ($defs.bridgeOutput). Transcription only: no selection/TopK, no future route, no result world, no hidden facts, no teacher in production closure. bifInput mirrors the production subset of the BehaviorImmediateFeatureV1 inputContract revision 6.",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -36,7 +36,7 @@
       "const": "BehaviorCandidateFeatureBridgeV1"
     },
     "revision": {
-      "const": 1
+      "const": 2
     },
     "status": {
       "const": "FROZEN"
@@ -668,7 +668,7 @@
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
-        "^tools/rc6/(contracts|cases)/[A-Za-z0-9_./-]+\\.json$": {
+        "^(?:BehaviorPrototypeAdapter_Module|BehaviorImmediateFeature_Module)\\.js$|^tools/rc6/(contracts|cases)/[A-Za-z0-9_./-]+\\.json$": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
         }
@@ -1124,6 +1124,8 @@
           "required": [
             "entryId",
             "grantType",
+            "ownerId",
+            "followUpKey",
             "triggerKey",
             "payloadDirectFacts"
           ],
@@ -1137,6 +1139,18 @@
             },
             "grantType": {
               "const": "FOLLOW_UP"
+            },
+            "ownerId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+            },
+            "followUpKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
             },
             "triggerKey": {
               "enum": [

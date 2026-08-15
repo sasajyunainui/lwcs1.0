@@ -1,20 +1,20 @@
 // BehaviorImmediateFeature_Module.js
 // M2 immediate feature compiler writer F - revision 4 production candidate (R9_CANDIDATE_UNREGISTERED).
 // Contract authority (frozen, disk-verified):
-//   tools/rc6/contracts/BehaviorImmediateFeatureV1.json       5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd
+//   tools/rc6/contracts/BehaviorImmediateFeatureV1.json       6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5
 //   tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json 686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937
-//   tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json       9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18
+//   tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json       7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0
 //   tools/rc6/contracts/DistilledBehaviorPolicyV1.json         8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c (read-only, untrained)
 //   tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json  19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b (read-only, untrained)
 // Governed frozen sources (read-only): BehaviorProviderV1 cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156;
-//   PrototypeDirectAdapterV1 b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a;
-//   PrototypeDirectAdapterV1.schema 9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5;
-//   DirectFactRowV1 7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67;
+//   PrototypeDirectAdapterV1 4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e;
+//   PrototypeDirectAdapterV1.schema 7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22;
+//   PrototypeDirectAdapterCasesV1 f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d; DirectFactRowV1 7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67;
 //   DirectFactRowV1.schema 0325e39cd33ecf1c925268d451f23c3bde4d75eca3b5405b614c255b931b0538.
 // Revision 4 final (cases 62): scheduledFacts closed four-shape per PDA rev5 schema
 // (WINDOW_ADJUST entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/
 // 结算倍率; SETTLEMENT_RATIO_ADJUST entryId/operation/结算倍率; FOLLOW_UP entryId/grantType/
-// triggerKey/payloadDirectFacts with maxActions only for 主动触发; SUMMON_WINDOW entryId/
+// ownerId/followUpKey/triggerKey/payloadDirectFacts with maxActions >=1 only for 主动触发; SUMMON_WINDOW entryId/
 // grantType/召唤单位类型/召唤物名称/行动模式/durationTurns); private aliases key/字段/方式
 // are rejected; every entry requires entryId and counts into OUTSIDE_BATCH1_ROW_COUNT.
 // Revision 4 (batch-2 rev4): six raw feature codes pinned at fixed catalog positions 23-28
@@ -210,7 +210,7 @@
   var SCHED_SHAPES = {
     WINDOW_ADJUST: ['entryId', 'operation', '调整字段', '调整方式', '调整回合', '调整tick', '调整次数', '结算倍率'],
     SETTLEMENT_RATIO_ADJUST: ['entryId', 'operation', '结算倍率'],
-    FOLLOW_UP: ['entryId', 'grantType', 'triggerKey', 'maxActions', 'payloadDirectFacts'],
+    FOLLOW_UP: ['entryId', 'grantType', 'ownerId', 'followUpKey', 'triggerKey', 'maxActions', 'payloadDirectFacts'],
     SUMMON_WINDOW: ['entryId', 'grantType', '召唤单位类型', '召唤物名称', '行动模式', 'durationTurns']
   };
   var TRIGGER_ENUM = ['主动触发', '随下次行动触发'];
@@ -219,15 +219,16 @@
   var FORBIDDEN_FACT_KEYS = ['source', 'fact'];
 
   var CONTRACT_HASHES = {
-    featureContract: '5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd',
+    featureContract: '6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5',
     featureSchema: '686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937',
-    featureCases: '9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18',
+    featureCases: '7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0',
     policyContract: '8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c',
     policySchema: '19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b',
     governed: {
       provider: 'cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156',
-      adapterContract: 'b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a',
-      adapterSchema: '9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5',
+      adapterContract: '4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e',
+      adapterSchema: '7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22',
+      adapterCases: 'f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d',
       directFactRow: '7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67'
     }
   };
@@ -507,8 +508,10 @@
         if (e['结算倍率'] === undefined) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].结算倍率' });
         toFiniteNumber(e['结算倍率'], 'scheduledFacts[].结算倍率');
       } else if (shape === 'FOLLOW_UP') {
+        validateIdString(e.ownerId, 'scheduledFacts[].ownerId');
+        validateIdString(e.followUpKey, 'scheduledFacts[].followUpKey');
         if (TRIGGER_ENUM.indexOf(e.triggerKey) < 0) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].triggerKey', value: String(e.triggerKey) });
-        if (!Array.isArray(e.payloadDirectFacts)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts' });
+        if (!Array.isArray(e.payloadDirectFacts) || e.payloadDirectFacts.length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts' });
         for (var pi = 0; pi < e.payloadDirectFacts.length; pi += 1) {
           var prow = e.payloadDirectFacts[pi];
           if (!prow || typeof prow !== 'object') throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].payloadDirectFacts[' + pi + ']' });
@@ -530,9 +533,12 @@
           }
         }
         if (e.maxActions !== undefined) {
+          if (typeof e.maxActions !== 'number') throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', value: String(e.maxActions) });
           var ma = toFiniteNumber(e.maxActions, 'scheduledFacts[].maxActions');
-          if (ma < 0 || Math.floor(ma) !== ma) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', value: ma });
+          if (ma < 1 || Math.floor(ma) !== ma) throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', value: ma });
           if (e.triggerKey !== '主动触发') throw rejection('INVALID_OPTION_VALUE', { field: 'scheduledFacts[].maxActions', triggerKey: String(e.triggerKey) });
+        } else if (e.triggerKey === '主动触发') {
+          throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].maxActions' });
         }
       } else if (shape === 'SUMMON_WINDOW') {
         if (typeof e['召唤单位类型'] !== 'string' || e['召唤单位类型'].length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'scheduledFacts[].召唤单位类型' });
@@ -1242,7 +1248,7 @@
         legalityFlags: { required: false, shape: 'string[] every member in hardExclusionCodes' },
         legalityModifiers: { required: false, shape: 'judgmentRates/taunt/tauntRemoved/stateMigration/stateSwap/mechanismRemoval metadata; hardExclusions/legalityFlags code arrays restricted to hardExclusionCodes', closed: true },
         opportunityModifiers: { required: false, shape: 'resourceLocks/opportunityConstraints/interferenceRates/dependencyTokens metadata', closed: true },
-        scheduledFacts: { required: false, shape: 'closed four-shape: WINDOW_ADJUST {entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/结算倍率}, SETTLEMENT_RATIO_ADJUST {entryId/operation/结算倍率}, FOLLOW_UP {entryId/grantType/triggerKey/payloadDirectFacts, maxActions only for 主动触发}, SUMMON_WINDOW {entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns}; entryId required; private aliases key/字段/方式 rejected', closed: true },
+        scheduledFacts: { required: false, shape: 'closed four-shape: WINDOW_ADJUST {entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/结算倍率}, SETTLEMENT_RATIO_ADJUST {entryId/operation/结算倍率}, FOLLOW_UP {entryId/grantType/ownerId/followUpKey/triggerKey/payloadDirectFacts, maxActions integer >=1 and required only for 主动触发}, SUMMON_WINDOW {entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns}; entryId/ownerId/followUpKey required; all IDs validateIdString; private aliases key/字段/方式 rejected', closed: true },
         mechanicMetadataEntries: { required: false, shape: 'closed entries array, one entry per effect instance: {sourceEffectId (required id) + prototype-allowed Chinese keys} per PDA rev5Spec perPrototypeSubsets (生效方式/结算标签/抗性类型/驱动属性/影响方向/对应等级/触发方式/触发限制/结算/限定元素/吸收资源/吸收来源); audit-only, values never enter features', closed: true },
         projectionFamilies: { required: false, shape: '[{ sourceEffectId: id string, prototype: closed registry prototype enum }] unique; audit-only routing identity, never weighted', closed: true },
         publicCost: { required: false, shape: [{ resource: 'enum 魂力|精神力|体力|生命', amount: 'number finite positive' }], closed: true },

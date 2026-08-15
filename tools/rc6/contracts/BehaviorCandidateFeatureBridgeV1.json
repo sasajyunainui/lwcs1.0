@@ -1,7 +1,7 @@
 {
   "schemaVersion": "BehaviorCandidateFeatureBridgeV1",
   "contractId": "BehaviorCandidateFeatureBridgeV1",
-  "revision": 1,
+  "revision": 2,
   "status": "FROZEN",
   "encoding": "UTF-8",
   "title": "candidate-level facts bridge: transcribes prepareDecisionRequest(CANDIDATES_ONLY) candidate identity and public snapshot, per-candidate DECISION_VISIBLE preview atomic facts, and PrototypeDirectAdapterV1 admit/project output into the BehaviorImmediateFeatureV1 input contract production subset; one pass per candidate and per effect; explicit rejections, pending, deferred and untranscribed accounting; paymentMode derived (never fabricated); ZERO supported projection is a fatal contract violation; BIF caps (CAP_EXCEEDED, MAX_WORK_UNITS_PER_CALL=200000) referenced as whole-compile rejections; no selection, no TopK, no future route, no result world, no hidden facts, no teacher in production closure.",
@@ -16,7 +16,7 @@
       "DirectFactRowV1"
     ],
     "claim": "CONTRACT_TARGET_ONLY_NOT_IMPLEMENTED",
-    "claimDetail": "freezes the transcription bridge input/output shape, lifting rules and accounting; the runtime bridge module is not implemented; this contract is not an implementation claim.",
+    "claimDetail": "freezes the transcription bridge input/output shape, lifting rules and accounting; PrototypeDirectAdapterV1 revision 5 scheduled rows are transcribed verbatim, including stable ownerId/followUpKey on FOLLOW_UP rows; the BIF input contract is BehaviorImmediateFeatureV1 inputContract revision 6; this contract is not an implementation claim.",
     "futureRouteDerivation": false,
     "worldClone": false,
     "resultWorldEnumeration": false,
@@ -29,7 +29,7 @@
       "prepareDecisionRequest CANDIDATES_ONLY frozen candidate identity (candidateId, actorId, actorSide, actionKind, targetSet, paymentMode)",
       "prepareDecisionRequest CANDIDATES_ONLY visibleWorld public snapshot (units, sides, actorStatus)",
       "per-candidate previewAction basis DECISION_VISIBLE atomic contributions with finite expectedDelta and finite evidence.hitProbability",
-      "PrototypeDirectAdapterV1 admit/project rows: directFacts, legalityModifiers, opportunityModifiers, scheduledFacts, unsupportedOutcomeKinds, deferCode",
+      "PrototypeDirectAdapterV1 revision 5 admit/project rows: directFacts, legalityModifiers, opportunityModifiers, scheduledFacts, unsupportedOutcomeKinds, deferCode; FOLLOW_UP rows retain stable non-empty ownerId/followUpKey",
       "candidate declaration public costs (魂力/精神力/体力/生命) and public hit probability evidence",
       "candidate declaration payment fields: candidate.paymentMode, declaration.paymentMode, candidate.resourcePotentialOnly"
     ],
@@ -59,11 +59,11 @@
   "perCandidateOutput": {
     "candidateId": "string, non-empty, at most 512 characters, rejects C0/DEL control characters; equals the prepared candidate identity",
     "bifInput": {
-      "shape": "production subset of BehaviorImmediateFeatureV1 inputContract revision 4: candidate, publicSnapshot, atomicFacts, directFacts, legalityModifiers, opportunityModifiers, scheduledFacts, mechanicMetadataEntries, projectionFamilies, publicCost, publicProbability, publicDeclarations",
+      "shape": "production subset of BehaviorImmediateFeatureV1 inputContract revision 6: candidate, publicSnapshot, atomicFacts, directFacts, legalityModifiers, opportunityModifiers, scheduledFacts, mechanicMetadataEntries, projectionFamilies, publicCost, publicProbability, publicDeclarations",
       "lifting": {
         "mechanicMetadataEntries": "aggregated from PrototypeDirectAdapterV1 opportunityModifiers.mechanicMetadataEntries across all effects of the candidate into one closed array; values are verbatim normalized deep clones, deep-frozen and never re-interpreted or scored; multi-effect entries are kept per effect instance",
         "projectionFamilies": "aggregated from PrototypeDirectAdapterV1 opportunityModifiers.projectionFamilies; closed [{sourceEffectId, prototype}] entries; routing identity only, never a weight",
-        "scheduledFacts": "PrototypeDirectAdapterV1 scheduledFacts rows verbatim; no repack; every scheduledFacts row (WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW) already carries entryId = sourceEffectId + ':schedule:' + 0-based index inside that effect's own scheduledFacts array",
+        "scheduledFacts": "PrototypeDirectAdapterV1 revision 5 scheduledFacts rows verbatim; no repack; every scheduledFacts row (WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW) already carries entryId = sourceEffectId + ':schedule:' + 0-based index inside that effect's own scheduledFacts array; FOLLOW_UP rows retain ownerId/followUpKey and the triggerKey/maxActions constraint",
         "opportunityModifiers": "transcribed minus the lifted mechanicMetadataEntries and projectionFamilies keys"
       },
       "testOnlyKeysNeverEmitted": [
@@ -174,7 +174,7 @@
   },
   "complexity": {
     "expression": "O(C * (F0 + R_c + N_c))",
-    "note": "C=candidates; F0=fixed candidate-scope facts; R_c=directFacts rows; N_c=modifier/scheduled/metadata entries; one pass, no cross-row/cross-branch combination product. BIF caps are referenced from BehaviorImmediateFeatureV1 rev4: work units = F0(13) + directFacts rows + modifier entries + scheduledFacts entries + atomicFacts entries; any breach (features>256, rows>128, modifiers>64, work>200000) is a whole-compile CAP_EXCEEDED rejection of the candidate; the bridge never pre-prunes candidates and never uses wall clock.",
+    "note": "C=candidates; F0=fixed candidate-scope facts; R_c=directFacts rows; N_c=modifier/scheduled/metadata entries; one pass, no cross-row/cross-branch combination product. BIF caps are referenced from BehaviorImmediateFeatureV1 rev6: work units = F0(13) + directFacts rows + modifier entries + scheduledFacts entries + atomicFacts entries; any breach (features>256, rows>128, modifiers>64, work>200000) is a whole-compile CAP_EXCEEDED rejection of the candidate; the bridge never pre-prunes candidates and never uses wall clock.",
     "caps": {
       "MAX_FEATURES_PER_CANDIDATE": 256,
       "MAX_FACT_ROWS_PER_CANDIDATE": 128,
@@ -197,17 +197,19 @@
     "bridgeSchema": "tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json"
   },
   "sourceHashes": {
-    "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a",
-    "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5",
-    "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "f875433b372d925ee3e659449f06d98cbce566b02556f4f10e2811d3d1d0a164",
+    "BehaviorPrototypeAdapter_Module.js": "6924daa535b98e369da67b924bcd0a4e957ed6bf4ca2a9bc9aaa2184c6886c70",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e",
+    "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22",
+    "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d",
     "tools/rc6/contracts/BehaviorProviderQualityGateV1.json": "cf9eeaa3519db8084b55c340716a987c046f205c640ecfe39f1e224ae05c33c2",
     "tools/rc6/contracts/BehaviorProviderQualityGateV1.schema.json": "09e6a59bfb02c41cca6fb813aea5acca31349aed99c3363fe0c8a1293bb4744e",
     "tools/rc6/cases/BehaviorProviderQualitySplitV1.json": "1ea7faee92a61008505cb6b4ccf6e03cf8a7d586b140230897513e0e662512a9",
     "tools/rc6/contracts/DirectFactRowV1.json": "7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67",
     "tools/rc6/contracts/DirectFactRowV1.schema.json": "0325e39cd33ecf1c925268d451f23c3bde4d75eca3b5405b614c255b931b0538",
-    "tools/rc6/contracts/BehaviorImmediateFeatureV1.json": "5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd",
+    "BehaviorImmediateFeature_Module.js": "8add454b2197c8bf5be825c5584ade4369343c6eb62cac391f51cdd1bfd2cb6c",
+    "tools/rc6/contracts/BehaviorImmediateFeatureV1.json": "6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5",
     "tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json": "686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937",
-    "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json": "9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18",
+    "tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json": "7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0",
     "tools/rc6/contracts/DistilledBehaviorPolicyV1.json": "8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c",
     "tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json": "19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b",
     "tools/rc6/contracts/DecisionContributionTraceV1.json": "efd196824263d85c7c17ebec4761b17ea70d04178429cb94f66b3d0f55ef9a99",
@@ -227,7 +229,7 @@
       "bifInput mirrors the production subset of BehaviorImmediateFeatureV1 inputContract; the bridge never emits the test-only keys forbiddenFacts/branchCombination/preMultiplied",
       "mechanicMetadataEntries is a closed array of {sourceEffectId plus prototype-allowed Chinese field-name keys}; values are verbatim and never interpreted or scored",
       "projectionFamilies is a closed array of {sourceEffectId, prototype}; routing identity only",
-      "scheduledFacts are PDA verbatim rows; every scheduledFacts row (WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW) carries entryId = sourceEffectId + ':schedule:' + 0-based index inside that effect's own scheduledFacts array",
+      "scheduledFacts are PDA revision 5 verbatim rows; every row carries entryId = sourceEffectId + ':schedule:' + 0-based index inside that effect's own scheduledFacts array, and FOLLOW_UP retains stable non-empty ownerId/followUpKey with the triggerKey/maxActions constraint",
       "untranscribed preview facts are counted with explicit reasons; UNKNOWN is never 0",
       "hardExclusions carry only the ten BIF formal codes; legacy R9 codes are never forwarded",
       "no-official-effect candidates are recorded with kind and upstream materialization note; no invented skill effects",
@@ -236,7 +238,7 @@
       "pdaDeferred kinds are exactly DEFER_MECHANICS_PROJECTION/DEFER_LEGALITY_INJECTION/DEFER_REPORT_PROJECTION; deferred effects stay admitted and are never relabeled pending or rejected",
       "zeroProjectionPolicy: SUPPORTED with no projection is fatal ZERO_SUPPORTED_PROJECTION, never pending, never silent",
       "publicDeclarations is emitted only with an explicit public source; otherwise the key is omitted",
-      "BIF CAP_EXCEEDED is referenced as whole-compile rejection (never candidate pruning, never wall clock); MAX_WORK_UNITS_PER_CALL=200000 mirrors BehaviorImmediateFeatureV1 rev4"
+      "BIF CAP_EXCEEDED is referenced as whole-compile rejection (never candidate pruning, never wall clock); MAX_WORK_UNITS_PER_CALL=200000 mirrors BehaviorImmediateFeatureV1 rev6"
     ]
   }
 }

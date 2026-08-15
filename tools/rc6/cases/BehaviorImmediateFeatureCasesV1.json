@@ -1,6 +1,6 @@
 {
   "schemaVersion": "BehaviorImmediateFeatureCasesV1",
-  "revision": 8,
+  "revision": 9,
   "contractId": "RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-CASES-V1-2026-08-14",
   "encoding": "UTF-8",
   "contractsUnderTest": [
@@ -31,6 +31,8 @@
     "input.legalityFlags[]/legalityModifiers.hardExclusions[]/legalityFlags[] outside hardExclusionCodes": "INVALID_OPTION_VALUE",
     "input.publicCost[].resource outside 魂力/精神力/体力/生命 or amount<=0": "INVALID_OPTION_VALUE",
     "input.scheduledFacts[].entryId missing": "MISSING_SOURCE_REFERENCE",
+    "input.scheduledFacts[].FOLLOW_UP.ownerId/followUpKey missing": "MISSING_SOURCE_REFERENCE",
+    "input.scheduledFacts[].FOLLOW_UP.maxActions < 1": "INVALID_OPTION_VALUE",
     "output STATE_PRESENCE KNOWN from unit=COUNT row (COUNT coerced to BOOL)": "INVALID_STATUS_VALUE",
     "input.atomicFacts[].hitCheckApplicability missing": "MISSING_SOURCE_REFERENCE",
     "input.directFacts rows > MAX_FACT_ROWS_PER_CANDIDATE": "CAP_EXCEEDED",
@@ -43,7 +45,8 @@
     "caseCount": 62,
     "positiveCount": 38,
     "negativeCount": 15,
-    "antiPatternCount": 9
+    "antiPatternCount": 9,
+    "parameterizedCount": 5
   },
   "cases": [
     {
@@ -5491,6 +5494,8 @@
           {
             "entryId": "effect:pos-followup-next-action:0:schedule:0",
             "grantType": "FOLLOW_UP",
+            "ownerId": "actor-1",
+            "followUpKey": "follow-1",
             "triggerKey": "随下次行动触发",
             "payloadDirectFacts": [
               {
@@ -5592,8 +5597,16 @@
       }
     }
   ],
+  "parameterizedCases": [
+    { "caseId": "neg-followup-missing-owner-id", "baseCaseId": "pos-followup-next-action", "scheduledIndex": 0, "removeKeys": ["ownerId"], "expect": { "reject": { "reasonCode": "MISSING_SOURCE_REFERENCE" } } },
+    { "caseId": "neg-followup-missing-followup-key", "baseCaseId": "pos-followup-next-action", "scheduledIndex": 0, "removeKeys": ["followUpKey"], "expect": { "reject": { "reasonCode": "MISSING_SOURCE_REFERENCE" } } },
+    { "caseId": "neg-followup-max-actions-zero", "baseCaseId": "pos-followup-next-action", "scheduledIndex": 0, "set": { "triggerKey": "主动触发", "maxActions": 0 }, "expect": { "reject": { "reasonCode": "INVALID_OPTION_VALUE" } } },
+    { "caseId": "EMPTY_PAYLOAD_DIRECT_FACTS", "baseCaseId": "pos-followup-next-action", "scheduledIndex": 0, "set": { "payloadDirectFacts": [] }, "expect": { "reject": { "reasonCode": "MISSING_SOURCE_REFERENCE" } } },
+    { "caseId": "STRING_MAX_ACTIONS", "baseCaseId": "pos-followup-next-action", "scheduledIndex": 0, "set": { "triggerKey": "主动触发", "maxActions": "1" }, "expect": { "reject": { "reasonCode": "INVALID_OPTION_VALUE" } } }
+  ],
   "revision3Delta": "revision 4 (feature contract rev3): five batch-2 raw feature codes STATE_DELTA_PERCENT/SETTLEMENT_MODIFIER_PERCENT/SUMMON_COUNT/SUMMON_STRENGTH/SUMMON_DURATION; mechanicMetadataEntries/projectionFamilies audit-only inputs strictly validated (values never enter features; prototype names never weighted); scheduled windows never become KNOWN summon duration; settlement modifier never double-counts into HP/RESOURCE features; unknown/NA never 0.",
   "revision6Delta": "revision 6 (feature contract rev4 caps): CAP_EXCEEDED and MAX_WORK_UNITS_PER_CALL=200000 formalized; pos-cap-within-bounds (64 modifier entries, 14 features) and neg-cap-modifiers-exceeded (65 modifier entries, CAP_EXCEEDED) probes added; rejectionMapping gains the four cap-breach mappings; cap breach is a whole-compile rejection, never candidate pruning or wall clock.",
   "revision7Delta": "revision 7 (PDA-form trigger limit): mechanicMetadataEntries[].触发限制 is oneOf non-empty string or closed object {周期: string, 次数: integer>=1} per PrototypeDirectAdapterV1 schema authority; pos-metadata-trigger-object (object form, audit-only, 4 features) and anti-metadata-trigger-object-unknown-key (object unknown key => INVALID_OPTION_VALUE) probes added; metadata values never enter features.",
-  "revision8Delta": "revision 8 (PDA-form scheduled four-shape): inputContract.scheduledFacts accepts exactly WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW closed shapes per PrototypeDirectAdapterV1 schema authority (standard keys only, private aliases key/字段/方式 rejected); pos-scheduled-counted rewritten to real 白寒樱 window shape; pos-followup-next-action added (随下次行动触发, no maxActions); neg-scheduled-private-alias added (private alias 字段/方式 => INVALID_OPTION_VALUE); rejectionMapping gains private-alias and unknown-operation mappings."
+  "revision8Delta": "revision 8 (PDA-form scheduled four-shape): inputContract.scheduledFacts accepts exactly WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW closed shapes per PrototypeDirectAdapterV1 schema authority (standard keys only, private alias keys rejected); pos-scheduled-counted rewritten to real 白寒樱 window shape; pos-followup-next-action added (随下次行动触发, no maxActions); neg-scheduled-private-alias added (private alias 字段/方式 => INVALID_OPTION_VALUE); rejectionMapping gains private-alias and unknown-operation mappings.",
+  "revision9Delta": "revision 9 (BIF input contract revision 6): pos-followup-next-action carries ownerId/followUpKey; parameterized shape probes reject missing ownerId, missing followUpKey, maxActions=0, empty payloadDirectFacts and string maxActions; main feature/output revision remains 4."
 }

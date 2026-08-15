@@ -1,7 +1,7 @@
 {
  "schemaVersion": "BehaviorImmediateFeatureV1",
  "contractId": "RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-V1-2026-08-14",
- "revision": 5,
+  "revision": 6,
  "status": "FROZEN",
  "encoding": "UTF-8",
  "title": "public immediate mechanics to raw stable ordered features; CANDIDATES_ONLY inputs only; no future traversal; revision 2 freezes real ids (CJK/hyphen ok), actor identity (actorId/actorSide/sides), actor-only cost, explicit hit-check applicability, closed input contract, unordered-multiset SUBSET semantics; revision 4 formalizes the module caps (CAP_EXCEEDED, MAX_WORK_UNITS_PER_CALL=200000) and freezes the batch-2 raw feature codes (STATE_DELTA_PERCENT/SETTLEMENT_MODIFIER_PERCENT/SUMMON_COUNT/SUMMON_STRENGTH/SUMMON_DURATION, RESOURCE_DELTA_PERCENT) plus audit-only mechanicMetadataEntries/projectionFamilies inputs.",
@@ -86,7 +86,7 @@
    },
    {
     "name": "scheduledFacts",
-    "source": "adapter scheduledFacts entries, closed four-shape per PrototypeDirectAdapterV1 schema: WINDOW_ADJUST (entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/结算倍率), SETTLEMENT_RATIO_ADJUST (entryId/operation/结算倍率), FOLLOW_UP (entryId/grantType/triggerKey/payloadDirectFacts, maxActions only for 主动触发 from explicit 可用次数), SUMMON_WINDOW (entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns); private aliases key/字段/方式 are rejected; every entry requires entryId (missing => MISSING_SOURCE_REFERENCE); entries are never silent: they count into OUTSIDE_BATCH1_ROW_COUNT and their entryIds go to its sourceEventIds",
+    "source": "adapter scheduledFacts entries, closed four-shape per PrototypeDirectAdapterV1 schema: WINDOW_ADJUST (entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/结算倍率), SETTLEMENT_RATIO_ADJUST (entryId/operation/结算倍率), FOLLOW_UP (entryId/grantType/ownerId/followUpKey/triggerKey/payloadDirectFacts, maxActions integer >=1 required only for 主动触发 from explicit 可用次数), SUMMON_WINDOW (entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns); ownerId/followUpKey are required stable id strings; private aliases key/字段/方式 are rejected; every entry requires entryId (missing => MISSING_SOURCE_REFERENCE); entries are never silent: they count into OUTSIDE_BATCH1_ROW_COUNT and their entryIds go to its sourceEventIds",
     "required": false
    },
    {
@@ -643,12 +643,14 @@
   "provider": "tools/rc6/contracts/BehaviorProviderV1.json",
   "adapterContract": "tools/rc6/contracts/PrototypeDirectAdapterV1.json",
   "adapterSchema": "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json",
+  "adapterCases": "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json",
   "directFactRow": "tools/rc6/contracts/DirectFactRowV1.json"
  },
  "sourceHashes": {
   "tools/rc6/contracts/BehaviorProviderV1.json": "cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156",
-  "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a",
-  "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5",
+  "tools/rc6/contracts/PrototypeDirectAdapterV1.json": "4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e",
+  "tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json": "7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22",
+  "tools/rc6/cases/PrototypeDirectAdapterCasesV1.json": "f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d",
   "tools/rc6/contracts/DirectFactRowV1.json": "7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67"
  },
  "validation": {
@@ -667,12 +669,12 @@
    "batch1PrototypeFamilies mapping agrees with featureCatalog sources.",
    "rejectionReasonCodes and hardExclusionCodes are each unique and disjoint.",
    "inputSurface.forbidden names are disjoint from allowed names.",
-   "inputContract (revision 4, closed) validates every case input: POSITIVE/BOUNDARY inputs must pass; NEGATIVE/ANTI_PATTERN inputs are injection channels whose expected reject codes are in rejectionReasonCodes and whose inputs must pass the closed shape unless the rejection itself is an input-shape rejection (NON_FINITE_REJECTED/MISSING_SOURCE_REFERENCE/INVALID_OPTION_VALUE on shape fields); mechanicMetadataEntries/projectionFamilies and both scheduledFacts shapes (windowAdjust, summonWindow) are closed in the inputContract.",
+    "inputContract (revision 6, closed) validates every case input: POSITIVE/BOUNDARY inputs must pass; NEGATIVE/ANTI_PATTERN inputs are injection channels whose expected reject codes are in rejectionReasonCodes and whose inputs must pass the closed shape unless the rejection itself is an input-shape rejection (NON_FINITE_REJECTED/MISSING_SOURCE_REFERENCE/INVALID_OPTION_VALUE on shape fields); mechanicMetadataEntries/projectionFamilies and all four scheduledFacts shapes are closed in the inputContract.",
    "identityRules: sides[actorId]===actorSide; sides covers actorId and all declared targets; RELATION_TARGET_SIDE derived by ID equality + sides equality only; no prefix guessing/neutral folding/default ALLY.",
    "COST_AFFORDABILITY reads units[actorId] only; resource map 魂力/精神力/体力/生命 frozen; cases include an actor-low-resource vs target-high-resource protection pair.",
    "SUCCESS_PROBABILITY uses explicit hitCheckApplicability; actionKind is never special-cased.",
    "RELATION_TARGET_COUNT = unique targetSet length; unknown units never dropped.",
-   "scheduledFacts never silent: counted into OUTSIDE_BATCH1_ROW_COUNT with entryIds in sourceEventIds; entryId required.",
+    "scheduledFacts never silent: counted into OUTSIDE_BATCH1_ROW_COUNT with entryIds in sourceEventIds; entryId required; FOLLOW_UP ownerId/followUpKey required; 主动触发 maxActions required and integer >=1, 随下次行动触发 forbids maxActions.",
    "STATE_PRESENCE KNOWN only for unit=BOOL rows, value strictly in {0,1} (amount>0 => 1, amount<=0 => 0, removal keeps row fact id); COUNT rows are UNKNOWN(STATE_FORM_UNMAPPED); schema rejects any other BOOL value.",
    "subsetSemantics is UNORDERED_MULTISET_WITH_COUNT_ASSERTIONS; expect order never represents output order; featureOrdering is the single global output order.",
    "sourceHashes match disk SHA256(raw bytes).",
@@ -687,7 +689,7 @@
  },
  "inputContract": {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "BehaviorImmediateFeatureV1 input contract (revision 4, closed)",
+  "title": "BehaviorImmediateFeatureV1 input contract (revision 6, closed)",
   "type": "object",
   "required": [
    "candidate",
@@ -1144,6 +1146,8 @@
        "required": [
         "entryId",
         "grantType",
+        "ownerId",
+        "followUpKey",
         "triggerKey",
         "payloadDirectFacts"
        ],
@@ -1158,6 +1162,8 @@
         "grantType": {
          "const": "FOLLOW_UP"
         },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" },
+        "followUpKey": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" },
         "triggerKey": {
          "enum": [
           "主动触发",
@@ -1518,5 +1524,6 @@
    "SETTLEMENT_MODIFIER_PERCENT"
   ]
  },
- "revision5Delta": "revision 5 (PDA-form scheduled four-shape): inputContract.scheduledFacts narrowed to the four closed shapes of PrototypeDirectAdapterV1 rev5 (WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW); operation is const per branch, standard keys only, private alias keys rejected; cases 60->62 with pos-followup-next-action and neg-scheduled-private-alias."
+ "revision5Delta": "revision 5 (PDA-form scheduled four-shape): inputContract.scheduledFacts narrowed to the four closed shapes of PrototypeDirectAdapterV1 rev5 (WINDOW_ADJUST/SETTLEMENT_RATIO_ADJUST/FOLLOW_UP/SUMMON_WINDOW); operation is const per branch, standard keys only, private alias keys rejected; cases 60->62 with pos-followup-next-action and neg-scheduled-private-alias.",
+  "revision6Delta": "revision 6 (PDA rev5 FOLLOW_UP shape): inputContract.scheduledFacts keeps the four closed shapes and requires FOLLOW_UP entryId/grantType/ownerId/followUpKey/triggerKey/payloadDirectFacts; ownerId/followUpKey use the stable id-string rule; 主动触发 requires integer maxActions >=1 and 随下次行动触发 forbids it; feature/output revision remains 4; parameterized cases cover missing ownerId, missing followUpKey and maxActions=0."
 }

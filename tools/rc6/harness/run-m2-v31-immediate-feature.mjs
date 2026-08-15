@@ -1,7 +1,7 @@
 // run-m2-v31-immediate-feature.mjs
 // M2 ImmediateFeature harness (candidate C), rev3. Read-only: never writes, stages or commits.
 // Loads the real BehaviorImmediateFeature_Module.js (compiler) in a poisoned vm and runs all
-// 62 BehaviorImmediateFeatureCasesV1 cases against it; verifies the five contract files
+// 62 BehaviorImmediateFeatureCasesV1 cases plus parameterized FOLLOW_UP shape probes; verifies the five contract files
 // (Feature/Feature.schema/Cases/Policy/Policy.schema) hashes, schema closure, 29-feature
 // stable ordering, value rules (KNOWN value only, UNKNOWN/NOT_APPLICABLE omit value, unit
 // isolation, duplicate/caps/work metrics, determinism/deepfreeze/noalias/-0), vm poison and
@@ -20,14 +20,15 @@ const REPO_ROOT = path.resolve(HERE, '..', '..', '..');
 const RC6 = path.join(REPO_ROOT, 'tools', 'rc6');
 const MOD_SRC = fs.readFileSync(path.join(REPO_ROOT, 'BehaviorImmediateFeature_Module.js'), 'utf8');
 
-const MOD_HASH_EXPECTED = 'a3d2be20e871af70db9082a3b446a5cd1b882af236d5096ef1a0ae9e56151bcf';
+const MOD_HASH_EXPECTED = '8add454b2197c8bf5be825c5584ade4369343c6eb62cac391f51cdd1bfd2cb6c';
 const CONTRACT_HASHES = {
-  feature: '5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd',
+  feature: '6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5',
   featureSchema: '686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937',
-  cases: '9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18',
+  cases: '7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0',
   policy: '8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c',
   policySchema: '19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b',
 };
+const PDA_PINS = {'tools/rc6/contracts/PrototypeDirectAdapterV1.json': '4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e', 'tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json': '7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22', 'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json': 'f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d'};
 const FILE_PATHS = {
   feature: path.join(RC6, 'contracts', 'BehaviorImmediateFeatureV1.json'),
   featureSchema: path.join(RC6, 'contracts', 'BehaviorImmediateFeatureV1.schema.json'),
@@ -219,7 +220,7 @@ const PS = readJson(FILE_PATHS.policySchema);
 
 // ---- block 1: five contract files hash / utf8 / dup keys / schema closure ----
 block('contracts', () => {
-  ok('module hash expected a3d2be20', sha256(MOD_SRC) === MOD_HASH_EXPECTED, sha256(MOD_SRC).slice(0, 12));
+  ok('module hash current pin', sha256(MOD_SRC) === MOD_HASH_EXPECTED, sha256(MOD_SRC).slice(0, 12));
   for (const [tag, want] of Object.entries(CONTRACT_HASHES)) {
     const buf = fs.readFileSync(FILE_PATHS[tag]);
     ok('hash ' + tag, sha256(buf) === want, sha256(buf).slice(0, 12));
@@ -229,8 +230,9 @@ block('contracts', () => {
     ok('no-mojibake ' + tag, !text.includes('\uFFFD'));
     ok('no-dup-keys ' + tag, findDupKeys(text).length === 0, findDupKeys(text).slice(0, 3).join(','));
   }
-  ok('feature rev5 frozen', F.revision === 5 && F.status === 'FROZEN');
-  ok('cases rev8 62', CASES.revision === 8 && CASES.cases.length === 62 && CASES.counts.caseCount === 62);
+  ok('feature input contract rev6 frozen', F.revision === 6 && F.status === 'FROZEN');
+  ok('cases rev9 62 + 5 parameterized', CASES.revision === 9 && CASES.cases.length === 62 && CASES.counts.caseCount === 62 && CASES.parameterizedCases.length === 5 && CASES.counts.parameterizedCount === 5);
+  ok('PDA source pins current', Object.entries(PDA_PINS).every(([p, h]) => F.sourceHashes[p] === h) && F.references.adapterCases === 'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json', JSON.stringify(F.sourceHashes));
   const kinds = {};
   const modes = {};
   for (const c of CASES.cases) { kinds[c.kind] = (kinds[c.kind] || 0) + 1; if (c.expectMode) modes[c.expectMode] = (modes[c.expectMode] || 0) + 1; }
@@ -302,6 +304,7 @@ block('module', () => {
   ok('module subsetSemantics', reg.subsetSemantics.includes('UNORDERED_MULTISET_WITH_COUNT_ASSERTIONS'));
   const HASH_KEY_MAP = { featureContract: 'feature', featureSchema: 'featureSchema', featureCases: 'cases', policyContract: 'policy', policySchema: 'policySchema' };
   ok('module contract hashes == disk', Object.entries(reg.contractHashes).filter(([k]) => HASH_KEY_MAP[k]).every(([k, h]) => CONTRACT_HASHES[HASH_KEY_MAP[k]] === h), JSON.stringify(reg.contractHashes));
+  ok('module PDA pins == contract', (reg.contractHashes.governed || {}).adapterContract === PDA_PINS['tools/rc6/contracts/PrototypeDirectAdapterV1.json'] && (reg.contractHashes.governed || {}).adapterSchema === PDA_PINS['tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json'] && (reg.contractHashes.governed || {}).adapterCases === PDA_PINS['tools/rc6/cases/PrototypeDirectAdapterCasesV1.json'], JSON.stringify(reg.contractHashes.governed || {}));
   ok('module identityRules', reg.identityRules.sidesConsistency.includes('sides[actorId]') && reg.identityRules.noGuessing.includes('no default ALLY'));
   ok('module semantics judgment single source', reg.semantics.judgmentSingleSource.includes('never a second magnitude'));
   ok('module semantics statePresence BOOL/COUNT', reg.semantics.statePresence.includes('STATE_FORM_UNMAPPED'));
@@ -466,9 +469,20 @@ block('cases', () => {
       }
     }
   }
+  let parameterizedOk = 0; const caseById = new Map(CASES.cases.map(c => [c.caseId, c]));
+  for (const p of CASES.parameterizedCases) {
+    const input = clone(caseById.get(p.baseCaseId).input), row = input.scheduledFacts[p.scheduledIndex];
+    for (const key of p.removeKeys || []) delete row[key];
+    Object.assign(row, p.set || {});
+    const rc = compileOnce(input), want = p.expect.reject.reasonCode;
+    ok(p.caseId + ' rejects ' + want, rc.err === want, 'got ' + rc.err);
+    ok(p.caseId + ' no output on reject', rc.out === null);
+    if (rc.err === want && rc.out === null) parameterizedOk += 1;
+  }
   ok('all 38 positive ran', positiveOk === 38, String(positiveOk));
   ok('all 15 negative ran', negativeOk === 15, String(negativeOk));
   ok('all 9 anti ran', antiOk === 9, String(antiOk));
+  ok('all 5 parameterized shape probes ran', parameterizedOk === 5, String(parameterizedOk));
 });
 
 // ---- block 4: ordering, uniqueness, per-feature protections ----

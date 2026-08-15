@@ -1,20 +1,23 @@
 // BehaviorCandidateFeatureBridge_Module.js
-// M2 candidate-feature bridge writer C - revision 1 production candidate (R9_CANDIDATE_UNREGISTERED).
+// M2 candidate-feature bridge writer C - revision 2 production candidate (R9_CANDIDATE_UNREGISTERED).
 // Contract authority (frozen, disk-verified):
-//   tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.json       4466b80b568b8b7edee74ca18fdcbf40dca4e4d864785e18c0c0de0671655756
-//   tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json a5d6b0dfc281ea23a612124f0e22210316a5a9fd8dad8dbf7cf1863e2eaae1f5
-//   tools/rc6/contracts/BehaviorImmediateFeatureV1.json            5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd
+//   tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.json       a84f43bd6179f1de529700175a75ba5bdf755d51c86e899b96f81c66b5ee125c
+//   tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json 11e9a0656ae589dcaa1a49a425f3d934082af2bd4c6d300d901cc1300a74dc0a
+//   BehaviorImmediateFeature_Module.js                              8add454b2197c8bf5be825c5584ade4369343c6eb62cac391f51cdd1bfd2cb6c
+//   tools/rc6/contracts/BehaviorImmediateFeatureV1.json             6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5
 //   tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json     686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937
-//   tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json           9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18
-//   tools/rc6/contracts/PrototypeDirectAdapterV1.json              b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a
-//   tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json       9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5
+//   tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json           7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0
+//   BehaviorPrototypeAdapter_Module.js                              6924daa535b98e369da67b924bcd0a4e957ed6bf4ca2a9bc9aaa2184c6886c70
+//   tools/rc6/contracts/PrototypeDirectAdapterV1.json               4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e
+//   tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json        7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22
+//   tools/rc6/cases/PrototypeDirectAdapterCasesV1.json              f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d
 //   tools/rc6/contracts/DirectFactRowV1.json                        7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67
 //   tools/rc6/contracts/DirectFactRowV1.schema.json                0325e39cd33ecf1c925268d451f23c3bde4d75eca3b5405b614c255b931b0538
 //   tools/rc6/contracts/DistilledBehaviorPolicyV1.json             8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c (read-only, untrained)
 //   tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json      19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b (read-only, untrained)
 // One-pass transcription bridge: prepared CANDIDATES_ONLY frozen candidate + public
 // visible snapshot + preview DECISION_VISIBLE atomic contributions + per-effect PDA
-// projection records + candidate declaration -> BIF rev4 production input subset.
+// projection records + candidate declaration -> BIF input rev6 production subset.
 // Strictly no R8 selection, no old shadow, no future-route, no world clone, no result
 // enumeration, no hidden reads, no teacher, no wall clock, no Runtime/loader wiring.
 // mechanicMetadataEntries/projectionFamilies are lifted (aggregated verbatim, never
@@ -29,16 +32,19 @@
   var ROLE = 'R9_CANDIDATE_UNREGISTERED';
   var SCHEMA_VERSION = 'BehaviorCandidateFeatureBridgeV1';
   var REGISTRY_ID = 'RC6-M2-BEHAVIOR-CANDIDATE-FEATURE-BRIDGE-V1-2026-08-14';
-  var REVISION = 1;
+  var REVISION = 2;
 
   var CONTRACT_HASHES = {
-    bridgeContract: '4466b80b568b8b7edee74ca18fdcbf40dca4e4d864785e18c0c0de0671655756',
-    bridgeSchema: 'a5d6b0dfc281ea23a612124f0e22210316a5a9fd8dad8dbf7cf1863e2eaae1f5',
-    featureContract: '5474139d71b4f0a5ece5512c89969085ba70b0d14b8b015c93b7d735d73cb9fd',
+    bridgeContract: 'a84f43bd6179f1de529700175a75ba5bdf755d51c86e899b96f81c66b5ee125c',
+    bridgeSchema: '11e9a0656ae589dcaa1a49a425f3d934082af2bd4c6d300d901cc1300a74dc0a',
+    featureModule: '8add454b2197c8bf5be825c5584ade4369343c6eb62cac391f51cdd1bfd2cb6c',
+    featureContract: '6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5',
     featureSchema: '686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937',
-    featureCases: '9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18',
-    adapterContract: 'b11ec4052fe2f8a91dc9ad47021ff2f68327487458ef55e32778f30ac694473a',
-    adapterSchema: '9f7fd7c46ec4dd76ae73e20b07daff57a7b70ece8e8b85adbaa174f60c16b5a5',
+    featureCases: '7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0',
+    adapterModule: '6924daa535b98e369da67b924bcd0a4e957ed6bf4ca2a9bc9aaa2184c6886c70',
+    adapterContract: '4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e',
+    adapterSchema: '7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22',
+    adapterCases: 'f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d',
     directFactRow: '7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67',
     policyContract: '8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c',
     policySchema: '19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b'
@@ -470,7 +476,17 @@
       fca.detail = { sourceScanned: true, hit: hit };
     }
     checks.push(fca);
-    add('contractPinsClosed', Object.keys(CONTRACT_HASHES).length === 10 && CONTRACT_HASHES.bridgeContract === '4466b80b568b8b7edee74ca18fdcbf40dca4e4d864785e18c0c0de0671655756' && CONTRACT_HASHES.featureCases === '9d67f332d1af35fe7c54020fe311cb8d674b5428ac7b3302adacceed8edfcf18', { pins: Object.keys(CONTRACT_HASHES).length });
+    add('contractPinsClosed', Object.keys(CONTRACT_HASHES).length === 13 &&
+      CONTRACT_HASHES.bridgeContract === 'a84f43bd6179f1de529700175a75ba5bdf755d51c86e899b96f81c66b5ee125c' &&
+      CONTRACT_HASHES.bridgeSchema === '11e9a0656ae589dcaa1a49a425f3d934082af2bd4c6d300d901cc1300a74dc0a' &&
+      CONTRACT_HASHES.featureModule === '8add454b2197c8bf5be825c5584ade4369343c6eb62cac391f51cdd1bfd2cb6c' &&
+      CONTRACT_HASHES.featureContract === '6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5' &&
+      CONTRACT_HASHES.featureSchema === '686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937' &&
+      CONTRACT_HASHES.featureCases === '7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0' &&
+      CONTRACT_HASHES.adapterModule === '6924daa535b98e369da67b924bcd0a4e957ed6bf4ca2a9bc9aaa2184c6886c70' &&
+      CONTRACT_HASHES.adapterContract === '4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e' &&
+      CONTRACT_HASHES.adapterSchema === '7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22' &&
+      CONTRACT_HASHES.adapterCases === 'f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d', { pins: Object.keys(CONTRACT_HASHES).length });
     add('enumsClosed', REJECT_CODES.length === 8 && PENDING_KINDS.length === 5 && DEFER_KINDS.length === 3 && UNTRANSCRIBED_REASONS.length === 5 && NO_OFFICIAL_EFFECT_KINDS.length === 4 && HARD_EXCLUSION_CODES.length === 10 && TEST_ONLY_KEYS.length === 3, {});
     add('bifInputKeysClosed', BIF_INPUT_KEYS.length === 12 && TEST_ONLY_KEYS.every(function (k) { return BIF_INPUT_KEYS.indexOf(k) < 0; }), {});
 
@@ -525,6 +541,33 @@
       var mm = o.bifInput.mechanicMetadataEntries;
       return mm.length === 1 && mm[0].sourceEffectId === 'effect:tl:0' && mm[0]['触发限制'] &&
         typeof mm[0]['触发限制'] === 'object' && mm[0]['触发限制']['周期'] === '每战' && mm[0]['触发限制']['次数'] === 1;
+    }(), {});
+    add('followUpIdentityVerbatim', function () {
+      var row = {
+        entryId: 'effect:fu:0:schedule:0',
+        grantType: 'FOLLOW_UP',
+        ownerId: 'actor-1',
+        followUpKey: 'follow-up-1',
+        triggerKey: '主动触发',
+        maxActions: 2,
+        payloadDirectFacts: [{
+          schemaVersion: 'DirectFactRowV1',
+          factType: 'HP_DELTA',
+          key: '',
+          sourceActionId: 'action:actor-1',
+          sourceActorId: 'actor-1',
+          sourceEffectId: 'effect:fu:0',
+          targetIds: ['enemy-1'],
+          amount: 1,
+          unit: 'POWER',
+          durationTurns: 0
+        }]
+      };
+      var o = bridgeCandidates([scBaseCandidate({ pdaProjections: [{
+        sourceEffectId: 'effect:fu:0',
+        projection: scProjection({ scheduledFacts: [row] })
+      }] })]).perCandidate[0];
+      return JSON.stringify(o.bifInput.scheduledFacts[0]) === JSON.stringify(row);
     }(), {});
     add('totalsSums', function () {
       var o = bridgeCandidates([

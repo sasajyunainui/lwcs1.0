@@ -1,7 +1,6 @@
 // run-m2-v31-pairability.mjs
 // M2 pairability audit (candidate C). Read-only: never writes, stages or commits.
-// Pins: PDA module 76915ef0... (rev5), BIF module a3d2be20... (rev4), Bridge module
-// 33851456... (rev1). One file only; no production/contract/fixture edits.
+// Pins: PDA rev5, BIF input rev6/output rev4, Bridge rev2. One file only.
 //
 // Item definition (current real totals; no forced 56):
 //   opportunity = first NATURAL_ACTION of the first team player, round 1 sequence 1,
@@ -27,6 +26,7 @@
 // Forbidden: R8 selection, old shadow, future-route, raid sources, performance timing.
 // Metadata / projectionFamilies are never stripped. Deterministic; two runs must agree.
 import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
@@ -35,10 +35,39 @@ import { buildManualCases } from "../../battle_r63_manual_cases.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
+const BASE_HEAD = 'ef584bbc5a9f0a57f95f861066a413e182e966af';
+const HASH_ALGORITHM = 'SHA256_UTF8_LF';
+const BASE_FILES = {
+  'LibraryData_Runtime.js': 'ab7e6dae9fbbe6cbe6c6df39a3b6fc3866511ccbc6b65aaa61de59f961f75c85',
+  'CharacterLibrary.js': 'dffa678f8984cbbdad8e24ceb3adefc2178c5c49b2f6299f91f3af509ab66cce',
+  'MVU_Skill_Runtime.js': '91b7700abeab5d017fdc5767a0ed72de568ea7abc0f495a6f7771b60783577de',
+  'BattlePreview_Module.js': '77e549c459f0397672433cdde429cf5115b3eaba4e6c8b5e6a21c9fec97c2b87',
+  'BattleDecision_Module.js': 'f999e398d3fde5b0dc47205859e23e1dea48fa22f41c7d2efb023661ebae31f6',
+};
 
-const PDA_HASH_EXPECTED = '76915ef0fac57ea4fe141319540177b5024ce86ffc7919202b4463a337143147';
-const BIF_HASH_EXPECTED = 'a3d2be20e871af70db9082a3b446a5cd1b882af236d5096ef1a0ae9e56151bcf';
-const BRIDGE_HASH_EXPECTED = '3385145699856f2c063cad8400d208bf5f3993f833907e7e603650ee9916489b';
+const PDA_HASH_EXPECTED = '6924daa535b98e369da67b924bcd0a4e957ed6bf4ca2a9bc9aaa2184c6886c70';
+const BIF_HASH_EXPECTED = '8add454b2197c8bf5be825c5584ade4369343c6eb62cac391f51cdd1bfd2cb6c';
+const BRIDGE_HASH_EXPECTED = 'f8a1d66201d7cd60d7c82a8a0440bc61d0de3d150bc61c57e94641e7be092c00';
+const CONTRACT_PINS = {
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.json': '4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e',
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json': '7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22',
+  'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json': 'f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d',
+  'tools/rc6/contracts/BehaviorImmediateFeatureV1.json': '6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5',
+  'tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json': '686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937',
+  'tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json': '7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0',
+  'tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.json': 'a84f43bd6179f1de529700175a75ba5bdf755d51c86e899b96f81c66b5ee125c',
+  'tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json': '11e9a0656ae589dcaa1a49a425f3d934082af2bd4c6d300d901cc1300a74dc0a',
+};
+const CONTRACT_REVISION_EXPECTED = {
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.json': 5,
+  'tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json': 5,
+  'tools/rc6/cases/PrototypeDirectAdapterCasesV1.json': 5,
+  'tools/rc6/contracts/BehaviorImmediateFeatureV1.json': 6,
+  'tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json': 4,
+  'tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json': 9,
+  'tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.json': 2,
+  'tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json': 2,
+};
 
 // 7 fixed non-raid sources. Coverage: 属性修正 only exists in team_resource_support;
 // 召唤生成 in summon_one_window; 结算修正 in team_control_overlap / charge_interrupt /
@@ -81,6 +110,64 @@ function ok(name, cond, detail) {
   else { failed += 1; failures.push(name + (detail ? " | " + detail : "")); }
 }
 const sha256 = v => crypto.createHash("sha256").update(v).digest("hex");
+const normalizeLf = v => String(v).replace(/\r\n?/g, "\n");
+const sha256Utf8Lf = v => crypto.createHash("sha256").update(Buffer.from(normalizeLf(v), "utf8")).digest("hex");
+const baseTexts = Object.create(null);
+const baseWorktreeHashes = Object.create(null);
+const baseReadErrors = [];
+for (const [file, expected] of Object.entries(BASE_FILES)) {
+  try {
+    const text = execFileSync('git', ['show', `${BASE_HEAD}:${file}`], {
+      cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+    });
+    baseTexts[file] = text;
+    ok('base blob ' + file, sha256Utf8Lf(text) === expected, sha256Utf8Lf(text));
+  } catch (e) {
+    baseReadErrors.push(file + ': ' + String((e && e.message) || e));
+  }
+  try {
+    baseWorktreeHashes[file] = sha256Utf8Lf(fs.readFileSync(path.join(REPO_ROOT, file), 'utf8'));
+  } catch (e) {
+    baseWorktreeHashes[file] = 'MISSING';
+  }
+}
+ok('fixed base blobs readable', baseReadErrors.length === 0, baseReadErrors.join('; '));
+function readMechanicalSource(file) {
+  if (Object.prototype.hasOwnProperty.call(BASE_FILES, file)) {
+    if (typeof baseTexts[file] !== 'string') throw new Error('BASE_BLOB_MISSING:' + file);
+    return baseTexts[file];
+  }
+  return fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
+}
+const pinnedDocs = Object.create(null);
+for (const [file, expected] of Object.entries(CONTRACT_PINS)) {
+  let text = null;
+  try { text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8'); } catch (e) { /* asserted below */ }
+  ok('pin exists ' + file, text !== null);
+  if (text === null) continue;
+  ok('pin hash ' + file, sha256Utf8Lf(text) === expected, sha256Utf8Lf(text));
+  try { pinnedDocs[file] = JSON.parse(text); } catch (e) { ok('pin JSON ' + file, false, String(e.message || e)); }
+}
+for (const [file, expected] of Object.entries(CONTRACT_REVISION_EXPECTED)) {
+  const doc = pinnedDocs[file];
+  let actual;
+  if (doc && file.endsWith('.schema.json')) {
+    actual = file.indexOf('BehaviorCandidateFeatureBridgeV1.schema.json') >= 0
+      ? doc.properties && doc.properties.revision && doc.properties.revision.const
+      : doc.revision && doc.revision.const !== undefined ? doc.revision.const : doc.revision;
+  } else if (doc) actual = doc.revision;
+  ok('revision ' + file, actual === expected, 'got ' + actual + ' want ' + expected);
+}
+const MECHANICAL_FILES = [
+  'LibraryData_Runtime.js', 'CharacterLibrary.js', 'MVU_Skill_Runtime.js',
+  'BattlePreview_Module.js', 'BattleDecision_Module.js', 'BehaviorPrototypeAdapter_Module.js',
+  'BehaviorImmediateFeature_Module.js', 'BehaviorCandidateFeatureBridge_Module.js',
+];
+const FORBIDDEN_LOAD_FILES = [
+  'BattleDecisionR9v2Kernel_Module.js', 'BattleRuntime_Module.js', 'BattleReport_Module.js',
+  'BattleUI_Module.js', 'BehaviorRelationalFeatureSource_Module.js',
+];
+ok('load list excludes forbidden modules', FORBIDDEN_LOAD_FILES.every(f => MECHANICAL_FILES.indexOf(f) < 0));
 const canon = v => JSON.stringify(sortKeys(v));
 function sortKeys(v) {
   if (Array.isArray(v)) return v.map(sortKeys);
@@ -114,8 +201,8 @@ sandbox.self = sandbox;
 vm.createContext(sandbox);
 let loadErr = null;
 try {
-  for (const f of ['LibraryData_Runtime.js', 'CharacterLibrary.js', 'MVU_Skill_Runtime.js', 'BattlePreview_Module.js', 'BattleDecision_Module.js', 'BehaviorPrototypeAdapter_Module.js', 'BehaviorImmediateFeature_Module.js', 'BehaviorCandidateFeatureBridge_Module.js']) {
-    vm.runInContext(fs.readFileSync(path.join(REPO_ROOT, f), "utf8"), sandbox, { filename: f });
+  for (const f of MECHANICAL_FILES) {
+    vm.runInContext(readMechanicalSource(f), sandbox, { filename: f });
   }
 } catch (e) { loadErr = String((e && e.message) || e); }
 const decision = sandbox.__LWCS_BATTLE_DECISION__;
@@ -124,9 +211,18 @@ const PDA = sandbox.__LWCS_BEHAVIOR_PROTOTYPE_ADAPTER__;
 const BIF = sandbox.__LWCS_BEHAVIOR_IMMEDIATE_FEATURE__;
 const BRIDGE = sandbox.__LWCS_BEHAVIOR_CANDIDATE_FEATURE_BRIDGE__;
 ok("battle modules mounted", loadErr === null && !!decision && !!preview && !!PDA && !!BIF && !!BRIDGE, "err=" + loadErr);
-ok("PDA hash pinned", sha256(fs.readFileSync(path.join(REPO_ROOT, "BehaviorPrototypeAdapter_Module.js"), "utf8")) === PDA_HASH_EXPECTED);
-ok("BIF hash pinned", sha256(fs.readFileSync(path.join(REPO_ROOT, "BehaviorImmediateFeature_Module.js"), "utf8")) === BIF_HASH_EXPECTED);
-ok("Bridge hash pinned", sha256(fs.readFileSync(path.join(REPO_ROOT, "BehaviorCandidateFeatureBridge_Module.js"), "utf8")) === BRIDGE_HASH_EXPECTED);
+ok("PDA hash pinned", sha256Utf8Lf(fs.readFileSync(path.join(REPO_ROOT, "BehaviorPrototypeAdapter_Module.js"), "utf8")) === PDA_HASH_EXPECTED);
+ok("BIF hash pinned", sha256Utf8Lf(fs.readFileSync(path.join(REPO_ROOT, "BehaviorImmediateFeature_Module.js"), "utf8")) === BIF_HASH_EXPECTED);
+ok("Bridge hash pinned", sha256Utf8Lf(fs.readFileSync(path.join(REPO_ROOT, "BehaviorCandidateFeatureBridge_Module.js"), "utf8")) === BRIDGE_HASH_EXPECTED);
+const pdaRegistry = PDA && PDA.registry ? PDA.registry() : {};
+const bifRegistry = BIF && BIF.registry ? BIF.registry() : {};
+const bridgeRegistry = BRIDGE && BRIDGE.registry ? BRIDGE.registry() : {};
+ok('PDA registry revision 5', pdaRegistry.revision === 5);
+ok('BIF registry revision 4 / input contract rev6', bifRegistry.revision === 4 && pinnedDocs['tools/rc6/contracts/BehaviorImmediateFeatureV1.json'] && pinnedDocs['tools/rc6/contracts/BehaviorImmediateFeatureV1.json'].revision === 6);
+ok('BIF output schema revision 4', pinnedDocs['tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json'] && pinnedDocs['tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json'].revision && pinnedDocs['tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json'].revision.const === 4);
+ok('Bridge registry revision 2', bridgeRegistry.revision === 2);
+ok('BIF governed PDA pins', bifRegistry.contractHashes && bifRegistry.contractHashes.governed && bifRegistry.contractHashes.governed.adapterContract === CONTRACT_PINS['tools/rc6/contracts/PrototypeDirectAdapterV1.json'] && bifRegistry.contractHashes.governed.adapterSchema === CONTRACT_PINS['tools/rc6/contracts/PrototypeDirectAdapterV1.schema.json'] && bifRegistry.contractHashes.governed.adapterCases === CONTRACT_PINS['tools/rc6/cases/PrototypeDirectAdapterCasesV1.json']);
+ok('Bridge contract pins', bridgeRegistry.contractHashes && bridgeRegistry.contractHashes.bridgeContract === CONTRACT_PINS['tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.json'] && bridgeRegistry.contractHashes.bridgeSchema === CONTRACT_PINS['tools/rc6/contracts/BehaviorCandidateFeatureBridgeV1.schema.json'] && bridgeRegistry.contractHashes.featureModule === BIF_HASH_EXPECTED && bridgeRegistry.contractHashes.adapterModule === PDA_HASH_EXPECTED);
 
 // ---- official fact builders (transcription only) ----
 function buildPublicSnapshot(visibleWorld, actorId) {
@@ -192,6 +288,65 @@ function publicProbabilityFromPreview(pv) {
 
 const cases = buildManualCases(sandbox.__LWCS_内置角色库__, sandbox.__LWCS_GET_BASE_STATS__);
 ok("fixture 25 cases built", cases.length === 25, String(cases.length));
+
+// ---- real PDA FOLLOW_UP -> Bridge -> BIF integration ----
+const pdaCases = pinnedDocs['tools/rc6/cases/PrototypeDirectAdapterCasesV1.json'];
+const bifCases = pinnedDocs['tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json'];
+const pdaFollowCase = pdaCases && Array.isArray(pdaCases.cases)
+  ? pdaCases.cases.find(c => c.caseId === 'pos-grant-followup') : null;
+const bifFollowCase = bifCases && Array.isArray(bifCases.cases)
+  ? bifCases.cases.find(c => c.caseId === 'pos-followup-next-action') : null;
+ok('PDA FOLLOW_UP integration fixture present', !!pdaFollowCase);
+ok('BIF FOLLOW_UP positive fixture present', !!bifFollowCase);
+if (pdaFollowCase && bifFollowCase && PDA && BRIDGE && BIF) {
+  let pdaFollow = null;
+  let pdaFollowErr = null;
+  try { pdaFollow = PDA.project(pdaFollowCase.effect, pdaFollowCase.context); }
+  catch (e) { pdaFollowErr = String((e && (e.code || e.reasonCode || e.message)) || e); }
+  ok('PDA FOLLOW_UP projects scheduled row', pdaFollowErr === null && pdaFollow && pdaFollow.scheduledFacts && pdaFollow.scheduledFacts.length === 1, pdaFollowErr || 'missing row');
+  if (pdaFollow && pdaFollow.scheduledFacts && pdaFollow.scheduledFacts.length === 1) {
+    const bifFixtureInput = bifFollowCase.input;
+    const bridgeInput = {
+      frozenCandidate: JSON.parse(JSON.stringify(bifFixtureInput.candidate)),
+      visibleWorld: JSON.parse(JSON.stringify(bifFixtureInput.publicSnapshot)),
+      contributions: [],
+      pdaProjections: [{ sourceEffectId: pdaFollowCase.context.sourceEffectId, projection: pdaFollow }],
+      declaration: {},
+    };
+    let bridged = null;
+    let bridgeFollowErr = null;
+    try { bridged = BRIDGE.bridgeCandidates([bridgeInput]); }
+    catch (e) { bridgeFollowErr = String((e && (e.code || e.reasonCode || e.message)) || e); }
+    ok('Bridge receives real PDA FOLLOW_UP', bridgeFollowErr === null && bridged && bridged.perCandidate.length === 1, bridgeFollowErr || 'missing bridge output');
+    const pdaRow = pdaFollow.scheduledFacts[0];
+    const bridgeRow = bridged && bridged.perCandidate[0] && bridged.perCandidate[0].bifInput && bridged.perCandidate[0].bifInput.scheduledFacts && bridged.perCandidate[0].bifInput.scheduledFacts[0];
+    const followUpFields = ['entryId', 'ownerId', 'followUpKey', 'triggerKey', 'maxActions', 'payloadDirectFacts'];
+    for (const field of followUpFields) {
+      ok('FOLLOW_UP ' + field + ' PDA->Bridge deep equal', !!bridgeRow && canon(bridgeRow[field]) === canon(pdaRow[field]), JSON.stringify({ pda: pdaRow && pdaRow[field], bridge: bridgeRow && bridgeRow[field] }));
+    }
+    let bifFollow = null;
+    let bifFollowErr = null;
+    try { bifFollow = BIF.compileCandidate(JSON.parse(JSON.stringify(bridged.perCandidate[0].bifInput))); }
+    catch (e) { bifFollowErr = String((e && (e.code || e.reasonCode || e.message)) || e); }
+    ok('BIF accepts bridged PDA FOLLOW_UP positive', bifFollowErr === null && !!bifFollow, bifFollowErr || 'no output');
+  }
+}
+const followUpParameterized = bifCases && Array.isArray(bifCases.parameterizedCases)
+  ? bifCases.parameterizedCases.filter(p => ['neg-followup-missing-owner-id', 'neg-followup-missing-followup-key', 'neg-followup-max-actions-zero', 'EMPTY_PAYLOAD_DIRECT_FACTS', 'STRING_MAX_ACTIONS'].indexOf(p.caseId) >= 0) : [];
+ok('BIF FOLLOW_UP parameterized gates present', followUpParameterized.length === 5, String(followUpParameterized.length));
+if (bifCases && Array.isArray(bifCases.cases)) {
+  const bifCaseById = new Map(bifCases.cases.map(c => [c.caseId, c]));
+  for (const p of followUpParameterized) {
+    const base = bifCaseById.get(p.baseCaseId);
+    let input = base && base.input ? JSON.parse(JSON.stringify(base.input)) : null;
+    if (input && Array.isArray(input.scheduledFacts) && input.scheduledFacts[p.scheduledIndex]) {
+      const row = input.scheduledFacts[p.scheduledIndex];
+      for (const key of p.removeKeys || []) delete row[key];
+      Object.assign(row, p.set || {});
+    }
+    expectThrow('BIF ' + p.caseId, () => BIF.compileCandidate(input), p.expect.reject.reasonCode);
+  }
+}
 
 // ---- per-case first-opportunity audit ----
 const perCase = [];
@@ -402,7 +557,18 @@ ok("self no raid caseIds", CASE_IDS.every(c => c.indexOf("raid") < 0));
 const summary = {
   schemaVersion: "M2PairabilityV1",
   status: failed ? "FAILED" : "PASSED",
+  hashAlgorithm: HASH_ALGORITHM,
+  baseHead: BASE_HEAD,
+  cleanMode: {
+    loader: 'git show BASE_HEAD:path -> VM memory',
+    workingTreeMechanicalSourcesIgnored: true,
+    baseFiles: BASE_FILES,
+    baseReadErrors,
+    observedWorkingTreeHashes: baseWorktreeHashes,
+  },
   moduleHashes: { BehaviorPrototypeAdapter_Module: PDA_HASH_EXPECTED, BehaviorImmediateFeature_Module: BIF_HASH_EXPECTED, BehaviorCandidateFeatureBridge_Module: BRIDGE_HASH_EXPECTED },
+  contractPins: CONTRACT_PINS,
+  contractRevisions: CONTRACT_REVISION_EXPECTED,
   scope: {
     cases: CASE_IDS.length,
     opportunitiesPerCase: 1,
