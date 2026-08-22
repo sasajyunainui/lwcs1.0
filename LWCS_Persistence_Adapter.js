@@ -298,19 +298,22 @@
       const key = `nonce-${nonce}`;
       const value = { nonce };
       let deleteAttempted = false;
+      let writeCompleted = false;
       try {
         assertGeneration(sessionIdentity.chatGeneration);
         await backend.setJson({ namespace: PROBE_NAMESPACE, key, value, stableChatId: sessionIdentity.stableChatId });
+        writeCompleted = true;
         assertGeneration(sessionIdentity.chatGeneration);
         const readBack = await backend.getJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
         assertGeneration(sessionIdentity.chatGeneration);
         if (!jsonEqual(readBack, value)) return null;
         await backend.deleteJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
         deleteAttempted = true;
+        writeCompleted = false;
         assertGeneration(sessionIdentity.chatGeneration);
-        const afterDelete = await backend.getJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
+        const afterDelete = await backend.listKeys({ namespace: PROBE_NAMESPACE, stableChatId: sessionIdentity.stableChatId });
         assertGeneration(sessionIdentity.chatGeneration);
-        if (afterDelete !== undefined) return null;
+        if (!Array.isArray(afterDelete) || afterDelete.includes(key)) return null;
         return Object.freeze({
           ready: true,
           stableId: true,
@@ -323,7 +326,7 @@
         if (error instanceof StaleChatError) throw error;
         return null;
       } finally {
-        if (!deleteAttempted) {
+        if (writeCompleted && !deleteAttempted) {
           try {
             assertGeneration(sessionIdentity.chatGeneration);
             await backend.deleteJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
@@ -430,6 +433,12 @@
       session.getJson = async request => {
         assertRequest(request);
         return run('read', async check => {
+          if (backend === 'tt-store') {
+            const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
+            check();
+            if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
+            if (!keys.includes(request.key)) return resultMeta(session, 'committed', { verified: true, value: undefined });
+          }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
           if (!expectedFieldsMatch(value, request.verify)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
@@ -470,11 +479,15 @@
       session.deleteJson = async request => {
         assertRequest(request);
         return enqueueMutation(session, () => run('mutation', async check => {
+          const beforeDelete = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
+          check();
+          if (!Array.isArray(beforeDelete)) return failureMeta(session, 'uncertain', 'DELETE_NOT_VERIFIED');
+          if (!beforeDelete.includes(request.key)) return resultMeta(session, 'committed', { verified: true });
           await backendApi.deleteJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
-          const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
+          const afterDelete = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
           check();
-          if (value !== undefined) return failureMeta(session, 'uncertain', 'DELETE_NOT_VERIFIED');
+          if (!Array.isArray(afterDelete) || afterDelete.includes(request.key)) return failureMeta(session, 'uncertain', 'DELETE_NOT_VERIFIED');
           pinBackend(session);
           return resultMeta(session, 'committed', { verified: true });
         }));
