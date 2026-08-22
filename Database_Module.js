@@ -4304,7 +4304,7 @@ $CONTENT
     }
     function saveVerificationValuesEqual_ACU(left, right) {
         try {
-            return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+            return databasePersistenceCanonicalJson_ACU(left ?? null) === databasePersistenceCanonicalJson_ACU(right ?? null);
         }
         catch (_) {
             return false;
@@ -8913,8 +8913,28 @@ $CONTENT
         };
     }
 
+    function databasePersistenceCanonicalJson_ACU(value, ancestors = []) {
+        if (value === null || typeof value === 'boolean' || typeof value === 'string')
+            return JSON.stringify(value);
+        if (typeof value === 'number')
+            return Number.isFinite(value) ? JSON.stringify(value) : 'null';
+        if (value === undefined || typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint')
+            return undefined;
+        if (ancestors.includes(value))
+            throw new Error('database persistence value contains a circular reference');
+        if (Array.isArray(value))
+            return `[${value.map(item => databasePersistenceCanonicalJson_ACU(item, ancestors.concat([value])) ?? 'null').join(',')}]`;
+        const parts = [];
+        Object.keys(value).sort().forEach(key => {
+            const serialized = databasePersistenceCanonicalJson_ACU(value[key], ancestors.concat([value]));
+            if (serialized !== undefined)
+                parts.push(`${JSON.stringify(key)}:${serialized}`);
+        });
+        return `{${parts.join(',')}}`;
+    }
+
     function databasePersistenceValueHash_ACU(value) {
-        return hashUserInput_ACU(JSON.stringify(value)) || '0';
+        return hashUserInput_ACU(databasePersistenceCanonicalJson_ACU(value)) || '0';
     }
 
     function databaseMessageFingerprint_ACU(message, messageIndex) {
