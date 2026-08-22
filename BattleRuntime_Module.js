@@ -3056,6 +3056,7 @@
         return [{
           ...skill,
           承载方式: '被动',
+          __equipmentPassiveTriggered: true,
           魂技名: String(skill.魂技名 || entry?.技能名 || '装备阶段被动').trim(),
           _效果数组: triggered,
         }];
@@ -3284,16 +3285,30 @@
       statusFields.forEach(field => {
         if (participant[field] !== undefined) merged.状态[field] = cloneValue(participant[field]);
       });
-      if (participant.状态效果 && typeof participant.状态效果 === 'object' && !Array.isArray(participant.状态效果)) {
-        merged.状态效果 = cloneValue(participant.状态效果);
-      } else if (!merged.状态效果 || typeof merged.状态效果 !== 'object') {
-        merged.状态效果 = {};
-      }
+      const sourceAttributeStates = sourceCharacter?.属性?.状态效果 && typeof sourceCharacter.属性.状态效果 === 'object' && !Array.isArray(sourceCharacter.属性.状态效果)
+        ? sourceCharacter.属性.状态效果
+        : {};
+      const participantAttributeStates = participant?.属性?.状态效果 && typeof participant.属性.状态效果 === 'object' && !Array.isArray(participant.属性.状态效果)
+        ? participant.属性.状态效果
+        : {};
+      const participantDirectStates = participant?.状态效果 && typeof participant.状态效果 === 'object' && !Array.isArray(participant.状态效果)
+        ? participant.状态效果
+        : {};
+      const sourceDirectStates = sourceCharacter?.状态效果 && typeof sourceCharacter.状态效果 === 'object' && !Array.isArray(sourceCharacter.状态效果)
+        ? sourceCharacter.状态效果
+        : {};
+      merged.状态效果 = {
+        ...cloneValue(sourceAttributeStates),
+        ...cloneValue(sourceDirectStates),
+        ...cloneValue(participantAttributeStates),
+        ...cloneValue(participantDirectStates),
+      };
       if (participant.持续效果 && typeof participant.持续效果 === 'object' && !Array.isArray(participant.持续效果)) {
         merged.持续效果 = cloneValue(participant.持续效果);
       } else if (!merged.持续效果 || typeof merged.持续效果 !== 'object') {
         merged.持续效果 = {};
       }
+      syncC2FoodMaintenanceRuntime(merged, merged.持续效果?.['c2:坚挺金苍蝇:武魂真身维持']?.技能快照 || {});
       [
         ['hp', 'HP', 'HP'], ['hp_max', 'HP上限', 'HP上限'],
         ['vit', '体力', '体力'], ['vit_max', '体力上限', '体力上限'],
@@ -3332,6 +3347,7 @@
     unit[config.statKey] = nextValue;
     if (stats && typeof stats === 'object') stats[config.statKey] = nextValue;
     if (resourceKey === 'vit') previewRuntime.refreshStaminaAdjustedFinal(unit);
+    if (resourceKey === 'hp' && nextValue <= 0) clearC2FoodMaintenanceRuntime(unit);
     if (unit.召唤键) syncSummonMirror(unit);
     return nextValue;
   }
@@ -6674,8 +6690,66 @@
     if (effect.effect_type === 'domain') unit.当前领域 = '无';
     else if (effect.effect_type === 'life_fire' && unit.血脉之力) unit.血脉之力.生命之火 = false;
     else if (effect.effect_type === 'condition' && effect.related_condition && unit.状态效果) delete unit.状态效果[effect.related_condition];
+    else if (effect.effect_type === 'c2_food_maintain') {
+      if (unit.状态效果 && typeof unit.状态效果 === 'object') delete unit.状态效果['坚挺金苍蝇·武魂真身维持'];
+      if (unit.属性?.状态效果 && typeof unit.属性.状态效果 === 'object') delete unit.属性.状态效果['坚挺金苍蝇·武魂真身维持'];
+    }
     if (unit.持续效果) delete unit.持续效果[key];
     refreshSustainRuntimeLoad(unit);
+  }
+
+  function clearC2FoodMaintenanceRuntime(unit = {}) {
+    if (!unit || typeof unit !== 'object') return false;
+    const effectKey = 'c2:坚挺金苍蝇:武魂真身维持';
+    const effects = unit.持续效果 && typeof unit.持续效果 === 'object' && !Array.isArray(unit.持续效果)
+      ? unit.持续效果
+      : {};
+    const effectEntries = Object.entries(effects).filter(([key, effect]) =>
+      key === effectKey || effect?.effect_type === 'c2_food_maintain',
+    );
+    effectEntries.forEach(([key, effect]) => {
+      breakSustainEffect(unit, key, { ...(effect || {}), effect_type: 'c2_food_maintain' });
+    });
+    if (!effectEntries.length) {
+      if (unit.状态效果 && typeof unit.状态效果 === 'object') delete unit.状态效果['坚挺金苍蝇·武魂真身维持'];
+      if (unit.属性?.状态效果 && typeof unit.属性.状态效果 === 'object') delete unit.属性.状态效果['坚挺金苍蝇·武魂真身维持'];
+      refreshSustainRuntimeLoad(unit);
+    }
+    return effectEntries.length > 0;
+  }
+
+  function syncC2FoodMaintenanceRuntime(unit = {}, skillSnapshot = {}) {
+    if (!unit || typeof unit !== 'object') return false;
+    const states = unit.状态效果 && typeof unit.状态效果 === 'object' && !Array.isArray(unit.状态效果)
+      ? unit.状态效果
+      : {};
+    const marker = Object.values(states).find(state =>
+      state && typeof state === 'object' && state.维持态 === true && String(state.来源技能 || '').trim() === '坚挺金苍蝇',
+    );
+    unit.持续效果 = unit.持续效果 && typeof unit.持续效果 === 'object' && !Array.isArray(unit.持续效果) ? unit.持续效果 : {};
+    const key = 'c2:坚挺金苍蝇:武魂真身维持';
+    if (!marker) {
+      Object.entries(unit.持续效果).forEach(([effectKey, effect]) => {
+        if (effect?.effect_type === 'c2_food_maintain') delete unit.持续效果[effectKey];
+      });
+      refreshSustainRuntimeLoad(unit);
+      return false;
+    }
+    unit.持续效果[key] = {
+      ...(unit.持续效果[key] || {}),
+      effect_type: 'c2_food_maintain',
+      name: '坚挺金苍蝇',
+      来源技能: '坚挺金苍蝇',
+      技能快照: cloneValue(skillSnapshot || unit.持续效果[key]?.技能快照 || {}),
+      维持态: true,
+      制造速度倍率: Number(marker.制造速度倍率 || 1.3),
+      产物效果倍率: Number(marker.产物效果倍率 || 1.3),
+      维持消耗: marker.维持消耗 || '魂力:8%',
+      维持存在效果列表: [],
+      维持释放效果列表: [],
+    };
+    refreshSustainRuntimeLoad(unit);
+    return true;
   }
 
   function attachSkillSustainCost(combatData = {}, actor = {}, declaration = {}, actionName = '', sustainCosts = {}, beforeKeys = new Set(), actionEvent = {}) {
@@ -6749,7 +6823,8 @@
       const inactive =
         (effect.effect_type === 'domain' && (!unit.当前领域 || unit.当前领域 === '无')) ||
         (effect.effect_type === 'life_fire' && !unit.血脉之力?.生命之火) ||
-        (effect.effect_type === 'condition' && effect.related_condition && !unit.状态效果?.[effect.related_condition]);
+        (effect.effect_type === 'condition' && effect.related_condition && !unit.状态效果?.[effect.related_condition]) ||
+        (effect.effect_type === 'c2_food_maintain' && unit.状态效果?.['坚挺金苍蝇·武魂真身维持']?.维持态 !== true);
       if (inactive) {
         delete unit.持续效果[key];
         refreshSustainRuntimeLoad(unit);
@@ -6885,7 +6960,10 @@
   function settleBattleRoundEnd(combatData = {}, logs = [], adapterOptions = {}) {
     listCombatUnits(combatData).forEach(unit => {
       syncRoundEndUnit(unit);
-      if (previewRuntime.readHp(unit) <= 0) return;
+      if (previewRuntime.readHp(unit) <= 0) {
+        clearC2FoodMaintenanceRuntime(unit);
+        return;
+      }
       const name = previewRuntime.unitName(unit);
       const sustainResult = settleSustainAtRoundEnd(unit, name, combatData) || {};
       const conditionResult = settleConditionsAtRoundEnd(unit, name, combatData) || {};
@@ -9393,13 +9471,18 @@
     );
     const equipmentPassiveTriggerRows = [];
     const sustainEffectKeysBefore = new Set(Object.keys(actor?.持续效果 || {}));
-    const grantedEffects = previewRuntime.pendingGrantedEffects(actor);
+    const grantedEffects = previewRuntime.pendingGrantedEffects(actor, actionKind);
     const effects = [
       ...grantedEffects.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
       ...baseEffects,
     ];
     if (!effects.length && actionKind !== 'EQUIP') throw new Error('battle_structured_effects_missing');
-    if (actionKind === 'USE_ITEM') {
+    const itemConsumptionRule = typeof root.__LWCS_C2_CONSUMER_RULES_V1__?.读取正式物品消费规则_V1 === 'function'
+      ? root.__LWCS_C2_CONSUMER_RULES_V1__.读取正式物品消费规则_V1(
+        declaration?.skill?.使用效果 || declaration?.skill?._效果数组 || declaration?.skill || {},
+      )
+      : { consume: true };
+    if (actionKind === 'USE_ITEM' && itemConsumptionRule.consume) {
       const inventory = findStructuredInventoryEntry(actor, declaration);
       const quantityBefore = Math.max(0, Number(inventory?.item?.数量 ?? inventory?.item?.quantity ?? 0));
       if (!inventory || quantityBefore < 1) {
@@ -9437,11 +9520,6 @@
           remainingQuantity,
         },
       })); 
-    }
-    if (grantedEffects.length && actor?.状态效果 && typeof actor.状态效果 === 'object') {
-      new Set(grantedEffects.map(entry => entry.stateKey)).forEach(key => {
-        delete actor.状态效果[key];
-      });
     }
     const primaryResolutionByTarget = new Map();
     const primaryOutcomeByTarget = new Map();
@@ -11020,6 +11098,50 @@
         meta: { source: 'structured_runtime', equipmentId, equipmentSignature: signature },
       }));
     }
+    const grantedEffectIds = new Set(grantedEffects.map(entry => String(entry?.effectId || '').trim()).filter(Boolean));
+    const isGrantedEffectEvent = event => {
+      const sourceEffectId = String(event?.sourceEffectId || event?.meta?.effectInstanceId || '').trim();
+      return Boolean(sourceEffectId) && [...grantedEffectIds].some(effectId => sourceEffectId === effectId || sourceEffectId.startsWith(`${effectId}:`));
+    };
+    const actionLedgerEffects = ensureLedger(combatData).filter(event =>
+      String(event?.actionId || event?.sourceActionId || '').trim() === String(actionEvent.actionId || '').trim() &&
+      String(event?.resultState || '').trim().toUpperCase() === 'SUCCESS' &&
+      !['action_cost', 'action_start'].includes(String(event?.eventKind || '').trim()) &&
+      !isGrantedEffectEvent(event) &&
+      String(event?.effectPrototype || event?.prototype || '').trim(),
+    );
+    const releaseSucceeded = actionKind === 'RELEASE_SKILL' && (
+      facts.some(event =>
+        String(event?.actionId || event?.sourceActionId || '').trim() === String(actionEvent.actionId || '').trim() &&
+        String(event?.resultState || '').trim().toUpperCase() === 'SUCCESS' &&
+        !['action_cost', 'action_start'].includes(String(event?.eventKind || '').trim()) &&
+        !isGrantedEffectEvent(event) &&
+        String(event?.effectPrototype || event?.prototype || '').trim(),
+      ) ||
+      actionLedgerEffects.length > 0 ||
+      (grantedEffects.length === 0 && [...primaryResolutionByTarget.values()].some(value => value === true))
+    );
+    if (actionKind === 'RELEASE_SKILL' && actionName === '坚挺金苍蝇' && Object.keys(skillCostStages.维持 || {}).length && releaseSucceeded) {
+      actor.状态效果 = actor.状态效果 && typeof actor.状态效果 === 'object' && !Array.isArray(actor.状态效果) ? actor.状态效果 : {};
+      const maintenanceState = {
+        ...(actor.状态效果['坚挺金苍蝇·武魂真身维持'] || {}),
+        类型: 'buff',
+        状态: '坚挺金苍蝇·武魂真身维持',
+        状态名称: '坚挺金苍蝇·武魂真身维持',
+        描述: '第七魂技武魂真身维持态：香肠制造速度×1.3，香肠产物效果×1.3',
+        来源技能: '坚挺金苍蝇',
+        维持态: true,
+        制造速度倍率: 1.3,
+        产物效果倍率: 1.3,
+        维持消耗: '魂力:8%',
+      };
+      ['duration', '持续回合', '剩余回合', '剩余tick', '持续tick', '结束tick', '有效期至tick', '剩余窗口'].forEach(field => delete maintenanceState[field]);
+      actor.状态效果['坚挺金苍蝇·武魂真身维持'] = maintenanceState;
+      syncC2FoodMaintenanceRuntime(actor, declaration.skill || {});
+    }
+    if (releaseSucceeded && typeof root.__LWCS_C2_CONSUMER_RULES_V1__?.消费坚挺金苍蝇成功魂技_V1 === 'function') {
+      root.__LWCS_C2_CONSUMER_RULES_V1__.消费坚挺金苍蝇成功魂技_V1(actor, actionKind, true);
+    }
     if (actionKind === 'RELEASE_SKILL' && Object.keys(skillCostStages.维持 || {}).length) {
       attachSkillSustainCost(
         combatData,
@@ -11673,6 +11795,7 @@
     runtime.decisionSeed = seed;
     const invalidRuntime = validateBattleRuntime(combatData);
     if (invalidRuntime) {
+      listCombatUnits(combatData).forEach(clearC2FoodMaintenanceRuntime);
       const finalSnapshot = getBattleSnapshot(combatData);
       return {
         caseId,
@@ -14151,6 +14274,7 @@
           terminal?.terminal === true,
         );
       }
+      listCombatUnits(combatData).forEach(clearC2FoodMaintenanceRuntime);
       if (JSON.stringify(source) !== sourceJson) throw new Error('PREVIEW_MUTATED_STATE');
       const ledger = ensureLedger(combatData).map(item => cloneAuditSnapshot(item));
       const trace = collectResolutionTrace(combatData).map(normalizeCausalNode);
@@ -14243,6 +14367,7 @@
         audit, beliefObservations,
       };
     } finally {
+      listCombatUnits(combatData).forEach(clearC2FoodMaintenanceRuntime);
       if (evaluationSession) {
         decisionRuntime.disposeEvaluationSession(evaluationSession);
       }
@@ -18269,7 +18394,6 @@
     };
     return attestBattleDraft({ ...draft, draftHash: hashBattleValue(draft) });
   }
-
   function sealBattleResult(input = {}) {
     const draft = input?.draft && typeof input.draft === 'object' ? input.draft : null;
     const reportAudit = input?.reportAudit && typeof input.reportAudit === 'object' ? input.reportAudit : null;
@@ -18474,6 +18598,7 @@
     settleRingRecoveryAtRoundEnd,
     settleConditionResourceTick,
     readSustainCosts,
+    syncC2FoodMaintenanceRuntime,
     settleSustainAtRoundEnd,
     attachSkillSustainCost,
     triggerStateRevive,

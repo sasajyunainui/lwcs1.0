@@ -42,6 +42,7 @@
   const Vue远程地址 = 'https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js';
   const 资源请求超时毫秒 = 6500;
   const 远程脚本超时毫秒 = 8000;
+  const 模块等待上限毫秒 = 15000;
   const 首次重试延迟毫秒 = 260;
   const 二次重试延迟毫秒 = 560;
 
@@ -50,11 +51,13 @@
     魂环引擎样式: { 类型: 'css', 地址: 资源基础地址 + 'soul_ring_engine.css' + 资源版本后缀, 关键: true, 分组: 'core' },
     Vue核心: { 类型: 'remote-js', 地址: Vue远程地址, 关键: true, 分组: 'core' },
     壳层运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    历法与库运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'LibraryData_Runtime.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    内置角色库: { 类型: 'inline-js', 地址: 资源基础地址 + 'CharacterLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    内置物品库: { 类型: 'inline-js', 地址: 资源基础地址 + 'ItemLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    内置势力库: { 类型: 'inline-js', 地址: 资源基础地址 + 'FactionLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    内置地点库: { 类型: 'inline-js', 地址: 资源基础地址 + 'LocationLibrary.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    历法与库运行时: { 类型: 'wait-global', 全局键: '__LWCS_LIBRARY_DATA_RUNTIME_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
+    时代数据注册表: { 类型: 'wait-global', 全局键: '__LWCS_ERA_DATA_REGISTRY_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
+    时代货币注册表: { 类型: 'wait-global', 全局键: '__LWCS_ERA_CURRENCY_REGISTRY_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
+    时代事件状态运行时: { 类型: 'wait-global', 全局键: '__LWCS_TIMELINE_RUNTIME_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
+    时代运行时集成: { 类型: 'wait-global', 全局键: '__LWCS_ERA_RUNTIME_INTEGRATION_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
+    时代修炼运行时: { 类型: 'wait-global', 全局键: '__LWCS_ERA_CULTIVATION_RUNTIME_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
+    MVU核心就绪: { 类型: 'wait-global', 全局键: '__LWCS_MVU_CORE_READY_V1__', 值类型: 'value', 关键: true, 分组: 'core' },
     魂技机制注册表: { 类型: 'wait-global', 全局键: '__LWCS_SKILL_MECHANISM_REGISTRY__', 值类型: 'object', 关键: true, 分组: 'core' },
     变量运行时视图: { 类型: 'wait-global', 全局键: '__LWCS_MVU_RUNTIME_VIEW__', 值类型: 'object', 关键: true, 分组: 'core' },
     变量规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_MVU_STAT_DATA__', 值类型: 'function', 关键: true, 分组: 'core' },
@@ -69,6 +72,8 @@
     JSONPatch文本预处理接口: { 类型: 'wait-global', 全局键: '__LWCS_PREPROCESS_JSON_PATCH_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
     逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     数据库适配器: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Database_Adapter.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    持久化适配器: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Persistence_Adapter.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    冷归档存储: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Cold_Archive_Store.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['持久化适配器'] },
     请求监控挂件: { 类型: 'inline-js', 地址: 资源基础地址 + 'RequestMonitorWidget.js' + 资源版本后缀, 关键: false, 分组: 'background' },
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
@@ -97,54 +102,17 @@
     'JSONPatch规范化接口',
     'JSONPatch文本预处理接口',
   ]);
+  const 时代运行时前置模块顺序 = Object.freeze(['历法与库运行时', '时代数据注册表', '时代货币注册表', '时代事件状态运行时', '时代运行时集成', '时代修炼运行时', 'MVU核心就绪']);
   const 行为载荷模块顺序 = Object.freeze(['行为决策管线']);
-  const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库']);
-  const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
-  const 热更新重置模块顺序 = Object.freeze(['历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '赛事权限模块', '战斗预估运行时', ...行为载荷模块顺序, '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块', '数据库模块']);
-  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', '壳层运行时', '历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库', '逻辑桥接', '数据库适配器', '请求监控挂件', '数据库模块', '地图模块', '战斗预估运行时', ...行为载荷模块顺序, '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
-  const 正常启动追踪模块顺序 = Object.freeze(Array.from(new Set([
-    ...核心模块顺序,
-    '请求监控挂件',
-    '数据库模块',
-    '地图模块',
-    '战斗预估运行时',
-    ...行为载荷模块顺序,
-    '战斗决策运行时',
-    '战斗运行时',
-    '战斗战报运行时',
-    '战斗模块',
-  ])));
-  const 热更新追踪模块顺序 = Object.freeze([
-    '样式核心',
-    '历法与库运行时',
-    '内置角色库',
-    '内置物品库',
-    '内置势力库',
-    '内置地点库',
-    ...变量运行时接口模块顺序,
-    '逻辑桥接',
-    '请求监控挂件',
-    '数据库模块',
-    '战斗预估运行时',
-    ...行为载荷模块顺序,
-    '战斗决策运行时',
-    '战斗运行时',
-    '战斗战报运行时',
-    '战斗模块',
-    '地图模块',
-  ]);
+  const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', ...时代运行时前置模块顺序]);
+  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '持久化适配器']);
+  const 热更新重置模块顺序 = Object.freeze([...核心模块顺序]);
+  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '逻辑桥接', '数据库适配器', '持久化适配器']);
+  const 正常启动追踪模块顺序 = Object.freeze([...核心模块顺序]);
+  const 热更新追踪模块顺序 = Object.freeze([...核心模块顺序]);
   const 当前启动追踪模块顺序 = 调试热更新模式 ? 热更新追踪模块顺序 : 正常启动追踪模块顺序;
   const 启动预取资源列表 = Object.freeze([
     'MVU_ZOD_Entry.js',
-    'LibraryData_Runtime.js',
-    'MVU_Skill_Runtime.js',
-    'MVU_Schema_Runtime.js',
-    'MVU_Competition_Runtime.js',
-    'MVU_Runtime_View.js',
-    'MVU.js',
-    'MVU_Hooks.js',
-    'timeline.js',
-    'IntelEvents.js',
   ]);
 
   const 预览依赖映射 = {
@@ -491,7 +459,7 @@
     if (!/LibraryData_Runtime\.js(?:[?#]|$)/.test(地址)) return 执行内联加载();
     const 运行时宿主 = 宿主窗口;
     const 已就绪 = 运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || window.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
-    if (已就绪 && 已就绪.version === '1.0.0') return 地址;
+    if (已就绪 && 已就绪.version === '2.0.0') return 地址;
     const 已有加载 = 运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ || window.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
     if (已有加载 && typeof 已有加载.then === 'function') {
       await 已有加载;
@@ -499,7 +467,7 @@
     }
     const 加载承诺 = 执行内联加载().then(() => {
       const 运行时 = 运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || window.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
-      if (!运行时 || 运行时.version !== '1.0.0') throw new Error('LibraryData_Runtime未暴露1.0.0接口');
+      if (!运行时 || 运行时.version !== '2.0.0') throw new Error('LibraryData_Runtime未暴露2.0.0接口');
       return 运行时;
     });
     运行时宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
@@ -514,7 +482,7 @@
     }
   }
 
-  function 加载模块脚本(地址, 状态 = null) {
+  function 加载模块脚本(地址, 状态 = null, 模块 = null) {
     return new Promise(async (resolve, reject) => {
       const 脚本标记 = 取内联脚本标记(地址);
       const 旧脚本 = 宿主文档.getElementById(脚本标记);
@@ -543,7 +511,10 @@
         };
         脚本节点.id = 脚本标记;
         脚本节点.type = 'module';
-        脚本节点.textContent = `${代码文本}\n//# sourceURL=${地址}`;
+        const 导出注入 = 模块?.导出名 && 模块?.导出全局键
+          ? `\n;globalThis[${JSON.stringify(模块.导出全局键)}] = ${模块.导出名};`
+          : '';
+        脚本节点.textContent = `${代码文本}${导出注入}\n//# sourceURL=${地址}`;
         脚本节点.onload = 完成加载;
         脚本节点.onerror = () => reject(new Error(`Module JS execute failed: ${地址}`));
         (宿主文档.body || 宿主文档.documentElement).appendChild(脚本节点);
@@ -578,45 +549,13 @@
         模块状态表[模块名].状态 = 'pending';
         模块状态表[模块名].错误 = '';
       });
-      await 确保模块已加载('历法与库运行时', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('内置角色库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('内置物品库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('内置势力库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('内置地点库', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      for (const 模块名 of 时代运行时前置模块顺序) {
+        await 确保模块已加载(模块名, { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      }
       await 确保模块组已加载(变量运行时接口模块顺序, { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('逻辑桥接', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      await 确保模块已加载('请求监控挂件', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
-      await 确保模块已加载('战斗模块', { 来源: 'hot_reload', 允许失败降级: true, 抛错: false });
-      await 确保模块已加载('数据库模块', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
-      try {
-        if (typeof 宿主窗口.__sheepMapDispose === 'function') 宿主窗口.__sheepMapDispose();
-      } catch (错误) {}
-      try {
-        宿主窗口.__sheepMapRestoreLoaded = false;
-        if (window !== 宿主窗口) window.__sheepMapRestoreLoaded = false;
-      } catch (错误) {}
-      宿主文档.querySelectorAll('#page-map .map-layout').forEach(节点 => 节点.remove());
-      宿主文档.querySelectorAll([
-        ".split-left-page[data-target='page-map']",
-        ".split-right-page[data-target='page-map']",
-        '[data-mvu-map-stage]'
-      ].join(',')).forEach(节点 => { 节点.innerHTML = ''; });
-      模块状态表.地图模块.状态 = 'loading';
-      刷新加载追踪面板();
-      try {
-        await 加载内联脚本(模块注册表.地图模块.地址, 模块状态表.地图模块);
-        模块状态表.地图模块.状态 = 'loaded';
-        模块状态表.地图模块.阶段 = '完成';
-        模块状态表.地图模块.错误 = '';
-        模块状态表.地图模块.最后完成时间 = Date.now();
-        刷新加载追踪面板();
-      } catch (错误) {
-        记录模块失败('地图模块', 'hot_reload', 错误);
-        模块状态表.地图模块.状态 = 'failed';
-        模块状态表.地图模块.阶段 = '失败';
-        刷新加载追踪面板();
-        throw 错误;
-      }
+      await 确保模块已加载('数据库适配器', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 确保模块已加载('持久化适配器', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       记录阶段(加载阶段.完成);
       加载状态.结束时间 = Date.now();
       setTimeout(triggerMvuRefresh, 0);
@@ -644,7 +583,7 @@
       }
       return 等待全局函数(模块.全局键, 12000, 模块.值类型 || 'function');
     }
-    if (模块.类型 === 'module-js') return 加载模块脚本(模块.地址, 状态);
+    if (模块.类型 === 'module-js') return 加载模块脚本(模块.地址, 状态, 模块);
     return 加载内联脚本(模块.地址, 状态);
   }
 
@@ -702,7 +641,20 @@
   async function 确保模块已加载(模块名, 选项 = {}) {
     const 来源 = typeof 选项.来源 === 'string' ? 选项.来源 : 'runtime';
     const 允许失败降级 = 选项.允许失败降级 !== false;
-    const 结果 = await 尝试加载模块(模块名, 来源, 允许失败降级);
+    const 最大等待毫秒 = Math.max(1, Number(选项.最大等待毫秒 || 模块等待上限毫秒));
+    const 加载承诺 = 尝试加载模块(模块名, 来源, 允许失败降级);
+    const 超时结果 = new Promise(resolve => setTimeout(() => {
+      const 错误 = new Error(`${模块名}加载等待超过${最大等待毫秒}ms`);
+      const 状态 = 模块状态表[模块名];
+      if (状态 && 状态.状态 === 'loading') {
+        状态.状态 = 模块注册表[模块名]?.关键 ? 'failed' : 'degraded';
+        状态.阶段 = '超时';
+        状态.错误 = 错误.message;
+        刷新加载追踪面板();
+      }
+      resolve({ ok: false, 模块名, reason: 'timeout', error: 错误 });
+    }, 最大等待毫秒));
+    const 结果 = await Promise.race([加载承诺, 超时结果]);
     if (!结果.ok && 选项 && 选项.抛错) {
       throw 结果.error || new Error(结果.reason || `${模块名}_load_failed`);
     }
@@ -1060,6 +1012,9 @@
       eventOn(getButtonEvent('MVU冷归档'), async () => {
         try {
           await 引导加载();
+          await 确保模块已加载('冷归档存储', { 来源: 'cold_archive_button', 允许失败降级: false, 抛错: true });
+          const 冷归档存储 = 读取已就绪全局值('__LWCS_COLD_ARCHIVE_STORE_V1__', 'object');
+          if (!冷归档存储 || typeof 冷归档存储.open !== 'function') throw new Error('冷归档存储模块未就绪');
           await 确保模块已加载('逻辑桥接', { 来源: 'cold_archive_button', 允许失败降级: false, 抛错: true });
           await 等待全局函数('__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__', 12000);
           const 打开冷归档面板 = 读取已就绪全局值('__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__');
@@ -1127,19 +1082,23 @@
     if (空闲预取已安排) return;
     空闲预取已安排 = true;
     记录阶段(加载阶段.空闲预取中);
-    if (模块状态表.地图模块?.状态 === 'pending') {
-      模块状态表.地图模块.阶段 = '等待空闲';
-      刷新加载追踪面板();
+    const enabled = 宿主窗口.__LWCS_OPTIONAL_MODULE_IDLE_WARMUP_ENABLED__ === true;
+    if (!enabled) {
+      记录阶段(加载阶段.完成);
+      加载状态.结束时间 = Date.now();
+      return;
     }
     const 使用原生空闲回调 = typeof 宿主窗口.requestIdleCallback === 'function';
     const 空闲执行器 = 使用原生空闲回调
       ? 宿主窗口.requestIdleCallback.bind(宿主窗口)
       : callback => setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 8 }), 160);
-    ['地图模块', '战斗模块'].forEach(预取模块文本);
+    const 启用预热模块 = ['地图模块', '战斗模块'].filter(模块名 => 宿主窗口.__LWCS_OPTIONAL_MODULES_ENABLED__?.[模块名] === true);
+    启用预热模块.forEach(模块名 => {
+      if (模块状态表[模块名]?.状态 === 'pending') 模块状态表[模块名].阶段 = '等待空闲';
+    });
+    刷新加载追踪面板();
     空闲执行器(async () => {
-      const 地图加载承诺 = 确保模块已加载('地图模块', { 来源: 'idle_prefetch:map' });
-      const 战斗加载承诺 = 确保模块已加载('战斗模块', { 来源: 'idle_prefetch:battle' });
-      await Promise.allSettled([地图加载承诺, 战斗加载承诺]);
+      await Promise.allSettled(启用预热模块.map(模块名 => 确保模块已加载(模块名, { 来源: `idle_prefetch:${模块名}`, 最大等待毫秒: 15000 })));
       记录阶段(加载阶段.完成);
       加载状态.结束时间 = Date.now();
     }, 使用原生空闲回调 ? { timeout: 800 } : undefined);
@@ -1164,9 +1123,7 @@
         await 确保模块组已加载(变量运行时接口模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await 确保模块已加载('逻辑桥接', { 来源: 'bootstrap_core', 允许失败降级: false });
         await 确保模块已加载('数据库适配器', { 来源: 'bootstrap_core', 允许失败降级: false });
-        确保模块已加载('请求监控挂件', { 来源: 'bootstrap_request_monitor', 允许失败降级: true, 抛错: false });
-        启动数据库模块后台加载('bootstrap_database');
-        确保模块已加载('战斗模块', { 来源: 'bootstrap_battle', 允许失败降级: true, 抛错: false });
+        await 确保模块已加载('持久化适配器', { 来源: 'bootstrap_core', 允许失败降级: false });
 
         if (!宿主窗口.Vue || typeof 宿主窗口.Vue.compile !== 'function') {
           throw new Error('Vue full build load failed: compiler missing');

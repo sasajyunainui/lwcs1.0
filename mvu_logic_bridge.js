@@ -1,5 +1,11 @@
 (() => {
   const __mvuBridgeRoot = typeof globalThis !== 'undefined' ? globalThis : window;
+  const 读取C2消费者规则_桥接 = () => {
+    const roots = [__mvuBridgeRoot];
+    try { if (window.parent && window.parent !== window) roots.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) roots.push(window.top); } catch (错误) {}
+    return roots.map(root => root?.__LWCS_C2_CONSUMER_RULES_V1__).find(value => value && typeof value === 'object') || null;
+  };
   const resolveSharedSkillMechanismRegistry = () => {
     if (
       __mvuBridgeRoot.__LWCS_SKILL_MECHANISM_REGISTRY__ &&
@@ -744,7 +750,7 @@
           ${(items || [])
             .map(
               item => `
-            <div class="wallet-chip wallet-data-chip ${item.className || ''}" data-wallet-key="${escapeHtmlAttr(toText(item.label, ''))}">
+            <div class="wallet-chip wallet-data-chip ${item.className || ''}" data-wallet-key="${escapeHtmlAttr(toText(item.key || item.label, ''))}">
               <b>${item.label}</b>
               <span>${构建详情项值HTML(item)}</span>
             </div>
@@ -1670,13 +1676,7 @@
             <div class="archive-modal-grid vault-modal-grid">
               <div class="archive-card full vault-wallet-card">
                 <div class="archive-card-head"><div class="archive-card-title">钱包条</div></div>
-                ${makeWalletStrip([
-                  { label: '联邦币', value: '', className: 'gold' },
-                  { label: '星罗币', value: '', className: 'cyan' },
-                  { label: '唐门积分', value: '', className: 'cyan' },
-                  { label: '学院积分', value: '', className: 'cyan' },
-                  { label: '战功', value: '', className: 'red' },
-                ])}
+                ${makeWalletStrip(读取当前时代钱包配置_桥接().currencies.map(货币 => ({ ...货币, value: '' })))}
               </div>
               <div class="mvu-inventory-workbench inventory-definition-layout">
                 <div class="archive-card inventory-instance-panel mvu-inventory-registry">
@@ -2569,7 +2569,7 @@
     const remainderMinutes = totalMinutes % (24 * 60);
     const hours = Math.floor(remainderMinutes / 60);
     const mins = Math.floor(remainderMinutes % 60);
-    return `斗罗历${20000 + years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    return `斗罗历${years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }
 
   function getSnapshotWorldTimeText(snapshot) {
@@ -2713,14 +2713,15 @@
     return spiritEntries.length >= 2 ? 1.2 : 1.0;
   }
 
-  function getNextLevelSoulRequirement(stat, charData = null) {
+  function getNextLevelSoulRequirement(stat, charData = null, currentTick = 0) {
     const currentLv = toNumber(stat && stat.等级, 0);
-    if (currentLv >= 100) {
+    const safeCharData = charData && typeof charData === 'object' ? charData : {};
+    const finalCap = getCharacterNaturalLevelCapForUi(safeCharData, currentTick);
+    if (currentLv >= finalCap) {
       return { needed: 0, nextLevel: currentLv, isMax: true };
     }
     const currentSpMax = toNumber(stat && stat.魂力上限, 0);
-    const safeCharData = charData && typeof charData === 'object' ? charData : {};
-    const nextLevel = currentLv + 1;
+    const nextLevel = currentLv >= 100 ? Math.floor(currentLv) + 1 : currentLv >= 99.5 ? 100 : currentLv >= 99 ? 99.5 : currentLv + 1;
     const hiddenVar = Math.max(0.1, toNumber(deepGet(safeCharData, '属性.底子波动', 1), 1));
     const currentLevelSoulRequirement = Math.floor(
       getBaseSpMaxForLevel(Math.max(1, currentLv)) *
@@ -2765,32 +2766,55 @@
   }
 
   function getCharacterSoulRingLevelCapForUi(charData = {}) {
+    if (toNumber(deepGet(charData, '属性.等级', 0), 0) >= 100) return Number.POSITIVE_INFINITY;
     const ringCount = getCharacterActualSoulRingCountForUi(charData);
     return Math.min(100, Math.max(10, (ringCount + 1) * 10));
   }
 
-  function getCharacterCoreLevelCapForUi(charData = {}) {
-    const coreCount = toNumber(deepGet(charData, '魂核.核心.数量', 0), 0);
-    if (coreCount >= 3) return 150;
-    if (coreCount === 2) return 98;
-    if (coreCount === 1) return 89;
-    return 69;
+  function getEraCultivationRuntimeForUi() {
+    const candidates = [globalThis];
+    try { if (globalThis.parent && globalThis.parent !== globalThis) candidates.push(globalThis.parent); } catch (_) {}
+    try { if (globalThis.top && globalThis.top !== globalThis) candidates.push(globalThis.top); } catch (_) {}
+    return candidates
+      .map(candidate => candidate && candidate.__LWCS_ERA_CULTIVATION_RUNTIME_V1__)
+      .find(runtime => runtime && typeof runtime === 'object') || null;
   }
 
-  function getNextLevelSoulRequirementWithCap(stat, charData = null) {
+  function getCharacterNaturalLevelCapForUi(charData = {}, currentTick = 0) {
+    const runtime = getEraCultivationRuntimeForUi();
+    if (!runtime || typeof runtime.finalLevelCap !== 'function') return 100;
+    try { return Number(runtime.finalLevelCap(charData, { currentTick })); } catch (_) { return 100; }
+  }
+
+  function getCharacterCoreLevelCapForUi(charData = {}, currentTick = 0) {
+    const runtime = getEraCultivationRuntimeForUi();
+    if (!runtime || typeof runtime.getLevelCapForCoreCount !== 'function') return Number.POSITIVE_INFINITY;
+    try {
+      return Number(runtime.getLevelCapForCoreCount(charData, { currentTick }));
+    } catch (_) {
+      return Number.POSITIVE_INFINITY;
+    }
+  }
+
+  function getNextLevelSoulRequirementWithCap(stat, charData = null, currentTick = 0) {
     const currentLv = toNumber(stat && stat.等级, 0);
     const safeCharData = charData && typeof charData === 'object' ? charData : {};
-    const baseResult = getNextLevelSoulRequirement(stat, safeCharData);
+    const baseResult = getNextLevelSoulRequirement(stat, safeCharData, currentTick);
     const ringCap = getCharacterSoulRingLevelCapForUi(safeCharData);
-    const coreCap = getCharacterCoreLevelCapForUi(safeCharData);
-    const levelCap = Math.min(ringCap, coreCap);
+    const coreCap = getCharacterCoreLevelCapForUi(safeCharData, currentTick);
+    const naturalCap = getCharacterNaturalLevelCapForUi(safeCharData, currentTick);
+    const levelCap = Math.min(ringCap, coreCap, naturalCap);
     if (currentLv >= levelCap) {
-      const blockedByRing = ringCap <= coreCap;
+      const blockedBy = ringCap <= coreCap && ringCap <= naturalCap
+        ? 'ring'
+        : coreCap <= naturalCap
+          ? 'core'
+          : 'natural';
       return {
         ...baseResult,
         levelCap,
         blocked: true,
-        blockedBy: blockedByRing ? 'ring' : 'core',
+        blockedBy,
       };
     }
     return {
@@ -3138,7 +3162,11 @@
   }
 
   function 判断物品可直接使用_桥接(物品名 = '', 物品数据 = {}) {
-    return Array.isArray(物品数据 && 物品数据.使用效果) && 物品数据.使用效果.length > 0 && !判断可装配魂导器_桥接(物品名, 物品数据);
+    const 有使用效果 = Array.isArray(物品数据?.使用效果) && 物品数据.使用效果.length > 0;
+    const 有可直接解锁内容 = Array.isArray(物品数据?.解锁内容) && 物品数据.解锁内容.some(内容 =>
+      ['功法', '情报', '自创魂技'].includes(toText(内容?.内容类型, '').trim()),
+    );
+    return (有使用效果 || 有可直接解锁内容) && !判断可装配魂导器_桥接(物品名, 物品数据);
   }
 
   function 构建魂导器装备技能_桥接(物品名 = '', 物品数据 = {}) {
@@ -3206,6 +3234,7 @@
       魂导等级: Math.max(0, Math.min(12, Math.floor(toNumber(来源.魂导等级 ?? fallback.魂导等级, 0)))),
       耐久: Math.max(0, Math.floor(toNumber(来源.耐久 ?? fallback.耐久, 0))),
       剩余使用次数: Math.max(0, Math.floor(toNumber(来源.剩余使用次数 ?? fallback.剩余使用次数 ?? fallback.基础使用次数, 0))),
+      使用次数恢复至tick: Math.max(0, Math.floor(toNumber(来源.使用次数恢复至tick ?? fallback.使用次数恢复至tick, 0))),
       绑定者: toText(来源.绑定者 ?? fallback.绑定者, '').trim(),
       有效期至tick: Math.max(0, Math.floor(toNumber(来源.有效期至tick ?? fallback.有效期至tick, 0))),
     };
@@ -3229,10 +3258,11 @@
         键 !== '数量' &&
         (值 === '' ||
           值 === '无' ||
-          (键 !== '耐久' && 值 === 0) ||
+          (键 !== '耐久' && 值 === 0 && !(键 === '剩余使用次数' && toNumber(来源.使用次数恢复至tick ?? fallback.使用次数恢复至tick, 0) > 0)) ||
           (键 === '耐久' && !有耐久) ||
           (键 === '阶位' && !(toNumber(来源.阶位 ?? fallback.阶位, 0) > 0)) ||
           (键 === '剩余使用次数' && !(来源.剩余使用次数 !== undefined || fallback.剩余使用次数 !== undefined || Number(fallback.基础使用次数 || 0) > 0)) ||
+          (键 === '使用次数恢复至tick' && !(来源.使用次数恢复至tick !== undefined || fallback.使用次数恢复至tick !== undefined)) ||
           (键 === '魂导等级' && !(Number(来源.魂导等级 ?? fallback.魂导等级 ?? 0) > 0)) ||
           (键 === '品质' && 值 === '普通') ||
           (键 === '品质系数' && Number(值) === 1) ||
@@ -3680,9 +3710,17 @@
     const 是魂导器 = 魂导等级 > 0 && !判断一次性魂导道具_桥接(物品名, { ...来源, 物品分类 });
     if (魂导等级 > 0) 记录.魂导等级 = 魂导等级;
     if (Number(来源.基础使用次数 || 0) > 0) 记录.基础使用次数 = Math.max(1, Math.floor(toNumber(来源.基础使用次数, 1)));
+    if (来源.使用次数恢复周期 !== undefined) {
+      const 使用次数恢复周期 = toText(来源.使用次数恢复周期, '').trim();
+      if (使用次数恢复周期 !== '每日') throw new Error(`物品定义使用次数恢复周期无效：${物品名}`);
+      记录.使用次数恢复周期 = 使用次数恢复周期;
+    }
+    if (来源.使用后消耗 !== undefined) {
+      if (typeof 来源.使用后消耗 !== 'boolean') throw new Error(`物品定义使用后消耗无效：${物品名}`);
+      记录.使用后消耗 = 来源.使用后消耗;
+    }
     const 是装备定义 = 判断物品为装备_桥接(物品名, { ...来源, 物品分类 });
     if (是装备定义 || 是魂导器) {
-      const 是神器装备 = 判断神器品质_桥接(记录.品质);
       const 是常规装备 = 判断常规装备定义_桥接(物品分类, 是魂导器);
       if (toText(来源.装备槽位, '')) 记录.装备槽位 = toText(来源.装备槽位, '');
       if (toNumber(来源.基础耐久, 0) > 0) 记录.基础耐久 = Math.max(0, Math.floor(toNumber(来源.基础耐久, 0)));
@@ -3691,7 +3729,12 @@
         if (加成方向.length) 记录.加成方向 = 加成方向;
       }
       if (来源.属性加成 && typeof 来源.属性加成 === 'object' && !Array.isArray(来源.属性加成)) {
-        if (是神器装备) 记录.属性加成 = cloneJsonValue(来源.属性加成, {});
+        const 属性加成 = {};
+        装备加成属性选项_桥接.forEach(属性 => {
+          const 值 = 来源.属性加成[属性];
+          if (Number.isFinite(Number(值)) || /^[-+]?\d+(?:\.\d+)?%$/.test(toText(值, '').trim())) 属性加成[属性] = cloneJsonValue(值, 值);
+        });
+        if (Object.keys(属性加成).length) 记录.属性加成 = 属性加成;
       }
       if (物品分类 === '魂骨' && 来源.属性倍率 && typeof 来源.属性倍率 === 'object' && !Array.isArray(来源.属性倍率)) 记录.属性倍率 = 归一化魂骨属性倍率_桥接(来源.属性倍率);
       if (物品分类 !== '魂骨' && 来源.装备技能 && typeof 来源.装备技能 === 'object' && !Array.isArray(来源.装备技能)) 记录.装备技能 = cloneJsonValue(来源.装备技能, {});
@@ -3715,16 +3758,17 @@
       }
       if (Array.isArray(来源.副作用列表) && 来源.副作用列表.length) 记录.副作用列表 = cloneJsonValue(来源.副作用列表, []);
     }
+    if (来源.解锁内容 !== undefined) 记录.解锁内容 = cloneJsonValue(来源.解锁内容);
     if (物品分类 === '修炼秘籍') {
       if (来源.获取条件 !== undefined) 记录.获取条件 = cloneJsonValue(来源.获取条件);
       if (来源.研读条件 !== undefined) 记录.研读条件 = cloneJsonValue(来源.研读条件);
-      if (来源.解锁内容 !== undefined) 记录.解锁内容 = cloneJsonValue(来源.解锁内容);
     }
     if (物品分类 === '设计图纸') {
-      ['图纸目标'].forEach(字段名 => {
+      ['图纸目标', '材料'].forEach(字段名 => {
         if (来源[字段名] !== undefined && toText(来源[字段名], '').trim()) 记录[字段名] = cloneJsonValue(来源[字段名]);
       });
     }
+    if (['身份凭证', '入场凭证'].includes(物品分类) && toText(来源.使用限制或归属说明, '').trim()) 记录.使用限制或归属说明 = toText(来源.使用限制或归属说明, '').trim();
     Object.keys(记录).forEach(键 => {
       const 值 = 记录[键];
       if (值 === undefined || 值 === null || 值 === '' || (Array.isArray(值) && !值.length)) delete 记录[键];
@@ -3748,6 +3792,7 @@
       剩余使用次数: 来源.剩余使用次数,
       基础耐久: 来源.基础耐久,
       基础使用次数: 来源.基础使用次数,
+      使用次数恢复至tick: 来源.使用次数恢复至tick,
       绑定者: 来源.绑定者,
       有效期至tick: 来源.有效期至tick,
       副职业参数: 来源?.副职业参数?.融合参数 ? { 融合参数: 来源.副职业参数.融合参数 } : undefined,
@@ -3843,11 +3888,33 @@
 
   const 物品品质选项_桥接 = 物品经济品质列表_桥接;
   const 魂灵品质选项_桥接 = Object.freeze(['F', 'D', 'C', 'B', 'A', 'S', 'S+']);
-  const 物品货币选项_桥接 = Object.freeze(['联邦币', '星罗币', '唐门积分', '学院积分', '战功', '血神功勋']);
+  const 物品货币选项_桥接 = Object.freeze((() => {
+    const registry = 读取当前时代钱包配置_桥接().registry;
+    return [...new Set((registry?.eraOrder || []).flatMap(时代 => {
+      const result = registry.listCurrencies(时代);
+      return result.status === 'resolved' ? result.currencies.map(货币 => 货币.名称) : [];
+    }))];
+  })());
   const 物品装备槽位选项_桥接 = Object.freeze(['无', '头部', '躯干', '左臂', '右臂', '左腿', '右腿', '武器', '防具', '饰品']);
   const 装备加成属性选项_桥接 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
   const 装备加成方向选项_桥接 = Object.freeze([...装备加成属性选项_桥接, '全属性']);
   const 装备加成属性集合_桥接 = new Set(装备加成属性选项_桥接);
+  const 正式技能字段列表_桥接 = Object.freeze(['魂技名', '画面描述', '效果描述', '产物描述', '承载方式', '消耗', '前摇', '场外冷却至tick', '附带属性', '使用条件', '技能掌控度', '触发限制', '_效果数组', '副作用列表']);
+  const 正式技能字段集合_桥接 = new Set(正式技能字段列表_桥接);
+
+  function 断言物品正式技能_桥接(技能 = {}, 来源 = '物品技能') {
+    const 技能名 = toText(技能?.魂技名, '').trim() || 来源;
+    const 未知字段 = Object.keys(技能 || {}).filter(字段名 => !正式技能字段集合_桥接.has(字段名));
+    if (未知字段.length) throw new Error(`技能【${技能名}】包含未知字段：${未知字段.join('、')}`);
+    ['魂技名', '画面描述', '效果描述', '承载方式'].forEach(字段名 => {
+      if (!toText(技能?.[字段名], '').trim()) throw new Error(`技能【${技能名}】缺少${字段名}。`);
+    });
+    if (技能.消耗 === undefined) throw new Error(`技能【${技能名}】缺少消耗。`);
+    if (!Number.isFinite(Number(技能.前摇))) throw new Error(`技能【${技能名}】的前摇必须是数值。`);
+    if (!Array.isArray(技能._效果数组) || !技能._效果数组.length) throw new Error(`技能【${技能名}】缺少可执行效果数组。`);
+    断言技能设计台效果数组契约(技能._效果数组, `${来源}.${技能名}._效果数组`);
+    return 技能;
+  }
   const 装备加成方向集合_桥接 = new Set(装备加成方向选项_桥接);
   const 物品属性选项_桥接 = 装备加成属性选项_桥接;
 
@@ -4025,6 +4092,7 @@
     const 占位 = toText(选项参数 && 选项参数.placeholder, '技能名');
     return `<div class="item-definition-skill-row" data-item-definition-skill-row data-item-skill-old-key="${escapeHtmlAttr(技能名)}">
         <input class="request-console-input" data-item-skill-field="魂技名" value="${escapeHtmlAttr(toText(数据.魂技名 || 技能文本 || 技能名, ''))}" placeholder="${escapeHtmlAttr(占位)}" />
+        <textarea class="mvu-editor-textarea" data-item-skill-field="技能数据" rows="7" placeholder="填写完整 SkillStruct JSON">${htmlEscape(格式化物品结构字段值(数据))}</textarea>
         <button type="button" class="tag-chip item-definition-icon-btn" data-collection-action="delete-item-definition-row">×</button>
       </div>`;
   }
@@ -4063,6 +4131,7 @@
     const canUse = !!选项参数.canUse;
     const canEquip = !!选项参数.canEquip;
     const charKey = toText(选项参数.charKey, '').trim();
+    const 默认时代货币 = 读取当前时代钱包配置_桥接(选项参数.rootData || {}).currencies[0]?.key || '联邦币';
     const 阶位字段 = 是锻造 ? 构建物品定义字段('阶位', '阶位', toNumber(定义.阶位, 0), 'number') : '';
     const 魂导等级字段 = 是魂灵 ? '' : 构建物品定义字段('魂导等级', '魂导等级', 读取魂导等级_桥接(定义), 'number');
     const 基础模块 = `<div class="item-definition-form-grid">
@@ -4072,7 +4141,7 @@
       ${魂导等级字段}
       ${构建物品定义字段('品质', '品质/稀有度', 规范化物品经济品质_桥接(定义.品质, 物品名, 物品分类), 'select', 物品品质选项_桥接)}
       ${构建物品定义字段('基础价格', '基础价格', toNumber(定义.基础价格, 0), 'number')}
-      ${构建物品定义字段('默认货币', '货币类型', toText(定义.默认货币, '联邦币'), 'select', 物品货币选项_桥接)}
+      ${构建物品定义字段('默认货币', '货币类型', toText(定义.默认货币, 默认时代货币), 'select', 物品货币选项_桥接)}
       ${构建物品定义字段('描述', '描述', toText(定义.描述, ''), 'textarea')}
     </div>`;
     const 魂灵模块 = `<div class="item-definition-form-grid">
@@ -4111,6 +4180,7 @@
     </div>`;
     const 设计图纸模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('图纸目标', '图纸目标', toText(定义.图纸目标, ''), 'text')}
+      ${构建物品定义字段('材料', '材料', 格式化物品结构字段值(定义.材料), 'textarea')}
     </div>`;
     const 修炼秘籍模块 = `<div class="item-definition-form-grid">
       ${构建物品定义字段('获取条件', '获取条件', 格式化物品结构字段值(定义.获取条件), 'textarea')}
@@ -4505,8 +4575,11 @@
       };
       const 键名 = 取值('键名') || 取值('魂技名');
       if (!键名) return;
-      const 技能 = { ...旧技能 };
+      const 技能数据节点 = 行节点.querySelector('[data-item-skill-field="技能数据"]');
+      const 解析技能 = 解析物品结构表单值(技能数据节点 && 'value' in 技能数据节点 ? 技能数据节点.value : '');
+      const 技能 = 解析技能 && typeof 解析技能 === 'object' && !Array.isArray(解析技能) ? cloneJsonValue(解析技能, {}) : { ...旧技能 };
       技能.魂技名 = 取值('魂技名') || toText(技能.魂技名, 键名);
+      断言物品正式技能_桥接(技能);
       输出[键名] = 技能;
     });
     return 输出;
@@ -4519,6 +4592,7 @@
     if (!新名) throw new Error('物品名称不能为空。');
     const 旧命中 = 查找物品定义_桥接(数据根, 旧名 || 新名);
     const 旧定义 = cloneJsonValue(旧命中?.定义 || {}, {});
+    const 默认时代货币 = 读取当前时代钱包配置_桥接(数据根).currencies[0]?.key || '联邦币';
     const 分类 = 规范化物品定义分类_桥接(
       读取物品定义输入值(表单节点, '物品分类', 旧命中?.分类 || 读取物品定义显式分类_桥接(旧定义, '剧情杂物')),
       '剧情杂物',
@@ -4531,7 +4605,7 @@
       ),
       描述: 读取物品定义输入值(表单节点, '描述', toText(旧定义.描述, '')),
       基础价格: Math.max(1, Math.floor(toNumber(读取物品定义输入值(表单节点, '基础价格', 旧定义.基础价格), 1))),
-      默认货币: 读取物品定义输入值(表单节点, '默认货币', toText(旧定义.默认货币, '联邦币')) || '联邦币',
+      默认货币: 读取物品定义输入值(表单节点, '默认货币', toText(旧定义.默认货币, 默认时代货币)) || 默认时代货币,
     };
     if (分类 === '魂灵') {
       const 魂灵品质 = normalizeSoulSpiritQuality(读取物品定义输入值(表单节点, '魂灵品质', toText(旧定义.魂灵品质, '')));
@@ -4563,17 +4637,20 @@
     if (可使用物品分类集合_桥接.has(分类) && 使用效果.length) 定义.使用效果 = 使用效果;
     if (可使用物品分类集合_桥接.has(分类) && 使用副作用列表.length) 定义.副作用列表 = 使用副作用列表;
     if (是常规装备 && 加成方向.length) 定义.加成方向 = 加成方向;
-    if ((是装备定义 || 是魂导器) && 判断神器品质_桥接(定义.品质) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
+    if ((是装备定义 || 是魂导器) && Object.keys(属性加成).length) 定义.属性加成 = 属性加成;
     if ((是装备定义 || 是魂导器) && Object.keys(装备技能).length) {
       if (分类 === '魂骨') 定义.附带技能 = 装备技能;
       else 定义.装备技能 = 装备技能;
     }
     if (分类 === '设计图纸') {
-      ['图纸目标'].forEach(字段名 => {
-        const 字段值 = 读取物品定义输入值(表单节点, 字段名, '');
+      ['图纸目标', '材料'].forEach(字段名 => {
+        const 原始值 = 读取物品定义输入值(表单节点, 字段名, '');
+        const 字段值 = 字段名 === '材料' ? 解析物品结构表单值(原始值) : 原始值;
         if (字段值) 定义[字段名] = 字段值;
       });
     }
+    if (旧定义.解锁内容 !== undefined) 定义.解锁内容 = cloneJsonValue(旧定义.解锁内容);
+    if (旧定义.使用限制或归属说明 !== undefined) 定义.使用限制或归属说明 = toText(旧定义.使用限制或归属说明, '').trim();
     if (分类 === '修炼秘籍') {
       ['获取条件', '研读条件', '解锁内容'].forEach(字段名 => {
         const 字段值 = 解析物品结构表单值(读取物品定义输入值(表单节点, 字段名, ''));
@@ -4668,15 +4745,13 @@
   }
 
   const 冷归档Manifest版本_桥接 = 1;
-  const 冷归档Api根_桥接 = '/api/plugins/lwcs-archive';
-  const 冷归档用户文件前缀_桥接 = 'LWCS_MVU_archive_';
   const 冷归档预览键_桥接 = 'MVU冷归档';
   const 角色归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 动态地点归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 物品归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null };
   const 势力归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null, 读取失败: false, 错误: '' };
   const 静态地点归档状态_桥接 = { chatKey: '', 存储键: '', 楼层: -1, manifest: null, manifestPromise: null, 读取失败: false, 错误: '' };
-  const 冷归档楼层清理状态_桥接 = { chatKey: '', 最新楼层: -1, timer: 0, autoTimer: 0, 提交前自动归档Timer: 0, pollTimer: 0, promise: null, 已安装: false, 提交意图监听已安装: false, 变量更新中: false, 变量更新兜底计时器: 0, 已自动检查消息键表: new Set() };
+  const 冷归档楼层清理状态_桥接 = { chatKey: '', 最新楼层: -1, timer: 0, 提交前自动归档Timer: 0, promise: null, 已安装: false, 提交意图监听已安装: false, 变量更新中: false, 变量更新兜底计时器: 0, 已自动检查消息键表: new Set() };
   const 冷归档自动归档配置存储键_桥接 = 'LWCS_冷归档自动归档配置_v1';
   const 冷实体激活保护存储键_桥接 = 'LWCS_冷实体激活保护_v1';
   const 冷实体激活保护楼层窗口_桥接 = 6;
@@ -4700,7 +4775,21 @@
   const 冷归档自动归档配置_桥接 = { ...冷归档自动归档默认配置_桥接 };
   const 冷归档自动归档状态_桥接 = { chatKey: '', 上次尝试毫秒: 0, promise: null };
   const 冷归档写回状态_桥接 = { 正在恢复: false, 正在归档: false };
-  const 冷归档服务状态_桥接 = { 已检查: false, 可用: false, 可写: false, 插件可用: false, 管理员: false, 存储模式: '', root: '', customRoot: '', custom: false, error: '', promise: null };
+  const 冷归档服务状态_桥接 = {
+    已检查: false,
+    可用: false,
+    可写: false,
+    后端: '',
+    存储模式: '',
+    root: '',
+    error: '',
+    promise: null,
+    handle: null,
+    chatKey: '',
+    generation: 0,
+    revision: 0,
+    提交队列: Promise.resolve(),
+  };
 
   function 读取冷归档布尔配置值_桥接(值, 默认值 = true) {
     if (值 === undefined || 值 === null || 值 === '') return !!默认值;
@@ -4919,193 +5008,274 @@
     return `${构建冷归档聊天路径_桥接(chatKey)}/meta/status.json`;
   }
 
-  async function 请求冷归档Api_桥接(端点 = '', 数据 = {}) {
-    const 响应 = await fetch(`${冷归档Api根_桥接}${端点}`, {
-      method: 'POST',
-      headers: 取冷归档请求头_桥接(),
-      body: JSON.stringify(数据 || {}),
-    });
-    let 载荷 = null;
-    try {
-      载荷 = await 响应.json();
-    } catch (错误) {}
-    if (!响应.ok || !载荷 || 载荷.ok === false) {
-      const 错误 = new Error((载荷 && (载荷.error || 载荷.detail)) || `冷归档服务失败 ${响应.status}`);
-      错误.status = 响应.status;
-      错误.payload = 载荷;
-      throw 错误;
-    }
-    return 载荷;
-  }
-
-  function 计算冷归档路径哈希_桥接(值 = '') {
-    try {
-      let 哈希 = 1469598103934665603n;
-      const 文本 = String(值 || '');
-      for (let 序号 = 0; 序号 < 文本.length; 序号 += 1) {
-        哈希 ^= BigInt(文本.charCodeAt(序号));
-        哈希 = BigInt.asUintN(64, 哈希 * 1099511628211n);
-      }
-      return 哈希.toString(16).padStart(16, '0');
-    } catch (错误) {
-      return `${计算归档路径短哈希_桥接(值)}_${String(值 || '').length}`;
-    }
-  }
-
-  function 构建用户文件冷归档文件名_桥接(路径 = '') {
-    return `${冷归档用户文件前缀_桥接}${计算冷归档路径哈希_桥接(路径)}.json`;
-  }
-
-  function 取用户文件冷归档Url_桥接(路径 = '') {
-    return `/user/files/${encodeURIComponent(构建用户文件冷归档文件名_桥接(路径))}?t=${Date.now()}`;
-  }
-
   async function 计算冷归档校验_桥接(文本内容 = '') {
     try {
       const 数据 = new TextEncoder().encode(String(文本内容 || ''));
       const 摘要 = await globalThis.crypto.subtle.digest('SHA-256', 数据);
       return Array.from(new Uint8Array(摘要)).map(字节 => 字节.toString(16).padStart(2, '0')).join('');
     } catch (错误) {
-      return `fallback-${计算冷归档路径哈希_桥接(文本内容)}`;
+      return `fallback-${计算归档路径短哈希_桥接(文本内容)}`;
     }
   }
 
-  async function 转为冷归档Base64_桥接(文本内容 = '') {
-    const 数据块 = new Blob([String(文本内容 || '')], { type: 'application/json' });
-    return await new Promise((resolve, reject) => {
-      const 读取器 = new FileReader();
-      读取器.onload = () => {
-        const 结果 = String(读取器.result || '');
-        resolve(结果.includes(',') ? 结果.split(',')[1] : 结果);
-      };
-      读取器.onerror = () => reject(new Error('冷归档 Base64 编码失败。'));
-      读取器.readAsDataURL(数据块);
-    });
-  }
-
-  async function 上传用户文件冷归档Json_桥接(路径 = '', 数据 = {}) {
-    const 数据文本 = JSON.stringify(数据 ?? null);
-    const 响应 = await fetch('/api/files/upload', {
-      method: 'POST',
-      headers: 取冷归档请求头_桥接(),
-      body: JSON.stringify({
-        name: 构建用户文件冷归档文件名_桥接(路径),
-        data: await 转为冷归档Base64_桥接(数据文本),
-      }),
-    });
-    if (!响应.ok) {
-      const 错误文本 = await 响应.text().catch(() => 响应.statusText);
-      const 错误 = new Error(`用户文件归档写入失败 ${响应.status}: ${错误文本}`);
-      错误.status = 响应.status;
-      throw 错误;
-    }
-    return {
-      path: 路径,
-      checksum: await 计算冷归档校验_桥接(数据文本),
-      byteSize: new Blob([数据文本]).size,
+  function 取冷归档窗口列表_桥接() {
+    const 列表 = [];
+    const 添加 = 候选 => {
+      if (候选 && (typeof 候选 === 'object' || typeof 候选 === 'function') && !列表.includes(候选)) 列表.push(候选);
     };
+    try { 添加(window); } catch (错误) {}
+    try { 添加(window.parent); } catch (错误) {}
+    try { 添加(window.top); } catch (错误) {}
+    try { 添加(globalThis); } catch (错误) {}
+    return 列表;
   }
 
-  async function 读取用户文件冷归档Json_桥接(路径 = '') {
-    const 响应 = await fetch(取用户文件冷归档Url_桥接(路径));
-    if (!响应.ok) {
-      const 错误 = new Error(`用户文件归档读取失败 ${响应.status}`);
-      错误.status = 响应.status;
+  function 取冷归档存储API_桥接() {
+    return 取冷归档窗口列表_桥接()
+      .map(窗口 => {
+        try { return 窗口.__LWCS_COLD_ARCHIVE_STORE_V1__; } catch (错误) { return null; }
+      })
+      .find(接口 => 接口 && typeof 接口.open === 'function') || null;
+  }
+
+  function 取冷归档模块加载器_桥接() {
+    return 取冷归档窗口列表_桥接()
+      .map(窗口 => {
+        try { return 窗口.__LWCS_确保模块已加载__; } catch (错误) { return null; }
+      })
+      .find(加载器 => typeof 加载器 === 'function') || null;
+  }
+
+  function 创建冷归档状态错误_桥接(结果 = null, 默认错误 = 'cold_archive_unavailable') {
+    const 错误码 = toText(结果 && (结果.error || 结果.state), 默认错误) || 默认错误;
+    const 错误 = new Error(错误码);
+    错误.code = 错误码;
+    错误.state = toText(结果 && 结果.state, 'unavailable');
+    if (错误码 === 'not_found') 错误.status = 404;
+    return 错误;
+  }
+
+  function 取冷归档逻辑键_桥接(路径 = '') {
+    const 原始路径 = toText(路径, '').trim().replace(/^\/+/, '');
+    if (!原始路径) throw new Error('冷归档逻辑键为空。');
+    if (原始路径.endsWith('/index.json')) return `manifest:${原始路径}`;
+    if (原始路径.endsWith('/status.json')) return `state:${原始路径}`;
+    return `entity:${原始路径}`;
+  }
+
+  function 冷归档会话有效_桥接(chatKey = '', generation = 冷归档服务状态_桥接.generation) {
+    return (
+      toText(chatKey, '').trim() === toText(取当前聊天归档标识_桥接(), '').trim()
+      && generation === 冷归档服务状态_桥接.generation
+      && !!冷归档服务状态_桥接.handle
+    );
+  }
+
+  function 要求冷归档会话代际_桥接(chatKey = '', generation = -1) {
+    if (toText(chatKey, '').trim() !== toText(取当前聊天归档标识_桥接(), '').trim() || generation !== 冷归档服务状态_桥接.generation) {
+      const 错误 = new Error('STALE_CHAT');
+      错误.code = 'STALE_CHAT';
       throw 错误;
     }
-    return await 响应.json();
+  }
+
+  function 失效冷归档会话_桥接(原因 = 'chat_changed') {
+    冷归档服务状态_桥接.generation += 1;
+    冷归档服务状态_桥接.handle = null;
+    冷归档服务状态_桥接.已检查 = false;
+    冷归档服务状态_桥接.可用 = false;
+    冷归档服务状态_桥接.可写 = false;
+    冷归档服务状态_桥接.后端 = '';
+    冷归档服务状态_桥接.存储模式 = '';
+    冷归档服务状态_桥接.chatKey = '';
+    冷归档服务状态_桥接.revision = 0;
+    冷归档服务状态_桥接.promise = null;
+    冷归档服务状态_桥接.提交队列 = Promise.resolve();
+    const 适配器 = 取冷归档窗口列表_桥接()
+      .map(窗口 => {
+        try { return 窗口.__LWCS_PERSISTENCE_ADAPTER_V1__; } catch (错误) { return null; }
+      })
+      .find(接口 => 接口 && typeof 接口.invalidateChatGeneration === 'function');
+    try { 适配器?.invalidateChatGeneration?.(); } catch (错误) {}
+    重置冷归档Manifest缓存_桥接();
+    冷归档楼层清理状态_桥接.chatKey = '';
+    冷归档楼层清理状态_桥接.最新楼层 = -1;
+    return { reason: 原因, generation: 冷归档服务状态_桥接.generation };
+  }
+
+  async function 确保冷归档句柄_桥接(选项 = {}) {
+    const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
+    if (!chatKey) throw new Error('冷归档聊天标识不可用。');
+    if (generation !== 冷归档服务状态_桥接.generation || chatKey !== 取当前聊天归档标识_桥接()) {
+      const 错误 = new Error('STALE_CHAT');
+      错误.code = 'STALE_CHAT';
+      throw 错误;
+    }
+    if (
+      冷归档服务状态_桥接.handle
+      && 冷归档服务状态_桥接.chatKey === chatKey
+      && 冷归档服务状态_桥接.generation === generation
+    ) return 冷归档服务状态_桥接;
+    if (冷归档服务状态_桥接.promise) return await 冷归档服务状态_桥接.promise;
+    const 加载器 = 取冷归档模块加载器_桥接();
+    if (typeof 加载器 !== 'function') throw new Error('冷归档存储模块加载器不可用。');
+    const 当前承诺 = (async () => {
+      await 加载器.call(window, '冷归档存储', { 来源: 'cold_archive_first_use', 允许失败降级: false, 抛错: true });
+      if (generation !== 冷归档服务状态_桥接.generation || chatKey !== 取当前聊天归档标识_桥接()) {
+        const 错误 = new Error('STALE_CHAT');
+        错误.code = 'STALE_CHAT';
+        throw 错误;
+      }
+      const 存储API = 取冷归档存储API_桥接();
+      if (!存储API) throw new Error('冷归档存储接口未就绪。');
+      const 打开选项 = chatKey === 'current_chat' ? {} : { fallbackStableChatId: chatKey };
+      const 句柄 = await 存储API.open(打开选项);
+      if (!句柄 || 句柄.state !== 'committed' || typeof 句柄.getJson !== 'function' || typeof 句柄.commitBundle !== 'function') {
+        throw 创建冷归档状态错误_桥接(句柄);
+      }
+      if (generation !== 冷归档服务状态_桥接.generation || chatKey !== 取当前聊天归档标识_桥接()) {
+        const 错误 = new Error('STALE_CHAT');
+        错误.code = 'STALE_CHAT';
+        throw 错误;
+      }
+      冷归档服务状态_桥接.handle = 句柄;
+      冷归档服务状态_桥接.chatKey = chatKey;
+      冷归档服务状态_桥接.generation = generation;
+      冷归档服务状态_桥接.后端 = toText(句柄.backend, '').trim();
+      冷归档服务状态_桥接.存储模式 = 冷归档服务状态_桥接.后端;
+      冷归档服务状态_桥接.root = 冷归档服务状态_桥接.后端 === 'st-files' ? 'SillyTavern files' : 'TauriTavern Store';
+      冷归档服务状态_桥接.error = '';
+      冷归档服务状态_桥接.已检查 = true;
+      冷归档服务状态_桥接.可用 = true;
+      冷归档服务状态_桥接.可写 = true;
+      return 冷归档服务状态_桥接;
+    })()
+      .catch(错误 => {
+        if (generation === 冷归档服务状态_桥接.generation) {
+          冷归档服务状态_桥接.已检查 = true;
+          冷归档服务状态_桥接.可用 = false;
+          冷归档服务状态_桥接.可写 = false;
+          冷归档服务状态_桥接.error = toText(错误 && (错误.code || 错误.message), 'cold_archive_unavailable');
+        }
+        throw 错误;
+      })
+      .finally(() => {
+        if (冷归档服务状态_桥接.promise === 当前承诺) 冷归档服务状态_桥接.promise = null;
+      });
+    冷归档服务状态_桥接.promise = 当前承诺;
+    return await 当前承诺;
   }
 
   async function 检查冷归档服务_桥接(选项 = {}) {
     if (!选项.force && 冷归档服务状态_桥接.已检查) return 冷归档服务状态_桥接;
-    if (!选项.force && 冷归档服务状态_桥接.promise) return await 冷归档服务状态_桥接.promise;
-    冷归档服务状态_桥接.promise = 请求冷归档Api_桥接('/status')
-      .then(结果 => {
-        冷归档服务状态_桥接.已检查 = true;
-        冷归档服务状态_桥接.插件可用 = !!结果.enabled;
-        冷归档服务状态_桥接.管理员 = !!结果.admin;
-        冷归档服务状态_桥接.可用 = true;
-        冷归档服务状态_桥接.可写 = 结果.enabled ? !!结果.writable : true;
-        冷归档服务状态_桥接.存储模式 = 结果.enabled ? '插件' : '用户文件';
-        冷归档服务状态_桥接.root = 冷归档服务状态_桥接.存储模式 === '插件' ? toText(结果.root, '') : '/user/files';
-        冷归档服务状态_桥接.customRoot = toText(结果.config && 结果.config.customRoot, '');
-        冷归档服务状态_桥接.custom = !!结果.custom;
-        冷归档服务状态_桥接.error = toText(结果.error, '');
-        return 冷归档服务状态_桥接;
-      })
-      .catch(错误 => {
-        冷归档服务状态_桥接.已检查 = true;
-        冷归档服务状态_桥接.可用 = true;
-        冷归档服务状态_桥接.可写 = true;
-        冷归档服务状态_桥接.插件可用 = false;
-        冷归档服务状态_桥接.管理员 = false;
-        冷归档服务状态_桥接.存储模式 = '用户文件';
-        冷归档服务状态_桥接.root = '/user/files';
-        冷归档服务状态_桥接.customRoot = '';
-        冷归档服务状态_桥接.custom = false;
-        冷归档服务状态_桥接.error = 错误 && 错误.message ? 错误.message : 'service_unavailable';
-        return 冷归档服务状态_桥接;
-      })
-      .finally(() => {
-        冷归档服务状态_桥接.promise = null;
-      });
-    return await 冷归档服务状态_桥接.promise;
+    try {
+      return await 确保冷归档句柄_桥接();
+    } catch (错误) {
+      冷归档服务状态_桥接.已检查 = true;
+      冷归档服务状态_桥接.可用 = false;
+      冷归档服务状态_桥接.可写 = false;
+      冷归档服务状态_桥接.error = toText(错误 && (错误.code || 错误.message), 'cold_archive_unavailable');
+      return 冷归档服务状态_桥接;
+    }
   }
 
   function 取冷归档存储键_桥接() {
     return [
-      冷归档服务状态_桥接.存储模式 || '未检查',
-      冷归档服务状态_桥接.root || '',
-      冷归档服务状态_桥接.customRoot || '',
+      冷归档服务状态_桥接.后端 || '未打开',
+      冷归档服务状态_桥接.chatKey || '',
+      String(冷归档服务状态_桥接.generation),
     ].join('|');
   }
 
   function 读取冷归档服务状态标签_桥接() {
     if (!冷归档服务状态_桥接.已检查) return '检测中';
-    if (冷归档服务状态_桥接.存储模式 === '用户文件') return '用户文件兼容';
-    if (!冷归档服务状态_桥接.可用) return '服务不可用';
-    if (!冷归档服务状态_桥接.可写) return '目录不可写';
-    return '插件归档';
+    if (!冷归档服务状态_桥接.可用) return `服务不可用：${冷归档服务状态_桥接.error || 'unavailable'}`;
+    return `backend=${冷归档服务状态_桥接.后端 || 'unknown'}`;
   }
 
-  async function 设置冷归档根目录_桥接(customRoot = '') {
-    const 当前状态 = await 检查冷归档服务_桥接({ force: true });
-    if (!当前状态.插件可用) throw new Error('路径设置需要启用冷归档插件。');
-    const 结果 = await 请求冷归档Api_桥接('/config/set', { customRoot: toText(customRoot, '').trim() });
-    冷归档服务状态_桥接.已检查 = false;
-    清除角色归档缓存_桥接('');
-    清除动态地点归档缓存_桥接('');
-    清除物品归档缓存_桥接('');
-    await 检查冷归档服务_桥接({ force: true });
-    return 结果;
+  async function 上传冷归档Json文件_桥接(路径 = '', 数据 = {}, 选项 = {}) {
+    const 状态 = await 确保冷归档句柄_桥接({
+      chatKey: 选项.chatKey || 取当前聊天归档标识_桥接(),
+      generation: Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation,
+    });
+    const 结果 = await 状态.handle.setJson({ key: 取冷归档逻辑键_桥接(路径), value: 数据 });
+    if (!结果 || 结果.state !== 'committed' || 结果.verified !== true) throw 创建冷归档状态错误_桥接(结果, 'not_committed');
+    const 数据文本 = JSON.stringify(数据 ?? null);
+    return { path: 路径, checksum: await 计算冷归档校验_桥接(数据文本), byteSize: new Blob([数据文本]).size };
   }
 
-  async function 上传冷归档Json文件_桥接(路径 = '', 数据 = {}) {
-    const 状态 = await 检查冷归档服务_桥接();
-    if (状态.存储模式 === '用户文件') return await 上传用户文件冷归档Json_桥接(路径, 数据);
-    if (!状态.可用) throw new Error('冷归档服务不可用。');
-    if (!状态.可写) throw new Error('冷归档目录不可写。');
-    const 结果 = await 请求冷归档Api_桥接('/json/write', { path: 路径, data: 数据 });
-    return { path: 结果.path || 路径, checksum: 结果.checksum, byteSize: 结果.byteSize };
-  }
-
-  async function 读取冷归档Json文件_桥接(路径 = '') {
-    const 状态 = await 检查冷归档服务_桥接();
-    if (状态.存储模式 === '用户文件') return await 读取用户文件冷归档Json_桥接(路径);
-    if (!状态.可用) throw new Error('冷归档服务不可用。');
-    const 结果 = await 请求冷归档Api_桥接('/json/read', { path: 路径 });
-    if (结果 && 结果.missing) {
+  async function 读取冷归档Json文件_桥接(路径 = '', 选项 = {}) {
+    const 状态 = await 确保冷归档句柄_桥接({
+      chatKey: 选项.chatKey || 取当前聊天归档标识_桥接(),
+      generation: Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation,
+    });
+    const 结果 = await 状态.handle.getJson({ key: 取冷归档逻辑键_桥接(路径) });
+    if (!结果 || 结果.state !== 'committed') throw 创建冷归档状态错误_桥接(结果, 'unavailable');
+    if (结果.value === undefined) {
       const 错误 = new Error('not_found');
+      错误.code = 'not_found';
       错误.status = 404;
       throw 错误;
     }
-    return 结果.data;
+    return 结果.value;
   }
 
-  async function 读取赛事归档Manifest_桥接() {
-    const chatKey = 取当前聊天归档标识_桥接();
+  async function 提交冷归档Bundle_桥接(条目列表 = [], 元数据 = {}, 选项 = {}) {
+    const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
+    const 规范条目 = (Array.isArray(条目列表) ? 条目列表 : [])
+      .map(条目 => ({ key: toText(条目 && (条目.key || (条目.path && 取冷归档逻辑键_桥接(条目.path))), '').trim(), value: 条目 && 条目.value }))
+      .filter(条目 => 条目.key);
+    if (!规范条目.length) throw new Error('冷归档提交条目为空。');
+    const 前序 = 冷归档服务状态_桥接.提交队列 || Promise.resolve();
+    const 当前提交 = 前序.catch(() => undefined).then(async () => {
+      const 状态 = await 确保冷归档句柄_桥接({ chatKey, generation });
+      if (!冷归档会话有效_桥接(chatKey, generation)) {
+        const 错误 = new Error('STALE_CHAT');
+        错误.code = 'STALE_CHAT';
+        throw 错误;
+      }
+      const 头部 = await 状态.handle.getJson({ key: 'state:head' });
+      if (!头部 || 头部.state !== 'committed') throw 创建冷归档状态错误_桥接(头部, 'unavailable');
+      const 当前修订 = Math.max(0, Math.floor(Number(头部.value && 头部.value.revision) || 0));
+      const revision = Math.max(当前修订 + 1, 冷归档服务状态_桥接.revision + 1);
+      const commitId = `cold-${Date.now().toString(36)}-${(冷归档服务状态_桥接.revision + 1).toString(36)}`;
+      const 结果 = await 状态.handle.commitBundle({
+        commitId,
+        revision,
+        entries: 规范条目,
+        metadata: { source: 'mvu-cold-archive', type: toText(元数据 && 元数据.type, 'entity') },
+      });
+      if (!结果 || 结果.state !== 'committed' || 结果.verified !== true) throw 创建冷归档状态错误_桥接(结果, 'not_committed');
+      冷归档服务状态_桥接.revision = revision;
+      return 结果;
+    });
+    冷归档服务状态_桥接.提交队列 = 当前提交.finally(() => {
+      if (冷归档服务状态_桥接.提交队列 === 当前提交) 冷归档服务状态_桥接.提交队列 = Promise.resolve();
+    });
+    return await 当前提交;
+  }
+
+  async function 提交冷归档Bundle并回读_桥接(条目列表 = [], 元数据 = {}, 选项 = {}) {
+    const 待确认条目 = (Array.isArray(条目列表) ? 条目列表 : [])
+      .map(条目 => ({ path: toText(条目 && 条目.path, '').trim(), value: 条目 && 条目.value }))
+      .filter(条目 => 条目.path);
+    if (!待确认条目.length || 待确认条目.length !== (Array.isArray(条目列表) ? 条目列表.length : 0)) throw new Error('冷归档原子提交条目路径缺失。');
+    await 提交冷归档Bundle_桥接(待确认条目, 元数据, 选项);
+    const 回读条目 = await Promise.all(待确认条目.map(async 条目 => ({
+      path: 条目.path,
+      value: await 读取冷归档Json文件_桥接(条目.path, 选项),
+    })));
+    if (回读条目.some((条目, 索引) => !冷归档值相等_桥接(条目.value, 待确认条目[索引].value))) throw new Error('冷归档原子提交回读校验失败。');
+    return 回读条目;
+  }
+
+  async function 读取赛事归档Manifest_桥接(选项 = {}) {
+    const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     try {
-      const manifest = await 读取冷归档Json文件_桥接(构建赛事归档Manifest路径_桥接(chatKey));
+      const manifest = await 读取冷归档Json文件_桥接(构建赛事归档Manifest路径_桥接(chatKey), { chatKey, generation });
       if (!manifest || manifest.version !== 冷归档Manifest版本_桥接 || manifest.schema !== 'competition_archive_index') {
         throw new Error('赛事归档索引结构不匹配');
       }
@@ -5118,7 +5288,7 @@
     }
   }
 
-  function 构建赛事归档摘要_桥接(赛事ID = '', 赛事 = {}, 文件路径 = '') {
+  function 构建赛事归档摘要_桥接(赛事ID = '', 赛事 = {}, 文件路径 = '', 楼层 = -1) {
     const 项目条目 = Object.entries(赛事?.项目 || {});
     const 参赛数量 = 项目条目.reduce((总数, [, 项目]) => 总数 + Math.max(0, toNumber(项目?.参赛总数, 0)), 0);
     return {
@@ -5127,6 +5297,7 @@
       参赛数量,
       项目数量: 项目条目.length,
       项目摘要: 项目条目.map(([项目名, 项目]) => `${项目名} ${toNumber(项目?.参赛总数, 0)}个单位`).join(' · '),
+      楼层: Number.isFinite(Number(楼层)) ? Math.max(-1, Math.floor(Number(楼层))) : -1,
       path: 文件路径,
     };
   }
@@ -5138,22 +5309,51 @@
     const 赛事 = cloneJsonValue(deepGet(liveSnapshot || lastRenderableSnapshot || {}, ['rootData', 'world', '赛事', 安全赛事ID], null), null);
     if (!赛事 || 赛事.状态 !== '已完成') throw new Error('只有已完成赛事可以归档');
     const chatKey = 取当前聊天归档标识_桥接();
+    const generation = 冷归档服务状态_桥接.generation;
+    const 当前楼层 = 读取当前最新聊天楼层_桥接();
     const 文件路径 = 构建赛事归档文件路径_桥接(chatKey, 安全赛事ID, 赛事.名称);
-    await 上传冷归档Json文件_桥接(文件路径, {
+    const 赛事记录 = {
       version: 冷归档Manifest版本_桥接,
       schema: 'competition_archive_record',
       chatKey,
       赛事ID: 安全赛事ID,
+      楼层: 当前楼层,
       赛事,
-    });
-    const manifest = await 读取赛事归档Manifest_桥接();
-    manifest.赛事索引[安全赛事ID] = 构建赛事归档摘要_桥接(安全赛事ID, 赛事, 文件路径);
-    await 上传冷归档Json文件_桥接(构建赛事归档Manifest路径_桥接(chatKey), manifest);
-    await mutateStatDataByEditor(statData => {
-      if (statData?.world?.赛事?.[安全赛事ID]?.状态 === '已完成') delete statData.world.赛事[安全赛事ID];
-    }, { force: true });
-    await refreshLiveSnapshot({ force: true });
-    return manifest.赛事索引[安全赛事ID];
+    };
+    const manifest = await 读取赛事归档Manifest_桥接({ chatKey, generation });
+    if (!manifest.赛事索引 || typeof manifest.赛事索引 !== 'object' || Array.isArray(manifest.赛事索引)) manifest.赛事索引 = {};
+    manifest.赛事索引[安全赛事ID] = 构建赛事归档摘要_桥接(安全赛事ID, 赛事, 文件路径, 当前楼层);
+    manifest.updatedAt = new Date().toISOString();
+    const 回读条目 = await 提交冷归档Bundle并回读_桥接(
+      [
+        { path: 文件路径, value: 赛事记录 },
+        { path: 构建赛事归档Manifest路径_桥接(chatKey), value: manifest },
+      ],
+      { type: 'competition' },
+      { chatKey, generation },
+    );
+    const 回读Manifest = 回读条目.find(条目 => 条目.path === 构建赛事归档Manifest路径_桥接(chatKey))?.value;
+    const 回读记录 = 回读条目.find(条目 => 条目.path === 文件路径)?.value;
+    if (!回读记录 || !冷归档值相等_桥接(回读记录, 赛事记录) || !回读Manifest?.赛事索引?.[安全赛事ID] || 回读Manifest.赛事索引[安全赛事ID].path !== 文件路径) throw new Error('赛事归档回读校验失败。');
+    if (!冷归档允许删除热区_桥接(chatKey, generation)) return 创建冷归档过期结果_桥接({ 赛事ID: 安全赛事ID });
+    try {
+      要求冷归档会话代际_桥接(chatKey, generation);
+      await mutateStatDataByEditor(statData => {
+        if (statData?.world?.赛事?.[安全赛事ID]?.状态 === '已完成') delete statData.world.赛事[安全赛事ID];
+      }, { force: true });
+      要求冷归档会话代际_桥接(chatKey, generation);
+    } catch (错误) {
+      if (是冷归档过期错误_桥接(错误)) return 创建冷归档过期结果_桥接({ 赛事ID: 安全赛事ID });
+      throw 错误;
+    }
+    try {
+      await refreshLiveSnapshot({ force: true });
+      要求冷归档会话代际_桥接(chatKey, generation);
+    } catch (错误) {
+      if (是冷归档过期错误_桥接(错误)) return 创建冷归档过期结果_桥接({ 赛事ID: 安全赛事ID });
+      throw 错误;
+    }
+    return 回读Manifest.赛事索引[安全赛事ID];
   }
 
   async function 列出赛事归档_桥接() {
@@ -5281,36 +5481,6 @@
       if (匹配楼层.length > 1) break;
     }
     return 匹配楼层.length === 1 ? 匹配楼层[0] : -1;
-  }
-
-  function 构建冷归档自动检查消息键_桥接(选项 = {}) {
-    const 目标元信息 = 读取自动归档目标消息元信息_桥接(选项);
-    if (目标元信息) {
-      return [
-        目标元信息.chatKey || 取当前聊天归档标识_桥接(),
-        目标元信息.消息编号,
-        目标元信息.滑动编号,
-        目标元信息.文本签名,
-      ].join('|');
-    }
-    const 聊天 = 读取当前聊天数组_桥接();
-    let 目标索引 = 定位聊天消息索引_桥接(聊天, 读取事件消息引用_桥接(选项));
-    if (目标索引 < 0 && 选项.使用最新AI !== false) {
-      for (let 索引 = 聊天.length - 1; 索引 >= 0; 索引 -= 1) {
-        if (聊天[索引] && !聊天[索引].is_user) {
-          目标索引 = 索引;
-          break;
-        }
-      }
-    }
-    if (目标索引 < 0) return '';
-    const 目标消息 = 聊天[目标索引];
-    if (!目标消息 || 目标消息.is_user) return '';
-    return [
-      取当前聊天归档标识_桥接(),
-      读取聊天消息编号_桥接(目标消息, 目标索引),
-      读取聊天消息当前滑动编号_桥接(目标消息),
-    ].join('|');
   }
 
   function 定位聊天消息索引_桥接(聊天 = [], 消息引用 = '') {
@@ -5490,7 +5660,7 @@
   }
 
   function 清理冷实体激活保护表未来楼层_桥接(表 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
-    ['角色', '动态地点', '物品'].forEach(类型 => {
+    ['角色', '动态地点', '物品', '势力', '地点'].forEach(类型 => {
       const 类型表 = 表[类型] && typeof 表[类型] === 'object' && !Array.isArray(表[类型]) ? 表[类型] : {};
       Object.keys(类型表).forEach(名称 => {
         const 楼层 = Number(类型表[名称]);
@@ -5876,13 +6046,14 @@
   }
 
   async function 读取角色归档Manifest_桥接(选项 = {}) {
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     清除角色归档缓存_桥接(chatKey);
     if (!选项.force && 角色归档状态_桥接.manifest) return 角色归档状态_桥接.manifest;
     if (!选项.force && 角色归档状态_桥接.manifestPromise) return await 角色归档状态_桥接.manifestPromise;
     角色归档状态_桥接.manifestPromise = (async () => {
       try {
-        const manifest = await 读取冷归档Json文件_桥接(构建角色归档Manifest路径_桥接(chatKey));
+        const manifest = await 读取冷归档Json文件_桥接(构建角色归档Manifest路径_桥接(chatKey), { chatKey, generation });
         if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('角色归档 manifest 版本不匹配。');
         if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('角色归档 manifest 结构不匹配。');
         if (manifest.chatKey !== chatKey) throw new Error('角色归档 manifest 不属于当前聊天。');
@@ -5910,13 +6081,14 @@
   }
 
   async function 读取动态地点归档Manifest_桥接(选项 = {}) {
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     清除动态地点归档缓存_桥接(chatKey);
     if (!选项.force && 动态地点归档状态_桥接.manifest) return 动态地点归档状态_桥接.manifest;
     if (!选项.force && 动态地点归档状态_桥接.manifestPromise) return await 动态地点归档状态_桥接.manifestPromise;
     动态地点归档状态_桥接.manifestPromise = (async () => {
       try {
-        const manifest = await 读取冷归档Json文件_桥接(构建动态地点归档Manifest路径_桥接(chatKey));
+        const manifest = await 读取冷归档Json文件_桥接(构建动态地点归档Manifest路径_桥接(chatKey), { chatKey, generation });
         if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('动态地点归档 manifest 版本不匹配。');
         if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('动态地点归档 manifest 结构不匹配。');
         if (manifest.chatKey !== chatKey) throw new Error('动态地点归档 manifest 不属于当前聊天。');
@@ -5944,13 +6116,14 @@
   }
 
   async function 读取物品归档Manifest_桥接(选项 = {}) {
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     清除物品归档缓存_桥接(chatKey);
     if (!选项.force && 物品归档状态_桥接.manifest) return 物品归档状态_桥接.manifest;
     if (!选项.force && 物品归档状态_桥接.manifestPromise) return await 物品归档状态_桥接.manifestPromise;
     物品归档状态_桥接.manifestPromise = (async () => {
       try {
-        const manifest = await 读取冷归档Json文件_桥接(构建物品归档Manifest路径_桥接(chatKey));
+        const manifest = await 读取冷归档Json文件_桥接(构建物品归档Manifest路径_桥接(chatKey), { chatKey, generation });
         if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('物品归档 manifest 版本不匹配。');
         if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('物品归档 manifest 结构不匹配。');
         if (manifest.chatKey !== chatKey) throw new Error('物品归档 manifest 不属于当前聊天。');
@@ -5978,13 +6151,14 @@
   }
 
   async function 读取势力归档Manifest_桥接(选项 = {}) {
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     清除势力归档缓存_桥接(chatKey);
     if (!选项.force && 势力归档状态_桥接.manifest) return 势力归档状态_桥接.manifest;
     if (!选项.force && 势力归档状态_桥接.manifestPromise) return await 势力归档状态_桥接.manifestPromise;
     势力归档状态_桥接.manifestPromise = (async () => {
       try {
-        const manifest = await 读取冷归档Json文件_桥接(构建势力归档Manifest路径_桥接(chatKey));
+        const manifest = await 读取冷归档Json文件_桥接(构建势力归档Manifest路径_桥接(chatKey), { chatKey, generation });
         if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('势力归档 manifest 版本不匹配。');
         if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('势力归档 manifest 结构不匹配。');
         if (manifest.chatKey !== chatKey) throw new Error('势力归档 manifest 不属于当前聊天。');
@@ -6021,13 +6195,14 @@
   }
 
   async function 读取静态地点归档Manifest_桥接(选项 = {}) {
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     清除静态地点归档缓存_桥接(chatKey);
     if (!选项.force && 静态地点归档状态_桥接.manifest) return 静态地点归档状态_桥接.manifest;
     if (!选项.force && 静态地点归档状态_桥接.manifestPromise) return await 静态地点归档状态_桥接.manifestPromise;
     静态地点归档状态_桥接.manifestPromise = (async () => {
       try {
-        const manifest = await 读取冷归档Json文件_桥接(构建静态地点归档Manifest路径_桥接(chatKey));
+        const manifest = await 读取冷归档Json文件_桥接(构建静态地点归档Manifest路径_桥接(chatKey), { chatKey, generation });
         if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('静态地点归档 manifest 版本不匹配。');
         if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('静态地点归档 manifest 结构不匹配。');
         if (manifest.chatKey !== chatKey) throw new Error('静态地点归档 manifest 不属于当前聊天。');
@@ -6065,6 +6240,7 @@
 
   async function 写入角色归档Manifest_桥接(manifest = {}, 选项 = {}) {
     const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
     const 角色索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.角色索引, 当前楼层);
     const 待写入 = {
@@ -6074,7 +6250,7 @@
       updatedAt: new Date().toISOString(),
       角色索引,
     };
-    await 上传冷归档Json文件_桥接(构建角色归档Manifest路径_桥接(chatKey), 待写入);
+    await 上传冷归档Json文件_桥接(构建角色归档Manifest路径_桥接(chatKey), 待写入, { chatKey, generation });
     const 缓存manifest = { ...待写入, 角色索引: 规范化冷归档时间线索引表_桥接(角色索引, 当前楼层) };
     角色归档状态_桥接.chatKey = chatKey;
     角色归档状态_桥接.存储键 = 取冷归档存储键_桥接();
@@ -6086,6 +6262,7 @@
 
   async function 写入动态地点归档Manifest_桥接(manifest = {}, 选项 = {}) {
     const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
     const 动态地点索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.动态地点索引, 当前楼层);
     const 待写入 = {
@@ -6095,7 +6272,7 @@
       updatedAt: new Date().toISOString(),
       动态地点索引,
     };
-    await 上传冷归档Json文件_桥接(构建动态地点归档Manifest路径_桥接(chatKey), 待写入);
+    await 上传冷归档Json文件_桥接(构建动态地点归档Manifest路径_桥接(chatKey), 待写入, { chatKey, generation });
     const 缓存manifest = { ...待写入, 动态地点索引: 规范化冷归档时间线索引表_桥接(动态地点索引, 当前楼层) };
     动态地点归档状态_桥接.chatKey = chatKey;
     动态地点归档状态_桥接.存储键 = 取冷归档存储键_桥接();
@@ -6107,6 +6284,7 @@
 
   async function 写入物品归档Manifest_桥接(manifest = {}, 选项 = {}) {
     const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
     const 物品索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.物品索引, 当前楼层);
     const 待写入 = {
@@ -6116,7 +6294,7 @@
       updatedAt: new Date().toISOString(),
       物品索引,
     };
-    await 上传冷归档Json文件_桥接(构建物品归档Manifest路径_桥接(chatKey), 待写入);
+    await 上传冷归档Json文件_桥接(构建物品归档Manifest路径_桥接(chatKey), 待写入, { chatKey, generation });
     const 缓存manifest = { ...待写入, 物品索引: 规范化冷归档时间线索引表_桥接(物品索引, 当前楼层) };
     物品归档状态_桥接.chatKey = chatKey;
     物品归档状态_桥接.存储键 = 取冷归档存储键_桥接();
@@ -6128,6 +6306,7 @@
 
   async function 写入势力归档Manifest_桥接(manifest = {}, 选项 = {}) {
     const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
     const 势力索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.势力索引, 当前楼层);
     const 待写入 = {
@@ -6137,7 +6316,7 @@
       updatedAt: new Date().toISOString(),
       势力索引,
     };
-    await 上传冷归档Json文件_桥接(构建势力归档Manifest路径_桥接(chatKey), 待写入);
+    await 上传冷归档Json文件_桥接(构建势力归档Manifest路径_桥接(chatKey), 待写入, { chatKey, generation });
     const 缓存manifest = { ...待写入, 势力索引: 规范化冷归档时间线索引表_桥接(势力索引, 当前楼层) };
     势力归档状态_桥接.chatKey = chatKey;
     势力归档状态_桥接.存储键 = 取冷归档存储键_桥接();
@@ -6151,6 +6330,7 @@
 
   async function 写入静态地点归档Manifest_桥接(manifest = {}, 选项 = {}) {
     const chatKey = toText(选项.chatKey || manifest.chatKey || 取当前聊天归档标识_桥接(), '').trim() || 取当前聊天归档标识_桥接();
+    const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     const 当前楼层 = 读取当前最新聊天楼层_桥接(选项.楼层);
     const 地点索引 = 构建冷归档时间线写入索引表_桥接(manifest && manifest.地点索引, 当前楼层);
     const 待写入 = {
@@ -6160,7 +6340,7 @@
       updatedAt: new Date().toISOString(),
       地点索引,
     };
-    await 上传冷归档Json文件_桥接(构建静态地点归档Manifest路径_桥接(chatKey), 待写入);
+    await 上传冷归档Json文件_桥接(构建静态地点归档Manifest路径_桥接(chatKey), 待写入, { chatKey, generation });
     const 缓存manifest = { ...待写入, 地点索引: 规范化冷归档时间线索引表_桥接(地点索引, 当前楼层) };
     静态地点归档状态_桥接.chatKey = chatKey;
     静态地点归档状态_桥接.存储键 = 取冷归档存储键_桥接();
@@ -6216,9 +6396,9 @@
     静态地点归档状态_桥接.错误 = '';
   }
 
-  async function 读取冷归档时间线原始Manifest_桥接(路径 = '', chatKey = '', 索引字段 = '') {
+  async function 读取冷归档时间线原始Manifest_桥接(路径 = '', chatKey = '', 索引字段 = '', generation = 冷归档服务状态_桥接.generation) {
     try {
-      const manifest = await 读取冷归档Json文件_桥接(路径);
+      const manifest = await 读取冷归档Json文件_桥接(路径, { chatKey, generation });
       if (!manifest || typeof manifest !== 'object' || manifest.version !== 冷归档Manifest版本_桥接) throw new Error('冷归档时间线版本不匹配。');
       if (manifest.schema && manifest.schema !== 'object_timeline_index') throw new Error('冷归档索引结构不匹配。');
       if (manifest.chatKey !== chatKey) throw new Error('冷归档时间线不属于当前聊天。');
@@ -6231,9 +6411,9 @@
     }
   }
 
-  async function 清理单对象未来楼层冷归档_桥接(配置 = {}, 名称 = '', 索引 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接()) {
+  async function 清理单对象未来楼层冷归档_桥接(配置 = {}, 名称 = '', 索引 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接(), generation = 冷归档服务状态_桥接.generation) {
     const 路径 = toText(索引 && 索引.path, '').trim() || 配置.构建文件路径(chatKey, 名称);
-    const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: 配置.类型, 名称, 路径 });
+    const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, generation, 类型: 配置.类型, 名称, 路径 });
     const 原版本列表 = 取冷归档版本列表_桥接(时间线);
     const 新版本列表 = 原版本列表
       .filter(版本 => 规范化冷归档版本楼层_桥接(版本) <= 当前楼层)
@@ -6249,27 +6429,30 @@
       updatedAt: new Date().toISOString(),
       versions: 新版本列表,
     };
-    if (changed) await 上传冷归档Json文件_桥接(路径, 待写入时间线);
     const 当前版本 = 取当前冷归档版本_桥接(待写入时间线, 当前楼层);
     return {
       changed,
+      path: 路径,
+      时间线: 待写入时间线,
       索引: 构建冷归档对象索引条目_桥接(当前版本, 路径, 新版本列表.length),
     };
   }
 
-  async function 清理单类未来楼层冷归档_桥接(配置 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接()) {
-    const manifest = await 读取冷归档时间线原始Manifest_桥接(配置.路径, chatKey, 配置.索引字段);
+  async function 清理单类未来楼层冷归档_桥接(配置 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接(), generation = 冷归档服务状态_桥接.generation) {
+    const manifest = await 读取冷归档时间线原始Manifest_桥接(配置.路径, chatKey, 配置.索引字段, generation);
     if (!manifest) return { changed: false, manifest: null };
     const 原索引表 = manifest[配置.索引字段] && typeof manifest[配置.索引字段] === 'object' ? manifest[配置.索引字段] : {};
     const 新索引表 = {};
+    const 待写入实体 = [];
     let changed = false;
     for (const [名称, 索引] of Object.entries(原索引表)) {
       try {
-        const 结果 = await 清理单对象未来楼层冷归档_桥接(配置, 名称, 索引, 当前楼层, chatKey);
+        const 结果 = await 清理单对象未来楼层冷归档_桥接(配置, 名称, 索引, 当前楼层, chatKey, generation);
         if (结果.索引) 新索引表[名称] = 结果.索引;
+        if (结果.changed && 结果.path && 结果.时间线) 待写入实体.push({ path: 结果.path, value: 结果.时间线 });
         if (结果.changed || !结果.索引 || 规范化冷归档版本楼层_桥接(索引) > 当前楼层) changed = true;
       } catch (错误) {
-        console.warn('[DragonUI] 冷归档对象楼层清理失败', 名称, 错误);
+        console.warn('[DragonUI] 冷归档对象楼层清理失败', toText(错误 && (错误.code || 错误.message), 'unknown'));
         const 条目 = 取当前冷归档版本_桥接(索引, 当前楼层);
         const 索引条目 = 构建冷归档对象索引条目_桥接(条目, 条目 && 条目.path, 条目 && 条目.版本数量);
         if (索引条目) 新索引表[名称] = 索引条目;
@@ -6277,14 +6460,72 @@
     }
     if (!changed && 冷归档Json文本_桥接(规范化冷归档时间线索引表_桥接(原索引表, 当前楼层)) !== 冷归档Json文本_桥接(新索引表)) changed = true;
     if (!changed) return { changed: false, manifest: { ...manifest, [配置.索引字段]: 新索引表 } };
-    manifest[配置.索引字段] = 新索引表;
-    return { changed: true, manifest: await 配置.写入(manifest, { 楼层: 当前楼层, chatKey }) };
+    const 待写入Manifest = {
+      ...manifest,
+      updatedAt: new Date().toISOString(),
+      [配置.索引字段]: 新索引表,
+    };
+    const 回读条目 = await 提交冷归档Bundle并回读_桥接(
+      [...待写入实体, { path: 配置.路径, value: 待写入Manifest }],
+      { type: `${配置.类型 || 'entity'}_future_prune` },
+      { chatKey, generation },
+    );
+    const 回读Manifest = 回读条目.find(条目 => 条目.path === 配置.路径)?.value;
+    if (!回读Manifest || !冷归档值相等_桥接(回读Manifest, 待写入Manifest)) throw new Error('冷归档未来楼层 manifest 回读校验失败。');
+    return { changed: true, manifest: 回读Manifest };
+  }
+
+  async function 清理未来赛事归档_桥接(当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接(), generation = 冷归档服务状态_桥接.generation) {
+    const manifestPath = 构建赛事归档Manifest路径_桥接(chatKey);
+    const manifest = await 读取赛事归档Manifest_桥接({ chatKey, generation });
+    const 原索引表 = manifest && manifest.赛事索引 && typeof manifest.赛事索引 === 'object' && !Array.isArray(manifest.赛事索引) ? manifest.赛事索引 : {};
+    const 新索引表 = {};
+    const 待写入实体 = [];
+    for (const [赛事ID, 索引] of Object.entries(原索引表)) {
+      const 楼层 = Number(索引 && 索引.楼层);
+      if (!Number.isFinite(楼层) || 楼层 <= 当前楼层) {
+        新索引表[赛事ID] = 索引;
+        continue;
+      }
+      const 路径 = toText(索引 && 索引.path, '').trim();
+      if (!路径) {
+        新索引表[赛事ID] = 索引;
+        continue;
+      }
+      待写入实体.push({
+        path: 路径,
+        value: {
+          version: 冷归档Manifest版本_桥接,
+          schema: 'competition_archive_tombstone',
+          chatKey,
+          赛事ID,
+          楼层,
+          状态: '已清理未来楼层',
+          清理时间: new Date().toISOString(),
+        },
+      });
+    }
+    if (!待写入实体.length) return { changed: false, manifest };
+    const 待写入Manifest = {
+      ...manifest,
+      updatedAt: new Date().toISOString(),
+      赛事索引: 新索引表,
+    };
+    const 回读条目 = await 提交冷归档Bundle并回读_桥接(
+      [...待写入实体, { path: manifestPath, value: 待写入Manifest }],
+      { type: 'competition_future_prune' },
+      { chatKey, generation },
+    );
+    const 回读Manifest = 回读条目.find(条目 => 条目.path === manifestPath)?.value;
+    if (!回读Manifest || !冷归档值相等_桥接(回读Manifest, 待写入Manifest)) throw new Error('赛事未来楼层 manifest 回读校验失败。');
+    return { changed: true, manifest: 回读Manifest, 清理数量: 待写入实体.length };
   }
 
   async function 清理未来楼层冷归档_桥接(选项 = {}) {
     if (!选项.force && 冷归档楼层清理状态_桥接.promise) return await 冷归档楼层清理状态_桥接.promise;
     冷归档楼层清理状态_桥接.promise = (async () => {
       const chatKey = 取当前聊天归档标识_桥接();
+      const generation = 冷归档服务状态_桥接.generation;
       const 当前楼层 = 读取当前最新聊天楼层_桥接();
       const 上次chatKey = 冷归档楼层清理状态_桥接.chatKey;
       const 上次楼层 = 冷归档楼层清理状态_桥接.最新楼层;
@@ -6300,21 +6541,29 @@
         return { changed: false, chatKey, 当前楼层, reason: 'archive_unavailable' };
       }
       const 配置列表 = [
-        { 路径: 构建角色归档Manifest路径_桥接(chatKey), 索引字段: '角色索引', 类型: '角色', 构建文件路径: 构建角色归档文件路径_桥接, 写入: 写入角色归档Manifest_桥接 },
-        { 路径: 构建动态地点归档Manifest路径_桥接(chatKey), 索引字段: '动态地点索引', 类型: '动态地点', 构建文件路径: 构建动态地点归档文件路径_桥接, 写入: 写入动态地点归档Manifest_桥接 },
-        { 路径: 构建物品归档Manifest路径_桥接(chatKey), 索引字段: '物品索引', 类型: '物品', 构建文件路径: 构建物品归档文件路径_桥接, 写入: 写入物品归档Manifest_桥接 },
-        { 路径: 构建势力归档Manifest路径_桥接(chatKey), 索引字段: '势力索引', 类型: '势力', 构建文件路径: 构建势力归档文件路径_桥接, 写入: 写入势力归档Manifest_桥接 },
-        { 路径: 构建静态地点归档Manifest路径_桥接(chatKey), 索引字段: '地点索引', 类型: '地点', 构建文件路径: (当前chatKey, 名称) => 构建静态地点归档文件路径_桥接(当前chatKey, 规范化静态地点路径_桥接(名称)), 写入: 写入静态地点归档Manifest_桥接 },
+        { 路径: 构建角色归档Manifest路径_桥接(chatKey), 索引字段: '角色索引', 类型: '角色', 构建文件路径: 构建角色归档文件路径_桥接 },
+        { 路径: 构建动态地点归档Manifest路径_桥接(chatKey), 索引字段: '动态地点索引', 类型: '动态地点', 构建文件路径: 构建动态地点归档文件路径_桥接 },
+        { 路径: 构建物品归档Manifest路径_桥接(chatKey), 索引字段: '物品索引', 类型: '物品', 构建文件路径: 构建物品归档文件路径_桥接 },
+        { 路径: 构建势力归档Manifest路径_桥接(chatKey), 索引字段: '势力索引', 类型: '势力', 构建文件路径: 构建势力归档文件路径_桥接 },
+        { 路径: 构建静态地点归档Manifest路径_桥接(chatKey), 索引字段: '地点索引', 类型: '地点', 构建文件路径: (当前chatKey, 名称) => 构建静态地点归档文件路径_桥接(当前chatKey, 规范化静态地点路径_桥接(名称)) },
       ];
       const 结果列表 = [];
       for (const 配置 of 配置列表) {
         try {
-          结果列表.push(await 清理单类未来楼层冷归档_桥接(配置, 当前楼层, chatKey));
+          结果列表.push(await 清理单类未来楼层冷归档_桥接(配置, 当前楼层, chatKey, generation));
         } catch (错误) {
-          console.warn('[DragonUI] 冷归档楼层清理失败', 错误);
+          console.warn('[DragonUI] 冷归档楼层清理失败', toText(错误 && (错误.code || 错误.message), 'unknown'));
           结果列表.push({ changed: false, error: 错误 });
         }
       }
+      try {
+        结果列表.push(await 清理未来赛事归档_桥接(当前楼层, chatKey, generation));
+      } catch (错误) {
+        console.warn('[DragonUI] 赛事归档楼层清理失败', toText(错误 && (错误.code || 错误.message), 'unknown'));
+        结果列表.push({ changed: false, error: 错误 });
+      }
+      try { 要求冷归档会话代际_桥接(chatKey, generation); }
+      catch (错误) { if (是冷归档过期错误_桥接(错误)) return { changed: false, chatKey, 当前楼层, reason: 'stale_chat' }; throw 错误; }
       const changed = 结果列表.some(结果 => 结果 && 结果.changed);
       冷归档楼层清理状态_桥接.chatKey = chatKey;
       冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
@@ -6332,21 +6581,22 @@
     return await 冷归档楼层清理状态_桥接.promise;
   }
 
-  async function 整理单类冷归档历史_桥接(配置 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接()) {
-    const manifest = await 读取冷归档时间线原始Manifest_桥接(配置.路径, chatKey, 配置.索引字段);
+  async function 整理单类冷归档历史_桥接(配置 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接(), chatKey = 取当前聊天归档标识_桥接(), generation = 冷归档服务状态_桥接.generation) {
+    const manifest = await 读取冷归档时间线原始Manifest_桥接(配置.路径, chatKey, 配置.索引字段, generation);
     if (!manifest) return { changed: false, manifest: null, 整理数量: 0 };
     const 原索引表 = manifest[配置.索引字段] && typeof manifest[配置.索引字段] === 'object' ? manifest[配置.索引字段] : {};
     const 新索引表 = {};
+    const 待写入实体 = [];
     let changed = false;
     let 整理数量 = 0;
     for (const [名称, 索引] of Object.entries(原索引表)) {
       try {
         const 路径 = toText(索引 && 索引.path, '').trim() || 配置.构建文件路径(chatKey, 名称);
-        const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, 类型: 配置.类型, 名称, 路径 });
+        const 时间线 = await 读取冷归档对象时间线_桥接({ chatKey, generation, 类型: 配置.类型, 名称, 路径 });
         const 整理结果 = await 整理冷归档对象时间线_桥接(时间线, 当前楼层, { force: true });
         const 待写入时间线 = 整理结果.时间线 || 时间线;
         if (整理结果.changed) {
-          await 上传冷归档Json文件_桥接(路径, 待写入时间线);
+          待写入实体.push({ path: 路径, value: 待写入时间线 });
           changed = true;
           整理数量 += 1;
         }
@@ -6354,7 +6604,7 @@
         const 索引条目 = 构建冷归档对象索引条目_桥接(当前版本, 路径, 取冷归档版本列表_桥接(待写入时间线).length);
         if (索引条目) 新索引表[名称] = 索引条目;
       } catch (错误) {
-        console.warn('[DragonUI] 冷归档历史整理失败', 名称, 错误);
+        console.warn('[DragonUI] 冷归档历史整理失败', toText(错误 && (错误.code || 错误.message), 'unknown'));
         const 条目 = 取当前冷归档版本_桥接(索引, 当前楼层);
         const 索引条目 = 构建冷归档对象索引条目_桥接(条目, 条目 && 条目.path, 条目 && 条目.版本数量);
         if (索引条目) 新索引表[名称] = 索引条目;
@@ -6362,32 +6612,46 @@
     }
     if (冷归档Json文本_桥接(规范化冷归档时间线索引表_桥接(原索引表, 当前楼层)) !== 冷归档Json文本_桥接(新索引表)) changed = true;
     if (!changed) return { changed: false, manifest, 整理数量 };
-    manifest[配置.索引字段] = 新索引表;
-    return { changed: true, manifest: await 配置.写入(manifest, { 楼层: 当前楼层, chatKey }), 整理数量 };
+    const 待写入Manifest = {
+      ...manifest,
+      updatedAt: new Date().toISOString(),
+      [配置.索引字段]: 新索引表,
+    };
+    const 回读条目 = await 提交冷归档Bundle并回读_桥接(
+      [...待写入实体, { path: 配置.路径, value: 待写入Manifest }],
+      { type: `${配置.类型 || 'entity'}_history_compact` },
+      { chatKey, generation },
+    );
+    const 回读Manifest = 回读条目.find(条目 => 条目.path === 配置.路径)?.value;
+    if (!回读Manifest || !冷归档值相等_桥接(回读Manifest, 待写入Manifest)) throw new Error('冷归档历史 manifest 回读校验失败。');
+    return { changed: true, manifest: 回读Manifest, 整理数量 };
   }
 
   async function 整理全部冷归档历史_桥接(选项 = {}) {
     if (冷归档自动归档配置_桥接.历史清理模式 === '停用') return { changed: false, 整理数量: 0, reason: 'disabled' };
     const chatKey = 取当前聊天归档标识_桥接();
+    const generation = 冷归档服务状态_桥接.generation;
     const 当前楼层 = 读取当前最新聊天楼层_桥接();
     const 状态 = await 检查冷归档服务_桥接();
     if (!状态 || !状态.可用 || !状态.可写) return { changed: false, 整理数量: 0, reason: 'archive_unavailable' };
     const 配置列表 = [
-      { 路径: 构建角色归档Manifest路径_桥接(chatKey), 索引字段: '角色索引', 类型: '角色', 构建文件路径: 构建角色归档文件路径_桥接, 写入: 写入角色归档Manifest_桥接 },
-      { 路径: 构建动态地点归档Manifest路径_桥接(chatKey), 索引字段: '动态地点索引', 类型: '动态地点', 构建文件路径: 构建动态地点归档文件路径_桥接, 写入: 写入动态地点归档Manifest_桥接 },
-      { 路径: 构建物品归档Manifest路径_桥接(chatKey), 索引字段: '物品索引', 类型: '物品', 构建文件路径: 构建物品归档文件路径_桥接, 写入: 写入物品归档Manifest_桥接 },
-      { 路径: 构建势力归档Manifest路径_桥接(chatKey), 索引字段: '势力索引', 类型: '势力', 构建文件路径: 构建势力归档文件路径_桥接, 写入: 写入势力归档Manifest_桥接 },
-      { 路径: 构建静态地点归档Manifest路径_桥接(chatKey), 索引字段: '地点索引', 类型: '地点', 构建文件路径: (当前chatKey, 名称) => 构建静态地点归档文件路径_桥接(当前chatKey, 规范化静态地点路径_桥接(名称)), 写入: 写入静态地点归档Manifest_桥接 },
+      { 路径: 构建角色归档Manifest路径_桥接(chatKey), 索引字段: '角色索引', 类型: '角色', 构建文件路径: 构建角色归档文件路径_桥接 },
+      { 路径: 构建动态地点归档Manifest路径_桥接(chatKey), 索引字段: '动态地点索引', 类型: '动态地点', 构建文件路径: 构建动态地点归档文件路径_桥接 },
+      { 路径: 构建物品归档Manifest路径_桥接(chatKey), 索引字段: '物品索引', 类型: '物品', 构建文件路径: 构建物品归档文件路径_桥接 },
+      { 路径: 构建势力归档Manifest路径_桥接(chatKey), 索引字段: '势力索引', 类型: '势力', 构建文件路径: 构建势力归档文件路径_桥接 },
+      { 路径: 构建静态地点归档Manifest路径_桥接(chatKey), 索引字段: '地点索引', 类型: '地点', 构建文件路径: (当前chatKey, 名称) => 构建静态地点归档文件路径_桥接(当前chatKey, 规范化静态地点路径_桥接(名称)) },
     ];
     const 结果列表 = [];
     for (const 配置 of 配置列表) {
       try {
-        结果列表.push(await 整理单类冷归档历史_桥接(配置, 当前楼层, chatKey));
+        结果列表.push(await 整理单类冷归档历史_桥接(配置, 当前楼层, chatKey, generation));
       } catch (错误) {
-        console.warn('[DragonUI] 冷归档历史整理类别失败', 错误);
+        console.warn('[DragonUI] 冷归档历史整理类别失败', toText(错误 && (错误.code || 错误.message), 'unknown'));
         结果列表.push({ changed: false, 整理数量: 0, error: 错误 });
       }
     }
+    try { 要求冷归档会话代际_桥接(chatKey, generation); }
+    catch (错误) { if (是冷归档过期错误_桥接(错误)) return { changed: false, 整理数量: 0, reason: 'stale_chat' }; throw 错误; }
     const changed = 结果列表.some(结果 => 结果 && 结果.changed);
     const 整理数量 = 结果列表.reduce((总数, 结果) => 总数 + Math.max(0, Math.floor(Number(结果 && 结果.整理数量) || 0)), 0);
     if (changed) {
@@ -6403,42 +6667,8 @@
     if (冷归档楼层清理状态_桥接.timer) window.clearTimeout(冷归档楼层清理状态_桥接.timer);
     冷归档楼层清理状态_桥接.timer = window.setTimeout(() => {
       冷归档楼层清理状态_桥接.timer = 0;
-      清理未来楼层冷归档_桥接().catch(错误 => console.warn('[DragonUI] 冷归档楼层清理调度失败', 错误));
+      清理未来楼层冷归档_桥接().catch(错误 => console.warn('[DragonUI] 冷归档楼层清理调度失败', toText(错误 && (错误.code || 错误.message), 'unknown')));
     }, Math.max(0, Number(延迟) || 0));
-  }
-
-  function 调度冷归档楼层自动归档_桥接(延迟 = 1500, 选项 = {}) {
-    const 目标消息元信息 = 读取自动归档目标消息元信息_桥接(选项);
-    if (!目标消息元信息) {
-      console.warn('[DragonUI] 冷归档自动归档跳过：缺少明确目标楼层。');
-      return;
-    }
-    const 自动检查消息键 = 构建冷归档自动检查消息键_桥接(选项);
-    if (!选项.force && 自动检查消息键 && 冷归档楼层清理状态_桥接.已自动检查消息键表.has(自动检查消息键)) return;
-    if (冷归档楼层清理状态_桥接.autoTimer) window.clearTimeout(冷归档楼层清理状态_桥接.autoTimer);
-    冷归档楼层清理状态_桥接.autoTimer = window.setTimeout(() => {
-      冷归档楼层清理状态_桥接.autoTimer = 0;
-      if (!目标AI楼层仍匹配_桥接(目标消息元信息)) return;
-      if (冷归档楼层清理状态_桥接.变量更新中) {
-        return;
-      }
-      按阈值自动归档MVU冷实体_桥接({
-        触发来源: '下一楼层',
-        跳过冷却: true,
-        需要明确目标: true,
-        ...(选项 && typeof 选项 === 'object' ? 选项 : {}),
-        目标消息元信息,
-      })
-        .then(结果 => {
-          const 未进入检查 = ['archive_unavailable', 'restore_in_progress', 'archive_in_progress', 'disabled', 'cooldown', 'target_missing', 'target_changed'].includes(结果 && 结果.reason);
-          if (!选项.force && 自动检查消息键 && !未进入检查) 冷归档楼层清理状态_桥接.已自动检查消息键表.add(自动检查消息键);
-        })
-        .catch(错误 => console.warn('[DragonUI] 冷归档楼层自动归档失败', 错误));
-    }, Math.max(0, Number(延迟) || 0));
-  }
-
-  function 检查冷归档楼层增长自动归档_桥接(触发来源 = '楼层增长') {
-    return false;
   }
 
   function 查找当前最后AI楼层元信息_桥接() {
@@ -6461,12 +6691,23 @@
     ].join('|');
   }
 
-  function 执行提交前冷归档_桥接(目标消息元信息 = null, 来源详情 = {}) {
+  function 执行提交前冷归档_桥接(目标消息元信息 = null, 来源详情 = {}, 传入期限租约 = null) {
     if (!目标消息元信息 || !目标AI楼层仍匹配_桥接(目标消息元信息)) return;
     const 自动检查消息键 = 构建提交前冷归档检查键_桥接(目标消息元信息);
     if (自动检查消息键 && 冷归档楼层清理状态_桥接.已自动检查消息键表.has(自动检查消息键)) return;
     if (自动检查消息键) 冷归档楼层清理状态_桥接.已自动检查消息键表.add(自动检查消息键);
+    const 期限租约 = 传入期限租约 && typeof 传入期限租约 === 'object'
+      ? 传入期限租约
+      : {
+        chatKey: 取当前聊天归档标识_桥接(),
+        generation: 冷归档服务状态_桥接.generation,
+        deadline: Date.now() + 1500,
+      };
     const 触发归档 = () => {
+      if (Date.now() >= Number(期限租约.deadline)) {
+        if (自动检查消息键) 冷归档楼层清理状态_桥接.已自动检查消息键表.delete(自动检查消息键);
+        return;
+      }
       if (!目标AI楼层仍匹配_桥接(目标消息元信息)) return;
       if (冷归档楼层清理状态_桥接.变量更新中) {
         if (冷归档楼层清理状态_桥接.提交前自动归档Timer) window.clearTimeout(冷归档楼层清理状态_桥接.提交前自动归档Timer);
@@ -6476,7 +6717,6 @@
         }, 600);
         return;
       }
-      console.debug('[DragonUI] 冷归档用户提交前触发', 目标消息元信息);
       按阈值自动归档MVU冷实体_桥接({
         触发来源: '用户提交前',
         跳过冷却: true,
@@ -6484,14 +6724,15 @@
         目标消息元信息,
         禁止目标回退: true,
         来源详情,
+        期限租约,
       })
         .then(结果 => {
-          const 未进入检查 = ['archive_unavailable', 'restore_in_progress', 'archive_in_progress', 'disabled', 'cooldown', 'target_missing', 'target_changed'].includes(结果 && 结果.reason);
+          const 未进入检查 = ['archive_unavailable', 'restore_in_progress', 'archive_in_progress', 'disabled', 'cooldown', 'target_missing', 'target_changed', 'archive_deadline_expired'].includes(结果 && 结果.reason);
           if (自动检查消息键 && 未进入检查) 冷归档楼层清理状态_桥接.已自动检查消息键表.delete(自动检查消息键);
         })
         .catch(错误 => {
           if (自动检查消息键) 冷归档楼层清理状态_桥接.已自动检查消息键表.delete(自动检查消息键);
-          console.warn('[DragonUI] 冷归档用户提交前自动归档失败', 错误);
+          console.warn('[DragonUI] 冷归档用户提交前自动归档失败', toText(错误 && (错误.code || 错误.message), 'unknown'));
         });
     };
     触发归档();
@@ -6536,11 +6777,14 @@
       const eventSource = 上下文 && 上下文.eventSource;
       if (!eventSource || typeof eventSource.on !== 'function') return false;
       const eventTypes = 上下文.eventTypes || {};
-      ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_UPDATED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'GENERATION_ENDED', 'GENERATION_STOPPED'].forEach(事件键 => {
+      ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_UPDATED', 'MESSAGE_EDITED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'GENERATION_ENDED', 'GENERATION_STOPPED'].forEach(事件键 => {
         const 事件名 = eventTypes[事件键] || 事件键;
         if (!事件名) return;
         try {
           eventSource.on(事件名, (...事件参数) => {
+            const 需要使冷归档会话失效 = ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_UPDATED', 'MESSAGE_EDITED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED'].includes(事件键);
+            const 曾使用冷归档 = !!冷归档服务状态_桥接.handle || 冷归档服务状态_桥接.已检查;
+            if (需要使冷归档会话失效) 失效冷归档会话_桥接(事件键);
             if (事件键 === 'MESSAGE_SENT') {
               调度剧情模块预结算用户楼落地读取_桥接(事件键, 事件参数, { 最大尝试: 20 });
             }
@@ -6573,7 +6817,7 @@
                 });
               }, 250);
             }
-            调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
+            if (曾使用冷归档) 调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
           });
         } catch (错误) {}
       });
@@ -6611,23 +6855,6 @@
       return true;
     };
     if (!绑定酒馆事件()) window.setTimeout(绑定酒馆事件, 1200);
-    if (!冷归档楼层清理状态_桥接.pollTimer) {
-      冷归档楼层清理状态_桥接.pollTimer = window.setInterval(() => {
-        const chatKey = 取当前聊天归档标识_桥接();
-        const 当前楼层 = 读取当前最新聊天楼层_桥接();
-        if (
-          chatKey !== 冷归档楼层清理状态_桥接.chatKey ||
-          冷归档楼层清理状态_桥接.最新楼层 < 0 ||
-          当前楼层 < 冷归档楼层清理状态_桥接.最新楼层
-        ) {
-          调度冷归档楼层清理_桥接(0);
-          return;
-        }
-        冷归档楼层清理状态_桥接.chatKey = chatKey;
-        冷归档楼层清理状态_桥接.最新楼层 = 当前楼层;
-      }, 2500);
-    }
-    调度冷归档楼层清理_桥接(600);
   }
 
   function 读取角色归档Manifest缓存_桥接() {
@@ -6677,15 +6904,13 @@
     const 物品Manifest已缓存 = !!物品Manifest缓存;
     const 势力Manifest已缓存 = !!势力Manifest缓存;
     const 静态地点Manifest已缓存 = !!静态地点Manifest缓存;
-    const Manifest已初始化 = manifest => !!toText(manifest && manifest.updatedAt, '').trim();
     if (
       !选项.force &&
       角色Manifest已缓存 &&
       动态地点Manifest已缓存 &&
       物品Manifest已缓存 &&
       势力Manifest已缓存 &&
-      静态地点Manifest已缓存 &&
-      (!选项.初始化目录 || (Manifest已初始化(角色Manifest缓存) && Manifest已初始化(动态地点Manifest缓存) && Manifest已初始化(物品Manifest缓存) && Manifest已初始化(势力Manifest缓存) && Manifest已初始化(静态地点Manifest缓存)))
+      静态地点Manifest已缓存
     ) return Promise.resolve();
     const 承诺 = Promise.allSettled([
       读取角色归档Manifest_桥接({ force: !!选项.force }),
@@ -6694,40 +6919,11 @@
       读取势力归档Manifest_桥接({ force: !!选项.force }),
       读取静态地点归档Manifest_桥接({ force: !!选项.force }),
     ])
-      .then(async 结果列表 => {
+      .then(结果列表 => {
         结果列表.forEach(结果 => {
-          if (结果.status === 'rejected') console.warn('[DragonUI] 冷归档 manifest 读取失败', 结果.reason);
+          if (结果.status === 'rejected') console.warn('[DragonUI] 冷归档 manifest 读取失败', toText(结果.reason && (结果.reason.code || 结果.reason.message), 'unknown'));
         });
-        let 已写入 = false;
-        if (选项.初始化目录 && 冷归档服务状态_桥接.存储模式 === '插件' && 冷归档服务状态_桥接.可用 && 冷归档服务状态_桥接.可写) {
-          let 角色Manifest = 结果列表[0] && 结果列表[0].status === 'fulfilled' ? 结果列表[0].value : null;
-          let 动态地点Manifest = 结果列表[1] && 结果列表[1].status === 'fulfilled' ? 结果列表[1].value : null;
-          let 物品Manifest = 结果列表[2] && 结果列表[2].status === 'fulfilled' ? 结果列表[2].value : null;
-          let 势力Manifest = 结果列表[3] && 结果列表[3].status === 'fulfilled' ? 结果列表[3].value : null;
-          let 静态地点Manifest = 结果列表[4] && 结果列表[4].status === 'fulfilled' ? 结果列表[4].value : null;
-          if (角色Manifest && !角色Manifest.updatedAt) {
-            角色Manifest = await 写入角色归档Manifest_桥接(角色Manifest);
-            已写入 = true;
-          }
-          if (动态地点Manifest && !动态地点Manifest.updatedAt) {
-            动态地点Manifest = await 写入动态地点归档Manifest_桥接(动态地点Manifest);
-            已写入 = true;
-          }
-          if (物品Manifest && !物品Manifest.updatedAt) {
-            物品Manifest = await 写入物品归档Manifest_桥接(物品Manifest);
-            已写入 = true;
-          }
-          if (势力Manifest && !势力Manifest.updatedAt) {
-            势力Manifest = await 写入势力归档Manifest_桥接(势力Manifest);
-            已写入 = true;
-          }
-          if (静态地点Manifest && !静态地点Manifest.updatedAt) {
-            静态地点Manifest = await 写入静态地点归档Manifest_桥接(静态地点Manifest);
-            已写入 = true;
-          }
-          if (已写入 && 角色Manifest && 动态地点Manifest && 物品Manifest && 势力Manifest && 静态地点Manifest) await 写入冷归档聊天状态_桥接(角色Manifest, 动态地点Manifest, 物品Manifest, 势力Manifest, 静态地点Manifest);
-        }
-        if (!选项.初始化目录 || 已写入 || 选项.force) 刷新视图();
+        刷新视图();
       });
     return 承诺;
   }
@@ -6746,7 +6942,7 @@
         return manifest;
       })
       .catch(错误 => {
-        console.warn('[DragonUI] 角色归档 manifest 读取失败', 错误);
+        console.warn('[DragonUI] 角色归档 manifest 读取失败', toText(错误 && (错误.code || 错误.message), 'unknown'));
         return 创建空角色归档Manifest_桥接(取当前聊天归档标识_桥接());
       });
   }
@@ -6982,6 +7178,22 @@
     return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(毫秒) || 0)));
   }
 
+  function 是冷归档过期错误_桥接(错误 = null) {
+    return toText(错误 && (错误.code || 错误.message), '').trim().toLowerCase() === 'stale_chat';
+  }
+
+  function 创建冷归档过期结果_桥接(额外字段 = {}) {
+    return {
+      changed: false,
+      names: [],
+      archivedNames: [],
+      skippedNames: [],
+      reason: 'stale_chat',
+      storageCommitted: true,
+      ...额外字段,
+    };
+  }
+
   async function 复读确认归档已移出热区_桥接(名称列表 = [], 查找残留名称, 类型名 = '对象', 选项 = {}) {
     const 待确认名称 = (Array.isArray(名称列表) ? 名称列表 : [名称列表])
       .map(名称 => toText(名称, '').trim())
@@ -6990,6 +7202,10 @@
     for (let 尝试次数 = 0; 尝试次数 < 归档复读确认次数_桥接; 尝试次数 += 1) {
       if (尝试次数 > 0) await 等待毫秒_桥接(归档复读确认间隔毫秒_桥接);
       const { mvuData } = await readLatestMvuDataByEditor(选项);
+      要求冷归档会话代际_桥接(
+        toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim(),
+        Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation,
+      );
       const statData = mvuData && typeof mvuData === 'object' ? mvuData.stat_data || {} : {};
       最后残留名称 = typeof 查找残留名称 === 'function' ? 查找残留名称(statData, 待确认名称) : [];
       if (!最后残留名称.length) return statData;
@@ -7048,7 +7264,7 @@
     const 路径 = toText(配置.路径, '').trim();
     if (!路径) throw new Error('冷归档对象路径为空。');
     try {
-      const 时间线 = await 读取冷归档Json文件_桥接(路径);
+      const 时间线 = await 读取冷归档Json文件_桥接(路径, { chatKey: 配置.chatKey, generation: 配置.generation });
       if (!时间线 || typeof 时间线 !== 'object' || 时间线.version !== 冷归档Manifest版本_桥接) throw new Error('冷归档对象版本不匹配。');
       if (时间线.schema !== 'object_timeline_diff') throw new Error('冷归档对象结构不匹配。');
       if (时间线.chatKey !== 配置.chatKey) throw new Error('冷归档对象不属于当前聊天。');
@@ -7107,7 +7323,7 @@
       保留版本列表.push(新版本);
     }
     const 待写入版本列表 = 保留版本列表.sort((左, 右) => 规范化冷归档版本楼层_桥接(左) - 规范化冷归档版本楼层_桥接(右));
-    const 待写入时间线 = {
+    let 待写入时间线 = {
       version: 冷归档Manifest版本_桥接,
       schema: 'object_timeline_diff',
       chatKey,
@@ -7119,14 +7335,38 @@
     };
     const 整理结果 = await 整理冷归档对象时间线_桥接(待写入时间线, 当前楼层);
     if (整理结果.changed) 待写入时间线 = 整理结果.时间线;
-    if (需要新增版本 || 已截断未来 || !时间线.updatedAt || 整理结果.changed) {
+    const 当前版本 = 取当前冷归档版本_桥接(待写入时间线, 当前楼层);
+    const 索引条目 = 构建冷归档对象索引条目_桥接(当前版本, 路径, 待写入版本列表.length);
+    if (!索引条目) throw new Error(`冷归档对象索引生成失败：${名称}`);
+    const 成对Manifest = 配置.匹配Manifest && typeof 配置.匹配Manifest === 'object' ? 配置.匹配Manifest : null;
+    if (成对Manifest && 成对Manifest.path && 成对Manifest.field) {
+      let manifest;
       try {
-        await 上传冷归档Json文件_桥接(路径, 待写入时间线);
+        manifest = await 读取冷归档Json文件_桥接(成对Manifest.path, { chatKey, generation: 配置.generation });
+      } catch (错误) {
+        if (错误 && 错误.status === 404 && typeof 成对Manifest.创建 === 'function') manifest = 成对Manifest.创建();
+        else throw 错误;
+      }
+      if (!manifest || typeof manifest !== 'object' || manifest.chatKey !== chatKey) throw new Error('冷归档匹配 manifest 不属于当前聊天。');
+      if (!manifest[成对Manifest.field] || typeof manifest[成对Manifest.field] !== 'object' || Array.isArray(manifest[成对Manifest.field])) manifest[成对Manifest.field] = {};
+      manifest[成对Manifest.field][名称] = 索引条目;
+      manifest.updatedAt = new Date().toISOString();
+      await 提交冷归档Bundle_桥接(
+        [
+          { path: 路径, value: 待写入时间线 },
+          { path: 成对Manifest.path, value: manifest },
+        ],
+        { type: 配置.类型 },
+        { chatKey, generation: 配置.generation },
+      );
+    } else if (需要新增版本 || 已截断未来 || !时间线.updatedAt || 整理结果.changed) {
+      try {
+        await 上传冷归档Json文件_桥接(路径, 待写入时间线, { chatKey, generation: 配置.generation });
       } catch (错误) {
         if (冷归档自动归档配置_桥接.历史清理模式 === '停用' || !/payload_too_large/i.test(toText(错误 && 错误.message, ''))) throw 错误;
         const 强制整理结果 = await 整理冷归档对象时间线_桥接(待写入时间线, 当前楼层, { force: true });
         待写入时间线 = 强制整理结果.时间线;
-        await 上传冷归档Json文件_桥接(路径, 待写入时间线);
+        await 上传冷归档Json文件_桥接(路径, 待写入时间线, { chatKey, generation: 配置.generation });
       }
     }
     if (配置.写入后校验 === true) {
@@ -7141,9 +7381,6 @@
         throw new Error(`冷归档对象校验和不匹配：${名称}`);
       }
     }
-    const 当前版本 = 取当前冷归档版本_桥接(待写入时间线, 当前楼层);
-    const 索引条目 = 构建冷归档对象索引条目_桥接(当前版本, 路径, 待写入版本列表.length);
-    if (!索引条目) throw new Error(`冷归档对象索引生成失败：${名称}`);
     return 索引条目;
   }
 
@@ -7161,6 +7398,8 @@
       归档时间: 上下文.归档时间 || new Date().toISOString(),
       摘要: 构建角色归档摘要_桥接(角色名, 数据),
       数据,
+      generation: 上下文.generation,
+      匹配Manifest: { path: 构建角色归档Manifest路径_桥接(chatKey), field: '角色索引', 创建: () => 创建空角色归档Manifest_桥接(chatKey) },
     });
   }
 
@@ -7179,6 +7418,8 @@
       摘要: 构建动态地点归档摘要_桥接(地点名, 数据),
       数据,
       扩展: 构建动态地点归档索引扩展_桥接(地点名, 数据),
+      generation: 上下文.generation,
+      匹配Manifest: { path: 构建动态地点归档Manifest路径_桥接(chatKey), field: '动态地点索引', 创建: () => 创建空动态地点归档Manifest_桥接(chatKey) },
     });
   }
 
@@ -7198,6 +7439,8 @@
       摘要: 构建物品归档摘要_桥接(物品名, 数据, 物品分类),
       数据,
       扩展: { 物品分类, 分类: 物品分类, ...构建物品归档索引扩展_桥接(物品名, 数据, 物品分类) },
+      generation: 上下文.generation,
+      匹配Manifest: { path: 构建物品归档Manifest路径_桥接(chatKey), field: '物品索引', 创建: () => 创建空物品归档Manifest_桥接(chatKey) },
     });
   }
 
@@ -7253,9 +7496,10 @@
     };
   }
 
-  function 推断静态地点记录ID_桥接(路径 = [], 地点数据 = {}) {
-    const 库 = 读取内置地点库_桥接();
-    if (!库 || !库.地点 || typeof 库.地点 !== 'object') return '';
+  function 推断静态地点记录ID_桥接(路径 = [], 地点数据 = {}, 选项 = {}) {
+    const 源结果 = 读取时代静态源_桥接('location', 选项);
+    const 库 = 源结果?.source;
+    if (源结果?.status !== 'resolved' || !库 || !库.地点 || typeof 库.地点 !== 'object') return '';
     const 目标路径键 = JSON.stringify(规范化静态地点路径_桥接(路径));
     const 候选 = Object.entries(库.地点).filter(([, 记录]) => JSON.stringify(记录?.目标路径 || []) === 目标路径键);
     if (!候选.length) return '';
@@ -7283,6 +7527,8 @@
       数据,
       扩展: 构建势力归档索引扩展_桥接(势力名, 数据),
       写入后校验: true,
+      generation: 上下文.generation,
+      匹配Manifest: { path: 构建势力归档Manifest路径_桥接(chatKey), field: '势力索引', 创建: () => 创建空势力归档Manifest_桥接(chatKey) },
     });
   }
 
@@ -7305,6 +7551,8 @@
       数据,
       扩展: 构建静态地点归档索引扩展_桥接(规范路径, 数据, 上下文.记录ID),
       写入后校验: true,
+      generation: 上下文.generation,
+      匹配Manifest: { path: 构建静态地点归档Manifest路径_桥接(chatKey), field: '地点索引', 创建: () => 创建空静态地点归档Manifest_桥接(chatKey) },
     });
   }
 
@@ -7526,20 +7774,78 @@
     return 候选窗口.map(候选 => 候选 && 候选.__LWCS_LIBRARY_DATA_RUNTIME_V1__).find(接口 => 接口 && typeof 接口.resolveFaction === 'function' && typeof 接口.resolveLocation === 'function') || null;
   }
 
-  function 读取内置势力库_桥接() {
+  function 读取时代运行时集成_桥接() {
     const 候选窗口 = [globalThis];
     try { if (globalThis.window && globalThis.window !== globalThis) 候选窗口.push(globalThis.window); } catch (错误) {}
     try { if (globalThis.parent && globalThis.parent !== globalThis) 候选窗口.push(globalThis.parent); } catch (错误) {}
     try { if (globalThis.top && globalThis.top !== globalThis) 候选窗口.push(globalThis.top); } catch (错误) {}
-    return 候选窗口.map(候选 => 候选 && 候选.__LWCS_内置势力库__).find(库 => 库 && 库.势力 && typeof 库.势力 === 'object') || null;
+    return 候选窗口.map(候选 => 候选 && 候选.__LWCS_ERA_RUNTIME_INTEGRATION_V1__)
+      .find(接口 => 接口 && typeof 接口.getEraContext === 'function') || null;
   }
 
-  function 读取内置地点库_桥接() {
+  function 读取当前时代钱包配置_桥接(数据根 = {}) {
     const 候选窗口 = [globalThis];
     try { if (globalThis.window && globalThis.window !== globalThis) 候选窗口.push(globalThis.window); } catch (错误) {}
     try { if (globalThis.parent && globalThis.parent !== globalThis) 候选窗口.push(globalThis.parent); } catch (错误) {}
     try { if (globalThis.top && globalThis.top !== globalThis) 候选窗口.push(globalThis.top); } catch (错误) {}
-    return 候选窗口.map(候选 => 候选 && 候选.__LWCS_内置地点库__).find(库 => 库 && 库.地点 && typeof 库.地点 === 'object') || null;
+    const registry = 候选窗口
+      .map(候选 => 候选 && 候选.__LWCS_ERA_CURRENCY_REGISTRY_V1__)
+      .find(接口 => 接口 && typeof 接口.listCurrencies === 'function') || null;
+    const integration = 读取时代运行时集成_桥接();
+    const tick = Number(deepGet(数据根, 'world.时间.tick', NaN));
+    let eraId = 'current';
+    let status = 'implicit-current';
+    let context = null;
+    let diagnostic = { selector: 'implicit-current', code: 'IMPLICIT_CURRENT' };
+    if (Number.isFinite(tick) && tick >= 0) {
+      if (!integration) {
+        return { status: 'era-context-unready', eraId: null, registry, currencies: [], context: null, diagnostic: { selector: 'tick-context', code: 'ERA_CONTEXT_NOT_READY', tick } };
+      }
+      try {
+        context = integration.getEraContext(tick, { dataRoot: 数据根 });
+        eraId = toText(context?.resourceEra, '').trim();
+        if (!eraId) throw new Error('时代上下文缺少resourceEra');
+        status = 'resolved';
+        diagnostic = { selector: 'context-resource-era', tick, narrativeEra: context.narrativeEra, resourceEra: context.resourceEra };
+      } catch (错误) {
+        return { status: 'era-context-failed', eraId: null, registry, currencies: [], context: null, diagnostic: { selector: 'tick-context', code: 'ERA_CONTEXT_FAILED', tick, detail: 错误?.message || String(错误 || '') } };
+      }
+    }
+    const listed = registry?.listCurrencies(eraId);
+    if (status === 'resolved' && listed?.status !== 'resolved') status = 'currency-registry-unresolved';
+    const currencies = listed?.status === 'resolved'
+      ? listed.currencies.map((定义, index) => ({
+          key: 定义.名称,
+          label: 定义.显示名 || 定义.名称,
+          className: 定义.种类 === registry?.currencyKinds?.军功 ? 'red' : index === 0 ? 'gold' : 'cyan',
+        }))
+      : [];
+    return { status, eraId, registry, currencies, context, diagnostic, resourceStatus: listed?.status || 'unavailable' };
+  }
+
+  function 是时代资源未就绪状态_桥接(status = '') {
+    return ['loading', 'unloaded', 'failed', 'disabled', 'not-configured', 'not-ready'].includes(toText(status, '').trim());
+  }
+
+  function 读取时代静态源_桥接(resourceType = '', options = {}) {
+    const integration = 读取时代运行时集成_桥接();
+    if (!integration) return { status: 'failed', resourceStatus: 'failed', resourceType, detail: 'EraRuntime_Integration未注册' };
+    const explicitEraId = toText(options?.eraId, '').trim();
+    const tick = Number(options?.absoluteTick ?? deepGet(options?.dataRoot, 'world.时间.tick', NaN));
+    try {
+      if (explicitEraId && typeof integration.getStaticSourceForEra === 'function') {
+        return integration.getStaticSourceForEra(explicitEraId, resourceType);
+      }
+      if (Number.isFinite(tick) && tick >= 0 && typeof integration.getStaticSource === 'function') {
+        return integration.getStaticSource(resourceType, tick);
+      }
+      if (typeof integration.getStaticSourceForEra === 'function') {
+        return { ...integration.getStaticSourceForEra('current', resourceType), diagnostic: { selector: 'implicit-current', resourceType } };
+      }
+    } catch (错误) {
+      return { status: 'failed', resourceStatus: 'failed', resourceType, detail: 错误?.message || String(错误 || '') };
+    }
+    return { status: 'failed', resourceStatus: 'failed', resourceType, detail: '时代静态源接口未注册' };
   }
 
   function 收集归档势力命中名称_桥接(索引表 = {}, 文本 = '') {
@@ -7561,7 +7867,7 @@
     const 结果 = new Set();
     命中映射.forEach((候选, 关键词) => {
       if (候选.size === 1) [...候选].forEach(名称 => 结果.add(名称));
-      else console.warn('[LWCS] 势力归档命中冲突，已跳过：', 关键词, [...候选]);
+      else console.warn('[LWCS] 势力归档命中冲突，已跳过');
     });
     return Array.from(结果);
   }
@@ -7586,7 +7892,7 @@
     const 结果 = new Set();
     命中映射.forEach((候选, 关键词) => {
       if (候选.size === 1) [...候选].forEach(路径键 => 结果.add(路径键));
-      else console.warn('[LWCS] 静态地点归档命中冲突，已跳过：', 关键词, [...候选]);
+      else console.warn('[LWCS] 静态地点归档命中冲突，已跳过');
     });
     return Array.from(结果);
   }
@@ -7638,17 +7944,25 @@
     return true;
   }
 
-  function 解析静态地点路径_桥接(位置 = '') {
+  function 解析静态地点路径结果_桥接(位置 = '', 选项 = {}) {
     const 文本 = toText(位置, '').trim();
-    if (!文本 || ['无', '未知', '待生成'].includes(文本)) return [];
-    const 库 = 读取内置地点库_桥接();
+    if (!文本 || ['无', '未知', '待生成'].includes(文本)) return { status: 'unresolved', path: [], reason: 'empty-query' };
     const 运行时 = 读取库运行时_桥接();
-    if (!库 || !运行时) return [];
+    if (!运行时) return { status: 'failed', path: [], reason: 'library-runtime-not-ready', diagnostic: { code: 'LIBRARY_RUNTIME_NOT_READY' } };
     const 片段 = 文本.split('-').map(片段 => 片段.trim()).filter(Boolean);
-    const 直接 = 片段.length > 1 ? 运行时.resolveLocation(文本, 片段, { library: 库, allowKeyword: false }) : null;
-    if (直接?.status === 'resolved') return Array.isArray(直接.path) ? [...直接.path] : [];
-    const 叶节点 = 运行时.resolveLocation(片段[片段.length - 1], [], { library: 库, allowKeyword: false });
-    return 叶节点?.status === 'resolved' && Array.isArray(叶节点.path) ? [...叶节点.path] : [];
+    const 解析选项 = { ...(选项 && typeof 选项 === 'object' ? 选项 : {}), allowKeyword: false };
+    delete 解析选项.library;
+    const 直接 = 片段.length > 1 ? 运行时.resolveLocation(文本, 片段, 解析选项) : null;
+    if (直接 && (直接.status === 'resolved' || 是时代资源未就绪状态_桥接(直接.status))) {
+      return { ...直接, path: Array.isArray(直接.path) ? [...直接.path] : [] };
+    }
+    const 叶节点 = 运行时.resolveLocation(片段[片段.length - 1], [], 解析选项);
+    return { ...叶节点, path: Array.isArray(叶节点?.path) ? [...叶节点.path] : [] };
+  }
+
+  function 解析静态地点路径_桥接(位置 = '', 选项 = {}) {
+    const 结果 = 解析静态地点路径结果_桥接(位置, 选项);
+    return 结果.status === 'resolved' ? 结果.path : [];
   }
 
   function 收集归档保护势力名_桥接(statData = {}) {
@@ -7661,7 +7975,7 @@
       safeEntries(角色数据 && 角色数据.社交 && 角色数据.社交.势力).forEach(([势力名]) => 添加(势力名));
     });
     const 添加地点掌控势力 = 路径 => {
-      const 片段 = 解析静态地点路径_桥接(路径);
+      const 片段 = 解析静态地点路径_桥接(路径, { dataRoot: statData });
       for (let index = 1; index <= 片段.length; index += 1) 添加(读取活动静态地点节点_桥接(statData, 片段.slice(0, index))?.掌控势力);
     };
     const 玩家名 = toText(deepGet(statData, 'sys.玩家名', ''), '').trim();
@@ -7678,7 +7992,7 @@
       if (!路径.length) return;
       for (let index = 1; index <= 路径.length; index += 1) 保护.add(构建静态地点路径键_桥接(路径.slice(0, index)));
     };
-    const 添加位置 = 位置 => 添加路径(解析静态地点路径_桥接(位置));
+    const 添加位置 = 位置 => 添加路径(解析静态地点路径_桥接(位置, { dataRoot: statData }));
     safeEntries(statData.char || {}).forEach(([, 角色数据]) => 添加位置(deepGet(角色数据, '状态.位置', '')));
     添加位置(deepGet(statData, '当前.地点', ''));
     添加位置(deepGet(statData, 'world.战斗.环境.地点', ''));
@@ -7695,10 +8009,28 @@
     return 保护;
   }
 
+  function 冷归档允许删除热区_桥接(chatKey = '', generation = -1, 选项 = {}) {
+    const 租约 = 选项 && 选项.期限租约;
+    if (租约 && (Date.now() >= Number(租约.deadline) || 租约.generation !== generation || 租约.chatKey !== chatKey)) return false;
+    return 冷归档会话有效_桥接(chatKey, generation);
+  }
+
+  function 冷归档热区删除阻断原因_桥接(chatKey = '', generation = -1, 选项 = {}) {
+    const 租约 = 选项 && 选项.期限租约;
+    return 租约 && Date.now() >= Number(租约.deadline) ? 'archive_deadline_expired' : 'stale_chat';
+  }
+
+  function 冷归档热区删除被阻断结果_桥接(名称列表 = [], 跳过 = [], statData = {}, messageId = -1, reason = 'archive_deadline_expired') {
+    return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, reason, storageCommitted: true, statData, messageId };
+  }
+
   async function 归档MVU势力_桥接(势力名列表 = [], 选项 = {}) {
+    const 归档聊天标识 = 取当前聊天归档标识_桥接();
+    const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档名称 = Array.from(new Set((Array.isArray(势力名列表) ? 势力名列表 : [势力名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
     const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+    要求冷归档会话代际_桥接(归档聊天标识, 归档会话代际);
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const 原始MVU数据 = cloneJsonValue(当前MVU数据, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
@@ -7711,45 +8043,53 @@
       return true;
     });
     if (!可归档.length) return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, statData, messageId };
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = 归档聊天标识;
+    const generation = Number.isFinite(选项?.期限租约?.generation) ? 选项.期限租约.generation : 归档会话代际;
+    const 归档后回读选项 = { ...(选项 && typeof 选项 === 'object' ? 选项 : {}), chatKey, generation };
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
     const 上传索引 = [];
-    for (const 势力名 of 可归档) 上传索引.push(await 上传势力归档文件_桥接(势力名, 势力集[势力名], { chatKey, 归档时间, 归档tick, 楼层: 当前楼层 }));
-    const manifest = cloneJsonValue(await 读取势力归档Manifest_桥接({ force: true }), 创建空势力归档Manifest_桥接(chatKey));
-    if (!manifest.势力索引 || typeof manifest.势力索引 !== 'object') manifest.势力索引 = {};
-    上传索引.forEach(索引 => { const 势力名 = toText(索引 && 索引.势力名, '').trim(); if (势力名) manifest.势力索引[势力名] = 索引; });
-    await 写入势力归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
-    const 回读Manifest = await 读取势力归档Manifest_桥接({ force: true });
+    for (const 势力名 of 可归档) 上传索引.push(await 上传势力归档文件_桥接(势力名, 势力集[势力名], { chatKey, generation, 归档时间, 归档tick, 楼层: 当前楼层 }));
+    const 回读Manifest = await 读取势力归档Manifest_桥接({ force: true, chatKey, generation });
     上传索引.forEach(索引 => {
       const 势力名 = toText(索引 && 索引.势力名, '').trim();
       校验冷归档Manifest条目_桥接(回读Manifest?.势力索引?.[势力名], 索引, '势力名');
     });
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档, 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
     可归档.forEach(势力名 => { delete 势力集[势力名]; });
     当前MVU数据.stat_data = statData;
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档, 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
     let 复读StatData;
     try {
       await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
-      复读StatData = await 复读确认归档已移出热区_桥接(可归档, (数据, 名称列表) => 名称列表.filter(名称 => 数据?.org?.[名称]), '势力', 选项);
+      要求冷归档会话代际_桥接(chatKey, generation);
+      复读StatData = await 复读确认归档已移出热区_桥接(可归档, (数据, 名称列表) => 名称列表.filter(名称 => 数据?.org?.[名称]), '势力', 归档后回读选项);
+      要求冷归档会话代际_桥接(chatKey, generation);
     } catch (错误) {
+      if (是冷归档过期错误_桥接(错误) || !冷归档会话有效_桥接(chatKey, generation)) return 创建冷归档过期结果_桥接({ statData: cloneJsonValue(原始MVU数据.stat_data, {}), messageId, skippedNames: 跳过 });
       try { await Promise.resolve(host.replaceMvuData(原始MVU数据, { type: 'message', message_id: messageId })); }
-      catch (回滚错误) { console.error('[DragonUI] 势力归档失败后回滚热区 MVU 失败', 回滚错误); }
+      catch (回滚错误) { console.error('[DragonUI] 势力归档失败后回滚热区 MVU 失败', toText(回滚错误 && (回滚错误.code || 回滚错误.message), 'unknown')); }
       throw new Error(`已生成势力归档副本但未完成热区移除，已尝试保留主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
     writeMvuEditorStoreSnapshot(复读StatData, { messageId });
-    await refreshLiveSnapshot({ force: true });
+    await refreshLiveSnapshot({ force: true, acceptResult: () => 冷归档会话有效_桥接(chatKey, generation) });
+    try { 要求冷归档会话代际_桥接(chatKey, generation); }
+    catch (错误) { if (是冷归档过期错误_桥接(错误)) return 创建冷归档过期结果_桥接({ statData: 复读StatData, messageId, skippedNames: 跳过 }); throw 错误; }
     return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
   async function 归档MVU静态地点_桥接(地点路径列表 = [], 选项 = {}) {
+    const 归档聊天标识 = 取当前聊天归档标识_桥接();
+    const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档路径键 = Array.from(new Set((Array.isArray(地点路径列表) ? 地点路径列表 : [地点路径列表]).map(路径 => 构建静态地点路径键_桥接(路径)).filter(Boolean)));
     if (!待归档路径键.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
     const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+    要求冷归档会话代际_桥接(归档聊天标识, 归档会话代际);
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
     const 原始MVU数据 = cloneJsonValue(当前MVU数据, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
-    const manifest当前 = await 读取静态地点归档Manifest_桥接({ force: true });
+    const manifest当前 = await 读取静态地点归档Manifest_桥接({ force: true, chatKey: 归档聊天标识, generation: 归档会话代际 });
     const 地点索引 = manifest当前 && manifest当前.地点索引 && typeof manifest当前.地点索引 === 'object' ? manifest当前.地点索引 : {};
     const 保护地点 = 收集归档保护静态地点路径键_桥接(statData, 地点索引);
     const 跳过 = [];
@@ -7763,7 +8103,9 @@
       可归档.push({ 路径键, 路径 });
     });
     if (!可归档.length) return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, statData, messageId };
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = 归档聊天标识;
+    const generation = Number.isFinite(选项?.期限租约?.generation) ? 选项.期限租约.generation : 归档会话代际;
+    const 归档后回读选项 = { ...(选项 && typeof 选项 === 'object' ? 选项 : {}), chatKey, generation };
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
@@ -7771,39 +8113,46 @@
     for (const 项 of 可归档) {
       const 记录 = 地点索引[项.路径键] || {};
       const 节点数据 = 读取活动静态地点节点_桥接(statData, 项.路径);
-      const 记录ID = 记录.记录ID || 推断静态地点记录ID_桥接(项.路径, 节点数据);
-      上传索引.push(await 上传静态地点归档文件_桥接(项.路径, 节点数据, { chatKey, 归档时间, 归档tick, 楼层: 当前楼层, 记录ID }));
+      const 记录ID = 记录.记录ID || 推断静态地点记录ID_桥接(项.路径, 节点数据, { dataRoot: statData });
+      上传索引.push(await 上传静态地点归档文件_桥接(项.路径, 节点数据, { chatKey, generation, 归档时间, 归档tick, 楼层: 当前楼层, 记录ID }));
     }
-    const manifest = cloneJsonValue(await 读取静态地点归档Manifest_桥接({ force: true }), 创建空静态地点归档Manifest_桥接(chatKey));
-    if (!manifest.地点索引 || typeof manifest.地点索引 !== 'object') manifest.地点索引 = {};
-    上传索引.forEach(索引 => { const 路径键 = toText(索引 && 索引.地点路径, '').trim(); if (路径键) manifest.地点索引[路径键] = 索引; });
-    await 写入静态地点归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
-    const 回读Manifest = await 读取静态地点归档Manifest_桥接({ force: true });
+    const 回读Manifest = await 读取静态地点归档Manifest_桥接({ force: true, chatKey, generation });
     上传索引.forEach(索引 => {
       const 路径键 = toText(索引 && 索引.地点路径, '').trim();
       校验冷归档Manifest条目_桥接(回读Manifest?.地点索引?.[路径键], 索引, '地点路径');
     });
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档.map(项 => 项.路径键), 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
     可归档.forEach(项 => { 删除活动静态地点节点_桥接(statData, 项.路径); });
     当前MVU数据.stat_data = statData;
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档.map(项 => 项.路径键), 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
     let 复读StatData;
     try {
       await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
-      复读StatData = await 复读确认归档已移出热区_桥接(可归档.map(项 => 项.路径键), (数据, 名称列表) => 名称列表.filter(路径键 => 读取活动静态地点节点_桥接(数据, 规范化静态地点路径_桥接(路径键))), '静态地点', 选项);
+      要求冷归档会话代际_桥接(chatKey, generation);
+      复读StatData = await 复读确认归档已移出热区_桥接(可归档.map(项 => 项.路径键), (数据, 名称列表) => 名称列表.filter(路径键 => 读取活动静态地点节点_桥接(数据, 规范化静态地点路径_桥接(路径键))), '静态地点', 归档后回读选项);
+      要求冷归档会话代际_桥接(chatKey, generation);
     } catch (错误) {
+      if (是冷归档过期错误_桥接(错误) || !冷归档会话有效_桥接(chatKey, generation)) return 创建冷归档过期结果_桥接({ statData: cloneJsonValue(原始MVU数据.stat_data, {}), messageId, skippedNames: 跳过 });
       try { await Promise.resolve(host.replaceMvuData(原始MVU数据, { type: 'message', message_id: messageId })); }
-      catch (回滚错误) { console.error('[DragonUI] 静态地点归档失败后回滚热区 MVU 失败', 回滚错误); }
+      catch (回滚错误) { console.error('[DragonUI] 静态地点归档失败后回滚热区 MVU 失败', toText(回滚错误 && (回滚错误.code || 回滚错误.message), 'unknown')); }
       throw new Error(`已生成静态地点归档副本但未完成热区移除，已尝试保留主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
     writeMvuEditorStoreSnapshot(复读StatData, { messageId });
-    await refreshLiveSnapshot({ force: true });
+    await refreshLiveSnapshot({ force: true, acceptResult: () => 冷归档会话有效_桥接(chatKey, generation) });
+    try { 要求冷归档会话代际_桥接(chatKey, generation); }
+    catch (错误) { if (是冷归档过期错误_桥接(错误)) return 创建冷归档过期结果_桥接({ statData: 复读StatData, messageId, skippedNames: 跳过 }); throw 错误; }
     return { changed: true, names: 可归档.map(项 => 项.路径键), archivedNames: 可归档.map(项 => 项.路径键), skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
   async function 归档MVU角色_桥接(角色名列表 = [], 选项 = {}) {
+    const 归档聊天标识 = 取当前聊天归档标识_桥接();
+    const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档名称 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [角色名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
     const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+    要求冷归档会话代际_桥接(归档聊天标识, 归档会话代际);
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
+    const 原始MVU数据 = cloneJsonValue(当前MVU数据, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     const 角色集 = statData.char && typeof statData.char === 'object' ? statData.char : {};
     const 保护角色 = 收集归档保护角色名_桥接(statData);
@@ -7820,37 +8169,51 @@
       return true;
     });
     if (!可归档.length) return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, statData, messageId };
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = 归档聊天标识;
+    const generation = Number.isFinite(选项?.期限租约?.generation) ? 选项.期限租约.generation : 归档会话代际;
+    const 归档后回读选项 = { ...(选项 && typeof 选项 === 'object' ? 选项 : {}), chatKey, generation };
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
     const 上传索引 = [];
-    for (const 角色名 of 可归档) 上传索引.push(await 上传角色归档文件_桥接(角色名, 角色集[角色名], { chatKey, 归档时间, 归档tick, 楼层: 当前楼层 }));
-    const manifest = cloneJsonValue(await 读取角色归档Manifest_桥接({ force: true }), 创建空角色归档Manifest_桥接(chatKey));
-    if (!manifest.角色索引 || typeof manifest.角色索引 !== 'object') manifest.角色索引 = {};
+    for (const 角色名 of 可归档) 上传索引.push(await 上传角色归档文件_桥接(角色名, 角色集[角色名], { chatKey, generation, 归档时间, 归档tick, 楼层: 当前楼层 }));
+    const 回读Manifest = await 读取角色归档Manifest_桥接({ force: true, chatKey, generation });
     上传索引.forEach(索引 => {
       const 角色名 = toText(索引 && 索引.角色名, '').trim();
-      if (角色名) manifest.角色索引[角色名] = 索引;
+      校验冷归档Manifest条目_桥接(回读Manifest?.角色索引?.[角色名], 索引, '角色名');
     });
-    await 写入角色归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档, 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
     可归档.forEach(角色名 => { delete 角色集[角色名]; });
     当前MVU数据.stat_data = statData;
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档, 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
+    let 复读StatData;
     try {
       await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+      要求冷归档会话代际_桥接(chatKey, generation);
+      复读StatData = await 复读确认归档角色已移出热区_桥接(可归档, 归档后回读选项);
+      要求冷归档会话代际_桥接(chatKey, generation);
     } catch (错误) {
+      if (是冷归档过期错误_桥接(错误) || !冷归档会话有效_桥接(chatKey, generation)) return 创建冷归档过期结果_桥接({ statData: cloneJsonValue(原始MVU数据.stat_data, {}), messageId, skippedNames: 跳过 });
+      try { await Promise.resolve(host.replaceMvuData(原始MVU数据, { type: 'message', message_id: messageId })); }
+      catch (回滚错误) { console.error('[DragonUI] 角色归档失败后回滚热区 MVU 失败', toText(回滚错误 && (回滚错误.code || 回滚错误.message), 'unknown')); }
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    const 复读StatData = await 复读确认归档角色已移出热区_桥接(可归档, 选项);
     writeMvuEditorStoreSnapshot(复读StatData, { messageId });
-    await refreshLiveSnapshot({ force: true });
+    await refreshLiveSnapshot({ force: true, acceptResult: () => 冷归档会话有效_桥接(chatKey, generation) });
+    try { 要求冷归档会话代际_桥接(chatKey, generation); }
+    catch (错误) { if (是冷归档过期错误_桥接(错误)) return 创建冷归档过期结果_桥接({ statData: 复读StatData, messageId, skippedNames: 跳过 }); throw 错误; }
     return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
   async function 归档MVU动态地点_桥接(地点名列表 = [], 选项 = {}) {
+    const 归档聊天标识 = 取当前聊天归档标识_桥接();
+    const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档名称 = Array.from(new Set((Array.isArray(地点名列表) ? 地点名列表 : [地点名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
     const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+    要求冷归档会话代际_桥接(归档聊天标识, 归档会话代际);
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
+    const 原始MVU数据 = cloneJsonValue(当前MVU数据, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     if (!statData.world || typeof statData.world !== 'object') statData.world = {};
     const 动态地点 = statData.world.动态地点 && typeof statData.world.动态地点 === 'object' ? statData.world.动态地点 : {};
@@ -7868,38 +8231,52 @@
       return true;
     });
     if (!可归档.length) return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, statData, messageId };
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = 归档聊天标识;
+    const generation = Number.isFinite(选项?.期限租约?.generation) ? 选项.期限租约.generation : 归档会话代际;
+    const 归档后回读选项 = { ...(选项 && typeof 选项 === 'object' ? 选项 : {}), chatKey, generation };
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
     const 上传索引 = [];
-    for (const 地点名 of 可归档) 上传索引.push(await 上传动态地点归档文件_桥接(地点名, 动态地点[地点名], { chatKey, 归档时间, 归档tick, 楼层: 当前楼层 }));
-    const manifest = cloneJsonValue(await 读取动态地点归档Manifest_桥接({ force: true }), 创建空动态地点归档Manifest_桥接(chatKey));
-    if (!manifest.动态地点索引 || typeof manifest.动态地点索引 !== 'object') manifest.动态地点索引 = {};
+    for (const 地点名 of 可归档) 上传索引.push(await 上传动态地点归档文件_桥接(地点名, 动态地点[地点名], { chatKey, generation, 归档时间, 归档tick, 楼层: 当前楼层 }));
+    const 回读Manifest = await 读取动态地点归档Manifest_桥接({ force: true, chatKey, generation });
     上传索引.forEach(索引 => {
       const 地点名 = toText(索引 && 索引.地点名, '').trim();
-      if (地点名) manifest.动态地点索引[地点名] = 索引;
+      校验冷归档Manifest条目_桥接(回读Manifest?.动态地点索引?.[地点名], 索引, '地点名');
     });
-    await 写入动态地点归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档, 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
     可归档.forEach(地点名 => { delete 动态地点[地点名]; });
     statData.world.动态地点 = 动态地点;
     当前MVU数据.stat_data = statData;
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档, 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
+    let 复读StatData;
     try {
       await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+      要求冷归档会话代际_桥接(chatKey, generation);
+      复读StatData = await 复读确认归档动态地点已移出热区_桥接(可归档, 归档后回读选项);
+      要求冷归档会话代际_桥接(chatKey, generation);
     } catch (错误) {
+      if (是冷归档过期错误_桥接(错误) || !冷归档会话有效_桥接(chatKey, generation)) return 创建冷归档过期结果_桥接({ statData: cloneJsonValue(原始MVU数据.stat_data, {}), messageId, skippedNames: 跳过 });
+      try { await Promise.resolve(host.replaceMvuData(原始MVU数据, { type: 'message', message_id: messageId })); }
+      catch (回滚错误) { console.error('[DragonUI] 动态地点归档失败后回滚热区 MVU 失败', toText(回滚错误 && (回滚错误.code || 回滚错误.message), 'unknown')); }
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    const 复读StatData = await 复读确认归档动态地点已移出热区_桥接(可归档, 选项);
     writeMvuEditorStoreSnapshot(复读StatData, { messageId });
-    await refreshLiveSnapshot({ force: true });
+    await refreshLiveSnapshot({ force: true, acceptResult: () => 冷归档会话有效_桥接(chatKey, generation) });
+    try { 要求冷归档会话代际_桥接(chatKey, generation); }
+    catch (错误) { if (是冷归档过期错误_桥接(错误)) return 创建冷归档过期结果_桥接({ statData: 复读StatData, messageId, skippedNames: 跳过 }); throw 错误; }
     return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
   async function 归档MVU物品定义_桥接(物品名列表 = [], 选项 = {}) {
+    const 归档聊天标识 = 取当前聊天归档标识_桥接();
+    const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档名称 = Array.from(new Set((Array.isArray(物品名列表) ? 物品名列表 : [物品名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待归档名称.length) return { changed: false, names: [], archivedNames: [], skippedNames: [], reason: 'empty_names' };
     const { host, mvuData, messageId } = await readLatestMvuDataByEditor(选项);
+    要求冷归档会话代际_桥接(归档聊天标识, 归档会话代际);
     const 当前MVU数据 = cloneJsonValue(mvuData, {});
+    const 原始MVU数据 = cloneJsonValue(当前MVU数据, {});
     const statData = 当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {};
     确保物品定义分类表_桥接(statData);
     const 保护物品 = 收集归档保护物品名_桥接(statData);
@@ -7916,32 +8293,42 @@
       return true;
     });
     if (!可归档.length) return { changed: false, names: [], archivedNames: [], skippedNames: 跳过, statData, messageId };
-    const chatKey = 取当前聊天归档标识_桥接();
+    const chatKey = 归档聊天标识;
+    const generation = Number.isFinite(选项?.期限租约?.generation) ? 选项.期限租约.generation : 归档会话代际;
+    const 归档后回读选项 = { ...(选项 && typeof 选项 === 'object' ? 选项 : {}), chatKey, generation };
     const 归档时间 = new Date().toISOString();
     const 归档tick = Math.floor(toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
     const 当前楼层 = 读取归档目标楼层_桥接(选项, messageId);
     const 上传索引 = [];
     for (const 物品名 of 可归档) {
       const 命中 = 查找物品定义_桥接(statData, 物品名);
-      上传索引.push(await 上传物品归档文件_桥接(物品名, 命中.定义, { chatKey, 归档时间, 归档tick, 物品分类: 命中.分类, 楼层: 当前楼层 }));
+      上传索引.push(await 上传物品归档文件_桥接(物品名, 命中.定义, { chatKey, generation, 归档时间, 归档tick, 物品分类: 命中.分类, 楼层: 当前楼层 }));
     }
-    const manifest = cloneJsonValue(await 读取物品归档Manifest_桥接({ force: true }), 创建空物品归档Manifest_桥接(chatKey));
-    if (!manifest.物品索引 || typeof manifest.物品索引 !== 'object') manifest.物品索引 = {};
+    const 回读Manifest = await 读取物品归档Manifest_桥接({ force: true, chatKey, generation });
     上传索引.forEach(索引 => {
       const 物品名 = toText(索引 && 索引.物品名, '').trim();
-      if (物品名) manifest.物品索引[物品名] = 索引;
+      校验冷归档Manifest条目_桥接(回读Manifest?.物品索引?.[物品名], 索引, '物品名');
     });
-    await 写入物品归档Manifest_桥接(manifest, { 楼层: 当前楼层 });
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档, 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
     可归档.forEach(物品名 => { 删除分类物品定义_桥接(statData, 物品名); });
     当前MVU数据.stat_data = statData;
+    if (!冷归档允许删除热区_桥接(chatKey, generation, 选项)) return 冷归档热区删除被阻断结果_桥接(可归档, 跳过, statData, messageId, 冷归档热区删除阻断原因_桥接(chatKey, generation, 选项));
+    let 复读StatData;
     try {
       await Promise.resolve(host.replaceMvuData(当前MVU数据, { type: 'message', message_id: messageId }));
+      要求冷归档会话代际_桥接(chatKey, generation);
+      复读StatData = await 复读确认归档物品已移出热区_桥接(可归档, 归档后回读选项);
+      要求冷归档会话代际_桥接(chatKey, generation);
     } catch (错误) {
+      if (是冷归档过期错误_桥接(错误) || !冷归档会话有效_桥接(chatKey, generation)) return 创建冷归档过期结果_桥接({ statData: cloneJsonValue(原始MVU数据.stat_data, {}), messageId, skippedNames: 跳过 });
+      try { await Promise.resolve(host.replaceMvuData(原始MVU数据, { type: 'message', message_id: messageId })); }
+      catch (回滚错误) { console.error('[DragonUI] 物品归档失败后回滚热区 MVU 失败', toText(回滚错误 && (回滚错误.code || 回滚错误.message), 'unknown')); }
       throw new Error(`已生成归档副本但未移出主 MVU：${错误 && 错误.message ? 错误.message : '写回失败'}`);
     }
-    const 复读StatData = await 复读确认归档物品已移出热区_桥接(可归档, 选项);
     writeMvuEditorStoreSnapshot(复读StatData, { messageId });
-    await refreshLiveSnapshot({ force: true });
+    await refreshLiveSnapshot({ force: true, acceptResult: () => 冷归档会话有效_桥接(chatKey, generation) });
+    try { 要求冷归档会话代际_桥接(chatKey, generation); }
+    catch (错误) { if (是冷归档过期错误_桥接(错误)) return 创建冷归档过期结果_桥接({ statData: 复读StatData, messageId, skippedNames: 跳过 }); throw 错误; }
     return { changed: true, names: 可归档, archivedNames: 可归档, skippedNames: 跳过, statData: 复读StatData, messageId };
   }
 
@@ -8114,8 +8501,11 @@
       const 地点索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引 : {};
       const 当前MVU数据 = cloneJsonValue(mvuData, {});
       const statData = 外部StatData || (当前MVU数据.stat_data && typeof 当前MVU数据.stat_data === 'object' ? 当前MVU数据.stat_data : {});
-      const 库 = 读取内置地点库_桥接();
       const 运行时 = 读取库运行时_桥接();
+      const 当前tick = Number(deepGet(statData, 'world.时间.tick', NaN));
+      const 解析选项 = Number.isFinite(当前tick) && 当前tick >= 0
+        ? { dataRoot: statData, absoluteTick: 当前tick, allowKeyword: false }
+        : { dataRoot: statData, allowKeyword: false };
       const 跳过 = [];
       const 已恢复 = [];
       const 已阻断 = [];
@@ -8154,15 +8544,22 @@
               if (JSON.stringify(前缀归档.地点路径) !== JSON.stringify(前缀) || !前缀归档.地点数据 || typeof 前缀归档.地点数据 !== 'object') throw new Error(`祖先地点归档损坏：${前缀键}`);
               节点数据 = 前缀归档.地点数据;
             } else {
-              if (!库 || !运行时) throw new Error('地点库或库运行时缺失，无法补齐静态地点祖先。');
+              if (!运行时) throw new Error('库运行时缺失，无法补齐静态地点祖先。');
               let 记录ID = depth === 路径.length ? toText(索引 && 索引.记录ID, '').trim() : '';
+              let 解析 = null;
               if (!记录ID) {
-                const 解析 = 运行时.resolveLocation(前缀.join('/'), 前缀, { library: 库, allowKeyword: false });
+                解析 = 运行时.resolveLocation(前缀.join('/'), 前缀, 解析选项);
+                if (是时代资源未就绪状态_桥接(解析?.status)) throw new Error(`静态地点资源未就绪：${解析.status}：${解析.detail || 前缀键}`);
                 if (解析.status === 'resolved') 记录ID = toText(解析.recordId, '').trim();
-                else if (解析.status === 'conflict') {
-                  const 可插入 = (解析.candidates || []).find(候选 => 库.地点[候选] && 库.地点[候选].实例化策略 === 'insert');
-                  记录ID = toText(可插入, '').trim();
-                }
+              }
+              const 源结果 = 读取时代静态源_桥接('location', { ...解析选项, eraId: toText(解析?.eraId, '').trim() });
+              if (源结果?.status !== 'resolved' || !源结果.source?.地点 || typeof 源结果.source.地点 !== 'object') {
+                throw new Error(`静态地点资源未就绪：${源结果?.status || 'failed'}：${源结果?.detail || 前缀键}`);
+              }
+              const 库 = 源结果.source;
+              if (!记录ID && 解析?.status === 'conflict') {
+                const 可插入 = (解析.candidates || []).find(候选 => 库.地点[候选] && 库.地点[候选].实例化策略 === 'insert');
+                记录ID = toText(可插入, '').trim();
               }
               if (!记录ID || !库.地点[记录ID]) throw new Error(`静态地点路径无法唯一解析：${前缀键}`);
               节点数据 = 库.地点[记录ID].节点;
@@ -8606,6 +9003,7 @@
           if (!名称列表.length) continue;
           冷归档自动归档状态_桥接.上次尝试毫秒 = 当前毫秒;
           const 结果 = await 类型项.执行(名称列表);
+          if (结果 && ['stale_chat', 'archive_deadline_expired'].includes(结果.reason)) return { ...结果, type: 类型项.类型, auto: true };
           if (结果 && 结果.changed) {
             归档结果列表.push({ ...结果, type: 类型项.类型 });
             if (!是否首次自动归档) return { ...结果, type: 类型项.类型, auto: true, 首次自动归档: false };
@@ -8833,9 +9231,6 @@
     const 自动归档配置 = 冷归档自动归档配置_桥接;
     const 归档服务标签 = 读取冷归档服务状态标签_桥接();
     const 归档服务可写 = 冷归档服务状态_桥接.可用 && 冷归档服务状态_桥接.可写;
-    const 允许设置归档路径 = !!冷归档服务状态_桥接.插件可用 && !!冷归档服务状态_桥接.管理员;
-    const 显示归档高级设置 = modalFocusState[`${冷归档预览键_桥接}::advanced`] === true;
-    const 归档路径 = 冷归档服务状态_桥接.root || 冷归档服务状态_桥接.error || '';
     const 保护角色 = 收集归档保护角色名_桥接(rootData);
     const 保护动态地点 = 收集归档保护动态地点名_桥接(rootData);
     const 保护物品 = 收集归档保护物品名_桥接(rootData);
@@ -8992,9 +9387,8 @@
         检查冷归档服务_桥接().then(() => {
           if (需要首次服务检测 && (currentUnifiedPreviewKey || currentModalPreviewKey) === 冷归档预览键_桥接) {
             rerenderDetailSurface(冷归档预览键_桥接, { force: true });
-            return;
           }
-          if (冷归档服务状态_桥接.可用) 预热冷归档Manifest_桥接({ 刷新视图: true, 初始化目录: 冷归档服务状态_桥接.存储模式 === '插件' });
+          if (冷归档服务状态_桥接.可用) 预热冷归档Manifest_桥接({ 刷新视图: true });
         });
         const 输入 = mountEl.querySelector('.role-switch-search-input');
         const 列表 = Array.from(mountEl.querySelectorAll('.mvu-cold-archive-row'));
@@ -9028,18 +9422,7 @@
             ], 'two')}
             <div class="mvu-detail-search-row">
               <button type="button" class="tag-chip" data-cold-archive-refresh="1">刷新</button>
-              ${允许设置归档路径 ? `<button type="button" class="tag-chip ${显示归档高级设置 ? 'live' : ''}" data-cold-archive-toggle-advanced="1">高级</button>` : ''}
             </div>
-            ${显示归档高级设置 && 允许设置归档路径 ? `
-              <div class="mvu-detail-search-row">
-                <input type="text" class="request-console-input" value="${escapeHtmlAttr(归档路径 || '')}" disabled />
-              </div>
-              <div class="mvu-detail-search-row">
-                <input type="text" class="request-console-input" data-cold-archive-root-input="1" value="${escapeHtmlAttr(冷归档服务状态_桥接.customRoot || '')}" placeholder="自定义绝对路径" />
-                <button type="button" class="tag-chip live" data-cold-archive-save-root="1">保存</button>
-                <button type="button" class="tag-chip" data-cold-archive-reset-root="1">默认</button>
-              </div>
-            ` : ''}
             <div class="mvu-editor-field-grid">
               <label class="mvu-editor-field">
                 <span class="mvu-editor-label">自动归档</span>
@@ -9512,7 +9895,7 @@
   function 预入库角色名内置角色_桥接(statData = {}, 角色名列表 = [], 选项 = {}) {
     const 接口 = 获取内置角色实例化接口_桥接();
     if (!接口 || typeof 接口.应用内置角色实例化 !== 'function') return [];
-    const 内置角色候选 = 读取内置角色候选表_桥接(接口);
+    const 内置角色候选 = 读取内置角色候选表_桥接(接口, statData, deepGet(statData, 'world.时间.tick', null));
     const 命中角色 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [])
       .filter(角色名 => Object.prototype.hasOwnProperty.call(内置角色候选, 角色名))
       .map(角色名 => 内置角色候选[角色名] || 角色名)));
@@ -9657,7 +10040,7 @@
     if (!不完整角色.length) return [];
     const 可用冷档角色 = await 收集可用归档角色名_桥接(不完整角色, 选项);
     const 内置角色接口 = 获取内置角色实例化接口_桥接();
-    const 内置角色候选 = 内置角色接口 ? 读取内置角色候选表_桥接(内置角色接口) : {};
+    const 内置角色候选 = 内置角色接口 ? 读取内置角色候选表_桥接(内置角色接口, statData, deepGet(statData, 'world.时间.tick', null)) : {};
     const 仍未补齐 = 不完整角色.filter(角色名 => !statData?.char?.[角色名] || 是桥接角色空壳_桥接(statData.char[角色名]));
     if (!仍未补齐.length) return [];
     const 冷档未补齐 = 仍未补齐.filter(角色名 => 可用冷档角色.has(角色名));
@@ -9842,7 +10225,7 @@
       if (匹配楼层 >= 0) 定位选项.签名匹配楼层 = 匹配楼层;
     }
     const 内置角色接口 = 获取内置角色实例化接口_桥接();
-    const 正文内置角色候选 = 内置角色接口 ? 读取内置角色候选表_桥接(内置角色接口) : {};
+    const 正文内置角色候选 = 内置角色接口 ? 读取内置角色候选表_桥接(内置角色接口, statData, deepGet(statData, 'world.时间.tick', null)) : {};
     const 正文文本 = 读取当前最后AI正文_桥接();
     const 正文扫描文本 = 清理提示审计扫描文本_桥接(正文文本);
     const 正文内置角色 = 收集统一实体命中名称_桥接(正文内置角色候选, 正文扫描文本, '角色');
@@ -10004,19 +10387,22 @@
     return ['char', toText(角色名, '').trim()];
   }
 
-  function 交易货币_桥接(物品 = {}, 商店名 = '', 地点 = '', 商店数据 = {}) {
+  function 交易货币_桥接(物品 = {}, 商店名 = '', 地点 = '', 商店数据 = {}, 数据根 = {}) {
     const 显式货币 = toText(物品?.货币 || 物品?.默认货币, '').trim();
-    if (显式货币) return 显式货币;
     const 上下文 = `${商店名}|${地点}|${toText(商店数据?.所属势力, '')}`;
-    if (/血神军团战备|战功商店|军需处/.test(上下文)) return '战功';
-    if (/唐门/.test(上下文)) return '唐门积分';
-    if (/史莱克|海神阁|内院|外院/.test(上下文)) return '学院积分';
-    if (/星罗/.test(上下文)) return '星罗币';
-    return '联邦币';
+    const 配置 = 读取当前时代钱包配置_桥接(数据根);
+    if (配置.status !== 'resolved' || !配置.registry || !配置.eraId) {
+      throw new Error(`时代货币上下文未就绪：${配置.status || 'unavailable'}`);
+    }
+    const 结果 = 配置.registry?.resolveTradeCurrency(配置.eraId, 显式货币, 上下文);
+    if (结果?.status === 'resolved' || 结果?.reason === 'identity-item-excluded') return 结果.currency;
+    throw new Error('当前时代货币注册表无法解析交易货币');
   }
 
-  function 交易可用货币_桥接(货币 = '') {
-    return toText(货币, '').trim() !== '战功';
+  function 交易可用货币_桥接(货币 = '', 数据根 = {}) {
+    const 配置 = 读取当前时代钱包配置_桥接(数据根);
+    if (配置.status !== 'resolved' || !配置.registry || !配置.eraId) return false;
+    return 配置.registry?.isDirectlySpendable(配置.eraId, toText(货币, '').trim()) === true;
   }
 
   function 交易市场单价_桥接(数据根 = {}, 地点 = '', 基础单价 = 0, 固定价格 = false) {
@@ -10083,8 +10469,8 @@
       });
       消费权限ID = toText(折扣?.权限ID, '').trim();
       应付 = Math.max(0, Math.floor(市场单价 * toNumber(折扣?.支付比例, 100) / 100)) * 数量;
-      const 货币 = 交易货币_桥接(商品, 商店名, 地点, 商店);
-      if (!交易可用货币_桥接(货币)) throw new Error('当前货币不可直接用于交易');
+      const 货币 = 交易货币_桥接(商品, 商店名, 地点, 商店, 数据根);
+      if (!交易可用货币_桥接(货币, 数据根)) throw new Error('当前货币不可直接用于交易');
       if (toNumber(角色.财富?.[货币], 0) < 应付) throw new Error('货币余额不足');
       if (toNumber(角色.社交?.声望, 0) < toNumber(商品.需求声望, 0)) throw new Error('声望不足');
       if (参数.货币 !== undefined && toText(参数.货币, '') !== 货币) throw new Error('交易货币与实时商品定义不一致');
@@ -10107,8 +10493,8 @@
       if (!拍品) throw new Error('拍品已不存在');
       const 当前价 = Math.max(0, toNumber(拍品.价格, toNumber(拍品.基础价格, 0)));
       if (出价 <= 当前价) throw new Error('出价必须高于当前价格');
-      const 货币 = 交易货币_桥接(拍品, '拍卖行', 地点, 拍卖);
-      if (!交易可用货币_桥接(货币)) throw new Error('当前货币不可直接用于交易');
+      const 货币 = 交易货币_桥接(拍品, '拍卖行', 地点, 拍卖, 数据根);
+      if (!交易可用货币_桥接(货币, 数据根)) throw new Error('当前货币不可直接用于交易');
       if (toNumber(角色.财富?.[货币], 0) < 出价) throw new Error('货币余额不足');
       应付 = 出价;
       if (参数.货币 !== undefined && toText(参数.货币, '') !== 货币) throw new Error('拍卖货币与实时拍品定义不一致');
@@ -10157,7 +10543,9 @@
         safePatches.forEach(补丁 => {
           const 路径 = decodeJsonPointerPath(补丁.path);
           if (路径[0] === 'char' && 路径[2] === '状态' && 路径[3] === '位置' && ['add', 'replace'].includes(补丁.op)) {
-            const 地点路径 = 解析静态地点路径_桥接(toText(补丁.value, ''));
+            const 解析 = 解析静态地点路径结果_桥接(toText(补丁.value, ''), { dataRoot: statData });
+            if (是时代资源未就绪状态_桥接(解析.status)) throw new Error(`静态地点资源未就绪：${解析.status}：${解析.detail || toText(补丁.value, '')}`);
+            const 地点路径 = 解析.status === 'resolved' ? 解析.path : [];
             const 路径键 = 构建静态地点路径键_桥接(地点路径);
             if (路径键) 目标静态地点.push(路径键);
           }
@@ -12353,34 +12741,165 @@
     return 键;
   }
 
+  async function 预检任务时间推进时代资源_桥接(新tick = 0, 数据根 = {}) {
+    const 集成 = 读取时代运行时集成_桥接();
+    if (!集成 || typeof 集成.ensureEraResourcesForTick !== 'function') {
+      return { ok: false, reason: 'time_advance_era_runtime_unready', detail: 'EraRuntime_Integration未提供ensureEraResourcesForTick' };
+    }
+    let 上下文;
+    try {
+      if (typeof 集成.getEraContext !== 'function') throw new Error('EraRuntime_Integration未提供getEraContext');
+      上下文 = 集成.getEraContext(新tick, { dataRoot: 数据根 });
+    } catch (错误) {
+      return { ok: false, reason: 'time_advance_era_context_failed', detail: 错误?.message || String(错误 || '') };
+    }
+    let 资源结果;
+    try {
+      资源结果 = await 集成.ensureEraResourcesForTick(
+        新tick,
+        ['character', 'item', 'timeline'],
+        { reason: 'bridge-time-advance', dataRoot: 数据根 },
+      );
+    } catch (错误) {
+      const code = toText(错误?.code, '').trim();
+      return {
+        ok: false,
+        reason: code === 'RESOURCE_OWNER_NOT_READY' ? 'time_advance_resource_owner_unready' : 'time_advance_target_resource_failed',
+        status: 'failed',
+        resourceType: toText(错误?.resourceType, '').trim() || null,
+        detail: 错误?.message || String(错误 || ''),
+        context: 上下文,
+      };
+    }
+    const 资源列表 = Array.isArray(资源结果?.resources) ? 资源结果.resources : [];
+    const 未就绪 = ['character', 'item', 'timeline']
+      .map(resourceType => 资源列表.find(资源 => 资源?.resourceType === resourceType) || { resourceType, status: 'unloaded' })
+      .find(资源 => 资源.status !== 'loaded');
+    if (未就绪) {
+      const 原因 = {
+        'not-configured': 'time_advance_target_resource_not_configured',
+        disabled: 'time_advance_target_resource_disabled',
+        failed: 'time_advance_target_resource_failed',
+      }[未就绪.status] || 'time_advance_target_resource_not_ready';
+      return {
+        ok: false,
+        reason: 原因,
+        status: 未就绪.status,
+        resourceType: 未就绪.resourceType,
+        detail: 未就绪.detail || '目标时代资源未达到loaded',
+        context: 资源结果?.context || 上下文,
+        resources: 资源列表,
+      };
+    }
+    return { ok: true, context: 资源结果?.context || 上下文, resources: 资源列表 };
+  }
+
+  function 构建时代跨越提示_桥接(数据根 = {}, 旧tick = 0, 新tick = 0, 新时代上下文 = null) {
+    const 集成 = 读取时代运行时集成_桥接();
+    if (!集成) return { patchOps: [], text: '' };
+    let 剧情时代文本 = '';
+    let 剧情时代跨越 = null;
+    if (typeof 集成.getEraTransitions === 'function') {
+      剧情时代跨越 = 集成.getEraTransitions(旧tick, 新tick);
+      剧情时代文本 = 剧情时代跨越?.crossed && 剧情时代跨越.broadcastText ? 剧情时代跨越.broadcastText : '';
+    }
+    let 旧时代上下文 = null;
+    let 目标时代上下文 = 新时代上下文;
+    try {
+      if (typeof 集成.getEraContext === 'function') {
+        旧时代上下文 = 集成.getEraContext(旧tick, { dataRoot: 数据根 });
+        目标时代上下文 = 目标时代上下文 || 集成.getEraContext(新tick, { dataRoot: 数据根 });
+      }
+    } catch (_) {}
+    const 正式资源文本 = 旧时代上下文?.resourceEra && 目标时代上下文?.resourceEra && 旧时代上下文.resourceEra !== 目标时代上下文.resourceEra
+      ? `正式资源时代切换：${目标时代上下文.resourceLabel || 目标时代上下文.resourceEra}资源开始生效。`
+      : '';
+    const 文本列表 = [剧情时代文本, 正式资源文本].filter(Boolean);
+    if (!文本列表.length) return { patchOps: [], text: '', narrativeTransitions: 剧情时代跨越?.transitions || [], resourceEra: 目标时代上下文?.resourceEra || null };
+    const 原播报 = toText(deepGet(数据根, 'sys.系统播报', ''), '').trim();
+    const 新播报 = 文本列表.join('\n');
+    const 合并播报 = 原播报 && 原播报 !== '初始化' ? `${原播报}\n${新播报}` : 新播报;
+    return {
+      patchOps: [{ op: 'replace', path: '/sys/系统播报', value: 合并播报 }],
+      text: 新播报,
+      narrativeTransitions: 剧情时代跨越?.transitions || [],
+      resourceEra: 目标时代上下文?.resourceEra || null,
+    };
+  }
+
   async function 暂存任务时间推进_桥接(时间推进上下文 = {}, options = {}) {
     const 增量tick = Number(时间推进上下文?.tick增量);
-    const 旧tick = Number(时间推进上下文?.旧tick);
-    if (!Number.isFinite(增量tick) || 增量tick <= 0 || !Number.isFinite(旧tick) || 旧tick < 0) {
+    const 外部旧tick = Number(时间推进上下文?.旧tick);
+    const 外部新tick原值 = 时间推进上下文?.新tick;
+    const 有外部新tick = 外部新tick原值 !== undefined && 外部新tick原值 !== null && String(外部新tick原值).trim() !== '';
+    const 外部新tick = Number(外部新tick原值);
+    if (
+      !Number.isFinite(增量tick) ||
+      增量tick <= 0 ||
+      !Number.isFinite(外部旧tick) ||
+      外部旧tick < 0 ||
+      (有外部新tick && (!Number.isFinite(外部新tick) || 外部新tick < 0))
+    ) {
       return { ok: false, reason: 'time_advance_context_invalid' };
     }
-    const 新tick = Number((旧tick + 增量tick).toFixed(2));
+    const 已有事务 = 查找剧情模块预结算记录_桥接(options);
+    let 基底MVU数据 = null;
+    let 基底根 = null;
+    let 旧AI元信息 = null;
+    let 实际旧tick = NaN;
+    if (已有事务) {
+      基底根 = resolveRootData(已有事务.settledStatData);
+      if (!基底根) return { ok: false, reason: 'time_advance_staging_root_missing' };
+      const 事务tick = Number(已有事务.任务时间推进tick);
+      const 根tick = Number(deepGet(基底根, 'world.时间.tick', NaN));
+      if (Number.isFinite(事务tick) && Number.isFinite(根tick) && Number(事务tick.toFixed(2)) !== Number(根tick.toFixed(2))) {
+        return { ok: false, reason: 'time_advance_staging_tick_mismatch' };
+      }
+      实际旧tick = Number.isFinite(事务tick) ? 事务tick : 根tick;
+    } else {
+      旧AI元信息 = 查找当前最后AI楼层元信息_桥接();
+      if (!旧AI元信息) return { ok: false, reason: 'time_advance_previous_ai_missing' };
+      基底MVU数据 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 旧AI元信息.消息编号 });
+      基底根 = resolveRootData(基底MVU数据);
+      if (!基底根) return { ok: false, reason: 'time_advance_base_root_missing' };
+      实际旧tick = Number(deepGet(基底根, 'world.时间.tick', NaN));
+    }
+    if (!Number.isFinite(实际旧tick) || 实际旧tick < 0) return { ok: false, reason: 'time_advance_actual_tick_missing' };
+    if (Number(实际旧tick.toFixed(2)) !== Number(外部旧tick.toFixed(2))) {
+      return { ok: false, reason: 'time_advance_old_tick_mismatch', actualOldTick: 实际旧tick, suppliedOldTick: 外部旧tick };
+    }
+    const 新tick = Number((实际旧tick + 增量tick).toFixed(2));
+    if (!Number.isFinite(新tick) || 新tick < 0) return { ok: false, reason: 'time_advance_new_tick_invalid' };
+    if (有外部新tick && Number(外部新tick.toFixed(2)) !== Number(新tick.toFixed(2))) {
+      return { ok: false, reason: 'time_advance_new_tick_mismatch', actualNewTick: 新tick, suppliedNewTick: 外部新tick };
+    }
+    const 资源预检 = await 预检任务时间推进时代资源_桥接(新tick, 基底根);
+    if (!资源预检.ok) return 资源预检;
     const 时间补丁 = [
       { op: 'replace', path: '/world/时间/tick', value: 新tick },
       { op: 'replace', path: '/world/时间/_calendar', value: formatTickToCalendarDateText(新tick) },
     ];
-    const 已有事务 = 查找剧情模块预结算记录_桥接(options);
     if (已有事务) {
       if (Number(已有事务.任务时间推进tick) === 新tick) {
+        let 已提交 = true;
         if (已有事务.记录键 && 已有事务.状态 !== 'user_message_committed') {
-          await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance_retry');
+          已提交 = await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance_retry');
         }
+        if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
         return { ok: true, reused: true, unchanged: true, 新tick };
       }
-      const 结算根 = cloneJsonValue(已有事务.settledStatData, {});
+      const 结算根 = cloneJsonValue(基底根, {});
+      const 旧任务tick = Number(已有事务.任务时间推进tick);
+      const 时代提示 = 构建时代跨越提示_桥接(结算根, Number.isFinite(旧任务tick) ? 旧任务tick : 实际旧tick, 新tick, 资源预检.context);
       if (!结算根.world || typeof 结算根.world !== 'object') 结算根.world = {};
       if (!结算根.world.时间 || typeof 结算根.world.时间 !== 'object') 结算根.world.时间 = {};
       结算根.world.时间.tick = 新tick;
       结算根.world.时间._calendar = formatTickToCalendarDateText(新tick);
+      if (时代提示.text) deepSetMutable(结算根, ['sys', '系统播报'], 时代提示.patchOps[0].value);
       已有事务.settledStatData = 结算根;
       已有事务.settledPaths = Array.from(
         new Map(
-          [...已有事务.settledPaths, ['world', '时间', 'tick'], ['world', '时间', '_calendar']]
+          [...已有事务.settledPaths, ['world', '时间', 'tick'], ['world', '时间', '_calendar'], ...(时代提示.text ? [['sys', '系统播报']] : [])]
             .map(normalizeEditorPath)
             .filter(path => path.length)
             .map(path => [JSON.stringify(path), path]),
@@ -12393,33 +12912,34 @@
       if (!写后根.world.时间 || typeof 写后根.world.时间 !== 'object') 写后根.world.时间 = {};
       写后根.world.时间.tick = 新tick;
       写后根.world.时间._calendar = formatTickToCalendarDateText(新tick);
+      if (时代提示.text) deepSetMutable(写后根, ['sys', '系统播报'], 时代提示.patchOps[0].value);
       已有事务.写后MVU数据 = 写后MVU数据;
       已有事务.写后记录 = 构建路径回滚记录自路径列表_桥接(结算根, 已有事务.settledPaths);
-      已有事务.patchOps = [...已有事务.patchOps, ...时间补丁];
+      已有事务.patchOps = [...已有事务.patchOps, ...时间补丁, ...时代提示.patchOps];
       已有事务.任务时间推进tick = 新tick;
       已有事务.状态 = 'waiting_user_message';
-      if (已有事务.记录键) {
-        await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance');
-      }
+      if (!已有事务.记录键) return { ok: false, reason: 'time_advance_transaction_missing_key' };
+      const 已提交 = await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance');
+      if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
+      if (时代提示.text) showUiToast(时代提示.text, 'info', 6200);
       return { ok: true, reused: true, 新tick };
     }
-    const 旧AI元信息 = 查找当前最后AI楼层元信息_桥接();
-    if (!旧AI元信息) return { ok: false, reason: 'time_advance_previous_ai_missing' };
-    const 基底MVU数据 = 读取消息变量写回当前底稿_桥接({ type: 'message', message_id: 旧AI元信息.消息编号 });
-    const 基底根 = resolveRootData(基底MVU数据);
-    if (!基底根) return { ok: false, reason: 'time_advance_base_root_missing' };
     const 结算根 = cloneJsonValue(基底根, {});
+    const 时代提示 = 构建时代跨越提示_桥接(基底根, 实际旧tick, 新tick, 资源预检.context);
     if (!结算根.world || typeof 结算根.world !== 'object') 结算根.world = {};
     if (!结算根.world.时间 || typeof 结算根.world.时间 !== 'object') 结算根.world.时间 = {};
     结算根.world.时间.tick = 新tick;
     结算根.world.时间._calendar = formatTickToCalendarDateText(新tick);
+    if (时代提示.text) deepSetMutable(结算根, ['sys', '系统播报'], 时代提示.patchOps[0].value);
     const 写后MVU数据 = cloneJsonValue(基底MVU数据, {});
     const 写后根 = resolveRootData(写后MVU数据);
+    if (!写后根) return { ok: false, reason: 'time_advance_staging_root_missing' };
     if (!写后根.world || typeof 写后根.world !== 'object') 写后根.world = {};
     if (!写后根.world.时间 || typeof 写后根.world.时间 !== 'object') 写后根.world.时间 = {};
     写后根.world.时间.tick = 新tick;
     写后根.world.时间._calendar = formatTickToCalendarDateText(新tick);
-    const 时间路径 = [['world', '时间', 'tick'], ['world', '时间', '_calendar']];
+    if (时代提示.text) deepSetMutable(写后根, ['sys', '系统播报'], 时代提示.patchOps[0].value);
+    const 时间路径 = [['world', '时间', 'tick'], ['world', '时间', '_calendar'], ...(时代提示.text ? [['sys', '系统播报']] : [])];
     const 记录键 = 登记剧情模块预结算事务_桥接({
       requestKind: 'time_advance',
       旧AI消息编号: 旧AI元信息.消息编号,
@@ -12432,7 +12952,7 @@
       baseStatData: 基底根,
       settledStatData: 结算根,
       settledPaths: 时间路径,
-      patchOps: 时间补丁,
+      patchOps: [...时间补丁, ...时代提示.patchOps],
       用户输入文本: toText(options.userInput || options.用户输入文本, ''),
       用户输入签名: toText(options.userInputSignature || options.用户输入签名, '') || 构建剧情模块用户输入签名(options.userInput || options.用户输入文本),
       路由块哈希: toText(options.routeHash || options.路由块哈希, ''),
@@ -12442,7 +12962,10 @@
     });
     if (!记录键) return { ok: false, reason: 'time_advance_transaction_register_failed' };
     const 记录 = 剧情模块预结算事务表.get(记录键);
-    if (记录) await 尝试提交剧情模块预结算事务_桥接(记录键, 记录, 'time_advance');
+    if (!记录) return { ok: false, reason: 'time_advance_transaction_missing_record' };
+    const 已提交 = await 尝试提交剧情模块预结算事务_桥接(记录键, 记录, 'time_advance');
+    if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
+    if (时代提示.text) showUiToast(时代提示.text, 'info', 6200);
     return { ok: true, reused: false, 新tick };
   }
 
@@ -13021,13 +13544,9 @@
     return null;
   }
 
-  function 读取内置角色候选表_桥接(接口 = null) {
-    const 候选库 = [];
-    try { if (接口 && typeof 接口.读取内置角色库 === 'function') 候选库.push(接口.读取内置角色库()); } catch (错误) {}
-    try { 候选库.push(window.__LWCS_内置角色库__); } catch (错误) {}
-    try { if (window.parent && window.parent !== window) 候选库.push(window.parent.__LWCS_内置角色库__); } catch (错误) {}
-    try { if (window.top && window.top !== window) 候选库.push(window.top.__LWCS_内置角色库__); } catch (错误) {}
-    const 角色库 = 候选库.find(候选 => 候选 && 候选.角色 && typeof 候选.角色 === 'object') || {};
+  function 读取内置角色候选表_桥接(接口 = null, 数据根 = null, 当前tick = null) {
+    const 角色库 = 读取内置角色库_桥接(接口, 数据根, 当前tick) || {};
+    if (角色库.__LWCS_RESOURCE_NOT_READY__) return {};
     const 角色表 = 角色库 && 角色库.角色 && typeof 角色库.角色 === 'object' ? 角色库.角色 : {};
     const 候选表 = {};
     Object.entries(角色表).forEach(([角色名, 角色记录]) => {
@@ -13042,13 +13561,9 @@
     return 候选表;
   }
 
-  function 读取内置角色库_桥接(接口 = null) {
-    const 候选库 = [];
-    try { if (接口 && typeof 接口.读取内置角色库 === 'function') 候选库.push(接口.读取内置角色库()); } catch (错误) {}
-    try { 候选库.push(window.__LWCS_内置角色库__); } catch (错误) {}
-    try { if (window.parent && window.parent !== window) 候选库.push(window.parent.__LWCS_内置角色库__); } catch (错误) {}
-    try { if (window.top && window.top !== window) 候选库.push(window.top.__LWCS_内置角色库__); } catch (错误) {}
-    return 候选库.find(候选 => 候选 && 候选.角色 && typeof 候选.角色 === 'object') || null;
+  function 读取内置角色库_桥接(接口 = null, 数据根 = null, 当前tick = null) {
+    if (!接口 || typeof 接口.读取内置角色库 !== 'function') return null;
+    try { return 接口.读取内置角色库(数据根, 当前tick); } catch (错误) { return null; }
   }
 
   function 解析内置角色规范名_桥接(角色名 = '', 角色库 = null, 当前tick = 0, 数据根 = {}) {
@@ -13069,7 +13584,7 @@
   }
 
   function 内置角色文本命中满足二级关键词_桥接(角色名 = '', 文本 = '', 接口 = null) {
-    const 角色库 = 读取内置角色库_桥接(接口);
+    const 角色库 = 读取内置角色库_桥接(接口, 变量数据, 当前tick);
     const 角色记录 = 角色库?.角色?.[toText(角色名, '').trim()];
     const 二级关键词 = Array.isArray(角色记录?.匹配要求?.二级关键词) ? 角色记录.匹配要求.二级关键词 : [];
     if (!二级关键词.length) return true;
@@ -13208,7 +13723,7 @@
     const 变量数据 = 最新MVU数据 && 最新MVU数据.stat_data ? cloneJsonValue(最新MVU数据.stat_data, {}) : {};
     const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(变量数据, 'world.时间.tick', 0), 0)));
     const 接口 = 获取内置角色实例化接口_桥接();
-    const 角色库 = 读取内置角色库_桥接(接口);
+    const 角色库 = 读取内置角色库_桥接(接口, 变量数据, 当前tick);
     if (!角色库) throw new Error('内置角色库不可用。');
     const 规范角色名 = 解析内置角色规范名_桥接(角色名, 角色库, 当前tick, 变量数据);
     if (!规范角色名) throw new Error('未找到可校对的内置角色。');
@@ -13452,7 +13967,7 @@
     const 待写回MVU数据 = cloneJsonValue(当前MVU数据, {});
     const 前置变量数据 = 附加选项.statData && typeof 附加选项.statData === 'object' ? 附加选项.statData : 待写回MVU数据.stat_data;
     const 待写回变量数据 = cloneJsonValue(前置变量数据, {});
-    const 命中角色 = 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口), 合并文本, '角色')
+    const 命中角色 = 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口, 待写回变量数据, deepGet(待写回变量数据, 'world.时间.tick', null)), 合并文本, '角色')
       .filter(角色名 => !排除角色.has(角色名));
     const 结果 = 接口.应用内置角色实例化(待写回变量数据, {
       用户输入: 合并文本,
@@ -13654,7 +14169,7 @@
     try {
       const 接口 = 获取内置角色实例化接口_桥接();
       const 命中内置角色 = 接口 && !角色归档检查失败
-        ? 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口), 捕获文本, '角色')
+        ? 收集统一实体命中名称_桥接(读取内置角色候选表_桥接(接口, 当前StatData, deepGet(当前StatData, 'world.时间.tick', null)), 捕获文本, '角色')
             .filter(角色名 => !可用冷档角色.has(角色名))
         : [];
       const 写入角色 = 预入库角色名内置角色_桥接(当前StatData, 命中内置角色, {
@@ -19068,7 +19583,7 @@
     前摇: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
     反伤: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
     伤害转移: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '转移对象', '持续回合']),
-    伤害吸收: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '吸收来源', '吸收资源', '持续回合']),
+    伤害吸收: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '对应等级', '吸收来源', '吸收资源', '转化效果', '增幅上限', '持续回合']),
     伤害转治疗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
     治疗转伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
     伤害分摊: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '数量', '持续回合']),
@@ -19188,6 +19703,13 @@
         throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收来源无效`);
       if (!技能设计台伤害吸收资源选项.includes(normalizeSkillUiText(effect['吸收资源'], '生命')))
         throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收资源无效`);
+      if (effect['对应等级'] !== undefined && (!Number.isInteger(Number(effect['对应等级'])) || Number(effect['对应等级']) <= 0))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收对应等级必须为正整数`);
+      const 转化效果 = normalizeSkillUiText(effect['转化效果'], '');
+      if (转化效果 && !['恢复资源', '下次造成伤害'].includes(转化效果))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收转化效果无效`);
+      if (effect['增幅上限'] !== undefined && !技能设计台字段值是百分比修正(effect['增幅上限']))
+        throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收增幅上限必须使用百分比`);
     } else {
       if (effect['吸收来源'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段吸收来源`);
       if (effect['吸收资源'] !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段吸收资源`);
@@ -19466,6 +19988,15 @@
         字段['吸收资源'] = 技能设计台伤害吸收资源选项.includes(normalizeSkillUiText(字段['吸收资源'], ''))
           ? normalizeSkillUiText(字段['吸收资源'], '')
           : '生命';
+        if (字段['对应等级'] !== undefined) {
+          const 对应等级 = Math.round(toNumber(字段['对应等级'], 0));
+          if (Number.isFinite(对应等级) && 对应等级 > 0) 字段['对应等级'] = Math.max(1, Math.min(180, 对应等级));
+          else delete 字段['对应等级'];
+        }
+        const 转化效果 = normalizeSkillUiText(字段['转化效果'], '');
+        if (转化效果 === '恢复资源' || 转化效果 === '下次造成伤害') 字段['转化效果'] = 转化效果;
+        else delete 字段['转化效果'];
+        if (字段['增幅上限'] !== undefined) 字段['增幅上限'] = 格式化技能设计台百分比字段值(字段['增幅上限'], '+100%');
       }
       const 支持字段 = 技能设计台结算修正支持字段矩阵[normalizeSkillUiText(字段['结算'], '')];
       if (支持字段) {
@@ -19480,6 +20011,11 @@
         if (normalizeSkillDesignerEffectTargetValue(字段['目标'], '单体') === '群体') 字段['数量'] = Math.max(1, parseSkillDesignerIntegerInputValue(字段['数量'], 1, 1));
         else delete 字段['数量'];
       }
+    }
+    if (原型 === '魂骨年限提升') {
+      字段['目标'] = '自身';
+      字段['数值'] = 格式化技能设计台百分比字段值(字段['数值'], '+10%');
+      字段['年限上限'] = Math.max(1, Math.min(10000, Math.round(toNumber(字段['年限上限'], 10000))));
     }
     if (原型 === '修炼增益') {
       const 收益类型 = normalizeSkillUiText(字段['收益类型'], '');
@@ -19884,8 +20420,13 @@
       if (缺失必填字段.length) throw new Error(`技能执行结构错误:${path}[${index}]缺少必填字段${缺失必填字段.join('、')}`);
       if (原型 === '伤害结算' && effect['持续回合'] !== undefined)
         throw new Error(`技能执行结构错误:${path}[${index}]伤害结算不支持持续回合`);
-      if (effect['对应等级'] !== undefined)
-        throw new Error(`技能执行结构错误:${path}[${index}]对应等级只允许普通物品使用效果`);
+      const 允许对应等级字段 = 原型 === '伤害结算'
+        || (原型 === '结算修正' && normalizeSkillUiText(effect['结算'], '') === '伤害吸收');
+      if (effect['对应等级'] !== undefined) {
+        if (!允许对应等级字段) throw new Error(`技能执行结构错误:${path}[${index}]对应等级只允许伤害结算或伤害吸收`);
+        const 对应等级 = Number(effect['对应等级']);
+        if (!Number.isInteger(对应等级) || 对应等级 <= 0) throw new Error(`技能执行结构错误:${path}[${index}]对应等级必须为正整数`);
+      }
       if (effect['资源转移角色'] !== undefined)
         throw new Error(`技能执行结构错误:${path}[${index}]资源转移角色已删除`);
       const 正式字段集合 = new Set(Array.isArray(原型定义 && 原型定义['允许字段']) ? 原型定义['允许字段'] : []);
@@ -19913,6 +20454,14 @@
         throw new Error(`技能执行结构错误:${path}[${index}]${normalizeSkillUiText(effect['结算'], '')}目标只允许单体/群体`);
       if (原型 === '修炼增益' && !['自身', '单体', '群体', '全场'].includes(当前目标))
         throw new Error(`技能执行结构错误:${path}[${index}]修炼增益目标只允许自身/单体/群体/全场`);
+      if (原型 === '魂骨年限提升') {
+        if (当前目标 !== '自身') throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升目标必须是自身`);
+        if (!技能设计台字段值是百分比修正(effect['数值'])) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升数值必须使用百分比`);
+        const 提升比例 = 解析技能设计台正负数值(effect['数值']);
+        if (!(提升比例 > 0 && 提升比例 <= 100)) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升比例必须在0到100%之间`);
+        const 年限上限 = Number(effect['年限上限']);
+        if (!Number.isInteger(年限上限) || 年限上限 < 1 || 年限上限 > 10000) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升年限上限必须是1到10000的整数`);
+      }
       if (原型 === '战斗外复活') {
         if (当前目标 === '自身') throw new Error(`技能执行结构错误:${path}[${index}]战斗外复活目标不能是自身`);
         if (!['单体', '群体', '全场'].includes(当前目标)) throw new Error(`技能执行结构错误:${path}[${index}]战斗外复活目标只允许单体/群体/全场`);
@@ -20036,8 +20585,8 @@
         throw new Error(`技能执行结构错误:${path}[${index}]规则防御规则只允许免伤/免死`);
       if (原型 === '规则防御' && effect['持续回合'] !== undefined) {
         const 持续回合 = toNumber(effect['持续回合'], 0);
-        if (!Number.isFinite(持续回合) || 持续回合 < 1 || 持续回合 > 10 || Math.round(持续回合) !== 持续回合)
-          throw new Error(`技能执行结构错误:${path}[${index}]规则防御持续回合必须为1到10的整数`);
+        if (!Number.isFinite(持续回合) || 持续回合 < 1 || 持续回合 > 99 || Math.round(持续回合) !== 持续回合)
+          throw new Error(`技能执行结构错误:${path}[${index}]规则防御持续回合必须为1到99的整数`);
       }
       if (原型 === '规则改写') {
         if (!技能设计台规则改写选项值.includes(normalizeSkillUiText(effect['规则'], '')))
@@ -24805,6 +25354,10 @@
     const 原型名 = normalizeSkillUiText(原型, '');
     const 定义 = SKILL_DESIGNER_PROTOTYPE_REGISTRY[原型名];
     const 字段 = Array.isArray(定义 && 定义['允许字段']) ? [...定义['允许字段']] : [];
+    if (原型名 === '结算修正') {
+      const 支持字段 = 技能设计台结算修正支持字段矩阵[normalizeSkillUiText(effect && effect['结算'], '')];
+      if (支持字段) 字段.push(...支持字段);
+    }
     const 允许字段 = key => key && !技能设计台原型字段隐藏集合.has(key) && (key !== '对应等级' || !!(context && context.允许对应等级));
     if (原型名 === '炸环' && !字段.includes('强化倍率')) return ['目标', '原型', '生效方式', '强化倍率', '条件分支'];
     if (原型名 === '规则改写') {
@@ -24889,11 +25442,26 @@
     if (原型名 === '结算修正' && 字段名 === '吸收来源') {
       return { 字段: 字段名, 类型: '枚举', 选项: 技能设计台伤害吸收来源选项, 默认值: '造成伤害' };
     }
+    if (原型名 === '结算修正' && 字段名 === '转化效果') {
+      return { 字段: 字段名, 类型: '枚举', 选项: ['', '恢复资源', '下次造成伤害'], 默认值: '' };
+    }
+    if (原型名 === '结算修正' && 字段名 === '增幅上限') {
+      return { 字段: 字段名, 类型: '带符号数值', 默认值: '+100%' };
+    }
+    if (原型名 === '结算修正' && 字段名 === '对应等级') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '10', 最小值: 1, 最大值: 180 };
+    }
     if (原型名 === '结算修正' && 字段名 === '转移对象') {
       return { 字段: 字段名, 类型: '枚举', 选项: 技能设计台伤害转移对象选项, 默认值: '攻击者' };
     }
     if (原型名 === '结算修正' && 字段名 === '数量') {
       return { 字段: 字段名, 类型: '整数', 默认值: '1', 最小值: 1 };
+    }
+    if (原型名 === '魂骨年限提升' && 字段名 === '数值') {
+      return { 字段: 字段名, 类型: '带符号数值', 默认值: '+10%' };
+    }
+    if (原型名 === '魂骨年限提升' && 字段名 === '年限上限') {
+      return { 字段: 字段名, 类型: '整数', 默认值: '10000', 最小值: 1, 最大值: 10000 };
     }
     if (
       原型名 === '结算修正' &&
@@ -29755,12 +30323,14 @@
     return 冷却状态;
   }
 
-  function 写入场外魂技冷却(skill = {}, 当前tick = 0) {
+  function 写入场外魂技冷却(skill = {}, 当前tick = 0, 冷却倍率 = 1) {
     if (!skill || typeof skill !== 'object' || Array.isArray(skill)) return null;
     const 冷却状态 = 读取场外魂技冷却状态(skill, 当前tick);
-    if (冷却状态.冷却tick > 0) skill['场外冷却至tick'] = Math.max(0, toNumber(当前tick, 0)) + 冷却状态.冷却tick;
+    const 倍率 = Math.max(1, toNumber(冷却倍率, 1));
+    const 实际冷却tick = 冷却状态.冷却tick > 0 ? Math.max(1, Math.ceil(冷却状态.冷却tick / 倍率)) : 0;
+    if (实际冷却tick > 0) skill['场外冷却至tick'] = Math.max(0, toNumber(当前tick, 0)) + 实际冷却tick;
     else delete skill['场外冷却至tick'];
-    return 读取场外魂技冷却状态(skill, 当前tick);
+    return { ...读取场外魂技冷却状态(skill, 当前tick), 冷却tick: 实际冷却tick };
   }
 
   function extractConstructCreateEffects(effectArray = []) {
@@ -29786,7 +30356,7 @@
   }
 
   function skillHasDailyMvuWritebackEffect(skill = {}) {
-    const 可写回原型 = new Set(['资源变化', '属性修正', '状态施加', '状态移除', '修炼增益', '战斗外复活', '灵物吸收', '永久属性提升', '护盾变化', '机制授予', '复制执行']);
+    const 可写回原型 = new Set(['资源变化', '属性修正', '状态施加', '状态移除', '修炼增益', '战斗外复活', '灵物吸收', '永久属性提升', '魂骨年限提升', '护盾变化', '机制授予', '复制执行']);
     const visit = effects =>
       (Array.isArray(effects) ? effects : []).some(effect => {
         if (!effect || typeof effect !== 'object') return false;
@@ -32597,7 +33167,8 @@
   function buildArchiveCoreCard(snapshot) {
     const stat = deepGet(snapshot, 'activeChar.属性', {});
     const hpPair = getDisplayHpPair(stat);
-    const nextLevelSoul = getNextLevelSoulRequirementWithCap(stat, deepGet(snapshot, 'activeChar', {}));
+    const currentTick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
+    const nextLevelSoul = getNextLevelSoulRequirementWithCap(stat, deepGet(snapshot, 'activeChar', {}), currentTick);
     const 雷达HTML = 构建档案属性雷达(stat);
     const 魂力经验条HTML = 构建档案魂力经验条(stat, nextLevelSoul);
     return `
@@ -33697,7 +34268,8 @@
       : '未加入';
     const titleText =
       Array.isArray(snapshot.recentTitles) && snapshot.recentTitles.length ? snapshot.recentTitles[0] : '';
-    const nextLevelSoul = getNextLevelSoulRequirementWithCap(stat, deepGet(snapshot, 'activeChar', {}));
+    const currentTick = toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0);
+    const nextLevelSoul = getNextLevelSoulRequirementWithCap(stat, deepGet(snapshot, 'activeChar', {}), currentTick);
     const hasSoulPowerMeter = toNumber(stat.魂力上限, 0) > 0;
     const hasVitalityMeter = toNumber(stat.体力上限, 0) > 0;
     const hasMentalMeter = toNumber(stat.精神力上限, 0) > 0;
@@ -33827,11 +34399,9 @@
     }
     const wealth = deepGet(snapshot, 'activeChar.财富', {});
     const inventoryCount = (snapshot.inventoryEntries || []).length || 0;
-    const fedCoin = toNumber(wealth.联邦币, 0);
-    const starCoin = toNumber(wealth.星罗币, 0);
-    const tangPt = toNumber(wealth.唐门积分, 0);
-    const bloodPt = toNumber(wealth.战功, 0);
-    const hasStoredResources = inventoryCount > 0 || fedCoin > 0 || starCoin > 0 || tangPt > 0 || bloodPt > 0;
+    const wallet = 读取当前时代钱包配置_桥接(snapshot.rootData || {}).currencies
+      .map(货币 => ({ ...货币, value: toNumber(wealth[货币.key], 0) }));
+    const hasStoredResources = inventoryCount > 0 || wallet.some(货币 => 货币.value > 0);
     if (!hasStoredResources) {
       return buildShellSummaryCard({
         title: '背包',
@@ -33840,20 +34410,14 @@
         rows: [{ label: '货币', value: '0' }],
       });
     }
+    const primaryCurrency = wallet.find(货币 => 货币.value > 0) || wallet[0] || { label: '货币', value: 0 };
     return buildShellSummaryCard({
       kicker: '背包',
       title: '背包',
       value: `${formatNumber(inventoryCount)} 物资`,
-      meta: `流动资金 ${formatNumber(fedCoin)} / 星罗 ${formatNumber(starCoin)}`,
-      metrics: [
-        { label: '联邦', value: formatNumber(fedCoin), tone: 'live' },
-        { label: '星罗', value: formatNumber(starCoin) },
-        { label: '积分', value: formatNumber(tangPt), tone: 'gold' },
-      ],
-      rows: [
-        { label: '血神', value: formatNumber(bloodPt) },
-        { label: '物资', value: `${formatNumber(inventoryCount)} 种` },
-      ],
+      meta: `${primaryCurrency.label} ${formatNumber(primaryCurrency.value)}`,
+      metrics: wallet.slice(0, 3).map((货币, index) => ({ label: 货币.label, value: formatNumber(货币.value), tone: index === 0 ? 'live' : '' })),
+      rows: [...wallet.slice(3, 5).map(货币 => ({ label: 货币.label, value: formatNumber(货币.value) })), { label: '物资', value: `${formatNumber(inventoryCount)} 种` }],
     });
   }
 
@@ -34003,7 +34567,7 @@
               <button type="button" class="mvu-shell-roster-action clickable" data-preview="角色档案：${escapeHtmlAttr(displayName)}">档案</button>
               <button type="button" class="mvu-shell-roster-action map-dispatch-action-btn live" data-action="talk" data-target="${escapeHtmlAttr(当前地点)}" data-current-loc="${escapeHtmlAttr(当前地点)}" data-npc-target="${escapeHtmlAttr(displayName)}">对话</button>
               <button type="button" class="mvu-shell-roster-action map-dispatch-action-btn" data-action="intel" data-target="${escapeHtmlAttr(当前地点)}" data-current-loc="${escapeHtmlAttr(当前地点)}" data-npc-target="${escapeHtmlAttr(displayName)}">请教</button>
-              <button type="button" class="mvu-shell-roster-action map-dispatch-action-btn warn" data-action="battle" data-target="${escapeHtmlAttr(当前地点)}" data-current-loc="${escapeHtmlAttr(当前地点)}" data-npc-target="${escapeHtmlAttr(displayName)}">切磋</button>
+              <button type="button" class="mvu-shell-roster-action map-dispatch-action-btn warn" data-action="battle" data-target="${escapeHtmlAttr(当前地点)}" data-current-loc="${escapeHtmlAttr(当前地点)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-npc-key="${escapeHtmlAttr(name)}">切磋</button>
               <button type="button" class="mvu-shell-roster-action map-dispatch-action-btn" data-action="trade" data-target="${escapeHtmlAttr(当前地点)}" data-current-loc="${escapeHtmlAttr(当前地点)}" data-npc-target="${escapeHtmlAttr(displayName)}">交易</button>
               ${可委托 ? `<button type="button" class="mvu-shell-roster-action map-dispatch-action-btn warn" data-action="commission" data-target="${escapeHtmlAttr(当前地点)}" data-current-loc="${escapeHtmlAttr(当前地点)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="private">委托</button>` : ''}
             </div>
@@ -35114,14 +35678,9 @@
 
   function buildShellVaultView(snapshot) {
     const wealth = deepGet(snapshot, 'activeChar.财富', {});
-    const currencies = [
-      { key: '联邦币', label: '联邦币', value: toNumber(wealth.联邦币, 0) },
-      { key: '星罗币', label: '星罗币', value: toNumber(wealth.星罗币, 0) },
-      { key: '唐门积分', label: '唐门积分', value: toNumber(wealth.唐门积分, 0) },
-      { key: '学院积分', label: '学院积分', value: toNumber(wealth.学院积分, 0) },
-      { key: '战功', label: '战功', value: toNumber(wealth.战功, 0) },
-    ];
-    const primaryCurrency = currencies.find(item => item.value > 0) || currencies[0];
+    const currencies = 读取当前时代钱包配置_桥接(snapshot.rootData || {}).currencies
+      .map(货币 => ({ ...货币, value: toNumber(wealth[货币.key], 0) }));
+    const primaryCurrency = currencies.find(item => item.value > 0) || currencies[0] || { label: '货币', value: 0 };
     const secondaryCurrencies = currencies.filter(item => item !== primaryCurrency && item.value > 0);
     const inventoryEntries = Array.isArray(snapshot && snapshot.inventoryEntries) ? snapshot.inventoryEntries : [];
     const inventoryItems = inventoryEntries.slice(0, 6).map(([name, item]) => {
@@ -40481,6 +41040,7 @@
     if (previewKey === '储物仓库详细页') {
       const activeCharKey =
         resolveSnapshotCharKey(snapshot, toText(snapshot.activeName, '')) || toText(snapshot.activeName, '');
+      const 当前时代钱包 = 读取当前时代钱包配置_桥接(snapshot.rootData || {}).currencies;
       const 当前分类 = toText(modalFocusState['储物仓库详细页::分类'], '全部') || '全部';
       const 背包条目列表 = (Array.isArray(snapshot.inventoryEntries) ? snapshot.inventoryEntries : [])
         .map(([名称, 物品]) => {
@@ -40561,58 +41121,15 @@
             <div class="archive-modal-grid vault-modal-grid">
               <div class="archive-card full vault-wallet-card">
                 <div class="archive-card-head"><div class="archive-card-title">钱包条</div></div>
-                ${makeWalletStrip([
-                  {
-                    label: '联邦币',
-                    value: makeInlineEditableValue(formatNumber(wealth.联邦币), {
-                      path: ['char', activeCharKey, '财富', '联邦币'],
-                      kind: 'number',
-                      rawValue: wealth.联邦币,
-                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                    }),
-                    className: 'gold',
-                  },
-                  {
-                    label: '星罗币',
-                    value: makeInlineEditableValue(formatNumber(wealth.星罗币), {
-                      path: ['char', activeCharKey, '财富', '星罗币'],
-                      kind: 'number',
-                      rawValue: wealth.星罗币,
-                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                    }),
-                    className: 'cyan',
-                  },
-                  {
-                    label: '唐门积分',
-                    value: makeInlineEditableValue(formatNumber(wealth.唐门积分), {
-                      path: ['char', activeCharKey, '财富', '唐门积分'],
-                      kind: 'number',
-                      rawValue: wealth.唐门积分,
-                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                    }),
-                    className: 'cyan',
-                  },
-                  {
-                    label: '学院积分',
-                    value: makeInlineEditableValue(formatNumber(wealth.学院积分), {
-                      path: ['char', activeCharKey, '财富', '学院积分'],
-                      kind: 'number',
-                      rawValue: wealth.学院积分,
-                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                    }),
-                    className: 'cyan',
-                  },
-                  {
-                    label: '战功',
-                    value: makeInlineEditableValue(formatNumber(wealth.战功), {
-                      path: ['char', activeCharKey, '财富', '战功'],
-                      kind: 'number',
-                      rawValue: wealth.战功,
-                      editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
-                    }),
-                    className: 'red',
-                  },
-                ])}
+                ${makeWalletStrip(当前时代钱包.map(货币 => ({
+                  ...货币,
+                  value: makeInlineEditableValue(formatNumber(wealth[货币.key]), {
+                    path: ['char', activeCharKey, '财富', 货币.key],
+                    kind: 'number',
+                    rawValue: wealth[货币.key],
+                    editorMeta: { min: 0, integer: true, hint: '最小 0 · 整数' },
+                  }),
+                })))}
               </div>
               <div class="mvu-inventory-workbench inventory-definition-layout${定义编辑展开 ? ' is-editor-open' : ''}">
                 <div class="archive-card inventory-instance-panel mvu-inventory-registry">
@@ -40646,7 +41163,7 @@
                       </div>
                       ${当前物品动作}
                     </div>
-                    ${构建物品定义编辑器(正在加入物品 ? '' : 当前定义名, 当前定义, { 新建: 正在加入物品, 实例: 当前实例, charKey: activeCharKey, canUse: 当前物品可用, canEquip: 当前物品可装备 })}
+                    ${构建物品定义编辑器(正在加入物品 ? '' : 当前定义名, 当前定义, { 新建: 正在加入物品, 实例: 当前实例, charKey: activeCharKey, canUse: 当前物品可用, canEquip: 当前物品可装备, rootData: snapshot.rootData || {} })}
                   `
                       : 构建物品解析面板(当前定义名, 当前定义, 当前实例, { rootData: snapshot.rootData || {}, charKey: activeCharKey })
                   }
@@ -40749,9 +41266,16 @@
         title: '技能设计',
         summary: '',
         body: `
-            <div class="archive-modal-grid mvu-detail-grid--single">
-              <div class="archive-card full">
-                <div class="archive-card-head"><div class="archive-card-title">新技能</div></div>
+            <div class="archive-modal-grid mvu-detail-grid--single skill-design-confirm-shell">
+              <div class="archive-card full skill-design-confirm-card">
+                <div class="archive-card-head">
+                  <div class="archive-card-title">新技能</div>
+                  <span class="skill-design-confirm-state">待确认</span>
+                </div>
+                <div class="skill-design-confirm-intro">
+                  <strong>选择技能处理方式</strong>
+                  <span>保留当前技能，或进入设计台调整具体效果。</span>
+                </div>
                 ${makeDossierRows(
                   [
                     { label: '角色', value: htmlEscape(pendingSkillDesign.charName || '当前角色') },
@@ -40763,11 +41287,11 @@
                       ),
                     },
                   ],
-                  'dossier-row-grid--two',
+                  'dossier-row-grid--three skill-design-confirm-meta',
                 )}
-                <div class="ring-hover-actions mvu-detail-action-row">
-                  <button type="button" class="tag-chip live" data-skill-design-confirm-action="design">自行设计</button>
-                  <button type="button" class="tag-chip" data-skill-design-confirm-action="continue">继续</button>
+                <div class="ring-hover-actions mvu-detail-action-row skill-design-confirm-actions">
+                  <button type="button" class="tag-chip skill-design-confirm-action" data-skill-design-confirm-action="design">自行设计</button>
+                  <button type="button" class="tag-chip live skill-design-confirm-action" data-skill-design-confirm-action="continue">保留原技能并继续</button>
                 </div>
               </div>
             </div>
@@ -40980,7 +41504,7 @@
               </div>
               <div class="archive-card full spirit-flow-card mvu-detail-scroll-card">
                 <div class="archive-card-head"><div class="archive-card-title">魂灵与魂环矩阵</div></div>
-                <div class="soul-expand-stack mvu-detail-scroll-list">
+                <div class="soul-expand-stack mvu-detail-scroll-list mvu-spirit-matrix-list">
                   ${config.souls.map((魂灵, 序号) => 渲染魂灵终端卡(魂灵, 序号)).join('')}
                   ${
                     config.independentRings && config.independentRings.length
@@ -41956,7 +42480,7 @@
                     ${对象委托能力.length ? `<button type="button" class="map-dispatch-action-btn warn" data-action="commission" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="private" data-services="${escapeHtmlAttr(对象委托能力.join('|'))}">委托</button>` : ''}
                     <button type="button" class="map-dispatch-action-btn live" data-action="talk" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="" data-services="">对话</button>
                     <button type="button" class="map-dispatch-action-btn" data-action="intel" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="" data-services="">请教</button>
-                    <button type="button" class="map-dispatch-action-btn warn" data-action="battle" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-executor-type="" data-services="">切磋</button>
+                    <button type="button" class="map-dispatch-action-btn warn" data-action="battle" data-target="${escapeHtmlAttr(nodeName)}" data-current-loc="${escapeHtmlAttr(nodeName)}" data-npc-target="${escapeHtmlAttr(displayName)}" data-npc-key="${escapeHtmlAttr(name)}" data-executor-type="" data-services="">切磋</button>
                   </div>`
                   : '';
               const 状态色调 = 取人物状态色调(char);
@@ -43241,12 +43765,31 @@
     let 慢刷新骨架计时器 = 0;
     let 已触发慢刷新骨架 = false;
     let 已写回真实卡片 = false;
+    let 结果守卫拒绝 = false;
+    let 刷新版本失效 = false;
     try {
       const refreshInlineEditToken = inlineEditSessionToken;
+      const 刷新版本仍有效 = () => {
+        if (!Number.isFinite(options.revision)) return true;
+        return getSharedMvuRefreshHub().runtime.revision === options.revision;
+      };
+      const 结果守卫通过 = () => {
+        if (!刷新版本仍有效()) {
+          刷新版本失效 = true;
+          return false;
+        }
+        if (typeof options.acceptResult !== 'function') return true;
+        try {
+          if (options.acceptResult() === true) return true;
+        } catch (_) {}
+        结果守卫拒绝 = true;
+        return false;
+      };
       const 初始暂停完整刷新 = !options.force && shouldPauseLiveRefresh(options);
       if (!options.force && !初始暂停完整刷新) {
         慢刷新骨架计时器 = window.setTimeout(() => {
           if (refreshInlineEditToken !== inlineEditSessionToken) return;
+          if (!结果守卫通过()) return;
           已触发慢刷新骨架 = true;
           设置慢刷新骨架状态(true, { 刷新详情: true });
         }, 300);
@@ -43256,16 +43799,20 @@
         return;
       }
       const vars = options.sharedVars === undefined ? await getAllVariablesSafe() : options.sharedVars;
+      if (!结果守卫通过()) return null;
       const 原始根 = resolveRootData(vars);
       if (!原始根) return;
       const root = 归一化变量根_桥接(cloneJsonValue(原始根, 原始根));
       const effective = buildEffectiveSd(root);
       if (!effective.rootData) return;
+      if (!结果守卫通过()) return null;
       if (isRootDataRelevantToCurrentChat(effective.rootData)) {
         syncMvuEditorStoreFromRoot(effective.rootData);
       }
-      liveSnapshot = buildSnapshot(effective.rootData);
-      lastRenderableSnapshot = liveSnapshot;
+      const nextSnapshot = buildSnapshot(effective.rootData);
+      if (!结果守卫通过()) return null;
+      liveSnapshot = nextSnapshot;
+      lastRenderableSnapshot = nextSnapshot;
       const snapshotPlayerName = toText(deepGet(liveSnapshot, 'rootData.sys.玩家名', ''), '').trim();
       const repairedPlayerName = resolveEffectivePlayerName(
         deepGet(liveSnapshot, 'rootData', {}),
@@ -43276,8 +43823,10 @@
         liveSnapshot.rootData.sys.玩家名 = repairedPlayerName;
         if (!effective.rootData.sys || typeof effective.rootData.sys !== 'object') effective.rootData.sys = {};
         effective.rootData.sys.玩家名 = repairedPlayerName;
+        if (!结果守卫通过()) return null;
         schedulePlayerNameRepair(liveSnapshot, repairedPlayerName);
       }
+      if (!结果守卫通过()) return null;
       schedulePlayerNameRepair(liveSnapshot);
       const nextHeaderRenderSignature = buildHeaderRenderSignature(liveSnapshot);
       const nextDashboardSectionRenderSignatures = buildDashboardSectionRenderSignatures(liveSnapshot);
@@ -43289,11 +43838,7 @@
       const shouldRenderDashboard = !!options.force || nextDashboardRenderSignature !== lastDashboardRenderSignature;
       const 当前暂停完整刷新 =
         !options.force && (初始暂停完整刷新 || refreshInlineEditToken !== inlineEditSessionToken || shouldPauseLiveRefresh(options));
-      const 刷新版本仍有效 = () => {
-        if (!Number.isFinite(options.revision)) return true;
-        return getSharedMvuRefreshHub().runtime.revision === options.revision;
-      };
-      if (!刷新版本仍有效()) return;
+      if (!结果守卫通过()) return null;
       if (shouldRenderHeader) {
         renderHeader(liveSnapshot);
         lastHeaderRenderSignature = nextHeaderRenderSignature;
@@ -43316,16 +43861,20 @@
               window.setTimeout(resolve, 0);
             }
           });
-          if (!刷新版本仍有效()) return;
+          if (!结果守卫通过()) return null;
         }
+        if (!结果守卫通过()) return null;
         if (renderLiveCards(liveSnapshot, nextDashboardSectionRenderSignatures)) {
           lastDashboardRenderSignature = nextDashboardRenderSignature;
           已写回真实卡片 = true;
         }
       }
+      if (!结果守卫通过()) return null;
       syncPrivateArchiveLongPressTargets(liveSnapshot);
+      if (!结果守卫通过()) return null;
       maybeAutoOpenPendingSoulRingPreview(liveSnapshot, options);
 
+      if (!结果守卫通过()) return null;
       syncBattleUiForSnapshot(liveSnapshot, options);
 
       const effectiveUnifiedPreviewKey = getEffectiveUnifiedPreviewKey();
@@ -43335,6 +43884,7 @@
         (detailModal.classList.contains('show') || isUnifiedInlinePreviewActive()) &&
         activeDetailPreviewKey
       ) {
+        if (!结果守卫通过()) return null;
         if (activeDetailPreviewKey === '角色切换器') {
           return;
         }
@@ -43361,7 +43911,9 @@
       console.warn('[DragonUI] MVU 实时渲染失败', error);
     } finally {
       if (慢刷新骨架计时器) window.clearTimeout(慢刷新骨架计时器);
-      if (慢刷新骨架已启用) {
+      if (结果守卫拒绝 || 刷新版本失效) {
+        if (慢刷新骨架已启用) 设置慢刷新骨架状态(false, { 刷新详情: false });
+      } else if (慢刷新骨架已启用) {
         设置慢刷新骨架状态(false, { 刷新详情: false });
         if (!已写回真实卡片 && lastRenderableSnapshot) {
           const 回退区段签名 = buildDashboardSectionRenderSignatures(lastRenderableSnapshot);
@@ -45426,6 +45978,30 @@ ${播报文本}
     const sourceChar = chars && typeof chars === 'object' ? chars[charKey] : null;
     if (!sourceChar || typeof sourceChar !== 'object') return null;
     const participant = cloneJsonValue(sourceChar, {});
+    const rootData = snapshot && snapshot.rootData && typeof snapshot.rootData === 'object' ? snapshot.rootData : {};
+    const hydrateEquipmentItem = (item = {}) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+      const itemName = toText(item.名称 || item.name || item.物品名, '').trim();
+      if (!itemName || itemName === '无') return item;
+      const hydrated = 合并物品定义与状态_桥接(rootData, itemName, item);
+      return hydrated && typeof hydrated === 'object' && !Array.isArray(hydrated) ? hydrated : item;
+    };
+    if (participant.装备 && typeof participant.装备 === 'object' && !Array.isArray(participant.装备)) {
+      ['武器', '防具', '机甲'].forEach(slot => {
+        if (participant.装备[slot] && typeof participant.装备[slot] === 'object') participant.装备[slot] = hydrateEquipmentItem(participant.装备[slot]);
+      });
+      Object.entries(participant.装备.斗铠?.部件 || {}).forEach(([partSlot, part]) => {
+        if (part && typeof part === 'object') participant.装备.斗铠.部件[partSlot] = hydrateEquipmentItem(part);
+      });
+      Object.entries(participant.装备.魂导器?.装配 || {}).forEach(([toolSlot, tool]) => {
+        if (tool && typeof tool === 'object') participant.装备.魂导器.装配[toolSlot] = hydrateEquipmentItem(tool);
+      });
+    }
+    if (participant.魂骨 && typeof participant.魂骨 === 'object' && !Array.isArray(participant.魂骨)) {
+      Object.entries(participant.魂骨).forEach(([boneSlot, bone]) => {
+        if (bone && typeof bone === 'object') participant.魂骨[boneSlot] = hydrateEquipmentItem(bone);
+      });
+    }
     const stat = participant.属性 && typeof participant.属性 === 'object' ? participant.属性 : {};
     const status = participant.状态 && typeof participant.状态 === 'object' ? participant.状态 : {};
     participant.name = toText(participant.name || deepGet(participant, 'base.name', ''), charKey);
@@ -45718,8 +46294,17 @@ ${播报文本}
   function 继续现有技能获得流程() {
     const state = buildSkillDesignConfirmState(liveSnapshot || lastRenderableSnapshot);
     if (state?.growthRecord && state.signature) 已跳过成长技能确认签名.add(state.signature);
+    const skillName = normalizeSkillUiText(state?.skillName, '当前技能');
+    const returnPreviewKey = toText(state?.returnPreviewKey, '').trim();
     待处理技能设计确认 = null;
-    if ((currentModalPreviewKey || currentUnifiedPreviewKey) === PENDING_SKILL_DESIGN_PREVIEW_KEY) closeModal();
+    if (returnPreviewKey) {
+      openDetailPreview(returnPreviewKey, { preserveMapDispatchContext: true, replace: true });
+    } else {
+      closeDetailSurface({
+        surface: currentUnifiedPreviewKey === PENDING_SKILL_DESIGN_PREVIEW_KEY ? 'unified' : 'modal',
+      });
+    }
+    showUiToast(`已保留【${skillName}】。`, 'success', 2200);
   }
 
   function 构建成长技能模板预览键(记录 = {}) {
@@ -46669,8 +47254,13 @@ ${播报文本}
         const soloCheck = validateSoulTowerRosterFromBattleSeeds(snapshot, activeKey, []);
         if (!soloCheck.ok) return { ok: false, reason: soloCheck.message };
       }
-      const npcTarget = toText(detail.npcTarget, '');
-      const targetKey = resolveSnapshotCharKey(snapshot, npcTarget);
+      const npcTargets = Array.isArray(detail.npcTargets)
+        ? detail.npcTargets.map(item => toText(item, '').trim()).filter(Boolean)
+        : [];
+      const npcTarget = toText(detail.npcTarget, '').trim() || (npcTargets.length === 1 ? npcTargets[0] : '');
+      const targetKey =
+        resolveSnapshotCharKey(snapshot, toText(detail.npcKey, '').trim()) ||
+        resolveSnapshotCharKey(snapshot, npcTarget);
       if (targetKey) {
         const enemyChar = buildCombatParticipantFromSnapshotChar(snapshot, targetKey, '敌对');
         if (!enemyChar) return { ok: false, reason: 'combat_context_unresolved' };
@@ -49642,10 +50232,13 @@ ${播报文本}
     return actionMode || '冥想';
   }
 
-  function 分段执行日常结算(settleRuntime, snapshot = {}, charKey = '', beforeChar = {}, request = {}) {
+  async function 分段执行日常结算(settleRuntime, snapshot = {}, charKey = '', beforeChar = {}, request = {}) {
     const actionMode = toText(request && request.动作, '');
     const durationTicks = Math.max(0, Math.floor(toNumber(request && request.耗时tick, 0)));
     const { 临时根, 当前tick } = 构建日常结算临时根(snapshot, charKey, beforeChar, { ...request, 耗时tick: 0 });
+    const equipmentPassive = typeof window?.EquipmentManager?.结算装备被动战斗外效果 === 'function'
+      ? await window.EquipmentManager.结算装备被动战斗外效果(临时根, charKey, 当前tick, [])
+      : null;
     let cursor = 当前tick;
     let remaining = durationTicks;
     let actionTicks = 0;
@@ -49667,7 +50260,7 @@ ${播报文本}
     if (!临时根.world.时间 || typeof 临时根.world.时间 !== 'object' || Array.isArray(临时根.world.时间)) 临时根.world.时间 = {};
     临时根.world.时间.tick = 当前tick + durationTicks;
     临时根.world.时间._上次结算tick = 当前tick;
-    return { settledRoot: 临时根, 当前tick, 结束tick: 当前tick + durationTicks, actionTicks, recoveryTicks };
+    return { settledRoot: 临时根, 当前tick, 结束tick: 当前tick + durationTicks, actionTicks, recoveryTicks, equipmentPassive };
   }
 
   async function 执行日常模块真实结算(snapshot = {}, request = {}) {
@@ -49685,7 +50278,7 @@ ${播报文本}
     let segmentStats = null;
     let settledRoot = null;
     try {
-      segmentStats = 分段执行日常结算(settleRuntime, snapshot, charKey, beforeChar, { ...request, 动作: actionMode, 耗时tick: durationTicks });
+      segmentStats = await 分段执行日常结算(settleRuntime, snapshot, charKey, beforeChar, { ...request, 动作: actionMode, 耗时tick: durationTicks });
       settledRoot = segmentStats.settledRoot;
     } catch (error) {
       console.error('[LWCS routine settle failed]', {
@@ -49716,6 +50309,13 @@ ${播报文本}
       durationText: 格式化tick时长文本_桥接(durationTicks),
       location: toText(request && request.位置, toText(beforeChar?.状态?.位置, '')),
       mimicEnabled: request.启用地点拟态 === true && actionMode === '冥想',
+      equipmentPassive: segmentStats?.equipmentPassive
+        ? {
+            routeCount: Number(segmentStats.equipmentPassive.路由数 || 0),
+            appliedCount: Number(segmentStats.equipmentPassive.已结算数 || 0),
+            skippedCount: Number(segmentStats.equipmentPassive.跳过路由数 || 0),
+          }
+        : null,
       summary: [
         计算日常数值变化(beforeChar, afterChar),
         segmentStats?.recoveryTicks > 0 ? `其中恢复${格式化tick时长文本_桥接(segmentStats.recoveryTicks)}` : '',
@@ -50600,14 +51200,27 @@ ${播报文本}
         return;
       }
       let battleOpenResult = null;
+      let battleSnapshot = liveSnapshot || lastRenderableSnapshot || {};
       try {
-        battleOpenResult = await openMapBattleModule(liveSnapshot, detail);
+        battleOpenResult = await openMapBattleModule(battleSnapshot, detail);
+        if (battleOpenResult?.reason === 'combat_context_unresolved') {
+          await refreshLiveSnapshot({ force: true });
+          battleSnapshot = liveSnapshot || lastRenderableSnapshot || battleSnapshot;
+          battleOpenResult = await openMapBattleModule(battleSnapshot, detail);
+        }
       } catch (error) {
         console.warn('[DragonUI] 战斗模块开启失败。', error);
       }
       if (battleOpenResult && battleOpenResult.ok) return;
+      const battleOpenReason = toText(battleOpenResult && battleOpenResult.reason, 'combat_context_unresolved');
+      const battleOpenMessage =
+        battleOpenReason === 'combat_context_unresolved'
+          ? toText(detail.npcTarget, '').trim()
+            ? `无法读取【${toText(detail.npcTarget, '').trim()}】的有效战斗档案。`
+            : '请先选择明确的切磋对象。'
+          : battleOpenReason;
       showUiToast(
-        `战斗模块开启失败：${battleOpenResult && battleOpenResult.reason ? battleOpenResult.reason : 'combat_context_unresolved'}`,
+        `战斗模块开启失败：${battleOpenMessage}`,
         'error',
         4200,
       );
@@ -51358,7 +51971,8 @@ ${播报文本}
   function 读取仓库钱包签名(快照 = {}) {
     const 当前角色 = deepGet(快照, 'activeChar', {});
     const 财富 = 当前角色 && typeof 当前角色 === 'object' ? deepGet(当前角色, '财富', {}) : {};
-    return ['联邦币', '星罗币', '唐门积分', '学院积分', '战功'].map(字段名 => String(toNumber(财富[字段名], 0))).join('|');
+    return 读取当前时代钱包配置_桥接(快照.rootData || {}).currencies
+      .map(货币 => String(toNumber(财富[货币.key], 0))).join('|');
   }
 
   function 同步仓库页动效(宿主节点, 快照, 选中物品名 = '') {
@@ -51379,7 +51993,7 @@ ${播报文本}
     const 新钱包签名 = 读取仓库钱包签名(快照 || {});
     const 旧钱包值列表 = 上次仓库钱包签名.split('|');
     const 新钱包值列表 = 新钱包签名.split('|');
-    const 钱包标签列表 = ['联邦币', '星罗币', '唐门积分', '学院积分', '战功'];
+    const 钱包标签列表 = 读取当前时代钱包配置_桥接(快照?.rootData || {}).currencies.map(货币 => 货币.key);
     const 钱包节点列表 = Array.from(宿主节点.querySelectorAll('.wallet-data-chip'));
     if (!首次渲染 && 新钱包签名 !== 上次仓库钱包签名) {
       钱包节点列表.forEach(钱包节点 => {
@@ -53048,7 +53662,7 @@ ${播报文本}
       冷归档刷新按钮.classList.add('is-busy');
       try {
         const 状态 = await 检查冷归档服务_桥接({ force: true });
-        if (状态.可用) await 预热冷归档Manifest_桥接({ force: true, 初始化目录: 状态.存储模式 === '插件' });
+        if (状态.可用) await 预热冷归档Manifest_桥接({ force: true });
         rerenderDetailSurface(冷归档预览键_桥接, options);
       } catch (错误) {
         showUiToast(错误 && 错误.message ? 错误.message : '冷归档服务检测失败。', 'error');
@@ -53056,61 +53670,6 @@ ${播报文本}
         冷归档刷新按钮.disabled = false;
         冷归档刷新按钮.classList.remove('is-busy');
       }
-      return;
-    }
-
-    const 冷归档路径保存按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-save-root]') : null;
-    if (冷归档路径保存按钮 && detailSurfaceHost.contains(冷归档路径保存按钮)) {
-      event.preventDefault();
-      event.stopPropagation();
-      const 输入 = detailSurfaceHost.querySelector('[data-cold-archive-root-input]');
-      const 路径 = toText(输入 && 输入.value, '').trim();
-      if (!路径) {
-        showUiToast('请输入自定义路径，或点击默认。', 'warning');
-        return;
-      }
-      冷归档路径保存按钮.disabled = true;
-      冷归档路径保存按钮.classList.add('is-busy');
-      try {
-        await 设置冷归档根目录_桥接(路径);
-        if (冷归档服务状态_桥接.可用) await 预热冷归档Manifest_桥接({ force: true, 初始化目录: 冷归档服务状态_桥接.存储模式 === '插件' });
-        showUiToast('归档路径已更新。', 'info');
-        rerenderDetailSurface(冷归档预览键_桥接, options);
-      } catch (错误) {
-        showUiToast(错误 && 错误.message ? 错误.message : '归档路径设置失败。', 'error');
-      } finally {
-        冷归档路径保存按钮.disabled = false;
-        冷归档路径保存按钮.classList.remove('is-busy');
-      }
-      return;
-    }
-
-    const 冷归档路径默认按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-reset-root]') : null;
-    if (冷归档路径默认按钮 && detailSurfaceHost.contains(冷归档路径默认按钮)) {
-      event.preventDefault();
-      event.stopPropagation();
-      冷归档路径默认按钮.disabled = true;
-      冷归档路径默认按钮.classList.add('is-busy');
-      try {
-        await 设置冷归档根目录_桥接('');
-        if (冷归档服务状态_桥接.可用) await 预热冷归档Manifest_桥接({ force: true, 初始化目录: 冷归档服务状态_桥接.存储模式 === '插件' });
-        showUiToast('归档路径已恢复默认。', 'info');
-        rerenderDetailSurface(冷归档预览键_桥接, options);
-      } catch (错误) {
-        showUiToast(错误 && 错误.message ? 错误.message : '归档路径设置失败。', 'error');
-      } finally {
-        冷归档路径默认按钮.disabled = false;
-        冷归档路径默认按钮.classList.remove('is-busy');
-      }
-      return;
-    }
-
-    const 冷归档高级按钮 = eventTarget ? eventTarget.closest('[data-cold-archive-toggle-advanced]') : null;
-    if (冷归档高级按钮 && detailSurfaceHost.contains(冷归档高级按钮)) {
-      event.preventDefault();
-      event.stopPropagation();
-      modalFocusState[`${冷归档预览键_桥接}::advanced`] = modalFocusState[`${冷归档预览键_桥接}::advanced`] !== true;
-      rerenderDetailSurface(冷归档预览键_桥接, options);
       return;
     }
 
@@ -54779,6 +55338,47 @@ ${播报文本}
       return 判断物品可直接使用_桥接(itemName, itemData);
     },
 
+    grantInventoryUnlockContent(charData = {}, itemData = {}, itemName = '', logs = [], 根数据 = {}) {
+      const 解锁列表 = Array.isArray(itemData?.解锁内容) ? itemData.解锁内容 : [];
+      let 授予数量 = 0;
+      解锁列表.forEach(内容 => {
+        const 内容类型 = toText(内容?.内容类型, '').trim();
+        const 内容名称 = toText(内容?.内容名称 || 内容?.魂技名, '').trim();
+        if (!内容名称) throw new Error(`【${itemName}】存在未命名的解锁内容。`);
+        if (内容类型 === '功法') {
+          if (!charData.功法 || typeof charData.功法 !== 'object' || Array.isArray(charData.功法)) charData.功法 = {};
+          if (charData.功法[内容名称] && typeof charData.功法[内容名称] === 'object' && !Array.isArray(charData.功法[内容名称])) return;
+          charData.功法[内容名称] = 构建功法学习记录_桥接(内容名称, 内容.描述 || itemData.描述 || '未知', 根数据);
+          logs.push(`解锁功法【${内容名称}】`);
+          授予数量 += 1;
+          return;
+        }
+        if (内容类型 === '情报') {
+          if (!Array.isArray(charData.已掌握情报)) charData.已掌握情报 = [];
+          if (charData.已掌握情报.some(情报 => toText(情报, '').trim() === 内容名称)) return;
+          charData.已掌握情报.push(内容名称);
+          logs.push(`解锁情报【${内容名称}】`);
+          授予数量 += 1;
+          return;
+        }
+        if (内容类型 !== '自创魂技') return;
+        if (!Array.isArray(内容?._效果数组) || !内容._效果数组.length) throw new Error(`【${itemName}】的技能【${内容名称}】缺少可执行效果。`);
+        if (!charData.自创魂技 || typeof charData.自创魂技 !== 'object' || Array.isArray(charData.自创魂技)) charData.自创魂技 = {};
+        const 已有技能 = charData.自创魂技[内容名称];
+        if (已有技能 && typeof 已有技能 === 'object' && !Array.isArray(已有技能) && Array.isArray(已有技能._效果数组) && 已有技能._效果数组.length) return;
+        const 技能数据 = {};
+        正式技能字段列表_桥接.forEach(字段名 => {
+          if (内容[字段名] !== undefined) 技能数据[字段名] = cloneJsonValue(内容[字段名], 内容[字段名]);
+        });
+        技能数据.魂技名 = toText(技能数据.魂技名 || 内容名称, 内容名称);
+        断言物品正式技能_桥接(技能数据, `道具解锁.${itemName}`);
+        charData.自创魂技[内容名称] = 技能数据;
+        logs.push(`解锁技能【${内容名称}】`);
+        授予数量 += 1;
+      });
+      return 授予数量;
+    },
+
     读取修炼增益同场角色候选(statData = {}, 使用者键 = '') {
       const 角色表 = statData && statData.char && typeof statData.char === 'object' ? statData.char : {};
       const 使用者 = 角色表[使用者键] && typeof 角色表[使用者键] === 'object' ? 角色表[使用者键] : {};
@@ -54962,6 +55562,43 @@ ${播报文本}
       return true;
     },
 
+    async 结算魂骨年限提升(charData = {}, effect = {}, itemName = '魂骨年限提升', 日志列表 = []) {
+      const 魂骨表 = charData && charData.魂骨 && typeof charData.魂骨 === 'object' && !Array.isArray(charData.魂骨)
+        ? charData.魂骨
+        : {};
+      const 提升比例 = Math.max(0, Math.min(1, toNumber(effect?.value?.提升比例, 0)));
+      const 年限上限 = Math.min(10000, Math.max(1, Math.floor(toNumber(effect?.value?.年限上限, 10000))));
+      const c2Rules = 读取C2消费者规则_桥接();
+      const 计算提升后年限 = 年限 => typeof c2Rules?.计算魂骨年限提升_V1 === 'function'
+        ? c2Rules.计算魂骨年限提升_V1(年限, 提升比例, 年限上限)
+        : Math.min(年限上限, Math.max(Math.floor(年限) + 1, Math.floor(Math.floor(年限) * (1 + 提升比例))));
+      const 候选 = 魂骨固定槽位列表_桥接.flatMap(槽位 => {
+        const 魂骨 = 魂骨表[槽位];
+        if (!是有效魂骨记录_桥接(魂骨)) return [];
+        const 当前年限 = Math.floor(toNumber(魂骨.年限, 0));
+        if (!(当前年限 > 0 && 当前年限 < 年限上限)) return [];
+        const 提升后年限 = 计算提升后年限(当前年限);
+        return [{
+          键: 槽位,
+          名称: `${槽位} · ${toText(魂骨.名称 || 魂骨.表象名称, '未命名魂骨')} · ${当前年限}年→${提升后年限}年`,
+          当前年限,
+          提升后年限,
+        }];
+      });
+      if (!候选.length) throw new Error(`【${itemName}】没有可提升的已融合魂骨。`);
+
+      const 已选 = await this.选择修炼增益目标角色(候选, '单体', `${itemName}目标`);
+      const 目标槽位 = Array.isArray(已选) ? toText(已选[0], '').trim() : '';
+      const 目标魂骨 = 目标槽位 ? 魂骨表[目标槽位] : null;
+      if (!目标槽位 || !是有效魂骨记录_桥接(目标魂骨)) throw new Error('未选择有效的已融合魂骨。');
+      const 旧年限 = Math.floor(toNumber(目标魂骨.年限, 0));
+      if (!(旧年限 > 0 && 旧年限 < 年限上限)) throw new Error('所选魂骨已失效或已达到年限上限。');
+      const 新年限 = 计算提升后年限(旧年限);
+      目标魂骨.年限 = 新年限;
+      日志列表.push(`${itemName}：${目标槽位}【${toText(目标魂骨.名称 || 目标魂骨.表象名称, '未命名魂骨')}】年限 ${旧年限}→${新年限}`);
+      return true;
+    },
+
     读取角色物品效果等级(角色 = {}) {
       const 候选列表 = [
         角色?.属性?.对标等级,
@@ -55005,7 +55642,37 @@ ${播报文本}
       return this.读取角色物品效果等级(角色) <= 对应等级;
     },
 
-    async 结算战斗外使用效果列表(statData = {}, 使用者键 = '', 效果列表 = [], 名称 = '技能效果', 日志列表 = [], 当前tick = 0) {
+    async 结算群体撤离效果(statData = {}, 使用者键 = '', 效果 = {}, 名称 = '群体撤离', 日志列表 = [], 选项参数 = {}) {
+      const c2Rules = 读取C2消费者规则_桥接();
+      if (typeof c2Rules?.结算群体撤离_V1 !== 'function') throw new Error('GROUP_ESCAPE_CONSUMER_UNAVAILABLE');
+      const 候选 = this.读取修炼增益同场角色候选(statData, 使用者键);
+      const 注入参与者 = Array.isArray(选项参数?.参与者键列表)
+        ? 选项参数.参与者键列表.map(value => toText(value, '').trim()).filter(Boolean)
+        : null;
+      const 参与者键列表 = 注入参与者 || await this.选择修炼增益目标角色(候选, '群体', `${名称}参与者`);
+      const 候选键集合 = new Set(候选.map(item => item.键));
+      if (!参与者键列表.length || 参与者键列表.some(key => !候选键集合.has(key)) || !参与者键列表.includes(使用者键)) {
+        throw new Error('GROUP_ESCAPE_PARTICIPANTS_INVALID');
+      }
+      const result = c2Rules.结算群体撤离_V1(
+        statData,
+        使用者键,
+        参与者键列表,
+        效果?.value || 效果,
+        选项参数?.随机数函数 || 选项参数?.random || Math.random,
+      );
+      if (!result.started) {
+        throw new Error(`资源不足，${名称}需要魂力:${result.cost?.魂力 || 0} 精神力:${result.cost?.精神力 || 0}`);
+      }
+      日志列表.push(
+        result.success
+          ? `群体撤离成功：${参与者键列表.join('、')}→${result.destination}（${result.participantCount}人，P=${result.probability.toFixed(4)}，roll=${result.roll.toFixed(4)}）`
+          : `群体撤离失败：${参与者键列表.length}人资源已扣除（P=${result.probability.toFixed(4)}，roll=${result.roll.toFixed(4)}）`,
+      );
+      return true;
+    },
+
+    async 结算战斗外使用效果列表(statData = {}, 使用者键 = '', 效果列表 = [], 名称 = '技能效果', 日志列表 = [], 当前tick = 0, 选项参数 = {}) {
       const 使用者 = deepGet(statData, ['char', 使用者键], null);
       if (!使用者 || typeof 使用者 !== 'object') throw new Error('未找到目标角色信息。');
       let 已结算数量 = 0;
@@ -55036,9 +55703,96 @@ ${播报文本}
           });
           continue;
         }
+        if (可用效果.type === 'soul_bone_age_up') {
+          if (await this.结算魂骨年限提升(使用者, 可用效果, 名称, 日志列表)) 已结算数量 += 1;
+          continue;
+        }
+        if (可用效果.type === 'group_escape') {
+          if (await this.结算群体撤离效果(statData, 使用者键, 可用效果, 名称, 日志列表, 选项参数)) 已结算数量 += 1;
+          continue;
+        }
         if (this.applyDailyWritebackUsageEffect(使用者, 可用效果, 索引, 名称, 日志列表, 当前tick)) 已结算数量 += 1;
       }
       return 已结算数量;
+    },
+
+    async 结算装备被动战斗外效果(statData = {}, 使用者键 = '', 当前tick = 0, 日志列表 = []) {
+      const 使用者 = deepGet(statData, ['char', 使用者键], null);
+      if (!使用者 || typeof 使用者 !== 'object' || Array.isArray(使用者)) {
+        return { 路由数: 0, 已结算数: 0, 跳过路由数: 0, 状态键: [], 原因: 'character_missing' };
+      }
+      const 根列表 = [__mvuBridgeRoot];
+      try { if (window.parent && window.parent !== window) 根列表.push(window.parent); } catch (错误) {}
+      try { if (window.top && window.top !== window) 根列表.push(window.top); } catch (错误) {}
+      const consumer = 根列表
+        .map(根 => 根 && 根.__LWCS_ITEM_PASSIVE_CONSUMER_V1__)
+        .find(候选 => 候选 && typeof 候选.编译角色装备被动消费者_V1 === 'function');
+      const 状态表 = 使用者.属性?.状态效果 && typeof 使用者.属性.状态效果 === 'object' && !Array.isArray(使用者.属性.状态效果)
+        ? 使用者.属性.状态效果
+        : (使用者.属性 = { ...(使用者.属性 || {}), 状态效果: {} }).状态效果;
+      Object.keys(状态表)
+        .filter(状态名 => String(状态名).startsWith('装备被动:'))
+        .forEach(状态名 => delete 状态表[状态名]);
+      if (!consumer) return { 路由数: 0, 已结算数: 0, 跳过路由数: 0, 状态键: [], 原因: 'item_passive_consumer_missing' };
+
+      const hydrated = cloneJsonValue(使用者, {});
+      const hydrate = (物品 = {}) => {
+        if (!物品 || typeof 物品 !== 'object' || Array.isArray(物品)) return 物品;
+        const 名称 = toText(物品.名称 || 物品.name || 物品.物品名, '').trim();
+        if (!名称 || 名称 === '无') return 物品;
+        const 合并物品 = 合并物品定义与状态_桥接(statData, 名称, 物品);
+        return 合并物品 && typeof 合并物品 === 'object' && !Array.isArray(合并物品) ? 合并物品 : 物品;
+      };
+      if (hydrated.装备 && typeof hydrated.装备 === 'object' && !Array.isArray(hydrated.装备)) {
+        ['武器', '防具', '机甲'].forEach(槽位 => {
+          if (hydrated.装备[槽位] && typeof hydrated.装备[槽位] === 'object') hydrated.装备[槽位] = hydrate(hydrated.装备[槽位]);
+        });
+        Object.entries(hydrated.装备.斗铠?.部件 || {}).forEach(([槽位, 部件]) => {
+          if (部件 && typeof 部件 === 'object') hydrated.装备.斗铠.部件[槽位] = hydrate(部件);
+        });
+        Object.entries(hydrated.装备.魂导器?.装配 || {}).forEach(([槽位, 魂导器]) => {
+          if (魂导器 && typeof 魂导器 === 'object') hydrated.装备.魂导器.装配[槽位] = hydrate(魂导器);
+        });
+      }
+      Object.entries(hydrated.魂骨 || {}).forEach(([槽位, 魂骨]) => {
+        if (魂骨 && typeof 魂骨 === 'object') hydrated.魂骨[槽位] = hydrate(魂骨);
+      });
+      const packageValue = consumer.编译角色装备被动消费者_V1(hydrated);
+      const routes = Array.isArray(packageValue?.非战斗路由) ? packageValue.非战斗路由 : [];
+      let 已结算数 = 0;
+      let 跳过路由数 = 0;
+      for (const route of routes) {
+        const effect = route?.效果 && typeof route.效果 === 'object' ? route.效果 : null;
+        if (!effect || String(effect.目标 || '自身').trim() !== '自身') {
+          跳过路由数 += 1;
+          continue;
+        }
+        const source = route?.来源 && typeof route.来源 === 'object' ? route.来源 : {};
+        const sourceName = [
+          '装备被动',
+          source.来源槽位 || '装备',
+          source.来源物品 || '物品',
+          source.技能名 || '被动技能',
+        ].map(value => toText(value, '').trim()).filter(Boolean).join(':');
+        const localLogs = [];
+        const applied = await this.结算战斗外使用效果列表(
+          statData,
+          使用者键,
+          [effect],
+          sourceName,
+          localLogs,
+          Math.max(0, Math.floor(toNumber(当前tick, 0))),
+        );
+        已结算数 += Math.max(0, Number(applied || 0));
+        if (localLogs.length) 日志列表.push(...localLogs);
+      }
+      return {
+        路由数: routes.length,
+        已结算数,
+        跳过路由数,
+        状态键: Object.keys(状态表).filter(状态名 => String(状态名).startsWith('装备被动:')),
+        package: packageValue,
+      };
     },
 
     isSelfResolvableUsageTarget(target = '') {
@@ -55184,10 +55938,20 @@ ${播报文本}
       const record = this.createInventoryStatusRecord(itemName, effect, key, 当前tick);
       if (effect?.type === 'mechanism_grant') {
         record.效果授予状态 = true;
-        record.触发条件 = 读取技能设计台机制授予触发条件选项(value.目标 || effect.target || '自身').includes(toText(value.触发条件, '')) ? toText(value.触发条件, '') : '主动触发';
-        record.duration = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.持续回合, toNumber(value.持续, record.持续回合 || 1)));
-        delete record.持续回合;
-        record.可用次数 = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.可用次数, 1));
+        const 触发条件候选 = ['主动触发', '随下次行动触发', '下次魂技成功释放'];
+        record.触发条件 = 触发条件候选.includes(toText(value.触发条件, '')) ? toText(value.触发条件, '') : '主动触发';
+        record.授予触发条件 = record.触发条件;
+        if (record.触发条件 === '下次魂技成功释放') {
+          delete record.duration;
+          delete record.持续回合;
+          delete record.持续tick;
+          delete record.结束tick;
+          record.可用次数 = Math.max(1, toNumber(value.可用次数, 1));
+        } else {
+          record.duration = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.持续回合, toNumber(value.持续, record.持续回合 || 1)));
+          delete record.持续回合;
+          record.可用次数 = record.触发条件 === '随下次行动触发' ? 1 : Math.max(1, toNumber(value.可用次数, 1));
+        }
         record.授予效果 = cloneJsonValue(Array.isArray(value.授予效果) ? value.授予效果 : [], []);
         record.战斗效果 = {
           ...(record.战斗效果 || {}),
@@ -55387,24 +56151,61 @@ ${播报文本}
       if (!prototype) return null;
       const target = toText(effect['目标'], '自身');
       const description = toText(effect['描述'], prototype);
-    if (prototype === '机制授予') {
-      const 触发条件 = 读取技能设计台机制授予触发条件选项(target).includes(toText(effect['触发条件'], '')) ? toText(effect['触发条件'], '') : '主动触发';
-      const value = {
-        目标: target,
-        触发条件,
-        授予效果: cloneJsonValue(Array.isArray(effect['授予效果']) ? effect['授予效果'] : [], []),
-      };
-      if (触发条件 === '主动触发') {
-        value.可用次数 = Math.max(1, toNumber(effect['可用次数'], 1));
-        value.持续回合 = Math.max(1, toNumber(effect['持续回合'], 1));
+      if (prototype === '机制授予') {
+        const 触发条件候选 = ['主动触发', '随下次行动触发', '下次魂技成功释放'];
+        const 触发条件原值 = toText(effect['触发条件'], '');
+        const 触发条件 = 触发条件候选.includes(触发条件原值) ? 触发条件原值 : '主动触发';
+        const value = {
+          目标: target,
+          触发条件,
+          授予效果: cloneJsonValue(Array.isArray(effect['授予效果']) ? effect['授予效果'] : [], []),
+        };
+        if (触发条件 !== '随下次行动触发') value.可用次数 = Math.max(1, toNumber(effect['可用次数'], 1));
+        if (触发条件 === '主动触发') value.持续回合 = Math.max(1, toNumber(effect['持续回合'], 1));
+        return {
+          target: '自身',
+          type: 'mechanism_grant',
+          description: description || '获得后续效果',
+          value,
+        };
       }
-      return {
-        target: '自身',
-        type: 'mechanism_grant',
-        description: description || '获得后续效果',
-        value,
-      };
-    }
+      if (prototype === '等级提升') {
+        return {
+          target: '自身',
+          type: 'level_up',
+          description: description || '提升至下一合法等级',
+          value: {
+            提升方式: toText(effect['提升方式'], '下一合法等级'),
+            等级上限: Math.max(1, Math.min(120, Math.floor(toNumber(effect['等级上限'], 120)))),
+            冷却年数: Math.max(0, Math.floor(toNumber(effect['冷却年数'], 0))),
+          },
+        };
+      }
+      if (prototype === '群体撤离') {
+        return {
+          target: '群体',
+          type: 'group_escape',
+          description: description || '群体撤离至亡灵半位面',
+          value: {
+            目的地: toText(effect['目的地'], '亡灵半位面'),
+            基础成功率: Math.max(0, Math.min(1, toNumber(effect['基础成功率'], 1))),
+            每增加一人成功率倍率: Math.max(0, toNumber(effect['每增加一人成功率倍率'], 0.9)),
+            结算方式: toText(effect['结算方式'], '全员同成败'),
+            失败仍消耗资源: effect['失败仍消耗资源'] === true,
+            消耗道具: effect['消耗道具'] === false ? false : true,
+            对应等级: Math.max(1, Math.min(180, Math.floor(toNumber(effect['对应等级'], 71)))),
+            消耗: toText(effect['消耗'], '魂力:14030 | 精神力:240'),
+          },
+        };
+      }
+      if (prototype === '状态施加' && toText(effect['状态'], '').trim() === '坚挺金苍蝇·武魂真身维持') {
+        return {
+          target: '自身',
+          type: 'food_maintain_start',
+          description: description || '进入坚挺金苍蝇武魂真身维持态',
+          value: { 制造速度倍率: 1.3, 产物效果倍率: 1.3 },
+        };
+      }
       if (prototype === '伤害结算') {
         if (target !== '自身') return null;
         const ratio = Math.max(0, Math.min(1, toNumber(effect['威力倍率'], 0) / 100));
@@ -55422,6 +56223,17 @@ ${播报文本}
           type: 'durability_repair',
           description: description || '修复装备耐久',
           value: { 修复等级: toText(effect['修复等级'], '轻度磨损') },
+        };
+      }
+      if (prototype === '魂骨年限提升') {
+        const 提升比例 = 解析带符号比例数值(effect['数值'], 0);
+        const 年限上限 = Math.max(1, Math.min(10000, Math.floor(toNumber(effect['年限上限'], 10000))));
+        if (!(提升比例 > 0) || !Number.isInteger(年限上限)) return null;
+        return {
+          target: '自身',
+          type: 'soul_bone_age_up',
+          description: description || '提升已融合魂骨年限',
+          value: { 提升比例: Math.min(1, 提升比例), 年限上限 },
         };
       }
       if (prototype === '战斗外复活') {
@@ -55569,6 +56381,31 @@ ${播报文本}
       if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
       if (!charData.属性.状态效果 || typeof charData.属性.状态效果 !== 'object' || Array.isArray(charData.属性.状态效果))
         charData.属性.状态效果 = {};
+      if (usableEffect.type === 'level_up') {
+        const c2Rules = 读取C2消费者规则_桥接();
+        const result = typeof c2Rules?.应用等级提升_V1 === 'function'
+          ? c2Rules.应用等级提升_V1(charData, usableEffect.value || {})
+          : { success: false, reason: 'LEVEL_UP_CONSUMER_UNAVAILABLE' };
+        if (!result.success) throw new Error(`等级提升失败:${result.reason}`);
+        logs.push(`等级 ${result.currentLevel}→${result.targetLevel}，魂力上限→${result.soulPowerCap}`);
+        return true;
+      }
+      if (usableEffect.type === 'food_maintain_start') {
+        charData.属性.状态效果['坚挺金苍蝇·武魂真身维持'] = {
+          类型: 'buff',
+          层数: 1,
+          状态: '坚挺金苍蝇·武魂真身维持',
+          状态名称: '坚挺金苍蝇·武魂真身维持',
+          描述: '第七魂技武魂真身维持态：香肠制造速度×1.3，香肠产物效果×1.3',
+          来源技能: '坚挺金苍蝇',
+          维持态: true,
+          制造速度倍率: Number(usableEffect.value?.制造速度倍率 || 1.3),
+          产物效果倍率: Number(usableEffect.value?.产物效果倍率 || 1.3),
+          维持消耗: '魂力:8%',
+        };
+        logs.push('进入坚挺金苍蝇武魂真身维持态：香肠制造速度×1.3、产物效果×1.3');
+        return true;
+      }
       if (usableEffect.type === 'self_damage') return this.applyInventorySelfDamageEffect(charData, usableEffect, logs);
       if (usableEffect.type === 'heal') return this.applyInventoryHealEffect(charData.属性, usableEffect, logs);
       if (usableEffect.type === 'durability_repair') return false;
@@ -56024,6 +56861,29 @@ ${播报文本}
       return nextSkill;
     },
 
+    读取坚挺金苍蝇自用倍率(角色 = {}) {
+      const c2Rules = 读取C2消费者规则_桥接();
+      return typeof c2Rules?.读取坚挺金苍蝇自用倍率_V1 === 'function'
+        ? c2Rules.读取坚挺金苍蝇自用倍率_V1(角色)
+        : { 制造速度倍率: 1, 产物效果倍率: 1 };
+    },
+
+    应用坚挺金苍蝇自用产出倍率(技能 = {}, 效果 = {}, 角色 = {}) {
+      const 倍率 = this.读取坚挺金苍蝇自用倍率(角色);
+      const 食物文本 = [
+        ...(Array.isArray(技能?.附带属性) ? 技能.附带属性 : []),
+        ...(Array.isArray(效果?.附带属性) ? 效果.附带属性 : []),
+        效果?.描述,
+      ].map(value => toText(value, '')).join('|');
+      if (!/食物属性|香肠/.test(食物文本) || 倍率.产物效果倍率 <= 1 && 倍率.制造速度倍率 <= 1) return cloneJsonValue(效果, {});
+      const c2Rules = 读取C2消费者规则_桥接();
+      const 输出 = cloneJsonValue(效果, {});
+      if (Array.isArray(输出.使用效果) && typeof c2Rules?.缩放技能效果数组_V1 === 'function') {
+        输出.使用效果 = c2Rules.缩放技能效果数组_V1(输出.使用效果, 倍率.产物效果倍率);
+      }
+      return 输出;
+    },
+
     isEquipmentSkillPath(skillPath = []) {
       return Array.isArray(skillPath) && skillPath.includes('装备') && skillPath.includes('装备技能');
     },
@@ -56126,6 +56986,38 @@ ${播报文本}
       return { 物品名, 物品定义, 背包状态 };
     },
 
+    结算物品批次每日使用次数(记录 = {}, 基础使用次数 = 0, 当前tick = 0, 提交 = false) {
+      const 批次列表 = Array.isArray(记录?.批次) ? 记录.批次 : [];
+      const 定义次数 = Math.max(0, Math.floor(toNumber(基础使用次数, 0)));
+      if (!(定义次数 > 0) || !批次列表.length) return { available: false, changed: false, reason: 'BATCH_USAGE_MISSING' };
+      const 当前 = Math.max(0, Math.floor(toNumber(当前tick, 0)));
+      let changed = false;
+      批次列表.forEach(批次 => {
+        if (!批次 || typeof 批次 !== 'object' || Math.max(0, Math.floor(toNumber(批次.数量, 0))) <= 0) return;
+        const 恢复tick = Math.max(0, Math.floor(toNumber(批次.使用次数恢复至tick, 0)));
+        if (恢复tick > 0 && 当前 >= 恢复tick) {
+          批次.剩余使用次数 = 定义次数;
+          delete 批次.使用次数恢复至tick;
+          changed = true;
+        }
+      });
+      const 批次 = 批次列表.find(候选 => {
+        if (!候选 || typeof 候选 !== 'object' || Math.max(0, Math.floor(toNumber(候选.数量, 0))) <= 0) return false;
+        const 剩余次数 = 候选.剩余使用次数 === undefined ? 定义次数 : Math.max(0, Math.floor(toNumber(候选.剩余使用次数, 0)));
+        return 剩余次数 > 0;
+      });
+      if (!批次) return { available: false, changed, reason: 'DAILY_USAGE_EXHAUSTED' };
+      const 剩余次数 = 批次.剩余使用次数 === undefined ? 定义次数 : Math.max(0, Math.floor(toNumber(批次.剩余使用次数, 0)));
+      if (!提交) return { available: true, changed, remaining: 剩余次数 };
+      if (剩余次数 > 1) {
+        批次.剩余使用次数 = 剩余次数 - 1;
+        return { available: true, changed: true, remaining: 剩余次数 - 1 };
+      }
+      批次.剩余使用次数 = 0;
+      批次.使用次数恢复至tick = (Math.floor(当前 / 144) + 1) * 144;
+      return { available: true, changed: true, remaining: 0, restoreTick: 批次.使用次数恢复至tick };
+    },
+
     async performUse(charRef, itemName) {
       try {
         const { charKey } = await this.resolveCharContext(charRef);
@@ -56137,11 +57029,22 @@ ${播报文本}
             if (!charData || typeof charData !== 'object') throw new Error('未找到目标角色信息。');
             const inventory = charData.背包 && typeof charData.背包 === 'object' ? charData.背包 : null;
             if (!inventory) throw new Error('当前角色没有背包数据。');
-            const 物品数据 = 合并物品定义与状态_桥接(statData, itemName, inventory[itemName]);
             if (!inventory[itemName] || typeof inventory[itemName] !== 'object')
               throw new Error(`背包中未找到物品: ${itemName}`);
-            if (!this.isUsableInventoryItem(物品数据, itemName)) throw new Error('当前物品没有可执行的使用效果。');
             const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
+            const 物品定义 = 取物品定义_桥接(statData, itemName);
+            const c2Rules = 读取C2消费者规则_桥接();
+            const 消费规则 = typeof c2Rules?.读取正式物品消费规则_V1 === 'function'
+              ? c2Rules.读取正式物品消费规则_V1(物品定义)
+              : { consume: true };
+            const 定义次数 = Math.max(0, Math.floor(toNumber(物品定义.基础使用次数, 0)));
+            const 是可重复使用批次 = 消费规则.consume === false && 定义次数 > 0 && 物品定义.使用次数恢复周期 === '每日';
+            if (是可重复使用批次) {
+              const 每日使用状态 = this.结算物品批次每日使用次数(inventory[itemName], 定义次数, 当前tick);
+              if (!每日使用状态.available) throw new Error(`【${itemName}】今日使用次数已耗尽。`);
+            }
+            const 物品数据 = 合并物品定义与状态_桥接(statData, itemName, inventory[itemName]);
+            if (!this.isUsableInventoryItem(物品数据, itemName)) throw new Error('当前物品没有可执行的使用效果。');
             const 绑定者 = toText(物品数据.绑定者, '').trim();
             if (绑定者 && 绑定者 !== charKey) throw new Error(`【${itemName}】当前绑定者不是${charKey}。`);
             const 有效期至tick = Math.max(0, toNumber(物品数据.有效期至tick, 0));
@@ -56177,15 +57080,19 @@ ${播报文本}
               if (await this.结算背包耐久修复(statData, charData, inventory, 修复效果, itemName, logs)) appliedCount += 1;
             }
             appliedCount += await this.结算战斗外使用效果列表(statData, charKey, 常规效果列表, itemName, logs, 当前tick);
+            appliedCount += this.grantInventoryUnlockContent(charData, 物品数据, itemName, logs, statData);
 
             if (appliedCount <= 0) {
               throw new Error('当前物品的使用效果无法在背包场景中结算。');
             }
             this.结算战斗外副作用列表(charData, 物品数据.副作用列表, `${itemName}使用副作用`, logs);
 
-            const 下一背包项 = 构建背包扣减值_桥接(inventory[itemName], 1);
-            if (!下一背包项) delete inventory[itemName];
-            else inventory[itemName] = 下一背包项;
+            if (是可重复使用批次) this.结算物品批次每日使用次数(inventory[itemName], 定义次数, 当前tick, true);
+            if (消费规则.consume) {
+              const 下一背包项 = 构建背包扣减值_桥接(inventory[itemName], 1);
+              if (!下一背包项) delete inventory[itemName];
+              else inventory[itemName] = 下一背包项;
+            }
 
             summaryText = logs.join('；') || '已触发物品效果';
           },
@@ -56241,9 +57148,10 @@ ${播报文本}
 
             producedItems = [];
             造物模板列表.forEach(效果 => {
+              const 输出效果 = this.应用坚挺金苍蝇自用产出倍率(scaledSkill, 效果, charData);
               const { 物品名, 物品定义, 背包状态 } = this.构建造物背包值(
                 scaledSkill,
-                效果,
+                输出效果,
                 当前tick,
                 charKey,
               );
@@ -56262,7 +57170,14 @@ ${播报文本}
                 : cloneJsonValue(入库状态, {});
               producedItems.push(`${物品名}×${toNumber(背包状态.数量, 1)}`);
             });
-            写入场外魂技冷却(skill, 当前tick);
+            const 食物技能 = /食物属性|香肠/.test([
+              ...(Array.isArray(scaledSkill?.附带属性) ? scaledSkill.附带属性 : []),
+              scaledSkill?.效果描述,
+              scaledSkill?.画面描述,
+              ...造物模板列表.map(效果 => 效果?.描述),
+            ].map(value => toText(value, '')).join('|'));
+            const 自用倍率 = 食物技能 ? this.读取坚挺金苍蝇自用倍率(charData) : { 制造速度倍率: 1 };
+            写入场外魂技冷却(skill, 当前tick, 自用倍率.制造速度倍率 > 1 ? 自用倍率.制造速度倍率 : 1);
             this.结算战斗外副作用列表(charData, scaledSkill.副作用列表, `${skillName}施展副作用`, []);
           },
           { force: true },
@@ -56312,6 +57227,7 @@ ${播报文本}
         let skillName = '魂技';
         let summaryText = '';
         let costText = '无';
+        let 食物制造冷却倍率 = 1;
         await mutateStatDataByEditor(
           async statData => {
             if (deepGet(statData, 'world.战斗.进行中', false))
@@ -56322,10 +57238,26 @@ ${播报文本}
             if (!skill || typeof skill !== 'object') throw new Error('未找到技能。');
             skillName = toText(skill['魂技名'] || skill.name || safePath[safePath.length - 1], '魂技');
             const scaledSkill = this.isEquipmentSkillPath(safePath) ? skill : this.applyDailySkillMastery(skill, charData);
-            const effectList = (Array.isArray(scaledSkill?._效果数组) ? scaledSkill._效果数组 : []).flatMap(effect =>
+            let effectList = (Array.isArray(scaledSkill?._效果数组) ? scaledSkill._效果数组 : []).flatMap(effect =>
               this.expandInventoryEffectBranches(charData, effect),
             );
             if (!effectList.length) throw new Error('当前技能没有可日常结算的效果。');
+            const c2Rules = 读取C2消费者规则_桥接();
+            const foodSkill = skillName !== '坚挺金苍蝇' && /食物属性|香肠/.test([
+              ...(Array.isArray(scaledSkill?.附带属性) ? scaledSkill.附带属性 : []),
+              scaledSkill?.效果描述,
+              scaledSkill?.画面描述,
+            ].map(value => toText(value, '')).join('|'));
+            if (foodSkill && typeof c2Rules?.读取坚挺金苍蝇自用倍率_V1 === 'function' && typeof c2Rules?.缩放技能效果数组_V1 === 'function') {
+              const self倍率 = c2Rules.读取坚挺金苍蝇自用倍率_V1(charData);
+              食物制造冷却倍率 = Math.max(1, Number(self倍率.制造速度倍率) || 1);
+              if (self倍率.产物效果倍率 > 1) effectList = c2Rules.缩放技能效果数组_V1(effectList, self倍率.产物效果倍率);
+            }
+            const pendingGrant = typeof c2Rules?.读取坚挺金苍蝇成功授予_V1 === 'function'
+              ? c2Rules.读取坚挺金苍蝇成功授予_V1(charData)
+              : null;
+            if (pendingGrant && typeof c2Rules?.缩放技能效果数组_V1 === 'function') effectList = c2Rules.缩放技能效果数组_V1(effectList, 1.5);
+            const levelUpEffect = effectList.find(effect => toText(effect?.原型, '').trim() === '等级提升');
             const 当前tick = Math.max(0, toNumber(deepGet(statData, 'world.时间.tick', 0), 0));
             校验场外魂技冷却(skill, 当前tick, skillName);
             if (!charData.属性 || typeof charData.属性 !== 'object') charData.属性 = {};
@@ -56343,7 +57275,15 @@ ${播报文本}
             charData.属性.魂力 = Math.max(0, toNumber(charData.属性.魂力, 0) - parsedCost.reqSp);
             charData.属性.体力 = Math.max(0, toNumber(charData.属性.体力, 0) - parsedCost.reqVit);
             charData.属性.精神力 = Math.max(0, toNumber(charData.属性.精神力, 0) - parsedCost.reqMen);
-            写入场外魂技冷却(skill, 当前tick);
+            if (pendingGrant && typeof c2Rules?.消费坚挺金苍蝇成功魂技_V1 === 'function') {
+              const consumed = c2Rules.消费坚挺金苍蝇成功魂技_V1(charData, 'RELEASE_SKILL', true);
+              if (consumed.consumed) logs.push('坚挺金苍蝇效果×1.5已在本次成功魂技结算后消费');
+            }
+            if (levelUpEffect && Number.isFinite(Number(levelUpEffect?.冷却年数))) {
+              skill['场外冷却至tick'] = 当前tick + Math.max(0, Number(levelUpEffect.冷却年数)) * 51840;
+            } else {
+              写入场外魂技冷却(skill, 当前tick, 食物制造冷却倍率);
+            }
             summaryText = logs.join('；') || '已触发技能效果';
           },
           { force: true },
@@ -56440,6 +57380,7 @@ ${播报文本}
         target: actionBtn.dataset.target || '',
         currentLoc: actionBtn.dataset.currentLoc || '',
         npcTarget: actionBtn.dataset.npcTarget || '',
+        npcKey: actionBtn.dataset.npcKey || '',
         executorType: actionBtn.dataset.executorType || '',
         services: (actionBtn.dataset.services || '').split('|').filter(Boolean),
       };

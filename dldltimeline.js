@@ -1,6 +1,6 @@
 export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compileTimeline({ mainline: [
   {
-    "标识": "prologue_01",
+    "标识": "1-0001",
     "时间": '斗罗历0年1月1日00时00分',
     "章节": "前史",
     "人物": [
@@ -11,7 +11,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "昊天宗老宗主命令唐昊与唐啸兄弟二人外出大陆历练十年"
   },
   {
-    "标识": "prologue_02",
+    "标识": "1-0002",
     "时间": '斗罗历4年12月29日02时32分',
     "章节": "前史",
     "人物": [
@@ -23,7 +23,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊唐啸游历途中结识阿银并同时爱上她，唐啸主动退出让爱归宗"
   },
   {
-    "标识": "prologue_03",
+    "标识": "1-0003",
     "时间": '斗罗历4年12月29日08时32分',
     "章节": "前史",
     "人物": [
@@ -34,7 +34,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "阿银向唐昊坦白自己是十万年魂兽蓝银皇，唐昊不顾天堑向她表白"
   },
   {
-    "标识": "prologue_04",
+    "标识": "1-0004",
     "时间": '斗罗历5年1月14日02时07分',
     "章节": "前史",
     "人物": [
@@ -45,7 +45,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "武魂殿出动封号斗罗夺取阿银，唐昊力挫强敌后脱离昊天宗远遁"
   },
   {
-    "标识": "prologue_05",
+    "标识": "1-0005",
     "时间": '斗罗历5年4月13日17时54分',
     "章节": "前史",
     "人物": [
@@ -56,7 +56,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "武魂殿声讨昊天宗逼迫交出唐昊，老宗主急火攻心病逝，唐啸继任"
   },
   {
-    "标识": "prologue_06",
+    "标识": "1-0006",
     "时间": '斗罗历6年4月13日11时00分',
     "章节": "前史",
     "人物": [
@@ -67,7 +67,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊与阿银在瀑布山谷石室秘密成婚，誓言此生不离不弃"
   },
   {
-    "标识": "prologue_07",
+    "标识": "1-0007",
     "时间": '斗罗历18年12月22日19时05分',
     "章节": "前史",
     "人物": [
@@ -78,7 +78,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "阿银怀孕后唐昊魂力飞速突破逼近九十级，武魂殿锁定二人行踪"
   },
   {
-    "标识": "prologue_08",
+    "标识": "1-0008",
     "时间": '斗罗历19年12月21日02时54分',
     "章节": "前史",
     "人物": [
@@ -89,7 +89,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "武魂殿教皇率封号斗罗围攻，唐昊突破九十级却被三人联手重伤濒死"
   },
   {
-    "标识": "prologue_09",
+    "标识": "1-0009",
     "时间": '斗罗历19年12月21日08时53分',
     "章节": "前史",
     "人物": [
@@ -100,7 +100,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "阿银以十万年修为自尽献魂环救唐昊父子，化为蓝银草籽进入重生蛰伏"
   },
   {
-    "标识": "prologue_10",
+    "标识": "1-0010",
     "时间": '斗罗历19年12月24日11时28分',
     "章节": "前史",
     "人物": [
@@ -110,7 +110,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊狂怒激战三天击杀封号斗罗并重创教皇致死，昊天宗被迫封山隐忍"
   },
   {
-    "标识": "prologue_11",
+    "标识": "1-0011",
     "时间": '斗罗历19年12月28日17时01分',
     "章节": "前史",
     "人物": [
@@ -121,7 +121,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊种下阿银化身的草籽后携唐三隐居圣魂村，以铁匠身份掩盖踪迹"
   },
   {
-    "标识": "ch0001_01",
+    "标识": "1-0012",
     "时间": '斗罗历25年12月4日19时37分',
     "章节": "第一章 斗罗大陆，异界唐三",
     "人物": [
@@ -131,7 +131,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "六岁前的唐三修炼玄天功遇瓶颈，初识斗罗大陆武魂体系"
   },
   {
-    "标识": "ch0001_04",
+    "标识": "1-0013",
     "时间": '斗罗历25年12月5日01时36分',
     "章节": "第一章 斗罗大陆，异界唐三",
     "人物": [
@@ -141,7 +141,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三回忆前世佛怒唐莲完成后纵身跳崖的决然，确认玄天宝录全部记忆完整无损可作立身之本"
   },
   {
-    "标识": "ch0001_02",
+    "标识": "1-0014",
     "时间": '斗罗历25年12月5日04时16分',
     "章节": "第一章 斗罗大陆，异界唐三",
     "人物": [
@@ -152,7 +152,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三入铁匠铺请学锻造，唐昊立下万锤之约方有学艺资格"
   },
   {
-    "标识": "ch0001_05",
+    "标识": "1-0015",
     "时间": '斗罗历25年12月11日13时05分',
     "章节": "第一章 斗罗大陆，异界唐三",
     "人物": [
@@ -163,7 +163,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "深夜趁父酒醉独练玄玉手，指腹已能清晰分辨铁料杂质颗粒的细微纹理凹凸"
   },
   {
-    "标识": "ch0001_03",
+    "标识": "1-0016",
     "时间": '斗罗历25年12月15日22时18分',
     "章节": "第一章 斗罗大陆，异界唐三",
     "人物": [
@@ -174,7 +174,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "十一天八千余锤后铁坨缩至三分之一，玄天功内力坚韧度与体魄同步大幅精进"
   },
   {
-    "标识": "ch0002_01",
+    "标识": "1-0017",
     "时间": '斗罗历25年12月16日09时57分',
     "章节": "第二章 废武魂与先天满魂力",
     "人物": [
@@ -186,7 +186,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "老杰克通知觉醒仪式并讲解魂师体系，唐三完成万锤获新课题"
   },
   {
-    "标识": "ch0002_02",
+    "标识": "1-0018",
     "时间": '斗罗历25年12月18日22时13分',
     "章节": "第二章 废武魂与先天满魂力",
     "人物": [
@@ -198,7 +198,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "觉醒仪式上金色光点远超旁人却觉醒蓝银草，被执事断为废武魂"
   },
   {
-    "标识": "ch0002_03",
+    "标识": "1-0019",
     "时间": '斗罗历25年12月19日01时12分',
     "章节": "第二章 废武魂与先天满魂力",
     "人物": [
@@ -210,7 +210,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三主动测出百年难遇的先天满魂力十级，初闻魂环乃进阶突破关键"
   },
   {
-    "标识": "ch0003_01",
+    "标识": "1-0020",
     "时间": '斗罗历25年12月19日01时32分',
     "章节": "第三章 双生武魂",
     "人物": [
@@ -222,7 +222,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向父亲展露蓝银草与黑色小锤双生武魂，唐昊激动首拥"
   },
   {
-    "标识": "ch0003_03",
+    "标识": "1-0021",
     "时间": '斗罗历25年12月19日01时42分',
     "章节": "第三章 双生武魂",
     "人物": [
@@ -232,7 +232,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三私下试运黑锤武魂，发现其强烈吞噬内力令丹田空虚的特性"
   },
   {
-    "标识": "ch0002_05",
+    "标识": "1-0022",
     "时间": '斗罗历25年12月19日03时52分',
     "章节": "第二章 废武魂与先天满魂力",
     "人物": [
@@ -243,7 +243,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "老杰克午后再访赠魂圣前辈残页笔记，唐三初获诺丁城附近低级魂兽出没分布信息"
   },
   {
-    "标识": "ch0003_02",
+    "标识": "1-0023",
     "时间": '斗罗历25年12月19日04时12分',
     "章节": "第三章 双生武魂",
     "人物": [
@@ -254,7 +254,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "午后唐昊亲演连环锤法传授以小腿起力经腰背至臂的借力之法"
   },
   {
-    "标识": "ch0003_04",
+    "标识": "1-0024",
     "时间": '斗罗历25年12月19日07时12分',
     "章节": "第三章 双生武魂",
     "人物": [
@@ -265,7 +265,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊破天荒端出红烧野兔肉，未再饮酒，父子在沉默黄昏中关系悄然转暖"
   },
   {
-    "标识": "ch0003_05",
+    "标识": "1-0025",
     "时间": '斗罗历25年12月19日12时52分',
     "章节": "第三章 双生武魂",
     "人物": [
@@ -275,7 +275,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "入夜后唐三对月构想蓝银草缠绕控制配合黑锤致命一击的双武魂协同战术雏形"
   },
   {
-    "标识": "ch0002_04",
+    "标识": "1-0026",
     "时间": '斗罗历25年12月19日19时31分',
     "章节": "第二章 废武魂与先天满魂力",
     "人物": [
@@ -285,7 +285,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三独自登山复盘觉醒仪式全部细节，推断玄天功瓶颈与获取魂环注入新能量直接相关"
   },
   {
-    "标识": "ch0004_01",
+    "标识": "1-0027",
     "时间": '斗罗历26年3月17日19时41分',
     "章节": "第四章 异界唐三的第一件暗器",
     "人物": [
@@ -295,7 +295,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三将凡铁锻出铁母并制成首件暗器无声袖箭，奠定异界唐门基石"
   },
   {
-    "标识": "ch0004_04",
+    "标识": "1-0028",
     "时间": '斗罗历26年3月18日07时20分',
     "章节": "第四章 异界唐三的第一件暗器",
     "人物": [
@@ -305,7 +305,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "制成袖箭当夜对枯树月下试射校准，发现玄天功内力灌注指尖可稳定精度提升近两成"
   },
   {
-    "标识": "ch0004_05",
+    "标识": "1-0029",
     "时间": '斗罗历26年3月18日10时20分',
     "章节": "第四章 异界唐三的第一件暗器",
     "人物": [
@@ -316,7 +316,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "离村前夕唐昊赠磨亮铜牌信物，正面刻唐字背面小锤浮雕，叮嘱外出若遇识者自报姓唐"
   },
   {
-    "标识": "ch0004_02",
+    "标识": "1-0030",
     "时间": '斗罗历26年3月18日16时59分',
     "章节": "第四章 异界唐三的第一件暗器",
     "人物": [
@@ -328,7 +328,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊立下锤魂禁令许行，唐三随老杰克步行半日赴诺丁学院"
   },
   {
-    "标识": "ch0004_03",
+    "标识": "1-0031",
     "时间": '斗罗历26年3月18日22时59分',
     "章节": "第四章 异界唐三的第一件暗器",
     "人物": [
@@ -340,7 +340,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "门房推搡老杰克被唐三放倒，大师现身喝止并亲自领唐三入学注册"
   },
   {
-    "标识": "ch0005_01",
+    "标识": "1-0032",
     "时间": '斗罗历26年3月19日01时19分',
     "章节": "第五章 大师？师傅？",
     "人物": [
@@ -352,7 +352,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师凭六百四十七例研究识破双生武魂，唐三跪拜为师立终身之约"
   },
   {
-    "标识": "ch0005_03",
+    "标识": "1-0033",
     "时间": '斗罗历26年3月19日01时29分',
     "章节": "第五章 大师？师傅？",
     "人物": [
@@ -363,7 +363,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师带唐三逛藏书阁并批驳蓝银草废武魂定论，揭示其被误解根源"
   },
   {
-    "标识": "ch0005_02",
+    "标识": "1-0034",
     "时间": '斗罗历26年3月19日04时39分',
     "章节": "第五章 大师？师傅？",
     "人物": [
@@ -374,7 +374,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以控鹤擒龙三摔王圣，接任七舍工读生老大承诺护众"
   },
   {
-    "标识": "ch0005_04",
+    "标识": "1-0035",
     "时间": '斗罗历26年3月19日07时18分',
     "章节": "第五章 大师？师傅？",
     "人物": [
@@ -385,7 +385,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "烛光深谈中大师详授武魂十大核心竞争力理论框架，唐三逐条对照发现自身已占多席优势"
   },
   {
-    "标识": "ch0005_05",
+    "标识": "1-0036",
     "时间": '斗罗历26年3月19日10时18分',
     "章节": "第五章 大师？师傅？",
     "人物": [
@@ -395,7 +395,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "回舍后唐三将两界修炼体系逐一比对，在草纸写下控制为本暗器为翼内力为根十二字方针"
   },
   {
-    "标识": "ch0006_01",
+    "标识": "1-0037",
     "时间": '斗罗历26年3月27日19时24分',
     "章节": "第六章 我叫小舞，跳舞的舞",
     "人物": [
@@ -408,7 +408,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞以诡异柔技双腿绞颈两胜唐三，入主七舍成为新老大"
   },
   {
-    "标识": "ch0006_03",
+    "标识": "1-0038",
     "时间": '斗罗历26年3月29日01时02分',
     "章节": "第六章 我叫小舞，跳舞的舞",
     "人物": [
@@ -419,7 +419,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "花园午饭闲聊身世来历，唐三与小舞互留彼此好奇的初印象"
   },
   {
-    "标识": "ch0006_02",
+    "标识": "1-0039",
     "时间": '斗罗历26年3月29日22时20分',
     "章节": "第六章 我叫小舞，跳舞的舞",
     "人物": [
@@ -432,7 +432,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师验看唐三第二武魂昊天锤后失态，再次严申锤魂禁令"
   },
   {
-    "标识": "ch0007_01",
+    "标识": "1-0040",
     "时间": '斗罗历26年4月1日00时58分',
     "章节": "第七章 小舞，你还要啊？",
     "人物": [
@@ -443,7 +443,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师剖析蓝银草四大优势并定下控制系路线，决意携徒猎取魂环"
   },
   {
-    "标识": "ch0006_04",
+    "标识": "1-0041",
     "时间": '斗罗历26年4月2日04时16分',
     "章节": "第六章 我叫小舞，跳舞的舞",
     "人物": [
@@ -455,7 +455,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "傍晚洒扫花园时唐三拔草按粗细排列、小舞堆叶成兽，墨痕留下二人合作效率颇高评语"
   },
   {
-    "标识": "ch0007_03",
+    "标识": "1-0042",
     "时间": '斗罗历26年4月3日04时15分',
     "章节": "第七章 小舞，你还要啊？",
     "人物": [
@@ -466,7 +466,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "后山空地实训蓝银草操控，唐三半时辰掌握远超常人三日方成的精度"
   },
   {
-    "标识": "ch0007_04",
+    "标识": "1-0043",
     "时间": '斗罗历26年4月4日06时53分',
     "章节": "第七章 小舞，你还要啊？",
     "人物": [
@@ -476,7 +476,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "夜间独练中唐三发现内力脉冲送入草茎可产生寸劲鞭击爆发力，蓝银草初具攻击潜力"
   },
   {
-    "标识": "ch0006_05",
+    "标识": "1-0044",
     "时间": '斗罗历26年4月5日09时51分',
     "章节": "第六章 我叫小舞，跳舞的舞",
     "人物": [
@@ -487,7 +487,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "深夜同床唐三观察小舞梦中无意识蹬踹格斗动作，判断其柔技来历远比自述更加复杂"
   },
   {
-    "标识": "ch0007_02",
+    "标识": "1-0045",
     "时间": '斗罗历26年4月6日09时49分',
     "章节": "第七章 小舞，你还要啊？",
     "人物": [
@@ -498,7 +498,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "夜战小舞互见底牌，劳燕分飞三石子分袭初显唐门暗器锋芒"
   },
   {
-    "标识": "ch0007_05",
+    "标识": "1-0046",
     "时间": '斗罗历26年4月6日13时29分',
     "章节": "第七章 小舞，你还要啊？",
     "人物": [
@@ -509,7 +509,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "凌晨切磋后并坐石凳，互吐活过很久之言，二人对视中隐约感知彼此皆非寻常少年"
   },
   {
-    "标识": "ch0008_01",
+    "标识": "1-0047",
     "时间": '斗罗历26年4月7日16时07分',
     "章节": "第八章 魂导器，二十四桥明月夜",
     "人物": [
@@ -520,7 +520,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师赠储物魂导器二十四桥明月夜，师徒乘马车赴猎魂森林猎取魂环"
   },
   {
-    "标识": "ch0008_03",
+    "标识": "1-0048",
     "时间": '斗罗历26年4月7日19时07分',
     "章节": "第八章 魂导器，二十四桥明月夜",
     "人物": [
@@ -531,7 +531,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三半时辰掌握储物腰带存取节奏，大师提及天斗帝国魂导器学院"
   },
   {
-    "标识": "ch0008_04",
+    "标识": "1-0049",
     "时间": '斗罗历26年4月8日06时46分',
     "章节": "第八章 魂导器，二十四桥明月夜",
     "人物": [
@@ -542,7 +542,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "首夜野营篝火旁大师以木棍画图详授魂环白黄紫黑红五色对应体系与越级吸收致死铁律"
   },
   {
-    "标识": "ch0008_05",
+    "标识": "1-0050",
     "时间": '斗罗历26年4月8日09时46分',
     "章节": "第八章 魂导器，二十四桥明月夜",
     "人物": [
@@ -552,7 +552,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师入睡后唐三独守值夜修炼紫极魔瞳夜视能力，确认唐门武学与魂力体系可深度融合增益"
   },
   {
-    "标识": "ch0008_02",
+    "标识": "1-0051",
     "时间": '斗罗历26年4月8日22时25分',
     "章节": "第八章 魂导器，二十四桥明月夜",
     "人物": [
@@ -563,7 +563,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "持三图案手令入猎魂森林集市，大师展示变异武魂罗三炮并沿途授课"
   },
   {
-    "标识": "ch0009_01",
+    "标识": "1-0052",
     "时间": '斗罗历26年4月9日06时44分',
     "章节": "第九章 蓝银草的第一魂环",
     "人物": [
@@ -574,7 +574,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "夜遇百年曼陀罗蛇濒死绝境，唐三以暗器配合短剑贯脑反杀"
   },
   {
-    "标识": "ch0009_03",
+    "标识": "1-0053",
     "时间": '斗罗历26年4月9日06时54分',
     "章节": "第九章 蓝银草的第一魂环",
     "人物": [
@@ -585,7 +585,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "首次亲手杀生后心绪剧烈震荡，大师开导魂师之路必经杀戮不可逃避"
   },
   {
-    "标识": "ch0009_02",
+    "标识": "1-0054",
     "时间": '斗罗历26年4月9日07时04分',
     "章节": "第九章 蓝银草的第一魂环",
     "人物": [
@@ -596,7 +596,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "吸收百年曼陀罗蛇魂环入体，玄天功第一重瓶颈应声而破突破"
   },
   {
-    "标识": "ch0009_04",
+    "标识": "1-0055",
     "时间": '斗罗历26年4月9日13时24分',
     "章节": "第九章 蓝银草的第一魂环",
     "人物": [
@@ -606,7 +606,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以玄天功导引法将狂暴魂环能量逐圈碾磨纳入内力循环，半时辰后瓶颈轰然崩碎突破"
   },
   {
-    "标识": "ch0009_05",
+    "标识": "1-0056",
     "时间": '斗罗历26年4月9日16时24分',
     "章节": "第九章 蓝银草的第一魂环",
     "人物": [
@@ -617,7 +617,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "破晓唐三确认内力魂力彻底融合，蓝银草色泽纹路明显进化，默誓不负恩师心血"
   },
   {
-    "标识": "ch0010_01",
+    "标识": "1-0057",
     "时间": '斗罗历26年4月9日19时03分',
     "章节": "第十章 第一魂环技能",
     "人物": [
@@ -628,7 +628,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师武魂连坐中毒右臂肿大垂危，唐三以唐门治毒术放血逼毒救回"
   },
   {
-    "标识": "ch0010_03",
+    "标识": "1-0058",
     "时间": '斗罗历26年4月10日19时02分',
     "章节": "第十章 第一魂环技能",
     "人物": [
@@ -639,7 +639,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "布设唐门式绊索铃铛预警网，反复练习缠绕魂技将反应时间缩至半息"
   },
   {
-    "标识": "ch0010_04",
+    "标识": "1-0059",
     "时间": '斗罗历26年4月11日16时20分',
     "章节": "第十章 第一魂环技能",
     "人物": [
@@ -649,7 +649,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第三天清晨独自外出觅食以缠绕魂技加袖箭三息猎杀十年狼兽，烤肉裁皮照料昏迷大师"
   },
   {
-    "标识": "ch0010_02",
+    "标识": "1-0060",
     "时间": '斗罗历26年4月12日22时18分',
     "章节": "第十章 第一魂环技能",
     "人物": [
@@ -660,7 +660,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师苏醒验证缠绕魂技实证拟态理论，唐三背师出林返院"
   },
   {
-    "标识": "ch0010_05",
+    "标识": "1-0061",
     "时间": '斗罗历26年4月13日00时38分',
     "章节": "第十章 第一魂环技能",
     "人物": [
@@ -671,7 +671,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师苏醒听闻独猎经过后赞许，测试蓝银草延伸达二十三米操控精度超同级魂师"
   },
   {
-    "标识": "ch0011_01",
+    "标识": "1-0062",
     "时间": '斗罗历26年4月14日00时36分',
     "章节": "第十一章 小舞，原来你真的是个兔子",
     "人物": [
@@ -686,7 +686,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "后山十人轮战唐三秒杀凌风，亮出百年魂环黄色光芒震慑萧尘宇全场"
   },
   {
-    "标识": "ch0011_03",
+    "标识": "1-0063",
     "时间": '斗罗历26年4月14日03时56分',
     "章节": "第十一章 小舞，原来你真的是个兔子",
     "人物": [
@@ -697,7 +697,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "十人轮战结束后互认一年间成长，唐三赠兽牙项链为重逢之礼"
   },
   {
-    "标识": "ch0011_02",
+    "标识": "1-0064",
     "时间": '斗罗历26年4月14日04时06分',
     "章节": "第十一章 小舞，原来你真的是个兔子",
     "人物": [
@@ -709,7 +709,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "萧尘宇中蛇毒拜服认输，小舞亮明十二级一环成为全院大姐大"
   },
   {
-    "标识": "ch0011_04",
+    "标识": "1-0065",
     "时间": '斗罗历26年4月14日06时36分',
     "章节": "第十一章 小舞，原来你真的是个兔子",
     "人物": [
@@ -720,7 +720,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "当晚大师严肃训诫不可在大庭广众暴露百年魂环实力，唐三由此养成暗中观察低调行事习惯"
   },
   {
-    "标识": "ch0011_05",
+    "标识": "1-0066",
     "时间": '斗罗历26年4月14日09时36分',
     "章节": "第十一章 小舞，原来你真的是个兔子",
     "人物": [
@@ -731,7 +731,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "深夜小舞溜来陪修炼并讲述离林后独行往事，二人在安静夜晚中信任悄然加深"
   },
   {
-    "标识": "ch0012_01",
+    "标识": "1-0067",
     "时间": '斗罗历26年4月15日08时14分',
     "章节": "第十二章 乱披风锤法",
     "人物": [
@@ -743,7 +743,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "武魂殿鉴定测出连跳两级十三级，唐三正式注册魂师领取徽章"
   },
   {
-    "标识": "ch0012_03",
+    "标识": "1-0068",
     "时间": '斗罗历26年4月15日11时34分',
     "章节": "第十二章 乱披风锤法",
     "人物": [
@@ -754,7 +754,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三购暗器材料展露行家眼光手法，素云涛隔街茶楼暗自惊叹"
   },
   {
-    "标识": "ch0012_02",
+    "标识": "1-0069",
     "时间": '斗罗历26年4月15日13时54分',
     "章节": "第十二章 乱披风锤法",
     "人物": [
@@ -767,7 +767,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "乱披风锤法惊动铁匠石三，唐三入铺打工以月薪制暗器零件"
   },
   {
-    "标识": "ch0012_04",
+    "标识": "1-0070",
     "时间": '斗罗历26年4月15日17时13分',
     "章节": "第十二章 乱披风锤法",
     "人物": [
@@ -778,7 +778,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "石三铺首日收工后步行返校途中盘算：每日可锻三四组零件，月产能足以组装六具完整袖箭机括"
   },
   {
-    "标识": "ch0012_05",
+    "标识": "1-0071",
     "时间": '斗罗历26年4月15日19时53分',
     "章节": "第十二章 乱披风锤法",
     "人物": [
@@ -789,7 +789,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "晚课唐三展示首批暗器零件，大师提出魂力注入思路，师徒共探魂力暗器融合方向"
   },
   {
-    "标识": "ch0013_01",
+    "标识": "1-0072",
     "时间": '斗罗历27年3月18日12时26分',
     "章节": "第十三章 父亲的留言",
     "人物": [
@@ -801,7 +801,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "一学年结束唐三携礼返乡探父，唐昊已留书不辞而别音讯全无"
   },
   {
-    "标识": "ch0013_02",
+    "标识": "1-0073",
     "时间": '斗罗历27年3月18日15时05分',
     "章节": "第十三章 父亲的留言",
     "人物": [
@@ -812,7 +812,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊现身诺丁学院向大师托孤，掷下六图案至高令牌后离去"
   },
   {
-    "标识": "ch0013_04",
+    "标识": "1-0074",
     "时间": '斗罗历27年3月18日15时15分',
     "章节": "第十三章 父亲的留言",
     "人物": [
@@ -823,7 +823,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在村口向小舞倾诉六年间与父相处的点滴往事，首次在另一人面前落泪卸下所有防备"
   },
   {
-    "标识": "ch0013_03",
+    "标识": "1-0075",
     "时间": '斗罗历27年3月18日18时25分',
     "章节": "第十三章 父亲的留言",
     "人物": [
@@ -834,7 +834,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "后山顶郑重结为兄妹，唐三赠袖箭并展示暗器绝技立誓重振唐门"
   },
   {
-    "标识": "ch0013_05",
+    "标识": "1-0076",
     "时间": '斗罗历27年3月18日21时05分',
     "章节": "第十三章 父亲的留言",
     "人物": [
@@ -845,7 +845,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "结拜当晚唐三在铁匠铺教小舞袖箭使用与发射后侧移闪避，小舞低声道这是收到最好的礼物"
   },
   {
-    "标识": "ch0014_01",
+    "标识": "1-0077",
     "时间": '斗罗历31年12月16日17时51分',
     "章节": "第十四章 邪眸白虎戴沐白",
     "人物": [
@@ -856,7 +856,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "五年后毕业赴索托城报考史莱克学院，玫瑰酒店与戴少因房间起争执"
   },
   {
-    "标识": "ch0014_02",
+    "标识": "1-0078",
     "时间": '斗罗历31年12月16日20时11分',
     "章节": "第十四章 邪眸白虎戴沐白",
     "人物": [
@@ -868,7 +868,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三鬼藤寄生困白虎，戴沐白引动千年第三魂环二次变身炸碎藤缚"
   },
   {
-    "标识": "ch0014_05",
+    "标识": "1-0079",
     "时间": '斗罗历31年12月16日20时21分',
     "章节": "第十四章 邪眸白虎戴沐白",
     "人物": [
@@ -879,7 +879,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "巡逻魂师将至迫使双方停战，戴沐白记住唐三姓名约战史莱克后翻窗跃下虎啸远去"
   },
   {
-    "标识": "ch0014_03",
+    "标识": "1-0080",
     "时间": '斗罗历31年12月16日21时31分',
     "章节": "第十四章 邪眸白虎戴沐白",
     "人物": [
@@ -890,7 +890,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三清点五年暗器库存，小舞险碰曼陀罗蛇毒涂层二人相视而笑"
   },
   {
-    "标识": "ch0014_04",
+    "标识": "1-0081",
     "时间": '斗罗历31年12月16日21时41分',
     "章节": "第十四章 邪眸白虎戴沐白",
     "人物": [
@@ -900,7 +900,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "战后唐三独立窗前远眺索托夜景反思五年成长差距，将戴沐白武魂特征魂技表现逐条记录备战"
   },
   {
-    "标识": "ch0015_01",
+    "标识": "1-0082",
     "时间": '斗罗历31年12月16日23时41分',
     "章节": "第十五章 千年魂环之技，白虎金刚变",
     "人物": [
@@ -912,7 +912,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白发动千年环白虎金刚变震碎蓝银草，认输让房，约战史莱克学院。"
   },
   {
-    "标识": "ch0015_02",
+    "标识": "1-0083",
     "时间": '斗罗历31年12月17日06时11分',
     "章节": "第十五章 千年魂环之技，白虎金刚变",
     "人物": ["唐三","小舞"], 未建档人物: ["玫瑰酒店王经理"],
@@ -920,7 +920,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "误住戴沐白情侣套房，唐三复盘对战得失定下提升目标。"
   },
   {
-    "标识": "ch0015_04",
+    "标识": "1-0084",
     "时间": '斗罗历31年12月17日08时50分',
     "章节": "第十五章 千年魂环之技，白虎金刚变",
     "人物": [
@@ -931,7 +931,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三小舞复盘对战细节，分析白虎金刚变持续与弱点，定下拖延消耗战术思路。"
   },
   {
-    "标识": "ch0015_03",
+    "标识": "1-0085",
     "时间": '斗罗历31年12月18日06时09分',
     "章节": "第十五章 千年魂环之技，白虎金刚变",
     "人物": [
@@ -942,7 +942,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三加紧修炼冲击三十级瓶颈，拗不过小舞软磨答应出游索托城"
   },
   {
-    "标识": "ch0015_05",
+    "标识": "1-0086",
     "时间": '斗罗历31年12月18日08时49分',
     "章节": "第十五章 千年魂环之技，白虎金刚变",
     "人物": [
@@ -952,7 +952,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三闭门试探三十级瓶颈未果，转而精炼精神力并推演猎魂对策做足准备。"
   },
   {
-    "标识": "ch0016_01",
+    "标识": "1-0087",
     "时间": '斗罗历31年12月18日14时28分',
     "章节": "第十六章 板晶发金龙须针",
     "人物": [
@@ -963,7 +963,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "旧货店主认出腰带含义，唐三几番周折得一块古怪水晶。"
   },
   {
-    "标识": "ch0016_04",
+    "标识": "1-0088",
     "时间": '斗罗历31年12月18日14时38分',
     "章节": "第十六章 板晶发金龙须针",
     "人物": [
@@ -974,7 +974,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三抱水晶穿越集市引人侧目，向小舞讲解板晶稀有度感叹运气逆天。"
   },
   {
-    "标识": "ch0016_02",
+    "标识": "1-0089",
     "时间": '斗罗历31年12月18日17时48分',
     "章节": "第十六章 板晶发金龙须针",
     "人物": [
@@ -985,7 +985,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三全力锤碎板晶得逾万粒发金颗粒，炼制成唐门暗器排名第八的龙须针"
   },
   {
-    "标识": "ch0016_05",
+    "标识": "1-0090",
     "时间": '斗罗历31年12月19日06时27分',
     "章节": "第十六章 板晶发金龙须针",
     "人物": [
@@ -996,7 +996,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以内力拉伸发金研磨倒钩完成龙须针工序，小舞叹服唐门暗器精妙绝伦。"
   },
   {
-    "标识": "ch0016_03",
+    "标识": "1-0091",
     "时间": '斗罗历31年12月19日08时47分',
     "章节": "第十六章 板晶发金龙须针",
     "人物": [
@@ -1007,7 +1007,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "南行途中意外抵达简陋村落，惊见「史莱克学院」破旧牌匾。"
   },
   {
-    "标识": "ch0017_01",
+    "标识": "1-0092",
     "时间": '斗罗历31年12月19日14时27分',
     "章节": "第十七章 只收怪物的学院",
     "人物": [
@@ -1019,7 +1019,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "报名初试规则严苛淘汰大半，戴沐白亮出三魂环威压逼退闹事家长父子"
   },
   {
-    "标识": "ch0017_04",
+    "标识": "1-0093",
     "时间": '斗罗历31年12月19日14时37分',
     "章节": "第十七章 只收怪物的学院",
     "人物": [
@@ -1030,7 +1030,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "排队候考时唐三分析选拔核心指标，小舞大放厥词引前排少年怒视不敢吭声。"
   },
   {
-    "标识": "ch0017_02",
+    "标识": "1-0094",
     "时间": '斗罗历31年12月19日14时46分',
     "章节": "第十七章 只收怪物的学院",
     "人物": [
@@ -1044,7 +1044,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "老者亮出魂帝实力，唐三小舞与两名新面孔一并通过初试。"
   },
   {
-    "标识": "ch0017_03",
+    "标识": "1-0095",
     "时间": '斗罗历31年12月19日14时56分',
     "章节": "第十七章 只收怪物的学院",
     "人物": [
@@ -1057,7 +1057,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白引荐奥斯卡，四名新生魂力均超二十五级免试直入第四关考核"
   },
   {
-    "标识": "ch0017_05",
+    "标识": "1-0096",
     "时间": '斗罗历31年12月19日17时46分',
     "章节": "第十七章 只收怪物的学院",
     "人物": [
@@ -1070,7 +1070,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "客舍暂住一夜唐三观察两位新生判断其出身不凡，独自窗边修炼至天明待考。"
   },
   {
-    "标识": "ch0018_01",
+    "标识": "1-0097",
     "时间": '斗罗历31年12月20日14时25分',
     "章节": "第十八章 不动明王赵无极",
     "人物": [
@@ -1085,7 +1085,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极兴致大发亲自主考第四关，唐三临阵组队迅速分配战术分工"
   },
   {
-    "标识": "ch0018_04",
+    "标识": "1-0098",
     "时间": '斗罗历31年12月20日17时45分',
     "章节": "第十八章 不动明王赵无极",
     "人物": [
@@ -1098,7 +1098,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极宣布撑过一柱香即通过，唐三迅速布阵四人默契初生准备迎战魂圣。"
   },
   {
-    "标识": "ch0018_02",
+    "标识": "1-0099",
     "时间": '斗罗历31年12月20日17时55分',
     "章节": "第十八章 不动明王赵无极",
     "人物": [
@@ -1112,7 +1112,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七宝琉璃塔增幅力速各三成，四人合力配合首次将赵无极摔倒在地"
   },
   {
-    "标识": "ch0018_03",
+    "标识": "1-0100",
     "时间": '斗罗历31年12月20日18时05分',
     "章节": "第十八章 不动明王赵无极",
     "人物": [
@@ -1125,7 +1125,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极不动明王身一招破局重创小舞朱竹清，唐三愤而请求单独重赛"
   },
   {
-    "标识": "ch0018_05",
+    "标识": "1-0101",
     "时间": '斗罗历31年12月20日18时15分',
     "章节": "第十八章 不动明王赵无极",
     "人物": [
@@ -1136,7 +1136,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三独力以身法暗器蓝银草配合拖住赵无极三十息，令魂圣暗生收徒之念。"
   },
   {
-    "标识": "ch0019_01",
+    "标识": "1-0102",
     "时间": '斗罗历31年12月20日18时25分',
     "章节": "第十九章 唐三的暗器",
     "人物": [
@@ -1147,7 +1147,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三倾力施展唐门暗器，含沙射影首破赵无极护体罡气。"
   },
   {
-    "标识": "ch0019_04",
+    "标识": "1-0103",
     "时间": '斗罗历31年12月20日18时35分',
     "章节": "第十九章 唐三的暗器",
     "人物": [
@@ -1157,7 +1157,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三快速清点暗器存量排定出手序列，连环杀招在脑海中完整成形待战。"
   },
   {
-    "标识": "ch0019_02",
+    "标识": "1-0104",
     "时间": '斗罗历31年12月20日18时45分',
     "章节": "第十九章 唐三的暗器",
     "人物": [
@@ -1168,7 +1168,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以隐藏的第二武魂黑锤重创赵无极，自身油尽灯枯。"
   },
   {
-    "标识": "ch0019_03",
+    "标识": "1-0105",
     "时间": '斗罗历31年12月20日18时54分',
     "章节": "第十九章 唐三的暗器",
     "人物": [
@@ -1182,7 +1182,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡食物系香肠为众人疗伤，唐三取针致谢，四人正式获准入学录取"
   },
   {
-    "标识": "ch0019_05",
+    "标识": "1-0106",
     "时间": '斗罗历31年12月20日20时24分',
     "章节": "第十九章 唐三的暗器",
     "人物": [
@@ -1195,7 +1195,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "一战落幕四人伤痕累累无怨言，共历极限之战后战友情谊与默契悄然萌生。"
   },
   {
-    "标识": "ch0020_01",
+    "标识": "1-0107",
     "时间": '斗罗历31年12月20日20时34分',
     "章节": "第二十章 奥斯卡的大香肠和小腊肠",
     "人物": [
@@ -1207,7 +1207,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三苏醒后结识食物系舍友奥斯卡，得知小舞安然无恙并初闻七人组合雏形"
   },
   {
-    "标识": "ch0020_03",
+    "标识": "1-0108",
     "时间": '斗罗历31年12月20日20时44分',
     "章节": "第二十章 奥斯卡的大香肠和小腊肠",
     "人物": [
@@ -1218,7 +1218,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡以香肠为唐三疗伤，唐三亲身体验后对辅助系魂师价值有了全新认识。"
   },
   {
-    "标识": "ch0020_04",
+    "标识": "1-0109",
     "时间": '斗罗历31年12月20日20时54分',
     "章节": "第二十章 奥斯卡的大香肠和小腊肠",
     "人物": [
@@ -1230,7 +1230,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞探望唐三时打断奥斯卡吹嘘，唐三得知学院放养教育与毕业标准颇感新奇。"
   },
   {
-    "标识": "ch0020_02",
+    "标识": "1-0110",
     "时间": '斗罗历31年12月20日23时24分',
     "章节": "第二十章 奥斯卡的大香肠和小腊肠",
     "人物": [
@@ -1240,7 +1240,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "神秘「昊天冕下」夜访学院，十息之内重创赵无极后离去。"
   },
   {
-    "标识": "ch0020_05",
+    "标识": "1-0111",
     "时间": '斗罗历31年12月21日03时04分',
     "章节": "第二十章 奥斯卡的大香肠和小腊肠",
     "人物": [
@@ -1250,7 +1250,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "深夜修炼中唐三反思力量差距警醒，将突破三十级的紧迫度再次上调规划修炼。"
   },
   {
-    "标识": "ch0021_01",
+    "标识": "1-0112",
     "时间": '斗罗历31年12月21日06时04分',
     "章节": "第二十一章 邪火凤凰",
     "人物": [
@@ -1260,7 +1260,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三反思对战魂圣的攻防差距，立志复原唐门佛怒唐莲等顶级机括暗器"
   },
   {
-    "标识": "ch0021_04",
+    "标识": "1-0113",
     "时间": '斗罗历31年12月21日08时44分',
     "章节": "第二十一章 邪火凤凰",
     "人物": [
@@ -1270,7 +1270,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三逐一检查维护暗器至最佳状态，体现唐门弟子对兵器性命相托的严谨态度。"
   },
   {
-    "标识": "ch0021_02",
+    "标识": "1-0114",
     "时间": '斗罗历31年12月21日12时03分',
     "章节": "第二十一章 邪火凤凰",
     "人物": [
@@ -1282,7 +1282,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三小舞路遇马红俊纠缠村女，其变异七彩凤凰武魂在怒中骇然显现"
   },
   {
-    "标识": "ch0021_03",
+    "标识": "1-0115",
     "时间": '斗罗历31年12月21日14时23分',
     "章节": "第二十一章 邪火凤凰",
     "人物": [
@@ -1295,7 +1295,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞腰弓技制服马红俊，揭晓其变异凤凰武魂的隐秘代价。"
   },
   {
-    "标识": "ch0021_05",
+    "标识": "1-0116",
     "时间": '斗罗历31年12月21日17时43分',
     "章节": "第二十一章 邪火凤凰",
     "人物": [
@@ -1308,7 +1308,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "四人老槐树下闲聊互相引荐，戴沐白提议探讨团战配合，七人班底雏形凑齐。"
   },
   {
-    "标识": "ch0022_01",
+    "标识": "1-0117",
     "时间": '斗罗历31年12月21日17时53分',
     "章节": "第二十二章 四眼猫鹰弗兰德",
     "人物": [
@@ -1323,7 +1323,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白讲解学院鼓励战斗的怪异规矩与补贴断供导致常年拮据的窘况"
   },
   {
-    "标识": "ch0022_04",
+    "标识": "1-0118",
     "时间": '斗罗历31年12月21日18时03分',
     "章节": "第二十二章 四眼猫鹰弗兰德",
     "人物": [
@@ -1336,7 +1336,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三演示十二根蓝银草独立多线操控，马红俊试火不影响全局令众人瞠目。"
   },
   {
-    "标识": "ch0022_02",
+    "标识": "1-0119",
     "时间": '斗罗历31年12月21日18时13分',
     "章节": "第二十二章 四眼猫鹰弗兰德",
     "人物": [
@@ -1348,7 +1348,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "众人惊觉弗兰德真身为七十八级魂圣，拆读大师密信触动往昔旧情"
   },
   {
-    "标识": "ch0022_03",
+    "标识": "1-0120",
     "时间": '斗罗历31年12月21日18时23分',
     "章节": "第二十二章 四眼猫鹰弗兰德",
     "人物": [
@@ -1360,7 +1360,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德布置辅助系体力课，七宝琉璃宗内景揭露宁荣荣身世。"
   },
   {
-    "标识": "ch0022_05",
+    "标识": "1-0121",
     "时间": '斗罗历31年12月21日18时33分',
     "章节": "第二十二章 四眼猫鹰弗兰德",
     "人物": [
@@ -1371,7 +1371,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德正色表态不误唐三成长并安排锻造小屋，唐三暗忖院长远比外表可靠。"
   },
   {
-    "标识": "ch0023_01",
+    "标识": "1-0122",
     "时间": '斗罗历31年12月21日20时23分',
     "章节": "第二十三章 魔女本色",
     "人物": [
@@ -1388,7 +1388,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德一语识破替罪谎言罚跑二十圈，宁荣荣骄纵本性当众暴露无遗"
   },
   {
-    "标识": "ch0023_04",
+    "标识": "1-0123",
     "时间": '斗罗历31年12月21日20时33分',
     "章节": "第二十三章 魔女本色",
     "人物": [
@@ -1399,7 +1399,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白首次坦白出走隐情，唐三一句话令其释然，二人信任超越同窗关系。"
   },
   {
-    "标识": "ch0023_02",
+    "标识": "1-0124",
     "时间": '斗罗历31年12月21日20时43分',
     "章节": "第二十三章 魔女本色",
     "人物": [
@@ -1416,7 +1416,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德逐一列举众人成就层层击碎宁荣荣傲气，令其心防崩溃痛哭"
   },
   {
-    "标识": "ch0023_03",
+    "标识": "1-0125",
     "时间": '斗罗历31年12月21日23时22分',
     "章节": "第二十三章 魔女本色",
     "人物": [
@@ -1431,7 +1431,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德揭示首课地点为大斗魂场，讲解斗魂徽章积分体系。"
   },
   {
-    "标识": "ch0023_05",
+    "标识": "1-0126",
     "时间": '斗罗历31年12月22日03时02分',
     "章节": "第二十三章 魔女本色",
     "人物": [
@@ -1443,7 +1443,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "破晓抵达斗魂场领取徽章，唐三仰望穹顶热血沸腾视此为走向大陆的第一步。"
   },
   {
-    "标识": "ch0024_01",
+    "标识": "1-0127",
     "时间": '斗罗历31年12月22日08时42分',
     "章节": "第二十四章 三五组合的成立",
     "人物": [
@@ -1457,7 +1457,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "五人于大斗魂场注册，唐三小舞组合被误刻为「三五组合」。"
   },
   {
-    "标识": "ch0024_04",
+    "标识": "1-0128",
     "时间": '斗罗历31年12月22日12时02分',
     "章节": "第二十四章 三五组合的成立",
     "人物": [
@@ -1468,7 +1468,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "观察器武魂兄弟默契打法后有所悟，与小舞约定前控后攻固定战术体系。"
   },
   {
-    "标识": "ch0024_02",
+    "标识": "1-0129",
     "时间": '斗罗历31年12月22日12时12分',
     "章节": "第二十四章 三五组合的成立",
     "人物": [
@@ -1480,7 +1480,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞凌空腰弓速胜庆宝，唐三以控制系天克敏攻轻取内战对手朱竹清"
   },
   {
-    "标识": "ch0024_03",
+    "标识": "1-0130",
     "时间": '斗罗历31年12月22日14时21分',
     "章节": "第二十四章 三五组合的成立",
     "人物": [
@@ -1491,7 +1491,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三五组合险胜器武魂铁氏兄弟，唐三重伤仍救对手性命。"
   },
   {
-    "标识": "ch0024_05",
+    "标识": "1-0131",
     "时间": '斗罗历31年12月22日17时41分',
     "章节": "第二十四章 三五组合的成立",
     "人物": [
@@ -1503,7 +1503,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞背伤重唐三出场，戴沐白接手喂药训诫拼法，三人暮色中默默返校沉淀。"
   },
   {
-    "标识": "ch0025_01",
+    "标识": "1-0132",
     "时间": '斗罗历31年12月22日17时51分',
     "章节": "第二十五章 器武魂的威力",
     "人物": [
@@ -1517,7 +1517,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "朱竹清斥戴沐白引发争端，唐三拒绝宁荣荣一万金魂币买凶刺杀提议"
   },
   {
-    "标识": "ch0025_04",
+    "标识": "1-0133",
     "时间": '斗罗历31年12月22日20时21分',
     "章节": "第二十五章 器武魂的威力",
     "人物": [
@@ -1528,7 +1528,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞追问唐三拒金的理由，听罢揪住衣角叮嘱他自身安全同样重要令人动容。"
   },
   {
-    "标识": "ch0025_02",
+    "标识": "1-0134",
     "时间": '斗罗历31年12月22日20时31分',
     "章节": "第二十五章 器武魂的威力",
     "人物": [
@@ -1539,7 +1539,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡以森林之喻坦然拒绝，宁荣荣遭三重打击陷入彻夜自我怀疑"
   },
   {
-    "标识": "ch0025_03",
+    "标识": "1-0135",
     "时间": '斗罗历31年12月23日06时00分',
     "章节": "第二十五章 器武魂的威力",
     "人物": [
@@ -1551,7 +1551,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡年仅十四岁突破三十级，成为学院第二位达标的天才学员"
   },
   {
-    "标识": "ch0025_05",
+    "标识": "1-0136",
     "时间": '斗罗历31年12月23日08时40分',
     "章节": "第二十五章 器武魂的威力",
     "人物": [
@@ -1563,7 +1563,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向戴沐白马红俊展示袖箭构造，马红俊请求定制并同意接受使用训练。"
   },
   {
-    "标识": "ch0026_01",
+    "标识": "1-0137",
     "时间": '斗罗历31年12月23日14时20分',
     "章节": "第二十六章 星斗大森林",
     "人物": [
@@ -1580,7 +1580,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "全员咬牙完成香肠适应性训练磨合心态，弗兰德宣布启程星斗大森林"
   },
   {
-    "标识": "ch0026_03",
+    "标识": "1-0138",
     "时间": '斗罗历31年12月23日17时39分',
     "章节": "第二十六章 星斗大森林",
     "人物": [
@@ -1591,7 +1591,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三极限训练蓝银草延伸至二十五米，小舞一语启发网状变体运用新思路。"
   },
   {
-    "标识": "ch0026_04",
+    "标识": "1-0139",
     "时间": '斗罗历31年12月23日20时19分',
     "章节": "第二十六章 星斗大森林",
     "人物": [
@@ -1603,7 +1603,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三详询蘑菇肠飞行参数并构想空地协同立体战术，向宁荣荣确认增幅叠加。"
   },
   {
-    "标识": "ch0026_02",
+    "标识": "1-0140",
     "时间": '斗罗历31年12月24日17时38分',
     "章节": "第二十六章 星斗大森林",
     "人物": [
@@ -1620,7 +1620,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极领队疾行至星斗大森林边境小镇，讲解森林概况。"
   },
   {
-    "标识": "ch0026_05",
+    "标识": "1-0141",
     "时间": '斗罗历31年12月24日20时18分',
     "章节": "第二十六章 星斗大森林",
     "人物": [
@@ -1632,7 +1632,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "出发前夜赵无极严肃警告千年魂兽智慧不亚人类，唐三请教弱点做情报准备。"
   },
   {
-    "标识": "ch0027_01",
+    "标识": "1-0142",
     "时间": '斗罗历31年12月24日20时28分',
     "章节": "第二十七章 不敢惹事是庸才",
     "人物": [
@@ -1645,7 +1645,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "苍晖学院偷袭不成反被碾压，七怪展露远超高级学院学员的实力威压"
   },
   {
-    "标识": "ch0027_03",
+    "标识": "1-0143",
     "时间": '斗罗历31年12月24日20时38分',
     "章节": "第二十七章 不敢惹事是庸才",
     "人物": [
@@ -1657,7 +1657,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三察觉邻桌领队实力不凡并提醒戴沐白，对方目光盯住储物腰带暗流涌动。"
   },
   {
-    "标识": "ch0027_02",
+    "标识": "1-0144",
     "时间": '斗罗历31年12月24日23时17分',
     "章节": "第二十七章 不敢惹事是庸才",
     "人物": [
@@ -1672,7 +1672,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三布阵克制魂王叶知秋，赵无极出手定局，七怪之名由此而来。"
   },
   {
-    "标识": "ch0027_04",
+    "标识": "1-0145",
     "时间": '斗罗历31年12月24日23时27分',
     "章节": "第二十七章 不敢惹事是庸才",
     "人物": [
@@ -1683,7 +1683,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极肯定唐三临场指挥的领袖气质，其战术核心地位获老师层面正式认可。"
   },
   {
-    "标识": "ch0027_05",
+    "标识": "1-0146",
     "时间": '斗罗历31年12月24日23时37分',
     "章节": "第二十七章 不敢惹事是庸才",
     "人物": [
@@ -1696,7 +1696,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "入林前唐三将暗器分配众人并逐一演示触发要领，为日后救命埋下关键伏笔。"
   },
   {
-    "标识": "ch0028_01",
+    "标识": "1-0147",
     "时间": '斗罗历31年12月24日23时47分',
     "章节": "第二十八章 千年凤尾鸡冠蛇",
     "人物": [
@@ -1708,7 +1708,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "正式踏入星斗大森林，唐三以血腥引兽的生态法则示意避战低阶魂兽"
   },
   {
-    "标识": "ch0028_03",
+    "标识": "1-0148",
     "时间": '斗罗历31年12月24日23时57分',
     "章节": "第二十八章 千年凤尾鸡冠蛇",
     "人物": [
@@ -1720,7 +1720,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "林中唐三以紫极魔瞳率先发现伪装魂兽预警，主动请缨担任队伍前哨探路。"
   },
   {
-    "标识": "ch0028_04",
+    "标识": "1-0149",
     "时间": '斗罗历31年12月25日00时07分',
     "章节": "第二十八章 千年凤尾鸡冠蛇",
     "人物": [
@@ -1733,7 +1733,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三观察溪流异常判断下游有毒系魂兽令众人绕行，野外判断力获全队信服。"
   },
   {
-    "标识": "ch0028_02",
+    "标识": "1-0150",
     "时间": '斗罗历31年12月25日00时17分',
     "章节": "第二十八章 千年凤尾鸡冠蛇",
     "人物": [
@@ -1748,7 +1748,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "众人合力擒获千年凤尾鸡冠蛇，老妇突然现身争夺魂环。"
   },
   {
-    "标识": "ch0028_05",
+    "标识": "1-0151",
     "时间": '斗罗历31年12月25日00时27分',
     "章节": "第二十八章 千年凤尾鸡冠蛇",
     "人物": [
@@ -1761,7 +1761,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以紫极魔瞳判断来者实力不凡并低声预警，赵无极暗中提升防御对峙升级。"
   },
   {
-    "标识": "ch0029_01",
+    "标识": "1-0152",
     "时间": '斗罗历31年12月25日17时36分',
     "章节": "第二十九章 盖世龙蛇",
     "人物": [
@@ -1775,7 +1775,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "蛇婆祖孙出面索还风尾鸡冠蛇归属权，唐三代奥斯卡出战孟依然迎接挑战"
   },
   {
-    "标识": "ch0029_02",
+    "标识": "1-0153",
     "时间": '斗罗历31年12月25日18时56分',
     "章节": "第二十九章 盖世龙蛇",
     "人物": [
@@ -1788,7 +1788,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以先天满魂力对拼力挫孟依然，奥斯卡趁机斩蛇获取千年魂环"
   },
   {
-    "标识": "ch0029_03",
+    "标识": "1-0154",
     "时间": '斗罗历31年12月25日20时16分',
     "章节": "第二十九章 盖世龙蛇",
     "人物": [
@@ -1800,7 +1800,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极趁胜命斩蛇夺魂环，唐三观察落败孟依然暗生惺惺相惜之感于其不甘。"
   },
   {
-    "标识": "ch0029_04",
+    "标识": "1-0155",
     "时间": '斗罗历31年12月25日20时26分',
     "章节": "第二十九章 盖世龙蛇",
     "人物": [
@@ -1812,7 +1812,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三布设蓝银草预警网守护奥斯卡吸环，观察食物系魂师天然高承受阈值。"
   },
   {
-    "标识": "ch0029_05",
+    "标识": "1-0156",
     "时间": '斗罗历31年12月25日23时16分',
     "章节": "第二十九章 盖世龙蛇",
     "人物": [
@@ -1824,7 +1824,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "连夜转移扎营唐三殿后抹痕并独守哨位，反思若孟依然换打法胜算将骤降。"
   },
   {
-    "标识": "ch0030_01",
+    "标识": "1-0157",
     "时间": '斗罗历31年12月25日23时26分',
     "章节": "第三十章 奥斯卡的第三魂环",
     "人物": [
@@ -1838,7 +1838,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡吸收千年魂环突破三十一级获蘑菇肠飞行奇技，全队士气大振"
   },
   {
-    "标识": "ch0030_03",
+    "标识": "1-0158",
     "时间": '斗罗历31年12月26日02时55分',
     "章节": "第三十章 奥斯卡的第三魂环",
     "人物": [
@@ -1850,7 +1850,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三试飞蘑菇肠测试升限速度转弯参数，与奥斯卡讨论战术运用奠定数据基础。"
   },
   {
-    "标识": "ch0030_02",
+    "标识": "1-0159",
     "时间": '斗罗历31年12月26日03时05分',
     "章节": "第三十章 奥斯卡的第三魂环",
     "人物": [
@@ -1863,7 +1863,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三十二岁破三十级创最年轻魂尊纪录，赵无极答应留下继续觅环"
   },
   {
-    "标识": "ch0030_04",
+    "标识": "1-0160",
     "时间": '斗罗历31年12月26日05时55分',
     "章节": "第三十章 奥斯卡的第三魂环",
     "人物": [
@@ -1875,7 +1875,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三十二岁破三十级令众人震惊祝贺，赵无极暗忖此子必成大器决意护其猎环。"
   },
   {
-    "标识": "ch0030_05",
+    "标识": "1-0161",
     "时间": '斗罗历31年12月26日08时35分',
     "章节": "第三十章 奥斯卡的第三魂环",
     "人物": [
@@ -1886,7 +1886,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极与唐三商议第三魂环方向选蛛蛇类，警告千年兽智高须全队配合应战。"
   },
   {
-    "标识": "ch0031_01",
+    "标识": "1-0162",
     "时间": '斗罗历31年12月27日14时13分',
     "章节": "第三十一章 森林之王 泰坦巨猿",
     "人物": [
@@ -1897,7 +1897,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "两日搜寻千年魂环未果，唐三与赵无极夜谈魂兽滥猎之弊引发深思"
   },
   {
-    "标识": "ch0031_03",
+    "标识": "1-0163",
     "时间": '斗罗历31年12月27日17时33分',
     "章节": "第三十一章 森林之王 泰坦巨猿",
     "人物": [
@@ -1909,7 +1909,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞整日心神不宁感知森林深处亲切气息，宁荣荣提及万年魂兽化形传说。"
   },
   {
-    "标识": "ch0031_04",
+    "标识": "1-0164",
     "时间": '斗罗历31年12月27日20时12分',
     "章节": "第三十一章 森林之王 泰坦巨猿",
     "人物": [
@@ -1921,7 +1921,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "夜间轮值唐三言不打无把握之仗但绝不弃队友，数小时后此言即遭残酷验证。"
   },
   {
-    "标识": "ch0031_02",
+    "标识": "1-0165",
     "时间": '斗罗历31年12月27日23时12分',
     "章节": "第三十一章 森林之王 泰坦巨猿",
     "人物": [
@@ -1938,7 +1938,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦巨猿深夜突袭赵无极武魂真身战败，小舞被一把擒走众人痛失同伴"
   },
   {
-    "标识": "ch0031_05",
+    "标识": "1-0166",
     "时间": '斗罗历31年12月28日02时52分',
     "章节": "第三十一章 森林之王 泰坦巨猿",
     "人物": [
@@ -1950,7 +1950,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三被拦下后强压冲动以理智请求蘑菇肠仅追踪方向，赵无极沉默应允。"
   },
   {
-    "标识": "ch0032_01",
+    "标识": "1-0167",
     "时间": '斗罗历31年12月28日03时02分',
     "章节": "第三十二章 邪恶的杀戮者 人面魔蛛",
     "人物": [
@@ -1962,7 +1962,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三只身追踪泰坦巨猿未果，以诸葛神弩十六箭重创千年人面魔蛛"
   },
   {
-    "标识": "ch0032_03",
+    "标识": "1-0168",
     "时间": '斗罗历31年12月28日05时52分',
     "章节": "第三十二章 邪恶的杀戮者 人面魔蛛",
     "人物": [
@@ -1972,7 +1972,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "落地未寻到小舞唐三强迫自己冷静观察，蓝银草触地感知蛛类规律步态逼近。"
   },
   {
-    "标识": "ch0032_04",
+    "标识": "1-0169",
     "时间": '斗罗历31年12月28日08时32分',
     "章节": "第三十二章 邪恶的杀戮者 人面魔蛛",
     "人物": [
@@ -1982,7 +1982,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魔蛛突袭崩断蓝银草，唐三退步分析发现双目与腹部为唯二弱点决意暗器搏命。"
   },
   {
-    "标识": "ch0032_02",
+    "标识": "1-0170",
     "时间": '斗罗历31年12月29日05时50分',
     "章节": "第三十二章 邪恶的杀戮者 人面魔蛛",
     "人物": [
@@ -1995,7 +1995,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "龙公孟蜀八环实力兴师问罪逼迫二选一，赵无极暗示师承解围"
   },
   {
-    "标识": "ch0032_05",
+    "标识": "1-0171",
     "时间": '斗罗历31年12月29日06时00分',
     "章节": "第三十二章 邪恶的杀戮者 人面魔蛛",
     "人物": [
@@ -2005,7 +2005,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三趁魔蛛失明绕后以透骨钉攻腹再刺颈终结之，瘫坐蛛背双手颤抖脱力。"
   },
   {
-    "标识": "ch0033_01",
+    "标识": "1-0172",
     "时间": '斗罗历31年12月29日08时30分',
     "章节": "第三十三章 孟依然也用暗器？",
     "人物": [
@@ -2018,7 +2018,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三背身听声辨形掷十八针完胜孟依然掷飞刀，龙公叹为神乎其技"
   },
   {
-    "标识": "ch0033_03",
+    "标识": "1-0173",
     "时间": '斗罗历31年12月29日14时09分',
     "章节": "第三十三章 孟依然也用暗器？",
     "人物": [
@@ -2029,7 +2029,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "孟依然践约踮脚亲唐三左颊后红脸跑开，众人起哄中紧张对峙气氛彻底消散。"
   },
   {
-    "标识": "ch0033_04",
+    "标识": "1-0174",
     "时间": '斗罗历31年12月29日17时29分',
     "章节": "第三十三章 孟依然也用暗器？",
     "人物": [
@@ -2041,7 +2041,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "龙公私下提醒魔蛛或凝外附魂骨并赠蛇形玉佩，邀唐三日后有难可赴谷求助。"
   },
   {
-    "标识": "ch0033_02",
+    "标识": "1-0175",
     "时间": '斗罗历31年12月30日11时48分',
     "章节": "第三十三章 孟依然也用暗器？",
     "人物": [
@@ -2054,7 +2054,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三传艺赠透骨针安慰孟依然，龙公暗生撮合之意双方友好别过"
   },
   {
-    "标识": "ch0033_05",
+    "标识": "1-0176",
     "时间": '斗罗历31年12月30日11时58分',
     "章节": "第三十三章 孟依然也用暗器？",
     "人物": [
@@ -2065,7 +2065,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三返回蛛体检查果然发现外附魂骨前兆，半时辰剥离出紫光蛛形骨片喜极而泣。"
   },
   {
-    "标识": "ch0034_01",
+    "标识": "1-0177",
     "时间": '斗罗历31年12月30日14时08分',
     "章节": "第三十四章 超过极限的人面魔蛛魂环",
     "人物": [
@@ -2078,7 +2078,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三冒死超限吸收两千年人面魔蛛魂环，狂暴能量令其命悬一线"
   },
   {
-    "标识": "ch0034_03",
+    "标识": "1-0178",
     "时间": '斗罗历31年12月30日20时07分',
     "章节": "第三十四章 超过极限的人面魔蛛魂环",
     "人物": [
@@ -2089,7 +2089,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞跪地握手以微弱魂力助唐三护心脉，唐三半昏迷中凭念力咬牙坚持不死。"
   },
   {
-    "标识": "ch0034_04",
+    "标识": "1-0179",
     "时间": '斗罗历31年12月30日20时17分',
     "章节": "第三十四章 超过极限的人面魔蛛魂环",
     "人物": [
@@ -2101,7 +2101,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第六时辰唐三毒血反噬命悬一线，全队六人各司其职彻夜守护无人合眼。"
   },
   {
-    "标识": "ch0034_02",
+    "标识": "1-0180",
     "时间": '斗罗历32年1月1日17时26分',
     "章节": "第三十四章 超过极限的人面魔蛛魂环",
     "人物": [
@@ -2114,7 +2114,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞奇迹生还诈称自猎千年魂兽获第三魂环，隐瞒被巨猿主动放归真相"
   },
   {
-    "标识": "ch0034_05",
+    "标识": "1-0181",
     "时间": '斗罗历32年1月1日20时06分',
     "章节": "第三十四章 超过极限的人面魔蛛魂环",
     "人物": [
@@ -2126,7 +2126,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第十时辰毒血回缩体温降，赵无极感叹唐三意志体魄超人类扛过一成存活率。"
   },
   {
-    "标识": "ch0035_01",
+    "标识": "1-0182",
     "时间": '斗罗历32年1月1日20时16分',
     "章节": "第三十五章 唐三强横的第三魂环",
     "人物": [
@@ -2140,7 +2140,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三苏醒生出八条紫色蛛腿附剧毒，急救误触中毒命悬一线的马红俊"
   },
   {
-    "标识": "ch0035_03",
+    "标识": "1-0183",
     "时间": '斗罗历32年1月1日20时26分',
     "章节": "第三十五章 唐三强横的第三魂环",
     "人物": [
@@ -2152,7 +2152,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三掌握蛛腿收放技巧硬度远超精钢，戴沐白感叹今后近身肉搏等于找死。"
   },
   {
-    "标识": "ch0035_04",
+    "标识": "1-0184",
     "时间": '斗罗历32年1月1日23时05分',
     "章节": "第三十五章 唐三强横的第三魂环",
     "人物": [
@@ -2163,7 +2163,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞夜查唐三背部骨节低声叮嘱不准再冒死，唐三握手无言承诺以作回应。"
   },
   {
-    "标识": "ch0035_02",
+    "标识": "1-0185",
     "时间": '斗罗历32年1月1日23时15分',
     "章节": "第三十五章 唐三强横的第三魂环",
     "人物": [
@@ -2177,7 +2177,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "归途演示诸葛神弩十六箭齐射威力骇人，唐三允诺为伙伴量身打造暗器"
   },
   {
-    "标识": "ch0035_05",
+    "标识": "1-0186",
     "时间": '斗罗历32年1月1日23时25分',
     "章节": "第三十五章 唐三强横的第三魂环",
     "人物": [
@@ -2188,7 +2188,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极建议蛛矛仅作保命手段，唐三立规非生死不用，获赞知进退懂轻重。"
   },
   {
-    "标识": "ch0036_01",
+    "标识": "1-0187",
     "时间": '斗罗历32年1月1日23时35分',
     "章节": "第三十六章 大师到来",
     "人物": [
@@ -2201,7 +2201,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "走出大森林后小镇修整两日，患难与共令团队隔阂悄然消融关系升温"
   },
   {
-    "标识": "ch0036_04",
+    "标识": "1-0188",
     "时间": '斗罗历32年1月2日02时45分',
     "章节": "第三十六章 大师到来",
     "人物": [
@@ -2215,7 +2215,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "修整首夜男生开怀痛饮互拆互损，生死与共后一切隔阂在酒杯碰撞中烟消云散。"
   },
   {
-    "标识": "ch0036_02",
+    "标识": "1-0189",
     "时间": '斗罗历32年1月2日20时04分',
     "章节": "第三十六章 大师到来",
     "人物": [
@@ -2228,7 +2228,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣以琉璃宗名义提议订购暗器，唐三萌生量产经营的长远构想"
   },
   {
-    "标识": "ch0036_05",
+    "标识": "1-0190",
     "时间": '斗罗历32年1月2日20时14分',
     "章节": "第三十六章 大师到来",
     "人物": [
@@ -2239,7 +2239,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师听完全程叹唐三运气惊人并接管修炼计划，收下蛇佩称日后或有大用。"
   },
   {
-    "标识": "ch0036_03",
+    "标识": "1-0191",
     "时间": '斗罗历32年1月2日23时04分',
     "章节": "第三十六章 大师到来",
     "人物": [
@@ -2251,7 +2251,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师揭秘天青牛蟒威压令巨猿放归小舞之因，决意留校亲自执教七怪"
   },
   {
-    "标识": "ch0037_01",
+    "标识": "1-0192",
     "时间": '斗罗历32年1月3日02时43分',
     "章节": "第三十七章 蓝银草进化后的威力",
     "人物": [
@@ -2262,7 +2262,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师黎明训诫重情失冷静之弊，验证蓝银草融合魔蛛后韧性与剧毒进化"
   },
   {
-    "标识": "ch0037_03",
+    "标识": "1-0193",
     "时间": '斗罗历32年1月3日08时23分',
     "章节": "第三十七章 蓝银草进化后的威力",
     "人物": [
@@ -2273,7 +2273,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师明确指出蓝银草惧火为最大短板，硬性要求第四魂环须选择提升耐火性的魂兽"
   },
   {
-    "标识": "ch0037_04",
+    "标识": "1-0194",
     "时间": '斗罗历32年1月3日11时43分',
     "章节": "第三十七章 蓝银草进化后的威力",
     "人物": [
@@ -2284,7 +2284,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞展示第三魂技瞬移零冷却恐怖机动力，唐三敏锐发现瞬移后半息失重破绽。"
   },
   {
-    "标识": "ch0037_02",
+    "标识": "1-0195",
     "时间": '斗罗历32年1月4日05时42分',
     "章节": "第三十七章 蓝银草进化后的威力",
     "人物": [
@@ -2295,7 +2295,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "验证蛛网束缚同级无解却惧火，大师严禁为锤武魂附加任何魂环"
   },
   {
-    "标识": "ch0037_05",
+    "标识": "1-0196",
     "时间": '斗罗历32年1月4日05时52分',
     "章节": "第三十七章 蓝银草进化后的威力",
     "人物": [
@@ -2305,7 +2305,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三开发蛛矛锚定配合蓝银草全方位控制的蛛网阵战术，定为团战标准起手式。"
   },
   {
-    "标识": "ch0038_01",
+    "标识": "1-0197",
     "时间": '斗罗历32年1月4日08时21分',
     "章节": "第三十八章 外附魂骨",
     "人物": [
@@ -2316,7 +2316,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师确认唐三获万分之一几率的稀世外附魂骨，毒蛛腿威力惊人须严守秘密"
   },
   {
-    "标识": "ch0038_03",
+    "标识": "1-0198",
     "时间": '斗罗历32年1月4日11时41分',
     "章节": "第三十八章 外附魂骨",
     "人物": [
@@ -2327,7 +2327,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师制定魂骨修炼方案并严禁滥用蛛毒，唐三或将首验外附魂骨随等级进化理论。"
   },
   {
-    "标识": "ch0038_04",
+    "标识": "1-0199",
     "时间": '斗罗历32年1月4日14时01分',
     "章节": "第三十八章 外附魂骨",
     "人物": [
@@ -2340,7 +2340,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师宣布团练优先方针，唐三任战术核心戴沐白副队长，七人战术架构正式成型。"
   },
   {
-    "标识": "ch0038_02",
+    "标识": "1-0200",
     "时间": '斗罗历32年1月5日11时39分',
     "章节": "第三十八章 外附魂骨",
     "人物": [
@@ -2359,7 +2359,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德正式引荐大师接掌教学并公布七怪一至七号座次，师资齐聚亮相"
   },
   {
-    "标识": "ch0038_05",
+    "标识": "1-0201",
     "时间": '斗罗历32年1月5日13时59分',
     "章节": "第三十八章 外附魂骨",
     "人物": [
@@ -2371,7 +2371,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣发现增幅对蓝银草有效，与朱竹清共同设计三人内外夹击联动战术雏形。"
   },
   {
-    "标识": "ch0039_01",
+    "标识": "1-0202",
     "时间": '斗罗历32年1月5日14时09分',
     "章节": "第三十九章 “铁”匠铺",
     "人物": [
@@ -2383,7 +2383,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三携暗器图纸赴索托城最大铁匠铺洽谈代工，铺主铁心心存疑虑"
   },
   {
-    "标识": "ch0039_03",
+    "标识": "1-0203",
     "时间": '斗罗历32年1月5日17时19分',
     "章节": "第三十九章 “铁”匠铺",
     "人物": [
@@ -2394,7 +2394,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "铁龙铁虎认出斗魂场宿敌行礼致敬，铁心表示荣幸，双方逐条敲定长期合约。"
   },
   {
-    "标识": "ch0039_04",
+    "标识": "1-0204",
     "时间": '斗罗历32年1月5日19时59分',
     "章节": "第三十九章 “铁”匠铺",
     "人物": [
@@ -2405,7 +2405,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向马红俊解释外包产能原因，强调机关与用毒为唐门命脉绝不可外授。"
   },
   {
-    "标识": "ch0039_02",
+    "标识": "1-0205",
     "时间": '斗罗历32年1月6日17时17分',
     "章节": "第三十九章 “铁”匠铺",
     "人物": [
@@ -2418,7 +2418,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三亮出三魂环折服铁心，铁氏兄弟感念旧恩定下长期暗器代工合作"
   },
   {
-    "标识": "ch0039_05",
+    "标识": "1-0206",
     "时间": '斗罗历32年1月6日19时57分',
     "章节": "第三十九章 “铁”匠铺",
     "人物": [
@@ -2428,7 +2428,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三连夜为七人量身设计个人化暗器方案绘制七套初稿，忙至后半夜方完成。"
   },
   {
-    "标识": "ch0040_01",
+    "标识": "1-0207",
     "时间": '斗罗历32年1月6日20时07分',
     "章节": "第四十章 特训第一阶段开始",
     "人物": [
@@ -2441,7 +2441,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师亲手备早膳强调营养为根基，重排全日作息开启系统专项强化训练"
   },
   {
-    "标识": "ch0040_03",
+    "标识": "1-0208",
     "时间": '斗罗历32年1月6日20时17分',
     "章节": "第四十章 特训第一阶段开始",
     "人物": [
@@ -2454,7 +2454,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师定三月目标达成盲配合，首项蒙眼追逐训练七人撞作一团混乱开场。"
   },
   {
-    "标识": "ch0040_02",
+    "标识": "1-0209",
     "时间": '斗罗历32年1月6日20时27分',
     "章节": "第四十章 特训第一阶段开始",
     "人物": [
@@ -2471,7 +2471,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "车轮战考核唐三制戴沐白马红俊飞行消耗获胜，大师逐一点评短板强调互补"
   },
   {
-    "标识": "ch0040_04",
+    "标识": "1-0210",
     "时间": '斗罗历32年1月6日20时37分',
     "章节": "第四十章 特训第一阶段开始",
     "人物": [
@@ -2484,7 +2484,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "朱竹清三度高速突进均被蓝银草预判绊住认负，大师指出敏攻系须练变速假动作欺骗"
   },
   {
-    "标识": "ch0041_01",
+    "标识": "1-0211",
     "时间": '斗罗历32年1月6日20时47分',
     "章节": "第四十一章 不抛弃，不放弃",
     "人物": [
@@ -2497,7 +2497,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师罚全体负重往返五百里不许用魂力，以同甘共苦点醒七人为一体"
   },
   {
-    "标识": "ch0040_05",
+    "标识": "1-0212",
     "时间": '斗罗历32年1月6日20时57分',
     "章节": "第四十章 特训第一阶段开始",
     "人物": [
@@ -2510,7 +2510,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三险胜小舞但暴露近身短板，大师要求特训中强化体术不可只依赖控制。"
   },
   {
-    "标识": "ch0041_03",
+    "标识": "1-0213",
     "时间": '斗罗历32年1月6日21时07分',
     "章节": "第四十一章 不抛弃，不放弃",
     "人物": [
@@ -2521,7 +2521,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣体力崩溃唐三分担石块激励前行，她终于切身理解体魄对辅助系的重量。"
   },
   {
-    "标识": "ch0041_04",
+    "标识": "1-0214",
     "时间": '斗罗历32年1月6日21时17分',
     "章节": "第四十一章 不抛弃，不放弃",
     "人物": [
@@ -2533,7 +2533,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白背朱竹清苦撑时马红俊无言接力，首次非战斗默契成为七怪信任纽带的起点"
   },
   {
-    "标识": "ch0041_02",
+    "标识": "1-0215",
     "时间": '斗罗历32年1月7日13时56分',
     "章节": "第四十一章 不抛弃，不放弃",
     "人物": [
@@ -2549,7 +2549,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "负重长跑逼近极限七人相互背负搀扶力竭完成，大师露满意笑容称赞团队"
   },
   {
-    "标识": "ch0041_05",
+    "标识": "1-0216",
     "时间": '斗罗历32年1月7日19时55分',
     "章节": "第四十一章 不抛弃，不放弃",
     "人物": [
@@ -2561,7 +2561,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七人力竭瘫倒大师确认后满意道'已准备好为彼此而战'，小舞攥唐三衣角不松。"
   },
   {
-    "标识": "ch0042_01",
+    "标识": "1-0217",
     "时间": '斗罗历32年4月4日14时47分',
     "章节": "第四十二章 大师是魔鬼",
     "人物": [
@@ -2574,7 +2574,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "药浴苏醒后共享丰盛晚餐，昔日疏离褪去团队情谊在磨砺中持续升温"
   },
   {
-    "标识": "ch0042_03",
+    "标识": "1-0218",
     "时间": '斗罗历32年4月4日17时27分',
     "章节": "第四十二章 大师是魔鬼",
     "人物": [
@@ -2587,7 +2587,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "食堂复盘戴沐白首感团队安全感，唐三断言配合极致则同级无敌，奥斯卡搞笑附和。"
   },
   {
-    "标识": "ch0042_02",
+    "标识": "1-0219",
     "时间": '斗罗历32年4月5日05时46分',
     "章节": "第四十二章 大师是魔鬼",
     "人物": [
@@ -2604,7 +2604,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三月魔鬼特训令七怪脱胎换骨实力飞跃，马红俊遭神秘魂宗不乐当众羞辱"
   },
   {
-    "标识": "ch0042_04",
+    "标识": "1-0220",
     "时间": '斗罗历32年4月5日09时06分',
     "章节": "第四十二章 大师是魔鬼",
     "人物": [
@@ -2615,7 +2615,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师单独考核唐三三项全过评三十五级以下无敌，警告三十七级以上仍有差距。"
   },
   {
-    "标识": "ch0042_05",
+    "标识": "1-0221",
     "时间": '斗罗历32年4月5日11时26分',
     "章节": "第四十二章 大师是魔鬼",
     "人物": [
@@ -2627,7 +2627,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "放假首日三人树下闲聊唐三感叹有伙伴最快乐，马红俊面色一变匆匆离去。"
   },
   {
-    "标识": "ch0043_01",
+    "标识": "1-0222",
     "时间": '斗罗历32年4月5日11时36分',
     "章节": "第四十三章 猥琐怪叔叔，不乐",
     "人物": [
@@ -2641,7 +2641,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "假期首夜，唐三四人偕小舞夜袭索托城为马红俊寻仇。"
   },
   {
-    "标识": "ch0043_02",
+    "标识": "1-0223",
     "时间": '斗罗历32年4月5日14时16分',
     "章节": "第四十三章 猥琐怪叔叔，不乐",
     "人物": [
@@ -2656,7 +2656,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞八段摔重创不乐，马红俊纵火复仇泄愤。"
   },
   {
-    "标识": "ch0043_03",
+    "标识": "1-0224",
     "时间": '斗罗历32年4月6日17时04分',
     "章节": "第四十三章 猥琐怪叔叔，不乐",
     "人物": [
@@ -2668,7 +2668,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德诉苦学费，重伤不乐同伙赶至断然施救。"
   },
   {
-    "标识": "ch0044_01",
+    "标识": "1-0225",
     "时间": '斗罗历32年4月11日23时35分',
     "章节": "第四十四章 大师教学的第二阶段",
     "人物": [
@@ -2685,7 +2685,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师宣布第二阶段试炼，移驻索托城以斗魂磨练实战。"
   },
   {
-    "标识": "ch0044_02",
+    "标识": "1-0226",
     "时间": '斗罗历32年4月12日02时15分',
     "章节": "第四十四章 大师教学的第二阶段",
     "人物": [
@@ -2702,7 +2702,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师分组配对并赐名，史莱克七怪称号正式诞生。"
   },
   {
-    "标识": "ch0044_03",
+    "标识": "1-0227",
     "时间": '斗罗历32年4月12日13时54分',
     "章节": "第四十四章 大师教学的第二阶段",
     "人物": [
@@ -2713,7 +2713,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三五组合速胜猫鼠组合，各路搭档首夜战绩全胜。"
   },
   {
-    "标识": "ch0045_01",
+    "标识": "1-0228",
     "时间": '斗罗历32年4月12日14时04分',
     "章节": "第四十五章 强横的对手，狂战队",
     "人物": ["戴沐白","唐三","马红俊","小舞","朱竹清","宁荣荣","奥斯卡"], 未建档人物: ["狂犀"],
@@ -2721,7 +2721,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "狂犀寻衅遇阻，七怪首度遭遇强悍狂战队团战。"
   },
   {
-    "标识": "ch0045_02",
+    "标识": "1-0229",
     "时间": '斗罗历32年4月13日13时52分',
     "章节": "第四十五章 强横的对手，狂战队",
     "人物": ["唐三","马红俊","戴沐白","宁荣荣"], 未建档人物: ["狂犀"],
@@ -2729,7 +2729,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三蛛网擒狂犀，己方开局全面压制狂战队。"
   },
   {
-    "标识": "ch0046_01",
+    "标识": "1-0230",
     "时间": '斗罗历32年4月13日14时02分',
     "章节": "第四十六章 控制系魂师的强势",
     "人物": [
@@ -2742,7 +2742,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "狂战队狂热技逆转战局，唐三紧急收拢队友稳阵。"
   },
   {
-    "标识": "ch0046_02",
+    "标识": "1-0231",
     "时间": '斗罗历32年4月13日14时12分',
     "章节": "第四十六章 控制系魂师的强势",
     "人物": [
@@ -2757,7 +2757,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "全员蘑菇肠升空避险，赌对狂热消退时机。"
   },
   {
-    "标识": "ch0047_01",
+    "标识": "1-0232",
     "时间": '斗罗历32年4月13日14时22分',
     "章节": "第四十七章 蜘蛛王者的威压",
     "人物": ["唐三"], 未建档人物: ["狂犀"],
@@ -2765,7 +2765,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三外附魂骨威压尽收蛛丝，反制蜘蛛女魂师。"
   },
   {
-    "标识": "ch0047_02",
+    "标识": "1-0233",
     "时间": '斗罗历32年4月13日16时52分',
     "章节": "第四十七章 蜘蛛王者的威压",
     "人物": [
@@ -2782,7 +2782,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千手修罗一战成名，此后一月斗魂全线连胜。"
   },
   {
-    "标识": "ch0048_01",
+    "标识": "1-0234",
     "时间": '斗罗历32年5月10日01时27分',
     "章节": "第四十八章 皇斗战队",
     "人物": [
@@ -2794,7 +2794,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "索托大斗魂场遭贵族押注重创，恳请七怪代打压阵。"
   },
   {
-    "标识": "ch0048_02",
+    "标识": "1-0235",
     "时间": '斗罗历32年5月10日07时06分',
     "章节": "第四十八章 皇斗战队",
     "人物": [
@@ -2809,7 +2809,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "皇斗战队阵容近乎完美，唐三请命领队应战。"
   },
   {
-    "标识": "ch0049_01",
+    "标识": "1-0236",
     "时间": '斗罗历32年5月10日13时06分',
     "章节": "第四十九章 七怪战皇斗",
     "人物": [
@@ -2824,7 +2824,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "玉天恒偷袭遭拉回反遭重创，七怪战术初显威力。"
   },
   {
-    "标识": "ch0049_02",
+    "标识": "1-0237",
     "时间": '斗罗历32年5月10日13时16分',
     "章节": "第四十九章 七怪战皇斗",
     "人物": [
@@ -2839,7 +2839,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三人合围重创玉天恒，独孤雁怒极释放碧磷紫毒。"
   },
   {
-    "标识": "ch0050_01",
+    "标识": "1-0238",
     "时间": '斗罗历32年5月11日13时04分',
     "章节": "第五十章 碧磷紫毒",
     "人物": [
@@ -2852,7 +2852,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三雄黄烈酒破碧磷紫毒，独孤雁大惊失色。"
   },
   {
-    "标识": "ch0050_02",
+    "标识": "1-0239",
     "时间": '斗罗历32年5月11日13时14分',
     "章节": "第五十章 碧磷紫毒",
     "人物": ["玉天恒","唐三","戴沐白","朱竹清","马红俊"], 未建档人物: ["叶泠泠"],
@@ -2860,7 +2860,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "九心海棠瞬间复原玉天恒，战局重陷胶着苦战。"
   },
   {
-    "标识": "ch0051_01",
+    "标识": "1-0240",
     "时间": '斗罗历32年5月11日13时24分',
     "章节": "第五十一章 武魂融合技之幽冥白虎",
     "人物": ["唐三","小舞"], 未建档人物: ["石墨","石磨"],
@@ -2868,7 +2868,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "玄武龟兄弟破阵，小舞遭龟甲旋舞重创。"
   },
   {
-    "标识": "ch0051_02",
+    "标识": "1-0241",
     "时间": '斗罗历32年5月11日16时04分',
     "章节": "第五十一章 武魂融合技之幽冥白虎",
     "人物": ["戴沐白","朱竹清","玉天恒"], 未建档人物: ["奥斯罗"],
@@ -2876,7 +2876,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白朱竹清释放幽冥白虎，重创玉天恒与奥斯罗。"
   },
   {
-    "标识": "ch0052_01",
+    "标识": "1-0242",
     "时间": '斗罗历32年5月11日16时14分',
     "章节": "第五十二章 八蛛矛，定胜负",
     "人物": ["唐三","玉天恒"], 未建档人物: ["石墨","石磨"],
@@ -2884,7 +2884,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三寄生玉天恒挡盾，八蛛矛刺伤玄武龟兄弟。"
   },
   {
-    "标识": "ch0052_02",
+    "标识": "1-0243",
     "时间": '斗罗历32年5月11日16时24分',
     "章节": "第五十二章 八蛛矛，定胜负",
     "人物": ["唐三","独孤雁","大师"], 未建档人物: ["叶泠泠"],
@@ -2892,7 +2892,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三制服独孤雁并逼令疗伤，七怪险胜皇斗战队。"
   },
   {
-    "标识": "ch0052_03",
+    "标识": "1-0244",
     "时间": '斗罗历32年5月11日16时34分',
     "章节": "第五十二章 八蛛矛，定胜负",
     "人物": [
@@ -2905,7 +2905,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "皇斗战队心服认输，大师赞许七怪并许下半月假期。"
   },
   {
-    "标识": "ch0053_01",
+    "标识": "1-0245",
     "时间": '斗罗历32年5月11日16时44分',
     "章节": "第五十三章 史莱克 金斗魂级战队",
     "人物": [
@@ -2920,7 +2920,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三积分破纪录跃金斗魂，大师蓝电霸王龙身世曝光。"
   },
   {
-    "标识": "ch0053_02",
+    "标识": "1-0246",
     "时间": '斗罗历32年5月11日16时54分',
     "章节": "第五十三章 史莱克 金斗魂级战队",
     "人物": [
@@ -2931,7 +2931,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师劝诫玉天恒放下骄傲，揭唐三惊人天赋。"
   },
   {
-    "标识": "ch0053_03",
+    "标识": "1-0247",
     "时间": '斗罗历32年5月11日22时44分',
     "章节": "第五十三章 史莱克 金斗魂级战队",
     "人物": [
@@ -2944,7 +2944,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师提议加盟天斗皇家学院，弗兰德借鸡生蛋释怀应允。"
   },
   {
-    "标识": "ch0055_01",
+    "标识": "1-0248",
     "时间": '斗罗历32年5月12日01时23分',
     "章节": "第五十五章 飞天神爪",
     "人物": [
@@ -2956,7 +2956,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "返校两月整训期，唐三闭关秘密铸造暗器。"
   },
   {
-    "标识": "ch0055_02",
+    "标识": "1-0249",
     "时间": '斗罗历32年6月30日21时20分',
     "章节": "第五十五章 飞天神爪",
     "人物": [
@@ -2966,7 +2966,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "四十九天苦炼终成，唐三炼出飞天神爪与十八铁球。"
   },
   {
-    "标识": "ch0055_03",
+    "标识": "1-0250",
     "时间": '斗罗历32年7月1日00时00分',
     "章节": "第五十五章 飞天神爪",
     "人物": [
@@ -2982,7 +2982,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三演示飞天神爪并分发全队，七怪等级悉数精进。"
   },
   {
-    "标识": "ch0056_01",
+    "标识": "1-0251",
     "时间": '斗罗历32年7月12日00时00分',
     "章节": "第五十六章 越阶挑战",
     "人物": [
@@ -2998,7 +2998,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德带队疾行两千里赴天斗，首日狂奔四百公里。"
   },
   {
-    "标识": "ch0056_02",
+    "标识": "1-0252",
     "时间": '斗罗历32年7月12日11时40分',
     "章节": "第五十六章 越阶挑战",
     "人物": [
@@ -3009,7 +3009,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞借揉腿吐露心意，戴沐白等隔墙偷听打趣。"
   },
   {
-    "标识": "ch0056_03",
+    "标识": "1-0253",
     "时间": '斗罗历32年7月13日09时00分',
     "章节": "第五十六章 越阶挑战",
     "人物": [
@@ -3022,7 +3022,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "抵西尔维斯城设宴图利，因无对手改议越级挑战。"
   },
   {
-    "标识": "ch0057_01",
+    "标识": "1-0254",
     "时间": '斗罗历32年7月13日11时40分',
     "章节": "第五十七章 凶神战队",
     "人物": ["大师","弗兰德"], 未建档人物: ["蒙厉"],
@@ -3030,7 +3030,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师选定死斗凶神战队，弗兰德重注三万金魂币。"
   },
   {
-    "标识": "ch0057_02",
+    "标识": "1-0255",
     "时间": '斗罗历32年7月13日11时50分',
     "章节": "第五十七章 凶神战队",
     "人物": ["唐三","戴沐白","小舞","马红俊","奥斯卡","宁荣荣","朱竹清"], 未建档人物: ["蒙厉"],
@@ -3038,7 +3038,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "诸葛神弩齐射秒杀凶神战队，越级挑战轰动全场。"
   },
   {
-    "标识": "ch0057_03",
+    "标识": "1-0256",
     "时间": '斗罗历32年7月14日14时40分',
     "章节": "第五十七章 凶神战队",
     "人物": [
@@ -3053,7 +3053,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "首次杀人重创心理，大师开导后连夜启程赴天斗。"
   },
   {
-    "标识": "ch0058_01",
+    "标识": "1-0257",
     "时间": '斗罗历32年7月17日12时20分',
     "章节": "第五十八章 天斗皇家学院",
     "人物": ["唐三","大师","弗兰德","戴沐白","雪崩"], 未建档人物: ["孙不语"],
@@ -3061,7 +3061,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "抵天斗皇家学院遭学员羞辱，戴沐白出手教训对方。"
   },
   {
-    "标识": "ch0058_02",
+    "标识": "1-0258",
     "时间": '斗罗历32年7月17日15时00分',
     "章节": "第五十八章 天斗皇家学院",
     "人物": [
@@ -3078,7 +3078,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "秦明设宴接风，安顿史莱克一行入住学院。"
   },
   {
-    "标识": "ch0058_03",
+    "标识": "1-0259",
     "时间": '斗罗历32年7月18日03时20分',
     "章节": "第五十八章 天斗皇家学院",
     "人物": [
@@ -3091,7 +3091,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "秦明介绍学院分级体系，众人启程见教委。"
   },
   {
-    "标识": "ch0059_01",
+    "标识": "1-0260",
     "时间": '斗罗历32年7月18日06时20分',
     "章节": "第五十九章 贯通，第一脉",
     "人物": ["唐三","大师","弗兰德"], 未建档人物: ["梦神机","白宝山","智林"],
@@ -3099,7 +3099,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "智林当众试探唐三，蓝银草化压展现异能。"
   },
   {
-    "标识": "ch0059_02",
+    "标识": "1-0261",
     "时间": '斗罗历32年7月18日09时00分',
     "章节": "第五十九章 贯通，第一脉",
     "人物": ["唐三","大师","弗兰德"], 未建档人物: ["梦神机","白宝山","智林"],
@@ -3107,7 +3107,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三融合外附魂骨、贯通冲脉，突破三十四级。"
   },
   {
-    "标识": "ch0060_01",
+    "标识": "1-0262",
     "时间": '斗罗历32年7月18日12时20分',
     "章节": "第六十章 封号斗罗，封号：毒",
     "人物": ["唐三","大师","弗兰德","雪崩","独孤博"], 未建档人物: ["雪星亲王","梦神机","白宝山","智林"],
@@ -3115,7 +3115,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪星亲王携毒斗罗独孤博登门，九魂环威慑全场。"
   },
   {
-    "标识": "ch0060_02",
+    "标识": "1-0263",
     "时间": '斗罗历32年7月18日15时00分',
     "章节": "第六十章 封号斗罗，封号：毒",
     "人物": ["大师","弗兰德","柳二龙","秦明","独孤博","唐三"], 未建档人物: ["梦神机"],
@@ -3123,7 +3123,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克众忍辱撤离，秦明辞职随行赴天斗城。"
   },
   {
-    "标识": "ch0061_01",
+    "标识": "1-0264",
     "时间": '斗罗历32年7月19日03时20分',
     "章节": "第六十一章 黄金铁三角的最后一角",
     "人物": [
@@ -3137,7 +3137,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克六师悉数展露六十级以上实力，震动蓝霸学院。"
   },
   {
-    "标识": "ch0061_02",
+    "标识": "1-0265",
     "时间": '斗罗历32年7月19日06时20分',
     "章节": "第六十一章 黄金铁三角的最后一角",
     "人物": [
@@ -3149,7 +3149,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "蓝霸学院请前往林中拜见隐居的神秘院长。"
   },
   {
-    "标识": "ch0061_03",
+    "标识": "1-0266",
     "时间": '斗罗历32年7月19日09时00分',
     "章节": "第六十一章 黄金铁三角的最后一角",
     "人物": [
@@ -3162,7 +3162,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "林中偶遇故人柳二龙，蓝霸学院易主改名史莱克。"
   },
   {
-    "标识": "ch0062_01",
+    "标识": "1-0267",
     "时间": '斗罗历32年7月19日15时00分',
     "章节": "第六十二章 黄金铁三角的往事",
     "人物": [
@@ -3173,7 +3173,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师向唐三倾诉与柳二龙二十年未解的乱伦悲情往事。"
   },
   {
-    "标识": "ch0062_02",
+    "标识": "1-0268",
     "时间": '斗罗历32年7月19日18时00分',
     "章节": "第六十二章 黄金铁三角的往事",
     "人物": [
@@ -3186,7 +3186,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "柳二龙表白促大师破防，唐三却遭独孤博瞬间掳走。"
   },
   {
-    "标识": "ch0063_01",
+    "标识": "1-0269",
     "时间": '斗罗历32年7月19日21时40分',
     "章节": "第六十三章 冰火两仪眼",
     "人物": [
@@ -3197,7 +3197,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三被独孤博掳走审讯，反道破其毒素反噬隐疾。"
   },
   {
-    "标识": "ch0063_02",
+    "标识": "1-0270",
     "时间": '斗罗历32年7月20日00时20分',
     "章节": "第六十三章 冰火两仪眼",
     "人物": [
@@ -3208,7 +3208,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博携唐三至冰火两仪眼，遍寻稀世仙品仙草。"
   },
   {
-    "标识": "ch0064_01",
+    "标识": "1-0271",
     "时间": '斗罗历32年7月20日03时20分',
     "章节": "第六十四章 冰火炼金身",
     "人物": [
@@ -3218,7 +3218,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三冒险摘取冰火两极仙草，备为闯泉之资。"
   },
   {
-    "标识": "ch0064_02",
+    "标识": "1-0272",
     "时间": '斗罗历32年7月20日06时20分',
     "章节": "第六十四章 冰火炼金身",
     "人物": [
@@ -3228,7 +3228,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三服下冰火仙草纵身沉入冰火两仪眼深处。"
   },
   {
-    "标识": "ch0065_01",
+    "标识": "1-0273",
     "时间": '斗罗历32年7月20日15时00分',
     "章节": "第六十五章 黄金圣龙VS碧磷蛇皇",
     "人物": [
@@ -3241,7 +3241,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "黄金铁三角寻踪落日森林一日，夜遇独孤博对峙。"
   },
   {
-    "标识": "ch0065_02",
+    "标识": "1-0274",
     "时间": '斗罗历32年7月20日18时00分',
     "章节": "第六十五章 黄金圣龙VS碧磷蛇皇",
     "人物": ["大师","弗兰德","柳二龙","独孤博"], 未建档人物: ["罗三炮"],
@@ -3249,7 +3249,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "黄金铁三角力战独孤博终告落败，命悬一线。"
   },
   {
-    "标识": "ch0066_01",
+    "标识": "1-0275",
     "时间": '斗罗历32年7月20日21时40分',
     "章节": "第六十六章 幽香绮罗仙品",
     "人物": [
@@ -3263,7 +3263,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三及时现身出言周旋，救下黄金铁三角三人。"
   },
   {
-    "标识": "ch0066_02",
+    "标识": "1-0276",
     "时间": '斗罗历32年7月21日00时20分',
     "章节": "第六十六章 幽香绮罗仙品",
     "人物": [
@@ -3274,7 +3274,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博打消杀心，唐三定下第一个人情条件。"
   },
   {
-    "标识": "ch0067_01",
+    "标识": "1-0277",
     "时间": '斗罗历32年7月21日03时20分',
     "章节": "第六十七章 水火不侵，百毒辟易",
     "人物": [
@@ -3285,7 +3285,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三接连化解独孤博三重考验，赢得信任。"
   },
   {
-    "标识": "ch0067_02",
+    "标识": "1-0278",
     "时间": '斗罗历33年1月21日15时00分',
     "章节": "第六十七章 水火不侵，百毒辟易",
     "人物": [
@@ -3296,7 +3296,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三闭关半年炼成阎王贴，魂力升至三十七级。"
   },
   {
-    "标识": "ch0068_01",
+    "标识": "1-0279",
     "时间": '斗罗历33年1月21日18时00分',
     "章节": "第六十八章 如意百宝囊与子母追魂夺命胆",
     "人物": [
@@ -3307,7 +3307,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博赠如意百宝囊，唐三演示子母追魂夺命胆。"
   },
   {
-    "标识": "ch0068_02",
+    "标识": "1-0280",
     "时间": '斗罗历33年1月24日03时20分',
     "章节": "第六十八章 如意百宝囊与子母追魂夺命胆",
     "人物": [
@@ -3318,7 +3318,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博应允出任史莱克学院顾问，随唐三启程返校。"
   },
   {
-    "标识": "ch0069_01",
+    "标识": "1-0281",
     "时间": '斗罗历33年1月24日06时20分',
     "章节": "第六十九章 小舞：发誓不要离开我",
     "人物": [
@@ -3336,7 +3336,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三携独孤博归院，众人惊喜得知顾问之约。"
   },
   {
-    "标识": "ch0069_02",
+    "标识": "1-0282",
     "时间": '斗罗历33年1月24日09时00分',
     "章节": "第六十九章 小舞：发誓不要离开我",
     "人物": [
@@ -3353,7 +3353,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三小舞重逢誓言相守，得知队友半年进展。"
   },
   {
-    "标识": "ch0070_01",
+    "标识": "1-0283",
     "时间": '斗罗历33年1月24日12时20分',
     "章节": "第七十章 绝世仙品配七怪",
     "人物": [
@@ -3368,7 +3368,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三分赠四株仙品药草予队友助其突破。"
   },
   {
-    "标识": "ch0070_02",
+    "标识": "1-0284",
     "时间": '斗罗历33年1月24日15时00分',
     "章节": "第七十章 绝世仙品配七怪",
     "人物": [
@@ -3381,7 +3381,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞泣血摘得相思断肠红，成命定之缘见证。"
   },
   {
-    "标识": "ch0071_01",
+    "标识": "1-0285",
     "时间": '斗罗历33年1月25日03时20分',
     "章节": "第七十一章 冰清玉洁唐三少",
     "人物": [
@@ -3393,7 +3393,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡宁荣荣魂力大增，九宝琉璃塔惊现。"
   },
   {
-    "标识": "ch0071_02",
+    "标识": "1-0286",
     "时间": '斗罗历33年1月25日06时20分',
     "章节": "第七十一章 冰清玉洁唐三少",
     "人物": [
@@ -3407,7 +3407,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊戴沐白朱竹清大师纷纷突破瓶颈。"
   },
   {
-    "标识": "ch0071_03",
+    "标识": "1-0287",
     "时间": '斗罗历33年1月28日06时20分',
     "章节": "第七十一章 冰清玉洁唐三少",
     "人物": [
@@ -3420,7 +3420,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博携孙女来访叮嘱，七怪整装备战大赛。"
   },
   {
-    "标识": "ch0072_01",
+    "标识": "1-0288",
     "时间": '斗罗历33年2月8日03时20分',
     "章节": "第七十二章 豁然贯通",
     "人物": [
@@ -3432,7 +3432,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三课堂蛛网秒败挑衅者泰隆，课后肉搏再卸其四肢关节。"
   },
   {
-    "标识": "ch0072_04",
+    "标识": "1-0289",
     "时间": '斗罗历33年2月8日03时30分',
     "章节": "第七十二章 豁然贯通",
     "人物": [
@@ -3444,7 +3444,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "课后肉搏约战开始，唐三以鬼影迷踪首摔泰隆，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0072_05",
+    "标识": "1-0290",
     "时间": '斗罗历33年2月8日06时40分',
     "章节": "第七十二章 豁然贯通",
     "人物": [
@@ -3456,7 +3456,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三百余摔后替泰隆复位，二人梁子正式结下，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0072_02",
+    "标识": "1-0291",
     "时间": '斗罗历33年2月8日09时00分',
     "章节": "第七十二章 豁然贯通",
     "人物": [
@@ -3467,7 +3467,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三小舞街头觅食后偶遇天斗城顶级拍卖场，心生好奇入内。"
   },
   {
-    "标识": "ch0073_01",
+    "标识": "1-0292",
     "时间": '斗罗历33年2月10日12时20分',
     "章节": "第七十三章 天斗拍卖场",
     "人物": [
@@ -3479,7 +3479,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三试炮含沙射影惊艳鉴定师，进入拍卖中心结识神秘中年人。"
   },
   {
-    "标识": "ch0073_04",
+    "标识": "1-0293",
     "时间": '斗罗历33年2月10日12时30分',
     "章节": "第七十三章 天斗拍卖场",
     "人物": [
@@ -3490,7 +3490,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "含沙射影试射惊艳鉴定师，破例获准入场，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0073_02",
+    "标识": "1-0294",
     "时间": '斗罗历33年2月10日15时00分',
     "章节": "第七十三章 天斗拍卖场",
     "人物": ["唐三","小舞","宁风致"], 未建档人物: ["雪星亲王"],
@@ -3498,7 +3498,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "神秘中年人力压雪星亲王买下猫女解救，买回含沙射影赠还唐三。"
   },
   {
-    "标识": "ch0073_05",
+    "标识": "1-0295",
     "时间": '斗罗历33年2月10日15时10分',
     "章节": "第七十三章 天斗拍卖场",
     "人物": [
@@ -3510,7 +3510,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "神秘中年人攀谈试探，唐三察觉其实力不凡，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0074_01",
+    "标识": "1-0296",
     "时间": '斗罗历33年2月12日18时00分',
     "章节": "第七十四章 极端纯力量魂师",
     "人物": [
@@ -3522,7 +3522,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三夜战五十八级纯力量魂王泰诺，毒制强敌后自身重伤吐血。"
   },
   {
-    "标识": "ch0074_04",
+    "标识": "1-0297",
     "时间": '斗罗历33年2月12日18时10分',
     "章节": "第七十四章 极端纯力量魂师",
     "人物": [
@@ -3533,7 +3533,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰诺拳碎石板力压唐三，蓝银草与弩箭皆难破防，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0074_02",
+    "标识": "1-0298",
     "时间": '斗罗历33年2月12日18时20分',
     "章节": "第七十四章 极端纯力量魂师",
     "人物": [
@@ -3543,7 +3543,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三疗伤脱险，顿悟八蛛矛暗藏吞噬敌力之能，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0074_05",
+    "标识": "1-0299",
     "时间": '斗罗历33年2月12日18时30分',
     "章节": "第七十四章 极端纯力量魂师",
     "人物": [
@@ -3553,7 +3553,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三伤愈复盘，思考暗器与蓝银草融合之道，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0075_01",
+    "标识": "1-0300",
     "时间": '斗罗历33年2月16日00时40分',
     "章节": "第七十五章 七宝琉璃宗",
     "人物": [
@@ -3566,7 +3566,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣归家诉说奇遇，当众展现七宝琉璃塔进化九宝的惊世异象。"
   },
   {
-    "标识": "ch0075_04",
+    "标识": "1-0301",
     "时间": '斗罗历33年2月16日00时50分',
     "章节": "第七十五章 七宝琉璃宗",
     "人物": [
@@ -3579,7 +3579,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "九宝琉璃塔惊现，尘心跪拜宣誓守护未来宗主，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0075_02",
+    "标识": "1-0302",
     "时间": '斗罗历33年2月16日03时20分',
     "章节": "第七十五章 七宝琉璃宗",
     "人物": [
@@ -3590,7 +3590,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁风致惊觉唐三身怀绝技，决意亲赴史莱克学院结交招揽。"
   },
   {
-    "标识": "ch0075_05",
+    "标识": "1-0303",
     "时间": '斗罗历33年2月16日03时30分',
     "章节": "第七十五章 七宝琉璃宗",
     "人物": [
@@ -3601,7 +3601,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁风致试射暗器惊叹，决定亲赴史莱克结交唐三，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0076_01",
+    "标识": "1-0304",
     "时间": '斗罗历33年2月19日06时40分',
     "章节": "第七十六章 七宝琉璃宗的惊讶",
     "人物": [
@@ -3612,7 +3612,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣以唐三暗器逼出剑斗罗本体武魂，验证暗器突然性威力。"
   },
   {
-    "标识": "ch0076_04",
+    "标识": "1-0305",
     "时间": '斗罗历33年2月19日06时50分',
     "章节": "第七十六章 七宝琉璃宗的惊讶",
     "人物": [
@@ -3623,7 +3623,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "暗器三连套逼出剑斗罗本体，麻痹毒令封号斗罗失神，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0076_02",
+    "标识": "1-0306",
     "时间": '斗罗历33年2月19日09时00分',
     "章节": "第七十六章 七宝琉璃宗的惊讶",
     "人物": [
@@ -3635,7 +3635,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "剑骨二斗罗力荐招揽，宁风致携众连夜启程赴史莱克学院。"
   },
   {
-    "标识": "ch0076_05",
+    "标识": "1-0307",
     "时间": '斗罗历33年2月19日09时10分',
     "章节": "第七十六章 七宝琉璃宗的惊讶",
     "人物": [
@@ -3648,7 +3648,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "二斗罗力荐纳入庇护，宁风致携众连夜启程，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0077_01",
+    "标识": "1-0308",
     "时间": '斗罗历33年2月26日12时20分',
     "章节": "第七十七章 大力神，爷爷真的来了",
     "人物": [
@@ -3661,7 +3661,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦携泰诺泰隆登门立压力赌约，唐三豁命应战，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0077_04",
+    "标识": "1-0309",
     "时间": '斗罗历33年2月26日12时30分',
     "章节": "第七十七章 大力神，爷爷真的来了",
     "人物": [
@@ -3674,7 +3674,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦祖孙登门，提出威压赌约逼唐三应战，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0077_02",
+    "标识": "1-0310",
     "时间": '斗罗历33年2月26日15时00分',
     "章节": "第七十七章 大力神，爷爷真的来了",
     "人物": [
@@ -3685,7 +3685,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三危急关头祭出隐秘的第二武魂黑色小锤，硬撑过赌约终局。"
   },
   {
-    "标识": "ch0077_05",
+    "标识": "1-0311",
     "时间": '斗罗历33年2月26日15时10分',
     "章节": "第七十七章 大力神，爷爷真的来了",
     "人物": [
@@ -3696,7 +3696,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三危急祭出黑色小锤，威压一滞撑过赌约，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0078_01",
+    "标识": "1-0312",
     "时间": '斗罗历33年2月29日18时00分',
     "章节": "第七十八章 唐三左手昊天锤",
     "人物": [
@@ -3710,7 +3710,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁风致及时相救，泰坦认出昊天锤跪拜尊唐三为少主，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0078_04",
+    "标识": "1-0313",
     "时间": '斗罗历33年2月29日18时10分',
     "章节": "第七十八章 唐三左手昊天锤",
     "人物": [
@@ -3723,7 +3723,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦跪拜认主，力之一族二百余人归附唐三，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0078_02",
+    "标识": "1-0314",
     "时间": '斗罗历33年2月29日18时20分',
     "章节": "第七十八章 唐三左手昊天锤",
     "人物": [
@@ -3734,7 +3734,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦追问确认黑锤即祖传昊天锤，唐三心生身世疑云，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0078_05",
+    "标识": "1-0315",
     "时间": '斗罗历33年2月29日18时30分',
     "章节": "第七十八章 唐三左手昊天锤",
     "人物": [
@@ -3745,7 +3745,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦忆昊天宗往事，唐三确认父亲字迹身世疑云加重，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0079_01",
+    "标识": "1-0316",
     "时间": '斗罗历33年3月2日03时20分',
     "章节": "第七十九章 身世之谜与昊天斗罗",
     "人物": [
@@ -3757,7 +3757,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三确认父亲唐昊即主人，力之一族效忠；暗器代工协议达成。"
   },
   {
-    "标识": "ch0079_04",
+    "标识": "1-0317",
     "时间": '斗罗历33年3月2日03时30分',
     "章节": "第七十九章 身世之谜与昊天斗罗",
     "人物": [
@@ -3768,7 +3768,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与宁风致敲定五百万金魂币暗器代工协议，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0079_02",
+    "标识": "1-0318",
     "时间": '斗罗历33年3月2日06时40分',
     "章节": "第七十九章 身世之谜与昊天斗罗",
     "人物": [
@@ -3783,7 +3783,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "队友体谅唐三不多追问；奥斯卡当日向宁荣荣表白心迹。"
   },
   {
-    "标识": "ch0079_05",
+    "标识": "1-0319",
     "时间": '斗罗历33年3月2日06时50分',
     "章节": "第七十九章 身世之谜与昊天斗罗",
     "人物": [
@@ -3794,7 +3794,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡向宁荣荣表白，族规阴影下情感悬而未决，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0080_01",
+    "标识": "1-0320",
     "时间": '斗罗历33年3月5日03时20分',
     "章节": "第八十章 双生武魂的奥秘",
     "人物": [
@@ -3808,7 +3808,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师揭晓天斗六皇牌与父亲昊天斗罗身世，阐明双生武魂终极战略。"
   },
   {
-    "标识": "ch0080_04",
+    "标识": "1-0321",
     "时间": '斗罗历33年3月5日03时30分',
     "章节": "第八十章 双生武魂的奥秘",
     "人物": [
@@ -3819,7 +3819,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师揭晓父亲昊天斗罗身份，阐明双生武魂终极策略，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0080_02",
+    "标识": "1-0322",
     "时间": '斗罗历33年3月5日09时00分',
     "章节": "第八十章 双生武魂的奥秘",
     "人物": [
@@ -3835,7 +3835,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "半年苦修，六怪相继突破四十级，唯小舞进度稍缓仍在冲关。"
   },
   {
-    "标识": "ch0080_05",
+    "标识": "1-0323",
     "时间": '斗罗历33年3月5日09时10分',
     "章节": "第八十章 双生武魂的奥秘",
     "人物": [
@@ -3848,7 +3848,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "半年苦修六怪破四十级，小舞进度稍缓成隐忧，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0081_01",
+    "标识": "1-0324",
     "时间": '斗罗历33年9月5日15时00分',
     "章节": "第八十一章 小舞：哥，替我梳头",
     "人物": [
@@ -3859,7 +3859,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞以母遗紫檀梳请唐三梳发，二人情愫在星月下悄然萌生。"
   },
   {
-    "标识": "ch0081_04",
+    "标识": "1-0325",
     "时间": '斗罗历33年9月5日15时10分',
     "章节": "第八十一章 小舞：哥，替我梳头",
     "人物": [
@@ -3870,7 +3870,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞以母遗紫檀梳托付唐三梳发，情愫悄然质变，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0081_02",
+    "标识": "1-0326",
     "时间": '斗罗历33年9月5日15时20分',
     "章节": "第八十一章 小舞：哥，替我梳头",
     "人物": [
@@ -3888,7 +3888,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七怪整装启程赴落日森林，弗兰德宣布毕业考核首阶不得援手。"
   },
   {
-    "标识": "ch0081_05",
+    "标识": "1-0327",
     "时间": '斗罗历33年9月5日15时30分',
     "章节": "第八十一章 小舞：哥，替我梳头",
     "人物": [
@@ -3901,7 +3901,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德宣布毕业考核规则，四师暗中护航不出手，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0082_01",
+    "标识": "1-0328",
     "时间": '斗罗历33年9月7日15时00分',
     "章节": "第八十二章 赤龙脚下的大地之王",
     "人物": [
@@ -3915,7 +3915,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "帐篷内大师与柳二龙旧情几近点燃，戴沐白示警戛然打断。"
   },
   {
-    "标识": "ch0082_04",
+    "标识": "1-0329",
     "时间": '斗罗历33年9月7日15时10分',
     "章节": "第八十二章 赤龙脚下的大地之王",
     "人物": [
@@ -3926,7 +3926,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "帐篷内柳二龙主动握手表白，大师泪落未拒，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0082_02",
+    "标识": "1-0330",
     "时间": '斗罗历33年9月7日18时00分',
     "章节": "第八十二章 赤龙脚下的大地之王",
     "人物": [
@@ -3939,7 +3939,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "柳二龙迁怒暴虐撕碎大地之王，赠予马红俊获取第四魂环。"
   },
   {
-    "标识": "ch0082_05",
+    "标识": "1-0331",
     "时间": '斗罗历33年9月7日18时10分',
     "章节": "第八十二章 赤龙脚下的大地之王",
     "人物": [
@@ -3950,7 +3950,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "柳二龙赤龙真身徒手肢解火蝎，赠予马红俊获魂环，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0083_01",
+    "标识": "1-0332",
     "时间": '斗罗历33年9月9日00时40分',
     "章节": "第八十三章 大地之王与粉红娘娘",
     "人物": [
@@ -3963,7 +3963,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊获第四魂环，柳二龙余怒未消令众人战战兢兢，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0083_04",
+    "标识": "1-0333",
     "时间": '斗罗历33年9月9日00时50分',
     "章节": "第八十三章 大地之王与粉红娘娘",
     "人物": [
@@ -3975,7 +3975,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊获凤凰啸天击，唐三发现前方粉红毒雾，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0083_02",
+    "标识": "1-0334",
     "时间": '斗罗历33年9月9日03时20分',
     "章节": "第八十三章 大地之王与粉红娘娘",
     "人物": [
@@ -3988,7 +3988,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "上千粉红女郎毒雾伏击，唐三以幽香绮罗仙品克毒护众。"
   },
   {
-    "标识": "ch0083_05",
+    "标识": "1-0335",
     "时间": '斗罗历33年9月9日03时30分',
     "章节": "第八十三章 大地之王与粉红娘娘",
     "人物": [
@@ -4000,7 +4000,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千只粉红女郎毒雾袭来，唐三以仙品花粉辟出安全区，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0084_01",
+    "标识": "1-0336",
     "时间": '斗罗历33年9月11日06时40分',
     "章节": "第八十四章 胖子的第四魂技，凤凰啸天击",
     "人物": [
@@ -4012,7 +4012,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "蘑菇肠飞行突围毒雾区，锁定复仇而来的粉红娘娘首领。"
   },
   {
-    "标识": "ch0084_04",
+    "标识": "1-0337",
     "时间": '斗罗历33年9月11日06时50分',
     "章节": "第八十四章 胖子的第四魂技，凤凰啸天击",
     "人物": [
@@ -4024,7 +4024,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "蘑菇肠飞行突围毒雾，锁定报仇的粉红娘娘首领，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0084_02",
+    "标识": "1-0338",
     "时间": '斗罗历33年9月11日09时00分',
     "章节": "第八十四章 胖子的第四魂技，凤凰啸天击",
     "人物": [
@@ -4038,7 +4038,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊祭凤凰啸天击擒杀粉红娘娘，奥斯卡吸收获亢奋技。"
   },
   {
-    "标识": "ch0084_05",
+    "标识": "1-0339",
     "时间": '斗罗历33年9月11日09时10分',
     "章节": "第八十四章 胖子的第四魂技，凤凰啸天击",
     "人物": [
@@ -4050,7 +4050,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡击杀吸收获亢奋技，大师剖析战术配合，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0085_01",
+    "标识": "1-0340",
     "时间": '斗罗历33年9月13日09时00分',
     "章节": "第八十五章 幽香引魂兽",
     "人物": [
@@ -4062,7 +4062,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三献策以幽香绮罗仙品于独孤博旧毒阵引诱强大魂兽自投。"
   },
   {
-    "标识": "ch0085_04",
+    "标识": "1-0341",
     "时间": '斗罗历33年9月13日09时10分',
     "章节": "第八十五章 幽香引魂兽",
     "人物": [
@@ -4075,7 +4075,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七怪合力围猎鬼虎，朱竹清获千年魂环，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0085_02",
+    "标识": "1-0342",
     "时间": '斗罗历33年9月13日12时20分',
     "章节": "第八十五章 幽香引魂兽",
     "人物": [
@@ -4089,7 +4089,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七怪合力智斗擒杀鬼虎，朱竹清吸收千年魂环，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0085_03",
+    "标识": "1-0343",
     "时间": '斗罗历33年9月13日15时00分',
     "章节": "第八十五章 幽香引魂兽",
     "人物": [
@@ -4103,7 +4103,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "近二十兽潮围攻，众人退入毒阵，唐三献飞天神爪擒兽新计。"
   },
   {
-    "标识": "ch0085_05",
+    "标识": "1-0344",
     "时间": '斗罗历33年9月13日15时10分',
     "章节": "第八十五章 幽香引魂兽",
     "人物": [
@@ -4116,7 +4116,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "兽潮围攻退入毒阵，唐三献飞天神爪擒兽新计，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0086_01",
+    "标识": "1-0345",
     "时间": '斗罗历33年9月14日15时10分',
     "章节": "第八十六章 千年麟甲兽与万年魔蛛",
     "人物": [
@@ -4133,7 +4133,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三力排众议选择万年地穴魔蛛为第四魂环，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0086_02",
+    "标识": "1-0346",
     "时间": '斗罗历33年9月14日15时20分',
     "章节": "第八十六章 千年麟甲兽与万年魔蛛",
     "人物": [
@@ -4145,7 +4145,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "地穴魔蛛以蛛网囚笼与隐匿两度逃脱弗兰德追捕，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0086_04",
+    "标识": "1-0347",
     "时间": '斗罗历33年9月14日15时30分',
     "章节": "第八十六章 千年麟甲兽与万年魔蛛",
     "人物": [
@@ -4157,7 +4157,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以大赛团战需求说服众人，决意吸收万年魂环，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0087_01",
+    "标识": "1-0348",
     "时间": '斗罗历33年9月14日21时50分',
     "章节": "第八十七章 万年地穴魔蛛",
     "人物": [
@@ -4168,7 +4168,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三配合弗兰德终擒万年地穴魔蛛，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0087_04",
+    "标识": "1-0349",
     "时间": '斗罗历33年9月14日22时00分',
     "章节": "第八十七章 万年地穴魔蛛",
     "人物": [
@@ -4179,7 +4179,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三配合弗兰德终擒万年地穴魔蛛凌空返回，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0087_02",
+    "标识": "1-0350",
     "时间": '斗罗历33年9月15日00时50分',
     "章节": "第八十七章 万年地穴魔蛛",
     "人物": [
@@ -4193,7 +4193,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "人面魔蛛偷袭小舞，相思断肠红代其挡下致命一击，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0087_05",
+    "标识": "1-0351",
     "时间": '斗罗历33年9月15日01时00分',
     "章节": "第八十七章 万年地穴魔蛛",
     "人物": [
@@ -4205,7 +4205,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "人面魔蛛偷袭小舞，相思断肠红护体挡下致命击，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0088_01",
+    "标识": "1-0352",
     "时间": '斗罗历33年9月16日03时30分',
     "章节": "第八十八章 吞噬，八蛛矛",
     "人物": [
@@ -4219,7 +4219,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "柳二龙认小舞为干女儿，大师柳二龙终解心结相拥，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0088_04",
+    "标识": "1-0353",
     "时间": '斗罗历33年9月17日03时30分',
     "章节": "第八十八章 吞噬，八蛛矛",
     "人物": [
@@ -4231,7 +4231,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "柳二龙认小舞为干女儿，弗兰德劝大师破心结，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0088_02",
+    "标识": "1-0354",
     "时间": '斗罗历33年9月17日03时40分',
     "章节": "第八十八章 吞噬，八蛛矛",
     "人物": [
@@ -4242,7 +4242,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三历劫吸收万年魂环归来，山腰与小舞相拥，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0088_05",
+    "标识": "1-0355",
     "时间": '斗罗历33年9月17日15时10分',
     "章节": "第八十八章 吞噬，八蛛矛",
     "人物": [
@@ -4253,7 +4253,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三历劫吸收万年魂环，紫极魔瞳抵御灵魂震荡，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0089_01",
+    "标识": "1-0356",
     "时间": '斗罗历33年9月18日03时30分',
     "章节": "第八十九章 唐三的第四魂技",
     "人物": ["唐三","戴沐白","马红俊","大师","弗兰德","柳二龙","泰隆"], 未建档人物: ["黄远","京灵","绛珠"],
@@ -4261,7 +4261,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三展示万年魂技蓝银囚笼，六怪多破四十级，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0089_04",
+    "标识": "1-0357",
     "时间": '斗罗历33年9月18日03时40分',
     "章节": "第八十九章 唐三的第四魂技",
     "人物": [
@@ -4274,7 +4274,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三展示万年魂技蓝银囚笼，群控困住三位魂圣，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0089_02",
+    "标识": "1-0358",
     "时间": '斗罗历33年9月18日09时10分',
     "章节": "第八十九章 唐三的第四魂技",
     "人物": [
@@ -4288,7 +4288,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师讲解大赛赛制，授权唐三统筹战术与人选，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0089_05",
+    "标识": "1-0359",
     "时间": '斗罗历33年9月18日09时20分',
     "章节": "第八十九章 唐三的第四魂技",
     "人物": ["唐三","大师","泰隆"], 未建档人物: ["黄远","京灵","绛珠"],
@@ -4296,7 +4296,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师讲解大赛赛制，授权唐三统筹战术人选，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0090_01",
+    "标识": "1-0360",
     "时间": '斗罗历33年9月21日03时30分',
     "章节": "第九十章 全大陆高级魂师学院精英大赛",
     "人物": ["唐三","戴沐白","马红俊","弗兰德","宁风致"], 未建档人物: ["雪星亲王"],
@@ -4304,7 +4304,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大赛天斗城开幕，史莱克学院屎绿队服惨遭围观嘲笑，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0090_04",
+    "标识": "1-0361",
     "时间": '斗罗历33年9月21日03时40分',
     "章节": "第九十章 全大陆高级魂师学院精英大赛",
     "人物": [
@@ -4316,7 +4316,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "屎绿队服惨遭嘲笑，弗兰德暗算广告位价值，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0090_02",
+    "标识": "1-0362",
     "时间": '斗罗历33年9月21日06时50分',
     "章节": "第九十章 全大陆高级魂师学院精英大赛",
     "人物": [
@@ -4329,7 +4329,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "抽签史莱克对阵天斗皇家学院，萨拉斯抛武魂圣殿悬赏。"
   },
   {
-    "标识": "ch0090_05",
+    "标识": "1-0363",
     "时间": '斗罗历33年9月21日07时00分',
     "章节": "第九十章 全大陆高级魂师学院精英大赛",
     "人物": [
@@ -4341,7 +4341,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "萨拉斯抛武魂圣殿悬赏，帝国与武魂殿博弈显端倪，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0091_01",
+    "标识": "1-0364",
     "时间": '斗罗历33年9月22日09时10分',
     "章节": "第九十一章 预选赛第一场，开战",
     "人物": ["唐三","戴沐白","小舞","泰隆"], 未建档人物: ["黄远","京灵","绛珠"],
@@ -4349,7 +4349,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三万年黑环震惊全场，蓝银囚笼瞬间群控对手，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0091_02",
+    "标识": "1-0365",
     "时间": '斗罗历33年9月22日09时20分',
     "章节": "第九十一章 预选赛第一场，开战",
     "人物": ["唐三","戴沐白","小舞"], 未建档人物: ["京灵","绛珠"],
@@ -4357,7 +4357,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克学院一分钟完胜天斗皇家学院二队，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0091_04",
+    "标识": "1-0366",
     "时间": '斗罗历33年9月22日09时30分',
     "章节": "第九十一章 预选赛第一场，开战",
     "人物": ["唐三","戴沐白","泰隆"], 未建档人物: ["黄远","京灵"],
@@ -4365,7 +4365,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "万年黑环震惊全场，蓝银囚笼群控后众人轮番爆发，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0092_01",
+    "标识": "1-0367",
     "时间": '斗罗历33年9月23日12时30分',
     "章节": "第九十二章 一分钟的完胜",
     "人物": [
@@ -4379,7 +4379,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以对手性命反诘裁判，弗兰德盘算队服广告，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0092_04",
+    "标识": "1-0368",
     "时间": '斗罗历33年9月23日12时40分',
     "章节": "第九十二章 一分钟的完胜",
     "人物": [
@@ -4391,7 +4391,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三反诘裁判维持胜果，一分钟碾压震动全场，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0092_02",
+    "标识": "1-0369",
     "时间": '斗罗历33年9月23日15时10分',
     "章节": "第九十二章 一分钟的完胜",
     "人物": [
@@ -4406,7 +4406,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁风致招揽众人遭婉拒，单独邀唐三密谈，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0092_05",
+    "标识": "1-0370",
     "时间": '斗罗历33年9月23日15时20分',
     "章节": "第九十二章 一分钟的完胜",
     "人物": [
@@ -4419,7 +4419,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁风致招揽遭婉拒，透露太子有唐昊消息待告，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0093_01",
+    "标识": "1-0371",
     "时间": '斗罗历33年9月25日18时10分',
     "章节": "第九十三章 唐昊退隐的原因",
     "人物": ["唐三","宁风致","千仞雪"],
@@ -4427,7 +4427,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪清河透露唐昊曾与武魂殿一战重创教皇后隐退，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0093_04",
+    "标识": "1-0372",
     "时间": '斗罗历33年9月25日18时20分',
     "章节": "第九十三章 唐昊退隐的原因",
     "人物": ["唐三","千仞雪","宁风致"],
@@ -4435,7 +4435,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪清河揭唐昊重创教皇后隐退，母亲下落成谜，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0093_02",
+    "标识": "1-0373",
     "时间": '斗罗历33年9月25日18时30分',
     "章节": "第九十三章 唐昊退隐的原因",
     "人物": ["唐三","宁风致","千仞雪","大师","宁荣荣"],
@@ -4443,7 +4443,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪清河赠金牌示好，大师促唐三与荣荣同修分心控制，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0093_05",
+    "标识": "1-0374",
     "时间": '斗罗历33年9月25日18时40分',
     "章节": "第九十三章 唐昊退隐的原因",
     "人物": [
@@ -4455,7 +4455,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师促唐三荣荣同修分心控制，后山开始训练，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0094_01",
+    "标识": "1-0375",
     "时间": '斗罗历33年9月27日03时30分',
     "章节": "第九十四章 分心控制之三窍御之心",
     "人物": [
@@ -4467,7 +4467,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三借蓝银草感知与满林野生蓝银草产生诡异共鸣，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0094_04",
+    "标识": "1-0376",
     "时间": '斗罗历33年9月27日03时40分',
     "章节": "第九十四章 分心控制之三窍御之心",
     "人物": [
@@ -4478,7 +4478,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "野生蓝银草对唐三产生诡异共鸣，暗示武魂不凡，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0094_02",
+    "标识": "1-0377",
     "时间": '斗罗历33年9月27日06时50分',
     "章节": "第九十四章 分心控制之三窍御之心",
     "人物": [
@@ -4490,7 +4490,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三初窥分心控制门径，同时驱使三根蓝银草，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0094_05",
+    "标识": "1-0378",
     "时间": '斗罗历33年9月27日07时00分',
     "章节": "第九十四章 分心控制之三窍御之心",
     "人物": [
@@ -4501,7 +4501,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三一时辰初窥三窍御之心，宁荣荣惊叹天赋，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0095_01",
+    "标识": "1-0379",
     "时间": '斗罗历33年9月29日03时30分',
     "章节": "第九十五章 唐三的新战术，宇宙天空流",
     "人物": [
@@ -4517,7 +4517,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克遇最强防御象甲学院，唐三决定五人应战，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0095_04",
+    "标识": "1-0380",
     "时间": '斗罗历33年9月29日03时40分',
     "章节": "第九十五章 唐三的新战术，宇宙天空流",
     "人物": [
@@ -4529,7 +4529,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "遇象甲学院最强防御，唐三调整阵容五人应战，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0095_02",
+    "标识": "1-0381",
     "时间": '斗罗历33年9月29日09时10分',
     "章节": "第九十五章 唐三的新战术，宇宙天空流",
     "人物": ["唐三","戴沐白","小舞","朱竹清","奥斯卡"], 未建档人物: ["京灵","黄远"],
@@ -4537,7 +4537,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三携六人集体腾空，宇宙天空流打乱象甲阵型，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0096_01",
+    "标识": "1-0382",
     "时间": '斗罗历33年10月1日09时10分',
     "章节": "第九十六章 极限团控与恐怖的幽冥白虎",
     "人物": ["唐三","戴沐白","朱竹清","呼延震"], 未建档人物: ["京灵","黄远"],
@@ -4545,7 +4545,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "呼延力惊现头部魂骨硬挡围攻，打破唐三必杀之局，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0095_05",
+    "标识": "1-0383",
     "时间": '斗罗历33年10月1日09时20分',
     "章节": "第九十五章 唐三的新战术，宇宙天空流",
     "人物": [
@@ -4558,7 +4558,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三自创宇宙天空流战术，集体腾空破象甲阵型，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0096_04",
+    "标识": "1-0384",
     "时间": '斗罗历33年10月1日09时30分',
     "章节": "第九十六章 极限团控与恐怖的幽冥白虎",
     "人物": [
@@ -4570,7 +4570,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "呼延力头部魂骨激活，硬挡围攻破唐三必杀局，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0096_02",
+    "标识": "1-0385",
     "时间": '斗罗历33年10月1日12时30分',
     "章节": "第九十六章 极限团控与恐怖的幽冥白虎",
     "人物": ["唐三","戴沐白","朱竹清","小舞","呼延力"], 未建档人物: ["京灵","黄远"],
@@ -4578,7 +4578,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "幽冥白虎横扫全场，史莱克险胜象甲学院，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0096_05",
+    "标识": "1-0386",
     "时间": '斗罗历33年10月1日12时40分',
     "章节": "第九十六章 极限团控与恐怖的幽冥白虎",
     "人物": [
@@ -4589,7 +4589,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "幽冥白虎十米巨兽横扫全场，史莱克险胜象甲，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0097_01",
+    "标识": "1-0387",
     "时间": '斗罗历33年10月3日15时10分',
     "章节": "第九十七章 魂师界的极限流与均衡流",
     "人物": [
@@ -4602,7 +4602,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "古榕盛赞唐三团控战术，观众高呼史莱克声浪滔天，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0097_04",
+    "标识": "1-0388",
     "时间": '斗罗历33年10月3日15时20分',
     "章节": "第九十七章 魂师界的极限流与均衡流",
     "人物": [
@@ -4613,7 +4613,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师剖析三流之争，警示武魂殿黄金一代最强，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0097_02",
+    "标识": "1-0389",
     "时间": '斗罗历33年10月3日18时10分',
     "章节": "第九十七章 魂师界的极限流与均衡流",
     "人物": [
@@ -4624,7 +4624,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师剖析极限流均衡流之争，警示武魂殿代表队最强，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0097_05",
+    "标识": "1-0390",
     "时间": '斗罗历33年10月3日18时20分',
     "章节": "第九十七章 魂师界的极限流与均衡流",
     "人物": [
@@ -4636,7 +4636,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "古榕透露武魂殿队长戚悦双控武魂，唐三须早做准备，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0098_01",
+    "标识": "1-0391",
     "时间": '斗罗历33年10月5日03时30分',
     "章节": "第九十八章 追魂夺命阎王帖",
     "人物": ["唐三"], 未建档人物: ["时年"],
@@ -4644,7 +4644,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "苍晖学院导师时年伏击唐三，欲除之而后快，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0098_04",
+    "标识": "1-0392",
     "时间": '斗罗历33年10月5日03时40分',
     "章节": "第九十八章 追魂夺命阎王帖",
     "人物": ["唐三"], 未建档人物: ["时年"],
@@ -4652,7 +4652,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "时年现身伏击，唐三示弱暗中以紫极魔瞳锁定真身，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0098_02",
+    "标识": "1-0393",
     "时间": '斗罗历33年10月5日06时50分',
     "章节": "第九十八章 追魂夺命阎王帖",
     "人物": ["唐三","小舞"], 未建档人物: ["时年"],
@@ -4660,7 +4660,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "时年以梦魇幻境折磨唐三，紫极魔瞳暗中锁定真身，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0098_03",
+    "标识": "1-0394",
     "时间": '斗罗历33年10月5日09时10分',
     "章节": "第九十八章 追魂夺命阎王帖",
     "人物": ["唐三"], 未建档人物: ["时年"],
@@ -4668,7 +4668,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三阎王帖秒杀时年，意外拾得七彩魂骨，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0098_05",
+    "标识": "1-0395",
     "时间": '斗罗历33年10月5日09时20分',
     "章节": "第九十八章 追魂夺命阎王帖",
     "人物": ["唐三"], 未建档人物: ["时年"],
@@ -4676,7 +4676,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三忍幻境之痛甩出阎王帖秒杀时年，获七彩魂骨，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0099_01",
+    "标识": "1-0396",
     "时间": '斗罗历33年10月7日12时30分',
     "章节": "第九十九章 又是一块魂骨",
     "人物": [
@@ -4688,7 +4688,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三诛时年得魂骨，遵大师教诲暂不吸收留作置换，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0099_04",
+    "标识": "1-0397",
     "时间": '斗罗历33年10月7日12时40分',
     "章节": "第九十九章 又是一块魂骨",
     "人物": [
@@ -4700,7 +4700,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师建议七彩魂骨暂不吸收，留作日后置换，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0099_02",
+    "标识": "1-0398",
     "时间": '斗罗历33年10月7日15时10分',
     "章节": "第九十九章 又是一块魂骨",
     "人物": [
@@ -4713,7 +4713,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克十战全胜居首，唐三决意正面迎战炽火学院，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0099_05",
+    "标识": "1-0399",
     "时间": '斗罗历33年10月7日15时20分',
     "章节": "第九十九章 又是一块魂骨",
     "人物": [
@@ -4725,7 +4725,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "预选赛十连胜居首，唐三决意正面迎战克制己方的炽火学院。"
   },
   {
-    "标识": "ch0100_01",
+    "标识": "1-0400",
     "时间": '斗罗历33年10月8日15时20分',
     "章节": "第一百章 史莱克学院VS炽火学院",
     "人物": [
@@ -4738,7 +4738,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "预选赛遇炽火学院，唐三识破对手辅助控制暗流，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0100_04",
+    "标识": "1-0401",
     "时间": '斗罗历33年10月8日15时30分',
     "章节": "第一百章 史莱克学院VS炽火学院",
     "人物": [
@@ -4750,7 +4750,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三观察识破火舞与火星辅助的真实控制配置，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0100_02",
+    "标识": "1-0402",
     "时间": '斗罗历33年10月8日18时40分',
     "章节": "第一百章 史莱克学院VS炽火学院",
     "人物": ["唐三","戴沐白","泰隆","火舞"], 未建档人物: ["黄远"],
@@ -4758,7 +4758,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三角合围险胜火无双，反遭火舞抗拒火环破局，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0100_03",
+    "标识": "1-0403",
     "时间": '斗罗历33年10月8日21时00分',
     "章节": "第一百章 史莱克学院VS炽火学院",
     "人物": [
@@ -4770,7 +4770,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三揭示蓝银草火免特性，完胜炽火学院夺十一连胜，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0100_05",
+    "标识": "1-0404",
     "时间": '斗罗历33年10月8日21时10分',
     "章节": "第一百章 史莱克学院VS炽火学院",
     "人物": [
@@ -4780,7 +4780,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三揭示火免特性，蓝银囚笼笼罩全场完胜，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0101_01",
+    "标识": "1-0405",
     "时间": '斗罗历33年10月11日00时20分',
     "章节": "第一百零一章 火免，蓝银草",
     "人物": [
@@ -4791,7 +4791,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师警示唐三锋芒太露，唐三坚持继续出战，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0101_04",
+    "标识": "1-0406",
     "时间": '斗罗历33年10月11日00时30分',
     "章节": "第一百零一章 火免，蓝银草",
     "人物": [
@@ -4802,7 +4802,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师警示锋芒过露，唐三坚持出战吸引火力，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0101_02",
+    "标识": "1-0407",
     "时间": '斗罗历33年10月11日00时40分',
     "章节": "第一百零一章 火免，蓝银草",
     "人物": [
@@ -4816,7 +4816,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "风笑天示好求胜，火舞挑衅反被唐三借力摔飞，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0101_05",
+    "标识": "1-0408",
     "时间": '斗罗历33年10月11日00时50分',
     "章节": "第一百零一章 火免，蓝银草",
     "人物": [
@@ -4828,7 +4828,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "风笑天示好暗藏算计，火舞挑衅反被唐三摔飞，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0102_01",
+    "标识": "1-0409",
     "时间": '斗罗历33年10月12日15时20分',
     "章节": "第一百零二章 隐藏的奥秘，七宝石武魂",
     "人物": [
@@ -4839,7 +4839,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "苍晖学院亮出七彩宝石武魂，唐三戒备静待，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0102_04",
+    "标识": "1-0410",
     "时间": '斗罗历33年10月12日15时30分',
     "章节": "第一百零二章 隐藏的奥秘，七宝石武魂",
     "人物": [
@@ -4850,7 +4850,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "苍晖学院全控制系阵容亮相，唐三判断合体攻击将至，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0102_02",
+    "标识": "1-0411",
     "时间": '斗罗历33年10月12日18时40分',
     "章节": "第一百零二章 隐藏的奥秘，七宝石武魂",
     "人物": [
@@ -4863,7 +4863,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "苍晖学院七彩光柱凝聚，疑似神技震动全场，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0102_05",
+    "标识": "1-0412",
     "时间": '斗罗历33年10月12日18时50分',
     "章节": "第一百零二章 隐藏的奥秘，七宝石武魂",
     "人物": [
@@ -4875,7 +4875,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七彩光柱震动全场，大师看破为控制系融合非神技，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0103_01",
+    "标识": "1-0413",
     "时间": '斗罗历33年10月14日21时00分',
     "章节": "第一百零三章 七位一体融合技",
     "人物": [
@@ -4885,7 +4885,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三紫极魔瞳精神绝杀，苍晖七人反噬成痴，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0103_04",
+    "标识": "1-0414",
     "时间": '斗罗历33年10月14日21时10分',
     "章节": "第一百零三章 七位一体融合技",
     "人物": [
@@ -4895,7 +4895,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三独承精神压力，精神冲击绝杀苍晖七人，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0103_02",
+    "标识": "1-0415",
     "时间": '斗罗历33年10月15日00时20分',
     "章节": "第一百零三章 七位一体融合技",
     "人物": [
@@ -4907,7 +4907,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三坦承狠手缘由，众怪物齐心守护秘密，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0103_05",
+    "标识": "1-0416",
     "时间": '斗罗历33年10月15日00时30分',
     "章节": "第一百零三章 七位一体融合技",
     "人物": [
@@ -4919,7 +4919,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三坦承斩草除根缘由，对外淡化己方实力，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0104_01",
+    "标识": "1-0417",
     "时间": '斗罗历33年10月17日03时00分',
     "章节": "第一百零四章 一唱一和",
     "人物": [
@@ -4932,7 +4932,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "调查组登门问罪，弗兰德以茶戏耍拖延对峙，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0104_04",
+    "标识": "1-0418",
     "时间": '斗罗历33年10月17日03时10分',
     "章节": "第一百零四章 一唱一和",
     "人物": [
@@ -4943,7 +4943,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "萨拉斯登门逼问，弗兰德强硬拖延等大师底牌，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0104_02",
+    "标识": "1-0419",
     "时间": '斗罗历33年10月17日06时00分',
     "章节": "第一百零四章 一唱一和",
     "人物": [
@@ -4956,7 +4956,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师亮教皇令震慑武魂殿，确认唐昊封号“昊天”，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0104_05",
+    "标识": "1-0420",
     "时间": '斗罗历33年10月17日06时10分',
     "章节": "第一百零四章 一唱一和",
     "人物": [
@@ -4968,7 +4968,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "教皇令震慑武魂殿，确认唐昊封号昊天斗罗，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0105_01",
+    "标识": "1-0421",
     "时间": '斗罗历33年10月18日15时20分',
     "章节": "第一百零五章 武魂融合技，冰雪飘零",
     "人物": ["唐三","戴沐白","水冰儿","泰隆"], 未建档人物: ["黄远"],
@@ -4976,7 +4976,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "水冰儿瞬发连续冰封，史莱克学院陷入被动，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0105_04",
+    "标识": "1-0422",
     "时间": '斗罗历33年10月18日15时30分',
     "章节": "第一百零五章 武魂融合技，冰雪飘零",
     "人物": [
@@ -4987,7 +4987,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "水冰儿瞬发冰封四人，唐三判断其为最强对手，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0105_02",
+    "标识": "1-0423",
     "时间": '斗罗历33年10月18日18时40分',
     "章节": "第一百零五章 武魂融合技，冰雪飘零",
     "人物": ["唐三","水冰儿","戴沐白"], 未建档人物: ["雪舞"],
@@ -4995,7 +4995,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "水冰儿雪舞蓝白光柱腾起，武魂融合技将临，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0105_05",
+    "标识": "1-0424",
     "时间": '斗罗历33年10月18日18时50分',
     "章节": "第一百零五章 武魂融合技，冰雪飘零",
     "人物": ["水冰儿","唐三"], 未建档人物: ["雪舞"],
@@ -5003,7 +5003,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "水冰儿雪舞武魂融合技将临，唐三令全队收缩防御，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0106_01",
+    "标识": "1-0425",
     "时间": '斗罗历33年10月20日21时00分',
     "章节": "第一百零六章 冰雪飘零冰凤凰",
     "人物": ["唐三","水冰儿","戴沐白"], 未建档人物: ["雪舞"],
@@ -5011,7 +5011,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "冰雪飘零席卷全场，唐三孤身迎战冰凤凰，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0106_04",
+    "标识": "1-0426",
     "时间": '斗罗历33年10月20日21时10分',
     "章节": "第一百零六章 冰雪飘零冰凤凰",
     "人物": ["唐三","水冰儿"], 未建档人物: ["雪舞"],
@@ -5019,7 +5019,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三护队友撤退后独自凌空躲避冰凤凰锁定，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0106_02",
+    "标识": "1-0427",
     "时间": '斗罗历33年10月21日00时20分',
     "章节": "第一百零六章 冰雪飘零冰凤凰",
     "人物": ["唐三","水冰儿"], 未建档人物: ["雪舞"],
@@ -5027,7 +5027,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三借八蛛矛脱险，坦言冰火免疫，比赛判平，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0106_05",
+    "标识": "1-0428",
     "时间": '斗罗历33年10月21日00时30分',
     "章节": "第一百零六章 冰雪飘零冰凤凰",
     "人物": [
@@ -5038,7 +5038,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三坦言冰火免疫局限，比赛判平互相认输，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0107_01",
+    "标识": "1-0429",
     "时间": '斗罗历33年10月23日03时00分',
     "章节": "第一百零七章 真是普通的蓝银草么？",
     "人物": [
@@ -5052,7 +5052,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "预选赛晋级颁奖，雪夜大帝破例赐封十子爵，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0107_02",
+    "标识": "1-0430",
     "时间": '斗罗历33年10月23日06时00分',
     "章节": "第一百零七章 真是普通的蓝银草么？",
     "人物": [
@@ -5064,7 +5064,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞偷袭反被摔飞，唐三闭关反思魂技缺陷，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0107_04",
+    "标识": "1-0431",
     "时间": '斗罗历33年10月23日06时10分',
     "章节": "第一百零七章 真是普通的蓝银草么？",
     "人物": [
@@ -5075,7 +5075,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞偷袭反被摔飞，唐三闭关反思魂技缺陷，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0107_03",
+    "标识": "1-0432",
     "时间": '斗罗历33年10月23日06时20分',
     "章节": "第一百零七章 真是普通的蓝银草么？",
     "人物": [
@@ -5085,7 +5085,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三两日茫然自我怀疑，动摇蓝银草修炼信念，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0107_05",
+    "标识": "1-0433",
     "时间": '斗罗历33年10月23日06时30分',
     "章节": "第一百零七章 真是普通的蓝银草么？",
     "人物": [
@@ -5095,7 +5095,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三两日自我怀疑，首次动摇蓝银草修炼信念，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0108_01",
+    "标识": "1-0434",
     "时间": '斗罗历33年10月24日15时20分',
     "章节": "第一百零八章 豁然贯通",
     "人物": [
@@ -5106,7 +5106,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博以双生武魂血脉理论点醒唐三心结，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0108_04",
+    "标识": "1-0435",
     "时间": '斗罗历33年10月24日15时30分',
     "章节": "第一百零八章 豁然贯通",
     "人物": [
@@ -5117,7 +5117,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博以双生武魂血脉理论点醒唐三心结，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0108_02",
+    "标识": "1-0436",
     "时间": '斗罗历33年10月24日21时00分',
     "章节": "第一百零八章 豁然贯通",
     "人物": [
@@ -5128,7 +5128,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博揭示冠军三块魂骨与黄金一代实力悬殊，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0108_05",
+    "标识": "1-0437",
     "时间": '斗罗历33年10月24日21时10分',
     "章节": "第一百零八章 豁然贯通",
     "人物": [
@@ -5139,7 +5139,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博揭冠军三块魂骨，唐三顿悟暗器融合之法，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0108_03",
+    "标识": "1-0438",
     "时间": '斗罗历33年10月25日03时00分',
     "章节": "第一百零八章 豁然贯通",
     "人物": [
@@ -5151,7 +5151,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三悟暗器融合之法，与小舞梳发情愫渐浓，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0109_01",
+    "标识": "1-0439",
     "时间": '斗罗历33年10月26日21时00分',
     "章节": "第一百零九章 被算计的柳二龙",
     "人物": [
@@ -5166,7 +5166,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克七怪合力设局，完胜魂圣柳二龙，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0109_04",
+    "标识": "1-0440",
     "时间": '斗罗历33年10月26日21时10分',
     "章节": "第一百零九章 被算计的柳二龙",
     "人物": [
@@ -5181,7 +5181,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七怪合力设局完胜魂圣柳二龙，证明配合克等级，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0109_02",
+    "标识": "1-0441",
     "时间": '斗罗历33年10月27日00时20分',
     "章节": "第一百零九章 被算计的柳二龙",
     "人物": [
@@ -5193,7 +5193,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师揭穿七怪算计柳二龙，柳二龙迁怒替补加练，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0109_03",
+    "标识": "1-0442",
     "时间": '斗罗历33年10月27日00时30分',
     "章节": "第一百零九章 被算计的柳二龙",
     "人物": ["唐三","弗兰德","宁风致","千仞雪","宁荣荣"],
@@ -5201,7 +5201,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "抵狩猎场备战晋级赛，宁风致求送弟子求学，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0109_05",
+    "标识": "1-0443",
     "时间": '斗罗历33年10月27日00时40分',
     "章节": "第一百零九章 被算计的柳二龙",
     "人物": ["弗兰德","宁风致","千仞雪"],
@@ -5209,7 +5209,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "抵狩猎场备战，宁风致求送宗门弟子入学，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0110_01",
+    "标识": "1-0444",
     "时间": '斗罗历33年10月28日15时20分',
     "章节": "第一百一十章 花中之王、君临群芳",
     "人物": [
@@ -5220,7 +5220,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞轻取轻敌魂宗，柳二龙镇场止群殴，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0110_04",
+    "标识": "1-0445",
     "时间": '斗罗历33年10月28日15时30分',
     "章节": "第一百一十章 花中之王、君临群芳",
     "人物": [
@@ -5231,7 +5231,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "相思断肠红君临群芳克化太阳花，不战而胜，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0110_02",
+    "标识": "1-0446",
     "时间": '斗罗历33年10月28日18时40分',
     "章节": "第一百一十章 花中之王、君临群芳",
     "人物": [
@@ -5242,7 +5242,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "相思断肠红君临群芳护体，克化太阳花魂师，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0110_03",
+    "标识": "1-0447",
     "时间": '斗罗历33年10月28日21时00分',
     "章节": "第一百一十章 花中之王、君临群芳",
     "人物": [
@@ -5253,7 +5253,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞五连胜后唐三两人终结首轮晋级赛，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0110_05",
+    "标识": "1-0448",
     "时间": '斗罗历33年10月28日21时10分',
     "章节": "第一百一十章 花中之王、君临群芳",
     "人物": [
@@ -5264,7 +5264,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞五连胜唐三收尾，两人终结首轮晋级赛，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0111_01",
+    "标识": "1-0449",
     "时间": '斗罗历33年10月30日15时20分',
     "章节": "第一百一十一章 魂技与唐门绝学的融合",
     "人物": [
@@ -5276,7 +5276,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师奇兵首发唐三，鬼影迷踪破火无双爆裂拳，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0111_04",
+    "标识": "1-0450",
     "时间": '斗罗历33年10月30日15时30分',
     "章节": "第一百一十一章 魂技与唐门绝学的融合",
     "人物": [
@@ -5287,7 +5287,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三顿悟融暗器索技于蓝银草，化身索鞭抽击，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0111_02",
+    "标识": "1-0451",
     "时间": '斗罗历33年10月30日18时40分',
     "章节": "第一百一十一章 魂技与唐门绝学的融合",
     "人物": [
@@ -5298,7 +5298,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三融暗器索技于蓝银草，一穿六完胜炽火主力，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0111_05",
+    "标识": "1-0452",
     "时间": '斗罗历33年10月30日18时50分',
     "章节": "第一百一十一章 魂技与唐门绝学的融合",
     "人物": [
@@ -5309,7 +5309,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "蓝银索鞭一穿五完胜炽火主力，融合战法成型，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0112_01",
+    "标识": "1-0453",
     "时间": '斗罗历33年11月2日21时00分',
     "章节": "第一百一十二章 唐三VS火舞",
     "人物": [
@@ -5320,7 +5320,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞融环凝聚绝技锁定唐三，威力空前恐怖，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0112_04",
+    "标识": "1-0454",
     "时间": '斗罗历33年11月2日21时10分',
     "章节": "第一百一十二章 唐三VS火舞",
     "人物": [
@@ -5331,7 +5331,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞融环凝聚绝技，唐三决定贴身迫其放弃，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0112_02",
+    "标识": "1-0455",
     "时间": '斗罗历33年11月3日00时20分',
     "章节": "第一百一十二章 唐三VS火舞",
     "人物": [
@@ -5344,7 +5344,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三舍身替火舞挡下绝杀，重伤换来比赛惜败，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0112_05",
+    "标识": "1-0456",
     "时间": '斗罗历33年11月3日00时30分',
     "章节": "第一百一十二章 唐三VS火舞",
     "人物": [
@@ -5356,7 +5356,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三舍身替火舞挡绝杀重伤，比赛惜败，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0113_01",
+    "标识": "1-0457",
     "时间": '斗罗历33年11月4日15时20分',
     "章节": "第一百一十三章 凤凰的狂野",
     "人物": [
@@ -5366,7 +5366,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊登场浴火凤凰克制植物系，连胜三阵扳回，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0113_04",
+    "标识": "1-0458",
     "时间": '斗罗历33年11月4日15时30分',
     "章节": "第一百一十三章 凤凰的狂野",
     "人物": [
@@ -5376,7 +5376,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊浴火凤凰全面克制植物系，连胜三阵扳回，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0113_02",
+    "标识": "1-0459",
     "时间": '斗罗历33年11月4日21时00分',
     "章节": "第一百一十三章 凤凰的狂野",
     "人物": [
@@ -5388,7 +5388,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊完成一穿七，大师告诫强攻系需独当一面，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0113_03",
+    "标识": "1-0460",
     "时间": '斗罗历33年11月5日03时00分',
     "章节": "第一百一十三章 凤凰的狂野",
     "人物": [
@@ -5399,7 +5399,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞追问唐三救命缘由，情愫未解暗藏悬念，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0113_05",
+    "标识": "1-0461",
     "时间": '斗罗历33年11月5日03时10分',
     "章节": "第一百一十三章 凤凰的狂野",
     "人物": [
@@ -5410,7 +5410,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞追问救命缘由遭婉拒，情愫悬而未决，为后续发展埋下重要伏笔"
   },
   {
-    "标识": "ch0114_01",
+    "标识": "1-0462",
     "时间": '斗罗历33年11月6日03时10分',
     "章节": "火舞与小舞的吻",
     "人物": [
@@ -5422,7 +5422,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞以初吻答谢唐三救命之恩，风笑天暗中窥见妒恨丛生。"
   },
   {
-    "标识": "ch0114_04",
+    "标识": "1-0463",
     "时间": '斗罗历33年11月6日03时20分',
     "章节": "火舞与小舞的吻",
     "人物": [
@@ -5432,7 +5432,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "风笑天目睹火舞索吻后独自立誓，决意击败唐三证明自己，局势由此发生转折。"
   },
   {
-    "标识": "ch0114_02",
+    "标识": "1-0464",
     "时间": '斗罗历33年11月6日03时30分',
     "章节": "火舞与小舞的吻",
     "人物": [
@@ -5446,7 +5446,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞先声夺人吻上唐三，兄妹情正式跨入恋人之境。"
   },
   {
-    "标识": "ch0114_03",
+    "标识": "1-0465",
     "时间": '斗罗历33年11月6日03时40分',
     "章节": "火舞与小舞的吻",
     "人物": [
@@ -5459,7 +5459,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克学院十一连胜领跑，大师定策留唐三对阵神风学院。"
   },
   {
-    "标识": "ch0114_05",
+    "标识": "1-0466",
     "时间": '斗罗历33年11月6日03时50分',
     "章节": "火舞与小舞的吻",
     "人物": [
@@ -5472,7 +5472,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "连胜间隙七怪训练场放松，唐三小舞间微妙情愫被众人察觉，局势由此发生转折。"
   },
   {
-    "标识": "ch0115_01",
+    "标识": "1-0467",
     "时间": '斗罗历33年11月10日03时50分',
     "章节": "运筹帷幄，大师",
     "人物": ["泰隆","小舞"], 未建档人物: ["京灵","黄远","雷天"],
@@ -5480,7 +5480,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰隆京灵黄远车轮消耗雷霆学院，小舞智斗雷天完胜。"
   },
   {
-    "标识": "ch0115_04",
+    "标识": "1-0468",
     "时间": '斗罗历33年11月10日04时00分',
     "章节": "运筹帷幄，大师",
     "人物": [
@@ -5492,7 +5492,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师推演雷霆学院弱点，制定消耗战术为主力创造碾压条件，局势由此发生转折。"
   },
   {
-    "标识": "ch0115_02",
+    "标识": "1-0469",
     "时间": '斗罗历33年11月10日06时10分',
     "章节": "运筹帷幄，大师",
     "人物": ["小舞","戴沐白","雪夜大帝","宁风致","萨拉斯"], 未建档人物: ["雷动"],
@@ -5500,7 +5500,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞遭锁神环重创，评审台揭穿史莱克学院战术皆出自大师之手。"
   },
   {
-    "标识": "ch0115_05",
+    "标识": "1-0470",
     "时间": '斗罗历33年11月10日06时20分',
     "章节": "运筹帷幄，大师",
     "人物": ["戴沐白","小舞"], 未建档人物: ["雷动"],
@@ -5508,7 +5508,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白硬扛锁神环反击重创雷动，替小舞复仇，局势由此发生转折。"
   },
   {
-    "标识": "ch0115_06",
+    "标识": "1-0471",
     "时间": '斗罗历33年11月10日06时30分',
     "章节": "运筹帷幄，大师",
     "人物": [
@@ -5520,7 +5520,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "萨拉斯揭穿大师身份，雪夜大帝萌生招揽之意，局势由此发生转折。"
   },
   {
-    "标识": "ch0116_01",
+    "标识": "1-0472",
     "时间": '斗罗历33年11月10日09时50分',
     "章节": "奇茸通天，虎破龙",
     "人物": ["戴沐白"], 未建档人物: ["雷动","玉天心"],
@@ -5528,7 +5528,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白金刚不坏破锁神环重创雷动，蓝电霸王龙玉天心登场应战。"
   },
   {
-    "标识": "ch0116_04",
+    "标识": "1-0473",
     "时间": '斗罗历33年11月10日10时00分',
     "章节": "奇茸通天，虎破龙",
     "人物": [
@@ -5539,7 +5539,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三为小舞疗伤同时分析玉天心弱点，小舞无声传递信任，局势由此发生转折。"
   },
   {
-    "标识": "ch0116_02",
+    "标识": "1-0474",
     "时间": '斗罗历33年11月10日12时30分',
     "章节": "奇茸通天，虎破龙",
     "人物": ["戴沐白","朱竹清"], 未建档人物: ["玉天心"],
@@ -5547,7 +5547,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白力克玉天心，史莱克十二连胜，朱竹清情深流露。"
   },
   {
-    "标识": "ch0116_03",
+    "标识": "1-0475",
     "时间": '斗罗历33年11月10日15时30分',
     "章节": "奇茸通天，虎破龙",
     "人物": [
@@ -5560,7 +5560,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "风笑天拦路约战唐三，戴沐白朱竹清夜间定情立誓。"
   },
   {
-    "标识": "ch0116_05",
+    "标识": "1-0476",
     "时间": '斗罗历33年11月10日15时40分',
     "章节": "奇茸通天，虎破龙",
     "人物": [
@@ -5572,7 +5572,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师检查戴沐白伤势后透露明日以唐三双生武魂为核心的新战术，局势由此发生转折。"
   },
   {
-    "标识": "ch0117_01",
+    "标识": "1-0477",
     "时间": '斗罗历33年11月12日00时50分',
     "章节": "昊天锤，乱披风",
     "人物": [
@@ -5583,7 +5583,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三风笑天巅峰对决开局，肉搏势均力敌后风笑天遁入高空。"
   },
   {
-    "标识": "ch0117_04",
+    "标识": "1-0478",
     "时间": '斗罗历33年11月12日01时00分',
     "章节": "昊天锤，乱披风",
     "人物": [
@@ -5594,7 +5594,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师赛前点拨唐三藏锋策略，师徒以默契完成最后心理建设，局势由此发生转折。"
   },
   {
-    "标识": "ch0117_02",
+    "标识": "1-0479",
     "时间": '斗罗历33年11月12日04时10分',
     "章节": "昊天锤，乱披风",
     "人物": [
@@ -5605,7 +5605,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三祭出昊天锤乱披风锤法破解绝技，双生武魂身份公诸于世。"
   },
   {
-    "标识": "ch0117_03",
+    "标识": "1-0480",
     "时间": '斗罗历33年11月12日06时30分',
     "章节": "昊天锤，乱披风",
     "人物": [
@@ -5617,7 +5617,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "风笑天认输，史莱克学院十四连胜夺得分区第一名。"
   },
   {
-    "标识": "ch0117_05",
+    "标识": "1-0481",
     "时间": '斗罗历33年11月12日06时40分',
     "章节": "昊天锤，乱披风",
     "人物": [
@@ -5630,7 +5630,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞坦然认输离去，大师当众盛赞唐三，七怪归属感达到巅峰，局势由此发生转折。"
   },
   {
-    "标识": "ch0118_01",
+    "标识": "1-0482",
     "时间": '斗罗历33年11月14日09时50分',
     "章节": "总决赛，武魂城",
     "人物": ["雪夜大帝","千仞雪","大师"],
@@ -5638,7 +5638,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "晋级赛结束，雪夜大帝宣布三日后启程赴武魂城总决赛。"
   },
   {
-    "标识": "ch0118_04",
+    "标识": "1-0483",
     "时间": '斗罗历33年11月14日10时00分',
     "章节": "总决赛，武魂城",
     "人物": [
@@ -5650,7 +5650,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三宁荣荣奥斯卡商议总决赛后勤方案，制定辅助系保障清单，局势由此发生转折。"
   },
   {
-    "标识": "ch0118_02",
+    "标识": "1-0484",
     "时间": '斗罗历33年11月17日09时50分',
     "章节": "总决赛，武魂城",
     "人物": [
@@ -5662,7 +5662,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "队伍启程赴武魂城，大师不告而别，柳二龙神色反常。"
   },
   {
-    "标识": "ch0118_03",
+    "标识": "1-0485",
     "时间": '斗罗历33年11月17日10时00分',
     "章节": "总决赛，武魂城",
     "人物": [
@@ -5676,7 +5676,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三推演武魂殿黄金一代威胁，火舞暗中联合风笑天备战总决赛。"
   },
   {
-    "标识": "ch0118_05",
+    "标识": "1-0486",
     "时间": '斗罗历33年11月17日10时10分',
     "章节": "总决赛，武魂城",
     "人物": [
@@ -5688,7 +5688,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白马红俊唐三推演黄金一代，认定须在融合前将敌方分割，局势由此发生转折。"
   },
   {
-    "标识": "ch0119_01",
+    "标识": "1-0487",
     "时间": '斗罗历33年11月27日09时50分',
     "章节": "一个爱花的封号斗罗",
     "人物": [
@@ -5700,7 +5700,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "山道遭千人黑衣伏击，唐三诸葛神弩暗器齐发力歼百敌。"
   },
   {
-    "标识": "ch0119_04",
+    "标识": "1-0488",
     "时间": '斗罗历33年11月27日10时00分',
     "章节": "一个爱花的封号斗罗",
     "人物": [
@@ -5712,7 +5712,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三冷静分析伏击阵型建言引蛇出洞，三名魂斗罗果然现身，局势由此发生转折。"
   },
   {
-    "标识": "ch0119_02",
+    "标识": "1-0489",
     "时间": '斗罗历33年11月27日13时10分',
     "章节": "一个爱花的封号斗罗",
     "人物": ["唐三","弗兰德","柳二龙"], 未建档人物: ["龙公孟蜀"],
@@ -5720,7 +5720,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魂斗罗金鹰洛尔迪亚拉突袭史莱克七怪，龙公孟蜀现身喝退。"
   },
   {
-    "标识": "ch0119_03",
+    "标识": "1-0490",
     "时间": '斗罗历33年11月27日15时30分',
     "章节": "一个爱花的封号斗罗",
     "人物": ["唐三","菊斗罗","鬼斗罗","独孤博"],
@@ -5728,7 +5728,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "菊斗罗鬼斗罗联手现身欲杀唐三，独孤博挺身相护。"
   },
   {
-    "标识": "ch0119_05",
+    "标识": "1-0491",
     "时间": '斗罗历33年11月27日15时40分',
     "章节": "一个爱花的封号斗罗",
     "人物": ["弗兰德","独孤博"], 未建档人物: ["龙公孟蜀"],
@@ -5736,7 +5736,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "龙公孟蜀后退护孙，独孤博毒雾逼退双封号为众人争取撤退时间，局势由此发生转折。"
   },
   {
-    "标识": "ch0120_01",
+    "标识": "1-0492",
     "时间": '斗罗历33年11月27日19时00分',
     "章节": "四个封号斗罗",
     "人物": ["小舞","菊斗罗","戴沐白"],
@@ -5744,7 +5744,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "相思断肠红震慑月关暂缓杀机，戴沐白舍身立誓护全体队友。"
   },
   {
-    "标识": "ch0120_04",
+    "标识": "1-0493",
     "时间": '斗罗历33年11月27日19时10分',
     "章节": "四个封号斗罗",
     "人物": [
@@ -5755,7 +5755,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三急护小舞身后并叮嘱利用月关对仙花的执念，小舞强压恐惧应允。"
   },
   {
-    "标识": "ch0120_02",
+    "标识": "1-0494",
     "时间": '斗罗历33年11月27日21时40分',
     "章节": "四个封号斗罗",
     "人物": ["柳二龙","独孤博","尘心","宁风致","千仞雪"],
@@ -5763,7 +5763,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "剑斗罗尘心与宁风致及时赶到，四大封号斗罗对峙终告平息。"
   },
   {
-    "标识": "ch0120_03",
+    "标识": "1-0495",
     "时间": '斗罗历33年11月28日00时40分',
     "章节": "四个封号斗罗",
     "人物": [
@@ -5775,7 +5775,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁风致独孤博剖析武魂殿杀机内幕，唐三婉拒避难坚持参赛。"
   },
   {
-    "标识": "ch0120_05",
+    "标识": "1-0496",
     "时间": '斗罗历33年11月28日00时50分',
     "章节": "四个封号斗罗",
     "人物": [
@@ -5788,7 +5788,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "弗兰德柳二龙清点伤亡，众人深刻认识到封号斗罗间的恐怖差距，局势由此发生转折。"
   },
   {
-    "标识": "ch0121_01",
+    "标识": "1-0497",
     "时间": '斗罗历33年11月29日10时00分',
     "章节": "教皇比比东",
     "人物": [
@@ -5798,7 +5798,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师独闯教皇殿，凭长老令牌令百名护殿骑士下跪。"
   },
   {
-    "标识": "ch0121_04",
+    "标识": "1-0498",
     "时间": '斗罗历33年11月29日10时10分',
     "章节": "教皇比比东",
     "人物": [
@@ -5808,7 +5808,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师独行武魂城暗中侦察兵力部署，取出令牌坦然步入教皇殿，局势由此发生转折。"
   },
   {
-    "标识": "ch0121_02",
+    "标识": "1-0499",
     "时间": '斗罗历33年11月29日13时20分',
     "章节": "教皇比比东",
     "人物": ["大师","比比东"],
@@ -5816,7 +5816,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师求见教皇比比东，惊闻其已派封号斗罗刺杀唐三。"
   },
   {
-    "标识": "ch0121_03",
+    "标识": "1-0500",
     "时间": '斗罗历33年11月29日15时40分',
     "章节": "教皇比比东",
     "人物": ["大师","比比东"],
@@ -5824,7 +5824,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "刺杀失败消息传来，大师警告决绝离去，比比东心绪破防。"
   },
   {
-    "标识": "ch0121_05",
+    "标识": "1-0501",
     "时间": '斗罗历33年11月29日15时50分',
     "章节": "教皇比比东",
     "人物": ["大师","比比东"],
@@ -5832,7 +5832,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东独自取出旧物感怀片刻后恢复冷厉，下令召集长老殿部署，局势由此发生转折。"
   },
   {
-    "标识": "ch0122_01",
+    "标识": "1-0502",
     "时间": '斗罗历33年12月6日09时50分',
     "章节": "星罗皇家学院战队",
     "人物": [
@@ -5844,7 +5844,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "队伍抵达武魂城，小舞归队已获第四魂环。"
   },
   {
-    "标识": "ch0122_04",
+    "标识": "1-0503",
     "时间": '斗罗历33年12月6日10时00分',
     "章节": "星罗皇家学院战队",
     "人物": [
@@ -5855,7 +5855,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞向唐三讲述获第四魂环的惊险过程，唐三心疼紧握其手，局势由此发生转折。"
   },
   {
-    "标识": "ch0122_02",
+    "标识": "1-0504",
     "时间": '斗罗历33年12月9日09时50分',
     "章节": "星罗皇家学院战队",
     "人物": [
@@ -5867,7 +5867,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "总决赛开幕，炽火学院弃权并入神风学院，史莱克学院连续轮空。"
   },
   {
-    "标识": "ch0122_03",
+    "标识": "1-0505",
     "时间": '斗罗历33年12月9日15时10分',
     "章节": "星罗皇家学院战队",
     "人物": [
@@ -5881,7 +5881,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第三轮对阵星罗皇家学院，戴沐白朱竹清神色凝重暗藏隐情。"
   },
   {
-    "标识": "ch0122_05",
+    "标识": "1-0506",
     "时间": '斗罗历33年12月9日15时20分',
     "章节": "星罗皇家学院战队",
     "人物": [
@@ -5892,7 +5892,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师分析星罗皇家学院实力，要求唐三确保戴沐白朱竹清亲手了结宿敌。"
   },
   {
-    "标识": "ch0123_01",
+    "标识": "1-0507",
     "时间": '斗罗历33年12月11日09时30分',
     "章节": "万年魂技的变异技能",
     "人物": [
@@ -5904,7 +5904,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白朱竹清坦白皇族相残身世，七怪立誓必胜同心出战。"
   },
   {
-    "标识": "ch0123_04",
+    "标识": "1-0508",
     "时间": '斗罗历33年12月11日09时40分',
     "章节": "万年魂技的变异技能",
     "人物": [
@@ -5916,7 +5916,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三鼓励戴沐白朱竹清为命运而战，三人击掌后气势汹涌步入赛场。"
   },
   {
-    "标识": "ch0123_02",
+    "标识": "1-0509",
     "时间": '斗罗历33年12月11日12时50分',
     "章节": "万年魂技的变异技能",
     "人物": [
@@ -5932,7 +5932,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "蓝银突刺阵配合七怪暴动完胜星罗皇家学院，晋级四强。"
   },
   {
-    "标识": "ch0123_03",
+    "标识": "1-0510",
     "时间": '斗罗历33年12月11日15时10分',
     "章节": "万年魂技的变异技能",
     "人物": [
@@ -5946,7 +5946,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "武魂殿黄金一代邪月胡列娜以武魂融合技碾压天斗皇家学院。"
   },
   {
-    "标识": "ch0123_05",
+    "标识": "1-0511",
     "时间": '斗罗历33年12月11日15时20分',
     "章节": "万年魂技的变异技能",
     "人物": [
@@ -5959,7 +5959,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴维斯朱竹云惨败后反应各异，皇族继承权之争尘埃落定，局势由此发生转折。"
   },
   {
-    "标识": "ch0124_01",
+    "标识": "1-0512",
     "时间": '斗罗历33年12月13日21时10分',
     "章节": "幽冥白虎的身世",
     "人物": [
@@ -5970,7 +5970,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白坦白星罗第三皇子身份，邀唐三他日相助未获应允。"
   },
   {
-    "标识": "ch0124_04",
+    "标识": "1-0513",
     "时间": '斗罗历33年12月13日21时20分',
     "章节": "幽冥白虎的身世",
     "人物": [
@@ -5981,7 +5981,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "朱竹清向唐三吐露少时自愿订婚往事，唐三暗下决心助友夺权，局势由此发生转折。"
   },
   {
-    "标识": "ch0124_05",
+    "标识": "1-0514",
     "时间": '斗罗历33年12月13日21时30分',
     "章节": "幽冥白虎的身世",
     "人物": [
@@ -5993,7 +5993,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师推断出戴沐白皇族身份，与弗兰德柳二龙密议安保预案，局势由此发生转折。"
   },
   {
-    "标识": "ch0124_06",
+    "标识": "1-0515",
     "时间": '斗罗历33年12月13日21时40分',
     "章节": "幽冥白虎的身世",
     "人物": [
@@ -6005,7 +6005,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊奥斯卡宁荣荣篝火旁讨论魂骨分配，击掌为誓以团队为先，局势由此发生转折。"
   },
   {
-    "标识": "ch0124_02",
+    "标识": "1-0516",
     "时间": '斗罗历33年12月13日21时50分',
     "章节": "幽冥白虎的身世",
     "人物": [
@@ -6017,7 +6017,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第四轮轻松晋级，武魂殿、史莱克、神风三强诞生。"
   },
   {
-    "标识": "ch0125_01",
+    "标识": "1-0517",
     "时间": '斗罗历33年12月16日21时50分',
     "章节": "震惊，七怪融合技",
     "人物": ["唐三","戴沐白","朱竹清","比比东"],
@@ -6025,7 +6025,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "教皇比比东亮出三块顶级魂骨为冠军奖，史莱克七怪独不下跪。"
   },
   {
-    "标识": "ch0125_04",
+    "标识": "1-0518",
     "时间": '斗罗历33年12月16日22时00分',
     "章节": "震惊，七怪融合技",
     "人物": [
@@ -6041,7 +6041,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七怪各自觊觎魂骨奖品，唐三察觉比比东暗藏算计提醒队友警惕，局势由此发生转折。"
   },
   {
-    "标识": "ch0125_02",
+    "标识": "1-0519",
     "时间": '斗罗历33年12月17日01时10分',
     "章节": "震惊，七怪融合技",
     "人物": [
@@ -6053,7 +6053,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师识破武魂殿神风学院车轮战阴谋，当场退出个人赛。"
   },
   {
-    "标识": "ch0125_05",
+    "标识": "1-0520",
     "时间": '斗罗历33年12月17日01时20分',
     "章节": "震惊，七怪融合技",
     "人物": [
@@ -6066,7 +6066,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师紧急部署七位一体融合技细节，七怪帐内完成最后站位排练，局势由此发生转折。"
   },
   {
-    "标识": "ch0125_03",
+    "标识": "1-0521",
     "时间": '斗罗历33年12月17日03时30分',
     "章节": "震惊，七怪融合技",
     "人物": [
@@ -6084,7 +6084,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克七怪首度施展七位一体融合技，震惊全场。"
   },
   {
-    "标识": "ch0126_04",
+    "标识": "1-0522",
     "时间": '斗罗历33年12月19日03时30分',
     "章节": "器魂真身，暗金昊天锤",
     "人物": [
@@ -6095,7 +6095,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "火舞面授机宜定下集火唐三控制体系的突袭战术，风笑天决意全力一搏。"
   },
   {
-    "标识": "ch0126_05",
+    "标识": "1-0523",
     "时间": '斗罗历33年12月19日06时50分',
     "章节": "器魂真身，暗金昊天锤",
     "人物": [
@@ -6106,7 +6106,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师叮嘱唐三克制昊天锤，唐三暗中调息凝聚精神力备战，局势由此发生转折。"
   },
   {
-    "标识": "ch0126_01",
+    "标识": "1-0524",
     "时间": '斗罗历33年12月19日07时00分',
     "章节": "器魂真身，暗金昊天锤",
     "人物": [
@@ -6117,7 +6117,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三昊天锤秒杀风笑天，更激发器魂真身震撼全场。"
   },
   {
-    "标识": "ch0126_02",
+    "标识": "1-0525",
     "时间": '斗罗历33年12月19日09时30分',
     "章节": "器魂真身，暗金昊天锤",
     "人物": [
@@ -6128,7 +6128,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师警示器魂真身代价，师徒密议明日决赛新战术。"
   },
   {
-    "标识": "ch0126_06",
+    "标识": "1-0526",
     "时间": '斗罗历33年12月19日12时30分',
     "章节": "器魂真身，暗金昊天锤",
     "人物": ["比比东","菊斗罗","鬼斗罗"],
@@ -6136,7 +6136,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东深夜密议唐三威胁，拍板决赛中伺机除之，局势由此发生转折。"
   },
   {
-    "标识": "ch0127_01",
+    "标识": "1-0527",
     "时间": '斗罗历33年12月20日21时50分',
     "章节": "史莱克七怪完整的实力",
     "人物": ["唐三","邪月","胡列娜","比比东"],
@@ -6144,7 +6144,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "邪月胡列娜施展武魂融合技妖魅笼罩史莱克七怪。"
   },
   {
-    "标识": "ch0127_04",
+    "标识": "1-0528",
     "时间": '斗罗历33年12月20日22时00分',
     "章节": "史莱克七怪完整的实力",
     "人物": [
@@ -6155,7 +6155,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师面授机宜，要求唐三主动冲入妖魅中心独扛邪月创造战机，局势由此发生转折。"
   },
   {
-    "标识": "ch0127_02",
+    "标识": "1-0529",
     "时间": '斗罗历33年12月21日01时10分',
     "章节": "史莱克七怪完整的实力",
     "人物": [
@@ -6172,7 +6172,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三红雾中缠斗邪月，六怪借飞行蘑菇肠脱困连挫强敌。"
   },
   {
-    "标识": "ch0127_05",
+    "标识": "1-0530",
     "时间": '斗罗历33年12月21日01时20分',
     "章节": "史莱克七怪完整的实力",
     "人物": [
@@ -6185,7 +6185,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "六怪脱困后重组阵型精密配合，分割包围令武魂殿阵脚动摇，局势由此发生转折。"
   },
   {
-    "标识": "ch0127_03",
+    "标识": "1-0531",
     "时间": '斗罗历33年12月21日03时30分',
     "章节": "史莱克七怪完整的实力",
     "人物": [
@@ -6198,7 +6198,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "邪月暗袭戴沐白命悬一线，总决赛终局胜负悬而未决。"
   },
   {
-    "标识": "ch0128_01",
+    "标识": "1-0532",
     "时间": '斗罗历34年2月24日09时00分',
     "章节": "第一百二十八章 唐门第十，蝠翼轮回",
     "人物": [
@@ -6211,7 +6211,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三昊天锤一石二鸟连挡邪月双月刃，战成平手。"
   },
   {
-    "标识": "ch0128_02",
+    "标识": "1-0533",
     "时间": '斗罗历34年2月24日09时10分',
     "章节": "第一百二十八章 唐门第十，蝠翼轮回",
     "人物": [
@@ -6223,7 +6223,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三八蛛矛尽碎硬撼圆月，双方力竭俱伤。"
   },
   {
-    "标识": "ch0128_03",
+    "标识": "1-0534",
     "时间": '斗罗历34年2月24日12时20分',
     "章节": "第一百二十八章 唐门第十，蝠翼轮回",
     "人物": [
@@ -6237,7 +6237,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三昏迷前暗器绝杀，武魂殿战队被迫认输。"
   },
   {
-    "标识": "ch0129_01",
+    "标识": "1-0535",
     "时间": '斗罗历34年2月24日12时30分',
     "章节": "第一百二十九章 小舞不是人",
     "人物": [
@@ -6254,7 +6254,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克学院夺冠，唐三主导三块魂骨分配。"
   },
   {
-    "标识": "ch0129_02",
+    "标识": "1-0536",
     "时间": '斗罗历34年2月24日15时00分',
     "章节": "第一百二十九章 小舞不是人",
     "人物": ["唐三","小舞","比比东","菊斗罗","鬼斗罗","大师","戴沐白"],
@@ -6262,7 +6262,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞十万年魂兽身份暴露，比比东下令强行擒拿。"
   },
   {
-    "标识": "ch0130_01",
+    "标识": "1-0537",
     "时间": '斗罗历34年2月24日15时10分',
     "章节": "第一百三十章 昊天扬威，新的开始",
     "人物": ["唐三","唐昊","比比东","菊斗罗","鬼斗罗"],
@@ -6270,7 +6270,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊天降破教皇殿，九环昊天真身威压比比东。"
   },
   {
-    "标识": "ch0130_02",
+    "标识": "1-0538",
     "时间": '斗罗历34年2月24日15时20分',
     "章节": "第一百三十章 昊天扬威，新的开始",
     "人物": [
@@ -6288,7 +6288,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东黯然退兵，史莱克七怪就此惜别解散。"
   },
   {
-    "标识": "ch0130_03",
+    "标识": "1-0539",
     "时间": '斗罗历34年2月24日18时00分',
     "章节": "第一百三十章 昊天扬威，新的开始",
     "人物": [
@@ -6300,7 +6300,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊揭示唐三生母亦是十万年魂兽，小舞含泪远走。"
   },
   {
-    "标识": "ch0131_01",
+    "标识": "1-0540",
     "时间": '斗罗历34年2月25日00时40分',
     "章节": "第一百三十一章 智慧头骨之技，紫极神光",
     "人物": [
@@ -6311,7 +6311,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊携唐三北上半月，抵达神秘瀑布水潭。"
   },
   {
-    "标识": "ch0131_02",
+    "标识": "1-0541",
     "时间": '斗罗历34年3月9日03时20分',
     "章节": "第一百三十一章 智慧头骨之技，紫极神光",
     "人物": [
@@ -6322,7 +6322,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三于瀑布潭畔吸收智慧头骨，精神力剧增。"
   },
   {
-    "标识": "ch0131_03",
+    "标识": "1-0542",
     "时间": '斗罗历34年3月11日03时20分',
     "章节": "第一百三十一章 智慧头骨之技，紫极神光",
     "人物": [
@@ -6333,7 +6333,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三吸收智慧头骨大成，自创紫极神光。"
   },
   {
-    "标识": "ch0132_01",
+    "标识": "1-0543",
     "时间": '斗罗历34年3月13日15时00分',
     "章节": "第一百三十二章 八十一锤",
     "人物": ["宁荣荣","奥斯卡","宁风致","尘心"],
@@ -6341,7 +6341,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣坦白宗规，奥斯卡立誓十年后归来。"
   },
   {
-    "标识": "ch0132_02",
+    "标识": "1-0544",
     "时间": '斗罗历34年6月16日06时40分',
     "章节": "第一百三十二章 八十一锤",
     "人物": [
@@ -6352,7 +6352,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "苦练三月，唐三以铸造锤练成八十一锤。"
   },
   {
-    "标识": "ch0133_01",
+    "标识": "1-0545",
     "时间": '斗罗历35年3月16日09时00分',
     "章节": "第一百三十三章 锤法大成，杀戮之气",
     "人物": [
@@ -6363,7 +6363,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "木锤特训九月功成，瀑布整体逆卷，恰满一年。"
   },
   {
-    "标识": "ch0133_02",
+    "标识": "1-0546",
     "时间": '斗罗历35年3月23日12时20分',
     "章节": "第一百三十三章 锤法大成，杀戮之气",
     "人物": [
@@ -6374,7 +6374,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊七日淬体，唐三魂力突破五十级瓶颈。"
   },
   {
-    "标识": "ch0133_03",
+    "标识": "1-0547",
     "时间": '斗罗历37年3月23日06时40分',
     "章节": "第一百三十三章 锤法大成，杀戮之气",
     "人物": [
@@ -6385,7 +6385,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三两年苦修锤法大成，唐昊将携其历练杀气。"
   },
   {
-    "标识": "ch0134_01",
+    "标识": "1-0548",
     "时间": '斗罗历37年3月28日01时00分',
     "章节": "第一百三十四章 唐三武魂的真面目，蓝银皇",
     "人物": [
@@ -6396,7 +6396,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三入古林，蓝银王现身尊称其为蓝银皇。"
   },
   {
-    "标识": "ch0134_02",
+    "标识": "1-0549",
     "时间": '斗罗历37年4月2日19时20分',
     "章节": "第一百三十四章 唐三武魂的真面目，蓝银皇",
     "人物": [
@@ -6407,7 +6407,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三武魂二次觉醒为蓝银皇，容貌骨骼脱胎换骨。"
   },
   {
-    "标识": "ch0134_03",
+    "标识": "1-0550",
     "时间": '斗罗历37年4月7日13时40分',
     "章节": "第一百三十四章 唐三武魂的真面目，蓝银皇",
     "人物": [
@@ -6418,7 +6418,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "十日蓝银皇觉醒功成，唐昊唤其亡母之名“阿银”。"
   },
   {
-    "标识": "ch0135_01",
+    "标识": "1-0551",
     "时间": '斗罗历37年4月12日08时00分',
     "章节": "第一百三十五章 杀戮之都",
     "人物": [
@@ -6429,7 +6429,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊命唐三饮人血受辱，怒而尽屠满座歹徒。"
   },
   {
-    "标识": "ch0135_02",
+    "标识": "1-0552",
     "时间": '斗罗历37年4月17日02时20分',
     "章节": "第一百三十五章 杀戮之都",
     "人物": [
@@ -6439,7 +6439,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三一锤降服恐怖骑士，获准踏入杀戮之都。"
   },
   {
-    "标识": "ch0135_03",
+    "标识": "1-0553",
     "时间": '斗罗历37年4月21日20时40分',
     "章节": "第一百三十五章 杀戮之都",
     "人物": [
@@ -6449,7 +6449,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三入杀戮之都，决意闯荡地狱杀戮场求道离城。"
   },
   {
-    "标识": "ch0136_01",
+    "标识": "1-0554",
     "时间": '斗罗历37年4月26日15时00分',
     "章节": "第一百三十六章 地狱杀戮场",
     "人物": [
@@ -6460,7 +6460,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三初探地狱杀戮场，意外撞见胡列娜同在此修行。"
   },
   {
-    "标识": "ch0136_02",
+    "标识": "1-0555",
     "时间": '斗罗历37年6月26日15时00分',
     "章节": "第一百三十六章 地狱杀戮场",
     "人物": [
@@ -6470,7 +6470,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三谨慎求存，连胜九场，杀气初显。"
   },
   {
-    "标识": "ch0137_01",
+    "标识": "1-0556",
     "时间": '斗罗历37年11月6日18时00分',
     "章节": "第一百三十七章 杀戮之王",
     "人物": [
@@ -6481,7 +6481,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三一年内战绩六十七胜，“修罗”之名威震杀戮之都。"
   },
   {
-    "标识": "ch0137_02",
+    "标识": "1-0557",
     "时间": '斗罗历37年12月26日15时00分',
     "章节": "第一百三十七章 杀戮之王",
     "人物": [
@@ -6492,7 +6492,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "杀戮之王密议，惊觉唐三胡列娜皆为杀神传人。"
   },
   {
-    "标识": "ch0138_01",
+    "标识": "1-0558",
     "时间": '斗罗历38年1月5日16时40分',
     "章节": "第一百三十八章 血的祭奠，地狱路",
     "人物": [
@@ -6503,7 +6503,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三完成百场生死搏杀，践行与父亲的两年之约。"
   },
   {
-    "标识": "ch0138_02",
+    "标识": "1-0559",
     "时间": '斗罗历38年1月5日16时50分',
     "章节": "第一百三十八章 血的祭奠，地狱路",
     "人物": [
@@ -6514,7 +6514,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三胡列娜拒绝封赏，联手请战地狱路。"
   },
   {
-    "标识": "ch0138_03",
+    "标识": "1-0560",
     "时间": '斗罗历38年1月5日17时00分',
     "章节": "第一百三十八章 血的祭奠，地狱路",
     "人物": [
@@ -6525,7 +6525,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "满场堕落者化为血祭，地狱路开启吞噬二人。"
   },
   {
-    "标识": "ch0139_01",
+    "标识": "1-0561",
     "时间": '斗罗历38年1月5日22时40分',
     "章节": "第一百三十九章 暗金三头蝙蝠王",
     "人物": [
@@ -6536,7 +6536,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "地狱路首遇千蝙蝠群，唐三蓝银领域助阵破敌。"
   },
   {
-    "标识": "ch0139_02",
+    "标识": "1-0562",
     "时间": '斗罗历38年1月6日01时10分',
     "章节": "第一百三十九章 暗金三头蝙蝠王",
     "人物": [
@@ -6547,7 +6547,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三胡列娜合力斩杀暗金三头蝙蝠王，互信渐生。"
   },
   {
-    "标识": "ch0140_01",
+    "标识": "1-0563",
     "时间": '斗罗历38年1月6日04时00分',
     "章节": "第一百四十章 十首烈阳蛇",
     "人物": [
@@ -6558,7 +6558,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "地狱路遇十首烈阳蛇，唐三雄黄酒破毒焰。"
   },
   {
-    "标识": "ch0140_02",
+    "标识": "1-0564",
     "时间": '斗罗历38年1月6日06时50分',
     "章节": "第一百四十章 十首烈阳蛇",
     "人物": [
@@ -6568,7 +6568,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三巧破十首烈阳蛇内丹自爆，夺得镇蛇至宝。"
   },
   {
-    "标识": "ch0141_01",
+    "标识": "1-0565",
     "时间": '斗罗历38年1月6日09时20分',
     "章节": "第二十一集 唐三的第三魂骨 第一百四十一章 蓝银领域与杀神领域",
     "人物": [
@@ -6579,7 +6579,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "胡列娜托生死于唐三，心甘昏迷共渡心魔关。"
   },
   {
-    "标识": "ch0141_02",
+    "标识": "1-0566",
     "时间": '斗罗历38年1月6日12时30分',
     "章节": "第一百四十一章 蓝银领域与杀神领域",
     "人物": [
@@ -6590,7 +6590,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三毒计埋伏杀戮之都，涉险跃出获封杀神领域。"
   },
   {
-    "标识": "ch0141_03",
+    "标识": "1-0567",
     "时间": '斗罗历38年1月6日15时00分',
     "章节": "第一百四十一章 蓝银领域与杀神领域",
     "人物": [
@@ -6602,7 +6602,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三获杀神领域与唐昊团聚，四载磨砺终见曙光。"
   },
   {
-    "标识": "ch0142_01",
+    "标识": "1-0568",
     "时间": '斗罗历38年1月6日18时00分',
     "章节": "第一百四十二章 月轩、姑姑",
     "人物": ["胡列娜","菊斗罗","鬼斗罗","唐三","唐昊"],
@@ -6610,7 +6610,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "胡列娜别过唐三，随月关、鬼魅返回武魂殿复命。"
   },
   {
-    "标识": "ch0142_02",
+    "标识": "1-0569",
     "时间": '斗罗历38年10月16日03时20分',
     "章节": "第一百四十二章 月轩、姑姑",
     "人物": [
@@ -6621,7 +6621,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三随唐昊闯入月轩，力挫总管奥德麾下高手。"
   },
   {
-    "标识": "ch0142_03",
+    "标识": "1-0570",
     "时间": '斗罗历38年10月16日09时00分',
     "章节": "第一百四十二章 月轩、姑姑",
     "人物": [
@@ -6633,7 +6633,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐月华认出兄长唐昊，与素未谋面的侄子唐三相认。"
   },
   {
-    "标识": "ch0143_01",
+    "标识": "1-0571",
     "时间": '斗罗历38年10月16日15时00分',
     "章节": "第一百四十二章 月轩、姑姑",
     "人物": [
@@ -6645,7 +6645,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊托子于妹唐月华，嘱其教导一年后再见。"
   },
   {
-    "标识": "ch0143_02",
+    "标识": "1-0572",
     "时间": '斗罗历39年10月16日15时00分',
     "章节": "第一百四十三章 铅华洗尽，圆融如意",
     "人物": ["唐三","唐月华","千仞雪","雪珂"],
@@ -6653,7 +6653,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三化名唐银在月轩毕业典礼技压全场，婉拒太子雪清河结交。"
   },
   {
-    "标识": "ch0143_03",
+    "标识": "1-0573",
     "时间": '斗罗历39年10月16日18时00分',
     "章节": "第一百四十三章 铅华洗尽，圆融如意",
     "人物": [
@@ -6664,7 +6664,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三提前结业辞别唐月华，启程寻父。"
   },
   {
-    "标识": "ch0144_01",
+    "标识": "1-0574",
     "时间": '斗罗历39年10月26日03时20分',
     "章节": "第一百四十四章 唐三的母亲，十万年蓝银皇",
     "人物": [
@@ -6675,7 +6675,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三归来惊见唐昊已自断一臂一腿，了断旧伤与宗门恩怨。"
   },
   {
-    "标识": "ch0144_02",
+    "标识": "1-0575",
     "时间": '斗罗历39年10月26日09时00分',
     "章节": "第一百四十四章 唐三的母亲，十万年蓝银皇",
     "人物": [
@@ -6686,7 +6686,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三于秘室初见母亲阿银所化蓝银草，血脉共鸣加速其生长。"
   },
   {
-    "标识": "ch0145_01",
+    "标识": "1-0576",
     "时间": '斗罗历39年10月26日15时00分',
     "章节": "第一百四十五章 母亲的遗物，蓝银皇右腿骨",
     "人物": [
@@ -6697,7 +6697,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊向唐三尽述生母阿银之死与昊天宗封山内情。"
   },
   {
-    "标识": "ch0145_02",
+    "标识": "1-0577",
     "时间": '斗罗历39年10月29日03时20分',
     "章节": "第一百四十五章 母亲的遗物，蓝银皇右腿骨",
     "人物": [
@@ -6708,7 +6708,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三吸收母亲遗留蓝银右腿骨，三日沉睡后奇经八脉贯通。"
   },
   {
-    "标识": "ch0145_03",
+    "标识": "1-0578",
     "时间": '斗罗历39年11月16日09时00分',
     "章节": "第一百四十五章 母亲的遗物，蓝银皇右腿骨",
     "人物": [
@@ -6719,7 +6719,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "父子安顿母亲蓝银草于冰火两仪眼，唐三炼丹助父康复后启程。"
   },
   {
-    "标识": "ch0146_01",
+    "标识": "1-0579",
     "时间": '斗罗历39年11月21日03时20分',
     "章节": "第一百四十六章 回归昊天宗",
     "人物": ["比比东","胡列娜","菊斗罗","鬼斗罗","邪月","焱"],
@@ -6727,7 +6727,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "教皇比比东宣布册封胡列娜、重启缉拿十万年魂兽与猎魂行动。"
   },
   {
-    "标识": "ch0146_02",
+    "标识": "1-0580",
     "时间": '斗罗历39年11月21日09时00分',
     "章节": "第一百四十六章 回归昊天宗",
     "人物": ["小舞","二明","大明"],
@@ -6735,7 +6735,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "星斗大森林中，小舞向二明大明诉说思念，隐现武魂殿搜寻踪迹。"
   },
   {
-    "标识": "ch0146_03",
+    "标识": "1-0581",
     "时间": '斗罗历39年11月22日09时00分',
     "章节": "第一百四十六章 回归昊天宗",
     "人物": ["唐三","唐龙"], 未建档人物: ["唐天","唐玉"],
@@ -6743,7 +6743,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三入昊天宗途中铁索断裂，蓝银皇及时救下坠崖的唐天、唐玉。"
   },
   {
-    "标识": "ch0147_01",
+    "标识": "1-0582",
     "时间": '斗罗历39年11月22日12时20分',
     "章节": "第一百四十七章 啸天斗罗",
     "人物": [
@@ -6756,7 +6756,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三觐见宗主唐啸，呈还唐昊自断肢体归还的两块传承魂骨。"
   },
   {
-    "标识": "ch0147_02",
+    "标识": "1-0583",
     "时间": '斗罗历39年11月22日15时00分',
     "章节": "第一百四十七章 啸天斗罗",
     "人物": [
@@ -6767,7 +6767,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐月华为唐三剖析宗门派系纷争，提点其明日需以实力服众。"
   },
   {
-    "标识": "ch0148_01",
+    "标识": "1-0584",
     "时间": '斗罗历39年11月23日03时20分',
     "章节": "第一百四十八章 蓝银皇的霸道控制力",
     "人物": [
@@ -6779,7 +6779,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在昊天宗前院遭辱骂生母，愤而向七长老发出挑战。"
   },
   {
-    "标识": "ch0148_02",
+    "标识": "1-0585",
     "时间": '斗罗历39年11月23日06时20分',
     "章节": "第一百四十八章 蓝银皇的霸道控制力",
     "人物": [
@@ -6791,7 +6791,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以蓝银囚笼与领域全力压制，完胜三代首席唐虎。"
   },
   {
-    "标识": "ch0149_01",
+    "标识": "1-0586",
     "时间": '斗罗历39年11月23日09时00分',
     "章节": "第一百四十九章 第五魂技，蓝银霸王枪",
     "人物": [
@@ -6803,7 +6803,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三主动选定铁索桥为战场，向七长老下战书。"
   },
   {
-    "标识": "ch0149_02",
+    "标识": "1-0587",
     "时间": '斗罗历39年11月23日12时20分',
     "章节": "第一百四十九章 第五魂技，蓝银霸王枪",
     "人物": ["唐三","七长老"],
@@ -6811,7 +6811,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三祭出第五魂技蓝银霸王枪，力挫九环封号斗罗七长老。"
   },
   {
-    "标识": "ch0150_01",
+    "标识": "1-0588",
     "时间": '斗罗历39年11月23日15时00分',
     "章节": "第一百五十章 虚空鬼影迷踪",
     "人物": ["唐三","七长老","唐啸","二长老"],
@@ -6819,7 +6819,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七长老认输并致歉，二长老提出十年之约方可祭祖归宗。"
   },
   {
-    "标识": "ch0150_02",
+    "标识": "1-0589",
     "时间": '斗罗历39年11月23日18时00分',
     "章节": "第一百五十章 虚空鬼影迷踪",
     "人物": [
@@ -6830,7 +6830,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "二长老提出三项十年之约，唐三慨然应下继承宗主之路。"
   },
   {
-    "标识": "ch0153_01",
+    "标识": "1-0590",
     "时间": '斗罗历39年11月28日03时20分',
     "章节": "第一百五十三章 奥斯卡的第六魂环",
     "人物": [
@@ -6841,7 +6841,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡历练五年，猎杀镜影兽获得第六魂环，突破六十级。"
   },
   {
-    "标识": "ch0153_02",
+    "标识": "1-0591",
     "时间": '斗罗历39年11月28日09时00分',
     "章节": "第一百五十三章 奥斯卡的第六魂环",
     "人物": [
@@ -6852,7 +6852,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡先发制人，与浩特联手歼灭猎杀小队，护住镜影头骨。"
   },
   {
-    "标识": "ch0153_03",
+    "标识": "1-0592",
     "时间": '斗罗历39年11月28日12时20分',
     "章节": "第一百五十三章 奥斯卡的第六魂环",
     "人物": [
@@ -6863,7 +6863,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "浩特赠镜影头骨予奥斯卡，二人过命之交愈发深厚。"
   },
   {
-    "标识": "ch0151_01",
+    "标识": "1-0593",
     "时间": '斗罗历39年12月1日03时20分',
     "章节": "第一百五十一章 史莱克，再聚首",
     "人物": [
@@ -6875,7 +6875,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白、朱竹清归院与马红俊重聚，宁荣荣痛陈奥斯卡杳无音讯。"
   },
   {
-    "标识": "ch0151_02",
+    "标识": "1-0594",
     "时间": '斗罗历39年12月1日06时20分',
     "章节": "第一百五十一章 史莱克，再聚首",
     "人物": [
@@ -6889,7 +6889,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三蓝银皇二次觉醒后容貌大变，被众伙伴围攻验明正身。"
   },
   {
-    "标识": "ch0151_03",
+    "标识": "1-0595",
     "时间": '斗罗历39年12月1日09时00分',
     "章节": "第一百五十一章 史莱克，再聚首",
     "人物": [
@@ -6901,7 +6901,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "赵无极认出五怪身份，领众人重返史莱克学院。"
   },
   {
-    "标识": "ch0152_01",
+    "标识": "1-0596",
     "时间": '斗罗历39年12月1日12时20分',
     "章节": "第一百五十二章 五年来的变化",
     "人物": [
@@ -6918,7 +6918,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向众师友尽述五年经历，坦言不图宗主之位只为尽孝。"
   },
   {
-    "标识": "ch0152_02",
+    "标识": "1-0597",
     "时间": '斗罗历39年12月1日15时00分',
     "章节": "第一百五十二章 五年来的变化",
     "人物": [
@@ -6932,7 +6932,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "五怪定下明日展示实力之约，唐三宣告将启程寻小舞。"
   },
   {
-    "标识": "ch0154_01",
+    "标识": "1-0598",
     "时间": '斗罗历39年12月2日03时20分',
     "章节": "第一百五十四章 蓝银领域真正的威力",
     "人物": [
@@ -6948,7 +6948,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三蓝银领域调动全院蓝银草，困死施展武魂真身的赵无极。"
   },
   {
-    "标识": "ch0154_02",
+    "标识": "1-0599",
     "时间": '斗罗历39年12月2日09时00分',
     "章节": "第一百五十四章 蓝银领域真正的威力",
     "人物": [
@@ -6962,7 +6962,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "幽冥白虎与赵无极硬撼后，马红俊烈焰绝技将其变成「烤熊」。"
   },
   {
-    "标识": "ch0155_01",
+    "标识": "1-0600",
     "时间": '斗罗历39年12月2日12时20分',
     "章节": "第一百五十五章 魂斗罗级别的碰撞",
     "人物": [
@@ -6973,7 +6973,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三紫极神光偷袭弗兰德，双方默契演出平局收场。"
   },
   {
-    "标识": "ch0155_02",
+    "标识": "1-0601",
     "时间": '斗罗历39年12月2日15时00分',
     "章节": "第一百五十五章 魂斗罗级别的碰撞",
     "人物": [
@@ -6987,7 +6987,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊决意留院，众人重定五年之约，唐三明日启程寻小舞。"
   },
   {
-    "标识": "ch0155_03",
+    "标识": "1-0602",
     "时间": '斗罗历39年12月6日18时00分',
     "章节": "第一百五十五章 魂斗罗级别的碰撞",
     "人物": [], 未建档人物: ["小乙"],
@@ -6995,7 +6995,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七宝琉璃宗深夜遭不明势力突袭，巡逻弟子拼死示警。"
   },
   {
-    "标识": "ch0156_01",
+    "标识": "1-0603",
     "时间": '斗罗历39年12月6日18时10分',
     "章节": "第一百五十六章 猎魂，灭门",
     "人物": [
@@ -7007,7 +7007,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七宝琉璃宗遭武魂殿夜袭惨胜，唐三独自奔赴森林寻小舞浑然不知"
   },
   {
-    "标识": "ch0157_01",
+    "标识": "1-0604",
     "时间": '斗罗历39年12月7日12时20分',
     "章节": "第一百五十七章 再遇胡列娜",
     "人物": [
@@ -7017,7 +7017,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三深入星斗大森林寻小舞，扎营时察觉神秘队伍逼近"
   },
   {
-    "标识": "ch0157_02",
+    "标识": "1-0605",
     "时间": '斗罗历39年12月7日18时00分',
     "章节": "第一百五十七章 再遇胡列娜",
     "人物": [
@@ -7032,7 +7032,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三佯装误闯武魂殿营地，与胡列娜重逢被强留随行"
   },
   {
-    "标识": "ch0158_01",
+    "标识": "1-0606",
     "时间": '斗罗历39年12月8日03时20分',
     "章节": "第一百五十八章 成功潜伏",
     "人物": [
@@ -7044,7 +7044,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三随队深入森林套得情报，确认目标正是小舞所在方位"
   },
   {
-    "标识": "ch0158_02",
+    "标识": "1-0607",
     "时间": '斗罗历39年12月8日09时00分',
     "章节": "第一百五十八章 成功潜伏",
     "人物": [
@@ -7056,7 +7056,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三精神探查遭强者反噬吐血，谎报军情误导鬼菊二斗罗"
   },
   {
-    "标识": "ch0159_01",
+    "标识": "1-0608",
     "时间": '斗罗历39年12月8日12时20分',
     "章节": "第一百五十九章 小舞，我的爱人，终再相见",
     "人物": ["唐三","小舞","鬼斗罗","菊斗罗","大明"], 未建档人物: ["泰坦巨猿二明"],
@@ -7064,7 +7064,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三重见小舞，鬼菊二斗罗武魂融合技瞬间困住两大森林之王"
   },
   {
-    "标识": "ch0159_02",
+    "标识": "1-0609",
     "时间": '斗罗历39年12月8日15时00分',
     "章节": "第一百五十九章 小舞，我的爱人，终再相见",
     "人物": [
@@ -7077,7 +7077,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三偷袭放倒八名武魂殿高手，携小舞破空重逢遁入密林"
   },
   {
-    "标识": "ch0159_03",
+    "标识": "1-0610",
     "时间": '斗罗历39年12月8日15时10分',
     "章节": "第一百五十九章 小舞，我的爱人，终再相见",
     "人物": [
@@ -7089,7 +7089,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "焱率十四名武魂殿高手狂追，唐三携小舞贴地疾行周旋"
   },
   {
-    "标识": "ch0160_01",
+    "标识": "1-0611",
     "时间": '斗罗历39年12月8日15时20分',
     "章节": "第一百六十章 森林死战",
     "人物": [
@@ -7100,7 +7100,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三小舞联手连杀四名魂圣，以命搏命缔造惊人战绩"
   },
   {
-    "标识": "ch0160_02",
+    "标识": "1-0612",
     "时间": '斗罗历39年12月8日15时30分',
     "章节": "第一百六十章 森林死战",
     "人物": [
@@ -7112,7 +7112,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "万年人面魔蛛拦路耽误时机，唐三小舞被焱率众团团围困"
   },
   {
-    "标识": "ch0161_01",
+    "标识": "1-0613",
     "时间": '斗罗历39年12月8日18时00分',
     "章节": "第一百六十一章 同样的命运，唐三的十万年魂环",
     "人物": [
@@ -7124,7 +7124,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三独扛七魂圣轰击自断腿骨、自插心脏慷慨赴死救小舞"
   },
   {
-    "标识": "ch0161_02",
+    "标识": "1-0614",
     "时间": '斗罗历39年12月8日18时10分',
     "章节": "第一百六十一章 同样的命运，唐三的十万年魂环",
     "人物": [
@@ -7135,7 +7135,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞献祭生命灵魂化兔救活唐三，重演母亲阿银宿命"
   },
   {
-    "标识": "ch0161_03",
+    "标识": "1-0615",
     "时间": '斗罗历39年12月8日18时20分',
     "章节": "第一百六十一章 同样的命运，唐三的十万年魂环",
     "人物": [
@@ -7146,7 +7146,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "相思断肠红渡命救回小舞躯壳，苏醒后却已空洞无神智"
   },
   {
-    "标识": "ch0156_02",
+    "标识": "1-0616",
     "时间": '斗罗历39年12月8日21时40分',
     "章节": "第一百五十六章 猎魂，灭门",
     "人物": [
@@ -7157,7 +7157,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "蓝电霸王龙家族满门被灭，比比东转向渗透计划并宣布重排七大宗门"
   },
   {
-    "标识": "ch0156_03",
+    "标识": "1-0617",
     "时间": '斗罗历39年12月9日00时00分',
     "章节": "第一百五十六章 猎魂，灭门",
     "人物": ["雪夜大帝","千仞雪","大师","宁风致"],
@@ -7165,7 +7165,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪夜大帝震怒，大师宁风致谏言隐忍联星罗共抗武魂殿"
   },
   {
-    "标识": "ch0162_01",
+    "标识": "1-0618",
     "时间": '斗罗历39年12月15日03时20分',
     "章节": "第一百六十二章 复活的希望",
     "人物": ["唐三","小舞","大明"], 未建档人物: ["泰坦巨猿二明"],
@@ -7173,7 +7173,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "二明揭示复活条件：三大至宝加封号斗罗、九环反哺小舞"
   },
   {
-    "标识": "ch0162_02",
+    "标识": "1-0619",
     "时间": '斗罗历39年12月15日12时20分',
     "章节": "第一百六十二章 复活的希望",
     "人物": ["唐三","小舞","大明"], 未建档人物: ["泰坦巨猿二明"],
@@ -7181,7 +7181,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三献出十首烈阳蛇内丹凑齐至宝，怀抱化兔小舞踏上归途"
   },
   {
-    "标识": "ch0163_01",
+    "标识": "1-0620",
     "时间": '斗罗历39年12月16日03时20分',
     "章节": "第一百六十三章 进化，八蛛矛",
     "人物": [
@@ -7191,7 +7191,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以蓝银霸王枪、八蛛矛复仇诛杀万年人面魔蛛，跃升六十六级"
   },
   {
-    "标识": "ch0163_02",
+    "标识": "1-0621",
     "时间": '斗罗历39年12月16日09时00分',
     "章节": "第一百六十三章 进化，八蛛矛",
     "人物": [
@@ -7201,7 +7201,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "八蛛矛质变现血色铠甲，唐三初触魂骨融合技雏形"
   },
   {
-    "标识": "ch0164_01",
+    "标识": "1-0622",
     "时间": '斗罗历39年12月18日03时20分',
     "章节": "第一百六十四章 皇室秘辛",
     "人物": [
@@ -7213,7 +7213,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三震慑禁卫皇子，与老友毒斗罗独孤博街头重逢"
   },
   {
-    "标识": "ch0164_02",
+    "标识": "1-0623",
     "时间": '斗罗历39年12月18日06时20分',
     "章节": "第一百六十四章 皇室秘辛",
     "人物": [
@@ -7224,7 +7224,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博揭露两大宗门覆灭详情及太子雪清河皇室秘辛疑云"
   },
   {
-    "标识": "ch0164_03",
+    "标识": "1-0624",
     "时间": '斗罗历39年12月18日09时00分',
     "章节": "第一百六十四章 皇室秘辛",
     "人物": [
@@ -7237,7 +7237,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三见大师强忍丧族之痛，仍日夜督训天斗帝国魂师"
   },
   {
-    "标识": "ch0165_01",
+    "标识": "1-0625",
     "时间": '斗罗历39年12月18日12时20分',
     "章节": "第一百六十五章 八蛛矛进化铠甲的缘由",
     "人物": [
@@ -7250,7 +7250,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三六倍重力碾压全场，泣诉小舞之死大师积劳昏厥获救"
   },
   {
-    "标识": "ch0165_02",
+    "标识": "1-0626",
     "时间": '斗罗历39年12月21日03时20分',
     "章节": "第一百六十五章 八蛛矛进化铠甲的缘由",
     "人物": [
@@ -7261,7 +7261,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师断言魂骨融合技雏形，师徒定策另立唐门谋覆灭武魂殿"
   },
   {
-    "标识": "ch0166_01",
+    "标识": "1-0627",
     "时间": '斗罗历39年12月21日09时00分',
     "章节": "第一百六十六章 奥斯卡归来，复制镜像肠",
     "人物": [
@@ -7273,7 +7273,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三透露建唐门之志，与历练五年归来的奥斯卡重逢"
   },
   {
-    "标识": "ch0166_02",
+    "标识": "1-0628",
     "时间": '斗罗历39年12月21日12时20分',
     "章节": "第一百六十六章 奥斯卡归来，复制镜像肠",
     "人物": [
@@ -7284,7 +7284,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以小舞之痛劝解，奥斯卡放下自卑决意重回荣荣身边"
   },
   {
-    "标识": "ch0166_03",
+    "标识": "1-0629",
     "时间": '斗罗历39年12月21日15时00分',
     "章节": "第一百六十六章 奥斯卡归来，复制镜像肠",
     "人物": [
@@ -7298,7 +7298,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡摘斗笠与宁荣荣重逢，五年相思一朝团聚"
   },
   {
-    "标识": "ch0167_01",
+    "标识": "1-0630",
     "时间": '斗罗历39年12月21日18时00分',
     "章节": "第一百六十七章 奥斯卡，宁荣荣",
     "人物": [
@@ -7310,7 +7310,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与宁风致密谈达成唐门盟约，七宝琉璃宗秘密资助"
   },
   {
-    "标识": "ch0167_02",
+    "标识": "1-0631",
     "时间": '斗罗历39年12月22日03时20分',
     "章节": "第一百六十七章 奥斯卡，宁荣荣",
     "人物": [
@@ -7324,7 +7324,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡镜像肠对战证实力，宁风致考验后终认可其与荣荣婚事"
   },
   {
-    "标识": "ch0168_01",
+    "标识": "1-0632",
     "时间": '斗罗历39年12月22日09时00分',
     "章节": "第一百六十八章 唐门，力之一族",
     "人物": [
@@ -7335,7 +7335,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三拜访力之一族，泰坦认主献府邸任唐门首席长老"
   },
   {
-    "标识": "ch0168_02",
+    "标识": "1-0633",
     "时间": '斗罗历39年12月22日15时00分',
     "章节": "第一百六十八章 唐门，力之一族",
     "人物": [
@@ -7345,7 +7345,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦展示铸造绝技愿助建唐门，唐三决意同赴四宗族聚会"
   },
   {
-    "标识": "ch0169_01",
+    "标识": "1-0634",
     "时间": '斗罗历39年12月23日03时20分',
     "章节": "第一百六十九章 单属性四大宗族",
     "人物": [
@@ -7357,7 +7357,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦讲述四宗族沦落渊源，唐三承诺唐门永不与昊天宗合并"
   },
   {
-    "标识": "ch0169_02",
+    "标识": "1-0635",
     "时间": '斗罗历39年12月23日09时00分',
     "章节": "第一百六十九章 单属性四大宗族",
     "人物": [
@@ -7368,7 +7368,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三透露孔雀翎构想，泰坦震撼应允协助搜寻玄铁"
   },
   {
-    "标识": "ch0170_01",
+    "标识": "1-0636",
     "时间": '斗罗历40年1月8日03时20分',
     "章节": "第一百七十章 猥琐三贱客",
     "人物": [
@@ -7381,7 +7381,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三随泰坦研讨暗器十余日抵边境,遭百名巡查士兵借检查之名强索魂导器。"
   },
   {
-    "标识": "ch0170_02",
+    "标识": "1-0637",
     "时间": '斗罗历40年1月8日03时30分',
     "章节": "第一百七十章 猥琐三贱客",
     "人物": ["唐三","马红俊","泰坦","不乐","老鹅","天涯"],
@@ -7389,7 +7389,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "边境幕后主使竟是猥琐三贱客旧识,马红俊唐三分头迎战,一场混战骤起。"
   },
   {
-    "标识": "ch0170_03",
+    "标识": "1-0638",
     "时间": '斗罗历40年1月8日06时20分',
     "章节": "第一百七十章 猥琐三贱客",
     "人物": ["唐三","老鹅","天涯"],
@@ -7397,7 +7397,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以十万年魂骨瞬间转移偷袭鹅考天涯,昊天锤连挥令二人心胆俱寒。"
   },
   {
-    "标识": "ch0171_01",
+    "标识": "1-0639",
     "时间": '斗罗历40年1月8日09时00分',
     "章节": "第一百七十一章 御之一族",
     "人物": ["唐三","马红俊","泰坦","泰隆","不乐","老鹅","天涯","牛皋"],
@@ -7405,7 +7405,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三贱客见势不敌撤离,唐三马红俊抵龙兴城,泰坦与老友牛皋重逢却隐瞒唐三身份。"
   },
   {
-    "标识": "ch0171_02",
+    "标识": "1-0640",
     "时间": '斗罗历40年1月8日09时10分',
     "章节": "第一百七十一章 御之一族",
     "人物": [
@@ -7418,7 +7418,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三自曝父亲是唐昊,牛皋闻言暴怒,直指昊天宗封山是四宗没落的根源。"
   },
   {
-    "标识": "ch0172_01",
+    "标识": "1-0641",
     "时间": '斗罗历40年1月8日09时20分',
     "章节": "第一百七十二章 对阵，与板甲巨犀比防御",
     "人物": [
@@ -7430,7 +7430,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三躬身致歉获牛皋一炷香比试机会,双方定下三拳硬扛的赌约条件。"
   },
   {
-    "标识": "ch0172_02",
+    "标识": "1-0642",
     "时间": '斗罗历40年1月8日12时20分',
     "章节": "第一百七十二章 对阵，与板甲巨犀比防御",
     "人物": [
@@ -7442,7 +7442,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三虚实两拳智取牛皋,以杀神突击震退三步,后者恼羞加码赌约。"
   },
   {
-    "标识": "ch0173_01",
+    "标识": "1-0643",
     "时间": '斗罗历40年1月8日12时30分',
     "章节": "第一百七十三章 破防，乱披风之威",
     "人物": [
@@ -7454,7 +7454,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三徒手乱披风锤法八十一击破防轰飞牛皋,牛皋当众认输允其留下参聚。"
   },
   {
-    "标识": "ch0173_02",
+    "标识": "1-0644",
     "时间": '斗罗历40年1月8日15时00分',
     "章节": "第一百七十三章 破防，乱披风之威",
     "人物": [
@@ -7466,7 +7466,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三展示双生武魂与十万年红环震惊牛皋,泰坦力劝老友共赌唐门前程。"
   },
   {
-    "标识": "ch0173_03",
+    "标识": "1-0645",
     "时间": '斗罗历40年1月8日15时10分',
     "章节": "第一百七十三章 破防，乱披风之威",
     "人物": [
@@ -7478,7 +7478,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "诸葛神弩当场试射震撼牛皋,唐三借机点明唐门稳中求利的经营之道。"
   },
   {
-    "标识": "ch0174_01",
+    "标识": "1-0646",
     "时间": '斗罗历40年1月8日15时20分',
     "章节": "第一百七十四章 御之一族入唐门",
     "人物": [
@@ -7491,7 +7491,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "象甲宗呼延震登门招安遭牛皋断然拒绝,泰坦联手逼退,唐三揭穿武魂殿威慑图谋。"
   },
   {
-    "标识": "ch0174_02",
+    "标识": "1-0647",
     "时间": '斗罗历40年1月8日18时00分',
     "章节": "第一百七十四章 御之一族入唐门",
     "人物": [
@@ -7503,7 +7503,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三剖陈唐门抗魂殿之志打动牛皋,御之一族决意举族加入唐门。"
   },
   {
-    "标识": "ch0174_03",
+    "标识": "1-0648",
     "时间": '斗罗历40年1月9日12时20分',
     "章节": "第一百七十四章 御之一族入唐门",
     "人物": [
@@ -7517,7 +7517,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "敏之一族族长白鹤携孙女抵达,牛皋泰坦故布疑阵为说服其入唐门铺垫。"
   },
   {
-    "标识": "ch0175_01",
+    "标识": "1-0649",
     "时间": '斗罗历40年1月9日15时00分',
     "章节": "第一百七十五章 鬼影迷踪斗纯敏",
     "人物": [
@@ -7530,7 +7530,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白鹤心动却因囊中羞涩与唐三争执,最终以速度赌局换取诸葛神弩。"
   },
   {
-    "标识": "ch0175_02",
+    "标识": "1-0650",
     "时间": '斗罗历40年1月9日15时10分',
     "章节": "第一百七十五章 鬼影迷踪斗纯敏",
     "人物": [
@@ -7542,7 +7542,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以鬼影迷踪步智斗白沉香尖尾雨燕分身,一炷香内全身而退获胜。"
   },
   {
-    "标识": "ch0175_03",
+    "标识": "1-0651",
     "时间": '斗罗历40年1月9日15时20分',
     "章节": "第一百七十五章 鬼影迷踪斗纯敏",
     "人物": [
@@ -7554,7 +7554,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白鹤释放武魂真身极限速度,逼得唐三疲于瞬移躲闪,战局骤然凶险。"
   },
   {
-    "标识": "ch0176_01",
+    "标识": "1-0652",
     "时间": '斗罗历40年1月9日15时30分',
     "章节": "第一百七十六章 唐三的第六魂技，小舞现身",
     "人物": [
@@ -7566,7 +7566,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三第六魂技小舞虚影意外浮现化解白鹤武魂真身攻势,双方战成平局。"
   },
   {
-    "标识": "ch0176_02",
+    "标识": "1-0653",
     "时间": '斗罗历40年1月9日18时00分',
     "章节": "第一百七十六章 唐三的第六魂技，小舞现身",
     "人物": [
@@ -7579,7 +7579,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白沉香探问唐三秘密无果,唐三席间坦承父亲唐昊身份,白鹤骤然色变。"
   },
   {
-    "标识": "ch0177_01",
+    "标识": "1-0654",
     "时间": '斗罗历40年1月10日00时20分',
     "章节": "第一百七十七章 水晶血龙参",
     "人物": [
@@ -7590,7 +7590,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白鹤晨练时揭晓与唐三的舅甥血脉渊源,赠传家水晶血龙参助其说服杨无敌。"
   },
   {
-    "标识": "ch0177_02",
+    "标识": "1-0655",
     "时间": '斗罗历40年1月10日03时20分',
     "章节": "第一百七十七章 水晶血龙参",
     "人物": [
@@ -7601,7 +7601,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞偷食水晶血龙参毛色异变数轮,两仙草药效相济,复活希望骤然大增。"
   },
   {
-    "标识": "ch0177_03",
+    "标识": "1-0656",
     "时间": '斗罗历40年1月10日03时30分',
     "章节": "第一百七十七章 水晶血龙参",
     "人物": ["唐三","马红俊","杨无敌","白鹤"], 未建档人物: ["牛奔"],
@@ -7609,7 +7609,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "破之一族杨无敌怒斥昊天宗欲杀唐三,唐三针锋相对提出生死对赌。"
   },
   {
-    "标识": "ch0178_01",
+    "标识": "1-0657",
     "时间": '斗罗历40年1月10日06时20分',
     "章节": "第一百七十八章 唐三VS杨无敌",
     "人物": [
@@ -7620,7 +7620,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与杨无敌正面交锋,破魂枪震碎蓝银皇连番惨烈突刺,唐三步步凶险。"
   },
   {
-    "标识": "ch0178_02",
+    "标识": "1-0658",
     "时间": '斗罗历40年1月10日06时30分',
     "章节": "第一百七十八章 唐三VS杨无敌",
     "人物": [
@@ -7631,7 +7631,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "杨无敌祭出器魂真身,唐三紫极神光遭破魂枪吸附压制,战局陷入绝境。"
   },
   {
-    "标识": "ch0179_01",
+    "标识": "1-0659",
     "时间": '斗罗历40年1月10日09时00分',
     "章节": "第一百七十九章 唐三第六魂技：虚无、爆杀八段摔",
     "人物": [
@@ -7642,7 +7642,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以无敌金身硬扛破魂枪贯胸,昊天锤全力反击命中杨无敌胸口。"
   },
   {
-    "标识": "ch0179_02",
+    "标识": "1-0660",
     "时间": '斗罗历40年1月10日09时10分',
     "章节": "第一百七十九章 唐三第六魂技：虚无、爆杀八段摔",
     "人物": [
@@ -7654,7 +7654,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三第六魂技化身狂暴八段摔重创杨无敌,蓝银皇右腿骨异能瞬间愈合贯胸伤。"
   },
   {
-    "标识": "ch0180_01",
+    "标识": "1-0661",
     "时间": '斗罗历40年1月10日12时20分',
     "章节": "第一百八十章 复活，小舞，二分之一",
     "人物": [
@@ -7665,7 +7665,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三沉睡疗伤后惊觉小舞已恢复人形,然灵魂未归,仅复活二分之一。"
   },
   {
-    "标识": "ch0180_02",
+    "标识": "1-0662",
     "时间": '斗罗历40年1月10日15时00分',
     "章节": "第一百八十章 复活，小舞，二分之一",
     "人物": [
@@ -7679,7 +7679,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以幽香绮罗仙品代替失约水晶血龙参,杨无敌欣然入盟,四宗终团聚。"
   },
   {
-    "标识": "ch0180_03",
+    "标识": "1-0663",
     "时间": '斗罗历40年1月10日18时00分',
     "章节": "第一百八十章 复活，小舞，二分之一",
     "人物": [
@@ -7690,7 +7690,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞本能依恋贴身而眠,唐三强忍情欲恪守底线,只待她灵魂真正归体。"
   },
   {
-    "标识": "ch0181_01",
+    "标识": "1-0664",
     "时间": '斗罗历40年2月3日06时20分',
     "章节": "第一百八十一章 五年的差距，一挑三",
     "人物": [
@@ -7703,7 +7703,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三小舞马红俊返校,恰逢四元素学院趁精锐外出之际强闯挑衅。"
   },
   {
-    "标识": "ch0181_02",
+    "标识": "1-0665",
     "时间": '斗罗历40年2月3日09时00分',
     "章节": "第一百八十一章 五年的差距，一挑三",
     "人物": [
@@ -7716,7 +7716,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三一人独战风笑天火舞火无双,首度公开十万年红环,连挫强敌。"
   },
   {
-    "标识": "ch0181_03",
+    "标识": "1-0666",
     "时间": '斗罗历40年2月3日09时10分',
     "章节": "第一百八十一章 五年的差距，一挑三",
     "人物": [
@@ -7730,7 +7730,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三连挫三人手下留情,风笑天甘拜下风,四元素学院一众折服臣服。"
   },
   {
-    "标识": "ch0182_01",
+    "标识": "1-0667",
     "时间": '斗罗历40年2月3日12时20分',
     "章节": "第一百八十二章 四元素学院的来意",
     "人物": [
@@ -7744,7 +7744,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "风笑天坦陈四元素学院困境求依附,唐三识破其意图暂拒,留待弗兰德定夺。"
   },
   {
-    "标识": "ch0182_02",
+    "标识": "1-0668",
     "时间": '斗罗历40年2月3日15时00分',
     "章节": "第一百八十二章 四元素学院的来意",
     "人物": [
@@ -7757,7 +7757,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三坦陈小舞复活真相与代价,众人定策低调筹建唐门,议定赴庚辛城购金属。"
   },
   {
-    "标识": "ch0183_01",
+    "标识": "1-0669",
     "时间": '斗罗历40年3月10日03时20分',
     "章节": "第一百八十三章 金属之都庚辛城",
     "人物": [
@@ -7772,7 +7772,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "众人启程赴庚辛城采购稀有金属,泰坦沿途揭晓大陆铁匠七级体系与三大神匠。"
   },
   {
-    "标识": "ch0183_02",
+    "标识": "1-0670",
     "时间": '斗罗历40年3月10日09时00分',
     "章节": "第一百八十三章 金属之都庚辛城",
     "人物": [
@@ -7783,7 +7783,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "泰坦街头识破假冒楼高弟子兜售的劣质铠甲骗局,一脚震波轻取行凶者。"
   },
   {
-    "标识": "ch0183_03",
+    "标识": "1-0671",
     "时间": '斗罗历40年3月10日09时10分',
     "章节": "第一百八十三章 金属之都庚辛城",
     "人物": ["唐三","泰坦"], 未建档人物: ["任怨"],
@@ -7791,7 +7791,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "铁匠师任怨认出泰坦乃大陆三大神匠之一当众下跪,士兵队长骇然瘫软。"
   },
   {
-    "标识": "ch0184_01",
+    "标识": "1-0672",
     "时间": '斗罗历40年3月10日12时20分',
     "章节": "第一百八十四章 神匠楼高",
     "人物": [
@@ -7804,7 +7804,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三设计诱使神匠楼高痴迷暴雨梨花针图纸，主动加入唐门任长老。"
   },
   {
-    "标识": "ch0184_02",
+    "标识": "1-0673",
     "时间": '斗罗历40年3月10日15时00分',
     "章节": "第一百八十四章 神匠楼高",
     "人物": [
@@ -7817,7 +7817,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以原价采购二十万金魂币稀有金属，打通唐门暗器原料供应渠道。"
   },
   {
-    "标识": "ch0184_03",
+    "标识": "1-0674",
     "时间": '斗罗历40年3月10日18时00分',
     "章节": "第一百八十四章 神匠楼高",
     "人物": [
@@ -7832,7 +7832,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "迈尔斯当街轻薄小舞遭震慑，唐三定下明夜血洗庚辛城武魂主殿之计。"
   },
   {
-    "标识": "ch0186_01",
+    "标识": "1-0675",
     "时间": '斗罗历40年3月12日12时20分',
     "章节": "第一百八十六章 寒心铁精与深海沉银",
     "人物": [
@@ -7846,7 +7846,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣一金魂币购得极品板晶，为唐门顶尖暗器储备关键材料。"
   },
   {
-    "标识": "ch0186_02",
+    "标识": "1-0676",
     "时间": '斗罗历40年3月12日15时00分',
     "章节": "第一百八十六章 寒心铁精与深海沉银",
     "人物": [
@@ -7859,7 +7859,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣意外购得寒心铁精与深海沉银银母，佛怒唐莲重现露出曙光。"
   },
   {
-    "标识": "ch0187_01",
+    "标识": "1-0677",
     "时间": '斗罗历40年3月12日18时00分',
     "章节": "第一百八十七章 月黑风高杀人夜",
     "人物": [
@@ -7873,7 +7873,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "迈尔斯百万金魂币强夺楼高神器软甲，楼高暗中助唐三筹划复仇。"
   },
   {
-    "标识": "ch0187_02",
+    "标识": "1-0678",
     "时间": '斗罗历40年3月12日21时40分',
     "章节": "第一百八十七章 月黑风高杀人夜",
     "人物": [
@@ -7884,7 +7884,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三借夜色以杀神领域、无敌金身尽歼庚辛城武魂主殿三十余魂师。"
   },
   {
-    "标识": "ch0187_03",
+    "标识": "1-0679",
     "时间": '斗罗历40年3月13日00时20分',
     "章节": "第一百八十七章 月黑风高杀人夜",
     "人物": [
@@ -7899,7 +7899,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "武魂主殿全灭震动庚辛城，楼高低价转让神器软甲，唐门收获盆满钵满。"
   },
   {
-    "标识": "ch0189_01",
+    "标识": "1-0680",
     "时间": '斗罗历40年3月24日12时20分',
     "章节": "第一百八十九章 唐门五堂",
     "人物": [
@@ -7915,7 +7915,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三携楼高归返唐门，敏堂早已探明归期，御堂扩建工程令人惊叹。"
   },
   {
-    "标识": "ch0189_02",
+    "标识": "1-0681",
     "时间": '斗罗历40年3月25日03时20分',
     "章节": "第一百八十九章 唐门五堂",
     "人物": [
@@ -7933,7 +7933,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐门确立五堂制与议事堂共治架构，四宗族正式更名归入唐门体系。"
   },
   {
-    "标识": "ch0189_03",
+    "标识": "1-0682",
     "时间": '斗罗历40年3月25日09时00分',
     "章节": "第一百八十九章 唐门五堂",
     "人物": [
@@ -7947,7 +7947,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三察觉天斗城异样，独孤博突然告知雪夜大帝毒发垂危的惊变。"
   },
   {
-    "标识": "ch0190_01",
+    "标识": "1-0683",
     "时间": '斗罗历40年3月25日15时00分',
     "章节": "第一百九十章 宫闱，惊变，敌影现",
     "人物": [
@@ -7960,7 +7960,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博告知雪夜大帝中多重混毒垂危，唐三携杨无敌驰援皇宫解毒。"
   },
   {
-    "标识": "ch0190_02",
+    "标识": "1-0684",
     "时间": '斗罗历40年3月25日18时00分',
     "章节": "第一百九十章 宫闱，惊变，敌影现",
     "人物": ["唐三","独孤博","杨无敌","千仞雪"],
@@ -7968,7 +7968,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三凭三重逻辑破绽当场揭穿太子雪清河勾结武魂殿弑父下毒的阴谋。"
   },
   {
-    "标识": "ch0191_01",
+    "标识": "1-0685",
     "时间": '斗罗历40年3月25日18时10分',
     "章节": "第一百九十一章 刺豚、蛇矛、破魂枪",
     "人物": [
@@ -7981,7 +7981,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "杨无敌以破魂枪硬撼蛇矛斗罗，一枪震伤这位轻敌的封号斗罗。"
   },
   {
-    "标识": "ch0191_02",
+    "标识": "1-0686",
     "时间": '斗罗历40年3月25日18时20分',
     "章节": "第一百九十一章 刺豚、蛇矛、破魂枪",
     "人物": [
@@ -7994,7 +7994,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三无敌金身硬挡蛇矛斗罗偷袭，三人合力逼退两名封号斗罗。"
   },
   {
-    "标识": "ch0192_01",
+    "标识": "1-0687",
     "时间": '斗罗历40年3月25日21时40分',
     "章节": "第一百九十二章 杀神领域VS天使领域",
     "人物": ["唐三","千仞雪"],
@@ -8002,7 +8002,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪清河展现超级武魂六翼天使真容，一击将唐三震得口吐鲜血。"
   },
   {
-    "标识": "ch0192_02",
+    "标识": "1-0688",
     "时间": '斗罗历40年3月25日21时50分',
     "章节": "第一百九十二章 杀神领域VS天使领域",
     "人物": ["唐三","千仞雪"],
@@ -8010,7 +8010,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪清河天使领域全面笼罩，唐三险中借三种力量融合勉强避开必杀。"
   },
   {
-    "标识": "ch0193_01",
+    "标识": "1-0689",
     "时间": '斗罗历40年3月25日22时00分',
     "章节": "第一百九十三章 自创魂技，乱披风之舞",
     "人物": ["唐三","千仞雪"],
@@ -8018,7 +8018,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三首次实战启用自创绝学乱披风之舞，于天使领域中翩然闪避蓄力。"
   },
   {
-    "标识": "ch0193_02",
+    "标识": "1-0690",
     "时间": '斗罗历40年3月25日22时10分',
     "章节": "第一百九十三章 自创魂技，乱披风之舞",
     "人物": ["唐三","千仞雪"],
@@ -8026,7 +8026,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三乱披风之舞八十一锤全力轰破雪清河天使领域，双方两败俱伤。"
   },
   {
-    "标识": "ch0194_01",
+    "标识": "1-0691",
     "时间": '斗罗历40年3月25日22时20分',
     "章节": "第一百九十四章 小舞，复活，四分之一",
     "人物": [
@@ -8037,7 +8037,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪揭下面具露出女子真容，凝聚全部残余魂力欲斩杀油尽灯枯的唐三。"
   },
   {
-    "标识": "ch0194_02",
+    "标识": "1-0692",
     "时间": '斗罗历40年3月25日22时30分',
     "章节": "第一百九十四章 小舞，复活，四分之一",
     "人物": [
@@ -8048,7 +8048,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞灵魂肉身刹那合一舍身救主，复活迈入四分之一的新阶段。"
   },
   {
-    "标识": "ch0194_03",
+    "标识": "1-0693",
     "时间": '斗罗历40年3月25日22时40分',
     "章节": "第一百九十四章 小舞，复活，四分之一",
     "人物": [
@@ -8063,7 +8063,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "黄金铁三角罗三炮化龙荡平残敌，唐三合力抢救雪夜大帝性命。"
   },
   {
-    "标识": "ch0195_01",
+    "标识": "1-0694",
     "时间": '斗罗历40年3月26日00时20分',
     "章节": "第一百九十五章 六块，魂骨，天使神装",
     "人物": ["唐三","独孤博","杨无敌","宁风致","古榕","尘心"],
@@ -8071,7 +8071,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐门联手七宝琉璃宗于学院外全歼千名武魂殿伏兵，扬眉吐气。"
   },
   {
-    "标识": "ch0195_02",
+    "标识": "1-0695",
     "时间": '斗罗历40年3月26日00时30分',
     "章节": "第一百九十五章 六块，魂骨，天使神装",
     "人物": [
@@ -8084,7 +8084,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "杨无敌独孤博联手为雪夜大帝解毒，宁风致秘法助其提前苏醒主政。"
   },
   {
-    "标识": "ch0196_01",
+    "标识": "1-0696",
     "时间": '斗罗历40年3月26日03时20分',
     "章节": "第一百九十六章 九十九级的封号斗罗",
     "人物": [
@@ -8098,7 +8098,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪血洗七宝琉璃宗宫内据点后遁走，雪夜大帝册立雪崩为太子。"
   },
   {
-    "标识": "ch0196_02",
+    "标识": "1-0697",
     "时间": '斗罗历40年3月26日03时30分',
     "章节": "第一百九十六章 九十九级的封号斗罗",
     "人物": ["唐三","尘心","古榕","宁风致","大师"],
@@ -8106,7 +8106,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "剑斗罗尘心揭示九十五级后的恐怖等级差距，众人窥见魂师界天花板。"
   },
   {
-    "标识": "ch0197_01",
+    "标识": "1-0698",
     "时间": '斗罗历40年3月28日03时20分',
     "章节": "第一百九十七章 魔鬼岛？海神岛？",
     "人物": [
@@ -8117,7 +8117,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师剖析大陆局势，建议唐三暂离锋芒赴神秘的海神岛历练磨砺。"
   },
   {
-    "标识": "ch0197_02",
+    "标识": "1-0699",
     "时间": '斗罗历40年3月28日09时00分',
     "章节": "第一百九十七章 魔鬼岛？海神岛？",
     "人物": [
@@ -8132,7 +8132,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三宣布远赴险地历练，将唐门大政暂交四堂共同打理。"
   },
   {
-    "标识": "ch0198_01",
+    "标识": "1-0700",
     "时间": '斗罗历40年3月28日15时00分',
     "章节": "第一百九十八章 三位绝世斗罗的来历",
     "人物": [
@@ -8146,7 +8146,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "杨无敌坦白胞弟叛投武魂殿之痛，白鹤揭晓联姻背后振兴宗族的深谋。"
   },
   {
-    "标识": "ch0198_02",
+    "标识": "1-0701",
     "时间": '斗罗历40年4月5日03时20分',
     "章节": "第一百九十八章 三位绝世斗罗的来历",
     "人物": [
@@ -8159,7 +8159,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐啸揭晓曾祖唐晨与武魂殿供奉千道流当年并称魂师界两岳的隐秘往事。"
   },
   {
-    "标识": "ch0198_03",
+    "标识": "1-0702",
     "时间": '斗罗历40年4月5日09时00分',
     "章节": "第一百九十八章 三位绝世斗罗的来历",
     "人物": [
@@ -8170,7 +8170,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐啸揭晓海神岛主曾令曾祖与千道流双双落败的往事，倾力支持唐三远行。"
   },
   {
-    "标识": "ch0199_01",
+    "标识": "1-0703",
     "时间": '斗罗历40年4月15日09时00分',
     "章节": "第一百九十九章 唐三和小舞的幸福，订婚",
     "人物": [
@@ -8183,7 +8183,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三携小舞重返冰火两仪眼，母亲阿银草复苏神速让团聚看到曙光。"
   },
   {
-    "标识": "ch0199_02",
+    "标识": "1-0704",
     "时间": '斗罗历40年4月15日12时20分',
     "章节": "第一百九十九章 唐三和小舞的幸福，订婚",
     "人物": [
@@ -8196,7 +8196,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "蓝银皇化戒指见证唐三与小舞订婚，小舞灵魂短暂附体拜见公婆。"
   },
   {
-    "标识": "ch0199_03",
+    "标识": "1-0705",
     "时间": '斗罗历40年4月15日15时00分',
     "章节": "第一百九十九章 唐三和小舞的幸福，订婚",
     "人物": [
@@ -8211,7 +8211,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白朱竹清赶回重聚史莱克七怪，众人整装待发共赴海神岛历练。"
   },
   {
-    "标识": "ch0200_01",
+    "标识": "1-0706",
     "时间": '斗罗历40年4月16日09时00分',
     "章节": "第二百章 重聚，史莱克七怪",
     "人物": ["马红俊","白沉香","戴沐白","朱竹清","奥斯卡","宁荣荣","大师","尘心"],
@@ -8219,7 +8219,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克五怪与白沉香重聚，大师携剑斗罗尘心到来宣布赴海神岛前须先磨合受压。"
   },
   {
-    "标识": "ch0200_02",
+    "标识": "1-0707",
     "时间": '斗罗历40年4月17日12时20分',
     "章节": "第二百章 重聚，史莱克七怪",
     "人物": ["唐三","小舞","戴沐白","朱竹清","马红俊","奥斯卡","宁荣荣","尘心"],
@@ -8227,7 +8227,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三、小舞加入磨合，七怪联手强攻仍被剑斗罗尘心气势轻松压制毫发无伤。"
   },
   {
-    "标识": "ch0200_04",
+    "标识": "1-0708",
     "时间": '斗罗历40年4月17日15时00分',
     "章节": "第二百章 重聚，史莱克七怪",
     "人物": [
@@ -8242,7 +8242,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三总结磨合短板,制定三天密集配合训练计划要求恢复大赛水准默契。"
   },
   {
-    "标识": "ch0200_03",
+    "标识": "1-0709",
     "时间": '斗罗历40年4月18日15时00分',
     "章节": "第二百章 重聚，史莱克七怪",
     "人物": ["唐三","戴沐白","朱竹清","马红俊","宁荣荣","奥斯卡","尘心","大师","白沉香"],
@@ -8250,7 +8250,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "剑斗罗尘心化剑震慑全场并揭示九十五级质变之理，令七怪深知与真正强者的差距。"
   },
   {
-    "标识": "ch0200_05",
+    "标识": "1-0710",
     "时间": '斗罗历40年4月18日18时00分',
     "章节": "第二百章 重聚，史莱克七怪",
     "人物": [
@@ -8262,7 +8262,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三月下独白坚定决心,戴沐白坦言以唐三为标杆既不甘又庆幸，局势由此发生微妙转变。"
   },
   {
-    "标识": "ch0201_01",
+    "标识": "1-0711",
     "时间": '斗罗历40年4月19日03时20分',
     "章节": "第二百零一章 镇国之宝赠唐三，瀚海乾坤罩",
     "人物": [
@@ -8278,7 +8278,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三日静默修炼后马红俊突破五十九级，唐三应宁风致之邀准备入宫觐见雪夜大帝。"
   },
   {
-    "标识": "ch0201_04",
+    "标识": "1-0712",
     "时间": '斗罗历40年4月19日06时40分',
     "章节": "第二百零一章 镇国之宝赠唐三，瀚海乾坤罩",
     "人物": [
@@ -8291,7 +8291,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪夜大帝透露瀚海乾坤罩乃三万年前极限强者遗物,唐三联想到海神岛。"
   },
   {
-    "标识": "ch0201_02",
+    "标识": "1-0713",
     "时间": '斗罗历40年4月19日06时50分',
     "章节": "第二百零一章 镇国之宝赠唐三，瀚海乾坤罩",
     "人物": ["唐三","宁风致","雪夜大帝","雪崩"], 未建档人物: ["雪星亲王"],
@@ -8299,7 +8299,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪夜大帝册封唐三为蓝昊王，令太子雪崩拜师，并赐下镇国至宝瀚海乾坤罩。"
   },
   {
-    "标识": "ch0201_05",
+    "标识": "1-0714",
     "时间": '斗罗历40年4月20日07时40分',
     "章节": "第二百零一章 镇国之宝赠唐三，瀚海乾坤罩",
     "人物": [
@@ -8310,7 +8310,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁风致警告三位先帝探查此物均受创,叮嘱循序渐进并承诺维护唐门。"
   },
   {
-    "标识": "ch0201_03",
+    "标识": "1-0715",
     "时间": '斗罗历40年4月21日15时00分',
     "章节": "第二百零一章 镇国之宝赠唐三，瀚海乾坤罩",
     "人物": [
@@ -8320,7 +8320,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三探查瀚海乾坤罩遭精神反震重伤昏迷，神器中传出苍老虚影低语寻得合适体质。"
   },
   {
-    "标识": "ch0202_01",
+    "标识": "1-0716",
     "时间": '斗罗历40年4月22日00时40分',
     "章节": "第二百零二章 瀚海乾坤罩",
     "人物": ["唐三","戴沐白","小舞"], 未建档人物: ["史莱克七怪"],
@@ -8328,7 +8328,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白试注魂力无果，唐三亲自沟通瀚海乾坤罩整夜习得其四大神奇妙用。"
   },
   {
-    "标识": "ch0202_02",
+    "标识": "1-0717",
     "时间": '斗罗历40年4月22日03时20分',
     "章节": "第二百零二章 瀚海乾坤罩",
     "人物": [
@@ -8345,7 +8345,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三演示瀚海乾坤罩四大神技，众人辞别唐门与史莱克学院启程远赴海神岛。"
   },
   {
-    "标识": "ch0202_04",
+    "标识": "1-0718",
     "时间": '斗罗历40年4月22日05时40分',
     "章节": "第二百零二章 瀚海乾坤罩",
     "人物": [
@@ -8357,7 +8357,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白亲历乾坤定神罩的恐怖封印效果,唐三提醒每日仅限一次不可滥用。"
   },
   {
-    "标识": "ch0202_05",
+    "标识": "1-0719",
     "时间": '斗罗历40年4月23日09时00分',
     "章节": "第二百零二章 瀚海乾坤罩",
     "人物": ["唐三","大师","尘心","古榕"],
@@ -8365,7 +8365,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师叮嘱心智为重,尘心赠求援令牌,骨斗罗赠万年魂骨碎片保命。"
   },
   {
-    "标识": "ch0202_03",
+    "标识": "1-0720",
     "时间": '斗罗历40年4月23日15时00分',
     "章节": "第二百零二章 瀚海乾坤罩",
     "人物": [
@@ -8382,7 +8382,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "首夜宿营马红俊与白沉香因老鼠闹出误会又和好，感情在磕磕绊绊中悄然升温。"
   },
   {
-    "标识": "ch0203_01",
+    "标识": "1-0721",
     "时间": '斗罗历40年4月24日00时40分',
     "章节": "第二百零三章 暗影猎手",
     "人物": [
@@ -8395,7 +8395,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊与白沉香别扭消散，众人经十日赶路抵达天斗帝国西陲边境地带。"
   },
   {
-    "标识": "ch0203_04",
+    "标识": "1-0722",
     "时间": '斗罗历40年4月24日12时20分',
     "章节": "第二百零三章 暗影猎手",
     "人物": [
@@ -8407,7 +8407,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以蓝银领域锁定三百狼盗方位,戴沐白辨认种群,唐三定暗杀策略。"
   },
   {
-    "标识": "ch0203_05",
+    "标识": "1-0723",
     "时间": '斗罗历40年4月25日15时00分',
     "章节": "第二百零三章 暗影猎手",
     "人物": [
@@ -8419,7 +8419,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三人分配暗杀方案以五人一轮猎杀,前三轮无声歼灭十五名狼盗，为后续行动奠定基础。"
   },
   {
-    "标识": "ch0204_04",
+    "标识": "1-0724",
     "时间": '斗罗历40年4月25日21时40分',
     "章节": "第三十集 瀚海城 第二百零四章 唐门第四，一千零一夜",
     "人物": [
@@ -8431,7 +8431,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "全歼后三人浑身浴血取出魂骨,感叹生死锤炼令配合默契全面复苏。"
   },
   {
-    "标识": "ch0204_05",
+    "标识": "1-0725",
     "时间": '斗罗历40年4月26日00时40分',
     "章节": "第三十集 瀚海城 第二百零四章 唐门第四，一千零一夜",
     "人物": [
@@ -8443,7 +8443,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三人为死难村民安葬立碑,唐三默誓日后优先供暗器予边境百姓防身。"
   },
   {
-    "标识": "ch0203_02",
+    "标识": "1-0726",
     "时间": '斗罗历40年4月26日09时00分',
     "章节": "第二百零三章 暗影猎手",
     "人物": [
@@ -8459,7 +8459,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白沉香空中侦查发现全村百余具惨死尸体，唐三携戴沐白、马红俊循血迹追凶。"
   },
   {
-    "标识": "ch0203_03",
+    "标识": "1-0727",
     "时间": '斗罗历40年4月27日12时20分',
     "章节": "第二百零三章 暗影猎手",
     "人物": [
@@ -8471,7 +8471,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三人查明凶手为人狼混血的狼盗种群，唐三释放八蛛矛决意暗杀绝不姑息。"
   },
   {
-    "标识": "ch0204_01",
+    "标识": "1-0728",
     "时间": '斗罗历40年4月27日15时00分',
     "章节": "第三十集 瀚海城 第二百零四章 唐门第四，一千零一夜",
     "人物": [
@@ -8483,7 +8483,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三人暗杀二十余名狼盗后暴露行踪，遭三百余狼盗围攻爆发正面激战。"
   },
   {
-    "标识": "ch0204_02",
+    "标识": "1-0729",
     "时间": '斗罗历40年4月28日18时00分',
     "章节": "第三十集 瀚海城 第二百零四章 唐门第四，一千零一夜",
     "人物": [
@@ -8495,7 +8495,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三只变异青色狼盗突袭令三人负伤，唐三万年魂技配合队友合力斩杀两只。"
   },
   {
-    "标识": "ch0204_03",
+    "标识": "1-0730",
     "时间": '斗罗历40年4月28日21时40分',
     "章节": "第三十集 瀚海城 第二百零四章 唐门第四，一千零一夜",
     "人物": [
@@ -8507,7 +8507,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三首用暗器绝技一千零一夜秒杀狼盗首领，三人全歼群狼却未能救下村民。"
   },
   {
-    "标识": "ch0205_01",
+    "标识": "1-0731",
     "时间": '斗罗历40年4月29日00时40分',
     "章节": "第二百零五章 嗜血狂化之飓风右腿",
     "人物": [
@@ -8519,7 +8519,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白吸收狼盗首领体内魂骨，获嗜血狂化之飓风右腿全属性大幅提升技能。"
   },
   {
-    "标识": "ch0205_02",
+    "标识": "1-0732",
     "时间": '斗罗历40年4月29日09时00分',
     "章节": "第二百零五章 嗜血狂化之飓风右腿",
     "人物": [
@@ -8532,7 +8532,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白沉香忍痛为马红俊缝合手臂重伤，以坚韧担当赢得史莱克七怪全体认可。"
   },
   {
-    "标识": "ch0205_04",
+    "标识": "1-0733",
     "时间": '斗罗历40年4月29日12时20分',
     "章节": "第二百零五章 嗜血狂化之飓风右腿",
     "人物": [
@@ -8544,7 +8544,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "朱竹清为戴沐白包扎含泪嘱咐勿再冒险,两人感情较五年前深厚百倍。"
   },
   {
-    "标识": "ch0205_05",
+    "标识": "1-0734",
     "时间": '斗罗历40年4月30日15时00分',
     "章节": "第二百零五章 嗜血狂化之飓风右腿",
     "人物": [
@@ -8555,7 +8555,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三建议戴沐白暂缓使用嗜血狂化技能待精神力提升再启用,戴沐白从之。"
   },
   {
-    "标识": "ch0205_03",
+    "标识": "1-0735",
     "时间": '斗罗历40年5月1日15时00分',
     "章节": "第二百零五章 嗜血狂化之飓风右腿",
     "人物": [
@@ -8565,7 +8565,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三修炼时发觉四块魂骨随瀚海乾坤罩发热异变，隐约感到二者已灵魂交融。"
   },
   {
-    "标识": "ch0206_05",
+    "标识": "1-0736",
     "时间": '斗罗历40年5月2日09时00分',
     "章节": "第二百零六章 瀚海大斗魂场",
     "人物": [
@@ -8578,7 +8578,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三总结海魂师依赖水域增幅的弱点,指出飞行与空中是克制关键。"
   },
   {
-    "标识": "ch0206_01",
+    "标识": "1-0737",
     "时间": '斗罗历40年5月2日09时10分',
     "章节": "第二百零六章 瀚海大斗魂场",
     "人物": [
@@ -8595,7 +8595,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "众人抵达瀚海城入住旅店，房间分配意外令马红俊与白沉香被迫同住一室。"
   },
   {
-    "标识": "ch0206_04",
+    "标识": "1-0738",
     "时间": '斗罗历40年5月2日15时00分',
     "章节": "第二百零六章 瀚海大斗魂场",
     "人物": [
@@ -8607,7 +8607,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊制定以白沉香为诱饵暗中注入火劲的战术,白沉香默契配合。"
   },
   {
-    "标识": "ch0206_02",
+    "标识": "1-0739",
     "时间": '斗罗历40年5月2日15时10分',
     "章节": "第二百零六章 瀚海大斗魂场",
     "人物": [
@@ -8623,7 +8623,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊与白沉香化名出战海魄兄弟，故意示弱诱敌实则暗中埋下火劲伏笔。"
   },
   {
-    "标识": "ch0207_04",
+    "标识": "1-0740",
     "时间": '斗罗历40年5月3日18时00分',
     "章节": "第二百零七章 不要崇拜哥，哥只是个传说",
     "人物": [
@@ -8635,7 +8635,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白沉香主动扶住体力透支的马红俊,二人关系在自然接触中悄然升温。"
   },
   {
-    "标识": "ch0207_05",
+    "标识": "1-0741",
     "时间": '斗罗历40年5月3日19时30分',
     "章节": "第二百零七章 不要崇拜哥，哥只是个传说",
     "人物": [
@@ -8648,7 +8648,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三检视龙渊艇确认功能完好,众人惊叹其工艺远超当今水平，众人为之动容不已。"
   },
   {
-    "标识": "ch0206_03",
+    "标识": "1-0742",
     "时间": '斗罗历40年5月4日18时00分',
     "章节": "第二百零六章 瀚海大斗魂场",
     "人物": [
@@ -8661,7 +8661,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊拼死以凤凰流星雨对轰海魄兄弟武魂融合技，险胜赢下这场斗魂比试。"
   },
   {
-    "标识": "ch0207_01",
+    "标识": "1-0743",
     "时间": '斗罗历40年5月4日19时10分',
     "章节": "第二百零七章 不要崇拜哥，哥只是个传说",
     "人物": ["马红俊","白沉香"], 未建档人物: ["海白","海鬼"],
@@ -8669,7 +8669,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊惊险获胜后亲自为对手疗伤，坦诚取巧获胜，令白沉香对其刮目相看。"
   },
   {
-    "标识": "ch0207_02",
+    "标识": "1-0744",
     "时间": '斗罗历40年5月5日18时00分',
     "章节": "第二百零七章 不要崇拜哥，哥只是个传说",
     "人物": [
@@ -8684,7 +8684,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三于拍卖场以底价竞得上古神器龙渊艇，为出海之行添一件重要保命利器。"
   },
   {
-    "标识": "ch0207_03",
+    "标识": "1-0745",
     "时间": '斗罗历40年5月5日18时50分',
     "章节": "第二百零七章 不要崇拜哥，哥只是个传说",
     "人物": [
@@ -8695,7 +8695,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三私下严词教育马红俊切勿因逞强而无谓消耗，点明多加历练助其突破瓶颈的苦心。"
   },
   {
-    "标识": "ch0208_05",
+    "标识": "1-0746",
     "时间": '斗罗历40年5月6日00时40分',
     "章节": "第二百零八章 海上旖旎",
     "人物": [
@@ -8707,7 +8707,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海德尔讲解航路时对魔鲸海域流露恐惧,唐三警觉标注全部危险区域。"
   },
   {
-    "标识": "ch0208_01",
+    "标识": "1-0747",
     "时间": '斗罗历40年5月6日03时20分',
     "章节": "第二百零八章 海上旖旎",
     "人物": [
@@ -8724,7 +8724,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三租下海魔号并分派战斗分工，众人告别瀚海城正式扬帆出海驶向大洋。"
   },
   {
-    "标识": "ch0208_04",
+    "标识": "1-0748",
     "时间": '斗罗历40年5月7日06时40分',
     "章节": "第二百零八章 海上旖旎",
     "人物": [
@@ -8737,7 +8737,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三暗察海德尔船员均为魂师有异心,与戴沐白马红俊密议将计就计。"
   },
   {
-    "标识": "ch0208_02",
+    "标识": "1-0749",
     "时间": '斗罗历40年5月7日09时00分',
     "章节": "第二百零八章 海上旖旎",
     "人物": [
@@ -8754,7 +8754,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海魔号午后风浪骤起众人纷纷晕船，唯小舞适应力惊人，白沉香借飞行避险侦察。"
   },
   {
-    "标识": "ch0208_03",
+    "标识": "1-0750",
     "时间": '斗罗历40年5月8日15时00分',
     "章节": "第二百零八章 海上旖旎",
     "人物": [
@@ -8765,7 +8765,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞灵魂短暂苏醒与唐三夜话诉衷情，唐三以死明志逼她接受复活计划的安排。"
   },
   {
-    "标识": "ch0209_04",
+    "标识": "1-0751",
     "时间": '斗罗历40年5月9日00时40分',
     "章节": "第二百零九章 魔鲸海域",
     "人物": [
@@ -8777,7 +8777,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三逼问出紫珍珠海盗团全部情报,留海德尔活口导航继续前行，此举意义深远不可小觑。"
   },
   {
-    "标识": "ch0209_01",
+    "标识": "1-0752",
     "时间": '斗罗历40年5月9日00时50分',
     "章节": "第二百零九章 魔鲸海域",
     "人物": [
@@ -8791,7 +8791,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海德尔投毒行劫反遭识破，唐三制服全船海盗并逼问出紫珍珠海盗团情报。"
   },
   {
-    "标识": "ch0209_05",
+    "标识": "1-0753",
     "时间": '斗罗历40年5月9日12时20分',
     "章节": "第二百零九章 魔鲸海域",
     "人物": [
@@ -8803,7 +8803,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魔鲸海域海底现数百米巨影,唐三命全员熄灯收敛魂力静默通过，一切都在悄然推进之中。"
   },
   {
-    "标识": "ch0209_06",
+    "标识": "1-0754",
     "时间": '斗罗历40年5月10日18时00分',
     "章节": "第二百零九章 魔鲸海域",
     "人物": [
@@ -8814,7 +8814,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海德尔引爆后被唐三击晕,深海魔鲸气息涌上,唐三紧急备用瀚海乾坤罩。"
   },
   {
-    "标识": "ch0210_04",
+    "标识": "1-0755",
     "时间": '斗罗历40年5月10日21时40分',
     "章节": "第二百一十章 超级十万年，海中霸主",
     "人物": [
@@ -8829,7 +8829,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "六人含泪以飞行蘑菇肠全力撤离数十里,精神崩溃瘫软于礁石之上。"
   },
   {
-    "标识": "ch0210_05",
+    "标识": "1-0756",
     "时间": '斗罗历40年5月10日21时50分',
     "章节": "第二百一十章 超级十万年，海中霸主",
     "人物": ["唐三"], 未建档人物: ["深海魔鲸"],
@@ -8837,7 +8837,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "虚影告知唐三去海神岛完成考验方可获传承,随后消散,唐三昏迷漂流。"
   },
   {
-    "标识": "ch0209_02",
+    "标识": "1-0757",
     "时间": '斗罗历40年5月11日15时20分',
     "章节": "第二百零九章 魔鲸海域",
     "人物": [
@@ -8848,7 +8848,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海德尔为复仇亡子故意引爆炸弹激怒海域深处十万年魔鲸，灭顶之灾骤然降临。"
   },
   {
-    "标识": "ch0210_01",
+    "标识": "1-0758",
     "时间": '斗罗历40年5月12日18时00分',
     "章节": "第二百一十章 超级十万年，海中霸主",
     "人物": [
@@ -8865,7 +8865,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "十万年深海魔鲸怒轰海魔号，七怪合力施展幽冥白虎仍不敌其毁天灭地之威。"
   },
   {
-    "标识": "ch0210_02",
+    "标识": "1-0759",
     "时间": '斗罗历40年5月12日21时40分',
     "章节": "第二百一十章 超级十万年，海中霸主",
     "人物": [
@@ -8880,7 +8880,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三舍身瞬移至魔鲸背部黑洞死命吞噬其生命精华，为伙伴争取撤离时间。"
   },
   {
-    "标识": "ch0210_03",
+    "标识": "1-0760",
     "时间": '斗罗历40年5月12日21时50分',
     "章节": "第二百一十章 超级十万年，海中霸主",
     "人物": ["唐三"], 未建档人物: ["深海魔鲸"],
@@ -8888,7 +8888,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "深海魔鲸终极一击后，瀚海乾坤罩中浮现苍老虚影一声怒喝喝退魔鲸救下唐三。"
   },
   {
-    "标识": "ch0211_04",
+    "标识": "1-0761",
     "时间": '斗罗历40年5月13日03时20分',
     "章节": "第三十一集 登陆海神岛 第二百一十一章 险死还生、塞翁失马",
     "人物": [
@@ -8899,7 +8899,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三三日后木屋苏醒,经脉自愈中渐趋通畅,小舞兔形始终守护身旁。"
   },
   {
-    "标识": "ch0211_01",
+    "标识": "1-0762",
     "时间": '斗罗历40年5月14日03时20分',
     "章节": "第三十一集 登陆海神岛 第二百一十一章 险死还生、塞翁失马",
     "人物": [
@@ -8910,7 +8910,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三海滩苏醒濒临经脉崩裂，靠小舞灵魂献策强行将驳杂能量封入八蛛矛。"
   },
   {
-    "标识": "ch0211_05",
+    "标识": "1-0763",
     "时间": '斗罗历40年5月14日13时00分',
     "章节": "第三十一集 登陆海神岛 第二百一十一章 险死还生、塞翁失马",
     "人物": [
@@ -8921,7 +8921,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三得知自己被冲至紫珍珠海盗团老巢,对救命恩人吉祥暗中警觉。"
   },
   {
-    "标识": "ch0211_06",
+    "标识": "1-0764",
     "时间": '斗罗历40年5月15日15时00分',
     "章节": "第三十一集 登陆海神岛 第二百一十一章 险死还生、塞翁失马",
     "人物": [
@@ -8931,7 +8931,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三日修复后经脉扩张魂力跃升近六十八级,唐三满心牵挂伙伴安危。"
   },
   {
-    "标识": "ch0212_04",
+    "标识": "1-0765",
     "时间": '斗罗历40年5月16日09时00分',
     "章节": "第二百一十二章 神医拜师",
     "人物": [
@@ -8942,7 +8942,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "吉祥魂力初现激动拜师,唐三嘱其银针武魂适合暗器手法待后续传授。"
   },
   {
-    "标识": "ch0211_02",
+    "标识": "1-0766",
     "时间": '斗罗历40年5月16日09时10分',
     "章节": "第三十一集 登陆海神岛 第二百一十一章 险死还生、塞翁失马",
     "人物": [
@@ -8953,7 +8953,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "吉祥悉心照料唐三三日，唐三消化异种能量竟意外突破至近六十八级魂力。"
   },
   {
-    "标识": "ch0212_05",
+    "标识": "1-0767",
     "时间": '斗罗历40年5月16日12时20分',
     "章节": "第二百一十二章 神医拜师",
     "人物": [
@@ -8964,7 +8964,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "吉祥讲述海神岛考验规矩与自身被驱逐经历,唐三默记一切情报，局势由此发生微妙转变。"
   },
   {
-    "标识": "ch0212_01",
+    "标识": "1-0768",
     "时间": '斗罗历40年5月17日12时20分',
     "章节": "第二百一十二章 神医拜师",
     "人物": [
@@ -8975,7 +8975,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三得知恩人吉祥先天零魂力，感恩收其为徒并助其打通奇经八脉筑基。"
   },
   {
-    "标识": "ch0212_06",
+    "标识": "1-0769",
     "时间": '斗罗历40年5月17日15时00分',
     "章节": "第二百一十二章 神医拜师",
     "人物": [
@@ -8986,7 +8986,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以蓝银领域侦测全岛实力,制定借海盗团之力寻伙伴赴海神岛的计划。"
   },
   {
-    "标识": "ch0212_02",
+    "标识": "1-0770",
     "时间": '斗罗历40年5月18日03时20分',
     "章节": "第二百一十二章 神医拜师",
     "人物": ["唐三","吉祥","白沉香"], 未建档人物: ["史莱克七怪"],
@@ -8994,7 +8994,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三随吉祥入村求助搜救伙伴，却猛然发现六名同伴被绑缚木桩生死不明。"
   },
   {
-    "标识": "ch0213_01",
+    "标识": "1-0771",
     "时间": '斗罗历40年5月18日10时00分',
     "章节": "第二百一十三章 火辣辣的紫珍珠",
     "人物": [
@@ -9012,7 +9012,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三怒闯木屋误以为紫珍珠凌辱小舞出手围攻，才发现对方竟是女子团长。"
   },
   {
-    "标识": "ch0213_04",
+    "标识": "1-0772",
     "时间": '斗罗历40年5月19日12时20分',
     "章节": "第二百一十三章 火辣辣的紫珍珠",
     "人物": [
@@ -9025,7 +9025,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊澄清紫珍珠救人晒毒本非恶意,但觊觎小舞美色才生误会，为后续行动奠定基础。"
   },
   {
-    "标识": "ch0213_02",
+    "标识": "1-0773",
     "时间": '斗罗历40年5月19日12时30分',
     "章节": "第二百一十三章 火辣辣的紫珍珠",
     "人物": [
@@ -9043,7 +9043,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三查明晒毒疗法实情，以十首烈阳蛇内丹为六人解寒毒并软禁紫珍珠待伤愈启程。"
   },
   {
-    "标识": "ch0213_05",
+    "标识": "1-0774",
     "时间": '斗罗历40年5月20日15时00分',
     "章节": "第二百一十三章 火辣辣的紫珍珠",
     "人物": [
@@ -9058,7 +9058,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "六人解毒后渐复,唐三布设三重感应网防御,白沉香紧守马红俊身旁。"
   },
   {
-    "标识": "ch0213_06",
+    "标识": "1-0775",
     "时间": '斗罗历40年5月20日15时20分',
     "章节": "第二百一十三章 火辣辣的紫珍珠",
     "人物": [
@@ -9070,7 +9070,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三软禁紫珍珠故意留破绽诱其召集海盗,欲一战令全岛臣服，众人为之动容不已。"
   },
   {
-    "标识": "ch0214_01",
+    "标识": "1-0776",
     "时间": '斗罗历40年5月20日15时30分',
     "章节": "主人，要性服务么？",
     "人物": [
@@ -9082,7 +9082,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "紫珍珠深夜诈降遁走后纠众围攻木屋，唐三闭目静坐待其自投罗网。"
   },
   {
-    "标识": "ch0214_02",
+    "标识": "1-0777",
     "时间": '斗罗历40年5月20日18时20分',
     "章节": "主人，要性服务么？",
     "人物": [
@@ -9093,7 +9093,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以唐门暗器天女散花只身完胜数千海盗，紫珍珠心服认主投诚。"
   },
   {
-    "标识": "ch0215_01",
+    "标识": "1-0778",
     "时间": '斗罗历40年5月21日03时40分',
     "章节": "供奉海神的海神岛",
     "人物": [
@@ -9105,7 +9105,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "吉祥坦言身世并揭示海神岛考验的凶险规矩，唐三仍执意三日后启程。"
   },
   {
-    "标识": "ch0215_02",
+    "标识": "1-0779",
     "时间": '斗罗历40年5月24日03时40分',
     "章节": "供奉海神的海神岛",
     "人物": [
@@ -9118,7 +9118,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "紫珍珠号扬帆启航赴海神岛，众人获悉护岛神兽十万年大白鲨的习性。"
   },
   {
-    "标识": "ch0216_01",
+    "标识": "1-0780",
     "时间": '斗罗历40年5月26日18时20分',
     "章节": "避水乾坤罩",
     "人物": [
@@ -9131,7 +9131,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "龙渊艇下水试航却险些搁浅，瀚海护身罩避水特性阴差阳错曝光。"
   },
   {
-    "标识": "ch0216_02",
+    "标识": "1-0781",
     "时间": '斗罗历40年5月26日22时00分',
     "章节": "避水乾坤罩",
     "人物": [
@@ -9144,7 +9144,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三携众以护身罩避水之能徒步穿越海底，惊险成功登陆海神岛。"
   },
   {
-    "标识": "ch0217_01",
+    "标识": "1-0782",
     "时间": '斗罗历40年5月27日03时40分',
     "章节": "海马圣柱，黑级六考",
     "人物": [
@@ -9156,7 +9156,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "众人登岛遇八名黄衣海魂师拦路，得引至海马圣柱准备受考验。"
   },
   {
-    "标识": "ch0217_02",
+    "标识": "1-0783",
     "时间": '斗罗历40年5月27日06时40分',
     "章节": "海马圣柱，黑级六考",
     "人物": [
@@ -9168,7 +9168,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白、朱竹清各显神通渡海登台，双双被判为黑级六考与五考。"
   },
   {
-    "标识": "ch0218_01",
+    "标识": "1-0784",
     "时间": '斗罗历40年5月27日09时20分',
     "章节": "顶级七考与黄级一考",
     "人物": [
@@ -9181,7 +9181,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣意外触发罕见的顶级七考，竟被指为未来大供奉的继承人。"
   },
   {
-    "标识": "ch0218_02",
+    "标识": "1-0785",
     "时间": '斗罗历40年5月27日12时40分',
     "章节": "顶级七考与黄级一考",
     "人物": [
@@ -9192,7 +9192,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白沉香的黄级一考竟是强吻马红俊满一炷香，魂力当场提升一级。"
   },
   {
-    "标识": "ch0219_01",
+    "标识": "1-0786",
     "时间": '斗罗历40年5月27日15时20分',
     "章节": "海神九考，三叉戟烙印",
     "人物": [
@@ -9203,7 +9203,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三竟获罕见的海神九考，小舞的顶级一考内容竟是终生随行相伴。"
   },
   {
-    "标识": "ch0219_02",
+    "标识": "1-0787",
     "时间": '斗罗历40年5月27日18时20分',
     "章节": "海神九考，三叉戟烙印",
     "人物": [
@@ -9214,7 +9214,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海神斗罗波赛西认出唐三系唐晨曾孙，郑重示警考验非同小可。"
   },
   {
-    "标识": "ch0220_01",
+    "标识": "1-0788",
     "时间": '斗罗历40年5月28日03时40分',
     "章节": "海神之光",
     "人物": [
@@ -9226,7 +9226,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "众人入住海马城，得悉海神岛以信仰而非强权维系的体系。"
   },
   {
-    "标识": "ch0220_02",
+    "标识": "1-0789",
     "时间": '斗罗历40年5月28日09时20分',
     "章节": "海神之光",
     "人物": [
@@ -9237,7 +9237,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "阶前试探揭示海神之光会反弹攻击者，只能硬扛压力步步攀登。"
   },
   {
-    "标识": "ch0221_01",
+    "标识": "1-0790",
     "时间": '斗罗历40年5月28日12时40分',
     "章节": "海神之光的奥秘",
     "人物": [
@@ -9250,7 +9250,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "众人首度试阶各有斩获收获颇丰，小舞因唐三护她而对其发怒。"
   },
   {
-    "标识": "ch0221_02",
+    "标识": "1-0791",
     "时间": '斗罗历40年5月28日15时20分',
     "章节": "海神之光的奥秘",
     "人物": [
@@ -9262,7 +9262,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三识破海神之光暗藏的真正用意，波赛西亲临当面赞许其智。"
   },
   {
-    "标识": "ch0222_01",
+    "标识": "1-0792",
     "时间": '斗罗历40年5月29日03时40分',
     "章节": "神赐魂环",
     "人物": [
@@ -9273,7 +9273,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西宣布神赐魂环机制，为已达瓶颈的马红俊赐下考验。"
   },
   {
-    "标识": "ch0222_02",
+    "标识": "1-0793",
     "时间": '斗罗历40年5月29日09时20分',
     "章节": "神赐魂环",
     "人物": [
@@ -9285,7 +9285,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊硬撑神赐魂环之苦，获六环及万年级凤凰穿云击技能。"
   },
   {
-    "标识": "ch0223_01",
+    "标识": "1-0794",
     "时间": '斗罗历40年5月29日15时20分',
     "章节": "天使与罗刹",
     "人物": [
@@ -9296,7 +9296,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千道流唤醒跪拜百日的千仞雪，揭示罕见的天使九考降临于她。"
   },
   {
-    "标识": "ch0223_02",
+    "标识": "1-0795",
     "时间": '斗罗历40年5月29日18时20分',
     "章节": "天使与罗刹",
     "人物": [
@@ -9307,7 +9307,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东密室自曝罗刹秘境修炼真相，扬言十年内必灭天使一族。"
   },
   {
-    "标识": "ch0224_01",
+    "标识": "1-0796",
     "时间": '斗罗历40年6月29日03时40分',
     "章节": "十万年，唐三的第七魂环",
     "人物": [
@@ -9319,7 +9319,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海神之光中苦修一月，众人魂力普涨，效率远超常规修炼数倍。"
   },
   {
-    "标识": "ch0224_02",
+    "标识": "1-0797",
     "时间": '斗罗历40年8月29日15时20分',
     "章节": "十万年，唐三的第七魂环",
     "人物": [
@@ -9330,7 +9330,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三破七十级后拼死承受神赐魂环，只为复活小舞的信念死撑。"
   },
   {
-    "标识": "ch0224_03",
+    "标识": "1-0798",
     "时间": '斗罗历40年12月9日03时40分',
     "章节": "十万年，唐三的第七魂环",
     "人物": [
@@ -9342,7 +9342,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三闭关百日获十万年第七魂环，试阶发现考验远未达标。"
   },
   {
-    "标识": "ch0225_01",
+    "标识": "1-0799",
     "时间": '斗罗历41年5月27日03时40分',
     "章节": "穿越，海神之光",
     "人物": [
@@ -9354,7 +9354,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "白沉香拼死冲阶至六十一级台阶，坚持感动海神破格升为紫级。"
   },
   {
-    "标识": "ch0225_02",
+    "标识": "1-0800",
     "时间": '斗罗历41年5月27日06时40分',
     "章节": "穿越，海神之光",
     "人物": [
@@ -9366,7 +9366,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡靠反哺魂力、戴沐白凭真身增幅相继完成黑级六考。"
   },
   {
-    "标识": "ch0226_01",
+    "标识": "1-0801",
     "时间": '斗罗历41年5月27日09时20分',
     "章节": "穿越，双倍，海神之光",
     "人物": [
@@ -9378,7 +9378,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "朱竹清、马红俊相继顺利过关，宁荣荣的艰难挑战即将开始。"
   },
   {
-    "标识": "ch0226_02",
+    "标识": "1-0802",
     "时间": '斗罗历41年5月27日12时40分',
     "章节": "穿越，双倍，海神之光",
     "人物": [
@@ -9389,7 +9389,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三背负宁荣荣硬闯一百三十六级台阶，助其完成顶级七考。"
   },
   {
-    "标识": "ch0227_01",
+    "标识": "1-0803",
     "时间": '斗罗历41年5月27日15时20分',
     "章节": "唐三的底牌，进化的杀神领域之技",
     "人物": [
@@ -9400,7 +9400,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三背负小舞死撑冲阶三百余级，全靠秘药强撑逼近终点。"
   },
   {
-    "标识": "ch0227_02",
+    "标识": "1-0804",
     "时间": '斗罗历41年5月27日18时20分',
     "章节": "唐三的底牌，进化的杀神领域之技",
     "人物": [
@@ -9411,7 +9411,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞舍身摔阵、唐三牺牲八蛛矛，二人惊险合力踏上考验终点。"
   },
   {
-    "标识": "ch0227_03",
+    "标识": "1-0805",
     "时间": '斗罗历41年5月28日00时40分',
     "章节": "唐三的底牌，进化的杀神领域之技",
     "人物": [
@@ -9423,7 +9423,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第一考顺利完成，环形海骤现新光幕，第二考随即正式开启。"
   },
   {
-    "标识": "ch0228_04",
+    "标识": "1-0806",
     "时间": '斗罗历41年5月29日06时20分',
     "章节": "奥斯卡猥琐的第七魂技",
     "人物": [
@@ -9435,7 +9435,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与戴沐白朱竹清配合演练，发现有正面牵制时幽冥斩七命中率飙升三成。"
   },
   {
-    "标识": "ch0228_05",
+    "标识": "1-0807",
     "时间": '斗罗历41年5月30日09时00分',
     "章节": "奥斯卡猥琐的第七魂技",
     "人物": [
@@ -9447,7 +9447,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "午后三人各自苦修，奥斯卡马红俊冲刺七十级，宁荣荣练习双目标增幅操作。"
   },
   {
-    "标识": "ch0228_01",
+    "标识": "1-0808",
     "时间": '斗罗历41年6月1日03时20分',
     "章节": "奥斯卡猥琐的第七魂技",
     "人物": [
@@ -9458,7 +9458,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣休整期苦练分心控制，力求由五窍散之心迈向六窍如意心。"
   },
   {
-    "标识": "ch0229_04",
+    "标识": "1-0809",
     "时间": '斗罗历41年6月2日06时20分',
     "章节": "十万年，魔魂大白鲨之王",
     "人物": [
@@ -9470,7 +9470,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在岩壁绘制环形海情报图，宁荣荣计算增幅在水中仅能维持一刻钟。"
   },
   {
-    "标识": "ch0228_02",
+    "标识": "1-0810",
     "时间": '斗罗历41年6月3日09时00分',
     "章节": "奥斯卡猥琐的第七魂技",
     "人物": [
@@ -9484,7 +9484,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡突破七十级，承受神赐魂环之苦更胜众人，得第七魂环。"
   },
   {
-    "标识": "ch0228_03",
+    "标识": "1-0811",
     "时间": '斗罗历41年6月4日12时20分',
     "章节": "奥斯卡猥琐的第七魂技",
     "人物": [
@@ -9496,7 +9496,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第七魂技坚挺金苍蝇现世，增幅永不过期，复制镜像肠升至九成十分钟。"
   },
   {
-    "标识": "ch0229_05",
+    "标识": "1-0812",
     "时间": '斗罗历41年6月5日15时00分',
     "章节": "十万年，魔魂大白鲨之王",
     "人物": [
@@ -9507,7 +9507,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与戴沐白推演出封锁只为考验非灭杀的关键假设，决定次日全体下海验证。"
   },
   {
-    "标识": "ch0230_04",
+    "标识": "1-0813",
     "时间": '斗罗历41年6月6日06时20分',
     "章节": "莽撞的魔魂大白鲨之王",
     "人物": [
@@ -9519,7 +9519,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白与小舞灵魂叙旧忆起星斗大森林往事，唐三旁听后更坚定复活之决心。"
   },
   {
-    "标识": "ch0230_05",
+    "标识": "1-0814",
     "时间": '斗罗历41年6月7日09时00分',
     "章节": "莽撞的魔魂大白鲨之王",
     "人物": [
@@ -9532,7 +9532,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白详述化形规则并透露南方深海有远超自己的存在名为深海魔鲸。"
   },
   {
-    "标识": "ch0231_04",
+    "标识": "1-0815",
     "时间": '斗罗历41年6月8日15时00分',
     "章节": "邪火凤凰的武魂真身",
     "人物": [
@@ -9544,7 +9544,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与小白商定轮值对练日程，以万年鲨为陪练提升水中实战经验。"
   },
   {
-    "标识": "ch0231_05",
+    "标识": "1-0816",
     "时间": '斗罗历41年6月9日18时00分',
     "章节": "邪火凤凰的武魂真身",
     "人物": [
@@ -9556,7 +9556,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "深夜白沉香许诺马红俊突破七十级后可叫她香香，马红俊激动险些落海。"
   },
   {
-    "标识": "ch0229_01",
+    "标识": "1-0817",
     "时间": '斗罗历41年6月10日03时20分',
     "章节": "十万年，魔魂大白鲨之王",
     "人物": [
@@ -9566,7 +9566,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三独探环形海，震退箭形鱼群后被十万年魔魂大白鲨轰出海面。"
   },
   {
-    "标识": "ch0229_02",
+    "标识": "1-0818",
     "时间": '斗罗历41年6月11日06时20分',
     "章节": "十万年，魔魂大白鲨之王",
     "人物": ["唐三","戴沐白","海马斗罗"],
@@ -9574,7 +9574,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与戴沐白联手再探，仍被鲨王浪压弹出，欧亚冷眼旁观。"
   },
   {
-    "标识": "ch0229_03",
+    "标识": "1-0819",
     "时间": '斗罗历41年6月12日09时00分',
     "章节": "十万年，魔魂大白鲨之王",
     "人物": [
@@ -9590,7 +9590,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七怪判定封锁只阻不杀，唐三定计以环形海为磨刀石长期实战。"
   },
   {
-    "标识": "ch0230_01",
+    "标识": "1-0820",
     "时间": '斗罗历41年6月13日03时20分',
     "章节": "莽撞的魔魂大白鲨之王",
     "人物": [
@@ -9606,7 +9606,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "鲨王化人形登陆质问小舞，七怪误判来意六人联手迎击。"
   },
   {
-    "标识": "ch0230_02",
+    "标识": "1-0821",
     "时间": '斗罗历41年6月14日06时20分',
     "章节": "莽撞的魔魂大白鲨之王",
     "人物": ["唐三","小白","波赛西"],
@@ -9614,7 +9614,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魔鲨之牙锁空间险杀唐三，黄金三叉戟显威令鲨王与波赛西同时跪伏。"
   },
   {
-    "标识": "ch0230_03",
+    "标识": "1-0822",
     "时间": '斗罗历41年6月15日09时00分',
     "章节": "莽撞的魔魂大白鲨之王",
     "人物": [
@@ -9628,7 +9628,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞道出献祭真相，小白身份与鱼类海魂兽化形规则明朗，误会尽解。"
   },
   {
-    "标识": "ch0231_01",
+    "标识": "1-0823",
     "时间": '斗罗历41年6月16日12时20分',
     "章节": "邪火凤凰的武魂真身",
     "人物": [
@@ -9642,7 +9642,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞咬唐三，唐三定下八十级目标，七怪以环形海为演武场日日对练。"
   },
   {
-    "标识": "ch0231_02",
+    "标识": "1-0824",
     "时间": '斗罗历41年9月3日03时20分',
     "章节": "邪火凤凰的武魂真身",
     "人物": [
@@ -9655,7 +9655,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "对练三月，马红俊破七十级，唐三以十首烈阳蛇内丹代其第七魂环。"
   },
   {
-    "标识": "ch0232_03",
+    "标识": "1-0825",
     "时间": '斗罗历41年9月3日06时20分',
     "章节": "七首火凤凰",
     "人物": [
@@ -9667,7 +9667,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三调整马红俊为关键爆发节点，奥斯卡复制镜像肠可出单首火凤凰。"
   },
   {
-    "标识": "ch0231_03",
+    "标识": "1-0826",
     "时间": '斗罗历41年9月3日09时00分',
     "章节": "邪火凤凰的武魂真身",
     "人物": [
@@ -9680,7 +9680,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三三香肠护法引内丹入体，烧尽发眉，马红俊气息一路攀升。"
   },
   {
-    "标识": "ch0232_04",
+    "标识": "1-0827",
     "时间": '斗罗历41年9月3日12时20分',
     "章节": "七首火凤凰",
     "人物": [
@@ -9692,7 +9692,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "朱竹清与蜕变后马红俊对练，发现其七秒呼吸间隙体表温度骤降可切入。"
   },
   {
-    "标识": "ch0232_05",
+    "标识": "1-0828",
     "时间": '斗罗历41年9月3日15时00分',
     "章节": "七首火凤凰",
     "人物": [
@@ -9704,7 +9704,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣增幅马红俊时火焰意外出现金色光晕，唐三判断为神圣属性叠加共振。"
   },
   {
-    "标识": "ch0232_01",
+    "标识": "1-0829",
     "时间": '斗罗历41年9月5日03时20分',
     "章节": "七首火凤凰",
     "人物": [
@@ -9717,7 +9717,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白指明内丹救不了小舞，复活须九环加海神之光反灌，亲和度需三成。"
   },
   {
-    "标识": "ch0232_02",
+    "标识": "1-0830",
     "时间": '斗罗历41年9月5日09时00分',
     "章节": "七首火凤凰",
     "人物": [
@@ -9732,7 +9732,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊烧尽肥肉走出密室，武魂蜕变为七首火凤凰，七首齐鸣震动众人。"
   },
   {
-    "标识": "ch0233_05",
+    "标识": "1-0831",
     "时间": '斗罗历42年2月3日03时20分',
     "章节": "凤凰领域",
     "人物": [
@@ -9745,7 +9745,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "强攻前日唐三与小白推演确认主攻南侧第二节点，宁荣荣记录增幅切换时点。"
   },
   {
-    "标识": "ch0233_01",
+    "标识": "1-0832",
     "时间": '斗罗历42年2月5日00时20分',
     "章节": "凤凰领域",
     "人物": [
@@ -9761,7 +9761,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "苦练五月后七怪清晨列阵，以七人之力正面强攻环形海封锁。"
   },
   {
-    "标识": "ch0233_02",
+    "标识": "1-0833",
     "时间": '斗罗历42年2月5日03时20分',
     "章节": "凤凰领域",
     "人物": [
@@ -9774,7 +9774,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊蒸干海水开隧道并展开七首火凤凰领域，奥斯卡复制凤凰助阵。"
   },
   {
-    "标识": "ch0233_03",
+    "标识": "1-0834",
     "时间": '斗罗历42年2月5日06时20分',
     "章节": "凤凰领域",
     "人物": [
@@ -9787,7 +9787,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魔鲨领域化晶封路，唐三紫极神光对撞七窍出血，奥斯卡复制体自爆护人。"
   },
   {
-    "标识": "ch0233_04",
+    "标识": "1-0835",
     "时间": '斗罗历42年2月5日09时00分',
     "章节": "凤凰领域",
     "人物": [
@@ -9802,7 +9802,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "幽冥白虎两倍威力拍飞小白，实为掩护唐三蓄满乱披风锤法。"
   },
   {
-    "标识": "ch0234_01",
+    "标识": "1-0836",
     "时间": '斗罗历42年2月5日12时20分',
     "章节": "第三考，潮汐炼体",
     "人物": [
@@ -9819,7 +9819,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "九九归一破化晶海壁，七怪接力突围成功，齐向小白鞠躬致谢。"
   },
   {
-    "标识": "ch0234_02",
+    "标识": "1-0837",
     "时间": '斗罗历42年2月5日15时00分',
     "章节": "第三考，潮汐炼体",
     "人物": ["唐三","宁荣荣","戴沐白","朱竹清","奥斯卡","马红俊","波赛西"],
@@ -9827,7 +9827,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第二考通过：亲和度一成、各升一级，宁荣荣魂环增五百年，第三考公布。"
   },
   {
-    "标识": "ch0234_03",
+    "标识": "1-0838",
     "时间": '斗罗历42年2月6日03时20分',
     "章节": "第三考，潮汐炼体",
     "人物": ["波赛西","唐三","戴沐白","朱竹清","宁荣荣","奥斯卡","马红俊","小舞"],
@@ -9835,7 +9835,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西领众至怒浪绝境，现八黑一红九环并无声凝止百米怒浪。"
   },
   {
-    "标识": "ch0234_04",
+    "标识": "1-0839",
     "时间": '斗罗历42年2月6日06时20分',
     "章节": "第三考，潮汐炼体",
     "人物": ["波赛西","唐三","小舞","宁荣荣","戴沐白","朱竹清","奥斯卡","马红俊"],
@@ -9843,7 +9843,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西立七根深海沉银柱，定潮汐炼体每日时数，增幅魂技全部失效。"
   },
   {
-    "标识": "ch0234_05",
+    "标识": "1-0840",
     "时间": '斗罗历42年5月6日03时20分',
     "章节": "第三考，潮汐炼体",
     "人物": [
@@ -9855,7 +9855,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "潮汐炼体三月，宁荣荣由半个时辰苦撑至五个时辰，无人退出。"
   },
   {
-    "标识": "ch0234_06",
+    "标识": "1-0841",
     "时间": '斗罗历42年8月6日03时20分',
     "章节": "第三考，潮汐炼体",
     "人物": [
@@ -9870,7 +9870,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "炼体六月，戴沐白拳带海啸声浪，众人皮肤生出自动卸力本能。"
   },
   {
-    "标识": "ch0235_05",
+    "标识": "1-0842",
     "时间": '斗罗历43年2月4日03时20分',
     "章节": "紫极魔瞳的最终境界，浩瀚",
     "人物": [
@@ -9885,7 +9885,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三为五怪各定突破方向，自己以浩瀚境界反复推演第四考所有战况。"
   },
   {
-    "标识": "ch0235_01",
+    "标识": "1-0843",
     "时间": '斗罗历43年2月6日00时20分',
     "章节": "紫极魔瞳的最终境界，浩瀚",
     "人物": [
@@ -9895,7 +9895,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "炼体十二月首日日出，紫极魔瞳达最终境界浩瀚，智慧头骨崩裂。"
   },
   {
-    "标识": "ch0235_02",
+    "标识": "1-0844",
     "时间": '斗罗历43年2月6日03时20分',
     "章节": "紫极魔瞳的最终境界，浩瀚",
     "人物": ["唐三","波赛西"],
@@ -9903,7 +9903,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "瀚海乾坤罩融成瀚海头骨，唐三破八十级，亲和度累计二成五。"
   },
   {
-    "标识": "ch0235_03",
+    "标识": "1-0845",
     "时间": '斗罗历43年3月5日03时20分',
     "章节": "紫极魔瞳的最终境界，浩瀚",
     "人物": ["波赛西","唐三","戴沐白","朱竹清","宁荣荣","奥斯卡","马红俊","小白"],
@@ -9911,7 +9911,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第三考结束，第四考公布：唐三诛鲨鲸之王，众人各领击杀定额。"
   },
   {
-    "标识": "ch0236_04",
+    "标识": "1-0846",
     "时间": '斗罗历43年6月3日09时00分',
     "章节": "第四考，鲨鲸之战",
     "人物": [
@@ -9923,7 +9923,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与小白做出征前锥形阵战术确认，叮嘱戴沐白充当肉盾而非冲锋。"
   },
   {
-    "标识": "ch0236_05",
+    "标识": "1-0847",
     "时间": '斗罗历43年6月3日12时20分',
     "章节": "第四考，鲨鲸之战",
     "人物": [
@@ -9936,7 +9936,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "出征前夕唐三清点物资，众人确认战斗必须速决否则深海中毫无退路。"
   },
   {
-    "标识": "ch0235_04",
+    "标识": "1-0848",
     "时间": '斗罗历43年6月5日03时20分',
     "章节": "紫极魔瞳的最终境界，浩瀚",
     "人物": [
@@ -9952,7 +9952,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "休整三月众人复原，小舞魂魄已能维持肉身每日约两个时辰。"
   },
   {
-    "标识": "ch0236_01",
+    "标识": "1-0849",
     "时间": '斗罗历43年6月5日06时20分',
     "章节": "第四考，鲨鲸之战",
     "人物": [
@@ -9964,7 +9964,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三扩张凤凰领域至千米召唤小白，紫极神光化范围直入鲨群脑海。"
   },
   {
-    "标识": "ch0236_02",
+    "标识": "1-0850",
     "时间": '斗罗历43年6月5日09时00分',
     "章节": "第四考，鲨鲸之战",
     "人物": [
@@ -9980,7 +9980,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白详述邪魔虎鲸战力与世仇，托唐三万一战死护住百余幼鲨。"
   },
   {
-    "标识": "ch0237_04",
+    "标识": "1-0851",
     "时间": '斗罗历43年6月5日12时20分',
     "章节": "巧杀邪魔虎鲸",
     "人物": [
@@ -9991,7 +9991,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "阳泉余量不足三分之一，唐三果断改策为大范围驱赶虎鲸入伏击海域。"
   },
   {
-    "标识": "ch0237_05",
+    "标识": "1-0852",
     "时间": '斗罗历43年6月5日15时00分',
     "章节": "巧杀邪魔虎鲸",
     "人物": [
@@ -10005,7 +10005,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "五怪在伏击海域列阵就绪，感知唐三驱赶虎鲸群的波动与血腥渐近。"
   },
   {
-    "标识": "ch0238_05",
+    "标识": "1-0853",
     "时间": '斗罗历43年6月5日18时00分',
     "章节": "唐三的第八魂环",
     "人物": [
@@ -10017,7 +10017,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三日后唐三炼化完毕起身，小白言怨念之重仅见，小舞输精神力助稳神智。"
   },
   {
-    "标识": "ch0236_03",
+    "标识": "1-0854",
     "时间": '斗罗历43年6月6日12时20分',
     "章节": "第四考，鲨鲸之战",
     "人物": [
@@ -10034,7 +10034,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "两百头大白鲨驮载七怪与白沉香出征，第四考鲨鲸之战启程。"
   },
   {
-    "标识": "ch0237_01",
+    "标识": "1-0855",
     "时间": '斗罗历43年6月7日00时20分',
     "章节": "巧杀邪魔虎鲸",
     "人物": [
@@ -10045,7 +10045,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与小白瀚海护身罩隐身潜入五百米，锁定三十米金属光泽虎鲸王。"
   },
   {
-    "标识": "ch0237_02",
+    "标识": "1-0856",
     "时间": '斗罗历43年6月7日03时20分',
     "章节": "巧杀邪魔虎鲸",
     "人物": [
@@ -10057,7 +10057,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以阳泉毒箭偷袭连杀八头虎鲸，白沉香化雨燕高空通报。"
   },
   {
-    "标识": "ch0237_03",
+    "标识": "1-0857",
     "时间": '斗罗历43年6月7日09时00分',
     "章节": "巧杀邪魔虎鲸",
     "人物": [
@@ -10071,7 +10071,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "虎鲸王升绿弹追击，唐三耗尽四十八箭造成七十余头死伤。"
   },
   {
-    "标识": "ch0238_01",
+    "标识": "1-0858",
     "时间": '斗罗历43年6月7日12时20分',
     "章节": "唐三的第八魂环",
     "人物": [
@@ -10087,7 +10087,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "修罗地狱开场，幽冥白虎连杀三十余头，宁荣荣独增幅小白。"
   },
   {
-    "标识": "ch0238_02",
+    "标识": "1-0859",
     "时间": '斗罗历43年6月7日15时00分',
     "章节": "唐三的第八魂环",
     "人物": [
@@ -10100,7 +10100,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "乾坤破魔接铁灰水柱，唐三灌半瓶阴阳泉入呼吸孔诛杀虎鲸王。"
   },
   {
-    "标识": "ch0238_03",
+    "标识": "1-0860",
     "时间": '斗罗历43年6月7日18时00分',
     "章节": "唐三的第八魂环",
     "人物": [
@@ -10117,7 +10117,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第四考超额完成，亲和度三成五，唐三解锁海神之光，白沉香破五十五级。"
   },
   {
-    "标识": "ch0239_05",
+    "标识": "1-0861",
     "时间": '斗罗历43年7月2日09时00分',
     "章节": "十万年邪魔左腿骨",
     "人物": [
@@ -10130,7 +10130,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与戴沐白宁荣荣初定第五考策略框架，以控制加爆发为核心方针。"
   },
   {
-    "标识": "ch0238_04",
+    "标识": "1-0862",
     "时间": '斗罗历43年7月4日03时20分',
     "章节": "唐三的第八魂环",
     "人物": [
@@ -10142,7 +10142,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光镇怨念，用卸力之法三天三夜炼化第八魂环。"
   },
   {
-    "标识": "ch0239_01",
+    "标识": "1-0863",
     "时间": '斗罗历43年7月4日06时20分',
     "章节": "十万年邪魔左腿骨",
     "人物": [
@@ -10156,7 +10156,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "十万年邪魔左腿骨现世，海神之光压服，唐三足踏虚空纳骨长啸。"
   },
   {
-    "标识": "ch0239_02",
+    "标识": "1-0864",
     "时间": '斗罗历43年7月4日09时00分',
     "章节": "十万年邪魔左腿骨",
     "人物": [
@@ -10172,7 +10172,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三八环三枚十万年、五魂骨，第八魂环得化晶囚笼与虎鲸魔之摄。"
   },
   {
-    "标识": "ch0239_03",
+    "标识": "1-0865",
     "时间": '斗罗历43年7月4日12时20分',
     "章节": "十万年邪魔左腿骨",
     "人物": [
@@ -10183,7 +10183,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三试演虎鲸邪魔斧，与小白对练中破八十四级，小白认输。"
   },
   {
-    "标识": "ch0240_05",
+    "标识": "1-0866",
     "时间": '斗罗历43年7月4日15时00分',
     "章节": "第五考，挑战，封号斗罗",
     "人物": [
@@ -10194,7 +10194,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "开考前夜唐三对小舞坦言六成把握，关键变数全在九十五级海龙斗罗。"
   },
   {
-    "标识": "ch0239_04",
+    "标识": "1-0867",
     "时间": '斗罗历43年7月5日15时00分',
     "章节": "十万年邪魔左腿骨",
     "人物": ["波赛西","唐三","戴沐白","朱竹清","宁荣荣","奥斯卡","马红俊"],
@@ -10202,7 +10202,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第五考公布：三十六时辰内击败七圣柱守护者，海龙或达九十五级。"
   },
   {
-    "标识": "ch0240_01",
+    "标识": "1-0868",
     "时间": '斗罗历43年7月6日03时20分',
     "章节": "第五考，挑战，封号斗罗",
     "人物": [
@@ -10217,7 +10217,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三五分钟内以一敌五制服五怪，逐一点出各人战术痼疾。"
   },
   {
-    "标识": "ch0240_02",
+    "标识": "1-0869",
     "时间": '斗罗历43年7月6日06时20分',
     "章节": "第五考，挑战，封号斗罗",
     "人物": [
@@ -10232,7 +10232,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "复盘亮明各人底牌，定策唐三削弱后交奥斯卡，余者独力过关。"
   },
   {
-    "标识": "ch0240_03",
+    "标识": "1-0870",
     "时间": '斗罗历43年7月6日09时00分',
     "章节": "第五考，挑战，封号斗罗",
     "人物": [
@@ -10243,7 +10243,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪过天使第五考亲和度四成，千道流定第六考并一掌轰出百米。"
   },
   {
-    "标识": "ch0240_04",
+    "标识": "1-0871",
     "时间": '斗罗历43年7月6日12时20分',
     "章节": "第五考，挑战，封号斗罗",
     "人物": [
@@ -10253,7 +10253,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东露台现真身五米六黑一红七环，与对外九环之说截然不同。"
   },
   {
-    "标识": "ch0241_01",
+    "标识": "1-0872",
     "时间": '斗罗历43年7月7日00时20分',
     "章节": "海马圣柱之战",
     "人物": ["波赛西","唐三","戴沐白","朱竹清","宁荣荣","奥斯卡","马红俊","小舞"],
@@ -10261,7 +10261,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海中海黎明开考，波赛西重申规则并立七道光柱计时，小舞隐身随行。"
   },
   {
-    "标识": "ch0241_02",
+    "标识": "1-0873",
     "时间": '斗罗历43年7月7日03时20分',
     "章节": "海马圣柱之战",
     "人物": ["海马斗罗","唐三"],
@@ -10269,7 +10269,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海马斗罗现两黄两紫五黑九环与三米海马真身，第九魂技压得海面下陷。"
   },
   {
-    "标识": "ch0241_03",
+    "标识": "1-0874",
     "时间": '斗罗历43年7月7日06时20分',
     "章节": "海马圣柱之战",
     "人物": ["唐三","海马斗罗"],
@@ -10277,7 +10277,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以无敌金身硬吃巨拳，铺开吞噬金丝反噬海马斗罗魂力。"
   },
   {
-    "标识": "ch0241_04",
+    "标识": "1-0875",
     "时间": '斗罗历43年7月7日09时00分',
     "章节": "海马圣柱之战",
     "人物": ["唐三","海马斗罗","小舞"],
@@ -10285,7 +10285,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "虎鲸魔之摄强制眩晕致第九魂技反噬，海马斗罗溢血刻纹认输。"
   },
   {
-    "标识": "ch0241_05",
+    "标识": "1-0876",
     "时间": '斗罗历43年7月7日12时20分',
     "章节": "海马圣柱之战",
     "人物": ["奥斯卡","宁荣荣","海马斗罗","唐三"],
@@ -10293,7 +10293,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡复制凤凰配宁荣荣增幅三回合胜海马斗罗，奖励削减半级。"
   },
   {
-    "标识": "ch0241_06",
+    "标识": "1-0877",
     "时间": '斗罗历43年7月7日15时00分',
     "章节": "海马圣柱之战",
     "人物": [
@@ -10307,7 +10307,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "转战海之矛圣柱，戴沐白四重增幅金虎首回合逼退海矛斗罗。"
   },
   {
-    "标识": "ch0242_01",
+    "标识": "1-0878",
     "时间": '斗罗历43年7月7日18时00分',
     "章节": "控制！邪眸白虎VS海之矛",
     "人物": [
@@ -10320,7 +10320,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海矛斗罗身矛合一并以第八魂技反弹，唐三急喝救下戴沐白。"
   },
   {
-    "标识": "ch0242_02",
+    "标识": "1-0879",
     "时间": '斗罗历43年7月7日21时40分',
     "章节": "控制！邪眸白虎VS海之矛",
     "人物": [
@@ -10333,7 +10333,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三遥控指挥令海矛斗罗第九魂技无处可发，魂力被生生耗尽。"
   },
   {
-    "标识": "ch0243_01",
+    "标识": "1-0880",
     "时间": '斗罗历43年7月8日00时20分',
     "章节": "再现，小舞献祭的时刻",
     "人物": [
@@ -10347,7 +10347,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "幻之空间移位加三肠白虎破灭杀击溃海矛斗罗，戴沐白破八十级。"
   },
   {
-    "标识": "ch0243_02",
+    "标识": "1-0881",
     "时间": '斗罗历43年7月8日03时20分',
     "章节": "再现，小舞献祭的时刻",
     "人物": [
@@ -10360,7 +10360,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光与浩瀚精神力压服海矛斗罗，圣柱自行判其过关。"
   },
   {
-    "标识": "ch0243_03",
+    "标识": "1-0882",
     "时间": '斗罗历43年7月8日06时20分',
     "章节": "再现，小舞献祭的时刻",
     "人物": [
@@ -10372,7 +10372,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海幻斗罗幻境重现献祭一幕，唐三暴怒以镜之灭尽屠幻影。"
   },
   {
-    "标识": "ch0244_01",
+    "标识": "1-0883",
     "时间": '斗罗历43年7月8日09时00分',
     "章节": "挑战，海星圣柱",
     "人物": [
@@ -10384,7 +10384,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三破海幻领域并震破真身，虎鲸邪魔斧下小舞以柔骨锁止其杀手。"
   },
   {
-    "标识": "ch0244_02",
+    "标识": "1-0884",
     "时间": '斗罗历43年7月8日12时20分',
     "章节": "挑战，海星圣柱",
     "人物": [
@@ -10399,7 +10399,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三调息两时辰，马红俊速胜海鬼斗罗，戴沐白驮同伴代步赶路。"
   },
   {
-    "标识": "ch0244_03",
+    "标识": "1-0885",
     "时间": '斗罗历43年7月8日15时00分',
     "章节": "挑战，海星圣柱",
     "人物": [
@@ -10411,7 +10411,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海星斗罗化十五米真身以吞噬与毒雾缠斗，唐三封锁其吸取之力。"
   },
   {
-    "标识": "ch0245_01",
+    "标识": "1-0886",
     "时间": '斗罗历43年7月8日18时00分',
     "章节": "海魔女，人鱼公主？",
     "人物": [
@@ -10423,7 +10423,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以坚挺金苍蝇加持八蛛矛反噬海星斗罗，听见心跳即收手。"
   },
   {
-    "标识": "ch0245_02",
+    "标识": "1-0887",
     "时间": '斗罗历43年7月9日00时20分',
     "章节": "海魔女，人鱼公主？",
     "人物": [
@@ -10437,7 +10437,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海女斗罗现人鱼真身与读心术，欲吹笛放行，唐三大喝令抢攻。"
   },
   {
-    "标识": "ch0246_01",
+    "标识": "1-0888",
     "时间": '斗罗历43年7月9日03时20分',
     "章节": "进化十万年，唐三的第五魂环",
     "人物": [
@@ -10450,7 +10450,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣复制凤凰真身反打，凤凰穿云击令海女斗罗三秒失技。"
   },
   {
-    "标识": "ch0246_02",
+    "标识": "1-0889",
     "时间": '斗罗历43年7月9日06时20分',
     "章节": "进化十万年，唐三的第五魂环",
     "人物": [
@@ -10464,7 +10464,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "幽冥影相连逼海女斗罗认输，朱竹清全考完成获黑级权限与神赐魂环。"
   },
   {
-    "标识": "ch0246_03",
+    "标识": "1-0890",
     "时间": '斗罗历43年7月9日09时00分',
     "章节": "进化十万年，唐三的第五魂环",
     "人物": [
@@ -10478,7 +10478,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三主动请听镇海神曲，实因体内蓝银皇与玄天功骤然相冲。"
   },
   {
-    "标识": "ch0246_04",
+    "标识": "1-0891",
     "时间": '斗罗历43年7月9日12时20分',
     "章节": "进化十万年，唐三的第五魂环",
     "人物": [
@@ -10492,7 +10492,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "镇海神曲助融两股能量，第五魂环自行进化为十万年红环。"
   },
   {
-    "标识": "ch0247_01",
+    "标识": "1-0892",
     "时间": '斗罗历43年7月9日15时00分',
     "章节": "海龙斗罗",
     "人物": [
@@ -10506,7 +10506,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "抵海龙圣柱，唐三先调息一个时辰以巅峰状态迎九十五级强者。"
   },
   {
-    "标识": "ch0247_02",
+    "标识": "1-0893",
     "时间": '斗罗历43年7月9日18时00分',
     "章节": "海龙斗罗",
     "人物": [
@@ -10518,7 +10518,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海龙斗罗点明取巧之失，破魔领域无声抹去唐三两大领域。"
   },
   {
-    "标识": "ch0248_01",
+    "标识": "1-0894",
     "时间": '斗罗历43年7月10日00时20分',
     "章节": "控鹤擒龙，昊天飞锤",
     "人物": [
@@ -10530,7 +10530,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三诱海龙斗罗立下不用魂技之约，随即取出双生武魂昊天锤。"
   },
   {
-    "标识": "ch0248_02",
+    "标识": "1-0895",
     "时间": '斗罗历43年7月10日03时20分',
     "章节": "控鹤擒龙，昊天飞锤",
     "人物": [
@@ -10543,7 +10543,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "乱披风之舞十七锤对撞舍身技，两人俱伤落海，昊天锤占得上风。"
   },
   {
-    "标识": "ch0248_03",
+    "标识": "1-0896",
     "时间": '斗罗历43年7月10日06时20分',
     "章节": "控鹤擒龙，昊天飞锤",
     "人物": [
@@ -10555,7 +10555,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "控鹤擒龙操昊天飞锤牵制，飞天神爪钩柱扭转落海的死局。"
   },
   {
-    "标识": "ch0248_04",
+    "标识": "1-0897",
     "时间": '斗罗历43年7月10日09时00分',
     "章节": "控鹤擒龙，昊天飞锤",
     "人物": [
@@ -10567,7 +10567,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以透骨针与夺命胆逼海龙斗罗动用魂技，落回柱台取胜。"
   },
   {
-    "标识": "ch0249_01",
+    "标识": "1-0898",
     "时间": '斗罗历43年7月10日12时20分',
     "章节": "第六考，海神斗罗的攻击",
     "人物": [
@@ -10581,7 +10581,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第五考通过，亲和度累计五成，烙印转暗金，第六考难度随之增加。"
   },
   {
-    "标识": "ch0249_02",
+    "标识": "1-0899",
     "时间": '斗罗历43年7月10日15时00分',
     "章节": "第六考，海神斗罗的攻击",
     "人物": ["波赛西","唐三","戴沐白","朱竹清","奥斯卡","马红俊","宁荣荣"],
@@ -10589,7 +10589,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第六考改为独抗波赛西一炷香，唐三争得自选地点并定在海神山下。"
   },
   {
-    "标识": "ch0249_03",
+    "标识": "1-0900",
     "时间": '斗罗历43年7月12日03时20分',
     "章节": "第六考，海神斗罗的攻击",
     "人物": [
@@ -10605,7 +10605,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白欲出海抢一环遭众人劝阻，朱竹清因已通考不得离岛而返。"
   },
   {
-    "标识": "ch0249_04",
+    "标识": "1-0901",
     "时间": '斗罗历43年7月14日00时20分',
     "章节": "第六考，海神斗罗的攻击",
     "人物": ["小白","白沉香","波赛西","马红俊"], 未建档人物: ["史莱克七怪"],
@@ -10613,7 +10613,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白送众人渡海，波赛西持香现身，马红俊点香兼试探未果。"
   },
   {
-    "标识": "ch0250_01",
+    "标识": "1-0902",
     "时间": '斗罗历43年7月14日03时20分',
     "章节": "海神斗罗，无限接近于神的实力",
     "人物": ["唐三","波赛西","戴沐白","奥斯卡","宁荣荣","马红俊","小舞"],
@@ -10621,7 +10621,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "六怪化雨燕分散逃遁并封锁探查，波赛西以纯魂力漩涡尽数吸扯。"
   },
   {
-    "标识": "ch0250_02",
+    "标识": "1-0903",
     "时间": '斗罗历43年7月14日06时20分',
     "章节": "海神斗罗，无限接近于神的实力",
     "人物": ["唐三","波赛西","奥斯卡","宁荣荣"],
@@ -10629,7 +10629,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光加紫极魔瞳金线回援，波赛西现暗红烙印双掌相迎。"
   },
   {
-    "标识": "ch0250_03",
+    "标识": "1-0904",
     "时间": '斗罗历43年7月14日09时00分',
     "章节": "海神斗罗，无限接近于神的实力",
     "人物": ["唐三","波赛西"],
@@ -10637,7 +10637,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "精神对撞唐三口鼻出血，波赛西以卸力化去冲击，给他惨痛一课。"
   },
   {
-    "标识": "ch0250_04",
+    "标识": "1-0905",
     "时间": '斗罗历43年7月14日12时20分',
     "章节": "海神斗罗，无限接近于神的实力",
     "人物": ["唐三","波赛西"],
@@ -10645,7 +10645,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三瞬移偷袭无效被一掌拍入海底，赖第一次无敌金身保命。"
   },
   {
-    "标识": "ch0251_01",
+    "标识": "1-0906",
     "时间": '斗罗历43年7月14日15时00分',
     "章节": "借势过关，冲破，第六考",
     "人物": ["唐三","波赛西","海龙斗罗"],
@@ -10653,7 +10653,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三隐身逃出海底并抢登海神山，令波赛西不敢施大范围攻击。"
   },
   {
-    "标识": "ch0251_02",
+    "标识": "1-0907",
     "时间": '斗罗历43年7月14日18时00分',
     "章节": "借势过关，冲破，第六考",
     "人物": ["波赛西","唐三","海龙斗罗","海星斗罗","海女斗罗"],
@@ -10661,7 +10661,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西被逼放出海神武魂，蓝光魂力与精神力融合漫扫海神山。"
   },
   {
-    "标识": "ch0251_03",
+    "标识": "1-0908",
     "时间": '斗罗历43年7月15日00时20分',
     "章节": "借势过关，冲破，第六考",
     "人物": ["唐三","波赛西","海龙斗罗"],
@@ -10669,7 +10669,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三喷血催全山草木并以蓝银霸皇枪逼殿，迫波赛西亲身回救。"
   },
   {
-    "标识": "ch0251_04",
+    "标识": "1-0909",
     "时间": '斗罗历43年7月15日03时20分',
     "章节": "借势过关，冲破，第六考",
     "人物": ["唐三","波赛西","海龙斗罗","海马斗罗"],
@@ -10677,7 +10677,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七圣柱出手拦草木致规则突破，判词准许撤离，唐三反迎其攻。"
   },
   {
-    "标识": "ch0251_05",
+    "标识": "1-0910",
     "时间": '斗罗历43年7月15日06时20分',
     "章节": "借势过关，冲破，第六考",
     "人物": ["唐三","波赛西","海龙斗罗"],
@@ -10685,7 +10685,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三借波赛西一掌之力飞出海神岛，超额通过第六考，亲和度七成。"
   },
   {
-    "标识": "ch0251_06",
+    "标识": "1-0911",
     "时间": '斗罗历43年7月15日09时00分',
     "章节": "借势过关，冲破，第六考",
     "人物": ["唐三","波赛西","海龙斗罗"],
@@ -10693,7 +10693,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三当面点破波赛西的杀心，她承认并给出七日期限赴第七考。"
   },
   {
-    "标识": "ch0251_07",
+    "标识": "1-0912",
     "时间": '斗罗历43年7月17日06时20分',
     "章节": "借势过关，冲破，第六考",
     "人物": [
@@ -10709,7 +10709,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三睡足两日被众人质问独担之事，含糊蒙过并查明第七考题目。"
   },
   {
-    "标识": "ch0251_08",
+    "标识": "1-0913",
     "时间": '斗罗历43年7月17日09时00分',
     "章节": "借势过关，冲破，第六考",
     "人物": [
@@ -10725,7 +10725,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第七考公布为拔出海神三叉戟，众人震动，马红俊直问是否要成神。"
   },
   {
-    "标识": "ch0252_01",
+    "标识": "1-0914",
     "时间": '斗罗历43年7月21日00时20分',
     "章节": "海神神诋，成神之路",
     "人物": ["唐三","宁荣荣","小舞","海龙斗罗","波赛西"],
@@ -10733,7 +10733,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三携宁荣荣、小舞登千级台阶入海神殿，见倒插的漆黑戟柄。"
   },
   {
-    "标识": "ch0252_02",
+    "标识": "1-0915",
     "时间": '斗罗历43年7月21日03时20分',
     "章节": "海神神诋，成神之路",
     "人物": ["波赛西","唐三","宁荣荣","小舞"],
@@ -10741,7 +10741,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西讲海神一千零一年统一海洋之史，并道出九十九级的寿数之秘。"
   },
   {
-    "标识": "ch0252_03",
+    "标识": "1-0916",
     "时间": '斗罗历43年7月21日06时20分',
     "章节": "海神神诋，成神之路",
     "人物": ["波赛西","唐三","宁荣荣","小舞"],
@@ -10749,7 +10749,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西自陈实力源于神赐，并道出与唐晨、千道流的旧情与错过。"
   },
   {
-    "标识": "ch0252_04",
+    "标识": "1-0917",
     "时间": '斗罗历43年7月21日09时00分',
     "章节": "海神神诋",
     "人物": ["波赛西","唐三","宁荣荣","小舞"],
@@ -10757,7 +10757,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西揭示信仰之力与继承神诋两条成神之路，唐三即为被选中者。"
   },
   {
-    "标识": "ch0252_05",
+    "标识": "1-0918",
     "时间": '斗罗历43年7月21日12时20分',
     "章节": "成神之路",
     "人物": ["唐三","宁荣荣","小舞","波赛西"],
@@ -10765,7 +10765,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西以信念二字为提示，唐三在九宝增幅下握柄，掌血渗入纹路。"
   },
   {
-    "标识": "ch0253_01",
+    "标识": "1-0919",
     "时间": '斗罗历43年7月21日15时00分',
     "章节": "拔出，神器，海神的三叉戟",
     "人物": ["唐三","宁荣荣","小舞","波赛西"],
@@ -10773,7 +10773,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海神之光减轻戟重，戟首出土露出菱形孔洞，唐三渐感力竭。"
   },
   {
-    "标识": "ch0253_02",
+    "标识": "1-0920",
     "时间": '斗罗历43年7月21日18时00分',
     "章节": "拔出，神器，海神的三叉戟",
     "人物": ["唐三","宁荣荣","小舞","波赛西"],
@@ -10781,7 +10781,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海神之光注入孔洞，瀚海乾坤罩自行化菱形宝石，唐三终得明悟。"
   },
   {
-    "标识": "ch0253_03",
+    "标识": "1-0921",
     "时间": '斗罗历43年7月22日00时20分',
     "章节": "拔出，神器，海神的三叉戟",
     "人物": ["唐三","宁荣荣","小舞","波赛西","戴沐白","海龙斗罗"],
@@ -10789,7 +10789,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宝石入孔，唐三肌肉爆裂拔出三叉戟，金色海神虚像现出他的面容。"
   },
   {
-    "标识": "ch0253_04",
+    "标识": "1-0922",
     "时间": '斗罗历43年7月22日03时20分',
     "章节": "拔出，神器，海神的三叉戟",
     "人物": ["唐三","宁荣荣","小舞","波赛西"],
@@ -10797,7 +10797,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "信仰之力灌入神器，唐三昏迷，宁荣荣顶级七考获红级权限与两神赐环。"
   },
   {
-    "标识": "ch0253_05",
+    "标识": "1-0923",
     "时间": '斗罗历43年7月22日06时20分',
     "章节": "拔出，神器，海神的三叉戟",
     "人物": ["波赛西","宁荣荣","小舞","唐三"],
@@ -10805,7 +10805,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西全力移开神器，小舞割腕输血救唐三并求众人对他保密。"
   },
   {
-    "标识": "ch0254_01",
+    "标识": "1-0924",
     "时间": '斗罗历43年7月23日03时20分',
     "章节": "海神三叉戟，重十万八千斤",
     "人物": ["唐三","波赛西"],
@@ -10813,7 +10813,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西揭示海神之心真名，并道出深海魔鲸王距化龙仅一步之遥。"
   },
   {
-    "标识": "ch0254_02",
+    "标识": "1-0925",
     "时间": '斗罗历43年7月23日06时20分',
     "章节": "海神三叉戟，重十万八千斤",
     "人物": ["唐三","波赛西","小舞"],
@@ -10821,7 +10821,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第八考公布，唐三宁弃成神之路也要复活小舞，波赛西喝住他。"
   },
   {
-    "标识": "ch0254_03",
+    "标识": "1-0926",
     "时间": '斗罗历43年7月23日09时00分',
     "章节": "海神三叉戟，重十万八千斤",
     "人物": ["波赛西","唐三","小舞"],
@@ -10829,7 +10829,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西授复活两全之法：只还五环，断臂前先备新右臂魂骨。"
   },
   {
-    "标识": "ch0254_04",
+    "标识": "1-0927",
     "时间": '斗罗历43年7月23日12时20分',
     "章节": "海神三叉戟，重十万八千斤",
     "人物": ["波赛西","唐三"],
@@ -10837,7 +10837,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西点明双武魂九环之要，并示以深海魔鲸王补齐魂环魂骨之策。"
   },
   {
-    "标识": "ch0254_05",
+    "标识": "1-0928",
     "时间": '斗罗历43年7月23日15时00分',
     "章节": "海神三叉戟，重十万八千斤",
     "人物": ["唐三","波赛西","小舞"],
@@ -10845,7 +10845,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西许其离岛并交代神器三事，临别托付若见唐晨请他来看她。"
   },
   {
-    "标识": "ch0255_01",
+    "标识": "1-0929",
     "时间": '斗罗历43年7月24日00时20分',
     "章节": "四年来的收获与分别",
     "人物": [
@@ -10861,7 +10861,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七圣柱跪拜神器，唐三宣布离岛，马红俊试提三叉戟不动分毫。"
   },
   {
-    "标识": "ch0255_02",
+    "标识": "1-0930",
     "时间": '斗罗历43年7月24日03时20分',
     "章节": "四年来的收获与分别",
     "人物": [
@@ -10876,7 +10876,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白跪贺神器并认主，唐三命她以友相称，率族人送众人渡海。"
   },
   {
-    "标识": "ch0255_03",
+    "标识": "1-0931",
     "时间": '斗罗历43年7月25日03时20分',
     "章节": "四年来的收获与分别",
     "人物": [
@@ -10893,7 +10893,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "归程清点四年收获：全员破八十级，宁荣荣得首枚十万年红环。"
   },
   {
-    "标识": "ch0255_04",
+    "标识": "1-0932",
     "时间": '斗罗历43年7月25日06时20分',
     "章节": "四年来的收获与分别",
     "人物": [
@@ -10908,7 +10908,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白弃星罗皇位之争，唐三决意让吉祥留在紫珍珠岛做医生。"
   },
   {
-    "标识": "ch0255_05",
+    "标识": "1-0933",
     "时间": '斗罗历43年7月27日00时20分',
     "章节": "四年来的收获与分别",
     "人物": [
@@ -10926,7 +10926,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白送至大陆西北岸告别，众人分途：唐三赴星斗大森林，余者回天斗城。"
   },
   {
-    "标识": "ch0255_06",
+    "标识": "1-0934",
     "时间": '斗罗历43年7月27日03时20分',
     "章节": "四年来的收获与分别",
     "人物": [
@@ -10943,7 +10943,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三分派唐门与宗门事宜，众人洒泪作别，他携小舞东赴星斗大森林。"
   },
   {
-    "标识": "ch0255_07",
+    "标识": "1-0935",
     "时间": '斗罗历43年7月27日09时00分',
     "章节": "四年来的收获与分别",
     "人物": [
@@ -10954,7 +10954,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "抵西鲁城见士兵胸缀武魂二字，唐三隐身携小舞越城而入。"
   },
   {
-    "标识": "ch0256_01",
+    "标识": "1-0936",
     "时间": '斗罗历43年7月28日03时20分',
     "章节": "武魂帝国",
     "人物": [
@@ -10965,7 +10965,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在西鲁城得知武魂殿已立国为武魂帝国，决定沿途歼灭护城魂师团制造混乱。"
   },
   {
-    "标识": "ch0256_03",
+    "标识": "1-0937",
     "时间": '斗罗历43年7月28日06时20分',
     "章节": "武魂帝国",
     "人物": [
@@ -10976,7 +10976,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在西鲁城暗中调查武魂帝国控制模式，发现高压税赋与强征觉醒者令民间怨声载道。"
   },
   {
-    "标识": "ch0256_04",
+    "标识": "1-0938",
     "时间": '斗罗历43年7月28日09时00分',
     "章节": "武魂帝国",
     "人物": [
@@ -10987,7 +10987,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在城外检视装备与测试极限输出，与小舞制定夜袭护城魂师团的详细作战计划。"
   },
   {
-    "标识": "ch0256_05",
+    "标识": "1-0939",
     "时间": '斗罗历43年7月28日12时20分',
     "章节": "武魂帝国",
     "人物": [
@@ -10998,7 +10998,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以精神力渗透护城魂师团驻地绘制兵力图，小舞空中确认无飞行系魂师。"
   },
   {
-    "标识": "ch0256_02",
+    "标识": "1-0940",
     "时间": '斗罗历43年7月28日15时00分',
     "章节": "武魂帝国",
     "人物": [
@@ -11008,7 +11008,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三夜袭西鲁城护城魂师团驻地，以多种手段无声清除外围后正面对阵八十余魂师。"
   },
   {
-    "标识": "ch0257_01",
+    "标识": "1-0941",
     "时间": '斗罗历43年7月28日18时00分',
     "章节": "海神三叉戟之威",
     "人物": [
@@ -11018,7 +11018,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以昊天飞锤扫杀群敌后首次实战挥动海神三叉戟，全歼八十名魂师。"
   },
   {
-    "标识": "ch0257_03",
+    "标识": "1-0942",
     "时间": '斗罗历43年7月28日21时40分',
     "章节": "海神三叉戟之威",
     "人物": [
@@ -11028,7 +11028,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三清理现场后搜获武魂帝国魂师团联络暗号与轮换时间表，获得七天隐蔽窗口期。"
   },
   {
-    "标识": "ch0257_04",
+    "标识": "1-0943",
     "时间": '斗罗历43年7月28日21时50分',
     "章节": "海神三叉戟之威",
     "人物": [
@@ -11039,7 +11039,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与小舞连夜东行，途中讨论海神三叉戟威力，黎明前抵达第二座目标城市。"
   },
   {
-    "标识": "ch0257_05",
+    "标识": "1-0944",
     "时间": '斗罗历43年7月29日06时20分',
     "章节": "海神三叉戟之威",
     "人物": [
@@ -11050,7 +11050,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三白天潜入第二座城市以斩首行动击杀城防长官，取走令牌后不恋战迅速撤离。"
   },
   {
-    "标识": "ch0257_02",
+    "标识": "1-0945",
     "时间": '斗罗历43年8月1日03时20分',
     "章节": "海神三叉戟之威",
     "人物": [
@@ -11061,7 +11061,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三数日间横穿哈根达斯王国，屠灭十余城护城魂师团逾千名魂师。"
   },
   {
-    "标识": "ch0258_01",
+    "标识": "1-0946",
     "时间": '斗罗历43年8月4日03时20分',
     "章节": "再现，杀戮之王",
     "人物": [
@@ -11072,7 +11072,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三进入星斗大森林察觉大量魂兽逃窜异象，隐身深入查探疑似武魂帝国猎魂队。"
   },
   {
-    "标识": "ch0258_02",
+    "标识": "1-0947",
     "时间": '斗罗历43年8月5日06时20分',
     "章节": "再现，杀戮之王",
     "人物": ["唐三","比比东","菊斗罗"],
@@ -11080,7 +11080,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三发现比比东亲率封号斗罗猎杀大明二明，全速抢先深入核心区域。"
   },
   {
-    "标识": "ch0258_04",
+    "标识": "1-0948",
     "时间": '斗罗历43年8月5日09时00分',
     "章节": "再现，杀戮之王",
     "人物": [
@@ -11090,7 +11090,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三观察比比东队伍搜索阵型后找到弱点，规划绕后潜入路线抢先接触大明二明。"
   },
   {
-    "标识": "ch0258_05",
+    "标识": "1-0949",
     "时间": '斗罗历43年8月5日09时10分',
     "章节": "再现，杀戮之王",
     "人物": [
@@ -11102,7 +11102,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三从逃窜魂兽处获知大明二明已激战两天两夜且力竭减弱，全力加速赶往星湖畔。"
   },
   {
-    "标识": "ch0258_03",
+    "标识": "1-0950",
     "时间": '斗罗历43年8月5日12时20分',
     "章节": "再现，杀戮之王",
     "人物": [
@@ -11114,7 +11114,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三找到重伤的大明二明，以海神之光疗伤并决定正面迎战比比东。"
   },
   {
-    "标识": "ch0259_01",
+    "标识": "1-0951",
     "时间": '斗罗历43年8月5日12时30分',
     "章节": "杀戮之王？曾祖？",
     "人物": ["唐三","比比东","菊斗罗"],
@@ -11122,7 +11122,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东率队追至星湖畔，唐三以海神三叉戟第一式挡下其攻击，初步交手。"
   },
   {
-    "标识": "ch0259_04",
+    "标识": "1-0952",
     "时间": '斗罗历43年8月5日15时00分',
     "章节": "杀戮之王？曾祖？",
     "人物": [
@@ -11133,7 +11133,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东下令三名封号斗罗包抄，唐三以虎鲸魔之摄晕眩三人后瞬移逐个击飞瓦解包围。"
   },
   {
-    "标识": "ch0259_05",
+    "标识": "1-0953",
     "时间": '斗罗历43年8月5日15时10分',
     "章节": "杀戮之王？曾祖？",
     "人物": [
@@ -11144,7 +11144,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东以暗冥蛛网领域全力缠战唐三，双方陷入消耗对峙中唐晨气息突然降临。"
   },
   {
-    "标识": "ch0259_02",
+    "标识": "1-0954",
     "时间": '斗罗历43年8月5日18时00分',
     "章节": "杀戮之王？曾祖？",
     "人物": [
@@ -11155,7 +11155,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "九十九级绝世斗罗唐晨突然现身，一丝气息便令比比东全队撤退。"
   },
   {
-    "标识": "ch0259_03",
+    "标识": "1-0955",
     "时间": '斗罗历43年8月5日18时10分',
     "章节": "杀戮之王？曾祖？",
     "人物": [
@@ -11168,7 +11168,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐晨向唐三表明曾祖身份，承诺守护大明二明令唐三放心去复活小舞。"
   },
   {
-    "标识": "ch0261_03",
+    "标识": "1-0956",
     "时间": '斗罗历43年8月5日21时40分',
     "章节": "唐三与比比东的第一次交手",
     "人物": [
@@ -11181,7 +11181,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三整夜以海神之光为大明疗伤并以蓝银皇毒克制暗蛛毒，大明告知二明经脉崩裂不可逆。"
   },
   {
-    "标识": "ch0261_04",
+    "标识": "1-0957",
     "时间": '斗罗历43年8月6日00时20分',
     "章节": "唐三与比比东的第一次交手",
     "人物": [
@@ -11193,7 +11193,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三确认二明经脉崩裂不可逆转，二明以诀别口吻表示守护小舞十万年已无憾。"
   },
   {
-    "标识": "ch0261_05",
+    "标识": "1-0958",
     "时间": '斗罗历43年8月6日03时20分',
     "章节": "唐三与比比东的第一次交手",
     "人物": [
@@ -11204,7 +11204,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐晨透露自身无法持续战斗，并告知比比东不死之身有三分钟冷却的致命弱点。"
   },
   {
-    "标识": "ch0261_01",
+    "标识": "1-0959",
     "时间": '斗罗历43年8月6日06时20分',
     "章节": "唐三与比比东的第一次交手",
     "人物": ["唐三","比比东","菊斗罗"],
@@ -11212,7 +11212,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东再次折返，唐三以海神三叉戟与之正面交手，双方互有攻防。"
   },
   {
-    "标识": "ch0261_02",
+    "标识": "1-0960",
     "时间": '斗罗历43年8月6日09时00分',
     "章节": "唐三与比比东的第一次交手",
     "人物": [
@@ -11223,7 +11223,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东释放双武魂叠加态逼唐三全力应对，唐三判断不利后隐身脱离。"
   },
   {
-    "标识": "ch0262_01",
+    "标识": "1-0961",
     "时间": '斗罗历43年8月9日03时20分',
     "章节": "海神的技能，黄金十三戟",
     "人物": [
@@ -11236,7 +11236,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐晨传授海神三叉戟完整技能黄金十三戟十三式，唐三目前仅能用前三式。"
   },
   {
-    "标识": "ch0262_03",
+    "标识": "1-0962",
     "时间": '斗罗历43年8月9日06时20分',
     "章节": "海神的技能，黄金十三戟",
     "人物": [
@@ -11247,7 +11247,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐晨与唐三实战演练指出其运用海神之力效率仅四成，传授内蕴释放法令威力倍增。"
   },
   {
-    "标识": "ch0262_04",
+    "标识": "1-0963",
     "时间": '斗罗历43年8月9日12时20分',
     "章节": "海神的技能，黄金十三戟",
     "人物": [
@@ -11259,7 +11259,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大明提议与二明联手制造空间折叠屏障隐藏星湖三天，为唐三争取修炼时间。"
   },
   {
-    "标识": "ch0262_02",
+    "标识": "1-0964",
     "时间": '斗罗历43年8月10日06时20分',
     "章节": "海神的技能，黄金十三戟",
     "人物": [
@@ -11272,7 +11272,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大明二明决定在濒死前献祭唐三，以助其突破九十级并获复活小舞之资源。"
   },
   {
-    "标识": "ch0262_05",
+    "标识": "1-0965",
     "时间": '斗罗历43年8月10日15时00分',
     "章节": "海神的技能，黄金十三戟",
     "人物": [
@@ -11285,7 +11285,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三接受大明二明以命为代价制造空间折叠，立誓三天内将前三式练至实战水平。"
   },
   {
-    "标识": "ch0263_01",
+    "标识": "1-0966",
     "时间": '斗罗历43年8月11日09时00分',
     "章节": "献祭！森林之王，唐三九环",
     "人物": [
@@ -11298,7 +11298,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三自断右臂取出小舞魂骨后，大明献祭为蓝银皇第九环+右臂骨，唐三破九十级。"
   },
   {
-    "标识": "ch0263_04",
+    "标识": "1-0967",
     "时间": '斗罗历43年8月11日09时10分',
     "章节": "献祭！森林之王，唐三九环",
     "人物": [
@@ -11310,7 +11310,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大明魂环能量暴涌中唐三以海神之光引导有序吸收，二明为其构建防护屏障护小舞安全。"
   },
   {
-    "标识": "ch0263_02",
+    "标识": "1-0968",
     "时间": '斗罗历43年8月11日12时20分',
     "章节": "献祭！森林之王，唐三九环",
     "人物": [
@@ -11322,7 +11322,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "二明献祭为昊天锤第一环+左臂骨，唐三以海神之光完成脱胎换骨承受双魂骨。"
   },
   {
-    "标识": "ch0263_05",
+    "标识": "1-0969",
     "时间": '斗罗历43年8月11日12时30分',
     "章节": "献祭！森林之王，唐三九环",
     "人物": [
@@ -11333,7 +11333,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "二明献祭前托付星湖生命之核与旧友保护之事，告知唐三自己真名为'砺'后从容赴死。"
   },
   {
-    "标识": "ch0263_03",
+    "标识": "1-0970",
     "时间": '斗罗历43年8月11日15时00分',
     "章节": "献祭！森林之王，唐三九环",
     "人物": [
@@ -11344,7 +11344,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三收殓两兽遗体后全速飞离星斗大森林，比比东确认其身份但追索不及。"
   },
   {
-    "标识": "ch0264_03",
+    "标识": "1-0971",
     "时间": '斗罗历43年8月12日06时20分',
     "章节": "复活之地，落日森林",
     "人物": [
@@ -11354,7 +11354,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三飞行途中经过战场遗址目睹战乱惨状，暗下决心复活小舞后尽快终结大陆战争。"
   },
   {
-    "标识": "ch0264_04",
+    "标识": "1-0972",
     "时间": '斗罗历43年8月12日09时00分',
     "章节": "复活之地，落日森林",
     "人物": [
@@ -11364,7 +11364,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三进入落日森林后蓝银草网络提供信息引导，驱离猎魂队伍保护冰火两仪眼隐秘。"
   },
   {
-    "标识": "ch0264_01",
+    "标识": "1-0973",
     "时间": '斗罗历43年8月13日03时20分',
     "章节": "复活之地，落日森林",
     "人物": [
@@ -11376,7 +11376,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三飞行两天抵落日森林冰火两仪眼，与父母唐昊、阿银时隔近五年重聚。"
   },
   {
-    "标识": "ch0264_05",
+    "标识": "1-0974",
     "时间": '斗罗历43年8月13日12时20分',
     "章节": "复活之地，落日森林",
     "人物": [
@@ -11388,7 +11388,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三抵达冰火两仪眼时唐昊持锤戒备，认出儿子后独臂紧抱，阿银蓝银皇草叶温柔包裹父子。"
   },
   {
-    "标识": "ch0264_02",
+    "标识": "1-0975",
     "时间": '斗罗历43年8月13日15时00分',
     "章节": "复活之地，落日森林",
     "人物": [
@@ -11401,7 +11401,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向父母述经历并表明要在此复活小舞，唐昊阿银全力支持。"
   },
   {
-    "标识": "ch0265_01",
+    "标识": "1-0976",
     "时间": '斗罗历43年8月14日03时20分',
     "章节": "复活吧，我的爱人",
     "人物": [
@@ -11414,7 +11414,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光为媒介将五个魂环剥离注入小舞体内，承受剧痛开始复活。"
   },
   {
-    "标识": "ch0265_04",
+    "标识": "1-0977",
     "时间": '斗罗历43年8月14日06时20分',
     "章节": "复活吧，我的爱人",
     "人物": [
@@ -11426,7 +11426,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞肉身出现兽性排异反应，阿银以蓝银皇生命力安抚其本能使唐三成功注入最后两环。"
   },
   {
-    "标识": "ch0265_02",
+    "标识": "1-0978",
     "时间": '斗罗历43年8月14日09时00分',
     "章节": "复活吧，我的爱人",
     "人物": [
@@ -11439,7 +11439,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "五环注入完毕小舞肉身蜕变复原，两时辰后小舞睁眼复活，与唐三相拥。"
   },
   {
-    "标识": "ch0265_05",
+    "标识": "1-0979",
     "时间": '斗罗历43年8月14日12时20分',
     "章节": "复活吧，我的爱人",
     "人物": [
@@ -11451,7 +11451,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊评估小舞因三枚十万年红环质变后近战可匹敌八十级，小舞留冰火两仪眼适应新身体。"
   },
   {
-    "标识": "ch0265_03",
+    "标识": "1-0980",
     "时间": '斗罗历43年8月14日15时00分',
     "章节": "复活吧，我的爱人",
     "人物": [
@@ -11464,7 +11464,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞复活为76级魂圣，唐三回落至86级，小舞得知大明二明献祭真相后悲痛接受。"
   },
   {
-    "标识": "ch0266_01",
+    "标识": "1-0981",
     "时间": '斗罗历43年8月17日03时20分',
     "章节": "蓝银领域之终极进化，海纳百川",
     "人物": [
@@ -11477,7 +11477,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三蓝银领域因第九环注入质变为终极形态海纳百川，范围千米可同化生命能量。"
   },
   {
-    "标识": "ch0266_04",
+    "标识": "1-0982",
     "时间": '斗罗历43年8月17日06时20分',
     "章节": "蓝银领域之终极进化，海纳百川",
     "人物": [
@@ -11488,7 +11488,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三测试海纳百川领域对友军增幅三成对敌军每秒吸取百分之一魂力，可撑起军队级辅助。"
   },
   {
-    "标识": "ch0266_02",
+    "标识": "1-0983",
     "时间": '斗罗历43年8月17日09时00分',
     "章节": "蓝银领域之终极进化，海纳百川",
     "人物": [
@@ -11500,7 +11500,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三测试海纳百川领域并检视昊天锤第一环二明所化两个魂技。"
   },
   {
-    "标识": "ch0266_05",
+    "标识": "1-0984",
     "时间": '斗罗历43年8月17日12时20分',
     "章节": "蓝银领域之终极进化，海纳百川",
     "人物": [
@@ -11511,7 +11511,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三展示昊天锤双魂技后唐昊评价其战术价值，承诺回宗后传授大须弥锤终极锤法。"
   },
   {
-    "标识": "ch0266_03",
+    "标识": "1-0985",
     "时间": '斗罗历43年8月19日03时20分',
     "章节": "蓝银领域之终极进化，海纳百川",
     "人物": [
@@ -11524,7 +11524,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三小舞修炼数日后唐昊透露昊天宗近况，六封号斗罗长老健在仍封山。"
   },
   {
-    "标识": "ch0268_01",
+    "标识": "1-0986",
     "时间": '斗罗历43年8月20日03时20分',
     "章节": "铁汉柔情",
     "人物": [
@@ -11537,7 +11537,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三拜别父母启程赴昊天宗，唐昊交代昊天锤终极奥义与宗门应对之策。"
   },
   {
-    "标识": "ch0268_03",
+    "标识": "1-0987",
     "时间": '斗罗历43年8月20日06时20分',
     "章节": "铁汉柔情",
     "人物": [
@@ -11548,7 +11548,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与小舞空中演练配合战术，小舞两小时内掌握借蓝银皇支点发动空中瞬移摔的核心技巧。"
   },
   {
-    "标识": "ch0268_04",
+    "标识": "1-0988",
     "时间": '斗罗历43年8月20日09时00分',
     "章节": "铁汉柔情",
     "人物": [
@@ -11559,7 +11559,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞诉说灵魂困于体内五年的痛苦经历，两人在万米高空许下此生同生共死的誓言。"
   },
   {
-    "标识": "ch0268_05",
+    "标识": "1-0989",
     "时间": '斗罗历43年8月20日12时20分',
     "章节": "铁汉柔情",
     "人物": [
@@ -11570,7 +11570,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三隐身穿越武魂帝国巡逻飞行小队后判断敌方已推进至天斗北境，加速赶往昊天宗。"
   },
   {
-    "标识": "ch0268_02",
+    "标识": "1-0990",
     "时间": '斗罗历43年8月21日06时20分',
     "章节": "铁汉柔情",
     "人物": [
@@ -11581,7 +11581,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与复活后的小舞飞行途中实战演练配合，小舞实力远超献祭前。"
   },
   {
-    "标识": "ch0269_01",
+    "标识": "1-0991",
     "时间": '斗罗历43年8月22日03时20分',
     "章节": "重返昊天宗",
     "人物": [
@@ -11592,7 +11592,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三携小舞飞抵昊天宗，十年之约三项考验已超额完成，直入前哨村落。"
   },
   {
-    "标识": "ch0269_02",
+    "标识": "1-0992",
     "时间": '斗罗历43年8月22日06时20分',
     "章节": "重返昊天宗",
     "人物": [
@@ -11604,7 +11604,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在昊天宗当众展示封号斗罗实力，十年之约达成，提出昊天宗必须出山参战。"
   },
   {
-    "标识": "ch0269_03",
+    "标识": "1-0993",
     "时间": '斗罗历43年8月22日09时00分',
     "章节": "重返昊天宗",
     "人物": [
@@ -11616,7 +11616,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以唐晨消息与唐门支持说服昊天宗，唐啸拍板解除封山全宗整军赴天斗城。"
   },
   {
-    "标识": "ch0269_04",
+    "标识": "1-0994",
     "时间": '斗罗历43年8月22日09时10分',
     "章节": "重返昊天宗",
     "人物": [
@@ -11627,7 +11627,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以冷静逻辑逐一驳倒保守派长老的观望论，唐啸当场解除三十年封山令。"
   },
   {
-    "标识": "ch0269_05",
+    "标识": "1-0995",
     "时间": '斗罗历43年8月22日12时20分',
     "章节": "重返昊天宗",
     "人物": [
@@ -11639,7 +11639,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神三叉戟金光冲天向全宗动员，数百弟子热血沸腾高呼昊天宗万岁。"
   },
   {
-    "标识": "ch0270_01",
+    "标识": "1-0996",
     "时间": '斗罗历43年9月7日02时40分',
     "章节": "泰坦苍穹破与天青迟钝神爪",
     "人物": [
@@ -11651,7 +11651,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神三叉戟与泰坦苍穹炮三次击退七长老，正式挑战昊天宗五位封号斗罗。"
   },
   {
-    "标识": "ch0270_03",
+    "标识": "1-0997",
     "时间": '斗罗历43年9月7日23时40分',
     "章节": "泰坦苍穹破与天青迟钝神爪",
     "人物": [
@@ -11662,7 +11662,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七长老清晨挑衅唐三，唐三以纯肉体力量单手接下其全力一锤令其面色铁青。"
   },
   {
-    "标识": "ch0270_04",
+    "标识": "1-0998",
     "时间": '斗罗历43年9月9日02时40分',
     "章节": "泰坦苍穹破与天青迟钝神爪",
     "人物": [
@@ -11674,7 +11674,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "二长老以昊天裂空斩全力出手被唐三泰坦苍穹炮正面硬接后震退十步。"
   },
   {
-    "标识": "ch0270_02",
+    "标识": "1-0999",
     "时间": '斗罗历43年9月10日05时40分',
     "章节": "泰坦苍穹破与天青迟钝神爪",
     "人物": ["唐三","二长老","七长老"], 未建档人物: ["三长老","五长老","六长老"],
@@ -11682,7 +11682,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以蓝银虎鲸魔之摄加无定风波加千载空悠连环控制击溃五位长老联合防御。"
   },
   {
-    "标识": "ch0270_05",
+    "标识": "1-1000",
     "时间": '斗罗历43年9月11日05时40分',
     "章节": "泰坦苍穹破与天青迟钝神爪",
     "人物": [
@@ -11694,7 +11694,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三宣布以一敌五挑战全部长老以证明统率资格，演武场百米方圆清空迎接史册级对决。"
   },
   {
-    "标识": "ch0271_01",
+    "标识": "1-1001",
     "时间": '斗罗历43年9月12日08时20分',
     "章节": "宗门首席，昊天令",
     "人物": [
@@ -11706,7 +11706,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三出示唐晨所赐昊天令被拜为首席长老，婉拒宗主之位但获最高决策权。"
   },
   {
-    "标识": "ch0271_03",
+    "标识": "1-1002",
     "时间": '斗罗历43年9月13日08时20分',
     "章节": "宗门首席，昊天令",
     "人物": ["唐三"], 未建档人物: ["五长老","六长老"],
@@ -11714,7 +11714,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向五位长老讲述五年经历，五长老六长老率先臣服认唐三为首席，仅二七长老沉默。"
   },
   {
-    "标识": "ch0271_04",
+    "标识": "1-1003",
     "时间": '斗罗历43年9月14日08时20分',
     "章节": "宗门首席，昊天令",
     "人物": [
@@ -11726,7 +11726,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "二长老质疑唐三经验不足，唐三亮出昊天令中唐晨精神烙印令二七长老跪服。"
   },
   {
-    "标识": "ch0271_05",
+    "标识": "1-1004",
     "时间": '斗罗历43年9月15日11时40分',
     "章节": "宗门首席，昊天令",
     "人物": [
@@ -11737,7 +11737,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三首道命令整军备战：五支突击小队编制完成，制定七天急行军路线赴天斗城与唐门会合。"
   },
   {
-    "标识": "ch0271_02",
+    "标识": "1-1005",
     "时间": '斗罗历43年9月16日11时40分',
     "章节": "宗门首席，昊天令",
     "人物": [
@@ -11750,7 +11750,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三为父正名后唐啸下山迎唐昊入宗，兄弟二十五年后重逢在祖坟前团聚。"
   },
   {
-    "标识": "ch0272_01",
+    "标识": "1-1006",
     "时间": '斗罗历43年9月18日13时40分',
     "章节": "神匠遗物，绝世暗器",
     "人物": [
@@ -11762,7 +11762,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三获铸造神匠楼高遗物——三大绝世暗器孔雀翎、佛怒唐莲、暴雨梨花针全部完成。"
   },
   {
-    "标识": "ch0272_03",
+    "标识": "1-1007",
     "时间": '斗罗历43年9月19日16时40分',
     "章节": "神匠遗物，绝世暗器",
     "人物": [
@@ -11772,7 +11772,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三测试三大绝世暗器参数：孔雀翎攻三十六目标、佛怒唐莲封号级威力、暴雨梨花针穿三米岩。"
   },
   {
-    "标识": "ch0272_04",
+    "标识": "1-1008",
     "时间": '斗罗历43年9月20日22时40分',
     "章节": "神匠遗物，绝世暗器",
     "人物": [
@@ -11783,7 +11783,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光诊断唐昊断肢状况后制定精密修复步骤，唐昊坦然配合毫无惧色。"
   },
   {
-    "标识": "ch0272_02",
+    "标识": "1-1009",
     "时间": '斗罗历43年9月21日16时40分',
     "章节": "神匠遗物，绝世暗器",
     "人物": [
@@ -11796,7 +11796,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光修复唐昊双肢并打通其奇经八脉，唐昊魂力突破九十六级超越巅峰。"
   },
   {
-    "标识": "ch0272_05",
+    "标识": "1-1010",
     "时间": '斗罗历43年9月22日22时40分',
     "章节": "神匠遗物，绝世暗器",
     "人物": [
@@ -11808,7 +11808,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "打通奇经八脉时大须弥锤残力暴走，唐三引导其回归昊天锤令唐昊魂力骤升至九十六级。"
   },
   {
-    "标识": "ch0273_01",
+    "标识": "1-1011",
     "时间": '斗罗历43年9月23日13时40分',
     "章节": "唐家军，九十三级，帝师",
     "人物": [
@@ -11820,7 +11820,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三回唐门得知天斗帝国百万大军已出征，修书安排昊天宗守后方后携小舞追军。"
   },
   {
-    "标识": "ch0273_03",
+    "标识": "1-1012",
     "时间": '斗罗历43年9月24日16时40分',
     "章节": "唐家军，九十三级，帝师",
     "人物": [
@@ -11831,7 +11831,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以精神力感知百万大军部署分布，向小舞分析诸葛神弩作为军事兵器的战术价值。"
   },
   {
-    "标识": "ch0273_04",
+    "标识": "1-1013",
     "时间": '斗罗历43年9月25日22时40分',
     "章节": "唐家军，九十三级，帝师",
     "人物": [
@@ -11842,7 +11842,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三指导小舞将虚空转与飞翔叠加使用，小舞掌握空中三连虚空转不可预测轨迹。"
   },
   {
-    "标识": "ch0273_05",
+    "标识": "1-1014",
     "时间": '斗罗历43年9月27日01时20分',
     "章节": "唐家军，九十三级，帝师",
     "人物": [
@@ -11853,7 +11853,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三暗中救下被伏击的天斗斥候并从昏迷敌人身上搜获武魂帝国前线部署图。"
   },
   {
-    "标识": "ch0273_02",
+    "标识": "1-1015",
     "时间": '斗罗历43年9月27日13时40分',
     "章节": "唐家军，九十三级，帝师",
     "人物": ["唐三","小舞","尘心","弗兰德"],
@@ -11861,7 +11861,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三追上大军后突破九十三级，与众人重聚并得知自己已是帝国第一人帝师蓝昊王。"
   },
   {
-    "标识": "ch0274_01",
+    "标识": "1-1016",
     "时间": '斗罗历43年9月28日16时40分',
     "章节": "天斗大军",
     "人物": [
@@ -11873,7 +11873,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪崩当百万军前尊唐三为帝师，唐三许诺以七怪和唐家军抵挡武魂帝国魂师军团。"
   },
   {
-    "标识": "ch0274_03",
+    "标识": "1-1017",
     "时间": '斗罗历43年9月29日16时40分',
     "章节": "天斗大军",
     "人物": [
@@ -11884,7 +11884,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪崩私下倾诉三年帝位艰辛，唐三许诺全权负责魂师战斗层面令雪崩安心稳固后方。"
   },
   {
-    "标识": "ch0274_04",
+    "标识": "1-1018",
     "时间": '斗罗历43年9月30日19时20分',
     "章节": "天斗大军",
     "人物": [
@@ -11895,7 +11895,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师详析武魂帝国魂师军团构成与六大供奉实力，唐三据此制定魂师斩首战术方案。"
   },
   {
-    "标识": "ch0274_05",
+    "标识": "1-1019",
     "时间": '斗罗历43年10月1日22时40分',
     "章节": "天斗大军",
     "人物": [
@@ -11910,7 +11910,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三评估五怪战力并分配战术角色，确认宁荣荣增幅下七怪合体等同七封号斗罗。"
   },
   {
-    "标识": "ch0274_02",
+    "标识": "1-1020",
     "时间": '斗罗历43年10月2日19时20分',
     "章节": "天斗大军",
     "人物": ["唐三","大师"], 未建档人物: ["戈龙"],
@@ -11918,7 +11918,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在军事会议上预警补给线危机，主动请缨以七怪组机动小队守护后勤。"
   },
   {
-    "标识": "ch0275_02",
+    "标识": "1-1021",
     "时间": '斗罗历43年10月4日01时20分',
     "章节": "七怪，守护，补给线",
     "人物": [
@@ -11930,7 +11930,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与宁荣荣商定增幅轮换策略并将三件绝世暗器按属性分配给最合适的使用者。"
   },
   {
-    "标识": "ch0275_03",
+    "标识": "1-1022",
     "时间": '斗罗历43年10月5日04时20分',
     "章节": "七怪，守护，补给线",
     "人物": [
@@ -11941,7 +11941,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白与唐三深夜叙旧讲述五年守护经历，两兄弟约定一起活着看到和平。"
   },
   {
-    "标识": "ch0275_01",
+    "标识": "1-1023",
     "时间": '斗罗历43年10月5日13时40分',
     "章节": "七怪，守护，补给线",
     "人物": [
@@ -11953,7 +11953,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三为戴沐白朱竹清分配魂骨后守候补给线，五天后截获武魂帝国十支截粮小队情报。"
   },
   {
-    "标识": "ch0275_04",
+    "标识": "1-1024",
     "时间": '斗罗历43年10月6日13时40分',
     "章节": "七怪，守护，补给线",
     "人物": [
@@ -11965,7 +11965,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "朱竹清获鬼斗罗腿骨提升极限速度，戴沐白获白目魔虎王臂骨爆发力骤增，各升两级。"
   },
   {
-    "标识": "ch0275_05",
+    "标识": "1-1025",
     "时间": '斗罗历43年10月7日16时40分',
     "章节": "七怪，守护，补给线",
     "人物": [
@@ -11977,7 +11977,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三制定分级截杀战术并令奥斯卡制作储备食物、马红俊烧隔离带，万事俱备等敌来犯。"
   },
   {
-    "标识": "ch0276_01",
+    "标识": "1-1026",
     "时间": '斗罗历43年10月8日16时40分',
     "章节": "唐三的第九魂技",
     "人物": ["唐三","小舞","马红俊","菊斗罗"],
@@ -11985,7 +11985,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三伏击歼灭月关小队，首次使用第九魂技蓝银天青龙之魂双技能击杀菊斗罗。"
   },
   {
-    "标识": "ch0276_03",
+    "标识": "1-1027",
     "时间": '斗罗历43年10月9日19时20分',
     "章节": "唐三的第九魂技",
     "人物": [
@@ -11995,7 +11995,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三发现第九魂环被动技能天青龙鳞护体可自动挡一次致命攻击——大明最后的守护。"
   },
   {
-    "标识": "ch0276_04",
+    "标识": "1-1028",
     "时间": '斗罗历43年10月10日19时20分',
     "章节": "唐三的第九魂技",
     "人物": [
@@ -12009,7 +12009,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "戴沐白四人组遭三十人伏兵伏击，朱竹清瞬间加速穿阵戴沐白虎噬裂空横扫不到一分钟制服全敌。"
   },
   {
-    "标识": "ch0276_02",
+    "标识": "1-1029",
     "时间": '斗罗历43年10月11日22时40分',
     "章节": "唐三的第九魂技",
     "人物": [
@@ -12023,7 +12023,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七怪全歼武魂帝国十支截粮队近五百精锐魂师，确立七怪等同七封号斗罗的战力模式。"
   },
   {
-    "标识": "ch0276_05",
+    "标识": "1-1030",
     "时间": '斗罗历43年10月13日01时20分',
     "章节": "唐三的第九魂技",
     "人物": [
@@ -12034,7 +12034,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三总结截粮战经验后令唐家军千人分队接手补给线防守，七怪返回前线备战。"
   },
   {
-    "标识": "ch0277_01",
+    "标识": "1-1031",
     "时间": '斗罗历43年10月13日10时40分',
     "章节": "天青寂灭雷霆",
     "人物": ["唐三","大师","呼延震"], 未建档人物: ["圣龙拓跋希"],
@@ -12042,7 +12042,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "嘉陵关首战唐三十次呼吸间以海神三叉戟秒杀象甲宗主与圣龙宗主两大强者。"
   },
   {
-    "标识": "ch0277_02",
+    "标识": "1-1032",
     "时间": '斗罗历43年10月14日13时40分',
     "章节": "天青寂灭雷霆",
     "人物": [
@@ -12054,7 +12054,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与大师在帅帐最终确认斩首突击战术，锁定圣龙宗主等四名高级强者为优先击杀目标。"
   },
   {
-    "标识": "ch0277_03",
+    "标识": "1-1033",
     "时间": '斗罗历43年10月15日16时40分',
     "章节": "天青寂灭雷霆",
     "人物": [
@@ -12066,7 +12066,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与杨无敌独孤博商定分工：杨无敌牵制强者独孤博毒雾扰乱，唐三领域续航三人。"
   },
   {
-    "标识": "ch0277_04",
+    "标识": "1-1034",
     "时间": '斗罗历43年10月16日19时20分',
     "章节": "天青寂灭雷霆",
     "人物": [
@@ -12077,7 +12077,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三为小舞编织注入海神之力的防护发辫，二人在决战前夜温馨相伴互许不离不弃。"
   },
   {
-    "标识": "ch0277_05",
+    "标识": "1-1035",
     "时间": '斗罗历43年10月17日22时40分',
     "章节": "天青寂灭雷霆",
     "人物": [
@@ -12088,7 +12088,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海纳百川领域覆盖全军营地促进深度睡眠与体力恢复，确保明日全军以最佳状态迎战。"
   },
   {
-    "标识": "ch0278_01",
+    "标识": "1-1036",
     "时间": '斗罗历43年10月18日13时40分',
     "章节": "再战比比东，唐家军初显威",
     "人物": [
@@ -12101,7 +12101,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐家军诸葛神弩首次齐射重创圣龙军团，小舞以无敌金身替唐三挡下比比东绝杀。"
   },
   {
-    "标识": "ch0278_03",
+    "标识": "1-1037",
     "时间": '斗罗历43年10月19日13时40分',
     "章节": "再战比比东，唐家军初显威",
     "人物": [
@@ -12112,7 +12112,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师精准指挥重骑兵冲击圣龙军团侧翼撕开缺口，六千魂师齐射灌入形成毁灭弹幕。"
   },
   {
-    "标识": "ch0278_04",
+    "标识": "1-1038",
     "时间": '斗罗历43年10月20日16时40分',
     "章节": "再战比比东，唐家军初显威",
     "人物": [
@@ -12123,7 +12123,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以黄金十三戟第三式硬接比比东空间撕裂深渊斩，双方互伤后各自惊讶对手进步。"
   },
   {
-    "标识": "ch0278_02",
+    "标识": "1-1039",
     "时间": '斗罗历43年10月21日16时40分',
     "章节": "再战比比东，唐家军初显威",
     "人物": [
@@ -12135,7 +12135,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东被海神三叉戟重创后令圣龙军团撤退，唐家军追杀令其损失过半。"
   },
   {
-    "标识": "ch0278_05",
+    "标识": "1-1040",
     "时间": '斗罗历43年10月22日19时20分',
     "章节": "再战比比东，唐家军初显威",
     "人物": [
@@ -12146,7 +12146,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "杨无敌凭领域续航优势缠斗蛇矛斗罗后双方互贯穿重创，蛇矛斗罗濒死失去战力。"
   },
   {
-    "标识": "ch0279_01",
+    "标识": "1-1041",
     "时间": '斗罗历43年10月23日19时20分',
     "章节": "紫极魔瞳之修罗魔光",
     "人物": [
@@ -12157,7 +12157,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以修罗魔光经海神三叉戟反射重创比比东令其昏厥，夺回神器后精神力透支。"
   },
   {
-    "标识": "ch0279_03",
+    "标识": "1-1042",
     "时间": '斗罗历43年10月24日19时20分',
     "章节": "紫极魔瞳之修罗魔光",
     "人物": [
@@ -12167,7 +12167,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三退至两千米外决定以精神力远程攻击取回三叉戟，盘膝凝聚三力合一的新攻击。"
   },
   {
-    "标识": "ch0279_04",
+    "标识": "1-1043",
     "时间": '斗罗历43年10月25日22时40分',
     "章节": "紫极魔瞳之修罗魔光",
     "人物": [
@@ -12177,7 +12177,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三精神力透支昏厥后小舞抱其撤离，五怪独孤博断后护送安全归营。"
   },
   {
-    "标识": "ch0279_02",
+    "标识": "1-1044",
     "时间": '斗罗历43年10月26日22时40分',
     "章节": "紫极魔瞳之修罗魔光",
     "人物": ["唐三","大师"], 未建档人物: ["戈龙"],
@@ -12185,7 +12185,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "首战大捷武魂帝国损失惨重，唐三精神力透支昏睡三天，嘉陵关闭关不出。"
   },
   {
-    "标识": "ch0279_05",
+    "标识": "1-1045",
     "时间": '斗罗历43年10月28日01时20分',
     "章节": "紫极魔瞳之修罗魔光",
     "人物": [
@@ -12197,7 +12197,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师判断唐三需三天恢复令全军防守，小舞整夜以领域残念为唐三输送恢复力。"
   },
   {
-    "标识": "ch0280_01",
+    "标识": "1-1046",
     "时间": '斗罗历43年10月28日13时40分',
     "章节": "计定总攻",
     "人物": [
@@ -12210,7 +12210,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三提出飞行蘑菇肠空袭加海神三叉戟破城双方案，大师敲定七天后总攻。"
   },
   {
-    "标识": "ch0280_02",
+    "标识": "1-1047",
     "时间": '斗罗历43年10月29日16时40分',
     "章节": "计定总攻",
     "人物": [
@@ -12221,7 +12221,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三详细规划飞行蘑菇肠三波空袭战术，奥斯卡自信十天内制造两万根不成问题。"
   },
   {
-    "标识": "ch0280_03",
+    "标识": "1-1048",
     "时间": '斗罗历43年10月30日19时20分',
     "章节": "计定总攻",
     "人物": ["唐三","雪崩"], 未建档人物: ["戈龙"],
@@ -12229,7 +12229,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向雪崩戈龙详述三叉戟破城方案可一击碎城门，雪崩拍案定七天后全面总攻。"
   },
   {
-    "标识": "ch0280_04",
+    "标识": "1-1049",
     "时间": '斗罗历43年11月1日22时40分',
     "章节": "计定总攻",
     "人物": [
@@ -12240,7 +12240,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大师分析六大供奉可能效忠千道流另有图谋，唐三决定总攻时优先试探其真实意图。"
   },
   {
-    "标识": "ch0280_05",
+    "标识": "1-1050",
     "时间": '斗罗历43年11月3日01时20分',
     "章节": "计定总攻",
     "人物": [
@@ -12250,7 +12250,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三七天内将黄金十三戟效率提至六成、三千米投掷精度百发百中并掌握远程弹道微调。"
   },
   {
-    "标识": "ch0281_01",
+    "标识": "1-1051",
     "时间": '斗罗历43年11月3日10时40分',
     "章节": "一个人的战场",
     "人物": [
@@ -12261,7 +12261,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "总攻开始唐三四记飞戟轰碎嘉陵关四座城门，剑斗罗十三剑切开护城河通道。"
   },
   {
-    "标识": "ch0281_03",
+    "标识": "1-1052",
     "时间": '斗罗历43年11月4日10时40分',
     "章节": "一个人的战场",
     "人物": ["唐三","尘心"],
@@ -12269,7 +12269,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "剑斗罗以身剑合一十三剑开辟护城河通道，唐三以海神之光持续补蓝助其超常发挥。"
   },
   {
-    "标识": "ch0281_04",
+    "标识": "1-1053",
     "时间": '斗罗历43年11月5日13时40分',
     "章节": "一个人的战场",
     "人物": [
@@ -12280,7 +12280,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三控水如神令城内外震撼，胡列娜认清神级力量不可对抗后放弃渡河阻击转入巷战部署。"
   },
   {
-    "标识": "ch0281_02",
+    "标识": "1-1054",
     "时间": '斗罗历43年11月6日13时40分',
     "章节": "一个人的战场",
     "人物": [
@@ -12292,7 +12292,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之力清空护城河，唐家军升空齐射城头，百万大军发起登城总攻。"
   },
   {
-    "标识": "ch0281_05",
+    "标识": "1-1055",
     "时间": '斗罗历43年11月7日16时40分',
     "章节": "一个人的战场",
     "人物": ["唐三","雪崩"], 未建档人物: ["戈龙"],
@@ -12300,7 +12300,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐家军三轮空袭射杀城头三千魂师后步兵发起登城冲锋，百万大军总攻声势惊天动地。"
   },
   {
-    "标识": "ch0284_03",
+    "标识": "1-1056",
     "时间": '斗罗历43年11月8日18时00分',
     "章节": "击溃，九十六级的供奉兄弟",
     "人物": [
@@ -12311,7 +12311,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在城头感知千钧降魔二斗罗包抄后令大师撤退，独力迎战两名九十六级巅峰斗罗。"
   },
   {
-    "标识": "ch0284_04",
+    "标识": "1-1057",
     "时间": '斗罗历43年11月8日18时10分',
     "章节": "击溃，九十六级的供奉兄弟",
     "人物": [
@@ -12321,7 +12321,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千钧降魔二人默契联攻令唐三退守三步，海纳百川领域持续吸取魂力令二人逐渐感到异常。"
   },
   {
-    "标识": "ch0284_01",
+    "标识": "1-1058",
     "时间": '斗罗历43年11月8日21时40分',
     "章节": "击溃，九十六级的供奉兄弟",
     "人物": [
@@ -12333,7 +12333,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以泰坦苍穹破与天青寂灭雷霆同时击退两名九十六级供奉兄弟。"
   },
   {
-    "标识": "ch0284_02",
+    "标识": "1-1059",
     "时间": '斗罗历43年11月8日21时50分',
     "章节": "击溃，九十六级的供奉兄弟",
     "人物": [
@@ -12345,7 +12345,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "金鳄斗罗重创唐三，唐昊携昊天锤及时赶到一锤碎敌救子，昊天宗援军抵达。"
   },
   {
-    "标识": "ch0284_05",
+    "标识": "1-1060",
     "时间": '斗罗历43年11月8日22时00分',
     "章节": "击溃，九十六级的供奉兄弟",
     "人物": [
@@ -12356,7 +12356,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "金鳄斗罗九十八级恐怖气息升起令唐三转入防御，金鳄登城后以气势清场独对唐三。"
   },
   {
-    "标识": "ch0285_01",
+    "标识": "1-1061",
     "时间": '斗罗历43年11月9日00时20分',
     "章节": "真正的昊天锤，完全状态的昊天斗罗",
     "人物": [
@@ -12368,7 +12368,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊三锤展现大须弥锤极致力量，以九十七级全面压制九十八级金鳄斗罗。"
   },
   {
-    "标识": "ch0285_03",
+    "标识": "1-1062",
     "时间": '斗罗历43年11月9日00时30分',
     "章节": "真正的昊天锤，完全状态的昊天斗罗",
     "人物": [
@@ -12379,7 +12379,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊背出昏迷唐三后仰天长啸召来昊天宗五位封号斗罗与三百精锐从天而降加入战斗。"
   },
   {
-    "标识": "ch0285_04",
+    "标识": "1-1063",
     "时间": '斗罗历43年11月9日03时20分',
     "章节": "真正的昊天锤，完全状态的昊天斗罗",
     "人物": [
@@ -12390,7 +12390,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在小舞灌注下苏醒坚持自我修复欲返战场，小舞以死相逼令其留下等待完全恢复。"
   },
   {
-    "标识": "ch0285_02",
+    "标识": "1-1064",
     "时间": '斗罗历43年11月9日03时30分',
     "章节": "真正的昊天锤，完全状态的昊天斗罗",
     "人物": ["唐三","雪崩","大师","唐昊","唐啸"], 未建档人物: ["戈龙"],
@@ -12398,7 +12398,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "军事会议总结攻城失利，唐三提出成就海神是唯一破局之法，许诺三月内归来。"
   },
   {
-    "标识": "ch0285_05",
+    "标识": "1-1065",
     "时间": '斗罗历43年11月9日06时20分',
     "章节": "真正的昊天锤，完全状态的昊天斗罗",
     "人物": ["唐三","雪崩","大师","唐昊","唐啸"], 未建档人物: ["戈龙"],
@@ -12406,7 +12406,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "会议确认正面攻城代价过高后所有目光转向唐三成神方案作为唯一破局之路。"
   },
   {
-    "标识": "ch0286_01",
+    "标识": "1-1066",
     "时间": '斗罗历43年11月12日09时00分',
     "章节": "昊天宗神技，大须弥锤",
     "人物": [
@@ -12418,7 +12418,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊将昊天宗绝学大须弥锤及炸环秘技口传唐三，此为历代昊天斗罗专属神技。"
   },
   {
-    "标识": "ch0286_02",
+    "标识": "1-1067",
     "时间": '斗罗历43年11月12日09时10分',
     "章节": "昊天宗神技，大须弥锤",
     "人物": [
@@ -12430,7 +12430,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "六大供奉奉千道流之命夺比比东兵权令其返回自省，为千仞雪成神接管帝国铺路。"
   },
   {
-    "标识": "ch0286_03",
+    "标识": "1-1068",
     "时间": '斗罗历43年11月12日12时20分',
     "章节": "昊天宗神技，大须弥锤",
     "人物": [
@@ -12441,7 +12441,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三首次实操大须弥锤将泰坦巨猿魂环凝练为纯力注入昊天锤，一锤轰碎十米岩壁。"
   },
   {
-    "标识": "ch0287_03",
+    "标识": "1-1069",
     "时间": '斗罗历43年11月12日12时30分',
     "章节": "天使第九考，传承神诋",
     "人物": [
@@ -12451,7 +12451,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪传承前夜独处时内心闪过唐三身影，将感情压入心底后决意以神力掌控一切。"
   },
   {
-    "标识": "ch0286_04",
+    "标识": "1-1070",
     "时间": '斗罗历43年11月12日15时00分',
     "章节": "昊天宗神技，大须弥锤",
     "人物": [
@@ -12462,7 +12462,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊传授炸环时机把控精髓，唐三推演双武魂轮换炸环新战术令唐昊惊叹前所未有。"
   },
   {
-    "标识": "ch0287_01",
+    "标识": "1-1071",
     "时间": '斗罗历43年11月12日15时10分',
     "章节": "天使第九考，传承神诋",
     "人物": [
@@ -12473,7 +12473,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千道流揭露比比东杀父真相后献祭自身全部力量助千仞雪开启天使神位传承。"
   },
   {
-    "标识": "ch0287_04",
+    "标识": "1-1072",
     "时间": '斗罗历43年11月12日15时20分',
     "章节": "天使第九考，传承神诋",
     "人物": [
@@ -12484,7 +12484,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千道流坦白天使传承需三重执念，以慈爱目光说出此生唯一后悔是未能让孙女快乐长大。"
   },
   {
-    "标识": "ch0286_05",
+    "标识": "1-1073",
     "时间": '斗罗历43年11月12日18时00分',
     "章节": "昊天宗神技，大须弥锤",
     "人物": [
@@ -12494,7 +12494,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三修炼大须弥锤后意识到昊天锤仅一环限制巨大，决定赴海神岛前先入星斗大森林为锤补环。"
   },
   {
-    "标识": "ch0287_02",
+    "标识": "1-1074",
     "时间": '斗罗历43年11月12日18时10分',
     "章节": "天使第九考，传承神诋",
     "人物": [
@@ -12505,7 +12505,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪以三重执念支撑灵魂度过神劫，成功继承天使神位成为天使之神。"
   },
   {
-    "标识": "ch0287_05",
+    "标识": "1-1075",
     "时间": '斗罗历43年11月12日21时40分',
     "章节": "天使第九考，传承神诋",
     "人物": [
@@ -12515,7 +12515,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪传承中三次灵魂崩溃分别以仇恨、千道流、唐三面容为执念支撑，第三执念揭露内心。"
   },
   {
-    "标识": "ch0288_01",
+    "标识": "1-1076",
     "时间": '斗罗历43年11月13日03时20分',
     "章节": "邪神附体之暗魔邪神虎",
     "人物": [
@@ -12527,7 +12527,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪成神金光传千里，比比东与唐三各自感应到异变，比比东决意冲击罗刹神位。"
   },
   {
-    "标识": "ch0288_03",
+    "标识": "1-1077",
     "时间": '斗罗历43年11月13日06时20分',
     "章节": "邪神附体之暗魔邪神虎",
     "人物": [
@@ -12537,7 +12537,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以蓝银领域搜索后标记三只外围目标，决定先练手大须弥锤再逐步深入核心猎环。"
   },
   {
-    "标识": "ch0288_04",
+    "标识": "1-1078",
     "时间": '斗罗历43年11月13日09时00分',
     "章节": "邪神附体之暗魔邪神虎",
     "人物": [
@@ -12547,7 +12547,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三连续猎杀碧眼金雕与铁臂猿猴获昊天锤第二三魂环，魂力升至九十四级初。"
   },
   {
-    "标识": "ch0288_05",
+    "标识": "1-1079",
     "时间": '斗罗历43年11月13日12时20分',
     "章节": "邪神附体之暗魔邪神虎",
     "人物": [
@@ -12557,7 +12557,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三进入暗魔邪神虎领地后以精神力侦察却被邪恶意念反弹，确认此兽精神力接近封号级。"
   },
   {
-    "标识": "ch0288_02",
+    "标识": "1-1080",
     "时间": '斗罗历43年11月13日15时00分',
     "章节": "邪神附体之暗魔邪神虎",
     "人物": [
@@ -12567,7 +12567,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在星斗大森林遭遇六万年暗魔邪神虎，此兽拥有三属性且智慧堪比人类。"
   },
   {
-    "标识": "ch0289_01",
+    "标识": "1-1081",
     "时间": '斗罗历43年11月14日12时20分',
     "章节": "聪明绝顶的超级魂兽",
     "人物": [
@@ -12577,7 +12577,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "暗魔邪神虎以黑洞空间将双方拉回幼年状态，唐三凭唐门诸葛神弩险胜。"
   },
   {
-    "标识": "ch0289_02",
+    "标识": "1-1082",
     "时间": '斗罗历43年11月14日15时00分',
     "章节": "聪明绝顶的超级魂兽",
     "人物": [
@@ -12587,7 +12587,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在幼年空间中以鬼影迷踪闪避三次后分析暗魔邪神虎攻击模式，选定伏击位布置神弩。"
   },
   {
-    "标识": "ch0289_03",
+    "标识": "1-1083",
     "时间": '斗罗历43年11月14日18时00分',
     "章节": "聪明绝顶的超级魂兽",
     "人物": [
@@ -12597,7 +12597,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以诸葛神弩重伤暗魔邪神虎后以紫极魔瞳迟滞加含沙射影毒杀，黑洞空间破碎回归现实。"
   },
   {
-    "标识": "ch0289_04",
+    "标识": "1-1084",
     "时间": '斗罗历43年11月14日21时40分',
     "章节": "聪明绝顶的超级魂兽",
     "人物": [
@@ -12607,7 +12607,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三反思幼年状态险胜的教训——过于依赖魂力导致基本功松懈，决定每日无魂力训练一时辰。"
   },
   {
-    "标识": "ch0289_05",
+    "标识": "1-1085",
     "时间": '斗罗历43年11月15日00时20分',
     "章节": "聪明绝顶的超级魂兽",
     "人物": [
@@ -12617,7 +12617,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三修复伤势后发现暗魔邪神虎额头藏有邪神结晶珠，但其残魂操控结晶逃入虚空消失。"
   },
   {
-    "标识": "ch0290_03",
+    "标识": "1-1086",
     "时间": '斗罗历43年11月15日12时20分',
     "章节": "返老还童之战，昊天锤第四魂环",
     "人物": [
@@ -12627,7 +12627,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以三道屏障隔绝邪恶意念后一时辰吸收完毕，昊天锤第四环附带精神侵蚀效果。"
   },
   {
-    "标识": "ch0290_04",
+    "标识": "1-1087",
     "时间": '斗罗历43年11月15日15时00分',
     "章节": "返老还童之战，昊天锤第四魂环",
     "人物": [
@@ -12637,7 +12637,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第四环魂技邪神侵蚀令攻击附带三秒精神紊乱，配合连锤打法形成越打越强的恶性循环。"
   },
   {
-    "标识": "ch0290_01",
+    "标识": "1-1088",
     "时间": '斗罗历43年11月15日15时10分',
     "章节": "返老还童之战，昊天锤第四魂环",
     "人物": [
@@ -12647,7 +12647,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三吸收暗魔邪神虎魂环为昊天锤第四环，魂力升至九十四级半，精神力大增。"
   },
   {
-    "标识": "ch0290_02",
+    "标识": "1-1089",
     "时间": '斗罗历43年11月15日18时00分',
     "章节": "返老还童之战，昊天锤第四魂环",
     "人物": [
@@ -12657,7 +12657,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三领悟魂技衔接之道，发现五万年人面魔蛛皇决定猎杀为昊天锤第五环。"
   },
   {
-    "标识": "ch0290_05",
+    "标识": "1-1090",
     "时间": '斗罗历43年11月15日21时40分',
     "章节": "返老还童之战，昊天锤第四魂环",
     "人物": [
@@ -12667,7 +12667,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三发现五万年人面魔蛛皇进入暗魔邪神虎旧领地，判断可为第五环且可能增益八蛛矛。"
   },
   {
-    "标识": "ch0291_01",
+    "标识": "1-1091",
     "时间": '斗罗历43年11月15日21时50分',
     "章节": "神级进化，八蛛矛",
     "人物": [
@@ -12677,7 +12677,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以完美十一连击秒杀人面蛛皇，八蛛矛吞噬精华后率先进化至神级境界。"
   },
   {
-    "标识": "ch0291_03",
+    "标识": "1-1092",
     "时间": '斗罗历43年11月16日00时20分',
     "章节": "神级进化，八蛛矛",
     "人物": [
@@ -12687,7 +12687,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "八蛛矛吞噬人面蛛皇精华后震动频率飙升，金色蔓延浮现海神纹路正跨入神级进化。"
   },
   {
-    "标识": "ch0291_04",
+    "标识": "1-1093",
     "时间": '斗罗历43年11月16日00时30分',
     "章节": "神级进化，八蛛矛",
     "人物": [
@@ -12697,7 +12697,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "八蛛矛进化一刻钟内完成，从暗金尖刺变为蓝金羽翼状蛛矛可展开如翅提供滑翔控制力。"
   },
   {
-    "标识": "ch0291_02",
+    "标识": "1-1094",
     "时间": '斗罗历43年11月16日03时20分',
     "章节": "神级进化，八蛛矛",
     "人物": [
@@ -12707,7 +12707,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "神级八蛛矛获吞噬金丝与防御反弹新能力，唐三魂力突破至九十五级。"
   },
   {
-    "标识": "ch0291_05",
+    "标识": "1-1095",
     "时间": '斗罗历43年11月16日03时30分',
     "章节": "神级进化，八蛛矛",
     "人物": [
@@ -12717,7 +12717,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三测试神级八蛛矛：金丝穿透万年古树加岩石、防御自动反弹、可独立远程攻击形成双攻击系统。"
   },
   {
-    "标识": "ch0292_01",
+    "标识": "1-1096",
     "时间": '斗罗历43年11月16日06时20分',
     "章节": "九万年！千钧蚁皇三兄弟",
     "人物": [
@@ -12727,7 +12727,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三头九万年千钧蚁皇霸占大明二明领地，唐三发现重力控制加海神三叉戟可达百万斤。"
   },
   {
-    "标识": "ch0292_02",
+    "标识": "1-1097",
     "时间": '斗罗历43年11月16日06时30分',
     "章节": "九万年！千钧蚁皇三兄弟",
     "人物": [
@@ -12737,7 +12737,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三观察三头九万年千钧蚁皇各五米长力量恐怖，回忆大明信息后决定以智取胜。"
   },
   {
-    "标识": "ch0292_03",
+    "标识": "1-1098",
     "时间": '斗罗历43年11月16日09时00分',
     "章节": "九万年！千钧蚁皇三兄弟",
     "人物": [
@@ -12747,7 +12747,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以蓝银突刺阵制造三坑分割蚁皇，百万斤三叉戟压一只囚笼缠一只大须弥锤轰回一只。"
   },
   {
-    "标识": "ch0292_04",
+    "标识": "1-1099",
     "时间": '斗罗历43年11月16日09时10分',
     "章节": "九万年！千钧蚁皇三兄弟",
     "人物": [
@@ -12757,7 +12757,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三只蚁皇各自挣扎中唐三以金丝吸能削弱最强一只、邪神侵蚀令第三只精神紊乱自撞。"
   },
   {
-    "标识": "ch0293_02",
+    "标识": "1-1100",
     "时间": '斗罗历43年11月16日12时20分',
     "章节": "昆虫魂兽的克星，神级八蛛矛",
     "人物": [
@@ -12767,7 +12767,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三发现神级八蛛矛对昆虫类魂兽有血脉压制效果，九万年蚁皇也被压至五成战力。"
   },
   {
-    "标识": "ch0292_05",
+    "标识": "1-1101",
     "时间": '斗罗历43年11月16日12时30分',
     "章节": "九万年！千钧蚁皇三兄弟",
     "人物": [
@@ -12777,7 +12777,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以金丝持续抽能一时辰后三只蚁皇力竭被大须弥锤逐一击杀，全程零消耗正收益。"
   },
   {
-    "标识": "ch0293_01",
+    "标识": "1-1102",
     "时间": '斗罗历43年11月16日15时00分',
     "章节": "昆虫魂兽的克星，神级八蛛矛",
     "人物": [
@@ -12787,7 +12787,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "神级八蛛矛的血脉压制令九万年千钧蚁皇毫无反抗之力，唐三坐收三兽能量。"
   },
   {
-    "标识": "ch0293_03",
+    "标识": "1-1103",
     "时间": '斗罗历43年11月16日15时10分',
     "章节": "昆虫魂兽的克星，神级八蛛矛",
     "人物": [
@@ -12797,7 +12797,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在湖边静坐推演同时吸收三个九万年魂环的方案，选定以大须弥锤狂霸状态强行吞噬。"
   },
   {
-    "标识": "ch0293_04",
+    "标识": "1-1104",
     "时间": '斗罗历43年11月16日18时00分',
     "章节": "昆虫魂兽的克星，神级八蛛矛",
     "人物": [
@@ -12807,7 +12807,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光强化经脉、压缩丹田、八蛛矛防护、三叉戟导流四重准备后召唤昊天锤。"
   },
   {
-    "标识": "ch0293_05",
+    "标识": "1-1105",
     "时间": '斗罗历43年11月16日18时10分',
     "章节": "昆虫魂兽的克星，神级八蛛矛",
     "人物": [
@@ -12817,7 +12817,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三从湖底打捞大明留下的天青牛蟒生命之核收入百宝囊，留待小舞未来修炼使用。"
   },
   {
-    "标识": "ch0294_01",
+    "标识": "1-1106",
     "时间": '斗罗历43年11月16日21时40分',
     "章节": "宁为玉碎，不为瓦全",
     "人物": [
@@ -12827,7 +12827,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以大须弥锤狂霸之势同时吸收三个魂环并使其变异为十万年，魂力逼近九十六级。"
   },
   {
-    "标识": "ch0294_02",
+    "标识": "1-1107",
     "时间": '斗罗历43年11月16日21时50分',
     "章节": "宁为玉碎，不为瓦全",
     "人物": [
@@ -12837,7 +12837,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以大须弥锤三锤逐一碾碎三道九万年能量，以宁为玉碎的绝对意志令最后一道臣服。"
   },
   {
-    "标识": "ch0294_03",
+    "标识": "1-1108",
     "时间": '斗罗历43年11月17日00时20分',
     "章节": "宁为玉碎，不为瓦全",
     "人物": [
@@ -12847,7 +12847,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "三个九万年魂环在大须弥锤极端压缩下变异为十万年级别，唐三魂力飙升至九十五级末端。"
   },
   {
-    "标识": "ch0294_04",
+    "标识": "1-1109",
     "时间": '斗罗历43年11月17日03时20分',
     "章节": "宁为玉碎，不为瓦全",
     "人物": [
@@ -12857,7 +12857,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三半时辰后苏醒检视昊天锤八环完美排列，纯肉体力量已达二十万斤级别。"
   },
   {
-    "标识": "ch0294_05",
+    "标识": "1-1110",
     "时间": '斗罗历43年11月17日03时30分',
     "章节": "宁为玉碎，不为瓦全",
     "人物": [
@@ -12867,7 +12867,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三盘点昊天锤八环魂技，第八环千钧合力可召三道蚁皇虚影合击达六十万斤神级水准。"
   },
   {
-    "标识": "ch0295_01",
+    "标识": "1-1111",
     "时间": '斗罗历43年11月20日03时20分',
     "章节": "神级天使第一战",
     "人物": [
@@ -12878,7 +12878,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三拒绝千仞雪招揽后以百万斤海神三叉戟伤其左臂，但神器落入对方手中。"
   },
   {
-    "标识": "ch0295_02",
+    "标识": "1-1112",
     "时间": '斗罗历43年11月20日06时20分',
     "章节": "神级天使第一战",
     "人物": [
@@ -12889,7 +12889,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三利用蓝银领域融入森林逃脱神念追踪，千仞雪封锁出口形成对峙。"
   },
   {
-    "标识": "ch0295_03",
+    "标识": "1-1113",
     "时间": '斗罗历43年11月20日06时30分',
     "章节": "神级天使第一战",
     "人物": [
@@ -12900,7 +12900,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪以神级气息现身招揽唐三，唐三握紧三叉戟断然拒绝臣服要求。"
   },
   {
-    "标识": "ch0295_04",
+    "标识": "1-1114",
     "时间": '斗罗历43年11月20日09时00分',
     "章节": "神级天使第一战",
     "人物": [
@@ -12911,7 +12911,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三分析千仞雪虽成神但力量运用不纯熟处于窗口期，决定利用此弱点找回三叉戟。"
   },
   {
-    "标识": "ch0295_05",
+    "标识": "1-1115",
     "时间": '斗罗历43年11月20日12时20分',
     "章节": "神级天使第一战",
     "人物": [
@@ -12921,7 +12921,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三隐身一天后制定以赌约激将千仞雪的计划，利用她的骄傲心理创造取回三叉戟的机会。"
   },
   {
-    "标识": "ch0296_01",
+    "标识": "1-1116",
     "时间": '斗罗历43年11月21日03时20分',
     "章节": "第十魂环，神级魂环",
     "人物": [
@@ -12932,7 +12932,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以赌约换取生机，千仞雪展示第十神级魂环，唐三以炸环法暂达神级。"
   },
   {
-    "标识": "ch0296_02",
+    "标识": "1-1117",
     "时间": '斗罗历43年11月21日06时20分',
     "章节": "第十魂环，神级魂环",
     "人物": [
@@ -12943,7 +12943,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三炸环三道光环暂达高强度后千仞雪展示完整十环阵列，金色第十环令现实法则退让。"
   },
   {
-    "标识": "ch0296_03",
+    "标识": "1-1118",
     "时间": '斗罗历43年11月21日09时00分',
     "章节": "第十魂环，神级魂环",
     "人物": [
@@ -12954,7 +12954,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以多环炸开挡天使审判后以天青龙虚影缠翼争取两秒吞水晶毛虫肠满血复原。"
   },
   {
-    "标识": "ch0296_04",
+    "标识": "1-1119",
     "时间": '斗罗历43年11月21日12时20分',
     "章节": "第十魂环，神级魂环",
     "人物": [
@@ -12964,7 +12964,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三切换昊天锤后气势质变为狂暴碾压型，千仞雪感受到其成长潜力决意全力出手。"
   },
   {
-    "标识": "ch0296_05",
+    "标识": "1-1120",
     "时间": '斗罗历43年11月21日15时00分',
     "章节": "第十魂环，神级魂环",
     "人物": ["唐三"], 未建档人物: ["千亭雪"],
@@ -12972,7 +12972,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以昇天锤大须弥锤第一锤与千亭雪天使圣剑碰撞，杀神领域与神圣光芒产生耐人寻味的共鸣。"
   },
   {
-    "标识": "ch0297_01",
+    "标识": "1-1121",
     "时间": '斗罗历43年11月21日15时10分',
     "章节": "大须弥锤之奥义：炸环",
     "人物": [
@@ -12983,7 +12983,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三蓝银皇八环炸尽后以水晶毛虫肠满血复活，切换昊天锤继续大须弥锤对决。"
   },
   {
-    "标识": "ch0297_03",
+    "标识": "1-1122",
     "时间": '斗罗历43年11月21日15时20分',
     "章节": "大须弥锤之奥义：炸环",
     "人物": [
@@ -12994,7 +12994,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以大须弥锤越战越强的特性持续硬撼千仞雪天使圣剑，一炷香时间中艰难苦撑。"
   },
   {
-    "标识": "ch0297_02",
+    "标识": "1-1123",
     "时间": '斗罗历43年11月21日18时00分',
     "章节": "大须弥锤之奥义：炸环",
     "人物": [
@@ -13006,7 +13006,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与千仞雪的碰撞光柱惊动千里外比比东，比比东决意全力冲击罗刹神位。"
   },
   {
-    "标识": "ch0297_04",
+    "标识": "1-1124",
     "时间": '斗罗历43年11月21日18时10分',
     "章节": "大须弥锤之奥义：炸环",
     "人物": [
@@ -13017,7 +13017,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "一炷香最后三息双方全力碰撞夷平五百米森林，唐三骨骼断裂但坚持到时限赌约达成。"
   },
   {
-    "标识": "ch0297_05",
+    "标识": "1-1125",
     "时间": '斗罗历43年11月21日18时20分',
     "章节": "大须弥锤之奥义：炸环",
     "人物": ["唐三"], 未建档人物: ["千亭雪"],
@@ -13025,7 +13025,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千亭雪未下死手反而治疗唐三致命伤后给三天期限离去，其矛盾行为令唐三昔迷。"
   },
   {
-    "标识": "ch0298_01",
+    "标识": "1-1126",
     "时间": '斗罗历43年11月22日03时20分',
     "章节": "绝对压制，大须弥昊天锤",
     "人物": [
@@ -13036,7 +13036,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三切换昊天锤以大须弥锤连续炸环七锤压制千仞雪，碎天使圣剑。"
   },
   {
-    "标识": "ch0298_03",
+    "标识": "1-1127",
     "时间": '斗罗历43年11月22日03时30分',
     "章节": "绝对压制，大须弥昊天锤",
     "人物": [
@@ -13047,7 +13047,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以鬼影迷踪配合八蛛矛反弹逼近千仞雪后第一环炸环一锤令其后退三步。"
   },
   {
-    "标识": "ch0298_04",
+    "标识": "1-1128",
     "时间": '斗罗历43年11月22日06时20分',
     "章节": "绝对压制，大须弥昊天锤",
     "人物": [
@@ -13058,7 +13058,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪展开天使领域释放十二金龙攻击，唐三闭目以乱披风之舞碎龙蓄力叠加。"
   },
   {
-    "标识": "ch0298_02",
+    "标识": "1-1129",
     "时间": '斗罗历43年11月22日06时30分',
     "章节": "绝对压制，大须弥昊天锤",
     "人物": [
@@ -13069,7 +13069,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在天使领域中以乱披风之舞八十一锤合一配合紫极神光破开神级领域。"
   },
   {
-    "标识": "ch0298_05",
+    "标识": "1-1130",
     "时间": '斗罗历43年11月22日09时00分',
     "章节": "绝对压制，大须弥昊天锤",
     "人物": [
@@ -13080,7 +13080,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三八十一锤合一加紫极神光撕裂天使领域，千仞雪首次感受到领域被破的屈辱与震撼。"
   },
   {
-    "标识": "ch0299_01",
+    "标识": "1-1131",
     "时间": '斗罗历43年11月22日09时10分',
     "章节": "唐门第一，观音有泪",
     "人物": [
@@ -13091,7 +13091,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三耗尽全力施展唐门第一暗器观音泪贯穿千仞雪心脏，赢得赌约。"
   },
   {
-    "标识": "ch0299_02",
+    "标识": "1-1132",
     "时间": '斗罗历43年11月22日09时20分',
     "章节": "唐门第一，观音有泪",
     "人物": [
@@ -13102,7 +13102,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三趁千仞雪暴露心脏重伤之际夺回海神三叉戟离去，魂力突破96级。"
   },
   {
-    "标识": "ch0299_03",
+    "标识": "1-1133",
     "时间": '斗罗历43年11月22日12时20分',
     "章节": "唐门第一，观音有泪",
     "人物": [
@@ -13112,7 +13112,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三评估仅余蓝银皇第九环与一枚金苍蝇后决定赌命施展唐门第一暗器观音泪。"
   },
   {
-    "标识": "ch0299_04",
+    "标识": "1-1134",
     "时间": '斗罗历43年11月22日15时00分',
     "章节": "唐门第一，观音有泪",
     "人物": [
@@ -13123,7 +13123,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "观音泪命中后唐三因精气耗尽跪地濒死，千仞雪以全部神力模拟心脏维持生命双方僵持。"
   },
   {
-    "标识": "ch0299_05",
+    "标识": "1-1135",
     "时间": '斗罗历43年11月22日15时10分',
     "章节": "唐门第一，观音有泪",
     "人物": [
@@ -13133,7 +13133,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三夺回三叉戟飞离途中魂力经生死淬炼质变，出森林瞬间突破至九十六级。"
   },
   {
-    "标识": "ch0300_01",
+    "标识": "1-1136",
     "时间": '斗罗历43年11月23日15时00分',
     "章节": "太阳圣剑",
     "人物": [
@@ -13144,7 +13144,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪穿天使圣铠追至并释放太阳圣剑，唐三以大地之力遁入地下勉强躲过。"
   },
   {
-    "标识": "ch0301_01",
+    "标识": "1-1137",
     "时间": '斗罗历43年11月23日15时10分',
     "章节": "大地中的神级追杀",
     "人物": [
@@ -13155,7 +13155,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在地下以千钧蚁皇魂技加速逃脱，承受千仞雪一击后反拉开距离。"
   },
   {
-    "标识": "ch0300_02",
+    "标识": "1-1138",
     "时间": '斗罗历43年11月23日18时00分',
     "章节": "太阳圣剑",
     "人物": [
@@ -13165,7 +13165,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三判断高空不利后贴地飞行搜索厚岩层遁地点，以八蛛矛屏障防护背后追击。"
   },
   {
-    "标识": "ch0300_03",
+    "标识": "1-1139",
     "时间": '斗罗历43年11月23日21时40分',
     "章节": "太阳圣剑",
     "人物": [
@@ -13176,7 +13176,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪以天使锁链减速唐三，唐三以巨猿风暴争一秒后钻入地下五百米避开太阳圣剑。"
   },
   {
-    "标识": "ch0301_02",
+    "标识": "1-1140",
     "时间": '斗罗历43年11月23日21时50分',
     "章节": "大地中的神级追杀",
     "人物": [
@@ -13186,7 +13186,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三切换千钧蚁皇魂技组合在地下达到飞行八成速度且几乎零消耗，庆幸猎杀蚁皇的决策。"
   },
   {
-    "标识": "ch0301_03",
+    "标识": "1-1141",
     "时间": '斗罗历43年11月24日00时20分',
     "章节": "大地中的神级追杀",
     "人物": [
@@ -13197,7 +13197,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以无定风波九重防御加八蛛矛挡下千仞雪四剑，千仞雪飞出地面补充太阳能量蓄力。"
   },
   {
-    "标识": "ch0300_04",
+    "标识": "1-1142",
     "时间": '斗罗历43年11月24日03时20分',
     "章节": "太阳圣剑",
     "人物": [
@@ -13207,7 +13207,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三发现地下暗河连通大海后决定沿此逃离，以大地蚁皇斩开路全速向海洋方向突进。"
   },
   {
-    "标识": "ch0301_04",
+    "标识": "1-1143",
     "时间": '斗罗历43年11月24日06时20分',
     "章节": "大地中的神级追杀",
     "人物": [
@@ -13217,7 +13217,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三趁千仞雪补能间隙全速向暗河突进仅余五公里，盘点底牌仅剩海神神念为最后手段。"
   },
   {
-    "标识": "ch0300_05",
+    "标识": "1-1144",
     "时间": '斗罗历43年11月25日03时20分',
     "章节": "太阳圣剑",
     "人物": [
@@ -13228,7 +13228,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪融岩追至五十米内，唐三以蓝银皇炸环引发坍塌数千吨岩石暂时阻断追击。"
   },
   {
-    "标识": "ch0301_05",
+    "标识": "1-1145",
     "时间": '斗罗历43年11月25日06时20分',
     "章节": "大地中的神级追杀",
     "人物": [
@@ -13239,7 +13239,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在暗河口引爆海神之光炸开岩壁引洪水形成屏障，借水流向东遁入暗河全速逃向大海。"
   },
   {
-    "标识": "ch0302_01",
+    "标识": "1-1146",
     "时间": '斗罗历43年11月25日09时00分',
     "章节": "海神降临",
     "人物": [
@@ -13250,7 +13250,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪即将斩杀唐三之际海神神念降临引海水救驾，海神之心碎裂。"
   },
   {
-    "标识": "ch0302_02",
+    "标识": "1-1147",
     "时间": '斗罗历43年11月25日12时20分',
     "章节": "海神降临",
     "人物": [
@@ -13266,7 +13266,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三入海与六怪汇合脱离追杀，千仞雪放弃追击在海边入定完善神力。"
   },
   {
-    "标识": "ch0302_03",
+    "标识": "1-1148",
     "时间": '斗罗历43年11月25日15时00分',
     "章节": "海神降临",
     "人物": [
@@ -13276,7 +13276,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三被海水推送至海面后伤势快速愈合，检视碎裂的海神之心发誓必将修复三叉戟。"
   },
   {
-    "标识": "ch0302_04",
+    "标识": "1-1149",
     "时间": '斗罗历43年11月25日18时00分',
     "章节": "海神降临",
     "人物": [
@@ -13287,7 +13287,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三浮出水面后小舞哭扑入怀，六怪赶来确认其平安——戴沐白骂他再这样吓人就揍他。"
   },
   {
-    "标识": "ch0302_05",
+    "标识": "1-1150",
     "时间": '斗罗历43年11月25日18时10分',
     "章节": "海神降临",
     "人物": [
@@ -13299,7 +13299,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向六怪述经过后众人分析千仞雪不会上战场，决定全心赴海神岛完成传承。"
   },
   {
-    "标识": "ch0303_01",
+    "标识": "1-1151",
     "时间": '斗罗历43年11月28日03时20分',
     "章节": "目标，深海魔鲸王",
     "人物": [
@@ -13311,7 +13311,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白揭示深海魔鲸王修为远超十万年、攻击曾险破无敌金身，众人谨慎备战。"
   },
   {
-    "标识": "ch0303_02",
+    "标识": "1-1152",
     "时间": '斗罗历43年11月28日06时20分',
     "章节": "目标，深海魔鲸王",
     "人物": [
@@ -13322,7 +13322,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三分析对深海魔鲸王的优劣势后决定采用引蛇出洞策略将其引至海面作战。"
   },
   {
-    "标识": "ch0303_03",
+    "标识": "1-1153",
     "时间": '斗罗历43年11月28日09时00分',
     "章节": "目标，深海魔鲸王",
     "人物": [
@@ -13334,7 +13334,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三分配七怪战术角色：核心任务是确保唐三存活而非帮助击杀，所有人无条件执行撤退信号。"
   },
   {
-    "标识": "ch0303_04",
+    "标识": "1-1154",
     "时间": '斗罗历43年11月28日12时20分',
     "章节": "目标，深海魔鲸王",
     "人物": [
@@ -13345,7 +13345,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白提供魔鲸王领地情报与行为模式，唐三制定以海神之光在裂谷口激怒引出的具体方案。"
   },
   {
-    "标识": "ch0303_05",
+    "标识": "1-1155",
     "时间": '斗罗历43年11月28日15时00分',
     "章节": "目标，深海魔鲸王",
     "人物": [
@@ -13355,7 +13355,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三前夜修复三叉戟物理强度、备冰火泉水、以领域吸能超载至百分百二十，只许胜不许败。"
   },
   {
-    "标识": "ch0304_01",
+    "标识": "1-1156",
     "时间": '斗罗历43年11月29日03时20分',
     "章节": "战斗吧！深海魔鲸王",
     "人物": [
@@ -13368,7 +13368,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光克制魔鲸王水属性攻击，八蛛矛钉体迫其化人形应战。"
   },
   {
-    "标识": "ch0304_02",
+    "标识": "1-1157",
     "时间": '斗罗历43年11月29日06时20分',
     "章节": "战斗吧！深海魔鲸王",
     "人物": [
@@ -13378,7 +13378,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光激怒深海魔鲸王，两百米巨鲸从裂谷升起后唐三全速向浅海引诱。"
   },
   {
-    "标识": "ch0304_03",
+    "标识": "1-1158",
     "时间": '斗罗历43年11月29日09时00分',
     "章节": "战斗吧！深海魔鲸王",
     "人物": [
@@ -13389,7 +13389,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魔鲸王尾鳍水流击飞唐三三百米，唐三以光幕激怒后全速上浮向海面引诱并布绊索减速。"
   },
   {
-    "标识": "ch0304_04",
+    "标识": "1-1159",
     "时间": '斗罗历43年11月29日09时10分',
     "章节": "战斗吧！深海魔鲸王",
     "人物": [
@@ -13401,7 +13401,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三获宁荣荣增幅后趁魔鲸王跃出海面刺其左眼，眼球肌肉硬如精钢仅刺入三寸。"
   },
   {
-    "标识": "ch0304_05",
+    "标识": "1-1160",
     "时间": '斗罗历43年11月29日12时20分',
     "章节": "战斗吧！深海魔鲸王",
     "人物": [
@@ -13412,7 +13412,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魔鲸王化人形自称海之守望者欲吞噬唐三突破成神，双方约定你死我活正式开战。"
   },
   {
-    "标识": "ch0305_01",
+    "标识": "1-1161",
     "时间": '斗罗历43年11月29日12时30分',
     "章节": "一线之差的神，百万年魂兽",
     "人物": [
@@ -13424,7 +13424,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三获宁荣荣增幅后一锤砸飞百万年魂兽，接收马红俊凤凰火焰蓄力总攻。"
   },
   {
-    "标识": "ch0305_02",
+    "标识": "1-1162",
     "时间": '斗罗历43年11月29日15时00分',
     "章节": "一线之差的神，百万年魂兽",
     "人物": [
@@ -13435,7 +13435,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魔鲸王人形双锤力超三十万斤令唐三被迫后退，唐三转为技巧周旋发现其重心偏高可利用。"
   },
   {
-    "标识": "ch0305_03",
+    "标识": "1-1163",
     "时间": '斗罗历43年11月29日15时10分',
     "章节": "一线之差的神，百万年魂兽",
     "人物": [
@@ -13446,7 +13446,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以蓝银皇绊脚加大须弥锤一锤砸飞魔鲸王入海，但其丹气内甲削减七成伤害瞬间弹回。"
   },
   {
-    "标识": "ch0305_04",
+    "标识": "1-1164",
     "时间": '斗罗历43年11月29日18时00分',
     "章节": "一线之差的神，百万年魂兽",
     "人物": [
@@ -13458,7 +13458,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三隐身后接收凤凰火焰注入八蛛矛并备好冰火泉水，计划对魔鲸王实施冰火内爆。"
   },
   {
-    "标识": "ch0305_05",
+    "标识": "1-1165",
     "时间": '斗罗历43年11月29日18时10分',
     "章节": "一线之差的神，百万年魂兽",
     "人物": [
@@ -13469,7 +13469,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以大须弥锤三锤打裂丹气但魔鲸王入海三秒修复，唐三判断必须一击致命不给修复机会。"
   },
   {
-    "标识": "ch0306_01",
+    "标识": "1-1166",
     "时间": '斗罗历43年11月29日21时40分',
     "章节": "唐三VS深海魔鲸王",
     "人物": [
@@ -13482,7 +13482,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三六环齐炸触发修罗领域达到神级一击，深海魔鲸王战意崩溃欲逃。"
   },
   {
-    "标识": "ch0306_02",
+    "标识": "1-1167",
     "时间": '斗罗历43年11月29日21时50分',
     "章节": "唐三VS深海魔鲸王",
     "人物": [
@@ -13493,7 +13493,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以注火金丝破丹气后冰火泉水注入魔鲸王体内引发内爆，能量铠甲从内部炸碎暴露躯体。"
   },
   {
-    "标识": "ch0306_03",
+    "标识": "1-1168",
     "时间": '斗罗历43年11月30日00时20分',
     "章节": "唐三VS深海魔鲸王",
     "人物": [
@@ -13504,7 +13504,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三六环齐炸触发修罗领域变异化三米暗红巨人达神级门槛，魔鲸王生平首次产生恐惧。"
   },
   {
-    "标识": "ch0306_04",
+    "标识": "1-1169",
     "时间": '斗罗历43年11月30日00时30分',
     "章节": "唐三VS深海魔鲸王",
     "人物": [
@@ -13515,7 +13515,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "魔鲸王以百万年能量凝尖锥全力一击被修罗昊天锤正面碾碎，战意彻底崩溃恢复原形逃跑。"
   },
   {
-    "标识": "ch0306_05",
+    "标识": "1-1170",
     "时间": '斗罗历43年11月30日03时20分',
     "章节": "唐三VS深海魔鲸王",
     "人物": [
@@ -13526,7 +13526,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "修罗昊天锤碾碎魔鲸王尖锥后其战意彻底崩溃恢复原形逃窜，唐三以紫极神光锁定追击。"
   },
   {
-    "标识": "ch0307_01",
+    "标识": "1-1171",
     "时间": '斗罗历43年11月30日03时30分',
     "章节": "灭杀魔鲸王，变异的杀神领域",
     "人物": [
@@ -13538,7 +13538,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以菩提血九连爆炸穿深海魔鲸王心脏将其击杀，分配能量给伙伴。"
   },
   {
-    "标识": "ch0307_02",
+    "标识": "1-1172",
     "时间": '斗罗历43年11月30日06时20分',
     "章节": "灭杀魔鲸王，变异的杀神领域",
     "人物": [
@@ -13548,7 +13548,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以修罗之力浓缩九片菩提血叶注入全部精华后旋身甩出，九道弧线射向魔鲸王心脏。"
   },
   {
-    "标识": "ch0307_03",
+    "标识": "1-1173",
     "时间": '斗罗历43年11月30日06时30分',
     "章节": "灭杀魔鲸王，变异的杀神领域",
     "人物": [
@@ -13559,7 +13559,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "九片血叶炸穿魔鲸王心脏令其坠海身亡，唐三力竭坠落被马红俊凤凰真身接住。"
   },
   {
-    "标识": "ch0307_04",
+    "标识": "1-1174",
     "时间": '斗罗历43年11月30日09时00分',
     "章节": "灭杀魔鲸王，变异的杀神领域",
     "人物": [
@@ -13571,7 +13571,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三虚弱中坚持以八蛛矛分配魔鲸王能量，纯净部分导入六怪体内杂质排海。"
   },
   {
-    "标识": "ch0307_05",
+    "标识": "1-1175",
     "时间": '斗罗历43年11月30日09时10分',
     "章节": "灭杀魔鲸王，变异的杀神领域",
     "人物": [
@@ -13582,7 +13582,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三力竭昏睡中小舞将其抱在怀中滋养，看着他变化的容貌暗誓要变强保护他。"
   },
   {
-    "标识": "ch0308_01",
+    "标识": "1-1176",
     "时间": '斗罗历43年11月30日12时20分',
     "章节": "百万年魂环与百万年魂骨",
     "人物": [
@@ -13593,7 +13593,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "吸收百万年魂环引发体内海神与修罗双重神力争夺，七天后魂力突破至99级。"
   },
   {
-    "标识": "ch0308_02",
+    "标识": "1-1177",
     "时间": '斗罗历43年11月30日15时00分',
     "章节": "百万年魂环与百万年魂骨",
     "人物": [
@@ -13603,7 +13603,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "吸收第三天修罗与海神之力白热化争夺，第五天达成海神主外修罗主内的平衡共存。"
   },
   {
-    "标识": "ch0308_03",
+    "标识": "1-1178",
     "时间": '斗罗历43年11月30日15时10分',
     "章节": "百万年魂环与百万年魂骨",
     "人物": [
@@ -13613,7 +13613,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第七天唐三苏醒后瞳孔左蓝右红发色银白，魂力飙升至九十九级巅峰绝世斗罗。"
   },
   {
-    "标识": "ch0308_04",
+    "标识": "1-1179",
     "时间": '斗罗历43年11月30日18时00分',
     "章节": "百万年魂环与百万年魂骨",
     "人物": [
@@ -13624,7 +13624,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与小舞汇合后全面检视自身状态，修罗之力蛰伏左臂为隐患也是底牌。"
   },
   {
-    "标识": "ch0308_05",
+    "标识": "1-1180",
     "时间": '斗罗历43年11月30日18时10分',
     "章节": "百万年魂环与百万年魂骨",
     "人物": [
@@ -13634,7 +13634,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三测试九十九级极限：三叉戟投掷穿海面形成百米漩涡，昊天锤百万年魂技深渊之力达半神。"
   },
   {
-    "标识": "ch0309_01",
+    "标识": "1-1181",
     "时间": '斗罗历43年11月30日21时40分',
     "章节": "深海魔鲸王脑袋里的宝贝",
     "人物": [
@@ -13651,7 +13651,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三获鲸脑鲸珠后赶赴海神岛，六怪魂力因魔鲸能量全面跃升。"
   },
   {
-    "标识": "ch0309_02",
+    "标识": "1-1182",
     "时间": '斗罗历43年12月1日00时20分',
     "章节": "深海魔鲸王脑袋里的宝贝",
     "人物": [
@@ -13662,7 +13662,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小白解释鲸珠为海属性神器修复材料，唐三测试确认鲸珠可修复海神之心欣喜若狂。"
   },
   {
-    "标识": "ch0309_03",
+    "标识": "1-1183",
     "时间": '斗罗历43年12月1日03时20分',
     "章节": "深海魔鲸王脑袋里的宝贝",
     "人物": [
@@ -13678,7 +13678,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三总结战果后宣布下站海神岛，向小舞许下战后求婚承诺，众人士气高涨全速赶赴。"
   },
   {
-    "标识": "ch0309_04",
+    "标识": "1-1184",
     "时间": '斗罗历43年12月1日06时20分',
     "章节": "深海魔鲸王脑袋里的宝贝",
     "人物": [
@@ -13688,7 +13688,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三测试鲸脑膏精神力增两成后密封保存留待传承，以魂力激活三叉戟恢复三成威力。"
   },
   {
-    "标识": "ch0309_05",
+    "标识": "1-1185",
     "时间": '斗罗历43年12月1日09时00分',
     "章节": "深海魔鲸王脑袋里的宝贝",
     "人物": [
@@ -13699,7 +13699,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞问成神后是否高高在上，唐三许诺永远不变并约定回圣魂村万年大树下正式求婚。"
   },
   {
-    "标识": "ch0310_01",
+    "标识": "1-1186",
     "时间": '斗罗历43年12月1日12时20分',
     "章节": "两个传承选择，海神还是修罗神？",
     "人物": [
@@ -13710,7 +13710,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西告知唐晨已逝并留下修罗魔剑，唐三克制诱惑坚定选择海神传承。"
   },
   {
-    "标识": "ch0311_01",
+    "标识": "1-1187",
     "时间": '斗罗历43年12月1日12时30分',
     "章节": "传承开始，献祭，海神斗罗",
     "人物": [
@@ -13727,7 +13727,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西献祭生命开启海神传承之门，唐三进入海底发现需海神之心才能入殿。"
   },
   {
-    "标识": "ch0310_02",
+    "标识": "1-1188",
     "时间": '斗罗历43年12月1日15时00分',
     "章节": "两个传承选择，海神还是修罗神？",
     "人物": [
@@ -13738,7 +13738,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西解释修罗魔剑为唐晨临终三天炼成，剑中灵魂印记仅维持三年必须尽快选择。"
   },
   {
-    "标识": "ch0311_02",
+    "标识": "1-1189",
     "时间": '斗罗历43年12月1日15时10分',
     "章节": "传承开始，献祭，海神斗罗",
     "人物": [
@@ -13748,7 +13748,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪感应海神传承开启，入定期间已将天使之神全部能力完美贯通。"
   },
   {
-    "标识": "ch0310_03",
+    "标识": "1-1190",
     "时间": '斗罗历43年12月1日18时00分',
     "章节": "两个传承选择，海神还是修罗神？",
     "人物": [
@@ -13758,7 +13758,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以三个理由克制修罗魔剑诱惑选择海神：七考已过代价大、前车之鉴、小舞可为接受者。"
   },
   {
-    "标识": "ch0311_03",
+    "标识": "1-1191",
     "时间": '斗罗历43年12月1日18时10分',
     "章节": "传承开始，献祭，海神斗罗",
     "人物": [
@@ -13768,7 +13768,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三被蓝光裹挟坠入深海一时辰后抵达金色光罩中的海神神殿，光罩主动让路通行。"
   },
   {
-    "标识": "ch0310_04",
+    "标识": "1-1192",
     "时间": '斗罗历43年12月1日21时40分',
     "章节": "两个传承选择，海神还是修罗神？",
     "人物": [
@@ -13779,7 +13779,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "波赛西欣慰唐三选择后解释第八九考内容，以长辈姿态送别唐三说去成为神吧。"
   },
   {
-    "标识": "ch0311_04",
+    "标识": "1-1193",
     "时间": '斗罗历43年12月1日21时50分',
     "章节": "传承开始，献祭，海神斗罗",
     "人物": [
@@ -13789,7 +13789,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三在神殿外围发现远古城市遗迹与海神文字，得知神位可通过战斗或考验两种方式传承。"
   },
   {
-    "标识": "ch0310_05",
+    "标识": "1-1194",
     "时间": '斗罗历43年12月2日00时20分',
     "章节": "两个传承选择，海神还是修罗神？",
     "人物": [
@@ -13800,7 +13800,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三向小舞坦白修罗魔剑，小舞表示愿意接受修罗传承为与唐三永远在一起不惜代价。"
   },
   {
-    "标识": "ch0311_05",
+    "标识": "1-1195",
     "时间": '斗罗历43年12月2日00时30分',
     "章节": "传承开始，献祭，海神斗罗",
     "人物": [
@@ -13812,7 +13812,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞在传承之门外以心灵感应感知唐三情绪，众人就地修炼等待，马红俊调侃引小舞脸红。"
   },
   {
-    "标识": "ch0312_01",
+    "标识": "1-1196",
     "时间": '斗罗历43年12月3日03时20分',
     "章节": "海神与修罗神",
     "人物": [
@@ -13822,7 +13822,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之光软化光罩智破海神殿外层防护，昂首步入二百米高的海神神殿内部。"
   },
   {
-    "标识": "ch0312_02",
+    "标识": "1-1197",
     "时间": '斗罗历43年12月3日06时20分',
     "章节": "海神与修罗神",
     "人物": ["唐三"],
@@ -13830,7 +13830,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "海神本尊现身指点唐三传承要诀，解释神界与波赛西归宿后将其送入传承之地。"
   },
   {
-    "标识": "ch0312_04",
+    "标识": "1-1198",
     "时间": '斗罗历43年12月3日09时00分',
     "章节": "海神与修罗神",
     "人物": [
@@ -13840,7 +13840,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三观察神殿浮雕发现与自身经历重合领悟击杀百万年海兽为传承必经之路，神殿欢迎新主。"
   },
   {
-    "标识": "ch0312_05",
+    "标识": "1-1199",
     "时间": '斗罗历43年12月3日12时20分',
     "章节": "海神与修罗神",
     "人物": ["唐三"],
@@ -13848,7 +13848,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三昂首面对百米海神不退缩获赞，海神宣布八部分考验通过即成神失败即死唐三毫不犹豫。"
   },
   {
-    "标识": "ch0312_03",
+    "标识": "1-1200",
     "时间": '斗罗历43年12月3日15时00分',
     "章节": "海神与修罗神",
     "人物": ["唐三"], 未建档人物: ["修罗神"],
@@ -13856,7 +13856,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "修罗神闯入海神殿与海神争夺唐三传承权，揭示神界五至尊委员会体系。"
   },
   {
-    "标识": "ch0313_01",
+    "标识": "1-1201",
     "时间": '斗罗历43年12月3日18时00分',
     "章节": "魂骨剥离，海神八翼",
     "人物": [
@@ -13866,7 +13866,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "八蛛矛从体内剥离进化为海神八翼，唐三险被狂喜迷惑，八蛛矛器魂警醒助其过关。"
   },
   {
-    "标识": "ch0313_03",
+    "标识": "1-1202",
     "时间": '斗罗历43年12月3日21时40分',
     "章节": "魂骨剥离，海神八翼",
     "人物": [
@@ -13876,7 +13876,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三总结第一考经验后与体内魂骨灵魂碎片建立连接作为情绪失控时的外部锚点。"
   },
   {
-    "标识": "ch0313_04",
+    "标识": "1-1203",
     "时间": '斗罗历43年12月4日00时20分',
     "章节": "魂骨剥离，海神八翼",
     "人物": [
@@ -13886,7 +13886,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "大明灵魂消散后右臂骨进化为蓝金龙纹臂铠，天青迟钝神爪与寂灭雷霆获神级增幅翻倍。"
   },
   {
-    "标识": "ch0313_02",
+    "标识": "1-1204",
     "时间": '斗罗历43年12月4日03时20分',
     "章节": "魂骨剥离，海神八翼",
     "人物": [
@@ -13897,7 +13897,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第二考以侮辱大明魂骨激唐三之'怒'，大明灵魂最终爆发警醒唐三险过此关。"
   },
   {
-    "标识": "ch0313_05",
+    "标识": "1-1205",
     "时间": '斗罗历43年12月4日06时20分',
     "章节": "魂骨剥离，海神八翼",
     "人物": [
@@ -13907,7 +13907,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三推演后续考验以爱和欲为最危险，反复默念信念锚点后以坚定意志迎接第三考哀。"
   },
   {
-    "标识": "ch0314_01",
+    "标识": "1-1206",
     "时间": '斗罗历43年12月4日09时00分',
     "章节": "爱之一字，心灵感应的救赎",
     "人物": [
@@ -13918,7 +13918,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第五考以小舞幻境考'爱'，真正的小舞心灵感应跨世界传来四字救唐三于迷失。"
   },
   {
-    "标识": "ch0314_03",
+    "标识": "1-1207",
     "时间": '斗罗历43年12月4日12时20分',
     "章节": "爱之一字，心灵感应的救赎",
     "人物": [
@@ -13928,7 +13928,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三过哀惧两关后精神力极度透支以鲸脑膏紧急恢复五成，面对最致命的第五考爱。"
   },
   {
-    "标识": "ch0314_04",
+    "标识": "1-1208",
     "时间": '斗罗历43年12月4日15时00分',
     "章节": "爱之一字，心灵感应的救赎",
     "人物": [
@@ -13939,7 +13939,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第五考通过后头骨进化精神力跃升至近神级，与小舞的心灵连接被永久强化为海神之约。"
   },
   {
-    "标识": "ch0314_02",
+    "标识": "1-1209",
     "时间": '斗罗历43年12月4日18时00分',
     "章节": "爱之一字，心灵感应的救赎",
     "人物": [
@@ -13950,7 +13950,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第六考中深海魔鲸王灵魂真实脱离魂骨企图夺神位，唐三以'恶'字破解后其灵魂被抹杀。"
   },
   {
-    "标识": "ch0314_05",
+    "标识": "1-1210",
     "时间": '斗罗历43年12月4日21时40分',
     "章节": "爱之一字，心灵感应的救赎",
     "人物": [
@@ -13960,7 +13960,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第五考后精神力质变为近神级，唐三预判第六平台有真实恶意灵魂波动提高警惕。"
   },
   {
-    "标识": "ch0315_01",
+    "标识": "1-1211",
     "时间": '斗罗历43年12月5日03时20分',
     "章节": "唐三：我的处男身只给小舞，海神神装",
     "人物": [
@@ -13971,7 +13971,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "第七考以千仞雪裸身幻境考'欲'，唐三默念'那不是我'坚守本心通过最终情关。"
   },
   {
-    "标识": "ch0315_03",
+    "标识": "1-1212",
     "时间": '斗罗历43年12月5日06时20分',
     "章节": "唐三：我的处男身只给小舞，海神神装",
     "人物": [
@@ -13981,7 +13981,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三从第六考悟到考验利用真实元素制造欺骗，提醒自己第七考欲可能同样含真实元素。"
   },
   {
-    "标识": "ch0315_04",
+    "标识": "1-1213",
     "时间": '斗罗历43年12月5日09时00分',
     "章节": "唐三：我的处男身只给小舞，海神神装",
     "人物": [
@@ -13991,7 +13991,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三从第七考中发现千仞雪成神执念含自己，分析为战略弱点后因道义否定利用感情的想法。"
   },
   {
-    "标识": "ch0315_02",
+    "标识": "1-1214",
     "时间": '斗罗历43年12月5日12时20分',
     "章节": "唐三：我的处男身只给小舞，海神神装",
     "人物": [
@@ -14001,7 +14001,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七块魂骨逐一化为海神神装回归唐三之身，海神三叉戟以鲸珠修复海神之心重铸完成。"
   },
   {
-    "标识": "ch0315_05",
+    "标识": "1-1215",
     "时间": '斗罗历43年12月5日15时00分',
     "章节": "唐三：我的处男身只给小舞，海神神装",
     "人物": [
@@ -14011,7 +14011,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以鲸珠鲸脑膏耗一时辰精神力修复海神之心，三叉戟爆发蓝金光柱灵性回归更胜从前。"
   },
   {
-    "标识": "ch0316_01",
+    "标识": "1-1216",
     "时间": '斗罗历43年12月6日03时20分',
     "章节": "海神唐三",
     "人物": [
@@ -14027,7 +14027,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三完成海神九考成神，全魂环升至十万年，蓝金光柱冲天宣告海神归来。"
   },
   {
-    "标识": "ch0316_03",
+    "标识": "1-1217",
     "时间": '斗罗历43年12月6日06时20分',
     "章节": "海神唐三",
     "人物": [
@@ -14037,7 +14037,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以神念检视海神权柄：命令海洋生物、操控水属性、无限海洋能量补给，信念未变。"
   },
   {
-    "标识": "ch0316_04",
+    "标识": "1-1218",
     "时间": '斗罗历43年12月6日09时00分',
     "章节": "海神唐三",
     "人物": [
@@ -14048,7 +14048,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三成神后与小舞重逢，小舞扑入怀中大哭后两人额头相抵无声温柔交流。"
   },
   {
-    "标识": "ch0316_02",
+    "标识": "1-1219",
     "时间": '斗罗历43年12月6日12时20分',
     "章节": "海神唐三",
     "人物": [
@@ -14064,7 +14064,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三任命海龙斗罗为新大祭司后携小舞赴海边迎战千仞雪，六怪开始冲击封号斗罗。"
   },
   {
-    "标识": "ch0316_05",
+    "标识": "1-1220",
     "时间": '斗罗历43年12月6日15时00分',
     "章节": "海神唐三",
     "人物": [
@@ -14080,7 +14080,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以平和态度消除距离感后赐五怪各一枚神赐魂环、小舞三枚突破九十级。"
   },
   {
-    "标识": "ch0317_01",
+    "标识": "1-1221",
     "时间": '斗罗历43年12月7日03时20分',
     "章节": "海神VS天使神",
     "人物": [
@@ -14092,7 +14092,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与千仞雪首次神战，以神念优势调动太阴真水击破太阳真火熔炉反败为胜。"
   },
   {
-    "标识": "ch0317_02",
+    "标识": "1-1222",
     "时间": '斗罗历43年12月7日06时20分',
     "章节": "海神VS天使神",
     "人物": [
@@ -14103,7 +14103,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三利用海边地利以万众一心归属召数千水剑全方位攻击，千仞雪六翼硬接消耗巨大。"
   },
   {
-    "标识": "ch0317_03",
+    "标识": "1-1223",
     "时间": '斗罗历43年12月7日09时00分',
     "章节": "海神VS天使神",
     "人物": [
@@ -14114,7 +14114,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪以极速侧袭被唐三浩瀚攻略金网减速后三叉戟命中右翼根部，千仞雪炸网后退。"
   },
   {
-    "标识": "ch0317_04",
+    "标识": "1-1224",
     "时间": '斗罗历43年12月7日12时20分',
     "章节": "海神VS天使神",
     "人物": [
@@ -14125,7 +14125,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪承认唐三更强后宣言下次以同归于尽相见，以残余五翼全力撤退飞离战场。"
   },
   {
-    "标识": "ch0317_05",
+    "标识": "1-1225",
     "时间": '斗罗历43年12月7日15时00分',
     "章节": "海神VS天使神",
     "人物": [
@@ -14136,7 +14136,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三验证海边作战几乎不可战胜后开始规划应对内陆双神联手的水源储备战略。"
   },
   {
-    "标识": "ch0318_01",
+    "标识": "1-1226",
     "时间": '斗罗历43年12月10日03时20分',
     "章节": "碧波、海神、无尽蔚蓝",
     "人物": [
@@ -14147,7 +14147,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以'碧波海神无尽蔚蓝'碾压千仞雪万阳凌天奥义，千仞雪立必死之志后撤退。"
   },
   {
-    "标识": "ch0318_02",
+    "标识": "1-1227",
     "时间": '斗罗历43年12月10日06时20分',
     "章节": "碧波、海神、无尽蔚蓝",
     "人物": [
@@ -14158,7 +14158,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪正午以万阳凌天全力攻来，唐三以碧波海神无尽蔚蓝化海面为能量场吞噬全部攻击。"
   },
   {
-    "标识": "ch0318_03",
+    "标识": "1-1228",
     "时间": '斗罗历43年12月10日09时00分',
     "章节": "碧波、海神、无尽蔚蓝",
     "人物": [
@@ -14169,7 +14169,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪认清差距后以精神传音问如果当年选她会如何，唐三坦言从第一眼就认定小舞。"
   },
   {
-    "标识": "ch0318_04",
+    "标识": "1-1229",
     "时间": '斗罗历43年12月10日12时20分',
     "章节": "碧波、海神、无尽蔚蓝",
     "人物": [
@@ -14179,7 +14179,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三推断千仞雪可能使用天使陨落灭世级爆炸，开始推演阻止方案为最终决战做准备。"
   },
   {
-    "标识": "ch0318_05",
+    "标识": "1-1230",
     "时间": '斗罗历43年12月10日15时00分',
     "章节": "碧波、海神、无尽蔚蓝",
     "人物": [
@@ -14190,7 +14190,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞对千仞雪产生同情，唐三表示战场不会手软，两人在海神岛度过最后一个平静夜晚。"
   },
   {
-    "标识": "ch0319_01",
+    "标识": "1-1231",
     "时间": '斗罗历43年12月11日03时20分',
     "章节": "食神与九彩神女",
     "人物": [
@@ -14202,7 +14202,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡获食神清睐、宁荣荣获九彩神女清睐，两人同获神诋传承资格释然相拥。"
   },
   {
-    "标识": "ch0319_02",
+    "标识": "1-1232",
     "时间": '斗罗历43年12月11日06时20分',
     "章节": "食神与九彩神女",
     "人物": [
@@ -14214,7 +14214,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神知识解释食神与九彩神女神位等级，鼓励奥斯卡宁荣荣以成神为目标。"
   },
   {
-    "标识": "ch0319_03",
+    "标识": "1-1233",
     "时间": '斗罗历43年12月11日09时00分',
     "章节": "食神与九彩神女",
     "人物": [
@@ -14225,7 +14225,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡自卑配不上宁荣荣，宁荣荣坦白爱意源于他燃魂救唐三的无私，两人释然相拥。"
   },
   {
-    "标识": "ch0319_04",
+    "标识": "1-1234",
     "时间": '斗罗历43年12月11日12时20分',
     "章节": "食神与九彩神女",
     "人物": [
@@ -14236,7 +14236,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊坦言不在意成神只求打完仗看到和平，唐三提及火凤之神马红俊笑说随缘。"
   },
   {
-    "标识": "ch0319_05",
+    "标识": "1-1235",
     "时间": '斗罗历43年12月11日15时00分',
     "章节": "食神与九彩神女",
     "人物": [
@@ -14248,7 +14248,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三解释幽冒白虎具备双人共享神位潜力，戴沐白朱竹清立志成为神界第一对双神体。"
   },
   {
-    "标识": "ch0320_01",
+    "标识": "1-1236",
     "时间": '斗罗历43年12月12日03时20分',
     "章节": "七怪封号与复苏的修罗神之力",
     "人物": [
@@ -14264,7 +14264,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "七怪各定封号，唐三以神念助小舞完美吸收魂环达96级，修罗领域能量自动融入小舞。"
   },
   {
-    "标识": "ch0320_02",
+    "标识": "1-1237",
     "时间": '斗罗历43年12月12日06时20分',
     "章节": "七怪封号与复苏的修罗神之力",
     "人物": [
@@ -14275,7 +14275,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以神念精细操控辅助小舞吸收三枚神赐魂环，小舞咬牙承受不发一声令唐三又骄傲又心疼。"
   },
   {
-    "标识": "ch0320_03",
+    "标识": "1-1238",
     "时间": '斗罗历43年12月12日09时00分',
     "章节": "七怪封号与复苏的修罗神之力",
     "人物": [
@@ -14286,7 +14286,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞达九十六级后修罗之力自动涌出融合，其柔骨兔武魂转为攻击性暗粉色杀伤力质变。"
   },
   {
-    "标识": "ch0320_04",
+    "标识": "1-1239",
     "时间": '斗罗历43年12月12日12时20分',
     "章节": "七怪封号与复苏的修罗神之力",
     "人物": [
@@ -14297,7 +14297,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "修罗之力渗透柔骨兔武魂作为底层增幅令八段摔附带杀伐之意，小舞笑称只是摔人更疼了。"
   },
   {
-    "标识": "ch0320_05",
+    "标识": "1-1240",
     "时间": '斗罗历43年12月12日15时00分',
     "章节": "七怪封号与复苏的修罗神之力",
     "人物": [
@@ -14308,7 +14308,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三检测确认修罗之力以共生模式融入小舞，推测因两人羁绊作为修罗神位情感锚点。"
   },
   {
-    "标识": "ch0321_01",
+    "标识": "1-1241",
     "时间": '斗罗历43年12月13日03时20分',
     "章节": "小舞的选择，魔剑入体",
     "人物": [
@@ -14319,7 +14319,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞坚定接受修罗神传承，修罗魔剑化九道气流融入其体内，经脉尽变暗红色。"
   },
   {
-    "标识": "ch0321_02",
+    "标识": "1-1242",
     "时间": '斗罗历43年12月13日06时20分',
     "章节": "小舞的选择，魔剑入体",
     "人物": [
@@ -14331,7 +14331,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三途经紫珍珠岛探望弟子吉祥，留海神烙印赠神赐魂环后七人全速赶赴嘉陵关。"
   },
   {
-    "标识": "ch0321_03",
+    "标识": "1-1243",
     "时间": '斗罗历43年12月13日09时00分',
     "章节": "小舞的选择，魔剑入体",
     "人物": [
@@ -14343,7 +14343,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以神速载七人飞回大陆途中解释修罗传承需实战积累杀伐之意，更适合小舞战斗风格。"
   },
   {
-    "标识": "ch0321_04",
+    "标识": "1-1244",
     "时间": '斗罗历43年12月13日12时20分',
     "章节": "小舞的选择，魔剑入体",
     "人物": [
@@ -14354,7 +14354,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三对吉祥六年成长满意，烙海神使者印记赠神赐魂环，期许其未来触及封号甚至更高。"
   },
   {
-    "标识": "ch0321_05",
+    "标识": "1-1245",
     "时间": '斗罗历43年12月13日15时00分',
     "章节": "小舞的选择，魔剑入体",
     "人物": [
@@ -14365,7 +14365,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞修罗之力可部分穿透海神领域防御，两人组合将是神级战场最完美搭档。"
   },
   {
-    "标识": "ch0322_01",
+    "标识": "1-1246",
     "时间": '斗罗历44年1月11日03时20分',
     "章节": "嘉陵关，双神降临",
     "人物": [
@@ -14376,7 +14376,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪降临嘉陵关令全军膜拜下令出战，天斗帝国以唐三即将归来稳定军心备战。"
   },
   {
-    "标识": "ch0322_03",
+    "标识": "1-1247",
     "时间": '斗罗历44年1月11日06时20分',
     "章节": "嘉陵关，双神降临",
     "人物": [
@@ -14386,7 +14386,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪在帅帐独处以天使神念搜索唐三未果后微笑接受命运，感受最后为他心跳的夜晚。"
   },
   {
-    "标识": "ch0322_02",
+    "标识": "1-1248",
     "时间": '斗罗历44年1月11日09时00分',
     "章节": "嘉陵关，双神降临",
     "人物": [
@@ -14399,7 +14399,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "雪崩坦承谎言后以死战决心获唐昊等强者真正认可，天斗帝国决战前夜气势凝聚。"
   },
   {
-    "标识": "ch0322_04",
+    "标识": "1-1249",
     "时间": '斗罗历44年1月11日12时20分',
     "章节": "嘉陵关，双神降临",
     "人物": [
@@ -14410,7 +14410,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "深夜雪崩与大师分析局势：千仞雪神力尚不纯熟以拖延战术等唐三为上策，雪崩已备后手保国脉。"
   },
   {
-    "标识": "ch0322_05",
+    "标识": "1-1250",
     "时间": '斗罗历44年1月11日15时00分',
     "章节": "嘉陵关，双神降临",
     "人物": [
@@ -14421,7 +14421,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊判断无唐三胜算为零但誓不退让，唐啸陪兄长——昊天宗从不在战场后退。"
   },
   {
-    "标识": "ch0323_01",
+    "标识": "1-1251",
     "时间": '斗罗历44年1月11日15时10分',
     "章节": "绝世双神，决战万米之上",
     "人物": [
@@ -14438,7 +14438,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三及时归来双神对峙，以海神领域压迫千仞雪后双方升入万米高空展开终极决战。"
   },
   {
-    "标识": "ch0323_02",
+    "标识": "1-1252",
     "时间": '斗罗历44年1月11日18时00分',
     "章节": "绝世双神，决战万米之上",
     "人物": [
@@ -14449,7 +14449,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三察觉千仞雪携死志必须在天使陨落前击败她，以第三执念攻心却未能动摇其决意。"
   },
   {
-    "标识": "ch0323_03",
+    "标识": "1-1253",
     "时间": '斗罗历44年1月11日21时40分',
     "章节": "绝世双神，决战万米之上",
     "人物": [
@@ -14460,7 +14460,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以沧海桑田困千仞雪于高空之海中压制太阳真火，千仞雪被逼开始蓄力天使陨落。"
   },
   {
-    "标识": "ch0323_04",
+    "标识": "1-1254",
     "时间": '斗罗历44年1月12日00时20分',
     "章节": "绝世双神，决战万米之上",
     "人物": [
@@ -14471,7 +14471,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海之国度高压封印干扰天使陨落蓄力使其无法引爆，千仞雪被迫将能量转为一次性攻击。"
   },
   {
-    "标识": "ch0323_05",
+    "标识": "1-1255",
     "时间": '斗罗历44年1月12日03时20分',
     "章节": "绝世双神，决战万米之上",
     "人物": ["唐三"], 未建档人物: ["千亭雪"],
@@ -14479,7 +14479,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以断苍穹切断千亭雪最后一击与施展者的联系令其消散，千亭雪耗尽神力坠落。"
   },
   {
-    "标识": "ch0324_01",
+    "标识": "1-1256",
     "时间": '斗罗历44年1月12日06时20分',
     "章节": "超级版融合技，幽冥白虎",
     "人物": [
@@ -14495,7 +14495,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "史莱克六怪斩首战术成功，幽冥白虎配合马红俊将九十八级金鳄斗罗重创至失去战力。"
   },
   {
-    "标识": "ch0324_02",
+    "标识": "1-1257",
     "时间": '斗罗历44年1月12日09时00分',
     "章节": "超级版融合技，幽冥白虎",
     "人物": [
@@ -14507,7 +14507,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "幽冥白虎以白色光环僵直六封号后与马红俊凤凰联攻金鳄斗罗终将其甲壳打出裂痕。"
   },
   {
-    "标识": "ch0324_03",
+    "标识": "1-1258",
     "时间": '斗罗历44年1月12日12时20分',
     "章节": "超级版融合技，幽冥白虎",
     "人物": [
@@ -14518,7 +14518,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "马红俊以三头碎裂为代价创造两秒窗口，幽冥白虎灌入白光令金鳄斗罗紊乱退人形被拍飞。"
   },
   {
-    "标识": "ch0324_04",
+    "标识": "1-1259",
     "时间": '斗罗历44年1月12日15时00分',
     "章节": "超级版融合技，幽冥白虎",
     "人物": [
@@ -14530,7 +14530,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞以修罗之力加持八段摔三连击将三供奉砸入石板，宁荣荣无敌光护其全力进攻。"
   },
   {
-    "标识": "ch0324_05",
+    "标识": "1-1260",
     "时间": '斗罗历44年1月12日18时00分',
     "章节": "超级版融合技，幽冒白虎",
     "人物": [
@@ -14542,7 +14542,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "融合技后戴沐白朱竹清瘤倒，奥斯卡钻石肠三分钟内为二人全恢复活力充沛。"
   },
   {
-    "标识": "ch0325_01",
+    "标识": "1-1261",
     "时间": '斗罗历44年1月13日03时20分',
     "章节": "六怪发威，兵临城下",
     "人物": [
@@ -14555,7 +14555,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞击杀三供奉、唐家军出动五十万斤撞城锤攻城，嘉陵关防线全面崩溃。"
   },
   {
-    "标识": "ch0325_02",
+    "标识": "1-1262",
     "时间": '斗罗历44年1月13日06时20分',
     "章节": "六怪发威，兵临城下",
     "人物": [
@@ -14566,7 +14566,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐昊唐啸兄弟以默契配合压制四名封号斗罗，唐昊炸环一锤碾碎其中一名战局彻底倾斜。"
   },
   {
-    "标识": "ch0325_03",
+    "标识": "1-1263",
     "时间": '斗罗历44年1月13日09时00分',
     "章节": "六怪发威，兵临城下",
     "人物": [
@@ -14577,7 +14577,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞以佛怒唐莲灭百人后孔雀翎三十六翎同时击杀三十六精锐，撞城锤破最后内门嘉陵关攻破。"
   },
   {
-    "标识": "ch0325_04",
+    "标识": "1-1264",
     "时间": '斗罗历44年1月13日12时20分',
     "章节": "六怪发威，兵临城下",
     "人物": ["雪崩"], 未建档人物: ["戈龙"],
@@ -14585,7 +14585,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "嘉陵关内门破后三十万步兵涌入，雪崩仁政不杀降令抵抗一时辰内消失，夕阳下宣告胜利。"
   },
   {
-    "标识": "ch0325_05",
+    "标识": "1-1265",
     "时间": '斗罗历44年1月13日15时00分',
     "章节": "六怪发威，兵临城下",
     "人物": [
@@ -14595,7 +14595,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三击败千亭雪后从万米高空降落城头，百万大军山呼海神万岁宣告嘉陵关大捷。"
   },
   {
-    "标识": "ch0326_01",
+    "标识": "1-1266",
     "时间": '斗罗历44年1月14日03时20分',
     "章节": "九宝无敌神光",
     "人物": [
@@ -14613,7 +14613,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "嘉陵关总攻中宁荣荣首施九宝无敌神光护戴沐白朱竹清反杀四五供奉，唐昊炸环击杀一封号斗罗。"
   },
   {
-    "标识": "ch0326_03",
+    "标识": "1-1267",
     "时间": '斗罗历44年1月14日06时20分',
     "章节": "九宝无敌神光",
     "人物": [
@@ -14624,7 +14624,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神领域为唐昊无限续航，唐昊连续炸环零点三秒双锤击杀一名九十四级封号斗罗。"
   },
   {
-    "标识": "ch0326_04",
+    "标识": "1-1268",
     "时间": '斗罗历44年1月14日09时00分',
     "章节": "九宝无敌神光",
     "人物": [
@@ -14636,7 +14636,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "宁荣荣无敌神光令朱竹清无视四供奉绝杀后反杀插喉，戴沐白撕裂五供奉，每日十次改写战规。"
   },
   {
-    "标识": "ch0326_02",
+    "标识": "1-1269",
     "时间": '斗罗历44年1月14日09时10分',
     "章节": "九宝无敌神光",
     "人物": [
@@ -14650,7 +14650,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡钻石肠助戴沐白朱竹清满状态重融幽冥白虎屠杀城头万余魂师，防御体系全面崩溃。"
   },
   {
-    "标识": "ch0326_05",
+    "标识": "1-1270",
     "时间": '斗罗历44年1月14日12时20分',
     "章节": "九宝无敌神光",
     "人物": [
@@ -14661,7 +14661,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞全面释放修罗之力令八段摔附带杀伐恐惧效果，战斗风格从柔美转为凌厉果断。"
   },
   {
-    "标识": "ch0327_01",
+    "标识": "1-1271",
     "时间": '斗罗历44年1月14日12时30分',
     "章节": "满城尽是绿幽幽",
     "人物": [
@@ -14672,7 +14672,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博趁乱释放碧磷蛇皇封号斗罗级剧毒覆盖全城头，武魂帝国魂师军团近万人剧毒身亡。"
   },
   {
-    "标识": "ch0327_03",
+    "标识": "1-1272",
     "时间": '斗罗历44年1月14日15时00分',
     "章节": "满城尽是绿幽幽",
     "人物": [
@@ -14682,7 +14682,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "独孤博以一时辰将剧毒渗入地面后选在守军士气最低时催发，绝望令魂力防护松懈毒效翻倍。"
   },
   {
-    "标识": "ch0327_04",
+    "标识": "1-1273",
     "时间": '斗罗历44年1月14日15时10分',
     "章节": "满城尽是绿幽幽",
     "人物": [
@@ -14693,7 +14693,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "金鳄斗罗以抗毒力勉强支撑但无力回天，碧磷毒雾令近万名魂师永远留在嘉陵关城头。"
   },
   {
-    "标识": "ch0327_02",
+    "标识": "1-1274",
     "时间": '斗罗历44年1月14日18时00分',
     "章节": "满城尽是绿幽幽",
     "人物": [
@@ -14704,7 +14704,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三决心速战在万米高空近身格斗中刺穿千仞雪翅根并划开腰铠令其重伤。"
   },
   {
-    "标识": "ch0327_05",
+    "标识": "1-1275",
     "时间": '斗罗历44年1月14日18时10分',
     "章节": "满城尽是绿幽幽",
     "人物": [
@@ -14715,7 +14715,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三判断需速战速决以日月同辉消耗千仞雪神力，为地面毒雾净化争取时间。"
   },
   {
-    "标识": "ch0328_01",
+    "标识": "1-1276",
     "时间": '斗罗历44年1月14日21时40分',
     "章节": "太阳天使",
     "人物": [
@@ -14727,7 +14727,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪太阳天使搏命被唐三斗转星移化解，金鳄斗罗自爆托她脱险，四五供奉断后被千载空悠击杀。"
   },
   {
-    "标识": "ch0328_03",
+    "标识": "1-1277",
     "时间": '斗罗历44年1月14日21时50分',
     "章节": "太阳天使",
     "人物": [
@@ -14738,7 +14738,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "千仞雪破碎神装释放全部能量凝聚三十米赤金天使形象如审判降世，威力接近灭世级。"
   },
   {
-    "标识": "ch0328_04",
+    "标识": "1-1278",
     "时间": '斗罗历44年1月15日00时20分',
     "章节": "太阳天使",
     "人物": [
@@ -14748,7 +14748,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以身戟合一化为黄金三叉戟发动斗转星移借力打力将太阳天使压缩抛向高空引爆。"
   },
   {
-    "标识": "ch0328_02",
+    "标识": "1-1279",
     "时间": '斗罗历44年1月15日00时30分',
     "章节": "太阳天使",
     "人物": [
@@ -14760,7 +14760,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之力召雨净化全城剧毒后受降嘉陵关，追杀千仞雪一时辰未果返回。"
   },
   {
-    "标识": "ch0328_05",
+    "标识": "1-1280",
     "时间": '斗罗历44年1月15日03时20分',
     "章节": "太阳天使",
     "人物": [
@@ -14771,7 +14771,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三召雨净毒后降落受欢呼，建议立即接管后方城市，雪崩下令全军追击嘉陵关战役完美落幕。"
   },
   {
-    "标识": "ch0329_01",
+    "标识": "1-1281",
     "时间": '斗罗历44年1月15日03时30分',
     "章节": "罗刹神现",
     "人物": [
@@ -14783,7 +14783,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三认大师为父后大师心脉断裂濒死，唐三以海神神力与神之血半时辰内救回并提升其魂力。"
   },
   {
-    "标识": "ch0329_03",
+    "标识": "1-1282",
     "时间": '斗罗历44年1月15日06时20分',
     "章节": "罗刹神现",
     "人物": [
@@ -14794,7 +14794,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三跪认大师为父，大师说你是此生最大的骄傲，三十年师徒情升华为真正父子之情。"
   },
   {
-    "标识": "ch0329_04",
+    "标识": "1-1283",
     "时间": '斗罗历44年1月15日09时00分',
     "章节": "罗刹神现",
     "人物": [
@@ -14804,7 +14804,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三修炼恢复中以神念确认千仞雪消失，但对比比东长期无消息感到隐约不安。"
   },
   {
-    "标识": "ch0329_02",
+    "标识": "1-1284",
     "时间": '斗罗历44年1月15日09时10分',
     "章节": "罗刹神现",
     "人物": [
@@ -14817,7 +14817,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东以罗刹神身份携千仞雪现身嘉陵关前，唐三首次面对双神联手的绝境。"
   },
   {
-    "标识": "ch0329_05",
+    "标识": "1-1285",
     "时间": '斗罗历44年1月15日12时20分',
     "章节": "罗刹神现",
     "人物": [
@@ -14828,7 +14828,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东在武魂城完成罗刹神传承暗紫甲冑加身，对胡列娜说去告诉千仞雪母亲来帮她了。"
   },
   {
-    "标识": "ch0330_01",
+    "标识": "1-1286",
     "时间": '斗罗历44年1月15日12时30分',
     "章节": "天使与罗刹",
     "人物": [
@@ -14840,7 +14840,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三观音泪险杀比比东却被千仞雪本能救母打断计划，首轮对攻后双方均受创但唐三计策失效。"
   },
   {
-    "标识": "ch0330_02",
+    "标识": "1-1287",
     "时间": '斗罗历44年1月15日15时00分',
     "章节": "天使与罗刹",
     "人物": [
@@ -14852,7 +14852,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三海神领域被罗刹领域压制加天使领域夹击活动空间急缩，决定先集中攻击较弱的千仞雪。"
   },
   {
-    "标识": "ch0330_03",
+    "标识": "1-1288",
     "时间": '斗罗历44年1月15日15时10分',
     "章节": "天使与罗刹",
     "人物": [
@@ -14864,7 +14864,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三声东击西以观音泪射比比东，千仞雪以血脉本能替母挡下，唐三计策被母女情打破。"
   },
   {
-    "标识": "ch0330_04",
+    "标识": "1-1289",
     "时间": '斗罗历44年1月15日18时00分',
     "章节": "天使与罗刹",
     "人物": [
@@ -14875,7 +14875,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东以罗刹魔镰在唐三腰间留紫黑伤口令海神力无法自愈，唐三确认罗刹天然克制海神。"
   },
   {
-    "标识": "ch0330_05",
+    "标识": "1-1290",
     "时间": '斗罗历44年1月15日18时10分',
     "章节": "天使与罗刹",
     "人物": ["唐三","比比东"], 未建档人物: ["千亭雪"],
@@ -14883,7 +14883,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三封锁罗刹侵蚀后分析双神配合模式，决定利用天使与罗刹本质对立制造内耗。"
   },
   {
-    "标识": "ch0331_01",
+    "标识": "1-1291",
     "时间": '斗罗历44年1月15日21时40分',
     "章节": "海神陨落",
     "人物": ["唐三","比比东","千仞雪","尘心","古榕"],
@@ -14891,7 +14891,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以灵魂穿刺重创比比东后被摘心而死，剑斗罗骨斗罗救援中被罗刹魔镰绞杀殉难。"
   },
   {
-    "标识": "ch0331_02",
+    "标识": "1-1292",
     "时间": '斗罗历44年1月15日21时50分',
     "章节": "海神陨落",
     "人物": [
@@ -14905,7 +14905,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三阵亡后全军绝望众人决意赴死，奥斯卡宁荣荣在绝境中领悟复活之光武魂融合技。"
   },
   {
-    "标识": "ch0331_03",
+    "标识": "1-1293",
     "时间": '斗罗历44年1月16日00时20分',
     "章节": "海神陨落",
     "人物": [
@@ -14916,7 +14916,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三灵魂穿刺后比比东以本能反应捏碎其心脏，唐三最后对小舞说对不起后陷入黑暗。"
   },
   {
-    "标识": "ch0331_04",
+    "标识": "1-1294",
     "时间": '斗罗历44年1月16日00时30分',
     "章节": "海神陨落",
     "人物": [
@@ -14927,7 +14927,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞通过心灵感应断裂感知唐三死亡后修罗之力暴走，唐昊以大须弥锤压制并安抚她。"
   },
   {
-    "标识": "ch0331_05",
+    "标识": "1-1295",
     "时间": '斗罗历44年1月16日03时20分',
     "章节": "海神陨落",
     "人物": ["小舞","大师"], 未建档人物: ["唐昇"],
@@ -14935,7 +14935,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞恢复理智后以海神之约感知唐三灵魂未散，大师分析神魂可通过信仰重塑提供理论基础。"
   },
   {
-    "标识": "ch0332_01",
+    "标识": "1-1296",
     "时间": '斗罗历44年1月17日21时40分',
     "章节": "完美融合之复活神光",
     "人物": [
@@ -14948,7 +14948,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡宁荣荣复活之光修复唐三身体，百万将士信仰之力与海洋生物祈祷合力重塑海神神魂。"
   },
   {
-    "标识": "ch0332_02",
+    "标识": "1-1297",
     "时间": '斗罗历44年1月18日00时20分',
     "章节": "完美融合之复活神光",
     "人物": [
@@ -14959,7 +14959,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "奥斯卡宁荣荣以武魂融合技复活之光引食神九彩神女微弱神力修复唐三，三分钟后油尽灯枯昏倒。"
   },
   {
-    "标识": "ch0332_03",
+    "标识": "1-1298",
     "时间": '斗罗历44年1月18日03时20分',
     "章节": "完美融合之复活神光",
     "人物": [
@@ -14969,7 +14969,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞修罗之力觉醒隔绝外界，两人体内修罗之力共鸣如导线接通令唐三心脏微微颤动。"
   },
   {
-    "标识": "ch0332_04",
+    "标识": "1-1299",
     "时间": '斗罗历44年1月18日06时20分',
     "章节": "完美融合之复活神光",
     "人物": [
@@ -14979,7 +14979,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "百万将士与海洋生物信仰之力超临界后海神之力自发运转，新心脏融入百万意志更胜从前。"
   },
   {
-    "标识": "ch0332_05",
+    "标识": "1-1300",
     "时间": '斗罗历44年1月18日09时00分',
     "章节": "完美融合之复活神光",
     "人物": [
@@ -14990,7 +14990,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三神魂归位金色光芒涌出，第一眼见哭到昏睡的小舞将其抱入怀中承诺不再让她哭。"
   },
   {
-    "标识": "ch0333_01",
+    "标识": "1-1301",
     "时间": '斗罗历44年1月18日12时20分',
     "章节": "神魂归位，海神归来",
     "人物": [
@@ -15003,7 +15003,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "两天两夜后唐三神魂归位海神复活，他对外宣称必胜实则已做好同归于尽的准备。"
   },
   {
-    "标识": "ch0333_02",
+    "标识": "1-1302",
     "时间": '斗罗历44年1月18日15时00分',
     "章节": "神魂归位，海神归来",
     "人物": [
@@ -15015,7 +15015,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以神力唤醒奥斯卡宁荣荣并温养其武魂加速恢复，郑重鞠躬说此命不忘。"
   },
   {
-    "标识": "ch0333_03",
+    "标识": "1-1303",
     "时间": '斗罗历44年1月18日18时00分',
     "章节": "神魂归位，海神归来",
     "人物": [
@@ -15026,7 +15026,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三释放唐昊后被一拳怒骂，唐昊说以后带上你爹唐家人不兴一个人死，父子相视而笑。"
   },
   {
-    "标识": "ch0333_04",
+    "标识": "1-1304",
     "时间": '斗罗历44年1月18日21时40分',
     "章节": "神魂归位，海神归来",
     "人物": [
@@ -15037,7 +15037,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三与小舞讨论后领悟破局之法：两人修罗之力同源可武魂融合形成海神加修罗双神共存态。"
   },
   {
-    "标识": "ch0333_05",
+    "标识": "1-1305",
     "时间": '斗罗历44年1月19日00时20分',
     "章节": "神魂归位，海神归来",
     "人物": [
@@ -15048,7 +15048,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三小舞练习双神融合发现需生死危机中灵魂完全敞开为条件，两人以额头相抵练习同步。"
   },
   {
-    "标识": "ch0334_01",
+    "标识": "1-1306",
     "时间": '斗罗历44年1月19日03时20分',
     "章节": "最终决战",
     "人物": [
@@ -15061,7 +15061,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三遮蔽太阳面对双神联合施压被逼炸环发动海神黄昏破千仞雪但被罗刹魔镰贯穿右胸。"
   },
   {
-    "标识": "ch0334_02",
+    "标识": "1-1307",
     "时间": '斗罗历44年1月19日03时30分',
     "章节": "最终决战",
     "人物": [
@@ -15072,7 +15072,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三为小舞编织注入神念的连接发辫后并肩出城，百万将士山呼海神万岁声震百里。"
   },
   {
-    "标识": "ch0335_01",
+    "标识": "1-1308",
     "时间": '斗罗历44年1月19日06时20分',
     "章节": "完美融合之双神战双神",
     "人物": [
@@ -15085,7 +15085,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞融入唐三体内完成双神共存融合技，修罗神审判击溃比比东，千仞雪破碎神位后被彻底击败。"
   },
   {
-    "标识": "ch0336_01",
+    "标识": "1-1309",
     "时间": '斗罗历44年1月19日06时30分',
     "章节": "大结局，最后一个条件",
     "人物": [
@@ -15099,7 +15099,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "比比东替女挡剑临终揭露真相后含笑而亡，唐三向雪崩提出四条件后功成身退大陆归于和平。"
   },
   {
-    "标识": "ch0334_03",
+    "标识": "1-1310",
     "时间": '斗罗历44年1月19日09时00分',
     "章节": "最终决战",
     "人物": [
@@ -15111,7 +15111,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以金色巨翼遮蔽太阳削弱千仞雪火属性，比比东罗刹领域前压千仞雪后蓄力形成夹击。"
   },
   {
-    "标识": "ch0335_02",
+    "标识": "1-1311",
     "时间": '斗罗历44年1月19日09时10分',
     "章节": "完美融合之双神战双神",
     "人物": [
@@ -15124,7 +15124,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞融入唐三体内双神合一化身修罗神碎千仞雪圣剑，比比东确认对手已达神王级门槛。"
   },
   {
-    "标识": "ch0334_04",
+    "标识": "1-1312",
     "时间": '斗罗历44年1月19日12时20分',
     "章节": "最终决战",
     "人物": [
@@ -15137,7 +15137,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三海神黄昏碾压千仞雪但被比比东罗刹魔镰从背后贯穿右胸，小舞修罗之力爆发射向唐三。"
   },
   {
-    "标识": "ch0335_03",
+    "标识": "1-1313",
     "时间": '斗罗历44年1月19日12时30分',
     "章节": "完美融合之双神战双神",
     "人物": [
@@ -15149,7 +15149,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "修罗审判天然克制罗刹破碎比比东怨气，海神三叉戟百万斤击碎千仞雪天使神位。"
   },
   {
-    "标识": "ch0334_05",
+    "标识": "1-1314",
     "时间": '斗罗历44年1月19日15时00分',
     "章节": "最终决战",
     "人物": [
@@ -15160,7 +15160,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "小舞修罗之力召唤唐三体内修罗能量压制罗刹侵蚀，小舞全速飞向唐三启动双神融合。"
   },
   {
-    "标识": "ch0335_04",
+    "标识": "1-1315",
     "时间": '斗罗历44年1月19日15时10分',
     "章节": "完美融合之双神战双神",
     "人物": [
@@ -15171,7 +15171,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "修罗审判破碎怨气后比比东罗刹神力急速熔灭跌回凡人，她微笑感受解脱——二十年束缚终于结束。"
   },
   {
-    "标识": "ch0335_05",
+    "标识": "1-1316",
     "时间": '斗罗历44年1月19日18时00分',
     "章节": "完美融合之双神战双神",
     "人物": ["唐三"], 未建档人物: ["千亭雪"],
@@ -15179,7 +15179,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以水垫救下坠落的千亭雪，她失去神位后释然说你赢了转身向比比东走去。"
   },
   {
-    "标识": "ch0336_03",
+    "标识": "1-1317",
     "时间": '斗罗历44年1月19日18时10分',
     "章节": "大结局，最后一个条件",
     "人物": [
@@ -15192,7 +15192,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "战后小舞分离恢复，千仞雪跪哭失去母亲，唐三遵守承诺扶起她令其放下执念。"
   },
   {
-    "标识": "ch0336_04",
+    "标识": "1-1318",
     "时间": '斗罗历44年1月19日21时40分',
     "章节": "大结局，最后一个条件",
     "人物": [
@@ -15203,7 +15203,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "唐三以海神之力降温柔细雨祝福大地洗去战争伤痕，微笑看着和平感慨只需善意与克制。"
   },
   {
-    "标识": "ch0336_02",
+    "标识": "1-1319",
     "时间": '斗罗历44年1月20日00时20分',
     "章节": "大结局，最后一个条件",
     "人物": [
@@ -15215,7 +15215,7 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     "简述": "战争结束武魂帝国覆灭，唐三功成身退携小舞归隐，圣魂村改名神魂村纪念神的诞生。"
   },
   {
-    "标识": "ch0336_05",
+    "标识": "1-1320",
     "时间": '斗罗历44年1月20日03时20分',
     "章节": "大结局，最后一个条件",
     "人物": [
@@ -15224,5 +15224,13 @@ export const TimelineEvents = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__.compil
     ],
     "描述": "战争结束后唐三携小舞返回圣魂村——村口的万年大树仍然枝繁叶茂如同十五年前他们初次相遇时一样。唐三在树下单膝跪地以海神三叉戟为媚，将一朵以海神之力凝聚的永不凋零的蓝金色花朵递向小舞：‘小舞，嫁给我好吗？’小舞泪如雨下点头如捣蒜——十万年的等待、五年的沉睡、无数次生死离别后终于等来了这一句。万年大树在海神之力滋润下结出了一枚金色果实仿佛在祝福这对人。",
     "简述": "唐三携小舞返回圣魂村万年大树下单膝跪地求婚，小舞泪如雨下点头大树结金果祝福。"
-  }
+  },
+  {
+    "标识": "1-1321",
+    "时间": '斗罗历9999年12月30日23时50分',
+    "章节": "时代过渡",
+    "人物": [],
+    "描述": "时代过渡节点：日月大陆与斗罗大陆完成大规模碰撞，地理、政权与魂导技术交流进入新的历史阶段。",
+    "简述": "日月大陆与斗罗大陆碰撞，斗一时代过渡至斗二时代。"
+  },
 ] }, 'dldl');

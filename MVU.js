@@ -2,6 +2,8 @@ import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/ta
 
 globalThis.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema;
 
+const DEFAULT_NEW_GAME_TICK = 20000 * 51840;
+
 try { if (globalThis.parent && globalThis.parent !== globalThis) { globalThis.parent.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema; } } catch (错误) {}
 
 try { if (globalThis.top && globalThis.top !== globalThis) { globalThis.top.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema; } } catch (错误) {}
@@ -13,8 +15,41 @@ const WealthSchema = z
     唐门积分: z.coerce.number().prefault(0).describe('唐门积分'),
     学院积分: z.coerce.number().prefault(0).describe('史莱克徽章/积分'),
     战功: z.coerce.number().prefault(0).describe('血神军团功勋'),
+    金魂币: z.coerce.number().prefault(0).describe('斗一/斗二金魂币'),
+    银魂币: z.coerce.number().prefault(0).describe('斗一/斗二银魂币'),
+    铜魂币: z.coerce.number().prefault(0).describe('斗一/斗二铜魂币'),
+    龙马币: z.coerce.number().prefault(0).describe('斗四龙马币'),
+    天龙晶币: z.coerce.number().prefault(0).describe('斗四天龙晶币'),
+    白级徽章: z.coerce.number().prefault(0).describe('斗四学院白级徽章积分'),
+    黄级徽章: z.coerce.number().prefault(0).describe('斗四学院黄级徽章积分'),
+    紫级徽章: z.coerce.number().prefault(0).describe('斗四学院紫级徽章积分'),
+    斗天者积分: z.coerce.number().prefault(0).describe('斗四斗天者军功积分'),
   })
   .prefault({});
+
+const 原著事件状态串Schema_V1 = z
+  .string()
+  .transform(值 => String(值 || '').trim())
+  .refine(文本 => !文本 || /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(文本), {
+    message: '原著事件状态必须是合法Base64字符串',
+  })
+  .prefault('');
+
+const 原著事件状态Schema_V1 = z
+  .object({
+    版本: z.literal(1).prefault(1),
+    数据: z
+      .object({
+        dldl: 原著事件状态串Schema_V1,
+        jueshitangmen: 原著事件状态串Schema_V1,
+        current: 原著事件状态串Schema_V1,
+        zjdl: 原著事件状态串Schema_V1,
+      })
+      .prefault({}),
+  })
+  .prefault({ 版本: 1, 数据: {} })
+  .describe('四时代原著事件四态位图；仅由TimelineRuntime读写');
+
   const BodyPartSchema = z
   .object({
     外观特征: z.string().prefault('待补全(请描写该部位的静态外观与天生敏感特征，如：粉嫩/修长/天生敏感)'),
@@ -65,6 +100,7 @@ const EquipmentSchema = z
     武器: z
       .object({
         名称: z.string().prefault('无'),
+        材质: z.string().prefault('无').describe('武器实际材质，用于装备兼容性判定'),
         品阶: z.string().prefault('无').describe('品阶如: 魂导器/神器/超神器'),
         特性: z
           .record(z.string(), z.object({ 描述: z.string().prefault('无') }).prefault({}))
@@ -197,6 +233,9 @@ const SkillStructSchema = z
         最低精神力: z.coerce.number().prefault(0),
       })
       .optional(),
+    触发方式: z
+      .enum(['战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后'])
+      .optional(),
     技能掌控度: z
       .object({
         中心等级: z.coerce.number().prefault(1),
@@ -209,6 +248,7 @@ const SkillStructSchema = z
         次数: z.coerce.number().int().min(1).prefault(1),
       })
       .optional(),
+    装备要求: z.record(z.string(), z.any()).optional().describe('技能根层装备要求；效果级装备要求位于对应_效果数组条目'),
     _效果数组: z.array(z.any()).prefault([]).describe('打包后的_效果数组，供前端显示和后续战斗模块解析'),
     副作用列表: z.array(z.any()).optional(),
   })
@@ -862,6 +902,7 @@ const CharacterSchema = z
                       .optional(),
                     耐久: z.coerce.number().optional(),
                     剩余使用次数: z.coerce.number().optional(),
+                    使用次数恢复至tick: z.coerce.number().optional(),
                     绑定者: z.string().optional(),
                     有效期至tick: z.coerce.number().optional(),
                   })
@@ -980,7 +1021,7 @@ const SchemaRootObject = z
       .object({
         时间: z
           .object({
-            tick: z.coerce.number().prefault(0),
+            tick: z.coerce.number().prefault(DEFAULT_NEW_GAME_TICK),
             _上次结算tick: z.coerce.number().optional(),
             _calendar: z.string().prefault('斗罗历X年X月X日 HH:MM'),
           })
@@ -1000,6 +1041,7 @@ const SchemaRootObject = z
           )
           .prefault({})
           .describe('未来事件备忘录，记录明确的未来约定、限时任务、定时危机'),
+        原著事件状态: 原著事件状态Schema_V1,
         偏差值: z.coerce.number().prefault(0).describe('世界线偏差值(0-100)'),
         偏差倍率: z.coerce.number().prefault(1.0).describe('偏差值累计倍率'),
         累计击杀年限: z.coerce.number().prefault(0).describe('星斗大森林累计被杀魂兽年限'),

@@ -9,33 +9,8 @@ const CDN地址列表 = Object.freeze([
 const 请求超时毫秒 = 6500;
 const GitHub请求超时毫秒 = 8000;
 const 入口文件名 = 'MVU_ZOD_Entry.js';
-const MVU追踪模块顺序 = Object.freeze([
-  'MVU_ZOD_Entry.js',
-  'LibraryData_Runtime.js',
-  'FactionLibrary.js',
-  'LocationLibrary.js',
-  'MVU_Skill_Runtime.js',
-  'MVU_Schema_Runtime.js',
-  'MVU_Competition_Runtime.js',
-  'MVU_Runtime_View.js',
-  'MVU.js',
-  'MVU_Hooks.js',
-  'timeline.js',
-  'IntelEvents.js',
-]);
-const 启动预取资源列表 = Object.freeze([
-  'LibraryData_Runtime.js',
-  'FactionLibrary.js',
-  'LocationLibrary.js',
-  'MVU_Skill_Runtime.js',
-  'MVU_Schema_Runtime.js',
-  'MVU_Competition_Runtime.js',
-  'MVU_Runtime_View.js',
-  'MVU.js',
-  'MVU_Hooks.js',
-  'timeline.js',
-  'IntelEvents.js',
-]);
+const MVU追踪模块顺序 = Object.freeze([入口文件名]);
+const 启动预取资源列表 = Object.freeze([入口文件名]);
 
 async function 取最新提交哈希() {
   const 接口地址 = `https://api.github.com/repos/${仓库名}/git/ref/heads/${分支名}?t=${Date.now()}`;

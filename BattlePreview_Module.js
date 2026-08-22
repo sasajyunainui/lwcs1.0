@@ -527,15 +527,18 @@
       if (states && typeof states === 'object') return Object.fromEntries(Object.entries(states).map(([key, state]) => [key, cloneValue(state)]));
       return states;
     };
+    const attribute = unit?.属性 && typeof unit.属性 === 'object' ? cloneValue(unit.属性) : unit?.属性;
+    const directStates = unit?.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : attribute?.状态效果;
     return {
       ...unit,
-      属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性,
+      属性: attribute,
       状态: unit?.状态 && typeof unit.状态 === 'object' ? { ...unit.状态 } : unit?.状态,
       final: unit?.final && typeof unit.final === 'object' ? { ...unit.final } : unit?.final,
       __battleRuntime: unit?.__battleRuntime && typeof unit.__battleRuntime === 'object'
         ? cloneValue(unit.__battleRuntime)
         : unit?.__battleRuntime,
-      状态效果: cloneStates(unit?.状态效果),
+      状态效果: cloneStates(directStates),
+      持续效果: unit?.持续效果 && typeof unit.持续效果 === 'object' ? cloneValue(unit.持续效果) : unit?.持续效果,
       背包: unit?.背包 && typeof unit.背包 === 'object' ? cloneValue(unit.背包) : unit?.背包,
       库存: unit?.库存 && typeof unit.库存 === 'object' ? cloneValue(unit.库存) : unit?.库存,
       物品: unit?.物品 && typeof unit.物品 === 'object' ? cloneValue(unit.物品) : unit?.物品,
@@ -2855,7 +2858,11 @@
     const field = readPassiveStructuredField(skill, effect, '触发限制');
     if (field.conflict) return { supported: false, reason: 'TRIGGER_LIMIT_CONFLICT' };
     const value = field.value;
-    if (value === undefined || value === null || value === '') return { supported: true, cycle: '', count: 0 };
+    if (value === undefined || value === null || value === '') {
+      return skill?.__equipmentPassiveTriggered === true
+        ? { supported: true, cycle: '', count: 0 }
+        : { supported: false, reason: 'TRIGGER_LIMIT_MISSING' };
+    }
     if (!value || typeof value !== 'object' || Array.isArray(value)) return { supported: false, reason: 'TRIGGER_LIMIT_UNSUPPORTED' };
     const cycle = String(value?.周期 || '').trim();
     const count = Number(value?.次数);
@@ -4895,7 +4902,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function collectStateEntries(unit = {}) {
-    const states = unit?.状态效果;
+    const states = unit?.状态效果 && typeof unit.状态效果 === 'object'
+      ? unit.状态效果
+      : unit?.属性?.状态效果;
     return Array.isArray(states)
       ? states.map((state, index) => [String(index), state]).filter(([, state]) => state && typeof state === 'object')
       : states && typeof states === 'object'
@@ -5021,7 +5030,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (normalizedScope === 'GRANTED_EFFECTS') {
       return entries
         .filter(([, state]) =>
-          /下次行动/.test(String(state?.授予触发条件 || '').trim()) &&
+          /下次行动|下次魂技成功释放/.test(String(state?.授予触发条件 || state?.触发条件 || '').trim()) &&
           Array.isArray(state?.授予效果) &&
           state.授予效果.length > 0
         )
@@ -5213,10 +5222,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
   }
 
-  function pendingGrantedEffects(unit = {}) {
+  function pendingGrantedEffects(unit = {}, actionKind = '') {
+    const normalizedActionKind = String(actionKind || '').trim().toUpperCase();
     return stateEntries(unit, 'GRANTED_EFFECTS').flatMap(([key, state]) => {
-      const trigger = String(state?.授予触发条件 || '').trim();
-      if (!/下次行动/.test(trigger) || !Array.isArray(state?.授予效果)) return [];
+      const trigger = String(state?.授予触发条件 || state?.触发条件 || '').trim();
+      const isNextSkill = trigger === '下次魂技成功释放';
+      const isNextAction = trigger === '随下次行动触发';
+      if ((!isNextAction && !(isNextSkill && normalizedActionKind === 'RELEASE_SKILL')) || !Array.isArray(state?.授予效果)) return [];
       return state.授予效果.map((effect, index) => ({
         stateKey: key,
         effect: cloneValue(effect),
@@ -6811,22 +6823,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const trigger = String(effect?.触发条件 || '主动触发').trim();
         targets.forEach(target => {
           const targetId = unitId(target);
-          if (/下次行动/.test(trigger)) {
+          if (trigger === '随下次行动触发' || trigger === '下次魂技成功释放') {
             overlay.changeUnit(targetId, unit => {
               unit.状态效果 ||= {};
-              unit.状态效果[`preview:${context.effectInstanceId}:机制授予`] = {
+              const record = {
                 状态: '机制授予',
                 状态名称: '机制授予',
                 类型: 'buff',
-                duration: Math.max(1, Number(effect?.持续回合 || 1)),
                 来源原型摘要: prototype,
                 授予触发条件: trigger,
+                触发条件: trigger,
                 授予效果: cloneValue(granted),
                 可用次数: Math.max(1, Number(effect?.可用次数 || 1)),
                 战斗效果: {},
                 面板修改比例: {},
                 面板固定修正: {},
               };
+              if (trigger === '随下次行动触发') record.duration = 1;
+              unit.状态效果[`preview:${context.effectInstanceId}:机制授予`] = record;
             });
           } else {
             granted.forEach((nested, index) => {
@@ -9785,7 +9799,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
       });
     }
-    if (String(declaration?.actionKind || '').trim() === 'USE_ITEM' && declaration?.__skipInventoryConsume !== true) {
+    const itemConsumptionRule = typeof root.__LWCS_C2_CONSUMER_RULES_V1__?.读取正式物品消费规则_V1 === 'function'
+      ? root.__LWCS_C2_CONSUMER_RULES_V1__.读取正式物品消费规则_V1(
+        declaration?.skill?.使用效果 || declaration?.skill?._效果数组 || declaration?.skill || {},
+      )
+      : { consume: true };
+    if (String(declaration?.actionKind || '').trim() === 'USE_ITEM' && declaration?.__skipInventoryConsume !== true && itemConsumptionRule.consume) {
       overlay.changeUnit(unitId(actor), unit => {
         const inventoryItem = findInventoryEntry(unit, declaration);
         const quantityBefore = Math.max(0, Number(inventoryItem?.数量 ?? inventoryItem?.quantity ?? 0));
@@ -9797,24 +9816,28 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (inventoryItem.quantity !== undefined) inventoryItem.quantity = remainingQuantity;
       });
     }
-    const baseEffects = declaration?.actionKind === 'BASIC_ATTACK'
+    let baseEffects = declaration?.actionKind === 'BASIC_ATTACK'
       ? [basicAttackEffect()]
       : Array.isArray(declaredEffects)
         ? declaredEffects.filter(effect => effect && typeof effect === 'object')
         : [];
-    const grants = declaration?.__includeGrantedEffects === false ? [] : pendingGrantedEffects(actor);
+    const c2Rules = root.__LWCS_C2_CONSUMER_RULES_V1__;
+    const previewFoodSkill = String(declaration?.skill?.魂技名 || declaration?.skill?.name || '').trim() !== '坚挺金苍蝇' && /食物属性|香肠/.test([
+      ...(Array.isArray(declaration?.skill?.附带属性) ? declaration.skill.附带属性 : []),
+      declaration?.skill?.效果描述,
+      declaration?.skill?.画面描述,
+    ].map(value => String(value || '')).join('|'));
+    if (previewFoodSkill && typeof c2Rules?.读取坚挺金苍蝇自用倍率_V1 === 'function' && typeof c2Rules?.缩放技能效果数组_V1 === 'function') {
+      const food倍率 = c2Rules.读取坚挺金苍蝇自用倍率_V1(actor);
+      if (food倍率.产物效果倍率 > 1) baseEffects = c2Rules.缩放技能效果数组_V1(baseEffects, food倍率.产物效果倍率);
+    }
+    const grants = declaration?.__includeGrantedEffects === false ? [] : pendingGrantedEffects(actor, declaration?.actionKind);
     const effects = [
       ...grants.map(entry => ({ ...entry.effect, effectId: entry.effectId })),
       ...baseEffects,
     ];
     if (!effects.length && !['PASS_OPPORTUNITY', 'DEFEND', 'EVADE', 'WITHDRAW', 'EQUIP', 'OBSERVE'].includes(String(declaration?.actionKind || '').trim())) {
       throw new Error('battle_preview_action_effects_missing');
-    }
-    if (grants.length) {
-      const consumedKeys = new Set(grants.map(entry => entry.stateKey));
-      overlay.changeUnit(unitId(actor), unit => {
-        replaceStates(unit, stateEntries(unit).filter(([key]) => !consumedKeys.has(key)));
-      });
     }
     const nodeBudget = { count: 0, limit: budgetLimit, activeFingerprints: new Set() };
     const primarySuccessProbability = new Map();

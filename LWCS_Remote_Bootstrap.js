@@ -13,30 +13,7 @@
   const GitHub请求超时毫秒 = 8000;
   const 入口文件名 = 'ST_UI_Entry.js';
   const 启动预取资源列表 = Object.freeze([
-    'mvu_styles.css',
-    'soul_ring_engine.css',
-    'Main_Vue_runtimefix_v2.js',
-    'LibraryData_Runtime.js',
-    'CharacterLibrary.js',
-    'ItemLibrary.js',
-    'FactionLibrary.js',
-    'LocationLibrary.js',
-    'mvu_logic_bridge.js',
-    'LWCS_Database_Adapter.js',
-    'RequestMonitorWidget.js',
-    'Database_Module.js',
-    'BattleUI_Module.js',
-    'sheep_map_restore.js',
-    'CompetitionPrivilegeUI_Module.js',
-    'MVU_ZOD_Entry.js',
-    'MVU_Skill_Runtime.js',
-    'MVU_Schema_Runtime.js',
-    'MVU_Competition_Runtime.js',
-    'MVU_Runtime_View.js',
-    'MVU.js',
-    'MVU_Hooks.js',
-    'timeline.js',
-    'IntelEvents.js',
+    入口文件名,
   ]);
   const 引导键 = '__LWCS_REMOTE_BOOTSTRAP_RUNNING__';
   const 宿主窗口 = (() => {

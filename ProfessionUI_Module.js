@@ -1050,6 +1050,7 @@ class ProfessionUIComponent {
     this.snapshot = snapshot;
     this.options = options;
     this.activeMode = 'forge';
+    this.equipmentPassivePatchOps = [];
 
     this.initDOM();
     this.bindEvents();
@@ -3021,12 +3022,16 @@ class ProfessionUIComponent {
     }
     if (分类 === '设计图纸') {
       definition.图纸目标 = safeItem.图纸目标 || itemName.replace(/设计图$/, '');
+      if (safeItem.材料 !== undefined) definition.材料 = safeItem.材料;
     }
+    if (!批次派生字段 && Array.isArray(safeItem.使用效果) && safeItem.使用效果.length) definition.使用效果 = safeItem.使用效果;
+    if (!批次派生字段 && Array.isArray(safeItem.副作用列表) && safeItem.副作用列表.length) definition.副作用列表 = safeItem.副作用列表;
+    if (safeItem.解锁内容 !== undefined) definition.解锁内容 = safeItem.解锁内容;
     if (分类 === '修炼秘籍') {
       if (safeItem.获取条件) definition.获取条件 = safeItem.获取条件;
       if (safeItem.研读条件) definition.研读条件 = safeItem.研读条件;
-      if (safeItem.解锁内容) definition.解锁内容 = safeItem.解锁内容;
     }
+    if (['身份凭证', '入场凭证'].includes(分类) && String(safeItem.使用限制或归属说明 || '').trim()) definition.使用限制或归属说明 = String(safeItem.使用限制或归属说明).trim();
     Object.keys(definition).forEach(字段名 => {
       const 值 = definition[字段名];
       if (值 === undefined || 值 === null || 值 === '' || (Array.isArray(值) && !值.length)) delete definition[字段名];
@@ -3142,12 +3147,16 @@ class ProfessionUIComponent {
   }
 
   submitAction(playerInput, sysPrompt, requestKind, patchOps = []) {
+    const equipmentPassivePatchOps = Array.isArray(this.equipmentPassivePatchOps)
+      ? this.equipmentPassivePatchOps
+      : [];
+    this.equipmentPassivePatchOps = [];
     if (this.options.onAction) {
       this.options.onAction({
         playerInput,
         systemPrompt: sysPrompt,
         requestKind,
-        patchOps: Array.isArray(patchOps) ? patchOps : []
+        patchOps: [...equipmentPassivePatchOps, ...(Array.isArray(patchOps) ? patchOps : [])]
       });
     }
   }
@@ -3169,6 +3178,20 @@ class ProfessionUIComponent {
     try {
       // 执行链是同步的，浏览器不会中途重绘；先让忙碌态绘制一帧再开工
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const equipmentManager = [window, window.parent, window.top]
+        .filter((candidate, index, list) => candidate && list.indexOf(candidate) === index)
+        .map(candidate => candidate.EquipmentManager)
+        .find(manager => manager && typeof manager.结算装备被动战斗外效果 === 'function');
+      if (equipmentManager) {
+        const 当前tick = Math.max(0, Number(this.rootData?.world?.时间?.tick || 0));
+        const result = await equipmentManager.结算装备被动战斗外效果(this.rootData, this.activeName, 当前tick, []);
+        this.equipmentPassivePatchOps = [{
+          op: 'replace',
+          path: `${this.activeCharBasePath}/属性/状态效果`,
+          value: this.复制JSON(this.charData?.属性?.状态效果 || {}, {}),
+        }];
+        this.equipmentPassiveResult = result;
+      }
       if (连续配置.连续模式开启) {
         this.executeContinuousProfession(连续配置);
       } else if (this.activeMode === 'forge') {

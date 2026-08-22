@@ -204,7 +204,7 @@ const TradeTemplate = `
 <div class="trade-module-scope">
   <div class="wealth-display">
     <span>地点：<span class="val-highlight" id="ui-loc">未知</span></span>
-    <span>联邦币：<span class="wealth-amt" id="ui-fedcoin">0</span></span>
+    <span><span id="ui-currency-label">货币</span>：<span class="wealth-amt" id="ui-fedcoin">0</span></span>
     <span>声望：<span class="wealth-amt" id="ui-fame">0</span></span>
   </div>
 
@@ -380,7 +380,19 @@ const 交易装备物品分类集合 = new Set(['近战武器', '防具装备', 
 const 系统禁售物品分类集合 = new Set(['身份凭证', '入场凭证']);
 const 交易物品经济品质列表 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
 const 交易物品经济品质集合 = new Set(交易物品经济品质列表);
-const 交易物品经济品质倍率 = Object.freeze({ 普通: 1, 优秀: 1.25, 稀有: 2, 史诗: 5, 传说: 20, 神器: 1, 超神器: 1 });
+const 交易物品经济品质倍率 = Object.freeze({ 普通: 1, 优秀: 1.25, 稀有: 2, 史诗: 5, 传说: 20, 神器: 80, 超神器: 320 });
+
+function 读取显式交易物品价格(来源 = {}) {
+  const 数据 = 来源 && typeof 来源 === 'object' && !Array.isArray(来源) ? 来源 : {};
+  for (const 字段名 of ['基础价格', '价格']) {
+    if (!Object.prototype.hasOwnProperty.call(数据, 字段名)) continue;
+    const 原值 = 数据[字段名];
+    if (原值 === undefined || 原值 === null || (typeof 原值 === 'string' && !原值.trim())) continue;
+    const 数值 = Number(原值);
+    if (Number.isFinite(数值)) return Math.max(0, Math.floor(数值));
+  }
+  return undefined;
+}
 
 class TradeUIComponent {
   constructor(container, snapshot, options = {}) {
@@ -878,24 +890,27 @@ class TradeUIComponent {
     return 批次 ? [批次] : [];
   }
 
-  计算批次价格倍率(批次 = {}) {
+  计算批次价格倍率(批次 = {}, 静态定义 = {}) {
     const 数据 = 批次 && typeof 批次 === 'object' && !Array.isArray(批次) ? 批次 : {};
-    const 品质 = this.规范化物品经济品质(数据.品质 || '普通');
-    const 品质倍率 = Number(交易物品经济品质倍率[品质] || 1);
-    const 品质系数 = Math.max(0.1, Math.min(2, Number(数据.品质系数 || 1)));
+    const 基准定义 = typeof 静态定义 === 'string' ? { 品质: 静态定义 } : 静态定义 && typeof 静态定义 === 'object' && !Array.isArray(静态定义) ? 静态定义 : {};
+    const 基准品质 = this.规范化物品经济品质(基准定义.品质 ?? 基准定义.品级 ?? 基准定义.rarity ?? 数据.基础品质 ?? '普通');
+    const 品质 = this.规范化物品经济品质(数据.品质 ?? '普通');
+    const 品质倍率 = Number(交易物品经济品质倍率[品质] ?? 1) / Number(交易物品经济品质倍率[基准品质] ?? 1);
+    const 品质系数 = Math.max(0.1, Math.min(2, Number(数据.品质系数 ?? 1)));
     const 融合率 = 数据?.副职业参数?.融合参数?.融合率;
-    const 融合倍率 = 融合率 === undefined ? 1 : Math.max(0.8, Math.min(1.2, 0.8 + Number(融合率 || 0) / 250));
+    const 融合倍率 = 融合率 === undefined ? 1 : Math.max(0.8, Math.min(1.2, 0.8 + Number(融合率 ?? 0) / 250));
     return Math.max(0.01, 品质倍率 * 品质系数 * 融合倍率);
   }
 
-  计算来源批次平均倍率(来源 = {}, 数量 = 1) {
+  计算来源批次平均倍率(来源 = {}, 数量 = 1, 静态定义 = {}) {
     const 数据 = 来源 && typeof 来源 === 'object' && !Array.isArray(来源) ? 来源 : {};
+    const 基准定义 = typeof 静态定义 === 'string' ? { 品质: 静态定义 } : 静态定义 && typeof 静态定义 === 'object' && !Array.isArray(静态定义) ? 静态定义 : {};
     const 目标数量 = Math.max(1, Math.floor(Number(数量 || 1)));
     const 批次结果 = Array.isArray(数据.批次) && 数据.批次.length
-      ? this.复制批次数量(数据.批次, 目标数量)
-      : { 批次列表: this.需要批次入库(数据) ? this.构建交易入库批次(数据, 目标数量) : [], 剩余数量: 0 };
+      ? this.复制批次数量(数据.批次, 目标数量, 基准定义)
+      : { 批次列表: this.需要批次入库(数据) ? this.构建交易入库批次(数据, 目标数量, 基准定义) : [], 剩余数量: 0 };
     if (!批次结果.批次列表.length) return 1;
-    const 加权 = 批次结果.批次列表.reduce((总和, 批次) => 总和 + this.计算批次价格倍率(批次) * Math.max(0, Number(批次.数量 || 0)), 0);
+    const 加权 = 批次结果.批次列表.reduce((总和, 批次) => 总和 + this.计算批次价格倍率(批次, 基准定义) * Math.max(0, Number(批次.数量 || 0)), 0);
     const 数量合计 = 批次结果.批次列表.reduce((总和, 批次) => 总和 + Math.max(0, Number(批次.数量 || 0)), 0);
     return 数量合计 > 0 ? Math.max(0.01, 加权 / 数量合计) : 1;
   }
@@ -937,11 +952,12 @@ class TradeUIComponent {
   构建交易物品定义(物品名 = '', 来源物品 = {}, fallback = {}) {
     const 来源 = 来源物品 && typeof 来源物品 === 'object' && !Array.isArray(来源物品) ? JSON.parse(JSON.stringify(来源物品)) : {};
     const 分类 = this.要求物品定义分类(物品名, 来源, fallback.分类);
+    const 基础价格 = this.读取交易物品基础价格(物品名, 来源, fallback, 分类);
     const 定义 = {
       品质: this.规范化物品经济品质(来源.品质 || fallback.rarity || 来源.品级 || '普通', 物品名, 分类),
       描述: 来源.描述 || fallback.desc || `获得了【${物品名}】。`,
-      基础价格: Math.max(1, Math.floor(Number(来源.基础价格 || 来源.价格 || this.estimateBasePrice(物品名, 分类) || 1))),
-      默认货币: 来源.默认货币 || 来源.货币 || fallback.currency || '联邦币',
+      基础价格: 基础价格,
+      默认货币: 来源.默认货币 || 来源.货币 || fallback.currency || this.getDefaultCurrencyByContext(fallback.storeName || fallback.source || '', this.charData?.状态?.位置 || '', fallback.storeData),
     };
     if (分类 === '锻造金属') {
       定义.阶位 = Math.max(0, Math.min(5, Math.floor(Number(来源.阶位 || 0))));
@@ -978,15 +994,16 @@ class TradeUIComponent {
       if (Array.isArray(来源.副作用列表) && 来源.副作用列表.length) 定义.副作用列表 = 来源.副作用列表;
     }
     if (分类 === '设计图纸') {
-      ['图纸目标'].forEach(字段名 => {
+      ['图纸目标', '材料'].forEach(字段名 => {
         if (来源[字段名] !== undefined && String(来源[字段名]).trim()) 定义[字段名] = 来源[字段名];
       });
     }
+    if (来源.解锁内容 !== undefined) 定义.解锁内容 = 来源.解锁内容;
     if (分类 === '修炼秘籍') {
       if (来源.获取条件 !== undefined) 定义.获取条件 = 来源.获取条件;
       if (来源.研读条件 !== undefined) 定义.研读条件 = 来源.研读条件;
-      if (来源.解锁内容 !== undefined) 定义.解锁内容 = 来源.解锁内容;
     }
+    if (['身份凭证', '入场凭证'].includes(分类) && String(来源.使用限制或归属说明 || '').trim()) 定义.使用限制或归属说明 = String(来源.使用限制或归属说明).trim();
     Object.keys(定义).forEach(键 => {
       const 值 = 定义[键];
       if (值 === undefined || 值 === null || 值 === '' || (Array.isArray(值) && !值.length)) delete 定义[键];
@@ -1016,18 +1033,37 @@ class TradeUIComponent {
     return firstName || '主角';
   }
 
+  get eraRuntimeIntegration() {
+    const roots = [window];
+    try { if (window.parent && window.parent !== window) roots.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window && !roots.includes(window.top)) roots.push(window.top); } catch (错误) {}
+    return roots.map(root => root && root.__LWCS_ERA_RUNTIME_INTEGRATION_V1__)
+      .find(runtime => runtime && typeof runtime.resolveEraAtTick === 'function') || null;
+  }
+
+  get eraCurrencyRegistry() {
+    const roots = [window];
+    try { if (window.parent && window.parent !== window) roots.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window && !roots.includes(window.top)) roots.push(window.top); } catch (错误) {}
+    return roots.map(root => root && root.__LWCS_ERA_CURRENCY_REGISTRY_V1__)
+      .find(runtime => runtime && typeof runtime.resolveCurrency === 'function') || null;
+  }
+
+  get currentEraId() {
+    const integration = this.eraRuntimeIntegration;
+    const tick = Math.max(0, Number(this.worldData?.时间?.tick || 0));
+    try { return integration?.resolveEraAtTick(tick)?.eraId || 'current'; } catch (错误) { return 'current'; }
+  }
+
   get activeCharBasePath() {
     return `/char/${this.escapeJsonPointer(this.activeName)}`;
   }
 
   getCurrencyLabel(currency) {
-    return {
-      联邦币: '联邦币',
-      星罗币: '星罗币',
-      唐门积分: '唐门积分',
-      学院积分: '学院积分',
-      战功: '战功',
-    }[currency] || '联邦币';
+    const token = String(currency || '').trim();
+    const result = this.eraCurrencyRegistry?.resolveCurrency(this.currentEraId, token);
+    if (result?.status === 'resolved') return result.definition?.显示名 || result.definition?.名称 || token;
+    return token || '未知货币';
   }
 
   getDefaultCurrencyByContext(storeName = '', loc = '', storeData = null) {
@@ -1035,37 +1071,41 @@ class TradeUIComponent {
     const locText = String(loc || this.charData?.状态?.位置 || '');
     const storeFaction = String(storeData?.所属势力 || '');
     const merged = `${storeText}|${locText}|${storeFaction}`;
-    if (/血神军团战备|战功商店|军需处/.test(merged)) return '战功';
-    if (/唐门/.test(merged)) return '唐门积分';
-    if (/史莱克|海神阁|内院|外院/.test(merged)) return '学院积分';
-    if (/星罗/.test(merged)) return '星罗币';
-    return '联邦币';
+    const registry = this.eraCurrencyRegistry;
+    const result = registry?.resolveTradeCurrency(this.currentEraId, '', merged);
+    return result?.status === 'resolved' ? result.currency : (this.currentEraId === 'dldl' || this.currentEraId === 'jueshitangmen' ? '金魂币' : '联邦币');
   }
 
   resolveTradeCurrency(item = {}, storeName = '', loc = '', storeData = null) {
     const explicit = String(item?.货币 || item?.默认货币 || '').trim();
-    return explicit || this.getDefaultCurrencyByContext(storeName, loc, storeData);
+    const merged = `${String(storeName || '')}|${String(loc || this.charData?.状态?.位置 || '')}|${String(storeData?.所属势力 || '')}`;
+    const result = this.eraCurrencyRegistry?.resolveTradeCurrency(this.currentEraId, explicit, merged);
+    return result?.currency || this.getDefaultCurrencyByContext(storeName, loc, storeData);
   }
 
   isCurrencySpendable(currency) {
-    return currency !== '战功';
+    return this.eraCurrencyRegistry?.isDirectlySpendable(this.currentEraId, String(currency || '').trim()) === true;
   }
 
   getCurrencyBlockedMessage(currency) {
-    if (currency === '战功') return '战功不能直接用于购物，只能用于军方晋升、审批或资格申领。';
+    const result = this.eraCurrencyRegistry?.resolveCurrency(this.currentEraId, String(currency || '').trim());
+    if (result?.reason === 'identity-item-excluded') return '徽章、勋章和入场凭证是身份物品，不能当作货币直接交易。';
+    if (result?.status === 'resolved' && result.definition?.种类 === this.eraCurrencyRegistry.currencyKinds?.军功) return '军功不能直接用于购物，只能用于军方晋升、审批或资格申领。';
     return '当前货币不可直接用于交易。';
   }
 
   syncData() {
     const loc = this.charData?.状态?.位置 || "未知区域";
-    const fedCoin = this.charData?.财富?.联邦币 || 0;
     const fame = this.charData?.社交?.声望 || 0;
+    const currentCity = this.resolveTradeLocationNode(loc);
+    const displayCurrency = this.resolveTradeCurrency({}, '', loc, currentCity?.data);
+    const displayBalance = Number(this.charData?.财富?.[displayCurrency] || 0);
 
     this.$('#ui-loc').textContent = loc;
-    this.$('#ui-fedcoin').textContent = fedCoin.toLocaleString();
+    this.$('#ui-currency-label').textContent = this.getCurrencyLabel(displayCurrency);
+    this.$('#ui-fedcoin').textContent = displayBalance.toLocaleString();
     this.$('#ui-fame').textContent = fame.toLocaleString();
 
-    const currentCity = this.resolveTradeLocationNode(loc);
     const currentStores = JSON.parse(JSON.stringify(currentCity?.data?.商店 || {}));
     if (this.canAccessSoulTowerDiscountStore(loc, currentCity)) {
       const discountStore = this.buildSoulTowerDiscountStoreEntry();
@@ -1081,9 +1121,17 @@ class TradeUIComponent {
   }
 
   // --- 估值与上下文 ---
+  读取交易物品基础价格(物品名 = '', 来源 = {}, fallback = {}, 分类 = '物品') {
+    const 来源价格 = 读取显式交易物品价格(来源);
+    if (来源价格 !== undefined) return 来源价格;
+    const 回退价格 = 读取显式交易物品价格(fallback);
+    if (回退价格 !== undefined) return 回退价格;
+    return this.estimateBasePrice(物品名, 分类);
+  }
+
   estimateBasePrice(itemName, itemType = "物品") {
-    const definitionPrice = Number(this.取物品定义(itemName)?.基础价格 || 0);
-    if (Number.isFinite(definitionPrice) && definitionPrice > 0) return Math.floor(definitionPrice);
+    const definitionPrice = 读取显式交易物品价格(this.取物品定义(itemName));
+    if (definitionPrice !== undefined) return definitionPrice;
     if (/斗铠/.test(itemName)) return 0;
     if (/机甲/.test(itemName)) {
       if (/红级/.test(itemName)) return 5000000000;
@@ -1223,6 +1271,11 @@ class TradeUIComponent {
     };
     if (!itemName) { ctx.error = '请输入交易物品名称。'; return ctx; }
     if (!targetNpcName) { ctx.error = '请输入交易对象 NPC。'; return ctx; }
+    ctx.currency = this.resolveTradeCurrency(this.取物品定义(itemName), '', this.charData?.状态?.位置 || '');
+    if (!this.isCurrencySpendable(ctx.currency)) {
+      ctx.error = this.getCurrencyBlockedMessage(ctx.currency);
+      return ctx;
+    }
 
     const resolvedTarget = this.resolveCharacterByName(targetNpcName);
     const targetChar = resolvedTarget.char;
@@ -1243,11 +1296,11 @@ class TradeUIComponent {
 
     if (action === "私下买入") {
       ctx.npcItem = targetChar?.背包?.[itemName] || null;
-      ctx.basePrice = Math.max(0, Math.floor(ctx.basePrice * this.计算来源批次平均倍率(ctx.npcItem || {}, qty)));
+      ctx.basePrice = Math.max(0, Math.floor(ctx.basePrice * this.计算来源批次平均倍率(ctx.npcItem || {}, qty, this.取物品定义(itemName))));
       ctx.marketPrice = this.getMarketAdjustedPrice(ctx.basePrice, 'buy');
       const priceDeltaRatio = (Number(price || 0) - ctx.marketPrice) / Math.max(1, ctx.marketPrice);
-      if ((this.charData?.财富?.联邦币 || 0) < ctx.total) {
-        ctx.error = `联邦币不足，完成该交易需要 ${ctx.total.toLocaleString()}。`; return ctx;
+      if ((this.charData?.财富?.[ctx.currency] || 0) < ctx.total) {
+        ctx.error = `${this.getCurrencyLabel(ctx.currency)}不足，完成该交易需要 ${ctx.total.toLocaleString()}。`; return ctx;
       }
       if (!ctx.npcItem || this.读取背包总数量(ctx.npcItem) < qty) {
         ctx.error = `【${targetNpcName}】当前并没有足够的【${itemName}】可供出售。`; return ctx;
@@ -1256,14 +1309,14 @@ class TradeUIComponent {
       ctx.note = `好感 ${ctx.relationScore} / 市场价 ${ctx.marketPrice.toLocaleString()} / 预计成交率 ${ctx.successRate}%`;
     } else {
       ctx.playerItem = this.charData?.背包?.[itemName] || null;
-      ctx.basePrice = Math.max(0, Math.floor(ctx.basePrice * this.计算来源批次平均倍率(ctx.playerItem || {}, qty)));
+      ctx.basePrice = Math.max(0, Math.floor(ctx.basePrice * this.计算来源批次平均倍率(ctx.playerItem || {}, qty, this.取物品定义(itemName))));
       ctx.marketPrice = this.getMarketAdjustedPrice(ctx.basePrice, 'sell');
       const priceDeltaRatio = (Number(price || 0) - ctx.marketPrice) / Math.max(1, ctx.marketPrice);
       if (!ctx.playerItem || this.读取背包总数量(ctx.playerItem) < qty) {
         ctx.error = '背包数量不足。'; return ctx;
       }
-      if ((targetChar?.财富?.联邦币 || 0) < ctx.total) {
-        ctx.error = `【${targetNpcName}】的联邦币不足，无法完成这笔收购。`; return ctx;
+      if ((targetChar?.财富?.[ctx.currency] || 0) < ctx.total) {
+        ctx.error = `【${targetNpcName}】的${this.getCurrencyLabel(ctx.currency)}不足，无法完成这笔收购。`; return ctx;
       }
       ctx.successRate = this.clampTrade(60 + Math.floor(ctx.relationScore * 0.25) - Math.floor(priceDeltaRatio * 55), 5, 95);
       ctx.note = `好感 ${ctx.relationScore} / 市场价 ${ctx.marketPrice.toLocaleString()} / 预计成交率 ${ctx.successRate}%`;
@@ -1278,7 +1331,8 @@ class TradeUIComponent {
     const 命中定义 = this.查找运行时物品定义(名称);
     const 分类 = this.规范化物品定义分类(命中定义?.分类 || 来源物品.物品分类 || 来源物品.分类 || 选项.分类 || '剧情杂物');
     const 定义 = { ...(命中定义?.定义 || {}), ...来源物品 };
-    const 基础单价 = Math.max(0, Math.floor(Number(定义.基础价格 || 定义.价格 || this.estimateBasePrice(名称, 分类) || 0) * this.计算来源批次平均倍率(定义, 数量)));
+    const 基础价格 = this.读取交易物品基础价格(名称, 定义, {}, 分类);
+    const 基础单价 = Math.max(0, Math.floor(基础价格 * this.计算来源批次平均倍率(定义, 数量, 命中定义?.定义 || 定义)));
     const 方向 = /sell|出售|卖出/i.test(String(选项.方向 || 'buy')) ? 'sell' : 'buy';
     const 实际单价 = this.getMarketAdjustedPrice(方向 === 'sell' ? Math.floor(基础单价 * 0.5) : 基础单价, 方向, {
       fixed: 选项.fixed === true,
@@ -1291,7 +1345,7 @@ class TradeUIComponent {
       基础单价,
       实际单价,
       总价: 实际单价 * 数量,
-      货币: String(定义.默认货币 || 定义.货币 || 选项.货币 || '联邦币').trim() || '联邦币',
+      货币: this.resolveTradeCurrency(定义, 选项.商店 || 选项.来源 || '', this.charData?.状态?.位置 || '', 选项.商店数据 || null),
       信息,
     };
   }
@@ -1306,7 +1360,7 @@ class TradeUIComponent {
     const remainderMinutes = totalMinutes % (24 * 60);
     const hours = Math.floor(remainderMinutes / 60);
     const mins = Math.floor(remainderMinutes % 60);
-    return `斗罗历${20000 + years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    return `斗罗历${years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }
 
   getCurrentWorldHour() {
@@ -1648,10 +1702,12 @@ class TradeUIComponent {
     const 商店营业中 = this.isShopOpenNow();
     const isSoulTowerDiscountTrade = item && item._tower_discount_virtual === true;
     const itemDefinition = item._临时定义 || this.取物品定义(itemName);
+    const priceSource = { ...(itemDefinition || {}), ...(item && typeof item === 'object' ? item : {}) };
     const priceMultiplier = Number(item.价格倍率 || 1);
     const discount = Number(item.折扣 || 0);
-    const 批次倍率 = this.计算来源批次平均倍率(item, qty);
-    const baseUnitPrice = Math.max(0, Math.floor(Number(itemDefinition.基础价格 || 0) * 批次倍率 * priceMultiplier * Math.max(0, 1 - discount)));
+    const 批次倍率 = this.计算来源批次平均倍率(item, qty, itemDefinition);
+    const itemBasePrice = this.读取交易物品基础价格(itemName, priceSource, {}, itemDefinition?.分类 || '剧情杂物');
+    const baseUnitPrice = Math.max(0, Math.floor(itemBasePrice * 批次倍率 * priceMultiplier * Math.max(0, 1 - discount)));
     const unitPrice = this.getMarketAdjustedPrice(baseUnitPrice, 'buy', { fixed: isSoulTowerDiscountTrade });
     const privilegeDiscount = this.resolvePrivilegePurchaseDiscount(storeName, itemName, itemDefinition);
     const total = Math.max(0, Math.floor(unitPrice * privilegeDiscount.支付比例 / 100)) * qty;
@@ -1679,6 +1735,16 @@ class TradeUIComponent {
 
     this.updateTradeMetaPanel('shop', this.resolveTradeItemInfo(itemName, item, { source: storeName, desc: 商店营业中 ? (this.取物品定义(itemName)?.描述 || `可在 ${storeName} 购得`) : `${storeName} 当前关门，营业时间 09:00-22:00。` }));
 
+    if (itemBasePrice <= 0) {
+      this.$('#shop-base-price').textContent = '未知/禁售';
+      this.$('#shop-market').textContent = '-';
+      this.$('#shop-price').textContent = '-';
+      this.$('#shop-total').textContent = '无法交易';
+      this.$('#shop-total').className = 'val-warn';
+      btn.disabled = true;
+      return;
+    }
+
     if (!商店营业中) {
       btn.disabled = true;
       return;
@@ -1704,8 +1770,11 @@ class TradeUIComponent {
     const currency = this.resolveTradeCurrency(item, storeName, this.charData?.状态?.位置 || '', storeData);
     const isSoulTowerDiscountTrade = item && item._tower_discount_virtual === true;
     const itemDefinition = item._临时定义 || this.取物品定义(itemName);
-    const 批次倍率 = this.计算来源批次平均倍率(item, qty);
-    const baseUnitPrice = Math.max(0, Math.floor(Number(itemDefinition.基础价格 || 0) * 批次倍率 * Number(item.价格倍率 || 1) * Math.max(0, 1 - Number(item.折扣 || 0))));
+    const priceSource = { ...(itemDefinition || {}), ...(item && typeof item === 'object' ? item : {}) };
+    const 批次倍率 = this.计算来源批次平均倍率(item, qty, itemDefinition);
+    const itemBasePrice = this.读取交易物品基础价格(itemName, priceSource, {}, itemDefinition?.分类 || '剧情杂物');
+    if (itemBasePrice <= 0) return this.显示提示('该商品没有有效价格，当前不可交易。');
+    const baseUnitPrice = Math.max(0, Math.floor(itemBasePrice * 批次倍率 * Number(item.价格倍率 || 1) * Math.max(0, 1 - Number(item.折扣 || 0))));
     const privilegeDiscount = this.resolvePrivilegePurchaseDiscount(storeName, itemName, itemDefinition);
     const total = Math.max(
       0,
@@ -1846,25 +1915,26 @@ class TradeUIComponent {
     }
 
     const itemName = 出售项.物品名;
+    const currency = this.resolveTradeCurrency(出售项.展示物品, '', this.charData?.状态?.位置 || '');
     const 系统禁售 = 系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName);
-    const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty)));
+    const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty, 出售项.展示物品 || this.取物品定义(itemName))));
     const baseSellPrice = Math.floor(basePrice * 0.5);
     const sellPrice = this.getMarketAdjustedPrice(baseSellPrice, 'sell');
     const total = sellPrice * qty;
 
     this.updateTradeMetaPanel('sell', this.resolveTradeItemInfo(itemName, 出售项.展示物品, { source: 出售项.展示物品?.来源 || 出售项.展示物品?.绑定者 || '背包持有' }));
 
-    if (系统禁售 || basePrice === 0) {
+    if (系统禁售 || basePrice === 0 || !this.isCurrencySpendable(currency)) {
       this.$('#sell-base-price').textContent = "禁售物品";
       this.$('#sell-market').textContent = '-';
       this.$('#sell-price').textContent = '-';
       this.$('#sell-total').textContent = "无法交易";
       btn.disabled = true;
     } else {
-      this.$('#sell-base-price').textContent = `${baseSellPrice.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
+      this.$('#sell-base-price').textContent = `${baseSellPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
       this.$('#sell-market').textContent = this.getMarketAdjustmentText('sell');
-      this.$('#sell-price').textContent = `${sellPrice.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
-      this.$('#sell-total').textContent = `${total.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
+      this.$('#sell-price').textContent = `${sellPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
+      this.$('#sell-total').textContent = `${total.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
       btn.disabled = 出售项.可用数量 < qty;
     }
   }
@@ -1875,22 +1945,24 @@ class TradeUIComponent {
     const 出售项 = this.读取出售引用上下文(出售引用, qty);
     if (!出售项 || !出售项.物品名 || 出售项.可用数量 < qty) return this.显示提示('背包数量不足。');
     const itemName = 出售项.物品名;
+    const currency = this.resolveTradeCurrency(出售项.展示物品, '', this.charData?.状态?.位置 || '');
     if (系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName)) return this.显示提示('凭证类物品不能出售。');
-    const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty)));
+    if (!this.isCurrencySpendable(currency)) return this.显示提示(this.getCurrencyBlockedMessage(currency));
+    const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty, 出售项.展示物品 || this.取物品定义(itemName))));
     if (basePrice <= 0) return this.显示提示('该物品当前无法出售。');
     const totalEarn = this.getMarketAdjustedPrice(Math.floor(basePrice * 0.5), 'sell') * qty;
 
     let patchOps = [];
     this.appendInventoryConsumePatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, qty, 出售项.批次索引);
-    patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/联邦币`, value: (this.charData.财富?.联邦币 || 0) + totalEarn });
+    patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(currency)}`, value: (this.charData.财富?.[currency] || 0) + totalEarn });
 
-    const log = `[交易成功][卖出热][交易触发待处理] ${this.activeName} 向系统商店出售了 ${qty} 份【${itemName}】，获得 ${totalEarn} 联邦币。`;
+    const log = `[交易成功][卖出热][交易触发待处理] ${this.activeName} 向系统商店出售了 ${qty} 份【${itemName}】，获得 ${totalEarn} ${this.getCurrencyLabel(currency)}。`;
     patchOps.push(...this.buildTradeSystemPatches(log));
 
     const sysPrompt = this.buildTradeNarrationPrompt(log, [
       `[交易类型]\n系统出售`,
       `[市场调整]\n${this.getMarketAdjustmentText('sell')}`,
-      `[结算摘要]\n已卖出 ${qty} 份【${itemName}】；已获得 ${totalEarn} 联邦币。`,
+      `[结算摘要]\n已卖出 ${qty} 份【${itemName}】；已获得 ${totalEarn} ${this.getCurrencyLabel(currency)}。`,
     ]);
 
     this.submitAction(`我要卖出 ${qty} 份【${itemName}】换钱。`, sysPrompt, 'trade_system_sell', patchOps);
@@ -1909,9 +1981,10 @@ class TradeUIComponent {
     
     const ctx = this.getPrivateTradeContext(action, targetNpc, itemName, qty, price);
 
-    this.$('#priv-base-price').textContent = ctx.marketPrice > 0 ? `${ctx.marketPrice.toLocaleString()} ${this.getCurrencyLabel('联邦币')}` : (ctx.basePrice > 0 ? `${ctx.basePrice.toLocaleString()} ${this.getCurrencyLabel('联邦币')}` : '未知/禁售');
+    const currencyLabel = this.getCurrencyLabel(ctx.currency || this.getDefaultCurrencyByContext('', this.charData?.状态?.位置 || ''));
+    this.$('#priv-base-price').textContent = ctx.marketPrice > 0 ? `${ctx.marketPrice.toLocaleString()} ${currencyLabel}` : (ctx.basePrice > 0 ? `${ctx.basePrice.toLocaleString()} ${currencyLabel}` : '未知/禁售');
     this.$('#priv-market').textContent = ctx.basePrice > 0 ? this.getMarketAdjustmentText(action === '私下买入' ? 'buy' : 'sell') : '-';
-    this.$('#priv-total').textContent = `${total.toLocaleString()} ${this.getCurrencyLabel('联邦币')}`;
+    this.$('#priv-total').textContent = `${total.toLocaleString()} ${currencyLabel}`;
 
     const previewItem = action === '私下买入' ? ctx.npcItem : ctx.playerItem;
     this.updateTradeMetaPanel('priv', previewItem ? this.resolveTradeItemInfo(itemName, previewItem, { source: action === '私下买入' ? targetNpc : this.activeName }) : null);
@@ -1946,27 +2019,27 @@ class TradeUIComponent {
 
     if (action === "私下买入") {
       if (!isSuccess) {
-        log = `[私下交易失败] ${this.activeName} 向 ${targetNpc} 报价 ${price} 联邦币，但对方没有接受。`;
+        log = `[私下交易失败] ${this.activeName} 向 ${targetNpc} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接受。`;
       } else {
-        patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/联邦币`, value: (this.charData.财富?.联邦币 || 0) - ctx.total });
+        patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (this.charData.财富?.[ctx.currency] || 0) - ctx.total });
         const tradeItem = this.buildInventoryItemFromTradeSource(itemName, ctx.npcItem, qty, { source: targetNpc, desc: `从 ${targetNpc} 处私下购得` });
         this.appendItemDefinitionPatch(patchOps, itemName, tradeItem.definition, tradeItem.分类);
         this.appendInventoryGainPatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, tradeItem);
         this.appendInventoryConsumePatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, qty);
-        patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/联邦币`, value: (ctx.targetChar?.财富?.联邦币 || 0) + ctx.total });
-        log = `[私下交易成功][买入热][交易触发待处理] ${this.activeName} 以总价 ${ctx.total} 联邦币从 ${targetNpc} 处买入了 ${qty} 份【${itemName}】。`;
+        patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) + ctx.total });
+        log = `[私下交易成功][买入热][交易触发待处理] ${this.activeName} 以总价 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}从 ${targetNpc} 处买入了 ${qty} 份【${itemName}】。`;
       }
     } else {
       if (!isSuccess) {
-        log = `[私下交易失败] ${this.activeName} 向 ${targetNpc} 报价 ${price} 联邦币，但对方没有接手。`;
+        log = `[私下交易失败] ${this.activeName} 向 ${targetNpc} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接手。`;
       } else {
         this.appendInventoryConsumePatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, qty);
-        patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/联邦币`, value: (this.charData.财富?.联邦币 || 0) + ctx.total });
+        patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (this.charData.财富?.[ctx.currency] || 0) + ctx.total });
         const npcItem = this.buildInventoryItemFromTradeSource(itemName, this.charData.背包[itemName], qty, { source: this.activeName, desc: `从 ${this.activeName} 处私下收购` });
         this.appendItemDefinitionPatch(patchOps, itemName, npcItem.definition, npcItem.分类);
         this.appendInventoryGainPatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, npcItem);
-        patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/联邦币`, value: (ctx.targetChar?.财富?.联邦币 || 0) - ctx.total });
-        log = `[私下交易成功][卖出热][交易触发待处理] ${this.activeName} 以单价 ${price} 联邦币向 ${targetNpc} 卖出 ${qty} 份【${itemName}】，获得 ${ctx.total} 联邦币。`;
+        patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) - ctx.total });
+        log = `[私下交易成功][卖出热][交易触发待处理] ${this.activeName} 以单价 ${price} ${this.getCurrencyLabel(ctx.currency)}向 ${targetNpc} 卖出 ${qty} 份【${itemName}】，获得 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}。`;
       }
     }
 
@@ -1976,10 +2049,10 @@ class TradeUIComponent {
       `[交易对象]\n${targetNpc}`,
       `[交易类型]\n${action}`,
       `[市场调整]\n${this.getMarketAdjustmentText(action === '私下买入' ? 'buy' : 'sell')}`,
-      `[结算摘要]\n${isSuccess ? `本次成交 ${qty} 份【${itemName}】，总价 ${ctx.total} 联邦币。` : `本次未成交，报价为单价 ${price} 联邦币。`}`
+      `[结算摘要]\n${isSuccess ? `本次成交 ${qty} 份【${itemName}】，总价 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}。` : `本次未成交，报价为单价 ${price} ${this.getCurrencyLabel(ctx.currency)}。`}`
     ]);
 
-    this.submitAction(`我要和【${targetNpc}】${action} ${qty} 份【${itemName}】，单价 ${price} 联邦币。`, sysPrompt, 'trade_private', patchOps);
+    this.submitAction(`我要和【${targetNpc}】${action} ${qty} 份【${itemName}】，单价 ${price} ${this.getCurrencyLabel(ctx.currency)}。`, sysPrompt, 'trade_private', patchOps);
   }
 
   // --- 拍卖行模块 ---
@@ -2027,7 +2100,13 @@ class TradeUIComponent {
     const item = this.currentAuction.拍品[itemName];
     const currency = this.resolveTradeCurrency(item, '拍卖行', this.charData?.状态?.位置 || '', this.currentAuction || {});
     const itemDefinition = this.取物品定义(itemName) || item || {};
-    const currentPrice = Number(item.价格 || itemDefinition.基础价格 || 0);
+    const currentPrice = 读取显式交易物品价格(item) ?? 读取显式交易物品价格(itemDefinition) ?? 0;
+    if (currentPrice <= 0) {
+      this.$('#auc-current-price').textContent = '未知/禁售';
+      this.$('#auc-desc').textContent = `[${itemDefinition.品质 || item.品级 || '普通'}] ${itemDefinition.描述 || item.背景 || item.描述 || '暂无说明'}`;
+      btn.disabled = true;
+      return;
+    }
     this.$('#auc-current-price').textContent = `${currentPrice.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
     this.$('#auc-desc').textContent = `[${itemDefinition.品质 || item.品级 || '普通'}] ${itemDefinition.描述 || item.背景 || item.描述 || '暂无说明'}`;
 
@@ -2045,6 +2124,9 @@ class TradeUIComponent {
     const bid = parseInt(this.$('#auc-bid').value) || 0;
     const item = this.currentAuction.拍品[itemName];
     const currency = this.resolveTradeCurrency(item, '拍卖行', this.charData?.状态?.位置 || '', this.currentAuction || {});
+    const itemDefinition = this.取物品定义(itemName) || item || {};
+    const currentPrice = 读取显式交易物品价格(item) ?? 读取显式交易物品价格(itemDefinition) ?? 0;
+    if (currentPrice <= 0) return this.显示提示('该拍品没有有效价格，当前不可竞拍。');
 
     if (!this.isCurrencySpendable(currency)) return this.显示提示(this.getCurrencyBlockedMessage(currency));
 
@@ -2095,4 +2177,3 @@ window.__LWCS_RESOLVE_TRADE_ITEM_PRICE__ = function(snapshot, 物品名, 选项 
   组件.options = {};
   return 组件.解析交易物品价格(物品名, 选项);
 };
-

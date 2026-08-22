@@ -5907,6 +5907,7 @@
     const 当前动作 = toText(选项.当前动作, '');
     const 已选人物 = toText(选项.已选人物, '');
     const 人物名 = toText(人物条目 && 人物条目.name, '');
+    const 人物键 = toText(人物条目 && 人物条目.id, '');
     const 动作标签 = 输出模式 === 'dispatch'
       ? ({ craft: '委托', intel: '请教', battle: '切磋' }[动作] || getNodeInteractionLabel(动作))
       : getNodeInteractionLabel(动作);
@@ -5916,7 +5917,7 @@
       const 派发动作 = 派发动作为委托 ? 'commission' : 动作;
       const 执行者类型 = 派发动作为委托 ? resolveMapNpcCraftExecutorType(节点项, 人物名) : '';
       const 服务文本 = Array.isArray(节点项 && 节点项.services) ? 节点项.services.join('|') : '';
-      return `<button type="button" class="map-npc-action-btn map-dispatch-action-btn${当前类}" data-action="${escapeMapHtml(派发动作)}" data-target="${escapeMapHtml(当前地点)}" data-current-loc="${escapeMapHtml(当前地点)}" data-npc-target="${escapeMapHtml(人物名)}" data-executor-type="${escapeMapHtml(执行者类型)}" data-services="${escapeMapHtml(服务文本)}" title="发起${escapeMapHtml(动作标签)}">${escapeMapHtml(动作标签)}</button>`;
+      return `<button type="button" class="map-npc-action-btn map-dispatch-action-btn${当前类}" data-action="${escapeMapHtml(派发动作)}" data-target="${escapeMapHtml(当前地点)}" data-current-loc="${escapeMapHtml(当前地点)}" data-npc-target="${escapeMapHtml(人物名)}" data-npc-key="${escapeMapHtml(人物键)}" data-executor-type="${escapeMapHtml(执行者类型)}" data-services="${escapeMapHtml(服务文本)}" title="发起${escapeMapHtml(动作标签)}">${escapeMapHtml(动作标签)}</button>`;
     }
     return `<button type="button" class="map-npc-action-btn${当前类}" data-map-npc-select="${escapeMapHtml(人物名)}" data-map-npc-action="${escapeMapHtml(动作)}" title="切换到${escapeMapHtml(动作标签)}">${escapeMapHtml(动作标签)}</button>`;
   }
@@ -6975,6 +6976,7 @@
     const serviceText = formatBehaviorLabels(itemServices, getNodeServiceLabel);
     const eventText = toText(item.eventId, '无');
     const talkTargets = [];
+    let selectedNpcKey = '';
     if (snapshot.charactersByLoc instanceof Map) {
       const 人物条目列表 = snapshot.charactersByLoc.get(item.name) || [];
       人物条目列表.forEach(人物条目 => {
@@ -6982,11 +6984,23 @@
         const 人物名 = toText(人物条目.name, '');
         if (人物名 && !talkTargets.includes(人物名)) talkTargets.push(人物名);
       });
+      const 已选人物条目 = 人物条目列表.find(人物条目 =>
+        人物条目 &&
+        人物条目.可交互 === true &&
+        toText(人物条目.name, '') === (toText(mapState.selectedNpc, '') || (talkTargets.length === 1 ? talkTargets[0] : '')),
+      );
+      selectedNpcKey = toText(已选人物条目 && 已选人物条目.id, '');
     }
     const selectedNpc = toText(mapState.selectedNpc, '');
     const 初始对象 = selectedNpc && talkTargets.includes(selectedNpc) ? selectedNpc : (talkTargets.length === 1 ? talkTargets[0] : '');
     const executorType = action === 'craft' ? resolveMapNpcCraftExecutorType(item, 初始对象) : '';
     const npcTarget = action === 'craft' && executorType === 'official' ? '' : 初始对象;
+    if (action === 'battle' && !npcTarget) {
+      const 提示 = talkTargets.length ? '请先在“在场人物”中选择切磋对象。' : '当前节点没有可切磋对象。';
+      mapState.lastTravelNote = 提示;
+      if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show(提示, 'warning');
+      return { target: item.name, npcTarget: '', action, note: 提示, at: Date.now() };
+    }
     const talkSuffix = action === 'talk'
       ? (npcTarget ? ` · 对象 ${npcTarget}` : (talkTargets.length ? ` · 对象 ${talkTargets.join('、')}` : ''))
       : (npcTarget ? ` · 对象 ${npcTarget}` : '');
@@ -7005,7 +7019,7 @@
     if (['trade', 'bid', 'craft', 'black_market', 'auction', 'shop', 'battle', 'talk', 'brief', 'intel'].includes(action) || itemServices.some(s => ['shop', 'auction', 'black_market', 'craft', 'battle', 'talk', 'brief', 'intel'].includes(s)) || 商店上下文.商店名) {
       try {
         window.dispatchEvent(new CustomEvent('map-action-dispatch', {
-          detail: { target: item.name, action: action === 'shop' ? 'trade' : action, services: itemServices, actionSlots: item.actionSlots || [], eventId: item.eventId, nodeKind: item.nodeKind, mapId: mapState.currentMapId, currentLoc: toText(snapshot.currentLocFull, snapshot.currentLoc), npcTargets: talkTargets, npcTarget, executorType, preferredStore: 商店上下文.商店名, storeSource: 商店上下文.来源地点 }
+          detail: { target: item.name, action: action === 'shop' ? 'trade' : action, services: itemServices, actionSlots: item.actionSlots || [], eventId: item.eventId, nodeKind: item.nodeKind, mapId: mapState.currentMapId, currentLoc: toText(snapshot.currentLocFull, snapshot.currentLoc), npcTargets: talkTargets, npcTarget, npcKey: selectedNpcKey, executorType, preferredStore: 商店上下文.商店名, storeSource: 商店上下文.来源地点 }
         }));
       } catch (e) {}
       return mapState.lastNodeAction;
@@ -7813,10 +7827,10 @@ ${logMsg}
         selectedActionDetail.values = [selectedNpc || selectedActionSlot.reason || focusCharactersText, focusName, selectedNpc ? `将在当前节点与【${selectedNpc}】交谈` : '将在当前节点发起人物交谈'];
         selectedActionDetail.panelDisabled = !!selectedActionSlot.disabled;
       } else if (selectedAction === 'battle') {
-        selectedActionDetail.title = selectedNpc ? `切磋 · ${selectedNpc}` : '切磋';
+        selectedActionDetail.title = selectedNpc ? `切磋 · ${selectedNpc}` : '请先选择切磋对象';
         selectedActionDetail.labels = ['对象', '地点', '说明'];
-        selectedActionDetail.values = [selectedNpc || selectedActionSlot.reason || focusCharactersText, focusName, selectedNpc ? `将在当前节点与【${selectedNpc}】切磋` : '将在当前节点触发切磋分发'];
-        selectedActionDetail.panelDisabled = !!selectedActionSlot.disabled;
+        selectedActionDetail.values = [selectedNpc || '未选择', focusName, selectedNpc ? `将在当前节点与【${selectedNpc}】切磋` : '请先从在场人物列表选择一名对象'];
+        selectedActionDetail.panelDisabled = !!selectedActionSlot.disabled || !selectedNpc;
       } else if (selectedAction === 'craft') {
         const extraInfo = [
           selectedActionSlot.reason,

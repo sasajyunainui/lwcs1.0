@@ -1,12 +1,14 @@
 !(function (global) {
   'use strict';
 
-const VERSION = '1.0.0';
+  const VERSION = '2.0.0';
   const MINUTES_PER_DAY = 24 * 60;
   const DAYS_PER_MONTH = 30;
   const MONTHS_PER_YEAR = 12;
   const MINUTES_PER_YEAR = DAYS_PER_MONTH * MONTHS_PER_YEAR * MINUTES_PER_DAY;
   const MINUTES_PER_TICK = 10;
+  const TICKS_PER_YEAR = MINUTES_PER_YEAR / MINUTES_PER_TICK;
+  const TICKS_PER_MILLENNIUM = 1000 * TICKS_PER_YEAR;
   const LEGACY_TICK_FIELDS = new Set([
     '每年tick',
     'tick',
@@ -36,11 +38,23 @@ const VERSION = '1.0.0';
     复活代价时限: '复活代价时限tick',
     复活后状态时限: '复活后状态时限tick',
   });
+  const ITEM_USAGE_RECOVERY_CYCLES = new Set(['每日']);
   const PROFILES = Object.freeze({
     dldl: Object.freeze({ id: 'dldl', startYear: 0, epoch: '斗罗历0年1月1日00时00分' }),
     jueshitangmen: Object.freeze({ id: 'jueshitangmen', startYear: 10000, epoch: '斗罗历10000年1月1日00时00分' }),
     current: Object.freeze({ id: 'current', startYear: 20000, epoch: '斗罗历20000年1月1日00时00分' }),
     zjdl: Object.freeze({ id: 'zjdl', startYear: 30000, epoch: '斗罗历30000年1月1日00时00分' }),
+  });
+  const ERA_TRANSITION_POINTS = Object.freeze([
+    Object.freeze({ eraId: 'jueshitangmen', thresholdYear: 9800, thresholdTick: 9800 * TICKS_PER_YEAR }),
+    Object.freeze({ eraId: 'current', thresholdYear: 19800, thresholdTick: 19800 * TICKS_PER_YEAR }),
+    Object.freeze({ eraId: 'zjdl', thresholdYear: 29800, thresholdTick: 29800 * TICKS_PER_YEAR }),
+  ]);
+  const ERA_THRESHOLDS = Object.freeze({
+    dldl: Object.freeze({ eraId: 'dldl', thresholdYear: 0, thresholdTick: 0 }),
+    jueshitangmen: ERA_TRANSITION_POINTS[0],
+    current: ERA_TRANSITION_POINTS[1],
+    zjdl: ERA_TRANSITION_POINTS[2],
   });
 
   class LibraryContractError extends Error {
@@ -115,7 +129,7 @@ const VERSION = '1.0.0';
     if (Number(date.月) < 1 || Number(date.月) > 12 || Number(date.日) < 1 || Number(date.日) > 30 || Number(date.时) < 0 || Number(date.时) > 23 || Number(date.分) < 0 || Number(date.分) > 59) {
       fail('DATE_RANGE_INVALID', profileId, path, value, '日期字段超出斗罗历范围');
     }
-    const minutes = dateToMinutes(date) - profile.startYear * MINUTES_PER_YEAR;
+    const minutes = dateToMinutes(date);
     if (minutes < 0) fail('DATE_BEFORE_EPOCH', profileId, path, value, '日期早于profile起点');
     if (!Number.isSafeInteger(minutes)) fail('TICK_INVALID', profileId, path, value, '日期无法转换为安全tick');
     return minutes / MINUTES_PER_TICK;
@@ -123,11 +137,11 @@ const VERSION = '1.0.0';
 
   function fromTick(value, profileId, path = '$') {
     const profile = assertProfile(profileId);
-    const tick = Number(value);
-    if (!Number.isFinite(tick) || tick < 0 || !Number.isInteger(tick * 10)) fail('TICK_INVALID', profileId, path, value, 'tick必须是非负0.1精度数值');
+    const tick = assertAbsoluteTick(value, path);
     const totalMinutes = Math.round(tick * MINUTES_PER_TICK);
     let remainder = totalMinutes;
-    const year = profile.startYear + Math.floor(remainder / MINUTES_PER_YEAR);
+    const year = Math.floor(remainder / MINUTES_PER_YEAR);
+    if (year < profile.startYear) fail('DATE_BEFORE_EPOCH', profileId, path, value, 'tick对应日期早于profile起点');
     remainder %= MINUTES_PER_YEAR;
     const month = Math.floor(remainder / (DAYS_PER_MONTH * MINUTES_PER_DAY)) + 1;
     remainder %= DAYS_PER_MONTH * MINUTES_PER_DAY;
@@ -150,6 +164,72 @@ const VERSION = '1.0.0';
     const minutes = parts[0] * MINUTES_PER_YEAR + parts[1] * DAYS_PER_MONTH * MINUTES_PER_DAY + parts[2] * MINUTES_PER_DAY + parts[3] * 60 + parts[4];
     if (!Number.isSafeInteger(minutes)) fail('DURATION_INVALID', profileId, path, value, '持续时间超出安全范围');
     return minutes / MINUTES_PER_TICK;
+  }
+
+  function assertAbsoluteTick(value, path = '$') {
+    const tick = Number(value);
+    const scaled = Math.round(tick * 10);
+    if (!Number.isFinite(tick) || tick < 0 || !Number.isSafeInteger(scaled) || Math.abs(tick * 10 - scaled) > 1e-9) {
+      fail('TICK_INVALID', 'absolute', path, value, '绝对tick必须是非负且保持0.1精度的安全数值');
+    }
+    return scaled / 10;
+  }
+
+  function resolveEraAtTick(tick) {
+    const absoluteTick = assertAbsoluteTick(tick, '$.tick');
+    for (let index = ERA_TRANSITION_POINTS.length - 1; index >= 0; index -= 1) {
+      const point = ERA_TRANSITION_POINTS[index];
+      if (absoluteTick >= point.thresholdTick) return point.eraId;
+    }
+    return 'dldl';
+  }
+
+  function transitionRecord(point, direction) {
+    return Object.freeze({
+      eraId: point.eraId,
+      thresholdYear: point.thresholdYear,
+      thresholdTick: point.thresholdTick,
+      direction,
+    });
+  }
+
+  function getEraTransitions(previousTick, currentTick) {
+    const previous = assertAbsoluteTick(previousTick, '$.previousTick');
+    const current = assertAbsoluteTick(currentTick, '$.currentTick');
+    if (previous === current) return [];
+    if (current > previous) {
+      return ERA_TRANSITION_POINTS
+        .filter(point => point.thresholdTick > previous && point.thresholdTick <= current)
+        .map(point => transitionRecord(point, 'forward'));
+    }
+    return ERA_TRANSITION_POINTS
+      .filter(point => point.thresholdTick > current && point.thresholdTick <= previous)
+      .sort((left, right) => right.thresholdTick - left.thresholdTick)
+      .map(point => transitionRecord(point, 'backward'));
+  }
+
+  function cultivationBlend(current, zjdl, mode, stage, absorptionTick = null) {
+    return Object.freeze({ current, zjdl, mode, stage, absorptionTick });
+  }
+
+  function getCultivationEraBlend(tick, options = undefined) {
+    const absoluteTick = assertAbsoluteTick(tick, '$.tick');
+    const settings = options === undefined ? {} : options;
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+      fail('BLEND_OPTIONS_INVALID', 'absolute', '$.options', options, '修炼时代渐变参数必须是对象');
+    }
+    if (Object.prototype.hasOwnProperty.call(settings, 'directZJDL') && typeof settings.directZJDL !== 'boolean') {
+      fail('BLEND_OPTIONS_INVALID', 'absolute', '$.options.directZJDL', settings.directZJDL, 'directZJDL必须是布尔值');
+    }
+    if (settings.directZJDL === true) return cultivationBlend(0, 1, 'direct-zjdl', 10);
+    if (settings.deepAbyssAbsorptionTick === undefined || settings.deepAbyssAbsorptionTick === null) {
+      return cultivationBlend(1, 0, 'no-absorption-event', 0);
+    }
+    const absorptionTick = assertAbsoluteTick(settings.deepAbyssAbsorptionTick, '$.options.deepAbyssAbsorptionTick');
+    if (absoluteTick < absorptionTick) return cultivationBlend(1, 0, 'before-absorption', 0, absorptionTick);
+    const stage = Math.min(10, 1 + Math.floor((absoluteTick - absorptionTick) / TICKS_PER_MILLENNIUM));
+    const zjdl = stage / 10;
+    return cultivationBlend(1 - zjdl, zjdl, 'progressive', stage, absorptionTick);
   }
 
   function clone(value, seen = new WeakMap()) {
@@ -193,6 +273,14 @@ const VERSION = '1.0.0';
   function compileItemDurations(value, profileId, path = '$') {
     if (Array.isArray(value)) return value.map((item, index) => compileItemDurations(item, profileId, `${path}[${index}]`));
     if (!value || typeof value !== 'object') return value;
+    if (Object.prototype.hasOwnProperty.call(value, '使用次数恢复周期')) {
+      if (typeof value.使用次数恢复周期 !== 'string' || !ITEM_USAGE_RECOVERY_CYCLES.has(value.使用次数恢复周期.trim())) {
+        fail('LIBRARY_FIELD_INVALID', `${path}.使用次数恢复周期`, value.使用次数恢复周期, '使用次数恢复周期只允许每日');
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(value, '使用后消耗') && typeof value.使用后消耗 !== 'boolean') {
+      fail('LIBRARY_FIELD_INVALID', `${path}.使用后消耗`, value.使用后消耗, '使用后消耗必须是布尔值');
+    }
     const output = {};
     Object.keys(value).forEach(key => {
       const childPath = `${path}.${key}`;
@@ -297,6 +385,7 @@ const VERSION = '1.0.0';
   const compiledLocationMeta = new WeakMap();
   let defaultFactionLibrary = null;
   let defaultLocationLibrary = null;
+  const ERA_IDS = new Set(['dldl', 'jueshitangmen', 'current', 'zjdl']);
 
   function libraryFail(code, path, value, message) {
     fail(code, 'library', path, value, message);
@@ -351,13 +440,209 @@ const VERSION = '1.0.0';
     return JSON.stringify(pathSegments);
   }
 
-  function resolveLibraryValue(library, type) {
-    if (library) return type === 'faction' ? (compiledFactionMeta.has(library) ? library : compileFactionLibrary(library)) : (compiledLocationMeta.has(library) ? library : compileLocationLibrary(library));
+  function runtimeWindows() {
+    const result = [global];
+    try { if (global.parent && global.parent !== global) result.push(global.parent); } catch (_) {}
+    try { if (global.top && global.top !== global && !result.includes(global.top)) result.push(global.top); } catch (_) {}
+    return result;
+  }
+
+  function readEraIntegration() {
+    for (const current of runtimeWindows()) {
+      try {
+        const integration = current?.__LWCS_ERA_RUNTIME_INTEGRATION_V1__;
+        if (integration) return integration;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function readDataRootTick(dataRoot) {
+    const value = dataRoot?.world?.时间?.tick;
+    const tick = Number(value);
+    return Number.isFinite(tick) && tick >= 0 ? tick : null;
+  }
+
+  function selectEraContext(options = {}) {
+    const explicitEraId = typeof options.eraId === 'string' ? options.eraId.trim() : '';
+    if (explicitEraId) {
+      if (!ERA_IDS.has(explicitEraId)) {
+        return { ok: false, status: 'failed', eraId: explicitEraId, selector: 'explicit-era', detail: `未知时代: ${explicitEraId}`, diagnostic: { code: 'ERA_UNKNOWN', selector: 'explicit-era' } };
+      }
+      return { ok: true, eraId: explicitEraId, selector: 'explicit-era', diagnostic: { selector: 'explicit-era' } };
+    }
+
+    const suppliedTick = options.absoluteTick === undefined || options.absoluteTick === null
+      ? readDataRootTick(options.dataRoot)
+      : Number(options.absoluteTick);
+    if (Number.isFinite(suppliedTick) && suppliedTick >= 0) {
+      const integration = readEraIntegration();
+      if (!integration || typeof integration.getEraContext !== 'function') {
+        return { ok: false, status: 'failed', eraId: null, selector: 'tick-context', detail: 'EraRuntime_Integration尚未注册', diagnostic: { code: 'ERA_CONTEXT_NOT_READY', selector: 'tick-context', tick: suppliedTick } };
+      }
+      try {
+        const context = integration.getEraContext(suppliedTick, { dataRoot: options.dataRoot });
+        return {
+          ok: true,
+          eraId: context.resourceEra,
+          selector: 'context-resource-era',
+          tick: suppliedTick,
+          context,
+          diagnostic: { selector: 'context-resource-era', tick: suppliedTick, narrativeEra: context.narrativeEra, resourceEra: context.resourceEra },
+        };
+      } catch (error) {
+        return { ok: false, status: 'failed', eraId: null, selector: 'tick-context', detail: error?.message || String(error), diagnostic: { code: 'ERA_CONTEXT_FAILED', selector: 'tick-context', tick: suppliedTick } };
+      }
+    }
+
+    return { ok: true, eraId: 'current', selector: 'implicit-current', diagnostic: { code: 'IMPLICIT_CURRENT', selector: 'implicit-current', detail: '未提供时代或可读tick，按current本地调用处理' } };
+  }
+
+  function compileResolvedLibrary(source, type) {
+    if (type === 'faction') return compiledFactionMeta.has(source) ? source : compileFactionLibrary(source);
+    return compiledLocationMeta.has(source) ? source : compileLocationLibrary(source);
+  }
+
+  function resolutionDiagnostic(selection, type, resourceStatus, source) {
+    return {
+      selector: selection.selector,
+      source: source || null,
+      resourceType: type,
+      resourceStatus,
+      ...(selection.diagnostic || {}),
+    };
+  }
+
+  function resolveEraLibrary(library, type, options = {}) {
+    const selection = selectEraContext(options);
+    if (!selection.ok) {
+      return {
+        status: selection.status,
+        library: null,
+        eraId: selection.eraId,
+        resourceType: type,
+        resourceStatus: selection.status,
+        detail: selection.detail || '',
+        diagnostic: resolutionDiagnostic(selection, type, selection.status, null),
+      };
+    }
+
+    const integration = readEraIntegration();
+    if (selection.selector !== 'implicit-current') {
+      if (!integration || typeof integration.getStaticSourceForEra !== 'function') {
+        return {
+          status: 'failed',
+          library: null,
+          eraId: selection.eraId,
+          resourceType: type,
+          resourceStatus: 'failed',
+          detail: 'EraRuntime_Integration按时代取源接口尚未注册',
+          diagnostic: resolutionDiagnostic(selection, type, 'failed', null),
+        };
+      }
+      let sourceResult;
+      try {
+        sourceResult = integration.getStaticSourceForEra(selection.eraId, type);
+      } catch (error) {
+        return {
+          status: 'failed',
+          library: null,
+          eraId: selection.eraId,
+          resourceType: type,
+          resourceStatus: 'failed',
+          detail: error?.message || String(error),
+          diagnostic: resolutionDiagnostic(selection, type, 'failed', 'era-runtime'),
+        };
+      }
+      if (!sourceResult || sourceResult.status !== 'resolved') {
+        const status = sourceResult?.status || 'failed';
+        return {
+          status,
+          library: null,
+          eraId: selection.eraId,
+          resourceType: type,
+          resourceStatus: status,
+          detail: sourceResult?.detail || '时代资源未就绪',
+          diagnostic: resolutionDiagnostic(selection, type, status, 'era-runtime'),
+        };
+      }
+      return {
+        status: 'resolved',
+        library: compileResolvedLibrary(sourceResult.source, type),
+        eraId: selection.eraId,
+        resourceType: type,
+        resourceStatus: 'loaded',
+        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'era-runtime'),
+      };
+    }
+
+    if (library) {
+      return {
+        status: 'resolved',
+        library: compileResolvedLibrary(library, type),
+        eraId: 'current',
+        resourceType: type,
+        resourceStatus: 'loaded',
+        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'provided-library'),
+      };
+    }
+
+    if (integration && typeof integration.getStaticSourceForEra === 'function') {
+      const sourceResult = integration.getStaticSourceForEra('current', type);
+      if (!sourceResult || sourceResult.status !== 'resolved') {
+        const status = sourceResult?.status || 'failed';
+        return {
+          status,
+          library: null,
+          eraId: 'current',
+          resourceType: type,
+          resourceStatus: status,
+          detail: sourceResult?.detail || '当前时代资源未就绪',
+          diagnostic: resolutionDiagnostic(selection, type, status, 'era-runtime'),
+        };
+      }
+      return {
+        status: 'resolved',
+        library: compileResolvedLibrary(sourceResult.source, type),
+        eraId: 'current',
+        resourceType: type,
+        resourceStatus: 'loaded',
+        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'era-runtime'),
+      };
+    }
+
     const globalName = type === 'faction' ? '__LWCS_内置势力库__' : '__LWCS_内置地点库__';
     const current = type === 'faction' ? defaultFactionLibrary : defaultLocationLibrary;
     const source = current || global[globalName];
-    if (!source) return null;
-    return type === 'faction' ? (compiledFactionMeta.has(source) ? source : compileFactionLibrary(source)) : (compiledLocationMeta.has(source) ? source : compileLocationLibrary(source));
+    if (!source) {
+      return {
+        status: 'unloaded',
+        library: null,
+        eraId: 'current',
+        resourceType: type,
+        resourceStatus: 'unloaded',
+        detail: '当前时代资源未注册',
+        diagnostic: resolutionDiagnostic(selection, type, 'unloaded', 'implicit-current'),
+      };
+    }
+    return {
+      status: 'resolved',
+      library: compileResolvedLibrary(source, type),
+      eraId: 'current',
+      resourceType: type,
+      resourceStatus: 'loaded',
+      diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'current-global'),
+    };
+  }
+
+  function decorateResolution(result, selection) {
+    return {
+      ...result,
+      eraId: selection.eraId,
+      resourceType: selection.resourceType,
+      resourceStatus: selection.resourceStatus,
+      diagnostic: selection.diagnostic,
+    };
   }
 
   function compileFactionLibrary(source) {
@@ -487,19 +772,21 @@ const VERSION = '1.0.0';
   }
 
   function resolveFaction(nameOrAlias, options = {}) {
-    const library = resolveLibraryValue(options.library, 'faction');
-    if (!library) return { status: 'unresolved', canonicalName: null, candidates: [], reason: 'library-missing' };
+    const selection = resolveEraLibrary(options.library, 'faction', options);
+    const finish = result => decorateResolution(result, selection);
+    if (selection.status !== 'resolved') return finish({ status: selection.status, canonicalName: null, candidates: [], reason: selection.detail || 'resource-not-ready' });
+    const library = selection.library;
     const meta = compiledFactionMeta.get(library);
     const name = String(nameOrAlias && typeof nameOrAlias === 'object' ? (nameOrAlias.规范名 || nameOrAlias.name || nameOrAlias.名称 || '') : nameOrAlias || '').trim();
-    if (!name) return { status: 'unresolved', canonicalName: null, candidates: [], reason: 'empty-query' };
-    if (meta.names.has(name)) return { status: 'resolved', canonicalName: name, candidates: [name], reason: 'exact-name' };
-    if (meta.aliases.has(name)) return { status: 'resolved', canonicalName: meta.aliases.get(name), candidates: [meta.aliases.get(name)], reason: 'alias' };
+    if (!name) return finish({ status: 'unresolved', canonicalName: null, candidates: [], reason: 'empty-query' });
+    if (meta.names.has(name)) return finish({ status: 'resolved', canonicalName: name, candidates: [name], reason: 'exact-name' });
+    if (meta.aliases.has(name)) return finish({ status: 'resolved', canonicalName: meta.aliases.get(name), candidates: [meta.aliases.get(name)], reason: 'alias' });
     if (options.allowKeyword && meta.keywords.has(name)) {
       const candidates = Array.from(new Set(meta.keywords.get(name)));
-      if (candidates.length === 1) return { status: 'resolved', canonicalName: candidates[0], candidates, reason: 'keyword' };
-      return { status: 'conflict', canonicalName: null, candidates, reason: 'keyword' };
+      if (candidates.length === 1) return finish({ status: 'resolved', canonicalName: candidates[0], candidates, reason: 'keyword' });
+      return finish({ status: 'conflict', canonicalName: null, candidates, reason: 'keyword' });
     }
-    return { status: 'unresolved', canonicalName: null, candidates: [], reason: 'not-found' };
+    return finish({ status: 'unresolved', canonicalName: null, candidates: [], reason: 'not-found' });
   }
 
   function resolveLocation(nameOrAlias, currentPath = [], options = {}) {
@@ -507,8 +794,10 @@ const VERSION = '1.0.0';
       options = currentPath;
       currentPath = options.currentPath || [];
     }
-    const library = resolveLibraryValue(options.library, 'location');
-    if (!library) return { status: 'unresolved', recordId: null, candidates: [], reason: 'library-missing' };
+    const selection = resolveEraLibrary(options.library, 'location', options);
+    const finish = result => decorateResolution(result, selection);
+    if (selection.status !== 'resolved') return finish({ status: selection.status, recordId: null, candidates: [], reason: selection.detail || 'resource-not-ready' });
+    const library = selection.library;
     const meta = compiledLocationMeta.get(library);
     const recordId = String(nameOrAlias && typeof nameOrAlias === 'object'
       ? (nameOrAlias.记录ID || '')
@@ -516,15 +805,15 @@ const VERSION = '1.0.0';
     const explicitRecordId = nameOrAlias && typeof nameOrAlias === 'object' && !!recordId;
     if (explicitRecordId && Object.prototype.hasOwnProperty.call(library.地点, recordId)) {
       const record = library.地点[recordId];
-      return { status: 'resolved', recordId, canonicalName: record.规范名, path: record.目标路径, candidates: [recordId], reason: 'record-id' };
+      return finish({ status: 'resolved', recordId, canonicalName: record.规范名, path: record.目标路径, candidates: [recordId], reason: 'record-id' });
     }
     const query = String(nameOrAlias && typeof nameOrAlias === 'object' ? (nameOrAlias.规范名 || nameOrAlias.name || nameOrAlias.名称 || '') : nameOrAlias || '').trim();
-    if (!query) return { status: 'unresolved', recordId: null, candidates: [], reason: 'empty-query' };
+    if (!query) return finish({ status: 'unresolved', recordId: null, candidates: [], reason: 'empty-query' });
     const normalizedCurrentPath = Array.isArray(currentPath) ? currentPath : [];
     const pathCandidates = meta.paths.get(pathKey(normalizedCurrentPath)) || [];
     if (!explicitRecordId && pathCandidates.length && (query === normalizedCurrentPath.join('-') || query === normalizedCurrentPath.join('/') || query === normalizedCurrentPath[normalizedCurrentPath.length - 1])) {
-      if (pathCandidates.length > 1) return { status: 'conflict', recordId: null, candidates: pathCandidates, reason: 'path' };
-      return { status: 'resolved', recordId: pathCandidates[0], canonicalName: library.地点[pathCandidates[0]].规范名, path: library.地点[pathCandidates[0]].目标路径, candidates: pathCandidates, reason: 'path' };
+      if (pathCandidates.length > 1) return finish({ status: 'conflict', recordId: null, candidates: pathCandidates, reason: 'path' });
+      return finish({ status: 'resolved', recordId: pathCandidates[0], canonicalName: library.地点[pathCandidates[0]].规范名, path: library.地点[pathCandidates[0]].目标路径, candidates: pathCandidates, reason: 'path' });
     }
     let candidates = meta.names.get(query) || [];
     let reason = 'exact-name';
@@ -538,19 +827,22 @@ const VERSION = '1.0.0';
     }
     if (candidates.length === 1) {
       const record = library.地点[candidates[0]];
-      return { status: 'resolved', recordId: candidates[0], canonicalName: record.规范名, path: record.目标路径, candidates, reason };
+      return finish({ status: 'resolved', recordId: candidates[0], canonicalName: record.规范名, path: record.目标路径, candidates, reason });
     }
-    if (candidates.length > 1) return { status: 'conflict', recordId: null, candidates, reason };
+    if (candidates.length > 1) return finish({ status: 'conflict', recordId: null, candidates, reason });
     if (recordId && Object.prototype.hasOwnProperty.call(library.地点, recordId)) {
       const record = library.地点[recordId];
-      return { status: 'resolved', recordId, canonicalName: record.规范名, path: record.目标路径, candidates: [recordId], reason: 'record-id' };
+      return finish({ status: 'resolved', recordId, canonicalName: record.规范名, path: record.目标路径, candidates: [recordId], reason: 'record-id' });
     }
-    return { status: 'unresolved', recordId: null, candidates: [], reason: 'not-found' };
+    return finish({ status: 'unresolved', recordId: null, candidates: [], reason: 'not-found' });
   }
 
   function collectLibraryHits(text, type, options = {}) {
-    const library = resolveLibraryValue(options.library, type);
-    if (!library || typeof text !== 'string' || !text.trim()) return { status: 'unresolved', hits: [], conflicts: [], reason: library ? 'empty-text' : 'library-missing' };
+    const selection = resolveEraLibrary(options.library, type, options);
+    const finish = result => decorateResolution(result, selection);
+    if (selection.status !== 'resolved') return finish({ status: selection.status, hits: [], conflicts: [], reason: selection.detail || 'resource-not-ready' });
+    const library = selection.library;
+    if (typeof text !== 'string' || !text.trim()) return finish({ status: 'unresolved', hits: [], conflicts: [], reason: 'empty-text' });
     const meta = type === 'faction' ? compiledFactionMeta.get(library) : compiledLocationMeta.get(library);
     const exactTerms = [];
     if (type === 'faction') {
@@ -600,7 +892,7 @@ const VERSION = '1.0.0';
       const end = start + String(conflict.term || '').length;
       return !hits.some(hit => hit.index <= start && hit.index + String(hit.term || '').length >= end);
     });
-    return { status: unresolvedConflicts.length ? 'conflict' : (hits.length ? 'resolved' : 'unresolved'), hits, conflicts: unresolvedConflicts };
+    return finish({ status: unresolvedConflicts.length ? 'conflict' : (hits.length ? 'resolved' : 'unresolved'), hits, conflicts: unresolvedConflicts });
   }
 
   function collectFactionHits(text, options = {}) {
@@ -614,7 +906,7 @@ const VERSION = '1.0.0';
   function buildFactionInstance(canonicalName, statData = {}, options = {}) {
     const resolved = resolveFaction(canonicalName, { ...options, allowKeyword: false });
     if (resolved.status !== 'resolved') libraryFail(resolved.status === 'conflict' ? 'LIBRARY_REFERENCE_CONFLICT' : 'LIBRARY_REFERENCE_UNRESOLVED', '$.势力', canonicalName, `无法唯一解析势力: ${canonicalName}`);
-    const library = resolveLibraryValue(options.library, 'faction');
+    const library = resolveEraLibrary(options.library, 'faction', options).library;
     const sourceRecord = library.势力[resolved.canonicalName];
     const instance = clone(sourceRecord);
     if (statData !== undefined && statData !== null) {
@@ -672,7 +964,7 @@ const VERSION = '1.0.0';
   }
 
   function buildLocationInstantiationOps(recordId, statData = {}, options = {}) {
-    const library = resolveLibraryValue(options.library, 'location');
+    const library = resolveEraLibrary(options.library, 'location', options).library;
     if (!library || !Object.prototype.hasOwnProperty.call(library.地点, recordId)) libraryFail('LIBRARY_REFERENCE_UNRESOLVED', `$.地点.${recordId}`, recordId, `地点记录不存在: ${recordId}`);
     const meta = compiledLocationMeta.get(library);
     const targetRecord = library.地点[recordId];
@@ -701,12 +993,18 @@ const VERSION = '1.0.0';
   const API = Object.freeze({
     version: VERSION,
     profiles: PROFILES,
+    ticksPerYear: TICKS_PER_YEAR,
+    ticksPerMillennium: TICKS_PER_MILLENNIUM,
+    eraThresholds: ERA_THRESHOLDS,
     LibraryContractError,
     parseDateTime,
     formatDateTime,
     toTick,
     fromTick,
     durationToTicks,
+    resolveEraAtTick,
+    getEraTransitions,
+    getCultivationEraBlend,
     compileCharacterLibrary,
     compileItemLibrary: (source, profileId) => {
       assertProfile(profileId);
