@@ -2541,7 +2541,12 @@ function 读取成长模板附近事件文本_V1(当前tick = 0) {
   const 时间线事件源 = 读取时间线事件源_V1();
   const 时间线事件列表 = Array.isArray(时间线事件源) ? 时间线事件源 : Object.values(时间线事件源 || {}).flat();
   return 时间线事件列表
-    .filter(事件 => Number.isFinite(Number(事件?.触发tick)) && Math.abs(Number(事件.触发tick) - 当前tick数值) <= 内置角色预备出场窗口tick_V1)
+    .filter(事件 => {
+      const 事件tick = Number(事件?.触发tick);
+      return Number.isFinite(事件tick)
+        && 事件tick <= 当前tick数值
+        && 当前tick数值 - 事件tick <= 内置角色预备出场窗口tick_V1;
+    })
     .map(事件 => [事件?.标识, 事件?.章节, 事件?.描述, 事件?.简述].join('\n'))
     .join('\n');
 }
