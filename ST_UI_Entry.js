@@ -1042,6 +1042,50 @@
     尝试注册();
   }
 
+  function 注册消息统计脚本按钮() {
+    try {
+      if (宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__) return true;
+      if (
+        typeof appendInexistentScriptButtons !== 'function' ||
+        typeof getButtonEvent !== 'function' ||
+        typeof eventOn !== 'function'
+      ) {
+        return false;
+      }
+      appendInexistentScriptButtons([{ name: '消息统计', visible: true }]);
+      eventOn(getButtonEvent('消息统计'), async () => {
+        try {
+          await 确保模块已加载('请求监控挂件', { 来源: 'request_monitor_button', 允许失败降级: false, 抛错: true });
+          const 等待开始 = Date.now();
+          let 悬浮按钮 = null;
+          while (!悬浮按钮 && Date.now() - 等待开始 < 5000) {
+            悬浮按钮 = 宿主文档.querySelector('#request-monitor-root .rm-fab');
+            if (!悬浮按钮) await 睡眠(100);
+          }
+          if (!悬浮按钮 || typeof 悬浮按钮.click !== 'function') throw new Error('请求统计界面未就绪');
+          悬浮按钮.click();
+        } catch (错误) {
+          console.error('[MVU] 消息统计按钮执行失败:', 错误);
+          显示入口按钮提示(构建入口按钮错误文本('消息统计', 错误), 'error');
+        }
+      });
+      宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__ = true;
+      return true;
+    } catch (错误) {
+      console.warn('[MVU] 消息统计按钮注册失败:', 错误);
+      return false;
+    }
+  }
+
+  function 安排消息统计脚本按钮注册() {
+    const 启动时间 = Date.now();
+    const 尝试注册 = () => {
+      if (注册消息统计脚本按钮()) return;
+      if (Date.now() - 启动时间 < 12000) setTimeout(尝试注册, 500);
+    };
+    尝试注册();
+  }
+
   function 清理已废弃防护配置() {
     try {
       const 候选窗口 = [window, 宿主窗口];
@@ -1201,6 +1245,7 @@
   }
 
   安排冷归档脚本按钮注册();
+  安排消息统计脚本按钮注册();
   安排已废弃防护配置清理();
   监控并启动引导();
 })();

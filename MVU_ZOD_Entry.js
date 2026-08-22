@@ -390,7 +390,11 @@ function 读取MVU共享全局值_V1(键名) {
 async function 确保库数据运行时_V1() {
   const 宿主 = MVU共享宿主窗口_V1;
   const 就绪 = 宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
-  if (就绪 && 就绪.version === '2.0.0') return 就绪;
+  if (就绪 && 就绪.version === '2.0.0') {
+    发布MVU模块状态_V1('LibraryData_Runtime.js', 'loaded', '已存在');
+    return 就绪;
+  }
+  发布MVU模块状态_V1('LibraryData_Runtime.js', 'loading', '下载并执行');
   const 加载承诺 = MVU资源所有者_V1.loadResource('LibraryData_Runtime.js', {
     mode: 'script-global',
     ready: () => {
@@ -401,7 +405,9 @@ async function 确保库数据运行时_V1() {
   宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
   globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
   try {
-    return await 加载承诺;
+    const 运行时 = await 加载承诺;
+    发布MVU模块状态_V1('LibraryData_Runtime.js', 'loaded', '完成');
+    return 运行时;
   } catch (错误) {
     if (宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ === 加载承诺) delete 宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
     if (globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ === 加载承诺) delete globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
@@ -428,15 +434,20 @@ async function 读取MVU当前数据根_V1() {
   return null;
 }
 
-async function 预加载MVU当前时代资源_V1() {
+async function 加载MVU当前时代核心资源_V1() {
   const 集成 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
   const 根 = await 读取MVU当前数据根_V1();
-  const 当前tick = Number(根?.world?.时间?.tick);
+  let 当前tick = Number(根?.world?.时间?.tick);
+  if (!Number.isFinite(当前tick) || 当前tick < 0) {
+    const 注册表 = 读取MVU共享全局值_V1('__LWCS_ERA_DATA_REGISTRY_V1__');
+    const 运行时 = 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__');
+    当前tick = Number(注册表?.getEraDataSource?.('current')?.startYear) * Number(运行时?.ticksPerYear);
+  }
   if (!集成 || typeof 集成.ensureEraResourcesForTick !== 'function' || !Number.isFinite(当前tick) || 当前tick < 0) {
-    return { status: 'not-ready', reason: 'current_tick_unavailable' };
+    throw new Error('MVU当前时代核心资源缺少有效时代上下文');
   }
   try {
-    const 结果 = await 集成.ensureEraResourcesForTick(当前tick, ['character', 'item', 'faction', 'location', 'timeline'], {
+    const 结果 = await 集成.ensureEraResourcesForTick(当前tick, ['character', 'item', 'faction', 'location'], {
       reason: 'mvu-core-consumer-demand',
       dataRoot: 根,
     });
@@ -446,7 +457,7 @@ async function 预加载MVU当前时代资源_V1() {
     const 诊断 = { status: 'failed', reason: 错误?.message || String(错误 || 'era_resource_load_failed'), tick: 当前tick };
     同步MVU全局字段_V1('__LWCS_MVU_CURRENT_ERA_RESOURCE_CONTEXT_V1__', 诊断);
     console.warn('[LWCS] 当前时代资源未就绪：', 错误);
-    return 诊断;
+    throw 错误;
   }
 }
 
@@ -467,7 +478,7 @@ await 加载MVU经典依赖_V1('EraCultivation_Runtime.js', () => {
   const 修炼运行时 = 读取MVU共享全局值_V1('__LWCS_ERA_CULTIVATION_RUNTIME_V1__');
   return !!修炼运行时 && typeof 修炼运行时.settleMeditationSegment === 'function';
 });
-await 预加载MVU当前时代资源_V1();
+await 加载MVU当前时代核心资源_V1();
 await 加载MVU数据源模块_V1('IntelEvents.js', 'IntelEvents', '情报开始时间', '情报完成时间', '情报错误');
 
 await 加载MVU经典依赖_V1('MVU_Skill_Runtime.js', () =>

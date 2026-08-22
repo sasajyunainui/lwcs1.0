@@ -526,6 +526,19 @@
         diagnostic: resolutionDiagnostic(selection, type, selection.status, null),
       };
     }
+    const 未就绪标记 = library && typeof library === 'object' ? library.__LWCS_RESOURCE_NOT_READY__ : null;
+    if (未就绪标记 && typeof 未就绪标记 === 'object') {
+      const 资源状态 = String(未就绪标记.status || 'unloaded');
+      return {
+        status: 'unloaded',
+        library: null,
+        eraId: selection.eraId,
+        resourceType: type,
+        resourceStatus: 资源状态,
+        detail: String(未就绪标记.detail || 未就绪标记.reason || '时代资源尚未加载'),
+        diagnostic: resolutionDiagnostic(selection, type, 资源状态, 'not-ready-placeholder'),
+      };
+    }
 
     const integration = readEraIntegration();
     if (selection.selector !== 'implicit-current') {

@@ -75,16 +75,9 @@ function 加载模块脚本入口(入口地址) {
     const 完成 = 结果 => {
       if (已完成) return;
       已完成 = true;
-      clearTimeout(超时器);
       if (结果 === true) resolve(入口地址);
       else reject(结果 instanceof Error ? 结果 : new Error(`入口脚本加载失败: ${入口地址}`));
     };
-    const 超时器 = setTimeout(() => {
-      try {
-        脚本.remove();
-      } catch (错误) {}
-      完成(new Error(`入口脚本加载超时:${请求超时毫秒}ms ${入口地址}`));
-    }, 请求超时毫秒);
     脚本.type = 'module';
     脚本.src = 入口地址;
     脚本.onload = () => 完成(true);
@@ -121,6 +114,8 @@ if (typeof 共享启动状态.mvuStage !== 'string') 共享启动状态.mvuStage
 if (typeof 共享启动状态.mvuTrackingComplete !== 'boolean') 共享启动状态.mvuTrackingComplete = false;
 
 function 更新MVU入口追踪(状态, 阶段, 错误 = '') {
+  const 原顺序 = 共享启动状态.mvuModules.map(项目 => 项目.名称);
+  const 追踪顺序 = 原顺序.length ? 原顺序 : MVU追踪模块顺序;
   const 状态表 = new Map(共享启动状态.mvuModules.map(项目 => [项目.名称, { ...项目 }]));
   if (!状态表.size) {
     MVU追踪模块顺序.forEach(名称 => {
@@ -129,7 +124,7 @@ function 更新MVU入口追踪(状态, 阶段, 错误 = '') {
   }
   状态表.set(入口文件名, { 名称: 入口文件名, 状态, 阶段, 错误 });
   共享启动状态.mvuStage = 阶段;
-  共享启动状态.mvuModules = MVU追踪模块顺序.map(名称 =>
+  共享启动状态.mvuModules = [入口文件名, ...追踪顺序.filter(名称 => 名称 !== 入口文件名)].map(名称 =>
     状态表.get(名称) || { 名称, 状态: 'pending', 阶段: '等待', 错误: '' }
   );
   共享启动状态.mvuTrackingComplete = 共享启动状态.mvuModules.every(项目 =>
@@ -192,11 +187,10 @@ try {
       } catch (错误) {}
 
       const 入口地址 = `${资源基础地址}${入口文件名}`;
-      try {
-        await withTimeout(import(入口地址), `导入 ${入口地址}`);
-      } catch (导入错误) {
-        await 加载模块脚本入口(入口地址);
-      }
+      const 入口响应 = await withTimeout(fetch(入口地址, { cache: 'force-cache' }), `读取 ${入口地址}`);
+      if (!入口响应.ok) throw new Error(`MVU入口读取失败: ${入口响应.status}`);
+      await 入口响应.text();
+      await 加载模块脚本入口(入口地址);
       预取关键资源(资源基础地址);
       已加载 = true;
       break;
