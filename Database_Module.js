@@ -9072,10 +9072,14 @@ $CONTENT
                 return safeClone(getNamespaceStore(target.message, namespace, false)?.namespaceStore?.[key]);
             },
             async listKeys({ namespace }) {
-                const target = findTargetAiMessage_ACU(getChatArray_ACU(), undefined);
-                if (!target)
-                    return [];
-                return Object.keys(getNamespaceStore(target.message, namespace, false)?.namespaceStore || {});
+                const keys = new Set();
+                for (const message of getChatArray_ACU()) {
+                    if (!message || message.is_user)
+                        continue;
+                    for (const key of Object.keys(getNamespaceStore(message, namespace, false)?.namespaceStore || {}))
+                        keys.add(key);
+                }
+                return [...keys];
             },
             async deleteJson({ namespace, key }) {
                 const target = findStoredKey(namespace, key) || findTargetAiMessage_ACU(getChatArray_ACU(), undefined);
@@ -18201,24 +18205,6 @@ $CONTENT
         }
         return nextTags;
     }
-    function 构建模块路由事件系统消息_ACU(事件列表 = []) {
-        const 有效事件列表 = (Array.isArray(事件列表) ? 事件列表 : [])
-            .map(item => String(item || '').trim())
-            .filter(Boolean);
-        if (!有效事件列表.length)
-            return null;
-        return {
-            role: 'system',
-            content: 有效事件列表.join('\n\n'),
-        };
-    }
-    function 合并模块路由事件系统消息_ACU(systemMessages = [], 事件列表 = []) {
-        const 基础消息 = Array.isArray(systemMessages) ? [...systemMessages] : [];
-        const 事件消息 = 构建模块路由事件系统消息_ACU(事件列表);
-        if (事件消息)
-            基础消息.push(事件消息);
-        return 基础消息;
-    }
     function hasMeaningfulTagContents_ACU(contents) {
         if (Array.isArray(contents)) {
             return contents.some((content) => String(content ?? '').trim() !== '');
@@ -18440,7 +18426,7 @@ $CONTENT
         const baseDirective = String(finalSystemDirectiveContent || '').trim() || defaultDirective;
         const rawFallbackText = buildPlotRawFallbackText_ACU(taskResults);
         const placeholderNames = getPlotPlaceholderTagNames_ACU(baseDirective);
-        const shouldSkipFinalTag = (tagName) => ['module_routing', 'battle_adjudication'].includes(String(tagName || '').trim());
+        const shouldSkipFinalTag = (tagName) => ['module_routing', 'module_routing_result', 'battle_adjudication'].includes(String(tagName || '').trim());
         if (aggregatedTags instanceof Map && aggregatedTags.size > 0) {
             if (placeholderNames.length > 0) {
                 const matchedTags = new Set();
@@ -19066,7 +19052,6 @@ $CONTENT
             }
             logDebug_ACU(`[剧情推进] 阶段 ${stageGroup.stage} 开始执行，任务级API预设将按各任务独立决议。`);
             const stageRelayTagMap = 合并模块路由事件到标签_ACU(过滤阶段传递标签_ACU(aggregatedTags), 本轮模块路由事件列表);
-            const stageSystemMessages = 合并模块路由事件系统消息_ACU(systemMessages, 本轮模块路由事件列表);
             const stageResults = await Promise.all(stageGroup.tasks.map((task) => {
                 const stageTask = stageEffectivePreset
                     ? { ...task, taskApiPreset: stageEffectivePreset }
@@ -19075,7 +19060,7 @@ $CONTENT
                     relayTagMap: stageRelayTagMap,
                     historyTagMap,
                     historyLookupOptions,
-                    systemMessages: stageSystemMessages,
+                    systemMessages,
                 });
             }));
             checkPlotAbortRequested_ACU();
@@ -19224,13 +19209,7 @@ $CONTENT
             taskResults: successfulResults,
         });
         logDebug_ACU('[剧情推进] [Plot] 已暂存plot数据，用户输入哈希:', userInputHash, '，原始文本长度:', inputForHash?.length || 0);
-        const transientStoryInjects = [
-            ...sortPlotTaskResults_ACU(successfulResults)
-            .map(result => result?.success && typeof result.rawResponse === 'string'
-            ? buildPlotTagBlock_ACU('scene_audit', extractLastTagContent_ACU(result.rawResponse, 'scene_audit'))
-            : '')
-            .filter(Boolean),
-        ].filter(Boolean);
+        const transientStoryInjects = [];
         const 最终聚合标签 = 合并模块路由事件到标签_ACU(aggregatedTags, 本轮模块路由事件列表);
         const finalMessage = buildFinalPlotInjectionMessage_ACU(sharedContext.finalSystemDirectiveContent, successfulResults, 最终聚合标签, aggregatedInjectOnlyTagNames);
         logDebug_ACU('[剧情推进] 最终正文注入长度:', finalMessage.length);

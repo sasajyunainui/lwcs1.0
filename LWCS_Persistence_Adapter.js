@@ -350,6 +350,9 @@
         const readBack = await backend.getJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
         assertGeneration(sessionIdentity.chatGeneration);
         if (!jsonEqual(readBack, value)) return null;
+        const keysBeforeDelete = await backend.listKeys({ namespace: PROBE_NAMESPACE, stableChatId: sessionIdentity.stableChatId });
+        assertGeneration(sessionIdentity.chatGeneration);
+        if (!Array.isArray(keysBeforeDelete) || !keysBeforeDelete.includes(key)) return null;
         await backend.deleteJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
         deleteAttempted = true;
         writeCompleted = false;

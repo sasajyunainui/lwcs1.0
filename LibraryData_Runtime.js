@@ -298,6 +298,24 @@
     const output = compileDates(clone(source), profileId);
     output.每年tick = MINUTES_PER_YEAR / MINUTES_PER_TICK;
     if (!output.角色 || typeof output.角色 !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$.角色', output.角色, '角色库缺少角色表');
+    Object.entries(output.角色).forEach(([角色名, 角色记录]) => {
+      if (!角色记录 || typeof 角色记录 !== 'object') fail('REFERENCE_UNRESOLVED', profileId, `$.角色.${角色名}`, 角色记录, '角色记录不是对象');
+      (Array.isArray(角色记录.快照) ? 角色记录.快照 : []).forEach((快照, index) => {
+        const tick = Number(快照?.触发tick);
+        if (!Number.isFinite(tick)) fail('TICK_INVALID', profileId, `$.角色.${角色名}.快照[${index}]`, 快照, '角色快照缺少合法时间');
+        快照.tick = tick;
+        delete 快照.触发tick;
+      });
+    });
+    Object.entries(output.开场节点 || {}).forEach(([节点名, 节点]) => {
+      const 角色名 = String(节点?.角色名 || '').trim();
+      const 快照节点 = String(节点?.快照节点 || '').trim();
+      const 快照 = output.角色?.[角色名]?.快照?.find(条目 => String(条目?.节点 || '').trim() === 快照节点);
+      if (!快照) fail('REFERENCE_UNRESOLVED', profileId, `$.开场节点.${节点名}`, 节点, `开场节点未绑定有效角色快照: ${角色名 || '空角色'}/${快照节点 || '空节点'}`);
+      节点.时间 = 快照.时间;
+      节点.tick = 快照.tick;
+      delete 节点.触发tick;
+    });
     return freezeDeep(output);
   }
 

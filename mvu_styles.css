@@ -8043,7 +8043,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage .map-action-menu 
 }
 
 .mvu-spirit-archive-shell .spirit-flow-card {
-  overflow: visible;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .mvu-spirit-archive-shell .soul-expand-stack {
@@ -11296,7 +11299,11 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-det
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-spirit-detail-grid {
-  grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.18fr) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-armory-detail-grid,
@@ -16114,6 +16121,16 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-for
 body.mvu-layout-holo
   #mvu-unified-mount
   .mvu-unified-detail-host
+  .mvu-spirit-archive-shell
+  .mvu-spirit-matrix-list {
+  height: 100% !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+body.mvu-layout-holo
+  #mvu-unified-mount
+  .mvu-unified-detail-host
   .mvu-detail-scroll-list:not(.role-switch-grid)::-webkit-scrollbar,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed::-webkit-scrollbar,
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-form-grid::-webkit-scrollbar,
@@ -16166,6 +16183,87 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-too
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-toolbar--tight,
 #detailModal.mvu-modal-display-unified .mvu-detail-toolbar--tight {
   margin-top: 8px !important;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-shell,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-shell {
+  width: 100% !important;
+  max-width: 760px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+  padding: clamp(8px, 2vw, 24px) !important;
+  align-content: center !important;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-card,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-card {
+  display: grid !important;
+  gap: 14px !important;
+  width: 100% !important;
+  padding: clamp(16px, 2.4vw, 26px) !important;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-state,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-state {
+  margin-left: auto;
+  color: var(--文字弱色);
+  font-size: var(--mvu-font-xs, 10px);
+  letter-spacing: 0.12em;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-intro,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-intro {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px 13px;
+  border-left: 3px solid color-mix(in srgb, var(--主题主色) 76%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--主题主色) 10%, transparent), transparent 82%);
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-intro strong,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-intro strong {
+  color: var(--文字主色);
+  font-size: var(--mvu-font-base, 13px);
+  line-height: 1.25;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-intro span,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-intro span {
+  color: var(--文字弱色);
+  font-size: var(--mvu-font-sm, 12px);
+  line-height: 1.45;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-meta,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-meta {
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)) !important;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-actions,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-actions {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 10px !important;
+  width: 100%;
+  margin-top: 2px !important;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-action,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-action {
+  min-height: 48px;
+  padding: 10px 18px;
+  border-radius: var(--mvu-radius-md, 12px);
+  font-size: var(--mvu-font-base, 13px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .skill-design-confirm-action:focus-visible,
+#detailModal.mvu-modal-display-unified .skill-design-confirm-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--主题高光) 72%, transparent);
+  outline-offset: 2px;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-action-row--start,
@@ -18542,6 +18640,10 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host {
   font-size: var(--mvu-font-sm, 12px);
   line-height: 1.4;
   scrollbar-width: none;
+}
+
+body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host:has(.mvu-spirit-archive-shell) {
+  overflow-y: hidden;
 }
 
 body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host::before,
@@ -21806,7 +21908,6 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-grid--trial,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-intel-grid,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-card-grid--two,
-  body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-spirit-detail-grid,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .dossier-profile-flow {
     grid-template-columns: minmax(0, 1fr) !important;
     height: auto !important;
@@ -22433,7 +22534,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
   body.mvu-layout-holo
     #mvu-unified-mount
     .mvu-unified-detail-host
-    .mvu-detail-scroll-list:not(.mvu-quest-scroll-list),
+    .mvu-detail-scroll-list:not(.mvu-quest-scroll-list):not(.mvu-spirit-matrix-list),
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-embed,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .mvu-detail-form-grid,
   body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .location-brief-row > span,
@@ -23843,7 +23944,8 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-map-stage {
     padding: 10px 10px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  #detailModal.mvu-modal-display-unified .mvu-detail-scroll-list:not(.mvu-quest-scroll-list),
+  #detailModal.mvu-modal-display-unified
+    .mvu-detail-scroll-list:not(.mvu-quest-scroll-list):not(.mvu-spirit-matrix-list),
   #detailModal.mvu-modal-display-unified .mvu-detail-embed,
   #detailModal.mvu-modal-display-unified .mvu-detail-form-grid,
   #detailModal.mvu-modal-display-unified .mvu-armory-main-grid > .archive-card,
@@ -26556,7 +26658,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .archive-redesi
     position: static !important;
   }
 
-  #detailModal .mvu-detail-scroll-list:not(.mvu-quest-scroll-list),
+  #detailModal .mvu-detail-scroll-list:not(.mvu-quest-scroll-list):not(.mvu-spirit-matrix-list),
   #detailModal .mvu-detail-embed,
   #detailModal .mvu-detail-form-grid,
   #detailModal .mvu-armory-main-grid > .archive-card,
@@ -28294,7 +28396,7 @@ body.mvu-layout-holo #mvu-unified-mount .mvu-unified-detail-host .injury-action-
 
   #detailModal.archive-redesign-mode.mvu-modal-display-split
     .archive-redesign-root
-    .mvu-detail-scroll-list:not(.mvu-quest-scroll-list),
+    .mvu-detail-scroll-list:not(.mvu-quest-scroll-list):not(.mvu-spirit-matrix-list),
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-detail-embed,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-detail-form-grid,
   #detailModal.archive-redesign-mode.mvu-modal-display-split .archive-redesign-root .mvu-armory-main-grid > .archive-card,

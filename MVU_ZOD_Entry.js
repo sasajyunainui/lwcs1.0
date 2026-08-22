@@ -456,7 +456,7 @@ async function 加载MVU当前时代核心资源_V1() {
     throw new Error('MVU当前时代核心资源缺少有效时代上下文');
   }
   try {
-    const 结果 = await 集成.ensureEraResourcesForTick(当前tick, ['character', 'item', 'faction', 'location'], {
+    const 结果 = await 集成.ensureEraResourcesForTick(当前tick, ['character', 'item', 'faction', 'location', 'timeline'], {
       reason: 'mvu-core-consumer-demand',
       dataRoot: 根,
     });

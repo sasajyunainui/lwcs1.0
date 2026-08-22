@@ -190,7 +190,7 @@ function 记录运行时冷实体发送_V1(实体表 = {}) {
   }
 }
 
-var 古月娜融合成立tick_V1 = 643159;
+var 古月娜融合成立tick_V1 = DEFAULT_NEW_GAME_TICK_SCHEMA_RUNTIME + 643159;
 var 内置角色预备出场窗口tick_V1 = 3 * 30 * 144;
 
 function 是否古月娜融合阶段_V1(当前tick = 0, 数据根 = {}) {
@@ -200,7 +200,7 @@ function 是否古月娜融合阶段_V1(当前tick = 0, 数据根 = {}) {
 function 读取内置角色记录_V1(角色名 = '', 当前tick = 0, 数据根 = {}) {
   const 规范名 = 解析内置角色规范名_V1(角色名, 当前tick, 数据根);
   if (!规范名) return null;
-  return 读取内置角色库_V1().角色?.[规范名] || null;
+  return 读取内置角色库_V1(数据根, 当前tick).角色?.[规范名] || null;
 }
 
 function 读取内置角色别名条目_V1() {
@@ -3211,26 +3211,44 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
 function 解析开场时间线入库命令_V1(命令文本 = '') {
   const 匹配 = String(命令文本 || '').match(/<LWCS_开场时间线入库>\s*([\s\S]*?)\s*<\/LWCS_开场时间线入库>/);
   if (!匹配) throw new Error('缺少开场时间线入库命令');
-  const 开场节点 = String(匹配[1] || '').trim();
-  if (!['6岁', '9岁', '13岁'].includes(开场节点)) throw new Error(`开场时间线入库节点无效：${开场节点 || '空'}`);
-  return 开场节点;
+  let 载荷;
+  try {
+    载荷 = JSON.parse(String(匹配[1] || '').trim());
+  } catch (错误) {
+    throw new Error('开场时间线入库命令必须是JSON对象');
+  }
+  const eraId = String(载荷?.eraId || '').trim();
+  const 开场节点 = String(载荷?.node || '').trim();
+  if (!eraId || !开场节点) throw new Error('开场时间线入库命令缺少eraId或node');
+  return { eraId, 开场节点 };
 }
 
 function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本 = '') {
   if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
   if (!数据根.char || typeof 数据根.char !== 'object' || Array.isArray(数据根.char)) 数据根.char = {};
-  const 开场节点 = 解析开场时间线入库命令_V1(命令文本);
+  const { eraId, 开场节点 } = 解析开场时间线入库命令_V1(命令文本);
   const tick数值 = Number(数据根?.world?.时间?.tick || 0);
   const 当前tick = Number.isFinite(tick数值) ? tick数值 : 0;
-  const 角色库 = 读取内置角色库_V1();
+  const 时代集成 = 读取时代运行时集成_V1();
+  if (!时代集成 || typeof 时代集成.getStaticSourceForEra !== 'function' || typeof 时代集成.resolveResourceEraAtTick !== 'function') {
+    throw new Error('时代运行时接口未就绪');
+  }
+  const 资源结果 = 时代集成.getStaticSourceForEra(eraId, 'character');
+  if (资源结果?.status !== 'resolved' || !资源结果.source?.角色) throw new Error(`开场时代角色库未就绪：${eraId}`);
+  const 角色库 = 资源结果.source;
+  const 节点定义 = 角色库.开场节点?.[开场节点];
+  if (!节点定义 || !Number.isFinite(Number(节点定义.tick))) throw new Error(`开场节点无效：${eraId}/${开场节点}`);
+  if (时代集成.resolveResourceEraAtTick(当前tick) !== eraId) throw new Error(`开场tick与时代不一致：${eraId}/${当前tick}`);
+  if (Math.abs(Number(节点定义.tick) - 当前tick) > 1e-9) throw new Error(`开场tick与快照不一致：${开场节点}`);
   const 已写入 = [];
   Object.values(角色库.角色 || {}).forEach(角色记录 => {
     const 角色名 = String(角色记录?.角色名 || '').trim();
     if (!角色名) return;
     const 节点列表 = Array.isArray(角色记录?.开场常驻节点) ? 角色记录.开场常驻节点 : [];
-    if (!节点列表.includes(开场节点)) return;
+    if (!节点列表.includes(开场节点) && 角色名 !== 节点定义.角色名) return;
     if (数据根.char[角色名] && !是内置角色空壳_V1(数据根.char[角色名])) return;
-    const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根, { 指定快照节点: 开场节点 });
+    const 指定快照节点 = 角色名 === 节点定义.角色名 ? 节点定义.快照节点 : 开场节点;
+    const 角色 = 构建内置角色实例_V1(角色名, 当前tick, 数据根, { 指定快照节点 });
     if (!角色) return;
     const 临时根 = { ...数据根, char: { [角色名]: 角色 } };
     水合角色物品引用_V1(临时根);
@@ -3247,7 +3265,7 @@ function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本
   const 已同步 = 同步银龙融合旧实体状态_V1(数据根, 当前tick);
   const 已补成长技能 = 应用内置角色成长技能模板_V1(数据根, {});
   const 已变更 = Array.from(new Set([...已写入, ...已同步, ...已补成长技能]));
-  return { changed: 已变更.length > 0, changedNames: 已变更, names: 已变更, 开场节点 };
+  return { changed: 已变更.length > 0, changedNames: 已变更, names: 已变更, eraId, 开场节点 };
 }
 
 function 角色存在空技能效果数组_V1(节点 = null) {

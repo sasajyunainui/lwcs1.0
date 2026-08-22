@@ -13570,13 +13570,13 @@
     const 文本 = toText(角色名, '').trim();
     const 角色表 = 角色库 && 角色库.角色 && typeof 角色库.角色 === 'object' ? 角色库.角色 : {};
     if (!文本 || !角色表 || typeof 角色表 !== 'object') return '';
-    if (文本 === '古月娜' && Number(当前tick || 0) < 643159 && !(数据根?.char && 数据根.char.古月娜)) return '';
-    if (文本 === '古月' && Number(当前tick || 0) >= 643159 && 角色表.古月娜) return '古月娜';
+    if (文本 === '古月娜' && Number(当前tick || 0) < 20000 * 51840 + 643159 && !(数据根?.char && 数据根.char.古月娜)) return '';
+    if (文本 === '古月' && Number(当前tick || 0) >= 20000 * 51840 + 643159 && 角色表.古月娜) return '古月娜';
     if (角色表[文本]) return 文本;
     for (const [候选名, 角色记录] of Object.entries(角色表)) {
       const 别名列表 = Array.isArray(角色记录 && 角色记录.别名) ? 角色记录.别名 : [];
       if (别名列表.map(别名 => toText(别名, '').trim()).includes(文本)) {
-        if (候选名 === '古月娜' && Number(当前tick || 0) < 643159 && !(数据根?.char && 数据根.char.古月娜)) return '';
+        if (候选名 === '古月娜' && Number(当前tick || 0) < 20000 * 51840 + 643159 && !(数据根?.char && 数据根.char.古月娜)) return '';
         return 候选名;
       }
     }
