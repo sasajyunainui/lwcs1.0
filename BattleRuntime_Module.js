@@ -18270,75 +18270,6 @@
     return attestBattleDraft({ ...draft, draftHash: hashBattleValue(draft) });
   }
 
-  // Task 6 test-only transaction entry: runs a real structured battle with the
-  // lightweight linear provider decision source (request mode) and returns an
-  // attested 8.3-draft-1 walking the complete round loop / state settlement /
-  // multi-actor decisions / ledger / snapshots / decisionAudit. Production
-  // executeBattleDraft stays fail-closed NO_FORMAL_PROVIDER; this path is only
-  // reachable when the provider module is mounted and the caller opts in via
-  // settings.__r9v2LinearTest === true. providerId 'r9v2', engine R9V2_LINEAR.
-  function runRuntimeLinearTransaction(input = {}) {
-    const provider = root.__LWCS_BEHAVIOR_LINEAR_PROVIDER__;
-    const decisionApi = root.__LWCS_BATTLE_DECISION__;
-    if (!provider || typeof provider.selectPreparedRequest !== 'function') {
-      throw new Error('R9V2_LINEAR_PROVIDER_NOT_MOUNTED');
-    }
-    if (!decisionApi || typeof decisionApi.runR9v2LinearProviderForTest !== 'function') {
-      throw new Error('R9V2_LINEAR_DECISION_TEST_ENTRY_MISSING');
-    }
-    const source = input && typeof input === 'object' ? cloneValue(input) : {};
-    const combatData = source && source.combatData && typeof source.combatData === 'object'
-      ? source.combatData
-      : null;
-    if (!combatData) throw new Error('battle_declaration_combat_data_missing');
-    const maxRounds = Math.max(1, Math.min(20, Math.floor(Number(source.rounds || 1))));
-    const result = runStructuredBattle({
-      ...source,
-      combatData,
-      caseId: String(source.caseId || 'runtime-linear-test').trim(),
-      seed: Math.max(1, Math.floor(Number(source.seed || 1))),
-      rounds: maxRounds,
-      mode: 'single_round',
-      settings: {
-        ...(source.settings || {}),
-        providerId: '',
-        decisionOnly: false,
-        playerLockedSettlement: false,
-        __r9v2LinearTest: true,
-      },
-    });
-    const objectiveContract = source.objectiveContract ||
-      (source.battleIntent && source.battleIntent.objectives) || combatData['胜负条件'] || {};
-    const hasSeed = result && result.seed !== undefined && result.seed !== null;
-    const draft = {
-      schemaVersion: '8.3-draft-1',
-      status: 'DRAFT',
-      providerId: String(provider.providerId || 'r9v2').trim(),
-      formalProviderState: 'TEST_R9V2_LINEAR',
-      selectionMode: 'AI',
-      actorControl: 'AI',
-      decisionEngine: 'R9V2_LINEAR',
-      inputHash: hashBattleValue(source),
-      objectiveHash: hashBattleValue(objectiveContract),
-      caseId: String((result && result.caseId) || source.caseId || '').trim(),
-      seed: Math.max(1, Math.floor(Number(hasSeed ? result.seed : (source.seed || 1)))),
-      mode: 'single_round',
-      roundsRequested: maxRounds,
-      actualRoundCount: Math.max(0, Number((result && result.roundsExecuted) || 0)),
-      executedRoundNumbers: cloneValue((result && result.executedRoundNumbers) || []),
-      roundStart: result && result.roundStart !== undefined && result.roundStart !== null ? result.roundStart : null,
-      roundEnd: result && result.roundEnd !== undefined && result.roundEnd !== null ? result.roundEnd : null,
-      ledger: cloneValue((result && result.ledger) || []),
-      trace: cloneValue((result && result.trace) || []),
-      actionQueueTrace: cloneValue((result && result.actionQueueTrace) || []),
-      decisionAudit: cloneValue((result && result.decisions) || []),
-      runtimeAudit: cloneValue((result && result.audit) || { fatalCount: 0, warningCount: 0, fatals: [], warnings: [] }),
-      terminalResult: cloneValue((result && result.terminal) || { terminal: false, winner: 'unfinished', reason: 'RUNTIME_LINEAR_TEST' }),
-      initialSnapshot: cloneValue((result && result.initialSnapshot) || null),
-      finalSnapshot: cloneValue((result && (result.combatData || result.finalSnapshot)) || null),
-    };
-    return attestBattleDraft({ ...draft, draftHash: hashBattleValue(draft) });
-  }
   function sealBattleResult(input = {}) {
     const draft = input?.draft && typeof input.draft === 'object' ? input.draft : null;
     const reportAudit = input?.reportAudit && typeof input.reportAudit === 'object' ? input.reportAudit : null;
@@ -18519,7 +18450,6 @@
    runDecisionCase,
    runBattleCase,
    executeBattleDraft,
-    runRuntimeLinearTransaction,
    executePlayerLockedBattleSettlement,
     sealBattleResult,
     verifySealedBattlePackage,

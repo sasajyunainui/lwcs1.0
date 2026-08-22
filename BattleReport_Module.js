@@ -5378,16 +5378,17 @@
             : {}),
         };
         const linearDecomposition = trace?.linearDecomposition;
+        const chineseReason = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__?.chineseReason;
         if (
           linearDecomposition &&
-          root.__LWCS_BEHAVIOR_CHINESE_REASON__ &&
-          typeof root.__LWCS_BEHAVIOR_CHINESE_REASON__.buildPlayerReasons === 'function' &&
-          typeof root.__LWCS_BEHAVIOR_CHINESE_REASON__.mapToReport === 'function'
+          chineseReason &&
+          typeof chineseReason.buildPlayerReasons === 'function' &&
+          typeof chineseReason.mapToReport === 'function'
         ) {
           const enriched = enrichLinearExplanation(
             baseExplanation,
             linearDecomposition,
-            root.__LWCS_BEHAVIOR_CHINESE_REASON__,
+            chineseReason,
             hideEnemyPrivateCandidates,
             visibilityMode,
           );

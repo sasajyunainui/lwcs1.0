@@ -10,6 +10,15 @@ function cloneJsonValue(值, 回退值 = {}) {
   return 回退值;
 }
 
+function 读取时代修炼运行时_V1() {
+  const 候选列表 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选列表.push(globalThis.parent); } catch (_错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) 候选列表.push(globalThis.top); } catch (_错误) {}
+  return 候选列表
+    .map(候选 => 候选 && 候选.__LWCS_ERA_CULTIVATION_RUNTIME_V1__)
+    .find(接口 => 接口 && typeof 接口 === 'object') || null;
+}
+
 function 读取性能计时毫秒_V1() {
   try {
     if (typeof performance !== 'undefined' && typeof performance.now === 'function') return performance.now();
@@ -369,6 +378,336 @@ function 计算当前装备生效属性加成_V1(角色或装备 = {}) {
     追加加成(计算机甲属性加成_V1(装备.机甲));
   }
   return 总加成;
+}
+
+var 物品被动战斗外原型集合_V1 = new Set(['修炼增益', '战斗外复活', '灵物吸收', '天赋提升', '永久属性提升', '魂骨年限提升']);
+var 物品被动常驻原型集合_V1 = new Set(['属性修正', '结算修正', '判定修正', '规则防御']);
+var 物品被动触发字段集合_V1 = new Set([
+  '条件分支', '触发限制', '触发方式', '触发条件', '延迟回合', '持续回合', '有效期',
+  '死亡时限', '复活代价时限', '复活后状态时限',
+]);
+
+function 读取物品被动技能条目_V1(物品 = {}, 选项 = {}) {
+  if (!物品 || typeof 物品 !== 'object' || Array.isArray(物品)) return [];
+  const 条目 = [];
+  const 已见 = new Set();
+  ['装备技能', '附带技能', '附带魂技'].forEach(字段名 => {
+    const 技能表 = 物品[字段名] && typeof 物品[字段名] === 'object' && !Array.isArray(物品[字段名]) ? 物品[字段名] : {};
+    Object.entries(技能表).forEach(([技能名, 技能]) => {
+      if (!技能 || typeof 技能 !== 'object' || Array.isArray(技能) || String(技能.承载方式 || '').trim() !== '被动') return;
+      const 效果数组 = Array.isArray(技能._效果数组)
+        ? 技能._效果数组
+        : Array.isArray(技能.效果数组) ? 技能.效果数组 : [];
+      if (!效果数组.length) return;
+      const 身份键 = `${字段名}|${技能名}|${JSON.stringify(效果数组)}`;
+      if (已见.has(身份键)) return;
+      已见.add(身份键);
+      条目.push({
+        字段: 字段名,
+        技能名: String(技能名 || 技能.魂技名 || '被动技能').trim() || '被动技能',
+        技能: cloneJsonValue(技能, {}),
+        效果数组: cloneJsonValue(效果数组, []),
+        来源物品: String(选项.来源物品 || 物品.名称 || 物品.name || 物品.物品名 || '').trim(),
+        来源槽位: String(选项.来源槽位 || '').trim(),
+      });
+    });
+  });
+  return 条目;
+}
+
+function 物品被动效果含触发字段_V1(效果 = {}) {
+  if (!效果 || typeof 效果 !== 'object') return false;
+  return [...物品被动触发字段集合_V1].some(字段名 => {
+    const 值 = 效果[字段名];
+    return Array.isArray(值) ? 值.length > 0 : 值 !== undefined && 值 !== null && 值 !== '';
+  });
+}
+
+function 物品被动效果可常驻_V1(效果 = {}, 技能 = {}) {
+  const 原型 = String(效果?.原型 || '').trim();
+  const 目标 = String(效果?.目标 || '自身').trim();
+  return 物品被动常驻原型集合_V1.has(原型)
+    && 目标 === '自身'
+    && !物品被动效果含触发字段_V1(技能)
+    && !物品被动效果含触发字段_V1(效果);
+}
+
+function 装备要求满足_V1(角色 = {}, 要求 = {}) {
+  if (!要求 || typeof 要求 !== 'object' || Array.isArray(要求) || !Object.keys(要求).length) return true;
+  if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return false;
+  const 装备文本 = () => {
+    try {
+      return JSON.stringify({ 装备: 角色.装备 || {}, 已装备: 角色.已装备 || {}, 装备栏: 角色.装备栏 || {}, 魂骨: 角色.魂骨 || {} });
+    } catch (_error) {
+      return '';
+    }
+  };
+  const 装备身份文本 = () => {
+    const values = [];
+    const visit = (value, key = '') => {
+      if (!value || typeof value !== 'object') {
+        if (key) values.push(key);
+        if (value !== undefined && value !== null) values.push(String(value));
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach(entry => visit(entry));
+        return;
+      }
+      if (key) values.push(key);
+      ['名称', 'name', '物品名', 'id', '物品ID', '装备槽位', '装备状态', '材质', '品质', '品阶']
+        .forEach(field => {
+          if (value[field] !== undefined) values.push(String(value[field] || ''));
+        });
+      Object.entries(value).forEach(([childKey, child]) => {
+        if (['描述', '效果描述', '画面描述', '说明', '备注', '使用限制或归属说明'].includes(childKey)) return;
+        if (child && typeof child === 'object') visit(child, childKey);
+      });
+    };
+    visit({ 装备: 角色.装备 || {}, 已装备: 角色.已装备 || {}, 装备栏: 角色.装备栏 || {}, 魂骨: 角色.魂骨 || {} });
+    return values.filter(Boolean).join('|');
+  };
+  const 单位文本 = () => {
+    try {
+      const identity = {};
+      [
+        'id', 'name', '名称', '类型', '单位类型', '种族', '阵营', '系别', '武魂',
+        '武魂类型', '血脉', '天赋', '天赋梯队', '描述', '摘要',
+      ].forEach(field => {
+        if (角色[field] !== undefined) identity[field] = cloneJsonValue(角色[field]);
+      });
+      if (角色.属性 && typeof 角色.属性 === 'object' && !Array.isArray(角色.属性)) {
+        const statIdentity = {};
+        ['武魂', '武魂类型', '血脉', '天赋', '天赋梯队', '类型', '单位类型', '种族', '阵营', '系别'].forEach(field => {
+          if (角色.属性[field] !== undefined) statIdentity[field] = cloneJsonValue(角色.属性[field]);
+        });
+        if (Object.keys(statIdentity).length) identity.属性 = statIdentity;
+      }
+      return JSON.stringify(identity);
+    } catch (_error) {
+      return '';
+    }
+  };
+  const 血脉文本 = [
+    角色?.血脉之力?.血脉,
+    角色?.血脉?.血脉,
+    角色?.血脉,
+    角色?.属性?.血脉,
+  ].map(value => String(value || '').trim()).filter(Boolean).join('|');
+  const 武器材质 = String(角色?.装备?.武器?.材质 || '').trim();
+  const 文本匹配 = (actual, expected, comparison = '包含') => {
+    const left = String(actual || '').trim();
+    const right = String(expected || '').trim();
+    if (!right) return false;
+    if (comparison === '==') return left === right;
+    if (comparison === '!=') return left !== right;
+    if (comparison === '不包含') return !left.includes(right);
+    if (comparison === '有') return right ? left.includes(right) : Boolean(left);
+    if (comparison === '无') return right ? !left.includes(right) : !left;
+    return left.includes(right);
+  };
+  return Object.entries(要求).every(([字段名, raw]) => {
+    if (字段名 === '单位文本') {
+      const 条件 = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : { 比较: '包含', 值: raw };
+      return 文本匹配(单位文本(), 条件.值, String(条件.比较 || '包含').trim());
+    }
+    if (字段名 === '武器材质') {
+      const wanted = Array.isArray(raw) ? raw.map(value => String(value || '').trim()).filter(Boolean) : [String(raw || '').trim()];
+      return wanted.some(value => {
+        if (!武器材质) return false;
+        if (value === '非金属' || /非金属/.test(value)) return /非金属/.test(武器材质) || !/金属/.test(武器材质);
+        if (value === '金属' || /金属/.test(value)) return /金属/.test(武器材质) && !/非金属/.test(武器材质);
+        return 武器材质.includes(value);
+      });
+    }
+    if (字段名 === '血脉') return (Array.isArray(raw) ? raw : [raw]).some(value => 血脉文本.includes(String(value || '').trim()));
+    if (字段名 === '装备包含') return (Array.isArray(raw) ? raw : [raw]).some(value => 装备身份文本().includes(String(value || '').trim()));
+    if (字段名 === '装备品质' || 字段名 === '武器品质') {
+      const 品质文本 = 装备身份文本();
+      return (Array.isArray(raw) ? raw : [raw]).some(value => 品质文本.includes(String(value || '').trim()));
+    }
+    if (字段名 === '装备状态') return 文本匹配(装备身份文本(), raw, '包含');
+    return false;
+  });
+}
+
+function 读取物品被动受击门槛_V1(物品 = {}, 技能 = {}) {
+  const 文本 = [
+    物品?.描述,
+    技能?.效果描述,
+    技能?.画面描述,
+  ].map(value => String(value || '').trim()).filter(Boolean).join('；');
+  if (!文本 || !/(承受|抵御|防护|不破|抗住)/.test(文本)) return 0;
+  const 匹配 = 文本.match(/第([零〇一二三四五六七八九十百千万\d]+)魂技(?:级别)?(?:以下|以内)?/);
+  if (!匹配) return 0;
+  const 原始 = String(匹配[1] || '').trim();
+  const 阿拉伯 = Number(原始);
+  if (Number.isFinite(阿拉伯) && 阿拉伯 > 0) return Math.max(1, Math.floor(阿拉伯 * 10));
+  const 数字 = { 零: 0, 〇: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+  if (原始.length === 1 && Number.isFinite(数字[原始])) return 数字[原始] * 10;
+  const 十位 = 原始.indexOf('十');
+  if (十位 >= 0) {
+    const 前 = 十位 === 0 ? 1 : Number(数字[原始[十位 - 1]] || 0);
+    const 后 = 十位 === 原始.length - 1 ? 0 : Number(数字[原始[十位 + 1]] || 0);
+    const 魂技位 = 前 * 10 + 后;
+    return 魂技位 > 0 ? 魂技位 * 10 : 0;
+  }
+  return 0;
+}
+
+function 编译物品被动消费者_V1(物品 = {}, 选项 = {}) {
+  const 技能条目 = 读取物品被动技能条目_V1(物品, 选项);
+  const 常驻效果 = [];
+  const 动作效果 = [];
+  const 非战斗路由 = [];
+  const 未支持路由 = [];
+  const 角色 = 选项?.角色 && typeof 选项.角色 === 'object' && !Array.isArray(选项.角色) ? 选项.角色 : null;
+  const 条目结果 = 技能条目.map(条目 => {
+    const 技能装备要求 = 条目?.技能?.装备要求;
+    if (角色 && 技能装备要求 !== undefined && !装备要求满足_V1(角色, 技能装备要求)) return null;
+    const 有效效果数组 = 条目.效果数组.filter(效果 => {
+      const 效果装备要求 = 效果?.装备要求;
+      return !角色 || 效果装备要求 === undefined || 装备要求满足_V1(角色, 效果装备要求);
+    });
+    const 受击门槛 = 读取物品被动受击门槛_V1(物品, 条目.技能);
+    if (
+      受击门槛 > 0 &&
+      !有效效果数组.some(效果 =>
+        String(效果?.原型 || '').trim() === '结算修正' &&
+        String(效果?.结算 || '').trim() === '受到伤害' &&
+        String(效果?.对应等级用途 || '').trim() === '受击门槛',
+      )
+    ) {
+      有效效果数组.push({
+        原型: '结算修正',
+        目标: '自身',
+        生效方式: '独立生效',
+        结算: '受到伤害',
+        数值: '-0%',
+        对应等级: 受击门槛,
+        对应等级用途: '受击门槛',
+      });
+    }
+    if (!有效效果数组.length) return null;
+    const 条目副本 = {
+      ...条目,
+      技能: {
+        ...条目.技能,
+        _效果数组: cloneJsonValue(有效效果数组, []),
+      },
+      效果数组: cloneJsonValue(有效效果数组, []),
+    };
+    const 常驻 = [];
+    const 动作 = [];
+    const 非战斗 = [];
+    const 未支持 = [];
+    有效效果数组.forEach(效果 => {
+      const 原型 = String(效果?.原型 || '').trim();
+      const 来源 = {
+        来源物品: 条目.来源物品,
+        来源槽位: 条目.来源槽位,
+        来源字段: 条目.字段,
+        技能名: 条目.技能名,
+        ...(条目?.技能?.装备要求 !== undefined ? { 技能装备要求: cloneJsonValue(条目.技能.装备要求) } : {}),
+        ...(效果?.装备要求 !== undefined ? { 效果装备要求: cloneJsonValue(效果.装备要求) } : {}),
+      };
+      if (!原型 || !SKILL_PROTOTYPE_REGISTRY_V1[原型]) {
+        未支持.push({ 效果: cloneJsonValue(效果, {}), 来源 });
+        未支持路由.push({ 路由: 'battle-prototype-registry', 效果: cloneJsonValue(效果, {}), 来源 });
+        return;
+      }
+      if (物品被动战斗外原型集合_V1.has(原型)) {
+        非战斗.push(效果);
+        非战斗路由.push({ 路由: 'EquipmentManager.结算战斗外使用效果列表', 效果: cloneJsonValue(效果, {}), 来源 });
+        return;
+      }
+      if (物品被动效果可常驻_V1(效果, 条目.技能)) {
+        常驻.push(效果);
+        常驻效果.push({ 效果: cloneJsonValue(效果, {}), 来源 });
+        return;
+      }
+      动作.push(效果);
+      const 技能触发方式 = String(条目.技能?.触发方式 || '').trim();
+      const 效果触发方式 = String(效果?.触发方式 || '').trim();
+      动作效果.push({
+        效果: cloneJsonValue(效果, {}),
+        来源,
+        ...(技能触发方式 || 效果触发方式
+          ? { 触发方式: 效果触发方式 || 技能触发方式 }
+          : {}),
+      });
+    });
+    return {
+      ...条目副本,
+      常驻效果: cloneJsonValue(常驻, []),
+      动作效果: cloneJsonValue(动作, []),
+      非战斗效果: cloneJsonValue(非战斗, []),
+      未支持效果: cloneJsonValue(未支持, []),
+      分类: 未支持.length
+        ? 'unsupported'
+        : 非战斗.length && (常驻.length || 动作.length)
+          ? 'mixed'
+          : 非战斗.length
+            ? 'non-battle'
+            : 常驻.length && 动作.length
+              ? 'mixed'
+              : 常驻.length ? 'persistent' : 'battle-action',
+    };
+  }).filter(Boolean);
+  return {
+    版本: 'item-passive-consumer-v1',
+    有效: 条目结果.length > 0,
+    来源物品: String(选项.来源物品 || 物品.名称 || 物品.name || 物品.物品名 || '').trim(),
+    来源槽位: String(选项.来源槽位 || '').trim(),
+    技能条目: 条目结果,
+    常驻效果,
+    动作效果,
+    非战斗路由,
+    未支持路由,
+  };
+}
+
+function 编译角色装备被动消费者_V1(角色 = {}) {
+  if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return { 版本: 'item-passive-consumer-v1', 有效: false, 来源物品列表: [], 技能条目: [], 常驻效果: [], 动作效果: [], 非战斗路由: [], 未支持路由: [] };
+  const 物品列表 = [];
+  const 记录物品 = (槽位, 物品, 已生效 = true) => {
+    if (!已生效) return;
+    if (!物品 || typeof 物品 !== 'object' || Array.isArray(物品)) return;
+    const 名称 = String(物品.名称 || 物品.name || 物品.物品名 || '').trim();
+    if (名称 && 名称 !== '无') 物品列表.push({ 槽位, 物品: { ...物品, 名称 }, 名称 });
+  };
+  const 装备 = 角色.装备 && typeof 角色.装备 === 'object' && !Array.isArray(角色.装备) ? 角色.装备 : {};
+  记录物品('武器', 装备.武器);
+  记录物品('防具', 装备.防具, 装备.防具?.装备状态 === '已装备');
+  记录物品('机甲', 装备.机甲, 装备.机甲?.装备状态 === '已装备');
+  Object.entries(装备.魂导器?.装配 || {}).forEach(([子槽位, 子物品]) => {
+    const 状态 = String(子物品?.装备状态 || '').trim();
+    记录物品(`魂导器.${子槽位}`, 子物品, !状态 || ['已装配', '已装备', '已装载', '在线'].includes(状态));
+  });
+  const 斗铠已装备 = 装备.斗铠?.装备状态 === '已装备';
+  Object.entries(装备.斗铠?.部件 || {}).forEach(([部件槽位, 部件]) => 记录物品(`斗铠.${部件槽位}`, 部件, 斗铠已装备));
+  Object.entries(角色.魂骨 || {}).forEach(([槽位, 魂骨]) => 记录物品(`魂骨.${槽位}`, 魂骨));
+  const 合并 = {
+    版本: 'item-passive-consumer-v1',
+    有效: false,
+    来源物品列表: 物品列表.map(条目 => ({ 槽位: 条目.槽位, 名称: 条目.名称 })),
+    技能条目: [],
+    常驻效果: [],
+    动作效果: [],
+    非战斗路由: [],
+    未支持路由: [],
+  };
+  物品列表.forEach(({ 槽位, 物品, 名称 }) => {
+    const 结果 = 编译物品被动消费者_V1(物品, { 来源物品: 名称, 来源槽位: 槽位, 角色 });
+    if (!结果.有效) return;
+    合并.有效 = true;
+    合并.技能条目.push(...结果.技能条目);
+    合并.常驻效果.push(...结果.常驻效果);
+    合并.动作效果.push(...结果.动作效果);
+    合并.非战斗路由.push(...结果.非战斗路由);
+    合并.未支持路由.push(...结果.未支持路由);
+  });
+  return 合并;
 }
 
 var JobExpThresholds = [0, 1000, 5000, 12000, 60000, 80000, 400000, 500000, 3000000, 99999999];
@@ -941,10 +1280,238 @@ function formatCultivationLevelText(level, fallback = '未知') {
 
 function getNextCultivationLevelStep(currentLevel = 0) {
   const safeLevel = Math.max(0, Number(currentLevel) || 0);
-  if (safeLevel >= 100) return null;
+  if (safeLevel >= 100) return Math.floor(safeLevel) + 1;
   if (safeLevel >= 99.5) return 100;
   if (safeLevel >= 99) return 99.5;
   return Math.floor(safeLevel) + 1;
+}
+
+function 计算等级提升结果_V1(currentLevel = 0, effect = {}, character = null) {
+  const 当前等级 = Number(currentLevel);
+  const 等级上限 = Math.max(1, Math.min(120, Math.floor(Number(effect?.等级上限 ?? 120) || 120)));
+  if (!Number.isFinite(当前等级) || 当前等级 < 0) return { success: false, reason: 'LEVEL_INVALID' };
+  if (当前等级 >= 等级上限) return { success: false, reason: 'LEVEL_CAP_REACHED', currentLevel: 当前等级, levelCap: 等级上限 };
+  const 目标等级 = getNextCultivationLevelStep(当前等级);
+  if (!(目标等级 > 当前等级) || 目标等级 > 等级上限) {
+    return { success: false, reason: 'NEXT_LEVEL_EXCEEDS_CAP', currentLevel: 当前等级, targetLevel: 目标等级, levelCap: 等级上限 };
+  }
+  const 目标魂力上限 = character && typeof character === 'object' && character.属性 && typeof character.属性 === 'object'
+    ? getCharacterBaseSoulPowerRequirementAtLevel(character, 目标等级)
+    : Math.floor(计算魂力曲线值_V1(目标等级));
+  return {
+    success: true,
+    currentLevel: 当前等级,
+    targetLevel: 目标等级,
+    levelCap: 等级上限,
+    soulPowerCap: Math.max(0, Math.floor(目标魂力上限)),
+  };
+}
+
+function 应用等级提升_V1(characterOrAttributes = {}, effect = {}) {
+  if (!characterOrAttributes || typeof characterOrAttributes !== 'object' || Array.isArray(characterOrAttributes)) return { success: false, reason: 'ATTRIBUTES_INVALID' };
+  const character = characterOrAttributes.属性 && typeof characterOrAttributes.属性 === 'object' && !Array.isArray(characterOrAttributes.属性)
+    ? characterOrAttributes
+    : null;
+  const attributes = character ? character.属性 : characterOrAttributes;
+  const result = 计算等级提升结果_V1(attributes.等级, effect, character);
+  if (!result.success) return result;
+  attributes.等级 = result.targetLevel;
+  const currentSoulPowerCap = Math.max(0, Math.floor(Number(attributes.魂力上限) || 0));
+  attributes.魂力上限 = Math.max(currentSoulPowerCap, result.soulPowerCap);
+  result.soulPowerCap = attributes.魂力上限;
+  return result;
+}
+
+function 计算群体撤离成功率_V1(effect = {}, participantCount = 1) {
+  const count = Math.max(1, Math.floor(Number(participantCount) || 1));
+  const base = Math.max(0, Math.min(1, Number(effect?.基础成功率 ?? 1)));
+  const multiplier = Math.max(0, Number(effect?.每增加一人成功率倍率 ?? 0.9));
+  return Math.max(0, Math.min(1, base * Math.pow(multiplier, count - 1)));
+}
+
+function 解析绝对资源消耗_V1(costText = '') {
+  const result = { 魂力: 0, 精神力: 0, 体力: 0 };
+  String(costText || '').split(/\s*\|\s*/).forEach(entry => {
+    const match = /^(魂力|精神力|体力):([1-9]\d*)$/.exec(String(entry || '').trim());
+    if (match) result[match[1]] = Number(match[2]);
+  });
+  return result;
+}
+
+function 结算群体撤离_V1(statData = {}, userKey = '', participantKeys = [], effect = {}, randomFn = Math.random) {
+  const roleTable = statData?.char && typeof statData.char === 'object' ? statData.char : {};
+  const keys = [...new Set((Array.isArray(participantKeys) ? participantKeys : []).map(value => String(value || '').trim()).filter(Boolean))];
+  if (!keys.length || !keys.includes(String(userKey || '').trim())) throw new Error('GROUP_ESCAPE_USER_NOT_INCLUDED');
+  const user = roleTable[userKey];
+  if (!user || typeof user !== 'object') throw new Error('GROUP_ESCAPE_USER_MISSING');
+  const userLocation = String(user?.状态?.位置 || '').trim();
+  if (!userLocation) throw new Error('GROUP_ESCAPE_LOCATION_MISSING');
+  const participants = keys.map(key => roleTable[key]).map((role, index) => {
+    if (!role || typeof role !== 'object' || role?.状态?.存活 === false || role?.存活 === false) throw new Error(`GROUP_ESCAPE_PARTICIPANT_INVALID:${keys[index]}`);
+    if (String(role?.状态?.位置 || '').trim() !== userLocation) throw new Error(`GROUP_ESCAPE_PARTICIPANT_LOCATION_INVALID:${keys[index]}`);
+    return role;
+  });
+  const userAttributes = user.属性 && typeof user.属性 === 'object' ? user.属性 : null;
+  if (!userAttributes) throw new Error('GROUP_ESCAPE_USER_ATTRIBUTES_MISSING');
+  const cost = 解析绝对资源消耗_V1(effect?.消耗);
+  if (Number(userAttributes.魂力 || 0) < cost.魂力 || Number(userAttributes.精神力 || 0) < cost.精神力 || Number(userAttributes.体力 || 0) < cost.体力) {
+    return { started: false, success: false, reason: 'RESOURCE_INSUFFICIENT', cost, participantCount: keys.length };
+  }
+  const probability = 计算群体撤离成功率_V1(effect, keys.length);
+  const roll = Math.max(0, Math.min(1, Number((typeof randomFn === 'function' ? randomFn : Math.random)()) || 0));
+  const success = roll < probability;
+  if (effect?.失败仍消耗资源 !== false || success) {
+    userAttributes.魂力 = Math.max(0, Number(userAttributes.魂力 || 0) - cost.魂力);
+    userAttributes.精神力 = Math.max(0, Number(userAttributes.精神力 || 0) - cost.精神力);
+    userAttributes.体力 = Math.max(0, Number(userAttributes.体力 || 0) - cost.体力);
+  }
+  if (success) participants.forEach(role => {
+    role.状态 ||= {};
+    role.状态.位置 = String(effect?.目的地 || '亡灵半位面').trim() || '亡灵半位面';
+  });
+  return { started: true, success, probability, roll, cost, participantCount: keys.length, destination: String(effect?.目的地 || '亡灵半位面').trim() || '亡灵半位面' };
+}
+
+function 读取正式物品消费规则_V1(value = {}) {
+  const itemDefinition = value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+  if (itemDefinition && Object.prototype.hasOwnProperty.call(itemDefinition, '使用后消耗')) {
+    if (typeof itemDefinition.使用后消耗 !== 'boolean') throw new Error('使用后消耗必须是布尔值');
+    let effectCount = 0;
+    const countEffects = current => {
+      if (!current || typeof current !== 'object') return;
+      if (Array.isArray(current)) {
+        current.forEach(countEffects);
+        return;
+      }
+      if (Object.prototype.hasOwnProperty.call(current, '原型')) effectCount += 1;
+      Object.values(current).forEach(countEffects);
+    };
+    countEffects(itemDefinition.使用效果 ?? itemDefinition._效果数组 ?? []);
+    return { consume: itemDefinition.使用后消耗, explicit: true, effectCount };
+  }
+  let effectCount = 0;
+  let allExplicitlyReusable = true;
+  const visited = new WeakSet();
+  const visit = current => {
+    if (!current || typeof current !== 'object') return;
+    if (visited.has(current)) return;
+    visited.add(current);
+    if (Array.isArray(current)) {
+      current.forEach(visit);
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(current, '原型')) {
+      effectCount += 1;
+      if (current.消耗道具 !== false) allExplicitlyReusable = false;
+    }
+    Object.values(current).forEach(visit);
+  };
+  visit(value);
+  return {
+    consume: effectCount === 0 || !allExplicitlyReusable,
+    explicit: effectCount > 0,
+    effectCount,
+  };
+}
+
+function 读取状态效果表_V1(unit = {}) {
+  const direct = unit?.状态效果 && typeof unit.状态效果 === 'object' && !Array.isArray(unit.状态效果) ? unit.状态效果 : null;
+  const attribute = unit?.属性?.状态效果 && typeof unit.属性.状态效果 === 'object' && !Array.isArray(unit.属性.状态效果) ? unit.属性.状态效果 : null;
+  const sustain = unit?.持续效果 && typeof unit.持续效果 === 'object' && !Array.isArray(unit.持续效果) ? unit.持续效果 : null;
+  return [direct, attribute, sustain].filter(Boolean);
+}
+
+function 读取坚挺金苍蝇成功授予_V1(unit = {}) {
+  for (const states of 读取状态效果表_V1(unit)) {
+    for (const [stateKey, state] of Object.entries(states)) {
+      if (!state || typeof state !== 'object') continue;
+      const trigger = String(state.授予触发条件 || state.触发条件 || '').trim();
+      if (trigger !== '下次魂技成功释放' || !Array.isArray(state.授予效果) || !state.授予效果.length) continue;
+      const uses = Math.max(0, Math.floor(Number(state.可用次数 ?? 1) || 0));
+      if (uses > 0) return { states, stateKey, state, uses };
+    }
+  }
+  return null;
+}
+
+function 缩放技能效果数组_V1(effects = [], multiplier = 1) {
+  const scale = Number(multiplier);
+  if (!Number.isFinite(scale) || scale <= 0) return Array.isArray(effects) ? effects.map(effect => JSON.parse(JSON.stringify(effect))) : [];
+  const scaleValue = value => {
+    if (typeof value === 'number' && Number.isFinite(value)) return Number((value * scale).toFixed(4));
+    if (typeof value !== 'string') return value;
+    const text = value.trim();
+    const percent = /^([+-]?)(\d+(?:\.\d+)?)%$/.exec(text);
+    if (percent) return `${percent[1] === '-' ? '-' : '+'}${Number((Number(percent[2]) * scale).toFixed(4))}%`;
+    const numeric = Number(text);
+    return Number.isFinite(numeric) && text !== '' ? Number((numeric * scale).toFixed(4)) : value;
+  };
+  const visit = effect => {
+    if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return effect;
+    const next = JSON.parse(JSON.stringify(effect));
+    ['数值', '副数值', '威力倍率'].forEach(key => {
+      if (next[key] !== undefined) next[key] = scaleValue(next[key]);
+    });
+    ['使用效果', '授予效果', '结算效果', '替换效果', '追加效果'].forEach(key => {
+      if (Array.isArray(next[key])) next[key] = next[key].map(visit);
+    });
+    if (Array.isArray(next.条件分支)) next.条件分支 = next.条件分支.map(branch => ({
+      ...branch,
+      ...(Array.isArray(branch?.替换效果) ? { 替换效果: branch.替换效果.map(visit) } : {}),
+      ...(Array.isArray(branch?.追加效果) ? { 追加效果: branch.追加效果.map(visit) } : {}),
+    }));
+    return next;
+  };
+  return (Array.isArray(effects) ? effects : []).map(visit);
+}
+
+function 读取坚挺金苍蝇自用倍率_V1(unit = {}) {
+  for (const states of 读取状态效果表_V1(unit)) {
+    for (const state of Object.values(states)) {
+      if (!state || typeof state !== 'object') continue;
+      const isActiveMaintenance = state.维持态 === true
+        && Boolean(String(state.维持消耗 || '').trim())
+        && (state.effect_type === 'c2_food_maintain' || state.来源技能 === '坚挺金苍蝇' || state.状态 === '坚挺金苍蝇·武魂真身维持');
+      if (isActiveMaintenance) {
+        const production = Math.max(1, Number(state.制造速度倍率 || 1.3) || 1.3);
+        const effect = Math.max(1, Number(state.产物效果倍率 || 1.3) || 1.3);
+        return { 制造速度倍率: production, 产物效果倍率: effect };
+      }
+    }
+  }
+  return { 制造速度倍率: 1, 产物效果倍率: 1 };
+}
+
+function 消费坚挺金苍蝇成功魂技_V1(unit = {}, actionKind = '', success = false) {
+  if (String(actionKind || '').trim().toUpperCase() !== 'RELEASE_SKILL' || success !== true) return { consumed: false, multiplier: 1 };
+  let consumed = false;
+  let stateKey = '';
+  let effects = [];
+  const visited = new Set();
+  for (const states of 读取状态效果表_V1(unit)) {
+    if (!states || visited.has(states)) continue;
+    visited.add(states);
+    for (const [key, state] of Object.entries(states)) {
+      if (!state || typeof state !== 'object') continue;
+      const trigger = String(state.授予触发条件 || state.触发条件 || '').trim();
+      const uses = Math.max(0, Math.floor(Number(state.可用次数 ?? 1) || 0));
+      if (trigger !== '下次魂技成功释放' || !Array.isArray(state.授予效果) || uses <= 0) continue;
+      if (!consumed) {
+        stateKey = key;
+        effects = JSON.parse(JSON.stringify(state.授予效果));
+      }
+      consumed = true;
+      if (uses > 1) state.可用次数 = uses - 1;
+      else delete states[key];
+    }
+  }
+  return consumed ? { consumed: true, multiplier: 1.5, stateKey, effects } : { consumed: false, multiplier: 1 };
+}
+
+function 计算魂骨年限提升_V1(oldAge = 0, ratio = 0.1, cap = 10000) {
+  const oldValue = Math.max(0, Math.floor(Number(oldAge) || 0));
+  const limit = Math.min(10000, Math.max(1, Math.floor(Number(cap) || 10000)));
+  return Math.min(limit, Math.max(oldValue + 1, Math.floor(oldValue * (1 + Math.max(0, Number(ratio) || 0)))));
 }
 
 function isSoulRingGateLevel(level) {
@@ -1027,10 +1594,15 @@ function autoBreakthrough(data) {
     if (isBeast) return;
     const pendingRingState = String(c.状态?.待选魂环?.状态 || '').trim();
     if (pendingRingState && !['已处理', 'handled', '无'].includes(pendingRingState)) return;
+    const currentTick = Number(data?.world?.时间?.tick || 0);
+    const cultivationRuntime = 读取时代修炼运行时_V1();
 
     while (true) {
       const currentLv = Math.max(0, Number(c.属性?.等级 || 0));
-      if (currentLv >= 100) return;
+      const finalCap = cultivationRuntime && typeof cultivationRuntime.finalLevelCap === 'function'
+        ? Number(cultivationRuntime.finalLevelCap(c, { currentTick }))
+        : 100;
+      if (currentLv >= finalCap) return;
       const nextLevelStep = getNextCultivationLevelStep(currentLv);
       if (nextLevelStep === null) return;
 
@@ -1038,12 +1610,14 @@ function autoBreakthrough(data) {
       const nextLevelSoulRequirement = getCharacterBaseSoulPowerRequirementAtLevel(c, nextLevelStep);
       if (baseSoulPowerForBreakthrough < nextLevelSoulRequirement) return;
 
-      const coreCount = c.魂核?.核心?.数量 || 0;
-      let maxLv = 69;
-      if (coreCount === 1) maxLv = 89;
-      else if (coreCount === 2) maxLv = 98;
-      else if (coreCount >= 3) maxLv = 99.5;
-      maxLv = Math.min(maxLv, getCharacterSoulRingLevelCap(c));
+      const coreCap = cultivationRuntime && typeof cultivationRuntime.getLevelCapForCoreCount === 'function'
+        ? Number(cultivationRuntime.getLevelCapForCoreCount(c, { currentTick }))
+        : Number.POSITIVE_INFINITY;
+      const naturalCap = cultivationRuntime && typeof cultivationRuntime.finalLevelCap === 'function'
+        ? Number(cultivationRuntime.finalLevelCap(c, { currentTick }))
+        : 100;
+      const ringCap = currentLv >= 100 ? Number.POSITIVE_INFINITY : getCharacterSoulRingLevelCap(c);
+      const maxLv = Math.min(coreCap, naturalCap, ringCap);
       if (currentLv >= maxLv) return;
 
       c.属性.等级 = nextLevelStep;
@@ -1192,6 +1766,11 @@ function getCharacterBaseSoulPowerRequirementAtLevel(char = {}, level = 1) {
   const safeLevel = Math.max(1, Number(level) || 1);
   const dualSpiritSoulCoeff = getDualSpiritSoulPowerCoeff(char);
   const hiddenVar = Math.max(0.1, Number(char?.属性?.底子波动 || 1));
+  const cultivationRuntime = 读取时代修炼运行时_V1();
+  if (cultivationRuntime && typeof cultivationRuntime.soulPowerRequirement === 'function') {
+    const runtimeRequirement = Number(cultivationRuntime.soulPowerRequirement(safeLevel, hiddenVar));
+    if (Number.isFinite(runtimeRequirement)) return Math.floor(runtimeRequirement * dualSpiritSoulCoeff);
+  }
   return Math.floor(getBaseStats(safeLevel).sp_max * dualSpiritSoulCoeff * hiddenVar);
 }
 
@@ -1246,16 +1825,17 @@ function getCharacterSoulRingLevelCap(char = {}) {
   return Math.min(100, Math.max(10, (ringCount + 1) * 10));
 }
 
-function 同步临时突破魂核_V1(char = {}, 目标等级 = 1) {
+function 同步临时突破魂核_V1(char = {}, 目标等级 = 1, options = {}) {
   if (!char || typeof char !== 'object') return;
   const 安全目标等级 = Math.max(1, Number(目标等级) || 1);
   if (!char.魂核 || typeof char.魂核 !== 'object') char.魂核 = {};
   if (!char.魂核.核心 || typeof char.魂核.核心 !== 'object') char.魂核.核心 = { 数量: 0, 进度: 0 };
   const 当前数量 = Math.max(0, Math.floor(Number(char.魂核.核心.数量 || 0)));
-  let 目标数量 = 当前数量;
-  if (安全目标等级 >= 99) 目标数量 = Math.max(目标数量, 3);
-  else if (安全目标等级 >= 90) 目标数量 = Math.max(目标数量, 2);
-  else if (安全目标等级 >= 70) 目标数量 = Math.max(目标数量, 1);
+  const cultivationRuntime = 读取时代修炼运行时_V1();
+  const currentTick = Number(options?.currentTick ?? 0);
+  const 目标数量 = cultivationRuntime && typeof cultivationRuntime.requiredCoreCountForLevel === 'function'
+    ? Math.max(当前数量, Number(cultivationRuntime.requiredCoreCountForLevel(cultivationRuntime.resolveEra(char, { currentTick }), 安全目标等级)))
+    : 当前数量;
   if (目标数量 > 当前数量) {
     char.魂核.核心.数量 = 目标数量;
     char.魂核.核心.进度 = 0;
@@ -1274,10 +1854,10 @@ function 处理临时突破请求_V1(数据根 = {}) {
       return;
     }
     if (!角色数据.属性 || typeof 角色数据.属性 !== 'object') 角色数据.属性 = {};
-    const 安全目标等级 = Math.max(1, Math.min(150, 目标等级));
+    const 安全目标等级 = Math.max(1, 目标等级);
     const 当前等级 = Math.max(0, Number(角色数据.属性.等级 || 0));
     if (安全目标等级 > 当前等级) {
-      同步临时突破魂核_V1(角色数据, 安全目标等级);
+      同步临时突破魂核_V1(角色数据, 安全目标等级, { currentTick: Number(数据根?.world?.时间?.tick || 0) });
       const 目标需求 = getCharacterBaseSoulPowerRequirementAtLevel(角色数据, 安全目标等级);
       const 当前魂力上限 = Math.max(0, Number(角色数据.属性.魂力上限 || 0));
       角色数据.属性.魂力上限 = Math.max(当前魂力上限, 目标需求);
@@ -3543,6 +4123,29 @@ var SKILL_MECHANISM_META_V1 = (() => {
     designerSecondaryHint: '机制授予',
     设计台参数定义: [select('grantTrigger', '触发条件', 'MECHANISM_GRANT_TRIGGER'), num('useCount', '可用次数', '1', '1'), num('duration', '持续回合', '1', '1')],
   });
+  register('等级提升', {
+    说明: '战斗外主动将目标提升至当前合法等级序列的下一等级，并受等级上限与冷却约束。',
+    可主机制: false,
+    可副机制: true,
+    目标语义: '仅自身',
+    仅自身: true,
+    摘要提示: { skillType: '辅助', mainType: '特殊规则类', effectMode: '瞬发' },
+    designerMainHint: '特殊规则类',
+    designerSubHint: '等级提升',
+    designerSecondaryHint: '等级提升',
+    设计台参数定义: [],
+  });
+  register('群体撤离', {
+    说明: '战斗外按人数倍率执行一次群体撤离，所有成员共享同一次成败结果。',
+    可主机制: false,
+    可副机制: true,
+    目标语义: '上下文',
+    摘要提示: { skillType: '辅助', mainType: '特殊规则类', cooperation: '高', effectMode: '瞬发' },
+    designerMainHint: '特殊规则类',
+    designerSubHint: '群体撤离',
+    designerSecondaryHint: '群体撤离',
+    设计台参数定义: [],
+  });
   return Object.freeze(map);
 })();
 
@@ -3678,9 +4281,11 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   反击: [原型编译条目('机制授予', { 授予效果: [{ 原型: '结算修正', 目标: '自身', 结算: '反击', 数值: '+20%', 生效方式: '独立生效' }] })],
   受击反击: [原型编译条目('机制授予', { 授予效果: [{ 原型: '结算修正', 目标: '自身', 结算: '反击', 数值: '+20%', 生效方式: '独立生效' }] })],
   机制授予: [原型编译条目('机制授予')],
+  等级提升: [原型编译条目('等级提升')],
+  群体撤离: [原型编译条目('群体撤离')],
 });
 
-var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '沉默', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱']);
+var 技能状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '持续恢复', '迟缓', '资源燃烧', '眩晕', '沉默', '致盲', '禁疗', '治疗反转', '隐匿', '探查屏蔽', '共享视野', '护盾', '无视异常', '霸体', '标记', '封技', '护卫', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱', '坚挺金苍蝇·武魂真身维持']);
 var 技能负面状态选项_V1 = Object.freeze(['中毒', '流血', '灼烧', '冻伤', '持续创伤', '迟缓', '资源燃烧', '眩晕', '沉默', '致盲', '禁疗', '治疗反转', '标记', '封技', '嘲讽', '防御剥夺', '精神抗性剥夺', '虚弱', '失控', '反噬', '精神紊乱', '魂力枯竭', '僵直', '麻痹', '混乱']);
 var 战斗外可继承技能状态选项_V1 = Object.freeze(['中毒', '灼烧', '冻伤', '虚弱', '反噬', '精神紊乱', '魂力枯竭']);
 var 日常系统状态选项_V1 = Object.freeze(['饥饿']);
@@ -3689,25 +4294,46 @@ var 战斗外复活代价类型选项_V1 = Object.freeze(['状态代价', '封�
 var 战斗外复活物品代价对象选项_V1 = Object.freeze(['神器', '魂骨', '复活类丹药', '绑定祭器']);
 var 战斗外复活封印代价对象选项_V1 = Object.freeze(['武魂', '魂技', '魂环', '魂骨', '精神力', '魂力']);
 var 战斗外复活永久代价对象选项_V1 = Object.freeze(['等级上限', '力量', '防御', '敏捷', '体力上限', '魂力上限', '精神力上限']);
+var 技能正式资源选项_V1 = Object.freeze(['生命', '体力', '魂力', '精神力']);
+var 技能限定攻击类型选项_V1 = Object.freeze(['近身攻击', '远程攻击', '精神攻击', '真实攻击', '碾压', '冲击']);
+
+var SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1 = Object.freeze([
+  '战斗开始',
+  '回合开始',
+  '受击前',
+  '受击后',
+  '濒死时',
+  '被控制时',
+  '命中后',
+]);
 
 var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   原型: Object.freeze([]),
   目标: Object.freeze(['自身', '单体', '群体', '全场', '召唤物']),
   生效方式: Object.freeze(['独立生效', '跟随主原型']),
-  触发方式: Object.freeze(['立即触发', '延迟触发', '遥控触发']),
+  触发方式: Object.freeze(['立即触发', '延迟触发', '遥控触发', ...SKILL_PASSIVE_TRIGGER_PHASE_OPTIONS_V1]),
   发动方式: Object.freeze(['主动', '被动']),
-  触发条件: Object.freeze(['计时结束', '主动触发', '随下次行动触发']),
+  触发条件: Object.freeze(['计时结束', '主动触发', '随下次行动触发', '下次魂技成功释放']),
+  提升方式: Object.freeze(['下一合法等级']),
+  目的地: Object.freeze(['亡灵半位面']),
+  结算方式: Object.freeze(['全员同成败']),
   护盾模式: Object.freeze(['正向护盾', '斩盾', '窃盾']),
   伤害类型: Object.freeze(['近身攻击', '远程攻击', '精神攻击', '真实攻击']),
   驱动属性: Object.freeze(['无', '力量', '防御', '敏捷', '魂力上限', '精神力上限', '体力上限']),
   影响方向: Object.freeze(['成功率', '效果强度', '持续时间', '消耗', '前摇']),
-  资源: Object.freeze(['生命', '体力', '魂力', '精神力']),
+  资源: 技能正式资源选项_V1,
+  限定资源: 技能正式资源选项_V1,
+  触发概率: Object.freeze([]),
+  限定探查者: Object.freeze([]),
+  限定攻击类型: 技能限定攻击类型选项_V1,
+  转化效果: Object.freeze(['立即恢复', '下次造成伤害']),
+  触发消耗: Object.freeze([]),
   属性: Object.freeze(['力量', '防御', '敏捷', '生命上限', '体力上限', '魂力上限', '精神力上限']),
   判定: Object.freeze(['命中', '闪避', '反应']),
-  结算: Object.freeze(['造成伤害', '受到伤害', '治疗', '消耗', '前摇', '反伤', '伤害转移', '伤害吸收', '伤害转治疗', '治疗转伤害', '伤害分摊', '消耗分摊', '防御穿透', '防御剥夺', '精神抗性剥夺', '技能效果', '反击', '持续伤害引爆']),
+  结算: Object.freeze(['造成伤害', '受到伤害', '治疗', '资源恢复', '消耗', '前摇', '反伤', '伤害转移', '伤害吸收', '伤害转治疗', '治疗转伤害', '伤害分摊', '消耗分摊', '防御穿透', '防御剥夺', '精神抗性剥夺', '技能效果', '反击', '持续伤害引爆']),
   转移对象: Object.freeze(['攻击者', '攻击方队友', '攻击方任意', '防守方队友']),
   吸收来源: Object.freeze(['造成伤害', '受到伤害']),
-  吸收资源: Object.freeze(['生命', '体力', '魂力', '精神力']),
+  吸收资源: 技能正式资源选项_V1,
   锁定类型: Object.freeze(['资源池锁定', '回复锁定', '转化锁定']),
   调整方式: Object.freeze(['延长', '压缩']),
   调整字段: Object.freeze(['持续回合', '有效期tick', '触发次数', '使用次数']),
@@ -3733,6 +4359,7 @@ var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   限定元素: Object.freeze(['五行类', '元素类', '金', '木', '水', '火', '土', '风', '雷', '冰', '光', '暗', '精神', '空间', '时间', '创造', '毁灭']),
   位移类型: Object.freeze(['拉近', '击退', '换位', '瞬移', '脱离']),
   位移对象: Object.freeze(['自身', '目标', '自身与目标']),
+  消耗道具: Object.freeze([]),
   收益类型: Object.freeze(['属性修炼速度', '训练方式收益']),
   修炼属性: Object.freeze(['力量', '防御', '敏捷', '体力上限', '魂力上限', '精神力上限']),
   上限梯队: Object.freeze(['劣等', '正常', '优秀', '天才', '顶级天才', '绝世妖孽']),
@@ -3740,9 +4367,9 @@ var SKILL_PROTOTYPE_FIELD_OPTIONS_V1 = Object.freeze({
   行动模式: Object.freeze(['自主行动', '护卫', '协同攻击']),
   召唤单位类型: Object.freeze(['魂师', '魂兽', '本命召唤兽', '分身', '深渊生物', '其他召唤生物']),
   承伤规则: Object.freeze(['可承伤', '护卫承伤', '分摊承伤']),
-  条件类型: Object.freeze(['当前行动', '命中', '被闪避', '状态存在', '护盾', '生命比例', '体力比例', '魂力比例', '精神力比例', '生命数值', '体力数值', '魂力数值', '精神力数值', '目标', '使用者', '环境满足', '时间', '装备状态', '自身状态', '连携前提', '天赋梯队']),
-  条件对象: Object.freeze(['目标', '自身', '施术者', '召唤物', '使用者', '制作者']),
-  条件比较: Object.freeze(['==', '!=', '>', '>=', '<', '<=', '有', '无']),
+  条件类型: Object.freeze(['当前行动', '命中', '被闪避', '状态存在', '护盾', '生命比例', '体力比例', '魂力比例', '精神力比例', '生命数值', '体力数值', '魂力数值', '精神力数值', '等级', '技能属性', '攻击段数', '终结', '生命体', '装备品质', '反抗状态', '血脉', '目标', '使用者', '环境满足', '时间', '装备状态', '自身状态', '连携前提', '天赋梯队', '单位文本']),
+  条件对象: Object.freeze(['目标', '自身', '施术者', '召唤物', '使用者', '制作者', '本次行动']),
+  条件比较: Object.freeze(['==', '!=', '>', '>=', '<', '<=', '有', '无', '包含']),
   条件处理: Object.freeze(['生效', '替换效果', '追加效果', '禁用']),
 });
 
@@ -3753,6 +4380,23 @@ var SKILL_PROTOTYPE_FIELD_TYPE_V1 = Object.freeze({
   触发方式: '枚举',
   发动方式: '枚举',
   触发条件: '枚举',
+  提升方式: '枚举',
+  目的地: '枚举',
+  结算方式: '枚举',
+  基础成功率: '概率',
+  每增加一人成功率倍率: '数字',
+  等级上限: '整数',
+  冷却年数: '整数',
+  失败仍消耗资源: '布尔',
+  消耗道具: '布尔',
+  消耗: 'COST',
+  装备要求: '对象',
+  触发概率: '概率',
+  限定探查者: '文本',
+  限定攻击类型: '多枚举',
+  限定资源: '枚举',
+  转化效果: '枚举',
+  触发消耗: 'COST',
   伤害类型: '枚举',
   驱动属性: '枚举',
   影响方向: '枚举',
@@ -3784,6 +4428,7 @@ var SKILL_PROTOTYPE_FIELD_TYPE_V1 = Object.freeze({
   复制类型: '枚举',
   复制模式: '枚举',
   保存上限: '整数',
+  年限上限: '整数',
   削减比例: '数字',
   造物名称: '文本',
   调整tick: '整数',
@@ -3841,6 +4486,15 @@ var SKILL_PROTOTYPE_FIELD_DEFAULT_V1 = Object.freeze({
   触发方式: '立即触发',
   发动方式: '被动',
   触发条件: '计时结束',
+  提升方式: '下一合法等级',
+  目的地: '亡灵半位面',
+  结算方式: '全员同成败',
+  基础成功率: 1,
+  每增加一人成功率倍率: 0.9,
+  等级上限: 120,
+  冷却年数: 3,
+  失败仍消耗资源: true,
+  消耗道具: false,
   护盾模式: '正向护盾',
   伤害类型: '近身攻击',
   驱动属性: '魂力上限',
@@ -3871,6 +4525,7 @@ var SKILL_PROTOTYPE_FIELD_DEFAULT_V1 = Object.freeze({
   复制类型: '复制技能',
   复制模式: '即时镜像',
   保存上限: 1,
+  年限上限: 10000,
   削减比例: 0.2,
   结算标签: '标准伤害',
   抗性类型: '物理抗性',
@@ -4007,6 +4662,8 @@ var SKILL_PROTOTYPE_CONTROL_TYPE_V1 = Object.freeze({
   条件分支: '条件分支编辑器',
   对象: '对象编辑器',
   文本: '文本输入',
+  概率: '概率输入',
+  COST: 'COST输入',
 });
 
 var 分身目标允许原型集合_V1 = new Set(['资源变化', '属性修正', '判定修正', '结算修正']);
@@ -4031,7 +4688,10 @@ var 读取原型字段选项_V1 = (原型 = '', 字段名 = '') => {
   if (原型名 === '状态移除' && key === '匹配原型') return Object.freeze(['无', '资源变化', '护盾变化']);
   if (原型名 === '状态移除' && key === '资源') return Object.freeze(['生命']);
   if (原型名 === '状态转移' && ['来源', '去向'].includes(key)) return Object.freeze(['自身', '目标', '友方', '敌方']);
-  if (原型名 === '机制授予' && key === '触发条件') return Object.freeze(['主动触发', '随下次行动触发']);
+  if (原型名 === '等级提升' && key === '提升方式') return SKILL_PROTOTYPE_FIELD_OPTIONS_V1.提升方式;
+  if (原型名 === '群体撤离' && key === '目的地') return SKILL_PROTOTYPE_FIELD_OPTIONS_V1.目的地;
+  if (原型名 === '群体撤离' && key === '结算方式') return SKILL_PROTOTYPE_FIELD_OPTIONS_V1.结算方式;
+  if (原型名 === '机制授予' && key === '触发条件') return Object.freeze(['主动触发', '随下次行动触发', '下次魂技成功释放']);
   if (key === '影响方向') {
     const 通用方向列表 = Object.freeze(['成功率', '效果强度', '持续时间', '消耗', '前摇']);
     const 保留消耗前摇 = 方向列表 => Object.freeze(Array.from(new Set([...(方向列表 || []), '消耗', '前摇'])));
@@ -4065,6 +4725,15 @@ var 读取原型字段默认值_V1 = (原型 = '', 字段名 = '') => {
   if (原型名 === '时光回溯' && key === '驱动属性') return '精神力上限';
   if (原型名 === '时光回溯' && key === '影响方向') return '成功率';
   if (原型名 === '机制授予' && key === '触发条件') return '主动触发';
+  if (原型名 === '等级提升' && key === '提升方式') return '下一合法等级';
+  if (原型名 === '等级提升' && key === '等级上限') return 120;
+  if (原型名 === '等级提升' && key === '冷却年数') return 3;
+  if (原型名 === '群体撤离' && key === '目的地') return '亡灵半位面';
+  if (原型名 === '群体撤离' && key === '基础成功率') return 1;
+  if (原型名 === '群体撤离' && key === '每增加一人成功率倍率') return 0.9;
+  if (原型名 === '群体撤离' && key === '结算方式') return '全员同成败';
+  if (原型名 === '群体撤离' && key === '失败仍消耗资源') return true;
+  if (原型名 === '群体撤离' && key === '消耗道具') return false;
   if (原型名 === '位移执行' && key === '影响方向') return '效果强度';
   if (原型名 === '位移执行' && key === '持续回合') return 1;
   if (原型名 === '状态交换' && key === '状态') return '任意负面';
@@ -4075,24 +4744,32 @@ var 读取原型字段默认值_V1 = (原型 = '', 字段名 = '') => {
 
 var 构建原型字段定义_V1 = (字段名, 原型 = '') => Object.freeze({
   字段: 字段名,
-  类型: SKILL_PROTOTYPE_FIELD_TYPE_V1[字段名] || '文本',
+  类型: 原型 === '群体撤离' && 字段名 === '对应等级'
+    ? '整数'
+    : ['状态施加', '结算修正'].includes(原型) && ['资源', '限定资源'].includes(字段名)
+    ? '枚举'
+    : SKILL_PROTOTYPE_FIELD_TYPE_V1[字段名] || '文本',
   选项: 字段名 === '原型'
     ? Object.freeze(SKILL_PROTOTYPE_DEFINITION_LIST_V1.map(([原型]) => 原型))
     : 读取原型字段选项_V1(原型, 字段名),
   默认值: 读取原型字段默认值_V1(原型, 字段名),
-  设计台控件类型: SKILL_PROTOTYPE_CONTROL_TYPE_V1[SKILL_PROTOTYPE_FIELD_TYPE_V1[字段名] || '文本'] || '文本输入',
+  设计台控件类型: SKILL_PROTOTYPE_CONTROL_TYPE_V1[
+    ['状态施加', '结算修正'].includes(原型) && ['资源', '限定资源'].includes(字段名)
+      ? '枚举'
+      : SKILL_PROTOTYPE_FIELD_TYPE_V1[字段名] || '文本'
+  ] || '文本输入',
 });
 
 var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
-  ['伤害结算', '战斗结算', '敌对', ['威力倍率', '伤害类型', '攻击段数', '防御穿透', '对应等级', '结算标签', '抗性类型'], ['威力倍率', '伤害类型'], '造成一次或多段直接伤害'],
+  ['伤害结算', '战斗结算', '敌对', ['威力倍率', '伤害类型', '攻击段数', '防御穿透', '对应等级', '结算标签', '抗性类型', '触发消耗'], ['威力倍率', '伤害类型'], '造成一次或多段直接伤害'],
   ['资源变化', '战斗结算', '上下文', ['资源', '数值', '持续回合', '触发限制', '驱动属性', '影响方向', '对应等级'], ['资源', '数值'], '恢复资源或扣除体力、魂力、精神力；生命负数必须使用伤害结算'],
   ['资源转移', '战斗结算', '上下文', ['资源', '数值', '资源转移方式', '转化比例', '持续回合', '驱动属性', '影响方向'], ['资源', '数值', '资源转移方式'], '吞噬、共享、转移或均分目标资源，可用持续回合表达短期资源流转'],
   ['护盾变化', '战斗结算', '上下文', ['护盾模式', '数值', '持续回合', '驱动属性', '影响方向'], ['护盾模式', '数值'], '获得护盾、斩除护盾或窃取护盾'],
   ['属性修正', '战斗结算', '上下文', ['属性', '数值', '持续回合', '驱动属性', '影响方向', '对应等级'], ['属性', '数值'], '修正力量、防御、敏捷、资源上限等属性'],
   ['判定修正', '战斗结算', '上下文', ['判定', '数值', '持续回合', '打断效果', '驱动属性', '影响方向', '对应等级'], ['判定', '数值'], '修正命中、闪避或反应判定，可用持续回合表达短期判定增减益'],
-  ['结算修正', '战斗结算', '上下文', ['结算', '数值', '数量', '转移对象', '吸收来源', '吸收资源', '限定元素', '持续回合', '驱动属性', '影响方向'], ['结算', '数值'], '修正常规结算倍率、比例、消耗、前摇等结果'],
+  ['结算修正', '战斗结算', '上下文', ['结算', '数值', '数量', '转移对象', '吸收来源', '吸收资源', '资源', '限定资源', '限定攻击类型', '转化效果', '限定元素', '持续回合', '驱动属性', '影响方向'], ['结算', '数值'], '修正常规结算倍率、比例、消耗、前摇等结果'],
   ['炸环', '战斗结算', '可赋予', ['强化倍率'], ['强化倍率'], '战斗中选择并炸掉魂环，按魂环年限临时增幅下一次魂技释放时的自身属性'],
-  ['状态施加', '战斗结算', '上下文', ['状态', '触发方式', '数值', '副数值', '持续回合', '延迟回合', '触发限制', '打断效果', '驱动属性', '影响方向', '对应等级'], ['状态'], '施加中毒、冻伤、沉默、隐匿、霸体、无视异常等概括状态，可设置延迟回合登记后施加'],
+  ['状态施加', '战斗结算', '上下文', ['状态', '触发方式', '触发概率', '资源', '限定探查者', '数值', '副数值', '持续回合', '延迟回合', '触发限制', '打断效果', '驱动属性', '影响方向', '对应等级'], ['状态'], '施加中毒、冻伤、沉默、隐匿、霸体、无视异常等概括状态，可设置延迟回合登记后施加'],
   ['时窗修正', '战斗结算', '敌对', ['调整字段', '调整方式', '调整回合', '调整tick', '调整次数', '单日使用次数上限', '结算倍率', '驱动属性', '影响方向'], ['调整字段', '调整方式'], '延长或压缩目标身上对应类型的时间与次数窗口'],
   ['状态移除', '战斗结算', '上下文', ['状态', '匹配原型', '资源', '数值方向', '数量', '持续回合', '驱动属性', '影响方向', '对应等级'], [], '按状态名或状态内部原型效果移除状态，可用持续回合表达持续净化或驱散窗口'],
   ['规则防御', '战斗结算', '可赋予', ['规则', '次数', '持续回合', '触发限制'], ['规则', '次数'], '免伤、免死等防御规则'],
@@ -4109,12 +4786,15 @@ var SKILL_PROTOTYPE_DEFINITION_LIST_V1 = Object.freeze([
   ['修炼增益', '战斗外', '可赋予', ['收益类型', '修炼属性', '训练方式', '数值', '有效期tick', '对应等级'], ['收益类型', '数值'], '修正指定属性修炼速度或指定训练方式收益'],
   ['天赋提升', '战斗外', '可赋予', ['上限梯队', '提升档数', '对应等级'], [], '提升角色天赋梯队，默认提升一级；上限梯队限制提升后不得超过的档位'],
   ['永久属性提升', '战斗外', '可赋予', ['属性', '数值', '对应等级'], ['属性', '数值'], '永久提升指定属性上限，写入角色训练加成并由属性重算生效'],
+  ['魂骨年限提升', '战斗外', '可赋予', ['数值', '年限上限'], ['数值', '年限上限'], '以一次性魂骨材料提升角色已融合魂骨的现有年限，并受年限上限限制'],
   ['战斗外复活', '战斗外', '可赋予', ['数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活代价值', '复活代价时限tick', '复活后状态', '复活后状态时限tick'], ['数值', '死亡时限tick', '复活代价类型', '复活代价对象', '复活后状态'], '战斗外复活意外死亡目标并写回复活代价'],
+  ['等级提升', '战斗外', '可赋予', ['提升方式', '等级上限', '冷却年数'], ['提升方式', '等级上限', '冷却年数'], '将目标提升至下一合法等级，并受等级上限约束；成功后进入指定年数冷却', 'formal-non-battle'],
+  ['群体撤离', '战斗外', '上下文', ['目的地', '基础成功率', '每增加一人成功率倍率', '结算方式', '失败仍消耗资源', '消耗道具', '对应等级', '消耗'], ['目的地', '基础成功率', '每增加一人成功率倍率', '结算方式', '失败仍消耗资源', '消耗道具', '对应等级', '消耗'], '按人数计算一次群体撤离成功率，成功全员同成败；失败仍消耗资源且道具本身不消耗', 'formal-non-battle'],
   ['召唤生成', '战斗结算', '召唤物', ['召唤单位类型', '召唤物名称', '数量', '行动模式', '继承属性比例', '强度', '持续回合', '承伤规则', '触发限制'], ['召唤单位类型', '召唤物名称', '数量'], '生成战斗召唤单位并折算为短期战斗收益'],
 ]);
 
 // ============ 阶段 2 v3：COST 真值表常量（魂技 COST 全链路收口） ============
-// 第 N 魂技运转标准消耗：仅用于普通魂环魂技的承载倍数；第七魂技按武魂真身百分比消耗分流。
+// 第 N 魂技运转标准消耗：普通魂环魂技按来源分类承载；真身来源才按武魂真身百分比消耗分流，魂环位本身不自动等于真身。
 var SKILL_STANDARD_COST_BY_TIER_V1 = Object.freeze(
   Array.from({ length: 9 }, (_, 序号) => 计算魂技资源消耗_V1('魂力', 获取魂技位对应等级_V1(序号 + 1), 50)),
 );
@@ -4300,7 +4980,15 @@ function 获取单位COST_V1(原型, 选项字段, 选项值) {
 }
 
 
-var SKILL_PROTOTYPE_COMMON_FIELDS_V1 = Object.freeze(['原型', '目标', '生效方式', '条件分支']);
+var SKILL_PROTOTYPE_COMMON_FIELDS_V1 = Object.freeze([
+  '原型',
+  '目标',
+  '生效方式',
+  '条件分支',
+  '触发方式',
+  '触发限制',
+  '装备要求',
+]);
 
 var SKILL_MECHANISM_SUPPRESS_MATCHABLE_FIELDS_V1 = Object.freeze({
   状态施加: Object.freeze(['状态']),
@@ -4354,7 +5042,7 @@ function 机制抹消支持原型_V1(原型 = '') {
 
 var SKILL_PROTOTYPE_REGISTRY_V1 = Object.freeze(
   Object.fromEntries(
-    SKILL_PROTOTYPE_DEFINITION_LIST_V1.map(([原型, 类别, 默认方向, 允许字段, 必填字段, 描述]) => {
+    SKILL_PROTOTYPE_DEFINITION_LIST_V1.map(([原型, 类别, 默认方向, 允许字段, 必填字段, 描述, 审计分类]) => {
       const 原始字段列表 = [...SKILL_PROTOTYPE_COMMON_FIELDS_V1, ...允许字段];
       const 字段列表 = 技能原型允许延迟回合_V1(原型) && !原始字段列表.includes('延迟回合')
         ? [...原始字段列表, '延迟回合']
@@ -4375,6 +5063,7 @@ var SKILL_PROTOTYPE_REGISTRY_V1 = Object.freeze(
         运行编译入口: 原型,
         设计台控件类型: Object.freeze(Object.fromEntries(字段列表.map(字段名 => [字段名, 字段定义表[字段名]?.设计台控件类型 || '文本输入']))),
         描述,
+        ...(审计分类 ? { 审计分类 } : {}),
         表现语义: Object.freeze([描述].filter(Boolean)),
         推荐语义: Object.freeze([原型, 描述].filter(Boolean)),
       }),
@@ -4543,12 +5232,17 @@ if (typeof globalThis !== 'undefined') {
     SKILL_STANDARD_CAST_TIME_V1,
     SKILL_BASE_BUDGET_BY_TIER_V1,
     SKILL_SIDE_EFFECT_TIER_V1,
+    判定技能消耗来源_V1,
+    解析技能来源_V1,
+    解析技能阶段消耗_V1,
     获取标准消耗_V1,
     获取运转标准消耗_V1,
     获取武魂真身运转标准消耗比例_V1,
     构建武魂真身默认承载消耗_V1,
     获取标准前摇_V1,
     获取基础预算_V1,
+    计算魂技资源消耗_V1,
+    构建魂技消耗结构_V1,
     是武魂真身魂技位_V1,
     计算运转代价能量_V1,
     运转代价能量反推乘积_V1,
@@ -4597,6 +5291,14 @@ if (typeof globalThis !== 'undefined') {
     判定修正是否增益语义_V1,
     食物造物效果可直接食用_V1,
   });
+  globalThis.__LWCS_ITEM_PASSIVE_CONSUMER_V1__ = Object.freeze({
+    读取物品被动技能条目_V1,
+    装备要求满足_V1,
+    编译物品被动消费者_V1,
+    编译角色装备被动消费者_V1,
+  });
+  try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_ITEM_PASSIVE_CONSUMER_V1__ = globalThis.__LWCS_ITEM_PASSIVE_CONSUMER_V1__; } catch (_错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_ITEM_PASSIVE_CONSUMER_V1__ = globalThis.__LWCS_ITEM_PASSIVE_CONSUMER_V1__; } catch (_错误) {}
   try {
     if (typeof window !== 'undefined' && window.parent && window.parent !== window && !window.parent.__LWCS_SKILL_MECHANISM_REGISTRY__) {
       window.parent.__LWCS_SKILL_MECHANISM_REGISTRY__ = SKILL_MECHANISM_REGISTRY_V1;
@@ -7863,7 +8565,7 @@ var 技能执行黑名单键表_V1 = Object.freeze([
   '副作用列表',
   '机制决策临时',
 ]);
-var 技能条件分支类型候选_V1 = Object.freeze(['当前行动', '命中', '被闪避', '状态存在', '护盾', '生命比例', '体力比例', '魂力比例', '精神力比例', '生命数值', '体力数值', '魂力数值', '精神力数值', '目标', '使用者', '环境满足', '时间', '装备状态', '自身状态', '连携前提', '天赋梯队', '单位文本']);
+var 技能条件分支类型候选_V1 = Object.freeze(['当前行动', '命中', '被闪避', '状态存在', '护盾', '生命比例', '体力比例', '魂力比例', '精神力比例', '生命数值', '体力数值', '魂力数值', '精神力数值', '等级', '技能属性', '攻击段数', '终结', '生命体', '装备品质', '反抗状态', '血脉', '目标', '使用者', '环境满足', '时间', '装备状态', '自身状态', '连携前提', '天赋梯队', '单位文本']);
 var 技能条件分支对象候选_V1 = Object.freeze(['目标', '自身', '施术者', '召唤物', '使用者', '制作者']);
 var 技能条件分支比较候选_V1 = Object.freeze(['==', '!=', '>', '>=', '<', '<=', '有', '无', '包含']);
 var 技能条件分支处理候选_V1 = Object.freeze(['生效', '替换效果', '追加效果', '禁用']);
@@ -7888,7 +8590,9 @@ var 技能正式根字段集合_V1 = new Set([
   '前摇',
   '附带属性',
   '使用条件',
+  '触发方式',
   '触发限制',
+  '装备要求',
   '场外冷却至tick',
   '技能掌控度',
   '_效果数组',
@@ -8085,20 +8789,108 @@ function 约束结算修正目标_V1(结算 = '', 目标 = '') {
   return 当前目标;
 }
 
-function 解析技能消耗结构_V1(value) {
-  if (value === undefined || value === null) return {};
-  if (typeof value === 'object' && !Array.isArray(value)) return 中文化技能机制参数值_V1(cloneJsonValue(value));
-  const text = String(value || '').trim();
-  if (!text || text === '无') return {};
-  const result = {};
-  text.split(/[|｜+，,]/).forEach(part => {
-    const item = String(part || '').trim();
-    const match = item.match(/(魂力|体力|精神力)\s*[:：]\s*([+-]?\d+(?:\.\d+)?%?)/);
-    if (!match) return;
-    const raw = match[2];
-    const parsed = /%$/.test(raw) ? raw : Number(raw);
-    result[match[1]] = Number.isFinite(parsed) ? parsed : raw;
-  });
+const 技能阶段消耗正式资源_V1 = new Set(['魂力', '精神力', '体力']);
+
+function 解析技能阶段消耗_V1(value, context = {}) {
+  const result = { 启动: [], 维持: [], 形式: 'none', 非法项: [] };
+  const addInvalid = (阶段, 原始值, 原因, 资源 = '') => {
+    result.非法项.push({ 阶段, 资源, 原始值, 原因 });
+  };
+  const addEntry = (阶段, 资源, 原始值) => {
+    const 资源名 = String(资源 || '').trim();
+    if (!技能阶段消耗正式资源_V1.has(资源名)) {
+      addInvalid(阶段, 原始值, 'unknown-resource', 资源名);
+      return;
+    }
+    if (typeof 原始值 === 'number') {
+      if (!Number.isFinite(原始值)) addInvalid(阶段, 原始值, 'non-finite', 资源名);
+      else if (原始值 < 0) addInvalid(阶段, 原始值, 'negative', 资源名);
+      else result[阶段].push({ 资源: 资源名, 数值: 原始值, 百分比: false });
+      return;
+    }
+    const 文本 = String(原始值 ?? '').trim();
+    const 匹配 = /^([+-]?\d+(?:\.\d+)?)(%)?$/.exec(文本);
+    if (!匹配) {
+      addInvalid(阶段, 原始值, 'invalid-value', 资源名);
+      return;
+    }
+    const 数值 = Number(匹配[1]);
+    const 百分比 = !!匹配[2];
+    if (!Number.isFinite(数值)) addInvalid(阶段, 原始值, 'non-finite', 资源名);
+    else if (数值 < 0) addInvalid(阶段, 原始值, 'negative', 资源名);
+    else if (百分比 && 数值 > 100) addInvalid(阶段, 原始值, 'percent-out-of-range', 资源名);
+    else result[阶段].push({ 资源: 资源名, 数值, 百分比 });
+  };
+  const parseText = (默认阶段, text) => {
+    const 文本 = String(text ?? '').trim();
+    if (!文本 || 文本 === '无') return;
+    const phasePattern = /(?:^|[\s|｜+，,;；])(启动|维持)\s*[:：]/g;
+    let 当前阶段 = 默认阶段;
+    let cursor = 0;
+    for (const match of 文本.matchAll(phasePattern)) {
+      parseTextPart(当前阶段, 文本.slice(cursor, match.index));
+      当前阶段 = match[1] === '维持' ? '维持' : '启动';
+      cursor = match.index + match[0].length;
+    }
+    parseTextPart(当前阶段, 文本.slice(cursor));
+  };
+  const parseTextPart = (阶段, text) => {
+    const 片段 = String(text ?? '').trim();
+    if (!片段) return;
+    const pattern = /([^\s|｜+，,;；:：]+)\s*[:：]\s*([+-]?\d+(?:\.\d+)?%?)/g;
+    const matches = [...片段.matchAll(pattern)];
+    matches.forEach(match => addEntry(阶段, match[1], match[2]));
+    const 残余 = 片段.replace(pattern, '').replace(/[\s|｜+，,;；]/g, '').trim();
+    if (!matches.length || 残余) addInvalid(阶段, 片段, 'unparsed');
+  };
+  const parseValue = (原始值, 阶段 = '启动') => {
+    if (原始值 === undefined || 原始值 === null) return;
+    if (Array.isArray(原始值)) {
+      原始值.forEach(条目 => parseValue(条目, 阶段));
+      return;
+    }
+    if (typeof 原始值 === 'object') {
+      Object.entries(原始值).forEach(([字段, 值]) => {
+        if (字段 === '启动' || 字段 === 'upfront') parseValue(值, '启动');
+        else if (字段 === '维持' || 字段 === 'sustain') parseValue(值, '维持');
+        else addEntry(阶段, 字段, 值);
+      });
+      return;
+    }
+    if (typeof 原始值 === 'string') {
+      parseText(阶段, 原始值);
+      return;
+    }
+    addInvalid(阶段, 原始值, 'missing-resource');
+  };
+  parseValue(value);
+  const skill = context?.技能 || context?.skill || context?.技能数据 || {};
+  const hasSourceContext = !!(
+    context?.sourceCategory || context?.来源类别 || context?.来源 || context?.path || context?.写入路径
+    || context?.技能类型 || context?.技能分类 || context?.融合参与者 || context?.fusionParticipantIds
+    || context?.融合模式 || context?.fusionMode || context?.actionKind || context?.动作类型
+    || context?.技能名 || context?.魂技名 || context?.name || context?.名称 || context?.效果模式
+    || context?.effectMode || context?.技能效果模式 || context?.释放形态 || context?.画面描述
+    || context?.效果描述 || context?.技能描述 || context?.描述 || context?.触发关键词 || context?.关键词
+    || context?.forceTrueBody !== undefined || context?.强制真身 !== undefined
+    || context?.技能 || context?.skill || context?.技能数据
+  );
+  if (hasSourceContext) {
+    const 来源判定 = 判定技能消耗来源_V1(skill, context);
+    if (来源判定.成本类型 === 'ordinary') {
+      [...result.启动, ...result.维持]
+        .filter(项 => 项.百分比)
+        .forEach(项 => addInvalid(项.阶段 || (result.启动.includes(项) ? '启动' : '维持'), `${项.数值}%`, 'source-percent-forbidden', 项.资源));
+    }
+  }
+  const 条目 = [...result.启动, ...result.维持];
+  const 有百分比 = 条目.some(项 => 项.百分比) || result.非法项.some(项 => /%/.test(String(项.原始值 ?? '')));
+  const 有绝对值 = 条目.some(项 => !项.百分比);
+  if (result.非法项.length) result.形式 = 'invalid';
+  else if (!条目.length) result.形式 = 'none';
+  else if (有百分比 && 有绝对值) result.形式 = 'mixed';
+  else if (有百分比) result.形式 = 'percentage';
+  else result.形式 = 'absolute';
   return result;
 }
 
@@ -8584,6 +9376,18 @@ function 标准化原型字段值_V1(value) {
   return result;
 }
 
+function 解析技能触发概率_V1(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 && value <= 1 ? Number(value.toFixed(4)) : null;
+  }
+  const 文本 = String(value ?? '').trim();
+  const 匹配 = /^(\d+(?:\.\d+)?)(%)?$/.exec(文本);
+  if (!匹配) return null;
+  const 原始值 = Number(匹配[1]);
+  const 概率 = 匹配[2] ? 原始值 / 100 : 原始值;
+  return Number.isFinite(概率) && 概率 >= 0 && 概率 <= 1 ? Number(概率.toFixed(4)) : null;
+}
+
 function 归一化技能原型字段同义值_V1(原型 = '', 字段 = {}) {
   if (!字段 || typeof 字段 !== 'object') return 字段;
   if (原型 === '属性修正') {
@@ -8639,6 +9443,10 @@ function 归一化技能原型字段同义值_V1(原型 = '', 字段 = {}) {
       缠扰: '迟缓',
     };
     if (映射[状态]) 字段.状态 = 映射[状态];
+    if (字段.触发概率 !== undefined) {
+      const 概率 = 解析技能触发概率_V1(字段.触发概率);
+      if (概率 !== null) 字段.触发概率 = 概率;
+    }
   }
   if (原型 === '位移执行') {
     const 位移类型 = String(字段.位移类型 || '').trim();
@@ -10076,8 +10884,18 @@ function 收口原型效果条目_V1(value = {}, fallbackTargetKind = '单体', 
       return;
     }
     if (raw === undefined) return;
-    if (typeof raw === 'string' && !raw.trim()) return;
     const 可见键名 = 技能机制可见键中文名映射_V1[key] || 技能机制属性键中文名映射_V1[key] || key;
+    if (typeof raw === 'string' && !raw.trim()) {
+      const 严格非空字段 = 原型 === '状态施加'
+        ? ['触发概率', '资源', '限定探查者']
+        : 原型 === '结算修正'
+          ? ['资源', '限定资源', '转化效果']
+          : 原型 === '伤害结算'
+            ? ['触发消耗']
+            : [];
+      if (严格非空字段.includes(可见键名)) recordViolation(`${原型}.${可见键名}`);
+      return;
+    }
     if (原型 === '规则防御' && 可见键名 === '防御对象') {
       const 防御对象 = String(raw || '').trim();
       if (!String(原型字段.规则 || '').trim()) 原型字段.规则 = /致命|死亡|免死|锁血/.test(防御对象) ? '免死' : '免伤';
@@ -10141,9 +10959,13 @@ function 收口原型效果条目_V1(value = {}, fallbackTargetKind = '单体', 
   if (原型 === '资源锁定') 原型字段.数值 = 规范化资源锁定比例_V1(原型字段.数值, 0.5);
   if (原型 === '机制授予') {
     const 触发条件 = String(原型字段.触发条件 || value.触发条件 || '主动触发').trim();
-    原型字段.触发条件 = 机制授予目标允许下次行动触发_V1(目标) && ['主动触发', '随下次行动触发'].includes(触发条件) ? 触发条件 : '主动触发';
+    const 是下一魂技成功触发 = 触发条件 === '下次魂技成功释放';
+    原型字段.触发条件 = 机制授予目标允许下次行动触发_V1(目标) && ['主动触发', '随下次行动触发', '下次魂技成功释放'].includes(触发条件) ? 触发条件 : '主动触发';
     if (原型字段.触发条件 === '随下次行动触发') {
       delete 原型字段.可用次数;
+      delete 原型字段.持续回合;
+    } else if (是下一魂技成功触发) {
+      原型字段.可用次数 = Math.max(1, Math.round(Number(原型字段.可用次数 || value.可用次数 || value.useCount || 1)));
       delete 原型字段.持续回合;
     } else {
       原型字段.可用次数 = Math.max(1, Math.round(Number(原型字段.可用次数 || value.可用次数 || value.useCount || 1)));
@@ -10159,6 +10981,41 @@ function 收口原型效果条目_V1(value = {}, fallbackTargetKind = '单体', 
   清理执行效果原型语义_V1(原型, 原型字段, 上下文);
   收口技能效果影响方向_V1(原型, 原型字段);
   应用技能原型目标驱动契约_V1(原型, 原型字段);
+  if (原型 === '状态施加') {
+    if (原型字段.资源 !== undefined) {
+      const 资源 = typeof 原型字段.资源 === 'string' ? 原型字段.资源.trim() : '';
+      if (!技能正式资源选项_V1.includes(资源)) recordViolation(`${原型}.资源`);
+      else 原型字段.资源 = 资源;
+    }
+    if (原型字段.触发概率 !== undefined && 解析技能触发概率_V1(原型字段.触发概率) === null) {
+      recordViolation(`${原型}.触发概率`);
+    }
+    if (原型字段.限定探查者 !== undefined) {
+      const 探查者 = typeof 原型字段.限定探查者 === 'string' ? 原型字段.限定探查者.trim() : '';
+      if (!探查者) recordViolation(`${原型}.限定探查者`);
+      else 原型字段.限定探查者 = 探查者;
+    }
+  }
+  if (原型 === '结算修正') {
+    ['资源', '限定资源'].forEach(字段名 => {
+      if (原型字段[字段名] === undefined) return;
+      const 资源 = typeof 原型字段[字段名] === 'string' ? 原型字段[字段名].trim() : '';
+      if (!技能正式资源选项_V1.includes(资源)) recordViolation(`${原型}.${字段名}`);
+      else 原型字段[字段名] = 资源;
+    });
+    if (原型字段.限定攻击类型 !== undefined) {
+      const 攻击类型 = Array.isArray(原型字段.限定攻击类型)
+        ? 原型字段.限定攻击类型.map(item => typeof item === 'string' ? item.trim() : '')
+        : [];
+      if (!攻击类型.length || 攻击类型.some(item => !技能限定攻击类型选项_V1.includes(item))) recordViolation(`${原型}.限定攻击类型`);
+      else 原型字段.限定攻击类型 = Array.from(new Set(攻击类型));
+    }
+    if (原型字段.转化效果 !== undefined) {
+      const 转化效果 = typeof 原型字段.转化效果 === 'string' ? 原型字段.转化效果.trim() : '';
+      if (!['立即恢复', '下次造成伤害'].includes(转化效果)) recordViolation(`${原型}.转化效果`);
+      else 原型字段.转化效果 = 转化效果;
+    }
+  }
   Object.entries(原型字段).forEach(([key, raw]) => {
     const 字段定义 = 原型定义.字段定义?.[key] || {};
     const 类型 = String(字段定义.类型 || '').trim();
@@ -10318,6 +11175,37 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
     if (原型 === '规则防御' && (effect.驱动属性 !== undefined || effect.影响方向 !== undefined)) throw new Error(`技能执行结构错误:${path}[${index}]${原型}不允许驱动属性或影响方向`);
     if (原型 === '结算修正' && ['伤害分摊', '消耗分摊'].includes(String(effect.结算 || '').trim()) && !['单体', '群体'].includes(String(effect.目标 || '').trim())) throw new Error(`技能执行结构错误:${path}[${index}]${String(effect.结算 || '').trim()}目标只允许单体/群体`);
     if (原型 === '修炼增益' && !['自身', '单体', '群体', '全场'].includes(String(effect.目标 || '').trim())) throw new Error(`技能执行结构错误:${path}[${index}]修炼增益目标只允许自身/单体/群体/全场`);
+    if (原型 === '魂骨年限提升') {
+      if (String(effect.目标 || '').trim() !== '自身') throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升目标必须是自身`);
+      if (!技能原型字段值是百分比修正_V1(effect.数值)) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升数值必须使用百分比`);
+      const 提升比例 = parseSkillSignedChangeNumber(effect.数值);
+      if (!(提升比例 > 0 && 提升比例 <= 1)) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升比例必须在0到100%之间`);
+      const 年限上限 = Number(effect.年限上限);
+      if (!Number.isInteger(年限上限) || 年限上限 < 1 || 年限上限 > 10000) throw new Error(`技能执行结构错误:${path}[${index}]魂骨年限提升年限上限必须是1到10000的整数`);
+    }
+    if (原型 === '等级提升') {
+      if (String(effect.目标 || '').trim() !== '自身') throw new Error(`技能执行结构错误:${path}[${index}]等级提升目标必须是自身`);
+      if (String(effect.提升方式 || '').trim() !== '下一合法等级') throw new Error(`技能执行结构错误:${path}[${index}]等级提升方式必须是下一合法等级`);
+      const 等级上限 = Number(effect.等级上限);
+      if (!Number.isInteger(等级上限) || 等级上限 < 1 || 等级上限 > 120) throw new Error(`技能执行结构错误:${path}[${index}]等级提升上限必须是1到120的整数`);
+      const 冷却年数 = Number(effect.冷却年数);
+      if (!Number.isInteger(冷却年数) || 冷却年数 < 0) throw new Error(`技能执行结构错误:${path}[${index}]等级提升冷却年数必须是非负整数`);
+    }
+    if (原型 === '群体撤离') {
+      if (String(effect.目标 || '').trim() !== '群体') throw new Error(`技能执行结构错误:${path}[${index}]群体撤离目标必须是群体`);
+      if (String(effect.目的地 || '').trim() !== '亡灵半位面') throw new Error(`技能执行结构错误:${path}[${index}]群体撤离目的地无效`);
+      const 基础成功率 = Number(effect.基础成功率);
+      const 人数倍率 = Number(effect.每增加一人成功率倍率);
+      if (!Number.isFinite(基础成功率) || 基础成功率 < 0 || 基础成功率 > 1) throw new Error(`技能执行结构错误:${path}[${index}]群体撤离基础成功率必须在0到1之间`);
+      if (!Number.isFinite(人数倍率) || 人数倍率 < 0 || 人数倍率 > 1) throw new Error(`技能执行结构错误:${path}[${index}]群体撤离人数成功率倍率必须在0到1之间`);
+      if (String(effect.结算方式 || '').trim() !== '全员同成败') throw new Error(`技能执行结构错误:${path}[${index}]群体撤离结算方式必须是全员同成败`);
+      if (effect.失败仍消耗资源 !== true) throw new Error(`技能执行结构错误:${path}[${index}]群体撤离必须声明失败仍消耗资源`);
+      if (effect.消耗道具 !== false) throw new Error(`技能执行结构错误:${path}[${index}]群体撤离必须声明消耗道具为false`);
+      const 对应等级 = Number(effect.对应等级);
+      if (!Number.isInteger(对应等级) || 对应等级 < 1 || 对应等级 > 180) throw new Error(`技能执行结构错误:${path}[${index}]群体撤离对应等级必须是1到180的整数`);
+      const 消耗解析 = 解析技能阶段消耗_V1(effect.消耗);
+      if (消耗解析.形式 !== 'absolute' || 消耗解析.非法项.length === 0 && 消耗解析.启动.length === 0 && 消耗解析.维持.length === 0) throw new Error(`技能执行结构错误:${path}[${index}]群体撤离消耗必须是最终绝对整数COST`);
+    }
     if (原型 === '战斗外复活') {
       if (String(effect.目标 || '').trim() === '自身') throw new Error(`技能执行结构错误:${path}[${index}]战斗外复活目标不能是自身`);
       if (!['单体', '群体', '全场'].includes(String(effect.目标 || '').trim())) throw new Error(`技能执行结构错误:${path}[${index}]战斗外复活目标只允许单体/群体/全场`);
@@ -10586,6 +11474,12 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
             ? '元素抗性'
           : '物理抗性';
       if (结算标签 !== 预期结算标签 || 抗性类型 !== 预期抗性类型) throw new Error(`技能执行结构错误:${path}[${index}]伤害类型自动绑定字段不一致`);
+      if (effect.触发消耗 !== undefined) {
+        const 触发消耗 = 解析技能阶段消耗_V1(effect.触发消耗);
+        if (触发消耗.非法项.length || 触发消耗.形式 !== 'absolute' || !触发消耗.启动.length || 触发消耗.维持.length) {
+          throw new Error(`技能执行结构错误:${path}[${index}]伤害结算触发消耗必须是仅启动阶段的绝对值COST`);
+        }
+      }
     }
     if (原型 === '结算修正') {
       const 结算 = String(effect.结算 || '').trim();
@@ -10651,6 +11545,15 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
         });
       }
       if (effect.概率 !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]状态施加不允许概率`);
+      if (effect.资源 !== undefined && (typeof effect.资源 !== 'string' || !技能正式资源选项_V1.includes(effect.资源.trim()))) {
+        throw new Error(`技能执行结构错误:${path}[${index}]状态施加资源无效`);
+      }
+      if (effect.触发概率 !== undefined && 解析技能触发概率_V1(effect.触发概率) === null) {
+        throw new Error(`技能执行结构错误:${path}[${index}]状态施加触发概率必须是0到100%的合法概率`);
+      }
+      if (effect.限定探查者 !== undefined && (typeof effect.限定探查者 !== 'string' || !effect.限定探查者.trim())) {
+        throw new Error(`技能执行结构错误:${path}[${index}]状态施加限定探查者必须是非空字符串`);
+      }
       if (effect.打断效果 !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]该状态不允许打断效果`);
       if (effect.触发限制 !== undefined && !状态施加允许触发限制_V1(状态, effect.目标)) {
         throw new Error(`技能执行结构错误:${path}[${index}]该状态不允许触发限制`);
@@ -10702,9 +11605,11 @@ function 断言技能执行效果原型契约_V1(effectArray = [], path = '_效�
     });
   if (原型 === '机制授予') {
     const 触发条件 = String(effect.触发条件 || '主动触发').trim();
-    if (!['主动触发', '随下次行动触发'].includes(触发条件)) throw new Error(`技能执行结构错误:${path}[${index}]机制授予触发条件无效`);
+    if (!['主动触发', '随下次行动触发', '下次魂技成功释放'].includes(触发条件)) throw new Error(`技能执行结构错误:${path}[${index}]机制授予触发条件无效`);
     if (触发条件 === '随下次行动触发' && !机制授予目标允许下次行动触发_V1(effect.目标)) throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许随下次行动触发`);
     if (触发条件 === '随下次行动触发' && (effect.可用次数 !== undefined || effect.持续回合 !== undefined)) throw new Error(`技能执行结构错误:${path}[${index}]随下次行动触发不支持可用次数或持续回合`);
+    if (触发条件 === '下次魂技成功释放' && !机制授予目标允许下次行动触发_V1(effect.目标)) throw new Error(`技能执行结构错误:${path}[${index}]非自身机制授予不允许在下次魂技成功释放时触发`);
+    if (触发条件 === '下次魂技成功释放' && (!(Number.isInteger(Number(effect.可用次数)) && Number(effect.可用次数) > 0) || effect.持续回合 !== undefined)) throw new Error(`技能执行结构错误:${path}[${index}]下次魂技成功释放机制授予必须有正整数可用次数且不设置回合期限`);
     if (触发条件 === '主动触发' && !(Number(effect.可用次数 || 0) > 0 && Number(effect.持续回合 || 0) > 0)) throw new Error(`技能执行结构错误:${path}[${index}]主动触发机制授予缺少可用次数或持续回合`);
     if ((Array.isArray(effect.授予效果) ? effect.授予效果 : []).some(item => String(item?.原型 || '').trim() === '机制授予')) throw new Error(`技能执行结构错误:${path}[${index}]机制授予不能嵌套机制授予`);
     if ((Array.isArray(effect.授予效果) ? effect.授予效果 : []).some(item => !机制授予允许授予原型集合_V1.has(String(item?.原型 || '').trim()))) throw new Error(`技能执行结构错误:${path}[${index}]机制授予授予效果原型无效`);
@@ -11796,7 +12701,7 @@ function formatTickToCalendarDateText(tickValue) {
   const remainderMinutes = totalMinutes % (24 * 60);
   const hours = Math.floor(remainderMinutes / 60);
   const mins = remainderMinutes % 60;
-  return `斗罗历${20000 + years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  return `斗罗历${years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
 function formatTickToCalendarDateTimeText(tickValue) {
@@ -12304,59 +13209,251 @@ function 读取直接结算预算资源上限_V1(资源 = '', 上下文 = {}) {
 }
 
 function 读取直接结算预算消耗比例_V1(消耗 = '无', 上下文 = {}) {
-  const 解析单项 = (资源, 原始值) => {
-    const 文本 = String(原始值 ?? '').trim();
-    if (!文本 || 文本 === '无') return 0;
-    if (/%$/.test(文本)) {
-      const 数字 = Number(文本.replace('%', ''));
-      return Number.isFinite(数字) && 数字 > 0 ? 数字 / 100 : 0;
-    }
-    const 数字 = Number(文本);
-    if (!Number.isFinite(数字) || 数字 <= 0) return 0;
-    return 数字 / 读取直接结算预算资源上限_V1(资源, 上下文);
+  const 解析结果 = 解析技能阶段消耗_V1(消耗, 上下文);
+  return 解析结果.启动.reduce((总和, 项) => {
+    const 资源上限 = 读取直接结算预算资源上限_V1(项.资源, 上下文);
+    return 总和 + (项.百分比 ? 项.数值 / 100 : 项.数值 / 资源上限);
+  }, 0);
+}
+
+function 判定技能消耗来源_V1(skill = {}, 上下文 = {}) {
+  const 文本化 = value => {
+    if (Array.isArray(value)) return value.map(文本化).join('|');
+    if (value && typeof value === 'object') return Object.entries(value).map(([key, item]) => `${key}:${文本化(item)}`).join('|');
+    return String(value ?? '');
   };
-  if (!消耗 || String(消耗).trim() === '无') return 0;
-  if (消耗 && typeof 消耗 === 'object' && !Array.isArray(消耗)) {
-    return Object.entries(消耗).reduce((总和, [资源, 原始值]) => 总和 + 解析单项(资源, 原始值), 0);
-  }
-  const 文本 = String(消耗 || '').trim();
-  if (!文本 || 文本 === '无') return 0;
-  return 文本
-    .split(/[|｜]/)
-    .flatMap(片段 => String(片段 || '').split(/\s+/))
-    .map(片段 => 片段.trim())
-    .filter(Boolean)
-    .reduce((总和, 片段) => {
-      if (/^维持[:：]/.test(片段)) return 总和;
-      const 清理 = 片段.replace(/^启动[:：]/, '');
-      const 匹配 = 清理.match(/^(生命|HP|体力|魂力|精神力)[:：]([+-]?\d+(?:\.\d+)?%?)$/i);
-      return 匹配 ? 总和 + 解析单项(匹配[1] === 'HP' ? '生命' : 匹配[1], 匹配[2]) : 总和;
-    }, 0);
+  const skillData = 上下文?.技能 || 上下文?.skill || 上下文?.技能数据 || skill || {};
+  const sourceCandidate = [
+    上下文?.sourceCategory,
+    上下文?.来源类别,
+    上下文?.来源,
+    上下文?.category,
+    上下文?.source_category,
+    skillData?.来源类别,
+    skillData?.来源类型,
+    skillData?.内容类型,
+    skillData?.__战斗来源类别,
+    上下文?.技能类型,
+    上下文?.技能分类,
+    skillData?.技能类型,
+    skillData?.技能分类,
+    skillData?.类型,
+  ].find(value => String(value ?? '').trim());
+  const sourceCandidateText = String(sourceCandidate ?? 推断技能来源_V1(上下文?.path)).trim() || '魂技';
+  const explicitSourceValues = [
+    上下文?.sourceCategory,
+    上下文?.来源类别,
+    上下文?.来源,
+    上下文?.source_category,
+    上下文?.sourceType,
+    上下文?.来源类型,
+    skillData?.来源类别,
+    skillData?.来源类型,
+    skillData?.__战斗来源类别,
+  ];
+  const explicitTypeCategoryValues = [上下文?.技能类型, 上下文?.技能分类, skillData?.技能类型, skillData?.技能分类, skillData?.类型];
+  const explicitFusionCategory = [...explicitSourceValues, ...explicitTypeCategoryValues]
+    .some(value => /^(?:融合|武魂融合技|融合技|融合技能)$/i.test(String(value ?? '').trim()));
+  const 来源文本 = /^(?:融合|武魂融合技|融合技|融合技能)$/i.test(sourceCandidateText)
+    ? '武魂融合技'
+    : /自创魂技/.test(sourceCandidateText)
+      ? '自创魂技'
+      : /魂骨/.test(sourceCandidateText)
+        ? '魂骨技能'
+        : /气血魂技|魂兽能力/.test(sourceCandidateText)
+          ? '气血魂技'
+          : /魂环魂技|普通魂技|魂技/.test(sourceCandidateText)
+            ? '魂技'
+            : sourceCandidateText;
+  const pathText = 文本化([
+    上下文?.path,
+    上下文?.写入路径,
+    上下文?.writePath,
+    上下文?.路径,
+    上下文?.写入类型,
+    上下文?.来源类别,
+    上下文?.sourceCategory,
+    上下文?.来源明细,
+    上下文?.sourceDetail,
+    skillData?.写入路径,
+    skillData?.写入类型,
+    skillData?.需求魂环数,
+    skillData?.魂环位,
+    上下文?.需求魂环数,
+    上下文?.需求魂环槽位,
+    skillData?.path,
+    skillData?.路径,
+    skillData?.写入类型,
+  ]);
+  const skillText = 文本化([
+    上下文?.技能名,
+    上下文?.魂技名,
+    上下文?.name,
+    上下文?.名称,
+    上下文?.类型,
+    上下文?.技能类型,
+    上下文?.技能分类,
+    上下文?.效果模式,
+    上下文?.effectMode,
+    上下文?.技能效果模式,
+    上下文?.释放形态,
+    skillData?.魂技名,
+    skillData?.name,
+    skillData?.技能名,
+    skillData?.名称,
+    skillData?.类型,
+    skillData?.技能类型,
+    skillData?.技能分类,
+    skillData?.效果模式,
+    skillData?.effectMode,
+    skillData?.技能效果模式,
+    skillData?.释放形态,
+    skillData?.来源类别,
+    skillData?.来源类型,
+  ]);
+  const descriptionText = 文本化([
+    上下文?.画面描述,
+    上下文?.效果描述,
+    上下文?.技能描述,
+    上下文?.描述,
+    skillData?.画面描述,
+    skillData?.效果描述,
+    skillData?.技能描述,
+    skillData?.描述,
+  ]);
+  const keywordText = 文本化([
+    上下文?.触发关键词,
+    上下文?.关键词,
+    上下文?.标签,
+    上下文?.附带属性,
+    skillData?.触发关键词,
+    skillData?.关键词,
+    skillData?.标签,
+    skillData?.keywords,
+    skillData?.附带属性,
+  ]);
+  const actionText = 文本化([
+    上下文?.动作,
+    上下文?.动作类型,
+    上下文?.action,
+    上下文?.actionKind,
+    上下文?.actionType,
+    上下文?.action_kind,
+    上下文?.来源模块,
+    上下文?.sourceModule,
+    上下文?.外部动作,
+    上下文?.actionContext,
+  ]);
+  const participantValues = [
+    上下文?.融合参与者,
+    上下文?.fusionParticipantIds,
+    skillData?.融合参与者,
+    skillData?.fusionParticipantIds,
+  ];
+  const hasFusionParticipants = participantValues.some(value => Array.isArray(value)
+    ? value.length > 0
+    : value && typeof value === 'object'
+      ? Object.keys(value).length > 0
+      : String(value ?? '').trim() !== '');
+  const modeValues = [
+    上下文?.融合模式,
+    上下文?.fusionMode,
+    上下文?.fusionUsageMode,
+    skillData?.融合模式,
+    skillData?.fusionMode,
+  ];
+  const hasFusionMode = modeValues.some(value => String(value ?? '').trim() !== '');
+  const fusionSignalText = [sourceCandidateText, pathText, skillText, actionText].join('|');
+  const 武魂融合技 = explicitFusionCategory
+    || /武魂融合技|融合技|融合技能|fusion[-_ ]?(?:skill|technique)|release[_ -]?fusion/i.test(fusionSignalText)
+    || hasFusionParticipants
+    || hasFusionMode
+    || !!(上下文?.融合技 && typeof 上下文.融合技 === 'object' && Object.keys(上下文.融合技).length);
+  const ringValue = [
+    上下文?.ringIndex,
+    上下文?.魂环位,
+    上下文?.ringSlot,
+    上下文?.需求魂环数,
+    上下文?.需求魂环槽位,
+    skillData?.ringIndex,
+    skillData?.魂环位,
+    skillData?.需求魂环数,
+  ].map(Number).find(value => Number.isFinite(value) && value > 0);
+  const ring = Number.isFinite(ringValue) && ringValue > 0
+    ? Math.max(1, Math.floor(ringValue))
+    : null;
+  const trueBodyDependencyPattern = /(?:(?:需要|需|必须|须(?:要)?|依赖|依附于|借助|配合)[^。！？；，,|]{0,16}(?:武魂)?真身|(?:武魂)?真身[^。！？；，,|]{0,16}(?:状态下|为引|需要|需|必须|依赖|依附于|借助|配合))/i;
+  const isPositiveTrueBodyDescription = text => {
+    const 文本 = String(text || '').trim();
+    if (!文本 || trueBodyDependencyPattern.test(文本) || !/武魂真身|真身|true[-_ ]?body/i.test(文本)) return false;
+    return /(?:武魂真身形态|真身形态|真身附体|真身降临|进入[^。！？；，,|]*真身|化为[^。！？；，,|]*真身|化作[^。！？；，,|]*真身|变为[^。！？；，,|]*真身|显现[^。！？；，,|]*真身|开启[^。！？；，,|]*真身|施展[^。！？；，,|]*真身|true[-_ ]?body)/i.test(文本);
+  };
+  const identityText = [
+    sourceCandidateText,
+    文本化(explicitSourceValues),
+    文本化(explicitTypeCategoryValues),
+    pathText,
+    skillText,
+  ].join('|');
+  const identityTrueBodySignal = /武魂真身|真身|true[-_ ]?body/i.test(identityText);
+  const descriptionTrueBodySignal = isPositiveTrueBodyDescription(descriptionText);
+  const keywordTrueBodySignal = /武魂真身|真身|true[-_ ]?body/i.test(keywordText)
+    && !trueBodyDependencyPattern.test(keywordText);
+  const trueBodySignal = 上下文?.forceTrueBody === true
+    || 上下文?.强制真身 === true
+    || skillData?.forceTrueBody === true
+    || skillData?.强制真身 === true
+    || identityTrueBodySignal
+    || descriptionTrueBodySignal
+    || keywordTrueBodySignal;
+  // 来源分类只接受显式真身标记或文本语义；第七魂环/自创需求 7 只提供位级，不自动放行百分比 COST。
+  const 武魂真身 = !武魂融合技 && trueBodySignal;
+  const 有效来源 = 武魂融合技 ? '武魂融合技' : 武魂真身 ? '魂技' : 来源文本;
+  const 成本类型 = 武魂融合技
+    ? 'fusion'
+    : 武魂真身
+      ? 'true-body'
+      : ['魂技', '自创魂技'].includes(来源文本)
+        ? 'ordinary'
+        : 'not-applicable';
+  return {
+    来源: 来源文本,
+    声明来源: sourceCandidateText,
+    有效来源,
+    武魂融合技,
+    武魂真身,
+    魂环位: 武魂真身 ? 7 : ring,
+    成本类型,
+    语义来源: 武魂融合技 ? '武魂融合技' : 武魂真身 ? '武魂真身' : 来源文本,
+  };
 }
 
-function 技能消耗包含百分比_V1(消耗 = '无') {
-  if (!消耗 || String(消耗).trim() === '无') return false;
-  if (Array.isArray(消耗)) return 消耗.some(条目 => 技能消耗包含百分比_V1(条目));
-  if (消耗 && typeof 消耗 === 'object') return Object.values(消耗).some(值 => 技能消耗包含百分比_V1(值));
-  return /%/.test(String(消耗 || '').trim());
+// 对外统一命名；内部旧调用继续使用“判定技能消耗来源_V1”。
+function 解析技能来源_V1(skill = {}, 上下文 = {}) {
+  return 判定技能消耗来源_V1(skill, 上下文);
 }
 
-function 技能启动消耗包含百分比_V1(消耗 = '无') {
-  if (!消耗 || String(消耗).trim() === '无') return false;
-  if (Array.isArray(消耗)) return 消耗.some(条目 => 技能启动消耗包含百分比_V1(条目));
-  if (消耗 && typeof 消耗 === 'object') return 技能消耗包含百分比_V1(消耗.启动 || 消耗.upfront || 消耗);
-  return /%/.test(String(消耗 || '').split(/\s+维持[:：]/)[0] || '');
+function 技能消耗包含百分比_V1(消耗 = '无', 上下文 = {}) {
+  const 解析结果 = 解析技能阶段消耗_V1(消耗, 上下文);
+  return [...解析结果.启动, ...解析结果.维持].some(项 => 项.百分比)
+    || 解析结果.非法项.some(项 => /%/.test(String(项.原始值 ?? '')));
+}
+
+function 技能启动消耗包含百分比_V1(消耗 = '无', 上下文 = {}) {
+  const 解析结果 = 解析技能阶段消耗_V1(消耗, 上下文);
+  return 解析结果.启动.some(项 => 项.百分比)
+    || 解析结果.非法项.some(项 => 项.阶段 === '启动' && /%/.test(String(项.原始值 ?? '')));
 }
 
 function 普通魂技禁止百分比启动消耗_V1(skill = {}, 上下文 = {}) {
-  const 来源 = String(上下文?.sourceCategory || 上下文?.来源类别 || 上下文?.来源 || 推断技能来源_V1(上下文?.path)).trim() || '魂技';
+  const 来源判定 = 判定技能消耗来源_V1(skill, 上下文);
+  const 来源 = 来源判定.来源;
   if (!['魂技', '自创魂技'].includes(来源)) return false;
-  if (上下文?.forceTrueBody === true) return false;
-  const 魂技位 = Math.max(1, Math.floor(Number(上下文?.ringIndex ?? 上下文?.魂环位 ?? 推断虚拟魂技位_V1(来源, 上下文) ?? 1)) || 1);
-  if (来源 === '魂技' && 是武魂真身魂技位_V1(魂技位)) return false;
-  const 名称 = String(skill?.魂技名 || skill?.name || '').trim();
-  if (/武魂真身|真身|武魂融合技/.test(名称)) return false;
-  return 技能启动消耗包含百分比_V1(skill?.消耗);
+  if (来源判定.武魂融合技 || 来源判定.武魂真身) return false;
+  const 解析结果 = 解析技能阶段消耗_V1(skill?.消耗, { ...上下文, 技能: skill });
+  return 解析结果.启动.some(项 => 项.百分比)
+    || 解析结果.维持.some(项 => 项.百分比)
+    || 解析结果.非法项.some(项 => /%/.test(String(项.原始值 ?? '')));
 }
 
 function 强制普通魂技固定启动消耗_V1(skill = {}, 上下文 = {}) {
@@ -12403,11 +13500,11 @@ function 强制普通魂技固定启动消耗_V1(skill = {}, 上下文 = {}) {
 
 // ============ v3 反推方案：从 skill.消耗 / skill.前摇 反推倍数 → COST 修正比例 ============
 function 解析消耗为绝对值_V1(消耗字段 = '无', 上下文 = {}) {
-  // 把 "无" / "30%" / "100" / "启动:魂力:30% | 维持:魂力:10%" / 对象 解析为绝对魂力扣除值
-  // 复用 读取直接结算预算消耗比例_V1（返回比例 0-1），再乘上当前角色魂力上限
-  const 比例 = 读取直接结算预算消耗比例_V1(消耗字段, 上下文);
-  const 魂力上限 = 读取直接结算预算资源上限_V1('魂力', 上下文);
-  return 比例 * 魂力上限;
+  const 解析结果 = 解析技能阶段消耗_V1(消耗字段, 上下文);
+  return 解析结果.启动.reduce((总和, 项) => {
+    const 资源上限 = 读取直接结算预算资源上限_V1(项.资源, 上下文);
+    return 总和 + (项.百分比 ? 资源上限 * 项.数值 / 100 : 项.数值);
+  }, 0);
 }
 
 function 技能消耗字段缺失_V1(skill = {}) {
@@ -12441,15 +13538,18 @@ function 读取技能实际前摇_V1(skill = {}, 上下文 = {}) {
 }
 
 function 计算消耗倍数_V1(skill = {}, 魂技位 = 1, 上下文 = {}) {
-  const 来源 = String(上下文?.来源 || 上下文?.sourceCategory || 上下文?.来源类别 || 推断技能来源_V1(上下文?.path)).trim();
-  const 武魂真身百分比消耗 = 来源 !== '武魂融合技' && 是武魂真身魂技位_V1(魂技位) && 技能消耗包含百分比_V1(skill?.消耗);
+  const 来源判定 = 判定技能消耗来源_V1(skill, { ...上下文, ringIndex: 魂技位, 魂环位: 魂技位 });
+  const 来源 = 来源判定.有效来源 || 来源判定.来源;
+  const 技能上下文 = { ...上下文, 技能: skill, ringIndex: 魂技位, 魂环位: 魂技位 };
+  const 武魂融合技百分比消耗 = 来源判定.武魂融合技 && 技能消耗包含百分比_V1(skill?.消耗, 技能上下文);
+  const 武魂真身百分比消耗 = !武魂融合技百分比消耗 && 来源判定.武魂真身 && 技能消耗包含百分比_V1(skill?.消耗, 技能上下文);
   const 标准 = 武魂真身百分比消耗 ? null : 获取标准消耗_V1(魂技位);
-  if (武魂真身百分比消耗) {
-    const 实际比例 = 读取技能承载消耗比例_V1(skill, 上下文);
+  if (武魂真身百分比消耗 || 武魂融合技百分比消耗) {
+    const 实际比例 = 读取技能承载消耗比例_V1(skill, 技能上下文);
     return Math.max(0.05, Math.min(4, 实际比例 / 获取武魂真身运转标准消耗比例_V1()));
   }
   if (!Number.isFinite(标准) || 标准 <= 0) return 1;
-  const 实际 = 读取技能实际消耗_V1(skill, 上下文, 标准);
+  const 实际 = 读取技能实际消耗_V1(skill, 技能上下文, 标准);
   return Math.max(0.05, Math.min(4, 实际 / 标准));
 }
 
@@ -12790,7 +13890,7 @@ function 按伤害COST反推威力倍率_V1(目标COST = 0, 效果 = {}, 上下�
 var 资源绝对值每COST点数_V1 = 30;
 
 function 技能效果是战斗外专用原型_V1(效果 = {}) {
-  return ['修炼增益', '战斗外复活'].includes(String(效果?.原型 || '').trim());
+  return ['修炼增益', '战斗外复活', '等级提升', '群体撤离'].includes(String(效果?.原型 || '').trim());
 }
 
 function 技能包含战斗外专用原型_V1(skill = {}) {
@@ -13544,20 +14644,23 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   if (上下文?.魂环位 === undefined && 上下文?.ringIndex !== undefined) {
     上下文.魂环位 = Math.max(1, Math.floor(Number(上下文.ringIndex || 1)) || 1);
   }
-  const 来源 = String(上下文?.来源 || 上下文?.sourceCategory || 上下文?.来源类别 || 推断技能来源_V1(上下文?.path)).trim() || '魂技';
+  const 来源判定 = 判定技能消耗来源_V1(技能, 上下文);
+  const 来源 = 来源判定.有效来源 || 来源判定.来源;
   const 来源承载 = 来源承载系数_V1(来源);
-  const 魂技位 = 推断虚拟魂技位_V1(来源, 上下文);
+  const 魂技位 = 来源判定.武魂真身 ? 7 : 推断虚拟魂技位_V1(来源, 上下文);
   const 角色 = 上下文?.角色 || {};
 
-  const 武魂融合技百分比消耗 = 来源 === '武魂融合技' && 技能消耗包含百分比_V1(技能?.消耗);
-  const 武魂真身百分比消耗 = !武魂融合技百分比消耗 && 是武魂真身魂技位_V1(魂技位) && 技能消耗包含百分比_V1(技能?.消耗);
+  const 技能上下文 = { ...上下文, 技能 };
+  const 武魂融合技百分比消耗 = 来源判定.武魂融合技 && 技能消耗包含百分比_V1(技能?.消耗, 技能上下文);
+  const 武魂真身百分比消耗 = !武魂融合技百分比消耗 && 来源判定.武魂真身 && 技能消耗包含百分比_V1(技能?.消耗, 技能上下文);
   const 标准消耗 = 武魂真身百分比消耗 || 武魂融合技百分比消耗 ? null : 获取标准消耗_V1(魂技位);
   const 实际魂环位 = Math.max(1, Math.floor(Number(上下文?.魂环位 ?? 上下文?.ringIndex ?? 魂技位 ?? 1) || 1));
   const 魂环年限COST修正 = 计算魂环年限COST修正_V1(角色, 实际魂环位, 上下文);
   const 天赋修正 = 计算天赋梯队COST修正_V1(角色);
 
-  const 承载消耗比例 = 读取技能承载消耗比例_V1(技能, { 角色 });
-  const 实际消耗 = Number.isFinite(标准消耗) ? 读取技能实际消耗_V1(技能, { 角色 }, 标准消耗) : 0;
+  const 资源上下文 = { ...上下文, 技能, 角色, 等级: 上下文?.等级 ?? 角色?.属性?.等级 };
+  const 承载消耗比例 = 读取技能承载消耗比例_V1(技能, 资源上下文);
+  const 实际消耗 = Number.isFinite(标准消耗) ? 读取技能实际消耗_V1(技能, 资源上下文, 标准消耗) : 0;
   const 消耗倍数 = 武魂真身百分比消耗 || 武魂融合技百分比消耗
     ? Math.max(0.05, Math.min(4, 承载消耗比例 / 获取武魂真身运转标准消耗比例_V1()))
     : Number.isFinite(标准消耗) && 标准消耗 > 0
@@ -15636,13 +16739,14 @@ function 技能原型字段值是数值修正_V1(value) {
 
 var 结算修正支持字段矩阵_V1 = Object.freeze({
   造成伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
-  受到伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
+  受到伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '限定攻击类型', '驱动属性', '影响方向']),
+  资源恢复: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '资源', '限定资源', '数值', '持续回合', '驱动属性', '影响方向']),
   治疗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '驱动属性', '影响方向']),
   消耗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
   前摇: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合', '限定元素', '驱动属性', '影响方向']),
   反伤: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
   伤害转移: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '转移对象', '持续回合']),
-  伤害吸收: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '吸收来源', '吸收资源', '转化效果', '增幅上限', '持续回合']),
+  伤害吸收: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '对应等级', '吸收来源', '吸收资源', '转化效果', '增幅上限', '持续回合']),
   伤害转治疗: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
   治疗转伤害: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '持续回合']),
   伤害分摊: Object.freeze(['目标', '原型', '生效方式', '条件分支', '结算', '数值', '数量', '持续回合']),
@@ -15780,8 +16884,9 @@ function 断言结算修正字段范围_V1(effect = {}, path = '_效果数组', 
   if (结算 === '伤害吸收') {
     if (!SKILL_PROTOTYPE_FIELD_OPTIONS_V1.吸收来源.includes(String(effect.吸收来源 || '造成伤害').trim())) throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收来源无效`);
     if (!SKILL_PROTOTYPE_FIELD_OPTIONS_V1.吸收资源.includes(String(effect.吸收资源 || '生命').trim())) throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收资源无效`);
+    if (effect.对应等级 !== undefined && (!Number.isInteger(Number(effect.对应等级)) || Number(effect.对应等级) <= 0)) throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收对应等级必须为正整数`);
     const 转化效果 = String(effect.转化效果 || '').trim();
-    if (转化效果 && !['恢复资源', '下次造成伤害'].includes(转化效果)) throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收转化效果无效`);
+    if (转化效果 && !['立即恢复', '下次造成伤害'].includes(转化效果)) throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收转化效果无效`);
     if (effect.增幅上限 !== undefined && !技能原型字段值是百分比修正_V1(effect.增幅上限)) throw new Error(`技能执行结构错误:${path}[${index}]伤害吸收增幅上限必须使用百分比`);
   } else if (effect.吸收资源 !== undefined) {
     throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段吸收资源`);
@@ -15791,6 +16896,23 @@ function 断言结算修正字段范围_V1(effect = {}, path = '_效果数组', 
     throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段转化效果`);
   } else if (effect.增幅上限 !== undefined) {
     throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段增幅上限`);
+  }
+  if (effect.限定攻击类型 !== undefined) {
+    if (结算 !== '受到伤害' || !Array.isArray(effect.限定攻击类型) || !effect.限定攻击类型.length) {
+      throw new Error(`技能执行结构错误:${path}[${index}]${结算}限定攻击类型必须是非空数组且仅用于受到伤害`);
+    }
+    if (effect.限定攻击类型.some(item => typeof item !== 'string' || !技能限定攻击类型选项_V1.includes(item.trim()))) {
+      throw new Error(`技能执行结构错误:${path}[${index}]${结算}限定攻击类型无效`);
+    }
+  }
+  if (结算 === '资源恢复') {
+    ['资源', '限定资源'].forEach(字段名 => {
+      if (effect[字段名] !== undefined && (typeof effect[字段名] !== 'string' || !技能正式资源选项_V1.includes(effect[字段名].trim()))) {
+        throw new Error(`技能执行结构错误:${path}[${index}]资源恢复${字段名}无效`);
+      }
+    });
+  } else if (effect.资源 !== undefined || effect.限定资源 !== undefined) {
+    throw new Error(`技能执行结构错误:${path}[${index}]${结算}不支持字段资源或限定资源`);
   }
   if (['伤害分摊', '消耗分摊'].includes(结算)) {
     if (String(effect.目标 || '').trim() !== '群体' && effect.数量 !== undefined) throw new Error(`技能执行结构错误:${path}[${index}]${结算}单体目标不支持数量`);
@@ -16251,16 +17373,24 @@ function 转译技能结构附加语义_V1(效果 = {}, 深度 = 0) {
   const 持续tick = Math.max(0, Number(效果?.持续tick || 0));
   const 驱动属性 = 格式化技能结构转译字段_V1(效果?.驱动属性, '');
   const 影响方向 = 格式化技能结构转译字段_V1(效果?.影响方向, '');
-  const 概率 = 格式化技能结构转译字段_V1(效果?.概率, '');
+  const 触发概率值 = 解析技能触发概率_V1(效果?.触发概率 ?? 效果?.概率);
+  const 概率 = 触发概率值 === null ? '' : `${formatSkillNumber(触发概率值 * 100)}%`;
+  const 原型 = String(效果?.原型 || '').trim();
+  const 关联资源 = 原型 === '状态施加' ? 格式化技能结构转译字段_V1(效果?.资源, '') : '';
+  const 限定探查者 = 原型 === '状态施加' ? 格式化技能结构转译字段_V1(效果?.限定探查者, '') : '';
+  const 触发消耗 = 原型 === '伤害结算' ? 格式化技能结构转译字段_V1(效果?.触发消耗, '') : '';
   const 副作用文本 = 转译技能副作用列表_V1(效果?.副作用列表 || []);
   const 覆盖规则 = 格式化技能结构转译字段_V1(效果?.覆盖规则, '');
-  if (触发条件 && !['主动触发', '随下次行动触发'].includes(触发条件)) 片段.push(`触发:${触发条件}`);
+  if (触发条件 && !['主动触发', '随下次行动触发', '下次魂技成功释放'].includes(触发条件)) 片段.push(`触发:${触发条件}`);
   if (触发限制) 片段.push(触发限制);
   if (覆盖规则) 片段.push(`覆盖:${覆盖规则}`);
   if (消耗) 片段.push(`消耗:${消耗}`);
   if (持续回合 > 0) 片段.push(`持续${formatSkillNumber(持续回合)}回合`);
   if (持续tick > 0) 片段.push(`持续${formatSkillNumber(持续tick)}tick`);
   if (概率) 片段.push(`概率:${概率}`);
+  if (关联资源) 片段.push(`关联资源:${关联资源}`);
+  if (限定探查者) 片段.push(`限定探查者:${限定探查者}`);
+  if (触发消耗) 片段.push(`触发消耗:${触发消耗}`);
   if (副作用文本) 片段.push(`副作用:${副作用文本}`);
   const 条件文本 = (Array.isArray(效果?.条件分支) ? 效果.条件分支 : [])
     .map(分支 => 转译技能结构条件分支_V1({ ...分支, __父效果: 效果 }, 深度))
@@ -16286,6 +17416,7 @@ function 转译机制授予描述_V1(效果 = {}, 选项 = {}) {
     预算: 选项.预算,
   }) || '后续效果';
   if (触发条件 === '随下次行动触发') return `下次行动时附带：${授予效果文本}`;
+  if (触发条件 === '下次魂技成功释放') return `下一次魂技成功释放时附带：${授予效果文本}；成功后消费${formatSkillNumber(效果?.可用次数 || 1)}次，无回合期限`;
   const 回合 = Math.max(1, Number(效果?.持续回合 || 1));
   const 次数 = Math.max(1, Number(效果?.可用次数 || 1));
   return `使用/食用者可在${formatSkillNumber(回合)}回合内获得一个新技能，仅限使用${formatSkillNumber(次数)}次；技能效果为：${授予效果文本}；`;
@@ -16354,9 +17485,21 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
       const 文本 = 变化.正数值 ? `${变化.是负向 ? '降低' : '提高'}${目标}${判定文本}${变化.正数值}` : `调整${目标}${判定文本}`;
       return `${文本}${效果.打断效果 === true ? '，成立时打断当前动作' : ''}${附加}`;
     }
+    case '等级提升':
+      return `战斗外主动：将${目标}提升至当前合法等级序列的下一等级，最高${formatSkillNumber(效果.等级上限 || 120)}级；成功后冷却${formatSkillNumber(效果.冷却年数 || 0)}年${附加}`;
+    case '群体撤离':
+      return `战斗外群体撤离至${格式化技能结构转译字段_V1(效果.目的地, '目的地')}：基础成功率${格式化技能结构转译字段_V1(效果.基础成功率, '1')}，每增加一人乘${格式化技能结构转译字段_V1(效果.每增加一人成功率倍率, '0.9')}；${效果.结算方式 || '全员同成败'}，失败仍消耗资源，密钥不消耗${效果.消耗 ? `，消耗${效果.消耗}` : ''}${附加}`;
+    case '魂骨年限提升':
+      return `战斗外一次性效果：将${目标}已融合魂骨的现有年限提高${数值 || '+10%'}，上限${formatSkillNumber(效果.年限上限 || 10000)}年${附加}`;
     case '结算修正': {
       const 限定元素 = 格式化技能结构转译字段_V1(效果.限定元素, '');
-      const 限定文本 = 限定元素 ? `，限定${限定元素}元素` : '';
+      const 限定攻击类型 = 格式化技能结构转译字段_V1(效果.限定攻击类型, '');
+      const 限定资源 = 格式化技能结构转译字段_V1(效果.限定资源, '');
+      const 限定文本 = [
+        限定元素 ? `限定${限定元素}元素` : '',
+        限定攻击类型 ? `限定${限定攻击类型}攻击` : '',
+        限定资源 ? `限定${限定资源}` : '',
+      ].filter(Boolean).map(文本 => `，${文本}`).join('');
       const 结算 = String(效果.结算 || '').trim();
       const 正数值 = String(数值 || '').replace(/^[+-]/, '');
       if (结算 === '伤害吸收') {
@@ -16366,7 +17509,16 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
         const 吸收资源 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.吸收资源.includes(String(效果.吸收资源 || '').trim())
           ? String(效果.吸收资源 || '').trim()
           : '生命';
+        const 转化效果 = String(效果.转化效果 || '').trim();
+        const 对应等级文本 = Number(效果.对应等级 || 0) > 0 ? `，按等效${formatSkillNumber(效果.对应等级)}级${吸收资源}上限储存` : '';
+        const 增幅上限文本 = 效果.增幅上限 ? `，下一击增幅上限${格式化技能结构转译字段_V1(效果.增幅上限, '')}` : '';
+        if (转化效果 === '下次造成伤害') return `${吸收来源}时，将伤害量${正数值 || '0%'}储存为下一次造成伤害的增幅${增幅上限文本}${对应等级文本}${预算附加}${附加}`;
+        if (转化效果 === '立即恢复') return `${吸收来源}时，将伤害量${正数值 || '0%'}立即恢复为${吸收资源}${预算附加}${附加}`;
         return `${吸收来源}时，将伤害量${正数值 || '0%'}转化为${吸收资源}${预算附加}${附加}`;
+      }
+      if (结算 === '资源恢复') {
+        const 资源 = 格式化技能结构转译字段_V1(效果.资源 || 效果.限定资源, '资源');
+        return `使${目标}恢复${资源}${正数值 || '0%'}${预算附加}${附加}`;
       }
       if (结算 === '伤害转治疗') return `将伤害结算转为治疗，比例${正数值 || '0%'}${预算附加}${附加}`;
       if (结算 === '治疗转伤害') return `将治疗结算转为伤害，比例${正数值 || '0%'}${预算附加}${附加}`;
@@ -16468,6 +17620,8 @@ function 转译单条执行效果_V1(效果 = {}, 选项 = {}) {
       const 效果文本 = 变化.正数值 ? `${变化.是负向 ? '降低' : '提高'}${目标}${对象}${变化.正数值}` : `调整${目标}${对象}`;
       return `战斗外收益，不作为主动战斗结算：${效果文本}${效果.有效期tick ? `，有效${formatSkillNumber(效果.有效期tick)}tick` : ''}${附加}`;
     }
+    case '魂骨年限提升':
+      return `战斗外一次性效果：将${目标}已融合魂骨的现有年限提高${数值 || '+10%'}，上限${formatSkillNumber(效果.年限上限 || 10000)}年${附加}`;
     case '战斗外复活':
       return `战斗外复活${目标}：意外死亡${formatSkillNumber(效果.死亡时限tick || 144)}tick内可用，恢复${数值 || '+25%'}生命，代价${格式化技能结构转译字段_V1(效果.复活代价类型, '状态代价')}【${格式化技能结构转译字段_V1(效果.复活代价对象, '虚弱')}】×${formatSkillNumber(效果.复活代价值 || '+1')}，复活后获得【${格式化技能结构转译字段_V1(效果.复活后状态, '虚弱')}】${附加}`;
     case '召唤生成': {
@@ -16723,7 +17877,7 @@ function 读取技能场外冷却档_V1(技能 = {}) {
 function 技能结构可场外使用_V1(技能 = {}) {
   const 效果数组 = Array.isArray(技能?._效果数组) ? 技能._效果数组 : [];
   if (String(技能?.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(效果数组)) return true;
-  const 可写回原型 = new Set(['资源变化', '属性修正', '状态施加', '状态移除', '修炼增益', '战斗外复活', '灵物吸收', '护盾变化', '机制授予', '复制执行']);
+  const 可写回原型 = new Set(['资源变化', '属性修正', '状态施加', '状态移除', '修炼增益', '战斗外复活', '等级提升', '群体撤离', '灵物吸收', '护盾变化', '机制授予', '复制执行']);
   return 技能执行效果数组存在匹配_V1(效果数组, 效果 => 可写回原型.has(String(效果?.原型 || '').trim()));
 }
 
@@ -16863,14 +18017,20 @@ function buildSingleSkillEffectSummary(effect) {
       return '修正' + target + '的' + String(effect.判定 || '判定') + String(effect.数值 || '') + (effect.打断效果 === true ? '，附带打断' : '') + 持续文本;
     case '结算修正': {
       const 结算 = String(effect.结算 || '结算').trim();
+      const 限定攻击类型 = 格式化技能结构转译字段_V1(effect.限定攻击类型, '');
+      const 限定资源 = 格式化技能结构转译字段_V1(effect.限定资源, '');
+      const 限定文本 = `${限定攻击类型 ? '，限定' + 限定攻击类型 + '攻击' : ''}${限定资源 ? '，限定' + 限定资源 : ''}`;
       if (结算 === '伤害吸收') {
         const 吸收来源 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.吸收来源.includes(String(effect.吸收来源 || '').trim()) ? String(effect.吸收来源 || '').trim() : '造成伤害';
         const 吸收资源 = SKILL_PROTOTYPE_FIELD_OPTIONS_V1.吸收资源.includes(String(effect.吸收资源 || '').trim()) ? String(effect.吸收资源 || '').trim() : '生命';
+        if (String(effect.转化效果 || '').trim() === '下次造成伤害') return 吸收来源 + '时，将伤害量' + String(effect.数值 || '+0%') + '储存为下一次造成伤害增幅' + (effect.增幅上限 ? '，上限' + String(effect.增幅上限) : '') + (Number(effect.对应等级 || 0) > 0 ? '，按等效' + formatSkillNumber(effect.对应等级) + '级' + 吸收资源 + '上限储存' : '') + 持续文本;
+        if (String(effect.转化效果 || '').trim() === '立即恢复') return 吸收来源 + '时，将伤害量' + String(effect.数值 || '+0%') + '立即恢复为' + 吸收资源 + 持续文本;
         return 吸收来源 + '时，将伤害量' + String(effect.数值 || '+0%') + '转化为' + 吸收资源 + 持续文本;
       }
+      if (结算 === '资源恢复') return '使' + target + '恢复' + String(effect.资源 || effect.限定资源 || '资源') + String(effect.数值 || '+0%') + 限定文本 + 持续文本;
       if (结算 === '伤害转治疗') return '伤害结算转为治疗，比例' + String(effect.数值 || '+0%') + 持续文本;
       if (结算 === '治疗转伤害') return '治疗结算转为伤害，比例' + String(effect.数值 || '+0%') + 持续文本;
-      return '修正' + target + '的' + 结算 + String(effect.数值 || '') + 持续文本;
+      return '修正' + target + '的' + 结算 + String(effect.数值 || '') + 限定文本 + 持续文本;
     }
     case '状态施加':
       return 转译技能状态施加描述_V1(effect, target) + 持续文本;
@@ -16900,6 +18060,7 @@ function buildSingleSkillEffectSummary(effect) {
         .join('；') || '后续效果';
       const 触发条件 = String(effect?.触发条件 || '主动触发').trim();
       if (触发条件 === '随下次行动触发') return '下次行动时附带：' + 授予文本;
+      if (触发条件 === '下次魂技成功释放') return '下一次魂技成功释放时附带：' + 授予文本 + '；成功后消费' + formatSkillNumber(effect?.可用次数 || 1) + '次，无回合期限';
       return '可在' + formatSkillNumber(effect?.持续回合 || 1) + '回合内主动触发' + formatSkillNumber(effect?.可用次数 || 1) + '次：' + 授予文本;
     }
     case '复制执行': {
@@ -16928,6 +18089,12 @@ function buildSingleSkillEffectSummary(effect) {
         : String(effect.训练方式 || '冥想') + '收益';
       return '战斗外收益，不作为主动战斗结算：使' + target + 对象 + String(effect.数值 || '') + 持续文本;
     }
+    case '等级提升':
+      return '战斗外主动：将' + target + '提升至当前合法等级序列的下一等级，最高' + formatSkillNumber(effect.等级上限 || 120) + '级；成功后冷却' + formatSkillNumber(effect.冷却年数 || 0) + '年';
+    case '群体撤离':
+      return '战斗外群体撤离至' + String(effect.目的地 || '亡灵半位面') + '：基础成功率' + formatSkillNumber(effect.基础成功率 ?? 1) + '，每增加一人乘' + formatSkillNumber(effect.每增加一人成功率倍率 ?? 0.9) + '；' + String(effect.结算方式 || '全员同成败') + '，失败仍消耗资源，密钥不消耗' + (effect.消耗 ? '，消耗' + String(effect.消耗) : '');
+    case '魂骨年限提升':
+      return '战斗外一次性效果：将' + target + '已融合魂骨的现有年限提高' + String(effect.数值 || '+10%') + '，上限' + formatSkillNumber(effect.年限上限 || 10000) + '年';
     case '战斗外复活':
       return '战斗外复活' + target + '：意外死亡' + formatSkillNumber(effect.死亡时限tick || 144) + 'tick内可用，恢复' + String(effect.数值 || '+25%') + '生命，代价' + String(effect.复活代价类型 || '状态代价') + '【' + String(effect.复活代价对象 || '虚弱') + '】×' + formatSkillNumber(effect.复活代价值 || '+1') + '，复活后获得【' + String(effect.复活后状态 || '虚弱') + '】';
     case '召唤生成': {
@@ -17712,8 +18879,8 @@ function getUpgradedTalentTier_ACU(currentTier = '') {
 function applyHundredThousandSpiritHerbBonus_ACU(char = {}) {
   if (!char?.属性 || Number(char?.状态?.吸收灵物年限 || 0) < 100000) return [];
   const messages = [];
-  const originalHiddenVar = Math.max(0.1, Number(char.属性?.底子波动 || 1));
-  char.属性.底子波动 = Number((originalHiddenVar + 0.03).toFixed(4));
+  const originalHiddenVar = Math.max(0.1, Math.min(1.05, Number(char.属性?.底子波动 || 1)));
+  char.属性.底子波动 = Number(Math.min(1.05, originalHiddenVar + 0.03).toFixed(4));
   messages.push(`底子提升至 ${char.属性.底子波动.toFixed(4)}`);
 
   if (originalHiddenVar > 1.02) {
@@ -21054,9 +22221,16 @@ function getNormalizedFusionSourceSpirits(fusionSkill = {}, char = {}) {
 function ensureFusionSkillMentalCost(skill, currentRatio = 0.5) {
   if (!skill || typeof skill !== 'object') return skill;
   if (!Array.isArray(skill._效果数组)) skill._效果数组 = [];
-  const cost = 解析技能消耗结构_V1(skill.消耗);
-  cost.精神力 = `当前${Math.round(Math.max(0, Number(currentRatio || 0)) * 100)}%`;
-  skill.消耗 = cost;
+  const parsed = 解析技能阶段消耗_V1(skill.消耗, { 来源: '武魂融合技', sourceCategory: '武魂融合技', path: '武魂融合技.技能数据', 技能: skill });
+  const toCostMap = entries => (Array.isArray(entries) ? entries : []).reduce((result, item) => {
+    const value = item.百分比 ? `${item.数值}%` : item.数值;
+    result[item.资源] = result[item.资源] === undefined ? value : value;
+    return result;
+  }, {});
+  const startup = toCostMap(parsed.启动);
+  startup.精神力 = `${Math.max(0, Math.min(100, Number(currentRatio || 0) * 100))}%`;
+  const sustain = toCostMap(parsed.维持);
+  skill.消耗 = Object.keys(sustain).length ? { 启动: startup, 维持: sustain } : startup;
   skill.前摇 = Math.max(0, Number(skill.前摇 ?? 30) || 30);
   收口技能执行结构_V1(skill, { 目标: '单体', path: '武魂融合技.技能数据', 技能: skill });
   return skill;
@@ -22463,12 +23637,34 @@ globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类�
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ = 编译技能结构为人类语言_V1; } catch (错误) {}
 globalThis.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ = 计算开场初始化修为等级_V1;
+globalThis.__LWCS_CALC_SOUL_POWER_CAP__ = 计算魂力曲线值_V1;
+globalThis.__LWCS_GET_NEXT_CULTIVATION_LEVEL__ = getNextCultivationLevelStep;
+globalThis.__LWCS_C2_CONSUMER_RULES_V1__ = Object.freeze({
+  getNextCultivationLevelStep,
+  getCharacterBaseSoulPowerRequirementAtLevel,
+  计算等级提升结果_V1,
+  应用等级提升_V1,
+  计算群体撤离成功率_V1,
+  结算群体撤离_V1,
+  读取正式物品消费规则_V1,
+  读取坚挺金苍蝇成功授予_V1,
+  消费坚挺金苍蝇成功魂技_V1,
+  读取坚挺金苍蝇自用倍率_V1,
+  缩放技能效果数组_V1,
+  计算魂骨年限提升_V1,
+});
 globalThis.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ = 计算直接结算收益预算_V1;
 globalThis.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ = 断言直接结算收益预算_V1;
 globalThis.__LWCS_GET_DIRECT_SETTLE_BUDGET_CONFIG__ = 读取直接结算收益预算系数_V1;
 globalThis.__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__ = 计算当前装备生效属性加成_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ = 计算开场初始化修为等级_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_CALC_INITIAL_CULTIVATION_LEVEL__ = 计算开场初始化修为等级_V1; } catch (错误) {}
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_CALC_SOUL_POWER_CAP__ = 计算魂力曲线值_V1; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_CALC_SOUL_POWER_CAP__ = 计算魂力曲线值_V1; } catch (错误) {}
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_GET_NEXT_CULTIVATION_LEVEL__ = getNextCultivationLevelStep; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_GET_NEXT_CULTIVATION_LEVEL__ = getNextCultivationLevelStep; } catch (错误) {}
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_C2_CONSUMER_RULES_V1__ = globalThis.__LWCS_C2_CONSUMER_RULES_V1__; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_C2_CONSUMER_RULES_V1__ = globalThis.__LWCS_C2_CONSUMER_RULES_V1__; } catch (错误) {}
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ = 计算直接结算收益预算_V1; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ = 计算直接结算收益预算_V1; } catch (错误) {}
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ = 断言直接结算收益预算_V1; } catch (错误) {}

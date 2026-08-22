@@ -75,16 +75,8 @@
     副职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     赛事权限模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'CompetitionPrivilegeUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
     战斗预估运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattlePreview_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy' },
-    行为原型适配器: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorPrototypeAdapter_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
-    行为候选特征桥: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorCandidateFeatureBridge_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
-    行为即时特征: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorImmediateFeature_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
-    行为候选特征源: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorCandidateFeatureSource_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
-    行为关系特征: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorRelationalFeature_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
-    候选影响载荷: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorCandidateImpactEnvelope_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
-    行为线性评分候选: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorLinearScoreProvider_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
-    行为贡献分解: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorContributionTrace_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
-    行为中文理由: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorChineseReason_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy', 依赖: ['行为贡献分解'] },
-    战斗决策运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleDecision_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗预估运行时', '行为原型适配器', '行为候选特征桥', '行为即时特征', '行为候选特征源', '行为关系特征', '候选影响载荷', '行为线性评分候选', '行为贡献分解', '行为中文理由'] },
+    行为决策管线: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorDecisionPipeline_Module.js' + 资源版本后缀, 关键: true, 分组: 'lazy' },
+    战斗决策运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleDecision_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗预估运行时', '行为决策管线'] },
     战斗运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleRuntime_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗决策运行时'] },
     战斗战报运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleReport_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗运行时'] },
     战斗模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗战报运行时'] },
@@ -105,7 +97,7 @@
     'JSONPatch规范化接口',
     'JSONPatch文本预处理接口',
   ]);
-  const 行为载荷模块顺序 = Object.freeze(['行为原型适配器', '行为候选特征桥', '行为即时特征', '行为候选特征源', '行为关系特征', '候选影响载荷', '行为线性评分候选', '行为贡献分解', '行为中文理由']);
+  const 行为载荷模块顺序 = Object.freeze(['行为决策管线']);
   const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库']);
   const 核心模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器']);
   const 热更新重置模块顺序 = Object.freeze(['历法与库运行时', '内置角色库', '内置物品库', '内置势力库', '内置地点库', ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '请求监控挂件', '赛事权限模块', '战斗预估运行时', ...行为载荷模块顺序, '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块', '数据库模块']);
