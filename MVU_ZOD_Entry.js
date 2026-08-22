@@ -169,12 +169,11 @@ function 发布MVU资源所有者_V1(所有者) {
 }
 
 const MVU资源所有者状态_V1 = (() => {
-  const 宿主 = MVU共享宿主窗口_V1;
   const 键 = '__LWCS_MVU_RESOURCE_OWNER_STATE_V1__';
-  const 旧状态 = 宿主[键];
+  const 旧状态 = globalThis[键];
   if (旧状态 && 旧状态.version === '1.0.0' && 旧状态.records instanceof Map) return 旧状态;
   const 新状态 = { version: '1.0.0', records: new Map() };
-  宿主[键] = 新状态;
+  globalThis[键] = 新状态;
   return 新状态;
 })();
 
@@ -250,7 +249,7 @@ function 创建MVU资源所有者_V1() {
       记录.phase = 'execute';
       记录.executionStarted = true;
       记录.executeCount += 1;
-      const 文档 = MVU共享宿主窗口_V1.document || globalThis.document;
+      const 文档 = globalThis.document;
       if (!文档 || !文档.createElement) throw new Error(`MVU资源执行缺少document：${记录.relativePath}`);
       const 脚本 = 文档.createElement('script');
       脚本.id = `lwcs-resource-owner-${记录.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
@@ -323,7 +322,7 @@ function 创建MVU资源所有者_V1() {
 }
 
 const MVU资源所有者_V1 = (() => {
-  const 已有 = MVU共享宿主窗口_V1.__LWCS_MVU_RESOURCE_OWNER_V1__;
+  const 已有 = globalThis.__LWCS_MVU_RESOURCE_OWNER_V1__;
   const 所有者 = 已有 && 已有.version === '1.0.0' ? 已有 : 创建MVU资源所有者_V1();
   发布MVU资源所有者_V1(所有者);
   return 所有者;
