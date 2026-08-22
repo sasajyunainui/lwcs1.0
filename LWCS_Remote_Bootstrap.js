@@ -50,6 +50,7 @@
   if (typeof 共享启动状态.mvuStage !== 'string') 共享启动状态.mvuStage = '等待 MVU 引导';
   if (typeof 共享启动状态.mvuTrackingComplete !== 'boolean') 共享启动状态.mvuTrackingComplete = false;
 
+  if (共享启动状态.uiStatus === 'loading' || 共享启动状态.uiStatus === 'ready') return;
   if (宿主窗口[引导键]) return;
   宿主窗口[引导键] = true;
 
@@ -67,6 +68,7 @@
       最近错误: '',
     };
     let 已手动关闭 = false;
+    let 已自动隐藏 = false;
     let 隐藏计时器 = 0;
     let 待渲染计时器 = 0;
 
@@ -238,7 +240,7 @@
     }
 
     function 刷新面板() {
-      if (已手动关闭) return;
+      if (已手动关闭 || 已自动隐藏) return;
       if (!宿主文档.body) {
         if (!待渲染计时器) {
           待渲染计时器 = setTimeout(() => {
@@ -320,6 +322,7 @@
           隐藏计时器 = setTimeout(() => {
             const 当前面板 = 宿主文档.getElementById(面板ID);
             if (当前面板?.dataset.session === 会话ID) 当前面板.remove();
+            已自动隐藏 = true;
             隐藏计时器 = 0;
           }, 900);
         }
@@ -340,6 +343,7 @@
         状态.模块完成 = false;
         状态.最近错误 = '';
         已手动关闭 = false;
+        已自动隐藏 = false;
         if (隐藏计时器) {
           clearTimeout(隐藏计时器);
           隐藏计时器 = 0;
