@@ -303,6 +303,11 @@ class BattleUIComponent {
     if (BATTLE_RUNTIME.version !== '7.3-R6.3') throw new Error(`battle_runtime_version_mismatch:${BATTLE_RUNTIME.version || 'missing'}`);
     if (BATTLE_PREVIEW.version !== '7.3-R6.3-preview-2') throw new Error(`battle_preview_version_mismatch:${BATTLE_PREVIEW.version || 'missing'}`);
     if (BATTLE_DECISION?.version !== '7.3-R6.3-decision-2') throw new Error(`battle_decision_version_mismatch:${BATTLE_DECISION?.version || 'missing'}`);
+    function formatBattleUiSkillCost(skill = {}, context = {}) {
+      if (!BATTLE_PREVIEW || typeof BATTLE_PREVIEW.readSkillCostStages !== 'function') return '不可用：技能消耗解析器未就绪';
+      return BATTLE_PREVIEW.formatSkillCostStages(skill, context);
+    }
+    root.__LWCS_BATTLE_UI_COST_CONSUMER__ = Object.freeze({ formatSkillCost: formatBattleUiSkillCost });
     const SHARED_SKILL_MECHANISM_REGISTRY = root.__LWCS_SKILL_MECHANISM_REGISTRY__;
     if (!SHARED_SKILL_MECHANISM_REGISTRY || BATTLE_RUNTIME.prototypeRegistry !== SHARED_SKILL_MECHANISM_REGISTRY.原型定义) {
       throw new Error('battle_runtime_registry_contract_mismatch');
@@ -4531,7 +4536,17 @@ class BattleUIComponent {
             let action = grouped.get(groupKey);
             if (!action) {
               const costs = declaration.resourceCosts && typeof declaration.resourceCosts === 'object' ? declaration.resourceCosts : {};
-              const costText = Object.entries(costs).filter(([, value]) => Number(value) > 0).map(([key, value]) => `${key}:${Math.round(Number(value) * 100) / 100}`).join(' ') || (actionKind === 'USE_ITEM' ? '消耗 1' : '无');
+              const costText = actionKind === 'RELEASE_SKILL'
+                ? formatBattleUiSkillCost(skill, declaration)
+                : actionKind === 'USE_ITEM'
+                  ? '消耗 1'
+                  : BATTLE_PREVIEW.formatSkillCostStages(
+                      costs && Object.prototype.hasOwnProperty.call(costs, '启动')
+                        ? costs
+                        : { 启动: costs, 维持: {} },
+                      declaration,
+                    );
+              const costInvalid = actionKind === 'RELEASE_SKILL' && /^不可用：/.test(costText);
               action = {
                 id: `decision_${BATTLE_PREVIEW.stableHash({ actionKind, identity }).slice(0, 16)}`,
                 type: meta.type,
@@ -4546,8 +4561,8 @@ class BattleUIComponent {
                   : [],
                 cast_time: Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 10)),
                 cost_text: costText,
-                enabled: true,
-                reason: '',
+                enabled: !costInvalid,
+                reason: costInvalid ? costText : '',
                 raw_skill: skill,
                 skill,
                 declarations: [],
@@ -5073,10 +5088,14 @@ class BattleUIComponent {
             .join('');
         }
 
-        function findUiSkillCost(skill = {}) {
+        function findUiSkillCost(skill = {}, context = {}) {
           if (skill?.__fusion_display_cost_text) return String(skill.__fusion_display_cost_text);
-          const direct = skill.消耗 || skill.cost || skill.cost_text || '';
-          return direct ? String(direct) : '';
+          if (skill && typeof skill === 'object' && skill.消耗 !== undefined) {
+            return formatBattleUiSkillCost(skill, context);
+          }
+          const direct = skill.cost_text;
+          if (direct && typeof direct === 'object') return BATTLE_PREVIEW.formatSkillCostStages(direct, context);
+          return direct ? String(direct) : '启动：无';
         }
 
         function findUiSkillCastTime(skill = {}) {
@@ -5271,7 +5290,7 @@ class BattleUIComponent {
             .map(值 => String(值 || '').trim())
             .filter(Boolean)
             .forEach(值 => 标签集合.add(值));
-          const 消耗原文 = String(动作.cost_text || findUiSkillCost(技能) || '').trim();
+          const 消耗原文 = String(动作.cost_text || findUiSkillCost(技能, 动作?.declaration || 动作) || '').trim();
           const 消耗文本 = 消耗原文 && 消耗原文 !== '无' ? 消耗原文 : '无耗';
           const 前摇数值 = Number(动作.cast_time ?? findUiSkillCastTime(技能) ?? 0) || 0;
           const 前摇文本 = 前摇数值 ? `${前摇数值}` : '即时';
@@ -5718,6 +5737,7 @@ class BattleUIComponent {
               activeBattleRecordTab: previousState.activeBattleRecordTab === 'preview' ? 'preview' : 'actual',
               activeBattleRecordView: ['report', 'round', 'decision', 'summary'].includes(previousState.activeBattleRecordView) ? previousState.activeBattleRecordView : 'report',
               activeBattleDecisionRound: Math.max(0, Number(previousState.activeBattleDecisionRound || 0)),
+              activeBattleDecisionActor: String(previousState.activeBattleDecisionActor || '').trim(),
               activeBattleDecisionActionId: String(previousState.activeBattleDecisionActionId || '').trim(),
               battleRecordCollapsed: previousState.battleRecordCollapsed !== false,
             },
@@ -9976,38 +9996,134 @@ class BattleUIComponent {
         function 渲染ReportDto回合视图(roundOverview = []) {
           const rows = Array.isArray(roundOverview) ? roundOverview : [];
           if (!rows.length) return '<div class="battle-preview-empty">暂无回合结算</div>';
-          return `<div class="battle-report-round-overview">${rows.map(row => `
-            <article class="battle-report-round-overview-row">
-              <header><b>第${Math.max(0, Number(row?.round || 0))}回合</b><span>${htmlEscapeText(String(row?.headline || row?.summary || '回合结算').trim())}</span></header>
-              ${String(row?.summary || '').trim() ? `<p>${htmlEscapeText(String(row.summary).trim())}</p>` : ''}
-            </article>
-          `).join('')}</div>`;
+          return `<div class="battle-report-round-overview">${rows.map(row => {
+            const summary = String(row?.summary || '').trim();
+            const summaryParts = summary.split('；').map(part => part.trim()).filter(Boolean);
+            const passiveParts = String(row?.passiveSummary || '').trim().split('；').map(part => part.trim()).filter(Boolean);
+            const headline = String(row?.headline || '').trim();
+            return `
+              <article class="battle-report-round-overview-row">
+                <header><b>第${Math.max(0, Number(row?.round || 0))}回合</b><span>${htmlEscapeText(headline && headline !== summary ? headline : `${summaryParts.length}组战况`)}</span></header>
+                ${summaryParts.length ? `<section><h4>交锋结果</h4><ul>${summaryParts.map(part => `<li>${htmlEscapeText(part)}</li>`).join('')}</ul></section>` : ''}
+                ${passiveParts.length ? `<section><h4>回合结束变化</h4><ul>${passiveParts.map(part => `<li>${htmlEscapeText(part)}</li>`).join('')}</ul></section>` : ''}
+              </article>
+            `;
+          }).join('')}</div>`;
         }
 
-        function 渲染ReportDto决策视图(explanations = []) {
+        function 渲染ReportDto决策视图(explanations = [], narrativeChain = []) {
           const rows = Array.isArray(explanations) ? explanations : [];
           if (!rows.length) return '<div class="battle-preview-empty">暂无决策解释</div>';
-          return `<div class="battle-report-decision-explanations">${rows.map(row => {
+          const contexts = (Array.isArray(narrativeChain) ? narrativeChain : []).flatMap(node => {
+            const decisions = Array.isArray(node?.decisions) && node.decisions.length
+              ? node.decisions
+              : node?.decision
+                ? [{ actorName: node?.actorName, isPrimary: true }]
+                : [];
+            return decisions.map(decision => ({ node, decision }));
+          });
+          const contextAligned = contexts.length === rows.length && rows.every((row, index) =>
+            String(contexts[index]?.decision?.actorName || contexts[index]?.node?.actorName || '').trim() ===
+            String(row?.actorName || '').trim()
+          );
+          const indexedRows = rows.map((row, index) => ({ row, node: contextAligned ? contexts[index]?.node || null : null }));
+          const rounds = [...new Set(rows.map(row => Math.max(0, Number(row?.round || 0))).filter(Boolean))]
+            .sort((left, right) => left - right);
+          const actors = [...new Set(rows.map(row => String(row?.actorName || '').trim()).filter(Boolean))]
+            .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+          const state = window.BattleUI?.state || {};
+          const activeRound = rounds.includes(Number(state.activeBattleDecisionRound))
+            ? Number(state.activeBattleDecisionRound)
+            : 0;
+          const activeActor = actors.includes(String(state.activeBattleDecisionActor || '').trim())
+            ? String(state.activeBattleDecisionActor).trim()
+            : '';
+          if (window.BattleUI?.state) {
+            window.BattleUI.state.activeBattleDecisionRound = activeRound;
+            window.BattleUI.state.activeBattleDecisionActor = activeActor;
+          }
+          const visibleRows = indexedRows.filter(({ row }) =>
+            (!activeRound || Number(row?.round || 0) === activeRound) &&
+            (!activeActor || String(row?.actorName || '').trim() === activeActor)
+          );
+          const filters = `
+            <div class="battle-decision-filter" aria-label="筛选判定记录">
+              <label>回合
+                <select data-battle-decision-round-filter>
+                  <option value="0">全部回合（${rows.length}项）</option>
+                  ${rounds.map(round => `<option value="${round}"${round === activeRound ? ' selected' : ''}>第${round}回合（${rows.filter(row => Number(row?.round || 0) === round).length}项）</option>`).join('')}
+                </select>
+              </label>
+              <label>行动者
+                <select data-battle-decision-actor-filter>
+                  <option value="">全部行动者</option>
+                  ${actors.map(actor => `<option value="${htmlEscapeText(actor)}"${actor === activeActor ? ' selected' : ''}>${htmlEscapeText(actor)}</option>`).join('')}
+                </select>
+              </label>
+            </div>
+          `;
+          if (!visibleRows.length) {
+            return `${filters}<div class="battle-preview-empty">当前筛选下没有判定记录，请调整回合或行动者。</div>`;
+          }
+          return `${filters}<div class="battle-report-decision-explanations">${visibleRows.map(({ row, node }) => {
             const selected = row?.selected || {};
             const alternatives = Array.isArray(row?.alternatives) ? row.alternatives : [];
             const actualTokens = Array.isArray(row?.actual?.numericTokens) ? row.actual.numericTokens : [];
             const predictedTokens = Array.isArray(row?.predicted?.numbers) ? row.predicted.numbers : [];
+            const situationTokens = predictedTokens.filter(token => /当前|余量|可推进目标数/.test(String(token?.label || token?.displayName || '')));
+            const forecastTokens = predictedTokens.filter(token => !situationTokens.includes(token));
+            const randomTokens = actualTokens.filter(token => String(token?.label || token?.displayName || '') === '随机值');
+            const resultTokens = actualTokens.filter(token => !randomTokens.includes(token));
+            const mainReason = String(row?.comparisonEvidence?.explanation || '').trim();
+            const selectedName = String(selected?.name || '').trim();
+            const reasonPrefix = `选择${selectedName}；`;
+            const displayedMainReason = selectedName && mainReason.startsWith(reasonPrefix)
+              ? mainReason.slice(reasonPrefix.length).trim()
+              : mainReason;
+            const supportingReasons = [...new Set([
+              ...(row?.objectiveTradeoffs || []),
+              ...(row?.riskTradeoffs || []),
+              ...(row?.resourceTradeoffs || []),
+              ...(row?.futurePoolTradeoffs || []),
+            ].map(reason => String(reason || '').trim()).filter(reason => {
+              if (!reason || mainReason.includes(reason)) return false;
+              const sharedConcept = ['目标推进', '风险', '资源', '消耗', '伤害', '控制', '防御', '生存', '行动机会']
+                .some(concept => mainReason.includes(concept) && reason.includes(concept));
+              const genericConceptReason = /^(?:这一手的主要价值在.+上。|当前公开信息里，这一步的.+收益更突出。|这一手的优势主要体现在.+上。|按当前公开信息，这一步在.+上更合适。)$/.test(reason);
+              return !(sharedConcept && genericConceptReason);
+            }))];
+            const settlementTexts = (Array.isArray(row?.actual?.settlementTexts) ? row.actual.settlementTexts : [])
+              .map(value => String(value || '').trim())
+              .filter(Boolean);
+            const actualHeadline = settlementTexts[0] || '';
+            const settlementDetails = settlementTexts.length > 1 ? settlementTexts : [];
             const alternativeHTML = alternatives.length
               ? `<ul>${alternatives.map(candidate => `
-                  <li><b>${htmlEscapeText(candidate?.name || '替代动作')}</b>${candidate?.reason ? `：${htmlEscapeText(candidate.reason)}` : ''}</li>
+                  <li><b>${htmlEscapeText(candidate?.name || '替代动作')}</b>${candidate?.reason && !mainReason.includes(String(candidate.reason).trim()) ? `：${htmlEscapeText(candidate.reason)}` : ''}</li>
                 `).join('')}</ul>`
               : `<p>${htmlEscapeText(row?.comparisonEvidence?.alternativeSummary || '没有登记可比较的替代动作。')}</p>`;
+            const choiceReasonHTML = (displayedMainReason || supportingReasons.length)
+              ? `<section class="battle-report-decision-reason"><h4>为什么这样选</h4>${displayedMainReason ? `<p>${htmlEscapeText(displayedMainReason)}</p>` : ''}${supportingReasons.length ? `<ul>${supportingReasons.map(reason => `<li>${htmlEscapeText(reason)}</li>`).join('')}</ul>` : ''}</section>`
+              : '';
             return `
               <article class="battle-report-decision-explanation">
                 <header><span>第${Math.max(0, Number(row?.round || 0))}回合 · ${htmlEscapeText(row?.actorName || '行动者')}</span><b>${htmlEscapeText(selected?.name || '未记录动作')}</b></header>
-                ${row?.comparisonEvidence?.explanation ? `<p>${htmlEscapeText(row.comparisonEvidence.explanation)}</p>` : ''}
-                <section class="battle-report-decision-alternatives"><h4>主要替代方案</h4>${alternativeHTML}</section>
-                <section class="battle-report-decision-numbers" aria-label="预演预测">
-                  ${predictedTokens.length ? predictedTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">暂无可公开的预测数字</span>'}
+                <section class="battle-report-decision-context"><h4>当时局面</h4><div class="battle-report-decision-numbers">
+                  ${situationTokens.length ? situationTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">当时没有更多可公开的局面数字</span>'}
+                </div></section>
+                <div class="battle-report-decision-choice-analysis">
+                  ${choiceReasonHTML}
+                  <section class="battle-report-decision-alternatives"><h4>当时的主要替代</h4>${alternativeHTML}</section>
+                </div>
+                <section class="battle-report-decision-forecast"><h4>当时预期</h4><div class="battle-report-decision-numbers">
+                  ${forecastTokens.length ? forecastTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">暂无可公开的预测数字</span>'}
+                </div></section>
+                <section class="battle-report-decision-result"><h4>实际结算</h4>
+                  ${actualHeadline ? `<p>${htmlEscapeText(actualHeadline)}</p>` : `<p class="battle-preview-empty">${contextAligned ? '本次判定没有额外结算文本' : '判定记录与因果链顺序不一致，无法自动绑定局面上下文'}</p>`}
+                  <div class="battle-report-decision-numbers">${resultTokens.length ? resultTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">暂无数值事实</span>'}</div>
+                  ${settlementDetails.length ? `<details class="battle-report-decision-steps"><summary>查看完整结算过程（${settlementTexts.length}步）</summary><ol>${settlementDetails.map(text => `<li>${htmlEscapeText(text)}</li>`).join('')}</ol></details>` : ''}
                 </section>
-                <section class="battle-report-decision-numbers" aria-label="实际结算">
-                  ${actualTokens.length ? actualTokens.map(渲染ReportDto数字).join(' ') : '<span class="battle-preview-empty">暂无数值事实</span>'}
-                </section>
+                ${randomTokens.length ? `<details class="battle-report-decision-rolls"><summary>随机判定明细</summary><div class="battle-report-decision-numbers">${randomTokens.map(渲染ReportDto数字).join(' ')}</div></details>` : ''}
               </article>
             `;
           }).join('')}</div>`;
@@ -10021,7 +10137,7 @@ class BattleUIComponent {
             return 渲染ReportDto回合视图(reportDto?.roundOverview);
           }
           if (activeView === 'decision') {
-            return 渲染ReportDto决策视图(reportDto?.decisionExplanations);
+            return 渲染ReportDto决策视图(reportDto?.decisionExplanations, reportDto?.narrativeChain);
           }
           const chain = Array.isArray(reportDto?.narrativeChain) ? reportDto.narrativeChain : [];
           if (!chain.length) return '<div class="battle-preview-empty">暂无战报</div>';
@@ -10227,7 +10343,7 @@ class BattleUIComponent {
                 <b>战报暂不可用</b>
                 <em>等待经过审计的玩家战报</em>
               </div>
-              <div class="battle-preview-empty">本次结果没有可展示的 BattleReportDtoV2 玩家投影。</div>
+              <div class="battle-preview-empty">本次结果未通过玩家战报审计，已阻止显示冲突内容。</div>
             `;
             return;
           }
@@ -10247,6 +10363,19 @@ class BattleUIComponent {
               <section class="battle-record-view" role="tabpanel" aria-label="${htmlEscapeText(视图标签[activeView])}">${渲染ReportDto记录视图(result.reportDto, activeView)}</section>
             `;
             绑定分段控件键盘导航(node.querySelector('.battle-record-view-tabs'), 'data-battle-record-view', activeView, 设置战斗记录视图);
+            if (activeView === 'decision') {
+              const bindDecisionFilter = (selector, stateKey, normalize) => {
+                const select = node.querySelector(selector);
+                if (!select) return;
+                select.addEventListener('change', () => {
+                  if (window.BattleUI?.state) window.BattleUI.state[stateKey] = normalize(select.value);
+                  渲染战斗记录面板();
+                  读取战斗记录面板节点()?.querySelector(selector)?.focus();
+                });
+              };
+              bindDecisionFilter('[data-battle-decision-round-filter]', 'activeBattleDecisionRound', value => Math.max(0, Number(value || 0)));
+              bindDecisionFilter('[data-battle-decision-actor-filter]', 'activeBattleDecisionActor', value => String(value || '').trim());
+            }
             绑定ReportDto数字来源(node);
             return;
           }

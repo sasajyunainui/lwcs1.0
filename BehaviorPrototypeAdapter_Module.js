@@ -617,10 +617,6 @@
       if (!hasOwn(effect, f)) continue;
       if (spec.allowed.indexOf(f) < 0) return { reason: 'INVALID_OPTION_VALUE' };
     }
-    if (proto === '机制授予') {
-      var keyReason = followUpKeyReason(effect);
-      if (keyReason) return { reason: keyReason };
-    }
     if (proto === '机制授予' && (!Array.isArray(effect['授予效果']) || effect['授予效果'].length === 0)) return { carrier: true };
     for (var rq = 0; rq < spec.required.length; rq += 1) {
       if (!hasOwn(effect, spec.required[rq])) return { reason: 'MISSING_REQUIRED_FIELD' };
@@ -639,7 +635,6 @@
       if (!pending13ValueForm(effect[tp], spec.types[tp])) return { reason: 'INVALID_OPTION_VALUE' };
     }
     if (proto === '机制授予') {
-      if (!Array.isArray(effect['授予效果']) || effect['授予效果'].length === 0) return { carrier: true };
       var trigger = String(effect['触发条件'] || '').trim();
       if (TRIGGER_OPTIONS.indexOf(trigger) < 0) return { reason: 'INVALID_OPTION_VALUE' };
       if (trigger === '主动触发' && !hasOwn(effect, '可用次数')) return { reason: 'MISSING_REQUIRED_FIELD' };
@@ -653,6 +648,8 @@
           }
         }
       }
+      var keyReason = followUpKeyReason(effect);
+      if (keyReason) return { reason: keyReason };
       return { ok: true };
     }
     if (proto === '时窗修正') {

@@ -1,16 +1,21 @@
 // BehaviorImmediateFeature_Module.js
 // M2 immediate feature compiler writer F - revision 4 production candidate (R9_CANDIDATE_UNREGISTERED).
 // Contract authority (frozen, disk-verified):
-//   tools/rc6/contracts/BehaviorImmediateFeatureV1.json       6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5
-//   tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json 686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937
-//   tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json       7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0
-//   tools/rc6/contracts/DistilledBehaviorPolicyV1.json         8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c (read-only, untrained)
-//   tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json  19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b (read-only, untrained)
+//   tools/rc6/contracts/BehaviorImmediateFeatureV1.json       8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76
+//   tools/rc6/contracts/BehaviorImmediateFeatureV1.schema.json b6cb71713d6777a543a44de5d7bd4c540d5bacf18259a49c6eee4451cd2ecf49
+//   tools/rc6/cases/BehaviorImmediateFeatureCasesV1.json       4a9e04d18c75eb9ef94a515a6acf8b9eada42cf4829bce17adfd6c7814141e55
+//   tools/rc6/contracts/DistilledBehaviorPolicyV1.json         69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8 (read-only, untrained, revision 15)
+//   tools/rc6/contracts/DistilledBehaviorPolicyV1.schema.json  3015adf1a25c5d048c7739fcba8e4ae68d5bf995b4f5f42bb1a2d8b324f5b07e (read-only, untrained, revision 15)
 // Governed frozen sources (read-only): BehaviorProviderV1 cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156;
 //   PrototypeDirectAdapterV1 4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e;
 //   PrototypeDirectAdapterV1.schema 7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22;
-//   PrototypeDirectAdapterCasesV1 f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d; DirectFactRowV1 7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67;
+//   PrototypeDirectAdapterCasesV1 1c50e3e7eea834ed2317526dc647856c74aeff528e939855af8b92be25ae3f1c; DirectFactRowV1 493a7f938ef380d0be2e4f581ec2859c9e5dc4a96eede5909a8fcad74a657917;
 //   DirectFactRowV1.schema 0325e39cd33ecf1c925268d451f23c3bde4d75eca3b5405b614c255b931b0538.
+// Prototype attestation: projectionFamilies prototype legitimacy comes from the
+// read-only input.prototypeRegistry PDA registry attestation carrier (stamped by
+// BehaviorCandidateFeatureBridge_Module); no hardcoded prototype name list; unknown
+// names and registry hash/sourceContractHash drift fail closed; new prototypes
+// auto-adopt (family-neutral until a later contract revision routes them).
 // Revision 4 final (cases 62): scheduledFacts closed four-shape per PDA rev5 schema
 // (WINDOW_ADJUST entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/
 // 结算倍率; SETTLEMENT_RATIO_ADJUST entryId/operation/结算倍率; FOLLOW_UP entryId/grantType/
@@ -47,10 +52,10 @@
 
   var MOUNT_NAME = '__LWCS_BEHAVIOR_IMMEDIATE_FEATURE__';
   var ROLE = 'R9_CANDIDATE_UNREGISTERED';
-  var REVISION = 4;
+  var REVISION = 17;
   var REGISTRY_ID = 'RC6-M2-BEHAVIOR-IMMEDIATE-FEATURE-V1-2026-08-14';
   var SCHEMA_VERSION = 'BehaviorImmediateFeatureV1';
-  var F0 = 13;
+  var F0 = 14;
 
   var CAPS = {
     MAX_FEATURES_PER_CANDIDATE: 256,
@@ -69,10 +74,19 @@
     'DAMAGE_PENETRATION', 'DAMAGE_TYPE', 'RESOURCE_DELTA', 'SHIELD_DELTA',
     'ATTRIBUTE_DELTA', 'JUDGMENT_DELTA', 'STATE_PRESENCE', 'STATE_DURATION',
     'STATE_DELTA_PERCENT', 'SETTLEMENT_MODIFIER_PERCENT', 'SUMMON_COUNT',
-    'SUMMON_STRENGTH', 'SUMMON_DURATION', 'RESOURCE_DELTA_PERCENT'
+    'SUMMON_STRENGTH', 'SUMMON_DURATION', 'RESOURCE_DELTA_PERCENT',
+    'PUBLIC_RECIPIENT_NEED_MATCH', 'TARGET_CHARGE_ACTIVE', 'TARGET_CHARGE_CAST_TIME',
+    'REACTION_DAMAGE_MULTIPLIER', 'REACTION_DODGE_PROBABILITY', 'REACTION_COUNTER_WINDOW_OPEN'
   ];
-  var CANDIDATE_CODES = FEATURE_CODES.slice(0, 13);
-  var ROW_CODES = FEATURE_CODES.slice(13);
+  // PUBLIC_RECIPIENT_NEED_MATCH is candidate-scope and lives at frozen position 29;
+  // positions 0-28 stay unchanged, so the candidate block is explicit. The two
+  // TARGET_CHARGE_* codes live at frozen positions 30/31 as per-target row facts
+  // (one row per declared target in targetSet declaration order).
+  var CANDIDATE_CODES = FEATURE_CODES.slice(0, 13).concat([
+    'PUBLIC_RECIPIENT_NEED_MATCH', 'REACTION_DAMAGE_MULTIPLIER',
+    'REACTION_DODGE_PROBABILITY', 'REACTION_COUNTER_WINDOW_OPEN'
+  ]);
+  var ROW_CODES = FEATURE_CODES.slice(13, 29).concat(['TARGET_CHARGE_ACTIVE', 'TARGET_CHARGE_CAST_TIME']);
 
   var UNIT_FAMILY = {
     'RELATION_TARGET_COUNT': 'COUNT',
@@ -103,10 +117,16 @@
     'SUMMON_COUNT': 'COUNT',
     'SUMMON_STRENGTH': 'RATIO',
     'SUMMON_DURATION': 'TURNS',
-    'RESOURCE_DELTA_PERCENT': 'PERCENT'
+    'RESOURCE_DELTA_PERCENT': 'PERCENT',
+    'PUBLIC_RECIPIENT_NEED_MATCH': 'RATIO_0_1',
+    'TARGET_CHARGE_ACTIVE': 'BOOL',
+    'TARGET_CHARGE_CAST_TIME': 'TURNS',
+    'REACTION_DAMAGE_MULTIPLIER': 'RATIO_0_1',
+    'REACTION_DODGE_PROBABILITY': 'PROBABILITY_0_1',
+    'REACTION_COUNTER_WINDOW_OPEN': 'BOOL'
   };
   var UNIT_FAMILIES = ['COUNT', 'ABS', 'POWER', 'PERCENT', 'RATIO_0_1', 'PROBABILITY_0_1', 'TURNS', 'BOOL', 'ENUM', 'RATIO'];
-  var BOOL_CODES = ['OVERKILL_AVAILABILITY', 'HARD_EXCLUSION', 'DAMAGE_TYPE', 'STATE_PRESENCE'];
+  var BOOL_CODES = ['OVERKILL_AVAILABILITY', 'HARD_EXCLUSION', 'DAMAGE_TYPE', 'STATE_PRESENCE', 'TARGET_CHARGE_ACTIVE', 'REACTION_COUNTER_WINDOW_OPEN'];
 
   var ATTRIBUTE_KEYS = ['力量', '防御', '敏捷', '魂力上限', '精神力上限', '体力上限'];
   var JUDGMENT_KEYS = ['命中', '闪避', '反应'];
@@ -127,7 +147,8 @@
   var UNKNOWN_REASONS = [
     'NO_PUBLIC_DECLARATION', 'CONDITIONAL_PROBABILITY_UNRESOLVED', 'FINAL_SETTLEMENT_UNKNOWN',
     'FUTURE_REALIZATION_UNKNOWN', 'HIDDEN_AXIS_UNOBSERVED', 'MISSING_SOURCE_FACT',
-    'SIDE_UNOBSERVED', 'STATE_FORM_UNMAPPED'
+    'SIDE_UNOBSERVED', 'STATE_FORM_UNMAPPED', 'CONFLICTING_DELIVERIES', 'NON_FINITE_DELIVERY',
+    'SOURCE_PROVENANCE_INCOMPLETE'
   ];
   var NA_REASONS = ['NO_TARGET_AXIS', 'NO_HIT_AXIS', 'NO_PUBLIC_COST', 'NOT_EXCLUDED', 'NO_DURATION'];
   var HIT_APPLICABILITY = ['APPLICABLE', 'NOT_APPLICABLE', 'UNKNOWN'];
@@ -146,14 +167,11 @@
     '召唤生成': ['SUMMON_COUNT', 'SUMMON_STRENGTH', 'SUMMON_DURATION'],
     '结算修正': ['SETTLEMENT_MODIFIER_PERCENT']
   };
-  // Closed registry prototype names (same 27-name registry as PrototypeDirectAdapterV1).
-  // Used only to validate projectionFamilies routing identity; never weighted.
-  var REGISTRY_PROTOTYPE_NAMES = [
-    '伤害结算', '资源变化', '资源转移', '护盾变化', '属性修正', '判定修正', '结算修正',
-    '炸环', '状态施加', '时窗修正', '状态移除', '规则防御', '状态转移', '状态交换',
-    '资源锁定', '规则改写', '机制抹消', '机制授予', '复制执行', '时光回溯', '位移执行',
-    '决策干扰', '召唤生成', '修炼增益', '天赋提升', '永久属性提升', '战斗外复活'
-  ];
+  // projectionFamilies prototype legitimacy is attested at runtime: the authoritative
+  // 27-name registry is carried in input.prototypeRegistry (read-only PDA registry
+  // attestation carrier stamped by BehaviorCandidateFeatureBridge_Module). No
+  // hardcoded prototype name list lives in this module; unknown names and registry
+  // hash/sourceContractHash drift fail closed; new prototypes auto-adopt.
   var MECHANIC_METADATA_CLOSED_KEYS = [
     'sourceEffectId', '生效方式', '结算标签', '抗性类型', '驱动属性', '影响方向',
     '对应等级', '触发方式', '触发限制', '结算', '限定元素', '吸收资源', '吸收来源'
@@ -196,14 +214,25 @@
     'candidate', 'publicSnapshot', 'atomicFacts', 'directFacts', 'legalityFlags',
     'legalityModifiers', 'opportunityModifiers', 'scheduledFacts', 'publicCost',
     'publicProbability', 'publicDeclarations', 'forbiddenFacts', 'branchCombination',
-    'preMultiplied', 'mechanicMetadataEntries', 'projectionFamilies'
+    'preMultiplied', 'mechanicMetadataEntries', 'projectionFamilies', 'prototypeRegistry',
+    'creationProfile', 'actionOpportunity'
   ];
   var CANDIDATE_KEYS = ['candidateId', 'actorId', 'actorSide', 'actionKind', 'targetSet', 'paymentMode'];
+  var ACTION_OPPORTUNITY_KEYS = ['role', 'sourceActorId', 'incomingAction', 'actionContext', 'counterWindow', 'reactionMechanics'];
+  var REACTION_MECHANICS_KEYS = [
+    'candidateId', 'responseKind', 'status', 'reason', 'sourceActionId', 'sourceActorId',
+    'targetId', 'prepared', 'damageMultiplier', 'dodgeProbability',
+    'visibleWorldRevision', 'requestHash', 'sourceFactIds', 'sourceEventIds'
+  ];
+  var REACTION_RESPONSE_KINDS = ['PASS_OPPORTUNITY', 'DEFEND', 'EVADE'];
   var SNAPSHOT_KEYS = ['units', 'sides', 'actorStatus'];
-  var UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'def', 'agi', 'shield', '状态效果'];
+  var UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'def', 'agi', 'shield', '状态效果', '蓄力技能'];
   var NUMERIC_UNIT_FIELDS = ['hp', 'hp_max', 'sp', 'sp_max', 'men', 'men_max', 'vit', 'vit_max', 'def', 'agi', 'shield'];
-  var ATOMIC_KEYS = ['eventId', 'sourceActionId', 'outcomeKind', 'expectedDelta', 'hitCheckApplicability', 'evidence'];
-  var EVIDENCE_KEYS = ['hitProbability'];
+  // R4b2 delivery identity: HP_DELTA atomic rows carry effectInstanceId/targetId
+  // (transcribed by the bridge from preview contribution identity) plus the
+  // decision-visible damageBasis.basisView attestation inside evidence.
+  var ATOMIC_KEYS = ['eventId', 'sourceActionId', 'outcomeKind', 'expectedDelta', 'hitCheckApplicability', 'evidence', 'effectInstanceId', 'targetId'];
+  var EVIDENCE_KEYS = ['hitProbability', 'damageBasis', 'deliveryStatus'];
   var ROW_KEYS = ['schemaVersion', 'factType', 'key', 'sourceActionId', 'sourceActorId', 'sourceEffectId', 'targetIds', 'amount', 'unit', 'durationTurns'];
   var LM_KEYS = ['judgmentRates', 'taunt', 'tauntRemoved', 'stateMigration', 'stateSwap', 'mechanismRemoval', 'hardExclusions', 'legalityFlags'];
   var OM_KEYS = ['resourceLocks', 'opportunityConstraints', 'interferenceRates', 'dependencyTokens'];
@@ -217,19 +246,21 @@
   var COST_KEYS = ['resource', 'amount'];
   var DECL_KEYS = ['revealStrength', 'declaredOverkill'];
   var FORBIDDEN_FACT_KEYS = ['source', 'fact'];
+  var CREATION_PROFILE_KEYS = ['recipientId', 'useEffects'];
+  var CREATION_PROFILE_ROW_KEYS = ['原型', '目标', '资源', '数值'];
 
   var CONTRACT_HASHES = {
-    featureContract: '6c781ddbd2a970b25193743f9d5a26a527b4b041824485abf2e8958880c641f5',
-    featureSchema: '686e41a085ae83a3b04bca1deea61f5a063fa75fdb52805fd3bfe927587f7937',
-    featureCases: '7b98b599214824632181dca252f58700603876d4425f8fa7c7cb3cb351a9bea0',
-    policyContract: '8f5ebca2c856ab01883484bff10e321ac5c61963d5dbd74740786c00296a774c',
-    policySchema: '19f5513677600ec24112346a8069df577b39492f4ec43f5c4eaead0d71a95b0b',
+    featureContract: '8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76',
+    featureSchema: 'b6cb71713d6777a543a44de5d7bd4c540d5bacf18259a49c6eee4451cd2ecf49',
+    featureCases: '4a9e04d18c75eb9ef94a515a6acf8b9eada42cf4829bce17adfd6c7814141e55',
+    policyContract: '69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8',
+    policySchema: '3015adf1a25c5d048c7739fcba8e4ae68d5bf995b4f5f42bb1a2d8b324f5b07e',
     governed: {
       provider: 'cc32c251236906c5e128164f76a25a1196ebe089ef7903edb454e3374a90f156',
       adapterContract: '4d47e3ccfaee921b35bbbd916924841d632e1ee238de04be3c25bab924a6f20e',
       adapterSchema: '7772969d5685778712be4b1868e4e92f75dd31e147d7601078c3f64822671e22',
-      adapterCases: 'f8a4c4e002d63718a112987f1cb8c9b1c6baa7a3438a81ea348d7f8e39e43c2d',
-      directFactRow: '7edd6a9fe2448764ba8ff18450d3536cc05e74fc6970560b90496d3ec8da7d67'
+      adapterCases: '1c50e3e7eea834ed2317526dc647856c74aeff528e939855af8b92be25ae3f1c',
+      directFactRow: '493a7f938ef380d0be2e4f581ec2859c9e5dc4a96eede5909a8fcad74a657917'
     }
   };
 
@@ -241,6 +272,12 @@
     'futureRoute(', 'kernelRoute(', 'resultCartesian('
   ];
   function hasOwn(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
+  function isPlainObject(o) {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return false;
+    var proto = Object.getPrototypeOf(o);
+    return proto === null || (Object.getPrototypeOf(proto) === null &&
+      hasOwn(proto, 'constructor') && proto.constructor && proto.constructor.name === 'Object');
+  }
   function cmpStr(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
   function normZero(v) { return v === 0 ? 0 : v; }
   function toFiniteNumber(x, where) {
@@ -260,6 +297,26 @@
     for (var i = 0; i < arr.length; i += 1) if (out.indexOf(arr[i]) < 0) out.push(arr[i]);
     out.sort(cmpStr);
     return out;
+  }
+  // Deterministic sandbox-safe hash (FNV-1a 32-bit over UTF-16 code units of the
+  // canonical JSON {"prototypeNames":[...]}). Verifies the PDA registry attestation
+  // carrier inside prototypeRegistry; production sandboxes have no crypto, so the
+  // file-level SHA-256 anchors stay harness-side.
+  function fnv1a32Hex(names) {
+    var s = '{"prototypeNames":[';
+    for (var i = 0; i < names.length; i += 1) {
+      if (i > 0) s += ',';
+      s += JSON.stringify(names[i]);
+    }
+    s += ']}';
+    var h = 0x811c9dc5;
+    for (var j = 0; j < s.length; j += 1) {
+      h ^= s.charCodeAt(j);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    var hex = h.toString(16);
+    while (hex.length < 8) hex = '0' + hex;
+    return hex;
   }
   function freezeDeep(v) {
     if (Array.isArray(v)) {
@@ -348,6 +405,122 @@
     }
   }
 
+  function validateReactionRefs(value, field) {
+    if (!Array.isArray(value)) throw rejection('MISSING_SOURCE_REFERENCE', { field: field });
+    var seen = {};
+    for (var i = 0; i < value.length; i += 1) {
+      validateIdString(value[i], field + '[' + i + ']');
+      if (hasOwn(seen, value[i])) throw rejection('INVALID_OPTION_VALUE', { field: field, duplicate: value[i] });
+      seen[value[i]] = true;
+    }
+  }
+
+  function sameReactionRefs(left, right) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length &&
+      left.every(function (value, index) { return value === right[index]; });
+  }
+
+  function validateActionContext(value, field) {
+    if (value === undefined) return undefined;
+    if (!isPlainObject(value)) throw rejection('INVALID_OPTION_VALUE', { field: field });
+    rejectUnknownKeys(value, ['actionEvent', 'targetResolutionEvent'], field);
+    var actionEvent = value.actionEvent;
+    if (!isPlainObject(actionEvent)) throw rejection('MISSING_SOURCE_REFERENCE', { field: field + '.actionEvent' });
+    rejectUnknownKeys(actionEvent, ['actionId', 'eventId'], field + '.actionEvent');
+    validateIdString(actionEvent.actionId, field + '.actionEvent.actionId');
+    validateIdString(actionEvent.eventId, field + '.actionEvent.eventId');
+    var normalized = { actionEvent: { actionId: actionEvent.actionId, eventId: actionEvent.eventId } };
+    if (value.targetResolutionEvent !== undefined) {
+      var targetEvent = value.targetResolutionEvent;
+      if (!isPlainObject(targetEvent)) throw rejection('INVALID_OPTION_VALUE', { field: field + '.targetResolutionEvent' });
+      rejectUnknownKeys(targetEvent, ['eventId'], field + '.targetResolutionEvent');
+      validateIdString(targetEvent.eventId, field + '.targetResolutionEvent.eventId');
+      normalized.targetResolutionEvent = { eventId: targetEvent.eventId };
+    }
+    return normalized;
+  }
+
+  function contextRefs(context) {
+    var ids = [context.actionEvent.eventId];
+    if (context.targetResolutionEvent && context.targetResolutionEvent.eventId !== context.actionEvent.eventId) {
+      ids.push(context.targetResolutionEvent.eventId);
+    }
+    return { sourceActionId: context.actionEvent.actionId, sourceFactIds: ids.slice(), sourceEventIds: ids.slice() };
+  }
+
+  function validateActionOpportunity(input) {
+    var opportunity = input.actionOpportunity;
+    if (opportunity === undefined) return;
+    if (!isPlainObject(opportunity)) throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity' });
+    rejectUnknownKeys(opportunity, ACTION_OPPORTUNITY_KEYS, 'actionOpportunity');
+    validateIdString(opportunity.role, 'actionOpportunity.role');
+    if (opportunity.sourceActorId !== undefined) validateIdString(opportunity.sourceActorId, 'actionOpportunity.sourceActorId');
+    if (opportunity.counterWindow !== undefined && typeof opportunity.counterWindow !== 'boolean') {
+      throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.counterWindow' });
+    }
+    var actionContext = validateActionContext(opportunity.actionContext, 'actionOpportunity.actionContext');
+    var incoming = opportunity.incomingAction;
+    if (incoming !== undefined && incoming !== null) {
+      if (!isPlainObject(incoming)) throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.incomingAction' });
+      if (hasOwn(incoming, 'reactionMechanics') || hasOwn(incoming, 'damageMultiplier') || hasOwn(incoming, 'dodgeProbability')) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.incomingAction' });
+      }
+      validateIdString(incoming.sourceActionId, 'actionOpportunity.incomingAction.sourceActionId');
+    }
+    if (actionContext) {
+      var refs = contextRefs(actionContext);
+      if (!incoming || !sameReactionRefs(incoming.sourceFactIds, refs.sourceFactIds) ||
+        !sameReactionRefs(incoming.sourceEventIds, refs.sourceEventIds) || incoming.sourceActionId !== refs.sourceActionId) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.actionContext.identity' });
+      }
+    }
+    var mechanics = opportunity.reactionMechanics;
+    if (!isPlainObject(mechanics)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'actionOpportunity.reactionMechanics' });
+    rejectUnknownKeys(mechanics, REACTION_MECHANICS_KEYS, 'actionOpportunity.reactionMechanics');
+    var required = ['candidateId', 'responseKind', 'status', 'reason', 'sourceActionId', 'sourceActorId', 'targetId', 'prepared', 'visibleWorldRevision', 'requestHash', 'sourceFactIds', 'sourceEventIds'];
+    for (var r = 0; r < required.length; r += 1) {
+      if (mechanics[required[r]] === undefined) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'actionOpportunity.reactionMechanics.' + required[r] });
+    }
+    validateIdString(mechanics.candidateId, 'actionOpportunity.reactionMechanics.candidateId');
+    validateIdString(mechanics.sourceActionId, 'actionOpportunity.reactionMechanics.sourceActionId');
+    validateIdString(mechanics.sourceActorId, 'actionOpportunity.reactionMechanics.sourceActorId');
+    validateIdString(mechanics.targetId, 'actionOpportunity.reactionMechanics.targetId');
+    validateIdString(mechanics.visibleWorldRevision, 'actionOpportunity.reactionMechanics.visibleWorldRevision');
+    validateIdString(mechanics.requestHash, 'actionOpportunity.reactionMechanics.requestHash');
+    validateReactionRefs(mechanics.sourceFactIds, 'actionOpportunity.reactionMechanics.sourceFactIds');
+    validateReactionRefs(mechanics.sourceEventIds, 'actionOpportunity.reactionMechanics.sourceEventIds');
+    if (REACTION_RESPONSE_KINDS.indexOf(mechanics.responseKind) < 0 || (mechanics.status !== 'KNOWN' && mechanics.status !== 'UNKNOWN')) {
+      throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.reactionMechanics' });
+    }
+    if (mechanics.prepared !== true || mechanics.candidateId !== input.candidate.candidateId ||
+      mechanics.targetId !== input.candidate.actorId || mechanics.responseKind !== input.candidate.actionKind ||
+      mechanics.sourceActorId !== opportunity.sourceActorId || !incoming || mechanics.sourceActionId !== incoming.sourceActionId ||
+      input.candidate.targetSet.indexOf(mechanics.targetId) < 0) {
+      throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.reactionMechanics.identity' });
+    }
+    if (actionContext) {
+      var contextIdentity = contextRefs(actionContext);
+      if (mechanics.sourceActionId !== contextIdentity.sourceActionId ||
+        !sameReactionRefs(mechanics.sourceFactIds, contextIdentity.sourceFactIds) ||
+        !sameReactionRefs(mechanics.sourceEventIds, contextIdentity.sourceEventIds)) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.actionContext.reactionMechanics' });
+      }
+    }
+    if (mechanics.status === 'KNOWN') {
+      if (mechanics.reason !== 'OK' || !isFinite(mechanics.damageMultiplier) || mechanics.damageMultiplier < 0 || mechanics.damageMultiplier > 1 ||
+        !isFinite(mechanics.dodgeProbability) || mechanics.dodgeProbability < 0 || mechanics.dodgeProbability > 1) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.reactionMechanics.values' });
+      }
+      if (mechanics.responseKind === 'PASS_OPPORTUNITY' && (mechanics.damageMultiplier !== 1 || mechanics.dodgeProbability !== 0)) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.reactionMechanics.PASS_OPPORTUNITY' });
+      }
+    } else {
+      if (hasOwn(mechanics, 'damageMultiplier') || hasOwn(mechanics, 'dodgeProbability') || UNKNOWN_REASONS.indexOf(mechanics.reason) < 0) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'actionOpportunity.reactionMechanics.UNKNOWN' });
+      }
+    }
+  }
+
   function validateSnapshot(input) {
     var snap = input.publicSnapshot;
     if (!snap || typeof snap !== 'object') throw rejection('MISSING_SOURCE_REFERENCE', { field: 'publicSnapshot' });
@@ -367,6 +540,10 @@
         if (u[fn] !== undefined) toFiniteNumber(u[fn], 'units.' + uid + '.' + fn);
       }
       if (u['状态效果'] !== undefined && (typeof u['状态效果'] !== 'object' || u['状态效果'] === null)) throw rejection('INVALID_OPTION_VALUE', { field: 'units.' + uid + '.状态效果' });
+      var chargeField = u['蓄力技能'];
+      if (chargeField !== undefined && chargeField !== null && (typeof chargeField !== 'object' || Array.isArray(chargeField))) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'units.' + uid + '.蓄力技能' });
+      }
     }
     var sides = snap.sides;
     if (typeof sides !== 'object' || sides === null || Array.isArray(sides)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'publicSnapshot.sides' });
@@ -392,15 +569,38 @@
       if (f.expectedDelta !== undefined) toFiniteNumber(f.expectedDelta, 'atomicFacts.expectedDelta');
       if (f.sourceActionId !== undefined && (typeof f.sourceActionId !== 'string' || f.sourceActionId.length === 0)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'atomicFacts[].sourceActionId' });
       if (f.outcomeKind !== undefined && (typeof f.outcomeKind !== 'string' || f.outcomeKind.length === 0)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'atomicFacts[].outcomeKind' });
+      if (f.effectInstanceId !== undefined) validateIdString(f.effectInstanceId, 'atomicFacts[].effectInstanceId');
+      if (f.targetId !== undefined) validateIdString(f.targetId, 'atomicFacts[].targetId');
       if (f.hitCheckApplicability === 'APPLICABLE') {
-        if (!f.evidence || typeof f.evidence !== 'object' || f.evidence.hitProbability === undefined) {
+        if (!f.evidence || typeof f.evidence !== 'object') {
           throw rejection('MISSING_SOURCE_REFERENCE', { field: 'atomicFacts[].evidence.hitProbability' });
         }
-        toFiniteNumber(f.evidence.hitProbability, 'atomicFacts.evidence.hitProbability');
+        if (f.evidence.deliveryStatus !== undefined && f.evidence.deliveryStatus !== null) {
+          if (['MISSING', 'NON_FINITE'].indexOf(f.evidence.deliveryStatus) < 0) {
+            throw rejection('INVALID_OPTION_VALUE', { field: 'atomicFacts[].evidence.deliveryStatus', value: String(f.evidence.deliveryStatus) });
+          }
+          if (f.evidence.deliveryStatus === 'MISSING' && f.evidence.hitProbability !== undefined) {
+            throw rejection('INVALID_OPTION_VALUE', { field: 'atomicFacts[].evidence.deliveryStatus', value: 'MISSING_WITH_PROBABILITY' });
+          }
+          if (f.evidence.deliveryStatus === 'NON_FINITE' && f.evidence.hitProbability !== undefined) {
+            throw rejection('INVALID_OPTION_VALUE', { field: 'atomicFacts[].evidence.deliveryStatus', value: 'NON_FINITE_WITH_PROBABILITY' });
+          }
+        } else if (f.evidence.hitProbability === undefined) {
+          throw rejection('MISSING_SOURCE_REFERENCE', { field: 'atomicFacts[].evidence.hitProbability' });
+        } else {
+          toFiniteNumber(f.evidence.hitProbability, 'atomicFacts.evidence.hitProbability');
+        }
       } else if (f.evidence !== undefined) {
         if (typeof f.evidence !== 'object' || f.evidence === null) throw rejection('INVALID_OPTION_VALUE', { field: 'atomicFacts[].evidence' });
         rejectUnknownKeys(f.evidence, EVIDENCE_KEYS, 'atomicFacts[].evidence');
         if (f.evidence.hitProbability !== undefined) toFiniteNumber(f.evidence.hitProbability, 'atomicFacts.evidence.hitProbability');
+      }
+      if (f.evidence && typeof f.evidence === 'object' && f.evidence.damageBasis !== undefined) {
+        var db = f.evidence.damageBasis;
+        if (!db || typeof db !== 'object' || Array.isArray(db)) throw rejection('INVALID_OPTION_VALUE', { field: 'atomicFacts[].evidence.damageBasis' });
+        if (typeof db.basisView !== 'string' || ['DECISION_VISIBLE', 'BELIEF', 'RUNTIME_ACTUAL'].indexOf(db.basisView) < 0) {
+          throw rejection('INVALID_OPTION_VALUE', { field: 'atomicFacts[].evidence.damageBasis.basisView', value: String(db && db.basisView) });
+        }
       }
     }
   }
@@ -618,9 +818,41 @@
       }
     }
   }
+  function validatePrototypeRegistry(input) {
+    var pr = input.prototypeRegistry;
+    if (pr === undefined) {
+      if (Array.isArray(input.projectionFamilies)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'prototypeRegistry' });
+      return;
+    }
+    if (!pr || typeof pr !== 'object' || Array.isArray(pr)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'prototypeRegistry' });
+    rejectUnknownKeys(pr, ['registryId', 'prototypeNames', 'prototypeRegistryHash', 'sourceContractHash'], 'prototypeRegistry');
+    if (typeof pr.registryId !== 'string' || pr.registryId.indexOf('RC6-M2-PROTOTYPE-DIRECT-ADAPTER') !== 0) {
+      throw rejection('INVALID_OPTION_VALUE', { field: 'prototypeRegistry.registryId', value: pr.registryId });
+    }
+    var names = pr.prototypeNames;
+    if (!Array.isArray(names) || names.length === 0) throw rejection('INVALID_OPTION_VALUE', { field: 'prototypeRegistry.prototypeNames' });
+    for (var i = 0; i < names.length; i += 1) {
+      var n = names[i];
+      if (typeof n !== 'string' || n.length === 0 || n.length > 512 || /[\u0000-\u001F\u007F]/.test(n)) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'prototypeRegistry.prototypeNames[' + i + ']' });
+      }
+      if (i > 0 && cmpStr(names[i - 1], n) >= 0) {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'prototypeRegistry.prototypeNames', notCanonicalSorted: true });
+      }
+    }
+    if (typeof pr.prototypeRegistryHash !== 'string' || !/^[0-9a-f]{8}$/.test(pr.prototypeRegistryHash) || pr.prototypeRegistryHash !== fnv1a32Hex(names)) {
+      throw rejection('INVALID_OPTION_VALUE', { field: 'prototypeRegistry.prototypeRegistryHash' });
+    }
+    if (typeof pr.sourceContractHash !== 'string' || !/^[0-9a-f]{64}$/.test(pr.sourceContractHash) || pr.sourceContractHash !== CONTRACT_HASHES.governed.adapterContract) {
+      throw rejection('INVALID_OPTION_VALUE', { field: 'prototypeRegistry.sourceContractHash' });
+    }
+  }
+
   function validateProjectionFamilies(input) {
     var pf = input.projectionFamilies;
     if (pf === undefined) return;
+    if (!input.prototypeRegistry) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'prototypeRegistry' });
+    var names = input.prototypeRegistry.prototypeNames;
     if (!Array.isArray(pf)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'projectionFamilies' });
     var seen = {};
     for (var i = 0; i < pf.length; i += 1) {
@@ -629,7 +861,7 @@
       rejectUnknownKeys(e, ['sourceEffectId', 'prototype'], 'projectionFamilies[]');
       validateIdString(e.sourceEffectId, 'projectionFamilies[].sourceEffectId');
       if (typeof e.prototype !== 'string' || e.prototype.length === 0) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'projectionFamilies[].prototype' });
-      if (REGISTRY_PROTOTYPE_NAMES.indexOf(e.prototype) < 0) throw rejection('INVALID_OPTION_VALUE', { field: 'projectionFamilies[].prototype', value: e.prototype });
+      if (names.indexOf(e.prototype) < 0) throw rejection('INVALID_OPTION_VALUE', { field: 'projectionFamilies[].prototype', value: e.prototype });
       var uid = e.sourceEffectId + '\u0000' + e.prototype;
       if (hasOwn(seen, uid)) throw rejection('INVALID_OPTION_VALUE', { field: 'projectionFamilies', duplicate: uid });
       seen[uid] = true;
@@ -678,10 +910,45 @@
     if (pd.declaredOverkill !== undefined) toFiniteNumber(pd.declaredOverkill, 'publicDeclarations.declaredOverkill');
   }
 
+  function validateCreationProfile(input) {
+    var cp = input.creationProfile;
+    if (cp === undefined) return;
+    if (typeof cp !== 'object' || cp === null || Array.isArray(cp)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'creationProfile' });
+    rejectUnknownKeys(cp, CREATION_PROFILE_KEYS, 'creationProfile');
+    if (cp.recipientId === undefined) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'creationProfile.recipientId' });
+    validateIdString(cp.recipientId, 'creationProfile.recipientId');
+    if (cp.useEffects === undefined) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'creationProfile.useEffects' });
+    if (!Array.isArray(cp.useEffects)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'creationProfile.useEffects' });
+    for (var i = 0; i < cp.useEffects.length; i += 1) {
+      var row = cp.useEffects[i];
+      if (!row || typeof row !== 'object' || Array.isArray(row)) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'creationProfile.useEffects[' + i + ']' });
+      rejectUnknownKeys(row, CREATION_PROFILE_ROW_KEYS, 'creationProfile.useEffects[' + i + ']');
+      for (var k = 0; k < CREATION_PROFILE_ROW_KEYS.length; k += 1) {
+        var key = CREATION_PROFILE_ROW_KEYS[k];
+        if (row[key] === undefined) throw rejection('MISSING_SOURCE_REFERENCE', { field: 'creationProfile.useEffects[' + i + '].' + key });
+      }
+      if (typeof row['原型'] !== 'string' || row['原型'].length === 0) throw rejection('INVALID_OPTION_VALUE', { field: 'creationProfile.useEffects[' + i + '].原型' });
+      if (typeof row['目标'] !== 'string' || row['目标'].length === 0) throw rejection('INVALID_OPTION_VALUE', { field: 'creationProfile.useEffects[' + i + '].目标' });
+      if (typeof row['数值'] !== 'string' || row['数值'].length === 0) throw rejection('INVALID_OPTION_VALUE', { field: 'creationProfile.useEffects[' + i + '].数值' });
+      var res = row['资源'];
+      if (typeof res === 'string') {
+        if (res.length === 0) throw rejection('INVALID_OPTION_VALUE', { field: 'creationProfile.useEffects[' + i + '].资源' });
+      } else if (Array.isArray(res)) {
+        if (res.length === 0) throw rejection('INVALID_OPTION_VALUE', { field: 'creationProfile.useEffects[' + i + '].资源' });
+        for (var r = 0; r < res.length; r += 1) {
+          if (typeof res[r] !== 'string' || res[r].length === 0) throw rejection('INVALID_OPTION_VALUE', { field: 'creationProfile.useEffects[' + i + '].资源[' + r + ']' });
+        }
+      } else {
+        throw rejection('INVALID_OPTION_VALUE', { field: 'creationProfile.useEffects[' + i + '].资源' });
+      }
+    }
+  }
+
   function validateInput(input) {
     checkForbiddenInput(input);
     validateTopLevelKeys(input);
     validateCandidate(input);
+    validateActionOpportunity(input);
     validateSnapshot(input);
     validateAtomicFacts(input);
     validateDirectFactsRows(input);
@@ -690,10 +957,12 @@
     validateOpportunityModifiers(input);
     validateScheduledFacts(input);
     validateMechanicMetadataEntries(input);
+    validatePrototypeRegistry(input);
     validateProjectionFamilies(input);
     validatePublicCost(input);
     validatePublicProbability(input);
     validatePublicDeclarations(input);
+    validateCreationProfile(input);
   }
   function expectUnit(unit, want) {
     if (unit !== want) throw rejection('UNIT_FAMILY_MISMATCH', { unit: unit, expected: want });
@@ -731,8 +1000,18 @@
         throw rejection('UNIT_FAMILY_MISMATCH', { factType: factType, key: key, unit: unit });
       }
     } else if (factType === 'SHIELD_DELTA') {
-      expectUnit(unit, 'ABS');
-      out.push(kKnown('SHIELD_DELTA', 'ABS', amount));
+      if (unit === 'ABS') {
+        out.push(kKnown('SHIELD_DELTA', 'ABS', amount));
+      } else if (unit === 'PERCENT') {
+        // Percent-declared shield magnitudes cannot be faithfully scalarized
+        // into the ABS shield-delta feature: the final ABS settlement depends on
+        // effect-strength resolution and is not public at feature time. The row
+        // keeps its feature home and sourceFactIds ownership as UNKNOWN
+        // (FINAL_SETTLEMENT_UNKNOWN), never coerced to ABS, never OUTSIDE.
+        out.push(kUnknown('SHIELD_DELTA', 'ABS', 'FINAL_SETTLEMENT_UNKNOWN'));
+      } else {
+        throw rejection('UNIT_FAMILY_MISMATCH', { factType: factType, key: key, unit: unit });
+      }
     } else if (factType === 'STATE_DELTA') {
       if (key === 'settlement.primary') {
         expectUnit(unit, 'PERCENT');
@@ -855,7 +1134,44 @@
         summonFamilyBlock(recs, pfk, {});
       }
     }
+    recs = collapseAttributeDeltaRows(recs);
     return { recs: recs, outsideCount: outside, outsideFactIds: outsideFactIds };
+  }
+
+  // Same-candidate duplicate KNOWN ATTRIBUTE_DELTA rows (same unit) collapse to
+  // a single row: stable-order signed SUM with unioned sourceFactIds and
+  // sourceEventIds. Mixed units or non-finite values are rejected; MAX is never
+  // used. computeRows runs strictly once per candidate, so all rows here are
+  // provably within the same candidate scope by construction.
+  function collapseAttributeDeltaRows(recs) {
+    var attrs = [];
+    var kept = [];
+    for (var i = 0; i < recs.length; i += 1) {
+      if (recs[i].featureCode === 'ATTRIBUTE_DELTA' && recs[i].status === 'KNOWN') attrs.push(recs[i]);
+      else kept.push(recs[i]);
+    }
+    if (attrs.length <= 1) return recs;
+    var unit = attrs[0].unitFamily;
+    var sum = 0;
+    var factIds = [];
+    var eventIds = [];
+    for (var a = 0; a < attrs.length; a += 1) {
+      if (attrs[a].unitFamily !== unit) {
+        throw rejection('UNIT_FAMILY_MISMATCH', { featureCode: 'ATTRIBUTE_DELTA', unit: attrs[a].unitFamily, expected: unit });
+      }
+      if (typeof attrs[a].value !== 'number' || !Number.isFinite(attrs[a].value)) {
+        throw rejection('INVALID_OPTION_VALUE', { featureCode: 'ATTRIBUTE_DELTA', value: attrs[a].value });
+      }
+      sum = normZero(sum + attrs[a].value);
+      factIds = factIds.concat(attrs[a].sourceFactIds || []);
+      eventIds = eventIds.concat(attrs[a].sourceEventIds || []);
+    }
+    var uniqueFactIds = [];
+    for (var f = 0; f < factIds.length; f += 1) {
+      if (uniqueFactIds.indexOf(factIds[f]) < 0) uniqueFactIds.push(factIds[f]);
+    }
+    kept.push(rec('ATTRIBUTE_DELTA', unit, 'KNOWN', 'OK', sum, uniqueFactIds, eventIds, attrs.length, attrs[0]._seid, attrs[0]._key));
+    return kept;
   }
 
   function targetSideRec(input) {
@@ -878,49 +1194,127 @@
     return knownStr('RELATION_TARGET_SIDE', 'ENUM', 'MIXED');
   }
 
-  function atomicHitProbabilities(input) {
-    var out = [];
-    var facts = input.atomicFacts;
-    if (!Array.isArray(facts)) return out;
+  // R4b2 damage-delivery hit axis. A valid delivery requires outcomeKind
+  // HP_DELTA, evidence.damageBasis.basisView DECISION_VISIBLE, nonempty
+  // effectInstanceId + targetId and finite hitProbability. Rows are deduped by
+  // (effectInstanceId,targetId); same identity with differing probabilities is
+  // UNKNOWN(CONFLICTING_DELIVERIES). Candidate value = arithmetic mean over the
+  // declared targets that have a hit axis: first the per-target mean over that
+  // target's independent deliveries, then the mean over targets. Targets with
+  // no damage delivery are NO_HIT_AXIS and excluded from the denominator; a
+  // candidate with no damage delivery at all is NOT_APPLICABLE(NO_HIT_AXIS).
+  // deliveryStatus 'MISSING'/'NON_FINITE' is the explicit fail-closed carrier
+  // for a delivery that mechanically should exist but is absent/non-finite.
+  function successProbabilityRec(input) {
+    var facts = Array.isArray(input.atomicFacts) ? input.atomicFacts : [];
+    var targets = input.candidate.targetSet;
+    var deliveryByKey = {};
+    var keyOrder = [];
+    var conflictKey = null;
+    var brokenReason = null;
+    var brokenEvents = [];
+    var unresolvedEvent = null;
+    var hasDeliveryRow = false;
     for (var i = 0; i < facts.length; i += 1) {
       var f = facts[i];
-      if (f.hitCheckApplicability === 'APPLICABLE') {
-        out.push({ eventId: f.eventId, value: toFiniteNumber(f.evidence.hitProbability, 'atomicFacts.evidence.hitProbability') });
+      if (String(f.outcomeKind || '').trim() !== 'HP_DELTA') continue;
+      hasDeliveryRow = true;
+      if (f.hitCheckApplicability === 'UNKNOWN') {
+        if (!unresolvedEvent) unresolvedEvent = f.eventId;
+        continue;
+      }
+      if (f.hitCheckApplicability === 'NOT_APPLICABLE') continue;
+      var ev = f.evidence && typeof f.evidence === 'object' ? f.evidence : {};
+      var status = ev.deliveryStatus;
+      if (status === 'MISSING') {
+        if (!brokenReason) brokenReason = 'MISSING_SOURCE_FACT';
+        brokenEvents.push(f.eventId);
+        continue;
+      }
+      if (status === 'NON_FINITE') {
+        if (!brokenReason) brokenReason = 'NON_FINITE_DELIVERY';
+        brokenEvents.push(f.eventId);
+        continue;
+      }
+      var basis = ev.damageBasis && typeof ev.damageBasis === 'object' ? ev.damageBasis : null;
+      var basisOk = !!basis && String(basis.basisView || '').trim() === 'DECISION_VISIBLE';
+      var effId = typeof f.effectInstanceId === 'string' ? f.effectInstanceId.trim() : '';
+      var tgtId = typeof f.targetId === 'string' ? f.targetId.trim() : '';
+      var idOk = effId.length > 0 && tgtId.length > 0;
+      if (!basisOk || !idOk) {
+        if (!brokenReason) brokenReason = 'MISSING_SOURCE_FACT';
+        brokenEvents.push(f.eventId);
+        continue;
+      }
+      var raw = ev.hitProbability;
+      if (raw === undefined || raw === null || !Number.isFinite(Number(raw))) {
+        if (!brokenReason) brokenReason = 'NON_FINITE_DELIVERY';
+        brokenEvents.push(f.eventId);
+        continue;
+      }
+      var value = Number(raw);
+      var key = effId + '\u0000' + tgtId;
+      var entry = deliveryByKey[key];
+      if (!entry) {
+        entry = { p: value, targetId: tgtId, events: [] };
+        deliveryByKey[key] = entry;
+        keyOrder.push(key);
+      } else if (entry.p !== value) {
+        if (!conflictKey) conflictKey = key;
+        entry.conflict = true;
+      }
+      entry.events.push(f.eventId);
+    }
+    if (unresolvedEvent) return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'CONDITIONAL_PROBABILITY_UNRESOLVED', [], [unresolvedEvent]);
+    if (conflictKey) return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'CONFLICTING_DELIVERIES', [], deliveryByKey[conflictKey].events);
+    if (brokenReason) return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', brokenReason, [], brokenEvents);
+    // R4b2 declared-target mechanical closure: the PDA projections lifted into
+    // directFacts are the authoritative obligation carrier. Every HP_DELTA row's
+    // targetIds is a target the action mechanically owes a damage delivery to;
+    // a declared obligation target with no transcribed delivery is a missing
+    // source fact (fail-closed), not a NO_HIT_AXIS exclusion. Non-obligation
+    // declared targets keep the existing no-hit-axis exclusion semantics.
+    var obligationTargets = {};
+    var rows = Array.isArray(input.directFacts) ? input.directFacts : [];
+    for (var r = 0; r < rows.length; r += 1) {
+      if (String(rows[r].factType || '').trim() !== 'HP_DELTA') continue;
+      var ids = Array.isArray(rows[r].targetIds) ? rows[r].targetIds : [];
+      for (var u = 0; u < ids.length; u += 1) obligationTargets[ids[u]] = true;
+    }
+    if (Object.keys(obligationTargets).length > 0) {
+      var deliveredTargets = {};
+      for (var d = 0; d < keyOrder.length; d += 1) deliveredTargets[deliveryByKey[keyOrder[d]].targetId] = true;
+      var obligationKeys = Object.keys(obligationTargets);
+      for (var o = 0; o < obligationKeys.length; o += 1) {
+        if (!hasOwn(deliveredTargets, obligationKeys[o])) {
+          return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'MISSING_SOURCE_FACT', [], []);
+        }
       }
     }
-    return out;
-  }
-
-  function successProbabilityRec(input) {
-    var facts = input.atomicFacts;
-    var hasFacts = Array.isArray(facts) && facts.length > 0;
-    var pp = input.publicProbability;
-    if (pp && typeof pp === 'object') {
-      if (pp.hitProbability !== undefined) {
-        var evs = atomicHitProbabilities(input);
-        var evIds = [];
-        for (var e = 0; e < evs.length; e += 1) evIds.push(evs[e].eventId);
-        return rec('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'KNOWN', 'OK', toFiniteNumber(pp.hitProbability, 'publicProbability.hitProbability'), [], evIds, 0, '', '');
+    if (!hasDeliveryRow) {
+      if (!targets || targets.length === 0) return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'MISSING_SOURCE_FACT');
+      return na('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'NO_HIT_AXIS');
+    }
+    if (!keyOrder.length) return na('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'NO_HIT_AXIS');
+    var targetSum = {};
+    var targetCount = {};
+    var targetEventIds = {};
+    for (var o = 0; o < keyOrder.length; o += 1) {
+      var item = deliveryByKey[keyOrder[o]];
+      targetSum[item.targetId] = (targetSum[item.targetId] || 0) + item.p;
+      targetCount[item.targetId] = (targetCount[item.targetId] || 0) + 1;
+      for (var x = 0; x < item.events.length; x += 1) {
+        (targetEventIds[item.targetId] = targetEventIds[item.targetId] || []).push(item.events[x]);
       }
-      if (pp.resolved === false) return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'CONDITIONAL_PROBABILITY_UNRESOLVED');
     }
-    if (!hasFacts) return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'MISSING_SOURCE_FACT');
-    for (var i = 0; i < facts.length; i += 1) {
-      if (facts[i].hitCheckApplicability === 'UNKNOWN') return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'CONDITIONAL_PROBABILITY_UNRESOLVED');
+    var targetIds = Object.keys(targetSum);
+    var total = 0;
+    var allEventIds = [];
+    for (var t = 0; t < targetIds.length; t += 1) {
+      total += targetSum[targetIds[t]] / targetCount[targetIds[t]];
+      for (var y = 0; y < targetEventIds[targetIds[t]].length; y += 1) allEventIds.push(targetEventIds[targetIds[t]][y]);
     }
-    var allNa = true;
-    for (var n = 0; n < facts.length; n += 1) {
-      if (facts[n].hitCheckApplicability !== 'NOT_APPLICABLE') allNa = false;
-    }
-    if (allNa) return na('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'NO_HIT_AXIS');
-    var evs2 = atomicHitProbabilities(input);
-    var ids = [];
-    for (var e2 = 0; e2 < evs2.length; e2 += 1) ids.push(evs2[e2].eventId);
-    var first = evs2[0].value;
-    var allSame = true;
-    for (var s = 1; s < evs2.length; s += 1) if (evs2[s].value !== first) allSame = false;
-    if (allSame) return rec('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'KNOWN', 'OK', first, [], ids, 0, '', '');
-    return unk('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'CONDITIONAL_PROBABILITY_UNRESOLVED', [], ids);
+    return rec('SUCCESS_PROBABILITY', 'PROBABILITY_0_1', 'KNOWN', 'OK', total / targetIds.length, [], allEventIds, 0, '', '');
   }
   function hpRatioRec(input) {
     var targets = input.candidate.targetSet;
@@ -956,6 +1350,61 @@
       sum += (sp / spMax + men / menMax) / 2;
     }
     return known('PUBLIC_RESOURCE_RATIO', 'RATIO_0_1', sum / targets.length);
+  }
+
+  // PUBLIC_RECIPIENT_NEED_MATCH: declared positive recovery (creationProfile.useEffects
+  // 资源变化 rows with percent 数值) vs the same observer-visible recipient resource
+  // gap. Per (recipientId, resource) duplicates take max, never sum; the value is the
+  // arithmetic mean over the actual recovery channels; no channel => KNOWN 0; any
+  // unprovable recipient/axis/percent-unit fails closed to UNKNOWN, never guessed.
+  // 数值 grammar: optional sign, decimal digits, optional literal percent sign
+  // ([+-]?[0-9]+(\.[0-9]+)?%?); negative and zero rows are drains, never recovery
+  // channels; malformed strings or non-finite magnitudes are UNKNOWN(MISSING_SOURCE_FACT).
+  function recipientNeedMatchRec(input) {
+    var cp = input.creationProfile;
+    if (!cp || typeof cp !== 'object') return known('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 0);
+    if (typeof cp.recipientId !== 'string' || cp.recipientId.length === 0) return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'MISSING_SOURCE_FACT');
+    if (!Array.isArray(cp.useEffects)) return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'MISSING_SOURCE_FACT');
+    var unit = input.publicSnapshot.units[cp.recipientId];
+    var channels = {};
+    var factIds = [];
+    for (var i = 0; i < cp.useEffects.length; i += 1) {
+      var row = cp.useEffects[i];
+      if (row['原型'] !== '资源变化') continue;
+      var m = /^([+-]?)([0-9]+(?:\.[0-9]+)?)(%)?$/.exec(String(row['数值']).trim());
+      if (!m) return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'MISSING_SOURCE_FACT');
+      var ratio = (m[1] === '-' ? -1 : 1) * Number(m[2]);
+      if (m[3] === '%') ratio = ratio / 100;
+      if (ratio <= 0) continue;
+      if (!isFinite(ratio)) return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'MISSING_SOURCE_FACT');
+      if (m[3] !== '%') return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'MISSING_SOURCE_FACT');
+      var resList = Array.isArray(row['资源']) ? row['资源'] : [row['资源']];
+      for (var r = 0; r < resList.length; r += 1) {
+        var resName = resList[r];
+        if (RESOURCE_NAMES.indexOf(resName) < 0) return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'HIDDEN_AXIS_UNOBSERVED');
+        if (!unit || typeof unit !== 'object') return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'HIDDEN_AXIS_UNOBSERVED');
+        var field = RESOURCE_FIELD[resName];
+        var cur = unit[field];
+        var max = unit[field + '_max'];
+        if (cur === undefined || max === undefined) return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'HIDDEN_AXIS_UNOBSERVED');
+        cur = toFiniteNumber(cur, 'units.' + cp.recipientId + '.' + field);
+        max = toFiniteNumber(max, 'units.' + cp.recipientId + '.' + field + '_max');
+        if (max <= 0) return unk('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'HIDDEN_AXIS_UNOBSERVED');
+        var gap = (max - cur) / max;
+        if (gap < 0) gap = 0;
+        if (gap > 1) gap = 1;
+        var realized = gap < ratio ? gap : ratio;
+        if (realized < 0) realized = 0;
+        if (realized > 1) realized = 1;
+        channels[resName] = hasOwn(channels, resName) && channels[resName] > realized ? channels[resName] : realized;
+        if (factIds.indexOf('creationProfile:useEffects:' + i) < 0) factIds.push('creationProfile:useEffects:' + i);
+      }
+    }
+    var keys = Object.keys(channels);
+    if (keys.length === 0) return known('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 0);
+    var sum = 0;
+    for (var k = 0; k < keys.length; k += 1) sum += channels[keys[k]];
+    return rec('PUBLIC_RECIPIENT_NEED_MATCH', 'RATIO_0_1', 'KNOWN', 'OK', sum / keys.length, factIds.sort(cmpStr), [], 0, '', '');
   }
 
   function costAffordabilityRec(input) {
@@ -1009,6 +1458,8 @@
     if (status === 'TERMINAL') return 'ACTOR_TERMINAL';
     if (status === 'UNKNOWN') return 'UNKNOWN_STATE';
     if (input.candidate.targetSet.length < 1) return 'TARGET_EMPTY';
+    var affordability = costAffordabilityRec(input);
+    if (affordability.status === 'KNOWN' && affordability.value < 1) return 'RESOURCE_INSUFFICIENT';
     return null;
   }
 
@@ -1020,6 +1471,46 @@
     return out;
   }
 
+  function reactionMechanicsRows(input) {
+    var mechanics = input.actionOpportunity && input.actionOpportunity.reactionMechanics;
+    var factIds = mechanics && Array.isArray(mechanics.sourceFactIds) ? mechanics.sourceFactIds : [];
+    var eventIds = mechanics && Array.isArray(mechanics.sourceEventIds) ? mechanics.sourceEventIds : [];
+    var provenanceComplete = factIds.length > 0 && eventIds.length > 0;
+    if (!mechanics || mechanics.status !== 'KNOWN' || !provenanceComplete) {
+      var reason = !mechanics
+        ? 'HIDDEN_AXIS_UNOBSERVED'
+        : mechanics.status === 'KNOWN' && !provenanceComplete
+          ? 'SOURCE_PROVENANCE_INCOMPLETE'
+          : mechanics.reason || 'HIDDEN_AXIS_UNOBSERVED';
+      return [
+        rec('REACTION_DAMAGE_MULTIPLIER', 'RATIO_0_1', 'UNKNOWN', reason, undefined, factIds, eventIds, 0, '', ''),
+        rec('REACTION_DODGE_PROBABILITY', 'PROBABILITY_0_1', 'UNKNOWN', reason, undefined, factIds, eventIds, 0, '', '')
+      ];
+    }
+    return [
+      rec('REACTION_DAMAGE_MULTIPLIER', 'RATIO_0_1', 'KNOWN', 'OK', mechanics.damageMultiplier, factIds, eventIds, 0, '', ''),
+      rec('REACTION_DODGE_PROBABILITY', 'PROBABILITY_0_1', 'KNOWN', 'OK', mechanics.dodgeProbability, factIds, eventIds, 0, '', '')
+    ];
+  }
+
+  function reactionCounterWindowRow(input) {
+    var opportunity = input.actionOpportunity;
+    if (!opportunity) return unk('REACTION_COUNTER_WINDOW_OPEN', 'BOOL', 'MISSING_SOURCE_FACT');
+    var mechanics = opportunity.reactionMechanics;
+    var factIds = mechanics && Array.isArray(mechanics.sourceFactIds) ? mechanics.sourceFactIds : [];
+    var eventIds = mechanics && Array.isArray(mechanics.sourceEventIds) ? mechanics.sourceEventIds : [];
+    if (!mechanics || factIds.length === 0 || eventIds.length === 0) {
+      return unk('REACTION_COUNTER_WINDOW_OPEN', 'BOOL', mechanics?.status === 'KNOWN'
+        ? 'SOURCE_PROVENANCE_INCOMPLETE'
+        : mechanics?.reason || 'MISSING_SOURCE_FACT');
+    }
+    return rec(
+      'REACTION_COUNTER_WINDOW_OPEN', 'BOOL', 'KNOWN', 'OK',
+      opportunity.role === 'COUNTER' || opportunity.counterWindow === true ? 1 : 0,
+      factIds, eventIds, 0, '', '',
+    );
+  }
+
   function candidateFeatures(input, outsideCount, outsideFactIds) {
     var out = [];
     out.push(known('RELATION_TARGET_COUNT', 'COUNT', input.candidate.targetSet.length));
@@ -1027,6 +1518,7 @@
     out.push(successProbabilityRec(input));
     out.push(hpRatioRec(input));
     out.push(resourceRatioRec(input));
+    out.push(recipientNeedMatchRec(input));
     out.push(costAffordabilityRec(input));
     out.push(revealRec(input));
     out.push(overkillRec(input));
@@ -1036,12 +1528,81 @@
     out.push(unk('SETTLEMENT_DAMAGE', 'ABS', 'FINAL_SETTLEMENT_UNKNOWN'));
     out.push(unk('ROLL_REALIZATION', 'BOOL', 'FUTURE_REALIZATION_UNKNOWN'));
     out.push(rec('OUTSIDE_BATCH1_ROW_COUNT', 'COUNT', 'KNOWN', 'OK', outsideCount, outsideFactIds || [], scheduledEntryIds(input), 0, '', ''));
+    out.push.apply(out, reactionMechanicsRows(input));
+    out.push(reactionCounterWindowRow(input));
     for (var j = 0; j < out.length; j += 1) {
       out[j]._scopeRank = 0;
       out[j]._seid = '';
       out[j]._key = '';
     }
     return out;
+  }
+
+  // Per-target charge transport rows (M3 R4b5): one row per declared target in
+  // targetSet declaration order. Sources are only the decision-visible public
+  // snapshot paths publicSnapshot.units[targetId].蓄力技能.cast_time and
+  // publicSnapshot.units[targetId].蓄力技能.skill.前摇 (fallback). Nothing else is
+  // read: no Runtime internals, no skill names, no _效果数组, no future values.
+  // The facts are transport-only and non-scoreable (catalog CATALOG_ONLY);
+  // Provider weights/hashes never reference these codes.
+  function chargeCastTime(charge, activeFact) {
+    if (charge && typeof charge === 'object' && !Array.isArray(charge)) {
+      var ct = charge['cast_time'];
+      if (ct !== undefined && ct !== null) {
+        var n = (typeof ct === 'string') ? Number(ct) : ct;
+        if (typeof n === 'number' && isFinite(n) && n >= 0) {
+          return { value: normZero(n), factId: activeFact + '.cast_time' };
+        }
+      }
+      var skill = charge['skill'];
+      if (skill && typeof skill === 'object' && !Array.isArray(skill)) {
+        var pre = skill['前摇'];
+        if (pre !== undefined && pre !== null) {
+          var pn = (typeof pre === 'string') ? Number(pre) : pre;
+          if (typeof pn === 'number' && isFinite(pn) && pn >= 0) {
+            return { value: normZero(pn), factId: activeFact + '.skill.前摇' };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function chargeTargetRows(input) {
+    var recs = [];
+    var targets = input.candidate.targetSet;
+    var units = input.publicSnapshot.units;
+    if (targets.length === 0) {
+      recs.push(na('TARGET_CHARGE_ACTIVE', 'BOOL', 'NO_TARGET_AXIS'));
+      recs.push(na('TARGET_CHARGE_CAST_TIME', 'TURNS', 'NO_TARGET_AXIS'));
+      return recs;
+    }
+    for (var i = 0; i < targets.length; i += 1) {
+      var tid = targets[i];
+      var key = 'target:' + i;
+      var unitPath = 'publicSnapshot.units.' + tid;
+      var activeFact = unitPath + '.蓄力技能';
+      if (!hasOwn(units, tid)) {
+        recs.push(rec('TARGET_CHARGE_ACTIVE', 'BOOL', 'UNKNOWN', 'HIDDEN_AXIS_UNOBSERVED', undefined, [unitPath], [], 1, '', key));
+        recs.push(rec('TARGET_CHARGE_CAST_TIME', 'TURNS', 'UNKNOWN', 'HIDDEN_AXIS_UNOBSERVED', undefined, [unitPath], [], 1, '', key));
+        continue;
+      }
+      var charge = units[tid]['蓄力技能'];
+      var chargePresent = charge !== undefined && charge !== null;
+      recs.push(rec('TARGET_CHARGE_ACTIVE', 'BOOL', 'KNOWN', 'OK', chargePresent ? 1 : 0, [activeFact], [], 1, '', key));
+      if (!chargePresent) {
+        // Observable no charge: both facts KNOWN 0 (never a guessed value).
+        recs.push(rec('TARGET_CHARGE_CAST_TIME', 'TURNS', 'KNOWN', 'OK', 0, [activeFact], [], 1, '', key));
+      } else {
+        var cast = chargeCastTime(charge, activeFact);
+        if (cast === null) {
+          recs.push(rec('TARGET_CHARGE_CAST_TIME', 'TURNS', 'UNKNOWN', 'MISSING_SOURCE_FACT', undefined, [activeFact], [], 1, '', key));
+        } else {
+          recs.push(rec('TARGET_CHARGE_CAST_TIME', 'TURNS', 'KNOWN', 'OK', cast.value, [cast.factId], [], 1, '', key));
+        }
+      }
+    }
+    return recs;
   }
 
   function featCompare(a, b) {
@@ -1121,7 +1682,7 @@
     if (work > CAPS.MAX_WORK_UNITS_PER_CALL) throw rejection('CAP_EXCEEDED', { work: work });
     var rowsOut = computeRows(input);
     var candRecs = candidateFeatures(input, rowsOut.outsideCount + schedCount, rowsOut.outsideFactIds);
-    var doc = assemble(input.candidate.candidateId, candRecs.concat(rowsOut.recs));
+    var doc = assemble(input.candidate.candidateId, candRecs.concat(chargeTargetRows(input)).concat(rowsOut.recs));
     var frozen = freezeDeep(doc);
     if (m) {
       m.calls += 1;
@@ -1183,10 +1744,13 @@
         'SHIELD_DELTA': 18, 'ATTRIBUTE_DELTA': 19, 'JUDGMENT_DELTA': 20,
         'STATE_PRESENCE': 21, 'STATE_DURATION': 22, 'STATE_DELTA_PERCENT': 23,
         'SETTLEMENT_MODIFIER_PERCENT': 24, 'SUMMON_COUNT': 25, 'SUMMON_STRENGTH': 26,
-        'SUMMON_DURATION': 27, 'RESOURCE_DELTA_PERCENT': 28
+        'SUMMON_DURATION': 27, 'RESOURCE_DELTA_PERCENT': 28,
+        'PUBLIC_RECIPIENT_NEED_MATCH': 29, 'TARGET_CHARGE_ACTIVE': 30,
+        'TARGET_CHARGE_CAST_TIME': 31, 'REACTION_DAMAGE_MULTIPLIER': 32,
+        'REACTION_DODGE_PROBABILITY': 33, 'REACTION_COUNTER_WINDOW_OPEN': 34
       },
       caps: copyOf(CAPS),
-      workFormula: '13 (F0) + directFactsRows + modifierEntries + scheduledFactsEntries + atomicFactsCount (each row yields at most its own features; no cross-row/branch product); any breach throws CAP_EXCEEDED whole-compile',
+      workFormula: '14 (F0) + directFactsRows + modifierEntries + scheduledFactsEntries + atomicFactsCount (each row yields at most its own features; no cross-row/branch product); any breach throws CAP_EXCEEDED whole-compile',
       statusReasonCodes: { KNOWN: ['OK'], UNKNOWN: UNKNOWN_REASONS.slice(), NOT_APPLICABLE: NA_REASONS.slice() },
       hardExclusionCodes: HARD_EXCLUSION_CODES.slice(),
       rejectionReasonCodes: [
@@ -1213,8 +1777,10 @@
         unknownNeverZero: 'UNKNOWN/NOT_APPLICABLE never carry value; 0 placeholders are forbidden',
         declaredNeverSettlement: 'SETTLEMENT_DAMAGE and ROLL_REALIZATION are always UNKNOWN',
         costActorOnly: 'COST_AFFORDABILITY reads publicSnapshot.units[actorId] only; frozen resource map 魂力->sp, 精神力->men, 体力->vit, 生命->hp; clamp(available/required,0,1), min over entries; target resources never consulted',
+        recipientNeedMatch: 'PUBLIC_RECIPIENT_NEED_MATCH reads only the structured creationProfile (recipientId + closed useEffects rows) against the same observer-visible recipient resource axes (frozen map 魂力->sp, 精神力->men, 体力->vit, 生命->hp); recovery channel = 资源变化 row with positive percent 数值 (percent /100 is the sole admitted unit; negative/zero rows are drains and never count); per (recipientId, resource) duplicates take max, never sum; value = arithmetic mean over the actual recovery channels; no recovery channel (absent creationProfile, non-recovery or empty useEffects) => KNOWN 0; missing recipientId, recipient unit/current/max unprovable, max<=0, unmappable resource name or unprovable percent unit => UNKNOWN (MISSING_SOURCE_FACT / HIDDEN_AXIS_UNOBSERVED), never guessed; no hidden reads, no future route, no role/skill-name special-casing',
+        resourceInsufficientDerivation: 'RESOURCE_INSUFFICIENT derives from the same actor-only affordability check, last in precedence (after legalityFlags/legalityModifiers, actorStatus, TARGET_EMPTY): KNOWN min ratio < 1 (strict cost > available) => RESOURCE_INSUFFICIENT; equality and affordable => not excluded; no publicCost, missing actor/axis or UNKNOWN => no exclusion, never guessed; other hard-exclusion codes keep first-code precedence',
         targetSide: 'sides-map equality only (SELF by id equality, ALLY by side equality, ENEMY otherwise, MIXED on distinct classes, SIDE_UNOBSERVED when any declared target side missing, NO_TARGET_AXIS on empty axis); no prefix guessing/default ALLY/neutral folding',
-        successProbability: 'declared publicProbability first; else atomicFacts: any UNKNOWN applicability => UNKNOWN(CONDITIONAL_PROBABILITY_UNRESOLVED); all NOT_APPLICABLE => NOT_APPLICABLE(NO_HIT_AXIS); APPLICABLE equal hitProbability => KNOWN, differing => UNKNOWN(CONDITIONAL_PROBABILITY_UNRESOLVED); no atomic facts => UNKNOWN(MISSING_SOURCE_FACT); actionKind never special-cased',
+        successProbability: 'R4b2 damage-delivery hit axis: only outcomeKind HP_DELTA rows with evidence.damageBasis.basisView DECISION_VISIBLE, nonempty effectInstanceId/targetId and finite hitProbability are deliveries; dedupe by (effectInstanceId,targetId), same identity differing probability => UNKNOWN(CONFLICTING_DELIVERIES); per-target mean over independent deliveries then mean over hit-axis targets (targets without delivery are NO_HIT_AXIS and excluded from the denominator); no damage delivery at all => NOT_APPLICABLE(NO_HIT_AXIS); deliveryStatus MISSING/NON_FINITE or missing identity/basis => UNKNOWN fail-closed; empty targetSet keeps existing missing semantics; no FIRST/JOINT/MIN/MAX/applicationProbability/Runtime roll; actionKind never special-cased',
         outsideRowCounting: 'rows outside the batch-1 families plus every scheduledFacts entry count into OUTSIDE_BATCH1_ROW_COUNT; scheduled entryIds recorded in sourceEventIds; nothing silently dropped',
         statePresence: 'STATE_DELTA non-attribute/judgment key: unit=BOOL => KNOWN 1 (amount>0) or 0 (amount<=0); unit=COUNT => UNKNOWN(STATE_FORM_UNMAPPED), never coerced to BOOL; other units => UNIT_FAMILY_MISMATCH; BOOL KNOWN domain strictly {0,1}',
         batch2StateDeltaPercent: 'STATE_DELTA state.primary/state.secondary PERCENT => STATE_DELTA_PERCENT (signed declared magnitude, never multiplied by duration); other PERCENT keys => UNKNOWN(MISSING_SOURCE_FACT); other units/keys keep revision-2 STATE_PRESENCE/UNIT_FAMILY_MISMATCH rules',
@@ -1243,7 +1809,7 @@
           },
           closed: true
         },
-        atomicFacts: { required: false, shape: [{ eventId: 'string nonempty', hitCheckApplicability: 'enum APPLICABLE|NOT_APPLICABLE|UNKNOWN', evidence: { hitProbability: 'number finite (required when APPLICABLE)' }, sourceActionId: 'string', outcomeKind: 'string', expectedDelta: 'number finite' }], closed: true },
+        atomicFacts: { required: false, shape: [{ eventId: 'string nonempty', hitCheckApplicability: 'enum APPLICABLE|NOT_APPLICABLE|UNKNOWN', effectInstanceId: 'string (delivery identity, required for HP_DELTA APPLICABLE)', targetId: 'string (delivery target, required for HP_DELTA APPLICABLE)', evidence: { hitProbability: 'number finite (required when APPLICABLE unless deliveryStatus set)', damageBasis: '{ basisView: enum DECISION_VISIBLE|BELIEF|RUNTIME_ACTUAL } (required for HP_DELTA APPLICABLE)', deliveryStatus: 'enum MISSING|NON_FINITE (explicit fail-closed carrier)' }, sourceActionId: 'string', outcomeKind: 'string', expectedDelta: 'number finite' }], closed: true },
         directFacts: { required: false, shape: 'DirectFactRowV1 rows: schemaVersion const DirectFactRowV1, factType enum, key string, sourceActionId/sourceActorId/sourceEffectId nonempty, sourceActorId===candidate.actorId, targetIds nonempty non-symbolic, amount finite, unit enum, durationTurns integer >=0', closed: true },
         legalityFlags: { required: false, shape: 'string[] every member in hardExclusionCodes' },
         legalityModifiers: { required: false, shape: 'judgmentRates/taunt/tauntRemoved/stateMigration/stateSwap/mechanismRemoval metadata; hardExclusions/legalityFlags code arrays restricted to hardExclusionCodes', closed: true },
@@ -1251,9 +1817,13 @@
         scheduledFacts: { required: false, shape: 'closed four-shape: WINDOW_ADJUST {entryId/operation/调整字段/调整方式 + optional 调整回合/调整tick/调整次数/结算倍率}, SETTLEMENT_RATIO_ADJUST {entryId/operation/结算倍率}, FOLLOW_UP {entryId/grantType/ownerId/followUpKey/triggerKey/payloadDirectFacts, maxActions integer >=1 and required only for 主动触发}, SUMMON_WINDOW {entryId/grantType/召唤单位类型/召唤物名称/行动模式/durationTurns}; entryId/ownerId/followUpKey required; all IDs validateIdString; private aliases key/字段/方式 rejected', closed: true },
         mechanicMetadataEntries: { required: false, shape: 'closed entries array, one entry per effect instance: {sourceEffectId (required id) + prototype-allowed Chinese keys} per PDA rev5Spec perPrototypeSubsets (生效方式/结算标签/抗性类型/驱动属性/影响方向/对应等级/触发方式/触发限制/结算/限定元素/吸收资源/吸收来源); audit-only, values never enter features', closed: true },
         projectionFamilies: { required: false, shape: '[{ sourceEffectId: id string, prototype: closed registry prototype enum }] unique; audit-only routing identity, never weighted', closed: true },
-        publicCost: { required: false, shape: [{ resource: 'enum 魂力|精神力|体力|生命', amount: 'number finite positive' }], closed: true },
+        prototypeRegistry: { required: false, shape: '{ registryId: string prefix RC6-M2-PROTOTYPE-DIRECT-ADAPTER, prototypeNames: unique canonical-sorted nonempty strings, prototypeRegistryHash: 8-hex fnv1a32 of canonical names JSON, sourceContractHash: 64-hex equal to governed adapterContract pin } read-only PDA registry attestation carrier; required whenever projectionFamilies present; values never enter features', closed: true },
+        publicCost: { required: false, shape: [{ resource: 'enum 魂力|精神力|体力|生命', amount: 'number finite positive' }], closed: true, semantics: 'declared costs only; drives COST_AFFORDABILITY and the RESOURCE_INSUFFICIENT hard exclusion (strict cost > available on the same observer-visible units[actorId] axis; equality affordable; missing/non-finite facts never guess)' },
         publicProbability: { required: false, shape: '{ hitProbability: number finite, source?: string } or { resolved: false, unresolvedCondition?: string }', closed: true },
         publicDeclarations: { required: false, shape: { revealStrength: 'number finite', declaredOverkill: 'number finite' }, closed: true }
+        ,
+        actionOpportunity: { required: false, shape: '{ role: id, sourceActorId?: id, incomingAction: normalized plain object, actionContext?: { actionEvent: { actionId: id, eventId: id }, targetResolutionEvent?: { eventId: id } }, counterWindow?: boolean, reactionMechanics: closed candidate-level carrier; actionContext is provenance-only and never a feature/value input }', closed: true },
+        creationProfile: { required: false, shape: '{ recipientId: nonempty id <=512 no C0/DEL, useEffects: rows closed {原型,目标,资源,数值} (原型/目标/数值 nonempty strings, 资源 single nonempty string or unique nonempty string array) }', closed: true, semantics: 'structured creation declaration carrier; drives PUBLIC_RECIPIENT_NEED_MATCH only (positive percent 资源变化 rows vs the same observer-visible recipient resource axes; per (recipientId, resource) duplicates max; arithmetic mean over actual recovery channels; no channel => KNOWN 0; recipient/axis/percent unit unprovable => UNKNOWN fail-closed; drains/zero rows never count)' }
       },
       forbiddenKeys: ['forbiddenFacts', 'branchCombination', 'preMultiplied', 'route', 'worldClone', 'resultWorld', 'hidden', 'wallClock', 'skillRoleName', 'teacher', 'kernelRouteValue', 'prototypeNameWeighting'],
       note: 'pure compiler; closed input contract; never invokes Decision/Preview/Provider; never traverses future routes'
@@ -1318,7 +1888,7 @@
         'enemy-1': scUnit(80, 60),
         'actor-1': scUnit(100, 100)
       }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }),
-      atomicFacts: [{ eventId: 'evt:sc:0', sourceActionId: 'action:sc', outcomeKind: 'HP_DELTA', expectedDelta: -60, hitCheckApplicability: 'APPLICABLE', evidence: { hitProbability: 0.8 } }],
+      atomicFacts: [{ eventId: 'evt:sc:0', sourceActionId: 'action:sc', outcomeKind: 'HP_DELTA', effectInstanceId: 'action:sc:effect:0', targetId: 'enemy-1', expectedDelta: -60, hitCheckApplicability: 'APPLICABLE', evidence: { hitProbability: 0.8, damageBasis: { basisView: 'DECISION_VISIBLE' } } }],
       directFacts: [
         scRow('HP_DELTA', '', 60, 'POWER', 0, 'effect:sc:0', ['enemy-1']),
         scRow('HP_DELTA', 'damage.segments', 2, 'COUNT', 0, 'effect:sc:0', ['enemy-1']),
@@ -1339,7 +1909,7 @@
     return null;
   }
 
-  function runSelfCheck(sourceText) {
+  function runSelfCheck(sourceText, loadedHashes) {
     var sourceSelfCheckable = typeof sourceText === 'string' && sourceText.length > 0;
     var checks = [];
     function add(id, passed, detail) { checks.push({ id: id, passed: !!passed, counted: true, detail: detail === undefined ? null : detail }); }
@@ -1354,20 +1924,55 @@
       fca.detail = { sourceScanned: true, forbiddenTokens: FORBIDDEN_CALL_TOKENS.slice(), hit: hit };
     }
     checks.push(fca);
-    add('featureCatalogClosed', FEATURE_CODES.length === 29 && CANDIDATE_CODES.length === 13 && ROW_CODES.length === 16, { total: FEATURE_CODES.length, candidate: CANDIDATE_CODES.length, row: ROW_CODES.length });
-    var fixedOk = FEATURE_CODES.indexOf('STATE_DELTA_PERCENT') === 23 && FEATURE_CODES.indexOf('SETTLEMENT_MODIFIER_PERCENT') === 24 && FEATURE_CODES.indexOf('SUMMON_COUNT') === 25 && FEATURE_CODES.indexOf('SUMMON_STRENGTH') === 26 && FEATURE_CODES.indexOf('SUMMON_DURATION') === 27 && FEATURE_CODES.indexOf('RESOURCE_DELTA_PERCENT') === 28;
-    add('fixedCatalogPositions23to28', fixedOk, { positions: FEATURE_CODES.slice(23) });
+    add('featureCatalogClosed', FEATURE_CODES.length === 35 && CANDIDATE_CODES.length === 17 && ROW_CODES.length === 18, { total: FEATURE_CODES.length, candidate: CANDIDATE_CODES.length, row: ROW_CODES.length });
+    var fixedOk = FEATURE_CODES.indexOf('STATE_DELTA_PERCENT') === 23 && FEATURE_CODES.indexOf('SETTLEMENT_MODIFIER_PERCENT') === 24 && FEATURE_CODES.indexOf('SUMMON_COUNT') === 25 && FEATURE_CODES.indexOf('SUMMON_STRENGTH') === 26 && FEATURE_CODES.indexOf('SUMMON_DURATION') === 27 && FEATURE_CODES.indexOf('RESOURCE_DELTA_PERCENT') === 28 && FEATURE_CODES.indexOf('PUBLIC_RECIPIENT_NEED_MATCH') === 29 && FEATURE_CODES.indexOf('TARGET_CHARGE_ACTIVE') === 30 && FEATURE_CODES.indexOf('TARGET_CHARGE_CAST_TIME') === 31 && FEATURE_CODES.indexOf('REACTION_DAMAGE_MULTIPLIER') === 32 && FEATURE_CODES.indexOf('REACTION_DODGE_PROBABILITY') === 33 && FEATURE_CODES.indexOf('REACTION_COUNTER_WINDOW_OPEN') === 34;
+    add('fixedCatalogPositions23to34', fixedOk, { positions: FEATURE_CODES.slice(23) });
     var familyOk = true;
     for (var fc = 0; fc < FEATURE_CODES.length; fc += 1) if (UNIT_FAMILIES.indexOf(UNIT_FAMILY[FEATURE_CODES[fc]]) < 0) familyOk = false;
     add('unitFamilyClosed', familyOk && UNIT_FAMILY['SUMMON_STRENGTH'] === 'RATIO' && UNIT_FAMILIES.indexOf('RATIO') >= 0, { families: UNIT_FAMILIES.slice() });
     add('rejectionMappingComplete', Object.keys(FORBIDDEN_SOURCE_CODE).length === 8 && HARD_EXCLUSION_CODES.length === 10 && FORBIDDEN_SOURCE_CODE['PROTOTYPE_NAME_WEIGHTING'] === 'PROTOTYPE_NAME_WEIGHTING_REJECTED', { sources: Object.keys(FORBIDDEN_SOURCE_CODE).slice() });
     add('batchFamilyMapping', Object.keys(BATCH1_FAMILY).length === 6 && BATCH1_FAMILY['状态施加/状态移除'].length === 2 && Object.keys(BATCH2_FAMILY).length === 3 && BATCH2_FAMILY['状态施加'].length === 3 && BATCH2_FAMILY['召唤生成'].length === 3 && BATCH2_FAMILY['结算修正'].length === 1, { families: Object.keys(BATCH1_FAMILY).length, batch2: Object.keys(BATCH2_FAMILY).length });
-    add('capsFixed', CAPS.MAX_FEATURES_PER_CANDIDATE === 256 && CAPS.MAX_FACT_ROWS_PER_CANDIDATE === 128 && CAPS.MAX_MODIFIER_ENTRIES_PER_CANDIDATE === 64 && CAPS.MAX_WORK_UNITS_PER_CALL === 200000 && F0 === 13, { caps: CAPS });
+    add('capsFixed', CAPS.MAX_FEATURES_PER_CANDIDATE === 256 && CAPS.MAX_FACT_ROWS_PER_CANDIDATE === 128 && CAPS.MAX_MODIFIER_ENTRIES_PER_CANDIDATE === 64 && CAPS.MAX_WORK_UNITS_PER_CALL === 200000 && F0 === 14, { caps: CAPS });
+    var policyPins = { id: 'policyPinsLoaded', counted: false, passed: false, detail: { pins: Object.keys(CONTRACT_HASHES).length, loadedProvided: false } };
+    if (loadedHashes && typeof loadedHashes === 'object') {
+      var pc = loadedHashes.policyContract;
+      var ps = loadedHashes.policySchema;
+      policyPins.counted = typeof pc === 'string' && pc.length === 64 && typeof ps === 'string' && ps.length === 64;
+      policyPins.passed = policyPins.counted && pc === CONTRACT_HASHES.policyContract && ps === CONTRACT_HASHES.policySchema;
+      policyPins.detail = { pins: Object.keys(CONTRACT_HASHES).length, loadedProvided: true, match: policyPins.passed };
+    }
+    checks.push(policyPins);
+    add('contractRevisionClosed', REVISION === 17, { revision: REVISION });
+    var contextProbe = baseInput();
+    var contextRefsProbe = ['ctx-event', 'ctx-target'];
+    contextProbe.candidate = scCandidate('cand-ctx', 'actor-1', 'side-blue', ['actor-1'], 'PASS_OPPORTUNITY');
+    contextProbe.actionOpportunity = {
+      role: 'REACTION', sourceActorId: 'enemy-1',
+      actionContext: { actionEvent: { actionId: 'ctx-action', eventId: 'ctx-event' }, targetResolutionEvent: { eventId: 'ctx-target' } },
+      incomingAction: { sourceActionId: 'ctx-action', sourceFactIds: contextRefsProbe.slice(), sourceEventIds: contextRefsProbe.slice() },
+      reactionMechanics: {
+        candidateId: 'cand-ctx', responseKind: 'PASS_OPPORTUNITY', status: 'KNOWN', reason: 'OK',
+        sourceActionId: 'ctx-action', sourceActorId: 'enemy-1', targetId: 'actor-1', prepared: true,
+        visibleWorldRevision: 'ctx-world', requestHash: 'ctx-request', damageMultiplier: 1, dodgeProbability: 0,
+        sourceFactIds: contextRefsProbe.slice(), sourceEventIds: contextRefsProbe.slice()
+      }
+    };
+    var contextDoc = compileCore(contextProbe, freshMetrics());
+    var contextRows = contextDoc.features.filter(function (row) { return row.featureCode === 'REACTION_DAMAGE_MULTIPLIER' || row.featureCode === 'REACTION_DODGE_PROBABILITY'; });
+    var contextConflict = false;
+    try {
+      var badContext = JSON.parse(JSON.stringify(contextProbe));
+      badContext.actionOpportunity.actionContext.actionEvent.actionId = 'ctx-other';
+      compileCore(badContext, freshMetrics());
+    } catch (e) { contextConflict = (e && (e.code || e.reasonCode)) === 'INVALID_OPTION_VALUE'; }
+    add('actionContextClosedProvenanceOnly', contextRows.length === 2 && contextRows.every(function (row) {
+      return row.status === 'KNOWN' && JSON.stringify(row.sourceFactIds) === JSON.stringify(contextRefsProbe) && JSON.stringify(row.sourceEventIds) === JSON.stringify(contextRefsProbe);
+    }) && JSON.stringify(contextDoc.features).indexOf('actionContext') < 0 && contextConflict, {});
 
     var base = compileCore(baseInput(), freshMetrics());
     var probe = {};
-    probe.featureCount17 = base.featureCount === 17;
-    probe.always13Candidate = base.features.filter(function (f) { return CANDIDATE_CODES.indexOf(f.featureCode) >= 0; }).length === 13;
+    probe.featureCount23 = base.featureCount === 23;
+    probe.always17Candidate = base.features.filter(function (f) { return CANDIDATE_CODES.indexOf(f.featureCode) >= 0; }).length === 17;
     var settlement = findFeature(base, 'SETTLEMENT_DAMAGE');
     var roll = findFeature(base, 'ROLL_REALIZATION');
     probe.settlementAlwaysUnknown = settlement !== null && settlement.status === 'UNKNOWN' && settlement.reasonCode === 'FINAL_SETTLEMENT_UNKNOWN' && !hasOwn(settlement, 'value');
@@ -1382,8 +1987,11 @@
     var EXPECTED_SELFCHECK_ORDER = [
       'COST_AFFORDABILITY', 'HARD_EXCLUSION', 'HARD_EXCLUSION_REASON',
       'OUTSIDE_BATCH1_ROW_COUNT', 'OVERKILL_AVAILABILITY', 'PUBLIC_HP_RATIO',
-      'PUBLIC_RESOURCE_RATIO', 'RELATION_TARGET_COUNT', 'RELATION_TARGET_SIDE',
+      'PUBLIC_RECIPIENT_NEED_MATCH',
+      'PUBLIC_RESOURCE_RATIO', 'REACTION_COUNTER_WINDOW_OPEN', 'REACTION_DAMAGE_MULTIPLIER',
+      'REACTION_DODGE_PROBABILITY', 'RELATION_TARGET_COUNT', 'RELATION_TARGET_SIDE',
       'REVEAL_STRENGTH', 'ROLL_REALIZATION', 'SETTLEMENT_DAMAGE', 'SUCCESS_PROBABILITY',
+      'TARGET_CHARGE_ACTIVE', 'TARGET_CHARGE_CAST_TIME',
       'DAMAGE_POWER', 'DAMAGE_PENETRATION', 'DAMAGE_SEGMENTS', 'DAMAGE_TYPE'
     ];
     var orderOk = base.features.length === EXPECTED_SELFCHECK_ORDER.length;
@@ -1400,6 +2008,24 @@
     var costDoc = compileCore(costIn, freshMetrics());
     var costFeat = findFeature(costDoc, 'COST_AFFORDABILITY');
     probe.costActorOnly = costFeat !== null && costFeat.status === 'KNOWN' && costFeat.value === 0.5;
+    var hCostBit = findFeature(costDoc, 'HARD_EXCLUSION');
+    var hCostReason = findFeature(costDoc, 'HARD_EXCLUSION_REASON');
+    probe.resourceInsufficientDerivation = hCostBit !== null && hCostBit.value === 1 && hCostReason !== null && hCostReason.status === 'KNOWN' && hCostReason.value === 'RESOURCE_INSUFFICIENT';
+    function hardProbe(actorSp, costAmount, withCost, hiddenAxis) {
+      var inp = {
+        candidate: scCandidate('cand-ri', 'actor-1', 'side-blue', ['enemy-1']),
+        publicSnapshot: scSnapshot({ 'enemy-1': scUnit(100, 200), 'actor-1': scUnit(100, actorSp) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' })
+      };
+      if (withCost) inp.publicCost = [{ resource: '魂力', amount: costAmount }];
+      if (hiddenAxis) delete inp.publicSnapshot.units['actor-1'].sp;
+      var doc = compileCore(inp, freshMetrics());
+      var bit = findFeature(doc, 'HARD_EXCLUSION');
+      return bit !== null && bit.value === 0;
+    }
+    probe.resourceInsufficientEquality = hardProbe(20, 20, true, false);
+    probe.resourceInsufficientAffordable = hardProbe(30, 20, true, false);
+    probe.resourceInsufficientNoCost = hardProbe(10, 20, false, false);
+    probe.resourceInsufficientHiddenAxis = hardProbe(10, 20, true, true);
     probe.sideRules = {};
     var sideIn = function (targets, sides) {
       return { candidate: scCandidate('cand-side', 'actor-1', 'side-blue', targets), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'ally-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, sides) };
@@ -1431,19 +2057,40 @@
     var schFeat = findFeature(schDoc, 'OUTSIDE_BATCH1_ROW_COUNT');
     probe.scheduledCounted = schFeat !== null && schFeat.status === 'KNOWN' && schFeat.value === 1 && schFeat.sourceEventIds.length === 1 && schFeat.sourceEventIds[0] === 'sf:x';
     probe.atomicProbes = {};
-    var at1 = compileCore({ candidate: scCandidate('cand-at1', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [{ eventId: 'evt:a', hitCheckApplicability: 'APPLICABLE', evidence: { hitProbability: 0.8 } }, { eventId: 'evt:b', hitCheckApplicability: 'APPLICABLE', evidence: { hitProbability: 0.8 } }] }, freshMetrics());
+    var dmgFact = function (eventId, eff, tgt, p) {
+      return { eventId: eventId, outcomeKind: 'HP_DELTA', effectInstanceId: eff, targetId: tgt, hitCheckApplicability: 'APPLICABLE', evidence: { hitProbability: p, damageBasis: { basisView: 'DECISION_VISIBLE' } } };
+    };
+    var at1 = compileCore({ candidate: scCandidate('cand-at1', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [dmgFact('evt:a', 'fx:a', 'enemy-1', 0.8), dmgFact('evt:b', 'fx:b', 'enemy-1', 0.8)] }, freshMetrics());
     var sp1 = findFeature(at1, 'SUCCESS_PROBABILITY');
     probe.atomicProbes.equalApplicableKnown = sp1 !== null && sp1.status === 'KNOWN' && sp1.value === 0.8 && sp1.sourceEventIds.length === 2 && sp1.sourceEventIds[0] === 'evt:a' && sp1.sourceEventIds[1] === 'evt:b';
     var at2 = compileCore({ candidate: scCandidate('cand-at2', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [{ eventId: 'evt:c', hitCheckApplicability: 'NOT_APPLICABLE' }] }, freshMetrics());
     var sp2 = findFeature(at2, 'SUCCESS_PROBABILITY');
     probe.atomicProbes.allNotApplicableNa = sp2 !== null && sp2.status === 'NOT_APPLICABLE' && sp2.reasonCode === 'NO_HIT_AXIS';
-    var at3 = compileCore({ candidate: scCandidate('cand-at3', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [{ eventId: 'evt:d', hitCheckApplicability: 'UNKNOWN' }] }, freshMetrics());
+    var at3 = compileCore({ candidate: scCandidate('cand-at3', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [{ eventId: 'evt:d', outcomeKind: 'HP_DELTA', hitCheckApplicability: 'UNKNOWN' }] }, freshMetrics());
     var sp3b = findFeature(at3, 'SUCCESS_PROBABILITY');
     probe.atomicProbes.unknownApplicabilityUnknown = sp3b !== null && sp3b.status === 'UNKNOWN' && sp3b.reasonCode === 'CONDITIONAL_PROBABILITY_UNRESOLVED';
     var at4 = compileCore({ candidate: scCandidate('cand-at4', 'actor-1', 'side-blue', ['actor-1'], 'DEFEND'), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100) }, { 'actor-1': 'side-blue' }) }, freshMetrics());
     var sp4 = findFeature(at4, 'SUCCESS_PROBABILITY');
-    probe.atomicProbes.noActionKindSpecialCase = sp4 !== null && sp4.status === 'UNKNOWN' && sp4.reasonCode === 'MISSING_SOURCE_FACT';
-    add('behaviorProbes', probe.featureCount17 && probe.always13Candidate && probe.settlementAlwaysUnknown && probe.rollAlwaysUnknown && probe.noUnknownValue && probe.zeroNormalized && probe.deterministic && probe.deepFrozen && probe.frozenArraysRejectMutation && probe.stableOrder && probe.costActorOnly && probe.sideRules.self && probe.sideRules.ally && probe.sideRules.enemy && probe.sideRules.mixed && probe.sideRules.unobserved && probe.statePresence.positiveOverflowClampedTo1 && probe.statePresence.negativeRemovalTo0 && probe.statePresence.zeroDurationNa && probe.statePresence.countUnmapped && probe.statePresence.countDurationKept && probe.scheduledCounted && probe.atomicProbes.equalApplicableKnown && probe.atomicProbes.allNotApplicableNa && probe.atomicProbes.unknownApplicabilityUnknown && probe.atomicProbes.noActionKindSpecialCase, probe);
+    probe.atomicProbes.noActionKindSpecialCase = sp4 !== null && sp4.status === 'NOT_APPLICABLE' && sp4.reasonCode === 'NO_HIT_AXIS';
+    var at5 = compileCore({ candidate: scCandidate('cand-at5', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [dmgFact('evt:e', 'fx:a', 'enemy-1', 0.8), dmgFact('evt:f', 'fx:b', 'enemy-1', 0.9)] }, freshMetrics());
+    var sp5 = findFeature(at5, 'SUCCESS_PROBABILITY');
+    probe.atomicProbes.sameTargetMean = sp5 !== null && sp5.status === 'KNOWN' && Math.abs(sp5.value - 0.85) <= 1e-9;
+    var at6 = compileCore({ candidate: scCandidate('cand-at6', 'actor-1', 'side-blue', ['enemy-1', 'enemy-2']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100), 'enemy-2': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red', 'enemy-2': 'side-red' }), atomicFacts: [dmgFact('evt:g', 'fx:a', 'enemy-1', 0.6), dmgFact('evt:h', 'fx:b', 'enemy-2', 0.9)] }, freshMetrics());
+    var sp6 = findFeature(at6, 'SUCCESS_PROBABILITY');
+    probe.atomicProbes.multiTargetMean = sp6 !== null && sp6.status === 'KNOWN' && sp6.value === 0.75;
+    var at7 = compileCore({ candidate: scCandidate('cand-at7', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [dmgFact('evt:i', 'fx:a', 'enemy-1', 0.8), dmgFact('evt:j', 'fx:a', 'enemy-1', 0.9)] }, freshMetrics());
+    var sp7 = findFeature(at7, 'SUCCESS_PROBABILITY');
+    probe.atomicProbes.conflictingDeliveries = sp7 !== null && sp7.status === 'UNKNOWN' && sp7.reasonCode === 'CONFLICTING_DELIVERIES';
+    var at8 = compileCore({ candidate: scCandidate('cand-at8', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [{ eventId: 'evt:k', outcomeKind: 'HP_DELTA', effectInstanceId: 'fx:a', targetId: 'enemy-1', hitCheckApplicability: 'APPLICABLE', evidence: { deliveryStatus: 'MISSING' } }] }, freshMetrics());
+    var sp8 = findFeature(at8, 'SUCCESS_PROBABILITY');
+    probe.atomicProbes.deliveryMissingFailClosed = sp8 !== null && sp8.status === 'UNKNOWN' && sp8.reasonCode === 'MISSING_SOURCE_FACT';
+    var at9 = compileCore({ candidate: scCandidate('cand-at9', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [{ eventId: 'evt:l', outcomeKind: 'HP_DELTA', effectInstanceId: 'fx:a', targetId: 'enemy-1', hitCheckApplicability: 'APPLICABLE', evidence: { deliveryStatus: 'NON_FINITE' } }] }, freshMetrics());
+    var sp9 = findFeature(at9, 'SUCCESS_PROBABILITY');
+    probe.atomicProbes.deliveryNonFiniteFailClosed = sp9 !== null && sp9.status === 'UNKNOWN' && sp9.reasonCode === 'NON_FINITE_DELIVERY';
+    var at10 = compileCore({ candidate: scCandidate('cand-at10', 'actor-1', 'side-blue', ['enemy-1']), publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }), atomicFacts: [dmgFact('evt:m', 'fx:a', 'enemy-1', 0.8), dmgFact('evt:n', 'fx:a', 'enemy-1', 0.8)] }, freshMetrics());
+    var sp10 = findFeature(at10, 'SUCCESS_PROBABILITY');
+    probe.atomicProbes.dedupeSameIdentitySameProbability = sp10 !== null && sp10.status === 'KNOWN' && sp10.value === 0.8 && sp10.sourceEventIds.length === 2;
+    add('behaviorProbes', probe.featureCount23 && probe.always17Candidate && probe.settlementAlwaysUnknown && probe.rollAlwaysUnknown && probe.noUnknownValue && probe.zeroNormalized && probe.deterministic && probe.deepFrozen && probe.frozenArraysRejectMutation && probe.stableOrder && probe.costActorOnly && probe.resourceInsufficientDerivation && probe.resourceInsufficientEquality && probe.resourceInsufficientAffordable && probe.resourceInsufficientNoCost && probe.resourceInsufficientHiddenAxis && probe.sideRules.self && probe.sideRules.ally && probe.sideRules.enemy && probe.sideRules.mixed && probe.sideRules.unobserved && probe.statePresence.positiveOverflowClampedTo1 && probe.statePresence.negativeRemovalTo0 && probe.statePresence.zeroDurationNa && probe.statePresence.countUnmapped && probe.statePresence.countDurationKept && probe.scheduledCounted && probe.atomicProbes.equalApplicableKnown && probe.atomicProbes.allNotApplicableNa && probe.atomicProbes.unknownApplicabilityUnknown && probe.atomicProbes.noActionKindSpecialCase && probe.atomicProbes.sameTargetMean && probe.atomicProbes.multiTargetMean && probe.atomicProbes.conflictingDeliveries && probe.atomicProbes.deliveryMissingFailClosed && probe.atomicProbes.deliveryNonFiniteFailClosed && probe.atomicProbes.dedupeSameIdentitySameProbability, probe);
 
     var rej = {};
     function expectReject(input, code) {
@@ -1471,11 +2118,21 @@
     add('rejectionProbes', rej.route && rej.hidden && rej.branch && rej.preMultiplied && rej.nonFinite && rej.duplicate && rej.unitMismatch && rej.missingActorStatus && rej.unknownLegalityCode && rej.costInvalidResource && rej.scheduledMissingEntryId && rej.unknownTopKey && rej.controlCharId && rej.sidesInconsistent && rej.rowActorMismatch, rej);
 
     // ---- revision 3 batch-2 probes (raw codes 23-27, audit bridges, summon family) ----
+    function scProtoReg() {
+      var names = ['状态施加', '召唤生成', '结算修正', '未来原型A'].sort();
+      return {
+        registryId: 'RC6-M2-PROTOTYPE-DIRECT-ADAPTER-2026-08-14',
+        prototypeNames: names,
+        prototypeRegistryHash: fnv1a32Hex(names),
+        sourceContractHash: CONTRACT_HASHES.governed.adapterContract
+      };
+    }
     function b2In(rows, extra) {
       var input = {
         candidate: scCandidate('cand-b2', 'actor-1', 'side-blue', ['actor-1']),
         publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100) }, { 'actor-1': 'side-blue' }),
-        directFacts: rows || []
+        directFacts: rows || [],
+        prototypeRegistry: scProtoReg()
       };
       if (extra) for (var k in extra) if (hasOwn(extra, k)) input[k] = extra[k];
       return input;
@@ -1560,7 +2217,7 @@
     };
     for (var ci = 0; ci < 64; ci += 1) capIn.legalityModifiers.hardExclusions.push('ACTOR_DISABLED');
     var capDoc = compileCore(capIn, freshMetrics());
-    b2.capWithinBounds = capDoc.featureCount === 14;
+    b2.capWithinBounds = capDoc.featureCount === 20;
     var capBad = {
       candidate: scCandidate('cand-capb', 'actor-1', 'side-blue', ['enemy-1']),
       publicSnapshot: scSnapshot({ 'actor-1': scUnit(100, 100), 'enemy-1': scUnit(100, 100) }, { 'actor-1': 'side-blue', 'enemy-1': 'side-red' }),
@@ -1569,6 +2226,23 @@
     for (var cj = 0; cj < 65; cj += 1) capBad.legalityModifiers.hardExclusions.push('ACTOR_DISABLED');
     b2.capModifiersExceeded = expectReject(capBad, 'CAP_EXCEEDED');
     add('batch2FeatureProbes', b2.statePrimary && b2.stateSecondary && b2.settlement && b2.summonFull && b2.summonMissingRowsUnknown && b2.summonWrongUnitUnknown && b2.inheritRatioOutside && b2.scheduledWindowNeverKnownDuration && b2.stateWrongKeyPercentUnknown && b2.metadataStrictValidation && b2.metadataNeverValue && b2.prototypeNameWeightingRejected && b2.triggerLimitMetadataAccepted && b2.settlementMetadataAbsent && b2.triggerLimitObjectAccepted && b2.triggerLimitObjectUnknownKey && b2.triggerLimitZeroCount && b2.triggerLimitMissingPeriod && b2.resourcePercentRecover && b2.resourcePercentDrain && b2.resourceAbsKeepsDelta && b2.capWithinBounds && b2.capModifiersExceeded, b2);
+
+    var protoAtt = true;
+    var prAuto = null;
+    try {
+      prAuto = compileCore(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:prauto:0', prototype: '未来原型A' }] }), freshMetrics());
+    } catch (e) { prAuto = null; }
+    protoAtt = protoAtt && prAuto !== null && prAuto.featureCount >= 13;
+    protoAtt = protoAtt && expectReject(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:prx:0', prototype: '不存在的原型' }] }), 'INVALID_OPTION_VALUE');
+    protoAtt = protoAtt && expectReject(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:prm:0', prototype: '状态施加' }], prototypeRegistry: undefined }), 'MISSING_SOURCE_REFERENCE');
+    var prValid = scProtoReg();
+    var prHashBad = { registryId: prValid.registryId, prototypeNames: prValid.prototypeNames.slice(), prototypeRegistryHash: '00000000', sourceContractHash: prValid.sourceContractHash };
+    protoAtt = protoAtt && expectReject(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:prh:0', prototype: '状态施加' }], prototypeRegistry: prHashBad }), 'INVALID_OPTION_VALUE');
+    var prSourceBad = { registryId: prValid.registryId, prototypeNames: prValid.prototypeNames.slice(), prototypeRegistryHash: prValid.prototypeRegistryHash, sourceContractHash: 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef' };
+    protoAtt = protoAtt && expectReject(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:prs:0', prototype: '状态施加' }], prototypeRegistry: prSourceBad }), 'INVALID_OPTION_VALUE');
+    var prUnsort = { registryId: prValid.registryId, prototypeNames: ['状态施加', '召唤生成'], prototypeRegistryHash: '00000000', sourceContractHash: prValid.sourceContractHash };
+    protoAtt = protoAtt && expectReject(b2In([], { projectionFamilies: [{ sourceEffectId: 'effect:pru:0', prototype: '状态施加' }], prototypeRegistry: prUnsort }), 'INVALID_OPTION_VALUE');
+    add('prototypeRegistryAttestation', protoAtt, { autoAdoptFeatureCount: prAuto !== null ? prAuto.featureCount : -1 });
 
     var passed = true;
     for (var c = 0; c < checks.length; c += 1) if (checks[c].counted && !checks[c].passed) passed = false;
@@ -1580,7 +2254,7 @@
     inputSchema: function () { return freezeDeep(buildInputSchema()); },
     registry: function () { return freezeDeep(buildRegistry()); },
     readMetrics: readMetrics,
-    selfCheck: function (sourceText) { return runSelfCheck(sourceText); }
+    selfCheck: function (sourceText, loadedHashes) { return runSelfCheck(sourceText, loadedHashes); }
   };
 
   freezeDeep(api.registry());

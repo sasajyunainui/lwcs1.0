@@ -15,6 +15,72 @@
   const MAX_SEQUENCE_PROFILES_PER_CATALOG = 256;
   const MAX_R8_TERMINAL_CANONICAL_ROUTE_KEYS = 8192;
   const MAX_R8_TERMINAL_IDENTITY_OBSERVATIONS = 16384;
+  const R9V2_DIRECT_INFORMATION_CAPABILITY =
+    'DIRECT_ATOMIC_NO_FUTURE_INFORMATION_V1';
+  const R9V2_DIRECT_COMPONENT_CATALOG = Object.freeze([
+    Object.freeze({
+      code: 'S1_DIRECT_STATE',
+      domain: 'S1',
+      owner: 'STATE_DELTA',
+      ownerCode: 1,
+    }),
+    Object.freeze({
+      code: 'S1_DIRECT_TERMINAL',
+      domain: 'S1',
+      owner: 'TERMINAL_DELTA',
+      ownerCode: 3,
+    }),
+    Object.freeze({
+      code: 'S2_DIRECT_ACTION_POOL',
+      domain: 'S2',
+      owner: 'ACTION_POOL_DELTA',
+      ownerCode: 2,
+    }),
+    Object.freeze({
+      code: 'S3_DIRECT_STATE',
+      domain: 'S3',
+      owner: 'STATE_DELTA',
+      ownerCode: 1,
+    }),
+    Object.freeze({
+      code: 'S3_DIRECT_ACTION_POOL',
+      domain: 'S3',
+      owner: 'ACTION_POOL_DELTA',
+      ownerCode: 2,
+    }),
+    Object.freeze({
+      code: 'S4_DIRECT_INFORMATION',
+      domain: 'S4',
+      owner: 'NONE',
+      ownerCode: 0,
+    }),
+    Object.freeze({
+      code: 'S5_SCHEDULED_STATE',
+      domain: 'S5',
+      owner: 'STATE_DELTA',
+      ownerCode: 1,
+    }),
+    Object.freeze({
+      code: 'S5_SCHEDULED_ACTION_POOL',
+      domain: 'S5',
+      owner: 'ACTION_POOL_DELTA',
+      ownerCode: 2,
+    }),
+    Object.freeze({
+      code: 'S6_DIRECT_NONE',
+      domain: 'S6',
+      owner: 'NONE',
+      ownerCode: 0,
+    }),
+  ]);
+  const R9V2_DIRECT_COMPONENT_BY_CODE = Object.freeze(
+    Object.fromEntries(
+      R9V2_DIRECT_COMPONENT_CATALOG.map(component => [
+        component.code,
+        component,
+      ]),
+    ),
+  );
   const compareUtf16 = (left, right) => {
     const leftValue = String(left || '');
     const rightValue = String(right || '');
@@ -23,10 +89,12 @@
   const skillRootCache = new WeakMap();
   const effectFingerprintCache = new WeakMap();
   const skillCostCache = new WeakMap();
+  const skillCostStageCache = new WeakMap();
   const targetProfileCache = new WeakMap();
   const decisionRequestHashCache = new WeakMap();
   const declarationFingerprintCache = new WeakMap();
   const preparedDecisionRequests = new WeakMap();
+  const preparedLinearSourceMaps = new WeakMap();
   const preparedRouteAnalyses = new WeakMap();
   const preparedR9v2Slices = new WeakMap();
   const evaluationSessionStates = new WeakMap();
@@ -337,6 +405,8 @@
           state.r9v2TargetRouteTablesByKey.size,
         r9v2TargetRouteBestByKey:
           state.r9v2TargetRouteBestByKey.size,
+        r9v2DecisionValueGraphs:
+          state.r9v2DecisionValueGraphs.size,
       },
     });
   }
@@ -550,6 +620,7 @@
       r9v2TargetRouteEntriesByKey: new Map(),
       r9v2TargetRouteTablesByKey: new Map(),
       r9v2TargetRouteBestByKey: new Map(),
+      r9v2DecisionValueGraphs: new Map(),
       r9v2DependencyOwners: new Map(),
       r9v2MechanicalKeyObjectHashes: new WeakMap(),
       r9v2NormalizedContributionStore:
@@ -1612,7 +1683,7 @@
       agi: preview.readCombatStat(sourceActor, 'agi'),
     };
     actorStats.combatBase = Math.cbrt(actorStats.str * actorStats.def * actorStats.agi);
-    const projectUnit = sourceUnit => {
+    const projectUnit = (sourceUnit, publicSide = '') => {
       if (sideOf(worldSnapshot, sourceUnit) === actorSide) {
         return cloneValue(sourceUnit);
       }
@@ -1657,6 +1728,7 @@
         id,
         name: preview.unitName(sourceUnit),
         名称: preview.unitName(sourceUnit),
+        阵营: publicSide === 'team_enemy' ? '敌方' : publicSide === 'team_player' ? '玩家' : '',
         level: perceivedLevel,
         等级: perceivedLevel,
         系别: system,
@@ -1699,13 +1771,14 @@
     };
     const participants = worldSnapshot?.参战者 || {};
     const projectedParticipants = Object.fromEntries(Object.entries(participants).map(([side, value]) => {
-      if (Array.isArray(value)) return [side, value.map(projectUnit)];
+      const publicSide = side === 'team_enemy' ? 'team_enemy' : side === 'team_player' ? 'team_player' : '';
+      if (Array.isArray(value)) return [side, value.map(unit => projectUnit(unit, publicSide))];
       if (value && typeof value === 'object') {
-        return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, projectUnit(unit)]))];
+        return [side, Object.fromEntries(Object.entries(value).map(([key, unit]) => [key, projectUnit(unit, publicSide)]))];
       }
       return [side, value];
     }));
-    const decisionWorld = attachDecisionRuntimeState(
+    let decisionWorld = attachDecisionRuntimeState(
       { ...worldSnapshot, 参战者: projectedParticipants },
       worldSnapshot,
     );
@@ -1723,7 +1796,31 @@
         configurable: true,
         enumerable: true,
         writable: true,
-        value: Object.fromEntries(Object.entries(summons).map(([key, unit]) => [key, projectUnit(unit)])),
+        value: Object.fromEntries(Object.entries(summons).map(([key, unit]) => [key, projectUnit(unit, r9v2PublicSideOf(unit))])),
+      });
+    }
+    const passiveProjection = typeof preview.materializePassiveEffects === 'function'
+      ? preview.materializePassiveEffects(decisionWorld, {
+          phase: 'ALL',
+          currentRound: Number(worldSnapshot?.回合 || 0),
+          rootActionId: `decision-passives:${preview.unitId(sourceActor)}:${Number(worldSnapshot?.回合 || 0)}`,
+        })
+      : null;
+    if (passiveProjection?.afterSnapshot) {
+      decisionWorld = passiveProjection.afterSnapshot;
+      if (Array.isArray(worldSnapshot?.__battleEventLedger)) {
+        Object.defineProperty(decisionWorld, '__battleEventLedger', {
+          configurable: true,
+          enumerable: false,
+          writable: false,
+          value: [...worldSnapshot.__battleEventLedger],
+        });
+      }
+      Object.defineProperty(decisionWorld, '__passiveConsumerEvidence', {
+        configurable: true,
+        enumerable: false,
+        writable: false,
+        value: Object.freeze([...(passiveProjection.applications || [])]),
       });
     }
     return decisionWorld;
@@ -2545,6 +2642,59 @@
     return String(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.名称 || skillId(skill, index)).trim();
   }
 
+  function equipmentPassivePreviewEffects(unit = {}) {
+    const consumer = root.__LWCS_ITEM_PASSIVE_CONSUMER_V1__;
+    if (!consumer || typeof consumer.编译角色装备被动消费者_V1 !== 'function') return [];
+    const packageValue = consumer.编译角色装备被动消费者_V1(unit);
+    return (Array.isArray(packageValue?.动作效果) ? packageValue.动作效果 : [])
+      .filter(entry => !['战斗开始', '回合开始', '受击前', '受击后', '濒死时', '被控制时', '命中后']
+        .includes(String(entry?.触发方式 || entry?.效果?.触发方式 || '').trim()))
+      .filter(entry => {
+        const effect = entry?.效果 || {};
+        return !(
+          !String(effect?.触发方式 || '').trim() &&
+          String(effect?.原型 || '').trim() === '结算修正' &&
+          String(effect?.结算 || '').trim() === '受到伤害' &&
+          String(effect?.目标 || '自身').trim() === '自身'
+        );
+      })
+      .map(entry => entry?.效果)
+      .filter(effect => effect && typeof effect === 'object' && !Array.isArray(effect));
+  }
+
+  function applyEquipmentPassivesToSkill(unit = {}, skill = {}) {
+    const sourceEffects = Array.isArray(skill?._效果数组) ? skill._效果数组 : [];
+    const requirementChecker = root.__LWCS_ITEM_PASSIVE_CONSUMER_V1__?.装备要求满足_V1;
+    if (
+      skill?.装备要求 !== undefined &&
+      (typeof requirementChecker !== 'function' || !requirementChecker(unit, skill.装备要求))
+    ) return { ...skill, _效果数组: [] };
+    const effects = sourceEffects.filter(effect =>
+      effect && typeof effect === 'object' &&
+      (effect.装备要求 === undefined || (typeof requirementChecker === 'function' && requirementChecker(unit, effect.装备要求))),
+    );
+    const seen = new Set(effects.map(effect => preview.stableHash(effect)));
+    equipmentPassivePreviewEffects(unit).forEach(effect => {
+      const fingerprint = preview.stableHash(effect);
+      if (seen.has(fingerprint)) return;
+      seen.add(fingerprint);
+      effects.push(cloneValue(effect));
+    });
+    if (effects.length === sourceEffects.length) return skill;
+    return { ...skill, _效果数组: effects };
+  }
+
+  function basicAttackSkill(unit = {}) {
+    return applyEquipmentPassivesToSkill(unit, {
+      name: '普通攻击',
+      魂技名: '普通攻击',
+      承载方式: '直接生效',
+      消耗: '无',
+      前摇: 0,
+      _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }],
+    });
+  }
+
   function candidateActionName(candidate = {}) {
     const declaration = candidate?.declaration || {};
     if (declaration?.skill && typeof declaration.skill === 'object') return skillName(declaration.skill);
@@ -2578,7 +2728,7 @@
         ? skill.属性加成
         : {};
     const effects = actionKind === 'BASIC_ATTACK'
-      ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }]
+      ? (explicitEffects.length ? explicitEffects : basicAttackSkill(actor)._效果数组)
       : actionKind === 'EQUIP' && !explicitEffects.length
         ? Object.entries(equipmentModifiers).map(([attribute, value]) => ({
             原型: '属性修正',
@@ -2880,6 +3030,11 @@
           return;
         }
         if (Number(value?.炸环恢复tick || 0) > 0 || value?.__战斗禁用 === true) return;
+        const requirementChecker = root.__LWCS_ITEM_PASSIVE_CONSUMER_V1__?.装备要求满足_V1;
+        if (
+          value?.装备要求 !== undefined &&
+          (typeof requirementChecker !== 'function' || !requirementChecker(unit, value.装备要求))
+        ) return;
         if (Array.isArray(value._效果数组) && value._效果数组.length && !isPassiveSkill(value)) {
           let effectFingerprint = effectFingerprintCache.get(value._效果数组);
           if (!effectFingerprint) {
@@ -2960,9 +3115,10 @@
       actionCache = new Map();
       targetCache.set(target, actionCache);
     }
-    const key = skill || actionKind;
+    const effectiveSkill = actionKind === 'BASIC_ATTACK' ? basicAttackSkill(actor) : skill;
+    const key = effectiveSkill || actionKind;
     if (!actionCache.has(key)) {
-      actionCache.set(key, preview.calculateBaseActionValue(actor, target, { actionKind, skill, capacityMode: true }));
+      actionCache.set(key, preview.calculateBaseActionValue(actor, target, { actionKind, skill: effectiveSkill, capacityMode: true }));
     }
     return actionCache.get(key);
   }
@@ -3058,7 +3214,13 @@
     if (!product) return null;
     const productId = String(product?.id || product?.物品ID || product?.名称 || product?.name || product).trim();
     const actorSide = sideOf(worldSnapshot, actor);
-    const stock = livingEntries(worldSnapshot)
+    const primaryLiving = ['team_player', 'team_enemy'].flatMap(side => {
+      const value = worldSnapshot?.参战者?.[side];
+      return (Array.isArray(value) ? value : value && typeof value === 'object' ? Object.values(value) : [])
+        .filter(unit => unit && preview.isPhysicallyAlive(unit))
+        .map(unit => ({ unit, side }));
+    });
+    const stock = primaryLiving
       .filter(entry => entry.side === actorSide)
       .flatMap(entry => collectInventory(entry.unit))
       .filter(entry => entry.id === productId)
@@ -3088,7 +3250,7 @@
       if (/体力/.test(resource)) return preview.readResource(unit, '体力') < preview.readResourceMax(unit, '体力');
       return preview.readHp(unit) < preview.readHpMax(unit);
     });
-    const consumers = livingEntries(worldSnapshot).filter(entry =>
+    const consumers = primaryLiving.filter(entry =>
       entry.side === actorSide && (hasResourceGap(entry.unit) || (!useEffects.length && preview.readHp(entry.unit) < preview.readHpMax(entry.unit))),
     );
     const inferredProductionWindow = Math.max(1, Math.ceil(Math.max(0, Number(skill?.前摇 || 0)) / 40));
@@ -3251,37 +3413,94 @@
     });
   }
 
-  function parseSkillCosts(skill = {}) {
-    const cached = skillCostCache.get(skill);
-    if (cached) return cached;
-    const costs = {};
-    const add = (resource, value) => {
-      const numeric = Number.parseFloat(String(value ?? '').replace('%', ''));
-      if (!Number.isFinite(numeric)) return;
-      costs[resource] = String(value).includes('%') ? `${Math.max(0, numeric)}%` : Math.max(0, numeric);
+  function skillCostParserContext(unit = {}, skill = {}, actionContext = {}) {
+    const fusion = typeof preview.fusionSkillMetadata === 'function'
+      ? preview.fusionSkillMetadata(unit, skill)
+      : null;
+    return {
+      ...actionContext,
+      技能类型: actionContext?.技能类型 ?? skill?.技能类型,
+      技能分类: actionContext?.技能分类 ?? skill?.技能分类,
+      承载方式: actionContext?.承载方式 ?? skill?.承载方式,
+      来源类别: actionContext?.来源类别 ?? actionContext?.sourceCategory ?? skill?.来源类别 ?? skill?.来源类型 ?? skill?.内容类型 ?? skill?.__战斗来源类别,
+      sourceCategory: actionContext?.sourceCategory ?? actionContext?.来源类别 ?? skill?.来源类别 ?? skill?.来源类型 ?? skill?.内容类型 ?? skill?.__战斗来源类别,
+      来源明细: actionContext?.来源明细 ?? actionContext?.sourceDetail ?? skill?.来源明细 ?? skill?.__战斗来源明细,
+      sourceDetail: actionContext?.sourceDetail ?? actionContext?.来源明细 ?? skill?.来源明细 ?? skill?.__战斗来源明细,
+      forceTrueBody: actionContext?.forceTrueBody ?? skill?.forceTrueBody,
+      强制真身: actionContext?.强制真身 ?? skill?.强制真身,
+      魂环位: actionContext?.魂环位 ?? actionContext?.ringIndex ?? actionContext?.ringSlot ?? skill?.魂环位 ?? skill?.ringIndex ?? skill?.ringSlot ?? skill?.__魂技槽位,
+      ringIndex: actionContext?.ringIndex ?? actionContext?.魂环位 ?? skill?.ringIndex ?? skill?.魂环位,
+      ringSlot: actionContext?.ringSlot ?? actionContext?.魂环位 ?? skill?.ringSlot ?? skill?.魂环位,
+      魂技槽位: actionContext?.魂技槽位 ?? actionContext?.ringSlot ?? actionContext?.魂环位 ?? skill?.魂技槽位 ?? skill?.__魂技槽位,
+      ...(fusion ? {
+        融合模式: actionContext?.融合模式 ?? actionContext?.fusionMode ?? fusion.mode,
+        fusionMode: actionContext?.fusionMode ?? actionContext?.融合模式 ?? fusion.mode,
+        用法模式: actionContext?.用法模式 ?? fusion.usageMode,
+        融合对象: actionContext?.融合对象 ?? fusion.partnerName,
+        融合参与者: actionContext?.融合参与者 ?? actionContext?.fusionParticipantIds ?? actionContext?.fusionPartnerIds ?? (fusion.participants?.length ? fusion.participants : undefined),
+        fusionParticipantIds: actionContext?.fusionParticipantIds ?? actionContext?.融合参与者 ?? actionContext?.fusionPartnerIds ?? (fusion.participants?.length ? fusion.participants : undefined),
+      } : {}),
     };
-    const raw = skill?.消耗 ?? skill?.cost ?? skill?.技能消耗 ?? {};
-    if (typeof raw === 'string') {
-      for (const match of raw.matchAll(/(魂力|精神力|体力)\s*[:：]\s*([+-]?\d+(?:\.\d+)?%?)/g)) add(match[1], match[2]);
-    } else if (raw && typeof raw === 'object') {
-      Object.entries(raw).forEach(([resource, value]) => add(resource, value));
-    }
-    [['魂力', skill?.魂力消耗], ['精神力', skill?.精神力消耗], ['体力', skill?.体力消耗]].forEach(([resource, value]) => {
-      if (value !== undefined) add(resource, value);
+  }
+
+  function parseSkillCosts(skill = {}, context = {}) {
+    const cached = !Object.keys(context || {}).length ? skillCostCache.get(skill) : null;
+    if (cached) return cached;
+    const result = Object.freeze({
+      ...(parseSkillCostStages(skill, context).启动 || {}),
     });
-    const result = Object.freeze(costs);
-    skillCostCache.set(skill, result);
+    if (!Object.keys(context || {}).length) skillCostCache.set(skill, result);
     return result;
   }
 
-  function costAffordable(unit = {}, skill = {}) {
-    return Object.entries(parseSkillCosts(skill)).every(([resource, cost]) => {
-      const available = preview.readResource(unit, resource);
-      const maximum = preview.readResourceMax(unit, resource);
-      const text = String(cost ?? '').trim();
-      const amount = text.includes('%') ? maximum * Math.max(0, Number.parseFloat(text) || 0) / 100 : Math.max(0, Number(cost || 0));
-      return available + 1e-9 >= amount;
+  function parseSkillCostStages(skill = {}, context = {}) {
+    if (skill && typeof skill === 'object' && !Object.keys(context || {}).length) {
+      const cached = skillCostStageCache.get(skill);
+      if (cached) return cached;
+    }
+    const stages = preview.readSkillCostStages(skill, { 来源模块: 'BattleDecision_Module', ...context });
+    if (skill && typeof skill === 'object' && !Object.keys(context || {}).length) skillCostStageCache.set(skill, stages);
+    return stages;
+  }
+
+  function checkSkillCostAffordable(unit = {}, skill = {}, options = {}) {
+    const parserContext = Object.prototype.hasOwnProperty.call(options || {}, 'context')
+      ? options.context || {}
+      : skillCostParserContext(unit, skill);
+    const stages = parseSkillCostStages(skill, parserContext);
+    if (stages.非法项?.length) {
+      return Object.freeze({
+        valid: false,
+        affordable: false,
+        reason: `COST_INVALID:${stages.非法项.join('|')}`,
+        非法项: stages.非法项,
+        stages,
+      });
+    }
+    const payment = preview.assessResourcePayment([unit], stages.启动, {
+      resourceOverrides: options?.resourceOverrides,
     });
+    return Object.freeze({
+      valid: payment.valid,
+      affordable: payment.ok,
+      reason: payment.reason,
+      非法项: payment.非法项,
+      stages,
+      payment,
+    });
+  }
+
+  function costAffordable(unit = {}, skill = {}) {
+    const check = checkSkillCostAffordable(unit, skill, {
+      context: skillCostParserContext(unit, skill),
+    });
+    return check.valid && check.affordable;
+  }
+
+  function resourceCostsAffordable(unit = {}, costs = {}, resourceOverrides = {}) {
+    const normalized = preview.normalizeSkillCostMap(costs || {});
+    if (normalized.非法项.length) return false;
+    return preview.assessResourcePayment([unit], normalized.values, { resourceOverrides }).ok;
   }
 
   function snapshotAfterResourceCosts(worldSnapshot = {}, actorId = '', costs = {}) {
@@ -3297,22 +3516,21 @@
       属性: unit?.属性 && typeof unit.属性 === 'object' ? { ...unit.属性 } : unit?.属性,
       final: unit?.final && typeof unit.final === 'object' ? { ...unit.final } : unit?.final,
     };
-    Object.entries(costs || {}).forEach(([resource, cost]) => {
-      const maximum = preview.readResourceMax(actor, resource);
-      const text = String(cost ?? '').trim();
-      const amount = text.includes('%')
-        ? maximum * Math.max(0, Number.parseFloat(text) || 0) / 100
-        : Math.max(0, Number(cost || 0));
-      const remaining = Math.max(0, preview.readResource(actor, resource) - amount);
-      if (/精神/.test(resource)) {
+    const normalized = preview.normalizeSkillCostMap(costs || {});
+    if (normalized.非法项.length) return actor;
+    const payment = preview.assessResourcePayment([actor], normalized.values);
+    if (!payment.valid) return actor;
+    payment.payments.forEach(row => {
+      const remaining = Math.max(0, row.before - row.amount);
+      if (row.key === 'men') {
         actor.men = remaining;
         if (actor.属性 && typeof actor.属性 === 'object') actor.属性.精神力 = remaining;
-      } else if (/体力/.test(resource)) {
+      } else if (row.key === 'vit') {
         actor.vit = remaining;
         actor.sta = remaining;
         if (actor.属性 && typeof actor.属性 === 'object') actor.属性.体力 = remaining;
         preview.refreshStaminaAdjustedFinal(actor);
-      } else {
+      } else if (row.key === 'sp') {
         actor.sp = remaining;
         if (actor.属性 && typeof actor.属性 === 'object') actor.属性.魂力 = remaining;
       }
@@ -3533,7 +3751,8 @@
       if (prototype === '资源变化') return Number.parseFloat(String(effect?.数值 || '0')) < 0;
       if (prototype === '结算修正') return !增益语义.结算修正是否增益语义_V1(effect);
       if (prototype === '判定修正') return !增益语义.判定修正是否增益语义_V1(effect);
-      if (prototype === '状态施加' || prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '-1')) < 0 || /眩晕|沉默|中毒|流血|灼烧|禁疗|迟缓|致盲|混乱|嘲讽/.test(String(effect?.状态 || ''));
+      if (prototype === '状态施加') return !preview.effectTargetsAllies(effect);
+      if (prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '-1')) < 0;
       return false;
     });
     const friendly = targetableEffects.some(effect => {
@@ -3545,6 +3764,7 @@
       if (prototype === '护盾变化') return String(effect?.护盾模式 || '').trim() === '正向护盾' && !hostile;
       if (prototype === '结算修正') return 增益语义.结算修正是否增益语义_V1(effect) && !hostile;
       if (prototype === '判定修正') return 增益语义.判定修正是否增益语义_V1(effect) && !hostile;
+      if (prototype === '状态施加') return preview.effectTargetsAllies(effect) && !hostile;
       if (prototype === '属性修正') return Number.parseFloat(String(effect?.数值 || '0')) > 0 && !hostile;
       return false;
     });
@@ -3673,7 +3893,12 @@
   }
 
   function primaryCombatantEntries(worldSnapshot = {}) {
-    return aliveEntries(worldSnapshot).filter(entry => !preview.isSummonUnit(entry.unit));
+    return ['team_player', 'team_enemy'].flatMap(side => {
+      const value = worldSnapshot?.参战者?.[side];
+      return (Array.isArray(value) ? value : value && typeof value === 'object' ? Object.values(value) : [])
+        .filter(unit => unit && preview.isAlive(unit))
+        .map(unit => ({ unit, side }));
+    });
   }
 
   function livingEntries(worldSnapshot = {}) {
@@ -3766,11 +3991,67 @@
 
   function enumerateCandidates(input = {}) {
     if (providerExecutionDepth > 0) throw new Error('PROVIDER_REENUMERATED_CANDIDATES');
+    const rejectionCollector = typeof input?.rejectionCollector === 'function'
+      ? input.rejectionCollector
+      : null;
+    const recordRejected = entry => {
+      if (!rejectionCollector) return;
+      rejectionCollector({
+        actionKind: String(entry?.actionKind || '').trim(),
+        sourceActionId: String(entry?.sourceActionId || '').trim(),
+        targetIds: Object.freeze(
+          (Array.isArray(entry?.targetIds) ? entry.targetIds : [])
+            .map(value => String(value || '').trim())
+            .filter(Boolean),
+        ),
+        paymentMode: String(entry?.paymentMode || '').trim(),
+        rejectionCode: String(entry?.rejectionCode || '').trim(),
+        skillId: String(entry?.skillId || '').trim(),
+        fusionKey: String(entry?.fusionKey || '').trim(),
+        equipmentSignature: String(entry?.equipmentSignature || '').trim(),
+      });
+    };
     const worldSnapshot = input.worldSnapshot || {};
     const actor = findUnitInWorld(worldSnapshot, input.actorId);
     if (!actor || !preview.isAlive(actor)) return [];
     if (hasActionCancellation(actor)) return [];
     const actorId = preview.unitId(actor);
+    // Taunt legality gate before candidate freeze: reuse the PDA's public
+    // legality context (computeLegalityContext) so taunt detection stays in
+    // one place. publicStates carries only publicly visible enemy state, so
+    // hidden/private state cannot influence the freeze. A missing adapter
+    // fails closed with MISSING_SOURCE_REFERENCE; an empty taunt set leaves
+    // every downstream branch unchanged.
+    const tauntContext = (() => {
+      const pda = root.__LWCS_BEHAVIOR_PROTOTYPE_ADAPTER__;
+      if (!pda || typeof pda.computeLegalityContext !== 'function') {
+        const error = new Error('battle_decision_behavior_prototype_adapter_missing');
+        error.reasonCode = 'MISSING_SOURCE_REFERENCE';
+        throw error;
+      }
+      const publicStates = {};
+      aliveEntries(worldSnapshot).forEach(entry => {
+        if (entry.side === sideOf(worldSnapshot, actor)) return;
+        const unitId = preview.unitId(entry.unit);
+        const hasTaunt = stateEntries(entry.unit).some(state => {
+          const name = String(state?.状态 || state?.状态名称 || '').trim();
+          return (name === '嘲讽' || name === 'taunt') &&
+            state?.隐藏 !== true && state?.hidden !== true;
+        });
+        if (hasTaunt) publicStates[unitId] = { 嘲讽: true };
+      });
+      const legality = pda.computeLegalityContext({ publicStates });
+      return {
+        forcedTauntTargetIds: Array.isArray(legality?.forcedTauntTargetIds)
+          ? legality.forcedTauntTargetIds.map(value => String(value || '').trim()).filter(Boolean)
+          : [],
+      };
+    })();
+    const tauntActive = tauntContext.forcedTauntTargetIds.length > 0;
+    const singleTaunterId = tauntContext.forcedTauntTargetIds.length === 1
+      ? tauntContext.forcedTauntTargetIds[0]
+      : '';
+    const taunterAlive = singleTaunterId && preview.isAlive(findUnitInWorld(worldSnapshot, singleTaunterId) || {});
     const opportunityRole = String(input.actionOpportunity?.role || '').trim();
     const reactionOnly = opportunityRole === 'REACTION';
     const counterOnly = opportunityRole === 'COUNTER';
@@ -3788,6 +4069,43 @@
     const forcedTargetIds = Array.isArray(input.actionOpportunity?.forcedTargetIds)
       ? input.actionOpportunity.forcedTargetIds.map(value => String(value || '').trim()).filter(Boolean)
       : [];
+    const lockedDeclaration = input?.playerLockedDeclaration || null;
+    if (tauntActive && lockedDeclaration && !forcedSkill && !reactionOnly && !counterOnly && !assistOnly) {
+      const lockedActionKind = String(lockedDeclaration.actionKind || '').trim();
+      if (lockedActionKind === 'RELEASE_SKILL' || lockedActionKind === 'BASIC_ATTACK' || lockedActionKind === 'USE_ITEM') {
+        const lockedTargets = normalizedTargetIds(worldSnapshot, lockedDeclaration);
+        const hostileAliveIds = new Set(
+          aliveEntries(worldSnapshot)
+            .filter(entry => entry.side !== sideOf(worldSnapshot, actor))
+            .map(entry => preview.unitId(entry.unit)),
+        );
+        const mandatoryTargetIds = new Set(
+          (singleTaunterId && taunterAlive ? [singleTaunterId] : [])
+            .map(value => {
+              const unit = findUnitInWorld(worldSnapshot, value);
+              return unit ? preview.unitId(unit) : String(value || '').trim();
+            })
+            .filter(Boolean),
+        );
+        const violatesTaunt = mandatoryTargetIds.size === 0
+          ? lockedTargets.length > 0
+          : lockedTargets.some(targetId =>
+              hostileAliveIds.has(targetId) && !mandatoryTargetIds.has(targetId),
+            );
+        if (violatesTaunt) {
+          recordRejected({
+            actionKind: lockedActionKind,
+            sourceActionId: String(lockedDeclaration.actionId || '').trim(),
+            targetIds: [...lockedTargets],
+            paymentMode: String(lockedDeclaration.paymentMode || '').trim(),
+            rejectionCode: 'PLAYER_LOCKED_TAUNT_LEGALITY',
+            skillId: skillId(lockedDeclaration.skill || {}),
+            fusionKey: String(lockedDeclaration.fusionKey || '').trim(),
+            equipmentSignature: String(lockedDeclaration.equipmentSignature || '').trim(),
+          });
+        }
+      }
+    }
     const playerLockedSkillId = String(input?.playerLockedDeclaration?.actionKind || '').trim() === 'RELEASE_SKILL'
       ? skillId(input.playerLockedDeclaration?.skill || {})
       : '';
@@ -3806,12 +4124,41 @@
         input?.beliefState?.targetInterferencePossible === true ||
         input?.beliefState?.confused === true
       );
-    const directBasicTargets = interferencePossible
+    let directBasicTargets = interferencePossible
       ? aliveEntries(worldSnapshot).map(entry => entry.unit)
       : directHostile;
+    const basicTargetsBeforeTaunt = directBasicTargets;
+    if (tauntActive && !reactionOnly && !counterOnly && !assistOnly) {
+      if (singleTaunterId && taunterAlive) {
+        directBasicTargets = directBasicTargets.filter(target => preview.unitId(target) === singleTaunterId);
+      } else {
+        directBasicTargets = [];
+      }
+    }
+    if (tauntActive && !(singleTaunterId && taunterAlive) && !reactionOnly && !counterOnly && !assistOnly && !forcedSkill && basicAttackAllowed) {
+      basicTargetsBeforeTaunt.forEach(target => {
+        const targetId = preview.unitId(target);
+        recordRejected({
+          actionKind: 'BASIC_ATTACK',
+          sourceActionId: `${actorId}:basic:${targetId}`,
+          targetIds: [targetId],
+          paymentMode: '',
+          rejectionCode: 'AMBIGUOUS_TAUNT_TARGET',
+        });
+      });
+    }
     const candidates = reactionOnly || forcedSkill || !basicAttackAllowed ? [] : directBasicTargets.map(target => {
       const targetId = preview.unitId(target);
-      return { candidateId: `${actorId}:basic:${targetId}`, declaration: { actionId: `${actorId}:basic:${targetId}`, actorId, actionKind: 'BASIC_ATTACK', targetIds: [targetId] } };
+      return {
+        candidateId: `${actorId}:basic:${targetId}`,
+        declaration: {
+          actionId: `${actorId}:basic:${targetId}`,
+          actorId,
+          actionKind: 'BASIC_ATTACK',
+          targetIds: [targetId],
+          skill: basicAttackSkill(actor),
+        },
+      };
     });
     if (counterOnly && !forcedSkill) candidates.push({
       candidateId: `${actorId}:COUNTER_DECLINE`,
@@ -3845,10 +4192,24 @@
     (forcedSkill ? [forcedSkill] : skillReleaseAllowed ? collectSkills(actor) : []).forEach((sourceSkill, index) => {
       const skill = preview.applySkillSettlementModifiers(
         actor,
-        sourceSkill,
+        applyEquipmentPassivesToSkill(actor, sourceSkill),
       ).skill;
-      const costs = parseSkillCosts(skill);
-      const affordable = costAffordable(actor, skill);
+      if (!Array.isArray(skill?._效果数组) || !skill._效果数组.length) return;
+      const costCheck = checkSkillCostAffordable(actor, skill, {
+        context: skillCostParserContext(actor, skill),
+      });
+      const costs = costCheck.stages?.启动 || {};
+      const affordable = costCheck.affordable;
+      if (!costCheck.valid) {
+        recordRejected({
+          actionKind: 'RELEASE_SKILL',
+          sourceActionId: `${actorId}:skill:${skillId(sourceSkill, index)}`,
+          targetIds: [],
+          paymentMode: '',
+          rejectionCode: costCheck.reason || 'COST_INVALID',
+        });
+        return;
+      }
       if (!affordable && input?.includeUnaffordableRoutes !== true) return;
       const isPlayerLockedSkill = playerLockedSkillId &&
         skillId(sourceSkill, index) === playerLockedSkillId;
@@ -3882,7 +4243,7 @@
         targetSet.length === forcedTargetIds.length &&
         targetSet.every(targetId => forcedTargetIds.includes(targetId))
       );
-      const targetSets = legalForcedTargetSet
+      let targetSets = legalForcedTargetSet
         ? [legalForcedTargetSet]
         : (reactionOnly || counterOnly) && reactionSourceId && ['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(profile)
         ? [[reactionSourceId]]
@@ -3892,6 +4253,23 @@
               targetSet.every(targetId => opportunityValidTargetIds.has(targetId))
             )
           : legalTargetSets;
+      if (tauntActive && profile === 'HOSTILE_SINGLE' && !forcedSkill && !reactionOnly && !counterOnly && !assistOnly) {
+        if (singleTaunterId && taunterAlive) {
+          targetSets = [[singleTaunterId]];
+        } else {
+          const rejectedActionId = `${actorId}:skill:${skillId(sourceSkill, index)}`;
+          legalTargetSets.forEach(targetSet => {
+            recordRejected({
+              actionKind: 'RELEASE_SKILL',
+              sourceActionId: rejectedActionId,
+              targetIds: targetSet,
+              paymentMode: '',
+              rejectionCode: 'AMBIGUOUS_TAUNT_TARGET',
+            });
+          });
+          targetSets = [];
+        }
+      }
       const ringBurst = (Array.isArray(counterSkill?._效果数组) ? counterSkill._效果数组 : [])
         .some(effect => String(effect?.原型 || '').trim() === '炸环');
       const ringOptions = ringBurst
@@ -3953,7 +4331,22 @@
       });
     });
     if (forcedSkill) return candidates;
-    if (reactionOnly || counterOnly || assistOnly) return candidates;
+    if (reactionOnly || counterOnly || assistOnly) {
+      if (counterOnly) {
+        // Every counter-opportunity candidate carries an explicit boolean
+        // execution flag: COUNTER_DECLINE is true by construction, all other
+        // counter candidates (real counters, basic/skill counters) are false.
+        // The R9V2_LINEAR wrapper later reads this flag from the same prepared
+        // frozen candidate and assembles it onto the selected record; a
+        // missing (non-boolean) flag is fail-closed there.
+        for (const candidate of candidates) {
+          if (candidate && candidate.counterDeclineFallback !== true) {
+            candidate.counterDeclineFallback = false;
+          }
+        }
+      }
+      return candidates;
+    }
     const currentEquipmentIds = new Set(Object.values(actor?.装备 || {}).map(item => String(item?.id || item?.物品ID || item?.名称 || item?.name || '')).filter(Boolean));
     const runtimeEquipmentId = String(actor?.__battleRuntime?.equippedDecisionItem?.id || '').trim();
     if (runtimeEquipmentId) currentEquipmentIds.add(runtimeEquipmentId);
@@ -3997,7 +4390,23 @@
       const futureMaximumValue = renewableCreation
         ? 0
         : irreversibleAssetFutureMaximum(usableItem, actor, worldSnapshot);
-      enumerateTargetSets(worldSnapshot, actor, targetProfile(usableItem), input.beliefState).forEach((targetIds, targetIndex) => {
+      const itemProfile = targetProfile(usableItem);
+      const itemLegalTargetSets = enumerateTargetSets(worldSnapshot, actor, itemProfile, input.beliefState);
+      const itemTargetSets = tauntActive && itemProfile === 'HOSTILE_SINGLE'
+        ? (singleTaunterId && taunterAlive ? [[singleTaunterId]] : [])
+        : itemLegalTargetSets;
+      if (tauntActive && itemProfile === 'HOSTILE_SINGLE' && !(singleTaunterId && taunterAlive)) {
+        itemLegalTargetSets.forEach(targetSet => {
+          recordRejected({
+            actionKind: 'USE_ITEM',
+            sourceActionId: `${actorId}:item:${entry.id}`,
+            targetIds: targetSet,
+            paymentMode: '',
+            rejectionCode: 'AMBIGUOUS_TAUNT_TARGET',
+          });
+        });
+      }
+      itemTargetSets.forEach((targetIds, targetIndex) => {
         const id = `${actorId}:item:${entry.id}:${targetIndex}`;
         const currentTarget = findUnitInWorld(worldSnapshot, targetIds[0]);
         const assetCost = renewableCreation ? 0 : estimateIrreversibleAssetCost(usableItem, actor, entry.quantity, currentTarget, futureMaximumValue);
@@ -4570,9 +4979,7 @@
       return best;
     }
     collectSkills(unit)
-      .map(skill =>
-        preview.applySkillSettlementModifiers(unit, skill).skill
-      )
+      .map(skill => preview.applySkillSettlementModifiers(unit, applyEquipmentPassivesToSkill(unit, skill)).skill)
       .filter(skill => costAffordable(unit, skill))
       .forEach(skill => {
         const profile = targetProfile(skill);
@@ -4598,13 +5005,11 @@
       : cachedBaseActionValue(unit, target, 'BASIC_ATTACK');
     if (hasStateFlag(unit, 'silence')) return Math.max(0, best);
     collectSkills(unit)
-      .map(skill =>
-        preview.applySkillSettlementModifiers(unit, skill).skill
-      )
+      .map(skill => preview.applySkillSettlementModifiers(unit, applyEquipmentPassivesToSkill(unit, skill)).skill)
       .filter(skill =>
         costAffordable(unit, skill) &&
         preview.resolveFusionAction(worldSnapshot, unit, skill, {
-          resourceCosts: parseSkillCosts(skill),
+          resourceCosts: parseSkillCosts(skill, skillCostParserContext(unit, skill)),
           requirePendingOpportunity: true,
         }).valid
       )
@@ -4777,14 +5182,13 @@
   }
 
   function normalizedCost(unit = {}, costs = {}) {
-    return Object.entries(costs || {}).reduce((sum, [resource, cost]) => {
-      const maximum = Math.max(1, preview.readResourceMax(unit, resource));
-      const text = String(cost ?? '').trim();
-      const amount = text.includes('%')
-        ? maximum * Math.max(0, Number.parseFloat(text) || 0) / 100
-        : Math.max(0, Number(cost || 0));
-      return sum + amount / maximum;
-    }, 0);
+    const normalized = preview.normalizeSkillCostMap(costs || {});
+    if (normalized.非法项.length) return Infinity;
+    const payment = preview.assessResourcePayment([unit], normalized.values);
+    if (!payment.valid) return Infinity;
+    return payment.payments.reduce((sum, row) =>
+      sum + row.amount / Math.max(1, row.maximum),
+    0);
   }
 
   function frozenActionCatalog(worldSnapshot = {}, unit = {}, perspectiveSide = '', beliefState = {}) {
@@ -4833,7 +5237,7 @@
       const targetPoolIds = targets.map(preview.unitId);
       const effects = preview.collectEffects(
         actionKind === 'BASIC_ATTACK'
-          ? { _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }] }
+          ? (skill || basicAttackSkill(unit))
           : skill || {},
       );
       const damageEffects = effects.filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
@@ -4897,6 +5301,7 @@
       if (enemies.length) actions.push(targetAction({
         actionKey: `${unitId}:basic`,
         actionKind: 'BASIC_ATTACK',
+        skill: basicAttackSkill(unit),
         targets: enemies,
         costs: {},
         costRatio: 0,
@@ -4906,9 +5311,11 @@
       collectSkills(unit).forEach((sourceSkill, index) => {
         const skill = preview.applySkillSettlementModifiers(
           unit,
-          sourceSkill,
+          applyEquipmentPassivesToSkill(unit, sourceSkill),
         ).skill;
-        const costs = parseSkillCosts(skill);
+        const costStages = parseSkillCostStages(skill, skillCostParserContext(unit, skill));
+        if (costStages.非法项.length) return;
+        const costs = costStages.启动;
         const fusion = preview.resolveFusionAction(worldSnapshot, unit, skill, {
           resourceCosts: costs,
           requirePendingOpportunity: true,
@@ -5014,7 +5421,7 @@
         (
           action.fusionRequired === true &&
           !preview.resolveFusionAction(worldSnapshot, unit, action.skill, {
-            resourceCosts: action.costs || parseSkillCosts(action.skill),
+            resourceCosts: action.costs || parseSkillCosts(action.skill, skillCostParserContext(unit, action.skill)),
             requirePendingOpportunity: true,
           }).valid
         )
@@ -6248,17 +6655,15 @@
   }
 
   function resourceRunway(unit = {}, costs = {}) {
-    const entries = Object.entries(costs || {}).filter(([, rawCost]) =>
-      Math.max(0, Number.parseFloat(String(rawCost ?? ''))) > 0);
+    const normalized = preview.normalizeSkillCostMap(costs || {});
+    if (normalized.非法项.length) return null;
+    const payment = preview.assessResourcePayment([unit], normalized.values);
+    if (!payment.valid || !payment.payments.length) return null;
+    const entries = payment.payments.filter(row => row.amount > 0);
     if (!entries.length) return null;
-    return Math.max(0, Math.min(...entries.map(([resource, rawCost]) => {
-      const maximum = Math.max(1, preview.readResourceMax(unit, resource));
-      const text = String(rawCost ?? '').trim();
-      const cost = text.includes('%')
-        ? maximum * Math.max(0, Number.parseFloat(text) || 0) / 100
-        : Math.max(0, Number(rawCost || 0));
-      return cost > 0 ? Math.floor((preview.readResource(unit, resource) + 1e-9) / cost) : 20;
-    })));
+    return Math.max(0, Math.min(...entries.map(row =>
+      Math.floor((row.before + 1e-9) / row.amount),
+    )));
   }
 
   function resourceContinuityAudit({
@@ -7935,7 +8340,7 @@
   }) {
     const damageEffects = preview.collectEffects(
       candidate?.declaration?.actionKind === 'BASIC_ATTACK'
-        ? { _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }] }
+        ? (candidate?.declaration?.skill || basicAttackSkill(actor))
         : candidate?.declaration?.skill || {}
     ).filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
     const realizationMultiplierByTarget = Object.fromEntries(
@@ -8591,6 +8996,57 @@
     return deepFreeze(audits);
   }
 
+  function buildCandidatePlanningEvidence({
+    candidate = {},
+    result = null,
+    worldSnapshot = {},
+    actor = {},
+    expectedStateGain = 0,
+    catastrophicRisk = 0,
+    objectiveUtility = null,
+    consumer = 'BattleDecision',
+  } = {}) {
+    const effects = preview.collectEffects(candidate?.skill || candidate?.declaration?.skill || {});
+    const base = typeof preview.buildEffectPlanningEvidence === 'function'
+      ? preview.buildEffectPlanningEvidence({
+          worldSnapshot,
+          actor,
+          result: result || { contributions: [], afterSnapshot: worldSnapshot },
+          effects,
+          consumer,
+          usedInScore: true,
+        })
+      : {
+          source: '_效果数组',
+          consumer,
+          effectCount: effects.length,
+          coveredEffectCount: 0,
+          benefit: 0,
+          risk: 0,
+          releaseWeight: 0,
+          usedInScore: true,
+          score: null,
+          effects: [],
+        };
+    return Object.freeze({
+      ...base,
+      usedInScore: true,
+      score: Object.freeze({
+        expectedStateGain: Number(expectedStateGain || 0),
+        catastrophicRisk: Number(catastrophicRisk || 0),
+        releaseWeight: clamp(Number(expectedStateGain || 0) - Number(catastrophicRisk || 0), -100, 100),
+        objectiveUtility: objectiveUtility === null ? null : Number(objectiveUtility || 0),
+        includedInExistingScore: !!result,
+        contributionPath: result
+          ? 'PreviewResult.afterSnapshot/contributions -> stateUtility/responseComparison'
+          : 'NO_PREVIEW_RESULT',
+        countedInObjectiveUtility: !!result,
+        doubleCounted: false,
+        source: consumer,
+      }),
+    });
+  }
+
   function scoreCandidatesNext(input = {}) {
     if (input?.__preparedDecisionWorld !== true) resetDecisionCaches();
     const worldSnapshot = input?.worldSnapshot;
@@ -8638,7 +9094,7 @@
         );
     const hasExplicitCounterPlan = collectSkills(actor).some(skill =>
       isExplicitCounterSkill(
-        preview.applySkillSettlementModifiers(actor, skill).skill,
+        preview.applySkillSettlementModifiers(actor, applyEquipmentPassivesToSkill(actor, skill)).skill,
         40,
       )
     );
@@ -8677,7 +9133,7 @@
       const effectTargetAudit = candidateEffectTargetAudit(candidate, decisionWorld, actor);
       const candidateDamageEffects = preview.collectEffects(
         candidate?.declaration?.actionKind === 'BASIC_ATTACK'
-          ? { _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }] }
+          ? (candidate?.declaration?.skill || basicAttackSkill(actor))
           : candidate?.declaration?.skill || {},
       ).filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
       const result = ['RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM', 'EQUIP'].includes(candidate?.declaration?.actionKind)
@@ -8699,11 +9155,9 @@
       const candidateContributions = (result?.contributions || []).filter(entry => {
         const rootCauseId = String(entry?.rootCauseId || '').trim();
         const sourceActionId = String(entry?.sourceActionId || '').trim();
-        const rootOwned = rootCauseId === candidateRootActionId ||
-          rootCauseId.startsWith(`${candidateRootActionId}:`);
+        const rootOwned = rootCauseId === candidateRootActionId;
         const sourceOwned = !sourceActionId ||
-          sourceActionId === candidateRootActionId ||
-          sourceActionId.startsWith(`${candidateRootActionId}:`);
+          sourceActionId === candidateRootActionId;
         return rootOwned && sourceOwned;
       });
       const candidateEffects = preview.collectEffects(
@@ -9466,6 +9920,15 @@
         (responseComparison.candidateUtility - responseComparison.noOpUtility) /
         Math.max(1, before.total) +
         summonWindowValue;
+      const planningEvidence = buildCandidatePlanningEvidence({
+        candidate,
+        result: candidatePreview,
+        worldSnapshot: decisionWorld,
+        actor,
+        expectedStateGain,
+        catastrophicRisk: responseComparison.catastrophicRisk,
+        consumer: 'BattleDecision.scoreCandidatesNext',
+      });
       const repeatedInformationMarginal = priorAction ? informationValue : 0;
       const repeatedActionDelta = priorAction && (
         repeatedValueEvidence.length ||
@@ -9780,8 +10243,9 @@
         ...candidate,
         actionFamily: actionFamilyOf(candidate),
         effectTargetAudit,
-        preview: candidatePreview,
-        predictedOutcomeEvidence: predictedOutcomeEvidence(
+         preview: candidatePreview,
+         planningEvidence,
+         predictedOutcomeEvidence: predictedOutcomeEvidence(
           candidatePreview
             ? { ...candidatePreview, contributions: valueContributions }
             : candidatePreview,
@@ -9807,6 +10271,9 @@
           irreversibleAssetCost,
           worstTailCapacityLoss: responseComparison.worstTailCapacityLoss,
           expectedStateGain,
+          planningBenefit: planningEvidence.benefit,
+          planningRisk: planningEvidence.risk,
+          planningReleaseWeight: planningEvidence.releaseWeight,
           terminalUtility: responseComparison.terminalUtility,
           objectiveProgress: responseComparison.objectiveProgress,
           objectiveProgressAudit,
@@ -11347,7 +11814,7 @@
     return collectSkills(unit).reduce((best, sourceSkill) => {
       const skill = preview.applySkillSettlementModifiers(
         unit,
-        sourceSkill,
+        applyEquipmentPassivesToSkill(unit, sourceSkill),
       ).skill;
       if (!costAffordable(unit, skill) || Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0)) > 40) return best;
       const profile = targetProfile(skill);
@@ -11583,7 +12050,7 @@
       : [];
     const candidateEffects = preview.collectEffects(
       candidate?.declaration?.actionKind === 'BASIC_ATTACK'
-        ? { _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }] }
+        ? (candidate?.declaration?.skill || basicAttackSkill(actor))
         : candidate?.declaration?.skill || {},
     );
     const experience = experienceOf(actor);
@@ -11756,7 +12223,7 @@
     const resourceSupportOnly = candidateEffects.length > 0 &&
       candidateEffects.every(isPositiveResourceSupportEffect);
     const damageEffects = candidate.declaration.actionKind === 'BASIC_ATTACK'
-      ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }]
+      ? preview.collectEffects(candidate?.declaration?.skill || basicAttackSkill(actor)).filter(effect => String(effect?.原型 || '').trim() === '伤害结算')
       : candidateEffects;
     const withdrawalProfile = candidate.declaration.actionKind === 'WITHDRAW'
       ? aliveEntries(context.worldSnapshot)
@@ -11986,6 +12453,15 @@
         const terminalLoss = Math.max(0, -Number(branch?.responseTerminalUtility || 0));
         return sum + probability * Math.max(normalizedCapacityLoss, terminalLoss);
       }, 0);
+    const planningEvidence = buildCandidatePlanningEvidence({
+      candidate,
+      result,
+      worldSnapshot: context.worldSnapshot,
+      actor,
+      expectedStateGain,
+      catastrophicRisk,
+      consumer: 'BattleDecision.scoreCandidate',
+    });
     const resultTimeline = deepRequired && mechanicObservations.length
       ? [
           { nodeType: 'RESULT_SUCCESS', probability: mechanicProbability },
@@ -12069,9 +12545,14 @@
     const summonWindowMissing = summonEvents.some(event => !event.actionMode || Number(event.duration || 0) <= 0);
     const lifecycleReject = candidate.creation && !candidate.creation.useful ? 'ZERO_EFFECT_COSTLY' : summonWindowMissing ? 'SUMMON_NO_ACTION_WINDOW' : resourceUnlockMissing ? (hasCost ? 'ZERO_EFFECT_COSTLY' : 'ZERO_PROGRESS') : '';
     const intentReject = terminalUtility < 0 ? 'INTENT_TERMINAL_CONFLICT' : '';
+    const candidateCostNormalization = preview.normalizeSkillCostMap(candidate.costs || {});
+    const candidateCostPayment = candidateCostNormalization.非法项.length
+      ? null
+      : preview.assessResourcePayment([actor], candidateCostNormalization.values);
     return {
       ...candidate,
       preview: result || null,
+      planningEvidence,
       predictedOutcomeEvidence: predictedOutcomeEvidence(
         result,
         context?.visibleWorldSnapshot,
@@ -12098,18 +12579,17 @@
       }),
       vector: {
         expectedStateGain,
+        planningBenefit: planningEvidence.benefit,
+        planningRisk: planningEvidence.risk,
+        planningReleaseWeight: planningEvidence.releaseWeight,
         objectiveRelevantStateGain,
         objectiveStateGainWeight,
         terminalUtility,
         objectiveProgress,
         informationValue,
-        resourcePreservation: -Object.entries(candidate.costs || {}).reduce((sum, [resource, value]) => {
-          const text = String(value ?? '').trim();
-          const amount = text.includes('%')
-            ? preview.readResourceMax(actor, resource) * Math.max(0, Number.parseFloat(text) || 0) / 100
-            : Math.max(0, Number(value || 0));
-          return sum + amount;
-        }, 0),
+        resourcePreservation: candidateCostPayment?.valid
+          ? -candidateCostPayment.payments.reduce((sum, row) => sum + row.amount, 0)
+          : -Infinity,
         survivalLowerBound: after.own,
         irreversibleCost,
         catastrophicRisk,
@@ -12343,9 +12823,38 @@
     return true;
   }
 
-  function selectPlayerLockedCandidate(candidates = [], declaration = {}, worldSnapshot = {}) {
+  function rejectionMatchesLockedDeclaration(entry = {}, declaration = {}, worldSnapshot = {}) {
+    const rejectionCode = String(entry?.rejectionCode || '').trim();
+    if (rejectionCode !== 'PLAYER_LOCKED_TAUNT_LEGALITY' && rejectionCode !== 'AMBIGUOUS_TAUNT_TARGET') return false;
+    if (String(entry?.actionKind || '').trim() !== String(declaration?.actionKind || '').trim()) return false;
+    const entryTargets = Array.isArray(entry?.targetIds) ? entry.targetIds : [];
+    const lockedTargets = normalizedTargetIds(worldSnapshot, declaration);
+    if (entryTargets.length !== lockedTargets.length || entryTargets.some((id, index) => id !== lockedTargets[index])) return false;
+    const lockedFusionKey = String(declaration?.fusionKey || '').trim();
+    if (lockedFusionKey && String(entry?.fusionKey || '').trim() !== lockedFusionKey) return false;
+    const lockedSkill = declaration?.skill && typeof declaration.skill === 'object' ? declaration.skill : null;
+    const entrySkillId = String(entry?.skillId || '').trim();
+    if (lockedSkill || entrySkillId) {
+      if (skillId(lockedSkill || {}) !== entrySkillId) return false;
+    }
+    const lockedEquipmentSignature = String(declaration?.equipmentSignature || '').trim();
+    if (lockedEquipmentSignature && String(entry?.equipmentSignature || '').trim() !== lockedEquipmentSignature) return false;
+    return true;
+  }
+
+  function selectPlayerLockedCandidate(candidates = [], declaration = {}, worldSnapshot = {}, rejectedCandidates = []) {
     const selected = candidates.find(candidate => matchesPlayerLockedDeclaration(candidate, declaration, worldSnapshot));
-    if (!selected) throw new Error('battle_player_locked_declaration_mechanically_illegal');
+    if (!selected) {
+      const error = new Error('battle_player_locked_declaration_mechanically_illegal');
+      const matchingRejections = (Array.isArray(rejectedCandidates) ? rejectedCandidates : [])
+        .filter(entry => rejectionMatchesLockedDeclaration(entry, declaration, worldSnapshot));
+      if (matchingRejections.some(entry => String(entry?.rejectionCode || '').trim() === 'AMBIGUOUS_TAUNT_TARGET')) {
+        error.reasonCode = 'AMBIGUOUS_TAUNT_TARGET';
+      } else if (matchingRejections.some(entry => String(entry?.rejectionCode || '').trim() === 'PLAYER_LOCKED_TAUNT_LEGALITY')) {
+        error.reasonCode = 'PLAYER_LOCKED_TAUNT_LEGALITY';
+      }
+      throw error;
+    }
     return {
       selected: {
         ...selected,
@@ -12530,6 +13039,7 @@
       riskCompensationAudit: candidate?.riskCompensationAudit || null,
       teamIntentAudit: candidate?.teamIntentAudit || null,
       effectTargetAudit: Object.freeze([...(candidate?.effectTargetAudit || [])]),
+      planningEvidence: candidate?.planningEvidence || null,
       predictedOutcomeEvidence: Object.freeze([...(candidate?.predictedOutcomeEvidence || [])]),
       selected: candidate?.selected === true,
     });
@@ -12801,9 +13311,10 @@
           terminalEvidence: selected.terminalEvidence || null,
           crisisResponseAudit: selected.crisisResponseAudit || null,
           crisisAlternativeAudit: selected.crisisAlternativeAudit || null,
-          riskCompensationAudit: selected.riskCompensationAudit || null,
-          teamIntentAudit: selected.teamIntentAudit || null,
-          effectTargetAudit: selected.effectTargetAudit || Object.freeze([]),
+           riskCompensationAudit: selected.riskCompensationAudit || null,
+           teamIntentAudit: selected.teamIntentAudit || null,
+           planningEvidence: selected.planningEvidence || null,
+           effectTargetAudit: selected.effectTargetAudit || Object.freeze([]),
           immediateReactionAudit: selected.immediateReactionAudit || Object.freeze([]),
           predictedOutcomeEvidence: selected.predictedOutcomeEvidence || Object.freeze([]),
           mechanicObservations: Object.freeze([...(selected.mechanicObservations || [])]),
@@ -12970,8 +13481,9 @@
       forcedFallback: selected.forcedFallback === true,
       fallbackReason: String(selected.fallbackReason || '').trim(),
       predictedOutcomeEvidence: selected.predictedOutcomeEvidence || Object.freeze([]),
-      terminalEvidence: selected.terminalEvidence || null,
-      mechanicObservations: Object.freeze([...(selected.mechanicObservations || [])]),
+       terminalEvidence: selected.terminalEvidence || null,
+       planningEvidence: selected.planningEvidence || null,
+       mechanicObservations: Object.freeze([...(selected.mechanicObservations || [])]),
     });
     return Object.freeze({
       version: VERSION,
@@ -13944,22 +14456,20 @@
       ];
       payerIds.forEach(payerId => {
         const payer = findUnitInWorld(worldSnapshot, payerId);
-        Object.entries(
+        const normalized = preview.normalizeSkillCostMap(
           candidate?.costs ||
           candidate?.declaration?.resourceCosts ||
           {},
-        ).forEach(([resource, rawCost]) => {
-          const text = String(rawCost ?? '').trim();
-          const numeric = Math.max(0, Number.parseFloat(text) || 0);
-          if (!(numeric > 1e-9)) return;
-          paymentDependencies.push({
+        );
+        if (normalized.非法项.length || !payer) return;
+        const payment = preview.assessResourcePayment([payer], normalized.values);
+        payment.payments
+          .filter(row => row.amount > 1e-9)
+          .forEach(row => paymentDependencies.push({
             unitId: payerId,
-            resource,
-            amount: text.includes('%')
-              ? preview.readResourceMax(payer, resource) * numeric / 100
-              : numeric,
-          });
-        });
+            resource: row.resource,
+            amount: row.amount,
+          }));
       });
     }
     for (const [contributionSequence, entry] of (previewResult?.contributions || []).entries()) {
@@ -31386,6 +31896,7 @@
         normalized,
         request.playerLockedDeclaration,
         request.visibleWorld,
+        request?.rejectedCandidates || [],
       );
       const lockedCandidate = lockedChoice.selected;
       const lockedSelection = Object.freeze({
@@ -31763,7 +32274,17 @@
     const visibleActor = findUnitInWorld(visibleWorld, actorId);
     const actorSide = sideOf(visibleWorld, visibleActor);
     const battleIntent = actorBattleIntent(visibleWorld, actorSide, input?.battleIntent);
-    const actionOpportunity = cloneValue(input?.actionOpportunity || {});
+    const rawActionOpportunity = input?.actionOpportunity;
+    if (rawActionOpportunity !== undefined && !r9v2LinearPlainObject(rawActionOpportunity)) {
+      throw new Error('R9V2_LINEAR_ACTION_OPPORTUNITY_INVALID');
+    }
+    const rawIncomingAction = rawActionOpportunity?.incomingAction;
+    if (rawIncomingAction !== undefined && rawIncomingAction !== null && !r9v2LinearPlainObject(rawIncomingAction)) {
+      throw new Error('R9V2_LINEAR_INCOMING_ACTION_INVALID');
+    }
+    const actionOpportunity = cloneValue(rawActionOpportunity || {});
+    if (actionOpportunity.actionContext !== undefined) r9v2LinearActionContext(actionOpportunity.actionContext);
+    r9v2LinearNormalizeIncomingAction(actionOpportunity);
     const opportunityOwnerId = String(
       actionOpportunity?.ownerId || '',
     ).trim();
@@ -31772,6 +32293,7 @@
     }
     actionOpportunity.ownerId = actorId;
     tracePrepareStage('before-enumerate');
+    const rejectedCandidates = [];
     const candidates = enumerateCandidates({
       ...input,
       worldSnapshot: visibleWorld,
@@ -31780,6 +32302,7 @@
       battleIntent,
       beliefState,
       actionOpportunity,
+      rejectionCollector: entry => rejectedCandidates.push(entry),
     });
     tracePrepareStage(`after-enumerate:${candidates.length}`);
     if (!candidates.length) throw new Error('battle_decision_candidate_pool_empty');
@@ -31854,6 +32377,11 @@
         runtimeSnapshot.opportunitySnapshotHash ||
         preview.stableHash(opportunitySnapshot)
       }`,
+      ...(String(runtimeSnapshot.opportunityRevision || '').startsWith('opportunity-journal:') &&
+        Number.isSafeInteger(runtimeSnapshot.opportunityJournalRevision) &&
+        runtimeSnapshot.opportunityJournalRevision >= 0
+        ? { opportunityJournalRevision: runtimeSnapshot.opportunityJournalRevision }
+        : {}),
       opportunitySemanticRevision: r9v2ContextSemanticRevision(
         opportunitySnapshot,
       ),
@@ -32201,6 +32729,22 @@
         visibleStates: visibleStates(entry.unit),
       })),
       frozenCandidates,
+      rejectedCandidates: Object.freeze(rejectedCandidates.map(entry =>
+        Object.freeze({
+          actionKind: String(entry?.actionKind || '').trim(),
+          sourceActionId: String(entry?.sourceActionId || '').trim(),
+          targetIds: Object.freeze(
+            (Array.isArray(entry?.targetIds) ? entry.targetIds : [])
+              .map(value => String(value || '').trim())
+              .filter(Boolean),
+          ),
+          paymentMode: String(entry?.paymentMode || '').trim(),
+          rejectionCode: String(entry?.rejectionCode || '').trim(),
+          skillId: String(entry?.skillId || '').trim(),
+          fusionKey: String(entry?.fusionKey || '').trim(),
+          equipmentSignature: String(entry?.equipmentSignature || '').trim(),
+        })
+      )),
       candidateFingerprintMap,
       evaluationContext,
       actionRouteCatalog: routeAnalysis.routeCatalog,
@@ -32345,13 +32889,11 @@
           ])}`
         : decisionRequestHash(requestPayload),
     };
-    // 轻 prepare 不深冻世界：deepFreeze 会 O(世界) 递归冻结每个对象，
-    // 而 runProvider 的防变异合同只要求 request 顶层冻结 + 其余载荷深冻。
+    // CANDIDATES_ONLY 也在 prepared 登记前递归深冻 visibleWorld，
+    // 使嵌套世界 mutation 无法改变后续 feature 结果。
     let frozenRequest;
     if (lightPrepare) {
-      for (const key of Object.keys(request)) {
-        if (key !== 'visibleWorld') deepFreeze(request[key]);
-      }
+      for (const key of Object.keys(request)) deepFreeze(request[key]);
       frozenRequest = Object.freeze(request);
     } else {
       frozenRequest = deepFreeze(request);
@@ -32433,6 +32975,26 @@
       });
     }
     return frozenRequest;
+  }
+
+  function isPreparedDecisionRequest(request) {
+    const context = request?.evaluationContext;
+    const requestHash = request?.requestHash;
+    return !!request && request.schemaVersion === R8_REQUEST_SCHEMA &&
+      Object.isFrozen(request) && Object.isFrozen(request.visibleWorld) &&
+      typeof requestHash === 'string' && requestHash.length > 0 &&
+      preparedDecisionRequests.get(request) === requestHash &&
+      request.candidateFingerprintMap && typeof request.candidateFingerprintMap === 'object' &&
+      !Array.isArray(request.candidateFingerprintMap) &&
+      typeof context?.visibleWorldRevision === 'string' && context.visibleWorldRevision.length > 0 &&
+      typeof context?.scheduleRevision === 'string' && context.scheduleRevision.length > 0;
+  }
+
+  function isPreparedLinearSourceMaps(request, previewResultsById, pdaProjectionsById) {
+    const record = preparedLinearSourceMaps.get(request);
+    return isPreparedDecisionRequest(request) && !!record &&
+      record.previewResultsById === previewResultsById &&
+      record.pdaProjectionsById === pdaProjectionsById;
   }
 
   function preparedRouteCacheSnapshot(request) {
@@ -32524,6 +33086,10 @@
         stores.targetRouteBestByKey instanceof Map
           ? stores.targetRouteBestByKey
           : new Map(),
+      r9v2DecisionValueGraphs:
+        stores.decisionValueGraphs instanceof Map
+          ? stores.decisionValueGraphs
+          : new Map(),
       r9v2MechanicalKeyObjectHashes:
         stores.mechanicalKeyObjectHashes instanceof WeakMap
           ? stores.mechanicalKeyObjectHashes
@@ -32577,6 +33143,10 @@
       targetRouteBestByKey:
         state?.r9v2TargetRouteBestByKey instanceof Map
           ? state.r9v2TargetRouteBestByKey
+          : new Map(),
+      decisionValueGraphs:
+        state?.r9v2DecisionValueGraphs instanceof Map
+          ? state.r9v2DecisionValueGraphs
           : new Map(),
       mechanicalKeyObjectHashes:
         state?.r9v2MechanicalKeyObjectHashes instanceof WeakMap
@@ -32700,20 +33270,18 @@
       declaration?.resourceCosts &&
       typeof declaration.resourceCosts === 'object'
         ? declaration.resourceCosts
-        : parseSkillCosts(declaration?.skill || {});
+        : parseSkillCosts(
+            declaration?.skill || {},
+            skillCostParserContext(unit, declaration?.skill || {}, declaration),
+          );
+    const normalized = preview.normalizeSkillCostMap(rawCosts || {});
+    if (normalized.非法项.length) return Object.freeze({});
+    const payment = preview.assessResourcePayment([unit], normalized.values);
+    if (!payment.valid) return Object.freeze({});
     return Object.freeze(Object.fromEntries(
-      Object.entries(rawCosts || {})
-        .map(([resource, rawCost]) => {
-          const text = String(rawCost ?? '').trim();
-          const numeric = Math.max(0, Number.parseFloat(text) || 0);
-          const amount = text.includes('%')
-            ? preview.readResourceMax(unit, resource) * numeric / 100
-            : numeric;
-          return [String(resource || '').trim(), amount];
-        })
-        .filter(([resource, amount]) =>
-          resource && Number.isFinite(amount) && amount > 1e-9
-        )
+      payment.payments
+        .filter(row => row.amount > 1e-9)
+        .map(row => [row.resource, row.amount])
         .sort(([left], [right]) => left.localeCompare(right)),
     ));
   }
@@ -33963,9 +34531,12 @@
     ) {
       return {};
     }
-    const prototype = String(
+    const observationPrototype = String(
       observation?.effectPrototype || '',
     ).trim();
+    const prototype = observationPrototype === '命中判定'
+      ? '伤害结算'
+      : observationPrototype;
     const targetId = String(observation?.targetId || '').trim();
     if (!prototype || !targetId) return {};
     const expectedState = String(
@@ -34023,6 +34594,7 @@
     forcedMechanicSuccess = null,
     useBeliefProbabilityResolvers = false,
     captureDependencyKeys = false,
+    routeValueOnly = false,
   }) {
     const actor = findUnitInWorld(worldSnapshot, actorId);
     const actorSide = actor ? sideOf(worldSnapshot, actor) : '';
@@ -34059,7 +34631,8 @@
     const mechanicalEntryCacheEnabled =
       state?.r9v2MechanicalEntryCacheEnabled === true &&
       state?.r9v2MechanicalEntryCacheActive === true &&
-      verifyMechanicalBasis !== true;
+      verifyMechanicalBasis !== true &&
+      routeValueOnly !== true;
     let mechanicalEntryStore = null;
     let mechanicalEntryCacheKey = '';
     if (mechanicalEntryCacheEnabled) {
@@ -34198,6 +34771,35 @@
             r9v2NormalizedContribution(contribution, state)
           ),
       );
+      if (routeValueOnly) {
+        return Object.freeze({
+          schemaVersion: 'R9v2RouteValueNodeV1',
+          actorId,
+          actorSide,
+          candidateId,
+          declarationFingerprint: fingerprint,
+          declaration,
+          actionKind,
+          targetIds: Object.freeze(
+            (Array.isArray(declaration?.targetIds) ? declaration.targetIds : [])
+              .map(value => String(value || '').trim())
+              .filter(Boolean),
+          ),
+          resourceCosts: r9v2ResourceCostAmounts(actor || {}, declaration),
+          resourcePotentialOnly: candidate?.resourcePotentialOnly === true,
+          mechanicObservations,
+          contributions,
+          hardInvalid: false,
+          mechanicalDependencyKeys: Object.freeze(
+            [...new Set((projection?.dependencyReads || [])
+              .map(row => String(row?.[0] || '').trim())
+              .filter(Boolean))].sort(),
+          ),
+          mechanicalDependencyRoles,
+          mechanicalPaymentDependencyKeys,
+          mechanicalDependencyScopes,
+        });
+      }
       entry = Object.freeze({
         schemaVersion: 'R9v2MechanicalPoolEntryV1',
         actorId,
@@ -34893,12 +35495,8 @@
       addDependency(normalizedActorId, ['HEALTH', 'OPPORTUNITY']);
     }
 
-    const resourceCosts = declaration?.resourceCosts || {};
-    if (
-      Object.values(resourceCosts).some(rawCost =>
-        Math.max(0, Number.parseFloat(String(rawCost ?? '')) || 0) > 1e-9
-      )
-    ) {
+    const resourceCosts = preview.normalizeSkillCostMap(declaration?.resourceCosts || {});
+    if (resourceCosts.非法项.length || Object.keys(resourceCosts.values).length > 0) {
       addDependency(normalizedActorId, ['RESOURCE']);
     }
     if (
@@ -35252,6 +35850,7 @@
               : ['STATE'];
     return {
       unitId: String(match[1] || '').trim(),
+      field,
       fieldScopes,
     };
   }
@@ -36272,6 +36871,9 @@
         targetInterferenceRateByUnit: new Map(),
         beliefDependencyHashes: new Map(),
         beliefModeSignature: r9v2BeliefModeSignature(beliefState),
+        r9v2MaterializedWorldSnapshot: worldSnapshot,
+        r9v2MaterializedBeliefState: beliefState,
+        r9v2MaterializedActionOpportunity: actionOpportunity,
         r9v2NormalizedContributionStore:
           state.r9v2NormalizedContributionStore,
         r9v2SharedStores: r9v2SharedStoresFor(state),
@@ -36377,6 +36979,9 @@
     pool.opportunityRevision = String(
       state?.revisionState?.opportunityRevision || '',
     ).trim();
+    pool.r9v2MaterializedWorldSnapshot = worldSnapshot;
+    pool.r9v2MaterializedBeliefState = beliefState;
+    pool.r9v2MaterializedActionOpportunity = actionOpportunity;
     pool.factDeltaCount = state.factDeltaRecords.length;
     pool.factDeltas = state.factDeltaRecords;
     if (scope.rebuildAll) {
@@ -36487,13 +37092,7 @@
     if (!unit || !preview.isAlive(unit)) return [];
     return (pool.unitEntries.get(unitId) || []).filter(entry => {
       if (entry.hardInvalid) return false;
-      const affordable = Object.entries(entry.resourceCosts || {})
-        .every(([resource, amount]) => {
-          const available = Object.hasOwn(resourceOverrides, resource)
-            ? Number(resourceOverrides[resource])
-            : preview.readResource(unit, resource);
-          return available + 1e-9 >= Number(amount || 0);
-        });
+      const affordable = resourceCostsAffordable(unit, entry.resourceCosts || {}, resourceOverrides);
       return affordable;
     });
   }
@@ -41859,6 +42458,7 @@
     projectionCache,
     component,
     dependencies = [],
+    outputMode = 'FACTS',
     extra = null,
     extraKey = null,
     build,
@@ -41964,6 +42564,10 @@
     const cacheRequest = projectionCache?.targetKernel === true
       ? r9v2TargetKernelComponentCacheRequest(request)
       : request;
+    const normalizedOutputMode = String(outputMode || 'FACTS').trim().toUpperCase() ===
+      'VECTOR'
+      ? 'VECTOR'
+      : 'FACTS';
     const dependencyCodes = new Set(
       (dependencies || [])
         .map(value => String(value || '').trim().toLowerCase())
@@ -41975,6 +42579,7 @@
       schemaVersion: 'R9v2ProofComponentContextV2',
       targetKernel: projectionCache?.targetKernel === true,
       component,
+      outputMode: normalizedOutputMode,
       actorId: String(cacheRequest?.actorId || '').trim(),
       actorSide: String(cacheRequest?.actorSide || '').trim(),
       unitFingerprints,
@@ -42068,6 +42673,7 @@
           contextPayload.actorId,
           contextPayload.actorSide,
           contextPayload.targetKernel,
+          contextPayload.outputMode,
           contextPayload.objectiveHash || '',
           contextPayload.opportunityContextHash || '',
           contextPayload.resourceContextHash || '',
@@ -44408,6 +45014,164 @@
     return result;
   }
 
+  function r9v2InformationBranchFactDelta({
+    baseWorld,
+    branchWorld,
+    branchEntry,
+    observation,
+    success,
+  }) {
+    const scopesByUnit = new Map();
+    const fieldsByUnit = new Map();
+    const rows = [];
+    let exact = true;
+    let topologyChanged = false;
+    const add = (unitId, scopes, field, contribution = null, sequence = 0) => {
+      const normalizedUnitId = String(unitId || '').trim();
+      if (!normalizedUnitId) {
+        exact = false;
+        return;
+      }
+      const unitScopes = scopesByUnit.get(normalizedUnitId) || new Set();
+      scopes.forEach(scope => unitScopes.add(scope));
+      scopesByUnit.set(normalizedUnitId, unitScopes);
+      const unitFields = fieldsByUnit.get(normalizedUnitId) || new Set();
+      unitFields.add(field);
+      fieldsByUnit.set(normalizedUnitId, unitFields);
+      const evidence = contribution?.evidence || {};
+      rows.push([
+        normalizedUnitId,
+        field,
+        String(contribution?.outcomeKind || '').trim(),
+        String(
+          contribution?.effectInstanceId ||
+          contribution?.sourceEffectId ||
+          contribution?.sourceActionId ||
+          '',
+        ).trim(),
+        String(evidence?.resource || '').trim(),
+        String(
+          evidence?.stateName ||
+          evidence?.state ||
+          evidence?.prototype ||
+          '',
+        ).trim(),
+        Number.isFinite(Number(evidence?.before)) ? Number(evidence.before) : null,
+        Number.isFinite(Number(evidence?.current)) ? Number(evidence.current) : null,
+        Number.isFinite(Number(evidence?.next)) ? Number(evidence.next) : null,
+        Number.isFinite(Number(evidence?.delta))
+          ? Number(evidence.delta)
+          : Number.isFinite(Number(contribution?.expectedDelta))
+            ? Number(contribution.expectedDelta)
+            : null,
+        Number(sequence || 0),
+      ]);
+    };
+    const projectedUnitIds = new Set(
+      (branchEntry?.projectedUnitSnapshots || [])
+        .map(snapshot => String(snapshot?.unitId || '').trim())
+        .filter(Boolean),
+    );
+    if ((branchEntry?.summonDefinitions || []).length) {
+      topologyChanged = true;
+      exact = false;
+    }
+    projectedUnitIds.forEach(projectedUnitId => {
+      const baseUnit = findUnitInWorld(baseWorld, projectedUnitId);
+      const branchUnit = findUnitInWorld(branchWorld, projectedUnitId);
+      if (!baseUnit || !branchUnit) {
+        topologyChanged = true;
+        exact = false;
+        return;
+      }
+      const contributions = (branchEntry?.contributions || [])
+        .map((contribution, sequence) => ({ contribution, sequence }))
+        .filter(({ contribution }) =>
+          String(contribution?.targetId || '').trim() === projectedUnitId
+        );
+      if (!contributions.length) {
+        exact = false;
+        return;
+      }
+      contributions.forEach(({ contribution, sequence }) => {
+        const kind = String(contribution?.outcomeKind || '').trim();
+        if (kind === 'HP_DELTA') {
+          add(projectedUnitId, ['HEALTH'], 'hp', contribution, sequence);
+        } else if (kind === 'SHIELD_DELTA') {
+          add(
+            projectedUnitId,
+            ['HEALTH', 'STATE'],
+            'shield',
+            contribution,
+            sequence,
+          );
+        } else if (kind === 'RESOURCE_OPTION_CHANGED') {
+          const resource = String(contribution?.evidence?.resource || '').trim();
+          add(
+            projectedUnitId,
+            ['RESOURCE'],
+            resource ? `resource:${resource}` : 'resource:*',
+            contribution,
+            sequence,
+          );
+        } else if (kind === 'SCHEDULED_HP_DELTA' || kind === 'STATE_CHANGED') {
+          add(projectedUnitId, ['STATE'], 'state:*', contribution, sequence);
+        } else if (kind === 'ACTION_CANCELLED') {
+          add(
+            projectedUnitId,
+            ['STATE', 'OPPORTUNITY'],
+            'action',
+            contribution,
+            sequence,
+          );
+        } else if (kind === 'NEXT_ACTION_QUALITY_CHANGED') {
+          add(
+            projectedUnitId,
+            ['STATE', 'OPPORTUNITY'],
+            'action-quality',
+            contribution,
+            sequence,
+          );
+        } else if (kind === 'WITHDRAWAL_CONTEST') {
+          add(
+            projectedUnitId,
+            ['OPPORTUNITY'],
+            'opportunity',
+            contribution,
+            sequence,
+          );
+        } else {
+          exact = false;
+        }
+      });
+    });
+    rows.sort((left, right) => {
+      for (let index = 0; index < left.length; index += 1) {
+        const leftValue = String(left[index] ?? '');
+        const rightValue = String(right[index] ?? '');
+        const comparison = r9v2TargetCompareUtf16(leftValue, rightValue);
+        if (comparison) return comparison;
+      }
+      return 0;
+    });
+    return Object.freeze({
+      schemaVersion: 'R9v2InformationBranchFactDeltaV1',
+      exact,
+      topologyChanged,
+      changedUnitIds: Object.freeze([...scopesByUnit.keys()].sort(
+        r9v2TargetCompareUtf16,
+      )),
+      scopesByUnit,
+      fieldsByUnit,
+      revision: JSON.stringify([
+        String(observation?.mechanicKey || '').trim(),
+        String(observation?.adaptationKey || '').trim(),
+        success === true ? 1 : 0,
+        rows,
+      ]),
+    });
+  }
+
   function r9v2InformationProofReusableComponentNamesFromProfile({
     profile,
     request,
@@ -45018,11 +45782,15 @@
         .map(value => String(value || '').trim())
         .filter(Boolean),
     );
-    const changedUnitScopes = r9v2InformationUnitFactScopes({
-      baseWorld: request.visibleWorld,
-      branchWorld,
-      changedUnitIds: changedUnitIdSet,
-    });
+    // Branch mechanical projection already supplies the changed unit set. Use
+    // all scopes conservatively here; route dependency columns still compare
+    // actual values before a node is rebuilt, avoiding whole-unit hashes.
+    const changedUnitScopes = new Map(
+      [...changedUnitIdSet].map(unitId => [
+        unitId,
+        new Set(['HEALTH', 'STATE', 'RESOURCE', 'OPPORTUNITY', 'INVENTORY']),
+      ]),
+    );
     changedUnitScopes.forEach((scopes, unitId) => {
       r9v2Metric(
         branchState,
@@ -45973,6 +46741,3795 @@
     return Object.freeze(next);
   }
 
+  function r9v2DirectFinite(value, code, detail = '') {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      throw new Error(`${code}${detail ? `:${detail}` : ''}`);
+    }
+    return Object.is(number, -0) ? 0 : number;
+  }
+
+  function r9v2DirectKernelApi() {
+    const kernel = root.__LWCS_BATTLE_R9V2_KERNEL__;
+    if (
+      !kernel ||
+      typeof kernel.createSession !== 'function' ||
+      typeof kernel.evaluateAllCandidates !== 'function' ||
+      typeof kernel.materializeProof !== 'function'
+    ) {
+      throw new Error('R9V2_DIRECT_KERNEL_NOT_LOADED');
+    }
+    return kernel;
+  }
+
+  function r9v2DirectComponentForContribution(contribution = {}) {
+    const outcomeKind = String(contribution?.outcomeKind || '')
+      .trim()
+      .toUpperCase();
+    if (['HP_DELTA', 'WITHDRAWAL_CONTEST'].includes(outcomeKind)) {
+      return R9V2_DIRECT_COMPONENT_BY_CODE.S1_DIRECT_STATE;
+    }
+    if (outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+      return R9V2_DIRECT_COMPONENT_BY_CODE.S2_DIRECT_ACTION_POOL;
+    }
+    if (outcomeKind === 'SHIELD_DELTA') {
+      return R9V2_DIRECT_COMPONENT_BY_CODE.S3_DIRECT_STATE;
+    }
+    if ([
+      'SCHEDULED_HP_DELTA',
+      'STATE_SCHEDULED',
+      'SUMMON_WINDOW',
+      'IRREVERSIBLE_ASSET_LOST',
+    ].includes(outcomeKind)) {
+      return outcomeKind === 'IRREVERSIBLE_ASSET_LOST'
+        ? R9V2_DIRECT_COMPONENT_BY_CODE.S5_SCHEDULED_ACTION_POOL
+        : R9V2_DIRECT_COMPONENT_BY_CODE.S5_SCHEDULED_STATE;
+    }
+    if ([
+      'ACTION_CANCELLED',
+      'ACTION_GRANTED',
+      'NEXT_ACTION_QUALITY_CHANGED',
+      'STATE_CHANGED',
+      'RULE_CHANGED',
+      'DEFENSE_CHANGED',
+      'HEAL_DELTA',
+      'CONTROL_CHANGED',
+      'COUNTER_WINDOW',
+    ].includes(outcomeKind)) {
+      return R9V2_DIRECT_COMPONENT_BY_CODE.S3_DIRECT_ACTION_POOL;
+    }
+    throw new Error(
+      `R9V2_DIRECT_UNSUPPORTED_OUTCOME_KIND:${outcomeKind || 'MISSING'}`,
+    );
+  }
+
+  function r9v2DirectObjectiveDelta(
+    request,
+    objectiveContext,
+    trajectoryByTarget,
+    targetId,
+    healthDeltaPP,
+  ) {
+    const before = r9v2TargetObjectiveValue(
+      request,
+      [...trajectoryByTarget.entries()].map(([id, value]) => ({
+        targetId: id,
+        healthDeltaPP: value,
+      })),
+      objectiveContext,
+    );
+    const nextTrajectory = new Map(trajectoryByTarget);
+    nextTrajectory.set(
+      targetId,
+      Number(nextTrajectory.get(targetId) || 0) + healthDeltaPP,
+    );
+    const after = r9v2TargetObjectiveValue(
+      request,
+      [...nextTrajectory.entries()].map(([id, value]) => ({
+        targetId: id,
+        healthDeltaPP: value,
+      })),
+      objectiveContext,
+    );
+    return {
+      value: r9v2DirectFinite(
+        after - before,
+        'R9V2_DIRECT_OBJECTIVE_VALUE_NON_FINITE',
+        targetId,
+      ),
+      nextTrajectory,
+    };
+  }
+
+  function r9v2DirectContributionValue({
+    request,
+    candidateId,
+    contribution,
+    objectiveContext,
+    trajectoryByTarget,
+  }) {
+    const outcomeKind = String(contribution?.outcomeKind || '')
+      .trim()
+      .toUpperCase();
+    const targetId = String(contribution?.targetId || '').trim();
+    if (!targetId) {
+      throw new Error(
+        `R9V2_DIRECT_MISSING_FIELD:${candidateId}:contributions.targetId`,
+      );
+    }
+    if (['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(outcomeKind)) {
+      const expectedDelta = r9v2DirectFinite(
+        contribution?.expectedDelta,
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:contributions.expectedDelta`,
+      );
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      if (!target) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:targetUnit:${targetId}`,
+        );
+      }
+      const hpMax = r9v2DirectFinite(
+        preview.readHpMax(target),
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:targetUnit:${targetId}.hpMax`,
+      );
+      if (!(hpMax > 0)) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:targetUnit:${targetId}.hpMax`,
+        );
+      }
+      const healthDeltaPP = 100 * expectedDelta / hpMax;
+      const objective = r9v2DirectObjectiveDelta(
+        request,
+        objectiveContext,
+        trajectoryByTarget,
+        targetId,
+        healthDeltaPP,
+      );
+      const hasObjectiveConditions = [
+        ...(objectiveContext?.groups?.victory?.conditions || []),
+        ...(objectiveContext?.groups?.defeat?.conditions || []),
+      ].length > 0;
+      const targetSide = r9v2ObjectiveSide(sideOf(request.visibleWorld, target));
+      const fallbackValue = targetSide === objectiveContext?.actorSide
+        ? healthDeltaPP
+        : -healthDeltaPP;
+      return {
+        value: hasObjectiveConditions ? objective.value : fallbackValue,
+        healthDeltaPP,
+        nextTrajectory: objective.nextTrajectory,
+      };
+    }
+    if (outcomeKind === 'SHIELD_DELTA') {
+      const expectedDelta = r9v2DirectFinite(
+        contribution?.expectedDelta,
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:contributions.expectedDelta`,
+      );
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      if (!target) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:targetUnit:${targetId}`,
+        );
+      }
+      const hpMax = r9v2DirectFinite(
+        preview.readHpMax(target),
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:targetUnit:${targetId}.hpMax`,
+      );
+      if (!(hpMax > 0)) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:targetUnit:${targetId}.hpMax`,
+        );
+      }
+      const targetSide = r9v2ObjectiveSide(sideOf(request.visibleWorld, target));
+      return {
+        value: (targetSide === objectiveContext?.actorSide ? 1 : -1) *
+          100 * expectedDelta / hpMax,
+        healthDeltaPP: 0,
+        nextTrajectory: trajectoryByTarget,
+      };
+    }
+    if (outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+      const expectedDelta = r9v2DirectFinite(
+        contribution?.expectedDelta,
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:contributions.expectedDelta`,
+      );
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      if (!target) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:targetUnit:${targetId}`,
+        );
+      }
+      const resource = String(
+        contribution?.evidence?.resource || contribution?.resource || '',
+      ).trim();
+      if (!resource) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:contributions.evidence.resource`,
+        );
+      }
+      const resourceMax = r9v2DirectFinite(
+        preview.readResourceMax(target, resource),
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:targetUnit:${targetId}.resourceMax:${resource}`,
+      );
+      if (!(resourceMax > 0)) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:targetUnit:${targetId}.resourceMax:${resource}`,
+        );
+      }
+      const targetSide = r9v2ObjectiveSide(sideOf(request.visibleWorld, target));
+      return {
+        value: (targetSide === objectiveContext?.actorSide ? 1 : -1) *
+          100 * expectedDelta / resourceMax,
+        healthDeltaPP: 0,
+        nextTrajectory: trajectoryByTarget,
+      };
+    }
+    if (outcomeKind === 'IRREVERSIBLE_ASSET_LOST') {
+      const evidence = contribution?.evidence || {};
+      const rawCost = Object.hasOwn(contribution, 'threatValue')
+        ? contribution.threatValue
+        : evidence?.cost;
+      const cost = r9v2DirectFinite(
+        rawCost,
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:contributions.assetCost`,
+      );
+      const target = findUnitInWorld(request.visibleWorld, targetId);
+      const targetSide = target
+        ? r9v2ObjectiveSide(sideOf(request.visibleWorld, target))
+        : objectiveContext?.actorSide;
+      return {
+        value: (targetSide === objectiveContext?.actorSide ? -1 : 1) *
+          Math.max(0, cost),
+        healthDeltaPP: 0,
+        nextTrajectory: trajectoryByTarget,
+      };
+    }
+    return {
+      value: 0,
+      healthDeltaPP: 0,
+      nextTrajectory: trajectoryByTarget,
+    };
+  }
+
+  function r9v2DirectBranchValue({
+    request,
+    candidateId,
+    contribution,
+    branch,
+    objectiveContext,
+  }) {
+    const outcomeKind = String(contribution?.outcomeKind || '')
+      .trim()
+      .toUpperCase();
+    const targetId = String(contribution?.targetId || '').trim();
+    const target = findUnitInWorld(request.visibleWorld, targetId);
+    if (!target) {
+      throw new Error(
+        `R9V2_DIRECT_MISSING_FIELD:${candidateId}:targetUnit:${targetId}`,
+      );
+    }
+    const delta = r9v2DirectFinite(
+      branch?.delta ?? branch?.healthDelta,
+      'R9V2_DIRECT_MISSING_FIELD',
+      `${candidateId}:outcomeDistribution.delta`,
+    );
+    if (['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(outcomeKind)) {
+      const hpMax = r9v2DirectFinite(
+        preview.readHpMax(target),
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:targetUnit:${targetId}.hpMax`,
+      );
+      const deltaPP = 100 * delta / hpMax;
+      const targetSide = r9v2ObjectiveSide(sideOf(request.visibleWorld, target));
+      const hasObjectiveConditions = [
+        ...(objectiveContext?.groups?.victory?.conditions || []),
+        ...(objectiveContext?.groups?.defeat?.conditions || []),
+      ].length > 0;
+      if (!hasObjectiveConditions) {
+        return targetSide === objectiveContext?.actorSide ? deltaPP : -deltaPP;
+      }
+      return r9v2DirectObjectiveDelta(
+        request,
+        objectiveContext,
+        new Map(),
+        targetId,
+        deltaPP,
+      ).value;
+    }
+    if (outcomeKind === 'SHIELD_DELTA') {
+      const hpMax = r9v2DirectFinite(
+        preview.readHpMax(target),
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:targetUnit:${targetId}.hpMax`,
+      );
+      const targetSide = r9v2ObjectiveSide(sideOf(request.visibleWorld, target));
+      return (targetSide === objectiveContext?.actorSide ? 1 : -1) *
+        100 * delta / hpMax;
+    }
+    if (outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+      const resource = String(
+        contribution?.evidence?.resource || contribution?.resource || '',
+      ).trim();
+      if (!resource) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:outcomeDistribution.resource`,
+        );
+      }
+      const resourceMax = r9v2DirectFinite(
+        preview.readResourceMax(target, resource),
+        'R9V2_DIRECT_MISSING_FIELD',
+        `${candidateId}:targetUnit:${targetId}.resourceMax:${resource}`,
+      );
+      const targetSide = r9v2ObjectiveSide(sideOf(request.visibleWorld, target));
+      return (targetSide === objectiveContext?.actorSide ? 1 : -1) *
+        100 * delta / resourceMax;
+    }
+    return 0;
+  }
+
+  function r9v2DirectExplicitTerminal(contribution = {}, candidateId = '') {
+    const evidence = contribution?.evidence || {};
+    for (const key of ['terminalDeltaHEPP', 'terminalValueHEPP']) {
+      if (!Object.hasOwn(evidence, key)) continue;
+      const value = r9v2DirectFinite(
+        evidence[key],
+        'R9V2_DIRECT_TERMINAL_VALUE_NON_FINITE',
+        `${candidateId}:${key}`,
+      );
+      const identity = String(
+        evidence?.terminalId ||
+        evidence?.terminalIdentity ||
+        contribution?.terminalId ||
+        '',
+      ).trim();
+      if (!identity) {
+        throw new Error(
+          `R9V2_DIRECT_MISSING_FIELD:${candidateId}:evidence.terminalId`,
+        );
+      }
+      return { key, value, identity };
+    }
+    return null;
+  }
+
+  function r9v2DirectInformationColumns(request = {}, candidates = []) {
+    const candidateIds = candidates.map(candidate =>
+      String(candidate?.candidateId || '').trim(),
+    );
+    const result = {
+      candidateInformationGroupRanges: candidateIds.map(() => [0, 0]),
+      informationGroupOutcomeRanges: [],
+      informationOutcomeProbabilities: [],
+      informationOutcomeCandidateRanges: [],
+      informationCandidateIds: [],
+      informationCandidateValuesHEPP: [],
+      audits: candidateIds.map(candidateId => ({
+        candidateId,
+        status: 'UNAVAILABLE',
+        fullS4Claim: false,
+        capability: R9V2_DIRECT_INFORMATION_CAPABILITY,
+        reasonCode: 'DIRECT_PUBLIC_OUTCOME_CANDIDATE_COLUMNS_MISSING',
+      })),
+    };
+    const source = [
+      request?.directPublicOutcomeColumns,
+      request?.publicOutcomeColumns,
+      request?.informationOutcomeColumns,
+      request?.directInformationColumns,
+    ].find(value => value && typeof value === 'object' && !Array.isArray(value));
+    if (!source) return result;
+    const unsafeKey = Object.keys(source).find(key =>
+      /future|route|projected|observer|hidden|private|posterior|scalar/iu.test(key),
+    );
+    if (unsafeKey) {
+      result.audits.forEach(audit => {
+        audit.reasonCode = `DIRECT_PUBLIC_OUTCOME_COLUMN_REJECTED:${unsafeKey}`;
+      });
+      return result;
+    }
+    const required = [
+      'candidateInformationGroupRanges',
+      'informationGroupOutcomeRanges',
+      'informationOutcomeProbabilities',
+      'informationOutcomeCandidateRanges',
+      'informationCandidateIds',
+      'informationCandidateValuesHEPP',
+    ];
+    const missing = required.find(key => !Array.isArray(source[key]));
+    if (missing) {
+      result.audits.forEach(audit => {
+        audit.reasonCode = `DIRECT_PUBLIC_OUTCOME_COLUMN_MISSING:${missing}`;
+      });
+      return result;
+    }
+    const suppliedIds = Array.isArray(source.candidateIds)
+      ? source.candidateIds.map(value => String(value || '').trim())
+      : candidateIds;
+    if (
+      suppliedIds.length !== candidateIds.length ||
+      suppliedIds.some((candidateId, index) => candidateId !== candidateIds[index])
+    ) {
+      result.audits.forEach(audit => {
+        audit.reasonCode = 'DIRECT_PUBLIC_OUTCOME_CANDIDATE_IDS_MISMATCH';
+      });
+      return result;
+    }
+    const sourceGroups = source.informationGroupOutcomeRanges;
+    const sourceProbabilities = source.informationOutcomeProbabilities;
+    const sourceCandidateRanges = source.informationOutcomeCandidateRanges;
+    const sourceInformationIds = source.informationCandidateIds
+      .map(value => String(value || '').trim());
+    const sourceInformationValues = source.informationCandidateValuesHEPP;
+    const candidateIdSet = new Set(candidateIds);
+    const readRange = (value, upper, path) => {
+      if (!Array.isArray(value) || value.length !== 2) {
+        throw new Error(`DIRECT_PUBLIC_OUTCOME_COLUMN_RANGE_MISSING:${path}`);
+      }
+      const start = Number(value[0]);
+      const end = Number(value[1]);
+      if (
+        !Number.isInteger(start) ||
+        !Number.isInteger(end) ||
+        start < 0 ||
+        end < start ||
+        end > upper
+      ) {
+        throw new Error(`DIRECT_PUBLIC_OUTCOME_COLUMN_RANGE_INVALID:${path}`);
+      }
+      return [start, end];
+    };
+    const parsedByCandidate = [];
+    for (let candidateIndex = 0; candidateIndex < candidateIds.length; candidateIndex += 1) {
+      try {
+        const groupRange = readRange(
+          source.candidateInformationGroupRanges[candidateIndex],
+          sourceGroups.length,
+          `candidate:${candidateIds[candidateIndex]}`,
+        );
+        const groups = [];
+        for (let groupIndex = groupRange[0]; groupIndex < groupRange[1]; groupIndex += 1) {
+          const outcomeRange = readRange(
+            sourceGroups[groupIndex],
+            sourceProbabilities.length,
+            `group:${groupIndex}`,
+          );
+          if (outcomeRange[0] === outcomeRange[1]) {
+            throw new Error(`DIRECT_PUBLIC_OUTCOME_COLUMN_EMPTY_GROUP:${groupIndex}`);
+          }
+          const outcomes = [];
+          for (let outcomeIndex = outcomeRange[0]; outcomeIndex < outcomeRange[1]; outcomeIndex += 1) {
+            const probability = r9v2DirectFinite(
+              sourceProbabilities[outcomeIndex],
+              'DIRECT_PUBLIC_OUTCOME_PROBABILITY_NON_FINITE',
+              String(outcomeIndex),
+            );
+            if (probability < 0 || probability > 1) {
+              throw new Error(`DIRECT_PUBLIC_OUTCOME_PROBABILITY_RANGE:${outcomeIndex}`);
+            }
+            const candidateRange = readRange(
+              sourceCandidateRanges[outcomeIndex],
+              sourceInformationIds.length,
+              `outcome:${outcomeIndex}`,
+            );
+            const values = [];
+            const ids = new Set();
+            for (let valueIndex = candidateRange[0]; valueIndex < candidateRange[1]; valueIndex += 1) {
+              const informationCandidateId = sourceInformationIds[valueIndex];
+              if (!candidateIdSet.has(informationCandidateId) || ids.has(informationCandidateId)) {
+                throw new Error(`DIRECT_PUBLIC_OUTCOME_CANDIDATE_INVALID:${outcomeIndex}`);
+              }
+              ids.add(informationCandidateId);
+              values.push({
+                candidateId: informationCandidateId,
+                valueHEPP: r9v2DirectFinite(
+                  sourceInformationValues[valueIndex],
+                  'DIRECT_PUBLIC_OUTCOME_CANDIDATE_VALUE_NON_FINITE',
+                  String(valueIndex),
+                ),
+              });
+            }
+            if (ids.size !== candidateIds.length) {
+              throw new Error(`DIRECT_PUBLIC_OUTCOME_CANDIDATE_SET_INCOMPLETE:${outcomeIndex}`);
+            }
+            outcomes.push({ probability, values });
+          }
+          const probabilityTotal = outcomes.reduce(
+            (sum, outcome) => sum + outcome.probability,
+            0,
+          );
+          if (Math.abs(probabilityTotal - 1) > 1e-9) {
+            throw new Error(`DIRECT_PUBLIC_OUTCOME_PROBABILITY_SUM:${groupIndex}`);
+          }
+          groups.push(outcomes);
+        }
+        parsedByCandidate.push(groups);
+      } catch (error) {
+        parsedByCandidate.push(null);
+        result.audits[candidateIndex].reasonCode = String(
+          error?.message || error,
+        );
+      }
+    }
+    let groupCursor = 0;
+    parsedByCandidate.forEach((groups, candidateIndex) => {
+      if (!groups) {
+        result.candidateInformationGroupRanges[candidateIndex] = [
+          groupCursor,
+          groupCursor,
+        ];
+        return;
+      }
+      const groupStart = result.informationGroupOutcomeRanges.length;
+      groups.forEach(outcomes => {
+        const outcomeStart = result.informationOutcomeProbabilities.length;
+        outcomes.forEach(outcome => {
+          const candidateStart = result.informationCandidateIds.length;
+          result.informationOutcomeProbabilities.push(outcome.probability);
+          outcome.values.forEach(value => {
+            result.informationCandidateIds.push(value.candidateId);
+            result.informationCandidateValuesHEPP.push(value.valueHEPP);
+          });
+          result.informationOutcomeCandidateRanges.push([
+            candidateStart,
+            result.informationCandidateIds.length,
+          ]);
+        });
+        result.informationGroupOutcomeRanges.push([
+          outcomeStart,
+          result.informationOutcomeProbabilities.length,
+        ]);
+      });
+      result.candidateInformationGroupRanges[candidateIndex] = [
+        groupStart,
+        result.informationGroupOutcomeRanges.length,
+      ];
+      groupCursor = result.informationGroupOutcomeRanges.length;
+      result.audits[candidateIndex] = {
+        candidateId: candidateIds[candidateIndex],
+        status: groups.length ? 'DIRECT_PUBLIC_OUTCOME_CANDIDATE_COLUMNS' : 'UNAVAILABLE',
+        fullS4Claim: false,
+        capability: R9V2_DIRECT_INFORMATION_CAPABILITY,
+        reasonCode: groups.length ? 'DIRECT_PUBLIC_OUTCOME_CANDIDATE_COLUMNS_PRESENT' : 'DIRECT_PUBLIC_OUTCOME_CANDIDATE_COLUMNS_EMPTY',
+      };
+    });
+    return result;
+  }
+
+  function r9v2DirectCandidateData({
+    request,
+    candidate,
+    projectionContext,
+    objectiveContext,
+  }) {
+    const candidateId = String(candidate?.candidateId || '').trim();
+    const declaration = cloneValue(candidate?.declaration || {});
+    const paymentMode = candidate?.resourcePotentialOnly === true
+      ? 'EXTERNAL_TIMELINE'
+      : 'FORMAL';
+    const actionId = String(
+      declaration?.actionId || candidateId,
+    ).trim();
+    const targetSet = [
+      ...(Array.isArray(declaration?.targetIds) ? declaration.targetIds : []),
+    ].map(value => String(value || '').trim()).filter(Boolean);
+    const row = {
+      candidateId,
+      actionId,
+      actorId: String(request.actorId || '').trim(),
+      targetSet: targetSet.length ? [...new Set(targetSet)] : [String(request.actorId || '').trim()],
+      paymentMode,
+      dependencyTokens: [
+        `candidate:${candidateId}`,
+        `actor:${String(request.actorId || '').trim()}`,
+        ...targetSet.map(targetId => `unit:${targetId}`),
+      ].filter(Boolean),
+      mechanicalSource: 'PREVIEW_ATOMIC_FACTS_V1',
+      legal: true,
+      hardExclusionCodes: [],
+    };
+    const data = {
+      candidateId,
+      candidate: cloneValue(candidate),
+      declaration,
+      row,
+      basis: null,
+      evaluation: null,
+      contributions: [],
+      outcomeRows: [],
+      directFacts: [],
+      scheduledFacts: [],
+      directFactRange: [0, 0],
+      scheduledFactRange: [0, 0],
+      pareto: {
+        worstTailUtilityHEPP: 0,
+        survivalUtilityHEPP: 0,
+        assetReserveHEPP: 0,
+        discardedOverkillPP: 0,
+      },
+      status: 'READY',
+      auditReason: '',
+    };
+    const reject = (code, error = null) => {
+      row.legal = false;
+      row.hardExclusionCodes = [String(code || 'R9V2_DIRECT_INVALID')];
+      data.status = 'HARD_INVALID';
+      data.auditReason = String(error?.message || error || code || '').trim();
+      return data;
+    };
+    try {
+      if (!candidateId) throw new Error('R9V2_DIRECT_MISSING_FIELD:candidateId');
+      if (!row.actorId) throw new Error('R9V2_DIRECT_MISSING_FIELD:actorId');
+      data.basis = preview.compileMechanicalBasis({
+        identity: `${row.actorId}:${candidateId}:${paymentMode}`,
+        actorId: row.actorId,
+        declaration,
+        paymentMode,
+        actionFingerprint: String(
+          candidate?.declarationFingerprint || `${candidateId}:direct`,
+        ).trim(),
+      });
+      if (Array.isArray(data.basis?.unsupportedReasons) && data.basis.unsupportedReasons.length) {
+        throw new Error(
+          `R9V2_DIRECT_BASIS_UNSUPPORTED:${data.basis.unsupportedReasons.join('|')}`,
+        );
+      }
+      data.evaluation = preview.evaluateMechanicalBasis({
+        basis: data.basis,
+        worldSnapshot: request.visibleWorld,
+        actorId: row.actorId,
+        beliefState: request.beliefState,
+        battleIntent: request.battleIntent,
+        actionOpportunity: request.actionOpportunity,
+        revision: String(
+          request?.evaluationContext?.worldRevision ||
+          request?.evaluationContext?.visibleWorldRevision ||
+          `direct:${candidateId}`,
+        ).trim(),
+        mechanicalProjectionContext: projectionContext,
+        captureProjectedUnits: false,
+        captureDependencyKeys: true,
+      });
+      const dependencyReads = Array.isArray(data.evaluation?.dependencyReads)
+        ? data.evaluation.dependencyReads
+          .map(read => 'preview:' + String(read?.[0] || '').trim())
+          .filter(token => token !== 'preview:')
+        : [];
+      row.dependencyTokens = [
+        ...new Set([...row.dependencyTokens, ...dependencyReads]),
+      ];
+      data.contributions = Array.isArray(data.evaluation?.contributions)
+        ? data.evaluation.contributions.map(contribution => cloneValue(contribution))
+        : [];
+      const trajectoryByTarget = new Map();
+      let expectedValueTotal = 0;
+      let tailCorrection = 0;
+      let actorHealthDeltaPP = 0;
+      let actorHealthTailPP = 0;
+      let assetReserve = 0;
+      data.contributions.forEach((contribution, contributionIndex) => {
+        const component = r9v2DirectComponentForContribution(contribution);
+        const contributionValue = r9v2DirectContributionValue({
+          request,
+          candidateId,
+          contribution,
+          objectiveContext,
+          trajectoryByTarget,
+        });
+        const targetId = String(contribution?.targetId || '').trim();
+        const outcomeKind = String(contribution?.outcomeKind || '').trim().toUpperCase();
+        const sourceEventId = String(
+          contribution?.windowId ||
+          contribution?.sourceActionId ||
+          actionId ||
+          candidateId,
+        ).trim();
+        const sourceFactId = `${candidateId}:atomic:${contributionIndex}:${outcomeKind || 'FACT'}`;
+        const sequence = Number.isFinite(Number(contribution?.sequence))
+          ? Number(contribution.sequence)
+          : contributionIndex;
+        const fact = {
+          componentCode: component.code,
+          causalOwnerType: component.owner,
+          sourceEventId: sourceEventId || `${candidateId}:event`,
+          sourceFactId,
+          targetUnitId: targetId,
+          sequence,
+          valueHEPP: r9v2DirectFinite(
+            contributionValue.value,
+            'R9V2_DIRECT_FACT_VALUE_NON_FINITE',
+            sourceFactId,
+          ),
+          sourceOutcomeKind: outcomeKind,
+        };
+        if (component.domain === 'S5') data.scheduledFacts.push(fact);
+        else data.directFacts.push(fact);
+        expectedValueTotal += fact.valueHEPP;
+        if (contributionValue.healthDeltaPP) {
+          trajectoryByTarget.set(
+            targetId,
+            Number(trajectoryByTarget.get(targetId) || 0) + contributionValue.healthDeltaPP,
+          );
+          const target = findUnitInWorld(request.visibleWorld, targetId);
+          const targetSide = r9v2ObjectiveSide(sideOf(request.visibleWorld, target));
+          if (targetSide === objectiveContext?.actorSide) {
+            actorHealthDeltaPP += contributionValue.healthDeltaPP;
+          }
+          const distribution = Array.isArray(contribution?.evidence?.outcomeDistribution)
+            ? contribution.evidence.outcomeDistribution
+            : [];
+          if (targetSide === objectiveContext?.actorSide && distribution.length) {
+            const hpMax = Math.max(1, preview.readHpMax(target));
+            actorHealthTailPP += Math.min(
+              ...distribution.map(branch =>
+                100 * r9v2DirectFinite(
+                  branch?.delta,
+                  'R9V2_DIRECT_MISSING_FIELD',
+                  `${candidateId}:outcomeDistribution.delta`,
+                ) / hpMax,
+              ),
+            );
+          }
+        }
+        if (['SHIELD_DELTA', 'IRREVERSIBLE_ASSET_LOST'].includes(outcomeKind)) {
+          assetReserve += fact.valueHEPP;
+        }
+        const distribution = Array.isArray(contribution?.evidence?.outcomeDistribution)
+          ? contribution.evidence.outcomeDistribution
+          : [];
+        distribution.forEach((branch, branchIndex) => {
+          const probability = r9v2DirectFinite(
+            branch?.probability,
+            'R9V2_DIRECT_OUTCOME_PROBABILITY_NON_FINITE',
+            `${candidateId}:${contributionIndex}:${branchIndex}`,
+          );
+          if (probability < 0 || probability > 1) {
+            throw new Error(
+              `R9V2_DIRECT_OUTCOME_PROBABILITY_RANGE:${candidateId}:${contributionIndex}:${branchIndex}`,
+            );
+          }
+          data.outcomeRows.push({
+            candidateId,
+            contributionIndex,
+            sourceFactId,
+            outcomeKind,
+            branchIndex,
+            probability,
+            branch: cloneValue(branch),
+          });
+        });
+        const branchValueKinds = [
+          'HP_DELTA',
+          'SCHEDULED_HP_DELTA',
+          'SHIELD_DELTA',
+          'RESOURCE_OPTION_CHANGED',
+        ];
+        const completeNumericDistribution = distribution.length > 0 &&
+          distribution.every(branch =>
+            Number.isFinite(Number(branch?.delta)) ||
+            Number.isFinite(Number(branch?.healthDelta)),
+          );
+        if (distribution.length && branchValueKinds.includes(outcomeKind) && completeNumericDistribution) {
+          const branchValues = distribution.map(branch =>
+            r9v2DirectBranchValue({
+              request,
+              candidateId,
+              contribution,
+              branch,
+              objectiveContext,
+            }),
+          );
+          tailCorrection += Math.min(...branchValues) - fact.valueHEPP;
+        }
+        const terminal = r9v2DirectExplicitTerminal(contribution, candidateId);
+        if (terminal) {
+          const terminalFactId = `${candidateId}:terminal:${terminal.identity}:${contributionIndex}`;
+          const terminalFact = {
+            componentCode: R9V2_DIRECT_COMPONENT_BY_CODE.S1_DIRECT_TERMINAL.code,
+            causalOwnerType: R9V2_DIRECT_COMPONENT_BY_CODE.S1_DIRECT_TERMINAL.owner,
+            sourceEventId: sourceEventId || `${candidateId}:event`,
+            sourceFactId: terminalFactId,
+            targetUnitId: targetId,
+            sequence: sequence + 0.0001,
+            valueHEPP: terminal.value,
+            sourceOutcomeKind: `${outcomeKind}:TERMINAL`,
+          };
+          data.directFacts.push(terminalFact);
+          expectedValueTotal += terminalFact.valueHEPP;
+        }
+      });
+      const trajectoryRows = [...trajectoryByTarget.entries()].map(([targetId, healthDeltaPP]) => ({
+        targetId,
+        healthDeltaPP,
+      }));
+      data.pareto = {
+        worstTailUtilityHEPP: r9v2DirectFinite(
+          expectedValueTotal + tailCorrection,
+          'R9V2_DIRECT_PARETO_NON_FINITE',
+          `${candidateId}:worstTailUtilityHEPP`,
+        ),
+        survivalUtilityHEPP: r9v2DirectFinite(
+          actorHealthDeltaPP || actorHealthTailPP,
+          'R9V2_DIRECT_PARETO_NON_FINITE',
+          `${candidateId}:survivalUtilityHEPP`,
+        ),
+        assetReserveHEPP: r9v2DirectFinite(
+          assetReserve,
+          'R9V2_DIRECT_PARETO_NON_FINITE',
+          `${candidateId}:assetReserveHEPP`,
+        ),
+        discardedOverkillPP: r9v2DirectFinite(
+          r9v2TargetDiscardedOverkillPP(request, trajectoryRows, objectiveContext),
+          'R9V2_DIRECT_PARETO_NON_FINITE',
+          `${candidateId}:discardedOverkillPP`,
+        ),
+      };
+      data.directFactRange = [0, data.directFacts.length];
+      data.scheduledFactRange = [0, data.scheduledFacts.length];
+      data.evaluation = {
+        ...data.evaluation,
+        contributions: data.contributions,
+        changedUnitIds: cloneValue(data.evaluation?.changedUnitIds || []),
+        summonDefinitions: cloneValue(data.evaluation?.summonDefinitions || []),
+        scheduledEvents: cloneValue(data.evaluation?.scheduledEvents || []),
+        dependencyReads: cloneValue(data.evaluation?.dependencyReads || []),
+      };
+      return data;
+    } catch (error) {
+      return reject(
+        `R9V2_DIRECT_PREVIEW_ERROR:${String(error?.message || error).trim()}`,
+        error,
+      );
+    }
+  }
+
+  function r9v2DirectBuildColumns({
+    request,
+    candidates,
+    candidateData,
+  }) {
+    const candidateIds = candidates.map(candidate =>
+      String(candidate?.candidateId || '').trim(),
+    );
+    const sourceEventIds = [];
+    const sourceFactIds = [];
+    const targetUnitIds = [];
+    const sourceEventIndex = new Map();
+    const sourceFactIndex = new Map();
+    const targetUnitIndex = new Map();
+    const addCatalog = (map, values, value) => {
+      const normalized = String(value || '').trim();
+      if (!normalized) throw new Error('R9V2_DIRECT_MISSING_FIELD:column.identity');
+      if (!map.has(normalized)) {
+        map.set(normalized, values.length);
+        values.push(normalized);
+      }
+      return map.get(normalized);
+    };
+    const allFacts = [];
+    const candidateFactRanges = [];
+    const directFactRanges = [];
+    const scheduledFactRanges = [];
+    let factCursor = 0;
+    let directFactCursor = 0;
+    let scheduledFactCursor = 0;
+    candidateData.forEach(data => {
+      const facts = [...data.directFacts, ...data.scheduledFacts];
+      facts.forEach(fact => {
+        allFacts.push(fact);
+      });
+      candidateFactRanges.push([factCursor, factCursor + facts.length]);
+      factCursor += facts.length;
+      directFactRanges.push([
+        directFactCursor,
+        directFactCursor + data.directFacts.length,
+      ]);
+      scheduledFactRanges.push([
+        scheduledFactCursor,
+        scheduledFactCursor + data.scheduledFacts.length,
+      ]);
+      directFactCursor += data.directFacts.length;
+      scheduledFactCursor += data.scheduledFacts.length;
+    });
+    const componentCodes = R9V2_DIRECT_COMPONENT_CATALOG.map(component => component.code);
+    const componentCodeIndex = new Map(componentCodes.map((code, index) => [code, index]));
+    const columns = {
+      schemaVersion: 'BehaviorPoolColumnsV1',
+      candidateIds,
+      componentCodes,
+      componentSemanticDomainCodes: R9V2_DIRECT_COMPONENT_CATALOG.map(component => component.domain),
+      componentOwnerTypeCodes: R9V2_DIRECT_COMPONENT_CATALOG.map(component => component.ownerCode),
+      sourceEventIds,
+      sourceFactIds,
+      targetUnitIds,
+      candidateFactRanges,
+      componentCodeIndex: [],
+      causalOwnerTypeCode: [],
+      sourceEventIndex: [],
+      sourceFactIndex: [],
+      targetUnitIndex: [],
+      sequence: [],
+      valueHEPP: [],
+      paretoColumns: {
+        worstTailUtilityHEPP: candidateData.map(data => data.pareto.worstTailUtilityHEPP),
+        survivalUtilityHEPP: candidateData.map(data => data.pareto.survivalUtilityHEPP),
+        assetReserveHEPP: candidateData.map(data => data.pareto.assetReserveHEPP),
+        discardedOverkillPP: candidateData.map(data => data.pareto.discardedOverkillPP),
+      },
+    };
+    allFacts.forEach(fact => {
+      const component = R9V2_DIRECT_COMPONENT_BY_CODE[fact.componentCode];
+      if (!component) throw new Error(`R9V2_DIRECT_COMPONENT_UNKNOWN:${fact.componentCode}`);
+      columns.componentCodeIndex.push(componentCodeIndex.get(fact.componentCode));
+      columns.causalOwnerTypeCode.push(component.ownerCode);
+      columns.sourceEventIndex.push(addCatalog(sourceEventIndex, sourceEventIds, fact.sourceEventId));
+      columns.sourceFactIndex.push(addCatalog(sourceFactIndex, sourceFactIds, fact.sourceFactId));
+      columns.targetUnitIndex.push(addCatalog(targetUnitIndex, targetUnitIds, fact.targetUnitId));
+      columns.sequence.push(r9v2DirectFinite(fact.sequence, 'R9V2_DIRECT_SEQUENCE_NON_FINITE', fact.sourceFactId));
+      columns.valueHEPP.push(r9v2DirectFinite(fact.valueHEPP, 'R9V2_DIRECT_FACT_VALUE_NON_FINITE', fact.sourceFactId));
+    });
+    const information = r9v2DirectInformationColumns(request, candidates);
+    Object.assign(columns, {
+      candidateInformationGroupRanges: information.candidateInformationGroupRanges,
+      informationGroupOutcomeRanges: information.informationGroupOutcomeRanges,
+      informationOutcomeProbabilities: information.informationOutcomeProbabilities,
+      informationOutcomeCandidateRanges: information.informationOutcomeCandidateRanges,
+      informationCandidateIds: information.informationCandidateIds,
+      informationCandidateValuesHEPP: information.informationCandidateValuesHEPP,
+    });
+    return {
+      columns,
+      informationAudits: information.audits,
+      allFacts,
+      directFacts: candidateData.flatMap(data => data.directFacts),
+      scheduledFacts: candidateData.flatMap(data => data.scheduledFacts),
+      rawContributionsByCandidate: candidateData.map(data => data.contributions),
+      outcomeRowsByCandidate: candidateData.map(data => data.outcomeRows),
+      directFactRanges,
+      scheduledFactRanges,
+    };
+  }
+
+  function r9v2DirectAtomicNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? (Object.is(number, -0) ? 0 : number) : null;
+  }
+
+  function r9v2DirectAtomicFirstNumber(values = []) {
+    for (const value of values) {
+      const number = r9v2DirectAtomicNumber(value);
+      if (number !== null) return number;
+    }
+    return null;
+  }
+
+  function r9v2DirectAtomicUnit(worldSnapshot, wantedId) {
+    const wanted = String(wantedId || '').trim();
+    if (!wanted) return null;
+    return worldEntries(worldSnapshot).find(entry =>
+      String(preview.unitId(entry?.unit) || '').trim() === wanted
+    )?.unit || null;
+  }
+
+  function r9v2DirectAtomicAddReason(data, reasonCode, detail = '') {
+    if (!data || !reasonCode) return;
+    if (!data.hardExclusionCodes.includes(reasonCode)) {
+      data.hardExclusionCodes.push(reasonCode);
+    }
+    if (detail) data.auditDetails.push(String(detail).trim());
+  }
+
+  function r9v2DirectAtomicOpportunity(request, actor, visibleWorld) {
+    const supplied = request?.actionOpportunity &&
+      typeof request.actionOpportunity === 'object'
+      ? request.actionOpportunity
+      : null;
+    const actual = actor?.__battleRuntime?.naturalOpportunity &&
+      typeof actor.__battleRuntime.naturalOpportunity === 'object'
+      ? actor.__battleRuntime.naturalOpportunity
+      : null;
+    const invalid = (reason, detail = '') => ({
+      valid: false,
+      reason,
+      detail,
+      raw: supplied || actual || null,
+      opportunityId: '',
+      revision: '',
+      targetIds: [],
+    });
+    if (!supplied && !actual) {
+      return invalid('ACTION_OPPORTUNITY_MISSING', 'current');
+    }
+    const opportunityRows = Array.isArray(
+      request?.evaluationContext?.opportunitySnapshot,
+    )
+      ? request.evaluationContext.opportunitySnapshot
+      : Array.isArray(request?.evaluationContext?.opportunitySnapshot?.opportunities)
+        ? request.evaluationContext.opportunitySnapshot.opportunities
+        : Array.isArray(request?.runtimeSnapshot?.opportunitySnapshot)
+          ? request.runtimeSnapshot.opportunitySnapshot
+          : Array.isArray(request?.runtimeSnapshot?.opportunitySnapshot?.opportunities)
+            ? request.runtimeSnapshot.opportunitySnapshot.opportunities
+            : [];
+    const evaluationOpportunityRows = Array.isArray(
+      request?.evaluationContext?.opportunitySnapshot,
+    )
+      ? request.evaluationContext.opportunitySnapshot
+      : Array.isArray(request?.evaluationContext?.opportunitySnapshot?.opportunities)
+        ? request.evaluationContext.opportunitySnapshot.opportunities
+        : [];
+    const runtimeOpportunityRows = Array.isArray(
+      request?.runtimeSnapshot?.opportunitySnapshot,
+    )
+      ? request.runtimeSnapshot.opportunitySnapshot
+      : Array.isArray(request?.runtimeSnapshot?.opportunitySnapshot?.opportunities)
+        ? request.runtimeSnapshot.opportunitySnapshot.opportunities
+        : [];
+    const suppliedIdentity = String(
+      supplied?.opportunityId || supplied?.id || '',
+    ).trim();
+    const actualIdentity = String(
+      actual?.opportunityId || actual?.id || '',
+    ).trim();
+    const currentIdentity = suppliedIdentity || actualIdentity;
+    if (!currentIdentity) {
+      return invalid('ACTION_OPPORTUNITY_IDENTITY_MISSING', 'opportunityId');
+    }
+    const currentActual = actualIdentity && actualIdentity === currentIdentity
+      ? actual
+      : null;
+    const findSnapshotRow = rows => rows.find(row => {
+      const rowOpportunityId = String(
+        row?.opportunityId || row?.id || '',
+      ).trim();
+      return !!rowOpportunityId && rowOpportunityId === currentIdentity;
+    }) || null;
+    const evaluationSnapshot = findSnapshotRow(evaluationOpportunityRows);
+    const runtimeSnapshot = findSnapshotRow(runtimeOpportunityRows);
+    const snapshot = evaluationSnapshot || runtimeSnapshot;
+    function readTextConsistent(values, uppercase = false) {
+      let selected;
+      let hasValue = false;
+      for (const value of values) {
+        if (value === undefined || value === null || value === '') continue;
+        const text = String(value).trim();
+        if (!text) return { invalid: true };
+        const normalized = uppercase ? text.toUpperCase() : text;
+        if (!hasValue) {
+          selected = normalized;
+          hasValue = true;
+          continue;
+        }
+        if (selected !== normalized) {
+          return { conflict: true };
+        }
+      }
+      return { value: hasValue ? selected : undefined };
+    }
+    function readNumberConsistent(values) {
+      let selected;
+      let hasValue = false;
+      for (const value of values) {
+        if (value === undefined || value === null || value === '') continue;
+        const normalized = Number(value);
+        if (!Number.isFinite(normalized)) return { invalid: true };
+        if (!hasValue) {
+          selected = normalized;
+          hasValue = true;
+          continue;
+        }
+        if (selected !== normalized) return { conflict: true };
+      }
+      return { value: hasValue ? selected : undefined };
+    }
+    function readTargetsConsistent(values) {
+      let selected;
+      let hasValue = false;
+      for (const value of values) {
+        if (!Array.isArray(value)) continue;
+        const normalized = [];
+        for (const item of value) {
+          const text = String(item ?? '').trim();
+          if (!text || normalized.includes(text)) continue;
+          normalized.push(text);
+        }
+        normalized.sort(compareUtf16);
+        if (!hasValue) {
+          selected = normalized;
+          hasValue = true;
+          continue;
+        }
+        if (JSON.stringify(selected) !== JSON.stringify(normalized)) {
+          return { conflict: true };
+        }
+      }
+      return { value: hasValue ? selected : undefined };
+    }
+    const opportunityIdValue = readTextConsistent([
+      currentActual?.opportunityId,
+      currentActual?.id,
+      evaluationSnapshot?.opportunityId,
+      evaluationSnapshot?.id,
+      runtimeSnapshot?.opportunityId,
+      runtimeSnapshot?.id,
+      supplied?.opportunityId,
+      supplied?.id,
+    ]);
+    const grantIdValue = readTextConsistent([
+      currentActual?.grantId,
+      evaluationSnapshot?.grantId,
+      runtimeSnapshot?.grantId,
+      supplied?.grantId,
+    ]);
+    const typeValue = readTextConsistent([
+      currentActual?.opportunityType,
+      currentActual?.type,
+      currentActual?.grantType,
+      currentActual?.kind,
+      evaluationSnapshot?.opportunityType,
+      evaluationSnapshot?.type,
+      evaluationSnapshot?.grantType,
+      evaluationSnapshot?.kind,
+      runtimeSnapshot?.opportunityType,
+      runtimeSnapshot?.type,
+      runtimeSnapshot?.grantType,
+      runtimeSnapshot?.kind,
+      supplied?.opportunityType,
+      supplied?.type,
+      supplied?.grantType,
+      supplied?.kind,
+    ], true);
+    const ownerValue = readTextConsistent([
+      currentActual?.ownerId,
+      currentActual?.actorId,
+      currentActual?.characterId,
+      evaluationSnapshot?.ownerId,
+      evaluationSnapshot?.actorId,
+      evaluationSnapshot?.characterId,
+      runtimeSnapshot?.ownerId,
+      runtimeSnapshot?.actorId,
+      runtimeSnapshot?.characterId,
+      supplied?.ownerId,
+      supplied?.actorId,
+      supplied?.characterId,
+    ]);
+    const statusValue = readTextConsistent([
+      currentActual?.status,
+      currentActual?.state,
+      evaluationSnapshot?.status,
+      evaluationSnapshot?.state,
+      runtimeSnapshot?.status,
+      runtimeSnapshot?.state,
+      supplied?.status,
+      supplied?.state,
+    ], true);
+    const revisionValue = readTextConsistent([
+      currentActual?.opportunityRevision,
+      currentActual?.revision,
+      currentActual?.windowRevision,
+      evaluationSnapshot?.opportunityRevision,
+      evaluationSnapshot?.revision,
+      evaluationSnapshot?.windowRevision,
+      runtimeSnapshot?.opportunityRevision,
+      runtimeSnapshot?.revision,
+      runtimeSnapshot?.windowRevision,
+      supplied?.opportunityRevision,
+      supplied?.revision,
+      supplied?.windowRevision,
+      request?.evaluationContext?.opportunityRevision,
+      request?.runtimeSnapshot?.opportunityRevision,
+      request?.opportunityRevision,
+    ]);
+    const sequenceValue = readNumberConsistent([
+      currentActual?.sequence,
+      currentActual?.opportunitySequence,
+      currentActual?.createdAtSequence,
+      evaluationSnapshot?.sequence,
+      evaluationSnapshot?.opportunitySequence,
+      evaluationSnapshot?.createdAtSequence,
+      runtimeSnapshot?.sequence,
+      runtimeSnapshot?.opportunitySequence,
+      runtimeSnapshot?.createdAtSequence,
+      supplied?.sequence,
+      supplied?.opportunitySequence,
+      supplied?.createdAtSequence,
+    ]);
+    const expiresAtSequenceValue = readNumberConsistent([
+      currentActual?.expiresAtSequence,
+      currentActual?.expiresAt,
+      evaluationSnapshot?.expiresAtSequence,
+      evaluationSnapshot?.expiresAt,
+      runtimeSnapshot?.expiresAtSequence,
+      runtimeSnapshot?.expiresAt,
+      supplied?.expiresAtSequence,
+      supplied?.expiresAt,
+    ]);
+    const roundValue = readNumberConsistent([
+      currentActual?.round,
+      currentActual?.回合,
+      currentActual?.currentRound,
+      evaluationSnapshot?.round,
+      evaluationSnapshot?.回合,
+      evaluationSnapshot?.currentRound,
+      runtimeSnapshot?.round,
+      runtimeSnapshot?.回合,
+      runtimeSnapshot?.currentRound,
+      supplied?.round,
+      supplied?.回合,
+      supplied?.currentRound,
+    ]);
+    const windowValue = readTextConsistent([
+      currentActual?.windowId,
+      currentActual?.windowKey,
+      currentActual?.window,
+      currentActual?.opportunityWindow,
+      evaluationSnapshot?.windowId,
+      evaluationSnapshot?.windowKey,
+      evaluationSnapshot?.window,
+      evaluationSnapshot?.opportunityWindow,
+      runtimeSnapshot?.windowId,
+      runtimeSnapshot?.windowKey,
+      runtimeSnapshot?.window,
+      runtimeSnapshot?.opportunityWindow,
+      supplied?.windowId,
+      supplied?.windowKey,
+      supplied?.window,
+      supplied?.opportunityWindow,
+    ]);
+    const roleValue = readTextConsistent([
+      currentActual?.role,
+      currentActual?.opportunityRole,
+      currentActual?.actionRole,
+      evaluationSnapshot?.role,
+      evaluationSnapshot?.opportunityRole,
+      evaluationSnapshot?.actionRole,
+      runtimeSnapshot?.role,
+      runtimeSnapshot?.opportunityRole,
+      runtimeSnapshot?.actionRole,
+      supplied?.role,
+      supplied?.opportunityRole,
+      supplied?.actionRole,
+    ], true);
+    const sourceValue = readTextConsistent([
+      currentActual?.source,
+      currentActual?.sourceType,
+      currentActual?.sourceEventId,
+      evaluationSnapshot?.source,
+      evaluationSnapshot?.sourceType,
+      evaluationSnapshot?.sourceEventId,
+      runtimeSnapshot?.source,
+      runtimeSnapshot?.sourceType,
+      runtimeSnapshot?.sourceEventId,
+      supplied?.source,
+      supplied?.sourceType,
+      supplied?.sourceEventId,
+    ]);
+    const sourceActorValue = readTextConsistent([
+      currentActual?.sourceActorId,
+      currentActual?.sourceOwnerId,
+      evaluationSnapshot?.sourceActorId,
+      evaluationSnapshot?.sourceOwnerId,
+      runtimeSnapshot?.sourceActorId,
+      runtimeSnapshot?.sourceOwnerId,
+      supplied?.sourceActorId,
+      supplied?.sourceOwnerId,
+    ]);
+    const sourceActionValue = readTextConsistent([
+      currentActual?.sourceActionId,
+      currentActual?.sourceAction,
+      evaluationSnapshot?.sourceActionId,
+      evaluationSnapshot?.sourceAction,
+      runtimeSnapshot?.sourceActionId,
+      runtimeSnapshot?.sourceAction,
+      supplied?.sourceActionId,
+      supplied?.sourceAction,
+    ]);
+    const targetValues = [
+      currentActual?.validTargetIds,
+      currentActual?.targetIds,
+      currentActual?.targetBinding?.validTargetIds,
+      currentActual?.targetBinding?.targetIds,
+      evaluationSnapshot?.validTargetIds,
+      evaluationSnapshot?.targetIds,
+      evaluationSnapshot?.targetBinding?.validTargetIds,
+      evaluationSnapshot?.targetBinding?.targetIds,
+      runtimeSnapshot?.validTargetIds,
+      runtimeSnapshot?.targetIds,
+      runtimeSnapshot?.targetBinding?.validTargetIds,
+      runtimeSnapshot?.targetBinding?.targetIds,
+      supplied?.validTargetIds,
+      supplied?.targetIds,
+      supplied?.targetBinding?.validTargetIds,
+      supplied?.targetBinding?.targetIds,
+    ];
+    const targetValue = readTargetsConsistent(targetValues);
+    if (opportunityIdValue.conflict) return invalid('ACTION_OPPORTUNITY_OPPORTUNITYID_CONFLICT', 'opportunityId');
+    if (opportunityIdValue.invalid) return invalid('ACTION_OPPORTUNITY_OPPORTUNITYID_INVALID', 'opportunityId');
+    if (grantIdValue.conflict) return invalid('ACTION_OPPORTUNITY_GRANTID_CONFLICT', 'grantId');
+    if (grantIdValue.invalid) return invalid('ACTION_OPPORTUNITY_GRANTID_INVALID', 'grantId');
+    if (typeValue.conflict) return invalid('ACTION_OPPORTUNITY_GRANTTYPE_CONFLICT', 'grantType');
+    if (typeValue.invalid) return invalid('ACTION_OPPORTUNITY_GRANTTYPE_INVALID', 'grantType');
+    if (ownerValue.conflict) return invalid('ACTION_OPPORTUNITY_OWNERID_CONFLICT', 'ownerId');
+    if (ownerValue.invalid) return invalid('ACTION_OPPORTUNITY_OWNERID_INVALID', 'ownerId');
+    if (statusValue.conflict) return invalid('ACTION_OPPORTUNITY_STATUS_CONFLICT', 'status');
+    if (statusValue.invalid) return invalid('ACTION_OPPORTUNITY_STATUS_INVALID', 'status');
+    if (revisionValue.conflict) return invalid('ACTION_OPPORTUNITY_REVISION_CONFLICT', 'revision');
+    if (revisionValue.invalid) return invalid('ACTION_OPPORTUNITY_REVISION_INVALID', 'revision');
+    if (sequenceValue.conflict) return invalid('ACTION_OPPORTUNITY_SEQUENCE_CONFLICT', 'sequence');
+    if (sequenceValue.invalid) return invalid('ACTION_OPPORTUNITY_SEQUENCE_INVALID', 'sequence');
+    if (expiresAtSequenceValue.conflict) return invalid('ACTION_OPPORTUNITY_EXPIRESATSEQUENCE_CONFLICT', 'expiresAtSequence');
+    if (expiresAtSequenceValue.invalid) return invalid('ACTION_OPPORTUNITY_EXPIRESATSEQUENCE_INVALID', 'expiresAtSequence');
+    if (roundValue.conflict) return invalid('ACTION_OPPORTUNITY_ROUND_CONFLICT', 'round');
+    if (roundValue.invalid) return invalid('ACTION_OPPORTUNITY_ROUND_INVALID', 'round');
+    if (windowValue.conflict) return invalid('ACTION_OPPORTUNITY_WINDOWID_CONFLICT', 'windowId');
+    if (windowValue.invalid) return invalid('ACTION_OPPORTUNITY_WINDOWID_INVALID', 'windowId');
+    if (roleValue.conflict) return invalid('ACTION_OPPORTUNITY_ROLE_CONFLICT', 'role');
+    if (roleValue.invalid) return invalid('ACTION_OPPORTUNITY_ROLE_INVALID', 'role');
+    if (sourceValue.conflict) return invalid('ACTION_OPPORTUNITY_SOURCE_CONFLICT', 'source');
+    if (sourceValue.invalid) return invalid('ACTION_OPPORTUNITY_SOURCE_INVALID', 'source');
+    if (sourceActorValue.conflict) return invalid('ACTION_OPPORTUNITY_SOURCEACTORID_CONFLICT', 'sourceActorId');
+    if (sourceActorValue.invalid) return invalid('ACTION_OPPORTUNITY_SOURCEACTORID_INVALID', 'sourceActorId');
+    if (sourceActionValue.conflict) return invalid('ACTION_OPPORTUNITY_SOURCEACTIONID_CONFLICT', 'sourceActionId');
+    if (sourceActionValue.invalid) return invalid('ACTION_OPPORTUNITY_SOURCEACTIONID_INVALID', 'sourceActionId');
+    if (targetValue.conflict) return invalid('ACTION_OPPORTUNITY_VALIDTARGETIDS_CONFLICT', 'validTargetIds');
+    if (targetValue.invalid) return invalid('ACTION_OPPORTUNITY_VALIDTARGETIDS_INVALID', 'validTargetIds');
+    const trustedJournalRevisionValues = [
+      request?.evaluationContext?.opportunityJournalRevision,
+      request?.runtimeSnapshot?.opportunityJournalRevision,
+    ].filter(value => value !== undefined && value !== null && value !== '');
+    let trustedOpportunityJournalRevision;
+    for (const value of trustedJournalRevisionValues) {
+      if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+        return invalid('ACTION_OPPORTUNITY_JOURNAL_REVISION_INVALID', String(value));
+      }
+      const revisionNumber = value;
+      if (
+        trustedOpportunityJournalRevision !== undefined &&
+        trustedOpportunityJournalRevision !== revisionNumber
+      ) {
+        return invalid(
+          'ACTION_OPPORTUNITY_JOURNAL_REVISION_CONFLICT',
+          'TRUSTED_REVISION_VALUES_DIFFER',
+        );
+      }
+      trustedOpportunityJournalRevision = revisionNumber;
+    }
+    const merged = {
+      ...(runtimeSnapshot || {}),
+      ...(snapshot || {}),
+      ...(currentActual || {}),
+      ...(supplied || {}),
+    };
+    const explicitCurrentRound = r9v2DirectAtomicFirstNumber([
+      supplied?.battleHorizon?.currentRound,
+      request?.evaluationContext?.horizon?.currentRound,
+    ]);
+    const opportunityId = String(opportunityIdValue.value || '').trim();
+    const grantId = String(grantIdValue.value || '').trim();
+    const rawOpportunityType = String(typeValue.value || '').trim().toUpperCase();
+    const opportunityType = rawOpportunityType === 'CONTINUATION'
+      ? 'FOLLOW_UP'
+      : rawOpportunityType;
+    const ownerId = String(ownerValue.value || '').trim();
+    const status = String(statusValue.value || '').trim().toUpperCase();
+    const revision = String(revisionValue.value || '').trim();
+    const windowId = String(windowValue.value || '').trim();
+    const role = String(roleValue.value || '').trim().toUpperCase();
+    const source = String(sourceValue.value || '').trim();
+    const sourceActorId = String(sourceActorValue.value || '').trim();
+    const sourceActionId = String(sourceActionValue.value || '').trim();
+    const sequence = r9v2DirectAtomicNumber(sequenceValue.value);
+    const expiresAtSequence = r9v2DirectAtomicNumber(expiresAtSequenceValue.value);
+    const opportunityContract = {
+      NATURAL_ACTION: {
+        role: 'ACTIVE',
+        requiresSourceActor: false,
+        requiresSourceAction: false,
+      },
+      DEFEND_WINDOW: {
+        role: 'REACTION',
+        requiresSourceActor: true,
+        requiresSourceAction: true,
+      },
+      COUNTER_WINDOW: {
+        role: 'COUNTER',
+        requiresSourceActor: true,
+        requiresSourceAction: true,
+      },
+      FOLLOW_UP: {
+        role: 'ACTIVE',
+        requiresSourceActor: false,
+        requiresSourceAction: true,
+      },
+      ASSIST_WINDOW: {
+        role: 'ASSIST',
+        requiresSourceActor: true,
+        requiresSourceAction: true,
+      },
+    }[opportunityType];
+    if (!opportunityId) return invalid('ACTION_OPPORTUNITY_IDENTITY_MISSING', 'opportunityId');
+    if (!opportunityType) return invalid('ACTION_OPPORTUNITY_TYPE_MISSING', 'type');
+    if (!opportunityContract) return invalid('ACTION_OPPORTUNITY_TYPE_UNSUPPORTED', opportunityType);
+    if (!grantId) return invalid('ACTION_OPPORTUNITY_IDENTITY_MISSING', 'grantId');
+    if (!ownerId || ownerId !== String(preview.unitId(actor) || '').trim()) {
+      return invalid('ACTION_OPPORTUNITY_OWNER_MISMATCH', ownerId);
+    }
+    if (!role || role === 'PASSIVE' || role === 'PROJECTED') {
+      return invalid('ACTION_OPPORTUNITY_ROLE_INVALID', role);
+    }
+    if (role !== opportunityContract.role) {
+      return invalid(
+        'ACTION_OPPORTUNITY_ROLE_TYPE_CONFLICT',
+        `${role}:${opportunityType}:expected=${opportunityContract.role}/${opportunityType}`,
+      );
+    }
+    if (!status) return invalid('ACTION_OPPORTUNITY_STATUS_MISSING', 'status');
+    if (['EXPIRED', 'CONSUMED', 'LOST', 'CANCELLED'].includes(status) ||
+      (expiresAtSequence !== null && expiresAtSequence > 0 && sequence !== null && sequence >= expiresAtSequence)) {
+      return invalid('ACTION_OPPORTUNITY_EXPIRED', String(expiresAtSequenceValue.value || status));
+    }
+    const hasExplicitExecutingStatus = [
+      currentActual?.status,
+      currentActual?.state,
+      evaluationSnapshot?.status,
+      evaluationSnapshot?.state,
+      runtimeSnapshot?.status,
+      runtimeSnapshot?.state,
+      ...(suppliedIdentity === currentIdentity
+        ? [supplied?.status, supplied?.state]
+        : []),
+    ].some(value => String(value ?? '').trim().toUpperCase() === 'EXECUTING');
+    if (!['PENDING', 'ACTIVE', 'AVAILABLE', 'OPEN'].includes(status)) {
+      if (status !== 'EXECUTING' || !hasExplicitExecutingStatus) {
+        return invalid('ACTION_OPPORTUNITY_STATUS_INVALID', status);
+      }
+    }
+    if (!revision) return invalid('ACTION_OPPORTUNITY_REVISION_MISSING', 'revision');
+    if (!opportunityRows.length || !snapshot) {
+      return invalid('ACTION_OPPORTUNITY_REVISION_SNAPSHOT_MISSING', 'opportunitySnapshot');
+    }
+    const revisionActionOpportunityId = String(
+      currentIdentity,
+    ).trim();
+    if (revision.startsWith('opportunity:lite:')) {
+      const liteMatch = /^opportunity:lite:(\d+):(.*)$/u.exec(revision);
+      if (!liteMatch ||
+        Number(liteMatch[1]) !== opportunityRows.length ||
+        liteMatch[2] !== revisionActionOpportunityId) {
+        return invalid('ACTION_OPPORTUNITY_REVISION_INVALID', revision);
+      }
+    } else if (revision.startsWith('opportunity-journal:')) {
+      const journalMatch = /^opportunity-journal:(\d+):(\d+):(.*)$/u.exec(revision);
+      const parsedJournalRevision = journalMatch ? Number(journalMatch[1]) : null;
+      if (!journalMatch ||
+        trustedOpportunityJournalRevision === undefined ||
+        !Number.isSafeInteger(parsedJournalRevision) ||
+        String(parsedJournalRevision) !== journalMatch[1] ||
+        parsedJournalRevision !== trustedOpportunityJournalRevision ||
+        Number(journalMatch[2]) !== opportunityRows.length ||
+        journalMatch[3] !== opportunityId) {
+        return invalid('ACTION_OPPORTUNITY_REVISION_INVALID', revision);
+      }
+    } else if (revision.startsWith('opportunity:')) {
+      const revisionHash = revision.slice('opportunity:'.length);
+      const currentOpportunityHash = preview.stableHash(opportunityRows);
+      if (!revisionHash || revisionHash !== currentOpportunityHash) {
+        return invalid('ACTION_OPPORTUNITY_REVISION_INVALID', revision);
+      }
+    } else {
+      return invalid('ACTION_OPPORTUNITY_REVISION_INVALID', revision);
+    }
+    if (sequence === null) {
+      return invalid('ACTION_OPPORTUNITY_SEQUENCE_MISSING', 'sequence');
+    }
+    if (sequence !== null && sequence < 0) return invalid('ACTION_OPPORTUNITY_SEQUENCE_INVALID', 'sequence');
+    const round = r9v2DirectAtomicNumber(
+      roundValue.value === undefined ? explicitCurrentRound : roundValue.value,
+    );
+    const currentRound = r9v2DirectAtomicNumber(visibleWorld?.回合);
+    if (round === null || currentRound === null || round !== currentRound) {
+      return invalid('ACTION_OPPORTUNITY_ROUND_MISMATCH', String(round) + ':' + String(currentRound));
+    }
+    if ((opportunityContract.requiresSourceActor && !sourceActorId) ||
+      (opportunityContract.requiresSourceAction && !sourceActionId)) {
+      return invalid(
+        'ACTION_OPPORTUNITY_SOURCE_BINDING_MISSING',
+        `${opportunityType}:${opportunityContract.requiresSourceActor ? 'sourceActorId' : ''}${opportunityContract.requiresSourceActor && opportunityContract.requiresSourceAction ? '+' : ''}${opportunityContract.requiresSourceAction ? 'sourceActionId' : ''}`,
+      );
+    }
+    if (!targetValue || !Array.isArray(targetValue.value)) {
+      return invalid('ACTION_OPPORTUNITY_TARGET_BINDING_MISSING', 'validTargetIds');
+    }
+    const targetIds = [...targetValue.value];
+    if (targetIds.some(targetId => !r9v2DirectAtomicUnit(visibleWorld, targetId))) {
+      return invalid('ACTION_OPPORTUNITY_TARGET_BINDING_UNKNOWN', targetIds.toString());
+    }
+    return {
+      valid: true,
+      raw: merged,
+      opportunityId,
+      grantId,
+      opportunityType,
+      ownerId,
+      status,
+      revision,
+      round,
+      windowId,
+      sequence,
+      expiresAtSequence: expiresAtSequence === null ? 0 : expiresAtSequence,
+      role,
+      source,
+      sourceActorId,
+      sourceActionId,
+      targetIds,
+      targetRestricted: ['COUNTER_WINDOW', 'ASSIST_WINDOW'].includes(opportunityType) && targetIds.length > 0,
+    };
+  }
+
+  function r9v2DirectAtomicTargets(request, candidate, actorId, visibleWorld, opportunity = null, projectionContext = null) {
+    const declaration = candidate?.declaration && typeof candidate.declaration === 'object'
+      ? candidate.declaration
+      : {};
+    const source = candidate?.targetIds ??
+      candidate?.targetSet ??
+      declaration.targetIds ??
+      declaration.targets ??
+      [];
+    if (!Array.isArray(source)) return { targets: [], reason: 'CANDIDATE_TARGETS_NOT_ARRAY' };
+    const targets = [...new Set(source.map(value => String(value || '').trim()).filter(Boolean))].sort(compareUtf16);
+    if (targets.some(targetId => !r9v2DirectAtomicUnit(visibleWorld, targetId))) {
+      return { targets, reason: 'CANDIDATE_TARGET_UNKNOWN' };
+    }
+    if (Array.isArray(declaration?.targetIds)) {
+      const declaredTargetIds = [...new Set(
+        declaration.targetIds.map(value => String(value || '').trim()).filter(Boolean),
+      )].sort(compareUtf16);
+      if (JSON.stringify(declaredTargetIds) !== JSON.stringify(targets)) {
+        return { targets, reason: 'CANDIDATE_TARGET_DECLARATION_MISMATCH' };
+      }
+    }
+    return { targets, reason: '' };
+  }
+
+  function r9v2DirectAtomicPayment(candidate, actor, actorId) {
+    const declaration = candidate?.declaration && typeof candidate.declaration === 'object'
+      ? candidate.declaration
+      : {};
+    const rawMode = candidate?.paymentMode ?? declaration.paymentMode ??
+      (candidate?.resourcePotentialOnly === true || declaration.resourcePotentialOnly === true
+        ? 'EXTERNAL_TIMELINE'
+        : 'FORMAL');
+    const paymentMode = String(rawMode || '').trim().toUpperCase();
+    const result = {
+      valid: ['FORMAL', 'EXTERNAL_TIMELINE'].includes(paymentMode),
+      paymentMode,
+      resourceCosts: {},
+      evidence: null,
+      reason: '',
+    };
+    if (!result.valid) {
+      result.reason = 'PAYMENT_MODE_INVALID';
+      return result;
+    }
+    const toAbsoluteCosts = source => {
+      if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+      const normalized = preview.normalizeSkillCostMap(source);
+      if (normalized.非法项.length) return null;
+      const payment = preview.assessResourcePayment([actor], normalized.values);
+      if (!payment.valid) return null;
+      return Object.fromEntries(payment.payments.map(row => [row.resource, row.amount]));
+    };
+    if (paymentMode === 'FORMAL') {
+      const source = candidate?.resourceCosts && typeof candidate.resourceCosts === 'object'
+        ? candidate.resourceCosts
+        : declaration.resourceCosts && typeof declaration.resourceCosts === 'object'
+          ? declaration.resourceCosts
+          : {};
+      const costs = toAbsoluteCosts(source);
+      if (!costs) {
+        result.valid = false;
+        result.reason = 'RESOURCE_COST_NOT_EXACT';
+        return result;
+      }
+      result.resourceCosts = costs;
+      return result;
+    }
+    const evidence = candidate?.directPaymentEvidence ||
+      candidate?.directResourceEvidence ||
+      declaration.directPaymentEvidence ||
+      declaration.directResourceEvidence ||
+      candidate?.paymentEvidence ||
+      declaration.paymentEvidence ||
+      null;
+    if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
+      result.valid = false;
+      result.reason = 'EXTERNAL_DIRECT_PAYMENT_EVIDENCE_MISSING';
+      return result;
+    }
+    const directMarker = evidence.direct === true ||
+      evidence.source === 'DIRECT' ||
+      /DIRECT_PAYMENT|DIRECT_RESOURCE/i.test(String(evidence.kind || ''));
+    const sourceCosts = evidence.resourceCosts || evidence.costs || evidence.resources ||
+      (evidence.resource && (evidence.amount ?? evidence.cost ?? evidence.delta) !== undefined
+        ? { [String(evidence.resource)]: evidence.amount ?? evidence.cost ?? evidence.delta }
+        : null);
+    if (!directMarker && sourceCosts === null) {
+      result.valid = false;
+      result.reason = 'EXTERNAL_DIRECT_PAYMENT_EVIDENCE_NOT_EXPLICIT';
+      return result;
+    }
+    const costs = toAbsoluteCosts(sourceCosts);
+    if (!costs || !Object.keys(costs).length) {
+      result.valid = false;
+      result.reason = 'EXTERNAL_DIRECT_PAYMENT_EVIDENCE_NOT_NUMERIC';
+      return result;
+    }
+    result.resourceCosts = costs;
+    result.evidence = evidence;
+    return result;
+  }
+
+  function r9v2DirectAtomicPublicCandidate(candidate, data) {
+    return {
+      candidateId: data.candidateId,
+      actionId: data.actionId,
+      actorId: data.actorId,
+      targetIds: [...data.targetIds],
+      paymentMode: data.paymentMode,
+      resourceCosts: { ...data.resourceCosts },
+      opportunityId: data.opportunityId,
+      opportunityRevision: data.opportunityRevision,
+      windowId: data.windowId,
+      role: data.role,
+      legal: Object.keys(candidate || {}).includes('legal') ? candidate.legal === true : undefined,
+      hardExclusionCodes: [...data.hardExclusionCodes],
+      upstreamAuditCodes: cloneValue(data.upstreamAuditCodes || []),
+      selectionStatus: data.status,
+    };
+  }
+
+  function r9v2DirectAtomicObjectiveContext(request, visibleWorld, actorId) {
+    const raw = request?.battleIntent?.objectives ||
+      request?.objectives ||
+      visibleWorld?.胜负条件 ||
+      {};
+    const objectives = preview.normalizeBattleObjectives(raw, visibleWorld);
+    const units = new Map();
+    const sides = new Map();
+    const hp = new Map();
+    const hpMax = new Map();
+    worldEntries(visibleWorld).forEach(entry => {
+      const id = String(preview.unitId(entry?.unit) || '').trim();
+      if (!id) return;
+      units.set(id, entry.unit);
+      sides.set(id, String(preview.sideOf(visibleWorld, entry.unit) || '').trim().toUpperCase());
+      hp.set(id, Number(preview.readHp(entry.unit)));
+      hpMax.set(id, Math.max(1, Number(preview.readHpMax(entry.unit))));
+    });
+    const actorSide = sides.get(actorId) || 'PLAYER';
+    return {
+      objectives,
+      units,
+      sides,
+      initialHp: new Map(hp),
+      hpMax,
+      actorId,
+      actorSide,
+      currentRound: Number(visibleWorld?.回合 || 0),
+    };
+  }
+
+  function r9v2DirectAtomicThresholdFor(targetId, context) {
+    const values = [
+      ...(context.objectives?.victory?.conditions || []),
+      ...(context.objectives?.defeat?.conditions || []),
+    ]
+      .filter(condition => condition?.type === 'HP_RATIO_AT_OR_BELOW' && (condition.targetIds || []).includes(targetId))
+      .map(condition => Math.max(0, Math.min(1, Number(condition.threshold || 0))));
+    return values.length ? Math.max(...values) : 0;
+  }
+
+  function r9v2DirectAtomicConditionDone(condition, state, context) {
+    const targetIds = (condition?.targetIds || []).length
+      ? condition.targetIds
+      : [...context.units.keys()].filter(id => !preview.isSummonUnit(context.units.get(id)) &&
+        (!condition?.side || context.sides.get(id) === condition.side));
+    const one = targetId => {
+      const currentHp = Number(state.hp.get(targetId) ?? context.initialHp.get(targetId) ?? 0);
+      const maximum = Math.max(1, Number(context.hpMax.get(targetId) || 1));
+      if (condition.type === 'HP_RATIO_AT_OR_BELOW') return currentHp / maximum <= Number(condition.threshold || 0) + 1e-12;
+      if (condition.type === 'UNIT_DEAD' || condition.type === 'TEAM_DEAD') return currentHp <= 0;
+      if (condition.type === 'UNIT_INCAPACITATED' || condition.type === 'TEAM_INCAPACITATED') return currentHp <= 0;
+      if (condition.type === 'UNIT_DAMAGED') return currentHp < Number(context.initialHp.get(targetId) || 0) - 1e-12;
+      if (condition.type === 'ROUND_REACHED') return Number(context.currentRound) >= Number(condition.round || 0);
+      if (condition.type === 'WITHDRAW_SUCCESS') return state.withdrawSuccess === true;
+      return false;
+    };
+    if (!targetIds.length && !['ROUND_REACHED', 'WITHDRAW_SUCCESS'].includes(condition?.type)) return false;
+    const values = targetIds.map(one);
+    return condition?.scope === 'ALL' ? values.length > 0 && values.every(Boolean) : values.some(Boolean);
+  }
+
+  function r9v2DirectAtomicObjectiveTerminal(state, context) {
+    const victoryConditions = context.objectives?.victory?.conditions || [];
+    const defeatConditions = context.objectives?.defeat?.conditions || [];
+    const victoryValues = victoryConditions.map(condition =>
+      r9v2DirectAtomicConditionDone(condition, state, context),
+    );
+    const defeatValues = defeatConditions.map(condition =>
+      r9v2DirectAtomicConditionDone(condition, state, context),
+    );
+    const victory = context.objectives?.victory?.logic === 'ALL'
+      ? victoryValues.length > 0 && victoryValues.every(Boolean)
+      : victoryValues.some(Boolean);
+    const defeat = context.objectives?.defeat?.logic === 'ALL'
+      ? defeatValues.length > 0 && defeatValues.every(Boolean)
+      : defeatValues.some(Boolean);
+    if (victory && defeat) {
+      return context.objectives?.resolutionPriority === 'DRAW_ON_CONFLICT' ? 'DRAW' : 'FAILURE';
+    }
+    if (victory) return 'VICTORY';
+    if (defeat) return 'FAILURE';
+    return '';
+  }
+
+  function r9v2DirectAtomicObjectiveValue(rawDelta, targetId, outcomeKind, context) {
+    const delta = Number(rawDelta);
+    if (!Number.isFinite(delta)) return null;
+    const side = context.sides.get(targetId) || '';
+    const ally = side === context.actorSide;
+    if (['HP_DELTA', 'HEAL_DELTA', 'SCHEDULED_HP_DELTA'].includes(outcomeKind)) {
+      if (ally) return delta;
+      if (delta < 0) {
+        const current = Number(context.initialHp.get(targetId) || 0);
+        const maximum = Math.max(1, Number(context.hpMax.get(targetId) || 1));
+        const thresholdHp = maximum * r9v2DirectAtomicThresholdFor(targetId, context);
+        return Math.min(-delta, Math.max(0, current - thresholdHp));
+      }
+      return -delta;
+    }
+    if (outcomeKind === 'SHIELD_DELTA') return ally ? delta : -delta;
+    return delta;
+  }
+
+  function r9v2DirectAtomicDistribution(contribution, rawDelta, targetId, outcomeKind) {
+    const evidence = contribution?.evidence && typeof contribution.evidence === 'object'
+      ? contribution.evidence
+      : {};
+    const source = Array.isArray(contribution?.outcomeDistribution)
+      ? contribution.outcomeDistribution
+      : Array.isArray(evidence?.outcomeDistribution)
+        ? evidence.outcomeDistribution
+        : Array.isArray(evidence?.distribution)
+          ? evidence.distribution
+          : [];
+    if (!source.length) {
+      return {
+        valid: true,
+        random: false,
+        branches: [{
+          outcome: 'DETERMINISTIC',
+          probability: 1,
+          delta: rawDelta,
+          outcomeClass: 'DETERMINISTIC',
+          metadata: {
+            outcome: 'DETERMINISTIC',
+            outcomeClass: 'DETERMINISTIC',
+            targetId,
+            delta: rawDelta,
+          },
+        }],
+      };
+    }
+    const globalDistribution = String(outcomeKind || '').trim().toUpperCase() === 'WITHDRAWAL_CONTEST';
+    const conditionalDistribution = !globalDistribution && source.some(branch => {
+      const conditionalOn = branch?.conditionalOn;
+      return branch && (
+        branch.conditionalProbability !== undefined ||
+        branch.conditional === true ||
+        (conditionalOn && typeof conditionalOn === 'object' && !Array.isArray(conditionalOn) &&
+          Object.keys(conditionalOn).length > 0)
+      );
+    });
+    const conditionPriorFor = row => {
+      const conditionalOn = row?.conditionalOn && typeof row.conditionalOn === 'object' &&
+        !Array.isArray(row.conditionalOn)
+        ? row.conditionalOn
+        : {};
+      const directPrior = r9v2DirectAtomicFirstNumber([
+        row?.conditionPrior,
+        row?.priorProbability,
+        row?.conditionProbability,
+        row?.conditionalPrior,
+        row?.applicationProbability,
+        row?.ownApplicationProbability,
+      ]);
+      if (directPrior !== null) return directPrior;
+      const sharedPrior = r9v2DirectAtomicFirstNumber([
+        contribution?.conditionPrior,
+        contribution?.priorProbability,
+        contribution?.conditionalPrior,
+        evidence?.conditionPrior,
+        evidence?.priorProbability,
+        evidence?.conditionalPrior,
+      ]);
+      if (sharedPrior !== null) return sharedPrior;
+      const priorSources = [
+        row?.conditionPrior,
+        row?.conditionPriors,
+        row?.conditionalPriors,
+        contribution?.conditionPrior,
+        contribution?.conditionPriors,
+        contribution?.conditionalPriors,
+        evidence?.conditionPrior,
+        evidence?.conditionPriors,
+        evidence?.conditionalPriors,
+      ];
+      const lookupKeys = [JSON.stringify(conditionalOn)];
+      Object.entries(conditionalOn).forEach(([key, value]) => {
+        lookupKeys.push(String(value), key, key + ':' + String(value), key + '=' + String(value));
+      });
+      for (const sourcePrior of priorSources) {
+        if (!sourcePrior || typeof sourcePrior !== 'object' || Array.isArray(sourcePrior)) continue;
+        for (const key of [...new Set(lookupKeys)]) {
+          if (!Object.hasOwn(sourcePrior, key)) continue;
+          const mappedPrior = r9v2DirectAtomicFirstNumber([sourcePrior[key]]);
+          if (mappedPrior !== null) return mappedPrior;
+        }
+      }
+      const applicationPrior = r9v2DirectAtomicFirstNumber([
+        row?.applicationProbability,
+        row?.ownApplicationProbability,
+        contribution?.applicationProbability,
+        contribution?.ownApplicationProbability,
+        contribution?.conditionProbability,
+        evidence?.applicationProbability,
+        evidence?.ownApplicationProbability,
+        evidence?.conditionProbability,
+        contribution?.probability,
+        evidence?.probability,
+      ]);
+      if (applicationPrior === null) return null;
+      const conditionValues = Object.values(conditionalOn).map(value => String(value).trim().toUpperCase());
+      const positive = conditionValues.some(value => /HIT|SUCCESS|APPLIED|TRUE|ACTIVE|PASS/.test(value));
+      const negative = conditionValues.some(value => /MISS|RESIST|FAIL|FALSE|INACTIVE|LOST|CONDITION_FALSE/.test(value));
+      if (positive && !negative) return applicationPrior;
+      if (negative && !positive) return 1 - applicationPrior;
+      return applicationPrior;
+    };
+    const branches = [];
+    let total = 0;
+    for (const [index, branch] of source.entries()) {
+      const row = branch && typeof branch === 'object' ? branch : {};
+      const branchProbability = r9v2DirectAtomicFirstNumber([
+        row.conditionalProbability,
+        row.probability,
+      ]);
+      if (branchProbability === null || branchProbability < 0 || branchProbability > 1) {
+        return { valid: false, reason: 'OUTCOME_DISTRIBUTION_NON_FINITE' };
+      }
+      const prior = conditionalDistribution ? conditionPriorFor(row) : 1;
+      if (conditionalDistribution && prior === null) {
+        return { valid: false, reason: 'CONDITIONAL_PRIOR_MISSING' };
+      }
+      if (!Number.isFinite(Number(prior)) || Number(prior) < 0 || Number(prior) > 1) {
+        return { valid: false, reason: 'OUTCOME_DISTRIBUTION_NON_FINITE' };
+      }
+      const probability = Number(prior) * Number(branchProbability);
+      if (!Number.isFinite(probability) || probability < 0) {
+        return { valid: false, reason: 'OUTCOME_DISTRIBUTION_NON_FINITE' };
+      }
+      const branchDelta = r9v2DirectAtomicFirstNumber([
+        row.delta,
+        row.healthDelta,
+        row.hpDelta,
+        row.shieldDelta,
+        row.resourceDelta,
+        row.hpDamage === undefined ? null : -Number(row.hpDamage),
+      ]);
+      if (branchDelta === null) {
+        return { valid: false, reason: 'OUTCOME_DISTRIBUTION_NON_FINITE' };
+      }
+      const outcome = String(row.outcome || row.result || 'BRANCH_' + index).trim().toUpperCase();
+      const withdrawalSuccess = row.withdrawalSuccess === true || /SUCCESS|PASS|WIN/i.test(outcome);
+      const outcomeClass = withdrawalSuccess
+        ? 'SUCCESS'
+        : /MISS|EVADED|RESIST|FAIL|LOSE|LOST|FALSE|CONDITION_FALSE|PARTIAL/i.test(outcome)
+        ? 'FAILURE'
+        : /HIT|SUCCESS|PASS|APPLIED|TRUE|WIN/i.test(outcome)
+          ? 'SUCCESS'
+          : 'OTHER';
+      const branchMetadata = {
+        outcome,
+        outcomeClass,
+        targetId,
+        delta: branchDelta,
+        withdrawalSuccess,
+        ...(row.pursuitDamage !== undefined
+          ? { pursuitDamage: Number(row.pursuitDamage) }
+          : {}),
+      };
+      ['condition', 'conditionalOn', 'conditionalProbability', 'conditionPrior', 'success']
+        .forEach(key => {
+          if (row[key] !== undefined) branchMetadata[key] = cloneValue(row[key]);
+      });
+      branches.push({
+        outcome,
+        probability,
+        delta: branchDelta,
+        outcomeClass,
+        withdrawalSuccess,
+        metadata: branchMetadata,
+      });
+      total += probability;
+    }
+    if (branches.length !== source.length || !Number.isFinite(total) || total > 1 + 1e-12) {
+      return { valid: false, reason: 'OUTCOME_DISTRIBUTION_NON_FINITE' };
+    }
+    if (conditionalDistribution && total < 1 - 1e-12) {
+      branches.push({
+        outcome: 'CONDITION_FALSE',
+        probability: 1 - total,
+        delta: 0,
+        outcomeClass: 'CONDITION_FALSE',
+        metadata: {
+          outcome: 'CONDITION_FALSE',
+          outcomeClass: 'CONDITION_FALSE',
+          targetId,
+          delta: 0,
+          conditional: true,
+        },
+      });
+      total = 1;
+    }
+    if (Math.abs(total - 1) > 1e-12) return { valid: false, reason: 'OUTCOME_PROBABILITY_SUM_MISMATCH' };
+    return {
+      valid: true,
+      random: branches.length > 1,
+      groupKey: String(
+        contribution?.probabilityGroupKey ||
+        evidence?.probabilityGroupKey ||
+        evidence?.distributionGroupKey ||
+        '',
+      ).trim(),
+      branches,
+    };
+  }
+
+  function r9v2DirectAtomicMapContribution(contribution, candidateId, index, context) {
+    const outcomeKind = String(contribution?.outcomeKind || '').trim().toUpperCase();
+    const targetId = String(
+      contribution?.targetId ||
+      contribution?.targetUnitId ||
+      context.actorId,
+    ).trim();
+    const sourceToken = String(
+      contribution?.effectInstanceId ||
+      contribution?.sourceActionId ||
+      'contribution:' + index,
+    ).trim();
+    const sequence = r9v2DirectAtomicFirstNumber([
+      contribution?.sequence,
+      contribution?.order,
+      index,
+    ]);
+    const rawDelta = r9v2DirectAtomicFirstNumber([
+      contribution?.expectedDelta,
+      contribution?.evidence?.delta,
+      contribution?.delta,
+    ]);
+    const base = {
+      candidateId,
+      targetId: targetId || context.actorId,
+      sourceEventId: candidateId + ':event:' + sourceToken + ':' + index,
+      sourceFactId: candidateId + ':fact:' + index + ':' + (outcomeKind || 'UNKNOWN'),
+      sourceOutcomeKind: outcomeKind || 'UNKNOWN',
+      sequence: sequence === null ? index : sequence,
+      rawDelta,
+      valueHEPP: null,
+      componentCode: '',
+      scheduled: false,
+      postTerminal: false,
+      terminalKind: '',
+      assetReserveDelta: 0,
+      distribution: null,
+    };
+    if (outcomeKind === 'PASS' || outcomeKind === 'PASS_OPPORTUNITY') {
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S6_DIRECT_NONE.code;
+      base.valueHEPP = 0;
+      base.distribution = r9v2DirectAtomicDistribution(contribution, 0, base.targetId, outcomeKind);
+      return base;
+    }
+    if (outcomeKind === 'LOST') {
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S1_DIRECT_TERMINAL.code;
+      base.valueHEPP = -100;
+      base.terminalKind = 'FAILURE';
+      base.distribution = r9v2DirectAtomicDistribution(contribution, 0, base.targetId, outcomeKind);
+      return base;
+    }
+    if (outcomeKind === 'HEAL_DELTA') {
+      const actualDelta = r9v2DirectAtomicFirstNumber([
+        contribution?.actualHpDelta,
+        contribution?.hpDelta,
+        contribution?.evidence?.actualHpDelta,
+        contribution?.evidence?.hpDelta,
+      ]);
+      if (actualDelta === null) return { unsupported: true, outcomeKind, reason: 'HEAL_ACTUAL_HP_DELTA_MISSING' };
+      base.rawDelta = actualDelta;
+      base.valueHEPP = r9v2DirectAtomicObjectiveValue(actualDelta, base.targetId, outcomeKind, context);
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S3_DIRECT_STATE.code;
+    } else if (outcomeKind === 'HP_DELTA') {
+      if (rawDelta === null) return { unsupported: true, outcomeKind, reason: 'HP_DELTA_EXACT_VALUE_MISSING' };
+      base.valueHEPP = r9v2DirectAtomicObjectiveValue(rawDelta, base.targetId, outcomeKind, context);
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S1_DIRECT_STATE.code;
+    } else if (outcomeKind === 'SHIELD_DELTA') {
+      if (rawDelta === null) return { unsupported: true, outcomeKind, reason: 'SHIELD_DELTA_EXACT_VALUE_MISSING' };
+      base.valueHEPP = r9v2DirectAtomicObjectiveValue(rawDelta, base.targetId, outcomeKind, context);
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S3_DIRECT_STATE.code;
+    } else if (outcomeKind === 'ACTION_COST' || outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+      if (outcomeKind === 'RESOURCE_OPTION_CHANGED') {
+        const evidence = contribution?.evidence && typeof contribution.evidence === 'object'
+          ? contribution.evidence
+          : {};
+        const resourceKey = String(
+          contribution?.resourceKey || evidence?.resourceKey || evidence?.resource || '',
+        ).trim();
+        const current = r9v2DirectAtomicFirstNumber([
+          contribution?.beforeValue,
+          contribution?.before,
+          evidence?.current,
+        ]);
+        const next = r9v2DirectAtomicFirstNumber([
+          contribution?.afterValue,
+          contribution?.after,
+          evidence?.next,
+        ]);
+        const actionCost = String(contribution?.windowId || '').trim().toUpperCase() === 'ACTION_COST' ||
+          String(contribution?.component || '').trim().toUpperCase() === 'ACTION_COST' ||
+          String(evidence?.resourceKey || '').trim().toLowerCase() === 'action_cost';
+        if (actionCost) {
+          if (rawDelta === null) return { unsupported: true, outcomeKind, reason: 'RESOURCE_CHANGE_NOT_ACTION_COST' };
+        } else if (!resourceKey || current === null || next === null) {
+          return { unsupported: true, outcomeKind, reason: 'RESOURCE_CHANGE_NOT_ACTION_COST' };
+        } else {
+          base.rawDelta = next - current;
+          base.valueHEPP = r9v2DirectAtomicObjectiveValue(
+            base.rawDelta,
+            base.targetId,
+            'HEAL_DELTA',
+            context,
+          );
+          base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S3_DIRECT_STATE.code;
+        }
+      }
+      if (!base.componentCode) {
+        if (rawDelta === null) return { unsupported: true, outcomeKind, reason: 'RESOURCE_CHANGE_NOT_ACTION_COST' };
+        base.valueHEPP = rawDelta;
+        base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S2_DIRECT_ACTION_POOL.code;
+      }
+    } else if (outcomeKind === 'IRREVERSIBLE_ASSET_LOST') {
+      if (String(contribution?.windowId || 'IMMEDIATE').trim().toUpperCase().includes('SCHEDULE')) {
+        return { unsupported: true, outcomeKind, reason: 'ASSET_LOSS_NOT_IMMEDIATE' };
+      }
+      if (rawDelta === null) return { unsupported: true, outcomeKind, reason: 'ASSET_LOSS_EXACT_VALUE_MISSING' };
+      base.valueHEPP = rawDelta;
+      base.assetReserveDelta = -Math.abs(rawDelta);
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S2_DIRECT_ACTION_POOL.code;
+    } else if (outcomeKind === 'SCHEDULED_HP_DELTA') {
+      if (rawDelta === null) return { unsupported: true, outcomeKind, reason: 'SCHEDULED_HP_DELTA_EXACT_VALUE_MISSING' };
+      base.valueHEPP = r9v2DirectAtomicObjectiveValue(rawDelta, base.targetId, outcomeKind, context);
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S5_SCHEDULED_STATE.code;
+      base.scheduled = true;
+    } else if (outcomeKind === 'STATE_SCHEDULED') {
+      const scheduledValue = r9v2DirectAtomicFirstNumber([
+        contribution?.valueHEPP,
+        contribution?.scheduledValueHEPP,
+        contribution?.stateDeltaHEPP,
+        contribution?.objectiveDeltaHEPP,
+        contribution?.evidence?.valueHEPP,
+        contribution?.evidence?.scheduledValueHEPP,
+      ]);
+      if (scheduledValue === null) return { unsupported: true, outcomeKind, reason: 'STATE_SCHEDULED_EXACT_VALUE_MISSING' };
+      base.rawDelta = scheduledValue;
+      base.valueHEPP = scheduledValue;
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S5_SCHEDULED_STATE.code;
+      base.scheduled = true;
+    } else if (outcomeKind === 'WITHDRAWAL_CONTEST') {
+      if (rawDelta === null) return { unsupported: true, outcomeKind, reason: 'WITHDRAWAL_EXACT_VALUE_MISSING' };
+      base.valueHEPP = r9v2DirectAtomicObjectiveValue(rawDelta, base.targetId, outcomeKind, context);
+      base.componentCode = R9V2_DIRECT_COMPONENT_BY_CODE.S1_DIRECT_STATE.code;
+    } else {
+      return { unsupported: true, outcomeKind: outcomeKind || 'UNKNOWN', reason: 'OUTCOME_KIND_NOT_DIRECT_ATOMIC' };
+    }
+    if (!Number.isFinite(Number(base.valueHEPP))) {
+      return { unsupported: true, outcomeKind, reason: 'DIRECT_VALUE_NON_FINITE' };
+    }
+    const distribution = r9v2DirectAtomicDistribution(
+      contribution,
+      base.rawDelta === null ? 0 : base.rawDelta,
+      base.targetId,
+      outcomeKind,
+    );
+    if (!distribution.valid) return { unsupported: true, outcomeKind, reason: distribution.reason };
+    base.distribution = distribution;
+    return base;
+  }
+
+  function r9v2DirectAtomicStateAfter(facts, context, branchFactId = '', branch = null) {
+    const state = {
+      hp: new Map(context.initialHp),
+      round: Number(context.objectives?.startRound || 0),
+      withdrawSuccess: false,
+    };
+    let terminal = '';
+    let terminalFactId = '';
+    facts.slice().sort((left, right) =>
+      Number(left.sequence) - Number(right.sequence) ||
+      (left.scheduled ? 1 : 0) - (right.scheduled ? 1 : 0) ||
+      compareUtf16(left.sourceFactId, right.sourceFactId)
+    ).forEach(fact => {
+      if (terminal) return;
+      if (fact.terminalKind) {
+        terminal = fact.terminalKind;
+        terminalFactId = fact.sourceFactId;
+        return;
+      }
+      const selectedBranch = fact.sourceFactId === branchFactId ? branch : null;
+      const deterministicBranch = !selectedBranch && fact.distribution?.random !== true &&
+        fact.distribution?.branches?.length === 1
+        ? fact.distribution.branches[0]
+        : null;
+      const resolvedBranch = selectedBranch || deterministicBranch;
+      const rawDelta = resolvedBranch?.delta ?? fact.rawDelta;
+      if (['HP_DELTA', 'HEAL_DELTA', 'SCHEDULED_HP_DELTA', 'WITHDRAWAL_CONTEST'].includes(fact.sourceOutcomeKind)) {
+        const current = Number(state.hp.get(fact.targetId) || 0);
+        const maximum = Math.max(1, Number(context.hpMax.get(fact.targetId) || 1));
+        state.hp.set(fact.targetId, Math.max(0, Math.min(maximum, current + Number(rawDelta || 0))));
+      }
+      if (fact.sourceOutcomeKind === 'WITHDRAWAL_CONTEST') {
+        state.withdrawSuccess = resolvedBranch?.withdrawalSuccess === true ||
+          resolvedBranch?.metadata?.withdrawalSuccess === true ||
+          /SUCCESS|PASS|WIN/i.test(String(resolvedBranch?.outcome || ''));
+      }
+      const nextTerminal = r9v2DirectAtomicObjectiveTerminal(state, context);
+      if (nextTerminal) {
+        terminal = nextTerminal;
+        terminalFactId = fact.sourceFactId;
+      } else if (
+        fact.sourceOutcomeKind === 'WITHDRAWAL_CONTEST' &&
+        state.withdrawSuccess
+      ) {
+        terminal = 'VICTORY';
+        terminalFactId = fact.sourceFactId;
+      }
+    });
+    return { kind: terminal, factId: terminalFactId, state };
+  }
+
+  function r9v2DirectAtomicTerminalValue(kind) {
+    if (kind === 'VICTORY') return 100;
+    if (kind === 'FAILURE') return -100;
+    return 0;
+  }
+
+  function r9v2DirectAtomicFinalizeData(data, context) {
+    const facts = [...data.directFacts, ...data.scheduledFacts];
+    const randomFacts = facts.filter(fact => fact.distribution?.random === true);
+    if (randomFacts.length > 1) {
+      r9v2DirectAtomicAddReason(
+        data,
+        'DIRECT_ATOMIC_EXACT_VALUE_UNREPRESENTABLE_WITHOUT_FUTURE_ROUTE',
+        'MULTIPLE_MARGINAL_RANDOM_EFFECTS_WITHOUT_COMPLETE_JOINT_PATH',
+      );
+    }
+    const randomFact = randomFacts[0] || null;
+    const paths = randomFact
+      ? randomFact.distribution.branches.map(branch => ({ branch, probability: branch.probability }))
+      : [{ branch: null, probability: 1 }];
+    const pathResults = paths.map(path => ({
+      ...path,
+      result: r9v2DirectAtomicStateAfter(facts, context, randomFact?.sourceFactId || '', path.branch),
+    }));
+    const terminalResults = pathResults.filter(path => path.result.kind);
+    const terminalKinds = [...new Set(terminalResults.map(path => path.result.kind))];
+    const terminalFactIds = [...new Set(terminalResults.map(path => path.result.factId))];
+    let terminalSpec = null;
+    if (terminalKinds.length > 1 || terminalFactIds.length > 1) {
+      r9v2DirectAtomicAddReason(
+        data,
+        'DIRECT_ATOMIC_EXACT_VALUE_UNREPRESENTABLE_WITHOUT_FUTURE_ROUTE',
+        'BRANCH_DEPENDENT_TERMINAL_KIND_OR_CUTOFF',
+      );
+    } else if (terminalResults.length) {
+      const kind = terminalKinds[0];
+      const probability = terminalResults.reduce((total, path) => total + path.probability, 0);
+      const trigger = facts.find(fact => fact.sourceFactId === terminalResults[0].result.factId);
+      const triggerSequence = Number(trigger?.sequence || 0);
+      const laterFacts = facts.filter(fact =>
+        Number(fact.sequence) > triggerSequence &&
+        fact.sourceFactId !== terminalResults[0].result.factId
+      );
+      if (randomFact && terminalResults.length !== pathResults.length && laterFacts.length) {
+        r9v2DirectAtomicAddReason(
+          data,
+          'DIRECT_ATOMIC_EXACT_VALUE_UNREPRESENTABLE_WITHOUT_FUTURE_ROUTE',
+          'BRANCH_DEPENDENT_POST_TERMINAL_SEQUENCE',
+        );
+      } else {
+        const deterministic = !randomFact || Math.abs(probability - 1) <= 1e-12;
+        terminalSpec = {
+          kind,
+          triggerFactId: terminalResults[0].result.factId,
+          probability,
+          valueHEPP: deterministic ? r9v2DirectAtomicTerminalValue(kind) : r9v2DirectAtomicTerminalValue(kind) * probability,
+          deterministic,
+          pathResults,
+        };
+      }
+    }
+    if (terminalSpec) {
+      const trigger = facts.find(fact => fact.sourceFactId === terminalSpec.triggerFactId);
+      if (trigger?.componentCode === R9V2_DIRECT_COMPONENT_BY_CODE.S1_DIRECT_TERMINAL.code) {
+        trigger.terminalKind = terminalSpec.kind;
+        trigger.valueHEPP = terminalSpec.valueHEPP;
+        trigger.distribution = {
+          valid: true,
+          random: !!randomFact,
+          branches: terminalSpec.pathResults.map(path => ({
+            outcome: path.result.kind || 'NO_TERMINAL',
+            probability: path.probability,
+            delta: 0,
+            outcomeClass: path.result.kind ? 'TERMINAL' : 'NON_TERMINAL',
+            metadata: {
+              outcome: path.result.kind || 'NO_TERMINAL',
+              outcomeClass: path.result.kind ? 'TERMINAL' : 'NON_TERMINAL',
+              targetId: context.actorId,
+              delta: 0,
+            },
+          })),
+        };
+      } else {
+        const terminalFact = {
+          candidateId: data.candidateId,
+          targetId: context.actorId,
+          sourceEventId: data.candidateId + ':event:terminal:' + terminalSpec.kind,
+          sourceFactId: data.candidateId + ':fact:terminal:' + terminalSpec.kind,
+          sourceOutcomeKind: 'TERMINAL_' + terminalSpec.kind,
+          sequence: Number(trigger?.sequence || facts.length) + 0.0001,
+          rawDelta: 0,
+          valueHEPP: terminalSpec.valueHEPP,
+          componentCode: R9V2_DIRECT_COMPONENT_BY_CODE.S1_DIRECT_TERMINAL.code,
+          scheduled: false,
+          postTerminal: false,
+          terminalKind: terminalSpec.kind,
+          assetReserveDelta: 0,
+          distribution: {
+            valid: true,
+            random: !!randomFact,
+            branches: terminalSpec.pathResults.map(path => ({
+              outcome: path.result.kind || 'NO_TERMINAL',
+              probability: path.probability,
+              delta: 0,
+              outcomeClass: path.result.kind ? 'TERMINAL' : 'NON_TERMINAL',
+              metadata: {
+                outcome: path.result.kind || 'NO_TERMINAL',
+                outcomeClass: path.result.kind ? 'TERMINAL' : 'NON_TERMINAL',
+                targetId: context.actorId,
+                delta: 0,
+              },
+            })),
+          },
+        };
+        data.directFacts.push(terminalFact);
+      }
+    }
+    const ordered = [...data.directFacts, ...data.scheduledFacts].sort((left, right) =>
+      Number(left.sequence) - Number(right.sequence) || compareUtf16(left.sourceFactId, right.sourceFactId)
+    );
+    const terminalAnchorIndex = ordered.findIndex(fact => String(fact.terminalKind || '').trim());
+    if (terminalAnchorIndex >= 0) {
+      ordered.forEach((fact, index) => {
+        if (index <= terminalAnchorIndex) return;
+        fact.postTerminal = true;
+        fact.valueHEPP = 0;
+        fact.rawDelta = 0;
+        ['terminalKind', 'terminalIdentity', 'terminalId', 'terminalFactId', 'terminalEventId',
+          'terminalAtomicKey', 'terminalAfterEffectInstanceId', 'terminalOutcome']
+          .forEach(key => {
+            if (Object.hasOwn(fact, key)) fact[key] = '';
+          });
+      });
+    }
+    data.directFacts.sort((left, right) => Number(left.sequence) - Number(right.sequence) || compareUtf16(left.sourceFactId, right.sourceFactId));
+    data.scheduledFacts.sort((left, right) => Number(left.sequence) - Number(right.sequence) || compareUtf16(left.sourceFactId, right.sourceFactId));
+    data.outcomeGroups = [...data.directFacts, ...data.scheduledFacts]
+      .filter(fact => fact.distribution?.valid)
+      .map(fact => ({
+        candidateId: data.candidateId,
+        groupId: fact.sourceFactId + ':PRIMARY',
+        sourceFactId: fact.sourceFactId,
+        targetUnitId: fact.targetId,
+        outcomeKind: fact.sourceOutcomeKind,
+        fact,
+        primary: false,
+        rows: fact.distribution.branches.map((branch, branchIndex) => {
+          const metadata = cloneValue(branch.metadata);
+          if (fact.postTerminal && metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+            ['delta', 'valueHEPP', 'rawDelta', 'hpDamage', 'pursuitDamage'].forEach(key => {
+              if (Object.hasOwn(metadata, key)) metadata[key] = 0;
+            });
+            ['terminalKind', 'terminalIdentity', 'terminalId', 'terminalFactId', 'terminalEventId',
+              'terminalAtomicKey', 'terminalAfterEffectInstanceId', 'terminalOutcome']
+              .forEach(key => {
+                if (Object.hasOwn(metadata, key)) metadata[key] = '';
+              });
+          }
+          return {
+            probability: branch.probability,
+            branchIndex,
+            branch: metadata,
+            isTerminal: !fact.postTerminal && fact.terminalKind && (
+              !randomFact || branch.outcomeClass === 'TERMINAL' || /SUCCESS|VICTORY|FAILURE|DRAW/i.test(branch.outcome)
+            )
+              ? true
+              : false,
+            terminalKind: !fact.postTerminal && fact.terminalKind && (
+              !randomFact || branch.outcomeClass === 'TERMINAL' || /SUCCESS|VICTORY|FAILURE|DRAW/i.test(branch.outcome)
+            )
+              ? fact.terminalKind
+              : 'NONE',
+            postTerminal: fact.postTerminal,
+          };
+        }),
+      }));
+    if (data.outcomeGroups.length) {
+      const primaryIndex = data.outcomeGroups.findIndex(group =>
+        !['ACTION_COST', 'RESOURCE_OPTION_CHANGED'].includes(group.outcomeKind),
+      );
+      const resolvedPrimaryIndex = primaryIndex >= 0 ? primaryIndex : 0;
+      data.outcomeGroups = data.outcomeGroups.map((group, index) => ({
+        ...group,
+        primary: index === resolvedPrimaryIndex,
+      }));
+      const primary = data.outcomeGroups[resolvedPrimaryIndex];
+      const directHpHealOtherPrimary =
+        ['HP_DELTA', 'HEAL_DELTA'].includes(String(primary?.outcomeKind || '').trim().toUpperCase()) &&
+        primary.rows.length > 0 &&
+        primary.rows.every(row => {
+          const branch = row?.branch && typeof row.branch === 'object' ? row.branch : {};
+          const conditionalOn = branch?.conditionalOn && typeof branch.conditionalOn === 'object' &&
+            !Array.isArray(branch.conditionalOn)
+            ? branch.conditionalOn
+            : {};
+          return /^BRANCH_\d+$/i.test(String(branch?.outcome || '').trim()) &&
+            String(branch?.outcomeClass || '').trim().toUpperCase() === 'OTHER' &&
+            Object.keys(conditionalOn).length === 0 &&
+            branch?.conditionalProbability === undefined &&
+            branch?.conditional !== true;
+        });
+      const probabilityTotal = primary.rows.reduce((total, row) => total + Number(row?.probability), 0);
+      if (directHpHealOtherPrimary && (!Number.isFinite(probabilityTotal) || Math.abs(probabilityTotal - 1) > 1e-12)) {
+        r9v2DirectAtomicAddReason(
+          data,
+          'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED',
+          'PRIMARY_DIRECT_HP_HEAL_PROBABILITY_CLOSURE_MISMATCH',
+        );
+      }
+      data.successProbability = directHpHealOtherPrimary
+        ? primary.rows.reduce((total, row) => {
+            const intendedDelta = Number(row?.branch?.delta);
+            return total + (Number.isFinite(intendedDelta) && intendedDelta !== 0 ? Number(row.probability) : 0);
+          }, 0)
+        : primary.rows.reduce((total, row) => {
+            const outcome = String(row?.branch?.outcome || '').toUpperCase();
+            const outcomeClass = String(row?.branch?.outcomeClass || '').toUpperCase();
+            const success = outcomeClass === 'SUCCESS' ||
+              /SUCCESS|HIT|PASS|APPLIED|WIN|DETERMINISTIC/i.test(outcome) &&
+              !/MISS|FAIL|LOSE|LOST|RESIST|FALSE|PARTIAL/i.test(outcome);
+            return total + (success ? Number(row.probability) : 0);
+          }, 0);
+      const classified = primary.rows.every(row =>
+        ['SUCCESS', 'FAILURE', 'DETERMINISTIC', 'CONDITION_FALSE', 'TERMINAL', 'NON_TERMINAL']
+          .includes(String(row?.branch?.outcomeClass || '').toUpperCase()),
+      );
+      if (!directHpHealOtherPrimary && !classified && primary.rows.length > 1) {
+        r9v2DirectAtomicAddReason(
+          data,
+          'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED',
+          'PRIMARY_OUTCOME_SUCCESS_PROBABILITY_AMBIGUOUS',
+        );
+      }
+      if (!Number.isFinite(data.successProbability)) {
+        r9v2DirectAtomicAddReason(
+          data,
+          'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED',
+          'PRIMARY_OUTCOME_SUCCESS_PROBABILITY_NON_FINITE',
+        );
+        data.successProbability = 0;
+      }
+    } else {
+      data.successProbability = data.hardExclusionCodes.length ? 0 : 1;
+    }
+    const objectiveTotal = [...data.directFacts, ...data.scheduledFacts]
+      .reduce((total, fact) => total + Number(fact.valueHEPP || 0), 0);
+    const branchTotals = data.outcomeGroups.flatMap(group => group.rows.map(row =>
+      objectiveTotal + Number(row?.branch?.delta || 0) - Number(group.fact.rawDelta || 0)
+    ));
+    const damageOverkill = [...data.directFacts, ...data.scheduledFacts].reduce((total, fact) => {
+      if (!['HP_DELTA', 'SCHEDULED_HP_DELTA'].includes(fact.sourceOutcomeKind) || Number(fact.rawDelta) >= 0) return total;
+      const maximum = Math.max(1, Number(context.hpMax.get(fact.targetId) || 1));
+      const thresholdHp = maximum * r9v2DirectAtomicThresholdFor(fact.targetId, context);
+      const effective = Math.max(0, Number(context.initialHp.get(fact.targetId) || 0) - thresholdHp);
+      return total + Math.max(0, -Number(fact.rawDelta) - effective) / maximum;
+    }, 0);
+    data.pareto = {
+      worstTailUtilityHEPP: Number.isFinite(Math.min(objectiveTotal, ...(branchTotals.length ? branchTotals : [objectiveTotal])))
+        ? Math.min(objectiveTotal, ...(branchTotals.length ? branchTotals : [objectiveTotal]))
+        : 0,
+      survivalUtilityHEPP: [...data.directFacts, ...data.scheduledFacts]
+        .filter(fact => fact.targetId === context.actorId && ['HP_DELTA', 'HEAL_DELTA', 'WITHDRAWAL_CONTEST', 'SCHEDULED_HP_DELTA'].includes(fact.sourceOutcomeKind))
+        .reduce((total, fact) => total + Number(fact.rawDelta || 0), 0),
+      assetReserveHEPP: [...data.directFacts, ...data.scheduledFacts]
+        .reduce((total, fact) => total + Number(fact.assetReserveDelta || 0), 0),
+      discardedOverkillPP: damageOverkill,
+    };
+    data.firstTerminal = [...data.directFacts, ...data.scheduledFacts].find(fact => fact.terminalKind) || null;
+  }
+
+  function r9v2DirectAtomicCandidateData(request, candidate, context) {
+    const candidateId = String(candidate?.candidateId || '').trim();
+    const declaration = candidate?.declaration && typeof candidate.declaration === 'object'
+      ? candidate.declaration
+      : {};
+    const actionKind = String(candidate?.actionKind || declaration.actionKind || '').trim().toUpperCase();
+    const actionId = String(candidate?.actionId || declaration.actionId || candidateId).trim();
+    const actorId = String(candidate?.actorId || declaration.actorId || context.actorId).trim();
+    const targetInfo = r9v2DirectAtomicTargets(request, candidate, actorId, context.visibleWorld, context.opportunity, context.projectionContext);
+    const payment = r9v2DirectAtomicPayment(candidate, context.actor, actorId);
+    const hardExclusionCodes = [];
+    const upstreamAuditCodes = [];
+    const acceptedHardExclusionCode = /^(?:DIRECT_ATOMIC|R9V2_DIRECT|R9V2_KERNEL|R9V2_MECHANICAL)_[A-Z0-9_]+(?::.+)?$/;
+    if (Array.isArray(candidate?.hardExclusionCodes)) {
+      candidate.hardExclusionCodes.forEach((value, index) => {
+        const code = String(value || '').trim();
+        if (!code) return;
+        if (acceptedHardExclusionCode.test(code)) {
+          hardExclusionCodes.push(code);
+          return;
+        }
+        upstreamAuditCodes.push({
+          identity: (candidateId || 'UNIDENTIFIED_CANDIDATE') + ':upstream-hard-exclusion:' + index,
+          code,
+        });
+      });
+    }
+    const data = {
+      candidateId,
+      actionKind,
+      actionId,
+      actorId,
+      targetIds: targetInfo.targets,
+      paymentMode: payment.paymentMode || 'FORMAL',
+      resourceCosts: payment.resourceCosts || {},
+      dependencyTokens: [],
+      opportunityId: context.opportunity.opportunityId,
+      opportunityRevision: context.opportunity.revision,
+      windowId: context.opportunity.windowId,
+      role: context.opportunity.role,
+      hardExclusionCodes: [...new Set(hardExclusionCodes)],
+      upstreamAuditCodes,
+      auditDetails: [],
+      unsupportedOutcomeKinds: [],
+      directFacts: [],
+      scheduledFacts: [],
+      outcomeGroups: [],
+      successProbability: 0,
+      pareto: {
+        worstTailUtilityHEPP: 0,
+        survivalUtilityHEPP: 0,
+        assetReserveHEPP: 0,
+        discardedOverkillPP: 0,
+      },
+      status: 'DIRECT_ATOMIC_EVALUATED',
+      basisIdentity: '',
+      evaluationSource: 'PREVIEW_ATOMIC_FACTS_V1',
+      firstTerminal: null,
+    };
+    if (upstreamAuditCodes.length) {
+      r9v2DirectAtomicAddReason(
+        data,
+        'DIRECT_ATOMIC_UPSTREAM_HARD_EXCLUSION_INVALID',
+        JSON.stringify(upstreamAuditCodes),
+      );
+    }
+    if (Object.keys(candidate || {}).includes('legal') && candidate.legal !== true) {
+      data.legal = false;
+      r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_LEGAL_FALSE', 'LEGAL_FALSE');
+    }
+    if (!actionKind) r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', 'ACTION_KIND_MISSING');
+    if (actorId !== context.actorId) r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', 'ACTOR_BINDING_MISMATCH');
+    if (targetInfo.reason) r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', targetInfo.reason);
+    if (context.opportunity.targetRestricted && data.targetIds.some(targetId => !context.opportunity.targetIds.includes(targetId))) {
+      r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', 'OPPORTUNITY_TARGET_BINDING_MISMATCH');
+    }
+    const candidateOpportunityFields = [
+      ['opportunityId', candidate?.opportunityId],
+      ['grantId', candidate?.grantId],
+      ['opportunityRevision', candidate?.opportunityRevision],
+      ['windowId', candidate?.windowId],
+      ['role', candidate?.role],
+      ['opportunityType', candidate?.opportunityType],
+    ];
+    candidateOpportunityFields.forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      const expected = key === 'grantId'
+        ? context.opportunity.grantId
+        : key === 'opportunityRevision'
+          ? context.opportunity.revision
+          : key === 'opportunityType'
+            ? context.opportunity.opportunityType
+            : context.opportunity[key];
+      if (String(value).trim().toUpperCase() !== String(expected || '').trim().toUpperCase()) {
+        r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', 'OPPORTUNITY_' + key.toUpperCase() + '_MISMATCH');
+      }
+    });
+    if (!payment.valid) r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', payment.reason);
+    const publicDeclaration = {
+      ...declaration,
+      actorId,
+      actionKind,
+      actionId,
+      targetIds: [...data.targetIds],
+      resourceCosts: { ...data.resourceCosts },
+    };
+    const addExternalPaymentFacts = () => {
+      if (data.paymentMode !== 'EXTERNAL_TIMELINE' || !payment.valid) return;
+      Object.entries(data.resourceCosts).forEach(([resource, cost], index) => {
+        data.directFacts.push({
+          candidateId,
+          targetId: actorId,
+          sourceEventId: candidateId + ':event:external-payment:' + resource + ':' + index,
+          sourceFactId: candidateId + ':fact:external-payment:' + resource + ':' + index,
+          sourceOutcomeKind: 'ACTION_COST',
+          sequence: -100 + index,
+          rawDelta: -cost,
+          valueHEPP: -cost,
+          componentCode: R9V2_DIRECT_COMPONENT_BY_CODE.S2_DIRECT_ACTION_POOL.code,
+          scheduled: false,
+          postTerminal: false,
+          terminalKind: '',
+          assetReserveDelta: 0,
+          distribution: {
+            valid: true,
+            random: false,
+            branches: [{
+              outcome: 'PAYMENT_APPLIED',
+              probability: 1,
+              delta: -cost,
+              outcomeClass: 'SUCCESS',
+              metadata: {
+                outcome: 'PAYMENT_APPLIED',
+                outcomeClass: 'SUCCESS',
+                targetId: actorId,
+                delta: -cost,
+                resource,
+              },
+            }],
+          },
+        });
+      });
+    };
+    addExternalPaymentFacts();
+    if (!context.opportunity.valid || data.hardExclusionCodes.length) {
+      if (!context.opportunity.valid) r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', 'OPPORTUNITY_' + context.opportunity.reason);
+    } else {
+      try {
+        const basis = preview.compileMechanicalBasis({
+          identity: candidateId + ':' + context.opportunity.revision,
+          actorId,
+          declaration: publicDeclaration,
+          paymentMode: data.paymentMode,
+          actionFingerprint: actionId,
+        });
+        data.basisIdentity = String(basis?.identity || '').trim();
+        if (Array.isArray(basis?.unsupportedReasons) && basis.unsupportedReasons.length) {
+          basis.unsupportedReasons.forEach(reason =>
+            r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', 'BASIS_' + String(reason))
+          );
+        }
+        const evaluation = preview.evaluateMechanicalBasis({
+          basis,
+          worldSnapshot: context.visibleWorld,
+          actorId,
+          beliefState: context.publicBelief,
+          battleIntent: request?.battleIntent || {},
+          actionOpportunity: context.opportunity.raw,
+          revision: context.opportunity.revision,
+          mechanicalProjectionContext: context.projectionContext,
+          captureProjectedUnits: false,
+          captureDependencyKeys: true,
+        });
+        data.dependencyTokens = [
+          ...(Array.isArray(candidate?.dependencyTokens) ? candidate.dependencyTokens : []),
+          ...(Array.isArray(evaluation?.dependencyReads)
+            ? evaluation.dependencyReads.map(item => Array.isArray(item) ? item[0] : item?.key).filter(Boolean)
+            : []),
+        ].map(value => String(value || '').trim()).filter(Boolean);
+        data.dependencyTokens = [...new Set(data.dependencyTokens)];
+        const contributions = Array.isArray(evaluation?.contributions) ? evaluation.contributions : [];
+        contributions.forEach((contribution, index) => {
+          const mapped = r9v2DirectAtomicMapContribution(
+            contribution,
+            candidateId,
+            index,
+            context,
+          );
+          if (mapped?.unsupported) {
+            r9v2DirectAtomicAddReason(
+              data,
+              mapped.reason === 'OUTCOME_PROBABILITY_SUM_MISMATCH' || mapped.reason === 'CONDITIONAL_PRIOR_MISSING'
+                ? 'DIRECT_ATOMIC_EXACT_VALUE_UNREPRESENTABLE_WITHOUT_FUTURE_ROUTE'
+                : 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED',
+              mapped.reason,
+            );
+            if (!data.unsupportedOutcomeKinds.includes(mapped.outcomeKind)) data.unsupportedOutcomeKinds.push(mapped.outcomeKind);
+            return;
+          }
+          if (mapped) {
+            data[mapped.scheduled ? 'scheduledFacts' : 'directFacts'].push(mapped);
+            if (mapped.sourceOutcomeKind === 'UNKNOWN' && !data.unsupportedOutcomeKinds.includes(mapped.sourceOutcomeKind)) data.unsupportedOutcomeKinds.push(mapped.sourceOutcomeKind);
+          }
+        });
+        if (Array.isArray(evaluation?.summonDefinitions) && evaluation.summonDefinitions.length) {
+          r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', 'SUMMON_OR_CREATION_CONSUMER');
+          if (!data.unsupportedOutcomeKinds.includes('SUMMON_WINDOW')) data.unsupportedOutcomeKinds.push('SUMMON_WINDOW');
+        }
+        if (!data.directFacts.length && !data.scheduledFacts.length && actionKind === 'PASS_OPPORTUNITY') {
+          const pass = r9v2DirectAtomicMapContribution({ outcomeKind: 'PASS_OPPORTUNITY', targetId: actorId }, candidateId, 0, context);
+          data.directFacts.push(pass);
+        }
+      } catch (error) {
+        r9v2DirectAtomicAddReason(
+          data,
+          'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED',
+          'PREVIEW_' + String(error?.message || error).trim(),
+        );
+      }
+    }
+    r9v2DirectAtomicFinalizeData(data, context);
+    data.status = data.hardExclusionCodes.length ? 'DIRECT_ATOMIC_HARD_EXCLUDED' : 'DIRECT_ATOMIC_EVALUATED';
+    data.auditReason = data.auditDetails.toString();
+    data.publicCandidate = r9v2DirectAtomicPublicCandidate(candidate, data);
+    return data;
+  }
+
+  function r9v2DirectAtomicInformation(request, candidateIds) {
+    const keys = [
+      'candidateInformationGroupRanges',
+      'informationGroupOutcomeRanges',
+      'informationOutcomeProbabilities',
+      'informationOutcomeCandidateRanges',
+      'informationCandidateIds',
+      'informationCandidateValuesHEPP',
+    ];
+    const source = request?.directPublicOutcomeColumns ||
+      request?.publicOutcomeColumns ||
+      request?.informationOutcomeColumns ||
+      request?.directInformationColumns ||
+      request?.observableOpportunity?.publicOutcomeColumns ||
+      null;
+    const declared = request?.observableS4Opportunity === true ||
+      request?.observableOpportunity === true ||
+      (Array.isArray(request?.observableDeclarations) && request.observableDeclarations.length > 0) ||
+      (Array.isArray(request?.observableResults) && request.observableResults.length > 0) ||
+      !!source ||
+      keys.some(key => Object.hasOwn(request || {}, key));
+    const empty = {
+      candidateInformationGroupRanges: candidateIds.map(() => [0, 0]),
+      informationGroupOutcomeRanges: [],
+      informationOutcomeProbabilities: [],
+      informationOutcomeCandidateRanges: [],
+      informationCandidateIds: [],
+      informationCandidateValuesHEPP: [],
+    };
+    const publicEmpty = {
+      candidateInformationGroupRanges: [],
+      informationGroupOutcomeRanges: [],
+      informationOutcomeProbabilities: [],
+      informationOutcomeCandidateRanges: [],
+      informationCandidateIds: [],
+      informationCandidateValuesHEPP: [],
+    };
+    const publicStates = request?.publicStates ?? request?.beliefState?.publicStates ?? {};
+    const observableDeclarations = request?.observableDeclarations ?? request?.beliefState?.observableDeclarations ?? [];
+    const observableResults = request?.observableResults ?? request?.beliefState?.observableResults ?? [];
+    const revealedAbilityIds = request?.revealedAbilityIds ?? request?.beliefState?.revealedAbilityIds ?? [];
+    const visibilityTokens = request?.visibilityTokens ?? request?.beliefState?.visibilityTokens ?? [];
+    const publicBoundary = {
+      publicStates: cloneValue(publicStates && typeof publicStates === 'object' ? publicStates : {}),
+      observableDeclarations: cloneValue(Array.isArray(observableDeclarations) ? observableDeclarations : []),
+      observableResults: cloneValue(Array.isArray(observableResults) ? observableResults : []),
+      revealedAbilityIds: cloneValue(Array.isArray(revealedAbilityIds) ? revealedAbilityIds : []),
+      visibilityTokens: cloneValue(Array.isArray(visibilityTokens) ? visibilityTokens : []),
+    };
+    const forbidden = value => {
+      if (!value || typeof value !== 'object') return false;
+      if (Array.isArray(value)) return value.some(forbidden);
+      return Object.entries(value).some(([key, child]) =>
+        /hidden|private|unobserved|future|route|scalar|posterior|secret|internal|confidential/i.test(key) || forbidden(child)
+      );
+    };
+    if (forbidden(publicBoundary) || forbidden(source)) {
+      return {
+        ...empty,
+        declared: true,
+        rejectInput: true,
+        auditCode: 'DIRECT_PUBLIC_OUTCOME_COLUMNS_INCOMPLETE',
+        state: 'DECLARED_OBSERVABLE_S4_OPPORTUNITY',
+        publicBoundary,
+        publicColumns: publicEmpty,
+      };
+    }
+    if (!declared) {
+      return {
+        ...empty,
+        declared: false,
+        rejectInput: false,
+        auditCode: 'DIRECT_ATOMIC_NO_OBSERVABLE_S4_OPPORTUNITY',
+        state: 'NO_OBSERVABLE_S4_OPPORTUNITY',
+        publicBoundary,
+        publicColumns: publicEmpty,
+      };
+    }
+    const columns = source || request || {};
+    const complete = keys.every(key => Array.isArray(columns[key]));
+    if (!complete) {
+      return {
+        ...empty,
+        declared: true,
+        rejectInput: true,
+        auditCode: 'DIRECT_PUBLIC_OUTCOME_COLUMNS_INCOMPLETE',
+        state: 'DECLARED_OBSERVABLE_S4_OPPORTUNITY',
+        publicBoundary,
+        publicColumns: publicEmpty,
+      };
+    }
+    const normalized = {};
+    keys.forEach(key => { normalized[key] = cloneValue(columns[key]); });
+    const validRange = (range, cursor, upper) =>
+      Array.isArray(range) &&
+      range.length === 2 &&
+      Number.isInteger(range[0]) &&
+      Number.isInteger(range[1]) &&
+      range[0] === cursor &&
+      range[0] >= 0 &&
+      range[1] >= range[0] &&
+      range[1] <= upper;
+    const candidateGroupRanges = normalized.candidateInformationGroupRanges;
+    const groupOutcomeRanges = normalized.informationGroupOutcomeRanges;
+    const outcomeProbabilities = normalized.informationOutcomeProbabilities;
+    const outcomeCandidateRanges = normalized.informationOutcomeCandidateRanges;
+    const candidateInformationIds = normalized.informationCandidateIds;
+    const candidateInformationValues = normalized.informationCandidateValuesHEPP;
+    let valid = candidateGroupRanges.length === candidateIds.length &&
+      outcomeCandidateRanges.length === outcomeProbabilities.length &&
+      candidateInformationValues.length === candidateInformationIds.length;
+    let groupCursor = 0;
+    candidateGroupRanges.forEach(range => {
+      if (!validRange(range, groupCursor, groupOutcomeRanges.length)) {
+        valid = false;
+        return;
+      }
+      groupCursor = range[1];
+    });
+    if (groupCursor !== groupOutcomeRanges.length) valid = false;
+    let outcomeCursor = 0;
+    groupOutcomeRanges.forEach(range => {
+      if (!validRange(range, outcomeCursor, outcomeProbabilities.length) || range[1] <= range[0]) {
+        valid = false;
+        return;
+      }
+      const probabilities = outcomeProbabilities.slice(range[0], range[1]).map(Number);
+      if (probabilities.some(value => !Number.isFinite(value) || value < 0 || value > 1) ||
+        Math.abs(probabilities.reduce((sum, value) => sum + value, 0) - 1) > 1e-12) {
+        valid = false;
+      }
+      outcomeCursor = range[1];
+    });
+    if (outcomeCursor !== outcomeProbabilities.length) valid = false;
+    let candidateCursor = 0;
+    outcomeCandidateRanges.forEach(range => {
+      if (!validRange(range, candidateCursor, candidateInformationIds.length) ||
+        range[1] - range[0] !== candidateIds.length) {
+        valid = false;
+        return;
+      }
+      const ids = candidateInformationIds.slice(range[0], range[1]).map(String);
+      const values = candidateInformationValues.slice(range[0], range[1]).map(Number);
+      if (JSON.stringify(ids) !== JSON.stringify(candidateIds) ||
+        values.length !== candidateIds.length ||
+        values.some(value => !Number.isFinite(value))) {
+        valid = false;
+      }
+      candidateCursor = range[1];
+    });
+    if (candidateCursor !== candidateInformationIds.length ||
+      candidateInformationValues.length !== candidateInformationIds.length) valid = false;
+    if (!valid) {
+      return { ...empty, declared: true, rejectInput: true, auditCode: 'DIRECT_PUBLIC_OUTCOME_COLUMNS_INCOMPLETE', state: 'DECLARED_OBSERVABLE_S4_OPPORTUNITY', publicBoundary, publicColumns: publicEmpty };
+    }
+    return {
+      ...normalized,
+      declared: true,
+      rejectInput: false,
+      auditCode: 'DIRECT_PUBLIC_OUTCOME_CANDIDATE_COLUMNS_PRESENT',
+      state: 'DECLARED_OBSERVABLE_S4_OPPORTUNITY',
+      publicBoundary,
+      publicColumns: normalized,
+    };
+  }
+
+  function r9v2DirectAtomicBuildColumns(request, candidates, data, information, worldRevision, opportunityRevision) {
+    const candidateIds = candidates.map(candidate => String(candidate.candidateId).trim());
+    const targetUnitIds = [];
+    const targetOffsets = [];
+    const dependencyTokens = [];
+    const dependencyTokenRanges = [];
+    const actorIds = [];
+    const sourceActionIds = [];
+    const paymentModes = [];
+    const resourceCosts = [];
+    const successProbabilities = [];
+    let targetCursor = 0;
+    let dependencyCursor = 0;
+    data.forEach(item => {
+      actorIds.push(item.actorId);
+      sourceActionIds.push(item.actionId);
+      paymentModes.push(item.paymentMode);
+      resourceCosts.push({ ...item.resourceCosts });
+      successProbabilities.push(Number.isFinite(Number(item.successProbability)) ? Number(item.successProbability) : 0);
+      targetOffsets.push([targetCursor, targetCursor + item.targetIds.length]);
+      targetUnitIds.push(...item.targetIds);
+      targetCursor += item.targetIds.length;
+      const deps = [...new Set(item.dependencyTokens.map(String).filter(Boolean))];
+      dependencyTokenRanges.push([dependencyCursor, dependencyCursor + deps.length]);
+      dependencyTokens.push(...deps);
+      dependencyCursor += deps.length;
+    });
+    const componentCodes = R9V2_DIRECT_COMPONENT_CATALOG.map(component => component.code);
+    const componentCodeIndex = new Map(componentCodes.map((code, index) => [code, index]));
+    const sourceEventIds = [];
+    const sourceFactIds = [];
+    const factTargetIds = [];
+    const sourceEventIndex = new Map();
+    const sourceFactIndex = new Map();
+    const factTargetIndex = new Map();
+    const addCatalog = (map, values, value) => {
+      const normalized = String(value || '').trim();
+      if (!normalized) throw new Error('DIRECT_ATOMIC_COLUMN_IDENTITY_MISSING');
+      if (!map.has(normalized)) {
+        map.set(normalized, values.length);
+        values.push(normalized);
+      }
+      return map.get(normalized);
+    };
+    const allFacts = [];
+    const candidateFactRanges = [];
+    const directFactRanges = [];
+    const scheduledFactRanges = [];
+    const candidateOutcomeRanges = [];
+    const candidatePrimaryOutcomeGroupRanges = [];
+    const outcomeRows = [];
+    const primaryOutcomeGroups = [];
+    let factCursor = 0;
+    let outcomeCursor = 0;
+    let groupCursor = 0;
+    data.forEach(item => {
+      const facts = [...item.directFacts, ...item.scheduledFacts];
+      const start = factCursor;
+      allFacts.push(...facts);
+      factCursor += facts.length;
+      candidateFactRanges.push([start, factCursor]);
+      directFactRanges.push([start, start + item.directFacts.length]);
+      scheduledFactRanges.push([start + item.directFacts.length, factCursor]);
+      const localIndexes = new Map(facts.map((fact, index) => [fact.sourceFactId, start + index]));
+      const startOutcome = outcomeCursor;
+      const startGroup = groupCursor;
+      item.outcomeGroups.forEach(group => {
+        const sourceFactIndexValue = localIndexes.get(group.sourceFactId);
+        if (sourceFactIndexValue === undefined) return;
+        const groupOutcomeStart = outcomeCursor;
+        group.rows.forEach(row => {
+          const fact = facts[sourceFactIndexValue - start];
+          outcomeRows.push({
+            candidateId: item.candidateId,
+            sourceFactIndex: sourceFactIndexValue,
+            sourceFactId: fact.sourceFactId,
+            sourceOutcomeKind: fact.sourceOutcomeKind,
+            outcomeKind: fact.sourceOutcomeKind,
+            branchIndex: row.branchIndex,
+            probability: Number(row.probability),
+            isTerminal: row.isTerminal === true,
+            terminalKind: row.terminalKind || 'NONE',
+            postTerminal: fact.postTerminal === true,
+            branch: cloneValue(row.branch),
+          });
+          outcomeCursor += 1;
+        });
+        primaryOutcomeGroups.push({
+          candidateId: item.candidateId,
+          groupId: group.groupId,
+          sourceFactIndex: sourceFactIndexValue,
+          targetUnitId: group.targetUnitId,
+          outcomeKind: group.outcomeKind,
+          outcomeRange: [groupOutcomeStart, outcomeCursor],
+        });
+        groupCursor += 1;
+      });
+      candidateOutcomeRanges.push([startOutcome, outcomeCursor]);
+      candidatePrimaryOutcomeGroupRanges.push([startGroup, groupCursor]);
+    });
+    const firstTerminalMetadata = data.map((item, candidateIndex) => {
+      const factStart = candidateFactRanges[candidateIndex][0];
+      const terminal = item.firstTerminal;
+      if (!terminal) {
+        return {
+          hasTerminal: false,
+          factIndex: null,
+          sequence: null,
+          sourceFactId: null,
+          sourceOutcomeKind: null,
+          terminalKind: 'NONE',
+        };
+      }
+      const localFacts = [...item.directFacts, ...item.scheduledFacts];
+      const localIndex = localFacts.findIndex(fact => fact.sourceFactId === terminal.sourceFactId);
+      return {
+        hasTerminal: true,
+        factIndex: factStart + localIndex,
+        sequence: terminal.sequence,
+        sourceFactId: terminal.sourceFactId,
+        sourceOutcomeKind: terminal.sourceOutcomeKind,
+        terminalKind: terminal.terminalKind,
+      };
+    });
+    const columns = {
+      schemaVersion: 'BehaviorPoolColumnsV1',
+      worldRevision,
+      opportunityRevision,
+      candidateIds,
+      actorIds,
+      targetOffsets,
+      targetUnitIds,
+      sourceActionIds,
+      paymentModes,
+      resourceCosts,
+      successProbabilities,
+      dependencyTokens,
+      dependencyTokenRanges,
+      componentCodes,
+      componentSemanticDomainCodes: R9V2_DIRECT_COMPONENT_CATALOG.map(component => component.domain),
+      componentOwnerTypeCodes: R9V2_DIRECT_COMPONENT_CATALOG.map(component => component.ownerCode),
+      sourceEventIds,
+      sourceFactIds,
+      factTargetIds,
+      candidateFactRanges,
+      directFactRanges,
+      scheduledFactRanges,
+      componentCodeIndex: [],
+      causalOwnerTypeCode: [],
+      sourceEventIndex: [],
+      sourceFactIndex: [],
+      factTargetIndex: [],
+      sourceOutcomeKind: [],
+      sequence: [],
+      valueHEPP: [],
+      postTerminalFlags: [],
+      firstTerminalMetadata,
+      candidateOutcomeRanges,
+      outcomeRows,
+      candidatePrimaryOutcomeGroupRanges,
+      primaryOutcomeGroups,
+      paretoColumns: {
+        worstTailUtilityHEPP: data.map(item => item.pareto.worstTailUtilityHEPP),
+        survivalUtilityHEPP: data.map(item => item.pareto.survivalUtilityHEPP),
+        assetReserveHEPP: data.map(item => item.pareto.assetReserveHEPP),
+        discardedOverkillPP: data.map(item => item.pareto.discardedOverkillPP),
+      },
+      candidateInformationGroupRanges: information.candidateInformationGroupRanges,
+      informationGroupOutcomeRanges: information.informationGroupOutcomeRanges,
+      informationOutcomeProbabilities: information.informationOutcomeProbabilities,
+      informationOutcomeCandidateRanges: information.informationOutcomeCandidateRanges,
+      informationCandidateIds: information.informationCandidateIds,
+      informationCandidateValuesHEPP: information.informationCandidateValuesHEPP,
+    };
+    allFacts.forEach(fact => {
+      const component = R9V2_DIRECT_COMPONENT_BY_CODE[fact.componentCode];
+      if (!component) throw new Error('DIRECT_ATOMIC_COMPONENT_UNKNOWN:' + fact.componentCode);
+      columns.componentCodeIndex.push(componentCodeIndex.get(fact.componentCode));
+      columns.causalOwnerTypeCode.push(component.ownerCode);
+      columns.sourceEventIndex.push(addCatalog(sourceEventIndex, sourceEventIds, fact.sourceEventId));
+      columns.sourceFactIndex.push(addCatalog(sourceFactIndex, sourceFactIds, fact.sourceFactId));
+      columns.factTargetIndex.push(addCatalog(factTargetIndex, factTargetIds, fact.targetId));
+      columns.sourceOutcomeKind.push(String(fact.sourceOutcomeKind || '').trim());
+      columns.sequence.push(r9v2DirectFinite(fact.sequence, 'DIRECT_ATOMIC_SEQUENCE_NON_FINITE', fact.sourceFactId));
+      columns.valueHEPP.push(r9v2DirectFinite(fact.valueHEPP, 'DIRECT_ATOMIC_VALUE_NON_FINITE', fact.sourceFactId));
+      columns.postTerminalFlags.push(fact.postTerminal === true);
+    });
+    return {
+      columns,
+      allFacts,
+      directFacts: data.flatMap(item => item.directFacts),
+      scheduledFacts: data.flatMap(item => item.scheduledFacts),
+      firstTerminalMetadata,
+      outcomeRowsByCandidate: data.map(item => item.outcomeGroups.flatMap(group => group.rows)),
+    };
+  }
+
+  function r9v2DirectAtomicStructuralDifferent(left, right) {
+    if (!left || !right) return true;
+    if (String(left.candidateMetadata?.actionId || '') !== String(right.candidateMetadata?.actionId || '')) return true;
+    if (String(left.candidateMetadata?.paymentMode || '') !== String(right.candidateMetadata?.paymentMode || '')) return true;
+    const leftTargets = [...(left.candidateMetadata?.targetSet || [])].map(String).sort(compareUtf16);
+    const rightTargets = [...(right.candidateMetadata?.targetSet || [])].map(String).sort(compareUtf16);
+    return JSON.stringify(leftTargets) !== JSON.stringify(rightTargets);
+  }
+
+  function r9v2DirectAtomicL1(left, right, vectors) {
+    const fields = ['objectiveUtilityHEPP', 'worstTailUtilityHEPP', 'survivalUtilityHEPP', 'assetReserveHEPP', 'informationValueHEPP', 'discardedOverkillPP'];
+    return fields.reduce((total, field) => {
+      const values = vectors.map(vector => Number(vector?.paretoDimensions?.[field] || 0));
+      const min = Math.min(...values, 0);
+      const max = Math.max(...values, 0);
+      const span = max - min || 1;
+      return total + Math.abs(
+        Number(left?.paretoDimensions?.[field] || 0) - Number(right?.paretoDimensions?.[field] || 0),
+      ) / span;
+    }, 0);
+  }
+
+  function r9v2DirectAtomicProofEqual(vector, proof) {
+    const candidate = proof?.vector;
+    if (!candidate || candidate.candidateId !== vector?.candidateId) return false;
+    for (const field of [
+      'stateDeltaTotal',
+      'actionPoolDeltaTotal',
+      'terminalDeltaTotal',
+      'goalUtilityDeltaHEPP',
+      'informationValueHEPP',
+      'objectiveUtilityHEPP',
+    ]) {
+      if (Math.abs(Number(candidate[field]) - Number(vector[field])) > 1e-9) return false;
+    }
+    for (const field of [
+      'valueSource',
+      'mechanicalSource',
+      'candidateMetadata',
+      'firstTerminalMetadata',
+      'factRanges',
+      'causalFacts',
+      'outcomeRows',
+      'primaryOutcomeGroups',
+      'paretoInputs',
+      'paretoDimensions',
+      'causalContributionColumns',
+      'legal',
+      'hardExclusionCodes',
+    ]) {
+      if (JSON.stringify(candidate[field]) !== JSON.stringify(vector[field])) return false;
+    }
+    return true;
+  }
+
+  function r9v2DirectAtomicProviderPublicBoundary(request, visibleWorld, actorId, information) {
+    const visibleHpRatios = {};
+    const visibleStateById = {};
+    const explicitHpRatios = request?.visibleHpRatios && typeof request.visibleHpRatios === 'object' &&
+      !Array.isArray(request.visibleHpRatios)
+      ? request.visibleHpRatios
+      : null;
+    if (explicitHpRatios) {
+      Object.entries(explicitHpRatios).forEach(([id, value]) => {
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+          throw new Error('DIRECT_PUBLIC_HP_RATIO_INVALID:' + id);
+        }
+      });
+    }
+    worldEntries(visibleWorld).forEach(entry => {
+      const id = String(preview.unitId(entry?.unit) || '').trim();
+      if (!id) return;
+      const hasExplicitRatio = !!explicitHpRatios && Object.hasOwn(explicitHpRatios, id);
+      const ratio = hasExplicitRatio
+        ? explicitHpRatios[id]
+        : Number(preview.readHp(entry.unit)) / Number(preview.readHpMax(entry.unit));
+      if (typeof ratio !== 'number' || !Number.isFinite(ratio) || ratio < 0 || ratio > 1) {
+        throw new Error('DIRECT_PUBLIC_HP_RATIO_INVALID:' + id);
+      }
+      visibleHpRatios[id] = ratio;
+      const explicitState = request?.publicStates?.[id] ?? request?.beliefState?.publicStates?.[id];
+      visibleStateById[id] = explicitState !== undefined ? cloneValue(explicitState) : visibleStates(entry.unit);
+    });
+    return {
+      actorId,
+      visibleHpRatios,
+      visibleStates: visibleStateById,
+      publicStates: cloneValue(information.publicBoundary.publicStates),
+      observableDeclarations: cloneValue(information.publicBoundary.observableDeclarations),
+      observableResults: cloneValue(information.publicBoundary.observableResults),
+      revealedAbilityIds: cloneValue(information.publicBoundary.revealedAbilityIds),
+      visibilityTokens: cloneValue(information.publicBoundary.visibilityTokens),
+    };
+  }
+
+  function r9v2DirectBehaviorProvider(request = {}) {
+    const visibleWorld = request?.visibleWorld || request?.worldSnapshot;
+    if (!visibleWorld || typeof visibleWorld !== 'object') throw new Error('R9V2_DIRECT_MISSING_FIELD:visibleWorld');
+    const actorId = String(request?.actorId || '').trim();
+    if (!actorId) throw new Error('R9V2_DIRECT_MISSING_FIELD:actorId');
+    const actor = r9v2DirectAtomicUnit(visibleWorld, actorId);
+    if (!actor) throw new Error('R9V2_DIRECT_ACTOR_NOT_FOUND');
+    const candidates = Array.isArray(request?.frozenCandidates) ? request.frozenCandidates : [];
+    if (!candidates.length) throw new Error('R9V2_DIRECT_CANDIDATE_POOL_EMPTY');
+    const candidateIds = candidates.map(candidate => String(candidate?.candidateId || '').trim());
+    if (candidateIds.some(candidateId => !candidateId)) throw new Error('R9V2_DIRECT_MISSING_FIELD:frozenCandidates.candidateId');
+    if (new Set(candidateIds).size !== candidateIds.length) throw new Error('R9V2_DIRECT_DUPLICATE_CANDIDATE_ID');
+    const frozenCandidateById = new Map(
+      candidates.map(candidate => [
+        String(candidate?.candidateId || '').trim(),
+        candidate,
+      ]),
+    );
+    const frozenDeclarationFor = candidateId => {
+      const frozenCandidate = frozenCandidateById.get(String(candidateId || '').trim());
+      if (!frozenCandidate) {
+        throw new Error('R9V2_DIRECT_FROZEN_CANDIDATE_MISSING:' + candidateId);
+      }
+      if (!frozenCandidate.declaration || typeof frozenCandidate.declaration !== 'object') {
+        throw new Error('R9V2_DIRECT_FROZEN_DECLARATION_MISSING:' + candidateId);
+      }
+      return cloneValue(frozenCandidate.declaration);
+    };
+    const opportunity = r9v2DirectAtomicOpportunity(request, actor, visibleWorld);
+    const publicInput = r9v2DirectAtomicInformation(request, candidateIds);
+    const projectionContext = preview.compileMechanicalProjectionContext(visibleWorld);
+    const objectiveContext = r9v2DirectAtomicObjectiveContext(request, visibleWorld, actorId);
+    const context = {
+      visibleWorld,
+      actor,
+      actorId,
+      opportunity,
+      projectionContext,
+      publicBelief: {
+        publicStates: publicInput.publicBoundary.publicStates,
+        observableDeclarations: publicInput.publicBoundary.observableDeclarations,
+        observableResults: publicInput.publicBoundary.observableResults,
+        revealedAbilityIds: publicInput.publicBoundary.revealedAbilityIds,
+        visibilityTokens: publicInput.publicBoundary.visibilityTokens,
+      },
+      ...objectiveContext,
+    };
+    const candidateData = candidates.map(candidate =>
+      r9v2DirectAtomicCandidateData(request, candidate, context)
+    );
+    if (publicInput.rejectInput) {
+      candidateData.forEach(data => r9v2DirectAtomicAddReason(
+        data,
+        'DIRECT_PUBLIC_OUTCOME_COLUMNS_INCOMPLETE',
+        publicInput.auditCode,
+      ));
+      candidateData.forEach(data => { data.status = 'DIRECT_ATOMIC_S4_INPUT_REJECTED'; });
+    }
+    const worldRevision = String(
+      request?.evaluationContext?.worldRevision ||
+      request?.evaluationContext?.visibleWorldRevision ||
+      request?.worldRevision ||
+      visibleWorld?.revision ||
+      'direct-world:' + preview.stableHash(visibleWorld),
+    ).trim();
+    const opportunityRevision = String(opportunity.revision || '').trim();
+    if (!opportunityRevision) {
+      candidateData.forEach(data => r9v2DirectAtomicAddReason(data, 'DIRECT_ATOMIC_EXACT_PROJECTION_UNSUPPORTED', 'OPPORTUNITY_REVISION_MISSING'));
+    }
+    candidateData.forEach(data => {
+      data.status = publicInput.rejectInput
+        ? 'DIRECT_ATOMIC_S4_INPUT_REJECTED'
+        : data.hardExclusionCodes.length
+          ? 'DIRECT_ATOMIC_HARD_EXCLUDED'
+          : 'DIRECT_ATOMIC_EVALUATED';
+      data.auditReason = data.auditDetails.toString();
+      const candidate = candidates.find(item => String(item?.candidateId || '').trim() === data.candidateId);
+      data.publicCandidate = r9v2DirectAtomicPublicCandidate(candidate, data);
+    });
+    const kernelOpportunityRevision = opportunityRevision ||
+      'invalid-opportunity:' + preview.stableHash(opportunity.raw || { reason: opportunity.reason || '' });
+    const built = r9v2DirectAtomicBuildColumns(
+      request,
+      candidates,
+      candidateData,
+      publicInput,
+      worldRevision,
+      kernelOpportunityRevision,
+    );
+    const publicBoundary = r9v2DirectAtomicProviderPublicBoundary(request, visibleWorld, actorId, publicInput);
+    const beliefRevision = String(
+      request?.evaluationContext?.beliefRevision ||
+      request?.beliefRevision ||
+      'direct-belief:' + preview.stableHash(publicBoundary),
+    ).trim();
+    const kernel = r9v2DirectKernelApi();
+    const rows = candidateData.map(data => {
+      const row = {
+        candidateId: data.candidateId,
+        actionId: data.actionId,
+        actorId: data.actorId,
+        targetSet: [...data.targetIds],
+        paymentMode: data.paymentMode,
+        resourceCosts: { ...data.resourceCosts },
+        dependencyTokens: [...data.dependencyTokens],
+        mechanicalSource: 'PREVIEW_ATOMIC_FACTS_V1',
+        hardExclusionCodes: [...data.hardExclusionCodes],
+      };
+      if (Object.keys(data).includes('legal')) row.legal = data.legal;
+      return row;
+    });
+    const session = kernel.createSession({
+      calculationMode: 'BEHAVIOR_POOL_COLUMNS_V1',
+      worldRevision,
+      beliefRevision,
+      opportunityRevision: kernelOpportunityRevision,
+      observerId: actorId,
+      beliefOverlay: {
+        schemaVersion: 'BeliefOverlayV1',
+        observerId: actorId,
+        beliefRevision,
+        visibleHpRatios: publicBoundary.visibleHpRatios,
+        visibleStates: publicBoundary.visibleStates,
+        publicStates: publicBoundary.publicStates,
+        revealedAbilityIds: publicBoundary.revealedAbilityIds,
+        observableDeclarations: publicBoundary.observableDeclarations,
+        observableResults: publicBoundary.observableResults,
+        visibilityTokens: publicBoundary.visibilityTokens,
+      },
+      candidates: rows,
+      behaviorPoolColumns: built.columns,
+    });
+    const vectors = kernel.evaluateAllCandidates(session, actorId).map(vector => ({
+      ...vector,
+      selectionStatus: candidateData.find(item => item.candidateId === vector.candidateId)?.status || '',
+    }));
+    if (!Array.isArray(vectors) || vectors.length !== candidateIds.length || vectors.some((vector, index) => vector?.candidateId !== candidateIds[index])) {
+      throw new Error('R9V2_DIRECT_VECTOR_COVERAGE_MISMATCH');
+    }
+    if (vectors.some(vector => vector?.valueSource !== 'BEHAVIOR_POOL_COLUMNS_V1')) throw new Error('R9V2_DIRECT_VALUE_SOURCE_MISMATCH');
+    const vectorById = new Map(vectors.map(vector => [vector.candidateId, vector]));
+    const legalParetoVectors = vectors
+      .filter(vector => vector?.legal === true && Array.isArray(vector?.hardExclusionCodes) && vector.hardExclusionCodes.length === 0 && vector?.paretoWitness?.kind === 'NON_DOMINATED')
+      .sort((left, right) => Number(left.paretoRank || 0) - Number(right.paretoRank || 0) || compareUtf16(left.candidateId, right.candidateId));
+    let selectedVector = legalParetoVectors[0] || null;
+    let selectionMode = selectedVector ? 'PARETO_RANK' : 'NO_LEGAL_CANDIDATE';
+    if (request?.playerLockedDeclaration) {
+      const lock = request.playerLockedDeclaration;
+      const lockedId = String(lock?.candidateId || '').trim();
+      const normalizeLockTargets = value => Array.isArray(value)
+        ? [...new Set(value.map(item => String(item || '').trim()).filter(Boolean))].sort(compareUtf16)
+        : null;
+      const hasLockTargetIds = Object.hasOwn(lock, 'targetIds');
+      const hasLockTargetSet = Object.hasOwn(lock, 'targetSet');
+      const lockTargetIds = hasLockTargetIds
+        ? normalizeLockTargets(lock.targetIds)
+        : hasLockTargetSet
+          ? normalizeLockTargets(lock.targetSet)
+          : null;
+      const bothLockTargetsAgree = !hasLockTargetIds || !hasLockTargetSet ||
+        JSON.stringify(normalizeLockTargets(lock.targetIds)) === JSON.stringify(normalizeLockTargets(lock.targetSet));
+      const locked = legalParetoVectors.find(vector => {
+        if (lockedId && vector.candidateId !== lockedId) return false;
+        if (!bothLockTargetsAgree) return false;
+        const data = candidateData.find(item => item.candidateId === vector.candidateId);
+        if (!data) return false;
+        const actionMatch = !Object.hasOwn(lock, 'actionId') ||
+          data.actionId === String(lock.actionId ?? '').trim();
+        const kindMatch = !Object.hasOwn(lock, 'actionKind') ||
+          data.actionKind === String(lock.actionKind ?? '').trim().toUpperCase();
+        const paymentMatch = !Object.hasOwn(lock, 'paymentMode') ||
+          data.paymentMode === String(lock.paymentMode ?? '').trim().toUpperCase();
+        const targetMatch = (!hasLockTargetIds && !hasLockTargetSet) ||
+          (lockTargetIds !== null && JSON.stringify([...data.targetIds].sort(compareUtf16)) === JSON.stringify(lockTargetIds));
+        return actionMatch && targetMatch && paymentMatch && kindMatch;
+      });
+      if (!locked) throw new Error('MANUAL_LOCK_NOT_IN_LEGAL_PARETO_SET');
+      selectedVector = locked;
+      selectionMode = 'PLAYER_LOCKED';
+    }
+    const selectedId = selectedVector?.candidateId || '';
+    const remaining = legalParetoVectors.filter(vector => vector.candidateId !== selectedId);
+    const explicitAlternativeIds = Array.isArray(request?.explicitAlternativeCandidateIds)
+      ? request.explicitAlternativeCandidateIds.map(String)
+      : Array.isArray(request?.alternativeCandidateIds)
+        ? request.alternativeCandidateIds.map(String)
+        : [];
+    const alternativesVectors = [];
+    explicitAlternativeIds.forEach(candidateId => {
+      const vector = remaining.find(item => item.candidateId === candidateId);
+      if (vector && !alternativesVectors.some(item => item.candidateId === vector.candidateId)) alternativesVectors.push(vector);
+    });
+    if (!explicitAlternativeIds.length) {
+      const structural = remaining.find(vector => r9v2DirectAtomicStructuralDifferent(vector, selectedVector));
+      if (structural && !alternativesVectors.some(item => item.candidateId === structural.candidateId)) alternativesVectors.push(structural);
+      const farthest = remaining
+        .filter(vector => !alternativesVectors.some(item => item.candidateId === vector.candidateId))
+        .sort((left, right) => r9v2DirectAtomicL1(right, selectedVector, legalParetoVectors) - r9v2DirectAtomicL1(left, selectedVector, legalParetoVectors) || compareUtf16(left.candidateId, right.candidateId))[0];
+      if (farthest && alternativesVectors.length < 2) alternativesVectors.push(farthest);
+    }
+    const proofIds = selectedVector ? [selectedId, ...alternativesVectors.slice(0, 2).map(vector => vector.candidateId)] : [];
+    const proofs = new Map();
+    proofIds.forEach(candidateId => {
+      const proof = kernel.materializeProof(session, candidateId);
+      const vector = vectorById.get(candidateId);
+      if (!r9v2DirectAtomicProofEqual(vector, proof)) throw new Error('DIRECT_ATOMIC_PROOF_VECTOR_MISMATCH:' + candidateId);
+      proofs.set(candidateId, proof);
+    });
+    const vectorAudit = vectors.map(vector => ({
+      candidateId: vector.candidateId,
+      legal: vector.legal,
+      hardExclusionCodes: [...(vector.hardExclusionCodes || [])],
+      paretoWitness: cloneValue(vector.paretoWitness),
+      paretoRank: vector.paretoRank ?? null,
+      valueSource: vector.valueSource,
+      paretoDimensions: cloneValue(vector.paretoDimensions),
+      selectionStatus: vector.selectionStatus || candidateData.find(item => item.candidateId === vector.candidateId)?.status || '',
+      unsupportedOutcomeKinds: [...(candidateData.find(item => item.candidateId === vector.candidateId)?.unsupportedOutcomeKinds || [])],
+    }));
+    const exclusionCounts = {};
+    const unsupportedOutcomeKindCounts = {};
+    candidateData.forEach(item => {
+      item.hardExclusionCodes.forEach(code => { exclusionCounts[code] = Number(exclusionCounts[code] || 0) + 1; });
+      item.unsupportedOutcomeKinds.forEach(kind => { unsupportedOutcomeKindCounts[kind] = Number(unsupportedOutcomeKindCounts[kind] || 0) + 1; });
+    });
+    const publicCandidateById = new Map(candidateData.map(item => [item.candidateId, item.publicCandidate]));
+    const directBoundary = {
+      schemaVersion: 'R9v2DirectBehaviorBoundaryV2',
+      calculationMode: 'BEHAVIOR_POOL_COLUMNS_V1',
+      candidateIds: [...candidateIds],
+      candidates: candidateData.map(item => ({
+        ...item.publicCandidate,
+        status: item.status,
+        auditReason: item.auditReason,
+        unsupportedOutcomeKinds: [...item.unsupportedOutcomeKinds],
+        dependencyTokens: [...item.dependencyTokens],
+        directFacts: cloneValue(item.directFacts),
+        scheduledFacts: cloneValue(item.scheduledFacts),
+        outcomeGroups: cloneValue(item.outcomeGroups.map(group => ({
+          ...group,
+          fact: undefined,
+        }))),
+        firstTerminal: cloneValue(item.firstTerminal),
+      })),
+      behaviorPoolColumns: cloneValue(built.columns),
+      canonicalFactPool: cloneValue(built.allFacts),
+      publicInput: publicBoundary,
+      information: {
+        state: publicInput.state,
+        status: publicInput.auditCode,
+        auditCode: publicInput.auditCode,
+        candidateInformationGroupRanges: cloneValue(publicInput.publicColumns.candidateInformationGroupRanges),
+        informationGroupOutcomeRanges: cloneValue(publicInput.publicColumns.informationGroupOutcomeRanges),
+        informationOutcomeProbabilities: cloneValue(publicInput.publicColumns.informationOutcomeProbabilities),
+        informationOutcomeCandidateRanges: cloneValue(publicInput.publicColumns.informationOutcomeCandidateRanges),
+        informationCandidateIds: cloneValue(publicInput.publicColumns.informationCandidateIds),
+        informationCandidateValuesHEPP: cloneValue(publicInput.publicColumns.informationCandidateValuesHEPP),
+        applicability: publicInput.declared ? (publicInput.rejectInput ? 'REJECTED' : 'OBSERVABLE') : 'NOT_APPLICABLE',
+        valueHEPP: publicInput.rejectInput ? null : publicInput.declared ? null : 0,
+      },
+      vectors: cloneValue(vectors),
+      proofCandidateIds: [...proofIds],
+    };
+    const makeSelected = vector => {
+      if (!vector) return null;
+      const candidateId = String(vector.candidateId || '').trim();
+      return {
+        candidateId,
+        declaration: frozenDeclarationFor(candidateId),
+        candidate: cloneValue(publicCandidateById.get(candidateId)),
+        vector: cloneValue(vector),
+        proof: cloneValue(proofs.get(candidateId)),
+        selectionMode,
+      };
+    };
+    return {
+      schemaVersion: 'R9v2DirectBehaviorDecisionV2',
+      providerId: 'r9v2-direct-test',
+      actorId,
+      selectedCandidateId: selectedId || null,
+      selectedDeclaration: selectedId ? frozenDeclarationFor(selectedId) : null,
+      selected: makeSelected(selectedVector),
+      alternatives: alternativesVectors.slice(0, 2).map(vector => {
+        const candidateId = String(vector.candidateId || '').trim();
+        return {
+          candidateId,
+          declaration: frozenDeclarationFor(candidateId),
+          candidate: cloneValue(publicCandidateById.get(candidateId)),
+          vector: cloneValue(vector),
+          proof: cloneValue(proofs.get(candidateId)),
+        };
+      }),
+      decisionAudit: {
+        schemaVersion: 'DecisionAuditV3',
+        engine: 'R9V2_DIRECT_BEHAVIOR_POOL_COLUMNS_V1',
+        selectionMode,
+        candidateCount: candidates.length,
+        frozenCandidateIds: [...candidateIds],
+        candidates: vectorAudit,
+        exclusionCounts,
+        unsupportedOutcomeKindCounts,
+        opportunity: {
+          valid: opportunity.valid,
+          reason: opportunity.reason || '',
+          opportunityId: opportunity.opportunityId || '',
+          opportunityType: opportunity.opportunityType || '',
+          ownerId: opportunity.ownerId || '',
+          status: opportunity.status || '',
+          revision: opportunity.revision || '',
+          round: opportunity.round ?? null,
+          windowId: opportunity.windowId || '',
+          role: opportunity.role || '',
+          targetIds: [...(opportunity.targetIds || [])],
+        },
+        information: {
+          state: publicInput.state,
+          auditCode: publicInput.auditCode,
+          rejectInput: publicInput.rejectInput,
+        },
+        vectorCoverage: 'CLOSED',
+        paretoAppliedAfterHardExclusion: true,
+        proofCoverage: selectedVector ? {
+          mode: 'SELECTED_AND_EXPLICIT_ALTERNATIVES',
+          materializedCandidateIds: [...proofIds],
+          equality: 'VERIFIED',
+        } : 'NONE',
+      },
+      directBoundary,
+      kernelMetrics: cloneValue(session.metrics),
+      beliefRevision,
+      decisionProfile: {
+        engine: 'R9V2_DIRECT_BEHAVIOR_POOL_COLUMNS_V1',
+        calculationMode: 'BEHAVIOR_POOL_COLUMNS_V1',
+        mechanicalSource: 'PREVIEW_ATOMIC_FACTS_V1',
+        proofPolicy: 'LATE_SELECTED_AND_EXPLICIT_ALTERNATIVES',
+        formalProvider: 'r8',
+        sourceCapability: R9V2_DIRECT_INFORMATION_CAPABILITY,
+        noFutureRouteDerivation: true,
+        s4: {
+          state: publicInput.state,
+          status: publicInput.auditCode,
+          allSixColumnsEmpty: !publicInput.declared,
+          applicability: publicInput.declared ? (publicInput.rejectInput ? 'REJECTED' : 'OBSERVABLE') : 'NOT_APPLICABLE',
+          valueHEPP: publicInput.rejectInput ? null : publicInput.declared ? null : 0,
+        },
+      },
+    };
+  }
+
+  function r9v2LegacyDirectBehaviorProvider(request = {}) {
+    const visibleWorld = request?.visibleWorld || request?.worldSnapshot;
+    if (!visibleWorld || typeof visibleWorld !== 'object') {
+      throw new Error('R9V2_DIRECT_MISSING_FIELD:visibleWorld');
+    }
+    const actorId = String(request?.actorId || '').trim();
+    if (!actorId) throw new Error('R9V2_DIRECT_MISSING_FIELD:actorId');
+    const candidates = Array.isArray(request?.frozenCandidates)
+      ? request.frozenCandidates
+      : [];
+    if (!candidates.length) throw new Error('R9V2_DIRECT_CANDIDATE_POOL_EMPTY');
+    const candidateIds = candidates.map(candidate =>
+      String(candidate?.candidateId || '').trim(),
+    );
+    if (candidateIds.some(candidateId => !candidateId)) {
+      throw new Error('R9V2_DIRECT_MISSING_FIELD:frozenCandidates.candidateId');
+    }
+    if (new Set(candidateIds).size !== candidateIds.length) {
+      throw new Error('R9V2_DIRECT_DUPLICATE_CANDIDATE_ID');
+    }
+    const directRequest = { ...request, visibleWorld };
+    const projectionContext = preview.compileMechanicalProjectionContext(visibleWorld);
+    const objectiveContext = r9v2TargetObjectiveEvaluationContext(directRequest);
+    const candidateData = candidates.map(candidate =>
+      r9v2DirectCandidateData({
+        request: directRequest,
+        candidate,
+        projectionContext,
+        objectiveContext,
+      }),
+    );
+    const built = r9v2DirectBuildColumns({
+      request: directRequest,
+      candidates,
+      candidateData,
+    });
+    const visibleHpRatios = {};
+    const visibleStatesById = {};
+    worldEntries(visibleWorld).forEach(({ unit }) => {
+      const unitId = String(preview.unitId(unit) || '').trim();
+      if (!unitId) return;
+      visibleHpRatios[unitId] = preview.readHp(unit) /
+        Math.max(1, preview.readHpMax(unit));
+      visibleStatesById[unitId] = visibleStatesById[unitId] ||
+        visibleStates(unit);
+    });
+    const beliefRevision = String(
+      request?.evaluationContext?.beliefRevision ||
+      request?.beliefState?.revision ||
+      `direct-belief:${actorId}`,
+    ).trim();
+    const worldRevision = String(
+      request?.evaluationContext?.worldRevision ||
+      request?.evaluationContext?.visibleWorldRevision ||
+      `direct-world:${actorId}`,
+    ).trim();
+    const opportunityRevision = String(
+      request?.evaluationContext?.opportunityRevision ||
+      request?.evaluationContext?.opportunitySemanticRevision ||
+      `direct-opportunity:${String(request?.actionOpportunity?.opportunityId || 'active').trim()}`,
+    ).trim();
+    const kernel = r9v2DirectKernelApi();
+    const session = kernel.createSession({
+      calculationMode: 'BEHAVIOR_POOL_COLUMNS_V1',
+      worldRevision,
+      beliefRevision,
+      opportunityRevision,
+      observerId: actorId,
+      beliefOverlay: {
+        schemaVersion: 'BeliefOverlayV1',
+        observerId: actorId,
+        beliefRevision,
+        visibleHpRatios,
+        visibleStates: visibleStatesById,
+        publicStates: visibleStatesById,
+        revealedAbilityIds: [],
+        observableDeclarations: candidates.map(candidate =>
+          cloneValue(candidate?.declaration || {}),
+        ),
+        observableResults: [],
+        posteriorParameters: {},
+        visibilityTokens: Object.keys(visibleHpRatios),
+      },
+      candidates: candidateData.map(data => data.row),
+      behaviorPoolColumns: built.columns,
+    });
+    const vectors = kernel.evaluateAllCandidates(session, actorId);
+    if (
+      !Array.isArray(vectors) ||
+      vectors.length !== candidateIds.length ||
+      vectors.some((vector, index) => vector?.candidateId !== candidateIds[index])
+    ) {
+      throw new Error('R9V2_DIRECT_VECTOR_COVERAGE_MISMATCH');
+    }
+    if (vectors.some(vector => vector?.valueSource !== 'BEHAVIOR_POOL_COLUMNS_V1')) {
+      throw new Error('R9V2_DIRECT_VALUE_SOURCE_MISMATCH');
+    }
+    const vectorByCandidateId = new Map(
+      vectors.map(vector => [vector.candidateId, vector]),
+    );
+    const legalParetoVectors = vectors
+      .filter(vector =>
+        vector?.legal === true &&
+        Array.isArray(vector?.hardExclusionCodes) &&
+        vector.hardExclusionCodes.length === 0 &&
+        vector?.paretoWitness?.kind === 'NON_DOMINATED' &&
+        Number.isInteger(vector?.paretoRank),
+      )
+      .sort((left, right) =>
+        left.paretoRank - right.paretoRank ||
+        compareUtf16(left.candidateId, right.candidateId),
+      );
+    let selectedVector = null;
+    let selectionMode = 'PARETO_RANK';
+    if (request?.playerLockedDeclaration) {
+      const lockedCandidate = candidates.find(candidate =>
+        matchesPlayerLockedDeclaration(
+          candidate,
+          request.playerLockedDeclaration,
+          visibleWorld,
+        ),
+      );
+      selectedVector = lockedCandidate
+        ? vectorByCandidateId.get(lockedCandidate.candidateId) || null
+        : null;
+      if (
+        !selectedVector ||
+        selectedVector.legal !== true ||
+        selectedVector.hardExclusionCodes.length ||
+        selectedVector.paretoWitness?.kind === 'HARD_EXCLUDED'
+      ) {
+        throw new Error('R9V2_DIRECT_PLAYER_LOCKED_CANDIDATE_INVALID');
+      }
+      selectionMode = 'PLAYER_LOCKED';
+    } else {
+      selectedVector = legalParetoVectors[0] || null;
+    }
+    const vectorAudit = vectors.map(vector => ({
+      candidateId: vector.candidateId,
+      legal: vector.legal,
+      hardExclusionCodes: cloneValue(vector.hardExclusionCodes || []),
+      paretoWitness: cloneValue(vector.paretoWitness),
+      paretoRank: vector.paretoRank,
+      valueSource: vector.valueSource,
+      paretoDimensions: cloneValue(vector.paretoDimensions),
+    }));
+    const directBoundary = {
+      schemaVersion: 'R9v2DirectBehaviorBoundaryV1',
+      calculationMode: 'BEHAVIOR_POOL_COLUMNS_V1',
+      candidateIds: [...candidateIds],
+      frozenCandidates: candidates.map(candidate => cloneValue(candidate)),
+      behaviorPoolColumns: cloneValue(built.columns),
+      directFacts: cloneValue(built.directFacts),
+      scheduledFacts: cloneValue(built.scheduledFacts),
+      directFactRanges: cloneValue(built.directFactRanges),
+      scheduledFactRanges: cloneValue(built.scheduledFactRanges),
+      rawContributionsByCandidate: cloneValue(built.rawContributionsByCandidate),
+      outcomeRowsByCandidate: cloneValue(built.outcomeRowsByCandidate),
+      responseRowsByCandidate: candidates.map(candidate => {
+        const candidateId = String(candidate?.candidateId || '').trim();
+        return {
+          candidateId,
+          rows: cloneValue(
+            request?.directResponseRowsByCandidate?.[candidateId] ||
+            request?.publicResponseRowsByCandidate?.[candidateId] ||
+            [],
+          ),
+        };
+      }),
+      candidateData: candidateData.map(data => ({
+        candidateId: data.candidateId,
+        status: data.status,
+        auditReason: data.auditReason,
+        basis: cloneValue(data.basis),
+        evaluation: cloneValue(data.evaluation),
+        directFacts: cloneValue(data.directFacts),
+        scheduledFacts: cloneValue(data.scheduledFacts),
+      })),
+      informationAudits: cloneValue(built.informationAudits),
+      kernelSession: session,
+      kernelVectors: cloneValue(vectors),
+    };
+    if (!selectedVector) {
+      return {
+        schemaVersion: 'R9v2DirectBehaviorDecisionV1',
+        providerId: 'r9v2-direct-test',
+        actorId,
+        selectedCandidateId: null,
+        selectedDeclaration: null,
+        selected: null,
+        alternatives: [],
+        decisionAudit: {
+          schemaVersion: 'DecisionAuditV2',
+          engine: 'R9V2_DIRECT_BEHAVIOR_POOL_COLUMNS_V1',
+          selectionMode: 'NO_LEGAL_CANDIDATE',
+          candidateCount: candidates.length,
+          frozenCandidateIds: [...candidateIds],
+          candidates: vectorAudit,
+          informationAudits: cloneValue(built.informationAudits),
+          vectorCoverage: 'CLOSED',
+          proofCoverage: 'NONE',
+        },
+        directBoundary,
+        kernelMetrics: cloneValue(session.metrics),
+        beliefState: cloneValue(request.beliefState),
+        strategyMemory: cloneValue(request.strategyMemory),
+        decisionProfile: {
+          engine: 'R9V2_DIRECT_BEHAVIOR_POOL_COLUMNS_V1',
+          calculationMode: 'BEHAVIOR_POOL_COLUMNS_V1',
+          s4: {
+            fullS4Claim: false,
+            capability: R9V2_DIRECT_INFORMATION_CAPABILITY,
+          },
+        },
+      };
+    }
+    const alternativeVectors = selectionMode === 'PLAYER_LOCKED'
+      ? []
+      : legalParetoVectors.filter(vector =>
+        vector.candidateId !== selectedVector.candidateId,
+      );
+    const proofIds = [
+      selectedVector.candidateId,
+      ...alternativeVectors.map(vector => vector.candidateId),
+    ];
+    const proofByCandidateId = new Map();
+    proofIds.forEach(candidateId => {
+      proofByCandidateId.set(
+        candidateId,
+        kernel.materializeProof(session, candidateId),
+      );
+    });
+    const candidateAudit = candidateData.map(data => {
+      const vector = vectorByCandidateId.get(data.candidateId);
+      const proof = proofByCandidateId.get(data.candidateId);
+      return {
+        candidateId: data.candidateId,
+        status: data.status,
+        auditReason: data.auditReason,
+        legal: vector?.legal === true,
+        hardExclusionCodes: cloneValue(vector?.hardExclusionCodes || []),
+        paretoWitness: cloneValue(vector?.paretoWitness),
+        paretoRank: vector?.paretoRank ?? null,
+        paretoDimensions: cloneValue(vector?.paretoDimensions || {}),
+        proofMaterialized: !!proof,
+        directFactCount: data.directFacts.length,
+        scheduledFactCount: data.scheduledFacts.length,
+        outcomeRowCount: data.outcomeRows.length,
+        informationAudit: cloneValue(
+          built.informationAudits.find(audit => audit.candidateId === data.candidateId),
+        ),
+      };
+    });
+    const selectedCandidate = candidates.find(candidate =>
+      candidate.candidateId === selectedVector.candidateId,
+    );
+    const selectedProof = proofByCandidateId.get(selectedVector.candidateId);
+    const alternatives = alternativeVectors.map(vector => ({
+      candidateId: vector.candidateId,
+      candidate: cloneValue(
+        candidates.find(candidate => candidate.candidateId === vector.candidateId),
+      ),
+      vector: cloneValue(vector),
+      proof: cloneValue(proofByCandidateId.get(vector.candidateId)),
+    }));
+    return {
+      schemaVersion: 'R9v2DirectBehaviorDecisionV1',
+      providerId: 'r9v2-direct-test',
+      actorId,
+      selectedCandidateId: selectedVector.candidateId,
+      selectedDeclaration: cloneValue(selectedCandidate?.declaration || {}),
+      selected: {
+        candidateId: selectedVector.candidateId,
+        candidate: cloneValue(selectedCandidate),
+        vector: cloneValue(selectedVector),
+        proof: cloneValue(selectedProof),
+        selectionMode,
+      },
+      alternatives,
+      decisionAudit: {
+        schemaVersion: 'DecisionAuditV2',
+        engine: 'R9V2_DIRECT_BEHAVIOR_POOL_COLUMNS_V1',
+        selectionMode,
+        candidateCount: candidates.length,
+        frozenCandidateIds: [...candidateIds],
+        candidates: candidateAudit,
+        vectorCoverage: 'CLOSED',
+        proofCoverage: {
+          mode: 'SELECTED_AND_ACTUAL_PARETO_ALTERNATIVES',
+          materializedCandidateIds: [...proofIds],
+        },
+        informationAudits: cloneValue(built.informationAudits),
+        paretoRanksReturnedByKernel: true,
+      },
+      directBoundary,
+      kernelMetrics: cloneValue(session.metrics),
+      beliefState: cloneValue(request.beliefState),
+      strategyMemory: cloneValue(request.strategyMemory),
+      stateCapacityTotal: Math.max(0, Number(selectedProof?.objectiveUtilityHEPP || 0)),
+      beliefRevision,
+      decisionProfile: {
+        engine: 'R9V2_DIRECT_BEHAVIOR_POOL_COLUMNS_V1',
+        calculationMode: 'BEHAVIOR_POOL_COLUMNS_V1',
+        mechanicalSource: 'PREVIEW_ATOMIC_FACTS_V1',
+        proofPolicy: 'LATE_SELECTED_AND_ACTUAL_ALTERNATIVES',
+        s4: {
+          fullS4Claim: false,
+          capability: R9V2_DIRECT_INFORMATION_CAPABILITY,
+          directPublicOutcomeCandidateColumnsOnly: true,
+        },
+      },
+    };
+  }
+
   function r9v2TargetKernelApi() {
     const kernel = root.__LWCS_BATTLE_R9V2_KERNEL__;
     if (
@@ -46542,17 +51099,101 @@
     }, []);
   }
 
+  function r9v2TargetFactAccumulator(outputMode, candidateId) {
+    const vectorMode = outputMode === 'VECTOR';
+    const scalarMode = outputMode === 'SCALAR';
+    const rows = [];
+    const ownerTotals = {
+      STATE_DELTA: 0,
+      ACTION_POOL_DELTA: 0,
+      TERMINAL_DELTA: 0,
+      NONE: 0,
+    };
+    const sourceFactIds = scalarMode ? new Set() : null;
+    const push = (...facts) => facts.forEach((fact, index) => {
+      if (scalarMode) {
+        const componentCode = String(fact?.componentCode || '').trim();
+        const sourceFactId = String(
+          fact?.sourceFactId || fact?.factId ||
+          `${candidateId}:${componentCode}:fact:${index}`,
+        ).trim();
+        if (sourceFactIds.has(sourceFactId)) {
+          throw new Error(`DUPLICATE_CAUSAL_VALUE:${candidateId}:${sourceFactId}`);
+        }
+        sourceFactIds.add(sourceFactId);
+        const owner = String(fact?.causalOwnerType || 'NONE').trim() || 'NONE';
+        if (!Object.hasOwn(ownerTotals, owner)) {
+          throw new Error(`R9V2_UNKNOWN_CAUSAL_OWNER:${candidateId}:${owner}`);
+        }
+        const value = Number(fact?.valueHEPP);
+        if (!Number.isFinite(value)) {
+          throw new Error(`R9V2_NON_FINITE_CAUSAL_VALUE:${candidateId}:${sourceFactId}`);
+        }
+        ownerTotals[owner] += value;
+        return;
+      }
+      if (!vectorMode) {
+        rows.push(fact);
+        return;
+      }
+      const componentCode = String(fact?.componentCode || '').trim();
+      rows.push({
+        componentCode,
+        sourceEventId: String(
+          fact?.sourceEventId || fact?.effectInstanceId ||
+          `${candidateId}:${componentCode}:event:${index}`,
+        ).trim(),
+        sourceFactId: String(
+          fact?.sourceFactId || fact?.factId ||
+          `${candidateId}:${componentCode}:fact:${index}`,
+        ).trim(),
+        targetUnitId: String(
+          fact?.targetUnitId || fact?.targetId || candidateId,
+        ).trim(),
+        sequence: Number.isFinite(Number(fact?.sequence))
+          ? Number(fact.sequence)
+          : index,
+        valueHEPP: fact?.valueHEPP,
+      });
+    });
+    return {
+      rows,
+      push,
+      ownerTotals,
+    };
+  }
+
+  function r9v2TargetAccumulatorOutput(outputMode, accumulator) {
+    if (outputMode === 'VECTOR') {
+      return { contributions: accumulator.rows };
+    }
+    if (outputMode === 'SCALAR') {
+      return {
+        scalarOwnerTotals: Object.freeze({
+          STATE_DELTA: accumulator.ownerTotals.STATE_DELTA,
+          ACTION_POOL_DELTA: accumulator.ownerTotals.ACTION_POOL_DELTA,
+          TERMINAL_DELTA: accumulator.ownerTotals.TERMINAL_DELTA,
+          NONE: accumulator.ownerTotals.NONE,
+        }),
+      };
+    }
+    return { facts: accumulator.rows };
+  }
+
   function r9v2TargetS1Components(
     request,
     entry,
     objectiveContext = null,
+    outputMode = 'FACTS',
   ) {
     const health = r9v2TargetHealthFacts(
       request,
       entry,
       objectiveContext,
     );
-    const facts = (health.objectiveFacts || health.facts).map((row, index) => ({
+    const accumulator = r9v2TargetFactAccumulator(outputMode, entry.candidateId);
+    const appendFact = fact => accumulator.push(fact);
+    (health.objectiveFacts || health.facts).forEach((row, index) => appendFact({
       componentCode: 'S1_STATE_TRAJECTORY',
       causalOwnerType: 'STATE_DELTA',
       valueHEPP: row.value,
@@ -46593,7 +51234,7 @@
         );
       }
       if (Math.abs(explicit.value) <= 1e-9) return;
-      facts.push({
+      appendFact({
         componentCode: 'S1_FIRST_TERMINAL',
         causalOwnerType: 'TERMINAL_DELTA',
         valueHEPP: explicit.value,
@@ -46610,7 +51251,7 @@
       });
     });
     return {
-      facts,
+      ...r9v2TargetAccumulatorOutput(outputMode, accumulator),
       health,
       discardedOverkillPP: health.discardedOverkillPP,
       handledContributionIndexes,
@@ -46660,6 +51301,153 @@
       JSON.stringify(healthSignature(baselineWorld, unitId)) !==
       JSON.stringify(healthSignature(branchWorld, unitId))
     );
+  }
+
+  function r9v2TargetDecisionValueGraph({ request, pool, projectionCache }) {
+    if (projectionCache?.targetKernel !== true || !pool) return null;
+    const store = projectionCache?.decisionValueGraphs instanceof Map
+      ? projectionCache.decisionValueGraphs
+      : null;
+    if (!(store instanceof Map)) return null;
+    const futureOpportunity = r9v2FutureOpportunityContext(
+      request.actionOpportunity || {},
+    );
+    const context = request?.evaluationContext || {};
+    const graphKey = [
+      'R9v2TransactionCandidateComponentGraphV1',
+      String(request.actorSide || '').trim(),
+      String(pool?.observerPoolKey || '').trim(),
+      Number(pool?.generation || 0),
+      Number(pool?.factDeltaCount || 0),
+      Number(pool?.valueRevision || 0),
+      String(
+        context.visibleWorldRevision || context.worldRevision || '',
+      ).trim(),
+      String(context.beliefRevision || pool?.beliefRevision || '').trim(),
+      String(
+        context.opportunitySemanticRevision ||
+          context.opportunityRevision ||
+          pool?.opportunityRevision || '',
+      ).trim(),
+      String(context.resourceTimelineRevision || '').trim(),
+      String(
+        context.scheduleSemanticRevision || context.scheduleRevision || '',
+      ).trim(),
+      String(context.objectiveHash || '').trim(),
+    ].join('\u0000');
+    const cached = store.get(graphKey);
+    if (cached) {
+      r9v2Metric(projectionCache.metricsState, 'r9v2DecisionValueGraphHits');
+      return cached;
+    }
+    const graph = {
+      schemaVersion: 'R9v2TransactionCandidateComponentGraphV1',
+      baselineGraphKey: graphKey,
+      futureOpportunity,
+      routePool: pool,
+      routeRequest: {
+        ...request,
+        actionOpportunity: futureOpportunity,
+      },
+      routeBasisByActorId: new Map(),
+      overlayVectorByKey: new Map(),
+    };
+    while (store.size >= 16) {
+      const oldest = store.keys().next().value;
+      if (oldest === undefined) break;
+      store.delete(oldest);
+    }
+    store.set(graphKey, graph);
+    r9v2Metric(projectionCache.metricsState, 'r9v2DecisionValueGraphBuilds');
+    return graph;
+  }
+
+  function r9v2TargetDecisionValueGraphRoute({
+    graph,
+    request,
+    unitId,
+    projectionCache,
+  }) {
+    if (!graph) return null;
+    const normalizedUnitId = String(unitId || '').trim();
+    if (!normalizedUnitId) return null;
+    const cached = graph.routeBasisByActorId.get(normalizedUnitId);
+    if (cached) return cached;
+    const unit = findUnitInWorld(request.visibleWorld, normalizedUnitId);
+    if (!unit || !preview.isBattleCapable(unit)) return null;
+    const routeRequest = {
+      ...graph.routeRequest,
+      actorId: normalizedUnitId,
+      actorSide: sideOf(request.visibleWorld, unit) || request.actorSide,
+    };
+    const baselineTable = r9v2TargetFutureRouteTable(
+      routeRequest,
+      graph.routePool,
+      normalizedUnitId,
+      {},
+      request.visibleWorld,
+      projectionCache,
+      false,
+    );
+    if (!baselineTable?.complete) return null;
+    const basis = r9v2TargetInformationBranchValueBasis({
+      request: routeRequest,
+      pool: graph.routePool,
+      unitId: normalizedUnitId,
+      baselineTable,
+      baselineGraphKey: graph.baselineGraphKey,
+    });
+    if (!basis) return null;
+    const result = Object.freeze({
+      routeRequest,
+      baselineTable,
+      basis,
+    });
+    graph.routeBasisByActorId.set(normalizedUnitId, result);
+    return result;
+  }
+
+  function r9v2TargetDecisionValueGraphOverlayBest({
+    graph,
+    route,
+    baseRequest,
+    branchWorld,
+    branchBelief,
+    changedUnitIds,
+    changedUnitScopes,
+    changedBeliefKeys,
+    projectionCache,
+  }) {
+    if (!graph || !route || !branchWorld) return null;
+    const unitId = String(route.basis?.unitId || '').trim();
+    const branchUnit = findUnitInWorld(branchWorld, unitId);
+    if (!branchUnit || !preview.isBattleCapable(branchUnit)) return null;
+    const branchRequest = {
+      ...route.routeRequest,
+      visibleWorld: branchWorld,
+      beliefState: branchBelief,
+      actorId: unitId,
+      actorSide: sideOf(branchWorld, branchUnit) || route.routeRequest.actorSide,
+    };
+    const vector = r9v2TargetInformationBranchValueVector({
+      request: route.routeRequest,
+      branchRequest,
+      routePool: graph.routePool,
+      branchWorld,
+      branchBelief,
+      changedUnitIds,
+      changedUnitScopes,
+      changedBeliefKeys,
+      basis: route.basis,
+      projectionCache,
+      bestOnly: true,
+    });
+    if (!vector) return null;
+    return {
+      complete: vector.complete === true,
+      valueHEPP: Number(vector.bestValueHEPP || 0),
+      candidateId: String(vector.bestCandidateId || '').trim(),
+    };
   }
 
   function r9v2TargetRouteValueProfile(
@@ -46785,6 +51573,69 @@
     );
   }
 
+  function r9v2TargetRouteProfileIsBranchInvariantZero(profile, basis) {
+    if (
+      !profile?.complete ||
+      profile.targetFacts?.length ||
+      Math.abs(Number(profile.staticValue || 0)) > 1e-12 ||
+      !basis ||
+      basis.unsupportedReasons?.length ||
+      basis.actionKind === 'WITHDRAW' ||
+      basis.creationCarriers?.length ||
+      basis.declaration?.irreversibleAsset ||
+      basis.declaration?.fusionPartnerIds?.length ||
+      basis.declaration?.fusionParticipantIds?.length
+    ) {
+      return false;
+    }
+    if (!basis.effects?.length) {
+      return ['DEFEND', 'EVADE', 'OBSERVE', 'PASS_OPPORTUNITY'].includes(
+        String(basis.actionKind || '').trim().toUpperCase(),
+      );
+    }
+    const pending = [...basis.effects];
+    const valueNeutralPrototypes = new Set([
+      '状态施加',
+      '状态移除',
+      '属性修正',
+      '判定修正',
+      '结算修正',
+      '时窗修正',
+      '位移执行',
+      '决策干扰',
+      '资源变化',
+    ]);
+    while (pending.length) {
+      const effect = pending.pop();
+      if (!effect || typeof effect !== 'object') return false;
+      const prototype = String(effect?.原型 || '').trim();
+      if (prototype && !valueNeutralPrototypes.has(prototype)) return false;
+      if (prototype === '资源变化') {
+        const resources = Array.isArray(effect?.资源)
+          ? effect.资源
+          : [effect?.资源];
+        if (resources.some(resource => /生命|HP/i.test(String(resource || '')))) {
+          return false;
+        }
+      }
+      const nested = [
+        ...(Array.isArray(effect?.使用效果) ? effect.使用效果 : []),
+        ...(Array.isArray(effect?.授予效果) ? effect.授予效果 : []),
+        ...(Array.isArray(effect?.条件分支)
+          ? effect.条件分支.flatMap(branch => [
+              ...(Array.isArray(branch?.效果) ? branch.效果 : []),
+              ...(Array.isArray(branch?.使用效果) ? branch.使用效果 : []),
+              ...(branch?.效果 && !Array.isArray(branch.效果)
+                ? [branch.效果]
+                : []),
+            ])
+          : []),
+      ].filter(value => value && typeof value === 'object');
+      pending.push(...nested);
+    }
+    return true;
+  }
+
   function r9v2TargetRouteEntryValue(
     request,
     entry,
@@ -46809,6 +51660,22 @@
     changedUnitScopes = null,
   }) {
     const baselineWorld = reuseContext?.baselineWorld || request?.visibleWorld;
+    if (
+      projectionCache?.targetKernel === true &&
+      !reuseContext &&
+      worldSnapshot &&
+      worldSnapshot === request?.visibleWorld
+    ) {
+      const context = request?.evaluationContext || {};
+      return [
+        'R9v2TargetBaselineWorldRevisionV1',
+        String(
+          context.visibleWorldRevision ||
+          context.worldRevision ||
+          r9v2ProjectionObjectRevision(projectionCache, worldSnapshot)
+        ).trim(),
+      ].join('\u0000');
+    }
     const changedUnitIds = reuseContext?.changedUnitIds instanceof Set
       ? reuseContext.changedUnitIds
       : new Set();
@@ -47475,13 +52342,7 @@
     const canReuseBaselineRouteValues =
       routeValueReuseGateReason === 'ELIGIBLE';
     const isRouteEntryAffordable = entry =>
-      Object.entries(entry?.resourceCosts || {}).every(([resource, amount]) => {
-        const available = Object.hasOwn(resourceOverrides, resource)
-          ? Number(resourceOverrides[resource])
-          : preview.readResource(unit, resource);
-        return Number.isFinite(available) &&
-          available + 1e-9 >= Number(amount || 0);
-      });
+      resourceCostsAffordable(unit, entry?.resourceCosts || {}, resourceOverrides);
     if (reuseContext) {
       r9v2Metric(
         projectionCache.metricsState,
@@ -47996,11 +52857,36 @@
     return result;
   }
 
+  function r9v2TargetRouteEffectiveDependencyKeys(entry = {}) {
+    const dependencyKeys = Array.isArray(entry?.mechanicalDependencyKeys)
+      ? entry.mechanicalDependencyKeys.map(key => String(key || '').trim()).filter(Boolean)
+      : [];
+    const paymentOnlyKeys = new Set(
+      (Array.isArray(entry?.mechanicalPaymentDependencyKeys)
+        ? entry.mechanicalPaymentDependencyKeys
+        : []
+      ).map(key => String(key || '').trim()).filter(Boolean),
+    );
+    const roleRows = Array.isArray(entry?.mechanicalDependencyRoles)
+      ? entry.mechanicalDependencyRoles
+      : [];
+    if (!paymentOnlyKeys.size || !roleRows.length) return dependencyKeys;
+    const removable = new Set(
+      dependencyKeys.filter(key =>
+        paymentOnlyKeys.has(key) && /^unit:[^:]+:resource:[^:]+$/u.test(key),
+      ),
+    );
+    return removable.size
+      ? dependencyKeys.filter(key => !removable.has(key))
+      : dependencyKeys;
+  }
+
   function r9v2TargetInformationBranchValueBasis({
     request,
     pool,
     unitId,
     baselineTable,
+    baselineGraphKey = '',
   }) {
     const baselineEntries = pool?.unitEntries?.get(unitId) || [];
     const baselineRows = baselineTable?.allRows || baselineTable?.rows || [];
@@ -48013,6 +52899,11 @@
     );
     const objectiveContext = r9v2TargetObjectiveEvaluationContext(request);
     const rows = [];
+    const dependencyOwners = new Map();
+    const dependencyKeysByUnit = new Map();
+    const beliefOwners = new Map();
+    const fallbackNodeIndexesByUnit = new Map();
+    const unindexedNodeIndexes = new Set();
     for (const row of baselineRows) {
       const candidateId = String(row?.candidateId || '').trim();
       const entry = entryByCandidate.get(candidateId);
@@ -48027,18 +52918,61 @@
             objectiveContext,
           );
       if (!profile?.complete) return null;
+      const nodeIndex = rows.length;
+      const dependencyKeys = r9v2TargetRouteEffectiveDependencyKeys(entry);
       rows.push(Object.freeze({
+        routeValueNodeKey: [
+          String(unitId || '').trim(),
+          candidateId,
+          String(entry?.declarationFingerprint || '').trim(),
+        ].join('\u0000'),
         candidateId,
         entry,
         profile,
+        dependencyKeys: Object.freeze(dependencyKeys),
       }));
+      if (!dependencyKeys.length) unindexedNodeIndexes.add(nodeIndex);
+      dependencyKeys.forEach(key => {
+        const owners = dependencyOwners.get(key) || new Set();
+        owners.add(nodeIndex);
+        dependencyOwners.set(key, owners);
+        const descriptor = r9v2TargetRouteDependencyDescriptor(key);
+        if (descriptor?.unitId) {
+          const keys = dependencyKeysByUnit.get(descriptor.unitId) || new Set();
+          keys.add(key);
+          dependencyKeysByUnit.set(descriptor.unitId, keys);
+        }
+      });
+      const indexedUnits = new Set(
+        dependencyKeys
+          .map(key => r9v2TargetRouteDependencyDescriptor(key)?.unitId)
+          .filter(Boolean),
+      );
+      r9v2CandidateInputDependencyUnitIds(entry).forEach(dependencyUnitId => {
+        if (indexedUnits.has(dependencyUnitId)) return;
+        const owners = fallbackNodeIndexesByUnit.get(dependencyUnitId) || new Set();
+        owners.add(nodeIndex);
+        fallbackNodeIndexesByUnit.set(dependencyUnitId, owners);
+      });
+      r9v2CandidateBeliefKeys(entry).forEach(key => {
+        const owners = beliefOwners.get(key) || new Set();
+        owners.add(nodeIndex);
+        beliefOwners.set(key, owners);
+      });
     }
     if (!rows.length) return null;
-    return Object.freeze({
-      schemaVersion: 'R9v2S4BranchValueBasisV1',
+    return {
+      schemaVersion: 'DecisionValueGraphRouteBasisV1',
+      baselineGraphKey: String(baselineGraphKey || '').trim(),
       unitId: String(unitId || '').trim(),
       rows: Object.freeze(rows),
-    });
+      dependencyOwners,
+      dependencyKeysByUnit,
+      beliefOwners,
+      fallbackNodeIndexesByUnit,
+      unindexedNodeIndexes,
+      overlayVectorByKey: new Map(),
+    };
   }
 
   function r9v2TargetInformationBranchValueVector({
@@ -48050,83 +52984,138 @@
     changedUnitIds = new Set(),
     changedUnitScopes = null,
     changedBeliefKeys = new Set(),
+    branchDelta = null,
     basis,
     projectionCache,
+    bestOnly = false,
   }) {
     if (!basis || !branchWorld || !request.visibleWorld) return null;
-    const baselineUnitIds = new Set(
-      worldEntries(request.visibleWorld)
-        .map(({ unit }) => String(preview.unitId(unit) || '').trim())
-        .filter(Boolean),
-    );
-    const branchUnitIds = new Set(
-      worldEntries(branchWorld)
-        .map(({ unit }) => String(preview.unitId(unit) || '').trim())
-        .filter(Boolean),
-    );
-    if (
-      baselineUnitIds.size !== branchUnitIds.size ||
-      [...baselineUnitIds].some(unitId => !branchUnitIds.has(unitId))
-    ) {
-      return null;
+    const exactBranchDelta =
+      branchDelta?.schemaVersion === 'R9v2InformationBranchFactDeltaV1' &&
+      branchDelta.exact === true &&
+      branchDelta.topologyChanged !== true;
+    if (exactBranchDelta) {
+      changedUnitIds = new Set(branchDelta.changedUnitIds || []);
+      changedUnitScopes = branchDelta.scopesByUnit;
+    } else {
+      const baselineUnitIds = new Set(
+        worldEntries(request.visibleWorld)
+          .map(({ unit }) => String(preview.unitId(unit) || '').trim())
+          .filter(Boolean),
+      );
+      const branchUnitIds = new Set(
+        worldEntries(branchWorld)
+          .map(({ unit }) => String(preview.unitId(unit) || '').trim())
+          .filter(Boolean),
+      );
+      if (
+        baselineUnitIds.size !== branchUnitIds.size ||
+        [...baselineUnitIds].some(unitId => !branchUnitIds.has(unitId))
+      ) {
+        return null;
+      }
     }
     const unitId = String(basis.unitId || '').trim();
     const unit = findUnitInWorld(branchWorld, unitId);
     if (!unit || !preview.isBattleCapable(unit)) return null;
     if (!(changedUnitScopes instanceof Map)) return null;
-    const effectiveDependencyKeysByEntry = new WeakMap();
-    const effectiveDependencyKeys = entry => {
-      const cached = effectiveDependencyKeysByEntry.get(entry);
-      if (cached) return cached;
-      const dependencyKeys = Array.isArray(entry?.mechanicalDependencyKeys)
-        ? entry.mechanicalDependencyKeys
-            .map(key => String(key || '').trim())
+    const overlayBeliefs = [...changedBeliefKeys]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .sort()
+      .map(key => {
+        const belief = branchBelief?.mechanics?.[key] || branchBelief?.[key] || {};
+        return [
+          key,
+          Number.isFinite(Number(belief?.alpha)) ? Number(belief.alpha) : null,
+          Number.isFinite(Number(belief?.beta)) ? Number(belief.beta) : null,
+          Number.isFinite(Number(belief?.observations))
+            ? Number(belief.observations)
+            : null,
+        ];
+      });
+    const beliefRevisionChanged = changedBeliefKeys.size === 0 &&
+      r9v2ProjectionObjectRevision(projectionCache, request.beliefState || {}) !==
+      r9v2ProjectionObjectRevision(projectionCache, branchBelief || {});
+    const overlayKey = exactBranchDelta
+      ? [
+          String(basis.baselineGraphKey || '').trim(),
+          String(basis.unitId || '').trim(),
+          branchDelta.revision,
+          JSON.stringify(overlayBeliefs),
+          JSON.stringify(r9v2MechanicalCandidateOpportunityContext(
+            branchRequest.actionOpportunity || {},
+          )),
+        ].join('\u0000')
+      : [
+          String(basis.baselineGraphKey || '').trim(),
+          String(basis.unitId || '').trim(),
+          preview.stableHash([...changedUnitIds]
+            .map(value => String(value || '').trim())
             .filter(Boolean)
-        : [];
-      const paymentOnlyKeys = new Set(
-        (Array.isArray(entry?.mechanicalPaymentDependencyKeys)
-          ? entry.mechanicalPaymentDependencyKeys
-          : []
-        )
-          .map(key => String(key || '').trim())
-          .filter(Boolean),
+            .sort()
+            .map(changedId => [
+              changedId,
+              [...(changedUnitScopes.get(changedId) || [])].sort(),
+              [...(basis.dependencyKeysByUnit?.get(changedId) || [])]
+                .sort()
+                .map(key => [
+                  key,
+                  preview.dependencyValueForKey(branchWorld, key),
+                ]),
+            ])),
+          preview.stableHash(overlayBeliefs),
+          beliefRevisionChanged
+            ? r9v2ProjectionObjectRevision(projectionCache, branchBelief || {})
+            : '',
+          r9v2ProjectionObjectRevision(
+            projectionCache,
+            branchRequest.actionOpportunity || {},
+          ),
+        ].join('\u0000');
+    const cachedOverlay = basis.overlayVectorByKey?.get(overlayKey);
+    if (cachedOverlay) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        'r9v2DecisionValueGraphOverlayHits',
       );
-      const roleRows = Array.isArray(entry?.mechanicalDependencyRoles)
-        ? entry.mechanicalDependencyRoles
-        : [];
-      if (!paymentOnlyKeys.size || !roleRows.length) {
-        effectiveDependencyKeysByEntry.set(entry, dependencyKeys);
-        return dependencyKeys;
-      }
-      const removablePaymentKeys = new Set(
-        dependencyKeys.filter(key =>
-          paymentOnlyKeys.has(key) &&
-          /^unit:[^:]+:resource:[^:]+$/u.test(key)
-        ),
-      );
-      const result = removablePaymentKeys.size
-        ? dependencyKeys.filter(key => !removablePaymentKeys.has(key))
-        : dependencyKeys;
-      effectiveDependencyKeysByEntry.set(entry, result);
-      return result;
-    };
+      return cachedOverlay;
+    }
+    const dirtyNodeIndexes = new Set();
     const changedDependencyKeys = new Set();
     const unknownDependencyKeys = new Set();
-    const dependencyKeys = new Set();
-    basis.rows.forEach(row => {
-      effectiveDependencyKeys(row.entry).forEach(key => {
-        dependencyKeys.add(String(key || '').trim());
-      });
-    });
-    dependencyKeys.forEach(dependencyKey => {
+    const unknownDependencyNodeIndexes = new Set();
+    basis.dependencyOwners.forEach((nodeIndexes, dependencyKey) => {
       const descriptor = r9v2TargetRouteDependencyDescriptor(dependencyKey);
       if (!descriptor || !changedUnitIds.has(descriptor.unitId)) return;
       const scopes = changedUnitScopes.get(descriptor.unitId);
       if (!(scopes instanceof Set)) {
         unknownDependencyKeys.add(dependencyKey);
+        nodeIndexes.forEach(index => unknownDependencyNodeIndexes.add(index));
         return;
       }
-      if (!descriptor.fieldScopes.some(scope => scopes.has(scope))) return;
+      if (exactBranchDelta) {
+        const fields = branchDelta.fieldsByUnit.get(descriptor.unitId) || new Set();
+        let touched = descriptor.fieldScopes.some(scope => scopes.has(scope));
+        if (touched && descriptor.field.startsWith('resource')) {
+          const resource = descriptor.field.split(':').slice(1).join(':');
+          touched = fields.has('resource:*') || fields.has(`resource:${resource}`);
+        } else if (touched && descriptor.field === 'defense') {
+          touched = fields.has('shield') || fields.has('state:*') ||
+            fields.has('action') || fields.has('action-quality');
+        } else if (touched && descriptor.field.startsWith('state:')) {
+          touched = fields.has('state:*') || fields.has('shield') ||
+            fields.has('action') || fields.has('action-quality');
+        } else if (touched && descriptor.field === 'hp') {
+          touched = fields.has('hp');
+        } else if (touched && descriptor.field === 'baseMaxHp') {
+          touched = fields.has('baseMaxHp');
+        }
+        if (!touched) return;
+        changedDependencyKeys.add(dependencyKey);
+        nodeIndexes.forEach(index => dirtyNodeIndexes.add(index));
+        return;
+      }
       const baselineValue = preview.dependencyValueForKey(
         request.visibleWorld,
         dependencyKey,
@@ -48137,6 +53126,7 @@
       );
       if (baselineValue === undefined || branchValue === undefined) {
         unknownDependencyKeys.add(dependencyKey);
+        nodeIndexes.forEach(index => unknownDependencyNodeIndexes.add(index));
         return;
       }
       if (
@@ -48144,45 +53134,42 @@
         preview.stableHash(branchValue ?? null)
       ) {
         changedDependencyKeys.add(dependencyKey);
+        nodeIndexes.forEach(index => dirtyNodeIndexes.add(index));
       }
     });
-    const dirtyCandidateKeys = new Set();
-    basis.rows.forEach(row => {
-      const beliefChanged = [...r9v2CandidateBeliefKeys(row.entry)]
-        .some(key => changedBeliefKeys.has(key));
-      const rowDependencyKeys = effectiveDependencyKeys(row.entry);
-      let dependencyChanged = false;
-      let dependencyFallbackRequired = rowDependencyKeys.length === 0;
-      rowDependencyKeys.forEach(dependencyKey => {
-        const descriptor = r9v2TargetRouteDependencyDescriptor(dependencyKey);
-        if (!descriptor || !changedUnitIds.has(descriptor.unitId)) return;
-        const scopes = changedUnitScopes.get(descriptor.unitId);
-        if (!(scopes instanceof Set)) {
-          dependencyFallbackRequired = true;
-          return;
-        }
-        if (!descriptor.fieldScopes.some(scope => scopes.has(scope))) return;
-        if (changedDependencyKeys.has(dependencyKey)) {
-          dependencyChanged = true;
-          return;
-        }
-        if (unknownDependencyKeys.has(dependencyKey)) {
-          dependencyFallbackRequired = true;
-        }
-      });
-      if (!dependencyChanged && dependencyFallbackRequired) {
-        dependencyChanged = r9v2TargetRouteMechanicalEntryReadsChanged({
-          entry: row.entry,
-          changedUnitIds,
-          changedUnitScopes,
-          baselineWorld: request.visibleWorld,
-          branchWorld,
+    unknownDependencyNodeIndexes.forEach(index => dirtyNodeIndexes.add(index));
+    changedDependencyKeys.forEach(dependencyKey =>
+      basis.dependencyOwners.get(dependencyKey)?.forEach(index =>
+        dirtyNodeIndexes.add(index)
+      )
+    );
+    changedBeliefKeys.forEach(beliefKey =>
+      basis.beliefOwners.get(String(beliefKey || '').trim())?.forEach(index =>
+        dirtyNodeIndexes.add(index)
+      )
+    );
+    if (exactBranchDelta) {
+      changedUnitIds.forEach(changedUnitId => {
+        const changedScopes = changedUnitScopes.get(changedUnitId) || new Set();
+        basis.fallbackNodeIndexesByUnit?.get(changedUnitId)?.forEach(index => {
+          const dependencyScopes = basis.rows[index]?.entry
+            ?.mechanicalDependencyScopes?.[changedUnitId];
+          if (
+            !Array.isArray(dependencyScopes) ||
+            dependencyScopes.some(scope => changedScopes.has(scope))
+          ) {
+            dirtyNodeIndexes.add(index);
+          }
         });
-      }
-      if (beliefChanged || dependencyChanged) {
-        dirtyCandidateKeys.add(`${unitId}\u0000${row.candidateId}`);
-      }
-    });
+      });
+    } else if (changedUnitIds.size) {
+      basis.unindexedNodeIndexes?.forEach(index => dirtyNodeIndexes.add(index));
+    }
+    if (unknownDependencyKeys.size) {
+      basis.rows.forEach((row, index) => {
+        if (!row.dependencyKeys?.length) dirtyNodeIndexes.add(index);
+      });
+    }
     const routeState = r9v2EphemeralState(
       routePool?.r9v2NormalizedContributionStore ||
         projectionCache?.normalizedContributionStore,
@@ -48192,7 +53179,7 @@
     routeState.r9v2MechanicalEntryCacheEnabled = true;
     routeState.r9v2MechanicalEntryCacheActive = true;
     const objectiveContext = r9v2TargetObjectiveEvaluationContext(branchRequest);
-    const mechanicalProjectionContext = dirtyCandidateKeys.size
+    const mechanicalProjectionContext = dirtyNodeIndexes.size
       ? preview.compileMechanicalProjectionContext(branchWorld)
       : null;
     const actionOpportunity = {
@@ -48200,18 +53187,137 @@
       role: 'ACTIVE',
       ownerId: unitId,
     };
-    const isAffordable = entry => Object.entries(entry?.resourceCosts || {})
-      .every(([resource, amount]) => {
-        const available = preview.readResource(unit, resource);
-        return Number.isFinite(available) &&
-          available + 1e-9 >= Number(amount || 0);
-      });
+    const isAffordable = entry => resourceCostsAffordable(unit, entry?.resourceCosts || {});
     const rows = [];
-    for (const basisRow of basis.rows) {
-      const candidateKey = `${unitId}\u0000${basisRow.candidateId}`;
+    const scalarRows = [];
+    const branchInvariantNodeIndexes = new Set();
+    basis.rows.forEach((row, rowIndex) => {
+      if (!dirtyNodeIndexes.has(rowIndex)) return;
+      const entry = row?.entry;
+      const actorId = String(entry?.actorId || unitId).trim();
+      const paymentMode = entry?.resourcePotentialOnly === true
+        ? 'EXTERNAL_TIMELINE'
+        : 'FORMAL';
+      const basisKey = [actorId, row?.entry?.declarationFingerprint, paymentMode].join('\u0000');
+      const mechanicalBasis = routePool?.mechanicalBasisStore?.get?.(basisKey) ||
+        projectionCache?.sharedStores?.mechanicalBasisStore?.get?.(basisKey);
+      if (mechanicalBasis) {
+        if (r9v2TargetRouteProfileIsBranchInvariantZero(
+          row.profile,
+          mechanicalBasis,
+        )) {
+          branchInvariantNodeIndexes.add(rowIndex);
+          return;
+        }
+        const candidate = {
+          candidateId: row.candidateId,
+          declaration: row.entry?.declaration || {},
+          declarationFingerprint: row.entry?.declarationFingerprint,
+          resourcePotentialOnly: row.entry?.resourcePotentialOnly === true,
+        };
+        const learnedBeliefResolver =
+          (row.entry?.mechanicObservations || []).some(observation =>
+            [observation?.mechanicKey, observation?.adaptationKey].some(key =>
+              Number(
+                branchBelief?.mechanics?.[String(key || '').trim()]
+                  ?.observations || 0,
+              ) > 0
+            )
+          );
+        scalarRows.push({
+          candidateId: row.candidateId,
+          actorId,
+          basis: mechanicalBasis,
+          hitProbabilityResolver: learnedBeliefResolver
+            ? candidateHitProbabilityResolver({
+                beliefState: branchBelief,
+                actor: unit,
+                candidate,
+                worldSnapshot: branchWorld,
+              })
+            : null,
+          applicationProbabilityResolver: learnedBeliefResolver
+            ? candidateApplicationProbabilityResolver({
+                beliefState: branchBelief,
+                actor: unit,
+                candidate,
+              })
+            : null,
+        });
+      }
+    });
+    const scalarProjection = scalarRows.length &&
+      typeof preview.evaluateMechanicalBasisRouteScalarColumns === 'function'
+      ? preview.evaluateMechanicalBasisRouteScalarColumns({
+          rows: scalarRows,
+          baselineWorld: request.visibleWorld,
+          branchWorld,
+          baselineProjectionContext: projectionCache?.mechanicalProjectionContext,
+          branchProjectionContext: mechanicalProjectionContext,
+          changedUnitIds,
+          battleIntent: branchRequest.battleIntent,
+          revision: `r9v2-s4-scalar:${String(basis.baselineGraphKey || '').trim()}`,
+        })
+      : null;
+    if (scalarProjection?.complete === true) {
+      scalarProjection.rows.forEach(row => {
+        const reason = String(row?.fallbackReason || '').trim();
+        if (reason) {
+          r9v2Metric(
+            projectionCache.metricsState,
+            `r9v2InformationBranchScalarFallback:${reason}`,
+          );
+        }
+      });
+    }
+    const scalarByCandidate = new Map(
+      (scalarProjection?.complete === true ? scalarProjection.rows : [])
+        .filter(row => row && !row.fallbackReason)
+        .map(row => [String(row.candidateId || '').trim(), row]),
+    );
+    if (scalarProjection?.complete !== true) {
+      r9v2Metric(
+        projectionCache.metricsState,
+        `r9v2InformationBranchScalarFallback:${scalarProjection?.fallbackReason || 'API_MISSING'}`,
+      );
+    }
+    let bestRow = null;
+    for (let rowIndex = 0; rowIndex < basis.rows.length; rowIndex += 1) {
+      const basisRow = basis.rows[rowIndex];
       let entry = basisRow.entry;
       let valueHEPP;
-      if (dirtyCandidateKeys.has(candidateKey)) {
+      const scalarRow = scalarByCandidate.get(basisRow.candidateId);
+      if (branchInvariantNodeIndexes.has(rowIndex)) {
+        valueHEPP = basisRow.profile.valueHEPP;
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchInvariantRouteRows',
+        );
+      } else if (scalarRow && scalarRow.hardInvalid !== true) {
+        const scalarEntry = {
+          ...basisRow.entry,
+          contributions: scalarRow.contributions,
+          changedUnitIds: scalarRow.changedUnitIds,
+        };
+        const profile = r9v2TargetRouteValueProfile(
+          branchRequest,
+          scalarEntry,
+          unitId,
+          branchWorld,
+          objectiveContext,
+        );
+        if (!profile.complete) return null;
+        valueHEPP = profile.valueHEPP;
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2InformationBranchScalarRouteRows',
+        );
+      } else if (dirtyNodeIndexes.has(rowIndex)) {
+        if (scalarRow?.hardInvalid === true) continue;
+        r9v2Metric(
+          projectionCache.metricsState,
+          'r9v2DecisionValueGraphDirtyNodeEvaluations',
+        );
         entry = r9v2BuildMechanicalEntry({
           state: routeState,
           worldSnapshot: branchWorld,
@@ -48230,6 +53336,7 @@
           mechanicalProjectionContext,
           verifyMechanicalBasis: false,
           captureDependencyKeys: true,
+          routeValueOnly: true,
         });
         if (!entry || entry.hardInvalid === true) continue;
         const profile = r9v2TargetRouteValueProfile(
@@ -48253,22 +53360,40 @@
         if (valueHEPP === null) return null;
       }
       if (!isAffordable(entry)) continue;
-      rows.push({
+      const normalizedValueHEPP = r9v2TargetFinite(
+        valueHEPP,
+        'R9V2_KERNEL_S4_BRANCH_VALUE_NON_FINITE',
+        basisRow.candidateId,
+      );
+      const nextRow = {
         candidateId: basisRow.candidateId,
-        valueHEPP: r9v2TargetFinite(
-          valueHEPP,
-          'R9V2_KERNEL_S4_BRANCH_VALUE_NON_FINITE',
-          basisRow.candidateId,
-        ),
-      });
+        valueHEPP: normalizedValueHEPP,
+      };
+      if (
+        !bestRow ||
+        normalizedValueHEPP > bestRow.valueHEPP ||
+        (
+          normalizedValueHEPP === bestRow.valueHEPP &&
+          r9v2TargetCompareUtf16(nextRow.candidateId, bestRow.candidateId) < 0
+        )
+      ) bestRow = nextRow;
+      if (!bestOnly) rows.push(nextRow);
     }
-    rows.sort((left, right) =>
-      Number(right.valueHEPP || 0) - Number(left.valueHEPP || 0) ||
-      r9v2TargetCompareUtf16(left.candidateId, right.candidateId),
-    );
+    if (!bestOnly) {
+      rows.sort((left, right) =>
+        Number(right.valueHEPP || 0) - Number(left.valueHEPP || 0) ||
+        r9v2TargetCompareUtf16(left.candidateId, right.candidateId),
+      );
+    } else if (bestRow) {
+      rows.push(bestRow);
+    }
     r9v2Metric(
       projectionCache.metricsState,
       'r9v2InformationBranchValueVectorBuilds',
+    );
+    if (bestOnly) r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2DecisionValueGraphBestOnlyEvaluations',
     );
     r9v2Metric(
       projectionCache.metricsState,
@@ -48278,9 +53403,9 @@
     r9v2Metric(
       projectionCache.metricsState,
       'r9v2InformationBranchValueVectorDirtyRows',
-      dirtyCandidateKeys.size,
+      dirtyNodeIndexes.size,
     );
-    return Object.freeze({
+    const result = Object.freeze({
       schemaVersion: 'R9v2S4BranchValueVectorV1',
       complete: true,
       candidateIds: Object.freeze(rows.map(row => row.candidateId)),
@@ -48291,10 +53416,17 @@
       bestCandidateId: String(rows[0]?.candidateId || '').trim(),
       bestValueHEPP: Number(rows[0]?.valueHEPP || 0),
     });
+    basis.overlayVectorByKey?.set(overlayKey, result);
+    r9v2Metric(
+      projectionCache.metricsState,
+      'r9v2DecisionValueGraphOverlayBuilds',
+    );
+    return result;
   }
 
-  function r9v2TargetS2Components(request, entry, pool, projectionCache, handledByS1) {
-    const facts = [];
+  function r9v2TargetS2Components(request, entry, pool, projectionCache, handledByS1, outputMode = 'FACTS') {
+    const accumulator = r9v2TargetFactAccumulator(outputMode, entry.candidateId);
+    const appendFact = fact => accumulator.push(fact);
     const handledContributionIndexes = new Set(handledByS1 || []);
     const duplicateCancellationTargets =
       r9v2TargetDuplicateCancellationTargets(entry);
@@ -48309,7 +53441,7 @@
       ].includes(explicit.key)) {
         handledContributionIndexes.add(index);
         if (Math.abs(explicit.value) <= 1e-9) return;
-        facts.push({
+        appendFact({
           componentCode: 'S2_EXPLICIT_ACTION_POOL',
           causalOwnerType: 'ACTION_POOL_DELTA',
           valueHEPP: explicit.value,
@@ -48385,7 +53517,7 @@
         `${entry.candidateId}:${targetId}`,
       );
       if (Math.abs(value) <= 1e-9) return;
-      facts.push({
+      appendFact({
         componentCode: 'hard_control',
         causalOwnerType: 'ACTION_POOL_DELTA',
         valueHEPP: value,
@@ -48474,7 +53606,7 @@
         `${entry.candidateId}:${index}`,
       );
       if (Math.abs(value) <= 1e-9) return;
-      facts.push({
+      appendFact({
         componentCode: 'support_resource',
         causalOwnerType: 'ACTION_POOL_DELTA',
         valueHEPP: value,
@@ -48496,16 +53628,22 @@
       });
     });
     return {
-      facts,
+      ...r9v2TargetAccumulatorOutput(outputMode, accumulator),
       handledContributionIndexes,
       resourceProjectionByIndex,
     };
   }
 
-  function r9v2TargetS3Components(request, entry, pool, projectionCache) {
-    const facts = [];
+  function r9v2TargetS3Components(request, entry, pool, projectionCache, outputMode = 'FACTS') {
+    const accumulator = r9v2TargetFactAccumulator(outputMode, entry.candidateId);
+    const appendFact = fact => accumulator.push(fact);
     const handledContributionIndexes = new Set();
-    if (!pool) return { facts, handledContributionIndexes };
+    if (!pool) {
+      return {
+        ...r9v2TargetAccumulatorOutput(outputMode, accumulator),
+        handledContributionIndexes,
+      };
+    }
     const stateOpportunityContributionIndexes = new Set();
     const hasStateOpportunityContribution = (entry.contributions || []).some(
       contribution => {
@@ -48523,11 +53661,11 @@
         entry,
         projectionCache,
       );
-      facts.push(...projection.facts.map(fact => ({
+      projection.facts.forEach(fact => appendFact({
         ...fact,
         componentCode: 'S3_STATE_OPPORTUNITY',
         causalOwnerType: 'ACTION_POOL_DELTA',
-      })));
+      }));
       (entry.contributions || []).forEach((contribution, index) => {
         const kind = String(contribution?.outcomeKind || '').trim();
         const prototype = String(contribution?.evidence?.prototype || '').trim();
@@ -48545,33 +53683,16 @@
     const futureOpportunity = r9v2FutureOpportunityContext(
       request.actionOpportunity || {},
     );
-    const targetSession = projectionCache?.targetKernelSession;
-    const futurePoolStore = targetSession?.futureRoutePoolStore;
-    const futurePoolKey = projectionCache?.targetKernel === true
-      ? r9v2FuturePoolContextKey({
-          state: projectionCache.metricsState,
-          request,
-          futureOpportunity,
-        })
-      : '';
-    let routePool = futurePoolStore instanceof Map && futurePoolKey
-      ? futurePoolStore.get(futurePoolKey) || null
-      : null;
-    if (!routePool && projectionCache?.targetKernel === true) {
-      routePool = r9v2PrepareSharedFuturePool({
-        state: projectionCache.metricsState,
-        pool,
-        request,
-        futureOpportunity,
-      });
-      if (futurePoolStore instanceof Map && futurePoolKey) {
-        futurePoolStore.set(futurePoolKey, routePool);
-      }
-    }
-    routePool = routePool || pool;
-    const routeRequest = routePool === pool
-      ? request
-      : { ...request, actionOpportunity: futureOpportunity };
+    const graph = r9v2TargetDecisionValueGraph({
+      request,
+      pool,
+      projectionCache,
+    });
+    const routePool = graph?.routePool || pool;
+    const routeRequest = graph?.routeRequest || {
+      ...request,
+      actionOpportunity: futureOpportunity,
+    };
     (entry.contributions || []).forEach((contribution, index) => {
       if (stateOpportunityContributionIndexes.has(index)) return;
       const mutationKind = r9v2BehaviorMutationKind(contribution);
@@ -48629,16 +53750,49 @@
         const routeUnit = findUnitInWorld(request.visibleWorld, unitId);
         return routeUnit && preview.isBattleCapable(routeUnit);
       }).sort(r9v2TargetCompareUtf16);
+      const changedUnitIds = new Set([targetId]);
+      const changedUnitScopes = r9v2InformationUnitFactScopes({
+        baseWorld: request.visibleWorld,
+        branchWorld: projectedWorld,
+        changedUnitIds,
+      });
+      const beliefChanged = preview.stableHash(request.beliefState || {}) !==
+        preview.stableHash(projectedRequest.beliefState || {});
       const routeRows = routeOwners.map(routeOwnerId => {
-        const beforeRoute = r9v2TargetBestAffordableRoute(
-          routeRequest,
-          routePool,
-          routeOwnerId,
-          {},
-          request.visibleWorld,
+        const route = r9v2TargetDecisionValueGraphRoute({
+          graph,
+          request,
+          unitId: routeOwnerId,
           projectionCache,
-        );
-        const afterRoute = r9v2TargetBestAffordableRoute(
+        });
+        const beforeRoute = route?.baselineTable?.best
+          ? {
+              complete: true,
+              valueHEPP: Number(route.baselineTable.best.valueHEPP || 0),
+              candidateId: String(route.baselineTable.best.candidateId || '').trim(),
+            }
+          : r9v2TargetBestAffordableRoute(
+              routeRequest,
+              routePool,
+              routeOwnerId,
+              {},
+              request.visibleWorld,
+              projectionCache,
+            );
+        const graphAfterRoute = !beliefChanged
+          ? r9v2TargetDecisionValueGraphOverlayBest({
+              graph,
+              route,
+              baseRequest: routeRequest,
+              branchWorld: projectedWorld,
+              branchBelief: projectedRequest.beliefState,
+              changedUnitIds,
+              changedUnitScopes,
+              changedBeliefKeys: new Set(),
+              projectionCache,
+            })
+          : null;
+        const afterRoute = graphAfterRoute || r9v2TargetBestAffordableRoute(
           projectedRouteRequest,
           routePool,
           routeOwnerId,
@@ -48679,7 +53833,7 @@
         `${entry.candidateId}:${index}`,
       );
       if (Math.abs(value) <= 1e-9) return;
-      facts.push({
+      appendFact({
         componentCode: 'S3_BEHAVIOR_POOL',
         causalOwnerType: 'ACTION_POOL_DELTA',
         valueHEPP: value,
@@ -48706,7 +53860,10 @@
         sequence: index,
       });
     });
-    return { facts, handledContributionIndexes };
+    return {
+      ...r9v2TargetAccumulatorOutput(outputMode, accumulator),
+      handledContributionIndexes,
+    };
   }
 
   function r9v2TargetInformationBranch({
@@ -48722,17 +53879,25 @@
     branchValueBasis = null,
   }) {
     const cache = projectionCache?.targetInformationBranchesByKey;
-    const branchKey = [
-      'R9v2TargetInformationBranchV2',
+    const branchCandidateIdentity = [
       String(entry?.candidateId || '').trim(),
       String(entry?.declarationFingerprint || '').trim(),
+    ].join('\u0000');
+    const baselineGraphKey = String(
+      branchValueBasis?.baselineGraphKey ||
+      r9v2ProjectionObjectHash(projectionCache, request.visibleWorld),
+    ).trim();
+    const branchKey = [
+      'R9v2TargetInformationBranchV3',
+      baselineGraphKey,
+      String(entry?.actorId || request.actorId || '').trim(),
+      branchCandidateIdentity,
       String(groupId || '').trim(),
       success ? 'success' : 'failure',
-      r9v2ProjectionObjectHash(projectionCache, request.visibleWorld),
-      r9v2ProjectionObjectHash(projectionCache, request.beliefState || {}),
-      r9v2ProjectionObjectHash(projectionCache, request.battleIntent || {}),
-      r9v2ProjectionObjectHash(projectionCache, request.actionOpportunity || {}),
-      preview.stableHash(observation || {}),
+      r9v2ProjectionObjectRevision(projectionCache, request.beliefState || {}),
+      r9v2ProjectionObjectRevision(projectionCache, request.battleIntent || {}),
+      r9v2ProjectionObjectRevision(projectionCache, request.actionOpportunity || {}),
+      r9v2ProjectionObjectRevision(projectionCache, observation || {}),
     ].join('\u0000');
     if (cache instanceof Map && cache.has(branchKey)) {
       r9v2Metric(
@@ -48827,19 +53992,19 @@
       ),
     };
     const routePool = futurePool || pool;
+    const branchDelta = r9v2InformationBranchFactDelta({
+      baseWorld: request.visibleWorld,
+      branchWorld,
+      branchEntry,
+      observation,
+      success,
+    });
     const changedUnitIdSet = new Set(
-      (branchEntry.changedUnitIds || [])
-        .map(value => String(value || '').trim())
-        .filter(Boolean),
+      (branchDelta.exact
+        ? branchDelta.changedUnitIds
+        : branchEntry.changedUnitIds || []
+      ).map(value => String(value || '').trim()).filter(Boolean),
     );
-    const baseActor = findUnitInWorld(request.visibleWorld, request.actorId);
-    const branchActor = findUnitInWorld(branchWorld, request.actorId);
-    if (
-      preview.stableHash(baseActor || null) !==
-      preview.stableHash(branchActor || null)
-    ) {
-      changedUnitIdSet.add(String(request.actorId || '').trim());
-    }
     const changedBeliefKeys = new Set([
       observation?.mechanicKey,
       observation?.adaptationKey,
@@ -48851,11 +54016,13 @@
     const scopeStartedAt = typeof globalThis?.performance?.now === 'function'
       ? globalThis.performance.now()
       : Date.now();
-    const changedUnitScopes = r9v2InformationUnitFactScopes({
-      baseWorld: request.visibleWorld,
-      branchWorld,
-      changedUnitIds: changedUnitIdSet,
-    });
+    const changedUnitScopes = branchDelta.exact
+      ? branchDelta.scopesByUnit
+      : r9v2InformationUnitFactScopes({
+          baseWorld: request.visibleWorld,
+          branchWorld,
+          changedUnitIds: changedUnitIdSet,
+        });
     const changedScopeSignature = [...changedUnitScopes.values()]
       .map(scopes => [...scopes].sort().join('+'))
       .sort()
@@ -48886,6 +54053,7 @@
         changedUnitIds: changedUnitIdSet,
         changedUnitScopes,
         changedBeliefKeys,
+        branchDelta,
         basis: branchValueBasis,
         projectionCache,
       });
@@ -49205,44 +54373,23 @@
     const futureOpportunity = r9v2FutureOpportunityContext(
       request.actionOpportunity || {},
     );
-    const targetSession = projectionCache?.targetKernelSession;
-    const futurePoolStore = targetSession?.futureRoutePoolStore;
-    const futurePoolKey = projectionCache?.targetKernel === true
-      ? r9v2FuturePoolContextKey({
-          state: projectionCache.metricsState,
-          request,
-          futureOpportunity,
-        })
-      : '';
-    let futurePool = futurePoolStore instanceof Map && futurePoolKey
-      ? futurePoolStore.get(futurePoolKey) || null
-      : null;
-    if (futurePool) {
-      r9v2Metric(
-        projectionCache.metricsState,
-        'r9v2TargetInformationFuturePoolSessionHits',
-      );
-    } else if (projectionCache?.targetKernel === true) {
-      futurePool = r9v2PrepareSharedFuturePool({
-        state: projectionCache.metricsState,
-        pool,
-        request,
-        futureOpportunity,
-      });
-      if (futurePoolStore instanceof Map && futurePoolKey) {
-        futurePoolStore.set(futurePoolKey, futurePool);
-      }
-      r9v2Metric(
-        projectionCache.metricsState,
-        'r9v2TargetInformationFuturePoolSessionCreates',
-      );
-    }
-    const routePool = futurePool || pool;
-    const futureRequest = {
+    const graph = r9v2TargetDecisionValueGraph({
+      request,
+      pool,
+      projectionCache,
+    });
+    const routePool = graph?.routePool || pool;
+    const futureRequest = graph?.routeRequest || {
       ...request,
       actionOpportunity: futureOpportunity,
     };
-    const baselineTable = r9v2TargetFutureRouteTable(
+    const actorRoute = r9v2TargetDecisionValueGraphRoute({
+      graph,
+      request,
+      unitId: request.actorId,
+      projectionCache,
+    });
+    const baselineTable = actorRoute?.baselineTable || r9v2TargetFutureRouteTable(
       futureRequest,
       routePool,
       request.actorId,
@@ -49251,22 +54398,9 @@
       projectionCache,
       false,
     );
-    if (!baselineTable.complete) return { informationComponents: [] };
-    const basisCache = projectionCache?.targetInformationBranchValueBasisByTable;
-    let branchValueBasis = basisCache instanceof WeakMap
-      ? basisCache.get(baselineTable) || null
-      : null;
-    if (!branchValueBasis && projectionCache?.targetKernel === true) {
-      branchValueBasis = r9v2TargetInformationBranchValueBasis({
-        request: futureRequest,
-        pool: routePool,
-        unitId: request.actorId,
-        baselineTable,
-      });
-      if (branchValueBasis && basisCache instanceof WeakMap) {
-        basisCache.set(baselineTable, branchValueBasis);
-      }
-    }
+    if (!baselineTable?.complete) return { informationComponents: [] };
+    const branchValueBasis = actorRoute?.basis || null;
+    if (!branchValueBasis) return { informationComponents: [] };
     const observationGroups = new Map();
     observations.forEach((observation, index) => {
       const groupId = [
@@ -49540,12 +54674,13 @@
     };
   }
 
-  function r9v2TargetS5Components(request, entry, pool, projectionCache, health) {
-    const facts = [];
+  function r9v2TargetS5Components(request, entry, pool, projectionCache, health, outputMode = 'FACTS') {
+    const accumulator = r9v2TargetFactAccumulator(outputMode, entry.candidateId);
+    const appendFact = fact => accumulator.push(fact);
     const handledContributionIndexes = new Set();
     (health?.futureFacts || []).forEach((row, index) => {
       if (Math.abs(row.value) <= 1e-9) return;
-      facts.push({
+      appendFact({
         componentCode: 'S5_FUTURE_STATE',
         causalOwnerType: row.causalOwnerType || 'STATE_DELTA',
         valueHEPP: row.value,
@@ -49587,7 +54722,7 @@
           'R9V2_KERNEL_ASSET_VALUE_NON_FINITE',
           `${entry.candidateId}:${index}`,
         );
-        facts.push({
+        appendFact({
           componentCode: 'S5_ITEM_CONSUMPTION',
           causalOwnerType: 'ACTION_POOL_DELTA',
           valueHEPP,
@@ -49623,7 +54758,7 @@
         );
         handledContributionIndexes.add(index);
         if (Math.abs(projection.valueHEPP) <= 1e-9) return;
-        facts.push({
+        appendFact({
           componentCode: 'S5_CREATION_CONSUMER',
           causalOwnerType: 'ACTION_POOL_DELTA',
           valueHEPP: projection.valueHEPP,
@@ -49688,7 +54823,7 @@
         `${entry.candidateId}:${index}`,
       );
       if (Math.abs(value) <= 1e-9) return;
-      facts.push({
+      appendFact({
         componentCode: 'S5_SUMMON_WINDOW',
         causalOwnerType: 'ACTION_POOL_DELTA',
         valueHEPP: value,
@@ -49705,7 +54840,10 @@
         sequence: index,
       });
     });
-    return { facts, handledContributionIndexes };
+    return {
+      ...r9v2TargetAccumulatorOutput(outputMode, accumulator),
+      handledContributionIndexes,
+    };
   }
 
   function r9v2TargetRiskComponents(request, entry) {
@@ -49907,9 +55045,10 @@
     return null;
   }
 
-  function r9v2TargetEmptyFormalComponent() {
+  function r9v2TargetEmptyFormalComponent(outputMode = 'FACTS') {
+    const vectorMode = outputMode === 'VECTOR';
     return {
-      facts: [],
+      ...(vectorMode ? { contributions: [] } : { facts: [] }),
       informationComponents: [],
       paretoComponents: [],
       unsupportedOutcomeKinds: [],
@@ -49921,8 +55060,11 @@
     entry,
     pool,
     projectionCache,
+    outputMode = 'FACTS',
     componentCodes = R9V2_TARGET_COMPONENT_DEFINITIONS.map(definition => definition.componentCode),
   }) {
+    const vectorMode = outputMode === 'VECTOR';
+    const scalarMode = outputMode === 'SCALAR';
     const requested = new Set(componentCodes);
     const needsS6 = requested.has('causal_ownership') || requested.has('pareto_selection');
     const needsS1 = needsS6 || [
@@ -49967,21 +55109,24 @@
       dependencies,
       extraKey = null,
       build,
-    }) => r9v2ProofComponentRead({
-      request,
-      pool,
-      entry,
-      projectionCache,
-      component,
-      dependencies,
-      ...(extraKey === null ? {} : { extraKey }),
-      build,
-    });
+    }) => scalarMode
+      ? build()
+      : r9v2ProofComponentRead({
+          request,
+          pool,
+          entry,
+          projectionCache,
+          component,
+          dependencies,
+          outputMode,
+          ...(extraKey === null ? {} : { extraKey }),
+          build,
+        });
     const s1 = needsS1
       ? cacheRead({
           component: 'TARGET_S1',
           dependencies: ['world', 'objective', 'entry'],
-          build: () => r9v2TargetS1Components(request, entry),
+          build: () => r9v2TargetS1Components(request, entry, null, outputMode),
         })
       : null;
     const s2 = needsS2
@@ -49997,6 +55142,7 @@
             pool,
             projectionCache,
             s1?.handledContributionIndexes || [],
+            outputMode,
           ),
         })
       : null;
@@ -50012,9 +55158,17 @@
             entry,
             pool,
             projectionCache,
+            outputMode,
           ),
         })
-      : { facts: [], handledContributionIndexes: [] };
+      : {
+          ...(scalarMode
+            ? { scalarOwnerTotals: { STATE_DELTA: 0, ACTION_POOL_DELTA: 0, TERMINAL_DELTA: 0, NONE: 0 } }
+            : vectorMode
+              ? { contributions: [] }
+              : { facts: [] }),
+          handledContributionIndexes: [],
+        };
     const s5 = needsS5
       ? cacheRead({
           component: 'TARGET_S5',
@@ -50026,6 +55180,7 @@
             pool,
             projectionCache,
             s1?.health || {},
+            outputMode,
           ),
         })
       : null;
@@ -50055,24 +55210,53 @@
           ),
         })
       : { informationComponents: [] };
+    if (scalarMode) {
+      const totals = {
+        STATE_DELTA: 0,
+        ACTION_POOL_DELTA: 0,
+        TERMINAL_DELTA: 0,
+        NONE: 0,
+      };
+      [s1, s2, s3, s5].forEach(component => {
+        Object.entries(component?.scalarOwnerTotals || {}).forEach(([owner, value]) => {
+          if (!Object.hasOwn(totals, owner)) {
+            throw new Error(`R9V2_UNKNOWN_CAUSAL_OWNER:${entry.candidateId}:${owner}`);
+          }
+          totals[owner] += Number(value || 0);
+        });
+      });
+      return {
+        scalarOwnerTotals: Object.freeze(totals),
+        informationComponents: s4?.informationComponents || [],
+        paretoComponents: s6?.paretoComponents || [],
+        unsupportedOutcomeKinds: s6?.unsupportedOutcomeKinds || [],
+      };
+    }
     const components = Object.fromEntries(
       componentCodes.map(componentCode => [
         componentCode,
-        r9v2TargetEmptyFormalComponent(),
+        r9v2TargetEmptyFormalComponent(outputMode),
       ]),
     );
-    const appendFacts = (facts = []) => facts.forEach(fact => {
-      const componentCode = r9v2TargetFormalComponentCode(fact);
+    const appendRows = (rows = []) => rows.forEach(row => {
+      const componentCode = r9v2TargetFormalComponentCode(row);
       if (!componentCode) {
-        throw new Error(`R9V2_KERNEL_UNSUPPORTED_FACT:${entry.candidateId}:${fact.componentCode || ''}`);
+        throw new Error(`R9V2_KERNEL_UNSUPPORTED_FACT:${entry.candidateId}:${row.componentCode || ''}`);
       }
       if (!components[componentCode]) return;
-      components[componentCode].facts.push({ ...fact, componentCode });
+      const target = components[componentCode];
+      target[vectorMode ? 'contributions' : 'facts'].push({
+        ...row,
+        componentCode,
+      });
     });
-    appendFacts(s1?.facts || []);
-    appendFacts(s2?.facts || []);
-    appendFacts(s3?.facts || []);
-    appendFacts(s5?.facts || []);
+    const rowsFrom = value => vectorMode
+      ? value?.contributions || []
+      : value?.facts || [];
+    appendRows(rowsFrom(s1));
+    appendRows(rowsFrom(s2));
+    appendRows(rowsFrom(s3));
+    appendRows(rowsFrom(s5));
     if (components.information_observation) {
       components.information_observation.informationComponents = s4?.informationComponents || [];
     }
@@ -50086,6 +55270,7 @@
     return {
       components,
       componentFacts: componentValues.flatMap(value => value.facts || []),
+      causalContributionColumns: componentValues.flatMap(value => value.contributions || []),
       informationComponents: componentValues.flatMap(value => value.informationComponents || []),
       paretoComponents: componentValues.flatMap(value => value.paretoComponents || []),
       unsupportedOutcomeKinds: componentValues.flatMap(value => value.unsupportedOutcomeKinds || []),
@@ -50881,47 +56066,73 @@
       }
       return null;
     };
+    const evaluateTargetComponents = ({
+      candidate,
+      factDeltas = [],
+      session = null,
+      componentCodes = componentDefinitions.map(definition => definition.componentCode),
+      outputMode = 'FACTS',
+    }) => {
+      projectionCache.targetKernelSession = session;
+      const originalEntry = candidate?.rawInput?.mechanicalEntry;
+      const entry = r9v2TargetKernelApplyFactDeltas(
+        originalEntry,
+        candidate.candidateId,
+        factDeltas,
+        canApplyFactDelta,
+      );
+      if (!entry || typeof entry !== 'object') {
+        throw new Error(
+          `R9V2_KERNEL_RAW_MECHANICAL_ENTRY_MISSING:${candidate?.candidateId || ''}`,
+        );
+      }
+      const values = r9v2TargetKernelComponentEvaluation({
+        request,
+        entry,
+        pool,
+        projectionCache,
+        outputMode,
+        componentCodes,
+      });
+      if (values.unsupportedOutcomeKinds.length) {
+        throw new Error(
+          `R9V2_KERNEL_UNSUPPORTED_FACT:${entry.candidateId}:${values.unsupportedOutcomeKinds.join(',')}`,
+        );
+      }
+      if (outputMode === 'SCALAR') {
+        return {
+          candidateId: candidate.candidateId,
+          scalarOwnerTotals: values.scalarOwnerTotals,
+          informationComponents: values.informationComponents,
+          paretoComponents: values.paretoComponents,
+          unsupportedOutcomeKinds: values.unsupportedOutcomeKinds,
+        };
+      }
+      return {
+        candidateId: candidate.candidateId,
+        components: values.components,
+        ...(outputMode === 'VECTOR'
+          ? { causalContributionColumns: values.causalContributionColumns }
+          : { componentFacts: values.componentFacts }),
+      };
+    };
     return Object.freeze({
       schemaVersion: 'KernelComponentRegistryRuntimeV1',
       componentDefinitions,
       validateFactDelta: canApplyFactDelta,
       componentCodesForFactDelta,
-      evaluateComponents: ({
-        candidate,
-        factDeltas = [],
-        session = null,
-        componentCodes = componentDefinitions.map(definition => definition.componentCode),
-      }) => {
-        projectionCache.targetKernelSession = session;
-        const originalEntry = candidate?.rawInput?.mechanicalEntry;
-        const entry = r9v2TargetKernelApplyFactDeltas(
-          originalEntry,
-          candidate.candidateId,
-          factDeltas,
-          canApplyFactDelta,
-        );
-        if (!entry || typeof entry !== 'object') {
-          throw new Error(
-            `R9V2_KERNEL_RAW_MECHANICAL_ENTRY_MISSING:${candidate?.candidateId || ''}`,
-          );
-        }
-        const values = r9v2TargetKernelComponentEvaluation({
-          request,
-          entry,
-          pool,
-          projectionCache,
-          componentCodes,
-        });
-        if (values.unsupportedOutcomeKinds.length) {
-          throw new Error(
-            `R9V2_KERNEL_UNSUPPORTED_FACT:${entry.candidateId}:${values.unsupportedOutcomeKinds.join(',')}`,
-          );
-        }
-        return {
-          candidateId: candidate.candidateId,
-          components: values.components,
-        };
-      },
+      evaluateComponents: input => evaluateTargetComponents({
+        ...input,
+        outputMode: 'FACTS',
+      }),
+      evaluateVectorComponents: input => evaluateTargetComponents({
+        ...input,
+        outputMode: 'VECTOR',
+      }),
+      evaluateScalarComponents: input => evaluateTargetComponents({
+        ...input,
+        outputMode: 'SCALAR',
+      }),
     });
   }
 
@@ -50958,19 +56169,21 @@
             `R9V2_KERNEL_FACT_DELTA_SNAPSHOT_MISSING:${candidateId}`,
           );
         }
-        return Object.assign(nextEntry, cloneValue(nextRawEntry));
+        Object.assign(nextEntry, cloneValue(nextRawEntry));
+        return;
       }
       const effectInstanceId = fieldCode.slice(
         'contributions.expectedDelta:'.length,
       ).trim();
-      const contribution = (nextEntry.contributions || []).find(row =>
+      const contributionIndex = (nextEntry?.contributions || []).findIndex(row =>
         String(row?.effectInstanceId || '').trim() === effectInstanceId,
       );
-      if (!contribution) {
+      if (contributionIndex < 0) {
         throw new Error(
           `R9V2_KERNEL_FACT_DELTA_TARGET_MISSING:${candidateId}:${effectInstanceId}`,
         );
       }
+      const contribution = nextEntry.contributions[contributionIndex];
       const before = Number(contribution.expectedDelta ?? 0);
       const expectedBefore = Number(delta?.beforeValue);
       if (
@@ -50990,10 +56203,14 @@
           `R9V2_KERNEL_FACT_DELTA_VALUE_NON_FINITE:${candidateId}:${effectInstanceId}`,
         );
       }
-      contribution.expectedDelta = after;
+      const nextContribution = { ...contribution, expectedDelta: after };
       if (contribution.evidence && typeof contribution.evidence === 'object') {
-        contribution.evidence.delta = after;
+        nextContribution.evidence = {
+          ...contribution.evidence,
+          delta: after,
+        };
       }
+      nextEntry.contributions[contributionIndex] = nextContribution;
     });
     return nextEntry;
   }
@@ -51145,6 +56362,9 @@
       battleIntent: {
         mode: String(battleIntent?.mode || '').trim(),
         withdrawAllowed: battleIntent?.withdrawAllowed === true,
+        objectives: cloneValue(
+          battleIntent?.objectives || battleIntent?.胜负条件 || {},
+        ),
       },
       objectiveContract: cloneValue(objectiveContract || {}),
       informationValueOnly: informationValueOnly !== false,
@@ -51495,8 +56715,9 @@
         prepared.state.r9v2TargetRouteTablesByKey,
       targetInformationBranchesByKey: new Map(),
       targetInformationBranchValueBasisByTable: new WeakMap(),
+      decisionValueGraphs: prepared.state.r9v2DecisionValueGraphs,
       projectionRevisionNamespace:
-        `r9v2-target-projection:${++r9v2ProjectionRevisionSequence}`,
+        `r9v2-target-projection:${String(targetKernelSessionKey || actorId).trim()}`,
       useRevisionKeys: true,
       useValueKeys: true,
       enableExactComponentDependencies: true,
@@ -51616,7 +56837,32 @@
         pool: prepared.pool,
         sharedContextFingerprint: contextFingerprint,
       });
-    const session = previousLifecycle?.session || kernel.createSession({
+    const stableSessionCompatible = !!previousLifecycle?.session &&
+      rows.length === previousRowsByCandidate?.size &&
+      rows.every(row => {
+        const previousRow = previousRowsByCandidate.get(row.candidateId);
+        if (!previousRow) return false;
+        return JSON.stringify({
+          actionId: previousRow.actionId,
+          actorId: previousRow.actorId,
+          targetSet: previousRow.targetSet,
+          paymentMode: previousRow.paymentMode,
+          legal: previousRow.legal,
+          hardExclusionCodes: previousRow.hardExclusionCodes,
+          dependencyTokens: previousRow.dependencyTokens,
+        }) === JSON.stringify({
+          actionId: row.actionId,
+          actorId: row.actorId,
+          targetSet: row.targetSet,
+          paymentMode: row.paymentMode,
+          legal: row.legal,
+          hardExclusionCodes: row.hardExclusionCodes,
+          dependencyTokens: row.dependencyTokens,
+        });
+      });
+    const session = stableSessionCompatible
+      ? previousLifecycle.session
+      : kernel.createSession({
       worldRevision: evaluationContext.worldRevision,
       beliefRevision: evaluationContext.beliefRevision,
       opportunityRevision: evaluationContext.opportunityRevision,
@@ -51626,7 +56872,7 @@
       componentRegistry,
       candidates: rows,
     });
-    let stableSessionReused = !!previousLifecycle?.session;
+    let stableSessionReused = stableSessionCompatible;
     if (stableSessionReused) {
       session.componentRegistry = componentRegistry;
       session.beliefOverlay = beliefOverlay;
@@ -51705,7 +56951,7 @@
           afterValue: r9v2TargetKernelRawMechanicalEntry(entry),
           sourceEventId: `target-kernel-entry:${candidateId}`,
           sourceFactId: `target-kernel-entry:${candidateId}:${contextFingerprint}`,
-          dependencyTokens: row.dependencyTokens,
+          dependencyTokens: [`candidate:${candidateId}`],
         });
         r9v2Metric(
           prepared.state,
@@ -51732,7 +56978,7 @@
         contextFingerprintByCandidate,
       });
     }
-    const vectors = kernel.evaluateAllCandidates(session, actorId);
+    const vectors = kernel.evaluateAllCandidatesScalarGraph(session, actorId);
     const invalidValueSource = rows.find(row =>
       row.mechanicalSource !== 'SHARED_MECHANICAL_ENTRY_V1',
     );
@@ -52029,6 +57275,31 @@
       requiredUnitIds = new Set(prepared.pool.unitEntries.keys());
     }
     if (targetKernel) {
+      prepared.pool.r9v2EnsureUnitEntries = unitId => {
+        const normalizedUnitId = String(unitId || '').trim();
+        if (
+          !normalizedUnitId ||
+          prepared.pool.unitEntries.has(normalizedUnitId)
+        ) {
+          return;
+        }
+        r9v2BuildFutureUnitPool({
+          state: prepared.state,
+          pool: prepared.pool,
+          worldSnapshot,
+          observerSide: actorSide,
+          unitId: normalizedUnitId,
+          beliefState,
+          battleIntent,
+          actionOpportunity: targetPoolOpportunity,
+          mechanicalProjectionContext,
+          verifyMechanicalBasis: false,
+          captureDependencyKeys: true,
+        });
+        r9v2ReindexTargets(prepared.pool);
+        r9v2BuildDependencyOwners(prepared.pool);
+        r9v2Metric(prepared.state, 'r9v2TransactionGraphLazyUnitBuilds');
+      };
       if (targetKernelCacheEnabled) {
         rawRowsHash = preview.stableHash({
           schemaVersion: 'R9v2TargetKernelRawRowsV1',
@@ -52470,7 +57741,7 @@
       .sort(r9v2TargetCompareUtf16);
     const proofByCandidate = new Map();
     for (const row of [winner, ...alternativeRows]) {
-      const kernelProof = kernel.materializeProof(
+      const kernelProof = kernel.materializeProofFromScalarGraph(
         prepared.session,
         row.candidate.candidateId,
       );
@@ -53119,11 +58390,1169 @@
     return runR9v2PreparedProvider(request, 'r9v2-shadow');
   }
 
-  function runR9v2TargetProvider(request = {}) {
-    return runR9v2PreparedProvider(request, 'r9v2');
+ function runR9v2TargetProvider(request = {}) {
+   const directDecision = r9v2DirectBehaviorProvider(request);
+   return {
+     ...directDecision,
+     providerId: 'r9v2-target-test',
+     decisionAudit: {
+       ...directDecision.decisionAudit,
+       engine: 'R9V2_TARGET',
+     },
+     decisionProfile: {
+       ...directDecision.decisionProfile,
+       engine: 'R9V2_TARGET',
+       slice: 'TARGET_KERNEL_V2',
+       valueSource: 'BEHAVIOR_POOL_COLUMNS_V1',
+     },
+   };
+ }
+
+  // R9V2 formal provider: consumes one registered, recursively frozen
+  // CANDIDATES_ONLY request. The decision shape is the lightweight contract:
+  // no R8 vector/proof/pareto fields are fabricated, and reasons come from the
+  // exact contribution factors consumed by the linear provider.
+
+  // Runtime adapter layer (before the provider): for every frozen candidate
+  // run exactly one atomic BattlePreview.previewAction mechanical pre-run and
+  // compile the V4-isomorphic online document (PDA -> Bridge -> BIF immediate,
+  // FeatureSource -> Relational) exactly like the offline compiler. The
+  // provider then stays pure linear scoring over the supplied featureInputs
+  // and never calls previewAction itself. No response/future round/route
+  // pools are consulted; failures are fail-closed with the candidate id.
+  function r9v2LinearPublicSnapshot(visibleWorld, actorId) {
+    const units = {};
+    const sides = {};
+    const byId = new Map();
+    const unitIdOf = unit => {
+      if (!unit || typeof unit !== 'object') return '';
+      return String(unit['召唤键'] || unit.id || unit['角色ID'] || unit.uid || unit.name || unit['名称'] || '').trim();
+    };
+    const copyPublic = (unit, side) => {
+      const id = unitIdOf(unit);
+      if (!id || byId.has(id)) return;
+      units[id] = {
+        hp: Number(unit.hp), hp_max: Number(unit.hp_max), sp: Number(unit.sp), sp_max: Number(unit.sp_max),
+        men: Number(unit.men), men_max: Number(unit.men_max), vit: Number(unit.vit), vit_max: Number(unit.vit_max),
+        def: Number(unit.def), agi: Number(unit.agi), shield: Number(unit.shield || 0),
+        ['状态效果']: cloneValue(unit['状态效果'] || {}),
+      };
+      // M3 R4b5 charge-only transport: carry the decision-visible 蓄力技能 fact
+      // (object or null) verbatim when present; never read Runtime internals and
+      // never touch nested skill payloads beyond BIF's documented {cast_time,
+      // skill.前摇} source paths.
+      if (Object.prototype.hasOwnProperty.call(unit, '蓄力技能')) {
+        units[id]['蓄力技能'] = unit['蓄力技能'];
+      }
+      byId.set(id, unit);
+      if (side) sides[id] = side;
+    };
+    const participants = visibleWorld && visibleWorld['参战者'] ? visibleWorld['参战者'] : {};
+    for (const [side, list] of Object.entries(participants)) {
+      for (const unit of Array.isArray(list) ? list : []) copyPublic(unit, side);
+    }
+    const summons = visibleWorld && visibleWorld['召唤单位表'] ? visibleWorld['召唤单位表'] : {};
+    for (const unit of Object.values(summons)) {
+      if (!unit || unit['已消散'] === true) continue;
+      copyPublic(unit, r9v2PublicSideOf(unit));
+    }
+    const actor = byId.get(String(actorId || '').trim()) || null;
+    return deepFreeze({
+      units,
+      sides,
+      actorStatus: actor && actor['状态'] && actor['状态']['存活'] === false ? 'TERMINAL' : 'NORMAL',
+    });
   }
 
-  // ===== R9 双层引擎（v0：Tier-1 廉价筛选骨架）=====
+  function r9v2PublicSideOf(unit) {
+    const raw = String(unit && unit['阵营'] || '').trim().toLowerCase();
+    if (/^(enemy|敌方|对方)$/.test(raw)) return 'team_enemy';
+    if (/^(player|玩家|我方)$/.test(raw)) return 'team_player';
+    return '';
+  }
+
+  function r9v2LinearPublicCost(declaration) {
+    const result = [];
+    for (const [resource, amount] of Object.entries((declaration && declaration.resourceCosts) || {})) {
+      if (['魂力', '精神力', '体力', '生命'].indexOf(resource) >= 0 && Number.isFinite(Number(amount))) {
+        result.push({ resource, amount: Number(amount) });
+      }
+    }
+    return result;
+  }
+
+  function r9v2LinearCreationProfile(candidate) {
+    const creation = candidate && candidate.creation;
+    if (!creation || typeof creation !== 'object' || Array.isArray(creation)) return undefined;
+    const recipientId = String(creation.recipientId || '').trim();
+    if (!recipientId) return undefined;
+    const useEffects = (Array.isArray(creation.useEffects) ? creation.useEffects : []).filter(row =>
+      row && typeof row === 'object' && !Array.isArray(row) &&
+      typeof row['原型'] === 'string' && row['原型'].length > 0 &&
+      typeof row['目标'] === 'string' && row['目标'].length > 0 &&
+      row['资源'] !== undefined &&
+      typeof row['数值'] === 'string' && row['数值'].length > 0
+    );
+    return { recipientId, useEffects };
+  }
+
+  function r9v2LinearPlainObject(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === null || (Object.getPrototypeOf(proto) === null &&
+      Object.prototype.hasOwnProperty.call(proto, 'constructor') && proto.constructor?.name === 'Object');
+  }
+
+  function r9v2LinearReactionId(value) {
+    return typeof value === 'string' && value.length > 0 && value.length <= 512 &&
+      !/[\u0000-\u001F\u007F]/.test(value);
+  }
+
+  function r9v2LinearSameIds(left, right) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length &&
+      left.every((value, index) => value === right[index]);
+  }
+
+  function r9v2LinearRejectKeys(object, allowed, field) {
+    Object.keys(object || {}).forEach(key => {
+      if (!allowed.includes(key)) throw new Error(`R9V2_LINEAR_ACTION_CONTEXT_INVALID:${field}.${key}`);
+    });
+  }
+
+  function r9v2LinearActionContext(value) {
+    if (!r9v2LinearPlainObject(value)) throw new Error('R9V2_LINEAR_ACTION_CONTEXT_INVALID');
+    if (Object.prototype.hasOwnProperty.call(value, 'actionEvent')) {
+      r9v2LinearRejectKeys(value, ['actionEvent', 'targetResolutionEvent'], 'actionContext');
+      const actionEvent = value.actionEvent;
+      if (!r9v2LinearPlainObject(actionEvent)) throw new Error('R9V2_LINEAR_ACTION_CONTEXT_INVALID');
+      r9v2LinearRejectKeys(actionEvent, ['actionId', 'eventId'], 'actionContext.actionEvent');
+      if (!r9v2LinearReactionId(actionEvent.actionId) || !r9v2LinearReactionId(actionEvent.eventId)) {
+        throw new Error('R9V2_LINEAR_ACTION_CONTEXT_INVALID');
+      }
+      const normalized = { actionEvent: { actionId: actionEvent.actionId, eventId: actionEvent.eventId } };
+      if (value.targetResolutionEvent !== undefined) {
+        const targetEvent = value.targetResolutionEvent;
+        if (!r9v2LinearPlainObject(targetEvent)) throw new Error('R9V2_LINEAR_ACTION_CONTEXT_INVALID');
+        r9v2LinearRejectKeys(targetEvent, ['eventId'], 'actionContext.targetResolutionEvent');
+        if (!r9v2LinearReactionId(targetEvent.eventId)) throw new Error('R9V2_LINEAR_ACTION_CONTEXT_INVALID');
+        normalized.targetResolutionEvent = { eventId: targetEvent.eventId };
+      }
+      return normalized;
+    }
+    // Runtime currently hands Decision its authenticated provenance projection;
+    // normalize that internal boundary into the frozen Bridge/BIF shape.
+    r9v2LinearRejectKeys(value, ['sourceActionId', 'sourceFactIds', 'sourceEventIds'], 'actionContext');
+    if (!r9v2LinearReactionId(value.sourceActionId) || !Array.isArray(value.sourceFactIds) ||
+      !Array.isArray(value.sourceEventIds) || value.sourceFactIds.length === 0 ||
+      value.sourceFactIds.length !== value.sourceEventIds.length || value.sourceEventIds.length > 2 ||
+      value.sourceFactIds.some(id => !r9v2LinearReactionId(id)) ||
+      value.sourceEventIds.some(id => !r9v2LinearReactionId(id)) ||
+      !r9v2LinearSameIds(value.sourceFactIds, value.sourceEventIds)) {
+      throw new Error('R9V2_LINEAR_ACTION_CONTEXT_INVALID');
+    }
+    const normalized = {
+      actionEvent: { actionId: value.sourceActionId, eventId: value.sourceEventIds[0] },
+    };
+    if (value.sourceEventIds[1] !== undefined) normalized.targetResolutionEvent = { eventId: value.sourceEventIds[1] };
+    return normalized;
+  }
+
+  function r9v2LinearContextRefs(context) {
+    const ids = [context.actionEvent.eventId];
+    if (context.targetResolutionEvent?.eventId !== context.actionEvent.eventId && context.targetResolutionEvent?.eventId) {
+      ids.push(context.targetResolutionEvent.eventId);
+    }
+    return { sourceActionId: context.actionEvent.actionId, sourceFactIds: ids.slice(), sourceEventIds: ids.slice() };
+  }
+
+  function r9v2LinearNormalizeIncomingAction(actionOpportunity) {
+    const incoming = actionOpportunity?.incomingAction;
+    const rawContext = actionOpportunity?.actionContext;
+    if (rawContext !== undefined) {
+      const context = r9v2LinearActionContext(rawContext);
+      const refs = r9v2LinearContextRefs(context);
+      if (!r9v2LinearPlainObject(incoming)) throw new Error('R9V2_LINEAR_INCOMING_ACTION_INVALID');
+      if (Object.prototype.hasOwnProperty.call(incoming, 'sourceActionId') && incoming.sourceActionId !== undefined &&
+        (typeof incoming.sourceActionId !== 'string' || incoming.sourceActionId !== refs.sourceActionId)) {
+        throw new Error('R9V2_LINEAR_ACTION_CONTEXT_CONFLICT');
+      }
+      for (const key of ['sourceFactIds', 'sourceEventIds']) {
+        if (Object.prototype.hasOwnProperty.call(incoming, key) && incoming[key] !== undefined &&
+          (!Array.isArray(incoming[key]) || !r9v2LinearSameIds(incoming[key], refs[key]))) {
+          throw new Error('R9V2_LINEAR_ACTION_CONTEXT_CONFLICT');
+        }
+      }
+      actionOpportunity.actionContext = context;
+      actionOpportunity.incomingAction = {
+        ...incoming,
+        sourceActionId: refs.sourceActionId,
+        sourceFactIds: refs.sourceFactIds.slice(),
+        sourceEventIds: refs.sourceEventIds.slice(),
+      };
+      return;
+    }
+    if (incoming === undefined || incoming === null) return;
+    if (!r9v2LinearPlainObject(incoming)) throw new Error('R9V2_LINEAR_INCOMING_ACTION_INVALID');
+    const ownsSourceActionId = Object.prototype.hasOwnProperty.call(incoming, 'sourceActionId');
+    if (ownsSourceActionId && incoming.sourceActionId !== undefined) {
+      if (!r9v2LinearReactionId(incoming.sourceActionId)) {
+        throw new Error('R9V2_LINEAR_INCOMING_SOURCE_ACTION_ID_INVALID');
+      }
+      return;
+    }
+    if (r9v2LinearReactionId(incoming.actionId)) {
+      actionOpportunity.incomingAction = { ...incoming, sourceActionId: incoming.actionId };
+    }
+  }
+
+  function r9v2LinearExactUnit(worldSnapshot, id) {
+    return preview.listUnits(worldSnapshot).find(entry => preview.unitId(entry.unit) === id)?.unit || null;
+  }
+
+  function r9v2LinearReactionCarrier(request, candidate, declaration) {
+    const opportunity = request?.actionOpportunity;
+    const role = typeof opportunity?.role === 'string' ? opportunity.role.trim().toUpperCase() : '';
+    if (role !== 'REACTION' && role !== 'COUNTER') return undefined;
+    const responseKind = String(declaration?.actionKind || '').trim().toUpperCase();
+    if (!['PASS_OPPORTUNITY', 'DEFEND', 'EVADE'].includes(responseKind)) return undefined;
+    const incoming = opportunity?.incomingAction;
+    const sourceActorId = opportunity?.sourceActorId;
+    const sourceActionId = incoming?.sourceActionId;
+    const actionContext = opportunity?.actionContext;
+    const revision = request?.evaluationContext?.visibleWorldRevision;
+    if (!r9v2LinearPlainObject(incoming) || !r9v2LinearReactionId(sourceActorId) ||
+      !r9v2LinearReactionId(sourceActionId) || !r9v2LinearReactionId(request?.requestHash) ||
+      !r9v2LinearReactionId(revision)) return undefined;
+    if (actionContext) {
+      const refs = r9v2LinearContextRefs(actionContext);
+      if (refs.sourceActionId !== sourceActionId || !r9v2LinearSameIds(refs.sourceFactIds, incoming.sourceFactIds) ||
+        !r9v2LinearSameIds(refs.sourceEventIds, incoming.sourceEventIds)) return undefined;
+    }
+    const refs = key => {
+      if (incoming[key] === undefined) return [];
+      if (!Array.isArray(incoming[key]) || incoming[key].some(value => !r9v2LinearReactionId(value))) return [];
+      return [...new Set(incoming[key])];
+    };
+    const sourceFactIds = refs('sourceFactIds');
+    const sourceEventIds = refs('sourceEventIds');
+    const provenanceComplete = sourceFactIds.length > 0 && sourceEventIds.length > 0;
+    const source = r9v2LinearExactUnit(request.visibleWorld, sourceActorId);
+    const target = r9v2LinearExactUnit(request.visibleWorld, request.actorId);
+    const targetsActor = Array.isArray(incoming.targetIds) && incoming.targetIds.some(id => id === request.actorId);
+    let status = 'UNKNOWN';
+    let reason = 'HIDDEN_AXIS_UNOBSERVED';
+    let damageMultiplier;
+    let dodgeProbability;
+    if (!provenanceComplete) {
+      reason = 'SOURCE_PROVENANCE_INCOMPLETE';
+    } else if (source && target && targetsActor) {
+      damageMultiplier = responseKind === 'PASS_OPPORTUNITY'
+        ? 1
+        : responseKind === 'DEFEND'
+          ? preview.calculateDefenseDamageMultiplier(target, source, true)
+          : 1;
+      dodgeProbability = responseKind === 'EVADE'
+        ? preview.calculateDodgeProbability(target, source, true)
+        : 0;
+      if (Number.isFinite(damageMultiplier) && damageMultiplier >= 0 && damageMultiplier <= 1 &&
+        Number.isFinite(dodgeProbability) && dodgeProbability >= 0 && dodgeProbability <= 1) {
+        status = 'KNOWN';
+        reason = 'OK';
+      } else {
+        reason = 'NON_FINITE_DELIVERY';
+        damageMultiplier = undefined;
+        dodgeProbability = undefined;
+      }
+    }
+    const reactionMechanics = {
+      candidateId: candidate.candidateId,
+      responseKind,
+      status,
+      reason,
+      sourceActionId,
+      sourceActorId,
+      targetId: request.actorId,
+      prepared: true,
+      visibleWorldRevision: revision,
+      requestHash: request.requestHash,
+      sourceFactIds,
+      sourceEventIds,
+      ...(status === 'KNOWN' ? { damageMultiplier, dodgeProbability } : {}),
+    };
+    return {
+      role,
+      sourceActorId,
+      incomingAction: incoming,
+      ...(actionContext ? { actionContext: cloneValue(actionContext) } : {}),
+      ...(typeof opportunity.counterWindow === 'boolean' ? { counterWindow: opportunity.counterWindow } : {}),
+      reactionMechanics,
+    };
+  }
+
+  function r9v2LinearCanonicalActionId(candidate) {
+    const declaration = candidate?.declaration;
+    if (declaration === undefined) {
+      return candidate.candidateId;
+    }
+    if (!r9v2LinearPlainObject(declaration)) {
+      throw new Error(`R9V2_LINEAR_ACTION_ID_INVALID:${candidate.candidateId}`);
+    }
+    if (!Object.prototype.hasOwnProperty.call(declaration, 'actionId')) return candidate.candidateId;
+    const value = declaration.actionId;
+    if (typeof value !== 'string' || value.length === 0 || value.length > 512 || /[\u0000-\u001F\u007F]/.test(value)) {
+      throw new Error(`R9V2_LINEAR_ACTION_ID_INVALID:${candidate.candidateId}`);
+    }
+    return value;
+  }
+
+  function r9v2LinearCanonicalEffectId(effect, rootActionId, index) {
+    if (effect === undefined) return `${rootActionId}:effect:${index}`;
+    if (!r9v2LinearPlainObject(effect)) {
+      throw new Error(`R9V2_LINEAR_EFFECT_ID_INVALID:${rootActionId}:effect:${index}`);
+    }
+    const object = effect;
+    const hasEffectId = Object.prototype.hasOwnProperty.call(object, 'effectId');
+    const hasChineseId = Object.prototype.hasOwnProperty.call(object, '效果ID');
+    const effectId = hasEffectId ? object.effectId : null;
+    const chineseId = hasChineseId ? object['效果ID'] : null;
+    const valid = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\u0000-\u001F\u007F]/.test(value);
+    if ((hasEffectId && !valid(effectId)) || (hasChineseId && !valid(chineseId))) {
+      throw new Error(`R9V2_LINEAR_EFFECT_ID_INVALID:${rootActionId}:effect:${index}`);
+    }
+    if (hasEffectId && hasChineseId && effectId !== chineseId) {
+      throw new Error(`R9V2_LINEAR_EFFECT_ID_CONFLICT:${rootActionId}:effect:${index}`);
+    }
+    return hasEffectId ? effectId : hasChineseId ? chineseId : `${rootActionId}:effect:${index}`;
+  }
+
+  const r9v2ImpactUnitFamilyByOutcome = Object.freeze({
+    HP_DELTA: 'ABS',
+    SHIELD_DELTA: 'ABS',
+    SCHEDULED_HP_DELTA: 'ABS',
+    ACTION_GRANTED: 'COUNT',
+    ACTION_CANCELLED: 'COUNT',
+    NEXT_ACTION_QUALITY_CHANGED: 'PERCENT',
+    RESOURCE_OPTION_CHANGED: 'ABS',
+    INFORMATION_REVEALED: 'BOOL',
+    BELIEF_CHANGED: 'BOOL',
+    IRREVERSIBLE_ASSET_LOST: 'ABS',
+    TAIL_FAILURE: 'ABS',
+    CHAIN_CONFLICT: 'BOOL',
+    STATE_CHANGED: 'BOOL',
+    STATE_SCHEDULED: 'BOOL',
+    RULE_CHANGED: 'BOOL',
+    SUMMON_WINDOW: 'COUNT',
+    WITHDRAWAL_CONTEST: 'ABS',
+  });
+
+  function r9v2BuildCandidateImpactEnvelope({
+    request,
+    candidateIds,
+    bifDocs,
+    previewResultsById,
+    sourceInput,
+  }) {
+    const carrier = root.__LWCS_BEHAVIOR_CANDIDATE_IMPACT_ENVELOPE__;
+    if (!carrier || typeof carrier.build !== 'function') {
+      throw new Error('CANDIDATE_IMPACT_CARRIER_NOT_MOUNTED');
+    }
+    const sourceFactIds = Array.isArray(sourceInput?.sourceClosure?.factIds)
+      ? sourceInput.sourceClosure.factIds.slice()
+      : [];
+    const sourceEventIds = Array.isArray(sourceInput?.sourceClosure?.eventIds)
+      ? sourceInput.sourceClosure.eventIds.slice()
+      : [];
+    if (!sourceFactIds.length || !sourceEventIds.length) {
+      throw new Error('CANDIDATE_IMPACT_PUBLIC_EVIDENCE_NOT_CLOSED');
+    }
+    const sourceClosureFacts = new Set(sourceFactIds);
+    const sourceClosureEvents = new Set(sourceEventIds);
+    const beliefRevision = String(request?.evaluationContext?.beliefRevision || '').trim();
+    if (!beliefRevision) throw new Error('CANDIDATE_IMPACT_BELIEF_REVISION_MISSING');
+    const publicConsumers = Array.isArray(sourceInput?.publicConsumers)
+      ? sourceInput.publicConsumers
+      : null;
+    const validLocalRefs = (value, closure) => Array.isArray(value) &&
+      value.length > 0 &&
+      new Set(value).size === value.length &&
+      value.every(item =>
+        typeof item === 'string' && item.length > 0 && closure.has(item),
+      );
+    const publicConsumerSourceClosed = sourceInput?.actionCatalogCompleteness === 'COMPLETE' &&
+      publicConsumers !== null &&
+      publicConsumers.every(consumer =>
+        consumer && typeof consumer === 'object' && !Array.isArray(consumer) &&
+        typeof consumer.consumerId === 'string' && consumer.consumerId.length > 0 &&
+        typeof consumer.ownerId === 'string' && consumer.ownerId.length > 0 &&
+        typeof consumer.resourceKey === 'string' && consumer.resourceKey.length > 0 &&
+        typeof consumer.actionId === 'string' && consumer.actionId.length > 0 &&
+        Number.isFinite(consumer.currentAmount) && consumer.currentAmount >= 0 &&
+        Number.isFinite(consumer.requiredAmount) && consumer.requiredAmount >= 0 &&
+        validLocalRefs(consumer.sourceFactIds, sourceClosureFacts) &&
+        validLocalRefs(consumer.sourceEventIds, sourceClosureEvents),
+      ) &&
+      new Set(publicConsumers.map(consumer => consumer.consumerId)).size === publicConsumers.length;
+    const futureConsumerIdentitiesFor = candidateId => {
+      const unknown = reason => ({
+        status: 'UNKNOWN',
+        identities: [],
+        sourceFactIds: [],
+        sourceEventIds: [],
+        reason,
+      });
+      if (!publicConsumerSourceClosed) return unknown('CONSUMER_IDENTITY_NOT_CLOSED');
+      const candidateEntries = Array.isArray(sourceInput?.candidateEntriesById?.[candidateId])
+        ? sourceInput.candidateEntriesById[candidateId]
+        : null;
+      if (sourceInput?.candidateCompletenessByAxis?.[candidateId]?.RESOURCE_SUPPLY !== 'COMPLETE' ||
+        candidateEntries === null) {
+        return unknown('CONSUMER_IDENTITY_NOT_CLOSED');
+      }
+      const supplyByTargetResource = new Map();
+      for (const entry of candidateEntries) {
+        if (entry?.capabilityKind !== 'RESOURCE_SUPPLY') continue;
+        if (entry?.timeBand === 'SCHEDULED') continue;
+        if (entry?.timeBand !== 'NOW') return unknown('CONSUMER_IDENTITY_NOT_CLOSED');
+        if (
+          typeof entry.targetId !== 'string' || entry.targetId.length === 0 ||
+          typeof entry.resourceKey !== 'string' || entry.resourceKey.length === 0 ||
+          !Number.isFinite(entry.supplyAmount) || entry.supplyAmount < 0 ||
+          !validLocalRefs(entry.sourceFactIds, sourceClosureFacts) ||
+          !validLocalRefs(entry.sourceEventIds, sourceClosureEvents)
+        ) return unknown('CONSUMER_IDENTITY_NOT_CLOSED');
+        const key = `${entry.targetId}\u0000${entry.resourceKey}`;
+        const existing = supplyByTargetResource.get(key) || {
+          amount: 0,
+          correction: 0,
+          publicMaxAmount: entry.publicMaxAmount,
+          entries: [],
+        };
+        if (!Number.isFinite(entry.publicMaxAmount) || entry.publicMaxAmount < 0 ||
+          entry.supplyAmount > entry.publicMaxAmount ||
+          existing.publicMaxAmount !== entry.publicMaxAmount) {
+          return unknown('CONSUMER_IDENTITY_NOT_CLOSED');
+        }
+        const nextAmount = existing.amount + entry.supplyAmount;
+        existing.correction += Math.abs(existing.amount) >= Math.abs(entry.supplyAmount)
+          ? existing.amount - nextAmount + entry.supplyAmount
+          : entry.supplyAmount - nextAmount + existing.amount;
+        existing.amount = nextAmount;
+        if (!Number.isFinite(existing.amount)) return unknown('CONSUMER_IDENTITY_NOT_CLOSED');
+        existing.entries.push(entry);
+        supplyByTargetResource.set(key, existing);
+      }
+      const selected = [];
+      const sourceFacts = new Set();
+      const sourceEvents = new Set();
+      for (const consumer of publicConsumers) {
+        if (!(consumer.currentAmount < consumer.requiredAmount)) continue;
+        const supply = supplyByTargetResource.get(
+          `${consumer.ownerId}\u0000${consumer.resourceKey}`,
+        );
+        if (!supply) continue;
+        const coveredAmount = Math.min(
+          supply.publicMaxAmount,
+          consumer.currentAmount + supply.amount + supply.correction,
+        );
+        if (!Number.isFinite(coveredAmount)) return unknown('CONSUMER_IDENTITY_NOT_CLOSED');
+        if (coveredAmount < consumer.requiredAmount) continue;
+        selected.push(consumer);
+        consumer.sourceFactIds.forEach(item => sourceFacts.add(item));
+        consumer.sourceEventIds.forEach(item => sourceEvents.add(item));
+        supply.entries.forEach(entry => {
+          entry.sourceFactIds.forEach(item => sourceFacts.add(item));
+          entry.sourceEventIds.forEach(item => sourceEvents.add(item));
+        });
+      }
+      if (selected.length === 0) {
+        return {
+          status: 'NOT_APPLICABLE',
+          identities: [],
+          sourceFactIds: [],
+          sourceEventIds: [],
+          reason: 'NO_NEWLY_PAYABLE_CONSUMER',
+        };
+      }
+      const identities = selected
+        .map(consumer => `consumer:v1:${preview.stableHash(['PUBLIC_CONSUMER', consumer.consumerId])}`)
+        .sort(compareUtf16);
+      if (new Set(identities).size !== identities.length) {
+        return unknown('CONSUMER_IDENTITY_COLLISION');
+      }
+      const sourceFactIds = [...sourceFacts].sort(compareUtf16);
+      const sourceEventIds = [...sourceEvents].sort(compareUtf16);
+      if (!sourceFactIds.length || !sourceEventIds.length ||
+        sourceFactIds.some(item => !sourceClosureFacts.has(item)) ||
+        sourceEventIds.some(item => !sourceClosureEvents.has(item))) {
+        return unknown('CONSUMER_IDENTITY_NOT_CLOSED');
+      }
+      return { status: 'KNOWN', identities, sourceFactIds, sourceEventIds };
+    };
+    const candidates = candidateIds.map(candidateId => {
+      const candidateEntries = Array.isArray(sourceInput?.candidateEntriesById?.[candidateId])
+        ? sourceInput.candidateEntriesById[candidateId]
+        : null;
+      const candidateCompleteness = sourceInput?.candidateCompletenessByAxis?.[candidateId];
+      const capabilitySourceFacts = new Set();
+      const capabilitySourceEvents = new Set();
+      const capabilityTuples = [];
+      let capabilityIds = [];
+      let capabilitySource;
+      let capabilityStatus = 'UNKNOWN';
+      let capabilityReason = 'CAPABILITY_AXIS_NOT_CLOSED';
+      let capabilitySourceClosed = true;
+      const axesClosed = candidateCompleteness?.TEAM_EFFECT === 'COMPLETE' &&
+        candidateCompleteness?.RESOURCE_SUPPLY === 'COMPLETE' &&
+        candidateCompleteness?.FOLLOW_UP === 'COMPLETE';
+      if (!axesClosed) {
+        capabilityReason = 'CAPABILITY_AXIS_NOT_CLOSED';
+      } else if (!candidateEntries) {
+        capabilityReason = 'CAPABILITY_ENTRIES_NOT_CLOSED';
+      } else if (candidateEntries.length === 0) {
+        capabilityStatus = 'NOT_APPLICABLE';
+        capabilityReason = 'NO_CONTINGENCY_CAPABILITY';
+      } else {
+        for (const entry of candidateEntries) {
+          const sourceFacts = Array.isArray(entry?.sourceFactIds) ? entry.sourceFactIds : null;
+          const sourceEvents = Array.isArray(entry?.sourceEventIds) ? entry.sourceEventIds : null;
+          const validSourceFacts = sourceFacts && new Set(sourceFacts).size === sourceFacts.length &&
+            sourceFacts.every(value => typeof value === 'string' && value.length > 0 && sourceClosureFacts.has(value));
+          const validSourceEvents = sourceEvents && new Set(sourceEvents).size === sourceEvents.length &&
+            sourceEvents.every(value => typeof value === 'string' && value.length > 0 && sourceClosureEvents.has(value));
+          if (!validSourceFacts || !validSourceEvents || (sourceFacts.length === 0 && sourceEvents.length === 0)) {
+            capabilitySourceClosed = false;
+            break;
+          }
+          sourceFacts.forEach(value => capabilitySourceFacts.add(value));
+          sourceEvents.forEach(value => capabilitySourceEvents.add(value));
+          let tuple;
+          if (entry?.capabilityKind === 'TEAM_EFFECT') {
+            tuple = [
+              'TEAM_EFFECT',
+              entry.targetId,
+              entry.effectAxis,
+              entry.effectKey,
+              entry.timeBand,
+            ];
+          } else if (entry?.capabilityKind === 'RESOURCE_SUPPLY') {
+            tuple = [
+              'RESOURCE_SUPPLY',
+              entry.targetId,
+              entry.resourceKey,
+              entry.timeBand,
+            ];
+          } else if (entry?.capabilityKind === 'FOLLOW_UP') {
+            tuple = [
+              'FOLLOW_UP',
+              entry.ownerId,
+              entry.followUpKey,
+            ];
+          }
+          if (!tuple || tuple.some(value => typeof value !== 'string' || value.length === 0)) {
+            capabilitySourceClosed = false;
+            break;
+          }
+          capabilityTuples.push(tuple);
+        }
+        if (!capabilitySourceClosed) {
+          capabilityReason = 'CAPABILITY_SOURCE_NOT_CLOSED';
+        } else {
+          const tupleKeys = new Set();
+          const hashOwners = new Map();
+          for (const tuple of capabilityTuples) {
+            const tupleKey = JSON.stringify(tuple);
+            const capabilityId = `capability:v1:${preview.stableHash(tuple)}`;
+            if (tupleKeys.has(tupleKey)) {
+              capabilitySourceClosed = false;
+              capabilityReason = 'CAPABILITY_IDENTITY_DUPLICATE';
+              break;
+            }
+            const previousTupleKey = hashOwners.get(capabilityId);
+            if (previousTupleKey !== undefined && previousTupleKey !== tupleKey) {
+              capabilitySourceClosed = false;
+              capabilityReason = 'CAPABILITY_IDENTITY_HASH_COLLISION';
+              break;
+            }
+            tupleKeys.add(tupleKey);
+            hashOwners.set(capabilityId, tupleKey);
+            capabilityIds.push(capabilityId);
+          }
+          if (capabilitySourceClosed) {
+            capabilityStatus = 'KNOWN';
+            capabilityReason = '';
+            capabilityIds.sort(compareUtf16);
+            const localSourceFactIds = [...capabilitySourceFacts].sort(compareUtf16);
+            const localSourceEventIds = [...capabilitySourceEvents].sort(compareUtf16);
+            if (localSourceFactIds.length === 0 || localSourceEventIds.length === 0) {
+              capabilityStatus = 'UNKNOWN';
+              capabilityReason = 'CAPABILITY_SOURCE_NOT_CLOSED';
+            } else {
+              capabilitySource = {
+                kind: 'CURRENT_PUBLIC_MECHANICS',
+                sourceFactIds: localSourceFactIds,
+                sourceEventIds: localSourceEventIds,
+              };
+            }
+          }
+        }
+      }
+      const contingencyCapabilities = {
+        status: capabilityStatus,
+        capabilityIds: capabilityStatus === 'KNOWN' ? capabilityIds : [],
+        ...(capabilitySource ? { source: capabilitySource } : {}),
+        ...(capabilityReason ? { reason: capabilityReason } : {}),
+      };
+      const reactionFacts = (bifDocs[candidateId]?.features || [])
+        .filter(feature =>
+          ['REACTION_DAMAGE_MULTIPLIER', 'REACTION_DODGE_PROBABILITY'].includes(feature?.featureCode) &&
+          Array.isArray(feature?.sourceFactIds) && feature.sourceFactIds.length > 0 &&
+          Array.isArray(feature?.sourceEventIds) && feature.sourceEventIds.length > 0
+        )
+        .map(feature => {
+          const row = {
+            status: feature.status,
+            targetUnitId: request.actorId,
+            sourceFactId: feature.sourceFactIds[0],
+            sourceEventId: feature.sourceEventIds[0],
+            causalOwner: 'NONE',
+            unitFamily: feature.unitFamily,
+          };
+          if (feature.status === 'KNOWN') {
+            if (!Number.isFinite(feature.value)) {
+              throw new Error('CANDIDATE_IMPACT_REACTION_VALUE_INVALID:' + candidateId + ':' + feature.featureCode);
+            }
+            row.value = feature.value;
+          }
+          return row;
+        });
+      const previewFacts = (previewResultsById[candidateId]?.contributions || [])
+        .filter(contribution =>
+          !['SCHEDULED_STATE', 'FUTURE_OPTION'].includes(contribution?.component)
+        )
+        .map(contribution => {
+          const outcomeKind = String(contribution?.outcomeKind || '').trim();
+          const unitFamily = r9v2ImpactUnitFamilyByOutcome[outcomeKind];
+          const targetUnitId = String(contribution?.targetId || '').trim();
+          const sourceFactId = String(contribution?.semanticKey || contribution?.eventId || '').trim();
+          const sourceEventId = String(contribution?.eventId || contribution?.semanticKey || '').trim();
+          if (!unitFamily || !targetUnitId || !sourceFactId || !sourceEventId) {
+            throw new Error('CANDIDATE_IMPACT_CURRENT_FACT_NOT_CLOSED:' + candidateId + ':' + outcomeKind);
+          }
+          const row = {
+            status: Number.isFinite(contribution.expectedDelta) ? 'KNOWN' : 'UNKNOWN',
+            targetUnitId,
+            sourceFactId,
+            sourceEventId,
+            causalOwner: ['ACTION_ECONOMY', 'RESOURCE_OPTION'].includes(contribution.component)
+              ? 'ACTION_POOL_DELTA'
+              : ['OBJECTIVE_TERMINAL', 'IRREVERSIBLE_COST', 'TAIL_RISK'].includes(contribution.component)
+                ? 'TERMINAL_DELTA'
+                : ['IMMEDIATE_STATE', 'STATE_DELTA', 'RULE_DELTA'].includes(contribution.component)
+                  ? 'STATE_DELTA'
+                  : 'NONE',
+            unitFamily,
+          };
+          if (row.status === 'KNOWN') row.value = contribution.expectedDelta;
+          return row;
+        });
+      return {
+        candidateId,
+        currentFactDeltas: [...reactionFacts, ...previewFacts],
+        actionPoolFacts: {
+          status: 'UNKNOWN',
+          causalOwner: 'ACTION_POOL_DELTA',
+          sourceFactIds: sourceFactIds.slice(),
+          sourceEventIds: sourceEventIds.slice(),
+        },
+        futureConsumerIdentities: futureConsumerIdentitiesFor(candidateId),
+        publicEvidence: {
+          status: 'KNOWN',
+          beliefRevision,
+          sourceFactIds: sourceFactIds.slice(),
+          sourceEventIds: sourceEventIds.slice(),
+        },
+        contingencyCapabilities,
+        continuationSurrogate: {
+          status: 'UNKNOWN',
+          source: { kind: 'NONE' },
+          reason: 'MODEL_INPUT_NOT_CLOSED',
+        },
+      };
+    });
+    const revisions = request.evaluationContext || {};
+    return carrier.build({
+      preparedFrozenCandidateIds: candidateIds,
+      legalResponseCandidateIds: candidateIds.slice(),
+      candidates,
+      requestIdentity: {
+        worldRevision: revisions.visibleWorldRevision,
+        beliefRevision,
+        opportunityRevision: revisions.opportunityRevision,
+      },
+    });
+  }
+
+  function buildOnlineLinearFeatureInputs(request, options = {}) {
+    const pda = root.__LWCS_BEHAVIOR_PROTOTYPE_ADAPTER__;
+    const bridge = root.__LWCS_BEHAVIOR_CANDIDATE_FEATURE_BRIDGE__;
+    const bif = root.__LWCS_BEHAVIOR_IMMEDIATE_FEATURE__;
+    const source = root.__LWCS_BEHAVIOR_CANDIDATE_FEATURE_SOURCE__;
+    const relational = root.__LWCS_BEHAVIOR_RELATIONAL_FEATURE__;
+    if (!pda || !bridge || !bif || !source || !relational) {
+      throw new Error('R9V2_LINEAR_FEATURE_CHAIN_NOT_MOUNTED');
+    }
+    if (!isPreparedDecisionRequest(request)) {
+      throw new Error('R9V2_LINEAR_PREPARED_REQUEST_REQUIRED');
+    }
+    const candidateIds = request.frozenCandidates.map(candidate => candidate.candidateId);
+    // The prepared request hash already binds actor, opportunity, seed, round,
+    // frozen declarations and the current slice revision. Reuse that identity
+    // as the decision-local Preview revision instead of hashing the full visible
+    // world once more for every runtime decision.
+    const publicSnapshot = r9v2LinearPublicSnapshot(request.visibleWorld, request.actorId);
+    const worldRevision = `r9v2-linear:${request.requestHash}`;
+    const actorSide = publicSnapshot.sides[request.actorId];
+    if (!actorSide) {
+      throw new Error('R9V2_LINEAR_ACTOR_SIDE_UNOBSERVED:' + request.actorId);
+    }
+    const bifDocs = {};
+    const previewResultsById = {};
+    const pdaProjectionsById = {};
+    const bridgeInputs = [];
+    let previewCalls = 0;
+    for (const candidate of request.frozenCandidates) {
+      const declaration = candidate.declaration === undefined ? {} : candidate.declaration;
+      if (!r9v2LinearPlainObject(declaration)) {
+        throw new Error('R9V2_LINEAR_ACTION_ID_INVALID:' + candidate.candidateId);
+      }
+      const bridgeIdPrefix = r9v2LinearCanonicalActionId(candidate);
+      const previewDeclaration = { ...declaration, actionId: bridgeIdPrefix };
+      const declaredEffects = declaration.skill && declaration.skill['_效果数组'];
+      if (declaredEffects !== undefined && !Array.isArray(declaredEffects)) {
+        throw new Error('R9V2_LINEAR_EFFECT_ARRAY_INVALID:' + bridgeIdPrefix);
+      }
+      const effects = Array.isArray(declaredEffects)
+        ? declaredEffects
+        : [];
+      const candidateTargetIds = Array.isArray(declaration.targetIds) ? declaration.targetIds.slice() : [];
+      const pdaProjections = [];
+      const sourceProjections = {};
+      for (let index = 0; index < effects.length; index += 1) {
+        const sourceEffectId = r9v2LinearCanonicalEffectId(effects[index], bridgeIdPrefix, index);
+        const context = {
+          sourceActionId: bridgeIdPrefix,
+          sourceActorId: request.actorId,
+          sourceEffectId,
+          candidateTargetIds,
+        };
+        pdaProjections.push({ sourceEffectId, projection: pda.project(effects[index], context) });
+        // FeatureSource.scanCandidate unpacks carrier rows into its own
+        // effect ids; precompute the exact same admit/project results here so
+        // the source never re-runs previewAction or PDA projection.
+        const unpacked = source.unpackCarrierRows(effects[index]);
+        const rows = unpacked === null ? [effects[index]] : unpacked;
+        for (let unpackIndex = 0; unpackIndex < rows.length; unpackIndex += 1) {
+          const seid = sourceEffectId + (unpacked === null ? '' : ':unpack:' + unpackIndex);
+          const innerContext = {
+            sourceActionId: bridgeIdPrefix,
+            sourceActorId: request.actorId,
+            sourceEffectId: seid,
+            candidateTargetIds,
+          };
+          sourceProjections[seid] = {
+            admitted: pda.admit(rows[unpackIndex], innerContext),
+            projection: pda.project(rows[unpackIndex], innerContext),
+          }
+        }
+      }
+      let previewResult;
+      try {
+        previewResult = preview.previewAction({
+          worldSnapshot: request.visibleWorld,
+          declaration: previewDeclaration,
+          actorId: request.actorId,
+          basisView: 'DECISION_VISIBLE',
+          worldRevision,
+          actionFingerprint: declarationFingerprint(previewDeclaration),
+        });
+      } catch (error) {
+        throw new Error('R9V2_LINEAR_PREVIEW_FAILED:' + candidate.candidateId + ':' + String((error && error.message) || error));
+      }
+      previewCalls += 1;
+      previewResultsById[candidate.candidateId] = previewResult;
+      pdaProjectionsById[candidate.candidateId] = sourceProjections;
+      const creationProfile = r9v2LinearCreationProfile(candidate);
+      const actionOpportunityCarrier = r9v2LinearReactionCarrier(request, candidate, declaration);
+      const bridgeInput = {
+        frozenCandidate: {
+          candidateId: candidate.candidateId,
+          actorId: request.actorId,
+          actorSide,
+          actionKind: declaration.actionKind || '',
+          targetSet: candidateTargetIds,
+        },
+        visibleWorld: publicSnapshot,
+        contributions: previewResult && previewResult.contributions || [],
+        pdaProjections,
+        declaration: {
+          actionId: bridgeIdPrefix,
+          publicCost: r9v2LinearPublicCost(declaration),
+        },
+      };
+      if (creationProfile !== undefined) bridgeInput.creationProfile = creationProfile;
+      if (actionOpportunityCarrier !== undefined) bridgeInput.actionOpportunity = actionOpportunityCarrier;
+      bridgeInputs.push(bridgeInput);
+    }
+    let bridged;
+    try {
+      bridged = bridge.bridgeCandidates(bridgeInputs);
+    } catch (error) {
+      throw new Error('R9V2_LINEAR_BRIDGE_REJECT:' + String((error && error.message) || error));
+    }
+    const perCandidateRows = Array.isArray(bridged && bridged.perCandidate) ? bridged.perCandidate : [];
+    if (perCandidateRows.length !== candidateIds.length) {
+      throw new Error('R9V2_LINEAR_BRIDGE_CLOSURE');
+    }
+    for (let index = 0; index < candidateIds.length; index += 1) {
+      const candidateId = candidateIds[index];
+      const perCandidate = perCandidateRows[index];
+      if (!perCandidate || perCandidate.candidateId !== candidateId) {
+        throw new Error('R9V2_LINEAR_BRIDGE_ORDER:' + candidateId);
+      }
+      if (!perCandidate.bifInput) {
+        throw new Error('R9V2_LINEAR_BIF_INPUT_MISSING:' + candidateId);
+      }
+      const bifInput = JSON.parse(JSON.stringify(perCandidate.bifInput));
+      try {
+        bifDocs[candidateId] = bif.compileCandidate(bifInput);
+      } catch (error) {
+        throw new Error('R9V2_LINEAR_BIF_REJECT:' + candidateId + ':' + String((error && error.message) || error));
+      }
+    }
+    let sourceInput;
+    let relationalDoc;
+    preparedLinearSourceMaps.set(request, { previewResultsById, pdaProjectionsById });
+    try {
+      sourceInput = source.compilePreparedRequest({
+        request,
+        decisionApi: root.__LWCS_BATTLE_DECISION__,
+        previewApi: preview,
+        pdaApi: pda,
+        previewResultsById,
+        pdaProjectionsById,
+      });
+      relationalDoc = relational.compileDecision(sourceInput);
+    } catch (error) {
+      throw new Error('R9V2_LINEAR_RELATIONAL_REJECT:' + String((error && error.message) || error));
+    } finally {
+      preparedLinearSourceMaps.delete(request);
+    }
+    const relationalByCandidate = new Map((relationalDoc && relationalDoc.perCandidate || []).map(item => [item && item.candidateId, item]));
+    if (relationalByCandidate.size !== candidateIds.length || candidateIds.some(id => !relationalByCandidate.has(id))) {
+      throw new Error('R9V2_LINEAR_RELATIONAL_CLOSURE');
+    }
+    const featureInputs = candidateIds.map(candidateId => ({
+      candidateId,
+      document: { immediate: bifDocs[candidateId], relational: relationalByCandidate.get(candidateId) },
+    }));
+    return {
+      featureInputs,
+      previewCalls,
+      ...(options?.includeCandidateImpactEnvelope === true
+        ? {
+            candidateImpactEnvelope: r9v2BuildCandidateImpactEnvelope({
+              request,
+              candidateIds,
+              bifDocs,
+              previewResultsById,
+              sourceInput,
+            }),
+          }
+        : {}),
+    };
+  }
+
+  function buildPreparedCandidateImpactEnvelope(request) {
+    return buildOnlineLinearFeatureInputs(request, {
+      includeCandidateImpactEnvelope: true,
+    }).candidateImpactEnvelope;
+  }
+
+  function r9v2LinearUniqueSorted(values) {
+    const seen = new Set();
+    for (const value of Array.isArray(values) ? values : []) {
+      if (typeof value === 'string' && value.length > 0) seen.add(value);
+    }
+    return [...seen].sort(compareUtf16);
+  }
+
+  // Builds the formal DecisionContributionTraceV1 document from the SAME
+  // featureInputs + provider result used for scoring: no re-preview, no
+  // re-scoring, no hidden reads. Contribution conservation is exact because
+  // each row reuses the provider's aggregated raw value, mean, scale and
+  // coefficient; source refs are the union of the raw feature rows' refs.
+  function r9v2LinearBuildDecomposition({ result, featureInputs, provider, selectedId, hardExclusionAudit }) {
+    const trace = root.__LWCS_BEHAVIOR_CONTRIBUTION_TRACE__;
+    if (!trace || typeof trace.buildScoreDecomposition !== 'function') {
+      throw new Error('R9V2_LINEAR_TRACE_NOT_MOUNTED');
+    }
+    const scoreContributions = (result && result.scoreContributions) || {};
+    const selectedEntry = scoreContributions[selectedId] || {};
+    const alternativeId = String((result && result.alternative && result.alternative.candidateId) || '').trim();
+    const decompositionCandidateIds = new Set([selectedId, alternativeId].filter(Boolean));
+    const selectedFactors = Array.isArray(selectedEntry.factors) ? selectedEntry.factors : [];
+    if (!selectedFactors.length) throw new Error('R9V2_LINEAR_TRACE_FACTORS_MISSING:' + selectedId);
+    const model = {
+      linear: { intercept: Number((provider && provider.intercept) ?? 0), coefficients: {} },
+      normalization: { means: {}, scales: {} },
+    };
+    for (const factor of selectedFactors) {
+      model.linear.coefficients[factor.code] = Number(factor.coefficient || 0);
+      model.normalization.means[factor.code] = Number(factor.mean || 0);
+      model.normalization.scales[factor.code] = Number(factor.scale || 1);
+    }
+    const refsByCode = new Map();
+    const catalogOnlyRows = new Map();
+    for (const item of Array.isArray(featureInputs) ? featureInputs : []) {
+      if (!decompositionCandidateIds.has(item?.candidateId)) continue;
+      const rows = [
+        ...((item.document && item.document.immediate && item.document.immediate.features) || []),
+        ...((item.document && item.document.relational && item.document.relational.features) || []),
+      ];
+      const byCode = new Map();
+      for (const row of rows) {
+        if (!row || typeof row.featureCode !== 'string' || row.featureCode.length === 0) continue;
+        const entry = byCode.get(row.featureCode) || { factIds: [], eventIds: [] };
+        if (Array.isArray(row.sourceFactIds)) entry.factIds.push(...row.sourceFactIds);
+        if (Array.isArray(row.sourceEventIds)) entry.eventIds.push(...row.sourceEventIds);
+        byCode.set(row.featureCode, entry);
+      }
+      refsByCode.set(item.candidateId, byCode);
+      const immediate = (item.document && item.document.immediate && item.document.immediate.features) || [];
+      const catalog = [];
+      for (const code of ['SETTLEMENT_DAMAGE', 'ROLL_REALIZATION']) {
+        const row = immediate.find(r => r && r.featureCode === code);
+        if (row) catalog.push(row);
+      }
+      catalogOnlyRows.set(item.candidateId, catalog);
+    }
+    const featuresByCandidate = {};
+    for (const candidateId of decompositionCandidateIds) {
+      if (!scoreContributions[candidateId]) continue;
+      const byCode = refsByCode.get(candidateId) || new Map();
+      const rows = [];
+      for (const factor of scoreContributions[candidateId].factors) {
+        const refs = byCode.get(factor.code) || { factIds: [], eventIds: [] };
+        const row = {
+          featureCode: String(factor.code || ''),
+          status: String(factor.status || 'UNKNOWN'),
+          reasonCode: String(factor.reasonCode || ''),
+          unitFamily: '',
+          sourceFactIds: r9v2LinearUniqueSorted(refs.factIds),
+          sourceEventIds: r9v2LinearUniqueSorted(refs.eventIds),
+        };
+        if (factor.raw !== undefined && factor.raw !== null) row.value = factor.raw;
+        rows.push(row);
+      }
+      for (const row of catalogOnlyRows.get(candidateId) || []) {
+        rows.push({
+          featureCode: String(row.featureCode || ''),
+          status: String(row.status || 'UNKNOWN'),
+          reasonCode: String(row.reasonCode || ''),
+          unitFamily: String(row.unitFamily || ''),
+          sourceFactIds: Array.isArray(row.sourceFactIds) ? row.sourceFactIds.slice() : [],
+          sourceEventIds: Array.isArray(row.sourceEventIds) ? row.sourceEventIds.slice() : [],
+        });
+      }
+      featuresByCandidate[candidateId] = rows;
+    }
+    const selectedScore = Number(selectedEntry.score);
+    if (!Number.isFinite(selectedScore)) throw new Error('R9V2_LINEAR_TRACE_SCORE_MISSING:' + selectedId);
+    const hardExclusions = (Array.isArray(hardExclusionAudit) ? hardExclusionAudit : []).map(entry => ({
+      code: String((entry && entry.reasonCode) || (entry && entry.code) || '').trim(),
+      reasonText: String((entry && entry.reasonText) || '').trim(),
+    })).filter(entry => entry.code.length > 0);
+    const built = trace.buildScoreDecomposition({
+      model,
+      selectedCandidateId: selectedId,
+      alternativeCandidateId: alternativeId,
+      featuresByCandidate,
+      score: selectedScore,
+      hardExclusionAudit: hardExclusions,
+    });
+    return built;
+  }
+
+  function runR9v2LinearPreparedProvider(request = {}) {
+    const provider = root.__LWCS_BEHAVIOR_LINEAR_PROVIDER__;
+    if (!provider || typeof provider.selectPreparedRequest !== 'function') {
+      throw new Error('R9V2_LINEAR_PROVIDER_NOT_MOUNTED');
+    }
+    if (
+      !isPreparedDecisionRequest(request) ||
+      String(request.analysisDepth || '').trim() !== 'CANDIDATES_ONLY'
+    ) {
+      throw new Error('R9V2_LINEAR_PREPARE_GATE');
+    }
+    const { featureInputs, previewCalls } = buildOnlineLinearFeatureInputs(request);
+    const result = provider.selectPreparedRequest({ request, featureInputs });
+    const ranked = Array.isArray(result?.ranked) ? result.ranked : [];
+    if (!ranked.length) throw new Error('R9V2_LINEAR_NO_RANKED_ROWS');
+    const selectedId = String(result?.selected?.candidateId || '').trim();
+    const frozenById = new Map(
+      request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]),
+    );
+    const auditRow = (candidateId, index) => {
+      const declaration = frozenById.get(candidateId)?.declaration || {};
+      return Object.freeze({
+        candidateId,
+        actorId: request.actorId,
+        declaration,
+        actionKind: String(declaration?.actionKind || '').trim(),
+        targetIds: Array.isArray(declaration?.targetIds)
+          ? declaration.targetIds.map(String)
+          : [],
+        score: Number(ranked[index]?.score ?? 0),
+        rank: index,
+        selected: candidateId === selectedId,
+        playerLocked: false,
+        selectionMode: 'R9V2_LINEAR_DIRECT',
+        tieGroup: Array.isArray(ranked[index]?.tieGroup)
+          ? [...ranked[index].tieGroup]
+          : [candidateId],
+      });
+    };
+    const candidateAudit = ranked.map((row, index) => auditRow(row.candidateId, index));
+    const selected = candidateAudit.find(row => row.candidateId === selectedId);
+    if (!selected) throw new Error('R9V2_LINEAR_SELECTED_MISSING');
+    const selectedDeclaration = selected.declaration || {};
+    const counterOpportunity = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'COUNTER';
+    let counterDeclineFlag;
+    if (counterOpportunity) {
+      // Same prepared request, same frozen candidates: resolve the selected
+      // candidate's explicit execution flag from the frozen record (no second
+      // prepare, no candidateId naming). A counter opportunity whose selected
+      // candidate lacks an explicit boolean flag is fail-closed.
+      const frozenSelected = frozenById.get(selectedId);
+      if (!frozenSelected) throw new Error('R9V2_LINEAR_SELECTED_FROZEN_MISSING:' + selectedId);
+      counterDeclineFlag = frozenSelected.counterDeclineFallback;
+      if (typeof counterDeclineFlag !== 'boolean') {
+        throw new Error('R9V2_LINEAR_COUNTER_DECLINE_FLAG_MISSING:' + selectedId);
+      }
+    }
+    const selectedRecord = Object.freeze({
+      ...selected,
+      ...(counterOpportunity ? { counterDeclineFallback: counterDeclineFlag } : {}),
+      selectedActionName: String(
+        selectedDeclaration?.skill?.name ||
+        selectedDeclaration?.skill?.魂技名 ||
+        selectedDeclaration?.actionKind ||
+        selectedId ||
+        '',
+      ).trim(),
+      selected: true,
+    });
+    const hardExclusionAudit = Array.isArray(result?.hardExclusionAudit)
+      ? result.hardExclusionAudit.map(entry => Object.freeze({ ...entry }))
+      : [];
+    const reasonFactors = result?.scoreContributions?.[selectedId]?.factors || [];
+    const alternatives = result?.alternative && result.alternative.candidateId
+      ? [Object.freeze({ ...result.alternative })]
+      : [];
+    const decomposition = r9v2LinearBuildDecomposition({
+      result,
+      featureInputs,
+      provider,
+      selectedId,
+      hardExclusionAudit,
+    });
+    const dct = decomposition.document;
+    const candidateBinding = Object.freeze({
+      schemaVersion: 'R9V2CandidateBindingV1',
+      preparedRequestHash: String(request.requestHash || '').trim(),
+      candidateSetHash: preview.stableHash(request.frozenCandidates.map(candidate => candidate.candidateId)),
+      // The provider owns scalarization, so its canonical hash is the exact
+      // feature vector it consumed. Hashing the expanded BIF/relational
+      // provenance documents again here adds no identity and is quadratic in
+      // repeated team-level provenance on large battles.
+      featureInputHash: String(result?.featureInputHash || '').trim(),
+      providerResultHash: String(result?.providerResultHash || '').trim(),
+      providerId: String(provider?.providerId || 'r9v2').trim(),
+      modelHash: String(provider?.modelHash || '').trim(),
+      weightsHash: String(provider?.weightsHash || '').trim(),
+      decompositionHash: String(decomposition?.documentHash || '').trim(),
+    });
+    for (const [field, value] of Object.entries({
+      featureInputHash: candidateBinding.featureInputHash,
+      providerResultHash: candidateBinding.providerResultHash,
+      decompositionHash: candidateBinding.decompositionHash,
+    })) {
+      if (!/^[0-9a-f]{64}$/.test(value)) {
+        throw new Error('R9V2_LINEAR_' + field.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase() + '_MISSING');
+      }
+    }
+    return deepFreeze({
+      schemaVersion: 'r9v2-linear-decision-1',
+      decisionEngine: 'R9V2_LINEAR',
+      providerId: String(provider?.providerId || 'r9v2').trim(),
+      round: Number(request?.visibleWorld?.回合 || 0),
+      actorId: request.actorId,
+      actionRole: String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase(),
+      actorControl: 'AI',
+      opportunityId: String(request?.actionOpportunity?.opportunityId || '').trim(),
+      grantId: String(request?.actionOpportunity?.grantId || '').trim(),
+      opportunitySequence: Math.max(0, Number(request?.actionOpportunity?.sequence || 0)),
+      candidateCount: request.frozenCandidates.length,
+      eligibleCount: Math.max(0, Number(result?.eligibleCount || 0)),
+      hardExcludedCount: Math.max(0, Number(result?.hardExcludedCount || 0)),
+      frozenCandidateIds: request.frozenCandidates.map(candidate => candidate.candidateId),
+      hardExcludedCandidateIds: hardExclusionAudit.map(entry => entry.candidateId),
+      hardExclusionAudit,
+      candidateAudit,
+      scoreAudit: candidateAudit.slice(0, 3),
+      selected: selectedRecord,
+      previewCalls,
+      beliefState: request.beliefState || {},
+      teamIntent: request.battleIntent ? { mode: request.battleIntent.mode } : {},
+      strategyMemory: request.strategyMemory || {},
+      strategicSignature: 'r9v2-linear:' + request.requestHash,
+      stateCapacityTotal: 0,
+      beliefRevision: String(request?.evaluationContext?.beliefRevision || '').trim(),
+      pendingStrategicEffect: false,
+      reasonContributions: result?.scoreContributions || {},
+      decomposition: dct,
+      candidateBinding,
+      alternatives,
+      decisionProfile: Object.freeze({
+        engine: 'R9V2_LINEAR',
+        providerId: String(provider?.providerId || 'r9v2').trim(),
+        selectionMode: 'R9V2_LINEAR_DIRECT',
+        selectionPath: 'R9V2_LINEAR_DIRECT',
+        requestHash: String(request.requestHash || '').trim(),
+        top1CandidateId: ranked[0]?.candidateId || selectedId,
+        reasonFactorCount: reasonFactors.length,
+        previewCalls,
+        eligibleCount: Math.max(0, Number(result?.eligibleCount || 0)),
+        hardExcludedCount: Math.max(0, Number(result?.hardExcludedCount || 0)),
+      }),
+      lostOpportunity: null,
+    });
+  }
+
+  function runR9v2LinearProviderForTest(input = {}) {
+    if (input?.__r9v2LinearTest !== true) {
+      throw new Error('R9V2_LINEAR_TEST_MODE_REQUIRED');
+    }
+    if (input?.includeUnaffordableRoutes === true) {
+      throw new Error('R9V2_LINEAR_UNAFFORDABLE_MODE_FORBIDDEN');
+    }
+    return runR9v2LinearPreparedProvider(prepareDecisionRequest({
+      ...input,
+      analysisDepth: 'CANDIDATES_ONLY',
+    }));
+  }
+
+ // ===== R9 双层引擎（v0：Tier-1 廉价筛选骨架）=====
   // 目标：7v7 五回合 5 秒（33ms/决策）。走 CANDIDATES_ONLY 轻 prepare，
   // 本层只做纯算术打分——禁用清单：previewAction / 路线目录 / 包络 / 终局投影 / stableHash。
   // P0 门（2026-07-26，24 案例）：meanRegret@3=0.2%、maxRegret@3=2.9%，
@@ -53234,14 +59663,18 @@
       }
     }
     // 资源成本罚项：与普攻近价值并列时偏向零消耗选项
-    const costs = skill?.消耗 && typeof skill.消耗 === 'object' ? skill.消耗 : null;
-    if (costs) {
-      for (const [resource, rawCost] of Object.entries(costs)) {
-        const amount = Math.max(0, Number.parseFloat(String(rawCost ?? '')) || 0);
-        if (!(amount > 0)) continue;
-        const maximum = Math.max(1, Number(preview.readResourceMax(actor, resource)) || 1);
-        score -= 8 * Math.min(1, amount / maximum);
-      }
+    const costStages = parseSkillCostStages(
+      skill,
+      skillCostParserContext(actor, skill),
+    );
+    const costPayment = costStages.非法项.length
+      ? null
+      : preview.assessResourcePayment([actor], costStages.启动);
+    if (costPayment?.valid) {
+      costPayment.payments.forEach(payment => {
+        if (!(payment.amount > 0)) return;
+        score -= 8 * Math.min(1, payment.amount / Math.max(1, payment.maximum));
+      });
     }
     return score;
   }
@@ -53364,8 +59797,10 @@
     };
   }
 
-  const formalProviderState = 'NO_FORMAL_PROVIDER';
-  const providerRegistry = Object.freeze({});
+  const formalProviderState = 'R9V2_LINEAR_READY';
+  const providerRegistry = Object.freeze({
+    r9v2: runR9v2LinearPreparedProvider,
+  });
 
   function runProvider(input = {}) {
     const providerId = String(input?.providerId || '').trim();
@@ -53396,6 +59831,16 @@
     }
     if (!Object.isFrozen(request) || String(request.requestHash || '').trim() !== beforeHash) {
       throw new Error('PROVIDER_MUTATED_STATE:provider');
+    }
+    if (
+      !decision ||
+      !Object.isFrozen(decision) ||
+      String(decision.providerId || '').trim() !== providerId ||
+      String(decision?.decisionProfile?.requestHash || '').trim() !== beforeHash ||
+      String(decision?.candidateBinding?.preparedRequestHash || '').trim() !== beforeHash ||
+      String(decision?.candidateBinding?.providerId || '').trim() !== providerId
+    ) {
+      throw new Error('DECISION_PROVIDER_BINDING_MISMATCH');
     }
     const selectedCandidateId = String(decision?.selected?.candidateId || '').trim();
     const lostOpportunity = decision?.lostOpportunity && typeof decision.lostOpportunity === 'object'
@@ -53465,9 +59910,17 @@
     formalProviderState,
     actionKinds,
     collectSkills,
+    collectPassiveSkills: unit => typeof preview.collectPassiveSkills === 'function' ? preview.collectPassiveSkills(unit) : Object.freeze([]),
+    buildPassiveConsumerEvidence: (worldSnapshot, unit, options) =>
+      typeof preview.buildPassiveConsumerEvidence === 'function'
+        ? preview.buildPassiveConsumerEvidence(worldSnapshot, unit, options)
+        : Object.freeze([]),
+    buildCandidatePlanningEvidence,
     collectAvailableRings,
     parseSkillCosts,
+    parseSkillCostStages,
     costAffordable,
+    checkSkillCostAffordable,
     enumerateCandidates,
     targetProfile,
     buildInitialBelief,
@@ -53563,7 +60016,30 @@
     r8NormalizeUtilities,
     selectR8Candidate,
     prepareDecisionRequest,
-    runProvider,
+    isPreparedDecisionRequest,
+    isPreparedLinearSourceMaps,
+    buildOnlineLinearFeatureInputs,
+    buildPreparedCandidateImpactEnvelope,
+    r9v2LinearPublicSnapshot,
+   runR9v2LinearProviderForTest,
+   runProvider,
+   validatePlayerLockedDeclaration: input => {
+      const rejectedCandidates = [];
+      const candidates = enumerateCandidates({
+        ...input,
+        rejectionCollector: entry => rejectedCandidates.push(entry),
+      });
+      const selected = selectPlayerLockedCandidate(
+        candidates,
+        input?.playerLockedDeclaration || {},
+        input?.worldSnapshot || {},
+        rejectedCandidates,
+      );
+      return Object.freeze({
+        candidate: cloneValue(selected.selected),
+        selectionMode: 'PLAYER_LOCKED',
+      });
+    },
     providerIds: Object.freeze(Object.keys(providerRegistry)),
   });
 })();

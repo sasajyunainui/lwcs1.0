@@ -29709,6 +29709,191 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
   min-height: 0;
 }
 
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-explanations,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanations,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanations {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-round-overview,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-round-overview-row,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--战斗主色) 18%, transparent);
+  border-radius: calc(var(--战斗圆角) * 0.32);
+  background: color-mix(in srgb, var(--战斗主色) 5%, transparent);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-round-overview-row > header,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row > header,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 5px 10px;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-round-overview-row section,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row section,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row section {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-round-overview-row :is(h4, ul),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row :is(h4, ul),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row :is(h4, ul) {
+  margin: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-round-overview-row h4,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row h4,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row h4 {
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+  font-weight: 650;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-round-overview-row ul,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row ul,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-round-overview-row li,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row li,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-round-overview-row li {
+  min-width: 0;
+  padding: 5px 7px;
+  border-radius: calc(var(--战斗圆角) * 0.2);
+  background: color-mix(in srgb, var(--战斗主色) 6%, transparent);
+  overflow-wrap: anywhere;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-explanation,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--战斗主色) 18%, transparent);
+  border-radius: calc(var(--战斗圆角) * 0.32);
+  background: color-mix(in srgb, var(--战斗主色) 5%, transparent);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-explanation > header,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation > header,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 5px 10px;
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-explanation > header b,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation > header b,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation > header b {
+  color: var(--战斗记录文字主色);
+  font-size: var(--战斗记录正文字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-explanation :is(.battle-report-decision-context, .battle-report-decision-reason, .battle-report-decision-alternatives, .battle-report-decision-forecast, .battle-report-decision-result),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation :is(.battle-report-decision-context, .battle-report-decision-reason, .battle-report-decision-alternatives, .battle-report-decision-forecast, .battle-report-decision-result),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation :is(.battle-report-decision-context, .battle-report-decision-reason, .battle-report-decision-alternatives, .battle-report-decision-forecast, .battle-report-decision-result) {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-choice-analysis,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-choice-analysis,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-choice-analysis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-explanation :is(h4, p, ul),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation :is(h4, p, ul),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation :is(h4, p, ul) {
+  margin: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-explanation h4,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation h4,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation h4 {
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+  font-weight: 650;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-explanation ul,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation ul,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-explanation ul {
+  padding-left: 1.25em;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-numbers,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-numbers,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal :is(.battle-report-decision-rolls, .battle-report-decision-steps),
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-report-decision-rolls, .battle-report-decision-steps),
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-report-decision-rolls, .battle-report-decision-steps) {
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--战斗主色) 13%, transparent);
+  color: var(--战斗记录文字弱色);
+  font-size: var(--战斗记录辅助字号);
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal :is(.battle-report-decision-rolls, .battle-report-decision-steps) summary,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-report-decision-rolls, .battle-report-decision-steps) summary,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline :is(.battle-report-decision-rolls, .battle-report-decision-steps) summary {
+  width: fit-content;
+  margin-bottom: 5px;
+  cursor: pointer;
+}
+
+:where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-steps ol,
+body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-steps ol,
+#detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-steps ol {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 1.4em;
+}
+
 :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-decision-filter,
 body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-decision-filter,
 #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-decision-filter {
@@ -30554,8 +30739,15 @@ body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-t
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-decision-filter,
   body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-decision-filter,
   #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-decision-filter {
+    grid-template-columns: 1fr;
+  }
+
+  :where(#mvu-unified-mount, #detailModal, body) > .battle-record-terminal--portal .battle-report-decision-choice-analysis,
+  body.mvu-layout-holo #mvu-unified-mount #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-choice-analysis,
+  #detailModal #mvu-battle-inline-host .battle-record-terminal--inline .battle-report-decision-choice-analysis {
     grid-template-columns: 1fr;
   }
 

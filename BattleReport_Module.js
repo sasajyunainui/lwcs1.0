@@ -157,6 +157,12 @@
     return leftText < rightText ? -1 : leftText > rightText ? 1 : 0;
   }
 
+  function stableVariant(key = '', variants = []) {
+    let hash = 2166136261;
+    for (const character of text(key)) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0;
+    return variants[hash % variants.length];
+  }
+
   function number(value, fallback = 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -616,12 +622,19 @@
       tokens.push({ ...token, tokenId: `${text(event?.eventId)}:number:${tokens.length + 1}` });
     };
     const appliedDamage = number(event?.appliedDamage ?? meta?.appliedDamage ?? event?.damage ?? meta?.damage, NaN);
-    if (Number.isFinite(appliedDamage) && appliedDamage > 0 && ['hit_result', 'state_tick', 'reflect_damage', 'self_damage'].includes(kind)) {
+    const delta = number(event?.delta ?? meta?.delta, NaN);
+    if (kind === 'state_tick' && isHealingStateTick(event)) {
+      const recovery = Math.max(0, number(delta, meta?.amount));
+      if (recovery > 0) {
+        push(eventNumberToken(event, '生命恢复', recovery, 'HP', 'SETTLEMENT', 'ADD', visibilityMode, {
+          deriveStatePair: true,
+        }));
+      }
+    } else if (Number.isFinite(appliedDamage) && appliedDamage > 0 && ['hit_result', 'state_tick', 'reflect_damage', 'self_damage'].includes(kind)) {
       push(eventNumberToken(event, '最终伤害', appliedDamage, 'HP', 'SETTLEMENT', 'SET', visibilityMode, {
         deriveStatePair: true,
       }));
     }
-    const delta = number(event?.delta ?? meta?.delta, NaN);
     if (Number.isFinite(delta) && delta !== 0 && kind === 'resource_change') {
       const operation = text(event?.operation || meta?.operation).toUpperCase();
       push(eventNumberToken(event, resourceTokenLabel(event), delta, resourceName(event), 'RESOURCE', operation, visibilityMode));
@@ -707,6 +720,13 @@
     return tokens;
   }
 
+  function isHealingStateTick(event = {}) {
+    if (text(event?.eventKind) !== 'state_tick') return false;
+    const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
+    return number(event?.delta ?? meta?.delta, 0) > 0 ||
+      /恢复|HEAL|HOT|RECOVER/i.test(text(event?.result || event?.operation || meta?.operation));
+  }
+
   function stateName(event = {}) {
     const meta = event?.meta && typeof event.meta === 'object' ? event.meta : {};
     return text(
@@ -754,6 +774,7 @@
     const labels = {
       ACTIVE: '战斗',
       READY: '战斗',
+      STAMINA_EXHAUSTED: '失去战斗力（体力耗尽）',
       UNCONSCIOUS: '昏迷',
       INCAPACITATED: '失去战斗力',
       DEAD: '死亡',
@@ -788,7 +809,7 @@
       rate(combatEffect.damage_reduction, '承受伤害', '降低'),
       rate(combatEffect.armor_pen, '防御效果', '削弱'),
     ].filter(Boolean);
-    if (Number(combatEffect.skill_effect_mult || 0) > 0) {
+    if (Number(combatEffect.skill_effect_mult || 0) > 1 + 1e-9) {
       const element = text(evidence?.element || after?.限定元素);
       descriptions.push(`${element ? `${element}系` : ''}技能效果提高${percentText(Number(combatEffect.skill_effect_mult) - 1)}`);
     }
@@ -1052,9 +1073,17 @@
       }
       return `${actor}的【${action}】命中${target || '目标'}，但未造成有效伤害`;
     }
-    if (kind === 'state_tick') return damage > 0
-      ? `${target || actor}受到【${namedState || action}】的持续影响，损失${damage}点生命`
-      : `${target || actor}结算【${namedState || action}】的持续效果`;
+    if (kind === 'state_tick') {
+      if (isHealingStateTick(event)) {
+        const recovery = Math.max(0, number(event?.delta ?? meta?.delta ?? meta?.amount, 0));
+        return recovery > 0
+          ? `${target || actor}受到【${namedState || action}】的持续影响，恢复${recovery}点生命`
+          : `${target || actor}结算【${namedState || action}】的持续恢复`;
+      }
+      return damage > 0
+        ? `${target || actor}受到【${namedState || action}】的持续影响，损失${damage}点生命`
+        : `${target || actor}结算【${namedState || action}】的持续效果`;
+    }
     if (kind === 'resource_change' || kind === 'round_recover') {
       return resourceChangeSummary(event);
     }
@@ -1077,8 +1106,8 @@
       const receiver = target || actor;
       /* "获得【失去战斗力】"是自相矛盾的措辞。状态有正负之分，
          对己方增益用"获得"，对敌方减益用"陷入"，都由施加方与承受方是否同阵营决定。 */
-      const selfBuff = receiver === actor;
-      const verb = selfBuff ? '获得' : '陷入';
+      const sameSide = text(event?.actorSide) && text(event?.actorSide) === text(event?.targetSide);
+      const verb = receiver === actor || sameSide ? '获得' : '陷入';
       if (['失败', '被抵抗', '免疫', '已阻断'].includes(outcome)) {
         return `${actor}试图用【${action}】让${receiver}${verb}【${namedState || '状态'}】，但${outcome}`;
       }
@@ -1331,12 +1360,12 @@
       : counterDecline
       ? ['counter_window', 'counter']
       : actionRole === 'COUNTER'
-      ? ['action_start', 'counter', 'counter_window']
+      ? ['action_start', 'counter', 'counter_window', 'blocked_action']
       : actionKind === 'DEFEND'
-        ? ['action_start', 'defend']
+        ? ['action_start', 'defend', 'blocked_action']
         : actionKind === 'EVADE'
-          ? ['action_start', 'dodge']
-          : ['action_start', 'charge_start', 'pass'];
+          ? ['action_start', 'dodge', 'blocked_action']
+          : ['action_start', 'charge_start', 'pass', 'blocked_action', 'target_fail'];
     for (const eventKind of preferredKinds) {
       for (const exchange of exchanges) {
         if (number(exchange?.round, 0) !== round) continue;
@@ -2449,9 +2478,167 @@
     };
   }
 
+  const linearRejectionLabels = Object.freeze({
+    ACTOR_DISABLED: '行动者无法行动',
+    ACTOR_TERMINAL: '行动者已退场',
+    TARGET_EMPTY: '目标为空',
+    INVALID_OPTION_VALUE: '选项值不合法',
+    MISSING_REQUIRED_FIELD: '缺少必需字段',
+    UNKNOWN_STATE: '状态未知',
+    UNKNOWN_RULE: '规则未知',
+    AMBIGUOUS_TAUNT_TARGET: '嘲讽目标不明确',
+    ILLEGAL_TARGET: '目标不合法',
+    RESOURCE_INSUFFICIENT: '资源不足',
+  });
+
+  /* 轻量线性评分（R9V2_LINEAR / LINEAR_SCORE_V1）决策轨迹适配器。
+     行来自 decision.candidateAudit/scoreAudit；排名即模型分数；
+     decision.decomposition 携带同源 DecisionContributionTraceV1 文档，
+     供 buildDecisionTimeExplanations 用中文理由层重投影。不构造任何
+     HEPP/Pareto/路线字段；EXCLUDED 仅来自硬排除审计。 */
+  function adaptLinearDecisionTrace(decision = {}, directory = new Map()) {
+    const auditRows = Array.isArray(decision?.candidateAudit) && decision.candidateAudit.length
+      ? decision.candidateAudit
+      : Array.isArray(decision?.scoreAudit) ? decision.scoreAudit : [];
+    const selectedId = text(decision?.selected?.candidateId);
+    const hardExcludedIds = new Set(
+      (Array.isArray(decision?.hardExclusionAudit) ? decision.hardExclusionAudit : [])
+        .map(entry => text(entry?.candidateId))
+        .filter(Boolean),
+    );
+    const formalAlternativeIds = new Set(
+      (Array.isArray(decision?.alternatives) ? decision.alternatives : [])
+        .map(candidate => text(candidate?.candidateId))
+        .filter(Boolean),
+    );
+    const rows = auditRows.map(candidate => {
+      const rawId = text(candidate?.candidateId);
+      const isSelected = candidate?.selected === true ||
+        (!!selectedId && rawId === selectedId);
+      const statusOf = text(candidate?.status).toUpperCase();
+      const rejectionCode = text(candidate?.rejectionCode);
+      const status = isSelected ? 'SELECTED'
+        : statusOf === 'EXCLUDED' ? 'EXCLUDED'
+        : statusOf === 'SELECTED' ? 'SELECTED'
+        : hardExcludedIds.has(rawId) || rejectionCode ? 'EXCLUDED'
+        : 'CONSIDERED';
+      const explicitName = text(candidate?.name);
+      const projected = publicCandidate(candidate, directory);
+      const name = explicitName
+        ? playerSafeText(explicitName, directory)
+        : candidateDisplayLabel(projected);
+      const score = Number.isFinite(Number(candidate?.score))
+        ? Number(candidate.score)
+        : Number.isFinite(Number(candidate?.normalizedUtility))
+          ? Number(candidate.normalizedUtility)
+          : null;
+      const reasonCode = rejectionCode;
+      return {
+        candidateId: rawId,
+        actionId: text(candidate?.declaration?.actionId || candidate?.actionId || rawId),
+        name,
+        actionName: text(candidate?.actionName || projected.actionName),
+        actionKind: text(candidate?.actionKind || projected.actionKind),
+        targetNames: unique(
+          Array.isArray(candidate?.targetNames) ? candidate.targetNames : projected.targetNames,
+        ).map(text).filter(Boolean),
+        status,
+        reasonCode,
+        reasonText: rejectionReasonText(reasonCode) || linearRejectionLabels[reasonCode] || '',
+        reasonPlayerText: rejectionReasonPlayerText(reasonCode) || linearRejectionLabels[reasonCode] || '',
+        reasonChecked: rejectionReasonChecked(reasonCode) || !!linearRejectionLabels[reasonCode],
+        rank: score,
+        score,
+        publicProjection: {
+          scope: '',
+          sourceType: 'LINEAR_SCORE_V1',
+          expectedCandidateUtility: 0,
+          expectedNoOpUtility: 0,
+          goalUtilityDelta: 0,
+          informationValue: 0,
+        },
+        publicProjectionAvailable: false,
+        tradeoffVector: {},
+      };
+    });
+    const candidateCount = Math.max(rows.length, number(decision?.candidateCount, 0));
+    const viable = rows.filter(row => row.status !== 'EXCLUDED');
+    const ranked = viable
+      .filter(row => Number.isFinite(row.rank))
+      .sort((left, right) => right.rank - left.rank);
+    const topRanked = ranked[0] || null;
+    const selectedRow = rows.find(row => row.status === 'SELECTED') || null;
+    const topRankedTieCount = topRanked
+      ? ranked.filter(row =>
+          Math.abs(number(row.rank, 0) - number(topRanked.rank, 0)) <= 1e-9
+        ).length
+      : 0;
+    const droppedReasons = [...rows
+      .filter(row => row.status === 'EXCLUDED')
+      .reduce((counts, row) => {
+        const key = row.reasonCode || 'UNSPECIFIED';
+        const current = counts.get(key);
+        if (current) {
+          current.count += 1;
+        } else {
+          counts.set(key, {
+            reasonCode: key,
+            reasonText: row.reasonText,
+            reasonPlayerText: row.reasonPlayerText,
+            count: 1,
+          });
+        }
+        return counts;
+      }, new Map())
+      .values()]
+      .sort((left, right) => right.count - left.count || left.reasonCode.localeCompare(right.reasonCode));
+    const narrowing = [
+      { stage: '候选生成', before: 0, after: candidateCount, droppedReasons: [] },
+      { stage: '硬排除', before: candidateCount, after: viable.length, droppedReasons },
+      { stage: '选择', before: viable.length, after: selectedRow ? 1 : 0, droppedReasons: [] },
+    ];
+    const wasOptimal = !selectedRow || !topRanked
+      ? null
+      : selectedRow.candidateId === topRanked.candidateId ||
+        Math.abs(number(selectedRow.rank, 0) - number(topRanked.rank, 0)) <= 1e-9;
+    return {
+      engineLabel: 'R9V2_LINEAR',
+      candidateCount,
+      candidates: rows,
+      narrowing,
+      selectionLabel: text(decision?.selected?.selectionMode) || 'R9V2_LINEAR_DIRECT',
+      wasOptimal,
+      topRankedTieCount,
+      selectedTiedAtTop: !!selectedRow && !!topRanked &&
+        Math.abs(number(selectedRow.rank, 0) - number(topRanked.rank, 0)) <= 1e-9,
+      topRankedName: wasOptimal === false ? text(topRanked?.name) : '',
+      rankGap: wasOptimal === false && selectedRow && topRanked
+        ? Number((number(topRanked.rank, 0) - number(selectedRow.rank, 0)).toFixed(4))
+        : null,
+      alternativeSelection: formalAlternativeIds.size ? 'FORMAL' : 'LINEAR_TOP_SCORE',
+      formalAlternativeCandidateIds: Object.freeze([...formalAlternativeIds]),
+      linearDecomposition: decision?.decomposition &&
+        typeof decision.decomposition === 'object'
+        ? decision.decomposition
+        : null,
+      candidateBinding: decision?.candidateBinding &&
+        typeof decision.candidateBinding === 'object'
+        ? decision.candidateBinding
+        : null,
+    };
+  }
+
   function adaptDecisionTrace(decision = {}, directory = new Map()) {
     /* 目前只有 R8 一个适配器。换引擎时在这里按 decisionEngine 增派新适配器，
        战报层与 UI 层不需要任何改动。 */
+    const engineLabel = text(decision?.decisionEngine).toUpperCase();
+    if (
+      engineLabel === 'R9V2_LINEAR' ||
+      engineLabel === 'LINEAR_SCORE_V1' ||
+      engineLabel.endsWith('_LINEAR')
+    ) {
+      return adaptLinearDecisionTrace(decision, directory);
+    }
     return adaptR8DecisionTrace(decision, directory);
   }
 
@@ -3215,8 +3402,9 @@
       if (kind === 'state_replace') {
         return `${receiver}的【${state}】被更新${dur > 0 ? `，可持续${dur}回合` : ''}`;
       }
-      return receiver === actor
-        ? `${actor}进入【${state}】状态${dur > 0 ? `，可持续${dur}回合` : ''}`
+      const sameSide = text(rawEvent?.actorSide) && text(rawEvent?.actorSide) === text(rawEvent?.targetSide);
+      return receiver === actor || sameSide
+        ? `${receiver}进入【${state}】状态${dur > 0 ? `，可持续${dur}回合` : ''}`
         : `${receiver}被打成【${state}】状态${dur > 0 ? `，要持续${dur}回合` : ''}`;
     }
     if (kind === 'ring_burst') return `${actor}发动炸环`;
@@ -3270,7 +3458,7 @@
       }
     });
 
-    return rows
+    const visibleRows = rows
       .filter(entry => {
         const kind = text(entry.raw?.eventKind);
         /* action_cost 是 auditOnly 审计事件，真正扣减写在同 actionId 的 resource_change，
@@ -3292,28 +3480,45 @@
       .sort((left, right) =>
         number(left.raw?.sequence, 0) - number(right.raw?.sequence, 0) ||
         text(left.fact?.factId).localeCompare(text(right.fact?.factId))
-      )
-      .map(entry => ({
-        factId: text(entry.fact.factId),
-        sequence: number(entry.raw?.sequence, 0),
-        eventKind: text(entry.raw?.eventKind),
-        stepRole: settlementStepRoles[text(entry.raw?.eventKind)] || 'OTHER',
-        actorId: text(entry.fact.actorId),
-        actorName: text(entry.fact.actorName),
-        targetName: text(entry.fact.targetName),
-        /* ledger 里的真实因果边：这一步挂在哪次行动下、由哪次行动引发。
-           叙述的因果连接词必须用它，不能靠"上一步是不是发起方"猜。 */
-        actionId: text(entry.raw?.actionId),
-        sourceActionId: text(entry.raw?.sourceActionId),
-        /* 这一步是不是由交锋发起者以外的人做出的——反击、格挡、闪避都靠它识别，
-           渲染时据此加"对此"之类的回应连接词，而不是让读者自己猜谁在回应谁。
-           必须比 actorId 而不是显示名：同名单位（尤其召唤物）会让名字比较误判归属。 */
-        byResponder: text(entry.fact.actorId) !== text(exchange?.actorId),
-        text: text(entry.fact.summary),
-        /* 玩家版没有覆盖到的事件类型回落到 AI 版，宁可稍显生硬也不能凭空造句。 */
-        playerText: playerStepText(entry.raw, entry.fact) || text(entry.fact.summary),
-        numericTokens: Array.isArray(entry.fact.numericTokens) ? entry.fact.numericTokens : [],
-      }))
+      );
+    const hitRowsByActionTarget = new Map();
+    visibleRows.forEach(entry => {
+      if (text(entry.raw?.eventKind) !== 'hit_result') return;
+      const key = [entry.raw?.actionId, entry.fact?.actorId, entry.fact?.targetName].map(text).join('|');
+      const group = hitRowsByActionTarget.get(key) || [];
+      group.push(entry);
+      hitRowsByActionTarget.set(key, group);
+    });
+
+    return visibleRows
+      .map(entry => {
+        const key = [entry.raw?.actionId, entry.fact?.actorId, entry.fact?.targetName].map(text).join('|');
+        const hitRows = hitRowsByActionTarget.get(key) || [];
+        const segmentPrefix = text(entry.raw?.eventKind) === 'hit_result' && hitRows.length > 1
+          ? `第${hitRows.indexOf(entry) + 1}段：`
+          : '';
+        return {
+          factId: text(entry.fact.factId),
+          sequence: number(entry.raw?.sequence, 0),
+          eventKind: text(entry.raw?.eventKind),
+          stepRole: settlementStepRoles[text(entry.raw?.eventKind)] || 'OTHER',
+          actorId: text(entry.fact.actorId),
+          actorName: text(entry.fact.actorName),
+          targetName: text(entry.fact.targetName),
+          /* ledger 里的真实因果边：这一步挂在哪次行动下、由哪次行动引发。
+             叙述的因果连接词必须用它，不能靠"上一步是不是发起方"猜。 */
+          actionId: text(entry.raw?.actionId),
+          sourceActionId: text(entry.raw?.sourceActionId),
+          /* 这一步是不是由交锋发起者以外的人做出的——反击、格挡、闪避都靠它识别，
+             渲染时据此加"对此"之类的回应连接词，而不是让读者自己猜谁在回应谁。
+             必须比 actorId 而不是显示名：同名单位（尤其召唤物）会让名字比较误判归属。 */
+          byResponder: text(entry.fact.actorId) !== text(exchange?.actorId),
+          text: segmentPrefix + text(entry.fact.summary),
+          /* 玩家版没有覆盖到的事件类型回落到 AI 版，宁可稍显生硬也不能凭空造句。 */
+          playerText: segmentPrefix + (playerStepText(entry.raw, entry.fact) || text(entry.fact.summary)),
+          numericTokens: Array.isArray(entry.fact.numericTokens) ? entry.fact.numericTokens : [],
+        };
+      })
       .filter(step => step.text);
   }
 
@@ -3830,12 +4035,16 @@
     const name = publicEntityName(directory, unit?.id || unit?.召唤键 || unit?.name || unit?.名称, unit?.name || unit?.名称);
     const hidePrivateResources = visibilityMode !== 'DEVELOPER' && side === 'enemy';
     const hp = number(unit?.hp ?? unit?.HP ?? unit?.属性?.HP, 0);
+    const stamina = number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0);
     const rawActionState = text(
-      unit?.actionState || unit?.__战斗失能原因 || unit?.行动状态,
+      unit?.__战斗失能原因 || unit?.actionState || unit?.行动状态,
     );
-    const actionState = hp <= 0 && !/(?:DEAD|UNCONSCIOUS|INCAPACITATED|SUBDUED|CONTROLLED|UNAVAILABLE|死亡|昏迷|失去战斗力|被制服|受控制|暂时无法行动)/iu.test(rawActionState)
+    const explicitIncapacity = /(?:DEAD|UNCONSCIOUS|INCAPACITATED|STAMINA_EXHAUSTED|SUBDUED|CONTROLLED|UNAVAILABLE|死亡|昏迷|失去战斗力|体力耗尽|被制服|受控制|暂时无法行动)/iu.test(rawActionState);
+    const actionState = hp <= 0 && !explicitIncapacity
       ? 'INCAPACITATED'
-      : (rawActionState || 'ACTIVE');
+      : stamina <= 0 && !explicitIncapacity
+        ? 'STAMINA_EXHAUSTED'
+        : (rawActionState || 'ACTIVE');
     const states = Array.isArray(unit?.状态效果)
       ? unit.状态效果.map(state => text(state?.name || state?.状态 || state?.状态名称)).filter(Boolean)
       : Object.entries(unit?.状态效果 || {}).map(([stateKey, state]) =>
@@ -3854,7 +4063,7 @@
         soulMax: Math.max(0, number(unit?.sp_max ?? unit?.魂力上限 ?? unit?.属性?.魂力上限, 0)),
         spirit: number(unit?.men ?? unit?.精神力 ?? unit?.属性?.精神力, 0),
         spiritMax: Math.max(0, number(unit?.men_max ?? unit?.精神力上限 ?? unit?.属性?.精神力上限, 0)),
-        stamina: number(unit?.vit ?? unit?.sta ?? unit?.体力 ?? unit?.属性?.体力, 0),
+        stamina,
         staminaMax: Math.max(0, number(unit?.vit_max ?? unit?.sta_max ?? unit?.体力上限 ?? unit?.属性?.体力上限, 0)),
       },
       actionState: playerActionStateName(
@@ -3891,7 +4100,10 @@
     const actor = findUnitState(states, directory, rawEvent?.actorId, rawEvent?.actorName);
     const kind = fact.eventKind;
     const damage = number(rawEvent?.appliedDamage ?? meta?.appliedDamage ?? rawEvent?.damage ?? meta?.damage, 0);
-    if (target && damage > 0 && ['hit_result', 'state_tick', 'reflect_damage', 'self_damage'].includes(kind)) {
+    const stateTickDelta = number(rawEvent?.delta ?? meta?.delta, 0);
+    if (target && kind === 'state_tick' && isHealingStateTick(rawEvent) && stateTickDelta > 0) {
+      target.hp = Math.min(target.hpMax, target.hp + stateTickDelta);
+    } else if (target && damage > 0 && ['hit_result', 'state_tick', 'reflect_damage', 'self_damage'].includes(kind)) {
       target.hp = Math.max(0, target.hp - damage);
     }
     const delta = number(rawEvent?.delta ?? meta?.delta, 0);
@@ -4097,6 +4309,14 @@
       const passiveSummaryFacts = passiveFacts.filter(fact => {
         const rawEvent = rawEventsById.get(fact.factId);
         if (text(rawEvent?.ruleCode || rawEvent?.meta?.reasonCode) === 'BATTLE_TERMINAL') return false;
+        const targetSide = ['player', 'enemy'].includes(text(fact?.targetSide))
+          ? text(fact.targetSide)
+          : text(fact?.actorSide);
+        if (
+          visibilityMode !== 'DEVELOPER' &&
+          targetSide === 'enemy' &&
+          fact.numericTokens.some(token => token.sourceType === 'RESOURCE')
+        ) return false;
         if (!['action_cancelled', 'blocked_action'].includes(fact.eventKind)) return true;
         const key = opportunityFactKey(rawEventsById.get(fact.factId), fact);
         return !key || !lostOpportunityKeys.has(key);
@@ -4138,7 +4358,31 @@
       }
       if (lostOpportunityCount) summaryParts.push(`${lostOpportunityCount}次行动机会未能执行`);
       if (!summaryParts.length) summaryParts.push('本回合未产生生命、护盾、资源或物品变化，行动与窗口事实已完整记录');
-      const passiveSummary = unique(passiveSummaryFacts.map(fact => fact.summary)).join('；');
+      let passiveSummary;
+      if (visibilityMode === 'DEVELOPER') {
+        passiveSummary = unique(passiveSummaryFacts.map(fact => fact.summary)).join('；');
+      } else {
+        const naturalRecoveryByResource = new Map();
+        const otherPassiveSummaries = [];
+        passiveSummaryFacts.forEach(fact => {
+          const rawEvent = rawEventsById.get(fact.factId);
+          const operation = text(rawEvent?.operation || rawEvent?.meta?.operation).toUpperCase();
+          if (fact.eventKind !== 'round_recover' && operation !== 'NATURAL_RECOVERY') {
+            otherPassiveSummaries.push(fact.summary);
+            return;
+          }
+          const resource = resourceName(rawEvent);
+          const amount = Math.abs(number(rawEvent?.meta?.amount ?? rawEvent?.amount ?? rawEvent?.meta?.delta ?? rawEvent?.delta, 0));
+          naturalRecoveryByResource.set(resource, number(naturalRecoveryByResource.get(resource), 0) + amount);
+        });
+        const recoverySummary = [...naturalRecoveryByResource.entries()]
+          .filter(([, amount]) => amount > 0)
+          .map(([resource, amount]) => `${resource}${displayNumber(amount)}点`)
+          .join('、');
+        passiveSummary = [recoverySummary ? `我方自然恢复：${recoverySummary}` : '', ...unique(otherPassiveSummaries)]
+          .filter(Boolean)
+          .join('；');
+      }
       rows.push({
         round,
         factIds,
@@ -4454,8 +4698,8 @@
   ]);
   const playerActionKindDescriptions = Object.freeze({
     BASIC_ATTACK: '普通攻击直接争取生命优势',
-    DEFEND: '防御以承受并减轻来袭为主',
-    EVADE: '闪避以完全避开来袭为主',
+    DEFEND: '防御能在命中时减轻承伤',
+    EVADE: '闪避成功时能完全避开来袭',
     PASS_OPPORTUNITY: '让过行动不建立动作效果',
     WITHDRAW: '撤离以脱离战斗为目标',
     OBSERVE: '观察以获取可见信息为主',
@@ -4467,9 +4711,19 @@
     return ['DEFEND', 'EVADE'].includes(text(actionKind).toUpperCase());
   }
 
-  function compareDecisionCandidates(selected = {}, alternative = {}, includeValueTradeoffs = true) {
+  function isLinearDecisionTrace(trace = {}) {
+    const engineLabel = text(trace && (trace.decisionEngine || trace.engineLabel)).toUpperCase();
+    if (engineLabel === 'R9V2_LINEAR' || engineLabel === 'LINEAR_SCORE_V1' || engineLabel.endsWith('_LINEAR')) {
+      return true;
+    }
+    const decomposition = trace && trace.linearDecomposition;
+    return Boolean(decomposition && typeof decomposition === 'object' && !Array.isArray(decomposition));
+  }
+
+  function compareDecisionCandidates(selected = {}, alternative = {}, includeValueTradeoffs = true, options = {}) {
+    const allowFutureCategory = options.allowFutureCategory !== false;
     const directReason = text(alternative?.reasonPlayerText || alternative?.reasonText);
-    if (directReason) return { reason: directReason, categories: ['future'] };
+    if (directReason) return { reason: directReason, categories: allowFutureCategory ? ['future'] : [] };
 
     const selectedAdvantages = [];
     const alternativeAdvantages = [];
@@ -4485,6 +4739,7 @@
         ['discardedOverkillPP', false, '无效的过量效果更少', 'objective'],
       ];
       dimensions.forEach(([key, higherIsBetter, label, category]) => {
+        if (!allowFutureCategory && key === 'informationValueHEPP') return;
         const selectedValue = number(selected?.tradeoffVector?.[key], 0);
         const alternativeValue = number(alternative?.tradeoffVector?.[key], 0);
         if (Math.abs(selectedValue - alternativeValue) <= epsilon) return;
@@ -4525,7 +4780,7 @@
             : `${selectedDescription}；${alternativeDescription}`
           : `动作不同（所选：${text(selected?.actionName)}；替代：${text(alternative?.actionName)}）`,
       );
-      categories.add('future');
+      if (allowFutureCategory) categories.add('future');
     }
     if (!clauses.length) clauses.push('两者在当前公开信息下的目标推进、风险和资源取舍接近');
     return { reason: clauses.join('；'), categories: [...categories] };
@@ -4941,6 +5196,7 @@
         const alternativeExcludedCandidates = alternativeCandidates.filter(candidate =>
           text(candidate?.status).toUpperCase() === 'EXCLUDED',
         );
+        const linearTrace = isLinearDecisionTrace(trace);
         const comparisonRows = selectPublicAlternativeRows(
           selectedCandidate,
           alternativeConsideredCandidates,
@@ -4952,6 +5208,7 @@
               selectedCandidate || {},
               candidate,
               includeValueTradeoffs,
+              { allowFutureCategory: !linearTrace },
             ),
           }));
         const alternatives = comparisonRows.map(({ candidate, comparison }) => ({
@@ -4968,9 +5225,22 @@
         const otherConsideredCandidates = consideredCandidates.filter(candidate =>
           text(candidate?.candidateId) !== selectedCandidateId,
         );
-        const publicCandidateLabel = hideEnemyPrivateCandidates
-          ? '当前可公开说明且机械合法的候选'
-          : '当前公开且机械合法的候选';
+        const comparisonSubject = hideEnemyPrivateCandidates
+          ? `${otherConsideredCandidates.length}项行动`
+          : `${otherConsideredCandidates.length}项可用行动`;
+        const noMajorAlternativeSummary = otherConsideredCandidates.length
+          ? stableVariant(
+              [node?.chainId, actorId, selectedCandidateId, comparisonSubject].map(text).join('|'),
+              [
+                `当时还有${comparisonSubject}可选，但公开的目标、风险和资源条件没有显示哪一项更适合改选。`,
+                `除这一步外，当时还考虑过${comparisonSubject}；公开信息不足以支持改选其中某一项。`,
+                `其余${comparisonSubject}也在可选范围内，但没有哪一项在公开条件下形成明显优势。`,
+                `当时也看过另外${comparisonSubject}，但从公开信息看，没有哪一项明显更值得改选。`,
+              ],
+            )
+          : hideEnemyPrivateCandidates
+            ? '从当前公开信息看，没有另一项可比较的行动。'
+            : '当时没有另一项可用行动可供比较。';
         const alternativeSummary = [
           'PLAYER_LOCKED',
           'FORCED',
@@ -4978,12 +5248,10 @@
           'DECLINED',
         ].includes(decisionKind) || comparisonRows.length
           ? ''
-          : otherConsideredCandidates.length
-            ? `另有${otherConsideredCandidates.length}项${publicCandidateLabel}已纳入比较，但在当前目标、风险、资源和后续路线下没有形成主要替代。`
-            : `${publicCandidateLabel}中，没有另一项可行动作可供比较。`;
+          : noMajorAlternativeSummary;
         let selectionReason;
         if (decisionKind === 'PLAYER_LOCKED') {
-          selectionReason = `玩家锁定了${selectedName}；系统只检查动作是否合法，没有改用AI候选`;
+          selectionReason = `玩家锁定了${selectedName}；系统只检查动作是否合法，没有改动玩家的选择`;
         } else if (decisionKind === 'FORCED') {
           selectionReason = `${selectedName}由当前强制行动约束决定`;
         } else if (decisionKind === 'LOST_OPPORTUNITY') {
@@ -4993,9 +5261,19 @@
         } else if (trace?.wasOptimal === false) {
           selectionReason = `当前仍有多个可行方案，选择了${selectedName}；${firstComparison || alternativeSummary || '公开信息下无法进一步区分这些方案的取舍'}`;
         } else if (trace?.selectedTiedAtTop === true && number(trace?.topRankedTieCount, 0) > 1) {
-          selectionReason = `${selectedName}与${number(trace.topRankedTieCount, 0) - 1}个方案在当前公开评估中并列最高，本次选择了该方案；${firstComparison || alternativeSummary || '并列方案的目标推进、风险和资源取舍相同'}`;
+          selectionReason = hideEnemyPrivateCandidates
+            ? `选择${selectedName}；${firstComparison || alternativeSummary || '当前公开信息没有显示明确的主要替代'}`
+            : `当时有${number(trace.topRankedTieCount, 0)}项行动在公开比较中没有拉开差距，最终选择${selectedName}；${firstComparison || alternativeSummary || '这些行动的目标推进、风险和资源取舍相同'}`;
         } else if (firstComparison) {
-          selectionReason = `选择${selectedName}；相较主要替代项，${firstComparison}`;
+          selectionReason = stableVariant(
+            [node?.chainId, actorId, selectedCandidateId, firstComparison].map(text).join('|'),
+            [
+              `选择${selectedName}；相较主要替代项，${firstComparison}`,
+              `选择${selectedName}；与主要替代项相比，${firstComparison}`,
+              `选择${selectedName}；两者的主要区别是：${firstComparison}`,
+              `选择${selectedName}；主要比较结果是：${firstComparison}`,
+            ],
+          );
         } else {
           selectionReason = `选择${selectedName}；${alternativeSummary}`;
         }
@@ -5026,7 +5304,7 @@
               }))
               .filter(reason => reason.reason),
           }));
-        return {
+        const baseExplanation = {
           schemaVersion: 'DecisionTimeExplanationV1',
           explanationId,
           chainId: text(node?.chainId),
@@ -5064,9 +5342,11 @@
           resourceTradeoffs: unique(comparisonRows
             .filter(row => row.comparison.categories.includes('resource'))
             .map(row => row.comparison.reason)),
-          futurePoolTradeoffs: unique(comparisonRows
-            .filter(row => row.comparison.categories.includes('future'))
-            .map(row => row.comparison.reason)),
+          futurePoolTradeoffs: linearTrace
+            ? []
+            : unique(comparisonRows
+                .filter(row => row.comparison.categories.includes('future'))
+                .map(row => row.comparison.reason)),
           comparisonEvidence: {
             comparisonId: `decision-comparison:${explanationIndex}`,
             changedComponents: alternatives.map(candidate => ({
@@ -5083,6 +5363,9 @@
           actual: {
             numericTokens: actualNumericTokens,
             factIds: ownedSteps.map(step => text(step?.factId)).filter(Boolean),
+            settlementTexts: ownedSteps
+              .map(step => text(step?.playerText || step?.text))
+              .filter(Boolean),
           },
           ...(visibilityMode === 'DEVELOPER'
             ? {
@@ -5094,8 +5377,146 @@
               }
             : {}),
         };
+        const linearDecomposition = trace?.linearDecomposition;
+        if (
+          linearDecomposition &&
+          root.__LWCS_BEHAVIOR_CHINESE_REASON__ &&
+          typeof root.__LWCS_BEHAVIOR_CHINESE_REASON__.buildPlayerReasons === 'function' &&
+          typeof root.__LWCS_BEHAVIOR_CHINESE_REASON__.mapToReport === 'function'
+        ) {
+          const enriched = enrichLinearExplanation(
+            baseExplanation,
+            linearDecomposition,
+            root.__LWCS_BEHAVIOR_CHINESE_REASON__,
+            hideEnemyPrivateCandidates,
+            visibilityMode,
+          );
+          if (enriched) return enriched;
+        }
+        return baseExplanation;
       });
     });
+  }
+
+  /* 轻量线性决策的同源中文理由重投影：把 DecisionContributionTraceV1
+     文档经 BehaviorChineseReason_Module 映射进既有 DecisionTimeExplanationV1
+     字段（comparisonEvidence/objectiveTradeoffs/riskTradeoffs/resourceTradeoffs/
+     alternatives/narrowing/predicted.numbers），futurePoolTradeoffs 恒空。
+     predicted.numbers 沿用现有决策预测数字合同形状（DECISION_TIME_PUBLIC_PROJECTION、
+     ADD、sourceEventId=explanationId、operands>=2），数字来自公开特征原值；
+     审计不过或理由不可用则整体 fail-closed 回退到基础说明。 */
+  function enrichLinearExplanation(
+    base = {},
+    decomposition = {},
+    reasonApi = {},
+    hideEnemyPrivateCandidates = false,
+    visibilityMode = 'PLAYER',
+  ) {
+    if (hideEnemyPrivateCandidates || !decomposition || typeof decomposition !== 'object') {
+      return null;
+    }
+    const selectedName = text(base?.selected?.name);
+    const alternativeName = text(base?.alternatives?.[0]?.name || '');
+    const candidateCount = number(base?.visibleContext?.candidateCount, 0);
+    let player;
+    let report;
+    try {
+      player = reasonApi.buildPlayerReasons(decomposition, {
+        selectedName,
+        alternativeName,
+        candidateCount,
+        decisionKey: text(base?.explanationId || base?.chainId),
+      });
+      if (!player || !Array.isArray(player.sentences) || player.sentences.length === 0) {
+        return null;
+      }
+      const audit = reasonApi.auditReason(decomposition, player, {});
+      if (!audit || audit.ok !== true) return null;
+      report = reasonApi.mapToReport(decomposition, player, {
+        selectedName,
+        alternativeName,
+        candidateCount,
+        decisionKey: text(base?.explanationId || base?.chainId),
+      });
+    } catch (error) {
+      return null;
+    }
+    const explanationId = text(base?.explanationId);
+    const numbers = (Array.isArray(report?.predictedNumbers) ? report.predictedNumbers : [])
+      .slice(0, 12)
+      .map((token, index) => {
+        const unit = text(token?.unit);
+        const value = number(token?.value, 0);
+        const consequence = text(token?.tacticalConsequence) ||
+          '用于说明这一手在决策时公开特征上的取值';
+        return {
+          tokenId: `${explanationId}:prediction:linear:${index + 1}`,
+          displayName: text(token?.displayName || token?.label),
+          label: text(token?.displayName || token?.label),
+          value,
+          unit,
+          subject: consequence,
+          sourceName: '决策时公开特征',
+          sourceType: 'DECISION_TIME_PUBLIC_PROJECTION',
+          operation: 'ADD',
+          sourceEventId: explanationId,
+          sourceFactId: `${explanationId}:prediction:linear:${index + 1}`,
+          visibility: visibilityMode,
+          operands: [
+            { name: '公开特征值', value, unit },
+            { name: '未附加修正', value: 0, unit },
+          ],
+          derivationRule: text(token?.derivationRule) || '读取决策时公开特征原值',
+          tacticalConsequence: consequence,
+        };
+      });
+    const narrowing = (Array.isArray(report?.narrowing) && report.narrowing.length
+      ? report.narrowing
+      : base?.visibleContext?.narrowing || [])
+      .map(stage => ({
+        stage: text(stage?.stage),
+        before: Math.max(0, number(stage?.before, 0)),
+        after: Math.max(0, number(stage?.after, 0)),
+        droppedReasons: (Array.isArray(stage?.droppedReasons) ? stage.droppedReasons : [])
+          .map(reason => ({
+            reason: text(reason?.reasonPlayerText || reason?.reasonText || reason?.reason),
+            count: Math.max(0, number(reason?.count, 0)),
+          }))
+          .filter(reason => reason.reason),
+      }));
+    return {
+      ...base,
+      objectiveTradeoffs: (Array.isArray(report?.objectiveTradeoffs)
+        ? report.objectiveTradeoffs
+        : []).map(text).filter(Boolean),
+      riskTradeoffs: (Array.isArray(report?.riskTradeoffs)
+        ? report.riskTradeoffs
+        : []).map(text).filter(Boolean),
+      resourceTradeoffs: (Array.isArray(report?.resourceTradeoffs)
+        ? report.resourceTradeoffs
+        : []).map(text).filter(Boolean),
+      futurePoolTradeoffs: [],
+      alternatives: (Array.isArray(report?.alternatives) ? report.alternatives : [])
+        .map(alternative => ({
+          name: text(alternative?.name),
+          targetNames: [],
+          status: text(alternative?.status) || 'CONSIDERED',
+          reason: text(alternative?.reason),
+        })),
+      visibleContext: {
+        ...(base?.visibleContext || {}),
+        narrowing,
+      },
+      comparisonEvidence: {
+        ...(base?.comparisonEvidence || {}),
+        explanation: text(report?.selectionReason) || base?.comparisonEvidence?.explanation || '',
+        alternativeSummary: text(report?.comparisonEvidence?.alternativeSummary),
+      },
+      predicted: {
+        publicEvidenceAvailable: numbers.length > 0,
+        numbers,
+      },
+    };
   }
 
   function publicFactReference(value = '', prefix = '事实') {
@@ -5212,7 +5633,16 @@
       },
       reconciliation: (Array.isArray(node?.reconciliation) ? node.reconciliation : [])
         .map(publicReconciliation),
-      reconciliationSummary: text(node?.reconciliationSummary),
+      reconciliationSummary: {
+        total: Math.max(0, number(node?.reconciliationSummary?.total, 0)),
+        confirmed: Math.max(0, number(node?.reconciliationSummary?.confirmed, 0)),
+        missed: Math.max(0, number(node?.reconciliationSummary?.missed, 0)),
+        preempted: Math.max(0, number(node?.reconciliationSummary?.preempted, 0)),
+        unconfirmed: Math.max(0, number(node?.reconciliationSummary?.unconfirmed, 0)),
+        magnitudeUnexplained: Math.max(0, number(node?.reconciliationSummary?.magnitudeUnexplained, 0)),
+        predictionExceedsTargetHp: Math.max(0, number(node?.reconciliationSummary?.predictionExceedsTargetHp, 0)),
+        rawDamageModelDiverged: Math.max(0, number(node?.reconciliationSummary?.rawDamageModelDiverged, 0)),
+      },
       isLostOpportunity: text(node?.decisionKind) === 'LOST_OPPORTUNITY',
     };
   }
@@ -5274,9 +5704,9 @@
         ? null
         : cloneValue(unit?.resources || {}),
       states: (Array.isArray(unit?.states) ? unit.states : []).map(state => ({
-        name: text(state?.name),
-        duration: Math.max(0, number(state?.duration, 0)),
-      })),
+        name: text(typeof state === 'string' ? state : state?.name),
+        duration: Math.max(0, number(typeof state === 'string' ? 0 : state?.duration, 0)),
+      })).filter(state => state.name),
       actionState: text(unit?.actionState),
     });
     return {
@@ -5338,6 +5768,9 @@
       actual: {
         numericTokens: (Array.isArray(explanation?.actual?.numericTokens) ? explanation.actual.numericTokens : [])
           .map(publicNumericToken),
+        settlementTexts: (Array.isArray(explanation?.actual?.settlementTexts) ? explanation.actual.settlementTexts : [])
+          .map(text)
+          .filter(Boolean),
       },
     };
   }
@@ -5910,6 +6343,9 @@
       });
       inspectVisibleUnits(report?.aiStructuredSummary?.sides?.enemy?.units, 'aiStructuredSummary.enemy.units');
       const hiddenRoundResourceLocations = [];
+      const enemyNames = (report?.finalSummary?.sides?.enemy?.units || [])
+        .map(unit => text(unit?.name))
+        .filter(Boolean);
       (Array.isArray(report?.roundOverview) ? report.roundOverview : []).forEach((row, rowIndex) => {
         const enemyDelta = row?.resourceDeltaBySide?.enemy;
         if (
@@ -5922,6 +6358,9 @@
         }
         if (/(?:敌方|对方)[^；\n]*(?:魂力|体力|精神力)(?:净变化|变化|恢复|消耗|削减)/u.test(text(row?.summary))) {
           hiddenRoundResourceLocations.push(`roundOverview[${rowIndex}].summary`);
+        }
+        if (enemyNames.some(name => text(row?.passiveSummary).includes(`${name}自然恢复`))) {
+          hiddenRoundResourceLocations.push(`roundOverview[${rowIndex}].passiveSummary`);
         }
         (Array.isArray(row?.resourceEvents) ? row.resourceEvents : []).forEach((event, eventIndex) => {
           if (text(event?.targetSide).toLowerCase() === 'enemy' || text(event?.resourceVisibility) === 'HIDDEN') {
@@ -6424,5 +6863,6 @@
     buildBattleHeadline,
     groupStepsByTarget,
     adaptDecisionTrace,
+    adaptLinearDecisionTrace,
   });
 })();

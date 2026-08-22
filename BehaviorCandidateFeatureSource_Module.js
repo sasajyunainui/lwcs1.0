@@ -38,9 +38,37 @@
   });
 
   function isObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
+  function isPlainObject(value) {
+    if (!isObject(value)) return false;
+    var proto = Object.getPrototypeOf(value);
+    return proto === null || (Object.getPrototypeOf(proto) === null &&
+      Object.prototype.hasOwnProperty.call(proto, 'constructor') && proto.constructor && proto.constructor.name === 'Object');
+  }
   function own(value, key) { return isObject(value) && Object.prototype.hasOwnProperty.call(value, key); }
   function validId(value) {
     return typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\u0000-\u001f\u007f]/.test(value);
+  }
+  function canonicalActionId(candidate) {
+    var declaration = candidate && candidate.declaration;
+    if (declaration === undefined) return candidate && candidate.candidateId || '';
+    if (!isPlainObject(declaration)) fail('SOURCE_ACTION_ID_INVALID', candidate && candidate.candidateId);
+    if (!own(declaration, 'actionId')) return candidate && candidate.candidateId || '';
+    if (!validId(declaration.actionId)) fail('SOURCE_ACTION_ID_INVALID', candidate && candidate.candidateId);
+    return declaration.actionId;
+  }
+  function canonicalEffectId(effect, rootActionId, index) {
+    if (effect === undefined) return rootActionId + ':effect:' + index;
+    if (!isPlainObject(effect)) fail('SOURCE_EFFECT_ID_INVALID', rootActionId + ':effect:' + index);
+    var hasEffectId = own(effect, 'effectId'), hasChineseId = own(effect, '效果ID');
+    var effectId = hasEffectId ? effect.effectId : null;
+    var chineseId = hasChineseId ? effect['效果ID'] : null;
+    if ((hasEffectId && !validId(effectId)) || (hasChineseId && !validId(chineseId))) {
+      fail('SOURCE_EFFECT_ID_INVALID', rootActionId + ':effect:' + index);
+    }
+    if (hasEffectId && hasChineseId && effectId !== chineseId) {
+      fail('SOURCE_EFFECT_ID_CONFLICT', rootActionId + ':effect:' + index);
+    }
+    return hasEffectId ? effectId : hasChineseId ? chineseId : rootActionId + ':effect:' + index;
   }
   function finite(value) { return typeof value === 'number' && Number.isFinite(value) ? value : null; }
   function uniqueIds(values) {
@@ -615,51 +643,90 @@
     if (pair.ok) authenticatePreviewRow(verified, row);
     return pair.ok;
   }
-  function scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitEntries, visibleUnitIndex, followUpAudit) {
+  function unpackCarrierRows(effect) {
+    // 造物承载/物品使用载体：无原型但有结构化使用效果时按 PDA/Preview 语义解包一层；
+    // 内层目标 自身 规范化为 单体，使 PDA 按候选 targetSet（recipient）解析。
+    // 不递归；畸形内层行原样保留，由未知原型路径 fail closed。
+    if (!isObject(effect) || validId(effect['原型'])
+      || !Array.isArray(effect['使用效果']) || effect['使用效果'].length === 0) return null;
+    var rows = [], j, row, normalized;
+    for (j = 0; j < effect['使用效果'].length; j += 1) {
+      row = effect['使用效果'][j];
+      if (!isObject(row) || row['目标'] !== '自身') { rows.push(row); continue; }
+      normalized = {};
+      Object.keys(row).forEach(function (key) { normalized[key] = row[key]; });
+      normalized['目标'] = '单体';
+      rows.push(normalized);
+    }
+    return rows;
+  }
+  function scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitEntries, visibleUnitIndex, followUpAudit, injection) {
     var entries = [], identities = Object.create(null), status = { TEAM_EFFECT: 'COMPLETE', RESOURCE_SUPPLY: 'COMPLETE', FOLLOW_UP: 'COMPLETE' };
     var catalogComplete = true;
-    var declaration = isObject(candidate.declaration) ? candidate.declaration : null;
+    var declaration = candidate.declaration === undefined ? {} : candidate.declaration;
+    if (!isPlainObject(declaration)) fail('SOURCE_ACTION_ID_INVALID', candidate && candidate.candidateId);
     var actionKind = validId(declaration && declaration.actionKind) ? declaration.actionKind : '';
-    var effects = declaration && declaration.skill && Array.isArray(declaration.skill._效果数组) ? declaration.skill._效果数组 : [];
+    var declaredEffects = declaration && declaration.skill && declaration.skill._效果数组;
+    if (declaredEffects !== undefined && !Array.isArray(declaredEffects)) {
+      fail('SOURCE_EFFECT_ARRAY_INVALID', candidate && candidate.candidateId);
+    }
+    var effects = Array.isArray(declaredEffects) ? declaredEffects : [];
     if (actionKind === 'RELEASE_SKILL' && (!declaration || !declaration.skill || !Array.isArray(declaration.skill._效果数组))) {
       status.TEAM_EFFECT = 'PARTIAL'; catalogComplete = false; followUpAudit.prototypeComplete = false;
     }
-    var actionId = validId(declaration && declaration.actionId) ? declaration.actionId : '';
-    if (actionId) { addVerified(verified.events, actionId); addVerified(verified.actions, actionId); }
-    else catalogComplete = false;
+    var actionId = canonicalActionId(candidate);
+    addVerified(verified.events, actionId); addVerified(verified.actions, actionId);
+    var previewDeclaration = Object.assign({}, declaration || {}, { actionId: actionId });
     var preview = null;
-    try {
-      preview = previewApi.previewAction({ worldSnapshot: request.visibleWorld, declaration: declaration || {}, actorId: request.actorId, basisView: 'DECISION_VISIBLE' });
-    } catch (error) {
-      status.TEAM_EFFECT = 'PARTIAL'; status.RESOURCE_SUPPLY = 'PARTIAL'; status.FOLLOW_UP = 'PARTIAL';
-      catalogComplete = false;
+    if (injection) {
+      var injectedPreview = isObject(injection.previewResultsById) ? injection.previewResultsById[candidate.candidateId] : undefined;
+      if (injectedPreview === undefined || !isObject(injectedPreview)) fail('SOURCE_PREVIEW_INJECTION_MISSING', candidate.candidateId);
+      preview = injectedPreview;
+    } else {
+      try {
+        preview = previewApi.previewAction({ worldSnapshot: request.visibleWorld, declaration: previewDeclaration, actorId: request.actorId, basisView: 'DECISION_VISIBLE' });
+      } catch (error) {
+        status.TEAM_EFFECT = 'PARTIAL'; status.RESOURCE_SUPPLY = 'PARTIAL'; status.FOLLOW_UP = 'PARTIAL';
+        catalogComplete = false;
+      }
     }
     var contributions = Array.isArray(preview && preview.contributions) ? preview.contributions : [];
     contributions.forEach(function (item) {
+      if (!item || item.sourceActionId !== actionId) fail('SOURCE_PREVIEW_SOURCE_ACTION_MISMATCH', candidate.candidateId);
       if (!indexCandidatePreviewRow(item, verified, closure)) {
         status.FOLLOW_UP = 'PARTIAL'; catalogComplete = false;
       }
     });
-    if (!actionId && effects.length) {
-      status.TEAM_EFFECT = 'PARTIAL'; status.RESOURCE_SUPPLY = 'PARTIAL'; status.FOLLOW_UP = 'PARTIAL';
-      return { entries: entries, status: status, catalogComplete: false };
-    }
     effects.forEach(function (effect, index) {
-      var prototypeKind = validId(effect && effect['原型']) ? effect['原型'] : '';
+      var effectBaseId = canonicalEffectId(effect, actionId, index);
+      var unpacked = unpackCarrierRows(effect), rows = unpacked === null ? [effect] : unpacked, u;
+      for (u = 0; u < rows.length; u += 1) {
+      var row = rows[u];
+      var prototypeKind = validId(row && row['原型']) ? row['原型'] : '';
       var registry = REGISTRY[prototypeKind];
-      var effectId = actionId ? actionId + ':effect:' + index : '';
+      var effectId = effectBaseId + (unpacked === null ? '' : ':unpack:' + u);
       if (!registry) {
-        status.TEAM_EFFECT = 'PARTIAL'; status.RESOURCE_SUPPLY = 'PARTIAL'; status.FOLLOW_UP = 'PARTIAL'; catalogComplete = false; followUpAudit.prototypeComplete = false; return;
+        status.TEAM_EFFECT = 'PARTIAL'; status.RESOURCE_SUPPLY = 'PARTIAL'; status.FOLLOW_UP = 'PARTIAL'; catalogComplete = false; followUpAudit.prototypeComplete = false; continue;
       }
       var context = {
         sourceActionId: actionId, sourceActorId: request.actorId, sourceEffectId: effectId,
         candidateTargetIds: Array.isArray(declaration && declaration.targetIds) ? declaration.targetIds.slice() : [],
       };
       var admitted, projection;
-      try { admitted = pdaApi.admit(effect, context); projection = pdaApi.project(effect, context); } catch (error) {
-        status[registry.capabilityKind === 'TEAM_EFFECT' ? 'TEAM_EFFECT' : registry.capabilityKind === 'RESOURCE_SUPPLY' ? 'RESOURCE_SUPPLY' : 'FOLLOW_UP'] = 'PARTIAL';
-        catalogComplete = false;
-        return;
+      if (injection) {
+        var perCandidateProjections = isObject(injection.pdaProjectionsById) ? injection.pdaProjectionsById[candidate.candidateId] : null;
+        var injectedProjection = isObject(perCandidateProjections) ? perCandidateProjections[effectId] : undefined;
+        if (injectedProjection === undefined || !isObject(injectedProjection) || !isObject(injectedProjection.projection)) {
+          fail('SOURCE_PDA_INJECTION_MISSING', candidate.candidateId + ':' + effectId);
+        }
+        admitted = injectedProjection.admitted === undefined ? null : injectedProjection.admitted;
+        projection = injectedProjection.projection;
+      } else {
+        try { admitted = pdaApi.admit(row, context); projection = pdaApi.project(row, context); } catch (error) {
+          status[registry.capabilityKind === 'TEAM_EFFECT' ? 'TEAM_EFFECT' : registry.capabilityKind === 'RESOURCE_SUPPLY' ? 'RESOURCE_SUPPLY' : 'FOLLOW_UP'] = 'PARTIAL';
+          catalogComplete = false;
+          continue;
+        }
       }
       if (hasPendingOrDeferred(admitted, projection)) {
         status[registry.capabilityKind === 'TEAM_EFFECT' ? 'TEAM_EFFECT' : registry.capabilityKind === 'RESOURCE_SUPPLY' ? 'RESOURCE_SUPPLY' : 'FOLLOW_UP'] = 'PARTIAL';
@@ -675,10 +742,10 @@
         if (registry.capabilityKind === 'RESOURCE_SUPPLY') status.RESOURCE_SUPPLY = 'PARTIAL';
         if (registry.capabilityKind === 'NOT_RELATIONAL') status.FOLLOW_UP = 'PARTIAL';
         catalogComplete = false;
-        return;
+        continue;
       }
       if (registry.capabilityKind === 'TEAM_EFFECT') {
-        if (!direct.length && !scheduled.length) { status.TEAM_EFFECT = 'PARTIAL'; return; }
+        if (!direct.length && !scheduled.length) { status.TEAM_EFFECT = 'PARTIAL'; continue; }
         direct.forEach(function (fact) { var made = teamEntries(registry, fact, false, effectId, verified, closure, visibleUnitIndex); if (!made.complete) status.TEAM_EFFECT = 'PARTIAL'; else authenticatePdaRow(verified, fact); made.entries.forEach(function (entry) { if (!addEntry(entries, identities, entry)) status.TEAM_EFFECT = 'PARTIAL'; }); });
         scheduled.forEach(function (fact) { var made = teamEntries(registry, fact, true, effectId, verified, closure, visibleUnitIndex); if (!made.complete) status.TEAM_EFFECT = 'PARTIAL'; else authenticatePdaRow(verified, fact); made.entries.forEach(function (entry) { if (!addEntry(entries, identities, entry)) status.TEAM_EFFECT = 'PARTIAL'; }); });
       } else if (registry.capabilityKind === 'RESOURCE_SUPPLY') {
@@ -694,15 +761,29 @@
           else if (!addEntry(entries, identities, grant)) status.FOLLOW_UP = 'PARTIAL';
         });
       }
+      }
     });
     return { entries: sortObjects(entries), status: status, catalogComplete: catalogComplete };
   }
   function compilePreparedRequest(args) {
     args = args || {};
     var request = args.request, previewApi = args.previewApi, pdaApi = args.pdaApi, decisionApi = args.decisionApi;
+    var injection = null;
+    if (args.previewResultsById !== undefined || args.pdaProjectionsById !== undefined) {
+      if (!isObject(args.previewResultsById) || !isObject(args.pdaProjectionsById)) fail('SOURCE_INJECTION_PARTIAL');
+      injection = { previewResultsById: args.previewResultsById, pdaProjectionsById: args.pdaProjectionsById };
+    }
     requireFormalApi(decisionApi, root.__LWCS_BATTLE_DECISION__, 'decisionApi');
     requireFormalApi(previewApi, root.__LWCS_BATTLE_PREVIEW__, 'previewApi');
     requireFormalApi(pdaApi, root.__LWCS_BEHAVIOR_PROTOTYPE_ADAPTER__, 'pdaApi');
+    requireFunction(decisionApi && decisionApi.isPreparedDecisionRequest, 'decisionApi.isPreparedDecisionRequest');
+    if (!decisionApi.isPreparedDecisionRequest(request)) fail('SOURCE_PREPARED_REQUEST_IDENTITY');
+    if (injection) {
+      requireFunction(decisionApi.isPreparedLinearSourceMaps, 'decisionApi.isPreparedLinearSourceMaps');
+      if (!decisionApi.isPreparedLinearSourceMaps(request, injection.previewResultsById, injection.pdaProjectionsById)) {
+        fail('SOURCE_MAP_IDENTITY');
+      }
+    }
     if (!isObject(request) || !Array.isArray(request.frozenCandidates) || request.frozenCandidates.length === 0) fail('SOURCE_FROZEN_REQUEST_REQUIRED');
     if (!isObject(request.visibleWorld)) fail('SOURCE_VISIBLE_WORLD_REQUIRED');
     requireFunction(previewApi && previewApi.previewAction, 'previewApi.previewAction');
@@ -730,7 +811,7 @@
     var candidateResults = {};
     request.frozenCandidates.forEach(function (candidate) {
       var candidateId = candidate.candidateId;
-      var result = scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitData.entries, unitData.byId, followUpAudit);
+      var result = scanCandidate(candidate, request, previewApi, pdaApi, verified, closure, unitData.entries, unitData.byId, followUpAudit, injection);
       candidateResults[candidateId] = result;
       if (result.catalogComplete !== true) catalogComplete = false;
     });
@@ -755,5 +836,8 @@
     };
     return freeze(output);
   }
-  root.__LWCS_BEHAVIOR_CANDIDATE_FEATURE_SOURCE__ = Object.freeze({ compilePreparedRequest: compilePreparedRequest });
+  root.__LWCS_BEHAVIOR_CANDIDATE_FEATURE_SOURCE__ = Object.freeze({
+    compilePreparedRequest: compilePreparedRequest,
+    unpackCarrierRows: unpackCarrierRows,
+  });
 })(typeof globalThis !== 'undefined' ? globalThis : this);
