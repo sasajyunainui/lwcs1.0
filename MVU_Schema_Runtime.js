@@ -3208,13 +3208,8 @@ function 应用内置角色实例化_V1(数据根 = {}, 选项 = {}) {
   return { changed: 已变更.length > 0, changedNames: 已变更, names: 已变更 };
 }
 
-function 解析开场时间线入库命令_V1(命令文本 = '') {
-  const 匹配 = String(命令文本 || '').match(/<LWCS_开场时间线入库>\s*([\s\S]*?)\s*<\/LWCS_开场时间线入库>/);
-  if (!匹配) throw new Error('缺少开场时间线入库命令');
-  let 载荷;
-  try {
-    载荷 = JSON.parse(String(匹配[1] || '').trim());
-  } catch (错误) {
+function 解析开场时间线入库命令_V1(载荷 = null) {
+  if (!载荷 || typeof 载荷 !== 'object' || Array.isArray(载荷)) {
     throw new Error('开场时间线入库命令必须是JSON对象');
   }
   const eraId = String(载荷?.eraId || '').trim();
@@ -3223,10 +3218,10 @@ function 解析开场时间线入库命令_V1(命令文本 = '') {
   return { eraId, 开场节点 };
 }
 
-function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令文本 = '') {
+function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令 = null) {
   if (!数据根 || typeof 数据根 !== 'object') return { changed: false, changedNames: [], names: [] };
   if (!数据根.char || typeof 数据根.char !== 'object' || Array.isArray(数据根.char)) 数据根.char = {};
-  const { eraId, 开场节点 } = 解析开场时间线入库命令_V1(命令文本);
+  const { eraId, 开场节点 } = 解析开场时间线入库命令_V1(命令);
   const tick数值 = Number(数据根?.world?.时间?.tick || 0);
   const 当前tick = Number.isFinite(tick数值) ? tick数值 : 0;
   const 时代集成 = 读取时代运行时集成_V1();

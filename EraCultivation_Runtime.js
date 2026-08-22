@@ -13,7 +13,7 @@
     斗三: Object.freeze([69, 89, 98, NO_SOUL_CORE_GATE]),
     斗四: Object.freeze([69, 89, 98, NO_SOUL_CORE_GATE]),
   });
-  const LEVEL_ADJUSTMENTS = Object.freeze([[20, 1.024], [30, 1.014], [40, 0.865]]);
+  const LEVEL_ADJUSTMENTS = Object.freeze([[20, 30, 1.024], [30, 40, 1.014], [40, 60, 0.865]]);
   const INITIAL_LEVEL_ANCHORS = Object.freeze({
     劣等: Object.freeze([1, 2]),
     正常: Object.freeze([3, 4]),
@@ -456,8 +456,8 @@
       : cultivationMultiplier(char, { ...options, levelOverride: level, coreCountOverride: coreCount })
         * cultivationAgeDecayMultiplier(char, options);
     growth *= actualEfficiency * youthYieldMultiplier(age, talent);
-    const adjustment = LEVEL_ADJUSTMENTS.find(([upper]) => level >= upper && level < upper + 10);
-    if (adjustment) growth *= adjustment[1];
+    const adjustment = LEVEL_ADJUSTMENTS.find(([lower, upper]) => level >= lower && level < upper);
+    if (adjustment) growth *= adjustment[2];
     growth *= soulPowerCurveCalibration(level, nextLevel(level));
     return Math.max(0, growth * Math.max(0, finite(options.externalMultiplier, 1)));
   }
