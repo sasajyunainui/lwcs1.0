@@ -10,7 +10,20 @@ const 请求超时毫秒 = 6500;
 const GitHub请求超时毫秒 = 8000;
 const 入口文件名 = 'MVU_ZOD_Entry.js';
 const MVU追踪模块顺序 = Object.freeze([入口文件名]);
-const 启动预取资源列表 = Object.freeze([入口文件名]);
+const 启动预取资源列表 = Object.freeze([
+  'LibraryData_Runtime.js',
+  'EraDataRegistry.js',
+  'EraCurrencyRegistry.js',
+  'TimelineRuntime.js',
+  'EraRuntime_Integration.js',
+  'EraCultivation_Runtime.js',
+  'MVU_Skill_Runtime.js',
+  'MVU_Schema_Runtime.js',
+  'MVU_Competition_Runtime.js',
+  'MVU_Runtime_View.js',
+  'MVU_Hooks.js',
+]);
+const 启动模块预载资源列表 = Object.freeze(['IntelEvents.js', 'MVU.js']);
 
 async function 取最新提交哈希() {
   const 接口地址 = `https://api.github.com/repos/${仓库名}/git/ref/heads/${分支名}?t=${Date.now()}`;
@@ -27,16 +40,29 @@ async function 取最新提交哈希() {
 
 function 预取关键资源(资源基础地址) {
   const 文档 = globalThis.document;
-  if (!文档 || !文档.createElement) return;
+  const 缓存键 = '__LWCS_MVU_RESOURCE_TEXT_PREFETCH_V1__';
+  const 预取缓存 = globalThis[缓存键] && typeof globalThis[缓存键] === 'object'
+    ? globalThis[缓存键]
+    : Object.create(null);
+  globalThis[缓存键] = 预取缓存;
   启动预取资源列表.forEach(文件名 => {
     const 地址 = `${资源基础地址}${文件名}`;
-    const 标记 = 'lwcs-mvu-prefetch-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
+    if (预取缓存[地址]) return;
+    预取缓存[地址] = withTimeout(fetch(地址, { cache: 'force-cache' }), `预取 ${地址}`)
+      .then(async 响应 => 响应.ok
+        ? { ok: true, text: await withTimeout(响应.text(), `读取预取正文 ${地址}`, 20000) }
+        : { ok: false, status: 响应.status })
+      .catch(错误 => ({ ok: false, error: 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error') }));
+  });
+  if (!文档 || !文档.createElement) return;
+  启动模块预载资源列表.forEach(文件名 => {
+    const 地址 = `${资源基础地址}${文件名}`;
+    const 标记 = 'lwcs-mvu-modulepreload-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
     if (文档.getElementById(标记)) return;
     const 节点 = 文档.createElement('link');
     节点.id = 标记;
-    节点.rel = 'prefetch';
+    节点.rel = 'modulepreload';
     节点.href = 地址;
-    节点.as = 'script';
     节点.crossOrigin = 'anonymous';
     (文档.head || 文档.documentElement).appendChild(节点);
   });
@@ -190,8 +216,8 @@ try {
       const 入口响应 = await withTimeout(fetch(入口地址, { cache: 'force-cache' }), `读取 ${入口地址}`);
       if (!入口响应.ok) throw new Error(`MVU入口读取失败: ${入口响应.status}`);
       await 入口响应.text();
-      await 加载模块脚本入口(入口地址);
       预取关键资源(资源基础地址);
+      await 加载模块脚本入口(入口地址);
       已加载 = true;
       break;
     } catch (错误) {

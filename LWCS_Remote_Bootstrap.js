@@ -13,7 +13,13 @@
   const GitHub请求超时毫秒 = 8000;
   const 入口文件名 = 'ST_UI_Entry.js';
   const 启动预取资源列表 = Object.freeze([
-    入口文件名,
+    'mvu_styles.css',
+    'soul_ring_engine.css',
+    'Main_Vue_runtimefix_v2.js',
+    'mvu_logic_bridge.js',
+    'LWCS_Database_Adapter.js',
+    'LWCS_Persistence_Adapter.js',
+    'Database_Module.js',
   ]);
   const 引导键 = '__LWCS_REMOTE_BOOTSTRAP_RUNNING__';
   const 宿主窗口 = (() => {
@@ -391,18 +397,20 @@
   }
 
   function 预取关键资源(资源基础地址) {
-    if (!宿主文档 || !宿主文档.createElement) return;
+    const 缓存键 = '__LWCS_UI_RESOURCE_TEXT_PREFETCH_V1__';
+    const 预取缓存 = 宿主窗口[缓存键] && typeof 宿主窗口[缓存键] === 'object'
+      ? 宿主窗口[缓存键]
+      : Object.create(null);
+    宿主窗口[缓存键] = 预取缓存;
+    try { if (window !== 宿主窗口) window[缓存键] = 预取缓存; } catch (错误) {}
     启动预取资源列表.forEach(文件名 => {
       const 地址 = `${资源基础地址}${文件名}`;
-      const 标记 = 'lwcs-prefetch-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
-      if (宿主文档.getElementById(标记)) return;
-      const 节点 = 宿主文档.createElement('link');
-      节点.id = 标记;
-      节点.rel = 'prefetch';
-      节点.href = 地址;
-      节点.as = /\.css(?:[?#]|$)/i.test(地址) ? 'style' : 'script';
-      节点.crossOrigin = 'anonymous';
-      (宿主文档.head || 宿主文档.documentElement).appendChild(节点);
+      if (预取缓存[地址]) return;
+      预取缓存[地址] = fetchWithTimeout(地址, { cache: 'force-cache' })
+        .then(async 响应 => 响应.ok
+          ? { ok: true, text: await withTimeout(响应.text(), `读取预取正文 ${地址}`, 20000) }
+          : { ok: false, status: 响应.status })
+        .catch(错误 => ({ ok: false, error: 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error') }));
     });
   }
 

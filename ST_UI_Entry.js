@@ -85,7 +85,7 @@
     战斗运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleRuntime_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗决策运行时'] },
     战斗战报运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleReport_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗运行时'] },
     战斗模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleUI_Module.js' + 资源版本后缀, 关键: false, 分组: 'lazy', 依赖: ['战斗战报运行时'] },
-    数据库模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀, 关键: true, 分组: 'background' }
+    数据库模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' }
   };
 
   const 变量运行时接口模块顺序 = Object.freeze([
@@ -105,9 +105,9 @@
   const 时代运行时前置模块顺序 = Object.freeze(['历法与库运行时', '时代数据注册表', '时代货币注册表', '时代事件状态运行时', '时代运行时集成', '时代修炼运行时', 'MVU核心就绪']);
   const 行为载荷模块顺序 = Object.freeze(['行为决策管线']);
   const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', ...时代运行时前置模块顺序]);
-  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '持久化适配器']);
+  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...变量运行时接口模块顺序, '逻辑桥接', '数据库适配器', '持久化适配器', '数据库模块']);
   const 热更新重置模块顺序 = Object.freeze([...核心模块顺序]);
-  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '逻辑桥接', '数据库适配器', '持久化适配器']);
+  const 启动预取模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', '逻辑桥接', '数据库适配器', '持久化适配器', '数据库模块']);
   const 正常启动追踪模块顺序 = Object.freeze([...核心模块顺序]);
   const 热更新追踪模块顺序 = Object.freeze([...核心模块顺序]);
   const 当前启动追踪模块顺序 = 调试热更新模式 ? 热更新追踪模块顺序 : 正常启动追踪模块顺序;
@@ -157,7 +157,6 @@
   const 文本资源缓存表 = new Map();
   let 引导承诺 = null;
   let 空闲预取已安排 = false;
-  let 数据库模块后台加载已安排 = false;
 
   Object.keys(模块注册表).forEach(模块名 => {
     模块状态表[模块名] = {
@@ -321,6 +320,13 @@
         const 错误列表 = [];
         for (const 候选地址 of 取候选资源地址列表(地址)) {
           try {
+            const 预取缓存 = 宿主窗口.__LWCS_UI_RESOURCE_TEXT_PREFETCH_V1__;
+            const 预取承诺 = 预取缓存?.[候选地址];
+            if (预取承诺) {
+              const 预取结果 = await 预取承诺;
+              delete 预取缓存[候选地址];
+              if (预取结果?.ok) return 预取结果.text;
+            }
             const 响应 = await fetchWithTimeout(候选地址, 取资源请求选项(候选地址));
             if (!响应.ok) throw new Error(`[${响应.status}]`);
             return await 响应.text();
@@ -396,6 +402,7 @@
     样式节点.id = 样式标记;
     样式节点.textContent = 样式文本;
     宿主文档.head.appendChild(样式节点);
+    文本资源缓存表.delete(地址);
     return 地址;
   }
 
@@ -454,6 +461,7 @@
       脚本节点.id = 脚本标记;
       脚本节点.text = `${代码文本}\n//# sourceURL=${地址}`;
       (宿主文档.body || 宿主文档.documentElement).appendChild(脚本节点);
+      文本资源缓存表.delete(地址);
       return 地址;
     };
     if (!/LibraryData_Runtime\.js(?:[?#]|$)/.test(地址)) return 执行内联加载();
@@ -518,6 +526,7 @@
         脚本节点.onload = 完成加载;
         脚本节点.onerror = () => reject(new Error(`Module JS execute failed: ${地址}`));
         (宿主文档.body || 宿主文档.documentElement).appendChild(脚本节点);
+        文本资源缓存表.delete(地址);
         setTimeout(完成加载, 100);
       } catch (错误) {
         reject(错误);
@@ -556,11 +565,11 @@
       await 确保模块已加载('逻辑桥接', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('数据库适配器', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
       await 确保模块已加载('持久化适配器', { 来源: 'hot_reload', 允许失败降级: false, 抛错: true });
+      await 等待数据库模块就绪('hot_reload_database', true);
       记录阶段(加载阶段.完成);
       加载状态.结束时间 = Date.now();
       setTimeout(triggerMvuRefresh, 0);
       setTimeout(triggerMvuRefresh, 260);
-      启动数据库模块后台加载('hot_reload_database');
     } catch (错误) {
       记录阶段(加载阶段.失败, 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_hot_reload_error'));
       console.error('[MVU] External UI hot reload failed:', 错误);
@@ -674,7 +683,7 @@
   async function 等待数据库模块就绪(来源 = 'database_required', 抛错 = true) {
     if (!加载状态.数据库模块开始时间) 加载状态.数据库模块开始时间 = Date.now();
     加载状态.数据库模块错误 = '';
-    const 结果 = await 确保模块已加载('数据库模块', { 来源, 允许失败降级: false, 抛错: false });
+    const 结果 = await 确保模块已加载('数据库模块', { 来源, 允许失败降级: false, 抛错: false, 最大等待毫秒: 60000 });
     if (结果 && 结果.ok) {
       加载状态.数据库模块完成时间 = Date.now();
       加载状态.数据库模块错误 = '';
@@ -689,17 +698,6 @@
     加载状态.数据库模块错误 = 错误文本;
     if (抛错) throw (结果 && 结果.error) || new Error(错误文本);
     return 结果;
-  }
-
-  function 启动数据库模块后台加载(来源 = 'bootstrap_database') {
-    if (数据库模块后台加载已安排) return;
-    数据库模块后台加载已安排 = true;
-    if (!加载状态.数据库模块开始时间) 加载状态.数据库模块开始时间 = Date.now();
-    setTimeout(() => {
-      等待数据库模块就绪(来源, false).then(结果 => {
-        if (!结果 || !结果.ok) console.error('[LWCS] 数据库模块后台加载失败:', 加载状态.数据库模块错误);
-      });
-    }, 0);
   }
 
   async function 确保预览依赖已加载(预览键, 选项 = {}) {
@@ -1173,6 +1171,7 @@
         await 确保模块已加载('逻辑桥接', { 来源: 'bootstrap_core', 允许失败降级: false });
         await 确保模块已加载('数据库适配器', { 来源: 'bootstrap_core', 允许失败降级: false });
         await 确保模块已加载('持久化适配器', { 来源: 'bootstrap_core', 允许失败降级: false });
+        await 等待数据库模块就绪('bootstrap_core', true);
 
         if (!宿主窗口.Vue || typeof 宿主窗口.Vue.compile !== 'function') {
           throw new Error('Vue full build load failed: compiler missing');
@@ -1192,7 +1191,6 @@
           setTimeout(triggerMvuRefresh, 900);
         }
         安排空闲预取();
-        启动数据库模块后台加载();
       } catch (错误) {
         const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error');
         UI启动状态.成功启动 = false;

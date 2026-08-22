@@ -237,9 +237,18 @@ function 创建MVU资源所有者_V1() {
         记录.fetchAttempts += 1;
         地址 = 候选地址[Math.min(尝试序号, Math.max(候选地址.length - 1, 0))];
         try {
-          const 响应 = await MVU_FETCH_V1(地址);
-          if (!响应.ok) throw new Error(`[${响应.status}]`);
-          代码文本 = await 响应.text();
+          const 预取缓存 = globalThis.__LWCS_MVU_RESOURCE_TEXT_PREFETCH_V1__;
+          const 预取承诺 = 预取缓存?.[地址];
+          if (预取承诺) {
+            const 预取结果 = await 预取承诺;
+            delete 预取缓存[地址];
+            if (!预取结果?.ok) throw new Error(预取结果?.error || `[${预取结果?.status || 'prefetch_failed'}]`);
+            代码文本 = 预取结果.text;
+          } else {
+            const 响应 = await MVU_FETCH_V1(地址);
+            if (!响应.ok) throw new Error(`[${响应.status}]`);
+            代码文本 = await 响应.text();
+          }
           break;
         } catch (错误) {
           错误列表.push(`${地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
