@@ -134,6 +134,49 @@
     return `${Date.now().toString(36)}-${nonceCounter.toString(36)}-${randomPart}`;
   }
 
+  function encodeTauriStoreComponent(value) {
+    const bytes = new TextEncoder().encode(String(value));
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return `lwcs_${btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')}`;
+  }
+
+  function decodeTauriStoreComponent(value) {
+    const encoded = String(value || '');
+    if (!encoded.startsWith('lwcs_')) return null;
+    try {
+      const body = encoded.slice(5).replace(/-/g, '+').replace(/_/g, '/');
+      const binary = atob(body + '='.repeat((4 - body.length % 4) % 4));
+      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function createTauriStoreBackend(store) {
+    return Object.freeze({
+      setJson: ({ namespace, key, value }) => store.setJson({
+        namespace: encodeTauriStoreComponent(namespace),
+        key: encodeTauriStoreComponent(key),
+        value,
+      }),
+      getJson: ({ namespace, key }) => store.getJson({
+        namespace: encodeTauriStoreComponent(namespace),
+        key: encodeTauriStoreComponent(key),
+      }),
+      deleteJson: ({ namespace, key }) => store.deleteJson({
+        namespace: encodeTauriStoreComponent(namespace),
+        key: encodeTauriStoreComponent(key),
+      }),
+      listKeys: async ({ namespace }) => {
+        const keys = await store.listKeys({ namespace: encodeTauriStoreComponent(namespace) });
+        if (!Array.isArray(keys)) return keys;
+        return keys.map(decodeTauriStoreComponent).filter(key => key !== null);
+      },
+    });
+  }
+
   function findTauriTavern() {
     for (const candidate of collectWindows()) {
       const tauriTavern = readField(candidate, '__TAURITAVERN__');
@@ -288,7 +331,7 @@
       if (backend === 'tt-store') {
         const store = identity.handle?.store;
         if (!store || typeof store !== 'object') return null;
-        try { return assertMethodSet(store); } catch (_) { return null; }
+        try { return assertMethodSet(createTauriStoreBackend(store)); } catch (_) { return null; }
       }
       return injectedBackend(domain, backend);
     }
