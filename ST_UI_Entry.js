@@ -560,6 +560,7 @@
       加载状态.结束时间 = Date.now();
       setTimeout(triggerMvuRefresh, 0);
       setTimeout(triggerMvuRefresh, 260);
+      启动数据库模块后台加载('hot_reload_database');
     } catch (错误) {
       记录阶段(加载阶段.失败, 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_hot_reload_error'));
       console.error('[MVU] External UI hot reload failed:', 错误);
@@ -1055,6 +1056,10 @@
       appendInexistentScriptButtons([{ name: '消息统计', visible: true }]);
       eventOn(getButtonEvent('消息统计'), async () => {
         try {
+          try {
+            if (宿主窗口.parent && 宿主窗口.parent !== 宿主窗口) 宿主窗口.parent.__LWCS_REQUEST_MONITOR_UNLOAD__?.();
+          } catch (错误) {}
+          宿主窗口.__LWCS_REQUEST_MONITOR_HOST_WINDOW__ = 宿主窗口;
           await 确保模块已加载('请求监控挂件', { 来源: 'request_monitor_button', 允许失败降级: false, 抛错: true });
           const 等待开始 = Date.now();
           let 悬浮按钮 = null;
@@ -1187,6 +1192,7 @@
           setTimeout(triggerMvuRefresh, 900);
         }
         安排空闲预取();
+        启动数据库模块后台加载();
       } catch (错误) {
         const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error');
         UI启动状态.成功启动 = false;
