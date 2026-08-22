@@ -18757,15 +18757,6 @@ function 获取正式修炼魂核倍率(角色 = {}) {
   return Math.max(0, Number(倍率表[魂核数] || 0));
 }
 
-var 初始化修为年龄描点表 = Object.freeze({
-  劣等: Object.freeze([[6, 1], [9, 9], [10, 9], [20, 18], [30, 21], [40, 21], [150, 21]]),
-  正常: Object.freeze([[6, 3], [9, 13], [10, 15], [15, 23], [20, 31], [30, 40], [50, 41], [150, 41]]),
-  优秀: Object.freeze([[6, 6], [9, 16], [10, 18], [15, 29], [20, 40], [30, 69], [60, 70], [150, 70]]),
-  天才: Object.freeze([[6, 8], [9, 19], [10, 21], [15, 35], [20, 48], [30, 69], [40, 80], [50, 85], [100, 90], [150, 90]]),
-  顶级天才: Object.freeze([[6, 10], [9, 19], [10, 21], [14, 39], [15, 45], [20, 60], [30, 74], [40, 89], [50, 94], [100, 96], [150, 96]]),
-  绝世妖孽: Object.freeze([[6, 10], [9, 19], [10, 21], [14, 39], [15, 45], [20, 60], [30, 98], [40, 99.5], [150, 99.5]]),
-});
-
 function 解析生日年内日序(生日 = '') {
   const 文本 = String(生日 || '').trim();
   if (!文本 || 文本 === '待生成') return null;
@@ -18811,32 +18802,21 @@ function 规避魂环门槛等级(等级 = 1) {
   return 等级值;
 }
 
-function 计算初始化修为等级(天赋梯队 = '正常', 年龄 = 6, 底子波动 = 1, 生日 = '', 当前tick = null) {
+function 计算初始化修为等级(天赋梯队 = '正常', 年龄 = 6, 底子波动 = 1, 生日 = '', 当前tick = null, 时代 = '') {
   const 年龄值 = 计算生日有效年龄(年龄, 生日, 当前tick);
-  const 有效天赋 = String(天赋梯队 || '').trim() || '正常';
-  const 描点 = 初始化修为年龄描点表[有效天赋] || 初始化修为年龄描点表.正常;
-  let 等级 = 描点[0][1];
-  for (let 序号 = 0; 序号 < 描点.length - 1; 序号 += 1) {
-    const 当前 = 描点[序号];
-    const 下个 = 描点[序号 + 1];
-    if (年龄值 < 当前[0]) break;
-    if (年龄值 <= 下个[0]) {
-      const 比例 = Math.max(0, Math.min(1, (年龄值 - 当前[0]) / Math.max(1, 下个[0] - 当前[0])));
-      等级 = 当前[1] + (下个[1] - 当前[1]) * 比例;
-      break;
-    }
-    等级 = 下个[1];
-  }
-  const 波动 = Math.max(0.72, Math.min(1.4, Number(底子波动 || 1)));
-  const 波动修正 = (波动 - 1) * (年龄值 >= 18 ? 10 : 4);
-  const 修正等级 = Math.max(1, Math.min(99.5, 等级 + 波动修正));
-  const 结果 = 修正等级 >= 99.5 ? 99.5 : Math.floor(修正等级);
-  if (年龄值 < 7) {
-    if (有效天赋 === '天才') return Math.max(1, Math.min(8, 结果));
-    if (有效天赋 === '顶级天才') return Math.max(1, Math.min(10, 结果));
-    if (有效天赋 === '绝世妖孽') return 10;
-  }
-  return Math.max(1, Math.min(99.5, 规避魂环门槛等级(结果)));
+  const 运行时 = 读取时代修炼运行时_V1();
+  if (!运行时 || typeof 运行时.estimateInitialLevel !== 'function') throw new Error('四时代修炼初始化接口未就绪');
+  const 估算等级 = Number(运行时.estimateInitialLevel({
+    talent: String(天赋梯队 || '').trim() || '正常',
+    age: 年龄值,
+    baseVariation: Math.max(0.95, Math.min(1.05, Number(底子波动 || 1))),
+    ...(当前tick === null || 当前tick === undefined ? {} : { currentTick: 当前tick }),
+    ...(时代 ? { era: 时代 } : {}),
+  }));
+  if (!Number.isFinite(估算等级)) throw new Error('四时代修炼初始化计算返回无效等级');
+  if (估算等级 <= 0) return 0;
+  const 结果 = 估算等级 >= 99.5 ? 99.5 : Math.floor(估算等级);
+  return Math.max(1, 规避魂环门槛等级(结果));
 }
 
 function 计算开场初始化修为等级_V1(选项 = {}) {
@@ -18847,6 +18827,7 @@ function 计算开场初始化修为等级_V1(选项 = {}) {
     参数.底子波动 === undefined ? 1 : 参数.底子波动,
     参数.生日 || '',
     参数.当前tick ?? null,
+    参数.时代 || '',
   );
 }
 function isTopTalentLateBloom_ACU(char = {}) {
