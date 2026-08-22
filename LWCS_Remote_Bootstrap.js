@@ -69,7 +69,6 @@
     };
     let 已手动关闭 = false;
     let 已自动隐藏 = false;
-    let 隐藏计时器 = 0;
     let 待渲染计时器 = 0;
 
     function 转义文本(值) {
@@ -278,6 +277,11 @@
         || (MVU模块列表.length > 0 && MVU模块列表.every(项目 => ['loaded', 'degraded', 'failed'].includes(项目.状态)));
       const 全部完成 = MVU追踪完成 && 状态.入口状态 === 'loaded' && 状态.模块完成 && 异常列表.length === 0;
       const 进度 = 模块列表.length ? Math.round((完成数 / 模块列表.length) * 100) : 100;
+      if (全部完成) {
+        已自动隐藏 = true;
+        面板.remove();
+        return;
+      }
       const 状态文本表 = {
         pending: '等待',
         loading: '加载中',
@@ -313,23 +317,8 @@
       `;
       面板.querySelector('.lwcs-load-close')?.addEventListener('click', () => {
         已手动关闭 = true;
-        if (隐藏计时器) clearTimeout(隐藏计时器);
         面板.remove();
       }, { once: true });
-
-      if (全部完成) {
-        if (!隐藏计时器) {
-          隐藏计时器 = setTimeout(() => {
-            const 当前面板 = 宿主文档.getElementById(面板ID);
-            if (当前面板?.dataset.session === 会话ID) 当前面板.remove();
-            已自动隐藏 = true;
-            隐藏计时器 = 0;
-          }, 900);
-        }
-      } else if (隐藏计时器) {
-        clearTimeout(隐藏计时器);
-        隐藏计时器 = 0;
-      }
     }
 
     const 接口 = {
@@ -344,10 +333,6 @@
         状态.最近错误 = '';
         已手动关闭 = false;
         已自动隐藏 = false;
-        if (隐藏计时器) {
-          clearTimeout(隐藏计时器);
-          隐藏计时器 = 0;
-        }
         宿主文档.getElementById(面板ID)?.remove();
         刷新面板();
       },
