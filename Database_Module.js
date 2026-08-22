@@ -9203,6 +9203,7 @@ $CONTENT
         const rawFrames = Array.isArray(index?.frames) ? index.frames : [];
         const live = [];
         const liveByKey = new Map();
+        const liveByContentPosition = new Map();
         let aiFloor = 0;
         for (let i = 0; i < chat.length; i += 1) {
             const message = chat[i];
@@ -9216,10 +9217,18 @@ $CONTENT
             const matches = liveByKey.get(key) || [];
             matches.push(meta);
             liveByKey.set(key, matches);
+            const contentPositionKey = `${meta.aiFloor}\u0000${meta.textHash}`;
+            const contentPositionMatches = liveByContentPosition.get(contentPositionKey) || [];
+            contentPositionMatches.push(meta);
+            liveByContentPosition.set(contentPositionKey, contentPositionMatches);
         }
         rawFrames.forEach((frame, order) => {
             const key = `${frame.localAnchor}\u0000${frame.textHash}\u0000${frame.messageFingerprint}`;
-            for (const meta of liveByKey.get(key) || [])
+            const exactMatches = liveByKey.get(key) || [];
+            const matches = exactMatches.length > 0
+                ? exactMatches
+                : (liveByContentPosition.get(`${frame.aiFloor}\u0000${frame.textHash}`) || []);
+            for (const meta of matches)
                 live.push({ ...frame, messageIndex: meta.messageIndex, aiFloor: meta.aiFloor, order });
         });
         live.sort((left, right) => left.messageIndex - right.messageIndex || left.order - right.order);
@@ -11113,7 +11122,7 @@ $CONTENT
         const extracted = extractTableEditInner_ACU(responseForParsing, { allowNoTableEditTags: true });
         if (!extracted || !extracted.inner) {
             logWarn_ACU('No recognizable table edit block found (missing <tableEdit> boundary and/or incomplete <!-- --> wrapper).');
-            return true;
+            return { success: false, modifiedKeys: [], appliedEdits: 0, error: 'AI响应中未找到可执行的 <tableEdit> 内容。' };
         }
         const editsString = extracted.inner.replace(/<!--|-->/g, '').trim();
         if (!editsString) {
@@ -11512,6 +11521,9 @@ $CONTENT
                     modifiedSheetKeys.push(sheetKey);
             }
         });
+        if (appliedEdits === 0 && finalCommandLines.length > 0) {
+            return { success: false, modifiedKeys: [], appliedEdits: 0, error: 'AI返回了表格编辑指令，但没有任何一条成功应用。' };
+        }
         return { success: true, modifiedKeys: modifiedSheetKeys, appliedEdits };
     }
     function parseAndApplyTableEdits_ACU(aiResponse, updateMode = 'standard', isImportMode = false) {
@@ -34104,10 +34116,11 @@ $CONTENT
                     tableEditText = (extracted.tableEditText || '').trim();
                 }
                 else {
-                    if (!aiResponse || !aiResponse.includes('<tableEdit>') || !aiResponse.includes('</tableEdit>')) {
+                    const extracted = extractTableEditInner_ACU(aiResponse, { allowNoTableEditTags: false });
+                    if (!extracted || typeof extracted.inner !== 'string') {
                         throw new Error('AI响应中未找到完整有效的 <tableEdit> 标签');
                     }
-                    tableEditText = (aiResponse.match(/<tableEdit>([\s\S]*?)<\/tableEdit>/i)?.[1] || '').trim();
+                    tableEditText = extracted.inner.replace(/<!--|-->/g, '').trim();
                 }
                 return { job, success: true, attempt, aiResponse: normalizedAiResponse, tableEditText };
             }
