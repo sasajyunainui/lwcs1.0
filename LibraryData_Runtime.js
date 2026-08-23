@@ -840,9 +840,20 @@
     }
     const query = String(nameOrAlias && typeof nameOrAlias === 'object' ? (nameOrAlias.规范名 || nameOrAlias.name || nameOrAlias.名称 || '') : nameOrAlias || '').trim();
     if (!query) return finish({ status: 'unresolved', recordId: null, candidates: [], reason: 'empty-query' });
-    const normalizedCurrentPath = Array.isArray(currentPath) ? currentPath : [];
-    const pathCandidates = meta.paths.get(pathKey(normalizedCurrentPath)) || [];
-    if (!explicitRecordId && pathCandidates.length && (query === normalizedCurrentPath.join('-') || query === normalizedCurrentPath.join('/') || query === normalizedCurrentPath[normalizedCurrentPath.length - 1])) {
+    const suppliedCurrentPath = Array.isArray(currentPath) ? currentPath.map(片段 => String(片段 || '').trim()).filter(Boolean) : [];
+    let normalizedCurrentPath = suppliedCurrentPath;
+    let pathCandidates = meta.paths.get(pathKey(normalizedCurrentPath)) || [];
+    if (!pathCandidates.length && normalizedCurrentPath.length > 1) {
+      for (let 起点 = 1; 起点 < suppliedCurrentPath.length; 起点 += 1) {
+        const 后缀路径 = suppliedCurrentPath.slice(起点);
+        const 后缀候选 = meta.paths.get(pathKey(后缀路径)) || [];
+        if (!后缀候选.length) continue;
+        normalizedCurrentPath = 后缀路径;
+        pathCandidates = 后缀候选;
+        break;
+      }
+    }
+    if (!explicitRecordId && pathCandidates.length && (query === suppliedCurrentPath.join('-') || query === suppliedCurrentPath.join('/') || query === normalizedCurrentPath.join('-') || query === normalizedCurrentPath.join('/') || query === normalizedCurrentPath[normalizedCurrentPath.length - 1])) {
       if (pathCandidates.length > 1) return finish({ status: 'conflict', recordId: null, candidates: pathCandidates, reason: 'path' });
       return finish({ status: 'resolved', recordId: pathCandidates[0], canonicalName: library.地点[pathCandidates[0]].规范名, path: library.地点[pathCandidates[0]].目标路径, candidates: pathCandidates, reason: 'path' });
     }

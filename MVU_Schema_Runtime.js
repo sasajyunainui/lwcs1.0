@@ -3036,10 +3036,17 @@ function 归一化角色死亡状态_V1(角色 = {}, 当前tick = 0) {
 function 应用内置势力实例化_V1(数据根 = {}, 选项 = {}) {
   const 档案阻断 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__.势力 === true;
   if (选项.禁止内置势力实例化 === true || 档案阻断) return { changed: false, changedNames: [], names: [], error: 'archive-unavailable' };
-  const 名称列表 = Array.isArray(选项.候选势力) ? 选项.候选势力 : [];
+  const 名称列表 = [
+    ...(Array.isArray(选项.候选势力) ? 选项.候选势力 : []),
+    ...Object.values(数据根?.char || {}).flatMap(角色 => Object.keys(
+      角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' && !Array.isArray(角色.社交.势力)
+        ? 角色.社交.势力
+        : {},
+    )),
+  ];
   if (!数据根 || typeof 数据根 !== 'object' || !名称列表.length) return { changed: false, changedNames: [], names: [] };
   const 运行时 = 读取库运行时_V1();
-  const 势力库 = 读取内置势力库_V1();
+  const 势力库 = 读取内置势力库_V1(数据根, Number(数据根?.world?.时间?.tick));
   if (!运行时 || typeof 运行时.resolveFaction !== 'function' || typeof 运行时.buildFactionInstance !== 'function' || !势力库) {
     记录库缺失错误_V1('势力', '势力库或库运行时缺失，已阻止新的势力实例化。');
     return { changed: false, changedNames: [], names: [], error: 'library-missing' };
@@ -3119,7 +3126,7 @@ function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
   const 档案阻断 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__.地点 === true;
   if (选项.禁止内置地点实例化 === true || 档案阻断) return { changed: false, changedNames: [], names: [], error: 'archive-unavailable' };
   const 运行时 = 读取库运行时_V1();
-  const 地点库 = 读取内置地点库_V1();
+  const 地点库 = 读取内置地点库_V1(数据根, Number(数据根?.world?.时间?.tick));
   const 当前位置 = 读取玩家当前位置_V1(数据根, 选项);
   const 名称列表 = Array.isArray(选项.候选地点) ? 选项.候选地点 : [];
   const 禁止地点记录ID = new Set(Array.isArray(选项.禁止地点记录ID) ? 选项.禁止地点记录ID.map(名称 => String(名称 || '').trim()).filter(Boolean) : []);

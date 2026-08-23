@@ -3029,9 +3029,14 @@ const 内置地点静态字段_V1 = new Set(['类型', '别名', '关键词', '�
 const 内置势力动态字段_V1 = new Set(['现状描述', '影响力', '规模', '状态', '上级势力', '关系', '战力统计']);
 const 内置地点动态字段_V1 = new Set(['现状描述', '掌控势力', '人口', '守护军团', '经济状况', '状态', 'x', 'y', '商店']);
 
-function 读取内置库环境_V1() {
+function 读取内置库环境_V1(数据根 = {}) {
   const 运行时 = 读取内置库运行时_V1();
-  return { 运行时, 势力库: 读取内置势力库_V1(), 地点库: 读取内置地点库_V1() };
+  const 当前tick = Number(数据根?.world?.时间?.tick);
+  return {
+    运行时,
+    势力库: 读取内置势力库_V1(数据根, 当前tick),
+    地点库: 读取内置地点库_V1(数据根, 当前tick),
+  };
 }
 
 function 解析内置地点补丁目标_V1(路径 = [], patch = {}, 环境 = {}) {
@@ -3172,7 +3177,7 @@ function 构建玩家位置地点实例化补丁_V1(根 = {}, 位置 = '', 环�
 }
 
 function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = {}) {
-  const 环境 = 读取内置库环境_V1();
+  const 环境 = 读取内置库环境_V1(根);
   const 档案阻断 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && typeof globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ === 'object'
     ? globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__
     : {};

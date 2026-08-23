@@ -182,14 +182,22 @@ function 暴露AIJsonPatch预处理接口_V1() {
 暴露AIJsonPatch预处理接口_V1();
 
 function 安装AIJsonPatch解析钩子_V1() {
-  const 宿主 = globalThis.Mvu || globalThis.window?.Mvu;
-  if (!宿主 || typeof 宿主.parseMessage !== 'function' || 宿主.__LWCS_AI_JSON_PATCH_PREPROCESS_WRAPPED__) return;
-  const 原解析 = 宿主.parseMessage.bind(宿主);
-  宿主.parseMessage = function parseMessageWithLwcsJsonPatchGuard(text, mvuData, ...args) {
-    const 修正文本 = 预处理AIJsonPatch文本_V1(text, mvuData || 获取最新运行时Mvu数据根_V1());
-    return 原解析(修正文本, mvuData, ...args);
-  };
-  宿主.__LWCS_AI_JSON_PATCH_PREPROCESS_WRAPPED__ = true;
+  const 候选窗口 = [globalThis];
+  try { if (globalThis.parent && globalThis.parent !== globalThis) 候选窗口.push(globalThis.parent); } catch (错误) {}
+  try { if (globalThis.top && globalThis.top !== globalThis && !候选窗口.includes(globalThis.top)) 候选窗口.push(globalThis.top); } catch (错误) {}
+  const 已处理接口 = new Set();
+  候选窗口.forEach(窗口 => {
+    let 宿主 = null;
+    try { 宿主 = 窗口?.Mvu; } catch (错误) {}
+    if (!宿主 || 已处理接口.has(宿主) || typeof 宿主.parseMessage !== 'function' || 宿主.__LWCS_AI_JSON_PATCH_PREPROCESS_WRAPPED__) return;
+    已处理接口.add(宿主);
+    const 原解析 = 宿主.parseMessage.bind(宿主);
+    宿主.parseMessage = function parseMessageWithLwcsJsonPatchGuard(text, mvuData, ...args) {
+      const 修正文本 = 预处理AIJsonPatch文本_V1(text, mvuData || 获取最新运行时Mvu数据根_V1());
+      return 原解析(修正文本, mvuData, ...args);
+    };
+    宿主.__LWCS_AI_JSON_PATCH_PREPROCESS_WRAPPED__ = true;
+  });
 }
 
 function 安装技能生成性能计数器_V1() {
