@@ -2103,21 +2103,6 @@
     return Object.fromEntries(魂骨倍率属性列表_桥接.map(属性 => [属性, Math.max(0, toNumber(来源[属性], 0))]));
   }
 
-  const 模块依赖映射 = Object.freeze({
-    交易网络: ['交易模块'],
-    交易模块弹窗: ['交易模块'],
-    当前节点详情: ['交易模块', '地图模块'],
-    图层控制与跑图: ['地图模块'],
-    全息星图主画布: ['地图模块'],
-    动态地点与扩展节点: ['地图模块'],
-    武装工坊详细页: ['副职业模块'],
-    副职业工坊: ['副职业模块'],
-    战斗终端: ['战斗模块'],
-    赛事: ['赛事权限模块'],
-    特殊权限: ['赛事权限模块'],
-  });
-  const 预览依赖任务表 = new Map();
-
   function 获取载入器候选窗口() {
     const 列表 = [window];
     try {
@@ -2143,89 +2128,6 @@
     }
     return null;
   }
-
-  function 读取模块状态(模块名) {
-    const 名称 = String(模块名 || '').trim();
-    if (!名称) return null;
-    for (const 目标窗口 of 获取载入器候选窗口()) {
-      const 状态表 = 目标窗口 && typeof 目标窗口 === 'object' ? 目标窗口.__LWCS_模块状态__ : null;
-      if (状态表 && typeof 状态表 === 'object' && 状态表[名称]) {
-        return 状态表[名称];
-      }
-    }
-    return null;
-  }
-
-  function 模块是否已加载(模块名) {
-    const 状态 = 读取模块状态(模块名);
-    return !!(状态 && 状态.状态 === 'loaded');
-  }
-
-  function 获取预览依赖模块列表(预览键) {
-    const 键 = String(预览键 || '').trim();
-    if (!键) return [];
-    if (键.startsWith('地图节点：')) return ['地图模块'];
-    return Array.isArray(模块依赖映射[键]) ? 模块依赖映射[键] : [];
-  }
-
-  async function 确保模块依赖已加载(模块名, 来源 = 'bridge') {
-    const 名称 = String(模块名 || '').trim();
-    if (!名称) return { ok: false, reason: 'empty_module_name' };
-    if (模块是否已加载(名称)) return { ok: true, 模块名: 名称, cached: true };
-    const 加载函数 = 读取窗口函数('__LWCS_确保模块已加载__');
-    if (typeof 加载函数 !== 'function') {
-      return { ok: false, 模块名: 名称, reason: 'loader_unavailable' };
-    }
-    try {
-      const 结果 = await Promise.resolve(加载函数(名称, { 来源, 允许失败降级: true }));
-      return 结果 && typeof 结果 === 'object'
-        ? 结果
-        : { ok: !!结果, 模块名: 名称, reason: 结果 ? '' : 'loader_returned_false' };
-    } catch (错误) {
-      return { ok: false, 模块名: 名称, reason: 错误 && 错误.message ? 错误.message : 'loader_exception', error: 错误 };
-    }
-  }
-
-  function 请求预热预览依赖(预览键, 来源 = 'preview_open') {
-    const 键 = String(预览键 || '').trim();
-    if (!键) return Promise.resolve({ ok: true, skipped: true });
-    const 任务键 = 键;
-    if (预览依赖任务表.has(任务键)) return 预览依赖任务表.get(任务键);
-
-    const 预览加载函数 = 读取窗口函数('__LWCS_确保预览依赖已加载__');
-    const 缺失模块列表 = 获取预览依赖模块列表(键).filter(模块名 => !模块是否已加载(模块名));
-    if (!预览加载函数 && !缺失模块列表.length) {
-      return Promise.resolve({ ok: true, skipped: true });
-    }
-
-    const 任务 = (async () => {
-      if (typeof 预览加载函数 === 'function') {
-        const 结果 = await Promise.resolve(预览加载函数(键, { 来源 }));
-        return 结果 && typeof 结果 === 'object'
-          ? 结果
-          : { ok: !!结果, 预览键: 键, reason: 结果 ? '' : 'preview_loader_failed' };
-      }
-      const 结果列表 = [];
-      for (const 模块名 of 缺失模块列表) {
-        const 结果 = await 确保模块依赖已加载(模块名, `${来源}:${键}`);
-        结果列表.push(结果);
-      }
-      return { ok: 结果列表.every(item => item && item.ok), 预览键: 键, results: 结果列表 };
-    })()
-      .catch(错误 => ({
-        ok: false,
-        预览键: 键,
-        reason: 错误 && 错误.message ? 错误.message : 'preview_loader_exception',
-        error: 错误,
-      }))
-      .finally(() => {
-        预览依赖任务表.delete(任务键);
-      });
-
-    预览依赖任务表.set(任务键, 任务);
-    return 任务;
-  }
-
   function formatCultivationLevelValue(value, fallback = '0') {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) {
@@ -5038,14 +4940,6 @@
       .find(接口 => 接口 && typeof 接口.open === 'function') || null;
   }
 
-  function 取冷归档模块加载器_桥接() {
-    return 取冷归档窗口列表_桥接()
-      .map(窗口 => {
-        try { return 窗口.__LWCS_确保模块已加载__; } catch (错误) { return null; }
-      })
-      .find(加载器 => typeof 加载器 === 'function') || null;
-  }
-
   function 创建冷归档状态错误_桥接(结果 = null, 默认错误 = 'cold_archive_unavailable') {
     const 错误码 = toText(结果 && (结果.error || 结果.state), 默认错误) || 默认错误;
     const 错误 = new Error(错误码);
@@ -5118,10 +5012,7 @@
       && 冷归档服务状态_桥接.generation === generation
     ) return 冷归档服务状态_桥接;
     if (冷归档服务状态_桥接.promise) return await 冷归档服务状态_桥接.promise;
-    const 加载器 = 取冷归档模块加载器_桥接();
-    if (typeof 加载器 !== 'function') throw new Error('冷归档存储模块加载器不可用。');
     const 当前承诺 = (async () => {
-      await 加载器.call(window, '冷归档存储', { 来源: 'cold_archive_first_use', 允许失败降级: false, 抛错: true });
       if (generation !== 冷归档服务状态_桥接.generation || chatKey !== 取当前聊天归档标识_桥接()) {
         const 错误 = new Error('STALE_CHAT');
         错误.code = 'STALE_CHAT';
@@ -39969,20 +39860,7 @@
           if (typeof window.mountProfessionUI === 'function') {
             return 挂载副职业工坊();
           }
-          挂载点.innerHTML = '<div class="dossier-empty-note">工坊模块加载中...</div>';
-          void 请求预热预览依赖('副职业工坊', 'profession_mount')
-            .then(() => {
-              if (!挂载点.isConnected) return;
-              if (typeof window.mountProfessionUI !== 'function') {
-                挂载点.innerHTML = '<div class="dossier-empty-note">工坊模块暂不可用</div>';
-                return;
-              }
-              挂载点.innerHTML = '';
-              activeSubUI = 挂载副职业工坊();
-            })
-            .catch(() => {
-              if (挂载点.isConnected) 挂载点.innerHTML = '<div class="dossier-empty-note">工坊模块加载失败</div>';
-            });
+          挂载点.innerHTML = '<div class="dossier-empty-note">工坊模块暂不可用</div>';
           return null;
         },
       };
@@ -42764,24 +42642,7 @@
             return 挂载交易面板();
           }
           container.innerHTML =
-            '<div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">交易模块</div></div><div class="dossier-empty-note">交易模块加载中...</div></div>';
-          void 请求预热预览依赖('交易网络', 'trade_preview_mount')
-            .then(() => {
-              if (!container.isConnected) return;
-              if (typeof window.mountTradeUI !== 'function') {
-                container.innerHTML =
-                  '<div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">交易模块</div></div><div class="dossier-empty-note">交易模块暂不可用</div></div>';
-                return;
-              }
-              container.innerHTML = '';
-              activeSubUI = 挂载交易面板();
-            })
-            .catch(() => {
-              if (container.isConnected) {
-                container.innerHTML =
-                  '<div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">交易模块</div></div><div class="dossier-empty-note">交易模块加载失败</div></div>';
-              }
-            });
+            '<div class="archive-card full"><div class="archive-card-head"><div class="archive-card-title">交易模块</div></div><div class="dossier-empty-note">交易模块暂不可用</div></div>';
           return null;
         },
       };
@@ -42813,20 +42674,7 @@
             });
           const 挂载函数名 = 是赛事 ? 'mountCompetitionUI' : 'mountPrivilegeUI';
           if (typeof window[挂载函数名] === 'function') return 挂载独立模块();
-          container.innerHTML = `<div class="cp-empty">${previewKey}模块加载中...</div>`;
-          void 请求预热预览依赖(是赛事 ? '赛事' : '特殊权限', 'competition_privilege_mount')
-            .then(() => {
-              if (!container.isConnected) return;
-              if (typeof window[挂载函数名] !== 'function') {
-                container.innerHTML = `<div class="cp-empty">${previewKey}模块暂不可用。</div>`;
-                return;
-              }
-              container.innerHTML = '';
-              activeSubUI = 挂载独立模块();
-            })
-            .catch(() => {
-              if (container.isConnected) container.innerHTML = `<div class="cp-empty">${previewKey}模块加载失败。</div>`;
-            });
+          container.innerHTML = `<div class="cp-empty">${previewKey}模块暂不可用。</div>`;
           return null;
         },
       };
@@ -43989,9 +43837,8 @@
     return true;
   };
   window.__MVU_OPEN_BATTLE_UI__ = async () => {
-    const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'open_battle_ui');
-    if (!模块加载结果 || 模块加载结果.ok === false) {
-      showUiToast('战斗模块加载失败，暂时无法开启战斗终端。', 'error', 4200);
+    if (typeof window.mountBattleUI !== 'function') {
+      showUiToast('战斗模块未就绪，暂时无法开启战斗终端。', 'error', 4200);
       return false;
     }
     battleInlineDismissed = false;
@@ -45615,10 +45462,6 @@ ${播报文本}
   }
 
   async function 确保自动战斗运行器(snapshot, combatData) {
-    const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'auto_battle_headless_runner');
-    if (!模块加载结果 || 模块加载结果.ok === false) {
-      return { ok: false, reason: '战斗模块加载失败。' };
-    }
     if (typeof window.mountBattleUI !== 'function') return { ok: false, reason: 'battle_mount_unavailable' };
     if (!自动战斗运行宿主 || !自动战斗运行宿主.isConnected) {
       自动战斗运行宿主 = document.createElement('div');
@@ -45695,8 +45538,7 @@ ${播报文本}
   }
 
   async function 挂载临时召唤夹具战斗UI() {
-    const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'summon_fixture');
-    if (!模块加载结果 || 模块加载结果.ok === false || typeof window.mountBattleUI !== 'function') {
+    if (typeof window.mountBattleUI !== 'function') {
       throw new Error('战斗模块未就绪');
     }
     const 原战斗UI = window.BattleUI;
@@ -47485,11 +47327,6 @@ ${播报文本}
           const latestCombatData = normalizeCombatForBattleUI(latestSnapshot);
           if (!latestCombatData || !latestCombatData.进行中 || !isSnapshotPlayerControlled(latestSnapshot)) return;
           const latestBattleUiSnapshot = buildBattleUiSnapshot(latestSnapshot, latestCombatData);
-          const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'battle_sync_mount');
-          if (!模块加载结果 || 模块加载结果.ok === false) {
-            showUiToast('战斗模块尚未就绪，暂时无法挂载战斗终端。', 'error', 4200);
-            return;
-          }
           if (!host || typeof window.mountBattleUI !== 'function') {
             showUiToast('战斗终端嵌入宿主未就绪，战斗模块未打开。', 'error', 4200);
             return;
@@ -47592,8 +47429,7 @@ ${播报文本}
     const combatData = buildMapBattleCombatData(snapshot, trialBattleDetail || dispatchDetail);
     if (!combatData || combatData.ok === false)
       return { ok: false, reason: combatData?.reason || 'combat_context_unresolved' };
-    const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'open_map_battle_module');
-    if (!模块加载结果 || 模块加载结果.ok === false) {
+    if (typeof window.mountBattleUI !== 'function') {
       return { ok: false, reason: '战斗模块加载失败。' };
     }
     const playerName = toText(combatData.参战者.team_player?.[0]?.name, '玩家');
@@ -48002,8 +47838,7 @@ ${播报文本}
     let 当前快照 = snapshot;
     let 战斗已接管 = deepGet(当前快照, 'rootData.world.战斗.进行中', false) === true;
     if (deepGet(当前快照, 'rootData.world.战斗.进行中', false)) {
-      const 模块加载结果 = await 确保模块依赖已加载('战斗模块', 'auto_battle_route_continuation');
-      if (!模块加载结果 || 模块加载结果.ok === false) {
+      if (typeof window.mountBattleUI !== 'function') {
         return { ok: false, reason: '战斗模块加载失败。', 已接管: 战斗已接管 };
       }
     } else {
@@ -48605,10 +48440,6 @@ ${播报文本}
   }
 
   async function buildInlineTradeAction(snapshot, tradeRequest) {
-    const 模块加载结果 = await 确保模块依赖已加载('交易模块', 'inline_trade_action');
-    if (!模块加载结果 || 模块加载结果.ok === false) {
-      return { ok: false, reason: 'trade_module_load_failed', detail: 模块加载结果 };
-    }
     if (typeof window.mountTradeUI !== 'function') {
       return { ok: false, reason: 'trade_ui_unavailable' };
     }
@@ -51531,7 +51362,6 @@ ${播报文本}
     }
 
     if (targetKey === PRIVATE_ARCHIVE_PREVIEW_KEY && !canOpenPrivateArchive(liveSnapshot)) return;
-    if (targetKey) void 请求预热预览依赖(targetKey, 'modal_open');
     if (targetKey) {
       if (!modalStack.length || modalStack[modalStack.length - 1] !== targetKey) {
         modalStack.push(targetKey);
@@ -52044,7 +51874,6 @@ ${播报文本}
     const targetKey = 归一化详情预览键(previewKey);
     if (!host || !targetKey) return false;
     if (targetKey === PRIVATE_ARCHIVE_PREVIEW_KEY && !canOpenPrivateArchive(liveSnapshot)) return false;
-    void 请求预热预览依赖(targetKey, 'unified_preview');
     if (shouldBlockInlineEditRerender(options)) {
       pendingLiveRefresh = true;
       return true;
@@ -52835,7 +52664,6 @@ ${播报文本}
       const nodeName = mapTravelBtn.getAttribute('data-map-travel-node') || '';
       let sheepMapBridge = window.__sheepMapBridge;
       if (!sheepMapBridge || typeof sheepMapBridge.travelToNode !== 'function') {
-        await 确保模块依赖已加载('地图模块', 'map_travel_action');
         sheepMapBridge = window.__sheepMapBridge;
       }
       if (!sheepMapBridge || typeof sheepMapBridge.travelToNode !== 'function') {

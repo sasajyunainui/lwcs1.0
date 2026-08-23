@@ -232,7 +232,7 @@ function 创建MVU资源所有者_V1() {
       const 候选地址 = 构建MVU候选资源地址列表_V1(文件名);
       let 代码文本 = '';
       const 错误列表 = [];
-      while (记录.fetchAttempts < 2) {
+      while (记录.fetchAttempts < 候选地址.length) {
         const 尝试序号 = 记录.fetchAttempts;
         记录.fetchAttempts += 1;
         地址 = 候选地址[Math.min(尝试序号, Math.max(候选地址.length - 1, 0))];
@@ -266,11 +266,22 @@ function 创建MVU资源所有者_V1() {
       (文档.body || 文档.documentElement).appendChild(脚本);
       if (!(await Promise.resolve(就绪检查()))) throw new Error(`MVU资源未暴露预期接口：${记录.relativePath}`);
     } else if (模式 === 'dynamic-import') {
-      地址 = 构建MVU候选资源地址列表_V1(文件名)[0];
-      记录.phase = 'execute';
-      记录.executionStarted = true;
-      记录.executeCount += 1;
-      模块 = await MVU请求超时_V1(import(地址), `导入 ${地址}`);
+      const 候选地址 = 构建MVU候选资源地址列表_V1(文件名);
+      const 错误列表 = [];
+      for (const 候选地址项 of 候选地址) {
+        地址 = 候选地址项;
+        记录.fetchAttempts += 1;
+        记录.phase = 'execute';
+        记录.executionStarted = true;
+        记录.executeCount += 1;
+        try {
+          模块 = await MVU请求超时_V1(import(地址), `导入 ${地址}`);
+          break;
+        } catch (错误) {
+          错误列表.push(`${地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
+        }
+      }
+      if (!模块) throw new Error(`MVU模块导入失败：${记录.relativePath} ${错误列表.join(' | ')}`);
     } else {
       throw new Error(`MVU资源执行模式无效：${模式}`);
     }
@@ -291,8 +302,12 @@ function 创建MVU资源所有者_V1() {
     if (已有记录) {
       if (已有记录.mode !== 模式) throw new Error(`MVU资源执行模式冲突：${key}`);
       if (已有记录.status === 'loaded') return Promise.resolve(Object.freeze({ key, commit, relativePath: 相对路径, mode: 模式, url: 已有记录.url || '', value: 已有记录.value || null, existing: 已有记录.phase === 'existing' }));
-      if (已有记录.promise) return 已有记录.promise;
-      return Promise.reject(已有记录.error || new Error(`MVU资源已失败：${key}`));
+      if (已有记录.status === 'failed') {
+        if (模式 !== 'dynamic-import' && 已有记录.executionStarted)
+          return Promise.reject(已有记录.error || new Error(`MVU资源执行失败，禁止重复执行：${key}`));
+        MVU资源所有者状态_V1.records.delete(key);
+      }
+      else if (已有记录.promise) return 已有记录.promise;
     }
     const 记录 = {
       key,

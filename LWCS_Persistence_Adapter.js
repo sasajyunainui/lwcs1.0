@@ -510,6 +510,31 @@
         }));
       };
 
+      session.setJsonBatch = async requests => {
+        if (backend !== 'tt-store') return failureMeta(session, 'unavailable', 'BATCH_WRITE_UNSUPPORTED');
+        if (!Array.isArray(requests) || requests.length === 0) throw new PersistenceAdapterError('REQUEST_INVALID', 'non-empty requests are required');
+        requests.forEach(request => assertRequest(request, true));
+        return enqueueMutation(session, () => run('mutation', async check => {
+          await Promise.all(requests.map(request => backendApi.setJson({
+            namespace: request.namespace,
+            key: request.key,
+            value: request.value,
+            stableChatId: session.stableChatId,
+          })));
+          check();
+          const readBack = await Promise.all(requests.map(request => backendApi.getJson({
+            namespace: request.namespace,
+            key: request.key,
+            stableChatId: session.stableChatId,
+          })));
+          check();
+          const mismatchIndex = requests.findIndex((request, index) => !jsonEqual(readBack[index], request.value) || !expectedFieldsMatch(readBack[index], request.verify));
+          if (mismatchIndex >= 0) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${mismatchIndex}`);
+          pinBackend(session);
+          return resultMeta(session, 'committed', { verified: true, count: requests.length });
+        }));
+      };
+
       session.listKeys = async request => {
         const normalized = request && typeof request === 'object' ? request : {};
         if (typeof normalized.namespace !== 'string' || normalized.namespace.length === 0) throw new PersistenceAdapterError('REQUEST_INVALID', 'namespace is required');

@@ -609,9 +609,18 @@
         const pendingResult = await rawSet(journalKey, pendingJournal, { commitId: bundle.commitId, revision: bundle.revision });
         if (pendingResult.state !== 'committed') return pendingResult;
 
-        for (const entry of prepared.preparedEntries) {
-          const entryResult = await rawSet(entry.physicalKey, entry.value);
-          if (entryResult.state !== 'committed') return entryResult;
+        if (session.backend === 'tt-store' && typeof session.setJsonBatch === 'function' && prepared.preparedEntries.length > 1) {
+          const batchResult = await invokeSession(session, 'setJsonBatch', prepared.preparedEntries.map(entry => ({
+            namespace: NAMESPACE,
+            key: entry.physicalKey,
+            value: entry.value,
+          })), true);
+          if (batchResult.state !== 'committed' || batchResult.verified !== true) return batchResult;
+        } else {
+          for (const entry of prepared.preparedEntries) {
+            const entryResult = await rawSet(entry.physicalKey, entry.value);
+            if (entryResult.state !== 'committed') return entryResult;
+          }
         }
 
         const committedJournal = { ...pendingJournal, status: 'committed' };

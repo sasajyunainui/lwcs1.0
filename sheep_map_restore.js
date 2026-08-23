@@ -27,6 +27,10 @@
         地图卸载函数列表.pop()();
       } catch (错误) {}
     }
+    try {
+      const hub = window.__dragonUiSharedMvuRefreshHub;
+      if (hub && typeof hub.stopBindings === 'function') hub.stopBindings();
+    } catch (错误) {}
     window.__sheepMapRestoreLoaded = false;
   };
 
@@ -1738,6 +1742,7 @@
       },
 
       async dispatch(...args) {
+        if (subscribers.size === 0) return;
         lastTriggerArgs = args;
         if (running) {
           pending = true;
@@ -1775,6 +1780,8 @@
         const eventName = host && host.events ? host.events.VARIABLE_UPDATE_ENDED : '';
         let bound = false;
         const triggerFromEvent = (...args) => hub.trigger({ source: 'event', eventName }, ...args);
+        hub.触发函数 = triggerFromEvent;
+        hub.事件名 = eventName;
 
         if (host && eventName && typeof host.on === 'function') {
           try {
@@ -1827,15 +1834,49 @@
         }
       },
 
+      stopBindings() {
+        if (hub.刷新轮询计时器) {
+          window.clearInterval(hub.刷新轮询计时器);
+          hub.刷新轮询计时器 = null;
+        }
+        if (hub.可见性处理函数) {
+          document.removeEventListener('visibilitychange', hub.可见性处理函数);
+          hub.可见性处理函数 = null;
+        }
+        if (hub.聚焦处理函数) {
+          window.removeEventListener('focus', hub.聚焦处理函数);
+          hub.聚焦处理函数 = null;
+        }
+        const 解绑事件 = () => {
+          const 触发函数 = hub.触发函数;
+          const 事件名 = hub.事件名;
+          if (!触发函数 || !事件名) return;
+          try { window.removeEventListener(事件名, 触发函数); } catch (_) {}
+          try { if (window.top && window.top !== window) window.top.removeEventListener(事件名, 触发函数); } catch (_) {}
+          try { document.removeEventListener(事件名, 触发函数); } catch (_) {}
+          const 宿主 = getMvuHost();
+          if (宿主) {
+            try { if (typeof 宿主.off === 'function') 宿主.off(事件名, 触发函数); } catch (_) {}
+            try { if (typeof 宿主.removeEventListener === 'function') 宿主.removeEventListener(事件名, 触发函数); } catch (_) {}
+          }
+        };
+        解绑事件();
+        hub.触发函数 = null;
+        hub.事件名 = null;
+        bindingsReady = false;
+      },
+
       subscribe(subscriberId, handler, options = {}) {
         if (!subscriberId || typeof handler !== 'function') return () => {};
+        const 首次订阅 = subscribers.size === 0;
         subscribers.set(subscriberId, { handler });
-        hub.ensureBindings();
+        if (首次订阅) hub.ensureBindings();
         if (options.immediate !== false) {
           hub.trigger({ source: 'subscribe', subscriberId });
         }
         return () => {
           subscribers.delete(subscriberId);
+          if (subscribers.size === 0) hub.stopBindings();
         };
       }
     };

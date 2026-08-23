@@ -4422,18 +4422,26 @@ $CONTENT
         await SillyTavern_API_ACU.deleteLastMessage();
     }
     /**
-     * 通过宿主 API 更新聊天消息内容
-     * @param messages 要更新的消息数组（包含 message_id、mes、extra 等字段）
+     * 通过 Tavern Helper 正式接口更新并回读聊天楼层。
+     * @param messages 要更新的消息数组（包含 message_id、message、extra 等字段）
      * @param options 更新选项（如 { refresh: 'affected' }）
-     * 内置存在性检查，setChatMessages 不可用时返回 false
-     * @returns 是否成功调用了 setChatMessages
+     * @returns 写入并回读一致时返回 true
      */
     async function setChatMessages_ACU(messages, options) {
-        if (typeof SillyTavern_API_ACU?.setChatMessages !== 'function') {
+        if (typeof TavernHelper_API_ACU?.setChatMessages !== 'function') {
             logWarn_ACU('[ChatGateway] setChatMessages 不可用');
             return false;
         }
-        await SillyTavern_API_ACU.setChatMessages(messages, options);
+        await TavernHelper_API_ACU.setChatMessages(messages, options);
+        for (const patch of messages) {
+            const [readback] = await getChatMessages_ACU(patch.message_id, { include_swipes: false });
+            if (!readback)
+                throw new Error(`CHAT_MESSAGE_READBACK_MISSING:${patch.message_id}`);
+            if (Object.prototype.hasOwnProperty.call(patch, 'message') && String(readback.message ?? '') !== String(patch.message ?? ''))
+                throw new Error(`CHAT_MESSAGE_READBACK_MISMATCH:${patch.message_id}`);
+            if (Object.prototype.hasOwnProperty.call(patch, 'extra') && !saveVerificationValuesEqual_ACU(readback.extra, patch.extra))
+                throw new Error(`CHAT_MESSAGE_EXTRA_READBACK_MISMATCH:${patch.message_id}`);
+        }
         return true;
     }
     /**
@@ -19142,7 +19150,7 @@ $CONTENT
                     return 战斗裁断内容 ? `<battle_adjudication>${战斗裁断内容}</battle_adjudication>` : '';
                 })
                 .filter(Boolean);
-            const 阶段已有战斗裁断 = 阶段战斗裁断块列表.length > 0;
+            let 阶段战斗裁断已接管 = false;
             for (const 阶段战斗裁断文本 of 阶段战斗裁断块列表) {
                 const 战斗裁断执行键 = hashUserInput_ACU(阶段战斗裁断文本);
                 if (本轮模块路由执行键集合.has(战斗裁断执行键))
@@ -19154,6 +19162,8 @@ $CONTENT
                     originalUserInput: historyAnchorText,
                     userInput: historyAnchorText,
                 });
+                if (战斗裁断决定?.result?.handled === true)
+                    阶段战斗裁断已接管 = true;
                 const 事件文本 = 规范化模块路由运行事件文本_ACU(战斗裁断决定);
                 if (事件文本) {
                     本轮模块路由事件列表.push(事件文本);
@@ -19169,7 +19179,7 @@ $CONTENT
                 }
             }
             for (const 阶段模块路由文本 of 阶段模块路由块列表) {
-                if (阶段已有战斗裁断 && /<module_routing>\s*模块：\s*battle\b/i.test(阶段模块路由文本)) {
+                if (阶段战斗裁断已接管 && /<module_routing>\s*模块：\s*battle\b/i.test(阶段模块路由文本)) {
                     logDebug_ACU('[剧情推进] 本阶段已应用战斗裁断，跳过 battle 模块路由重入。');
                     continue;
                 }
@@ -20684,16 +20694,21 @@ $CONTENT
                 generationGate_ACU.lastGeneration = null;
                 generationGate_ACU.正文后置上下文 = null;
                 重置生成结束运行时状态_ACU();
-                return;
+                return { changed: true, active: false };
             }
             logWarn_ACU(`ACU: Received invalid chat file name: "${chatFileName}". This can happen after an update error. Ignoring event to preserve current state.`);
             // 保持当前状态不变，防止数据库被意外清除
-            return;
+            return { changed: false, ignored: true };
+        }
+        const normalizedChatFileName_ACU = cleanChatName_ACU(chatFileName);
+        if (normalizedChatFileName_ACU && normalizedChatFileName_ACU === currentChatFileIdentifier_ACU) {
+            logDebug_ACU(`ACU: Ignore duplicate CHAT_CHANGED for current chat: "${normalizedChatFileName_ACU}"`);
+            return { changed: false, sameChat: true, chatId: normalizedChatFileName_ACU };
         }
         logDebug_ACU(`ACU: Resetting script state for new chat: "${chatFileName}"`);
         invalidateDatabasePersistence_ACU();
         // 直接使用有效的 chatFileName，不再需要调用 /getchatname 或其他回退逻辑。
-        _set_currentChatFileIdentifier_ACU(cleanChatName_ACU(chatFileName));
+        _set_currentChatFileIdentifier_ACU(normalizedChatFileName_ACU);
         // [FIX] Reload all settings to ensure template is not stale for new chats.
         // MUST be called AFTER setting currentChatFileIdentifier_ACU so it loads the correct character settings.
         loadSettings_ACU();
@@ -20715,6 +20730,7 @@ $CONTENT
         // updateCardUpdateStatusDisplay 由 presentation 层的 init.ts CHAT_CHANGED 回调执行
         // [修复] 加载完成后，延迟检查并强制清理角色卡绑定世界书（如果设置了注入到其他目标）
         enforceCleanupOfCharacterWorldbook_ACU();
+        return { changed: true, active: true, chatId: normalizedChatFileName_ACU };
     }
     // [新增] 获取数据注入目标世界书的函数
     async function getInjectionTargetLorebook_ACU() {
@@ -23957,22 +23973,13 @@ $CONTENT
             });
             const 当前内容 = chat[messageIndex]?.mes ?? oldContent;
             const 写回内容 = 保留正文后端块_ACU(newContent, 当前内容);
-            // 使用酒馆的 setChatMessages API 来更新消息内容，确保渲染及时生效
-            const success = await setChatMessages_ACU([{ message_id: chat[messageIndex].message_id, mes: 写回内容, extra: extra }], { refresh: 'affected' });
-            if (success) {
-                logDebug_ACU('[正文优化] 消息已通过 setChatMessages API 更新');
-            }
-            else {
-                // 降级方案：如果 setChatMessages 不可用，使用原有逻辑
-                logDebug_ACU('[正文优化] setChatMessages API 不可用，使用降级方案...');
-                chat[messageIndex].mes = 写回内容;
-                chat[messageIndex].extra = extra;
-                const verifyContent = chat[messageIndex].mes;
-                logDebug_ACU(`[正文优化] 修改后验证 - 内容长度: ${verifyContent?.length || 0}, 是否匹配: ${verifyContent === 写回内容}`);
-                await saveChatToHost_ACU();
-                logDebug_ACU('[正文优化] 聊天已保存');
-                emitMessageUpdated_ACU(messageIndex);
-            }
+            const messageId = Number.isInteger(Number(chat[messageIndex].message_id))
+                ? Number(chat[messageIndex].message_id)
+                : messageIndex;
+            const success = await setChatMessages_ACU([{ message_id: messageId, message: 写回内容, extra }], { refresh: 'affected' });
+            if (!success)
+                throw new Error('CHAT_MESSAGE_WRITE_API_UNAVAILABLE');
+            logDebug_ACU('[正文优化] 消息已通过 setChatMessages API 更新并完成回读验证');
             logDebug_ACU(`[正文优化] 消息 ${messageIndex} 已更新完成`);
             return true;
         }
@@ -53000,32 +53007,6 @@ $CONTENT
     // ============================================================
     // 核心业务函数
     // ============================================================
-    /**
-     * 判断 TavernHelper.generate 钩子是否应该进行剧情规划
-     * 纯业务逻辑
-     */
-    function shouldProcessTavernHelperHook_ACU(options) {
-        if (!settings_ACU.plotSettings.enabled || isProcessing_Plot_ACU || loopState_ACU.isRetrying || options.should_stream) {
-            return false;
-        }
-        if (options?._qrf_processed_by_hook || options?._qrf_processed_by_after_commands) {
-            return false;
-        }
-        const hookMessage = extractUserMessageFromOptions_ACU(options);
-        if (shouldSkipPlotIntercept_ACU(hookMessage)) {
-            logDebug_ACU('[剧情推进] Skip TavernHelper.generate due to recent plot interception.');
-            return false;
-        }
-        return true;
-    }
-    /**
-     * 从 TavernHelper.generate 的 options 中提取用户消息
-     * 纯业务逻辑
-     */
-    function extractUserMessageFromOptions_ACU(options) {
-        const userMessage = options?.user_input ?? options?.prompt;
-        return typeof userMessage === 'string' && userMessage.trim() ? userMessage : null;
-    }
     function 标记AfterCommands已接管剧情推进_ACU(params) {
         if (params && typeof params === 'object') {
             params._qrf_processed_by_after_commands = true;
@@ -53061,36 +53042,6 @@ $CONTENT
         }
     }
     /**
-     * 处理规划结果并决定如何写回 TavernHelper.generate 的 options
-     * 纯业务逻辑：返回应该写回的位置和内容
-     */
-    async function applyPlanningResultToOptions_ACU(options, finalMessage, userMessage = '', runtimePlotText = '', 时间推进上下文 = null) {
-        const 正文生成指导 = String(finalMessage || '').trim();
-        const 用户输入文本 = String(userMessage || '');
-        const 过滤后用户输入文本 = await 套用酒馆Prompt正则_ACU(用户输入文本, 'user');
-        const 过滤后最后角色消息文本 = await 套用酒馆Prompt正则_ACU(getLatestAIMessageContent_ACU(), 'ai');
-        const 运行时数据 = await 准备正文生成运行时数据_ACU(
-            过滤后用户输入文本,
-            runtimePlotText || '',
-            正文生成指导,
-            用户输入文本,
-            时间推进上下文,
-        );
-        const 替换后正文生成指导 = await 处理剧情推进提示词运行时内容_ACU(正文生成指导, {
-            viewType: 'story',
-            statData: 运行时数据 || undefined,
-            userInput: 过滤后用户输入文本,
-            lastCharMessage: 过滤后最后角色消息文本,
-            plotText: runtimePlotText || 正文生成指导,
-            captureText: [过滤后用户输入文本, 过滤后最后角色消息文本].filter(Boolean).join('\n'),
-            时间推进上下文,
-        });
-        if (typeof options?.prompt === 'string' && options.prompt.trim()) {
-            return { target: 'prompt', value: 替换后正文生成指导, statData: 运行时数据 || null };
-        }
-        return { target: 'user_input', value: 替换后正文生成指导, statData: 运行时数据 || null };
-    }
-    /**
      * 处理循环模式下规划失败的情况
      * 纯业务逻辑
      * @returns true 表示应该进入重试流程
@@ -53117,91 +53068,6 @@ $CONTENT
         lastMessage._qrf_plot_pending_hash = originalInputHash;
         logDebug_ACU('[剧情推进] [Plot] 在消息对象上保存原始输入哈希:', originalInputHash);
         return { messageToProcess, originalInputHash };
-    }
-    // ============================================================
-    // TavernHelper.generate hook 编排
-    // ============================================================
-    /**
-     * TavernHelper.generate hook 的完整业务编排
-     *
-     * 职责：判断是否处理 → 提取用户消息 → 标记拦截 → 调用规划 → 判断循环重试 → 决定写回位置
-     * 不负责：修改 options 对象、调用原始 generate 函数（这些由 presentation 层做）
-     */
-    async function orchestrateTavernHelperHook_ACU(options, runPlanning) {
-        // 1. 判断是否应该处理
-        if (!shouldProcessTavernHelperHook_ACU(options)) {
-            return { action: 'passthrough' };
-        }
-        // 2. 提取用户消息
-        const userMessage = extractUserMessageFromOptions_ACU(options);
-        if (!userMessage) {
-            return { action: 'passthrough' };
-        }
-        const runtimeSystemMessages = 构建剧情推进运行时系统消息_ACU(options);
-        // 3. 标记拦截（供 GENERATION_AFTER_COMMANDS 去重）
-        markPlotIntercept_ACU(userMessage);
-        // 4. 调用规划
-        _set_isProcessing_Plot_ACU(true);
-        try {
-            const finalMessage = await runPlanning(userMessage, {
-                originalUserInput: userMessage,
-                hasExistingUserMessage: false,
-                systemMessages: runtimeSystemMessages,
-            });
-            // 5. 处理跳过
-            if (finalMessage && finalMessage.skipped) {
-                logDebug_ACU('[剧情推进] Planning skipped in TavernHelper.generate hook (duplicate).');
-                return { action: 'skipped' };
-            }
-            // 6. 处理中止
-            if (finalMessage && finalMessage.aborted) {
-                logDebug_ACU('[剧情推进] Generation aborted by user.');
-                return { action: 'aborted' };
-            }
-            if (finalMessage && finalMessage.blocked) {
-                logWarn_ACU(`[剧情推进] Planning blocked generation in TavernHelper.generate hook. reason=${finalMessage.reason || 'unknown'}`);
-                return { action: 'blocked', reason: finalMessage.reason || 'blocked', errorMessage: finalMessage.errorMessage || '' };
-            }
-            // 7. 判断循环模式下规划失败
-            if (shouldEnterLoopRetryOnPlanningFailure_ACU(finalMessage)) {
-                logWarn_ACU('[剧情推进] [Loop] 规划未产生有效回复，按循环重试规则重试。');
-                return { action: 'loop_retry' };
-            }
-            // 8. 规划成功，决定写回位置
-            const 正文指令文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.finalMessage || '') : '');
-            const 完整规划文本 = typeof finalMessage === 'string' ? finalMessage : (finalMessage?.planned ? String(finalMessage.runtimePlotText || finalMessage.finalMessage || '') : '');
-            if (正文指令文本) {
-                const 运行时生成决定 = await 确认剧情推进运行时生成前置_ACU(完整规划文本, {
-                    originalUserInput: userMessage,
-                    userInput: userMessage,
-                    时间推进上下文: finalMessage?.时间推进上下文 || null,
-                });
-                if (运行时生成决定.action === 'blocked') {
-                    return { action: 'blocked', reason: 运行时生成决定.reason || 'runtime_generation_blocked', userMessage };
-                }
-                const visibleMessage = sanitizePlanningVisibleOutput_ACU(正文指令文本);
-                const finalMessageForGeneration = String(正文指令文本 || '').trim();
-                const writeBack = await applyPlanningResultToOptions_ACU(
-                    options,
-                    finalMessageForGeneration,
-                    userMessage,
-                    完整规划文本,
-                    finalMessage?.时间推进上下文 || null,
-                );
-                markPlotIntercept_ACU(userMessage);
-                markPlotIntercept_ACU(finalMessageForGeneration);
-                return { action: 'planned', finalMessage: finalMessageForGeneration, visibleMessage, runtimePlotText: 完整规划文本, transientStoryInjects: finalMessage?.transientStoryInjects || [], writeBack, userMessage };
-            }
-            // 9. 规划返回 null（未启用/失败），透传
-            return { action: 'passthrough' };
-        }
-        catch (error) {
-            logError_ACU('[剧情推进] Error in TavernHelper.generate hook orchestration:', error);
-            return { action: 'passthrough' };
-        }
-        finally {
-            _set_isProcessing_Plot_ACU(false);
-        }
     }
     // ============================================================
     // GENERATION_AFTER_COMMANDS 策略1编排
@@ -54196,15 +54062,16 @@ $CONTENT
                         clearRuntimeForNoActiveChat_ACU(chatFileName);
                         return;
                     }
-                    // [修复] 换卡/换聊天时立即丢弃所有派生缓存。
-                    // 后续延迟阶段只从当前聊天持久化 metadata / 消息日志重建，避免旧表和旧模板在窗口期继续显示。
+                    const resetResult_ACU = await resetScriptStateForNewChat_ACU(chatFileName);
+                    if (!resetResult_ACU?.changed)
+                        return;
+                    // 换卡/换聊天时丢弃派生缓存；同一聊天的重复事件不会再清空数据库。
                     if (hasValidChatFileName_ACU) {
                         clearDerivedRuntimeState_ACU();
                         notifyRuntimeTableCleared_ACU();
                         if (isSqliteMode())
                             logDebug_ACU('[SQLite] CHAT_CHANGED: 立即销毁旧数据库实例');
                     }
-                    await resetScriptStateForNewChat_ACU(chatFileName);
                     // [触发门控] generationGate 重置已搬到 service 层的 resetScriptStateForNewChat_ACU 中
                     // [触发门控] 每次切换聊天都尝试安装一次 capture 钩子（防止 DOM 重新渲染导致丢失）          installSendIntentCaptureHooks_ACU();
                     // [剧情推进] 切换聊天时停止循环并加载预设
@@ -54213,65 +54080,6 @@ $CONTENT
                         showToastr_ACU('info', '切换聊天，自动化循环已停止。');
                     }
                     await loadPresetAndCleanCharacterData_ACU();
-                    // [剧情推进] TavernHelper钩子：拦截直接的JS调用
-                    if (!window.original_TavernHelper_generate_ACU) {
-                        if (window.TavernHelper && typeof window.TavernHelper.generate === 'function') {
-                            window.original_TavernHelper_generate_ACU = window.TavernHelper.generate;
-                            window.TavernHelper.generate = async function (...args) {
-                                const options = args[0] || {};
-                                // quiet/automatic_trigger 直接透传
-                                if (isQuietLikeGeneration_ACU('tavernhelper', { quiet_prompt: options.quiet_prompt }) || options.automatic_trigger) {
-                                    return window.original_TavernHelper_generate_ACU.apply(this, args);
-                                }
-                                const userInputForInitialSeed = String(options.user_input || options.prompt || '').trim();
-                                if (userInputForInitialSeed) {
-                                    await ensureInitialSeedCheckpointBeforeGeneration_ACU('tavernhelper_generate_before_ai', { allowPendingFirstUserMessage: true });
-                                }
-                                if (userInputForInitialSeed && shouldProcessSummaryVectorIndexForGeneration_ACU('tavernhelper', { quiet_prompt: options.quiet_prompt, automatic_trigger: options.automatic_trigger }, false)) {
-                                    const userInput = String(options.user_input || options.prompt || '').trim();
-                                    const summaryVectorResult = await processSummaryVectorIndexBeforeGenerationWithUI_ACU({ userInput, source: 'tavernhelper' });
-                                    logDebug_ACU(`[交火模式纪要索引] TavernHelper.generate 发送前处理完成：success=${summaryVectorResult.success}, skipped=${summaryVectorResult.skipped === true}, reason=${summaryVectorResult.reason || 'none'}, keywords=${summaryVectorResult.keywordCount ?? 0}, injected=${summaryVectorResult.injectedCount ?? 0}`);
-                                }
-                                // [重构] 调用 service 层编排函数，传入 UI 规划回调
-                                const result = await orchestrateTavernHelperHook_ACU(options, runOptimizationLogicWithUI_ACU);
-                                switch (result.action) {
-                                    case 'loop_retry': {
-                                        options._qrf_processed_by_hook = true;
-                                        const loopSettings = settings_ACU.plotSettings.loopSettings || DEFAULT_PLOT_SETTINGS_ACU.loopSettings;
-                                        loopState_ACU.awaitingReply = false;
-                                        await enterLoopRetryFlow_ACU({ loopSettings, shouldDeleteAiReply: false });
-                                        return;
-                                    }
-                                    case 'planned': {
-                                        // UI 操作：写回 options
-                                        if (result.writeBack) {
-                                            if (result.writeBack.target === 'prompt') {
-                                                options.prompt = result.writeBack.value;
-                                            }
-                                            else {
-                                                options.user_input = result.writeBack.value;
-                                            }
-                                        }
-                                        const 正文运行时上下文 = {
-                                            userInput: result.userMessage || '',
-                                            statData: result.writeBack?.statData || null,
-                                        };
-                                        追加正文运行时注入_ACU(options, 正文运行时上下文);
-                                        追加剧情推进临时正文注入_ACU(options, result.transientStoryInjects || []);
-                                        options._qrf_processed_by_hook = true;
-                                        break;
-                                    }
-                                    case 'blocked': {
-                                        options._qrf_processed_by_hook = true;
-                                        return;
-                                    }
-                                    // 'passthrough', 'skipped', 'aborted' — 不做额外操作，直接透传
-                                }
-                                return await window.original_TavernHelper_generate_ACU.apply(this, args);
-                            };
-                            logDebug_ACU('[剧情推进] TavernHelper.generate hook registered.');
-                        }
-                    }
                     // [新增] 切换角色卡（聊天）时，强制从新聊天记录的本地数据读取最新的表格并刷新UI
                     logDebug_ACU('ACU: Chat changed, forcing reload of table data from new chat history.');
                     const scheduledChatIdentifier_ACU = cleanChatName_ACU(chatFileName);
@@ -54352,8 +54160,6 @@ $CONTENT
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS, async (type, params, dryRun) => {
                         // 前置过滤（纯 UI/宿主层判断）
-                        if (params?._qrf_processed_by_hook)
-                            return;
                         const shouldProcessSummaryVectorIndex = shouldProcessSummaryVectorIndexForGeneration_ACU(type, params, dryRun);
                         const shouldProcessPlot = shouldProcessPlotForGeneration_ACU(type, params, dryRun);
                         const shouldEnsureInitialSeed = !dryRun
@@ -54437,18 +54243,30 @@ $CONTENT
                                     break;
                                 case 'planned':
                                     标记AfterCommands已接管剧情推进_ACU(params);
-                                    // 写回 params 和消息对象
-                                    params.prompt = s1.finalMessage;
-                                    const 正文运行时上下文 = {
-                                        userInput: s1.originalMessage || '',
-                                        statData: s1.statData || null,
-                                    };
-                                    追加正文运行时注入_ACU(params, 正文运行时上下文);
-                                    追加剧情推进临时正文注入_ACU(params, s1.transientStoryInjects || []);
-                                    lastMessage.mes = s1.visibleMessage || s1.finalMessage;
-                                    emitMessageUpdated_ACU(lastMessageIndex);
-                                    if (getSendTextareaValue_ACU() === s1.originalMessage)
-                                        setSendTextareaValue_ACU('');
+                                    try {
+                                        const messageId = Number.isInteger(Number(lastMessage.message_id))
+                                            ? Number(lastMessage.message_id)
+                                            : lastMessageIndex;
+                                        const visibleMessage = s1.visibleMessage || s1.finalMessage;
+                                        const written = await setChatMessages_ACU([{ message_id: messageId, message: visibleMessage }], { refresh: 'affected' });
+                                        if (!written)
+                                            throw new Error('CHAT_MESSAGE_WRITE_API_UNAVAILABLE');
+                                        params.prompt = s1.finalMessage;
+                                        const 正文运行时上下文 = {
+                                            userInput: s1.originalMessage || '',
+                                            statData: s1.statData || null,
+                                        };
+                                        追加正文运行时注入_ACU(params, 正文运行时上下文);
+                                        追加剧情推进临时正文注入_ACU(params, s1.transientStoryInjects || []);
+                                        if (getSendTextareaValue_ACU() === s1.originalMessage)
+                                            setSendTextareaValue_ACU('');
+                                        logDebug_ACU(`[剧情推进] 汇总已写入用户楼层 ${messageId}，继续正文生成。`);
+                                    }
+                                    catch (error) {
+                                        logError_ACU('[剧情推进] 汇总写入用户楼层失败，已停止本次正文生成:', error);
+                                        showToastr_ACU('error', '剧情推进汇总未能写入用户楼层，本次正文生成已停止。', '剧情推进');
+                                        stopGeneration_ACU();
+                                    }
                                     break;
                                 case 'blocked':
                                     标记AfterCommands已接管剧情推进_ACU(params);
@@ -54557,7 +54375,11 @@ $CONTENT
             // [修复] 添加轮询重试机制：如果 chatId 暂时不可用，持续轮询直到可用
             const initWithChatId = async (chatId) => {
                 logDebug_ACU(`ACU: Initializing with current chat on load: ${chatId}`);
-                await resetScriptStateForNewChat_ACU(chatId);
+                const resetResult_ACU = await resetScriptStateForNewChat_ACU(chatId);
+                if (!resetResult_ACU?.changed) {
+                    logDebug_ACU(`ACU: Startup initialization skipped because chat "${cleanChatName_ACU(chatId)}" is already being handled.`);
+                    return;
+                }
                 await loadPresetAndCleanCharacterData_ACU();
                 // 再次强制刷新数据和UI，确保初始加载时表格显示正确
                 await loadAllChatMessages_ACU();
@@ -54580,8 +54402,13 @@ $CONTENT
                 }
             };
             if (SillyTavern_API_ACU && SillyTavern_API_ACU.chatId) {
-                // 当前聊天已经可用时直接初始化；后续换聊天由 CHAT_CHANGED 驱动。
-                void initWithChatId(SillyTavern_API_ACU.chatId);
+                const startupChatId_ACU = cleanChatName_ACU(SillyTavern_API_ACU.chatId);
+                if (startupChatId_ACU !== currentChatFileIdentifier_ACU) {
+                    // 当前聊天已经可用时直接初始化；后续换聊天由 CHAT_CHANGED 驱动。
+                    void initWithChatId(SillyTavern_API_ACU.chatId).catch(error => {
+                        logError_ACU('[DatabaseBootstrap] 当前聊天初始化失败:', error);
+                    });
+                }
             }
             else {
                 // 没有当前聊天时只等待宿主的 CHAT_CHANGED，不启动轮询。

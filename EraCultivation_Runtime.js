@@ -331,12 +331,16 @@
     const naturalCap = finalLevelCap(char, options);
     const levelCap = Number.isFinite(Number(options.levelCap)) ? Number(options.levelCap) : NO_SOUL_CORE_GATE;
     const cap = Math.min(naturalCap, levelCap);
+    const nonCultivationSoulPowerBonus = Math.max(0, finite(options.nonCultivationSoulPowerBonus, 0));
     let level = Math.max(0, finite(char.属性.等级, 0));
     let advanced = 0;
     while (level < cap) {
       const next = nextLevel(level);
       if (next === null || next > cap || requiredCoreCountForLevel(era, next) > coreCount) break;
-      if (finite(char.属性.魂力上限, 0) < soulPowerRequirement(next, variation) * requirementMultiplier) break;
+      if (
+        Math.max(0, finite(char.属性.魂力上限, 0) - nonCultivationSoulPowerBonus)
+        < soulPowerRequirement(next, variation) * requirementMultiplier
+      ) break;
       level = next;
       advanced += 1;
     }
@@ -470,6 +474,7 @@
     let coresCompleted = 0;
     let levelsAdvanced = 0;
     let guard = 0;
+    const nonCultivationSoulPowerBonus = Math.max(0, finite(options.nonCultivationSoulPowerBonus, 0));
     while (remaining > 0 && guard < 200000 && isNaturalCultivationAllowed(char, { ...options, levelOverride: char?.属性?.等级 })) {
       guard += 1;
       const startLevelAdvance = advanceNaturalLevel(char, options).advanced;
@@ -487,6 +492,7 @@
           ? soulPowerRequirement(level, baseVariation(char, options.baseVariation)) * requirementMultiplier
             + Math.max(0, soulPowerRequirement(next, baseVariation(char, options.baseVariation)) * requirementMultiplier
               - soulPowerRequirement(level, baseVariation(char, options.baseVariation)) * requirementMultiplier) * 0.7
+            + nonCultivationSoulPowerBonus
           : Number.POSITIVE_INFINITY;
         const nextValue = Math.max(current, Math.min(storageCap, current + growth));
         char.属性.魂力上限 = nextValue;

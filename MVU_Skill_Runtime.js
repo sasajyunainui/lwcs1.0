@@ -1606,7 +1606,10 @@ function autoBreakthrough(data) {
       const nextLevelStep = getNextCultivationLevelStep(currentLv);
       if (nextLevelStep === null) return;
 
-      const baseSoulPowerForBreakthrough = Math.max(0, Math.floor(Number(c.属性?.魂力上限 || 0)));
+      const baseSoulPowerForBreakthrough = Math.max(
+        0,
+        Math.floor(Number(c.属性?.魂力上限 || 0) - getCharacterCurrentRingAndBoneSoulPowerBonus_ACU(c)),
+      );
       const nextLevelSoulRequirement = getCharacterBaseSoulPowerRequirementAtLevel(c, nextLevelStep);
       if (baseSoulPowerForBreakthrough < nextLevelSoulRequirement) return;
 

@@ -2536,9 +2536,9 @@ function 读取情报事件源_V1() {
   }
 }
 
-function 读取成长模板附近事件文本_V1(当前tick = 0) {
+function 读取成长模板附近事件文本_V1(当前tick = 0, 数据根 = null) {
   const 当前tick数值 = Number(当前tick || 0);
-  const 时间线事件源 = 读取时间线事件源_V1();
+  const 时间线事件源 = 读取时间线事件源_V1(数据根, 当前tick数值);
   const 时间线事件列表 = Array.isArray(时间线事件源) ? 时间线事件源 : Object.values(时间线事件源 || {}).flat();
   return 时间线事件列表
     .filter(事件 => {
@@ -2849,7 +2849,7 @@ function 收集内置角色成长技能模板触发_V1(数据根 = {}, 选项 = 
   const 当前剧情文本 = [选项.用户输入, 选项.剧情文本, 选项.最后剧情文本].join('\n');
   if (!String(当前剧情文本 || '').trim()) return [];
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
-  const 附近事件文本 = 读取成长模板附近事件文本_V1(当前tick);
+  const 附近事件文本 = 读取成长模板附近事件文本_V1(当前tick, 数据根);
   const 待确认 = [];
   Object.entries(数据根?.char || {}).forEach(([角色名, 角色]) => {
     if (!角色 || typeof 角色 !== 'object' || Array.isArray(角色)) return;
@@ -4139,6 +4139,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
             externalMultiplier,
             levelCap,
             requirementMultiplier: getDualSpiritSoulPowerCoeff(c),
+            nonCultivationSoulPowerBonus: getCharacterCurrentRingAndBoneSoulPowerBonus_ACU(c),
             ...(渐变 ? { blend: 渐变 } : {}),
           });
         }
