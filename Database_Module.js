@@ -9729,6 +9729,7 @@ $CONTENT
             guard = { state: error?.code || 'uncertain', error: error?.message || 'STALE_BEFORE_MESSAGE_SAVE' };
         }
         if (!guard || guard.state !== 'committed' || guard.verified !== true || !saveVerificationValuesEqual_ACU(guard.value, nextIndex)) {
+            logWarn_ACU('[persist-commit] guard 校验失败', JSON.stringify({ state: guard?.state, error: guard?.error, verified: guard?.verified, hasValue: guard?.value !== undefined }));
             return rollbackExternalCommit(guard, 'STALE_BEFORE_MESSAGE_SAVE');
         }
         if (guideWrite) {
@@ -9769,6 +9770,7 @@ $CONTENT
             committedRead = { state: error?.code || 'uncertain', error: error?.message || 'COMMITTED_READ_FAILED' };
         }
         if (!committedRead || committedRead.state !== 'committed' || committedRead.verified !== true || !saveVerificationValuesEqual_ACU(committedRead.value, nextIndex)) {
+            logWarn_ACU('[persist-commit] committedRead 校验失败', JSON.stringify({ state: committedRead?.state, error: committedRead?.error, verified: committedRead?.verified, hasValue: committedRead?.value !== undefined }));
             return rollbackExternalCommit(committedRead, 'COMMITTED_READ_FAILED');
         }
         return {
@@ -54263,13 +54265,15 @@ $CONTENT
                                         logDebug_ACU(`[剧情推进] 汇总已写入用户楼层 ${messageId}，继续正文生成。`);
                                     }
                                     catch (error) {
-                                        logError_ACU('[剧情推进] 汇总写入用户楼层失败，已停止本次正文生成:', error);
+                                        const 回读诊断 = (error && typeof error === 'object' && error.message) ? String(error.message) : String(error || '');
+                                        logError_ACU('[剧情推进] 汇总写入用户楼层失败，已停止本次正文生成。回读详情:', 回读诊断, '| 期望楼层长度:', String(visibleMessage || '').length, '| 期望楼层前80字:', String(visibleMessage || '').slice(0, 80));
                                         showToastr_ACU('error', '剧情推进汇总未能写入用户楼层，本次正文生成已停止。', '剧情推进');
                                         stopGeneration_ACU();
                                     }
                                     break;
                                 case 'blocked':
                                     标记AfterCommands已接管剧情推进_ACU(params);
+                                    logWarn_ACU('[剧情推进] 正文生成被阻断（策略1 blocked），reason=' + String(s1.reason || 'unknown') + '。若为 empty_final_message 说明规划未产出可用正文指令。');
                                     stopGeneration_ACU();
                                     break;
                                 case 'loop_retry': {
@@ -84417,6 +84421,18 @@ Expected function or array of functions, received type ${typeof value}.`
             genericError: "运行日志中有报错，请去高级工具查看具体内容。",
             genericWarning: "运行日志中有警告，请去高级工具确认是否需要处理。",
         },
+        ttPerf: {
+            title: "TT 性能采样",
+            enabledBadge: "采样中",
+            disabledBadge: "未启用",
+            enabledSummary: "正在采集 FPS、长任务、事件循环延迟和 DOM 数量。按 Ctrl+Alt+P 可显示或隐藏 TT 性能浮层；测试结束后点击导出并关闭采样。",
+            disabledSummary: "默认关闭，不产生采样成本。启用后会重新加载 TT，并可在这里复制和下载性能报告。",
+            enableAction: "启用并重载",
+            exportAction: "导出并关闭采样",
+            enabledToast: "TT 性能采样已启用，正在重新加载。",
+            exportSuccess: "TT 性能报告已复制并下载。",
+            exportWithoutClipboard: "TT 性能报告已下载；当前环境未允许写入剪贴板。",
+        },
         tableStatus: {
             none: "无",
             notInitialized: "未初始",
@@ -85168,6 +85184,48 @@ Expected function or array of functions, received type ${typeof value}.`
             action: { label: dashboardCopy.logs.action, pageId: "advanced-tools" },
         });
     }
+    function readTauriPerfState() {
+        const candidates = [];
+        try {
+            candidates.push(window.top);
+        }
+        catch { }
+        try {
+            candidates.push(window.parent);
+        }
+        catch { }
+        candidates.push(window);
+        for (const host of new Set(candidates)) {
+            try {
+                if (!host || (host.__TAURI_RUNNING__ !== true && !host.__TAURITAVERN__))
+                    continue;
+                const api = host.__TAURITAVERN_PERF__;
+                return {
+                    host,
+                    api,
+                    enabled: api?.enabled === true || host.localStorage?.getItem("tt:perf") === "1",
+                };
+            }
+            catch { }
+        }
+        return null;
+    }
+    function buildTauriPerfHealthItem() {
+        const state = readTauriPerfState();
+        if (!state)
+            return null;
+        return makeHealthItem({
+            key: "tt-perf",
+            title: dashboardCopy.ttPerf.title,
+            badge: state.enabled ? dashboardCopy.ttPerf.enabledBadge : dashboardCopy.ttPerf.disabledBadge,
+            kind: state.enabled ? "ok" : "info",
+            summary: state.enabled ? dashboardCopy.ttPerf.enabledSummary : dashboardCopy.ttPerf.disabledSummary,
+            action: {
+                label: state.enabled ? dashboardCopy.ttPerf.exportAction : dashboardCopy.ttPerf.enableAction,
+                actionKey: "ttPerf",
+            },
+        });
+    }
     function useDashboardPage() {
         const toast = useToastStore();
         const { developerOptionsEnabled, setDeveloperOptionsEnabled, refresh: refreshDevOptions, } = useDevOptions();
@@ -85367,12 +85425,14 @@ Expected function or array of functions, received type ${typeof value}.`
             void logRefreshTick.value;
             const hasActiveChat = hasActiveChatContext(chatFileIdentifier.value);
             const showDeveloperDiagnostics = developerOptionsEnabled.value === true;
+            const ttPerfHealth = buildTauriPerfHealthItem();
             return [
                 buildApiHealthItem(coreApisReady.value),
                 buildTableHealthItem(tableRows.value, hasTables.value, aiMessageCount.value, hasActiveChat),
                 buildSqlTemplateHealthItem(storageMode.value, hasActiveChat, showDeveloperDiagnostics),
                 buildVectorHealthItem(),
                 buildLogHealthItem(showDeveloperDiagnostics),
+                ...(ttPerfHealth ? [ttPerfHealth] : []),
             ];
         });
         const contentReplaceGateEnabled = computed(() => {
@@ -85452,6 +85512,36 @@ Expected function or array of functions, received type ${typeof value}.`
             }
             dataRefreshTick.value++;
         }
+        async function runTauriPerfAction() {
+            const state = readTauriPerfState();
+            if (!state) {
+                toast.error("当前环境不是 TauriTavern，无法使用 TT 性能采样。");
+                return;
+            }
+            try {
+                if (!state.enabled) {
+                    state.host.localStorage.setItem("tt:perf", "1");
+                    toast.success(dashboardCopy.ttPerf.enabledToast);
+                    state.host.setTimeout(() => state.host.location.reload(), 150);
+                    return;
+                }
+                if (state.host.__TAURITAVERN_PERF_READY__)
+                    await state.host.__TAURITAVERN_PERF_READY__;
+                const api = state.host.__TAURITAVERN_PERF__;
+                if (!api || typeof api.downloadReport !== "function")
+                    throw new Error("TAURITAVERN_PERF_NOT_READY");
+                const copied = typeof api.copyReport === "function" && await api.copyReport();
+                api.downloadReport();
+                state.host.localStorage.removeItem("tt:perf");
+                api.disable?.();
+                toast.success(copied ? dashboardCopy.ttPerf.exportSuccess : dashboardCopy.ttPerf.exportWithoutClipboard);
+                dataRefreshTick.value++;
+            }
+            catch (error) {
+                logError_ACU("[ACU-V2] TauriTavern perf action failed", error);
+                toast.error("TT 性能采样操作失败，详情见运行日志。");
+            }
+        }
         async function setStorageMode(rawMode) {
             const mode = normalizeStorageMode(rawMode);
             storageMode.value = mode;
@@ -85493,6 +85583,7 @@ Expected function or array of functions, received type ${typeof value}.`
             contentReplaceGateEnabled,
             refresh,
             setToggle,
+            runTauriPerfAction,
             setStorageMode,
         };
     }
@@ -85534,8 +85625,13 @@ Expected function or array of functions, received type ${typeof value}.`
                 routerStore.syncFeatureGate(FEATURE_GATE_IMPORT, dashboard.advancedToggles.value.some((item) => item.key === "externalImportPageEnabled" && item.value));
                 routerStore.syncFeatureGate(FEATURE_GATE_VECTOR_INDEX, dashboard.advancedToggles.value.some((item) => item.key === "summaryVectorIndexModeEnabled" && item.value));
             }
-            function goToHealthAction(pageId) {
-                routerStore.setActivePage(pageId);
+            async function goToHealthAction(action) {
+                if (action?.actionKey === "ttPerf") {
+                    await dashboard.runTauriPerfAction();
+                    return;
+                }
+                if (action?.pageId)
+                    routerStore.setActivePage(action.pageId);
             }
             async function handleToggleChange(key, value) {
                 dashboard.setToggle(key, value);
@@ -85620,7 +85716,7 @@ Expected function or array of functions, received type ${typeof value}.`
 								key: 0,
 								class: "acu-v2-dashboard-page__health-action",
 								size: "sm",
-								onClick: ($event) => $setup.goToHealthAction(item.action.pageId)
+								onClick: ($event) => $setup.goToHealthAction(item.action)
 							}, {
 								default: withCtx(() => [_cache[1] || (_cache[1] = createBaseVNode(
 									"i",
