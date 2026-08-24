@@ -10568,7 +10568,7 @@
   }
 
   function applyBattlePatchOpsByEditor(patches, options = {}) {
-    return applyJsonPatchOpsByEditor(patches, { ...options, 允许脚本维护战斗: true });
+    return applyJsonPatchOpsByEditor(patches, { ...options, 允许脚本维护战斗: true, 必须启用兜底: true });
   }
 
   function 分配赛事运行时UID_桥接(数据根 = {}, 前缀 = '') {
@@ -12141,7 +12141,10 @@
         detail.requestKind || detail.channels?.requestKind || detail.options?.requestKind,
         'battle_settlement_plot',
       );
-      const patchOps = Array.isArray(detail.mvuUpdate?.patchOps) ? detail.mvuUpdate.patchOps : [];
+      const patchOps =
+        requestKind === 'battle_settlement_plot' || !Array.isArray(detail.mvuUpdate?.patchOps)
+          ? []
+          : detail.mvuUpdate.patchOps;
       return dispatchUiAiRequest(detail.playerInput, detail.systemPrompt, { requestKind, patchOps });
     };
     window.BattleUIBridge = Object.assign(window.BattleUIBridge || {}, {

@@ -1774,7 +1774,6 @@ class BattleUIComponent {
             `<battle_result>${战果标题}</battle_result>`,
             `<battle_summary>\n${aiStructuredSummaryText}\n</battle_summary>`,
             {
-              mvuUpdate: commitReceipt,
               requestKind: 'battle_settlement_plot',
             },
           );
