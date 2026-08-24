@@ -8,6 +8,7 @@ const CDN地址列表 = Object.freeze([
 ]);
 const 请求超时毫秒 = 6500;
 const GitHub请求超时毫秒 = 8000;
+const 回退提交哈希 = '7f51be679a61fc259a5da2ae59bd5ee1a8e00a23';
 const 入口文件名 = 'MVU_ZOD_Entry.js';
 const MVU追踪模块顺序 = Object.freeze([入口文件名]);
 const 启动预取资源列表 = Object.freeze([
@@ -175,8 +176,10 @@ async function 取共享最新提交哈希() {
         return 提交哈希;
       })
       .catch(错误 => {
+        console.warn('[LWCS MVU Bootstrap] GitHub 最新提交读取失败，改用正式回退提交。', 错误);
+        共享启动状态.commit = 回退提交哈希;
         共享启动状态.commitPromise = null;
-        throw 错误;
+        return 回退提交哈希;
       });
   }
   return await 共享启动状态.commitPromise;

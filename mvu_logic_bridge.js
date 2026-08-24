@@ -51041,6 +51041,10 @@ ${播报文本}
         }
       } catch (error) {
         console.warn('[DragonUI] 战斗模块开启失败。', error);
+        battleOpenResult = {
+          ok: false,
+          reason: error instanceof Error ? error.message : toText(error, 'battle_open_exception'),
+        };
       }
       if (battleOpenResult && battleOpenResult.ok) return;
       const battleOpenReason = toText(battleOpenResult && battleOpenResult.reason, 'combat_context_unresolved');

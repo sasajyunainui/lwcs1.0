@@ -11,6 +11,7 @@
   ]);
   const 请求超时毫秒 = 6500;
   const GitHub请求超时毫秒 = 8000;
+  const 回退提交哈希 = '7f51be679a61fc259a5da2ae59bd5ee1a8e00a23';
   const 入口文件名 = 'ST_UI_Entry.js';
   const 启动预取资源列表 = Object.freeze([
     'mvu_styles.css',
@@ -484,8 +485,10 @@
           return 提交哈希;
         })
         .catch(错误 => {
+          console.warn('[LWCS Bootstrap] GitHub 最新提交读取失败，改用正式回退提交。', 错误);
+          共享启动状态.commit = 回退提交哈希;
           共享启动状态.commitPromise = null;
-          throw 错误;
+          return 回退提交哈希;
         });
     }
     return await 共享启动状态.commitPromise;
