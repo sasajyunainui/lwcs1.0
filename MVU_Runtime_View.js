@@ -2799,7 +2799,7 @@ function 规范化AI赛事记录_V1(输入 = {}, 根 = {}, UID分配器, 运行�
   return 赛事;
 }
 
-function 预处理特殊权限赛事补丁_V2(补丁列表 = [], 根 = {}) {
+function 预处理特殊权限赛事补丁_V2(补丁列表 = [], 根 = {}, options = {}) {
   const 运行时 = 读取赛事权限运行时_V1();
   if (!运行时) return { 补丁: 补丁列表, UID分配器: { 提交() {} } };
   const UID = 创建赛事权限UID分配器_V1(根);
@@ -2817,7 +2817,11 @@ function 预处理特殊权限赛事补丁_V2(补丁列表 = [], 根 = {}) {
       输出.push(补丁);
       return;
     }
-    if (路径[1] === '战斗') throw new Error(`JSONPatch[${index}]战斗上下文由脚本维护`);
+    if (路径[1] === '战斗') {
+      if (options.允许脚本维护战斗 !== true) throw new Error(`JSONPatch[${index}]战斗上下文由脚本维护`);
+      输出.push(补丁);
+      return;
+    }
     if (路径.length < 3) throw new Error(`JSONPatch[${index}]不能整体覆盖${路径[1]}表`);
     if (路径[1] === '特殊权限') {
       let ID = 路径[2];
@@ -3282,7 +3286,7 @@ function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = 
 
 function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options = {}) {
   const 根 = 读取运行时Mvu数据根_V1(数据输入) || {};
-  const 赛事权限预处理结果 = 预处理特殊权限赛事补丁_V2(Array.isArray(patches) ? patches : [], 根);
+  const 赛事权限预处理结果 = 预处理特殊权限赛事补丁_V2(Array.isArray(patches) ? patches : [], 根, options);
   const 来源列表 = 预处理内置库实例化补丁_V1(赛事权限预处理结果.补丁, 根, options);
   const 路径索引 = 收集运行时真实路径索引_V1(根);
   const 前缀映射表 = new Map();
@@ -3296,6 +3300,12 @@ function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options 
     原路径.forEach(片段 => {
       if (!运行时路径片段安全_V1(片段, { 允许斜杠: true })) throw new Error(`JSONPatch[${index}]路径片段非法：${片段}`);
     });
+    if (options.允许脚本维护战斗 === true && 原路径[0] === 'world' && 原路径[1] === '战斗') {
+      if (!['add', 'replace', 'remove'].includes(op)) throw new Error(`JSONPatch[${index}]脚本战斗操作无效：${op}`);
+      const 脚本补丁 = { ...patch, op, path: 构建运行时JsonPointer路径_V1(原路径) };
+      if (op !== 'remove') 脚本补丁.value = cloneJsonValue(patch.value, patch.value);
+      return 脚本补丁;
+    }
     let 路径 = 纠正AIJsonPatch槽位漏层路径_V1(原路径);
     校验AIJsonPatch路径层级_V1(路径, { 原始路径: patch.path });
     if (['add', 'insert', 'replace', 'delta'].includes(op) && 是AIJsonPatch装备属性加成路径_V1(路径)) {

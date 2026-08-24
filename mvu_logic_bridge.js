@@ -10567,6 +10567,10 @@
     }
   }
 
+  function applyBattlePatchOpsByEditor(patches, options = {}) {
+    return applyJsonPatchOpsByEditor(patches, { ...options, 允许脚本维护战斗: true });
+  }
+
   function 分配赛事运行时UID_桥接(数据根 = {}, 前缀 = '') {
     const 已用 = new Set();
     const 收集 = 记录表 => Object.keys(记录表 || {}).forEach(键 => 已用.add(键));
@@ -11479,7 +11483,7 @@
         { op: 'replace', path: '/world/战斗/裁断结果', value: `达到最大回合，双方未分胜负：${settlement.终局原因}` },
         { op: 'replace', path: '/sys/系统播报', value: `[战斗裁断] 达到最大回合，双方停止交锋，本场平局。` },
       ];
-      await applyJsonPatchOpsByEditor(patches, { force: true });
+      await applyBattlePatchOpsByEditor(patches, { force: true });
       await 结算赛事战斗_桥接({ 平局: true, 比分: [0, 0] });
       await refreshLiveSnapshot({ force: true });
       return {
@@ -11677,7 +11681,7 @@
       }
     }
     try {
-      await applyJsonPatchOpsByEditor(patches, { force: true });
+      await applyBattlePatchOpsByEditor(patches, { force: true });
       await 结算赛事战斗_桥接({ 胜方: settlement.胜方 });
       await refreshLiveSnapshot({ force: true });
       const summary = `${settlement.胜方}战胜${settlement.败方}，${settlement.败方}剩余HP ${settlement.败方剩余HP比例}%`;
@@ -44607,7 +44611,7 @@
       trialContext.试炼类型 === '升灵台'
         ? `${toText(sourceSnapshot.activeName, activeCharKey)} 已进入${trialContext.档位}${trialContext.暴动期 ? '暴动期' : ''}升灵台，等待剧情推进触发战斗。`
         : `${toText(sourceSnapshot.activeName, activeCharKey)} 已进入魂灵塔第${trialContext.当前层}层，等待剧情推进触发战斗。`;
-    await applyJsonPatchOpsByEditor(
+    await applyBattlePatchOpsByEditor(
       [
         ...ticketConsumeResult.patchOps,
         { op: 'replace', path: '/world/战斗', value: 清理后战斗数据 },
@@ -47459,7 +47463,7 @@ ${播报文本}
         : '';
     battleInlineDismissed = false;
     跳过战斗终端自动挂载 = options.skipUi === true;
-    await applyJsonPatchOpsByEditor([
+    await applyBattlePatchOpsByEditor([
       ...towerEntryTicketPatches,
       { op: 'replace', path: '/world/战斗', value: compactCombatData },
       {
@@ -47718,7 +47722,7 @@ ${播报文本}
     const verifiedPackage = runtime.verifySealedBattlePackage(sealedPackage);
     const patchOps = 构建正式战斗写回补丁(verifiedPackage.finalSnapshot);
     runtime.verifySealedBattlePackage(verifiedPackage);
-    await applyJsonPatchOpsByEditor(patchOps, {
+    await applyBattlePatchOpsByEditor(patchOps, {
       force: true,
       记录本轮模块结算路径: true,
       结算类型: 'battle',
@@ -51166,7 +51170,7 @@ ${播报文本}
       return;
     }
     try {
-      await applyJsonPatchOpsByEditor(patchOps);
+      await applyBattlePatchOpsByEditor(patchOps);
       detail.delivery = { ok: true, channel: 'mvu_editor_patch', patchCount: patchOps.length };
       if (detail.combatData && detail.combatData.进行中 === false) {
         const 裁断文本 = toText(detail.combatData.裁断结果, '').trim();
