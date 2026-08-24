@@ -1,7 +1,14 @@
 const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', import.meta.url);
 const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
+const MVU_ENGINE_BUNDLE_FILE_V1 = 'MVU_Engine_Bundle.js';
+const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = '5cdfb31920212e2ed11a66eb7c51026d97ce5b50ebf5d9964f78938621d9516d';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
+  'LWCS_Persistence_Adapter.js',
+  'LWCS_MVU_Persistence_Provider.js',
+  'LWCS_MVU_Prompt_Projector.js',
+  MVU_ENGINE_BUNDLE_FILE_V1,
   'LibraryData_Runtime.js',
   'EraDataRegistry.js',
   'EraCurrencyRegistry.js',
@@ -37,6 +44,28 @@ const MVU共享启动状态_V1 = (() => {
     uiStatus: 'idle',
   };
   MVU共享宿主窗口_V1[键] = 新状态;
+  return 新状态;
+})();
+const MVU项目引擎状态_V1 = (() => {
+  const 键 = '__LWCS_MVU_ENGINE_STATE_V1__';
+  const 已有状态 = MVU共享宿主窗口_V1[键];
+  if (已有状态 && 已有状态.version === '1.0.0') {
+    try { globalThis[键] = 已有状态; } catch (_) {}
+    return 已有状态;
+  }
+  const 新状态 = {
+    version: '1.0.0',
+    status: 'idle',
+    phase: '等待',
+    upstreamCommit: MVU_ENGINE_UPSTREAM_COMMIT_V1,
+    bundleFile: MVU_ENGINE_BUNDLE_FILE_V1,
+    bundleSha256: MVU_ENGINE_BUNDLE_SHA256_V1,
+    url: '',
+    error: '',
+    loadPromise: null,
+  };
+  MVU共享宿主窗口_V1[键] = 新状态;
+  try { globalThis[键] = 新状态; } catch (_) {}
   return 新状态;
 })();
 
@@ -352,6 +381,59 @@ const MVU资源所有者_V1 = (() => {
   return 所有者;
 })();
 
+function 取MVU引擎窗口_V1() {
+  const 窗口列表 = [globalThis, MVU共享宿主窗口_V1];
+  try { if (globalThis.top && !窗口列表.includes(globalThis.top)) 窗口列表.push(globalThis.top); } catch (_) {}
+  return 窗口列表.filter((窗口, 序号, 列表) => 窗口 && 列表.indexOf(窗口) === 序号);
+}
+
+function 取已有MVU引擎_V1() {
+  return 取MVU引擎窗口_V1().map(窗口 => 窗口.Mvu).find(接口 =>
+    接口 && 接口.__LWCS_MVU_ENGINE_OWNER_V1__?.owner === 'lwcs-controlled-magvarupdate'
+  ) || null;
+}
+
+function 取已有外部MVU_V1() {
+  return 取MVU引擎窗口_V1().map(窗口 => 窗口.Mvu).find(Boolean) || null;
+}
+
+async function 确保项目MVU引擎_V1() {
+  const 已有项目引擎 = 取已有MVU引擎_V1();
+  if (已有项目引擎) {
+    MVU项目引擎状态_V1.status = 'ready';
+    MVU项目引擎状态_V1.phase = '已存在';
+    return 已有项目引擎;
+  }
+  const 已有外部引擎 = 取已有外部MVU_V1();
+  if (已有外部引擎) {
+    MVU项目引擎状态_V1.status = 'failed';
+    MVU项目引擎状态_V1.phase = '拒绝重复注册';
+    MVU项目引擎状态_V1.error = '检测到未由LWCS控制的Mvu实例';
+    throw new Error('LWCS MVU引擎拒绝与外部Mvu实例重复注册');
+  }
+  if (MVU项目引擎状态_V1.loadPromise) return await MVU项目引擎状态_V1.loadPromise;
+
+  MVU项目引擎状态_V1.status = 'loading';
+  MVU项目引擎状态_V1.phase = '导入固定bundle';
+  MVU项目引擎状态_V1.error = '';
+  const 加载承诺 = 导入MVU候选模块_V1(MVU_ENGINE_BUNDLE_FILE_V1)
+    .then(结果 => {
+      MVU项目引擎状态_V1.status = 'loaded';
+      MVU项目引擎状态_V1.phase = 'bundle已执行，等待Mvu';
+      MVU项目引擎状态_V1.url = 结果?.url || '';
+      return 结果;
+    })
+    .catch(错误 => {
+      MVU项目引擎状态_V1.status = 'failed';
+      MVU项目引擎状态_V1.phase = '导入失败';
+      MVU项目引擎状态_V1.error = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error');
+      if (MVU项目引擎状态_V1.loadPromise === 加载承诺) MVU项目引擎状态_V1.loadPromise = null;
+      throw 错误;
+    });
+  MVU项目引擎状态_V1.loadPromise = 加载承诺;
+  return await 加载承诺;
+}
+
 async function 导入MVU候选模块_V1(文件名) {
   const 结果 = await MVU资源所有者_V1.loadResource(文件名, { mode: 'dynamic-import' });
   return 结果.value;
@@ -404,6 +486,29 @@ async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
   } catch (错误) {
     发布MVU模块状态_V1(文件名, 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
     throw 错误;
+  }
+}
+
+async function 确保MVU持久化依赖_V1() {
+  const 依赖列表 = [
+    ['LWCS_Persistence_Adapter.js', () => {
+      const 适配器 = 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__');
+      return !!适配器 && typeof 适配器.openSession === 'function' && typeof 适配器.registerBackend === 'function';
+    }],
+    ['LWCS_MVU_Persistence_Provider.js', () => {
+      const 提供者 = 读取MVU共享全局值_V1('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__');
+      return !!提供者 && typeof 提供者.open === 'function';
+    }],
+    ['LWCS_MVU_Prompt_Projector.js', () =>
+      typeof 读取MVU共享全局值_V1('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function'
+    ],
+  ];
+  for (const [文件名, 已就绪] of 依赖列表) {
+    if (已就绪()) {
+      发布MVU模块状态_V1(文件名, 'loaded', '已存在');
+      continue;
+    }
+    await 加载MVU经典依赖_V1(文件名, 已就绪);
   }
 }
 
@@ -485,8 +590,10 @@ async function 加载MVU当前时代核心资源_V1() {
   }
 }
 
-if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mvu');
 if (typeof eventOn !== 'function') throw new Error('MVU_ZOD_Entry 需要酒馆助手 eventOn 接口');
+await 确保MVU持久化依赖_V1();
+await 确保项目MVU引擎_V1();
+if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mvu');
 
 await 确保库数据运行时_V1();
 const MVU执行上下文库运行时_V1 = MVU共享宿主窗口_V1.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;

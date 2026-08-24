@@ -28,6 +28,13 @@
     try { return target?.[field]; } catch (_) { return null; }
   }
 
+  function isTauriTavern() {
+    return collectWindows().some(candidate => {
+      const tauriTavern = readField(candidate, '__TAURITAVERN__');
+      return !!tauriTavern && typeof tauriTavern === 'object';
+    });
+  }
+
   function findGlobal(key) {
     for (const candidate of collectWindows()) {
       const value = readField(candidate, key);
@@ -646,6 +653,7 @@
   }
 
   async function open(options = {}) {
+    if (isTauriTavern()) return resultMeta(null, 'unavailable', { error: 'TT_COLD_ARCHIVE_DISABLED' });
     const hasFallback = Object.prototype.hasOwnProperty.call(options, 'fallbackStableChatId');
     const fallbackStableChatId = normalizeStableChatId(options.fallbackStableChatId);
     if (hasFallback && !fallbackStableChatId) return resultMeta(null, 'unavailable', { error: 'FALLBACK_IDENTITY_UNAVAILABLE' });

@@ -4777,7 +4777,7 @@
     return 应用冷归档自动归档配置_桥接(冷归档自动归档默认配置_桥接);
   }
 
-  应用冷归档自动归档配置_桥接(读取冷归档自动归档保存配置_桥接());
+  if (当前启用标准ST冷归档_桥接()) 应用冷归档自动归档配置_桥接(读取冷归档自动归档保存配置_桥接());
 
   function 取冷归档请求头_桥接() {
     const 头 = {};
@@ -4932,7 +4932,18 @@
     return 列表;
   }
 
+  function 当前为TauriTavern环境_桥接() {
+    return 取冷归档窗口列表_桥接().some(窗口 => {
+      try { return !!窗口.__TAURITAVERN__ && typeof 窗口.__TAURITAVERN__ === 'object'; } catch (错误) { return false; }
+    });
+  }
+
+  function 当前启用标准ST冷归档_桥接() {
+    return !当前为TauriTavern环境_桥接();
+  }
+
   function 取冷归档存储API_桥接() {
+    if (!当前启用标准ST冷归档_桥接()) return null;
     return 取冷归档窗口列表_桥接()
       .map(窗口 => {
         try { return 窗口.__LWCS_COLD_ARCHIVE_STORE_V1__; } catch (错误) { return null; }
@@ -4974,6 +4985,14 @@
   }
 
   function 失效冷归档会话_桥接(原因 = 'chat_changed') {
+    if (冷归档楼层清理状态_桥接.timer) window.clearTimeout(冷归档楼层清理状态_桥接.timer);
+    if (冷归档楼层清理状态_桥接.提交前自动归档Timer) window.clearTimeout(冷归档楼层清理状态_桥接.提交前自动归档Timer);
+    if (冷归档楼层清理状态_桥接.变量更新兜底计时器) window.clearTimeout(冷归档楼层清理状态_桥接.变量更新兜底计时器);
+    冷归档楼层清理状态_桥接.timer = 0;
+    冷归档楼层清理状态_桥接.提交前自动归档Timer = 0;
+    冷归档楼层清理状态_桥接.变量更新兜底计时器 = 0;
+    冷归档楼层清理状态_桥接.promise = null;
+    冷归档楼层清理状态_桥接.变量更新中 = false;
     冷归档服务状态_桥接.generation += 1;
     冷归档服务状态_桥接.handle = null;
     冷归档服务状态_桥接.已检查 = false;
@@ -4985,6 +5004,10 @@
     冷归档服务状态_桥接.revision = 0;
     冷归档服务状态_桥接.promise = null;
     冷归档服务状态_桥接.提交队列 = Promise.resolve();
+    冷归档自动归档状态_桥接.chatKey = '';
+    冷归档自动归档状态_桥接.上次尝试毫秒 = 0;
+    冷归档自动归档状态_桥接.promise = null;
+    冷归档写回状态_桥接.正在归档 = false;
     const 适配器 = 取冷归档窗口列表_桥接()
       .map(窗口 => {
         try { return 窗口.__LWCS_PERSISTENCE_ADAPTER_V1__; } catch (错误) { return null; }
@@ -4998,6 +5021,11 @@
   }
 
   async function 确保冷归档句柄_桥接(选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) {
+      const 错误 = new Error('TT_COLD_ARCHIVE_DISABLED');
+      错误.code = 'TT_COLD_ARCHIVE_DISABLED';
+      throw 错误;
+    }
     const chatKey = toText(选项.chatKey || 取当前聊天归档标识_桥接(), '').trim();
     const generation = Number.isFinite(选项.generation) ? 选项.generation : 冷归档服务状态_桥接.generation;
     if (!chatKey) throw new Error('冷归档聊天标识不可用。');
@@ -5059,6 +5087,13 @@
   }
 
   async function 检查冷归档服务_桥接(选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) {
+      冷归档服务状态_桥接.已检查 = true;
+      冷归档服务状态_桥接.可用 = false;
+      冷归档服务状态_桥接.可写 = false;
+      冷归档服务状态_桥接.error = 'TT_COLD_ARCHIVE_DISABLED';
+      return 冷归档服务状态_桥接;
+    }
     if (!选项.force && 冷归档服务状态_桥接.已检查) return 冷归档服务状态_桥接;
     try {
       return await 确保冷归档句柄_桥接();
@@ -6413,6 +6448,7 @@
   }
 
   async function 清理未来楼层冷归档_桥接(选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return { changed: false, reason: 'tt_cold_archive_disabled' };
     if (!选项.force && 冷归档楼层清理状态_桥接.promise) return await 冷归档楼层清理状态_桥接.promise;
     冷归档楼层清理状态_桥接.promise = (async () => {
       const chatKey = 取当前聊天归档标识_桥接();
@@ -6519,6 +6555,7 @@
   }
 
   async function 整理全部冷归档历史_桥接(选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return { changed: false, 整理数量: 0, reason: 'tt_cold_archive_disabled' };
     if (冷归档自动归档配置_桥接.历史清理模式 === '停用') return { changed: false, 整理数量: 0, reason: 'disabled' };
     const chatKey = 取当前聊天归档标识_桥接();
     const generation = 冷归档服务状态_桥接.generation;
@@ -6555,6 +6592,7 @@
   }
 
   function 调度冷归档楼层清理_桥接(延迟 = 200) {
+    if (!当前启用标准ST冷归档_桥接()) return false;
     if (冷归档楼层清理状态_桥接.timer) window.clearTimeout(冷归档楼层清理状态_桥接.timer);
     冷归档楼层清理状态_桥接.timer = window.setTimeout(() => {
       冷归档楼层清理状态_桥接.timer = 0;
@@ -6583,6 +6621,7 @@
   }
 
   function 执行提交前冷归档_桥接(目标消息元信息 = null, 来源详情 = {}, 传入期限租约 = null) {
+    if (!当前启用标准ST冷归档_桥接()) return;
     if (!目标消息元信息 || !目标AI楼层仍匹配_桥接(目标消息元信息)) return;
     const 自动检查消息键 = 构建提交前冷归档检查键_桥接(目标消息元信息);
     if (自动检查消息键 && 冷归档楼层清理状态_桥接.已自动检查消息键表.has(自动检查消息键)) return;
@@ -6640,6 +6679,7 @@
   }
 
   function 安装冷归档用户提交意图监听_桥接() {
+    if (!当前启用标准ST冷归档_桥接()) return false;
     if (冷归档楼层清理状态_桥接.提交意图监听已安装) return;
     冷归档楼层清理状态_桥接.提交意图监听已安装 = true;
     const 目标列表 = [];
@@ -6659,7 +6699,8 @@
   function 安装冷归档楼层监视器_桥接() {
     if (冷归档楼层清理状态_桥接.已安装) return;
     冷归档楼层清理状态_桥接.已安装 = true;
-    安装冷归档用户提交意图监听_桥接();
+    const 标准ST冷归档启用 = 当前启用标准ST冷归档_桥接();
+    if (标准ST冷归档启用) 安装冷归档用户提交意图监听_桥接();
     const 绑定酒馆事件 = () => {
       let 上下文 = null;
       try {
@@ -6708,11 +6749,12 @@
                 });
               }, 250);
             }
-            if (曾使用冷归档) 调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
+            if (标准ST冷归档启用 && 曾使用冷归档) 调度冷归档楼层清理_桥接(事件键 === 'CHAT_CHANGED' ? 0 : 180);
           });
         } catch (错误) {}
       });
-      const 主机 = getMvuHost();
+      if (标准ST冷归档启用) {
+        const 主机 = getMvuHost();
       const 变量更新开始事件 = 主机?.events?.VARIABLE_UPDATE_STARTED || window.Mvu?.events?.VARIABLE_UPDATE_STARTED || 'mag_variable_update_started';
       const 变量更新结束事件 = 主机?.events?.VARIABLE_UPDATE_ENDED || window.Mvu?.events?.VARIABLE_UPDATE_ENDED || 'mag_variable_update_ended';
       if (变量更新开始事件) {
@@ -6735,6 +6777,7 @@
             冷归档楼层清理状态_桥接.变量更新兜底计时器 = 0;
           });
         } catch (错误) {}
+      }
       }
       const 生成命令后事件 = eventTypes.GENERATION_AFTER_COMMANDS || 'GENERATION_AFTER_COMMANDS';
       try {
@@ -8831,6 +8874,7 @@
   }
 
   async function 按阈值自动归档MVU冷实体_桥接(选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return { changed: false, reason: 'tt_cold_archive_disabled' };
     const chatKey = 取当前聊天归档标识_桥接();
     const 目标消息元信息 = 读取自动归档目标消息元信息_桥接(选项);
     if (选项.需要明确目标 && !目标消息元信息) return { changed: false, reason: 'target_missing' };
@@ -9102,6 +9146,7 @@
   }
 
   function 构建冷归档面板_桥接(snapshot = liveSnapshot || lastRenderableSnapshot || {}) {
+    if (!当前启用标准ST冷归档_桥接()) return null;
     const rootData = snapshot && snapshot.rootData ? snapshot.rootData : {};
     const 当前页签 = 规范化冷归档页签_桥接(modalFocusState[`${冷归档预览键_桥接}::tab`]);
     const 角色集 = rootData.char && typeof rootData.char === 'object' ? rootData.char : {};
@@ -12655,7 +12700,7 @@
     try {
       资源结果 = await 集成.ensureEraResourcesForTick(
         新tick,
-        ['character', 'item', 'timeline'],
+        ['character', 'item', 'timeline', 'faction', 'location'],
         { reason: 'bridge-time-advance', dataRoot: 数据根 },
       );
     } catch (错误) {
@@ -12670,7 +12715,7 @@
       };
     }
     const 资源列表 = Array.isArray(资源结果?.resources) ? 资源结果.resources : [];
-    const 未就绪 = ['character', 'item', 'timeline']
+    const 未就绪 = ['character', 'item', 'timeline', 'faction', 'location']
       .map(resourceType => 资源列表.find(资源 => 资源?.resourceType === resourceType) || { resourceType, status: 'unloaded' })
       .find(资源 => 资源.status !== 'loaded');
     if (未就绪) {
@@ -14047,6 +14092,20 @@
         const 名称 = String(项目?.规范名 || 项目?.名称 || 项目?.记录ID || 项目 || '').trim();
         return !势力静态实例化阻断.has(名称);
       });
+      const 库运行时 = 读取库运行时_桥接();
+      if (库运行时 && typeof 库运行时.collectFactionHits === 'function') {
+        const 当前势力库 = typeof 接口?.读取内置势力库 === 'function'
+          ? 接口.读取内置势力库(当前StatData, Number(当前StatData?.world?.时间?.tick))
+          : null;
+        const 势力命中 = 库运行时.collectFactionHits(捕获文本, {
+          allowKeyword: false,
+          library: 当前势力库 && !当前势力库?.__LWCS_RESOURCE_NOT_READY__ ? 当前势力库 : undefined,
+        });
+        (Array.isArray(势力命中?.hits) ? 势力命中.hits : []).forEach(命中 => {
+          const 名称 = Array.isArray(命中.candidates) && 命中.candidates.length === 1 ? String(命中.candidates[0] || '').trim() : '';
+          if (名称 && !势力静态实例化阻断.has(名称) && !候选势力.some(项目 => String(项目?.规范名 || 项目?.名称 || 项目?.记录ID || 项目 || '').trim() === 名称)) 候选势力.push(名称);
+        });
+      }
       if (接口 && !势力归档检查失败 && typeof 接口.应用内置势力实例化 === 'function' && 候选势力.length) {
         const 结果 = 接口.应用内置势力实例化(当前StatData, { ...定位选项, 候选势力, 禁止势力: Array.from(势力静态实例化阻断) });
         changed = changed || 结果?.changed === true || (Array.isArray(结果?.changedNames) && 结果.changedNames.length > 0);
@@ -31898,9 +31957,9 @@
       deepGet(
         mapData,
         'current_map_id',
-        sheepSnapshot && sheepSnapshot.currentMapId ? sheepSnapshot.currentMapId : 'map_douluo_world',
+        sheepSnapshot && sheepSnapshot.currentMapId ? sheepSnapshot.currentMapId : 'map_terrestrial_world',
       ),
-      'map_douluo_world',
+      'map_terrestrial_world',
     );
     const mapZoomHint = toNumber(
       deepGet(
@@ -36080,11 +36139,12 @@
   }
 
   function getMapDisplayName(snapshot, mapId = null) {
-    const safeMapId = toText(mapId || (snapshot && snapshot.mapCurrentMapId), 'map_douluo_world');
+    const safeMapId = toText(mapId || (snapshot && snapshot.mapCurrentMapId), 'map_terrestrial_world');
     const mapMeta = getMapMeta(snapshot, safeMapId);
     const sheepMapName = toText(mapMeta.name, '').trim();
     if (sheepMapName) return sheepMapName;
-    if (safeMapId === 'map_douluo_world') return '斗罗大陆总图';
+    if (safeMapId === 'map_dldl_world' || safeMapId === 'map_terrestrial_world') return '斗罗大陆总图';
+    if (safeMapId === 'map_zjdl_stellar') return '斗罗星际总图';
     if (/^map_debug_/i.test(safeMapId)) return '区域子图';
     if (/^map_/i.test(safeMapId)) return '未命名子图';
     return '未命名地图';
@@ -43840,6 +43900,7 @@
   window.__LWCS_CALIBRATE_CHARACTER_ANCHOR__ = (角色名, 选项 = {}) => 执行角色锚点校对_桥接(角色名, 选项);
   window.__LWCS_FILTER_CHARACTER_ANCHOR_PATCHES__ = (patches, 角色名 = '') => 过滤角色锚点校对补丁_桥接(patches, 角色名);
   window.__LWCS_OPEN_MVU_COLD_ARCHIVE_PANEL__ = () => {
+    if (!当前启用标准ST冷归档_桥接()) return false;
     openDetailPreview(冷归档预览键_桥接, { preserveMapDispatchContext: true, replace: true });
     return true;
   };
@@ -52558,6 +52619,7 @@ ${播报文本}
     const detailSurfacePanel = options.panel instanceof Element ? options.panel : detailSurfaceHost;
     const detailPreviewKey = getDetailSurfacePreviewKey(options);
     if (!detailSurfaceHost) return;
+    if (!当前启用标准ST冷归档_桥接() && detailPreviewKey === 冷归档预览键_桥接) return;
     const eventTarget =
       event.target instanceof Element
         ? event.target

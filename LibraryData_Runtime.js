@@ -802,6 +802,35 @@
     return compiled;
   }
 
+  const LIFECYCLE_STATUSES = new Set(['开场常驻', '按需现存', '尚未生效']);
+
+  function compileLifecycleMetadata(sourceMetadata, profileId, resourceType, source) {
+    assertProfile(profileId);
+    if (!['faction', 'location'].includes(resourceType)) fail('LIFECYCLE_RESOURCE_INVALID', profileId, '$', resourceType, '生命周期sidecar只适用于势力或地点');
+    assertPlainRecord(sourceMetadata, '$', '生命周期sidecar');
+    assertStrictKeys(sourceMetadata, new Set(['版本', '时代', '资源类型', '记录']), '$');
+    if (sourceMetadata.版本 !== 1) fail('LIFECYCLE_VERSION_INVALID', profileId, '$.版本', sourceMetadata.版本, '生命周期sidecar版本必须为1');
+    if (sourceMetadata.时代 !== profileId) fail('LIFECYCLE_ERA_INVALID', profileId, '$.时代', sourceMetadata.时代, '生命周期sidecar时代不匹配');
+    if (sourceMetadata.资源类型 !== resourceType) fail('LIFECYCLE_RESOURCE_INVALID', profileId, '$.资源类型', sourceMetadata.资源类型, '生命周期sidecar资源类型不匹配');
+    assertPlainRecord(sourceMetadata.记录, '$.记录', '生命周期记录表');
+    const sourceTable = resourceType === 'faction' ? source?.势力 : source?.地点;
+    if (!sourceTable || typeof sourceTable !== 'object' || Array.isArray(sourceTable)) fail('LIFECYCLE_SOURCE_INVALID', profileId, '$.记录', source, '生命周期sidecar缺少对应静态库');
+    const sourceIds = new Set(Object.keys(sourceTable));
+    const metadataIds = new Set(Object.keys(sourceMetadata.记录));
+    for (const recordId of sourceIds) if (!metadataIds.has(recordId)) fail('LIFECYCLE_RECORD_MISSING', profileId, `$.记录.${recordId}`, undefined, `静态记录缺少生命周期sidecar: ${recordId}`);
+    for (const recordId of metadataIds) if (!sourceIds.has(recordId)) fail('LIFECYCLE_RECORD_UNKNOWN', profileId, `$.记录.${recordId}`, sourceMetadata.记录[recordId], `生命周期sidecar包含未知记录: ${recordId}`);
+    const records = {};
+    for (const [recordId, value] of Object.entries(sourceMetadata.记录)) {
+      assertPlainRecord(value, `$.记录.${recordId}`, '生命周期记录');
+      assertStrictKeys(value, new Set(['运行状态', '首次生效tick']), `$.记录.${recordId}`);
+      const status = requiredString(value.运行状态, `$.记录.${recordId}.运行状态`, '运行状态');
+      if (!LIFECYCLE_STATUSES.has(status)) fail('LIFECYCLE_STATUS_INVALID', profileId, `$.记录.${recordId}.运行状态`, status, `非法生命周期状态: ${status}`);
+      const tick = assertAbsoluteTick(value.首次生效tick, `$.记录.${recordId}.首次生效tick`);
+      records[recordId] = { 运行状态: status, 首次生效tick: tick };
+    }
+    return freezeDeep({ 版本: 1, 时代: profileId, 资源类型: resourceType, 记录: records });
+  }
+
   function resolveFaction(nameOrAlias, options = {}) {
     const selection = resolveEraLibrary(options.library, 'faction', options);
     const finish = result => decorateResolution(result, selection);
@@ -1057,6 +1086,7 @@
     compileTimeline,
     compileFactionLibrary,
     compileLocationLibrary,
+    compileLifecycleMetadata,
     resolveFaction,
     resolveLocation,
     collectFactionHits,

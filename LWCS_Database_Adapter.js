@@ -1008,7 +1008,7 @@
     const 文本 = String(规划文本 || '');
     const 路由块 = 提取模块路由块(文本);
     if (!路由块) return { action: 'continue', reason: 'module_route_missing' };
-    if (模块路由块命中战斗(路由块) && 取本轮有效战斗结算上下文(本轮输入文本)) {
+    if (模块路由块命中战斗(路由块) && 取本轮有效战斗结算上下文(String(context.userInput || context.originalUserInput || 本轮输入文本 || '').trim())) {
       return {
         action: 'continueWithRuntimeEvent',
         reason: 'battle_summary_route_skipped',
@@ -1035,6 +1035,7 @@
       }
       if (!结果 || 结果.handled !== true) {
         if (结果 && 结果.reason) console.warn('[LWCS适配器] 模块路由未接管，放行正文生成:', 结果.reason);
+        else console.warn('[LWCS适配器] 模块路由未接管且无原因（可能战斗未打开），放行正文生成。路由块:', 路由块.slice(0, 200));
         const runtimeEvent = 构建模块路由运行事件(结果 || {});
         if (runtimeEvent) {
           return {

@@ -7,10 +7,10 @@
   const ERA_IDS = Object.freeze(['dldl', 'jueshitangmen', 'current', 'zjdl']);
   const ERA_LABELS = Object.freeze({ dldl: '斗一', jueshitangmen: '斗二', current: '斗三', zjdl: '斗四' });
   const DATA_GLOBAL_KEYS = Object.freeze({
-    dldl: Object.freeze({ character: '__DLDL_CHARACTER_LIBRARY__', item: '__LWCS_斗罗大陆物品库__' }),
-    jueshitangmen: Object.freeze({ character: '__LWCS_绝世唐门角色库__', item: '__LWCS_绝世唐门物品库__' }),
+    dldl: Object.freeze({ character: '__DLDL_CHARACTER_LIBRARY__', item: '__LWCS_斗罗大陆物品库__', faction: '__LWCS_DLDL_FACTION_LIBRARY__', location: '__LWCS_DLDL_LOCATION_LIBRARY__' }),
+    jueshitangmen: Object.freeze({ character: '__LWCS_绝世唐门角色库__', item: '__LWCS_绝世唐门物品库__', faction: '__LWCS_JSTM_FACTION_LIBRARY__', location: '__LWCS_JSTM_LOCATION_LIBRARY__' }),
     current: Object.freeze({ character: '__LWCS_内置角色库__', item: '__LWCS_内置物品库__', faction: '__LWCS_内置势力库__', location: '__LWCS_内置地点库__' }),
-    zjdl: Object.freeze({ character: '__LWCS_终极斗罗角色库__', item: '__LWCS_终极斗罗物品库__' }),
+    zjdl: Object.freeze({ character: '__LWCS_终极斗罗角色库__', item: '__LWCS_终极斗罗物品库__', faction: '__LWCS_终极斗罗势力库__', location: '__LWCS_终极斗罗地点库__' }),
   });
   const TIMELINE_GLOBAL_KEYS = Object.freeze({
     dldl: '__LWCS_TIMELINE_SOURCE_dldl__',
@@ -98,6 +98,7 @@
   }
 
   const SOURCE_TABLE = new Map();
+  const SOURCE_METADATA = new Map();
 
   function 注册静态源(eraId, resourceType, source, options = {}) {
     const registry = 读取数据注册表();
@@ -124,7 +125,21 @@
       }
       timelineRuntime.registerTimelineSource(eraId, source);
     }
+    let metadata = null;
+    if (resourceType === 'faction' || resourceType === 'location') {
+      const libraryRuntime = 读取库运行时();
+      if (!libraryRuntime || typeof libraryRuntime.compileLifecycleMetadata !== 'function') {
+        return Object.freeze({ status: 'failed', eraId, resourceType, detail: 'LibraryData_Runtime缺少生命周期契约编译器' });
+      }
+      try {
+        metadata = libraryRuntime.compileLifecycleMetadata(options.metadata, eraId, resourceType, source);
+      } catch (error) {
+        try { registry.setResourceState(eraId, resourceType, 'failed', error?.message || String(error || 'lifecycle_metadata_invalid')); } catch (_) {}
+        return Object.freeze({ status: 'failed', eraId, resourceType, detail: error?.message || String(error || 'lifecycle_metadata_invalid') });
+      }
+    }
     SOURCE_TABLE.set(sourceKey, source);
+    if (metadata) SOURCE_METADATA.set(sourceKey, metadata);
     try { registry.setResourceState(eraId, resourceType, 'loaded', options.detail || 'EraRuntime_Integration'); } catch (_) {}
     return Object.freeze({ status: 'loaded', eraId, resourceType, source });
   }
@@ -144,9 +159,10 @@
           return;
         }
         const source = 读取全局值(取全局源键(eraId, resourceType));
+        const metadata = descriptor.metadataGlobalKey ? 读取全局值(descriptor.metadataGlobalKey) : null;
         result.push(source === null
           ? { status: registry.getResourceState(eraId, resourceType).status, eraId, resourceType, detail: '源尚未加载' }
-          : 注册静态源(eraId, resourceType, source));
+          : 注册静态源(eraId, resourceType, source, { metadata }));
       });
     });
     return Object.freeze(result);
@@ -169,6 +185,43 @@
   function 获取静态源(resourceType, absoluteTick) {
     const context = 获取时代上下文(absoluteTick);
     return 获取时代静态源(context.resourceEra, resourceType, context);
+  }
+
+  function 获取静态元数据(eraId, resourceType) {
+    const registry = 读取数据注册表();
+    const descriptor = registry.getResourceDescriptor(eraId, resourceType);
+    if (descriptor.sourceStatus !== 'configured') return Object.freeze({ status: 'not-configured', eraId, resourceType, metadata: null, detail: descriptor.note || '' });
+    const state = registry.getResourceState(eraId, resourceType);
+    if (state.status !== 'loaded') return Object.freeze({ status: state.status, eraId, resourceType, metadata: null, detail: state.detail || '' });
+    const metadata = SOURCE_METADATA.get(`${eraId}:${resourceType}`);
+    return metadata
+      ? Object.freeze({ status: 'resolved', eraId, resourceType, metadata })
+      : Object.freeze({ status: 'failed', eraId, resourceType, metadata: null, detail: '静态资源已加载但生命周期sidecar未注册' });
+  }
+
+  function 获取时代地图配置(absoluteTick) {
+    const context = 获取时代上下文(absoluteTick);
+    const profile = 读取数据注册表().getMapProfile(context.resourceEra);
+    return Object.freeze({ ...profile, eraId: context.resourceEra, tick: context.tick });
+  }
+
+  function 获取生命周期记录(eraId, resourceType, recordId, absoluteTick, mode = 'demand') {
+    const tick = 规范化tick(absoluteTick);
+    const resolved = 获取静态元数据(eraId, resourceType);
+    const record = resolved.metadata?.记录?.[String(recordId || '').trim()] || null;
+    if (!record) return Object.freeze({ status: resolved.status === 'resolved' ? 'unknown-record' : resolved.status, active: false, eraId, resourceType, recordId: String(recordId || '').trim(), record: null });
+    const effective = tick >= Number(record.首次生效tick);
+    const active = effective && (mode === 'resident' ? record.运行状态 === '开场常驻' : true);
+    return Object.freeze({ status: 'resolved', active, eraId, resourceType, recordId: String(recordId || '').trim(), record });
+  }
+
+  function 列出生命周期记录(eraId, resourceType, absoluteTick, mode = 'demand') {
+    const resolved = 获取静态元数据(eraId, resourceType);
+    if (resolved.status !== 'resolved') return Object.freeze([]);
+    const tick = 规范化tick(absoluteTick);
+    return Object.freeze(Object.entries(resolved.metadata.记录)
+      .filter(([, record]) => tick >= Number(record.首次生效tick) && (mode !== 'resident' || record.运行状态 === '开场常驻'))
+      .map(([recordId, record]) => Object.freeze({ recordId, ...record })));
   }
 
   async function 确保时代资源(absoluteTick, resourceTypes, options = {}) {
@@ -275,6 +328,10 @@
     registerAvailableSources: 注册可用源,
     getStaticSourceForEra: 获取时代静态源,
     getStaticSource: 获取静态源,
+    getStaticSourceMetadata: 获取静态元数据,
+    getLifecycleRecord: 获取生命周期记录,
+    listLifecycleRecords: 列出生命周期记录,
+    getMapProfileForTick: 获取时代地图配置,
     getEraTransitions: 获取时代跨越,
     getCultivationBlend: 获取修炼渐变,
     buildCultivationOptions: 构建修炼选项,

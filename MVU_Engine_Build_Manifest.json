@@ -1,0 +1,44 @@
+{
+  "manifestVersion": "1.0.0",
+  "product": {
+    "bundle": "MVU_Engine_Bundle.js",
+    "sourcePatch": "MVU_Engine_Source.patch",
+    "bundleBytes": 390207,
+    "bundleSha256": "5cdfb31920212e2ed11a66eb7c51026d97ce5b50ebf5d9964f78938621d9516d",
+    "sourcePatchSha256": "9b1d02e35979b066170388c0bb27bc8069e37379d39f76a951fb5d52b5aa546a"
+  },
+  "upstream": {
+    "repository": "https://github.com/MagicalAstrogy/MagVarUpdate.git",
+    "commit": "0a730cd4a9b99689d1135a49b542c780b977c24c",
+    "artifact": "artifact/bundle.js"
+  },
+  "build": {
+    "packageManager": "yarn@3.4.1",
+    "applyPatch": "git apply --ignore-space-change --ignore-whitespace --whitespace=nowarn MVU_Engine_Source.patch",
+    "install": "corepack yarn install --immutable",
+    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-25 00:00'; corepack yarn build\"",
+    "buildDate": "2026-08-25 00:00",
+    "output": "artifact/bundle.js"
+  },
+  "loading": {
+    "entry": "MVU_ZOD_Entry.js",
+    "bundleMode": "dynamic-import",
+    "ownerMarker": "__LWCS_MVU_ENGINE_OWNER_V1__",
+    "duplicatePolicy": "reuse-owned-or-fail-unowned"
+  },
+  "runtimeContract": {
+    "generationBoundary": "tavern_events.GENERATION_AFTER_COMMANDS",
+    "syncHotRead": "Mvu.getMvuData",
+    "asyncRead": "Mvu.getMvuDataAsync",
+    "persistenceAwait": "Mvu.persistence.awaitIdle",
+    "persistenceStatus": "Mvu.persistence.getStatus",
+    "events": {
+      "taskStarted": "lwcs_mvu_task_started",
+      "taskFinished": "lwcs_mvu_task_finished",
+      "commitStarted": "lwcs_mvu_commit_started",
+      "commitFinished": "lwcs_mvu_commit_finished"
+    },
+    "staleKey": ["chat_id", "absolute_index", "swipe_id", "text_fingerprint"],
+    "persistentDataChanges": false
+  }
+}

@@ -1514,8 +1514,9 @@
 
 .map-node-label {
   position: absolute;
-  left: calc(50% + var(--label-offset-x, 0px));
-  top: calc(100% + 6px + var(--label-offset-y, 0px));
+  left: 50%;
+  top: var(--label-top, calc(100% + 6px));
+  bottom: var(--label-bottom, auto);
   max-width: clamp(68px, 16vw, 136px);
   padding: 2px 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1529,7 +1530,28 @@
   text-overflow: ellipsis;
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.72);
   box-shadow: 0 5px 12px rgba(0, 0, 0, 0.22);
-  transform: translateX(-50%);
+  transform: translate(
+    calc(var(--label-shift-x, -50%) + var(--label-offset-x, 0px)),
+    calc(var(--label-shift-y, 0px) + var(--label-offset-y, 0px))
+  );
+}
+
+.map-node.edge-left {
+  --label-shift-x: 4px;
+}
+
+.map-node.edge-right {
+  --label-shift-x: calc(-100% - 4px);
+}
+
+.map-node.edge-bottom {
+  --label-top: auto;
+  --label-bottom: 100%;
+  --label-shift-y: -4px;
+}
+
+.map-node.edge-top {
+  --label-shift-y: 8px;
 }
 
 .map-node:hover .map-node-label,

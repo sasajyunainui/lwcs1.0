@@ -33,43 +33,76 @@
       modulePath: options.modulePath || null,
       loader: options.loader || null,
       globalKey: options.globalKey || null,
+      metadataGlobalKey: options.metadataGlobalKey || null,
       exportName: options.exportName || null,
       namespace: options.namespace,
       note: options.note || null,
     });
   }
 
-  function eraDescriptor(id, profileId, startYear, resources) {
-    return freezeDeep({ id, profileId, startYear, resources });
+  function eraDescriptor(id, profileId, startYear, mapProfile, resources) {
+    return freezeDeep({ id, profileId, startYear, mapProfile, resources });
   }
 
   const ERA_DATA_SOURCES = freezeDeep({
     dldl: eraDescriptor('dldl', 'dldl', 0, {
+      id: 'dldl-terrestrial',
+      mapId: 'map_dldl_world',
+      asset: '斗罗大陆1地图.png',
+      topology: 'terrestrial',
+      terrainSource: 'image-sampling',
+      width: 3174,
+      height: 2246,
+    }, {
       character: resourceDescriptor('character', { modulePath: './dldlCharacterLibrary.js', loader: 'script-global', globalKey: '__DLDL_CHARACTER_LIBRARY__', namespace: 'dldlCharacterLibrary' }),
       item: resourceDescriptor('item', { modulePath: './dldlItemLibrary.js', loader: 'script-global', globalKey: '__LWCS_斗罗大陆物品库__', namespace: 'dldlItemLibrary' }),
-      faction: resourceDescriptor('faction', { sourceStatus: 'not-configured', namespace: 'dldlFactionLibrary', note: '当前lwcs没有斗一独立势力库' }),
-      location: resourceDescriptor('location', { sourceStatus: 'not-configured', namespace: 'dldlLocationLibrary', note: '当前lwcs没有斗一独立地点库' }),
+      faction: resourceDescriptor('faction', { modulePath: './dldlFactionLibrary.js', loader: 'script-global', globalKey: '__LWCS_DLDL_FACTION_LIBRARY__', metadataGlobalKey: '__LWCS_DLDL_FACTION_LIBRARY_META_V1__', namespace: 'dldlFactionLibrary' }),
+      location: resourceDescriptor('location', { modulePath: './dldlLocationLibrary.js', loader: 'script-global', globalKey: '__LWCS_DLDL_LOCATION_LIBRARY__', metadataGlobalKey: '__LWCS_DLDL_LOCATION_LIBRARY_META_V1__', namespace: 'dldlLocationLibrary' }),
       timeline: resourceDescriptor('timeline', { modulePath: './dldltimeline.js', loader: 'dynamic-import', globalKey: '__LWCS_TIMELINE_SOURCE_dldl__', exportName: 'TimelineEvents', namespace: 'dldlTimelineEvents' }),
     }),
     jueshitangmen: eraDescriptor('jueshitangmen', 'jueshitangmen', 10000, {
+      id: 'terrestrial-shared',
+      mapId: 'map_terrestrial_world',
+      asset: 'MAP.webp',
+      topology: 'terrestrial',
+      terrainSource: 'manual-and-image',
+      width: 3174,
+      height: 2246,
+    }, {
       character: resourceDescriptor('character', { modulePath: './JueshiTangmenCharacterLibrary.js', loader: 'script-global', globalKey: '__LWCS_绝世唐门角色库__', namespace: 'jueshitangmenCharacterLibrary' }),
       item: resourceDescriptor('item', { modulePath: './JueshiTangmenItemLibrary.js', loader: 'script-global', globalKey: '__LWCS_绝世唐门物品库__', namespace: 'jueshitangmenItemLibrary' }),
-      faction: resourceDescriptor('faction', { sourceStatus: 'not-configured', namespace: 'jueshitangmenFactionLibrary', note: '当前lwcs没有斗二独立势力库' }),
-      location: resourceDescriptor('location', { sourceStatus: 'not-configured', namespace: 'jueshitangmenLocationLibrary', note: '当前lwcs没有斗二独立地点库' }),
+      faction: resourceDescriptor('faction', { modulePath: './jstmFactionLibrary.js', loader: 'script-global', globalKey: '__LWCS_JSTM_FACTION_LIBRARY__', metadataGlobalKey: '__LWCS_JSTM_FACTION_LIBRARY_META_V1__', namespace: 'jueshitangmenFactionLibrary' }),
+      location: resourceDescriptor('location', { modulePath: './jstmLocationLibrary.js', loader: 'script-global', globalKey: '__LWCS_JSTM_LOCATION_LIBRARY__', metadataGlobalKey: '__LWCS_JSTM_LOCATION_LIBRARY_META_V1__', namespace: 'jueshitangmenLocationLibrary' }),
       timeline: resourceDescriptor('timeline', { modulePath: './JueshiTangmenTimeline.js', loader: 'dynamic-import', globalKey: '__LWCS_TIMELINE_SOURCE_jueshitangmen__', exportName: '绝世唐门时间线', namespace: 'jueshitangmenTimelineEvents' }),
     }),
     current: eraDescriptor('current', 'current', 20000, {
+      id: 'terrestrial-shared',
+      mapId: 'map_terrestrial_world',
+      asset: 'MAP.webp',
+      topology: 'terrestrial',
+      terrainSource: 'manual-and-image',
+      width: 3174,
+      height: 2246,
+    }, {
       character: resourceDescriptor('character', { modulePath: './CharacterLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置角色库__', namespace: 'currentCharacterLibrary' }),
       item: resourceDescriptor('item', { modulePath: './ItemLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置物品库__', namespace: 'currentItemLibrary' }),
-      faction: resourceDescriptor('faction', { modulePath: './FactionLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置势力库__', namespace: 'currentFactionLibrary' }),
-      location: resourceDescriptor('location', { modulePath: './LocationLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置地点库__', namespace: 'currentLocationLibrary' }),
+      faction: resourceDescriptor('faction', { modulePath: './FactionLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置势力库__', metadataGlobalKey: '__LWCS_CURRENT_FACTION_LIBRARY_META_V1__', namespace: 'currentFactionLibrary' }),
+      location: resourceDescriptor('location', { modulePath: './LocationLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置地点库__', metadataGlobalKey: '__LWCS_CURRENT_LOCATION_LIBRARY_META_V1__', namespace: 'currentLocationLibrary' }),
       timeline: resourceDescriptor('timeline', { modulePath: './timeline.js', loader: 'dynamic-import', globalKey: '__LWCS_TIMELINE_SOURCE_current__', exportName: 'TimelineEvents', namespace: 'currentTimelineEvents' }),
     }),
     zjdl: eraDescriptor('zjdl', 'zjdl', 30000, {
+      id: 'zjdl-stellar',
+      mapId: 'map_zjdl_stellar',
+      asset: 'MAP_ZJDL.webp',
+      topology: 'stellar',
+      terrainSource: 'none',
+      width: 3174,
+      height: 2246,
+    }, {
       character: resourceDescriptor('character', { modulePath: './zjdlCharacterLibrary.js', loader: 'script-global', globalKey: '__LWCS_终极斗罗角色库__', namespace: 'zjdlCharacterLibrary' }),
       item: resourceDescriptor('item', { modulePath: './zjdlItemLibrary.js', loader: 'script-global', globalKey: '__LWCS_终极斗罗物品库__', namespace: 'zjdlItemLibrary' }),
-      faction: resourceDescriptor('faction', { sourceStatus: 'not-configured', namespace: 'zjdlFactionLibrary', note: '当前lwcs没有斗四独立势力库' }),
-      location: resourceDescriptor('location', { sourceStatus: 'not-configured', namespace: 'zjdlLocationLibrary', note: '当前lwcs没有斗四独立地点库' }),
+      faction: resourceDescriptor('faction', { modulePath: './zjdlFactionLibrary.js', loader: 'script-global', globalKey: '__LWCS_终极斗罗势力库__', metadataGlobalKey: '__LWCS_ZJDL_FACTION_LIBRARY_META_V1__', namespace: 'zjdlFactionLibrary' }),
+      location: resourceDescriptor('location', { modulePath: './zjdlLocationLibrary.js', loader: 'script-global', globalKey: '__LWCS_终极斗罗地点库__', metadataGlobalKey: '__LWCS_ZJDL_LOCATION_LIBRARY_META_V1__', namespace: 'zjdlLocationLibrary' }),
       timeline: resourceDescriptor('timeline', { modulePath: './zjdltimeline.js', loader: 'dynamic-import', globalKey: '__LWCS_TIMELINE_SOURCE_zjdl__', exportName: '终极斗罗时间线', namespace: 'zjdlTimelineEvents' }),
     }),
   });
@@ -127,6 +160,10 @@
 
   function getEraDataSource(eraId) {
     return assertEraId(eraId);
+  }
+
+  function getMapProfile(eraId) {
+    return assertEraId(eraId).mapProfile;
   }
 
   function listEraDataSources() {
@@ -212,7 +249,11 @@
           throw new EraDataRegistryError('RESOURCE_SOURCE_MISSING', eraId, resourceType, `资源已执行但未暴露源: ${eraId}:${resourceType}`);
         }
         同步资源全局源(descriptor, source);
-        const registered = integration.registerSource(eraId, resourceType, source, { detail: options.reason || 'ensureEraResources' });
+        const metadata = descriptor.metadataGlobalKey ? 读取全局能力(descriptor.metadataGlobalKey) : null;
+        const registered = integration.registerSource(eraId, resourceType, source, {
+          detail: options.reason || 'ensureEraResources',
+          metadata,
+        });
         if (!registered || registered.status !== 'loaded') {
           throw new EraDataRegistryError('RESOURCE_REGISTER_FAILED', eraId, resourceType, `资源注册失败: ${eraId}:${resourceType}`);
         }
@@ -247,6 +288,7 @@
     sources: ERA_DATA_SOURCES,
     EraDataRegistryError,
     getEraDataSource,
+    getMapProfile,
     listEraDataSources,
     listResourceTypes,
     getResourceDescriptor,

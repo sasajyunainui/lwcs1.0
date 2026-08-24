@@ -9,6 +9,8 @@
     return window;
   })();
   const 宿主文档 = 宿主窗口.document;
+  const 是TT宿主 = !!(宿主窗口.__TAURITAVERN__ || window.__TAURITAVERN__);
+  const 读取共享值 = 键 => 宿主窗口[键] ?? window[键] ?? null;
 
   const UI启动状态 = (() => {
     const 键 = '__LWCS_UI_ENTRY_STATE__';
@@ -74,8 +76,38 @@
     JSONPatch文本预处理接口: { 类型: 'wait-global', 全局键: '__LWCS_PREPROCESS_JSON_PATCH_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
     逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     数据库适配器: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Database_Adapter.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    持久化适配器: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Persistence_Adapter.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    冷归档存储: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Cold_Archive_Store.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['持久化适配器'] },
+    持久化适配器: {
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'LWCS_Persistence_Adapter.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      已就绪: () => {
+        const 适配器 = 读取共享值('__LWCS_PERSISTENCE_ADAPTER_V1__');
+        return !!适配器 && typeof 适配器.openSession === 'function' && typeof 适配器.registerBackend === 'function';
+      },
+    },
+    MVU持久化提供者: {
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'LWCS_MVU_Persistence_Provider.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      依赖: ['持久化适配器'],
+      已就绪: () => {
+        const 提供者 = 读取共享值('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__');
+        return !!提供者 && typeof 提供者.open === 'function';
+      },
+    },
+    MVU提示投影器: {
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'LWCS_MVU_Prompt_Projector.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      依赖: ['MVU持久化提供者'],
+      已就绪: () => typeof 读取共享值('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function',
+    },
+    ...(是TT宿主 ? {} : {
+      冷归档存储: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Cold_Archive_Store.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['持久化适配器'] },
+    }),
     请求监控挂件: { 类型: 'inline-js', 地址: 资源基础地址 + 'RequestMonitorWidget.js' + 资源版本后缀, 关键: false, 分组: 'background' },
     地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' },
@@ -107,7 +139,13 @@
   const 时代运行时前置模块顺序 = Object.freeze(['历法与库运行时', '时代数据注册表', '时代货币注册表', '时代事件状态运行时', '时代运行时集成', '时代修炼运行时', 'MVU核心就绪']);
   const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', ...时代运行时前置模块顺序]);
   const 游戏功能模块顺序 = Object.freeze(['地图模块', '交易模块', '副职业模块', '赛事权限模块', '战斗预估运行时', '行为决策管线', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
-  const 冷归档前置模块顺序 = Object.freeze(['数据库适配器', '持久化适配器', '冷归档存储']);
+  const 冷归档前置模块顺序 = Object.freeze([
+    '数据库适配器',
+    '持久化适配器',
+    'MVU持久化提供者',
+    'MVU提示投影器',
+    ...(是TT宿主 ? [] : ['冷归档存储']),
+  ]);
   const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...变量运行时接口模块顺序, ...冷归档前置模块顺序, '逻辑桥接', ...游戏功能模块顺序, '数据库模块']);
   const 正常启动追踪模块顺序 = Object.freeze([...核心模块顺序]);
 
@@ -515,6 +553,13 @@
     if (!模块 || !状态) return { ok: false, 模块名, reason: 'unknown_module' };
     if (状态.状态 === 'loaded') return { ok: true, 模块名, cached: true };
     if (模块加载承诺表.has(模块名)) return 模块加载承诺表.get(模块名);
+    if (typeof 模块.已就绪 === 'function' && 模块.已就绪()) {
+      状态.状态 = 'loaded';
+      状态.阶段 = '复用已有全局';
+      状态.错误 = '';
+      刷新加载追踪面板();
+      return { ok: true, 模块名, existing: true };
+    }
 
     const 加载承诺 = (async () => {
       状态.状态 = 'loading';
@@ -887,6 +932,7 @@
 
   function 注册冷归档脚本按钮() {
     try {
+      if (是TT宿主) return true;
       if (宿主窗口.__LWCS_COLD_ARCHIVE_ENTRY_BUTTON_BOUND__) return true;
       if (
         typeof appendInexistentScriptButtons !== 'function' ||

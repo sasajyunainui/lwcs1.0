@@ -156,6 +156,25 @@ function 读取库运行时_V1() {
   return null;
 }
 
+function 读取当前静态资源时代_V1(数据根 = {}, 当前tick = null) {
+  const 集成 = 读取时代运行时集成_V1();
+  const tick = Number(当前tick ?? 数据根?.world?.时间?.tick);
+  if (!集成 || !Number.isFinite(tick) || tick < 0 || typeof 集成.getEraContext !== 'function') return null;
+  try { return 集成.getEraContext(tick, { dataRoot: 数据根 }).resourceEra || null; } catch (_) { return null; }
+}
+
+function 静态记录可用_V1(资源时代 = '', 资源类型 = '', 记录ID = '', 当前tick = 0, 模式 = 'demand') {
+  const 集成 = 读取时代运行时集成_V1();
+  if (!集成 || typeof 集成.getLifecycleRecord !== 'function' || !资源时代 || !资源类型 || !记录ID) return false;
+  try { return 集成.getLifecycleRecord(资源时代, 资源类型, 记录ID, 当前tick, 模式).active === true; } catch (_) { return false; }
+}
+
+function 收集开场常驻静态记录_V1(资源时代 = '', 资源类型 = '', 当前tick = 0) {
+  const 集成 = 读取时代运行时集成_V1();
+  if (!集成 || typeof 集成.listLifecycleRecords !== 'function' || !资源时代) return [];
+  try { return 集成.listLifecycleRecords(资源时代, 资源类型, 当前tick, 'resident').map(记录 => String(记录.recordId || '').trim()).filter(Boolean); } catch (_) { return []; }
+}
+
 function 记录库缺失错误_V1(类型 = '', 文本 = '') {
   const 键 = `${类型}:${文本}`;
   if (!globalThis.__LWCS_LIBRARY_RUNTIME_ERRORS_V1__) globalThis.__LWCS_LIBRARY_RUNTIME_ERRORS_V1__ = new Set();
@@ -2061,6 +2080,74 @@ function 判断传灵塔万年魂灵开放_V1(数据根 = {}) {
   });
 }
 
+const 势力动态字段集合_V1 = new Set(['现状描述', '影响力', '规模', '状态', '上级势力', '关系', '战力统计']);
+
+function 水合空势力实例_V1(candidate) {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return;
+  const org = candidate?.org;
+  if (!org || typeof org !== 'object' || Array.isArray(org) || !Object.keys(org).length) return;
+  const 运行时 = 读取库运行时_V1();
+  const 档案阻断 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__.势力 === true;
+  const 可解析势力 = !档案阻断 && 运行时 && typeof 运行时.resolveFaction === 'function' && typeof 运行时.buildFactionInstance === 'function';
+  const 势力库 = 可解析势力 ? 读取内置势力库_V1(candidate, Number(candidate?.world?.时间?.tick)) : null;
+  Object.keys(org).forEach(势力名 => {
+    const 势力数据 = org[势力名];
+    const 是完整实例 =
+      !!势力数据 &&
+      typeof 势力数据 === 'object' &&
+      !Array.isArray(势力数据) &&
+      typeof 势力数据.类型 === 'string' &&
+      !!势力数据.类型.trim() &&
+      typeof 势力数据.描述 === 'string' &&
+      势力数据.影响力 !== undefined &&
+      势力数据.规模 !== undefined &&
+      typeof 势力数据.状态 === 'string' &&
+      typeof 势力数据.上级势力 === 'string' &&
+      !!势力数据.关系 && typeof 势力数据.关系 === 'object' &&
+      !!势力数据.战力统计 && typeof 势力数据.战力统计 === 'object' &&
+      势力数据.战力统计.极限斗罗 !== undefined &&
+      势力数据.战力统计.超级斗罗 !== undefined &&
+      势力数据.战力统计.封号斗罗 !== undefined;
+    if (是完整实例) return;
+    const 原型 = 势力数据 && typeof 势力数据 === 'object' && !Array.isArray(势力数据)
+      ? Object.getPrototypeOf(势力数据)
+      : null;
+    const 是纯空普通对象 =
+      !!势力数据 &&
+      typeof 势力数据 === 'object' &&
+      !Array.isArray(势力数据) &&
+      (原型 === Object.prototype || 原型 === null) &&
+      Object.keys(势力数据).length === 0;
+    let 已构建 = false;
+    if (可解析势力 && 势力库 && !势力库.__LWCS_RESOURCE_NOT_READY__) {
+      let 解析 = null;
+      try {
+        解析 = 运行时.resolveFaction(势力名, { library: 势力库, allowKeyword: false });
+      } catch (错误) {}
+      if (解析?.status === 'resolved') {
+        const 规范名 = 解析.canonicalName;
+        const 当前tick = Math.max(0, Number(candidate?.world?.时间?.tick || 0));
+        const 资源时代 = 读取当前静态资源时代_V1(candidate, 当前tick);
+        if (静态记录可用_V1(资源时代, 'faction', 规范名, 当前tick) && !(org[规范名] && 规范名 !== 势力名)) {
+          const 动态值 = {};
+          Object.keys(势力数据 || {}).forEach(字段 => {
+            if (势力动态字段集合_V1.has(字段)) 动态值[字段] = 势力数据[字段];
+          });
+          try {
+            const 实例 = 运行时.buildFactionInstance(规范名, 动态值, { library: 势力库 });
+            if (实例 && typeof 实例 === 'object' && !Array.isArray(实例) && Object.keys(实例).length > 0) {
+              org[规范名] = 实例;
+              if (规范名 !== 势力名) delete org[势力名];
+              已构建 = true;
+            }
+          } catch (错误) {}
+        }
+      }
+    }
+    if (!已构建 && 是纯空普通对象) delete org[势力名];
+  });
+}
+
 function markPlayerCharacterInSchemaInput(rawInput) {
   开始MVU归一化批次_V1();
   if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) return rawInput;
@@ -2111,9 +2198,10 @@ function markPlayerCharacterInSchemaInput(rawInput) {
       charMap[matchedKey].__mvu_isPlayer = true;
     }
   };
-  候选根列表.forEach(记录候选原始等级);
+   候选根列表.forEach(记录候选原始等级);
   候选根列表.forEach(水合角色物品引用_V1);
   候选根列表.forEach(记录数据根非魂师角色_V1);
+  候选根列表.forEach(水合空势力实例_V1);
   候选根列表.forEach(markCandidate);
   return clonedInput;
 }
@@ -3036,7 +3124,10 @@ function 归一化角色死亡状态_V1(角色 = {}, 当前tick = 0) {
 function 应用内置势力实例化_V1(数据根 = {}, 选项 = {}) {
   const 档案阻断 = globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__ && globalThis.__LWCS_LIBRARY_ARCHIVE_BLOCKS__.势力 === true;
   if (选项.禁止内置势力实例化 === true || 档案阻断) return { changed: false, changedNames: [], names: [], error: 'archive-unavailable' };
+  const 当前tick = Math.max(0, Number(数据根?.world?.时间?.tick || 0));
+  const 资源时代 = 读取当前静态资源时代_V1(数据根, 当前tick);
   const 名称列表 = [
+    ...收集开场常驻静态记录_V1(资源时代, 'faction', 当前tick),
     ...(Array.isArray(选项.候选势力) ? 选项.候选势力 : []),
     ...Object.values(数据根?.char || {}).flatMap(角色 => Object.keys(
       角色?.社交?.势力 && typeof 角色.社交.势力 === 'object' && !Array.isArray(角色.社交.势力)
@@ -3062,9 +3153,20 @@ function 应用内置势力实例化_V1(数据根 = {}, 选项 = {}) {
     }
     const 规范名 = 解析.canonicalName;
     if (禁止势力.has(规范名)) return;
-    if (数据根.org[规范名] && typeof 数据根.org[规范名] === 'object' && !Array.isArray(数据根.org[规范名])) return;
+    if (!静态记录可用_V1(资源时代, 'faction', 规范名, 当前tick)) return;
+    const 已有实例 = 数据根.org[规范名];
+    if (已有实例 && typeof 已有实例 === 'object' && !Array.isArray(已有实例)
+      && typeof 已有实例.类型 === 'string' && 已有实例.类型.trim()
+      && typeof 已有实例.描述 === 'string' && 已有实例.影响力 !== undefined && 已有实例.规模 !== undefined
+      && typeof 已有实例.状态 === 'string' && typeof 已有实例.上级势力 === 'string'
+      && 已有实例.关系 && typeof 已有实例.关系 === 'object'
+      && 已有实例.战力统计 && typeof 已有实例.战力统计 === 'object'
+      && 已有实例.战力统计.极限斗罗 !== undefined && 已有实例.战力统计.超级斗罗 !== undefined && 已有实例.战力统计.封号斗罗 !== undefined) return;
     try {
-      数据根.org[规范名] = 运行时.buildFactionInstance(规范名, {}, { library: 势力库 });
+      const 动态值 = 已有实例 && typeof 已有实例 === 'object' && !Array.isArray(已有实例)
+        ? Object.fromEntries(Object.entries(已有实例).filter(([字段]) => 势力动态字段集合_V1.has(字段)))
+        : {};
+      数据根.org[规范名] = 运行时.buildFactionInstance(规范名, 动态值, { library: 势力库 });
       已写入.push(规范名);
     } catch (错误) {
       记录库缺失错误_V1('势力实例化', `势力“${规范名}”实例化失败，已阻止写入：${错误.message || 错误}`);
@@ -3139,10 +3241,13 @@ function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
   if (!数据根.world || typeof 数据根.world !== 'object') 数据根.world = {};
   if (!数据根.world.地点 || typeof 数据根.world.地点 !== 'object' || Array.isArray(数据根.world.地点)) 数据根.world.地点 = {};
   const 记录ID列表 = [];
+  const 当前tick = Math.max(0, Number(数据根?.world?.时间?.tick || 0));
+  const 资源时代 = 读取当前静态资源时代_V1(数据根, 当前tick);
+  收集开场常驻静态记录_V1(资源时代, 'location', 当前tick).forEach(记录ID => 记录ID列表.push(记录ID));
   if (当前位置 && !['无', '未知', '待生成'].includes(当前位置)) {
     const 位置解析 = 解析内置地点位置_V1(当前位置, 地点库, 运行时);
     if (位置解析.status === 'resolved') {
-      if (!地点被阻断(位置解析)) 记录ID列表.push(位置解析.recordId);
+      if (!地点被阻断(位置解析) && 静态记录可用_V1(资源时代, 'location', 位置解析.recordId, 当前tick)) 记录ID列表.push(位置解析.recordId);
     } else 记录库缺失错误_V1('地点解析', `玩家位置“${当前位置}”无法唯一解析（${位置解析.status}），保留原位置文本。`);
   }
   名称列表.forEach(项目 => {
@@ -3151,11 +3256,8 @@ function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
     if (!名称 && !项目?.记录ID) return;
     const 解析 = 运行时.resolveLocation(查询对象, [], { library: 地点库, allowKeyword: false });
     if (解析.status === 'resolved') {
-      if (!地点被阻断(解析)) 记录ID列表.push(解析.recordId);
+      if (!地点被阻断(解析) && 静态记录可用_V1(资源时代, 'location', 解析.recordId, 当前tick)) 记录ID列表.push(解析.recordId);
     } else 记录库缺失错误_V1('地点解析', `地点“${名称}”无法唯一解析（${解析.status}），未创建候选实例。`);
-  });
-  Object.entries(地点库.地点 || {}).forEach(([记录ID, 记录]) => {
-    if (记录?.实例化策略 === 'insert' && !地点被阻断({ recordId: 记录ID, path: 记录.目标路径 })) 记录ID列表.push(记录ID);
   });
   const 已写入 = [];
   Array.from(new Set(记录ID列表)).forEach(记录ID => {
@@ -6273,6 +6375,16 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     const REFRESH_INTERVAL = 1008;
     const 市场耗散基础触发率 = 0.22;
     const 商店刷新基准tick = Math.max(0, Math.floor(Number(currentTick || 0)));
+    const 当前资源时代 = 读取当前静态资源时代_V1(data, currentTick);
+    const 星际资源模式 = 当前资源时代 === 'zjdl';
+    if (星际资源模式) {
+      Object.values(data.world.地点 || {}).forEach(cityData => {
+        if (cityData && typeof cityData === 'object' && !Array.isArray(cityData)
+          && cityData.商店 && typeof cityData.商店 === 'object' && !Array.isArray(cityData.商店)) {
+          delete cityData.商店.城市杂货店;
+        }
+      });
+    }
     const 归一商店记录 = 商店数据 => {
       if (!商店数据 || typeof 商店数据 !== 'object' || Array.isArray(商店数据)) return { 库存: {}, _下次刷新tick: 0 };
       if (!商店数据.库存 || typeof 商店数据.库存 !== 'object' || Array.isArray(商店数据.库存)) 商店数据.库存 = {};
@@ -6292,12 +6404,14 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
     };
 
     _(data.world.地点).forEach((cityData, cityName) => {
+      if (星际资源模式) return;
       const 地点类型 = String(cityData?.类型 || '').trim();
       const 已声明商店 = !!cityData && typeof cityData === 'object' && !Array.isArray(cityData)
         && Object.prototype.hasOwnProperty.call(cityData, '商店');
       const 城市类地点 = /城市|主城|首都|城镇|新城/.test(地点类型);
       if (!已声明商店 && !城市类地点) return;
       const 城市商店 = 归一地点商店容器(cityData);
+      if (!城市类地点) return;
 
       const groceryStoreName = '城市杂货店';
       if (!城市商店[groceryStoreName]) {

@@ -3043,6 +3043,41 @@ function 读取内置库环境_V1(数据根 = {}) {
   };
 }
 
+function 要求内置记录生命周期当前可用_V1(资源类型 = '', 记录ID = '', 根 = {}, 标签 = '') {
+  const 集成 = 读取视图时代运行时集成_V1();
+  const 前缀 = 标签 || `${资源类型}记录${记录ID}`;
+  const 当前tick = Number(根?.world?.时间?.tick);
+  if (!集成 || typeof 集成.getEraContext !== 'function' || typeof 集成.getLifecycleRecord !== 'function') {
+    throw new Error(`${前缀}生命周期接口未就绪，已阻止实例化。`);
+  }
+  if (!Number.isFinite(当前tick) || 当前tick < 0) {
+    throw new Error(`${前缀}当前world.时间.tick无效，已阻止实例化。`);
+  }
+  let 上下文;
+  try {
+    上下文 = 集成.getEraContext(当前tick, { dataRoot: 根 });
+  } catch (错误) {
+    throw new Error(`${前缀}时代上下文未就绪，已阻止实例化：${错误?.message || String(错误 || 'getEraContext失败')}`);
+  }
+  const 资源时代 = String(上下文?.resourceEra || '').trim();
+  if (!资源时代) throw new Error(`${前缀}当前resourceEra缺失，已阻止实例化。`);
+  let 生命周期;
+  try {
+    生命周期 = 集成.getLifecycleRecord(资源时代, 资源类型, 记录ID, 当前tick, 'demand');
+  } catch (错误) {
+    throw new Error(`${前缀}生命周期sidecar未就绪，已阻止实例化：${错误?.message || String(错误 || 'getLifecycleRecord失败')}`);
+  }
+  if (!生命周期 || 生命周期.status !== 'resolved') {
+    if (生命周期?.status === 'unknown-record') throw new Error(`${前缀}生命周期记录未知，已阻止实例化：${记录ID}`);
+    throw new Error(`${前缀}生命周期sidecar未就绪，已阻止实例化：${生命周期?.status || 'unknown'}`);
+  }
+  if (生命周期.active !== true) {
+    const 首次生效tick = 生命周期.record?.首次生效tick;
+    throw new Error(`${前缀}尚未生效，已阻止实例化：当前tick=${当前tick}，首次生效tick=${首次生效tick ?? '未知'}`);
+  }
+  return 生命周期;
+}
+
 function 解析内置地点补丁目标_V1(路径 = [], patch = {}, 环境 = {}) {
   const 地点路径 = [];
   const 原始地点路径 = 路径.slice(2);
@@ -3165,13 +3200,14 @@ function 读取内置地点位置记录ID_V1(位置 = '', 环境 = {}) {
 }
 
 function 构建玩家位置地点实例化补丁_V1(根 = {}, 位置 = '', 环境 = {}, 已注入路径 = new Set(), 选项 = {}) {
-  if (!环境.运行时 || !环境.地点库) throw new Error('地点库或库运行时缺失，已阻止玩家位置地点实例化。');
+  if (!环境.运行时 || !环境.地点库 || 环境.地点库.__LWCS_RESOURCE_NOT_READY__) throw new Error('地点库或生命周期sidecar未就绪，已阻止玩家位置地点实例化。');
   const 记录ID = 读取内置地点位置记录ID_V1(位置, 环境);
   if (!记录ID) return [];
   const 记录 = 环境.地点库.地点?.[记录ID];
   const 禁止记录 = new Set(Array.isArray(选项.禁止地点记录ID) ? 选项.禁止地点记录ID.map(名称 => String(名称 || '').trim()).filter(Boolean) : []);
   const 禁止路径 = new Set(Array.isArray(选项.禁止地点路径键) ? 选项.禁止地点路径键.map(路径 => typeof 路径 === 'string' ? 路径 : JSON.stringify(路径)).filter(Boolean) : []);
   if (选项.禁止内置地点实例化 === true || 禁止记录.has(记录ID) || 禁止路径.has(JSON.stringify(记录?.目标路径 || []))) return [];
+  要求内置记录生命周期当前可用_V1('location', 记录ID, 根, `JSONPatch玩家位置地点${记录?.规范名 || 记录ID}`);
   const 操作列表 = 环境.运行时.buildLocationInstantiationOps(记录ID, 根, { library: 环境.地点库 });
   return 清理内置实例化操作_V1(操作列表).filter(操作 => {
     if (已注入路径.has(操作.path)) return false;
@@ -3216,7 +3252,7 @@ function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = 
     if (路径[0] === 'org' && 路径.length === 2) {
       if (!['add', 'insert', 'replace'].includes(op)) throw new Error(`JSONPatch只允许用add创建新势力实例：${patch.path}`);
       if ((options.禁止内置势力实例化 === true || 档案阻断.势力 === true || 禁止势力.has(路径[1])) && !根.org?.[路径[1]]) throw new Error(`JSONPatch[${index}]势力归档不可用，已阻止新势力实例化：${路径[1]}`);
-      if (!环境.运行时 || !环境.势力库 || typeof 环境.运行时.resolveFaction !== 'function') throw new Error(`JSONPatch[${index}]势力库或库运行时缺失，已阻止新势力实例化。`);
+      if (!环境.运行时 || !环境.势力库 || 环境.势力库.__LWCS_RESOURCE_NOT_READY__ || typeof 环境.运行时.resolveFaction !== 'function') throw new Error(`JSONPatch[${index}]势力库或生命周期sidecar未就绪，已阻止新势力实例化。`);
       const 解析 = 环境.运行时.resolveFaction(路径[1], { library: 环境.势力库, allowKeyword: false });
       if (解析.status !== 'resolved') throw new Error(`JSONPatch[${index}]势力路径无法唯一解析：${路径[1]}（${解析.status}）`);
       const 规范名 = 解析.canonicalName;
@@ -3224,6 +3260,7 @@ function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = 
       if (op === 'remove' || (op === 'replace' && 根.org?.[规范名])) throw new Error(`JSONPatch禁止整体删除或覆盖活动势力：${规范名}`);
       if (op === 'add' || op === 'insert' || (op === 'replace' && !根.org?.[规范名])) {
         if (根.org?.[规范名]) return;
+        要求内置记录生命周期当前可用_V1('faction', 规范名, 根, `JSONPatch势力${规范名}`);
         const 值 = 合并势力实例化动态值_V1(规范名, patch.value || {}, 环境);
         输出.push({ op: 'add', path: 构建运行时JsonPointer路径_V1(['org', 规范名]), value: 值 });
         return;
@@ -3239,8 +3276,8 @@ function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = 
     const 是静态字段 = 地点路径.length > 1 && 内置地点静态字段_V1.has(地点路径[地点路径.length - 1]);
     if (是地点路径) {
       if (是静态字段 && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op)) throw new Error(`JSONPatch禁止修改地点静态身份字段：${patch.path}`);
-      if (是完整地点节点 && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op) && (!环境.运行时 || !环境.地点库)) {
-        throw new Error(`JSONPatch[${index}]地点库或库运行时缺失，已阻止新地点实例化：${patch.path}`);
+      if (是完整地点节点 && ['add', 'insert', 'replace', 'remove', 'delta'].includes(op) && (!环境.运行时 || !环境.地点库 || 环境.地点库.__LWCS_RESOURCE_NOT_READY__)) {
+        throw new Error(`JSONPatch[${index}]地点库或生命周期sidecar未就绪，已阻止新地点实例化：${patch.path}`);
       }
       if (是完整地点节点 && op === 'delta') throw new Error(`JSONPatch禁止对地点实例使用delta：${patch.path}`);
     }
@@ -3249,6 +3286,7 @@ function 预处理内置库实例化补丁_V1(patches = [], 根 = {}, options = 
         const 记录ID = 解析内置地点补丁目标_V1(路径, patch, 环境);
         if ((options.禁止内置地点实例化 === true || 档案阻断.地点 === true || 地点被阻断(记录ID)) && !读取运行时路径值_V1(根, 路径)) throw new Error(`JSONPatch[${index}]地点归档不可用，已阻止新地点实例化：${构建运行时地点路径名_V1(地点路径)}`);
         if (op === 'remove') throw new Error(`JSONPatch禁止整体删除地点实例：${记录ID}`);
+        要求内置记录生命周期当前可用_V1('location', 记录ID, 根, `JSONPatch地点${记录ID}`);
       const 操作列表 = 清理内置实例化操作_V1(环境.运行时.buildLocationInstantiationOps(记录ID, 根, { library: 环境.地点库 }))
         .filter(操作 => {
           if (已注入路径.has(操作.path)) return false;

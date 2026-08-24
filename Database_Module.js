@@ -4718,7 +4718,7 @@ $CONTENT
                 return { action: 'skipped', reason: 'no_generation_context' };
             }
             const 正文上下文 = 读取正文后置上下文_ACU();
-            const 目标消息元信息 = await 等待本轮真实角色消息落地_ACU(正文上下文);
+            const 目标消息元信息 = await 等待本轮真实角色消息落地_ACU(正文上下文, 事件消息编号);
             if (!目标消息元信息 || 目标消息元信息.消息索引 < 0) {
                 const reason = 'generation_not_landed';
                 logWarn_ACU(`[生成结束后置] 未确认本轮真实 AI 楼层，跳过后置更新: event=${事件名}, reason=${reason}, eventMessageId=${事件消息编号 ?? ''}`);
@@ -4827,12 +4827,46 @@ $CONTENT
             return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
         return 当前元信息;
     }
-    async function 等待本轮真实角色消息落地_ACU(生成上下文 = null) {
+    function 读取事件目标角色消息元信息_ACU(生成上下文, 事件消息编号) {
+        if (事件消息编号 === null || 事件消息编号 === undefined || String(事件消息编号).trim() === '')
+            return null;
+        const 聊天数组 = getChatArray_ACU();
+        if (!Array.isArray(聊天数组) || 聊天数组.length === 0)
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        const 数字索引 = Number(事件消息编号);
+        let 消息索引 = Number.isInteger(数字索引) && 数字索引 >= 0 && 数字索引 < 聊天数组.length ? 数字索引 : -1;
+        if (消息索引 < 0) {
+            消息索引 = 聊天数组.findIndex(消息 => String(消息?.id ?? 消息?.message_id ?? '') === String(事件消息编号));
+        }
+        const 消息 = 消息索引 >= 0 ? 聊天数组[消息索引] : null;
+        if (!消息 || 消息.is_user)
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        const 起点 = 生成上下文 || generationGate_ACU.lastGeneration || {};
+        if (起点.chatId && 起点.chatId !== getActiveChatId_ACU())
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        const 最后用户消息编号 = Number.isInteger(起点.最后用户消息编号) ? 起点.最后用户消息编号 : -1;
+        const 开始聊天长度 = Number.isInteger(起点.开始聊天长度) ? 起点.开始聊天长度 : -1;
+        const 开始最后角色索引 = Number.isInteger(起点.开始最后角色索引) ? 起点.开始最后角色索引 : -1;
+        if (消息索引 <= 最后用户消息编号)
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        const 首次元信息 = 读取角色消息元信息_ACU(消息, 消息索引);
+        const 是新增楼层 = 消息索引 >= 开始聊天长度;
+        const 是原位更新 = 消息索引 === 开始最后角色索引
+            && 首次元信息.文本签名 !== String(起点.开始最后角色签名 || '');
+        if (开始聊天长度 >= 0 && 开始最后角色索引 >= 0 && !是新增楼层 && !是原位更新)
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        const 当前元信息 = 读取当前目标角色消息元信息_ACU(首次元信息);
+        if (!当前元信息 || 当前元信息.滑动编号 !== 首次元信息.滑动编号 || 当前元信息.文本签名 !== 首次元信息.文本签名)
+            return { 文本: '', 消息索引: -1, 消息编号: '', 滑动编号: '', 文本签名: '' };
+        return 当前元信息;
+    }
+    async function 等待本轮真实角色消息落地_ACU(生成上下文 = null, 事件消息编号 = null) {
         const 最大重读次数 = 4;
         const 重读间隔毫秒 = [80, 160, 320, 500];
         for (let 尝试次数 = 0; 尝试次数 <= 最大重读次数; 尝试次数 += 1) {
             const 当前上下文 = generationGate_ACU.正文后置上下文 || 生成上下文;
-            const 目标消息元信息 = 读取指定角色消息元信息_ACU(当前上下文);
+            const 事件目标消息元信息 = 读取事件目标角色消息元信息_ACU(当前上下文, 事件消息编号);
+            const 目标消息元信息 = 事件目标消息元信息 || 读取指定角色消息元信息_ACU(当前上下文);
             if (目标消息元信息.消息索引 >= 0)
                 return 目标消息元信息;
             if (尝试次数 < 最大重读次数) {
@@ -4949,6 +4983,65 @@ $CONTENT
     }
     // ═══ Setter 函数 ═══
     function _set_settings_ACU(v) { settings_ACU = v; }
+    const optionalRuntimeState_ACU = {
+        editor: { enabled: false, initialized: false, menuRetryTimers: 0 },
+        standardAnalysis: { enabled: false, initialized: false },
+        vector: { enabled: false, initialized: false },
+        diagnostics: { enabled: false, initialized: false },
+        visualization: { enabled: false, initialized: false },
+    };
+    function markOptionalRuntime_ACU(feature, patch = {}) {
+        const state = optionalRuntimeState_ACU[feature];
+        if (!state)
+            return;
+        if (patch.enabled === true)
+            state.enabled = true;
+        if (patch.initialized === true) {
+            state.enabled = true;
+            state.initialized = true;
+        }
+    }
+    function getOptionalRuntimeStatus_ACU() {
+        const vectorEnabled = globalMeta_ACU?.summaryVectorIndexModeGlobal === true;
+        const standardAnalysisEnabled = settings_ACU?.contentOptimizationSettings?.enabled === true;
+        const visualizerAssistantTimer = lifecycleTimer_ACU !== null;
+        return {
+            version: 1,
+            features: {
+                editor: { ...optionalRuntimeState_ACU.editor, gate: 'explicit_open_or_enable' },
+                standardAnalysis: {
+                    ...optionalRuntimeState_ACU.standardAnalysis,
+                    enabled: standardAnalysisEnabled,
+                    gate: 'contentOptimizationSettings.enabled',
+                },
+                vector: {
+                    ...optionalRuntimeState_ACU.vector,
+                    enabled: vectorEnabled,
+                    gate: 'globalMeta.summaryVectorIndexModeGlobal',
+                },
+                diagnostics: { ...optionalRuntimeState_ACU.diagnostics, gate: 'editor_open_or_explicit_enable' },
+                visualization: { ...optionalRuntimeState_ACU.visualization, gate: 'visualizer_open_or_explicit_enable' },
+            },
+            background: {
+                activeTimers: optionalRuntimeState_ACU.editor.menuRetryTimers
+                    + summaryVectorFlushTimers_ACU.size
+                    + vectorIndexPersistTimers_ACU.size
+                    + (visualizerAssistantTimer ? 1 : 0),
+                menuRetryTimers: optionalRuntimeState_ACU.editor.menuRetryTimers,
+                vectorFlushTimers: summaryVectorFlushTimers_ACU.size,
+                vectorPersistTimers: vectorIndexPersistTimers_ACU.size,
+                visualizerAssistantTimer,
+                networkRequests: 0,
+                fullHistoryScans: 0,
+            },
+            entryPoints: [
+                'AutoCardUpdaterAPI.openSettings',
+                'AutoCardUpdaterAPI.openVisualizer',
+                'AutoCardUpdaterV2API.openVisualizer',
+                'AutoCardUpdaterAPI.enableOptionalFeature',
+            ],
+        };
+    }
     function _set_currentJsonTableData_ACU(v) { currentJsonTableData_ACU = v; }
     function _set_currentChatFileIdentifier_ACU(v) {
         logDebug_ACU(`[状态管理] 切换聊天标识: ${currentChatFileIdentifier_ACU} -> ${v}`);
@@ -8874,8 +8967,8 @@ $CONTENT
     // st-message 只作为 TT capability probe 不可用时的注入式回退，不能在
     // TT 已验证后因一次写失败而偷偷换后端。
     // ════════════════════════════════════════════════════════════════
-    const LWCS_DATABASE_STORE_NAMESPACE_ACU = 'lwcs.database.v1';
-    const LWCS_DATABASE_SCHEMA_VERSION_ACU = 1;
+    const LWCS_DATABASE_STORE_NAMESPACE_ACU = 'lwcs.database.v2';
+    const LWCS_DATABASE_SCHEMA_VERSION_ACU = 2;
     const LWCS_DATABASE_FALLBACK_STORE_FIELD_ACU = '_acu_database_store';
     let databasePersistenceOpenPromise_ACU = null;
     let databasePersistenceFallbackRegistered_ACU = false;
@@ -8911,14 +9004,39 @@ $CONTENT
         return null;
     }
 
+    function hasTauriTavernChatStoreSurface_ACU() {
+        const windows = [];
+        const add = candidate => {
+            if (candidate && !windows.includes(candidate))
+                windows.push(candidate);
+        };
+        add(globalThis);
+        try { add(window); } catch (_) { }
+        try { add(window.parent); } catch (_) { }
+        try { add(window.top); } catch (_) { }
+        return windows.some(candidate => {
+            try {
+                return typeof candidate.__TAURITAVERN__?.api?.chat?.current?.handle === 'function';
+            }
+            catch (_) {
+                return false;
+            }
+        });
+    }
+
     function databasePersistenceFailure_ACU(state, error, extra = {}) {
-        return {
+        const result = {
             saved: false,
             verified: false,
             state: state || 'unavailable',
             error: error || 'PERSISTENCE_UNAVAILABLE',
             ...extra,
         };
+        logError_ACU(`[DatabasePersistence] ${result.error} (state=${result.state})`, {
+            messageIndex: result.messageIndex,
+            idempotencyKey: result.idempotencyKey,
+        });
+        return result;
     }
 
     function databasePersistenceCanonicalJson_ACU(value, ancestors = []) {
@@ -8956,6 +9074,52 @@ $CONTENT
         const text = String(message?.mes ?? message?.content ?? '');
         const swipeId = String(message?.swipe_id ?? message?.swipeId ?? '');
         return hashUserInput_ACU(`${swipeId}\n${text}`) || '0';
+    }
+
+    function databaseMessageContentFingerprint_ACU(message) {
+        return hashUserInput_ACU(String(message?.mes ?? message?.content ?? '')) || '0';
+    }
+
+    function normalizeDatabaseIdempotencyGroup_ACU(groupKeys) {
+        const values = Array.isArray(groupKeys)
+            ? groupKeys
+            : (groupKeys === undefined || groupKeys === null ? [] : [groupKeys]);
+        const normalized = [...new Set(values
+            .map(value => String(value || '').trim())
+            .filter(Boolean))].sort();
+        return normalized.length > 0 ? normalized.join(',') : '*';
+    }
+
+    function databaseIdempotencyParts_ACU(stableChatId, target, groupKeys) {
+        const message = target?.message || {};
+        const assistantIndex = Number(target?.index);
+        const swipe = String(message?.swipe_id ?? message?.swipeId ?? '');
+        return {
+            chat: String(stableChatId || '').trim(),
+            assistantIndex: Number.isInteger(assistantIndex) ? assistantIndex : -1,
+            swipe,
+            textFingerprint: databaseMessageContentFingerprint_ACU(message),
+            tableGroup: normalizeDatabaseIdempotencyGroup_ACU(groupKeys),
+        };
+    }
+
+    function databaseIdempotencyKey_ACU(stableChatId, target, groupKeys) {
+        const parts = databaseIdempotencyParts_ACU(stableChatId, target, groupKeys);
+        if (!parts.chat || parts.assistantIndex < 0)
+            return '';
+        return `idem_v2_${hashUserInput_ACU(databasePersistenceCanonicalJson_ACU(parts)) || '0'}`;
+    }
+
+    function databaseIdempotencyGroupKeys_ACU(options = {}, uniqueMutation = false) {
+        const rawGroupKeys = options.idempotencyGroupKeys
+            ?? options.groupKeys
+            ?? options.updateGroupKeys
+            ?? options.targetSheetKeys
+            ?? [];
+        const groupKeys = Array.isArray(rawGroupKeys) ? rawGroupKeys : [rawGroupKeys];
+        if (!uniqueMutation || options.idempotencyGroupKeys !== undefined || options.idempotencyKey !== undefined || options.source === 'group_fill')
+            return groupKeys;
+        return [...groupKeys, `mutation:${generateEntryId_ACU()}`];
     }
 
     function databaseMessageAnchor_ACU(message, messageIndex) {
@@ -9153,6 +9317,19 @@ $CONTENT
             }
             const opened = await adapter.openSession({ domain: 'database', fallbackStableChatId });
             if (opened.state === 'committed' && opened.session) {
+                const hasTtStoreSurface = hasTauriTavernChatStoreSurface_ACU();
+                if (hasTtStoreSurface && opened.session.backend !== 'tt-store') {
+                    return databasePersistenceFailure_ACU('unavailable', 'TT_STORE_REQUIRED', {
+                        session: opened.session,
+                        present: false,
+                    });
+                }
+                if (!hasTtStoreSurface && opened.session.backend === 'tt-store') {
+                    return databasePersistenceFailure_ACU('unavailable', 'TT_STORE_IDENTITY_UNAVAILABLE', {
+                        session: opened.session,
+                        present: false,
+                    });
+                }
                 return { state: 'committed', session: opened.session, verified: true };
             }
             return {
@@ -9173,15 +9350,21 @@ $CONTENT
             adapter.invalidateChatGeneration();
     }
 
-    function databaseIndexKey_ACU(isolationHash) {
-        return `index:${isolationHash}`;
+    function databaseHeadKey_ACU(isolationHash) {
+        return `head:${isolationHash}`;
+    }
+
+    function databaseIndexKey_ACU(isolationHash, revision, commitId) {
+        if (revision === undefined || commitId === undefined)
+            return databaseHeadKey_ACU(isolationHash);
+        return `index:${isolationHash}:${revision}:${commitId}`;
     }
 
     function databaseFrameKey_ACU(isolationHash, localAnchor, textHash, commitId) {
         return `frame:${isolationHash}:${localAnchor}:${textHash}:${commitId}`;
     }
 
-    function buildDatabaseFrameValue_ACU({ commitId, revision, checksum, metadata, storageFrame }) {
+    function buildDatabaseFrameValue_ACU({ commitId, revision, checksum, metadata, storageFrame, idempotencyKey, idempotencyParts }) {
         const value = {
             schemaVersion: LWCS_DATABASE_SCHEMA_VERSION_ACU,
             commitId,
@@ -9191,20 +9374,26 @@ $CONTENT
             messageFingerprint: metadata.messageFingerprint,
             messageIndex: metadata.messageIndex,
             aiFloor: metadata.aiFloor,
+            ...(idempotencyKey ? { idempotencyKey } : {}),
+            ...(idempotencyParts ? { idempotencyParts: safeClone(idempotencyParts) } : {}),
             storageFrame: safeClone(storageFrame),
         };
         value.checksum = checksum || databasePersistenceValueHash_ACU(value);
         return value;
     }
 
-    function buildDatabaseIndexValue_ACU({ stableChatId, isolationHash, revision, commitId, frames }) {
+    function buildDatabaseIndexValue_ACU({ stableChatId, isolationHash, revision, commitId, headMessageIndex, headMessageFingerprint, headTextHash, frames }) {
         const value = {
             schemaVersion: LWCS_DATABASE_SCHEMA_VERSION_ACU,
+            kind: 'index',
             stableChatId,
             isolationHash,
             revision,
             commitId,
             headRevision: revision,
+            headMessageIndex: Number.isInteger(headMessageIndex) ? headMessageIndex : -1,
+            headMessageFingerprint: String(headMessageFingerprint || ''),
+            headTextHash: String(headTextHash || ''),
             frames: frames.map(frame => ({
                 frameKey: frame.frameKey,
                 commitId: frame.commitId,
@@ -9217,7 +9406,33 @@ $CONTENT
                 messageIndex: frame.messageIndex,
                 aiFloor: frame.aiFloor,
                 isCheckpoint: frame.isCheckpoint === true,
+                idempotencyKey: frame.idempotencyKey || '',
+                idempotencyParts: frame.idempotencyParts ? safeClone(frame.idempotencyParts) : undefined,
+                tableGroup: frame.tableGroup || '*',
             })),
+        };
+        value.frames = value.frames.map(frame => {
+            if (frame.idempotencyParts === undefined)
+                delete frame.idempotencyParts;
+            return frame;
+        });
+        value.checksum = databasePersistenceValueHash_ACU(value);
+        return value;
+    }
+
+    function buildDatabaseHeadValue_ACU({ stableChatId, isolationHash, revision, commitId, pointerKey, pointerChecksum, headMessageIndex, headMessageFingerprint, headTextHash }) {
+        const value = {
+            schemaVersion: LWCS_DATABASE_SCHEMA_VERSION_ACU,
+            kind: 'head',
+            stableChatId,
+            isolationHash,
+            revision,
+            commitId,
+            pointerKey,
+            pointerChecksum,
+            headMessageIndex: Number.isInteger(headMessageIndex) ? headMessageIndex : -1,
+            headMessageFingerprint: String(headMessageFingerprint || ''),
+            headTextHash: String(headTextHash || ''),
         };
         value.checksum = databasePersistenceValueHash_ACU(value);
         return value;
@@ -9264,6 +9479,44 @@ $CONTENT
                 live.push({ ...frame, messageIndex: meta.messageIndex, aiFloor: meta.aiFloor, order });
         });
         live.sort((left, right) => left.messageIndex - right.messageIndex || left.order - right.order);
+        const checkpointPosition = live.reduce((position, frame, indexPosition) => frame.isCheckpoint ? indexPosition : position, -1);
+        if (checkpointPosition < 0)
+            return { activeFrames: [], liveFrames: live, orphanFrames: rawFrames };
+        const activeFrames = [];
+        let parentRevision = null;
+        for (let i = checkpointPosition; i < live.length; i += 1) {
+            const frame = live[i];
+            if (i === checkpointPosition) {
+                activeFrames.push(frame);
+                parentRevision = String(frame.revision);
+                continue;
+            }
+            if (String(frame.parentRevision) !== String(parentRevision))
+                break;
+            activeFrames.push(frame);
+            parentRevision = String(frame.revision);
+        }
+        const activeKeys = new Set(activeFrames.map(frame => frame.frameKey));
+        return {
+            activeFrames,
+            liveFrames: live,
+            orphanFrames: rawFrames.filter(frame => !activeKeys.has(frame.frameKey)),
+        };
+    }
+
+    function selectDatabaseProjectionForTtStore_ACU(index, maxMessageIndex) {
+        const rawFrames = (Array.isArray(index?.frames) ? index.frames : [])
+            .filter(frame => maxMessageIndex === undefined || frame.messageIndex <= maxMessageIndex);
+        const latestBySlot = new Map();
+        rawFrames.forEach((frame, order) => {
+            const slot = `${frame.messageIndex}\u0000${frame.tableGroup || '*'}\u0000${frame.idempotencyParts?.assistantIndex ?? frame.messageIndex}`;
+            const previous = latestBySlot.get(slot);
+            if (!previous || Number(frame.revision) >= Number(previous.revision))
+                latestBySlot.set(slot, { ...frame, order });
+        });
+        const live = [...latestBySlot.values()].sort((left, right) => (
+            left.messageIndex - right.messageIndex || left.order - right.order
+        ));
         const checkpointPosition = live.reduce((position, frame, indexPosition) => frame.isCheckpoint ? indexPosition : position, -1);
         if (checkpointPosition < 0)
             return { activeFrames: [], liveFrames: live, orphanFrames: rawFrames };
@@ -9340,22 +9593,38 @@ $CONTENT
             return { ...opened, present: false };
         const session = opened.session;
         const isolationHash = hashUserInput_ACU(String(isolationKey || '')) || '0';
-        const indexKey = databaseIndexKey_ACU(isolationHash);
-        const indexResult = await session.getJson({
+        const indexKey = databaseHeadKey_ACU(isolationHash);
+        const headResult = await session.getJson({
             namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
             key: indexKey,
         });
-        if (indexResult.state !== 'committed' || indexResult.verified !== true)
-            return { ...indexResult, present: false };
-        if (indexResult.value === undefined)
+        if (headResult.state !== 'committed' || headResult.verified !== true)
+            return { ...headResult, present: false };
+        if (headResult.value === undefined)
             return { state: 'committed', verified: true, present: false, session, isolationHash, indexKey };
-        let resolvedIndex = indexResult.value;
-        const index = resolvedIndex;
-        if (!index || index.schemaVersion !== LWCS_DATABASE_SCHEMA_VERSION_ACU
-            || index.isolationHash !== isolationHash || !databaseChecksumMatches_ACU(index)) {
-            return databasePersistenceFailure_ACU('uncertain', 'INDEX_INVALID', { session, present: false, isolationHash, indexKey });
+        const head = headResult.value;
+        if (!head || head.kind !== 'head' || head.schemaVersion !== LWCS_DATABASE_SCHEMA_VERSION_ACU
+            || head.stableChatId !== session.stableChatId || head.isolationHash !== isolationHash || !head.pointerKey || !head.pointerChecksum
+            || !databaseChecksumMatches_ACU(head)) {
+            return databasePersistenceFailure_ACU('uncertain', 'HEAD_INVALID', { session, present: false, isolationHash, indexKey });
         }
-        let projection = selectDatabaseProjection_ACU(index, Array.isArray(chat) ? chat : [], maxMessageIndex);
+        const pointerKey = String(head.pointerKey);
+        const pointerResult = await session.getJson({
+            namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
+            key: pointerKey,
+            verify: { commitId: head.commitId, revision: head.revision, checksum: head.pointerChecksum },
+        });
+        if (pointerResult.state !== 'committed' || pointerResult.verified !== true)
+            return { ...pointerResult, present: true, session, head, isolationHash, indexKey, pointerKey };
+        const index = pointerResult.value;
+        if (!index || index.kind !== 'index' || index.schemaVersion !== LWCS_DATABASE_SCHEMA_VERSION_ACU
+            || index.stableChatId !== session.stableChatId || index.isolationHash !== isolationHash || index.commitId !== head.commitId
+            || String(index.revision) !== String(head.revision) || !databaseChecksumMatches_ACU(index)) {
+            return databasePersistenceFailure_ACU('uncertain', 'INDEX_INVALID', { session, present: false, head, isolationHash, indexKey, pointerKey });
+        }
+        let projection = session.backend === 'tt-store'
+            ? selectDatabaseProjectionForTtStore_ACU(index, maxMessageIndex)
+            : selectDatabaseProjection_ACU(index, Array.isArray(chat) ? chat : [], maxMessageIndex);
         const frameRefs = [];
         for (const meta of projection.activeFrames) {
             const frameResult = await session.getJson({
@@ -9364,16 +9633,17 @@ $CONTENT
                 verify: { commitId: meta.commitId, revision: meta.revision, checksum: meta.checksum },
             });
             if (frameResult.state !== 'committed' || frameResult.verified !== true)
-                return { ...frameResult, present: true, session, index, projection, isolationHash, indexKey };
+                return { ...frameResult, present: true, session, head, index, projection, isolationHash, indexKey, pointerKey };
             const frameValue = frameResult.value;
             if (!frameValue?.storageFrame || !databaseChecksumMatches_ACU(frameValue)
-                || frameValue.commitId !== meta.commitId || String(frameValue.revision) !== String(meta.revision))
-                return databasePersistenceFailure_ACU('uncertain', 'FRAME_INVALID', { session, present: true, index, projection, isolationHash, indexKey });
+                || frameValue.commitId !== meta.commitId || String(frameValue.revision) !== String(meta.revision)
+                || (meta.idempotencyKey && frameValue.idempotencyKey !== meta.idempotencyKey))
+                return databasePersistenceFailure_ACU('uncertain', 'FRAME_INVALID', { session, present: true, head, index, projection, isolationHash, indexKey, pointerKey });
             try {
                 assertExternalFrameOperations_ACU(frameValue.storageFrame);
             }
             catch (_) {
-                return databasePersistenceFailure_ACU('uncertain', 'FRAME_OPERATION_SCHEMA_INVALID', { session, present: true, index, projection, isolationHash, indexKey });
+                return databasePersistenceFailure_ACU('uncertain', 'FRAME_OPERATION_SCHEMA_INVALID', { session, present: true, head, index, projection, isolationHash, indexKey, pointerKey });
             }
             frameRefs.push({
                 messageIndex: meta.messageIndex,
@@ -9383,36 +9653,7 @@ $CONTENT
                 frame: frameValue.storageFrame,
             });
         }
-        if (prune && projection.orphanFrames.length > 0) {
-            const prunedIndex = buildDatabaseIndexValue_ACU({
-                stableChatId: index.stableChatId,
-                isolationHash,
-                revision: index.revision,
-                commitId: index.commitId,
-                frames: projection.activeFrames,
-            });
-            const pruneResult = await session.setJson({
-                namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
-                key: indexKey,
-                value: prunedIndex,
-                verify: { commitId: prunedIndex.commitId, revision: prunedIndex.revision, checksum: prunedIndex.checksum },
-            });
-            if (pruneResult.state !== 'committed' || pruneResult.verified !== true)
-                return { ...pruneResult, present: true, session, index, projection, frameRefs, isolationHash, indexKey };
-            const pruneReadback = await session.getJson({
-                namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
-                key: indexKey,
-                verify: { commitId: prunedIndex.commitId, revision: prunedIndex.revision, checksum: prunedIndex.checksum },
-            });
-            if (pruneReadback.state !== 'committed'
-                || pruneReadback.verified !== true
-                || !pruneReadback.value
-                || pruneReadback.value.commitId !== prunedIndex.commitId
-                || String(pruneReadback.value.revision) !== String(prunedIndex.revision)
-                || pruneReadback.value.checksum !== prunedIndex.checksum
-                || !databaseChecksumMatches_ACU(pruneReadback.value)) {
-                return databasePersistenceFailure_ACU('uncertain', 'INDEX_PRUNE_READBACK_FAILED', { session, present: true, index, projection, frameRefs, isolationHash, indexKey });
-            }
+        if (prune && maxMessageIndex === undefined && projection.orphanFrames.length > 0) {
             const remainingOrphans = [];
             for (const orphan of projection.orphanFrames) {
                 const orphanKey = String(orphan?.frameKey || '').trim();
@@ -9434,57 +9675,71 @@ $CONTENT
                 }
             }
             projection = { ...projection, orphanFrames: remainingOrphans };
-            resolvedIndex = prunedIndex;
         }
         return {
             state: 'committed',
             verified: true,
             present: true,
             session,
-            index: resolvedIndex,
+            head,
+            index,
             projection,
             frameRefs,
             isolationHash,
             indexKey,
+            pointerKey,
             data: frameRefs.length > 0 ? undefined : null,
         };
     }
 
-    async function cleanupDatabaseExternalCommit_ACU(session, frameKey, indexKey, previousIndex, message, messageSnapshot, guideSnapshot = null) {
+    async function cleanupDatabaseExternalCommit_ACU(session, frameKey, pointerKey, headKey, previousHead, message, messageSnapshot, guideSnapshot = null, allowMessageMutation = true) {
         let cleanupState = 'committed';
         const markCleanupFailure = state => {
             const nextState = state || 'uncertain';
             cleanupState = cleanupState === 'committed' ? nextState : (cleanupState === nextState ? cleanupState : 'uncertain');
         };
         try {
-            if (previousIndex === undefined) {
-                const indexDelete = await session.deleteJson({ namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU, key: indexKey });
-                if (!indexDelete || indexDelete.state !== 'committed' || indexDelete.verified !== true)
-                    markCleanupFailure(indexDelete?.state || 'uncertain');
+            if (previousHead === undefined) {
+                const headDelete = await session.deleteJson({ namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU, key: headKey });
+                if (!headDelete || headDelete.state !== 'committed' || headDelete.verified !== true)
+                    markCleanupFailure(headDelete?.state || 'uncertain');
                 else {
-                    const indexRead = await session.getJson({ namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU, key: indexKey });
-                    if (!indexRead || indexRead.state !== 'committed' || indexRead.verified !== true || indexRead.value !== undefined)
-                        markCleanupFailure(indexRead?.state === 'stale_chat' ? 'stale_chat' : 'uncertain');
+                    const headRead = await session.getJson({ namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU, key: headKey });
+                    if (!headRead || headRead.state !== 'committed' || headRead.verified !== true || headRead.value !== undefined)
+                        markCleanupFailure(headRead?.state === 'stale_chat' ? 'stale_chat' : 'uncertain');
                 }
             }
             else {
-                const indexRestore = await session.setJson({
+                const headRestore = await session.setJson({
                     namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
-                    key: indexKey,
-                    value: previousIndex,
-                    verify: { commitId: previousIndex.commitId, revision: previousIndex.revision, checksum: previousIndex.checksum },
+                    key: headKey,
+                    value: previousHead,
+                    verify: { commitId: previousHead.commitId, revision: previousHead.revision, checksum: previousHead.checksum },
                 });
-                if (!indexRestore || indexRestore.state !== 'committed' || indexRestore.verified !== true)
-                    markCleanupFailure(indexRestore?.state || 'uncertain');
+                if (!headRestore || headRestore.state !== 'committed' || headRestore.verified !== true)
+                    markCleanupFailure(headRestore?.state || 'uncertain');
                 else {
-                    const indexRead = await session.getJson({
+                    const headRead = await session.getJson({
                         namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
-                        key: indexKey,
-                        verify: { commitId: previousIndex.commitId, revision: previousIndex.revision, checksum: previousIndex.checksum },
+                        key: headKey,
+                        verify: { commitId: previousHead.commitId, revision: previousHead.revision, checksum: previousHead.checksum },
                     });
-                    if (!indexRead || indexRead.state !== 'committed' || indexRead.verified !== true)
-                        markCleanupFailure(indexRead?.state === 'stale_chat' ? 'stale_chat' : 'uncertain');
+                    if (!headRead || headRead.state !== 'committed' || headRead.verified !== true)
+                        markCleanupFailure(headRead?.state === 'stale_chat' ? 'stale_chat' : 'uncertain');
                 }
+            }
+        }
+        catch (_) {
+            markCleanupFailure('uncertain');
+        }
+        try {
+            const pointerDelete = await session.deleteJson({ namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU, key: pointerKey });
+            if (!pointerDelete || pointerDelete.state !== 'committed' || pointerDelete.verified !== true)
+                markCleanupFailure(pointerDelete?.state || 'uncertain');
+            else {
+                const pointerRead = await session.getJson({ namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU, key: pointerKey });
+                if (!pointerRead || pointerRead.state !== 'committed' || pointerRead.verified !== true || pointerRead.value !== undefined)
+                    markCleanupFailure(pointerRead?.state === 'stale_chat' ? 'stale_chat' : 'uncertain');
             }
         }
         catch (_) {
@@ -9503,6 +9758,8 @@ $CONTENT
         catch (_) {
             markCleanupFailure('uncertain');
         }
+        if (!allowMessageMutation)
+            return cleanupState;
         try {
             restoreDatabaseMessagePersistence_ACU(message, messageSnapshot);
         }
@@ -9558,14 +9815,47 @@ $CONTENT
 
     async function persistDatabaseExternalCommit_ACU(options, chat, target, isolationKey, afterData, filledSheetKeys, effectiveChangedSheetKeys, operations, externalState) {
         const session = externalState.session;
+        const isTtStore = session.backend === 'tt-store';
+        const allowMessageMutation = !isTtStore;
         const activeRefs = externalState.frameRefs || [];
         const previousIndex = externalState.present ? externalState.index : undefined;
+        const previousHead = externalState.present ? externalState.head : undefined;
         const previousFrames = activeRefs.map(ref => ref.metadata);
         const hasExistingCheckpoint = activeRefs.some(ref => ref.frame?.checkpoint?.kind === 'full');
         const hasExistingFrame = activeRefs.length > 0;
+        const groupKeys = options.idempotencyGroupKeys ?? options.groupKeys ?? [];
+        const messageSnapshot = allowMessageMutation ? snapshotDatabaseMessagePersistence_ACU(target.message) : null;
+        const metadata = databaseMessageMeta_ACU(
+            target.message,
+            target.index,
+            allowMessageMutation,
+            isTtStore
+                ? (Number.isFinite(Number(options.targetAiFloor)) ? Number(options.targetAiFloor) : target.index + 1)
+                : countAiFloor_ACU$1(chat, target.index),
+        );
+        const idempotencyParts = databaseIdempotencyParts_ACU(session.stableChatId, target, groupKeys);
+        const idempotencyKey = options.idempotencyKey || databaseIdempotencyKey_ACU(session.stableChatId, target, groupKeys);
+        if (!idempotencyKey)
+            return databasePersistenceFailure_ACU('not_committed', 'IDEMPOTENCY_KEY_INVALID', { messageIndex: target.index });
+        const duplicate = [
+            ...activeRefs.map(ref => ref.metadata),
+            ...(externalState.projection?.orphanFrames || []),
+        ].find(metadata => metadata?.idempotencyKey === idempotencyKey);
+        if (duplicate) {
+            return {
+                state: 'committed',
+                saved: true,
+                verified: true,
+                duplicate: true,
+                messageIndex: target.index,
+                commitId: duplicate.commitId,
+                revision: duplicate.revision,
+                idempotencyKey,
+            };
+        }
         const hasMetadataOnlyFillEvent = filledSheetKeys.length > 0 || (Array.isArray(options.groupKeys) && options.groupKeys.length > 0);
         if (operations.length === 0 && !hasMetadataOnlyFillEvent && options.source !== 'import' && hasExistingCheckpoint)
-            return databasePersistenceFailure_ACU('not_committed', 'V2 operation log requires explicit operations', { messageIndex: target.index });
+            return databasePersistenceFailure_ACU('not_committed', 'V2 operation log requires explicit operations', { messageIndex: target.index, idempotencyKey });
 
         const shouldCheckpoint = options.forceCheckpoint
             || !hasExistingCheckpoint
@@ -9576,10 +9866,13 @@ $CONTENT
         const commitId = `commit_${entryId}`;
         const previousRevision = Number(previousIndex?.revision);
         const revision = Number.isFinite(previousRevision) && previousRevision >= 0 ? previousRevision + 1 : 1;
-        const aiFloor = countAiFloor_ACU$1(chat, target.index);
+        const aiFloor = metadata.aiFloor;
         let entry;
         let storageFrame;
         let commitRevision;
+        const ttGuideData = isTtStore && options.guideWrite?.guideData
+            ? deepClone_ACU$2(options.guideWrite.guideData)
+            : null;
         if (shouldCheckpoint) {
             commitRevision = buildCommitRevision_ACU('checkpoint', entryId);
             const checkpointEvent = {
@@ -9589,11 +9882,13 @@ $CONTENT
                 requestId: options.requestId,
                 batchId: options.batchId,
                 error: options.error,
+                idempotencyKey,
             };
             storageFrame = {
                 version: 2,
                 headRevision: commitRevision,
                 logEntries: [],
+                ...(ttGuideData ? { guideData: ttGuideData } : {}),
                 checkpoint: {
                     kind: 'full',
                     createdAt: now,
@@ -9623,6 +9918,8 @@ $CONTENT
                 batchId: options.batchId,
                 error: options.error,
                 operations,
+                idempotencyKey,
+                idempotencyParts,
                 baseRevision: options.baseRevision ?? parentRevision,
                 parentRevision,
                 commitRevision,
@@ -9632,17 +9929,18 @@ $CONTENT
                 version: 2,
                 headRevision: commitRevision,
                 logEntries: [entry],
+                ...(ttGuideData ? { guideData: ttGuideData } : {}),
             };
         }
 
-        const messageSnapshot = snapshotDatabaseMessagePersistence_ACU(target.message);
-        const metadata = databaseMessageMeta_ACU(target.message, target.index, true);
         const frameKey = databaseFrameKey_ACU(externalState.isolationHash, metadata.localAnchor, metadata.textHash, commitId);
         const frameValue = buildDatabaseFrameValue_ACU({
             commitId,
             revision,
             metadata,
             storageFrame,
+            idempotencyKey,
+            idempotencyParts,
         });
         const frameMeta = {
             frameKey,
@@ -9656,15 +9954,48 @@ $CONTENT
             messageIndex: target.index,
             aiFloor,
             isCheckpoint: shouldCheckpoint,
+            idempotencyKey,
+            idempotencyParts,
+            tableGroup: idempotencyParts.tableGroup,
         };
+        const previousHeadIndex = Number(previousIndex?.headMessageIndex ?? previousHead?.headMessageIndex);
+        const branchChanged = Number.isInteger(previousHeadIndex)
+            && previousHeadIndex >= 0
+            && (target.index < previousHeadIndex
+                || (target.index === previousHeadIndex
+                    && previousIndex?.headMessageFingerprint
+                    && previousIndex.headMessageFingerprint !== metadata.messageFingerprint));
+        let nextFrames = shouldCheckpoint
+            ? [frameMeta]
+            : (branchChanged
+                ? previousFrames.filter(frame => Number(frame.messageIndex) < target.index)
+                : previousFrames.slice());
+        if (!shouldCheckpoint)
+            nextFrames = [...nextFrames, frameMeta];
+        const pointerKey = databaseIndexKey_ACU(externalState.isolationHash, revision, commitId);
         const nextIndex = buildDatabaseIndexValue_ACU({
             stableChatId: session.stableChatId,
             isolationHash: externalState.isolationHash,
             revision,
             commitId,
-            frames: shouldCheckpoint ? [frameMeta] : [...previousFrames, frameMeta],
+            headMessageIndex: target.index,
+            headMessageFingerprint: metadata.messageFingerprint,
+            headTextHash: metadata.textHash,
+            frames: nextFrames,
         });
-        const guideWrite = options.guideWrite && options.guideWrite.guideData
+        const headKey = databaseHeadKey_ACU(externalState.isolationHash);
+        const nextHead = buildDatabaseHeadValue_ACU({
+            stableChatId: session.stableChatId,
+            isolationHash: externalState.isolationHash,
+            revision,
+            commitId,
+            pointerKey,
+            pointerChecksum: nextIndex.checksum,
+            headMessageIndex: target.index,
+            headMessageFingerprint: metadata.messageFingerprint,
+            headTextHash: metadata.textHash,
+        });
+        const guideWrite = !isTtStore && options.guideWrite && options.guideWrite.guideData
             ? options.guideWrite
             : null;
         const guideRollbackSnapshot = guideWrite
@@ -9675,17 +10006,19 @@ $CONTENT
             const cleanupState = await cleanupDatabaseExternalCommit_ACU(
                 session,
                 frameKey,
-                externalState.indexKey,
-                previousIndex,
+                pointerKey,
+                headKey,
+                previousHead,
                 target.message,
                 messageSnapshot,
                 guideTouched ? guideRollbackSnapshot : null,
+                allowMessageMutation,
             );
             const resultState = writeResult?.state === 'committed' ? 'uncertain' : (writeResult?.state || 'uncertain');
             const failureState = resultState === 'stale_chat' || cleanupState === 'stale_chat'
                 ? 'stale_chat'
                 : (cleanupState === 'committed' ? resultState : 'uncertain');
-            return databasePersistenceFailure_ACU(failureState, writeResult?.error || fallbackError, { messageIndex: target.index });
+            return databasePersistenceFailure_ACU(failureState, writeResult?.error || fallbackError, { messageIndex: target.index, idempotencyKey });
         };
         let frameWrite;
         try {
@@ -9699,39 +10032,62 @@ $CONTENT
         catch (error) {
             frameWrite = { state: error?.code || 'uncertain', error: error?.message || 'FRAME_WRITE_FAILED' };
         }
-        if (!frameWrite || frameWrite.state !== 'committed' || frameWrite.verified !== true) {
+        if (!frameWrite || frameWrite.state !== 'committed' || frameWrite.verified !== true)
             return rollbackExternalCommit(frameWrite, 'FRAME_WRITE_FAILED');
-        }
-        let indexWrite;
+        let pointerWrite;
         try {
-            indexWrite = await session.setJson({
+            pointerWrite = await session.setJson({
                 namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
-                key: externalState.indexKey,
+                key: pointerKey,
                 value: nextIndex,
                 verify: { commitId, revision, checksum: nextIndex.checksum },
             });
         }
         catch (error) {
-            indexWrite = { state: error?.code || 'uncertain', error: error?.message || 'INDEX_WRITE_FAILED' };
+            pointerWrite = { state: error?.code || 'uncertain', error: error?.message || 'POINTER_WRITE_FAILED' };
         }
-        if (!indexWrite || indexWrite.state !== 'committed' || indexWrite.verified !== true) {
-            return rollbackExternalCommit(indexWrite, 'INDEX_WRITE_FAILED');
-        }
-        let guard;
+        if (!pointerWrite || pointerWrite.state !== 'committed' || pointerWrite.verified !== true)
+            return rollbackExternalCommit(pointerWrite, 'POINTER_WRITE_FAILED');
+        let pointerRead;
         try {
-            guard = await session.getJson({
+            pointerRead = await session.getJson({
                 namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
-                key: externalState.indexKey,
+                key: pointerKey,
                 verify: { commitId, revision, checksum: nextIndex.checksum },
             });
         }
         catch (error) {
-            guard = { state: error?.code || 'uncertain', error: error?.message || 'STALE_BEFORE_MESSAGE_SAVE' };
+            pointerRead = { state: error?.code || 'uncertain', error: error?.message || 'POINTER_READBACK_FAILED' };
         }
-        if (!guard || guard.state !== 'committed' || guard.verified !== true || !saveVerificationValuesEqual_ACU(guard.value, nextIndex)) {
-            logWarn_ACU('[persist-commit] guard 校验失败', JSON.stringify({ state: guard?.state, error: guard?.error, verified: guard?.verified, hasValue: guard?.value !== undefined }));
-            return rollbackExternalCommit(guard, 'STALE_BEFORE_MESSAGE_SAVE');
+        if (!pointerRead || pointerRead.state !== 'committed' || pointerRead.verified !== true || !saveVerificationValuesEqual_ACU(pointerRead.value, nextIndex))
+            return rollbackExternalCommit(pointerRead, 'POINTER_READBACK_FAILED');
+        let headWrite;
+        try {
+            headWrite = await session.setJson({
+                namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
+                key: headKey,
+                value: nextHead,
+                verify: { commitId, revision, checksum: nextHead.checksum },
+            });
         }
+        catch (error) {
+            headWrite = { state: error?.code || 'uncertain', error: error?.message || 'HEAD_WRITE_FAILED' };
+        }
+        if (!headWrite || headWrite.state !== 'committed' || headWrite.verified !== true)
+            return rollbackExternalCommit(headWrite, 'HEAD_WRITE_FAILED');
+        let guard;
+        try {
+            guard = await session.getJson({
+                namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
+                key: headKey,
+                verify: { commitId, revision, checksum: nextHead.checksum },
+            });
+        }
+        catch (error) {
+            guard = { state: error?.code || 'uncertain', error: error?.message || 'HEAD_READBACK_FAILED' };
+        }
+        if (!guard || guard.state !== 'committed' || guard.verified !== true || !saveVerificationValuesEqual_ACU(guard.value, nextHead))
+            return rollbackExternalCommit(guard, 'HEAD_READBACK_FAILED');
         if (guideWrite) {
             guideTouched = true;
             try {
@@ -9762,17 +10118,15 @@ $CONTENT
         try {
             committedRead = await session.getJson({
                 namespace: LWCS_DATABASE_STORE_NAMESPACE_ACU,
-                key: externalState.indexKey,
-                verify: { commitId, revision, checksum: nextIndex.checksum },
+                key: headKey,
+                verify: { commitId, revision, checksum: nextHead.checksum },
             });
         }
         catch (error) {
             committedRead = { state: error?.code || 'uncertain', error: error?.message || 'COMMITTED_READ_FAILED' };
         }
-        if (!committedRead || committedRead.state !== 'committed' || committedRead.verified !== true || !saveVerificationValuesEqual_ACU(committedRead.value, nextIndex)) {
-            logWarn_ACU('[persist-commit] committedRead 校验失败', JSON.stringify({ state: committedRead?.state, error: committedRead?.error, verified: committedRead?.verified, hasValue: committedRead?.value !== undefined }));
+        if (!committedRead || committedRead.state !== 'committed' || committedRead.verified !== true || !saveVerificationValuesEqual_ACU(committedRead.value, nextHead))
             return rollbackExternalCommit(committedRead, 'COMMITTED_READ_FAILED');
-        }
         return {
             state: 'committed',
             saved: true,
@@ -9781,14 +10135,14 @@ $CONTENT
             entry,
             commitId,
             revision,
+            pointerKey,
+            idempotencyKey,
         };
     }
 
     async function rebuildDatabaseProjection_ACU({ prune = true } = {}) {
         const chat = getChatArray_ACU();
-        if (!Array.isArray(chat) || chat.length === 0)
-            return { state: 'committed', present: false, verified: true };
-        return readDatabaseExternalProjection_ACU(chat, getCurrentIsolationKey_ACU(), { prune });
+        return readDatabaseExternalProjection_ACU(Array.isArray(chat) ? chat : [], getCurrentIsolationKey_ACU(), { prune });
     }
 
     function queueDatabaseProjectionRefresh_ACU(reason) {
@@ -9811,9 +10165,10 @@ $CONTENT
         }
         const checkpoint = checkpointRef.frame.checkpoint;
         const state = deepClone_ACU$3(checkpoint.data);
+        const ttGuideData = [...frameRefs].reverse().find(ref => ref.frame?.guideData)?.frame?.guideData || null;
         const replayGuideData = Object.prototype.hasOwnProperty.call(options, 'guideDataOverride')
             ? options.guideDataOverride || null
-            : getReplayGuideData_ACU(chat, isolationKey);
+            : (ttGuideData || getReplayGuideData_ACU(chat, isolationKey));
         applyGuideStructureBeforeReplay_ACU(state, replayGuideData);
         const replayStartMessageIndex = checkpointRef.messageIndex;
         replayCheckpointSchedule_ACU(checkpoint, checkpointRef.aiFloor);
@@ -9858,7 +10213,7 @@ $CONTENT
     }
     async function loadTableStateFromFramesV2_ACU(chatArg, isolationKeyArg, options = {}) {
         const chat = chatArg || getChatArray_ACU();
-        if (!Array.isArray(chat) || chat.length === 0)
+        if (!Array.isArray(chat))
             return null;
         const isolationKey = isolationKeyArg ?? getCurrentIsolationKey_ACU();
         if (!getPersistenceAdapter_ACU())
@@ -9868,6 +10223,8 @@ $CONTENT
             prune: false,
         });
         if (external.state !== 'committed' || external.verified !== true || !external.present || !external.frameRefs?.length)
+            return null;
+        if (external.session?.backend !== 'tt-store' && chat.length === 0)
             return null;
         return replayTableStateFromFrameRefsV2_ACU(chat, isolationKey, external.frameRefs, { ...options, external: true });
     }
@@ -9949,6 +10306,47 @@ $CONTENT
         }
         return null;
     }
+
+    function databaseTargetDescriptor_ACU(options = {}, chat = []) {
+        const targetMeta = options.targetMessageMeta || options.messageMeta || null;
+        const requestedIndex = Number(options.targetMessageIndex);
+        const metaIndex = Number(targetMeta?.消息索引 ?? targetMeta?.messageIndex ?? targetMeta?.index);
+        const targetIndex = Number.isInteger(requestedIndex) && requestedIndex >= 0
+            ? requestedIndex
+            : (Number.isInteger(metaIndex) && metaIndex >= 0 ? metaIndex : -1);
+        let message = options.targetMessage && !options.targetMessage.is_user ? options.targetMessage : null;
+        if (!message && Array.isArray(chat) && targetIndex >= 0)
+            message = chat[targetIndex] && !chat[targetIndex].is_user ? chat[targetIndex] : null;
+        const targetMessageId = targetMeta?.消息编号 ?? targetMeta?.messageId ?? targetMeta?.id;
+        if (!message && Array.isArray(chat) && targetMessageId !== undefined) {
+            message = chat.find(candidate => !candidate?.is_user
+                && String(candidate?.id ?? candidate?.message_id ?? '') === String(targetMessageId));
+        }
+        const targetMetaHasText = targetMeta && ['文本', 'text', 'content'].some(key => Object.prototype.hasOwnProperty.call(targetMeta, key));
+        if (!message && targetMeta && targetIndex >= 0 && targetMetaHasText) {
+            const text = targetMeta.文本 ?? targetMeta.text ?? targetMeta.content ?? '';
+            const messageId = targetMeta.消息编号 ?? targetMeta.messageId ?? targetMeta.id ?? targetIndex;
+            const swipeId = targetMeta.滑动编号 ?? targetMeta.swipeId ?? targetMeta.swipe_id ?? 0;
+            message = {
+                is_user: false,
+                mes: String(text || ''),
+                id: messageId,
+                message_id: messageId,
+                swipe_id: swipeId,
+            };
+        }
+        if (!message) {
+            const found = findTargetAiMessage_ACU(Array.isArray(chat) ? chat : [], options.targetMessageIndex);
+            if (found) {
+                message = found.message;
+                return { ...found, synthetic: false };
+            }
+        }
+        if (!message || targetIndex < 0 || message.is_user)
+            return null;
+        return { message, index: targetIndex, synthetic: !Array.isArray(chat) || chat[targetIndex] !== message };
+    }
+
     function countAiFloor_ACU$1(chat, messageIndex) {
         let count = 0;
         for (let i = 0; i <= messageIndex && i < chat.length; i += 1) {
@@ -10079,12 +10477,12 @@ $CONTENT
     }
     async function persistTableMutationLogV2Core_ACU(options) {
         const chat = getChatArray_ACU();
-        if (!chat || chat.length === 0) {
-            return { saved: false, error: 'chat history is empty' };
-        }
-        const target = findTargetAiMessage_ACU(chat, options.targetMessageIndex);
+        const safeChat = Array.isArray(chat) ? chat : [];
+        const target = databaseTargetDescriptor_ACU(options, safeChat);
         if (!target) {
-            return { saved: false, error: 'no AI message found' };
+            return databasePersistenceFailure_ACU('not_committed', 'NO_AI_MESSAGE_TARGET', {
+                messageIndex: options.targetMessageIndex,
+            });
         }
         const isolationKey = options.isolationKey ?? getCurrentIsolationKey_ACU();
         const afterData = deepClone_ACU$2(options.afterData);
@@ -10094,7 +10492,7 @@ $CONTENT
         const effectiveChangedSheetKeys = candidateChangedSheetKeys;
         const persistenceAdapter = getPersistenceAdapter_ACU();
         if (persistenceAdapter) {
-            const externalState = await readDatabaseExternalProjection_ACU(chat, isolationKey, { prune: false });
+            const externalState = await readDatabaseExternalProjection_ACU(safeChat, isolationKey, { prune: false });
             if (externalState.state !== 'committed' || !externalState.session) {
                 return databasePersistenceFailure_ACU(externalState.state || 'unavailable', externalState.error || 'PERSISTENCE_UNAVAILABLE', { messageIndex: target.index });
             }
@@ -10114,12 +10512,19 @@ $CONTENT
     }
     async function persistTableMutationLogV2_ACU(options) {
         if (!options.transactionContext) {
-            return { saved: false, error: 'V2 operation log write requires TableWriteTransactionContext; direct unsafe writes are not allowed.' };
+            return databasePersistenceFailure_ACU('not_committed', 'V2 operation log write requires TableWriteTransactionContext; direct unsafe writes are not allowed.', {
+                messageIndex: options.targetMessageIndex,
+            });
         }
-        if (options.assumeCommitLock) {
-            return persistTableMutationLogV2Core_ACU(options);
+        const persistenceOptions = options.idempotencyGroupKeys === undefined
+            && options.idempotencyKey === undefined
+            && options.source !== 'group_fill'
+            ? { ...options, idempotencyGroupKeys: databaseIdempotencyGroupKeys_ACU(options, true) }
+            : options;
+        if (persistenceOptions.assumeCommitLock) {
+            return persistTableMutationLogV2Core_ACU(persistenceOptions);
         }
-        return options.transactionContext.runCommit(() => persistTableMutationLogV2Core_ACU(options), options.revisionWriteSet);
+        return persistenceOptions.transactionContext.runCommit(() => persistTableMutationLogV2Core_ACU(persistenceOptions), persistenceOptions.revisionWriteSet);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -10135,7 +10540,7 @@ $CONTENT
         return persistTablesToChatMessageWithLockOption_ACU(options);
     }
     async function persistTablesToChatMessageWithLockOption_ACU(options = {}) {
-        const { targetMessageIndex = -1, targetSheetKeys = null, updateGroupKeys = null, trackingSheetKeys, tableData: explicitTableData, trackAsUpdate = true, source, requestId, batchId, operations, revisionWriteSet, forceCheckpoint, checkpointReason, manualRefillProgress, assumeCommitLock, transactionContext, } = options;
+        const { targetMessageIndex = -1, targetMessage = null, targetMessageMeta = null, targetSheetKeys = null, updateGroupKeys = null, trackingSheetKeys, tableData: explicitTableData, trackAsUpdate = true, source, requestId, batchId, operations, revisionWriteSet, forceCheckpoint, checkpointReason, manualRefillProgress, idempotencyGroupKeys, idempotencyKey, assumeCommitLock, transactionContext, } = options;
         const effectiveTableData = explicitTableData !== undefined ? explicitTableData : currentJsonTableData_ACU;
         if (!effectiveTableData) {
             logError_ACU('Save aborted: currentJsonTableData_ACU is null.');
@@ -10144,10 +10549,6 @@ $CONTENT
         const currentIsolationKey = getCurrentIsolationKey_ACU();
         const persistCore = async () => {
             const chat = getChatArray_ACU();
-            if (!chat || chat.length === 0) {
-                logError_ACU('Save failed: Chat history is empty.');
-                return { saved: false, error: 'chat history is empty' };
-            }
             let keysToSave = Array.isArray(targetSheetKeys)
                 ? targetSheetKeys.filter((sheetKey) => typeof sheetKey === 'string' && sheetKey.length > 0)
                 : getSortedSheetKeys_ACU(effectiveTableData);
@@ -10163,12 +10564,16 @@ $CONTENT
             const persistV2InTransaction = async (transactionContext) => {
                 const result = await persistTableMutationLogV2_ACU({
                     targetMessageIndex,
+                    targetMessage,
+                    targetMessageMeta,
                     source: source || (metadataOnlyUpdateGroupKeys.length > 0 ? 'group_fill' : 'system'),
                     afterData: effectiveTableData,
                     operations,
                     filledSheetKeys: trackAsUpdate ? metadataOnlyUpdateGroupKeys : [],
                     candidateChangedSheetKeys: [...trackingKeySet],
                     groupKeys: metadataOnlyUpdateGroupKeys,
+                    idempotencyGroupKeys,
+                    idempotencyKey,
                     requestId,
                     batchId,
                     forceCheckpoint: forceCheckpoint === true,
@@ -22041,7 +22446,55 @@ $CONTENT
     function normalizeSqlBindParams_ACU(params) {
         return Array.isArray(params) && params.length > 0 ? [params.map(value => value ?? null)] : undefined;
     }
+    async function inspectDatabaseIdempotency_ACU(options = {}) {
+        if (options.skipChatSave)
+            return { checked: false, skipped: true };
+        const chat = getChatArray_ACU();
+        const safeChat = Array.isArray(chat) ? chat : [];
+        const target = databaseTargetDescriptor_ACU(options, safeChat);
+        if (!target)
+            return { checked: true, state: 'not_committed', error: 'NO_AI_MESSAGE_TARGET', messageIndex: options.targetMessageIndex };
+        const externalState = await readDatabaseExternalProjection_ACU(
+            safeChat,
+            options.isolationKey ?? getCurrentIsolationKey_ACU(),
+            { prune: false },
+        );
+        if (externalState.state !== 'committed' || !externalState.session) {
+            return {
+                checked: true,
+                state: externalState.state || 'unavailable',
+                error: externalState.error || 'PERSISTENCE_UNAVAILABLE',
+                messageIndex: target.index,
+            };
+        }
+        const groupKeys = options.idempotencyGroupKeys
+            ?? options.groupKeys
+            ?? options.updateGroupKeys
+            ?? options.targetSheetKeys
+            ?? [];
+        const idempotencyKey = options.idempotencyKey
+            || databaseIdempotencyKey_ACU(externalState.session.stableChatId, target, groupKeys);
+        if (!idempotencyKey)
+            return { checked: true, state: 'not_committed', error: 'IDEMPOTENCY_KEY_INVALID', messageIndex: target.index };
+        return {
+            checked: true,
+            state: 'committed',
+            verified: true,
+            messageIndex: target.index,
+            idempotencyKey,
+            duplicate: [
+                ...(externalState.frameRefs || []).map(ref => ref.metadata),
+                ...(externalState.projection?.orphanFrames || []),
+            ].some(metadata => metadata?.idempotencyKey === idempotencyKey),
+        };
+    }
     async function runTableUpdateCommit_ACU(options, apply) {
+        const idempotencyOptions = !options.skipChatSave
+            && options.idempotencyGroupKeys === undefined
+            && options.idempotencyKey === undefined
+            && options.source !== 'group_fill'
+            ? { ...options, idempotencyGroupKeys: databaseIdempotencyGroupKeys_ACU(options, true) }
+            : options;
         try {
             return await runTableWriteTransaction_ACU({
                 source: options.source,
@@ -22054,6 +22507,27 @@ $CONTENT
                 let commitRevisionWriteSet = options.revisionWriteSet;
                 const runtimeBeforeCommit = currentJsonTableData_ACU ? cloneTableData_ACU(currentJsonTableData_ACU) : null;
                 return transactionContext.runCommit(async () => {
+                    const idempotency = await inspectDatabaseIdempotency_ACU(idempotencyOptions);
+                    if (idempotency.error) {
+                        const idempotencyError = new Error(idempotency.error);
+                        idempotencyError.persistenceState = idempotency.state || 'not_committed';
+                        idempotencyError.messageIndex = idempotency.messageIndex;
+                        throw idempotencyError;
+                    }
+                    if (idempotency.duplicate) {
+                        commitRevisionWriteSet = [];
+                        return {
+                            success: true,
+                            duplicate: true,
+                            value: { success: true, modifiedKeys: [] },
+                            tableData: runtimeBeforeCommit || workingData,
+                            saved: true,
+                            verified: true,
+                            state: 'committed',
+                            messageIndex: idempotency.messageIndex,
+                            idempotencyKey: idempotency.idempotencyKey,
+                        };
+                    }
                     const applied = await apply({ transactionContext, workingData });
                     if (!applied.success || !applied.tableData) {
                         throw new Error(applied.error || `${options.reason}: update apply failed`);
@@ -22078,6 +22552,8 @@ $CONTENT
                     if (!options.skipChatSave) {
                         persistenceResult = await persistTableMutationLogV2_ACU({
                             targetMessageIndex: persistOptions.targetMessageIndex ?? options.targetMessageIndex,
+                            targetMessage: persistOptions.targetMessage ?? idempotencyOptions.targetMessage,
+                            targetMessageMeta: persistOptions.targetMessageMeta ?? idempotencyOptions.targetMessageMeta,
                             isolationKey: options.isolationKey ?? getCurrentIsolationKey_ACU(),
                             source: persistOptions.source ?? options.source,
                             afterData: applied.tableData,
@@ -22096,6 +22572,14 @@ $CONTENT
                                 : (persistOptions.updateGroupKeys !== undefined
                                     ? persistOptions.updateGroupKeys
                                     : (options.groupKeys !== undefined ? options.groupKeys : (options.updateGroupKeys ?? []))),
+                            idempotencyGroupKeys: persistOptions.idempotencyGroupKeys
+                                ?? idempotencyOptions.idempotencyGroupKeys
+                                ?? (persistOptions.groupKeys !== undefined
+                                    ? persistOptions.groupKeys
+                                    : (persistOptions.updateGroupKeys !== undefined
+                                        ? persistOptions.updateGroupKeys
+                                        : (options.groupKeys !== undefined ? options.groupKeys : (options.updateGroupKeys ?? [])))),
+                            idempotencyKey: persistOptions.idempotencyKey ?? idempotencyOptions.idempotencyKey,
                             requestId: persistOptions.requestId ?? options.requestId,
                             batchId: persistOptions.batchId ?? options.batchId,
                             error: persistOptions.error ?? options.error,
@@ -22111,6 +22595,22 @@ $CONTENT
                             assumeCommitLock: true,
                             transactionContext,
                         });
+                        if (persistenceResult?.duplicate) {
+                            commitRevisionWriteSet = [];
+                            if (runtimeBeforeCommit)
+                                _set_currentJsonTableData_ACU(cloneTableData_ACU(runtimeBeforeCommit));
+                            return {
+                                success: true,
+                                duplicate: true,
+                                value: { success: true, modifiedKeys: [] },
+                                tableData: runtimeBeforeCommit || applied.tableData,
+                                saved: true,
+                                verified: true,
+                                state: 'committed',
+                                messageIndex: persistenceResult.messageIndex,
+                                idempotencyKey: persistenceResult.idempotencyKey,
+                            };
+                        }
                         saved = persistenceResult.state === 'committed' && persistenceResult.saved === true && persistenceResult.verified === true;
                         messageIndex = persistenceResult.messageIndex;
                         if (!saved) {
@@ -22138,6 +22638,7 @@ $CONTENT
                         messageIndex,
                         commitId: persistenceResult?.commitId,
                         revision: persistenceResult?.revision,
+                        idempotencyKey: persistenceResult?.idempotencyKey,
                     };
                 }, () => commitRevisionWriteSet);
             });
@@ -28518,6 +29019,8 @@ $CONTENT
         const enabled = !!modeEnabled;
         settings_ACU.summaryVectorIndexModeDefault = enabled;
         globalMeta_ACU.summaryVectorIndexModeGlobal = enabled;
+        if (!enabled)
+            clearSummaryVectorIndexRuntimeTimers_ACU();
         // 向量混合增强交火方案会复用普通向量模型/API/rerank 配置；启停交火时必须同步启停普通向量开关。
         // 这里只改 enabled，不覆盖模型、API、rerank、namespace 等用户配置。
         const vectorMemoryConfig = getCurrentVectorMemoryConfig_ACU();
@@ -32653,7 +33156,17 @@ $CONTENT
     const VECTOR_INDEX_PERSIST_DEBOUNCE_MS_ACU = 2500;
     const pendingVectorIndexArchives_ACU = new Map();
     const vectorIndexPersistTimers_ACU = new Map();
+    function clearSummaryVectorIndexRuntimeTimers_ACU() {
+        for (const timer of vectorIndexPersistTimers_ACU.values())
+            clearTimeout(timer);
+        vectorIndexPersistTimers_ACU.clear();
+        for (const timer of summaryVectorFlushTimers_ACU.values())
+            clearTimeout(timer);
+        summaryVectorFlushTimers_ACU.clear();
+    }
     function scheduleDebouncedVectorIndexPersist_ACU(scopeKey) {
+        if (globalMeta_ACU?.summaryVectorIndexModeGlobal !== true)
+            return;
         const existing = vectorIndexPersistTimers_ACU.get(scopeKey);
         if (existing)
             clearTimeout(existing);
@@ -33602,6 +34115,8 @@ $CONTENT
         });
     }
     function scheduleFlushTaskTimer_ACU(task) {
+        if (globalMeta_ACU?.summaryVectorIndexModeGlobal !== true)
+            return;
         clearFlushTimer_ACU(task.scopeKey);
         const delay = Math.max(0, Math.min(Math.max(0, task.debounceUntil - Date.now()), 2147483647));
         logDebug_ACU(`[交火向量索引] 防抖定时器已设置：scope=${task.scopeKey}, delay=${delay}ms, mode=${task.mode}`);
@@ -33613,6 +34128,8 @@ $CONTENT
         summaryVectorFlushTimers_ACU.set(task.scopeKey, timer);
     }
     async function enqueueSummaryVectorIndexFlush_ACU(options = {}) {
+        if (globalMeta_ACU?.summaryVectorIndexModeGlobal !== true)
+            return { queued: false, skipped: true, reason: 'summary_vector_index_disabled' };
         const selectedSummary = findSummaryTable_ACU();
         if (!selectedSummary?.summaryKey) {
             return { queued: false, skipped: true, reason: 'summary_table_not_found' };
@@ -33706,6 +34223,8 @@ $CONTENT
         }
     }
     async function restoreSummaryVectorIndexFlushQueueForCurrentChat_ACU() {
+        if (globalMeta_ACU?.summaryVectorIndexModeGlobal !== true)
+            return 0;
         const chatKey = normalizeKeyPart_ACU(currentChatFileIdentifier_ACU);
         if (!chatKey)
             return 0;
@@ -34412,6 +34931,9 @@ $CONTENT
                 baseRevision: options.baseRevision,
                 initialData: baseSnapshot,
                 targetMessageIndex: options.saveTargetIndex,
+                targetMessage: options.targetMessage,
+                targetMessageMeta: options.targetMessageMeta,
+                idempotencyGroupKeys: options.idempotencyGroupKeys ?? [...allTargetSheetKeySet],
                 targetSheetKeys: null,
                 updateGroupKeys: null,
                 trackingSheetKeys: null,
@@ -34478,10 +35000,10 @@ $CONTENT
                 _set_currentJsonTableData_ACU(JSON.parse(JSON.stringify(baseSnapshot || {})));
                 return { success: false, modifiedKeys: [], error: commitResult.error || '统一提交失败。' };
             }
-            if (!options.isImportMode && commitResult.tableData) {
+            if (!commitResult.duplicate && !options.isImportMode && commitResult.tableData) {
                 await updateReadableLorebookEntry_ACU(true, false, null, commitResult.tableData);
             }
-            return { success: true, modifiedKeys: commitResult.value.modifiedKeys, tableData: commitResult.tableData };
+            return { success: true, duplicate: commitResult.duplicate === true, modifiedKeys: commitResult.value.modifiedKeys, tableData: commitResult.tableData };
         }
         const sqlInitialization = isSqliteMode()
             ? buildSqlInitializationBase_ACU(baseSnapshot, [...allTargetSheetKeySet])
@@ -34545,6 +35067,7 @@ $CONTENT
         if (options.deferPersist) {
             return { success: true, modifiedKeys, tableData: workingTableData };
         }
+        let persistCommitResult = null;
         if (!options.isImportMode) {
             const isFirstTimeInit = await checkIfFirstTimeInit_ACU();
             const allUnifiedSheetKeys = getSortedSheetKeys_ACU(workingTableData);
@@ -34557,7 +35080,7 @@ $CONTENT
                 .filter(sheetKey => Boolean(workingTableData?.[sheetKey]))
                 .sort();
             const revisionWriteSet = modifiedKeys.map(sheetKey => ({ kind: 'sheet', sheetKey }));
-            const commitResult = await runTableUpdateCommit_ACU({
+            persistCommitResult = await runTableUpdateCommit_ACU({
                 source: 'group_fill',
                 reason: 'applyUnifiedGroupFillResponses:snapshot',
                 isolationKey: getCurrentIsolationKey_ACU(),
@@ -34566,6 +35089,9 @@ $CONTENT
                 baseRevision: options.baseRevision,
                 initialData: baseSnapshot,
                 targetMessageIndex: options.saveTargetIndex,
+                targetMessage: options.targetMessage,
+                targetMessageMeta: options.targetMessageMeta,
+                idempotencyGroupKeys: options.idempotencyGroupKeys ?? [...allTargetSheetKeySet],
                 targetSheetKeys: keysToSave,
                 updateGroupKeys: fillAttemptKeys,
                 trackingSheetKeys: keysToTrack,
@@ -34576,15 +35102,17 @@ $CONTENT
                 value: { modifiedKeys },
                 tableData: workingTableData,
             }));
-            if (!commitResult.success) {
-                return { success: false, modifiedKeys, error: commitResult.error || '统一提交失败：保存聊天记录失败。' };
+            if (!persistCommitResult.success) {
+                return { success: false, modifiedKeys, error: persistCommitResult.error || '统一提交失败：保存聊天记录失败。' };
             }
-            await updateReadableLorebookEntry_ACU(true, false, null, workingTableData);
-            if (getCurrentWorldbookConfig_ACU().summaryVectorIndexModeEnabled === true) {
+            if (!persistCommitResult.duplicate) {
+                await updateReadableLorebookEntry_ACU(true, false, null, workingTableData);
+            }
+            if (!persistCommitResult.duplicate && getCurrentWorldbookConfig_ACU().summaryVectorIndexModeEnabled === true) {
                 await enqueueSummaryVectorIndexFlush_ACU({ targetMessageIndex: options.saveTargetIndex, mode: 'sync', reason: 'unified_group_fill_complete' });
             }
         }
-        return { success: true, modifiedKeys, tableData: workingTableData };
+        return { success: true, duplicate: persistCommitResult?.duplicate === true, modifiedKeys: persistCommitResult?.duplicate ? [] : modifiedKeys, tableData: persistCommitResult?.duplicate ? persistCommitResult.tableData : workingTableData };
     }
     async function processGroupedRuntimeChunk_ACU(groups, mode, options = {}) {
         if (!Array.isArray(groups) || groups.length === 0) {
@@ -34790,13 +35318,21 @@ $CONTENT
                     ? await applySqlResponsesToCurrentRuntime_ACU(responses, baseSnapshot, bucket.updateMode)
                     : await applyUnifiedGroupFillResponses_ACU(responses, baseSnapshot, {
                         saveTargetIndex: bucket.saveTargetIndex,
+                        targetMessage: chatHistory[bucket.saveTargetIndex] || null,
+                        targetMessageMeta: 目标消息元信息,
+                        idempotencyGroupKeys: bucketSheetKeys,
                         updateMode: bucket.updateMode,
                         isImportMode: options.isImportMode === true,
                         baseRevision,
                         deferPersist: options.deferPersist === true,
                         forceSnapshotApply: options.forceSnapshotApply === true,
-                    });
+                });
                 if (applyResult.success) {
+                    if (applyResult.duplicate) {
+                        emitBucketProgress(bucketIndex, { phase: 'complete', duplicate: true });
+                        bucketSucceeded = true;
+                        break;
+                    }
                     if (options.deferPersist && applyResult.tableData) {
                         deferredWorkingData = JSON.parse(JSON.stringify(applyResult.tableData));
                         deferredCheckpointData = deferredCheckpointData || JSON.parse(JSON.stringify(deferredWorkingData));
@@ -34836,6 +35372,9 @@ $CONTENT
                             revisionWriteSet,
                             initialData: checkpointInitialData,
                             targetMessageIndex: checkpointTargetIndex,
+                            targetMessage: chatHistory[checkpointTargetIndex] || null,
+                            targetMessageMeta: 目标消息元信息,
+                            idempotencyGroupKeys: checkpointSheetKeys,
                             targetSheetKeys: getSortedSheetKeys_ACU(deferredCheckpointData),
                             updateGroupKeys: checkpointSheetKeys,
                             trackingSheetKeys: checkpointSheetKeys,
@@ -34865,7 +35404,7 @@ $CONTENT
                             firstError = firstError || checkpointCommit.error || '手动重填进度 checkpoint 保存失败。';
                             break;
                         }
-                        if (checkpointCommit.tableData) {
+                        if (checkpointCommit.tableData && !checkpointCommit.duplicate) {
                             deferredCheckpointData = JSON.parse(JSON.stringify(checkpointCommit.tableData));
                             _set_currentJsonTableData_ACU(deferredCheckpointData);
                             if (isSqliteMode()) {
@@ -34878,7 +35417,7 @@ $CONTENT
                             }
                             await updateReadableLorebookEntry_ACU(true, false, null, deferredCheckpointData);
                         }
-                        if (getCurrentWorldbookConfig_ACU().summaryVectorIndexModeEnabled === true) {
+                        if (!checkpointCommit.duplicate && getCurrentWorldbookConfig_ACU().summaryVectorIndexModeEnabled === true) {
                             await enqueueSummaryVectorIndexFlush_ACU({ targetMessageIndex: checkpointTargetIndex, mode: 'sync', reason: 'manual_refill_progress' });
                         }
                     }
@@ -34935,6 +35474,7 @@ $CONTENT
             });
         };
         let success = false;
+        let duplicateCommitDetected = false;
         let modifiedKeys = [];
         const maxRetries = settings_ACU.tableMaxRetries || 3;
         try {
@@ -34978,6 +35518,11 @@ $CONTENT
                             baseRevision,
                             initialData: rawBaseSnapshot,
                             targetMessageIndex: saveTargetIndex,
+                            targetMessage: progressContext?.targetMessageMeta
+                                ? getChatArray_ACU()?.[Number(progressContext.targetMessageMeta.消息索引 ?? progressContext.targetMessageMeta.messageIndex ?? progressContext.targetMessageMeta.index)] || null
+                                : null,
+                            targetMessageMeta: progressContext?.targetMessageMeta || null,
+                            idempotencyGroupKeys: targetSheetKeys || [],
                             targetSheetKeys: null,
                             updateGroupKeys: null,
                             trackingSheetKeys: null,
@@ -35058,6 +35603,7 @@ $CONTENT
                                 persist: {
                                     targetSheetKeys: keysToActuallySave,
                                     updateGroupKeys: updateGroupKeysToUse,
+                                    idempotencyGroupKeys: targetSheetKeys || [],
                                     trackingSheetKeys: keysToTrackAsUpdated,
                                     trackAsUpdate: true,
                                     operations,
@@ -35068,8 +35614,9 @@ $CONTENT
                         if (!commitResult.success || !commitResult.value) {
                             throw new Error(commitResult.error || '解析或应用AI更新时出错');
                         }
+                        duplicateCommitDetected = commitResult.duplicate === true;
                         modifiedKeys = commitResult.value.modifiedKeys;
-                        if (!isImportMode && commitResult.tableData) {
+                        if (!duplicateCommitDetected && !isImportMode && commitResult.tableData) {
                             await updateReadableLorebookEntry_ACU(true, false, null, commitResult.tableData);
                         }
                         success = true;
@@ -35086,6 +35633,11 @@ $CONTENT
                         baseRevision,
                         initialData: rawBaseSnapshot,
                         targetMessageIndex: saveTargetIndex,
+                        targetMessage: progressContext?.targetMessageMeta
+                            ? getChatArray_ACU()?.[Number(progressContext.targetMessageMeta.消息索引 ?? progressContext.targetMessageMeta.messageIndex ?? progressContext.targetMessageMeta.index)] || null
+                            : null,
+                        targetMessageMeta: progressContext?.targetMessageMeta || null,
+                        idempotencyGroupKeys: targetSheetKeys || [],
                         targetSheetKeys: null,
                         updateGroupKeys: null,
                         trackingSheetKeys: null,
@@ -35181,6 +35733,7 @@ $CONTENT
                             persist: {
                                 targetSheetKeys: keysToActuallySave,
                                 updateGroupKeys: updateGroupKeysToUse,
+                                idempotencyGroupKeys: targetSheetKeys || [],
                                 trackingSheetKeys: keysToTrackAsUpdated,
                                 trackAsUpdate: true,
                                 operations: operationsForCommit,
@@ -35192,7 +35745,8 @@ $CONTENT
                         return { success: false, modifiedKeys: [], error: updateOutcome.error || '无法将更新后的数据库保存到聊天记录。' };
                     }
                     modifiedKeys = updateOutcome.value.modifiedKeys;
-                    if (!isImportMode && updateOutcome.tableData) {
+                    duplicateCommitDetected = updateOutcome.duplicate === true;
+                    if (!duplicateCommitDetected && !isImportMode && updateOutcome.tableData) {
                         await updateReadableLorebookEntry_ACU(true, false, null, updateOutcome.tableData);
                     }
                     success = true;
@@ -35225,7 +35779,7 @@ $CONTENT
                 // 避免 embedding API 调用阻塞"正在保存"提示框。
                 // 使用 flush queue 替代直接调用，由防抖定时器统一调度。
                 // [spv3.6.9] 增加诊断日志，记录入队结果（queued/skipped）
-                if (!isImportMode && success && getCurrentWorldbookConfig_ACU().summaryVectorIndexModeEnabled === true) {
+                if (!isImportMode && success && !duplicateCommitDetected && getCurrentWorldbookConfig_ACU().summaryVectorIndexModeEnabled === true) {
                     enqueueSummaryVectorIndexFlush_ACU({
                         targetMessageIndex: saveTargetIndex,
                         mode: 'sync',
@@ -35331,6 +35885,7 @@ $CONTENT
                     currentBatch: batchNumber,
                     totalBatches: batches.length,
                     batchBaseSnapshot: JSON.parse(JSON.stringify(mergedBatchData)),
+                    targetMessageMeta: 目标消息元信息,
                 });
                 if (!result.success) {
                     return { success: false, failedBatch: batchNumber, error: result.error || `批处理在第 ${batchNumber} 批时失败或被终止。` };
@@ -36599,6 +37154,7 @@ $CONTENT
         if (!config.enabled) {
             return false;
         }
+        markOptionalRuntime_ACU('standardAnalysis', { enabled: true, initialized: true });
         const chat = getChatArray_ACU();
         if (!chat || !chat[messageIndex]) {
             return false;
@@ -45213,6 +45769,8 @@ $CONTENT
             showToastr_ACU('warning', '数据未加载，请先进行一次对话或初始化。');
             return;
         }
+        markOptionalRuntime_ACU('editor', { enabled: true, initialized: true });
+        markOptionalRuntime_ACU('visualization', { enabled: true, initialized: true });
         // Initial Load
         _acuVisState.tempData = JSON.parse(JSON.stringify(currentJsonTableData_ACU));
         resetVisualizerPendingDataOps_ACU(_acuVisState);
@@ -45270,8 +45828,10 @@ $CONTENT
                 if (!confirm('确定要关闭吗？未保存的修改将丢失。')) {
                     return false; // 阻止关闭（注意：当前实现会立即关闭，后续可优化）
                 }
+                stopVisualizerTemplateAssistantAddon_ACU();
             },
             onReady: ($window) => {
+                initVisualizerTemplateAssistantAddon_ACU();
                 // 绑定事件：数据保存与模板保存彻底分离
                 $window.find('#acu-vis-save-data-btn').on('click', async () => {
                     await saveVisualizerDataChanges_ACU();
@@ -52782,6 +53342,8 @@ $CONTENT
             showToastr_ACU('error', '核心API未就绪。');
             return;
         }
+        markOptionalRuntime_ACU('editor', { enabled: true, initialized: true });
+        markOptionalRuntime_ACU('diagnostics', { enabled: true, initialized: true });
         showToastr_ACU('info', '正在准备数据库更新工具...', { timeOut: 1000 });
         // The state is managed by background event listeners. The popup should only display the current state.
         // Calling reset here could cause race conditions or incorrect state wipes.
@@ -52960,9 +53522,14 @@ $CONTENT
         }
         const extensionsMenu = jQuery_API_ACU('#extensionsMenu', parentDoc);
         if (!extensionsMenu.length) {
-            setTimeout(addAutoCardMenuItem_ACU, 2000);
+            optionalRuntimeState_ACU.editor.menuRetryTimers += 1;
+            setTimeout(() => {
+                optionalRuntimeState_ACU.editor.menuRetryTimers = Math.max(0, optionalRuntimeState_ACU.editor.menuRetryTimers - 1);
+                addAutoCardMenuItem_ACU();
+            }, 2000);
             return false;
         }
+        markOptionalRuntime_ACU('editor', { enabled: true, initialized: true });
         let $menuItemContainer = jQuery_API_ACU(`#${MENU_ITEM_CONTAINER_ID_ACU}`, extensionsMenu);
         if ($menuItemContainer.length > 0) {
             $menuItemContainer
@@ -52997,6 +53564,24 @@ $CONTENT
         applyLegacyUiMenuVisibility();
         logDebug_ACU('ACU Menu item added.');
         return true;
+    }
+    function enableOptionalFeature_ACU(feature) {
+        const key = String(feature || '').trim();
+        const state = optionalRuntimeState_ACU[key];
+        if (!state)
+            return { success: false, error: 'UNKNOWN_OPTIONAL_FEATURE', status: getOptionalRuntimeStatus_ACU() };
+        if (key === 'standardAnalysis' && settings_ACU?.contentOptimizationSettings?.enabled !== true) {
+            return { success: false, error: 'FEATURE_SETTING_DISABLED', status: getOptionalRuntimeStatus_ACU() };
+        }
+        if (key === 'vector' && globalMeta_ACU?.summaryVectorIndexModeGlobal !== true) {
+            return { success: false, error: 'FEATURE_SETTING_DISABLED', status: getOptionalRuntimeStatus_ACU() };
+        }
+        state.enabled = true;
+        if (key === 'editor') {
+            addAutoCardMenuItem_ACU();
+            registerAcuV2MenuButton();
+        }
+        return { success: true, status: getOptionalRuntimeStatus_ACU() };
     }
 
     /**
@@ -53435,6 +54020,14 @@ $CONTENT
             || text.includes('交火向量索引内容块校验失败');
     }
     async function preloadSummaryVectorIndexCacheForCurrentChat_ACU() {
+        if (globalMeta_ACU?.summaryVectorIndexModeGlobal !== true) {
+            return {
+                success: true,
+                skipped: true,
+                reason: 'vector_disabled',
+                chunkCount: 0,
+            };
+        }
         const snapshot = getLatestSummaryVectorIndexSnapshotState_ACU();
         const latestLayer = snapshot?.layers?.[0] || null;
         const manifest = snapshot?.summaryVectorIndexState?.manifest || null;
@@ -53729,6 +54322,7 @@ $CONTENT
             logDebug_ACU(`[交火模式纪要索引] 全局开关未启用，跳过发送前处理。worldbookProjection=${worldbookConfig.summaryVectorIndexModeEnabled === true}`);
             return { success: false, skipped: true, reason: 'summary_vector_index_disabled' };
         }
+        markOptionalRuntime_ACU('vector', { enabled: true, initialized: true });
         const userInput = normalizeText_ACU(options.userInput);
         if (!userInput)
             return { success: false, skipped: true, reason: 'empty_user_input' };
@@ -54036,7 +54630,8 @@ $CONTENT
         if (attemptToLoadCoreApis_ACU()) {
             logDebug_ACU('AutoCardUpdater Initialization successful! Core APIs loaded.');
             showToastr_ACU('success', '数据库自动更新脚本已加载！', '脚本启动');
-            addAutoCardMenuItem_ACU();
+            if (readLegacyUiMenuVisible())
+                enableOptionalFeature_ACU('editor');
             loadSettings_ACU();
             if (SillyTavern_API_ACU &&
                 SillyTavern_API_ACU.eventSource &&
@@ -54156,6 +54751,11 @@ $CONTENT
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
                         调度生成结束后置更新_ACU('GENERATION_ENDED', message_id);
                         onLoopGenerationEnded_ACU();
+                    });
+                }
+                if (SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED) {
+                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id) => {
+                        调度生成结束后置更新_ACU('MESSAGE_RECEIVED', message_id);
                     });
                 }
                 // [剧情推进] 拦截用户输入进行剧情规划
@@ -56861,6 +57461,8 @@ $CONTENT
     const api = Object.assign({}, createCallbackApi(ctx), createCoreDataApi(ctx), createTableCrudApi(ctx), createTableLockApi(ctx), createTemplatePresetApi(ctx), createPlotPresetApi(ctx), createDataAdminApi(ctx), createSettingsConfigApi(ctx), createWorldbookAiApi(ctx), createSqlApi(ctx));
     // 将最终组装的 api 赋给 apiRef，使 ctx.getApi() 返回完整对象
     apiRef = api;
+    api.getOptionalRuntimeStatus = getOptionalRuntimeStatus_ACU;
+    api.enableOptionalFeature = enableOptionalFeature_ACU;
     // --- 挂载到全局 ---
     topLevelWindow_ACU.AutoCardUpdaterAPI = api;
 
@@ -59615,7 +60217,6 @@ $CONTENT
     const ASSISTANT_HOST_ID_ACU = 'acu-vis-assistant-host';
     const ASSISTANT_DOCK_SELECTOR_ACU = '#acu-vis-assistant-dock';
     const LIFECYCLE_POLL_MS_ACU = 1000;
-    const DISABLE_AUTO_INIT_FLAG_ACU = '__ACU_DISABLE_TEMPLATE_ASSISTANT_ADDON_AUTO_INIT__';
     let addonInitialized_ACU = false;
     let lifecycleTimer_ACU = null;
     let visualizerObserver_ACU = null;
@@ -59741,9 +60342,6 @@ $CONTENT
         startVisualizerObserver_ACU();
         startLifecyclePoll_ACU();
         syncVisualizerTemplateAssistantAddon_ACU(true);
-    }
-    if (!globalThis[DISABLE_AUTO_INIT_FLAG_ACU]) {
-        initVisualizerTemplateAssistantAddon_ACU();
     }
 
     /**
@@ -83279,6 +83877,8 @@ Expected function or array of functions, received type ${typeof value}.`
                 wasShellOpen,
                 previousPageId: previousPageId ?? router.activePageId,
             });
+            markOptionalRuntime_ACU('visualization', { enabled: true, initialized: true });
+            markOptionalRuntime_ACU('editor', { enabled: true, initialized: true });
             return true;
         }
         catch (error) {
@@ -99825,6 +100425,7 @@ ${lines.join('\n')}
         const store = useRootShellStore(s.pinia);
         const wasOpen = store.isOpen;
         store.setOpen(true);
+        markOptionalRuntime_ACU('editor', { enabled: true, initialized: true });
         if (wasMounted && !wasOpen)
             store.requestOpenRefresh();
     }
@@ -99881,7 +100482,11 @@ ${lines.join('\n')}
         const $ = getHostJQuery();
         if (!doc || !$) {
             if (retry < 10) {
-                setTimeout(() => attemptInsert(retry + 1), 1000);
+                optionalRuntimeState_ACU.editor.menuRetryTimers += 1;
+                setTimeout(() => {
+                    optionalRuntimeState_ACU.editor.menuRetryTimers = Math.max(0, optionalRuntimeState_ACU.editor.menuRetryTimers - 1);
+                    attemptInsert(retry + 1);
+                }, 1000);
             }
             else {
                 logError_ACU('[ACU-V2] menu button registration aborted: host doc/jQuery not ready after 10 retries.');
@@ -99891,13 +100496,18 @@ ${lines.join('\n')}
         const extensionsMenu = $('#extensionsMenu', doc);
         if (!extensionsMenu.length) {
             if (retry < 30) {
-                setTimeout(() => attemptInsert(retry + 1), 2000);
+                optionalRuntimeState_ACU.editor.menuRetryTimers += 1;
+                setTimeout(() => {
+                    optionalRuntimeState_ACU.editor.menuRetryTimers = Math.max(0, optionalRuntimeState_ACU.editor.menuRetryTimers - 1);
+                    attemptInsert(retry + 1);
+                }, 2000);
             }
             else {
                 logError_ACU('[ACU-V2] menu button registration aborted: #extensionsMenu not found after 30 retries.');
             }
             return;
         }
+        markOptionalRuntime_ACU('editor', { enabled: true, initialized: true });
         const existingContainer = $(`#${MENU_CONTAINER_ID}`, extensionsMenu);
         if (existingContainer.length > 0) {
             existingContainer
@@ -99948,7 +100558,6 @@ ${lines.join('\n')}
      */
     function bootstrapAcuV2() {
         installAutoCardUpdaterV2Api_ACU();
-        registerAcuV2MenuButton();
     }
 
     if (globalThis.__LWCS_DATABASE_PERSISTENCE_TEST_MODE__ === true) {
@@ -99966,10 +100575,16 @@ ${lines.join('\n')}
             persistTableMutationLogV2: persistTableMutationLogV2_ACU,
             runTableUpdateCommit: runTableUpdateCommit_ACU,
             getCurrentJsonTableData: () => currentJsonTableData_ACU ? safeClone(currentJsonTableData_ACU) : null,
+            getLogs: getAllLogs,
             purgeSheetKeysFromMessage: purgeSheetKeysFromMessage_ACU,
             setSillyTavernApi: _set_SillyTavern_API_ACU,
             setSettings: _set_settings_ACU,
             invalidatePersistence: invalidateDatabasePersistence_ACU,
+            getOptionalRuntimeStatus: getOptionalRuntimeStatus_ACU,
+            enableOptionalFeature: enableOptionalFeature_ACU,
+            preloadSummaryVectorIndexCache: preloadSummaryVectorIndexCacheForCurrentChat_ACU,
+            restoreSummaryVectorFlushQueue: restoreSummaryVectorIndexFlushQueueForCurrentChat_ACU,
+            enqueueSummaryVectorFlush: enqueueSummaryVectorIndexFlush_ACU,
         });
     }
 

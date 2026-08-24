@@ -45,9 +45,67 @@
     } catch (错误) {}
     return 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@1c483fa1c0af6f056b725652044d564282a26f2b/';
   })();
-  const ASSETS = {
-    world: encodeURI(资源基础地址 + 'MAP.webp')
-  };
+  const MAP_PROFILES = Object.freeze({
+    'map_dldl_world': Object.freeze({ id: 'dldl-terrestrial', mapId: 'map_dldl_world', asset: '斗罗大陆1地图.png', topology: 'terrestrial', terrainSource: 'image-sampling' }),
+    'map_terrestrial_world': Object.freeze({ id: 'terrestrial-shared', mapId: 'map_terrestrial_world', asset: 'MAP.webp', topology: 'terrestrial', terrainSource: 'manual-and-image' }),
+    'map_zjdl_stellar': Object.freeze({ id: 'zjdl-stellar', mapId: 'map_zjdl_stellar', asset: 'MAP_ZJDL.webp', topology: 'stellar', terrainSource: 'none' })
+  });
+  const MAP_ZJDL_SUBMAP_ASSETS = Object.freeze({
+    '斗罗星': 'MAP_ZJDL_DOULUO.webp',
+    '天斗星': 'MAP_ZJDL_TIANDOU.webp',
+    '天罗星': 'MAP_ZJDL_TIANLUO.webp',
+    '史莱克星': 'MAP_ZJDL_SHREK.webp',
+    '龙马星系/龙源星': 'MAP_ZJDL_LONGYUAN.webp',
+    '龙马星系/森罗星': 'MAP_ZJDL_SENLUO.webp',
+    '龙马星系/精灵星': 'MAP_ZJDL_JINGLING.webp',
+    '天堂星域/天堂星': 'MAP_ZJDL_TIANTANG.webp',
+    '龙马星系/天龙星': 'MAP_ZJDL_TIANLONG.webp',
+    '龙马星系/天马星': 'MAP_ZJDL_TIANMA.webp',
+    '龙马星系/御空族七十六号星球': 'MAP_ZJDL_YUKONG76.webp'
+  });
+  const DEFAULT_MAIN_MAP_ID = 'map_terrestrial_world';
+  function getEraMapProfileFromRoot(rootData = null) {
+    const tick = toNumber(deepGet(rootData || {}, 'world.时间.tick', NaN), NaN);
+    if (!Number.isFinite(tick)) return null;
+    const candidates = [window, window.parent, window.top];
+    for (const host of candidates) {
+      try {
+        const integration = host && host.__LWCS_ERA_RUNTIME_INTEGRATION_V1__;
+        if (integration && typeof integration.getMapProfileForTick === 'function') {
+          const profile = integration.getMapProfileForTick(tick);
+          if (profile && profile.mapId) return profile;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  function resolveMapProfile(mapId = '', snapshot = null, rootData = null) {
+    const safeMapId = toText(mapId, '');
+    if (MAP_PROFILES[safeMapId]) return MAP_PROFILES[safeMapId];
+    const snapshotProfile = snapshot && snapshot.mapProfile;
+    if (snapshotProfile && snapshotProfile.mapId) return snapshotProfile;
+    const rootProfile = getEraMapProfileFromRoot(rootData || (snapshot && snapshot.rootData));
+    if (rootProfile && rootProfile.mapId) return rootProfile;
+    return MAP_PROFILES[DEFAULT_MAIN_MAP_ID];
+  }
+
+  function getZJDLSubmapAsset(locationPath = []) {
+    const pathSegments = (Array.isArray(locationPath) ? locationPath : [locationPath])
+      .flatMap(segment => getLocationPathSegments(segment));
+    return MAP_ZJDL_SUBMAP_ASSETS[pathSegments.join('/')] || '';
+  }
+
+  function getMapAssetUrl(profile = null, locationPath = []) {
+    const resolved = profile && profile.asset ? profile : MAP_PROFILES[DEFAULT_MAIN_MAP_ID];
+    const submapAsset = resolved.mapId === 'map_zjdl_stellar' ? getZJDLSubmapAsset(locationPath) : '';
+    return encodeURI(资源基础地址 + (submapAsset || resolved.asset));
+  }
+
+  function isMainMapId(mapId = '') {
+    const safeMapId = toText(mapId, '');
+    return !!MAP_PROFILES[safeMapId];
+  }
 
   const SMALL_SETTLEMENT_NAMES = new Set(['傲来城', '上陵城', '海陆城', '烈火盆地']);
   const SUPER_CITY_NAMES = new Set(['明都', '史莱克城']);
@@ -77,6 +135,7 @@
     image: null,
     canvas: null,
     ctx: null,
+    asset: '',
     ready: false,
     loading: false,
     failed: false
@@ -1549,7 +1608,8 @@
     items: [],
     itemMap: new Map(),
     coordSystem: MAP_COORD_SYSTEM_IMAGE,
-    currentMapId: 'map_douluo_world',
+    currentMapId: DEFAULT_MAIN_MAP_ID,
+    mapProfile: MAP_PROFILES[DEFAULT_MAIN_MAP_ID],
     mapLevel: 'world',
     baseSnapshot: null,
     previewViewStack: [],
@@ -2074,7 +2134,7 @@
     if (mapId.includes('district')) return 'district';
     if (mapId.includes('_city') || mapId.includes('city_')) return 'city';
     if (mapId.includes('region')) return 'region';
-    return mapId === 'map_douluo_world' ? 'world' : 'world';
+    return 'world';
   }
 
   function getMapLevelText(level) {
@@ -2087,10 +2147,12 @@
   }
 
   function getMapDisplayName(mapId = mapState.currentMapId, mapMeta = null) {
-    const safeMapId = toText(mapId, 'map_douluo_world');
+    const safeMapId = toText(mapId, DEFAULT_MAIN_MAP_ID);
     const explicitName = toText((mapMeta && mapMeta.name) || '', '');
     if (explicitName) return explicitName;
-    if (safeMapId === 'map_douluo_world') return '斗罗大陆总图';
+    if (safeMapId === 'map_dldl_world') return '斗罗大陆总图';
+    if (safeMapId === 'map_terrestrial_world') return '斗罗大陆总图';
+    if (safeMapId === 'map_zjdl_stellar') return '斗罗星际总图';
     if (/^map_/i.test(safeMapId)) return '未命名子图';
     return '未命名地图';
   }
@@ -2727,9 +2789,11 @@
   function 获取地图维护父节点名() {
     const 预览锚点 = toText(mapState.snapshot && mapState.snapshot.previewMeta && mapState.snapshot.previewMeta.anchor_name, '');
     if (预览锚点) return 预览锚点;
-    if (toText(mapState.currentMapId, 'map_douluo_world') === 'map_douluo_world') return '斗罗大陆';
-    if (mapState.selectedFreePoint) return toText(mapState.currentNode || mapState.snapshot?.currentLoc, '斗罗大陆');
-    return toText(mapState.selectedNode || mapState.currentNode || mapState.snapshot?.currentLoc, '斗罗大陆');
+    const profile = resolveMapProfile(mapState.currentMapId, mapState.snapshot, mapState.snapshot && mapState.snapshot.rootData);
+    const rootName = profile && profile.topology === 'stellar' ? '斗罗星际' : '斗罗大陆';
+    if (isMainMapId(mapState.currentMapId)) return rootName;
+    if (mapState.selectedFreePoint) return toText(mapState.currentNode || mapState.snapshot?.currentLoc, rootName);
+    return toText(mapState.selectedNode || mapState.currentNode || mapState.snapshot?.currentLoc, rootName);
   }
 
   function 获取地图维护焦点项() {
@@ -3454,10 +3518,17 @@
   }
 
   function buildSnapshotFromMapPayload(payload, sourceRootData, activeName, activeChar, cachedIndexes = null) {
-    const isPreview = payload && payload.current_map_id && payload.current_map_id !== 'map_douluo_world';
+    const payloadMapId = toText(payload && payload.current_map_id, '');
+    const isRootMapId = !payloadMapId || isMainMapId(payloadMapId);
+    const isPreview = !!payloadMapId && !isRootMapId;
     const rootData = isPreview ? (payload.rootData || sourceRootData || mapState.baseSnapshot?.rootData || {}) : (sourceRootData || payload || {});
     const currentLocFull = toText(deepGet(activeChar, '状态.位置', '斗罗大陆-未知地点'), '斗罗大陆-未知地点');
-    const currentMapId = isPreview ? payload.current_map_id : 'map_douluo_world';
+    const rootProfile = getEraMapProfileFromRoot(rootData) || MAP_PROFILES[DEFAULT_MAIN_MAP_ID];
+    const mapProfile = isPreview
+      ? (payload.map_profile && payload.map_profile.mapId ? payload.map_profile : rootProfile)
+      : rootProfile;
+    const currentMapId = isPreview ? payloadMapId : mapProfile.mapId;
+    const dedicatedSubmap = isPreview && mapProfile.mapId === 'map_zjdl_stellar' && !!getZJDLSubmapAsset(mapState.previewTrail);
     const characterIndexPayload = cachedIndexes && cachedIndexes.charactersByLoc instanceof Map
       ? cachedIndexes
       : buildCharactersByLocationIndex(rootData, activeName);
@@ -3481,7 +3552,17 @@
       Object.assign(visibleNodes, payload.visible_nodes);
     } else {
       const rootLocations = deepGet(rootData, 'world.地点', {});
-      Object.assign(visibleNodes, rootLocations);
+      const rootLocationNames = rootLocations && typeof rootLocations === 'object' && !Array.isArray(rootLocations)
+        ? Object.keys(rootLocations)
+        : [];
+      const compositeRoot = rootLocationNames.length === 1 && rootLocationNames[0] === '斗罗大陆'
+        ? rootLocations['斗罗大陆']
+        : null;
+      const directChildNodes = getMapNodeChildren(compositeRoot);
+      Object.assign(
+        visibleNodes,
+        directChildNodes && Object.keys(directChildNodes).length ? directChildNodes : rootLocations
+      );
     }
 
     const currentFocusCoord = {
@@ -3520,13 +3601,14 @@
       currentWithinView: currentAnchorMeta.currentWithinView,
       coordSystem: resolveSnapshotCoordSystem(currentMapId, 'world'),
       currentMapId,
+      mapProfile,
       currentZoomHint: 0,
       availableChildMaps: 内联子图索引.availableChildMaps,
       previewChildMaps: 内联子图索引.previewChildMaps,
       travelCandidates: Array.from(new Set([...Object.keys(visibleNodes), ...Object.keys(visibleDynamics)])),
       visibleNodes: safeEntries(visibleNodes),
       visibleDynamics: safeEntries(visibleDynamics),
-      mapLevel: isPreview ? payload.map_meta?.map_level || 'city' : 'world',
+       mapLevel: isPreview ? payload.map_meta?.map_level || 'city' : 'world',
       mapMeta: isPreview ? payload.map_meta : null,
       previewMeta: isPreview ? payload.preview_meta : null,
       coord_system: resolveSnapshotCoordSystem(),
@@ -3534,7 +3616,9 @@
       characterDigest: characterIndexPayload.characterDigest
     };
     snapshot.items = buildRuntimeMapItems(snapshot);
-    snapshot.bounds = isPreview ? 计算地图显示边界(snapshot.items, 240) : { ...DEFAULT_IMAGE_BOUNDS };
+    snapshot.bounds = isPreview
+      ? (dedicatedSubmap ? { ...DEFAULT_IMAGE_BOUNDS } : 计算地图显示边界(snapshot.items, 240))
+      : { ...DEFAULT_IMAGE_BOUNDS };
     return snapshot;
   }
 
@@ -3578,7 +3662,7 @@
       rootData: {
         world: {
           maps: {
-            map_douluo_world: {
+            [DEFAULT_MAIN_MAP_ID]: {
               name: '世界地图',
               map_level: 'world',
               coord_system: MAP_COORD_SYSTEM_IMAGE,
@@ -3602,7 +3686,8 @@
       currentFocusName: '',
       currentFocusCoord: { x: NaN, y: NaN },
       currentWithinView: true,
-      currentMapId: 'map_douluo_world',
+      currentMapId: DEFAULT_MAIN_MAP_ID,
+      mapProfile: MAP_PROFILES[DEFAULT_MAIN_MAP_ID],
       currentZoomHint: 0,
       availableChildMaps: {},
       previewChildMaps: {},
@@ -3663,6 +3748,8 @@
     if (!childEntries.length && !dynamicEntries.length) return null;
 
     const currentMapId = `preview_${nodeName}`;
+    const parentProfile = resolveMapProfile(parentMapId || container?.currentMapId, container, container?.rootData);
+    const resolvedParentMapId = parentMapId || container?.currentMapId || parentProfile.mapId;
     const visibleNodeEntries = [];
     const availableChildMaps = {};
     const previewChildMaps = {};
@@ -3757,7 +3844,7 @@
       map_meta: {
         name: `${nodeName}区域预览`,
         map_level: inferredMapLevel,
-        parent_map_id: parentMapId || 'map_douluo_world',
+        parent_map_id: resolvedParentMapId,
         anchor_loc: nodeName,
         child_maps: availableChildMaps
       },
@@ -3771,8 +3858,9 @@
       preview_meta: {
         anchor_name: nodeName,
         parent_name: container?.previewMeta?.anchor_name || container?.currentLoc || '',
-        parent_map_id: parentMapId || 'map_douluo_world'
+        parent_map_id: resolvedParentMapId
       },
+      map_profile: parentProfile,
       preview_child_maps: previewChildMaps
     };
   }
@@ -3884,6 +3972,7 @@
     mapState.itemMap = new Map(snapshot.items.map(item => [item.name, item]));
     mapState.coordSystem = MAP_COORD_SYSTEM_IMAGE;
     mapState.currentMapId = snapshot.currentMapId;
+    mapState.mapProfile = snapshot.mapProfile || resolveMapProfile(snapshot.currentMapId, snapshot, snapshot.rootData);
     mapState.mapLevel = snapshot.mapLevel;
     mapState.layerFollowsZoom = shouldMapLayerFollowZoom(snapshot);
     if (forceLayer) {
@@ -4381,7 +4470,7 @@
 
 
   const MAIN_MAP_TERRAIN_GRID_V1 = {
-    map_id: 'map_douluo_world',
+    map_id: 'map_terrestrial_world',
     version: 'terrain-grid-96x68-firstpass-001',
     source: '基于 MAP.jpeg 颜色格网提取的世界地图首轮粗地形。',
     bounds: { min_x: 0, min_y: 0, width: 3174, height: 2246 },
@@ -4467,19 +4556,20 @@
     X: { gridTerrain: 'mixed', name: '过渡地带', terrainTypes: ['过渡地带'], climate: '过渡带', movementDifficulty: 2, resources: [] }
   };
 
-  function getMainMapTerrainGridData(mapId = 'map_douluo_world') {
-    return toText(mapId, 'map_douluo_world') === MAIN_MAP_TERRAIN_GRID_V1.map_id ? MAIN_MAP_TERRAIN_GRID_V1 : null;
+  function getMainMapTerrainGridData(mapId = DEFAULT_MAIN_MAP_ID) {
+    const safeMapId = toText(mapId, DEFAULT_MAIN_MAP_ID);
+    return safeMapId === MAIN_MAP_TERRAIN_GRID_V1.map_id ? MAIN_MAP_TERRAIN_GRID_V1 : null;
   }
 
-  function resolveMainMapTerrainGridInfo(coord, mapId = 'map_douluo_world') {
-    const safeMapId = toText(mapId, 'map_douluo_world');
+  function resolveMainMapTerrainGridInfo(coord, mapId = DEFAULT_MAIN_MAP_ID) {
+    const safeMapId = toText(mapId, DEFAULT_MAIN_MAP_ID);
     const gridData = getMainMapTerrainGridData(safeMapId);
     const x = toNumber(coord && coord.x, NaN);
     const y = toNumber(coord && coord.y, NaN);
     if (!gridData || !Number.isFinite(x) || !Number.isFinite(y)) return null;
     let relX = NaN;
     let relY = NaN;
-    if (safeMapId === 'map_douluo_world') {
+    if (safeMapId === DEFAULT_MAIN_MAP_ID) {
       relX = x / Math.max(1, WORLD_IMAGE_WIDTH - 1);
       relY = y / Math.max(1, WORLD_IMAGE_HEIGHT - 1);
     } else {
@@ -4515,9 +4605,9 @@
   }
 
   const MAIN_MAP_TERRAIN_DATA = {
-    map_id: 'map_douluo_world',
+    map_id: DEFAULT_MAIN_MAP_ID,
     version: 'terrain-remap-002',
-    coordinate_system: 'sd.world.maps.map_douluo_world.bounds absolute x/y',
+    coordinate_system: 'sd.world.maps.map_terrestrial_world.bounds absolute x/y',
     source: '根据当前 MAP.jpeg 主地图底图重新人工提取的前端地形分区，采用海域底层 + 大陆底层 + 高优先级地貌覆盖。',
     bounds: { min_x: 0, min_y: 0, width: 3174, height: 2246 },
     note: '优先保证点击地形与底图视觉一致；通过 priority 控制重叠区命中顺序，高优先级区域覆盖低优先级底层。',
@@ -5148,11 +5238,12 @@
     return inside;
   }
 
-  function getMainMapTerrainData(mapId = 'map_douluo_world') {
-    return toText(mapId, 'map_douluo_world') === MAIN_MAP_TERRAIN_DATA.map_id ? MAIN_MAP_TERRAIN_DATA : null;
+  function getMainMapTerrainData(mapId = DEFAULT_MAIN_MAP_ID) {
+    const safeMapId = toText(mapId, DEFAULT_MAIN_MAP_ID);
+    return safeMapId === MAIN_MAP_TERRAIN_DATA.map_id ? MAIN_MAP_TERRAIN_DATA : null;
   }
 
-  function convertCoordToMainMapTerrainDataSpace(x, y, terrainData = getMainMapTerrainData(), mapId = 'map_douluo_world') {
+  function convertCoordToMainMapTerrainDataSpace(x, y, terrainData = getMainMapTerrainData(), mapId = DEFAULT_MAIN_MAP_ID) {
     const px = toNumber(x, NaN);
     const py = toNumber(y, NaN);
     if (!Number.isFinite(px) || !Number.isFinite(py) || !terrainData) return null;
@@ -5161,7 +5252,7 @@
     const minY = toNumber(bounds.min_y, 0);
     const width = Math.max(1, toNumber(bounds.width, WORLD_IMAGE_WIDTH));
     const height = Math.max(1, toNumber(bounds.height, WORLD_IMAGE_HEIGHT));
-    if (toText(mapId, 'map_douluo_world') === 'map_douluo_world') {
+    if (toText(mapId, DEFAULT_MAIN_MAP_ID) === DEFAULT_MAIN_MAP_ID) {
       return {
         x: Number((minX + clamp(px / Math.max(1, WORLD_IMAGE_WIDTH - 1), 0, 1) * width).toFixed(2)),
         y: Number((minY + clamp(py / Math.max(1, WORLD_IMAGE_HEIGHT - 1), 0, 1) * height).toFixed(2))
@@ -5170,7 +5261,19 @@
     return { x: px, y: py };
   }
 
-  function ensureWorldTerrainColorSampler() {
+  function ensureWorldTerrainColorSampler(mapId = mapState.currentMapId, snapshot = mapState.snapshot) {
+    const profile = resolveMapProfile(mapId, snapshot, snapshot && snapshot.rootData);
+    if (!profile || profile.topology !== 'terrestrial' || profile.terrainSource !== 'image-sampling') return;
+    const asset = getMapAssetUrl(profile);
+    if (worldTerrainColorSamplerState.asset !== asset) {
+      worldTerrainColorSamplerState.image = null;
+      worldTerrainColorSamplerState.canvas = null;
+      worldTerrainColorSamplerState.ctx = null;
+      worldTerrainColorSamplerState.asset = asset;
+      worldTerrainColorSamplerState.ready = false;
+      worldTerrainColorSamplerState.loading = false;
+      worldTerrainColorSamplerState.failed = false;
+    }
     if (worldTerrainColorSamplerState.ready || worldTerrainColorSamplerState.loading || worldTerrainColorSamplerState.failed) return;
     if (typeof Image !== 'function' || typeof document === 'undefined') {
       worldTerrainColorSamplerState.failed = true;
@@ -5183,8 +5286,8 @@
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || WORLD_IMAGE_WIDTH;
-          canvas.height = img.naturalHeight || WORLD_IMAGE_HEIGHT;
+          canvas.width = WORLD_IMAGE_WIDTH;
+          canvas.height = WORLD_IMAGE_HEIGHT;
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
           if (!ctx) throw new Error('2d context unavailable');
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -5202,7 +5305,7 @@
         worldTerrainColorSamplerState.failed = true;
         worldTerrainColorSamplerState.loading = false;
       };
-      img.src = ASSETS.world;
+      img.src = asset;
     } catch (_) {
       worldTerrainColorSamplerState.failed = true;
       worldTerrainColorSamplerState.loading = false;
@@ -5232,7 +5335,7 @@
     return 'other';
   }
 
-  function buildWorldTerrainInfoFromVisualKind(kind, gridInfo = null, mapId = 'map_douluo_world') {
+  function buildWorldTerrainInfoFromVisualKind(kind, gridInfo = null, mapId = DEFAULT_MAIN_MAP_ID) {
     const defs = {
       glacier: { name: '冰川', terrainTypes: ['冰川'], movementDifficulty: 5, resources: ['冰晶'] },
       iceberg: { name: '冰山', terrainTypes: ['冰山'], movementDifficulty: 5, resources: ['冰晶', '寒铁'] },
@@ -5253,14 +5356,15 @@
       movementDifficulty: meta.movementDifficulty,
       resources: Array.isArray(meta.resources) ? meta.resources.slice() : [],
       overlapNames: [],
-      mapId: toText(mapId, 'map_douluo_world'),
+      mapId: toText(mapId, DEFAULT_MAIN_MAP_ID),
       grid: gridInfo ? { x: gridInfo.gridX, y: gridInfo.gridY, code: gridInfo.gridCode, terrain: gridInfo.gridTerrain } : null,
       source: 'image-color'
     };
   }
 
-  function resolveWorldTerrainHardOverride(coord, gridInfo = null, mapId = 'map_douluo_world') {
-    if (toText(mapId, 'map_douluo_world') !== 'map_douluo_world') return null;
+  function resolveWorldTerrainHardOverride(coord, gridInfo = null, mapId = DEFAULT_MAIN_MAP_ID) {
+    const profile = resolveMapProfile(mapId, mapState.snapshot, mapState.snapshot && mapState.snapshot.rootData);
+    if (!profile || profile.terrainSource !== 'manual-and-image') return null;
     const overrideKey = gridInfo ? `${gridInfo.gridX},${gridInfo.gridY}` : '';
     const override = overrideKey ? WORLD_TERRAIN_CELL_OVERRIDES[overrideKey] : null;
     if (!override) return null;
@@ -5271,9 +5375,10 @@
     return info;
   }
 
-  function resolveWorldImageColorTerrainInfo(coord, gridInfo = null, mapId = 'map_douluo_world') {
-    if (toText(mapId, 'map_douluo_world') !== 'map_douluo_world') return null;
-    ensureWorldTerrainColorSampler();
+  function resolveWorldImageColorTerrainInfo(coord, gridInfo = null, mapId = DEFAULT_MAIN_MAP_ID) {
+    const profile = resolveMapProfile(mapId, mapState.snapshot, mapState.snapshot && mapState.snapshot.rootData);
+    if (!profile || profile.terrainSource !== 'image-sampling') return null;
+    ensureWorldTerrainColorSampler(mapId, mapState.snapshot);
     const sampler = worldTerrainColorSamplerState;
     if (!sampler.ready || !sampler.ctx) return null;
     const x = Math.round(clamp(toNumber(coord && coord.x, NaN), 0, Math.max(0, WORLD_IMAGE_WIDTH - 1)));
@@ -5306,7 +5411,7 @@
     return buildWorldTerrainInfoFromVisualKind('plain', gridInfo, mapId);
   }
 
-  function getMainMapTerrainRegionsByCoord(x, y, mapId = 'map_douluo_world') {
+  function getMainMapTerrainRegionsByCoord(x, y, mapId = DEFAULT_MAIN_MAP_ID) {
     const terrainData = getMainMapTerrainData(mapId);
     if (!terrainData) return [];
     const terrainPoint = convertCoordToMainMapTerrainDataSpace(x, y, terrainData, mapId);
@@ -5338,8 +5443,10 @@
   function resolveTerrainInfoByCoord(coord, mapId = mapState.currentMapId) {
     const x = toNumber(coord && coord.x, NaN);
     const y = toNumber(coord && coord.y, NaN);
-    const safeMapId = toText(mapId, 'map_douluo_world');
+    const safeMapId = toText(mapId, DEFAULT_MAIN_MAP_ID);
+    const profile = resolveMapProfile(safeMapId, mapState.snapshot, mapState.snapshot && mapState.snapshot.rootData);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (!profile || profile.topology === 'stellar') return null;
     const cacheKey = `${safeMapId}:${roundCoord(x)}:${roundCoord(y)}`;
     if (mapDerivedCache.terrainInfo.has(cacheKey)) return mapDerivedCache.terrainInfo.get(cacheKey);
     const gridInfo = resolveMainMapTerrainGridInfo({ x, y }, safeMapId);
@@ -5351,7 +5458,9 @@
       const visualInfo = resolveWorldImageColorTerrainInfo({ x, y }, gridInfo, safeMapId);
       if (visualInfo) {
         result = visualInfo;
-      } else if (safeMapId === 'map_douluo_world') {
+      } else if (profile.terrainSource === 'image-sampling') {
+        result = null;
+      } else if (profile.terrainSource === 'manual-and-image') {
         const terrainHints = Array.isArray(gridInfo && gridInfo.terrainTypes)
           ? gridInfo.terrainTypes.map(item => toText(item, '')).filter(Boolean)
           : [];
@@ -5407,8 +5516,9 @@
   }
 
   function formatTerrainText(info, mapId = mapState.currentMapId) {
-    const safeMapId = toText(mapId, 'map_douluo_world');
-    if (!info) return safeMapId === 'map_douluo_world' ? '未命中地形区' : '当前子图未标注';
+    const safeMapId = toText(mapId, DEFAULT_MAIN_MAP_ID);
+    const profile = resolveMapProfile(safeMapId, mapState.snapshot, mapState.snapshot && mapState.snapshot.rootData);
+    if (!info) return profile && profile.topology === 'stellar' ? '星际地图 · 不使用陆海地形' : (profile?.terrainSource === 'image-sampling' ? '底图地形采样中' : '当前地图未标注地形');
     const name = toText(info.name, '未知地形');
     const terrainLabel = Array.isArray(info.terrainTypes) && info.terrainTypes.length
       ? info.terrainTypes.join('/')
@@ -5419,9 +5529,10 @@
   }
 
   function formatTerrainNarrative(info, mapId = mapState.currentMapId, options = {}) {
-    const safeMapId = toText(mapId, 'map_douluo_world');
+    const safeMapId = toText(mapId, DEFAULT_MAIN_MAP_ID);
+    const profile = resolveMapProfile(safeMapId, mapState.snapshot, mapState.snapshot && mapState.snapshot.rootData);
     const { fallback = '', includeDifficulty = true } = options || {};
-    if (!info) return fallback || (safeMapId === 'map_douluo_world' ? '未命中地形区' : '当前子图未标注');
+    if (!info) return fallback || (profile && profile.topology === 'stellar' ? '星际地图不使用陆海地形解释。' : (profile?.terrainSource === 'image-sampling' ? '当前底图正在进行地形采样。' : '当前地图未标注地形。'));
     const name = toText(info.name, '未知地形');
     const terrainLabel = Array.isArray(info.terrainTypes) && info.terrainTypes.length
       ? info.terrainTypes.join('/')
@@ -6170,8 +6281,14 @@
     }
 
     function getMapBackdropCssImage(mapId = mapState.currentMapId, snapshot = mapState.snapshot) {
-      if (mapId && mapId !== 'map_douluo_world' && (mapId.includes('preview') || mapId.includes('city') || mapId.includes('district') || mapId.includes('region'))) return svgToCssDataUri(buildDebugMapBackdropSvg(mapId, snapshot));
-      return `url('${ASSETS.world}')`;
+      const profile = resolveMapProfile(mapId, snapshot, snapshot && snapshot.rootData);
+      const isPreview = !!mapId && !isMainMapId(mapId);
+      const previewPath = isPreview && Array.isArray(mapState.previewTrail) ? mapState.previewTrail : [];
+      const dedicatedSubmap = isPreview && profile.topology === 'stellar' && !!getZJDLSubmapAsset(previewPath);
+      if (dedicatedSubmap) return `url('${getMapAssetUrl(profile, previewPath)}'), url('${getMapAssetUrl(profile)}')`;
+      if (isPreview && profile.topology === 'stellar') return `url('${getMapAssetUrl(profile)}')`;
+      if (isPreview) return svgToCssDataUri(buildDebugMapBackdropSvg(mapId, snapshot));
+      return `url('${getMapAssetUrl(profile)}')`;
     }
 
     const terrainHtml = `
@@ -6374,13 +6491,13 @@
     if (!Number.isFinite(safeGx) || !Number.isFinite(safeGy)) return null;
     const cacheKey = `${safeGx},${safeGy}`;
     if (worldTravelGridCellProfileCache.has(cacheKey)) return worldTravelGridCellProfileCache.get(cacheKey);
-    const gridData = getMainMapTerrainGridData('map_douluo_world');
+    const gridData = getMainMapTerrainGridData(DEFAULT_MAIN_MAP_ID);
     if (!gridData || safeGx < 0 || safeGy < 0 || safeGx >= gridData.gridWidth || safeGy >= gridData.gridHeight) return null;
     const center = {
       x: Math.round(((safeGx + 0.5) / Math.max(1, gridData.gridWidth)) * Math.max(1, WORLD_IMAGE_WIDTH - 1)),
       y: Math.round(((safeGy + 0.5) / Math.max(1, gridData.gridHeight)) * Math.max(1, WORLD_IMAGE_HEIGHT - 1))
     };
-    const info = resolveTerrainInfoByCoord(center, 'map_douluo_world');
+    const info = resolveTerrainInfoByCoord(center, DEFAULT_MAIN_MAP_ID);
     const terrainName = toText(info && info.name, '');
     const terrainTypes = Array.isArray(info && info.terrainTypes) ? info.terrainTypes.map(item => toText(item, '')).filter(Boolean) : [];
     const gridTerrain = toText(deepGet(info, 'grid.terrain', deepGet(info, 'gridTerrain', '')), '');
@@ -6422,7 +6539,7 @@
   const worldTravelPathCache = new Map();
 
   function findWorldTravelGridPath(startNode, endNode, options = {}) {
-    const gridData = getMainMapTerrainGridData('map_douluo_world');
+    const gridData = getMainMapTerrainGridData(DEFAULT_MAIN_MAP_ID);
     if (!gridData || !startNode || !endNode) return null;
     const allowWater = options.allowWater !== false;
     const cacheKey = `${startNode.gx},${startNode.gy}-${endNode.gx},${endNode.gy}-${allowWater}`;
@@ -6482,8 +6599,9 @@
     return null;
   }
 
-  function buildWorldTravelRouteProfile(startCoord, endCoord, mapId = 'map_douluo_world') {
-    if (toText(mapId, 'map_douluo_world') !== 'map_douluo_world') return null;
+  function buildWorldTravelRouteProfile(startCoord, endCoord, mapId = DEFAULT_MAIN_MAP_ID) {
+    const profile = resolveMapProfile(mapId, mapState.snapshot, mapState.snapshot && mapState.snapshot.rootData);
+    if (!profile || profile.topology !== 'terrestrial' || profile.terrainSource !== 'manual-and-image') return null;
     const startGrid = resolveMainMapTerrainGridInfo(startCoord, mapId);
     const endGrid = resolveMainMapTerrainGridInfo(endCoord, mapId);
     if (!startGrid || !endGrid) return null;
@@ -6519,6 +6637,11 @@
 
   function chooseMapTravelMethod(distance, travelContext = null) {
     const ctx = travelContext || buildMapTravelContext(null, mapState.currentMapId);
+    if (ctx && ctx.isStellar) {
+      if (distance > 700) return '星际跃迁';
+      if (distance > 180) return '星际航线';
+      return '星际航行';
+    }
     if (ctx && ctx.shipEligible) return '远洋巨轮';
     if (distance <= 35) return '步行';
     if (distance <= 120) return '魂导汽车';
@@ -6609,7 +6732,10 @@
       '斗铠飞行': 0.03,        // 比肉身稍快
       '机甲飞行': 0.034,       
       '肉身飞行': 0.034,       // 原著：明斗山脉(1420,649)到明都(1103,496)距离约352px，2小时(12 ticks)
-      '空间传送(极限斗罗)': 0.005 // 瞬息即至(半小时内)
+      '空间传送(极限斗罗)': 0.005, // 瞬息即至(半小时内)
+      '星际航行': 0.08,
+      '星际航线': 0.035,
+      '星际跃迁': 0.008
     }[actualMethod] ?? 1;
     if (travelContext && travelContext.routeProfile && travelContext.routeProfile.requiresSea && actualMethod === '远洋巨轮') {
       const totalCells = Math.max(1, travelContext.routeProfile.landCells + travelContext.routeProfile.waterCells);
@@ -6620,7 +6746,7 @@
 
     const depth = Array.isArray(mapState.previewTrail) ? mapState.previewTrail.length : 0;
     const 当前地图 = toText(mapState.currentMapId, '');
-    const 局部地图 = 当前地图 && 当前地图 !== 'map_douluo_world';
+    const 局部地图 = 当前地图 && !isMainMapId(当前地图);
     let localScale = 1.0;
     if (局部地图) {
       const 城市规模系数 = 获取局部地图城市规模系数(snapshot);
@@ -6649,6 +6775,10 @@
     let canAfford = true;
     let reason = '';
     let note = '';
+
+    if (['星际航行', '星际航线', '星际跃迁'].includes(resolvedMethod)) {
+      return { fedCoin: 0, sp: 0, vit: 0, canAfford: true, reason: '', text: '按星际节点航线结算', note: '星际航行' };
+    }
 
     if (resolvedMethod === '步行') {
       vit = Math.max(1, Math.round(scaledDistance * 3.75));
@@ -6724,21 +6854,26 @@
 
   function buildMapTravelContext(snapshot = null, mapId = mapState.currentMapId, startCoord = getCurrentCoord(), endCoord = getSelectedCoord()) {
     const activeSnapshot = snapshot || mapState.snapshot || buildFallbackSnapshot();
-    const safeMapId = toText(mapId || (activeSnapshot && activeSnapshot.currentMapId), 'map_douluo_world');
+    const safeMapId = toText(mapId || (activeSnapshot && activeSnapshot.currentMapId), DEFAULT_MAIN_MAP_ID);
+    const profile = resolveMapProfile(safeMapId, activeSnapshot, activeSnapshot && activeSnapshot.rootData);
     const level = toText(activeSnapshot && activeSnapshot.mapLevel, inferMapLevelFromId(safeMapId));
-    const isWorld = safeMapId === 'map_douluo_world' || level === 'world' || level === 'continent';
+    const isStellar = profile && profile.topology === 'stellar';
+    const isWorld = !isStellar && (isMainMapId(safeMapId) || level === 'world' || level === 'continent');
     const isFacility = level === 'facility' || level === 'district' || level === 'city';
-    const routeProfile = isWorld ? buildWorldTravelRouteProfile(startCoord, endCoord, safeMapId) : null;
+    const routeProfile = isWorld && profile && profile.terrainSource === 'manual-and-image' ? buildWorldTravelRouteProfile(startCoord, endCoord, safeMapId) : null;
     const requiresSea = !!(routeProfile && routeProfile.requiresSea);
     return {
       mapId: safeMapId,
+      mapProfile: profile,
       level,
       isWorld,
+      isStellar,
       isFacility,
       routeProfile,
       routePlanText: routeProfile ? routeProfile.summary : '',
       shipEligible: isWorld && requiresSea,
-      railEligible: isWorld && !mapState.selectedFreePoint && !requiresSea
+      railEligible: isWorld && !mapState.selectedFreePoint && !requiresSea,
+      stellarEligible: !!isStellar
     };
   }
 
@@ -6755,6 +6890,13 @@
       if (hasMecha) pushMethod('机甲飞行');
       if (lv >= 70) pushMethod('肉身飞行');
     };
+
+    if (ctx.isStellar) {
+      pushMethod('星际航行');
+      if (distance > 180) pushMethod('星际航线');
+      if (distance > 700 && lv >= 90) pushMethod('星际跃迁');
+      return methods;
+    }
     
     if (ctx.isFacility) {
       pushMethod('步行');
@@ -6873,12 +7015,15 @@
     const isFreeTravel = request.target_loc === '无';
     const resolvedNamedCoord = !isFreeTravel ? getMapNodeCoord(request.target_loc) : null;
     const previewCurrentBranch = hasActivePreview() && isPreviewCurrentBranch();
-    // 根据【绝对路径铁律】，补齐斗罗大陆前缀（如果AI没传的话）
+    const travelProfile = resolveMapProfile(mapState.currentMapId, mapState.snapshot, mapState.snapshot && mapState.snapshot.rootData);
+    const rootLocationName = travelProfile && travelProfile.topology === 'stellar' ? '斗罗星际' : '斗罗大陆';
     const finalLocName = previewCurrentBranch
       ? resolvePreviewTravelTargetLoc(request.target_loc, { isFree: isFreeTravel })
-      : (isFreeTravel
-        ? `斗罗大陆-未知荒野`
-        : (request.target_loc.startsWith('斗罗大陆-') || request.target_loc.startsWith('斗灵大陆-') ? request.target_loc : `斗罗大陆-${request.target_loc}`));
+      : isFreeTravel
+        ? `${rootLocationName}-未知荒野`
+        : travelProfile && travelProfile.topology === 'stellar'
+          ? request.target_loc
+          : (request.target_loc.startsWith('斗罗大陆-') || request.target_loc.startsWith('斗灵大陆-') ? request.target_loc : `斗罗大陆-${request.target_loc}`);
       
     const targetCoord = {
       x: Number.isFinite(Number(request.target_x)) && Number(request.target_x) >= 0 ? Number(request.target_x) : (resolvedNamedCoord ? roundCoord(resolvedNamedCoord.x) : -1),
@@ -6888,11 +7033,11 @@
     const 自由坐标父级路径 = (() => {
       if (!isFreeTravel) return finalLocName;
       const segments = finalLocName.split('-').map(seg => toText(seg, '').trim()).filter(Boolean);
-      if (!segments.length) return '斗罗大陆';
+       if (!segments.length) return rootLocationName;
       if (segments[segments.length - 1] === '未知荒野') segments.pop();
       const leaf = segments[segments.length - 1];
       if (leaf && !getItemByName(leaf) && segments.length > 1) segments.pop();
-      return segments.join('-') || '斗罗大陆';
+       return segments.join('-') || rootLocationName;
     })();
     const 结算最终位置 = isFreeTravel ? `${自由坐标父级路径}-${移动显示目标}` : finalLocName;
 
@@ -7398,7 +7543,7 @@ ${logMsg}
     const inPreview = hasActivePreview();
     const isSubMapView = inPreview
       || !!previewMeta
-      || (toText(snapshot.currentMapId || mapState.currentMapId, '') && toText(snapshot.currentMapId || mapState.currentMapId, '') !== 'map_douluo_world');
+      || (toText(snapshot.currentMapId || mapState.currentMapId, '') && !isMainMapId(snapshot.currentMapId || mapState.currentMapId));
     const previewCurrentBranch = isPreviewCurrentBranch();
     const currentVisibleName = getVisibleCurrentNode();
     const currentActionNodeName = resolveActionableCurrentNodeName(snapshot);

@@ -7,10 +7,12 @@
   const STATES = Object.freeze(['committed', 'not_committed', 'conflict', 'uncertain', 'stale_chat', 'unavailable']);
   const DOMAIN_BACKENDS = Object.freeze({
     database: Object.freeze(['tt-store', 'st-message']),
-    'cold-archive': Object.freeze(['tt-store', 'st-files']),
+    mvu: Object.freeze(['tt-store', 'st-message']),
+    'cold-archive': Object.freeze(['st-files']),
   });
   const FALLBACK_BACKENDS = Object.freeze({
     database: 'st-message',
+    mvu: 'st-message',
     'cold-archive': 'st-files',
   });
   const PROBE_NAMESPACE = '__lwcs_capability_probe_v1__';
@@ -452,6 +454,7 @@
         }
         if (!capabilities?.verifiedWrite) continue;
         const session = createSession({ ...sessionBase, backend: backendName, capabilities, backendApi: backend });
+        if (domain === 'mvu') pinBackend(session);
         return resultMeta(session, 'committed', { verified: true, session });
       }
       return resultMeta(null, 'unavailable', { error: 'PERSISTENCE_BACKEND_UNAVAILABLE' });
@@ -479,7 +482,7 @@
       session.getJson = async request => {
         assertRequest(request);
         return run('read', async check => {
-          if (backend === 'tt-store') {
+          if (backend === 'tt-store' && request.verify === undefined) {
             const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
             check();
             if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
@@ -487,6 +490,7 @@
           }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
+          if (request.verify !== undefined && value === undefined) return failureMeta(session, 'not_committed', 'NOT_FOUND');
           if (!expectedFieldsMatch(value, request.verify)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
           if (value !== undefined) pinBackend(session);
           return resultMeta(session, 'committed', { verified: true, value });

@@ -24,7 +24,14 @@ const 启动预取资源列表 = Object.freeze([
   'MVU_Runtime_View.js',
   'MVU_Hooks.js',
 ]);
-const 启动模块预载资源列表 = Object.freeze(['IntelEvents.js', 'MVU.js']);
+const 启动模块预载资源列表 = Object.freeze([
+  'LWCS_Persistence_Adapter.js',
+  'LWCS_MVU_Persistence_Provider.js',
+  'LWCS_MVU_Prompt_Projector.js',
+  'MVU_Engine_Bundle.js',
+  'IntelEvents.js',
+  'MVU.js',
+]);
 
 async function 取最新提交哈希() {
   const 接口地址 = `https://api.github.com/repos/${仓库名}/git/ref/heads/${分支名}?t=${Date.now()}`;
