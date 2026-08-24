@@ -11,7 +11,7 @@
   ]);
   const 请求超时毫秒 = 6500;
   const GitHub请求超时毫秒 = 8000;
-  const 回退提交哈希 = '7f51be679a61fc259a5da2ae59bd5ee1a8e00a23';
+  const 回退提交哈希 = '81f0eb1293872c5e8d4ff75d4f35c66caffbd675';
   const 入口文件名 = 'ST_UI_Entry.js';
   const 启动预取资源列表 = Object.freeze([
     'mvu_styles.css',
