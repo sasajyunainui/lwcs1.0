@@ -17,6 +17,9 @@
       || (!!TT对象 && Object.prototype.hasOwnProperty.call(TT对象, 'ready'));
   });
   const 读取共享值 = 键 => 宿主窗口[键] ?? window[键] ?? null;
+  const 共享启动状态 = 读取共享值('__LWCS_REMOTE_BOOTSTRAP_STATE__') || {};
+  const 共享文本读取 = 读取共享值('__LWCS_READ_SHARED_TEXT_V1__');
+  const 共享资源提交哈希 = String(读取共享值('__LWCS_当前远程提交__') || 共享启动状态.commit || 'local').trim() || 'local';
   const MVU正式依赖共享加载表 = (() => {
     const 键 = '__LWCS_MVU_FORMAL_RESOURCE_LOADS_V1__';
     const 已有表 = 宿主窗口[键] || window[键];
@@ -49,7 +52,20 @@
     宿主窗口[键] = 新状态;
     return 新状态;
   })();
+  let UI就绪解决 = 宿主窗口.__LWCS_UI_READY_RESOLVE_V1__;
+  let UI就绪拒绝 = 宿主窗口.__LWCS_UI_READY_REJECT_V1__;
+  if (!宿主窗口.__LWCS_UI_READY_PROMISE_V1__
+    || typeof 宿主窗口.__LWCS_UI_READY_PROMISE_V1__.then !== 'function') {
+    宿主窗口.__LWCS_UI_READY_PROMISE_V1__ = new Promise((resolve, reject) => {
+      UI就绪解决 = resolve;
+      UI就绪拒绝 = reject;
+    });
+    宿主窗口.__LWCS_UI_READY_RESOLVE_V1__ = UI就绪解决;
+    宿主窗口.__LWCS_UI_READY_REJECT_V1__ = UI就绪拒绝;
+  }
+  void 宿主窗口.__LWCS_UI_READY_PROMISE_V1__.catch(() => {});
   if (宿主窗口[加载器键]) {
+    if (UI启动状态.成功启动) UI就绪解决?.(UI启动状态);
     return;
   }
   宿主窗口[加载器键] = true;
@@ -57,12 +73,19 @@
 
   const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@f9ac09ce4dc7b6418a915adb6e198121d2e0e10e/';
   const 资源基础地址 = (() => {
-    const 覆盖地址 = String(宿主窗口.__LWCS_资源基础地址__ || window.__LWCS_资源基础地址__ || '').trim();
+    const 覆盖地址 = String(
+        宿主窗口.__LWCS_资源基础地址__
+        || window.__LWCS_资源基础地址__
+        || 共享启动状态.resourceBases?.[0]
+        || ''
+    ).trim();
     if (!覆盖地址) return 默认资源基础地址;
     return 覆盖地址.endsWith('/') ? 覆盖地址 : `${覆盖地址}/`;
   })();
   const 资源基础地址候选列表 = (() => {
-    const 候选原值 = 宿主窗口.__LWCS_资源基础地址候选列表__ || window.__LWCS_资源基础地址候选列表__;
+    const 候选原值 = 宿主窗口.__LWCS_资源基础地址候选列表__
+      || window.__LWCS_资源基础地址候选列表__
+      || 共享启动状态.resourceBases;
     const 候选列表 = Array.isArray(候选原值) ? 候选原值 : [];
     const 清理地址 = 地址 => {
       const 文本 = String(地址 || '').trim();
@@ -166,7 +189,8 @@
     'JSONPatch文本预处理接口',
   ]);
   const 时代运行时前置模块顺序 = Object.freeze(['历法与库运行时', '时代数据注册表', '时代货币注册表', '时代事件状态运行时', '时代运行时集成', '时代修炼运行时', 'MVU核心就绪']);
-  const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时', ...时代运行时前置模块顺序]);
+  const MVU核心接口模块顺序 = Object.freeze([...时代运行时前置模块顺序, ...变量运行时接口模块顺序]);
+  const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时']);
   const 游戏功能模块顺序 = Object.freeze(['地图模块', '交易模块', '副职业模块', '赛事权限模块', '战斗预估运行时', '行为决策管线', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
   const 冷归档前置模块顺序 = Object.freeze([
     '数据库适配器',
@@ -175,7 +199,7 @@
     'MVU提示投影器',
     ...(是TT宿主 ? [] : ['冷归档存储']),
   ]);
-  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...变量运行时接口模块顺序, ...冷归档前置模块顺序, '逻辑桥接', ...游戏功能模块顺序, '数据库模块']);
+  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...冷归档前置模块顺序, '逻辑桥接', ...游戏功能模块顺序, '数据库模块']);
   const 正常启动追踪模块顺序 = Object.freeze([...核心模块顺序]);
 
   const 加载阶段 = {
@@ -203,6 +227,7 @@
   const 模块状态表 = Object.create(null);
   const 模块加载承诺表 = new Map();
   const 文本资源缓存表 = new Map();
+  let MVU核心接口验证承诺 = null;
   let 引导承诺 = null;
 
   Object.keys(模块注册表).forEach(模块名 => {
@@ -364,12 +389,13 @@
         const 错误列表 = [];
         for (const 候选地址 of 取候选资源地址列表(地址)) {
           try {
-            const 预取缓存 = 宿主窗口.__LWCS_UI_RESOURCE_TEXT_PREFETCH_V1__;
-            const 预取承诺 = 预取缓存?.[候选地址];
-            if (预取承诺) {
-              const 预取结果 = await 预取承诺;
-              delete 预取缓存[候选地址];
-              if (预取结果?.ok) return 预取结果.text;
+            if (typeof 共享文本读取 === 'function') {
+              return await 共享文本读取(
+                候选地址,
+                取资源请求选项(候选地址),
+                资源请求超时毫秒,
+                共享资源提交哈希,
+              );
             }
             const 响应 = await fetchWithTimeout(候选地址, 取资源请求选项(候选地址));
             if (!响应.ok) throw new Error(`[${响应.status}]`);
@@ -929,6 +955,49 @@
     return null;
   }
 
+  async function 等待MVU核心契约(来源 = 'bootstrap_core', 抛错 = true, 最大等待毫秒 = 30000) {
+    if (!MVU核心接口验证承诺) {
+      MVU核心接口验证承诺 = (async () => {
+        加载状态.阶段 = '等待MVU核心接口契约';
+        加载状态.最近错误 = '';
+        刷新加载追踪面板();
+        const 就绪承诺 = 读取共享值('__LWCS_MVU_CORE_READY_PROMISE_V1__');
+        if (!就绪承诺 || typeof 就绪承诺.then !== 'function') throw new Error('MVU核心就绪承诺未注册');
+        await Promise.race([
+          就绪承诺,
+          睡眠(最大等待毫秒).then(() => { throw new Error(`MVU核心接口契约等待超过${最大等待毫秒}ms`); }),
+        ]);
+        const 契约 = 读取共享值('__LWCS_MVU_CORE_CONTRACT_V1__');
+        if (!契约?.ready) throw new Error(`MVU核心接口契约不完整${契约?.missing?.length ? `：${契约.missing.join('、')}` : ''}`);
+        const 缺失接口 = [];
+        for (const 模块名 of MVU核心接口模块顺序) {
+          const 模块 = 模块注册表[模块名];
+          const 已就绪 = 模块?.类型 === 'wait-global'
+            && !!读取已就绪全局值(模块.全局键, 模块.值类型 || 'function');
+          const 状态 = 模块状态表[模块名];
+          if (状态) {
+            状态.状态 = 已就绪 ? 'loaded' : 'failed';
+            状态.阶段 = 已就绪 ? '核心契约确认' : '接口缺失';
+            状态.错误 = 已就绪 ? '' : `${来源}: ${模块?.全局键 || 模块名}`;
+            状态.最近来源 = 来源;
+            状态.最后完成时间 = 已就绪 ? Date.now() : 0;
+          }
+          if (!已就绪) 缺失接口.push(模块名);
+        }
+        刷新加载追踪面板();
+        if (缺失接口.length) throw new Error(`MVU核心接口缺失：${缺失接口.join('、')}`);
+        return { ok: true, contract: 契约 };
+      })().catch(错误 => {
+        const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'MVU核心契约验证失败');
+        加载状态.最近错误 = 错误文本;
+        刷新加载追踪面板();
+        if (抛错) throw 错误;
+        return { ok: false, error: 错误 };
+      });
+    }
+    return MVU核心接口验证承诺;
+  }
+
   function 显示入口按钮提示(消息, 类型 = 'info', 时长 = 4200) {
     const 文本 = String(消息 || '').trim();
     if (!文本) return;
@@ -1124,7 +1193,8 @@
 
   async function 引导加载() {
     if (引导承诺) return 引导承诺;
-    引导承诺 = (async () => {
+    let 本次引导承诺;
+    本次引导承诺 = (async () => {
       try {
         记录阶段(加载阶段.节点就绪);
         await waitForMountsReady(10000);
@@ -1139,8 +1209,7 @@
           确保模块已加载('Vue核心', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true }),
         ]);
         await 确保模块已加载('壳层运行时', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
-        await 确保模块组已加载(时代运行时前置模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
-        await 确保模块组已加载(变量运行时接口模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
+        await 等待MVU核心契约('bootstrap_core', true);
         await 确保模块组已加载(冷归档前置模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await 确保模块已加载('逻辑桥接', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await 确保模块组已加载(游戏功能模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
@@ -1153,23 +1222,26 @@
         记录阶段(加载阶段.桥接就绪);
         ensureHostNodes();
         const mounted = await waitForVueMounted(10000);
-        if (mounted) {
-          记录阶段(加载阶段.首屏可交互);
-          加载状态.首屏可交互时间 = Date.now();
-          UI启动状态.成功启动 = true;
-          UI启动状态.重试次数 = 0;
-          UI启动状态.最近错误 = '';
-          setTimeout(triggerMvuRefresh, 0);
-        }
+        if (!mounted) throw new Error('Vue 首屏挂载超时');
+        记录阶段(加载阶段.首屏可交互);
+        加载状态.首屏可交互时间 = Date.now();
+        UI启动状态.成功启动 = true;
+        UI启动状态.重试次数 = 0;
+        UI启动状态.最近错误 = '';
+        共享启动状态.uiStatus = 'ready';
+        setTimeout(triggerMvuRefresh, 0);
         记录阶段(加载阶段.完成);
         加载状态.结束时间 = Date.now();
+        UI就绪解决?.(UI启动状态);
       } catch (错误) {
         const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error');
         UI启动状态.成功启动 = false;
         UI启动状态.最近错误 = 错误文本;
         记录阶段(加载阶段.失败, 错误文本);
         console.error('[MVU] External UI Vue loader failed:', 错误);
+        if (引导承诺 !== 本次引导承诺) return;
         引导承诺 = null;
+        MVU核心接口验证承诺 = null;
         模块加载承诺表.clear();
         Object.values(模块状态表).forEach(状态 => {
           if (状态 && 状态.状态 !== 'loaded') {
@@ -1180,12 +1252,17 @@
         if (UI启动状态.重试次数 < 最大启动重试次数) {
           UI启动状态.重试次数 += 1;
           setTimeout(() => {
-            if (!引导承诺) 引导加载();
+            if (引导承诺 === null) 引导加载();
           }, UI启动状态.重试次数 === 1 ? 首次重试延迟毫秒 : 二次重试延迟毫秒);
+        } else {
+          宿主窗口[加载器键] = false;
+          共享启动状态.uiStatus = 'failed';
+          UI就绪拒绝?.(错误);
         }
       }
     })();
-    return 引导承诺;
+    引导承诺 = 本次引导承诺;
+    return 本次引导承诺;
   }
 
   function 监控并启动引导() {

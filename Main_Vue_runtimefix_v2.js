@@ -925,7 +925,12 @@ const DesktopUnifiedLayout = {
         const 可同步 = typeof window.__MVU_RERENDER_UNIFIED_CARDS__ === 'function';
         if (可同步 && 概览槽位) {
           try {
-            window.__MVU_RERENDER_UNIFIED_CARDS__({ force: true, source: 原因 || 'unified-shell' });
+            const 当前共享修订 = Number(window.__dragonUiSharedMvuRefreshHub?.runtime?.revision);
+            window.__MVU_RERENDER_UNIFIED_CARDS__({
+              force: true,
+              source: 原因 || 'unified-shell',
+              revision: Number.isFinite(当前共享修订) ? 当前共享修订 : undefined,
+            });
           } catch (错误) {}
         }
         if ((!可同步 || !概览槽位 || 概览为空) && 重试次数 < 8) {

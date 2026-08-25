@@ -1841,6 +1841,7 @@
         const host = getMvuHost();
         const eventName = host && host.events ? host.events.VARIABLE_UPDATE_ENDED : '';
         let bound = false;
+        let reliableEventBound = false;
         const triggerFromEvent = (...args) => hub.trigger({ source: 'event', eventName }, ...args);
         hub.触发函数 = triggerFromEvent;
         hub.事件名 = eventName;
@@ -1849,7 +1850,24 @@
           try {
             host.on(eventName, triggerFromEvent);
             bound = true;
+            reliableEventBound = true;
           } catch (_) {}
+        }
+
+        if (!reliableEventBound) {
+          const eventOnFn = typeof eventOn === 'function'
+            ? eventOn
+            : (typeof window.eventOn === 'function' ? window.eventOn.bind(window) : null);
+          if (eventOnFn && eventName) {
+            try {
+              const 事件订阅 = eventOnFn(eventName, triggerFromEvent);
+              if (事件订阅 && typeof 事件订阅.stop === 'function') {
+                hub.事件订阅 = 事件订阅;
+                bound = true;
+                reliableEventBound = true;
+              }
+            } catch (_) {}
+          }
         }
 
         if (host && eventName && typeof host.addEventListener === 'function') {
@@ -1872,8 +1890,14 @@
           } catch (_) {}
         }
 
-        if (!hub.刷新轮询计时器) {
+        if (reliableEventBound) {
+          if (hub.刷新轮询计时器) {
+            window.clearInterval(hub.刷新轮询计时器);
+            hub.刷新轮询计时器 = null;
+          }
+        } else if (!hub.刷新轮询计时器) {
           hub.刷新轮询计时器 = window.setInterval(() => {
+            if (!hasVisibleMapSurface()) return;
             if (document.visibilityState === 'hidden') return;
             hub.trigger({ source: 'poll' });
           }, 1500);
@@ -1908,6 +1932,10 @@
         if (hub.聚焦处理函数) {
           window.removeEventListener('focus', hub.聚焦处理函数);
           hub.聚焦处理函数 = null;
+        }
+        if (hub.事件订阅 && typeof hub.事件订阅.stop === 'function') {
+          try { hub.事件订阅.stop(); } catch (_) {}
+          hub.事件订阅 = null;
         }
         const 解绑事件 = () => {
           const 触发函数 = hub.触发函数;
@@ -4171,7 +4199,12 @@
       if (btn.dataset.sheepMapBound === '1') return;
       btn.dataset.sheepMapBound = '1';
       注册地图元素事件(btn, 'sheepMapBound', 'click', () => {
-        setTimeout(() => resyncMapShell({ center: true, syncVisual: false }), 30);
+        setTimeout(() => {
+          if (hasVisibleMapSurface() && !liveRefreshDirty) {
+            getSharedMvuRefreshHub().trigger({ source: 'map-open' });
+          }
+          resyncMapShell({ center: true, syncVisual: false });
+        }, 30);
         setTimeout(() => resyncMapShell({ center: false }), 120);
       });
     });

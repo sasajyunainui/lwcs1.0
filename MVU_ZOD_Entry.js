@@ -46,6 +46,31 @@ const MVU共享启动状态_V1 = (() => {
   MVU共享宿主窗口_V1[键] = 新状态;
   return 新状态;
 })();
+const MVU入口启动代号_V1 = (() => {
+  const 参数值 = Number(new URL(import.meta.url).searchParams.get('lwcs_generation'));
+  return Number.isFinite(参数值) ? 参数值 : Number(MVU共享启动状态_V1.mvuGeneration) || 0;
+})();
+function 是当前MVU启动轮次_V1() {
+  return Number(MVU共享宿主窗口_V1.__LWCS_MVU_ACTIVE_GENERATION_V1__) === MVU入口启动代号_V1;
+}
+if (!是当前MVU启动轮次_V1()) throw new Error(`MVU入口已过期：${MVU入口启动代号_V1}`);
+const MVU读取共享文本_V1 = typeof MVU共享宿主窗口_V1.__LWCS_READ_SHARED_TEXT_V1__ === 'function'
+  ? MVU共享宿主窗口_V1.__LWCS_READ_SHARED_TEXT_V1__
+  : null;
+let MVU核心就绪解决_V1;
+let MVU核心就绪拒绝_V1;
+const MVU核心就绪承诺_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_PROMISE_V1__ || new Promise((resolve, reject) => {
+  MVU核心就绪解决_V1 = resolve;
+  MVU核心就绪拒绝_V1 = reject;
+});
+MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_PROMISE_V1__ = MVU核心就绪承诺_V1;
+void MVU核心就绪承诺_V1.catch(() => {});
+if (MVU核心就绪解决_V1) {
+  MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_RESOLVE_V1__ = MVU核心就绪解决_V1;
+  MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_REJECT_V1__ = MVU核心就绪拒绝_V1;
+}
+const MVU本轮核心就绪解决_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_RESOLVE_V1__ || MVU核心就绪解决_V1;
+const MVU本轮核心就绪拒绝_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_REJECT_V1__ || MVU核心就绪拒绝_V1;
 const MVU项目引擎状态_V1 = (() => {
   const 键 = '__LWCS_MVU_ENGINE_STATE_V1__';
   const 已有状态 = MVU共享宿主窗口_V1[键];
@@ -70,6 +95,8 @@ const MVU项目引擎状态_V1 = (() => {
 })();
 
 function 发布MVU模块状态_V1(名称, 状态, 阶段, 错误 = '') {
+  if (!是当前MVU启动轮次_V1()) return;
+  MVU共享启动状态_V1.mvuHeartbeatAt = Date.now();
   const 状态表 = new Map(
     (Array.isArray(MVU共享启动状态_V1.mvuModules) ? MVU共享启动状态_V1.mvuModules : [])
       .map(项目 => [项目.名称, { ...项目 }])
@@ -94,7 +121,9 @@ function 发布MVU模块状态_V1(名称, 状态, 阶段, 错误 = '') {
 
 发布MVU模块状态_V1('MVU_ZOD_Entry.js', 'loading', '执行中');
 const MVU_ZOD_ENTRY_BASE_CANDIDATES_V1 = (() => {
-  const 候选原值 = globalThis.__LWCS_MVU_资源基础地址候选列表__;
+  const 候选原值 = globalThis.__LWCS_MVU_资源基础地址候选列表__
+    || MVU共享宿主窗口_V1.__LWCS_MVU_资源基础地址候选列表__
+    || MVU共享启动状态_V1.resourceBases;
   const 候选列表 = Array.isArray(候选原值) ? 候选原值 : [];
   const 清理地址 = 地址 => {
     const 文本 = String(地址 || '').trim();
@@ -126,7 +155,9 @@ function MVU请求超时_V1(承诺, 标签, 超时毫秒 = MVU_ZOD_RESOURCE_TIME
       try {
         if (typeof 超时回调 === 'function') 超时回调();
       } catch (错误) {}
-      结束(false, new Error(`${标签} 超时:${超时毫秒}ms`));
+      const 错误 = new Error(`${标签} 超时:${超时毫秒}ms`);
+      错误.code = 'LWCS_RESOURCE_TIMEOUT';
+      结束(false, 错误);
     }, 超时毫秒);
     Promise.resolve(承诺).then(
       结果 => 结束(true, 结果),
@@ -200,7 +231,8 @@ function 发布MVU资源所有者_V1(所有者) {
 const MVU资源所有者状态_V1 = (() => {
   const 键 = '__LWCS_MVU_RESOURCE_OWNER_STATE_V1__';
   const 旧状态 = globalThis[键];
-  if (旧状态 && 旧状态.version === '1.0.0' && 旧状态.records instanceof Map) return 旧状态;
+  if (旧状态 && 旧状态.version === '1.0.0'
+    && typeof 旧状态.records?.get === 'function' && typeof 旧状态.records?.set === 'function') return 旧状态;
   const 新状态 = { version: '1.0.0', records: new Map() };
   globalThis[键] = 新状态;
   return 新状态;
@@ -266,13 +298,13 @@ function 创建MVU资源所有者_V1() {
         记录.fetchAttempts += 1;
         地址 = 候选地址[Math.min(尝试序号, Math.max(候选地址.length - 1, 0))];
         try {
-          const 预取缓存 = globalThis.__LWCS_MVU_RESOURCE_TEXT_PREFETCH_V1__;
-          const 预取承诺 = 预取缓存?.[地址];
-          if (预取承诺) {
-            const 预取结果 = await 预取承诺;
-            delete 预取缓存[地址];
-            if (!预取结果?.ok) throw new Error(预取结果?.error || `[${预取结果?.status || 'prefetch_failed'}]`);
-            代码文本 = 预取结果.text;
+          if (MVU读取共享文本_V1) {
+            代码文本 = await MVU读取共享文本_V1(
+              地址,
+              取MVU资源请求选项_V1(地址),
+              MVU_ZOD_RESOURCE_TIMEOUT_MS_V1,
+              读取MVU资源提交_V1(),
+            );
           } else {
             const 响应 = await MVU_FETCH_V1(地址);
             if (!响应.ok) throw new Error(`[${响应.status}]`);
@@ -304,9 +336,10 @@ function 创建MVU资源所有者_V1() {
         记录.executionStarted = true;
         记录.executeCount += 1;
         try {
-          模块 = await MVU请求超时_V1(import(地址), `导入 ${地址}`);
+          模块 = await MVU请求超时_V1(import(地址), `导入 ${地址}`, 30000);
           break;
         } catch (错误) {
+          if (错误?.code === 'LWCS_RESOURCE_TIMEOUT') throw 错误;
           错误列表.push(`${地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
         }
       }
@@ -709,5 +742,44 @@ await 加载MVU经典依赖_V1('MVU_Hooks.js', () =>
   typeof globalThis.__LWCS_PREPROCESS_JSON_PATCH_TEXT__ === 'function'
 );
 
+const 集成_V1 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
+const 竞争_V1 = 读取MVU共享全局值_V1('__LWCS_COMPETITION_PRIVILEGE_RUNTIME__');
+const 必需接口_V1 = [
+  ['eventOn', typeof eventOn === 'function'],
+  ['Mvu', typeof 读取MVU共享全局值_V1('Mvu')?.getMvuData === 'function'],
+  ['PersistenceAdapter', typeof 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__')?.openSession === 'function'],
+  ['PersistenceProvider', typeof 读取MVU共享全局值_V1('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__')?.open === 'function'],
+  ['PromptProjector', typeof 读取MVU共享全局值_V1('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function'],
+  ['LibraryData', 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__')?.version === '2.0.0'],
+  ['EraDataRegistry', !!读取MVU共享全局值_V1('__LWCS_ERA_DATA_REGISTRY_V1__')],
+  ['EraCurrencyRegistry', !!读取MVU共享全局值_V1('__LWCS_ERA_CURRENCY_REGISTRY_V1__')],
+  ['TimelineRuntime', !!读取MVU共享全局值_V1('__LWCS_TIMELINE_RUNTIME_V1__')],
+  ['EraIntegration', !!集成_V1 && typeof 集成_V1.getEraContext === 'function' && typeof 集成_V1.ensureEraResourcesForTick === 'function'],
+  ['EraCultivation', typeof 读取MVU共享全局值_V1('__LWCS_ERA_CULTIVATION_RUNTIME_V1__')?.settleMeditationSegment === 'function'],
+  ['SkillRuntime', !!读取MVU共享全局值_V1('__LWCS_SKILL_MECHANISM_REGISTRY__') && typeof globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ === 'function'],
+  ['SchemaRuntime', typeof markPlayerCharacterInSchemaInput === 'function' && typeof 规范化角色Schema_V1 === 'function'],
+  ['CompetitionRuntime', !!竞争_V1 && typeof 竞争_V1.生成项目对局 === 'function'],
+  ['RuntimeView', !!读取MVU共享全局值_V1('__LWCS_MVU_RUNTIME_VIEW__')],
+  ['MvuRegistered', globalThis.__LWCS_MVU变量结构已注册__ === true],
+  ['MvuHooks', typeof globalThis.__LWCS_NORMALIZE_MVU_STAT_DATA__ === 'function' && typeof globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__ === 'function'],
+];
+const MVU核心接口缺失_V1 = 必需接口_V1.filter(([, 已就绪]) => !已就绪).map(([名称]) => 名称);
+const MVU核心契约_V1 = Object.freeze({
+  version: '1.0.0',
+  ready: MVU核心接口缺失_V1.length === 0,
+  missing: Object.freeze(MVU核心接口缺失_V1),
+});
+if (!是当前MVU启动轮次_V1()) throw new Error(`MVU入口完成时已过期：${MVU入口启动代号_V1}`);
+同步MVU全局字段_V1('__LWCS_MVU_CORE_CONTRACT_V1__', MVU核心契约_V1);
+if (!MVU核心契约_V1.ready) {
+  const 错误 = new Error(`MVU核心接口缺失：${MVU核心接口缺失_V1.join('、')}`);
+  MVU共享启动状态_V1.mvuStatus = 'failed';
+  MVU共享启动状态_V1.mvuStartedAt = 0;
+  MVU本轮核心就绪拒绝_V1?.(错误);
+  throw 错误;
+}
 同步MVU全局字段_V1('__LWCS_MVU_CORE_READY_V1__', true);
 发布MVU模块状态_V1('MVU_ZOD_Entry.js', 'loaded', '完成');
+MVU共享启动状态_V1.mvuStatus = 'ready';
+MVU共享启动状态_V1.mvuStartedAt = 0;
+MVU本轮核心就绪解决_V1?.(MVU核心契约_V1);

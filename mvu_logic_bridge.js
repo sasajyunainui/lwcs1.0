@@ -1904,6 +1904,10 @@
   let lastHeaderRenderSignature = '';
   let lastDashboardRenderSignature = '';
   let lastDashboardSectionRenderSignatures = null;
+  let lastHeaderRenderRevision = null;
+  let lastDashboardRenderRevision = null;
+  let lastDashboardRenderWasFull = false;
+  let lastDashboardRenderSection = '';
   let liveUiRefCache = new Map();
   let 慢刷新骨架已启用 = false;
   let 上次仓库选中物品名 = '';
@@ -36482,11 +36486,30 @@
     }
     const force = !!(options && options.force);
     const sectionSignatures = buildDashboardSectionRenderSignatures(snapshot);
+    const nextDashboardRenderSignature = buildDashboardRenderSignature(snapshot, sectionSignatures);
+    const activeOverviewPage = document.querySelector('#mvu-unified-mount .mvu-unified-page.active');
+    const overviewContentReady = !!(activeOverviewPage && (activeOverviewPage.textContent || '').trim());
+    const requestedRevision = Number.isFinite(options && options.revision) ? options.revision : null;
+    if (
+      force
+        && requestedRevision !== null
+        && requestedRevision === lastDashboardRenderRevision
+        && nextDashboardRenderSignature === lastDashboardRenderSignature
+        && lastDashboardRenderWasFull
+        && overviewContentReady
+      ) {
+      return true;
+    }
     renderUnifiedCards(
       snapshot,
       sectionSignatures,
       force ? Object.create(null) : lastDashboardSectionRenderSignatures || Object.create(null),
     );
+    lastDashboardSectionRenderSignatures = { ...sectionSignatures };
+    lastDashboardRenderSignature = nextDashboardRenderSignature;
+    lastDashboardRenderRevision = requestedRevision;
+    lastDashboardRenderWasFull = force;
+    lastDashboardRenderSection = force ? 'all' : getVisibleDashboardSectionKey();
     return true;
   }
 
@@ -43828,14 +43851,32 @@
         liveSnapshot,
         nextDashboardSectionRenderSignatures,
       );
-      const shouldRenderHeader = !!options.force || nextHeaderRenderSignature !== lastHeaderRenderSignature;
-      const shouldRenderDashboard = !!options.force || nextDashboardRenderSignature !== lastDashboardRenderSignature;
+      const currentRefreshRevision = Number.isFinite(options.revision) ? options.revision : null;
+      const headerSurfaceReady = !!document.querySelector('.header-loc span');
+      const activeOverviewPage = document.querySelector('#mvu-unified-mount .mvu-unified-page.active');
+      const dashboardSurfaceReady = !!(activeOverviewPage && (activeOverviewPage.textContent || '').trim());
+      const dashboardRenderCoversView =
+        lastDashboardRenderWasFull || lastDashboardRenderSection === getVisibleDashboardSectionKey();
+      const sameRevisionHeaderRender =
+        currentRefreshRevision !== null
+        && currentRefreshRevision === lastHeaderRenderRevision
+        && nextHeaderRenderSignature === lastHeaderRenderSignature
+        && headerSurfaceReady;
+      const sameRevisionDashboardRender =
+        currentRefreshRevision !== null
+        && currentRefreshRevision === lastDashboardRenderRevision
+        && nextDashboardRenderSignature === lastDashboardRenderSignature
+        && dashboardRenderCoversView
+        && dashboardSurfaceReady;
+      const shouldRenderHeader = !sameRevisionHeaderRender && (!!options.force || nextHeaderRenderSignature !== lastHeaderRenderSignature);
+      const shouldRenderDashboard = !sameRevisionDashboardRender && (!!options.force || nextDashboardRenderSignature !== lastDashboardRenderSignature);
       const 当前暂停完整刷新 =
         !options.force && (初始暂停完整刷新 || refreshInlineEditToken !== inlineEditSessionToken || shouldPauseLiveRefresh(options));
       if (!结果守卫通过()) return null;
       if (shouldRenderHeader) {
         renderHeader(liveSnapshot);
         lastHeaderRenderSignature = nextHeaderRenderSignature;
+        lastHeaderRenderRevision = currentRefreshRevision;
       }
       if (当前暂停完整刷新) {
         pendingLiveRefresh = true;
@@ -43860,6 +43901,9 @@
         if (!结果守卫通过()) return null;
         if (renderLiveCards(liveSnapshot, nextDashboardSectionRenderSignatures)) {
           lastDashboardRenderSignature = nextDashboardRenderSignature;
+          lastDashboardRenderRevision = currentRefreshRevision;
+          lastDashboardRenderWasFull = false;
+          lastDashboardRenderSection = getVisibleDashboardSectionKey();
           已写回真实卡片 = true;
         }
       }
