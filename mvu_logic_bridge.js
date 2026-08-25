@@ -4675,6 +4675,7 @@
     历史清理触发MB: 48,
   });
   const 冷归档自动归档配置_桥接 = { ...冷归档自动归档默认配置_桥接 };
+  let 冷归档自动归档配置已加载_桥接 = false;
   const 冷归档自动归档状态_桥接 = { chatKey: '', 上次尝试毫秒: 0, promise: null };
   const 冷归档写回状态_桥接 = { 正在恢复: false, 正在归档: false };
   const 冷归档服务状态_桥接 = {
@@ -4737,6 +4738,7 @@
   }
 
   function 读取冷归档自动归档保存配置_桥接() {
+    if (!当前启用标准ST冷归档_桥接()) return {};
     try {
       const 原始值 = window.localStorage && window.localStorage.getItem(冷归档自动归档配置存储键_桥接);
       return 原始值 ? JSON.parse(原始值) : {};
@@ -4745,8 +4747,16 @@
     }
   }
 
+  function 确保冷归档自动归档配置已加载_桥接() {
+    if (!当前启用标准ST冷归档_桥接() || 冷归档自动归档配置已加载_桥接) return;
+    应用冷归档自动归档配置_桥接(读取冷归档自动归档保存配置_桥接());
+    冷归档自动归档配置已加载_桥接 = true;
+  }
+
   function 保存冷归档自动归档配置_桥接(输入 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档自动归档配置_桥接;
     const 配置 = 应用冷归档自动归档配置_桥接(输入);
+    冷归档自动归档配置已加载_桥接 = true;
     try {
       if (window.localStorage) {
         window.localStorage.setItem(
@@ -4770,14 +4780,14 @@
   }
 
   function 重置冷归档自动归档配置_桥接() {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档自动归档配置_桥接;
     try {
       if (window.localStorage) window.localStorage.removeItem(冷归档自动归档配置存储键_桥接);
     } catch (错误) {}
     冷归档自动归档状态_桥接.上次尝试毫秒 = 0;
+    冷归档自动归档配置已加载_桥接 = true;
     return 应用冷归档自动归档配置_桥接(冷归档自动归档默认配置_桥接);
   }
-
-  if (当前启用标准ST冷归档_桥接()) 应用冷归档自动归档配置_桥接(读取冷归档自动归档保存配置_桥接());
 
   function 取冷归档请求头_桥接() {
     const 头 = {};
@@ -4942,6 +4952,17 @@
     return !当前为TauriTavern环境_桥接();
   }
 
+  function 冷归档TT禁用结果_桥接(额外 = {}) {
+    return {
+      changed: false,
+      names: [],
+      archivedNames: [],
+      skippedNames: [],
+      reason: 'tt_cold_archive_disabled',
+      ...额外,
+    };
+  }
+
   function 取冷归档存储API_桥接() {
     if (!当前启用标准ST冷归档_桥接()) return null;
     return 取冷归档窗口列表_桥接()
@@ -4985,6 +5006,7 @@
   }
 
   function 失效冷归档会话_桥接(原因 = 'chat_changed') {
+    if (!当前启用标准ST冷归档_桥接()) return { reason: 原因, disabled: true };
     if (冷归档楼层清理状态_桥接.timer) window.clearTimeout(冷归档楼层清理状态_桥接.timer);
     if (冷归档楼层清理状态_桥接.提交前自动归档Timer) window.clearTimeout(冷归档楼层清理状态_桥接.提交前自动归档Timer);
     if (冷归档楼层清理状态_桥接.变量更新兜底计时器) window.clearTimeout(冷归档楼层清理状态_桥接.变量更新兜底计时器);
@@ -5094,6 +5116,7 @@
       冷归档服务状态_桥接.error = 'TT_COLD_ARCHIVE_DISABLED';
       return 冷归档服务状态_桥接;
     }
+    确保冷归档自动归档配置已加载_桥接();
     if (!选项.force && 冷归档服务状态_桥接.已检查) return 冷归档服务状态_桥接;
     try {
       return await 确保冷归档句柄_桥接();
@@ -5229,6 +5252,7 @@
   }
 
   async function 归档已完成赛事_桥接(赛事ID = '') {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接({ 赛事ID: toText(赛事ID, '').trim() });
     const 安全赛事ID = toText(赛事ID, '').trim();
     if (!安全赛事ID) throw new Error('赛事ID不能为空');
     await refreshLiveSnapshot({ force: true });
@@ -5283,11 +5307,13 @@
   }
 
   async function 列出赛事归档_桥接() {
+    if (!当前启用标准ST冷归档_桥接()) return [];
     const manifest = await 读取赛事归档Manifest_桥接();
     return Object.values(manifest.赛事索引 || {}).sort((a, b) => toText(a.名称, '').localeCompare(toText(b.名称, ''), 'zh-CN'));
   }
 
   async function 恢复赛事归档_桥接(赛事ID = '') {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接({ 赛事ID: toText(赛事ID, '').trim() });
     const 安全赛事ID = toText(赛事ID, '').trim();
     const manifest = await 读取赛事归档Manifest_桥接();
     const 索引 = manifest.赛事索引?.[安全赛事ID];
@@ -5399,7 +5425,7 @@
         const 候选 = await Promise.resolve(主机.getMvuData({ type: 'message', message_id: 消息编号 })).catch(() => null);
         if (候选) 候选列表.push(候选);
       }
-      if (window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
+      if (!当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
         const 候选 = await Promise.resolve(window.TavernHelper.getVariables({ type: 'message', message_id: 消息编号 })).catch(() => null);
         if (候选) 候选列表.push(候选);
       }
@@ -5537,6 +5563,7 @@
   }
 
   function 读取冷实体激活保护根_桥接() {
+    if (!当前启用标准ST冷归档_桥接()) return {};
     try {
       const 原始值 = window.localStorage && window.localStorage.getItem(冷实体激活保护存储键_桥接);
       const 解析 = 原始值 ? JSON.parse(原始值) : {};
@@ -5546,6 +5573,7 @@
   }
 
   function 保存冷实体激活保护根_桥接(数据 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return false;
     try {
       if (window.localStorage) window.localStorage.setItem(冷实体激活保护存储键_桥接, JSON.stringify(数据 && typeof 数据 === 'object' ? 数据 : {}));
     } catch (错误) {}
@@ -5561,6 +5589,7 @@
   }
 
   function 记录MVU冷实体激活_桥接(输入 = []) {
+    if (!当前启用标准ST冷归档_桥接()) return { changed: false, reason: 'tt_cold_archive_disabled' };
     const 条目列表 = Array.isArray(输入) ? 输入 : [输入];
     const chatKey = 取当前聊天归档标识_桥接();
     const 当前楼层 = 读取当前最新聊天楼层_桥接();
@@ -5586,6 +5615,7 @@
   }
 
   function 清理冷实体激活保护表未来楼层_桥接(表 = {}, 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    if (!当前启用标准ST冷归档_桥接()) return 表;
     ['角色', '动态地点', '物品', '势力', '地点'].forEach(类型 => {
       const 类型表 = 表[类型] && typeof 表[类型] === 'object' && !Array.isArray(表[类型]) ? 表[类型] : {};
       Object.keys(类型表).forEach(名称 => {
@@ -5598,6 +5628,7 @@
   }
 
   function 清理未来楼层冷实体激活记录_桥接(chatKey = 取当前聊天归档标识_桥接(), 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    if (!当前启用标准ST冷归档_桥接()) return { changed: false, reason: 'tt_cold_archive_disabled' };
     if (!chatKey || 当前楼层 < 0) return { changed: false };
     const 根 = 读取冷实体激活保护根_桥接();
     const 表 = 根[chatKey] && typeof 根[chatKey] === 'object' && !Array.isArray(根[chatKey]) ? cloneJsonValue(根[chatKey], {}) : {};
@@ -5612,6 +5643,7 @@
   }
 
   function 冷实体激活保护中_桥接(类型 = '', 名称 = '', 当前楼层 = 读取当前最新聊天楼层_桥接()) {
+    if (!当前启用标准ST冷归档_桥接()) return false;
     const 实体类型 = 规范化冷实体激活类型_桥接(类型);
     const 实体名 = toText(名称, '').trim();
     if (!实体类型 || !实体名 || 当前楼层 < 0) return false;
@@ -6449,6 +6481,7 @@
 
   async function 清理未来楼层冷归档_桥接(选项 = {}) {
     if (!当前启用标准ST冷归档_桥接()) return { changed: false, reason: 'tt_cold_archive_disabled' };
+    确保冷归档自动归档配置已加载_桥接();
     if (!选项.force && 冷归档楼层清理状态_桥接.promise) return await 冷归档楼层清理状态_桥接.promise;
     冷归档楼层清理状态_桥接.promise = (async () => {
       const chatKey = 取当前聊天归档标识_桥接();
@@ -6556,6 +6589,7 @@
 
   async function 整理全部冷归档历史_桥接(选项 = {}) {
     if (!当前启用标准ST冷归档_桥接()) return { changed: false, 整理数量: 0, reason: 'tt_cold_archive_disabled' };
+    确保冷归档自动归档配置已加载_桥接();
     if (冷归档自动归档配置_桥接.历史清理模式 === '停用') return { changed: false, 整理数量: 0, reason: 'disabled' };
     const chatKey = 取当前聊天归档标识_桥接();
     const generation = 冷归档服务状态_桥接.generation;
@@ -6822,6 +6856,7 @@
   }
 
   function 预热冷归档Manifest_桥接(选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return Promise.resolve();
     const 刷新视图 = () => {
       const 当前预览键 = currentUnifiedPreviewKey || currentModalPreviewKey;
       if (!选项.刷新视图 || !当前预览键 || ![冷归档预览键_桥接, '角色切换器'].includes(当前预览键)) return;
@@ -6863,6 +6898,7 @@
   }
 
   function 预热角色归档Manifest_桥接(选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return Promise.resolve(创建空角色归档Manifest_桥接(取当前聊天归档标识_桥接()));
     if (冷归档服务状态_桥接.已检查 && !冷归档服务状态_桥接.可用) {
       return Promise.resolve(创建空角色归档Manifest_桥接(取当前聊天归档标识_桥接()));
     }
@@ -7959,6 +7995,7 @@
   }
 
   async function 归档MVU势力_桥接(势力名列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 归档聊天标识 = 取当前聊天归档标识_桥接();
     const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档名称 = Array.from(new Set((Array.isArray(势力名列表) ? 势力名列表 : [势力名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
@@ -8014,6 +8051,7 @@
   }
 
   async function 归档MVU静态地点_桥接(地点路径列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 归档聊天标识 = 取当前聊天归档标识_桥接();
     const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档路径键 = Array.from(new Set((Array.isArray(地点路径列表) ? 地点路径列表 : [地点路径列表]).map(路径 => 构建静态地点路径键_桥接(路径)).filter(Boolean)));
@@ -8079,6 +8117,7 @@
   }
 
   async function 归档MVU角色_桥接(角色名列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 归档聊天标识 = 取当前聊天归档标识_桥接();
     const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档名称 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [角色名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
@@ -8140,6 +8179,7 @@
   }
 
   async function 归档MVU动态地点_桥接(地点名列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 归档聊天标识 = 取当前聊天归档标识_桥接();
     const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档名称 = Array.from(new Set((Array.isArray(地点名列表) ? 地点名列表 : [地点名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
@@ -8203,6 +8243,7 @@
   }
 
   async function 归档MVU物品定义_桥接(物品名列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 归档聊天标识 = 取当前聊天归档标识_桥接();
     const 归档会话代际 = 冷归档服务状态_桥接.generation;
     const 待归档名称 = Array.from(new Set((Array.isArray(物品名列表) ? 物品名列表 : [物品名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
@@ -8314,6 +8355,7 @@
   }
 
   async function 恢复MVU归档角色_桥接(角色名列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 待恢复名称 = Array.from(new Set((Array.isArray(角色名列表) ? 角色名列表 : [角色名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
     if (冷归档写回状态_桥接.正在归档) {
@@ -8373,6 +8415,7 @@
   }
 
   async function 恢复MVU归档势力_桥接(势力名列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 待恢复名称 = Array.from(new Set((Array.isArray(势力名列表) ? 势力名列表 : [势力名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
     if (冷归档写回状态_桥接.正在归档) return { changed: false, names: [], restoredNames: [], skippedNames: 待恢复名称.map(势力名 => ({ 势力名, reason: 'archive_in_progress' })), reason: 'archive_in_progress' };
@@ -8423,6 +8466,7 @@
   }
 
   async function 恢复MVU归档静态地点_桥接(地点路径键列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 待恢复路径键 = Array.from(new Set((Array.isArray(地点路径键列表) ? 地点路径键列表 : [地点路径键列表]).map(路径 => toText(路径, '').trim()).filter(Boolean)));
     if (!待恢复路径键.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
     if (冷归档写回状态_桥接.正在归档) return { changed: false, names: [], restoredNames: [], skippedNames: 待恢复路径键.map(地点路径 => ({ 地点路径, reason: 'archive_in_progress' })), reason: 'archive_in_progress' };
@@ -8521,6 +8565,7 @@
   }
 
   async function 恢复MVU归档物品定义_桥接(物品名列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 待恢复名称 = Array.from(new Set((Array.isArray(物品名列表) ? 物品名列表 : [物品名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
     if (冷归档写回状态_桥接.正在归档) {
@@ -8575,6 +8620,7 @@
   }
 
   async function 恢复MVU归档动态地点_桥接(地点名列表 = [], 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 待恢复名称 = Array.from(new Set((Array.isArray(地点名列表) ? 地点名列表 : [地点名列表]).map(名称 => toText(名称, '').trim()).filter(Boolean)));
     if (!待恢复名称.length) return { changed: false, names: [], restoredNames: [], skippedNames: [], reason: 'empty_names' };
     if (冷归档写回状态_桥接.正在归档) {
@@ -8630,6 +8676,7 @@
   }
 
   async function 按文本恢复归档角色_桥接(文本 = '', 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
     let manifest = null;
@@ -8645,6 +8692,7 @@
   }
 
   async function 按文本恢复归档动态地点_桥接(文本 = '', 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
     const manifest = await 读取动态地点归档Manifest_桥接();
@@ -8655,6 +8703,7 @@
   }
 
   async function 按文本恢复归档势力_桥接(文本 = '', 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
     const manifest = await 读取势力归档Manifest_桥接();
@@ -8665,6 +8714,7 @@
   }
 
   async function 按文本恢复归档静态地点_桥接(文本 = '', 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim()) return await 读取冷归档空结果_桥接('empty_text');
     const manifest = await 读取静态地点归档Manifest_桥接();
@@ -8675,6 +8725,7 @@
   }
 
   async function 按文本恢复归档物品定义_桥接(文本 = '', 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const 捕获文本 = 清理提示审计扫描文本_桥接(文本);
     if (!捕获文本.trim() && !收集归档物品候选名_桥接(选项).length) return await 读取冷归档空结果_桥接('empty_text');
     const manifest = await 读取物品归档Manifest_桥接();
@@ -8685,6 +8736,7 @@
   }
 
   async function 读取MVU角色归档_桥接(输入 = '', 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const manifest = await 读取角色归档Manifest_桥接(选项);
     const 标识 = toText(输入, '').trim();
     if (!标识) return manifest;
@@ -8693,6 +8745,7 @@
   }
 
   async function 读取MVU动态地点归档_桥接(输入 = '', 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const manifest = await 读取动态地点归档Manifest_桥接(选项);
     const 标识 = toText(输入, '').trim();
     if (!标识) return manifest;
@@ -8701,6 +8754,7 @@
   }
 
   async function 读取MVU物品归档_桥接(输入 = '', 选项 = {}) {
+    if (!当前启用标准ST冷归档_桥接()) return 冷归档TT禁用结果_桥接();
     const manifest = await 读取物品归档Manifest_桥接(选项);
     const 标识 = toText(输入, '').trim();
     if (!标识) return manifest;
@@ -8875,6 +8929,7 @@
 
   async function 按阈值自动归档MVU冷实体_桥接(选项 = {}) {
     if (!当前启用标准ST冷归档_桥接()) return { changed: false, reason: 'tt_cold_archive_disabled' };
+    确保冷归档自动归档配置已加载_桥接();
     const chatKey = 取当前聊天归档标识_桥接();
     const 目标消息元信息 = 读取自动归档目标消息元信息_桥接(选项);
     if (选项.需要明确目标 && !目标消息元信息) return { changed: false, reason: 'target_missing' };
@@ -13178,14 +13233,20 @@
   }
 
   function 读取消息变量写回当前底稿_桥接(选项 = {}) {
+    const 主机 = getMvuHost();
+    if (当前为TauriTavern环境_桥接() && 主机 && typeof 主机.getMvuData === 'function') {
+      try {
+        const 变量 = 主机.getMvuData(选项);
+        if (变量 && typeof 变量 === 'object') return 变量;
+      } catch (错误) {}
+    }
     try {
-      if (window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
+      if (!当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
         const 变量 = window.TavernHelper.getVariables(选项);
         if (变量 && typeof 变量 === 'object') return 变量;
       }
     } catch (错误) {}
     try {
-      const 主机 = getMvuHost();
       if (主机 && typeof 主机.getMvuData === 'function') {
         const 变量 = 主机.getMvuData(选项);
         if (变量 && typeof 变量 === 'object') return 变量;
@@ -15905,7 +15966,7 @@
 
   async function getLatestMessageVariablesFallback() {
     try {
-      if (window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
+      if (!当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
         const scanned = await scanRecentMessageVariablesWithReaders([
           messageId => Promise.resolve(window.TavernHelper.getVariables({ type: 'message', message_id: messageId })),
         ]);
@@ -15921,7 +15982,7 @@
       host && typeof host.getMvuData === 'function'
         ? messageId => Promise.resolve(host.getMvuData({ type: 'message', message_id: messageId }))
         : null,
-      window.TavernHelper && typeof window.TavernHelper.getVariables === 'function'
+      !当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function'
         ? messageId => Promise.resolve(window.TavernHelper.getVariables({ type: 'message', message_id: messageId }))
         : null,
     ]);
@@ -15949,7 +16010,7 @@
       host && typeof host.getMvuData === 'function'
         ? () => Promise.resolve(host.getMvuData({ type: 'message', message_id: 'latest' }))
         : null,
-      window.TavernHelper && typeof window.TavernHelper.getVariables === 'function'
+      !当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function'
         ? () => Promise.resolve(window.TavernHelper.getVariables({ type: 'message', message_id: 'latest' }))
         : null,
     ];

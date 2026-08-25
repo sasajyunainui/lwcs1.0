@@ -3,7 +3,25 @@
 
   const GLOBAL_KEY = '__LWCS_MVU_PROMPT_PROJECTOR_V1__';
   const VERSION = 1;
-  if (typeof root[GLOBAL_KEY] === 'function') return;
+  function collectWindows() {
+    const windows = [];
+    const add = candidate => {
+      if (candidate && (typeof candidate === 'object' || typeof candidate === 'function') && !windows.includes(candidate)) windows.push(candidate);
+    };
+    add(root);
+    try { add(root.window); } catch (_) {}
+    try { add(root.parent); } catch (_) {}
+    try { add(root.top); } catch (_) {}
+    return windows;
+  }
+
+  const existing = collectWindows().map(candidate => candidate[GLOBAL_KEY]).find(value => typeof value === 'function');
+  if (existing) {
+    collectWindows().forEach(candidate => {
+      try { candidate[GLOBAL_KEY] = existing; } catch (_) {}
+    });
+    return;
+  }
 
   const ACTIVE_STATUSES = new Set(['进行中', '待接取', '已接取', '开放', 'active', 'pending', 'running', 'open']);
   const CLOSED_STATUSES = new Set(['已完成', '完成', '已失败', '失败', '已放弃', '放弃', '关闭', '结束', 'closed', 'failed', 'completed']);
@@ -213,5 +231,8 @@
     return cloneWithoutStatData(projection);
   }
 
-  root[GLOBAL_KEY] = Object.freeze(project);
+  const projector = Object.freeze(project);
+  collectWindows().forEach(candidate => {
+    try { candidate[GLOBAL_KEY] = projector; } catch (_) {}
+  });
 })(typeof globalThis !== 'undefined' ? globalThis : window);

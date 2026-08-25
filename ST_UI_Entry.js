@@ -9,8 +9,37 @@
     return window;
   })();
   const 宿主文档 = 宿主窗口.document;
-  const 是TT宿主 = !!(宿主窗口.__TAURITAVERN__ || window.__TAURITAVERN__);
+  const 是TT宿主 = [宿主窗口, window].some(候选窗口 => {
+    if (!候选窗口) return false;
+    const TT对象 = 候选窗口.__TAURITAVERN__;
+    return Object.prototype.hasOwnProperty.call(候选窗口, '__TAURITAVERN_MAIN_READY__')
+      || (!!TT对象 && typeof TT对象 === 'object')
+      || (!!TT对象 && Object.prototype.hasOwnProperty.call(TT对象, 'ready'));
+  });
   const 读取共享值 = 键 => 宿主窗口[键] ?? window[键] ?? null;
+  const MVU正式依赖共享加载表 = (() => {
+    const 键 = '__LWCS_MVU_FORMAL_RESOURCE_LOADS_V1__';
+    const 已有表 = 宿主窗口[键] || window[键];
+    if (已有表 && typeof 已有表 === 'object') {
+      宿主窗口[键] = 已有表;
+      window[键] = 已有表;
+      return 已有表;
+    }
+    const 新表 = Object.create(null);
+    宿主窗口[键] = 新表;
+    window[键] = 新表;
+    return 新表;
+  })();
+  const MVU正式依赖模块名列表 = Object.freeze([
+    '持久化适配器',
+    'MVU持久化提供者',
+    'MVU提示投影器',
+  ]);
+  const MVU正式依赖文件名表 = Object.freeze({
+    持久化适配器: 'LWCS_Persistence_Adapter.js',
+    MVU持久化提供者: 'LWCS_MVU_Persistence_Provider.js',
+    MVU提示投影器: 'LWCS_MVU_Prompt_Projector.js',
+  });
 
   const UI启动状态 = (() => {
     const 键 = '__LWCS_UI_ENTRY_STATE__';
@@ -533,6 +562,15 @@
       const 依赖结果 = await 尝试加载模块(依赖模块名, `dependency:${模块名}`, false);
       if (!依赖结果?.ok) throw 依赖结果?.error || new Error(`module_dependency_failed:${模块名}:${依赖模块名}`);
     }
+    const 共享资源所有者 = 读取共享值('__LWCS_MVU_RESOURCE_OWNER_V1__');
+    const 正式资源文件名 = MVU正式依赖文件名表[模块名];
+    if (正式资源文件名 && typeof 共享资源所有者?.loadResource === 'function') {
+      await 共享资源所有者.loadResource(正式资源文件名, {
+        mode: 'script-global',
+        ready: 模块.已就绪,
+      });
+      return 模块.地址;
+    }
     const 状态 = 模块状态表[模块名];
     if (模块.类型 === 'css') return 加载样式(模块.地址, 状态);
     if (模块.类型 === 'remote-js') return 加载远程脚本(模块.地址, 状态);
@@ -553,6 +591,24 @@
     if (!模块 || !状态) return { ok: false, 模块名, reason: 'unknown_module' };
     if (状态.状态 === 'loaded') return { ok: true, 模块名, cached: true };
     if (模块加载承诺表.has(模块名)) return 模块加载承诺表.get(模块名);
+    const 共享加载承诺 = MVU正式依赖模块名列表.includes(模块名)
+      ? MVU正式依赖共享加载表[模块名]
+      : null;
+    if (共享加载承诺 && typeof 共享加载承诺.then === 'function') {
+      try {
+        await 共享加载承诺;
+        if (typeof 模块.已就绪 === 'function' && !模块.已就绪()) {
+          throw new Error(`${模块名}共享加载后接口未就绪`);
+        }
+        状态.状态 = 'loaded';
+        状态.阶段 = '复用共享加载';
+        状态.错误 = '';
+        刷新加载追踪面板();
+        return { ok: true, 模块名, shared: true };
+      } catch (错误) {
+        return { ok: false, 模块名, error: 错误, reason: 'shared_load_failed' };
+      }
+    }
     if (typeof 模块.已就绪 === 'function' && 模块.已就绪()) {
       状态.状态 = 'loaded';
       状态.阶段 = '复用已有全局';
@@ -602,6 +658,13 @@
       });
 
     模块加载承诺表.set(模块名, 加载承诺);
+    if (MVU正式依赖模块名列表.includes(模块名)) {
+      const 清理共享加载 = () => {
+        if (MVU正式依赖共享加载表[模块名] === 加载承诺) delete MVU正式依赖共享加载表[模块名];
+      };
+      MVU正式依赖共享加载表[模块名] = 加载承诺;
+      void 加载承诺.then(清理共享加载, 清理共享加载);
+    }
     return 加载承诺;
   }
 

@@ -31,7 +31,9 @@
   function isTauriTavern() {
     return collectWindows().some(candidate => {
       const tauriTavern = readField(candidate, '__TAURITAVERN__');
-      return !!tauriTavern && typeof tauriTavern === 'object';
+      return Object.prototype.hasOwnProperty.call(candidate, '__TAURITAVERN_MAIN_READY__')
+        || (!!tauriTavern && typeof tauriTavern === 'object')
+        || (!!tauriTavern && Object.prototype.hasOwnProperty.call(tauriTavern, 'ready'));
     });
   }
 

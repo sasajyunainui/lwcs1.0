@@ -1,125 +1,62 @@
 diff --git a/src/button.ts b/src/button.ts
-index fc033f4..af4eaae 100644
+index fc033f4090a96487497f16e900a7a049e5e18076..af4eaaea4883cb22a6e77453f1c5cc3c224a3b6a 100644
 --- a/src/button.ts
 +++ b/src/button.ts
-@@ -4,6 +4,11 @@ import { isFunctionCallingSupported } from '@/function/is_function_calling_suppo
- import { cleanUpMetadata, reconcileAndApplySchema } from '@/function/schema';
- import { onMessageReceived } from '@/function/update/on_message_received';
- import { handleVariablesInMessage, updateVariables } from '@/function/update_variables';
+@@ -6,0 +7,5 @@ import { handleVariablesInMessage, updateVariables } from '@/function/update_var
 +import {
 +    getCanonicalMvuData,
 +    replaceMvuDataControlled,
 +    updateVariablesWithControlled as updateVariablesWith,
 +} from '@/function/update/mvu_runtime';
- import { tr, type MessageKey } from '@/i18n';
- import { useDataStore } from '@/store';
- import { controlledStoppableEventOn, getLastValidMessageId, getLastValidVariable } from '@/util';
-@@ -237,13 +242,13 @@ export const buttons: Button[] = [
-             cleanUpMetadata(merged_data.stat_data);
-
-             // 6. 更新变量到最新消息
+@@ -240 +245 @@ export const buttons: Button[] = [
 -            await replaceVariables(merged_data, { type: 'message', message_id: message_id });
 +            await replaceMvuDataControlled(merged_data as MvuData, { type: 'message', message_id: message_id });
-
-             // @ts-expect-error 该函数可用
-             await setChatMessage({}, message_id);
-
-             if (useDataStore().effective_settings.兼容性.更新到聊天变量) {
+@@ -246 +251 @@ export const buttons: Button[] = [
 -                await replaceVariables(merged_data, { type: 'chat' });
 +                await replaceMvuDataControlled(merged_data as MvuData, { type: 'chat' });
-             }
-
-             console.info(tr('runtime.button.initVarDescriptionsUpdated'));
-@@ -351,7 +356,7 @@ export const buttons: Button[] = [
-             //进行重演
-             //这个变量将会在每次重演的过程一直更新。
-             const recur_variable_data = klona(
+@@ -354 +359 @@ export const buttons: Button[] = [
 -                getVariables({
 +                getCanonicalMvuData({
-                     type: 'message',
-                     message_id: recur_intial_message_id,
-                 })
-@@ -500,7 +505,7 @@ export const buttons: Button[] = [
-                 const last_valid_msg = getLastValidMessageId(last_msg);
-                 if (last_valid_msg !== -1) {
-                     const last_variable_data = klona(
+@@ -503 +508 @@ export const buttons: Button[] = [
 -                        getVariables({
 +                        getCanonicalMvuData({
-                             type: 'message',
-                             message_id: last_valid_msg,
-                         })
 diff --git a/src/function/cleanup/chat_variables.ts b/src/function/cleanup/chat_variables.ts
-index c77cee8..8c88e1f 100644
+index c77cee8eef6305d1cdcc1d132eec871253e80d25..8c88e1f4076998bb8667d0bbf629490de1811008 100644
 --- a/src/function/cleanup/chat_variables.ts
 +++ b/src/function/cleanup/chat_variables.ts
-@@ -1,4 +1,5 @@
- import { useDataStore } from '@/store';
+@@ -1,0 +2 @@ import { useDataStore } from '@/store';
 +import { updateVariablesWithControlled as updateVariablesWith } from '@/function/update/mvu_runtime';
-
- export function checkAndRemoveChatVariables() {
-     const store = useDataStore();
 diff --git a/src/function/cleanup/index.ts b/src/function/cleanup/index.ts
-index b8f3a7c..6507f67 100644
+index b8f3a7cd13965bfa1cb05b34f5764f694f8b523f..6507f674b0ff3569cc2d28a3ccef6ab2598d574e 100644
 --- a/src/function/cleanup/index.ts
 +++ b/src/function/cleanup/index.ts
-@@ -2,13 +2,14 @@ import { checkAndRemoveChatVariables } from '@/function/cleanup/chat_variables';
- import { cleanupMessageVariables } from '@/function/cleanup/cleanup_variables';
- import { checkAndCleanupLegacyChat } from '@/function/cleanup/legacy_chat';
- import { restoreVariables } from '@/function/cleanup/restore_variables';
+@@ -4,0 +5 @@ import { restoreVariables } from '@/function/cleanup/restore_variables';
 +import { isTtMvuHost } from '@/function/update/mvu_runtime';
- import { tr } from '@/i18n';
- import { useDataStore } from '@/store';
- import { controlledStoppableEventOn } from '@/util';
-
- export function initCleanup() {
-     const store = useDataStore();
+@@ -11 +12 @@ export function initCleanup() {
 -    if (store.should_enable) {
 +    if (store.should_enable && !isTtMvuHost()) {
-         checkAndRemoveChatVariables();
-         checkAndCleanupLegacyChat();
-     }
-@@ -17,11 +18,12 @@ export function initCleanup() {
-     stop_list.push(
-         controlledStoppableEventOn(
-             tavern_events.MESSAGE_DELETED,
+@@ -20 +21 @@ export function initCleanup() {
 -            _.debounce(restoreVariables, 2000)
 +            isTtMvuHost() ? () => undefined : _.debounce(restoreVariables, 2000)
-         )
-     );
-     stop_list.push(
-         controlledStoppableEventOn(tavern_events.MESSAGE_RECEIVED, message_id => {
+@@ -24,0 +26 @@ export function initCleanup() {
 +            if (isTtMvuHost()) return;
-             const store = useDataStore();
-             if (!store.settings.自动清理变量.启用) {
-                 return;
 diff --git a/src/function/cleanup/restore_variables.ts b/src/function/cleanup/restore_variables.ts
-index 95c3250..9a03458 100644
+index 95c3250deb02595b82fdd1fa28168a1291188c5d..9a03458f220d171f0230253cb76969496db5e973 100644
 --- a/src/function/cleanup/restore_variables.ts
 +++ b/src/function/cleanup/restore_variables.ts
-@@ -1,4 +1,5 @@
- import { updateVariables } from '@/function/update_variables';
+@@ -1,0 +2 @@ import { updateVariables } from '@/function/update_variables';
 +import { updateVariablesWithControlled as updateVariablesWith } from '@/function/update/mvu_runtime';
- import { tr } from '@/i18n';
- import { useDataStore } from '@/store';
- import { getLastValidMessageId } from '@/util';
 diff --git a/src/function/exported_events.ts b/src/function/exported_events.ts
-index eea9feb..63e39dc 100644
+index eea9feb1ae214a59362917cf5fceef471b75b9cf..63e39dc19a81591bcae091b8956ca8e406e81be2 100644
 --- a/src/function/exported_events.ts
 +++ b/src/function/exported_events.ts
-@@ -1,4 +1,9 @@
- import { updateVariable, updateVariables } from '@/function/update_variables';
+@@ -1,0 +2,5 @@ import { updateVariable, updateVariables } from '@/function/update_variables';
 +import {
 +    isTtMvuHost,
 +    runMvuCommit,
 +    updateVariablesWithControlled,
 +} from '@/function/update/mvu_runtime';
- import { exported_events, VariableData } from '@/variable_def';
- import { controlledStoppableEventOn } from '@/util';
-
-@@ -20,7 +25,28 @@ export function initExportedEvents() {
-     stop_list.push(
-         controlledStoppableEventOn(exported_events.INVOKE_MVU_PROCESS, handleVariablesInCallback)
-     );
+@@ -23 +28,22 @@ export function initExportedEvents() {
 -    stop_list.push(controlledStoppableEventOn(exported_events.UPDATE_VARIABLE, updateVariable));
 +    stop_list.push(
 +        controlledStoppableEventOn(
@@ -143,38 +80,29 @@ index eea9feb..63e39dc 100644
 +                )
 +        )
 +    );
-
-     return () => {
-         stop_list.forEach(stop => stop());
 diff --git a/src/function/function_call.ts b/src/function/function_call.ts
-index 321bd11..e77dd33 100644
+index 321bd11d198cb9058b6cbfee2d45a22bdb523081..c7dbc515f924581df7b522991c0f5b1195a77459 100644
 --- a/src/function/function_call.ts
 +++ b/src/function/function_call.ts
-@@ -1,4 +1,5 @@
- import { updateVariables } from '@/function/update_variables';
-+import { replaceMvuDataControlled } from '@/function/update/mvu_runtime';
- import { tr } from '@/i18n';
- import { useDataStore } from '@/store';
- import { getLastValidVariable, isJsonPatch } from '@/util';
-@@ -233,9 +234,9 @@ async function onVariableUpdatedCall(args: any): Promise<string> {
-
-     const has_variable_modified = await updateVariables(args.delta, variables);
-     if (has_variable_modified && useDataStore().effective_settings.兼容性.更新到聊天变量) {
+@@ -1,0 +2 @@ import { updateVariables } from '@/function/update_variables';
++import { isTtMvuHost, replaceMvuDataControlled } from '@/function/update/mvu_runtime';
+@@ -235,2 +236,7 @@ async function onVariableUpdatedCall(args: any): Promise<string> {
+-    if (has_variable_modified && useDataStore().effective_settings.兼容性.更新到聊天变量) {
 -        await replaceVariables(variables, { type: 'chat' });
-+        await replaceMvuDataControlled(variables, { type: 'chat' });
-     }
++    if (isTtMvuHost()) {
++        await replaceMvuDataControlled(variables, { type: 'chat', message_id });
++    } else {
++        if (has_variable_modified && useDataStore().effective_settings.兼容性.更新到聊天变量) {
++            await replaceMvuDataControlled(variables, { type: 'chat' });
++        }
++        await replaceMvuDataControlled(variables, { type: 'message', message_id: message_id });
+@@ -238 +243,0 @@ async function onVariableUpdatedCall(args: any): Promise<string> {
 -    await replaceVariables(variables, { type: 'message', message_id: message_id });
-+    await replaceMvuDataControlled(variables, { type: 'message', message_id: message_id });
-
-     message_content += `\n\n<UpdateVariable>\n<Analysis>${args.analysis}</Analysis></Analysis>${args.delta}\n</UpdateVariable>`;
-
 diff --git a/src/function/global/index.ts b/src/function/global/index.ts
-index caf3097..7faa20d 100644
+index caf3097b1b516c202d32f7faf5eb58cc166295c9..7faa20d2e55434073cb066bc77c50ab6a7fd1935 100644
 --- a/src/function/global/index.ts
 +++ b/src/function/global/index.ts
-@@ -1,12 +1,22 @@
- import { loadInitVarData } from '@/function/initvar/variable_init';
- import { updateVariable, updateVariables } from '@/function/update_variables';
+@@ -2,0 +3,8 @@ import { updateVariable, updateVariables } from '@/function/update_variables';
 +import {
 +    awaitIdle,
 +    ensureMvuPersistence,
@@ -183,23 +111,13 @@ index caf3097..7faa20d 100644
 +    mvu_runtime_events,
 +    replaceMvuDataControlled,
 +} from '@/function/update/mvu_runtime';
- import { isValueWithDescription, MvuData, variable_events } from '@/variable_def';
- import { watch } from 'vue';
- import { useDataStore } from '../../store';
-
- function createMvu() {
+@@ -7,0 +16,2 @@ function createMvu() {
 +    const replaceMvuData = (mvu_data: MvuData, options: VariableOption) =>
 +        replaceMvuDataControlled(mvu_data, options);
-     const mvu = {
+@@ -9 +19 @@ function createMvu() {
 -        events: variable_events,
 +        events: Object.freeze({ ...variable_events, ...mvu_runtime_events }),
-
-         /**
-          * 获取变量表, 并将其视为包含 mvu 数据的 MvuData
-@@ -26,7 +36,19 @@ function createMvu() {
-          * const message_data = Mvu.getMvuData({ type: 'message', message_id: getCurrentMessageId() });
-          */
-         getMvuData: function (options: VariableOption): MvuData {
+@@ -29 +39,13 @@ function createMvu() {
 -            return getVariables(options) as MvuData;
 +            return getCanonicalMvuData(options);
 +        },
@@ -214,39 +132,18 @@ index caf3097..7faa20d 100644
 +        persistence: {
 +            awaitIdle,
 +            getStatus,
-         },
-
-         /**
-@@ -45,8 +67,7 @@ function createMvu() {
-          * await Mvu.replaceMvuData(mvu_data, { type: 'message', message_id: 'latest' });
-          */
-         replaceMvuData: function (mvu_data: MvuData, options: VariableOption) {
+@@ -48,2 +70 @@ function createMvu() {
 -            /** 旧酒馆助手的 replaceVariables 是异步函数, 因此需要返回 Promise */
 -            return replaceVariables(mvu_data, options);
 +            return replaceMvuData(mvu_data, options);
-         },
-
-         /**
-@@ -74,13 +95,12 @@ function createMvu() {
-
-         /** @deprecated */
-         getCurrentMvuData: function (): MvuData {
+@@ -77,2 +98 @@ function createMvu() {
 -            const variables = getVariables({ type: 'message', message_id: getCurrentMessageId() });
 -            return variables as MvuData;
 +            return getCanonicalMvuData({ type: 'message', message_id: getCurrentMessageId() });
-         },
-
-         /** @deprecated */
-         replaceCurrentMvuData: async function (mvu_data: MvuData): Promise<void> {
+@@ -83 +103 @@ function createMvu() {
 -            await replaceVariables(mvu_data, {
 +            await replaceMvuData(mvu_data, {
-                 type: 'message',
-                 message_id: getCurrentMessageId(),
-             });
-@@ -162,14 +182,32 @@ function createMvu() {
-     return mvu;
- }
-
+@@ -165 +185,11 @@ function createMvu() {
 -export function initGlobals() {
 +const LWCS_MVU_ENGINE_OWNER_V1 = Object.freeze({
 +    version: '1.0.0',
@@ -259,12 +156,7 @@ index caf3097..7faa20d 100644
 +    } catch (error) {
 +        console.error('[LWCS MVU] 持久化 Provider 初始化失败，已禁止 TT 消息楼变量写入', error);
 +    }
-     const mvu = createMvu();
-     const store = useDataStore();
-     const stop = watch(
-         () => store.should_enable,
-         should_enabled => {
-             if (should_enabled) {
+@@ -171,0 +202,7 @@ export function initGlobals() {
 +                if (!Object.prototype.hasOwnProperty.call(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__')) {
 +                    Object.defineProperty(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__', {
 +                        value: LWCS_MVU_ENGINE_OWNER_V1,
@@ -272,40 +164,23 @@ index caf3097..7faa20d 100644
 +                        configurable: false,
 +                    });
 +                }
-                 _.set(window.parent, 'Mvu', mvu);
+@@ -172,0 +210 @@ export function initGlobals() {
 +                _.set(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__', LWCS_MVU_ENGINE_OWNER_V1);
-                 eventEmit('global_Mvu_initialized');
-             }
-         },
-@@ -180,6 +218,9 @@ export function initGlobals() {
-         if (store.should_enable && _.get(window.parent, 'Mvu') === mvu) {
-             deleteVariable('extra_analysis', { type: 'global' });
-             _.unset(window.parent, 'Mvu');
+@@ -182,0 +221,3 @@ export function initGlobals() {
 +            if (_.get(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__') === LWCS_MVU_ENGINE_OWNER_V1) {
 +                _.unset(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__');
 +            }
-         }
-         stop();
-     };
 diff --git a/src/function/initvar/variable_init.ts b/src/function/initvar/variable_init.ts
-index c3ddcb5..4d71f74 100644
+index c3ddcb5f1d64c09cdea4b5151b99ca408d561598..4d71f74d60f77f16a15daa957b60ea943fdc5f28 100644
 --- a/src/function/initvar/variable_init.ts
 +++ b/src/function/initvar/variable_init.ts
-@@ -1,5 +1,10 @@
- import { cleanUpMetadata, EXTENSIBLE_MARKER, generateSchema } from '@/function/schema';
- import { updateVariables } from '@/function/update_variables';
+@@ -2,0 +3,5 @@ import { updateVariables } from '@/function/update_variables';
 +import {
 +    isTtMvuHost,
 +    replaceMvuDataControlled,
 +    updateVariablesWithControlled as updateVariablesWith,
 +} from '@/function/update/mvu_runtime';
- import { tr } from '@/i18n';
- import { useDataStore } from '@/store';
- import { getLastValidVariable } from '@/util';
-@@ -135,12 +140,8 @@ export async function initCheck() {
-     if (getLastMessageId() == 0) {
-         const last_msg = getChatMessages(0, { include_swipes: true })[0];
-         // 更新所有 swipes
+@@ -138,6 +143,2 @@ export async function initCheck() {
 -        await setChatMessages([
 -            {
 -                // last_msg 不一定存在 message_id
@@ -314,13 +189,7 @@ index c3ddcb5..4d71f74 100644
 -                    last_msg.swipes!.map(async (swipe, index) => {
 +        const swipes_data = await Promise.all(
 +            last_msg.swipes!.map(async (swipe, index) => {
-                         let vanilla_variable_data: Record<string, any> = klona(
-                             last_msg.swipes_data[index]
-                         );
-@@ -191,13 +192,23 @@ export async function initCheck() {
-                         await updateVariables(swipe, current_data);
-                         console.log(tr('runtime.initvar.initializationCompletedLog'));
-                         return current_data;
+@@ -194,4 +195,14 @@ export async function initCheck() {
 -                    })
 -                ),
 -            },
@@ -339,22 +208,17 @@ index c3ddcb5..4d71f74 100644
 +                },
 +            ]);
 +        }
-     } else {
-         // 非开局直接更新到最后一条即可，也并不需要重新结算当前的变量
+@@ -200 +211 @@ export async function initCheck() {
 -        await replaceVariables(variables, { type: 'message' });
 +        await replaceMvuDataControlled(variables, { type: isTtMvuHost() ? 'chat' : 'message' });
-     }
-     try {
-         if (useDataStore().settings.通知.变量初始化成功) {
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
-index 722db33..272172a 100644
+index 722db3359e725d1002f797646bc1572d2f873c1f..272172afb0ddda6f52e52506e19a88d5e734ac3e 100644
 --- a/src/function/update/index.ts
 +++ b/src/function/update/index.ts
-@@ -1,21 +1,80 @@
+@@ -1,2 +0,0 @@
 -import { is_jest_environment } from '@/jest';
 -
- import { onMessageReceived } from '@/function/update/on_message_received';
- import { handleVariablesInMessage } from '@/function/update_variables';
+@@ -4,0 +3,8 @@ import { handleVariablesInMessage } from '@/function/update_variables';
 +import {
 +    awaitBeforeGeneration,
 +    invalidateAll,
@@ -363,11 +227,7 @@ index 722db33..272172a 100644
 +    runMvuTaskCommit,
 +    scheduleMvuTask,
 +} from '@/function/update/mvu_runtime';
- import { controlledStoppableEventOn } from '@/util';
-
- export function initResponse() {
-     const stop_list: Array<() => void> = [];
-     stop_list.push(
+@@ -10 +16,11 @@ export function initResponse() {
 -        controlledStoppableEventOn(tavern_events.MESSAGE_SENT, handleVariablesInMessage)
 +        controlledStoppableEventOn(tavern_events.MESSAGE_SENT, (message_id: number) => {
 +            invalidateAll('message_sent');
@@ -380,10 +240,7 @@ index 722db33..272172a 100644
 +                );
 +            });
 +        })
-     );
-     stop_list.push(
-         controlledStoppableEventOn(
-             tavern_events.MESSAGE_RECEIVED,
+@@ -15 +31,43 @@ export function initResponse() {
 -            is_jest_environment ? onMessageReceived : _.throttle(onMessageReceived, 3000)
 +            (message_id: number, _type: string) => {
 +                invalidateAll('message_received');
@@ -428,35 +285,115 @@ index 722db33..272172a 100644
 +            tavern_events.MESSAGE_SWIPE_DELETED,
 +            ({ messageId }: { messageId: number }) =>
 +            invalidateMessage(messageId, 'message_swipe_deleted')
-         )
-     );
-     return () => {
-         stop_list.forEach(stop => stop());
+@@ -19,0 +78 @@ export function initResponse() {
 +        reset('response_listener_stopped');
-     };
- }
+diff --git a/src/function/update/invoke_extra_model.ts b/src/function/update/invoke_extra_model.ts
+index f992a26492359a75765eaf34b5ff6a5fd117ce6c..fefc6906ce4baaa00ab5817fbaecc4eb8034065e 100644
+--- a/src/function/update/invoke_extra_model.ts
++++ b/src/function/update/invoke_extra_model.ts
+@@ -19,0 +20 @@ import {
++import { getCanonicalMvuData } from '@/function/update/mvu_runtime';
+@@ -401,0 +403,65 @@ const decoded_extra_model_task = decode(extra_model_task);
++type MvuPromptProjector = (
++    full_state: unknown,
++    context: Record<string, unknown>
++) => unknown;
++
++function findMvuPromptProjector(): MvuPromptProjector | null {
++    const candidates: any[] = [];
++    const add = (candidate: any) => {
++        if (candidate && !candidates.includes(candidate)) candidates.push(candidate);
++    };
++    add(globalThis);
++    try { add((globalThis as any).parent); } catch { /* optional parent window */ }
++    try { add((globalThis as any).top); } catch { /* optional top window */ }
++    return candidates
++        .map(candidate => candidate?.__LWCS_MVU_PROMPT_PROJECTOR_V1__)
++        .find(value => typeof value === 'function') ?? null;
++}
++
++function buildProjectedMvuContext(): string {
++    const projector = findMvuPromptProjector();
++    if (!projector) return '';
++    try {
++        const full_state = getCanonicalMvuData({ type: 'chat' });
++        const state = full_state as Record<string, any>;
++        const message = getChatMessages(-1, { include_swipes: true }).at(-1) as
++            | Record<string, any>
++            | undefined;
++        const message_text = typeof message?.message === 'string'
++            ? message.message
++            : typeof message?.mes === 'string'
++                ? message.mes
++                : '';
++        const player_name = String(
++            state?.sys?.玩家名
++            ?? state?.sys?.playerName
++            ?? message?.name
++            ?? ''
++        ).trim();
++        const player = player_name ? state?.char?.[player_name] : undefined;
++        const current_location = String(
++            state?.world?.当前地点
++            ?? player?.状态?.位置
++            ?? player?.位置
++            ?? ''
++        ).trim();
++        const explicit_mentions = message?.extra?.mentionedEntities
++            ?? message?.extra?.mentioned_entities
++            ?? message?.extra?.mentions
++            ?? message?.mentionedEntities
++            ?? message?.mentions;
++        const projected = projector(full_state, {
++            text: message_text,
++            message: message_text,
++            playerName: player_name,
++            currentLocation: current_location,
++            mentionedEntities: Array.isArray(explicit_mentions) ? explicit_mentions : [],
++        });
++        if (projected === undefined || projected === null) return '';
++        return `<mvu_projected_context>\n${JSON.stringify(projected)}\n</mvu_projected_context>`;
++    } catch (error) {
++        console.warn('[LWCS MVU] 额外模型提示投影失败，跳过投影上下文', error);
++        return '';
++    }
++}
++
+@@ -496,0 +563,11 @@ async function requestReply(generation_id?: string, batch_id?: string): Promise<
++    const projected_mvu_context = buildProjectedMvuContext();
++    const projected_mvu_injects = projected_mvu_context
++        ? [{
++            position: 'in_chat' as const,
++            depth: 0,
++            should_scan: false,
++            role: 'system' as const,
++            content: projected_mvu_context,
++        }]
++        : [];
++
+@@ -501,0 +579 @@ async function requestReply(generation_id?: string, batch_id?: string): Promise<
++                ...projected_mvu_injects,
+@@ -544 +622 @@ async function requestReply(generation_id?: string, batch_id?: string): Promise<
+-                injects,
++                injects: [...projected_mvu_injects, ...injects],
+@@ -566,0 +645,3 @@ async function requestReply(generation_id?: string, batch_id?: string): Promise<
++            ...(projected_mvu_context
++                ? [{ role: 'system' as const, content: projected_mvu_context }]
++                : []),
 diff --git a/src/function/update/on_message_received.ts b/src/function/update/on_message_received.ts
-index 2f7a0bf..ed45449 100644
+index 2f7a0bf8be4f147a4bf8048782a5a70e2d15cdaf..ed454493afaa105f5c2e51cac9fcfc2f3f05366e 100644
 --- a/src/function/update/on_message_received.ts
 +++ b/src/function/update/on_message_received.ts
-@@ -1,16 +1,29 @@
- import { isExtraModelSupported } from '@/function/is_extra_model_supported';
- import { isFunctionCallingSupported } from '@/function/is_function_calling_supported';
- import { invokeExtraModelWithStrategy } from '@/function/update/invoke_extra_model';
+@@ -3,0 +4,5 @@ import { invokeExtraModelWithStrategy } from '@/function/update/invoke_extra_mod
 +import {
 +    runMvuTaskCommit,
 +    MvuRuntimeTask,
 +    scheduleMvuTask,
 +} from '@/function/update/mvu_runtime';
- import { handleVariablesInMessage } from '@/function/update_variables';
- import { tr } from '@/i18n';
- import { useDataStore } from '@/store';
-
- export async function onMessageReceived(
-     message_id: number,
+@@ -10 +15 @@ export async function onMessageReceived(
 -    { force = false }: { force?: boolean } = {}
 +    { force = false, task }: { force?: boolean; task?: MvuRuntimeTask } = {}
- ) {
+@@ -11,0 +17,7 @@ export async function onMessageReceived(
 +    if (!task) {
 +        const scheduled = scheduleMvuTask('manual_message_received', message_id, next_task =>
 +            onMessageReceived(message_id, { force, task: next_task })
@@ -464,31 +401,13 @@ index 2f7a0bf..ed45449 100644
 +        await scheduled.wait();
 +        return;
 +    }
-     const current_chatmsg = getChatMessages(message_id).at(-1);
-     if (!current_chatmsg) {
+@@ -13,0 +26 @@ export async function onMessageReceived(
 +        task.finish('skipped', 'message_missing');
-         return;
-     }
-
-@@ -19,12 +32,14 @@ export async function onMessageReceived(
-         store.effective_settings.兼容性.sendas不视为user消息 === false &&
-         current_chatmsg.name !== SillyTavern.name2
-     ) {
+@@ -21,0 +35 @@ export async function onMessageReceived(
 +        task.finish('skipped', 'not_user_message');
-         return;
-     }
-
-     const message_content = current_chatmsg.message;
-     if (message_content.length < 5) {
-         //MESSAGE_RECEIVED 有时候也会在请求的一开始递交，会包含一个 "..." 的消息
+@@ -27,0 +42 @@ export async function onMessageReceived(
 +        task.finish('skipped', 'placeholder_message');
-         return;
-     }
-     store.runtimes.is_during_extra_analysis = false;
-@@ -35,40 +50,80 @@ export async function onMessageReceived(
-             !isFunctionCallingSupported()) ||
-         !(await isExtraModelSupported())
-     ) {
+@@ -38 +53,6 @@ export async function onMessageReceived(
 -        await handleVariablesInMessage(message_id);
 +        await runMvuTaskCommit(
 +            task,
@@ -496,17 +415,9 @@ index 2f7a0bf..ed45449 100644
 +            () => handleVariablesInMessage(message_id, task.isCurrent),
 +            changed => (changed ? 'committed' : 'no_diff')
 +        );
-         return;
-     }
-
-     if (SillyTavern.chat.length <= 1) {
-         console.log(tr('runtime.extraModel.firstFloorSkippedLog'));
+@@ -43,0 +64 @@ export async function onMessageReceived(
 +        task.finish('skipped', 'first_floor');
-         return;
-     }
-
-     if (!force && store.effective_settings.额外模型解析配置.启用自动请求 === false) {
-         console.log(tr('runtime.extraModel.autoRequestDisabledLog'));
+@@ -48,0 +70,27 @@ export async function onMessageReceived(
 +        task.finish('skipped', 'auto_request_disabled');
 +        return;
 +    }
@@ -534,9 +445,7 @@ index 2f7a0bf..ed45449 100644
 +        if (should_parse_message) {
 +            await handleVariablesInMessage(message_id, task.isMessageCurrent);
 +        }
-         return;
-     }
-
+@@ -52,3 +100,4 @@ export async function onMessageReceived(
 -    const result = await invokeExtraModelWithStrategy();
 -    if (result !== null) {
 -        const chat_message = getChatMessages(message_id);
@@ -544,7 +453,7 @@ index 2f7a0bf..ed45449 100644
 +        task.finish('stale', 'message_changed_during_request');
 +        return;
 +    }
-
+@@ -56,9 +105,7 @@ export async function onMessageReceived(
 -        await setChatMessages(
 -            [
 -                {
@@ -561,7 +470,7 @@ index 2f7a0bf..ed45449 100644
 +            const chat_message = getChatMessages(message_id).at(-1);
 +            if (!chat_message || !task.isCurrent()) {
 +                return false;
-             }
+@@ -66,8 +113,16 @@ export async function onMessageReceived(
 -        );
 -    } else {
 -        toastr.error(
@@ -586,149 +495,95 @@ index 2f7a0bf..ed45449 100644
 +        },
 +        changed => (changed ? 'committed' : 'no_diff')
 +    );
- }
 diff --git a/src/function/update_variables.ts b/src/function/update_variables.ts
-index e144b79..6840f32 100644
+index e144b79ff6cfe95ee750909fb679b4cdd592acaa..62fcbc24ac25623daafcec7fb2ee13ccdabace76 100644
 --- a/src/function/update_variables.ts
 +++ b/src/function/update_variables.ts
-@@ -4,6 +4,7 @@ import {
-     getSchemaForPath,
-     reconcileAndApplySchema,
- } from '@/function/schema';
+@@ -6,0 +7 @@ import {
 +import { isTtMvuHost, updateVariablesWithControlled as updateVariablesWith } from '@/function/update/mvu_runtime';
- import { tr } from '@/i18n';
- import { useDataStore } from '@/store';
- import { getLastValidVariable, isJsonPatch } from '@/util';
-@@ -1497,32 +1498,41 @@ export async function updateVariables(
-     return is_modified;
- }
-
+@@ -1500 +1501,4 @@ export async function updateVariables(
 -export async function handleVariablesInMessage(message_id: number) {
 +export async function handleVariablesInMessage(
 +    message_id: number,
 +    is_current: () => boolean = () => true
 +): Promise<boolean> {
-     const chat_message = getChatMessages(message_id).at(-1);
-     if (!chat_message) {
+@@ -1503 +1507 @@ export async function handleVariablesInMessage(message_id: number) {
 -        return;
 +        return false;
-     }
-
-     let message_content = chat_message.message;
-
-     if (chat_message.role === 'assistant' && message_content.length < 5) {
+@@ -1509 +1513 @@ export async function handleVariablesInMessage(message_id: number) {
 -        return;
 +        return false;
-     }
-     //在重构后 getLastValidVariable 的语义改编为了 [0, message_id) 区间
-     const request_message_id = message_id === 0 ? 1 : message_id;
-     const variables = getLastValidVariable(request_message_id);
-     const settings = useDataStore().effective_settings;
-     if (!_.has(variables, 'stat_data')) {
+@@ -1516 +1520 @@ export async function handleVariablesInMessage(message_id: number) {
 -        return;
 +        return false;
-     }
-
-     const has_variable_modified = await updateVariables(message_content, variables);
+@@ -1519,0 +1524,3 @@ export async function handleVariablesInMessage(message_id: number) {
 +    if (!is_current()) {
 +        return false;
 +    }
-     if (has_variable_modified && chat_message.role !== 'user') {
-         const context: UpdateContext = {
-             variables: variables,
-             message_content: message_content,
-         };
-         await eventEmit(variable_events.BEFORE_MESSAGE_UPDATE, context);
+@@ -1525,0 +1533,3 @@ export async function handleVariablesInMessage(message_id: number) {
 +        if (!is_current()) {
 +            return false;
 +        }
-         message_content = context.message_content;
-     }
-     const updater = (data: Record<string, any>) => {
-@@ -1546,11 +1556,22 @@ export async function handleVariablesInMessage(message_id: number) {
-         return data;
-     };
-     if (has_variable_modified && settings.兼容性.更新到聊天变量) {
+@@ -1548,2 +1558,18 @@ export async function handleVariablesInMessage(message_id: number) {
+-    if (has_variable_modified && settings.兼容性.更新到聊天变量) {
 -        await updateVariablesWith(updater, { type: 'chat' });
++    if (isTtMvuHost()) {
++        if (has_variable_modified) {
++            if (!is_current()) {
++                return false;
++            }
++            await updateVariablesWith(updater, { type: 'chat', message_id: message_id }, is_current);
++        }
++    } else {
++        if (has_variable_modified && settings.兼容性.更新到聊天变量) {
++            if (!is_current()) {
++                return false;
++            }
++            await updateVariablesWith(updater, { type: 'chat' }, is_current);
++        }
 +        if (!is_current()) {
 +            return false;
 +        }
-+        await updateVariablesWith(updater, { type: 'chat' }, is_current);
-+    }
-+    if (!is_current()) {
-+        return false;
-+    }
-+    if (has_variable_modified || !isTtMvuHost()) {
 +        await updateVariablesWith(updater, { type: 'message', message_id: message_id }, is_current);
-     }
+@@ -1551 +1576,0 @@ export async function handleVariablesInMessage(message_id: number) {
 -    await updateVariablesWith(updater, { type: 'message', message_id: message_id });
-
-     if (chat_message.role !== 'user') {
+@@ -1553,0 +1579,3 @@ export async function handleVariablesInMessage(message_id: number) {
 +        if (!is_current()) {
 +            return false;
 +        }
-         if (!message_content.includes('<StatusPlaceHolderImpl/>')) {
-             message_content += '\n\n<StatusPlaceHolderImpl/>';
-         }
-@@ -1572,4 +1593,5 @@ export async function handleVariablesInMessage(message_id: number) {
-             }
-         );
-     }
+@@ -1574,0 +1603 @@ export async function handleVariablesInMessage(message_id: number) {
 +    return has_variable_modified;
- }
 diff --git a/src/main.ts b/src/main.ts
-index 364eb10..19269f3 100644
+index 364eb1063276c9ed450830e1f9087b80373bdc93..19269f3cee6183a35b4e3d430ba529eade1c7d9b 100644
 --- a/src/main.ts
 +++ b/src/main.ts
-@@ -36,7 +36,7 @@ $(async () => {
-
-     stop_list.push(initPanel());
-     stop_list.push(initButtons());
+@@ -39 +39 @@ $(async () => {
 -    stop_list.push(initGlobals());
 +    stop_list.push(await initGlobals());
-
-     let chat_level_stop_list: Stop[] = [];
-     let current_chat_id = SillyTavern.getCurrentChatId();
 diff --git a/src/util.ts b/src/util.ts
-index 7a796d3..1f6615f 100644
+index 7a796d3d1a4e908e536987b5c855249ecd3c7ed1..1f6615faf9d889b491f00a5b8a6d8248c6ff641e 100644
 --- a/src/util.ts
 +++ b/src/util.ts
-@@ -1,4 +1,5 @@
- import { useDataStore } from '@/store';
+@@ -1,0 +2 @@ import { useDataStore } from '@/store';
 +import { getCanonicalMvuData, isTtMvuHost } from '@/function/update/mvu_runtime';
- import { isMvuData, MvuData } from '@/variable_def';
- import * as jsonpatch from 'fast-json-patch';
- import { klona } from 'klona';
-@@ -18,6 +19,9 @@ export function getLastValidMessageId(end_message_id: number): number {
- }
-
- export function getLastValidVariable(end_message_id: number): MvuData | undefined {
+@@ -20,0 +22,3 @@ export function getLastValidVariable(end_message_id: number): MvuData | undefine
 +    if (isTtMvuHost()) {
 +        return klona(getCanonicalMvuData({ type: 'message', message_id: end_message_id - 1 }));
 +    }
-     const message_id = getLastValidMessageId(end_message_id);
-     if (message_id === -1) {
-         return undefined;
 diff --git a/webpack.config.ts b/webpack.config.ts
-index 76b0425..04396e4 100644
+index 76b042566ba0d332a530680a8426c3a078c57994..04396e4cbb3a781742a4d285abc80e399640a4aa 100644
 --- a/webpack.config.ts
 +++ b/webpack.config.ts
-@@ -49,7 +49,8 @@ function watch_tavern_helper(compiler: webpack.Compiler) {
-
- function config(_env: any, argv: any): webpack.Configuration {
-     // 获取构建时常量
+@@ -52 +52,2 @@ function config(_env: any, argv: any): webpack.Configuration {
 -    const buildDate = (() => {
 +    const configuredBuildDate = process.env.LWCS_MVU_BUILD_DATE?.trim();
 +    const buildDate = configuredBuildDate || (() => {
-         const date = new Date();
-         const utc8 = new Date(date.getTime() + 8 * 60 * 60 * 1000); // 转成 UTC+8 时间
-         const year = utc8.getUTCFullYear();
-
 diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
 new file mode 100644
+index 0000000000000000000000000000000000000000..0d50dc7fad34dc3a14f984e6d77301e566325978
 --- /dev/null
 +++ b/src/function/update/mvu_runtime.ts
-@@ -0,0 +1,677 @@
+@@ -0,0 +1,716 @@
 +import type { MvuData } from '@/variable_def';
 +
 +export const mvu_runtime_events = Object.freeze({
@@ -750,6 +605,13 @@ new file mode 100644
 +    textFingerprint: string;
 +};
 +
++type ProviderStatus = {
++    phase?: string;
++    pending?: number;
++    error?: string;
++    [key: string]: unknown;
++};
++
 +type ProviderHandle = {
 +    backend: string;
 +    stableChatId: string;
@@ -757,6 +619,8 @@ new file mode 100644
 +    enqueueCommit: (request: { fullState: MvuData; message: MessagePointer }) => Promise<ProviderResult>;
 +    getHotState: () => MvuData | null;
 +    getQueueState: () => { pending?: number };
++    awaitIdle?: () => Promise<void>;
++    getStatus?: () => ProviderStatus;
 +    isLive: () => boolean;
 +    invalidate?: (reason?: string) => unknown;
 +};
@@ -852,7 +716,9 @@ new file mode 100644
 +function isTauriTavern(): boolean {
 +    return runtimeWindows().some(candidate => {
 +        const value = candidate?.__TAURITAVERN__;
-+        return !!value && typeof value === 'object';
++        return Object.prototype.hasOwnProperty.call(candidate, '__TAURITAVERN_MAIN_READY__')
++            || (!!value && typeof value === 'object')
++            || (!!value && Object.prototype.hasOwnProperty.call(value, 'ready'));
 +    });
 +}
 +
@@ -874,13 +740,14 @@ new file mode 100644
 +    try {
 +        const messages = getChatMessages(message_id, { include_swipes: true });
 +        const message = messages?.at(-1) as
-+            | { message_id?: number; message?: string; swipe_id?: number | string }
++            | { message_id?: number; message?: string; mes?: string; swipe_id?: number | string }
 +            | undefined;
 +        const absoluteIndex = Number(message?.message_id ?? (typeof message_id === 'number' ? message_id : -1));
++        const message_text = typeof message?.message === 'string' ? message.message : message?.mes ?? '';
 +        return Object.freeze({
 +            absoluteIndex: Number.isFinite(absoluteIndex) ? Math.trunc(absoluteIndex) : -1,
 +            swipeId: message?.swipe_id ?? null,
-+            textFingerprint: textFingerprint(String(message?.message ?? '')),
++            textFingerprint: textFingerprint(message_text),
 +        });
 +    } catch {
 +        return Object.freeze({
@@ -949,8 +816,22 @@ new file mode 100644
 +    };
 +}
 +
++function readProviderStatus(): ProviderStatus | null {
++    try {
++        const status = provider_handle?.getStatus?.();
++        return status && typeof status === 'object' ? cloneRuntimeValue(status) : null;
++    } catch {
++        return null;
++    }
++}
++
++function providerPending(status: ProviderStatus | null = readProviderStatus()): number {
++    const pending = Number(status?.pending ?? provider_handle?.getQueueState?.().pending ?? 0);
++    return Number.isFinite(pending) ? Math.max(0, Math.trunc(pending)) : 0;
++}
++
 +function notifyIdle() {
-+    const provider_pending = provider_handle?.getQueueState?.().pending || 0;
++    const provider_pending = providerPending();
 +    if (active_tasks.size !== 0 || active_commits.size !== 0 || provider_init_promise || provider_pending > 0) {
 +        return;
 +    }
@@ -982,10 +863,10 @@ new file mode 100644
 +            fullState: cloneRuntimeValue(full_state),
 +            message,
 +        });
++        if (result.state !== 'committed') throw providerResultError(result);
 +        if (!provider_handle || !provider_handle.isLive() || !is_current()) {
 +            throw providerResultError({ state: 'stale_chat', error: 'STALE_CHAT' });
 +        }
-+        if (result.state !== 'committed') throw providerResultError(result);
 +        provider_runtime.phase = 'ready';
 +        provider_runtime.backend = provider_handle.backend;
 +        provider_runtime.error = '';
@@ -1359,20 +1240,32 @@ new file mode 100644
 +}
 +
 +export function awaitIdle(): Promise<void> {
-+    const provider_pending = provider_handle?.getQueueState?.().pending || 0;
-+    if (active_tasks.size === 0 && active_commits.size === 0 && !provider_init_promise && provider_pending === 0) {
-+        return Promise.resolve();
-+    }
-+    return new Promise(resolve => idle_waiters.add(resolve));
++    return (async () => {
++        while (true) {
++            const init = provider_init_promise;
++            if (init) await init.catch(() => undefined);
++            const handle = provider_handle;
++            if (handle?.awaitIdle) await handle.awaitIdle().catch(() => undefined);
++            const provider_pending = providerPending(readProviderStatus());
++            if (active_tasks.size === 0 && active_commits.size === 0 && !provider_init_promise && provider_pending === 0) {
++                return;
++            }
++            await new Promise<void>(resolve => {
++                idle_waiters.add(resolve);
++                notifyIdle();
++            });
++        }
++    })();
 +}
 +
 +export function awaitBeforeGeneration(dry_run = false): Promise<void> {
 +    if (dry_run) return Promise.resolve();
-+    return awaitIdle().then(() => provider_init_promise ? provider_init_promise.catch(() => undefined) : undefined).then(() => awaitIdle());
++    return awaitIdle();
 +}
 +
 +export function getStatus() {
-+    const provider_pending = provider_handle?.getQueueState?.().pending || 0;
++    const provider_handle_status = readProviderStatus();
++    const provider_pending = providerPending(provider_handle_status);
 +    return {
 +        phase: active_tasks.size === 0 && active_commits.size === 0 && !provider_init_promise && provider_pending === 0 ? 'idle' : 'busy',
 +        active_tasks: [...active_tasks.values()].map(task => ({
@@ -1391,14 +1284,15 @@ new file mode 100644
 +            chat_id: commit.chat_id,
 +        })),
 +        provider: {
-+            phase: provider_runtime.phase,
-+            backend: provider_runtime.backend,
-+            stable_chat_id: provider_runtime.stable_chat_id,
++            phase: provider_handle_status?.phase || provider_runtime.phase,
++            backend: provider_handle_status?.backend || provider_runtime.backend,
++            stable_chat_id: provider_handle_status?.stableChatId || provider_runtime.stable_chat_id,
 +            pending: provider_pending,
 +            loading: !!provider_init_promise,
 +            load_count: provider_runtime.load_count,
 +            commit_count: provider_runtime.commit_count,
-+            error: provider_runtime.error,
++            error: provider_handle_status?.error || provider_runtime.error,
++            handle: provider_handle_status,
 +        },
 +    };
 +}

@@ -16,7 +16,8 @@
    * handle.load({ initialState, message }) restores the complete hot state.
    * handle.commit({ fullState, message }) and handle.enqueueCommit(...) serialize one chat queue.
    * A commit is immutable revision -> floor/swipe pointer -> head; head is read back before success.
-   * handle.getHotState(), getHead(), getFloor(), getQueueState() are memory/status reads only.
+   * handle.getHotState(), getHead(), getFloor(), getQueueState(), getStatus() are memory/status reads only.
+   * handle.awaitIdle() waits for that chat's load and commit queue; provider.awaitIdle() waits for all opened chats.
    */
 
   function collectWindows() {
@@ -38,7 +39,9 @@
   function isTauriTavern() {
     return collectWindows().some(candidate => {
       const tauriTavern = readField(candidate, '__TAURITAVERN__');
-      return !!tauriTavern && typeof tauriTavern === 'object';
+      return Object.prototype.hasOwnProperty.call(candidate, '__TAURITAVERN_MAIN_READY__')
+        || (!!tauriTavern && typeof tauriTavern === 'object')
+        || (!!tauriTavern && Object.prototype.hasOwnProperty.call(tauriTavern, 'ready'));
     });
   }
 
@@ -398,7 +401,7 @@
     return normalizeFloor({
       absoluteIndex: message.message_id ?? normalized.absoluteIndex,
       swipeId: message.swipe_id,
-      textFingerprint: textFingerprint(message.message ?? ''),
+      textFingerprint: textFingerprint(message.message ?? message.mes ?? ''),
     });
   }
 
@@ -468,9 +471,15 @@
     let invalidated = false;
     let queue = Promise.resolve();
     let pending = 0;
+    let lastError = '';
 
     function assertLive() {
-      if (invalidated || adapter.getChatGeneration() !== opened.chatGeneration) throw new ProviderError('STALE_CHAT');
+      if (invalidated) throw new ProviderError('STALE_CHAT');
+      if (adapter.getChatGeneration() !== opened.chatGeneration) {
+        invalidated = true;
+        lastError = 'STALE_CHAT';
+        throw new ProviderError('STALE_CHAT');
+      }
     }
 
     function enqueue(action) {
@@ -485,7 +494,8 @@
       const state = ['not_committed', 'conflict', 'uncertain', 'stale_chat', 'unavailable'].includes(error?.state)
         ? error.state
         : (error?.code === 'STALE_CHAT' ? 'stale_chat' : 'uncertain');
-      return result(state, { error: error?.code || 'PERSISTENCE_OPERATION_FAILED', backend: opened.backend, stableChatId: opened.stableChatId });
+      lastError = error?.code || 'PERSISTENCE_OPERATION_FAILED';
+      return result(state, { error: lastError, backend: opened.backend, stableChatId: opened.stableChatId });
     }
 
     async function readKey(key, verify) {
@@ -506,15 +516,18 @@
       assertLive();
       const initialState = request.initialState === undefined ? {} : normalizeState(request.initialState);
       const requestedFloor = normalizeFloor(request.message);
+      await assertCurrentFloor(requestedFloor);
       const branchRead = requestedFloor.absoluteIndex >= 0
         ? await readKey(floorPointerKey(requestedFloor), {})
         : { found: false, value: undefined };
       const headRead = await readKey('state:head', {});
       if (!headRead.found) {
+        await assertCurrentFloor(requestedFloor);
         hotState = clone(initialState);
         head = null;
         floor = normalizeFloor(request.message);
         loaded = true;
+        lastError = '';
         return result('committed', { hotState: clone(hotState), head: null, floor, empty: true, backend: opened.backend, stableChatId: opened.stableChatId });
       }
       if (!validHead(headRead.value)) throw new ProviderError('HEAD_INVALID');
@@ -550,10 +563,12 @@
           targetAbsoluteIndex = candidateFloor.absoluteIndex;
         }
         if (targetIndex < 0) {
+          await assertCurrentFloor(requestedFloor);
           hotState = clone(initialState);
           head = null;
           floor = requestedFloor;
           loaded = true;
+          lastError = '';
           return result('committed', { hotState: clone(hotState), head: null, floor, branchReset: true, backend: opened.backend, stableChatId: opened.stableChatId });
         }
       }
@@ -572,10 +587,12 @@
         const record = records[index];
         state = record.mode === 'checkpoint' ? normalizeState(record.checkpoint) : normalizeState(applyPatch(state, record.patch));
       }
+      await assertCurrentFloor(requestedFloor);
       hotState = state;
       head = clone(targetHead);
       floor = normalizeFloor(target.floor);
       loaded = true;
+      lastError = '';
       return result('committed', { hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
     }
 
@@ -587,10 +604,14 @@
         ? (typeof request.updater === 'function' ? normalizeState(request.updater(clone(hotState))) : null)
         : normalizeState(request.fullState);
       if (nextState === null) throw new ProviderError('FULL_STATE_REQUIRED');
-      if (jsonEqual(previousState, nextState)) return result('committed', { skipped: true, revision: head?.revision || 0, hotState: clone(hotState), head: clone(head), floor });
       const nextFloor = normalizeFloor(request.message);
       await assertCurrentFloor(nextFloor);
-      const revision = latestRevision + 1;
+      if (jsonEqual(previousState, nextState)) {
+        lastError = '';
+        return result('committed', { skipped: true, revision: head?.revision || 0, hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
+      }
+      let revision = latestRevision + 1;
+      while ((await readKey(`state:revision:${revision}`, {})).found) revision += 1;
       const parent = head?.revision ?? null;
       latestRevision = revision;
       const patch = createPatch(previousState, nextState);
@@ -620,6 +641,7 @@
       };
       const nextPointer = { schemaVersion: SCHEMA_VERSION, kind: 'floor', revision, floor: nextFloor };
       hotState = clone(nextState);
+      let headWriteStarted = false;
       try {
         await assertCurrentFloor(nextFloor);
         await writeKey(`state:revision:${revision}`, record, { schemaVersion: SCHEMA_VERSION, kind: 'revision', revision });
@@ -628,15 +650,33 @@
         await assertCurrentFloor(nextFloor);
         await writeKey(floorPointerKey(nextFloor), nextPointer, { schemaVersion: SCHEMA_VERSION, kind: 'floor', revision });
         await assertCurrentFloor(nextFloor);
+        headWriteStarted = true;
         await writeKey('state:head', nextHead, { schemaVersion: SCHEMA_VERSION, kind: 'head', revision });
         const headRead = await readKey('state:head', { schemaVersion: SCHEMA_VERSION, kind: 'head', revision });
         if (!headRead.found || !jsonEqual(headRead.value, nextHead)) throw new ProviderError('HEAD_READBACK_MISMATCH');
         await assertCurrentFloor(nextFloor);
         head = nextHead;
         floor = nextFloor;
+        lastError = '';
         return result('committed', { revision, parent, checkpoint, hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
       } catch (error) {
+        let durableHead = null;
+        if (headWriteStarted && error?.code !== 'STALE_CHAT' && !invalidated && adapter.getChatGeneration() === opened.chatGeneration) {
+          try {
+            const headProbe = await adapterSession.getJson({ namespace: NAMESPACE, key: 'state:head', verify: {} });
+            if (headProbe.state === 'committed') durableHead = jsonEqual(headProbe.value, nextHead);
+            else if (headProbe.state === 'not_committed' && headProbe.error === 'NOT_FOUND') durableHead = false;
+          } catch (_) {}
+        }
+        if (durableHead === true && adapter.getChatGeneration() === opened.chatGeneration && !invalidated) {
+          hotState = clone(nextState);
+          head = nextHead;
+          floor = nextFloor;
+          lastError = '';
+          return result('committed', { revision, parent, checkpoint, recovered: true, hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
+        }
         hotState = previousState;
+        if (headWriteStarted && durableHead === null) invalidated = true;
         throw error;
       }
     }
@@ -654,13 +694,26 @@
       commit,
       enqueueCommit: commit,
       enqueue: action => enqueue(() => action(handle)),
-      getHotState: () => (hotState === null ? null : clone(hotState)),
+      getHotState: () => (hotState === null || invalidated ? null : clone(hotState)),
       getHead: () => (head === null ? null : clone(head)),
       getFloor: () => (floor === null ? null : clone(floor)),
-      getQueueState: () => Object.freeze({ pending }),
+      getQueueState: () => Object.freeze({ pending, busy: pending > 0 }),
+      awaitIdle: () => queue.catch(() => undefined),
+      getStatus: () => Object.freeze({
+        phase: invalidated ? 'stale' : pending > 0 ? (loaded ? 'busy' : 'loading') : lastError ? 'failed' : loaded ? 'ready' : 'idle',
+        pending,
+        loaded,
+        live: !invalidated && adapter.getChatGeneration() === opened.chatGeneration,
+        backend: opened.backend,
+        stableChatId: opened.stableChatId,
+        error: lastError,
+        head: head === null ? null : clone(head),
+        floor: floor === null ? null : clone(floor),
+      }),
       isLive: () => !invalidated && adapter.getChatGeneration() === opened.chatGeneration,
       invalidate: reason => {
         invalidated = true;
+        lastError = reason || 'STALE_CHAT';
         return { state: 'stale_chat', error: reason || 'STALE_CHAT' };
       },
     };
@@ -692,7 +745,12 @@
         return result('unavailable', { error: error.code || 'ST_MESSAGE_BACKEND_REGISTRATION_FAILED' });
       }
     }
-    const opened = await adapter.openSession({ domain: 'mvu', fallbackStableChatId });
+    let opened;
+    try {
+      opened = await adapter.openSession({ domain: 'mvu', fallbackStableChatId });
+    } catch (error) {
+      return result('unavailable', { error: error?.code || error?.message || 'PERSISTENCE_BACKEND_UNAVAILABLE', stableChatId: fallbackStableChatId });
+    }
     if (opened.state !== 'committed' || !opened.session) return result(opened.state, { error: opened.error || 'PERSISTENCE_BACKEND_UNAVAILABLE', backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration });
     const existingSession = sessions.get(opened.stableChatId);
     if (existingSession && existingSession.chatGeneration === opened.chatGeneration && existingSession.isLive()) return result('committed', { handle: existingSession, backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration });
@@ -708,6 +766,14 @@
     return { state: 'stale_chat', error: reason, chatGeneration: generation };
   }
 
+  async function awaitIdle() {
+    await Promise.all([...sessions.values()].map(session => session.awaitIdle()));
+  }
+
+  function getStatus() {
+    return Object.freeze([...sessions.values()].map(session => session.getStatus()));
+  }
+
   const provider = Object.freeze({
     version: VERSION,
     namespace: NAMESPACE,
@@ -715,6 +781,8 @@
     statuses: STATES,
     open,
     invalidateChat,
+    awaitIdle,
+    getStatus,
   });
   for (const candidate of collectWindows()) {
     try { candidate[GLOBAL_KEY] = provider; } catch (_) {}

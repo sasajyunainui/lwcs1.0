@@ -2,7 +2,7 @@ const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', import.meta.url);
 const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
 const MVU_ENGINE_BUNDLE_FILE_V1 = 'MVU_Engine_Bundle.js';
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = '5cdfb31920212e2ed11a66eb7c51026d97ce5b50ebf5d9964f78938621d9516d';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = 'f2e8dafcb9a6c3898c6d521704d3e327ccc0347ad338f62416697f54f8ec5167';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   'LWCS_Persistence_Adapter.js',
@@ -381,6 +381,19 @@ const MVU资源所有者_V1 = (() => {
   return 所有者;
 })();
 
+const MVU正式依赖共享加载表_V1 = (() => {
+  const 键 = '__LWCS_MVU_FORMAL_RESOURCE_LOADS_V1__';
+  const 候选窗口 = [globalThis, MVU共享宿主窗口_V1];
+  const 已有表 = 候选窗口.map(窗口 => 窗口?.[键]).find(表 => 表 && typeof 表 === 'object');
+  if (已有表) {
+    候选窗口.forEach(窗口 => { try { 窗口[键] = 已有表; } catch (_) {} });
+    return 已有表;
+  }
+  const 新表 = Object.create(null);
+  候选窗口.forEach(窗口 => { try { 窗口[键] = 新表; } catch (_) {} });
+  return 新表;
+})();
+
 function 取MVU引擎窗口_V1() {
   const 窗口列表 = [globalThis, MVU共享宿主窗口_V1];
   try { if (globalThis.top && !窗口列表.includes(globalThis.top)) 窗口列表.push(globalThis.top); } catch (_) {}
@@ -508,7 +521,21 @@ async function 确保MVU持久化依赖_V1() {
       发布MVU模块状态_V1(文件名, 'loaded', '已存在');
       continue;
     }
-    await 加载MVU经典依赖_V1(文件名, 已就绪);
+    const 已有加载 = MVU正式依赖共享加载表_V1[文件名];
+    if (已有加载 && typeof 已有加载.then === 'function') {
+      await 已有加载;
+      if (!已就绪()) throw new Error(`MVU持久化依赖共享加载后接口未就绪：${文件名}`);
+      发布MVU模块状态_V1(文件名, 'loaded', '复用共享加载');
+      continue;
+    }
+    const 加载承诺 = MVU资源所有者_V1.loadResource(文件名, { mode: 'script-global', ready: 已就绪 });
+    const 清理共享加载 = () => {
+      if (MVU正式依赖共享加载表_V1[文件名] === 加载承诺) delete MVU正式依赖共享加载表_V1[文件名];
+    };
+    MVU正式依赖共享加载表_V1[文件名] = 加载承诺;
+    void 加载承诺.then(清理共享加载, 清理共享加载);
+    await 加载承诺;
+    发布MVU模块状态_V1(文件名, 'loaded', '完成');
   }
 }
 
