@@ -230,10 +230,11 @@ function 发布MVU资源所有者_V1(所有者) {
 
 const MVU资源所有者状态_V1 = (() => {
   const 键 = '__LWCS_MVU_RESOURCE_OWNER_STATE_V1__';
+  const 会话键 = `${读取MVU资源提交_V1()}:${MVU入口启动代号_V1}`;
   const 旧状态 = globalThis[键];
-  if (旧状态 && 旧状态.version === '1.0.0'
+  if (旧状态 && 旧状态.version === '1.0.0' && 旧状态.sessionKey === 会话键
     && typeof 旧状态.records?.get === 'function' && typeof 旧状态.records?.set === 'function') return 旧状态;
-  const 新状态 = { version: '1.0.0', records: new Map() };
+  const 新状态 = { version: '1.0.0', sessionKey: 会话键, records: new Map() };
   globalThis[键] = 新状态;
   return 新状态;
 })();
@@ -336,7 +337,7 @@ function 创建MVU资源所有者_V1() {
         记录.executionStarted = true;
         记录.executeCount += 1;
         try {
-          模块 = await MVU请求超时_V1(import(地址), `导入 ${地址}`, 30000);
+          模块 = await MVU请求超时_V1(import(地址), `导入 ${地址}`, 120000);
           break;
         } catch (错误) {
           if (错误?.code === 'LWCS_RESOURCE_TIMEOUT') throw 错误;
@@ -399,6 +400,7 @@ function 创建MVU资源所有者_V1() {
 
   return Object.freeze({
     version: '1.0.0',
+    sessionKey: MVU资源所有者状态_V1.sessionKey,
     owner: 'MVU_ZOD_Entry.js',
     canonicalKey,
     loadResource,
@@ -409,7 +411,9 @@ function 创建MVU资源所有者_V1() {
 
 const MVU资源所有者_V1 = (() => {
   const 已有 = globalThis.__LWCS_MVU_RESOURCE_OWNER_V1__;
-  const 所有者 = 已有 && 已有.version === '1.0.0' ? 已有 : 创建MVU资源所有者_V1();
+  const 所有者 = 已有 && 已有.version === '1.0.0' && 已有.sessionKey === MVU资源所有者状态_V1.sessionKey
+    ? 已有
+    : 创建MVU资源所有者_V1();
   发布MVU资源所有者_V1(所有者);
   return 所有者;
 })();
@@ -448,6 +452,7 @@ async function 确保项目MVU引擎_V1() {
   if (已有项目引擎) {
     MVU项目引擎状态_V1.status = 'ready';
     MVU项目引擎状态_V1.phase = '已存在';
+    发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loaded', '已存在');
     return 已有项目引擎;
   }
   const 已有外部引擎 = 取已有外部MVU_V1();
@@ -455,25 +460,45 @@ async function 确保项目MVU引擎_V1() {
     MVU项目引擎状态_V1.status = 'failed';
     MVU项目引擎状态_V1.phase = '拒绝重复注册';
     MVU项目引擎状态_V1.error = '检测到未由LWCS控制的Mvu实例';
+    发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'failed', '拒绝重复注册', MVU项目引擎状态_V1.error);
     throw new Error('LWCS MVU引擎拒绝与外部Mvu实例重复注册');
   }
-  if (MVU项目引擎状态_V1.loadPromise) return await MVU项目引擎状态_V1.loadPromise;
+  if (MVU项目引擎状态_V1.loadPromise) {
+    const 进行中承诺 = MVU项目引擎状态_V1.loadPromise;
+    发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loading', '复用进行中的导入');
+    try {
+      const 结果 = await 进行中承诺;
+      发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loaded', '复用完成');
+      return 结果;
+    } catch (错误) {
+      发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'failed', '复用导入失败', 错误?.message || String(错误));
+      throw 错误;
+    }
+  }
 
   MVU项目引擎状态_V1.status = 'loading';
   MVU项目引擎状态_V1.phase = '导入固定bundle';
   MVU项目引擎状态_V1.error = '';
+  发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loading', '下载并执行');
   const 加载承诺 = 导入MVU候选模块_V1(MVU_ENGINE_BUNDLE_FILE_V1)
     .then(结果 => {
-      MVU项目引擎状态_V1.status = 'loaded';
-      MVU项目引擎状态_V1.phase = 'bundle已执行，等待Mvu';
-      MVU项目引擎状态_V1.url = 结果?.url || '';
+      if (MVU项目引擎状态_V1.loadPromise === 加载承诺) {
+        MVU项目引擎状态_V1.status = 'loaded';
+        MVU项目引擎状态_V1.phase = 'bundle已执行，等待Mvu';
+        MVU项目引擎状态_V1.url = 结果?.url || '';
+      }
+      发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loaded', '完成');
       return 结果;
     })
     .catch(错误 => {
-      MVU项目引擎状态_V1.status = 'failed';
-      MVU项目引擎状态_V1.phase = '导入失败';
-      MVU项目引擎状态_V1.error = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error');
-      if (MVU项目引擎状态_V1.loadPromise === 加载承诺) MVU项目引擎状态_V1.loadPromise = null;
+      const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error');
+      if (MVU项目引擎状态_V1.loadPromise === 加载承诺) {
+        MVU项目引擎状态_V1.status = 'failed';
+        MVU项目引擎状态_V1.phase = '导入失败';
+        MVU项目引擎状态_V1.error = 错误文本;
+        MVU项目引擎状态_V1.loadPromise = null;
+      }
+      发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'failed', '导入失败', 错误文本);
       throw 错误;
     });
   MVU项目引擎状态_V1.loadPromise = 加载承诺;

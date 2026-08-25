@@ -81,10 +81,10 @@ function 加载模块脚本入口(入口地址) {
     };
     const 超时器 = setTimeout(() => {
       try { 脚本.remove(); } catch (错误) {}
-      const 错误 = new Error(`入口脚本加载超时:30000ms ${入口地址}`);
+      const 错误 = new Error(`入口脚本加载超时:180000ms ${入口地址}`);
       错误.code = 'LWCS_MODULE_ENTRY_TIMEOUT';
       完成(错误);
-    }, 30000);
+    }, 180000);
     脚本.type = 'module';
     脚本.src = 入口地址;
     脚本.onload = () => 完成(true);
@@ -175,7 +175,7 @@ const 预取共享文本 = 共享宿主窗口.__LWCS_PREFETCH_SHARED_TEXT_V1__ |
 
 const MVU加载开始时间 = Math.max(Number(共享启动状态.mvuStartedAt) || 0, Number(共享启动状态.mvuHeartbeatAt) || 0);
 const MVU加载已陈旧 = 共享启动状态.mvuStatus === 'loading'
-  && (!Number.isFinite(MVU加载开始时间) || Date.now() - MVU加载开始时间 > 120000);
+  && (!Number.isFinite(MVU加载开始时间) || Date.now() - MVU加载开始时间 > 240000);
 const 核心状态已失效 = MVU加载已陈旧 || 共享启动状态.mvuStatus === 'failed'
   || (共享启动状态.mvuStatus === 'ready' && 共享宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__?.ready !== true);
 if (核心状态已失效) {
@@ -287,6 +287,24 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
         } catch (错误) {}
 
         const 入口地址 = `${资源基础地址}${入口文件名}?lwcs_generation=${本轮启动代号}`;
+        const 文档 = globalThis.document;
+        if (文档?.createElement) {
+          const 预载ID = 'lwcs-mvu-engine-modulepreload';
+          const 预载地址 = `${资源基础地址}MVU_Engine_Bundle.js`;
+          let 预载节点 = 文档.getElementById(预载ID);
+          if (预载节点 && 预载节点.href !== 预载地址) {
+            预载节点.remove();
+            预载节点 = null;
+          }
+          if (!预载节点) {
+            预载节点 = 文档.createElement('link');
+            预载节点.id = 预载ID;
+            预载节点.rel = 'modulepreload';
+            预载节点.href = 预载地址;
+            预载节点.crossOrigin = 'anonymous';
+            (文档.head || 文档.documentElement).appendChild(预载节点);
+          }
+        }
         预取关键资源(资源基础地址, 最新提交哈希);
         await 加载模块脚本入口(入口地址);
         已加载 = true;
