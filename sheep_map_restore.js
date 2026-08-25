@@ -1628,6 +1628,8 @@
     打开地图操作菜单: '',
     忽略画布点击至: 0
   };
+  let latestSharedVars;
+  let liveRefreshDirty = false;
 
   const mapDragState = { active: false, startX: 0, startY: 0, 起始客户端X: 0, 起始客户端Y: 0, originX: 0, originY: 0, sourceCanvas: null, moved: false, lastDragAt: 0, raf: 0 };
   const mapDerivedCache = { renderableItems: new Map(), terrainInfo: new Map(), nearestVisibleNode: new Map() };
@@ -4169,8 +4171,8 @@
       if (btn.dataset.sheepMapBound === '1') return;
       btn.dataset.sheepMapBound = '1';
       注册地图元素事件(btn, 'sheepMapBound', 'click', () => {
-        setTimeout(() => syncInteractiveMapUI({ center: true }), 30);
-        setTimeout(() => syncInteractiveMapUI({ center: false }), 120);
+        setTimeout(() => resyncMapShell({ center: true, syncVisual: false }), 30);
+        setTimeout(() => resyncMapShell({ center: false }), 120);
       });
     });
   }
@@ -4180,12 +4182,22 @@
     ensurePageMapMarkup();
     refreshSplitMapPages();
     bindTabResync();
+    if (hasVisibleMapSurface() && liveRefreshDirty) {
+      liveRefreshDirty = false;
+      const refresh = refreshLiveMap(true, latestSharedVars);
+      if (center) {
+        Promise.resolve(refresh).then(() => {
+          if (hasVisibleMapSurface()) scheduleSync(true, true);
+        });
+      }
+      return;
+    }
     if (syncVisual) scheduleSync(center);
   }
 
   try {
     window.__sheepMapResync = resyncMapShell;
-    window.__sheepMapRefreshLive = (preserveSelection = true) => refreshLiveMap(preserveSelection);
+    window.__sheepMapRefreshLive = (preserveSelection = true) => refreshLiveMap(preserveSelection, undefined, true);
   } catch (_) {}
 
   function projectCoord(coord) {
@@ -5863,6 +5875,20 @@
     if (elements.length) mapState.uiRefCache.set(selector, elements);
     else mapState.uiRefCache.delete(selector);
     return elements;
+  }
+
+  function isVisibleMapSurface(surface) {
+    if (!surface || !surface.isConnected || surface.hidden) return false;
+    if (typeof surface.getClientRects !== 'function' || !surface.getClientRects().length) return false;
+    if (typeof window.getComputedStyle !== 'function') return true;
+    const style = window.getComputedStyle(surface);
+    return style.display !== 'none' && style.visibility !== 'hidden' && style.visibility !== 'collapse';
+  }
+
+  function hasVisibleMapSurface() {
+    return [...document.querySelectorAll(
+      "#page-map, .split-left-page[data-target='page-map'], .split-right-page[data-target='page-map'], [data-mvu-map-stage]",
+    )].some(isVisibleMapSurface);
   }
 
   function getScopedMapUiElements(root, selector) {
@@ -9067,10 +9093,16 @@ ${logMsg}
     });
   }
 
-  async function refreshLiveMap(preserveSelection = true, sharedVars = undefined) {
+  async function refreshLiveMap(preserveSelection = true, sharedVars = undefined, force = false) {
     try {
       const firstLoad = !mapState.hasLoaded;
       const vars = sharedVars === undefined ? await getAllVariablesSafe() : sharedVars;
+      latestSharedVars = vars;
+      if (!force && !hasVisibleMapSurface()) {
+        liveRefreshDirty = true;
+        return;
+      }
+      liveRefreshDirty = false;
       const root = resolveRootData(vars);
       const effective = root ? buildEffectiveSd(root) : { rootData: null };
       const baseSnapshot = effective && effective.rootData ? buildMapSnapshot(effective.rootData) : buildFallbackSnapshot();

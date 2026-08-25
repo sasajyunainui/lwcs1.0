@@ -1269,13 +1269,126 @@ class BattleUIComponent {
       return { ok: true, button };
     }
 
+    const BATTLE_SYSTEM_PROMPT_INJECTION_ID = 'lwcs-battle-ui-system-prompt';
+
+    function findPromptInjectionApi() {
+      const owners = [root];
+      try {
+        const host = getHostWindow();
+        if (host && !owners.includes(host)) owners.push(host);
+      } catch (_) {}
+      for (const owner of owners) {
+        const targets = [owner];
+        try {
+          const helper = owner?.TavernHelper;
+          if (helper && !targets.includes(helper)) targets.push(helper);
+        } catch (_) {}
+        for (const target of targets) {
+          try {
+            if (typeof target?.injectPrompts !== 'function' || typeof target?.uninjectPrompts !== 'function') continue;
+            return {
+              inject: target.injectPrompts.bind(target),
+              uninject: target.uninjectPrompts.bind(target),
+            };
+          } catch (_) {}
+        }
+      }
+      return null;
+    }
+
+    function isTauriTavernHost() {
+      const candidates = [root];
+      try {
+        const host = getHostWindow();
+        if (host && !candidates.includes(host)) candidates.push(host);
+      } catch (_) {}
+      return candidates.some(candidate => {
+        try {
+          const tauriTavern = candidate?.__TAURITAVERN__;
+          return Object.prototype.hasOwnProperty.call(candidate, '__TAURITAVERN_MAIN_READY__')
+            || (!!tauriTavern && typeof tauriTavern === 'object')
+            || (!!tauriTavern && Object.prototype.hasOwnProperty.call(tauriTavern, 'ready'));
+        } catch (_) {
+          return false;
+        }
+      });
+    }
+
+    function recordInjectedSystemPrompt(prompt, meta = {}) {
+      const normalizedPrompt = String(prompt || '').trim();
+      if (!normalizedPrompt) return '';
+      root.__battleLastInjectedSystemPrompt = {
+        prompt: normalizedPrompt,
+        ...meta,
+        at: Date.now(),
+      };
+      try {
+        root.dispatchEvent(
+          new CustomEvent('battle-ui-system-prompt-consumed', {
+            detail: root.__battleLastInjectedSystemPrompt,
+          }),
+        );
+      } catch (error) {
+        console.warn('battle-ui-system-prompt-consumed dispatch failed', error);
+      }
+      return normalizedPrompt;
+    }
+
     function queueSystemPrompt(text) {
       const prompt = String(text || '');
-      root.__battlePendingSystemPrompt = prompt;
+      const injectionApi = findPromptInjectionApi();
+      const tauriTavern = isTauriTavernHost();
+      let delivery = prompt ? 'unavailable' : 'cleared';
+      let injectionMeta = null;
+      let failure = null;
+
+      if (injectionApi) {
+        try {
+          injectionApi.uninject([BATTLE_SYSTEM_PROMPT_INJECTION_ID]);
+          if (prompt) {
+            injectionApi.inject(
+              [{
+                id: BATTLE_SYSTEM_PROMPT_INJECTION_ID,
+                position: 'in_chat',
+                depth: 0,
+                role: 'system',
+                content: prompt,
+                should_scan: false,
+              }],
+              { once: true },
+            );
+            delivery = 'injectPrompts';
+            injectionMeta = {
+              transport: 'injectPrompts',
+              injectionId: BATTLE_SYSTEM_PROMPT_INJECTION_ID,
+            };
+          }
+        } catch (error) {
+          failure = error;
+        }
+      } else if (prompt && !tauriTavern) {
+        if (installHostHooks()) {
+          root.__battlePendingSystemPrompt = prompt;
+          delivery = 'fetch-xhr-fallback';
+        } else {
+          failure = new Error('battle_system_prompt_fallback_unavailable');
+        }
+      }
+
+      if (delivery !== 'fetch-xhr-fallback') root.__battlePendingSystemPrompt = '';
       try {
-        root.dispatchEvent(new CustomEvent('battle-ui-system-prompt-ready', { detail: { systemPrompt: prompt } }));
+        root.dispatchEvent(new CustomEvent('battle-ui-system-prompt-ready', {
+          detail: { systemPrompt: prompt, delivery },
+        }));
       } catch (error) {
         console.warn('battle-ui-system-prompt-ready dispatch failed', error);
+      }
+      if (injectionMeta) recordInjectedSystemPrompt(prompt, injectionMeta);
+      if (prompt && (failure || delivery === 'unavailable')) {
+        const reason = tauriTavern
+          ? 'TauriTavern 下 injectPrompts 不可用，已禁止安装全局请求 hook。'
+          : 'injectPrompts 不可用且旧 fetch/XHR 兼容兜底未能安装。';
+        console.warn('BattleUIBridge.queueSystemPrompt: ' + reason, failure || 'capability_unavailable');
       }
       return prompt;
     }
@@ -1318,21 +1431,7 @@ class BattleUIComponent {
       const prompt = String(root.__battlePendingSystemPrompt || '').trim();
       if (!prompt) return '';
       root.__battlePendingSystemPrompt = '';
-      root.__battleLastInjectedSystemPrompt = {
-        prompt,
-        ...meta,
-        at: Date.now(),
-      };
-      try {
-        root.dispatchEvent(
-          new CustomEvent('battle-ui-system-prompt-consumed', {
-            detail: root.__battleLastInjectedSystemPrompt,
-          }),
-        );
-      } catch (error) {
-        console.warn('battle-ui-system-prompt-consumed dispatch failed', error);
-      }
-      return prompt;
+      return recordInjectedSystemPrompt(prompt, meta);
     }
 
     function injectSystemPromptIntoPayload(payload, prompt) {
@@ -1471,8 +1570,17 @@ class BattleUIComponent {
     }
 
     function installHostHooks() {
+      if (isTauriTavernHost()) {
+        console.warn('BattleUIBridge.installHostHooks: TauriTavern 下禁止覆盖全局 fetch/XHR。');
+        return false;
+      }
       installFetchHook();
       installXHRHook();
+      const host = getHostWindow();
+      return !!(
+        host?.__battleUIFetchHookInstalled
+        || host?.XMLHttpRequest?.prototype?.__battleUIXHRHookInstalled
+      );
     }
 
     if (typeof root.sendToAI !== 'function') {
@@ -1645,7 +1753,7 @@ class BattleUIComponent {
         return root.__battleUIHostAdapter || null;
       },
       installHostHooks() {
-        installHostHooks();
+        return installHostHooks();
       },
       getLastInjectedSystemPrompt() {
         return root.__battleLastInjectedSystemPrompt || null;
@@ -1710,8 +1818,6 @@ class BattleUIComponent {
       const 年限 = Math.max(0, Math.floor(fallbackNumber(单位?.年限 ?? 属性?.年限 ?? getCombatUnitAgeValue(单位), 0)));
       return 年限 > 0 ? `${年限}年` : '';
     }
-
-                                                                            installHostHooks();
 
     root.__LWCS_DEBUG_RUN_BATTLE_CASE__ = options => BATTLE_RUNTIME.runBattleCase(options);
 

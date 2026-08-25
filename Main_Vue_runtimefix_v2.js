@@ -374,12 +374,31 @@ function 启动酒馆底部菜单位置修正() {
 function createUnifiedAnchorManager(options = {}) {
   const mountId = options.mountId || 'mvu-unified-mount';
   const onReadyChange = typeof options.onReadyChange === 'function' ? options.onReadyChange : () => {};
+  const anchorSelector = `.mes, #chat, #${mountId}`;
 
   let bodyObserver = null;
   let chatObserver = null;
   let observedChat = null;
   let rafToken = 0;
   let lastReadyState = null;
+
+  function nodeContainsSelector(node, selector) {
+    if (!(node instanceof Element)) return false;
+    return node.matches(selector) || !!node.querySelector(selector);
+  }
+
+  function recordsContainSelector(records, selector) {
+    for (const record of records) {
+      if (record.type !== 'childList') continue;
+      for (const node of record.addedNodes) {
+        if (nodeContainsSelector(node, selector)) return true;
+      }
+      for (const node of record.removedNodes) {
+        if (nodeContainsSelector(node, selector)) return true;
+      }
+    }
+    return false;
+  }
 
   function hasStableUnifiedMountContent() {
     const mountEl = document.getElementById(mountId);
@@ -463,7 +482,9 @@ function createUnifiedAnchorManager(options = {}) {
     observedChat = chatEl || null;
     if (!chatEl) return;
 
-    chatObserver = new MutationObserver(() => scheduleRelocate());
+    chatObserver = new MutationObserver(records => {
+      if (recordsContainSelector(records, anchorSelector)) scheduleRelocate();
+    });
     chatObserver.observe(chatEl, { childList: true, subtree: true });
   }
 
@@ -479,8 +500,9 @@ function createUnifiedAnchorManager(options = {}) {
     if (!root) return;
 
     if (bodyObserver) bodyObserver.disconnect();
-    bodyObserver = new MutationObserver(() => {
-      refreshChatObserver();
+    bodyObserver = new MutationObserver(records => {
+      if (!recordsContainSelector(records, anchorSelector)) return;
+      if (recordsContainSelector(records, '#chat')) refreshChatObserver();
       scheduleRelocate();
     });
     bodyObserver.observe(root, { childList: true, subtree: true });

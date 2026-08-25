@@ -213,6 +213,7 @@
       backend: session?.backend || null,
       stableChatId: session?.stableChatId || null,
       chatGeneration: session?.chatGeneration ?? null,
+      domainGeneration: extra.domainGeneration ?? session?.domainGeneration ?? null,
       commitId: extra.commitId ?? null,
       revision: extra.revision ?? null,
       verified: extra.verified === true,
@@ -245,6 +246,7 @@
     const mutationQueues = new Map();
     let chatGeneration = 0;
     let activeStableChatId = null;
+    const domainGenerations = new Map(Object.keys(DOMAIN_BACKENDS).map(domain => [domain, 0]));
 
     function chatDomainKey(stableChatId, domain) {
       return `${stableChatId}\u0000${domain}`;
@@ -277,8 +279,28 @@
       if (expectedGeneration !== chatGeneration) throw new StaleChatError();
     }
 
+    function getDomainGeneration(domain) {
+      assertDomain(domain);
+      return domainGenerations.get(domain);
+    }
+
+    function assertDomainGeneration(domain, expectedGeneration) {
+      if (getDomainGeneration(domain) !== expectedGeneration) throw new StaleChatError();
+    }
+
+    function assertSessionGeneration(session) {
+      assertGeneration(session.chatGeneration);
+      assertDomainGeneration(session.domain, session.domainGeneration);
+    }
+
+    function assertOpenIdentity(identity) {
+      assertGeneration(identity.chatGeneration);
+      assertDomainGeneration(identity.domain, identity.domainGeneration);
+    }
+
     function assertLive(session) {
-      if (session.chatGeneration !== chatGeneration || session.stableChatId !== activeStableChatId) throw new StaleChatError();
+      assertSessionGeneration(session);
+      if (session.stableChatId !== activeStableChatId) throw new StaleChatError();
     }
 
     async function resolveCurrentIdentity(startGeneration, fallbackStableChatId) {
@@ -345,22 +367,22 @@
       let deleteAttempted = false;
       let writeCompleted = false;
       try {
-        assertGeneration(sessionIdentity.chatGeneration);
+        assertOpenIdentity(sessionIdentity);
         await backend.setJson({ namespace: PROBE_NAMESPACE, key, value, stableChatId: sessionIdentity.stableChatId });
         writeCompleted = true;
-        assertGeneration(sessionIdentity.chatGeneration);
+        assertOpenIdentity(sessionIdentity);
         const readBack = await backend.getJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
-        assertGeneration(sessionIdentity.chatGeneration);
+        assertOpenIdentity(sessionIdentity);
         if (!jsonEqual(readBack, value)) return null;
         const keysBeforeDelete = await backend.listKeys({ namespace: PROBE_NAMESPACE, stableChatId: sessionIdentity.stableChatId });
-        assertGeneration(sessionIdentity.chatGeneration);
+        assertOpenIdentity(sessionIdentity);
         if (!Array.isArray(keysBeforeDelete) || !keysBeforeDelete.includes(key)) return null;
         await backend.deleteJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
         deleteAttempted = true;
         writeCompleted = false;
-        assertGeneration(sessionIdentity.chatGeneration);
+        assertOpenIdentity(sessionIdentity);
         const afterDelete = await backend.listKeys({ namespace: PROBE_NAMESPACE, stableChatId: sessionIdentity.stableChatId });
-        assertGeneration(sessionIdentity.chatGeneration);
+        assertOpenIdentity(sessionIdentity);
         if (!Array.isArray(afterDelete) || afterDelete.includes(key)) return null;
         return Object.freeze({
           ready: true,
@@ -376,9 +398,9 @@
       } finally {
         if (writeCompleted && !deleteAttempted) {
           try {
-            assertGeneration(sessionIdentity.chatGeneration);
+            assertOpenIdentity(sessionIdentity);
             await backend.deleteJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
-            assertGeneration(sessionIdentity.chatGeneration);
+            assertOpenIdentity(sessionIdentity);
           } catch (_) { /* cleanup is best effort after a failed probe */ }
         }
       }
@@ -428,9 +450,18 @@
     async function openSession({ domain, fallbackStableChatId } = {}) {
       assertDomain(domain);
       const startGeneration = chatGeneration;
+      const startDomainGeneration = getDomainGeneration(domain);
       let sessionIdentity;
       try {
-        sessionIdentity = await resolveCurrentIdentity(startGeneration, fallbackStableChatId);
+        const resolvedIdentity = await resolveCurrentIdentity(startGeneration, fallbackStableChatId);
+        if (resolvedIdentity) {
+          sessionIdentity = {
+            ...resolvedIdentity,
+            domain,
+            domainGeneration: startDomainGeneration,
+          };
+          assertOpenIdentity(sessionIdentity);
+        }
       } catch (error) {
         if (error instanceof StaleChatError) return resultMeta(null, 'stale_chat', { error: errorCode(error) });
         return resultMeta(null, 'unavailable', { error: errorCode(error) });
@@ -447,7 +478,7 @@
         let capabilities;
         try {
           capabilities = await getCapabilities(domain, backendName, backend, sessionIdentity);
-          assertGeneration(sessionIdentity.chatGeneration);
+          assertOpenIdentity(sessionIdentity);
         } catch (error) {
           if (error instanceof StaleChatError) return resultMeta(null, 'stale_chat', { error: errorCode(error) });
           capabilities = null;
@@ -460,12 +491,13 @@
       return resultMeta(null, 'unavailable', { error: 'PERSISTENCE_BACKEND_UNAVAILABLE' });
     }
 
-    function createSession({ domain, backend, stableChatId, chatGeneration: sessionGeneration, capabilities, backendApi }) {
+    function createSession({ domain, backend, stableChatId, chatGeneration: sessionGeneration, domainGeneration: sessionDomainGeneration, capabilities, backendApi }) {
       const session = {
         domain,
         backend,
         stableChatId,
         chatGeneration: sessionGeneration,
+        domainGeneration: sessionDomainGeneration,
         capabilities,
       };
 
@@ -577,6 +609,13 @@
       return chatGeneration;
     }
 
+    function invalidateDomainGeneration(domain) {
+      assertDomain(domain);
+      const nextGeneration = getDomainGeneration(domain) + 1;
+      domainGenerations.set(domain, nextGeneration);
+      return nextGeneration;
+    }
+
     return Object.freeze({
       version: VERSION,
       statuses: STATES,
@@ -584,7 +623,9 @@
       openSession,
       registerBackend,
       invalidateChatGeneration,
+      invalidateDomainGeneration,
       getChatGeneration: () => chatGeneration,
+      getDomainGeneration,
     });
   }
 

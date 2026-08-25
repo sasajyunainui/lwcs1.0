@@ -463,6 +463,7 @@
   function createSession(adapter, opened) {
     const sessionId = ++sessionCounter;
     const adapterSession = opened.session;
+    const domainGeneration = opened.domainGeneration;
     let hotState = null;
     let loaded = false;
     let head = null;
@@ -473,9 +474,14 @@
     let pending = 0;
     let lastError = '';
 
+    function generationIsLive() {
+      return adapter.getChatGeneration() === opened.chatGeneration
+        && adapter.getDomainGeneration('mvu') === domainGeneration;
+    }
+
     function assertLive() {
       if (invalidated) throw new ProviderError('STALE_CHAT');
-      if (adapter.getChatGeneration() !== opened.chatGeneration) {
+      if (!generationIsLive()) {
         invalidated = true;
         lastError = 'STALE_CHAT';
         throw new ProviderError('STALE_CHAT');
@@ -661,14 +667,14 @@
         return result('committed', { revision, parent, checkpoint, hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
       } catch (error) {
         let durableHead = null;
-        if (headWriteStarted && error?.code !== 'STALE_CHAT' && !invalidated && adapter.getChatGeneration() === opened.chatGeneration) {
+        if (headWriteStarted && error?.code !== 'STALE_CHAT' && !invalidated && generationIsLive()) {
           try {
             const headProbe = await adapterSession.getJson({ namespace: NAMESPACE, key: 'state:head', verify: {} });
             if (headProbe.state === 'committed') durableHead = jsonEqual(headProbe.value, nextHead);
             else if (headProbe.state === 'not_committed' && headProbe.error === 'NOT_FOUND') durableHead = false;
           } catch (_) {}
         }
-        if (durableHead === true && adapter.getChatGeneration() === opened.chatGeneration && !invalidated) {
+        if (durableHead === true && generationIsLive() && !invalidated) {
           hotState = clone(nextState);
           head = nextHead;
           floor = nextFloor;
@@ -690,6 +696,7 @@
       backend: opened.backend,
       stableChatId: opened.stableChatId,
       chatGeneration: opened.chatGeneration,
+      domainGeneration,
       load,
       commit,
       enqueueCommit: commit,
@@ -703,14 +710,16 @@
         phase: invalidated ? 'stale' : pending > 0 ? (loaded ? 'busy' : 'loading') : lastError ? 'failed' : loaded ? 'ready' : 'idle',
         pending,
         loaded,
-        live: !invalidated && adapter.getChatGeneration() === opened.chatGeneration,
+        live: !invalidated && generationIsLive(),
         backend: opened.backend,
         stableChatId: opened.stableChatId,
+        chatGeneration: opened.chatGeneration,
+        domainGeneration,
         error: lastError,
         head: head === null ? null : clone(head),
         floor: floor === null ? null : clone(floor),
       }),
-      isLive: () => !invalidated && adapter.getChatGeneration() === opened.chatGeneration,
+      isLive: () => !invalidated && generationIsLive(),
       invalidate: reason => {
         invalidated = true;
         lastError = reason || 'STALE_CHAT';
@@ -723,7 +732,11 @@
   function findAdapter() {
     for (const candidate of collectWindows()) {
       const adapter = readField(candidate, '__LWCS_PERSISTENCE_ADAPTER_V1__');
-      if (adapter && typeof adapter.openSession === 'function' && typeof adapter.registerBackend === 'function') return adapter;
+      if (adapter
+        && typeof adapter.openSession === 'function'
+        && typeof adapter.registerBackend === 'function'
+        && typeof adapter.getDomainGeneration === 'function'
+        && typeof adapter.invalidateDomainGeneration === 'function') return adapter;
     }
     return null;
   }
@@ -751,19 +764,29 @@
     } catch (error) {
       return result('unavailable', { error: error?.code || error?.message || 'PERSISTENCE_BACKEND_UNAVAILABLE', stableChatId: fallbackStableChatId });
     }
-    if (opened.state !== 'committed' || !opened.session) return result(opened.state, { error: opened.error || 'PERSISTENCE_BACKEND_UNAVAILABLE', backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration });
+    if (opened.state !== 'committed' || !opened.session) return result(opened.state, { error: opened.error || 'PERSISTENCE_BACKEND_UNAVAILABLE', backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration, domainGeneration: opened.domainGeneration });
+    if (!Number.isInteger(opened.domainGeneration) || !Number.isInteger(opened.session.domainGeneration)) return result('unavailable', { error: 'PERSISTENCE_DOMAIN_GENERATION_UNAVAILABLE', backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration });
     const existingSession = sessions.get(opened.stableChatId);
-    if (existingSession && existingSession.chatGeneration === opened.chatGeneration && existingSession.isLive()) return result('committed', { handle: existingSession, backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration });
+    if (existingSession
+      && existingSession.chatGeneration === opened.chatGeneration
+      && existingSession.domainGeneration === opened.domainGeneration
+      && existingSession.isLive()) return result('committed', { handle: existingSession, backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration, domainGeneration: opened.domainGeneration });
     const handle = createSession(adapter, opened);
     sessions.set(opened.stableChatId, handle);
-    return result('committed', { handle, backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration });
+    return result('committed', { handle, backend: opened.backend, stableChatId: opened.stableChatId, chatGeneration: opened.chatGeneration, domainGeneration: opened.domainGeneration });
   }
 
   function invalidateChat(reason = 'CHAT_CHANGED') {
     sessions.forEach(session => session.invalidate(reason));
     const adapter = findAdapter();
-    const generation = typeof adapter?.invalidateChatGeneration === 'function' ? adapter.invalidateChatGeneration() : null;
-    return { state: 'stale_chat', error: reason, chatGeneration: generation };
+    let chatGeneration = typeof adapter?.getChatGeneration === 'function' ? adapter.getChatGeneration() : null;
+    let domainGeneration = typeof adapter?.getDomainGeneration === 'function' ? adapter.getDomainGeneration('mvu') : null;
+    if (String(reason).toLowerCase() === 'chat_changed') {
+      if (typeof adapter?.invalidateChatGeneration === 'function') chatGeneration = adapter.invalidateChatGeneration();
+    } else if (typeof adapter?.invalidateDomainGeneration === 'function') {
+      domainGeneration = adapter.invalidateDomainGeneration('mvu');
+    }
+    return { state: 'stale_chat', error: reason, chatGeneration, domainGeneration };
   }
 
   async function awaitIdle() {

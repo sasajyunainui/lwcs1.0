@@ -5006,6 +5006,7 @@
   }
 
   function 失效冷归档会话_桥接(原因 = 'chat_changed') {
+    const 归一化原因 = toText(原因, 'chat_changed').trim().toUpperCase();
     if (!当前启用标准ST冷归档_桥接()) return { reason: 原因, disabled: true };
     if (冷归档楼层清理状态_桥接.timer) window.clearTimeout(冷归档楼层清理状态_桥接.timer);
     if (冷归档楼层清理状态_桥接.提交前自动归档Timer) window.clearTimeout(冷归档楼层清理状态_桥接.提交前自动归档Timer);
@@ -5034,8 +5035,16 @@
       .map(窗口 => {
         try { return 窗口.__LWCS_PERSISTENCE_ADAPTER_V1__; } catch (错误) { return null; }
       })
-      .find(接口 => 接口 && typeof 接口.invalidateChatGeneration === 'function');
-    try { 适配器?.invalidateChatGeneration?.(); } catch (错误) {}
+      .find(接口 => 接口 && (
+        归一化原因 === 'CHAT_CHANGED'
+          ? typeof 接口.invalidateChatGeneration === 'function'
+          : typeof 接口.invalidateDomainGeneration === 'function'
+      ));
+    if (归一化原因 === 'CHAT_CHANGED') {
+      try { 适配器?.invalidateChatGeneration?.(); } catch (错误) {}
+    } else {
+      try { 适配器?.invalidateDomainGeneration?.('cold-archive'); } catch (错误) {}
+    }
     重置冷归档Manifest缓存_桥接();
     冷归档楼层清理状态_桥接.chatKey = '';
     冷归档楼层清理状态_桥接.最新楼层 = -1;
@@ -16216,6 +16225,7 @@
               ? window.eventOn.bind(window)
               : null;
         let bound = false;
+        let chatChangedBound = false;
         const startFromEvent = (...args) => hub.markVariableUpdateStarted(...args);
         const endFromEvent = (...args) => hub.markVariableUpdateEnded(...args);
         const bindMvuEvent = (target, method, eventName, handler) => {
@@ -16252,6 +16262,7 @@
                 if (eventKey === 'MESSAGE_SENT' || eventKey === 'MESSAGE_UPDATED' || eventKey === 'GENERATION_ENDED') return;
                 hub.requestRecovery(`silly_event:${eventKey}`, args, eventKey === 'CHAT_CHANGED' ? 0 : 80);
               });
+              if (eventKey === 'CHAT_CHANGED') chatChangedBound = true;
               hasBound = true;
             } catch (err) {}
           });
@@ -16308,7 +16319,14 @@
         }
 
         lastChatContextSignature = getChatContextSignature();
-        if (!window[CHAT_CONTEXT_POLL_KEY]) {
+        if (chatChangedBound) {
+          if (window[CHAT_CONTEXT_POLL_KEY]) {
+            try {
+              window.clearInterval(window[CHAT_CONTEXT_POLL_KEY]);
+            } catch (err) {}
+            window[CHAT_CONTEXT_POLL_KEY] = 0;
+          }
+        } else if (!window[CHAT_CONTEXT_POLL_KEY]) {
           window[CHAT_CONTEXT_POLL_KEY] = window.setInterval(() => {
             if (document.visibilityState === 'hidden') return;
             const nextSignature = getChatContextSignature();
@@ -52476,8 +52494,18 @@ ${播报文本}
     }
     const root = document.body || document.documentElement;
     if (!root) return;
-    const observer = new MutationObserver(() => {
-      bindAllVueModalDelegations();
+    const observer = new MutationObserver(records => {
+      const mount = document.getElementById('mvu-unified-mount');
+      const mountNeedsBinding = !!mount && !mount.__mvuModalDelegationBound;
+      const mountWasChanged = records.some(record =>
+        [record.addedNodes, record.removedNodes].some(nodes =>
+          Array.from(nodes || []).some(node =>
+            (node.nodeType === 1 || node.nodeType === 11) &&
+            (node.id === 'mvu-unified-mount' || node.querySelector?.('#mvu-unified-mount'))
+          )
+        )
+      );
+      if (mountNeedsBinding || mountWasChanged) bindAllVueModalDelegations();
     });
     observer.observe(root, { childList: true, subtree: true });
     window.__MVU_MODAL_DELEGATION_OBSERVER__ = observer;

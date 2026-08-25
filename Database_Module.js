@@ -8963,7 +8963,8 @@ $CONTENT
     // ════════════════════════════════════════════════════════════════
     // B2：TauriTavern 数据库持久化投影
     //
-    // TT Store 保存不可变 frame，index 只保存当前聊天分支的投影。
+    // TT Store 保存不可变 frame，index 保存全部 frame 元数据目录；读取时再按当前聊天
+    // 的 messageIndex、swipe 和消息指纹选择活动分支。
     // st-message 只作为 TT capability probe 不可用时的注入式回退，不能在
     // TT 已验证后因一次写失败而偷偷换后端。
     // ════════════════════════════════════════════════════════════════
@@ -8973,6 +8974,8 @@ $CONTENT
     let databasePersistenceOpenPromise_ACU = null;
     let databasePersistenceFallbackRegistered_ACU = false;
     let databaseProjectionRefreshQueue_ACU = Promise.resolve();
+    const DATABASE_DELETED_QUIET_WINDOW_MS_ACU = 220;
+    let databasePendingTailDeletionRefresh_ACU = null;
 
     function getPersistenceAdapter_ACU() {
         const windows = [];
@@ -9504,36 +9507,92 @@ $CONTENT
         };
     }
 
-    function selectDatabaseProjectionForTtStore_ACU(index, maxMessageIndex) {
+    function selectDatabaseProjectionForTtStore_ACU(index, chat, maxMessageIndex) {
         const rawFrames = (Array.isArray(index?.frames) ? index.frames : [])
-            .filter(frame => maxMessageIndex === undefined || frame.messageIndex <= maxMessageIndex);
-        const latestBySlot = new Map();
-        rawFrames.forEach((frame, order) => {
-            const slot = `${frame.messageIndex}\u0000${frame.tableGroup || '*'}\u0000${frame.idempotencyParts?.assistantIndex ?? frame.messageIndex}`;
-            const previous = latestBySlot.get(slot);
-            if (!previous || Number(frame.revision) >= Number(previous.revision))
-                latestBySlot.set(slot, { ...frame, order });
-        });
-        const live = [...latestBySlot.values()].sort((left, right) => (
-            left.messageIndex - right.messageIndex || left.order - right.order
-        ));
-        const checkpointPosition = live.reduce((position, frame, indexPosition) => frame.isCheckpoint ? indexPosition : position, -1);
-        if (checkpointPosition < 0)
-            return { activeFrames: [], liveFrames: live, orphanFrames: rawFrames };
-        const activeFrames = [];
-        let parentRevision = null;
-        for (let i = checkpointPosition; i < live.length; i += 1) {
-            const frame = live[i];
-            if (i === checkpointPosition) {
-                activeFrames.push(frame);
-                parentRevision = String(frame.revision);
-                continue;
-            }
-            if (String(frame.parentRevision) !== String(parentRevision))
+            .filter(frame => maxMessageIndex === undefined || Number(frame?.messageIndex) <= maxMessageIndex);
+        const currentMessages = new Map();
+        let aiFloor = 0;
+        const safeChat = Array.isArray(chat) ? chat : [];
+        for (let messageIndex = 0; messageIndex < safeChat.length; messageIndex += 1) {
+            if (maxMessageIndex !== undefined && messageIndex > maxMessageIndex)
                 break;
-            activeFrames.push(frame);
-            parentRevision = String(frame.revision);
+            const message = safeChat[messageIndex];
+            if (!message || message.is_user)
+                continue;
+            aiFloor += 1;
+            const meta = databaseMessageMeta_ACU(message, messageIndex, false, aiFloor);
+            currentMessages.set(messageIndex, {
+                ...meta,
+                swipeId: String(message?.swipe_id ?? message?.swipeId ?? ''),
+            });
         }
+        const live = [];
+        rawFrames.forEach((frame, order) => {
+            const messageIndex = Number(frame?.messageIndex);
+            const current = currentMessages.get(messageIndex);
+            if (!current)
+                return;
+            // messageFingerprint 包含消息 id、swipe_id 和正文；textHash 再次锁定 swipe_id + 正文。
+            // idempotencyParts.swipe 用来显式拒绝同一楼层的其他 swipe 分支。
+            if (String(frame.messageFingerprint || '') !== current.messageFingerprint
+                || String(frame.textHash || '') !== current.textHash
+                || String(frame.idempotencyParts?.swipe ?? '') !== current.swipeId)
+                return;
+            live.push({ ...frame, messageIndex, aiFloor: current.aiFloor, order });
+        });
+        live.sort((left, right) => (
+            left.messageIndex - right.messageIndex
+            || Number(left.revision) - Number(right.revision)
+            || left.order - right.order
+        ));
+        const byRevision = new Map();
+        live.forEach(frame => {
+            const revision = String(frame.revision ?? '');
+            if (revision)
+                byRevision.set(revision, frame);
+        });
+        const pathCache = new Map();
+        const buildPathFromCheckpoint = endFrame => {
+            const endRevision = String(endFrame.revision ?? '');
+            if (pathCache.has(endRevision))
+                return pathCache.get(endRevision);
+            const path = [];
+            const visited = new Set();
+            let frame = endFrame;
+            while (frame) {
+                const revision = String(frame.revision ?? '');
+                if (!revision || visited.has(revision)) {
+                    pathCache.set(endRevision, null);
+                    return null;
+                }
+                visited.add(revision);
+                path.unshift(frame);
+                if (frame.isCheckpoint) {
+                    pathCache.set(endRevision, path);
+                    return path;
+                }
+                frame = byRevision.get(String(frame.parentRevision ?? ''));
+            }
+            pathCache.set(endRevision, null);
+            return null;
+        };
+        let activeFrames = [];
+        let selectedEnd = null;
+        let selectedPath = null;
+        for (const frame of live) {
+            const path = buildPathFromCheckpoint(frame);
+            if (!path)
+                continue;
+            if (!selectedEnd
+                || Number(frame.messageIndex) > Number(selectedEnd.messageIndex)
+                || (Number(frame.messageIndex) === Number(selectedEnd.messageIndex)
+                    && Number(frame.revision) > Number(selectedEnd.revision))) {
+                selectedEnd = frame;
+                selectedPath = path;
+            }
+        }
+        if (selectedPath)
+            activeFrames = selectedPath;
         const activeKeys = new Set(activeFrames.map(frame => frame.frameKey));
         return {
             activeFrames,
@@ -9623,7 +9682,7 @@ $CONTENT
             return databasePersistenceFailure_ACU('uncertain', 'INDEX_INVALID', { session, present: false, head, isolationHash, indexKey, pointerKey });
         }
         let projection = session.backend === 'tt-store'
-            ? selectDatabaseProjectionForTtStore_ACU(index, maxMessageIndex)
+            ? selectDatabaseProjectionForTtStore_ACU(index, chat, maxMessageIndex)
             : selectDatabaseProjection_ACU(index, Array.isArray(chat) ? chat : [], maxMessageIndex);
         const frameRefs = [];
         for (const meta of projection.activeFrames) {
@@ -9820,7 +9879,12 @@ $CONTENT
         const activeRefs = externalState.frameRefs || [];
         const previousIndex = externalState.present ? externalState.index : undefined;
         const previousHead = externalState.present ? externalState.head : undefined;
-        const previousFrames = activeRefs.map(ref => ref.metadata);
+        const previousFrames = Array.isArray(previousIndex?.frames)
+            ? previousIndex.frames.map(frame => ({ ...frame }))
+            : activeRefs.map(ref => ({ ...ref.metadata }));
+        const activeBranchLastRevision = activeRefs.length > 0
+            ? activeRefs[activeRefs.length - 1].metadata.revision
+            : null;
         const hasExistingCheckpoint = activeRefs.some(ref => ref.frame?.checkpoint?.kind === 'full');
         const hasExistingFrame = activeRefs.length > 0;
         const groupKeys = options.idempotencyGroupKeys ?? options.groupKeys ?? [];
@@ -9902,7 +9966,7 @@ $CONTENT
         }
         else {
             const nextSeq = Math.max(0, ...activeRefs.flatMap(ref => ref.frame?.logEntries || []).map(item => Number(item.seq) || 0)) + 1;
-            const parentRevision = previousIndex?.revision ?? null;
+            const parentRevision = activeBranchLastRevision;
             commitRevision = buildCommitRevision_ACU(nextSeq, entryId);
             entry = {
                 seq: nextSeq,
@@ -9946,7 +10010,7 @@ $CONTENT
             frameKey,
             commitId,
             revision,
-            parentRevision: previousIndex?.revision ?? null,
+            parentRevision: activeBranchLastRevision,
             checksum: frameValue.checksum,
             localAnchor: metadata.localAnchor,
             textHash: metadata.textHash,
@@ -9958,20 +10022,9 @@ $CONTENT
             idempotencyParts,
             tableGroup: idempotencyParts.tableGroup,
         };
-        const previousHeadIndex = Number(previousIndex?.headMessageIndex ?? previousHead?.headMessageIndex);
-        const branchChanged = Number.isInteger(previousHeadIndex)
-            && previousHeadIndex >= 0
-            && (target.index < previousHeadIndex
-                || (target.index === previousHeadIndex
-                    && previousIndex?.headMessageFingerprint
-                    && previousIndex.headMessageFingerprint !== metadata.messageFingerprint));
-        let nextFrames = shouldCheckpoint
-            ? [frameMeta]
-            : (branchChanged
-                ? previousFrames.filter(frame => Number(frame.messageIndex) < target.index)
-                : previousFrames.slice());
-        if (!shouldCheckpoint)
-            nextFrames = [...nextFrames, frameMeta];
+        // index.frames 是不可变 frame 元数据目录，必须保留旧 swipe/旧尾部分支；
+        // 当前活动分支由读取时按聊天消息链筛选，不能在新分支提交时物理丢弃旧元数据。
+        const nextFrames = [...previousFrames, frameMeta];
         const pointerKey = databaseIndexKey_ACU(externalState.isolationHash, revision, commitId);
         const nextIndex = buildDatabaseIndexValue_ACU({
             stableChatId: session.stableChatId,
@@ -10140,21 +10193,123 @@ $CONTENT
         };
     }
 
-    async function rebuildDatabaseProjection_ACU({ prune = true } = {}) {
+    async function rebuildDatabaseProjection_ACU({ prune = false } = {}) {
         const chat = getChatArray_ACU();
         return readDatabaseExternalProjection_ACU(Array.isArray(chat) ? chat : [], getCurrentIsolationKey_ACU(), { prune });
     }
 
     function queueDatabaseProjectionRefresh_ACU(reason) {
-        invalidateDatabasePersistence_ACU();
         const task = databaseProjectionRefreshQueue_ACU.catch(() => undefined).then(async () => {
-            const result = await rebuildDatabaseProjection_ACU({ prune: true });
+            const result = await rebuildDatabaseProjection_ACU({ prune: false });
             if (result.state !== 'committed' && result.state !== 'unavailable')
                 logWarn_ACU(`[DatabasePersistence] ${reason || 'projection'} refresh failed: ${result.error || result.state}`);
             return result;
         });
         databaseProjectionRefreshQueue_ACU = task.catch(() => undefined);
         return task;
+    }
+
+    function resolveDatabaseDeletedFrom_ACU(eventData, chat) {
+        const source = eventData && typeof eventData === 'object' && eventData.detail
+            && typeof eventData.detail === 'object'
+            ? eventData.detail
+            : eventData;
+        const candidates = [];
+        const addCandidate = value => {
+            const number = Number(value);
+            if (Number.isInteger(number) && number >= 0)
+                candidates.push(number);
+        };
+        if (typeof source === 'number' || (typeof source === 'string' && /^\s*\d+\s*$/.test(source)))
+            addCandidate(source);
+        if (source && typeof source === 'object') {
+            for (const key of ['messageIndex', 'message_index', 'index']) {
+                if (Object.prototype.hasOwnProperty.call(source, key))
+                    addCandidate(source[key]);
+            }
+        }
+        if (Array.isArray(chat))
+            candidates.push(chat.length);
+        return candidates.length > 0 ? Math.min(...candidates) : 0;
+    }
+
+    async function refreshDatabaseAfterChatMutation_ACU(reason) {
+        const projection = await queueDatabaseProjectionRefresh_ACU(reason);
+        if (isSqliteMode()) {
+            logDebug_ACU(`[SQLite] ${reason}: 重建内存数据库...`);
+            try {
+                await reloadStorageProvider();
+                logDebug_ACU(`[SQLite] ${reason}: 内存数据库重建完成`);
+            }
+            catch (error) {
+                logError_ACU(`[SQLite] ${reason}: 数据库重建失败: ${error?.message || error}`);
+            }
+        }
+        await refreshMergedDataAndNotifyWithUI_ACU();
+        return projection;
+    }
+
+    async function flushPendingDatabaseTailDeletionRefresh_ACU() {
+        const pending = databasePendingTailDeletionRefresh_ACU;
+        if (!pending)
+            return null;
+        if (pending.timer !== null) {
+            clearTimeout(pending.timer);
+            pending.timer = null;
+        }
+        databasePendingTailDeletionRefresh_ACU = null;
+        let result;
+        try {
+            logDebug_ACU(`[DatabasePersistence] 合并尾部删除，最早删除楼层=${pending.deletedFrom}`);
+            result = await refreshDatabaseAfterChatMutation_ACU('MESSAGE_DELETED');
+        }
+        catch (error) {
+            result = { state: 'uncertain', error: error?.message || String(error || 'MESSAGE_DELETED_REFRESH_FAILED') };
+            logWarn_ACU(`[DatabasePersistence] MESSAGE_DELETED refresh failed: ${result.error}`);
+        }
+        pending.resolve(result);
+        return result;
+    }
+
+    function scheduleDatabaseTailDeletionRefresh_ACU(eventData) {
+        const deletedFrom = resolveDatabaseDeletedFrom_ACU(eventData, getChatArray_ACU());
+        if (!databasePendingTailDeletionRefresh_ACU) {
+            let resolve;
+            const promise = new Promise(done => {
+                resolve = done;
+            });
+            databasePendingTailDeletionRefresh_ACU = {
+                deletedFrom,
+                timer: null,
+                promise,
+                resolve,
+            };
+        }
+        else {
+            databasePendingTailDeletionRefresh_ACU.deletedFrom = Math.min(
+                databasePendingTailDeletionRefresh_ACU.deletedFrom,
+                deletedFrom,
+            );
+        }
+        const pending = databasePendingTailDeletionRefresh_ACU;
+        if (pending.timer !== null)
+            clearTimeout(pending.timer);
+        pending.timer = setTimeout(() => {
+            pending.timer = null;
+            void flushPendingDatabaseTailDeletionRefresh_ACU();
+        }, DATABASE_DELETED_QUIET_WINDOW_MS_ACU);
+        logDebug_ACU(`[DatabasePersistence] 已排队尾部删除恢复：deletedFrom=${pending.deletedFrom} quiet=${DATABASE_DELETED_QUIET_WINDOW_MS_ACU}ms`);
+        return pending.promise;
+    }
+
+    function cancelPendingDatabaseTailDeletionRefresh_ACU(reason) {
+        const pending = databasePendingTailDeletionRefresh_ACU;
+        if (!pending)
+            return;
+        if (pending.timer !== null)
+            clearTimeout(pending.timer);
+        databasePendingTailDeletionRefresh_ACU = null;
+        pending.resolve({ state: 'cancelled', reason: reason || 'chat_changed' });
     }
 
     async function replayTableStateFromFrameRefsV2_ACU(chat, isolationKey, frameRefs, options = {}) {
@@ -21113,6 +21268,7 @@ $CONTENT
             return { changed: false, sameChat: true, chatId: normalizedChatFileName_ACU };
         }
         logDebug_ACU(`ACU: Resetting script state for new chat: "${chatFileName}"`);
+        cancelPendingDatabaseTailDeletionRefresh_ACU('chat_changed');
         invalidateDatabasePersistence_ACU();
         // 直接使用有效的 chatFileName，不再需要调用 /getchatname 或其他回退逻辑。
         _set_currentChatFileIdentifier_ACU(normalizedChatFileName_ACU);
@@ -54575,6 +54731,7 @@ $CONTENT
         _set_lastTotalAiMessages_ACU(0);
     }
     function clearRuntimeForNoActiveChat_ACU(chatFileName) {
+        cancelPendingDatabaseTailDeletionRefresh_ACU('no_active_chat');
         invalidateDatabasePersistence_ACU();
         clearDerivedRuntimeState_ACU();
         _set_currentChatFileIdentifier_ACU('');
@@ -54937,20 +55094,16 @@ $CONTENT
                         SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes[evName], async (data) => {
                             logDebug_ACU(`ACU ${evName} event detected. Triggering data reload and merge from chat history.`);
                             try {
-                                await queueDatabaseProjectionRefresh_ACU(evName);
-                                // [6.7.3] SQLite 模式下，楼层删除/滑动后需要重建内存数据库
-                                if (isSqliteMode()) {
-                                    logDebug_ACU(`[SQLite] ${evName}: 重建内存数据库...`);
-                                    try {
-                                        await reloadStorageProvider();
-                                        logDebug_ACU(`[SQLite] ${evName}: 内存数据库重建完成`);
-                                    }
-                                    catch (e) {
-                                        logError_ACU(`[SQLite] ${evName}: 数据库重建失败: ${e?.message}`);
-                                    }
+                                if (evName === 'MESSAGE_DELETED') {
+                                    // 酒馆会在尾删时连续发出多个删除事件；只记录最早删除楼层，
+                                    // 由 quiet window 结束后的单次恢复统一处理。
+                                    scheduleDatabaseTailDeletionRefresh_ACU(data);
+                                    return;
                                 }
-                                // [修复] 重新合并数据并更新UI和世界书
-                                await refreshMergedDataAndNotifyWithUI_ACU();
+                                // 重 Roll 需要及时切换分支；若尾删队列尚未落地，先把它冲刷完，
+                                // 保证两个恢复不会交错读取同一份旧聊天。
+                                await flushPendingDatabaseTailDeletionRefresh_ACU();
+                                await refreshDatabaseAfterChatMutation_ACU(evName);
                             }
                             catch (error) {
                                 logWarn_ACU(`[DatabasePersistence] ${evName} refresh failed: ${error?.message || error}`);
