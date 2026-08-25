@@ -921,9 +921,9 @@ const DesktopUnifiedLayout = {
         }
         const 概览页 = document.querySelector('#mvu-unified-mount .mvu-unified-page.active');
         const 概览槽位 = 概览页 ? 概览页.querySelector('[data-unified-card], [data-mvu-map-stage]') : null;
-        const 概览为空 = !!(概览页 && !(概览页.textContent || '').trim());
+        const 概览结构就绪 = !!(概览页 && 概览槽位 && 概览槽位.isConnected);
         const 可同步 = typeof window.__MVU_RERENDER_UNIFIED_CARDS__ === 'function';
-        if (可同步 && 概览槽位) {
+        if (可同步 && 概览结构就绪) {
           try {
             const 当前共享修订 = Number(window.__dragonUiSharedMvuRefreshHub?.runtime?.revision);
             window.__MVU_RERENDER_UNIFIED_CARDS__({
@@ -933,7 +933,7 @@ const DesktopUnifiedLayout = {
             });
           } catch (错误) {}
         }
-        if ((!可同步 || !概览槽位 || 概览为空) && 重试次数 < 8) {
+        if ((!可同步 || !概览结构就绪) && 重试次数 < 8) {
           window.setTimeout(() => 请求统一概览同步(原因, { ...选项, 重试次数: 重试次数 + 1 }), 80);
         }
       });

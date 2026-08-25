@@ -1,6 +1,8 @@
 (() => {
   if (window.__sheepMapRestoreLoaded) return;
   window.__sheepMapRestoreLoaded = true;
+  let 地图生命周期令牌 = 0;
+  const 地图实例仍有效 = 令牌 => 令牌 === 地图生命周期令牌 && window.__sheepMapRestoreLoaded === true;
   const 地图卸载函数列表 = [];
   function 注册地图卸载(卸载函数) {
     if (typeof 卸载函数 === 'function') 地图卸载函数列表.push(卸载函数);
@@ -19,6 +21,7 @@
     });
   }
   window.__sheepMapDispose = () => {
+    地图生命周期令牌 += 1;
     try {
       if (typeof 关闭地图维护右键菜单 === 'function') 关闭地图维护右键菜单();
     } catch (错误) {}
@@ -27,10 +30,6 @@
         地图卸载函数列表.pop()();
       } catch (错误) {}
     }
-    try {
-      const hub = window.__dragonUiSharedMvuRefreshHub;
-      if (hub && typeof hub.stopBindings === 'function') hub.stopBindings();
-    } catch (错误) {}
     window.__sheepMapRestoreLoaded = false;
   };
 
@@ -1870,24 +1869,26 @@
           }
         }
 
-        if (host && eventName && typeof host.addEventListener === 'function') {
-          try {
-            host.addEventListener(eventName, triggerFromEvent);
-            bound = true;
-          } catch (_) {}
-        }
-
-        if (eventName) {
-          try {
-            window.addEventListener(eventName, triggerFromEvent);
-            bound = true;
-          } catch (_) {}
-          try {
-            if (window.top && window.top !== window && typeof window.top.addEventListener === 'function') {
-              window.top.addEventListener(eventName, triggerFromEvent);
+        if (!reliableEventBound) {
+          if (host && eventName && typeof host.addEventListener === 'function') {
+            try {
+              host.addEventListener(eventName, triggerFromEvent);
               bound = true;
-            }
-          } catch (_) {}
+            } catch (_) {}
+          }
+
+          if (eventName) {
+            try {
+              window.addEventListener(eventName, triggerFromEvent);
+              bound = true;
+            } catch (_) {}
+            try {
+              if (window.top && window.top !== window && typeof window.top.addEventListener === 'function') {
+                window.top.addEventListener(eventName, triggerFromEvent);
+                bound = true;
+              }
+            } catch (_) {}
+          }
         }
 
         if (reliableEventBound) {
@@ -1898,7 +1899,7 @@
         } else if (!hub.刷新轮询计时器) {
           hub.刷新轮询计时器 = window.setInterval(() => {
             if (!hasVisibleMapSurface()) return;
-            if (document.visibilityState === 'hidden') return;
+            if (document.hidden) return;
             hub.trigger({ source: 'poll' });
           }, 1500);
         }
@@ -1975,15 +1976,27 @@
     return hub;
   }
 
-  function bindMvuUpdates(handler) {
+  function bindMvuUpdates(handler, 生命周期令牌 = 地图生命周期令牌) {
+    if (!地图实例仍有效(生命周期令牌)) return () => {};
     const hub = getSharedMvuRefreshHub();
-    const 取消订阅 = hub.subscribe('dragon-ui-sheep-map', async (vars, ...args) => {
+    const 原始取消订阅 = hub.subscribe('dragon-ui-sheep-map', async (vars, ...args) => {
+      if (!地图实例仍有效(生命周期令牌)) return;
       try {
         await Promise.resolve(handler(vars, ...args));
       } catch (error) {
         console.error('sheep_map_restore polling refresh failed', error);
       }
     });
+    let 取消订阅已执行 = false;
+    const 取消订阅 = () => {
+      if (取消订阅已执行) return;
+      取消订阅已执行 = true;
+      原始取消订阅();
+    };
+    if (!地图实例仍有效(生命周期令牌)) {
+      取消订阅();
+      return 取消订阅;
+    }
     注册地图卸载(取消订阅);
     return 取消订阅;
   }
@@ -9126,10 +9139,11 @@ ${logMsg}
     });
   }
 
-  async function refreshLiveMap(preserveSelection = true, sharedVars = undefined, force = false) {
+  async function refreshLiveMap(preserveSelection = true, sharedVars = undefined, force = false, 生命周期令牌 = null) {
     try {
       const firstLoad = !mapState.hasLoaded;
       const vars = sharedVars === undefined ? await getAllVariablesSafe() : sharedVars;
+      if (生命周期令牌 !== null && !地图实例仍有效(生命周期令牌)) return;
       latestSharedVars = vars;
       if (!force && !hasVisibleMapSurface()) {
         liveRefreshDirty = true;
@@ -9184,6 +9198,7 @@ ${logMsg}
       setMapSyncState('已同步', snapshot.currentMapId);
       scheduleSync(shouldCenter, true);
     } catch (error) {
+      if (生命周期令牌 !== null && !地图实例仍有效(生命周期令牌)) return;
       console.error('sheep map live refresh failed', error);
       setMapSyncState('同步失败', error && error.message ? error.message : '地图刷新异常');
       if (!mapState.hasLoaded) {
@@ -9204,6 +9219,8 @@ ${logMsg}
   }
 
   function init() {
+    const 生命周期令牌 = 地图生命周期令牌;
+    if (!地图实例仍有效(生命周期令牌)) return;
     if (!ensurePageMapMarkup()) return;
     refreshSplitMapPages();
     bindTabResync();
@@ -9216,9 +9233,16 @@ ${logMsg}
     mapState.currentNode = mapState.snapshot.currentLoc;
     mapState.selectedNode = mapState.snapshot.currentLoc;
     resyncMapShell({ center: true });
-    setTimeout(() => scheduleSync(false), 80);
-    setTimeout(() => scheduleSync(false), 240);
-    setTimeout(() => scheduleSync(false), 640);
+    const 注册生命周期定时器 = 延迟 => {
+      const 定时器 = window.setTimeout(() => {
+        if (!地图实例仍有效(生命周期令牌)) return;
+        scheduleSync(false);
+      }, 延迟);
+      注册地图卸载(() => window.clearTimeout(定时器));
+    };
+    注册生命周期定时器(80);
+    注册生命周期定时器(240);
+    注册生命周期定时器(640);
     try {
       window.__sheepMapBridge = {
         buildUnifiedNodePanels: 构建星图外壳节点面板,
@@ -9232,10 +9256,16 @@ ${logMsg}
 
     (async () => {
       await waitForMvuReady();
-      await refreshLiveMap(false);
-      bindMvuUpdates(vars => {
-        refreshLiveMap(true, vars);
-      });
+      if (!地图实例仍有效(生命周期令牌)) return;
+      await refreshLiveMap(false, undefined, false, 生命周期令牌);
+      if (!地图实例仍有效(生命周期令牌)) return;
+      const 取消订阅 = bindMvuUpdates(vars => {
+        refreshLiveMap(true, vars, false, 生命周期令牌);
+      }, 生命周期令牌);
+      if (!地图实例仍有效(生命周期令牌)) {
+        取消订阅();
+        return;
+      }
     })();
   }
 

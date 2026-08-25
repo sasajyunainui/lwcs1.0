@@ -1908,12 +1908,72 @@
   let lastDashboardRenderRevision = null;
   let lastDashboardRenderWasFull = false;
   let lastDashboardRenderSection = '';
+  let lastHeaderRenderSurfaceNode = null;
+  let lastDashboardRenderMountNode = null;
+  let lastDashboardRenderPageNode = null;
+  let lastDashboardRenderSlotNode = null;
   let liveUiRefCache = new Map();
   let 慢刷新骨架已启用 = false;
   let 上次仓库选中物品名 = '';
   let 上次仓库钱包签名 = '';
   const 慢刷新骨架预览键列表 = Object.freeze(['试炼与情报']);
   const 慢刷新骨架预览键集合 = new Set(慢刷新骨架预览键列表);
+
+  function getCurrentHeaderRenderSurfaceNode() {
+    const surface = document.querySelector('.header-loc span');
+    return surface && surface.isConnected ? surface : null;
+  }
+
+  function syncHeaderRenderMarker(node = getCurrentHeaderRenderSurfaceNode()) {
+    if (!node || !node.isConnected) {
+      lastHeaderRenderSignature = '';
+      lastHeaderRenderRevision = null;
+      lastHeaderRenderSurfaceNode = null;
+      return false;
+    }
+    lastHeaderRenderSurfaceNode = node;
+    return true;
+  }
+
+  function getCurrentDashboardRenderNodes() {
+    const mount = document.getElementById('mvu-unified-mount');
+    const page = mount ? mount.querySelector('.mvu-unified-page.active') : null;
+    const slot = page
+      ? page.querySelector('[data-unified-card][data-unified-surface="panel"], [data-mvu-map-stage="panel"]')
+      : null;
+    if (!mount?.isConnected || !page?.isConnected || !slot?.isConnected) return null;
+    return { mount, page, slot };
+  }
+
+  function dashboardRenderNodesMatch(nodes) {
+    return !!(
+      nodes
+      && nodes.mount?.isConnected
+      && nodes.page?.isConnected
+      && nodes.slot?.isConnected
+      && nodes.mount === lastDashboardRenderMountNode
+      && nodes.page === lastDashboardRenderPageNode
+      && nodes.slot === lastDashboardRenderSlotNode
+    );
+  }
+
+  function syncDashboardRenderMarker(nodes = getCurrentDashboardRenderNodes()) {
+    if (!nodes || !nodes.mount?.isConnected || !nodes.page?.isConnected || !nodes.slot?.isConnected) {
+      lastDashboardRenderSignature = '';
+      lastDashboardSectionRenderSignatures = null;
+      lastDashboardRenderRevision = null;
+      lastDashboardRenderWasFull = false;
+      lastDashboardRenderSection = '';
+      lastDashboardRenderMountNode = null;
+      lastDashboardRenderPageNode = null;
+      lastDashboardRenderSlotNode = null;
+      return false;
+    }
+    lastDashboardRenderMountNode = nodes.mount;
+    lastDashboardRenderPageNode = nodes.page;
+    lastDashboardRenderSlotNode = nodes.slot;
+    return true;
+  }
 
   function 规范化战斗提交模式(值) {
     const 文本 = String(值 || '').trim();
@@ -32612,6 +32672,7 @@
         `斗铠${toText(deepGet(snapshot, 'activeChar.装备.斗铠.装备状态', '未装备'), '未装备')} / 机甲${toText(deepGet(snapshot, 'activeChar.装备.机甲.等级', '无'), '无')}`,
       );
     if (statusChips[3]) setLiveNodeText(statusChips[3].querySelector('span'), snapshot.worldAlert);
+    return syncHeaderRenderMarker();
   }
 
   const PRIVATE_ARCHIVE_PREVIEW_KEY = '私密档案详细页';
@@ -36479,16 +36540,20 @@
 
   function rerenderUnifiedCardsFromLive(options = {}) {
     const snapshot = liveSnapshot || lastRenderableSnapshot;
-    if (!全息概览槽位已挂载()) return false;
+    const dashboardNodes = getCurrentDashboardRenderNodes();
+    if (!dashboardNodes) {
+      syncDashboardRenderMarker(null);
+      return false;
+    }
+    if (!dashboardRenderNodesMatch(dashboardNodes)) syncDashboardRenderMarker(null);
     if (!snapshot) {
       渲染统一空态卡片();
+      syncDashboardRenderMarker(null);
       return false;
     }
     const force = !!(options && options.force);
     const sectionSignatures = buildDashboardSectionRenderSignatures(snapshot);
     const nextDashboardRenderSignature = buildDashboardRenderSignature(snapshot, sectionSignatures);
-    const activeOverviewPage = document.querySelector('#mvu-unified-mount .mvu-unified-page.active');
-    const overviewContentReady = !!(activeOverviewPage && (activeOverviewPage.textContent || '').trim());
     const requestedRevision = Number.isFinite(options && options.revision) ? options.revision : null;
     if (
       force
@@ -36496,8 +36561,8 @@
         && requestedRevision === lastDashboardRenderRevision
         && nextDashboardRenderSignature === lastDashboardRenderSignature
         && lastDashboardRenderWasFull
-        && overviewContentReady
-      ) {
+        && dashboardRenderNodesMatch(dashboardNodes)
+    ) {
       return true;
     }
     renderUnifiedCards(
@@ -36505,6 +36570,7 @@
       sectionSignatures,
       force ? Object.create(null) : lastDashboardSectionRenderSignatures || Object.create(null),
     );
+    if (!syncDashboardRenderMarker()) return false;
     lastDashboardSectionRenderSignatures = { ...sectionSignatures };
     lastDashboardRenderSignature = nextDashboardRenderSignature;
     lastDashboardRenderRevision = requestedRevision;
@@ -36585,7 +36651,12 @@
   }
 
   function renderLiveCards(snapshot, precomputedSectionSignatures = null, options = {}) {
-    if (!全息概览槽位已挂载()) return false;
+    const dashboardNodes = getCurrentDashboardRenderNodes();
+    if (!dashboardNodes || !snapshot) {
+      syncDashboardRenderMarker(null);
+      return false;
+    }
+    if (!dashboardRenderNodesMatch(dashboardNodes)) syncDashboardRenderMarker(null);
     const sectionSignatures = precomputedSectionSignatures || buildDashboardSectionRenderSignatures(snapshot);
     const previousSectionSignatures = lastDashboardSectionRenderSignatures || Object.create(null);
     const visibleSection = toText(options.section, '').trim() || getVisibleDashboardSectionKey();
@@ -36605,6 +36676,9 @@
       scheduleUnifiedMapCanvasClamp();
     }
 
+    if (!syncDashboardRenderMarker()) return false;
+    lastDashboardRenderWasFull = false;
+    lastDashboardRenderSection = visibleSection;
     lastDashboardSectionRenderSignatures = {
       ...previousSectionSignatures,
       [visibleSection]: sectionSignatures[visibleSection],
@@ -43786,6 +43860,11 @@
     let 刷新版本失效 = false;
     try {
       const refreshInlineEditToken = inlineEditSessionToken;
+      const headerSurfaceNodeAtStart = getCurrentHeaderRenderSurfaceNode();
+      if (!headerSurfaceNodeAtStart || headerSurfaceNodeAtStart !== lastHeaderRenderSurfaceNode) {
+        syncHeaderRenderMarker(null);
+      }
+      if (!dashboardRenderNodesMatch(getCurrentDashboardRenderNodes())) syncDashboardRenderMarker(null);
       const 刷新版本仍有效 = () => {
         if (!Number.isFinite(options.revision)) return true;
         return getSharedMvuRefreshHub().runtime.revision === options.revision;
@@ -43818,10 +43897,18 @@
       const vars = options.sharedVars === undefined ? await getAllVariablesSafe() : options.sharedVars;
       if (!结果守卫通过()) return null;
       const 原始根 = resolveRootData(vars);
-      if (!原始根) return;
+      if (!原始根) {
+        syncHeaderRenderMarker(null);
+        syncDashboardRenderMarker(null);
+        return;
+      }
       const root = 归一化变量根_桥接(cloneJsonValue(原始根, 原始根));
       const effective = buildEffectiveSd(root);
-      if (!effective.rootData) return;
+      if (!effective.rootData) {
+        syncHeaderRenderMarker(null);
+        syncDashboardRenderMarker(null);
+        return;
+      }
       if (!结果守卫通过()) return null;
       if (isRootDataRelevantToCurrentChat(effective.rootData)) {
         syncMvuEditorStoreFromRoot(effective.rootData);
@@ -43852,31 +43939,53 @@
         nextDashboardSectionRenderSignatures,
       );
       const currentRefreshRevision = Number.isFinite(options.revision) ? options.revision : null;
-      const headerSurfaceReady = !!document.querySelector('.header-loc span');
-      const activeOverviewPage = document.querySelector('#mvu-unified-mount .mvu-unified-page.active');
-      const dashboardSurfaceReady = !!(activeOverviewPage && (activeOverviewPage.textContent || '').trim());
+      const headerSurfaceNode = getCurrentHeaderRenderSurfaceNode();
+      if (!headerSurfaceNode || headerSurfaceNode !== lastHeaderRenderSurfaceNode) syncHeaderRenderMarker(null);
+      const dashboardRenderNodes = getCurrentDashboardRenderNodes();
+      if (!dashboardRenderNodesMatch(dashboardRenderNodes)) syncDashboardRenderMarker(null);
       const dashboardRenderCoversView =
         lastDashboardRenderWasFull || lastDashboardRenderSection === getVisibleDashboardSectionKey();
       const sameRevisionHeaderRender =
         currentRefreshRevision !== null
         && currentRefreshRevision === lastHeaderRenderRevision
         && nextHeaderRenderSignature === lastHeaderRenderSignature
-        && headerSurfaceReady;
+        && headerSurfaceNode?.isConnected
+        && headerSurfaceNode === lastHeaderRenderSurfaceNode;
       const sameRevisionDashboardRender =
         currentRefreshRevision !== null
         && currentRefreshRevision === lastDashboardRenderRevision
         && nextDashboardRenderSignature === lastDashboardRenderSignature
         && dashboardRenderCoversView
-        && dashboardSurfaceReady;
-      const shouldRenderHeader = !sameRevisionHeaderRender && (!!options.force || nextHeaderRenderSignature !== lastHeaderRenderSignature);
-      const shouldRenderDashboard = !sameRevisionDashboardRender && (!!options.force || nextDashboardRenderSignature !== lastDashboardRenderSignature);
+        && dashboardRenderNodesMatch(dashboardRenderNodes);
+      const shouldRenderHeader =
+        !!headerSurfaceNode
+        && (
+          currentRefreshRevision === null
+          || (!sameRevisionHeaderRender && (!!options.force || nextHeaderRenderSignature !== lastHeaderRenderSignature))
+        );
+      const shouldRenderDashboard =
+        !!dashboardRenderNodes
+        && (
+          currentRefreshRevision === null
+          || (
+            !sameRevisionDashboardRender
+            && (
+              !!options.force
+              || nextDashboardRenderSignature !== lastDashboardRenderSignature
+              || !dashboardRenderCoversView
+            )
+          )
+        );
       const 当前暂停完整刷新 =
         !options.force && (初始暂停完整刷新 || refreshInlineEditToken !== inlineEditSessionToken || shouldPauseLiveRefresh(options));
       if (!结果守卫通过()) return null;
       if (shouldRenderHeader) {
-        renderHeader(liveSnapshot);
-        lastHeaderRenderSignature = nextHeaderRenderSignature;
-        lastHeaderRenderRevision = currentRefreshRevision;
+        if (renderHeader(liveSnapshot)) {
+          lastHeaderRenderSignature = nextHeaderRenderSignature;
+          lastHeaderRenderRevision = currentRefreshRevision;
+        } else {
+          syncHeaderRenderMarker(null);
+        }
       }
       if (当前暂停完整刷新) {
         pendingLiveRefresh = true;

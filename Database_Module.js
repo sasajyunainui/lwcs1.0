@@ -4557,6 +4557,7 @@ $CONTENT
         正文后置上下文: null,
     };
     let activeDatabaseGenerationTransaction_ACU = null;
+    let databaseGenerationEpoch_ACU = 0;
     function broadcastUserSendIntent_ACU(at) {
         try {
             const detail = { at, source: 'Database_Module' };
@@ -4619,13 +4620,17 @@ $CONTENT
         const 聊天数组 = getChatArray_ACU();
         const 最新角色消息 = 读取最新角色消息元信息_ACU();
         const 是否正文生成 = !dryRun && !isQuietLikeGeneration_ACU(type, params) && !params?.automatic_trigger;
+        if (是否正文生成)
+            advanceDatabaseGenerationEpoch_ACU();
+        const generationEpoch = databaseGenerationEpoch_ACU;
         generationGate_ACU.lastGeneration = {
             type,
             params,
             dryRun,
             at: Date.now(),
+            epoch: generationEpoch,
             chatId: getActiveChatId_ACU(),
-            开始聊天长度: getIndexedTotalMessages_ACU(聊天数组),
+            开始聊天长度: getIndexedTotalMessages_ACU(聊天数组, getDatabaseChatIndexChatId_ACU()),
             开始最后角色索引: 最新角色消息?.消息索引 ?? -1,
             开始最后角色签名: 最新角色消息?.文本签名 || '',
         };
@@ -4635,14 +4640,32 @@ $CONTENT
                 params,
                 dryRun,
                 at: Date.now(),
+                epoch: generationEpoch,
                 chatId: getActiveChatId_ACU(),
-                开始聊天长度: getIndexedTotalMessages_ACU(聊天数组),
+                开始聊天长度: getIndexedTotalMessages_ACU(聊天数组, getDatabaseChatIndexChatId_ACU()),
                 开始最后角色索引: 最新角色消息?.消息索引 ?? -1,
                 开始最后角色签名: 最新角色消息?.文本签名 || '',
                 最后用户消息编号: generationGate_ACU.lastUserMessageId,
             };
             生成结束后置状态_ACU.已处理消息键 = '';
         }
+    }
+    function clearDatabaseGenerationPlan_ACU(transaction = null) {
+        if (!transaction)
+            return;
+        transaction.planPromise = null;
+        transaction.planKey = '';
+    }
+    function advanceDatabaseGenerationEpoch_ACU() {
+        databaseGenerationEpoch_ACU += 1;
+        if (activeDatabaseGenerationTransaction_ACU) {
+            activeDatabaseGenerationTransaction_ACU.context = null;
+            clearDatabaseGenerationPlan_ACU(activeDatabaseGenerationTransaction_ACU);
+            invalidateDatabaseGenerationProjection_ACU(activeDatabaseGenerationTransaction_ACU);
+        }
+        activeDatabaseGenerationTransaction_ACU = null;
+        databaseTauriChatHandlePromise_ACU = null;
+        return databaseGenerationEpoch_ACU;
     }
     function isQuietLikeGeneration_ACU(type, params) {
         if (type === 'quiet')
@@ -4719,7 +4742,15 @@ $CONTENT
                 return { action: 'skipped', reason: 'no_generation_context' };
             }
             const 正文上下文 = 读取正文后置上下文_ACU();
+            if (正文上下文?.epoch !== databaseGenerationEpoch_ACU) {
+                generationGate_ACU.正文后置上下文 = null;
+                return { action: 'skipped', reason: 'stale_generation' };
+            }
             const 目标消息元信息 = await 等待本轮真实角色消息落地_ACU(正文上下文, 事件消息编号);
+            if (正文上下文?.epoch !== databaseGenerationEpoch_ACU) {
+                generationGate_ACU.正文后置上下文 = null;
+                return { action: 'skipped', reason: 'stale_generation' };
+            }
             if (!目标消息元信息 || 目标消息元信息.消息索引 < 0) {
                 const reason = 'generation_not_landed';
                 logWarn_ACU(`[生成结束后置] 未确认本轮真实 AI 楼层，跳过后置更新: event=${事件名}, reason=${reason}, eventMessageId=${事件消息编号 ?? ''}`);
@@ -4738,7 +4769,10 @@ $CONTENT
             }
             生成结束后置状态_ACU.已处理消息键 = 消息键;
             generationGate_ACU.正文后置上下文 = null;
-            await handleNewMessageDebounced_ACU(事件名, { 目标消息元信息 });
+            await handleNewMessageDebounced_ACU(事件名, {
+                目标消息元信息,
+                eventEpoch: 正文上下文.epoch,
+            });
             return { action: 'continue', reason: 'post_update_dispatched' };
         })();
         生成结束后置状态_ACU.处理中 = 处理Promise;
@@ -4770,51 +4804,148 @@ $CONTENT
         activeDatabaseGenerationTransaction_ACU = null;
     }
     function 构建生成结束消息键_ACU(消息元信息) {
-        if (!消息元信息 || 消息元信息.消息索引 < 0)
-            return '';
-        return [
-            String(getActiveChatId_ACU() || currentChatFileIdentifier_ACU || ''),
-            String(消息元信息.消息索引 ?? ''),
-            String(消息元信息.消息编号 ?? ''),
-            String(消息元信息.滑动编号 ?? ''),
-            String(消息元信息.文本签名 ?? ''),
-        ].join('|');
+        return getDatabaseGenerationTargetIdentity_ACU(消息元信息)?.key || '';
+    }
+
+    function getDatabaseGenerationTargetIdentity_ACU(消息元信息, epoch = databaseGenerationEpoch_ACU, chatId = null) {
+        const floor = Number(消息元信息?.消息索引 ?? 消息元信息?.messageIndex ?? 消息元信息?.index ?? -1);
+        if (!Number.isInteger(floor) || floor < 0)
+            return null;
+        const resolvedChatId = chatId === null || chatId === undefined
+            ? (getActiveChatId_ACU() || currentChatFileIdentifier_ACU || '')
+            : chatId;
+        const identity = {
+            epoch: Number(epoch),
+            chatId: String(resolvedChatId || ''),
+            floor,
+            messageId: String(消息元信息?.消息编号 ?? 消息元信息?.messageId ?? 消息元信息?.id ?? ''),
+            swipe: String(消息元信息?.滑动编号 ?? 消息元信息?.swipeId ?? 消息元信息?.swipe_id ?? ''),
+            fingerprint: String(消息元信息?.文本签名 ?? 消息元信息?.fingerprint ?? 消息元信息?.messageFingerprint ?? ''),
+        };
+        identity.key = JSON.stringify([
+            identity.epoch,
+            identity.chatId,
+            identity.floor,
+            identity.messageId,
+            identity.swipe,
+            identity.fingerprint,
+        ]);
+        return identity;
+    }
+
+    function databaseGenerationTransactionMatchesIdentity_ACU(transaction, identity) {
+        return !!transaction
+            && !!identity
+            && transaction.epoch === databaseGenerationEpoch_ACU
+            && transaction.key === identity.key
+            && String(transaction.chatId) === identity.chatId
+            && Number(transaction.floor) === identity.floor
+            && String(transaction.messageId) === identity.messageId
+            && String(transaction.swipe) === identity.swipe
+            && String(transaction.fingerprint) === identity.fingerprint;
+    }
+
+    function databaseGenerationTransactionStillCurrent_ACU(transaction, targetMessageMeta = null) {
+        if (!transaction)
+            return true;
+        const target = targetMessageMeta || transaction.targetMessageMeta;
+        const identity = getDatabaseGenerationTargetIdentity_ACU(target);
+        if (!databaseGenerationTransactionMatchesIdentity_ACU(transaction, identity))
+            return false;
+        if (transaction.context
+            && (transaction.context.epoch !== databaseGenerationEpoch_ACU
+                || String(transaction.context.chatId) !== identity.chatId
+                || String(getDatabaseChatIndexChatId_ACU()) !== identity.chatId))
+            return false;
+        if (transaction.context) {
+            const currentIndex = activeDatabaseChatIndex_ACU;
+            if (!currentIndex
+                || currentIndex.chatId !== identity.chatId
+                || Number(currentIndex.revision) !== Number(transaction.context.indexRevision))
+                return false;
+        }
+        return !!target && 目标角色消息仍匹配_ACU(target);
     }
 
     function getDatabaseGenerationTransaction_ACU(targetMessageMeta, existingTransaction = null) {
-        if (existingTransaction)
-            return existingTransaction;
-        const messageKey = 构建生成结束消息键_ACU(targetMessageMeta);
-        if (!messageKey)
+        const identity = getDatabaseGenerationTargetIdentity_ACU(targetMessageMeta);
+        if (!identity)
             return null;
-        if (activeDatabaseGenerationTransaction_ACU?.key === messageKey)
+        if (existingTransaction && databaseGenerationTransactionMatchesIdentity_ACU(existingTransaction, identity)) {
+            existingTransaction.targetMessageMeta = targetMessageMeta;
+            activeDatabaseGenerationTransaction_ACU = existingTransaction;
+            return existingTransaction;
+        }
+        if (!existingTransaction && databaseGenerationTransactionMatchesIdentity_ACU(activeDatabaseGenerationTransaction_ACU, identity)) {
+            activeDatabaseGenerationTransaction_ACU.targetMessageMeta = targetMessageMeta;
             return activeDatabaseGenerationTransaction_ACU;
-        const chatId = getActiveChatId_ACU() || currentChatFileIdentifier_ACU || '';
+        }
         activeDatabaseGenerationTransaction_ACU = {
-            key: messageKey,
-            chatId: String(chatId),
-            floor: Number(targetMessageMeta?.消息索引 ?? -1),
-            swipe: String(targetMessageMeta?.滑动编号 ?? ''),
-            fingerprint: String(targetMessageMeta?.文本签名 ?? ''),
+            ...identity,
             targetMessageMeta,
             context: null,
             projectionPromise: null,
             projectionKey: '',
-            plan: null,
+            projectionValue: undefined,
+            projectionValueKey: '',
+            projectionSettled: false,
+            commitProjectionScope: false,
+            planPromise: null,
+            planKey: '',
         };
         return activeDatabaseGenerationTransaction_ACU;
     }
 
     function getDatabaseGenerationContext_ACU(transaction = null) {
+        if (transaction?.context)
+            return transaction.context;
+        const chat = getChatArray_ACU();
+        const chatIndex = activeDatabaseChatIndex_ACU || getDatabaseChatIndex_ACU();
         if (!transaction)
-            return { chat: getChatArray_ACU(), chatIndex: activeDatabaseChatIndex_ACU || getDatabaseChatIndex_ACU() };
-        if (!transaction.context) {
-            transaction.context = {
-                chat: getChatArray_ACU(),
-                chatIndex: activeDatabaseChatIndex_ACU || getDatabaseChatIndex_ACU(),
+            return {
+                chat,
+                chatIndex,
+                chatId: getDatabaseChatIndexChatId_ACU(),
+                indexRevision: Number(chatIndex?.revision ?? -1),
+                epoch: databaseGenerationEpoch_ACU,
             };
-        }
+        transaction.context = {
+            chat,
+            chatIndex,
+            chatId: transaction.chatId,
+            indexRevision: Number(chatIndex?.revision ?? -1),
+            epoch: transaction.epoch,
+        };
         return transaction.context;
+    }
+
+    function rebindDatabaseGenerationTransaction_ACU(transaction, targetMessageMeta) {
+        if (!transaction || !targetMessageMeta)
+            return false;
+        const identity = getDatabaseGenerationTargetIdentity_ACU(targetMessageMeta);
+        if (!identity
+            || transaction.epoch !== databaseGenerationEpoch_ACU
+            || String(transaction.chatId) !== identity.chatId
+            || Number(transaction.floor) !== identity.floor
+            || String(transaction.messageId) !== identity.messageId
+            || String(transaction.swipe) !== identity.swipe)
+            return false;
+        transaction.key = identity.key;
+        transaction.fingerprint = identity.fingerprint;
+        transaction.targetMessageMeta = targetMessageMeta;
+        transaction.context = null;
+        clearDatabaseGenerationPlan_ACU(transaction);
+        invalidateDatabaseGenerationProjection_ACU(transaction);
+        if (activeDatabaseGenerationTransaction_ACU === transaction)
+            activeDatabaseGenerationTransaction_ACU = transaction;
+        return true;
+    }
+
+    function createDatabaseGenerationStaleError_ACU(targetMessageMeta = null) {
+        const error = new Error('STALE_TARGET_MESSAGE');
+        error.persistenceState = 'stale_chat';
+        error.messageIndex = Number(targetMessageMeta?.消息索引 ?? targetMessageMeta?.messageIndex ?? targetMessageMeta?.index ?? -1);
+        return error;
     }
 
     function invalidateDatabaseGenerationProjection_ACU(transaction = null) {
@@ -4822,6 +4953,9 @@ $CONTENT
             return;
         transaction.projectionPromise = null;
         transaction.projectionKey = '';
+        transaction.projectionValue = undefined;
+        transaction.projectionValueKey = '';
+        transaction.projectionSettled = false;
     }
     function 清理后端块后正文_ACU(正文文本 = '') {
         return String(正文文本 || '')
@@ -9027,6 +9161,7 @@ $CONTENT
     let activeDatabaseChatIndex_ACU = null;
     let databaseTauriChatHandle_ACU = null;
     let databaseTauriChatHandleChatId_ACU = '';
+    let databaseTauriChatHandleEpoch_ACU = 0;
     let databaseTauriChatHandlePromise_ACU = null;
 
     function getPersistenceAdapter_ACU() {
@@ -9219,11 +9354,12 @@ $CONTENT
         const key = String(chatId || '').trim();
         if (key)
             databaseChatIndexCache_ACU.delete(key);
+        advanceDatabaseGenerationEpoch_ACU();
         activeDatabaseChatIndex_ACU = null;
         databaseTauriChatHandle_ACU = null;
         databaseTauriChatHandleChatId_ACU = '';
+        databaseTauriChatHandleEpoch_ACU = 0;
         databaseTauriChatHandlePromise_ACU = null;
-        activeDatabaseGenerationTransaction_ACU = null;
     }
 
     function buildDatabaseChatIndexMeta_ACU(message, messageIndex) {
@@ -9232,6 +9368,8 @@ $CONTENT
             role: message?.is_user ? 'user' : (message?.is_system ? 'system' : 'assistant'),
             isUser: message?.is_user === true,
             messageId: String(message?.id ?? message?.message_id ?? messageIndex ?? ''),
+            hasStableMessageId: Object.prototype.hasOwnProperty.call(message || {}, 'id')
+                || Object.prototype.hasOwnProperty.call(message || {}, 'message_id'),
             swipeId: String(message?.swipe_id ?? message?.swipeId ?? ''),
             revision: String(message?.revision ?? message?.extra?.revision ?? ''),
             textHash: databaseMessageTextHash_ACU(message),
@@ -9304,30 +9442,54 @@ $CONTENT
         return true;
     }
 
-    function getIndexedAiIndices_ACU(chat = null) {
+    function getDatabaseChatIndexForRead_ACU(chat, expectedChatId, contextChat = null) {
         const index = activeDatabaseChatIndex_ACU;
-        if (index?.ready)
-            return index.aiIndices;
         const liveChat = Array.isArray(chat) ? chat : getChatArray_ACU();
+        const normalizedExpectedChatId = String(expectedChatId || '').trim();
+        if (!index?.ready
+            || !normalizedExpectedChatId
+            || normalizedExpectedChatId === 'unknown_chat_init'
+            || index.chatId !== normalizedExpectedChatId)
+            return null;
+        if (!Array.isArray(liveChat) || liveChat.length !== index.totalMessages)
+            return null;
+        if (liveChat.length === 0)
+            return index;
+        const lastMeta = index.tail.find(item => item.index === index.totalMessages - 1);
+        const lastMessage = liveChat[index.totalMessages - 1];
+        if (!lastMeta || !lastMessage)
+            return null;
+        return String(lastMeta.messageFingerprint) === String(databaseMessageFingerprint_ACU(lastMessage, index.totalMessages - 1))
+            ? index
+            : null;
+    }
+
+    function getIndexedAiIndices_ACU(chat = null, expectedChatId = null, contextChat = null) {
+        const liveChat = Array.isArray(chat) ? chat : getChatArray_ACU();
+        const index = getDatabaseChatIndexForRead_ACU(liveChat, expectedChatId, contextChat);
+        if (index)
+            return index.aiIndices;
         return Array.isArray(liveChat)
             ? liveChat.map((message, messageIndex) => !message?.is_user ? messageIndex : -1).filter(messageIndex => messageIndex >= 0)
             : [];
     }
 
-    function getIndexedAiMessageCount_ACU(chat = null) {
-        return getIndexedAiIndices_ACU(chat).length;
+    function getIndexedAiMessageCount_ACU(chat = null, expectedChatId = null, contextChat = null) {
+        return getIndexedAiIndices_ACU(chat, expectedChatId, contextChat).length;
     }
 
-    function getIndexedTotalMessages_ACU(chat = null) {
-        const index = activeDatabaseChatIndex_ACU;
-        if (index?.ready)
-            return index.totalMessages;
+    function getIndexedTotalMessages_ACU(chat = null, expectedChatId = null, contextChat = null) {
         const liveChat = Array.isArray(chat) ? chat : getChatArray_ACU();
+        const index = getDatabaseChatIndexForRead_ACU(liveChat, expectedChatId, contextChat);
+        if (index)
+            return index.totalMessages;
         return Array.isArray(liveChat) ? liveChat.length : 0;
     }
 
-    function getIndexedAiCountUpToIndex_ACU(messageIndex, aiIndices = null) {
-        const indices = Array.isArray(aiIndices) ? aiIndices : getIndexedAiIndices_ACU();
+    function getIndexedAiCountUpToIndex_ACU(messageIndex, aiIndices = null, chat = null, expectedChatId = null, contextChat = null) {
+        const indices = Array.isArray(aiIndices)
+            ? aiIndices
+            : getIndexedAiIndices_ACU(chat, expectedChatId, contextChat);
         let left = 0;
         let right = indices.length;
         while (left < right) {
@@ -9367,14 +9529,17 @@ $CONTENT
 
     async function getDatabaseTauriCurrentChatHandle_ACU() {
         const chatId = getDatabaseChatIndexChatId_ACU();
-        if (databaseTauriChatHandle_ACU && databaseTauriChatHandleChatId_ACU === chatId)
+        const epoch = databaseGenerationEpoch_ACU;
+        if (databaseTauriChatHandle_ACU
+            && databaseTauriChatHandleChatId_ACU === chatId
+            && databaseTauriChatHandleEpoch_ACU === epoch)
             return databaseTauriChatHandle_ACU;
         if (databaseTauriChatHandlePromise_ACU)
             return await databaseTauriChatHandlePromise_ACU;
         const surface = findDatabaseTauriChatApi_ACU();
         if (!surface)
             return null;
-        databaseTauriChatHandlePromise_ACU = (async () => {
+        const promise = (async () => {
             try {
                 const ready = surface.tauri.ready
                     ?? surface.owner.__TAURITAVERN_MAIN_READY__
@@ -9386,19 +9551,26 @@ $CONTENT
                 const handle = await surface.tauri.api.chat.current.handle();
                 if (!handle || typeof handle.locate?.findLastMessage !== 'function')
                     return null;
+                if (chatId !== getDatabaseChatIndexChatId_ACU() || epoch !== databaseGenerationEpoch_ACU)
+                    return null;
                 databaseTauriChatHandle_ACU = handle;
                 databaseTauriChatHandleChatId_ACU = chatId;
+                databaseTauriChatHandleEpoch_ACU = epoch;
                 return handle;
             }
             catch (error) {
                 logWarn_ACU(`[DatabaseChatIndex] TauriTavern current chat handle unavailable: ${error?.message || error}`);
                 return null;
             }
-            finally {
-                databaseTauriChatHandlePromise_ACU = null;
-            }
         })();
-        return await databaseTauriChatHandlePromise_ACU;
+        databaseTauriChatHandlePromise_ACU = promise;
+        try {
+            return await promise;
+        }
+        finally {
+            if (databaseTauriChatHandlePromise_ACU === promise)
+                databaseTauriChatHandlePromise_ACU = null;
+        }
     }
 
     async function locateLatestDatabaseChatMessage_ACU() {
@@ -9406,8 +9578,9 @@ $CONTENT
         if (handle) {
             try {
                 const hit = await handle.locate.findLastMessage({ scanLimit: 1 });
-                if (hit && Number.isInteger(Number(hit.index)))
-                    return { index: Number(hit.index), tauri: true };
+                const latestIndex = Number(hit?.index);
+                if (Number.isInteger(latestIndex) && latestIndex >= 0)
+                    return { index: latestIndex, tauri: true };
                 if (getChatLength_ACU() === 0)
                     return { index: -1, tauri: true };
             }
@@ -9958,13 +10131,72 @@ $CONTENT
     function getDatabaseProjectionForTransaction_ACU(chat, isolationKey, options = {}, transaction = null) {
         if (!transaction)
             return readDatabaseExternalProjection_ACU(chat, isolationKey, options);
+        const context = transaction.context;
+        const projectionChat = Array.isArray(chat) ? chat : getChatArray_ACU();
+        const contextIndex = context?.chatIndex;
+        const contextIsCurrent = !!context
+            && context.epoch === transaction.epoch
+            && String(context.chatId) === String(transaction.chatId)
+            && Number.isInteger(Number(context.indexRevision))
+            && contextIndex?.ready === true
+            && Number(context.indexRevision) === Number(contextIndex.revision)
+            && String(getDatabaseChatIndexChatId_ACU()) === String(context.chatId)
+            && databaseGenerationTransactionStillCurrent_ACU(transaction)
+            && getDatabaseChatIndexForRead_ACU(projectionChat, context.chatId, context.chat) === contextIndex;
+        if (!contextIsCurrent)
+            return readDatabaseExternalProjection_ACU(chat, isolationKey, options);
         const maxMessageKey = Number.isInteger(options.maxMessageIndex) ? String(options.maxMessageIndex) : 'latest';
-        const projectionKey = `${String(isolationKey || '')}|${maxMessageKey}|${options.prune === true ? 'prune' : 'read'}`;
+        const projectionKey = JSON.stringify([
+            transaction.key,
+            context.epoch,
+            String(context.chatId),
+            Number(context.indexRevision),
+            String(isolationKey || ''),
+            maxMessageKey,
+            options.prune === true ? 'prune' : 'read',
+        ]);
+        if (transaction.commitProjectionScope
+            && transaction.projectionSettled
+            && transaction.projectionValueKey === projectionKey)
+            return Promise.resolve(transaction.projectionValue);
         if (transaction.projectionPromise && transaction.projectionKey === projectionKey)
             return transaction.projectionPromise;
-        transaction.projectionKey = projectionKey;
-        transaction.projectionPromise = readDatabaseExternalProjection_ACU(chat, isolationKey, options);
-        return transaction.projectionPromise;
+        transaction.projectionValue = undefined;
+        transaction.projectionValueKey = '';
+        transaction.projectionSettled = false;
+        const projectionPromise = Promise.resolve().then(() => readDatabaseExternalProjection_ACU(chat, isolationKey, options));
+        const capturedProjectionKey = projectionKey;
+        transaction.projectionKey = capturedProjectionKey;
+        transaction.projectionPromise = projectionPromise;
+        const settleProjection = (value, rejected = false) => {
+            if (transaction.projectionPromise !== projectionPromise || transaction.projectionKey !== capturedProjectionKey)
+                return value;
+            transaction.projectionPromise = null;
+            transaction.projectionKey = '';
+            const canRetainSettledValue = !rejected
+                && transaction.commitProjectionScope
+                && databaseGenerationTransactionStillCurrent_ACU(transaction)
+                && getDatabaseChatIndexForRead_ACU(projectionChat, context.chatId, context.chat) === contextIndex;
+            if (canRetainSettledValue) {
+                transaction.projectionValue = value;
+                transaction.projectionValueKey = capturedProjectionKey;
+                transaction.projectionSettled = true;
+            }
+            else {
+                transaction.projectionValue = undefined;
+                transaction.projectionValueKey = '';
+                transaction.projectionSettled = false;
+            }
+            return value;
+        };
+        projectionPromise.then(
+            value => settleProjection(value, false),
+            error => {
+                settleProjection(undefined, true);
+                return undefined;
+            },
+        );
+        return projectionPromise;
     }
 
     async function readDatabaseExternalProjection_ACU(chat, isolationKey, { maxMessageIndex, prune = false } = {}) {
@@ -10534,34 +10766,79 @@ $CONTENT
     }
 
     function resolveDatabaseDeletedFromInfo_ACU(eventData, chat) {
-        const source = eventData && typeof eventData === 'object' && eventData.detail
-            && typeof eventData.detail === 'object'
+        const source = eventData && typeof eventData === 'object'
+            && Object.prototype.hasOwnProperty.call(eventData, 'detail')
             ? eventData.detail
             : eventData;
-        const candidates = [];
-        const addCandidate = value => {
+        const chatLength = Array.isArray(chat) ? chat.length : 0;
+        if (typeof source === 'number' || typeof source === 'string') {
+            const rawFloor = typeof source === 'string' ? source.trim() : source;
+            if ((typeof rawFloor === 'number' && Number.isInteger(rawFloor))
+                || (typeof rawFloor === 'string' && /^\d+$/.test(rawFloor))) {
+                const deletedFrom = Number(rawFloor);
+                return Number.isSafeInteger(deletedFrom) && deletedFrom >= 0 && deletedFrom <= chatLength
+                    ? { deletedFrom, reliable: true }
+                    : { deletedFrom: chatLength, reliable: false };
+            }
+            return { deletedFrom: chatLength, reliable: false };
+        }
+        const floorCandidates = [];
+        const messageIdCandidates = [];
+        let unresolved = false;
+        const addFloorCandidate = value => {
             const number = Number(value);
-            if (Number.isInteger(number) && number >= 0)
-                candidates.push(number);
+            if (Number.isInteger(number) && number >= 0 && number <= chatLength)
+                floorCandidates.push(number);
+            else
+                unresolved = true;
         };
-        if (typeof source === 'number' || (typeof source === 'string' && /^\s*\d+\s*$/.test(source)))
-            addCandidate(source);
+        const addMessageIdCandidate = value => {
+            const stableId = String(value ?? '').trim();
+            if (!stableId) {
+                unresolved = true;
+                return;
+            }
+            messageIdCandidates.push(stableId);
+        };
         if (source && typeof source === 'object') {
-            for (const key of ['messageIndex', 'message_index', 'index', 'messageId', 'message_id']) {
+            for (const key of ['deletedFrom', 'deleted_from', 'messageIndex', 'message_index', 'index', 'floor']) {
                 if (Object.prototype.hasOwnProperty.call(source, key))
-                    addCandidate(source[key]);
+                    addFloorCandidate(source[key]);
+            }
+            for (const key of ['messageId', 'message_id']) {
+                if (Object.prototype.hasOwnProperty.call(source, key))
+                    addMessageIdCandidate(source[key]);
             }
         }
+        const mappedMessageIndices = [];
+        for (const stableId of messageIdCandidates) {
+            let mappedIndex = -1;
+            if (Array.isArray(chat)) {
+                mappedIndex = chat.findIndex(message => (
+                    (Object.prototype.hasOwnProperty.call(message || {}, 'id') && String(message.id) === stableId)
+                    || (Object.prototype.hasOwnProperty.call(message || {}, 'message_id') && String(message.message_id) === stableId)
+                ));
+            }
+            if (mappedIndex < 0) {
+                const currentIndex = getDatabaseChatIndexForRead_ACU(chat, getDatabaseChatIndexChatId_ACU());
+                const indexedMeta = currentIndex?.tail?.find(meta => String(meta.messageId) === stableId);
+                if (indexedMeta?.hasStableMessageId
+                    && Number.isInteger(indexedMeta.index)
+                    && indexedMeta.index >= 0
+                    && indexedMeta.index <= chatLength)
+                    mappedIndex = indexedMeta.index;
+            }
+            if (mappedIndex >= 0)
+                mappedMessageIndices.push(mappedIndex);
+            else
+                unresolved = true;
+        }
+        if (unresolved || (floorCandidates.length === 0 && mappedMessageIndices.length === 0))
+            return { deletedFrom: chatLength, reliable: false };
         return {
-            deletedFrom: candidates.length > 0
-                ? Math.min(...candidates)
-                : (Array.isArray(chat) ? chat.length : 0),
-            reliable: candidates.length > 0,
+            deletedFrom: Math.min(...floorCandidates, ...mappedMessageIndices),
+            reliable: true,
         };
-    }
-
-    function resolveDatabaseDeletedFrom_ACU(eventData, chat) {
-        return resolveDatabaseDeletedFromInfo_ACU(eventData, chat).deletedFrom;
     }
 
     async function refreshDatabaseAfterChatMutation_ACU(reason) {
@@ -10890,9 +11167,10 @@ $CONTENT
     }
 
     function countAiFloor_ACU$1(chat, messageIndex) {
-        if (activeDatabaseChatIndex_ACU?.ready && Number.isInteger(messageIndex)
-            && messageIndex <= activeDatabaseChatIndex_ACU.latestAbsoluteIndex)
-            return getIndexedAiCountUpToIndex_ACU(messageIndex, activeDatabaseChatIndex_ACU.aiIndices);
+        const index = getDatabaseChatIndexForRead_ACU(chat, getDatabaseChatIndexChatId_ACU());
+        if (index?.ready && Number.isInteger(messageIndex)
+            && messageIndex <= index.latestAbsoluteIndex)
+            return getIndexedAiCountUpToIndex_ACU(messageIndex, index.aiIndices);
         let count = 0;
         for (let i = 0; i <= messageIndex && i < chat.length; i += 1) {
             if (chat[i] && !chat[i].is_user)
@@ -21199,7 +21477,7 @@ $CONTENT
     }
     async function refreshMergedDataAndNotify_ACU(eventTransaction = null) {
         // 重新加载聊天记录
-        await loadAllChatMessages_ACU({ eventTransaction });
+        await loadAllChatMessages_ACU({ fullHistory: false, eventTransaction });
         // 合并数据 (使用新的独立表合并逻辑)
         let mergedData = await mergeAllIndependentTables_ACU({ eventTransaction });
         // 当回溯找不到任何表格数据时（mergedData 为 null），
@@ -21266,13 +21544,48 @@ $CONTENT
         const fullHistory = options.fullHistory === true;
         const forceRebuild = options.forceRebuild === true;
         const replaceTail = options.replaceTail === true || options.refreshTail === true;
-        const eventContext = options.eventTransaction ? getDatabaseGenerationContext_ACU(options.eventTransaction) : null;
+        const eventTransaction = options.eventTransaction || null;
+        const eventContext = eventTransaction ? getDatabaseGenerationContext_ACU(eventTransaction) : null;
+        const loadTransactionKey = eventTransaction?.key || '';
+        const loadTargetMessageMeta = eventTransaction?.targetMessageMeta || null;
         const index = getDatabaseChatIndex_ACU();
+        const loadEpoch = databaseGenerationEpoch_ACU;
+        const loadChatId = getDatabaseChatIndexChatId_ACU();
+        const getCurrentIndex = () => getDatabaseChatIndex_ACU(getDatabaseChatIndexChatId_ACU());
+        const loadIsCurrent = () => {
+            if (loadEpoch !== databaseGenerationEpoch_ACU || loadChatId !== getDatabaseChatIndexChatId_ACU())
+                return false;
+            return !eventTransaction
+                || (eventTransaction.key === loadTransactionKey
+                    && eventTransaction.epoch === loadEpoch
+                    && databaseGenerationTransactionStillCurrent_ACU(eventTransaction, loadTargetMessageMeta));
+        };
+        const syncEventContextAfterIndexMutation = () => {
+            if (loadEpoch !== databaseGenerationEpoch_ACU || loadChatId !== getDatabaseChatIndexChatId_ACU())
+                return false;
+            if (eventTransaction) {
+                const identity = getDatabaseGenerationTargetIdentity_ACU(loadTargetMessageMeta);
+                if (!databaseGenerationTransactionMatchesIdentity_ACU(eventTransaction, identity)
+                    || !目标角色消息仍匹配_ACU(loadTargetMessageMeta))
+                    return false;
+            }
+            if (eventContext) {
+                eventContext.chat = getChatArray_ACU();
+                eventContext.chatIndex = getCurrentIndex();
+                eventContext.indexRevision = Number(eventContext.chatIndex?.revision ?? -1);
+            }
+            return loadIsCurrent();
+        };
         try {
             const latestResult = await locateLatestDatabaseChatMessage_ACU();
+            if (!loadIsCurrent())
+                return getCurrentIndex();
             const latestAbsoluteIndex = latestResult.index;
-            const liveChat = eventContext?.chat || getChatArray_ACU();
+            if (!loadIsCurrent())
+                return getCurrentIndex();
             if (latestAbsoluteIndex < 0) {
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
                 index.latestAbsoluteIndex = -1;
                 index.totalMessages = 0;
                 index.aiIndices = [];
@@ -21282,6 +21595,8 @@ $CONTENT
                 index.fullHistoryLoaded = fullHistory || index.fullHistoryLoaded;
                 index.revision += 1;
                 _set_allChatMessages_ACU([]);
+                if (!syncEventContextAfterIndexMutation())
+                    return getCurrentIndex();
                 logDebug_ACU('No chat messages (ACU).');
                 return index;
             }
@@ -21291,21 +21606,36 @@ $CONTENT
                     && index.fullHistoryLoaded
                     && index.latestAbsoluteIndex === latestAbsoluteIndex
                     && allChatMessages_ACU.length === latestAbsoluteIndex + 1) {
+                    if (!loadIsCurrent())
+                        return getCurrentIndex();
                     syncFullDatabaseChatHistoryTailFromHost_ACU(index);
+                    if (!syncEventContextAfterIndexMutation())
+                        return getCurrentIndex();
                     return index;
                 }
                 const messagesFromApi = await getChatMessages_ACU(`0-${latestAbsoluteIndex}`, {
                     include_swipes: false,
                 });
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
                 if (Array.isArray(messagesFromApi) && messagesFromApi.length === latestAbsoluteIndex + 1
+                    && loadIsCurrent()
                     && rebuildDatabaseChatIndex_ACU(index, messagesFromApi, 0, true)) {
                     _set_allChatMessages_ACU(messagesFromApi.map((message, messageIndex) => buildDatabaseRawChatMessage_ACU(message, messageIndex)));
+                    if (!syncEventContextAfterIndexMutation())
+                        return getCurrentIndex();
                     logDebug_ACU(`ACU Loaded ${allChatMessages_ACU.length} messages for: ${currentChatFileIdentifier_ACU}.`);
                     return index;
                 }
-                if (Array.isArray(liveChat) && liveChat.length === latestAbsoluteIndex + 1
-                    && rebuildDatabaseChatIndex_ACU(index, liveChat, 0, true)) {
-                    _set_allChatMessages_ACU(liveChat.map((message, messageIndex) => buildDatabaseRawChatMessage_ACU(message, messageIndex)));
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
+                const fallbackChat = getChatArray_ACU();
+                if (Array.isArray(fallbackChat) && fallbackChat.length === latestAbsoluteIndex + 1
+                    && loadIsCurrent()
+                    && rebuildDatabaseChatIndex_ACU(index, fallbackChat, 0, true)) {
+                    _set_allChatMessages_ACU(fallbackChat.map((message, messageIndex) => buildDatabaseRawChatMessage_ACU(message, messageIndex)));
+                    if (!syncEventContextAfterIndexMutation())
+                        return getCurrentIndex();
                     logWarn_ACU('[DatabaseChatIndex] 全量聊天读取未返回完整范围，已使用当前标准 ST 聊天数组回退。');
                     return index;
                 }
@@ -21313,8 +21643,15 @@ $CONTENT
                 return index;
             }
             if (!index.ready) {
-                if (Array.isArray(liveChat) && liveChat.length === latestAbsoluteIndex + 1) {
-                    rebuildDatabaseChatIndex_ACU(index, liveChat, 0, false);
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
+                const fallbackChat = getChatArray_ACU();
+                if (Array.isArray(fallbackChat) && fallbackChat.length === latestAbsoluteIndex + 1) {
+                    if (!loadIsCurrent())
+                        return getCurrentIndex();
+                    rebuildDatabaseChatIndex_ACU(index, fallbackChat, 0, false);
+                    if (!syncEventContextAfterIndexMutation())
+                        return getCurrentIndex();
                     logDebug_ACU('[DatabaseChatIndex] 正常路径使用宿主当前聊天数组建立索引，未读取完整正文。');
                 }
                 else {
@@ -21323,60 +21660,104 @@ $CONTENT
                 return index;
             }
             if (latestAbsoluteIndex < index.latestAbsoluteIndex) {
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
                 truncateDatabaseChatIndex_ACU(latestAbsoluteIndex + 1);
+                if (!syncEventContextAfterIndexMutation())
+                    return getCurrentIndex();
             }
             if (latestAbsoluteIndex > index.latestAbsoluteIndex) {
                 const startIndex = index.latestAbsoluteIndex + 1;
                 const messagesFromApi = await getChatMessages_ACU(`${startIndex}-${latestAbsoluteIndex}`, {
                     include_swipes: false,
                 });
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
                 if (Array.isArray(messagesFromApi)
                     && messagesFromApi.length === latestAbsoluteIndex - startIndex + 1
                     && messagesFromApi.every(message => message && typeof message === 'object')) {
+                    if (!loadIsCurrent())
+                        return getCurrentIndex();
                     messagesFromApi.forEach((message, offset) => updateDatabaseChatIndexMessage_ACU(index, message, startIndex + offset));
                     if (index.fullHistoryLoaded)
                         appendDatabaseChatHistory_ACU(messagesFromApi, startIndex);
-                }
-                else if (Array.isArray(liveChat) && liveChat.length === latestAbsoluteIndex + 1) {
-                    for (let messageIndex = startIndex; messageIndex <= latestAbsoluteIndex; messageIndex += 1)
-                        updateDatabaseChatIndexMessage_ACU(index, liveChat[messageIndex], messageIndex);
-                    if (index.fullHistoryLoaded)
-                        _set_allChatMessages_ACU(liveChat.map((message, messageIndex) => buildDatabaseRawChatMessage_ACU(message, messageIndex)));
-                    logWarn_ACU(`[DatabaseChatIndex] 尾段读取不完整，已使用标准 ST 聊天数组回退: ${startIndex}-${latestAbsoluteIndex}`);
+                    if (!syncEventContextAfterIndexMutation())
+                        return getCurrentIndex();
                 }
                 else {
-                    logWarn_ACU(`[DatabaseChatIndex] 尾段读取不完整，保留旧索引: ${startIndex}-${latestAbsoluteIndex}`);
-                    return index;
+                    if (!loadIsCurrent())
+                        return getCurrentIndex();
+                    const fallbackChat = getChatArray_ACU();
+                    if (Array.isArray(fallbackChat) && fallbackChat.length === latestAbsoluteIndex + 1) {
+                        if (!loadIsCurrent())
+                            return getCurrentIndex();
+                        for (let messageIndex = startIndex; messageIndex <= latestAbsoluteIndex; messageIndex += 1)
+                            updateDatabaseChatIndexMessage_ACU(index, fallbackChat[messageIndex], messageIndex);
+                        if (index.fullHistoryLoaded)
+                            _set_allChatMessages_ACU(fallbackChat.map((message, messageIndex) => buildDatabaseRawChatMessage_ACU(message, messageIndex)));
+                        if (!syncEventContextAfterIndexMutation())
+                            return getCurrentIndex();
+                        logWarn_ACU(`[DatabaseChatIndex] 尾段读取不完整，已使用标准 ST 聊天数组回退: ${startIndex}-${latestAbsoluteIndex}`);
+                    }
+                    else {
+                        logWarn_ACU(`[DatabaseChatIndex] 尾段读取不完整，保留旧索引: ${startIndex}-${latestAbsoluteIndex}`);
+                        return index;
+                    }
                 }
             }
             if (replaceTail && latestAbsoluteIndex >= 0) {
                 const messagesFromApi = await getChatMessages_ACU(`${latestAbsoluteIndex}-${latestAbsoluteIndex}`, {
                     include_swipes: false,
                 });
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
                 const replacement = Array.isArray(messagesFromApi) ? messagesFromApi[0] : null;
-                const currentMessage = replacement || (Array.isArray(liveChat) ? liveChat[latestAbsoluteIndex] : null);
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
+                const currentMessage = replacement || getChatArray_ACU()?.[latestAbsoluteIndex] || null;
                 if (currentMessage) {
+                    if (!loadIsCurrent())
+                        return getCurrentIndex();
                     updateDatabaseChatIndexMessage_ACU(index, currentMessage, latestAbsoluteIndex);
                     if (index.fullHistoryLoaded)
                         replaceDatabaseChatHistoryMessage_ACU(currentMessage, latestAbsoluteIndex);
+                    if (!syncEventContextAfterIndexMutation())
+                        return getCurrentIndex();
                 }
             }
-            if (Array.isArray(liveChat)) {
+            if (!loadIsCurrent())
+                return getCurrentIndex();
+            const currentChat = getChatArray_ACU();
+            if (Array.isArray(currentChat)) {
                 const tailStart = Math.max(0, latestAbsoluteIndex - DATABASE_CHAT_INDEX_TAIL_LIMIT_ACU + 1);
-                for (let messageIndex = tailStart; messageIndex <= latestAbsoluteIndex && messageIndex < liveChat.length; messageIndex += 1) {
-                    if (liveChat[messageIndex])
-                        updateDatabaseChatIndexMessage_ACU(index, liveChat[messageIndex], messageIndex);
+                if (!loadIsCurrent())
+                    return getCurrentIndex();
+                for (let messageIndex = tailStart; messageIndex <= latestAbsoluteIndex && messageIndex < currentChat.length; messageIndex += 1) {
+                    if (currentChat[messageIndex])
+                        updateDatabaseChatIndexMessage_ACU(index, currentChat[messageIndex], messageIndex);
                 }
                 syncFullDatabaseChatHistoryTailFromHost_ACU(index);
             }
+            if (!loadIsCurrent())
+                return getCurrentIndex();
             index.latestAbsoluteIndex = latestAbsoluteIndex;
             index.totalMessages = latestAbsoluteIndex + 1;
             index.ready = true;
+            if (!syncEventContextAfterIndexMutation())
+                return getCurrentIndex();
             return index;
         }
         catch (error) {
             logError_ACU('ACU获取聊天记录失败: ' + (error?.message || error));
-            return index;
+            return loadIsCurrent() ? index : getCurrentIndex();
+        }
+        finally {
+            if (eventContext
+                && loadIsCurrent()) {
+                eventContext.chat = getChatArray_ACU();
+                eventContext.chatIndex = getCurrentIndex();
+                eventContext.indexRevision = Number(eventContext.chatIndex?.revision ?? -1);
+            }
         }
     }
     async function getWorldbookNames_ACU() {
@@ -22044,7 +22425,7 @@ $CONTENT
                 return { changed: false, changedCount: 0, saved: false, verified: false, state: saveResult?.state || 'not_committed', error: saveResult?.error || 'SAVE_CHAT_REJECTED' };
             }
             try {
-                await loadAllChatMessages_ACU();
+                await loadAllChatMessages_ACU({ fullHistory: false });
             }
             catch (e) { /* runtime refresh can retry on the next host event */ }
         }
@@ -23133,6 +23514,8 @@ $CONTENT
         };
     }
     async function runTableUpdateCommit_ACU(options, apply) {
+        const eventTransaction = options?.eventTransaction || null;
+        const targetMessageMeta = options?.targetMessageMeta || eventTransaction?.targetMessageMeta || null;
         const idempotencyOptions = !options.skipChatSave
             && options.idempotencyGroupKeys === undefined
             && options.idempotencyKey === undefined
@@ -23140,6 +23523,10 @@ $CONTENT
             ? { ...options, idempotencyGroupKeys: databaseIdempotencyGroupKeys_ACU(options, true) }
             : options;
         try {
+            if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, targetMessageMeta))
+                return databasePersistenceFailure_ACU('stale_chat', 'STALE_TARGET_MESSAGE', {
+                    messageIndex: targetMessageMeta?.消息索引 ?? targetMessageMeta?.messageIndex ?? targetMessageMeta?.index,
+                });
             return await runTableWriteTransaction_ACU({
                 source: options.source,
                 reason: options.reason,
@@ -23151,7 +23538,14 @@ $CONTENT
                 let commitRevisionWriteSet = options.revisionWriteSet;
                 const runtimeBeforeCommit = currentJsonTableData_ACU ? cloneTableData_ACU(currentJsonTableData_ACU) : null;
                 return transactionContext.runCommit(async () => {
+                    if (eventTransaction) {
+                        invalidateDatabaseGenerationProjection_ACU(eventTransaction);
+                        eventTransaction.commitProjectionScope = true;
+                    }
+                    try {
                     const idempotency = await inspectDatabaseIdempotency_ACU(idempotencyOptions);
+                    if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, targetMessageMeta))
+                        throw createDatabaseGenerationStaleError_ACU(targetMessageMeta);
                     if (idempotency.error) {
                         const idempotencyError = new Error(idempotency.error);
                         idempotencyError.persistenceState = idempotency.state || 'not_committed';
@@ -23173,6 +23567,8 @@ $CONTENT
                         };
                     }
                     const applied = await apply({ transactionContext, workingData });
+                    if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, targetMessageMeta))
+                        throw createDatabaseGenerationStaleError_ACU(targetMessageMeta);
                     if (!applied.success || !applied.tableData) {
                         throw new Error(applied.error || `${options.reason}: update apply failed`);
                     }
@@ -23240,6 +23636,8 @@ $CONTENT
                             assumeCommitLock: true,
                             transactionContext,
                         });
+                        if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, targetMessageMeta))
+                            throw createDatabaseGenerationStaleError_ACU(targetMessageMeta);
                         if (persistenceResult?.duplicate) {
                             commitRevisionWriteSet = [];
                             if (runtimeBeforeCommit)
@@ -23285,6 +23683,14 @@ $CONTENT
                         revision: persistenceResult?.revision,
                         idempotencyKey: persistenceResult?.idempotencyKey,
                     };
+                    }
+                    finally {
+                        if (eventTransaction) {
+                            eventTransaction.commitProjectionScope = false;
+                            invalidateDatabaseGenerationProjection_ACU(eventTransaction);
+                            clearDatabaseGenerationPlan_ACU(eventTransaction);
+                        }
+                    }
                 }, () => commitRevisionWriteSet);
             });
         }
@@ -23298,6 +23704,13 @@ $CONTENT
                 state: error?.persistenceState || 'not_committed',
                 error: message,
             };
+        }
+        finally {
+            if (eventTransaction) {
+                eventTransaction.commitProjectionScope = false;
+                invalidateDatabaseGenerationProjection_ACU(eventTransaction);
+                clearDatabaseGenerationPlan_ACU(eventTransaction);
+            }
         }
     }
     async function runSqliteRuntimeMutationCommit_ACU(options) {
@@ -23392,13 +23805,63 @@ $CONTENT
         const { sheetKey, isolationKey } = options;
         return v2FrameTrackedUpdateFloor_ACU(readIsolatedTagData_ACU(msg, isolationKey), sheetKey, messageAiFloor);
     }
-    function getLatestAiMessageIndexFromChat_ACU(chat) {
-        if (activeDatabaseChatIndex_ACU?.ready && activeDatabaseChatIndex_ACU.aiIndices.length > 0)
-            return activeDatabaseChatIndex_ACU.aiIndices[activeDatabaseChatIndex_ACU.aiIndices.length - 1];
-        if (!Array.isArray(chat))
+    function projectTableHistoryStatesFromChat_ACU(chat, sheetKeys, isolationKey, aiIndices) {
+        const keys = [...new Set((Array.isArray(sheetKeys) ? sheetKeys : [])
+            .map(sheetKey => String(sheetKey || '').trim())
+            .filter(Boolean))];
+        const states = Object.fromEntries(keys.map(sheetKey => [sheetKey, {
+            latestAiMessageIndex: Array.isArray(aiIndices) && aiIndices.length > 0 ? aiIndices[aiIndices.length - 1] : -1,
+            latestDataMessageIndex: -1,
+            latestDataAiFloor: 0,
+            lastTrackedUpdateMessageIndex: -1,
+            lastTrackedUpdateAiFloor: 0,
+            hasAnyData: false,
+            hasTrackedUpdate: false,
+        }]));
+        if (!Array.isArray(chat) || !Array.isArray(aiIndices) || keys.length === 0)
+            return states;
+        const pendingData = new Set(keys);
+        const pendingTracked = new Set(keys);
+        for (let cursor = aiIndices.length - 1; cursor >= 0; cursor -= 1) {
+            if (pendingData.size === 0 && pendingTracked.size === 0)
+                break;
+            const messageIndex = aiIndices[cursor];
+            const message = Number.isInteger(messageIndex) ? chat[messageIndex] : null;
+            if (!message || message.is_user)
+                continue;
+            const tagData = readIsolatedTagData_ACU(message, isolationKey);
+            const messageAiFloor = cursor + 1;
+            for (const sheetKey of [...pendingData]) {
+                if (!v2FrameHasSheetData_ACU(tagData, sheetKey))
+                    continue;
+                const state = states[sheetKey];
+                state.latestDataMessageIndex = messageIndex;
+                state.latestDataAiFloor = messageAiFloor;
+                state.hasAnyData = true;
+                pendingData.delete(sheetKey);
+            }
+            for (const sheetKey of [...pendingTracked]) {
+                const trackedFloor = v2FrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor);
+                if (!(trackedFloor > 0))
+                    continue;
+                const state = states[sheetKey];
+                state.lastTrackedUpdateMessageIndex = messageIndex;
+                state.lastTrackedUpdateAiFloor = trackedFloor;
+                state.hasTrackedUpdate = true;
+                pendingTracked.delete(sheetKey);
+            }
+        }
+        return states;
+    }
+    function getLatestAiMessageIndexFromChat_ACU(chat, expectedChatId = null, contextChat = null) {
+        const liveChat = Array.isArray(chat) ? chat : getChatArray_ACU();
+        const index = getDatabaseChatIndexForRead_ACU(liveChat, expectedChatId, contextChat);
+        if (index?.aiIndices.length > 0)
+            return index.aiIndices[index.aiIndices.length - 1];
+        if (!Array.isArray(liveChat))
             return -1;
-        for (let i = chat.length - 1; i >= 0; i -= 1) {
-            if (chat[i] && !chat[i].is_user)
+        for (let i = liveChat.length - 1; i >= 0; i -= 1) {
+            if (liveChat[i] && !liveChat[i].is_user)
                 return i;
         }
         return -1;
@@ -23459,7 +23922,9 @@ $CONTENT
     }
     function resolveTableHistoryStateFromChat_ACU(chat, options = {}) {
         const indexedAiIndices = Array.isArray(options.aiIndices) ? options.aiIndices : null;
-        const latestAiMessageIndex = getLatestAiMessageIndexFromChat_ACU(chat);
+        const latestAiMessageIndex = indexedAiIndices
+            ? (indexedAiIndices.length > 0 ? indexedAiIndices[indexedAiIndices.length - 1] : -1)
+            : getLatestAiMessageIndexFromChat_ACU(chat, options.expectedChatId, options.contextChat);
         let latestDataMessageIndex = -1;
         let lastTrackedUpdateMessageIndex = -1;
         let lastTrackedUpdateAiFloor = 0;
@@ -33250,7 +33715,7 @@ $CONTENT
      * presentation/components/update-status-display.ts — 运行时状态/更新显示 UI
      * 从 features/runtime/01_runtime_state.js 迁移而来
      */
-    async function updateCardUpdateStatusDisplay_ACU() {
+    async function updateCardUpdateStatusDisplay_ACU(options = {}) {
         const $totalMessagesDisplay = $popupInstance_ACU
             ? $popupInstance_ACU.find(`#${SCRIPT_ID_PREFIX_ACU}-total-messages-display`)
             : null;
@@ -33270,8 +33735,23 @@ $CONTENT
             logDebug_ACU('updateCardUpdateStatusDisplay_ACU: UI elements not ready.');
             return;
         }
+        const eventTransaction = options?.eventTransaction || null;
+        const eventContext = options?.eventContext || options?.context || eventTransaction?.context || null;
+        if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, eventTransaction.targetMessageMeta))
+            return;
         const chatHistory = getChatArray_ACU();
-        const totalMessages = chatHistory.filter(msg => !msg.is_user).length;
+        const expectedChatId = eventTransaction?.chatId || eventContext?.chatId || getDatabaseChatIndexChatId_ACU();
+        const runtimeIndex = options?.runtimeIndex || eventContext?.chatIndex || null;
+        const validatedIndex = runtimeIndex?.ready
+            && getDatabaseChatIndexForRead_ACU(chatHistory, expectedChatId, eventContext?.chat) === runtimeIndex
+            ? runtimeIndex
+            : getDatabaseChatIndexForRead_ACU(chatHistory, expectedChatId, eventContext?.chat);
+        const aiIndices = validatedIndex?.ready
+            ? validatedIndex.aiIndices
+            : (Array.isArray(chatHistory)
+                ? chatHistory.map((msg, index) => !msg?.is_user ? index : -1).filter(index => index >= 0)
+                : []);
+        const totalMessages = aiIndices.length;
         $totalMessagesDisplay.text(`上下文总层数: ${totalMessages} (仅计算AI回复楼层)`);
         const totalAiMessages = totalMessages;
         if (!currentJsonTableData_ACU) {
@@ -33282,6 +33762,8 @@ $CONTENT
         try {
             const sheetKeys = getSortedSheetKeys_ACU(currentJsonTableData_ACU);
             const tableCount = sheetKeys.length;
+            const currentIsolationKey = getCurrentIsolationKey_ACU();
+            const historyProjection = projectTableHistoryStatesFromChat_ACU(chatHistory, sheetKeys, currentIsolationKey, aiIndices);
             let totalRowCount = 0;
             let nextUpdates = [];
             let tableStatusRows = "";
@@ -33294,7 +33776,6 @@ $CONTENT
                 }
                 // 计算每个表的状态
                 const tableConfig = table.updateConfig || {};
-                const isSummary = isSummaryOrOutlineTable_ACU(table.name);
                 // 确定参数
                 const globalFrequency = settings_ACU.autoUpdateFrequency || 1;
                 const globalSkip = settings_ACU.skipUpdateFloors || 0;
@@ -33302,16 +33783,8 @@ $CONTENT
                 const rawFreq = Number.isFinite(tableConfig.updateFrequency) ? tableConfig.updateFrequency : -1;
                 const rawSkip = Number.isFinite(tableConfig.skipFloors) ? tableConfig.skipFloors : -1;
                 const frequency = (rawFreq === -1) ? globalFrequency : rawFreq;
-                // [重构] 上次更新楼层计算：扫描聊天记录
-                // 寻找该表格在历史记录中最后一次被更新的楼层
                 // 支持合并更新逻辑：只要合并更新组内有任意表被修改，整组表都视为已更新
-                const currentIsolationKey = getCurrentIsolationKey_ACU();
-                const history = resolveTableHistoryStateFromChat_ACU(chatHistory, {
-                    sheetKey: key,
-                    isSummaryTable: isSummary,
-                    isolationKey: currentIsolationKey,
-                    settings: settings_ACU,
-                });
+                const history = historyProjection[key];
                 const lastUpdatedAiFloor = history.lastTrackedUpdateAiFloor;
                 const foundInHistory = history.hasTrackedUpdate;
                 const skipFloors = Math.max(0, (rawSkip === -1) ? globalSkip : rawSkip);
@@ -33430,6 +33903,7 @@ $CONTENT
                 .map((msg, index) => !msg.is_user ? index : -1)
                 .filter((index) => index !== -1);
         const totalAiMessages = allAiMessageIndices.length;
+        const historyProjection = projectTableHistoryStatesFromChat_ACU(liveChat, sheetKeys, isolationKey, allAiMessageIndices);
         // 统一的全局默认参数
         const globalFrequency = settings.autoUpdateFrequency || 1;
         const globalSkip = settings.skipUpdateFloors || 0;
@@ -33438,7 +33912,6 @@ $CONTENT
             if (!table)
                 continue;
             const tableConfig = table.updateConfig || {};
-            const isSummary = isSummaryOrOutlineTable_ACU(table.name);
             // 获取该表的更新配置 (优先使用表内配置，否则使用全局默认)
             const rawDepth = Number.isFinite(tableConfig.contextDepth) ? tableConfig.contextDepth : -1;
             const rawFreq = Number.isFinite(tableConfig.updateFrequency) ? tableConfig.updateFrequency : -1;
@@ -33449,13 +33922,7 @@ $CONTENT
             const frequency = (rawFreq === -1) ? globalFrequency : rawFreq;
             const skipFloors = Math.max(0, (rawSkip === -1) ? globalSkip : rawSkip);
             const groupId = rawGroupId;
-            const history = resolveTableHistoryStateFromChat_ACU(liveChat, {
-                sheetKey,
-                isSummaryTable: isSummary,
-                isolationKey,
-                settings,
-                aiIndices: allAiMessageIndices,
-            });
+            const history = historyProjection[sheetKey];
             const lastUpdatedAiFloor = history.lastTrackedUpdateAiFloor;
             // 计算未记录楼层数
             const effectiveUnrecordedFloors = Math.max(0, (totalAiMessages - skipFloors) - lastUpdatedAiFloor);
@@ -35782,7 +36249,8 @@ $CONTENT
         const eventTransaction = options?.eventTransaction || null;
         const eventContext = getDatabaseGenerationContext_ACU(eventTransaction);
         const 锁定保存索引 = 目标消息元信息 && Number.isInteger(Number(目标消息元信息.消息索引)) ? Number(目标消息元信息.消息索引) : null;
-        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+        if ((目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息))
+            || (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息))) {
             return { success: false, failedGroups: groups.map(group => group.key), error: '目标楼层已变化，已跳过本次自动更新。' };
         }
         const templateForLookup = parseTableTemplateJson_ACU({ stripSeedRows: true });
@@ -35836,6 +36304,8 @@ $CONTENT
             if (!initResult.success) {
                 return { success: false, failedGroups: groups.map(group => group.key), error: initResult.error || '手动重填 SQLite 运行时初始化失败。' };
             }
+            if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息))
+                return { success: false, failedGroups: groups.map(group => group.key), error: '目标楼层已变化，已跳过本次自动更新。' };
             deferredWorkingData = JSON.parse(JSON.stringify(initResult.data || deferredWorkingData));
             deferredCheckpointData = deferredCheckpointData || JSON.parse(JSON.stringify(deferredWorkingData));
         }
@@ -35852,11 +36322,21 @@ $CONTENT
             let retryUnifiedError = null;
             let bucketSucceeded = false;
             for (let bucketAttempt = 1; bucketAttempt <= maxBucketRetries; bucketAttempt++) {
+                if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                    bucket.plannedJobs.forEach(job => failedGroups.add(job.group.key));
+                    firstError = firstError || '目标楼层已变化，已跳过本次自动更新。';
+                    break;
+                }
                 const chatHistory = eventContext.chat || getChatArray_ACU();
                 const bucketFirstMessageIndex = Math.min(...bucket.plannedJobs.map(job => job.firstMessageIndexOfBatch));
                 const baseResult = options.deferPersist && deferredWorkingData
                     ? { data: JSON.parse(JSON.stringify(deferredWorkingData)), error: null }
                     : await buildBatchMergeBase_ACU(bucket.batchNumber, { maxMessageIndex: bucketFirstMessageIndex - 1, eventTransaction });
+                if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                    bucket.plannedJobs.forEach(job => failedGroups.add(job.group.key));
+                    firstError = firstError || '目标楼层已变化，已跳过本次自动更新。';
+                    break;
+                }
                 if (!baseResult.data) {
                     bucket.plannedJobs.forEach(job => failedGroups.add(job.group.key));
                     firstError = firstError || baseResult.error || '无法构建合并基底，操作已终止。';
@@ -35932,6 +36412,11 @@ $CONTENT
                     firstError = firstError || collectError || 'AI响应收集失败';
                     break;
                 }
+                if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                    jobs.forEach(job => failedGroups.add(job.groupKey));
+                    firstError = firstError || '目标楼层已变化，已跳过本次自动更新。';
+                    break;
+                }
                 if (isSqliteMode()) {
                     const responseByGroupKey = new Map();
                     responses.forEach(response => responseByGroupKey.set(response.job.groupKey, response));
@@ -35965,7 +36450,8 @@ $CONTENT
                     }
                 }
                 emitBucketProgress(bucketIndex, { phase: 'saving' });
-                if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+                if ((目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息))
+                    || (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息))) {
                     jobs.forEach(job => failedGroups.add(job.groupKey));
                     firstError = firstError || '目标楼层已变化，已跳过本次自动更新。';
                     break;
@@ -35990,6 +36476,11 @@ $CONTENT
                         forceSnapshotApply: options.forceSnapshotApply === true,
                         eventTransaction: options.eventTransaction,
                 });
+                if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                    jobs.forEach(job => failedGroups.add(job.groupKey));
+                    firstError = firstError || '目标楼层已变化，已跳过本次自动更新。';
+                    break;
+                }
                 if (applyResult.success) {
                     invalidateDatabaseGenerationProjection_ACU(eventTransaction);
                     if (applyResult.duplicate) {
@@ -36043,6 +36534,7 @@ $CONTENT
                             updateGroupKeys: checkpointSheetKeys,
                             trackingSheetKeys: checkpointSheetKeys,
                             trackAsUpdate: true,
+                            eventTransaction,
                         }, () => ({
                             success: true,
                             value: { modifiedKeys: checkpointSheetKeys },
@@ -36108,6 +36600,8 @@ $CONTENT
                     });
                 }
             }
+            if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息))
+                break;
             if (!bucketSucceeded && options.abortController?.signal.aborted) {
                 break;
             }
@@ -36150,6 +36644,9 @@ $CONTENT
             let lastSqlError = null;
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
+                    if (progressContext?.eventTransaction
+                        && !databaseGenerationTransactionStillCurrent_ACU(progressContext.eventTransaction, progressContext.targetMessageMeta))
+                        return { success: false, modifiedKeys: [], stale: true, error: '目标楼层已变化，已跳过本次自动更新。' };
                     const rawBaseSnapshot = getRuntimeTableDataSnapshot_ACU(progressContext?.batchBaseSnapshot || null) || {};
                     const baseRevision = captureTableRuntimeRevisionForWriteSet_ACU(buildWriteSetForSheetKeys_ACU(targetSheetKeys, rawBaseSnapshot));
                     const collectResult = await collectGroupFillResponse_ACU({
@@ -36168,6 +36665,9 @@ $CONTENT
                     if (collectResult.aborted) {
                         return { success: false, modifiedKeys: [], aborted: true };
                     }
+                    if (progressContext?.eventTransaction
+                        && !databaseGenerationTransactionStillCurrent_ACU(progressContext.eventTransaction, progressContext.targetMessageMeta))
+                        return { success: false, modifiedKeys: [], stale: true, error: '目标楼层已变化，已跳过本次自动更新。' };
                     if (!collectResult.success || !collectResult.aiResponse) {
                         throw new Error(collectResult.rawError || collectResult.error || 'AI响应收集失败');
                     }
@@ -36598,7 +37098,7 @@ $CONTENT
             if (!apiIsConfigured) {
                 return { success: false, error: 'API未配置，无法更新数据库。' };
             }
-            await loadAllChatMessages_ACU();
+            await loadAllChatMessages_ACU({ fullHistory: false });
             await refreshData();
             if (!currentJsonTableData_ACU) {
                 return { success: false, error: '数据库未加载。' };
@@ -36764,7 +37264,7 @@ $CONTENT
                 }
                 // 并发组内禁止每组单独刷新；填表保存后 currentJsonTableData_ACU 已由本轮 workingTableData 更新。
                 // 这里只同步聊天数组，避免刚保存完又通过 refreshData 触发历史回放/重建。
-                await loadAllChatMessages_ACU();
+                await loadAllChatMessages_ACU({ fullHistory: false });
                 if (failedGroups.length > 0) {
                     break;
                 }
@@ -36775,7 +37275,7 @@ $CONTENT
                 // 覆盖了 currentJsonTableData_ACU（包括旧表头）。必须调用 refreshData 恢复到正确状态，
                 // 否则用户重新打开可视化编辑器时会看到旧表头（指导表中的新表头不会被应用）。
                 try {
-                    await loadAllChatMessages_ACU();
+                    await loadAllChatMessages_ACU({ fullHistory: false });
                     await refreshData();
                 }
                 catch (e) {
@@ -36865,13 +37365,13 @@ $CONTENT
         }
         catch (_) { }
     }
-    function handleAutoGroupedProgressEvent_ACU(event, loadingToast) {
+    function handleAutoGroupedProgressEvent_ACU(event, loadingToast, statusOptions = {}) {
         const message = buildAutoUpdateProgressMessage_ACU(event);
         updateAutoUpdateToastMessage_ACU(loadingToast, message);
         switch (event.phase) {
             case 'complete':
                 if (typeof updateCardUpdateStatusDisplay_ACU === 'function')
-                    updateCardUpdateStatusDisplay_ACU();
+                    updateCardUpdateStatusDisplay_ACU(statusOptions);
                 break;
             case 'retry':
                 showToastr_ACU('warning', message, { timeOut: 5000 });
@@ -36891,6 +37391,10 @@ $CONTENT
         if (eventTransaction && 目标消息元信息)
             eventTransaction.targetMessageMeta = 目标消息元信息;
         const eventContext = getDatabaseGenerationContext_ACU(eventTransaction);
+        if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+            logWarn_ACU('[自动更新] 生成事件上下文已失配，跳过本次自动提交。');
+            return;
+        }
         logDebug_ACU('ACU Auto-Trigger: Starting independent check...');
         if (autoUpdateTriggerInFlight_ACU) {
             logDebug_ACU('ACU Auto-Trigger: trigger already in flight. Skipping.');
@@ -36899,7 +37403,14 @@ $CONTENT
         autoUpdateTriggerInFlight_ACU = true;
         try {
             // [重构] 调用 service 层前置检查
-            const preCheck = checkAutoUpdatePreConditions_ACU(settings_ACU, coreApisAreReady_ACU, isAutoUpdatingCard_ACU, currentJsonTableData_ACU, getIndexedTotalMessages_ACU());
+            const expectedChatId = eventTransaction?.chatId || eventContext.chatId;
+            const preCheck = checkAutoUpdatePreConditions_ACU(
+                settings_ACU,
+                coreApisAreReady_ACU,
+                isAutoUpdatingCard_ACU,
+                currentJsonTableData_ACU,
+                getIndexedTotalMessages_ACU(eventContext.chat, expectedChatId, eventContext.chat),
+            );
             if (!preCheck.canProceed) {
                 logWarn_ACU(`ACU Auto-Trigger: ${preCheck.reason} Skipping.`);
                 return;
@@ -36907,26 +37418,106 @@ $CONTENT
             let liveChat = eventContext.chat || getChatArray_ACU();
             if (!liveChat || liveChat.length === 0)
                 return;
-            let totalAiMessages = getIndexedAiMessageCount_ACU(liveChat);
+            let totalAiMessages = getIndexedAiMessageCount_ACU(liveChat, expectedChatId, eventContext.chat);
             // [重构] 调用 service 层楼层增加延迟逻辑
             const delayResult = await handleFloorIncreaseDelay_ACU(totalAiMessages, lastTotalAiMessages_ACU, AUTO_UPDATE_FLOOR_INCREASE_DELAY_ACU, getChatArray_ACU, _set_lastTotalAiMessages_ACU);
             if (delayResult === null)
                 return; // chat 为空
+            if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                logWarn_ACU('[自动更新] 延迟等待后生成事件上下文已失配，跳过本次自动提交。');
+                return;
+            }
             if (delayResult) {
                 liveChat = delayResult.liveChat;
-                await loadAllChatMessages_ACU({ eventTransaction });
+                await loadAllChatMessages_ACU({ fullHistory: false, eventTransaction });
                 eventContext.chat = getChatArray_ACU();
+                eventContext.chatIndex = activeDatabaseChatIndex_ACU || getDatabaseChatIndex_ACU();
+                eventContext.indexRevision = Number(eventContext.chatIndex?.revision ?? -1);
                 liveChat = eventContext.chat;
-                totalAiMessages = getIndexedAiMessageCount_ACU(eventContext.chat);
+                totalAiMessages = getIndexedAiMessageCount_ACU(eventContext.chat, expectedChatId, eventContext.chat);
+                if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                    logWarn_ACU('[自动更新] 尾段加载后生成事件上下文已失配，跳过本次自动提交。');
+                    return;
+                }
             }
             // [重构] 调用 service 层构建更新计划
             const triggerIsolationKey = getCurrentIsolationKey_ACU();
-            const runtimeIndex = eventContext.chatIndex?.ready ? eventContext.chatIndex : activeDatabaseChatIndex_ACU;
-            const plan = eventTransaction?.plan || buildAutoUpdatePlan_ACU(liveChat, currentJsonTableData_ACU, settings_ACU, triggerIsolationKey, {
-                aiIndices: runtimeIndex?.aiIndices,
+            const runtimeIndex = eventContext.chatIndex?.ready ? eventContext.chatIndex : null;
+            const planRuntimeScopeKey = getRuntimeScopeKey_ACU({
+                chatKey: eventTransaction?.chatId || expectedChatId,
+                isolationKey: triggerIsolationKey,
             });
-            if (eventTransaction && !eventTransaction.plan)
-                eventTransaction.plan = plan;
+            const planRuntimeState = getRuntimeRevisionState_ACU(planRuntimeScopeKey);
+            const tableApiPresetName = String(settings_ACU.tableApiPreset || '');
+            const tableApiPresetConfig = getApiConfigByPreset_ACU(tableApiPresetName) || {};
+            const tableApiConfig = tableApiPresetConfig.apiConfig || {};
+            const tableApiRouteIdentity = hashUserInput_ACU(JSON.stringify({
+                mode: tableApiPresetConfig.apiMode || '',
+                profile: tableApiPresetConfig.tavernProfile || '',
+                useMainApi: tableApiConfig.useMainApi === true,
+                url: tableApiConfig.url || '',
+                model: tableApiConfig.model || '',
+                storage: isSqliteMode() ? 'sqlite' : 'native',
+            })) || '0';
+            const templatePresetIdentity = getActiveTemplatePresetMeta_ACU({ isolationKey: triggerIsolationKey })?.presetName || '';
+            const planScheduleIdentity = JSON.stringify({
+                threshold: settings_ACU.autoUpdateThreshold,
+                frequency: settings_ACU.autoUpdateFrequency,
+                batchSize: settings_ACU.updateBatchSize,
+                skipFloors: settings_ACU.skipUpdateFloors,
+                sheets: getSortedSheetKeys_ACU(currentJsonTableData_ACU).map(sheetKey => {
+                    const config = currentJsonTableData_ACU?.[sheetKey]?.updateConfig || {};
+                    return [sheetKey, config.contextDepth, config.updateFrequency, config.skipFloors, config.batchSize, config.groupId];
+                }),
+            });
+            const planKey = eventTransaction
+                ? JSON.stringify([
+                    eventTransaction.key,
+                    eventContext.epoch,
+                    String(eventContext.chatId),
+                    Number(eventContext.indexRevision),
+                    String(triggerIsolationKey || ''),
+                    'auto-update-plan:v1',
+                    templatePresetIdentity,
+                    tableApiPresetName,
+                    tableApiRouteIdentity,
+                    planRuntimeState.global,
+                    planRuntimeState.allRevision,
+                    planScheduleIdentity,
+                ])
+                : '';
+            let plan;
+            if (eventTransaction) {
+                let planPromise = eventTransaction.planPromise && eventTransaction.planKey === planKey
+                    ? eventTransaction.planPromise
+                    : null;
+                if (!planPromise) {
+                    planPromise = Promise.resolve().then(() => buildAutoUpdatePlan_ACU(
+                        liveChat,
+                        currentJsonTableData_ACU,
+                        settings_ACU,
+                        triggerIsolationKey,
+                        { aiIndices: runtimeIndex?.aiIndices },
+                    ));
+                    eventTransaction.planKey = planKey;
+                    eventTransaction.planPromise = planPromise;
+                    const clearSettledPlan = () => {
+                        if (eventTransaction.planPromise === planPromise && eventTransaction.planKey === planKey)
+                            clearDatabaseGenerationPlan_ACU(eventTransaction);
+                    };
+                    planPromise.then(clearSettledPlan, clearSettledPlan);
+                }
+                plan = await planPromise;
+            }
+            else {
+                plan = buildAutoUpdatePlan_ACU(liveChat, currentJsonTableData_ACU, settings_ACU, triggerIsolationKey, {
+                    aiIndices: runtimeIndex?.aiIndices,
+                });
+            }
+            if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                logWarn_ACU('[自动更新] 计划生成前后生成事件上下文已失配，跳过本次自动提交。');
+                return;
+            }
             if (plan.tablesToUpdate.length === 0) {
                 logWarn_ACU('[自动更新] 计划为空，未提交数据库更新。', plan.diagnostics || []);
                 return;
@@ -36974,6 +37565,10 @@ $CONTENT
             // 调用 service 层执行更新计划，传入纯业务操作委托（不含 UI 操作）
             let result;
             try {
+                if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                    logWarn_ACU('[自动更新] 进入批次提交前生成事件上下文已失配，跳过本次自动提交。');
+                    return;
+                }
                 result = await executeAutoUpdatePlan_ACU(plan, settings_ACU, _set_isAutoUpdatingCard_ACU, {
                     processUpdates: (indices, mode, options) => processUpdates_ACU(indices, mode, options),
                     ...(useGroupedAutoUpdates
@@ -36985,14 +37580,18 @@ $CONTENT
                                     abortController: autoGroupedAbortController,
                                     onProgress: event => {
                                         upstreamProgress?.(event);
-                                        handleAutoGroupedProgressEvent_ACU(event, autoProgressToast);
+                                        handleAutoGroupedProgressEvent_ACU(event, autoProgressToast, {
+                                            eventTransaction,
+                                            eventContext,
+                                            runtimeIndex,
+                                        });
                                     },
                                 });
                             },
                         }
                         : {}),
                     refreshData: () => refreshRuntimeDataAndNotifyAfterAutoUpdate_ACU(),
-                    loadAllChatMessages: () => loadAllChatMessages_ACU({ eventTransaction }),
+                    loadAllChatMessages: () => loadAllChatMessages_ACU({ fullHistory: false, eventTransaction }),
                     purgeOldLayerData: () => purgeOldLayerData_ACU(),
                 }, { 目标消息元信息, eventTransaction });
             }
@@ -37010,7 +37609,7 @@ $CONTENT
                 showToastr_ACU('success', '自动合并纪要完成！');
             }
             if (typeof updateCardUpdateStatusDisplay_ACU === 'function')
-                updateCardUpdateStatusDisplay_ACU();
+                updateCardUpdateStatusDisplay_ACU({ eventTransaction, eventContext, runtimeIndex });
         }
         finally {
             autoUpdateTriggerInFlight_ACU = false;
@@ -37267,6 +37866,9 @@ $CONTENT
     }
     async function handleNewMessageDebounced_ACU(eventType = 'unknown_acu', 选项 = {}) {
         const 目标消息元信息 = 选项?.目标消息元信息 || null;
+        const eventEpoch = Number.isInteger(选项?.eventEpoch) ? Number(选项.eventEpoch) : null;
+        if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU)
+            return;
         if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
             logDebug_ACU(`[自动更新] handleNewMessageDebounced 目标楼层已变化，跳过: eventType=${eventType}`);
             return;
@@ -37274,6 +37876,8 @@ $CONTENT
         logDebug_ACU(`New message event (${eventType}) detected for ACU, debouncing for ${NEW_MESSAGE_DEBOUNCE_DELAY_ACU}ms...`);
         clearTimeout(newMessageDebounceTimer_ACU);
         _set_newMessageDebounceTimer_ACU(setTimeout(async () => {
+            if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU)
+                return;
             if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
                 logDebug_ACU(`[自动更新] 防抖执行前目标楼层已变化，跳过: eventType=${eventType}`);
                 return;
@@ -37284,8 +37888,14 @@ $CONTENT
             }
             catch (e) { }
             const eventTransaction = getDatabaseGenerationTransaction_ACU(目标消息元信息);
-            await loadAllChatMessages_ACU({ eventTransaction });
+            if (eventEpoch !== null && eventTransaction?.epoch !== eventEpoch)
+                return;
+            await loadAllChatMessages_ACU({ fullHistory: false, eventTransaction });
             const eventContext = getDatabaseGenerationContext_ACU(eventTransaction);
+            if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                logDebug_ACU(`[自动更新] 防抖加载后生成事件上下文已失配，跳过: eventType=${eventType}`);
+                return;
+            }
             const runtimeContext = { ...eventContext, eventTransaction };
             const liveChat = eventContext.chat;
             // [重构] 调用 service 层的 evaluateNewMessageAction_ACU 进行决策
@@ -37914,6 +38524,9 @@ $CONTENT
                         userMessage: userMessage
                     });
                     ensureOptimizationNotCancelled_ACU();
+                    if (runtimeContext?.eventTransaction
+                        && !databaseGenerationTransactionStillCurrent_ACU(runtimeContext.eventTransaction, runtimeContext.eventTransaction.targetMessageMeta))
+                        return false;
                     if (!result.success) {
                         logDebug_ACU(`[正文优化] 第 ${loop} 轮优化失败:`, result.error);
                         if (loop === 1) {
@@ -37955,7 +38568,17 @@ $CONTENT
                     }
                     return true;
                 }
-                await replaceChatMessage_ACU(messageIndex, finalOptimizedContent);
+                const replacementSucceeded = await replaceChatMessage_ACU(messageIndex, finalOptimizedContent);
+                if (replacementSucceeded && runtimeContext?.eventTransaction) {
+                    const rebound = rebindDatabaseGenerationTransaction_ACU(
+                        runtimeContext.eventTransaction,
+                        读取消息索引角色消息元信息_ACU(messageIndex),
+                    );
+                    if (!rebound) {
+                        invalidateDatabaseGenerationProjection_ACU(runtimeContext.eventTransaction);
+                        return false;
+                    }
+                }
                 invalidateDatabaseGenerationProjection_ACU(runtimeContext?.eventTransaction || null);
                 if (config.seamlessMode) {
                     hideOptimizationOverlay_ACU();
@@ -38020,6 +38643,9 @@ $CONTENT
             currentLoop: currentLoop,
             userMessage: userMessage
         });
+        if (eventTransaction
+            && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, eventTransaction.targetMessageMeta))
+            return false;
         if (!result.success) {
             logDebug_ACU(`[正文优化-手动确认] 第 ${currentLoop} 轮优化失败:`, result.error);
             // 如果是第一轮就失败，显示错误
@@ -38072,7 +38698,22 @@ $CONTENT
                     }
                     else {
                         // 所有轮次完成，应用最终结果并触发填表
-                        await replaceChatMessage_ACU(messageIndex, result.optimizedContent);
+                        if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, eventTransaction.targetMessageMeta)) {
+                            resolve(false);
+                            return;
+                        }
+                        const replacementSucceeded = await replaceChatMessage_ACU(messageIndex, result.optimizedContent);
+                        if (replacementSucceeded && eventTransaction) {
+                            const rebound = rebindDatabaseGenerationTransaction_ACU(
+                                eventTransaction,
+                                读取消息索引角色消息元信息_ACU(messageIndex),
+                            );
+                            if (!rebound) {
+                                invalidateDatabaseGenerationProjection_ACU(eventTransaction);
+                                resolve(false);
+                                return;
+                            }
+                        }
                         invalidateDatabaseGenerationProjection_ACU(eventTransaction);
                         showToastr_ACU('success', `正文优化完成，共 ${totalLoops} 轮优化，累计 ${newTotalOptimizations.length} 处改进`);
                         await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息: 读取消息索引角色消息元信息_ACU(messageIndex), eventTransaction });
@@ -55988,7 +56629,7 @@ $CONTENT
                 }
                 _set_isAutoUpdatingCard_ACU$1(true);
                 try {
-                    await loadAllChatMessages_ACU();
+                    await loadAllChatMessages_ACU({ fullHistory: false });
                     const chatHistory = SillyTavern_API_ACU.chat || [];
                     const currentThreshold = getEffectiveAutoUpdateThreshold_ACU('manual_update');
                     const allAiMessageIndices = chatHistory
@@ -86560,10 +87201,16 @@ Expected function or array of functions, received type ${typeof value}.`
             if (!currentJsonTableData_ACU)
                 return [];
             const chat = getChatArray_ACU();
-            const totalAi = chat.filter((msg) => msg && !msg.is_user).length;
+            const readyIndex = getDatabaseChatIndexForRead_ACU(chat, getDatabaseChatIndexChatId_ACU());
+            const aiIndices = readyIndex?.aiIndices
+                || (Array.isArray(chat)
+                    ? chat.map((msg, index) => msg && !msg.is_user ? index : -1).filter(index => index >= 0)
+                    : []);
+            const totalAi = aiIndices.length;
             const globalFrequency = normalizePositiveInteger_ACU$1(settings_ACU.autoUpdateFrequency, 1);
             const globalSkip = normalizeNonNegativeInteger_ACU$1(settings_ACU.skipUpdateFloors, 0);
             const currentIsolationKey = getCurrentIsolationKey_ACU();
+            const historyProjection = projectTableHistoryStatesFromChat_ACU(chat, sheetKeys.value, currentIsolationKey, aiIndices);
             return sheetKeys.value.map((key) => {
                 const table = currentJsonTableData_ACU?.[key] || {};
                 const config = table.updateConfig || {};
@@ -86576,12 +87223,7 @@ Expected function or array of functions, received type ${typeof value}.`
                 const frequency = rawFrequency === -1 ? globalFrequency : rawFrequency;
                 const skip = Math.max(0, rawSkip === -1 ? globalSkip : rawSkip);
                 const disabled = frequency <= 0;
-                const history = resolveTableHistoryStateFromChat_ACU(chat, {
-                    sheetKey: key,
-                    isSummaryTable: isSummaryOrOutlineTable_ACU(String(table.name || "")),
-                    isolationKey: currentIsolationKey,
-                    settings: settings_ACU,
-                });
+                const history = historyProjection[key];
                 const lastFloor = history.lastTrackedUpdateAiFloor;
                 const found = history.hasTrackedUpdate;
                 if (disabled) {
@@ -97158,16 +97800,16 @@ Expected function or array of functions, received type ${typeof value}.`
         const requestedSheetKeys = Array.isArray(sheetKeysToSave) ? sheetKeysToSave : [];
         const deletedKeys = Array.isArray(deletedSheetKeys) ? [...new Set(deletedSheetKeys.filter(key => typeof key === 'string' && key.startsWith('sheet_')))] : [];
         const allSheetKeys = requestedSheetKeys.filter(key => !!currentJsonTableData_ACU?.[key]);
-        const latestAiIndex = getLatestAiMessageIndexFromChat_ACU(chat);
+        const readyIndex = getDatabaseChatIndexForRead_ACU(chat, getDatabaseChatIndexChatId_ACU());
+        const aiIndices = readyIndex?.aiIndices
+            || (Array.isArray(chat)
+                ? chat.map((message, index) => message && !message.is_user ? index : -1).filter(index => index >= 0)
+                : []);
+        const latestAiIndex = aiIndices.length > 0 ? aiIndices[aiIndices.length - 1] : -1;
+        const historyProjection = projectTableHistoryStatesFromChat_ACU(chat, allSheetKeys, isolationKey, aiIndices);
         const bucketByIndex = {};
         allSheetKeys.forEach(key => {
-            const table = currentJsonTableData_ACU?.[key];
-            const history = resolveTableHistoryStateFromChat_ACU(chat, {
-                sheetKey: key,
-                isSummaryTable: table ? isSummaryOrOutlineTable_ACU(table.name) : false,
-                isolationKey,
-                settings: settings_ACU,
-            });
+            const history = historyProjection[key];
             const idx = history.latestDataMessageIndex !== -1
                 ? history.latestDataMessageIndex
                 : latestAiIndex;
