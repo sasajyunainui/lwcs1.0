@@ -521,11 +521,15 @@
       session.getJson = async request => {
         assertRequest(request);
         return run('read', async check => {
-          if (backend === 'tt-store' && request.verify === undefined) {
+          if (backend === 'tt-store') {
             const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
             check();
             if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
-            if (!keys.includes(request.key)) return resultMeta(session, 'committed', { verified: true, value: undefined });
+            if (!keys.includes(request.key)) {
+              return request.verify === undefined
+                ? resultMeta(session, 'committed', { verified: true, value: undefined })
+                : failureMeta(session, 'not_committed', 'NOT_FOUND');
+            }
           }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
