@@ -163,10 +163,17 @@
         key: encodeTauriStoreComponent(key),
         value,
       }),
-      getJson: ({ namespace, key }) => store.getJson({
-        namespace: encodeTauriStoreComponent(namespace),
-        key: encodeTauriStoreComponent(key),
-      }),
+      getJson: async ({ namespace, key }) => {
+        try {
+          return await store.getJson({
+            namespace: encodeTauriStoreComponent(namespace),
+            key: encodeTauriStoreComponent(key),
+          });
+        } catch (error) {
+          if (/Chat store entry not found(?::|$)/.test(String(error?.message || error))) return undefined;
+          throw error;
+        }
+      },
       deleteJson: ({ namespace, key }) => store.deleteJson({
         namespace: encodeTauriStoreComponent(namespace),
         key: encodeTauriStoreComponent(key),
