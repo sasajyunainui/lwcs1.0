@@ -2,27 +2,20 @@ const MVU_ZOD_ENTRY_URL_V1 = new URL(import.meta.url);
 const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', MVU_ZOD_ENTRY_URL_V1);
 const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
 const MVU_ENGINE_BUNDLE_FILE_V1 = 'MVU_Engine_Bundle.js';
+const MVU_PERSISTENCE_BUNDLE_FILE_V1 = 'LWCS_MVU_Persistence_Bundle.js';
+const MVU_ERA_RUNTIME_BUNDLE_FILE_V1 = 'LWCS_MVU_Era_Runtime_Bundle.js';
+const MVU_SCHEMA_RUNTIME_BUNDLE_FILE_V1 = 'LWCS_MVU_Schema_Runtime_Bundle.js';
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
 const MVU_ENGINE_BUNDLE_SHA256_V1 = 'f2e8dafcb9a6c3898c6d521704d3e327ccc0347ad338f62416697f54f8ec5167';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
-  'LWCS_Persistence_Adapter.js',
-  'LWCS_MVU_Persistence_Provider.js',
-  'LWCS_MVU_Prompt_Projector.js',
+  MVU_PERSISTENCE_BUNDLE_FILE_V1,
   MVU_ENGINE_BUNDLE_FILE_V1,
-  'LibraryData_Runtime.js',
-  'EraDataRegistry.js',
-  'EraCurrencyRegistry.js',
-  'TimelineRuntime.js',
-  'EraRuntime_Integration.js',
-  'EraCultivation_Runtime.js',
-  'MVU_Skill_Runtime.js',
-  'MVU_Schema_Runtime.js',
-  'MVU_Competition_Runtime.js',
-  'MVU_Runtime_View.js',
+  MVU_ERA_RUNTIME_BUNDLE_FILE_V1,
+  'IntelEvents.js',
+  MVU_SCHEMA_RUNTIME_BUNDLE_FILE_V1,
   'MVU.js',
   'MVU_Hooks.js',
-  'IntelEvents.js',
 ]);
 const MVU共享宿主窗口_V1 = (() => {
   try {
@@ -429,19 +422,6 @@ const MVU资源所有者_V1 = (() => {
   return 所有者;
 })();
 
-const MVU正式依赖共享加载表_V1 = (() => {
-  const 键 = '__LWCS_MVU_FORMAL_RESOURCE_LOADS_V1__';
-  const 候选窗口 = [globalThis, MVU共享宿主窗口_V1];
-  const 已有表 = 候选窗口.map(窗口 => 窗口?.[键]).find(表 => 表 && typeof 表 === 'object');
-  if (已有表) {
-    候选窗口.forEach(窗口 => { try { 窗口[键] = 已有表; } catch (_) {} });
-    return 已有表;
-  }
-  const 新表 = Object.create(null);
-  候选窗口.forEach(窗口 => { try { 窗口[键] = 新表; } catch (_) {} });
-  return 新表;
-})();
-
 function 取MVU引擎窗口_V1() {
   const 窗口列表 = [globalThis, MVU共享宿主窗口_V1];
   try { if (globalThis.top && !窗口列表.includes(globalThis.top)) 窗口列表.push(globalThis.top); } catch (_) {}
@@ -572,73 +552,20 @@ async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
 }
 
 async function 确保MVU持久化依赖_V1() {
-  const 依赖列表 = [
-    ['LWCS_Persistence_Adapter.js', () => {
-      const 适配器 = 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__');
-      return !!适配器 && typeof 适配器.openSession === 'function' && typeof 适配器.registerBackend === 'function';
-    }],
-    ['LWCS_MVU_Persistence_Provider.js', () => {
-      const 提供者 = 读取MVU共享全局值_V1('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__');
-      return !!提供者 && typeof 提供者.open === 'function';
-    }],
-    ['LWCS_MVU_Prompt_Projector.js', () =>
-      typeof 读取MVU共享全局值_V1('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function'
-    ],
-  ];
-  for (const [文件名, 已就绪] of 依赖列表) {
-    if (已就绪()) {
-      发布MVU模块状态_V1(文件名, 'loaded', '已存在');
-      continue;
-    }
-    const 已有加载 = MVU正式依赖共享加载表_V1[文件名];
-    if (已有加载 && typeof 已有加载.then === 'function') {
-      await 已有加载;
-      if (!已就绪()) throw new Error(`MVU持久化依赖共享加载后接口未就绪：${文件名}`);
-      发布MVU模块状态_V1(文件名, 'loaded', '复用共享加载');
-      continue;
-    }
-    const 加载承诺 = MVU资源所有者_V1.loadResource(文件名, { mode: 'script-global', ready: 已就绪 });
-    const 清理共享加载 = () => {
-      if (MVU正式依赖共享加载表_V1[文件名] === 加载承诺) delete MVU正式依赖共享加载表_V1[文件名];
-    };
-    MVU正式依赖共享加载表_V1[文件名] = 加载承诺;
-    void 加载承诺.then(清理共享加载, 清理共享加载);
-    await 加载承诺;
-    发布MVU模块状态_V1(文件名, 'loaded', '完成');
-  }
+  await 加载MVU经典依赖_V1(MVU_PERSISTENCE_BUNDLE_FILE_V1, () => {
+    const 适配器 = 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__');
+    const 提供者 = 读取MVU共享全局值_V1('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__');
+    return !!适配器
+      && typeof 适配器.openSession === 'function'
+      && typeof 适配器.registerBackend === 'function'
+      && !!提供者
+      && typeof 提供者.open === 'function'
+      && typeof 读取MVU共享全局值_V1('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function';
+  });
 }
 
 function 读取MVU共享全局值_V1(键名) {
   return MVU共享宿主窗口_V1[键名] ?? globalThis[键名] ?? null;
-}
-
-async function 确保库数据运行时_V1() {
-  const 宿主 = MVU共享宿主窗口_V1;
-  const 就绪 = 宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
-  if (就绪 && 就绪.version === '2.0.0') {
-    发布MVU模块状态_V1('LibraryData_Runtime.js', 'loaded', '已存在');
-    return 就绪;
-  }
-  发布MVU模块状态_V1('LibraryData_Runtime.js', 'loading', '加载并执行');
-  const 加载承诺 = MVU资源所有者_V1.loadResource('LibraryData_Runtime.js', {
-    mode: 'script-global',
-    ready: () => {
-      const 运行时 = 宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
-      return !!运行时 && 运行时.version === '2.0.0';
-    },
-  }).then(() => 宿主.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__);
-  宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
-  globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = 加载承诺;
-  try {
-    const 运行时 = await 加载承诺;
-    发布MVU模块状态_V1('LibraryData_Runtime.js', 'loaded', '完成');
-    return 运行时;
-  } catch (错误) {
-    if (宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ === 加载承诺) delete 宿主.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
-    if (globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ === 加载承诺) delete globalThis.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__;
-    发布MVU模块状态_V1('LibraryData_Runtime.js', 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
-    throw 错误;
-  }
 }
 
 async function 读取MVU当前数据根_V1() {
@@ -691,24 +618,25 @@ await 确保MVU持久化依赖_V1();
 await 确保项目MVU引擎_V1();
 if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mvu');
 
-await 确保库数据运行时_V1();
-const MVU执行上下文库运行时_V1 = MVU共享宿主窗口_V1.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
-if (MVU执行上下文库运行时_V1) globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = MVU执行上下文库运行时_V1;
-await 加载MVU经典依赖_V1('EraDataRegistry.js', () => 读取MVU共享全局值_V1('__LWCS_ERA_DATA_REGISTRY_V1__')?.version === '1.1.0-era-resource-owner-20260822');
-await 加载MVU经典依赖_V1('EraCurrencyRegistry.js', () => !!读取MVU共享全局值_V1('__LWCS_ERA_CURRENCY_REGISTRY_V1__'));
-await 加载MVU经典依赖_V1('TimelineRuntime.js', () => 读取MVU共享全局值_V1('__LWCS_TIMELINE_RUNTIME_V1__')?.version === '1.0.0');
-await 加载MVU经典依赖_V1('EraRuntime_Integration.js', () => {
+await 加载MVU经典依赖_V1(MVU_ERA_RUNTIME_BUNDLE_FILE_V1, () => {
+  const 库运行时 = 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__');
   const 集成 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
-  return !!集成 && 集成.version === '1.1.0-era-context-20260822' && typeof 集成.getCultivationBlend === 'function' && typeof 集成.getEraContext === 'function';
-});
-await 加载MVU经典依赖_V1('EraCultivation_Runtime.js', () => {
   const 修炼运行时 = 读取MVU共享全局值_V1('__LWCS_ERA_CULTIVATION_RUNTIME_V1__');
-  return !!修炼运行时 && typeof 修炼运行时.settleMeditationSegment === 'function';
+  return 库运行时?.version === '2.0.0'
+    && 读取MVU共享全局值_V1('__LWCS_ERA_DATA_REGISTRY_V1__')?.version === '1.1.0-era-resource-owner-20260822'
+    && !!读取MVU共享全局值_V1('__LWCS_ERA_CURRENCY_REGISTRY_V1__')
+    && 读取MVU共享全局值_V1('__LWCS_TIMELINE_RUNTIME_V1__')?.version === '1.0.0'
+    && 集成?.version === '1.1.0-era-context-20260822'
+    && typeof 集成.getCultivationBlend === 'function'
+    && typeof 集成.getEraContext === 'function'
+    && typeof 修炼运行时?.settleMeditationSegment === 'function';
 });
+const MVU执行上下文库运行时_V1 = 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__');
+if (MVU执行上下文库运行时_V1) globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = MVU执行上下文库运行时_V1;
 await 加载MVU当前时代核心资源_V1();
 await 加载MVU数据源模块_V1('IntelEvents.js', 'IntelEvents', '情报开始时间', '情报完成时间', '情报错误');
 
-await 加载MVU经典依赖_V1('MVU_Skill_Runtime.js', () =>
+await 加载MVU经典依赖_V1(MVU_SCHEMA_RUNTIME_BUNDLE_FILE_V1, () =>
   typeof 角色穿搭上装待补全文案_V1 === 'string' &&
   typeof globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__ === 'function' &&
   typeof 创建空魂导器装配表_V1 === 'function' &&
@@ -722,24 +650,16 @@ await 加载MVU经典依赖_V1('MVU_Skill_Runtime.js', () =>
   typeof globalThis.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ === 'function' &&
   typeof globalThis.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ === 'function' &&
   typeof globalThis.__LWCS_GET_BASE_STATS__ === 'function' &&
-  typeof globalThis.__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__ === 'function'
-);
-
-await 加载MVU经典依赖_V1('MVU_Schema_Runtime.js', () =>
+  typeof globalThis.__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__ === 'function' &&
   typeof markPlayerCharacterInSchemaInput === 'function' &&
   typeof 规范化技能结构Schema_V1 === 'function' &&
   typeof 规范化装备Schema_V1 === 'function' &&
   typeof 规范化角色Schema_V1 === 'function' &&
-  typeof 规范化Schema根转换_V1 === 'function'
-);
-
-await 加载MVU经典依赖_V1('MVU_Competition_Runtime.js', () =>
+  typeof 规范化Schema根转换_V1 === 'function' &&
   globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__ &&
   typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.生成项目对局 === 'function' &&
-  typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.计算购买支付比例 === 'function'
-);
-
-await 加载MVU经典依赖_V1('MVU_Runtime_View.js', () => {
+  typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.计算购买支付比例 === 'function' &&
+  (() => {
   const 运行时视图 = globalThis.__LWCS_MVU_RUNTIME_VIEW__;
   const 必需方法 = [
     '替换MVU运行时视图占位符',
@@ -757,7 +677,8 @@ await 加载MVU经典依赖_V1('MVU_Runtime_View.js', () => {
   return !!运行时视图
     && typeof 运行时视图 === 'object'
     && 必需方法.every(方法名 => typeof 运行时视图[方法名] === 'function');
-});
+  })()
+);
 
 发布MVU模块状态_V1('MVU.js', 'loading', '加载并执行');
 try {

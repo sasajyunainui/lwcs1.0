@@ -7612,7 +7612,7 @@ function 规范化魂灵Schema_V1(魂灵) {
     });
     delete 魂灵.魂环;
     return 魂灵;
-  
+
 }
 
 function 规范化武魂Schema_V1(武魂) {
@@ -7624,7 +7624,7 @@ function 规范化武魂Schema_V1(武魂) {
     delete 武魂.魂灵;
     delete 武魂.独立魂环;
     return 武魂;
-  
+
 }
 
 function 规范化血脉魂环Schema_V1(魂环) {
@@ -7633,7 +7633,7 @@ function 规范化血脉魂环Schema_V1(魂环) {
     });
     delete 魂环.魂技;
     return 魂环;
-  
+
 }
 
 function 规范化血脉之力Schema_V1(血脉) {
@@ -7643,14 +7643,14 @@ function 规范化血脉之力Schema_V1(血脉) {
     delete 血脉.气血魂环;
     清理银龙王血脉字段_V1(血脉);
     return 血脉;
-  
+
 }
 
 function 规范化等级输入Schema_V1(val) {
         if (val === '准神') return 99.5;
         let num = Number(val);
         return isNaN(num) ? 1 : num;
-      
+
 }
 
 function 规范化显式天赋梯队_V1(天赋梯队 = '') {
@@ -7782,7 +7782,7 @@ function 规范化属性Schema_V1(data) {
 
     填充默认训练加成_V1(data, false);
     return data;
-  
+
 }
 
 function 规范化复制技能列表Schema_V1(list) {
@@ -7805,7 +7805,7 @@ function 规范化复制技能列表Schema_V1(list) {
                   ])
                   .value();
                 return entries.length ? _.fromPairs(entries) : undefined;
-              
+
 }
 
 function 规范化属性快照Schema_V1(snapshot) {
@@ -7815,7 +7815,7 @@ function 规范化属性快照Schema_V1(snapshot) {
                   .map(([key, value]) => [key, Number(value)])
                   .value();
                 return entries.length ? _.fromPairs(entries) : undefined;
-              
+
 }
 
 function 规范化复制效果Schema_V1(data) {
@@ -7831,7 +7831,7 @@ function 规范化复制效果Schema_V1(data) {
           .filter(Boolean)
           .value();
         return entries.length ? _.fromPairs(entries) : undefined;
-      
+
 }
 
 function 规范化魂灵塔记录Schema_V1(record) {
@@ -7875,7 +7875,7 @@ function 规范化副职业Schema_V1(副职业表) {
           副职业数据.等级 = 读取副职业认证等级_V1(副职业名, 副职业数据);
         });
         return 副职业表;
-      
+
 }
 
 function 规范化功法Schema_V1(功法表) {
@@ -7886,7 +7886,7 @@ function 规范化功法Schema_V1(功法表) {
           输出[名称] = 构建最新功法记录_V1(名称, 记录);
         });
         return 输出;
-      
+
 }
 
 function 规范化社交Schema_V1(社交) {
@@ -7923,7 +7923,7 @@ function 规范化社交Schema_V1(社交) {
 
   delete 社交.关系分析;
   return 社交;
-      
+
 }
 
 function 规范化背包项Schema_V1(背包项) {
@@ -7973,7 +7973,7 @@ function 规范化背包项Schema_V1(背包项) {
               })
               .filter(批次 => Number(批次.数量 || 0) > 0);
             return 背包项;
-                
+
 }
 
 function 归一化角色副职业键_V1(角色 = {}) {
@@ -8827,7 +8827,7 @@ function 规范化角色Schema_V1(char) {
 
     标记本轮等级上升();
     return char;
-  
+
 }
 
 function 规范化商店库存项Schema_V1(库存项) {
@@ -8880,7 +8880,7 @@ function 规范化商店库存项Schema_V1(库存项) {
                                   .filter(批次 => 批次 && Number(批次.数量 || 0) > 0);
                                 if (!库存项.批次.length) delete 库存项.批次;
                                 return 库存项;
-                              
+
 }
 
 function 规范化动态地点Schema_V1(地点数据) {
@@ -8910,7 +8910,7 @@ function 规范化动态地点Schema_V1(地点数据) {
               }
             });
             return 地点数据;
-          
+
 }
 
 function 克隆普通数据_V1(值, 兜底 = null) {
