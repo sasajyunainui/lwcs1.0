@@ -487,6 +487,18 @@
       return current;
     }
 
+    async function readBackWithRetry(read, matches, check) {
+      const delays = [0, 40, 120, 240];
+      let value;
+      for (const delay of delays) {
+        if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
+        value = await read();
+        check();
+        if (matches(value)) return { matched: true, value };
+      }
+      return { matched: false, value };
+    }
+
     async function openSession({ domain, fallbackStableChatId } = {}) {
       assertDomain(domain);
       const startGeneration = chatGeneration;
@@ -579,9 +591,12 @@
         return enqueueMutation(session, () => run('mutation', async check => {
           await backendApi.setJson({ namespace: request.namespace, key: request.key, value: jsonValue, stableChatId: session.stableChatId });
           check();
-          const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
-          check();
-          if (!jsonEqual(value, jsonValue) || !expectedFieldsMatch(value, request.verify)) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${request.key}`);
+          const readBack = await readBackWithRetry(
+            () => backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId }),
+            value => jsonEqual(value, jsonValue) && expectedFieldsMatch(value, request.verify),
+            check,
+          );
+          if (!readBack.matched) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${request.key}`);
           pinBackend(session);
           return resultMeta(session, 'committed', {
             commitId: request.verify?.commitId ?? null,
@@ -604,13 +619,16 @@
             stableChatId: session.stableChatId,
           })));
           check();
-          const readBack = await Promise.all(requests.map(request => backendApi.getJson({
-            namespace: request.namespace,
-            key: request.key,
-            stableChatId: session.stableChatId,
-          })));
-          check();
-          const mismatchIndex = requests.findIndex((request, index) => !jsonEqual(readBack[index], jsonValues[index]) || !expectedFieldsMatch(readBack[index], request.verify));
+          const readBack = await readBackWithRetry(
+            () => Promise.all(requests.map(request => backendApi.getJson({
+              namespace: request.namespace,
+              key: request.key,
+              stableChatId: session.stableChatId,
+            }))),
+            values => requests.every((request, index) => jsonEqual(values[index], jsonValues[index]) && expectedFieldsMatch(values[index], request.verify)),
+            check,
+          );
+          const mismatchIndex = requests.findIndex((request, index) => !jsonEqual(readBack.value[index], jsonValues[index]) || !expectedFieldsMatch(readBack.value[index], request.verify));
           if (mismatchIndex >= 0) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${requests[mismatchIndex].key}`);
           pinBackend(session);
           return resultMeta(session, 'committed', { verified: true, count: requests.length });
