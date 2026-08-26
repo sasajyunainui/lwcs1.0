@@ -1,0 +1,33 @@
+{
+  "manifestVersion": "1.0.0",
+  "product": {
+    "bundle": "MVU_Zod_Bundle.js",
+    "sourcePatch": "MVU_Zod_Source.patch",
+    "bundleBytes": 37937,
+    "bundleSha256": "0be0a65b53f89bd0e009a95928d5a1ceb36aa36dcfa09bb746a3233f8542068c",
+    "sourcePatchBytes": 1104,
+    "sourcePatchSha256": "f1d81f69c36d0e8fe8628953765f4110b22a1c9a8a567f4a767e21e6961b92b6"
+  },
+  "upstream": {
+    "repository": "https://github.com/StageDog/tavern_resource.git",
+    "commit": "14e03abb53e56210b0351ef02873739c967c5406",
+    "source": "util/mvu_zod.ts"
+  },
+  "build": {
+    "packageManager": "pnpm",
+    "applyPatch": "git apply --unidiff-zero --whitespace=error MVU_Zod_Source.patch",
+    "install": "corepack pnpm install --frozen-lockfile",
+    "command": "corepack pnpm build",
+    "output": "dist/util/mvu_zod.js",
+    "dependencyPolicy": "bundle npm dependencies; retain only documented SillyTavern/TavernHelper host globals"
+  },
+  "loading": {
+    "importer": "MVU.js",
+    "specifier": "./MVU_Zod_Bundle.js",
+    "bundleMode": "dynamic-import dependency"
+  },
+  "runtimeContract": {
+    "export": "registerMvuSchema",
+    "persistentDataChanges": false
+  }
+}

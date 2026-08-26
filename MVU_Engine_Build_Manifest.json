@@ -3,10 +3,10 @@
   "product": {
     "bundle": "MVU_Engine_Bundle.js",
     "sourcePatch": "MVU_Engine_Source.patch",
-    "bundleBytes": 391911,
-    "bundleSha256": "f2e8dafcb9a6c3898c6d521704d3e327ccc0347ad338f62416697f54f8ec5167",
-    "sourcePatchBytes": 52755,
-    "sourcePatchSha256": "d7fb0395fc1b81c8616294fb06ae6c582569ca79c556c72fbe476d469c345b29"
+    "bundleBytes": 1169297,
+    "bundleSha256": "6c05357210551be8b827ee49c4d735b4f651ffdf33489aa1fbe2dfdf91fb8e69",
+    "sourcePatchBytes": 53498,
+    "sourcePatchSha256": "e94ebac186874de4e0d5a286539c946eefe3eaedb336006fcf21127930296b0f"
   },
   "upstream": {
     "repository": "https://github.com/MagicalAstrogy/MagVarUpdate.git",
@@ -17,9 +17,10 @@
     "packageManager": "yarn@3.4.1",
     "applyPatch": "git apply --unidiff-zero --whitespace=error MVU_Engine_Source.patch",
     "install": "corepack yarn install --immutable",
-    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-25 00:00'; corepack yarn build\"",
-    "buildDate": "2026-08-25 00:00",
-    "output": "artifact/bundle.js"
+    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-27 00:00'; corepack yarn build\"",
+    "buildDate": "2026-08-27 00:00",
+    "output": "artifact/bundle.js",
+    "dependencyPolicy": "bundle npm dependencies; retain only documented SillyTavern/TavernHelper host globals"
   },
   "loading": {
     "entry": "MVU_ZOD_Entry.js",

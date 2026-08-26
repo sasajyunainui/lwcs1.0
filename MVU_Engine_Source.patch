@@ -1300,3 +1300,24 @@ index 0000000000000000000000000000000000000000..0d50dc7fad34dc3a14f984e6d77301e5
 +export function reset(reason: string) {
 +    invalidateAll(reason);
 +}
+diff --git a/webpack.config.ts b/webpack.config.ts
+index 76b0425..810c7bd 100644
+--- a/webpack.config.ts
++++ b/webpack.config.ts
+@@ -388,15 +389,7 @@ function config(_env: any, argv: any): webpack.Configuration {
+             if (request in global) {
+                 return callback(null, 'var ' + global[request as keyof typeof global]);
+             }
+-            const cdn = {
+-                sass: 'https://jspm.dev/sass',
+-            };
+-            return callback(
+-                null,
+-                'module-import ' +
+-                    (cdn[request as keyof typeof cdn] ??
+-                        `https://testingcf.jsdelivr.net/npm/${request}/+esm`)
+-            );
++            return callback();
+         },
+     };
+ }

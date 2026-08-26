@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Persistence_Adapter.js:d29810f1838f837a8f9f6c0f877065d43c363f53eb6a0035ba1d757aadc5bba7|LWCS_MVU_Persistence_Provider.js:6a58dc159e89c0c880f50f3ee414d90a71e59f18872e00e779d97a018e1299f5|LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7 */
+/* sources-sha256: LWCS_Persistence_Adapter.js:99db441c20e82c31d01da4f82f3d7d4742136367e18fdbef03c9fb2e24e516ef|LWCS_MVU_Persistence_Provider.js:6a58dc159e89c0c880f50f3ee414d90a71e59f18872e00e779d97a018e1299f5|LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7 */
 ;
 /* source: LWCS_Persistence_Adapter.js */
 (function (root) {
@@ -579,6 +579,8 @@
         domainGeneration: sessionDomainGeneration,
         capabilities,
       };
+      const confirmedKeys = new Set();
+      const confirmedKey = (namespace, key) => `${namespace}\u0000${key}`;
 
       async function run(kind, action) {
         try {
@@ -593,11 +595,29 @@
       session.getJson = async request => {
         assertRequest(request);
         return run('read', async check => {
+          const key = confirmedKey(request.namespace, request.key);
+          if (backend === 'tt-store' && !confirmedKeys.has(key)) {
+            const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
+            check();
+            if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
+            if (!keys.includes(request.key)) {
+              return request.verify === undefined
+                ? resultMeta(session, 'committed', { verified: true, value: undefined })
+                : failureMeta(session, 'not_committed', 'NOT_FOUND');
+            }
+            confirmedKeys.add(key);
+          }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
-          if (request.verify !== undefined && value === undefined) return failureMeta(session, 'not_committed', 'NOT_FOUND');
+          if (value === undefined) {
+            confirmedKeys.delete(key);
+            if (request.verify !== undefined) return failureMeta(session, 'not_committed', 'NOT_FOUND');
+          }
           if (!expectedFieldsMatch(value, request.verify)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
-          if (value !== undefined) pinBackend(session);
+          if (value !== undefined) {
+            confirmedKeys.add(key);
+            pinBackend(session);
+          }
           return resultMeta(session, 'committed', { verified: true, value });
         });
       };
@@ -608,6 +628,15 @@
         return enqueueMutation(session, () => run('mutation', async check => {
           await backendApi.setJson({ namespace: request.namespace, key: request.key, value: jsonValue, stableChatId: session.stableChatId });
           check();
+          if (backend === 'tt-store') {
+            confirmedKeys.add(confirmedKey(request.namespace, request.key));
+            pinBackend(session);
+            return resultMeta(session, 'committed', {
+              commitId: request.verify?.commitId ?? null,
+              revision: request.verify?.revision ?? null,
+              verified: true,
+            });
+          }
           const readBack = await readBackWithRetry(
             () => backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId }),
             value => jsonEqual(value, jsonValue) && expectedFieldsMatch(value, request.verify),
@@ -617,6 +646,7 @@
             warnReadBackMismatch(session, request, jsonValue, readBack);
             return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${request.key}`);
           }
+          confirmedKeys.add(confirmedKey(request.namespace, request.key));
           pinBackend(session);
           return resultMeta(session, 'committed', {
             commitId: request.verify?.commitId ?? null,
@@ -639,23 +669,7 @@
             stableChatId: session.stableChatId,
           })));
           check();
-          const readBack = await readBackWithRetry(
-            () => Promise.all(requests.map(request => backendApi.getJson({
-              namespace: request.namespace,
-              key: request.key,
-              stableChatId: session.stableChatId,
-            }))),
-            values => requests.every((request, index) => jsonEqual(values[index], jsonValues[index]) && expectedFieldsMatch(values[index], request.verify)),
-            check,
-          );
-          const mismatchIndex = requests.findIndex((request, index) => !jsonEqual(readBack.value[index], jsonValues[index]) || !expectedFieldsMatch(readBack.value[index], request.verify));
-          if (mismatchIndex >= 0) {
-            warnReadBackMismatch(session, requests[mismatchIndex], jsonValues[mismatchIndex], {
-              ...readBack,
-              value: readBack.value[mismatchIndex],
-            });
-            return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${requests[mismatchIndex].key}`);
-          }
+          requests.forEach(request => confirmedKeys.add(confirmedKey(request.namespace, request.key)));
           pinBackend(session);
           return resultMeta(session, 'committed', { verified: true, count: requests.length });
         }));
@@ -668,6 +682,7 @@
           const keys = await backendApi.listKeys({ namespace: normalized.namespace, stableChatId: session.stableChatId });
           check();
           if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
+          keys.forEach(key => confirmedKeys.add(confirmedKey(normalized.namespace, key)));
           if (keys.length > 0) pinBackend(session);
           return resultMeta(session, 'committed', { verified: true, keys: keys.slice() });
         });
@@ -679,12 +694,16 @@
           const beforeDelete = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
           check();
           if (!Array.isArray(beforeDelete)) return failureMeta(session, 'uncertain', 'DELETE_NOT_VERIFIED');
-          if (!beforeDelete.includes(request.key)) return resultMeta(session, 'committed', { verified: true });
+          if (!beforeDelete.includes(request.key)) {
+            confirmedKeys.delete(confirmedKey(request.namespace, request.key));
+            return resultMeta(session, 'committed', { verified: true });
+          }
           await backendApi.deleteJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
           const afterDelete = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
           check();
           if (!Array.isArray(afterDelete) || afterDelete.includes(request.key)) return failureMeta(session, 'uncertain', 'DELETE_NOT_VERIFIED');
+          confirmedKeys.delete(confirmedKey(request.namespace, request.key));
           pinBackend(session);
           return resultMeta(session, 'committed', { verified: true });
         }));

@@ -1,4 +1,4 @@
-import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
+import { registerMvuSchema } from './MVU_Zod_Bundle.js';
 
 globalThis.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema;
 
