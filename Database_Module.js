@@ -101895,6 +101895,7 @@ ${lines.join('\n')}
      */
     function bootstrapAcuV2() {
         installAutoCardUpdaterV2Api_ACU();
+        registerAcuV2MenuButton();
     }
 
     if (globalThis.__LWCS_DATABASE_PERSISTENCE_TEST_MODE__ === true) {

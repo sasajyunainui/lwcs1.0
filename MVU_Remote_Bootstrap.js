@@ -8,7 +8,7 @@ const CDN地址列表 = Object.freeze([
 ]);
 const 请求超时毫秒 = 6500;
 const GitHub请求超时毫秒 = 8000;
-const 回退提交哈希 = 'f9ac09ce4dc7b6418a915adb6e198121d2e0e10e';
+const 回退提交哈希 = '630dc5cb06e493a2d40c63487ad6ab390be93299';
 const 入口文件名 = 'MVU_ZOD_Entry.js';
 const MVU追踪模块顺序 = Object.freeze([入口文件名]);
 const 启动预取资源列表 = Object.freeze([
@@ -66,7 +66,7 @@ function withTimeout(承诺, 标签, 超时毫秒 = 请求超时毫秒, 超时�
   });
 }
 
-function 加载模块脚本入口(入口地址) {
+function 加载模块脚本入口(入口地址, 入口尝试代号) {
   return new Promise((resolve, reject) => {
     const 文档 = globalThis.document;
     if (!文档 || !文档.createElement) {
@@ -79,15 +79,19 @@ function 加载模块脚本入口(入口地址) {
       if (已完成) return;
       已完成 = true;
       clearTimeout(超时器);
+      clearInterval(启动检查器);
       if (结果 === true) resolve(入口地址);
       else reject(结果 instanceof Error ? 结果 : new Error(`入口脚本加载失败: ${入口地址}`));
     };
     const 超时器 = setTimeout(() => {
       try { 脚本.remove(); } catch (错误) {}
-      const 错误 = new Error(`入口脚本加载超时:180000ms ${入口地址}`);
+      const 错误 = new Error(`入口脚本启动超时:${请求超时毫秒}ms ${入口地址}`);
       错误.code = 'LWCS_MODULE_ENTRY_TIMEOUT';
       完成(错误);
-    }, 180000);
+    }, 请求超时毫秒);
+    const 启动检查器 = setInterval(() => {
+      if (共享宿主窗口.__LWCS_MVU_ENTRY_STARTED_ATTEMPT_V1__ === 入口尝试代号) 完成(true);
+    }, 25);
     脚本.type = 'module';
     脚本.src = 入口地址;
     脚本.onload = () => 完成(true);
@@ -176,15 +180,27 @@ const 预取共享文本 = 共享宿主窗口.__LWCS_PREFETCH_SHARED_TEXT_V1__ |
 });
 共享宿主窗口.__LWCS_PREFETCH_SHARED_TEXT_V1__ = 预取共享文本;
 
+function MVU加载所有者仍存活() {
+  const 所有者窗口 = 共享启动状态.mvuOwnerWindow;
+  if (!所有者窗口) return false;
+  if (所有者窗口 === globalThis) return true;
+  try {
+    return !!所有者窗口.frameElement?.isConnected;
+  } catch (错误) {
+    return false;
+  }
+}
+
 const MVU加载开始时间 = Math.max(Number(共享启动状态.mvuStartedAt) || 0, Number(共享启动状态.mvuHeartbeatAt) || 0);
 const MVU加载已陈旧 = 共享启动状态.mvuStatus === 'loading'
-  && (!Number.isFinite(MVU加载开始时间) || Date.now() - MVU加载开始时间 > 240000);
+  && (!MVU加载所有者仍存活() || !Number.isFinite(MVU加载开始时间) || Date.now() - MVU加载开始时间 > 240000);
 const 核心状态已失效 = MVU加载已陈旧 || 共享启动状态.mvuStatus === 'failed'
   || (共享启动状态.mvuStatus === 'ready' && 共享宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__?.ready !== true);
 if (核心状态已失效) {
   共享启动状态.mvuStatus = 'idle';
   共享启动状态.mvuStartedAt = 0;
   共享启动状态.mvuHeartbeatAt = 0;
+  共享启动状态.mvuOwnerWindow = null;
   共享启动状态.mvuGeneration = (Number(共享启动状态.mvuGeneration) || 0) + 1;
   共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ = 共享启动状态.mvuGeneration;
   delete 共享宿主窗口.__LWCS_MVU_CORE_READY_PROMISE_V1__;
@@ -258,15 +274,16 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
   共享启动状态.mvuGeneration = 本轮启动代号;
   共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ = 本轮启动代号;
   共享启动状态.mvuStatus = 'loading';
+  共享启动状态.mvuOwnerWindow = globalThis;
   共享启动状态.mvuStartedAt = Date.now();
   共享启动状态.mvuHeartbeatAt = 共享启动状态.mvuStartedAt;
-  更新MVU入口追踪('loading', '下载并执行');
+  更新MVU入口追踪('loading', '加载并执行');
   try {
     const 最新提交哈希 = await 取共享最新提交哈希();
     const 错误列表 = [];
     let 已加载 = false;
 
-    for (const CDN地址 of CDN地址列表) {
+    for (const [CDN序号, CDN地址] of CDN地址列表.entries()) {
       const 资源基础地址 = `${CDN地址}/gh/${仓库名}@${最新提交哈希}/`;
       try {
         const 资源基础地址候选列表 = CDN地址列表.map(候选CDN地址 => `${候选CDN地址}/gh/${仓库名}@${最新提交哈希}/`);
@@ -289,7 +306,9 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
           }
         } catch (错误) {}
 
-        const 入口地址 = `${资源基础地址}${入口文件名}?lwcs_generation=${本轮启动代号}`;
+        const 入口尝试代号 = `${本轮启动代号}:${CDN序号}`;
+        共享宿主窗口.__LWCS_MVU_ACTIVE_ENTRY_ATTEMPT_V1__ = 入口尝试代号;
+        const 入口地址 = `${资源基础地址}${入口文件名}#lwcs_generation=${本轮启动代号}&lwcs_attempt=${入口尝试代号}`;
         const 文档 = globalThis.document;
         if (文档?.createElement) {
           const 预载ID = 'lwcs-mvu-engine-modulepreload';
@@ -309,11 +328,10 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
           }
         }
         预取关键资源(资源基础地址, 最新提交哈希);
-        await 加载模块脚本入口(入口地址);
+        await 加载模块脚本入口(入口地址, 入口尝试代号);
         已加载 = true;
         break;
       } catch (错误) {
-        if (错误?.code === 'LWCS_MODULE_ENTRY_TIMEOUT') throw 错误;
         错误列表.push(`${CDN地址}: ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
       }
     }
@@ -333,6 +351,7 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
       共享启动状态.mvuStatus = 'failed';
       共享启动状态.mvuStartedAt = 0;
       共享启动状态.mvuHeartbeatAt = 0;
+      共享启动状态.mvuOwnerWindow = null;
       更新MVU入口追踪('failed', '失败', 错误文本);
       共享启动状态.mvuGeneration = 本轮启动代号 + 1;
       共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ = 共享启动状态.mvuGeneration;

@@ -1,4 +1,5 @@
-const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', import.meta.url);
+const MVU_ZOD_ENTRY_URL_V1 = new URL(import.meta.url);
+const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', MVU_ZOD_ENTRY_URL_V1);
 const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
 const MVU_ENGINE_BUNDLE_FILE_V1 = 'MVU_Engine_Bundle.js';
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
@@ -46,14 +47,24 @@ const MVU共享启动状态_V1 = (() => {
   MVU共享宿主窗口_V1[键] = 新状态;
   return 新状态;
 })();
+const MVU入口片段参数_V1 = new URLSearchParams(MVU_ZOD_ENTRY_URL_V1.hash.replace(/^#/, ''));
+function 读取MVU入口参数_V1(名称) {
+  return MVU_ZOD_ENTRY_URL_V1.searchParams.get(名称) ?? MVU入口片段参数_V1.get(名称);
+}
 const MVU入口启动代号_V1 = (() => {
-  const 参数值 = Number(new URL(import.meta.url).searchParams.get('lwcs_generation'));
-  return Number.isFinite(参数值) ? 参数值 : Number(MVU共享启动状态_V1.mvuGeneration) || 0;
+  const 原值 = 读取MVU入口参数_V1('lwcs_generation');
+  const 参数值 = Number(原值);
+  return 原值 !== null && 原值 !== '' && Number.isFinite(参数值)
+    ? 参数值
+    : Number(MVU共享启动状态_V1.mvuGeneration) || 0;
 })();
+const MVU入口尝试代号_V1 = String(读取MVU入口参数_V1('lwcs_attempt') || '');
 function 是当前MVU启动轮次_V1() {
-  return Number(MVU共享宿主窗口_V1.__LWCS_MVU_ACTIVE_GENERATION_V1__) === MVU入口启动代号_V1;
+  return Number(MVU共享宿主窗口_V1.__LWCS_MVU_ACTIVE_GENERATION_V1__) === MVU入口启动代号_V1
+    && (!MVU入口尝试代号_V1 || MVU共享宿主窗口_V1.__LWCS_MVU_ACTIVE_ENTRY_ATTEMPT_V1__ === MVU入口尝试代号_V1);
 }
 if (!是当前MVU启动轮次_V1()) throw new Error(`MVU入口已过期：${MVU入口启动代号_V1}`);
+if (MVU入口尝试代号_V1) MVU共享宿主窗口_V1.__LWCS_MVU_ENTRY_STARTED_ATTEMPT_V1__ = MVU入口尝试代号_V1;
 const MVU读取共享文本_V1 = typeof MVU共享宿主窗口_V1.__LWCS_READ_SHARED_TEXT_V1__ === 'function'
   ? MVU共享宿主窗口_V1.__LWCS_READ_SHARED_TEXT_V1__
   : null;
@@ -479,7 +490,7 @@ async function 确保项目MVU引擎_V1() {
   MVU项目引擎状态_V1.status = 'loading';
   MVU项目引擎状态_V1.phase = '导入固定bundle';
   MVU项目引擎状态_V1.error = '';
-  发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loading', '下载并执行');
+  发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loading', '加载并执行');
   const 加载承诺 = 导入MVU候选模块_V1(MVU_ENGINE_BUNDLE_FILE_V1)
     .then(结果 => {
       if (MVU项目引擎状态_V1.loadPromise === 加载承诺) {
@@ -530,7 +541,7 @@ function 同步MVU全局字段_V1(字段名, 字段值) {
 async function 加载MVU数据源模块_V1(文件名, 导出名, 开始字段, 完成字段, 错误字段) {
   MVU数据源加载状态_V1[开始字段] = Date.now();
   MVU数据源加载状态_V1[错误字段] = '';
-  发布MVU模块状态_V1(文件名, 'loading', '下载并执行');
+  发布MVU模块状态_V1(文件名, 'loading', '加载并执行');
   try {
     const 模块 = await 导入MVU候选模块_V1(文件名);
     const 数据源 = 模块 && 模块[导出名] ? 模块[导出名] : {};
@@ -608,7 +619,7 @@ async function 确保库数据运行时_V1() {
     发布MVU模块状态_V1('LibraryData_Runtime.js', 'loaded', '已存在');
     return 就绪;
   }
-  发布MVU模块状态_V1('LibraryData_Runtime.js', 'loading', '下载并执行');
+  发布MVU模块状态_V1('LibraryData_Runtime.js', 'loading', '加载并执行');
   const 加载承诺 = MVU资源所有者_V1.loadResource('LibraryData_Runtime.js', {
     mode: 'script-global',
     ready: () => {
@@ -748,7 +759,7 @@ await 加载MVU经典依赖_V1('MVU_Runtime_View.js', () => {
     && 必需方法.every(方法名 => typeof 运行时视图[方法名] === 'function');
 });
 
-发布MVU模块状态_V1('MVU.js', 'loading', '下载并执行');
+发布MVU模块状态_V1('MVU.js', 'loading', '加载并执行');
 try {
   await 导入MVU候选模块_V1('MVU.js');
   发布MVU模块状态_V1('MVU.js', 'loaded', '完成');
