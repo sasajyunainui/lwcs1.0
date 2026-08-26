@@ -9519,7 +9519,7 @@
           quantityBefore,
           remainingQuantity,
         },
-      })); 
+      }));
     }
     const primaryResolutionByTarget = new Map();
     const primaryOutcomeByTarget = new Map();

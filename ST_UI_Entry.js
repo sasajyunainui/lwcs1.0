@@ -106,7 +106,7 @@
     样式核心: { 类型: 'css', 地址: 资源基础地址 + 'mvu_styles.css' + 资源版本后缀, 关键: true, 分组: 'core' },
     魂环引擎样式: { 类型: 'css', 地址: 资源基础地址 + 'soul_ring_engine.css' + 资源版本后缀, 关键: true, 分组: 'core' },
     Vue核心: { 类型: 'remote-js', 地址: Vue远程地址, 关键: true, 分组: 'core' },
-    壳层运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    壳层运行时: { 类型: 'remote-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     历法与库运行时: { 类型: 'wait-global', 全局键: '__LWCS_LIBRARY_DATA_RUNTIME_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
     时代数据注册表: { 类型: 'wait-global', 全局键: '__LWCS_ERA_DATA_REGISTRY_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
     时代货币注册表: { 类型: 'wait-global', 全局键: '__LWCS_ERA_CURRENCY_REGISTRY_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
@@ -126,8 +126,21 @@
     装备属性加成接口: { 类型: 'wait-global', 全局键: '__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__', 值类型: 'function', 关键: true, 分组: 'core' },
     JSONPatch规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_JSON_PATCH_OPS__', 值类型: 'function', 关键: true, 分组: 'core' },
     JSONPatch文本预处理接口: { 类型: 'wait-global', 全局键: '__LWCS_PREPROCESS_JSON_PATCH_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
-    逻辑桥接: { 类型: 'inline-js', 地址: 资源基础地址 + 'mvu_logic_bridge.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    数据库适配器: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Database_Adapter.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    UI集成运行时: {
+      类型: 'remote-js',
+      地址: 资源基础地址 + 'LWCS_UI_Integration_Bundle.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__') && typeof 读取共享值('__MVU_ROUTE_MODULE_INTENT__') === 'function',
+    },
+    逻辑桥接: { 类型: 'bundle-member', 依赖: ['UI集成运行时'], 关键: true, 分组: 'core' },
+    数据库适配器: {
+      类型: 'bundle-member',
+      依赖: ['UI集成运行时'],
+      关键: true,
+      分组: 'core',
+      已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__'),
+    },
     持久化适配器: {
       类型: 'inline-js',
       地址: 资源基础地址 + 'LWCS_Persistence_Adapter.js' + 资源版本后缀,
@@ -160,18 +173,45 @@
     ...(是TT宿主 ? {} : {
       冷归档存储: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Cold_Archive_Store.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['持久化适配器'] },
     }),
-    请求监控挂件: { 类型: 'inline-js', 地址: 资源基础地址 + 'RequestMonitorWidget.js' + 资源版本后缀, 关键: false, 分组: 'background' },
-    地图模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    交易模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'TradeUI_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    副职业模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'ProfessionUI_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    赛事权限模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'CompetitionPrivilegeUI_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    战斗预估运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattlePreview_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    行为决策管线: { 类型: 'inline-js', 地址: 资源基础地址 + 'BehaviorDecisionPipeline_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' },
-    战斗决策运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleDecision_Module.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['战斗预估运行时', '行为决策管线'] },
-    战斗运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleRuntime_Module.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['战斗决策运行时'] },
-    战斗战报运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleReport_Module.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['战斗运行时'] },
-    战斗模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'BattleUI_Module.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['战斗战报运行时'] },
-    数据库模块: { 类型: 'inline-js', 地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀, 关键: true, 分组: 'core' }
+    请求监控挂件: { 类型: 'remote-js', 地址: 资源基础地址 + 'RequestMonitorWidget.js' + 资源版本后缀, 关键: false, 分组: 'background' },
+    地图模块: {
+      类型: 'remote-js',
+      地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      已就绪: () => 读取共享值('__sheepMapRestoreLoaded') === true,
+    },
+    游戏功能运行时: {
+      类型: 'remote-js',
+      地址: 资源基础地址 + 'LWCS_UI_Gameplay_Bundle.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      已就绪: () => typeof 读取共享值('mountTradeUI') === 'function'
+        && typeof 读取共享值('mountProfessionUI') === 'function'
+        && typeof 读取共享值('mountCompetitionUI') === 'function'
+        && !!读取共享值('__LWCS_BATTLE_PREVIEW__')
+        && !!读取共享值('__LWCS_BEHAVIOR_DECISION_PIPELINE__')
+        && !!读取共享值('__LWCS_BATTLE_DECISION__')
+        && !!读取共享值('__LWCS_BATTLE_RUNTIME__')
+        && !!读取共享值('__LWCS_BATTLE_REPORT__')
+        && typeof 读取共享值('mountBattleUI') === 'function',
+    },
+    交易模块: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    副职业模块: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    赛事权限模块: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    战斗预估运行时: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    行为决策管线: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    战斗决策运行时: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    战斗运行时: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    战斗战报运行时: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    战斗模块: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
+    数据库模块: {
+      类型: 'remote-js',
+      地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      已就绪: () => !!读取共享值('AutoCardUpdaterAPI'),
+    }
   };
 
   const 变量运行时接口模块顺序 = Object.freeze([
@@ -191,15 +231,14 @@
   const 时代运行时前置模块顺序 = Object.freeze(['历法与库运行时', '时代数据注册表', '时代货币注册表', '时代事件状态运行时', '时代运行时集成', '时代修炼运行时', 'MVU核心就绪']);
   const MVU核心接口模块顺序 = Object.freeze([...时代运行时前置模块顺序, ...变量运行时接口模块顺序]);
   const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时']);
-  const 游戏功能模块顺序 = Object.freeze(['地图模块', '交易模块', '副职业模块', '赛事权限模块', '战斗预估运行时', '行为决策管线', '战斗决策运行时', '战斗运行时', '战斗战报运行时', '战斗模块']);
+  const 游戏功能模块顺序 = Object.freeze(['地图模块', '游戏功能运行时']);
   const 冷归档前置模块顺序 = Object.freeze([
-    '数据库适配器',
     '持久化适配器',
     'MVU持久化提供者',
     'MVU提示投影器',
     ...(是TT宿主 ? [] : ['冷归档存储']),
   ]);
-  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...冷归档前置模块顺序, '逻辑桥接', ...游戏功能模块顺序, '数据库模块']);
+  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...冷归档前置模块顺序, 'UI集成运行时', ...游戏功能模块顺序, '数据库模块']);
   const 正常启动追踪模块顺序 = Object.freeze([...核心模块顺序]);
 
   const 加载阶段 = {
@@ -227,6 +266,8 @@
   const 模块状态表 = Object.create(null);
   const 模块加载承诺表 = new Map();
   const 文本资源缓存表 = new Map();
+  const 样式加载承诺表 = new Map();
+  const 远程脚本加载承诺表 = new Map();
   let MVU核心接口验证承诺 = null;
   let 引导承诺 = null;
 
@@ -434,52 +475,83 @@
     return 'mvu-inline-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
   }
 
-  async function 加载样式(地址, 状态 = null) {
-    const 样式标记 = 取样式标记(地址);
-    const 旧样式 = 宿主文档.getElementById(样式标记);
-    if (旧样式) return 地址;
-
-    if (状态) {
-      状态.阶段 = '下载中';
-      刷新加载追踪面板();
-    }
-    const 样式文本 = await 读取文本资源(地址, 'CSS load failed');
-    if (状态) {
-      状态.阶段 = '应用中';
-      刷新加载追踪面板();
-    }
-    const 样式节点 = 宿主文档.createElement('style');
-    样式节点.id = 样式标记;
-    样式节点.textContent = 样式文本;
-    宿主文档.head.appendChild(样式节点);
-    文本资源缓存表.delete(地址);
-    return 地址;
-  }
-
-  function 加载远程脚本(地址, 状态 = null) {
+  function 加载单一样式(地址) {
     return new Promise((resolve, reject) => {
-      const 脚本标记 = 取远程脚本标记(地址);
-      if (宿主文档.getElementById(脚本标记)) {
+      const 样式标记 = 取样式标记(地址);
+      if (宿主文档.getElementById(样式标记)) {
         resolve(地址);
         return;
       }
-      const 脚本节点 = 宿主文档.createElement('script');
-      if (状态) {
-        状态.阶段 = '下载并执行';
-        刷新加载追踪面板();
-      }
+      const 样式节点 = 宿主文档.createElement('link');
       let 已完成 = false;
       const 完成 = (成功, 结果) => {
         if (已完成) return;
         已完成 = true;
         clearTimeout(超时器);
+        样式节点.onload = null;
+        样式节点.onerror = null;
         if (成功) resolve(结果);
-        else reject(结果);
+        else {
+          try { 样式节点.remove(); } catch (错误) {}
+          reject(结果);
+        }
       };
       const 超时器 = setTimeout(() => {
+        完成(false, new Error(`CSS load timeout:${资源请求超时毫秒}ms ${地址}`));
+      }, 资源请求超时毫秒);
+      样式节点.id = 样式标记;
+      样式节点.rel = 'stylesheet';
+      样式节点.href = 地址;
+      样式节点.onload = () => 完成(true, 地址);
+      样式节点.onerror = () => 完成(false, new Error(`CSS load failed: ${地址}`));
+      宿主文档.head.appendChild(样式节点);
+    });
+  }
+
+  function 加载样式(地址, 状态 = null) {
+    if (样式加载承诺表.has(地址)) return 样式加载承诺表.get(地址);
+    if (状态) {
+      状态.阶段 = '下载并应用';
+      刷新加载追踪面板();
+    }
+    const 加载承诺 = (async () => {
+      const 错误列表 = [];
+      for (const 候选地址 of 取候选资源地址列表(地址)) {
         try {
-          脚本节点.remove();
-        } catch (错误) {}
+          return await 加载单一样式(候选地址);
+        } catch (错误) {
+          错误列表.push(`${候选地址} ${错误?.message || String(错误)}`);
+        }
+      }
+      throw new Error(`CSS load failed: ${错误列表.join(' | ')}`);
+    })().finally(() => 样式加载承诺表.delete(地址));
+    样式加载承诺表.set(地址, 加载承诺);
+    return 加载承诺;
+  }
+
+  function 加载单一远程脚本(地址) {
+    return new Promise((resolve, reject) => {
+      const 脚本标记 = 取远程脚本标记(地址);
+      const 旧脚本 = 宿主文档.getElementById(脚本标记);
+      if (旧脚本) {
+        resolve(地址);
+        return;
+      }
+      const 脚本节点 = 宿主文档.createElement('script');
+      let 已完成 = false;
+      const 完成 = (成功, 结果) => {
+        if (已完成) return;
+        已完成 = true;
+        clearTimeout(超时器);
+        脚本节点.onload = null;
+        脚本节点.onerror = null;
+        if (成功) resolve(结果);
+        else {
+          try { 脚本节点.remove(); } catch (错误) {}
+          reject(结果);
+        }
+      };
+      const 超时器 = setTimeout(() => {
         完成(false, new Error(`Remote script load timeout:${远程脚本超时毫秒}ms ${地址}`));
       }, 远程脚本超时毫秒);
       脚本节点.id = 脚本标记;
@@ -489,6 +561,27 @@
       脚本节点.onerror = () => 完成(false, new Error(`Remote script load failed: ${地址}`));
       宿主文档.head.appendChild(脚本节点);
     });
+  }
+
+  function 加载远程脚本(地址, 状态 = null) {
+    if (远程脚本加载承诺表.has(地址)) return 远程脚本加载承诺表.get(地址);
+    if (状态) {
+      状态.阶段 = '下载并执行';
+      刷新加载追踪面板();
+    }
+    const 加载承诺 = (async () => {
+      const 错误列表 = [];
+      for (const 候选地址 of 取候选资源地址列表(地址)) {
+        try {
+          return await 加载单一远程脚本(候选地址);
+        } catch (错误) {
+          错误列表.push(`${候选地址} ${错误?.message || String(错误)}`);
+        }
+      }
+      throw new Error(`Remote script load failed: ${错误列表.join(' | ')}`);
+    })().finally(() => 远程脚本加载承诺表.delete(地址));
+    远程脚本加载承诺表.set(地址, 加载承诺);
+    return 加载承诺;
   }
   async function 加载内联脚本(地址, 状态 = null) {
     const 执行内联加载 = async () => {
@@ -607,6 +700,12 @@
       }
       return 等待全局函数(模块.全局键, 12000, 模块.值类型 || 'function');
     }
+    if (模块.类型 === 'bundle-member') {
+      if (typeof 模块.已就绪 === 'function' && !模块.已就绪()) {
+        throw new Error(`${模块名}所属Bundle已执行但接口未就绪`);
+      }
+      return 模块.地址 || 模块名;
+    }
     if (模块.类型 === 'module-js') return 加载模块脚本(模块.地址, 状态, 模块);
     return 加载内联脚本(模块.地址, 状态);
   }
@@ -654,6 +753,9 @@
         状态.尝试次数 = 尝试序号;
         try {
           await 执行模块加载(模块名);
+          if (typeof 模块.已就绪 === 'function' && !模块.已就绪()) {
+            throw new Error(`${模块名}执行完成但接口未就绪`);
+          }
           状态.状态 = 'loaded';
           状态.阶段 = '完成';
           状态.错误 = '';
@@ -1211,7 +1313,7 @@
         await 确保模块已加载('壳层运行时', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await 等待MVU核心契约('bootstrap_core', true);
         await 确保模块组已加载(冷归档前置模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
-        await 确保模块已加载('逻辑桥接', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
+        await 确保模块已加载('UI集成运行时', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await Promise.all([
           确保模块组已加载(游戏功能模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true }),
           等待数据库模块就绪('bootstrap_core', true),

@@ -1990,7 +1990,7 @@ class ProfessionUIComponent {
       if (tier === 3 || /黑级/.test(targetName)) return { mode: 'mech', fixedTierNeeds: { 4: 1, 2: 30 }, expectedTier: 3, note: '固定配方：1份魂锻金属 + 30份千锻金属' };
       if (tier === 4 || /红级/.test(targetName)) return { mode: 'mech', fixedTierNeeds: { 5: 1, 4: 10, 3: 10 }, expectedTier: 4, note: '固定配方：1份天锻金属 + 10份魂锻 + 10份灵锻' };
     }
-    
+
     if (isArmor) {
       const blueprintName = this.getArmorBlueprintNameByTier(tier);
       const blueprint = materialNames.find(name => this.取材料原名(name) === blueprintName) || '';
@@ -2947,7 +2947,7 @@ class ProfessionUIComponent {
     this.setPreviewField('prev-note', noteText);
   }
 
-  // --- 提交操作相关补丁生成 --- 
+  // --- 提交操作相关补丁生成 ---
   buildResourcePatches(costs) {
     return [
       { op: 'replace', path: `${this.activeCharBasePath}/属性/体力`, value: Math.max(0, Number(this.charData.属性?.体力 || 0) - Number(costs.体力 || 0)) },
@@ -3421,14 +3421,14 @@ class ProfessionUIComponent {
       this.显示提示(ruleError);
       return;
     }
-    
+
     const efc = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const isFusion = efc > 1;
     const successRate = commissionCtx.isCommission ? Number(commissionCtx.successRate || 0) : (isFusion ? this.getForgeFusionSuccessRate(effectiveRuntime, efc) : this.getSingleTierSuccessRate(tier, effectiveRuntime));
     const firstMaterial = this.resolveInventoryItem(materialNames[0]);
     const fusionRate = isFusion ? Number(commissionCtx.fusionSync || this.getForgeFusionRate(commissionCtx.executorRuntime || runtime, materialNames)) : Number(firstMaterial?.副职业参数?.融合参数?.融合率 ?? 100);
     const maxQ = this.getForgeMaxQ(tier, efc);
-    
+
     const roll = Math.floor(Math.random() * 100) + 1;
     const isGreatSuccess = roll <= 5 && !commissionCtx.isOfficial;
     const isSuccess = isGreatSuccess || roll <= successRate;
@@ -3438,7 +3438,7 @@ class ProfessionUIComponent {
       if (commissionCtx.isOfficial) finalQ = 1.0;
       else if (isFusion) finalQ = this.getForgeFusionQuality(tier, maxQ, fusionRate, roll, isGreatSuccess);
       else finalQ = this.clamp(isGreatSuccess ? 1.2 : this.getForgeSingleQuality(tier, commissionCtx.executorRuntime || runtime), 0.8, 1.2);
-      
+
       if (isGreatSuccess) {
         if (!commissionCtx.isCommission) expGain *= 2;
         resultLog = `[大成功] ${commissionCtx.executorName}触发极限锻压，成功打造出【${targetName}】。品质系数 ${finalQ.toFixed(2)}。`;
@@ -3498,7 +3498,7 @@ class ProfessionUIComponent {
       this.显示提示(ruleError);
       return;
     }
-    
+
     const efc = Math.max(Number(commissionCtx.fusionCount || 1), 1);
     const isComp = efc > 1;
     const successRate = this.读取本次通用成功率(cfg, effectiveRuntime, commissionCtx, tier, materialNames, targetName);

@@ -1291,7 +1291,7 @@ class TradeUIComponent {
     if (ctx.basePrice <= 0) {
       ctx.error = `【${itemName}】当前无法进行可靠估值，私下交易无法发起。`; return ctx;
     }
-    
+
     ctx.relationScore = Number(this.charData?.社交?.关系?.[targetNpcName]?.好感度 || this.charData?.社交?.关系?.[relationName]?.好感度 || 0);
 
     if (action === "私下买入") {
@@ -1657,7 +1657,7 @@ class TradeUIComponent {
     const storeName = this.$('#shop-store-sel').value;
     const itemSel = this.$('#shop-item-sel');
     itemSel.innerHTML = '';
-    
+
     if (!storeName || !this.currentStores[storeName] || !this.currentStores[storeName].库存) {
       itemSel.innerHTML = '<option value="">[该商店无货]</option>';
       this.updateShopPreview();
@@ -1720,7 +1720,7 @@ class TradeUIComponent {
     this.$('#shop-market').textContent = 商店营业中
       ? `${this.getMarketAdjustmentText('buy', { fixed: isSoulTowerDiscountTrade })}${privilegeDiscount.支付比例 < 100 ? ` · 权限支付${privilegeDiscount.支付比例}%` : ''}`
       : this.getShopOpenStateText();
-    
+
     const totalEl = this.$('#shop-total');
     totalEl.textContent = `${total.toLocaleString()} ${this.getCurrencyLabel(currency)}`;
     totalEl.className = (userCoin >= total) ? "val-highlight" : "val-warn";
@@ -1800,7 +1800,7 @@ class TradeUIComponent {
     if (!isSoulTowerDiscountTrade) {
       patchOps.push({ op: "replace", path: `/world/地点/${this.escapeJsonPointer(loc)}/商店/${this.escapeJsonPointer(storeName)}/库存/${this.escapeJsonPointer(itemName)}/库存`, value: Number(item.库存 || 0) - qty });
     }
-    
+
     const 采购定义 = { ...(item._临时定义 || this.取物品定义(itemName)), ...(item || {}) };
     const tradeItem = this.buildInventoryItemFromTradeSource(itemName, 采购定义, qty, { source: storeName, desc: 采购定义?.描述 || `购自${storeName}`, currency });
     this.appendItemDefinitionPatch(patchOps, itemName, tradeItem.definition, tradeItem.分类);
@@ -1978,7 +1978,7 @@ class TradeUIComponent {
     const targetNpc = String(this.$('#priv-npc').value || '').trim();
     const total = price * qty;
     const attEl = this.$('#priv-attitude');
-    
+
     const ctx = this.getPrivateTradeContext(action, targetNpc, itemName, qty, price);
 
     const currencyLabel = this.getCurrencyLabel(ctx.currency || this.getDefaultCurrencyByContext('', this.charData?.状态?.位置 || ''));
@@ -2132,7 +2132,7 @@ class TradeUIComponent {
 
     let patchOps = [];
     patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(currency)}`, value: (this.charData.财富?.[currency] || 0) - bid });
-    
+
     const tradeItem = this.buildInventoryItemFromTradeSource(itemName, item, 1, { source: '拍卖行', rarity: item.品级 || '普通', desc: item.背景 || item.描述 || '拍卖所得', currency });
     this.appendItemDefinitionPatch(patchOps, itemName, tradeItem.definition, tradeItem.分类);
     this.appendInventoryGainPatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, tradeItem);

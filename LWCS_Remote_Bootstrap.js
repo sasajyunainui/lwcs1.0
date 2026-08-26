@@ -13,15 +13,6 @@
   const GitHub请求超时毫秒 = 8000;
   const 回退提交哈希 = '12c6190a5efe803570ed6a28c2636d06ba181602';
   const 入口文件名 = 'ST_UI_Entry.js';
-  const 启动预取资源列表 = Object.freeze([
-    'mvu_styles.css',
-    'soul_ring_engine.css',
-    'Main_Vue_runtimefix_v2.js',
-    'mvu_logic_bridge.js',
-    'LWCS_Database_Adapter.js',
-    'LWCS_Persistence_Adapter.js',
-    'Database_Module.js',
-  ]);
   const 引导键 = '__LWCS_REMOTE_BOOTSTRAP_RUNNING__';
   const 宿主窗口 = (() => {
     try {
@@ -468,11 +459,6 @@
     return 候选列表.filter((地址, 序号) => 地址 && 候选列表.indexOf(地址) === 序号);
   }
 
-  function 预取关键资源(资源基础地址, 提交哈希) {
-    const 地址列表 = 启动预取资源列表.map(文件名 => `${资源基础地址}${文件名}`);
-    void 预取共享文本(地址列表, 提交哈希);
-  }
-
   function withTimeout(承诺, 标签, 超时毫秒 = 请求超时毫秒, 超时回调 = null) {
     return new Promise((resolve, reject) => {
       const 超时器 = setTimeout(() => {
@@ -515,7 +501,10 @@
         已完成 = true;
         clearTimeout(超时器);
         if (结果 === true) resolve(入口地址);
-        else reject(结果 instanceof Error ? 结果 : new Error(`入口脚本加载失败: ${入口地址}`));
+        else {
+          try { 脚本.remove(); } catch (错误) {}
+          reject(结果 instanceof Error ? 结果 : new Error(`入口脚本加载失败: ${入口地址}`));
+        }
       };
       const 超时器 = setTimeout(() => {
         try {
@@ -595,56 +584,13 @@
           }
         } catch (错误) {}
 
-        预取关键资源(资源基础地址, 提交哈希);
-        let 入口代码;
-        try {
-          入口代码 = await 读取共享文本(入口地址, { cache: 'force-cache' }, 请求超时毫秒, 提交哈希);
-        } catch (读取错误) {
-          await 加载脚本入口(入口地址);
-          return;
-        }
-        try {
-          const 执行入口 = new Function(`${入口代码}\n//# sourceURL=${入口地址}`);
-          执行入口();
-        } catch (执行错误) {
-          const 已标记错误 = 执行错误 instanceof Error ? 执行错误 : new Error(String(执行错误 || 'UI入口执行失败'));
-          已标记错误.code = 'LWCS_UI_ENTRY_EXECUTION_FAILED';
-          throw 已标记错误;
-        }
+        await 加载脚本入口(入口地址);
         return;
       } catch (错误) {
-        if (错误?.code === 'LWCS_UI_ENTRY_EXECUTION_FAILED') throw 错误;
         错误列表.push(`${CDN地址}: ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
       }
     }
     throw new Error(`LWCS 入口 CDN 全部失败: ${错误列表.join(' | ')}`);
-  }
-
-  async function 准备正式入口(提交哈希) {
-    const 错误列表 = [];
-    for (const CDN地址 of CDN地址列表) {
-      const 资源基础地址 = 构建资源基础地址(CDN地址, 提交哈希);
-      const 入口地址 = `${资源基础地址}${入口文件名}`;
-      try {
-        const 资源基础地址候选列表 = 构建资源基础地址候选列表(资源基础地址, 提交哈希);
-        宿主窗口.__LWCS_资源基础地址__ = 资源基础地址;
-        宿主窗口.__LWCS_资源基础地址候选列表__ = 资源基础地址候选列表;
-        宿主窗口.__LWCS_当前远程提交__ = 提交哈希;
-        try {
-          if (window !== 宿主窗口) {
-            window.__LWCS_资源基础地址__ = 资源基础地址;
-            window.__LWCS_资源基础地址候选列表__ = 资源基础地址候选列表;
-            window.__LWCS_当前远程提交__ = 提交哈希;
-          }
-        } catch (错误) {}
-        预取关键资源(资源基础地址, 提交哈希);
-        const 入口代码 = await 读取共享文本(入口地址, { cache: 'force-cache' }, 请求超时毫秒, 提交哈希);
-        return { 入口地址, 入口代码 };
-      } catch (错误) {
-        错误列表.push(`${CDN地址}: ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
-      }
-    }
-    throw new Error(`LWCS 入口预读 CDN 全部失败: ${错误列表.join(' | ')}`);
   }
 
   async function 启动远程入口() {
@@ -652,27 +598,13 @@
     加载追踪器.更新入口('pending', '正在解析最新版本', '', '等待版本');
     try {
       const 提交哈希 = await 取共享最新提交哈希();
-      加载追踪器.更新入口('loading', '并行准备 UI 入口', '', '下载中');
-      const 入口准备结果承诺 = 准备正式入口(提交哈希).then(
-        结果 => ({ ok: true, 结果 }),
-        错误 => ({ ok: false, 错误 }),
-      );
-      入口准备结果承诺.then(准备结果 => {
-        if (准备结果.ok) 加载追踪器.更新入口('pending', '等待 MVU 运行时', '', '等待执行');
-        else 加载追踪器.更新入口('pending', '等待 MVU 运行时', '', '等待回退');
-      });
+      加载追踪器.更新入口('pending', '等待 MVU 运行时', '', '等待执行');
       await 等待MVU就绪();
-      const 入口准备结果 = await 入口准备结果承诺;
-      if (入口准备结果.ok) {
-        加载追踪器.更新入口('loading', '正在执行 ST_UI_Entry.js', '', '执行中');
-        const { 入口地址, 入口代码 } = 入口准备结果.结果;
-        const 执行入口 = new Function(`${入口代码}\n//# sourceURL=${入口地址}`);
-        执行入口();
-      } else {
-        加载追踪器.更新入口('loading', '正在回退加载 ST_UI_Entry.js', '', '回退加载');
-        await 加载正式入口(提交哈希);
-      }
-      await 宿主窗口.__LWCS_UI_READY_PROMISE_V1__;
+      加载追踪器.更新入口('loading', '正在执行 ST_UI_Entry.js', '', '执行中');
+      await 加载正式入口(提交哈希);
+      const UI就绪承诺 = 宿主窗口.__LWCS_UI_READY_PROMISE_V1__;
+      if (!UI就绪承诺 || typeof UI就绪承诺.then !== 'function') throw new Error('ST_UI_Entry.js 未注册 UI 就绪契约');
+      await UI就绪承诺;
       加载追踪器.更新入口('loaded', '入口已执行', '', '完成');
       共享启动状态.uiStatus = 'ready';
     } catch (错误) {
