@@ -11,22 +11,6 @@ const GitHub请求超时毫秒 = 8000;
 const 回退提交哈希 = '630dc5cb06e493a2d40c63487ad6ab390be93299';
 const 入口文件名 = 'MVU_ZOD_Entry.js';
 const MVU追踪模块顺序 = Object.freeze([入口文件名]);
-const 启动预取资源列表 = Object.freeze([
-  'LWCS_Persistence_Adapter.js',
-  'LWCS_MVU_Persistence_Provider.js',
-  'LWCS_MVU_Prompt_Projector.js',
-  'LibraryData_Runtime.js',
-  'EraDataRegistry.js',
-  'EraCurrencyRegistry.js',
-  'TimelineRuntime.js',
-  'EraRuntime_Integration.js',
-  'EraCultivation_Runtime.js',
-  'MVU_Skill_Runtime.js',
-  'MVU_Schema_Runtime.js',
-  'MVU_Competition_Runtime.js',
-  'MVU_Runtime_View.js',
-  'MVU_Hooks.js',
-]);
 async function 取最新提交哈希() {
   const 接口地址 = `https://api.github.com/repos/${仓库名}/git/ref/heads/${分支名}?t=${Date.now()}`;
   const 响应 = await withTimeout(fetch(接口地址, {
@@ -38,11 +22,6 @@ async function 取最新提交哈希() {
   const 提交哈希 = String(数据 && 数据.object && 数据.object.sha ? 数据.object.sha : '').trim();
   if (!/^[0-9a-f]{40}$/i.test(提交哈希)) throw new Error('GitHub 最新提交格式异常');
   return 提交哈希;
-}
-
-function 预取关键资源(资源基础地址, 提交哈希) {
-  const 地址列表 = 启动预取资源列表.map(文件名 => `${资源基础地址}${文件名}`);
-  void 预取共享文本(地址列表, 提交哈希);
 }
 
 function withTimeout(承诺, 标签, 超时毫秒 = 请求超时毫秒, 超时回调 = null) {
@@ -67,13 +46,9 @@ function withTimeout(承诺, 标签, 超时毫秒 = 请求超时毫秒, 超时�
 }
 
 function 加载模块脚本入口(入口地址, 入口尝试代号) {
-  return new Promise((resolve, reject) => {
-    const 文档 = globalThis.document;
-    if (!文档 || !文档.createElement) {
-      reject(new Error(`入口脚本加载缺少document: ${入口地址}`));
-      return;
-    }
-    const 脚本 = 文档.createElement('script');
+  const 执行承诺 = import(入口地址);
+  void 执行承诺.catch(() => {});
+  const 开始承诺 = new Promise((resolve, reject) => {
     let 已完成 = false;
     const 完成 = 结果 => {
       if (已完成) return;
@@ -84,7 +59,6 @@ function 加载模块脚本入口(入口地址, 入口尝试代号) {
       else reject(结果 instanceof Error ? 结果 : new Error(`入口脚本加载失败: ${入口地址}`));
     };
     const 超时器 = setTimeout(() => {
-      try { 脚本.remove(); } catch (错误) {}
       const 错误 = new Error(`入口脚本启动超时:${请求超时毫秒}ms ${入口地址}`);
       错误.code = 'LWCS_MODULE_ENTRY_TIMEOUT';
       完成(错误);
@@ -92,12 +66,12 @@ function 加载模块脚本入口(入口地址, 入口尝试代号) {
     const 启动检查器 = setInterval(() => {
       if (共享宿主窗口.__LWCS_MVU_ENTRY_STARTED_ATTEMPT_V1__ === 入口尝试代号) 完成(true);
     }, 25);
-    脚本.type = 'module';
-    脚本.src = 入口地址;
-    脚本.onload = () => 完成(true);
-    脚本.onerror = () => 完成(new Error(`入口脚本加载失败: ${入口地址}`));
-    (文档.head || 文档.documentElement).appendChild(脚本);
+    执行承诺.then(
+      () => 完成(true),
+      错误 => 完成(共享宿主窗口.__LWCS_MVU_ENTRY_STARTED_ATTEMPT_V1__ === 入口尝试代号 ? true : 错误),
+    );
   });
+  return Object.freeze({ 开始承诺, 执行承诺 });
 }
 
 const 共享宿主窗口 = (() => {
@@ -282,6 +256,7 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
     const 最新提交哈希 = await 取共享最新提交哈希();
     const 错误列表 = [];
     let 已加载 = false;
+    let 入口执行承诺 = null;
 
     for (const [CDN序号, CDN地址] of CDN地址列表.entries()) {
       const 资源基础地址 = `${CDN地址}/gh/${仓库名}@${最新提交哈希}/`;
@@ -327,8 +302,9 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
             (文档.head || 文档.documentElement).appendChild(预载节点);
           }
         }
-        预取关键资源(资源基础地址, 最新提交哈希);
-        await 加载模块脚本入口(入口地址, 入口尝试代号);
+        const 入口加载 = 加载模块脚本入口(入口地址, 入口尝试代号);
+        await 入口加载.开始承诺;
+        入口执行承诺 = 入口加载.执行承诺;
         已加载 = true;
         break;
       } catch (错误) {
@@ -336,7 +312,10 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
       }
     }
     if (!已加载) throw new Error(`LWCS MVU 入口 CDN 全部失败: ${错误列表.join(' | ')}`);
-    await withTimeout(本轮核心就绪承诺, '等待 MVU 核心接口契约', 30000);
+    await withTimeout(Promise.race([
+      本轮核心就绪承诺,
+      入口执行承诺.then(() => 本轮核心就绪承诺),
+    ]), '等待 MVU 核心接口契约', 30000);
     if (共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ !== 本轮启动代号) {
       throw new Error(`MVU启动轮次已过期：${本轮启动代号}`);
     }

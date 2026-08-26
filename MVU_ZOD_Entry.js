@@ -65,9 +65,6 @@ function 是当前MVU启动轮次_V1() {
 }
 if (!是当前MVU启动轮次_V1()) throw new Error(`MVU入口已过期：${MVU入口启动代号_V1}`);
 if (MVU入口尝试代号_V1) MVU共享宿主窗口_V1.__LWCS_MVU_ENTRY_STARTED_ATTEMPT_V1__ = MVU入口尝试代号_V1;
-const MVU读取共享文本_V1 = typeof MVU共享宿主窗口_V1.__LWCS_READ_SHARED_TEXT_V1__ === 'function'
-  ? MVU共享宿主窗口_V1.__LWCS_READ_SHARED_TEXT_V1__
-  : null;
 let MVU核心就绪解决_V1;
 let MVU核心就绪拒绝_V1;
 const MVU核心就绪承诺_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_PROMISE_V1__ || new Promise((resolve, reject) => {
@@ -144,14 +141,6 @@ const MVU_ZOD_ENTRY_BASE_CANDIDATES_V1 = (() => {
   return [MVU_ZOD_ENTRY_BASE_V1.href, ...候选列表.map(清理地址)].filter((地址, 序号, 列表) => 地址 && 列表.indexOf(地址) === 序号);
 })();
 
-function 是MVU提交哈希资源地址_V1(地址) {
-  return /\/gh\/[^?#]+@[0-9a-f]{40}(?:\/|$)/i.test(String(地址 || ''));
-}
-
-function 取MVU资源请求选项_V1(地址) {
-  return { cache: 是MVU提交哈希资源地址_V1(地址) ? 'force-cache' : 'no-store' };
-}
-
 function MVU请求超时_V1(承诺, 标签, 超时毫秒 = MVU_ZOD_RESOURCE_TIMEOUT_MS_V1, 超时回调 = null) {
   return new Promise((resolve, reject) => {
     let 已结束 = false;
@@ -177,15 +166,38 @@ function MVU请求超时_V1(承诺, 标签, 超时毫秒 = MVU_ZOD_RESOURCE_TIME
   });
 }
 
-function MVU_FETCH_V1(地址) {
-  const 请求选项 = 取MVU资源请求选项_V1(地址);
-  let 控制器 = null;
-  if (typeof AbortController === 'function') {
-    控制器 = new AbortController();
-    请求选项.signal = 控制器.signal;
-  }
-  return MVU请求超时_V1(fetch(地址, 请求选项), `读取 ${地址}`, MVU_ZOD_RESOURCE_TIMEOUT_MS_V1, () => {
-    if (控制器) 控制器.abort();
+function 加载MVU经典脚本_V1(地址, 节点ID) {
+  return new Promise((resolve, reject) => {
+    const 文档 = globalThis.document;
+    if (!文档 || !文档.createElement) {
+      reject(new Error(`MVU资源执行缺少document：${地址}`));
+      return;
+    }
+    const 脚本 = 文档.createElement('script');
+    let 已完成 = false;
+    const 完成 = (成功, 结果) => {
+      if (已完成) return;
+      已完成 = true;
+      clearTimeout(超时器);
+      脚本.onload = null;
+      脚本.onerror = null;
+      if (成功) resolve(地址);
+      else {
+        try { 脚本.remove(); } catch (错误) {}
+        reject(结果 instanceof Error ? 结果 : new Error(`MVU资源加载失败：${地址}`));
+      }
+    };
+    const 超时器 = setTimeout(() => {
+      const 错误 = new Error(`MVU资源加载超时:${MVU_ZOD_RESOURCE_TIMEOUT_MS_V1}ms ${地址}`);
+      错误.code = 'LWCS_RESOURCE_TIMEOUT';
+      完成(false, 错误);
+    }, MVU_ZOD_RESOURCE_TIMEOUT_MS_V1);
+    脚本.id = 节点ID;
+    脚本.async = false;
+    脚本.src = 地址;
+    脚本.onload = () => 完成(true, 地址);
+    脚本.onerror = () => 完成(false, new Error(`MVU资源加载失败：${地址}`));
+    (文档.head || 文档.documentElement).appendChild(脚本);
   });
 }
 
@@ -303,40 +315,28 @@ function 创建MVU资源所有者_V1() {
     let 模块 = null;
     if (模式 === 'script-global') {
       const 候选地址 = 构建MVU候选资源地址列表_V1(文件名);
-      let 代码文本 = '';
       const 错误列表 = [];
       while (记录.fetchAttempts < 候选地址.length) {
         const 尝试序号 = 记录.fetchAttempts;
         记录.fetchAttempts += 1;
         地址 = 候选地址[Math.min(尝试序号, Math.max(候选地址.length - 1, 0))];
         try {
-          if (MVU读取共享文本_V1) {
-            代码文本 = await MVU读取共享文本_V1(
-              地址,
-              取MVU资源请求选项_V1(地址),
-              MVU_ZOD_RESOURCE_TIMEOUT_MS_V1,
-              读取MVU资源提交_V1(),
-            );
-          } else {
-            const 响应 = await MVU_FETCH_V1(地址);
-            if (!响应.ok) throw new Error(`[${响应.status}]`);
-            代码文本 = await 响应.text();
-          }
+          记录.phase = 'execute';
+          记录.executionStarted = true;
+          记录.executeCount += 1;
+          await 加载MVU经典脚本_V1(
+            地址,
+            `lwcs-resource-owner-${记录.key.replace(/[^a-zA-Z0-9_-]/g, '-')}-${尝试序号}`,
+          );
           break;
         } catch (错误) {
+          记录.executionStarted = false;
           错误列表.push(`${地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
         }
       }
-      if (!代码文本) throw new Error(`MVU资源读取失败：${记录.relativePath} ${错误列表.join(' | ')}`);
-      记录.phase = 'execute';
-      记录.executionStarted = true;
-      记录.executeCount += 1;
-      const 文档 = globalThis.document;
-      if (!文档 || !文档.createElement) throw new Error(`MVU资源执行缺少document：${记录.relativePath}`);
-      const 脚本 = 文档.createElement('script');
-      脚本.id = `lwcs-resource-owner-${记录.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
-      脚本.text = `${代码文本}\n//# sourceURL=${地址}`;
-      (文档.body || 文档.documentElement).appendChild(脚本);
+      if (!地址 || 错误列表.length === 候选地址.length) {
+        throw new Error(`MVU资源加载失败：${记录.relativePath} ${错误列表.join(' | ')}`);
+      }
       if (!(await Promise.resolve(就绪检查()))) throw new Error(`MVU资源未暴露预期接口：${记录.relativePath}`);
     } else if (模式 === 'dynamic-import') {
       const 候选地址 = 构建MVU候选资源地址列表_V1(文件名);
