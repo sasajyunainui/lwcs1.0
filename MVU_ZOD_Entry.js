@@ -5,6 +5,12 @@ const MVU_ENGINE_BUNDLE_FILE_V1 = 'MVU_Engine_Bundle.js';
 const MVU_PERSISTENCE_BUNDLE_FILE_V1 = 'LWCS_MVU_Persistence_Bundle.js';
 const MVU_ERA_RUNTIME_BUNDLE_FILE_V1 = 'LWCS_MVU_Era_Runtime_Bundle.js';
 const MVU_SCHEMA_RUNTIME_BUNDLE_FILE_V1 = 'LWCS_MVU_Schema_Runtime_Bundle.js';
+const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
+  'LWCS_UI_Runtime_Bundle.js',
+  'LWCS_UI_Styles_Bundle.js',
+  'Main_Vue_runtimefix_v2.js',
+  'sheep_map_restore.js',
+]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
 const MVU_ENGINE_BUNDLE_SHA256_V1 = '6c05357210551be8b827ee49c4d735b4f651ffdf33489aa1fbe2dfdf91fb8e69';
 const MVU追踪模块顺序_V1 = Object.freeze([
@@ -133,6 +139,13 @@ const MVU_ZOD_ENTRY_BASE_CANDIDATES_V1 = (() => {
   };
   return [MVU_ZOD_ENTRY_BASE_V1.href, ...候选列表.map(清理地址)].filter((地址, 序号, 列表) => 地址 && 列表.indexOf(地址) === 序号);
 })();
+const MVU_UI_PREFETCH_V1 = MVU共享宿主窗口_V1.__LWCS_PREFETCH_SHARED_TEXT_V1__;
+if (typeof MVU_UI_PREFETCH_V1 === 'function') {
+  void MVU_UI_PREFETCH_V1(
+    MVU_UI_PREFETCH_FILES_V1.map(文件名 => new URL(文件名, MVU_ZOD_ENTRY_BASE_CANDIDATES_V1[0]).href),
+    读取MVU资源提交_V1(),
+  ).catch(() => {});
+}
 
 function MVU请求超时_V1(承诺, 标签, 超时毫秒 = MVU_ZOD_RESOURCE_TIMEOUT_MS_V1, 超时回调 = null) {
   return new Promise((resolve, reject) => {

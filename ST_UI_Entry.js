@@ -104,14 +104,14 @@
 
   const 模块注册表 = {
     界面样式: {
-      类型: 'remote-js',
+      类型: 'inline-js',
       地址: 资源基础地址 + 'LWCS_UI_Styles_Bundle.js' + 资源版本后缀,
       关键: true,
       分组: 'core',
       已就绪: () => 读取共享值('__LWCS_UI_STYLES_READY_V1__') === true,
     },
     Vue核心: { 类型: 'remote-js', 地址: Vue远程地址, 关键: true, 分组: 'core' },
-    壳层运行时: { 类型: 'remote-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
+    壳层运行时: { 类型: 'inline-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     历法与库运行时: { 类型: 'wait-global', 全局键: '__LWCS_LIBRARY_DATA_RUNTIME_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
     时代数据注册表: { 类型: 'wait-global', 全局键: '__LWCS_ERA_DATA_REGISTRY_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
     时代货币注册表: { 类型: 'wait-global', 全局键: '__LWCS_ERA_CURRENCY_REGISTRY_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
@@ -198,7 +198,7 @@
     }),
     请求监控挂件: { 类型: 'remote-js', 地址: 资源基础地址 + 'RequestMonitorWidget.js' + 资源版本后缀, 关键: false, 分组: 'background' },
     地图模块: {
-      类型: 'remote-js',
+      类型: 'inline-js',
       地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀,
       关键: true,
       分组: 'core',
@@ -583,6 +583,12 @@
       }
       脚本节点.text = '';
       文本资源缓存表.delete(地址);
+      const 共享文本请求表 = 宿主窗口.__LWCS_SHARED_TEXT_REQUESTS_V1__;
+      if (共享文本请求表 && typeof 共享文本请求表.delete === 'function') {
+        for (const 候选地址 of 取候选资源地址列表(地址)) {
+          共享文本请求表.delete(`${共享资源提交哈希 || 'local'}:${候选地址}`);
+        }
+      }
       if (执行错误) {
         脚本节点.__LWCS_EXECUTION_ERROR__ = 执行错误;
         throw 执行错误;
