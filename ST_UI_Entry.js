@@ -131,17 +131,35 @@
     装备属性加成接口: { 类型: 'wait-global', 全局键: '__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__', 值类型: 'function', 关键: true, 分组: 'core' },
     JSONPatch规范化接口: { 类型: 'wait-global', 全局键: '__LWCS_NORMALIZE_JSON_PATCH_OPS__', 值类型: 'function', 关键: true, 分组: 'core' },
     JSONPatch文本预处理接口: { 类型: 'wait-global', 全局键: '__LWCS_PREPROCESS_JSON_PATCH_TEXT__', 值类型: 'function', 关键: true, 分组: 'core' },
+    UI运行时: {
+      类型: 'inline-js',
+      地址: 资源基础地址 + 'LWCS_UI_Runtime_Bundle.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__')
+        && typeof 读取共享值('__MVU_ROUTE_MODULE_INTENT__') === 'function'
+        && typeof 读取共享值('mountTradeUI') === 'function'
+        && typeof 读取共享值('mountProfessionUI') === 'function'
+        && typeof 读取共享值('mountCompetitionUI') === 'function'
+        && !!读取共享值('__LWCS_BATTLE_PREVIEW__')
+        && !!读取共享值('__LWCS_BEHAVIOR_DECISION_PIPELINE__')
+        && !!读取共享值('__LWCS_BATTLE_DECISION__')
+        && !!读取共享值('__LWCS_BATTLE_RUNTIME__')
+        && !!读取共享值('__LWCS_BATTLE_REPORT__')
+        && typeof 读取共享值('mountBattleUI') === 'function'
+        && !!读取共享值('AutoCardUpdaterAPI'),
+    },
     UI集成运行时: {
-      类型: 'remote-js',
-      地址: 资源基础地址 + 'LWCS_UI_Integration_Bundle.js' + 资源版本后缀,
+      类型: 'bundle-member',
+      依赖: ['UI运行时'],
       关键: true,
       分组: 'core',
       已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__') && typeof 读取共享值('__MVU_ROUTE_MODULE_INTENT__') === 'function',
     },
-    逻辑桥接: { 类型: 'bundle-member', 依赖: ['UI集成运行时'], 关键: true, 分组: 'core' },
+    逻辑桥接: { 类型: 'bundle-member', 依赖: ['UI运行时'], 关键: true, 分组: 'core' },
     数据库适配器: {
       类型: 'bundle-member',
-      依赖: ['UI集成运行时'],
+      依赖: ['UI运行时'],
       关键: true,
       分组: 'core',
       已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__'),
@@ -187,8 +205,8 @@
       已就绪: () => 读取共享值('__sheepMapRestoreLoaded') === true,
     },
     游戏功能运行时: {
-      类型: 'remote-js',
-      地址: 资源基础地址 + 'LWCS_UI_Gameplay_Bundle.js' + 资源版本后缀,
+      类型: 'bundle-member',
+      依赖: ['UI运行时'],
       关键: true,
       分组: 'core',
       已就绪: () => typeof 读取共享值('mountTradeUI') === 'function'
@@ -211,8 +229,8 @@
     战斗战报运行时: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
     战斗模块: { 类型: 'bundle-member', 依赖: ['游戏功能运行时'], 关键: true, 分组: 'core' },
     数据库模块: {
-      类型: 'remote-js',
-      地址: 资源基础地址 + 'Database_Module.js' + 资源版本后缀,
+      类型: 'bundle-member',
+      依赖: ['UI运行时'],
       关键: true,
       分组: 'core',
       已就绪: () => !!读取共享值('AutoCardUpdaterAPI'),
@@ -236,14 +254,13 @@
   const 时代运行时前置模块顺序 = Object.freeze(['历法与库运行时', '时代数据注册表', '时代货币注册表', '时代事件状态运行时', '时代运行时集成', '时代修炼运行时', 'MVU核心就绪']);
   const MVU核心接口模块顺序 = Object.freeze([...时代运行时前置模块顺序, ...变量运行时接口模块顺序]);
   const 核心前置模块顺序 = Object.freeze(['界面样式', 'Vue核心', '壳层运行时']);
-  const 游戏功能模块顺序 = Object.freeze(['地图模块', '游戏功能运行时']);
   const 冷归档前置模块顺序 = Object.freeze([
     '持久化适配器',
     'MVU持久化提供者',
     'MVU提示投影器',
     ...(是TT宿主 ? [] : ['冷归档存储']),
   ]);
-  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...冷归档前置模块顺序, 'UI集成运行时', ...游戏功能模块顺序, '数据库模块']);
+  const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...冷归档前置模块顺序, 'UI运行时', '地图模块', '数据库模块']);
   const 正常启动追踪模块顺序 = Object.freeze([...核心模块顺序]);
 
   const 加载阶段 = {
@@ -532,7 +549,10 @@
     const 执行内联加载 = async () => {
       const 脚本标记 = 取内联脚本标记(地址);
       const 旧脚本 = 宿主文档.getElementById(脚本标记);
-      if (旧脚本) return 地址;
+      if (旧脚本) {
+        if (旧脚本.__LWCS_EXECUTION_ERROR__) throw 旧脚本.__LWCS_EXECUTION_ERROR__;
+        return 地址;
+      }
 
       if (状态) {
         状态.阶段 = '下载中';
@@ -546,8 +566,27 @@
       const 脚本节点 = 宿主文档.createElement('script');
       脚本节点.id = 脚本标记;
       脚本节点.text = `${代码文本}\n//# sourceURL=${地址}`;
-      (宿主文档.body || 宿主文档.documentElement).appendChild(脚本节点);
+      let 执行错误 = null;
+      const 捕获执行错误 = 事件 => {
+        const 文件名 = String(事件?.filename || '');
+        const 堆栈 = String(事件?.error?.stack || '');
+        if (文件名 && 文件名 !== 地址 && !堆栈.includes(地址)) return;
+        执行错误 = 事件?.error instanceof Error
+          ? 事件.error
+          : new Error(String(事件?.message || `JS execute failed: ${地址}`));
+      };
+      宿主窗口.addEventListener('error', 捕获执行错误);
+      try {
+        (宿主文档.body || 宿主文档.documentElement).appendChild(脚本节点);
+      } finally {
+        宿主窗口.removeEventListener('error', 捕获执行错误);
+      }
+      脚本节点.text = '';
       文本资源缓存表.delete(地址);
+      if (执行错误) {
+        脚本节点.__LWCS_EXECUTION_ERROR__ = 执行错误;
+        throw 执行错误;
+      }
       return 地址;
     };
     if (!/LibraryData_Runtime\.js(?:[?#]|$)/.test(地址)) return 执行内联加载();
@@ -1243,6 +1282,7 @@
     本次引导承诺 = (async () => {
       try {
         记录阶段(加载阶段.节点就绪);
+        void 读取文本资源(模块注册表.UI运行时.地址, 'UI runtime preload failed').catch(() => {});
         await waitForMountsReady(10000);
         ensureGetAllVariablesShim();
 
@@ -1254,9 +1294,11 @@
         await 确保模块已加载('壳层运行时', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await 等待MVU核心契约('bootstrap_core', true);
         await 确保模块组已加载(冷归档前置模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
-        await 确保模块已加载('UI集成运行时', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await Promise.all([
-          确保模块组已加载(游戏功能模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true }),
+          确保模块已加载('UI运行时', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true }),
+          确保模块已加载('地图模块', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true }),
+        ]);
+        await Promise.all([
           等待数据库模块就绪('bootstrap_core', true),
         ]);
 

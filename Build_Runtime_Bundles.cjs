@@ -38,6 +38,20 @@ const 打包定义 = Object.freeze({
     'BattleReport_Module.js',
     'BattleUI_Module.js',
   ],
+  'LWCS_UI_Runtime_Bundle.js': [
+    'LWCS_Database_Adapter.js',
+    'mvu_logic_bridge.js',
+    'TradeUI_Module.js',
+    'ProfessionUI_Module.js',
+    'CompetitionPrivilegeUI_Module.js',
+    'BattlePreview_Module.js',
+    'BehaviorDecisionPipeline_Module.js',
+    'BattleDecision_Module.js',
+    'BattleRuntime_Module.js',
+    'BattleReport_Module.js',
+    'BattleUI_Module.js',
+    'Database_Module.js',
+  ],
 });
 
 const 样式源文件列表 = Object.freeze([
