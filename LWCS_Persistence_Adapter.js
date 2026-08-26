@@ -140,6 +140,13 @@
     try { return canonicalJson(left) === canonicalJson(right); } catch (_) { return false; }
   }
 
+  function toJsonValue(value) {
+    let serialized;
+    try { serialized = JSON.stringify(value); } catch (_) { /* handled below */ }
+    if (serialized === undefined) throw new PersistenceAdapterError('VALUE_INVALID', 'value is not JSON serializable');
+    return JSON.parse(serialized);
+  }
+
   function expectedFieldsMatch(value, expected) {
     if (expected === undefined) return true;
     if (!expected || typeof expected !== 'object' || Array.isArray(expected) || !value || typeof value !== 'object') return false;
@@ -568,12 +575,13 @@
 
       session.setJson = async request => {
         assertRequest(request, true);
+        const jsonValue = toJsonValue(request.value);
         return enqueueMutation(session, () => run('mutation', async check => {
-          await backendApi.setJson({ namespace: request.namespace, key: request.key, value: request.value, stableChatId: session.stableChatId });
+          await backendApi.setJson({ namespace: request.namespace, key: request.key, value: jsonValue, stableChatId: session.stableChatId });
           check();
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
-          if (!jsonEqual(value, request.value) || !expectedFieldsMatch(value, request.verify)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
+          if (!jsonEqual(value, jsonValue) || !expectedFieldsMatch(value, request.verify)) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${request.key}`);
           pinBackend(session);
           return resultMeta(session, 'committed', {
             commitId: request.verify?.commitId ?? null,
@@ -587,11 +595,12 @@
         if (backend !== 'tt-store') return failureMeta(session, 'unavailable', 'BATCH_WRITE_UNSUPPORTED');
         if (!Array.isArray(requests) || requests.length === 0) throw new PersistenceAdapterError('REQUEST_INVALID', 'non-empty requests are required');
         requests.forEach(request => assertRequest(request, true));
+        const jsonValues = requests.map(request => toJsonValue(request.value));
         return enqueueMutation(session, () => run('mutation', async check => {
-          await Promise.all(requests.map(request => backendApi.setJson({
+          await Promise.all(requests.map((request, index) => backendApi.setJson({
             namespace: request.namespace,
             key: request.key,
-            value: request.value,
+            value: jsonValues[index],
             stableChatId: session.stableChatId,
           })));
           check();
@@ -601,8 +610,8 @@
             stableChatId: session.stableChatId,
           })));
           check();
-          const mismatchIndex = requests.findIndex((request, index) => !jsonEqual(readBack[index], request.value) || !expectedFieldsMatch(readBack[index], request.verify));
-          if (mismatchIndex >= 0) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${mismatchIndex}`);
+          const mismatchIndex = requests.findIndex((request, index) => !jsonEqual(readBack[index], jsonValues[index]) || !expectedFieldsMatch(readBack[index], request.verify));
+          if (mismatchIndex >= 0) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${requests[mismatchIndex].key}`);
           pinBackend(session);
           return resultMeta(session, 'committed', { verified: true, count: requests.length });
         }));

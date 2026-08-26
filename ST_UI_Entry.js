@@ -1212,8 +1212,10 @@
         await 等待MVU核心契约('bootstrap_core', true);
         await 确保模块组已加载(冷归档前置模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
         await 确保模块已加载('逻辑桥接', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
-        await 确保模块组已加载(游戏功能模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
-        await 等待数据库模块就绪('bootstrap_core', true);
+        await Promise.all([
+          确保模块组已加载(游戏功能模块顺序, { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true }),
+          等待数据库模块就绪('bootstrap_core', true),
+        ]);
 
         if (!宿主窗口.Vue || typeof 宿主窗口.Vue.compile !== 'function') {
           throw new Error('Vue full build load failed: compiler missing');
