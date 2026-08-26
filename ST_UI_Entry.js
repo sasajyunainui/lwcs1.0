@@ -103,8 +103,13 @@
   const 二次重试延迟毫秒 = 560;
 
   const 模块注册表 = {
-    样式核心: { 类型: 'css', 地址: 资源基础地址 + 'mvu_styles.css' + 资源版本后缀, 关键: true, 分组: 'core' },
-    魂环引擎样式: { 类型: 'css', 地址: 资源基础地址 + 'soul_ring_engine.css' + 资源版本后缀, 关键: true, 分组: 'core' },
+    界面样式: {
+      类型: 'remote-js',
+      地址: 资源基础地址 + 'LWCS_UI_Styles_Bundle.js' + 资源版本后缀,
+      关键: true,
+      分组: 'core',
+      已就绪: () => 读取共享值('__LWCS_UI_STYLES_READY_V1__') === true,
+    },
     Vue核心: { 类型: 'remote-js', 地址: Vue远程地址, 关键: true, 分组: 'core' },
     壳层运行时: { 类型: 'remote-js', 地址: 资源基础地址 + 'Main_Vue_runtimefix_v2.js' + 资源版本后缀, 关键: true, 分组: 'core' },
     历法与库运行时: { 类型: 'wait-global', 全局键: '__LWCS_LIBRARY_DATA_RUNTIME_V1__', 值类型: 'object', 关键: true, 分组: 'core' },
@@ -230,7 +235,7 @@
   ]);
   const 时代运行时前置模块顺序 = Object.freeze(['历法与库运行时', '时代数据注册表', '时代货币注册表', '时代事件状态运行时', '时代运行时集成', '时代修炼运行时', 'MVU核心就绪']);
   const MVU核心接口模块顺序 = Object.freeze([...时代运行时前置模块顺序, ...变量运行时接口模块顺序]);
-  const 核心前置模块顺序 = Object.freeze(['样式核心', '魂环引擎样式', 'Vue核心', '壳层运行时']);
+  const 核心前置模块顺序 = Object.freeze(['界面样式', 'Vue核心', '壳层运行时']);
   const 游戏功能模块顺序 = Object.freeze(['地图模块', '游戏功能运行时']);
   const 冷归档前置模块顺序 = Object.freeze([
     '持久化适配器',
@@ -266,7 +271,6 @@
   const 模块状态表 = Object.create(null);
   const 模块加载承诺表 = new Map();
   const 文本资源缓存表 = new Map();
-  const 样式加载承诺表 = new Map();
   const 远程脚本加载承诺表 = new Map();
   let MVU核心接口验证承诺 = null;
   let 引导承诺 = null;
@@ -458,13 +462,8 @@
 
   function 取文本资源错误前缀(模块) {
     if (!模块) return 'Resource load failed';
-    if (模块.类型 === 'css') return 'CSS load failed';
     if (模块.类型 === 'module-js') return 'Module JS load failed';
     return 'JS load failed';
-  }
-
-  function 取样式标记(地址) {
-    return 'mvu-style-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
   }
 
   function 取远程脚本标记(地址) {
@@ -473,60 +472,6 @@
 
   function 取内联脚本标记(地址) {
     return 'mvu-inline-' + btoa(地址).replace(/[^a-zA-Z0-9]/g, '');
-  }
-
-  function 加载单一样式(地址) {
-    return new Promise((resolve, reject) => {
-      const 样式标记 = 取样式标记(地址);
-      if (宿主文档.getElementById(样式标记)) {
-        resolve(地址);
-        return;
-      }
-      const 样式节点 = 宿主文档.createElement('link');
-      let 已完成 = false;
-      const 完成 = (成功, 结果) => {
-        if (已完成) return;
-        已完成 = true;
-        clearTimeout(超时器);
-        样式节点.onload = null;
-        样式节点.onerror = null;
-        if (成功) resolve(结果);
-        else {
-          try { 样式节点.remove(); } catch (错误) {}
-          reject(结果);
-        }
-      };
-      const 超时器 = setTimeout(() => {
-        完成(false, new Error(`CSS load timeout:${资源请求超时毫秒}ms ${地址}`));
-      }, 资源请求超时毫秒);
-      样式节点.id = 样式标记;
-      样式节点.rel = 'stylesheet';
-      样式节点.href = 地址;
-      样式节点.onload = () => 完成(true, 地址);
-      样式节点.onerror = () => 完成(false, new Error(`CSS load failed: ${地址}`));
-      宿主文档.head.appendChild(样式节点);
-    });
-  }
-
-  function 加载样式(地址, 状态 = null) {
-    if (样式加载承诺表.has(地址)) return 样式加载承诺表.get(地址);
-    if (状态) {
-      状态.阶段 = '下载并应用';
-      刷新加载追踪面板();
-    }
-    const 加载承诺 = (async () => {
-      const 错误列表 = [];
-      for (const 候选地址 of 取候选资源地址列表(地址)) {
-        try {
-          return await 加载单一样式(候选地址);
-        } catch (错误) {
-          错误列表.push(`${候选地址} ${错误?.message || String(错误)}`);
-        }
-      }
-      throw new Error(`CSS load failed: ${错误列表.join(' | ')}`);
-    })().finally(() => 样式加载承诺表.delete(地址));
-    样式加载承诺表.set(地址, 加载承诺);
-    return 加载承诺;
   }
 
   function 加载单一远程脚本(地址) {
@@ -691,7 +636,6 @@
       return 模块.地址;
     }
     const 状态 = 模块状态表[模块名];
-    if (模块.类型 === 'css') return 加载样式(模块.地址, 状态);
     if (模块.类型 === 'remote-js') return 加载远程脚本(模块.地址, 状态);
     if (模块.类型 === 'wait-global') {
       if (状态) {
@@ -1304,10 +1248,7 @@
 
         记录阶段(加载阶段.核心加载中);
         await Promise.all([
-          (async () => {
-            await 确保模块已加载('样式核心', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
-            await 确保模块已加载('魂环引擎样式', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });
-          })(),
+          确保模块已加载('界面样式', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true }),
           确保模块已加载('Vue核心', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true }),
         ]);
         await 确保模块已加载('壳层运行时', { 来源: 'bootstrap_core', 允许失败降级: false, 抛错: true });

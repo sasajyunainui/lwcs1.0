@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Persistence_Adapter.js:07005dda595fa3addec15f63815b71029180a1608cde5c0d88cdc19baf0ce447|LWCS_MVU_Persistence_Provider.js:6a58dc159e89c0c880f50f3ee414d90a71e59f18872e00e779d97a018e1299f5|LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7 */
+/* sources-sha256: LWCS_Persistence_Adapter.js:d29810f1838f837a8f9f6c0f877065d43c363f53eb6a0035ba1d757aadc5bba7|LWCS_MVU_Persistence_Provider.js:6a58dc159e89c0c880f50f3ee414d90a71e59f18872e00e779d97a018e1299f5|LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7 */
 ;
 /* source: LWCS_Persistence_Adapter.js */
 (function (root) {
@@ -493,15 +493,37 @@
     }
 
     async function readBackWithRetry(read, matches, check) {
-      const delays = [0, 40, 120, 240];
+      const delays = [0, 50, 150, 300, 600];
       let value;
+      const startedAt = Date.now();
       for (const delay of delays) {
         if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
         value = await read();
         check();
-        if (matches(value)) return { matched: true, value };
+        if (matches(value)) return { matched: true, value, attempts: delays.indexOf(delay) + 1, elapsedMs: Date.now() - startedAt };
       }
-      return { matched: false, value };
+      return { matched: false, value, attempts: delays.length, elapsedMs: Date.now() - startedAt };
+    }
+
+    function describeValue(value) {
+      let serialized;
+      try { serialized = canonicalJson(value); } catch (_) { serialized = undefined; }
+      return {
+        type: value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value,
+        canonicalLength: typeof serialized === 'string' ? serialized.length : null,
+      };
+    }
+
+    function warnReadBackMismatch(session, request, expected, readBack) {
+      console.warn('[LWCS Persistence] 写后读回不一致', {
+        backend: session.backend,
+        key: request.key,
+        attempts: readBack.attempts,
+        elapsedMs: readBack.elapsedMs,
+        expected: describeValue(expected),
+        actual: describeValue(readBack.value),
+        verifyMatched: expectedFieldsMatch(readBack.value, request.verify),
+      });
     }
 
     async function openSession({ domain, fallbackStableChatId } = {}) {
@@ -571,16 +593,6 @@
       session.getJson = async request => {
         assertRequest(request);
         return run('read', async check => {
-          if (backend === 'tt-store') {
-            const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
-            check();
-            if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
-            if (!keys.includes(request.key)) {
-              return request.verify === undefined
-                ? resultMeta(session, 'committed', { verified: true, value: undefined })
-                : failureMeta(session, 'not_committed', 'NOT_FOUND');
-            }
-          }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
           if (request.verify !== undefined && value === undefined) return failureMeta(session, 'not_committed', 'NOT_FOUND');
@@ -601,7 +613,10 @@
             value => jsonEqual(value, jsonValue) && expectedFieldsMatch(value, request.verify),
             check,
           );
-          if (!readBack.matched) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${request.key}`);
+          if (!readBack.matched) {
+            warnReadBackMismatch(session, request, jsonValue, readBack);
+            return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${request.key}`);
+          }
           pinBackend(session);
           return resultMeta(session, 'committed', {
             commitId: request.verify?.commitId ?? null,
@@ -634,7 +649,13 @@
             check,
           );
           const mismatchIndex = requests.findIndex((request, index) => !jsonEqual(readBack.value[index], jsonValues[index]) || !expectedFieldsMatch(readBack.value[index], request.verify));
-          if (mismatchIndex >= 0) return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${requests[mismatchIndex].key}`);
+          if (mismatchIndex >= 0) {
+            warnReadBackMismatch(session, requests[mismatchIndex], jsonValues[mismatchIndex], {
+              ...readBack,
+              value: readBack.value[mismatchIndex],
+            });
+            return failureMeta(session, 'uncertain', `READBACK_MISMATCH:${requests[mismatchIndex].key}`);
+          }
           pinBackend(session);
           return resultMeta(session, 'committed', { verified: true, count: requests.length });
         }));
