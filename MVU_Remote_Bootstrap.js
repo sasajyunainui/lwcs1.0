@@ -8,7 +8,7 @@ const CDN地址列表 = Object.freeze([
 ]);
 const 请求超时毫秒 = 6500;
 const GitHub请求超时毫秒 = 8000;
-  const 回退提交哈希 = 'cba6eba9442e445cde7a0365b06837e0c9ab5c7f';
+  const 回退提交哈希 = '23d8e029d34943230d1c53325b2266846ce2a984';
 const 入口文件名 = 'MVU_ZOD_Entry.js';
 const MVU追踪模块顺序 = Object.freeze([入口文件名]);
 async function 取最新提交哈希() {
