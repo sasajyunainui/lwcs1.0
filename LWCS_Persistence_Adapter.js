@@ -16,6 +16,7 @@
     'cold-archive': 'st-files',
   });
   const PROBE_NAMESPACE = '__lwcs_capability_probe_v1__';
+  const TT_HOST_TIMEOUT_MS = 2000;
   let nonceCounter = 0;
 
   function collectWindows() {
@@ -63,6 +64,30 @@
     constructor() {
       super('STALE_CHAT', 'chat generation is no longer active');
     }
+  }
+
+  function callTtHost(label, call) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const timeoutId = setTimeout(() => {
+        settled = true;
+        reject(new PersistenceAdapterError('TT_HOST_TIMEOUT', `TT host call timed out: ${label}`));
+      }, TT_HOST_TIMEOUT_MS);
+      const finish = (handler, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        handler(value);
+      };
+      try {
+        Promise.resolve(call()).then(
+          value => finish(resolve, value),
+          error => finish(reject, error),
+        );
+      } catch (error) {
+        finish(reject, error);
+      }
+    });
   }
 
   function assertDomain(domain) {
@@ -158,28 +183,28 @@
 
   function createTauriStoreBackend(store) {
     return Object.freeze({
-      setJson: ({ namespace, key, value }) => store.setJson({
+      setJson: ({ namespace, key, value }) => callTtHost('store.setJson()', () => store.setJson({
         namespace: encodeTauriStoreComponent(namespace),
         key: encodeTauriStoreComponent(key),
         value,
-      }),
+      })),
       getJson: async ({ namespace, key }) => {
         try {
-          return await store.getJson({
+          return await callTtHost('store.getJson()', () => store.getJson({
             namespace: encodeTauriStoreComponent(namespace),
             key: encodeTauriStoreComponent(key),
-          });
+          }));
         } catch (error) {
           if (/Chat store entry not found(?::|$)/.test(String(error?.message || error))) return undefined;
           throw error;
         }
       },
-      deleteJson: ({ namespace, key }) => store.deleteJson({
+      deleteJson: ({ namespace, key }) => callTtHost('store.deleteJson()', () => store.deleteJson({
         namespace: encodeTauriStoreComponent(namespace),
         key: encodeTauriStoreComponent(key),
-      }),
+      })),
       listKeys: async ({ namespace }) => {
-        const keys = await store.listKeys({ namespace: encodeTauriStoreComponent(namespace) });
+        const keys = await callTtHost('store.listKeys()', () => store.listKeys({ namespace: encodeTauriStoreComponent(namespace) }));
         if (!Array.isArray(keys)) return keys;
         return keys.map(decodeTauriStoreComponent).filter(key => key !== null);
       },
@@ -197,19 +222,19 @@
   function findMainReady() {
     for (const candidate of collectWindows()) {
       const ready = readField(candidate, '__TAURITAVERN_MAIN_READY__');
-      if (ready && (typeof ready === 'function' || typeof ready.then === 'function')) return { owner: candidate, ready };
+      if (ready && (typeof ready === 'function' || typeof ready.then === 'function')) return { owner: candidate, ready, label: '__TAURITAVERN_MAIN_READY__' };
     }
     return null;
   }
 
-  async function awaitReady(owner, ready) {
-    if (typeof ready === 'function') await ready.call(owner);
-    else if (ready && typeof ready.then === 'function') await ready;
+  async function awaitReady(owner, ready, label) {
+    if (typeof ready === 'function') await callTtHost(label, () => ready.call(owner));
+    else if (ready && typeof ready.then === 'function') await callTtHost(label, () => ready);
   }
 
   function findTauriReady(candidate) {
     const localReady = readField(candidate.tauriTavern, 'ready');
-    if (localReady && (typeof localReady === 'function' || typeof localReady.then === 'function')) return { owner: candidate.tauriTavern, ready: localReady };
+    if (localReady && (typeof localReady === 'function' || typeof localReady.then === 'function')) return { owner: candidate.tauriTavern, ready: localReady, label: '__TAURITAVERN__.ready' };
     const mainReady = findMainReady();
     return mainReady || null;
   }
@@ -316,7 +341,7 @@
       if (!candidate) {
         const mainReady = findMainReady();
         if (mainReady) {
-          await awaitReady(mainReady.owner, mainReady.ready);
+          await awaitReady(mainReady.owner, mainReady.ready, mainReady.label);
           assertGeneration(startGeneration);
           candidate = findTauriTavern();
         }
@@ -327,15 +352,15 @@
       if (candidate) {
         const ready = findTauriReady(candidate);
         if (ready) {
-          await awaitReady(ready.owner, ready.ready);
+          await awaitReady(ready.owner, ready.ready, ready.label);
           assertGeneration(startGeneration);
         }
         const handleFactory = candidate.tauriTavern?.api?.chat?.current?.handle;
         if (typeof handleFactory === 'function') {
-          handle = await handleFactory.call(candidate.tauriTavern.api.chat.current);
+          handle = await callTtHost('api.chat.current.handle()', () => handleFactory.call(candidate.tauriTavern.api.chat.current));
           assertGeneration(startGeneration);
           if (handle && typeof handle.stableId === 'function') {
-            const rawStableId = await handle.stableId.call(handle);
+            const rawStableId = await callTtHost('handle.stableId()', () => handle.stableId.call(handle));
             assertGeneration(startGeneration);
             stableChatId = typeof rawStableId === 'string' ? rawStableId : (typeof rawStableId === 'number' ? String(rawStableId) : '');
             stableChatId = stableChatId.trim();
@@ -384,8 +409,8 @@
         const keysBeforeDelete = await backend.listKeys({ namespace: PROBE_NAMESPACE, stableChatId: sessionIdentity.stableChatId });
         assertOpenIdentity(sessionIdentity);
         if (!Array.isArray(keysBeforeDelete) || !keysBeforeDelete.includes(key)) return null;
-        await backend.deleteJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
         deleteAttempted = true;
+        await backend.deleteJson({ namespace: PROBE_NAMESPACE, key, stableChatId: sessionIdentity.stableChatId });
         writeCompleted = false;
         assertOpenIdentity(sessionIdentity);
         const afterDelete = await backend.listKeys({ namespace: PROBE_NAMESPACE, stableChatId: sessionIdentity.stableChatId });
@@ -420,7 +445,8 @@
       if (capabilityInflight.has(cacheKey)) return capabilityInflight.get(cacheKey);
       const probePromise = probeBackend(backend, sessionIdentity)
         .then(capabilities => {
-          capabilityCache.set(cacheKey, { backend: backendName, capabilities });
+          if (capabilities) capabilityCache.set(cacheKey, { backend: backendName, capabilities });
+          else capabilityCache.delete(cacheKey);
           return capabilities;
         })
         .finally(() => capabilityInflight.delete(cacheKey));

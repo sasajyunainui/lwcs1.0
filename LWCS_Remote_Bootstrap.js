@@ -563,16 +563,18 @@
     return await 共享启动状态.commitPromise;
   }
 
-  async function 等待MVU就绪(最大等待毫秒 = 30000) {
+  async function 等待MVU就绪() {
     const 就绪承诺 = 宿主窗口.__LWCS_MVU_CORE_READY_PROMISE_V1__
       || window.__LWCS_MVU_CORE_READY_PROMISE_V1__;
-    try {
-      if (!就绪承诺 || typeof 就绪承诺.then !== 'function') return false;
-      await withTimeout(就绪承诺, '等待 MVU 核心接口契约', 最大等待毫秒);
-    } catch (错误) {
-      return false;
+    if (!就绪承诺 || typeof 就绪承诺.then !== 'function') {
+      throw new Error('MVU核心就绪承诺未注册');
     }
-    return 宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__?.ready === true;
+    await 就绪承诺;
+    const 完成契约 = 宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__
+      || window.__LWCS_MVU_CORE_CONTRACT_V1__;
+    if (完成契约?.ready === true) return true;
+    if (共享启动状态.mvuStatus === 'failed') throw new Error(`MVU核心启动失败（${共享启动状态.mvuStage || '未知阶段'}）`);
+    throw new Error(`MVU核心就绪承诺已完成但核心契约未ready（${共享启动状态.mvuStage || '未知阶段'}）`);
   }
 
   async function 加载正式入口(提交哈希) {
@@ -659,7 +661,7 @@
         if (准备结果.ok) 加载追踪器.更新入口('pending', '等待 MVU 运行时', '', '等待执行');
         else 加载追踪器.更新入口('pending', '等待 MVU 运行时', '', '等待回退');
       });
-      if (!await 等待MVU就绪()) throw new Error('MVU 运行时未就绪，已停止加载 UI');
+      await 等待MVU就绪();
       const 入口准备结果 = await 入口准备结果承诺;
       if (入口准备结果.ok) {
         加载追踪器.更新入口('loading', '正在执行 ST_UI_Entry.js', '', '执行中');
