@@ -4,12 +4,10 @@ const { resolve } = require('node:path');
 
 const 工作目录 = __dirname;
 const 打包定义 = Object.freeze({
-  'LWCS_MVU_Persistence_Bundle.js': [
+  'LWCS_MVU_Foundation_Bundle.js': [
     'LWCS_Persistence_Adapter.js',
     'LWCS_MVU_Persistence_Provider.js',
     'LWCS_MVU_Prompt_Projector.js',
-  ],
-  'LWCS_MVU_Era_Runtime_Bundle.js': [
     'LibraryData_Runtime.js',
     'EraDataRegistry.js',
     'EraCurrencyRegistry.js',
@@ -17,11 +15,19 @@ const 打包定义 = Object.freeze({
     'EraRuntime_Integration.js',
     'EraCultivation_Runtime.js',
   ],
-  'LWCS_MVU_Schema_Runtime_Bundle.js': [
+  'LWCS_MVU_Schema_Data_Bundle.js': [
+    'IntelEvents.js',
     'MVU_Skill_Runtime.js',
     'MVU_Schema_Runtime.js',
     'MVU_Competition_Runtime.js',
     'MVU_Runtime_View.js',
+  ],
+  'LWCS_Era_Current_Data_Bundle.js': [
+    'CharacterLibrary.js',
+    'ItemLibrary.js',
+    'FactionLibrary.js',
+    'LocationLibrary.js',
+    'timeline.js',
   ],
   'LWCS_UI_Integration_Bundle.js': [
     'LWCS_Database_Adapter.js',
@@ -60,11 +66,22 @@ const 样式源文件列表 = Object.freeze([
 ]);
 
 function 读取源文件(文件名) {
-  const 内容 = readFileSync(resolve(工作目录, 文件名), 'utf8').replace(/^\uFEFF/, '');
+  const 原始内容 = readFileSync(resolve(工作目录, 文件名), 'utf8').replace(/^\uFEFF/, '');
+  const ESM数据源 = {
+    'IntelEvents.js': ['IntelEvents', 'IntelEvents'],
+    'timeline.js': ['TimelineEvents', '__LWCS_TIMELINE_SOURCE_current__'],
+  }[文件名];
+  let 内容 = 原始内容;
+  if (ESM数据源) {
+    const [导出名, 全局键] = ESM数据源;
+    const 导出声明 = `export const ${导出名} =`;
+    if (!内容.startsWith(导出声明)) throw new Error(`${文件名} 缺少预期导出声明: ${导出声明}`);
+    内容 = 内容.replace(导出声明, `const ${导出名} =`) + `\n;[globalThis, globalThis.parent, globalThis.top].forEach(目标 => { try { if (目标) 目标[${JSON.stringify(全局键)}] = ${导出名}; } catch (_) {} });`;
+  }
   return {
     文件名,
     内容,
-    哈希: createHash('sha256').update(内容, 'utf8').digest('hex'),
+    哈希: createHash('sha256').update(原始内容, 'utf8').digest('hex'),
   };
 }
 

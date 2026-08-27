@@ -84,11 +84,11 @@
       width: 3174,
       height: 2246,
     }, {
-      character: resourceDescriptor('character', { modulePath: './CharacterLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置角色库__', namespace: 'currentCharacterLibrary' }),
-      item: resourceDescriptor('item', { modulePath: './ItemLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置物品库__', namespace: 'currentItemLibrary' }),
-      faction: resourceDescriptor('faction', { modulePath: './FactionLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置势力库__', metadataGlobalKey: '__LWCS_CURRENT_FACTION_LIBRARY_META_V1__', namespace: 'currentFactionLibrary' }),
-      location: resourceDescriptor('location', { modulePath: './LocationLibrary.js', loader: 'script-global', globalKey: '__LWCS_内置地点库__', metadataGlobalKey: '__LWCS_CURRENT_LOCATION_LIBRARY_META_V1__', namespace: 'currentLocationLibrary' }),
-      timeline: resourceDescriptor('timeline', { modulePath: './timeline.js', loader: 'dynamic-import', globalKey: '__LWCS_TIMELINE_SOURCE_current__', exportName: 'TimelineEvents', namespace: 'currentTimelineEvents' }),
+      character: resourceDescriptor('character', { modulePath: './LWCS_Era_Current_Data_Bundle.js', loader: 'script-global', globalKey: '__LWCS_内置角色库__', namespace: 'currentCharacterLibrary' }),
+      item: resourceDescriptor('item', { modulePath: './LWCS_Era_Current_Data_Bundle.js', loader: 'script-global', globalKey: '__LWCS_内置物品库__', namespace: 'currentItemLibrary' }),
+      faction: resourceDescriptor('faction', { modulePath: './LWCS_Era_Current_Data_Bundle.js', loader: 'script-global', globalKey: '__LWCS_内置势力库__', metadataGlobalKey: '__LWCS_CURRENT_FACTION_LIBRARY_META_V1__', namespace: 'currentFactionLibrary' }),
+      location: resourceDescriptor('location', { modulePath: './LWCS_Era_Current_Data_Bundle.js', loader: 'script-global', globalKey: '__LWCS_内置地点库__', metadataGlobalKey: '__LWCS_CURRENT_LOCATION_LIBRARY_META_V1__', namespace: 'currentLocationLibrary' }),
+      timeline: resourceDescriptor('timeline', { modulePath: './LWCS_Era_Current_Data_Bundle.js', loader: 'script-global', globalKey: '__LWCS_TIMELINE_SOURCE_current__', namespace: 'currentTimelineEvents' }),
     }),
     zjdl: eraDescriptor('zjdl', 'zjdl', 30000, {
       id: 'zjdl-stellar',
