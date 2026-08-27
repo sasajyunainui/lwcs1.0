@@ -16149,46 +16149,6 @@
     return null;
   }
 
-  let 当前MVU持久化热态句柄_桥接 = null;
-  let 当前MVU持久化聊天标识_桥接 = '';
-
-  async function 读取当前MVU持久化热态_桥接() {
-    if (!当前为TauriTavern环境_桥接()) return null;
-    const 聊天标识 = toText(getCurrentChatContextMeta().chatId, '').trim();
-    if (
-      当前MVU持久化热态句柄_桥接
-      && 当前MVU持久化聊天标识_桥接 === 聊天标识
-      && 当前MVU持久化热态句柄_桥接.isLive?.()
-    ) {
-      await Promise.resolve(当前MVU持久化热态句柄_桥接.awaitIdle?.()).catch(() => {});
-      const 热态 = 当前MVU持久化热态句柄_桥接.getHotState?.();
-      if (热态 && typeof 热态 === 'object' && resolveRootData(热态)) return 热态;
-    }
-    const 候选窗口 = [];
-    const 添加窗口 = 候选 => {
-      if (候选 && !候选窗口.includes(候选)) 候选窗口.push(候选);
-    };
-    try { 添加窗口(window); } catch (err) {}
-    try { 添加窗口(window.parent); } catch (err) {}
-    try { 添加窗口(window.top); } catch (err) {}
-    const 提供者 = 候选窗口
-      .map(候选 => {
-        try { return 候选.__LWCS_MVU_PERSISTENCE_PROVIDER_V1__; } catch (err) { return null; }
-      })
-      .find(候选 => 候选 && typeof 候选.open === 'function');
-    if (!提供者) return null;
-    const 打开结果 = await Promise.resolve(
-      提供者.open(聊天标识 ? { fallbackStableChatId: 聊天标识 } : {}),
-    ).catch(() => null);
-    const 句柄 = 打开结果?.state === 'committed' ? 打开结果.handle : null;
-    if (!句柄 || !句柄.isLive?.()) return null;
-    当前MVU持久化热态句柄_桥接 = 句柄;
-    当前MVU持久化聊天标识_桥接 = 聊天标识;
-    await Promise.resolve(句柄.awaitIdle?.()).catch(() => {});
-    const 热态 = 句柄.getHotState?.();
-    return 热态 && typeof 热态 === 'object' && resolveRootData(热态) ? 热态 : null;
-  }
-
   async function getAllVariablesSafe() {
     const latest = await getLatestVariablesFast();
     if (latest) return latest;
@@ -16203,6 +16163,12 @@
       { type: 'chat' },
       { type: 'message', message_id: 'latest' },
     ];
+    if (host && typeof host.getMvuDataAsync === 'function') {
+      try {
+        const vars = await host.getMvuDataAsync(读取选项[0]);
+        if (vars && typeof vars === 'object' && resolveRootData(vars)) return vars;
+      } catch (err) {}
+    }
     if (host && typeof host.getMvuData === 'function') {
       for (const 选项 of 读取选项) {
         try {
@@ -16211,8 +16177,6 @@
         } catch (err) {}
       }
     }
-    const 持久化热态 = await 读取当前MVU持久化热态_桥接();
-    if (持久化热态) return 持久化热态;
     if (!当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
       for (const 选项 of 读取选项) {
         if (选项.type !== 'message') continue;

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7cb1dff12f330f2036a6ad86214e484e98be14608f0a5eef9232cdf4656f3695 */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7f5d3f4f8af0ce5566b2ecbab2d99a2b65c1dd8e8df35109e202eb0065d31089 */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -9064,6 +9064,58 @@
     return 候选窗口.map(候选 => 候选 && 候选.__LWCS_LIBRARY_DATA_RUNTIME_V1__).find(接口 => 接口 && typeof 接口.resolveFaction === 'function' && typeof 接口.resolveLocation === 'function') || null;
   }
 
+  function 读取世界动作上下文_桥接(snapshot = {}, request = {}, actionType = '') {
+    const 已有上下文 = request && request.动作上下文;
+    if (已有上下文 && typeof 已有上下文 === 'object' && Array.isArray(已有上下文.blockers)) {
+      return { ok: 已有上下文.blockers.length === 0, context: 已有上下文, reason: 已有上下文.blockers.join('；') };
+    }
+    const runtime = 读取库运行时_桥接();
+    if (!runtime || typeof runtime.resolveWorldActionContext !== 'function') {
+      return { ok: false, context: null, reason: 'world_context_runtime_unavailable' };
+    }
+    const rootData = deepGet(snapshot, 'rootData', {});
+    const roleText = toText(request.角色 || request.角色名 || request.name, toText(snapshot.activeName, '')).trim();
+    const charKey = resolveSnapshotCharKey(snapshot, roleText) || roleText;
+    const actionText = [actionType, request.动作, request.模式, request.训练方式, request.副职业, request.子类型, request.requestKind]
+      .map(item => toText(item, '').trim())
+      .filter(Boolean)
+      .join('|');
+    const isTravel = /travel|移动|前往|抵达|赶路/.test(actionText.toLowerCase());
+    const targetLocation = isTravel
+      ? toText(request.目标地点 || request.targetLocation || request.target_loc, '')
+      : toText(
+          request.地点 || request.location || request.目标地点 || request.currentLoc || request.位置 ||
+            (request.目标 && request.目标 !== request.物品 ? request.目标 : ''),
+          toText(deepGet(rootData, ['char', charKey, '状态', '位置'], ''), ''),
+        );
+    const durationTicks = toNumber(request.耗时tick ?? request.durationTicks ?? request.ticks, 0);
+    const temporaryRuleIds = Array.isArray(request.临时规则ID)
+      ? request.临时规则ID
+      : Array.isArray(request.temporaryRuleIds)
+        ? request.temporaryRuleIds
+        : [];
+    let context = null;
+    try {
+      context = runtime.resolveWorldActionContext({
+        dataRoot: rootData,
+        characterKey: charKey,
+        actionType: actionText,
+        targetLocation,
+        durationTicks,
+        temporaryRuleIds,
+      });
+    } catch (error) {
+      return { ok: false, context: null, reason: error?.message || 'world_context_failed' };
+    }
+    if (!context || typeof context !== 'object') return { ok: false, context: null, reason: 'world_context_empty' };
+    const contextBlockers = Array.isArray(context.blockers) ? context.blockers : ['world_context_blockers_invalid'];
+    return { ok: contextBlockers.length === 0, context, reason: contextBlockers.join('；') };
+  }
+
+  function 读取世界动作投影_桥接(context = {}) {
+    return toText(context?.modifiers?.投影, '').trim().slice(0, 800);
+  }
+
   function 读取时代运行时集成_桥接() {
     const 候选窗口 = [globalThis];
     try { if (globalThis.window && globalThis.window !== globalThis) 候选窗口.push(globalThis.window); } catch (错误) {}
@@ -17320,46 +17372,6 @@
     return null;
   }
 
-  let 当前MVU持久化热态句柄_桥接 = null;
-  let 当前MVU持久化聊天标识_桥接 = '';
-
-  async function 读取当前MVU持久化热态_桥接() {
-    if (!当前为TauriTavern环境_桥接()) return null;
-    const 聊天标识 = toText(getCurrentChatContextMeta().chatId, '').trim();
-    if (
-      当前MVU持久化热态句柄_桥接
-      && 当前MVU持久化聊天标识_桥接 === 聊天标识
-      && 当前MVU持久化热态句柄_桥接.isLive?.()
-    ) {
-      await Promise.resolve(当前MVU持久化热态句柄_桥接.awaitIdle?.()).catch(() => {});
-      const 热态 = 当前MVU持久化热态句柄_桥接.getHotState?.();
-      if (热态 && typeof 热态 === 'object' && resolveRootData(热态)) return 热态;
-    }
-    const 候选窗口 = [];
-    const 添加窗口 = 候选 => {
-      if (候选 && !候选窗口.includes(候选)) 候选窗口.push(候选);
-    };
-    try { 添加窗口(window); } catch (err) {}
-    try { 添加窗口(window.parent); } catch (err) {}
-    try { 添加窗口(window.top); } catch (err) {}
-    const 提供者 = 候选窗口
-      .map(候选 => {
-        try { return 候选.__LWCS_MVU_PERSISTENCE_PROVIDER_V1__; } catch (err) { return null; }
-      })
-      .find(候选 => 候选 && typeof 候选.open === 'function');
-    if (!提供者) return null;
-    const 打开结果 = await Promise.resolve(
-      提供者.open(聊天标识 ? { fallbackStableChatId: 聊天标识 } : {}),
-    ).catch(() => null);
-    const 句柄 = 打开结果?.state === 'committed' ? 打开结果.handle : null;
-    if (!句柄 || !句柄.isLive?.()) return null;
-    当前MVU持久化热态句柄_桥接 = 句柄;
-    当前MVU持久化聊天标识_桥接 = 聊天标识;
-    await Promise.resolve(句柄.awaitIdle?.()).catch(() => {});
-    const 热态 = 句柄.getHotState?.();
-    return 热态 && typeof 热态 === 'object' && resolveRootData(热态) ? 热态 : null;
-  }
-
   async function getAllVariablesSafe() {
     const latest = await getLatestVariablesFast();
     if (latest) return latest;
@@ -17374,6 +17386,12 @@
       { type: 'chat' },
       { type: 'message', message_id: 'latest' },
     ];
+    if (host && typeof host.getMvuDataAsync === 'function') {
+      try {
+        const vars = await host.getMvuDataAsync(读取选项[0]);
+        if (vars && typeof vars === 'object' && resolveRootData(vars)) return vars;
+      } catch (err) {}
+    }
     if (host && typeof host.getMvuData === 'function') {
       for (const 选项 of 读取选项) {
         try {
@@ -17382,8 +17400,6 @@
         } catch (err) {}
       }
     }
-    const 持久化热态 = await 读取当前MVU持久化热态_桥接();
-    if (持久化热态) return 持久化热态;
     if (!当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
       for (const 选项 of 读取选项) {
         if (选项.type !== 'message') continue;
@@ -49026,7 +49042,14 @@ ${播报文本}
       先攻: '无',
       允许撤离: detail.允许撤离 === false ? false : true,
       回合: 0,
-      环境: arenaName,
+      环境: {
+        地点: arenaName,
+        临时规则ID: Array.from(new Set(
+          (Array.isArray(detail.临时规则ID) ? detail.临时规则ID : Array.isArray(detail.temporaryRuleIds) ? detail.temporaryRuleIds : [])
+            .map(item => toText(item, '').trim())
+            .filter(Boolean),
+        )),
+      },
       裁断结果: '',
       参战者: rosterResult.participants,
       胜负条件,
@@ -49061,11 +49084,23 @@ ${播报文本}
   }
 
   async function openMapBattleModule(snapshot, dispatchDetail, options = {}) {
+    const contextResult = 读取世界动作上下文_桥接(snapshot, dispatchDetail || {}, 'battle');
+    if (!contextResult.ok) {
+      return {
+        ok: false,
+        reason: contextResult.reason || 'world_action_blocked',
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      };
+    }
+    const contextDetail = {
+      ...(dispatchDetail && typeof dispatchDetail === 'object' ? dispatchDetail : {}),
+      动作上下文: contextResult.context,
+    };
     const trialContext = 读取试炼状态上下文(snapshot);
     const trialBattleDetail = trialContext
-      ? buildTrialBattleDispatchDetail(snapshot, dispatchDetail, trialContext)
+      ? buildTrialBattleDispatchDetail(snapshot, contextDetail, trialContext)
       : null;
-    const combatData = buildMapBattleCombatData(snapshot, trialBattleDetail || dispatchDetail);
+    const combatData = buildMapBattleCombatData(snapshot, trialBattleDetail || contextDetail);
     if (!combatData || combatData.ok === false)
       return { ok: false, reason: combatData?.reason || 'combat_context_unresolved' };
     if (typeof window.mountBattleUI !== 'function') {
@@ -49110,7 +49145,7 @@ ${播报文本}
     await refreshLiveSnapshot({ force: true, reopenBattle: options.skipUi === true ? false : true });
     if (options.skipUi === true) showUiToast('战斗模块自动结算中。', 'info', 1800);
     else showUiToast('战斗模块已开启。', 'info', 2400);
-    return { ok: true, combatData };
+    return { ok: true, combatData, worldContextProjection: 读取世界动作投影_桥接(contextResult.context) };
   }
 
   /* 楼层只留一行战果；AI 注入只使用 PLAYER 结构化摘要。 */
@@ -50849,7 +50884,7 @@ ${播报文本}
     if (/teaching|teach|传授|授课|教学|指点/.test(文本)) return 'teaching';
     if (/skill_gain|技能获得|新技能/.test(文本)) return 'skill_gain';
     if (/travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(文本)) return 'travel';
-    if (/routine|daily|修炼|冥想|拟态/.test(文本)) return 'routine';
+    if (/routine|daily|修炼|冥想|拟态|探索|搜索|调查|侦察|勘察/.test(文本)) return 'routine';
     if (/trial_entry|trial|升灵台|魂灵塔|试炼/.test(文本)) return 'trial_entry';
     if (/未命中|none|no_module|no module/.test(文本)) return '未命中';
     return '';
@@ -51433,6 +51468,14 @@ ${播报文本}
   async function 执行移动模块意图路由(snapshot, request = {}) {
     if (!request || request.invalid)
       return 构建模块路由失败结果('travel', request, request?.reason || 'travel_request_invalid');
+    const contextResult = 读取世界动作上下文_桥接(snapshot, request, 'travel');
+    if (!contextResult.ok) {
+      return 构建模块路由失败结果('travel', request, contextResult.reason || 'world_action_blocked', {
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      });
+    }
+    request = { ...request, 动作上下文: contextResult.context };
+    const worldContextProjection = 读取世界动作投影_桥接(contextResult.context);
     const mapBridge = window.__sheepMapBridge;
     const 已有目标 = 解析移动已有地点目标(snapshot, request);
     const 当前所在 = 读取快照当前位置(snapshot);
@@ -51445,6 +51488,7 @@ ${播报文本}
         patchOps: [],
         startLoc: 当前所在,
         finalLocName: 当前所在,
+        worldContextProjection,
       });
     }
     if (已有目标.data) {
@@ -51466,6 +51510,7 @@ ${播报文本}
           startLoc: 当前所在,
           finalLocName: 当前所在 || 构建移动绝对位置(snapshot, 已有目标.name || request.目标地点, 已有目标父级),
           result,
+          worldContextProjection,
         });
       }
       const 补丁结果 = 构建已有地点移动补丁(snapshot, request, 已有目标, result);
@@ -51491,6 +51536,7 @@ ${播报文本}
         durationText: 补丁结果.mapRequest?.est_duration,
         moveKind: 补丁结果.moveKind,
         result,
+        worldContextProjection,
       });
     }
 
@@ -51517,12 +51563,14 @@ ${播报文本}
       durationTicks: request.耗时tick,
       durationText: 格式化tick时长文本_桥接(request.耗时tick),
       coord: 补丁结果.coord,
+      worldContextProjection,
     });
   }
 
   function 归一化日常动作模式(动作 = '', narrativeText = '') {
     const 匹配动作 = 文本 => {
       const 内容 = toText(文本, '');
+      if (/探索|搜索|调查|侦察|勘察/.test(内容)) return '探索';
       if (/肉体训练|身体训练|体能训练|锻体|炼体/.test(内容)) return '肉体训练';
       if (/精神训练|精神修炼|精神锻炼|识海|紫极魔瞳/.test(内容)) return '精神训练';
       if (/冥想|修炼|打坐|凝聚魂核/.test(内容)) return '冥想';
@@ -51536,6 +51584,7 @@ ${播报文本}
   function 读取日常动作候选列表(文本 = '') {
     const 内容 = toText(文本, '');
     return [
+      [/探索|搜索|调查|侦察|勘察/, '探索'],
       [/肉体训练|身体训练|体能训练|锻体|炼体/, '肉体训练'],
       [/精神训练|精神修炼|精神锻炼|识海|紫极魔瞳/, '精神训练'],
       [/冥想|修炼|打坐|凝聚魂核/, '冥想'],
@@ -51551,64 +51600,17 @@ ${播报文本}
     }
     const 动作 = 归一化日常动作模式(动作文本, narrativeText);
     if (!动作) return null;
-    const 识别文本 = `${动作文本}|${toText(payload.类型, '')}|${toText(payload.理由, '')}|${toText(narrativeText, '')}`;
-    const 显式拟态开关 = payload.启用地点拟态 ?? payload.拟态修炼 ?? payload.启用;
-    const 解析拟态开关 = 解析模块路由布尔值(显式拟态开关);
-    const 启用地点拟态 =
-      解析拟态开关 === false
-        ? false
-        : 解析拟态开关 === true || /地点拟态修炼|拟态修炼|mimic|mimetic/.test(识别文本);
     const 角色 = toText(payload.角色 || payload.角色名 || payload.name, toText(snapshot && snapshot.activeName, ''));
     const 耗时tick = toNumber(payload.耗时tick ?? payload.durationTicks ?? payload.ticks, 0);
     return {
+      难度: toNumber(payload.难度 ?? payload.difficulty, 0),
+      线索: toText(payload.线索 || payload.情报 || payload.clue || payload.intel, ''),
+      事务ID: toText(payload.事务ID || payload.transactionId || payload.transaction_id, ''),
       动作,
       角色,
       耗时tick,
-      启用地点拟态,
-      理由: toText(payload.理由, '当前地点与修炼状态形成拟态契合'),
+      理由: toText(payload.理由, ''),
       位置: toText(payload.地点, 读取快照当前位置(snapshot)),
-    };
-  }
-
-  function 写入地点拟态修炼状态(角色数据 = {}, request = {}, 当前tick = 0) {
-    if (!角色数据?.属性) return;
-    if (!角色数据.属性.状态效果 || typeof 角色数据.属性.状态效果 !== 'object' || Array.isArray(角色数据.属性.状态效果)) 角色数据.属性.状态效果 = {};
-    角色数据.属性.状态效果.地点拟态修炼 = {
-      类型: 'buff',
-      结算模式: '本轮冥想',
-      生效tick: Math.max(0, Math.floor(toNumber(当前tick, 0))),
-      收益倍率: 1.2,
-      收益说明: '地点拟态修炼',
-      描述: toText(request && request.理由, '当前地点与武魂修炼环境契合'),
-    };
-  }
-
-  function 构建地点拟态修炼补丁(snapshot, request = {}) {
-    const activeCharKey =
-      resolveSnapshotCharKey(snapshot, toText(request && request.角色, toText(snapshot && snapshot.activeName, ''))) ||
-      toText(request && request.角色, toText(snapshot && snapshot.activeName, ''));
-    if (!activeCharKey) return { ok: false, reason: 'active_character_unresolved', patchOps: [] };
-    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0)));
-    const 当前状态效果 = cloneJsonValue(
-      deepGet(snapshot, ['rootData', 'char', activeCharKey, '属性', '状态效果'], {}),
-      {},
-    );
-    const 临时角色 = { 属性: { 状态效果: 当前状态效果 } };
-    写入地点拟态修炼状态(临时角色, request, 当前tick);
-    return {
-      ok: true,
-      patchOps: [
-        {
-          op: 'replace',
-          path: `/char/${escapeJsonPointerValue(activeCharKey)}/属性/状态效果`,
-          value: 临时角色.属性.状态效果,
-        },
-        {
-          op: 'replace',
-          path: '/sys/系统播报',
-          value: `[日常结算] ${toText(snapshot && snapshot.activeName, activeCharKey)} 本轮冥想触发地点拟态修炼，收益倍率固定为 1.2。`,
-        },
-      ],
     };
   }
 
@@ -51678,14 +51680,13 @@ ${播报文本}
   function 构建日常结算临时根(snapshot = {}, charKey = '', charData = {}, request = {}) {
     const rootData = cloneJsonValue(deepGet(snapshot, 'rootData', {}), {});
     const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(rootData, 'world.时间.tick', 0), 0)));
-    const 耗时tick = Math.max(0, Math.floor(toNumber(request && request.耗时tick, 0)));
+    const 耗时tick = Math.max(0, Math.round(toNumber(request && request.耗时tick, 0) * 10) / 10);
     const 临时根 = cloneJsonValue(rootData, {});
     临时根.char = { [charKey]: cloneJsonValue(charData, {}) };
     if (!临时根.world || typeof 临时根.world !== 'object' || Array.isArray(临时根.world)) 临时根.world = {};
     if (!临时根.world.时间 || typeof 临时根.world.时间 !== 'object' || Array.isArray(临时根.world.时间)) 临时根.world.时间 = {};
     临时根.world.时间.tick = 当前tick + 耗时tick;
     临时根.world.时间._上次结算tick = 当前tick;
-    if (request.启用地点拟态 && request.动作 === '冥想') 写入地点拟态修炼状态(临时根.char[charKey], request, 当前tick);
     return { 临时根, 当前tick, 结束tick: 当前tick + 耗时tick };
   }
 
@@ -51704,7 +51705,7 @@ ${播报文本}
 
   async function 分段执行日常结算(settleRuntime, snapshot = {}, charKey = '', beforeChar = {}, request = {}) {
     const actionMode = toText(request && request.动作, '');
-    const durationTicks = Math.max(0, Math.floor(toNumber(request && request.耗时tick, 0)));
+    const durationTicks = Math.max(0, Math.round(toNumber(request && request.耗时tick, 0) * 10) / 10);
     const { 临时根, 当前tick } = 构建日常结算临时根(snapshot, charKey, beforeChar, { ...request, 耗时tick: 0 });
     const equipmentPassive = typeof window?.EquipmentManager?.结算装备被动战斗外效果 === 'function'
       ? await window.EquipmentManager.结算装备被动战斗外效果(临时根, charKey, 当前tick, [])
@@ -51718,7 +51719,9 @@ ${播报文本}
       const shouldRecover = actionMode !== '冥想' && !日常动作资源足够(currentChar, actionMode);
       const mode = shouldRecover ? 读取日常动作恢复模式(actionMode) : actionMode;
       const segment = actionMode === '冥想' ? remaining : Math.min(remaining, 6);
-      const settled = settleRuntime(临时根, charKey, cursor, cursor + segment, mode);
+      const settled = settleRuntime(临时根, charKey, cursor, cursor + segment, mode, {
+        动作上下文: request.动作上下文,
+      });
       Object.keys(临时根).forEach(key => delete 临时根[key]);
       Object.assign(临时根, settled);
       cursor += segment;

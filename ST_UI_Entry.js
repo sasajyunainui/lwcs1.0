@@ -878,29 +878,6 @@
 
     宿主窗口.getAllVariables = async function () {
       try {
-        const 候选窗口 = [宿主窗口];
-        if (window && !候选窗口.includes(window)) 候选窗口.push(window);
-        const 提供者 = 候选窗口
-          .map(候选 => 候选?.__LWCS_MVU_PERSISTENCE_PROVIDER_V1__)
-          .find(候选 => 候选 && typeof 候选.open === 'function');
-        if (提供者) {
-          const 上下文 = typeof 宿主窗口.SillyTavern?.getContext === 'function'
-            ? 宿主窗口.SillyTavern.getContext()
-            : null;
-          const 聊天标识 = String(上下文?.chatId ?? 上下文?.chat_id ?? '').trim();
-          const 打开结果 = await Promise.resolve(
-            提供者.open(聊天标识 ? { fallbackStableChatId: 聊天标识 } : {}),
-          );
-          const 句柄 = 打开结果?.state === 'committed' ? 打开结果.handle : null;
-          if (句柄?.isLive?.()) {
-            await Promise.resolve(句柄.awaitIdle?.());
-            const 热态 = 句柄.getHotState?.();
-            if (热态 && typeof 热态 === 'object') return 热态;
-          }
-        }
-      } catch (错误) {}
-
-      try {
         const mvu = 宿主窗口.Mvu || window.Mvu;
         if (mvu && typeof mvu.getMvuData === 'function') {
           const 上下文 = typeof 宿主窗口.SillyTavern?.getContext === 'function'
@@ -918,9 +895,13 @@
             { type: 'chat' },
             { type: 'message', message_id: 'latest' },
           ];
+          if (typeof mvu.getMvuDataAsync === 'function') {
+            const data = await mvu.getMvuDataAsync(读取选项[0]);
+            if (data?.stat_data && typeof data.stat_data === 'object' && Object.keys(data.stat_data).length > 0) return data;
+          }
           for (const 选项 of 读取选项) {
             const data = await Promise.resolve(mvu.getMvuData(选项));
-            if (data && typeof data === 'object') return data;
+            if (data?.stat_data && typeof data.stat_data === 'object' && Object.keys(data.stat_data).length > 0) return data;
           }
         }
       } catch (错误) {}

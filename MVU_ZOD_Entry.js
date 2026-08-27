@@ -131,7 +131,7 @@ function 导出MVU链路诊断_V1() {
     },
     data: {
       present: !!当前数据 && typeof 当前数据 === 'object',
-      canonical: !!当前数据?.stat_data && typeof 当前数据.stat_data === 'object'
+      canonical: !!当前数据?.stat_data && typeof 当前数据.stat_data === 'object' && Object.keys(当前数据.stat_data).length > 0
         && !!当前数据?.schema && typeof 当前数据.schema === 'object',
       keys: 当前数据 && typeof 当前数据 === 'object' ? Object.keys(当前数据) : [],
       statKeys: 当前数据?.stat_data && typeof 当前数据.stat_data === 'object' ? Object.keys(当前数据.stat_data) : [],
@@ -779,7 +779,8 @@ async function 等待MVU当前聊天数据就绪_V1(最大等待毫秒 = 15000) 
       if (!Mvu || typeof Mvu.getMvuDataAsync !== 'function') throw new Error('Mvu.getMvuDataAsync 未就绪');
       await Mvu.persistence?.awaitIdle?.();
       const 数据 = await Mvu.getMvuDataAsync({ type: 'message', message_id: 'latest' });
-      if (数据?.stat_data && typeof 数据.stat_data === 'object' && 数据?.schema && typeof 数据.schema === 'object') {
+      if (数据?.stat_data && typeof 数据.stat_data === 'object' && Object.keys(数据.stat_data).length > 0
+        && 数据?.schema && typeof 数据.schema === 'object') {
         记录MVU加载阶段_V1('mvu-data:await-resolved', {
           statKeys: Object.keys(数据.stat_data).length,
           schemaKeys: Object.keys(数据.schema).length,

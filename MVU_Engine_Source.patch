@@ -156,9 +156,9 @@ index caf3097..7faa20d 100644
 +    const waitForCanonicalMvuData = async (options: VariableOption): Promise<MvuData> => {
 +        const deadline = Date.now() + 15_000;
 +        do {
-+            await awaitIdle();
++            await ensureMvuPersistence().then(() => awaitIdle());
 +            const data = getCanonicalMvuData(options);
-+            if (_.isPlainObject(data?.stat_data) && _.isPlainObject(data?.schema)) return data;
++            if (_.isPlainObject(data?.stat_data) && !_.isEmpty(data.stat_data) && _.isPlainObject(data?.schema)) return data;
 +            await new Promise(resolve => setTimeout(resolve, 50));
 +        } while (Date.now() < deadline);
 +        throw new Error('MVU canonical data unavailable after initialization wait');
@@ -762,7 +762,7 @@ index 0000000..5a04ddd
 +
 +function isCanonicalMvuData(value: unknown): value is MvuData {
 +    return _.isPlainObject(value)
-+        && _.isPlainObject((value as MvuData).stat_data)
++        && _.isPlainObject((value as MvuData).stat_data) && !_.isEmpty((value as MvuData).stat_data)
 +        && _.isPlainObject((value as MvuData).schema);
 +}
 +
