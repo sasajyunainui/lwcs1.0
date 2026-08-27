@@ -150,7 +150,7 @@ index caf3097..16cbf7f 100644
 +    mvu_runtime_events,
 +    replaceMvuDataControlled,
 +} from '@/function/update/mvu_runtime';
-@@ -7,0 +16,12 @@ function createMvu() {
+@@ -7,0 +16,16 @@ function createMvu() {
 +    const replaceMvuData = (mvu_data: MvuData, options: VariableOption) =>
 +        replaceMvuDataControlled(mvu_data, options);
 +    const waitForCanonicalMvuData = async (options: VariableOption): Promise<MvuData> => {
@@ -158,15 +158,19 @@ index caf3097..16cbf7f 100644
 +        do {
 +            await ensureMvuPersistence().then(() => awaitIdle());
 +            const data = getCanonicalMvuData(options);
-+            if (_.isPlainObject(data?.stat_data) && !_.isEmpty(data.stat_data) && _.isPlainObject(data?.schema)) return data;
++            if (
++                _.isPlainObject(data?.stat_data)
++                && !_.isEmpty(data.stat_data)
++                && Object.prototype.hasOwnProperty.call(data, 'schema')
++            ) return data;
 +            await new Promise(resolve => setTimeout(resolve, 50));
 +        } while (Date.now() < deadline);
 +        throw new Error('MVU canonical data unavailable after initialization wait');
 +    };
-@@ -9 +29 @@ function createMvu() {
+@@ -9 +33 @@ function createMvu() {
 -        events: variable_events,
 +        events: Object.freeze({ ...variable_events, ...mvu_runtime_events }),
-@@ -29 +49,12 @@ function createMvu() {
+@@ -29 +53,12 @@ function createMvu() {
 -            return getVariables(options) as MvuData;
 +            return getCanonicalMvuData(options);
 +        },
@@ -180,18 +184,18 @@ index caf3097..16cbf7f 100644
 +        persistence: {
 +            awaitIdle,
 +            getStatus,
-@@ -48,2 +79 @@ function createMvu() {
+@@ -48,2 +83 @@ function createMvu() {
 -            /** 旧酒馆助手的 replaceVariables 是异步函数, 因此需要返回 Promise */
 -            return replaceVariables(mvu_data, options);
 +            return replaceMvuData(mvu_data, options);
-@@ -77,2 +107 @@ function createMvu() {
+@@ -77,2 +111 @@ function createMvu() {
 -            const variables = getVariables({ type: 'message', message_id: getCurrentMessageId() });
 -            return variables as MvuData;
 +            return getCanonicalMvuData({ type: 'message', message_id: getCurrentMessageId() });
-@@ -83 +112 @@ function createMvu() {
+@@ -83 +116 @@ function createMvu() {
 -            await replaceVariables(mvu_data, {
 +            await replaceMvuData(mvu_data, {
-@@ -165 +194,11 @@ function createMvu() {
+@@ -165 +198,11 @@ function createMvu() {
 -export function initGlobals() {
 +const LWCS_MVU_ENGINE_OWNER_V1 = Object.freeze({
 +    version: '1.0.0',
@@ -204,7 +208,7 @@ index caf3097..16cbf7f 100644
 +    } catch (error) {
 +        console.error('[LWCS MVU] 持久化 Provider 初始化失败，已禁止 TT 消息楼变量写入', error);
 +    }
-@@ -171,0 +211,7 @@ export function initGlobals() {
+@@ -171,0 +215,7 @@ export function initGlobals() {
 +                if (!Object.prototype.hasOwnProperty.call(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__')) {
 +                    Object.defineProperty(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__', {
 +                        value: LWCS_MVU_ENGINE_OWNER_V1,
@@ -212,9 +216,9 @@ index caf3097..16cbf7f 100644
 +                        configurable: false,
 +                    });
 +                }
-@@ -172,0 +219 @@ export function initGlobals() {
+@@ -172,0 +223 @@ export function initGlobals() {
 +                _.set(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__', LWCS_MVU_ENGINE_OWNER_V1);
-@@ -182,0 +230,3 @@ export function initGlobals() {
+@@ -182,0 +234,3 @@ export function initGlobals() {
 +            if (_.get(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__') === LWCS_MVU_ENGINE_OWNER_V1) {
 +                _.unset(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__');
 +            }
@@ -1100,7 +1104,7 @@ index 0000000..e7d3539
 +function isCanonicalMvuData(value: unknown): value is MvuData {
 +    return _.isPlainObject(value)
 +        && _.isPlainObject((value as MvuData).stat_data) && !_.isEmpty((value as MvuData).stat_data)
-+        && _.isPlainObject((value as MvuData).schema);
++        && Object.prototype.hasOwnProperty.call(value, 'schema');
 +}
 +
 +export function getCanonicalMvuData(options: VariableOption): MvuData {

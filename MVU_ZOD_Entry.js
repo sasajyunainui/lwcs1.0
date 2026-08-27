@@ -18,7 +18,7 @@ const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = 'd38c4076f641c2eeb3b55d8e199c40da6987941077b5c4851500997b068a6d59';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = 'c88d0589755836b7866725c21ab559a38a1dfc591be68dc6d38fafaba699efbc';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   MVU_ENGINE_BUNDLE_FILE_V1,
@@ -132,7 +132,7 @@ function 导出MVU链路诊断_V1() {
     data: {
       present: !!当前数据 && typeof 当前数据 === 'object',
       canonical: !!当前数据?.stat_data && typeof 当前数据.stat_data === 'object' && Object.keys(当前数据.stat_data).length > 0
-        && !!当前数据?.schema && typeof 当前数据.schema === 'object',
+        && Object.prototype.hasOwnProperty.call(当前数据, 'schema'),
       keys: 当前数据 && typeof 当前数据 === 'object' ? Object.keys(当前数据) : [],
       statKeys: 当前数据?.stat_data && typeof 当前数据.stat_data === 'object' ? Object.keys(当前数据.stat_data) : [],
     },
@@ -780,10 +780,10 @@ async function 等待MVU当前聊天数据就绪_V1(最大等待毫秒 = 15000) 
       await Mvu.persistence?.awaitIdle?.();
       const 数据 = await Mvu.getMvuDataAsync({ type: 'message', message_id: 'latest' });
       if (数据?.stat_data && typeof 数据.stat_data === 'object' && Object.keys(数据.stat_data).length > 0
-        && 数据?.schema && typeof 数据.schema === 'object') {
+        && Object.prototype.hasOwnProperty.call(数据, 'schema')) {
         记录MVU加载阶段_V1('mvu-data:await-resolved', {
           statKeys: Object.keys(数据.stat_data).length,
-          schemaKeys: Object.keys(数据.schema).length,
+          schemaKind: typeof 数据.schema,
         });
         return 数据;
       }
