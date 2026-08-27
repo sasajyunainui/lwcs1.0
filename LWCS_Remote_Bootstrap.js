@@ -103,22 +103,61 @@
     });
   }
   void 宿主窗口.__LWCS_MVU_CORE_READY_PROMISE_V1__.catch(() => {});
-  if (共享启动状态.uiStatus === 'failed' && !宿主窗口.mvu_external_ui_vue_loader) {
-    delete 宿主窗口.__LWCS_UI_READY_PROMISE_V1__;
-    delete 宿主窗口.__LWCS_UI_READY_RESOLVE_V1__;
-    delete 宿主窗口.__LWCS_UI_READY_REJECT_V1__;
-  }
-  if (!宿主窗口.__LWCS_UI_READY_PROMISE_V1__
-    || typeof 宿主窗口.__LWCS_UI_READY_PROMISE_V1__.then !== 'function') {
-    宿主窗口.__LWCS_UI_READY_PROMISE_V1__ = new Promise((resolve, reject) => {
-      宿主窗口.__LWCS_UI_READY_RESOLVE_V1__ = resolve;
-      宿主窗口.__LWCS_UI_READY_REJECT_V1__ = reject;
-    });
-  }
-  void 宿主窗口.__LWCS_UI_READY_PROMISE_V1__.catch(() => {});
-  if (共享启动状态.uiStatus === 'loading' || 共享启动状态.uiStatus === 'ready') return;
-  if (宿主窗口[引导键]) return;
+  const UI所有者仍存活 = (() => {
+    const 所有者窗口 = 共享启动状态.uiOwnerWindow;
+    if (!所有者窗口) return false;
+    if (所有者窗口 === window) return true;
+    try {
+      return !!所有者窗口.frameElement?.isConnected;
+    } catch (错误) {
+      return false;
+    }
+  })();
+  const UI加载开始时间 = Number(共享启动状态.uiStartedAt) || 0;
+  if (
+    共享启动状态.uiStatus === 'loading'
+    && 宿主窗口[引导键]
+    && UI所有者仍存活
+    && UI加载开始时间 > 0
+    && Date.now() - UI加载开始时间 < 60000
+  ) return;
+
+  try { 宿主窗口.mvu_external_ui_vue_loader?.停止?.(); } catch (错误) {}
+  try {
+    宿主窗口.__LWCS_UI_READY_REJECT_V1__?.(new Error('UI入口已由新一轮加载替换'));
+  } catch (错误) {}
+  delete 宿主窗口.mvu_external_ui_vue_loader;
+  delete 宿主窗口.__LWCS_UI_ENTRY_STATE__;
+  delete 宿主窗口.__LWCS_UI_READY_PROMISE_V1__;
+  delete 宿主窗口.__LWCS_UI_READY_RESOLVE_V1__;
+  delete 宿主窗口.__LWCS_UI_READY_REJECT_V1__;
+
+  const 本轮启动代号 = (Number(共享启动状态.uiGeneration) || 0) + 1;
+  const 本轮所有者代号 = `${本轮启动代号}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+  共享启动状态.uiGeneration = 本轮启动代号;
+  共享启动状态.uiOwnerWindow = window;
+  共享启动状态.uiOwnerToken = 本轮所有者代号;
+  共享启动状态.uiStartedAt = Date.now();
+  宿主窗口.__LWCS_UI_ACTIVE_GENERATION_V1__ = 本轮启动代号;
+  宿主窗口.__LWCS_UI_READY_PROMISE_V1__ = new Promise((resolve, reject) => {
+    宿主窗口.__LWCS_UI_READY_RESOLVE_V1__ = resolve;
+    宿主窗口.__LWCS_UI_READY_REJECT_V1__ = reject;
+  });
+  const 本轮UI就绪承诺 = 宿主窗口.__LWCS_UI_READY_PROMISE_V1__;
+  void 本轮UI就绪承诺.catch(() => {});
   宿主窗口[引导键] = true;
+
+  try {
+    window.addEventListener('pagehide', () => {
+      if (共享启动状态.uiOwnerToken !== 本轮所有者代号) return;
+      try { 宿主窗口.mvu_external_ui_vue_loader?.停止?.(); } catch (错误) {}
+      共享启动状态.uiStatus = 'idle';
+      共享启动状态.uiOwnerWindow = null;
+      共享启动状态.uiOwnerToken = '';
+      共享启动状态.uiStartedAt = 0;
+      宿主窗口[引导键] = false;
+    }, { once: true });
+  } catch (错误) {}
 
   const 加载追踪器 = (() => {
     const 面板ID = 'lwcs-script-load-tracker';
@@ -568,10 +607,12 @@
 
   async function 加载正式入口(提交哈希) {
     const 错误列表 = [];
-    for (const CDN地址 of CDN地址列表) {
+    for (const [CDN序号, CDN地址] of CDN地址列表.entries()) {
       const 资源基础地址 = 构建资源基础地址(CDN地址, 提交哈希);
       try {
-        const 入口地址 = `${资源基础地址}${入口文件名}`;
+        const 入口尝试代号 = `${本轮启动代号}:${CDN序号}`;
+        宿主窗口.__LWCS_UI_ACTIVE_ENTRY_ATTEMPT_V1__ = 入口尝试代号;
+        const 入口地址 = `${资源基础地址}${入口文件名}#lwcs_ui_generation=${本轮启动代号}&lwcs_attempt=${入口尝试代号}`;
         const 资源基础地址候选列表 = 构建资源基础地址候选列表(资源基础地址, 提交哈希);
         宿主窗口.__LWCS_资源基础地址__ = 资源基础地址;
         宿主窗口.__LWCS_资源基础地址候选列表__ = 资源基础地址候选列表;
@@ -602,17 +643,24 @@
       await 等待MVU就绪();
       加载追踪器.更新入口('loading', '正在执行 ST_UI_Entry.js', '', '执行中');
       await 加载正式入口(提交哈希);
-      const UI就绪承诺 = 宿主窗口.__LWCS_UI_READY_PROMISE_V1__;
-      if (!UI就绪承诺 || typeof UI就绪承诺.then !== 'function') throw new Error('ST_UI_Entry.js 未注册 UI 就绪契约');
-      await UI就绪承诺;
+      await 本轮UI就绪承诺;
+      if (宿主窗口.__LWCS_UI_ACTIVE_GENERATION_V1__ !== 本轮启动代号) {
+        throw new Error(`UI启动轮次已过期：${本轮启动代号}`);
+      }
       加载追踪器.更新入口('loaded', '入口已执行', '', '完成');
       共享启动状态.uiStatus = 'ready';
+      共享启动状态.uiStartedAt = 0;
     } catch (错误) {
-      共享启动状态.uiStatus = 'failed';
-      加载追踪器.标记失败(错误);
-      console.error('[LWCS] 远程入口加载失败:', 错误);
+      if (宿主窗口.__LWCS_UI_ACTIVE_GENERATION_V1__ === 本轮启动代号) {
+        共享启动状态.uiStatus = 'failed';
+        共享启动状态.uiStartedAt = 0;
+        加载追踪器.标记失败(错误);
+        console.error('[LWCS] 远程入口加载失败:', 错误);
+      }
     } finally {
-      宿主窗口[引导键] = false;
+      if (宿主窗口.__LWCS_UI_ACTIVE_GENERATION_V1__ === 本轮启动代号) {
+        宿主窗口[引导键] = false;
+      }
     }
   }
 

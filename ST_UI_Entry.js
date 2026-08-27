@@ -20,11 +20,61 @@
   const 共享启动状态 = 读取共享值('__LWCS_REMOTE_BOOTSTRAP_STATE__') || {};
   const 共享文本读取 = 读取共享值('__LWCS_READ_SHARED_TEXT_V1__');
   const 共享资源提交哈希 = String(读取共享值('__LWCS_当前远程提交__') || 共享启动状态.commit || 'local').trim() || 'local';
+  const 入口参数 = (() => {
+    try {
+      const 当前脚本地址 = 宿主文档.currentScript?.src || '';
+      return new URLSearchParams(new URL(当前脚本地址, 宿主文档.baseURI).hash.slice(1));
+    } catch (错误) {
+      return new URLSearchParams();
+    }
+  })();
+  const 本轮启动代号 = Number(入口参数.get('lwcs_ui_generation') || 读取共享值('__LWCS_UI_ACTIVE_GENERATION_V1__') || 0);
+  const 入口尝试代号 = String(入口参数.get('lwcs_attempt') || '');
+  const 活动启动代号 = Number(读取共享值('__LWCS_UI_ACTIVE_GENERATION_V1__') || 0);
+  if (本轮启动代号 > 0 && 活动启动代号 > 0 && 本轮启动代号 !== 活动启动代号) return;
+  if (入口尝试代号) 宿主窗口.__LWCS_UI_ENTRY_STARTED_ATTEMPT_V1__ = 入口尝试代号;
+
+  const 已有入口实例 = 宿主窗口[加载器键];
+  if (
+    已有入口实例?.active === true
+    && 已有入口实例.generation === 本轮启动代号
+    && 已有入口实例.commit === 共享资源提交哈希
+  ) return;
+  try { 已有入口实例?.停止?.(); } catch (错误) {}
+  const 入口实例 = {
+    generation: 本轮启动代号,
+    commit: 共享资源提交哈希,
+    active: true,
+    subscriptions: [],
+    停止() {
+      if (!this.active) return;
+      this.active = false;
+      for (const 订阅 of this.subscriptions.splice(0)) {
+        try { 订阅?.stop?.(); } catch (错误) {}
+      }
+    },
+  };
+  宿主窗口[加载器键] = 入口实例;
+  const 入口实例仍活动 = () => 入口实例.active
+    && 宿主窗口[加载器键] === 入口实例
+    && (!Number.isFinite(本轮启动代号) || 本轮启动代号 <= 0
+      || Number(读取共享值('__LWCS_UI_ACTIVE_GENERATION_V1__') || 0) === 本轮启动代号);
   const UI启动状态 = (() => {
     const 键 = '__LWCS_UI_ENTRY_STATE__';
     const 已有状态 = 宿主窗口[键];
-    if (已有状态 && typeof 已有状态 === 'object') return 已有状态;
-    const 新状态 = { 成功启动: false, 重试次数: 0, 最近错误: '' };
+    if (
+      已有状态
+      && typeof 已有状态 === 'object'
+      && 已有状态.generation === 本轮启动代号
+      && 已有状态.commit === 共享资源提交哈希
+    ) return 已有状态;
+    const 新状态 = {
+      generation: 本轮启动代号,
+      commit: 共享资源提交哈希,
+      成功启动: false,
+      重试次数: 0,
+      最近错误: '',
+    };
     宿主窗口[键] = 新状态;
     return 新状态;
   })();
@@ -40,11 +90,6 @@
     宿主窗口.__LWCS_UI_READY_REJECT_V1__ = UI就绪拒绝;
   }
   void 宿主窗口.__LWCS_UI_READY_PROMISE_V1__.catch(() => {});
-  if (宿主窗口[加载器键]) {
-    if (UI启动状态.成功启动) UI就绪解决?.(UI启动状态);
-    return;
-  }
-  宿主窗口[加载器键] = true;
   const 最大启动重试次数 = 2;
 
   const 默认资源基础地址 = 'https://testingcf.jsdelivr.net/gh/sasajyunainui/lwcs1.0@f9ac09ce4dc7b6418a915adb6e198121d2e0e10e/';
@@ -1091,6 +1136,7 @@
     const start = Date.now();
     const limit = timeout || 10000;
     while (Date.now() - start < limit) {
+      if (!入口实例仍活动()) return false;
       ensureHostNodes();
       const unifiedMount = 宿主文档.getElementById('mvu-unified-mount');
       const 真实卡片已就绪 = 读取共享值('__LWCS_UI_CONTENT_READY_V1__') === true;
@@ -1123,6 +1169,7 @@
 
   function 注册冷归档脚本按钮() {
     try {
+      if (!入口实例仍活动()) return true;
       if (是TT宿主) return true;
       if (冷归档按钮已由当前脚本绑定) return true;
       if (
@@ -1133,7 +1180,7 @@
         return false;
       }
       appendInexistentScriptButtons([{ name: 'MVU冷归档', visible: true }]);
-      eventOn(getButtonEvent('MVU冷归档'), async () => {
+      const 订阅 = eventOn(getButtonEvent('MVU冷归档'), async () => {
         try {
           await 引导加载();
           await 确保模块已加载('冷归档存储', { 来源: 'cold_archive_button', 允许失败降级: false, 抛错: true });
@@ -1149,6 +1196,7 @@
           显示入口按钮提示(构建入口按钮错误文本('MVU冷归档', 错误), 'error');
         }
       });
+      if (订阅 && typeof 订阅.stop === 'function') 入口实例.subscriptions.push(订阅);
       冷归档按钮已由当前脚本绑定 = true;
       宿主窗口.__LWCS_COLD_ARCHIVE_ENTRY_BUTTON_BOUND__ = {
         commit: 共享资源提交哈希,
@@ -1164,6 +1212,7 @@
   function 安排冷归档脚本按钮注册() {
     const 启动时间 = Date.now();
     const 尝试注册 = () => {
+      if (!入口实例仍活动()) return;
       if (注册冷归档脚本按钮()) return;
       if (Date.now() - 启动时间 < 12000) setTimeout(尝试注册, 500);
     };
@@ -1255,6 +1304,7 @@
 
   function 注册消息统计脚本按钮() {
     try {
+      if (!入口实例仍活动()) return true;
       if (消息统计按钮已由当前脚本绑定) return true;
       if (
         typeof appendInexistentScriptButtons !== 'function' ||
@@ -1264,7 +1314,7 @@
         return false;
       }
       appendInexistentScriptButtons([{ name: '消息统计', visible: true }]);
-      eventOn(getButtonEvent('消息统计'), async () => {
+      const 订阅 = eventOn(getButtonEvent('消息统计'), async () => {
         console.info('[LWCS][消息统计] 已收到按钮事件');
         try {
           const 已有界面 = 查找消息统计界面();
@@ -1287,6 +1337,7 @@
           显示入口按钮提示(构建入口按钮错误文本('消息统计', 错误), 'error');
         }
       });
+      if (订阅 && typeof 订阅.stop === 'function') 入口实例.subscriptions.push(订阅);
       消息统计按钮已由当前脚本绑定 = true;
       宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__ = {
         commit: 共享资源提交哈希,
@@ -1302,6 +1353,7 @@
   function 安排消息统计脚本按钮注册() {
     const 启动时间 = Date.now();
     const 尝试注册 = () => {
+      if (!入口实例仍活动()) return;
       if (注册消息统计脚本按钮()) return;
       if (Date.now() - 启动时间 < 12000) setTimeout(尝试注册, 500);
     };
@@ -1338,6 +1390,7 @@
   function 安排已废弃防护配置清理() {
     const 启动时间 = Date.now();
     const 尝试清理 = () => {
+      if (!入口实例仍活动()) return;
       if (清理已废弃防护配置()) return;
       if (Date.now() - 启动时间 < 12000) setTimeout(尝试清理, 500);
     };
@@ -1345,6 +1398,7 @@
   }
 
   async function 引导加载() {
+    if (!入口实例仍活动()) return false;
     if (引导承诺) return 引导承诺;
     let 本次引导承诺;
     本次引导承诺 = (async () => {
@@ -1377,6 +1431,7 @@
         记录阶段(加载阶段.桥接就绪);
         ensureHostNodes();
         const mounted = await waitForVueMounted(10000);
+        if (!入口实例仍活动()) return;
         if (!mounted) {
           const 首屏错误 = String(读取共享值('__LWCS_UI_CONTENT_ERROR_V1__') || '').trim();
           throw new Error(首屏错误 ? `Vue 首屏数据未就绪：${首屏错误}` : 'Vue 首屏数据挂载超时');
@@ -1392,6 +1447,7 @@
         加载状态.结束时间 = Date.now();
         UI就绪解决?.(UI启动状态);
       } catch (错误) {
+        if (!入口实例仍活动()) return;
         const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error');
         UI启动状态.成功启动 = false;
         UI启动状态.最近错误 = 错误文本;
@@ -1416,12 +1472,13 @@
         if (UI启动状态.重试次数 < 最大启动重试次数) {
           UI启动状态.重试次数 += 1;
           setTimeout(() => {
-            if (引导承诺 === null) 引导加载();
+            if (入口实例仍活动() && 引导承诺 === null) 引导加载();
           }, UI启动状态.重试次数 === 1 ? 首次重试延迟毫秒 : 二次重试延迟毫秒);
         } else {
-          宿主窗口[加载器键] = false;
           共享启动状态.uiStatus = 'failed';
           UI就绪拒绝?.(错误);
+          入口实例.停止();
+          if (宿主窗口[加载器键] === 入口实例) delete 宿主窗口[加载器键];
         }
       }
     })();
@@ -1431,6 +1488,7 @@
 
   function 监控并启动引导() {
     const tryBoot = () => {
+      if (!入口实例仍活动()) return;
       刷新加载追踪面板();
       if (!引导承诺) 引导加载();
     };
@@ -1440,6 +1498,10 @@
     }
     const 启动时间戳 = Date.now();
     const 轮询器 = setInterval(() => {
+      if (!入口实例仍活动()) {
+        clearInterval(轮询器);
+        return;
+      }
       if (宿主文档.body && 宿主文档.readyState !== 'loading') {
         clearInterval(轮询器);
         tryBoot();
