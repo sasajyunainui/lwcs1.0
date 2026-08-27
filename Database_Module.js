@@ -56093,7 +56093,43 @@ $CONTENT
                     });
                 }
                 if (SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED) {
-                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id) => {
+                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id, type) => {
+                        if (!读取正文后置上下文_ACU() && ['normal', 'regenerate', 'continue', 'swipe'].includes(type)) {
+                            const 聊天数组 = getChatArray_ACU();
+                            const 目标消息元信息 = 读取事件目标角色消息元信息_ACU(null, message_id);
+                            const 用户查找起点 = 目标消息元信息?.消息索引 > 0
+                                ? 目标消息元信息.消息索引 - 1
+                                : 聊天数组.length - 1;
+                            let 最后用户消息编号 = -1;
+                            for (let 索引 = 用户查找起点; 索引 >= 0; 索引 -= 1) {
+                                if (聊天数组[索引]?.is_user) {
+                                    最后用户消息编号 = 索引;
+                                    break;
+                                }
+                            }
+                            if (最后用户消息编号 >= 0) {
+                                const epoch = advanceDatabaseGenerationEpoch_ACU();
+                                const 恢复上下文 = {
+                                    type,
+                                    params: {},
+                                    dryRun: false,
+                                    at: Date.now(),
+                                    epoch,
+                                    chatId: getActiveChatId_ACU(),
+                                    开始聊天长度: -1,
+                                    开始最后角色索引: -1,
+                                    开始最后角色签名: '',
+                                    最后用户消息编号,
+                                };
+                                generationGate_ACU.lastUserMessageId = 最后用户消息编号;
+                                generationGate_ACU.lastUserMessageText = String(聊天数组[最后用户消息编号]?.mes || '');
+                                generationGate_ACU.lastUserMessageAt = Date.now();
+                                generationGate_ACU.lastGeneration = 恢复上下文;
+                                generationGate_ACU.正文后置上下文 = 恢复上下文;
+                                生成结束后置状态_ACU.已处理消息键 = '';
+                                logDebug_ACU(`[生成结束后置] 从真实助手楼层恢复缺失的生成上下文: type=${type}, message_id=${message_id}`);
+                            }
+                        }
                         调度生成结束后置更新_ACU('MESSAGE_RECEIVED', message_id);
                     });
                 }

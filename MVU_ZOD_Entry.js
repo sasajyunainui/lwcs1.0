@@ -18,7 +18,7 @@ const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = '6c05357210551be8b827ee49c4d735b4f651ffdf33489aa1fbe2dfdf91fb8e69';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = '866a53f79e24dc07a2f9ce7a26c740360c85c28502639066db51cca328e3933c';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   MVU_FOUNDATION_BUNDLE_FILE_V1,
@@ -537,7 +537,7 @@ async function 等待项目MVU接口_V1() {
   while (performance.now() - 开始时刻 < 5000) {
     const 接口 = 取已有MVU引擎_V1();
     if (接口 && typeof 接口.getMvuData === 'function') return 接口;
-    await new Promise(继续 => setTimeout(继续, 16));
+    await new Promise(继续 => setTimeout(继续, 50));
   }
   throw new Error('LWCS MVU引擎bundle已执行，但项目Mvu接口未在5秒内暴露');
 }
@@ -706,6 +706,18 @@ await Promise.all([确保MVU基础依赖_V1(), 确保项目MVU引擎_V1()]);
 记录MVU加载阶段_V1('project-mvu-interface:await-start');
 await 等待项目MVU接口_V1();
 记录MVU加载阶段_V1('project-mvu-interface:await-resolved');
+const MVU聊天监听就绪承诺_V1 = (async () => {
+  记录MVU加载阶段_V1('mvu-chat-hooks:await-start');
+  const 开始时刻 = performance.now();
+  while (performance.now() - 开始时刻 < 30000) {
+    if (读取MVU共享全局值_V1('__LWCS_MVU_CHAT_HOOKS_READY_V1__') === true) {
+      记录MVU加载阶段_V1('mvu-chat-hooks:await-resolved');
+      return;
+    }
+    await new Promise(继续 => setTimeout(继续, 16));
+  }
+  throw new Error('MVU聊天级自动更新监听未在30秒内就绪');
+})();
 const MVU执行上下文库运行时_V1 = 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__');
 if (MVU执行上下文库运行时_V1) globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = MVU执行上下文库运行时_V1;
 const MVU时代资源加载承诺_V1 = 加载MVU当前时代核心资源_V1();
@@ -753,7 +765,7 @@ const MVUSchema数据加载承诺_V1 = 加载MVU经典依赖_V1(MVU_SCHEMA_DATA_
     && 必需方法.every(方法名 => typeof 运行时视图[方法名] === 'function');
   })()
 );
-await Promise.all([MVU时代资源加载承诺_V1, MVUSchema数据加载承诺_V1]);
+await Promise.all([MVU时代资源加载承诺_V1, MVUSchema数据加载承诺_V1, MVU聊天监听就绪承诺_V1]);
 
 发布MVU模块状态_V1('MVU.js', 'loading', '加载并执行');
 记录MVU加载阶段_V1('mvu-import:await-start');
@@ -797,6 +809,7 @@ const 必需接口_V1 = [
   ['SchemaRuntime', typeof markPlayerCharacterInSchemaInput === 'function' && typeof 规范化角色Schema_V1 === 'function'],
   ['CompetitionRuntime', !!竞争_V1 && typeof 竞争_V1.生成项目对局 === 'function'],
   ['RuntimeView', !!读取MVU共享全局值_V1('__LWCS_MVU_RUNTIME_VIEW__')],
+  ['MvuChatHooks', 读取MVU共享全局值_V1('__LWCS_MVU_CHAT_HOOKS_READY_V1__') === true],
   ['MvuRegistered', globalThis.__LWCS_MVU变量结构已注册__ === true],
   ['MvuHooks', typeof globalThis.__LWCS_NORMALIZE_MVU_STAT_DATA__ === 'function' && typeof globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__ === 'function'],
 ];

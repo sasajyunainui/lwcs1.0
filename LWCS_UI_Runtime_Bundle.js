@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7cb1dff12f330f2036a6ad86214e484e98be14608f0a5eef9232cdf4656f3695|TradeUI_Module.js:6b8228d8ebb462f4af0d0f1be5630f1ef1d5e39f6b64cd92d685dc3da20b85af|ProfessionUI_Module.js:d3ca8e0ae968a86729d96a1c8889fb12c78e11b2d4ae149674d027919b6745d6|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:dc5aa4c36cb2f5bc28293227c9e104b77ccf723942444cc83c79eb2bdb3343f6|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:9064de25a4b831575ef8b8845770d1768a875ce29c99d55fc2d7e1eb24c048fc|BattleRuntime_Module.js:1a9e6ff6a93361b2a9bc0930c08bbc261f9ce2044a854eeb87f0094637b9d9be|BattleReport_Module.js:f8d1b508a2d7057015801c3229e84cc3f9add8194c56bc22fe54c7aeca206ee3|BattleUI_Module.js:e2c4bfafccda69516b4ad170208143ece3645e7cfbf2d8f5fcbd6073e17681d6|Database_Module.js:89cb03efb214a3aa2ee01f21832ab50030049232a5ca72e0b4914454dfff57b2 */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7cb1dff12f330f2036a6ad86214e484e98be14608f0a5eef9232cdf4656f3695|TradeUI_Module.js:6b8228d8ebb462f4af0d0f1be5630f1ef1d5e39f6b64cd92d685dc3da20b85af|ProfessionUI_Module.js:d3ca8e0ae968a86729d96a1c8889fb12c78e11b2d4ae149674d027919b6745d6|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:dc5aa4c36cb2f5bc28293227c9e104b77ccf723942444cc83c79eb2bdb3343f6|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:9064de25a4b831575ef8b8845770d1768a875ce29c99d55fc2d7e1eb24c048fc|BattleRuntime_Module.js:1a9e6ff6a93361b2a9bc0930c08bbc261f9ce2044a854eeb87f0094637b9d9be|BattleReport_Module.js:f8d1b508a2d7057015801c3229e84cc3f9add8194c56bc22fe54c7aeca206ee3|BattleUI_Module.js:e2c4bfafccda69516b4ad170208143ece3645e7cfbf2d8f5fcbd6073e17681d6|Database_Module.js:d909883b2a2a19617ffcdef15dd3036adf6de4b01ed9cc1a2b732cff020f71d3 */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -224862,7 +224862,43 @@ $CONTENT
                     });
                 }
                 if (SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED) {
-                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id) => {
+                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id, type) => {
+                        if (!读取正文后置上下文_ACU() && ['normal', 'regenerate', 'continue', 'swipe'].includes(type)) {
+                            const 聊天数组 = getChatArray_ACU();
+                            const 目标消息元信息 = 读取事件目标角色消息元信息_ACU(null, message_id);
+                            const 用户查找起点 = 目标消息元信息?.消息索引 > 0
+                                ? 目标消息元信息.消息索引 - 1
+                                : 聊天数组.length - 1;
+                            let 最后用户消息编号 = -1;
+                            for (let 索引 = 用户查找起点; 索引 >= 0; 索引 -= 1) {
+                                if (聊天数组[索引]?.is_user) {
+                                    最后用户消息编号 = 索引;
+                                    break;
+                                }
+                            }
+                            if (最后用户消息编号 >= 0) {
+                                const epoch = advanceDatabaseGenerationEpoch_ACU();
+                                const 恢复上下文 = {
+                                    type,
+                                    params: {},
+                                    dryRun: false,
+                                    at: Date.now(),
+                                    epoch,
+                                    chatId: getActiveChatId_ACU(),
+                                    开始聊天长度: -1,
+                                    开始最后角色索引: -1,
+                                    开始最后角色签名: '',
+                                    最后用户消息编号,
+                                };
+                                generationGate_ACU.lastUserMessageId = 最后用户消息编号;
+                                generationGate_ACU.lastUserMessageText = String(聊天数组[最后用户消息编号]?.mes || '');
+                                generationGate_ACU.lastUserMessageAt = Date.now();
+                                generationGate_ACU.lastGeneration = 恢复上下文;
+                                generationGate_ACU.正文后置上下文 = 恢复上下文;
+                                生成结束后置状态_ACU.已处理消息键 = '';
+                                logDebug_ACU(`[生成结束后置] 从真实助手楼层恢复缺失的生成上下文: type=${type}, message_id=${message_id}`);
+                            }
+                        }
                         调度生成结束后置更新_ACU('MESSAGE_RECEIVED', message_id);
                     });
                 }

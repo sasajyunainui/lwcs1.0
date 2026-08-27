@@ -554,12 +554,20 @@ index e144b79ff6cfe95ee750909fb679b4cdd592acaa..62fcbc24ac25623daafcec7fb2ee13cc
 @@ -1574,0 +1603 @@ export async function handleVariablesInMessage(message_id: number) {
 +    return has_variable_modified;
 diff --git a/src/main.ts b/src/main.ts
-index 364eb1063276c9ed450830e1f9087b80373bdc93..19269f3cee6183a35b4e3d430ba529eade1c7d9b 100644
+index 364eb1063276c9ed450830e1f9087b80373bdc93..66db4f1 100644
 --- a/src/main.ts
 +++ b/src/main.ts
 @@ -39 +39 @@ $(async () => {
 -    stop_list.push(initGlobals());
 +    stop_list.push(await initGlobals());
+@@ -51,0 +52 @@ $(async () => {
++        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
+@@ -79,0 +81 @@ $(async () => {
++                    _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', true);
+@@ -84,0 +87 @@ $(async () => {
++                _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
+@@ -105,0 +109 @@ $(async () => {
++        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
 diff --git a/src/util.ts b/src/util.ts
 index 7a796d3d1a4e908e536987b5c855249ecd3c7ed1..1f6615faf9d889b491f00a5b8a6d8248c6ff641e 100644
 --- a/src/util.ts

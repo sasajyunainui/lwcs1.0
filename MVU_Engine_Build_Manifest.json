@@ -3,10 +3,10 @@
   "product": {
     "bundle": "MVU_Engine_Bundle.js",
     "sourcePatch": "MVU_Engine_Source.patch",
-    "bundleBytes": 1169297,
-    "bundleSha256": "6c05357210551be8b827ee49c4d735b4f651ffdf33489aa1fbe2dfdf91fb8e69",
-    "sourcePatchBytes": 53498,
-    "sourcePatchSha256": "e94ebac186874de4e0d5a286539c946eefe3eaedb336006fcf21127930296b0f"
+    "bundleBytes": 1169535,
+    "bundleSha256": "866a53f79e24dc07a2f9ce7a26c740360c85c28502639066db51cca328e3933c",
+    "sourcePatchBytes": 53910,
+    "sourcePatchSha256": "1cd30462c062c5f8516222fbe768e29b21ab19d8423e405dad51a2dc2501cc82"
   },
   "upstream": {
     "repository": "https://github.com/MagicalAstrogy/MagVarUpdate.git",
@@ -31,6 +31,7 @@
   },
   "runtimeContract": {
     "generationBoundary": "tavern_events.GENERATION_AFTER_COMMANDS",
+    "chatHooksReady": "__LWCS_MVU_CHAT_HOOKS_READY_V1__",
     "syncHotRead": "Mvu.getMvuData",
     "asyncRead": "Mvu.getMvuDataAsync",
     "persistenceAwait": "Mvu.persistence.awaitIdle",

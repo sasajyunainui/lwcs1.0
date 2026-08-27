@@ -1200,7 +1200,6 @@
 
   function 注册消息统计脚本按钮() {
     try {
-      if (宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__) return true;
       if (
         typeof appendInexistentScriptButtons !== 'function' ||
         typeof getButtonEvent !== 'function' ||
@@ -1229,7 +1228,6 @@
           显示入口按钮提示(构建入口按钮错误文本('消息统计', 错误), 'error');
         }
       });
-      宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__ = true;
       return true;
     } catch (错误) {
       console.warn('[MVU] 消息统计按钮注册失败:', 错误);
