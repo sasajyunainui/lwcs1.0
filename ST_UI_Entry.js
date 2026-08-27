@@ -20,30 +20,6 @@
   const 共享启动状态 = 读取共享值('__LWCS_REMOTE_BOOTSTRAP_STATE__') || {};
   const 共享文本读取 = 读取共享值('__LWCS_READ_SHARED_TEXT_V1__');
   const 共享资源提交哈希 = String(读取共享值('__LWCS_当前远程提交__') || 共享启动状态.commit || 'local').trim() || 'local';
-  const MVU正式依赖共享加载表 = (() => {
-    const 键 = '__LWCS_MVU_FORMAL_RESOURCE_LOADS_V1__';
-    const 已有表 = 宿主窗口[键] || window[键];
-    if (已有表 && typeof 已有表 === 'object') {
-      宿主窗口[键] = 已有表;
-      window[键] = 已有表;
-      return 已有表;
-    }
-    const 新表 = Object.create(null);
-    宿主窗口[键] = 新表;
-    window[键] = 新表;
-    return 新表;
-  })();
-  const MVU正式依赖模块名列表 = Object.freeze([
-    '持久化适配器',
-    'MVU持久化提供者',
-    'MVU提示投影器',
-  ]);
-  const MVU正式依赖文件名表 = Object.freeze({
-    持久化适配器: 'LWCS_Persistence_Adapter.js',
-    MVU持久化提供者: 'LWCS_MVU_Persistence_Provider.js',
-    MVU提示投影器: 'LWCS_MVU_Prompt_Projector.js',
-  });
-
   const UI启动状态 = (() => {
     const 键 = '__LWCS_UI_ENTRY_STATE__';
     const 已有状态 = 宿主窗口[键];
@@ -165,8 +141,9 @@
       已就绪: () => !!读取共享值('__LWCS_DATABASE_ADAPTER__'),
     },
     持久化适配器: {
-      类型: 'inline-js',
-      地址: 资源基础地址 + 'LWCS_Persistence_Adapter.js' + 资源版本后缀,
+      类型: 'wait-global',
+      全局键: '__LWCS_PERSISTENCE_ADAPTER_V1__',
+      值类型: 'object',
       关键: true,
       分组: 'core',
       已就绪: () => {
@@ -175,8 +152,9 @@
       },
     },
     MVU持久化提供者: {
-      类型: 'inline-js',
-      地址: 资源基础地址 + 'LWCS_MVU_Persistence_Provider.js' + 资源版本后缀,
+      类型: 'wait-global',
+      全局键: '__LWCS_MVU_PERSISTENCE_PROVIDER_V1__',
+      值类型: 'object',
       关键: true,
       分组: 'core',
       依赖: ['持久化适配器'],
@@ -186,8 +164,9 @@
       },
     },
     MVU提示投影器: {
-      类型: 'inline-js',
-      地址: 资源基础地址 + 'LWCS_MVU_Prompt_Projector.js' + 资源版本后缀,
+      类型: 'wait-global',
+      全局键: '__LWCS_MVU_PROMPT_PROJECTOR_V1__',
+      值类型: 'function',
       关键: true,
       分组: 'core',
       依赖: ['MVU持久化提供者'],
@@ -677,15 +656,6 @@
       const 依赖结果 = await 尝试加载模块(依赖模块名, `dependency:${模块名}`, false);
       if (!依赖结果?.ok) throw 依赖结果?.error || new Error(`module_dependency_failed:${模块名}:${依赖模块名}`);
     }
-    const 共享资源所有者 = 读取共享值('__LWCS_MVU_RESOURCE_OWNER_V1__');
-    const 正式资源文件名 = MVU正式依赖文件名表[模块名];
-    if (正式资源文件名 && typeof 共享资源所有者?.loadResource === 'function') {
-      await 共享资源所有者.loadResource(正式资源文件名, {
-        mode: 'script-global',
-        ready: 模块.已就绪,
-      });
-      return 模块.地址;
-    }
     const 状态 = 模块状态表[模块名];
     if (模块.类型 === 'remote-js') return 加载远程脚本(模块.地址, 状态);
     if (模块.类型 === 'wait-global') {
@@ -711,24 +681,6 @@
     if (!模块 || !状态) return { ok: false, 模块名, reason: 'unknown_module' };
     if (状态.状态 === 'loaded') return { ok: true, 模块名, cached: true };
     if (模块加载承诺表.has(模块名)) return 模块加载承诺表.get(模块名);
-    const 共享加载承诺 = MVU正式依赖模块名列表.includes(模块名)
-      ? MVU正式依赖共享加载表[模块名]
-      : null;
-    if (共享加载承诺 && typeof 共享加载承诺.then === 'function') {
-      try {
-        await 共享加载承诺;
-        if (typeof 模块.已就绪 === 'function' && !模块.已就绪()) {
-          throw new Error(`${模块名}共享加载后接口未就绪`);
-        }
-        状态.状态 = 'loaded';
-        状态.阶段 = '复用共享加载';
-        状态.错误 = '';
-        刷新加载追踪面板();
-        return { ok: true, 模块名, shared: true };
-      } catch (错误) {
-        return { ok: false, 模块名, error: 错误, reason: 'shared_load_failed' };
-      }
-    }
     if (typeof 模块.已就绪 === 'function' && 模块.已就绪()) {
       状态.状态 = 'loaded';
       状态.阶段 = '复用已有全局';
@@ -781,13 +733,6 @@
       });
 
     模块加载承诺表.set(模块名, 加载承诺);
-    if (MVU正式依赖模块名列表.includes(模块名)) {
-      const 清理共享加载 = () => {
-        if (MVU正式依赖共享加载表[模块名] === 加载承诺) delete MVU正式依赖共享加载表[模块名];
-      };
-      MVU正式依赖共享加载表[模块名] = 加载承诺;
-      void 加载承诺.then(清理共享加载, 清理共享加载);
-    }
     return 加载承诺;
   }
 
@@ -1192,10 +1137,13 @@
     } catch (错误) {}
   }
 
+  let 冷归档按钮已由当前脚本绑定 = false;
+  let 消息统计按钮已由当前脚本绑定 = false;
+
   function 注册冷归档脚本按钮() {
     try {
       if (是TT宿主) return true;
-      if (宿主窗口.__LWCS_COLD_ARCHIVE_ENTRY_BUTTON_BOUND__) return true;
+      if (冷归档按钮已由当前脚本绑定) return true;
       if (
         typeof appendInexistentScriptButtons !== 'function' ||
         typeof getButtonEvent !== 'function' ||
@@ -1220,7 +1168,11 @@
           显示入口按钮提示(构建入口按钮错误文本('MVU冷归档', 错误), 'error');
         }
       });
-      宿主窗口.__LWCS_COLD_ARCHIVE_ENTRY_BUTTON_BOUND__ = true;
+      冷归档按钮已由当前脚本绑定 = true;
+      宿主窗口.__LWCS_COLD_ARCHIVE_ENTRY_BUTTON_BOUND__ = {
+        commit: 共享资源提交哈希,
+        boundAt: Date.now(),
+      };
       return true;
     } catch (错误) {
       console.warn('[MVU] MVU冷归档按钮注册失败:', 错误);
@@ -1322,7 +1274,7 @@
 
   function 注册消息统计脚本按钮() {
     try {
-      if (宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__) return true;
+      if (消息统计按钮已由当前脚本绑定) return true;
       if (
         typeof appendInexistentScriptButtons !== 'function' ||
         typeof getButtonEvent !== 'function' ||
@@ -1332,6 +1284,7 @@
       }
       appendInexistentScriptButtons([{ name: '消息统计', visible: true }]);
       eventOn(getButtonEvent('消息统计'), async () => {
+        console.info('[LWCS][消息统计] 已收到按钮事件');
         try {
           const 已有界面 = 查找消息统计界面();
           if (已有界面) {
@@ -1353,7 +1306,11 @@
           显示入口按钮提示(构建入口按钮错误文本('消息统计', 错误), 'error');
         }
       });
-      宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__ = true;
+      消息统计按钮已由当前脚本绑定 = true;
+      宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__ = {
+        commit: 共享资源提交哈希,
+        boundAt: Date.now(),
+      };
       return true;
     } catch (错误) {
       console.warn('[MVU] 消息统计按钮注册失败:', 错误);
@@ -1459,6 +1416,12 @@
         UI启动状态.最近错误 = 错误文本;
         记录阶段(加载阶段.失败, 错误文本);
         console.error('[MVU] External UI Vue loader failed:', 错误);
+        try {
+          const 导出诊断 = 读取共享值('__LWCS_EXPORT_MVU_CHAIN_DIAGNOSTICS_V1__');
+          if (typeof 导出诊断 === 'function') console.error(`[LWCS][MVU链路诊断] ${JSON.stringify(导出诊断())}`);
+        } catch (诊断错误) {
+          console.error('[LWCS][MVU链路诊断] 导出失败:', 诊断错误);
+        }
         if (引导承诺 !== 本次引导承诺) return;
         引导承诺 = null;
         MVU核心接口验证承诺 = null;

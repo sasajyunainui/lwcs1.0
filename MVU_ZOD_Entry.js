@@ -18,7 +18,7 @@ const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = '42876e474d6ab27ce2da51d569072d95bdc510c8df23888661c68a042dd57786';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = 'dd7a2fb250aea33f3be16125bd42484933197a44a76f2b1144c1cbf06a1c35f0';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   MVU_ENGINE_BUNDLE_FILE_V1,
@@ -91,6 +91,64 @@ function 输出MVU加载诊断_V1() {
   console.info(`[LWCS][MVU加载诊断汇总] ${JSON.stringify(MVU加载诊断_V1)}`);
   return MVU加载诊断_V1;
 }
+function 安全读取MVU链路值_V1(读取器, 默认值 = null) {
+  try {
+    const 值 = 读取器();
+    return 值 === undefined ? 默认值 : 值;
+  } catch (错误) {
+    return { error: 错误?.message || String(错误 || 'unknown_error') };
+  }
+}
+function 导出MVU链路诊断_V1() {
+  const Mvu = 安全读取MVU链路值_V1(() => MVU共享宿主窗口_V1.Mvu || globalThis.Mvu);
+  const Provider = 安全读取MVU链路值_V1(() => MVU共享宿主窗口_V1.__LWCS_MVU_PERSISTENCE_PROVIDER_V1__ || globalThis.__LWCS_MVU_PERSISTENCE_PROVIDER_V1__);
+  const 上下文 = 安全读取MVU链路值_V1(() => MVU共享宿主窗口_V1.SillyTavern?.getContext?.() || globalThis.SillyTavern?.getContext?.());
+  const 聊天数组 = Array.isArray(上下文?.chat) ? 上下文.chat : [];
+  const 当前数据 = 安全读取MVU链路值_V1(() => Mvu?.getMvuData?.({ type: 'message', message_id: 'latest' }));
+  return {
+    version: '1.0.0',
+    capturedAt: Date.now(),
+    commit: MVU共享启动状态_V1.commit || '',
+    generation: MVU入口启动代号_V1,
+    attempt: MVU入口尝试代号_V1,
+    bootstrap: {
+      mvuStatus: MVU共享启动状态_V1.mvuStatus || '',
+      mvuStage: MVU共享启动状态_V1.mvuStage || '',
+      uiStatus: MVU共享启动状态_V1.uiStatus || '',
+      uiError: MVU共享宿主窗口_V1.__LWCS_UI_CONTENT_ERROR_V1__ || '',
+    },
+    chat: {
+      id: String(上下文?.chatId ?? 上下文?.chat_id ?? ''),
+      count: 聊天数组.length,
+      messages: 聊天数组.map((消息, 索引) => ({
+        index: 索引,
+        messageId: 消息?.message_id ?? 消息?.id ?? null,
+        role: 消息?.role ?? '',
+        isUser: 消息?.is_user ?? null,
+        isSystem: 消息?.is_system ?? null,
+        swipeId: 消息?.swipe_id ?? null,
+      })),
+    },
+    data: {
+      present: !!当前数据 && typeof 当前数据 === 'object',
+      canonical: !!当前数据?.stat_data && typeof 当前数据.stat_data === 'object'
+        && !!当前数据?.schema && typeof 当前数据.schema === 'object',
+      keys: 当前数据 && typeof 当前数据 === 'object' ? Object.keys(当前数据) : [],
+      statKeys: 当前数据?.stat_data && typeof 当前数据.stat_data === 'object' ? Object.keys(当前数据.stat_data) : [],
+    },
+    mvuPersistence: 安全读取MVU链路值_V1(() => Mvu?.persistence?.getStatus?.()),
+    provider: {
+      version: Provider?.version || '',
+      sessions: 安全读取MVU链路值_V1(() => Provider?.getStatus?.(), []),
+    },
+    loadTrace: MVU加载诊断_V1,
+  };
+}
+function 发布MVU链路诊断工具_V1() {
+  for (const 候选窗口 of [globalThis, MVU共享宿主窗口_V1]) {
+    try { 候选窗口.__LWCS_EXPORT_MVU_CHAIN_DIAGNOSTICS_V1__ = 导出MVU链路诊断_V1; } catch (_) {}
+  }
+}
 globalThis.__LWCS_MVU_LOAD_TRACE_V1__ = MVU加载诊断_V1;
 globalThis.__LWCS_MARK_MVU_LOAD_V1__ = 记录MVU加载阶段_V1;
 globalThis.__LWCS_DUMP_MVU_LOAD_TRACE_V1__ = 输出MVU加载诊断_V1;
@@ -98,6 +156,7 @@ try {
   MVU共享宿主窗口_V1.__LWCS_MVU_LOAD_TRACE_V1__ = MVU加载诊断_V1;
   MVU共享宿主窗口_V1.__LWCS_DUMP_MVU_LOAD_TRACE_V1__ = 输出MVU加载诊断_V1;
 } catch (_) {}
+发布MVU链路诊断工具_V1();
 记录MVU加载阶段_V1('entry:module-start', { 入口地址: MVU_ZOD_ENTRY_URL_V1.href });
 function 是当前MVU启动轮次_V1() {
   return Number(MVU共享宿主窗口_V1.__LWCS_MVU_ACTIVE_GENERATION_V1__) === MVU入口启动代号_V1
@@ -710,6 +769,35 @@ async function 读取MVU当前数据根_V1() {
   return null;
 }
 
+async function 等待MVU当前聊天数据就绪_V1(最大等待毫秒 = 15000) {
+  const 开始时刻 = performance.now();
+  let 最近错误 = '';
+  记录MVU加载阶段_V1('mvu-data:await-start');
+  while (performance.now() - 开始时刻 < 最大等待毫秒) {
+    try {
+      const Mvu = 读取MVU共享全局值_V1('Mvu');
+      if (!Mvu || typeof Mvu.getMvuDataAsync !== 'function') throw new Error('Mvu.getMvuDataAsync 未就绪');
+      await Mvu.persistence?.awaitIdle?.();
+      const 数据 = await Mvu.getMvuDataAsync({ type: 'message', message_id: 'latest' });
+      if (数据?.stat_data && typeof 数据.stat_data === 'object' && 数据?.schema && typeof 数据.schema === 'object') {
+        记录MVU加载阶段_V1('mvu-data:await-resolved', {
+          statKeys: Object.keys(数据.stat_data).length,
+          schemaKeys: Object.keys(数据.schema).length,
+        });
+        return 数据;
+      }
+      最近错误 = `当前数据非canonical：${数据 && typeof 数据 === 'object' ? Object.keys(数据).join(',') : typeof 数据}`;
+    } catch (错误) {
+      最近错误 = 错误?.message || String(错误 || 'unknown_error');
+    }
+    await new Promise(继续 => setTimeout(继续, 100));
+  }
+  const 诊断 = 导出MVU链路诊断_V1();
+  记录MVU加载阶段_V1('mvu-data:await-failed', { 错误: 最近错误 });
+  console.error(`[LWCS][MVU链路诊断] ${JSON.stringify(诊断)}`);
+  throw new Error(`MVU当前聊天数据未就绪：${最近错误 || 'unknown_error'}`);
+}
+
 async function 加载MVU当前时代核心资源_V1() {
   const 集成 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
   记录MVU加载阶段_V1('era-context:data-root-start');
@@ -792,6 +880,7 @@ await 加载MVU经典依赖_V1('MVU_Hooks.js', () =>
 );
 
 await Promise.all([MVU时代资源加载承诺_V1, MVU聊天监听就绪承诺_V1]);
+await 等待MVU当前聊天数据就绪_V1();
 
 const 集成_V1 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
 const 竞争_V1 = 读取MVU共享全局值_V1('__LWCS_COMPETITION_PRIVILEGE_RUNTIME__');

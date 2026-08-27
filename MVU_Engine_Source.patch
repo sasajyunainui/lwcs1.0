@@ -150,13 +150,23 @@ index caf3097..7faa20d 100644
 +    mvu_runtime_events,
 +    replaceMvuDataControlled,
 +} from '@/function/update/mvu_runtime';
-@@ -7,0 +16,2 @@ function createMvu() {
+@@ -7,0 +16,12 @@ function createMvu() {
 +    const replaceMvuData = (mvu_data: MvuData, options: VariableOption) =>
 +        replaceMvuDataControlled(mvu_data, options);
-@@ -9 +19 @@ function createMvu() {
++    const waitForCanonicalMvuData = async (options: VariableOption): Promise<MvuData> => {
++        const deadline = Date.now() + 15_000;
++        do {
++            await awaitIdle();
++            const data = getCanonicalMvuData(options);
++            if (_.isPlainObject(data?.stat_data) && _.isPlainObject(data?.schema)) return data;
++            await new Promise(resolve => setTimeout(resolve, 50));
++        } while (Date.now() < deadline);
++        throw new Error('MVU canonical data unavailable after initialization wait');
++    };
+@@ -9 +29 @@ function createMvu() {
 -        events: variable_events,
 +        events: Object.freeze({ ...variable_events, ...mvu_runtime_events }),
-@@ -29 +39,13 @@ function createMvu() {
+@@ -29 +49,12 @@ function createMvu() {
 -            return getVariables(options) as MvuData;
 +            return getCanonicalMvuData(options);
 +        },
@@ -164,25 +174,24 @@ index caf3097..7faa20d 100644
 +        /** 等待当前内存态任务和提交完成后读取最新的变量表。 */
 +        getMvuDataAsync: async function (options: VariableOption): Promise<MvuData> {
 +            await ensureMvuPersistence();
-+            await awaitIdle();
-+            return getCanonicalMvuData(options);
++            return waitForCanonicalMvuData(options);
 +        },
 +
 +        persistence: {
 +            awaitIdle,
 +            getStatus,
-@@ -48,2 +70 @@ function createMvu() {
+@@ -48,2 +79 @@ function createMvu() {
 -            /** 旧酒馆助手的 replaceVariables 是异步函数, 因此需要返回 Promise */
 -            return replaceVariables(mvu_data, options);
 +            return replaceMvuData(mvu_data, options);
-@@ -77,2 +98 @@ function createMvu() {
+@@ -77,2 +107 @@ function createMvu() {
 -            const variables = getVariables({ type: 'message', message_id: getCurrentMessageId() });
 -            return variables as MvuData;
 +            return getCanonicalMvuData({ type: 'message', message_id: getCurrentMessageId() });
-@@ -83 +103 @@ function createMvu() {
+@@ -83 +112 @@ function createMvu() {
 -            await replaceVariables(mvu_data, {
 +            await replaceMvuData(mvu_data, {
-@@ -165 +185,11 @@ function createMvu() {
+@@ -165 +194,11 @@ function createMvu() {
 -export function initGlobals() {
 +const LWCS_MVU_ENGINE_OWNER_V1 = Object.freeze({
 +    version: '1.0.0',
@@ -195,7 +204,7 @@ index caf3097..7faa20d 100644
 +    } catch (error) {
 +        console.error('[LWCS MVU] 持久化 Provider 初始化失败，已禁止 TT 消息楼变量写入', error);
 +    }
-@@ -171,0 +202,7 @@ export function initGlobals() {
+@@ -171,0 +211,7 @@ export function initGlobals() {
 +                if (!Object.prototype.hasOwnProperty.call(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__')) {
 +                    Object.defineProperty(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__', {
 +                        value: LWCS_MVU_ENGINE_OWNER_V1,
@@ -203,9 +212,9 @@ index caf3097..7faa20d 100644
 +                        configurable: false,
 +                    });
 +                }
-@@ -172,0 +210 @@ export function initGlobals() {
+@@ -172,0 +219 @@ export function initGlobals() {
 +                _.set(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__', LWCS_MVU_ENGINE_OWNER_V1);
-@@ -182,0 +221,3 @@ export function initGlobals() {
+@@ -182,0 +230,3 @@ export function initGlobals() {
 +            if (_.get(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__') === LWCS_MVU_ENGINE_OWNER_V1) {
 +                _.unset(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__');
 +            }
