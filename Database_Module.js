@@ -56217,7 +56217,7 @@ $CONTENT
                                             ? Number(lastMessage.message_id)
                                             : lastMessageIndex;
                                         const visibleMessage = s1.visibleMessage || s1.finalMessage;
-                                        const written = await setChatMessages_ACU([{ message_id: messageId, message: visibleMessage }], { refresh: 'affected' });
+                                        const written = await setChatMessages_ACU([{ message_id: messageId, message: visibleMessage }], { refresh: 'none' });
                                         if (!written)
                                             throw new Error('CHAT_MESSAGE_WRITE_API_UNAVAILABLE');
                                         params.prompt = s1.finalMessage;
