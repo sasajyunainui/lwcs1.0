@@ -310,20 +310,26 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
         const 入口地址 = `${资源基础地址}${入口文件名}#lwcs_generation=${本轮启动代号}&lwcs_attempt=${入口尝试代号}`;
         const 文档 = globalThis.document;
         if (文档?.createElement) {
-          const 预载ID = 'lwcs-mvu-engine-modulepreload';
-          const 预载地址 = `${资源基础地址}MVU_Engine_Bundle.js`;
-          let 预载节点 = 文档.getElementById(预载ID);
-          if (预载节点 && 预载节点.href !== 预载地址) {
-            预载节点.remove();
-            预载节点 = null;
-          }
-          if (!预载节点) {
-            预载节点 = 文档.createElement('link');
-            预载节点.id = 预载ID;
-            预载节点.rel = 'modulepreload';
-            预载节点.href = 预载地址;
-            预载节点.crossOrigin = 'anonymous';
-            (文档.head || 文档.documentElement).appendChild(预载节点);
+          for (const 预载项 of [
+            { id: 'lwcs-mvu-project-runtime-preload', rel: 'preload', as: 'script', file: 'LWCS_MVU_Project_Runtime_Bundle.js' },
+            { id: 'lwcs-mvu-schema-modulepreload', rel: 'modulepreload', file: 'MVU.js' },
+            { id: 'lwcs-mvu-engine-modulepreload', rel: 'modulepreload', file: 'MVU_Engine_Bundle.js' },
+          ]) {
+            const 预载地址 = `${资源基础地址}${预载项.file}`;
+            let 预载节点 = 文档.getElementById(预载项.id);
+            if (预载节点 && 预载节点.href !== 预载地址) {
+              预载节点.remove();
+              预载节点 = null;
+            }
+            if (!预载节点) {
+              预载节点 = 文档.createElement('link');
+              预载节点.id = 预载项.id;
+              预载节点.rel = 预载项.rel;
+              if (预载项.as) 预载节点.as = 预载项.as;
+              预载节点.href = 预载地址;
+              if (预载项.rel === 'modulepreload') 预载节点.crossOrigin = 'anonymous';
+              (文档.head || 文档.documentElement).appendChild(预载节点);
+            }
           }
         }
         const 入口加载 = 加载模块脚本入口(入口地址, 入口尝试代号);

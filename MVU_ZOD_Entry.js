@@ -831,15 +831,34 @@ async function 加载MVU当前时代核心资源_V1() {
 }
 
 if (typeof eventOn !== 'function') throw new Error('MVU_ZOD_Entry 需要酒馆助手 eventOn 接口');
+记录MVU加载阶段_V1('project-runtime:await-start');
+await 确保MVU项目运行时_V1();
+记录MVU加载阶段_V1('project-runtime:await-resolved');
+
+发布MVU模块状态_V1('MVU.js', 'loading', '加载并执行');
+记录MVU加载阶段_V1('mvu-import:await-start');
+try {
+  await 导入MVU候选模块_V1('MVU.js');
+  if (globalThis.__LWCS_MVU变量结构已注册__ !== true) throw new Error('MVU.js 已执行但变量结构注册失败');
+  记录MVU加载阶段_V1('mvu-import:await-resolved');
+  输出MVU加载诊断_V1();
+  发布MVU模块状态_V1('MVU.js', 'loaded', '完成');
+} catch (错误) {
+  记录MVU加载阶段_V1('mvu-import:await-failed', { 错误: 错误?.message || String(错误 || 'unknown_error') });
+  输出MVU加载诊断_V1();
+  发布MVU模块状态_V1('MVU.js', 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
+  throw 错误;
+}
+
+try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_MVU变量结构已注册__ = true; } catch (错误) {}
+try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_MVU变量结构已注册__ = true; } catch (错误) {}
+
 记录MVU加载阶段_V1('mvu-environment:await-start');
 await 确保项目MVU引擎_V1();
 记录MVU加载阶段_V1('mvu-environment:await-resolved');
 记录MVU加载阶段_V1('project-mvu-interface:await-start');
 await 等待项目MVU接口_V1();
 记录MVU加载阶段_V1('project-mvu-interface:await-resolved');
-记录MVU加载阶段_V1('project-runtime:await-start');
-await 确保MVU项目运行时_V1();
-记录MVU加载阶段_V1('project-runtime:await-resolved');
 const MVU聊天监听就绪承诺_V1 = (async () => {
   记录MVU加载阶段_V1('mvu-chat-hooks:await-start');
   const 开始时刻 = performance.now();
@@ -855,24 +874,6 @@ const MVU聊天监听就绪承诺_V1 = (async () => {
 const MVU执行上下文库运行时_V1 = 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__');
 if (MVU执行上下文库运行时_V1) globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = MVU执行上下文库运行时_V1;
 const MVU时代资源加载承诺_V1 = 加载MVU当前时代核心资源_V1();
-
-发布MVU模块状态_V1('MVU.js', 'loading', '加载并执行');
-记录MVU加载阶段_V1('mvu-import:await-start');
-try {
-  await 导入MVU候选模块_V1('MVU.js');
-  记录MVU加载阶段_V1('mvu-import:await-resolved');
-  输出MVU加载诊断_V1();
-  发布MVU模块状态_V1('MVU.js', 'loaded', '完成');
-} catch (错误) {
-  记录MVU加载阶段_V1('mvu-import:await-failed', { 错误: 错误?.message || String(错误 || 'unknown_error') });
-  输出MVU加载诊断_V1();
-  发布MVU模块状态_V1('MVU.js', 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
-  throw 错误;
-}
-
-globalThis.__LWCS_MVU变量结构已注册__ = true;
-try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_MVU变量结构已注册__ = true; } catch (错误) {}
-try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_MVU变量结构已注册__ = true; } catch (错误) {}
 
 await 加载MVU经典依赖_V1('MVU_Hooks.js', () =>
   typeof globalThis.__LWCS_NORMALIZE_MVU_STAT_DATA__ === 'function' &&
