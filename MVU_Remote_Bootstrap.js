@@ -8,7 +8,7 @@ const CDN地址列表 = Object.freeze([
 ]);
 const 请求超时毫秒 = 6500;
 const GitHub请求超时毫秒 = 8000;
-  const 回退提交哈希 = 'cba6eba9442e445cde7a0365b06837e0c9ab5c7f';
+const 回退提交哈希 = 'cba6eba9442e445cde7a0365b06837e0c9ab5c7f';
 const 入口文件名 = 'MVU_ZOD_Entry.js';
 const MVU追踪模块顺序 = Object.freeze([入口文件名]);
 async function 取最新提交哈希() {
@@ -156,14 +156,87 @@ const 预取共享文本 = 共享宿主窗口.__LWCS_PREFETCH_SHARED_TEXT_V1__ |
 
 function MVU加载所有者仍存活() {
   const 所有者窗口 = 共享启动状态.mvuOwnerWindow;
-  if (!所有者窗口) return false;
-  if (所有者窗口 === globalThis) return true;
+  const 所有者文档 = 共享启动状态.mvuOwnerDocument;
+  if (!所有者窗口 || !所有者文档) return false;
   try {
-    return !!所有者窗口.frameElement?.isConnected;
+    if (所有者窗口.document !== 所有者文档) return false;
+    return 所有者文档 === globalThis.document || !!所有者窗口.frameElement?.isConnected;
   } catch (错误) {
     return false;
   }
 }
+
+function 失效MVU共享核心状态() {
+  共享启动状态.mvuStatus = 'idle';
+  共享启动状态.mvuStartedAt = 0;
+  共享启动状态.mvuHeartbeatAt = 0;
+  共享启动状态.mvuOwnerWindow = null;
+  共享启动状态.mvuOwnerDocument = null;
+  共享启动状态.mvuOwnerToken = '';
+  共享启动状态.mvuGeneration = (Number(共享启动状态.mvuGeneration) || 0) + 1;
+  共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ = 共享启动状态.mvuGeneration;
+  delete 共享宿主窗口.__LWCS_MVU_CORE_READY_PROMISE_V1__;
+  delete 共享宿主窗口.__LWCS_MVU_CORE_READY_RESOLVE_V1__;
+  delete 共享宿主窗口.__LWCS_MVU_CORE_READY_REJECT_V1__;
+  delete 共享宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__;
+  delete 共享宿主窗口.__LWCS_MVU_CORE_READY_V1__;
+}
+
+async function 等待旧MVU所有者释放() {
+  if (!['loading', 'ready'].includes(共享启动状态.mvuStatus)) return;
+  const 旧所有者窗口 = 共享启动状态.mvuOwnerWindow;
+  const 旧所有者文档 = 共享启动状态.mvuOwnerDocument;
+  const 旧所有者代号 = 共享启动状态.mvuOwnerToken;
+  if (旧所有者文档 === globalThis.document) return;
+  if (!旧所有者窗口) {
+    失效MVU共享核心状态();
+    return;
+  }
+
+  const 截止时间 = Date.now() + 请求超时毫秒;
+  if (!旧所有者文档) {
+    if (旧所有者窗口 === globalThis) {
+      失效MVU共享核心状态();
+      return;
+    }
+    while (
+      共享启动状态.mvuOwnerWindow === 旧所有者窗口
+      && 共享启动状态.mvuOwnerToken === 旧所有者代号
+      && ['loading', 'ready'].includes(共享启动状态.mvuStatus)
+    ) {
+      let 旧框架仍连接 = false;
+      try { 旧框架仍连接 = !!旧所有者窗口.frameElement?.isConnected; } catch (错误) {}
+      if (!旧框架仍连接) break;
+      if (Date.now() >= 截止时间) {
+        throw new Error(`等待旧MVU所有者释放超时:${请求超时毫秒}ms`);
+      }
+      await new Promise(继续 => setTimeout(继续, 16));
+    }
+    if (
+      共享启动状态.mvuOwnerWindow === 旧所有者窗口
+      && 共享启动状态.mvuOwnerToken === 旧所有者代号
+    ) 失效MVU共享核心状态();
+    return;
+  }
+  if (!MVU加载所有者仍存活()) {
+    失效MVU共享核心状态();
+    return;
+  }
+  while (
+    共享启动状态.mvuOwnerWindow === 旧所有者窗口
+    && 共享启动状态.mvuOwnerDocument === 旧所有者文档
+    && 共享启动状态.mvuOwnerToken === 旧所有者代号
+    && ['loading', 'ready'].includes(共享启动状态.mvuStatus)
+    && MVU加载所有者仍存活()
+  ) {
+    if (Date.now() >= 截止时间) {
+      throw new Error(`等待旧MVU所有者释放超时:${请求超时毫秒}ms`);
+    }
+    await new Promise(继续 => setTimeout(继续, 16));
+  }
+}
+
+await 等待旧MVU所有者释放();
 
 const MVU加载开始时间 = Math.max(Number(共享启动状态.mvuStartedAt) || 0, Number(共享启动状态.mvuHeartbeatAt) || 0);
 const MVU加载已陈旧 = 共享启动状态.mvuStatus === 'loading'
@@ -175,18 +248,7 @@ const 核心状态已失效 = MVU加载已陈旧 || 共享启动状态.mvuStatus
     || !MVU加载所有者仍存活()
   ));
 if (核心状态已失效) {
-  共享启动状态.mvuStatus = 'idle';
-  共享启动状态.mvuStartedAt = 0;
-  共享启动状态.mvuHeartbeatAt = 0;
-  共享启动状态.mvuOwnerWindow = null;
-  共享启动状态.mvuOwnerToken = '';
-  共享启动状态.mvuGeneration = (Number(共享启动状态.mvuGeneration) || 0) + 1;
-  共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ = 共享启动状态.mvuGeneration;
-  delete 共享宿主窗口.__LWCS_MVU_CORE_READY_PROMISE_V1__;
-  delete 共享宿主窗口.__LWCS_MVU_CORE_READY_RESOLVE_V1__;
-  delete 共享宿主窗口.__LWCS_MVU_CORE_READY_REJECT_V1__;
-  delete 共享宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__;
-  delete 共享宿主窗口.__LWCS_MVU_CORE_READY_V1__;
+  失效MVU共享核心状态();
 }
 let 解决核心就绪;
 let 拒绝核心就绪;
@@ -227,21 +289,35 @@ function 更新MVU入口追踪(状态, 阶段, 错误 = '') {
   } catch (追踪错误) {}
 }
 
-async function 取共享最新提交哈希() {
-  if (共享启动状态.commit) return 共享启动状态.commit;
-  if (!共享启动状态.commitPromise) {
-    共享启动状态.commitPromise = 取最新提交哈希()
+async function 取共享最新提交哈希(启动代号) {
+  if (共享启动状态.commitGeneration === 启动代号 && 共享启动状态.commit) {
+    return 共享启动状态.commit;
+  }
+  if (!共享启动状态.commitPromise || 共享启动状态.commitPromiseGeneration !== 启动代号) {
+    const 提交承诺 = 取最新提交哈希()
       .then(提交哈希 => {
-        共享启动状态.commit = 提交哈希;
-        共享启动状态.commitPromise = null;
+        if (共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ === 启动代号) {
+          共享启动状态.commit = 提交哈希;
+          共享启动状态.commitGeneration = 启动代号;
+        }
         return 提交哈希;
       })
       .catch(错误 => {
         console.warn('[LWCS MVU Bootstrap] GitHub 最新提交读取失败，改用正式回退提交。', 错误);
-        共享启动状态.commit = 回退提交哈希;
-        共享启动状态.commitPromise = null;
+        if (共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ === 启动代号) {
+          共享启动状态.commit = 回退提交哈希;
+          共享启动状态.commitGeneration = 启动代号;
+        }
         return 回退提交哈希;
+      })
+      .finally(() => {
+        if (共享启动状态.commitPromise === 提交承诺) {
+          共享启动状态.commitPromise = null;
+          共享启动状态.commitPromiseGeneration = 0;
+        }
       });
+    共享启动状态.commitPromise = 提交承诺;
+    共享启动状态.commitPromiseGeneration = 启动代号;
   }
   return await 共享启动状态.commitPromise;
 }
@@ -255,6 +331,7 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
   共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ = 本轮启动代号;
   共享启动状态.mvuStatus = 'loading';
   共享启动状态.mvuOwnerWindow = globalThis;
+  共享启动状态.mvuOwnerDocument = globalThis.document;
   共享启动状态.mvuOwnerToken = 本轮所有者代号;
   共享启动状态.mvuStartedAt = Date.now();
   共享启动状态.mvuHeartbeatAt = 共享启动状态.mvuStartedAt;
@@ -262,22 +339,11 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
   try {
     globalThis.addEventListener('pagehide', () => {
       if (共享启动状态.mvuOwnerToken !== 本轮所有者代号) return;
-      共享启动状态.mvuStatus = 'idle';
-      共享启动状态.mvuOwnerWindow = null;
-      共享启动状态.mvuOwnerToken = '';
-      共享启动状态.mvuStartedAt = 0;
-      共享启动状态.mvuHeartbeatAt = 0;
-      共享启动状态.mvuGeneration = Math.max(Number(共享启动状态.mvuGeneration) || 0, 本轮启动代号) + 1;
-      共享宿主窗口.__LWCS_MVU_ACTIVE_GENERATION_V1__ = 共享启动状态.mvuGeneration;
-      delete 共享宿主窗口.__LWCS_MVU_CORE_READY_PROMISE_V1__;
-      delete 共享宿主窗口.__LWCS_MVU_CORE_READY_RESOLVE_V1__;
-      delete 共享宿主窗口.__LWCS_MVU_CORE_READY_REJECT_V1__;
-      delete 共享宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__;
-      delete 共享宿主窗口.__LWCS_MVU_CORE_READY_V1__;
+      失效MVU共享核心状态();
     }, { once: true });
   } catch (错误) {}
   try {
-    const 最新提交哈希 = await 取共享最新提交哈希();
+    const 最新提交哈希 = await 取共享最新提交哈希(本轮启动代号);
     const 错误列表 = [];
     let 已加载 = false;
     let 入口执行承诺 = null;
@@ -361,6 +427,7 @@ if (共享启动状态.mvuStatus !== 'loading' && 共享启动状态.mvuStatus !
       共享启动状态.mvuStartedAt = 0;
       共享启动状态.mvuHeartbeatAt = 0;
       共享启动状态.mvuOwnerWindow = null;
+      共享启动状态.mvuOwnerDocument = null;
       共享启动状态.mvuOwnerToken = '';
       更新MVU入口追踪('failed', '失败', 错误文本);
       共享启动状态.mvuGeneration = 本轮启动代号 + 1;

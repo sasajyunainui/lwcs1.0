@@ -1,4 +1,4 @@
-!(function () {
+!(async function () {
   'use strict';
 
   const 仓库名 = 'sasajyunainui/lwcs1.0';
@@ -103,24 +103,59 @@
     });
   }
   void 宿主窗口.__LWCS_MVU_CORE_READY_PROMISE_V1__.catch(() => {});
-  const UI所有者仍存活 = (() => {
+  const UI所有者仍存活 = () => {
     const 所有者窗口 = 共享启动状态.uiOwnerWindow;
-    if (!所有者窗口) return false;
-    if (所有者窗口 === window) return true;
+    const 所有者文档 = 共享启动状态.uiOwnerDocument;
+    if (!所有者窗口 || !所有者文档) return false;
     try {
-      return !!所有者窗口.frameElement?.isConnected;
+      if (所有者窗口.document !== 所有者文档) return false;
+      return 所有者文档 === window.document || !!所有者窗口.frameElement?.isConnected;
     } catch (错误) {
       return false;
     }
-  })();
-  const UI加载开始时间 = Number(共享启动状态.uiStartedAt) || 0;
-  if (
-    共享启动状态.uiStatus === 'loading'
-    && 宿主窗口[引导键]
-    && UI所有者仍存活
-    && UI加载开始时间 > 0
-    && Date.now() - UI加载开始时间 < 60000
-  ) return;
+  };
+  async function 等待旧UI所有者释放() {
+    while (['loading', 'ready'].includes(共享启动状态.uiStatus)) {
+      const 旧所有者窗口 = 共享启动状态.uiOwnerWindow;
+      const 旧所有者文档 = 共享启动状态.uiOwnerDocument;
+      const 旧所有者代号 = 共享启动状态.uiOwnerToken;
+      if (旧所有者文档 === window.document) return false;
+      if (!旧所有者窗口 || 旧所有者窗口 === window) return true;
+
+      const 截止时间 = Date.now() + 请求超时毫秒;
+      if (!旧所有者文档) {
+        while (
+          共享启动状态.uiOwnerWindow === 旧所有者窗口
+          && 共享启动状态.uiOwnerToken === 旧所有者代号
+          && ['loading', 'ready'].includes(共享启动状态.uiStatus)
+        ) {
+          let 旧框架仍连接 = false;
+          try { 旧框架仍连接 = !!旧所有者窗口.frameElement?.isConnected; } catch (错误) {}
+          if (!旧框架仍连接) return true;
+          if (Date.now() >= 截止时间) {
+            throw new Error(`等待旧UI所有者释放超时:${请求超时毫秒}ms`);
+          }
+          await new Promise(继续 => setTimeout(继续, 16));
+        }
+        continue;
+      }
+      if (!UI所有者仍存活()) return true;
+      while (
+        共享启动状态.uiOwnerWindow === 旧所有者窗口
+        && 共享启动状态.uiOwnerDocument === 旧所有者文档
+        && 共享启动状态.uiOwnerToken === 旧所有者代号
+        && ['loading', 'ready'].includes(共享启动状态.uiStatus)
+        && UI所有者仍存活()
+      ) {
+        if (Date.now() >= 截止时间) {
+          throw new Error(`等待旧UI所有者释放超时:${请求超时毫秒}ms`);
+        }
+        await new Promise(继续 => setTimeout(继续, 16));
+      }
+    }
+    return true;
+  }
+  if (!await 等待旧UI所有者释放()) return;
 
   try { 宿主窗口.mvu_external_ui_vue_loader?.停止?.(); } catch (错误) {}
   try {
@@ -136,6 +171,7 @@
   const 本轮所有者代号 = `${本轮启动代号}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
   共享启动状态.uiGeneration = 本轮启动代号;
   共享启动状态.uiOwnerWindow = window;
+  共享启动状态.uiOwnerDocument = window.document;
   共享启动状态.uiOwnerToken = 本轮所有者代号;
   共享启动状态.uiStartedAt = Date.now();
   宿主窗口.__LWCS_UI_ACTIVE_GENERATION_V1__ = 本轮启动代号;
@@ -153,6 +189,7 @@
       try { 宿主窗口.mvu_external_ui_vue_loader?.停止?.(); } catch (错误) {}
       共享启动状态.uiStatus = 'idle';
       共享启动状态.uiOwnerWindow = null;
+      共享启动状态.uiOwnerDocument = null;
       共享启动状态.uiOwnerToken = '';
       共享启动状态.uiStartedAt = 0;
       宿主窗口[引导键] = false;
@@ -559,50 +596,53 @@
     });
   }
 
-  async function 取最新提交哈希() {
+  async function 取目标提交哈希() {
     const 接口地址 = `https://api.github.com/repos/${仓库名}/git/ref/heads/${分支名}?t=${Date.now()}`;
-    const 响应 = await withTimeout(fetch(接口地址, {
-      cache: 'no-store',
-      headers: { Accept: 'application/vnd.github+json' },
-    }), `读取 ${接口地址}`, GitHub请求超时毫秒);
-    if (!响应.ok) throw new Error(`GitHub 最新提交读取失败: ${响应.status}`);
-    const 数据 = await 响应.json();
-    const 提交哈希 = String(数据 && 数据.object && 数据.object.sha ? 数据.object.sha : '').trim();
-    if (!/^[0-9a-f]{40}$/i.test(提交哈希)) throw new Error('GitHub 最新提交格式异常');
-    return 提交哈希;
+    try {
+      const 响应 = await withTimeout(fetch(接口地址, {
+        cache: 'no-store',
+        headers: { Accept: 'application/vnd.github+json' },
+      }), `读取 ${接口地址}`, GitHub请求超时毫秒);
+      if (!响应.ok) throw new Error(`GitHub 最新提交读取失败: ${响应.status}`);
+      const 数据 = await 响应.json();
+      const 提交哈希 = String(数据?.object?.sha || '').trim();
+      if (!/^[0-9a-f]{40}$/i.test(提交哈希)) throw new Error('GitHub 最新提交格式异常');
+      return 提交哈希;
+    } catch (错误) {
+      const 当前提交哈希 = String(
+        宿主窗口.__LWCS_MVU_当前远程提交__
+        || window.__LWCS_MVU_当前远程提交__
+        || 共享启动状态.commit
+        || ''
+      ).trim();
+      console.warn('[LWCS Bootstrap] GitHub 最新提交读取失败，沿用当前 MVU 提交。', 错误);
+      return /^[0-9a-f]{40}$/i.test(当前提交哈希) ? 当前提交哈希 : 回退提交哈希;
+    }
   }
 
-  async function 取共享最新提交哈希() {
-    if (共享启动状态.commit) return 共享启动状态.commit;
-    if (!共享启动状态.commitPromise) {
-      共享启动状态.commitPromise = 取最新提交哈希()
-        .then(提交哈希 => {
-          共享启动状态.commit = 提交哈希;
-          共享启动状态.commitPromise = null;
-          return 提交哈希;
-        })
-        .catch(错误 => {
-          console.warn('[LWCS Bootstrap] GitHub 最新提交读取失败，改用正式回退提交。', 错误);
-          共享启动状态.commit = 回退提交哈希;
-          共享启动状态.commitPromise = null;
-          return 回退提交哈希;
-        });
+  async function 等待MVU就绪(目标提交哈希) {
+    const 截止时间 = Date.now() + 30000;
+    while (Date.now() < 截止时间) {
+      const 完成契约 = 宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__
+        || window.__LWCS_MVU_CORE_CONTRACT_V1__;
+      const 当前提交哈希 = String(
+        宿主窗口.__LWCS_MVU_当前远程提交__
+        || window.__LWCS_MVU_当前远程提交__
+        || ''
+      ).trim();
+      if (
+        共享启动状态.mvuStatus === 'ready'
+        && 当前提交哈希 === 目标提交哈希
+        && 完成契约?.ready === true
+        && 完成契约.commit === 目标提交哈希
+        && 完成契约.generation === Number(共享启动状态.mvuGeneration)
+      ) return true;
+      if (共享启动状态.mvuStatus === 'failed' && 当前提交哈希 === 目标提交哈希) {
+        throw new Error(`MVU核心启动失败（${共享启动状态.mvuStage || '未知阶段'}）`);
+      }
+      await new Promise(继续 => setTimeout(继续, 25));
     }
-    return await 共享启动状态.commitPromise;
-  }
-
-  async function 等待MVU就绪() {
-    const 就绪承诺 = 宿主窗口.__LWCS_MVU_CORE_READY_PROMISE_V1__
-      || window.__LWCS_MVU_CORE_READY_PROMISE_V1__;
-    if (!就绪承诺 || typeof 就绪承诺.then !== 'function') {
-      throw new Error('MVU核心就绪承诺未注册');
-    }
-    await 就绪承诺;
-    const 完成契约 = 宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__
-      || window.__LWCS_MVU_CORE_CONTRACT_V1__;
-    if (完成契约?.ready === true) return true;
-    if (共享启动状态.mvuStatus === 'failed') throw new Error(`MVU核心启动失败（${共享启动状态.mvuStage || '未知阶段'}）`);
-    throw new Error(`MVU核心就绪承诺已完成但核心契约未ready（${共享启动状态.mvuStage || '未知阶段'}）`);
+    throw new Error(`MVU核心未切换到UI目标提交：${目标提交哈希}`);
   }
 
   async function 加载正式入口(提交哈希) {
@@ -636,11 +676,11 @@
 
   async function 启动远程入口() {
     共享启动状态.uiStatus = 'loading';
-    加载追踪器.更新入口('pending', '正在解析最新版本', '', '等待版本');
+    加载追踪器.更新入口('pending', '正在解析目标版本', '', '等待版本');
     try {
-      const 提交哈希 = await 取共享最新提交哈希();
-      加载追踪器.更新入口('pending', '等待 MVU 运行时', '', '等待执行');
-      await 等待MVU就绪();
+      const 提交哈希 = await 取目标提交哈希();
+      加载追踪器.更新入口('pending', '等待同版本 MVU 运行时', '', '等待执行');
+      await 等待MVU就绪(提交哈希);
       加载追踪器.更新入口('loading', '正在执行 ST_UI_Entry.js', '', '执行中');
       await 加载正式入口(提交哈希);
       await 本轮UI就绪承诺;
@@ -652,8 +692,12 @@
       共享启动状态.uiStartedAt = 0;
     } catch (错误) {
       if (宿主窗口.__LWCS_UI_ACTIVE_GENERATION_V1__ === 本轮启动代号) {
+        try { 宿主窗口.mvu_external_ui_vue_loader?.停止?.(); } catch (停止错误) {}
         共享启动状态.uiStatus = 'failed';
         共享启动状态.uiStartedAt = 0;
+        共享启动状态.uiOwnerWindow = null;
+        共享启动状态.uiOwnerDocument = null;
+        共享启动状态.uiOwnerToken = '';
         加载追踪器.标记失败(错误);
         console.error('[LWCS] 远程入口加载失败:', 错误);
       }
@@ -664,5 +708,5 @@
     }
   }
 
-  启动远程入口();
-})();
+  void 启动远程入口();
+})().catch(错误 => console.error('[LWCS] UI 引导所有权交接失败:', 错误));

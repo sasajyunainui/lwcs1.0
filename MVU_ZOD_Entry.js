@@ -18,7 +18,7 @@ const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = 'dd7a2fb250aea33f3be16125bd42484933197a44a76f2b1144c1cbf06a1c35f0';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = 'd38c4076f641c2eeb3b55d8e199c40da6987941077b5c4851500997b068a6d59';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   MVU_ENGINE_BUNDLE_FILE_V1,
@@ -909,6 +909,8 @@ const 必需接口_V1 = [
 const MVU核心接口缺失_V1 = 必需接口_V1.filter(([, 已就绪]) => !已就绪).map(([名称]) => 名称);
 const MVU核心契约_V1 = Object.freeze({
   version: '1.0.0',
+  generation: MVU入口启动代号_V1,
+  commit: String(MVU共享宿主窗口_V1.__LWCS_MVU_当前远程提交__ || MVU共享启动状态_V1.commit || ''),
   ready: MVU核心接口缺失_V1.length === 0,
   missing: Object.freeze(MVU核心接口缺失_V1),
 });
