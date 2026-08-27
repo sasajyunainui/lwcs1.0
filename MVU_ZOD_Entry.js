@@ -660,7 +660,9 @@ async function 读取MVU当前数据根_V1() {
 
 async function 加载MVU当前时代核心资源_V1() {
   const 集成 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
+  记录MVU加载阶段_V1('era-context:data-root-start');
   const 根 = await 读取MVU当前数据根_V1();
+  记录MVU加载阶段_V1('era-context:data-root-resolved');
   let 当前tick = Number(根?.world?.时间?.tick);
   if (!Number.isFinite(当前tick) || 当前tick < 0) {
     const 注册表 = 读取MVU共享全局值_V1('__LWCS_ERA_DATA_REGISTRY_V1__');
@@ -671,10 +673,12 @@ async function 加载MVU当前时代核心资源_V1() {
     throw new Error('MVU当前时代核心资源缺少有效时代上下文');
   }
   try {
+    记录MVU加载阶段_V1('era-resources:ensure-start', { tick: 当前tick });
     const 结果 = await 集成.ensureEraResourcesForTick(当前tick, ['character', 'item', 'faction', 'location', 'timeline'], {
       reason: 'mvu-core-consumer-demand',
       dataRoot: 根,
     });
+    记录MVU加载阶段_V1('era-resources:ensure-resolved', { tick: 当前tick, 时代: 结果?.resourceEra || '' });
     同步MVU全局字段_V1('__LWCS_MVU_CURRENT_ERA_RESOURCE_CONTEXT_V1__', 结果);
     return { status: 'ready', ...结果 };
   } catch (错误) {
@@ -686,14 +690,18 @@ async function 加载MVU当前时代核心资源_V1() {
 }
 
 if (typeof eventOn !== 'function') throw new Error('MVU_ZOD_Entry 需要酒馆助手 eventOn 接口');
-await 确保MVU基础依赖_V1();
-await 确保项目MVU引擎_V1();
-if (typeof waitGlobalInitialized === 'function') await waitGlobalInitialized('Mvu');
+记录MVU加载阶段_V1('foundation-and-engine:await-start');
+await Promise.all([确保MVU基础依赖_V1(), 确保项目MVU引擎_V1()]);
+记录MVU加载阶段_V1('foundation-and-engine:await-resolved');
+if (typeof waitGlobalInitialized === 'function') {
+  记录MVU加载阶段_V1('mvu-global:await-start');
+  await waitGlobalInitialized('Mvu');
+  记录MVU加载阶段_V1('mvu-global:await-resolved');
+}
 const MVU执行上下文库运行时_V1 = 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__');
 if (MVU执行上下文库运行时_V1) globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = MVU执行上下文库运行时_V1;
-await 加载MVU当前时代核心资源_V1();
-
-await 加载MVU经典依赖_V1(MVU_SCHEMA_DATA_BUNDLE_FILE_V1, () =>
+const MVU时代资源加载承诺_V1 = 加载MVU当前时代核心资源_V1();
+const MVUSchema数据加载承诺_V1 = 加载MVU经典依赖_V1(MVU_SCHEMA_DATA_BUNDLE_FILE_V1, () =>
   Array.isArray(读取MVU共享全局值_V1('IntelEvents')) &&
   typeof 角色穿搭上装待补全文案_V1 === 'string' &&
   typeof globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__ === 'function' &&
@@ -737,6 +745,7 @@ await 加载MVU经典依赖_V1(MVU_SCHEMA_DATA_BUNDLE_FILE_V1, () =>
     && 必需方法.every(方法名 => typeof 运行时视图[方法名] === 'function');
   })()
 );
+await Promise.all([MVU时代资源加载承诺_V1, MVUSchema数据加载承诺_V1]);
 
 发布MVU模块状态_V1('MVU.js', 'loading', '加载并执行');
 记录MVU加载阶段_V1('mvu-import:await-start');

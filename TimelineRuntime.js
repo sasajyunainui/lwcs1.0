@@ -120,6 +120,9 @@
     }
     const collected = collectEvents(source);
     if (!collected.length) fail('TIMELINE_SOURCE_EMPTY', '时间线源没有事件: ' + safeEra, { eraId: safeEra });
+    const libraryRuntime = global.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+    const reuseCompiledEvents = typeof libraryRuntime?.isCompiledTimeline === 'function'
+      && libraryRuntime.isCompiledTimeline(source);
     const seen = new Set();
     const events = collected.map(({ source: event, path }) => {
       const parsed = parseEventId(event.标识);
@@ -146,6 +149,7 @@
           path,
         });
       }
+      if (reuseCompiledEvents) return { id: parsed.id, serial: parsed.serial, event };
       const cloned = cloneValue(event);
       cloned.标识 = parsed.id;
       cloned.触发tick = triggerTick;
@@ -321,10 +325,13 @@
   function registerTimelineSource(eraId, source) {
     const safeEra = assertEraId(eraId);
     const events = normalizeTimelineEvents(safeEra, source);
-    const fingerprint = sourceFingerprint(events);
     const existing = registrations.get(safeEra);
     if (existing) {
-      if (existing.fingerprint === fingerprint) return existing.summary;
+      if (existing.source === source) return existing.summary;
+      const fingerprint = sourceFingerprint(events);
+      const existingFingerprint = existing.fingerprint || sourceFingerprint(existing.events);
+      existing.fingerprint = existingFingerprint;
+      if (existingFingerprint === fingerprint) return existing.summary;
       fail('TIMELINE_SOURCE_ALREADY_REGISTERED', '时代时间线已经注册且内容不同: ' + safeEra, { eraId: safeEra });
     }
     const byId = new Map();
@@ -337,7 +344,8 @@
       eraId: safeEra,
       events: Object.freeze(events.slice()),
       byId,
-      fingerprint,
+      source,
+      fingerprint: null,
       summary: Object.freeze({
         eraId: safeEra,
         count: events.length,

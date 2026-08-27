@@ -291,11 +291,13 @@
     return output;
   }
 
+  const compiledTimelineSources = new WeakSet();
+
   function compileCharacterLibrary(source, profileId) {
     assertProfile(profileId);
     if (!source || typeof source !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$', source, '角色库不是对象');
     assertAuthorSource(source, profileId);
-    const output = compileDates(clone(source), profileId);
+    const output = compileDates(source, profileId);
     output.每年tick = MINUTES_PER_YEAR / MINUTES_PER_TICK;
     if (!output.角色 || typeof output.角色 !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$.角色', output.角色, '角色库缺少角色表');
     Object.entries(output.角色).forEach(([角色名, 角色记录]) => {
@@ -335,7 +337,7 @@
     assertProfile(profileId);
     if (!source || typeof source !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$', source, '时间线不是对象');
     assertAuthorSource(source, profileId);
-    const output = compileDates(clone(source), profileId);
+    const output = compileDates(source, profileId);
     const walk = (value, path) => {
       if (Array.isArray(value)) {
         const mapped = value.map((item, index) => walk(item, `${path}[${index}]`));
@@ -347,7 +349,9 @@
       Object.keys(value).forEach(key => { value[key] = walk(value[key], `${path}.${key}`); });
       return value;
     };
-    return freezeDeep(walk(output, '$'));
+    const compiled = freezeDeep(walk(output, '$'));
+    compiledTimelineSources.add(compiled);
+    return compiled;
   }
 
   function intervalMatches(record, atTime, context, profileId, path) {
@@ -1081,9 +1085,10 @@
       assertProfile(profileId);
       if (!source || typeof source !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$', source, '物品库不是对象');
       assertAuthorSource(source, profileId);
-      return freezeDeep(compileItemDurations(clone(source), profileId));
+      return freezeDeep(compileItemDurations(source, profileId));
     },
     compileTimeline,
+    isCompiledTimeline: source => !!source && typeof source === 'object' && compiledTimelineSources.has(source),
     compileFactionLibrary,
     compileLocationLibrary,
     compileLifecycleMetadata,

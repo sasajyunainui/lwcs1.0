@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Persistence_Adapter.js:99db441c20e82c31d01da4f82f3d7d4742136367e18fdbef03c9fb2e24e516ef|LWCS_MVU_Persistence_Provider.js:6a58dc159e89c0c880f50f3ee414d90a71e59f18872e00e779d97a018e1299f5|LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:315a379e38d57e17faf3dccf42eaf17e97f5969e931c6ad8ab46436ec76e787e|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:162a7a061312d44ce10b417368cc1472e33c805cb71e05d80a467cad0d8eed9c|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743 */
+/* sources-sha256: LWCS_Persistence_Adapter.js:99db441c20e82c31d01da4f82f3d7d4742136367e18fdbef03c9fb2e24e516ef|LWCS_MVU_Persistence_Provider.js:6a58dc159e89c0c880f50f3ee414d90a71e59f18872e00e779d97a018e1299f5|LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:8a5d07321714f9ba26ba8134099975dcc9a4ce371d78b5ca2d5a289383b6891b|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743 */
 ;
 /* source: LWCS_Persistence_Adapter.js */
 (function (root) {
@@ -2097,11 +2097,13 @@
     return output;
   }
 
+  const compiledTimelineSources = new WeakSet();
+
   function compileCharacterLibrary(source, profileId) {
     assertProfile(profileId);
     if (!source || typeof source !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$', source, '角色库不是对象');
     assertAuthorSource(source, profileId);
-    const output = compileDates(clone(source), profileId);
+    const output = compileDates(source, profileId);
     output.每年tick = MINUTES_PER_YEAR / MINUTES_PER_TICK;
     if (!output.角色 || typeof output.角色 !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$.角色', output.角色, '角色库缺少角色表');
     Object.entries(output.角色).forEach(([角色名, 角色记录]) => {
@@ -2141,7 +2143,7 @@
     assertProfile(profileId);
     if (!source || typeof source !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$', source, '时间线不是对象');
     assertAuthorSource(source, profileId);
-    const output = compileDates(clone(source), profileId);
+    const output = compileDates(source, profileId);
     const walk = (value, path) => {
       if (Array.isArray(value)) {
         const mapped = value.map((item, index) => walk(item, `${path}[${index}]`));
@@ -2153,7 +2155,9 @@
       Object.keys(value).forEach(key => { value[key] = walk(value[key], `${path}.${key}`); });
       return value;
     };
-    return freezeDeep(walk(output, '$'));
+    const compiled = freezeDeep(walk(output, '$'));
+    compiledTimelineSources.add(compiled);
+    return compiled;
   }
 
   function intervalMatches(record, atTime, context, profileId, path) {
@@ -2887,9 +2891,10 @@
       assertProfile(profileId);
       if (!source || typeof source !== 'object') fail('REFERENCE_UNRESOLVED', profileId, '$', source, '物品库不是对象');
       assertAuthorSource(source, profileId);
-      return freezeDeep(compileItemDurations(clone(source), profileId));
+      return freezeDeep(compileItemDurations(source, profileId));
     },
     compileTimeline,
+    isCompiledTimeline: source => !!source && typeof source === 'object' && compiledTimelineSources.has(source),
     compileFactionLibrary,
     compileLocationLibrary,
     compileLifecycleMetadata,
@@ -3625,6 +3630,9 @@
     }
     const collected = collectEvents(source);
     if (!collected.length) fail('TIMELINE_SOURCE_EMPTY', '时间线源没有事件: ' + safeEra, { eraId: safeEra });
+    const libraryRuntime = global.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+    const reuseCompiledEvents = typeof libraryRuntime?.isCompiledTimeline === 'function'
+      && libraryRuntime.isCompiledTimeline(source);
     const seen = new Set();
     const events = collected.map(({ source: event, path }) => {
       const parsed = parseEventId(event.标识);
@@ -3651,6 +3659,7 @@
           path,
         });
       }
+      if (reuseCompiledEvents) return { id: parsed.id, serial: parsed.serial, event };
       const cloned = cloneValue(event);
       cloned.标识 = parsed.id;
       cloned.触发tick = triggerTick;
@@ -3826,10 +3835,13 @@
   function registerTimelineSource(eraId, source) {
     const safeEra = assertEraId(eraId);
     const events = normalizeTimelineEvents(safeEra, source);
-    const fingerprint = sourceFingerprint(events);
     const existing = registrations.get(safeEra);
     if (existing) {
-      if (existing.fingerprint === fingerprint) return existing.summary;
+      if (existing.source === source) return existing.summary;
+      const fingerprint = sourceFingerprint(events);
+      const existingFingerprint = existing.fingerprint || sourceFingerprint(existing.events);
+      existing.fingerprint = existingFingerprint;
+      if (existingFingerprint === fingerprint) return existing.summary;
       fail('TIMELINE_SOURCE_ALREADY_REGISTERED', '时代时间线已经注册且内容不同: ' + safeEra, { eraId: safeEra });
     }
     const byId = new Map();
@@ -3842,7 +3854,8 @@
       eraId: safeEra,
       events: Object.freeze(events.slice()),
       byId,
-      fingerprint,
+      source,
+      fingerprint: null,
       summary: Object.freeze({
         eraId: safeEra,
         count: events.length,
