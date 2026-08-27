@@ -73,7 +73,7 @@ function 记录MVU加载阶段_V1(阶段, 详情 = {}) {
     ...详情,
   };
   MVU加载诊断_V1.records.push(记录);
-  console.info('[LWCS][MVU加载诊断]', 记录);
+  console.info(`[LWCS][MVU加载诊断] ${JSON.stringify(记录)}`);
   return 记录;
 }
 function 输出MVU加载诊断_V1() {
@@ -85,8 +85,7 @@ function 输出MVU加载诊断_V1() {
       响应等待毫秒: Number((项目.responseStart - 项目.startTime).toFixed(2)),
       传输字节: Number(项目.transferSize) || 0,
     }));
-  console.table(MVU加载诊断_V1.records);
-  console.table(MVU加载诊断_V1.resources);
+  console.info(`[LWCS][MVU加载诊断汇总] ${JSON.stringify(MVU加载诊断_V1)}`);
   return MVU加载诊断_V1;
 }
 globalThis.__LWCS_MVU_LOAD_TRACE_V1__ = MVU加载诊断_V1;
@@ -756,9 +755,11 @@ await 加载MVU经典依赖_V1(MVU_SCHEMA_RUNTIME_BUNDLE_FILE_V1, () =>
 try {
   await 导入MVU候选模块_V1('MVU.js');
   记录MVU加载阶段_V1('mvu-import:await-resolved');
+  输出MVU加载诊断_V1();
   发布MVU模块状态_V1('MVU.js', 'loaded', '完成');
 } catch (错误) {
   记录MVU加载阶段_V1('mvu-import:await-failed', { 错误: 错误?.message || String(错误 || 'unknown_error') });
+  输出MVU加载诊断_V1();
   发布MVU模块状态_V1('MVU.js', 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
   throw 错误;
 }
