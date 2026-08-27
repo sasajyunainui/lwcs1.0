@@ -58,6 +58,45 @@ const MVU入口启动代号_V1 = (() => {
     : Number(MVU共享启动状态_V1.mvuGeneration) || 0;
 })();
 const MVU入口尝试代号_V1 = String(读取MVU入口参数_V1('lwcs_attempt') || '');
+const MVU加载诊断起点_V1 = performance.now();
+const MVU加载诊断_V1 = {
+  version: '1.0.0',
+  generation: MVU入口启动代号_V1,
+  attempt: MVU入口尝试代号_V1,
+  records: [],
+  resources: [],
+};
+function 记录MVU加载阶段_V1(阶段, 详情 = {}) {
+  const 记录 = {
+    阶段: String(阶段 || 'unknown'),
+    经过毫秒: Number((performance.now() - MVU加载诊断起点_V1).toFixed(2)),
+    ...详情,
+  };
+  MVU加载诊断_V1.records.push(记录);
+  console.info('[LWCS][MVU加载诊断]', 记录);
+  return 记录;
+}
+function 输出MVU加载诊断_V1() {
+  MVU加载诊断_V1.resources = performance.getEntriesByType('resource')
+    .filter(项目 => /\/(?:MVU|LWCS_MVU)[^/?#]*\.js(?:[?#]|$)/i.test(String(项目.name || '')))
+    .map(项目 => ({
+      地址: 项目.name,
+      耗时毫秒: Number(项目.duration.toFixed(2)),
+      响应等待毫秒: Number((项目.responseStart - 项目.startTime).toFixed(2)),
+      传输字节: Number(项目.transferSize) || 0,
+    }));
+  console.table(MVU加载诊断_V1.records);
+  console.table(MVU加载诊断_V1.resources);
+  return MVU加载诊断_V1;
+}
+globalThis.__LWCS_MVU_LOAD_TRACE_V1__ = MVU加载诊断_V1;
+globalThis.__LWCS_MARK_MVU_LOAD_V1__ = 记录MVU加载阶段_V1;
+globalThis.__LWCS_DUMP_MVU_LOAD_TRACE_V1__ = 输出MVU加载诊断_V1;
+try {
+  MVU共享宿主窗口_V1.__LWCS_MVU_LOAD_TRACE_V1__ = MVU加载诊断_V1;
+  MVU共享宿主窗口_V1.__LWCS_DUMP_MVU_LOAD_TRACE_V1__ = 输出MVU加载诊断_V1;
+} catch (_) {}
+记录MVU加载阶段_V1('entry:module-start', { 入口地址: MVU_ZOD_ENTRY_URL_V1.href });
 function 是当前MVU启动轮次_V1() {
   return Number(MVU共享宿主窗口_V1.__LWCS_MVU_ACTIVE_GENERATION_V1__) === MVU入口启动代号_V1
     && (!MVU入口尝试代号_V1 || MVU共享宿主窗口_V1.__LWCS_MVU_ACTIVE_ENTRY_ATTEMPT_V1__ === MVU入口尝试代号_V1);
@@ -353,10 +392,29 @@ function 创建MVU资源所有者_V1() {
         记录.phase = 'execute';
         记录.executionStarted = true;
         记录.executeCount += 1;
+        const 导入开始时刻 = performance.now();
+        记录MVU加载阶段_V1('dynamic-import:start', {
+          文件: 记录.relativePath,
+          地址,
+          尝试: 记录.fetchAttempts,
+        });
         try {
           模块 = await MVU请求超时_V1(import(地址), `导入 ${地址}`, 120000);
+          记录MVU加载阶段_V1('dynamic-import:resolved', {
+            文件: 记录.relativePath,
+            地址,
+            尝试: 记录.fetchAttempts,
+            本次耗时毫秒: Number((performance.now() - 导入开始时刻).toFixed(2)),
+          });
           break;
         } catch (错误) {
+          记录MVU加载阶段_V1('dynamic-import:failed', {
+            文件: 记录.relativePath,
+            地址,
+            尝试: 记录.fetchAttempts,
+            本次耗时毫秒: Number((performance.now() - 导入开始时刻).toFixed(2)),
+            错误: 错误?.message || String(错误 || 'unknown_error'),
+          });
           if (错误?.code === 'LWCS_RESOURCE_TIMEOUT') throw 错误;
           错误列表.push(`${地址} ${错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error')}`);
         }
@@ -694,10 +752,13 @@ await 加载MVU经典依赖_V1(MVU_SCHEMA_RUNTIME_BUNDLE_FILE_V1, () =>
 );
 
 发布MVU模块状态_V1('MVU.js', 'loading', '加载并执行');
+记录MVU加载阶段_V1('mvu-import:await-start');
 try {
   await 导入MVU候选模块_V1('MVU.js');
+  记录MVU加载阶段_V1('mvu-import:await-resolved');
   发布MVU模块状态_V1('MVU.js', 'loaded', '完成');
 } catch (错误) {
+  记录MVU加载阶段_V1('mvu-import:await-failed', { 错误: 错误?.message || String(错误 || 'unknown_error') });
   发布MVU模块状态_V1('MVU.js', 'failed', '失败', 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_error'));
   throw 错误;
 }

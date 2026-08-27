@@ -1,5 +1,7 @@
 import { registerMvuSchema } from './MVU_Zod_Bundle.js';
 
+globalThis.__LWCS_MARK_MVU_LOAD_V1__?.('mvu-module:body-start');
+
 globalThis.__LWCS_REGISTER_MVU_SCHEMA__ = registerMvuSchema;
 
 const DEFAULT_NEW_GAME_TICK = 20000 * 51840;
@@ -1184,6 +1186,8 @@ export const Schema = z
   .preprocess(markPlayerCharacterInSchemaInput, SchemaRootObject)
   .transform(规范化Schema根转换_V1);
 
+globalThis.__LWCS_MARK_MVU_LOAD_V1__?.('mvu-module:schema-ready');
+
 globalThis.__LWCS_MVU_SCHEMA__ = Schema;
 
 globalThis.__LWCS_MVU_SCHEMA_PARTS__ = { CharacterSchema, SkillStructSchema, SoulRingSchema, SoulSpiritSchema, BloodlineRingSchema };
@@ -1193,10 +1197,13 @@ try { if (globalThis.parent && globalThis.parent !== globalThis) { globalThis.pa
 try { if (globalThis.top && globalThis.top !== globalThis) { globalThis.top.__LWCS_MVU_SCHEMA__ = Schema; globalThis.top.__LWCS_MVU_SCHEMA_PARTS__ = globalThis.__LWCS_MVU_SCHEMA_PARTS__; } } catch (错误) {}
 
 try {
+  globalThis.__LWCS_MARK_MVU_LOAD_V1__?.('mvu-module:register-start');
   registerMvuSchema(Schema);
+  globalThis.__LWCS_MARK_MVU_LOAD_V1__?.('mvu-module:register-resolved');
   globalThis.__LWCS_MVU变量结构已注册__ = true;
   if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_MVU变量结构已注册__ = true;
   if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_MVU变量结构已注册__ = true;
 } catch (错误) {
+  globalThis.__LWCS_MARK_MVU_LOAD_V1__?.('mvu-module:register-failed', { 错误: 错误?.message || String(错误 || 'unknown_error') });
   console.warn('LWCS MVU变量结构注册失败', 错误);
 }
