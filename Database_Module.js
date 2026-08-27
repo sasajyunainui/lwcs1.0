@@ -4723,25 +4723,17 @@ $CONTENT
     function 读取正文后置上下文_ACU() {
         return generationGate_ACU.正文后置上下文 || null;
     }
-    function shouldProcessAutoTableUpdateForGenerationEnded_ACU() {
-        const 生成上下文 = generationGate_ACU.lastGeneration;
-        if (!生成上下文 || 生成上下文.dryRun)
-            return false;
-        if (isQuietLikeGeneration_ACU(生成上下文.type, 生成上下文.params) || 生成上下文.params?.automatic_trigger)
-            return false;
-        return !!读取正文后置上下文_ACU();
-    }
     async function 执行生成结束后置更新_ACU(事件名 = 'unknown', 事件消息编号 = null) {
         if (生成结束后置状态_ACU.处理中) {
             logDebug_ACU(`[生成结束后置] 已有同轮处理正在进行，复用处理结果: event=${事件名}`);
             return await 生成结束后置状态_ACU.处理中;
         }
         const 处理Promise = (async () => {
-            if (!shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
+            const 正文上下文 = 读取正文后置上下文_ACU();
+            if (!正文上下文) {
                 logWarn_ACU(`ACU: Skip auto table update because no 正文生成上下文 is available. event=${事件名}`);
                 return { action: 'skipped', reason: 'no_generation_context' };
             }
-            const 正文上下文 = 读取正文后置上下文_ACU();
             if (正文上下文?.epoch !== databaseGenerationEpoch_ACU) {
                 generationGate_ACU.正文后置上下文 = null;
                 return { action: 'skipped', reason: 'stale_generation' };

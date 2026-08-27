@@ -1165,7 +1165,6 @@
   }
 
   let 冷归档按钮已由当前脚本绑定 = false;
-  let 消息统计按钮已由当前脚本绑定 = false;
 
   function 注册冷归档脚本按钮() {
     try {
@@ -1302,63 +1301,39 @@
     return true;
   }
 
-  function 注册消息统计脚本按钮() {
+  async function 打开消息统计入口() {
+    console.info('[LWCS][消息统计] 已收到按钮事件');
     try {
-      if (!入口实例仍活动()) return true;
-      if (消息统计按钮已由当前脚本绑定) return true;
-      if (
-        typeof appendInexistentScriptButtons !== 'function' ||
-        typeof getButtonEvent !== 'function' ||
-        typeof eventOn !== 'function'
-      ) {
-        return false;
+      const 已有界面 = 查找消息统计界面();
+      if (已有界面) {
+        await 打开消息统计界面(已有界面);
+        return;
       }
-      appendInexistentScriptButtons([{ name: '消息统计', visible: true }]);
-      const 订阅 = eventOn(getButtonEvent('消息统计'), async () => {
-        console.info('[LWCS][消息统计] 已收到按钮事件');
-        try {
-          const 已有界面 = 查找消息统计界面();
-          if (已有界面) {
-            await 打开消息统计界面(已有界面);
-            return;
-          }
-          显示入口按钮提示('消息统计加载中…', 'info', 1800);
-          重置失效的消息统计挂件();
-          await 确保模块已加载('请求监控挂件', { 来源: 'request_monitor_button', 允许失败降级: false, 抛错: true });
-          const 等待开始 = Date.now();
-          let 界面 = null;
-          while (!界面 && Date.now() - 等待开始 < 5000) {
-            界面 = 查找消息统计界面();
-            if (!界面) await 睡眠(100);
-          }
-          await 打开消息统计界面(界面);
-        } catch (错误) {
-          console.error('[MVU] 消息统计按钮执行失败:', 错误);
-          显示入口按钮提示(构建入口按钮错误文本('消息统计', 错误), 'error');
-        }
-      });
-      if (订阅 && typeof 订阅.stop === 'function') 入口实例.subscriptions.push(订阅);
-      消息统计按钮已由当前脚本绑定 = true;
-      宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__ = {
-        commit: 共享资源提交哈希,
-        boundAt: Date.now(),
-      };
-      return true;
+      显示入口按钮提示('消息统计加载中…', 'info', 1800);
+      重置失效的消息统计挂件();
+      await 确保模块已加载('请求监控挂件', { 来源: 'request_monitor_button', 允许失败降级: false, 抛错: true });
+      const 等待开始 = Date.now();
+      let 界面 = null;
+      while (!界面 && Date.now() - 等待开始 < 5000) {
+        界面 = 查找消息统计界面();
+        if (!界面) await 睡眠(100);
+      }
+      await 打开消息统计界面(界面);
     } catch (错误) {
-      console.warn('[MVU] 消息统计按钮注册失败:', 错误);
-      return false;
+      console.error('[MVU] 消息统计按钮执行失败:', 错误);
+      显示入口按钮提示(构建入口按钮错误文本('消息统计', 错误), 'error');
     }
   }
 
-  function 安排消息统计脚本按钮注册() {
-    const 启动时间 = Date.now();
-    const 尝试注册 = () => {
-      if (!入口实例仍活动()) return;
-      if (注册消息统计脚本按钮()) return;
-      if (Date.now() - 启动时间 < 12000) setTimeout(尝试注册, 500);
-    };
-    尝试注册();
-  }
+  // TavernHelper 按钮事件必须留在原脚本 iframe；父页面入口只暴露业务动作。
+  宿主窗口.__LWCS_OPEN_REQUEST_MONITOR_V1__ = 打开消息统计入口;
+  入口实例.subscriptions.push({
+    stop() {
+      if (宿主窗口.__LWCS_OPEN_REQUEST_MONITOR_V1__ === 打开消息统计入口) {
+        delete 宿主窗口.__LWCS_OPEN_REQUEST_MONITOR_V1__;
+      }
+    },
+  });
 
   function 清理已废弃防护配置() {
     try {
@@ -1520,7 +1495,6 @@
   }
 
   安排冷归档脚本按钮注册();
-  安排消息统计脚本按钮注册();
   安排已废弃防护配置清理();
   监控并启动引导();
 })();
