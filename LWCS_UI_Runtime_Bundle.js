@@ -225782,6 +225782,13 @@ $CONTENT
                 // [剧情推进] 拦截用户输入进行剧情规划
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS, async (type, params, dryRun) => {
+                        if (!读取正文后置上下文_ACU()
+                            && !dryRun
+                            && !isQuietLikeGeneration_ACU(type, params)
+                            && !params?.automatic_trigger) {
+                            recordGenerationContext_ACU(type, params, dryRun);
+                            logDebug_ACU(`[生成结束后置] 在 GENERATION_AFTER_COMMANDS 补记正文生成上下文: type=${type}`);
+                        }
                         // 前置过滤（纯 UI/宿主层判断）
                         const shouldProcessSummaryVectorIndex = shouldProcessSummaryVectorIndexForGeneration_ACU(type, params, dryRun);
                         const shouldProcessPlot = shouldProcessPlotForGeneration_ACU(type, params, dryRun);
