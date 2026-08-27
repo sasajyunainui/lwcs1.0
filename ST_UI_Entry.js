@@ -933,19 +933,69 @@
 
     宿主窗口.getAllVariables = async function () {
       try {
+        const 候选窗口 = [宿主窗口];
+        if (window && !候选窗口.includes(window)) 候选窗口.push(window);
+        const 提供者 = 候选窗口
+          .map(候选 => 候选?.__LWCS_MVU_PERSISTENCE_PROVIDER_V1__)
+          .find(候选 => 候选 && typeof 候选.open === 'function');
+        if (提供者) {
+          const 上下文 = typeof 宿主窗口.SillyTavern?.getContext === 'function'
+            ? 宿主窗口.SillyTavern.getContext()
+            : null;
+          const 聊天标识 = String(上下文?.chatId ?? 上下文?.chat_id ?? '').trim();
+          const 打开结果 = await Promise.resolve(
+            提供者.open(聊天标识 ? { fallbackStableChatId: 聊天标识 } : {}),
+          );
+          const 句柄 = 打开结果?.state === 'committed' ? 打开结果.handle : null;
+          if (句柄?.isLive?.()) {
+            await Promise.resolve(句柄.awaitIdle?.());
+            const 热态 = 句柄.getHotState?.();
+            if (热态 && typeof 热态 === 'object') return 热态;
+          }
+        }
+      } catch (错误) {}
+
+      try {
         const mvu = 宿主窗口.Mvu || window.Mvu;
         if (mvu && typeof mvu.getMvuData === 'function') {
-          const data = await Promise.resolve(mvu.getMvuData({ type: 'message', message_id: 'latest' }));
-          if (data) return data;
+          const 上下文 = typeof 宿主窗口.SillyTavern?.getContext === 'function'
+            ? 宿主窗口.SillyTavern.getContext()
+            : null;
+          const 聊天 = Array.isArray(上下文?.chat) ? 上下文.chat : [];
+          const 末条 = 聊天[聊天.length - 1];
+          const 当前楼层 = 聊天.length
+            ? Number(末条?.message_id ?? 末条?.id ?? 聊天.length - 1)
+            : NaN;
+          const 读取选项 = [
+            ...(Number.isFinite(当前楼层)
+              ? [{ type: 'message', message_id: Math.trunc(当前楼层) }]
+              : []),
+            { type: 'chat' },
+            { type: 'message', message_id: 'latest' },
+          ];
+          for (const 选项 of 读取选项) {
+            const data = await Promise.resolve(mvu.getMvuData(选项));
+            if (data && typeof data === 'object') return data;
+          }
         }
       } catch (错误) {}
 
       try {
         if (宿主窗口.TavernHelper && typeof 宿主窗口.TavernHelper.getVariables === 'function') {
-          const latest = await Promise.resolve(
-            宿主窗口.TavernHelper.getVariables({ type: 'message', message_id: 'latest' }),
-          );
-          return latest || null;
+          const 上下文 = typeof 宿主窗口.SillyTavern?.getContext === 'function'
+            ? 宿主窗口.SillyTavern.getContext()
+            : null;
+          const 聊天 = Array.isArray(上下文?.chat) ? 上下文.chat : [];
+          const 末条 = 聊天[聊天.length - 1];
+          const 当前楼层 = 聊天.length
+            ? Number(末条?.message_id ?? 末条?.id ?? 聊天.length - 1)
+            : NaN;
+          for (const 消息编号 of Number.isFinite(当前楼层) ? [Math.trunc(当前楼层), 'latest'] : ['latest']) {
+            const data = await Promise.resolve(
+              宿主窗口.TavernHelper.getVariables({ type: 'message', message_id: 消息编号 }),
+            );
+            if (data && typeof data === 'object') return data;
+          }
         }
       } catch (错误) {}
 
