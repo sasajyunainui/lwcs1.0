@@ -671,7 +671,7 @@ index e144b79..761834e 100644
 +                },
 +            ],
 +            {
-+                refresh: 'affected',
++                refresh: 'none',
 +            }
 +        );
 +        refresh_current();
