@@ -105,7 +105,7 @@ const EquipmentSchema = z
         材质: z.string().prefault('无').describe('武器实际材质，用于装备兼容性判定'),
         品阶: z.string().prefault('无').describe('品阶如: 魂导器/神器/超神器'),
         特性: z
-          .record(z.string(), z.object({ 描述: z.string().prefault('无') }).prefault({}))
+          .record(z.string(), z.object({ 描述: z.string().prefault('无'), 限定来源: z.string().optional() }).prefault({}))
           .prefault({})
           .describe('附带的绝对特性，如:无视防御/吞噬/绝对禁锢'),
         属性加成: z
@@ -127,7 +127,7 @@ const EquipmentSchema = z
         品阶: z.string().prefault('无').describe('普通防具、防护装备或魂导护具品阶'),
         装备状态: z.string().prefault('未装备'),
         特性: z
-          .record(z.string(), z.object({ 描述: z.string().prefault('无') }).prefault({}))
+          .record(z.string(), z.object({ 描述: z.string().prefault('无'), 限定来源: z.string().optional() }).prefault({}))
           .prefault({})
           .describe('附带的防护特性，如:抗冲击/减伤/元素抗性'),
         属性加成: z
@@ -251,6 +251,7 @@ const SkillStructSchema = z
       })
       .optional(),
     装备要求: z.record(z.string(), z.any()).optional().describe('技能根层装备要求；效果级装备要求位于对应_效果数组条目'),
+    限定来源: z.string().optional().describe('技能生效所限定的来源身份或装备来源；无值表示无来源限制'),
     _效果数组: z.array(z.any()).prefault([]).describe('打包后的_效果数组，供前端显示和后续战斗模块解析'),
     副作用列表: z.array(z.any()).optional(),
   })
@@ -1164,7 +1165,14 @@ const SchemaRootObject = z
               .describe('掌握先手权的角色名。若为"无"则代表公平开局；若有名字则代表突发偷袭，防守方首回合反应率减半'),
             允许撤离: z.boolean().prefault(true).describe('是否允许逃跑。若为false则代表背水一战，触发困兽机制'),
             回合: z.coerce.number().prefault(0).describe('当前回合数'),
-            环境: z.string().prefault('正常').describe('战场环境或全局领域法则'),
+            环境: z
+              .object({
+                地点: z.string().prefault('正常'),
+                临时规则ID: z.array(z.string()).prefault([]),
+              })
+              .strict()
+              .prefault({})
+              .describe('战场地点与临时规则ID；规则内容由地点/运行时解析'),
             战斗意图: z
               .enum(['点到为止', '尽量生擒', '重伤压制', '必杀'])
               .prefault('点到为止')

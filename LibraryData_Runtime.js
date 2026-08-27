@@ -400,7 +400,40 @@
   const FACTION_RECORD_KEYS = new Set(['类型', '别名', '关键词', '描述', '现状描述', '影响力', '规模', '状态', '上级势力', '关系', '战力统计']);
   const FACTION_RELATION_KEYS = new Set(['态度']);
   const FACTION_BATTLE_KEYS = new Set(['极限斗罗', '超级斗罗', '封号斗罗']);
-  const LOCATION_RECORD_KEYS = new Set(['规范名', '目标路径', '实例化策略', '节点']);
+  const LOCATION_REGION_PROFILES = Object.freeze({
+    前哨: Object.freeze({ 设施上限: 1 }),
+    小镇: Object.freeze({ 设施上限: 2 }),
+    小城: Object.freeze({ 设施上限: 3 }),
+    中型城市: Object.freeze({ 设施上限: 4 }),
+    大型城市: Object.freeze({ 设施上限: 5 }),
+    首都: Object.freeze({ 设施上限: 6 }),
+  });
+  const LOCATION_TERRAIN_PROFILES = Object.freeze({
+    森林: Object.freeze({ 设施上限: 2, 危险等级: 2, 探索难度: 35, 修炼环境: Object.freeze({ 魂力倍率: 1.02, 精神力倍率: 1.02, 生命力倍率: 1.04 }) }),
+    极寒: Object.freeze({ 设施上限: 1, 危险等级: 4, 探索难度: 60, 修炼环境: Object.freeze({ 魂力倍率: 0.95, 精神力倍率: 1, 生命力倍率: 0.9 }) }),
+    山地: Object.freeze({ 设施上限: 2, 危险等级: 2, 探索难度: 45, 修炼环境: Object.freeze({ 魂力倍率: 1, 精神力倍率: 1, 生命力倍率: 1 }) }),
+    平原: Object.freeze({ 设施上限: 3, 危险等级: 1, 探索难度: 30, 修炼环境: Object.freeze({ 魂力倍率: 1, 精神力倍率: 1, 生命力倍率: 1 }) }),
+    深海: Object.freeze({ 设施上限: 1, 危险等级: 4, 探索难度: 65, 修炼环境: Object.freeze({ 魂力倍率: 1.05, 精神力倍率: 1.02, 生命力倍率: 0.9 }) }),
+    位面: Object.freeze({ 设施上限: 1, 危险等级: 5, 探索难度: 75, 修炼环境: Object.freeze({ 魂力倍率: 0.8, 精神力倍率: 0.9, 生命力倍率: 0.85 }) }),
+    太空: Object.freeze({ 设施上限: 2, 危险等级: 5, 探索难度: 70, 修炼环境: Object.freeze({ 魂力倍率: 0.9, 精神力倍率: 1.05, 生命力倍率: 0.8 }) }),
+  });
+  const LOCATION_FUNCTION_PROFILES = Object.freeze({
+    学院: Object.freeze({ 默认等级: 3, 开放时段: '06:00-22:00' }),
+    锻造: Object.freeze({ 默认等级: 3, 开放时段: '08:00-22:00' }),
+    工业: Object.freeze({ 默认等级: 3, 开放时段: '08:00-22:00' }),
+    商业: Object.freeze({ 默认等级: 3, 开放时段: '08:00-22:00' }),
+    港口: Object.freeze({ 默认等级: 3, 开放时段: '00:00-24:00' }),
+    军方: Object.freeze({ 默认等级: 4, 开放时段: '00:00-24:00' }),
+    总部: Object.freeze({ 默认等级: 4, 开放时段: '08:00-22:00' }),
+    医疗: Object.freeze({ 默认等级: 3, 开放时段: '00:00-24:00' }),
+    交通: Object.freeze({ 默认等级: 3, 开放时段: '05:00-24:00' }),
+    资源: Object.freeze({ 默认等级: 2, 开放时段: '06:00-22:00' }),
+    黑市: Object.freeze({ 默认等级: 2, 开放时段: '18:00-06:00' }),
+    拍卖: Object.freeze({ 默认等级: 4, 开放时段: '18:00-22:00' }),
+  });
+  const ERA_FACILITY_CAPS = Object.freeze({ dldl: 3, jueshitangmen: 4, current: 5, zjdl: 6 });
+  const LOCATION_WORLD_RULE_KEYS = new Set(['区域档案', '功能档案', '覆盖']);
+  const LOCATION_RECORD_KEYS = new Set(['规范名', '目标路径', '实例化策略', '节点', '世界规则']);
   const LOCATION_NODE_KEYS = new Set(['类型', '别名', '关键词', '描述', '现状描述', '掌控势力', '状态', '人口', '守护军团', '经济状况', 'x', 'y', '商店']);
   const GENERIC_HIT_TERMS = new Set(['学院', '城市', '军团', '协会', '家族', '帝国', '大陆', '总部', '分部', '组织', '地点', '宗门']);
   const compiledFactionMeta = new WeakMap();
@@ -735,6 +768,24 @@
     return compiled;
   }
 
+  function compileLocationWorldRules(value, path) {
+    assertPlainRecord(value, path, '地点世界规则');
+    assertStrictKeys(value, LOCATION_WORLD_RULE_KEYS, path);
+    const region = requiredString(value.区域档案, `${path}.区域档案`, '区域档案');
+    const functions = stringList(value.功能档案, `${path}.功能档案`, '功能档案');
+    functions.forEach(functionName => {
+      if (!LOCATION_FUNCTION_PROFILES[functionName]) {
+        libraryFail('LIBRARY_FIELD_INVALID', `${path}.功能档案`, functionName, `未知功能档案: ${functionName}`);
+      }
+    });
+    assertPlainRecord(value.覆盖, `${path}.覆盖`, '地点规则覆盖');
+    return {
+      区域档案: region,
+      功能档案: functions,
+      覆盖: clone(value.覆盖),
+    };
+  }
+
   function compileLocationLibrary(source) {
     assertPlainRecord(source, '$', '地点库');
     assertStrictKeys(source, new Set(['版本', '地点']), '$');
@@ -777,7 +828,17 @@
         assertPlainRecord(sourceNode.商店, `$.地点.${recordId}.节点.商店`, '商店');
         node.商店 = clone(sourceNode.商店);
       }
-      output.地点[recordId] = { 规范名: canonicalName, 目标路径: targetPath, 实例化策略: strategy, 节点: node };
+      if (sourceRecord.世界规则 === undefined) {
+        libraryFail('LIBRARY_FIELD_INVALID', `$.地点.${recordId}.世界规则`, sourceRecord.世界规则, '地点记录必须声明世界规则');
+      }
+      const worldRules = compileLocationWorldRules(sourceRecord.世界规则, `$.地点.${recordId}.世界规则`);
+      output.地点[recordId] = {
+        规范名: canonicalName,
+        目标路径: targetPath,
+        实例化策略: strategy,
+        节点: node,
+        世界规则: worldRules,
+      };
       if (!names.has(canonicalName)) names.set(canonicalName, []);
       names.get(canonicalName).push(recordId);
       const targetKey = pathKey(targetPath);
@@ -1065,6 +1126,455 @@
     return operations;
   }
 
+  function normalizeLocationPath(value) {
+    return String(value || '')
+      .trim()
+      .replace(/^(?:斗罗大陆|斗灵大陆)-?/, '')
+      .split(/[-/]/)
+      .map(segment => segment.trim())
+      .filter(Boolean);
+  }
+
+  function readWorldLocationNode(dataRoot, pathSegments) {
+    const root = dataRoot?.world?.地点;
+    if (!isPlainRecord(root) || !pathSegments.length) return null;
+    const candidates = [pathSegments];
+    if (pathSegments.length > 1 && Object.prototype.hasOwnProperty.call(root, pathSegments[1])) candidates.push(pathSegments.slice(1));
+    for (const candidate of candidates) {
+      let current = root;
+      let valid = true;
+      for (let index = 0; index < candidate.length; index += 1) {
+        if (!isPlainRecord(current) || !isPlainRecord(current[candidate[index]])) {
+          valid = false;
+          break;
+        }
+        current = current[candidate[index]];
+        if (index < candidate.length - 1) current = current.子节点;
+      }
+      if (valid && isPlainRecord(current)) return current;
+    }
+    return null;
+  }
+
+  function selectLocationRecordByPath(library, pathSegments) {
+    const meta = compiledLocationMeta.get(library);
+    const ids = meta?.paths?.get(pathKey(pathSegments)) || [];
+    if (!ids.length) return null;
+    const recordId = ids.find(id => library.地点[id]?.实例化策略 === 'insert') || ids[0];
+    return library.地点[recordId] ? { recordId, record: library.地点[recordId] } : null;
+  }
+
+  function resolveStaticLocationView(library, query, currentPath = []) {
+    const raw = String(query || '').trim();
+    if (!raw || !library) return null;
+    const normalized = normalizeLocationPath(raw);
+    const candidates = Array.from(new Set([
+      raw,
+      normalized.join('-'),
+      normalized[normalized.length - 1] || '',
+    ].filter(Boolean)));
+    for (const candidate of candidates) {
+      const resolved = resolveLocation(candidate, currentPath, { library });
+      if (resolved.status !== 'resolved' || !resolved.recordId) continue;
+      const record = library.地点[resolved.recordId];
+      if (!record) continue;
+      return {
+        resolved: true,
+        dynamic: false,
+        recordId: resolved.recordId,
+        name: record.规范名,
+        path: [...record.目标路径],
+        node: clone(record.节点),
+        worldRules: clone(record.世界规则),
+        source: 'static-library',
+      };
+    }
+    const pathRecord = selectLocationRecordByPath(library, normalized);
+    if (!pathRecord) return null;
+    return {
+      resolved: true,
+      dynamic: false,
+      recordId: pathRecord.recordId,
+      name: pathRecord.record.规范名,
+      path: [...pathRecord.record.目标路径],
+      node: clone(pathRecord.record.节点),
+      worldRules: clone(pathRecord.record.世界规则),
+      source: 'static-library',
+      overlay: null,
+    };
+  }
+
+  function resolveDynamicLocationView(dataRoot, library, query) {
+    const dynamicTable = dataRoot?.world?.动态地点;
+    if (!isPlainRecord(dynamicTable)) return null;
+    const raw = String(query || '').trim();
+    const normalized = normalizeLocationPath(raw);
+    const leaf = normalized[normalized.length - 1] || raw;
+    const candidates = Array.from(new Set([raw, leaf].filter(Boolean)));
+    let hit = null;
+    for (const candidate of candidates) {
+      if (isPlainRecord(dynamicTable[candidate])) {
+        hit = [candidate, dynamicTable[candidate]];
+        break;
+      }
+    }
+    if (!hit) {
+      hit = Object.entries(dynamicTable).find(([name]) => name === leaf || (raw && raw.endsWith(`-${name}`))) || null;
+    }
+    if (!hit) return null;
+    const [name, node] = hit;
+    const parentName = String(node.归属父节点 || '').trim();
+    const parent = resolveStaticLocationView(library, parentName, normalizeLocationPath(parentName).slice(0, -1));
+    const parentPath = parent?.path || normalizeLocationPath(parentName);
+    return {
+      resolved: true,
+      dynamic: true,
+      recordId: `dynamic:${name}`,
+      name,
+      path: [...parentPath, name],
+      node: clone(node),
+      worldRules: {
+        区域档案: parent?.worldRules?.区域档案 || '平原',
+        功能档案: [],
+        覆盖: {},
+      },
+      source: 'world.动态地点',
+      parent,
+    };
+  }
+
+  function resolveWorldLocationView(dataRoot, library, query, currentPath = []) {
+    const dynamic = resolveDynamicLocationView(dataRoot, library, query);
+    if (dynamic) return dynamic;
+    const staticView = resolveStaticLocationView(library, query, currentPath);
+    if (!staticView) return null;
+    const overlay = readWorldLocationNode(dataRoot, staticView.path);
+    if (overlay) staticView.node = { ...staticView.node, ...clone(overlay) };
+    staticView.source = overlay ? 'world.地点' : staticView.source;
+    return staticView;
+  }
+
+  function parseClockMinute(value) {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+    if (!match) return null;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour < 0 || hour > 24 || minute < 0 || minute > 59 || (hour === 24 && minute !== 0)) return null;
+    return hour * 60 + minute;
+  }
+
+  function parseOpeningWindow(value) {
+    const match = String(value || '').trim().match(/^(.+?)-(.*)$/);
+    if (!match) return null;
+    const start = parseClockMinute(match[1]);
+    const end = parseClockMinute(match[2]);
+    return start === null || end === null ? null : { start, end };
+  }
+
+  function isOpeningRangeAvailable(window, startMinute, durationMinutes) {
+    if (!window) return true;
+    if (window.start === 0 && window.end === 1440) return true;
+    const intervals = window.start < window.end
+      ? [[window.start, window.end]]
+      : [[window.start, 1440], [0, window.end]];
+    const duration = Math.max(0, Number(durationMinutes || 0));
+    const start = Math.max(0, Number(startMinute || 0));
+    if (!(duration > 0)) {
+      const local = start % MINUTES_PER_DAY;
+      return intervals.some(([from, to]) => local >= from && local < to);
+    }
+    let cursor = start;
+    const end = start + duration;
+    while (cursor < end) {
+      const dayEnd = (Math.floor(cursor / MINUTES_PER_DAY) + 1) * MINUTES_PER_DAY;
+      const segmentEnd = Math.min(end, dayEnd);
+      const localStart = cursor % MINUTES_PER_DAY;
+      const localEnd = segmentEnd % MINUTES_PER_DAY || (segmentEnd === dayEnd ? MINUTES_PER_DAY : 0);
+      if (!intervals.some(([from, to]) => localStart >= from && localEnd <= to)) return false;
+      cursor = segmentEnd;
+    }
+    return true;
+  }
+
+  function buildWorldActionTime(dataRoot, durationTicks) {
+    const rawTick = Number(dataRoot?.world?.时间?.tick);
+    const tick = Number.isFinite(rawTick) && rawTick >= 0 ? Math.round(rawTick * 10) / 10 : null;
+    const duration = Number.isFinite(Number(durationTicks)) && Number(durationTicks) >= 0
+      ? Math.round(Number(durationTicks) * 10) / 10
+      : 0;
+    if (tick === null) return { tick: null, 持续tick: duration, 开始分钟: null, 结束分钟: null, 日内分钟: null, 日期: null };
+    const startMinutes = tick * MINUTES_PER_TICK;
+    const endMinutes = startMinutes + duration * MINUTES_PER_TICK;
+    const calendar = totalMinutes => {
+      const wholeMinutes = Math.max(0, Math.floor(totalMinutes));
+      const days = Math.floor(wholeMinutes / MINUTES_PER_DAY);
+      const minuteOfDay = wholeMinutes % MINUTES_PER_DAY;
+      return {
+        年: Math.floor(days / (DAYS_PER_MONTH * MONTHS_PER_YEAR)),
+        月: Math.floor(days % (DAYS_PER_MONTH * MONTHS_PER_YEAR) / DAYS_PER_MONTH) + 1,
+        日: days % DAYS_PER_MONTH + 1,
+        时: Math.floor(minuteOfDay / 60),
+        分: minuteOfDay % 60,
+      };
+    };
+    return {
+      tick,
+      持续tick: duration,
+      分钟: startMinutes,
+      结束分钟: endMinutes,
+      开始分钟: startMinutes,
+      日内分钟: startMinutes % MINUTES_PER_DAY,
+      日期: calendar(startMinutes),
+      结束日期: calendar(endMinutes),
+    };
+  }
+
+  function inferWorldTerrain(view) {
+    const area = String(view?.worldRules?.区域档案 || '').trim();
+    if (LOCATION_TERRAIN_PROFILES[area]) return area;
+    const text = `${view?.name || ''} ${(view?.path || []).join('-')} ${view?.node?.类型 || ''} ${view?.node?.描述 || ''}`;
+    if (/深渊|恶魔位面|位面|万兽台|七圣渊|战神斗场|龙谷/.test(text)) return '位面';
+    if (/深海|海神岛|海域|海港|海洋|水下/.test(text)) return '深海';
+    if (/极北|冰川|冰原|雪山|极寒/.test(text)) return '极寒';
+    if (/森林|林海|雨林|草木/.test(text)) return '森林';
+    if (/山脉|山地|山峰|盆地|峡谷|沙漠|矿区/.test(text)) return '山地';
+    return '平原';
+  }
+
+  function readWorldPermissions(charData, node) {
+    const social = isPlainRecord(charData?.社交) ? charData.社交 : {};
+    const factionTable = isPlainRecord(social.势力) ? social.势力 : {};
+    const relationTable = isPlainRecord(social.关系) ? social.关系 : {};
+    const factions = {};
+    let highest = 0;
+    Object.entries(factionTable).forEach(([name, value]) => {
+      if (!isPlainRecord(value)) return;
+      const level = Math.max(0, Number(value.权限级 || 0) || 0);
+      highest = Math.max(highest, level);
+      factions[name] = {
+        身份: String(value.身份 || '无'),
+        权限级: level,
+        关系: String(relationTable[name]?.关系 || relationTable[name]?.对方身份 || '').trim() || undefined,
+      };
+    });
+    const reputation = Number(social.声望 || 0) || 0;
+    const priceMultiplier = Number(Math.max(0.9, Math.min(1.1, 1 - Math.max(-1000, Math.min(1000, reputation)) / 10000)).toFixed(4));
+    const controlling = String(node?.掌控势力 || '').split(/[、/,，；;]/).map(item => item.trim()).filter(Boolean);
+    return {
+      主身份: String(social.主身份 || '无'),
+      声望: reputation,
+      势力: factions,
+      掌控势力: controlling,
+      最高权限级: highest,
+      修正: { 价格倍率: priceMultiplier },
+    };
+  }
+
+  function requiredWorldFacilityGroups(actionType) {
+    const text = String(actionType || '').trim().toLowerCase();
+    if (/trade|交易|购买|出售/.test(text)) return [/拍卖|竞拍/.test(text) ? ['拍卖'] : ['商业']];
+    if (/profession|craft|副职业|工坊|锻造|制造|设计|修理|维修/.test(text)) {
+      if (/锻造/.test(text)) return [['锻造']];
+      if (/修理|维修/.test(text)) return [['工业', '锻造']];
+      return [['工业', '锻造']];
+    }
+    return [];
+  }
+
+  function actionUsesSoulPower(actionType) {
+    return /冥想|修炼|魂核|魂力|soul/.test(String(actionType || '').trim().toLowerCase());
+  }
+
+  function buildWorldFacilityTable(view, eraId, time, permissions, terrainProfile) {
+    const rules = view?.worldRules || {};
+    const functions = Array.isArray(rules.功能档案) ? rules.功能档案 : [];
+    const overrides = isPlainRecord(rules.覆盖?.设施) ? rules.覆盖.设施 : {};
+    const area = String(rules.区域档案 || '').trim();
+    const areaCap = LOCATION_REGION_PROFILES[area]?.设施上限 || LOCATION_TERRAIN_PROFILES[area]?.设施上限 || terrainProfile?.设施上限 || 1;
+    const eraCap = ERA_FACILITY_CAPS[eraId] || ERA_FACILITY_CAPS.current;
+    const output = {};
+    functions.forEach(functionName => {
+      const profile = LOCATION_FUNCTION_PROFILES[functionName];
+      if (!profile) return;
+      const override = isPlainRecord(overrides[functionName]) ? overrides[functionName] : {};
+      const defaultLevel = Math.max(0, Number(profile.默认等级 || 0));
+      const requestedLevel = override.等级 === undefined ? defaultLevel : Math.max(0, Number(override.等级 || 0));
+      const level = Math.max(0, Math.min(eraCap, areaCap, requestedLevel));
+      const opening = String(override.开放时段 || profile.开放时段);
+      const minimumPermission = Math.max(0, Number(override.最低权限级 || 0) || 0);
+      const open = isOpeningRangeAvailable(parseOpeningWindow(opening), time?.日内分钟, Number(time?.持续tick || 0) * MINUTES_PER_TICK);
+      const permission = permissions.最高权限级 >= minimumPermission;
+      output[functionName] = {
+        功能: functionName,
+        等级: level,
+        开放时段: opening,
+        最低权限级: minimumPermission,
+        可用: level > 0 && open && permission,
+        ...(level <= 0 ? { 原因: '设施等级不足' } : !open ? { 原因: '当前时段未营业' } : !permission ? { 原因: '权限不足' } : {}),
+      };
+    });
+    return output;
+  }
+
+  function collectNearbyWorldFacilities(library, view, eraId, time, permissions, terrainProfile) {
+    const paths = [];
+    const path = Array.isArray(view?.path) ? view.path : [];
+    for (let depth = 1; depth < path.length; depth += 1) {
+      const selected = selectLocationRecordByPath(library, path.slice(0, depth));
+      if (selected) paths.push({ path: path.slice(0, depth), record: selected.record });
+    }
+    if (view?.dynamic && view.parent?.path?.length) {
+      const selected = selectLocationRecordByPath(library, view.parent.path);
+      if (selected && !paths.some(item => pathKey(item.path) === pathKey(view.parent.path))) paths.push({ path: view.parent.path, record: selected.record });
+    }
+    const output = [];
+    paths.forEach(({ path: parentPath, record }) => {
+      const parentView = { worldRules: record.世界规则, node: record.节点, path: parentPath, name: record.规范名 };
+      const table = buildWorldFacilityTable(parentView, eraId, time, permissions, terrainProfile);
+      Object.values(table).forEach(facility => {
+        output.push({ 地点: parentPath.join('-'), 功能: facility.功能, 等级: facility.等级, 开放时段: facility.开放时段, 需移动: true, 可用: false });
+      });
+    });
+    return output;
+  }
+
+  function resolveWorldActionContext(options = {}) {
+    const dataRoot = isPlainRecord(options.dataRoot) ? options.dataRoot : {};
+    const characterKey = String(options.characterKey || '').trim();
+    const actionType = String(options.actionType || '').trim();
+    const character = characterKey && isPlainRecord(dataRoot.char?.[characterKey]) ? dataRoot.char[characterKey] : null;
+    const durationTicks = Number.isFinite(Number(options.durationTicks)) ? Math.max(0, Math.round(Number(options.durationTicks) * 10) / 10) : 0;
+    const time = buildWorldActionTime(dataRoot, durationTicks);
+    const warnings = [];
+    const blockers = [];
+    if (!character) blockers.push('角色未在dataRoot.char中创建');
+    if (time.tick === null) blockers.push('世界时间不可读');
+
+    let selection = null;
+    let library = null;
+    try {
+      selection = resolveEraLibrary(options.library, 'location', { dataRoot, absoluteTick: time.tick === null ? undefined : time.tick });
+      library = selection.library;
+    } catch (error) {
+      selection = { status: 'failed', eraId: null, resourceStatus: 'failed', detail: error?.message || String(error) };
+    }
+    const era = {
+      id: selection?.eraId || null,
+      status: selection?.status || 'unavailable',
+      resourceStatus: selection?.resourceStatus || 'unavailable',
+      selector: selection?.diagnostic?.selector || null,
+      narrativeEra: selection?.diagnostic?.narrativeEra || null,
+      resourceEra: selection?.diagnostic?.resourceEra || selection?.eraId || null,
+    };
+    if (!library) {
+      const reason = selection?.detail || '地点库未就绪';
+      blockers.push(`地点资源不可用：${reason}`);
+      warnings.push('地点世界规则未加载，无法安全结算动作条件');
+    }
+
+    const currentLocation = character ? String(character.状态?.位置 || '').trim() : '';
+    const currentPath = normalizeLocationPath(currentLocation);
+    const targetText = String(options.targetLocation || '').trim();
+    const currentView = library && currentLocation ? resolveWorldLocationView(dataRoot, library, currentLocation, currentPath) : null;
+    const targetView = library && targetText ? resolveWorldLocationView(dataRoot, library, targetText, currentPath) : null;
+    const activeView = targetView || currentView;
+    const location = {
+      current: currentView,
+      target: targetText ? targetView || { resolved: false, name: targetText, path: normalizeLocationPath(targetText) } : null,
+      active: activeView,
+      moved: false,
+    };
+    if (character && currentLocation && !currentView) warnings.push(`当前位置未在地点库解析：${currentLocation}`);
+    if (targetText && !targetView) {
+      if (/travel|移动|前往|抵达|赶路/.test(actionType) && currentView) warnings.push(`目标地点待创建动态节点：${targetText}`);
+      else blockers.push(`目标地点未解析：${targetText}`);
+    }
+    if (!activeView && character) blockers.push('当前动作没有可解析的地点');
+
+    const terrainName = inferWorldTerrain(activeView || currentView);
+    const terrainProfile = LOCATION_TERRAIN_PROFILES[terrainName] || { 设施上限: 1, 危险等级: 0, 探索难度: 30, 修炼环境: { 魂力倍率: 1, 精神力倍率: 1, 生命力倍率: 1 } };
+    const terrain = {
+      区域档案: activeView?.worldRules?.区域档案 || '平原',
+      自然档案: terrainName,
+      路径: activeView?.path || [],
+      来源: activeView?.worldRules?.区域档案 === terrainName ? '地点规则' : '地点规则+自然档案',
+    };
+    const permissions = readWorldPermissions(character || {}, activeView?.node || {});
+    const facilities = activeView ? buildWorldFacilityTable(activeView, era.id || 'current', time, permissions, terrainProfile) : {};
+    const nearbyFacilities = library && activeView ? collectNearbyWorldFacilities(library, activeView, era.id || 'current', time, permissions, terrainProfile) : [];
+    const coverage = isPlainRecord(activeView?.worldRules?.覆盖) ? activeView.worldRules.覆盖 : {};
+    const environmentRules = isPlainRecord(coverage.环境规则) ? coverage.环境规则 : {};
+    const trainingRule = isPlainRecord(coverage.修炼环境) ? coverage.修炼环境 : {};
+    const facilityForTraining = ['学院', '资源']
+      .map(name => facilities[name])
+      .filter(item => item && item.可用)
+      .sort((left, right) => right.等级 - left.等级)[0] || null;
+    const facilityMultiplier = facilityForTraining ? 1 + Math.max(0, facilityForTraining.等级 - 3) * 0.05 : 1;
+    const cultivationModifiers = {
+      魂力: Number(Math.max(0.1, Number(trainingRule.魂力倍率 ?? terrainProfile.修炼环境.魂力倍率 ?? 1) * facilityMultiplier).toFixed(4)),
+      精神力: Number(Math.max(0.1, Number(trainingRule.精神力倍率 ?? terrainProfile.修炼环境.精神力倍率 ?? 1)).toFixed(4)),
+      生命力: Number(Math.max(0.1, Number(trainingRule.生命力倍率 ?? terrainProfile.修炼环境.生命力倍率 ?? 1)).toFixed(4)),
+      ...(facilityForTraining ? { 设施: facilityForTraining.功能, 设施等级: facilityForTraining.等级 } : {}),
+    };
+    const soulPowerAvailable = environmentRules.魂力可用 !== false && environmentRules.魂力动作 !== '禁止';
+    const temporaryRuleIds = Array.from(new Set((Array.isArray(options.temporaryRuleIds) ? options.temporaryRuleIds : []).map(item => String(item || '').trim()).filter(Boolean)));
+    const modifiers = {
+      修炼: cultivationModifiers,
+      技能: { 魂力可用: soulPowerAvailable, 魂力动作: soulPowerAvailable ? '允许' : '禁止' },
+      价格: { 倍率: permissions.修正.价格倍率 },
+      探索: { 标准难度: Math.max(10, Math.min(90, Number(terrainProfile.探索难度 || 30) + Number(terrainProfile.危险等级 || 0) * 3)) },
+      战斗: { 临时规则ID: temporaryRuleIds, 环境规则: clone(environmentRules) },
+      状态: Object.keys(character?.属性?.状态效果 || {}).slice(0, 8),
+    };
+    const hazards = [];
+    if (Number(terrainProfile.危险等级 || 0) > 0) hazards.push({ 类型: '自然环境', 名称: terrainName, 等级: terrainProfile.危险等级 });
+    if (isPlainRecord(coverage.危险)) hazards.push({ 类型: '地点危险', ...clone(coverage.危险) });
+    Object.entries(environmentRules).forEach(([ruleId, rule]) => {
+      hazards.push({ 规则ID: ruleId, 类型: '环境规则', ...(isPlainRecord(rule) ? clone(rule) : { 值: rule }) });
+    });
+    hazards.filter(item => Number(item.等级 || 0) >= 3).forEach(item => warnings.push(`环境危险：${item.名称 || item.规则ID || item.类型}（等级${item.等级}）`));
+    nearbyFacilities.forEach(item => warnings.push(`附近有${item.功能}设施，但需要移动至${item.地点}`));
+
+    const requiredGroups = requiredWorldFacilityGroups(actionType);
+    requiredGroups.forEach(group => {
+      const available = group.map(name => facilities[name]).find(item => item?.可用);
+      if (available) return;
+      const existing = group.map(name => facilities[name]).filter(Boolean);
+      blockers.push(existing.length ? `当前地点${group.join('/')}设施不可用：${existing.map(item => item.原因 || '条件不满足').join('、')}` : `当前地点缺少${group.join('/')}设施`);
+    });
+    if (!soulPowerAvailable && actionUsesSoulPower(actionType)) blockers.push('当前环境禁止调用魂力');
+
+    const resources = {
+      标签: coverage.资源 === undefined ? [] : clone(coverage.资源),
+      可用: true,
+      库存来源: Object.keys(activeView?.node?.商店 || {}),
+    };
+    const market = {
+      经济状况: activeView?.node?.经济状况 || '未知',
+      商店: Object.keys(activeView?.node?.商店 || {}),
+      价格倍率: permissions.修正.价格倍率,
+    };
+    const visibleFacility = Object.values(facilities).filter(item => item.可用).map(item => `${item.功能}Lv${item.等级}`).slice(0, 3).join('、') || '无';
+    const visibleHazard = hazards.map(item => item.名称 || item.规则ID || item.类型).filter(Boolean).slice(0, 2).join('、') || '无';
+    modifiers.投影 = `地点：${activeView?.path?.join('-') || currentLocation || '未知'}；时段：${time.日期 ? `${time.日期.时}时${time.日期.分}分` : '未知'}；设施：${visibleFacility}；风险：${visibleHazard}；魂力：${soulPowerAvailable ? '可用' : '禁用'}。`;
+    const dedupe = list => Array.from(new Set(list.map(item => String(item || '').trim()).filter(Boolean)));
+    return freezeDeep({
+      era,
+      time,
+      location,
+      terrain,
+      hazards,
+      facilities,
+      nearbyFacilities,
+      resources,
+      market,
+      permissions,
+      modifiers,
+      blockers: dedupe(blockers),
+      warnings: dedupe(warnings),
+    });
+  }
+
   const API = Object.freeze({
     version: VERSION,
     profiles: PROFILES,
@@ -1098,12 +1608,13 @@
     collectLocationHits,
     buildFactionInstance,
     buildLocationInstantiationOps,
+    resolveWorldActionContext,
     resolveIdentity,
   });
 
   const existing = global.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
   if (existing && existing.version !== VERSION) throw new Error(`LibraryData_Runtime版本不符: ${existing.version}`);
-  const runtime = existing || API;
+  const runtime = existing ? Object.freeze({ ...existing, ...API }) : API;
   global.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = runtime;
   if (!global.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ || typeof global.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__.then !== 'function') {
     global.__LWCS_LIBRARY_DATA_RUNTIME_LOADING_V1__ = Promise.resolve(runtime);

@@ -2222,6 +2222,7 @@
                 "周期": "每战",
                 "次数": 1
               },
+              "限定来源": "env:abyss-passage:soul-power-suppression",
               "条件分支": [
                 {
                   "条件": [

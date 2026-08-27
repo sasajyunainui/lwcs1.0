@@ -3650,6 +3650,11 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       });
     };
 
+    const 动作上下文 = 选项?.动作上下文 && typeof 选项.动作上下文 === 'object' && !Array.isArray(选项.动作上下文)
+      ? 选项.动作上下文
+      : null;
+    const 动作角色名 = String(选项?.动作角色名 || '').trim();
+    const 动作类型 = String(选项?.动作类型 || '').trim();
     const rawWorldTick = data.world.时间.tick === undefined || data.world.时间.tick === null
       ? DEFAULT_NEW_GAME_TICK_SCHEMA_RUNTIME
       : data.world.时间.tick;
@@ -3989,26 +3994,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       };
     };
 
-    const 读取修炼食物倍率_ACU = (角色, 动作模式 = '日常') => {
-      const 状态表 = 角色?.属性?.状态效果;
-      if (!状态表 || typeof 状态表 !== 'object') return { 倍率: 1, 来源: '无食物增益' };
-      const 当前动作模式 = normalizeCharacterActionMode_ACU(动作模式);
-      let 倍率 = 1;
-      const 来源列表 = [];
-      Object.entries(状态表).forEach(([状态名, 状态值]) => {
-        if (!状态值 || typeof 状态值 !== 'object') return;
-        if (状态名 === '地点拟态修炼' && 状态值.结算模式 === '本轮冥想') {
-          if (当前动作模式 !== '冥想') return;
-          const 拟态倍率 = Number(状态值.收益倍率 || 0);
-          if (!Number.isFinite(拟态倍率) || 拟态倍率 <= 1) return;
-          倍率 *= 拟态倍率;
-          来源列表.push(状态名);
-          return;
-        }
-      });
-      const 安全倍率 = Math.max(1, Math.min(3.5, Number(倍率.toFixed(4))));
-      return { 倍率: 安全倍率, 来源: 来源列表.length ? 来源列表.join(' + ') : '无食物增益' };
-    };
+    const 读取修炼食物倍率_ACU = () => ({ 倍率: 1, 来源: '无食物增益' });
 
     const 读取修炼增益倍率_ACU = (角色, 条件 = {}) => {
       const 状态表 = 角色?.属性?.状态效果;
@@ -4076,7 +4062,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 拟态倍率信息 = 计算地图拟态倍率_ACU(角色);
       const 城市档位信息 = 判定城市规模档位_ACU(角色);
       const 城市修炼倍率 = 1 + (城市档位信息.档位索引 >= 0 ? Number(城市修炼加成表_ACU[城市档位信息.档位索引] || 0) : 0);
-      const 食物倍率信息 = 读取修炼食物倍率_ACU(角色, 模式);
+      const 食物倍率信息 = 读取修炼食物倍率_ACU();
       const 总倍率 = Math.max(
         1,
         Math.min(8, Number((同修倍率信息.倍率 * 拟态倍率信息.倍率 * 城市修炼倍率 * 食物倍率信息.倍率).toFixed(4))),
@@ -4159,7 +4145,17 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         c.属性.HP = Math.min(生命值上限, roundRuntimeGrowthValue_ACU(当前生命值 + 恢复量));
       };
       const 修炼倍率信息 = 计算基础成长倍率_ACU(c, 角色名, normalizedActionMode);
-      const 基础成长倍率 = Math.max(1, Number(修炼倍率信息.倍率 || 1));
+      const 动作环境修炼属性 = normalizedActionMode === '冥想'
+        ? '魂力'
+        : normalizedActionMode === '精神训练'
+          ? '精神力'
+          : normalizedActionMode === '肉体训练'
+            ? '生命力'
+            : '';
+      const 动作环境倍率 = 动作上下文 && 动作角色名 === 角色名 && 动作类型 && 动作环境修炼属性
+        ? Math.max(0.1, Number(动作上下文.modifiers?.修炼?.[动作环境修炼属性] || 1))
+        : 1;
+      const 基础成长倍率 = Math.max(0.1, Number(修炼倍率信息.倍率 || 1) * 动作环境倍率);
       const 读取训练方式收益倍率 = 训练方式 => 读取修炼增益倍率_ACU(c, { 收益类型: '训练方式收益', 训练方式 });
       const 读取属性成长倍率 = 修炼属性 => 读取修炼增益倍率_ACU(c, { 收益类型: '属性修炼速度', 修炼属性 });
       const 肉体训练收益倍率 = 读取训练方式收益倍率('肉体训练');
@@ -5960,9 +5956,6 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           if (afterCoreCount > beforeCoreCount) {
             if (data.sys.系统播报 === '初始化' || !data.sys.系统播报) data.sys.系统播报 = '';
             data.sys.系统播报 += ` [境界突破] ${c.属性.年龄}岁的 ${charName || '角色'} 在冥想中成功凝聚第 ${afterCoreCount} 魂核！修为上限解锁！`;
-          }
-          if (c?.属性?.状态效果?.地点拟态修炼?.结算模式 === '本轮冥想') {
-            delete c.属性.状态效果.地点拟态修炼;
           }
           syncRoundedDisplaySoulPower_ACU(c);
         }
@@ -8926,8 +8919,8 @@ function 克隆普通数据_V1(值, 兜底 = null) {
 function 补结算归档角色时间流逝_V1(角色名 = '', 角色数据 = {}, 数据根 = {}, 起始tick = 0, 结束tick = null) {
   const 安全角色名 = String(角色名 || '').trim();
   if (!安全角色名 || !角色数据 || typeof 角色数据 !== 'object' || Array.isArray(角色数据)) return 角色数据;
-  const 当前tick = Math.max(0, Math.floor(Number(结束tick ?? 数据根?.world?.时间?.tick ?? 0) || 0));
-  const 归档tick = Math.max(0, Math.floor(Number(起始tick || 0) || 0));
+  const 当前tick = Math.max(0, Math.round(Number(结束tick ?? 数据根?.world?.时间?.tick ?? 0) * 10) / 10 || 0);
+  const 归档tick = Math.max(0, Math.round(Number(起始tick || 0) * 10) / 10 || 0);
   if (当前tick <= 归档tick) return 克隆普通数据_V1(角色数据, 角色数据);
 
   const 临时根 = 克隆普通数据_V1(数据根 && typeof 数据根 === 'object' && !Array.isArray(数据根) ? 数据根 : {}, {});
@@ -8942,18 +8935,22 @@ function 补结算归档角色时间流逝_V1(角色名 = '', 角色数据 = {},
     : 克隆普通数据_V1(角色数据, 角色数据);
 }
 
-function 按动作模式结算变量根时间流逝_V1(数据根 = {}, 角色名 = '', 起始tick = 0, 结束tick = null, 结算模式 = '') {
+function 按动作模式结算变量根时间流逝_V1(数据根 = {}, 角色名 = '', 起始tick = 0, 结束tick = null, 结算模式 = '', 选项 = {}) {
   const 临时根 = 克隆普通数据_V1(数据根 && typeof 数据根 === 'object' && !Array.isArray(数据根) ? 数据根 : {}, {});
   if (!临时根.world || typeof 临时根.world !== 'object' || Array.isArray(临时根.world)) 临时根.world = {};
   if (!临时根.world.时间 || typeof 临时根.world.时间 !== 'object' || Array.isArray(临时根.world.时间)) 临时根.world.时间 = {};
-  const 当前tick = Math.max(0, Math.floor(Number(结束tick ?? 临时根.world.时间.tick ?? 0) || 0));
-  const 起始tick值 = Math.max(0, Math.floor(Number(起始tick || 0) || 0));
+  const 当前tick = Math.max(0, Math.round(Number(结束tick ?? 临时根.world.时间.tick ?? 0) * 10) / 10 || 0);
+  const 起始tick值 = Math.max(0, Math.round(Number(起始tick || 0) * 10) / 10 || 0);
   临时根.world.时间.tick = 当前tick;
   临时根.world.时间._上次结算tick = 起始tick值;
   const 安全角色名 = String(角色名 || '').trim();
   const 临时结算模式 = String(结算模式 || '').trim();
   if (安全角色名 && 临时结算模式) 临时根.world.时间._临时角色结算模式 = { [安全角色名]: 临时结算模式 };
-  规范化Schema根转换_V1(临时根);
+  规范化Schema根转换_V1(临时根, {
+    ...(选项 && typeof 选项 === 'object' && !Array.isArray(选项) ? 选项 : {}),
+    动作角色名: 安全角色名,
+    动作类型: 临时结算模式,
+  });
   return 克隆普通数据_V1(临时根, 临时根);
 }
 

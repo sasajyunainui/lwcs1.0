@@ -549,6 +549,94 @@
     },
   };
 
+  const 地点规则区域 = Object.freeze({
+    斗罗大陆: '平原',
+    天斗帝国: '平原',
+    星罗帝国: '平原',
+    武魂帝国: '平原',
+    天斗城: '首都',
+    星罗城: '首都',
+    诺丁城: '小城',
+    索托城: '中型城市',
+    庚辛城: '中型城市',
+    龙兴城: '中型城市',
+    武魂城: '大型城市',
+    星斗大森林: '森林',
+    落日森林: '森林',
+    嘉陵关: '前哨',
+    杀戮之都: '位面',
+    海神岛: '深海',
+    深海: '深海',
+    紫珍珠岛: '深海',
+    昊天宗宗门: '前哨',
+    七宝琉璃宗宗门: '前哨',
+    蓝电霸王龙家族宗门: '前哨',
+    天水学院: '小城',
+    炽火学院: '小城',
+    神风学院: '小城',
+    苍晖学院: '小城',
+    象甲学院: '小城',
+  });
+  const 世界规则功能 = (record) => {
+    const node = record.节点 || {};
+    const path = Array.isArray(record.目标路径) ? record.目标路径 : [];
+    const identityText = [record.规范名, node.类型, path[path.length - 1]].filter(Boolean).join(' ');
+    const description = typeof node.描述 === 'string' ? node.描述 : '';
+    const resourceTerms = /资源|魂兽|森林|秘境|仙草|魂灵|海神山|龙谷|升灵|栖息地|自治区|安乐园|龙晶|源龙|藏宝|灵物|矿/;
+    const positiveResourceDescription = description
+      .split(/[。！？；;\n]/)
+      .filter(sentence => resourceTerms.test(sentence)
+        && !/(?:无|没有|不具备|并非|不是|不含|禁止|严禁|不可|不能|无法|未|不再|不属于|非)[^，,。！？；;]{0,12}(?:资源|魂兽|森林|秘境|仙草|魂灵|海神山|龙谷|升灵|栖息地|自治区|安乐园|龙晶|源龙|藏宝|灵物|矿)/.test(sentence))
+      .join(' ');
+    const functions = [];
+    if (/学院|学校|教学|教育/.test(identityText)) functions.push('学院');
+    if (/锻造|铁匠/.test(identityText)) functions.push('锻造');
+    if (/制造|魂导|机甲|设计师|修理师/.test(identityText)) functions.push('工业');
+    if (/拍卖/.test(identityText)) functions.push('拍卖');
+    if (/交易|商业|商贸|商会|市场|拍卖/.test(identityText)) functions.push('商业');
+    if (/港|码头|船坞|航运|军港|远洋|登船|船只/.test(identityText)) functions.push('港口');
+    if (/交通|道路|航线|车程|车站|列车|铁路|航行/.test(identityText)) functions.push('交通');
+    if (/军|军团|驻地|城防|要塞|军港|军区|战神殿|堡垒|舰队/.test(identityText)) functions.push('军方');
+    if (/总部|宗门|皇宫|家族|神殿|海神阁/.test(identityText)) functions.push('总部');
+    if (/医疗|医院|医馆|诊所/.test(identityText)) functions.push('医疗');
+    if (resourceTerms.test(identityText) || resourceTerms.test(positiveResourceDescription)) functions.push('资源');
+    if (/黑市|地下市场|地下交易|黑市交易/.test(identityText)) functions.push('黑市');
+    return [...new Set(functions)];
+  };
+  const 世界规则区域 = (record) => {
+    const ownProfile = 地点规则区域[record.规范名];
+    if (ownProfile) return ownProfile;
+    const path = Array.isArray(record.目标路径) ? record.目标路径 : [];
+    for (let index = path.length - 1; index >= 0; index -= 1) {
+      const profile = 地点规则区域[path[index]];
+      if (profile) return profile;
+    }
+    const pathText = path.join(' / ');
+    if (/位面|神界|龙谷|杀戮之都|试炼空间|虚拟/.test(pathText)) return '位面';
+    if (/深海|海神岛|环形海|海域|紫珍珠岛/.test(pathText)) return '深海';
+    if (/极北|冰川|冰海/.test(pathText)) return '极寒';
+    if (/森林/.test(pathText)) return '森林';
+    if (/山脉|山峰|山地/.test(pathText)) return '山地';
+    if (/大陆|帝国区域|平原|荒漠|沙漠/.test(pathText)) return '平原';
+    const text = `${record.规范名} ${record.节点.类型}`;
+    if (/首都|都城/.test(text)) return '首都';
+    if (/主城|城市/.test(text)) return '大型城市';
+    if (/城镇/.test(text)) return '小城';
+    if (/村/.test(text)) return '小镇';
+    if (/驻地|堡垒|要塞/.test(text)) return '前哨';
+    if (/山脉|山峰|山地/.test(text)) return '山地';
+    if (/大陆|帝国区域|普通陆地|平原|荒漠|沙漠/.test(text)) return '平原';
+    if (/学院|协会|总部|皇宫|宗门|家族|殿|塔|宫殿|设施|场所/.test(text)) return '小城';
+    throw new Error(`地点区域档案未定义：${record.规范名}`);
+  };
+  Object.entries(source.地点).forEach(([recordId, record]) => {
+    record.世界规则 = {
+      区域档案: 世界规则区域(record),
+      功能档案: 世界规则功能(record),
+      覆盖: {},
+    };
+  });
+
   const 运行元数据 = {
   "版本": 1,
   "时代": "dldl",

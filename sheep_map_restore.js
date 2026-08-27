@@ -50,14 +50,15 @@
     'map_zjdl_stellar': Object.freeze({ id: 'zjdl-stellar', mapId: 'map_zjdl_stellar', asset: 'MAP_ZJDL.webp', topology: 'stellar', terrainSource: 'none' })
   });
   const MAP_ZJDL_SUBMAP_ASSETS = Object.freeze({
-    '斗罗星': 'MAP_ZJDL_DOULUO.webp',
-    '天斗星': 'MAP_ZJDL_TIANDOU.webp',
-    '天罗星': 'MAP_ZJDL_TIANLUO.webp',
-    '史莱克星': 'MAP_ZJDL_SHREK.webp',
-    '龙马星系/龙源星': 'MAP_ZJDL_LONGYUAN.webp',
-    '龙马星系/森罗星': 'MAP_ZJDL_SENLUO.webp',
-    '龙马星系/精灵星': 'MAP_ZJDL_JINGLING.webp',
+    '斗罗星系': 'MAP_ZJDL_DOULUO_SYSTEM.webp',
+    '斗罗星系/斗罗星': 'MAP_ZJDL_DOULUO.webp',
+    '斗罗星系/天斗星': 'MAP_ZJDL_TIANDOU.webp',
+    '斗罗星系/天罗星': 'MAP_ZJDL_TIANLUO.webp',
+    '斗罗星系/龙源星': 'MAP_ZJDL_LONGYUAN.webp',
+    '斗罗星系/森罗星': 'MAP_ZJDL_SENLUO.webp',
+    '斗罗星系/精灵星': 'MAP_ZJDL_JINGLING.webp',
     '天堂星域/天堂星': 'MAP_ZJDL_TIANTANG.webp',
+    '龙马星系': 'MAP_ZJDL_LONGMA_SYSTEM.webp',
     '龙马星系/天龙星': 'MAP_ZJDL_TIANLONG.webp',
     '龙马星系/天马星': 'MAP_ZJDL_TIANMA.webp',
     '龙马星系/御空族七十六号星球': 'MAP_ZJDL_YUKONG76.webp'
@@ -92,7 +93,11 @@
   function getZJDLSubmapAsset(locationPath = []) {
     const pathSegments = (Array.isArray(locationPath) ? locationPath : [locationPath])
       .flatMap(segment => getLocationPathSegments(segment));
-    return MAP_ZJDL_SUBMAP_ASSETS[pathSegments.join('/')] || '';
+    for (let length = pathSegments.length; length > 0; length -= 1) {
+      const asset = MAP_ZJDL_SUBMAP_ASSETS[pathSegments.slice(0, length).join('/')];
+      if (asset) return asset;
+    }
+    return '';
   }
 
   function getMapAssetUrl(profile = null, locationPath = []) {
@@ -1722,6 +1727,111 @@
     return cursor === undefined ? fallback : cursor;
   }
 
+  function getMapWorldActionRuntime() {
+    const roots = [];
+    try { roots.push(globalThis); } catch (_) {}
+    try { if (window && !roots.includes(window)) roots.push(window); } catch (_) {}
+    try { if (window.parent && window.parent !== window && !roots.includes(window.parent)) roots.push(window.parent); } catch (_) {}
+    try { if (window.top && window.top !== window && !roots.includes(window.top)) roots.push(window.top); } catch (_) {}
+    return roots.map(root => {
+      try { return root && root.__LWCS_LIBRARY_DATA_RUNTIME_V1__; } catch (_) { return null; }
+    }).find(runtime => runtime && typeof runtime.resolveWorldActionContext === 'function') || null;
+  }
+
+  function resolveMapWorldActionContext(snapshot = null, actionType = 'map_view', targetLocation = '', durationTicks = 0, temporaryRuleIds = []) {
+    const runtime = getMapWorldActionRuntime();
+    if (!runtime) return null;
+    const source = snapshot || mapState.baseSnapshot || mapState.snapshot || {};
+    const rootData = source.rootData || source.sd || {};
+    const characterKey = toText(source.activeName || deepGet(rootData, 'sys.玩家名', ''), '主角');
+    const target = toText(targetLocation, source.currentLocFull || source.currentLoc || deepGet(rootData, ['char', characterKey, '状态', '位置'], ''));
+    try {
+      const context = runtime.resolveWorldActionContext({
+        dataRoot: rootData,
+        characterKey,
+        actionType: String(actionType || 'map_view'),
+        targetLocation: target,
+        durationTicks: Math.max(0, Number(durationTicks || 0)),
+        temporaryRuleIds: Array.isArray(temporaryRuleIds) ? temporaryRuleIds : [],
+      });
+      return context && typeof context === 'object' && !Array.isArray(context) ? context : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getMapWorldActionEntries(context, field = 'facilities') {
+    const raw = context && typeof context === 'object' ? context[field] : null;
+    if (Array.isArray(raw)) return raw.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
+    if (!raw || typeof raw !== 'object') return [];
+    if (Array.isArray(raw.items)) return raw.items.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
+    return Object.entries(raw).map(([name, value]) => value && typeof value === 'object' && !Array.isArray(value)
+      ? { name: value.name || value.名称 || name, ...value }
+      : { name, available: value });
+  }
+
+  function getMapWorldActionBoolean(value, keys = []) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    for (const key of keys) {
+      if (typeof value[key] === 'boolean') return value[key];
+    }
+    return undefined;
+  }
+
+  function getMapWorldActionBlockers(context) {
+    if (!context || typeof context !== 'object') return [];
+    const raw = context.blockers;
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      if (raw.blocked === false || raw.阻断 === false) return [];
+      if (raw.blocked === true || raw.阻断 === true) return [raw];
+      return Object.entries(raw).filter(([, value]) => value === true).map(([key]) => key);
+    }
+    return raw ? [raw] : [];
+  }
+
+  function getMapWorldActionBlockerText(context, fallback = '当前行动不满足地点、设施或环境条件。') {
+    const blocker = getMapWorldActionBlockers(context)[0];
+    if (!blocker) return '';
+    if (typeof blocker === 'string') return blocker.trim() || fallback;
+    if (blocker && typeof blocker === 'object') {
+      return toText(blocker.message || blocker.reason || blocker.说明 || blocker.原因 || blocker.label, fallback);
+    }
+    return toText(blocker, fallback);
+  }
+
+  function getMapWorldActionFacilityText(context) {
+    const names = field => getMapWorldActionEntries(context, field)
+      .map(entry => toText(entry.name || entry.名称 || entry.label || entry.类型 || entry.type, ''))
+      .filter(Boolean);
+    return {
+      direct: Array.from(new Set(names('facilities'))).join('、'),
+      nearby: Array.from(new Set(names('nearbyFacilities'))).join('、'),
+    };
+  }
+
+  function getMapWorldActionState(context, options = {}) {
+    if (!context) return { ok: false, reason: '共享世界行动上下文尚未就绪。', facility: null };
+    const blockerText = getMapWorldActionBlockerText(context);
+    if (blockerText) return { ok: false, reason: blockerText, facility: null };
+    if (!options.requireFacility) return { ok: true, reason: '', facility: null };
+
+    const matcher = options.facilityMatcher instanceof RegExp ? options.facilityMatcher : null;
+    const facilities = getMapWorldActionEntries(context, 'facilities').filter(entry => {
+      const text = `${entry.name || entry.名称 || ''} ${entry.type || entry.类型 || ''} ${entry.category || entry.类别 || ''} ${entry.job || entry.副职业 || ''}`;
+      return !matcher || matcher.test(text);
+    });
+    const facility = facilities.find(entry => getMapWorldActionBoolean(entry, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']) !== false);
+    if (!facility) return { ok: false, reason: options.missingFacilityReason || '当前地点没有可用的对应设施。', facility: null };
+    const available = getMapWorldActionBoolean(facility, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']);
+    if (available === false) return { ok: false, reason: '当前地点的对应设施暂不可用。', facility };
+    for (const source of [facility, context.market, context.time].filter(value => value && typeof value === 'object')) {
+      const open = getMapWorldActionBoolean(source, ['open', 'isOpen', '营业中', '开放', '可使用']);
+      if (open === false) return { ok: false, reason: '当前设施暂未开放。', facility };
+    }
+    return { ok: true, reason: '', facility };
+  }
+
   function htmlEscape(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -2299,6 +2409,33 @@
     return [];
   }
 
+  function readMapNodeStaticFields(rawNode) {
+    if (!rawNode || typeof rawNode !== 'object' || Array.isArray(rawNode)) return {};
+    const metadata = rawNode.metadata && typeof rawNode.metadata === 'object' && !Array.isArray(rawNode.metadata) ? rawNode.metadata : {};
+    const readValue = keys => {
+      for (const key of keys) {
+        if (rawNode[key] !== undefined && rawNode[key] !== null && rawNode[key] !== '') return rawNode[key];
+      }
+      for (const key of keys) {
+        if (metadata[key] !== undefined && metadata[key] !== null && metadata[key] !== '') return metadata[key];
+      }
+      return undefined;
+    };
+    const result = {};
+    const mappings = {
+      resources: ['resources', 'resource', '资源', '资源类型', '资源列表'],
+      hazards: ['hazards', 'hazard', '危险', '危险因素', '危险列表'],
+      terrain: ['terrain', 'terrainTypes', 'terrain_types', '地形', '地形类型'],
+      movementDifficulty: ['movementDifficulty', 'movement_difficulty', '移动难度', '通行难度'],
+      climate: ['climate', '气候', '气候类型']
+    };
+    Object.entries(mappings).forEach(([field, keys]) => {
+      const value = readValue(keys);
+      if (value !== undefined) result[field] = cloneJsonValue(value, value);
+    });
+    return result;
+  }
+
   function toSafeNodeToken(value = 'node') {
     return toText(value, 'node')
       .replace(/[^\w\u4e00-\u9fa5]+/g, '_')
@@ -2684,30 +2821,30 @@
     return list[0] || (item.canEnter ? 'enter' : 'inspect');
   }
 
-  function 获取当前小时(snapshot = mapState.baseSnapshot || mapState.snapshot) {
-    const 当前tick = Math.max(0, toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0));
-    const 当日分钟 = ((当前tick * 10) % (24 * 60) + (24 * 60)) % (24 * 60);
-    return Math.floor(当日分钟 / 60);
+  function 判断商店营业中(snapshot = mapState.baseSnapshot || mapState.snapshot, nodeName = '') {
+    const context = resolveMapWorldActionContext(snapshot, 'trade_buy', nodeName || snapshot?.currentLocFull || snapshot?.currentLoc || '');
+    return getMapWorldActionState(context, {
+      requireFacility: true,
+      facilityMatcher: /market|trade|shop|store|auction|商业|交易|商店|拍卖/,
+      missingFacilityReason: '当前地点没有可用的市场设施。'
+    }).ok;
   }
 
-  function 获取当前时分(snapshot = mapState.baseSnapshot || mapState.snapshot) {
-    const 当前tick = Math.max(0, toNumber(deepGet(snapshot, 'rootData.world.时间.tick', 0), 0));
-    const 当日分钟 = ((当前tick * 10) % (24 * 60) + (24 * 60)) % (24 * 60);
-    return {
-      小时: Math.floor(当日分钟 / 60),
-      分钟: Math.floor(当日分钟 % 60)
-    };
-  }
-
-  function 判断商店营业中(snapshot = mapState.baseSnapshot || mapState.snapshot) {
-    const 当前小时 = 获取当前小时(snapshot);
-    return 当前小时 >= 9 && 当前小时 < 22;
-  }
-
-  function 格式化营业状态(snapshot = mapState.baseSnapshot || mapState.snapshot) {
-    const 当前时间 = 获取当前时分(snapshot);
-    const 时间文本 = `${String(当前时间.小时).padStart(2, '0')}:${String(当前时间.分钟).padStart(2, '0')}`;
-    return 判断商店营业中(snapshot) ? `营业中 ${时间文本}` : `已关门 ${时间文本}`;
+  function 格式化营业状态(snapshot = mapState.baseSnapshot || mapState.snapshot, nodeName = '') {
+    const context = resolveMapWorldActionContext(snapshot, 'trade_buy', nodeName || snapshot?.currentLocFull || snapshot?.currentLoc || '');
+    const state = getMapWorldActionState(context, {
+      requireFacility: true,
+      facilityMatcher: /market|trade|shop|store|auction|商业|交易|商店|拍卖/,
+      missingFacilityReason: '当前地点没有可用的市场设施。'
+    });
+    const time = context?.time && typeof context.time === 'object' ? context.time : {};
+    const hour = Number(time.hour ?? time.小时);
+    const minute = Number(time.minute ?? time.分钟);
+    const clock = Number.isFinite(hour) && Number.isFinite(minute)
+      ? `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor(minute)).padStart(2, '0')}`
+      : toText(time.label || time.clock || time.current || time.当前, '');
+    if (!context) return state.reason;
+    return `${state.ok ? '营业中' : state.reason}${clock ? ` ${clock}` : ''}`;
   }
 
   function 归一地点名(地点 = '') {
@@ -2794,20 +2931,24 @@
     return 标签匹配.length ? 标签匹配[标签匹配.length - 1] : '平稳';
   }
 
-  function 构建星图焦点运营信息(snapshot, focusItem, 焦点名称 = '') {
+  function 构建星图焦点运营信息(snapshot, focusItem, 焦点名称 = '', 选项 = {}) {
     const 焦点名 = toText(焦点名称, focusItem ? focusItem.name : '');
     const 命中 = 焦点名 ? 获取地点节点及父级(焦点名, snapshot) : null;
     const 地点数据 = 命中 && 命中.节点 && typeof 命中.节点 === 'object' ? 命中.节点 : {};
     const 父地点数据 = 命中 && 命中.父节点 && typeof 命中.父节点 === 'object' ? 命中.父节点 : {};
     const 取节点字段 = (字段名, 回退值 = '') => toText(地点数据[字段名], toText(父地点数据[字段名], 回退值));
-    const 商店地点数据 = 地点数据.商店 && typeof 地点数据.商店 === 'object' && Object.keys(地点数据.商店).length ? 地点数据 : 父地点数据;
+    const 商店地点数据 = 地点数据.商店 && typeof 地点数据.商店 === 'object' && Object.keys(地点数据.商店).length ? 地点数据 : {};
+    const worldContext = 选项.世界行动上下文 || resolveMapWorldActionContext(snapshot, 'map_view', 焦点名);
+    const facilityText = getMapWorldActionFacilityText(worldContext);
     return {
       掌控: 取节点字段('掌控势力', focusItem ? toText(focusItem.faction, '未知') : '未知'),
       防务: 取节点字段('守护军团', '无'),
       经济: 取节点字段('经济状况', '未知'),
       供给: 计算地图节点供给文本(商店地点数据),
       价格: 计算地图节点价格文本(商店地点数据),
-      成交: 读取地图节点成交文本(snapshot)
+      成交: 读取地图节点成交文本(snapshot),
+      设施: worldContext ? (facilityText.direct || '无') : (focusItem ? formatBehaviorLabels(focusItem.services, getNodeServiceLabel) : '无'),
+      附近设施: facilityText.nearby ? `${facilityText.nearby}（需移动）` : '无'
     };
   }
 
@@ -3138,28 +3279,52 @@
     const 命中 = 获取地点节点及父级(节点名, snapshot);
     const 直接商店 = 命中 && 命中.节点 && 命中.节点.商店 && typeof 命中.节点.商店 === 'object' ? 命中.节点.商店 : {};
     const 父商店 = 命中 && 命中.父节点 && 命中.父节点.商店 && typeof 命中.父节点.商店 === 'object' ? 命中.父节点.商店 : {};
-    const 商店表 = Object.keys(直接商店).length ? 直接商店 : 父商店;
-    const 商店名列表 = Object.keys(商店表 || {});
-    if (!商店名列表.length) return { 商店表: {}, 商店名: '', 商品列表: [], 来源地点: 命中 ? (Object.keys(直接商店).length ? 命中.名称 : 命中.父名) : '' };
-    const 节点匹配键 = 规范商店匹配文本(节点名);
     const 类型匹配键 = 规范商店匹配文本(toText(节点项 && (节点项.type || 节点项.nodeKind), ''));
-    const 商店名 = 商店名列表.find(候选名 => {
-      const 商店匹配键 = 规范商店匹配文本(候选名);
-      return 商店匹配键 && (商店匹配键.includes(节点匹配键) || 节点匹配键.includes(商店匹配键) || 商店匹配键.includes(类型匹配键));
-    }) || (/商店|店铺|杂货/.test(`${节点名} ${toText(节点项 && 节点项.type, '')}`) ? 商店名列表[0] : '');
-    const 商品表 = 商店名 && 商店表[商店名] && 商店表[商店名].库存 && typeof 商店表[商店名].库存 === 'object'
-      ? 商店表[商店名].库存
-      : {};
-    const 商品列表 = Object.entries(商品表)
-      .filter(([, 商品]) => Number(商品 && 商品.库存 || 0) > 0)
-      .slice(0, 5)
-      .map(([商品名, 商品]) => ({
-        名称: 商品名,
-        库存: Number(商品 && 商品.库存 || 0),
-        价格: Number(商品 && 商品.价格 || 0),
-        货币: toText(商品 && 商品.货币, '联邦币')
-      }));
-    return { 商店表, 商店名, 商品列表, 来源地点: 命中 ? (Object.keys(直接商店).length ? 命中.名称 : 命中.父名) : '' };
+    const 解析商店 = (商店表, 来源地点, 需要移动 = false, 匹配名称 = 节点名, 允许首个 = false) => {
+      const 商店名列表 = Object.keys(商店表 || {});
+      if (!商店名列表.length) return { 商店表: {}, 商店名: '', 商品列表: [], 来源地点, 需要移动 };
+      const 匹配键 = 规范商店匹配文本(匹配名称);
+      const 商店名 = 商店名列表.find(候选名 => {
+        const 商店匹配键 = 规范商店匹配文本(候选名);
+        return 商店匹配键 && (商店匹配键.includes(匹配键) || 匹配键.includes(商店匹配键) || 商店匹配键.includes(类型匹配键));
+      }) || (允许首个 || /商店|店铺|杂货/.test(`${节点名} ${toText(节点项 && 节点项.type, '')}`) ? 商店名列表[0] : '');
+      const 商品表 = 商店名 && 商店表[商店名] && 商店表[商店名].库存 && typeof 商店表[商店名].库存 === 'object'
+        ? 商店表[商店名].库存
+        : {};
+      const 商品列表 = Object.entries(商品表)
+        .filter(([, 商品]) => Number(商品 && 商品.库存 || 0) > 0)
+        .slice(0, 5)
+        .map(([商品名, 商品]) => ({
+          名称: 商品名,
+          库存: Number(商品 && 商品.库存 || 0),
+          价格: Number(商品 && 商品.价格 || 0),
+          货币: toText(商品 && 商品.货币, '联邦币')
+        }));
+      return { 商店表: 商店名 ? 商店表 : {}, 商店名, 商品列表, 来源地点, 需要移动 };
+    };
+    const 直接上下文 = 解析商店(直接商店, 命中 ? 命中.名称 : '', false, 节点名, false);
+    const 父级上下文 = 解析商店(父商店, 命中 ? 命中.父名 : '', true, 命中 ? 命中.父名 : 节点名, true);
+    if (直接上下文.商店名) {
+      return {
+        ...直接上下文,
+        附近商店表: 父级上下文.商店表,
+        附近商店名: 父级上下文.商店名,
+        附近商品列表: 父级上下文.商品列表,
+        附近来源地点: 父级上下文.来源地点,
+        需要移动: false
+      };
+    }
+    return {
+      商店表: {},
+      商店名: '',
+      商品列表: [],
+      来源地点: '',
+      需要移动: !!父级上下文.商店名,
+      附近商店表: 父级上下文.商店表,
+      附近商店名: 父级上下文.商店名,
+      附近商品列表: 父级上下文.商品列表,
+      附近来源地点: 父级上下文.来源地点
+    };
   }
 
   function 获取节点本地动作(节点项 = null, snapshot = mapState.baseSnapshot || mapState.snapshot) {
@@ -3188,7 +3353,6 @@
     if (/拍卖/.test(节点文本)) 加入动作('bid');
     if (/锻造师协会|制造师协会|设计师协会|修理师协会|副职业|工坊/.test(节点文本)) {
       加入动作('craft');
-      加入动作('trade');
     }
     加入动作('meditate');
     加入动作('train_body');
@@ -3221,6 +3385,9 @@
       ? formatFreePoint(mapState.selectedFreePoint || mapState.currentFreePoint || mapState.hoverCoord, '坐标')
       : toText(focusItem && focusItem.name, 指定焦点名 || snapshot.currentFocusName || snapshot.currentLoc || '未知地点');
     if (!focusName) return null;
+    const focusWorldContext = 选项.世界行动上下文 || (!isFreeSelection && focusItem
+      ? resolveMapWorldActionContext(snapshot, 'map_view', focusName)
+      : null);
     const currentName = getActualCurrentLoc() || snapshot.currentLoc || '未知地点';
     const rawCurrentName = toText(snapshot.currentLocFull || snapshot.currentLoc || currentName, currentName);
     const 在场人物面板 = 构建星图在场人物列表HTML({
@@ -3242,7 +3409,8 @@
       ...选项,
       焦点名称: focusName,
       自由坐标: isFreeSelection,
-      地形: toText(选项 && 选项.地形, '')
+      地形: toText(选项 && 选项.地形, ''),
+      世界行动上下文: focusWorldContext
     });
     const 焦点规范名 = 归一地点名(focusName);
     const 当前规范名 = 归一地点名(currentName);
@@ -3286,6 +3454,7 @@
     const resolvedActionSlots = getMapNodeListField(rawItem, ['action_slots', 'actionSlots']).length ? getMapNodeListField(rawItem, ['action_slots', 'actionSlots']) : (extra.actionSlots || []);
     const resolvedEventId = getMapNodeTextField(rawItem, ['event_id', 'eventId'], extra.eventId || '') || extra.eventId || '';
     const resolvedLevel = getMapNodeNumberField(rawItem, ['level', '等级'], toNumber(rawItem && rawItem.level, 0));
+    const staticFields = { ...readMapNodeStaticFields(rawItem), ...readMapNodeStaticFields(extra) };
     const canEnter = !!extra.canEnter;
     const pointKind = toText(extra.pointKind || inferPointKind(displayName, source, resolvedType, resolvedIcon), 'node');
     const behaviorMeta = deriveNodeBehaviorMeta(displayName, rawItem || {}, {
@@ -3332,6 +3501,7 @@
       actionSlots: resolvedActionSlots.length ? resolvedActionSlots : behaviorMeta.actionSlots,
       eventId: resolvedEventId || behaviorMeta.eventId,
       level: resolvedLevel,
+      ...staticFields,
       current: !!extra.current
     };
   }
@@ -3675,7 +3845,14 @@
           toText(item && item.nodeKind, ''),
           toText(item && item.state, ''),
           item && item.canEnter ? '1' : '0',
-          toText(item && item.eventId, '')
+          toText(item && item.eventId, ''),
+          JSON.stringify(item && {
+            resources: item.resources,
+            hazards: item.hazards,
+            terrain: item.terrain,
+            movementDifficulty: item.movementDifficulty,
+            climate: item.climate
+          })
         ].join(':')).join('|')
       : '';
     return [
@@ -3828,7 +4005,8 @@
         描述: getMapNodeTextField(child, ['desc', '描述'], ''),
         状态: getMapNodeTextField(child, ['state', '状态'], ''),
         掌控势力: getMapNodeTextField(child, ['faction', 'default_faction', '掌控势力'], ''),
-        重要度: getMapNodeNumberField(child, ['importance', '重要度'], NaN)
+        重要度: getMapNodeNumberField(child, ['importance', '重要度'], NaN),
+        ...readMapNodeStaticFields(child)
       }]);
 
       if (hasChildren || hasDynamicChildren) {
@@ -3866,7 +4044,8 @@
         描述: getMapNodeTextField(动态节点, ['描述', 'desc'], '无'),
         状态: getMapNodeTextField(动态节点, ['状态', 'state'], '动态'),
         掌控势力: getMapNodeTextField(动态节点, ['势力', 'faction', '掌控势力'], ''),
-        重要度: getMapNodeNumberField(动态节点, ['重要度', 'importance'], NaN)
+        重要度: getMapNodeNumberField(动态节点, ['重要度', 'importance'], NaN),
+        ...readMapNodeStaticFields(动态节点)
       }]);
     });
 
@@ -6234,7 +6413,7 @@
     const 当前规范名 = 归一地点名(当前地点);
     const 是否当前位置 = !!焦点规范名 && (焦点规范名 === 当前规范名 || 当前规范名.endsWith(`-${焦点规范名}`));
     const 类型文本 = focusItem ? toText(focusItem.type, '节点') : (选项.自由坐标 ? '自由坐标点' : '节点');
-    const 运营信息 = 构建星图焦点运营信息(snapshot, focusItem, focusName);
+    const 运营信息 = 构建星图焦点运营信息(snapshot, focusItem, focusName, 选项);
     const 地貌摘要 = [类型文本, toText(选项.地形, '')].filter(Boolean).join(' · ') || 类型文本;
     const 元信息HTML = [
       ['掌控', 运营信息.掌控],
@@ -6242,7 +6421,9 @@
       ['经济', 运营信息.经济],
       ['供给', 运营信息.供给],
       ['价格', 运营信息.价格],
-      ['成交', 运营信息.成交]
+      ['成交', 运营信息.成交],
+      ['设施', 运营信息.设施],
+      ['附近设施', 运营信息.附近设施]
     ].map(([标签, 值]) => `<span class="mvu-map-focus-meta-item"><b>${escapeMapHtml(标签)}</b><em title="${escapeMapHtml(值)}">${escapeMapHtml(toText(值, '无'))}</em></span>`).join('');
     return `
         <div class="mvu-map-focus-card">
@@ -7121,6 +7302,22 @@
       return;
     }
 
+    const travelWorldContext = resolveMapWorldActionContext(
+      mapState.baseSnapshot || mapState.snapshot,
+      'travel',
+      结算最终位置,
+      Math.max(0, Number(request.est_ticks || 0)),
+    );
+    const travelWorldState = getMapWorldActionState(travelWorldContext);
+    if (!travelWorldState.ok) {
+      mapState.lastTravelNote = `[地图移动失败] ${travelWorldState.reason}`;
+      mapState.pendingTravelRequest = null;
+      mapState.待移动后动作 = null;
+      syncInteractiveMapUI({ center: false, updateInfo: true });
+      if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show(travelWorldState.reason, 'warning');
+      return;
+    }
+
     const targetTerrainInfo = resolveTerrainInfoByCoord(targetCoord, mapState.currentMapId);
     const targetTerrainBrief = targetTerrainInfo
       ? formatTerrainNarrative(targetTerrainInfo, mapState.currentMapId, { fallback: '', includeDifficulty: false })
@@ -7262,18 +7459,44 @@
     const talkSuffix = action === 'talk'
       ? (npcTarget ? ` · 对象 ${npcTarget}` : (talkTargets.length ? ` · 对象 ${talkTargets.join('、')}` : ''))
       : (npcTarget ? ` · 对象 ${npcTarget}` : '');
+    const actionContextType = ['trade', 'shop', 'black_market'].includes(action)
+      ? 'trade_buy'
+      : ['bid', 'auction'].includes(action)
+        ? 'trade_auction'
+        : action === 'craft'
+          ? 'profession'
+          : action === 'battle'
+            ? 'battle'
+            : ['meditate', 'train_body', 'train', '训练', 'train_mind', 'rest', 'sleep', 'study', '研读'].includes(action)
+              ? 'routine'
+              : ['talk', 'brief', 'intel'].includes(action)
+                ? 'social'
+                : '';
+    const actionNeedsWorldContext = !!actionContextType || !!商店上下文.商店名;
+    const actionNeedsFacility = ['trade', 'shop', 'black_market', 'bid', 'auction'].includes(action) || action === 'craft' || !!商店上下文.商店名;
+    const worldActionContext = actionNeedsWorldContext
+      ? resolveMapWorldActionContext(snapshot, actionContextType || 'trade_buy', item.name, 1)
+      : null;
+    const worldActionState = actionNeedsWorldContext
+      ? getMapWorldActionState(worldActionContext, {
+        requireFacility: actionNeedsFacility,
+        facilityMatcher: ['trade', 'shop', 'black_market', 'bid', 'auction'].includes(action) || !!商店上下文.商店名
+          ? /market|trade|shop|store|auction|商业|交易|商店|拍卖/
+          : action === 'craft' ? /forge|smith|workshop|station|bench|facility|craft|工坊|工作台|设施|协会|车间|实验室|锻造|制造|设计|修理|维修|副职业/ : null,
+        missingFacilityReason: '当前地点没有可用的对应设施。'
+      })
+      : { ok: true, reason: '' };
+    if (!worldActionState.ok) {
+      mapState.lastTravelNote = `【${item.name}】${worldActionState.reason}`;
+      if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show(worldActionState.reason, 'warning');
+      return { target: item.name, npcTarget, action, note: worldActionState.reason, at: Date.now() };
+    }
     const note = `[触发前端分发] ${item.name} · 执行 ${actionLabel} 交互${talkSuffix}`;
     mapState.lastNodeAction = { target: item.name, npcTarget, action, note, at: Date.now() };
     mapState.lastTravelNote = note;
 
     // ====== MVU 前端结果结算与指令注入 (轻量交互) ======
     // 对于需要走统一桥接的动作（交易、工坊、战斗与社交互动等），直接抛出事件交给 MVU 逻辑桥处理
-    if ((['trade', 'shop', 'black_market'].includes(action) || itemServices.some(s => ['shop', 'black_market'].includes(s)) || 商店上下文.商店名) && !判断商店营业中(mapState.baseSnapshot || snapshot)) {
-      mapState.lastTravelNote = `【${item.name}】商店已关门，营业时间 09:00-22:00。`;
-      if (window.MVU_Toast && typeof window.MVU_Toast.show === 'function') window.MVU_Toast.show('商店已关门，营业时间 09:00-22:00。', 'warning');
-      return mapState.lastNodeAction;
-    }
-
     if (['trade', 'bid', 'craft', 'black_market', 'auction', 'shop', 'battle', 'talk', 'brief', 'intel'].includes(action) || itemServices.some(s => ['shop', 'auction', 'black_market', 'craft', 'battle', 'talk', 'brief', 'intel'].includes(s)) || 商店上下文.商店名) {
       try {
         window.dispatchEvent(new CustomEvent('map-action-dispatch', {
@@ -7638,7 +7861,13 @@ ${logMsg}
     const focusName = isFreeSelection ? formatFreePoint(mapState.selectedFreePoint, '坐标') : toText(focusItem && focusItem.name, '未知地点');
     const focusNodeKindText = focusItem ? getNodeKindLabel(focusItem.nodeKind) : (isFreeSelection ? '自由坐标' : '无');
     const focusInteractionText = focusItem ? formatBehaviorLabels(focusItem.interactions, getNodeInteractionLabel) : (isFreeSelection ? '查看坐标/开始移动' : '无');
-    const focusServiceText = focusItem ? formatBehaviorLabels(focusItem.services, getNodeServiceLabel) : (isFreeSelection ? '无固定设施' : '无');
+    const focusWorldContext = !isFreeSelection && focusItem
+      ? resolveMapWorldActionContext(snapshot, 'map_view', focusName)
+      : null;
+    const focusFacilityText = getMapWorldActionFacilityText(focusWorldContext);
+    const staticFocusServiceText = focusItem ? formatBehaviorLabels(focusItem.services, getNodeServiceLabel) : (isFreeSelection ? '无固定设施' : '无');
+    const focusServiceText = focusWorldContext ? (focusFacilityText.direct || '无') : (focusFacilityText.direct || staticFocusServiceText);
+    const focusNearbyFacilityText = focusFacilityText.nearby ? `${focusFacilityText.nearby}（需移动）` : '';
     const focusEventText = focusItem && toText(focusItem.eventId, '') ? '已挂接事件' : '无';
     const primaryInteractionLabel = focusItem ? getNodeInteractionLabel(getPrimaryNodeInteraction(focusItem)) : (isFreeSelection ? '查看坐标' : '查看');
     const activeNodeAction = inPreview && focusItem && mapState.lastNodeAction && mapState.lastNodeAction.target === focusItem.name ? mapState.lastNodeAction : null;
@@ -7702,7 +7931,10 @@ ${logMsg}
     const focusImportance = focusItem ? toNumber(focusItem.importance, NaN) : NaN;
     const focusImportanceText = isFreeSelection ? '坐标点' : (Number.isFinite(focusImportance) && focusImportance > 0 ? `${Math.round(focusImportance)}` : '未标定');
     const focusDescBaseText = isFreeSelection ? '已选中该坐标，可在左侧选择方式后直接移动。' : (focusItem ? toText(focusItem.desc, '暂无节点说明。') : '视野内无节点');
-    const focusAvailableText = isFreeSelection ? '无固定设施' : (canPreviewEnter ? '可进入子图' : (focusServiceText !== '无' ? focusServiceText : '无'));
+    const focusAvailableText = isFreeSelection
+      ? '无固定设施'
+      : [canPreviewEnter ? '可进入子图' : '', focusServiceText !== '无' ? focusServiceText : '', focusNearbyFacilityText]
+        .filter(Boolean).join(' · ') || '无';
     const actionModeText = travelPreview ? (isFreeSelection ? '坐标移动' : pendingForSelection ? '移动待确认' : '移动规划') : '驻留 / 查看';
     const actionOperationText = travelPreview ? (isFreeSelection ? '开始移动' : pendingForSelection ? '确认前往' : '规划路线') : (isFreeSelection ? '查看坐标' : primaryInteractionLabel);
     const actionTargetText = pending ? `${pendingTarget}${pendingTerrainShort}` : (previewRequest ? `${previewTarget}${previewTerrainShort}` : focusName);
