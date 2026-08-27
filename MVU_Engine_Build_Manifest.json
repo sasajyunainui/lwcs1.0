@@ -5,14 +5,14 @@
     "engineRuntime": "MVU_Engine_Runtime.js",
     "projectRuntimeBundle": "LWCS_MVU_Project_Runtime_Bundle.js",
     "sourcePatch": "MVU_Engine_Source.patch",
-    "bundleBytes": 1241520,
-    "bundleSha256": "2129dd62d2eeaf7970344c9fa7c012f5ecf318a96a8285b5bff6c99d7cf78054",
-    "engineRuntimeBytes": 1171736,
-    "engineRuntimeSha256": "c57fa6e0d5930ba4b9688e0450042c85833870bb0c4470c5e83466a0cc0344ec",
+    "bundleBytes": 1241939,
+    "bundleSha256": "14ed1eb9195f8b2ef201b40f8daa47ee5cfecbc385fef324c17bb5e1f1a1ed66",
+    "engineRuntimeBytes": 1172155,
+    "engineRuntimeSha256": "aa13630e06b11306a02dc77dfb3b81c36f86633fd0b8650c3a8d241a4921d6a3",
     "projectRuntimeBundleBytes": 2445853,
     "projectRuntimeBundleSha256": "399499bbaba9e3f6c401a009f358fd202023f20e58a07fef01b072bfd5d12b98",
-    "sourcePatchBytes": 64382,
-    "sourcePatchSha256": "493f6aed7c9938f2dc4ed06442dd8cd760cace8ae463241a87ca7627f2476d04"
+    "sourcePatchBytes": 38014,
+    "sourcePatchSha256": "ea10a07cbc089efe94600328e69028b016adb63b01730ca894f24af4c4944da2"
   },
   "upstream": {
     "repository": "https://github.com/MagicalAstrogy/MagVarUpdate.git",
@@ -23,8 +23,8 @@
     "packageManager": "yarn@3.4.1",
     "applyPatch": "git apply --unidiff-zero --whitespace=error MVU_Engine_Source.patch",
     "install": "corepack yarn install --immutable",
-    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-27 00:00'; corepack yarn build\"",
-    "buildDate": "2026-08-27 00:00",
+    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-28 00:00'; corepack yarn build\"",
+    "buildDate": "2026-08-28 00:00",
     "output": "artifact/bundle.js -> MVU_Engine_Runtime.js; node Build_Runtime_Bundles.cjs MVU_Engine_Bundle.js -> MVU_Engine_Bundle.js",
     "environmentComposition": [
       "LWCS_Persistence_Adapter.js",

@@ -138,7 +138,7 @@ index 321bd11..c7dbc51 100644
 @@ -238 +243,0 @@ async function onVariableUpdatedCall(args: any): Promise<string> {
 -    await replaceVariables(variables, { type: 'message', message_id: message_id });
 diff --git a/src/function/global/index.ts b/src/function/global/index.ts
-index caf3097..16cbf7f 100644
+index caf3097..6665ece 100644
 --- a/src/function/global/index.ts
 +++ b/src/function/global/index.ts
 @@ -2,0 +3,8 @@ import { updateVariable, updateVariables } from '@/function/update_variables';
@@ -333,7 +333,7 @@ index c3ddcb5..4ff4e4a 100644
 @@ -319,0 +339 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
-index 722db33..272172a 100644
+index 722db33..bb4880c 100644
 --- a/src/function/update/index.ts
 +++ b/src/function/update/index.ts
 @@ -1,2 +0,0 @@
@@ -356,7 +356,7 @@ index 722db33..272172a 100644
 +                await runMvuTaskCommit(
 +                    task,
 +                    'message_variable_update',
-+                    () => handleVariablesInMessage(message_id, task.isCurrent),
++                    () => handleVariablesInMessage(message_id, task.isCurrent, task.refreshFingerprint),
 +                    changed => (changed ? 'committed' : 'no_diff')
 +                );
 +            });
@@ -502,7 +502,7 @@ index f992a26..fefc690 100644
 +                ? [{ role: 'system' as const, content: projected_mvu_context }]
 +                : []),
 diff --git a/src/function/update/on_message_received.ts b/src/function/update/on_message_received.ts
-index 2f7a0bf..ed45449 100644
+index 2f7a0bf..7a00c7c 100644
 --- a/src/function/update/on_message_received.ts
 +++ b/src/function/update/on_message_received.ts
 @@ -3,0 +4,5 @@ import { invokeExtraModelWithStrategy } from '@/function/update/invoke_extra_mod
@@ -533,7 +533,7 @@ index 2f7a0bf..ed45449 100644
 +        await runMvuTaskCommit(
 +            task,
 +            'message_variable_update',
-+            () => handleVariablesInMessage(message_id, task.isCurrent),
++            () => handleVariablesInMessage(message_id, task.isCurrent, task.refreshFingerprint),
 +            changed => (changed ? 'committed' : 'no_diff')
 +        );
 @@ -43,0 +64 @@ export async function onMessageReceived(
@@ -550,7 +550,7 @@ index 2f7a0bf..ed45449 100644
 +        const should_parse_message = task.isMessageCurrent();
 +        task.finish('request_failed', String(error));
 +        if (should_parse_message) {
-+            await handleVariablesInMessage(message_id, task.isMessageCurrent);
++            await handleVariablesInMessage(message_id, task.isMessageCurrent, task.refreshFingerprint);
 +        }
 +        return;
 +    }
@@ -564,7 +564,7 @@ index 2f7a0bf..ed45449 100644
 +        const should_parse_message = task.isMessageCurrent();
 +        task.finish(result === null ? 'request_failed' : 'skipped', result === null ? undefined : 'empty_response');
 +        if (should_parse_message) {
-+            await handleVariablesInMessage(message_id, task.isMessageCurrent);
++            await handleVariablesInMessage(message_id, task.isMessageCurrent, task.refreshFingerprint);
 +        }
 @@ -52,3 +100,4 @@ export async function onMessageReceived(
 -    const result = await invokeExtraModelWithStrategy();
@@ -612,43 +612,71 @@ index 2f7a0bf..ed45449 100644
 +                }
 +            );
 +            task.refreshFingerprint();
-+            return await handleVariablesInMessage(message_id, task.isCurrent);
++            return await handleVariablesInMessage(message_id, task.isCurrent, task.refreshFingerprint);
 +        },
 +        changed => (changed ? 'committed' : 'no_diff')
 +    );
 diff --git a/src/function/update_variables.ts b/src/function/update_variables.ts
-index e144b79..62fcbc2 100644
+index e144b79..761834e 100644
 --- a/src/function/update_variables.ts
 +++ b/src/function/update_variables.ts
 @@ -6,0 +7 @@ import {
 +import { isTtMvuHost, updateVariablesWithControlled as updateVariablesWith } from '@/function/update/mvu_runtime';
-@@ -1500 +1501,4 @@ export async function updateVariables(
+@@ -1500 +1501,5 @@ export async function updateVariables(
 -export async function handleVariablesInMessage(message_id: number) {
 +export async function handleVariablesInMessage(
 +    message_id: number,
-+    is_current: () => boolean = () => true
++    is_current: () => boolean = () => true,
++    refresh_current: () => void = () => undefined
 +): Promise<boolean> {
-@@ -1503 +1507 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1503 +1508 @@ export async function handleVariablesInMessage(message_id: number) {
 -        return;
 +        return false;
-@@ -1509 +1513 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1509 +1514 @@ export async function handleVariablesInMessage(message_id: number) {
 -        return;
 +        return false;
-@@ -1516 +1520 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1516 +1521 @@ export async function handleVariablesInMessage(message_id: number) {
 -        return;
 +        return false;
-@@ -1519,0 +1524,3 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1519,0 +1525,3 @@ export async function handleVariablesInMessage(message_id: number) {
 +    if (!is_current()) {
 +        return false;
 +    }
-@@ -1525,0 +1533,3 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1525,0 +1534,3 @@ export async function handleVariablesInMessage(message_id: number) {
 +        if (!is_current()) {
 +            return false;
 +        }
-@@ -1548,2 +1558,18 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1548,2 +1559,45 @@ export async function handleVariablesInMessage(message_id: number) {
 -    if (has_variable_modified && settings.兼容性.更新到聊天变量) {
 -        await updateVariablesWith(updater, { type: 'chat' });
-+    if (isTtMvuHost()) {
++    const is_tt_host = isTtMvuHost();
++    if (is_tt_host && chat_message.role !== 'user') {
++        if (!is_current()) {
++            return false;
++        }
++        if (!message_content.includes('<StatusPlaceHolderImpl/>')) {
++            message_content += '\n\n<StatusPlaceHolderImpl/>';
++        }
++        if (message_content.includes('<status_current_variable>')) {
++            message_content = message_content.replaceAll(
++                /<(status_current_variable)>(?:(?!<\1>).)*<\/\1?>/gis,
++                ''
++            );
++        }
++        await setChatMessages(
++            [
++                {
++                    message_id: message_id,
++                    message: message_content,
++                },
++            ],
++            {
++                refresh: 'affected',
++            }
++        );
++        refresh_current();
++    }
++    if (is_tt_host) {
 +        if (has_variable_modified) {
 +            if (!is_current()) {
 +                return false;
@@ -666,13 +694,15 @@ index e144b79..62fcbc2 100644
 +            return false;
 +        }
 +        await updateVariablesWith(updater, { type: 'message', message_id: message_id }, is_current);
-@@ -1551 +1576,0 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1551 +1604,0 @@ export async function handleVariablesInMessage(message_id: number) {
 -    await updateVariablesWith(updater, { type: 'message', message_id: message_id });
-@@ -1553,0 +1579,3 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1553 +1606,4 @@ export async function handleVariablesInMessage(message_id: number) {
+-    if (chat_message.role !== 'user') {
++    if (!is_tt_host && chat_message.role !== 'user') {
 +        if (!is_current()) {
 +            return false;
 +        }
-@@ -1574,0 +1603 @@ export async function handleVariablesInMessage(message_id: number) {
+@@ -1574,0 +1631 @@ export async function handleVariablesInMessage(message_id: number) {
 +    return has_variable_modified;
 diff --git a/src/main.ts b/src/main.ts
 index 364eb10..6dd2392 100644
@@ -795,752 +825,3 @@ index 76b0425..810c7bd 100644
 -                        `https://testingcf.jsdelivr.net/npm/${request}/+esm`)
 -            );
 +            return callback();
-diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
-new file mode 100644
-index 0000000..e7d3539
---- /dev/null
-+++ b/src/function/update/mvu_runtime.ts
-@@ -0,0 +1,743 @@
-+import type { MvuData } from '@/variable_def';
-+
-+export const mvu_runtime_events = Object.freeze({
-+    TASK_STARTED: 'lwcs_mvu_task_started',
-+    TASK_FINISHED: 'lwcs_mvu_task_finished',
-+    COMMIT_STARTED: 'lwcs_mvu_commit_started',
-+    COMMIT_FINISHED: 'lwcs_mvu_commit_finished',
-+} as const);
-+
-+type Fingerprint = {
-+    available: boolean;
-+    value: string | null;
-+    pointer: MessagePointer;
-+};
-+
-+type MessagePointer = {
-+    absoluteIndex: number;
-+    swipeId: number | string | null;
-+    textFingerprint: string;
-+};
-+
-+type ProviderStatus = {
-+    phase?: string;
-+    pending?: number;
-+    error?: string;
-+    [key: string]: unknown;
-+};
-+
-+type ProviderHandle = {
-+    backend: string;
-+    stableChatId: string;
-+    load: (request: { initialState: MvuData; message: MessagePointer }) => Promise<ProviderResult>;
-+    readState: (request: { initialState: MvuData; message: MessagePointer }) => Promise<ProviderResult>;
-+    enqueueCommit: (request: { fullState: MvuData; message: MessagePointer }) => Promise<ProviderResult>;
-+    getHotState: () => MvuData | null;
-+    getQueueState: () => { pending?: number };
-+    awaitIdle?: () => Promise<void>;
-+    getStatus?: () => ProviderStatus;
-+    isLive: () => boolean;
-+    invalidate?: (reason?: string) => unknown;
-+};
-+
-+type ProviderResult = {
-+    state: string;
-+    error?: string;
-+    skipped?: boolean;
-+    verified?: boolean;
-+    hotState?: MvuData;
-+};
-+
-+type TaskState = {
-+    id: number;
-+    kind: string;
-+    message_id: number;
-+    chat_id: string;
-+    fingerprint: Fingerprint;
-+    message: MessagePointer;
-+    epoch: number;
-+    phase: 'scheduled' | 'running' | 'committing';
-+    done: boolean;
-+    invalidated: boolean;
-+    commit_id?: number;
-+    resolve_completion: () => void;
-+};
-+
-+type CommitState = {
-+    id: number;
-+    task_id?: number;
-+    kind: string;
-+    chat_id: string;
-+    done: boolean;
-+};
-+
-+export type MvuRuntimeCommit = {
-+    finish: (status: string, reason?: string) => void;
-+};
-+
-+export type MvuRuntimeTask = {
-+    readonly id: number;
-+    readonly message_id: number;
-+    isCurrent: () => boolean;
-+    isMessageCurrent: () => boolean;
-+    beginCommit: (kind?: string) => MvuRuntimeCommit;
-+    finish: (status?: string, reason?: string) => void;
-+    wait: () => Promise<void>;
-+    refreshFingerprint: () => void;
-+};
-+
-+let next_id = 0;
-+let epoch = 0;
-+const active_tasks = new Map<number, TaskState>();
-+const active_commits = new Map<number, CommitState>();
-+const idle_waiters = new Set<() => void>();
-+
-+const PROVIDER_KEY = '__LWCS_MVU_PERSISTENCE_PROVIDER_V1__';
-+const provider_runtime = {
-+    phase: 'disabled' as 'disabled' | 'loading' | 'ready' | 'committing' | 'failed' | 'stale',
-+    backend: null as string | null,
-+    stable_chat_id: '',
-+    error: '',
-+    load_count: 0,
-+    commit_count: 0,
-+};
-+let provider_handle: ProviderHandle | null = null;
-+let provider_initial_state: MvuData | null = null;
-+let provider_init_promise: Promise<void> | null = null;
-+
-+function runtimeWindows(): any[] {
-+    const windows: any[] = [];
-+    const add = (candidate: any) => {
-+        if (candidate && !windows.includes(candidate)) windows.push(candidate);
-+    };
-+    add(globalThis);
-+    try { add((globalThis as any).window); } catch { /* optional child window */ }
-+    try { add((globalThis as any).parent); } catch { /* optional parent window */ }
-+    try { add((globalThis as any).top); } catch { /* optional top window */ }
-+    return windows;
-+}
-+
-+function findProvider(): any {
-+    return runtimeWindows().map(candidate => candidate?.[PROVIDER_KEY]).find(Boolean) || null;
-+}
-+
-+function cloneRuntimeValue<T>(value: T): T {
-+    if (value === undefined) return value;
-+    try {
-+        if (typeof structuredClone === 'function') return structuredClone(value);
-+    } catch { /* structured clone can reject host objects */ }
-+    return JSON.parse(JSON.stringify(value)) as T;
-+}
-+
-+function isTauriTavern(): boolean {
-+    return runtimeWindows().some(candidate => {
-+        const value = candidate?.__TAURITAVERN__;
-+        return Object.prototype.hasOwnProperty.call(candidate, '__TAURITAVERN_MAIN_READY__')
-+            || (!!value && typeof value === 'object')
-+            || (!!value && Object.prototype.hasOwnProperty.call(value, 'ready'));
-+    });
-+}
-+
-+function currentChatId(): string {
-+    try {
-+        return String(SillyTavern.getCurrentChatId());
-+    } catch {
-+        return '';
-+    }
-+}
-+
-+function textFingerprint(value: string): string {
-+    let hash = 2166136261;
-+    for (const character of String(value)) hash = Math.imul(hash ^ character.codePointAt(0)!, 16777619);
-+    return (hash >>> 0).toString(16).padStart(8, '0');
-+}
-+
-+function readMessagePointer(message_id: number | 'latest' = -1): MessagePointer {
-+    try {
-+        const messages = getChatMessages(message_id, { include_swipes: true });
-+        const message = messages?.at(-1) as
-+            | { message_id?: number; message?: string; mes?: string; swipe_id?: number | string }
-+            | undefined;
-+        const absoluteIndex = Number(message?.message_id ?? (typeof message_id === 'number' ? message_id : -1));
-+        const message_text = typeof message?.message === 'string' ? message.message : message?.mes ?? '';
-+        return Object.freeze({
-+            absoluteIndex: Number.isFinite(absoluteIndex) ? Math.trunc(absoluteIndex) : -1,
-+            swipeId: message?.swipe_id ?? null,
-+            textFingerprint: textFingerprint(message_text),
-+        });
-+    } catch {
-+        return Object.freeze({
-+            absoluteIndex: typeof message_id === 'number' ? Math.trunc(message_id) : -1,
-+            swipeId: null,
-+            textFingerprint: '',
-+        });
-+    }
-+}
-+
-+function readOptionPointer(options: VariableOption): MessagePointer {
-+    const raw_message_id = (options as any)?.message_id;
-+    if (raw_message_id === 'latest' || raw_message_id === undefined || raw_message_id === null) {
-+        return readMessagePointer(-1);
-+    }
-+    const message_id = Number(raw_message_id);
-+    return readMessagePointer(Number.isFinite(message_id) ? Math.trunc(message_id) : -1);
-+}
-+
-+function pointerKey(pointer: MessagePointer): string {
-+    return JSON.stringify([pointer.absoluteIndex, pointer.swipeId, pointer.textFingerprint]);
-+}
-+
-+function readFingerprint(message_id: number): Fingerprint {
-+    try {
-+        const pointer = readMessagePointer(message_id);
-+        return {
-+            available: true,
-+            value: pointerKey(pointer),
-+            pointer,
-+        };
-+    } catch {
-+        return { available: false, value: null, pointer: readMessagePointer(message_id) };
-+    }
-+}
-+
-+function emit(event_name: string, payload: Record<string, unknown>) {
-+    if (typeof eventEmit !== 'function') {
-+        return;
-+    }
-+    void eventEmit(event_name, payload).catch((error: unknown) => {
-+        console.warn('[LWCS MVU] 状态事件发送失败', error);
-+    });
-+}
-+
-+function taskPayload(task: TaskState, status: string, reason?: string) {
-+    return {
-+        id: task.id,
-+        kind: task.kind,
-+        status,
-+        reason,
-+        chat_id: task.chat_id,
-+        message_id: task.message_id,
-+        message: task.message,
-+    };
-+}
-+
-+function commitPayload(commit: CommitState, status: string, reason?: string) {
-+    return {
-+        id: commit.id,
-+        task_id: commit.task_id,
-+        kind: commit.kind,
-+        status,
-+        reason,
-+        chat_id: commit.chat_id,
-+    };
-+}
-+
-+function readProviderStatus(): ProviderStatus | null {
-+    try {
-+        const status = provider_handle?.getStatus?.();
-+        return status && typeof status === 'object' ? cloneRuntimeValue(status) : null;
-+    } catch {
-+        return null;
-+    }
-+}
-+
-+function providerPending(status: ProviderStatus | null = readProviderStatus()): number {
-+    const pending = Number(status?.pending ?? provider_handle?.getQueueState?.().pending ?? 0);
-+    return Number.isFinite(pending) ? Math.max(0, Math.trunc(pending)) : 0;
-+}
-+
-+function notifyIdle() {
-+    const provider_pending = providerPending();
-+    if (active_tasks.size !== 0 || active_commits.size !== 0 || provider_init_promise || provider_pending > 0) {
-+        return;
-+    }
-+    const waiters = [...idle_waiters];
-+    idle_waiters.clear();
-+    waiters.forEach(resolve => resolve());
-+}
-+
-+function providerResultError(result: ProviderResult): Error {
-+    const error = new Error(result.error || `MVU persistence ${result.state}`);
-+    (error as Error & { code?: string }).code = result.error || result.state.toUpperCase();
-+    return error;
-+}
-+
-+async function commitProviderState(
-+    full_state: MvuData,
-+    message: MessagePointer,
-+    is_current: () => boolean = () => true
-+): Promise<ProviderResult> {
-+    await ensureMvuPersistence();
-+    if (!provider_handle || !provider_handle.isLive() || !is_current()) {
-+        throw providerResultError({ state: 'stale_chat', error: 'STALE_CHAT' });
-+    }
-+    provider_runtime.phase = 'committing';
-+    provider_runtime.error = '';
-+    provider_runtime.commit_count += 1;
-+    try {
-+        const result = await provider_handle.enqueueCommit({
-+            fullState: cloneRuntimeValue(full_state),
-+            message,
-+        });
-+        if (result.state !== 'committed') throw providerResultError(result);
-+        if (!provider_handle || !provider_handle.isLive() || !is_current()) {
-+            throw providerResultError({ state: 'stale_chat', error: 'STALE_CHAT' });
-+        }
-+        provider_runtime.phase = 'ready';
-+        provider_runtime.backend = provider_handle.backend;
-+        provider_runtime.error = '';
-+        return result;
-+    } catch (error) {
-+        const error_code = String((error as Error & { code?: string })?.code || '');
-+        provider_runtime.phase = error_code === 'STALE_CHAT'
-+            ? (provider_handle?.isLive?.() ? 'ready' : 'stale')
-+            : 'failed';
-+        provider_runtime.error = String((error as Error)?.message || error);
-+        throw error;
-+    } finally {
-+        notifyIdle();
-+    }
-+}
-+
-+export function isTtMvuPersistenceActive(): boolean {
-+    return isTauriTavern() && !!provider_handle && provider_runtime.backend === 'tt-store' && provider_handle.isLive();
-+}
-+
-+export function isTtMvuHost(): boolean {
-+    return isTauriTavern();
-+}
-+
-+function isCanonicalMvuData(value: unknown): value is MvuData {
-+    return _.isPlainObject(value)
-+        && _.isPlainObject((value as MvuData).stat_data) && !_.isEmpty((value as MvuData).stat_data)
-+        && Object.prototype.hasOwnProperty.call(value, 'schema');
-+}
-+
-+export function getCanonicalMvuData(options: VariableOption): MvuData {
-+    if (isTauriTavern()) {
-+        const hot_state = provider_handle?.getHotState?.();
-+        if (isCanonicalMvuData(hot_state) && provider_handle?.isLive?.()) {
-+            return cloneRuntimeValue(hot_state);
-+        }
-+        if (isCanonicalMvuData(provider_initial_state)) {
-+            return cloneRuntimeValue(provider_initial_state);
-+        }
-+    }
-+    return getVariables(options) as MvuData;
-+}
-+
-+export async function readMvuDataControlled(options: VariableOption): Promise<MvuData | undefined> {
-+    if (!isTauriTavern()) return cloneRuntimeValue(getVariables(options) as MvuData);
-+    const operation_chat_id = currentChatId();
-+    await ensureMvuPersistence();
-+    if (operation_chat_id !== currentChatId() || typeof provider_handle?.readState !== 'function') return undefined;
-+    const read = await provider_handle.readState({
-+        initialState: provider_initial_state ?? (getVariables({ type: 'chat' }) as MvuData),
-+        message: readOptionPointer(options),
-+    });
-+    if (operation_chat_id !== currentChatId() || read.state !== 'committed' || !isCanonicalMvuData(read.hotState)) {
-+        return undefined;
-+    }
-+    return cloneRuntimeValue(read.hotState);
-+}
-+
-+export async function ensureMvuPersistence(): Promise<void> {
-+    if (!isTauriTavern()) {
-+        provider_runtime.phase = 'disabled';
-+        provider_runtime.backend = 'st-message-fallback';
-+        provider_runtime.error = '';
-+        return;
-+    }
-+    if (provider_handle?.isLive?.() && provider_runtime.backend === 'tt-store') return;
-+    if (provider_init_promise) return provider_init_promise;
-+
-+    provider_runtime.phase = 'loading';
-+    provider_runtime.backend = null;
-+    provider_runtime.error = '';
-+    const load_promise = (async () => {
-+        const provider = findProvider();
-+        if (!provider || typeof provider.open !== 'function') throw new Error('MVU persistence provider unavailable');
-+        const load_chat_id = currentChatId();
-+        const load_message = readMessagePointer(-1);
-+        const is_load_current = () =>
-+            load_chat_id === currentChatId() && pointerKey(load_message) === pointerKey(readMessagePointer(-1));
-+        const fallbackStableChatId = load_chat_id;
-+        const opened = await provider.open({ fallbackStableChatId });
-+        if (opened?.state !== 'committed' || opened.backend !== 'tt-store' || !opened.handle) {
-+            throw providerResultError(opened || { state: 'unavailable', error: 'MVU persistence provider open failed' });
-+        }
-+        if (!is_load_current()) {
-+            opened.handle.invalidate?.('STALE_CHAT');
-+            throw providerResultError({ state: 'stale_chat', error: 'STALE_CHAT' });
-+        }
-+        const initial_state = cloneRuntimeValue(getVariables({ type: 'chat' }) as MvuData || {});
-+        provider_runtime.load_count += 1;
-+        const loaded = await opened.handle.load({
-+            initialState: initial_state,
-+            message: load_message,
-+        });
-+        if (loaded?.state !== 'committed' || !opened.handle.getHotState?.()) {
-+            throw providerResultError(loaded || { state: 'unavailable', error: 'MVU persistence provider load failed' });
-+        }
-+        if (!is_load_current()) {
-+            opened.handle.invalidate?.('STALE_CHAT');
-+            throw providerResultError({ state: 'stale_chat', error: 'STALE_CHAT' });
-+        }
-+        provider_initial_state = initial_state;
-+        provider_handle = opened.handle as ProviderHandle;
-+        provider_runtime.phase = 'ready';
-+        provider_runtime.backend = provider_handle.backend;
-+        provider_runtime.stable_chat_id = provider_handle.stableChatId;
-+        provider_runtime.error = '';
-+    })()
-+        .catch(error => {
-+            provider_handle = null;
-+            provider_initial_state = null;
-+            provider_runtime.phase = (error as Error & { code?: string })?.code === 'STALE_CHAT'
-+                ? 'stale'
-+                : 'failed';
-+            provider_runtime.error = String((error as Error)?.message || error);
-+            throw error;
-+        })
-+        .finally(() => {
-+            if (provider_init_promise === load_promise) provider_init_promise = null;
-+            notifyIdle();
-+        });
-+    provider_init_promise = load_promise;
-+    return load_promise;
-+}
-+
-+export function invalidateProvider(reason: string): void {
-+    const provider = findProvider();
-+    try { provider?.invalidateChat?.(reason); } catch (error) {
-+        provider_runtime.error = String((error as Error)?.message || error);
-+    }
-+    provider_handle = null;
-+    provider_initial_state = null;
-+    provider_runtime.phase = isTauriTavern() ? 'stale' : 'disabled';
-+    provider_runtime.backend = isTauriTavern() ? null : 'st-message-fallback';
-+    notifyIdle();
-+}
-+
-+export async function updateVariablesWithControlled(
-+    updater: (data: Record<string, any>) => Record<string, any> | void | Promise<Record<string, any> | void>,
-+    options: VariableOption,
-+    is_current: () => boolean = () => true
-+): Promise<boolean> {
-+    if (!isTauriTavern()) {
-+        await updateVariablesWith(updater, options);
-+        return true;
-+    }
-+    const operation_chat_id = currentChatId();
-+    const operation_message = readOptionPointer(options);
-+    const operation_is_current = () =>
-+        is_current()
-+        && operation_chat_id === currentChatId()
-+        && pointerKey(operation_message) === pointerKey(readOptionPointer(options));
-+    await ensureMvuPersistence();
-+    const current = provider_handle?.getHotState?.();
-+    if (!current || !operation_is_current()) return false;
-+    const next = cloneRuntimeValue(current);
-+    const updated = await updater(next);
-+    const full_state = (updated || next) as MvuData;
-+    if (!operation_is_current()) return false;
-+    const result = await runMvuCommit('provider_update_variables', () =>
-+        commitProviderState(full_state, operation_message, operation_is_current)
-+    );
-+    return result.state === 'committed';
-+}
-+
-+export function replaceMvuDataControlled(
-+    mvu_data: MvuData,
-+    options: VariableOption,
-+    is_current: () => boolean = () => true
-+): Promise<unknown> {
-+    if (!isTauriTavern()) return replaceVariables(mvu_data, options);
-+    const operation_chat_id = currentChatId();
-+    const operation_message = readOptionPointer(options);
-+    const operation_is_current = () =>
-+        is_current()
-+        && operation_chat_id === currentChatId()
-+        && pointerKey(operation_message) === pointerKey(readOptionPointer(options));
-+    return runMvuCommit('replace_mvu_data', () =>
-+        commitProviderState(mvu_data, operation_message, operation_is_current)
-+    );
-+}
-+
-+function finishCommit(commit: CommitState, status: string, reason?: string) {
-+    if (commit.done) {
-+        return;
-+    }
-+    commit.done = true;
-+    active_commits.delete(commit.id);
-+    emit(mvu_runtime_events.COMMIT_FINISHED, commitPayload(commit, status, reason));
-+    if (commit.task_id !== undefined) {
-+        const task = active_tasks.get(commit.task_id);
-+        if (task && task.commit_id === commit.id) {
-+            task.commit_id = undefined;
-+            if (!task.done) {
-+                task.phase = 'running';
-+            }
-+        }
-+    }
-+    notifyIdle();
-+}
-+
-+function finishTask(task: TaskState, status: string, reason?: string) {
-+    if (task.done) {
-+        return;
-+    }
-+    if (status === 'stale') {
-+        task.invalidated = true;
-+    }
-+    if (task.commit_id !== undefined) {
-+        const commit = active_commits.get(task.commit_id);
-+        if (commit) {
-+            finishCommit(commit, 'failed', 'task_finished_before_commit');
-+        }
-+    }
-+    task.done = true;
-+    active_tasks.delete(task.id);
-+    emit(mvu_runtime_events.TASK_FINISHED, taskPayload(task, status, reason));
-+    task.resolve_completion();
-+    notifyIdle();
-+}
-+
-+function cancelTask(task: TaskState, reason: string) {
-+    task.invalidated = true;
-+    if (task.commit_id !== undefined) {
-+        const commit = active_commits.get(task.commit_id);
-+        if (commit) {
-+            finishCommit(commit, 'stale', reason);
-+        }
-+    }
-+    finishTask(task, 'stale', reason);
-+}
-+
-+function createTask(kind: string, message_id: number): { state: TaskState; api: MvuRuntimeTask } {
-+    let resolve_completion: () => void = () => {};
-+    const initial_fingerprint = readFingerprint(message_id);
-+    const state: TaskState = {
-+        id: ++next_id,
-+        kind,
-+        message_id,
-+        chat_id: currentChatId(),
-+        fingerprint: initial_fingerprint,
-+        message: initial_fingerprint.pointer,
-+        epoch,
-+        phase: 'scheduled',
-+        done: false,
-+        invalidated: false,
-+        resolve_completion,
-+    };
-+    const completion = new Promise<void>(resolve => {
-+        resolve_completion = resolve;
-+        state.resolve_completion = resolve;
-+    });
-+    active_tasks.set(state.id, state);
-+    emit(mvu_runtime_events.TASK_STARTED, taskPayload(state, 'scheduled'));
-+
-+    const api: MvuRuntimeTask = {
-+        id: state.id,
-+        message_id,
-+        isCurrent: () => {
-+            if (state.done || state.epoch !== epoch || state.chat_id !== currentChatId()) {
-+                return false;
-+            }
-+            if (!state.fingerprint.available) {
-+                return true;
-+            }
-+            return state.fingerprint.value === readFingerprint(message_id).value;
-+        },
-+        isMessageCurrent: () => {
-+            if (state.invalidated || state.epoch !== epoch || state.chat_id !== currentChatId()) {
-+                return false;
-+            }
-+            if (!state.fingerprint.available) {
-+                return true;
-+            }
-+            return state.fingerprint.value === readFingerprint(message_id).value;
-+        },
-+        beginCommit: (commit_kind = 'message_update') => {
-+            if (state.done) {
-+                return { finish: () => undefined };
-+            }
-+            if (state.commit_id !== undefined) {
-+                const current = active_commits.get(state.commit_id);
-+                if (current) {
-+                    return { finish: (status: string, reason?: string) => finishCommit(current, status, reason) };
-+                }
-+            }
-+            const commit: CommitState = {
-+                id: ++next_id,
-+                task_id: state.id,
-+                kind: commit_kind,
-+                chat_id: state.chat_id,
-+                done: false,
-+            };
-+            state.commit_id = commit.id;
-+            state.phase = 'committing';
-+            active_commits.set(commit.id, commit);
-+            emit(mvu_runtime_events.COMMIT_STARTED, commitPayload(commit, 'running'));
-+            return {
-+                finish: (status: string, reason?: string) => finishCommit(commit, status, reason),
-+            };
-+        },
-+        finish: (status = 'completed', reason?: string) => finishTask(state, status, reason),
-+        wait: () => completion,
-+        refreshFingerprint: () => {
-+            if (state.done) return;
-+            state.chat_id = currentChatId();
-+            state.epoch = epoch;
-+            state.fingerprint = readFingerprint(message_id);
-+            state.message = state.fingerprint.pointer;
-+        },
-+    };
-+    return { state, api };
-+}
-+
-+export function scheduleMvuTask(
-+    kind: string,
-+    message_id: number,
-+    runner: (task: MvuRuntimeTask) => void | Promise<void>
-+): MvuRuntimeTask {
-+    const { state, api } = createTask(kind, message_id);
-+    void Promise.resolve()
-+        .then(() => {
-+            if (state.done) return;
-+            api.refreshFingerprint();
-+            state.phase = 'running';
-+            return runner(api);
-+        })
-+        .then(
-+            () => finishTask(state, 'completed'),
-+            error => {
-+                console.error('[LWCS MVU] 任务失败', error);
-+                finishTask(state, 'failed', String(error));
-+            }
-+        );
-+    return api;
-+}
-+
-+export async function runMvuTaskCommit<T>(
-+    task: MvuRuntimeTask,
-+    kind: string,
-+    operation: () => T | Promise<T>,
-+    getStatus: (value: T) => string = () => 'committed'
-+): Promise<T> {
-+    const commit = task.beginCommit(kind);
-+    try {
-+        const value = await operation();
-+        const status = getStatus(value);
-+        commit.finish(status);
-+        task.finish(status);
-+        return value;
-+    } catch (error) {
-+        commit.finish('failed', String(error));
-+        task.finish('failed', String(error));
-+        throw error;
-+    }
-+}
-+
-+export function runMvuCommit<T>(kind: string, operation: () => T | Promise<T>): Promise<T> {
-+    const commit: CommitState = {
-+        id: ++next_id,
-+        kind,
-+        chat_id: currentChatId(),
-+        done: false,
-+    };
-+    active_commits.set(commit.id, commit);
-+    emit(mvu_runtime_events.COMMIT_STARTED, commitPayload(commit, 'running'));
-+    return Promise.resolve()
-+        .then(operation)
-+        .then(
-+            value => {
-+                finishCommit(commit, 'committed');
-+                return value;
-+            },
-+            error => {
-+                finishCommit(commit, 'failed', String(error));
-+                throw error;
-+            }
-+        );
-+}
-+
-+export function invalidateAll(reason: string) {
-+    epoch += 1;
-+    [...active_tasks.values()].forEach(task => cancelTask(task, reason));
-+    if (reason === 'chat_changed') invalidateProvider(reason);
-+}
-+
-+export function invalidateMessage(message_id: number, reason: string) {
-+    [...active_tasks.values()]
-+        .filter(
-+            task =>
-+                task.message_id === message_id &&
-+                task.phase !== 'committing' &&
-+                !(task.phase === 'scheduled' && reason === 'message_updated')
-+        )
-+        .forEach(task => cancelTask(task, reason));
-+    if (reason !== 'message_updated') invalidateProvider(reason);
-+}
-+
-+export function awaitIdle(): Promise<void> {
-+    return (async () => {
-+        while (true) {
-+            const init = provider_init_promise;
-+            if (init) await init.catch(() => undefined);
-+            const handle = provider_handle;
-+            if (handle?.awaitIdle) await handle.awaitIdle().catch(() => undefined);
-+            const provider_pending = providerPending(readProviderStatus());
-+            if (active_tasks.size === 0 && active_commits.size === 0 && !provider_init_promise && provider_pending === 0) {
-+                return;
-+            }
-+            await new Promise<void>(resolve => {
-+                idle_waiters.add(resolve);
-+                notifyIdle();
-+            });
-+        }
-+    })();
-+}
-+
-+export function awaitBeforeGeneration(dry_run = false): Promise<void> {
-+    if (dry_run) return Promise.resolve();
-+    return awaitIdle();
-+}
-+
-+export function getStatus() {
-+    const provider_handle_status = readProviderStatus();
-+    const provider_pending = providerPending(provider_handle_status);
-+    return {
-+        phase: active_tasks.size === 0 && active_commits.size === 0 && !provider_init_promise && provider_pending === 0 ? 'idle' : 'busy',
-+        active_tasks: [...active_tasks.values()].map(task => ({
-+            id: task.id,
-+            kind: task.kind,
-+            status: task.phase,
-+            chat_id: task.chat_id,
-+            message_id: task.message_id,
-+            message: task.message,
-+        })),
-+        active_commits: [...active_commits.values()].map(commit => ({
-+            id: commit.id,
-+            task_id: commit.task_id,
-+            kind: commit.kind,
-+            status: 'running',
-+            chat_id: commit.chat_id,
-+        })),
-+        provider: {
-+            phase: provider_handle_status?.phase || provider_runtime.phase,
-+            backend: provider_handle_status?.backend || provider_runtime.backend,
-+            stable_chat_id: provider_handle_status?.stableChatId || provider_runtime.stable_chat_id,
-+            pending: provider_pending,
-+            loading: !!provider_init_promise,
-+            load_count: provider_runtime.load_count,
-+            commit_count: provider_runtime.commit_count,
-+            error: provider_handle_status?.error || provider_runtime.error,
-+            handle: provider_handle_status,
-+        },
-+    };
-+}
-+
-+export function reset(reason: string) {
-+    invalidateAll(reason);
-+}
