@@ -1,10 +1,16 @@
 {
-  "manifestVersion": "1.0.0",
+  "manifestVersion": "1.1.0",
   "product": {
     "bundle": "MVU_Engine_Bundle.js",
+    "engineRuntime": "MVU_Engine_Runtime.js",
+    "projectRuntimeBundle": "LWCS_MVU_Project_Runtime_Bundle.js",
     "sourcePatch": "MVU_Engine_Source.patch",
-    "bundleBytes": 1169535,
-    "bundleSha256": "866a53f79e24dc07a2f9ce7a26c740360c85c28502639066db51cca328e3933c",
+    "bundleBytes": 1238565,
+    "bundleSha256": "8c10531d0384add3b77d31d5ad70dc59eda1aae05857a1b13c0b1aeab5e73fd1",
+    "engineRuntimeBytes": 1169535,
+    "engineRuntimeSha256": "866a53f79e24dc07a2f9ce7a26c740360c85c28502639066db51cca328e3933c",
+    "projectRuntimeBundleBytes": 2445853,
+    "projectRuntimeBundleSha256": "399499bbaba9e3f6c401a009f358fd202023f20e58a07fef01b072bfd5d12b98",
     "sourcePatchBytes": 53910,
     "sourcePatchSha256": "1cd30462c062c5f8516222fbe768e29b21ab19d8423e405dad51a2dc2501cc82"
   },
@@ -19,7 +25,12 @@
     "install": "corepack yarn install --immutable",
     "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-27 00:00'; corepack yarn build\"",
     "buildDate": "2026-08-27 00:00",
-    "output": "artifact/bundle.js",
+    "output": "artifact/bundle.js -> MVU_Engine_Runtime.js; node Build_Runtime_Bundles.cjs MVU_Engine_Bundle.js -> MVU_Engine_Bundle.js",
+    "environmentComposition": [
+      "LWCS_Persistence_Adapter.js",
+      "LWCS_MVU_Persistence_Provider.js",
+      "MVU_Engine_Runtime.js"
+    ],
     "dependencyPolicy": "bundle npm dependencies; retain only documented SillyTavern/TavernHelper host globals"
   },
   "loading": {

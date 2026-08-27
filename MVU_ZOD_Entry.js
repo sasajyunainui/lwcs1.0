@@ -2,13 +2,13 @@ const MVU_ZOD_ENTRY_URL_V1 = new URL(import.meta.url);
 const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', MVU_ZOD_ENTRY_URL_V1);
 const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
 const MVU_ENGINE_BUNDLE_FILE_V1 = 'MVU_Engine_Bundle.js';
-const MVU_FOUNDATION_BUNDLE_FILE_V1 = 'LWCS_MVU_Foundation_Bundle.js';
-const MVU_SCHEMA_DATA_BUNDLE_FILE_V1 = 'LWCS_MVU_Schema_Data_Bundle.js';
+const MVU_PROJECT_RUNTIME_BUNDLE_FILE_V1 = 'LWCS_MVU_Project_Runtime_Bundle.js';
 const MVU_CRITICAL_PREFETCH_FILES_V1 = Object.freeze([
-  MVU_FOUNDATION_BUNDLE_FILE_V1,
-  MVU_SCHEMA_DATA_BUNDLE_FILE_V1,
+  MVU_ENGINE_BUNDLE_FILE_V1,
+  MVU_PROJECT_RUNTIME_BUNDLE_FILE_V1,
   'MVU.js',
   'MVU_Zod_Bundle.js',
+  'LWCS_Era_Current_Data_Bundle.js',
   'MVU_Hooks.js',
 ]);
 const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
@@ -18,12 +18,11 @@ const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = '866a53f79e24dc07a2f9ce7a26c740360c85c28502639066db51cca328e3933c';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = '8c10531d0384add3b77d31d5ad70dc59eda1aae05857a1b13c0b1aeab5e73fd1';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
-  MVU_FOUNDATION_BUNDLE_FILE_V1,
   MVU_ENGINE_BUNDLE_FILE_V1,
-  MVU_SCHEMA_DATA_BUNDLE_FILE_V1,
+  MVU_PROJECT_RUNTIME_BUNDLE_FILE_V1,
   'MVU.js',
   'MVU_Hooks.js',
 ]);
@@ -123,12 +122,12 @@ const MVU本轮核心就绪拒绝_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_
 const MVU项目引擎状态_V1 = (() => {
   const 键 = '__LWCS_MVU_ENGINE_STATE_V1__';
   const 已有状态 = MVU共享宿主窗口_V1[键];
-  if (已有状态 && 已有状态.version === '1.0.0') {
+  if (已有状态 && 已有状态.version === '1.1.0') {
     try { globalThis[键] = 已有状态; } catch (_) {}
     return 已有状态;
   }
   const 新状态 = {
-    version: '1.0.0',
+    version: '1.1.0',
     status: 'idle',
     phase: '等待',
     upstreamCommit: MVU_ENGINE_UPSTREAM_COMMIT_V1,
@@ -536,15 +535,26 @@ async function 等待项目MVU接口_V1() {
   const 开始时刻 = performance.now();
   while (performance.now() - 开始时刻 < 5000) {
     const 接口 = 取已有MVU引擎_V1();
-    if (接口 && typeof 接口.getMvuData === 'function') return 接口;
+    const 适配器 = 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__');
+    const 提供者 = 读取MVU共享全局值_V1('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__');
+    if (接口
+      && typeof 接口.getMvuData === 'function'
+      && typeof 适配器?.openSession === 'function'
+      && typeof 适配器?.registerBackend === 'function'
+      && typeof 提供者?.open === 'function') return 接口;
     await new Promise(继续 => setTimeout(继续, 50));
   }
-  throw new Error('LWCS MVU引擎bundle已执行，但项目Mvu接口未在5秒内暴露');
+  throw new Error('LWCS MVU环境bundle已执行，但引擎或Persistence Provider未在5秒内暴露');
 }
 
 async function 确保项目MVU引擎_V1() {
   const 已有项目引擎 = 取已有MVU引擎_V1();
   if (已有项目引擎) {
+    const 适配器 = 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__');
+    const 提供者 = 读取MVU共享全局值_V1('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__');
+    if (typeof 适配器?.openSession !== 'function' || typeof 提供者?.open !== 'function') {
+      throw new Error('检测到不完整的旧MVU环境实例：Persistence Provider未注册，请刷新页面后重试');
+    }
     MVU项目引擎状态_V1.status = 'ready';
     MVU项目引擎状态_V1.phase = '已存在';
     发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loaded', '已存在');
@@ -623,18 +633,30 @@ async function 加载MVU经典依赖_V1(文件名, 已就绪 = () => false) {
   }
 }
 
-async function 确保MVU基础依赖_V1() {
-  await 加载MVU经典依赖_V1(MVU_FOUNDATION_BUNDLE_FILE_V1, () => {
-    const 适配器 = 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__');
-    const 提供者 = 读取MVU共享全局值_V1('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__');
+function MVU运行时视图已就绪_V1() {
+  const 运行时视图 = globalThis.__LWCS_MVU_RUNTIME_VIEW__;
+  const 错误状态 = globalThis.__LWCS_MVU_RUNTIME_VIEW_ERROR__;
+  if (错误状态?.错误列表?.length) {
+    throw new Error(`MVU运行时视图接口注册失败：${错误状态.错误列表.map(项目 => 项目.错误 || 'unknown_error').join('；')}`);
+  }
+  return !!运行时视图
+    && typeof 运行时视图 === 'object'
+    && [
+      '替换MVU运行时视图占位符',
+      '生成MVU剧情视图',
+      '生成MVU相互可见性视图',
+      '生成场景背景角色补充',
+      '生成场景候选角色资料',
+      '生成场景审计材料',
+      '生成角色基础六维对标摘要',
+    ].every(方法名 => typeof 运行时视图[方法名] === 'function');
+}
+
+async function 确保MVU项目运行时_V1() {
+  await 加载MVU经典依赖_V1(MVU_PROJECT_RUNTIME_BUNDLE_FILE_V1, () => {
     const 集成 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
     const 修炼运行时 = 读取MVU共享全局值_V1('__LWCS_ERA_CULTIVATION_RUNTIME_V1__');
-    return !!适配器
-      && typeof 适配器.openSession === 'function'
-      && typeof 适配器.registerBackend === 'function'
-      && !!提供者
-      && typeof 提供者.open === 'function'
-      && typeof 读取MVU共享全局值_V1('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function'
+    return typeof 读取MVU共享全局值_V1('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function'
       && 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__')?.version === '2.0.0'
       && 读取MVU共享全局值_V1('__LWCS_ERA_DATA_REGISTRY_V1__')?.version === '1.1.0-era-resource-owner-20260822'
       && !!读取MVU共享全局值_V1('__LWCS_ERA_CURRENCY_REGISTRY_V1__')
@@ -642,7 +664,27 @@ async function 确保MVU基础依赖_V1() {
       && 集成?.version === '1.1.0-era-context-20260822'
       && typeof 集成.getCultivationBlend === 'function'
       && typeof 集成.getEraContext === 'function'
-      && typeof 修炼运行时?.settleMeditationSegment === 'function';
+      && typeof 修炼运行时?.settleMeditationSegment === 'function'
+      && Array.isArray(读取MVU共享全局值_V1('IntelEvents'))
+      && typeof 角色穿搭上装待补全文案_V1 === 'string'
+      && typeof globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__ === 'function'
+      && typeof 创建空魂导器装配表_V1 === 'function'
+      && !!globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__
+      && typeof globalThis.__LWCS_PROFESSION_DERIVATION__?.派生运行时 === 'function'
+      && typeof globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ === 'function'
+      && !!globalThis.__LWCS_SKILL_COST_HELPERS_V1__
+      && typeof globalThis.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ === 'function'
+      && typeof globalThis.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ === 'function'
+      && typeof globalThis.__LWCS_GET_BASE_STATS__ === 'function'
+      && typeof globalThis.__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__ === 'function'
+      && typeof markPlayerCharacterInSchemaInput === 'function'
+      && typeof 规范化技能结构Schema_V1 === 'function'
+      && typeof 规范化装备Schema_V1 === 'function'
+      && typeof 规范化角色Schema_V1 === 'function'
+      && typeof 规范化Schema根转换_V1 === 'function'
+      && typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__?.生成项目对局 === 'function'
+      && typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__?.计算购买支付比例 === 'function'
+      && MVU运行时视图已就绪_V1();
   });
 }
 
@@ -700,12 +742,15 @@ async function 加载MVU当前时代核心资源_V1() {
 }
 
 if (typeof eventOn !== 'function') throw new Error('MVU_ZOD_Entry 需要酒馆助手 eventOn 接口');
-记录MVU加载阶段_V1('foundation-and-engine:await-start');
-await Promise.all([确保MVU基础依赖_V1(), 确保项目MVU引擎_V1()]);
-记录MVU加载阶段_V1('foundation-and-engine:await-resolved');
+记录MVU加载阶段_V1('mvu-environment:await-start');
+await 确保项目MVU引擎_V1();
+记录MVU加载阶段_V1('mvu-environment:await-resolved');
 记录MVU加载阶段_V1('project-mvu-interface:await-start');
 await 等待项目MVU接口_V1();
 记录MVU加载阶段_V1('project-mvu-interface:await-resolved');
+记录MVU加载阶段_V1('project-runtime:await-start');
+await 确保MVU项目运行时_V1();
+记录MVU加载阶段_V1('project-runtime:await-resolved');
 const MVU聊天监听就绪承诺_V1 = (async () => {
   记录MVU加载阶段_V1('mvu-chat-hooks:await-start');
   const 开始时刻 = performance.now();
@@ -721,51 +766,6 @@ const MVU聊天监听就绪承诺_V1 = (async () => {
 const MVU执行上下文库运行时_V1 = 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__');
 if (MVU执行上下文库运行时_V1) globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = MVU执行上下文库运行时_V1;
 const MVU时代资源加载承诺_V1 = 加载MVU当前时代核心资源_V1();
-const MVUSchema数据加载承诺_V1 = 加载MVU经典依赖_V1(MVU_SCHEMA_DATA_BUNDLE_FILE_V1, () =>
-  Array.isArray(读取MVU共享全局值_V1('IntelEvents')) &&
-  typeof 角色穿搭上装待补全文案_V1 === 'string' &&
-  typeof globalThis.__LWCS_INITIALIZE_SKILL_EFFECTS__ === 'function' &&
-  typeof 创建空魂导器装配表_V1 === 'function' &&
-  globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ &&
-  typeof globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ === 'object' &&
-  globalThis.__LWCS_PROFESSION_DERIVATION__ &&
-  typeof globalThis.__LWCS_PROFESSION_DERIVATION__.派生运行时 === 'function' &&
-  typeof globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ === 'function' &&
-  globalThis.__LWCS_SKILL_COST_HELPERS_V1__ &&
-  typeof globalThis.__LWCS_SKILL_COST_HELPERS_V1__ === 'object' &&
-  typeof globalThis.__LWCS_CALC_DIRECT_SETTLE_BUDGET__ === 'function' &&
-  typeof globalThis.__LWCS_ASSERT_DIRECT_SETTLE_BUDGET__ === 'function' &&
-  typeof globalThis.__LWCS_GET_BASE_STATS__ === 'function' &&
-  typeof globalThis.__LWCS_CALC_ACTIVE_EQUIPMENT_BONUS__ === 'function' &&
-  typeof markPlayerCharacterInSchemaInput === 'function' &&
-  typeof 规范化技能结构Schema_V1 === 'function' &&
-  typeof 规范化装备Schema_V1 === 'function' &&
-  typeof 规范化角色Schema_V1 === 'function' &&
-  typeof 规范化Schema根转换_V1 === 'function' &&
-  globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__ &&
-  typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.生成项目对局 === 'function' &&
-  typeof globalThis.__LWCS_COMPETITION_PRIVILEGE_RUNTIME__.计算购买支付比例 === 'function' &&
-  (() => {
-  const 运行时视图 = globalThis.__LWCS_MVU_RUNTIME_VIEW__;
-  const 必需方法 = [
-    '替换MVU运行时视图占位符',
-    '生成MVU剧情视图',
-    '生成MVU相互可见性视图',
-    '生成场景背景角色补充',
-    '生成场景候选角色资料',
-    '生成场景审计材料',
-    '生成角色基础六维对标摘要',
-  ];
-  const 错误状态 = globalThis.__LWCS_MVU_RUNTIME_VIEW_ERROR__;
-  if (错误状态?.错误列表?.length) {
-    throw new Error(`MVU运行时视图接口注册失败：${错误状态.错误列表.map(项目 => 项目.错误 || 'unknown_error').join('；')}`);
-  }
-  return !!运行时视图
-    && typeof 运行时视图 === 'object'
-    && 必需方法.every(方法名 => typeof 运行时视图[方法名] === 'function');
-  })()
-);
-await Promise.all([MVU时代资源加载承诺_V1, MVUSchema数据加载承诺_V1, MVU聊天监听就绪承诺_V1]);
 
 发布MVU模块状态_V1('MVU.js', 'loading', '加载并执行');
 记录MVU加载阶段_V1('mvu-import:await-start');
@@ -791,6 +791,8 @@ await 加载MVU经典依赖_V1('MVU_Hooks.js', () =>
   typeof globalThis.__LWCS_PREPROCESS_JSON_PATCH_TEXT__ === 'function'
 );
 
+await Promise.all([MVU时代资源加载承诺_V1, MVU聊天监听就绪承诺_V1]);
+
 const 集成_V1 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
 const 竞争_V1 = 读取MVU共享全局值_V1('__LWCS_COMPETITION_PRIVILEGE_RUNTIME__');
 const 必需接口_V1 = [
@@ -808,7 +810,7 @@ const 必需接口_V1 = [
   ['SkillRuntime', !!读取MVU共享全局值_V1('__LWCS_SKILL_MECHANISM_REGISTRY__') && typeof globalThis.__LWCS_COMPILE_SKILL_STRUCTURE_TEXT__ === 'function'],
   ['SchemaRuntime', typeof markPlayerCharacterInSchemaInput === 'function' && typeof 规范化角色Schema_V1 === 'function'],
   ['CompetitionRuntime', !!竞争_V1 && typeof 竞争_V1.生成项目对局 === 'function'],
-  ['RuntimeView', !!读取MVU共享全局值_V1('__LWCS_MVU_RUNTIME_VIEW__')],
+  ['RuntimeView', MVU运行时视图已就绪_V1()],
   ['MvuChatHooks', 读取MVU共享全局值_V1('__LWCS_MVU_CHAT_HOOKS_READY_V1__') === true],
   ['MvuRegistered', globalThis.__LWCS_MVU变量结构已注册__ === true],
   ['MvuHooks', typeof globalThis.__LWCS_NORMALIZE_MVU_STAT_DATA__ === 'function' && typeof globalThis.__LWCS_NORMALIZE_JSON_PATCH_OPS__ === 'function'],
