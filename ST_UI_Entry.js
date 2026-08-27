@@ -1455,6 +1455,11 @@
         记录阶段(加载阶段.完成);
         加载状态.结束时间 = Date.now();
         UI就绪解决?.(UI启动状态);
+        void 确保模块已加载('请求监控挂件', {
+          来源: 'bootstrap_background',
+          允许失败降级: true,
+          抛错: false,
+        });
       } catch (错误) {
         if (!入口实例仍活动()) return;
         const 错误文本 = 错误 && 错误.message ? 错误.message : String(错误 || 'unknown_bootstrap_error');
