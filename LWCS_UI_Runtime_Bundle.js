@@ -3142,6 +3142,30 @@
   const 慢刷新骨架预览键列表 = Object.freeze(['试炼与情报']);
   const 慢刷新骨架预览键集合 = new Set(慢刷新骨架预览键列表);
 
+  function 设置UI首屏内容状态(已就绪, 错误 = '') {
+    const 就绪 = 已就绪 === true;
+    const 错误文本 = 就绪 ? '' : toText(错误, '').trim();
+    const 候选窗口 = [window];
+    try {
+      if (window.parent && !候选窗口.includes(window.parent)) 候选窗口.push(window.parent);
+    } catch (异常) {}
+    try {
+      if (window.top && !候选窗口.includes(window.top)) 候选窗口.push(window.top);
+    } catch (异常) {}
+    候选窗口.forEach(候选 => {
+      try {
+        候选.__LWCS_UI_CONTENT_READY_V1__ = 就绪;
+        候选.__LWCS_UI_CONTENT_ERROR_V1__ = 错误文本;
+      } catch (异常) {}
+    });
+    const 挂载点 = document.getElementById('mvu-unified-mount');
+    if (!挂载点) return;
+    if (就绪) 挂载点.dataset.mvuContentReady = '1';
+    else delete 挂载点.dataset.mvuContentReady;
+  }
+
+  设置UI首屏内容状态(false, '等待当前聊天的 MVU 变量');
+
   function getCurrentHeaderRenderSurfaceNode() {
     const surface = document.querySelector('.header-loc span');
     return surface && surface.isConnected ? surface : null;
@@ -17263,40 +17287,18 @@
   async function getLatestMessageVariablesFallback() {
     try {
       if (!当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function') {
-        const scanned = await scanRecentMessageVariablesWithReaders([
-          messageId => Promise.resolve(window.TavernHelper.getVariables({ type: 'message', message_id: messageId })),
-        ]);
-        return scanned && scanned.vars ? scanned.vars : null;
+        const latest = await Promise.resolve(
+          window.TavernHelper.getVariables({ type: 'message', message_id: 'latest' }),
+        );
+        return latest && typeof latest === 'object' ? latest : null;
       }
     } catch (err) {}
     return null;
   }
 
   async function getAllVariablesSafe() {
-    const host = getMvuHost();
-    const scanned = await scanRecentMessageVariablesWithReaders([
-      host && typeof host.getMvuData === 'function'
-        ? messageId => Promise.resolve(host.getMvuData({ type: 'message', message_id: messageId }))
-        : null,
-      !当前为TauriTavern环境_桥接() && window.TavernHelper && typeof window.TavernHelper.getVariables === 'function'
-        ? messageId => Promise.resolve(window.TavernHelper.getVariables({ type: 'message', message_id: messageId }))
-        : null,
-    ]);
-    if (scanned && scanned.vars) {
-      return scanned.vars;
-    }
-    if (host && typeof host.getAllVariables === 'function') {
-      try {
-        const vars = await Promise.resolve(host.getAllVariables());
-        if (vars && typeof vars === 'object') return vars;
-      } catch (err) {}
-    }
-    if (window.getAllVariables && typeof window.getAllVariables === 'function') {
-      try {
-        const vars = await Promise.resolve(window.getAllVariables());
-        if (vars && typeof vars === 'object') return vars;
-      } catch (err) {}
-    }
+    const latest = await getLatestVariablesFast();
+    if (latest) return latest;
     return await getLatestMessageVariablesFallback();
   }
 
@@ -45123,14 +45125,22 @@
       if (!原始根) {
         syncHeaderRenderMarker(null);
         syncDashboardRenderMarker(null);
-        return;
+        if (!lastRenderableSnapshot) {
+          渲染统一空态卡片();
+          设置UI首屏内容状态(false, '未读取到当前聊天的 MVU 变量');
+        }
+        return null;
       }
       const root = 归一化变量根_桥接(cloneJsonValue(原始根, 原始根));
       const effective = buildEffectiveSd(root);
       if (!effective.rootData) {
         syncHeaderRenderMarker(null);
         syncDashboardRenderMarker(null);
-        return;
+        if (!lastRenderableSnapshot) {
+          渲染统一空态卡片();
+          设置UI首屏内容状态(false, '当前聊天的 MVU 变量无法生成有效视图');
+        }
+        return null;
       }
       if (!结果守卫通过()) return null;
       if (isRootDataRelevantToCurrentChat(effective.rootData)) {
@@ -45246,6 +45256,9 @@
 
       if (!结果守卫通过()) return null;
       syncBattleUiForSnapshot(liveSnapshot, options);
+      if (已写回真实卡片 || dashboardRenderNodesMatch(getCurrentDashboardRenderNodes())) {
+        设置UI首屏内容状态(true);
+      }
 
       const effectiveUnifiedPreviewKey = getEffectiveUnifiedPreviewKey();
       const activeDetailPreviewKey = effectiveUnifiedPreviewKey || currentModalPreviewKey;
@@ -45278,6 +45291,10 @@
         }
       }
     } catch (error) {
+      if (!lastRenderableSnapshot) {
+        渲染统一空态卡片();
+        设置UI首屏内容状态(false, error && error.message ? error.message : String(error || 'MVU 实时渲染失败'));
+      }
       console.warn('[DragonUI] MVU 实时渲染失败', error);
     } finally {
       if (慢刷新骨架计时器) window.clearTimeout(慢刷新骨架计时器);
@@ -45287,7 +45304,7 @@
         设置慢刷新骨架状态(false, { 刷新详情: false });
         if (!已写回真实卡片 && lastRenderableSnapshot) {
           const 回退区段签名 = buildDashboardSectionRenderSignatures(lastRenderableSnapshot);
-          renderLiveCards(lastRenderableSnapshot, 回退区段签名);
+          if (renderLiveCards(lastRenderableSnapshot, 回退区段签名)) 设置UI首屏内容状态(true);
         }
         const 当前详情预览键 = toText(currentUnifiedPreviewKey || currentModalPreviewKey, '').trim();
         if (
@@ -45311,7 +45328,6 @@
     安装MVU命令应用前实体兜底_桥接();
     installDirectModuleIntentGuard();
     安装冷归档楼层监视器_桥接();
-    await refreshLiveSnapshot();
     bindMvuUpdates(
       (vars, meta = {}) =>
         refreshLiveSnapshot({
@@ -45321,6 +45337,12 @@
         }),
       { immediate: false },
     );
+    for (const 等待毫秒 of [0, 180, 420, 800, 1400, 2200]) {
+      if (等待毫秒) await new Promise(resolve => window.setTimeout(resolve, 等待毫秒));
+      await refreshLiveSnapshot({ force: true });
+      if (window.__LWCS_UI_CONTENT_READY_V1__ === true) return true;
+    }
+    throw new Error(toText(window.__LWCS_UI_CONTENT_ERROR_V1__, 'MVU 首屏数据初始化失败'));
   }
 
   window.__MVU_REFRESH_LIVE_SNAPSHOT__ = options => refreshLiveSnapshot(options);
@@ -58788,7 +58810,13 @@ ${播报文本}
   bindAllVueModalDelegations();
   installVueModalDelegationObserver();
 
-  initLiveBindings();
+  const UI首屏内容就绪承诺 = initLiveBindings().catch(error => {
+    设置UI首屏内容状态(false, error && error.message ? error.message : String(error || 'MVU 首屏数据初始化失败'));
+    console.error('[DragonUI] MVU 首屏数据初始化失败', error);
+    throw error;
+  });
+  window.__LWCS_UI_CONTENT_READY_PROMISE_V1__ = UI首屏内容就绪承诺;
+  void UI首屏内容就绪承诺.catch(() => {});
 
   window.mvuSetMainTabExternal = setMainTab;
   window.mvuSetMainTab = setMainTab;

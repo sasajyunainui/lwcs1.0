@@ -196,7 +196,13 @@
     ...(是TT宿主 ? {} : {
       冷归档存储: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Cold_Archive_Store.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['持久化适配器'] },
     }),
-    请求监控挂件: { 类型: 'remote-js', 地址: 资源基础地址 + 'RequestMonitorWidget.js' + 资源版本后缀, 关键: false, 分组: 'background' },
+    请求监控挂件: {
+      类型: 'remote-js',
+      地址: 资源基础地址 + 'RequestMonitorWidget.js' + 资源版本后缀,
+      关键: false,
+      分组: 'background',
+      已就绪: () => !!查找消息统计界面(),
+    },
     地图模块: {
       类型: 'inline-js',
       地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀,
@@ -925,44 +931,20 @@
   function ensureGetAllVariablesShim() {
     if (宿主窗口.getAllVariables) return;
 
-    const buildMessageIdCandidates = (depth = 24) => {
-      const ids = ['latest'];
-      for (let index = 1; index <= Math.max(1, depth); index += 1) ids.push(-index);
-      return ids;
-    };
-
-    const hasLikelyRootData = (data) => {
-      if (!data || typeof data !== 'object') return false;
-      const statData = data.stat_data && typeof data.stat_data === 'object' ? data.stat_data : data;
-      return !!(statData && typeof statData === 'object' && (statData.char || statData.world || statData.sys || statData.org || statData.map));
-    };
-
-    const scanRecentMessageData = async (reader) => {
-      if (typeof reader !== 'function') return null;
-      let fallback = null;
-      for (const messageId of buildMessageIdCandidates()) {
-        try {
-          const data = await Promise.resolve(reader(messageId));
-          if (!data || typeof data !== 'object') continue;
-          if (!fallback) fallback = data;
-          if (hasLikelyRootData(data)) return data;
-        } catch (错误) {}
-      }
-      return fallback;
-    };
-
     宿主窗口.getAllVariables = async function () {
       try {
         const mvu = 宿主窗口.Mvu || window.Mvu;
         if (mvu && typeof mvu.getMvuData === 'function') {
-          const data = await scanRecentMessageData(messageId => mvu.getMvuData({ type: 'message', message_id: messageId }));
+          const data = await Promise.resolve(mvu.getMvuData({ type: 'message', message_id: 'latest' }));
           if (data) return data;
         }
       } catch (错误) {}
 
       try {
         if (宿主窗口.TavernHelper && typeof 宿主窗口.TavernHelper.getVariables === 'function') {
-          const latest = await scanRecentMessageData(messageId => 宿主窗口.TavernHelper.getVariables({ type: 'message', message_id: messageId }));
+          const latest = await Promise.resolve(
+            宿主窗口.TavernHelper.getVariables({ type: 'message', message_id: 'latest' }),
+          );
           return latest || null;
         }
       } catch (错误) {}
@@ -1135,7 +1117,14 @@
     while (Date.now() - start < limit) {
       ensureHostNodes();
       const unifiedMount = 宿主文档.getElementById('mvu-unified-mount');
-      if (unifiedMount && unifiedMount.innerHTML.trim()) return true;
+      const 真实卡片已就绪 = 读取共享值('__LWCS_UI_CONTENT_READY_V1__') === true;
+      if (
+        真实卡片已就绪
+        && unifiedMount?.dataset?.mvuContentReady === '1'
+        && unifiedMount.querySelector('.mvu-unified-page.active [data-unified-card]:not(:empty)')
+      ) {
+        return true;
+      }
       await 睡眠(140);
     }
     return false;
@@ -1198,8 +1187,92 @@
     尝试注册();
   }
 
+  function 查找消息统计界面() {
+    const 待检查窗口 = [宿主窗口, window];
+    const 已检查窗口 = new Set();
+    while (待检查窗口.length && 已检查窗口.size < 32) {
+      const 当前窗口 = 待检查窗口.shift();
+      if (!当前窗口 || 已检查窗口.has(当前窗口)) continue;
+      已检查窗口.add(当前窗口);
+      try {
+        const 根节点 = 当前窗口.document?.getElementById('request-monitor-root');
+        const 悬浮按钮 = 根节点?.querySelector('.rm-fab');
+        if (根节点?.isConnected && 悬浮按钮 && typeof 悬浮按钮.click === 'function') {
+          return { 窗口: 当前窗口, 根节点, 悬浮按钮 };
+        }
+      } catch (错误) {}
+      try {
+        if (当前窗口.parent && 当前窗口.parent !== 当前窗口) 待检查窗口.push(当前窗口.parent);
+      } catch (错误) {}
+      try {
+        if (当前窗口.top && 当前窗口.top !== 当前窗口) 待检查窗口.push(当前窗口.top);
+      } catch (错误) {}
+      try { 待检查窗口.push(...Array.from(当前窗口.frames || [])); } catch (错误) {}
+    }
+    return null;
+  }
+
+  function 重置失效的消息统计挂件() {
+    const 已访问窗口 = new Set();
+    const 待访问窗口 = [宿主窗口, window];
+    while (待访问窗口.length && 已访问窗口.size < 32) {
+      const 当前窗口 = 待访问窗口.shift();
+      if (!当前窗口 || 已访问窗口.has(当前窗口)) continue;
+      已访问窗口.add(当前窗口);
+      try {
+        if (typeof 当前窗口.__LWCS_REQUEST_MONITOR_UNLOAD__ === 'function') {
+          当前窗口.__LWCS_REQUEST_MONITOR_UNLOAD__();
+        }
+      } catch (错误) {}
+      try {
+        if (当前窗口.parent && 当前窗口.parent !== 当前窗口) 待访问窗口.push(当前窗口.parent);
+      } catch (错误) {}
+      try {
+        if (当前窗口.top && 当前窗口.top !== 当前窗口) 待访问窗口.push(当前窗口.top);
+      } catch (错误) {}
+      try { 待访问窗口.push(...Array.from(当前窗口.frames || [])); } catch (错误) {}
+    }
+
+    const 模块 = 模块注册表.请求监控挂件;
+    for (const 候选地址 of 取候选资源地址列表(模块.地址)) {
+      try { 宿主文档.getElementById(取远程脚本标记(候选地址))?.remove(); } catch (错误) {}
+      远程脚本加载承诺表.delete(候选地址);
+    }
+    try {
+      宿主文档.querySelectorAll('script[src*="RequestMonitorWidget.js"]').forEach(脚本 => 脚本.remove());
+    } catch (错误) {}
+    远程脚本加载承诺表.delete(模块.地址);
+    模块加载承诺表.delete('请求监控挂件');
+    const 状态 = 模块状态表.请求监控挂件;
+    if (状态) {
+      状态.状态 = 'pending';
+      状态.阶段 = '等待';
+      状态.错误 = '';
+    }
+  }
+
+  async function 打开消息统计界面(界面) {
+    let 当前界面 = 界面 || 查找消息统计界面();
+    if (!当前界面) throw new Error('请求统计界面未就绪');
+    const 已打开 = () => !!(
+      当前界面?.根节点?.querySelector('.rm-panel')
+      || 当前界面?.根节点?.querySelector('.rm-root.is-open')
+    );
+    if (已打开()) return true;
+    当前界面.悬浮按钮.click();
+    await 睡眠(120);
+    当前界面 = 查找消息统计界面() || 当前界面;
+    if (已打开()) return true;
+    当前界面.悬浮按钮.click();
+    await 睡眠(160);
+    当前界面 = 查找消息统计界面() || 当前界面;
+    if (!已打开()) throw new Error('请求统计挂件已加载，但窗口未能打开');
+    return true;
+  }
+
   function 注册消息统计脚本按钮() {
     try {
+      if (宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__) return true;
       if (
         typeof appendInexistentScriptButtons !== 'function' ||
         typeof getButtonEvent !== 'function' ||
@@ -1210,27 +1283,27 @@
       appendInexistentScriptButtons([{ name: '消息统计', visible: true }]);
       eventOn(getButtonEvent('消息统计'), async () => {
         try {
-          const 已有悬浮按钮 = 宿主文档.querySelector('#request-monitor-root .rm-fab');
-          if (已有悬浮按钮 && typeof 已有悬浮按钮.click === 'function') {
-            已有悬浮按钮.click();
+          const 已有界面 = 查找消息统计界面();
+          if (已有界面) {
+            await 打开消息统计界面(已有界面);
             return;
           }
           显示入口按钮提示('消息统计加载中…', 'info', 1800);
-          宿主窗口.__LWCS_REQUEST_MONITOR_HOST_WINDOW__ = 宿主窗口;
+          重置失效的消息统计挂件();
           await 确保模块已加载('请求监控挂件', { 来源: 'request_monitor_button', 允许失败降级: false, 抛错: true });
           const 等待开始 = Date.now();
-          let 悬浮按钮 = null;
-          while (!悬浮按钮 && Date.now() - 等待开始 < 5000) {
-            悬浮按钮 = 宿主文档.querySelector('#request-monitor-root .rm-fab');
-            if (!悬浮按钮) await 睡眠(100);
+          let 界面 = null;
+          while (!界面 && Date.now() - 等待开始 < 5000) {
+            界面 = 查找消息统计界面();
+            if (!界面) await 睡眠(100);
           }
-          if (!悬浮按钮 || typeof 悬浮按钮.click !== 'function') throw new Error('请求统计界面未就绪');
-          悬浮按钮.click();
+          await 打开消息统计界面(界面);
         } catch (错误) {
           console.error('[MVU] 消息统计按钮执行失败:', 错误);
           显示入口按钮提示(构建入口按钮错误文本('消息统计', 错误), 'error');
         }
       });
+      宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__ = true;
       return true;
     } catch (错误) {
       console.warn('[MVU] 消息统计按钮注册失败:', 错误);
@@ -1316,7 +1389,10 @@
         记录阶段(加载阶段.桥接就绪);
         ensureHostNodes();
         const mounted = await waitForVueMounted(10000);
-        if (!mounted) throw new Error('Vue 首屏挂载超时');
+        if (!mounted) {
+          const 首屏错误 = String(读取共享值('__LWCS_UI_CONTENT_ERROR_V1__') || '').trim();
+          throw new Error(首屏错误 ? `Vue 首屏数据未就绪：${首屏错误}` : 'Vue 首屏数据挂载超时');
+        }
         记录阶段(加载阶段.首屏可交互);
         加载状态.首屏可交互时间 = Date.now();
         UI启动状态.成功启动 = true;
