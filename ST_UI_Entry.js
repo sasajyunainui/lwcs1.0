@@ -1210,9 +1210,12 @@
       appendInexistentScriptButtons([{ name: '消息统计', visible: true }]);
       eventOn(getButtonEvent('消息统计'), async () => {
         try {
-          try {
-            if (宿主窗口.parent && 宿主窗口.parent !== 宿主窗口) 宿主窗口.parent.__LWCS_REQUEST_MONITOR_UNLOAD__?.();
-          } catch (错误) {}
+          const 已有悬浮按钮 = 宿主文档.querySelector('#request-monitor-root .rm-fab');
+          if (已有悬浮按钮 && typeof 已有悬浮按钮.click === 'function') {
+            已有悬浮按钮.click();
+            return;
+          }
+          显示入口按钮提示('消息统计加载中…', 'info', 1800);
           宿主窗口.__LWCS_REQUEST_MONITOR_HOST_WINDOW__ = 宿主窗口;
           await 确保模块已加载('请求监控挂件', { 来源: 'request_monitor_button', 允许失败降级: false, 抛错: true });
           const 等待开始 = Date.now();

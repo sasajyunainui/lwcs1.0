@@ -14,6 +14,7 @@
    * LUNA-MVU contract:
    * provider.open({ fallbackStableChatId }) -> { state, backend, handle }.
    * handle.load({ initialState, message }) restores the complete hot state.
+   * handle.readState({ initialState, message }) reads one floor without replacing the live hot state.
    * handle.commit({ fullState, message }) and handle.enqueueCommit(...) serialize one chat queue.
    * A commit is immutable revision -> floor/swipe pointer -> head; head is read back before success.
    * handle.getHotState(), getHead(), getFloor(), getQueueState(), getStatus() are memory/status reads only.
@@ -602,6 +603,23 @@
       return result('committed', { hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
     }
 
+    async function readStateNow(request = {}) {
+      const liveState = hotState === null ? null : clone(hotState);
+      const liveLoaded = loaded;
+      const liveHead = head === null ? null : clone(head);
+      const liveFloor = floor === null ? null : clone(floor);
+      const liveError = lastError;
+      try {
+        return await loadNow(request);
+      } finally {
+        hotState = liveState;
+        loaded = liveLoaded;
+        head = liveHead;
+        floor = liveFloor;
+        lastError = liveError;
+      }
+    }
+
     async function commitNow(request = {}) {
       assertLive();
       if (!loaded || hotState === null) throw new ProviderError('STATE_NOT_LOADED');
@@ -612,7 +630,7 @@
       if (nextState === null) throw new ProviderError('FULL_STATE_REQUIRED');
       const nextFloor = normalizeFloor(request.message);
       await assertCurrentFloor(nextFloor);
-      if (jsonEqual(previousState, nextState)) {
+      if (head && jsonEqual(previousState, nextState)) {
         lastError = '';
         return result('committed', { skipped: true, revision: head?.revision || 0, hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
       }
@@ -688,6 +706,7 @@
     }
 
     const load = request => enqueue(() => loadNow(request).catch(operationFailure));
+    const readState = request => enqueue(() => readStateNow(request).catch(operationFailure));
     const commit = request => enqueue(() => commitNow(request).catch(operationFailure));
     const handle = {
       version: VERSION,
@@ -698,6 +717,7 @@
       chatGeneration: opened.chatGeneration,
       domainGeneration,
       load,
+      readState,
       commit,
       enqueueCommit: commit,
       enqueue: action => enqueue(() => action(handle)),

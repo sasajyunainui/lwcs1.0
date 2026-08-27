@@ -5,14 +5,14 @@
     "engineRuntime": "MVU_Engine_Runtime.js",
     "projectRuntimeBundle": "LWCS_MVU_Project_Runtime_Bundle.js",
     "sourcePatch": "MVU_Engine_Source.patch",
-    "bundleBytes": 1238565,
-    "bundleSha256": "8c10531d0384add3b77d31d5ad70dc59eda1aae05857a1b13c0b1aeab5e73fd1",
-    "engineRuntimeBytes": 1169535,
-    "engineRuntimeSha256": "866a53f79e24dc07a2f9ce7a26c740360c85c28502639066db51cca328e3933c",
+    "bundleBytes": 1240540,
+    "bundleSha256": "42876e474d6ab27ce2da51d569072d95bdc510c8df23888661c68a042dd57786",
+    "engineRuntimeBytes": 1170756,
+    "engineRuntimeSha256": "9e52b61f076e4ca3f1085f018849cc961e254c87ec65d048b2f0b973b679614b",
     "projectRuntimeBundleBytes": 2445853,
     "projectRuntimeBundleSha256": "399499bbaba9e3f6c401a009f358fd202023f20e58a07fef01b072bfd5d12b98",
-    "sourcePatchBytes": 53910,
-    "sourcePatchSha256": "1cd30462c062c5f8516222fbe768e29b21ab19d8423e405dad51a2dc2501cc82"
+    "sourcePatchBytes": 56907,
+    "sourcePatchSha256": "9f1b3365e13fda99630b355a01b54116e2f1553091993ef559672f381425dc71"
   },
   "upstream": {
     "repository": "https://github.com/MagicalAstrogy/MagVarUpdate.git",
@@ -49,6 +49,7 @@
     "persistenceStatus": "Mvu.persistence.getStatus",
     "providerHandleAwait": "handle.awaitIdle",
     "providerHandleStatus": "handle.getStatus",
+    "providerHandleFloorRead": "handle.readState",
     "events": {
       "taskStarted": "lwcs_mvu_task_started",
       "taskFinished": "lwcs_mvu_task_finished",

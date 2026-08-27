@@ -1,33 +1,72 @@
 diff --git a/src/button.ts b/src/button.ts
-index fc033f4090a96487497f16e900a7a049e5e18076..af4eaaea4883cb22a6e77453f1c5cc3c224a3b6a 100644
+index fc033f4..ec6c560 100644
 --- a/src/button.ts
 +++ b/src/button.ts
-@@ -6,0 +7,5 @@ import { handleVariablesInMessage, updateVariables } from '@/function/update_var
+@@ -1 +1 @@
+-import { createEmptyGameData, loadInitVarData } from '@/function/initvar/variable_init';
++import { createEmptyGameData, initCheck, loadInitVarData } from '@/function/initvar/variable_init';
+@@ -6,0 +7,7 @@ import { handleVariablesInMessage, updateVariables } from '@/function/update_var
 +import {
 +    getCanonicalMvuData,
++    isTtMvuHost,
++    readMvuDataControlled,
 +    replaceMvuDataControlled,
 +    updateVariablesWithControlled as updateVariablesWith,
 +} from '@/function/update/mvu_runtime';
-@@ -240 +245 @@ export const buttons: Button[] = [
+@@ -150,2 +157,31 @@ export const buttons: Button[] = [
+-            if (last_msg < 1) return;
+-            if (SillyTavern.chat.length === 0) return;
++            if (last_msg < 0 || SillyTavern.chat.length === 0) {
++                toastr.error('当前聊天没有可处理的消息', tr('runtime.common.mvuTitle'));
++                return;
++            }
++            if (last_msg === 0) {
++                await initCheck();
++                toastr.success('已重新执行初始变量加载', tr('runtime.common.mvuTitle'));
++                return;
++            }
++            if (isTtMvuHost()) {
++                const current = klona(getCanonicalMvuData({ type: 'chat' }));
++                const previous = await readMvuDataControlled({ type: 'message', message_id: last_msg - 1 });
++                if (!previous?.stat_data || !previous.schema) {
++                    toastr.error('未找到上一楼的 MVU 快照', tr('runtime.common.mvuTitle'));
++                    return;
++                }
++                try {
++                    await replaceMvuDataControlled(previous, { type: 'chat', message_id: last_msg });
++                    const processed = await handleVariablesInMessage(last_msg);
++                    if (!processed) {
++                        await replaceMvuDataControlled(current, { type: 'chat', message_id: last_msg });
++                        toastr.info('当前消息没有可应用的变量更新', tr('runtime.common.mvuTitle'));
++                        return;
++                    }
++                    toastr.success('变量已重新处理', tr('runtime.common.mvuTitle'));
++                } catch (error) {
++                    await replaceMvuDataControlled(current, { type: 'chat', message_id: last_msg });
++                    throw error;
++                }
++                return;
++            }
+@@ -240 +276 @@ export const buttons: Button[] = [
 -            await replaceVariables(merged_data, { type: 'message', message_id: message_id });
 +            await replaceMvuDataControlled(merged_data as MvuData, { type: 'message', message_id: message_id });
-@@ -246 +251 @@ export const buttons: Button[] = [
+@@ -246 +282 @@ export const buttons: Button[] = [
 -                await replaceVariables(merged_data, { type: 'chat' });
 +                await replaceMvuDataControlled(merged_data as MvuData, { type: 'chat' });
-@@ -354 +359 @@ export const buttons: Button[] = [
+@@ -354 +390 @@ export const buttons: Button[] = [
 -                getVariables({
 +                getCanonicalMvuData({
-@@ -503 +508 @@ export const buttons: Button[] = [
+@@ -503 +539 @@ export const buttons: Button[] = [
 -                        getVariables({
 +                        getCanonicalMvuData({
 diff --git a/src/function/cleanup/chat_variables.ts b/src/function/cleanup/chat_variables.ts
-index c77cee8eef6305d1cdcc1d132eec871253e80d25..8c88e1f4076998bb8667d0bbf629490de1811008 100644
+index c77cee8..8c88e1f 100644
 --- a/src/function/cleanup/chat_variables.ts
 +++ b/src/function/cleanup/chat_variables.ts
 @@ -1,0 +2 @@ import { useDataStore } from '@/store';
 +import { updateVariablesWithControlled as updateVariablesWith } from '@/function/update/mvu_runtime';
 diff --git a/src/function/cleanup/index.ts b/src/function/cleanup/index.ts
-index b8f3a7cd13965bfa1cb05b34f5764f694f8b523f..6507f674b0ff3569cc2d28a3ccef6ab2598d574e 100644
+index b8f3a7c..6507f67 100644
 --- a/src/function/cleanup/index.ts
 +++ b/src/function/cleanup/index.ts
 @@ -4,0 +5 @@ import { restoreVariables } from '@/function/cleanup/restore_variables';
@@ -41,13 +80,13 @@ index b8f3a7cd13965bfa1cb05b34f5764f694f8b523f..6507f674b0ff3569cc2d28a3ccef6ab2
 @@ -24,0 +26 @@ export function initCleanup() {
 +            if (isTtMvuHost()) return;
 diff --git a/src/function/cleanup/restore_variables.ts b/src/function/cleanup/restore_variables.ts
-index 95c3250deb02595b82fdd1fa28168a1291188c5d..9a03458f220d171f0230253cb76969496db5e973 100644
+index 95c3250..9a03458 100644
 --- a/src/function/cleanup/restore_variables.ts
 +++ b/src/function/cleanup/restore_variables.ts
 @@ -1,0 +2 @@ import { updateVariables } from '@/function/update_variables';
 +import { updateVariablesWithControlled as updateVariablesWith } from '@/function/update/mvu_runtime';
 diff --git a/src/function/exported_events.ts b/src/function/exported_events.ts
-index eea9feb1ae214a59362917cf5fceef471b75b9cf..63e39dc19a81591bcae091b8956ca8e406e81be2 100644
+index eea9feb..63e39dc 100644
 --- a/src/function/exported_events.ts
 +++ b/src/function/exported_events.ts
 @@ -1,0 +2,5 @@ import { updateVariable, updateVariables } from '@/function/update_variables';
@@ -81,7 +120,7 @@ index eea9feb1ae214a59362917cf5fceef471b75b9cf..63e39dc19a81591bcae091b8956ca8e4
 +        )
 +    );
 diff --git a/src/function/function_call.ts b/src/function/function_call.ts
-index 321bd11d198cb9058b6cbfee2d45a22bdb523081..c7dbc515f924581df7b522991c0f5b1195a77459 100644
+index 321bd11..c7dbc51 100644
 --- a/src/function/function_call.ts
 +++ b/src/function/function_call.ts
 @@ -1,0 +2 @@ import { updateVariables } from '@/function/update_variables';
@@ -99,7 +138,7 @@ index 321bd11d198cb9058b6cbfee2d45a22bdb523081..c7dbc515f924581df7b522991c0f5b11
 @@ -238 +243,0 @@ async function onVariableUpdatedCall(args: any): Promise<string> {
 -    await replaceVariables(variables, { type: 'message', message_id: message_id });
 diff --git a/src/function/global/index.ts b/src/function/global/index.ts
-index caf3097b1b516c202d32f7faf5eb58cc166295c9..7faa20d2e55434073cb066bc77c50ab6a7fd1935 100644
+index caf3097..7faa20d 100644
 --- a/src/function/global/index.ts
 +++ b/src/function/global/index.ts
 @@ -2,0 +3,8 @@ import { updateVariable, updateVariables } from '@/function/update_variables';
@@ -171,7 +210,7 @@ index caf3097b1b516c202d32f7faf5eb58cc166295c9..7faa20d2e55434073cb066bc77c50ab6
 +                _.unset(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__');
 +            }
 diff --git a/src/function/initvar/variable_init.ts b/src/function/initvar/variable_init.ts
-index c3ddcb5f1d64c09cdea4b5151b99ca408d561598..4d71f74d60f77f16a15daa957b60ea943fdc5f28 100644
+index c3ddcb5..1eda9d9 100644
 --- a/src/function/initvar/variable_init.ts
 +++ b/src/function/initvar/variable_init.ts
 @@ -2,0 +3,5 @@ import { updateVariables } from '@/function/update_variables';
@@ -180,7 +219,11 @@ index c3ddcb5f1d64c09cdea4b5151b99ca408d561598..4d71f74d60f77f16a15daa957b60ea94
 +    replaceMvuDataControlled,
 +    updateVariablesWithControlled as updateVariablesWith,
 +} from '@/function/update/mvu_runtime';
-@@ -138,6 +143,2 @@ export async function initCheck() {
+@@ -66,0 +72,3 @@ export async function initCheck() {
++    if (_.isEmpty(variables.stat_data)) {
++        variables.initialized_lorebooks = {};
++    }
+@@ -138,6 +146,2 @@ export async function initCheck() {
 -        await setChatMessages([
 -            {
 -                // last_msg 不一定存在 message_id
@@ -189,7 +232,7 @@ index c3ddcb5f1d64c09cdea4b5151b99ca408d561598..4d71f74d60f77f16a15daa957b60ea94
 -                    last_msg.swipes!.map(async (swipe, index) => {
 +        const swipes_data = await Promise.all(
 +            last_msg.swipes!.map(async (swipe, index) => {
-@@ -194,4 +195,14 @@ export async function initCheck() {
+@@ -194,4 +198,14 @@ export async function initCheck() {
 -                    })
 -                ),
 -            },
@@ -208,11 +251,24 @@ index c3ddcb5f1d64c09cdea4b5151b99ca408d561598..4d71f74d60f77f16a15daa957b60ea94
 +                },
 +            ]);
 +        }
-@@ -200 +211 @@ export async function initCheck() {
+@@ -200 +214 @@ export async function initCheck() {
 -        await replaceVariables(variables, { type: 'message' });
 +        await replaceMvuDataControlled(variables, { type: isTtMvuHost() ? 'chat' : 'message' });
+@@ -234 +248 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+-        const char_lorebook = await getCharLorebooks();
++        const char_lorebook = getCharWorldbookNames('current');
+@@ -238 +252 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+-        if (char_lorebook.additional !== null) {
++        if (Array.isArray(char_lorebook.additional)) {
+@@ -244 +258 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+-    return enabled_lorebook_list;
++    return [...new Set(enabled_lorebook_list.filter(Boolean))];
+@@ -265 +278,0 @@ export async function loadInitVarData(
+-        mvu_data.initialized_lorebooks[current_lorebook] = [];
+@@ -319,0 +333 @@ export async function loadInitVarData(
++            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
-index 722db3359e725d1002f797646bc1572d2f873c1f..272172afb0ddda6f52e52506e19a88d5e734ac3e 100644
+index 722db33..272172a 100644
 --- a/src/function/update/index.ts
 +++ b/src/function/update/index.ts
 @@ -1,2 +0,0 @@
@@ -288,7 +344,7 @@ index 722db3359e725d1002f797646bc1572d2f873c1f..272172afb0ddda6f52e52506e19a88d5
 @@ -19,0 +78 @@ export function initResponse() {
 +        reset('response_listener_stopped');
 diff --git a/src/function/update/invoke_extra_model.ts b/src/function/update/invoke_extra_model.ts
-index f992a26492359a75765eaf34b5ff6a5fd117ce6c..fefc6906ce4baaa00ab5817fbaecc4eb8034065e 100644
+index f992a26..fefc690 100644
 --- a/src/function/update/invoke_extra_model.ts
 +++ b/src/function/update/invoke_extra_model.ts
 @@ -19,0 +20 @@ import {
@@ -380,218 +436,12 @@ index f992a26492359a75765eaf34b5ff6a5fd117ce6c..fefc6906ce4baaa00ab5817fbaecc4eb
 +            ...(projected_mvu_context
 +                ? [{ role: 'system' as const, content: projected_mvu_context }]
 +                : []),
-diff --git a/src/function/update/on_message_received.ts b/src/function/update/on_message_received.ts
-index 2f7a0bf8be4f147a4bf8048782a5a70e2d15cdaf..ed454493afaa105f5c2e51cac9fcfc2f3f05366e 100644
---- a/src/function/update/on_message_received.ts
-+++ b/src/function/update/on_message_received.ts
-@@ -3,0 +4,5 @@ import { invokeExtraModelWithStrategy } from '@/function/update/invoke_extra_mod
-+import {
-+    runMvuTaskCommit,
-+    MvuRuntimeTask,
-+    scheduleMvuTask,
-+} from '@/function/update/mvu_runtime';
-@@ -10 +15 @@ export async function onMessageReceived(
--    { force = false }: { force?: boolean } = {}
-+    { force = false, task }: { force?: boolean; task?: MvuRuntimeTask } = {}
-@@ -11,0 +17,7 @@ export async function onMessageReceived(
-+    if (!task) {
-+        const scheduled = scheduleMvuTask('manual_message_received', message_id, next_task =>
-+            onMessageReceived(message_id, { force, task: next_task })
-+        );
-+        await scheduled.wait();
-+        return;
-+    }
-@@ -13,0 +26 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'message_missing');
-@@ -21,0 +35 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'not_user_message');
-@@ -27,0 +42 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'placeholder_message');
-@@ -38 +53,6 @@ export async function onMessageReceived(
--        await handleVariablesInMessage(message_id);
-+        await runMvuTaskCommit(
-+            task,
-+            'message_variable_update',
-+            () => handleVariablesInMessage(message_id, task.isCurrent),
-+            changed => (changed ? 'committed' : 'no_diff')
-+        );
-@@ -43,0 +64 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'first_floor');
-@@ -48,0 +70,27 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'auto_request_disabled');
-+        return;
-+    }
-+
-+    let result: string | null;
-+    try {
-+        result = await invokeExtraModelWithStrategy();
-+    } catch (error) {
-+        const should_parse_message = task.isMessageCurrent();
-+        task.finish('request_failed', String(error));
-+        if (should_parse_message) {
-+            await handleVariablesInMessage(message_id, task.isMessageCurrent);
-+        }
-+        return;
-+    }
-+    if (result === null || result.trim().length === 0) {
-+        if (result === null) {
-+            toastr.error(
-+                tr('runtime.extraModel.updateFailed'),
-+                tr('runtime.extraModel.updateFailedTitle')
-+            );
-+        }
-+        const should_parse_message = task.isMessageCurrent();
-+        task.finish(result === null ? 'request_failed' : 'skipped', result === null ? undefined : 'empty_response');
-+        if (should_parse_message) {
-+            await handleVariablesInMessage(message_id, task.isMessageCurrent);
-+        }
-@@ -52,3 +100,4 @@ export async function onMessageReceived(
--    const result = await invokeExtraModelWithStrategy();
--    if (result !== null) {
--        const chat_message = getChatMessages(message_id);
-+    if (!task.isCurrent()) {
-+        task.finish('stale', 'message_changed_during_request');
-+        return;
-+    }
-@@ -56,9 +105,7 @@ export async function onMessageReceived(
--        await setChatMessages(
--            [
--                {
--                    message_id,
--                    message: chat_message[0].message.trimEnd() + '\n\n' + result,
--                },
--            ],
--            {
--                refresh: 'none',
-+    await runMvuTaskCommit(
-+        task,
-+        'extra_model_commit',
-+        async () => {
-+            const chat_message = getChatMessages(message_id).at(-1);
-+            if (!chat_message || !task.isCurrent()) {
-+                return false;
-@@ -66,8 +113,16 @@ export async function onMessageReceived(
--        );
--    } else {
--        toastr.error(
--            tr('runtime.extraModel.updateFailed'),
--            tr('runtime.extraModel.updateFailedTitle')
--        );
--    }
--    await handleVariablesInMessage(message_id);
-+            await setChatMessages(
-+                [
-+                    {
-+                        message_id,
-+                        message: chat_message.message.trimEnd() + '\n\n' + result,
-+                    },
-+                ],
-+                {
-+                    refresh: 'none',
-+                }
-+            );
-+            task.refreshFingerprint();
-+            return await handleVariablesInMessage(message_id, task.isCurrent);
-+        },
-+        changed => (changed ? 'committed' : 'no_diff')
-+    );
-diff --git a/src/function/update_variables.ts b/src/function/update_variables.ts
-index e144b79ff6cfe95ee750909fb679b4cdd592acaa..62fcbc24ac25623daafcec7fb2ee13ccdabace76 100644
---- a/src/function/update_variables.ts
-+++ b/src/function/update_variables.ts
-@@ -6,0 +7 @@ import {
-+import { isTtMvuHost, updateVariablesWithControlled as updateVariablesWith } from '@/function/update/mvu_runtime';
-@@ -1500 +1501,4 @@ export async function updateVariables(
--export async function handleVariablesInMessage(message_id: number) {
-+export async function handleVariablesInMessage(
-+    message_id: number,
-+    is_current: () => boolean = () => true
-+): Promise<boolean> {
-@@ -1503 +1507 @@ export async function handleVariablesInMessage(message_id: number) {
--        return;
-+        return false;
-@@ -1509 +1513 @@ export async function handleVariablesInMessage(message_id: number) {
--        return;
-+        return false;
-@@ -1516 +1520 @@ export async function handleVariablesInMessage(message_id: number) {
--        return;
-+        return false;
-@@ -1519,0 +1524,3 @@ export async function handleVariablesInMessage(message_id: number) {
-+    if (!is_current()) {
-+        return false;
-+    }
-@@ -1525,0 +1533,3 @@ export async function handleVariablesInMessage(message_id: number) {
-+        if (!is_current()) {
-+            return false;
-+        }
-@@ -1548,2 +1558,18 @@ export async function handleVariablesInMessage(message_id: number) {
--    if (has_variable_modified && settings.兼容性.更新到聊天变量) {
--        await updateVariablesWith(updater, { type: 'chat' });
-+    if (isTtMvuHost()) {
-+        if (has_variable_modified) {
-+            if (!is_current()) {
-+                return false;
-+            }
-+            await updateVariablesWith(updater, { type: 'chat', message_id: message_id }, is_current);
-+        }
-+    } else {
-+        if (has_variable_modified && settings.兼容性.更新到聊天变量) {
-+            if (!is_current()) {
-+                return false;
-+            }
-+            await updateVariablesWith(updater, { type: 'chat' }, is_current);
-+        }
-+        if (!is_current()) {
-+            return false;
-+        }
-+        await updateVariablesWith(updater, { type: 'message', message_id: message_id }, is_current);
-@@ -1551 +1576,0 @@ export async function handleVariablesInMessage(message_id: number) {
--    await updateVariablesWith(updater, { type: 'message', message_id: message_id });
-@@ -1553,0 +1579,3 @@ export async function handleVariablesInMessage(message_id: number) {
-+        if (!is_current()) {
-+            return false;
-+        }
-@@ -1574,0 +1603 @@ export async function handleVariablesInMessage(message_id: number) {
-+    return has_variable_modified;
-diff --git a/src/main.ts b/src/main.ts
-index 364eb1063276c9ed450830e1f9087b80373bdc93..66db4f1 100644
---- a/src/main.ts
-+++ b/src/main.ts
-@@ -39 +39 @@ $(async () => {
--    stop_list.push(initGlobals());
-+    stop_list.push(await initGlobals());
-@@ -51,0 +52 @@ $(async () => {
-+        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
-@@ -79,0 +81 @@ $(async () => {
-+                    _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', true);
-@@ -84,0 +87 @@ $(async () => {
-+                _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
-@@ -105,0 +109 @@ $(async () => {
-+        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
-diff --git a/src/util.ts b/src/util.ts
-index 7a796d3d1a4e908e536987b5c855249ecd3c7ed1..1f6615faf9d889b491f00a5b8a6d8248c6ff641e 100644
---- a/src/util.ts
-+++ b/src/util.ts
-@@ -1,0 +2 @@ import { useDataStore } from '@/store';
-+import { getCanonicalMvuData, isTtMvuHost } from '@/function/update/mvu_runtime';
-@@ -20,0 +22,3 @@ export function getLastValidVariable(end_message_id: number): MvuData | undefine
-+    if (isTtMvuHost()) {
-+        return klona(getCanonicalMvuData({ type: 'message', message_id: end_message_id - 1 }));
-+    }
-diff --git a/webpack.config.ts b/webpack.config.ts
-index 76b042566ba0d332a530680a8426c3a078c57994..04396e4cbb3a781742a4d285abc80e399640a4aa 100644
---- a/webpack.config.ts
-+++ b/webpack.config.ts
-@@ -52 +52,2 @@ function config(_env: any, argv: any): webpack.Configuration {
--    const buildDate = (() => {
-+    const configuredBuildDate = process.env.LWCS_MVU_BUILD_DATE?.trim();
-+    const buildDate = configuredBuildDate || (() => {
 diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..0d50dc7fad34dc3a14f984e6d77301e566325978
+index 0000000..5a04ddd
 --- /dev/null
 +++ b/src/function/update/mvu_runtime.ts
-@@ -0,0 +1,716 @@
+@@ -0,0 +1,743 @@
 +import type { MvuData } from '@/variable_def';
 +
 +export const mvu_runtime_events = Object.freeze({
@@ -624,6 +474,7 @@ index 0000000000000000000000000000000000000000..0d50dc7fad34dc3a14f984e6d77301e5
 +    backend: string;
 +    stableChatId: string;
 +    load: (request: { initialState: MvuData; message: MessagePointer }) => Promise<ProviderResult>;
++    readState: (request: { initialState: MvuData; message: MessagePointer }) => Promise<ProviderResult>;
 +    enqueueCommit: (request: { fullState: MvuData; message: MessagePointer }) => Promise<ProviderResult>;
 +    getHotState: () => MvuData | null;
 +    getQueueState: () => { pending?: number };
@@ -638,6 +489,7 @@ index 0000000000000000000000000000000000000000..0d50dc7fad34dc3a14f984e6d77301e5
 +    error?: string;
 +    skipped?: boolean;
 +    verified?: boolean;
++    hotState?: MvuData;
 +};
 +
 +type TaskState = {
@@ -899,13 +751,38 @@ index 0000000000000000000000000000000000000000..0d50dc7fad34dc3a14f984e6d77301e5
 +    return isTauriTavern();
 +}
 +
++function isCanonicalMvuData(value: unknown): value is MvuData {
++    return _.isPlainObject(value)
++        && _.isPlainObject((value as MvuData).stat_data)
++        && _.isPlainObject((value as MvuData).schema);
++}
++
 +export function getCanonicalMvuData(options: VariableOption): MvuData {
 +    if (isTauriTavern()) {
 +        const hot_state = provider_handle?.getHotState?.();
-+        if (hot_state && provider_handle?.isLive?.()) return cloneRuntimeValue(hot_state);
-+        if (provider_initial_state) return cloneRuntimeValue(provider_initial_state);
++        if (isCanonicalMvuData(hot_state) && provider_handle?.isLive?.()) {
++            return cloneRuntimeValue(hot_state);
++        }
++        if (isCanonicalMvuData(provider_initial_state)) {
++            return cloneRuntimeValue(provider_initial_state);
++        }
 +    }
 +    return getVariables(options) as MvuData;
++}
++
++export async function readMvuDataControlled(options: VariableOption): Promise<MvuData | undefined> {
++    if (!isTauriTavern()) return cloneRuntimeValue(getVariables(options) as MvuData);
++    const operation_chat_id = currentChatId();
++    await ensureMvuPersistence();
++    if (operation_chat_id !== currentChatId() || typeof provider_handle?.readState !== 'function') return undefined;
++    const read = await provider_handle.readState({
++        initialState: provider_initial_state ?? (getVariables({ type: 'chat' }) as MvuData),
++        message: readOptionPointer(options),
++    });
++    if (operation_chat_id !== currentChatId() || read.state !== 'committed' || !isCanonicalMvuData(read.hotState)) {
++        return undefined;
++    }
++    return cloneRuntimeValue(read.hotState);
 +}
 +
 +export async function ensureMvuPersistence(): Promise<void> {
@@ -1308,14 +1185,213 @@ index 0000000000000000000000000000000000000000..0d50dc7fad34dc3a14f984e6d77301e5
 +export function reset(reason: string) {
 +    invalidateAll(reason);
 +}
+diff --git a/src/function/update/on_message_received.ts b/src/function/update/on_message_received.ts
+index 2f7a0bf..ed45449 100644
+--- a/src/function/update/on_message_received.ts
++++ b/src/function/update/on_message_received.ts
+@@ -3,0 +4,5 @@ import { invokeExtraModelWithStrategy } from '@/function/update/invoke_extra_mod
++import {
++    runMvuTaskCommit,
++    MvuRuntimeTask,
++    scheduleMvuTask,
++} from '@/function/update/mvu_runtime';
+@@ -10 +15 @@ export async function onMessageReceived(
+-    { force = false }: { force?: boolean } = {}
++    { force = false, task }: { force?: boolean; task?: MvuRuntimeTask } = {}
+@@ -11,0 +17,7 @@ export async function onMessageReceived(
++    if (!task) {
++        const scheduled = scheduleMvuTask('manual_message_received', message_id, next_task =>
++            onMessageReceived(message_id, { force, task: next_task })
++        );
++        await scheduled.wait();
++        return;
++    }
+@@ -13,0 +26 @@ export async function onMessageReceived(
++        task.finish('skipped', 'message_missing');
+@@ -21,0 +35 @@ export async function onMessageReceived(
++        task.finish('skipped', 'not_user_message');
+@@ -27,0 +42 @@ export async function onMessageReceived(
++        task.finish('skipped', 'placeholder_message');
+@@ -38 +53,6 @@ export async function onMessageReceived(
+-        await handleVariablesInMessage(message_id);
++        await runMvuTaskCommit(
++            task,
++            'message_variable_update',
++            () => handleVariablesInMessage(message_id, task.isCurrent),
++            changed => (changed ? 'committed' : 'no_diff')
++        );
+@@ -43,0 +64 @@ export async function onMessageReceived(
++        task.finish('skipped', 'first_floor');
+@@ -48,0 +70,27 @@ export async function onMessageReceived(
++        task.finish('skipped', 'auto_request_disabled');
++        return;
++    }
++
++    let result: string | null;
++    try {
++        result = await invokeExtraModelWithStrategy();
++    } catch (error) {
++        const should_parse_message = task.isMessageCurrent();
++        task.finish('request_failed', String(error));
++        if (should_parse_message) {
++            await handleVariablesInMessage(message_id, task.isMessageCurrent);
++        }
++        return;
++    }
++    if (result === null || result.trim().length === 0) {
++        if (result === null) {
++            toastr.error(
++                tr('runtime.extraModel.updateFailed'),
++                tr('runtime.extraModel.updateFailedTitle')
++            );
++        }
++        const should_parse_message = task.isMessageCurrent();
++        task.finish(result === null ? 'request_failed' : 'skipped', result === null ? undefined : 'empty_response');
++        if (should_parse_message) {
++            await handleVariablesInMessage(message_id, task.isMessageCurrent);
++        }
+@@ -52,3 +100,4 @@ export async function onMessageReceived(
+-    const result = await invokeExtraModelWithStrategy();
+-    if (result !== null) {
+-        const chat_message = getChatMessages(message_id);
++    if (!task.isCurrent()) {
++        task.finish('stale', 'message_changed_during_request');
++        return;
++    }
+@@ -56,9 +105,7 @@ export async function onMessageReceived(
+-        await setChatMessages(
+-            [
+-                {
+-                    message_id,
+-                    message: chat_message[0].message.trimEnd() + '\n\n' + result,
+-                },
+-            ],
+-            {
+-                refresh: 'none',
++    await runMvuTaskCommit(
++        task,
++        'extra_model_commit',
++        async () => {
++            const chat_message = getChatMessages(message_id).at(-1);
++            if (!chat_message || !task.isCurrent()) {
++                return false;
+@@ -66,8 +113,16 @@ export async function onMessageReceived(
+-        );
+-    } else {
+-        toastr.error(
+-            tr('runtime.extraModel.updateFailed'),
+-            tr('runtime.extraModel.updateFailedTitle')
+-        );
+-    }
+-    await handleVariablesInMessage(message_id);
++            await setChatMessages(
++                [
++                    {
++                        message_id,
++                        message: chat_message.message.trimEnd() + '\n\n' + result,
++                    },
++                ],
++                {
++                    refresh: 'none',
++                }
++            );
++            task.refreshFingerprint();
++            return await handleVariablesInMessage(message_id, task.isCurrent);
++        },
++        changed => (changed ? 'committed' : 'no_diff')
++    );
+diff --git a/src/function/update_variables.ts b/src/function/update_variables.ts
+index e144b79..62fcbc2 100644
+--- a/src/function/update_variables.ts
++++ b/src/function/update_variables.ts
+@@ -6,0 +7 @@ import {
++import { isTtMvuHost, updateVariablesWithControlled as updateVariablesWith } from '@/function/update/mvu_runtime';
+@@ -1500 +1501,4 @@ export async function updateVariables(
+-export async function handleVariablesInMessage(message_id: number) {
++export async function handleVariablesInMessage(
++    message_id: number,
++    is_current: () => boolean = () => true
++): Promise<boolean> {
+@@ -1503 +1507 @@ export async function handleVariablesInMessage(message_id: number) {
+-        return;
++        return false;
+@@ -1509 +1513 @@ export async function handleVariablesInMessage(message_id: number) {
+-        return;
++        return false;
+@@ -1516 +1520 @@ export async function handleVariablesInMessage(message_id: number) {
+-        return;
++        return false;
+@@ -1519,0 +1524,3 @@ export async function handleVariablesInMessage(message_id: number) {
++    if (!is_current()) {
++        return false;
++    }
+@@ -1525,0 +1533,3 @@ export async function handleVariablesInMessage(message_id: number) {
++        if (!is_current()) {
++            return false;
++        }
+@@ -1548,2 +1558,18 @@ export async function handleVariablesInMessage(message_id: number) {
+-    if (has_variable_modified && settings.兼容性.更新到聊天变量) {
+-        await updateVariablesWith(updater, { type: 'chat' });
++    if (isTtMvuHost()) {
++        if (has_variable_modified) {
++            if (!is_current()) {
++                return false;
++            }
++            await updateVariablesWith(updater, { type: 'chat', message_id: message_id }, is_current);
++        }
++    } else {
++        if (has_variable_modified && settings.兼容性.更新到聊天变量) {
++            if (!is_current()) {
++                return false;
++            }
++            await updateVariablesWith(updater, { type: 'chat' }, is_current);
++        }
++        if (!is_current()) {
++            return false;
++        }
++        await updateVariablesWith(updater, { type: 'message', message_id: message_id }, is_current);
+@@ -1551 +1576,0 @@ export async function handleVariablesInMessage(message_id: number) {
+-    await updateVariablesWith(updater, { type: 'message', message_id: message_id });
+@@ -1553,0 +1579,3 @@ export async function handleVariablesInMessage(message_id: number) {
++        if (!is_current()) {
++            return false;
++        }
+@@ -1574,0 +1603 @@ export async function handleVariablesInMessage(message_id: number) {
++    return has_variable_modified;
+diff --git a/src/main.ts b/src/main.ts
+index 364eb10..66db4f1 100644
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -39 +39 @@ $(async () => {
+-    stop_list.push(initGlobals());
++    stop_list.push(await initGlobals());
+@@ -51,0 +52 @@ $(async () => {
++        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
+@@ -79,0 +81 @@ $(async () => {
++                    _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', true);
+@@ -84,0 +87 @@ $(async () => {
++                _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
+@@ -105,0 +109 @@ $(async () => {
++        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
+diff --git a/src/util.ts b/src/util.ts
+index 7a796d3..1f6615f 100644
+--- a/src/util.ts
++++ b/src/util.ts
+@@ -1,0 +2 @@ import { useDataStore } from '@/store';
++import { getCanonicalMvuData, isTtMvuHost } from '@/function/update/mvu_runtime';
+@@ -20,0 +22,3 @@ export function getLastValidVariable(end_message_id: number): MvuData | undefine
++    if (isTtMvuHost()) {
++        return klona(getCanonicalMvuData({ type: 'message', message_id: end_message_id - 1 }));
++    }
 diff --git a/webpack.config.ts b/webpack.config.ts
 index 76b0425..810c7bd 100644
 --- a/webpack.config.ts
 +++ b/webpack.config.ts
-@@ -388,15 +389,7 @@ function config(_env: any, argv: any): webpack.Configuration {
-             if (request in global) {
-                 return callback(null, 'var ' + global[request as keyof typeof global]);
-             }
+@@ -52 +52,2 @@ function config(_env: any, argv: any): webpack.Configuration {
+-    const buildDate = (() => {
++    const configuredBuildDate = process.env.LWCS_MVU_BUILD_DATE?.trim();
++    const buildDate = configuredBuildDate || (() => {
+@@ -391,9 +392 @@ function config(_env: any, argv: any): webpack.Configuration {
 -            const cdn = {
 -                sass: 'https://jspm.dev/sass',
 -            };
@@ -1326,6 +1402,3 @@ index 76b0425..810c7bd 100644
 -                        `https://testingcf.jsdelivr.net/npm/${request}/+esm`)
 -            );
 +            return callback();
-         },
-     };
- }
