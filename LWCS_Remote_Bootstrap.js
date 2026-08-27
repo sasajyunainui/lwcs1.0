@@ -184,15 +184,26 @@
   宿主窗口[引导键] = true;
 
   // getButtonEvent 依赖当前 TH-script iframe 的脚本身份，按钮只能在这里绑定。
-  appendInexistentScriptButtons([{ name: '消息统计', visible: true }]);
+  appendInexistentScriptButtons([
+    { name: '消息统计', visible: true },
+    { name: '变量管理', visible: true },
+  ]);
   const 消息统计按钮订阅 = eventOn(getButtonEvent('消息统计'), async () => {
     try {
-      if (共享启动状态.uiStatus !== 'ready') await 本轮UI就绪承诺;
       const 打开消息统计 = 宿主窗口.__LWCS_OPEN_REQUEST_MONITOR_V1__;
       if (typeof 打开消息统计 !== 'function') throw new Error('消息统计入口未就绪');
       await 打开消息统计();
     } catch (错误) {
       console.error('[LWCS][消息统计] 按钮执行失败:', 错误);
+    }
+  });
+  const 变量管理按钮订阅 = eventOn(getButtonEvent('变量管理'), async () => {
+    try {
+      const 打开变量管理 = 宿主窗口.__LWCS_OPEN_TT_STORE_VARIABLE_MANAGER_V1__;
+      if (typeof 打开变量管理 !== 'function') throw new Error('TT-store 变量管理入口未就绪');
+      await 打开变量管理();
+    } catch (错误) {
+      console.error('[LWCS][变量管理] 按钮执行失败:', 错误);
     }
   });
   宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__ = {
@@ -205,6 +216,7 @@
     window.addEventListener('pagehide', () => {
       if (共享启动状态.uiOwnerToken !== 本轮所有者代号) return;
       try { 消息统计按钮订阅?.stop?.(); } catch (错误) {}
+      try { 变量管理按钮订阅?.stop?.(); } catch (错误) {}
       if (宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__?.owner === 本轮所有者代号) {
         delete 宿主窗口.__LWCS_REQUEST_MONITOR_ENTRY_BUTTON_BOUND__;
       }

@@ -227,6 +227,14 @@
       分组: 'background',
       已就绪: () => !!查找消息统计界面(),
     },
+    TT变量管理器: {
+      类型: 'remote-js',
+      地址: 资源基础地址 + 'TTStoreVariableManager.js' + 资源版本后缀,
+      关键: false,
+      分组: 'background',
+      依赖: ['Vue核心', '持久化适配器', 'MVU持久化提供者'],
+      已就绪: () => !!读取共享值('__LWCS_TT_STORE_VARIABLE_MANAGER_V1__'),
+    },
     地图模块: {
       类型: 'inline-js',
       地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀,
@@ -1332,6 +1340,32 @@
       if (宿主窗口.__LWCS_OPEN_REQUEST_MONITOR_V1__ === 打开消息统计入口) {
         delete 宿主窗口.__LWCS_OPEN_REQUEST_MONITOR_V1__;
       }
+    },
+  });
+
+  async function 打开TT变量管理入口() {
+    try {
+      await 确保模块已加载('TT变量管理器', {
+        来源: 'tt_store_variable_manager_button',
+        允许失败降级: false,
+        抛错: true,
+      });
+      const 管理器 = 读取共享值('__LWCS_TT_STORE_VARIABLE_MANAGER_V1__');
+      if (typeof 管理器?.open !== 'function') throw new Error('TT-store 变量管理器未就绪');
+      await 管理器.open();
+    } catch (错误) {
+      console.error('[MVU] TT-store 变量管理按钮执行失败:', 错误);
+      显示入口按钮提示(构建入口按钮错误文本('变量管理', 错误), 'error');
+    }
+  }
+
+  宿主窗口.__LWCS_OPEN_TT_STORE_VARIABLE_MANAGER_V1__ = 打开TT变量管理入口;
+  入口实例.subscriptions.push({
+    stop() {
+      if (宿主窗口.__LWCS_OPEN_TT_STORE_VARIABLE_MANAGER_V1__ === 打开TT变量管理入口) {
+        delete 宿主窗口.__LWCS_OPEN_TT_STORE_VARIABLE_MANAGER_V1__;
+      }
+      try { 读取共享值('__LWCS_TT_STORE_VARIABLE_MANAGER_V1__')?.destroy?.(); } catch (错误) {}
     },
   });
 
