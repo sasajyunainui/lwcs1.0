@@ -532,6 +532,16 @@ function 取已有外部MVU_V1() {
   return 取MVU引擎窗口_V1().map(窗口 => 窗口.Mvu).find(Boolean) || null;
 }
 
+async function 等待项目MVU接口_V1() {
+  const 开始时刻 = performance.now();
+  while (performance.now() - 开始时刻 < 5000) {
+    const 接口 = 取已有MVU引擎_V1();
+    if (接口 && typeof 接口.getMvuData === 'function') return 接口;
+    await new Promise(继续 => setTimeout(继续, 16));
+  }
+  throw new Error('LWCS MVU引擎bundle已执行，但项目Mvu接口未在5秒内暴露');
+}
+
 async function 确保项目MVU引擎_V1() {
   const 已有项目引擎 = 取已有MVU引擎_V1();
   if (已有项目引擎) {
@@ -693,11 +703,9 @@ if (typeof eventOn !== 'function') throw new Error('MVU_ZOD_Entry 需要酒馆�
 记录MVU加载阶段_V1('foundation-and-engine:await-start');
 await Promise.all([确保MVU基础依赖_V1(), 确保项目MVU引擎_V1()]);
 记录MVU加载阶段_V1('foundation-and-engine:await-resolved');
-if (typeof waitGlobalInitialized === 'function') {
-  记录MVU加载阶段_V1('mvu-global:await-start');
-  await waitGlobalInitialized('Mvu');
-  记录MVU加载阶段_V1('mvu-global:await-resolved');
-}
+记录MVU加载阶段_V1('project-mvu-interface:await-start');
+await 等待项目MVU接口_V1();
+记录MVU加载阶段_V1('project-mvu-interface:await-resolved');
 const MVU执行上下文库运行时_V1 = 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__');
 if (MVU执行上下文库运行时_V1) globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__ = MVU执行上下文库运行时_V1;
 const MVU时代资源加载承诺_V1 = 加载MVU当前时代核心资源_V1();
