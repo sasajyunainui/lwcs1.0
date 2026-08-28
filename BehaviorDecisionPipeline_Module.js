@@ -5927,14 +5927,16 @@
 /* BehaviorLinearScoreProvider_Module.js
  * Task 6 core batch A: online lightweight LINEAR_SCORE_V1 provider (r9v2).
  * Pure candidate-only selection: frozen candidates -> public immediate features
- * -> frozen 31-code scalarization + embedded two-code reaction head ->
+ * -> frozen 31-code scalarization + embedded two-code reaction head +
+ * 13-code causal active/reaction heads ->
  * total linear score -> hard-exclusion removal ->
  * deterministic ordering (score desc, exact-tie candidateId UTF-16 asc) ->
  * structural alternative -> same-source structured reason factors.
  * The sealed model whitelist constants are embedded (never read from
  * gitignored artifacts at runtime): normalization, linear, featureAggregation,
  * modelHash, weightsHash, featureSchemaHash. Old Kernel/direct/future-route/S4
- * traversal has zero calls and zero fallback here.
+ * traversal has zero calls and zero fallback inside the provider; bounded
+ * public causal outcome features arrive through the frozen feature document.
  */
 (function (root) {
   'use strict';
@@ -5944,17 +5946,17 @@
   const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV2';
   const MOUNT_NAME = '__LWCS_BEHAVIOR_LINEAR_PROVIDER__';
 
-  // Sealed model whitelist (artifacts/rc6/distilled-linear-score-v1.json raw
-  // 432b82e0...; sealed binding m2-linear-score-v1-rev9-binding.json).
-  const MODEL_HASH = '5308f3bcbb60413e6161089397d59224ec3a7d92c60c58062067df19f9024ced';
-  const WEIGHTS_HASH = '2daa34c9aa8e340efa83d6caee433d19dc204ac9b52e0ea48d55591192a67550';
-  const FEATURE_SCHEMA_HASH = '9d083542dff4609b7ca7d55fdf3b204bc62fc2f40e350298f46db00d2ab5a121';
+  // Sealed runtime binding for the exact base, reaction and causal definitions
+  // embedded below. Runtime never reads an external training artifact.
+  const MODEL_HASH = 'b13c6c2356d632a296c26f20e0d4e07bd5d9e2b753bf781920040c8d8733826d';
+  const WEIGHTS_HASH = '190c00a8f137b0cbf2d186f685718df1786d9be17324a4083f43927a858f5e7d';
+  const FEATURE_SCHEMA_HASH = '1ae9cd7d4d2353efd76df73576d6a235bcefb72fe9ee26d40b626f1afc52a76f';
   const DBP_REVISION = 15;
   const DBP_CONTRACT_HASH = '69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8';
   const BIF_CONTRACT_HASH = '8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76';
   const BASE_SECTION_HASH = '1a6ba7bbf8543221f9620b29a6884d723a35b1eedc64ac9b508418e242f3fa0d';
   const REACTION_HEAD_HASH = 'b08565ade014bed633f5917aaa3891ba2730a18f8c9885c1c9c983db5c8f4a62';
-  const MODEL_COMPOSITE_HASH = '1571f142a29ad9e6faef6644533a632942dbd57867a5aa00c2ca76b685a2dd8c';
+  const MODEL_COMPOSITE_HASH = '363155cfcae91184c4ca5360ad0ef8ae7babbe77eeb1c2fbff2c8cc60825d128';
   const REACTION_ALGORITHM_HASH = '5ddd1dff3f07d3aa7c1b48f627cd5a3c64de9025941fab25923b52851b8a1852';
   const OP_DAMAGE_POWER = 'NEUMAIER\u005fSUM';
   const OP_DAMAGE_SEGMENTS = 'INTEGER\u005fSUM';
@@ -5982,7 +5984,7 @@
     'SELF_FOLLOWUP_MECHANICAL_GAIN', 'RESOURCE_RUNWAY_GAIN',
     'ENEMY_RESPONSE_OPTION_DENIAL', 'OPPONENT_RESPONSE_PRESSURE',
     'REACTION_FOLLOWUP_GAIN', 'SETUP_INTERRUPT_RISK',
-    'ALLY_OPTION_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
+    'ALLY_OPTION_GAIN', 'ALLY_RESOURCE_RUNWAY_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
     'PROTECTION_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
   ]);
   const EXCLUSION_ONLY = Object.freeze(['HARD_EXCLUSION', 'HARD_EXCLUSION_REASON']);
@@ -6157,35 +6159,37 @@
   const ACTIVE_CAUSAL_LINEAR = Object.freeze({
     intercept: 0,
     coefficients: Object.freeze({
-      OBJECTIVE_PROGRESS: 8,
-      SELF_FOLLOWUP_POOL_GAIN: 4,
-      SELF_FOLLOWUP_MECHANICAL_GAIN: 3.5,
-      RESOURCE_RUNWAY_GAIN: 2.5,
-      ENEMY_RESPONSE_OPTION_DENIAL: 4,
-      OPPONENT_RESPONSE_PRESSURE: 4,
+      OBJECTIVE_PROGRESS: 33.38215225116526,
+      SELF_FOLLOWUP_POOL_GAIN: 10.302556723848836,
+      SELF_FOLLOWUP_MECHANICAL_GAIN: 8.201659516257939,
+      RESOURCE_RUNWAY_GAIN: 14.848683457044219,
+      ENEMY_RESPONSE_OPTION_DENIAL: 1.4789589148898896,
+      OPPONENT_RESPONSE_PRESSURE: 11.747833245997066,
       REACTION_FOLLOWUP_GAIN: 0,
-      SETUP_INTERRUPT_RISK: -4,
-      ALLY_OPTION_GAIN: 4,
-      FOCUS_TARGET_MARGINAL_GAIN: 1.5,
-      PROTECTION_MARGINAL_GAIN: 4,
-      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -3,
+      SETUP_INTERRUPT_RISK: 0,
+      ALLY_OPTION_GAIN: 19.07586472591921,
+      ALLY_RESOURCE_RUNWAY_GAIN: 41.29002102614034,
+      FOCUS_TARGET_MARGINAL_GAIN: 11.747833245997066,
+      PROTECTION_MARGINAL_GAIN: 115.88679861250772,
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -3.5849163455251323,
     }),
   });
   const REACTION_CAUSAL_LINEAR = Object.freeze({
     intercept: 0,
     coefficients: Object.freeze({
-      OBJECTIVE_PROGRESS: 8,
-      SELF_FOLLOWUP_POOL_GAIN: 2,
-      SELF_FOLLOWUP_MECHANICAL_GAIN: 2,
-      RESOURCE_RUNWAY_GAIN: 1,
-      ENEMY_RESPONSE_OPTION_DENIAL: 4,
-      OPPONENT_RESPONSE_PRESSURE: 3,
-      REACTION_FOLLOWUP_GAIN: 7,
-      SETUP_INTERRUPT_RISK: -6,
-      ALLY_OPTION_GAIN: 2,
-      FOCUS_TARGET_MARGINAL_GAIN: 0.5,
-      PROTECTION_MARGINAL_GAIN: 5,
-      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -3,
+      OBJECTIVE_PROGRESS: 0,
+      SELF_FOLLOWUP_POOL_GAIN: 0.25,
+      SELF_FOLLOWUP_MECHANICAL_GAIN: 0.25,
+      RESOURCE_RUNWAY_GAIN: 0,
+      ENEMY_RESPONSE_OPTION_DENIAL: 0.25,
+      OPPONENT_RESPONSE_PRESSURE: 0,
+      REACTION_FOLLOWUP_GAIN: 72,
+      SETUP_INTERRUPT_RISK: -0.25,
+      ALLY_OPTION_GAIN: 0.25,
+      ALLY_RESOURCE_RUNWAY_GAIN: 0.25,
+      FOCUS_TARGET_MARGINAL_GAIN: 0,
+      PROTECTION_MARGINAL_GAIN: 29.400890343687756,
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -0.25,
     }),
   });
   const REACTION_MISSING_POLICY = deepFreeze({
@@ -6593,7 +6597,7 @@
         scalarizeCalls: work.scalarizeCalls,
         scalarizePerCandidate: work.candidates ? work.scalarizeCalls / work.candidates : 0,
         expectedCBy31: work.candidates * SCOREABLE_CODES.length,
-        expectedCBy45: work.candidates * SCOREABLE_INVENTORY.length,
+        expectedCBy46: work.candidates * SCOREABLE_INVENTORY.length,
         sortComparisons: work.sortComparisons,
         reasonFactorCount: work.reasonFactors,
         documentBuilds: work.documentBuilds,
@@ -6692,7 +6696,7 @@
 // BehaviorContributionTrace_Module.js
 // M3/R4B1 contribution trace builder: turns frozen per-candidate Provider
 // feature rows plus the accepted LINEAR_SCORE_V1 model into a
-// DecisionContributionTraceV1 revision 10 document (score conservation
+// DecisionContributionTraceV1 revision 11 document (score conservation
 // <= 1e-12, selection deltas, top positive/negative, missingMask,
 // hardExclusions) plus a separate sourceClosure. Pure function; never reads
 // teacher/route/future/hidden fields; never writes files.
@@ -6703,8 +6707,8 @@
   var TOLERANCE = 1e-12;
   var MOUNT_NAME = '__LWCS_BEHAVIOR_CONTRIBUTION_TRACE__';
 
-  // Frozen from DecisionContributionTraceV1 revision 10. Trace admits exactly
-  // the 32 numeric Provider factors; RELATION_TARGET_SIDE is evidence-only.
+  // Frozen from DecisionContributionTraceV1 revision 11. Trace admits exactly
+  // the 45 numeric Provider factors; RELATION_TARGET_SIDE is evidence-only.
   var TACTICAL_CONCEPT = {
     RELATION_TARGET_COUNT: '目标推进',
     RELATION_TARGET_SIDE: '目标推进',
@@ -6743,6 +6747,19 @@
     PUBLIC_RECIPIENT_NEED_MATCH: '资源',
     REACTION_DAMAGE_MULTIPLIER: '伤害压力',
     REACTION_DODGE_PROBABILITY: '生存',
+    OBJECTIVE_PROGRESS: '目标推进',
+    SELF_FOLLOWUP_POOL_GAIN: '机会',
+    SELF_FOLLOWUP_MECHANICAL_GAIN: '机会',
+    RESOURCE_RUNWAY_GAIN: '资源',
+    ENEMY_RESPONSE_OPTION_DENIAL: '控制',
+    OPPONENT_RESPONSE_PRESSURE: '伤害压力',
+    REACTION_FOLLOWUP_GAIN: '机会',
+    SETUP_INTERRUPT_RISK: '风险',
+    ALLY_OPTION_GAIN: '机会',
+    ALLY_RESOURCE_RUNWAY_GAIN: '资源',
+    FOCUS_TARGET_MARGINAL_GAIN: '目标推进',
+    PROTECTION_MARGINAL_GAIN: '防御',
+    TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: '控制',
   };
 
   // Fallback unit families; caller rows usually carry their own unitFamily.
@@ -6784,6 +6801,19 @@
     PUBLIC_RECIPIENT_NEED_MATCH: 'RATIO_0_1',
     REACTION_DAMAGE_MULTIPLIER: 'RATIO_0_1',
     REACTION_DODGE_PROBABILITY: 'PROBABILITY_0_1',
+    OBJECTIVE_PROGRESS: 'RATIO_0_1',
+    SELF_FOLLOWUP_POOL_GAIN: 'RATIO_0_1',
+    SELF_FOLLOWUP_MECHANICAL_GAIN: 'RATIO_0_1',
+    RESOURCE_RUNWAY_GAIN: 'RATIO_0_1',
+    ENEMY_RESPONSE_OPTION_DENIAL: 'RATIO_0_1',
+    OPPONENT_RESPONSE_PRESSURE: 'RATIO_0_1',
+    REACTION_FOLLOWUP_GAIN: 'RATIO_0_1',
+    SETUP_INTERRUPT_RISK: 'RATIO_0_1',
+    ALLY_OPTION_GAIN: 'RATIO_0_1',
+    ALLY_RESOURCE_RUNWAY_GAIN: 'RATIO_0_1',
+    FOCUS_TARGET_MARGINAL_GAIN: 'RATIO_0_1',
+    PROTECTION_MARGINAL_GAIN: 'RATIO_0_1',
+    TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: 'RATIO_0_1',
   };
 
   var NUMERIC_CODES = Object.freeze([
@@ -6798,7 +6828,13 @@
     'TEAM_EFFECT_REDUNDANCY_RATIO', 'RESOURCE_DEFICIT_COVERAGE',
     'RESOURCE_CONSUMER_FIT', 'TEAM_FOLLOWUP_COVERAGE',
     'PUBLIC_RECIPIENT_NEED_MATCH', 'REACTION_DAMAGE_MULTIPLIER',
-    'REACTION_DODGE_PROBABILITY',
+    'REACTION_DODGE_PROBABILITY', 'OBJECTIVE_PROGRESS',
+    'SELF_FOLLOWUP_POOL_GAIN', 'SELF_FOLLOWUP_MECHANICAL_GAIN',
+    'RESOURCE_RUNWAY_GAIN', 'ENEMY_RESPONSE_OPTION_DENIAL',
+    'OPPONENT_RESPONSE_PRESSURE', 'REACTION_FOLLOWUP_GAIN',
+    'SETUP_INTERRUPT_RISK', 'ALLY_OPTION_GAIN', 'ALLY_RESOURCE_RUNWAY_GAIN',
+    'FOCUS_TARGET_MARGINAL_GAIN', 'PROTECTION_MARGINAL_GAIN',
+    'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
   ]);
   var NUMERIC_CODE_SET = new Set(NUMERIC_CODES);
   var ENUM_CODES = new Set(['RELATION_TARGET_SIDE']);
@@ -7565,6 +7601,13 @@
     TEAM_EFFECT_REDUNDANCY_RATIO: '控制', RESOURCE_DEFICIT_COVERAGE: '资源',
     RESOURCE_CONSUMER_FIT: '资源', TEAM_FOLLOWUP_COVERAGE: '机会',
     PUBLIC_RECIPIENT_NEED_MATCH: '资源',
+    OBJECTIVE_PROGRESS: '目标推进', SELF_FOLLOWUP_POOL_GAIN: '机会',
+    SELF_FOLLOWUP_MECHANICAL_GAIN: '机会', RESOURCE_RUNWAY_GAIN: '资源',
+    ENEMY_RESPONSE_OPTION_DENIAL: '控制', OPPONENT_RESPONSE_PRESSURE: '伤害压力',
+    REACTION_FOLLOWUP_GAIN: '机会', SETUP_INTERRUPT_RISK: '风险',
+    ALLY_OPTION_GAIN: '机会', ALLY_RESOURCE_RUNWAY_GAIN: '资源',
+    FOCUS_TARGET_MARGINAL_GAIN: '目标推进', PROTECTION_MARGINAL_GAIN: '防御',
+    TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: '控制',
   };
   var DISPLAY_NAME = {
     SUCCESS_PROBABILITY: '命中把握', DAMAGE_POWER: '威力', DAMAGE_SEGMENTS: '段数',
@@ -7580,6 +7623,13 @@
     RESOURCE_DEFICIT_COVERAGE: '资源缺口覆盖', RESOURCE_CONSUMER_FIT: '资源消费匹配',
     TEAM_FOLLOWUP_COVERAGE: '后续跟进覆盖',
     REACTION_DAMAGE_MULTIPLIER: '预计承伤比例', REACTION_DODGE_PROBABILITY: '预计闪避把握',
+    OBJECTIVE_PROGRESS: '胜负目标推进', SELF_FOLLOWUP_POOL_GAIN: '后续可用招式增益',
+    SELF_FOLLOWUP_MECHANICAL_GAIN: '连招衔接增益', RESOURCE_RUNWAY_GAIN: '资源续航增益',
+    ENEMY_RESPONSE_OPTION_DENIAL: '对手应对空间压缩', OPPONENT_RESPONSE_PRESSURE: '对手反应压力',
+    REACTION_FOLLOWUP_GAIN: '应对后反击收益', SETUP_INTERRUPT_RISK: '蓄势中断风险',
+    ALLY_OPTION_GAIN: '队友后续选择增益', ALLY_RESOURCE_RUNWAY_GAIN: '队友资源续航增益',
+    FOCUS_TARGET_MARGINAL_GAIN: '集火边际收益', PROTECTION_MARGINAL_GAIN: '防护边际收益',
+    TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: '团队效果重复度',
   };
   var PLAYER_CONCEPT = {
     目标推进: '目标推进', 伤害压力: '伤害', 控制: '控制', 防御: '防御',

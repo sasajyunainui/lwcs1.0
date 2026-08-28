@@ -44804,6 +44804,17 @@
     };
   }
 
+  function 构建准入凭证扣除补丁_桥接(snapshot, context = {}) {
+    const 凭证名 = toText(context?.admission?.待消耗凭证, '').trim();
+    if (!凭证名) return { ok: true, patchOps: [], itemName: '' };
+    const 角色键 =
+      resolveSnapshotCharKey(snapshot, toText(snapshot?.activeName, '')) ||
+      toText(snapshot?.activeName, '').trim();
+    if (!角色键) return { ok: false, reason: '缺少当前角色，无法扣除准入凭证。', patchOps: [], itemName: 凭证名 };
+    const 扣除结果 = buildInventoryConsumePatches(snapshot, 角色键, 凭证名, 1);
+    return { ...扣除结果, itemName: 凭证名 };
+  }
+
   function getDefaultSoulTowerChallengeFloor(snapshot) {
     const activeChar = getActiveSnapshotCharacter(snapshot);
     return Math.min(SOUL_TOWER_TOTAL_FLOORS, Math.max(1, toNumber(deepGet(activeChar, '魂灵塔记录.最高层', 0), 0) + 1));
@@ -45064,7 +45075,9 @@
         ),
       });
     }
-    const ticketConsumeResult = buildInventoryConsumePatches(sourceSnapshot, activeCharKey, selectedTicket, 1);
+    const ticketConsumeResult = 构建准入凭证扣除补丁_桥接(sourceSnapshot, {
+      admission: { 待消耗凭证: selectedTicket },
+    });
     if (!ticketConsumeResult.ok) throw new Error(ticketConsumeResult.reason || `缺少【${selectedTicket}】门票。`);
     const 试炼内地点 =
       trialContext.试炼类型 === '魂灵塔'
@@ -50505,6 +50518,9 @@ ${播报文本}
         worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
       };
     }
+    const 准入扣除 = 构建准入凭证扣除补丁_桥接(snapshot, contextResult.context);
+    if (!准入扣除.ok) return { ok: false, reason: 准入扣除.reason || '准入凭证不足' };
+    补丁结果.patchOps = [...准入扣除.patchOps, ...补丁结果.patchOps];
     await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
     登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
     await refreshLiveSnapshot({ force: true });
@@ -50563,6 +50579,11 @@ ${播报文本}
       if (!补丁结果.ok || !补丁结果.patchOps.length) {
         return 构建模块路由失败结果('travel', request, 补丁结果.reason || 'travel_patch_unavailable', { result });
       }
+      const 准入扣除 = 构建准入凭证扣除补丁_桥接(snapshot, contextResult.context);
+      if (!准入扣除.ok) {
+        return 构建模块路由失败结果('travel', request, 准入扣除.reason || '准入凭证不足', { result });
+      }
+      补丁结果.patchOps = [...准入扣除.patchOps, ...补丁结果.patchOps];
       try {
         await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
         登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
@@ -50593,6 +50614,11 @@ ${播报文本}
       }
       return 构建模块路由失败结果('travel', request, 补丁结果.reason || 'travel_patch_unavailable');
     }
+    const 准入扣除 = 构建准入凭证扣除补丁_桥接(snapshot, contextResult.context);
+    if (!准入扣除.ok) {
+      return 构建模块路由失败结果('travel', request, 准入扣除.reason || '准入凭证不足');
+    }
+    补丁结果.patchOps = [...准入扣除.patchOps, ...补丁结果.patchOps];
     try {
       await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
       登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));

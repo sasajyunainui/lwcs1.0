@@ -432,7 +432,8 @@
     拍卖: Object.freeze({ 默认等级: 4, 开放时段: '18:00-22:00' }),
   });
   const ERA_FACILITY_CAPS = Object.freeze({ dldl: 3, jueshitangmen: 4, current: 5, zjdl: 6 });
-  const LOCATION_WORLD_RULE_KEYS = new Set(['区域档案', '功能档案', '覆盖']);
+  const LOCATION_ADMISSION_PROFILES = new Set(['公开', '组织内部', '凭证', '授权区域', '考核区域']);
+  const LOCATION_WORLD_RULE_KEYS = new Set(['区域档案', '功能档案', '准入档案', '覆盖']);
   const LOCATION_RECORD_KEYS = new Set(['规范名', '目标路径', '实例化策略', '节点', '世界规则']);
   const LOCATION_NODE_KEYS = new Set(['类型', '别名', '关键词', '描述', '现状描述', '掌控势力', '状态', '人口', '守护军团', '经济状况', 'x', 'y', '商店']);
   const GENERIC_HIT_TERMS = new Set(['学院', '城市', '军团', '协会', '家族', '帝国', '大陆', '总部', '分部', '组织', '地点', '宗门']);
@@ -722,7 +723,7 @@
     return compiled;
   }
 
-  function compileLocationWorldRules(value, path) {
+  function compileLocationWorldRules(value, path, node = {}) {
     assertPlainRecord(value, path, '地点世界规则');
     assertStrictKeys(value, LOCATION_WORLD_RULE_KEYS, path);
     const region = requiredString(value.区域档案, `${path}.区域档案`, '区域档案');
@@ -735,10 +736,24 @@
         libraryFail('LIBRARY_FIELD_INVALID', `${path}.功能档案`, functionName, `未知功能档案: ${functionName}`);
       }
     });
+    const admissionText = `${String(node?.类型 || '')} ${String(node?.状态 || '')}`;
+    const publicSpace = /城市|主城|军城|首都|大陆|帝国区域|森林区域|山脉区域|海域|平原|盆地|沙漠|城镇|村庄/.test(String(node?.类型 || ''));
+    const inferredAdmission = publicSpace
+      ? '公开'
+      : /禁区|秘境|隐秘|核心区域|核心校区|内院|议事机构|考核|restricted|禁入/.test(admissionText)
+        ? '授权区域'
+        : functions.some(name => ['军方', '总部'].includes(name)) || /皇宫|宗门|家族|驻地|军区|堡垒|要塞/.test(admissionText)
+          ? '组织内部'
+          : '公开';
+    const admission = String(value.准入档案 || inferredAdmission).trim();
+    if (!LOCATION_ADMISSION_PROFILES.has(admission)) {
+      libraryFail('LIBRARY_FIELD_INVALID', `${path}.准入档案`, admission, `未知准入档案: ${admission}`);
+    }
     assertPlainRecord(value.覆盖, `${path}.覆盖`, '地点规则覆盖');
     return {
       区域档案: region,
       功能档案: functions,
+      准入档案: admission,
       覆盖: clone(value.覆盖),
     };
   }
@@ -788,7 +803,7 @@
       if (sourceRecord.世界规则 === undefined) {
         libraryFail('LIBRARY_FIELD_INVALID', `$.地点.${recordId}.世界规则`, sourceRecord.世界规则, '地点记录必须声明世界规则');
       }
-      const worldRules = compileLocationWorldRules(sourceRecord.世界规则, `$.地点.${recordId}.世界规则`);
+      const worldRules = compileLocationWorldRules(sourceRecord.世界规则, `$.地点.${recordId}.世界规则`, node);
       output.地点[recordId] = {
         规范名: canonicalName,
         目标路径: targetPath,
@@ -1539,6 +1554,100 @@
     return output;
   }
 
+  function readAdmissionInventoryQuantity(character = {}, itemName = '') {
+    const item = character?.背包?.[itemName];
+    if (!isPlainRecord(item)) return 0;
+    const direct = Math.max(0, Math.floor(Number(item.数量 || 0) || 0));
+    const batches = (Array.isArray(item.批次) ? item.批次 : []).reduce(
+      (sum, batch) => sum + Math.max(0, Math.floor(Number(batch?.数量 || 0) || 0)),
+      0,
+    );
+    return direct + batches;
+  }
+
+  function resolveWorldLocationAdmission(library, targetPath = [], character = {}, permissions = {}, options = {}) {
+    const path = Array.isArray(targetPath) ? targetPath.map(item => String(item || '').trim()).filter(Boolean) : [];
+    const records = [];
+    for (let depth = 1; depth <= path.length; depth += 1) {
+      const selected = selectLocationRecordByPath(library, path.slice(0, depth));
+      if (selected) records.push({ path: path.slice(0, depth), record: selected.record });
+    }
+    let explicitRuleIndex = -1;
+    for (let index = records.length - 1; index >= 0; index -= 1) {
+      const qualifications = records[index].record?.世界规则?.覆盖?.准入?.资格任一;
+      if (Array.isArray(qualifications) && qualifications.length > 0) {
+        explicitRuleIndex = index;
+        break;
+      }
+    }
+    const recordsToCheck = explicitRuleIndex >= 0 ? [records[explicitRuleIndex]] : records;
+    const level = Math.max(0, Number(character?.属性?.等级 || 0) || 0);
+    const age = Math.max(0, Number(character?.属性?.年龄 || 0) || 0);
+    const partySize = Math.max(1, Math.floor(Number(options.partySize || options.teamSize || 1) || 1));
+    const passed = [];
+    for (const { path: rulePath, record } of recordsToCheck) {
+      const profile = String(record?.世界规则?.准入档案 || '公开').trim() || '公开';
+      const rule = isPlainRecord(record?.世界规则?.覆盖?.准入) ? record.世界规则.覆盖.准入 : {};
+      const base = isPlainRecord(rule.基础条件) ? rule.基础条件 : {};
+      const checks = [
+        ['最低等级', level >= Math.max(0, Number(base.最低等级 || 0) || 0)],
+        ['最高等级', base.最高等级 === undefined || level <= Math.max(0, Number(base.最高等级 || 0) || 0)],
+        ['最低年龄', age >= Math.max(0, Number(base.最低年龄 || 0) || 0)],
+        ['最高年龄', base.最高年龄 === undefined || age <= Math.max(0, Number(base.最高年龄 || 0) || 0)],
+        ['最少队伍人数', partySize >= Math.max(1, Number(base.最少队伍人数 || 1) || 1)],
+        ['最多队伍人数', base.最多队伍人数 === undefined || partySize <= Math.max(1, Number(base.最多队伍人数 || 1) || 1)],
+      ];
+      const failedBase = checks.find(([, ok]) => !ok);
+      if (failedBase) {
+        return { 可进入: false, 档案: profile, 原因: `${rulePath.join('-')}不满足${failedBase[0]}`, 命中资格: null, 待消耗凭证: '' };
+      }
+      let qualifications = Array.isArray(rule.资格任一) ? rule.资格任一.filter(isPlainRecord) : [];
+      if (!qualifications.length && ['组织内部', '授权区域'].includes(profile)) {
+        qualifications = String(record?.节点?.掌控势力 || '')
+          .split(/[、/,，；;]/)
+          .map(name => name.trim())
+          .filter(name => name && name !== '无')
+          .map(name => ({ 类型: '势力', 势力: name, 最低权限级: Math.max(1, Number(rule.最低权限级 || 1) || 1) }));
+      }
+      if (profile === '公开' && !qualifications.length) continue;
+      let matched = null;
+      for (const qualification of qualifications) {
+        const type = String(qualification.类型 || '').trim();
+        if (type === '势力') {
+          const faction = String(qualification.势力 || '').trim();
+          const minimum = Math.max(0, Number(qualification.最低权限级 || 0) || 0);
+          const current = permissions?.势力?.[faction];
+          if (current && String(current.身份 || '无') !== '无' && Number(current.权限级 || 0) >= minimum) {
+            matched = { 类型: '势力', 势力: faction, 最低权限级: minimum };
+            break;
+          }
+        }
+        if (type === '凭证') {
+          const names = (Array.isArray(qualification.名称) ? qualification.名称 : [qualification.名称])
+            .map(name => String(name || '').trim())
+            .filter(Boolean);
+          const itemName = names.find(name => readAdmissionInventoryQuantity(character, name) > 0);
+          if (itemName) {
+            matched = { 类型: '凭证', 名称: itemName, 消耗: qualification.消耗 === true };
+            break;
+          }
+        }
+      }
+      if (!matched) {
+        return { 可进入: false, 档案: profile, 原因: `${rulePath.join('-')}需要有效身份、权限或入场凭证`, 命中资格: null, 待消耗凭证: '' };
+      }
+      passed.push({ 地点: rulePath.join('-'), ...matched });
+    }
+    const consumable = passed.find(item => item.类型 === '凭证' && item.消耗 === true);
+    return {
+      可进入: true,
+      档案: records.length ? String(records[records.length - 1].record?.世界规则?.准入档案 || '公开') : '公开',
+      原因: '',
+      命中资格: passed.length ? passed[passed.length - 1] : null,
+      待消耗凭证: consumable?.名称 || '',
+    };
+  }
+
   function resolveWorldActionContext(options = {}) {
     const dataRoot = isPlainRecord(options.dataRoot) ? options.dataRoot : {};
     const characterKey = String(options.characterKey || '').trim();
@@ -1609,6 +1718,16 @@
       来源: terrainView?.worldRules?.区域档案 === terrainName ? '地点规则' : '地点规则+自然档案',
     };
     const permissions = readWorldPermissions(character || {}, facilityView?.node || {});
+    const admission = isTravelAction && library && character
+      ? resolveWorldLocationAdmission(
+          library,
+          targetView?.path || normalizeLocationPath(targetText),
+          character,
+          permissions,
+          options,
+        )
+      : { 可进入: true, 档案: '公开', 原因: '', 命中资格: null, 待消耗凭证: '' };
+    if (!admission.可进入) blockers.push(admission.原因 || '目标地点不允许进入');
     const facilities = facilityView ? buildWorldFacilityTable(facilityView, era.id || 'current', time, permissions, terrainProfile) : {};
     const nearbyFacilities = library && facilityView ? collectNearbyWorldFacilities(library, facilityView, era.id || 'current', time, permissions, terrainProfile) : [];
     const coverage = isPlainRecord(terrainView?.worldRules?.覆盖) ? terrainView.worldRules.覆盖 : {};
@@ -1689,7 +1808,14 @@
     };
     const visibleFacility = Object.values(facilities).filter(item => item.可用).map(item => `${item.功能}Lv${item.等级}`).slice(0, 3).join('、') || '无';
     const visibleHazard = hazards.map(item => item.名称 || item.规则ID || item.类型).filter(Boolean).slice(0, 2).join('、') || '无';
-    modifiers.投影 = `地点：${activeView?.path?.join('-') || currentLocation || '未知'}；时段：${time.日期 ? `${time.日期.时}时${time.日期.分}分` : '未知'}；设施：${visibleFacility}；风险：${visibleHazard}；魂力：${soulPowerAvailable ? '可用' : '禁用'}。`;
+    const visibleAdmission = admission.档案 === '公开'
+      ? '公开'
+      : admission.命中资格?.类型 === '势力'
+        ? `${admission.档案}（${admission.命中资格.势力}）`
+        : admission.命中资格?.类型 === '凭证'
+          ? `${admission.档案}（${admission.命中资格.名称}）`
+          : admission.档案;
+    modifiers.投影 = `地点：${activeView?.path?.join('-') || currentLocation || '未知'}；时段：${time.日期 ? `${time.日期.时}时${time.日期.分}分` : '未知'}；准入：${visibleAdmission}；设施：${visibleFacility}；风险：${visibleHazard}；魂力：${soulPowerAvailable ? '可用' : '禁用'}。`;
     const dedupe = list => Array.from(new Set(list.map(item => String(item || '').trim()).filter(Boolean)));
     return freezeDeep({
       era,
@@ -1702,6 +1828,7 @@
       resources,
       market,
       permissions,
+      admission,
       modifiers,
       blockers: dedupe(blockers),
       warnings: dedupe(warnings),

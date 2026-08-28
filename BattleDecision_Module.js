@@ -3764,6 +3764,7 @@
         );
     };
     if (explicitReactionAuthorization) return effects.length > 0;
+    if (castTime > Math.min(10, immediateBudget)) return false;
     return effects.length > 0 && effects.every(isImmediateDefensiveEffect);
   }
 
@@ -52389,8 +52390,9 @@
   // compile the V4-isomorphic online document (PDA -> Bridge -> BIF immediate,
   // FeatureSource -> Relational) exactly like the offline compiler. The
   // provider then stays pure linear scoring over the supplied featureInputs
-  // and never calls previewAction itself. No response/future round/route
-  // pools are consulted; failures are fail-closed with the candidate id.
+  // and never calls previewAction itself. The adapter derives bounded causal
+  // post-state, follow-up-option and public opponent-pressure summaries without
+  // entering recursive route pools; failures are fail-closed with the candidate id.
   function r9v2LinearPublicSnapshot(visibleWorld, actorId) {
     const units = {};
     const sides = {};
@@ -52472,7 +52474,7 @@
     'SELF_FOLLOWUP_MECHANICAL_GAIN', 'RESOURCE_RUNWAY_GAIN',
     'ENEMY_RESPONSE_OPTION_DENIAL', 'OPPONENT_RESPONSE_PRESSURE',
     'REACTION_FOLLOWUP_GAIN', 'SETUP_INTERRUPT_RISK',
-    'ALLY_OPTION_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
+    'ALLY_OPTION_GAIN', 'ALLY_RESOURCE_RUNWAY_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
     'PROTECTION_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
   ]);
 
@@ -52515,6 +52517,14 @@
       sum + preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)), 0) / 3;
   }
 
+  function r9v2LinearResourceRunwayGain(before = {}, after = {}) {
+    return ['魂力', '精神力', '体力'].reduce((selected, resource) => {
+      const delta = preview.readResource(after, resource) / Math.max(1, preview.readResourceMax(after, resource)) -
+        preview.readResource(before, resource) / Math.max(1, preview.readResourceMax(before, resource));
+      return Math.abs(delta) > Math.abs(selected) ? delta : selected;
+    }, 0);
+  }
+
   function r9v2LinearSideUnits(worldSnapshot = {}, side = '') {
     return preview.listUnits(worldSnapshot)
       .filter(entry => entry.side === side && preview.isPhysicallyAlive(entry.unit))
@@ -52525,8 +52535,7 @@
     const units = r9v2LinearSideUnits(worldSnapshot, side);
     if (!units.length) return 0;
     return units.reduce((sum, unit) => sum +
-      0.75 * preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)) +
-      0.25 * r9v2LinearResourceRatio(unit), 0) / units.length;
+      preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)), 0) / units.length;
   }
 
   function r9v2LinearMechanicalCoverage(worldSnapshot = {}, actorId = '', hostileSide = '') {
@@ -52540,6 +52549,44 @@
         const enabled = targets.some(target => preview.effectConditionEnabled(effect, worldSnapshot, actor, target));
         return sum + (enabled ? Math.max(0.1, r9v2LinearSkillValue({ _效果数组: [effect] })) : 0);
       }, 0), 0);
+  }
+
+  function r9v2LinearBestActionCapacity(worldSnapshot = {}, unit = {}, hostileSide = '') {
+    const targets = r9v2LinearSideUnits(worldSnapshot, hostileSide);
+    if (!targets.length) return 0;
+    let best = Math.max(...targets.map(target =>
+      preview.calculateBaseActionValue(unit, target, { actionKind: 'BASIC_ATTACK' })));
+    collectSkills(unit).forEach(sourceSkill => {
+      const skill = preview.applySkillSettlementModifiers(
+        unit,
+        applyEquipmentPassivesToSkill(unit, sourceSkill),
+      ).skill;
+      const affordable = checkSkillCostAffordable(unit, skill, {
+        context: skillCostParserContext(unit, skill),
+      });
+      if (!affordable.valid || !affordable.affordable) return;
+      targets.forEach(target => {
+        best = Math.max(best, preview.calculateBaseActionValue(unit, target, {
+          actionKind: 'RELEASE_SKILL',
+          skill,
+        }));
+      });
+    });
+    return Math.max(0, best);
+  }
+
+  function r9v2LinearFollowupWindows(effects = [], request = {}, worldSnapshot = {}) {
+    const duration = (Array.isArray(effects) ? effects : []).reduce((maximum, effect) => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (!['属性修正', '判定修正', '结算修正', '状态施加', '机制授予'].includes(prototype)) return maximum;
+      return Math.max(maximum, Math.max(1, Number(effect?.持续回合 || 1)));
+    }, 1);
+    const remainingRounds = battleHorizonProfile(request, worldSnapshot).remainingRounds;
+    return Math.max(1, Math.min(
+      3,
+      duration,
+      Number.isFinite(remainingRounds) ? remainingRounds + 1 : duration,
+    ));
   }
 
   function r9v2LinearTerminalValue(result = {}, actorSide = '') {
@@ -52565,6 +52612,80 @@
     return clamp(retention, 0, 1);
   }
 
+  function r9v2LinearControlSuppression(unit = {}) {
+    const states = unit?.状态效果 && typeof unit.状态效果 === 'object'
+      ? Object.values(unit.状态效果)
+      : [];
+    return clamp(states.reduce((maximum, state) => {
+      const effect = state?.战斗效果 || state?.计算层效果 || {};
+      if (effect.cannot_act === true || effect.skip_turn === true) return 1;
+      const lock = effect.cannot_react === true ? 0.8 : effect.silence === true || effect.disarm === true ? 0.6 : 0;
+      return Math.max(
+        maximum,
+        lock,
+        Number(effect.cast_speed_penalty || 0),
+        Number(effect.reaction_penalty || 0),
+        Number(effect.dodge_penalty || 0),
+      );
+    }, 0), 0, 1);
+  }
+
+  function r9v2LinearPublicSideToken(value = '') {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (/^(enemy|敌方|对方|team_enemy)$/.test(normalized)) return 'team_enemy';
+    if (/^(player|玩家|我方|team_player)$/.test(normalized)) return 'team_player';
+    return '';
+  }
+
+  function r9v2LinearRecentAttackPropensity(worldSnapshot = {}, unit = {}, unitSide = '') {
+    const unitId = preview.unitId(unit);
+    const currentRound = Math.max(0, Number(worldSnapshot?.回合 || 0));
+    const rows = (Array.isArray(worldSnapshot?.__battleEventLedger)
+      ? worldSnapshot.__battleEventLedger
+      : [])
+      .filter(event =>
+        String(event?.eventKind || '').trim() === 'action_start' &&
+        String(event?.actionRole || 'ACTIVE').trim().toUpperCase() === 'ACTIVE' &&
+        String(event?.actorId || '').trim() === unitId &&
+        Number(event?.round || 0) >= Math.max(0, currentRound - 2)
+      )
+      .slice(-2);
+    if (!rows.length) return 1;
+    let weightedOffense = 0;
+    let weightTotal = 0;
+    rows.forEach((event, index) => {
+      const weight = index + 1;
+      const targetIds = [...new Set([
+        ...(Array.isArray(event?.targetIds) ? event.targetIds : [event?.targetIds]),
+        event?.targetId,
+        event?.resolvedTargetId,
+      ].map(value => String(value || '').trim()).filter(Boolean))];
+      const targetSides = targetIds.map(targetId => {
+        const target = preview.findUnit(worldSnapshot, targetId);
+        return target ? preview.sideOf(worldSnapshot, target) : '';
+      }).filter(Boolean);
+      const eventTargetSide = r9v2LinearPublicSideToken(event?.targetSide);
+      const offensive = String(event?.actionType || event?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' ||
+        targetSides.some(side => side !== unitSide) ||
+        (eventTargetSide && eventTargetSide !== unitSide);
+      weightedOffense += weight * (offensive ? 1 : 0.15);
+      weightTotal += weight;
+    });
+    return clamp(weightedOffense / Math.max(1, weightTotal), 0.15, 1);
+  }
+
+  function r9v2LinearExpectedBasicDamageRatio(worldSnapshot = {}, source = {}, target = {}, sourceSide = '') {
+    const basicEffect = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
+    const expectedDamage = preview.calculateBaseDamage(basicEffect, source, target) *
+      preview.estimateHitProbability(source, target, basicEffect);
+    return clamp(
+      expectedDamage / Math.max(1, preview.readHpMax(target)) *
+        r9v2LinearRecentAttackPropensity(worldSnapshot, source, sourceSide),
+      0,
+      1,
+    );
+  }
+
   function r9v2LinearCausalFeatureRows(request = {}, candidate = {}, result = {}) {
     const before = request.visibleWorld;
     const after = result.afterSnapshot || before;
@@ -52574,6 +52695,8 @@
     const actorBefore = preview.findUnit(before, actorId);
     const actorAfter = preview.findUnit(after, actorId) || actorBefore;
     const declaration = candidate.declaration || {};
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const followupWindows = r9v2LinearFollowupWindows(effects, request, before);
     const role = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
     const beforePool = r9v2LinearSkillPool(actorBefore || {});
     const afterPool = r9v2LinearSkillPool(actorAfter || {});
@@ -52581,16 +52704,28 @@
     const beforeMechanical = r9v2LinearMechanicalCoverage(before, actorId, hostileSide);
     const afterMechanical = r9v2LinearMechanicalCoverage(after, actorId, hostileSide);
     const mechanicalScale = Math.max(1, beforeMechanical, afterMechanical);
+    const beforeSelfCapacity = r9v2LinearBestActionCapacity(before, actorBefore || {}, hostileSide);
+    const afterSelfCapacity = r9v2LinearBestActionCapacity(after, actorAfter || {}, hostileSide);
+    const selfCapacityGain = Math.max(0, afterSelfCapacity - beforeSelfCapacity) /
+      Math.max(1, beforeSelfCapacity, afterSelfCapacity) * followupWindows;
     const beforeAllies = r9v2LinearSideUnits(before, actorSide).filter(unit => preview.unitId(unit) !== actorId);
     const afterAllies = new Map(r9v2LinearSideUnits(after, actorSide).map(unit => [preview.unitId(unit), unit]));
     let allyOptionGain = 0;
+    let allyResourceRunwayGain = 0;
     beforeAllies.forEach(unit => {
       const next = afterAllies.get(preview.unitId(unit)) || unit;
       const priorPool = r9v2LinearSkillPool(unit);
       const nextPool = r9v2LinearSkillPool(next);
-      allyOptionGain += Math.max(0, nextPool.value - priorPool.value) / Math.max(1, priorPool.value, nextPool.value);
+      const priorCapacity = r9v2LinearBestActionCapacity(before, unit, hostileSide);
+      const nextCapacity = r9v2LinearBestActionCapacity(after, next, hostileSide);
+      allyOptionGain += Math.max(
+        Math.max(0, nextPool.value - priorPool.value) / Math.max(1, priorPool.value, nextPool.value),
+        Math.max(0, nextCapacity - priorCapacity) / Math.max(1, priorCapacity, nextCapacity),
+      ) * followupWindows;
+      allyResourceRunwayGain += Math.max(0, r9v2LinearResourceRunwayGain(unit, next));
     });
     allyOptionGain = clamp(allyOptionGain / Math.max(1, beforeAllies.length), 0, 1);
+    allyResourceRunwayGain = clamp(allyResourceRunwayGain / Math.max(1, beforeAllies.length), 0, 1);
     const enemiesBefore = r9v2LinearSideUnits(before, hostileSide);
     const enemiesAfter = new Map(r9v2LinearSideUnits(after, hostileSide).map(unit => [preview.unitId(unit), unit]));
     let enemyDenial = 0;
@@ -52599,11 +52734,34 @@
       const next = enemiesAfter.get(preview.unitId(unit));
       const priorPool = r9v2LinearSkillPool(unit);
       const nextPool = next ? r9v2LinearSkillPool(next) : { value: 0 };
-      enemyDenial += Math.max(0, priorPool.value - nextPool.value) / Math.max(1, priorPool.value);
+      const priorThreat = actorBefore
+        ? preview.calculateBaseActionValue(unit, actorBefore, { actionKind: 'BASIC_ATTACK' }) / 100
+        : 0;
+      const nextThreat = next && actorAfter
+        ? preview.calculateBaseActionValue(next, actorAfter, { actionKind: 'BASIC_ATTACK' }) / 100
+        : 0;
+      const priorOrder = preview.naturalActionOrderProfile(unit).effectiveAgility;
+      const nextOrder = next ? preview.naturalActionOrderProfile(next).effectiveAgility : 0;
+      const orderDenial = Math.max(0, priorOrder - nextOrder) / Math.max(1e-9, priorOrder);
+      const priorDodge = actorBefore ? preview.calculateDodgeProbability(unit, actorBefore, false) : 0;
+      const nextDodge = next && actorAfter ? preview.calculateDodgeProbability(next, actorAfter, false) : 0;
+      const reactionDenial = Math.max(0, priorDodge - nextDodge);
+      const controlDenial = Math.max(0, r9v2LinearControlSuppression(next || {}) - r9v2LinearControlSuppression(unit));
+      enemyDenial += Math.max(
+        Math.max(0, priorPool.value - nextPool.value) / Math.max(1, priorPool.value),
+        Math.max(0, priorThreat - nextThreat) / Math.max(1e-9, priorThreat),
+        orderDenial,
+        reactionDenial,
+        controlDenial,
+      );
       const hpLoss = Math.max(0, preview.readHp(unit) - (next ? preview.readHp(next) : 0)) / Math.max(1, preview.readHpMax(unit));
       hostilePressure += hpLoss * r9v2LinearResponseRetention(request, unit, actorBefore || {});
     });
-    enemyDenial = clamp(enemyDenial / Math.max(1, enemiesBefore.length), 0, 1);
+    enemyDenial = clamp(
+      enemyDenial / Math.max(1, enemiesBefore.length) * followupWindows,
+      0,
+      1,
+    );
     hostilePressure = clamp(hostilePressure / Math.max(1, enemiesBefore.length), 0, 1);
     const objectives = request?.objectiveContract || request?.battleIntent?.objectives || before?.胜负条件 || {};
     const beforeObjective = preview.evaluateBattleObjectivesCompact(before, objectives);
@@ -52613,7 +52771,6 @@
       r9v2LinearSideStateValue(after, actorSide) - r9v2LinearSideStateValue(before, actorSide) -
       r9v2LinearSideStateValue(after, hostileSide) + r9v2LinearSideStateValue(before, hostileSide)
     ) / 2;
-    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const setupAction = effects.some(effect => {
       const prototype = String(effect?.原型 || '').trim();
       return ['资源变化', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予'].includes(prototype) &&
@@ -52628,18 +52785,44 @@
     const lowestHostileRatio = Math.min(1, ...enemiesBefore.map(unit => preview.readHp(unit) / Math.max(1, preview.readHpMax(unit))));
     const focusGain = hostileTargets.some(unit =>
       preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)) <= lowestHostileRatio + 1e-9) ? hostilePressure : 0;
+    const friendlyThreat = unit => enemiesBefore.reduce((sum, enemy) =>
+      sum + r9v2LinearExpectedBasicDamageRatio(before, enemy, unit, hostileSide), 0);
+    const threatenedFriendlies = r9v2LinearSideUnits(before, actorSide);
+    const maximumFriendlyThreat = Math.max(1e-9, ...threatenedFriendlies.map(friendlyThreat));
+    const exposureRows = threatenedFriendlies.map(unit => ({
+      unitId: preview.unitId(unit),
+      value: Math.exp(clamp(8 * (friendlyThreat(unit) / maximumFriendlyThreat - 1), -30, 0)),
+    }));
+    const exposureTotal = Math.max(1e-9, exposureRows.reduce((sum, row) => sum + row.value, 0));
+    const exposureByUnit = new Map(exposureRows.map(row => [row.unitId, row.value / exposureTotal]));
     let protectionGain = 0;
     let redundant = 0;
     let supportiveCount = 0;
     effects.forEach(effect => {
       const prototype = String(effect?.原型 || '').trim();
-      const friendly = preview.effectTargetsAllies(effect) || /自身|友方|己方/.test(String(effect?.目标 || ''));
+      const signedValue = Number.parseFloat(String(effect?.数值 || '0'));
+      const friendly = preview.effectTargetsAllies(effect) ||
+        /自身|友方|己方/.test(String(effect?.目标 || '')) ||
+        (prototype === '资源变化' && signedValue > 0) ||
+        (prototype === '护盾变化' && String(effect?.护盾模式 || '').trim() === '正向护盾') ||
+        (prototype === '属性修正' && signedValue > 0);
       if (!friendly || !['资源变化', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除'].includes(prototype)) return;
       supportiveCount += 1;
       const recipients = targetIds.map(id => preview.findUnit(before, id)).filter(Boolean);
       const relevant = recipients.length ? recipients : [actorBefore].filter(Boolean);
-      const need = relevant.reduce((sum, unit) => sum + (1 - preview.readHp(unit) / Math.max(1, preview.readHpMax(unit))), 0) / Math.max(1, relevant.length);
-      protectionGain = Math.max(protectionGain, need);
+      const realizedProtection = relevant.reduce((sum, unit) => {
+        const next = preview.findUnit(after, preview.unitId(unit)) || unit;
+        const hpMax = Math.max(1, preview.readHpMax(unit));
+        const hpGain = Math.max(0, preview.readHp(next) - preview.readHp(unit)) / hpMax;
+        const shieldGain = Math.max(0, preview.readShield(next) - preview.readShield(unit)) / hpMax;
+        const protectionWindows = Math.max(1, Math.min(3, Number(effect?.持续回合 || 1)));
+        const usableShield = role === 'ACTIVE'
+          ? Math.min(shieldGain, friendlyThreat(unit) * protectionWindows)
+          : shieldGain;
+        return sum + (hpGain + usableShield) *
+          Number(exposureByUnit.get(preview.unitId(unit)) || 0);
+      }, 0) / Math.max(1, relevant.length);
+      protectionGain = Math.max(protectionGain, realizedProtection);
       if (prototype === '资源变化' && relevant.every(unit => {
         const resource = String(effect?.资源 || '').trim();
         return preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)) >= 0.95;
@@ -52650,18 +52833,25 @@
     const incomingThreat = source && actorBefore
       ? preview.calculateBaseActionValue(source, actorBefore, incoming) / 100
       : 0;
+    const sourceAfter = source ? preview.findUnit(after, preview.unitId(source)) || source : null;
+    const incomingThreatAfter = sourceAfter && actorAfter
+      ? preview.calculateBaseActionValue(sourceAfter, actorAfter, incoming) / 100
+      : incomingThreat;
     const selfHpGain = Math.max(0, preview.readHp(actorAfter || {}) - preview.readHp(actorBefore || {})) / Math.max(1, preview.readHpMax(actorBefore || {}));
     const selfShieldGain = Math.max(0, preview.readShield(actorAfter || {}) - preview.readShield(actorBefore || {})) / Math.max(1, preview.readHpMax(actorBefore || {}));
     const defensivePrevention = declaration.actionKind === 'DEFEND'
       ? incomingThreat * (1 - preview.calculateDefenseDamageMultiplier(actorBefore || {}, source || {}, false))
       : declaration.actionKind === 'EVADE'
         ? incomingThreat * preview.calculateDodgeProbability(actorBefore || {}, source || {}, false)
-        : selfHpGain + selfShieldGain;
+        : selfHpGain + selfShieldGain + Math.max(0, incomingThreat - incomingThreatAfter);
     const values = {
       OBJECTIVE_PROGRESS: clamp(terminalProgress || stateProgress, -1, 1),
       SELF_FOLLOWUP_POOL_GAIN: clamp((afterPool.value - beforePool.value) / poolScale, -1, 1),
-      SELF_FOLLOWUP_MECHANICAL_GAIN: clamp((afterMechanical - beforeMechanical) / mechanicalScale, -1, 1),
-      RESOURCE_RUNWAY_GAIN: clamp(r9v2LinearResourceRatio(actorAfter || {}) - r9v2LinearResourceRatio(actorBefore || {}), -1, 1),
+      SELF_FOLLOWUP_MECHANICAL_GAIN: clamp(Math.max(
+        (afterMechanical - beforeMechanical) / mechanicalScale,
+        selfCapacityGain,
+      ), -1, 1),
+      RESOURCE_RUNWAY_GAIN: clamp(r9v2LinearResourceRunwayGain(actorBefore || {}, actorAfter || {}), -1, 1),
       ENEMY_RESPONSE_OPTION_DENIAL: enemyDenial,
       OPPONENT_RESPONSE_PRESSURE: hostilePressure,
       REACTION_FOLLOWUP_GAIN: ['REACTION', 'COUNTER'].includes(role)
@@ -52669,6 +52859,7 @@
         : 0,
       SETUP_INTERRUPT_RISK: setupAction ? clamp(enemyThreat * Math.max(1, castTime / naturalBudget), 0, 1) : 0,
       ALLY_OPTION_GAIN: allyOptionGain,
+      ALLY_RESOURCE_RUNWAY_GAIN: allyResourceRunwayGain,
       FOCUS_TARGET_MARGINAL_GAIN: clamp(focusGain, 0, 1),
       PROTECTION_MARGINAL_GAIN: clamp(protectionGain, 0, 1),
       TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: supportiveCount ? clamp(redundant / supportiveCount, 0, 1) : 0,

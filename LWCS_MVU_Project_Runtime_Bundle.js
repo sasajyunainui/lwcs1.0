@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:7fcac97b2521381c311e6d47ea46da0dc963aa654105835d8d2c209f9d1e11d3|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:15db6be44b8b40c2b5140b3aa61766ec002acd521d291b6fdacc0bfd310136f3|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
+/* sources-sha256: LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:70101553f5ae833431197ad24ce19e95f58c657efdf7f5b91a94fca25bfa9cce|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
 ;
 /* source: LWCS_MVU_Prompt_Projector.js */
 (function (root) {
@@ -678,7 +678,8 @@
     拍卖: Object.freeze({ 默认等级: 4, 开放时段: '18:00-22:00' }),
   });
   const ERA_FACILITY_CAPS = Object.freeze({ dldl: 3, jueshitangmen: 4, current: 5, zjdl: 6 });
-  const LOCATION_WORLD_RULE_KEYS = new Set(['区域档案', '功能档案', '覆盖']);
+  const LOCATION_ADMISSION_PROFILES = new Set(['公开', '组织内部', '凭证', '授权区域', '考核区域']);
+  const LOCATION_WORLD_RULE_KEYS = new Set(['区域档案', '功能档案', '准入档案', '覆盖']);
   const LOCATION_RECORD_KEYS = new Set(['规范名', '目标路径', '实例化策略', '节点', '世界规则']);
   const LOCATION_NODE_KEYS = new Set(['类型', '别名', '关键词', '描述', '现状描述', '掌控势力', '状态', '人口', '守护军团', '经济状况', 'x', 'y', '商店']);
   const GENERIC_HIT_TERMS = new Set(['学院', '城市', '军团', '协会', '家族', '帝国', '大陆', '总部', '分部', '组织', '地点', '宗门']);
@@ -796,7 +797,7 @@
       }
     }
 
-    return { ok: true, eraId: 'current', selector: 'implicit-current', diagnostic: { code: 'IMPLICIT_CURRENT', selector: 'implicit-current', detail: '未提供时代或可读tick，按current本地调用处理' } };
+    return { ok: false, status: 'unloaded', eraId: null, selector: 'missing-context', detail: '未提供时代或可读tick', diagnostic: { code: 'ERA_CONTEXT_MISSING', selector: 'missing-context' } };
   }
 
   function compileResolvedLibrary(source, type) {
@@ -815,6 +816,20 @@
   }
 
   function resolveEraLibrary(library, type, options = {}) {
+    const explicitEraId = typeof options.eraId === 'string' ? options.eraId.trim() : '';
+    const suppliedTick = options.absoluteTick === undefined || options.absoluteTick === null
+      ? readDataRootTick(options.dataRoot)
+      : Number(options.absoluteTick);
+    if (library && !explicitEraId && !(Number.isFinite(suppliedTick) && suppliedTick >= 0)) {
+      return {
+        status: 'resolved',
+        library: compileResolvedLibrary(library, type),
+        eraId: null,
+        resourceType: type,
+        resourceStatus: 'loaded',
+        diagnostic: { selector: 'provided-library', source: 'provided-library', resourceType: type, resourceStatus: 'loaded' },
+      };
+    }
     const selection = selectEraContext(options);
     if (!selection.ok) {
       return {
@@ -842,110 +857,50 @@
     }
 
     const integration = readEraIntegration();
-    if (selection.selector !== 'implicit-current') {
-      if (!integration || typeof integration.getStaticSourceForEra !== 'function') {
-        return {
-          status: 'failed',
-          library: null,
-          eraId: selection.eraId,
-          resourceType: type,
-          resourceStatus: 'failed',
-          detail: 'EraRuntime_Integration按时代取源接口尚未注册',
-          diagnostic: resolutionDiagnostic(selection, type, 'failed', null),
-        };
-      }
-      let sourceResult;
-      try {
-        sourceResult = integration.getStaticSourceForEra(selection.eraId, type);
-      } catch (error) {
-        return {
-          status: 'failed',
-          library: null,
-          eraId: selection.eraId,
-          resourceType: type,
-          resourceStatus: 'failed',
-          detail: error?.message || String(error),
-          diagnostic: resolutionDiagnostic(selection, type, 'failed', 'era-runtime'),
-        };
-      }
-      if (!sourceResult || sourceResult.status !== 'resolved') {
-        const status = sourceResult?.status || 'failed';
-        return {
-          status,
-          library: null,
-          eraId: selection.eraId,
-          resourceType: type,
-          resourceStatus: status,
-          detail: sourceResult?.detail || '时代资源未就绪',
-          diagnostic: resolutionDiagnostic(selection, type, status, 'era-runtime'),
-        };
-      }
+    if (!integration || typeof integration.getStaticSourceForEra !== 'function') {
       return {
-        status: 'resolved',
-        library: compileResolvedLibrary(sourceResult.source, type),
+        status: 'failed',
+        library: null,
         eraId: selection.eraId,
         resourceType: type,
-        resourceStatus: 'loaded',
-        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'era-runtime'),
+        resourceStatus: 'failed',
+        detail: 'EraRuntime_Integration按时代取源接口尚未注册',
+        diagnostic: resolutionDiagnostic(selection, type, 'failed', null),
       };
     }
-
-    if (library) {
+    let sourceResult;
+    try {
+      sourceResult = integration.getStaticSourceForEra(selection.eraId, type);
+    } catch (error) {
       return {
-        status: 'resolved',
-        library: compileResolvedLibrary(library, type),
-        eraId: 'current',
-        resourceType: type,
-        resourceStatus: 'loaded',
-        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'provided-library'),
-      };
-    }
-
-    if (integration && typeof integration.getStaticSourceForEra === 'function') {
-      const sourceResult = integration.getStaticSourceForEra('current', type);
-      if (!sourceResult || sourceResult.status !== 'resolved') {
-        const status = sourceResult?.status || 'failed';
-        return {
-          status,
-          library: null,
-          eraId: 'current',
-          resourceType: type,
-          resourceStatus: status,
-          detail: sourceResult?.detail || '当前时代资源未就绪',
-          diagnostic: resolutionDiagnostic(selection, type, status, 'era-runtime'),
-        };
-      }
-      return {
-        status: 'resolved',
-        library: compileResolvedLibrary(sourceResult.source, type),
-        eraId: 'current',
-        resourceType: type,
-        resourceStatus: 'loaded',
-        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'era-runtime'),
-      };
-    }
-
-    const globalName = type === 'faction' ? '__LWCS_内置势力库__' : '__LWCS_内置地点库__';
-    const current = type === 'faction' ? defaultFactionLibrary : defaultLocationLibrary;
-    const source = current || global[globalName];
-    if (!source) {
-      return {
-        status: 'unloaded',
+        status: 'failed',
         library: null,
-        eraId: 'current',
+        eraId: selection.eraId,
         resourceType: type,
-        resourceStatus: 'unloaded',
-        detail: '当前时代资源未注册',
-        diagnostic: resolutionDiagnostic(selection, type, 'unloaded', 'implicit-current'),
+        resourceStatus: 'failed',
+        detail: error?.message || String(error),
+        diagnostic: resolutionDiagnostic(selection, type, 'failed', 'era-runtime'),
+      };
+    }
+    if (!sourceResult || sourceResult.status !== 'resolved') {
+      const status = sourceResult?.status || 'failed';
+      return {
+        status,
+        library: null,
+        eraId: selection.eraId,
+        resourceType: type,
+        resourceStatus: status,
+        detail: sourceResult?.detail || '时代资源未就绪',
+        diagnostic: resolutionDiagnostic(selection, type, status, 'era-runtime'),
       };
     }
     return {
       status: 'resolved',
-      library: compileResolvedLibrary(source, type),
-      eraId: 'current',
+      library: compileResolvedLibrary(sourceResult.source, type),
+      eraId: selection.eraId,
       resourceType: type,
       resourceStatus: 'loaded',
-      diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'current-global'),
+      diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'era-runtime'),
     };
   }
 
@@ -1014,7 +969,7 @@
     return compiled;
   }
 
-  function compileLocationWorldRules(value, path) {
+  function compileLocationWorldRules(value, path, node = {}) {
     assertPlainRecord(value, path, '地点世界规则');
     assertStrictKeys(value, LOCATION_WORLD_RULE_KEYS, path);
     const region = requiredString(value.区域档案, `${path}.区域档案`, '区域档案');
@@ -1027,10 +982,24 @@
         libraryFail('LIBRARY_FIELD_INVALID', `${path}.功能档案`, functionName, `未知功能档案: ${functionName}`);
       }
     });
+    const admissionText = `${String(node?.类型 || '')} ${String(node?.状态 || '')}`;
+    const publicSpace = /城市|主城|军城|首都|大陆|帝国区域|森林区域|山脉区域|海域|平原|盆地|沙漠|城镇|村庄/.test(String(node?.类型 || ''));
+    const inferredAdmission = publicSpace
+      ? '公开'
+      : /禁区|秘境|隐秘|核心区域|核心校区|内院|议事机构|考核|restricted|禁入/.test(admissionText)
+        ? '授权区域'
+        : functions.some(name => ['军方', '总部'].includes(name)) || /皇宫|宗门|家族|驻地|军区|堡垒|要塞/.test(admissionText)
+          ? '组织内部'
+          : '公开';
+    const admission = String(value.准入档案 || inferredAdmission).trim();
+    if (!LOCATION_ADMISSION_PROFILES.has(admission)) {
+      libraryFail('LIBRARY_FIELD_INVALID', `${path}.准入档案`, admission, `未知准入档案: ${admission}`);
+    }
     assertPlainRecord(value.覆盖, `${path}.覆盖`, '地点规则覆盖');
     return {
       区域档案: region,
       功能档案: functions,
+      准入档案: admission,
       覆盖: clone(value.覆盖),
     };
   }
@@ -1080,7 +1049,7 @@
       if (sourceRecord.世界规则 === undefined) {
         libraryFail('LIBRARY_FIELD_INVALID', `$.地点.${recordId}.世界规则`, sourceRecord.世界规则, '地点记录必须声明世界规则');
       }
-      const worldRules = compileLocationWorldRules(sourceRecord.世界规则, `$.地点.${recordId}.世界规则`);
+      const worldRules = compileLocationWorldRules(sourceRecord.世界规则, `$.地点.${recordId}.世界规则`, node);
       output.地点[recordId] = {
         规范名: canonicalName,
         目标路径: targetPath,
@@ -1831,6 +1800,100 @@
     return output;
   }
 
+  function readAdmissionInventoryQuantity(character = {}, itemName = '') {
+    const item = character?.背包?.[itemName];
+    if (!isPlainRecord(item)) return 0;
+    const direct = Math.max(0, Math.floor(Number(item.数量 || 0) || 0));
+    const batches = (Array.isArray(item.批次) ? item.批次 : []).reduce(
+      (sum, batch) => sum + Math.max(0, Math.floor(Number(batch?.数量 || 0) || 0)),
+      0,
+    );
+    return direct + batches;
+  }
+
+  function resolveWorldLocationAdmission(library, targetPath = [], character = {}, permissions = {}, options = {}) {
+    const path = Array.isArray(targetPath) ? targetPath.map(item => String(item || '').trim()).filter(Boolean) : [];
+    const records = [];
+    for (let depth = 1; depth <= path.length; depth += 1) {
+      const selected = selectLocationRecordByPath(library, path.slice(0, depth));
+      if (selected) records.push({ path: path.slice(0, depth), record: selected.record });
+    }
+    let explicitRuleIndex = -1;
+    for (let index = records.length - 1; index >= 0; index -= 1) {
+      const qualifications = records[index].record?.世界规则?.覆盖?.准入?.资格任一;
+      if (Array.isArray(qualifications) && qualifications.length > 0) {
+        explicitRuleIndex = index;
+        break;
+      }
+    }
+    const recordsToCheck = explicitRuleIndex >= 0 ? [records[explicitRuleIndex]] : records;
+    const level = Math.max(0, Number(character?.属性?.等级 || 0) || 0);
+    const age = Math.max(0, Number(character?.属性?.年龄 || 0) || 0);
+    const partySize = Math.max(1, Math.floor(Number(options.partySize || options.teamSize || 1) || 1));
+    const passed = [];
+    for (const { path: rulePath, record } of recordsToCheck) {
+      const profile = String(record?.世界规则?.准入档案 || '公开').trim() || '公开';
+      const rule = isPlainRecord(record?.世界规则?.覆盖?.准入) ? record.世界规则.覆盖.准入 : {};
+      const base = isPlainRecord(rule.基础条件) ? rule.基础条件 : {};
+      const checks = [
+        ['最低等级', level >= Math.max(0, Number(base.最低等级 || 0) || 0)],
+        ['最高等级', base.最高等级 === undefined || level <= Math.max(0, Number(base.最高等级 || 0) || 0)],
+        ['最低年龄', age >= Math.max(0, Number(base.最低年龄 || 0) || 0)],
+        ['最高年龄', base.最高年龄 === undefined || age <= Math.max(0, Number(base.最高年龄 || 0) || 0)],
+        ['最少队伍人数', partySize >= Math.max(1, Number(base.最少队伍人数 || 1) || 1)],
+        ['最多队伍人数', base.最多队伍人数 === undefined || partySize <= Math.max(1, Number(base.最多队伍人数 || 1) || 1)],
+      ];
+      const failedBase = checks.find(([, ok]) => !ok);
+      if (failedBase) {
+        return { 可进入: false, 档案: profile, 原因: `${rulePath.join('-')}不满足${failedBase[0]}`, 命中资格: null, 待消耗凭证: '' };
+      }
+      let qualifications = Array.isArray(rule.资格任一) ? rule.资格任一.filter(isPlainRecord) : [];
+      if (!qualifications.length && ['组织内部', '授权区域'].includes(profile)) {
+        qualifications = String(record?.节点?.掌控势力 || '')
+          .split(/[、/,，；;]/)
+          .map(name => name.trim())
+          .filter(name => name && name !== '无')
+          .map(name => ({ 类型: '势力', 势力: name, 最低权限级: Math.max(1, Number(rule.最低权限级 || 1) || 1) }));
+      }
+      if (profile === '公开' && !qualifications.length) continue;
+      let matched = null;
+      for (const qualification of qualifications) {
+        const type = String(qualification.类型 || '').trim();
+        if (type === '势力') {
+          const faction = String(qualification.势力 || '').trim();
+          const minimum = Math.max(0, Number(qualification.最低权限级 || 0) || 0);
+          const current = permissions?.势力?.[faction];
+          if (current && String(current.身份 || '无') !== '无' && Number(current.权限级 || 0) >= minimum) {
+            matched = { 类型: '势力', 势力: faction, 最低权限级: minimum };
+            break;
+          }
+        }
+        if (type === '凭证') {
+          const names = (Array.isArray(qualification.名称) ? qualification.名称 : [qualification.名称])
+            .map(name => String(name || '').trim())
+            .filter(Boolean);
+          const itemName = names.find(name => readAdmissionInventoryQuantity(character, name) > 0);
+          if (itemName) {
+            matched = { 类型: '凭证', 名称: itemName, 消耗: qualification.消耗 === true };
+            break;
+          }
+        }
+      }
+      if (!matched) {
+        return { 可进入: false, 档案: profile, 原因: `${rulePath.join('-')}需要有效身份、权限或入场凭证`, 命中资格: null, 待消耗凭证: '' };
+      }
+      passed.push({ 地点: rulePath.join('-'), ...matched });
+    }
+    const consumable = passed.find(item => item.类型 === '凭证' && item.消耗 === true);
+    return {
+      可进入: true,
+      档案: records.length ? String(records[records.length - 1].record?.世界规则?.准入档案 || '公开') : '公开',
+      原因: '',
+      命中资格: passed.length ? passed[passed.length - 1] : null,
+      待消耗凭证: consumable?.名称 || '',
+    };
+  }
+
   function resolveWorldActionContext(options = {}) {
     const dataRoot = isPlainRecord(options.dataRoot) ? options.dataRoot : {};
     const characterKey = String(options.characterKey || '').trim();
@@ -1901,6 +1964,16 @@
       来源: terrainView?.worldRules?.区域档案 === terrainName ? '地点规则' : '地点规则+自然档案',
     };
     const permissions = readWorldPermissions(character || {}, facilityView?.node || {});
+    const admission = isTravelAction && library && character
+      ? resolveWorldLocationAdmission(
+          library,
+          targetView?.path || normalizeLocationPath(targetText),
+          character,
+          permissions,
+          options,
+        )
+      : { 可进入: true, 档案: '公开', 原因: '', 命中资格: null, 待消耗凭证: '' };
+    if (!admission.可进入) blockers.push(admission.原因 || '目标地点不允许进入');
     const facilities = facilityView ? buildWorldFacilityTable(facilityView, era.id || 'current', time, permissions, terrainProfile) : {};
     const nearbyFacilities = library && facilityView ? collectNearbyWorldFacilities(library, facilityView, era.id || 'current', time, permissions, terrainProfile) : [];
     const coverage = isPlainRecord(terrainView?.worldRules?.覆盖) ? terrainView.worldRules.覆盖 : {};
@@ -1981,7 +2054,14 @@
     };
     const visibleFacility = Object.values(facilities).filter(item => item.可用).map(item => `${item.功能}Lv${item.等级}`).slice(0, 3).join('、') || '无';
     const visibleHazard = hazards.map(item => item.名称 || item.规则ID || item.类型).filter(Boolean).slice(0, 2).join('、') || '无';
-    modifiers.投影 = `地点：${activeView?.path?.join('-') || currentLocation || '未知'}；时段：${time.日期 ? `${time.日期.时}时${time.日期.分}分` : '未知'}；设施：${visibleFacility}；风险：${visibleHazard}；魂力：${soulPowerAvailable ? '可用' : '禁用'}。`;
+    const visibleAdmission = admission.档案 === '公开'
+      ? '公开'
+      : admission.命中资格?.类型 === '势力'
+        ? `${admission.档案}（${admission.命中资格.势力}）`
+        : admission.命中资格?.类型 === '凭证'
+          ? `${admission.档案}（${admission.命中资格.名称}）`
+          : admission.档案;
+    modifiers.投影 = `地点：${activeView?.path?.join('-') || currentLocation || '未知'}；时段：${time.日期 ? `${time.日期.时}时${time.日期.分}分` : '未知'}；准入：${visibleAdmission}；设施：${visibleFacility}；风险：${visibleHazard}；魂力：${soulPowerAvailable ? '可用' : '禁用'}。`;
     const dedupe = list => Array.from(new Set(list.map(item => String(item || '').trim()).filter(Boolean)));
     return freezeDeep({
       era,
@@ -1994,6 +2074,7 @@
       resources,
       market,
       permissions,
+      admission,
       modifiers,
       blockers: dedupe(blockers),
       warnings: dedupe(warnings),
@@ -31216,9 +31297,6 @@ function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
   const 记录ID列表 = [];
   const 当前tick = Math.max(0, Number(数据根?.world?.时间?.tick || 0));
   const 资源时代 = 读取当前静态资源时代_V1(数据根, 当前tick);
-  Object.entries(地点库.地点 || {}).forEach(([记录ID, 记录]) => {
-    if (记录?.实例化策略 === 'insert' && 静态记录可用_V1(资源时代, 'location', 记录ID, 当前tick)) 记录ID列表.push(记录ID);
-  });
   收集开场常驻静态记录_V1(资源时代, 'location', 当前tick).forEach(记录ID => 记录ID列表.push(记录ID));
   if (当前位置 && !['无', '未知', '待生成'].includes(当前位置)) {
     const 位置解析 = 解析内置地点位置_V1(当前位置, 地点库, 运行时);
@@ -31325,6 +31403,20 @@ function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令 = nul
   if (!节点定义 || !Number.isFinite(Number(节点定义.tick))) throw new Error(`开场节点无效：${eraId}/${开场节点}`);
   if (时代集成.resolveResourceEraAtTick(当前tick) !== eraId) throw new Error(`开场tick与时代不一致：${eraId}/${当前tick}`);
   if (Math.abs(Number(节点定义.tick) - 当前tick) > 1e-9) throw new Error(`开场tick与快照不一致：${开场节点}`);
+  const 玩家名 = String(数据根?.sys?.玩家名 || '').trim();
+  const 玩家角色 = 玩家名 && 数据根.char[玩家名] && typeof 数据根.char[玩家名] === 'object'
+    ? 数据根.char[玩家名]
+    : null;
+  数据根.char = 玩家角色 ? { [玩家名]: 玩家角色 } : {};
+  数据根.物品 = {};
+  数据根.org = {};
+  const 偏差倍率 = Number(数据根?.world?.偏差倍率);
+  数据根.world = {
+    时间: { tick: 当前tick, _上次结算tick: 当前tick },
+    ...(Number.isFinite(偏差倍率) ? { 偏差倍率 } : {}),
+    地点: {},
+    动态地点: {},
+  };
   const 已写入 = [];
   Object.values(角色库.角色 || {}).forEach(角色记录 => {
     const 角色名 = String(角色记录?.角色名 || '').trim();

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:a02ad5e578c94d7a72a809a5761fd1b1e431500f5dcf829e927cc01293eb1f0a|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:a470fa20e5bfbba99c349eb667879d0b93666e9c67c94fb534bd5683b133a65d|BattleRuntime_Module.js:c47ad09b6d4cf01205b5319ae69603b98d027f604737c0298df7112572be1ead|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5 */
+/* sources-sha256: TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:fdcbfd28286e4f8fc2408ff135c4e1512199db341afd606705082f2aad6ef81d|BehaviorDecisionPipeline_Module.js:53d4de60b23c45b683fdee664f82087fdbde45bb88fae1bc85e1ea515f1110ad|BattleDecision_Module.js:718e5d931c2b2aaa0867b492d7dc9637636c90941f77d2515dcdec658e9c59a3|BattleRuntime_Module.js:c47ad09b6d4cf01205b5319ae69603b98d027f604737c0298df7112572be1ead|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5 */
 ;
 /* source: TradeUI_Module.js */
 /* TradeUI_Module.js - 交易网络组件 (JS 模块版) */
@@ -8778,7 +8778,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   function calculateSettledSegmentDamage(totalDamage = 0, segments = 1, damageMultiplier = 1) {
     const segmentCount = Math.max(1, Math.floor(Number(segments || 1)));
     const multiplier = clamp(Number(damageMultiplier ?? 1), 0, 1);
-    return Math.max(0, Math.round(Math.max(0, Number(totalDamage || 0)) / segmentCount * multiplier));
+    const positiveDamage = Math.max(0, Number(totalDamage || 0));
+    if (!(positiveDamage > 0) || !(multiplier > 0)) return 0;
+    return Math.max(1, Math.round(positiveDamage / segmentCount * multiplier));
   }
 
   function expectedSegmentedDamageOutcome(input = {}) {
@@ -25156,34 +25158,36 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 /* BehaviorLinearScoreProvider_Module.js
  * Task 6 core batch A: online lightweight LINEAR_SCORE_V1 provider (r9v2).
  * Pure candidate-only selection: frozen candidates -> public immediate features
- * -> frozen 31-code scalarization + embedded two-code reaction head ->
+ * -> frozen 31-code scalarization + embedded two-code reaction head +
+ * 13-code causal active/reaction heads ->
  * total linear score -> hard-exclusion removal ->
  * deterministic ordering (score desc, exact-tie candidateId UTF-16 asc) ->
  * structural alternative -> same-source structured reason factors.
  * The sealed model whitelist constants are embedded (never read from
  * gitignored artifacts at runtime): normalization, linear, featureAggregation,
  * modelHash, weightsHash, featureSchemaHash. Old Kernel/direct/future-route/S4
- * traversal has zero calls and zero fallback here.
+ * traversal has zero calls and zero fallback inside the provider; bounded
+ * public causal outcome features arrive through the frozen feature document.
  */
 (function (root) {
   'use strict';
 
   const PROVIDER_ID = 'r9v2';
   const ENGINE = 'R9V2_LINEAR';
-  const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV1';
+  const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV2';
   const MOUNT_NAME = '__LWCS_BEHAVIOR_LINEAR_PROVIDER__';
 
-  // Sealed model whitelist (artifacts/rc6/distilled-linear-score-v1.json raw
-  // 432b82e0...; sealed binding m2-linear-score-v1-rev9-binding.json).
-  const MODEL_HASH = '5308f3bcbb60413e6161089397d59224ec3a7d92c60c58062067df19f9024ced';
-  const WEIGHTS_HASH = '2daa34c9aa8e340efa83d6caee433d19dc204ac9b52e0ea48d55591192a67550';
-  const FEATURE_SCHEMA_HASH = '9d083542dff4609b7ca7d55fdf3b204bc62fc2f40e350298f46db00d2ab5a121';
+  // Sealed runtime binding for the exact base, reaction and causal definitions
+  // embedded below. Runtime never reads an external training artifact.
+  const MODEL_HASH = 'b13c6c2356d632a296c26f20e0d4e07bd5d9e2b753bf781920040c8d8733826d';
+  const WEIGHTS_HASH = '190c00a8f137b0cbf2d186f685718df1786d9be17324a4083f43927a858f5e7d';
+  const FEATURE_SCHEMA_HASH = '1ae9cd7d4d2353efd76df73576d6a235bcefb72fe9ee26d40b626f1afc52a76f';
   const DBP_REVISION = 15;
   const DBP_CONTRACT_HASH = '69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8';
   const BIF_CONTRACT_HASH = '8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76';
   const BASE_SECTION_HASH = '1a6ba7bbf8543221f9620b29a6884d723a35b1eedc64ac9b508418e242f3fa0d';
   const REACTION_HEAD_HASH = 'b08565ade014bed633f5917aaa3891ba2730a18f8c9885c1c9c983db5c8f4a62';
-  const MODEL_COMPOSITE_HASH = '1571f142a29ad9e6faef6644533a632942dbd57867a5aa00c2ca76b685a2dd8c';
+  const MODEL_COMPOSITE_HASH = '363155cfcae91184c4ca5360ad0ef8ae7babbe77eeb1c2fbff2c8cc60825d128';
   const REACTION_ALGORITHM_HASH = '5ddd1dff3f07d3aa7c1b48f627cd5a3c64de9025941fab25923b52851b8a1852';
   const OP_DAMAGE_POWER = 'NEUMAIER\u005fSUM';
   const OP_DAMAGE_SEGMENTS = 'INTEGER\u005fSUM';
@@ -25205,6 +25209,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const RELATIONAL_CODES = Object.freeze([
     'TEAM_EFFECT_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO',
     'RESOURCE_DEFICIT_COVERAGE', 'RESOURCE_CONSUMER_FIT', 'TEAM_FOLLOWUP_COVERAGE',
+  ]);
+  const CAUSAL_CODES = Object.freeze([
+    'OBJECTIVE_PROGRESS', 'SELF_FOLLOWUP_POOL_GAIN',
+    'SELF_FOLLOWUP_MECHANICAL_GAIN', 'RESOURCE_RUNWAY_GAIN',
+    'ENEMY_RESPONSE_OPTION_DENIAL', 'OPPONENT_RESPONSE_PRESSURE',
+    'REACTION_FOLLOWUP_GAIN', 'SETUP_INTERRUPT_RISK',
+    'ALLY_OPTION_GAIN', 'ALLY_RESOURCE_RUNWAY_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
+    'PROTECTION_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
   ]);
   const EXCLUSION_ONLY = Object.freeze(['HARD_EXCLUSION', 'HARD_EXCLUSION_REASON']);
   const CATALOG_ONLY = Object.freeze(['SETTLEMENT_DAMAGE', 'ROLL_REALIZATION']);
@@ -25352,7 +25364,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const REACTION_CODES = Object.freeze([
     'REACTION_DAMAGE_MULTIPLIER', 'REACTION_DODGE_PROBABILITY',
   ]);
-  const SCOREABLE_INVENTORY = Object.freeze(SCOREABLE_CODES.concat(REACTION_CODES));
+  const SCOREABLE_INVENTORY = Object.freeze(SCOREABLE_CODES.concat(REACTION_CODES, CAUSAL_CODES));
   const REACTION_NORMALIZATION = Object.freeze({
     means: Object.freeze({
       REACTION_DAMAGE_MULTIPLIER: 0.820427777816285,
@@ -25371,11 +25383,59 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       REACTION_DODGE_PROBABILITY: 0.5600773498387871,
     }),
   });
+  const CAUSAL_NORMALIZATION = Object.freeze({
+    means: Object.freeze(Object.fromEntries(CAUSAL_CODES.map(code => [code, 0]))),
+    scales: Object.freeze(Object.fromEntries(CAUSAL_CODES.map(code => [code, 1]))),
+  });
+  const ACTIVE_CAUSAL_LINEAR = Object.freeze({
+    intercept: 0,
+    coefficients: Object.freeze({
+      OBJECTIVE_PROGRESS: 33.38215225116526,
+      SELF_FOLLOWUP_POOL_GAIN: 10.302556723848836,
+      SELF_FOLLOWUP_MECHANICAL_GAIN: 8.201659516257939,
+      RESOURCE_RUNWAY_GAIN: 14.848683457044219,
+      ENEMY_RESPONSE_OPTION_DENIAL: 1.4789589148898896,
+      OPPONENT_RESPONSE_PRESSURE: 11.747833245997066,
+      REACTION_FOLLOWUP_GAIN: 0,
+      SETUP_INTERRUPT_RISK: 0,
+      ALLY_OPTION_GAIN: 19.07586472591921,
+      ALLY_RESOURCE_RUNWAY_GAIN: 41.29002102614034,
+      FOCUS_TARGET_MARGINAL_GAIN: 11.747833245997066,
+      PROTECTION_MARGINAL_GAIN: 115.88679861250772,
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -3.5849163455251323,
+    }),
+  });
+  const REACTION_CAUSAL_LINEAR = Object.freeze({
+    intercept: 0,
+    coefficients: Object.freeze({
+      OBJECTIVE_PROGRESS: 0,
+      SELF_FOLLOWUP_POOL_GAIN: 0.25,
+      SELF_FOLLOWUP_MECHANICAL_GAIN: 0.25,
+      RESOURCE_RUNWAY_GAIN: 0,
+      ENEMY_RESPONSE_OPTION_DENIAL: 0.25,
+      OPPONENT_RESPONSE_PRESSURE: 0,
+      REACTION_FOLLOWUP_GAIN: 72,
+      SETUP_INTERRUPT_RISK: -0.25,
+      ALLY_OPTION_GAIN: 0.25,
+      ALLY_RESOURCE_RUNWAY_GAIN: 0.25,
+      FOCUS_TARGET_MARGINAL_GAIN: 0,
+      PROTECTION_MARGINAL_GAIN: 29.400890343687756,
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -0.25,
+    }),
+  });
   const REACTION_MISSING_POLICY = deepFreeze({
     REACTION_DAMAGE_MULTIPLIER: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
     REACTION_DODGE_PROBABILITY: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
   });
-  const SCOREABLE_MISSING_POLICY = deepFreeze({ ...MISSING_POLICY, ...REACTION_MISSING_POLICY });
+  const CAUSAL_MISSING_POLICY = deepFreeze(Object.fromEntries(CAUSAL_CODES.map(code => [
+    code,
+    { unknown: 'REQUIRE_KNOWN', na: 'REQUIRE_KNOWN' },
+  ])));
+  const SCOREABLE_MISSING_POLICY = deepFreeze({
+    ...MISSING_POLICY,
+    ...REACTION_MISSING_POLICY,
+    ...CAUSAL_MISSING_POLICY,
+  });
 
   const metrics = { selectCalls: 0, fatalCount: 0, lastWorkUnits: 0, totalWorkUnits: 0 };
 
@@ -25445,9 +25505,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // scalarizeCode (single-instance identity; duplicate rows via frozen perCode
   // SUM/MAX; ENUM identity; missing rows become UNKNOWN:NOT_EMITTED).
   function scalarizeCode(doc, code, aggregation) {
-    const sourceRows = RELATIONAL_CODES.indexOf(code) >= 0
-      ? (doc.document.relational.features || []).filter(f => f.featureCode === code)
-      : (doc.document.immediate.features || []).filter(f => f.featureCode === code);
+    const sourceRows = CAUSAL_CODES.indexOf(code) >= 0
+      ? (doc.document.causal?.features || []).filter(f => f.featureCode === code)
+      : RELATIONAL_CODES.indexOf(code) >= 0
+        ? (doc.document.relational.features || []).filter(f => f.featureCode === code)
+        : (doc.document.immediate.features || []).filter(f => f.featureCode === code);
     if (sourceRows.length === 0) return { status: 'UNKNOWN', value: null, reasonCode: 'NOT_EMITTED', rowCount: 0, kind: 'NONE' };
     const knownRows = sourceRows.filter(r => r.status === 'KNOWN');
     if (knownRows.length > 0) {
@@ -25503,6 +25565,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const cell = cells[code];
       if (!cell || cell.status === 'KNOWN') continue;
       const policy = REACTION_MISSING_POLICY[code];
+      if (cell.status === 'NOT_APPLICABLE') {
+        if (policy.na === 'REQUIRE_KNOWN') fail('NOT_SCORABLE_INPUT', code + ':NA:' + cell.reasonCode);
+      } else if (policy.unknown === 'REQUIRE_KNOWN') {
+        fail('NOT_SCORABLE_INPUT', code + ':' + cell.reasonCode);
+      }
+    }
+    for (const code of CAUSAL_CODES) {
+      const cell = cells[code];
+      if (!cell || cell.status === 'KNOWN') continue;
+      const policy = CAUSAL_MISSING_POLICY[code];
       if (cell.status === 'NOT_APPLICABLE') {
         if (policy.na === 'REQUIRE_KNOWN') fail('NOT_SCORABLE_INPUT', code + ':NA:' + cell.reasonCode);
       } else if (policy.unknown === 'REQUIRE_KNOWN') {
@@ -25567,6 +25639,38 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return factor;
   }
 
+  function causalZOf(cells, code) {
+    const cell = cells[code];
+    if (!cell || cell.status !== 'KNOWN' || typeof cell.value !== 'number' || !Number.isFinite(cell.value)) {
+      fail('NON_FINITE_CAUSAL_VALUE', code);
+    }
+    return (cell.value - CAUSAL_NORMALIZATION.means[code]) / CAUSAL_NORMALIZATION.scales[code];
+  }
+
+  function causalLinearForRole(role) {
+    return ['REACTION', 'COUNTER'].includes(String(role || '').trim().toUpperCase())
+      ? REACTION_CAUSAL_LINEAR
+      : ACTIVE_CAUSAL_LINEAR;
+  }
+
+  function causalContributionOf(cells, code, role) {
+    const cell = cells[code];
+    const linear = causalLinearForRole(role);
+    const z = causalZOf(cells, code);
+    return {
+      code,
+      raw: cell.value,
+      mean: CAUSAL_NORMALIZATION.means[code],
+      scale: CAUSAL_NORMALIZATION.scales[code],
+      z,
+      coefficient: linear.coefficients[code],
+      contribution: linear.coefficients[code] * z,
+      status: cell.status,
+      reasonCode: cell.reasonCode,
+      rowCount: cell.rowCount,
+    };
+  }
+
   function baseScoreOf(cells) {
     let score = LINEAR.intercept;
     for (const code of SCOREABLE_CODES) score += LINEAR.coefficients[code] * zOf(cells, code);
@@ -25576,6 +25680,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function reactionScoreOf(cells) {
     let score = REACTION_LINEAR.intercept;
     for (const code of REACTION_CODES) score += REACTION_LINEAR.coefficients[code] * reactionZOf(cells, code);
+    return score;
+  }
+
+  function causalScoreOf(cells, role) {
+    const linear = causalLinearForRole(role);
+    let score = linear.intercept;
+    for (const code of CAUSAL_CODES) score += linear.coefficients[code] * causalZOf(cells, code);
     return score;
   }
 
@@ -25597,6 +25708,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function selectPreparedRequest(input) {
     metrics.selectCalls += 1;
     const request = input && input.request ? input.request : {};
+    const actionRole = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
     const featureInputs = input && input.featureInputs;
     const frozenCandidates = Array.isArray(request.frozenCandidates) ? request.frozenCandidates : [];
     if (!frozenCandidates.length) fail('NO_LEGAL_CANDIDATES', 'frozenCandidates empty');
@@ -25634,7 +25746,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (HARD_EXCLUSION_CODES.indexOf(reasonCode) < 0) fail('HARD_EXCLUSION_CODE_UNKNOWN', reasonCode);
         hardExclusionAudit.push({ candidateId, disposition: 'HARD_EXCLUDED_PREVIEW_SKIPPED', reasonCode, source: 'BIF_IMMEDIATE_PUBLIC' });
       }
-      const row = { candidateId, cells, hardExcluded, eligible: !hardExcluded, baseScore: null, extensionScore: null, score: null };
+      const row = { candidateId, cells, hardExcluded, eligible: !hardExcluded, baseScore: null, extensionScore: null, causalScore: null, score: null };
       featureVector.push({
         candidateId,
         cells,
@@ -25644,7 +25756,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         assertScorable(cells);
         row.baseScore = baseScoreOf(cells);
         row.extensionScore = reactionScoreOf(cells);
-        row.score = row.baseScore + row.extensionScore;
+        row.causalScore = causalScoreOf(cells, actionRole);
+        row.score = row.baseScore + row.extensionScore + row.causalScore;
         if (!Number.isFinite(row.score)) fail('NON_FINITE_SCORE');
       }
       rows.push(row);
@@ -25663,16 +25776,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       score: row.score,
       baseScore: row.baseScore,
       extensionScore: row.extensionScore,
+      causalScore: row.causalScore,
       tieGroup: ranked.filter(other => other.score === row.score).map(other => other.candidateId).sort(compareUtf16),
     }));
     const scoreContributions = {};
     for (const row of eligible) {
       const factors = [];
       for (const code of SCOREABLE_INVENTORY) {
-        factors.push(REACTION_CODES.indexOf(code) >= 0 ? reactionContributionOf(row.cells, code) : contributionOf(row.cells, code));
+        factors.push(
+          CAUSAL_CODES.indexOf(code) >= 0
+            ? causalContributionOf(row.cells, code, actionRole)
+            : REACTION_CODES.indexOf(code) >= 0
+              ? reactionContributionOf(row.cells, code)
+              : contributionOf(row.cells, code),
+        );
         work.reasonFactors += 1;
       }
-      scoreContributions[row.candidateId] = { score: row.score, baseScore: row.baseScore, extensionScore: row.extensionScore, factors };
+      scoreContributions[row.candidateId] = {
+        score: row.score,
+        baseScore: row.baseScore,
+        extensionScore: row.extensionScore,
+        causalScore: row.causalScore,
+        causalHead: ['REACTION', 'COUNTER'].includes(actionRole) ? 'REACTION_COUNTER' : 'ACTIVE_ASSIST',
+        factors,
+      };
     }
     metrics.lastWorkUnits = work.candidates * SCOREABLE_INVENTORY.length + work.scalarizeCalls;
     metrics.totalWorkUnits += metrics.lastWorkUnits;
@@ -25701,7 +25828,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         scalarizeCalls: work.scalarizeCalls,
         scalarizePerCandidate: work.candidates ? work.scalarizeCalls / work.candidates : 0,
         expectedCBy31: work.candidates * SCOREABLE_CODES.length,
-        expectedCBy33: work.candidates * SCOREABLE_INVENTORY.length,
+        expectedCBy46: work.candidates * SCOREABLE_INVENTORY.length,
         sortComparisons: work.sortComparisons,
         reasonFactorCount: work.reasonFactors,
         documentBuilds: work.documentBuilds,
@@ -25765,6 +25892,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       scoreableCodes: SCOREABLE_INVENTORY.slice(),
       baseScoreableCodes: SCOREABLE_CODES.slice(),
       reactionCodes: REACTION_CODES.slice(),
+      causalCodes: CAUSAL_CODES.slice(),
       relationalCodes: RELATIONAL_CODES.slice(),
       exclusionOnly: EXCLUSION_ONLY.slice(),
       catalogOnly: CATALOG_ONLY.slice(),
@@ -25778,6 +25906,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         normalization: REACTION_NORMALIZATION,
         coefficients: REACTION_LINEAR.coefficients,
         algorithmHash: REACTION_ALGORITHM_HASH,
+      }),
+      causal: Object.freeze({
+        normalization: CAUSAL_NORMALIZATION,
+        activeAssist: ACTIVE_CAUSAL_LINEAR,
+        reactionCounter: REACTION_CAUSAL_LINEAR,
       }),
     }),
     selectPreparedRequest,
@@ -25794,7 +25927,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 // BehaviorContributionTrace_Module.js
 // M3/R4B1 contribution trace builder: turns frozen per-candidate Provider
 // feature rows plus the accepted LINEAR_SCORE_V1 model into a
-// DecisionContributionTraceV1 revision 10 document (score conservation
+// DecisionContributionTraceV1 revision 11 document (score conservation
 // <= 1e-12, selection deltas, top positive/negative, missingMask,
 // hardExclusions) plus a separate sourceClosure. Pure function; never reads
 // teacher/route/future/hidden fields; never writes files.
@@ -25805,8 +25938,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   var TOLERANCE = 1e-12;
   var MOUNT_NAME = '__LWCS_BEHAVIOR_CONTRIBUTION_TRACE__';
 
-  // Frozen from DecisionContributionTraceV1 revision 10. Trace admits exactly
-  // the 32 numeric Provider factors; RELATION_TARGET_SIDE is evidence-only.
+  // Frozen from DecisionContributionTraceV1 revision 11. Trace admits exactly
+  // the 45 numeric Provider factors; RELATION_TARGET_SIDE is evidence-only.
   var TACTICAL_CONCEPT = {
     RELATION_TARGET_COUNT: '目标推进',
     RELATION_TARGET_SIDE: '目标推进',
@@ -25845,6 +25978,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     PUBLIC_RECIPIENT_NEED_MATCH: '资源',
     REACTION_DAMAGE_MULTIPLIER: '伤害压力',
     REACTION_DODGE_PROBABILITY: '生存',
+    OBJECTIVE_PROGRESS: '目标推进',
+    SELF_FOLLOWUP_POOL_GAIN: '机会',
+    SELF_FOLLOWUP_MECHANICAL_GAIN: '机会',
+    RESOURCE_RUNWAY_GAIN: '资源',
+    ENEMY_RESPONSE_OPTION_DENIAL: '控制',
+    OPPONENT_RESPONSE_PRESSURE: '伤害压力',
+    REACTION_FOLLOWUP_GAIN: '机会',
+    SETUP_INTERRUPT_RISK: '风险',
+    ALLY_OPTION_GAIN: '机会',
+    ALLY_RESOURCE_RUNWAY_GAIN: '资源',
+    FOCUS_TARGET_MARGINAL_GAIN: '目标推进',
+    PROTECTION_MARGINAL_GAIN: '防御',
+    TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: '控制',
   };
 
   // Fallback unit families; caller rows usually carry their own unitFamily.
@@ -25886,6 +26032,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     PUBLIC_RECIPIENT_NEED_MATCH: 'RATIO_0_1',
     REACTION_DAMAGE_MULTIPLIER: 'RATIO_0_1',
     REACTION_DODGE_PROBABILITY: 'PROBABILITY_0_1',
+    OBJECTIVE_PROGRESS: 'RATIO_0_1',
+    SELF_FOLLOWUP_POOL_GAIN: 'RATIO_0_1',
+    SELF_FOLLOWUP_MECHANICAL_GAIN: 'RATIO_0_1',
+    RESOURCE_RUNWAY_GAIN: 'RATIO_0_1',
+    ENEMY_RESPONSE_OPTION_DENIAL: 'RATIO_0_1',
+    OPPONENT_RESPONSE_PRESSURE: 'RATIO_0_1',
+    REACTION_FOLLOWUP_GAIN: 'RATIO_0_1',
+    SETUP_INTERRUPT_RISK: 'RATIO_0_1',
+    ALLY_OPTION_GAIN: 'RATIO_0_1',
+    ALLY_RESOURCE_RUNWAY_GAIN: 'RATIO_0_1',
+    FOCUS_TARGET_MARGINAL_GAIN: 'RATIO_0_1',
+    PROTECTION_MARGINAL_GAIN: 'RATIO_0_1',
+    TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: 'RATIO_0_1',
   };
 
   var NUMERIC_CODES = Object.freeze([
@@ -25900,7 +26059,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     'TEAM_EFFECT_REDUNDANCY_RATIO', 'RESOURCE_DEFICIT_COVERAGE',
     'RESOURCE_CONSUMER_FIT', 'TEAM_FOLLOWUP_COVERAGE',
     'PUBLIC_RECIPIENT_NEED_MATCH', 'REACTION_DAMAGE_MULTIPLIER',
-    'REACTION_DODGE_PROBABILITY',
+    'REACTION_DODGE_PROBABILITY', 'OBJECTIVE_PROGRESS',
+    'SELF_FOLLOWUP_POOL_GAIN', 'SELF_FOLLOWUP_MECHANICAL_GAIN',
+    'RESOURCE_RUNWAY_GAIN', 'ENEMY_RESPONSE_OPTION_DENIAL',
+    'OPPONENT_RESPONSE_PRESSURE', 'REACTION_FOLLOWUP_GAIN',
+    'SETUP_INTERRUPT_RISK', 'ALLY_OPTION_GAIN', 'ALLY_RESOURCE_RUNWAY_GAIN',
+    'FOCUS_TARGET_MARGINAL_GAIN', 'PROTECTION_MARGINAL_GAIN',
+    'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
   ]);
   var NUMERIC_CODE_SET = new Set(NUMERIC_CODES);
   var ENUM_CODES = new Set(['RELATION_TARGET_SIDE']);
@@ -26667,6 +26832,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     TEAM_EFFECT_REDUNDANCY_RATIO: '控制', RESOURCE_DEFICIT_COVERAGE: '资源',
     RESOURCE_CONSUMER_FIT: '资源', TEAM_FOLLOWUP_COVERAGE: '机会',
     PUBLIC_RECIPIENT_NEED_MATCH: '资源',
+    OBJECTIVE_PROGRESS: '目标推进', SELF_FOLLOWUP_POOL_GAIN: '机会',
+    SELF_FOLLOWUP_MECHANICAL_GAIN: '机会', RESOURCE_RUNWAY_GAIN: '资源',
+    ENEMY_RESPONSE_OPTION_DENIAL: '控制', OPPONENT_RESPONSE_PRESSURE: '伤害压力',
+    REACTION_FOLLOWUP_GAIN: '机会', SETUP_INTERRUPT_RISK: '风险',
+    ALLY_OPTION_GAIN: '机会', ALLY_RESOURCE_RUNWAY_GAIN: '资源',
+    FOCUS_TARGET_MARGINAL_GAIN: '目标推进', PROTECTION_MARGINAL_GAIN: '防御',
+    TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: '控制',
   };
   var DISPLAY_NAME = {
     SUCCESS_PROBABILITY: '命中把握', DAMAGE_POWER: '威力', DAMAGE_SEGMENTS: '段数',
@@ -26682,6 +26854,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     RESOURCE_DEFICIT_COVERAGE: '资源缺口覆盖', RESOURCE_CONSUMER_FIT: '资源消费匹配',
     TEAM_FOLLOWUP_COVERAGE: '后续跟进覆盖',
     REACTION_DAMAGE_MULTIPLIER: '预计承伤比例', REACTION_DODGE_PROBABILITY: '预计闪避把握',
+    OBJECTIVE_PROGRESS: '胜负目标推进', SELF_FOLLOWUP_POOL_GAIN: '后续可用招式增益',
+    SELF_FOLLOWUP_MECHANICAL_GAIN: '连招衔接增益', RESOURCE_RUNWAY_GAIN: '资源续航增益',
+    ENEMY_RESPONSE_OPTION_DENIAL: '对手应对空间压缩', OPPONENT_RESPONSE_PRESSURE: '对手反应压力',
+    REACTION_FOLLOWUP_GAIN: '应对后反击收益', SETUP_INTERRUPT_RISK: '蓄势中断风险',
+    ALLY_OPTION_GAIN: '队友后续选择增益', ALLY_RESOURCE_RUNWAY_GAIN: '队友资源续航增益',
+    FOCUS_TARGET_MARGINAL_GAIN: '集火边际收益', PROTECTION_MARGINAL_GAIN: '防护边际收益',
+    TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: '团队效果重复度',
   };
   var PLAYER_CONCEPT = {
     目标推进: '目标推进', 伤害压力: '伤害', 控制: '控制', 防御: '防御',
@@ -30933,6 +31112,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         );
     };
     if (explicitReactionAuthorization) return effects.length > 0;
+    if (castTime > Math.min(10, immediateBudget)) return false;
     return effects.length > 0 && effects.every(isImmediateDefensiveEffect);
   }
 
@@ -79558,8 +79738,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // compile the V4-isomorphic online document (PDA -> Bridge -> BIF immediate,
   // FeatureSource -> Relational) exactly like the offline compiler. The
   // provider then stays pure linear scoring over the supplied featureInputs
-  // and never calls previewAction itself. No response/future round/route
-  // pools are consulted; failures are fail-closed with the candidate id.
+  // and never calls previewAction itself. The adapter derives bounded causal
+  // post-state, follow-up-option and public opponent-pressure summaries without
+  // entering recursive route pools; failures are fail-closed with the candidate id.
   function r9v2LinearPublicSnapshot(visibleWorld, actorId) {
     const units = {};
     const sides = {};
@@ -79634,6 +79815,413 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       typeof row['数值'] === 'string' && row['数值'].length > 0
     );
     return { recipientId, useEffects };
+  }
+
+  const r9v2LinearCausalCodes = Object.freeze([
+    'OBJECTIVE_PROGRESS', 'SELF_FOLLOWUP_POOL_GAIN',
+    'SELF_FOLLOWUP_MECHANICAL_GAIN', 'RESOURCE_RUNWAY_GAIN',
+    'ENEMY_RESPONSE_OPTION_DENIAL', 'OPPONENT_RESPONSE_PRESSURE',
+    'REACTION_FOLLOWUP_GAIN', 'SETUP_INTERRUPT_RISK',
+    'ALLY_OPTION_GAIN', 'ALLY_RESOURCE_RUNWAY_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
+    'PROTECTION_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
+  ]);
+
+  function r9v2LinearSkillValue(skill = {}) {
+    return Math.min(4, (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).reduce((sum, effect) => {
+      const prototype = String(effect?.原型 || '').trim();
+      const value = Math.abs(Number.parseFloat(String(effect?.数值 ?? effect?.威力倍率 ?? 0))) || 0;
+      if (prototype === '伤害结算') return sum + Math.max(0.2, Number(effect?.威力倍率 || 50) / 100);
+      if (['行动机会', '机制授予', '召唤生成'].includes(prototype)) return sum + 1;
+      if (['状态施加', '状态移除', '规则防御', '资源锁定', '机制抹消'].includes(prototype)) return sum + 0.75;
+      if (['护盾变化', '属性修正', '判定修正', '结算修正'].includes(prototype)) return sum + Math.max(0.35, Math.min(1, value / 25));
+      if (prototype === '资源变化' || prototype === '资源转移') return sum + Math.max(0.25, Math.min(1, value / 25));
+      return sum + 0.1;
+    }, 0));
+  }
+
+  function r9v2LinearSkillPool(unit = {}) {
+    const rows = collectSkills(unit).map(sourceSkill => {
+      const skill = preview.applySkillSettlementModifiers(
+        unit,
+        applyEquipmentPassivesToSkill(unit, sourceSkill),
+      ).skill;
+      if (!Array.isArray(skill?._效果数组) || !skill._效果数组.length) return null;
+      const affordable = checkSkillCostAffordable(unit, skill, {
+        context: skillCostParserContext(unit, skill),
+      });
+      return affordable.valid && affordable.affordable
+        ? { id: skillId(sourceSkill), value: r9v2LinearSkillValue(skill), skill }
+        : null;
+    }).filter(Boolean);
+    return {
+      count: rows.length,
+      value: rows.reduce((sum, row) => sum + row.value, 0),
+      rows,
+    };
+  }
+
+  function r9v2LinearResourceRatio(unit = {}) {
+    return ['魂力', '精神力', '体力'].reduce((sum, resource) =>
+      sum + preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)), 0) / 3;
+  }
+
+  function r9v2LinearResourceRunwayGain(before = {}, after = {}) {
+    return ['魂力', '精神力', '体力'].reduce((selected, resource) => {
+      const delta = preview.readResource(after, resource) / Math.max(1, preview.readResourceMax(after, resource)) -
+        preview.readResource(before, resource) / Math.max(1, preview.readResourceMax(before, resource));
+      return Math.abs(delta) > Math.abs(selected) ? delta : selected;
+    }, 0);
+  }
+
+  function r9v2LinearSideUnits(worldSnapshot = {}, side = '') {
+    return preview.listUnits(worldSnapshot)
+      .filter(entry => entry.side === side && preview.isPhysicallyAlive(entry.unit))
+      .map(entry => entry.unit);
+  }
+
+  function r9v2LinearSideStateValue(worldSnapshot = {}, side = '') {
+    const units = r9v2LinearSideUnits(worldSnapshot, side);
+    if (!units.length) return 0;
+    return units.reduce((sum, unit) => sum +
+      preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)), 0) / units.length;
+  }
+
+  function r9v2LinearMechanicalCoverage(worldSnapshot = {}, actorId = '', hostileSide = '') {
+    const actor = preview.findUnit(worldSnapshot, actorId);
+    if (!actor) return 0;
+    const targets = r9v2LinearSideUnits(worldSnapshot, hostileSide);
+    if (!targets.length) return 0;
+    return collectSkills(actor).reduce((total, skill) => total +
+      (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).reduce((sum, effect) => {
+        if (!effect || typeof effect !== 'object') return sum;
+        const enabled = targets.some(target => preview.effectConditionEnabled(effect, worldSnapshot, actor, target));
+        return sum + (enabled ? Math.max(0.1, r9v2LinearSkillValue({ _效果数组: [effect] })) : 0);
+      }, 0), 0);
+  }
+
+  function r9v2LinearBestActionCapacity(worldSnapshot = {}, unit = {}, hostileSide = '') {
+    const targets = r9v2LinearSideUnits(worldSnapshot, hostileSide);
+    if (!targets.length) return 0;
+    let best = Math.max(...targets.map(target =>
+      preview.calculateBaseActionValue(unit, target, { actionKind: 'BASIC_ATTACK' })));
+    collectSkills(unit).forEach(sourceSkill => {
+      const skill = preview.applySkillSettlementModifiers(
+        unit,
+        applyEquipmentPassivesToSkill(unit, sourceSkill),
+      ).skill;
+      const affordable = checkSkillCostAffordable(unit, skill, {
+        context: skillCostParserContext(unit, skill),
+      });
+      if (!affordable.valid || !affordable.affordable) return;
+      targets.forEach(target => {
+        best = Math.max(best, preview.calculateBaseActionValue(unit, target, {
+          actionKind: 'RELEASE_SKILL',
+          skill,
+        }));
+      });
+    });
+    return Math.max(0, best);
+  }
+
+  function r9v2LinearFollowupWindows(effects = [], request = {}, worldSnapshot = {}) {
+    const duration = (Array.isArray(effects) ? effects : []).reduce((maximum, effect) => {
+      const prototype = String(effect?.原型 || '').trim();
+      if (!['属性修正', '判定修正', '结算修正', '状态施加', '机制授予'].includes(prototype)) return maximum;
+      return Math.max(maximum, Math.max(1, Number(effect?.持续回合 || 1)));
+    }, 1);
+    const remainingRounds = battleHorizonProfile(request, worldSnapshot).remainingRounds;
+    return Math.max(1, Math.min(
+      3,
+      duration,
+      Number.isFinite(remainingRounds) ? remainingRounds + 1 : duration,
+    ));
+  }
+
+  function r9v2LinearTerminalValue(result = {}, actorSide = '') {
+    if (result?.terminal !== true) return 0;
+    if (result.winner === 'draw') return 0;
+    const actorWon = (result.winner === 'player' && actorSide === 'team_player') ||
+      (result.winner === 'enemy' && actorSide === 'team_enemy');
+    return actorWon ? 1 : -1;
+  }
+
+  function r9v2LinearResponseRetention(request = {}, target = {}, actor = {}) {
+    let retention = Math.min(
+      preview.calculateDefenseDamageMultiplier(target, actor, false),
+      1 - preview.calculateDodgeProbability(target, actor, false),
+    );
+    const known = Array.isArray(request?.beliefState?.publicResponses?.[preview.unitId(target)])
+      ? request.beliefState.publicResponses[preview.unitId(target)]
+      : [];
+    known.forEach(response => {
+      if (Number.isFinite(Number(response?.damageMultiplier))) retention = Math.min(retention, Number(response.damageMultiplier));
+      if (Number.isFinite(Number(response?.dodgeProbability))) retention = Math.min(retention, 1 - Number(response.dodgeProbability));
+    });
+    return clamp(retention, 0, 1);
+  }
+
+  function r9v2LinearControlSuppression(unit = {}) {
+    const states = unit?.状态效果 && typeof unit.状态效果 === 'object'
+      ? Object.values(unit.状态效果)
+      : [];
+    return clamp(states.reduce((maximum, state) => {
+      const effect = state?.战斗效果 || state?.计算层效果 || {};
+      if (effect.cannot_act === true || effect.skip_turn === true) return 1;
+      const lock = effect.cannot_react === true ? 0.8 : effect.silence === true || effect.disarm === true ? 0.6 : 0;
+      return Math.max(
+        maximum,
+        lock,
+        Number(effect.cast_speed_penalty || 0),
+        Number(effect.reaction_penalty || 0),
+        Number(effect.dodge_penalty || 0),
+      );
+    }, 0), 0, 1);
+  }
+
+  function r9v2LinearPublicSideToken(value = '') {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (/^(enemy|敌方|对方|team_enemy)$/.test(normalized)) return 'team_enemy';
+    if (/^(player|玩家|我方|team_player)$/.test(normalized)) return 'team_player';
+    return '';
+  }
+
+  function r9v2LinearRecentAttackPropensity(worldSnapshot = {}, unit = {}, unitSide = '') {
+    const unitId = preview.unitId(unit);
+    const currentRound = Math.max(0, Number(worldSnapshot?.回合 || 0));
+    const rows = (Array.isArray(worldSnapshot?.__battleEventLedger)
+      ? worldSnapshot.__battleEventLedger
+      : [])
+      .filter(event =>
+        String(event?.eventKind || '').trim() === 'action_start' &&
+        String(event?.actionRole || 'ACTIVE').trim().toUpperCase() === 'ACTIVE' &&
+        String(event?.actorId || '').trim() === unitId &&
+        Number(event?.round || 0) >= Math.max(0, currentRound - 2)
+      )
+      .slice(-2);
+    if (!rows.length) return 1;
+    let weightedOffense = 0;
+    let weightTotal = 0;
+    rows.forEach((event, index) => {
+      const weight = index + 1;
+      const targetIds = [...new Set([
+        ...(Array.isArray(event?.targetIds) ? event.targetIds : [event?.targetIds]),
+        event?.targetId,
+        event?.resolvedTargetId,
+      ].map(value => String(value || '').trim()).filter(Boolean))];
+      const targetSides = targetIds.map(targetId => {
+        const target = preview.findUnit(worldSnapshot, targetId);
+        return target ? preview.sideOf(worldSnapshot, target) : '';
+      }).filter(Boolean);
+      const eventTargetSide = r9v2LinearPublicSideToken(event?.targetSide);
+      const offensive = String(event?.actionType || event?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' ||
+        targetSides.some(side => side !== unitSide) ||
+        (eventTargetSide && eventTargetSide !== unitSide);
+      weightedOffense += weight * (offensive ? 1 : 0.15);
+      weightTotal += weight;
+    });
+    return clamp(weightedOffense / Math.max(1, weightTotal), 0.15, 1);
+  }
+
+  function r9v2LinearExpectedBasicDamageRatio(worldSnapshot = {}, source = {}, target = {}, sourceSide = '') {
+    const basicEffect = { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 };
+    const expectedDamage = preview.calculateBaseDamage(basicEffect, source, target) *
+      preview.estimateHitProbability(source, target, basicEffect);
+    return clamp(
+      expectedDamage / Math.max(1, preview.readHpMax(target)) *
+        r9v2LinearRecentAttackPropensity(worldSnapshot, source, sourceSide),
+      0,
+      1,
+    );
+  }
+
+  function r9v2LinearCausalFeatureRows(request = {}, candidate = {}, result = {}) {
+    const before = request.visibleWorld;
+    const after = result.afterSnapshot || before;
+    const actorId = request.actorId;
+    const actorSide = request.actorSide;
+    const hostileSide = actorSide === 'team_player' ? 'team_enemy' : 'team_player';
+    const actorBefore = preview.findUnit(before, actorId);
+    const actorAfter = preview.findUnit(after, actorId) || actorBefore;
+    const declaration = candidate.declaration || {};
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const followupWindows = r9v2LinearFollowupWindows(effects, request, before);
+    const role = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+    const beforePool = r9v2LinearSkillPool(actorBefore || {});
+    const afterPool = r9v2LinearSkillPool(actorAfter || {});
+    const poolScale = Math.max(1, beforePool.value, afterPool.value);
+    const beforeMechanical = r9v2LinearMechanicalCoverage(before, actorId, hostileSide);
+    const afterMechanical = r9v2LinearMechanicalCoverage(after, actorId, hostileSide);
+    const mechanicalScale = Math.max(1, beforeMechanical, afterMechanical);
+    const beforeSelfCapacity = r9v2LinearBestActionCapacity(before, actorBefore || {}, hostileSide);
+    const afterSelfCapacity = r9v2LinearBestActionCapacity(after, actorAfter || {}, hostileSide);
+    const selfCapacityGain = Math.max(0, afterSelfCapacity - beforeSelfCapacity) /
+      Math.max(1, beforeSelfCapacity, afterSelfCapacity) * followupWindows;
+    const beforeAllies = r9v2LinearSideUnits(before, actorSide).filter(unit => preview.unitId(unit) !== actorId);
+    const afterAllies = new Map(r9v2LinearSideUnits(after, actorSide).map(unit => [preview.unitId(unit), unit]));
+    let allyOptionGain = 0;
+    let allyResourceRunwayGain = 0;
+    beforeAllies.forEach(unit => {
+      const next = afterAllies.get(preview.unitId(unit)) || unit;
+      const priorPool = r9v2LinearSkillPool(unit);
+      const nextPool = r9v2LinearSkillPool(next);
+      const priorCapacity = r9v2LinearBestActionCapacity(before, unit, hostileSide);
+      const nextCapacity = r9v2LinearBestActionCapacity(after, next, hostileSide);
+      allyOptionGain += Math.max(
+        Math.max(0, nextPool.value - priorPool.value) / Math.max(1, priorPool.value, nextPool.value),
+        Math.max(0, nextCapacity - priorCapacity) / Math.max(1, priorCapacity, nextCapacity),
+      ) * followupWindows;
+      allyResourceRunwayGain += Math.max(0, r9v2LinearResourceRunwayGain(unit, next));
+    });
+    allyOptionGain = clamp(allyOptionGain / Math.max(1, beforeAllies.length), 0, 1);
+    allyResourceRunwayGain = clamp(allyResourceRunwayGain / Math.max(1, beforeAllies.length), 0, 1);
+    const enemiesBefore = r9v2LinearSideUnits(before, hostileSide);
+    const enemiesAfter = new Map(r9v2LinearSideUnits(after, hostileSide).map(unit => [preview.unitId(unit), unit]));
+    let enemyDenial = 0;
+    let hostilePressure = 0;
+    enemiesBefore.forEach(unit => {
+      const next = enemiesAfter.get(preview.unitId(unit));
+      const priorPool = r9v2LinearSkillPool(unit);
+      const nextPool = next ? r9v2LinearSkillPool(next) : { value: 0 };
+      const priorThreat = actorBefore
+        ? preview.calculateBaseActionValue(unit, actorBefore, { actionKind: 'BASIC_ATTACK' }) / 100
+        : 0;
+      const nextThreat = next && actorAfter
+        ? preview.calculateBaseActionValue(next, actorAfter, { actionKind: 'BASIC_ATTACK' }) / 100
+        : 0;
+      const priorOrder = preview.naturalActionOrderProfile(unit).effectiveAgility;
+      const nextOrder = next ? preview.naturalActionOrderProfile(next).effectiveAgility : 0;
+      const orderDenial = Math.max(0, priorOrder - nextOrder) / Math.max(1e-9, priorOrder);
+      const priorDodge = actorBefore ? preview.calculateDodgeProbability(unit, actorBefore, false) : 0;
+      const nextDodge = next && actorAfter ? preview.calculateDodgeProbability(next, actorAfter, false) : 0;
+      const reactionDenial = Math.max(0, priorDodge - nextDodge);
+      const controlDenial = Math.max(0, r9v2LinearControlSuppression(next || {}) - r9v2LinearControlSuppression(unit));
+      enemyDenial += Math.max(
+        Math.max(0, priorPool.value - nextPool.value) / Math.max(1, priorPool.value),
+        Math.max(0, priorThreat - nextThreat) / Math.max(1e-9, priorThreat),
+        orderDenial,
+        reactionDenial,
+        controlDenial,
+      );
+      const hpLoss = Math.max(0, preview.readHp(unit) - (next ? preview.readHp(next) : 0)) / Math.max(1, preview.readHpMax(unit));
+      hostilePressure += hpLoss * r9v2LinearResponseRetention(request, unit, actorBefore || {});
+    });
+    enemyDenial = clamp(
+      enemyDenial / Math.max(1, enemiesBefore.length) * followupWindows,
+      0,
+      1,
+    );
+    hostilePressure = clamp(hostilePressure / Math.max(1, enemiesBefore.length), 0, 1);
+    const objectives = request?.objectiveContract || request?.battleIntent?.objectives || before?.胜负条件 || {};
+    const beforeObjective = preview.evaluateBattleObjectivesCompact(before, objectives);
+    const afterObjective = preview.evaluateBattleObjectivesCompact(after, objectives);
+    const terminalProgress = r9v2LinearTerminalValue(afterObjective, actorSide) - r9v2LinearTerminalValue(beforeObjective, actorSide);
+    const stateProgress = (
+      r9v2LinearSideStateValue(after, actorSide) - r9v2LinearSideStateValue(before, actorSide) -
+      r9v2LinearSideStateValue(after, hostileSide) + r9v2LinearSideStateValue(before, hostileSide)
+    ) / 2;
+    const setupAction = effects.some(effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      return ['资源变化', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予'].includes(prototype) &&
+        !effects.some(row => String(row?.原型 || '').trim() === '伤害结算');
+    });
+    const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+    const naturalBudget = Math.max(1, Number(request?.actionOpportunity?.naturalActionBudget || 40));
+    const enemyThreat = Math.max(0, ...enemiesBefore.map(enemy =>
+      preview.calculateBaseActionValue(enemy, actorBefore || {}, { actionKind: 'BASIC_ATTACK' }) / 100));
+    const targetIds = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
+    const hostileTargets = targetIds.map(id => preview.findUnit(before, id)).filter(unit => unit && preview.sideOf(before, unit) === hostileSide);
+    const lowestHostileRatio = Math.min(1, ...enemiesBefore.map(unit => preview.readHp(unit) / Math.max(1, preview.readHpMax(unit))));
+    const focusGain = hostileTargets.some(unit =>
+      preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)) <= lowestHostileRatio + 1e-9) ? hostilePressure : 0;
+    const friendlyThreat = unit => enemiesBefore.reduce((sum, enemy) =>
+      sum + r9v2LinearExpectedBasicDamageRatio(before, enemy, unit, hostileSide), 0);
+    const threatenedFriendlies = r9v2LinearSideUnits(before, actorSide);
+    const maximumFriendlyThreat = Math.max(1e-9, ...threatenedFriendlies.map(friendlyThreat));
+    const exposureRows = threatenedFriendlies.map(unit => ({
+      unitId: preview.unitId(unit),
+      value: Math.exp(clamp(8 * (friendlyThreat(unit) / maximumFriendlyThreat - 1), -30, 0)),
+    }));
+    const exposureTotal = Math.max(1e-9, exposureRows.reduce((sum, row) => sum + row.value, 0));
+    const exposureByUnit = new Map(exposureRows.map(row => [row.unitId, row.value / exposureTotal]));
+    let protectionGain = 0;
+    let redundant = 0;
+    let supportiveCount = 0;
+    effects.forEach(effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      const signedValue = Number.parseFloat(String(effect?.数值 || '0'));
+      const friendly = preview.effectTargetsAllies(effect) ||
+        /自身|友方|己方/.test(String(effect?.目标 || '')) ||
+        (prototype === '资源变化' && signedValue > 0) ||
+        (prototype === '护盾变化' && String(effect?.护盾模式 || '').trim() === '正向护盾') ||
+        (prototype === '属性修正' && signedValue > 0);
+      if (!friendly || !['资源变化', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除'].includes(prototype)) return;
+      supportiveCount += 1;
+      const recipients = targetIds.map(id => preview.findUnit(before, id)).filter(Boolean);
+      const relevant = recipients.length ? recipients : [actorBefore].filter(Boolean);
+      const realizedProtection = relevant.reduce((sum, unit) => {
+        const next = preview.findUnit(after, preview.unitId(unit)) || unit;
+        const hpMax = Math.max(1, preview.readHpMax(unit));
+        const hpGain = Math.max(0, preview.readHp(next) - preview.readHp(unit)) / hpMax;
+        const shieldGain = Math.max(0, preview.readShield(next) - preview.readShield(unit)) / hpMax;
+        const protectionWindows = Math.max(1, Math.min(3, Number(effect?.持续回合 || 1)));
+        const usableShield = role === 'ACTIVE'
+          ? Math.min(shieldGain, friendlyThreat(unit) * protectionWindows)
+          : shieldGain;
+        return sum + (hpGain + usableShield) *
+          Number(exposureByUnit.get(preview.unitId(unit)) || 0);
+      }, 0) / Math.max(1, relevant.length);
+      protectionGain = Math.max(protectionGain, realizedProtection);
+      if (prototype === '资源变化' && relevant.every(unit => {
+        const resource = String(effect?.资源 || '').trim();
+        return preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)) >= 0.95;
+      })) redundant += 1;
+    });
+    const incoming = request?.actionOpportunity?.incomingAction || {};
+    const source = preview.findUnit(before, request?.actionOpportunity?.sourceActorId || incoming?.actorId);
+    const incomingThreat = source && actorBefore
+      ? preview.calculateBaseActionValue(source, actorBefore, incoming) / 100
+      : 0;
+    const sourceAfter = source ? preview.findUnit(after, preview.unitId(source)) || source : null;
+    const incomingThreatAfter = sourceAfter && actorAfter
+      ? preview.calculateBaseActionValue(sourceAfter, actorAfter, incoming) / 100
+      : incomingThreat;
+    const selfHpGain = Math.max(0, preview.readHp(actorAfter || {}) - preview.readHp(actorBefore || {})) / Math.max(1, preview.readHpMax(actorBefore || {}));
+    const selfShieldGain = Math.max(0, preview.readShield(actorAfter || {}) - preview.readShield(actorBefore || {})) / Math.max(1, preview.readHpMax(actorBefore || {}));
+    const defensivePrevention = declaration.actionKind === 'DEFEND'
+      ? incomingThreat * (1 - preview.calculateDefenseDamageMultiplier(actorBefore || {}, source || {}, false))
+      : declaration.actionKind === 'EVADE'
+        ? incomingThreat * preview.calculateDodgeProbability(actorBefore || {}, source || {}, false)
+        : selfHpGain + selfShieldGain + Math.max(0, incomingThreat - incomingThreatAfter);
+    const values = {
+      OBJECTIVE_PROGRESS: clamp(terminalProgress || stateProgress, -1, 1),
+      SELF_FOLLOWUP_POOL_GAIN: clamp((afterPool.value - beforePool.value) / poolScale, -1, 1),
+      SELF_FOLLOWUP_MECHANICAL_GAIN: clamp(Math.max(
+        (afterMechanical - beforeMechanical) / mechanicalScale,
+        selfCapacityGain,
+      ), -1, 1),
+      RESOURCE_RUNWAY_GAIN: clamp(r9v2LinearResourceRunwayGain(actorBefore || {}, actorAfter || {}), -1, 1),
+      ENEMY_RESPONSE_OPTION_DENIAL: enemyDenial,
+      OPPONENT_RESPONSE_PRESSURE: hostilePressure,
+      REACTION_FOLLOWUP_GAIN: ['REACTION', 'COUNTER'].includes(role)
+        ? clamp(defensivePrevention + hostilePressure + Math.max(0, (afterPool.value - beforePool.value) / poolScale), 0, 1)
+        : 0,
+      SETUP_INTERRUPT_RISK: setupAction ? clamp(enemyThreat * Math.max(1, castTime / naturalBudget), 0, 1) : 0,
+      ALLY_OPTION_GAIN: allyOptionGain,
+      ALLY_RESOURCE_RUNWAY_GAIN: allyResourceRunwayGain,
+      FOCUS_TARGET_MARGINAL_GAIN: clamp(focusGain, 0, 1),
+      PROTECTION_MARGINAL_GAIN: clamp(protectionGain, 0, 1),
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: supportiveCount ? clamp(redundant / supportiveCount, 0, 1) : 0,
+    };
+    const eventIds = [...new Set((result.contributions || []).map(entry => String(entry?.eventId || '')).filter(Boolean))];
+    return Object.freeze(r9v2LinearCausalCodes.map(code => Object.freeze({
+      featureCode: code,
+      status: 'KNOWN',
+      reasonCode: 'OK',
+      value: Number(values[code] || 0),
+      unitFamily: 'RATIO',
+      sourceFactIds: Object.freeze([]),
+      sourceEventIds: Object.freeze(eventIds),
+    })));
   }
 
   function r9v2LinearPlainObject(value) {
@@ -80392,9 +80980,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (relationalByCandidate.size !== candidateIds.length || candidateIds.some(id => !relationalByCandidate.has(id))) {
       throw new Error('R9V2_LINEAR_RELATIONAL_CLOSURE');
     }
+    const frozenById = new Map(request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]));
     const featureInputs = candidateIds.map(candidateId => ({
       candidateId,
-      document: { immediate: bifDocs[candidateId], relational: relationalByCandidate.get(candidateId) },
+      document: {
+        immediate: bifDocs[candidateId],
+        relational: relationalByCandidate.get(candidateId),
+        causal: {
+          schemaVersion: 'BehaviorCausalFeatureV1',
+          features: r9v2LinearCausalFeatureRows(
+            request,
+            frozenById.get(candidateId),
+            previewResultsById[candidateId],
+          ),
+        },
+      },
     }));
     return {
       featureInputs,
@@ -80459,6 +81059,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const rows = [
         ...((item.document && item.document.immediate && item.document.immediate.features) || []),
         ...((item.document && item.document.relational && item.document.relational.features) || []),
+        ...((item.document && item.document.causal && item.document.causal.features) || []),
       ];
       const byCode = new Map();
       for (const row of rows) {
