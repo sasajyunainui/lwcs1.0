@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:a02ad5e578c94d7a72a809a5761fd1b1e431500f5dcf829e927cc01293eb1f0a|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:a470fa20e5bfbba99c349eb667879d0b93666e9c67c94fb534bd5683b133a65d|BattleRuntime_Module.js:c47ad09b6d4cf01205b5319ae69603b98d027f604737c0298df7112572be1ead|BattleReport_Module.js:bf386ef874e05844341ad42e8ed77fa7ca6de52ce0b6dcc6ffbd23f08a612ea8|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5 */
+/* sources-sha256: TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:a02ad5e578c94d7a72a809a5761fd1b1e431500f5dcf829e927cc01293eb1f0a|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:a470fa20e5bfbba99c349eb667879d0b93666e9c67c94fb534bd5683b133a65d|BattleRuntime_Module.js:c47ad09b6d4cf01205b5319ae69603b98d027f604737c0298df7112572be1ead|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5 */
 ;
 /* source: TradeUI_Module.js */
 /* TradeUI_Module.js - 交易网络组件 (JS 模块版) */
@@ -104058,6 +104058,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       rows.push({
         round,
+        headline: damageBySide.player > 0 || damageBySide.enemy > 0
+          ? [
+              damageBySide.player > 0 ? `我方造成${damageBySide.player}点伤害` : '',
+              damageBySide.enemy > 0 ? `敌方造成${damageBySide.enemy}点伤害` : '',
+            ].filter(Boolean).join('，')
+          : stateEvents.length
+            ? `本回合发生${stateEvents.length}项状态变化`
+            : lostOpportunityCount
+              ? `本回合有${lostOpportunityCount}次行动机会未能执行`
+              : '本回合结算完成',
         factIds,
         canonicalFactIds: summaryFactIds,
         passiveFactIds: passiveFacts.map(fact => fact.factId),
@@ -104438,12 +104448,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (alternativeAdvantages.length) clauses.push(`替代方案${alternativeAdvantages.join('、')}`);
     const selectedTargets = unique(selected?.targetNames || []);
     const alternativeTargets = unique(alternative?.targetNames || []);
-    if (JSON.stringify(selectedTargets) !== JSON.stringify(alternativeTargets)) {
-      clauses.push(
-        `作用目标不同（所选：${selectedTargets.join('、') || '无指定目标'}；替代：${alternativeTargets.join('、') || '无指定目标'}）`,
-      );
-      categories.add('objective');
-    } else if (text(selected?.actionName) !== text(alternative?.actionName)) {
+    if (
+      text(selected?.actionKind) !== text(alternative?.actionKind) ||
+      text(selected?.actionName) !== text(alternative?.actionName)
+    ) {
       const selectedDescription = text(playerActionKindDescriptions[text(selected?.actionKind)]);
       const alternativeDescription = text(playerActionKindDescriptions[text(alternative?.actionKind)]);
       clauses.push(
@@ -104454,6 +104462,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           : `动作不同（所选：${text(selected?.actionName)}；替代：${text(alternative?.actionName)}）`,
       );
       if (allowFutureCategory) categories.add('future');
+    } else if (JSON.stringify(selectedTargets) !== JSON.stringify(alternativeTargets)) {
+      clauses.push(
+        `目标选择不同（所选：${selectedTargets.join('、') || '无指定目标'}；替代：${alternativeTargets.join('、') || '无指定目标'}）`,
+      );
+      categories.add('objective');
     }
     if (!clauses.length) clauses.push('两者在当前公开信息下的目标推进、风险和资源取舍接近');
     return { reason: clauses.join('；'), categories: [...categories] };
@@ -104934,9 +104947,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         } else if (trace?.wasOptimal === false) {
           selectionReason = `当前仍有多个可行方案，选择了${selectedName}；${firstComparison || alternativeSummary || '公开信息下无法进一步区分这些方案的取舍'}`;
         } else if (trace?.selectedTiedAtTop === true && number(trace?.topRankedTieCount, 0) > 1) {
-          selectionReason = hideEnemyPrivateCandidates
-            ? `选择${selectedName}；${firstComparison || alternativeSummary || '当前公开信息没有显示明确的主要替代'}`
-            : `当时有${number(trace.topRankedTieCount, 0)}项行动在公开比较中没有拉开差距，最终选择${selectedName}；${firstComparison || alternativeSummary || '这些行动的目标推进、风险和资源取舍相同'}`;
+          selectionReason = `当时有${number(trace.topRankedTieCount, 0)}项行动在公开比较中没有拉开差距，最终选择${selectedName}；${firstComparison || alternativeSummary || '这些行动的目标推进、风险和资源取舍相同'}`;
         } else if (firstComparison) {
           selectionReason = stableVariant(
             [node?.chainId, actorId, selectedCandidateId, firstComparison].map(text).join('|'),
@@ -105053,6 +105064,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const linearDecomposition = trace?.linearDecomposition;
         const chineseReason = root.__LWCS_BEHAVIOR_DECISION_PIPELINE__?.chineseReason;
         if (
+          decisionKind === 'CHOICE' &&
           linearDecomposition &&
           chineseReason &&
           typeof chineseReason.buildPlayerReasons === 'function' &&
@@ -105065,9 +105077,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             hideEnemyPrivateCandidates,
             visibilityMode,
           );
-          if (enriched) return enriched;
+          if (enriched) {
+            return enrichPublicTargetSelectionReason(enriched, linearDecomposition, baseExplanation);
+          }
         }
-        return baseExplanation;
+        return enrichPublicTargetSelectionReason(baseExplanation, linearDecomposition, baseExplanation);
       });
     });
   }
@@ -105079,6 +105093,37 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
      predicted.numbers 沿用现有决策预测数字合同形状（DECISION_TIME_PUBLIC_PROJECTION、
      ADD、sourceEventId=explanationId、operands>=2），数字来自公开特征原值；
      审计不过或理由不可用则整体 fail-closed 回退到基础说明。 */
+  function enrichPublicTargetSelectionReason(explanation = {}, decomposition = {}, base = {}) {
+    const baseReason = text(base?.comparisonEvidence?.explanation);
+    if (!baseReason.includes('目标选择不同')) return explanation;
+    const publicReasons = (Array.isArray(decomposition?.selection?.deltas)
+      ? decomposition.selection.deltas
+      : [])
+      .filter(delta =>
+        delta?.zeroByMask !== true &&
+        text(delta?.statusOfSelected) === 'KNOWN' &&
+        text(delta?.statusOfAlternative) === 'KNOWN' &&
+        number(delta?.deltaContribution, 0) > 1e-12
+      )
+      .sort((left, right) =>
+        Math.abs(number(right?.deltaContribution, 0)) - Math.abs(number(left?.deltaContribution, 0))
+      )
+      .map(delta => ({
+        PUBLIC_HP_RATIO: '所选目标的当前血线更适合优先推进',
+        SUCCESS_PROBABILITY: '对所选目标的命中把握更高',
+      })[text(delta?.featureCode)])
+      .filter(Boolean);
+    const reasons = unique(publicReasons).slice(0, 2);
+    if (!reasons.length) return explanation;
+    return {
+      ...explanation,
+      comparisonEvidence: {
+        ...(explanation?.comparisonEvidence || {}),
+        explanation: `选择${text(base?.selected?.name || explanation?.selected?.name)}；${reasons.join('；')}`,
+      },
+    };
+  }
+
   function enrichLinearExplanation(
     base = {},
     decomposition = {},
@@ -105158,6 +105203,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           }))
           .filter(reason => reason.reason),
       }));
+    const mappedSelectionReason = text(report?.selectionReason);
+    const weakMappedSelectionReason = /(?:综合现有公开信息，这一手更合适|相比另一手，当前公开比较更支持这一手|两者相比，这一步的整体取舍更占优|这一手在当前公开比较中更占优)[。！]?$/.test(
+      mappedSelectionReason,
+    );
     return {
       ...base,
       objectiveTradeoffs: (Array.isArray(report?.objectiveTradeoffs)
@@ -105183,7 +105232,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       },
       comparisonEvidence: {
         ...(base?.comparisonEvidence || {}),
-        explanation: text(report?.selectionReason) || base?.comparisonEvidence?.explanation || '',
+        explanation: weakMappedSelectionReason
+          ? text(base?.comparisonEvidence?.explanation)
+          : mappedSelectionReason || base?.comparisonEvidence?.explanation || '',
         alternativeSummary: text(report?.comparisonEvidence?.alternativeSummary),
       },
       predicted: {

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:7fcac97b2521381c311e6d47ea46da0dc963aa654105835d8d2c209f9d1e11d3|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:5b972fe966ebd231f5d9cdd4f16370c1abed4545d593f3a28f147a1f4f9f9b94|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:4820d85bb74c649e4e5db0f0d90c25c3992680935d35172637f7d06c2ffe357a */
+/* sources-sha256: LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:7fcac97b2521381c311e6d47ea46da0dc963aa654105835d8d2c209f9d1e11d3|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:15db6be44b8b40c2b5140b3aa61766ec002acd521d291b6fdacc0bfd310136f3|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
 ;
 /* source: LWCS_MVU_Prompt_Projector.js */
 (function (root) {
@@ -31159,6 +31159,11 @@ function 解析内置地点位置_V1(位置 = '', 地点库 = {}, 运行时 = nu
     ? 运行时.resolveLocation(原文, 片段, { library: 地点库, allowKeyword: false })
     : null;
   if (直接路径?.status === 'resolved') return 直接路径;
+  for (let 长度 = 片段.length - 1; 长度 >= 2; 长度 -= 1) {
+    const 前缀 = 片段.slice(0, 长度);
+    const 前缀解析 = 运行时.resolveLocation(前缀.join('-'), 前缀, { library: 地点库, allowKeyword: false });
+    if (前缀解析.status === 'resolved' || 前缀解析.status === 'conflict') return 前缀解析;
+  }
   if (片段.length > 1) {
     const 叶节点 = 运行时.resolveLocation(片段[片段.length - 1], [], { library: 地点库, allowKeyword: false });
     if (叶节点.status === 'resolved') return 叶节点;
@@ -31211,6 +31216,9 @@ function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
   const 记录ID列表 = [];
   const 当前tick = Math.max(0, Number(数据根?.world?.时间?.tick || 0));
   const 资源时代 = 读取当前静态资源时代_V1(数据根, 当前tick);
+  Object.entries(地点库.地点 || {}).forEach(([记录ID, 记录]) => {
+    if (记录?.实例化策略 === 'insert' && 静态记录可用_V1(资源时代, 'location', 记录ID, 当前tick)) 记录ID列表.push(记录ID);
+  });
   收集开场常驻静态记录_V1(资源时代, 'location', 当前tick).forEach(记录ID => 记录ID列表.push(记录ID));
   if (当前位置 && !['无', '未知', '待生成'].includes(当前位置)) {
     const 位置解析 = 解析内置地点位置_V1(当前位置, 地点库, 运行时);
@@ -40742,6 +40750,12 @@ function 读取内置地点位置记录ID_V1(位置 = '', 环境 = {}) {
     ? 环境.运行时.resolveLocation(原文, 片段, { library: 环境.地点库, allowKeyword: false })
     : null;
   if (直接?.status === 'resolved') return 直接.recordId;
+  for (let 长度 = 片段.length - 1; 长度 >= 2; 长度 -= 1) {
+    const 前缀 = 片段.slice(0, 长度);
+    const 前缀解析 = 环境.运行时.resolveLocation(前缀.join('-'), 前缀, { library: 环境.地点库, allowKeyword: false });
+    if (前缀解析.status === 'resolved') return 前缀解析.recordId;
+    if (前缀解析.status === 'conflict') throw new Error(`玩家位置存在地点解析冲突：${原文}（${前缀解析.candidates.join('、')}）`);
+  }
   if (片段.length > 1) {
     const 叶节点 = 环境.运行时.resolveLocation(片段[片段.length - 1], [], { library: 环境.地点库, allowKeyword: false });
     if (叶节点.status === 'resolved') return 叶节点.recordId;
