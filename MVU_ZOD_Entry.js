@@ -1,6 +1,6 @@
 const MVU_ZOD_ENTRY_URL_V1 = new URL(import.meta.url);
 const MVU_ZOD_ENTRY_BASE_V1 = new URL('./', MVU_ZOD_ENTRY_URL_V1);
-const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 6500;
+const MVU_ZOD_RESOURCE_TIMEOUT_MS_V1 = 30000;
 const MVU_ENGINE_BUNDLE_FILE_V1 = 'MVU_Engine_Bundle.js';
 const MVU_PROJECT_RUNTIME_BUNDLE_FILE_V1 = 'LWCS_MVU_Project_Runtime_Bundle.js';
 const MVU_CRITICAL_PREFETCH_FILES_V1 = Object.freeze([
