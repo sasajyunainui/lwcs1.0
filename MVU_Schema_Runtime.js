@@ -3191,6 +3191,11 @@ function 解析内置地点位置_V1(位置 = '', 地点库 = {}, 运行时 = nu
     ? 运行时.resolveLocation(原文, 片段, { library: 地点库, allowKeyword: false })
     : null;
   if (直接路径?.status === 'resolved') return 直接路径;
+  for (let 长度 = 片段.length - 1; 长度 >= 2; 长度 -= 1) {
+    const 前缀 = 片段.slice(0, 长度);
+    const 前缀解析 = 运行时.resolveLocation(前缀.join('-'), 前缀, { library: 地点库, allowKeyword: false });
+    if (前缀解析.status === 'resolved' || 前缀解析.status === 'conflict') return 前缀解析;
+  }
   if (片段.length > 1) {
     const 叶节点 = 运行时.resolveLocation(片段[片段.length - 1], [], { library: 地点库, allowKeyword: false });
     if (叶节点.status === 'resolved') return 叶节点;
@@ -3243,6 +3248,9 @@ function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
   const 记录ID列表 = [];
   const 当前tick = Math.max(0, Number(数据根?.world?.时间?.tick || 0));
   const 资源时代 = 读取当前静态资源时代_V1(数据根, 当前tick);
+  Object.entries(地点库.地点 || {}).forEach(([记录ID, 记录]) => {
+    if (记录?.实例化策略 === 'insert' && 静态记录可用_V1(资源时代, 'location', 记录ID, 当前tick)) 记录ID列表.push(记录ID);
+  });
   收集开场常驻静态记录_V1(资源时代, 'location', 当前tick).forEach(记录ID => 记录ID列表.push(记录ID));
   if (当前位置 && !['无', '未知', '待生成'].includes(当前位置)) {
     const 位置解析 = 解析内置地点位置_V1(当前位置, 地点库, 运行时);

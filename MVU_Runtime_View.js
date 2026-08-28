@@ -3188,6 +3188,12 @@ function 读取内置地点位置记录ID_V1(位置 = '', 环境 = {}) {
     ? 环境.运行时.resolveLocation(原文, 片段, { library: 环境.地点库, allowKeyword: false })
     : null;
   if (直接?.status === 'resolved') return 直接.recordId;
+  for (let 长度 = 片段.length - 1; 长度 >= 2; 长度 -= 1) {
+    const 前缀 = 片段.slice(0, 长度);
+    const 前缀解析 = 环境.运行时.resolveLocation(前缀.join('-'), 前缀, { library: 环境.地点库, allowKeyword: false });
+    if (前缀解析.status === 'resolved') return 前缀解析.recordId;
+    if (前缀解析.status === 'conflict') throw new Error(`玩家位置存在地点解析冲突：${原文}（${前缀解析.candidates.join('、')}）`);
+  }
   if (片段.length > 1) {
     const 叶节点 = 环境.运行时.resolveLocation(片段[片段.length - 1], [], { library: 环境.地点库, allowKeyword: false });
     if (叶节点.status === 'resolved') return 叶节点.recordId;
