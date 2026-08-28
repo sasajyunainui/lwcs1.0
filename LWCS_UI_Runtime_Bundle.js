@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:7f5d3f4f8af0ce5566b2ecbab2d99a2b65c1dd8e8df35109e202eb0065d31089|TradeUI_Module.js:b99e6a26a72acff777b675ac0ce28c95b1d6453d366a136a2c932a817d4b3c71|ProfessionUI_Module.js:5b6b552dfad918868569c2f9b68f6ef89c3bf459823e22256b89d09e99e9d2af|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:a4179cf84b59e7746386afa0473df34de094e5dbf9db32b39fc5163aed647a95|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:9064de25a4b831575ef8b8845770d1768a875ce29c99d55fc2d7e1eb24c048fc|BattleRuntime_Module.js:1a9e6ff6a93361b2a9bc0930c08bbc261f9ce2044a854eeb87f0094637b9d9be|BattleReport_Module.js:f8d1b508a2d7057015801c3229e84cc3f9add8194c56bc22fe54c7aeca206ee3|BattleUI_Module.js:e2c4bfafccda69516b4ad170208143ece3645e7cfbf2d8f5fcbd6073e17681d6|Database_Module.js:d909883b2a2a19617ffcdef15dd3036adf6de4b01ed9cc1a2b732cff020f71d3 */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:5d8d867b27b27c313c4d225b9a80e414c4b3e47abb08e83e3afc6cdd995e8ac2|TradeUI_Module.js:b99e6a26a72acff777b675ac0ce28c95b1d6453d366a136a2c932a817d4b3c71|ProfessionUI_Module.js:5b6b552dfad918868569c2f9b68f6ef89c3bf459823e22256b89d09e99e9d2af|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:a4179cf84b59e7746386afa0473df34de094e5dbf9db32b39fc5163aed647a95|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:9064de25a4b831575ef8b8845770d1768a875ce29c99d55fc2d7e1eb24c048fc|BattleRuntime_Module.js:1a9e6ff6a93361b2a9bc0930c08bbc261f9ce2044a854eeb87f0094637b9d9be|BattleReport_Module.js:f8d1b508a2d7057015801c3229e84cc3f9add8194c56bc22fe54c7aeca206ee3|BattleUI_Module.js:e2c4bfafccda69516b4ad170208143ece3645e7cfbf2d8f5fcbd6073e17681d6|Database_Module.js:8d81c55208c4b7a4dc3c2d2d0d1d7b7268e825cf8771f80e3b2a0b90eaf2168c */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -14255,8 +14255,8 @@
         if (已有事务.记录键 && 已有事务.状态 !== 'user_message_committed') {
           已提交 = await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance_retry');
         }
-        if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
-        return { ok: true, reused: true, unchanged: true, 新tick };
+        if (已提交 === false) return { ok: false, reason: 'time_advance_commit_failed' };
+        return { ok: true, reused: true, unchanged: true, pending: 已提交 === null, 新tick };
       }
       const 结算根 = cloneJsonValue(基底根, {});
       const 旧任务tick = Number(已有事务.任务时间推进tick);
@@ -14290,9 +14290,9 @@
       已有事务.状态 = 'waiting_user_message';
       if (!已有事务.记录键) return { ok: false, reason: 'time_advance_transaction_missing_key' };
       const 已提交 = await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance');
-      if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
+      if (已提交 === false) return { ok: false, reason: 'time_advance_commit_failed' };
       if (时代提示.text) showUiToast(时代提示.text, 'info', 6200);
-      return { ok: true, reused: true, 新tick };
+      return { ok: true, reused: true, pending: 已提交 === null, 新tick };
     }
     const 结算根 = cloneJsonValue(基底根, {});
     const 时代提示 = 构建时代跨越提示_桥接(基底根, 实际旧tick, 新tick, 资源预检.context);
@@ -14334,9 +14334,9 @@
     const 记录 = 剧情模块预结算事务表.get(记录键);
     if (!记录) return { ok: false, reason: 'time_advance_transaction_missing_record' };
     const 已提交 = await 尝试提交剧情模块预结算事务_桥接(记录键, 记录, 'time_advance');
-    if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
+    if (已提交 === false) return { ok: false, reason: 'time_advance_commit_failed' };
     if (时代提示.text) showUiToast(时代提示.text, 'info', 6200);
-    return { ok: true, reused: false, 新tick };
+    return { ok: true, reused: false, pending: 已提交 === null, 新tick };
   }
 
   function 登记剧情模块预结算事务自写入_桥接(options = {}, beforeStatData = {}, afterStatData = {}, writeAfterMvuData = {}) {
@@ -14416,10 +14416,12 @@
   }
 
   async function 尝试提交剧情模块预结算事务_桥接(记录键 = '', 记录 = {}, 事件键 = '', 事件消息编号 = '') {
-    if (!记录 || 记录.正在处理) return false;
+    if (!记录) return false;
+    if (记录.正在处理) return null;
     if (记录.状态 === 'user_message_committed') return true;
     const 用户楼元信息 = 查找剧情模块事务目标用户楼_桥接(记录, 事件消息编号);
-    if (!用户楼元信息) return false;
+    // TT 在 GENERATION_AFTER_COMMANDS 返回后才创建用户楼；此时属于等待落楼，不是提交失败。
+    if (!用户楼元信息) return null;
     记录.正在处理 = true;
     try {
       const 已固化 = await 固化剧情模块预结算到用户楼_桥接(记录, 用户楼元信息);
@@ -15435,66 +15437,68 @@
     let 静态地点归档检查失败 = false;
 
     let 归档角色命中 = [];
-    try {
-      const manifest = await 读取角色归档Manifest_桥接();
-      const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
-      归档角色命中 = 收集统一实体命中名称_桥接(角色索引, 捕获文本, '角色');
-      可用冷档角色 = await 收集可用归档角色名_桥接(归档角色命中, 定位选项);
-      const 恢复角色 = await 预恢复角色名归档角色_桥接(当前StatData, 归档角色命中, 定位选项);
-      恢复角色.forEach(角色名 => 已恢复角色.push(角色名));
-      changed = changed || 恢复角色.length > 0;
-    } catch (错误) {
-      角色归档检查失败 = true;
-      console.warn('[LWCS] 本轮MVU上下文归档角色恢复失败:', 错误);
-    }
+    if (当前启用标准ST冷归档_桥接()) {
+      try {
+        const manifest = await 读取角色归档Manifest_桥接();
+        const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+        归档角色命中 = 收集统一实体命中名称_桥接(角色索引, 捕获文本, '角色');
+        可用冷档角色 = await 收集可用归档角色名_桥接(归档角色命中, 定位选项);
+        const 恢复角色 = await 预恢复角色名归档角色_桥接(当前StatData, 归档角色命中, 定位选项);
+        恢复角色.forEach(角色名 => 已恢复角色.push(角色名));
+        changed = changed || 恢复角色.length > 0;
+      } catch (错误) {
+        角色归档检查失败 = true;
+        console.warn('[LWCS] 本轮MVU上下文归档角色恢复失败:', 错误);
+      }
 
-    try {
-      const manifest = await 读取势力归档Manifest_桥接();
-      const 势力索引 = manifest && manifest.势力索引 && typeof manifest.势力索引 === 'object' ? manifest.势力索引 : {};
-      const 命中势力 = 收集归档势力命中名称_桥接(势力索引, 捕获文本);
-      const 恢复势力 = await 恢复MVU归档势力_桥接(命中势力, 定位选项);
-      (Array.isArray(恢复势力?.restoredNames) ? 恢复势力.restoredNames : []).forEach(势力名 => 已恢复势力.push(势力名));
-      (恢复势力.blockedNames || []).forEach(势力名 => 势力静态实例化阻断.add(势力名));
-      changed = changed || 恢复势力?.changed === true;
-    } catch (错误) {
-      势力归档检查失败 = true;
-      console.warn('[LWCS] 本轮MVU上下文归档势力恢复失败:', 错误);
-    }
+      try {
+        const manifest = await 读取势力归档Manifest_桥接();
+        const 势力索引 = manifest && manifest.势力索引 && typeof manifest.势力索引 === 'object' ? manifest.势力索引 : {};
+        const 命中势力 = 收集归档势力命中名称_桥接(势力索引, 捕获文本);
+        const 恢复势力 = await 恢复MVU归档势力_桥接(命中势力, 定位选项);
+        (Array.isArray(恢复势力?.restoredNames) ? 恢复势力.restoredNames : []).forEach(势力名 => 已恢复势力.push(势力名));
+        (恢复势力.blockedNames || []).forEach(势力名 => 势力静态实例化阻断.add(势力名));
+        changed = changed || 恢复势力?.changed === true;
+      } catch (错误) {
+        势力归档检查失败 = true;
+        console.warn('[LWCS] 本轮MVU上下文归档势力恢复失败:', 错误);
+      }
 
-    try {
-      const manifest = await 读取静态地点归档Manifest_桥接();
-      const 地点索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引 : {};
-      const 命中地点 = 收集归档静态地点路径键_桥接(地点索引, 捕获文本);
-      const 恢复地点 = await 恢复MVU归档静态地点_桥接(命中地点, 定位选项);
-      (Array.isArray(恢复地点?.restoredNames) ? 恢复地点.restoredNames : []).forEach(地点路径 => 已恢复静态地点.push(地点路径));
-      (恢复地点.blockedNames || []).forEach(地点路径 => 地点静态实例化阻断路径键.add(地点路径));
-      (恢复地点.blockedRecordIds || []).forEach(记录ID => 地点静态实例化阻断记录ID.add(记录ID));
-      changed = changed || 恢复地点?.changed === true;
-    } catch (错误) {
-      静态地点归档检查失败 = true;
-      console.warn('[LWCS] 本轮MVU上下文归档静态地点恢复失败:', 错误);
-    }
+      try {
+        const manifest = await 读取静态地点归档Manifest_桥接();
+        const 地点索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引 : {};
+        const 命中地点 = 收集归档静态地点路径键_桥接(地点索引, 捕获文本);
+        const 恢复地点 = await 恢复MVU归档静态地点_桥接(命中地点, 定位选项);
+        (Array.isArray(恢复地点?.restoredNames) ? 恢复地点.restoredNames : []).forEach(地点路径 => 已恢复静态地点.push(地点路径));
+        (恢复地点.blockedNames || []).forEach(地点路径 => 地点静态实例化阻断路径键.add(地点路径));
+        (恢复地点.blockedRecordIds || []).forEach(记录ID => 地点静态实例化阻断记录ID.add(记录ID));
+        changed = changed || 恢复地点?.changed === true;
+      } catch (错误) {
+        静态地点归档检查失败 = true;
+        console.warn('[LWCS] 本轮MVU上下文归档静态地点恢复失败:', 错误);
+      }
 
-    try {
-      const manifest = await 读取动态地点归档Manifest_桥接();
-      const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
-      const 命中地点 = 收集归档动态地点命中名称_桥接(动态地点索引, 捕获文本, 定位选项, 6);
-      const 恢复地点 = await 预恢复地点名归档动态地点_桥接(当前StatData, 命中地点, 定位选项);
-      恢复地点.forEach(地点名 => 已恢复动态地点.push(地点名));
-      changed = changed || 恢复地点.length > 0;
-    } catch (错误) {
-      console.warn('[LWCS] 本轮MVU上下文归档动态地点恢复失败:', 错误);
-    }
+      try {
+        const manifest = await 读取动态地点归档Manifest_桥接();
+        const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
+        const 命中地点 = 收集归档动态地点命中名称_桥接(动态地点索引, 捕获文本, 定位选项, 6);
+        const 恢复地点 = await 预恢复地点名归档动态地点_桥接(当前StatData, 命中地点, 定位选项);
+        恢复地点.forEach(地点名 => 已恢复动态地点.push(地点名));
+        changed = changed || 恢复地点.length > 0;
+      } catch (错误) {
+        console.warn('[LWCS] 本轮MVU上下文归档动态地点恢复失败:', 错误);
+      }
 
-    try {
-      const manifest = await 读取物品归档Manifest_桥接();
-      const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
-      const 命中物品 = 收集归档物品命中名称_桥接(物品索引, 捕获文本, 定位选项, 8);
-      const 恢复物品 = await 预恢复物品名归档物品_桥接(当前StatData, 命中物品, 定位选项);
-      恢复物品.forEach(物品名 => 已恢复物品.push(物品名));
-      changed = changed || 恢复物品.length > 0;
-    } catch (错误) {
-      console.warn('[LWCS] 本轮MVU上下文归档物品恢复失败:', 错误);
+      try {
+        const manifest = await 读取物品归档Manifest_桥接();
+        const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
+        const 命中物品 = 收集归档物品命中名称_桥接(物品索引, 捕获文本, 定位选项, 8);
+        const 恢复物品 = await 预恢复物品名归档物品_桥接(当前StatData, 命中物品, 定位选项);
+        恢复物品.forEach(物品名 => 已恢复物品.push(物品名));
+        changed = changed || 恢复物品.length > 0;
+      } catch (错误) {
+        console.warn('[LWCS] 本轮MVU上下文归档物品恢复失败:', 错误);
+      }
     }
 
     try {
@@ -174369,25 +174373,17 @@ $CONTENT
     function 读取正文后置上下文_ACU() {
         return generationGate_ACU.正文后置上下文 || null;
     }
-    function shouldProcessAutoTableUpdateForGenerationEnded_ACU() {
-        const 生成上下文 = generationGate_ACU.lastGeneration;
-        if (!生成上下文 || 生成上下文.dryRun)
-            return false;
-        if (isQuietLikeGeneration_ACU(生成上下文.type, 生成上下文.params) || 生成上下文.params?.automatic_trigger)
-            return false;
-        return !!读取正文后置上下文_ACU();
-    }
     async function 执行生成结束后置更新_ACU(事件名 = 'unknown', 事件消息编号 = null) {
         if (生成结束后置状态_ACU.处理中) {
             logDebug_ACU(`[生成结束后置] 已有同轮处理正在进行，复用处理结果: event=${事件名}`);
             return await 生成结束后置状态_ACU.处理中;
         }
         const 处理Promise = (async () => {
-            if (!shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
+            const 正文上下文 = 读取正文后置上下文_ACU();
+            if (!正文上下文) {
                 logWarn_ACU(`ACU: Skip auto table update because no 正文生成上下文 is available. event=${事件名}`);
                 return { action: 'skipped', reason: 'no_generation_context' };
             }
-            const 正文上下文 = 读取正文后置上下文_ACU();
             if (正文上下文?.epoch !== databaseGenerationEpoch_ACU) {
                 generationGate_ACU.正文后置上下文 = null;
                 return { action: 'skipped', reason: 'stale_generation' };

@@ -13032,8 +13032,8 @@
         if (已有事务.记录键 && 已有事务.状态 !== 'user_message_committed') {
           已提交 = await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance_retry');
         }
-        if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
-        return { ok: true, reused: true, unchanged: true, 新tick };
+        if (已提交 === false) return { ok: false, reason: 'time_advance_commit_failed' };
+        return { ok: true, reused: true, unchanged: true, pending: 已提交 === null, 新tick };
       }
       const 结算根 = cloneJsonValue(基底根, {});
       const 旧任务tick = Number(已有事务.任务时间推进tick);
@@ -13067,9 +13067,9 @@
       已有事务.状态 = 'waiting_user_message';
       if (!已有事务.记录键) return { ok: false, reason: 'time_advance_transaction_missing_key' };
       const 已提交 = await 尝试提交剧情模块预结算事务_桥接(已有事务.记录键, 已有事务, 'time_advance');
-      if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
+      if (已提交 === false) return { ok: false, reason: 'time_advance_commit_failed' };
       if (时代提示.text) showUiToast(时代提示.text, 'info', 6200);
-      return { ok: true, reused: true, 新tick };
+      return { ok: true, reused: true, pending: 已提交 === null, 新tick };
     }
     const 结算根 = cloneJsonValue(基底根, {});
     const 时代提示 = 构建时代跨越提示_桥接(基底根, 实际旧tick, 新tick, 资源预检.context);
@@ -13111,9 +13111,9 @@
     const 记录 = 剧情模块预结算事务表.get(记录键);
     if (!记录) return { ok: false, reason: 'time_advance_transaction_missing_record' };
     const 已提交 = await 尝试提交剧情模块预结算事务_桥接(记录键, 记录, 'time_advance');
-    if (!已提交) return { ok: false, reason: 'time_advance_commit_failed' };
+    if (已提交 === false) return { ok: false, reason: 'time_advance_commit_failed' };
     if (时代提示.text) showUiToast(时代提示.text, 'info', 6200);
-    return { ok: true, reused: false, 新tick };
+    return { ok: true, reused: false, pending: 已提交 === null, 新tick };
   }
 
   function 登记剧情模块预结算事务自写入_桥接(options = {}, beforeStatData = {}, afterStatData = {}, writeAfterMvuData = {}) {
@@ -13193,10 +13193,12 @@
   }
 
   async function 尝试提交剧情模块预结算事务_桥接(记录键 = '', 记录 = {}, 事件键 = '', 事件消息编号 = '') {
-    if (!记录 || 记录.正在处理) return false;
+    if (!记录) return false;
+    if (记录.正在处理) return null;
     if (记录.状态 === 'user_message_committed') return true;
     const 用户楼元信息 = 查找剧情模块事务目标用户楼_桥接(记录, 事件消息编号);
-    if (!用户楼元信息) return false;
+    // TT 在 GENERATION_AFTER_COMMANDS 返回后才创建用户楼；此时属于等待落楼，不是提交失败。
+    if (!用户楼元信息) return null;
     记录.正在处理 = true;
     try {
       const 已固化 = await 固化剧情模块预结算到用户楼_桥接(记录, 用户楼元信息);
@@ -14212,66 +14214,68 @@
     let 静态地点归档检查失败 = false;
 
     let 归档角色命中 = [];
-    try {
-      const manifest = await 读取角色归档Manifest_桥接();
-      const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
-      归档角色命中 = 收集统一实体命中名称_桥接(角色索引, 捕获文本, '角色');
-      可用冷档角色 = await 收集可用归档角色名_桥接(归档角色命中, 定位选项);
-      const 恢复角色 = await 预恢复角色名归档角色_桥接(当前StatData, 归档角色命中, 定位选项);
-      恢复角色.forEach(角色名 => 已恢复角色.push(角色名));
-      changed = changed || 恢复角色.length > 0;
-    } catch (错误) {
-      角色归档检查失败 = true;
-      console.warn('[LWCS] 本轮MVU上下文归档角色恢复失败:', 错误);
-    }
+    if (当前启用标准ST冷归档_桥接()) {
+      try {
+        const manifest = await 读取角色归档Manifest_桥接();
+        const 角色索引 = manifest && manifest.角色索引 && typeof manifest.角色索引 === 'object' ? manifest.角色索引 : {};
+        归档角色命中 = 收集统一实体命中名称_桥接(角色索引, 捕获文本, '角色');
+        可用冷档角色 = await 收集可用归档角色名_桥接(归档角色命中, 定位选项);
+        const 恢复角色 = await 预恢复角色名归档角色_桥接(当前StatData, 归档角色命中, 定位选项);
+        恢复角色.forEach(角色名 => 已恢复角色.push(角色名));
+        changed = changed || 恢复角色.length > 0;
+      } catch (错误) {
+        角色归档检查失败 = true;
+        console.warn('[LWCS] 本轮MVU上下文归档角色恢复失败:', 错误);
+      }
 
-    try {
-      const manifest = await 读取势力归档Manifest_桥接();
-      const 势力索引 = manifest && manifest.势力索引 && typeof manifest.势力索引 === 'object' ? manifest.势力索引 : {};
-      const 命中势力 = 收集归档势力命中名称_桥接(势力索引, 捕获文本);
-      const 恢复势力 = await 恢复MVU归档势力_桥接(命中势力, 定位选项);
-      (Array.isArray(恢复势力?.restoredNames) ? 恢复势力.restoredNames : []).forEach(势力名 => 已恢复势力.push(势力名));
-      (恢复势力.blockedNames || []).forEach(势力名 => 势力静态实例化阻断.add(势力名));
-      changed = changed || 恢复势力?.changed === true;
-    } catch (错误) {
-      势力归档检查失败 = true;
-      console.warn('[LWCS] 本轮MVU上下文归档势力恢复失败:', 错误);
-    }
+      try {
+        const manifest = await 读取势力归档Manifest_桥接();
+        const 势力索引 = manifest && manifest.势力索引 && typeof manifest.势力索引 === 'object' ? manifest.势力索引 : {};
+        const 命中势力 = 收集归档势力命中名称_桥接(势力索引, 捕获文本);
+        const 恢复势力 = await 恢复MVU归档势力_桥接(命中势力, 定位选项);
+        (Array.isArray(恢复势力?.restoredNames) ? 恢复势力.restoredNames : []).forEach(势力名 => 已恢复势力.push(势力名));
+        (恢复势力.blockedNames || []).forEach(势力名 => 势力静态实例化阻断.add(势力名));
+        changed = changed || 恢复势力?.changed === true;
+      } catch (错误) {
+        势力归档检查失败 = true;
+        console.warn('[LWCS] 本轮MVU上下文归档势力恢复失败:', 错误);
+      }
 
-    try {
-      const manifest = await 读取静态地点归档Manifest_桥接();
-      const 地点索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引 : {};
-      const 命中地点 = 收集归档静态地点路径键_桥接(地点索引, 捕获文本);
-      const 恢复地点 = await 恢复MVU归档静态地点_桥接(命中地点, 定位选项);
-      (Array.isArray(恢复地点?.restoredNames) ? 恢复地点.restoredNames : []).forEach(地点路径 => 已恢复静态地点.push(地点路径));
-      (恢复地点.blockedNames || []).forEach(地点路径 => 地点静态实例化阻断路径键.add(地点路径));
-      (恢复地点.blockedRecordIds || []).forEach(记录ID => 地点静态实例化阻断记录ID.add(记录ID));
-      changed = changed || 恢复地点?.changed === true;
-    } catch (错误) {
-      静态地点归档检查失败 = true;
-      console.warn('[LWCS] 本轮MVU上下文归档静态地点恢复失败:', 错误);
-    }
+      try {
+        const manifest = await 读取静态地点归档Manifest_桥接();
+        const 地点索引 = manifest && manifest.地点索引 && typeof manifest.地点索引 === 'object' ? manifest.地点索引 : {};
+        const 命中地点 = 收集归档静态地点路径键_桥接(地点索引, 捕获文本);
+        const 恢复地点 = await 恢复MVU归档静态地点_桥接(命中地点, 定位选项);
+        (Array.isArray(恢复地点?.restoredNames) ? 恢复地点.restoredNames : []).forEach(地点路径 => 已恢复静态地点.push(地点路径));
+        (恢复地点.blockedNames || []).forEach(地点路径 => 地点静态实例化阻断路径键.add(地点路径));
+        (恢复地点.blockedRecordIds || []).forEach(记录ID => 地点静态实例化阻断记录ID.add(记录ID));
+        changed = changed || 恢复地点?.changed === true;
+      } catch (错误) {
+        静态地点归档检查失败 = true;
+        console.warn('[LWCS] 本轮MVU上下文归档静态地点恢复失败:', 错误);
+      }
 
-    try {
-      const manifest = await 读取动态地点归档Manifest_桥接();
-      const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
-      const 命中地点 = 收集归档动态地点命中名称_桥接(动态地点索引, 捕获文本, 定位选项, 6);
-      const 恢复地点 = await 预恢复地点名归档动态地点_桥接(当前StatData, 命中地点, 定位选项);
-      恢复地点.forEach(地点名 => 已恢复动态地点.push(地点名));
-      changed = changed || 恢复地点.length > 0;
-    } catch (错误) {
-      console.warn('[LWCS] 本轮MVU上下文归档动态地点恢复失败:', 错误);
-    }
+      try {
+        const manifest = await 读取动态地点归档Manifest_桥接();
+        const 动态地点索引 = manifest && manifest.动态地点索引 && typeof manifest.动态地点索引 === 'object' ? manifest.动态地点索引 : {};
+        const 命中地点 = 收集归档动态地点命中名称_桥接(动态地点索引, 捕获文本, 定位选项, 6);
+        const 恢复地点 = await 预恢复地点名归档动态地点_桥接(当前StatData, 命中地点, 定位选项);
+        恢复地点.forEach(地点名 => 已恢复动态地点.push(地点名));
+        changed = changed || 恢复地点.length > 0;
+      } catch (错误) {
+        console.warn('[LWCS] 本轮MVU上下文归档动态地点恢复失败:', 错误);
+      }
 
-    try {
-      const manifest = await 读取物品归档Manifest_桥接();
-      const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
-      const 命中物品 = 收集归档物品命中名称_桥接(物品索引, 捕获文本, 定位选项, 8);
-      const 恢复物品 = await 预恢复物品名归档物品_桥接(当前StatData, 命中物品, 定位选项);
-      恢复物品.forEach(物品名 => 已恢复物品.push(物品名));
-      changed = changed || 恢复物品.length > 0;
-    } catch (错误) {
-      console.warn('[LWCS] 本轮MVU上下文归档物品恢复失败:', 错误);
+      try {
+        const manifest = await 读取物品归档Manifest_桥接();
+        const 物品索引 = manifest && manifest.物品索引 && typeof manifest.物品索引 === 'object' ? manifest.物品索引 : {};
+        const 命中物品 = 收集归档物品命中名称_桥接(物品索引, 捕获文本, 定位选项, 8);
+        const 恢复物品 = await 预恢复物品名归档物品_桥接(当前StatData, 命中物品, 定位选项);
+        恢复物品.forEach(物品名 => 已恢复物品.push(物品名));
+        changed = changed || 恢复物品.length > 0;
+      } catch (错误) {
+        console.warn('[LWCS] 本轮MVU上下文归档物品恢复失败:', 错误);
+      }
     }
 
     try {

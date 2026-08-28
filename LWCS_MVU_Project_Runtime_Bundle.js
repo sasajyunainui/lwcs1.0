@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:77585e35bcc3be61cdb23a34688fd9cef1fc0181a7818b3dd5a1024370af2a9c|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:5b972fe966ebd231f5d9cdd4f16370c1abed4545d593f3a28f147a1f4f9f9b94|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:9faded9bb824e49957fabde271d439db50469f625bc3c838cd9b94bb4295492b */
+/* sources-sha256: LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:77585e35bcc3be61cdb23a34688fd9cef1fc0181a7818b3dd5a1024370af2a9c|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:5b972fe966ebd231f5d9cdd4f16370c1abed4545d593f3a28f147a1f4f9f9b94|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:4820d85bb74c649e4e5db0f0d90c25c3992680935d35172637f7d06c2ffe357a */
 ;
 /* source: LWCS_MVU_Prompt_Projector.js */
 (function (root) {
@@ -40998,6 +40998,11 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
     'Existing MVU Entity Hits:',
     'Only names listed here count as already existing in MVU. Lore-known, worldbook-known, narratively familiar, or previously mentioned names do NOT count as existing unless listed here.',
     `char=${格式化MVU更新结构命中列表_V1(更新提示命中.角色)}; world.地点=${格式化MVU更新结构命中列表_V1(更新提示命中.地点)}; world.动态地点=${格式化MVU更新结构命中列表_V1(更新提示命中.动态地点)}; org=${格式化MVU更新结构命中列表_V1(更新提示命中.势力)}; 物品=${格式化MVU更新结构命中列表_V1(更新提示命中.物品)}.`,
+    '',
+    '[Location Write Grammar]',
+    '- world.地点 is the existing static location tree. Every nested level after the top level must pass through 子节点; for example: /world/地点/史莱克城/子节点/史莱克学院/子节点/外院教学区. Never write /world/地点/史莱克城/史莱克学院.',
+    '- A place not listed in Existing MVU Entity Hits world.地点 is not an existing static node. Add a narratively new place under /world/动态地点/<地点短名>, and set 归属父节点 to an existing full location path such as 史莱克城-史莱克学院.',
+    '- A character position may use a full display path such as 史莱克城-史莱克学院-灵冰广场; do not copy that display path directly into a world.地点 JSON Pointer.',
     '',
     'Visible Placeholder Summary:',
     `待补全总数=${Number(可见占位统计?.总数 || 0)}; 角色=${(Array.isArray(可见占位统计.角色) ? 可见占位统计.角色 : []).filter(项 => 项 && 项.名称 !== '角色外' && Number(项.数量 || 0) > 0).map(项 => `${项.名称}${Number(项.数量 || 0)}项`).join('、') || '无'}; 角色外=${Number(可见占位统计?.角色外 || 0)}项.`,
