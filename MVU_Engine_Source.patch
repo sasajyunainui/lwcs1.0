@@ -67,6 +67,14 @@ index fc033f4..2e2fcb6 100644
 +            visible: button.name === '重试额外模型解析',
 +        }))
 +    );
+@@ -596 +637,6 @@ export function initButtons() {
+-    prev_states = _.intersectionBy(getScriptButtons(), buttons, button => button.name);
++    const current_buttons = getScriptButtons();
++    prev_states = _.intersectionBy(current_buttons, buttons, button => button.name);
++    prev_states.forEach(button => {
++        button.visible = button.name === '重试额外模型解析';
++    });
++    replaceScriptButtons(current_buttons);
 diff --git a/src/function/cleanup/chat_variables.ts b/src/function/cleanup/chat_variables.ts
 index c77cee8..8c88e1f 100644
 --- a/src/function/cleanup/chat_variables.ts
