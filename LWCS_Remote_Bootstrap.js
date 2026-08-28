@@ -9,10 +9,8 @@
     'https://gcore.jsdelivr.net',
     'https://fastly.jsdelivr.net',
   ]);
-  const 请求超时毫秒 = 30000;
+  const 请求超时毫秒 = 6500;
   const GitHub请求超时毫秒 = 8000;
-  const 旧UI所有者释放超时毫秒 = 6500;
-  const MVU就绪等待上限毫秒 = 90000;
   const 回退提交哈希 = 'cba6eba9442e445cde7a0365b06837e0c9ab5c7f';
   const 入口文件名 = 'ST_UI_Entry.js';
   const 引导键 = '__LWCS_REMOTE_BOOTSTRAP_RUNNING__';
@@ -124,7 +122,7 @@
       if (旧所有者文档 === window.document) return false;
       if (!旧所有者窗口 || 旧所有者窗口 === window) return true;
 
-      const 截止时间 = Date.now() + 旧UI所有者释放超时毫秒;
+      const 截止时间 = Date.now() + 请求超时毫秒;
       if (!旧所有者文档) {
         while (
           共享启动状态.uiOwnerWindow === 旧所有者窗口
@@ -135,7 +133,7 @@
           try { 旧框架仍连接 = !!旧所有者窗口.frameElement?.isConnected; } catch (错误) {}
           if (!旧框架仍连接) return true;
           if (Date.now() >= 截止时间) {
-            throw new Error(`等待旧UI所有者释放超时:${旧UI所有者释放超时毫秒}ms`);
+            throw new Error(`等待旧UI所有者释放超时:${请求超时毫秒}ms`);
           }
           await new Promise(继续 => setTimeout(继续, 16));
         }
@@ -150,7 +148,7 @@
         && UI所有者仍存活()
       ) {
         if (Date.now() >= 截止时间) {
-          throw new Error(`等待旧UI所有者释放超时:${旧UI所有者释放超时毫秒}ms`);
+          throw new Error(`等待旧UI所有者释放超时:${请求超时毫秒}ms`);
         }
         await new Promise(继续 => setTimeout(继续, 16));
       }
@@ -657,7 +655,7 @@
   }
 
   async function 等待MVU就绪(目标提交哈希) {
-    const 截止时间 = Date.now() + MVU就绪等待上限毫秒;
+    const 截止时间 = Date.now() + 30000;
     while (Date.now() < 截止时间) {
       const 完成契约 = 宿主窗口.__LWCS_MVU_CORE_CONTRACT_V1__
         || window.__LWCS_MVU_CORE_CONTRACT_V1__;

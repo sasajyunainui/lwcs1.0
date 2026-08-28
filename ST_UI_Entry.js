@@ -117,9 +117,9 @@
   })();
   const 资源版本后缀 = '';
   const Vue远程地址 = 'https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js';
-  const 资源请求超时毫秒 = 30000;
-  const 远程脚本超时毫秒 = 30000;
-  const 模块等待上限毫秒 = 90000;
+  const 资源请求超时毫秒 = 6500;
+  const 远程脚本超时毫秒 = 8000;
+  const 模块等待上限毫秒 = 15000;
   const 首次重试延迟毫秒 = 260;
   const 二次重试延迟毫秒 = 560;
 
