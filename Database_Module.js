@@ -4937,7 +4937,8 @@ $CONTENT
             .replace(/<UpdateVariable\b[^>]*>[\s\S]*?<\/UpdateVariable>/gi, '')
             .replace(/<StatusPlaceHolderImpl\b[^>]*\/>/gi, '')
             .replace(/<StatusPlaceHolderImpl\b[^>]*>[\s\S]*?<\/StatusPlaceHolderImpl>/gi, '')
-            .replace(/<JSONPatch\b[^>]*>[\s\S]*?<\/JSONPatch>/gi, '');
+            .replace(/<JSONPatch\b[^>]*>[\s\S]*?<\/JSONPatch>/gi, '')
+            .trimEnd();
     }
     function 读取角色消息元信息_ACU(消息, 消息索引) {
         if (!消息 || 消息.is_user || !Number.isInteger(消息索引) || 消息索引 < 0)
