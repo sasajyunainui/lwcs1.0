@@ -1,5 +1,5 @@
 diff --git a/src/button.ts b/src/button.ts
-index fc033f4..ec6c560 100644
+index fc033f4..2e2fcb6 100644
 --- a/src/button.ts
 +++ b/src/button.ts
 @@ -1 +1 @@
@@ -59,6 +59,14 @@ index fc033f4..ec6c560 100644
 @@ -503 +539 @@ export const buttons: Button[] = [
 -                        getVariables({
 +                        getCanonicalMvuData({
+@@ -591 +627,6 @@ export function initButtons() {
+-    appendInexistentScriptButtons(buttons.map(button => ({ name: button.name, visible: false })));
++    appendInexistentScriptButtons(
++        buttons.map(button => ({
++            name: button.name,
++            visible: button.name === '重试额外模型解析',
++        }))
++    );
 diff --git a/src/function/cleanup/chat_variables.ts b/src/function/cleanup/chat_variables.ts
 index c77cee8..8c88e1f 100644
 --- a/src/function/cleanup/chat_variables.ts
