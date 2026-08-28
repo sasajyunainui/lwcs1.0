@@ -32359,7 +32359,8 @@
     // 使嵌套世界 mutation 无法改变后续 feature 结果。
     let frozenRequest;
     if (lightPrepare) {
-      for (const key of Object.keys(request)) deepFreeze(request[key]);
+      const freezeSeen = new WeakSet();
+      for (const key of Object.keys(request)) deepFreeze(request[key], freezeSeen);
       frozenRequest = Object.freeze(request);
     } else {
       frozenRequest = deepFreeze(request);
@@ -52551,28 +52552,42 @@
       }, 0), 0);
   }
 
-  function r9v2LinearBestActionCapacity(worldSnapshot = {}, unit = {}, hostileSide = '') {
+  function r9v2LinearBestActionCapacity(worldSnapshot = {}, unit = {}, hostileSide = '', decisionCache = null) {
     const targets = r9v2LinearSideUnits(worldSnapshot, hostileSide);
     if (!targets.length) return 0;
-    let best = Math.max(...targets.map(target =>
-      preview.calculateBaseActionValue(unit, target, { actionKind: 'BASIC_ATTACK' })));
-    collectSkills(unit).forEach(sourceSkill => {
-      const skill = preview.applySkillSettlementModifiers(
-        unit,
-        applyEquipmentPassivesToSkill(unit, sourceSkill),
-      ).skill;
-      const affordable = checkSkillCostAffordable(unit, skill, {
-        context: skillCostParserContext(unit, skill),
-      });
-      if (!affordable.valid || !affordable.affordable) return;
-      targets.forEach(target => {
-        best = Math.max(best, preview.calculateBaseActionValue(unit, target, {
+    const preparedSkillsByUnit = decisionCache?.preparedSkillsByUnit;
+    let preparedSkills = preparedSkillsByUnit?.get(unit);
+    if (!preparedSkills) {
+      preparedSkills = collectSkills(unit).map(sourceSkill => {
+        const skill = preview.applySkillSettlementModifiers(
+          unit,
+          applyEquipmentPassivesToSkill(unit, sourceSkill),
+        ).skill;
+        const affordable = checkSkillCostAffordable(unit, skill, {
+          context: skillCostParserContext(unit, skill),
+        });
+        return affordable.valid && affordable.affordable ? skill : null;
+      }).filter(Boolean);
+      preparedSkillsByUnit?.set(unit, preparedSkills);
+    }
+    let valuesByTarget = decisionCache?.valuesByUnit?.get(unit);
+    if (!valuesByTarget && decisionCache?.valuesByUnit) {
+      valuesByTarget = new WeakMap();
+      decisionCache.valuesByUnit.set(unit, valuesByTarget);
+    }
+    return Math.max(0, ...targets.map(target => {
+      const cached = valuesByTarget?.get(target);
+      if (cached !== undefined) return cached;
+      let value = preview.calculateBaseActionValue(unit, target, { actionKind: 'BASIC_ATTACK' });
+      preparedSkills.forEach(skill => {
+        value = Math.max(value, preview.calculateBaseActionValue(unit, target, {
           actionKind: 'RELEASE_SKILL',
           skill,
         }));
       });
-    });
-    return Math.max(0, best);
+      valuesByTarget?.set(target, value);
+      return value;
+    }));
   }
 
   function r9v2LinearFollowupWindows(effects = [], request = {}, worldSnapshot = {}) {
@@ -52686,7 +52701,52 @@
     );
   }
 
-  function r9v2LinearCausalFeatureRows(request = {}, candidate = {}, result = {}) {
+  function r9v2LinearCausalFeatureRows(request = {}, candidate = {}, result = {}, decisionCache = new Map()) {
+    const memoBefore = (key, build) => {
+      if (decisionCache.has(key)) return decisionCache.get(key);
+      const value = build();
+      decisionCache.set(key, value);
+      return value;
+    };
+    const actionCapacityCache = memoBefore('cache:action-capacity', () => ({
+      preparedSkillsByUnit: new WeakMap(),
+      valuesByUnit: new WeakMap(),
+    }));
+    const skillPoolsByUnit = memoBefore('cache:skill-pools', () => new WeakMap());
+    const skillPoolFor = unit => {
+      const cached = skillPoolsByUnit.get(unit);
+      if (cached) return cached;
+      const pool = r9v2LinearSkillPool(unit);
+      skillPoolsByUnit.set(unit, pool);
+      return pool;
+    };
+    const unitMetrics = memoBefore('cache:unit-metrics', () => ({
+      actionOrder: new WeakMap(),
+      controlSuppression: new WeakMap(),
+      basicAction: new WeakMap(),
+      dodge: new WeakMap(),
+    }));
+    const cachedUnitMetric = (cache, unit, build) => {
+      if (cache.has(unit)) return cache.get(unit);
+      const value = build();
+      cache.set(unit, value);
+      return value;
+    };
+    const cachedPairMetric = (cache, source, target, build) => {
+      let byTarget = cache.get(source);
+      if (!byTarget) {
+        byTarget = new WeakMap();
+        cache.set(source, byTarget);
+      }
+      if (byTarget.has(target)) return byTarget.get(target);
+      const value = build();
+      byTarget.set(target, value);
+      return value;
+    };
+    const basicActionValue = (source, target) => cachedPairMetric(
+      unitMetrics.basicAction, source, target,
+      () => preview.calculateBaseActionValue(source, target, { actionKind: 'BASIC_ATTACK' }),
+    );
     const before = request.visibleWorld;
     const after = result.afterSnapshot || before;
     const actorId = request.actorId;
@@ -52698,26 +52758,36 @@
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const followupWindows = r9v2LinearFollowupWindows(effects, request, before);
     const role = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
-    const beforePool = r9v2LinearSkillPool(actorBefore || {});
-    const afterPool = r9v2LinearSkillPool(actorAfter || {});
+    const beforePool = skillPoolFor(actorBefore || {});
+    const afterPool = skillPoolFor(actorAfter || {});
     const poolScale = Math.max(1, beforePool.value, afterPool.value);
-    const beforeMechanical = r9v2LinearMechanicalCoverage(before, actorId, hostileSide);
+    const beforeMechanical = memoBefore('actor:mechanical-coverage', () =>
+      r9v2LinearMechanicalCoverage(before, actorId, hostileSide));
     const afterMechanical = r9v2LinearMechanicalCoverage(after, actorId, hostileSide);
     const mechanicalScale = Math.max(1, beforeMechanical, afterMechanical);
-    const beforeSelfCapacity = r9v2LinearBestActionCapacity(before, actorBefore || {}, hostileSide);
-    const afterSelfCapacity = r9v2LinearBestActionCapacity(after, actorAfter || {}, hostileSide);
+    const beforeSelfCapacity = memoBefore('actor:best-capacity', () =>
+      r9v2LinearBestActionCapacity(before, actorBefore || {}, hostileSide, actionCapacityCache));
+    const afterSelfCapacity = r9v2LinearBestActionCapacity(after, actorAfter || {}, hostileSide, actionCapacityCache);
     const selfCapacityGain = Math.max(0, afterSelfCapacity - beforeSelfCapacity) /
       Math.max(1, beforeSelfCapacity, afterSelfCapacity) * followupWindows;
-    const beforeAllies = r9v2LinearSideUnits(before, actorSide).filter(unit => preview.unitId(unit) !== actorId);
+    const beforeAllies = memoBefore('side:allies', () =>
+      r9v2LinearSideUnits(before, actorSide).filter(unit => preview.unitId(unit) !== actorId));
     const afterAllies = new Map(r9v2LinearSideUnits(after, actorSide).map(unit => [preview.unitId(unit), unit]));
+    const enemiesBefore = memoBefore('side:enemies', () => r9v2LinearSideUnits(before, hostileSide));
+    const enemiesAfter = new Map(r9v2LinearSideUnits(after, hostileSide).map(unit => [preview.unitId(unit), unit]));
+    const hostileRosterUnchanged = enemiesBefore.every(unit =>
+      enemiesAfter.get(preview.unitId(unit)) === unit);
     let allyOptionGain = 0;
     let allyResourceRunwayGain = 0;
     beforeAllies.forEach(unit => {
       const next = afterAllies.get(preview.unitId(unit)) || unit;
-      const priorPool = r9v2LinearSkillPool(unit);
-      const nextPool = r9v2LinearSkillPool(next);
-      const priorCapacity = r9v2LinearBestActionCapacity(before, unit, hostileSide);
-      const nextCapacity = r9v2LinearBestActionCapacity(after, next, hostileSide);
+      if (next === unit && hostileRosterUnchanged) return;
+      const unitId = preview.unitId(unit);
+      const priorPool = skillPoolFor(unit);
+      const nextPool = skillPoolFor(next);
+      const priorCapacity = memoBefore(`unit:${unitId}:best-capacity`, () =>
+        r9v2LinearBestActionCapacity(before, unit, hostileSide, actionCapacityCache));
+      const nextCapacity = r9v2LinearBestActionCapacity(after, next, hostileSide, actionCapacityCache);
       allyOptionGain += Math.max(
         Math.max(0, nextPool.value - priorPool.value) / Math.max(1, priorPool.value, nextPool.value),
         Math.max(0, nextCapacity - priorCapacity) / Math.max(1, priorCapacity, nextCapacity),
@@ -52726,27 +52796,32 @@
     });
     allyOptionGain = clamp(allyOptionGain / Math.max(1, beforeAllies.length), 0, 1);
     allyResourceRunwayGain = clamp(allyResourceRunwayGain / Math.max(1, beforeAllies.length), 0, 1);
-    const enemiesBefore = r9v2LinearSideUnits(before, hostileSide);
-    const enemiesAfter = new Map(r9v2LinearSideUnits(after, hostileSide).map(unit => [preview.unitId(unit), unit]));
     let enemyDenial = 0;
     let hostilePressure = 0;
     enemiesBefore.forEach(unit => {
       const next = enemiesAfter.get(preview.unitId(unit));
-      const priorPool = r9v2LinearSkillPool(unit);
-      const nextPool = next ? r9v2LinearSkillPool(next) : { value: 0 };
+      if (next === unit && actorAfter === actorBefore) return;
+      const priorPool = skillPoolFor(unit);
+      const nextPool = next ? skillPoolFor(next) : { value: 0 };
       const priorThreat = actorBefore
-        ? preview.calculateBaseActionValue(unit, actorBefore, { actionKind: 'BASIC_ATTACK' }) / 100
+        ? basicActionValue(unit, actorBefore) / 100
         : 0;
       const nextThreat = next && actorAfter
-        ? preview.calculateBaseActionValue(next, actorAfter, { actionKind: 'BASIC_ATTACK' }) / 100
+        ? basicActionValue(next, actorAfter) / 100
         : 0;
-      const priorOrder = preview.naturalActionOrderProfile(unit).effectiveAgility;
-      const nextOrder = next ? preview.naturalActionOrderProfile(next).effectiveAgility : 0;
+      const priorOrder = cachedUnitMetric(unitMetrics.actionOrder, unit, () =>
+        preview.naturalActionOrderProfile(unit).effectiveAgility);
+      const nextOrder = next ? cachedUnitMetric(unitMetrics.actionOrder, next, () =>
+        preview.naturalActionOrderProfile(next).effectiveAgility) : 0;
       const orderDenial = Math.max(0, priorOrder - nextOrder) / Math.max(1e-9, priorOrder);
-      const priorDodge = actorBefore ? preview.calculateDodgeProbability(unit, actorBefore, false) : 0;
-      const nextDodge = next && actorAfter ? preview.calculateDodgeProbability(next, actorAfter, false) : 0;
+      const priorDodge = actorBefore ? cachedPairMetric(unitMetrics.dodge, unit, actorBefore, () =>
+        preview.calculateDodgeProbability(unit, actorBefore, false)) : 0;
+      const nextDodge = next && actorAfter ? cachedPairMetric(unitMetrics.dodge, next, actorAfter, () =>
+        preview.calculateDodgeProbability(next, actorAfter, false)) : 0;
       const reactionDenial = Math.max(0, priorDodge - nextDodge);
-      const controlDenial = Math.max(0, r9v2LinearControlSuppression(next || {}) - r9v2LinearControlSuppression(unit));
+      const priorControl = cachedUnitMetric(unitMetrics.controlSuppression, unit, () => r9v2LinearControlSuppression(unit));
+      const nextControl = cachedUnitMetric(unitMetrics.controlSuppression, next || unit, () => r9v2LinearControlSuppression(next || {}));
+      const controlDenial = Math.max(0, nextControl - priorControl);
       enemyDenial += Math.max(
         Math.max(0, priorPool.value - nextPool.value) / Math.max(1, priorPool.value),
         Math.max(0, priorThreat - nextThreat) / Math.max(1e-9, priorThreat),
@@ -52764,12 +52839,13 @@
     );
     hostilePressure = clamp(hostilePressure / Math.max(1, enemiesBefore.length), 0, 1);
     const objectives = request?.objectiveContract || request?.battleIntent?.objectives || before?.胜负条件 || {};
-    const beforeObjective = preview.evaluateBattleObjectivesCompact(before, objectives);
+    const beforeObjective = memoBefore('battle:objective', () =>
+      preview.evaluateBattleObjectivesCompact(before, objectives));
     const afterObjective = preview.evaluateBattleObjectivesCompact(after, objectives);
     const terminalProgress = r9v2LinearTerminalValue(afterObjective, actorSide) - r9v2LinearTerminalValue(beforeObjective, actorSide);
     const stateProgress = (
-      r9v2LinearSideStateValue(after, actorSide) - r9v2LinearSideStateValue(before, actorSide) -
-      r9v2LinearSideStateValue(after, hostileSide) + r9v2LinearSideStateValue(before, hostileSide)
+      r9v2LinearSideStateValue(after, actorSide) - memoBefore('side:actor-state', () => r9v2LinearSideStateValue(before, actorSide)) -
+      r9v2LinearSideStateValue(after, hostileSide) + memoBefore('side:hostile-state', () => r9v2LinearSideStateValue(before, hostileSide))
     ) / 2;
     const setupAction = effects.some(effect => {
       const prototype = String(effect?.原型 || '').trim();
@@ -52778,23 +52854,27 @@
     });
     const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
     const naturalBudget = Math.max(1, Number(request?.actionOpportunity?.naturalActionBudget || 40));
-    const enemyThreat = Math.max(0, ...enemiesBefore.map(enemy =>
-      preview.calculateBaseActionValue(enemy, actorBefore || {}, { actionKind: 'BASIC_ATTACK' }) / 100));
+    const enemyThreat = memoBefore('side:enemy-threat', () => Math.max(0, ...enemiesBefore.map(enemy =>
+      basicActionValue(enemy, actorBefore || {}) / 100)));
     const targetIds = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
     const hostileTargets = targetIds.map(id => preview.findUnit(before, id)).filter(unit => unit && preview.sideOf(before, unit) === hostileSide);
-    const lowestHostileRatio = Math.min(1, ...enemiesBefore.map(unit => preview.readHp(unit) / Math.max(1, preview.readHpMax(unit))));
+    const lowestHostileRatio = memoBefore('side:lowest-hostile-ratio', () => Math.min(1,
+      ...enemiesBefore.map(unit => preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)))));
     const focusGain = hostileTargets.some(unit =>
       preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)) <= lowestHostileRatio + 1e-9) ? hostilePressure : 0;
-    const friendlyThreat = unit => enemiesBefore.reduce((sum, enemy) =>
-      sum + r9v2LinearExpectedBasicDamageRatio(before, enemy, unit, hostileSide), 0);
-    const threatenedFriendlies = r9v2LinearSideUnits(before, actorSide);
-    const maximumFriendlyThreat = Math.max(1e-9, ...threatenedFriendlies.map(friendlyThreat));
-    const exposureRows = threatenedFriendlies.map(unit => ({
-      unitId: preview.unitId(unit),
-      value: Math.exp(clamp(8 * (friendlyThreat(unit) / maximumFriendlyThreat - 1), -30, 0)),
-    }));
-    const exposureTotal = Math.max(1e-9, exposureRows.reduce((sum, row) => sum + row.value, 0));
-    const exposureByUnit = new Map(exposureRows.map(row => [row.unitId, row.value / exposureTotal]));
+    const friendlyThreat = unit => memoBefore(`unit:${preview.unitId(unit)}:incoming-threat`, () =>
+      enemiesBefore.reduce((sum, enemy) =>
+        sum + r9v2LinearExpectedBasicDamageRatio(before, enemy, unit, hostileSide), 0));
+    const exposureByUnit = memoBefore('side:friendly-exposure', () => {
+      const units = r9v2LinearSideUnits(before, actorSide);
+      const maximum = Math.max(1e-9, ...units.map(friendlyThreat));
+      const rows = units.map(unit => [
+        preview.unitId(unit),
+        Math.exp(clamp(8 * (friendlyThreat(unit) / maximum - 1), -30, 0)),
+      ]);
+      const total = Math.max(1e-9, rows.reduce((sum, row) => sum + row[1], 0));
+      return new Map(rows.map(row => [row[0], row[1] / total]));
+    });
     let protectionGain = 0;
     let redundant = 0;
     let supportiveCount = 0;
@@ -53500,6 +53580,7 @@
     const previewResultsById = {};
     const pdaProjectionsById = {};
     const bridgeInputs = [];
+    const causalDecisionCache = new Map();
     let previewCalls = 0;
     for (const candidate of request.frozenCandidates) {
       const declaration = candidate.declaration === undefined ? {} : candidate.declaration;
@@ -53603,9 +53684,8 @@
       if (!perCandidate.bifInput) {
         throw new Error('R9V2_LINEAR_BIF_INPUT_MISSING:' + candidateId);
       }
-      const bifInput = JSON.parse(JSON.stringify(perCandidate.bifInput));
       try {
-        bifDocs[candidateId] = bif.compileCandidate(bifInput);
+        bifDocs[candidateId] = bif.compileCandidate(perCandidate.bifInput);
       } catch (error) {
         throw new Error('R9V2_LINEAR_BIF_REJECT:' + candidateId + ':' + String((error && error.message) || error));
       }
@@ -53644,6 +53724,7 @@
             request,
             frozenById.get(candidateId),
             previewResultsById[candidateId],
+            causalDecisionCache,
           ),
         },
       },
