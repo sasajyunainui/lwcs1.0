@@ -142,6 +142,17 @@
     PASS_OPPORTUNITY: '让过行动',
     FUSION_SKILL: '武魂融合技',
   });
+  const previewStopReasonText = Object.freeze({
+    BATTLE_TERMINAL: '已达到战斗终局。',
+    SINGLE_ROUND_COMPLETE: '本次单回合结算已完成，战斗仍可继续。',
+    ROUND_CAP_REACHED: '已达到本次预演回合上限，战斗仍可继续。',
+    DAMAGE_THRESHOLD_REACHED: '本回合单目标伤害达到停推阈值，战斗仍可继续。',
+    CONTINUE_CHANCE_REJECTED: '本回合续推概率未通过，战斗仍可继续。',
+    WITHDRAWAL_SUCCEEDED: '撤离已经成功，本次推进结束。',
+    ACTORS_UNABLE: '当前没有单位能够继续行动，本次推进结束。',
+    RUNTIME_VALIDATION_FAILED: '战斗运行校验未通过。',
+    PREVIEW_INTERRUPTED: '本次预演提前中断，战斗仍可继续。',
+  });
 
   function cloneValue(value) {
     return runtime.cloneValue(value);
@@ -5685,6 +5696,12 @@
     };
   }
 
+  function publicPreviewStopReason(reason = {}) {
+    const code = text(reason?.code);
+    const playerText = previewStopReasonText[code] || '本次战斗推进已经停止。';
+    return { code, text: playerText };
+  }
+
   function publicFinalSummary(summary = {}) {
     const result = cloneValue(summary || {});
     delete result.canonicalFactIds;
@@ -5789,6 +5806,7 @@
       visibilityMode: text(report?.visibilityMode),
       projectionStatus: text(report?.projectionStatus),
       actualRoundCount: Math.max(0, number(report?.actualRoundCount, 0)),
+      previewStopReason: publicPreviewStopReason(report?.previewStopReason || {}),
       terminalResult: publicTerminalResult(report?.terminalResult || {}),
       objectiveSummary: {
         headline: text(finalSummary?.headline),
@@ -5987,6 +6005,7 @@
       termDictionaryVersion: reportTermDictionaryVersion,
       visibilityMode,
       actualRoundCount: Math.max(0, number(draft?.actualRoundCount, 0)),
+      previewStopReason: publicPreviewStopReason(draft?.previewStopReason || {}),
       terminalResult: projectedTerminal,
       projectionStatus: 'PENDING',
       sourceDecisionCount,
@@ -6058,6 +6077,34 @@
         expected: reportTermDictionaryVersion,
         actual: text(report?.termDictionaryVersion),
       });
+    }
+    const stopReason = report?.previewStopReason;
+    if (!stopReason || typeof stopReason !== 'object' || Array.isArray(stopReason)) {
+      pushFatal('REPORT_STOP_REASON_INVALID', { reason: 'STOP_REASON_MISSING' });
+    } else {
+      const stopReasonCode = text(stopReason?.code);
+      const expectedStopReasonText = previewStopReasonText[stopReasonCode];
+      if (!expectedStopReasonText) {
+        pushFatal('REPORT_STOP_REASON_INVALID', {
+          reason: 'STOP_REASON_CODE_UNKNOWN',
+          stopReasonCode,
+        });
+      } else if (text(stopReason?.text) !== expectedStopReasonText) {
+        pushFatal('REPORT_STOP_REASON_INVALID', {
+          reason: 'STOP_REASON_TEXT_MISMATCH',
+          stopReasonCode,
+          expected: expectedStopReasonText,
+          actual: text(stopReason?.text),
+        });
+      }
+      const terminal = report?.terminalResult?.terminal === true;
+      if ((stopReasonCode === 'BATTLE_TERMINAL') !== terminal) {
+        pushFatal('REPORT_STOP_REASON_INVALID', {
+          reason: 'STOP_REASON_TERMINAL_MISMATCH',
+          stopReasonCode,
+          terminal,
+        });
+      }
     }
     const projectionDirectory = new Map();
     const registry = Array.isArray(report?.factRegistry) ? report.factRegistry : [];

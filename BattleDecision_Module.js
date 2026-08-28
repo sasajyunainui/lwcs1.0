@@ -53370,10 +53370,19 @@
     const result = provider.selectPreparedRequest({ request, featureInputs });
     const ranked = Array.isArray(result?.ranked) ? result.ranked : [];
     if (!ranked.length) throw new Error('R9V2_LINEAR_NO_RANKED_ROWS');
-    const selectedId = String(result?.selected?.candidateId || '').trim();
+    const providerSelectedId = String(result?.selected?.candidateId || '').trim();
     const frozenById = new Map(
       request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]),
     );
+    const lockedChoice = request?.playerLockedDeclaration
+      ? selectPlayerLockedCandidate(
+          request.frozenCandidates,
+          request.playerLockedDeclaration,
+          request.visibleWorld,
+          request?.rejectedCandidates || [],
+        )
+      : null;
+    const selectedId = String(lockedChoice?.selected?.candidateId || providerSelectedId).trim();
     const auditRow = (candidateId, index) => {
       const declaration = frozenById.get(candidateId)?.declaration || {};
       return Object.freeze({
@@ -53387,8 +53396,10 @@
         score: Number(ranked[index]?.score ?? 0),
         rank: index,
         selected: candidateId === selectedId,
-        playerLocked: false,
-        selectionMode: 'R9V2_LINEAR_DIRECT',
+        playerLocked: Boolean(lockedChoice && candidateId === selectedId),
+        selectionMode: lockedChoice && candidateId === selectedId
+          ? 'PLAYER_LOCKED'
+          : 'R9V2_LINEAR_DIRECT',
         tieGroup: Array.isArray(ranked[index]?.tieGroup)
           ? [...ranked[index].tieGroup]
           : [candidateId],
@@ -53428,9 +53439,14 @@
       ? result.hardExclusionAudit.map(entry => Object.freeze({ ...entry }))
       : [];
     const reasonFactors = result?.scoreContributions?.[selectedId]?.factors || [];
-    const alternatives = result?.alternative && result.alternative.candidateId
-      ? [Object.freeze({ ...result.alternative })]
-      : [];
+    const alternatives = lockedChoice
+      ? candidateAudit
+          .filter(row => row.candidateId !== selectedId)
+          .slice(0, 2)
+          .map(row => Object.freeze({ ...row }))
+      : result?.alternative && result.alternative.candidateId
+        ? [Object.freeze({ ...result.alternative })]
+        : [];
     const decomposition = r9v2LinearBuildDecomposition({
       result,
       featureInputs,
@@ -53498,10 +53514,10 @@
       decisionProfile: Object.freeze({
         engine: 'R9V2_LINEAR',
         providerId: String(provider?.providerId || 'r9v2').trim(),
-        selectionMode: 'R9V2_LINEAR_DIRECT',
-        selectionPath: 'R9V2_LINEAR_DIRECT',
+        selectionMode: lockedChoice ? 'PLAYER_LOCKED' : 'R9V2_LINEAR_DIRECT',
+        selectionPath: lockedChoice ? 'PLAYER_LOCKED' : 'R9V2_LINEAR_DIRECT',
         requestHash: String(request.requestHash || '').trim(),
-        top1CandidateId: ranked[0]?.candidateId || selectedId,
+        top1CandidateId: providerSelectedId || selectedId,
         reasonFactorCount: reasonFactors.length,
         previewCalls,
         eligibleCount: Math.max(0, Number(result?.eligibleCount || 0)),

@@ -1903,6 +1903,7 @@ class BattleUIComponent {
         const transactionResult = await executeTransaction(cloneBattleValue(sourceCombatData), {
           mode: battleMode,
           rounds: maxRounds,
+          autoContinueConfig: options.autoContinueConfig,
           actionDeclaration: options.actionDeclaration || null,
           intentMode: String(options.intentMode || sourceCombatData.战斗意图 || '').trim(),
           executionMode: 'manual',
@@ -4029,12 +4030,23 @@ class BattleUIComponent {
           if (isRenderablePlayerReportDto(result.reportDto)) {
             const activeView = 读取战斗记录视图();
             const 视图标签 = { round: '回合', report: '战报', decision: '判定', summary: '总结' };
+            const 停止原因 = result?.reportDto?.previewStopReason || result?.previewStopReason || {};
+            const 停止原因代码 = String(停止原因?.code || '').trim();
+            const 停止原因文本 = String(停止原因?.text || '').trim() || {
+              BATTLE_TERMINAL: '已达到战斗终局',
+              ROUND_CAP_REACHED: '达到本次预演回合上限，战斗仍可继续',
+              DAMAGE_THRESHOLD_REACHED: '本回合单目标伤害达到停推阈值，战斗仍可继续',
+              CONTINUE_CHANCE_REJECTED: '续推概率未通过，战斗仍可继续',
+              SINGLE_ROUND_COMPLETE: '本次单回合已完成',
+              RUNTIME_VALIDATION_FAILED: '战斗运行校验未通过',
+            }[停止原因代码] || '';
+            const 推进摘要 = `推进${Math.max(0, Number(result.reportDto.actualRoundCount || 0))}回合${停止原因文本 ? ` · ${停止原因文本}` : ''}`;
             node.hidden = false;
             node.innerHTML = `
               <div class="battle-preview-head">
                 <span>${activeTab === 'preview' ? '预演结果' : '实战结果'}</span>
                 <b>${htmlEscapeText(格式化战斗模式显示文本(result.modeLabel, result.battleMode, result.mode))}</b>
-                <em>${htmlEscapeText(`推进${Math.max(0, Number(result.reportDto.actualRoundCount || 0))}回合`)}</em>
+                <em>${htmlEscapeText(推进摘要)}</em>
               </div>
               <div class="battle-record-view-tabs" role="tablist" aria-label="记录视图">
                 ${Object.entries(视图标签).map(([view, label]) => `<button class="battle-record-view-tab${view === activeView ? ' active' : ''}" type="button" role="tab" data-battle-record-view="${view}" aria-selected="${view === activeView ? 'true' : 'false'}" tabindex="${view === activeView ? '0' : '-1'}">${label}</button>`).join('')}
@@ -4077,6 +4089,7 @@ class BattleUIComponent {
             mode: preview ? 'preview' : 'sealed_transaction',
             battleMode: options.battleMode || 'single_round',
             roundsExecuted: Math.max(0, Number(reportDto.actualRoundCount || 0)),
+            previewStopReason: options.previewStopReason || reportDto.previewStopReason || null,
             reportDto,
             finalBattleReport: reportDto.finalSummary || null,
             aiStructuredSummary: reportDto.aiStructuredSummary || null,

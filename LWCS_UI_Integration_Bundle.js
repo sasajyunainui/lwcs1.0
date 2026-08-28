@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:76cd6710090ef57c36a9e5c1505730e6aef79603b8f3f6c78c8a05b7111a0df5 */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8fe16888a827ce5a025061e15fc9d6d696a4e5366e05f6911521f8355b312f2b */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -47051,9 +47051,9 @@ ${播报文本}
                             <em>回合</em>
                           </label>
                         </div>
-                        <div class="battle-terminal-row" title="单回合伤害达到这个生命百分比，就停止连续推进。">
-                          <span class="battle-terminal-label">停止阈值</span>
-                          <label class="battle-number-field" title="单回合伤害达到这个生命百分比，就停止连续推进。">
+                        <div class="battle-terminal-row" title="本回合单个目标承受的伤害达到其生命上限的这个百分比，就停止连续推进。">
+                          <span class="battle-terminal-label">单目标伤害停推</span>
+                          <label class="battle-number-field" title="本回合单个目标承受的伤害达到其生命上限的这个百分比，就停止连续推进。">
                             <input id="ui-auto-stop-threshold" type="number" min="0" max="100" step="1" inputmode="numeric" value="25">
                             <em>%</em>
                           </label>
@@ -49216,6 +49216,17 @@ ${播报文本}
     const maxRounds = battleMode === 'multi_round'
       ? Math.max(1, Math.min(20, Math.floor(toNumber(options.rounds || combatData?.胜负条件?.maxRounds, 20))))
       : 1;
+    const autoContinueSource = options.autoContinueConfig && typeof options.autoContinueConfig === 'object'
+      ? options.autoContinueConfig
+      : {};
+    const stopDamagePercent = Math.max(0, Math.min(100, toNumber(
+      autoContinueSource.stopDamagePercent,
+      Number.isFinite(Number(autoContinueSource.stopDamageRatio)) ? Number(autoContinueSource.stopDamageRatio) * 100 : 25,
+    )));
+    const continueChancePercent = Math.max(0, Math.min(100, toNumber(
+      autoContinueSource.continueChancePercent,
+      Number.isFinite(Number(autoContinueSource.continueChance)) ? Number(autoContinueSource.continueChance) * 100 : 100,
+    )));
     return {
       caseId: toText(options.caseId, 'battle-bridge-formal'),
       seed: Math.max(1, Math.floor(toNumber(runtimeState?.decisionSeed, 1))),
@@ -49226,6 +49237,17 @@ ${播报文本}
       mode: battleMode,
       executionMode: 规范化战斗提交模式(options.executionMode),
       rounds: maxRounds,
+      ...(battleMode === 'multi_round'
+        ? {
+            settings: {
+              maxRounds,
+              stopDamagePercent,
+              stopDamageRatio: stopDamagePercent / 100,
+              continueChancePercent,
+              continueChance: continueChancePercent / 100,
+            },
+          }
+        : {}),
       selectedAction: options.actionDeclaration || null,
       battleIntent: {
         mode: toText(options.intentMode || combatData?.战斗意图, '').trim(),
@@ -49600,11 +49622,35 @@ ${播报文本}
     自动战斗延后写回次数 += 1;
     let 执行结果 = null;
     try {
-      const 回合上限 = Math.max(1, Math.min(20, Math.floor(toNumber(战斗数据?.胜负条件?.maxRounds, 20))));
-      const 剩余回合 = Math.max(1, 回合上限 - Math.max(0, Math.floor(toNumber(战斗数据?.回合, 0))));
+      const 请求续推配置 = request?.autoContinueConfig && typeof request.autoContinueConfig === 'object'
+        ? request.autoContinueConfig
+        : {};
+      const 回合上限 = Math.max(1, Math.min(20, Math.floor(toNumber(
+        请求续推配置.maxRounds,
+        toNumber(战斗数据?.胜负条件?.maxRounds, 20),
+      ))));
+      const 停推阈值百分比 = Math.max(0, Math.min(100, toNumber(
+        请求续推配置.stopDamagePercent,
+        Number.isFinite(Number(请求续推配置.stopDamageRatio))
+          ? Number(请求续推配置.stopDamageRatio) * 100
+          : 25,
+      )));
+      const 续推概率百分比 = Math.max(0, Math.min(100, toNumber(
+        请求续推配置.continueChancePercent,
+        Number.isFinite(Number(请求续推配置.continueChance))
+          ? Number(请求续推配置.continueChance) * 100
+          : 100,
+      )));
       执行结果 = await 执行函数(战斗数据, {
         mode: 'multi_round',
-        rounds: 剩余回合,
+        rounds: 回合上限,
+        autoContinueConfig: {
+          maxRounds: 回合上限,
+          stopDamagePercent: 停推阈值百分比,
+          stopDamageRatio: 停推阈值百分比 / 100,
+          continueChancePercent: 续推概率百分比,
+          continueChance: 续推概率百分比 / 100,
+        },
         executionMode: 'auto',
         worldActionContext: 战斗上下文结果.context,
       });

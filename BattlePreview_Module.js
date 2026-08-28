@@ -1987,7 +1987,7 @@
       reason: matched ? 'BATTLEFIELD_EXHAUSTION' : '',
     });
     const elapsedRounds = Math.max(0, Number(options.round ?? worldSnapshot?.回合 ?? 0) - objectives.startRound);
-    const timeLimitReached = options.roundCompleted === true && elapsedRounds >= objectives.maxRounds;
+    const timeLimitReached = options.roundCompleted === true && options.enforceRoundLimit === true && elapsedRounds >= objectives.maxRounds;
     const implicitVictory = includeDetails
       ? exhaustionDetail('ENEMY', enemyExhausted)
       : null;

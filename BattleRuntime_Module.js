@@ -5855,6 +5855,7 @@
     const resolution = previewRuntime.evaluateBattleObjectives(combatData, objectives, {
       round: Number(context?.currentRound ?? combatData?.回合 ?? 0),
       roundCompleted: context?.roundCompleted === true,
+      enforceRoundLimit: adapterOptions.enforceRoundLimit === true,
     });
     const runtime = ensureCombatRuntime(combatData);
     runtime.objectiveResolution = cloneValue(resolution);
@@ -5906,17 +5907,32 @@
   function decideTeamContinuation(context = {}, adapterOptions = {}) {
     const combatData = context?.combatData || {};
     const runtime = ensureCombatRuntime(combatData);
-    if (adapterOptions.stopOnWithdrawal === true && runtime.withdrawalSuccess) return { continueSimulation: false, log: '' };
+    if (adapterOptions.stopOnWithdrawal === true && runtime.withdrawalSuccess) {
+      return { continueSimulation: false, reasonCode: 'WITHDRAWAL_SUCCEEDED', log: '' };
+    }
     const settings = adapterOptions.autoContinueSettings;
-    if (!settings) return { continueSimulation: true, log: '' };
+    if (!settings) return { continueSimulation: true, reasonCode: 'AUTO_CONTINUE_NOT_CONFIGURED', log: '' };
     const currentRound = Number(context?.currentRound || 0);
-    const damageRatios = ensureLedger(combatData)
+    const units = listCombatUnits(combatData);
+    const damageByTarget = new Map();
+    ensureLedger(combatData)
       .filter(event => String(event?.eventKind || '').trim() === 'hit_result' && Number(event?.round || 0) === currentRound)
-      .map(event => {
-        const target = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, event?.targetName || ''));
+      .forEach(event => {
+        const targetReference = String(event?.targetId || event?.targetName || '').trim();
+        if (!targetReference) return;
+        const target = units.find(unit => isUnitIdentityMatch(unit, targetReference));
+        const targetId = String(previewRuntime.unitId(target || {}) || targetReference).trim();
         const damage = Math.max(0, Number(event?.appliedDamage ?? event?.meta?.damage ?? 0));
-        return damage / Math.max(1, previewRuntime.readHpMax(target || {}));
+        const aggregate = damageByTarget.get(targetId) || {
+          damage: 0,
+          hpMax: Math.max(1, previewRuntime.readHpMax(target || {})),
+        };
+        aggregate.damage += damage;
+        aggregate.hpMax = Math.max(aggregate.hpMax, previewRuntime.readHpMax(target || {}));
+        damageByTarget.set(targetId, aggregate);
       });
+    const damageRatios = [...damageByTarget.values()]
+      .map(aggregate => aggregate.damage / Math.max(1, aggregate.hpMax));
     const maxDamageRatio = damageRatios.length ? Math.max(...damageRatios) : 0;
     return decideDuelContinuation({
       mode: context?.mode,
@@ -7117,11 +7133,16 @@
 
   function decideDuelContinuation(options = {}) {
     const mode = options?.mode === 'multi_round' ? 'multi_round' : 'single_round';
-    if (options?.actorsAble !== true) return { continueSimulation: false, intensity: 0, log: '' };
-    if (options?.isCharging === true) return { continueSimulation: true, intensity: 0, log: '' };
+    if (options?.actorsAble !== true) {
+      return { continueSimulation: false, reasonCode: 'ACTORS_UNABLE', intensity: 0, log: '' };
+    }
+    if (options?.isCharging === true) {
+      return { continueSimulation: true, reasonCode: 'CHARGING_CONTINUES', intensity: 0, log: '' };
+    }
     if (mode === 'single_round') {
       return {
         continueSimulation: false,
+        reasonCode: 'SINGLE_ROUND_COMPLETE',
         intensity: 0,
         log: '[单回合仲裁] 当前模式为单回合，本次暗箱演算到此结束。',
       };
@@ -7134,6 +7155,7 @@
     if (intensity >= stopDamageRatio) {
       return {
         continueSimulation: false,
+        reasonCode: 'DAMAGE_THRESHOLD_REACHED',
         intensity,
         log: `[续推终止] 本回合伤害已达生命占比${Math.round(stopDamagePercent)}%，暗箱续推停止。`,
       };
@@ -7145,6 +7167,7 @@
     const continueSimulation = probabilitySucceeds(chance, roll);
     return {
       continueSimulation,
+      reasonCode: continueSimulation ? 'CONTINUE_CHANCE_PASSED' : 'CONTINUE_CHANCE_REJECTED',
       intensity,
       log: `[续推判定] 本回合伤害约为生命占比${Math.round(intensity * 100)}%，未达到${Math.round(stopDamagePercent)}%，按${Math.round(chancePercent)}%概率续推。Roll:${roll.toFixed(2)} 判定:${continueSimulation ? '继续' : '停止'}。`,
     };
@@ -7179,71 +7202,6 @@
       }
     }
     return { results, fatal: queue.fatal };
-  }
-
-  function executeDeclaration(input = {}) {
-    const combatData = input?.combatData;
-    const declaration = input?.declaration;
-    if (!combatData || typeof combatData !== 'object') throw new TypeError('battle_declaration_combat_data_missing');
-    if (!declaration || typeof declaration !== 'object') throw new TypeError('battle_declaration_missing');
-    const actorId = String(declaration?.actorId || '').trim();
-    if (!actorId) throw new TypeError('battle_declaration_actor_missing');
-    const targetIds = Array.isArray(declaration?.targetIds) ? declaration.targetIds.map(String) : [];
-    const requestedRingId = String(declaration?.ringId || declaration?.skill?.ringId || '').trim();
-    const skillId = value => String(value?.id || value?.技能ID || value?.魂技ID || value?.name || value?.魂技名 || '').trim();
-    const legalCandidate = decisionRuntime.enumerateCandidates({
-      worldSnapshot: combatData,
-      actorId,
-      actionOpportunity: input?.actionOpportunity || { role: 'ACTIVE' },
-      beliefState: input?.beliefState || {},
-      battleIntent: input?.battleIntent || { mode: String(combatData?.战斗意图 || '').trim() },
-    }).find(candidate => {
-      const candidateDeclaration = candidate?.declaration || {};
-      if (String(candidateDeclaration.actionKind || '').trim() !== String(declaration.actionKind || '').trim()) return false;
-      if (skillId(candidateDeclaration.skill) !== skillId(declaration.skill)) return false;
-      if (String(candidateDeclaration?.ringId || '').trim() !== requestedRingId) return false;
-      const candidateTargets = Array.isArray(candidateDeclaration.targetIds) ? candidateDeclaration.targetIds.map(String) : [];
-      return candidateTargets.length === targetIds.length && candidateTargets.every((targetId, index) => targetId === targetIds[index]);
-    });
-    if (!legalCandidate) throw new Error('battle_declaration_mechanically_illegal');
-    const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
-    const lockedDeclaration = cloneValue(legalCandidate.declaration);
-    const requestedSkill = declaration?.skill && typeof declaration.skill === 'object' ? declaration.skill : {};
-    if (declaration.historySnapshot !== undefined || requestedSkill.historySnapshot !== undefined) {
-      lockedDeclaration.historySnapshot = cloneValue(
-        declaration.historySnapshot && typeof declaration.historySnapshot === 'object'
-          ? declaration.historySnapshot
-          : combatData,
-      );
-    }
-    const result = runStructuredBattle({
-      ...input,
-      combatData,
-      caseId: input?.caseId || 'structured-declaration',
-      seed,
-      rounds: 1,
-      settings: {
-        ...input?.settings,
-        providerId: '',
-        decisionOnly: false,
-        playerLockedSettlement: true,
-      },
-      selectedAction: {
-        actorId,
-        targetIds,
-        actionKind: String(lockedDeclaration?.actionKind || declaration?.actionKind || '').trim(),
-        declaration: lockedDeclaration,
-      },
-    });
-    Object.assign(combatData, result.combatData || {});
-    attachLedger(combatData, cloneValue(result.ledger || []));
-    Object.defineProperty(combatData, '__battleResolutionTrace', {
-      enumerable: false,
-      configurable: true,
-      writable: true,
-      value: cloneValue(result.trace || []),
-    });
-    return { ...result, rounds: Number(result?.roundsExecuted || 0), combatData };
   }
 
   function resolveStructuredTargets(combatData = {}, actor = {}, declaration = {}, effect = {}) {
@@ -11822,10 +11780,7 @@
     });
     combatData.胜负条件 = cloneValue(previewRuntime.normalizeBattleObjectives(combatData?.胜负条件 || {}, combatData));
     const sourceRound = Math.max(0, Number(source?.回合 || 0));
-    const objectiveFinalRound =
-      Math.max(0, Number(combatData?.胜负条件?.startRound || 0)) +
-      Math.max(1, Number(combatData?.胜负条件?.maxRounds || roundLimit));
-    const battleFinalRound = objectiveFinalRound;
+    const battleFinalRound = sourceRound + roundLimit;
     fillObjectiveDamageBaselines(combatData);
     const runtime = ensureCombatRuntime(combatData);
     runtime.actionQueueTrace = [];
@@ -11871,6 +11826,10 @@
         combatData: cloneValue(combatData),
         logs: invalidRuntime.logs || [],
         initialSnapshot: finalSnapshot,
+        previewStopReason: {
+          code: 'RUNTIME_VALIDATION_FAILED',
+          text: String(invalidRuntime?.message || '战斗运行时校验未通过。').trim(),
+        },
         terminal: null,
         objectiveResolution: null,
         winner: invalidRuntime.winner || 'unfinished',
@@ -12182,6 +12141,7 @@
     let roundsExecuted = 0;
     const executedRoundNumbers = [];
     let terminal = null;
+    let continuationStopReason = null;
     const naturalActionBudget = 40;
     try {
       if (input?.worldActionContext !== undefined) {
@@ -14319,6 +14279,29 @@
           },
         });
         if (terminal?.terminal === true) break;
+        if (roundOffset < roundLimit) {
+          const hasAutoContinueSettings = input?.settings && [
+            'stopDamagePercent',
+            'stopDamageRatio',
+            'continueChancePercent',
+            'continueChance',
+          ].some(key => Object.hasOwn(input.settings, key));
+          const continuation = decideTeamContinuation({
+            combatData,
+            currentRound: combatData.回合,
+            mode: input?.mode,
+          }, {
+            autoContinueSettings: hasAutoContinueSettings ? input.settings : null,
+          });
+          if (continuation.log) logs.push(continuation.log);
+          if (!continuation.continueSimulation) {
+            continuationStopReason = {
+              code: String(continuation?.reasonCode || 'AUTO_CONTINUE_STOPPED').trim(),
+              text: String(continuation?.log || '自动续推已停止。').trim(),
+            };
+            break;
+          }
+        }
       }
       if (evaluationSession) {
         advanceRuntimeEvaluationSession(
@@ -14372,6 +14355,23 @@
         candidateCoverage: cloneAuditSnapshot(item?.candidateCoverage || null),
       }));
       const finalSnapshot = getBattleSnapshot(combatData);
+      const previewStopReason = terminal?.terminal === true
+        ? {
+            code: 'BATTLE_TERMINAL',
+            text: String(terminal?.terminalReason || terminal?.reason || '战斗已达到终局条件。').trim(),
+          }
+        : continuationStopReason || {
+            code: input?.mode === 'single_round'
+              ? 'SINGLE_ROUND_COMPLETE'
+              : roundsExecuted >= roundLimit
+                ? 'ROUND_CAP_REACHED'
+                : 'PREVIEW_INTERRUPTED',
+            text: input?.mode === 'single_round'
+              ? '本次单回合结算已完成，战斗仍可继续。'
+              : roundsExecuted >= roundLimit
+                ? `已完成本次预演设置的${roundLimit}回合，战斗仍可继续。`
+                : '本次预演提前中断，战斗仍可继续。',
+          };
       const publicReportBlocks = projectPublicReportBlocks(ledger).map(cloneAuditSnapshot);
       const reportBlocks = buildReportBlocks(ledger, decisionAudits, publicReportBlocks);
       const summary = buildFinalSummary(ledger, decisionAudits, finalSnapshot, combatData);
@@ -14414,7 +14414,7 @@
         decisionTrace: decisionAudits, actionChains: buildActionChains(ledger, trace), actionQueueTrace: runtime.actionQueueTrace.map(item => cloneAuditSnapshot(item)),
         reportBlocks, publicReportBlocks, roundOverview, finalBattleReport: summary.finalBattleReport,
         aiSummaryInput: summary.aiSummaryInput, finalSnapshot, snapshot: finalSnapshot, combatData: cloneValue(combatData),
-        logs, initialSnapshot, terminal, objectiveResolution: terminal,
+        logs, initialSnapshot, previewStopReason, terminal, objectiveResolution: terminal,
         winner,
         playerAlive: finalAlive.playerAlive,
         enemyAlive: finalAlive.enemyAlive,
@@ -18326,7 +18326,7 @@
       objectiveHash: hashBattleValue(objectiveContract),
       caseId: String(result?.caseId || source?.caseId || '').trim(),
       seed: result?.seed ?? source?.seed ?? 1,
-      mode: 'single_round',
+      mode: source.mode === 'multi_round' ? 'multi_round' : 'single_round',
       roundsRequested: Math.max(1, Number(result?.roundsRequested || source?.rounds || 1)),
       actualRoundCount: Math.max(0, Number(result?.roundsExecuted || 0)),
       executedRoundNumbers: cloneValue(result?.executedRoundNumbers || []),
@@ -18338,6 +18338,7 @@
       decisionAudit: cloneValue(result?.decisions || []),
       runtimeAudit: cloneValue(result?.audit || { fatalCount: 0, warningCount: 0, fatals: [], warnings: [] }),
       terminalResult: cloneValue(result?.terminal || { terminal: false, winner: 'unfinished', reason: 'R9V2_LINEAR' }),
+      previewStopReason: cloneValue(result?.previewStopReason || null),
       initialSnapshot: cloneValue(result?.initialSnapshot || combatData),
       finalSnapshot: cloneValue(result?.combatData || result?.finalSnapshot || null),
     };
@@ -18346,11 +18347,7 @@
 
   function executePlayerLockedBattleSettlement(input = {}) {
     const source = input && typeof input === 'object' ? cloneValue(input) : {};
-    const topLevelProviderId = String(source?.providerId ?? '').trim();
-    const settingsProviderId = String(source?.settings?.providerId ?? '').trim();
-    if (topLevelProviderId || settingsProviderId) {
-      throw new Error('NO_FORMAL_PROVIDER_PROVIDER_ID_REJECTED:' + (topLevelProviderId || settingsProviderId));
-    }
+    const providerId = resolveFormalProviderId(source);
     const requestedAction = source?.actionDeclaration || source?.selectedAction;
     const actionDeclaration = requestedAction?.declaration && typeof requestedAction.declaration === 'object'
       ? requestedAction.declaration
@@ -18395,23 +18392,26 @@
       beliefState: {},
       battleIntent: { mode: String(combatData?.战斗意图 || '').trim() },
     });
+    const mode = source.mode === 'multi_round' ? 'multi_round' : 'single_round';
+    const rounds = mode === 'multi_round'
+      ? Math.max(1, Math.min(20, Math.floor(Number(source.rounds || source.settings?.maxRounds || 20))))
+      : 1;
     const result = runStructuredBattle({
       ...source,
       combatData,
-      rounds: 1,
-      mode: 'single_round',
+      rounds,
+      mode,
       // The same fixed/derived values are written back after the source spread
       // so a direct API caller cannot alter the battle intent through
       // input.battleIntent after validation.
       actionOpportunity: { role: 'ACTIVE' },
       beliefState: {},
       battleIntent: { mode: String(combatData?.战斗意图 || '').trim() },
-      // Player-locked settings are constructed, never spread from caller input:
-      // test-only keys (__r9v2LinearTest etc.) must not reach the provider path.
       settings: {
-        providerId: '',
+        ...(source.settings || {}),
+        providerId,
         decisionOnly: false,
-        playerLockedSettlement: true,
+        playerLockedSettlement: false,
       },
       selectedAction: {
         ...cloneValue(requestedAction || {}),
@@ -18425,17 +18425,17 @@
     const draft = {
       schemaVersion: '8.3-draft-1',
       status: 'DRAFT',
-      providerId: '',
-      formalProviderState: 'NO_FORMAL_PROVIDER',
+      providerId,
+      formalProviderState: String(decisionRuntime?.formalProviderState || '').trim(),
       selectionMode: 'PLAYER_LOCKED',
       actorControl: 'PLAYER_LOCKED',
-      decisionEngine: 'NO_FORMAL_PROVIDER',
+      decisionEngine: 'R9V2_LINEAR',
       inputHash: hashBattleValue(source),
       objectiveHash: hashBattleValue(objectiveContract),
       caseId: String(result?.caseId || source?.caseId || '').trim(),
       seed: result?.seed ?? source?.seed ?? 1,
-      mode: 'single_round',
-      roundsRequested: 1,
+      mode,
+      roundsRequested: Math.max(1, Number(result?.roundsRequested || rounds)),
       actualRoundCount: Math.max(0, Number(result?.roundsExecuted || 0)),
       executedRoundNumbers: cloneValue(result?.executedRoundNumbers || []),
       roundStart: result?.roundStart ?? null,
@@ -18446,6 +18446,7 @@
       decisionAudit: cloneValue(result?.decisions || []),
       runtimeAudit: cloneValue(result?.audit || { fatalCount: 0, warningCount: 0, fatals: [], warnings: [] }),
       terminalResult: cloneValue(result?.terminal || { terminal: false, winner: 'unfinished', reason: 'PLAYER_LOCKED' }),
+      previewStopReason: cloneValue(result?.previewStopReason || null),
       initialSnapshot: cloneValue(source.combatData || result?.initialSnapshot || null),
       finalSnapshot: cloneValue(result?.combatData || result?.finalSnapshot || null),
     };
@@ -18479,12 +18480,19 @@
     ) {
       throw new Error('BATTLE_REPORT_DTO_CONTRACT_MISMATCH');
     }
+    if (
+      String(draft?.previewStopReason?.code || '').trim() !==
+      String(reportDto?.previewStopReason?.code || '').trim()
+    ) {
+      throw new Error('BATTLE_REPORT_STOP_REASON_MISMATCH');
+    }
     const sealedPackage = Object.freeze({
       schemaVersion: '8.3-sealed-1',
       sealStatus: 'SEALED',
       draftHash,
       reportHash,
       terminalResult: draft.terminalResult,
+      previewStopReason: draft.previewStopReason,
       finalSnapshot: draft.finalSnapshot,
       reportDto,
     });
@@ -18618,7 +18626,6 @@
     findStateSource,
     decideDuelContinuation,
     executeActionNodes,
-    executeDeclaration,
     beginStructuredDeclaration,
     executeStructuredDeclaration,
     settleStructuredReaction,
