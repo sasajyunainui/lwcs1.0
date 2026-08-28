@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:5d8d867b27b27c313c4d225b9a80e414c4b3e47abb08e83e3afc6cdd995e8ac2|TradeUI_Module.js:b99e6a26a72acff777b675ac0ce28c95b1d6453d366a136a2c932a817d4b3c71|ProfessionUI_Module.js:5b6b552dfad918868569c2f9b68f6ef89c3bf459823e22256b89d09e99e9d2af|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:a4179cf84b59e7746386afa0473df34de094e5dbf9db32b39fc5163aed647a95|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:9064de25a4b831575ef8b8845770d1768a875ce29c99d55fc2d7e1eb24c048fc|BattleRuntime_Module.js:1a9e6ff6a93361b2a9bc0930c08bbc261f9ce2044a854eeb87f0094637b9d9be|BattleReport_Module.js:f8d1b508a2d7057015801c3229e84cc3f9add8194c56bc22fe54c7aeca206ee3|BattleUI_Module.js:e2c4bfafccda69516b4ad170208143ece3645e7cfbf2d8f5fcbd6073e17681d6|Database_Module.js:8d81c55208c4b7a4dc3c2d2d0d1d7b7268e825cf8771f80e3b2a0b90eaf2168c */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:76cd6710090ef57c36a9e5c1505730e6aef79603b8f3f6c78c8a05b7111a0df5|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:907cf7e3a2d21da3576866c682530a89d782795604b3459b19fb8980ec9bf39d|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:9064de25a4b831575ef8b8845770d1768a875ce29c99d55fc2d7e1eb24c048fc|BattleRuntime_Module.js:fe435ab51936615c18d16a99534f0c7571eebf5f29b08114313762384a4df4ad|BattleReport_Module.js:f8d1b508a2d7057015801c3229e84cc3f9add8194c56bc22fe54c7aeca206ee3|BattleUI_Module.js:f9cbb7eb225836832a504aa508727eb8fbd0bcda1bf9c714fa5042120c1ed8f6|Database_Module.js:8d81c55208c4b7a4dc3c2d2d0d1d7b7268e825cf8771f80e3b2a0b90eaf2168c */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -9076,11 +9076,22 @@
     const rootData = deepGet(snapshot, 'rootData', {});
     const roleText = toText(request.角色 || request.角色名 || request.name, toText(snapshot.activeName, '')).trim();
     const charKey = resolveSnapshotCharKey(snapshot, roleText) || roleText;
-    const actionText = [actionType, request.动作, request.模式, request.训练方式, request.副职业, request.子类型, request.requestKind]
+    const actionText = [
+      actionType,
+      request.动作,
+      request.模式,
+      request.训练方式,
+      request.副职业,
+      request.子类型,
+      request.requestKind,
+      request.移动方式,
+      request.method,
+      request.travelMethod,
+    ]
       .map(item => toText(item, '').trim())
       .filter(Boolean)
       .join('|');
-    const isTravel = /travel|移动|前往|抵达|赶路/.test(actionText.toLowerCase());
+    const isTravel = /travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(actionText.toLowerCase());
     const targetLocation = isTravel
       ? toText(request.目标地点 || request.targetLocation || request.target_loc, '')
       : toText(
@@ -9088,22 +9099,23 @@
             (request.目标 && request.目标 !== request.物品 ? request.目标 : ''),
           toText(deepGet(rootData, ['char', charKey, '状态', '位置'], ''), ''),
         );
-    const durationTicks = toNumber(request.耗时tick ?? request.durationTicks ?? request.ticks, 0);
+    const durationTicks = toNumber(request.耗时tick ?? request.durationTicks ?? request.ticks ?? request.est_ticks, 0);
     const temporaryRuleIds = Array.isArray(request.临时规则ID)
       ? request.临时规则ID
       : Array.isArray(request.temporaryRuleIds)
         ? request.temporaryRuleIds
-        : [];
+        : null;
+    const contextOptions = {
+      dataRoot: rootData,
+      characterKey: charKey,
+      actionType: actionText,
+      targetLocation,
+      durationTicks,
+    };
+    if (temporaryRuleIds) contextOptions.temporaryRuleIds = temporaryRuleIds;
     let context = null;
     try {
-      context = runtime.resolveWorldActionContext({
-        dataRoot: rootData,
-        characterKey: charKey,
-        actionType: actionText,
-        targetLocation,
-        durationTicks,
-        temporaryRuleIds,
-      });
+      context = runtime.resolveWorldActionContext(contextOptions);
     } catch (error) {
       return { ok: false, context: null, reason: error?.message || 'world_context_failed' };
     }
@@ -44201,6 +44213,7 @@
           }
           const 挂载交易面板 = () =>
             window.mountTradeUI(container, snapshot, {
+              actionType: tradeLaunchOptions.actionType,
               initialTab: tradeLaunchOptions.initialTab,
               prefillNpc: tradeLaunchOptions.prefillNpc,
               lockNpc: tradeLaunchOptions.lockNpc,
@@ -46913,8 +46926,15 @@ ${播报文本}
           ? 地点映射[normalizedLoc] || 地点映射[currentLoc] || {}
           : {};
     const storeMap = currentLocation && typeof currentLocation === 'object' ? currentLocation.商店 || {} : {};
+    const tradeActionText = [action, requestAction, ...services].join(' ');
+    const isBlackMarket = /black[_-]?market|黑市/i.test(tradeActionText);
+    const actionType = isBlackMarket
+      ? 'trade_private_black_market'
+      : /auction|bid|拍卖|竞拍/i.test(tradeActionText)
+        ? 'trade_auction'
+        : 'trade';
 
-    let initialTab = 'tab-shop';
+    let initialTab = isBlackMarket ? 'tab-private' : 'tab-shop';
     if (/竞拍|拍卖|auction|bid/i.test(requestAction) || action === 'bid' || services.includes('auction')) {
       initialTab = 'tab-auction';
     } else if ((/出售|卖出|sell/i.test(requestAction) && !toText(tradeRequest.对象, npcTarget)) || action === 'sell') {
@@ -46934,10 +46954,14 @@ ${播报文本}
       const storeNames = Object.keys(storeMap || {});
       if (storeNames.length === 1) preferredStore = storeNames[0];
     }
+    const privateTarget = isBlackMarket
+      ? toText(tradeRequest.对象, npcTarget) || preferredStore || '黑市渠道'
+      : toText(tradeRequest.对象, npcTarget);
     return {
+      actionType,
       initialTab,
-      prefillNpc: initialTab === 'tab-private' ? toText(tradeRequest.对象, npcTarget) : '',
-      lockNpc: initialTab === 'tab-private' && !!toText(tradeRequest.对象, npcTarget),
+      prefillNpc: initialTab === 'tab-private' ? privateTarget : '',
+      lockNpc: initialTab === 'tab-private' && (isBlackMarket || !!privateTarget),
       preferredStore: toText(tradeRequest.目标, preferredStore) || preferredStore,
       prefillAction: requestAction,
       prefillItem: toText(tradeRequest.物品, ''),
@@ -49039,6 +49063,14 @@ ${播报文本}
     const soulTowerMeta = soulTowerCombat ? getSoulTowerGateMeta(soulTowerFloor) : null;
     const 胜负条件 = 构建战斗胜负条件(detail, rosterResult.participants, 0);
     if (!胜负条件) return { ok: false, reason: 'battle_objectives_invalid' };
+    const contextRuleIds = Array.isArray(detail.动作上下文?.modifiers?.战斗?.临时规则ID)
+      ? detail.动作上下文.modifiers.战斗.临时规则ID
+      : [];
+    const temporaryRuleSource = Array.isArray(detail.临时规则ID)
+      ? detail.临时规则ID
+      : Array.isArray(detail.temporaryRuleIds)
+        ? detail.temporaryRuleIds
+        : contextRuleIds;
     return {
       进行中: true,
       战斗类型: toText(detail.战斗类型, '擂台切磋'),
@@ -49049,7 +49081,7 @@ ${播报文本}
       环境: {
         地点: arenaName,
         临时规则ID: Array.from(new Set(
-          (Array.isArray(detail.临时规则ID) ? detail.临时规则ID : Array.isArray(detail.temporaryRuleIds) ? detail.temporaryRuleIds : [])
+          temporaryRuleSource
             .map(item => toText(item, '').trim())
             .filter(Boolean),
         )),
@@ -49149,7 +49181,12 @@ ${播报文本}
     await refreshLiveSnapshot({ force: true, reopenBattle: options.skipUi === true ? false : true });
     if (options.skipUi === true) showUiToast('战斗模块自动结算中。', 'info', 1800);
     else showUiToast('战斗模块已开启。', 'info', 2400);
-    return { ok: true, combatData, worldContextProjection: 读取世界动作投影_桥接(contextResult.context) };
+    return {
+      ok: true,
+      combatData,
+      worldActionContext: contextResult.context,
+      worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+    };
   }
 
   /* 楼层只留一行战果；AI 注入只使用 PLAYER 结构化摘要。 */
@@ -49183,6 +49220,9 @@ ${播报文本}
       caseId: toText(options.caseId, 'battle-bridge-formal'),
       seed: Math.max(1, Math.floor(toNumber(runtimeState?.decisionSeed, 1))),
       combatData,
+      ...(options.worldActionContext && typeof options.worldActionContext === 'object'
+        ? { worldActionContext: options.worldActionContext }
+        : {}),
       mode: battleMode,
       executionMode: 规范化战斗提交模式(options.executionMode),
       rounds: maxRounds,
@@ -49535,6 +49575,26 @@ ${播报文本}
     if (!战斗数据 || typeof 战斗数据 !== 'object' || !战斗数据.进行中) {
       return { ok: false, reason: 'battle_context_missing', 已接管: 战斗已接管 };
     }
+    const 战斗环境 = 战斗数据.环境 && typeof 战斗数据.环境 === 'object' && !Array.isArray(战斗数据.环境)
+      ? 战斗数据.环境
+      : {};
+    const 环境地点 = toText(战斗环境.地点, toText(当前快照.currentLoc, ''));
+    const 环境规则ID = Array.isArray(战斗环境.临时规则ID) ? 战斗环境.临时规则ID : [];
+    const 战斗上下文请求 = {
+      ...(request && typeof request === 'object' ? request : {}),
+      地点: 环境地点,
+      临时规则ID: 环境规则ID,
+    };
+    delete 战斗上下文请求.动作上下文;
+    const 战斗上下文结果 = 读取世界动作上下文_桥接(当前快照, 战斗上下文请求, 'battle');
+    if (!战斗上下文结果.ok) {
+      return {
+        ok: false,
+        reason: 战斗上下文结果.reason || 'world_action_blocked',
+        已接管: 战斗已接管,
+        worldContextProjection: 读取世界动作投影_桥接(战斗上下文结果.context),
+      };
+    }
     const 执行函数 = window.BattleUIBridge?.executeBattleTransaction;
     if (typeof 执行函数 !== 'function') return { ok: false, reason: 'battle_transaction_unavailable', 已接管: 战斗已接管 };
     自动战斗延后写回次数 += 1;
@@ -49546,6 +49606,7 @@ ${播报文本}
         mode: 'multi_round',
         rounds: 剩余回合,
         executionMode: 'auto',
+        worldActionContext: 战斗上下文结果.context,
       });
     } catch (error) {
       自动战斗延后写回次数 = Math.max(0, 自动战斗延后写回次数 - 1);
@@ -49580,6 +49641,7 @@ ${播报文本}
       combatData: 战斗数据,
       reason: 提交结果?.reason || '',
       已接管: 战斗已接管,
+      worldContextProjection: 开启结果?.worldContextProjection || '',
     };
   }
 
@@ -50025,8 +50087,15 @@ ${播报文本}
   }
 
   function 执行交易预填路由(快照, 交易请求) {
+    const contextResult = 读取世界动作上下文_桥接(快照, 交易请求 || {}, 'trade');
+    if (!contextResult.ok) {
+      return 构建模块路由失败结果('trade', 交易请求, contextResult.reason || 'world_action_blocked', {
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      });
+    }
     const 待确认请求 = {
       ...cloneJsonValue(交易请求, {}),
+      动作上下文: contextResult.context,
       状态: 'pending',
       自动执行: false,
     };
@@ -50038,6 +50107,7 @@ ${播报文本}
       dispatchMode: 'pending_confirmation',
       skipped: true,
       reason: 'prefill_only',
+      worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
     });
   }
 
@@ -50126,6 +50196,7 @@ ${播报文本}
     const capture = await captureInlineModuleAction(
       (容器, 完成, 失败) =>
         window.mountTradeUI(容器, snapshot, {
+          actionType: launchOptions.actionType,
           initialTab: launchOptions.initialTab,
           prefillNpc: launchOptions.prefillNpc,
           lockNpc: launchOptions.lockNpc,
@@ -50146,8 +50217,15 @@ ${播报文本}
   }
 
   function 执行副职业工坊打开路由(快照, 副职业请求) {
+    const contextResult = 读取世界动作上下文_桥接(快照, 副职业请求 || {}, 'profession');
+    if (!contextResult.ok) {
+      return 构建模块路由失败结果('profession', 副职业请求, contextResult.reason || 'world_action_blocked', {
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      });
+    }
     const 待确认请求 = {
       ...cloneJsonValue(副职业请求, {}),
+      动作上下文: contextResult.context,
       状态: 'pending',
       自动执行: false,
     };
@@ -50159,6 +50237,7 @@ ${播报文本}
       dispatchMode: 'pending_confirmation',
       skipped: true,
       reason: 'prefill_only',
+      worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
     });
   }
 
@@ -50671,14 +50750,16 @@ ${播报文本}
   function 构建模块路由失败结果(moduleKind = '', request = null, reason = 'module_route_failed', extra = {}) {
     const kind = moduleKind || '';
     const safeReason = toText(reason, 'module_route_failed');
+    const publicRequest = request && typeof request === 'object' ? { ...request } : request;
+    if (publicRequest && typeof publicRequest === 'object') delete publicRequest.动作上下文;
     if (kind && kind !== '未命中') {
       return {
         handled: true,
         kind,
-        request: request || null,
+        request: publicRequest || null,
         reason: safeReason,
         dispatchMode: toText(extra && extra.dispatchMode, 'failed_summary') || 'failed_summary',
-        runtimeEvent: 构建模块路由运行事件文本(kind, extra && extra.request ? extra.request : request, {
+        runtimeEvent: 构建模块路由运行事件文本(kind, extra && extra.request ? extra.request : publicRequest, {
           ...extra,
           dispatchMode: toText(extra && extra.dispatchMode, 'failed_summary') || 'failed_summary',
           status: '执行失败',
@@ -50690,7 +50771,7 @@ ${播报文本}
     return {
       handled: false,
       kind,
-      request: request || null,
+      request: publicRequest || null,
       reason: safeReason,
       ...extra,
     };
@@ -50713,11 +50794,13 @@ ${播报文本}
 
   function 构建模块路由成功结果(moduleKind = '', request = null, extra = {}) {
     const kind = moduleKind || '';
+    const publicRequest = request && typeof request === 'object' ? { ...request } : request;
+    if (publicRequest && typeof publicRequest === 'object') delete publicRequest.动作上下文;
     return {
       handled: true,
       kind,
-      request: request || null,
-      runtimeEvent: extra && extra.runtimeEvent ? extra.runtimeEvent : 构建模块路由运行事件文本(kind, request, extra),
+      request: publicRequest || null,
+      runtimeEvent: extra && extra.runtimeEvent ? extra.runtimeEvent : 构建模块路由运行事件文本(kind, publicRequest, extra),
       ...extra,
     };
   }
@@ -50847,10 +50930,11 @@ ${播报文本}
       const 地点 = toText(request && (request.地点 || request.位置), toText(extra && extra.location, ''));
       const 耗时 = 格式化模块路由耗时(extra, request);
       const 摘要 = toText(extra && extra.summary, '');
+      const 世界投影 = toText(extra && extra.worldContextProjection, '').trim();
       if (状态 === '执行失败') {
         事实 = `${角色}的${动作}未结算，${拼接事实片段([地点 ? `地点：${地点}` : '', 耗时 ? `计划用时：${耗时}` : '', 格式化模块原因文本(原因)])}。`;
       } else {
-        事实 = `${角色}完成${动作}${地点 ? `，地点：${地点}` : ''}${耗时 ? `，用时：${耗时}` : ''}${extra?.mimicEnabled ? '，地点拟态修炼生效' : ''}${摘要 ? `，${摘要}` : '，本次结算无可见数值变化'}。`;
+        事实 = `${角色}完成${动作}${地点 ? `，地点：${地点}` : ''}${耗时 ? `，用时：${耗时}` : ''}${世界投影 ? `，${世界投影}` : ''}${摘要 ? `，${摘要}` : '，本次结算无可见数值变化'}。`;
       }
     } else if (模块 === 'teaching') {
       const 老师 = toText(request && request.老师, '');
@@ -51211,6 +51295,68 @@ ${播报文本}
     };
   }
 
+  function 是自主移动方式_桥接(方式 = '') {
+    const 文本 = toText(方式, '步行').trim().toLowerCase() || '步行';
+    if (/公共交通|列车|地铁|公交|航班|飞船客运|客运飞船|渡船|轮渡|校车|短驳|火车|train|subway|metro|bus|flight|ferry|passenger[\s_-]*ship|space[\s_-]*(flight|shuttle)|自有|自驾|私人|载具|汽车|飞行器|机甲|斗铠|vehicle|private|personal|own/.test(文本)) return false;
+    return /步行|徒步|攀爬|游泳|跑步|奔跑|walk|hike|climb|swim|run/.test(文本);
+  }
+
+  function 应用旅行环境修正_桥接(request = {}, mapRequest = {}) {
+    const source = mapRequest && typeof mapRequest === 'object' && !Array.isArray(mapRequest)
+      ? cloneJsonValue(mapRequest, {})
+      : {};
+    const method = toText(source.method, toText(request.移动方式 || request.method || request.travelMethod, '步行')).trim() || '步行';
+    const travel = request?.动作上下文?.modifiers?.旅行;
+    const autonomous = 是自主移动方式_桥接(method);
+    const timeMultiplier = autonomous
+      ? Math.max(1, Math.min(1.3, toNumber(travel?.耗时倍率, 1)))
+      : 1;
+    const vitMultiplier = autonomous
+      ? Math.max(1, Math.min(1.5, toNumber(travel?.体力倍率, 1)))
+      : 1;
+    const baseTicks = Math.max(0, toNumber(source.est_ticks, toNumber(request.耗时tick, 0)));
+    const estTicks = autonomous
+      ? Math.max(baseTicks > 0 ? 0.1 : 0, Math.round(baseTicks * timeMultiplier * 10) / 10)
+      : baseTicks;
+    const costs = source.costs && typeof source.costs === 'object' && !Array.isArray(source.costs)
+      ? { ...source.costs }
+      : null;
+    if (costs) {
+      if (autonomous && vitMultiplier > 1 && toNumber(costs.vit, 0) > 0) {
+        costs.vit = Math.max(1, Math.ceil(toNumber(costs.vit, 0) * vitMultiplier));
+      }
+      const charData = request.charData || {};
+      const wealth = toNumber(charData?.财富?.联邦币, 0);
+      const soulPower = toNumber(charData?.属性?.魂力, 0);
+      const vitality = toNumber(charData?.属性?.体力, 0);
+      const insufficient = toNumber(costs.fedCoin, 0) > wealth
+        ? '联邦币不足'
+        : toNumber(costs.sp, 0) > soulPower
+          ? '魂力不足'
+          : toNumber(costs.vit, 0) > vitality ? '体力不足' : '';
+      if (costs.canAfford === false || insufficient) {
+        costs.canAfford = false;
+        costs.reason = toText(costs.reason, insufficient || '资源不足，无法前往该节点。');
+      } else {
+        costs.canAfford = true;
+      }
+      costs.text = [
+        toNumber(costs.fedCoin, 0) > 0 ? `${toNumber(costs.fedCoin, 0)}联邦币` : '',
+        toNumber(costs.sp, 0) > 0 ? `${toNumber(costs.sp, 0)}魂力` : '',
+        toNumber(costs.vit, 0) > 0 ? `${toNumber(costs.vit, 0)}体力` : '',
+      ].filter(Boolean).join(' / ') || '无额外消耗';
+    }
+    return {
+      ...source,
+      method,
+      est_ticks: estTicks,
+      est_duration: autonomous || !toText(source.est_duration, '').trim()
+        ? 格式化tick时长文本_桥接(estTicks)
+        : source.est_duration,
+      ...(costs ? { costs } : {}),
+    };
+  }
+
   function 解析移动模块意图请求(snapshot, payload = {}, narrativeText = '') {
     const 角色名 = 读取移动请求文本(
       payload,
@@ -51258,10 +51404,30 @@ ${播报文本}
     const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, 父级.name || request.归属父节点);
     if (已有目标.data) return { ok: false, reason: 'travel_target_already_exists', patchOps: [] };
     const 目标短名 = 取地点叶名(request.原始目标地点 || request.目标地点);
-    const 坐标 = 推导移动动态地点坐标(snapshot, { ...request, 目标地点: 目标短名, 归属父节点: 父级.name });
+    const 基础消耗 = 计算移动基础消耗(snapshot, request);
+    if (!基础消耗.ok) return { ok: false, reason: 基础消耗.reason || 'travel_cost_unavailable', patchOps: [] };
+    const 最终移动请求 = 应用旅行环境修正_桥接(request, {
+      method: request.移动方式,
+      est_ticks: request.耗时tick,
+      est_duration: 格式化tick时长文本_桥接(request.耗时tick),
+      costs: {
+        fedCoin: 基础消耗.联邦币,
+        sp: 基础消耗.魂力,
+        vit: 基础消耗.体力,
+        canAfford: true,
+      },
+    });
+    if (最终移动请求.costs?.canAfford === false) {
+      return { ok: false, reason: 最终移动请求.costs.reason || 'travel_cost_unavailable', patchOps: [] };
+    }
+    const 坐标 = 推导移动动态地点坐标(snapshot, {
+      ...request,
+      目标地点: 目标短名,
+      归属父节点: 父级.name,
+      移动方式: 最终移动请求.method,
+      耗时tick: 最终移动请求.est_ticks,
+    });
     if (!坐标.ok) return { ok: false, reason: 坐标.reason || 'travel_coord_unavailable', patchOps: [] };
-    const 消耗 = 计算移动基础消耗(snapshot, request);
-    if (!消耗.ok) return { ok: false, reason: 消耗.reason || 'travel_cost_unavailable', patchOps: [] };
     const activePath = escapeJsonPointerValue(request.charKey);
     const targetPath = escapeJsonPointerValue(目标短名);
     const finalLocName = 构建移动绝对位置(snapshot, 目标短名, 父级.name);
@@ -51282,28 +51448,29 @@ ${播报文本}
       {
         op: 'replace',
         path: '/sys/系统播报',
-        value: `[移动完成] ${request.角色} 经${request.移动方式}抵达 ${finalLocName}，耗时 ${request.耗时tick} tick${未解析文本}。`,
+        value: `[移动完成] ${request.角色} 经${最终移动请求.method}抵达 ${finalLocName}，耗时 ${最终移动请求.est_ticks} tick${未解析文本}。`,
       },
     ];
-    if (消耗.联邦币 > 0)
+    const 消耗 = 最终移动请求.costs;
+    if (消耗.fedCoin > 0)
       patchOps.push({
         op: 'replace',
         path: `/char/${activePath}/财富/联邦币`,
-        value: Math.max(0, toNumber(deepGet(request.charData, '财富.联邦币', 0), 0) - 消耗.联邦币),
+        value: Math.max(0, toNumber(deepGet(request.charData, '财富.联邦币', 0), 0) - 消耗.fedCoin),
       });
-    if (消耗.魂力 > 0)
+    if (消耗.sp > 0)
       patchOps.push({
         op: 'replace',
         path: `/char/${activePath}/属性/魂力`,
-        value: Math.max(0, toNumber(deepGet(request.charData, '属性.魂力', 0), 0) - 消耗.魂力),
+        value: Math.max(0, toNumber(deepGet(request.charData, '属性.魂力', 0), 0) - 消耗.sp),
       });
-    if (消耗.体力 > 0)
+    if (消耗.vit > 0)
       patchOps.push({
         op: 'replace',
         path: `/char/${activePath}/属性/体力`,
-        value: Math.max(0, toNumber(deepGet(request.charData, '属性.体力', 0), 0) - 消耗.体力),
+        value: Math.max(0, toNumber(deepGet(request.charData, '属性.体力', 0), 0) - 消耗.vit),
       });
-    return { ok: true, patchOps, finalLocName, coord: 坐标, cost: 消耗 };
+    return { ok: true, patchOps, finalLocName, coord: 坐标, cost: 消耗, mapRequest: 最终移动请求 };
   }
 
   function 构建已有地点移动补丁(snapshot, request = {}, targetInfo = {}, travelPreview = {}) {
@@ -51329,7 +51496,7 @@ ${播报文本}
       y: toNumber(deepGet(request.charData, '状态.纵坐标', -1), -1),
     };
     const 层级切换耗时 = Math.max(0.1, Math.min(toNumber(request.耗时tick, 0.5), 0.5));
-    const mapRequest = Object.keys(预览请求).length ? 预览请求 : {
+    const 原始地图请求 = Object.keys(预览请求).length ? 预览请求 : {
       method: request.移动方式,
       est_ticks: 是层级切换 ? 层级切换耗时 : request.耗时tick,
       est_duration: 是层级切换 ? 格式化tick时长文本_桥接(层级切换耗时) : 格式化tick时长文本_桥接(request.耗时tick),
@@ -51344,6 +51511,7 @@ ${播报文本}
         text: 基础消耗 ? 基础消耗.消耗文本 : '无额外消耗',
       },
     };
+    const mapRequest = 应用旅行环境修正_桥接(request, 原始地图请求);
     if (mapRequest.costs && mapRequest.costs.canAfford === false) {
       return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
     }
@@ -51393,8 +51561,12 @@ ${播报文本}
     const 角色解析 = 解析移动角色列表(snapshot, 角色名);
     const 角色 = 角色解析.角色列表[0];
     if (!角色 || !角色.key || !角色.char) return { ok: false, reason: 'travel_character_unresolved', patchOps: [], unresolvedCharacters: 角色解析.未解析角色 };
-    const mapRequest = request && typeof request === 'object' ? request : {};
-    if (!Object.keys(mapRequest).length) return { ok: false, reason: 'travel_request_missing', patchOps: [] };
+    const 原始地图请求 = request && typeof request === 'object' ? request : {};
+    if (!Object.keys(原始地图请求).length) return { ok: false, reason: 'travel_request_missing', patchOps: [] };
+    const mapRequest = 应用旅行环境修正_桥接({
+      ...原始地图请求,
+      charData: 角色.char,
+    }, 原始地图请求);
     if (mapRequest.costs && mapRequest.costs.canAfford === false) {
       return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
     }
@@ -51452,7 +51624,16 @@ ${播报文本}
     const snapshot = liveSnapshot && liveSnapshot.rootData ? liveSnapshot : await refreshLiveSnapshot({ force: true });
     if (!snapshot || !snapshot.rootData) return { ok: false, reason: 'snapshot_unavailable' };
     const request = detail && detail.request && typeof detail.request === 'object' ? detail.request : {};
-    const 补丁结果 = 构建地图移动请求结算补丁(snapshot, request, detail);
+    const contextResult = 读取世界动作上下文_桥接(snapshot, request, 'travel');
+    if (!contextResult.ok) {
+      return {
+        ok: false,
+        reason: contextResult.reason || 'world_action_blocked',
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      };
+    }
+    const contextualRequest = { ...request, 动作上下文: contextResult.context };
+    const 补丁结果 = 构建地图移动请求结算补丁(snapshot, contextualRequest, detail);
     if (!补丁结果.ok || !补丁结果.patchOps.length) return 补丁结果;
     const 当前位置 = 读取快照当前位置(snapshot);
     if (
@@ -51461,12 +51642,19 @@ ${播报文本}
       当前位置 &&
       移动目标是否已到达(当前位置, 补丁结果.finalLocName)
     ) {
-      return { ok: true, alreadyThere: true, patchOps: [], finalLocName: 补丁结果.finalLocName, request };
+      return {
+        ok: true,
+        alreadyThere: true,
+        patchOps: [],
+        finalLocName: 补丁结果.finalLocName,
+        request,
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      };
     }
     await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
     登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
     await refreshLiveSnapshot({ force: true });
-    return { ok: true, settled: true, ...补丁结果 };
+    return { ok: true, settled: true, ...补丁结果, worldContextProjection: 读取世界动作投影_桥接(contextResult.context) };
   }
 
   async function 执行移动模块意图路由(snapshot, request = {}) {
@@ -51655,7 +51843,30 @@ ${播报文本}
     return parts.join('，');
   }
 
-  const 日常动作允许写回角色字段 = Object.freeze(['属性', '魂核', '状态', '财富', '我的任务']);
+  function 计算探索结算结果_桥接(charData = {}, request = {}, context = {}) {
+    const 属性 = charData && typeof charData === 'object' ? charData.属性 || {} : {};
+    const 等级 = Math.max(1, toNumber(属性.等级, 1));
+    const 精神上限 = Math.max(1, toNumber(属性.精神力上限, 1));
+    const 精神状态 = Math.max(0, Math.min(1, toNumber(属性.精神力, 精神上限) / 精神上限));
+    const 有效能力 = Math.max(1, 等级 * (0.75 + 精神状态 * 0.25));
+    const 标准难度 = Math.max(1, Math.min(1000, toNumber(request.难度, context?.modifiers?.探索?.标准难度 || 30)));
+    const 成功率 = Math.max(0.1, Math.min(0.9, 有效能力 / (有效能力 + 标准难度)));
+    const 地点键 = context?.location?.active?.path?.join('-') || request.地点 || request.位置 || '';
+    const 事务键 = toText(request.事务ID, '').trim() || [
+      charData?.身份 || charData?.姓名 || '',
+      地点键,
+      request.线索 || '',
+      context?.time?.tick ?? '',
+      request.耗时tick ?? '',
+    ].join('|');
+    const 成功 = 读取稳定随机数_桥接(`explore|${事务键}`) < 成功率;
+    return {
+      成功,
+      情报: 成功 ? toText(request.线索, '').trim() : '',
+    };
+  }
+
+  const 日常动作允许写回角色字段 = Object.freeze(['属性', '魂核', '状态', '财富', '我的任务', '已掌握情报']);
 
   function 构建日常动作字段级写回补丁(charKey = '', settledRoot = {}, options = {}) {
     const 角色名 = toText(charKey, '').trim();
@@ -51683,7 +51894,7 @@ ${播报文本}
 
   function 构建日常结算临时根(snapshot = {}, charKey = '', charData = {}, request = {}) {
     const rootData = cloneJsonValue(deepGet(snapshot, 'rootData', {}), {});
-    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(rootData, 'world.时间.tick', 0), 0)));
+    const 当前tick = Math.max(0, Math.round(toNumber(deepGet(rootData, 'world.时间.tick', 0), 0) * 10) / 10);
     const 耗时tick = Math.max(0, Math.round(toNumber(request && request.耗时tick, 0) * 10) / 10);
     const 临时根 = cloneJsonValue(rootData, {});
     临时根.char = { [charKey]: cloneJsonValue(charData, {}) };
@@ -51746,16 +51957,30 @@ ${播报文本}
     if (!charKey) return 构建模块路由失败结果('routine', request, 'active_character_unresolved');
     const actionMode = 归一化日常动作模式(request && request.动作, '');
     if (!actionMode) return 构建模块路由失败结果('routine', request, 'routine_action_invalid', { charName: charKey });
-    const durationTicks = Math.max(0, Math.floor(toNumber(request && request.耗时tick, 0)));
+    const durationTicks = Math.max(0, Math.round(toNumber(request && request.耗时tick, 0) * 10) / 10);
     if (!(durationTicks > 0)) return 构建模块路由失败结果('routine', request, 'routine_duration_missing', { charName: charKey, actionMode });
     const settleRuntime = 读取日常结算接口();
     if (typeof settleRuntime !== 'function') return 构建模块路由失败结果('routine', request, 'routine_runtime_unavailable', { charName: charKey, actionMode, durationTicks });
     const beforeChar = cloneJsonValue(deepGet(snapshot, ['rootData', 'char', charKey], {}), {});
     if (!beforeChar || !Object.keys(beforeChar).length) return 构建模块路由失败结果('routine', request, 'routine_character_missing', { charName: charKey, actionMode, durationTicks });
+    const contextResult = 读取世界动作上下文_桥接(
+      snapshot,
+      { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks },
+      `routine|${actionMode}`,
+    );
+    if (!contextResult.ok) {
+      return 构建模块路由失败结果('routine', request, contextResult.reason || 'world_action_blocked', {
+        charName: charKey,
+        actionMode,
+        durationTicks,
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      });
+    }
+    const actionRequest = { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks, 动作上下文: contextResult.context };
     let segmentStats = null;
     let settledRoot = null;
     try {
-      segmentStats = await 分段执行日常结算(settleRuntime, snapshot, charKey, beforeChar, { ...request, 动作: actionMode, 耗时tick: durationTicks });
+      segmentStats = await 分段执行日常结算(settleRuntime, snapshot, charKey, beforeChar, actionRequest);
       settledRoot = segmentStats.settledRoot;
     } catch (error) {
       console.error('[LWCS routine settle failed]', {
@@ -51771,13 +51996,20 @@ ${播报文本}
         errorStack: error && error.stack ? String(error.stack) : '',
       });
     }
-    const afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
+    let afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
     if (!afterChar) return 构建模块路由失败结果('routine', request, 'routine_result_missing', { charName: charKey, actionMode, durationTicks });
+    const exploration = actionMode === '探索' ? 计算探索结算结果_桥接(beforeChar, actionRequest, contextResult.context) : null;
+    if (exploration?.成功 && exploration.情报) {
+      const intel = Array.isArray(settledRoot.char[charKey].已掌握情报) ? settledRoot.char[charKey].已掌握情报 : [];
+      if (!intel.some(item => toText(item, '').trim() === exploration.情报)) intel.push(exploration.情报);
+      settledRoot.char[charKey].已掌握情报 = intel;
+      afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
+    }
     const systemText = toText(deepGet(settledRoot, 'sys.系统播报', ''), '').trim();
     const patches = 构建日常动作字段级写回补丁(charKey, settledRoot, { systemText });
     await applyJsonPatchOpsByEditor(patches, { force: true, 记录本轮模块结算路径: true, 结算类型: 'routine' });
     await refreshLiveSnapshot({ force: true });
-    return 构建模块路由成功结果('routine', { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks }, {
+    return 构建模块路由成功结果('routine', actionRequest, {
       dispatchMode: 'settled_summary',
       patchOps: patches,
       charName: charKey,
@@ -51785,7 +52017,8 @@ ${播报文本}
       durationTicks,
       durationText: 格式化tick时长文本_桥接(durationTicks),
       location: toText(request && request.位置, toText(beforeChar?.状态?.位置, '')),
-      mimicEnabled: request.启用地点拟态 === true && actionMode === '冥想',
+      worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      explorationSuccess: exploration?.成功 === true,
       equipmentPassive: segmentStats?.equipmentPassive
         ? {
             routeCount: Number(segmentStats.equipmentPassive.路由数 || 0),
@@ -51796,6 +52029,7 @@ ${播报文本}
       summary: [
         计算日常数值变化(beforeChar, afterChar),
         segmentStats?.recoveryTicks > 0 ? `其中恢复${格式化tick时长文本_桥接(segmentStats.recoveryTicks)}` : '',
+        exploration ? (exploration.成功 ? (exploration.情报 ? '探索获得新情报' : '探索完成') : '探索未发现新情报') : '',
       ].filter(Boolean).join('，'),
     });
   }
@@ -51882,6 +52116,17 @@ ${播报文本}
     inlineUnavailableReason,
     dispatchFailReason,
   ) {
+    let actionContext = null;
+    if (['trade', 'profession'].includes(moduleKind)) {
+      const contextResult = 读取世界动作上下文_桥接(snapshot, request || {}, moduleKind);
+      if (!contextResult.ok) {
+        return 构建模块路由失败结果(moduleKind, request, contextResult.reason || 'world_action_blocked', {
+          dispatchMode: 'inline',
+          worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+        });
+      }
+      actionContext = contextResult.context;
+    }
     const inlineResult = await inlineBuilder(snapshot, request);
     if (!inlineResult?.ok || !inlineResult.inlineAction) {
       return 构建模块路由失败结果(moduleKind, request, inlineResult?.reason || inlineUnavailableReason, {
@@ -51919,6 +52164,7 @@ ${播报文本}
       dispatchMode: 'settled_summary',
       inlineAction: inlineResult.inlineAction,
       result: inlineResult,
+      worldContextProjection: 读取世界动作投影_桥接(actionContext),
     });
   }
 
@@ -52262,6 +52508,7 @@ ${播报文本}
               dispatchMode: 'battle_auto_failed_after_takeover',
               reason: result.reason || 'battle_auto_failed',
               result,
+              worldContextProjection: result?.worldContextProjection || '',
             });
           }
           return 构建模块路由失败结果(moduleKind, request, result?.reason || 'battle_auto_failed', { result });
@@ -52269,6 +52516,7 @@ ${播报文本}
         return 构建模块路由成功结果(moduleKind, request, {
           dispatchMode: 'battle_auto_arbitration',
           result,
+          worldContextProjection: result?.worldContextProjection || '',
         });
       }
       跳过战斗终端自动挂载 = false;
@@ -52287,7 +52535,11 @@ ${播报文本}
       if (!result?.ok) {
         return 构建模块路由失败结果(moduleKind, request, result?.reason || 'battle_open_failed', { result });
       }
-      return 构建模块路由成功结果(moduleKind, request, { dispatchMode: 'battle_takeover', result });
+      return 构建模块路由成功结果(moduleKind, request, {
+        dispatchMode: 'battle_takeover',
+        result,
+        worldContextProjection: result?.worldContextProjection || '',
+      });
     }
 
     if (moduleKind === 'trade') {
@@ -59224,7 +59476,7 @@ const TradeTemplate = `
         <div class="info-row"><span>市场参考:</span><span class="val-highlight" id="priv-base-price">-</span></div>
         <div class="info-row"><span>市场调整:</span><span class="market-adjust" id="priv-market">-</span></div>
         <div class="info-row"><span>总金额:</span><span class="val-highlight" id="priv-total">-</span></div>
-        <div class="info-row"><span>NPC态度预测:</span><span id="priv-attitude">-</span></div>
+        <div class="info-row"><span>对方态度预测:</span><span id="priv-attitude">-</span></div>
         <div class="info-row"><span>触发方式:</span><span class="val-highlight" id="priv-trigger">-</span></div>
         <div class="info-row"><span>有效期至:</span><span class="val-highlight" id="priv-expiry">-</span></div>
         <div class="info-row"><span>来源:</span><span class="val-highlight" id="priv-source">-</span></div>
@@ -59477,6 +59729,11 @@ class TradeUIComponent {
       if (initialTab === 'tab-shop') this.setSelectIfExists('#shop-item-sel', prefillItem);
       if (initialTab === 'tab-sell') this.setSelectIfExists('#sell-item-sel', prefillItem);
       if (initialTab === 'tab-auction') this.setSelectIfExists('#auc-item-sel', prefillItem);
+    } else if (initialTab === 'tab-private' && this.isBlackMarketPrivateTrade() && this.$('#priv-item')) {
+      const storeName = this.getPrivateMarketStoreName(this.$('#priv-npc')?.value || '');
+      const firstStockedItem = Object.entries(this.currentStores?.[storeName]?.库存 || {})
+        .find(([, item]) => Number(item?.库存 || 0) > 0)?.[0] || '';
+      if (firstStockedItem) this.$('#priv-item').value = firstStockedItem;
     }
 
     const prefillQty = Math.max(1, Number(this.options.prefillQty || this.options.数量 || 0));
@@ -59970,101 +60227,78 @@ class TradeUIComponent {
     }
   }
 
-  getWorldActionBlockers(context) {
-    if (!context || typeof context !== 'object') return [];
-    const raw = context.blockers;
-    if (Array.isArray(raw)) return raw.filter(Boolean);
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      if (raw.blocked === false || raw.阻断 === false) return [];
-      if (raw.blocked === true || raw.阻断 === true) return [raw];
-      return Object.entries(raw).filter(([, value]) => value === true).map(([key]) => key);
-    }
-    return raw ? [raw] : [];
+  getConfiguredTradeWorldAction(defaultActionType) {
+    const configuredActionType = String(this.options.actionType || '').trim();
+    const actionType = ['trade_auction', 'trade_buy', 'trade_sell'].includes(configuredActionType)
+      ? configuredActionType
+      : defaultActionType;
+    return {
+      actionType,
+      marketFunction: actionType === 'trade_auction' ? '拍卖' : '商业'
+    };
   }
 
-  getWorldActionBlockerText(context, fallback = '当前行动不满足地点或身份条件。') {
-    const blocker = this.getWorldActionBlockers(context)[0];
-    if (!blocker) return '';
-    if (typeof blocker === 'string') return blocker.trim() || fallback;
-    if (blocker && typeof blocker === 'object') {
-      return String(blocker.message || blocker.reason || blocker.说明 || blocker.原因 || blocker.label || '').trim() || fallback;
-    }
-    return String(blocker).trim() || fallback;
+  isBlackMarketPrivateTrade() {
+    return String(this.options.actionType || '').trim() === 'trade_private_black_market';
   }
 
-  getWorldActionEntries(context, field = 'facilities') {
-    const raw = context && typeof context === 'object' ? context[field] : null;
-    if (Array.isArray(raw)) return raw.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    if (!raw || typeof raw !== 'object') return [];
-    if (Array.isArray(raw.items)) return raw.items.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    return Object.entries(raw).map(([name, value]) => value && typeof value === 'object' && !Array.isArray(value)
-      ? { name: value.name || value.名称 || name, ...value }
-      : { name, available: value });
-  }
-
-  getWorldActionBoolean(value, keys = []) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-    for (const key of keys) {
-      if (typeof value[key] === 'boolean') return value[key];
-    }
-    return undefined;
-  }
-
-  hasWorldMarketFacility(context, storeName = '') {
-    if (!context || typeof context !== 'object') return false;
-    const market = context.market && typeof context.market === 'object' ? context.market : null;
-    const marketAvailable = this.getWorldActionBoolean(market, ['available', '可用', 'enabled', '存在', 'hasFacility']);
-    if (marketAvailable === false) return false;
-    const storeText = String(storeName || '').trim();
-    const facilities = this.getWorldActionEntries(context, 'facilities');
-    const matching = facilities.filter(entry => {
-      const text = `${entry.name || ''} ${entry.type || entry.类型 || ''} ${entry.category || entry.类别 || ''}`;
-      return /market|trade|shop|store|auction|商业|交易|商店|拍卖/.test(text)
-        || (storeText && text.includes(storeText));
-    });
-    const facilityAvailable = matching.map(entry => this.getWorldActionBoolean(entry, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']))
-      .find(value => value !== undefined);
-    if (facilityAvailable === false) return false;
-    if (facilityAvailable === true || marketAvailable === true) return true;
-    return matching.length > 0;
-  }
-
-  isWorldMarketOpen(context, storeName = '') {
-    if (!context || typeof context !== 'object') return false;
-    const facilities = this.getWorldActionEntries(context, 'facilities');
-    const matching = facilities.filter(entry => {
-      const text = `${entry.name || ''} ${entry.type || entry.类型 || ''} ${entry.category || entry.类别 || ''}`;
-      return /market|trade|shop|store|auction|商业|交易|商店|拍卖/.test(text)
-        || (storeName && text.includes(String(storeName || '').trim()));
-    });
-    const sources = [context.market, ...matching, context.time].filter(value => value && typeof value === 'object');
-    for (const source of sources) {
-      const state = this.getWorldActionBoolean(source, ['open', 'isOpen', '营业中', '开放', '可营业']);
-      if (state !== undefined) return state;
-    }
-    return this.hasWorldMarketFacility(context, storeName);
+  getPrivateMarketStoreName(targetName = '') {
+    if (!this.isBlackMarketPrivateTrade()) return '';
+    const candidates = [this.options.preferredStore, targetName]
+      .map(name => String(name || '').trim())
+      .filter(Boolean);
+    return candidates.find(name => this.currentStores?.[name]) || '';
   }
 
   getWorldActionState(context, options = {}) {
-    if (!context) return { ok: false, reason: '共享世界行动上下文尚未就绪。' };
-    const blockerText = this.getWorldActionBlockerText(context);
-    if (blockerText) return { ok: false, reason: blockerText };
-    if (options.market === true && !this.hasWorldMarketFacility(context, options.storeName || '')) {
-      return { ok: false, reason: '当前地点没有可用的市场设施。' };
+    if (!context || typeof context !== 'object' || Array.isArray(context)) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文不可用（runtime 缺失或调用失败）。'
+      };
     }
-    if (options.market === true && !this.isWorldMarketOpen(context, options.storeName || '')) {
-      return { ok: false, reason: '当前市场设施暂未开放。' };
+    if (!Array.isArray(context.blockers) || context.blockers.some(item => typeof item !== 'string')) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文结构无效。'
+      };
+    }
+    const blockerText = context.blockers.find(item => item.trim());
+    if (blockerText) return { ok: false, reason: blockerText };
+    if (options.market === true) {
+      const functionName = options.marketFunction || '商业';
+      if (!context.facilities || typeof context.facilities !== 'object' || Array.isArray(context.facilities)) {
+        return { ok: false, reason: '共享世界行动上下文结构无效。' };
+      }
+      if (!context.market || typeof context.market !== 'object' || Array.isArray(context.market) || !Number.isFinite(Number(context.market.价格倍率))) {
+        return { ok: false, reason: '共享世界行动上下文结构无效。' };
+      }
+      const facility = context.facilities[functionName];
+      if (!facility || typeof facility !== 'object' || Array.isArray(facility)) {
+        return { ok: false, reason: `当前地点缺少${functionName}设施。` };
+      }
+      if (facility.可用 !== true) {
+        return { ok: false, reason: String(facility.原因 || `当前${functionName}设施不可用。`).trim() };
+      }
+      if (options.storeName) {
+        if (!context.market || typeof context.market !== 'object' || Array.isArray(context.market) || !Array.isArray(context.market.商店) || context.market.商店.some(item => typeof item !== 'string')) {
+          return { ok: false, reason: '共享世界行动上下文结构无效。' };
+        }
+        if (!context.market.商店.includes(options.storeName)) {
+          return { ok: false, reason: `当前地点没有商店【${options.storeName}】。` };
+        }
+      }
     }
     return { ok: true, reason: '' };
   }
 
   getWorldClockText(context) {
-    const time = context?.time;
-    if (!time || typeof time !== 'object') return '';
-    const hour = Number(time.hour ?? time.小时);
-    const minute = Number(time.minute ?? time.分钟);
+    const date = context?.time?.日期;
+    if (!date || typeof date !== 'object' || Array.isArray(date)) return '';
+    const hour = Number(date.时);
+    const minute = Number(date.分);
     if (Number.isFinite(hour) && Number.isFinite(minute)) return `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor(minute)).padStart(2, '0')}`;
-    return String(time.label || time.clock || time.current || time.当前 || '').trim();
+    return '';
   }
 
   get allChars() {
@@ -60224,34 +60458,20 @@ class TradeUIComponent {
     return Math.max(0.7, Math.min(1.6, num));
   }
 
-  getMarketMultiplier(kind = 'buy', context = this.tradeContext) {
-    const key = kind === 'sell' ? '卖出倍率' : '买入倍率';
-    const englishKey = kind === 'sell' ? 'sellMultiplier' : 'buyMultiplier';
-    const candidates = [
-      context?.market?.[englishKey],
-      context?.market?.[kind === 'sell' ? 'sell' : 'buy'],
-      context?.market?.[key],
-      context?.market?.modifiers?.[englishKey],
-      context?.modifiers?.market?.[englishKey],
-      context?.modifiers?.market?.[kind === 'sell' ? 'sell' : 'buy'],
-      context?.modifiers?.[englishKey],
-      context?.modifiers?.[key],
-    ];
-    const value = candidates.find(candidate => Number.isFinite(Number(candidate)));
-    return this.clampMarketMultiplier(value ?? 1);
+  getMarketMultiplier(kind = 'buy', context = null) {
+    return this.clampMarketMultiplier(context?.market?.价格倍率);
   }
 
   getMarketAdjustedPrice(basePrice, kind = 'buy', options = {}) {
     const base = Math.max(0, Math.floor(Number(basePrice || 0)));
     if (options.fixed === true) return base;
-    return Math.max(0, Math.floor(base * this.getMarketMultiplier(kind, options.context || this.tradeContext)));
+    return Math.max(0, Math.floor(base * this.getMarketMultiplier(kind, options.context)));
   }
 
   getMarketAdjustmentText(kind = 'buy', options = {}) {
     if (options.fixed === true) return '固定价格';
-    const context = options.context || this.tradeContext;
-    const market = context?.market && typeof context.market === 'object' ? context.market : {};
-    return String(market.label || market.status || market.description || market.说明 || context?.location?.marketLabel || '按当前区域供需结算').trim();
+    const context = options.context || null;
+    return String(context?.market?.经济状况 || '按当前区域供需结算').trim();
   }
 
   clampTrade(value, min, max) {
@@ -60298,8 +60518,8 @@ class TradeUIComponent {
     const 拍卖 = this.currentAuction && typeof this.currentAuction === 'object' ? this.currentAuction : {};
     const 拍品表 = 拍卖.拍品 && typeof 拍卖.拍品 === 'object' && !Array.isArray(拍卖.拍品) ? 拍卖.拍品 : {};
     if (String(拍卖.状态 || '休市') === '休市' || !Object.keys(拍品表).length) return false;
-    const worldContext = this.resolveWorldActionContext('trade_auction', this.charData?.状态?.位置 || '') || this.tradeContext;
-    if (!this.getWorldActionState(worldContext, { market: true }).ok) return false;
+    const worldContext = this.resolveWorldActionContext('trade_auction', this.charData?.状态?.位置 || '');
+    if (!this.getWorldActionState(worldContext, { market: true, marketFunction: '拍卖' }).ok) return false;
     const 拍卖地点 = String(拍卖.地点 || '').trim();
     const 当前位置 = String(this.charData?.状态?.位置 || '').trim();
     if (!拍卖地点 || 拍卖地点 === '无' || !当前位置) return false;
@@ -60334,59 +60554,98 @@ class TradeUIComponent {
       error: null, note: '', npcItem: null, playerItem: null
     };
     if (!itemName) { ctx.error = '请输入交易物品名称。'; return ctx; }
-    if (!targetNpcName) { ctx.error = '请输入交易对象 NPC。'; return ctx; }
-    ctx.worldContext = this.resolveWorldActionContext('trade_private', this.charData?.状态?.位置 || '');
-    const privateActionState = this.getWorldActionState(ctx.worldContext);
-    if (!privateActionState.ok) { ctx.error = privateActionState.reason; return ctx; }
-    ctx.currency = this.resolveTradeCurrency(this.取物品定义(itemName), '', this.charData?.状态?.位置 || '');
-    if (!this.isCurrencySpendable(ctx.currency)) {
-      ctx.error = this.getCurrencyBlockedMessage(ctx.currency);
-      return ctx;
+    ctx.isBlackMarket = this.isBlackMarketPrivateTrade();
+    ctx.storeName = this.getPrivateMarketStoreName(targetNpcName);
+    ctx.usesMarketStore = ctx.isBlackMarket && !!ctx.storeName;
+    ctx.counterparty = ctx.usesMarketStore ? ctx.storeName : targetNpcName;
+    if (!ctx.isBlackMarket && !targetNpcName) { ctx.error = '请输入交易对象 NPC。'; return ctx; }
+    if (ctx.isBlackMarket && (!targetNpcName || targetNpcName === '黑市渠道') && !ctx.usesMarketStore) {
+      ctx.error = '请选择在场交易对象，或从带有库存的黑市渠道进入交易。'; return ctx;
     }
-
-    const resolvedTarget = this.resolveCharacterByName(targetNpcName);
-    const targetChar = resolvedTarget.char;
-    const relationName = resolvedTarget.displayName || targetNpcName;
-    ctx.targetChar = targetChar || null;
-    if (!targetChar) { ctx.error = `找不到交易对象【${targetNpcName}】。`; return ctx; }
-
     const currentLoc = String(this.charData?.状态?.位置 || '');
-    const targetLoc = String(targetChar?.状态?.位置 || '');
-    if (currentLoc && targetLoc && !this.isLocationCompatible(currentLoc, targetLoc)) {
-      ctx.error = `【${targetNpcName}】当前不在你身边，无法进行私下交易。`; return ctx;
-    }
-    if (ctx.basePrice <= 0) {
-      ctx.error = `【${itemName}】当前无法进行可靠估值，私下交易无法发起。`; return ctx;
-    }
+    const currentLocation = this.resolveTradeLocationNode(currentLoc);
+    ctx.locationKey = currentLocation.key || currentLoc;
+    ctx.storeData = ctx.usesMarketStore ? this.currentStores?.[ctx.storeName] || null : null;
+    ctx.worldContext = this.resolveWorldActionContext(ctx.isBlackMarket ? 'trade_private_black_market' : 'trade_private', currentLoc);
+    const privateActionState = this.getWorldActionState(ctx.worldContext, ctx.isBlackMarket
+      ? { market: true, marketFunction: '黑市', ...(ctx.usesMarketStore ? { storeName: ctx.storeName } : {}) }
+      : {});
+    if (!privateActionState.ok) { ctx.error = privateActionState.reason; return ctx; }
 
-    ctx.relationScore = Number(this.charData?.社交?.关系?.[targetNpcName]?.好感度 || this.charData?.社交?.关系?.[relationName]?.好感度 || 0);
-
+    if (!ctx.usesMarketStore) {
+      const resolvedTarget = this.resolveCharacterByName(targetNpcName);
+      const targetChar = resolvedTarget.char;
+      const relationName = resolvedTarget.displayName || targetNpcName;
+      ctx.targetChar = targetChar || null;
+      if (!targetChar) { ctx.error = `找不到交易对象【${targetNpcName}】。`; return ctx; }
+      const targetLoc = String(targetChar?.状态?.位置 || '');
+      if (currentLoc && targetLoc && !this.isLocationCompatible(currentLoc, targetLoc)) {
+        ctx.error = `【${targetNpcName}】当前不在你身边，无法进行私下交易。`; return ctx;
+      }
+      ctx.relationScore = Number(this.charData?.社交?.关系?.[targetNpcName]?.好感度 || this.charData?.社交?.关系?.[relationName]?.好感度 || 0);
+    }
     if (action === "私下买入") {
-      ctx.npcItem = targetChar?.背包?.[itemName] || null;
-      ctx.basePrice = Math.max(0, Math.floor(ctx.basePrice * this.计算来源批次平均倍率(ctx.npcItem || {}, qty, this.取物品定义(itemName))));
+      ctx.npcItem = ctx.usesMarketStore
+        ? ctx.storeData?.库存?.[itemName] || null
+        : ctx.targetChar?.背包?.[itemName] || null;
+      const itemDefinition = ctx.npcItem?._临时定义 || this.取物品定义(itemName);
+      const itemBasePrice = this.读取交易物品基础价格(
+        itemName,
+        { ...(itemDefinition || {}), ...(ctx.npcItem || {}) },
+        itemDefinition,
+        itemDefinition?.分类 || '剧情杂物',
+      );
+      ctx.basePrice = Math.max(0, Math.floor(
+        itemBasePrice
+        * this.计算来源批次平均倍率(ctx.npcItem || {}, qty, itemDefinition)
+        * (ctx.usesMarketStore ? Number(ctx.npcItem?.价格倍率 || 1) * Math.max(0, 1 - Number(ctx.npcItem?.折扣 || 0)) : 1)
+      ));
+      if (ctx.basePrice <= 0) {
+        ctx.error = `【${itemName}】当前无法进行可靠估值，私下交易无法发起。`; return ctx;
+      }
       ctx.marketPrice = this.getMarketAdjustedPrice(ctx.basePrice, 'buy', { context: ctx.worldContext });
+      ctx.currency = this.resolveTradeCurrency(ctx.npcItem || itemDefinition, ctx.storeName, currentLoc, ctx.storeData);
       const priceDeltaRatio = (Number(price || 0) - ctx.marketPrice) / Math.max(1, ctx.marketPrice);
       if ((this.charData?.财富?.[ctx.currency] || 0) < ctx.total) {
         ctx.error = `${this.getCurrencyLabel(ctx.currency)}不足，完成该交易需要 ${ctx.total.toLocaleString()}。`; return ctx;
       }
-      if (!ctx.npcItem || this.读取背包总数量(ctx.npcItem) < qty) {
-        ctx.error = `【${targetNpcName}】当前并没有足够的【${itemName}】可供出售。`; return ctx;
+      const availableQuantity = ctx.usesMarketStore ? Number(ctx.npcItem?.库存 || 0) : this.读取背包总数量(ctx.npcItem);
+      if (!ctx.npcItem || availableQuantity < qty) {
+        ctx.error = `【${ctx.counterparty}】当前并没有足够的【${itemName}】可供出售。`; return ctx;
       }
       ctx.successRate = this.clampTrade(60 + Math.floor(ctx.relationScore * 0.25) + Math.floor(priceDeltaRatio * 50), 5, 95);
-      ctx.note = `好感 ${ctx.relationScore} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与关系结算`;
+      ctx.note = ctx.usesMarketStore
+        ? `黑市渠道 ${ctx.storeName} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与报价结算`
+        : `${ctx.isBlackMarket ? '黑市环境 / ' : ''}好感 ${ctx.relationScore} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与关系结算`;
     } else {
       ctx.playerItem = this.charData?.背包?.[itemName] || null;
-      ctx.basePrice = Math.max(0, Math.floor(ctx.basePrice * this.计算来源批次平均倍率(ctx.playerItem || {}, qty, this.取物品定义(itemName))));
+      const itemDefinition = this.取物品定义(itemName);
+      const itemBasePrice = this.读取交易物品基础价格(
+        itemName,
+        { ...(itemDefinition || {}), ...(ctx.playerItem || {}) },
+        itemDefinition,
+        itemDefinition?.分类 || '剧情杂物',
+      );
+      ctx.basePrice = Math.max(0, Math.floor(itemBasePrice * this.计算来源批次平均倍率(ctx.playerItem || {}, qty, itemDefinition)));
+      if (ctx.basePrice <= 0) {
+        ctx.error = `【${itemName}】当前无法进行可靠估值，私下交易无法发起。`; return ctx;
+      }
       ctx.marketPrice = this.getMarketAdjustedPrice(ctx.basePrice, 'sell', { context: ctx.worldContext });
+      ctx.currency = this.resolveTradeCurrency(ctx.playerItem || this.取物品定义(itemName), ctx.storeName, currentLoc, ctx.storeData);
       const priceDeltaRatio = (Number(price || 0) - ctx.marketPrice) / Math.max(1, ctx.marketPrice);
       if (!ctx.playerItem || this.读取背包总数量(ctx.playerItem) < qty) {
         ctx.error = '背包数量不足。'; return ctx;
       }
-      if ((targetChar?.财富?.[ctx.currency] || 0) < ctx.total) {
+      if (!ctx.usesMarketStore && (ctx.targetChar?.财富?.[ctx.currency] || 0) < ctx.total) {
         ctx.error = `【${targetNpcName}】的${this.getCurrencyLabel(ctx.currency)}不足，无法完成这笔收购。`; return ctx;
       }
       ctx.successRate = this.clampTrade(60 + Math.floor(ctx.relationScore * 0.25) - Math.floor(priceDeltaRatio * 55), 5, 95);
-      ctx.note = `好感 ${ctx.relationScore} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与关系结算`;
+      ctx.note = ctx.usesMarketStore
+        ? `黑市渠道 ${ctx.storeName} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与报价结算`
+        : `${ctx.isBlackMarket ? '黑市环境 / ' : ''}好感 ${ctx.relationScore} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与关系结算`;
+    }
+    if (!this.isCurrencySpendable(ctx.currency)) {
+      ctx.error = this.getCurrencyBlockedMessage(ctx.currency);
     }
     return ctx;
   }
@@ -60405,7 +60664,7 @@ class TradeUIComponent {
       `trade_${方向}`,
       String(选项.地点 || 选项.位置 || this.charData?.状态?.位置 || ''),
       Math.max(0, Number(选项.durationTicks || 选项.持续tick || 0))
-    ) || this.tradeContext;
+    );
     const 实际单价 = this.getMarketAdjustedPrice(方向 === 'sell' ? Math.floor(基础单价 * 0.5) : 基础单价, 方向, {
       fixed: 选项.fixed === true,
       context: 世界行动上下文,
@@ -60436,11 +60695,11 @@ class TradeUIComponent {
     return `斗罗历${years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }
 
-  isShopOpenNow(context = this.tradeContext, storeName = '') {
+  isShopOpenNow(context = null, storeName = '') {
     return this.getWorldActionState(context, { market: true, storeName }).ok;
   }
 
-  getShopOpenStateText(context = this.tradeContext, storeName = '') {
+  getShopOpenStateText(context = null, storeName = '') {
     const clockText = this.getWorldClockText(context);
     const state = this.getWorldActionState(context, { market: true, storeName });
     if (!context) return state.reason;
@@ -60599,7 +60858,7 @@ class TradeUIComponent {
     return this.normalizeSoulTowerDiscountSpiritRecord(this.charData?.魂灵塔记录?.当前五折魂灵 || {});
   }
 
-  canAccessSoulTowerDiscountStore(location = '', currentCity = null, worldContext = this.tradeContext) {
+  canAccessSoulTowerDiscountStore(location = '', currentCity = null, worldContext = null) {
     if (!this.getWorldActionState(worldContext, { market: true }).ok) return false;
     if (/传灵塔/.test(String(location || ''))) return true;
     const stores = currentCity?.data?.商店;
@@ -60755,8 +61014,9 @@ class TradeUIComponent {
 
     const item = this.currentStores[storeName].库存[itemName];
     const storeData = this.currentStores[storeName] || {};
-    const worldContext = this.resolveWorldActionContext('trade_buy', this.charData?.状态?.位置 || '') || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true, storeName });
+    const worldAction = this.getConfiguredTradeWorldAction('trade_buy');
+    const worldContext = this.resolveWorldActionContext(worldAction.actionType, this.charData?.状态?.位置 || '');
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction, storeName });
     const 商店营业中 = worldActionState.ok;
     const isSoulTowerDiscountTrade = item && item._tower_discount_virtual === true;
     const itemDefinition = item._临时定义 || this.取物品定义(itemName);
@@ -60825,8 +61085,9 @@ class TradeUIComponent {
     const item = this.currentStores?.[storeName]?.库存?.[itemName];
     if (!item) return this.显示提示('当前没有可交易的商品。');
     const loc = this.charData?.状态?.位置 || '';
-    const worldContext = this.resolveWorldActionContext('trade_buy', loc) || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true, storeName });
+    const worldAction = this.getConfiguredTradeWorldAction('trade_buy');
+    const worldContext = this.resolveWorldActionContext(worldAction.actionType, loc);
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction, storeName });
     if (!worldActionState.ok) return this.显示提示(worldActionState.reason);
     const storeData = this.currentStores[storeName] || {};
     const currency = this.resolveTradeCurrency(item, storeName, this.charData?.状态?.位置 || '', storeData);
@@ -60967,8 +61228,9 @@ class TradeUIComponent {
 
     const itemName = 出售项.物品名;
     const loc = this.charData?.状态?.位置 || '';
-    const worldContext = this.resolveWorldActionContext('trade_sell', loc) || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true });
+    const worldAction = this.getConfiguredTradeWorldAction('trade_sell');
+    const worldContext = this.resolveWorldActionContext(worldAction.actionType, loc);
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction });
     const currency = this.resolveTradeCurrency(出售项.展示物品, '', loc);
     const 系统禁售 = 系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName);
     const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty, 出售项.展示物品 || this.取物品定义(itemName))));
@@ -61000,8 +61262,9 @@ class TradeUIComponent {
     if (!出售项 || !出售项.物品名 || 出售项.可用数量 < qty) return this.显示提示('背包数量不足。');
     const itemName = 出售项.物品名;
     const loc = this.charData?.状态?.位置 || '';
-    const worldContext = this.resolveWorldActionContext('trade_sell', loc) || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true });
+    const worldAction = this.getConfiguredTradeWorldAction('trade_sell');
+    const worldContext = this.resolveWorldActionContext(worldAction.actionType, loc);
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction });
     if (!worldActionState.ok) return this.显示提示(worldActionState.reason);
     const currency = this.resolveTradeCurrency(出售项.展示物品, '', loc);
     if (系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName)) return this.显示提示('凭证类物品不能出售。');
@@ -61045,7 +61308,7 @@ class TradeUIComponent {
     this.$('#priv-total').textContent = `${total.toLocaleString()} ${currencyLabel}`;
 
     const previewItem = action === '私下买入' ? ctx.npcItem : ctx.playerItem;
-    this.updateTradeMetaPanel('priv', previewItem ? this.resolveTradeItemInfo(itemName, previewItem, { source: action === '私下买入' ? targetNpc : this.activeName }) : null);
+    this.updateTradeMetaPanel('priv', previewItem ? this.resolveTradeItemInfo(itemName, previewItem, { source: action === '私下买入' ? ctx.counterparty : this.activeName }) : null);
 
     btn.disabled = false;
     attEl.className = "";
@@ -61063,12 +61326,13 @@ class TradeUIComponent {
 
   executePrivateTrade() {
     const action = this.$('#priv-action').value;
-    const targetNpc = this.$('#priv-npc').value || "神秘商人";
+    const targetNpc = String(this.$('#priv-npc').value || '').trim();
     const itemName = this.$('#priv-item').value;
     const qty = parseInt(this.$('#priv-qty').value) || 1;
     const price = parseInt(this.$('#priv-price').value) || 1;
     const ctx = this.getPrivateTradeContext(action, targetNpc, itemName, qty, price);
     if (ctx.error) return this.显示提示(ctx.error);
+    const counterparty = ctx.counterparty || targetNpc;
 
     let patchOps = [];
     let log = "";
@@ -61077,40 +61341,56 @@ class TradeUIComponent {
 
     if (action === "私下买入") {
       if (!isSuccess) {
-        log = `[私下交易失败] ${this.activeName} 向 ${targetNpc} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接受。`;
+        log = `[私下交易失败] ${this.activeName} 向 ${counterparty} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接受。`;
       } else {
         patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (this.charData.财富?.[ctx.currency] || 0) - ctx.total });
-        const tradeItem = this.buildInventoryItemFromTradeSource(itemName, ctx.npcItem, qty, { source: targetNpc, desc: `从 ${targetNpc} 处私下购得` });
+        const tradeItem = this.buildInventoryItemFromTradeSource(itemName, ctx.npcItem, qty, { source: counterparty, desc: `从 ${counterparty} 处私下购得` });
         this.appendItemDefinitionPatch(patchOps, itemName, tradeItem.definition, tradeItem.分类);
         this.appendInventoryGainPatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, tradeItem);
-        this.appendInventoryConsumePatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, qty);
-        patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) + ctx.total });
-        log = `[私下交易成功][买入热][交易触发待处理] ${this.activeName} 以总价 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}从 ${targetNpc} 处买入了 ${qty} 份【${itemName}】。`;
+        if (ctx.usesMarketStore) {
+          patchOps.push({
+            op: "replace",
+            path: `/world/地点/${this.escapeJsonPointer(ctx.locationKey)}/商店/${this.escapeJsonPointer(ctx.storeName)}/库存/${this.escapeJsonPointer(itemName)}/库存`,
+            value: Number(ctx.npcItem?.库存 || 0) - qty,
+          });
+        } else {
+          this.appendInventoryConsumePatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, qty);
+          patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) + ctx.total });
+        }
+        log = `[私下交易成功][买入热][交易触发待处理] ${this.activeName} 以总价 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}从 ${counterparty} 处买入了 ${qty} 份【${itemName}】。`;
       }
     } else {
       if (!isSuccess) {
-        log = `[私下交易失败] ${this.activeName} 向 ${targetNpc} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接手。`;
+        log = `[私下交易失败] ${this.activeName} 向 ${counterparty} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接手。`;
       } else {
         this.appendInventoryConsumePatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, qty);
         patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (this.charData.财富?.[ctx.currency] || 0) + ctx.total });
-        const npcItem = this.buildInventoryItemFromTradeSource(itemName, this.charData.背包[itemName], qty, { source: this.activeName, desc: `从 ${this.activeName} 处私下收购` });
-        this.appendItemDefinitionPatch(patchOps, itemName, npcItem.definition, npcItem.分类);
-        this.appendInventoryGainPatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, npcItem);
-        patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) - ctx.total });
-        log = `[私下交易成功][卖出热][交易触发待处理] ${this.activeName} 以单价 ${price} ${this.getCurrencyLabel(ctx.currency)}向 ${targetNpc} 卖出 ${qty} 份【${itemName}】，获得 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}。`;
+        if (ctx.usesMarketStore) {
+          const stockPath = `/world/地点/${this.escapeJsonPointer(ctx.locationKey)}/商店/${this.escapeJsonPointer(ctx.storeName)}/库存/${this.escapeJsonPointer(itemName)}`;
+          const existingStock = ctx.storeData?.库存?.[itemName];
+          patchOps.push(existingStock
+            ? { op: "replace", path: `${stockPath}/库存`, value: Number(existingStock.库存 || 0) + qty }
+            : { op: "add", path: stockPath, value: { 库存: qty, 价格倍率: 1, 折扣: 0, 需求声望: 0, 需求: {}, 批次: [] } });
+        } else {
+          const npcItem = this.buildInventoryItemFromTradeSource(itemName, this.charData.背包[itemName], qty, { source: this.activeName, desc: `从 ${this.activeName} 处私下收购` });
+          this.appendItemDefinitionPatch(patchOps, itemName, npcItem.definition, npcItem.分类);
+          this.appendInventoryGainPatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, npcItem);
+          patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) - ctx.total });
+        }
+        log = `[私下交易成功][卖出热][交易触发待处理] ${this.activeName} 以单价 ${price} ${this.getCurrencyLabel(ctx.currency)}向 ${counterparty} 卖出 ${qty} 份【${itemName}】，获得 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}。`;
       }
     }
 
     patchOps.push(...this.buildTradeSystemPatches(log));
 
     const sysPrompt = this.buildTradeNarrationPrompt(log, [
-      `[交易对象]\n${targetNpc}`,
-      `[交易类型]\n${action}`,
+      `[交易对象]\n${counterparty}`,
+      `[交易类型]\n${ctx.isBlackMarket ? `${action}（黑市渠道）` : action}`,
       `[市场调整]\n${this.getMarketAdjustmentText(action === '私下买入' ? 'buy' : 'sell', { context: ctx.worldContext })}`,
       `[结算摘要]\n${isSuccess ? `本次成交 ${qty} 份【${itemName}】，总价 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}。` : `本次未成交，报价为单价 ${price} ${this.getCurrencyLabel(ctx.currency)}。`}`
     ]);
 
-    this.submitAction(`我要和【${targetNpc}】${action} ${qty} 份【${itemName}】，单价 ${price} ${this.getCurrencyLabel(ctx.currency)}。`, sysPrompt, 'trade_private', patchOps);
+    this.submitAction(`我要和【${counterparty}】${action} ${qty} 份【${itemName}】，单价 ${price} ${this.getCurrencyLabel(ctx.currency)}。`, sysPrompt, 'trade_private', patchOps);
   }
 
   // --- 拍卖行模块 ---
@@ -61181,8 +61461,8 @@ class TradeUIComponent {
     const itemName = this.$('#auc-item-sel').value;
     const bid = parseInt(this.$('#auc-bid').value) || 0;
     const item = this.currentAuction.拍品[itemName];
-    const worldContext = this.resolveWorldActionContext('trade_auction', this.charData?.状态?.位置 || '') || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true });
+    const worldContext = this.resolveWorldActionContext('trade_auction', this.charData?.状态?.位置 || '');
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: '拍卖' });
     if (!worldActionState.ok) return this.显示提示(worldActionState.reason);
     const currency = this.resolveTradeCurrency(item, '拍卖行', this.charData?.状态?.位置 || '', this.currentAuction || {});
     const itemDefinition = this.取物品定义(itemName) || item || {};
@@ -62554,98 +62834,51 @@ class ProfessionUIComponent {
     }
   }
 
-  getWorldActionBlockers(context) {
-    if (!context || typeof context !== 'object') return [];
-    const raw = context.blockers;
-    if (Array.isArray(raw)) return raw.filter(Boolean);
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      if (raw.blocked === false || raw.阻断 === false) return [];
-      if (raw.blocked === true || raw.阻断 === true) return [raw];
-      return Object.entries(raw).filter(([, value]) => value === true).map(([key]) => key);
-    }
-    return raw ? [raw] : [];
-  }
-
-  getWorldActionBlockerText(context, fallback = '当前行动不满足地点、设施或环境条件。') {
-    const blocker = this.getWorldActionBlockers(context)[0];
-    if (!blocker) return '';
-    if (typeof blocker === 'string') return blocker.trim() || fallback;
-    if (blocker && typeof blocker === 'object') {
-      return String(blocker.message || blocker.reason || blocker.说明 || blocker.原因 || blocker.label || '').trim() || fallback;
-    }
-    return String(blocker).trim() || fallback;
-  }
-
-  getWorldActionEntries(context, field = 'facilities') {
-    const raw = context && typeof context === 'object' ? context[field] : null;
-    if (Array.isArray(raw)) return raw.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    if (!raw || typeof raw !== 'object') return [];
-    if (Array.isArray(raw.items)) return raw.items.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    return Object.entries(raw).map(([name, value]) => value && typeof value === 'object' && !Array.isArray(value)
-      ? { name: value.name || value.名称 || name, ...value }
-      : { name, available: value });
-  }
-
-  getWorldActionBoolean(value, keys = []) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-    for (const key of keys) {
-      if (typeof value[key] === 'boolean') return value[key];
-    }
-    return undefined;
-  }
-
-  getProfessionFacilityMatches(context, cfg = {}) {
-    const mode = String(cfg.mode || '').trim();
-    const pattern = mode === 'forge' ? /forge|smith|锻造|锻造师|金属|锻压/
-      : mode === 'manufacture' ? /manufacture|assembly|制造|制造师|机甲|斗铠|组装/
-        : mode === 'design' ? /design|设计|设计师|图纸/
-          : mode === 'repair' ? /repair|修理|维修|修理师|维护/
-            : /profession|workshop|craft|工坊|工作台|副职业|制造|锻造|设计|修理/;
-    return this.getWorldActionEntries(context, 'facilities').filter(entry => {
-      const text = `${entry.name || ''} ${entry.type || entry.类型 || ''} ${entry.category || entry.类别 || ''} ${entry.job || entry.副职业 || ''}`;
-      const designation = `${entry.actionType || entry.action_type || entry.行动类型 || ''} ${entry.supportedJobs || entry.适用副职业 || entry.支持副职业 || ''}`;
-      const facilityLike = /workshop|station|bench|facility|工坊|工作台|设施|协会|车间|实验室|forge|smith|制造|锻造|设计|修理|维修|craft/i.test(text);
-      return facilityLike && (pattern.test(`${text} ${designation}`) || !designation.trim());
-    });
-  }
-
   getProfessionActionState(context, cfg = {}) {
-    if (!context) return { ok: false, reason: '共享世界行动上下文尚未就绪。', facility: null, facilityLevel: 0 };
-    const blockerText = this.getWorldActionBlockerText(context);
+    if (!context || typeof context !== 'object' || Array.isArray(context)) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文不可用（runtime 缺失或调用失败）。',
+        facility: null,
+        facilityLevel: 0
+      };
+    }
+    if (!Array.isArray(context.blockers) || context.blockers.some(item => typeof item !== 'string')) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文结构无效。',
+        facility: null,
+        facilityLevel: 0
+      };
+    }
+    const blockerText = context.blockers.find(item => item.trim());
     if (blockerText) return { ok: false, reason: blockerText, facility: null, facilityLevel: 0 };
 
-    const facilities = this.getProfessionFacilityMatches(context, cfg);
-    const facility = facilities.find(entry => this.getWorldActionBoolean(entry, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']) !== false);
-    if (!facility) return { ok: false, reason: '当前地点没有可用的副职业工作台或工坊。', facility: null, facilityLevel: 0 };
-
-    const availability = this.getWorldActionBoolean(facility, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']);
-    if (availability === false) return { ok: false, reason: '当前副职业设施暂不可用。', facility, facilityLevel: 0 };
-    const openSources = [facility, context.time].filter(source => source && typeof source === 'object');
-    for (const source of openSources) {
-      const open = this.getWorldActionBoolean(source, ['open', 'isOpen', '营业中', '开放', '可使用']);
-      if (open === false) return { ok: false, reason: '当前副职业设施暂未开放。', facility, facilityLevel: 0 };
+    const facilityFunctions = {
+      forge: ['锻造'],
+      manufacture: ['工业'],
+      design: ['工业'],
+      repair: ['工业', '锻造']
+    }[cfg.mode] || [];
+    if (!facilityFunctions.length) {
+      return { ok: false, reason: `不支持的副职业模式：${String(cfg.mode || '未知')}`, facility: null, facilityLevel: 0 };
     }
-
-    const permissionSources = [context.permissions, context.权限, facility.permissions, facility.权限].filter(source => source && typeof source === 'object');
-    for (const source of permissionSources) {
-      const allowed = this.getWorldActionBoolean(source, ['allowed', 'permitted', '可用', '有权限', '允许', 'authorized']);
-      if (allowed === false) return { ok: false, reason: '当前身份没有使用该副职业设施的权限。', facility, facilityLevel: 0 };
+    if (!context.facilities || typeof context.facilities !== 'object' || Array.isArray(context.facilities)) {
+      return { ok: false, reason: '共享世界行动上下文结构无效。', facility: null, facilityLevel: 0 };
     }
-
-    const environmentSources = [context.environment, context.environmentSuitability, context.suitability, context.环境].filter(source => source && typeof source === 'object');
-    for (const source of environmentSources) {
-      const suitable = this.getWorldActionBoolean(source, ['suitable', 'isSuitable', '适宜', '适合', '可用']);
-      if (suitable === false) return { ok: false, reason: '当前环境不适合进行该副职业工序。', facility, facilityLevel: 0 };
+    const candidates = facilityFunctions
+      .map(functionName => context.facilities[functionName])
+      .filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry));
+    const facility = candidates.find(entry => entry.可用 === true);
+    if (!facility) {
+      const reason = candidates.map(entry => String(entry.原因 || '').trim()).find(Boolean);
+      return { ok: false, reason: reason || `当前地点没有可用的${facilityFunctions.join('或')}设施。`, facility: null, facilityLevel: 0 };
     }
-
-    const toolReady = this.getWorldActionBoolean(facility, ['toolsReady', 'toolReady', '工具齐备', '工具可用', 'hasTools']);
-    if (toolReady === false) return { ok: false, reason: '当前工坊缺少可用工具。', facility, facilityLevel: 0 };
-    const facilityLevel = Math.max(0, Number(facility.level ?? facility.等级 ?? facility.tier ?? facility.阶级 ?? 0));
-    const requiredLevel = Number(facility.requiredLevel ?? facility.最低等级 ?? facility.最低设施等级 ?? 0);
-    if (Number.isFinite(requiredLevel) && requiredLevel > 0 && facilityLevel < requiredLevel) {
-      return { ok: false, reason: `当前工坊等级不足，至少需要 ${requiredLevel} 级设施。`, facility, facilityLevel };
+    const facilityLevel = Number(facility.等级);
+    if (!Number.isFinite(facilityLevel)) {
+      return { ok: false, reason: '共享世界行动上下文中的设施等级无效。', facility: null, facilityLevel: 0 };
     }
-    return { ok: true, reason: '', facility, facilityLevel, toolReady: toolReady !== false };
+    return { ok: true, reason: '', facility, facilityLevel: Math.max(0, facilityLevel) };
   }
 
   get itemDefinitions() {
@@ -63908,9 +64141,8 @@ class ProfessionUIComponent {
       ctx.error = ctx.worldActionState.reason;
       return ctx;
     }
-    const facilityMaxTier = Number(ctx.facility?.maxTier ?? ctx.facility?.最高阶位 ?? ctx.facility?.可承接阶位 ?? 0);
-    if (Number.isFinite(facilityMaxTier) && facilityMaxTier > 0 && tier > facilityMaxTier) {
-      ctx.error = `当前设施最多支持 ${facilityMaxTier} 阶工序，无法承担 ${tier} 阶操作。`;
+    if (ctx.facilityLevel < tier) {
+      ctx.error = `当前${ctx.facility.功能}设施等级为 ${ctx.facilityLevel}，无法承担 ${tier} 阶工序。`;
       return ctx;
     }
 
@@ -65590,6 +65822,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     operationGraphStateMerges: 0,
   };
   const previewCache = new Map();
+  const worldActionContextBindings = new WeakMap();
+  let activeWorldActionContextBinding = null;
   const unitIdCache = new WeakMap();
   const unitNameCache = new WeakMap();
   const dependencyCaptureStack = [];
@@ -67933,15 +68167,28 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     ));
   }
 
+  function itemPassiveConsumer() {
+    const candidates = [root];
+    try { if (root.parent && root.parent !== root) candidates.push(root.parent); } catch (_error) {}
+    try { if (root.top && root.top !== root) candidates.push(root.top); } catch (_error) {}
+    return candidates
+      .map(candidate => candidate && candidate.__LWCS_ITEM_PASSIVE_CONSUMER_V1__)
+      .find(consumer => consumer && typeof consumer.编译角色装备被动消费者_V1 === 'function') || null;
+  }
+
   function collectPassiveSkills(unit = {}) {
+    const equipmentPackage = itemPassiveConsumer()?.编译角色装备被动消费者_V1(unit);
     const roots = [
       ...(Array.isArray(unit?.技能列表) ? [unit.技能列表] : []),
       ...(Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills)
         ? [unit.__battleRuntime.itemPassiveTriggeredSkills]
         : []),
+      ...(Array.isArray(equipmentPackage?.技能条目)
+        ? [equipmentPackage.技能条目.map(entry => entry?.技能).filter(skill => skill && typeof skill === 'object')]
+        : []),
       ...Object.entries(unit || {})
         .filter(([key, value]) =>
-          /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) &&
+          /^(?:第\d+)?武魂|血脉之力|自创魂技|技能/.test(key) &&
           value && typeof value === 'object'
         )
         .map(([, value]) => value),
@@ -69786,285 +70033,157 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ))];
   }
 
-  function environmentEntryList(value, kind = '') {
-    if (Array.isArray(value)) return value.filter(entry => isPlainRecord(entry));
-    if (!isPlainRecord(value)) return [];
-    const markerFields = kind === 'hazard'
-      ? ['effectiveLevel', 'environmentLevel', '有效等级', '等级', '标准等级', 'sourceTag', '来源标签', '来源']
-      : kind === 'blocker'
-        ? ['blocked', 'blocking', '阻断', 'resources', '资源', 'message', 'reasonText']
-        : ['kind', '类型', 'scope', '作用域', 'movementMultiplier', '移动倍率', 'hitAdjustment', '命中修正'];
-    if (markerFields.some(field => Object.prototype.hasOwnProperty.call(value, field))) return [value];
-    return Object.entries(value)
-      .filter(([, entry]) => isPlainRecord(entry))
-      .map(([key, entry]) => Object.prototype.hasOwnProperty.call(entry, 'kind') || Object.prototype.hasOwnProperty.call(entry, '类型')
-        ? entry
-        : { ...entry, kind: key });
-  }
-
-  function environmentNumber(value, fallback = NaN) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : fallback;
-  }
-
-  function environmentRatio(value, fallback = NaN) {
-    if (value === undefined || value === null || value === '') return fallback;
-    const text = String(value).trim();
-    const number = environmentNumber(text.replace(/%$/, ''), NaN);
-    if (!Number.isFinite(number)) return fallback;
-    return number > 1 || text.endsWith('%') ? number / 100 : number;
-  }
-
-  function environmentBoolean(value, fallback = undefined) {
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'number' && Number.isFinite(value)) return value !== 0;
-    const text = String(value ?? '').trim().toLowerCase();
-    if (['true', 'yes', 'on', '是', '允许', '可用', '阻断', '阻止'].includes(text)) return true;
-    if (['false', 'no', 'off', '否', '禁止', '不可用', '不允许'].includes(text)) return false;
-    return fallback;
-  }
-
-  function environmentValues(value) {
-    const source = Array.isArray(value) ? value : [value];
-    return source.flatMap(entry => typeof entry === 'string'
-      ? entry.split(/[、,，/|｜；;\s]+/)
-      : [entry]
-    ).map(entry => String(entry ?? '').trim()).filter(Boolean);
-  }
-
-  function normalizeEnvironmentResourceNames(value) {
-    const aliases = { sp: '魂力', men: '精神力', vit: '体力', 魂力: '魂力', 精神力: '精神力', 体力: '体力' };
-    return [...new Set(environmentValues(value).map(entry => aliases[entry.toLowerCase()] || aliases[entry] || '').filter(Boolean))];
-  }
-
-  function normalizeEnvironmentActionKinds(value) {
-    return [...new Set(environmentValues(value).map(entry => entry.toUpperCase()))];
-  }
-
-  function environmentActionMatches(entry = {}, actionKind = '') {
-    const declared = normalizeEnvironmentActionKinds(
-      entry?.actionKinds ?? entry?.动作类型 ?? entry?.actionKind ?? entry?.适用动作,
-    );
-    return !declared.length || declared.includes(String(actionKind || '').trim().toUpperCase());
-  }
-
   function readActionDurationTicks(input = {}, declaration = {}) {
-    const candidates = [
-      [input, 'durationTicks'],
-      [input, 'actionDurationTicks'],
-      [declaration, 'durationTicks'],
-      [declaration, '持续tick'],
-      [declaration, '行动时长tick'],
-      [declaration, 'cast_time'],
-      [declaration?.skill, 'durationTicks'],
-      [declaration?.skill, '持续tick'],
-      [declaration?.skill, '行动时长tick'],
-      [declaration?.skill, '前摇'],
-      [declaration?.skill, 'cast_time'],
-    ];
-    for (const [source, key] of candidates) {
-      if (!source || typeof source !== 'object' || !Object.prototype.hasOwnProperty.call(source, key)) continue;
-      const value = environmentNumber(source[key], NaN);
-      if (Number.isFinite(value)) return Math.max(0, value);
-    }
-    return 1;
+    const value = Number(input?.durationTicks ?? declaration?.durationTicks ?? 0);
+    return Number.isFinite(value) ? Math.max(0, Math.round(value * 10) / 10) : 0;
   }
 
   function isMaintenanceAction(input = {}, declaration = {}) {
-    const flags = [
-      input?.isMaintenance,
-      input?.maintenance,
-      declaration?.isMaintenance,
-      declaration?.maintenance,
-      declaration?.维持,
-    ];
-    if (flags.some(value => value === true)) return true;
-    const phase = String(input?.phase ?? declaration?.phase ?? declaration?.阶段 ?? '').trim().toUpperCase();
-    return ['MAINTAIN', 'SUSTAIN', '维持', '维持消耗'].includes(phase) ||
-      ['MAINTAIN_SKILL', 'SUSTAIN_SKILL', '维持'].includes(String(declaration?.actionKind || '').trim().toUpperCase());
+    return input?.maintenance === true ||
+      declaration?.维持 === true ||
+      declaration?.阶段 === '维持' ||
+      declaration?.actionKind === 'MAINTAIN_SKILL';
   }
 
   function hasPositiveEnvironmentCost(costs = {}, resource = '') {
     const value = costs?.[resource];
     if (value === undefined || value === null || value === '') return false;
-    const numeric = environmentNumber(String(value).replace(/%$/, ''), NaN);
+    const numeric = Number(String(value).replace(/%$/, ''));
     return Number.isFinite(numeric) && numeric > 1e-9;
   }
 
   function normalizeEnvironmentHazard(entry = {}, index = 0) {
-    const effectiveLevel = environmentNumber(
-      entry?.effectiveLevel ?? entry?.environmentLevel ?? entry?.有效等级 ?? entry?.等级 ?? entry?.标准等级,
-      NaN,
-    );
-    const power = environmentNumber(entry?.power ?? entry?.威力 ?? entry?.威力倍率, NaN);
-    const rawDamageType = String(entry?.damageType ?? entry?.伤害类型 ?? entry?.类型 ?? '').trim();
-    const sourceTag = String(entry?.sourceTag ?? entry?.来源标签 ?? entry?.来源 ?? '').trim();
-    const intervalTicks = environmentNumber(
-      entry?.intervalTicks ?? entry?.间隔tick ?? entry?.间隔Ticks ?? entry?.间隔 ?? entry?.周期tick,
-      NaN,
-    );
-    if (!(effectiveLevel > 0) || !(power > 0) || !rawDamageType || !sourceTag || !(intervalTicks > 0)) return null;
-    const damageType = /精神/.test(rawDamageType)
-      ? '精神攻击'
-      : /真实/.test(rawDamageType)
-        ? '真实攻击'
-        : /远程/.test(rawDamageType)
-          ? '远程攻击'
-          : '近身攻击';
-    const rawTargetIds = entry?.targetIds ?? entry?.目标ID ?? entry?.目标;
-    const targetIds = environmentValues(rawTargetIds);
-    const hitProbability = entry?.hitProbability ?? entry?.命中概率;
+    if (!isPlainRecord(entry)) return null;
+    const effectiveLevel = Number(entry.对应等级);
+    const power = Number(entry.威力);
+    const damageType = String(entry.伤害类型 || '').trim();
+    const sourceTag = String(entry.来源标签 || '').trim();
+    const intervalTicks = Number(entry.间隔tick);
+    const penetration = Number(entry.穿透 ?? 0);
+    const segments = Number(entry.攻击段数 ?? 1);
+    if (!(effectiveLevel > 0) || !(power > 0) || !damageType || !sourceTag || !(intervalTicks > 0) ||
+      !Number.isFinite(penetration) || penetration < 0 || !Number.isFinite(segments) || segments < 1) return null;
+    const targetIds = Array.isArray(entry.目标ID)
+      ? entry.目标ID.map(value => String(value || '').trim()).filter(Boolean)
+      : [];
     return Object.freeze({
-      id: String(entry?.id ?? entry?.hazardId ?? `${sourceTag}:${index}`).trim() || `${sourceTag}:${index}`,
+      id: `${sourceTag}:${index}`,
       effectiveLevel,
       power,
       damageType,
-      element: String(entry?.element ?? entry?.元素 ?? entry?.限定元素 ?? '').trim(),
+      element: Object.freeze(normalizedElementTokens(entry.元素)),
       sourceTag,
       intervalTicks,
-      penetration: Math.max(0, environmentNumber(entry?.penetration ?? entry?.穿透 ?? entry?.防御穿透 ?? entry?.防穿, 0)),
-      segments: Math.max(1, Math.floor(environmentNumber(entry?.segments ?? entry?.攻击段数 ?? entry?.段数, 1)) || 1),
-      targetScope: String(entry?.targetScope ?? entry?.目标范围 ?? entry?.scope ?? '').trim().toUpperCase(),
+      penetration,
+      segments: Math.floor(segments),
+      targetScope: String(entry.目标范围 || '').trim().toUpperCase(),
       targetIds: Object.freeze(targetIds),
-      ...(hitProbability === undefined ? {} : { hitProbability: normalizeEffectProbability(hitProbability, 1) }),
-      displayName: String(entry?.displayName ?? entry?.名称 ?? entry?.name ?? '').trim(),
-      displayText: String(entry?.displayText ?? entry?.展示文本 ?? entry?.message ?? entry?.reasonText ?? '').trim(),
+      ...(entry.命中概率 === undefined ? {} : { hitProbability: normalizeEffectProbability(entry.命中概率, 1) }),
+      displayName: String(entry.名称 || '').trim(),
     });
   }
 
-  function normalizeEnvironmentModifier(entry = {}, index = 0) {
-    const rawKind = String(entry?.kind ?? entry?.类型 ?? entry?.scope ?? entry?.作用域 ?? '').trim().toLowerCase();
-    const kind = {
-      movement: 'movement', 移动: 'movement', 行动移动: 'movement',
-      vision: 'vision', 视野: 'vision',
-      deployment_space: 'deployment_space', 展开空间: 'deployment_space', 展开空间可用: 'deployment_space',
-      vehicle_deployment: 'vehicle_deployment', 载具展开: 'vehicle_deployment',
-      summon_deployment: 'summon_deployment', 召唤物展开: 'summon_deployment',
-    }[rawKind];
-    if (!kind) return null;
-    const readBoolean = (...keys) => {
-      for (const key of keys) {
-        if (Object.prototype.hasOwnProperty.call(entry, key)) return environmentBoolean(entry[key]);
-      }
-      return undefined;
-    };
-    const readRatio = (...keys) => {
-      for (const key of keys) {
-        if (Object.prototype.hasOwnProperty.call(entry, key)) return environmentRatio(entry[key], NaN);
-      }
-      return undefined;
-    };
-    let hitAdjustment;
-    for (const key of ['hitAdjustment', '命中修正', '命中概率修正']) {
-      if (Object.prototype.hasOwnProperty.call(entry, key)) {
-        const text = String(entry[key] ?? '').trim();
-        const numeric = environmentNumber(text.replace(/%$/, ''), NaN);
-        hitAdjustment = Number.isFinite(numeric) ? (text.endsWith('%') ? numeric / 100 : numeric) : undefined;
-        break;
-      }
+  function isWorldActionContext(value) {
+    return isPlainRecord(value) &&
+      ['era', 'time', 'location', 'terrain', 'hazards', 'facilities', 'nearbyFacilities', 'resources', 'market', 'permissions', 'modifiers', 'blockers', 'warnings']
+        .every(key => Object.prototype.hasOwnProperty.call(value, key)) &&
+      Array.isArray(value.hazards) &&
+      isPlainRecord(value.modifiers) &&
+      Array.isArray(value.blockers) &&
+      Array.isArray(value.warnings);
+  }
+
+  function normalizeWorldRuleIds(value) {
+    return [...new Set((Array.isArray(value) ? value : [])
+      .map(item => String(item || '').trim())
+      .filter(Boolean))].sort();
+  }
+
+  function worldActionContextLocationValues(context = {}) {
+    const location = isPlainRecord(context?.location) ? context.location : {};
+    return [...new Set(['current', 'target', 'active'].flatMap(key => {
+      const view = isPlainRecord(location[key]) ? location[key] : {};
+      return [view.name, Array.isArray(view.path) ? view.path.join('-') : '']
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+    }))];
+  }
+
+  function worldActionContextMatchesSnapshot(worldSnapshot = {}, context = {}) {
+    if (!isWorldActionContext(context) || !worldSnapshot || typeof worldSnapshot !== 'object') return false;
+    const battleLocation = String(worldSnapshot?.环境?.地点 || '').trim();
+    if (!battleLocation || !worldActionContextLocationValues(context).includes(battleLocation)) return false;
+    const battleRuleIds = normalizeWorldRuleIds(worldSnapshot?.环境?.临时规则ID);
+    const contextRuleIds = normalizeWorldRuleIds(context?.modifiers?.战斗?.临时规则ID);
+    return JSON.stringify(battleRuleIds) === JSON.stringify(contextRuleIds);
+  }
+
+  function bindWorldActionContext(worldSnapshot, context) {
+    if (!worldSnapshot || typeof worldSnapshot !== 'object' || !worldActionContextMatchesSnapshot(worldSnapshot, context)) {
+      throw new Error('battle_world_action_context_mismatch');
     }
-    return Object.freeze({
-      id: String(entry?.id ?? `${kind}:${index}`).trim() || `${kind}:${index}`,
-      kind,
-      actionKinds: Object.freeze(normalizeEnvironmentActionKinds(entry?.actionKinds ?? entry?.动作类型 ?? entry?.actionKind ?? entry?.适用动作)),
-      blocked: readBoolean('blocked', 'blocking', '阻断'),
-      allowed: readBoolean('allowed', '允许'),
-      movementMultiplier: readRatio('movementMultiplier', '移动倍率'),
-      hitAdjustment,
-      actionAvailability: readRatio('actionAvailability', '行动可行性'),
-      spaceAvailable: readBoolean('spaceAvailable', '可展开', '展开空间可用'),
-      vehicleDeploymentAllowed: readBoolean('vehicleDeploymentAllowed', '载具可展开'),
-      summonDeploymentAllowed: readBoolean('summonDeploymentAllowed', '召唤物可展开'),
-      displayText: String(entry?.displayText ?? entry?.展示文本 ?? entry?.message ?? entry?.reasonText ?? '').trim(),
-    });
+    worldActionContextBindings.set(worldSnapshot, context);
+    activeWorldActionContextBinding = { worldSnapshot, context };
+    return context;
   }
 
-  function normalizeEnvironmentBlocker(entry = {}, index = 0) {
-    const blocked = environmentBoolean(entry?.blocked ?? entry?.blocking ?? entry?.阻断, true);
-    return Object.freeze({
-      id: String(entry?.id ?? `${String(entry?.kind ?? entry?.类型 ?? 'blocker').trim() || 'blocker'}:${index}`).trim(),
-      kind: String(entry?.kind ?? entry?.类型 ?? entry?.scope ?? entry?.作用域 ?? '').trim().toLowerCase(),
-      actionKinds: Object.freeze(normalizeEnvironmentActionKinds(entry?.actionKinds ?? entry?.动作类型 ?? entry?.actionKind ?? entry?.适用动作)),
-      resources: Object.freeze(normalizeEnvironmentResourceNames(entry?.resources ?? entry?.blockedResources ?? entry?.资源 ?? entry?.禁用资源)),
-      blocked,
-      message: String(entry?.message ?? entry?.displayText ?? entry?.展示文本 ?? entry?.reasonText ?? '').trim(),
-    });
+  function clearWorldActionContext(worldSnapshot) {
+    if (worldSnapshot && typeof worldSnapshot === 'object') worldActionContextBindings.delete(worldSnapshot);
+    if (!worldSnapshot || activeWorldActionContextBinding?.worldSnapshot === worldSnapshot) {
+      activeWorldActionContextBinding = null;
+    }
   }
 
   function resolveEnvironmentContext(input = {}) {
+    const explicitContext = input?.worldActionContext;
+    if (explicitContext !== undefined) {
+      return worldActionContextMatchesSnapshot(input?.worldSnapshot, explicitContext)
+        ? explicitContext
+        : null;
+    }
+    const boundContext = input?.worldSnapshot && typeof input.worldSnapshot === 'object'
+      ? worldActionContextBindings.get(input.worldSnapshot)
+      : null;
+    if (boundContext && worldActionContextMatchesSnapshot(input.worldSnapshot, boundContext)) return boundContext;
+    if (activeWorldActionContextBinding?.context && worldActionContextMatchesSnapshot(input?.worldSnapshot, activeWorldActionContextBinding.context)) {
+      return activeWorldActionContextBinding.context;
+    }
     const resolver = root.__LWCS_LIBRARY_DATA_RUNTIME_V1__?.resolveWorldActionContext;
-    const unavailable = status => Object.freeze({
-      schemaVersion: WORLD_ACTION_ASSESSMENT_SCHEMA,
-      status,
-      hazards: Object.freeze([]),
-      modifiers: Object.freeze([]),
-      blockers: Object.freeze([]),
-    });
-    if (typeof resolver !== 'function') return unavailable('unavailable');
+    const dataRoot = isPlainRecord(input?.dataRoot) ? input.dataRoot : null;
+    const actor = input?.actor || findUnit(input?.worldSnapshot || {}, input?.actorId || input?.declaration?.actorId) || {};
+    const characterKey = String(input?.characterKey || input?.activeName || actor?.name || actor?.名称 || '').trim();
+    const actionType = String(input?.actionType || input?.declaration?.actionKind || '').trim();
+    const snapshotLocation = String(input?.worldSnapshot?.环境?.地点 || '').trim();
+    const targetLocation = String(input?.targetLocation ?? (snapshotLocation && snapshotLocation !== '正常' ? snapshotLocation : actor?.状态?.位置 ?? '') ?? '').trim();
+    const durationTicks = Number(input?.durationTicks ?? 0);
+    const temporaryRuleIds = Array.isArray(input?.temporaryRuleIds) ? input.temporaryRuleIds : (Array.isArray(input?.worldSnapshot?.环境?.临时规则ID) ? input.worldSnapshot.环境.临时规则ID : []);
+    if (typeof resolver !== 'function' || !dataRoot || !characterKey || !Number.isFinite(durationTicks)) return null;
     let resolved;
     try {
       resolved = resolver({
-        worldSnapshot: input?.worldSnapshot || {},
-        actorId: String(input?.actorId || '').trim(),
-        declaration: input?.declaration || {},
-        action: input?.declaration || {},
-        actionKind: String(input?.declaration?.actionKind || '').trim(),
-        locationPath: String(input?.locationPath || '').trim(),
-        durationTicks: Math.max(0, Number(input?.durationTicks || 0)),
+        dataRoot,
+        characterKey,
+        actionType,
+        targetLocation,
+        durationTicks: Math.max(0, Math.round(durationTicks * 10) / 10),
+        temporaryRuleIds,
       });
     } catch (error) {
-      return unavailable('unavailable');
+      return null;
     }
-    if (!resolved || typeof resolved !== 'object' || typeof resolved.then === 'function') return unavailable('unavailable');
-    const context = isPlainRecord(resolved?.context) ? resolved.context : resolved;
-    const hazards = environmentEntryList(context?.hazards, 'hazard')
-      .map(normalizeEnvironmentHazard)
-      .filter(Boolean);
-    const modifiers = environmentEntryList(context?.modifiers, 'modifier')
-      .map(normalizeEnvironmentModifier)
-      .filter(Boolean);
-    const blockers = [
-      ...environmentEntryList(context?.blockers, 'blocker'),
-      ...environmentEntryList(context?.resourceBlockers, 'blocker'),
-    ].map(normalizeEnvironmentBlocker).filter(entry => entry.blocked);
-    return Object.freeze({
-      schemaVersion: WORLD_ACTION_ASSESSMENT_SCHEMA,
-      status: 'resolved',
-      hazards: Object.freeze(hazards),
-      modifiers: Object.freeze(modifiers),
-      blockers: Object.freeze(blockers),
-    });
+    return isWorldActionContext(resolved) && worldActionContextMatchesSnapshot(input?.worldSnapshot, resolved) ? resolved : null;
   }
 
   function readCallableElements(unit = {}) {
-    const values = [];
-    const visited = new Set();
-    const visit = value => {
-      if (!value || typeof value !== 'object' || visited.has(value)) return;
-      visited.add(value);
-      if (Array.isArray(value)) {
-        value.forEach(visit);
-        return;
-      }
-      ['可调用元素', 'callableElements', '可调用属性', 'callable_elements', '武魂元素'].forEach(key => {
-        if (value[key] !== undefined) values.push(...environmentValues(value[key]));
-      });
-      ['武魂', 'martialSoul', 'martial_soul', '属性', 'attributes'].forEach(key => visit(value[key]));
-    };
-    visit(unit);
-    return normalizedElementTokens(values);
+    return normalizedElementTokens([
+      ...(Array.isArray(unit?.第1武魂?.可调用元素) ? unit.第1武魂.可调用元素 : []),
+      ...(Array.isArray(unit?.第2武魂?.可调用元素) ? unit.第2武魂.可调用元素 : []),
+    ]);
   }
 
   function readEffectiveUnitLevel(unit = {}) {
-    const values = [
-      unit?.effectiveLevel, unit?.有效等级, unit?.等级, unit?.level, unit?.lv,
-      unit?.final?.等级, unit?.final?.level, unit?.属性?.等级, unit?.属性?.level,
-    ];
-    for (const value of values) {
-      const level = environmentNumber(value, NaN);
-      if (Number.isFinite(level) && level > 0) return level;
-    }
-    return 1;
+    const level = Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.final?.等级 ?? 0);
+    return Number.isFinite(level) && level > 0 ? level : 1;
   }
 
   function sameElementAdaptation(hazard = {}, defender = {}) {
@@ -70083,9 +70202,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const units = listUnits(worldSnapshot).map(entry => entry.unit);
     const actorSide = sideOf(worldSnapshot, actor);
     const scope = String(hazard?.targetScope || 'ACTOR').trim().toUpperCase();
-    if (['ALL', '全场'].includes(scope)) return units;
-    if (['ALLY', 'ALLIES', '友方'].includes(scope)) return units.filter(unit => sideOf(worldSnapshot, unit) === actorSide);
-    if (['ENEMY', 'ENEMIES', '敌方'].includes(scope)) return units.filter(unit => sideOf(worldSnapshot, unit) !== actorSide);
+    if (scope === 'ALL') return units;
+    if (scope === 'ALLY') return units.filter(unit => sideOf(worldSnapshot, unit) === actorSide);
+    if (scope === 'ENEMY') return units.filter(unit => sideOf(worldSnapshot, unit) !== actorSide);
     return actor ? [actor] : [];
   }
 
@@ -70102,7 +70221,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         : ['requiresDeployment', 'deployment', '需要展开'];
     if (field.some(key => declaration?.[key] === true || declaration?.skill?.[key] === true)) return true;
     if (type === 'vehicle') return ['DEPLOY_VEHICLE', 'USE_VEHICLE', '载具展开'].includes(actionKind);
-    if (type === 'summon') return ['SUMMON', '召唤'].includes(actionKind);
+    if (type === 'summon') return ['SUMMON', '召唤'].includes(actionKind) ||
+      (Array.isArray(declaration?.skill?._效果数组) && declaration.skill._效果数组.some(effect => String(effect?.原型 || '').trim() === '召唤生成'));
+    if (Array.isArray(declaration?.skill?._效果数组) && declaration.skill._效果数组.some(effect => ['召唤生成', '位移执行'].includes(String(effect?.原型 || '').trim()))) return true;
     return ['DEPLOY', '展开'].includes(actionKind);
   }
 
@@ -70118,9 +70239,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actor = input?.actor || findUnit(input?.worldSnapshot || {}, input?.actorId || declaration?.actorId) || {};
     const actionKind = String(declaration?.actionKind || input?.actionKind || '').trim();
     const durationTicks = readActionDurationTicks(input, declaration);
-    const resolved = input?.environmentContext?.schemaVersion === WORLD_ACTION_ASSESSMENT_SCHEMA
-      ? input.environmentContext
-      : resolveEnvironmentContext({ ...input, declaration, actorId: unitId(actor) || input?.actorId, durationTicks });
+    const resolved = resolveEnvironmentContext({
+      ...input,
+      declaration,
+      actorId: unitId(actor) || input?.actorId,
+      durationTicks,
+    });
     const costStages = input?.costStages && typeof input.costStages === 'object'
       ? input.costStages
       : declaration?.skill && typeof declaration.skill === 'object'
@@ -70149,44 +70273,65 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const relevantSpace = actionRequiresDeployment(declaration);
     const relevantVehicle = actionRequiresDeployment(declaration, 'vehicle');
     const relevantSummon = actionRequiresDeployment(declaration, 'summon');
-    resolved.modifiers.forEach(modifier => {
-      if (!environmentActionMatches(modifier, actionKind)) return;
-      addUnique(displayEffects, modifier.displayText);
-      const blocked = modifier.blocked === true || modifier.allowed === false;
-      if (Number.isFinite(modifier.actionAvailability)) actionAvailability *= clamp(modifier.actionAvailability, 0, 1);
-      if (modifier.kind === 'movement') {
-        if (Number.isFinite(modifier.movementMultiplier)) movement.multiplier *= clamp(modifier.movementMultiplier, 0, 1);
-        if (blocked && relevantMovement) movement.blocked = true;
-        if ((Number.isFinite(modifier.movementMultiplier) && modifier.movementMultiplier < 1) && !modifier.displayText) addUnique(displayEffects, '移动受到环境影响');
-      } else if (modifier.kind === 'vision') {
-        if (Number.isFinite(modifier.hitAdjustment)) vision.hitAdjustment += modifier.hitAdjustment;
-        if (Number.isFinite(modifier.hitAdjustment) && modifier.hitAdjustment < 0 && !modifier.displayText) addUnique(displayEffects, '视野受到环境影响');
-      } else if (modifier.kind === 'deployment_space' && relevantSpace) {
-        if (modifier.spaceAvailable === false || blocked) deployment.spaceBlocked = true;
-        if ((modifier.spaceAvailable === false || blocked) && !modifier.displayText) addUnique(displayEffects, '当前空间不足以展开');
-      } else if (modifier.kind === 'vehicle_deployment' && relevantVehicle) {
-        if (modifier.vehicleDeploymentAllowed === false || blocked) deployment.vehicleBlocked = true;
-        if ((modifier.vehicleDeploymentAllowed === false || blocked) && !modifier.displayText) addUnique(displayEffects, '当前环境无法展开载具');
-      } else if (modifier.kind === 'summon_deployment' && relevantSummon) {
-        if (modifier.summonDeploymentAllowed === false || blocked) deployment.summonBlocked = true;
-        if ((modifier.summonDeploymentAllowed === false || blocked) && !modifier.displayText) addUnique(displayEffects, '当前环境无法展开召唤物');
+    const battleModifiers = isPlainRecord(resolved?.modifiers?.战斗) ? resolved.modifiers.战斗 : {};
+    const environmentRules = isPlainRecord(battleModifiers.环境规则) ? battleModifiers.环境规则 : {};
+    const environmentRuleEntries = [
+      environmentRules,
+      ...Object.values(environmentRules).filter(isPlainRecord),
+    ];
+    environmentRuleEntries.forEach(rule => {
+      const actionAvailabilityValue = Number(rule.行动可行性);
+      const movementMultiplier = Number(rule.移动倍率);
+      const visionAdjustment = Number(rule.视野修正);
+      if (Number.isFinite(actionAvailabilityValue)) actionAvailability *= clamp(actionAvailabilityValue, 0, 1);
+      if (Number.isFinite(movementMultiplier)) {
+        movement.multiplier *= clamp(movementMultiplier, 0, 1);
+        if (movementMultiplier < 1) addUnique(displayEffects, '移动受到环境影响');
+      }
+      if (Number.isFinite(visionAdjustment)) {
+        vision.hitAdjustment += visionAdjustment;
+        if (visionAdjustment < 0) addUnique(displayEffects, '视野受到环境影响');
+      }
+      if (rule.展开空间可用 === false && relevantSpace) {
+        deployment.spaceBlocked = true;
+        addUnique(displayEffects, '当前空间不足以展开');
+      }
+      if (rule.载具可展开 === false && relevantVehicle) {
+        deployment.vehicleBlocked = true;
+        addUnique(displayEffects, '当前环境无法展开载具');
+      }
+      if (rule.召唤物可展开 === false && relevantSummon) {
+        deployment.summonBlocked = true;
+        addUnique(displayEffects, '当前环境无法展开召唤物');
       }
     });
-    resolved.blockers.forEach(blocker => {
-      if (!blocker.blocked || !environmentActionMatches(blocker, actionKind)) return;
-      const activeCosts = maintenance ? sustainCosts : startupCosts;
-      const activeResources = blocker.resources.filter(resource => hasPositiveEnvironmentCost(activeCosts, resource));
-      if (blocker.resources.length && !activeResources.length) return;
-      if (blocker.resources.includes('魂力') && activeResources.includes('魂力')) {
-        addUnique(blockReasons, maintenance
-          ? '环境限制：当前环境无法维持含魂力消耗的技能'
-          : '环境限制：当前环境无法使用含魂力消耗的技能');
-      } else if (activeResources.length) {
-        addUnique(blockReasons, blocker.message || `环境限制：当前环境无法消耗${activeResources.join('、')}`);
-      } else if (!blocker.resources.length) {
-        addUnique(blockReasons, blocker.message || '环境限制：当前行动无法进行');
+    const activeCosts = maintenance ? sustainCosts : startupCosts;
+    const rawSoulPowerDisabled = environmentRules.魂力可用 === false ||
+      environmentRules.魂力动作 === '禁止';
+    const actorEnvironmentProtection = environmentProtectionForTarget(
+      input?.worldSnapshot || {},
+      actor,
+      resolved,
+      environmentRules.防护来源标签,
+    );
+    const soulPowerDisabled = rawSoulPowerDisabled && !actorEnvironmentProtection.sourceMatched;
+    if (soulPowerDisabled && hasPositiveEnvironmentCost(activeCosts, '魂力')) {
+      addUnique(blockReasons, maintenance
+        ? '环境限制：当前环境无法维持含魂力消耗的技能'
+        : '环境限制：当前环境无法使用含魂力消耗的技能');
+    }
+    (resolved?.blockers || []).forEach(reason => {
+      const text = String(reason || '').trim();
+      if (!text) return;
+      if (text === '当前环境禁止调用魂力') {
+        if (soulPowerDisabled && hasPositiveEnvironmentCost(activeCosts, '魂力')) {
+          addUnique(blockReasons, maintenance
+            ? '环境限制：当前环境无法维持含魂力消耗的技能'
+            : '环境限制：当前环境无法使用含魂力消耗的技能');
+        }
+        return;
       }
-      if (blocker.message) addUnique(displayEffects, blocker.message);
+      addUnique(blockReasons, text);
     });
     if (movement.blocked) addUnique(blockReasons, '环境限制：当前环境无法移动');
     if (deployment.spaceBlocked) addUnique(blockReasons, '环境限制：当前空间不足以展开');
@@ -70196,10 +70341,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (actionAvailability <= 1e-9) addUnique(blockReasons, '环境限制：当前行动无法进行');
     if (actionAvailability < 1 - 1e-9 && !displayEffects.length) addUnique(displayEffects, '行动效率受到环境影响');
     const cacheKey = stableHash({
-      status: resolved.status,
-      hazards: resolved.hazards,
-      modifiers: resolved.modifiers,
-      blockers: resolved.blockers,
+      status: resolved ? 'resolved' : 'unavailable',
+      hazards: Object.freeze(Array.isArray(resolved?.hazards) ? resolved.hazards : []),
+      modifiers: isPlainRecord(resolved?.modifiers) ? resolved.modifiers : Object.freeze({}),
+      blockers: Object.freeze(Array.isArray(resolved?.blockers) ? resolved.blockers : []),
       actionKind,
       actorId: unitId(actor),
       durationTicks,
@@ -70209,10 +70354,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     return Object.freeze({
       schemaVersion: WORLD_ACTION_ASSESSMENT_SCHEMA,
-      status: resolved.status,
-      hazards: resolved.hazards,
-      modifiers: resolved.modifiers,
-      blockers: resolved.blockers,
+      status: resolved ? 'resolved' : 'unavailable',
+      hazards: Object.freeze(Array.isArray(resolved?.hazards) ? resolved.hazards : []),
+      modifiers: isPlainRecord(resolved?.modifiers) ? resolved.modifiers : Object.freeze({}),
+      blockers: Object.freeze(Array.isArray(resolved?.blockers) ? resolved.blockers : []),
       blocked: blockReasons.length > 0,
       blockReasons: Object.freeze(blockReasons),
       displayEffects: Object.freeze(displayEffects),
@@ -70484,6 +70629,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ...(effect?.转化效果 !== undefined ? { 转化效果: String(effect.转化效果 || '').trim() } : {}),
         ...(effect?.增幅上限 !== undefined ? { 增幅上限: String(effect.增幅上限 || '').trim() } : {}),
         ...(effect?.限定探查者 !== undefined ? { 限定探查者: String(effect.限定探查者 || '').trim() } : {}),
+        ...(effect?.限定来源 !== undefined ? { 限定来源: cloneValue(effect.限定来源) } : {}),
         ...(effect?.资源 !== undefined ? { 资源: cloneValue(effect.资源) } : {}),
         ...(effect?.触发消耗 !== undefined ? { 触发消耗: cloneValue(effect.触发消耗) } : {}),
         战斗效果: { ...(existing?.战斗效果 || {}), ...deriveStateCombatEffect(effect) },
@@ -70508,6 +70654,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(effect?.转化效果 !== undefined ? { 转化效果: String(effect.转化效果 || '').trim() } : {}),
       ...(effect?.增幅上限 !== undefined ? { 增幅上限: String(effect.增幅上限 || '').trim() } : {}),
       ...(effect?.限定探查者 !== undefined ? { 限定探查者: String(effect.限定探查者 || '').trim() } : {}),
+      ...(effect?.限定来源 !== undefined ? { 限定来源: cloneValue(effect.限定来源) } : {}),
       ...(effect?.资源 !== undefined ? { 资源: cloneValue(effect.资源) } : {}),
       ...(effect?.触发消耗 !== undefined ? { 触发消耗: cloneValue(effect.触发消耗) } : {}),
       __previewApplicationProbability: clamp(Number(effect?.__previewApplicationProbability ?? 1), 0, 1),
@@ -70839,20 +70986,93 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
   }
 
+  function effectSourceRestrictions(effect = {}) {
+    const raw = effect?.限定来源;
+    const values = Array.isArray(raw) ? raw : [raw];
+    return [...new Set(values
+      .map(value => String(value ?? '').trim())
+      .filter(Boolean))];
+  }
+
+  function isFormalEnvironmentProtectionEffect(effect = {}) {
+    const prototype = String(effect?.原型 || effect?.来源原型摘要 || '').trim();
+    if (prototype === '状态施加') {
+      return ['无视异常', '环境免疫'].includes(String(effect?.状态 || effect?.状态名称 || '').trim());
+    }
+    if (prototype === '规则防御') {
+      return String(effect?.规则 || effect?.防御对象 || '').trim() === '免伤';
+    }
+    if (prototype === '结算修正' && String(effect?.结算 || '').trim() === '受到伤害') {
+      const value = typeof effect?.数值 === 'number'
+        ? effect.数值
+        : Number.parseFloat(String(effect?.数值 ?? '').replace(/,/g, ''));
+      return Number.isFinite(value) && value < 0;
+    }
+    return false;
+  }
+
+  function environmentProtectionForTarget(worldSnapshot = {}, target = {}, environmentContext = null, sourceTag = '') {
+    const environmentRules = environmentContext?.modifiers?.战斗?.环境规则;
+    const protectionSourceTags = effectSourceRestrictions({ 限定来源: environmentRules?.防护来源标签 });
+    const hazardSourceTag = String(sourceTag || '').trim();
+    if (protectionSourceTags.length && hazardSourceTag && !protectionSourceTags.includes(hazardSourceTag)) {
+      return Object.freeze({ immune: false, multiplier: 1, sourceMatched: false });
+    }
+    const candidates = [];
+    const append = effect => {
+      if (!effect || typeof effect !== 'object' || !isFormalEnvironmentProtectionEffect(effect)) return;
+      const restrictions = effectSourceRestrictions(effect);
+      const expectedSourceTags = hazardSourceTag ? [hazardSourceTag] : protectionSourceTags;
+      if (!expectedSourceTags.length || !restrictions.some(sourceTagValue => expectedSourceTags.includes(sourceTagValue))) return;
+      if (resolveConditionalEffectPlan(effect, worldSnapshot, target, target, { environmentContext }).length === 0) return;
+      candidates.push(effect);
+    };
+    collectPassiveSkills(target).forEach(({ skill }) => {
+      passiveEffectEntries(skill).forEach(({ effect }) => append(effect));
+    });
+    collectStateEntries(target).forEach(([, state]) => append(state));
+    const seen = new Set();
+    let multiplier = 1;
+    let immune = false;
+    let sourceMatched = false;
+    candidates.forEach(effect => {
+      const fingerprint = stableHash(effect);
+      if (seen.has(fingerprint)) return;
+      seen.add(fingerprint);
+      const restrictions = effectSourceRestrictions(effect);
+      if (restrictions.length) sourceMatched = true;
+      const prototype = String(effect?.原型 || effect?.来源原型摘要 || '').trim();
+      const state = String(effect?.状态 || effect?.状态名称 || '').trim();
+      const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
+      if ((prototype === '状态施加' && ['无视异常', '环境免疫'].includes(state)) ||
+        (prototype === '规则防御' && rule === '免伤')) {
+        immune = true;
+        return;
+      }
+      if (prototype === '结算修正' && String(effect?.结算 || '').trim() === '受到伤害') {
+        multiplier *= clamp(1 + parseSignedValue(effect?.数值, 1), 0, 1);
+      }
+    });
+    return Object.freeze({
+      immune: immune || multiplier <= 1e-9,
+      multiplier: immune ? 0 : clamp(multiplier, 0, 1),
+      sourceMatched,
+    });
+  }
+
   function effectSourceRestrictionAllows(effect = {}, environmentContext = null) {
-    const rawRestriction = effect?.限定来源;
-    const restrictions = Array.isArray(rawRestriction)
-      ? rawRestriction.map(value => String(value || '').trim()).filter(Boolean)
-      : String(rawRestriction ?? '').trim()
-        ? [String(rawRestriction).trim()]
-        : [];
+    const restrictions = effectSourceRestrictions(effect);
     if (!restrictions.length) return true;
-    const activeSourceTags = new Set(
-      (Array.isArray(environmentContext?.hazards) ? environmentContext.hazards : [])
-        .map(hazard => String(hazard?.sourceTag || '').trim())
-        .filter(Boolean),
-    );
-    return restrictions.some(sourceTag => activeSourceTags.has(sourceTag));
+    const environmentRules = environmentContext?.modifiers?.战斗?.环境规则;
+    const protectionSourceTags = effectSourceRestrictions({ 限定来源: environmentRules?.防护来源标签 });
+    const hazardSourceTags = Array.isArray(environmentContext?.hazards)
+      ? environmentContext.hazards
+        .map(hazard => String(hazard?.来源标签 || '').trim())
+        .filter(Boolean)
+      : [];
+    return [...protectionSourceTags, ...hazardSourceTags]
+      .filter(Boolean)
+      .some(sourceTag => restrictions.includes(sourceTag));
   }
 
   function pendingGrantedEffects(unit = {}, actionKind = '') {
@@ -71298,7 +71518,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const effectContext = { ...context, depth, effectPath: [...context.effectPath, context.effectInstanceId] };
     const activeFingerprint = consumePreviewNode(effectContext, effect);
     try {
-      const actor = overlay.readUnit(unitId(context.actor));
+      const actor = overlay.readUnit(unitId(context.actor)) || context.actor;
       if (prototype !== '机制抹消' && actorSuppressesEffect(actor, effect)) {
         ledger.addOutcome({
           ...context,
@@ -72595,6 +72815,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       if (prototype === '召唤生成') {
+        if (context?.environmentContext?.deployment?.summonBlocked) {
+          ledger.addOutcome({
+            ...context,
+            targetId: unitId(actor),
+            effectInstanceId: `${context.effectInstanceId}:environment-deployment`,
+            outcomeKind: 'ACTION_CANCELLED',
+            threatValue: 0,
+            evidence: { reason: 'ENVIRONMENT_SUMMON_DEPLOYMENT_BLOCKED', marginal: false },
+          });
+          return;
+        }
         const summonName = String(effect?.召唤物名称 || '').trim();
         if (!summonName) throw new Error('battle_preview_summon_name_missing');
         const count = Math.max(1, Math.floor(Number(effect?.数量 || 1)) || 1);
@@ -72788,6 +73019,142 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
   }
 
+  function createEnvironmentSource(hazard = {}, index = 0) {
+    const level = Math.max(1, Number(hazard?.effectiveLevel || 1));
+    if (typeof root.__LWCS_GET_BASE_STATS__ !== 'function') return null;
+    let baseStats;
+    try {
+      baseStats = root.__LWCS_GET_BASE_STATS__(level);
+    } catch (error) {
+      return null;
+    }
+    if (!baseStats || typeof baseStats !== 'object') return null;
+    const stats = Object.fromEntries(['sp_max', 'men_max', 'str', 'def', 'agi', 'vit_max'].map(key => [
+      key,
+      Math.max(1, Number(baseStats[key] || 0)),
+    ]));
+    if (Object.values(stats).some(value => !Number.isFinite(value) || value <= 0)) return null;
+    const id = `environment:${String(hazard?.sourceTag || 'hazard').trim()}:${index}`;
+    return {
+      id,
+      name: hazard?.displayName || '环境威胁',
+      名称: hazard?.displayName || '环境威胁',
+      等级: level,
+      属性: { 等级: level },
+      final: { ...stats, 等级: level, level },
+      hp_max: stats.vit_max,
+      hp: stats.vit_max,
+      sp_max: stats.sp_max,
+      sp: stats.sp_max,
+      men_max: stats.men_max,
+      men: stats.men_max,
+      vit_max: stats.vit_max,
+      vit: stats.vit_max,
+      状态: { 存活: true },
+      状态效果: {},
+    };
+  }
+
+  function applyEnvironmentalHazards({
+    environmentContext,
+    overlay,
+    ledger,
+    actor,
+    rootActionId,
+    battleIntent = {},
+    basisView = 'DECISION_VISIBLE',
+    snapshotRevision = '',
+  } = {}) {
+    if (!environmentContext || environmentContext.blocked || !Array.isArray(environmentContext.hazards)) return Object.freeze([]);
+    const durationTicks = Math.max(0, Number(environmentContext.durationTicks || 0));
+    if (!(durationTicks > 0)) return Object.freeze([]);
+    const applications = [];
+    const nodeBudget = {
+      count: 0,
+      limit: Math.max(1, MAX_ENVIRONMENT_TICKS * Math.max(1, environmentContext.hazards.length) + 8),
+      activeFingerprints: new Set(),
+    };
+    environmentContext.hazards.forEach((hazard, hazardIndex) => {
+      const normalizedHazard = normalizeEnvironmentHazard(hazard, hazardIndex);
+      if (!normalizedHazard) return;
+      const tickCount = Math.min(
+        MAX_ENVIRONMENT_TICKS,
+        Math.max(1, Math.floor(durationTicks / Math.max(0.000001, normalizedHazard.intervalTicks) + 1e-9)),
+      );
+      for (let tick = 0; tick < tickCount; tick += 1) {
+        const worldSnapshot = overlay.snapshot();
+        const currentActor = overlay.readUnit(unitId(actor)) || actor;
+        const targets = environmentTargetUnits(worldSnapshot, currentActor, normalizedHazard)
+          .map(target => overlay.readUnit(unitId(target)) || target)
+          .filter(target => isAlive(target));
+        if (!targets.length) continue;
+        const targetProtection = new Map(targets.map(target => [
+          unitId(target),
+          environmentProtectionForTarget(
+            worldSnapshot,
+            target,
+            environmentContext,
+            normalizedHazard.sourceTag,
+          ),
+        ]));
+        const applicableTargets = targets.filter(target => !targetProtection.get(unitId(target))?.immune);
+        if (!applicableTargets.length) continue;
+        const source = createEnvironmentSource(normalizedHazard, hazardIndex);
+        if (!source) continue;
+        const effect = {
+          原型: '伤害结算',
+          目标: '单体',
+          生效方式: '独立生效',
+          威力倍率: normalizedHazard.power,
+          伤害类型: normalizedHazard.damageType,
+          攻击段数: normalizedHazard.segments,
+          防御穿透: normalizedHazard.penetration,
+          ...(normalizedHazard.element.length ? { 限定元素: normalizedHazard.element } : {}),
+          ...(normalizedHazard.hitProbability === undefined ? {} : { 命中概率: normalizedHazard.hitProbability }),
+        };
+        const environmentDamageMultiplierByTarget = new Map(
+          applicableTargets.map(target => [
+            unitId(target),
+            sameElementAdaptation(normalizedHazard, target).multiplier *
+              targetProtection.get(unitId(target)).multiplier,
+          ]),
+        );
+        const effectInstanceId = `${rootActionId}:environment:${hazardIndex + 1}:tick:${tick + 1}`;
+        const before = ledger.entries.length;
+        applyEffect(effect, applicableTargets, overlay, ledger, {
+          actor: source,
+          declaration: {
+            actionId: effectInstanceId,
+            actorId: source.id,
+            actionKind: 'ENVIRONMENT_HAZARD',
+            targetIds: applicableTargets.map(unitId),
+            skill: { 消耗: '无', _效果数组: [effect] },
+          },
+          worldSnapshot,
+          nodeBudget,
+          depth: 0,
+          effectPath: [],
+          rootActionId,
+          sourceActionId: rootActionId,
+          effectInstanceId,
+          windowId: `environment:${hazardIndex + 1}:tick:${tick + 1}`,
+          battleIntent,
+          basisView,
+          snapshotRevision,
+          environmentContext,
+          environmentDamageMultiplierByTarget,
+        }, 0);
+        applications.push(Object.freeze({
+          hazardId: normalizedHazard.id,
+          tick: tick + 1,
+          targetIds: Object.freeze(applicableTargets.map(unitId)),
+          contributionCount: ledger.entries.length - before,
+        }));
+      }
+    });
+    return Object.freeze(applications);
+  }
+
   function settleImmediateCooperativeSummons({
     overlay,
     ledger,
@@ -72806,6 +73173,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     applicationProbabilityResolver,
     hitProbabilityResolver,
     forcedApplicationProbabilityByEffect = {},
+    environmentContext = null,
   }) {
     const summonEvents = overlay.mergedScheduledEvents().filter(event =>
       event?.type === 'SUMMON_CREATE' &&
@@ -72881,6 +73249,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               snapshotRevision,
               projectionContext: assistProjectionContext,
               captureDamageBasisTrace,
+              environmentContext,
               applicationProbability: summonApplicationProbability,
               applicationProbabilityByTarget: new Map([
                 [targetId, summonApplicationProbability],
@@ -73287,6 +73656,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     basisView = 'DECISION_VISIBLE',
     snapshotRevision = '',
     captureDamageBasisTrace = false,
+    environmentContext = null,
   }) {
     const contributions = [];
     const changedUnitIds = new Set();
@@ -73415,6 +73785,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         projectionContext,
       );
       targets.forEach(target => {
+        if (!effectSourceRestrictionAllows(effect, environmentContext)) return;
         if (
           !effectConditionEnabled(
             effect,
@@ -73455,6 +73826,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             target,
             effect,
             projectionContext,
+            environmentContext,
           );
           const segments = Math.max(
             1,
@@ -73926,6 +74298,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         'R9V2_MECHANICAL_BASIS_UNSUPPORTED:GRANTED_EFFECTS',
       );
     }
+    const environmentContext = assessWorldAction({
+      ...input,
+      worldSnapshot,
+      actor,
+      actorId,
+      declaration: basis.declaration,
+      startupCosts: basis.declaration?.resourceCosts,
+      sustainCosts: basis.declaration?.sustainCosts,
+      durationTicks: readActionDurationTicks(input, basis.declaration),
+    });
+    if (input?.worldActionContext !== undefined && environmentContext.status !== 'resolved') {
+      throw new Error('battle_world_action_context_unavailable');
+    }
+    if (environmentContext.blocked) throw createEnvironmentBlockError(environmentContext);
     if (
       basis.paymentMode === 'FORMAL' &&
       Array.isArray(basis.declaration?.fusionPartnerIds) &&
@@ -73984,6 +74370,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         basisView: input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
         snapshotRevision: resolvedSnapshotRevision,
         captureDamageBasisTrace: input?.captureDamageBasisTrace === true,
+        environmentContext,
       });
     }
     const rootActionId = String(
@@ -74162,6 +74549,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         basisView: input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
         snapshotRevision: resolvedSnapshotRevision,
         projectionContext: effectProjectionContext,
+        environmentContext,
         captureDamageBasisTrace: input?.captureDamageBasisTrace === true,
         primarySucceeded: false,
         primaryOutcomeKeyByTarget,
@@ -74279,6 +74667,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             currentActor,
             currentTarget,
             effect,
+            effectProjectionContext,
+            environmentContext,
           );
           const resolvedPerSegment =
             typeof input?.hitProbabilityResolver === 'function'
@@ -74499,7 +74889,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : Number.POSITIVE_INFINITY;
     return effects.filter(effect => effectConditionEnabled(effect, declaration?.worldSnapshot || {}, actor, target)).reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() === '伤害结算' && target) {
-        const expectedDamage = calculateBaseDamage(effect, actor, target) * estimateHitProbability(actor, target, effect);
+        const expectedDamage = calculateBaseDamage(effect, actor, target) * estimateHitProbability(
+          actor,
+          target,
+          effect,
+          null,
+          declaration?.environmentContext || null,
+        );
         const availableHp = declaration?.capacityMode === true ? readHpMax(target) : readHp(target);
         return sum + Math.min(availableHp, expectedDamage) / readHpMax(target) * 100;
       }
@@ -74537,7 +74933,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const unit = input?.unit || {};
     if (!isAlive(unit)) return 0;
     const survivalFactor = clamp(input?.survivalProbability ?? readHp(unit) / readHpMax(unit), 0, 1);
-    const actionAvailability = clamp(input?.actionAvailability ?? 1, 0, 1);
+    const actionAvailability = clamp(
+      Number(input?.actionAvailability ?? 1) * Number(input?.environmentContext?.actionAvailability ?? 1),
+      0,
+      1,
+    );
+    if (input?.environmentContext?.blocked === true) return 0;
     const bestLegalBaseActionValue = Math.max(0, Number(input?.bestLegalBaseActionValue || 0));
     return survivalFactor * actionAvailability * bestLegalBaseActionValue;
   }
@@ -75274,6 +75675,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       input.horizon || 'SHALLOW',
       cacheBasisView,
       cacheSnapshotRevision,
+      input.environmentCacheKey || '',
       input.captureDamageBasisTrace === true ? 'capture-damage-basis-trace' : '',
     ].join('|');
   }
@@ -75327,6 +75729,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       declaredCostStages.形式 === 'percentage' ? 'percentage' : 'absolute',
     );
     if (declaredStartupCosts.非法项.length) throw new Error(`battle_preview_cost_invalid:${declaredStartupCosts.非法项.join('|')}`);
+    const environmentContext = assessWorldAction({
+      ...input,
+      worldSnapshot,
+      actor,
+      declaration,
+      costStages: declaredCostStages,
+      startupCosts: declaredStartupCosts.values,
+      sustainCosts: declaredCostStages.维持,
+      durationTicks: readActionDurationTicks(input, declaration),
+    });
+    if (input?.worldActionContext !== undefined && environmentContext.status !== 'resolved') {
+      throw new Error('battle_world_action_context_unavailable');
+    }
+    if (environmentContext.blocked) throw createEnvironmentBlockError(environmentContext);
     const basisView = String(
       input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
     ).trim().toUpperCase();
@@ -75344,7 +75760,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       throw new Error(`BATTLE_PREVIEW_PAYMENT_MODE_INVALID:${paymentMode || 'missing'}`);
     }
     const budgetLimit = Math.max(1, Math.min(MAX_PREVIEW_NODES, Number(input?.previewBudget?.maxNodes || MAX_PREVIEW_NODES)));
-    const cacheKey = buildCacheKey(input);
+    const cacheKey = buildCacheKey({
+      ...input,
+      environmentCacheKey: environmentContext.cacheKey,
+    });
     const rootActionId = canonicalActionId(
       declaration,
       declaration?.candidateId === undefined
@@ -75539,6 +75958,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         snapshotRevision,
         projectionContext,
         captureDamageBasisTrace,
+        environmentContext,
         forcedApplicationProbabilityByEffect:
           input?.forcedApplicationProbabilityByEffect || {},
         actionDamageMultiplier,
@@ -75780,6 +76200,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
       }
     });
+    const environmentApplications = applyEnvironmentalHazards({
+      environmentContext,
+      overlay,
+      ledger,
+      actor,
+      rootActionId,
+      battleIntent: input?.battleIntent || {},
+      basisView,
+      snapshotRevision,
+    });
     settleImmediateCooperativeSummons({
       overlay,
       ledger,
@@ -75792,6 +76222,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       snapshotRevision,
       projectionContext,
       captureDamageBasisTrace,
+      environmentContext,
       damageMultiplierByTarget: input?.damageMultiplierByTarget || {},
       evadeProbabilityByTarget:
         input?.evadeProbabilityByTarget || {},
@@ -75818,6 +76249,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ...overlay.mergedMap('changedUnits').keys(),
       ]),
       afterSnapshot: overlay.snapshot(),
+      environment: environmentContext,
+      environmentApplications,
       metrics: Object.freeze({ overlayWrites: metrics.overlayWrites, fullCloneCalls: 0 }),
     };
     resultValue.planningEvidence = buildEffectPlanningEvidence({
@@ -77951,6 +78384,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     calculateNonlethalHpFloor,
     sampleSignedValue,
     sampleSignedValueExpression,
+    assessWorldAction,
+    bindWorldActionContext,
+    clearWorldActionContext,
     previewAction,
     buildActionOperationGraph,
     evaluateOperationGraph,
@@ -146334,7 +146770,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : context?.skill && typeof context.skill === 'object' && Object.keys(context.skill).length
         ? context.skill
         : context?.技能快照 || {};
-    const parsed = previewRuntime.readSkillSustainCosts(sustainCost || '无', {
+    const sustainInput = sustainCost && typeof sustainCost === 'object' && !Array.isArray(sustainCost) &&
+      (Object.prototype.hasOwnProperty.call(sustainCost, '维持') || Object.prototype.hasOwnProperty.call(sustainCost, 'sustain'))
+      ? sustainCost
+      : { 维持: sustainCost || '无' };
+    const parsed = previewRuntime.readSkillSustainCosts(sustainInput, {
       ...context,
       来源模块: 'BattleRuntime_Module',
       技能: skillSnapshot,
@@ -146495,7 +146935,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return { attached: true, diagnostic: false, representativeEffect: representativeKey };
   }
 
-  function settleSustainAtRoundEnd(unit = {}, label = '', combatData = {}) {
+  function settleSustainAtRoundEnd(unit = {}, label = '', combatData = {}, adapterOptions = {}) {
     const logs = [];
     const broken = [];
     const chargedSustainSources = new Set();
@@ -146541,6 +146981,47 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       const costs = sustainResolution.costs;
+      if (adapterOptions?.worldActionContext !== undefined) {
+        const environmentAssessment = previewRuntime.assessWorldAction({
+          worldSnapshot: combatData,
+          actor: unit,
+          actorId: previewRuntime.unitId(unit),
+          actionType: 'BATTLE',
+          declaration: {
+            actorId: previewRuntime.unitId(unit),
+            actionKind: 'MAINTAIN_SKILL',
+            维持: true,
+            skill: effect.技能快照 || effect.技能 || {},
+          },
+          maintenance: true,
+          sustainCosts: Object.fromEntries(costs.map(cost => [cost.resource, cost.amount])),
+          durationTicks: 0,
+          worldActionContext: adapterOptions.worldActionContext,
+        });
+        if (!environmentAssessment || environmentAssessment.status !== 'resolved' || environmentAssessment.blocked) {
+          breakSustainEffect(unit, key, effect);
+          broken.push(effect.name || key);
+          const reason = environmentAssessment?.blockReasons?.join('；') || '当前环境规则不可用';
+          writeLedgerEvent(combatData, {
+            eventKind: 'state_tick',
+            round: Number(combatData?.回合 || 0),
+            actorName: previewRuntime.unitName(unit),
+            targetName: previewRuntime.unitName(unit),
+            actionName: String(effect.name || key).trim(),
+            actionType: 'sustain_break',
+            actorControl: 'SYSTEM',
+            actionRole: 'STATE_TICK',
+            result: 'broken',
+            resultState: 'FAILURE',
+            ruleCode: environmentAssessment?.status === 'resolved'
+              ? 'SUSTAIN_ENVIRONMENT_BLOCKED'
+              : 'SUSTAIN_ENVIRONMENT_CONTEXT_UNAVAILABLE',
+            meta: { source: 'structured_runtime', stateName: String(effect.name || key).trim(), reason },
+          });
+          logs.push(`[维持中断] ${label}无法在当前环境维持[${effect.name || key}]：${reason}`);
+          return;
+        }
+      }
       const sustainSource = String(
         effect.来源技能 ||
         effect.技能快照?.name ||
@@ -146647,7 +147128,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       const name = previewRuntime.unitName(unit);
-      const sustainResult = settleSustainAtRoundEnd(unit, name, combatData) || {};
+      const sustainResult = settleSustainAtRoundEnd(unit, name, combatData, adapterOptions) || {};
       const conditionResult = settleConditionsAtRoundEnd(unit, name, combatData) || {};
       syncRoundEndUnit(unit);
       if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
@@ -151821,6 +152302,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let terminal = null;
     const naturalActionBudget = 40;
     try {
+      if (input?.worldActionContext !== undefined) {
+        if (typeof previewRuntime.bindWorldActionContext !== 'function' ||
+          typeof previewRuntime.clearWorldActionContext !== 'function') {
+          throw new Error('battle_preview_world_context_binding_missing');
+        }
+        previewRuntime.bindWorldActionContext(combatData, input.worldActionContext);
+      }
       for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {
         combatData.回合 = Number(source?.回合 || 0) + roundOffset;
         roundsExecuted = roundOffset;
@@ -153931,7 +154419,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         }
         if (queue.fatal) throw new Error(`${queue.fatal.code}:${queue.fatal.message || ''}`);
         if (terminal?.terminal !== true) {
-          settleBattleRoundEnd(combatData, logs);
+          settleBattleRoundEnd(combatData, logs, {
+            worldActionContext: input?.worldActionContext,
+          });
         }
         terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});
         const alive = readTeamAlive(combatData);
@@ -154049,6 +154539,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         audit, beliefObservations,
       };
     } finally {
+      if (typeof previewRuntime.clearWorldActionContext === 'function') {
+        previewRuntime.clearWorldActionContext(combatData);
+      }
       listCombatUnits(combatData).forEach(clearC2FoodMaintenanceRuntime);
       if (evaluationSession) {
         decisionRuntime.disposeEvaluationSession(evaluationSession);
@@ -167029,6 +167522,69 @@ class BattleUIComponent {
           : 1;
         const executeTransaction = root.BattleUIBridge?.executeBattleTransaction;
         if (typeof executeTransaction !== 'function') throw new Error('battle_transaction_unavailable');
+        const currentSnapshot = component?.snapshot && typeof component.snapshot === 'object' ? component.snapshot : {};
+        const dataRoot = currentSnapshot.rootData;
+        const activeName = String(currentSnapshot.activeName || '').trim();
+        const characterTable = dataRoot?.char;
+        const characterKey = characterTable && typeof characterTable === 'object' && !Array.isArray(characterTable)
+          ? Object.prototype.hasOwnProperty.call(characterTable, activeName)
+            ? activeName
+            : String(Object.entries(characterTable).find(([, character]) =>
+              String(character?.name || character?.base?.name || '').trim() === activeName,
+            )?.[0] || '').trim()
+          : '';
+        const targetLocation = String(sourceCombatData?.环境?.地点 || '').trim();
+        const temporaryRuleIds = Array.isArray(sourceCombatData?.环境?.临时规则ID)
+          ? sourceCombatData.环境.临时规则ID
+          : [];
+        const durationTicks = Number(options.durationTicks ?? options.actionDeclaration?.durationTicks ?? 0);
+        const libraryWindows = [];
+        try {
+          libraryWindows.push(root);
+        } catch (_error) {}
+        try {
+          const parentWindow = root.parent;
+          if (parentWindow && parentWindow !== root) libraryWindows.push(parentWindow);
+        } catch (_error) {}
+        try {
+          const topWindow = root.top;
+          if (topWindow && topWindow !== root && !libraryWindows.includes(topWindow)) libraryWindows.push(topWindow);
+        } catch (_error) {}
+        const libraryRuntime = libraryWindows
+          .map(candidate => {
+            try {
+              return candidate?.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || null;
+            } catch (_error) {
+              return null;
+            }
+          })
+          .find(runtime => runtime && typeof runtime.resolveWorldActionContext === 'function') || null;
+        if (!dataRoot || !activeName || !characterKey || !targetLocation || !Number.isFinite(durationTicks) || !libraryRuntime) {
+          throw new Error('battle_world_action_context_unavailable');
+        }
+        const rawWorldActionContext = libraryRuntime.resolveWorldActionContext({
+          dataRoot,
+          characterKey,
+          actionType: 'BATTLE',
+          targetLocation,
+          durationTicks: Math.max(0, Math.round(durationTicks * 10) / 10),
+          temporaryRuleIds,
+        });
+        const worldContextKeys = [
+          'era', 'time', 'location', 'terrain', 'hazards', 'facilities',
+          'nearbyFacilities', 'resources', 'market', 'permissions', 'modifiers',
+          'blockers', 'warnings',
+        ];
+        const validWorldActionContext = rawWorldActionContext &&
+          typeof rawWorldActionContext === 'object' &&
+          !Array.isArray(rawWorldActionContext) &&
+          worldContextKeys.every(key => Object.prototype.hasOwnProperty.call(rawWorldActionContext, key)) &&
+          Array.isArray(rawWorldActionContext.hazards) &&
+          rawWorldActionContext.modifiers && typeof rawWorldActionContext.modifiers === 'object' &&
+          !Array.isArray(rawWorldActionContext.modifiers) &&
+          Array.isArray(rawWorldActionContext.blockers) &&
+          Array.isArray(rawWorldActionContext.warnings);
+        if (!validWorldActionContext) throw new Error('battle_world_action_context_unavailable');
         const transactionResult = await executeTransaction(cloneBattleValue(sourceCombatData), {
           mode: battleMode,
           rounds: maxRounds,
@@ -167037,6 +167593,7 @@ class BattleUIComponent {
           executionMode: 'manual',
           dryRun,
           commit: !dryRun,
+          worldActionContext: rawWorldActionContext,
         });
           const commitReceipt = transactionResult?.commitReceipt || null;
           if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');

@@ -422,6 +422,8 @@
     operationGraphStateMerges: 0,
   };
   const previewCache = new Map();
+  const worldActionContextBindings = new WeakMap();
+  let activeWorldActionContextBinding = null;
   const unitIdCache = new WeakMap();
   const unitNameCache = new WeakMap();
   const dependencyCaptureStack = [];
@@ -2765,15 +2767,28 @@
     ));
   }
 
+  function itemPassiveConsumer() {
+    const candidates = [root];
+    try { if (root.parent && root.parent !== root) candidates.push(root.parent); } catch (_error) {}
+    try { if (root.top && root.top !== root) candidates.push(root.top); } catch (_error) {}
+    return candidates
+      .map(candidate => candidate && candidate.__LWCS_ITEM_PASSIVE_CONSUMER_V1__)
+      .find(consumer => consumer && typeof consumer.编译角色装备被动消费者_V1 === 'function') || null;
+  }
+
   function collectPassiveSkills(unit = {}) {
+    const equipmentPackage = itemPassiveConsumer()?.编译角色装备被动消费者_V1(unit);
     const roots = [
       ...(Array.isArray(unit?.技能列表) ? [unit.技能列表] : []),
       ...(Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills)
         ? [unit.__battleRuntime.itemPassiveTriggeredSkills]
         : []),
+      ...(Array.isArray(equipmentPackage?.技能条目)
+        ? [equipmentPackage.技能条目.map(entry => entry?.技能).filter(skill => skill && typeof skill === 'object')]
+        : []),
       ...Object.entries(unit || {})
         .filter(([key, value]) =>
-          /^(?:第\d+)?武魂|血脉之力|魂骨|装备|自创魂技|技能/.test(key) &&
+          /^(?:第\d+)?武魂|血脉之力|自创魂技|技能/.test(key) &&
           value && typeof value === 'object'
         )
         .map(([, value]) => value),
@@ -4618,285 +4633,157 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ))];
   }
 
-  function environmentEntryList(value, kind = '') {
-    if (Array.isArray(value)) return value.filter(entry => isPlainRecord(entry));
-    if (!isPlainRecord(value)) return [];
-    const markerFields = kind === 'hazard'
-      ? ['effectiveLevel', 'environmentLevel', '有效等级', '等级', '标准等级', 'sourceTag', '来源标签', '来源']
-      : kind === 'blocker'
-        ? ['blocked', 'blocking', '阻断', 'resources', '资源', 'message', 'reasonText']
-        : ['kind', '类型', 'scope', '作用域', 'movementMultiplier', '移动倍率', 'hitAdjustment', '命中修正'];
-    if (markerFields.some(field => Object.prototype.hasOwnProperty.call(value, field))) return [value];
-    return Object.entries(value)
-      .filter(([, entry]) => isPlainRecord(entry))
-      .map(([key, entry]) => Object.prototype.hasOwnProperty.call(entry, 'kind') || Object.prototype.hasOwnProperty.call(entry, '类型')
-        ? entry
-        : { ...entry, kind: key });
-  }
-
-  function environmentNumber(value, fallback = NaN) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : fallback;
-  }
-
-  function environmentRatio(value, fallback = NaN) {
-    if (value === undefined || value === null || value === '') return fallback;
-    const text = String(value).trim();
-    const number = environmentNumber(text.replace(/%$/, ''), NaN);
-    if (!Number.isFinite(number)) return fallback;
-    return number > 1 || text.endsWith('%') ? number / 100 : number;
-  }
-
-  function environmentBoolean(value, fallback = undefined) {
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'number' && Number.isFinite(value)) return value !== 0;
-    const text = String(value ?? '').trim().toLowerCase();
-    if (['true', 'yes', 'on', '是', '允许', '可用', '阻断', '阻止'].includes(text)) return true;
-    if (['false', 'no', 'off', '否', '禁止', '不可用', '不允许'].includes(text)) return false;
-    return fallback;
-  }
-
-  function environmentValues(value) {
-    const source = Array.isArray(value) ? value : [value];
-    return source.flatMap(entry => typeof entry === 'string'
-      ? entry.split(/[、,，/|｜；;\s]+/)
-      : [entry]
-    ).map(entry => String(entry ?? '').trim()).filter(Boolean);
-  }
-
-  function normalizeEnvironmentResourceNames(value) {
-    const aliases = { sp: '魂力', men: '精神力', vit: '体力', 魂力: '魂力', 精神力: '精神力', 体力: '体力' };
-    return [...new Set(environmentValues(value).map(entry => aliases[entry.toLowerCase()] || aliases[entry] || '').filter(Boolean))];
-  }
-
-  function normalizeEnvironmentActionKinds(value) {
-    return [...new Set(environmentValues(value).map(entry => entry.toUpperCase()))];
-  }
-
-  function environmentActionMatches(entry = {}, actionKind = '') {
-    const declared = normalizeEnvironmentActionKinds(
-      entry?.actionKinds ?? entry?.动作类型 ?? entry?.actionKind ?? entry?.适用动作,
-    );
-    return !declared.length || declared.includes(String(actionKind || '').trim().toUpperCase());
-  }
-
   function readActionDurationTicks(input = {}, declaration = {}) {
-    const candidates = [
-      [input, 'durationTicks'],
-      [input, 'actionDurationTicks'],
-      [declaration, 'durationTicks'],
-      [declaration, '持续tick'],
-      [declaration, '行动时长tick'],
-      [declaration, 'cast_time'],
-      [declaration?.skill, 'durationTicks'],
-      [declaration?.skill, '持续tick'],
-      [declaration?.skill, '行动时长tick'],
-      [declaration?.skill, '前摇'],
-      [declaration?.skill, 'cast_time'],
-    ];
-    for (const [source, key] of candidates) {
-      if (!source || typeof source !== 'object' || !Object.prototype.hasOwnProperty.call(source, key)) continue;
-      const value = environmentNumber(source[key], NaN);
-      if (Number.isFinite(value)) return Math.max(0, value);
-    }
-    return 1;
+    const value = Number(input?.durationTicks ?? declaration?.durationTicks ?? 0);
+    return Number.isFinite(value) ? Math.max(0, Math.round(value * 10) / 10) : 0;
   }
 
   function isMaintenanceAction(input = {}, declaration = {}) {
-    const flags = [
-      input?.isMaintenance,
-      input?.maintenance,
-      declaration?.isMaintenance,
-      declaration?.maintenance,
-      declaration?.维持,
-    ];
-    if (flags.some(value => value === true)) return true;
-    const phase = String(input?.phase ?? declaration?.phase ?? declaration?.阶段 ?? '').trim().toUpperCase();
-    return ['MAINTAIN', 'SUSTAIN', '维持', '维持消耗'].includes(phase) ||
-      ['MAINTAIN_SKILL', 'SUSTAIN_SKILL', '维持'].includes(String(declaration?.actionKind || '').trim().toUpperCase());
+    return input?.maintenance === true ||
+      declaration?.维持 === true ||
+      declaration?.阶段 === '维持' ||
+      declaration?.actionKind === 'MAINTAIN_SKILL';
   }
 
   function hasPositiveEnvironmentCost(costs = {}, resource = '') {
     const value = costs?.[resource];
     if (value === undefined || value === null || value === '') return false;
-    const numeric = environmentNumber(String(value).replace(/%$/, ''), NaN);
+    const numeric = Number(String(value).replace(/%$/, ''));
     return Number.isFinite(numeric) && numeric > 1e-9;
   }
 
   function normalizeEnvironmentHazard(entry = {}, index = 0) {
-    const effectiveLevel = environmentNumber(
-      entry?.effectiveLevel ?? entry?.environmentLevel ?? entry?.有效等级 ?? entry?.等级 ?? entry?.标准等级,
-      NaN,
-    );
-    const power = environmentNumber(entry?.power ?? entry?.威力 ?? entry?.威力倍率, NaN);
-    const rawDamageType = String(entry?.damageType ?? entry?.伤害类型 ?? entry?.类型 ?? '').trim();
-    const sourceTag = String(entry?.sourceTag ?? entry?.来源标签 ?? entry?.来源 ?? '').trim();
-    const intervalTicks = environmentNumber(
-      entry?.intervalTicks ?? entry?.间隔tick ?? entry?.间隔Ticks ?? entry?.间隔 ?? entry?.周期tick,
-      NaN,
-    );
-    if (!(effectiveLevel > 0) || !(power > 0) || !rawDamageType || !sourceTag || !(intervalTicks > 0)) return null;
-    const damageType = /精神/.test(rawDamageType)
-      ? '精神攻击'
-      : /真实/.test(rawDamageType)
-        ? '真实攻击'
-        : /远程/.test(rawDamageType)
-          ? '远程攻击'
-          : '近身攻击';
-    const rawTargetIds = entry?.targetIds ?? entry?.目标ID ?? entry?.目标;
-    const targetIds = environmentValues(rawTargetIds);
-    const hitProbability = entry?.hitProbability ?? entry?.命中概率;
+    if (!isPlainRecord(entry)) return null;
+    const effectiveLevel = Number(entry.对应等级);
+    const power = Number(entry.威力);
+    const damageType = String(entry.伤害类型 || '').trim();
+    const sourceTag = String(entry.来源标签 || '').trim();
+    const intervalTicks = Number(entry.间隔tick);
+    const penetration = Number(entry.穿透 ?? 0);
+    const segments = Number(entry.攻击段数 ?? 1);
+    if (!(effectiveLevel > 0) || !(power > 0) || !damageType || !sourceTag || !(intervalTicks > 0) ||
+      !Number.isFinite(penetration) || penetration < 0 || !Number.isFinite(segments) || segments < 1) return null;
+    const targetIds = Array.isArray(entry.目标ID)
+      ? entry.目标ID.map(value => String(value || '').trim()).filter(Boolean)
+      : [];
     return Object.freeze({
-      id: String(entry?.id ?? entry?.hazardId ?? `${sourceTag}:${index}`).trim() || `${sourceTag}:${index}`,
+      id: `${sourceTag}:${index}`,
       effectiveLevel,
       power,
       damageType,
-      element: String(entry?.element ?? entry?.元素 ?? entry?.限定元素 ?? '').trim(),
+      element: Object.freeze(normalizedElementTokens(entry.元素)),
       sourceTag,
       intervalTicks,
-      penetration: Math.max(0, environmentNumber(entry?.penetration ?? entry?.穿透 ?? entry?.防御穿透 ?? entry?.防穿, 0)),
-      segments: Math.max(1, Math.floor(environmentNumber(entry?.segments ?? entry?.攻击段数 ?? entry?.段数, 1)) || 1),
-      targetScope: String(entry?.targetScope ?? entry?.目标范围 ?? entry?.scope ?? '').trim().toUpperCase(),
+      penetration,
+      segments: Math.floor(segments),
+      targetScope: String(entry.目标范围 || '').trim().toUpperCase(),
       targetIds: Object.freeze(targetIds),
-      ...(hitProbability === undefined ? {} : { hitProbability: normalizeEffectProbability(hitProbability, 1) }),
-      displayName: String(entry?.displayName ?? entry?.名称 ?? entry?.name ?? '').trim(),
-      displayText: String(entry?.displayText ?? entry?.展示文本 ?? entry?.message ?? entry?.reasonText ?? '').trim(),
+      ...(entry.命中概率 === undefined ? {} : { hitProbability: normalizeEffectProbability(entry.命中概率, 1) }),
+      displayName: String(entry.名称 || '').trim(),
     });
   }
 
-  function normalizeEnvironmentModifier(entry = {}, index = 0) {
-    const rawKind = String(entry?.kind ?? entry?.类型 ?? entry?.scope ?? entry?.作用域 ?? '').trim().toLowerCase();
-    const kind = {
-      movement: 'movement', 移动: 'movement', 行动移动: 'movement',
-      vision: 'vision', 视野: 'vision',
-      deployment_space: 'deployment_space', 展开空间: 'deployment_space', 展开空间可用: 'deployment_space',
-      vehicle_deployment: 'vehicle_deployment', 载具展开: 'vehicle_deployment',
-      summon_deployment: 'summon_deployment', 召唤物展开: 'summon_deployment',
-    }[rawKind];
-    if (!kind) return null;
-    const readBoolean = (...keys) => {
-      for (const key of keys) {
-        if (Object.prototype.hasOwnProperty.call(entry, key)) return environmentBoolean(entry[key]);
-      }
-      return undefined;
-    };
-    const readRatio = (...keys) => {
-      for (const key of keys) {
-        if (Object.prototype.hasOwnProperty.call(entry, key)) return environmentRatio(entry[key], NaN);
-      }
-      return undefined;
-    };
-    let hitAdjustment;
-    for (const key of ['hitAdjustment', '命中修正', '命中概率修正']) {
-      if (Object.prototype.hasOwnProperty.call(entry, key)) {
-        const text = String(entry[key] ?? '').trim();
-        const numeric = environmentNumber(text.replace(/%$/, ''), NaN);
-        hitAdjustment = Number.isFinite(numeric) ? (text.endsWith('%') ? numeric / 100 : numeric) : undefined;
-        break;
-      }
+  function isWorldActionContext(value) {
+    return isPlainRecord(value) &&
+      ['era', 'time', 'location', 'terrain', 'hazards', 'facilities', 'nearbyFacilities', 'resources', 'market', 'permissions', 'modifiers', 'blockers', 'warnings']
+        .every(key => Object.prototype.hasOwnProperty.call(value, key)) &&
+      Array.isArray(value.hazards) &&
+      isPlainRecord(value.modifiers) &&
+      Array.isArray(value.blockers) &&
+      Array.isArray(value.warnings);
+  }
+
+  function normalizeWorldRuleIds(value) {
+    return [...new Set((Array.isArray(value) ? value : [])
+      .map(item => String(item || '').trim())
+      .filter(Boolean))].sort();
+  }
+
+  function worldActionContextLocationValues(context = {}) {
+    const location = isPlainRecord(context?.location) ? context.location : {};
+    return [...new Set(['current', 'target', 'active'].flatMap(key => {
+      const view = isPlainRecord(location[key]) ? location[key] : {};
+      return [view.name, Array.isArray(view.path) ? view.path.join('-') : '']
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+    }))];
+  }
+
+  function worldActionContextMatchesSnapshot(worldSnapshot = {}, context = {}) {
+    if (!isWorldActionContext(context) || !worldSnapshot || typeof worldSnapshot !== 'object') return false;
+    const battleLocation = String(worldSnapshot?.环境?.地点 || '').trim();
+    if (!battleLocation || !worldActionContextLocationValues(context).includes(battleLocation)) return false;
+    const battleRuleIds = normalizeWorldRuleIds(worldSnapshot?.环境?.临时规则ID);
+    const contextRuleIds = normalizeWorldRuleIds(context?.modifiers?.战斗?.临时规则ID);
+    return JSON.stringify(battleRuleIds) === JSON.stringify(contextRuleIds);
+  }
+
+  function bindWorldActionContext(worldSnapshot, context) {
+    if (!worldSnapshot || typeof worldSnapshot !== 'object' || !worldActionContextMatchesSnapshot(worldSnapshot, context)) {
+      throw new Error('battle_world_action_context_mismatch');
     }
-    return Object.freeze({
-      id: String(entry?.id ?? `${kind}:${index}`).trim() || `${kind}:${index}`,
-      kind,
-      actionKinds: Object.freeze(normalizeEnvironmentActionKinds(entry?.actionKinds ?? entry?.动作类型 ?? entry?.actionKind ?? entry?.适用动作)),
-      blocked: readBoolean('blocked', 'blocking', '阻断'),
-      allowed: readBoolean('allowed', '允许'),
-      movementMultiplier: readRatio('movementMultiplier', '移动倍率'),
-      hitAdjustment,
-      actionAvailability: readRatio('actionAvailability', '行动可行性'),
-      spaceAvailable: readBoolean('spaceAvailable', '可展开', '展开空间可用'),
-      vehicleDeploymentAllowed: readBoolean('vehicleDeploymentAllowed', '载具可展开'),
-      summonDeploymentAllowed: readBoolean('summonDeploymentAllowed', '召唤物可展开'),
-      displayText: String(entry?.displayText ?? entry?.展示文本 ?? entry?.message ?? entry?.reasonText ?? '').trim(),
-    });
+    worldActionContextBindings.set(worldSnapshot, context);
+    activeWorldActionContextBinding = { worldSnapshot, context };
+    return context;
   }
 
-  function normalizeEnvironmentBlocker(entry = {}, index = 0) {
-    const blocked = environmentBoolean(entry?.blocked ?? entry?.blocking ?? entry?.阻断, true);
-    return Object.freeze({
-      id: String(entry?.id ?? `${String(entry?.kind ?? entry?.类型 ?? 'blocker').trim() || 'blocker'}:${index}`).trim(),
-      kind: String(entry?.kind ?? entry?.类型 ?? entry?.scope ?? entry?.作用域 ?? '').trim().toLowerCase(),
-      actionKinds: Object.freeze(normalizeEnvironmentActionKinds(entry?.actionKinds ?? entry?.动作类型 ?? entry?.actionKind ?? entry?.适用动作)),
-      resources: Object.freeze(normalizeEnvironmentResourceNames(entry?.resources ?? entry?.blockedResources ?? entry?.资源 ?? entry?.禁用资源)),
-      blocked,
-      message: String(entry?.message ?? entry?.displayText ?? entry?.展示文本 ?? entry?.reasonText ?? '').trim(),
-    });
+  function clearWorldActionContext(worldSnapshot) {
+    if (worldSnapshot && typeof worldSnapshot === 'object') worldActionContextBindings.delete(worldSnapshot);
+    if (!worldSnapshot || activeWorldActionContextBinding?.worldSnapshot === worldSnapshot) {
+      activeWorldActionContextBinding = null;
+    }
   }
 
   function resolveEnvironmentContext(input = {}) {
+    const explicitContext = input?.worldActionContext;
+    if (explicitContext !== undefined) {
+      return worldActionContextMatchesSnapshot(input?.worldSnapshot, explicitContext)
+        ? explicitContext
+        : null;
+    }
+    const boundContext = input?.worldSnapshot && typeof input.worldSnapshot === 'object'
+      ? worldActionContextBindings.get(input.worldSnapshot)
+      : null;
+    if (boundContext && worldActionContextMatchesSnapshot(input.worldSnapshot, boundContext)) return boundContext;
+    if (activeWorldActionContextBinding?.context && worldActionContextMatchesSnapshot(input?.worldSnapshot, activeWorldActionContextBinding.context)) {
+      return activeWorldActionContextBinding.context;
+    }
     const resolver = root.__LWCS_LIBRARY_DATA_RUNTIME_V1__?.resolveWorldActionContext;
-    const unavailable = status => Object.freeze({
-      schemaVersion: WORLD_ACTION_ASSESSMENT_SCHEMA,
-      status,
-      hazards: Object.freeze([]),
-      modifiers: Object.freeze([]),
-      blockers: Object.freeze([]),
-    });
-    if (typeof resolver !== 'function') return unavailable('unavailable');
+    const dataRoot = isPlainRecord(input?.dataRoot) ? input.dataRoot : null;
+    const actor = input?.actor || findUnit(input?.worldSnapshot || {}, input?.actorId || input?.declaration?.actorId) || {};
+    const characterKey = String(input?.characterKey || input?.activeName || actor?.name || actor?.名称 || '').trim();
+    const actionType = String(input?.actionType || input?.declaration?.actionKind || '').trim();
+    const snapshotLocation = String(input?.worldSnapshot?.环境?.地点 || '').trim();
+    const targetLocation = String(input?.targetLocation ?? (snapshotLocation && snapshotLocation !== '正常' ? snapshotLocation : actor?.状态?.位置 ?? '') ?? '').trim();
+    const durationTicks = Number(input?.durationTicks ?? 0);
+    const temporaryRuleIds = Array.isArray(input?.temporaryRuleIds) ? input.temporaryRuleIds : (Array.isArray(input?.worldSnapshot?.环境?.临时规则ID) ? input.worldSnapshot.环境.临时规则ID : []);
+    if (typeof resolver !== 'function' || !dataRoot || !characterKey || !Number.isFinite(durationTicks)) return null;
     let resolved;
     try {
       resolved = resolver({
-        worldSnapshot: input?.worldSnapshot || {},
-        actorId: String(input?.actorId || '').trim(),
-        declaration: input?.declaration || {},
-        action: input?.declaration || {},
-        actionKind: String(input?.declaration?.actionKind || '').trim(),
-        locationPath: String(input?.locationPath || '').trim(),
-        durationTicks: Math.max(0, Number(input?.durationTicks || 0)),
+        dataRoot,
+        characterKey,
+        actionType,
+        targetLocation,
+        durationTicks: Math.max(0, Math.round(durationTicks * 10) / 10),
+        temporaryRuleIds,
       });
     } catch (error) {
-      return unavailable('unavailable');
+      return null;
     }
-    if (!resolved || typeof resolved !== 'object' || typeof resolved.then === 'function') return unavailable('unavailable');
-    const context = isPlainRecord(resolved?.context) ? resolved.context : resolved;
-    const hazards = environmentEntryList(context?.hazards, 'hazard')
-      .map(normalizeEnvironmentHazard)
-      .filter(Boolean);
-    const modifiers = environmentEntryList(context?.modifiers, 'modifier')
-      .map(normalizeEnvironmentModifier)
-      .filter(Boolean);
-    const blockers = [
-      ...environmentEntryList(context?.blockers, 'blocker'),
-      ...environmentEntryList(context?.resourceBlockers, 'blocker'),
-    ].map(normalizeEnvironmentBlocker).filter(entry => entry.blocked);
-    return Object.freeze({
-      schemaVersion: WORLD_ACTION_ASSESSMENT_SCHEMA,
-      status: 'resolved',
-      hazards: Object.freeze(hazards),
-      modifiers: Object.freeze(modifiers),
-      blockers: Object.freeze(blockers),
-    });
+    return isWorldActionContext(resolved) && worldActionContextMatchesSnapshot(input?.worldSnapshot, resolved) ? resolved : null;
   }
 
   function readCallableElements(unit = {}) {
-    const values = [];
-    const visited = new Set();
-    const visit = value => {
-      if (!value || typeof value !== 'object' || visited.has(value)) return;
-      visited.add(value);
-      if (Array.isArray(value)) {
-        value.forEach(visit);
-        return;
-      }
-      ['可调用元素', 'callableElements', '可调用属性', 'callable_elements', '武魂元素'].forEach(key => {
-        if (value[key] !== undefined) values.push(...environmentValues(value[key]));
-      });
-      ['武魂', 'martialSoul', 'martial_soul', '属性', 'attributes'].forEach(key => visit(value[key]));
-    };
-    visit(unit);
-    return normalizedElementTokens(values);
+    return normalizedElementTokens([
+      ...(Array.isArray(unit?.第1武魂?.可调用元素) ? unit.第1武魂.可调用元素 : []),
+      ...(Array.isArray(unit?.第2武魂?.可调用元素) ? unit.第2武魂.可调用元素 : []),
+    ]);
   }
 
   function readEffectiveUnitLevel(unit = {}) {
-    const values = [
-      unit?.effectiveLevel, unit?.有效等级, unit?.等级, unit?.level, unit?.lv,
-      unit?.final?.等级, unit?.final?.level, unit?.属性?.等级, unit?.属性?.level,
-    ];
-    for (const value of values) {
-      const level = environmentNumber(value, NaN);
-      if (Number.isFinite(level) && level > 0) return level;
-    }
-    return 1;
+    const level = Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.final?.等级 ?? 0);
+    return Number.isFinite(level) && level > 0 ? level : 1;
   }
 
   function sameElementAdaptation(hazard = {}, defender = {}) {
@@ -4915,9 +4802,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const units = listUnits(worldSnapshot).map(entry => entry.unit);
     const actorSide = sideOf(worldSnapshot, actor);
     const scope = String(hazard?.targetScope || 'ACTOR').trim().toUpperCase();
-    if (['ALL', '全场'].includes(scope)) return units;
-    if (['ALLY', 'ALLIES', '友方'].includes(scope)) return units.filter(unit => sideOf(worldSnapshot, unit) === actorSide);
-    if (['ENEMY', 'ENEMIES', '敌方'].includes(scope)) return units.filter(unit => sideOf(worldSnapshot, unit) !== actorSide);
+    if (scope === 'ALL') return units;
+    if (scope === 'ALLY') return units.filter(unit => sideOf(worldSnapshot, unit) === actorSide);
+    if (scope === 'ENEMY') return units.filter(unit => sideOf(worldSnapshot, unit) !== actorSide);
     return actor ? [actor] : [];
   }
 
@@ -4934,7 +4821,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         : ['requiresDeployment', 'deployment', '需要展开'];
     if (field.some(key => declaration?.[key] === true || declaration?.skill?.[key] === true)) return true;
     if (type === 'vehicle') return ['DEPLOY_VEHICLE', 'USE_VEHICLE', '载具展开'].includes(actionKind);
-    if (type === 'summon') return ['SUMMON', '召唤'].includes(actionKind);
+    if (type === 'summon') return ['SUMMON', '召唤'].includes(actionKind) ||
+      (Array.isArray(declaration?.skill?._效果数组) && declaration.skill._效果数组.some(effect => String(effect?.原型 || '').trim() === '召唤生成'));
+    if (Array.isArray(declaration?.skill?._效果数组) && declaration.skill._效果数组.some(effect => ['召唤生成', '位移执行'].includes(String(effect?.原型 || '').trim()))) return true;
     return ['DEPLOY', '展开'].includes(actionKind);
   }
 
@@ -4950,9 +4839,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actor = input?.actor || findUnit(input?.worldSnapshot || {}, input?.actorId || declaration?.actorId) || {};
     const actionKind = String(declaration?.actionKind || input?.actionKind || '').trim();
     const durationTicks = readActionDurationTicks(input, declaration);
-    const resolved = input?.environmentContext?.schemaVersion === WORLD_ACTION_ASSESSMENT_SCHEMA
-      ? input.environmentContext
-      : resolveEnvironmentContext({ ...input, declaration, actorId: unitId(actor) || input?.actorId, durationTicks });
+    const resolved = resolveEnvironmentContext({
+      ...input,
+      declaration,
+      actorId: unitId(actor) || input?.actorId,
+      durationTicks,
+    });
     const costStages = input?.costStages && typeof input.costStages === 'object'
       ? input.costStages
       : declaration?.skill && typeof declaration.skill === 'object'
@@ -4981,44 +4873,65 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const relevantSpace = actionRequiresDeployment(declaration);
     const relevantVehicle = actionRequiresDeployment(declaration, 'vehicle');
     const relevantSummon = actionRequiresDeployment(declaration, 'summon');
-    resolved.modifiers.forEach(modifier => {
-      if (!environmentActionMatches(modifier, actionKind)) return;
-      addUnique(displayEffects, modifier.displayText);
-      const blocked = modifier.blocked === true || modifier.allowed === false;
-      if (Number.isFinite(modifier.actionAvailability)) actionAvailability *= clamp(modifier.actionAvailability, 0, 1);
-      if (modifier.kind === 'movement') {
-        if (Number.isFinite(modifier.movementMultiplier)) movement.multiplier *= clamp(modifier.movementMultiplier, 0, 1);
-        if (blocked && relevantMovement) movement.blocked = true;
-        if ((Number.isFinite(modifier.movementMultiplier) && modifier.movementMultiplier < 1) && !modifier.displayText) addUnique(displayEffects, '移动受到环境影响');
-      } else if (modifier.kind === 'vision') {
-        if (Number.isFinite(modifier.hitAdjustment)) vision.hitAdjustment += modifier.hitAdjustment;
-        if (Number.isFinite(modifier.hitAdjustment) && modifier.hitAdjustment < 0 && !modifier.displayText) addUnique(displayEffects, '视野受到环境影响');
-      } else if (modifier.kind === 'deployment_space' && relevantSpace) {
-        if (modifier.spaceAvailable === false || blocked) deployment.spaceBlocked = true;
-        if ((modifier.spaceAvailable === false || blocked) && !modifier.displayText) addUnique(displayEffects, '当前空间不足以展开');
-      } else if (modifier.kind === 'vehicle_deployment' && relevantVehicle) {
-        if (modifier.vehicleDeploymentAllowed === false || blocked) deployment.vehicleBlocked = true;
-        if ((modifier.vehicleDeploymentAllowed === false || blocked) && !modifier.displayText) addUnique(displayEffects, '当前环境无法展开载具');
-      } else if (modifier.kind === 'summon_deployment' && relevantSummon) {
-        if (modifier.summonDeploymentAllowed === false || blocked) deployment.summonBlocked = true;
-        if ((modifier.summonDeploymentAllowed === false || blocked) && !modifier.displayText) addUnique(displayEffects, '当前环境无法展开召唤物');
+    const battleModifiers = isPlainRecord(resolved?.modifiers?.战斗) ? resolved.modifiers.战斗 : {};
+    const environmentRules = isPlainRecord(battleModifiers.环境规则) ? battleModifiers.环境规则 : {};
+    const environmentRuleEntries = [
+      environmentRules,
+      ...Object.values(environmentRules).filter(isPlainRecord),
+    ];
+    environmentRuleEntries.forEach(rule => {
+      const actionAvailabilityValue = Number(rule.行动可行性);
+      const movementMultiplier = Number(rule.移动倍率);
+      const visionAdjustment = Number(rule.视野修正);
+      if (Number.isFinite(actionAvailabilityValue)) actionAvailability *= clamp(actionAvailabilityValue, 0, 1);
+      if (Number.isFinite(movementMultiplier)) {
+        movement.multiplier *= clamp(movementMultiplier, 0, 1);
+        if (movementMultiplier < 1) addUnique(displayEffects, '移动受到环境影响');
+      }
+      if (Number.isFinite(visionAdjustment)) {
+        vision.hitAdjustment += visionAdjustment;
+        if (visionAdjustment < 0) addUnique(displayEffects, '视野受到环境影响');
+      }
+      if (rule.展开空间可用 === false && relevantSpace) {
+        deployment.spaceBlocked = true;
+        addUnique(displayEffects, '当前空间不足以展开');
+      }
+      if (rule.载具可展开 === false && relevantVehicle) {
+        deployment.vehicleBlocked = true;
+        addUnique(displayEffects, '当前环境无法展开载具');
+      }
+      if (rule.召唤物可展开 === false && relevantSummon) {
+        deployment.summonBlocked = true;
+        addUnique(displayEffects, '当前环境无法展开召唤物');
       }
     });
-    resolved.blockers.forEach(blocker => {
-      if (!blocker.blocked || !environmentActionMatches(blocker, actionKind)) return;
-      const activeCosts = maintenance ? sustainCosts : startupCosts;
-      const activeResources = blocker.resources.filter(resource => hasPositiveEnvironmentCost(activeCosts, resource));
-      if (blocker.resources.length && !activeResources.length) return;
-      if (blocker.resources.includes('魂力') && activeResources.includes('魂力')) {
-        addUnique(blockReasons, maintenance
-          ? '环境限制：当前环境无法维持含魂力消耗的技能'
-          : '环境限制：当前环境无法使用含魂力消耗的技能');
-      } else if (activeResources.length) {
-        addUnique(blockReasons, blocker.message || `环境限制：当前环境无法消耗${activeResources.join('、')}`);
-      } else if (!blocker.resources.length) {
-        addUnique(blockReasons, blocker.message || '环境限制：当前行动无法进行');
+    const activeCosts = maintenance ? sustainCosts : startupCosts;
+    const rawSoulPowerDisabled = environmentRules.魂力可用 === false ||
+      environmentRules.魂力动作 === '禁止';
+    const actorEnvironmentProtection = environmentProtectionForTarget(
+      input?.worldSnapshot || {},
+      actor,
+      resolved,
+      environmentRules.防护来源标签,
+    );
+    const soulPowerDisabled = rawSoulPowerDisabled && !actorEnvironmentProtection.sourceMatched;
+    if (soulPowerDisabled && hasPositiveEnvironmentCost(activeCosts, '魂力')) {
+      addUnique(blockReasons, maintenance
+        ? '环境限制：当前环境无法维持含魂力消耗的技能'
+        : '环境限制：当前环境无法使用含魂力消耗的技能');
+    }
+    (resolved?.blockers || []).forEach(reason => {
+      const text = String(reason || '').trim();
+      if (!text) return;
+      if (text === '当前环境禁止调用魂力') {
+        if (soulPowerDisabled && hasPositiveEnvironmentCost(activeCosts, '魂力')) {
+          addUnique(blockReasons, maintenance
+            ? '环境限制：当前环境无法维持含魂力消耗的技能'
+            : '环境限制：当前环境无法使用含魂力消耗的技能');
+        }
+        return;
       }
-      if (blocker.message) addUnique(displayEffects, blocker.message);
+      addUnique(blockReasons, text);
     });
     if (movement.blocked) addUnique(blockReasons, '环境限制：当前环境无法移动');
     if (deployment.spaceBlocked) addUnique(blockReasons, '环境限制：当前空间不足以展开');
@@ -5028,10 +4941,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (actionAvailability <= 1e-9) addUnique(blockReasons, '环境限制：当前行动无法进行');
     if (actionAvailability < 1 - 1e-9 && !displayEffects.length) addUnique(displayEffects, '行动效率受到环境影响');
     const cacheKey = stableHash({
-      status: resolved.status,
-      hazards: resolved.hazards,
-      modifiers: resolved.modifiers,
-      blockers: resolved.blockers,
+      status: resolved ? 'resolved' : 'unavailable',
+      hazards: Object.freeze(Array.isArray(resolved?.hazards) ? resolved.hazards : []),
+      modifiers: isPlainRecord(resolved?.modifiers) ? resolved.modifiers : Object.freeze({}),
+      blockers: Object.freeze(Array.isArray(resolved?.blockers) ? resolved.blockers : []),
       actionKind,
       actorId: unitId(actor),
       durationTicks,
@@ -5041,10 +4954,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     return Object.freeze({
       schemaVersion: WORLD_ACTION_ASSESSMENT_SCHEMA,
-      status: resolved.status,
-      hazards: resolved.hazards,
-      modifiers: resolved.modifiers,
-      blockers: resolved.blockers,
+      status: resolved ? 'resolved' : 'unavailable',
+      hazards: Object.freeze(Array.isArray(resolved?.hazards) ? resolved.hazards : []),
+      modifiers: isPlainRecord(resolved?.modifiers) ? resolved.modifiers : Object.freeze({}),
+      blockers: Object.freeze(Array.isArray(resolved?.blockers) ? resolved.blockers : []),
       blocked: blockReasons.length > 0,
       blockReasons: Object.freeze(blockReasons),
       displayEffects: Object.freeze(displayEffects),
@@ -5316,6 +5229,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ...(effect?.转化效果 !== undefined ? { 转化效果: String(effect.转化效果 || '').trim() } : {}),
         ...(effect?.增幅上限 !== undefined ? { 增幅上限: String(effect.增幅上限 || '').trim() } : {}),
         ...(effect?.限定探查者 !== undefined ? { 限定探查者: String(effect.限定探查者 || '').trim() } : {}),
+        ...(effect?.限定来源 !== undefined ? { 限定来源: cloneValue(effect.限定来源) } : {}),
         ...(effect?.资源 !== undefined ? { 资源: cloneValue(effect.资源) } : {}),
         ...(effect?.触发消耗 !== undefined ? { 触发消耗: cloneValue(effect.触发消耗) } : {}),
         战斗效果: { ...(existing?.战斗效果 || {}), ...deriveStateCombatEffect(effect) },
@@ -5340,6 +5254,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ...(effect?.转化效果 !== undefined ? { 转化效果: String(effect.转化效果 || '').trim() } : {}),
       ...(effect?.增幅上限 !== undefined ? { 增幅上限: String(effect.增幅上限 || '').trim() } : {}),
       ...(effect?.限定探查者 !== undefined ? { 限定探查者: String(effect.限定探查者 || '').trim() } : {}),
+      ...(effect?.限定来源 !== undefined ? { 限定来源: cloneValue(effect.限定来源) } : {}),
       ...(effect?.资源 !== undefined ? { 资源: cloneValue(effect.资源) } : {}),
       ...(effect?.触发消耗 !== undefined ? { 触发消耗: cloneValue(effect.触发消耗) } : {}),
       __previewApplicationProbability: clamp(Number(effect?.__previewApplicationProbability ?? 1), 0, 1),
@@ -5671,20 +5586,93 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     );
   }
 
+  function effectSourceRestrictions(effect = {}) {
+    const raw = effect?.限定来源;
+    const values = Array.isArray(raw) ? raw : [raw];
+    return [...new Set(values
+      .map(value => String(value ?? '').trim())
+      .filter(Boolean))];
+  }
+
+  function isFormalEnvironmentProtectionEffect(effect = {}) {
+    const prototype = String(effect?.原型 || effect?.来源原型摘要 || '').trim();
+    if (prototype === '状态施加') {
+      return ['无视异常', '环境免疫'].includes(String(effect?.状态 || effect?.状态名称 || '').trim());
+    }
+    if (prototype === '规则防御') {
+      return String(effect?.规则 || effect?.防御对象 || '').trim() === '免伤';
+    }
+    if (prototype === '结算修正' && String(effect?.结算 || '').trim() === '受到伤害') {
+      const value = typeof effect?.数值 === 'number'
+        ? effect.数值
+        : Number.parseFloat(String(effect?.数值 ?? '').replace(/,/g, ''));
+      return Number.isFinite(value) && value < 0;
+    }
+    return false;
+  }
+
+  function environmentProtectionForTarget(worldSnapshot = {}, target = {}, environmentContext = null, sourceTag = '') {
+    const environmentRules = environmentContext?.modifiers?.战斗?.环境规则;
+    const protectionSourceTags = effectSourceRestrictions({ 限定来源: environmentRules?.防护来源标签 });
+    const hazardSourceTag = String(sourceTag || '').trim();
+    if (protectionSourceTags.length && hazardSourceTag && !protectionSourceTags.includes(hazardSourceTag)) {
+      return Object.freeze({ immune: false, multiplier: 1, sourceMatched: false });
+    }
+    const candidates = [];
+    const append = effect => {
+      if (!effect || typeof effect !== 'object' || !isFormalEnvironmentProtectionEffect(effect)) return;
+      const restrictions = effectSourceRestrictions(effect);
+      const expectedSourceTags = hazardSourceTag ? [hazardSourceTag] : protectionSourceTags;
+      if (!expectedSourceTags.length || !restrictions.some(sourceTagValue => expectedSourceTags.includes(sourceTagValue))) return;
+      if (resolveConditionalEffectPlan(effect, worldSnapshot, target, target, { environmentContext }).length === 0) return;
+      candidates.push(effect);
+    };
+    collectPassiveSkills(target).forEach(({ skill }) => {
+      passiveEffectEntries(skill).forEach(({ effect }) => append(effect));
+    });
+    collectStateEntries(target).forEach(([, state]) => append(state));
+    const seen = new Set();
+    let multiplier = 1;
+    let immune = false;
+    let sourceMatched = false;
+    candidates.forEach(effect => {
+      const fingerprint = stableHash(effect);
+      if (seen.has(fingerprint)) return;
+      seen.add(fingerprint);
+      const restrictions = effectSourceRestrictions(effect);
+      if (restrictions.length) sourceMatched = true;
+      const prototype = String(effect?.原型 || effect?.来源原型摘要 || '').trim();
+      const state = String(effect?.状态 || effect?.状态名称 || '').trim();
+      const rule = String(effect?.规则 || effect?.防御对象 || '').trim();
+      if ((prototype === '状态施加' && ['无视异常', '环境免疫'].includes(state)) ||
+        (prototype === '规则防御' && rule === '免伤')) {
+        immune = true;
+        return;
+      }
+      if (prototype === '结算修正' && String(effect?.结算 || '').trim() === '受到伤害') {
+        multiplier *= clamp(1 + parseSignedValue(effect?.数值, 1), 0, 1);
+      }
+    });
+    return Object.freeze({
+      immune: immune || multiplier <= 1e-9,
+      multiplier: immune ? 0 : clamp(multiplier, 0, 1),
+      sourceMatched,
+    });
+  }
+
   function effectSourceRestrictionAllows(effect = {}, environmentContext = null) {
-    const rawRestriction = effect?.限定来源;
-    const restrictions = Array.isArray(rawRestriction)
-      ? rawRestriction.map(value => String(value || '').trim()).filter(Boolean)
-      : String(rawRestriction ?? '').trim()
-        ? [String(rawRestriction).trim()]
-        : [];
+    const restrictions = effectSourceRestrictions(effect);
     if (!restrictions.length) return true;
-    const activeSourceTags = new Set(
-      (Array.isArray(environmentContext?.hazards) ? environmentContext.hazards : [])
-        .map(hazard => String(hazard?.sourceTag || '').trim())
-        .filter(Boolean),
-    );
-    return restrictions.some(sourceTag => activeSourceTags.has(sourceTag));
+    const environmentRules = environmentContext?.modifiers?.战斗?.环境规则;
+    const protectionSourceTags = effectSourceRestrictions({ 限定来源: environmentRules?.防护来源标签 });
+    const hazardSourceTags = Array.isArray(environmentContext?.hazards)
+      ? environmentContext.hazards
+        .map(hazard => String(hazard?.来源标签 || '').trim())
+        .filter(Boolean)
+      : [];
+    return [...protectionSourceTags, ...hazardSourceTags]
+      .filter(Boolean)
+      .some(sourceTag => restrictions.includes(sourceTag));
   }
 
   function pendingGrantedEffects(unit = {}, actionKind = '') {
@@ -6130,7 +6118,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const effectContext = { ...context, depth, effectPath: [...context.effectPath, context.effectInstanceId] };
     const activeFingerprint = consumePreviewNode(effectContext, effect);
     try {
-      const actor = overlay.readUnit(unitId(context.actor));
+      const actor = overlay.readUnit(unitId(context.actor)) || context.actor;
       if (prototype !== '机制抹消' && actorSuppressesEffect(actor, effect)) {
         ledger.addOutcome({
           ...context,
@@ -7427,6 +7415,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         return;
       }
       if (prototype === '召唤生成') {
+        if (context?.environmentContext?.deployment?.summonBlocked) {
+          ledger.addOutcome({
+            ...context,
+            targetId: unitId(actor),
+            effectInstanceId: `${context.effectInstanceId}:environment-deployment`,
+            outcomeKind: 'ACTION_CANCELLED',
+            threatValue: 0,
+            evidence: { reason: 'ENVIRONMENT_SUMMON_DEPLOYMENT_BLOCKED', marginal: false },
+          });
+          return;
+        }
         const summonName = String(effect?.召唤物名称 || '').trim();
         if (!summonName) throw new Error('battle_preview_summon_name_missing');
         const count = Math.max(1, Math.floor(Number(effect?.数量 || 1)) || 1);
@@ -7620,6 +7619,142 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
   }
 
+  function createEnvironmentSource(hazard = {}, index = 0) {
+    const level = Math.max(1, Number(hazard?.effectiveLevel || 1));
+    if (typeof root.__LWCS_GET_BASE_STATS__ !== 'function') return null;
+    let baseStats;
+    try {
+      baseStats = root.__LWCS_GET_BASE_STATS__(level);
+    } catch (error) {
+      return null;
+    }
+    if (!baseStats || typeof baseStats !== 'object') return null;
+    const stats = Object.fromEntries(['sp_max', 'men_max', 'str', 'def', 'agi', 'vit_max'].map(key => [
+      key,
+      Math.max(1, Number(baseStats[key] || 0)),
+    ]));
+    if (Object.values(stats).some(value => !Number.isFinite(value) || value <= 0)) return null;
+    const id = `environment:${String(hazard?.sourceTag || 'hazard').trim()}:${index}`;
+    return {
+      id,
+      name: hazard?.displayName || '环境威胁',
+      名称: hazard?.displayName || '环境威胁',
+      等级: level,
+      属性: { 等级: level },
+      final: { ...stats, 等级: level, level },
+      hp_max: stats.vit_max,
+      hp: stats.vit_max,
+      sp_max: stats.sp_max,
+      sp: stats.sp_max,
+      men_max: stats.men_max,
+      men: stats.men_max,
+      vit_max: stats.vit_max,
+      vit: stats.vit_max,
+      状态: { 存活: true },
+      状态效果: {},
+    };
+  }
+
+  function applyEnvironmentalHazards({
+    environmentContext,
+    overlay,
+    ledger,
+    actor,
+    rootActionId,
+    battleIntent = {},
+    basisView = 'DECISION_VISIBLE',
+    snapshotRevision = '',
+  } = {}) {
+    if (!environmentContext || environmentContext.blocked || !Array.isArray(environmentContext.hazards)) return Object.freeze([]);
+    const durationTicks = Math.max(0, Number(environmentContext.durationTicks || 0));
+    if (!(durationTicks > 0)) return Object.freeze([]);
+    const applications = [];
+    const nodeBudget = {
+      count: 0,
+      limit: Math.max(1, MAX_ENVIRONMENT_TICKS * Math.max(1, environmentContext.hazards.length) + 8),
+      activeFingerprints: new Set(),
+    };
+    environmentContext.hazards.forEach((hazard, hazardIndex) => {
+      const normalizedHazard = normalizeEnvironmentHazard(hazard, hazardIndex);
+      if (!normalizedHazard) return;
+      const tickCount = Math.min(
+        MAX_ENVIRONMENT_TICKS,
+        Math.max(1, Math.floor(durationTicks / Math.max(0.000001, normalizedHazard.intervalTicks) + 1e-9)),
+      );
+      for (let tick = 0; tick < tickCount; tick += 1) {
+        const worldSnapshot = overlay.snapshot();
+        const currentActor = overlay.readUnit(unitId(actor)) || actor;
+        const targets = environmentTargetUnits(worldSnapshot, currentActor, normalizedHazard)
+          .map(target => overlay.readUnit(unitId(target)) || target)
+          .filter(target => isAlive(target));
+        if (!targets.length) continue;
+        const targetProtection = new Map(targets.map(target => [
+          unitId(target),
+          environmentProtectionForTarget(
+            worldSnapshot,
+            target,
+            environmentContext,
+            normalizedHazard.sourceTag,
+          ),
+        ]));
+        const applicableTargets = targets.filter(target => !targetProtection.get(unitId(target))?.immune);
+        if (!applicableTargets.length) continue;
+        const source = createEnvironmentSource(normalizedHazard, hazardIndex);
+        if (!source) continue;
+        const effect = {
+          原型: '伤害结算',
+          目标: '单体',
+          生效方式: '独立生效',
+          威力倍率: normalizedHazard.power,
+          伤害类型: normalizedHazard.damageType,
+          攻击段数: normalizedHazard.segments,
+          防御穿透: normalizedHazard.penetration,
+          ...(normalizedHazard.element.length ? { 限定元素: normalizedHazard.element } : {}),
+          ...(normalizedHazard.hitProbability === undefined ? {} : { 命中概率: normalizedHazard.hitProbability }),
+        };
+        const environmentDamageMultiplierByTarget = new Map(
+          applicableTargets.map(target => [
+            unitId(target),
+            sameElementAdaptation(normalizedHazard, target).multiplier *
+              targetProtection.get(unitId(target)).multiplier,
+          ]),
+        );
+        const effectInstanceId = `${rootActionId}:environment:${hazardIndex + 1}:tick:${tick + 1}`;
+        const before = ledger.entries.length;
+        applyEffect(effect, applicableTargets, overlay, ledger, {
+          actor: source,
+          declaration: {
+            actionId: effectInstanceId,
+            actorId: source.id,
+            actionKind: 'ENVIRONMENT_HAZARD',
+            targetIds: applicableTargets.map(unitId),
+            skill: { 消耗: '无', _效果数组: [effect] },
+          },
+          worldSnapshot,
+          nodeBudget,
+          depth: 0,
+          effectPath: [],
+          rootActionId,
+          sourceActionId: rootActionId,
+          effectInstanceId,
+          windowId: `environment:${hazardIndex + 1}:tick:${tick + 1}`,
+          battleIntent,
+          basisView,
+          snapshotRevision,
+          environmentContext,
+          environmentDamageMultiplierByTarget,
+        }, 0);
+        applications.push(Object.freeze({
+          hazardId: normalizedHazard.id,
+          tick: tick + 1,
+          targetIds: Object.freeze(applicableTargets.map(unitId)),
+          contributionCount: ledger.entries.length - before,
+        }));
+      }
+    });
+    return Object.freeze(applications);
+  }
+
   function settleImmediateCooperativeSummons({
     overlay,
     ledger,
@@ -7638,6 +7773,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     applicationProbabilityResolver,
     hitProbabilityResolver,
     forcedApplicationProbabilityByEffect = {},
+    environmentContext = null,
   }) {
     const summonEvents = overlay.mergedScheduledEvents().filter(event =>
       event?.type === 'SUMMON_CREATE' &&
@@ -7713,6 +7849,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               snapshotRevision,
               projectionContext: assistProjectionContext,
               captureDamageBasisTrace,
+              environmentContext,
               applicationProbability: summonApplicationProbability,
               applicationProbabilityByTarget: new Map([
                 [targetId, summonApplicationProbability],
@@ -8119,6 +8256,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     basisView = 'DECISION_VISIBLE',
     snapshotRevision = '',
     captureDamageBasisTrace = false,
+    environmentContext = null,
   }) {
     const contributions = [];
     const changedUnitIds = new Set();
@@ -8247,6 +8385,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         projectionContext,
       );
       targets.forEach(target => {
+        if (!effectSourceRestrictionAllows(effect, environmentContext)) return;
         if (
           !effectConditionEnabled(
             effect,
@@ -8287,6 +8426,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             target,
             effect,
             projectionContext,
+            environmentContext,
           );
           const segments = Math.max(
             1,
@@ -8758,6 +8898,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         'R9V2_MECHANICAL_BASIS_UNSUPPORTED:GRANTED_EFFECTS',
       );
     }
+    const environmentContext = assessWorldAction({
+      ...input,
+      worldSnapshot,
+      actor,
+      actorId,
+      declaration: basis.declaration,
+      startupCosts: basis.declaration?.resourceCosts,
+      sustainCosts: basis.declaration?.sustainCosts,
+      durationTicks: readActionDurationTicks(input, basis.declaration),
+    });
+    if (input?.worldActionContext !== undefined && environmentContext.status !== 'resolved') {
+      throw new Error('battle_world_action_context_unavailable');
+    }
+    if (environmentContext.blocked) throw createEnvironmentBlockError(environmentContext);
     if (
       basis.paymentMode === 'FORMAL' &&
       Array.isArray(basis.declaration?.fusionPartnerIds) &&
@@ -8816,6 +8970,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         basisView: input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
         snapshotRevision: resolvedSnapshotRevision,
         captureDamageBasisTrace: input?.captureDamageBasisTrace === true,
+        environmentContext,
       });
     }
     const rootActionId = String(
@@ -8994,6 +9149,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         basisView: input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
         snapshotRevision: resolvedSnapshotRevision,
         projectionContext: effectProjectionContext,
+        environmentContext,
         captureDamageBasisTrace: input?.captureDamageBasisTrace === true,
         primarySucceeded: false,
         primaryOutcomeKeyByTarget,
@@ -9111,6 +9267,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             currentActor,
             currentTarget,
             effect,
+            effectProjectionContext,
+            environmentContext,
           );
           const resolvedPerSegment =
             typeof input?.hitProbabilityResolver === 'function'
@@ -9331,7 +9489,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : Number.POSITIVE_INFINITY;
     return effects.filter(effect => effectConditionEnabled(effect, declaration?.worldSnapshot || {}, actor, target)).reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() === '伤害结算' && target) {
-        const expectedDamage = calculateBaseDamage(effect, actor, target) * estimateHitProbability(actor, target, effect);
+        const expectedDamage = calculateBaseDamage(effect, actor, target) * estimateHitProbability(
+          actor,
+          target,
+          effect,
+          null,
+          declaration?.environmentContext || null,
+        );
         const availableHp = declaration?.capacityMode === true ? readHpMax(target) : readHp(target);
         return sum + Math.min(availableHp, expectedDamage) / readHpMax(target) * 100;
       }
@@ -9369,7 +9533,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const unit = input?.unit || {};
     if (!isAlive(unit)) return 0;
     const survivalFactor = clamp(input?.survivalProbability ?? readHp(unit) / readHpMax(unit), 0, 1);
-    const actionAvailability = clamp(input?.actionAvailability ?? 1, 0, 1);
+    const actionAvailability = clamp(
+      Number(input?.actionAvailability ?? 1) * Number(input?.environmentContext?.actionAvailability ?? 1),
+      0,
+      1,
+    );
+    if (input?.environmentContext?.blocked === true) return 0;
     const bestLegalBaseActionValue = Math.max(0, Number(input?.bestLegalBaseActionValue || 0));
     return survivalFactor * actionAvailability * bestLegalBaseActionValue;
   }
@@ -10106,6 +10275,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       input.horizon || 'SHALLOW',
       cacheBasisView,
       cacheSnapshotRevision,
+      input.environmentCacheKey || '',
       input.captureDamageBasisTrace === true ? 'capture-damage-basis-trace' : '',
     ].join('|');
   }
@@ -10159,6 +10329,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       declaredCostStages.形式 === 'percentage' ? 'percentage' : 'absolute',
     );
     if (declaredStartupCosts.非法项.length) throw new Error(`battle_preview_cost_invalid:${declaredStartupCosts.非法项.join('|')}`);
+    const environmentContext = assessWorldAction({
+      ...input,
+      worldSnapshot,
+      actor,
+      declaration,
+      costStages: declaredCostStages,
+      startupCosts: declaredStartupCosts.values,
+      sustainCosts: declaredCostStages.维持,
+      durationTicks: readActionDurationTicks(input, declaration),
+    });
+    if (input?.worldActionContext !== undefined && environmentContext.status !== 'resolved') {
+      throw new Error('battle_world_action_context_unavailable');
+    }
+    if (environmentContext.blocked) throw createEnvironmentBlockError(environmentContext);
     const basisView = String(
       input?.basisView || (input?.beliefSnapshot ? 'BELIEF' : 'DECISION_VISIBLE'),
     ).trim().toUpperCase();
@@ -10176,7 +10360,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       throw new Error(`BATTLE_PREVIEW_PAYMENT_MODE_INVALID:${paymentMode || 'missing'}`);
     }
     const budgetLimit = Math.max(1, Math.min(MAX_PREVIEW_NODES, Number(input?.previewBudget?.maxNodes || MAX_PREVIEW_NODES)));
-    const cacheKey = buildCacheKey(input);
+    const cacheKey = buildCacheKey({
+      ...input,
+      environmentCacheKey: environmentContext.cacheKey,
+    });
     const rootActionId = canonicalActionId(
       declaration,
       declaration?.candidateId === undefined
@@ -10371,6 +10558,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         snapshotRevision,
         projectionContext,
         captureDamageBasisTrace,
+        environmentContext,
         forcedApplicationProbabilityByEffect:
           input?.forcedApplicationProbabilityByEffect || {},
         actionDamageMultiplier,
@@ -10612,6 +10800,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         });
       }
     });
+    const environmentApplications = applyEnvironmentalHazards({
+      environmentContext,
+      overlay,
+      ledger,
+      actor,
+      rootActionId,
+      battleIntent: input?.battleIntent || {},
+      basisView,
+      snapshotRevision,
+    });
     settleImmediateCooperativeSummons({
       overlay,
       ledger,
@@ -10624,6 +10822,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       snapshotRevision,
       projectionContext,
       captureDamageBasisTrace,
+      environmentContext,
       damageMultiplierByTarget: input?.damageMultiplierByTarget || {},
       evadeProbabilityByTarget:
         input?.evadeProbabilityByTarget || {},
@@ -10650,6 +10849,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ...overlay.mergedMap('changedUnits').keys(),
       ]),
       afterSnapshot: overlay.snapshot(),
+      environment: environmentContext,
+      environmentApplications,
       metrics: Object.freeze({ overlayWrites: metrics.overlayWrites, fullCloneCalls: 0 }),
     };
     resultValue.planningEvidence = buildEffectPlanningEvidence({
@@ -12783,6 +12984,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     calculateNonlethalHpFloor,
     sampleSignedValue,
     sampleSignedValueExpression,
+    assessWorldAction,
+    bindWorldActionContext,
+    clearWorldActionContext,
     previewAction,
     buildActionOperationGraph,
     evaluateOperationGraph,

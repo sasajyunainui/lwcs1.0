@@ -297,7 +297,7 @@ const TradeTemplate = `
         <div class="info-row"><span>市场参考:</span><span class="val-highlight" id="priv-base-price">-</span></div>
         <div class="info-row"><span>市场调整:</span><span class="market-adjust" id="priv-market">-</span></div>
         <div class="info-row"><span>总金额:</span><span class="val-highlight" id="priv-total">-</span></div>
-        <div class="info-row"><span>NPC态度预测:</span><span id="priv-attitude">-</span></div>
+        <div class="info-row"><span>对方态度预测:</span><span id="priv-attitude">-</span></div>
         <div class="info-row"><span>触发方式:</span><span class="val-highlight" id="priv-trigger">-</span></div>
         <div class="info-row"><span>有效期至:</span><span class="val-highlight" id="priv-expiry">-</span></div>
         <div class="info-row"><span>来源:</span><span class="val-highlight" id="priv-source">-</span></div>
@@ -550,6 +550,11 @@ class TradeUIComponent {
       if (initialTab === 'tab-shop') this.setSelectIfExists('#shop-item-sel', prefillItem);
       if (initialTab === 'tab-sell') this.setSelectIfExists('#sell-item-sel', prefillItem);
       if (initialTab === 'tab-auction') this.setSelectIfExists('#auc-item-sel', prefillItem);
+    } else if (initialTab === 'tab-private' && this.isBlackMarketPrivateTrade() && this.$('#priv-item')) {
+      const storeName = this.getPrivateMarketStoreName(this.$('#priv-npc')?.value || '');
+      const firstStockedItem = Object.entries(this.currentStores?.[storeName]?.库存 || {})
+        .find(([, item]) => Number(item?.库存 || 0) > 0)?.[0] || '';
+      if (firstStockedItem) this.$('#priv-item').value = firstStockedItem;
     }
 
     const prefillQty = Math.max(1, Number(this.options.prefillQty || this.options.数量 || 0));
@@ -1043,101 +1048,78 @@ class TradeUIComponent {
     }
   }
 
-  getWorldActionBlockers(context) {
-    if (!context || typeof context !== 'object') return [];
-    const raw = context.blockers;
-    if (Array.isArray(raw)) return raw.filter(Boolean);
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      if (raw.blocked === false || raw.阻断 === false) return [];
-      if (raw.blocked === true || raw.阻断 === true) return [raw];
-      return Object.entries(raw).filter(([, value]) => value === true).map(([key]) => key);
-    }
-    return raw ? [raw] : [];
+  getConfiguredTradeWorldAction(defaultActionType) {
+    const configuredActionType = String(this.options.actionType || '').trim();
+    const actionType = ['trade_auction', 'trade_buy', 'trade_sell'].includes(configuredActionType)
+      ? configuredActionType
+      : defaultActionType;
+    return {
+      actionType,
+      marketFunction: actionType === 'trade_auction' ? '拍卖' : '商业'
+    };
   }
 
-  getWorldActionBlockerText(context, fallback = '当前行动不满足地点或身份条件。') {
-    const blocker = this.getWorldActionBlockers(context)[0];
-    if (!blocker) return '';
-    if (typeof blocker === 'string') return blocker.trim() || fallback;
-    if (blocker && typeof blocker === 'object') {
-      return String(blocker.message || blocker.reason || blocker.说明 || blocker.原因 || blocker.label || '').trim() || fallback;
-    }
-    return String(blocker).trim() || fallback;
+  isBlackMarketPrivateTrade() {
+    return String(this.options.actionType || '').trim() === 'trade_private_black_market';
   }
 
-  getWorldActionEntries(context, field = 'facilities') {
-    const raw = context && typeof context === 'object' ? context[field] : null;
-    if (Array.isArray(raw)) return raw.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    if (!raw || typeof raw !== 'object') return [];
-    if (Array.isArray(raw.items)) return raw.items.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    return Object.entries(raw).map(([name, value]) => value && typeof value === 'object' && !Array.isArray(value)
-      ? { name: value.name || value.名称 || name, ...value }
-      : { name, available: value });
-  }
-
-  getWorldActionBoolean(value, keys = []) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-    for (const key of keys) {
-      if (typeof value[key] === 'boolean') return value[key];
-    }
-    return undefined;
-  }
-
-  hasWorldMarketFacility(context, storeName = '') {
-    if (!context || typeof context !== 'object') return false;
-    const market = context.market && typeof context.market === 'object' ? context.market : null;
-    const marketAvailable = this.getWorldActionBoolean(market, ['available', '可用', 'enabled', '存在', 'hasFacility']);
-    if (marketAvailable === false) return false;
-    const storeText = String(storeName || '').trim();
-    const facilities = this.getWorldActionEntries(context, 'facilities');
-    const matching = facilities.filter(entry => {
-      const text = `${entry.name || ''} ${entry.type || entry.类型 || ''} ${entry.category || entry.类别 || ''}`;
-      return /market|trade|shop|store|auction|商业|交易|商店|拍卖/.test(text)
-        || (storeText && text.includes(storeText));
-    });
-    const facilityAvailable = matching.map(entry => this.getWorldActionBoolean(entry, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']))
-      .find(value => value !== undefined);
-    if (facilityAvailable === false) return false;
-    if (facilityAvailable === true || marketAvailable === true) return true;
-    return matching.length > 0;
-  }
-
-  isWorldMarketOpen(context, storeName = '') {
-    if (!context || typeof context !== 'object') return false;
-    const facilities = this.getWorldActionEntries(context, 'facilities');
-    const matching = facilities.filter(entry => {
-      const text = `${entry.name || ''} ${entry.type || entry.类型 || ''} ${entry.category || entry.类别 || ''}`;
-      return /market|trade|shop|store|auction|商业|交易|商店|拍卖/.test(text)
-        || (storeName && text.includes(String(storeName || '').trim()));
-    });
-    const sources = [context.market, ...matching, context.time].filter(value => value && typeof value === 'object');
-    for (const source of sources) {
-      const state = this.getWorldActionBoolean(source, ['open', 'isOpen', '营业中', '开放', '可营业']);
-      if (state !== undefined) return state;
-    }
-    return this.hasWorldMarketFacility(context, storeName);
+  getPrivateMarketStoreName(targetName = '') {
+    if (!this.isBlackMarketPrivateTrade()) return '';
+    const candidates = [this.options.preferredStore, targetName]
+      .map(name => String(name || '').trim())
+      .filter(Boolean);
+    return candidates.find(name => this.currentStores?.[name]) || '';
   }
 
   getWorldActionState(context, options = {}) {
-    if (!context) return { ok: false, reason: '共享世界行动上下文尚未就绪。' };
-    const blockerText = this.getWorldActionBlockerText(context);
-    if (blockerText) return { ok: false, reason: blockerText };
-    if (options.market === true && !this.hasWorldMarketFacility(context, options.storeName || '')) {
-      return { ok: false, reason: '当前地点没有可用的市场设施。' };
+    if (!context || typeof context !== 'object' || Array.isArray(context)) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文不可用（runtime 缺失或调用失败）。'
+      };
     }
-    if (options.market === true && !this.isWorldMarketOpen(context, options.storeName || '')) {
-      return { ok: false, reason: '当前市场设施暂未开放。' };
+    if (!Array.isArray(context.blockers) || context.blockers.some(item => typeof item !== 'string')) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文结构无效。'
+      };
+    }
+    const blockerText = context.blockers.find(item => item.trim());
+    if (blockerText) return { ok: false, reason: blockerText };
+    if (options.market === true) {
+      const functionName = options.marketFunction || '商业';
+      if (!context.facilities || typeof context.facilities !== 'object' || Array.isArray(context.facilities)) {
+        return { ok: false, reason: '共享世界行动上下文结构无效。' };
+      }
+      if (!context.market || typeof context.market !== 'object' || Array.isArray(context.market) || !Number.isFinite(Number(context.market.价格倍率))) {
+        return { ok: false, reason: '共享世界行动上下文结构无效。' };
+      }
+      const facility = context.facilities[functionName];
+      if (!facility || typeof facility !== 'object' || Array.isArray(facility)) {
+        return { ok: false, reason: `当前地点缺少${functionName}设施。` };
+      }
+      if (facility.可用 !== true) {
+        return { ok: false, reason: String(facility.原因 || `当前${functionName}设施不可用。`).trim() };
+      }
+      if (options.storeName) {
+        if (!context.market || typeof context.market !== 'object' || Array.isArray(context.market) || !Array.isArray(context.market.商店) || context.market.商店.some(item => typeof item !== 'string')) {
+          return { ok: false, reason: '共享世界行动上下文结构无效。' };
+        }
+        if (!context.market.商店.includes(options.storeName)) {
+          return { ok: false, reason: `当前地点没有商店【${options.storeName}】。` };
+        }
+      }
     }
     return { ok: true, reason: '' };
   }
 
   getWorldClockText(context) {
-    const time = context?.time;
-    if (!time || typeof time !== 'object') return '';
-    const hour = Number(time.hour ?? time.小时);
-    const minute = Number(time.minute ?? time.分钟);
+    const date = context?.time?.日期;
+    if (!date || typeof date !== 'object' || Array.isArray(date)) return '';
+    const hour = Number(date.时);
+    const minute = Number(date.分);
     if (Number.isFinite(hour) && Number.isFinite(minute)) return `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor(minute)).padStart(2, '0')}`;
-    return String(time.label || time.clock || time.current || time.当前 || '').trim();
+    return '';
   }
 
   get allChars() {
@@ -1297,34 +1279,20 @@ class TradeUIComponent {
     return Math.max(0.7, Math.min(1.6, num));
   }
 
-  getMarketMultiplier(kind = 'buy', context = this.tradeContext) {
-    const key = kind === 'sell' ? '卖出倍率' : '买入倍率';
-    const englishKey = kind === 'sell' ? 'sellMultiplier' : 'buyMultiplier';
-    const candidates = [
-      context?.market?.[englishKey],
-      context?.market?.[kind === 'sell' ? 'sell' : 'buy'],
-      context?.market?.[key],
-      context?.market?.modifiers?.[englishKey],
-      context?.modifiers?.market?.[englishKey],
-      context?.modifiers?.market?.[kind === 'sell' ? 'sell' : 'buy'],
-      context?.modifiers?.[englishKey],
-      context?.modifiers?.[key],
-    ];
-    const value = candidates.find(candidate => Number.isFinite(Number(candidate)));
-    return this.clampMarketMultiplier(value ?? 1);
+  getMarketMultiplier(kind = 'buy', context = null) {
+    return this.clampMarketMultiplier(context?.market?.价格倍率);
   }
 
   getMarketAdjustedPrice(basePrice, kind = 'buy', options = {}) {
     const base = Math.max(0, Math.floor(Number(basePrice || 0)));
     if (options.fixed === true) return base;
-    return Math.max(0, Math.floor(base * this.getMarketMultiplier(kind, options.context || this.tradeContext)));
+    return Math.max(0, Math.floor(base * this.getMarketMultiplier(kind, options.context)));
   }
 
   getMarketAdjustmentText(kind = 'buy', options = {}) {
     if (options.fixed === true) return '固定价格';
-    const context = options.context || this.tradeContext;
-    const market = context?.market && typeof context.market === 'object' ? context.market : {};
-    return String(market.label || market.status || market.description || market.说明 || context?.location?.marketLabel || '按当前区域供需结算').trim();
+    const context = options.context || null;
+    return String(context?.market?.经济状况 || '按当前区域供需结算').trim();
   }
 
   clampTrade(value, min, max) {
@@ -1371,8 +1339,8 @@ class TradeUIComponent {
     const 拍卖 = this.currentAuction && typeof this.currentAuction === 'object' ? this.currentAuction : {};
     const 拍品表 = 拍卖.拍品 && typeof 拍卖.拍品 === 'object' && !Array.isArray(拍卖.拍品) ? 拍卖.拍品 : {};
     if (String(拍卖.状态 || '休市') === '休市' || !Object.keys(拍品表).length) return false;
-    const worldContext = this.resolveWorldActionContext('trade_auction', this.charData?.状态?.位置 || '') || this.tradeContext;
-    if (!this.getWorldActionState(worldContext, { market: true }).ok) return false;
+    const worldContext = this.resolveWorldActionContext('trade_auction', this.charData?.状态?.位置 || '');
+    if (!this.getWorldActionState(worldContext, { market: true, marketFunction: '拍卖' }).ok) return false;
     const 拍卖地点 = String(拍卖.地点 || '').trim();
     const 当前位置 = String(this.charData?.状态?.位置 || '').trim();
     if (!拍卖地点 || 拍卖地点 === '无' || !当前位置) return false;
@@ -1407,59 +1375,98 @@ class TradeUIComponent {
       error: null, note: '', npcItem: null, playerItem: null
     };
     if (!itemName) { ctx.error = '请输入交易物品名称。'; return ctx; }
-    if (!targetNpcName) { ctx.error = '请输入交易对象 NPC。'; return ctx; }
-    ctx.worldContext = this.resolveWorldActionContext('trade_private', this.charData?.状态?.位置 || '');
-    const privateActionState = this.getWorldActionState(ctx.worldContext);
-    if (!privateActionState.ok) { ctx.error = privateActionState.reason; return ctx; }
-    ctx.currency = this.resolveTradeCurrency(this.取物品定义(itemName), '', this.charData?.状态?.位置 || '');
-    if (!this.isCurrencySpendable(ctx.currency)) {
-      ctx.error = this.getCurrencyBlockedMessage(ctx.currency);
-      return ctx;
+    ctx.isBlackMarket = this.isBlackMarketPrivateTrade();
+    ctx.storeName = this.getPrivateMarketStoreName(targetNpcName);
+    ctx.usesMarketStore = ctx.isBlackMarket && !!ctx.storeName;
+    ctx.counterparty = ctx.usesMarketStore ? ctx.storeName : targetNpcName;
+    if (!ctx.isBlackMarket && !targetNpcName) { ctx.error = '请输入交易对象 NPC。'; return ctx; }
+    if (ctx.isBlackMarket && (!targetNpcName || targetNpcName === '黑市渠道') && !ctx.usesMarketStore) {
+      ctx.error = '请选择在场交易对象，或从带有库存的黑市渠道进入交易。'; return ctx;
     }
-
-    const resolvedTarget = this.resolveCharacterByName(targetNpcName);
-    const targetChar = resolvedTarget.char;
-    const relationName = resolvedTarget.displayName || targetNpcName;
-    ctx.targetChar = targetChar || null;
-    if (!targetChar) { ctx.error = `找不到交易对象【${targetNpcName}】。`; return ctx; }
-
     const currentLoc = String(this.charData?.状态?.位置 || '');
-    const targetLoc = String(targetChar?.状态?.位置 || '');
-    if (currentLoc && targetLoc && !this.isLocationCompatible(currentLoc, targetLoc)) {
-      ctx.error = `【${targetNpcName}】当前不在你身边，无法进行私下交易。`; return ctx;
-    }
-    if (ctx.basePrice <= 0) {
-      ctx.error = `【${itemName}】当前无法进行可靠估值，私下交易无法发起。`; return ctx;
-    }
+    const currentLocation = this.resolveTradeLocationNode(currentLoc);
+    ctx.locationKey = currentLocation.key || currentLoc;
+    ctx.storeData = ctx.usesMarketStore ? this.currentStores?.[ctx.storeName] || null : null;
+    ctx.worldContext = this.resolveWorldActionContext(ctx.isBlackMarket ? 'trade_private_black_market' : 'trade_private', currentLoc);
+    const privateActionState = this.getWorldActionState(ctx.worldContext, ctx.isBlackMarket
+      ? { market: true, marketFunction: '黑市', ...(ctx.usesMarketStore ? { storeName: ctx.storeName } : {}) }
+      : {});
+    if (!privateActionState.ok) { ctx.error = privateActionState.reason; return ctx; }
 
-    ctx.relationScore = Number(this.charData?.社交?.关系?.[targetNpcName]?.好感度 || this.charData?.社交?.关系?.[relationName]?.好感度 || 0);
-
+    if (!ctx.usesMarketStore) {
+      const resolvedTarget = this.resolveCharacterByName(targetNpcName);
+      const targetChar = resolvedTarget.char;
+      const relationName = resolvedTarget.displayName || targetNpcName;
+      ctx.targetChar = targetChar || null;
+      if (!targetChar) { ctx.error = `找不到交易对象【${targetNpcName}】。`; return ctx; }
+      const targetLoc = String(targetChar?.状态?.位置 || '');
+      if (currentLoc && targetLoc && !this.isLocationCompatible(currentLoc, targetLoc)) {
+        ctx.error = `【${targetNpcName}】当前不在你身边，无法进行私下交易。`; return ctx;
+      }
+      ctx.relationScore = Number(this.charData?.社交?.关系?.[targetNpcName]?.好感度 || this.charData?.社交?.关系?.[relationName]?.好感度 || 0);
+    }
     if (action === "私下买入") {
-      ctx.npcItem = targetChar?.背包?.[itemName] || null;
-      ctx.basePrice = Math.max(0, Math.floor(ctx.basePrice * this.计算来源批次平均倍率(ctx.npcItem || {}, qty, this.取物品定义(itemName))));
+      ctx.npcItem = ctx.usesMarketStore
+        ? ctx.storeData?.库存?.[itemName] || null
+        : ctx.targetChar?.背包?.[itemName] || null;
+      const itemDefinition = ctx.npcItem?._临时定义 || this.取物品定义(itemName);
+      const itemBasePrice = this.读取交易物品基础价格(
+        itemName,
+        { ...(itemDefinition || {}), ...(ctx.npcItem || {}) },
+        itemDefinition,
+        itemDefinition?.分类 || '剧情杂物',
+      );
+      ctx.basePrice = Math.max(0, Math.floor(
+        itemBasePrice
+        * this.计算来源批次平均倍率(ctx.npcItem || {}, qty, itemDefinition)
+        * (ctx.usesMarketStore ? Number(ctx.npcItem?.价格倍率 || 1) * Math.max(0, 1 - Number(ctx.npcItem?.折扣 || 0)) : 1)
+      ));
+      if (ctx.basePrice <= 0) {
+        ctx.error = `【${itemName}】当前无法进行可靠估值，私下交易无法发起。`; return ctx;
+      }
       ctx.marketPrice = this.getMarketAdjustedPrice(ctx.basePrice, 'buy', { context: ctx.worldContext });
+      ctx.currency = this.resolveTradeCurrency(ctx.npcItem || itemDefinition, ctx.storeName, currentLoc, ctx.storeData);
       const priceDeltaRatio = (Number(price || 0) - ctx.marketPrice) / Math.max(1, ctx.marketPrice);
       if ((this.charData?.财富?.[ctx.currency] || 0) < ctx.total) {
         ctx.error = `${this.getCurrencyLabel(ctx.currency)}不足，完成该交易需要 ${ctx.total.toLocaleString()}。`; return ctx;
       }
-      if (!ctx.npcItem || this.读取背包总数量(ctx.npcItem) < qty) {
-        ctx.error = `【${targetNpcName}】当前并没有足够的【${itemName}】可供出售。`; return ctx;
+      const availableQuantity = ctx.usesMarketStore ? Number(ctx.npcItem?.库存 || 0) : this.读取背包总数量(ctx.npcItem);
+      if (!ctx.npcItem || availableQuantity < qty) {
+        ctx.error = `【${ctx.counterparty}】当前并没有足够的【${itemName}】可供出售。`; return ctx;
       }
       ctx.successRate = this.clampTrade(60 + Math.floor(ctx.relationScore * 0.25) + Math.floor(priceDeltaRatio * 50), 5, 95);
-      ctx.note = `好感 ${ctx.relationScore} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与关系结算`;
+      ctx.note = ctx.usesMarketStore
+        ? `黑市渠道 ${ctx.storeName} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与报价结算`
+        : `${ctx.isBlackMarket ? '黑市环境 / ' : ''}好感 ${ctx.relationScore} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与关系结算`;
     } else {
       ctx.playerItem = this.charData?.背包?.[itemName] || null;
-      ctx.basePrice = Math.max(0, Math.floor(ctx.basePrice * this.计算来源批次平均倍率(ctx.playerItem || {}, qty, this.取物品定义(itemName))));
+      const itemDefinition = this.取物品定义(itemName);
+      const itemBasePrice = this.读取交易物品基础价格(
+        itemName,
+        { ...(itemDefinition || {}), ...(ctx.playerItem || {}) },
+        itemDefinition,
+        itemDefinition?.分类 || '剧情杂物',
+      );
+      ctx.basePrice = Math.max(0, Math.floor(itemBasePrice * this.计算来源批次平均倍率(ctx.playerItem || {}, qty, itemDefinition)));
+      if (ctx.basePrice <= 0) {
+        ctx.error = `【${itemName}】当前无法进行可靠估值，私下交易无法发起。`; return ctx;
+      }
       ctx.marketPrice = this.getMarketAdjustedPrice(ctx.basePrice, 'sell', { context: ctx.worldContext });
+      ctx.currency = this.resolveTradeCurrency(ctx.playerItem || this.取物品定义(itemName), ctx.storeName, currentLoc, ctx.storeData);
       const priceDeltaRatio = (Number(price || 0) - ctx.marketPrice) / Math.max(1, ctx.marketPrice);
       if (!ctx.playerItem || this.读取背包总数量(ctx.playerItem) < qty) {
         ctx.error = '背包数量不足。'; return ctx;
       }
-      if ((targetChar?.财富?.[ctx.currency] || 0) < ctx.total) {
+      if (!ctx.usesMarketStore && (ctx.targetChar?.财富?.[ctx.currency] || 0) < ctx.total) {
         ctx.error = `【${targetNpcName}】的${this.getCurrencyLabel(ctx.currency)}不足，无法完成这笔收购。`; return ctx;
       }
       ctx.successRate = this.clampTrade(60 + Math.floor(ctx.relationScore * 0.25) - Math.floor(priceDeltaRatio * 55), 5, 95);
-      ctx.note = `好感 ${ctx.relationScore} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与关系结算`;
+      ctx.note = ctx.usesMarketStore
+        ? `黑市渠道 ${ctx.storeName} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与报价结算`
+        : `${ctx.isBlackMarket ? '黑市环境 / ' : ''}好感 ${ctx.relationScore} / 参考价 ${ctx.marketPrice.toLocaleString()} / 按当前区域供需与关系结算`;
+    }
+    if (!this.isCurrencySpendable(ctx.currency)) {
+      ctx.error = this.getCurrencyBlockedMessage(ctx.currency);
     }
     return ctx;
   }
@@ -1478,7 +1485,7 @@ class TradeUIComponent {
       `trade_${方向}`,
       String(选项.地点 || 选项.位置 || this.charData?.状态?.位置 || ''),
       Math.max(0, Number(选项.durationTicks || 选项.持续tick || 0))
-    ) || this.tradeContext;
+    );
     const 实际单价 = this.getMarketAdjustedPrice(方向 === 'sell' ? Math.floor(基础单价 * 0.5) : 基础单价, 方向, {
       fixed: 选项.fixed === true,
       context: 世界行动上下文,
@@ -1509,11 +1516,11 @@ class TradeUIComponent {
     return `斗罗历${years}年${months}月${currentDay}日 ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }
 
-  isShopOpenNow(context = this.tradeContext, storeName = '') {
+  isShopOpenNow(context = null, storeName = '') {
     return this.getWorldActionState(context, { market: true, storeName }).ok;
   }
 
-  getShopOpenStateText(context = this.tradeContext, storeName = '') {
+  getShopOpenStateText(context = null, storeName = '') {
     const clockText = this.getWorldClockText(context);
     const state = this.getWorldActionState(context, { market: true, storeName });
     if (!context) return state.reason;
@@ -1672,7 +1679,7 @@ class TradeUIComponent {
     return this.normalizeSoulTowerDiscountSpiritRecord(this.charData?.魂灵塔记录?.当前五折魂灵 || {});
   }
 
-  canAccessSoulTowerDiscountStore(location = '', currentCity = null, worldContext = this.tradeContext) {
+  canAccessSoulTowerDiscountStore(location = '', currentCity = null, worldContext = null) {
     if (!this.getWorldActionState(worldContext, { market: true }).ok) return false;
     if (/传灵塔/.test(String(location || ''))) return true;
     const stores = currentCity?.data?.商店;
@@ -1828,8 +1835,9 @@ class TradeUIComponent {
 
     const item = this.currentStores[storeName].库存[itemName];
     const storeData = this.currentStores[storeName] || {};
-    const worldContext = this.resolveWorldActionContext('trade_buy', this.charData?.状态?.位置 || '') || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true, storeName });
+    const worldAction = this.getConfiguredTradeWorldAction('trade_buy');
+    const worldContext = this.resolveWorldActionContext(worldAction.actionType, this.charData?.状态?.位置 || '');
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction, storeName });
     const 商店营业中 = worldActionState.ok;
     const isSoulTowerDiscountTrade = item && item._tower_discount_virtual === true;
     const itemDefinition = item._临时定义 || this.取物品定义(itemName);
@@ -1898,8 +1906,9 @@ class TradeUIComponent {
     const item = this.currentStores?.[storeName]?.库存?.[itemName];
     if (!item) return this.显示提示('当前没有可交易的商品。');
     const loc = this.charData?.状态?.位置 || '';
-    const worldContext = this.resolveWorldActionContext('trade_buy', loc) || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true, storeName });
+    const worldAction = this.getConfiguredTradeWorldAction('trade_buy');
+    const worldContext = this.resolveWorldActionContext(worldAction.actionType, loc);
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction, storeName });
     if (!worldActionState.ok) return this.显示提示(worldActionState.reason);
     const storeData = this.currentStores[storeName] || {};
     const currency = this.resolveTradeCurrency(item, storeName, this.charData?.状态?.位置 || '', storeData);
@@ -2040,8 +2049,9 @@ class TradeUIComponent {
 
     const itemName = 出售项.物品名;
     const loc = this.charData?.状态?.位置 || '';
-    const worldContext = this.resolveWorldActionContext('trade_sell', loc) || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true });
+    const worldAction = this.getConfiguredTradeWorldAction('trade_sell');
+    const worldContext = this.resolveWorldActionContext(worldAction.actionType, loc);
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction });
     const currency = this.resolveTradeCurrency(出售项.展示物品, '', loc);
     const 系统禁售 = 系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName);
     const basePrice = Math.max(0, Math.floor(this.estimateBasePrice(itemName, 出售项.分类 || '物品') * this.计算来源批次平均倍率(出售项.来源状态 || {}, qty, 出售项.展示物品 || this.取物品定义(itemName))));
@@ -2073,8 +2083,9 @@ class TradeUIComponent {
     if (!出售项 || !出售项.物品名 || 出售项.可用数量 < qty) return this.显示提示('背包数量不足。');
     const itemName = 出售项.物品名;
     const loc = this.charData?.状态?.位置 || '';
-    const worldContext = this.resolveWorldActionContext('trade_sell', loc) || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true });
+    const worldAction = this.getConfiguredTradeWorldAction('trade_sell');
+    const worldContext = this.resolveWorldActionContext(worldAction.actionType, loc);
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: worldAction.marketFunction });
     if (!worldActionState.ok) return this.显示提示(worldActionState.reason);
     const currency = this.resolveTradeCurrency(出售项.展示物品, '', loc);
     if (系统禁售物品分类集合.has(出售项.分类 || '') || /兑换凭证|兑换券/.test(itemName)) return this.显示提示('凭证类物品不能出售。');
@@ -2118,7 +2129,7 @@ class TradeUIComponent {
     this.$('#priv-total').textContent = `${total.toLocaleString()} ${currencyLabel}`;
 
     const previewItem = action === '私下买入' ? ctx.npcItem : ctx.playerItem;
-    this.updateTradeMetaPanel('priv', previewItem ? this.resolveTradeItemInfo(itemName, previewItem, { source: action === '私下买入' ? targetNpc : this.activeName }) : null);
+    this.updateTradeMetaPanel('priv', previewItem ? this.resolveTradeItemInfo(itemName, previewItem, { source: action === '私下买入' ? ctx.counterparty : this.activeName }) : null);
 
     btn.disabled = false;
     attEl.className = "";
@@ -2136,12 +2147,13 @@ class TradeUIComponent {
 
   executePrivateTrade() {
     const action = this.$('#priv-action').value;
-    const targetNpc = this.$('#priv-npc').value || "神秘商人";
+    const targetNpc = String(this.$('#priv-npc').value || '').trim();
     const itemName = this.$('#priv-item').value;
     const qty = parseInt(this.$('#priv-qty').value) || 1;
     const price = parseInt(this.$('#priv-price').value) || 1;
     const ctx = this.getPrivateTradeContext(action, targetNpc, itemName, qty, price);
     if (ctx.error) return this.显示提示(ctx.error);
+    const counterparty = ctx.counterparty || targetNpc;
 
     let patchOps = [];
     let log = "";
@@ -2150,40 +2162,56 @@ class TradeUIComponent {
 
     if (action === "私下买入") {
       if (!isSuccess) {
-        log = `[私下交易失败] ${this.activeName} 向 ${targetNpc} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接受。`;
+        log = `[私下交易失败] ${this.activeName} 向 ${counterparty} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接受。`;
       } else {
         patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (this.charData.财富?.[ctx.currency] || 0) - ctx.total });
-        const tradeItem = this.buildInventoryItemFromTradeSource(itemName, ctx.npcItem, qty, { source: targetNpc, desc: `从 ${targetNpc} 处私下购得` });
+        const tradeItem = this.buildInventoryItemFromTradeSource(itemName, ctx.npcItem, qty, { source: counterparty, desc: `从 ${counterparty} 处私下购得` });
         this.appendItemDefinitionPatch(patchOps, itemName, tradeItem.definition, tradeItem.分类);
         this.appendInventoryGainPatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, tradeItem);
-        this.appendInventoryConsumePatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, qty);
-        patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) + ctx.total });
-        log = `[私下交易成功][买入热][交易触发待处理] ${this.activeName} 以总价 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}从 ${targetNpc} 处买入了 ${qty} 份【${itemName}】。`;
+        if (ctx.usesMarketStore) {
+          patchOps.push({
+            op: "replace",
+            path: `/world/地点/${this.escapeJsonPointer(ctx.locationKey)}/商店/${this.escapeJsonPointer(ctx.storeName)}/库存/${this.escapeJsonPointer(itemName)}/库存`,
+            value: Number(ctx.npcItem?.库存 || 0) - qty,
+          });
+        } else {
+          this.appendInventoryConsumePatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, qty);
+          patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) + ctx.total });
+        }
+        log = `[私下交易成功][买入热][交易触发待处理] ${this.activeName} 以总价 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}从 ${counterparty} 处买入了 ${qty} 份【${itemName}】。`;
       }
     } else {
       if (!isSuccess) {
-        log = `[私下交易失败] ${this.activeName} 向 ${targetNpc} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接手。`;
+        log = `[私下交易失败] ${this.activeName} 向 ${counterparty} 报价 ${price} ${this.getCurrencyLabel(ctx.currency)}，但对方没有接手。`;
       } else {
         this.appendInventoryConsumePatches(patchOps, this.activeCharBasePath, this.charData.背包 || {}, itemName, qty);
         patchOps.push({ op: "replace", path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (this.charData.财富?.[ctx.currency] || 0) + ctx.total });
-        const npcItem = this.buildInventoryItemFromTradeSource(itemName, this.charData.背包[itemName], qty, { source: this.activeName, desc: `从 ${this.activeName} 处私下收购` });
-        this.appendItemDefinitionPatch(patchOps, itemName, npcItem.definition, npcItem.分类);
-        this.appendInventoryGainPatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, npcItem);
-        patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) - ctx.total });
-        log = `[私下交易成功][卖出热][交易触发待处理] ${this.activeName} 以单价 ${price} ${this.getCurrencyLabel(ctx.currency)}向 ${targetNpc} 卖出 ${qty} 份【${itemName}】，获得 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}。`;
+        if (ctx.usesMarketStore) {
+          const stockPath = `/world/地点/${this.escapeJsonPointer(ctx.locationKey)}/商店/${this.escapeJsonPointer(ctx.storeName)}/库存/${this.escapeJsonPointer(itemName)}`;
+          const existingStock = ctx.storeData?.库存?.[itemName];
+          patchOps.push(existingStock
+            ? { op: "replace", path: `${stockPath}/库存`, value: Number(existingStock.库存 || 0) + qty }
+            : { op: "add", path: stockPath, value: { 库存: qty, 价格倍率: 1, 折扣: 0, 需求声望: 0, 需求: {}, 批次: [] } });
+        } else {
+          const npcItem = this.buildInventoryItemFromTradeSource(itemName, this.charData.背包[itemName], qty, { source: this.activeName, desc: `从 ${this.activeName} 处私下收购` });
+          this.appendItemDefinitionPatch(patchOps, itemName, npcItem.definition, npcItem.分类);
+          this.appendInventoryGainPatches(patchOps, `/char/${this.escapeJsonPointer(targetNpc)}`, ctx.targetChar?.背包 || {}, itemName, npcItem);
+          patchOps.push({ op: "replace", path: `/char/${this.escapeJsonPointer(targetNpc)}/财富/${this.escapeJsonPointer(ctx.currency)}`, value: (ctx.targetChar?.财富?.[ctx.currency] || 0) - ctx.total });
+        }
+        log = `[私下交易成功][卖出热][交易触发待处理] ${this.activeName} 以单价 ${price} ${this.getCurrencyLabel(ctx.currency)}向 ${counterparty} 卖出 ${qty} 份【${itemName}】，获得 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}。`;
       }
     }
 
     patchOps.push(...this.buildTradeSystemPatches(log));
 
     const sysPrompt = this.buildTradeNarrationPrompt(log, [
-      `[交易对象]\n${targetNpc}`,
-      `[交易类型]\n${action}`,
+      `[交易对象]\n${counterparty}`,
+      `[交易类型]\n${ctx.isBlackMarket ? `${action}（黑市渠道）` : action}`,
       `[市场调整]\n${this.getMarketAdjustmentText(action === '私下买入' ? 'buy' : 'sell', { context: ctx.worldContext })}`,
       `[结算摘要]\n${isSuccess ? `本次成交 ${qty} 份【${itemName}】，总价 ${ctx.total} ${this.getCurrencyLabel(ctx.currency)}。` : `本次未成交，报价为单价 ${price} ${this.getCurrencyLabel(ctx.currency)}。`}`
     ]);
 
-    this.submitAction(`我要和【${targetNpc}】${action} ${qty} 份【${itemName}】，单价 ${price} ${this.getCurrencyLabel(ctx.currency)}。`, sysPrompt, 'trade_private', patchOps);
+    this.submitAction(`我要和【${counterparty}】${action} ${qty} 份【${itemName}】，单价 ${price} ${this.getCurrencyLabel(ctx.currency)}。`, sysPrompt, 'trade_private', patchOps);
   }
 
   // --- 拍卖行模块 ---
@@ -2254,8 +2282,8 @@ class TradeUIComponent {
     const itemName = this.$('#auc-item-sel').value;
     const bid = parseInt(this.$('#auc-bid').value) || 0;
     const item = this.currentAuction.拍品[itemName];
-    const worldContext = this.resolveWorldActionContext('trade_auction', this.charData?.状态?.位置 || '') || this.tradeContext;
-    const worldActionState = this.getWorldActionState(worldContext, { market: true });
+    const worldContext = this.resolveWorldActionContext('trade_auction', this.charData?.状态?.位置 || '');
+    const worldActionState = this.getWorldActionState(worldContext, { market: true, marketFunction: '拍卖' });
     if (!worldActionState.ok) return this.显示提示(worldActionState.reason);
     const currency = this.resolveTradeCurrency(item, '拍卖行', this.charData?.状态?.位置 || '', this.currentAuction || {});
     const itemDefinition = this.取物品定义(itemName) || item || {};

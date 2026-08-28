@@ -1311,98 +1311,51 @@ class ProfessionUIComponent {
     }
   }
 
-  getWorldActionBlockers(context) {
-    if (!context || typeof context !== 'object') return [];
-    const raw = context.blockers;
-    if (Array.isArray(raw)) return raw.filter(Boolean);
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      if (raw.blocked === false || raw.阻断 === false) return [];
-      if (raw.blocked === true || raw.阻断 === true) return [raw];
-      return Object.entries(raw).filter(([, value]) => value === true).map(([key]) => key);
-    }
-    return raw ? [raw] : [];
-  }
-
-  getWorldActionBlockerText(context, fallback = '当前行动不满足地点、设施或环境条件。') {
-    const blocker = this.getWorldActionBlockers(context)[0];
-    if (!blocker) return '';
-    if (typeof blocker === 'string') return blocker.trim() || fallback;
-    if (blocker && typeof blocker === 'object') {
-      return String(blocker.message || blocker.reason || blocker.说明 || blocker.原因 || blocker.label || '').trim() || fallback;
-    }
-    return String(blocker).trim() || fallback;
-  }
-
-  getWorldActionEntries(context, field = 'facilities') {
-    const raw = context && typeof context === 'object' ? context[field] : null;
-    if (Array.isArray(raw)) return raw.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    if (!raw || typeof raw !== 'object') return [];
-    if (Array.isArray(raw.items)) return raw.items.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    return Object.entries(raw).map(([name, value]) => value && typeof value === 'object' && !Array.isArray(value)
-      ? { name: value.name || value.名称 || name, ...value }
-      : { name, available: value });
-  }
-
-  getWorldActionBoolean(value, keys = []) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-    for (const key of keys) {
-      if (typeof value[key] === 'boolean') return value[key];
-    }
-    return undefined;
-  }
-
-  getProfessionFacilityMatches(context, cfg = {}) {
-    const mode = String(cfg.mode || '').trim();
-    const pattern = mode === 'forge' ? /forge|smith|锻造|锻造师|金属|锻压/
-      : mode === 'manufacture' ? /manufacture|assembly|制造|制造师|机甲|斗铠|组装/
-        : mode === 'design' ? /design|设计|设计师|图纸/
-          : mode === 'repair' ? /repair|修理|维修|修理师|维护/
-            : /profession|workshop|craft|工坊|工作台|副职业|制造|锻造|设计|修理/;
-    return this.getWorldActionEntries(context, 'facilities').filter(entry => {
-      const text = `${entry.name || ''} ${entry.type || entry.类型 || ''} ${entry.category || entry.类别 || ''} ${entry.job || entry.副职业 || ''}`;
-      const designation = `${entry.actionType || entry.action_type || entry.行动类型 || ''} ${entry.supportedJobs || entry.适用副职业 || entry.支持副职业 || ''}`;
-      const facilityLike = /workshop|station|bench|facility|工坊|工作台|设施|协会|车间|实验室|forge|smith|制造|锻造|设计|修理|维修|craft/i.test(text);
-      return facilityLike && (pattern.test(`${text} ${designation}`) || !designation.trim());
-    });
-  }
-
   getProfessionActionState(context, cfg = {}) {
-    if (!context) return { ok: false, reason: '共享世界行动上下文尚未就绪。', facility: null, facilityLevel: 0 };
-    const blockerText = this.getWorldActionBlockerText(context);
+    if (!context || typeof context !== 'object' || Array.isArray(context)) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文不可用（runtime 缺失或调用失败）。',
+        facility: null,
+        facilityLevel: 0
+      };
+    }
+    if (!Array.isArray(context.blockers) || context.blockers.some(item => typeof item !== 'string')) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文结构无效。',
+        facility: null,
+        facilityLevel: 0
+      };
+    }
+    const blockerText = context.blockers.find(item => item.trim());
     if (blockerText) return { ok: false, reason: blockerText, facility: null, facilityLevel: 0 };
 
-    const facilities = this.getProfessionFacilityMatches(context, cfg);
-    const facility = facilities.find(entry => this.getWorldActionBoolean(entry, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']) !== false);
-    if (!facility) return { ok: false, reason: '当前地点没有可用的副职业工作台或工坊。', facility: null, facilityLevel: 0 };
-
-    const availability = this.getWorldActionBoolean(facility, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']);
-    if (availability === false) return { ok: false, reason: '当前副职业设施暂不可用。', facility, facilityLevel: 0 };
-    const openSources = [facility, context.time].filter(source => source && typeof source === 'object');
-    for (const source of openSources) {
-      const open = this.getWorldActionBoolean(source, ['open', 'isOpen', '营业中', '开放', '可使用']);
-      if (open === false) return { ok: false, reason: '当前副职业设施暂未开放。', facility, facilityLevel: 0 };
+    const facilityFunctions = {
+      forge: ['锻造'],
+      manufacture: ['工业'],
+      design: ['工业'],
+      repair: ['工业', '锻造']
+    }[cfg.mode] || [];
+    if (!facilityFunctions.length) {
+      return { ok: false, reason: `不支持的副职业模式：${String(cfg.mode || '未知')}`, facility: null, facilityLevel: 0 };
     }
-
-    const permissionSources = [context.permissions, context.权限, facility.permissions, facility.权限].filter(source => source && typeof source === 'object');
-    for (const source of permissionSources) {
-      const allowed = this.getWorldActionBoolean(source, ['allowed', 'permitted', '可用', '有权限', '允许', 'authorized']);
-      if (allowed === false) return { ok: false, reason: '当前身份没有使用该副职业设施的权限。', facility, facilityLevel: 0 };
+    if (!context.facilities || typeof context.facilities !== 'object' || Array.isArray(context.facilities)) {
+      return { ok: false, reason: '共享世界行动上下文结构无效。', facility: null, facilityLevel: 0 };
     }
-
-    const environmentSources = [context.environment, context.environmentSuitability, context.suitability, context.环境].filter(source => source && typeof source === 'object');
-    for (const source of environmentSources) {
-      const suitable = this.getWorldActionBoolean(source, ['suitable', 'isSuitable', '适宜', '适合', '可用']);
-      if (suitable === false) return { ok: false, reason: '当前环境不适合进行该副职业工序。', facility, facilityLevel: 0 };
+    const candidates = facilityFunctions
+      .map(functionName => context.facilities[functionName])
+      .filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry));
+    const facility = candidates.find(entry => entry.可用 === true);
+    if (!facility) {
+      const reason = candidates.map(entry => String(entry.原因 || '').trim()).find(Boolean);
+      return { ok: false, reason: reason || `当前地点没有可用的${facilityFunctions.join('或')}设施。`, facility: null, facilityLevel: 0 };
     }
-
-    const toolReady = this.getWorldActionBoolean(facility, ['toolsReady', 'toolReady', '工具齐备', '工具可用', 'hasTools']);
-    if (toolReady === false) return { ok: false, reason: '当前工坊缺少可用工具。', facility, facilityLevel: 0 };
-    const facilityLevel = Math.max(0, Number(facility.level ?? facility.等级 ?? facility.tier ?? facility.阶级 ?? 0));
-    const requiredLevel = Number(facility.requiredLevel ?? facility.最低等级 ?? facility.最低设施等级 ?? 0);
-    if (Number.isFinite(requiredLevel) && requiredLevel > 0 && facilityLevel < requiredLevel) {
-      return { ok: false, reason: `当前工坊等级不足，至少需要 ${requiredLevel} 级设施。`, facility, facilityLevel };
+    const facilityLevel = Number(facility.等级);
+    if (!Number.isFinite(facilityLevel)) {
+      return { ok: false, reason: '共享世界行动上下文中的设施等级无效。', facility: null, facilityLevel: 0 };
     }
-    return { ok: true, reason: '', facility, facilityLevel, toolReady: toolReady !== false };
+    return { ok: true, reason: '', facility, facilityLevel: Math.max(0, facilityLevel) };
   }
 
   get itemDefinitions() {
@@ -2665,9 +2618,8 @@ class ProfessionUIComponent {
       ctx.error = ctx.worldActionState.reason;
       return ctx;
     }
-    const facilityMaxTier = Number(ctx.facility?.maxTier ?? ctx.facility?.最高阶位 ?? ctx.facility?.可承接阶位 ?? 0);
-    if (Number.isFinite(facilityMaxTier) && facilityMaxTier > 0 && tier > facilityMaxTier) {
-      ctx.error = `当前设施最多支持 ${facilityMaxTier} 阶工序，无法承担 ${tier} 阶操作。`;
+    if (ctx.facilityLevel < tier) {
+      ctx.error = `当前${ctx.facility.功能}设施等级为 ${ctx.facilityLevel}，无法承担 ${tier} 阶工序。`;
       return ctx;
     }
 

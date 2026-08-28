@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:5d8d867b27b27c313c4d225b9a80e414c4b3e47abb08e83e3afc6cdd995e8ac2 */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:76cd6710090ef57c36a9e5c1505730e6aef79603b8f3f6c78c8a05b7111a0df5 */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -9076,11 +9076,22 @@
     const rootData = deepGet(snapshot, 'rootData', {});
     const roleText = toText(request.角色 || request.角色名 || request.name, toText(snapshot.activeName, '')).trim();
     const charKey = resolveSnapshotCharKey(snapshot, roleText) || roleText;
-    const actionText = [actionType, request.动作, request.模式, request.训练方式, request.副职业, request.子类型, request.requestKind]
+    const actionText = [
+      actionType,
+      request.动作,
+      request.模式,
+      request.训练方式,
+      request.副职业,
+      request.子类型,
+      request.requestKind,
+      request.移动方式,
+      request.method,
+      request.travelMethod,
+    ]
       .map(item => toText(item, '').trim())
       .filter(Boolean)
       .join('|');
-    const isTravel = /travel|移动|前往|抵达|赶路/.test(actionText.toLowerCase());
+    const isTravel = /travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(actionText.toLowerCase());
     const targetLocation = isTravel
       ? toText(request.目标地点 || request.targetLocation || request.target_loc, '')
       : toText(
@@ -9088,22 +9099,23 @@
             (request.目标 && request.目标 !== request.物品 ? request.目标 : ''),
           toText(deepGet(rootData, ['char', charKey, '状态', '位置'], ''), ''),
         );
-    const durationTicks = toNumber(request.耗时tick ?? request.durationTicks ?? request.ticks, 0);
+    const durationTicks = toNumber(request.耗时tick ?? request.durationTicks ?? request.ticks ?? request.est_ticks, 0);
     const temporaryRuleIds = Array.isArray(request.临时规则ID)
       ? request.临时规则ID
       : Array.isArray(request.temporaryRuleIds)
         ? request.temporaryRuleIds
-        : [];
+        : null;
+    const contextOptions = {
+      dataRoot: rootData,
+      characterKey: charKey,
+      actionType: actionText,
+      targetLocation,
+      durationTicks,
+    };
+    if (temporaryRuleIds) contextOptions.temporaryRuleIds = temporaryRuleIds;
     let context = null;
     try {
-      context = runtime.resolveWorldActionContext({
-        dataRoot: rootData,
-        characterKey: charKey,
-        actionType: actionText,
-        targetLocation,
-        durationTicks,
-        temporaryRuleIds,
-      });
+      context = runtime.resolveWorldActionContext(contextOptions);
     } catch (error) {
       return { ok: false, context: null, reason: error?.message || 'world_context_failed' };
     }
@@ -44201,6 +44213,7 @@
           }
           const 挂载交易面板 = () =>
             window.mountTradeUI(container, snapshot, {
+              actionType: tradeLaunchOptions.actionType,
               initialTab: tradeLaunchOptions.initialTab,
               prefillNpc: tradeLaunchOptions.prefillNpc,
               lockNpc: tradeLaunchOptions.lockNpc,
@@ -46913,8 +46926,15 @@ ${播报文本}
           ? 地点映射[normalizedLoc] || 地点映射[currentLoc] || {}
           : {};
     const storeMap = currentLocation && typeof currentLocation === 'object' ? currentLocation.商店 || {} : {};
+    const tradeActionText = [action, requestAction, ...services].join(' ');
+    const isBlackMarket = /black[_-]?market|黑市/i.test(tradeActionText);
+    const actionType = isBlackMarket
+      ? 'trade_private_black_market'
+      : /auction|bid|拍卖|竞拍/i.test(tradeActionText)
+        ? 'trade_auction'
+        : 'trade';
 
-    let initialTab = 'tab-shop';
+    let initialTab = isBlackMarket ? 'tab-private' : 'tab-shop';
     if (/竞拍|拍卖|auction|bid/i.test(requestAction) || action === 'bid' || services.includes('auction')) {
       initialTab = 'tab-auction';
     } else if ((/出售|卖出|sell/i.test(requestAction) && !toText(tradeRequest.对象, npcTarget)) || action === 'sell') {
@@ -46934,10 +46954,14 @@ ${播报文本}
       const storeNames = Object.keys(storeMap || {});
       if (storeNames.length === 1) preferredStore = storeNames[0];
     }
+    const privateTarget = isBlackMarket
+      ? toText(tradeRequest.对象, npcTarget) || preferredStore || '黑市渠道'
+      : toText(tradeRequest.对象, npcTarget);
     return {
+      actionType,
       initialTab,
-      prefillNpc: initialTab === 'tab-private' ? toText(tradeRequest.对象, npcTarget) : '',
-      lockNpc: initialTab === 'tab-private' && !!toText(tradeRequest.对象, npcTarget),
+      prefillNpc: initialTab === 'tab-private' ? privateTarget : '',
+      lockNpc: initialTab === 'tab-private' && (isBlackMarket || !!privateTarget),
       preferredStore: toText(tradeRequest.目标, preferredStore) || preferredStore,
       prefillAction: requestAction,
       prefillItem: toText(tradeRequest.物品, ''),
@@ -49039,6 +49063,14 @@ ${播报文本}
     const soulTowerMeta = soulTowerCombat ? getSoulTowerGateMeta(soulTowerFloor) : null;
     const 胜负条件 = 构建战斗胜负条件(detail, rosterResult.participants, 0);
     if (!胜负条件) return { ok: false, reason: 'battle_objectives_invalid' };
+    const contextRuleIds = Array.isArray(detail.动作上下文?.modifiers?.战斗?.临时规则ID)
+      ? detail.动作上下文.modifiers.战斗.临时规则ID
+      : [];
+    const temporaryRuleSource = Array.isArray(detail.临时规则ID)
+      ? detail.临时规则ID
+      : Array.isArray(detail.temporaryRuleIds)
+        ? detail.temporaryRuleIds
+        : contextRuleIds;
     return {
       进行中: true,
       战斗类型: toText(detail.战斗类型, '擂台切磋'),
@@ -49049,7 +49081,7 @@ ${播报文本}
       环境: {
         地点: arenaName,
         临时规则ID: Array.from(new Set(
-          (Array.isArray(detail.临时规则ID) ? detail.临时规则ID : Array.isArray(detail.temporaryRuleIds) ? detail.temporaryRuleIds : [])
+          temporaryRuleSource
             .map(item => toText(item, '').trim())
             .filter(Boolean),
         )),
@@ -49149,7 +49181,12 @@ ${播报文本}
     await refreshLiveSnapshot({ force: true, reopenBattle: options.skipUi === true ? false : true });
     if (options.skipUi === true) showUiToast('战斗模块自动结算中。', 'info', 1800);
     else showUiToast('战斗模块已开启。', 'info', 2400);
-    return { ok: true, combatData, worldContextProjection: 读取世界动作投影_桥接(contextResult.context) };
+    return {
+      ok: true,
+      combatData,
+      worldActionContext: contextResult.context,
+      worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+    };
   }
 
   /* 楼层只留一行战果；AI 注入只使用 PLAYER 结构化摘要。 */
@@ -49183,6 +49220,9 @@ ${播报文本}
       caseId: toText(options.caseId, 'battle-bridge-formal'),
       seed: Math.max(1, Math.floor(toNumber(runtimeState?.decisionSeed, 1))),
       combatData,
+      ...(options.worldActionContext && typeof options.worldActionContext === 'object'
+        ? { worldActionContext: options.worldActionContext }
+        : {}),
       mode: battleMode,
       executionMode: 规范化战斗提交模式(options.executionMode),
       rounds: maxRounds,
@@ -49535,6 +49575,26 @@ ${播报文本}
     if (!战斗数据 || typeof 战斗数据 !== 'object' || !战斗数据.进行中) {
       return { ok: false, reason: 'battle_context_missing', 已接管: 战斗已接管 };
     }
+    const 战斗环境 = 战斗数据.环境 && typeof 战斗数据.环境 === 'object' && !Array.isArray(战斗数据.环境)
+      ? 战斗数据.环境
+      : {};
+    const 环境地点 = toText(战斗环境.地点, toText(当前快照.currentLoc, ''));
+    const 环境规则ID = Array.isArray(战斗环境.临时规则ID) ? 战斗环境.临时规则ID : [];
+    const 战斗上下文请求 = {
+      ...(request && typeof request === 'object' ? request : {}),
+      地点: 环境地点,
+      临时规则ID: 环境规则ID,
+    };
+    delete 战斗上下文请求.动作上下文;
+    const 战斗上下文结果 = 读取世界动作上下文_桥接(当前快照, 战斗上下文请求, 'battle');
+    if (!战斗上下文结果.ok) {
+      return {
+        ok: false,
+        reason: 战斗上下文结果.reason || 'world_action_blocked',
+        已接管: 战斗已接管,
+        worldContextProjection: 读取世界动作投影_桥接(战斗上下文结果.context),
+      };
+    }
     const 执行函数 = window.BattleUIBridge?.executeBattleTransaction;
     if (typeof 执行函数 !== 'function') return { ok: false, reason: 'battle_transaction_unavailable', 已接管: 战斗已接管 };
     自动战斗延后写回次数 += 1;
@@ -49546,6 +49606,7 @@ ${播报文本}
         mode: 'multi_round',
         rounds: 剩余回合,
         executionMode: 'auto',
+        worldActionContext: 战斗上下文结果.context,
       });
     } catch (error) {
       自动战斗延后写回次数 = Math.max(0, 自动战斗延后写回次数 - 1);
@@ -49580,6 +49641,7 @@ ${播报文本}
       combatData: 战斗数据,
       reason: 提交结果?.reason || '',
       已接管: 战斗已接管,
+      worldContextProjection: 开启结果?.worldContextProjection || '',
     };
   }
 
@@ -50025,8 +50087,15 @@ ${播报文本}
   }
 
   function 执行交易预填路由(快照, 交易请求) {
+    const contextResult = 读取世界动作上下文_桥接(快照, 交易请求 || {}, 'trade');
+    if (!contextResult.ok) {
+      return 构建模块路由失败结果('trade', 交易请求, contextResult.reason || 'world_action_blocked', {
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      });
+    }
     const 待确认请求 = {
       ...cloneJsonValue(交易请求, {}),
+      动作上下文: contextResult.context,
       状态: 'pending',
       自动执行: false,
     };
@@ -50038,6 +50107,7 @@ ${播报文本}
       dispatchMode: 'pending_confirmation',
       skipped: true,
       reason: 'prefill_only',
+      worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
     });
   }
 
@@ -50126,6 +50196,7 @@ ${播报文本}
     const capture = await captureInlineModuleAction(
       (容器, 完成, 失败) =>
         window.mountTradeUI(容器, snapshot, {
+          actionType: launchOptions.actionType,
           initialTab: launchOptions.initialTab,
           prefillNpc: launchOptions.prefillNpc,
           lockNpc: launchOptions.lockNpc,
@@ -50146,8 +50217,15 @@ ${播报文本}
   }
 
   function 执行副职业工坊打开路由(快照, 副职业请求) {
+    const contextResult = 读取世界动作上下文_桥接(快照, 副职业请求 || {}, 'profession');
+    if (!contextResult.ok) {
+      return 构建模块路由失败结果('profession', 副职业请求, contextResult.reason || 'world_action_blocked', {
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      });
+    }
     const 待确认请求 = {
       ...cloneJsonValue(副职业请求, {}),
+      动作上下文: contextResult.context,
       状态: 'pending',
       自动执行: false,
     };
@@ -50159,6 +50237,7 @@ ${播报文本}
       dispatchMode: 'pending_confirmation',
       skipped: true,
       reason: 'prefill_only',
+      worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
     });
   }
 
@@ -50671,14 +50750,16 @@ ${播报文本}
   function 构建模块路由失败结果(moduleKind = '', request = null, reason = 'module_route_failed', extra = {}) {
     const kind = moduleKind || '';
     const safeReason = toText(reason, 'module_route_failed');
+    const publicRequest = request && typeof request === 'object' ? { ...request } : request;
+    if (publicRequest && typeof publicRequest === 'object') delete publicRequest.动作上下文;
     if (kind && kind !== '未命中') {
       return {
         handled: true,
         kind,
-        request: request || null,
+        request: publicRequest || null,
         reason: safeReason,
         dispatchMode: toText(extra && extra.dispatchMode, 'failed_summary') || 'failed_summary',
-        runtimeEvent: 构建模块路由运行事件文本(kind, extra && extra.request ? extra.request : request, {
+        runtimeEvent: 构建模块路由运行事件文本(kind, extra && extra.request ? extra.request : publicRequest, {
           ...extra,
           dispatchMode: toText(extra && extra.dispatchMode, 'failed_summary') || 'failed_summary',
           status: '执行失败',
@@ -50690,7 +50771,7 @@ ${播报文本}
     return {
       handled: false,
       kind,
-      request: request || null,
+      request: publicRequest || null,
       reason: safeReason,
       ...extra,
     };
@@ -50713,11 +50794,13 @@ ${播报文本}
 
   function 构建模块路由成功结果(moduleKind = '', request = null, extra = {}) {
     const kind = moduleKind || '';
+    const publicRequest = request && typeof request === 'object' ? { ...request } : request;
+    if (publicRequest && typeof publicRequest === 'object') delete publicRequest.动作上下文;
     return {
       handled: true,
       kind,
-      request: request || null,
-      runtimeEvent: extra && extra.runtimeEvent ? extra.runtimeEvent : 构建模块路由运行事件文本(kind, request, extra),
+      request: publicRequest || null,
+      runtimeEvent: extra && extra.runtimeEvent ? extra.runtimeEvent : 构建模块路由运行事件文本(kind, publicRequest, extra),
       ...extra,
     };
   }
@@ -50847,10 +50930,11 @@ ${播报文本}
       const 地点 = toText(request && (request.地点 || request.位置), toText(extra && extra.location, ''));
       const 耗时 = 格式化模块路由耗时(extra, request);
       const 摘要 = toText(extra && extra.summary, '');
+      const 世界投影 = toText(extra && extra.worldContextProjection, '').trim();
       if (状态 === '执行失败') {
         事实 = `${角色}的${动作}未结算，${拼接事实片段([地点 ? `地点：${地点}` : '', 耗时 ? `计划用时：${耗时}` : '', 格式化模块原因文本(原因)])}。`;
       } else {
-        事实 = `${角色}完成${动作}${地点 ? `，地点：${地点}` : ''}${耗时 ? `，用时：${耗时}` : ''}${extra?.mimicEnabled ? '，地点拟态修炼生效' : ''}${摘要 ? `，${摘要}` : '，本次结算无可见数值变化'}。`;
+        事实 = `${角色}完成${动作}${地点 ? `，地点：${地点}` : ''}${耗时 ? `，用时：${耗时}` : ''}${世界投影 ? `，${世界投影}` : ''}${摘要 ? `，${摘要}` : '，本次结算无可见数值变化'}。`;
       }
     } else if (模块 === 'teaching') {
       const 老师 = toText(request && request.老师, '');
@@ -51211,6 +51295,68 @@ ${播报文本}
     };
   }
 
+  function 是自主移动方式_桥接(方式 = '') {
+    const 文本 = toText(方式, '步行').trim().toLowerCase() || '步行';
+    if (/公共交通|列车|地铁|公交|航班|飞船客运|客运飞船|渡船|轮渡|校车|短驳|火车|train|subway|metro|bus|flight|ferry|passenger[\s_-]*ship|space[\s_-]*(flight|shuttle)|自有|自驾|私人|载具|汽车|飞行器|机甲|斗铠|vehicle|private|personal|own/.test(文本)) return false;
+    return /步行|徒步|攀爬|游泳|跑步|奔跑|walk|hike|climb|swim|run/.test(文本);
+  }
+
+  function 应用旅行环境修正_桥接(request = {}, mapRequest = {}) {
+    const source = mapRequest && typeof mapRequest === 'object' && !Array.isArray(mapRequest)
+      ? cloneJsonValue(mapRequest, {})
+      : {};
+    const method = toText(source.method, toText(request.移动方式 || request.method || request.travelMethod, '步行')).trim() || '步行';
+    const travel = request?.动作上下文?.modifiers?.旅行;
+    const autonomous = 是自主移动方式_桥接(method);
+    const timeMultiplier = autonomous
+      ? Math.max(1, Math.min(1.3, toNumber(travel?.耗时倍率, 1)))
+      : 1;
+    const vitMultiplier = autonomous
+      ? Math.max(1, Math.min(1.5, toNumber(travel?.体力倍率, 1)))
+      : 1;
+    const baseTicks = Math.max(0, toNumber(source.est_ticks, toNumber(request.耗时tick, 0)));
+    const estTicks = autonomous
+      ? Math.max(baseTicks > 0 ? 0.1 : 0, Math.round(baseTicks * timeMultiplier * 10) / 10)
+      : baseTicks;
+    const costs = source.costs && typeof source.costs === 'object' && !Array.isArray(source.costs)
+      ? { ...source.costs }
+      : null;
+    if (costs) {
+      if (autonomous && vitMultiplier > 1 && toNumber(costs.vit, 0) > 0) {
+        costs.vit = Math.max(1, Math.ceil(toNumber(costs.vit, 0) * vitMultiplier));
+      }
+      const charData = request.charData || {};
+      const wealth = toNumber(charData?.财富?.联邦币, 0);
+      const soulPower = toNumber(charData?.属性?.魂力, 0);
+      const vitality = toNumber(charData?.属性?.体力, 0);
+      const insufficient = toNumber(costs.fedCoin, 0) > wealth
+        ? '联邦币不足'
+        : toNumber(costs.sp, 0) > soulPower
+          ? '魂力不足'
+          : toNumber(costs.vit, 0) > vitality ? '体力不足' : '';
+      if (costs.canAfford === false || insufficient) {
+        costs.canAfford = false;
+        costs.reason = toText(costs.reason, insufficient || '资源不足，无法前往该节点。');
+      } else {
+        costs.canAfford = true;
+      }
+      costs.text = [
+        toNumber(costs.fedCoin, 0) > 0 ? `${toNumber(costs.fedCoin, 0)}联邦币` : '',
+        toNumber(costs.sp, 0) > 0 ? `${toNumber(costs.sp, 0)}魂力` : '',
+        toNumber(costs.vit, 0) > 0 ? `${toNumber(costs.vit, 0)}体力` : '',
+      ].filter(Boolean).join(' / ') || '无额外消耗';
+    }
+    return {
+      ...source,
+      method,
+      est_ticks: estTicks,
+      est_duration: autonomous || !toText(source.est_duration, '').trim()
+        ? 格式化tick时长文本_桥接(estTicks)
+        : source.est_duration,
+      ...(costs ? { costs } : {}),
+    };
+  }
+
   function 解析移动模块意图请求(snapshot, payload = {}, narrativeText = '') {
     const 角色名 = 读取移动请求文本(
       payload,
@@ -51258,10 +51404,30 @@ ${播报文本}
     const 已有目标 = 查找父级限定世界地点数据(snapshot, request.原始目标地点 || request.目标地点, 父级.name || request.归属父节点);
     if (已有目标.data) return { ok: false, reason: 'travel_target_already_exists', patchOps: [] };
     const 目标短名 = 取地点叶名(request.原始目标地点 || request.目标地点);
-    const 坐标 = 推导移动动态地点坐标(snapshot, { ...request, 目标地点: 目标短名, 归属父节点: 父级.name });
+    const 基础消耗 = 计算移动基础消耗(snapshot, request);
+    if (!基础消耗.ok) return { ok: false, reason: 基础消耗.reason || 'travel_cost_unavailable', patchOps: [] };
+    const 最终移动请求 = 应用旅行环境修正_桥接(request, {
+      method: request.移动方式,
+      est_ticks: request.耗时tick,
+      est_duration: 格式化tick时长文本_桥接(request.耗时tick),
+      costs: {
+        fedCoin: 基础消耗.联邦币,
+        sp: 基础消耗.魂力,
+        vit: 基础消耗.体力,
+        canAfford: true,
+      },
+    });
+    if (最终移动请求.costs?.canAfford === false) {
+      return { ok: false, reason: 最终移动请求.costs.reason || 'travel_cost_unavailable', patchOps: [] };
+    }
+    const 坐标 = 推导移动动态地点坐标(snapshot, {
+      ...request,
+      目标地点: 目标短名,
+      归属父节点: 父级.name,
+      移动方式: 最终移动请求.method,
+      耗时tick: 最终移动请求.est_ticks,
+    });
     if (!坐标.ok) return { ok: false, reason: 坐标.reason || 'travel_coord_unavailable', patchOps: [] };
-    const 消耗 = 计算移动基础消耗(snapshot, request);
-    if (!消耗.ok) return { ok: false, reason: 消耗.reason || 'travel_cost_unavailable', patchOps: [] };
     const activePath = escapeJsonPointerValue(request.charKey);
     const targetPath = escapeJsonPointerValue(目标短名);
     const finalLocName = 构建移动绝对位置(snapshot, 目标短名, 父级.name);
@@ -51282,28 +51448,29 @@ ${播报文本}
       {
         op: 'replace',
         path: '/sys/系统播报',
-        value: `[移动完成] ${request.角色} 经${request.移动方式}抵达 ${finalLocName}，耗时 ${request.耗时tick} tick${未解析文本}。`,
+        value: `[移动完成] ${request.角色} 经${最终移动请求.method}抵达 ${finalLocName}，耗时 ${最终移动请求.est_ticks} tick${未解析文本}。`,
       },
     ];
-    if (消耗.联邦币 > 0)
+    const 消耗 = 最终移动请求.costs;
+    if (消耗.fedCoin > 0)
       patchOps.push({
         op: 'replace',
         path: `/char/${activePath}/财富/联邦币`,
-        value: Math.max(0, toNumber(deepGet(request.charData, '财富.联邦币', 0), 0) - 消耗.联邦币),
+        value: Math.max(0, toNumber(deepGet(request.charData, '财富.联邦币', 0), 0) - 消耗.fedCoin),
       });
-    if (消耗.魂力 > 0)
+    if (消耗.sp > 0)
       patchOps.push({
         op: 'replace',
         path: `/char/${activePath}/属性/魂力`,
-        value: Math.max(0, toNumber(deepGet(request.charData, '属性.魂力', 0), 0) - 消耗.魂力),
+        value: Math.max(0, toNumber(deepGet(request.charData, '属性.魂力', 0), 0) - 消耗.sp),
       });
-    if (消耗.体力 > 0)
+    if (消耗.vit > 0)
       patchOps.push({
         op: 'replace',
         path: `/char/${activePath}/属性/体力`,
-        value: Math.max(0, toNumber(deepGet(request.charData, '属性.体力', 0), 0) - 消耗.体力),
+        value: Math.max(0, toNumber(deepGet(request.charData, '属性.体力', 0), 0) - 消耗.vit),
       });
-    return { ok: true, patchOps, finalLocName, coord: 坐标, cost: 消耗 };
+    return { ok: true, patchOps, finalLocName, coord: 坐标, cost: 消耗, mapRequest: 最终移动请求 };
   }
 
   function 构建已有地点移动补丁(snapshot, request = {}, targetInfo = {}, travelPreview = {}) {
@@ -51329,7 +51496,7 @@ ${播报文本}
       y: toNumber(deepGet(request.charData, '状态.纵坐标', -1), -1),
     };
     const 层级切换耗时 = Math.max(0.1, Math.min(toNumber(request.耗时tick, 0.5), 0.5));
-    const mapRequest = Object.keys(预览请求).length ? 预览请求 : {
+    const 原始地图请求 = Object.keys(预览请求).length ? 预览请求 : {
       method: request.移动方式,
       est_ticks: 是层级切换 ? 层级切换耗时 : request.耗时tick,
       est_duration: 是层级切换 ? 格式化tick时长文本_桥接(层级切换耗时) : 格式化tick时长文本_桥接(request.耗时tick),
@@ -51344,6 +51511,7 @@ ${播报文本}
         text: 基础消耗 ? 基础消耗.消耗文本 : '无额外消耗',
       },
     };
+    const mapRequest = 应用旅行环境修正_桥接(request, 原始地图请求);
     if (mapRequest.costs && mapRequest.costs.canAfford === false) {
       return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
     }
@@ -51393,8 +51561,12 @@ ${播报文本}
     const 角色解析 = 解析移动角色列表(snapshot, 角色名);
     const 角色 = 角色解析.角色列表[0];
     if (!角色 || !角色.key || !角色.char) return { ok: false, reason: 'travel_character_unresolved', patchOps: [], unresolvedCharacters: 角色解析.未解析角色 };
-    const mapRequest = request && typeof request === 'object' ? request : {};
-    if (!Object.keys(mapRequest).length) return { ok: false, reason: 'travel_request_missing', patchOps: [] };
+    const 原始地图请求 = request && typeof request === 'object' ? request : {};
+    if (!Object.keys(原始地图请求).length) return { ok: false, reason: 'travel_request_missing', patchOps: [] };
+    const mapRequest = 应用旅行环境修正_桥接({
+      ...原始地图请求,
+      charData: 角色.char,
+    }, 原始地图请求);
     if (mapRequest.costs && mapRequest.costs.canAfford === false) {
       return { ok: false, reason: toText(mapRequest.costs.reason, '资源不足，无法前往该节点。'), patchOps: [] };
     }
@@ -51452,7 +51624,16 @@ ${播报文本}
     const snapshot = liveSnapshot && liveSnapshot.rootData ? liveSnapshot : await refreshLiveSnapshot({ force: true });
     if (!snapshot || !snapshot.rootData) return { ok: false, reason: 'snapshot_unavailable' };
     const request = detail && detail.request && typeof detail.request === 'object' ? detail.request : {};
-    const 补丁结果 = 构建地图移动请求结算补丁(snapshot, request, detail);
+    const contextResult = 读取世界动作上下文_桥接(snapshot, request, 'travel');
+    if (!contextResult.ok) {
+      return {
+        ok: false,
+        reason: contextResult.reason || 'world_action_blocked',
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      };
+    }
+    const contextualRequest = { ...request, 动作上下文: contextResult.context };
+    const 补丁结果 = 构建地图移动请求结算补丁(snapshot, contextualRequest, detail);
     if (!补丁结果.ok || !补丁结果.patchOps.length) return 补丁结果;
     const 当前位置 = 读取快照当前位置(snapshot);
     if (
@@ -51461,12 +51642,19 @@ ${播报文本}
       当前位置 &&
       移动目标是否已到达(当前位置, 补丁结果.finalLocName)
     ) {
-      return { ok: true, alreadyThere: true, patchOps: [], finalLocName: 补丁结果.finalLocName, request };
+      return {
+        ok: true,
+        alreadyThere: true,
+        patchOps: [],
+        finalLocName: 补丁结果.finalLocName,
+        request,
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      };
     }
     await applyJsonPatchOpsByEditor(补丁结果.patchOps, { force: true });
     登记本轮移动结算路径(补丁结果.patchOps.map(patch => decodeJsonPointerPath(patch.path)).filter(path => path.length));
     await refreshLiveSnapshot({ force: true });
-    return { ok: true, settled: true, ...补丁结果 };
+    return { ok: true, settled: true, ...补丁结果, worldContextProjection: 读取世界动作投影_桥接(contextResult.context) };
   }
 
   async function 执行移动模块意图路由(snapshot, request = {}) {
@@ -51655,7 +51843,30 @@ ${播报文本}
     return parts.join('，');
   }
 
-  const 日常动作允许写回角色字段 = Object.freeze(['属性', '魂核', '状态', '财富', '我的任务']);
+  function 计算探索结算结果_桥接(charData = {}, request = {}, context = {}) {
+    const 属性 = charData && typeof charData === 'object' ? charData.属性 || {} : {};
+    const 等级 = Math.max(1, toNumber(属性.等级, 1));
+    const 精神上限 = Math.max(1, toNumber(属性.精神力上限, 1));
+    const 精神状态 = Math.max(0, Math.min(1, toNumber(属性.精神力, 精神上限) / 精神上限));
+    const 有效能力 = Math.max(1, 等级 * (0.75 + 精神状态 * 0.25));
+    const 标准难度 = Math.max(1, Math.min(1000, toNumber(request.难度, context?.modifiers?.探索?.标准难度 || 30)));
+    const 成功率 = Math.max(0.1, Math.min(0.9, 有效能力 / (有效能力 + 标准难度)));
+    const 地点键 = context?.location?.active?.path?.join('-') || request.地点 || request.位置 || '';
+    const 事务键 = toText(request.事务ID, '').trim() || [
+      charData?.身份 || charData?.姓名 || '',
+      地点键,
+      request.线索 || '',
+      context?.time?.tick ?? '',
+      request.耗时tick ?? '',
+    ].join('|');
+    const 成功 = 读取稳定随机数_桥接(`explore|${事务键}`) < 成功率;
+    return {
+      成功,
+      情报: 成功 ? toText(request.线索, '').trim() : '',
+    };
+  }
+
+  const 日常动作允许写回角色字段 = Object.freeze(['属性', '魂核', '状态', '财富', '我的任务', '已掌握情报']);
 
   function 构建日常动作字段级写回补丁(charKey = '', settledRoot = {}, options = {}) {
     const 角色名 = toText(charKey, '').trim();
@@ -51683,7 +51894,7 @@ ${播报文本}
 
   function 构建日常结算临时根(snapshot = {}, charKey = '', charData = {}, request = {}) {
     const rootData = cloneJsonValue(deepGet(snapshot, 'rootData', {}), {});
-    const 当前tick = Math.max(0, Math.floor(toNumber(deepGet(rootData, 'world.时间.tick', 0), 0)));
+    const 当前tick = Math.max(0, Math.round(toNumber(deepGet(rootData, 'world.时间.tick', 0), 0) * 10) / 10);
     const 耗时tick = Math.max(0, Math.round(toNumber(request && request.耗时tick, 0) * 10) / 10);
     const 临时根 = cloneJsonValue(rootData, {});
     临时根.char = { [charKey]: cloneJsonValue(charData, {}) };
@@ -51746,16 +51957,30 @@ ${播报文本}
     if (!charKey) return 构建模块路由失败结果('routine', request, 'active_character_unresolved');
     const actionMode = 归一化日常动作模式(request && request.动作, '');
     if (!actionMode) return 构建模块路由失败结果('routine', request, 'routine_action_invalid', { charName: charKey });
-    const durationTicks = Math.max(0, Math.floor(toNumber(request && request.耗时tick, 0)));
+    const durationTicks = Math.max(0, Math.round(toNumber(request && request.耗时tick, 0) * 10) / 10);
     if (!(durationTicks > 0)) return 构建模块路由失败结果('routine', request, 'routine_duration_missing', { charName: charKey, actionMode });
     const settleRuntime = 读取日常结算接口();
     if (typeof settleRuntime !== 'function') return 构建模块路由失败结果('routine', request, 'routine_runtime_unavailable', { charName: charKey, actionMode, durationTicks });
     const beforeChar = cloneJsonValue(deepGet(snapshot, ['rootData', 'char', charKey], {}), {});
     if (!beforeChar || !Object.keys(beforeChar).length) return 构建模块路由失败结果('routine', request, 'routine_character_missing', { charName: charKey, actionMode, durationTicks });
+    const contextResult = 读取世界动作上下文_桥接(
+      snapshot,
+      { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks },
+      `routine|${actionMode}`,
+    );
+    if (!contextResult.ok) {
+      return 构建模块路由失败结果('routine', request, contextResult.reason || 'world_action_blocked', {
+        charName: charKey,
+        actionMode,
+        durationTicks,
+        worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      });
+    }
+    const actionRequest = { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks, 动作上下文: contextResult.context };
     let segmentStats = null;
     let settledRoot = null;
     try {
-      segmentStats = await 分段执行日常结算(settleRuntime, snapshot, charKey, beforeChar, { ...request, 动作: actionMode, 耗时tick: durationTicks });
+      segmentStats = await 分段执行日常结算(settleRuntime, snapshot, charKey, beforeChar, actionRequest);
       settledRoot = segmentStats.settledRoot;
     } catch (error) {
       console.error('[LWCS routine settle failed]', {
@@ -51771,13 +51996,20 @@ ${播报文本}
         errorStack: error && error.stack ? String(error.stack) : '',
       });
     }
-    const afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
+    let afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
     if (!afterChar) return 构建模块路由失败结果('routine', request, 'routine_result_missing', { charName: charKey, actionMode, durationTicks });
+    const exploration = actionMode === '探索' ? 计算探索结算结果_桥接(beforeChar, actionRequest, contextResult.context) : null;
+    if (exploration?.成功 && exploration.情报) {
+      const intel = Array.isArray(settledRoot.char[charKey].已掌握情报) ? settledRoot.char[charKey].已掌握情报 : [];
+      if (!intel.some(item => toText(item, '').trim() === exploration.情报)) intel.push(exploration.情报);
+      settledRoot.char[charKey].已掌握情报 = intel;
+      afterChar = cloneJsonValue(deepGet(settledRoot, ['char', charKey], null), null);
+    }
     const systemText = toText(deepGet(settledRoot, 'sys.系统播报', ''), '').trim();
     const patches = 构建日常动作字段级写回补丁(charKey, settledRoot, { systemText });
     await applyJsonPatchOpsByEditor(patches, { force: true, 记录本轮模块结算路径: true, 结算类型: 'routine' });
     await refreshLiveSnapshot({ force: true });
-    return 构建模块路由成功结果('routine', { ...request, 角色: charKey, 动作: actionMode, 耗时tick: durationTicks }, {
+    return 构建模块路由成功结果('routine', actionRequest, {
       dispatchMode: 'settled_summary',
       patchOps: patches,
       charName: charKey,
@@ -51785,7 +52017,8 @@ ${播报文本}
       durationTicks,
       durationText: 格式化tick时长文本_桥接(durationTicks),
       location: toText(request && request.位置, toText(beforeChar?.状态?.位置, '')),
-      mimicEnabled: request.启用地点拟态 === true && actionMode === '冥想',
+      worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+      explorationSuccess: exploration?.成功 === true,
       equipmentPassive: segmentStats?.equipmentPassive
         ? {
             routeCount: Number(segmentStats.equipmentPassive.路由数 || 0),
@@ -51796,6 +52029,7 @@ ${播报文本}
       summary: [
         计算日常数值变化(beforeChar, afterChar),
         segmentStats?.recoveryTicks > 0 ? `其中恢复${格式化tick时长文本_桥接(segmentStats.recoveryTicks)}` : '',
+        exploration ? (exploration.成功 ? (exploration.情报 ? '探索获得新情报' : '探索完成') : '探索未发现新情报') : '',
       ].filter(Boolean).join('，'),
     });
   }
@@ -51882,6 +52116,17 @@ ${播报文本}
     inlineUnavailableReason,
     dispatchFailReason,
   ) {
+    let actionContext = null;
+    if (['trade', 'profession'].includes(moduleKind)) {
+      const contextResult = 读取世界动作上下文_桥接(snapshot, request || {}, moduleKind);
+      if (!contextResult.ok) {
+        return 构建模块路由失败结果(moduleKind, request, contextResult.reason || 'world_action_blocked', {
+          dispatchMode: 'inline',
+          worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
+        });
+      }
+      actionContext = contextResult.context;
+    }
     const inlineResult = await inlineBuilder(snapshot, request);
     if (!inlineResult?.ok || !inlineResult.inlineAction) {
       return 构建模块路由失败结果(moduleKind, request, inlineResult?.reason || inlineUnavailableReason, {
@@ -51919,6 +52164,7 @@ ${播报文本}
       dispatchMode: 'settled_summary',
       inlineAction: inlineResult.inlineAction,
       result: inlineResult,
+      worldContextProjection: 读取世界动作投影_桥接(actionContext),
     });
   }
 
@@ -52262,6 +52508,7 @@ ${播报文本}
               dispatchMode: 'battle_auto_failed_after_takeover',
               reason: result.reason || 'battle_auto_failed',
               result,
+              worldContextProjection: result?.worldContextProjection || '',
             });
           }
           return 构建模块路由失败结果(moduleKind, request, result?.reason || 'battle_auto_failed', { result });
@@ -52269,6 +52516,7 @@ ${播报文本}
         return 构建模块路由成功结果(moduleKind, request, {
           dispatchMode: 'battle_auto_arbitration',
           result,
+          worldContextProjection: result?.worldContextProjection || '',
         });
       }
       跳过战斗终端自动挂载 = false;
@@ -52287,7 +52535,11 @@ ${播报文本}
       if (!result?.ok) {
         return 构建模块路由失败结果(moduleKind, request, result?.reason || 'battle_open_failed', { result });
       }
-      return 构建模块路由成功结果(moduleKind, request, { dispatchMode: 'battle_takeover', result });
+      return 构建模块路由成功结果(moduleKind, request, {
+        dispatchMode: 'battle_takeover',
+        result,
+        worldContextProjection: result?.worldContextProjection || '',
+      });
     }
 
     if (moduleKind === 'trade') {

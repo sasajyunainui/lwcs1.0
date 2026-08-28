@@ -1837,6 +1837,69 @@ class BattleUIComponent {
           : 1;
         const executeTransaction = root.BattleUIBridge?.executeBattleTransaction;
         if (typeof executeTransaction !== 'function') throw new Error('battle_transaction_unavailable');
+        const currentSnapshot = component?.snapshot && typeof component.snapshot === 'object' ? component.snapshot : {};
+        const dataRoot = currentSnapshot.rootData;
+        const activeName = String(currentSnapshot.activeName || '').trim();
+        const characterTable = dataRoot?.char;
+        const characterKey = characterTable && typeof characterTable === 'object' && !Array.isArray(characterTable)
+          ? Object.prototype.hasOwnProperty.call(characterTable, activeName)
+            ? activeName
+            : String(Object.entries(characterTable).find(([, character]) =>
+              String(character?.name || character?.base?.name || '').trim() === activeName,
+            )?.[0] || '').trim()
+          : '';
+        const targetLocation = String(sourceCombatData?.环境?.地点 || '').trim();
+        const temporaryRuleIds = Array.isArray(sourceCombatData?.环境?.临时规则ID)
+          ? sourceCombatData.环境.临时规则ID
+          : [];
+        const durationTicks = Number(options.durationTicks ?? options.actionDeclaration?.durationTicks ?? 0);
+        const libraryWindows = [];
+        try {
+          libraryWindows.push(root);
+        } catch (_error) {}
+        try {
+          const parentWindow = root.parent;
+          if (parentWindow && parentWindow !== root) libraryWindows.push(parentWindow);
+        } catch (_error) {}
+        try {
+          const topWindow = root.top;
+          if (topWindow && topWindow !== root && !libraryWindows.includes(topWindow)) libraryWindows.push(topWindow);
+        } catch (_error) {}
+        const libraryRuntime = libraryWindows
+          .map(candidate => {
+            try {
+              return candidate?.__LWCS_LIBRARY_DATA_RUNTIME_V1__ || null;
+            } catch (_error) {
+              return null;
+            }
+          })
+          .find(runtime => runtime && typeof runtime.resolveWorldActionContext === 'function') || null;
+        if (!dataRoot || !activeName || !characterKey || !targetLocation || !Number.isFinite(durationTicks) || !libraryRuntime) {
+          throw new Error('battle_world_action_context_unavailable');
+        }
+        const rawWorldActionContext = libraryRuntime.resolveWorldActionContext({
+          dataRoot,
+          characterKey,
+          actionType: 'BATTLE',
+          targetLocation,
+          durationTicks: Math.max(0, Math.round(durationTicks * 10) / 10),
+          temporaryRuleIds,
+        });
+        const worldContextKeys = [
+          'era', 'time', 'location', 'terrain', 'hazards', 'facilities',
+          'nearbyFacilities', 'resources', 'market', 'permissions', 'modifiers',
+          'blockers', 'warnings',
+        ];
+        const validWorldActionContext = rawWorldActionContext &&
+          typeof rawWorldActionContext === 'object' &&
+          !Array.isArray(rawWorldActionContext) &&
+          worldContextKeys.every(key => Object.prototype.hasOwnProperty.call(rawWorldActionContext, key)) &&
+          Array.isArray(rawWorldActionContext.hazards) &&
+          rawWorldActionContext.modifiers && typeof rawWorldActionContext.modifiers === 'object' &&
+          !Array.isArray(rawWorldActionContext.modifiers) &&
+          Array.isArray(rawWorldActionContext.blockers) &&
+          Array.isArray(rawWorldActionContext.warnings);
+        if (!validWorldActionContext) throw new Error('battle_world_action_context_unavailable');
         const transactionResult = await executeTransaction(cloneBattleValue(sourceCombatData), {
           mode: battleMode,
           rounds: maxRounds,
@@ -1845,6 +1908,7 @@ class BattleUIComponent {
           executionMode: 'manual',
           dryRun,
           commit: !dryRun,
+          worldActionContext: rawWorldActionContext,
         });
           const commitReceipt = transactionResult?.commitReceipt || null;
           if (!dryRun && !commitReceipt?.committed) throw new Error('battle_package_commit_missing');

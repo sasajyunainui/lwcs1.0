@@ -1760,74 +1760,55 @@
     }
   }
 
-  function getMapWorldActionEntries(context, field = 'facilities') {
-    const raw = context && typeof context === 'object' ? context[field] : null;
-    if (Array.isArray(raw)) return raw.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    if (!raw || typeof raw !== 'object') return [];
-    if (Array.isArray(raw.items)) return raw.items.filter(Boolean).map(entry => (entry && typeof entry === 'object' ? entry : { name: String(entry || '') }));
-    return Object.entries(raw).map(([name, value]) => value && typeof value === 'object' && !Array.isArray(value)
-      ? { name: value.name || value.名称 || name, ...value }
-      : { name, available: value });
-  }
-
-  function getMapWorldActionBoolean(value, keys = []) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-    for (const key of keys) {
-      if (typeof value[key] === 'boolean') return value[key];
-    }
-    return undefined;
-  }
-
-  function getMapWorldActionBlockers(context) {
-    if (!context || typeof context !== 'object') return [];
-    const raw = context.blockers;
-    if (Array.isArray(raw)) return raw.filter(Boolean);
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      if (raw.blocked === false || raw.阻断 === false) return [];
-      if (raw.blocked === true || raw.阻断 === true) return [raw];
-      return Object.entries(raw).filter(([, value]) => value === true).map(([key]) => key);
-    }
-    return raw ? [raw] : [];
-  }
-
-  function getMapWorldActionBlockerText(context, fallback = '当前行动不满足地点、设施或环境条件。') {
-    const blocker = getMapWorldActionBlockers(context)[0];
-    if (!blocker) return '';
-    if (typeof blocker === 'string') return blocker.trim() || fallback;
-    if (blocker && typeof blocker === 'object') {
-      return toText(blocker.message || blocker.reason || blocker.说明 || blocker.原因 || blocker.label, fallback);
-    }
-    return toText(blocker, fallback);
-  }
-
   function getMapWorldActionFacilityText(context) {
-    const names = field => getMapWorldActionEntries(context, field)
-      .map(entry => toText(entry.name || entry.名称 || entry.label || entry.类型 || entry.type, ''))
-      .filter(Boolean);
+    const direct = context && context.facilities && typeof context.facilities === 'object' && !Array.isArray(context.facilities)
+      ? Object.values(context.facilities)
+        .filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry) && entry.可用 === true)
+        .map(entry => toText(entry.功能, ''))
+        .filter(Boolean)
+      : [];
+    const nearby = Array.isArray(context?.nearbyFacilities)
+      ? context.nearbyFacilities
+        .filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry) && entry.需移动 === true && entry.可用 === false)
+        .map(entry => {
+          const functionName = toText(entry.功能, '');
+          const location = toText(entry.地点, '');
+          return functionName ? (location ? `${functionName}（${location}）` : functionName) : '';
+        })
+        .filter(Boolean)
+      : [];
     return {
-      direct: Array.from(new Set(names('facilities'))).join('、'),
-      nearby: Array.from(new Set(names('nearbyFacilities'))).join('、'),
+      direct: Array.from(new Set(direct)).join('、'),
+      nearby: Array.from(new Set(nearby)).join('、'),
     };
   }
 
   function getMapWorldActionState(context, options = {}) {
-    if (!context) return { ok: false, reason: '共享世界行动上下文尚未就绪。', facility: null };
-    const blockerText = getMapWorldActionBlockerText(context);
+    if (!context || typeof context !== 'object' || Array.isArray(context)) {
+      return {
+        ok: false,
+        reason: '共享世界行动上下文不可用（runtime 缺失或调用失败）。',
+        facility: null
+      };
+    }
+    if (!Array.isArray(context.blockers) || context.blockers.some(item => typeof item !== 'string')) {
+      return { ok: false, reason: '共享世界行动上下文结构无效。', facility: null };
+    }
+    const blockerText = context.blockers.find(item => item.trim());
     if (blockerText) return { ok: false, reason: blockerText, facility: null };
     if (!options.requireFacility) return { ok: true, reason: '', facility: null };
 
-    const matcher = options.facilityMatcher instanceof RegExp ? options.facilityMatcher : null;
-    const facilities = getMapWorldActionEntries(context, 'facilities').filter(entry => {
-      const text = `${entry.name || entry.名称 || ''} ${entry.type || entry.类型 || ''} ${entry.category || entry.类别 || ''} ${entry.job || entry.副职业 || ''}`;
-      return !matcher || matcher.test(text);
-    });
-    const facility = facilities.find(entry => getMapWorldActionBoolean(entry, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']) !== false);
-    if (!facility) return { ok: false, reason: options.missingFacilityReason || '当前地点没有可用的对应设施。', facility: null };
-    const available = getMapWorldActionBoolean(facility, ['available', '可用', 'enabled', 'actionable', '可操作', '存在']);
-    if (available === false) return { ok: false, reason: '当前地点的对应设施暂不可用。', facility };
-    for (const source of [facility, context.market, context.time].filter(value => value && typeof value === 'object')) {
-      const open = getMapWorldActionBoolean(source, ['open', 'isOpen', '营业中', '开放', '可使用']);
-      if (open === false) return { ok: false, reason: '当前设施暂未开放。', facility };
+    if (!context.facilities || typeof context.facilities !== 'object' || Array.isArray(context.facilities)) {
+      return { ok: false, reason: '共享世界行动上下文结构无效。', facility: null };
+    }
+    const facilityFunctions = Array.isArray(options.facilityFunctions) ? options.facilityFunctions : [];
+    const candidates = facilityFunctions
+      .map(functionName => context.facilities[functionName])
+      .filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry));
+    const facility = candidates.find(entry => entry.可用 === true);
+    if (!facility) {
+      const reason = candidates.map(entry => toText(entry.原因, '')).find(Boolean);
+      return { ok: false, reason: reason || options.missingFacilityReason || '当前地点没有可用的对应设施。', facility: null };
     }
     return { ok: true, reason: '', facility };
   }
@@ -2470,6 +2451,7 @@
     battle: '战斗',
     talk: '对话',
     trade: '交易',
+    black_market: '黑市',
     bid: '竞拍',
     craft: '委托工坊',
     rest: '休整',
@@ -2753,10 +2735,13 @@
     return 'landmark';
   }
 
-  function inferNodeInteractions(nodeKind, name, type, canEnter) {
+  function inferNodeInteractions(nodeKind, name, type, canEnter, services = []) {
     const text = `${toText(name, '')} ${toText(type, '')}`;
     if (canEnter) return ['enter', 'inspect'];
-    if (nodeKind === 'commerce') return /拍卖/.test(text) ? ['inspect', 'bid'] : ['inspect', 'trade'];
+    if (services.includes('black_market')) return ['inspect', 'black_market'];
+    if (nodeKind === 'commerce') {
+      return services.includes('auction') || /拍卖/.test(text) ? ['inspect', 'bid'] : ['inspect', 'trade'];
+    }
     if (nodeKind === 'study') return ['inspect', 'meditate'];
     if (nodeKind === 'craft') return ['inspect', 'talk', 'meditate'];
     if (nodeKind === 'training') return ['inspect', 'train', 'meditate'];
@@ -2769,14 +2754,17 @@
   function inferNodeActionSlots(nodeKind, name, type, canEnter, interactions = [], services = []) {
     const text = `${toText(name, '')} ${toText(type, '')}`;
     if (canEnter) return ['enter', 'inspect'];
-    if (nodeKind === 'commerce') return /拍卖/.test(text) ? ['bid', 'trade'] : ['trade'];
+    if (services.includes('black_market')) return ['black_market'];
+    if (nodeKind === 'commerce') {
+      return services.includes('auction') || /拍卖/.test(text) ? ['bid', 'trade'] : ['trade'];
+    }
     if (nodeKind === 'study') return ['meditate'];
     if (nodeKind === 'craft') return ['craft', 'meditate'];
     if (nodeKind === 'training') return (services.includes('battle') || /演武|斗魂|擂台|实战/.test(text)) ? ['train', 'battle', 'meditate'] : ['train', 'meditate'];
     if (nodeKind === 'rest') return ['rest', 'meditate'];
     if (nodeKind === 'intel') return ['meditate'];
     if (nodeKind === 'administration') return ['meditate'];
-    if (interactions.length) return interactions.filter(action => ['trade', 'bid', 'craft', 'battle', 'meditate', 'rest', 'sleep', 'train', 'train_body', 'train_mind'].includes(toText(action, ''))).slice(0, 4);
+    if (interactions.length) return interactions.filter(action => ['trade', 'black_market', 'bid', 'craft', 'battle', 'meditate', 'rest', 'sleep', 'train', 'train_body', 'train_mind'].includes(toText(action, ''))).slice(0, 4);
     return ['meditate'];
   }
 
@@ -2798,12 +2786,12 @@
     const canEnter = !!options.canEnter;
     const explicitKind = toText(options.nodeKind !== undefined ? options.nodeKind : (rawItem.node_kind || rawItem.nodeKind), '');
     const nodeKind = explicitKind || inferNodeKind(name, type, canEnter);
-    const interactions = toTextList(options.interactions !== undefined ? options.interactions : rawItem.interactions);
     const services = toTextList(options.services !== undefined ? options.services : rawItem.services);
+    const interactions = toTextList(options.interactions !== undefined ? options.interactions : rawItem.interactions);
     const actionSlots = toTextList(options.actionSlots !== undefined ? options.actionSlots : (rawItem.action_slots || rawItem.actionSlots));
     const eventId = toText(options.eventId !== undefined ? options.eventId : (rawItem.event_id || rawItem.eventId), '');
-    const resolvedInteractions = interactions.length ? interactions : inferNodeInteractions(nodeKind, name, type, canEnter);
     const resolvedServices = services.length ? services : inferNodeServices(nodeKind, name, type, canEnter);
+    const resolvedInteractions = interactions.length ? interactions : inferNodeInteractions(nodeKind, name, type, canEnter, resolvedServices);
     return {
       nodeKind,
       interactions: resolvedInteractions,
@@ -2825,7 +2813,7 @@
     const context = resolveMapWorldActionContext(snapshot, 'trade_buy', nodeName || snapshot?.currentLocFull || snapshot?.currentLoc || '');
     return getMapWorldActionState(context, {
       requireFacility: true,
-      facilityMatcher: /market|trade|shop|store|auction|商业|交易|商店|拍卖/,
+      facilityFunctions: ['商业'],
       missingFacilityReason: '当前地点没有可用的市场设施。'
     }).ok;
   }
@@ -2834,15 +2822,15 @@
     const context = resolveMapWorldActionContext(snapshot, 'trade_buy', nodeName || snapshot?.currentLocFull || snapshot?.currentLoc || '');
     const state = getMapWorldActionState(context, {
       requireFacility: true,
-      facilityMatcher: /market|trade|shop|store|auction|商业|交易|商店|拍卖/,
+      facilityFunctions: ['商业'],
       missingFacilityReason: '当前地点没有可用的市场设施。'
     });
-    const time = context?.time && typeof context.time === 'object' ? context.time : {};
-    const hour = Number(time.hour ?? time.小时);
-    const minute = Number(time.minute ?? time.分钟);
+    const date = context?.time?.日期;
+    const hour = Number(date?.时);
+    const minute = Number(date?.分);
     const clock = Number.isFinite(hour) && Number.isFinite(minute)
       ? `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.floor(minute)).padStart(2, '0')}`
-      : toText(time.label || time.clock || time.current || time.当前, '');
+      : '';
     if (!context) return state.reason;
     return `${state.ok ? '营业中' : state.reason}${clock ? ` ${clock}` : ''}`;
   }
@@ -2947,7 +2935,7 @@
       供给: 计算地图节点供给文本(商店地点数据),
       价格: 计算地图节点价格文本(商店地点数据),
       成交: 读取地图节点成交文本(snapshot),
-      设施: worldContext ? (facilityText.direct || '无') : (focusItem ? formatBehaviorLabels(focusItem.services, getNodeServiceLabel) : '无'),
+      设施: worldContext ? (facilityText.direct || '无') : (focusItem ? '共享世界行动上下文未就绪' : '无固定设施'),
       附近设施: facilityText.nearby ? `${facilityText.nearby}（需移动）` : '无'
     };
   }
@@ -3333,11 +3321,12 @@
     const 动作集合 = new Set();
     const 节点文本 = `${toText(节点项.name, '')} ${toText(节点项.type, '')} ${toText(节点项.nodeKind, '')}`;
     const 商店上下文 = 获取节点商店上下文(节点项, snapshot);
-    const 可结算动作集合 = new Set(['trade', 'bid', 'craft', 'battle', 'meditate', 'train_body', 'train_mind', 'rest', 'sleep']);
+    const 可结算动作集合 = new Set(['trade', 'black_market', 'bid', 'craft', 'battle', 'meditate', 'train_body', 'train_mind', 'rest', 'sleep']);
     const 加入动作 = 动作 => {
       const 标准动作 = toText(动作, '');
       if (!标准动作 || ['inspect', 'enter', 'preview'].includes(标准动作)) return;
-      if (标准动作 === 'shop' || 标准动作 === 'black_market') 动作集合.add('trade');
+      if (标准动作 === 'shop') 动作集合.add('trade');
+      else if (标准动作 === 'black_market') 动作集合.add('black_market');
       else if (标准动作 === 'auction') 动作集合.add('bid');
       else if (标准动作 === 'train') {
         动作集合.add('train_body');
@@ -3349,7 +3338,9 @@
       .concat(Array.isArray(节点项.interactions) ? 节点项.interactions : [])
       .concat(Array.isArray(节点项.services) ? 节点项.services : [])
       .forEach(加入动作);
-    if (商店上下文.商店名) 加入动作('trade');
+    const 有黑市动作 = [节点项.services, 节点项.actionSlots, 节点项.interactions]
+      .some(动作列表 => Array.isArray(动作列表) && 动作列表.includes('black_market'));
+    if (商店上下文.商店名 && !有黑市动作) 加入动作('trade');
     if (/拍卖/.test(节点文本)) 加入动作('bid');
     if (/锻造师协会|制造师协会|设计师协会|修理师协会|副职业|工坊/.test(节点文本)) {
       加入动作('craft');
@@ -6277,13 +6268,14 @@
     }
     sourceActions.forEach(action => {
       const normalized = toText(action, '');
-      if (['talk', 'battle', 'trade', 'bid', 'brief', 'intel'].includes(normalized)) candidates.add(normalized);
+      if (['talk', 'battle', 'trade', 'black_market', 'bid', 'brief', 'intel'].includes(normalized)) candidates.add(normalized);
       if (normalized === 'craft' && (npcCount > 0 || isOfficialCommissionNode)) candidates.add('craft');
     });
     const services = Array.isArray(item.services) ? item.services : [];
     services.forEach(service => {
       const normalized = toText(service, '');
-      if (normalized === 'shop' || normalized === 'black_market') candidates.add('trade');
+      if (normalized === 'shop') candidates.add('trade');
+      else if (normalized === 'black_market') candidates.add('black_market');
       else if (normalized === 'auction') candidates.add('bid');
       else if (normalized === 'craft' && (npcCount > 0 || isOfficialCommissionNode)) candidates.add('craft');
       else if (normalized === 'battle') candidates.add('battle');
@@ -6293,7 +6285,7 @@
     if (toText(item.nodeKind, '') === 'intel') candidates.add('intel');
     if (toText(item.nodeKind, '') === 'administration') candidates.add('brief');
     if (npcCount > 0 && toText(item.nodeKind, '') === 'training') candidates.add('battle');
-    return ['talk', 'trade', 'bid', 'craft', 'brief', 'intel', 'battle'].filter(action => candidates.has(action));
+    return ['talk', 'trade', 'black_market', 'bid', 'craft', 'brief', 'intel', 'battle'].filter(action => candidates.has(action));
   }
 
   function resolveMapNpcCraftExecutorType(item, npcTarget = '') {
@@ -7459,8 +7451,10 @@
     const talkSuffix = action === 'talk'
       ? (npcTarget ? ` · 对象 ${npcTarget}` : (talkTargets.length ? ` · 对象 ${talkTargets.join('、')}` : ''))
       : (npcTarget ? ` · 对象 ${npcTarget}` : '');
-    const actionContextType = ['trade', 'shop', 'black_market'].includes(action)
-      ? 'trade_buy'
+    const actionContextType = action === 'black_market'
+      ? 'trade_private_black_market'
+      : ['trade', 'shop'].includes(action)
+        ? 'trade_buy'
       : ['bid', 'auction'].includes(action)
         ? 'trade_auction'
         : action === 'craft'
@@ -7477,12 +7471,17 @@
     const worldActionContext = actionNeedsWorldContext
       ? resolveMapWorldActionContext(snapshot, actionContextType || 'trade_buy', item.name, 1)
       : null;
+    const facilityFunctions = action === 'black_market'
+      ? ['黑市']
+      : ['bid', 'auction'].includes(action)
+      ? ['拍卖']
+      : ['trade', 'shop'].includes(action) || !!商店上下文.商店名
+        ? ['商业']
+        : action === 'craft' ? ['工业', '锻造'] : [];
     const worldActionState = actionNeedsWorldContext
       ? getMapWorldActionState(worldActionContext, {
         requireFacility: actionNeedsFacility,
-        facilityMatcher: ['trade', 'shop', 'black_market', 'bid', 'auction'].includes(action) || !!商店上下文.商店名
-          ? /market|trade|shop|store|auction|商业|交易|商店|拍卖/
-          : action === 'craft' ? /forge|smith|workshop|station|bench|facility|craft|工坊|工作台|设施|协会|车间|实验室|锻造|制造|设计|修理|维修|副职业/ : null,
+        facilityFunctions,
         missingFacilityReason: '当前地点没有可用的对应设施。'
       })
       : { ok: true, reason: '' };
@@ -7865,8 +7864,7 @@ ${logMsg}
       ? resolveMapWorldActionContext(snapshot, 'map_view', focusName)
       : null;
     const focusFacilityText = getMapWorldActionFacilityText(focusWorldContext);
-    const staticFocusServiceText = focusItem ? formatBehaviorLabels(focusItem.services, getNodeServiceLabel) : (isFreeSelection ? '无固定设施' : '无');
-    const focusServiceText = focusWorldContext ? (focusFacilityText.direct || '无') : (focusFacilityText.direct || staticFocusServiceText);
+    const focusServiceText = focusWorldContext ? (focusFacilityText.direct || '无') : (isFreeSelection ? '无固定设施' : '共享世界行动上下文未就绪');
     const focusNearbyFacilityText = focusFacilityText.nearby ? `${focusFacilityText.nearby}（需移动）` : '';
     const focusEventText = focusItem && toText(focusItem.eventId, '') ? '已挂接事件' : '无';
     const primaryInteractionLabel = focusItem ? getNodeInteractionLabel(getPrimaryNodeInteraction(focusItem)) : (isFreeSelection ? '查看坐标' : '查看');

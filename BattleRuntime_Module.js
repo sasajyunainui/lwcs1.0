@@ -6652,7 +6652,11 @@
       : context?.skill && typeof context.skill === 'object' && Object.keys(context.skill).length
         ? context.skill
         : context?.技能快照 || {};
-    const parsed = previewRuntime.readSkillSustainCosts(sustainCost || '无', {
+    const sustainInput = sustainCost && typeof sustainCost === 'object' && !Array.isArray(sustainCost) &&
+      (Object.prototype.hasOwnProperty.call(sustainCost, '维持') || Object.prototype.hasOwnProperty.call(sustainCost, 'sustain'))
+      ? sustainCost
+      : { 维持: sustainCost || '无' };
+    const parsed = previewRuntime.readSkillSustainCosts(sustainInput, {
       ...context,
       来源模块: 'BattleRuntime_Module',
       技能: skillSnapshot,
@@ -6813,7 +6817,7 @@
     return { attached: true, diagnostic: false, representativeEffect: representativeKey };
   }
 
-  function settleSustainAtRoundEnd(unit = {}, label = '', combatData = {}) {
+  function settleSustainAtRoundEnd(unit = {}, label = '', combatData = {}, adapterOptions = {}) {
     const logs = [];
     const broken = [];
     const chargedSustainSources = new Set();
@@ -6859,6 +6863,47 @@
         return;
       }
       const costs = sustainResolution.costs;
+      if (adapterOptions?.worldActionContext !== undefined) {
+        const environmentAssessment = previewRuntime.assessWorldAction({
+          worldSnapshot: combatData,
+          actor: unit,
+          actorId: previewRuntime.unitId(unit),
+          actionType: 'BATTLE',
+          declaration: {
+            actorId: previewRuntime.unitId(unit),
+            actionKind: 'MAINTAIN_SKILL',
+            维持: true,
+            skill: effect.技能快照 || effect.技能 || {},
+          },
+          maintenance: true,
+          sustainCosts: Object.fromEntries(costs.map(cost => [cost.resource, cost.amount])),
+          durationTicks: 0,
+          worldActionContext: adapterOptions.worldActionContext,
+        });
+        if (!environmentAssessment || environmentAssessment.status !== 'resolved' || environmentAssessment.blocked) {
+          breakSustainEffect(unit, key, effect);
+          broken.push(effect.name || key);
+          const reason = environmentAssessment?.blockReasons?.join('；') || '当前环境规则不可用';
+          writeLedgerEvent(combatData, {
+            eventKind: 'state_tick',
+            round: Number(combatData?.回合 || 0),
+            actorName: previewRuntime.unitName(unit),
+            targetName: previewRuntime.unitName(unit),
+            actionName: String(effect.name || key).trim(),
+            actionType: 'sustain_break',
+            actorControl: 'SYSTEM',
+            actionRole: 'STATE_TICK',
+            result: 'broken',
+            resultState: 'FAILURE',
+            ruleCode: environmentAssessment?.status === 'resolved'
+              ? 'SUSTAIN_ENVIRONMENT_BLOCKED'
+              : 'SUSTAIN_ENVIRONMENT_CONTEXT_UNAVAILABLE',
+            meta: { source: 'structured_runtime', stateName: String(effect.name || key).trim(), reason },
+          });
+          logs.push(`[维持中断] ${label}无法在当前环境维持[${effect.name || key}]：${reason}`);
+          return;
+        }
+      }
       const sustainSource = String(
         effect.来源技能 ||
         effect.技能快照?.name ||
@@ -6965,7 +7010,7 @@
         return;
       }
       const name = previewRuntime.unitName(unit);
-      const sustainResult = settleSustainAtRoundEnd(unit, name, combatData) || {};
+      const sustainResult = settleSustainAtRoundEnd(unit, name, combatData, adapterOptions) || {};
       const conditionResult = settleConditionsAtRoundEnd(unit, name, combatData) || {};
       syncRoundEndUnit(unit);
       if (sustainResult.log) logs.push(`[团战回合尾] ${sustainResult.log}`);
@@ -12139,6 +12184,13 @@
     let terminal = null;
     const naturalActionBudget = 40;
     try {
+      if (input?.worldActionContext !== undefined) {
+        if (typeof previewRuntime.bindWorldActionContext !== 'function' ||
+          typeof previewRuntime.clearWorldActionContext !== 'function') {
+          throw new Error('battle_preview_world_context_binding_missing');
+        }
+        previewRuntime.bindWorldActionContext(combatData, input.worldActionContext);
+      }
       for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {
         combatData.回合 = Number(source?.回合 || 0) + roundOffset;
         roundsExecuted = roundOffset;
@@ -14249,7 +14301,9 @@
         }
         if (queue.fatal) throw new Error(`${queue.fatal.code}:${queue.fatal.message || ''}`);
         if (terminal?.terminal !== true) {
-          settleBattleRoundEnd(combatData, logs);
+          settleBattleRoundEnd(combatData, logs, {
+            worldActionContext: input?.worldActionContext,
+          });
         }
         terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: true }, {});
         const alive = readTeamAlive(combatData);
@@ -14367,6 +14421,9 @@
         audit, beliefObservations,
       };
     } finally {
+      if (typeof previewRuntime.clearWorldActionContext === 'function') {
+        previewRuntime.clearWorldActionContext(combatData);
+      }
       listCombatUnits(combatData).forEach(clearC2FoodMaintenanceRuntime);
       if (evaluationSession) {
         decisionRuntime.disposeEvaluationSession(evaluationSession);

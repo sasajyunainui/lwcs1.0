@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:77585e35bcc3be61cdb23a34688fd9cef1fc0181a7818b3dd5a1024370af2a9c|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:15db6be44b8b40c2b5140b3aa61766ec002acd521d291b6fdacc0bfd310136f3|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
+/* sources-sha256: LWCS_MVU_Prompt_Projector.js:621af59c602776d18cecb575a844f3449f60baa2639ca850a7c9399de92905c7|LibraryData_Runtime.js:7fcac97b2521381c311e6d47ea46da0dc963aa654105835d8d2c209f9d1e11d3|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:5b972fe966ebd231f5d9cdd4f16370c1abed4545d593f3a28f147a1f4f9f9b94|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:4820d85bb74c649e4e5db0f0d90c25c3992680935d35172637f7d06c2ffe357a */
 ;
 /* source: LWCS_MVU_Prompt_Projector.js */
 (function (root) {
@@ -1018,6 +1018,9 @@
     assertPlainRecord(value, path, '地点世界规则');
     assertStrictKeys(value, LOCATION_WORLD_RULE_KEYS, path);
     const region = requiredString(value.区域档案, `${path}.区域档案`, '区域档案');
+    if (!LOCATION_REGION_PROFILES[region] && !LOCATION_TERRAIN_PROFILES[region]) {
+      libraryFail('LIBRARY_FIELD_INVALID', `${path}.区域档案`, region, `未知区域档案: ${region}`);
+    }
     const functions = stringList(value.功能档案, `${path}.功能档案`, '功能档案');
     functions.forEach(functionName => {
       if (!LOCATION_FUNCTION_PROFILES[functionName]) {
@@ -1604,21 +1607,55 @@
       };
     });
     const reputation = Number(social.声望 || 0) || 0;
-    const priceMultiplier = Number(Math.max(0.9, Math.min(1.1, 1 - Math.max(-1000, Math.min(1000, reputation)) / 10000)).toFixed(4));
     const controlling = String(node?.掌控势力 || '').split(/[、/,，；;]/).map(item => item.trim()).filter(Boolean);
+    const locationFactions = {};
+    let locationHighest = 0;
+    let locationPriceModifier = 0;
+    controlling.forEach(name => {
+      const faction = isPlainRecord(factionTable[name]) ? factionTable[name] : {};
+      const relation = isPlainRecord(relationTable[name]) ? relationTable[name] : {};
+      const level = Math.max(0, Number(faction.权限级 || 0) || 0);
+      const identity = String(faction.身份 || '无').trim() || '无';
+      const affinity = Math.max(-100, Math.min(100, Number(relation.好感度 || 0) || 0));
+      const relationText = String(relation.关系 || '').trim();
+      const relationshipModifier = /敌对|仇恨|厌恶/.test(relationText) ? 0.02 : /友好|信任|亲密|盟友/.test(relationText) ? -0.01 : 0;
+      const identityModifier = identity !== '无' && level > 0 ? -0.01 : 0;
+      const priceModifier = Number((identityModifier - Math.min(0.04, level * 0.008) - affinity * 0.0001 + relationshipModifier).toFixed(4));
+      locationHighest = Math.max(locationHighest, level);
+      locationPriceModifier += priceModifier;
+      locationFactions[name] = {
+        身份: identity,
+        权限级: level,
+        关系: relationText || '未记录',
+        好感度: affinity,
+        价格修正: priceModifier,
+      };
+    });
+    if (controlling.length) locationPriceModifier /= controlling.length;
+    const reputationModifier = -Math.max(-1000, Math.min(1000, reputation)) / 10000;
+    const priceMultiplier = Number(Math.max(0.85, Math.min(1.15, (1 + reputationModifier) * (1 + locationPriceModifier))).toFixed(4));
     return {
       主身份: String(social.主身份 || '无'),
       声望: reputation,
       势力: factions,
       掌控势力: controlling,
       最高权限级: highest,
-      修正: { 价格倍率: priceMultiplier },
+      当前地点势力: locationFactions,
+      当前地点最高权限级: locationHighest,
+      修正: { 价格倍率: priceMultiplier, 来源: controlling.length ? '声望+当前掌控势力社交记录' : '声望' },
     };
   }
 
   function requiredWorldFacilityGroups(actionType) {
     const text = String(actionType || '').trim().toLowerCase();
-    if (/trade|交易|购买|出售/.test(text)) return [/拍卖|竞拍/.test(text) ? ['拍卖'] : ['商业']];
+    if (/auction|bid|拍卖|竞拍/.test(text)) return [['拍卖']];
+    if (/private|私下/.test(text) && !/black[_-]?market|黑市/.test(text)) return [];
+    if (/black[_-]?market|黑市/.test(text)) return [['黑市']];
+    if (/trade|buy|sell|交易|购买|出售/.test(text)) return [['商业']];
+    const isTravel = /travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(text);
+    const isPublicTransport = /列车|地铁|公交|航班|飞船客运|客运飞船|渡船|轮渡|公共交通|校车|短驳|火车|train|subway|metro|bus|flight|ferry|passenger[\s_-]*ship|space[\s_-]*(flight|shuttle)/.test(text);
+    const isPrivateTransport = /自有|自驾|私人|private|personal|own/.test(text);
+    if (isTravel && isPublicTransport && !isPrivateTransport) return [['交通']];
     if (/profession|craft|副职业|工坊|锻造|制造|设计|修理|维修/.test(text)) {
       if (/锻造/.test(text)) return [['锻造']];
       if (/修理|维修/.test(text)) return [['工业', '锻造']];
@@ -1629,6 +1666,116 @@
 
   function actionUsesSoulPower(actionType) {
     return /冥想|修炼|魂核|魂力|soul/.test(String(actionType || '').trim().toLowerCase());
+  }
+
+  function collectEnvironmentSourceTags(environmentRules = {}) {
+    const tags = [];
+    const seen = new WeakSet();
+    const visit = value => {
+      if (Array.isArray(value)) {
+        value.forEach(visit);
+        return;
+      }
+      if (!isPlainRecord(value) || seen.has(value)) return;
+      seen.add(value);
+      ['来源标签', '防护来源标签'].forEach(field => {
+        const values = Array.isArray(value[field]) ? value[field] : [value[field]];
+        values.forEach(item => {
+          const tag = String(item || '').trim();
+          if (tag && !tags.includes(tag)) tags.push(tag);
+        });
+      });
+      Object.values(value).forEach(visit);
+    };
+    visit(environmentRules);
+    return tags;
+  }
+
+  function isFormalSoulPowerProtectionEffect(effect = {}) {
+    const prototype = String(effect.原型 || '').trim();
+    const state = String(effect.状态 || '').trim();
+    if (prototype === '状态施加' && /无视异常|环境免疫/.test(state)) return true;
+    const ruleText = [effect.规则, effect.防御对象, effect.环境规则, effect.防护对象]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .join(' ');
+    if (prototype === '规则防御' && /环境免疫|环境防护|魂力限制|魂力禁用|异常免疫/.test(ruleText)) return true;
+    if (prototype === '结算修正' && /环境免疫|环境防护|魂力限制解除|魂力禁用解除/.test(`${ruleText} ${String(effect.结算 || '').trim()}`)) return true;
+    return false;
+  }
+
+  function readSoulPowerProtection(character = {}, environmentRules = {}) {
+    const environmentTags = collectEnvironmentSourceTags(environmentRules);
+    if (!environmentTags.length) return { 来源: '' };
+    const consumer = runtimeWindows()
+      .map(current => current && current.__LWCS_ITEM_PASSIVE_CONSUMER_V1__)
+      .find(value => value && typeof value.编译角色装备被动消费者_V1 === 'function');
+    if (!consumer) return { 来源: '' };
+    let packageValue;
+    try {
+      packageValue = consumer.编译角色装备被动消费者_V1(character);
+    } catch (_) {
+      return { 来源: '' };
+    }
+    const effectEntries = [
+      ...(Array.isArray(packageValue?.常驻效果) ? packageValue.常驻效果 : []),
+      ...(Array.isArray(packageValue?.动作效果) ? packageValue.动作效果 : []),
+      ...(Array.isArray(packageValue?.非战斗路由) ? packageValue.非战斗路由 : []),
+    ];
+    for (const entry of effectEntries) {
+      const effect = isPlainRecord(entry?.效果) ? entry.效果 : null;
+      if (!effect) continue;
+      if (!isFormalSoulPowerProtectionEffect(effect)) continue;
+      const restrictions = Array.isArray(effect.限定来源)
+        ? effect.限定来源.map(value => String(value || '').trim()).filter(Boolean)
+        : [String(effect.限定来源 || '').trim()].filter(Boolean);
+      const matched = restrictions.find(tag => environmentTags.includes(tag));
+      if (matched) return { 来源: matched };
+    }
+    return { 来源: '' };
+  }
+
+  function readWorldActionState(character, dataRoot, characterKey, actionType, currentTick) {
+    const blockers = [];
+    const warnings = [];
+    const state = isPlainRecord(character?.状态) ? character.状态 : {};
+    const effects = isPlainRecord(character?.属性?.状态效果) ? character.属性.状态效果 : {};
+    const tokens = [];
+    const collect = table => Object.entries(table).forEach(([key, value]) => {
+      tokens.push(key);
+      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') tokens.push(String(value));
+      else if (isPlainRecord(value)) ['状态', '名称', '描述', '类型'].forEach(field => {
+        if (value[field] !== undefined) tokens.push(String(value[field]));
+      });
+    });
+    collect(state);
+    Object.entries(effects).forEach(([key, value]) => {
+      const endTick = Number(value?.结束tick);
+      if (Number.isFinite(endTick) && endTick > 0 && currentTick !== null && currentTick >= endTick) return;
+      collect({ [key]: value });
+    });
+    const text = tokens.join('|');
+    const actionText = String(actionType || '').trim().toLowerCase();
+    const battleAction = /battle|combat|战斗|切磋/.test(actionText);
+    const restAction = /休息|睡眠|休养/.test(actionText);
+    const worldBattle = isPlainRecord(dataRoot?.world?.战斗) && dataRoot.world.战斗.进行中 === true;
+    let characterInBattle = /战斗中|战斗状态|交战/.test(text);
+    if (worldBattle) {
+      const participants = [
+        ...(Array.isArray(dataRoot.world.战斗.参战者?.team_player) ? dataRoot.world.战斗.参战者.team_player : []),
+        ...(Array.isArray(dataRoot.world.战斗.参战者?.team_enemy) ? dataRoot.world.战斗.参战者.team_enemy : []),
+      ];
+      characterInBattle = characterInBattle || !participants.length || participants.some(item => {
+        const name = String(item?.name || item?.名称 || item?.charKey || '').trim();
+        return name && [characterKey, character?.姓名, character?.名称].map(value => String(value || '').trim()).includes(name);
+      });
+    }
+    if (state.存活 === false || /昏迷|失去意识|无法行动|死亡|濒死/.test(text)) blockers.push('角色当前状态无法行动');
+    if (/休息|睡眠|休养/.test(text) && !restAction) blockers.push('角色当前处于休息状态');
+    if (characterInBattle && !battleAction) blockers.push('角色当前处于战斗状态');
+    if (/执行职务|执勤|值勤|上课|授课|工作中/.test(text)) warnings.push('角色当前正在执行职务，行动可能需要先完成或中断当前事务');
+    if (actionUsesSoulPower(actionType) && /禁魔|魂力禁用|魂力禁止/.test(text)) blockers.push('角色当前状态禁止调用魂力');
+    return { blockers, warnings, tokens: Array.from(new Set(tokens)).slice(0, 12) };
   }
 
   function buildWorldFacilityTable(view, eraId, time, permissions, terrainProfile) {
@@ -1649,7 +1796,7 @@
       const opening = String(override.开放时段 || profile.开放时段);
       const minimumPermission = Math.max(0, Number(override.最低权限级 || 0) || 0);
       const open = isOpeningRangeAvailable(parseOpeningWindow(opening), time?.日内分钟, Number(time?.持续tick || 0) * MINUTES_PER_TICK);
-      const permission = permissions.最高权限级 >= minimumPermission;
+      const permission = permissions.当前地点最高权限级 >= minimumPermission;
       output[functionName] = {
         功能: functionName,
         等级: level,
@@ -1723,7 +1870,10 @@
     const targetText = String(options.targetLocation || '').trim();
     const currentView = library && currentLocation ? resolveWorldLocationView(dataRoot, library, currentLocation, currentPath) : null;
     const targetView = library && targetText ? resolveWorldLocationView(dataRoot, library, targetText, currentPath) : null;
-    const activeView = targetView || currentView;
+    const isTravelAction = /travel|move|移动|前往|赶往|抵达|出发|启程|赶路|去往/.test(actionType.toLowerCase());
+    const activeView = isTravelAction ? currentView || targetView : targetView || currentView;
+    const facilityView = isTravelAction ? currentView || targetView : activeView;
+    const terrainView = isTravelAction ? targetView || currentView : activeView;
     const location = {
       current: currentView,
       target: targetText ? targetView || { resolved: false, name: targetText, path: normalizeLocationPath(targetText) } : null,
@@ -1736,19 +1886,24 @@
       else blockers.push(`目标地点未解析：${targetText}`);
     }
     if (!activeView && character) blockers.push('当前动作没有可解析的地点');
+    const actionState = character
+      ? readWorldActionState(character, dataRoot, characterKey, actionType, time.tick)
+      : { blockers: [], warnings: [], tokens: [] };
+    blockers.push(...actionState.blockers);
+    warnings.push(...actionState.warnings);
 
-    const terrainName = inferWorldTerrain(activeView || currentView);
+    const terrainName = inferWorldTerrain(terrainView || currentView);
     const terrainProfile = LOCATION_TERRAIN_PROFILES[terrainName] || { 设施上限: 1, 危险等级: 0, 探索难度: 30, 修炼环境: { 魂力倍率: 1, 精神力倍率: 1, 生命力倍率: 1 } };
     const terrain = {
       区域档案: activeView?.worldRules?.区域档案 || '平原',
       自然档案: terrainName,
-      路径: activeView?.path || [],
-      来源: activeView?.worldRules?.区域档案 === terrainName ? '地点规则' : '地点规则+自然档案',
+      路径: terrainView?.path || [],
+      来源: terrainView?.worldRules?.区域档案 === terrainName ? '地点规则' : '地点规则+自然档案',
     };
-    const permissions = readWorldPermissions(character || {}, activeView?.node || {});
-    const facilities = activeView ? buildWorldFacilityTable(activeView, era.id || 'current', time, permissions, terrainProfile) : {};
-    const nearbyFacilities = library && activeView ? collectNearbyWorldFacilities(library, activeView, era.id || 'current', time, permissions, terrainProfile) : [];
-    const coverage = isPlainRecord(activeView?.worldRules?.覆盖) ? activeView.worldRules.覆盖 : {};
+    const permissions = readWorldPermissions(character || {}, facilityView?.node || {});
+    const facilities = facilityView ? buildWorldFacilityTable(facilityView, era.id || 'current', time, permissions, terrainProfile) : {};
+    const nearbyFacilities = library && facilityView ? collectNearbyWorldFacilities(library, facilityView, era.id || 'current', time, permissions, terrainProfile) : [];
+    const coverage = isPlainRecord(terrainView?.worldRules?.覆盖) ? terrainView.worldRules.覆盖 : {};
     const environmentRules = isPlainRecord(coverage.环境规则) ? coverage.环境规则 : {};
     const trainingRule = isPlainRecord(coverage.修炼环境) ? coverage.修炼环境 : {};
     const facilityForTraining = ['学院', '资源']
@@ -1762,21 +1917,45 @@
       生命力: Number(Math.max(0.1, Number(trainingRule.生命力倍率 ?? terrainProfile.修炼环境.生命力倍率 ?? 1)).toFixed(4)),
       ...(facilityForTraining ? { 设施: facilityForTraining.功能, 设施等级: facilityForTraining.等级 } : {}),
     };
-    const soulPowerAvailable = environmentRules.魂力可用 !== false && environmentRules.魂力动作 !== '禁止';
-    const temporaryRuleIds = Array.from(new Set((Array.isArray(options.temporaryRuleIds) ? options.temporaryRuleIds : []).map(item => String(item || '').trim()).filter(Boolean)));
+    const terrainDanger = Math.max(0, Math.min(5, Number(terrainProfile.危险等级 || 0)));
+    const terrainDifficulty = Math.max(30, Math.min(90, Number(terrainProfile.探索难度 || 30)));
+    const dangerDelta = Math.max(0, terrainDanger - 1);
+    const difficultyDelta = Math.max(0, terrainDifficulty - 30);
+    const travelModifiers = terrainName === '平原'
+      ? { 耗时倍率: 1, 体力倍率: 1 }
+      : {
+          耗时倍率: Number(Math.max(1, Math.min(1.3, 1 + dangerDelta * 0.04 + difficultyDelta * 0.001)).toFixed(4)),
+          体力倍率: Number(Math.max(1, Math.min(1.5, 1 + dangerDelta * 0.06 + difficultyDelta * 0.0015)).toFixed(4)),
+        };
+    const 原始魂力禁用 = environmentRules.魂力可用 === false || environmentRules.魂力动作 === '禁止';
+    const 魂力保护 = readSoulPowerProtection(character || {}, environmentRules);
+    const soulPowerAvailable = !原始魂力禁用 || Boolean(魂力保护.来源);
+    const temporaryRuleSource = Array.isArray(options.temporaryRuleIds)
+      ? options.temporaryRuleIds
+      : dataRoot?.world?.战斗?.环境?.临时规则ID;
+    const temporaryRuleIds = Array.from(new Set((Array.isArray(temporaryRuleSource) ? temporaryRuleSource : []).map(item => String(item || '').trim()).filter(Boolean)));
     const modifiers = {
       修炼: cultivationModifiers,
-      技能: { 魂力可用: soulPowerAvailable, 魂力动作: soulPowerAvailable ? '允许' : '禁止' },
+      旅行: travelModifiers,
+      技能: {
+        魂力可用: soulPowerAvailable,
+        魂力动作: soulPowerAvailable ? '允许' : '禁止',
+        原始禁用: 原始魂力禁用,
+        有效可用: soulPowerAvailable,
+        保护来源: 魂力保护.来源 || '无',
+      },
       价格: { 倍率: permissions.修正.价格倍率 },
       探索: { 标准难度: Math.max(10, Math.min(90, Number(terrainProfile.探索难度 || 30) + Number(terrainProfile.危险等级 || 0) * 3)) },
       战斗: { 临时规则ID: temporaryRuleIds, 环境规则: clone(environmentRules) },
-      状态: Object.keys(character?.属性?.状态效果 || {}).slice(0, 8),
+      状态: actionState.tokens,
     };
     const hazards = [];
     if (Number(terrainProfile.危险等级 || 0) > 0) hazards.push({ 类型: '自然环境', 名称: terrainName, 等级: terrainProfile.危险等级 });
     if (isPlainRecord(coverage.危险)) hazards.push({ 类型: '地点危险', ...clone(coverage.危险) });
     Object.entries(environmentRules).forEach(([ruleId, rule]) => {
-      hazards.push({ 规则ID: ruleId, 类型: '环境规则', ...(isPlainRecord(rule) ? clone(rule) : { 值: rule }) });
+      const ruleText = `${ruleId} ${isPlainRecord(rule) ? Object.values(rule).join(' ') : String(rule || '')}`;
+      if (!/(危险|攻击|威压|压迫|潮汐|暴露|伤害|毒|重力|辐射|风暴|缺氧|高温|低温|寒冷)/.test(ruleText)) return;
+      hazards.push({ 规则ID: ruleId, 类型: '环境危险', ...(isPlainRecord(rule) ? clone(rule) : { 值: rule }) });
     });
     hazards.filter(item => Number(item.等级 || 0) >= 3).forEach(item => warnings.push(`环境危险：${item.名称 || item.规则ID || item.类型}（等级${item.等级}）`));
     nearbyFacilities.forEach(item => warnings.push(`附近有${item.功能}设施，但需要移动至${item.地点}`));
@@ -30980,11 +31159,6 @@ function 解析内置地点位置_V1(位置 = '', 地点库 = {}, 运行时 = nu
     ? 运行时.resolveLocation(原文, 片段, { library: 地点库, allowKeyword: false })
     : null;
   if (直接路径?.status === 'resolved') return 直接路径;
-  for (let 长度 = 片段.length - 1; 长度 >= 2; 长度 -= 1) {
-    const 前缀 = 片段.slice(0, 长度);
-    const 前缀解析 = 运行时.resolveLocation(前缀.join('-'), 前缀, { library: 地点库, allowKeyword: false });
-    if (前缀解析.status === 'resolved' || 前缀解析.status === 'conflict') return 前缀解析;
-  }
   if (片段.length > 1) {
     const 叶节点 = 运行时.resolveLocation(片段[片段.length - 1], [], { library: 地点库, allowKeyword: false });
     if (叶节点.status === 'resolved') return 叶节点;
@@ -31037,9 +31211,6 @@ function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
   const 记录ID列表 = [];
   const 当前tick = Math.max(0, Number(数据根?.world?.时间?.tick || 0));
   const 资源时代 = 读取当前静态资源时代_V1(数据根, 当前tick);
-  Object.entries(地点库.地点 || {}).forEach(([记录ID, 记录]) => {
-    if (记录?.实例化策略 === 'insert' && 静态记录可用_V1(资源时代, 'location', 记录ID, 当前tick)) 记录ID列表.push(记录ID);
-  });
   收集开场常驻静态记录_V1(资源时代, 'location', 当前tick).forEach(记录ID => 记录ID列表.push(记录ID));
   if (当前位置 && !['无', '未知', '待生成'].includes(当前位置)) {
     const 位置解析 = 解析内置地点位置_V1(当前位置, 地点库, 运行时);
@@ -40571,12 +40742,6 @@ function 读取内置地点位置记录ID_V1(位置 = '', 环境 = {}) {
     ? 环境.运行时.resolveLocation(原文, 片段, { library: 环境.地点库, allowKeyword: false })
     : null;
   if (直接?.status === 'resolved') return 直接.recordId;
-  for (let 长度 = 片段.length - 1; 长度 >= 2; 长度 -= 1) {
-    const 前缀 = 片段.slice(0, 长度);
-    const 前缀解析 = 环境.运行时.resolveLocation(前缀.join('-'), 前缀, { library: 环境.地点库, allowKeyword: false });
-    if (前缀解析.status === 'resolved') return 前缀解析.recordId;
-    if (前缀解析.status === 'conflict') throw new Error(`玩家位置存在地点解析冲突：${原文}（${前缀解析.candidates.join('、')}）`);
-  }
   if (片段.length > 1) {
     const 叶节点 = 环境.运行时.resolveLocation(片段[片段.length - 1], [], { library: 环境.地点库, allowKeyword: false });
     if (叶节点.status === 'resolved') return 叶节点.recordId;
