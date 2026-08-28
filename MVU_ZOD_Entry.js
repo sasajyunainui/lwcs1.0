@@ -769,36 +769,6 @@ async function 读取MVU当前数据根_V1() {
   return null;
 }
 
-async function 等待MVU当前聊天数据就绪_V1(最大等待毫秒 = 15000) {
-  const 开始时刻 = performance.now();
-  let 最近错误 = '';
-  记录MVU加载阶段_V1('mvu-data:await-start');
-  while (performance.now() - 开始时刻 < 最大等待毫秒) {
-    try {
-      const Mvu = 读取MVU共享全局值_V1('Mvu');
-      if (!Mvu || typeof Mvu.getMvuDataAsync !== 'function') throw new Error('Mvu.getMvuDataAsync 未就绪');
-      await Mvu.persistence?.awaitIdle?.();
-      const 数据 = await Mvu.getMvuDataAsync({ type: 'message', message_id: 'latest' });
-      if (数据?.stat_data && typeof 数据.stat_data === 'object' && Object.keys(数据.stat_data).length > 0
-        && Object.prototype.hasOwnProperty.call(数据, 'schema')) {
-        记录MVU加载阶段_V1('mvu-data:await-resolved', {
-          statKeys: Object.keys(数据.stat_data).length,
-          schemaKind: typeof 数据.schema,
-        });
-        return 数据;
-      }
-      最近错误 = `当前数据非canonical：${数据 && typeof 数据 === 'object' ? Object.keys(数据).join(',') : typeof 数据}`;
-    } catch (错误) {
-      最近错误 = 错误?.message || String(错误 || 'unknown_error');
-    }
-    await new Promise(继续 => setTimeout(继续, 100));
-  }
-  const 诊断 = 导出MVU链路诊断_V1();
-  记录MVU加载阶段_V1('mvu-data:await-failed', { 错误: 最近错误 });
-  console.error(`[LWCS][MVU链路诊断] ${JSON.stringify(诊断)}`);
-  throw new Error(`MVU当前聊天数据未就绪：${最近错误 || 'unknown_error'}`);
-}
-
 async function 加载MVU当前时代核心资源_V1() {
   const 集成 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
   记录MVU加载阶段_V1('era-context:data-root-start');
@@ -882,7 +852,6 @@ await 加载MVU经典依赖_V1('MVU_Hooks.js', () =>
 );
 
 await Promise.all([MVU时代资源加载承诺_V1, MVU聊天监听就绪承诺_V1]);
-await 等待MVU当前聊天数据就绪_V1();
 
 const 集成_V1 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
 const 竞争_V1 = 读取MVU共享全局值_V1('__LWCS_COMPETITION_PRIVILEGE_RUNTIME__');

@@ -1398,3 +1398,74 @@ index 76b0425..810c7bd 100644
 -                        `https://testingcf.jsdelivr.net/npm/${request}/+esm`)
 -            );
 +            return callback();
+diff --git a/src/function/update/index.ts b/src/function/update/index.ts
+--- a/src/function/update/index.ts
++++ b/src/function/update/index.ts
+@@ -3,0 +4,5 @@ import { onMessageReceived } from '@/function/update/on_message_received';
++import {
++    awaitBeforeGeneration,
++    isTtMvuHost,
++    scheduleMvuTask,
++} from '@/function/update/mvu_runtime';
+@@ -4,0 +10 @@ import { handleVariablesInMessage } from '@/function/update_variables';
++import { useDataStore } from '@/store';
+@@ -8,0 +15,9 @@ export function initResponse() {
++    const is_tt_host = isTtMvuHost();
++    const handle_message_received = (message_id: number) => {
++        if (!is_tt_host) {
++            return onMessageReceived(message_id);
++        }
++        scheduleMvuTask('message_received', message_id, task =>
++            onMessageReceived(message_id, { task })
++        );
++    };
+@@ -15 +30,3 @@ export function initResponse() {
+-            is_jest_environment ? onMessageReceived : _.throttle(onMessageReceived, 3000)
++            is_jest_environment
++                ? handle_message_received
++                : _.throttle(handle_message_received, 3000)
+@@ -17,0 +35,13 @@ export function initResponse() {
++    if (is_tt_host) {
++        stop_list.push(
++            controlledStoppableEventOn(
++                tavern_events.GENERATION_AFTER_COMMANDS,
++                (_type: string, _option: Record<string, unknown>, dry_run: boolean) => {
++                    if (dry_run || useDataStore().runtimes.is_during_extra_analysis) {
++                        return;
++                    }
++                    return awaitBeforeGeneration();
++                }
++            )
++        );
++    }
+diff --git a/src/function/update/on_message_received.ts b/src/function/update/on_message_received.ts
+--- a/src/function/update/on_message_received.ts
++++ b/src/function/update/on_message_received.ts
+@@ -3,0 +4 @@ import { invokeExtraModelWithStrategy } from '@/function/update/invoke_extra_model';
++import type { MvuRuntimeTask } from '@/function/update/mvu_runtime';
+@@ -10 +11 @@ export async function onMessageReceived(
+-    { force = false }: { force?: boolean } = {}
++    { force = false, task }: { force?: boolean; task?: MvuRuntimeTask } = {}
+@@ -11,0 +13,3 @@ export async function onMessageReceived(
++    const is_current = task?.isCurrent ?? (() => true);
++    const refresh_current = task?.refreshFingerprint ?? (() => undefined);
++    if (!is_current()) return;
+@@ -38 +43 @@ export async function onMessageReceived(
+-        await handleVariablesInMessage(message_id);
++        await handleVariablesInMessage(message_id, is_current, refresh_current);
+@@ -40,0 +46 @@ export async function onMessageReceived(
++    if (!is_current()) return;
+@@ -52,0 +58 @@ export async function onMessageReceived(
++    if (!is_current()) return;
+@@ -54 +60,2 @@ export async function onMessageReceived(
+-        const chat_message = getChatMessages(message_id);
++        const chat_message = getChatMessages(message_id).at(-1);
++        if (!chat_message) return;
+@@ -60 +67 @@ export async function onMessageReceived(
+-                    message: chat_message[0].message.trimEnd() + '\n\n' + result,
++                    message: chat_message.message.trimEnd() + '\n\n' + result,
+@@ -66,0 +74 @@ export async function onMessageReceived(
++        refresh_current();
+@@ -73 +81 @@ export async function onMessageReceived(
+-    await handleVariablesInMessage(message_id);
++    await handleVariablesInMessage(message_id, is_current, refresh_current);
