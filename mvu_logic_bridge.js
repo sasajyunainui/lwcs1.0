@@ -7924,10 +7924,10 @@
       .find(接口 => 接口 && typeof 接口.listCurrencies === 'function') || null;
     const integration = 读取时代运行时集成_桥接();
     const tick = Number(deepGet(数据根, 'world.时间.tick', NaN));
-    let eraId = 'current';
-    let status = 'implicit-current';
+    let eraId = null;
+    let status = 'era-context-missing';
     let context = null;
-    let diagnostic = { selector: 'implicit-current', code: 'IMPLICIT_CURRENT' };
+    let diagnostic = { selector: 'missing-context', code: 'ERA_CONTEXT_MISSING' };
     if (Number.isFinite(tick) && tick >= 0) {
       if (!integration) {
         return { status: 'era-context-unready', eraId: null, registry, currencies: [], context: null, diagnostic: { selector: 'tick-context', code: 'ERA_CONTEXT_NOT_READY', tick } };
@@ -7942,6 +7942,7 @@
         return { status: 'era-context-failed', eraId: null, registry, currencies: [], context: null, diagnostic: { selector: 'tick-context', code: 'ERA_CONTEXT_FAILED', tick, detail: 错误?.message || String(错误 || '') } };
       }
     }
+    if (!eraId) return { status, eraId: null, registry, currencies: [], context: null, diagnostic, resourceStatus: 'unavailable' };
     const listed = registry?.listCurrencies(eraId);
     if (status === 'resolved' && listed?.status !== 'resolved') status = 'currency-registry-unresolved';
     const currencies = listed?.status === 'resolved'
@@ -7970,9 +7971,7 @@
       if (Number.isFinite(tick) && tick >= 0 && typeof integration.getStaticSource === 'function') {
         return integration.getStaticSource(resourceType, tick);
       }
-      if (typeof integration.getStaticSourceForEra === 'function') {
-        return { ...integration.getStaticSourceForEra('current', resourceType), diagnostic: { selector: 'implicit-current', resourceType } };
-      }
+      return { status: 'unloaded', resourceStatus: 'unloaded', resourceType, detail: '缺少时代或可读tick', diagnostic: { selector: 'missing-context', code: 'ERA_CONTEXT_MISSING', resourceType } };
     } catch (错误) {
       return { status: 'failed', resourceStatus: 'failed', resourceType, detail: 错误?.message || String(错误 || '') };
     }
@@ -16214,8 +16213,25 @@
   function getSharedMvuRefreshHub() {
     const hubKey = '__dragonUiSharedMvuRefreshHub';
     const existingHub = window[hubKey];
-    if (existingHub && typeof existingHub.subscribe === 'function' && typeof existingHub.trigger === 'function') {
+    const isMainRefreshHub = !!(
+      existingHub
+      && typeof existingHub.subscribe === 'function'
+      && typeof existingHub.trigger === 'function'
+      && (
+        existingHub.owner === 'mvu_logic_bridge'
+        || (
+          existingHub.runtime
+          && typeof existingHub.requestRecovery === 'function'
+          && typeof existingHub.markVariableUpdateEnded === 'function'
+        )
+      )
+    );
+    if (isMainRefreshHub) {
+      try { if (!existingHub.owner) existingHub.owner = 'mvu_logic_bridge'; } catch (_) {}
       return existingHub;
+    }
+    if (existingHub && typeof existingHub.stopBindings === 'function') {
+      try { existingHub.stopBindings(); } catch (_) {}
     }
 
     const subscribers = new Map();
@@ -16274,6 +16290,9 @@
     };
 
     const hub = {
+      owner: 'mvu_logic_bridge',
+      contractVersion: 1,
+
       runtime: {
         get revision() {
           return revision;
@@ -36842,6 +36861,18 @@
       return buildFactionDossierModal(snapshot, previewKey);
     }
     if (isMapOverviewPreviewKey(previewKey)) {
+      const refreshMapDetail = nextSnapshot => {
+        if (typeof window.__sheepMapRefreshLive === 'function') {
+          Promise.resolve(
+            window.__sheepMapRefreshLive(true, nextSnapshot?.rootData, false),
+          ).catch(error => console.warn('[DragonUI] 星图详情增量刷新失败', error));
+          return;
+        }
+        if (typeof window.__sheepMapResync === 'function') {
+          window.__sheepMapResync({ center: false, syncVisual: false });
+          scheduleUnifiedMapCanvasClamp();
+        }
+      };
       return {
         title: `${'\u5168\u606f\u661f\u56fe'} / ${getMapDisplayName(snapshot)}`,
         summary: '',
@@ -36856,15 +36887,11 @@
           const stage =
             mountEl && mountEl.querySelector ? mountEl.querySelector('[data-mvu-map-stage="detail"]') : null;
           if (stage) setLiveNodeHtml(stage, '');
-          if (typeof window.__sheepMapResync === 'function') {
-            window.setTimeout(() => {
-              try {
-                window.__sheepMapResync({ center: false, syncVisual: false });
-              } catch (err) {}
-              scheduleUnifiedMapCanvasClamp();
-            }, 0);
-          }
-          return null;
+          window.setTimeout(() => refreshMapDetail(snapshot), 0);
+          return {
+            updateData: refreshMapDetail,
+            destroy() {},
+          };
         },
       };
     }
@@ -44185,7 +44212,11 @@
           return;
         }
         const liveSubUiKeys = new Set(['副职业工坊', '储物仓库详细页', '当前节点详情', '交易模块弹窗', '交易网络', '赛事', '特殊权限']);
-        if (liveSubUiKeys.has(activeDetailPreviewKey) && activeSubUI && typeof activeSubUI.updateData === 'function') {
+        if (
+          (liveSubUiKeys.has(activeDetailPreviewKey) || isMapOverviewPreviewKey(activeDetailPreviewKey))
+          && activeSubUI
+          && typeof activeSubUI.updateData === 'function'
+        ) {
           activeSubUI.updateData(liveSnapshot);
         } else {
           rerenderDetailSurface(activeDetailPreviewKey, {

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8fe16888a827ce5a025061e15fc9d6d696a4e5366e05f6911521f8355b312f2b */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1d44c3297bacac694c32fcc9c414220a718421f73c27a6a876da68eb3054b291 */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -17437,8 +17437,25 @@
   function getSharedMvuRefreshHub() {
     const hubKey = '__dragonUiSharedMvuRefreshHub';
     const existingHub = window[hubKey];
-    if (existingHub && typeof existingHub.subscribe === 'function' && typeof existingHub.trigger === 'function') {
+    const isMainRefreshHub = !!(
+      existingHub
+      && typeof existingHub.subscribe === 'function'
+      && typeof existingHub.trigger === 'function'
+      && (
+        existingHub.owner === 'mvu_logic_bridge'
+        || (
+          existingHub.runtime
+          && typeof existingHub.requestRecovery === 'function'
+          && typeof existingHub.markVariableUpdateEnded === 'function'
+        )
+      )
+    );
+    if (isMainRefreshHub) {
+      try { if (!existingHub.owner) existingHub.owner = 'mvu_logic_bridge'; } catch (_) {}
       return existingHub;
+    }
+    if (existingHub && typeof existingHub.stopBindings === 'function') {
+      try { existingHub.stopBindings(); } catch (_) {}
     }
 
     const subscribers = new Map();
@@ -17497,6 +17514,9 @@
     };
 
     const hub = {
+      owner: 'mvu_logic_bridge',
+      contractVersion: 1,
+
       runtime: {
         get revision() {
           return revision;
@@ -38065,6 +38085,18 @@
       return buildFactionDossierModal(snapshot, previewKey);
     }
     if (isMapOverviewPreviewKey(previewKey)) {
+      const refreshMapDetail = nextSnapshot => {
+        if (typeof window.__sheepMapRefreshLive === 'function') {
+          Promise.resolve(
+            window.__sheepMapRefreshLive(true, nextSnapshot?.rootData, false),
+          ).catch(error => console.warn('[DragonUI] 星图详情增量刷新失败', error));
+          return;
+        }
+        if (typeof window.__sheepMapResync === 'function') {
+          window.__sheepMapResync({ center: false, syncVisual: false });
+          scheduleUnifiedMapCanvasClamp();
+        }
+      };
       return {
         title: `${'\u5168\u606f\u661f\u56fe'} / ${getMapDisplayName(snapshot)}`,
         summary: '',
@@ -38079,15 +38111,11 @@
           const stage =
             mountEl && mountEl.querySelector ? mountEl.querySelector('[data-mvu-map-stage="detail"]') : null;
           if (stage) setLiveNodeHtml(stage, '');
-          if (typeof window.__sheepMapResync === 'function') {
-            window.setTimeout(() => {
-              try {
-                window.__sheepMapResync({ center: false, syncVisual: false });
-              } catch (err) {}
-              scheduleUnifiedMapCanvasClamp();
-            }, 0);
-          }
-          return null;
+          window.setTimeout(() => refreshMapDetail(snapshot), 0);
+          return {
+            updateData: refreshMapDetail,
+            destroy() {},
+          };
         },
       };
     }
@@ -45408,7 +45436,11 @@
           return;
         }
         const liveSubUiKeys = new Set(['副职业工坊', '储物仓库详细页', '当前节点详情', '交易模块弹窗', '交易网络', '赛事', '特殊权限']);
-        if (liveSubUiKeys.has(activeDetailPreviewKey) && activeSubUI && typeof activeSubUI.updateData === 'function') {
+        if (
+          (liveSubUiKeys.has(activeDetailPreviewKey) || isMapOverviewPreviewKey(activeDetailPreviewKey))
+          && activeSubUI
+          && typeof activeSubUI.updateData === 'function'
+        ) {
           activeSubUI.updateData(liveSnapshot);
         } else {
           rerenderDetailSurface(activeDetailPreviewKey, {

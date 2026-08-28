@@ -1855,12 +1855,28 @@
     return null;
   }
 
+  let mapFallbackMvuRefreshHub = null;
+
   function getSharedMvuRefreshHub() {
     const hubKey = '__dragonUiSharedMvuRefreshHub';
     const existingHub = window[hubKey];
-    if (existingHub && typeof existingHub.subscribe === 'function' && typeof existingHub.trigger === 'function') {
+    const isMainRefreshHub = !!(
+      existingHub
+      && typeof existingHub.subscribe === 'function'
+      && typeof existingHub.trigger === 'function'
+      && (
+        existingHub.owner === 'mvu_logic_bridge'
+        || (
+          existingHub.runtime
+          && typeof existingHub.requestRecovery === 'function'
+          && typeof existingHub.markVariableUpdateEnded === 'function'
+        )
+      )
+    );
+    if (isMainRefreshHub) {
       return existingHub;
     }
+    if (mapFallbackMvuRefreshHub) return mapFallbackMvuRefreshHub;
 
     const subscribers = new Map();
     let bindingsReady = false;
@@ -1889,6 +1905,8 @@
     };
 
     const hub = {
+      owner: 'sheep_map_restore',
+
       async getAllVariables() {
         return await getAllVariablesDirect();
       },
@@ -2063,7 +2081,7 @@
       }
     };
 
-    window[hubKey] = hub;
+    mapFallbackMvuRefreshHub = hub;
     return hub;
   }
 
@@ -4413,7 +4431,9 @@
 
   try {
     window.__sheepMapResync = resyncMapShell;
-    window.__sheepMapRefreshLive = (preserveSelection = true) => refreshLiveMap(preserveSelection, undefined, true);
+    window.__sheepMapRefreshLive = (preserveSelection = true, sharedVars = undefined, force = true) => (
+      refreshLiveMap(preserveSelection, sharedVars, force)
+    );
   } catch (_) {}
 
   function projectCoord(coord) {

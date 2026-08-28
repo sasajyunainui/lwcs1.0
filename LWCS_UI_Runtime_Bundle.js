@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:8fe16888a827ce5a025061e15fc9d6d696a4e5366e05f6911521f8355b312f2b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:a02ad5e578c94d7a72a809a5761fd1b1e431500f5dcf829e927cc01293eb1f0a|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:a470fa20e5bfbba99c349eb667879d0b93666e9c67c94fb534bd5683b133a65d|BattleRuntime_Module.js:c47ad09b6d4cf01205b5319ae69603b98d027f604737c0298df7112572be1ead|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:8d81c55208c4b7a4dc3c2d2d0d1d7b7268e825cf8771f80e3b2a0b90eaf2168c */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1d44c3297bacac694c32fcc9c414220a718421f73c27a6a876da68eb3054b291|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:fdcbfd28286e4f8fc2408ff135c4e1512199db341afd606705082f2aad6ef81d|BehaviorDecisionPipeline_Module.js:c6ef7208d4bb93dcb52ea821199e20fbf9b443e44c19ec00b8a02eae0a9b5549|BattleDecision_Module.js:a470fa20e5bfbba99c349eb667879d0b93666e9c67c94fb534bd5683b133a65d|BattleRuntime_Module.js:c47ad09b6d4cf01205b5319ae69603b98d027f604737c0298df7112572be1ead|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:8d81c55208c4b7a4dc3c2d2d0d1d7b7268e825cf8771f80e3b2a0b90eaf2168c */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -17437,8 +17437,25 @@
   function getSharedMvuRefreshHub() {
     const hubKey = '__dragonUiSharedMvuRefreshHub';
     const existingHub = window[hubKey];
-    if (existingHub && typeof existingHub.subscribe === 'function' && typeof existingHub.trigger === 'function') {
+    const isMainRefreshHub = !!(
+      existingHub
+      && typeof existingHub.subscribe === 'function'
+      && typeof existingHub.trigger === 'function'
+      && (
+        existingHub.owner === 'mvu_logic_bridge'
+        || (
+          existingHub.runtime
+          && typeof existingHub.requestRecovery === 'function'
+          && typeof existingHub.markVariableUpdateEnded === 'function'
+        )
+      )
+    );
+    if (isMainRefreshHub) {
+      try { if (!existingHub.owner) existingHub.owner = 'mvu_logic_bridge'; } catch (_) {}
       return existingHub;
+    }
+    if (existingHub && typeof existingHub.stopBindings === 'function') {
+      try { existingHub.stopBindings(); } catch (_) {}
     }
 
     const subscribers = new Map();
@@ -17497,6 +17514,9 @@
     };
 
     const hub = {
+      owner: 'mvu_logic_bridge',
+      contractVersion: 1,
+
       runtime: {
         get revision() {
           return revision;
@@ -38065,6 +38085,18 @@
       return buildFactionDossierModal(snapshot, previewKey);
     }
     if (isMapOverviewPreviewKey(previewKey)) {
+      const refreshMapDetail = nextSnapshot => {
+        if (typeof window.__sheepMapRefreshLive === 'function') {
+          Promise.resolve(
+            window.__sheepMapRefreshLive(true, nextSnapshot?.rootData, false),
+          ).catch(error => console.warn('[DragonUI] 星图详情增量刷新失败', error));
+          return;
+        }
+        if (typeof window.__sheepMapResync === 'function') {
+          window.__sheepMapResync({ center: false, syncVisual: false });
+          scheduleUnifiedMapCanvasClamp();
+        }
+      };
       return {
         title: `${'\u5168\u606f\u661f\u56fe'} / ${getMapDisplayName(snapshot)}`,
         summary: '',
@@ -38079,15 +38111,11 @@
           const stage =
             mountEl && mountEl.querySelector ? mountEl.querySelector('[data-mvu-map-stage="detail"]') : null;
           if (stage) setLiveNodeHtml(stage, '');
-          if (typeof window.__sheepMapResync === 'function') {
-            window.setTimeout(() => {
-              try {
-                window.__sheepMapResync({ center: false, syncVisual: false });
-              } catch (err) {}
-              scheduleUnifiedMapCanvasClamp();
-            }, 0);
-          }
-          return null;
+          window.setTimeout(() => refreshMapDetail(snapshot), 0);
+          return {
+            updateData: refreshMapDetail,
+            destroy() {},
+          };
         },
       };
     }
@@ -45408,7 +45436,11 @@
           return;
         }
         const liveSubUiKeys = new Set(['副职业工坊', '储物仓库详细页', '当前节点详情', '交易模块弹窗', '交易网络', '赛事', '特殊权限']);
-        if (liveSubUiKeys.has(activeDetailPreviewKey) && activeSubUI && typeof activeSubUI.updateData === 'function') {
+        if (
+          (liveSubUiKeys.has(activeDetailPreviewKey) || isMapOverviewPreviewKey(activeDetailPreviewKey))
+          && activeSubUI
+          && typeof activeSubUI.updateData === 'function'
+        ) {
           activeSubUI.updateData(liveSnapshot);
         } else {
           rerenderDetailSurface(activeDetailPreviewKey, {
@@ -67998,7 +68030,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   function calculateSettledSegmentDamage(totalDamage = 0, segments = 1, damageMultiplier = 1) {
     const segmentCount = Math.max(1, Math.floor(Number(segments || 1)));
     const multiplier = clamp(Number(damageMultiplier ?? 1), 0, 1);
-    return Math.max(0, Math.round(Math.max(0, Number(totalDamage || 0)) / segmentCount * multiplier));
+    const positiveDamage = Math.max(0, Number(totalDamage || 0));
+    if (!(positiveDamage > 0) || !(multiplier > 0)) return 0;
+    return Math.max(1, Math.round(positiveDamage / segmentCount * multiplier));
   }
 
   function expectedSegmentedDamageOutcome(input = {}) {

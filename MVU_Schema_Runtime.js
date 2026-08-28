@@ -3248,9 +3248,6 @@ function 应用内置地点实例化_V1(数据根 = {}, 选项 = {}) {
   const 记录ID列表 = [];
   const 当前tick = Math.max(0, Number(数据根?.world?.时间?.tick || 0));
   const 资源时代 = 读取当前静态资源时代_V1(数据根, 当前tick);
-  Object.entries(地点库.地点 || {}).forEach(([记录ID, 记录]) => {
-    if (记录?.实例化策略 === 'insert' && 静态记录可用_V1(资源时代, 'location', 记录ID, 当前tick)) 记录ID列表.push(记录ID);
-  });
   收集开场常驻静态记录_V1(资源时代, 'location', 当前tick).forEach(记录ID => 记录ID列表.push(记录ID));
   if (当前位置 && !['无', '未知', '待生成'].includes(当前位置)) {
     const 位置解析 = 解析内置地点位置_V1(当前位置, 地点库, 运行时);
@@ -3357,6 +3354,20 @@ function 应用开场时间线内置角色入库_V1(数据根 = {}, 命令 = nul
   if (!节点定义 || !Number.isFinite(Number(节点定义.tick))) throw new Error(`开场节点无效：${eraId}/${开场节点}`);
   if (时代集成.resolveResourceEraAtTick(当前tick) !== eraId) throw new Error(`开场tick与时代不一致：${eraId}/${当前tick}`);
   if (Math.abs(Number(节点定义.tick) - 当前tick) > 1e-9) throw new Error(`开场tick与快照不一致：${开场节点}`);
+  const 玩家名 = String(数据根?.sys?.玩家名 || '').trim();
+  const 玩家角色 = 玩家名 && 数据根.char[玩家名] && typeof 数据根.char[玩家名] === 'object'
+    ? 数据根.char[玩家名]
+    : null;
+  数据根.char = 玩家角色 ? { [玩家名]: 玩家角色 } : {};
+  数据根.物品 = {};
+  数据根.org = {};
+  const 偏差倍率 = Number(数据根?.world?.偏差倍率);
+  数据根.world = {
+    时间: { tick: 当前tick, _上次结算tick: 当前tick },
+    ...(Number.isFinite(偏差倍率) ? { 偏差倍率 } : {}),
+    地点: {},
+    动态地点: {},
+  };
   const 已写入 = [];
   Object.values(角色库.角色 || {}).forEach(角色记录 => {
     const 角色名 = String(角色记录?.角色名 || '').trim();

@@ -2552,7 +2552,9 @@
   function calculateSettledSegmentDamage(totalDamage = 0, segments = 1, damageMultiplier = 1) {
     const segmentCount = Math.max(1, Math.floor(Number(segments || 1)));
     const multiplier = clamp(Number(damageMultiplier ?? 1), 0, 1);
-    return Math.max(0, Math.round(Math.max(0, Number(totalDamage || 0)) / segmentCount * multiplier));
+    const positiveDamage = Math.max(0, Number(totalDamage || 0));
+    if (!(positiveDamage > 0) || !(multiplier > 0)) return 0;
+    return Math.max(1, Math.round(positiveDamage / segmentCount * multiplier));
   }
 
   function expectedSegmentedDamageOutcome(input = {}) {

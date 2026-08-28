@@ -52467,6 +52467,224 @@
     return { recipientId, useEffects };
   }
 
+  const r9v2LinearCausalCodes = Object.freeze([
+    'OBJECTIVE_PROGRESS', 'SELF_FOLLOWUP_POOL_GAIN',
+    'SELF_FOLLOWUP_MECHANICAL_GAIN', 'RESOURCE_RUNWAY_GAIN',
+    'ENEMY_RESPONSE_OPTION_DENIAL', 'OPPONENT_RESPONSE_PRESSURE',
+    'REACTION_FOLLOWUP_GAIN', 'SETUP_INTERRUPT_RISK',
+    'ALLY_OPTION_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
+    'PROTECTION_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
+  ]);
+
+  function r9v2LinearSkillValue(skill = {}) {
+    return Math.min(4, (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).reduce((sum, effect) => {
+      const prototype = String(effect?.原型 || '').trim();
+      const value = Math.abs(Number.parseFloat(String(effect?.数值 ?? effect?.威力倍率 ?? 0))) || 0;
+      if (prototype === '伤害结算') return sum + Math.max(0.2, Number(effect?.威力倍率 || 50) / 100);
+      if (['行动机会', '机制授予', '召唤生成'].includes(prototype)) return sum + 1;
+      if (['状态施加', '状态移除', '规则防御', '资源锁定', '机制抹消'].includes(prototype)) return sum + 0.75;
+      if (['护盾变化', '属性修正', '判定修正', '结算修正'].includes(prototype)) return sum + Math.max(0.35, Math.min(1, value / 25));
+      if (prototype === '资源变化' || prototype === '资源转移') return sum + Math.max(0.25, Math.min(1, value / 25));
+      return sum + 0.1;
+    }, 0));
+  }
+
+  function r9v2LinearSkillPool(unit = {}) {
+    const rows = collectSkills(unit).map(sourceSkill => {
+      const skill = preview.applySkillSettlementModifiers(
+        unit,
+        applyEquipmentPassivesToSkill(unit, sourceSkill),
+      ).skill;
+      if (!Array.isArray(skill?._效果数组) || !skill._效果数组.length) return null;
+      const affordable = checkSkillCostAffordable(unit, skill, {
+        context: skillCostParserContext(unit, skill),
+      });
+      return affordable.valid && affordable.affordable
+        ? { id: skillId(sourceSkill), value: r9v2LinearSkillValue(skill), skill }
+        : null;
+    }).filter(Boolean);
+    return {
+      count: rows.length,
+      value: rows.reduce((sum, row) => sum + row.value, 0),
+      rows,
+    };
+  }
+
+  function r9v2LinearResourceRatio(unit = {}) {
+    return ['魂力', '精神力', '体力'].reduce((sum, resource) =>
+      sum + preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)), 0) / 3;
+  }
+
+  function r9v2LinearSideUnits(worldSnapshot = {}, side = '') {
+    return preview.listUnits(worldSnapshot)
+      .filter(entry => entry.side === side && preview.isPhysicallyAlive(entry.unit))
+      .map(entry => entry.unit);
+  }
+
+  function r9v2LinearSideStateValue(worldSnapshot = {}, side = '') {
+    const units = r9v2LinearSideUnits(worldSnapshot, side);
+    if (!units.length) return 0;
+    return units.reduce((sum, unit) => sum +
+      0.75 * preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)) +
+      0.25 * r9v2LinearResourceRatio(unit), 0) / units.length;
+  }
+
+  function r9v2LinearMechanicalCoverage(worldSnapshot = {}, actorId = '', hostileSide = '') {
+    const actor = preview.findUnit(worldSnapshot, actorId);
+    if (!actor) return 0;
+    const targets = r9v2LinearSideUnits(worldSnapshot, hostileSide);
+    if (!targets.length) return 0;
+    return collectSkills(actor).reduce((total, skill) => total +
+      (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).reduce((sum, effect) => {
+        if (!effect || typeof effect !== 'object') return sum;
+        const enabled = targets.some(target => preview.effectConditionEnabled(effect, worldSnapshot, actor, target));
+        return sum + (enabled ? Math.max(0.1, r9v2LinearSkillValue({ _效果数组: [effect] })) : 0);
+      }, 0), 0);
+  }
+
+  function r9v2LinearTerminalValue(result = {}, actorSide = '') {
+    if (result?.terminal !== true) return 0;
+    if (result.winner === 'draw') return 0;
+    const actorWon = (result.winner === 'player' && actorSide === 'team_player') ||
+      (result.winner === 'enemy' && actorSide === 'team_enemy');
+    return actorWon ? 1 : -1;
+  }
+
+  function r9v2LinearResponseRetention(request = {}, target = {}, actor = {}) {
+    let retention = Math.min(
+      preview.calculateDefenseDamageMultiplier(target, actor, false),
+      1 - preview.calculateDodgeProbability(target, actor, false),
+    );
+    const known = Array.isArray(request?.beliefState?.publicResponses?.[preview.unitId(target)])
+      ? request.beliefState.publicResponses[preview.unitId(target)]
+      : [];
+    known.forEach(response => {
+      if (Number.isFinite(Number(response?.damageMultiplier))) retention = Math.min(retention, Number(response.damageMultiplier));
+      if (Number.isFinite(Number(response?.dodgeProbability))) retention = Math.min(retention, 1 - Number(response.dodgeProbability));
+    });
+    return clamp(retention, 0, 1);
+  }
+
+  function r9v2LinearCausalFeatureRows(request = {}, candidate = {}, result = {}) {
+    const before = request.visibleWorld;
+    const after = result.afterSnapshot || before;
+    const actorId = request.actorId;
+    const actorSide = request.actorSide;
+    const hostileSide = actorSide === 'team_player' ? 'team_enemy' : 'team_player';
+    const actorBefore = preview.findUnit(before, actorId);
+    const actorAfter = preview.findUnit(after, actorId) || actorBefore;
+    const declaration = candidate.declaration || {};
+    const role = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
+    const beforePool = r9v2LinearSkillPool(actorBefore || {});
+    const afterPool = r9v2LinearSkillPool(actorAfter || {});
+    const poolScale = Math.max(1, beforePool.value, afterPool.value);
+    const beforeMechanical = r9v2LinearMechanicalCoverage(before, actorId, hostileSide);
+    const afterMechanical = r9v2LinearMechanicalCoverage(after, actorId, hostileSide);
+    const mechanicalScale = Math.max(1, beforeMechanical, afterMechanical);
+    const beforeAllies = r9v2LinearSideUnits(before, actorSide).filter(unit => preview.unitId(unit) !== actorId);
+    const afterAllies = new Map(r9v2LinearSideUnits(after, actorSide).map(unit => [preview.unitId(unit), unit]));
+    let allyOptionGain = 0;
+    beforeAllies.forEach(unit => {
+      const next = afterAllies.get(preview.unitId(unit)) || unit;
+      const priorPool = r9v2LinearSkillPool(unit);
+      const nextPool = r9v2LinearSkillPool(next);
+      allyOptionGain += Math.max(0, nextPool.value - priorPool.value) / Math.max(1, priorPool.value, nextPool.value);
+    });
+    allyOptionGain = clamp(allyOptionGain / Math.max(1, beforeAllies.length), 0, 1);
+    const enemiesBefore = r9v2LinearSideUnits(before, hostileSide);
+    const enemiesAfter = new Map(r9v2LinearSideUnits(after, hostileSide).map(unit => [preview.unitId(unit), unit]));
+    let enemyDenial = 0;
+    let hostilePressure = 0;
+    enemiesBefore.forEach(unit => {
+      const next = enemiesAfter.get(preview.unitId(unit));
+      const priorPool = r9v2LinearSkillPool(unit);
+      const nextPool = next ? r9v2LinearSkillPool(next) : { value: 0 };
+      enemyDenial += Math.max(0, priorPool.value - nextPool.value) / Math.max(1, priorPool.value);
+      const hpLoss = Math.max(0, preview.readHp(unit) - (next ? preview.readHp(next) : 0)) / Math.max(1, preview.readHpMax(unit));
+      hostilePressure += hpLoss * r9v2LinearResponseRetention(request, unit, actorBefore || {});
+    });
+    enemyDenial = clamp(enemyDenial / Math.max(1, enemiesBefore.length), 0, 1);
+    hostilePressure = clamp(hostilePressure / Math.max(1, enemiesBefore.length), 0, 1);
+    const objectives = request?.objectiveContract || request?.battleIntent?.objectives || before?.胜负条件 || {};
+    const beforeObjective = preview.evaluateBattleObjectivesCompact(before, objectives);
+    const afterObjective = preview.evaluateBattleObjectivesCompact(after, objectives);
+    const terminalProgress = r9v2LinearTerminalValue(afterObjective, actorSide) - r9v2LinearTerminalValue(beforeObjective, actorSide);
+    const stateProgress = (
+      r9v2LinearSideStateValue(after, actorSide) - r9v2LinearSideStateValue(before, actorSide) -
+      r9v2LinearSideStateValue(after, hostileSide) + r9v2LinearSideStateValue(before, hostileSide)
+    ) / 2;
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const setupAction = effects.some(effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      return ['资源变化', '属性修正', '判定修正', '结算修正', '召唤生成', '机制授予'].includes(prototype) &&
+        !effects.some(row => String(row?.原型 || '').trim() === '伤害结算');
+    });
+    const castTime = Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0));
+    const naturalBudget = Math.max(1, Number(request?.actionOpportunity?.naturalActionBudget || 40));
+    const enemyThreat = Math.max(0, ...enemiesBefore.map(enemy =>
+      preview.calculateBaseActionValue(enemy, actorBefore || {}, { actionKind: 'BASIC_ATTACK' }) / 100));
+    const targetIds = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
+    const hostileTargets = targetIds.map(id => preview.findUnit(before, id)).filter(unit => unit && preview.sideOf(before, unit) === hostileSide);
+    const lowestHostileRatio = Math.min(1, ...enemiesBefore.map(unit => preview.readHp(unit) / Math.max(1, preview.readHpMax(unit))));
+    const focusGain = hostileTargets.some(unit =>
+      preview.readHp(unit) / Math.max(1, preview.readHpMax(unit)) <= lowestHostileRatio + 1e-9) ? hostilePressure : 0;
+    let protectionGain = 0;
+    let redundant = 0;
+    let supportiveCount = 0;
+    effects.forEach(effect => {
+      const prototype = String(effect?.原型 || '').trim();
+      const friendly = preview.effectTargetsAllies(effect) || /自身|友方|己方/.test(String(effect?.目标 || ''));
+      if (!friendly || !['资源变化', '护盾变化', '属性修正', '判定修正', '结算修正', '状态施加', '状态移除'].includes(prototype)) return;
+      supportiveCount += 1;
+      const recipients = targetIds.map(id => preview.findUnit(before, id)).filter(Boolean);
+      const relevant = recipients.length ? recipients : [actorBefore].filter(Boolean);
+      const need = relevant.reduce((sum, unit) => sum + (1 - preview.readHp(unit) / Math.max(1, preview.readHpMax(unit))), 0) / Math.max(1, relevant.length);
+      protectionGain = Math.max(protectionGain, need);
+      if (prototype === '资源变化' && relevant.every(unit => {
+        const resource = String(effect?.资源 || '').trim();
+        return preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)) >= 0.95;
+      })) redundant += 1;
+    });
+    const incoming = request?.actionOpportunity?.incomingAction || {};
+    const source = preview.findUnit(before, request?.actionOpportunity?.sourceActorId || incoming?.actorId);
+    const incomingThreat = source && actorBefore
+      ? preview.calculateBaseActionValue(source, actorBefore, incoming) / 100
+      : 0;
+    const selfHpGain = Math.max(0, preview.readHp(actorAfter || {}) - preview.readHp(actorBefore || {})) / Math.max(1, preview.readHpMax(actorBefore || {}));
+    const selfShieldGain = Math.max(0, preview.readShield(actorAfter || {}) - preview.readShield(actorBefore || {})) / Math.max(1, preview.readHpMax(actorBefore || {}));
+    const defensivePrevention = declaration.actionKind === 'DEFEND'
+      ? incomingThreat * (1 - preview.calculateDefenseDamageMultiplier(actorBefore || {}, source || {}, false))
+      : declaration.actionKind === 'EVADE'
+        ? incomingThreat * preview.calculateDodgeProbability(actorBefore || {}, source || {}, false)
+        : selfHpGain + selfShieldGain;
+    const values = {
+      OBJECTIVE_PROGRESS: clamp(terminalProgress || stateProgress, -1, 1),
+      SELF_FOLLOWUP_POOL_GAIN: clamp((afterPool.value - beforePool.value) / poolScale, -1, 1),
+      SELF_FOLLOWUP_MECHANICAL_GAIN: clamp((afterMechanical - beforeMechanical) / mechanicalScale, -1, 1),
+      RESOURCE_RUNWAY_GAIN: clamp(r9v2LinearResourceRatio(actorAfter || {}) - r9v2LinearResourceRatio(actorBefore || {}), -1, 1),
+      ENEMY_RESPONSE_OPTION_DENIAL: enemyDenial,
+      OPPONENT_RESPONSE_PRESSURE: hostilePressure,
+      REACTION_FOLLOWUP_GAIN: ['REACTION', 'COUNTER'].includes(role)
+        ? clamp(defensivePrevention + hostilePressure + Math.max(0, (afterPool.value - beforePool.value) / poolScale), 0, 1)
+        : 0,
+      SETUP_INTERRUPT_RISK: setupAction ? clamp(enemyThreat * Math.max(1, castTime / naturalBudget), 0, 1) : 0,
+      ALLY_OPTION_GAIN: allyOptionGain,
+      FOCUS_TARGET_MARGINAL_GAIN: clamp(focusGain, 0, 1),
+      PROTECTION_MARGINAL_GAIN: clamp(protectionGain, 0, 1),
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: supportiveCount ? clamp(redundant / supportiveCount, 0, 1) : 0,
+    };
+    const eventIds = [...new Set((result.contributions || []).map(entry => String(entry?.eventId || '')).filter(Boolean))];
+    return Object.freeze(r9v2LinearCausalCodes.map(code => Object.freeze({
+      featureCode: code,
+      status: 'KNOWN',
+      reasonCode: 'OK',
+      value: Number(values[code] || 0),
+      unitFamily: 'RATIO',
+      sourceFactIds: Object.freeze([]),
+      sourceEventIds: Object.freeze(eventIds),
+    })));
+  }
+
   function r9v2LinearPlainObject(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const proto = Object.getPrototypeOf(value);
@@ -53223,9 +53441,21 @@
     if (relationalByCandidate.size !== candidateIds.length || candidateIds.some(id => !relationalByCandidate.has(id))) {
       throw new Error('R9V2_LINEAR_RELATIONAL_CLOSURE');
     }
+    const frozenById = new Map(request.frozenCandidates.map(candidate => [candidate.candidateId, candidate]));
     const featureInputs = candidateIds.map(candidateId => ({
       candidateId,
-      document: { immediate: bifDocs[candidateId], relational: relationalByCandidate.get(candidateId) },
+      document: {
+        immediate: bifDocs[candidateId],
+        relational: relationalByCandidate.get(candidateId),
+        causal: {
+          schemaVersion: 'BehaviorCausalFeatureV1',
+          features: r9v2LinearCausalFeatureRows(
+            request,
+            frozenById.get(candidateId),
+            previewResultsById[candidateId],
+          ),
+        },
+      },
     }));
     return {
       featureInputs,
@@ -53290,6 +53520,7 @@
       const rows = [
         ...((item.document && item.document.immediate && item.document.immediate.features) || []),
         ...((item.document && item.document.relational && item.document.relational.features) || []),
+        ...((item.document && item.document.causal && item.document.causal.features) || []),
       ];
       const byCode = new Map();
       for (const row of rows) {

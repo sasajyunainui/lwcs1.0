@@ -550,7 +550,7 @@
       }
     }
 
-    return { ok: true, eraId: 'current', selector: 'implicit-current', diagnostic: { code: 'IMPLICIT_CURRENT', selector: 'implicit-current', detail: '未提供时代或可读tick，按current本地调用处理' } };
+    return { ok: false, status: 'unloaded', eraId: null, selector: 'missing-context', detail: '未提供时代或可读tick', diagnostic: { code: 'ERA_CONTEXT_MISSING', selector: 'missing-context' } };
   }
 
   function compileResolvedLibrary(source, type) {
@@ -569,6 +569,20 @@
   }
 
   function resolveEraLibrary(library, type, options = {}) {
+    const explicitEraId = typeof options.eraId === 'string' ? options.eraId.trim() : '';
+    const suppliedTick = options.absoluteTick === undefined || options.absoluteTick === null
+      ? readDataRootTick(options.dataRoot)
+      : Number(options.absoluteTick);
+    if (library && !explicitEraId && !(Number.isFinite(suppliedTick) && suppliedTick >= 0)) {
+      return {
+        status: 'resolved',
+        library: compileResolvedLibrary(library, type),
+        eraId: null,
+        resourceType: type,
+        resourceStatus: 'loaded',
+        diagnostic: { selector: 'provided-library', source: 'provided-library', resourceType: type, resourceStatus: 'loaded' },
+      };
+    }
     const selection = selectEraContext(options);
     if (!selection.ok) {
       return {
@@ -596,110 +610,50 @@
     }
 
     const integration = readEraIntegration();
-    if (selection.selector !== 'implicit-current') {
-      if (!integration || typeof integration.getStaticSourceForEra !== 'function') {
-        return {
-          status: 'failed',
-          library: null,
-          eraId: selection.eraId,
-          resourceType: type,
-          resourceStatus: 'failed',
-          detail: 'EraRuntime_Integration按时代取源接口尚未注册',
-          diagnostic: resolutionDiagnostic(selection, type, 'failed', null),
-        };
-      }
-      let sourceResult;
-      try {
-        sourceResult = integration.getStaticSourceForEra(selection.eraId, type);
-      } catch (error) {
-        return {
-          status: 'failed',
-          library: null,
-          eraId: selection.eraId,
-          resourceType: type,
-          resourceStatus: 'failed',
-          detail: error?.message || String(error),
-          diagnostic: resolutionDiagnostic(selection, type, 'failed', 'era-runtime'),
-        };
-      }
-      if (!sourceResult || sourceResult.status !== 'resolved') {
-        const status = sourceResult?.status || 'failed';
-        return {
-          status,
-          library: null,
-          eraId: selection.eraId,
-          resourceType: type,
-          resourceStatus: status,
-          detail: sourceResult?.detail || '时代资源未就绪',
-          diagnostic: resolutionDiagnostic(selection, type, status, 'era-runtime'),
-        };
-      }
+    if (!integration || typeof integration.getStaticSourceForEra !== 'function') {
       return {
-        status: 'resolved',
-        library: compileResolvedLibrary(sourceResult.source, type),
+        status: 'failed',
+        library: null,
         eraId: selection.eraId,
         resourceType: type,
-        resourceStatus: 'loaded',
-        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'era-runtime'),
+        resourceStatus: 'failed',
+        detail: 'EraRuntime_Integration按时代取源接口尚未注册',
+        diagnostic: resolutionDiagnostic(selection, type, 'failed', null),
       };
     }
-
-    if (library) {
+    let sourceResult;
+    try {
+      sourceResult = integration.getStaticSourceForEra(selection.eraId, type);
+    } catch (error) {
       return {
-        status: 'resolved',
-        library: compileResolvedLibrary(library, type),
-        eraId: 'current',
-        resourceType: type,
-        resourceStatus: 'loaded',
-        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'provided-library'),
-      };
-    }
-
-    if (integration && typeof integration.getStaticSourceForEra === 'function') {
-      const sourceResult = integration.getStaticSourceForEra('current', type);
-      if (!sourceResult || sourceResult.status !== 'resolved') {
-        const status = sourceResult?.status || 'failed';
-        return {
-          status,
-          library: null,
-          eraId: 'current',
-          resourceType: type,
-          resourceStatus: status,
-          detail: sourceResult?.detail || '当前时代资源未就绪',
-          diagnostic: resolutionDiagnostic(selection, type, status, 'era-runtime'),
-        };
-      }
-      return {
-        status: 'resolved',
-        library: compileResolvedLibrary(sourceResult.source, type),
-        eraId: 'current',
-        resourceType: type,
-        resourceStatus: 'loaded',
-        diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'era-runtime'),
-      };
-    }
-
-    const globalName = type === 'faction' ? '__LWCS_内置势力库__' : '__LWCS_内置地点库__';
-    const current = type === 'faction' ? defaultFactionLibrary : defaultLocationLibrary;
-    const source = current || global[globalName];
-    if (!source) {
-      return {
-        status: 'unloaded',
+        status: 'failed',
         library: null,
-        eraId: 'current',
+        eraId: selection.eraId,
         resourceType: type,
-        resourceStatus: 'unloaded',
-        detail: '当前时代资源未注册',
-        diagnostic: resolutionDiagnostic(selection, type, 'unloaded', 'implicit-current'),
+        resourceStatus: 'failed',
+        detail: error?.message || String(error),
+        diagnostic: resolutionDiagnostic(selection, type, 'failed', 'era-runtime'),
+      };
+    }
+    if (!sourceResult || sourceResult.status !== 'resolved') {
+      const status = sourceResult?.status || 'failed';
+      return {
+        status,
+        library: null,
+        eraId: selection.eraId,
+        resourceType: type,
+        resourceStatus: status,
+        detail: sourceResult?.detail || '时代资源未就绪',
+        diagnostic: resolutionDiagnostic(selection, type, status, 'era-runtime'),
       };
     }
     return {
       status: 'resolved',
-      library: compileResolvedLibrary(source, type),
-      eraId: 'current',
+      library: compileResolvedLibrary(sourceResult.source, type),
+      eraId: selection.eraId,
       resourceType: type,
       resourceStatus: 'loaded',
-      diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'current-global'),
+      diagnostic: resolutionDiagnostic(selection, type, 'loaded', 'era-runtime'),
     };
   }
 

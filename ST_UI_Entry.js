@@ -240,6 +240,7 @@
       地址: 资源基础地址 + 'sheep_map_restore.js' + 资源版本后缀,
       关键: true,
       分组: 'core',
+      依赖: ['UI运行时'],
       已就绪: () => 读取共享值('__sheepMapRestoreLoaded') === true,
     },
     游戏功能运行时: {

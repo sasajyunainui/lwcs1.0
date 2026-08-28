@@ -5941,7 +5941,7 @@
 
   const PROVIDER_ID = 'r9v2';
   const ENGINE = 'R9V2_LINEAR';
-  const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV1';
+  const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV2';
   const MOUNT_NAME = '__LWCS_BEHAVIOR_LINEAR_PROVIDER__';
 
   // Sealed model whitelist (artifacts/rc6/distilled-linear-score-v1.json raw
@@ -5976,6 +5976,14 @@
   const RELATIONAL_CODES = Object.freeze([
     'TEAM_EFFECT_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO',
     'RESOURCE_DEFICIT_COVERAGE', 'RESOURCE_CONSUMER_FIT', 'TEAM_FOLLOWUP_COVERAGE',
+  ]);
+  const CAUSAL_CODES = Object.freeze([
+    'OBJECTIVE_PROGRESS', 'SELF_FOLLOWUP_POOL_GAIN',
+    'SELF_FOLLOWUP_MECHANICAL_GAIN', 'RESOURCE_RUNWAY_GAIN',
+    'ENEMY_RESPONSE_OPTION_DENIAL', 'OPPONENT_RESPONSE_PRESSURE',
+    'REACTION_FOLLOWUP_GAIN', 'SETUP_INTERRUPT_RISK',
+    'ALLY_OPTION_GAIN', 'FOCUS_TARGET_MARGINAL_GAIN',
+    'PROTECTION_MARGINAL_GAIN', 'TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL',
   ]);
   const EXCLUSION_ONLY = Object.freeze(['HARD_EXCLUSION', 'HARD_EXCLUSION_REASON']);
   const CATALOG_ONLY = Object.freeze(['SETTLEMENT_DAMAGE', 'ROLL_REALIZATION']);
@@ -6123,7 +6131,7 @@
   const REACTION_CODES = Object.freeze([
     'REACTION_DAMAGE_MULTIPLIER', 'REACTION_DODGE_PROBABILITY',
   ]);
-  const SCOREABLE_INVENTORY = Object.freeze(SCOREABLE_CODES.concat(REACTION_CODES));
+  const SCOREABLE_INVENTORY = Object.freeze(SCOREABLE_CODES.concat(REACTION_CODES, CAUSAL_CODES));
   const REACTION_NORMALIZATION = Object.freeze({
     means: Object.freeze({
       REACTION_DAMAGE_MULTIPLIER: 0.820427777816285,
@@ -6142,11 +6150,57 @@
       REACTION_DODGE_PROBABILITY: 0.5600773498387871,
     }),
   });
+  const CAUSAL_NORMALIZATION = Object.freeze({
+    means: Object.freeze(Object.fromEntries(CAUSAL_CODES.map(code => [code, 0]))),
+    scales: Object.freeze(Object.fromEntries(CAUSAL_CODES.map(code => [code, 1]))),
+  });
+  const ACTIVE_CAUSAL_LINEAR = Object.freeze({
+    intercept: 0,
+    coefficients: Object.freeze({
+      OBJECTIVE_PROGRESS: 8,
+      SELF_FOLLOWUP_POOL_GAIN: 4,
+      SELF_FOLLOWUP_MECHANICAL_GAIN: 3.5,
+      RESOURCE_RUNWAY_GAIN: 2.5,
+      ENEMY_RESPONSE_OPTION_DENIAL: 4,
+      OPPONENT_RESPONSE_PRESSURE: 4,
+      REACTION_FOLLOWUP_GAIN: 0,
+      SETUP_INTERRUPT_RISK: -4,
+      ALLY_OPTION_GAIN: 4,
+      FOCUS_TARGET_MARGINAL_GAIN: 1.5,
+      PROTECTION_MARGINAL_GAIN: 4,
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -3,
+    }),
+  });
+  const REACTION_CAUSAL_LINEAR = Object.freeze({
+    intercept: 0,
+    coefficients: Object.freeze({
+      OBJECTIVE_PROGRESS: 8,
+      SELF_FOLLOWUP_POOL_GAIN: 2,
+      SELF_FOLLOWUP_MECHANICAL_GAIN: 2,
+      RESOURCE_RUNWAY_GAIN: 1,
+      ENEMY_RESPONSE_OPTION_DENIAL: 4,
+      OPPONENT_RESPONSE_PRESSURE: 3,
+      REACTION_FOLLOWUP_GAIN: 7,
+      SETUP_INTERRUPT_RISK: -6,
+      ALLY_OPTION_GAIN: 2,
+      FOCUS_TARGET_MARGINAL_GAIN: 0.5,
+      PROTECTION_MARGINAL_GAIN: 5,
+      TEAM_EFFECT_REDUNDANCY_RATIO_CAUSAL: -3,
+    }),
+  });
   const REACTION_MISSING_POLICY = deepFreeze({
     REACTION_DAMAGE_MULTIPLIER: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
     REACTION_DODGE_PROBABILITY: { unknown: 'UNKNOWN_TO_TRAIN_MEAN', na: 'REQUIRE_KNOWN' },
   });
-  const SCOREABLE_MISSING_POLICY = deepFreeze({ ...MISSING_POLICY, ...REACTION_MISSING_POLICY });
+  const CAUSAL_MISSING_POLICY = deepFreeze(Object.fromEntries(CAUSAL_CODES.map(code => [
+    code,
+    { unknown: 'REQUIRE_KNOWN', na: 'REQUIRE_KNOWN' },
+  ])));
+  const SCOREABLE_MISSING_POLICY = deepFreeze({
+    ...MISSING_POLICY,
+    ...REACTION_MISSING_POLICY,
+    ...CAUSAL_MISSING_POLICY,
+  });
 
   const metrics = { selectCalls: 0, fatalCount: 0, lastWorkUnits: 0, totalWorkUnits: 0 };
 
@@ -6216,9 +6270,11 @@
   // scalarizeCode (single-instance identity; duplicate rows via frozen perCode
   // SUM/MAX; ENUM identity; missing rows become UNKNOWN:NOT_EMITTED).
   function scalarizeCode(doc, code, aggregation) {
-    const sourceRows = RELATIONAL_CODES.indexOf(code) >= 0
-      ? (doc.document.relational.features || []).filter(f => f.featureCode === code)
-      : (doc.document.immediate.features || []).filter(f => f.featureCode === code);
+    const sourceRows = CAUSAL_CODES.indexOf(code) >= 0
+      ? (doc.document.causal?.features || []).filter(f => f.featureCode === code)
+      : RELATIONAL_CODES.indexOf(code) >= 0
+        ? (doc.document.relational.features || []).filter(f => f.featureCode === code)
+        : (doc.document.immediate.features || []).filter(f => f.featureCode === code);
     if (sourceRows.length === 0) return { status: 'UNKNOWN', value: null, reasonCode: 'NOT_EMITTED', rowCount: 0, kind: 'NONE' };
     const knownRows = sourceRows.filter(r => r.status === 'KNOWN');
     if (knownRows.length > 0) {
@@ -6274,6 +6330,16 @@
       const cell = cells[code];
       if (!cell || cell.status === 'KNOWN') continue;
       const policy = REACTION_MISSING_POLICY[code];
+      if (cell.status === 'NOT_APPLICABLE') {
+        if (policy.na === 'REQUIRE_KNOWN') fail('NOT_SCORABLE_INPUT', code + ':NA:' + cell.reasonCode);
+      } else if (policy.unknown === 'REQUIRE_KNOWN') {
+        fail('NOT_SCORABLE_INPUT', code + ':' + cell.reasonCode);
+      }
+    }
+    for (const code of CAUSAL_CODES) {
+      const cell = cells[code];
+      if (!cell || cell.status === 'KNOWN') continue;
+      const policy = CAUSAL_MISSING_POLICY[code];
       if (cell.status === 'NOT_APPLICABLE') {
         if (policy.na === 'REQUIRE_KNOWN') fail('NOT_SCORABLE_INPUT', code + ':NA:' + cell.reasonCode);
       } else if (policy.unknown === 'REQUIRE_KNOWN') {
@@ -6338,6 +6404,38 @@
     return factor;
   }
 
+  function causalZOf(cells, code) {
+    const cell = cells[code];
+    if (!cell || cell.status !== 'KNOWN' || typeof cell.value !== 'number' || !Number.isFinite(cell.value)) {
+      fail('NON_FINITE_CAUSAL_VALUE', code);
+    }
+    return (cell.value - CAUSAL_NORMALIZATION.means[code]) / CAUSAL_NORMALIZATION.scales[code];
+  }
+
+  function causalLinearForRole(role) {
+    return ['REACTION', 'COUNTER'].includes(String(role || '').trim().toUpperCase())
+      ? REACTION_CAUSAL_LINEAR
+      : ACTIVE_CAUSAL_LINEAR;
+  }
+
+  function causalContributionOf(cells, code, role) {
+    const cell = cells[code];
+    const linear = causalLinearForRole(role);
+    const z = causalZOf(cells, code);
+    return {
+      code,
+      raw: cell.value,
+      mean: CAUSAL_NORMALIZATION.means[code],
+      scale: CAUSAL_NORMALIZATION.scales[code],
+      z,
+      coefficient: linear.coefficients[code],
+      contribution: linear.coefficients[code] * z,
+      status: cell.status,
+      reasonCode: cell.reasonCode,
+      rowCount: cell.rowCount,
+    };
+  }
+
   function baseScoreOf(cells) {
     let score = LINEAR.intercept;
     for (const code of SCOREABLE_CODES) score += LINEAR.coefficients[code] * zOf(cells, code);
@@ -6347,6 +6445,13 @@
   function reactionScoreOf(cells) {
     let score = REACTION_LINEAR.intercept;
     for (const code of REACTION_CODES) score += REACTION_LINEAR.coefficients[code] * reactionZOf(cells, code);
+    return score;
+  }
+
+  function causalScoreOf(cells, role) {
+    const linear = causalLinearForRole(role);
+    let score = linear.intercept;
+    for (const code of CAUSAL_CODES) score += linear.coefficients[code] * causalZOf(cells, code);
     return score;
   }
 
@@ -6368,6 +6473,7 @@
   function selectPreparedRequest(input) {
     metrics.selectCalls += 1;
     const request = input && input.request ? input.request : {};
+    const actionRole = String(request?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase();
     const featureInputs = input && input.featureInputs;
     const frozenCandidates = Array.isArray(request.frozenCandidates) ? request.frozenCandidates : [];
     if (!frozenCandidates.length) fail('NO_LEGAL_CANDIDATES', 'frozenCandidates empty');
@@ -6405,7 +6511,7 @@
         if (HARD_EXCLUSION_CODES.indexOf(reasonCode) < 0) fail('HARD_EXCLUSION_CODE_UNKNOWN', reasonCode);
         hardExclusionAudit.push({ candidateId, disposition: 'HARD_EXCLUDED_PREVIEW_SKIPPED', reasonCode, source: 'BIF_IMMEDIATE_PUBLIC' });
       }
-      const row = { candidateId, cells, hardExcluded, eligible: !hardExcluded, baseScore: null, extensionScore: null, score: null };
+      const row = { candidateId, cells, hardExcluded, eligible: !hardExcluded, baseScore: null, extensionScore: null, causalScore: null, score: null };
       featureVector.push({
         candidateId,
         cells,
@@ -6415,7 +6521,8 @@
         assertScorable(cells);
         row.baseScore = baseScoreOf(cells);
         row.extensionScore = reactionScoreOf(cells);
-        row.score = row.baseScore + row.extensionScore;
+        row.causalScore = causalScoreOf(cells, actionRole);
+        row.score = row.baseScore + row.extensionScore + row.causalScore;
         if (!Number.isFinite(row.score)) fail('NON_FINITE_SCORE');
       }
       rows.push(row);
@@ -6434,16 +6541,30 @@
       score: row.score,
       baseScore: row.baseScore,
       extensionScore: row.extensionScore,
+      causalScore: row.causalScore,
       tieGroup: ranked.filter(other => other.score === row.score).map(other => other.candidateId).sort(compareUtf16),
     }));
     const scoreContributions = {};
     for (const row of eligible) {
       const factors = [];
       for (const code of SCOREABLE_INVENTORY) {
-        factors.push(REACTION_CODES.indexOf(code) >= 0 ? reactionContributionOf(row.cells, code) : contributionOf(row.cells, code));
+        factors.push(
+          CAUSAL_CODES.indexOf(code) >= 0
+            ? causalContributionOf(row.cells, code, actionRole)
+            : REACTION_CODES.indexOf(code) >= 0
+              ? reactionContributionOf(row.cells, code)
+              : contributionOf(row.cells, code),
+        );
         work.reasonFactors += 1;
       }
-      scoreContributions[row.candidateId] = { score: row.score, baseScore: row.baseScore, extensionScore: row.extensionScore, factors };
+      scoreContributions[row.candidateId] = {
+        score: row.score,
+        baseScore: row.baseScore,
+        extensionScore: row.extensionScore,
+        causalScore: row.causalScore,
+        causalHead: ['REACTION', 'COUNTER'].includes(actionRole) ? 'REACTION_COUNTER' : 'ACTIVE_ASSIST',
+        factors,
+      };
     }
     metrics.lastWorkUnits = work.candidates * SCOREABLE_INVENTORY.length + work.scalarizeCalls;
     metrics.totalWorkUnits += metrics.lastWorkUnits;
@@ -6472,7 +6593,7 @@
         scalarizeCalls: work.scalarizeCalls,
         scalarizePerCandidate: work.candidates ? work.scalarizeCalls / work.candidates : 0,
         expectedCBy31: work.candidates * SCOREABLE_CODES.length,
-        expectedCBy33: work.candidates * SCOREABLE_INVENTORY.length,
+        expectedCBy45: work.candidates * SCOREABLE_INVENTORY.length,
         sortComparisons: work.sortComparisons,
         reasonFactorCount: work.reasonFactors,
         documentBuilds: work.documentBuilds,
@@ -6536,6 +6657,7 @@
       scoreableCodes: SCOREABLE_INVENTORY.slice(),
       baseScoreableCodes: SCOREABLE_CODES.slice(),
       reactionCodes: REACTION_CODES.slice(),
+      causalCodes: CAUSAL_CODES.slice(),
       relationalCodes: RELATIONAL_CODES.slice(),
       exclusionOnly: EXCLUSION_ONLY.slice(),
       catalogOnly: CATALOG_ONLY.slice(),
@@ -6549,6 +6671,11 @@
         normalization: REACTION_NORMALIZATION,
         coefficients: REACTION_LINEAR.coefficients,
         algorithmHash: REACTION_ALGORITHM_HASH,
+      }),
+      causal: Object.freeze({
+        normalization: CAUSAL_NORMALIZATION,
+        activeAssist: ACTIVE_CAUSAL_LINEAR,
+        reactionCounter: REACTION_CAUSAL_LINEAR,
       }),
     }),
     selectPreparedRequest,
