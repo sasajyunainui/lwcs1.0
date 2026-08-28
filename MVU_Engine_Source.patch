@@ -348,87 +348,6 @@ index c3ddcb5..4ff4e4a 100644
 +                                comment: _.escape(entry.name),
 @@ -319,0 +339 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
-diff --git a/src/function/update/index.ts b/src/function/update/index.ts
-index 722db33..a2c6d37 100644
---- a/src/function/update/index.ts
-+++ b/src/function/update/index.ts
-@@ -1,2 +0,0 @@
--import { is_jest_environment } from '@/jest';
--
-@@ -4,0 +3,9 @@ import { handleVariablesInMessage } from '@/function/update_variables';
-+import {
-+    awaitBeforeGeneration,
-+    invalidateAll,
-+    invalidateMessage,
-+    reset,
-+    runMvuTaskCommit,
-+    scheduleMvuTask,
-+} from '@/function/update/mvu_runtime';
-+import { useDataStore } from '@/store';
-@@ -10 +17,11 @@ export function initResponse() {
--        controlledStoppableEventOn(tavern_events.MESSAGE_SENT, handleVariablesInMessage)
-+        controlledStoppableEventOn(tavern_events.MESSAGE_SENT, (message_id: number) => {
-+            invalidateAll('message_sent');
-+            scheduleMvuTask('message_sent', message_id, async task => {
-+                await runMvuTaskCommit(
-+                    task,
-+                    'message_variable_update',
-+                    () => handleVariablesInMessage(message_id, task.isCurrent, task.refreshFingerprint),
-+                    changed => (changed ? 'committed' : 'no_diff')
-+                );
-+            });
-+        })
-@@ -15 +32,47 @@ export function initResponse() {
--            is_jest_environment ? onMessageReceived : _.throttle(onMessageReceived, 3000)
-+            (message_id: number, _type: string) => {
-+                invalidateAll('message_received');
-+                scheduleMvuTask('message_received', message_id, task =>
-+                    onMessageReceived(message_id, { task })
-+                );
-+            }
-+        )
-+    );
-+    stop_list.push(
-+        controlledStoppableEventOn(
-+            tavern_events.GENERATION_AFTER_COMMANDS,
-+            (_type: string, _option: Record<string, unknown>, dry_run: boolean) => {
-+                if (dry_run || useDataStore().runtimes.is_during_extra_analysis) {
-+                    return Promise.resolve();
-+                }
-+                return awaitBeforeGeneration();
-+            }
-+        )
-+    );
-+    stop_list.push(
-+        controlledStoppableEventOn(tavern_events.CHAT_CHANGED, () => invalidateAll('chat_changed'))
-+    );
-+    stop_list.push(
-+        controlledStoppableEventOn(tavern_events.MESSAGE_SWIPED, (message_id: number) =>
-+            invalidateMessage(message_id, 'message_swiped')
-+        )
-+    );
-+    stop_list.push(
-+        controlledStoppableEventOn(tavern_events.MESSAGE_EDITED, (message_id: number) =>
-+            invalidateMessage(message_id, 'message_edited')
-+        )
-+    );
-+    stop_list.push(
-+        controlledStoppableEventOn(tavern_events.MESSAGE_DELETED, (message_id: number) =>
-+            invalidateMessage(message_id, 'message_deleted')
-+        )
-+    );
-+    stop_list.push(
-+        controlledStoppableEventOn(tavern_events.MESSAGE_UPDATED, (message_id: number) =>
-+            invalidateMessage(message_id, 'message_updated')
-+        )
-+    );
-+    stop_list.push(
-+        controlledStoppableEventOn(
-+            tavern_events.MESSAGE_SWIPE_DELETED,
-+            ({ messageId }: { messageId: number }) =>
-+            invalidateMessage(messageId, 'message_swipe_deleted')
-@@ -19,0 +83 @@ export function initResponse() {
-+        reset('response_listener_stopped');
 diff --git a/src/function/update/invoke_extra_model.ts b/src/function/update/invoke_extra_model.ts
 index f992a26..fefc690 100644
 --- a/src/function/update/invoke_extra_model.ts
@@ -459,7 +378,7 @@ index f992a26..fefc690 100644
 +    if (!projector) return '';
 +    try {
 +        const full_state = getCanonicalMvuData({ type: 'chat' });
-+        const state = full_state as Record<string, any>;
++        const state = full_state.stat_data as Record<string, any>;
 +        const message = getChatMessages(-1, { include_swipes: true }).at(-1) as
 +            | Record<string, any>
 +            | undefined;
@@ -486,7 +405,7 @@ index f992a26..fefc690 100644
 +            ?? message?.extra?.mentions
 +            ?? message?.mentionedEntities
 +            ?? message?.mentions;
-+        const projected = projector(full_state, {
++        const projected = projector(state, {
 +            text: message_text,
 +            message: message_text,
 +            playerName: player_name,
@@ -1270,121 +1189,6 @@ index 0000000..07cc2e0
 +export function reset(reason: string) {
 +    invalidateAll(reason);
 +}
-diff --git a/src/function/update/on_message_received.ts b/src/function/update/on_message_received.ts
-index 2f7a0bf..7a00c7c 100644
---- a/src/function/update/on_message_received.ts
-+++ b/src/function/update/on_message_received.ts
-@@ -3,0 +4,5 @@ import { invokeExtraModelWithStrategy } from '@/function/update/invoke_extra_mod
-+import {
-+    runMvuTaskCommit,
-+    MvuRuntimeTask,
-+    scheduleMvuTask,
-+} from '@/function/update/mvu_runtime';
-@@ -10 +15 @@ export async function onMessageReceived(
--    { force = false }: { force?: boolean } = {}
-+    { force = false, task }: { force?: boolean; task?: MvuRuntimeTask } = {}
-@@ -11,0 +17,7 @@ export async function onMessageReceived(
-+    if (!task) {
-+        const scheduled = scheduleMvuTask('manual_message_received', message_id, next_task =>
-+            onMessageReceived(message_id, { force, task: next_task })
-+        );
-+        await scheduled.wait();
-+        return;
-+    }
-@@ -13,0 +26 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'message_missing');
-@@ -21,0 +35 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'not_user_message');
-@@ -27,0 +42 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'placeholder_message');
-@@ -38 +53,6 @@ export async function onMessageReceived(
--        await handleVariablesInMessage(message_id);
-+        await runMvuTaskCommit(
-+            task,
-+            'message_variable_update',
-+            () => handleVariablesInMessage(message_id, task.isCurrent, task.refreshFingerprint),
-+            changed => (changed ? 'committed' : 'no_diff')
-+        );
-@@ -43,0 +64 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'first_floor');
-@@ -48,0 +70,27 @@ export async function onMessageReceived(
-+        task.finish('skipped', 'auto_request_disabled');
-+        return;
-+    }
-+
-+    let result: string | null;
-+    try {
-+        result = await invokeExtraModelWithStrategy();
-+    } catch (error) {
-+        const should_parse_message = task.isMessageCurrent();
-+        task.finish('request_failed', String(error));
-+        if (should_parse_message) {
-+            await handleVariablesInMessage(message_id, task.isMessageCurrent, task.refreshFingerprint);
-+        }
-+        return;
-+    }
-+    if (result === null || result.trim().length === 0) {
-+        if (result === null) {
-+            toastr.error(
-+                tr('runtime.extraModel.updateFailed'),
-+                tr('runtime.extraModel.updateFailedTitle')
-+            );
-+        }
-+        const should_parse_message = task.isMessageCurrent();
-+        task.finish(result === null ? 'request_failed' : 'skipped', result === null ? undefined : 'empty_response');
-+        if (should_parse_message) {
-+            await handleVariablesInMessage(message_id, task.isMessageCurrent, task.refreshFingerprint);
-+        }
-@@ -52,3 +100,4 @@ export async function onMessageReceived(
--    const result = await invokeExtraModelWithStrategy();
--    if (result !== null) {
--        const chat_message = getChatMessages(message_id);
-+    if (!task.isCurrent()) {
-+        task.finish('stale', 'message_changed_during_request');
-+        return;
-+    }
-@@ -56,9 +105,7 @@ export async function onMessageReceived(
--        await setChatMessages(
--            [
--                {
--                    message_id,
--                    message: chat_message[0].message.trimEnd() + '\n\n' + result,
--                },
--            ],
--            {
--                refresh: 'none',
-+    await runMvuTaskCommit(
-+        task,
-+        'extra_model_commit',
-+        async () => {
-+            const chat_message = getChatMessages(message_id).at(-1);
-+            if (!chat_message || !task.isCurrent()) {
-+                return false;
-@@ -66,8 +113,16 @@ export async function onMessageReceived(
--        );
--    } else {
--        toastr.error(
--            tr('runtime.extraModel.updateFailed'),
--            tr('runtime.extraModel.updateFailedTitle')
--        );
--    }
--    await handleVariablesInMessage(message_id);
-+            await setChatMessages(
-+                [
-+                    {
-+                        message_id,
-+                        message: chat_message.message.trimEnd() + '\n\n' + result,
-+                    },
-+                ],
-+                {
-+                    refresh: 'none',
-+                }
-+            );
-+            task.refreshFingerprint();
-+            return await handleVariablesInMessage(message_id, task.isCurrent, task.refreshFingerprint);
-+        },
-+        changed => (changed ? 'committed' : 'no_diff')
-+    );
 diff --git a/src/function/update_variables.ts b/src/function/update_variables.ts
 index e144b79..b681f31 100644
 --- a/src/function/update_variables.ts

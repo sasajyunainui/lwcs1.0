@@ -5,14 +5,14 @@
     "engineRuntime": "MVU_Engine_Runtime.js",
     "projectRuntimeBundle": "LWCS_MVU_Project_Runtime_Bundle.js",
     "sourcePatch": "MVU_Engine_Source.patch",
-    "bundleBytes": 1242118,
-    "bundleSha256": "dc311abbc20085bac1aa8c6db77f0cc705c187a0c9bd74f14fb8f411a25acd75",
-    "engineRuntimeBytes": 1172334,
-    "engineRuntimeSha256": "3cc3599ff3fbff7242a76dec8da8ca9d4549d893b40d6bd6c63457ade1b44507",
-    "projectRuntimeBundleBytes": 2445853,
-    "projectRuntimeBundleSha256": "399499bbaba9e3f6c401a009f358fd202023f20e58a07fef01b072bfd5d12b98",
-    "sourcePatchBytes": 66460,
-    "sourcePatchSha256": "a5d10d791b07302eb783369c06425483e45bb35bd9e568f2138aa6aa83793bea"
+    "bundleBytes": 1237672,
+    "bundleSha256": "3ae6f52aed605fe9818f85871b980677ef2c030de85bbadc2c40df52445e9b62",
+    "engineRuntimeBytes": 1167888,
+    "engineRuntimeSha256": "f92870b6070035baf343e5dda5f003554c0bae376f40f78c9a00e00363ebdf99",
+    "projectRuntimeBundleBytes": 2464211,
+    "projectRuntimeBundleSha256": "c734f4f71d6a903a8e93eec3880af34fa36fb6a74d91252c127e211f22f27225",
+    "sourcePatchBytes": 58496,
+    "sourcePatchSha256": "e64b0e37a88ca0fe49f73dc9b801e202f999a5c95a626fb1363ccc387ba18d93"
   },
   "upstream": {
     "repository": "https://github.com/MagicalAstrogy/MagVarUpdate.git",
@@ -23,8 +23,8 @@
     "packageManager": "yarn@3.4.1",
     "applyPatch": "git apply --unidiff-zero --whitespace=error MVU_Engine_Source.patch",
     "install": "corepack yarn install --immutable",
-    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-28 00:00'; corepack yarn build\"",
-    "buildDate": "2026-08-28 00:00",
+    "command": "powershell -NoProfile -Command \"$env:LWCS_MVU_BUILD_DATE='2026-08-29 00:00'; corepack yarn build\"",
+    "buildDate": "2026-08-29 00:00",
     "output": "artifact/bundle.js -> MVU_Engine_Runtime.js; node Build_Runtime_Bundles.cjs MVU_Engine_Bundle.js -> MVU_Engine_Bundle.js",
     "environmentComposition": [
       "LWCS_Persistence_Adapter.js",
@@ -41,7 +41,7 @@
     "formalDependencyInFlight": "__LWCS_MVU_FORMAL_RESOURCE_LOADS_V1__"
   },
   "runtimeContract": {
-    "generationBoundary": "tavern_events.GENERATION_AFTER_COMMANDS",
+    "generationBoundary": "tavern_events.MESSAGE_RECEIVED",
     "chatHooksReady": "__LWCS_MVU_CHAT_HOOKS_READY_V1__",
     "syncHotRead": "Mvu.getMvuData",
     "asyncRead": "Mvu.getMvuDataAsync",

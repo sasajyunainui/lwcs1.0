@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:fdcbfd28286e4f8fc2408ff135c4e1512199db341afd606705082f2aad6ef81d|BehaviorDecisionPipeline_Module.js:53d4de60b23c45b683fdee664f82087fdbde45bb88fae1bc85e1ea515f1110ad|BattleDecision_Module.js:718e5d931c2b2aaa0867b492d7dc9637636c90941f77d2515dcdec658e9c59a3|BattleRuntime_Module.js:c47ad09b6d4cf01205b5319ae69603b98d027f604737c0298df7112572be1ead|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:f0754627dd97eed4feb5fda16a17c2ed50e0b7965b7b4448c27bc38905a37dc5 */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:fdcbfd28286e4f8fc2408ff135c4e1512199db341afd606705082f2aad6ef81d|BehaviorDecisionPipeline_Module.js:53d4de60b23c45b683fdee664f82087fdbde45bb88fae1bc85e1ea515f1110ad|BattleDecision_Module.js:718e5d931c2b2aaa0867b492d7dc9637636c90941f77d2515dcdec658e9c59a3|BattleRuntime_Module.js:c47ad09b6d4cf01205b5319ae69603b98d027f604737c0298df7112572be1ead|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:15a8a8dd1a7e5c893aaf8250d135d87379744fd3dec00254f2ff866972d06280 */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -175572,6 +175572,7 @@ $CONTENT
     // ═══ ui-refs re-export 已移除（P5）═══
     // 消费方应直接从 presentation/state/ui-refs import $xxx 变量
     // ═══ 业务状态 + 门控逻辑（保留在本文件） ═══
+    const NEW_MESSAGE_DEBOUNCE_DELAY_ACU = 500;
     let pendingBaseStatePlacement_ACU = false;
     let suppressWorldbookInjectionInGreeting_ACU = false;
     const loopState_ACU = {
@@ -175692,7 +175693,6 @@ $CONTENT
                 最后用户消息编号: generationGate_ACU.lastUserMessageId,
                 生成已结束: false,
             };
-            生成结束后置状态_ACU.已处理消息键 = '';
         }
     }
     function clearDatabaseGenerationPlan_ACU(transaction = null) {
@@ -175718,6 +175718,14 @@ $CONTENT
         if (params && typeof params.quiet_prompt === 'string' && params.quiet_prompt.trim().length > 0)
             return true;
         return false;
+    }
+    function shouldProcessAutoTableUpdateForGenerationEnded_ACU() {
+        const generation = generationGate_ACU.lastGeneration;
+        if (!generation)
+            return true;
+        if (generation.dryRun)
+            return false;
+        return !isQuietLikeGeneration_ACU(generation.type, generation.params);
     }
     function isRecentUserSend_ACU() {
         if (!generationGate_ACU.lastUserMessageAt)
@@ -175768,63 +175776,8 @@ $CONTENT
     function 读取正文后置上下文_ACU() {
         return generationGate_ACU.正文后置上下文 || null;
     }
-    async function 尝试完成数据库后置更新_ACU(事件名 = 'unknown', 事件消息编号 = null) {
-        const 正文上下文 = 读取正文后置上下文_ACU();
-        if (!正文上下文) {
-            logDebug_ACU(`[生成结束后置] 当前没有待处理的正文生成: event=${事件名}`);
-            return { action: 'skipped', reason: 'no_generation_context' };
-        }
-        if (正文上下文.epoch !== databaseGenerationEpoch_ACU) {
-            generationGate_ACU.正文后置上下文 = null;
-            return { action: 'skipped', reason: 'stale_generation' };
-        }
-        if (事件名 === 'GENERATION_ENDED' || 事件名 === 'MESSAGE_RECEIVED')
-            正文上下文.生成已结束 = true;
-        if (!正文上下文.生成已结束) {
-            logDebug_ACU(`[生成结束后置] 助手楼层已渲染但生成尚未结束，继续等待终点事件: event=${事件名}`);
-            return { action: 'waiting', reason: 'generation_not_ended' };
-        }
-        const 事件目标消息元信息 = 读取事件目标角色消息元信息_ACU(正文上下文, 事件消息编号);
-        const 目标消息元信息 = 事件目标消息元信息?.消息索引 >= 0
-            ? 事件目标消息元信息
-            : 读取指定角色消息元信息_ACU(正文上下文);
-        if (!目标消息元信息 || 目标消息元信息.消息索引 < 0) {
-            logDebug_ACU(`[生成结束后置] 本轮 AI 楼层尚未落地，保留上下文等待消息事件: event=${事件名}, eventMessageId=${事件消息编号 ?? ''}`);
-            return { action: 'waiting', reason: 'generation_not_landed' };
-        }
-        const 消息键 = 构建生成结束消息键_ACU(目标消息元信息);
-        if (!消息键) {
-            logWarn_ACU(`[生成结束后置] 本轮 AI 楼层元信息无效，跳过后置更新: event=${事件名}`);
-            generationGate_ACU.正文后置上下文 = null;
-            return { action: 'skipped', reason: 'invalid_target_message' };
-        }
-        if (生成结束后置状态_ACU.已处理消息键 === 消息键) {
-            logDebug_ACU(`[生成结束后置] 同一楼层已处理，跳过重复事件: event=${事件名}`);
-            return { action: 'skipped', reason: 'duplicate_message' };
-        }
-        生成结束后置状态_ACU.已处理消息键 = 消息键;
-        generationGate_ACU.正文后置上下文 = null;
-        await handleConfirmedAssistantMessage_ACU(事件名, {
-            目标消息元信息,
-            eventEpoch: 正文上下文.epoch,
-        });
-        return { action: 'continue', reason: 'post_update_dispatched' };
-    }
-    function 调度数据库后置更新_ACU(事件名 = 'unknown', 事件消息编号 = null) {
-        logDebug_ACU(`ACU ${事件名} event for message_id: ${事件消息编号}`);
-        void 尝试完成数据库后置更新_ACU(事件名, 事件消息编号).catch(错误 => {
-            logError_ACU(`ACU ${事件名} 后置更新调度失败:`, 错误);
-        });
-    }
-    const 生成结束后置状态_ACU = {
-        已处理消息键: '',
-    };
     function 重置生成结束运行时状态_ACU() {
-        生成结束后置状态_ACU.已处理消息键 = '';
         activeDatabaseGenerationTransaction_ACU = null;
-    }
-    function 构建生成结束消息键_ACU(消息元信息) {
-        return getDatabaseGenerationTargetIdentity_ACU(消息元信息)?.key || '';
     }
 
     function getDatabaseGenerationTargetIdentity_ACU(消息元信息, epoch = databaseGenerationEpoch_ACU, chatId = null) {
@@ -202595,6 +202548,7 @@ $CONTENT
     }
     let isAutoUpdatingCard_ACU = false; // Tracks if an update is in progress
     let wasStoppedByUser_ACU = false; // [新增] 标记更新是否被用户手动终止
+    let newMessageDebounceTimer_ACU = null;
     let currentAbortController_ACU = null; // [新增] 用于中止正在进行的AI请求
     // activePlotEditorSettings_ACU, currentPlotTaskEditorId_ACU, currentEditablePlotPresetState_ACU 已搬到 service/plot/plot-state.ts
     let plotTaskEditorAutoSaveTimer_ACU = null;
@@ -202624,6 +202578,7 @@ $CONTENT
     function _set_isAutoUpdatingCard_ACU(v) { isAutoUpdatingCard_ACU = v; }
     function _set_manualExtraHint_ACU(v) { manualExtraHint_ACU = v; }
     function _set_wasStoppedByUser_ACU(v) { wasStoppedByUser_ACU = v; }
+    function _set_newMessageDebounceTimer_ACU(v) { newMessageDebounceTimer_ACU = v; }
     // _set_currentEditablePlotPresetState_ACU, _set_activePlotEditorSettings_ACU, _set_currentPlotTaskEditorId_ACU 已搬到 service/plot/plot-state.ts
 
     /**
@@ -208868,62 +208823,48 @@ $CONTENT
             logError_ACU('Failed to load one or more critical APIs for AutoCardUpdater.');
         return coreApisAreReady_ACU;
     }
-    async function handleConfirmedAssistantMessage_ACU(eventType = 'unknown_acu', 选项 = {}) {
-        const 目标消息元信息 = 选项?.目标消息元信息 || null;
-        const eventEpoch = Number.isInteger(选项?.eventEpoch) ? Number(选项.eventEpoch) : null;
-        if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU)
-            return;
-        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
-            logDebug_ACU(`[自动更新] 已确认的目标楼层发生变化，跳过: eventType=${eventType}`);
-            return;
-        }
-        logDebug_ACU(`Confirmed assistant message event (${eventType}) detected for ACU.`);
-        // [健全性] 如果用户已经开始对话，则解除"开场白阶段世界书注入抑制"
-        try {
-            maybeLiftWorldbookSuppression_ACU();
-        }
-        catch (e) { }
-        const eventTransaction = getDatabaseGenerationTransaction_ACU(目标消息元信息);
-        if (eventEpoch !== null && eventTransaction?.epoch !== eventEpoch)
-            return;
-        await loadAllChatMessages_ACU({ fullHistory: false, eventTransaction });
-        const eventContext = getDatabaseGenerationContext_ACU(eventTransaction);
-        if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
-            logDebug_ACU(`[自动更新] 加载后生成事件上下文已失配，跳过: eventType=${eventType}`);
-            return;
-        }
-        const runtimeContext = { ...eventContext, eventTransaction };
-        const liveChat = eventContext.chat;
-        // [重构] 调用 service 层的 evaluateNewMessageAction_ACU 进行决策
-        const result = evaluateNewMessageAction_ACU(liveChat, isAutoUpdatingCard_ACU, coreApisAreReady_ACU, wasStoppedByUser_ACU, settings_ACU.contentOptimizationSettings, 目标消息元信息);
-        logDebug_ACU(`[NewMessage] Evaluation result: action=${result.action}, reason=${result.reason}`);
-        if (result.action === 'skip') {
-            logDebug_ACU(`ACU: ${result.reason}. Skipping.`);
-            return;
-        }
-        switch (result.action) {
-            case 'optimize_parallel':
-                logDebug_ACU('[正文优化] 并行模式已启用，正文优化与填表将同时进行...');
-                await Promise.all([
-                    executeContentOptimization_ACU(result.lastMessageIndex, runtimeContext),
-                    triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息, eventTransaction })
-                ]);
-                break;
-            case 'optimize_manual':
-                logDebug_ACU('[正文优化] 手动确认模式：等待用户确认后再填表...');
-                await executeContentOptimization_ACU(result.lastMessageIndex, runtimeContext);
-                break;
-            case 'optimize_then_update':
-                await executeContentOptimization_ACU(result.lastMessageIndex, runtimeContext);
-                await triggerAutomaticUpdateIfNeeded_ACU({
-                    目标消息元信息: 目标消息元信息 ? 读取当前目标角色消息元信息_ACU(目标消息元信息) : null,
-                    eventTransaction,
-                });
-                break;
-            case 'update_only':
-                await triggerAutomaticUpdateIfNeeded_ACU({ 目标消息元信息, eventTransaction });
-                break;
-        }
+    async function handleNewMessageDebounced_ACU(eventType = 'unknown_acu') {
+        logDebug_ACU(`New message event (${eventType}) detected for ACU, debouncing for ${NEW_MESSAGE_DEBOUNCE_DELAY_ACU}ms...`);
+        clearTimeout(newMessageDebounceTimer_ACU);
+        _set_newMessageDebounceTimer_ACU(setTimeout(async () => {
+            try {
+                maybeLiftWorldbookSuppression_ACU();
+            }
+            catch (e) { }
+            try {
+                await loadAllChatMessages_ACU({ fullHistory: false });
+                const liveChat = getChatArray_ACU();
+                const result = evaluateNewMessageAction_ACU(liveChat, isAutoUpdatingCard_ACU, coreApisAreReady_ACU, wasStoppedByUser_ACU, settings_ACU.contentOptimizationSettings);
+                logDebug_ACU(`[NewMessage] Evaluation result: action=${result.action}, reason=${result.reason}`);
+                if (result.action === 'skip') {
+                    logDebug_ACU(`ACU: ${result.reason}. Skipping.`);
+                    return;
+                }
+                switch (result.action) {
+                    case 'optimize_parallel':
+                        logDebug_ACU('[正文优化] 并行模式已启用，正文优化与填表将同时进行...');
+                        await Promise.all([
+                            executeContentOptimization_ACU(result.lastMessageIndex),
+                            triggerAutomaticUpdateIfNeeded_ACU()
+                        ]);
+                        break;
+                    case 'optimize_manual':
+                        logDebug_ACU('[正文优化] 手动确认模式：等待用户确认后再填表...');
+                        await executeContentOptimization_ACU(result.lastMessageIndex);
+                        break;
+                    case 'optimize_then_update':
+                        await executeContentOptimization_ACU(result.lastMessageIndex);
+                        await triggerAutomaticUpdateIfNeeded_ACU();
+                        break;
+                    case 'update_only':
+                        await triggerAutomaticUpdateIfNeeded_ACU();
+                        break;
+                }
+            }
+            catch (error) {
+                logError_ACU(`ACU ${eventType} 自动更新调度失败:`, error);
+            }
+        }, NEW_MESSAGE_DEBOUNCE_DELAY_ACU));
     }
     // [重构] 核心触发逻辑：基于独立表格参数的触发检查
 
@@ -227083,30 +227024,14 @@ $CONTENT
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
-                        调度数据库后置更新_ACU('GENERATION_ENDED', message_id);
+                        logDebug_ACU(`ACU GENERATION_ENDED event for message_id: ${message_id}`);
+                        if (shouldProcessAutoTableUpdateForGenerationEnded_ACU()) {
+                            handleNewMessageDebounced_ACU('GENERATION_ENDED');
+                        }
+                        else {
+                            logDebug_ACU('ACU: Skip auto table update due to quiet/background generation.');
+                        }
                         onLoopGenerationEnded_ACU();
-                    });
-                }
-                if (SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED) {
-                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id, type) => {
-                        if (['normal', 'regenerate', 'continue', 'swipe'].includes(type))
-                            调度数据库后置更新_ACU('MESSAGE_RECEIVED', message_id);
-                    });
-                }
-                if (SillyTavern_API_ACU.eventTypes.CHARACTER_MESSAGE_RENDERED) {
-                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.CHARACTER_MESSAGE_RENDERED, (message_id) => {
-                        调度数据库后置更新_ACU('CHARACTER_MESSAGE_RENDERED', message_id);
-                    });
-                }
-                if (SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED) {
-                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED, () => {
-                        const 正文上下文 = 读取正文后置上下文_ACU();
-                        if (!正文上下文)
-                            return;
-                        generationGate_ACU.正文后置上下文 = null;
-                        advanceDatabaseGenerationEpoch_ACU();
-                        生成结束后置状态_ACU.已处理消息键 = '';
-                        logDebug_ACU(`[生成结束后置] 本轮生成已停止，取消待处理上下文: epoch=${正文上下文.epoch}`);
                     });
                 }
                 // [剧情推进] 拦截用户输入进行剧情规划
