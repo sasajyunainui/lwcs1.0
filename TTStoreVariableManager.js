@@ -22,7 +22,7 @@
   const Vue = hostWindow.Vue || currentWindow.Vue;
   if (!Vue?.createApp || !Vue?.defineComponent || !Vue?.h) {
     const unavailableApi = Object.freeze({
-      open() { throw new Error('TT-store 变量管理器需要宿主已加载 Vue 3 global'); },
+      open() { throw new Error('变量管理器尚未准备好，请稍后重试'); },
       close() {},
       destroy() { if (hostWindow[API_KEY] === unavailableApi) delete hostWindow[API_KEY]; },
       async refresh() { throw new Error('Vue 3 global 不可用'); },
@@ -72,7 +72,7 @@
   }
 
   function pathLabel(path) {
-    return path.length ? ['stat_data', ...path].join(' › ') : 'stat_data';
+    return path.length ? ['变量', ...path].join(' › ') : '变量';
   }
 
   function getAtPath(rootValue, path) {
@@ -87,14 +87,15 @@
 
   function typeTag(value) {
     const kind = valueKind(value);
-    return kind === 'string' ? 'str' : kind === 'number' ? 'num' : kind === 'boolean' ? 'bool' : kind === 'array' ? 'arr' : kind === 'object' ? 'obj' : 'null';
+    return kind === 'string' ? '文本' : kind === 'number' ? '数字' : kind === 'boolean' ? '开关' : kind === 'array' ? '列表' : kind === 'object' ? '分组' : '空值';
   }
 
   function compactValue(value) {
     if (Array.isArray(value)) return value.length + ' 项';
     if (value && typeof value === 'object') return Object.keys(value).length + ' 项';
-    if (value === null) return 'null';
+    if (value === null) return '空值';
     if (typeof value === 'string') return value || '空字符串';
+    if (typeof value === 'boolean') return value ? '开启' : '关闭';
     return String(value);
   }
 
@@ -140,13 +141,6 @@
     for (let index = 0; index < path.length - 1; index += 1) cursor = cursor[path[index]];
     cursor[path[path.length - 1]] = nextValue;
     return nextRoot;
-  }
-
-  function shortValue(value) {
-    if (typeof value === 'string') return value.length > 120 ? `${value.slice(0, 117)}…` : value;
-    if (value === null) return 'null';
-    if (typeof value === 'object') return Array.isArray(value) ? `[${value.length}]` : `{${Object.keys(value).length}}`;
-    return String(value);
   }
 
   function safeStatus(value) {
@@ -197,6 +191,7 @@
     editingPath: [],
     editingType: '',
     editingText: '',
+    editingError: '',
     detailOpen: false,
     detailPath: [],
     detailType: '',
@@ -273,6 +268,11 @@
     return extractBackend(state.diagnostics?.mvuPersistence) || state.databaseBackend || '不可用';
   });
 
+  const saveStatusText = computed(() => {
+    if (state.mvuSaving) return '正在保存';
+    return isDirty.value ? `有 ${draftList.value.length} 项未保存` : '已保存';
+  });
+
   function setDraft(path, nextValue) {
     const key = pathKey(path);
     const original = cloneJson(getAtPath(state.snapshot?.stat_data, path));
@@ -310,13 +310,13 @@
   function discardDraft() {
     state.drafts = {};
     state.saveState = 'clean';
-    state.mvuNotice = '已丢弃全部未保存草稿。';
+    state.mvuNotice = '已丢弃全部未保存修改。';
     if (state.searchInput.trim()) scheduleSearch();
   }
 
   function confirmDiscardDraft() {
     if (!isDirty.value) return;
-    if (!hostWindow.confirm('丢弃当前未保存的 stat_data 修改？此操作无法撤销。')) return;
+    if (!hostWindow.confirm('丢弃当前所有未保存的变量修改？此操作无法撤销。')) return;
     discardDraft();
   }
 
@@ -353,7 +353,7 @@
   async function refreshMvu(options = {}) {
     if (state.mvuLoading || state.mvuSaving) return false;
     if (isDirty.value && options.discard !== true) {
-      state.mvuNotice = '存在未保存草稿。请先保存或点击“丢弃”，刷新不会覆盖当前草稿。';
+      state.mvuNotice = '还有未保存的修改。请先保存或点击“丢弃全部”；重新读取不会覆盖这些修改。';
       return false;
     }
     state.mvuLoading = true;
@@ -437,7 +437,7 @@
       state.drafts = {};
       state.verifiedPaths = new Set(intendedDrafts.map(entry => pathKey(entry.path)));
       state.saveState = 'verified';
-      state.mvuNotice = '已保存并完成 TT-store 路径回读确认。';
+      state.mvuNotice = '变量已保存。';
       hostWindow.clearTimeout(verifiedTimer);
       verifiedTimer = hostWindow.setTimeout(() => {
         state.verifiedPaths = new Set();
@@ -463,9 +463,14 @@
     }
     if (kind === 'boolean') return text === 'true';
     if (kind === 'null') return null;
-    const value = JSON.parse(text);
-    if (!value || typeof value !== 'object') throw new Error('请输入对象或数组 JSON');
-    return value;
+    try {
+      const value = JSON.parse(text);
+      if (!value || typeof value !== 'object') throw new Error('请输入有效的分组或列表内容。');
+      return value;
+    } catch (error) {
+      if (error?.message === '请输入有效的分组或列表内容。') throw error;
+      throw new Error('内容格式不正确，请检查括号、引号和逗号。');
+    }
   }
 
   function beginInlineEdit(path, value) {
@@ -477,6 +482,7 @@
     state.editingPath = [...path];
     state.editingType = valueKind(value);
     state.editingText = value === null ? 'null' : String(value);
+    state.editingError = '';
     state.saveState = 'editing';
     nextTick(() => rootElement?.querySelector('.lwcs-tvm-inline-input')?.focus());
   }
@@ -485,6 +491,7 @@
     state.editingPathKey = '';
     state.editingPath = [];
     state.editingText = '';
+    state.editingError = '';
     state.saveState = isDirty.value ? 'draft' : 'clean';
   }
 
@@ -496,7 +503,7 @@
       cancelInlineEdit();
       return true;
     } catch (error) {
-      state.mvuError = errorText(error);
+      state.editingError = errorText(error);
       return false;
     }
   }
@@ -525,7 +532,7 @@
     try {
       const nextValue = parseEditedValue(state.detailType, state.detailText);
       if (state.detailPath.length === 0 && (!nextValue || typeof nextValue !== 'object' || Array.isArray(nextValue))) {
-        throw new Error('stat_data 根必须是 JSON 对象');
+        throw new Error('全部变量必须保持为一个分组。');
       }
       setDraft(state.detailPath, nextValue);
       closeDetail();
@@ -834,9 +841,9 @@
   }
 
   function floorRole(message) {
-    if (message?.is_system) return 'system';
-    if (message?.is_user) return 'user';
-    return 'assistant';
+    if (message?.is_system) return '系统';
+    if (message?.is_user) return '玩家';
+    return '角色';
   }
 
   function floorSummary(message) {
@@ -1165,7 +1172,7 @@
   }
 
   async function refreshActive() {
-    if (destroyed) throw new Error('TT-store 变量管理器已销毁');
+    if (destroyed) throw new Error('变量管理器已关闭，请重新打开');
     if (state.activeTab === 'mvu') return refreshMvu();
     if (state.activeTab === 'floors') return refreshFloorList();
     if (state.activeTab === 'database') {
@@ -1217,7 +1224,7 @@
   }
 
   async function openManager() {
-    if (destroyed) throw new Error('TT-store 变量管理器已销毁');
+    if (destroyed) throw new Error('变量管理器已关闭，请重新打开');
     if (state.visible) {
       rootElement?.querySelector('.lwcs-tvm-close')?.focus();
       return;
@@ -1284,7 +1291,7 @@
             ? h('select', { class: 'lwcs-tvm-inline-input', value: state.editingText, onChange: event => { state.editingText = event.target.value; }, onKeydown: event => {
               if (event.key === 'Enter') commitInlineEdit(row.path);
               if (event.key === 'Escape') cancelInlineEdit();
-            } }, [h('option', { value: 'true' }, 'true'), h('option', { value: 'false' }, 'false')])
+            } }, [h('option', { value: 'true' }, '开启'), h('option', { value: 'false' }, '关闭')])
             : h('input', { class: 'lwcs-tvm-inline-input', type: state.editingType === 'number' ? 'number' : 'text', value: state.editingText,
               onInput: event => { state.editingText = event.target.value; }, onKeydown: event => {
                 if (event.key === 'Enter') commitInlineEdit(row.path);
@@ -1347,7 +1354,7 @@
           props.searchMode ? (props.readonly
             ? h('span', { class: 'lwcs-tvm-breadcrumb-value' }, pathLabel(row.path))
             : h('button', { type: 'button', class: 'lwcs-tvm-breadcrumb-value', onClick: () => locateRow(row.path) }, pathLabel(row.path)))
-            : h('span', { class: 'lwcs-tvm-type' }, '[' + typeTag(value) + ']'),
+            : h('span', { class: 'lwcs-tvm-type' }, typeTag(value)),
           h('div', { class: 'lwcs-tvm-value-wrap', onClick: () => {
             if (props.readonly || !isMobile.value) return;
             if (row.container) state.currentPath = [...row.path];
@@ -1372,8 +1379,8 @@
         return h('div', { class: 'lwcs-tvm-sheet-backdrop', onMousedown: event => { if (event.target === event.currentTarget) closeDetail(); } }, [
           h('section', { class: 'lwcs-tvm-detail-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'lwcs-tvm-detail-title' }, [
             h('header', null, [h('div', null, [
-              h('span', { class: 'lwcs-tvm-kicker' }, '[' + typeTag(getAtPath(effectiveStatData.value, state.detailPath)) + ']'),
-              h('h3', { id: 'lwcs-tvm-detail-title' }, state.detailPath.length ? String(state.detailPath.at(-1)) : 'stat_data'),
+              h('span', { class: 'lwcs-tvm-kicker' }, typeTag(getAtPath(effectiveStatData.value, state.detailPath))),
+              h('h3', { id: 'lwcs-tvm-detail-title' }, state.detailPath.length ? String(state.detailPath.at(-1)) : '全部变量'),
               h('p', null, pathLabel(state.detailPath)),
             ]), h('button', { type: 'button', class: 'lwcs-tvm-icon-button', 'aria-label': '关闭详情', onClick: closeDetail }, '×')]),
             h('div', { class: 'lwcs-tvm-detail-body' }, [
@@ -1381,12 +1388,16 @@
                 state.detailType = event.target.value;
                 if (event.target.value === 'boolean') state.detailText = ['true', 'false'].includes(state.detailText) ? state.detailText : 'false';
                 if (event.target.value === 'null') state.detailText = 'null';
-              } }, ['string', 'number', 'boolean', 'null', 'object', 'array'].map(kind => h('option', { value: kind }, kind))),
+              } }, [
+                ['string', '文本'], ['number', '数字'], ['boolean', '开关'], ['null', '空值'], ['object', '分组'], ['array', '列表'],
+              ].map(([kind, label]) => h('option', { value: kind }, label))),
               state.detailType === 'boolean'
-                ? h('button', { type: 'button', class: 'lwcs-tvm-boolean-toggle', onClick: () => { state.detailText = state.detailText === 'true' ? 'false' : 'true'; } }, state.detailText + ' · 点击翻转')
+                ? h('button', { type: 'button', class: 'lwcs-tvm-boolean-toggle', onClick: () => { state.detailText = state.detailText === 'true' ? 'false' : 'true'; } }, (state.detailText === 'true' ? '开启' : '关闭') + ' · 点击切换')
+                : state.detailType === 'null'
+                  ? h('div', { class: 'lwcs-tvm-state' }, '空值')
                 : h('textarea', { class: 'lwcs-tvm-detail-input', rows: 12, value: state.detailText, spellcheck: 'false', 'aria-label': '编辑值',
                   onInput: event => { state.detailText = event.target.value; } }),
-              h('div', { class: 'lwcs-tvm-original-block' }, [h('span', null, 'canonical 原值'), h('pre', null, isContainer(original) ? JSON.stringify(original, null, 2) : compactValue(original))]),
+              h('div', { class: 'lwcs-tvm-original-block' }, [h('span', null, '保存前的值'), h('pre', null, isContainer(original) ? JSON.stringify(original, null, 2) : compactValue(original))]),
               state.detailError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.detailError) : null,
             ]),
             h('footer', null, [
@@ -1395,24 +1406,22 @@
                 state.detailText = isContainer(original) ? JSON.stringify(original, null, 2) : original === null ? 'null' : String(original);
               } }, '恢复原值'),
               h('button', { type: 'button', onClick: closeDetail }, '取消'),
-              h('button', { type: 'button', class: 'lwcs-tvm-primary', onClick: commitDetail }, '加入草稿'),
+              h('button', { type: 'button', class: 'lwcs-tvm-primary', onClick: commitDetail }, '加入待保存'),
             ]),
           ]),
         ]);
       }
       return () => {
         const shown = rows.value.slice(start.value, end.value);
-        const crumbs = [{ label: 'stat_data', path: [] }, ...state.currentPath.map((part, index) => ({ label: String(part), path: state.currentPath.slice(0, index + 1) }))];
+        const crumbs = [{ label: '变量', path: [] }, ...state.currentPath.map((part, index) => ({ label: String(part), path: state.currentPath.slice(0, index + 1) }))];
         return h('section', { class: 'lwcs-tvm-mvu-page' }, [
           h('div', { class: 'lwcs-tvm-context-bar' }, [
             h('div', { class: 'lwcs-tvm-context' }, [
-              h('strong', null, '当前聊天 · canonical stat_data'),
-              h('span', { class: ['lwcs-tvm-backend', backendLabel.value === 'tt-store' ? 'is-online' : ''] }, backendLabel.value),
-              h('span', null, 'revision ' + revisionLabel.value),
-              h('span', { class: 'lwcs-tvm-state', 'data-state': state.saveState }, state.saveState),
+              h('strong', null, '当前聊天 · 变量'),
+              h('span', { class: 'lwcs-tvm-badge', 'data-state': state.saveState }, saveStatusText.value),
             ]),
             h('label', { class: 'lwcs-tvm-search' }, [h('span', { class: 'lwcs-tvm-sr-only' }, '搜索变量'), h('input', {
-              type: 'search', value: state.searchInput, placeholder: '搜索键名、路径或值  Ctrl+P',
+              type: 'search', value: state.searchInput, placeholder: '搜索名称或内容  Ctrl+P',
               onInput: event => { state.searchInput = event.target.value; scheduleSearch(); },
             })]),
             h('div', { class: 'lwcs-tvm-tree-tools' }, [
@@ -1422,33 +1431,38 @@
                 state.expanded = next;
               } }, '展开一级') : null,
               h('button', { type: 'button', onClick: () => { state.expanded = new Set(['$']); } }, '全部折叠'),
-              h('button', { type: 'button', onClick: () => openDetail([], effectiveStatData.value) }, 'JSON 详情'),
-              h('button', { type: 'button', disabled: state.mvuLoading || state.mvuSaving, onClick: () => refreshMvu() }, '刷新'),
+              h('button', { type: 'button', onClick: () => openDetail([], effectiveStatData.value) }, '查看全部'),
+              h('button', { type: 'button', disabled: state.mvuLoading || state.mvuSaving, onClick: () => refreshMvu() }, '重新读取'),
             ]),
           ]),
           h('div', { class: 'lwcs-tvm-status-stack' }, [
             isMobile.value && !state.searchQuery ? h('nav', { class: 'lwcs-tvm-mobile-crumbs', 'aria-label': '当前位置' }, crumbs.map((crumb, index) => h('button', {
               type: 'button', class: index === crumbs.length - 1 ? 'is-current' : '', onClick: () => { state.currentPath = [...crumb.path]; },
             }, crumb.label))) : null,
-            state.mvuError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.mvuError) : null,
+            state.editingError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.editingError) : null,
+            state.mvuError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.saveState === 'conflict'
+                ? '检测到其他更新，当前修改尚未保存。请保留修改并重试。'
+                : '操作没有完成。请重试；如需重新读取，请先保存或丢弃当前修改。') : null,
             state.mvuNotice ? h('p', { class: 'lwcs-tvm-message', role: 'status' }, state.mvuNotice) : null,
             state.searchBusy ? h('p', { class: 'lwcs-tvm-message', role: 'status' }, '正在检索…') : null,
             state.searchCapped ? h('p', { class: 'lwcs-tvm-message' }, '仅显示前 150 条匹配结果。') : null,
           ]),
-          h('div', { class: 'lwcs-tvm-grid-head' }, [h('span', null, '键名'), h('span', null, '类型'), h('span', null, '值 / 草稿差异'), h('span', null, '操作')]),
-          h('div', { class: 'lwcs-tvm-tree-viewport', role: 'tree', 'aria-label': 'stat_data 变量树', 'aria-rowcount': rows.value.length,
+          h('div', { class: 'lwcs-tvm-grid-head' }, [h('span', null, '名称'), h('span', null, '类型'), h('span', null, '当前值与修改'), h('span', null, '操作')]),
+          h('div', { class: 'lwcs-tvm-tree-viewport', role: 'tree', 'aria-label': '当前聊天变量', 'aria-rowcount': rows.value.length,
             onScroll: event => { state.scrollTop = event.currentTarget.scrollTop; state.viewportHeight = event.currentTarget.clientHeight; } }, [
             start.value ? h('div', { style: { height: start.value * 32 + 'px' } }) : null,
             ...shown.map((row, index) => h(DataRow, { key: row.key, row, index: start.value + index, searchMode: !!state.searchQuery })),
             virtual.value && end.value < rows.value.length ? h('div', { style: { height: (rows.value.length - end.value) * 32 + 'px' } }) : null,
-            !state.mvuLoading && !rows.value.length ? h('div', { class: 'lwcs-tvm-empty' }, state.searchQuery ? '没有匹配项' : 'stat_data 当前没有子项') : null,
+            !state.mvuLoading && !rows.value.length ? h('div', { class: 'lwcs-tvm-empty' }, state.searchQuery
+              ? '没有找到匹配的变量。'
+              : [h('p', null, '当前聊天暂时没有可显示的变量。'), h('button', { type: 'button', onClick: () => refreshMvu() }, '重新读取')]) : null,
           ]),
           h('footer', { class: 'lwcs-tvm-draft-bar' }, [
-            h('div', null, [h('strong', null, isDirty.value ? draftList.value.length + ' 条路径草稿' : '无未保存草稿'),
-              h('span', null, state.saveState === 'conflict' ? '检测到冲突，未覆盖 canonical' : '仅写入 stat_data；保存后逐路径回读')]),
+            h('div', null, [h('strong', null, saveStatusText.value),
+              h('span', null, state.saveState === 'conflict' ? '检测到其他更新，当前修改仍保留。' : '只保存当前修改；完成后会重新确认结果。')]),
             h('button', { type: 'button', disabled: !isDirty.value || state.mvuSaving, onClick: confirmDiscardDraft }, '丢弃全部'),
             h('button', { type: 'button', class: 'lwcs-tvm-primary lwcs-tvm-save', disabled: !isDirty.value || state.mvuSaving || state.mvuLoading, onClick: saveMvu },
-              state.mvuSaving ? '保存中…' : '保存并回读'),
+              state.mvuSaving ? '正在保存…' : '保存修改'),
           ]),
           detailSheet(),
         ]);
@@ -1486,22 +1500,21 @@
             h('span', { class: 'lwcs-tvm-floor-number' }, '第 ' + item.absoluteIndex + ' 楼'),
             h('span', { class: 'lwcs-tvm-floor-role' }, item.role),
             h('span', { class: 'lwcs-tvm-floor-summary' }, item.summary),
-            h('span', { class: 'lwcs-tvm-floor-swipe' }, 'swipe ' + (item.swipeId ?? '—')),
           ])),
           listEnd.value < state.floorMessages.length
             ? h('div', { style: { height: (state.floorMessages.length - listEnd.value) * 56 + 'px' }, 'aria-hidden': 'true' })
             : null,
-          !state.floorListLoading && !state.floorMessages.length ? h('div', { class: 'lwcs-tvm-empty' }, '当前聊天没有可显示楼层') : null,
+          !state.floorListLoading && !state.floorMessages.length ? h('div', { class: 'lwcs-tvm-empty' }, '当前聊天暂时没有可显示的楼层记录。') : null,
         ]);
       }
 
       function renderDetail() {
-        if (state.floorDetailLoading) return h('div', { class: 'lwcs-tvm-state', role: 'status' }, '正在恢复该楼 TT-store 快照…');
-        if (!state.floorDetail) return h('div', { class: 'lwcs-tvm-state' }, '选择一个楼层后惰性读取其持久化 MVU 快照。');
+        if (state.floorDetailLoading) return h('div', { class: 'lwcs-tvm-state', role: 'status' }, '正在读取该楼变量…');
+        if (!state.floorDetail) return h('div', { class: 'lwcs-tvm-state' }, '选择一个楼层后查看当时的变量记录。');
         if (state.floorDetail.status === 'none') {
           return h('div', { class: 'lwcs-tvm-floor-none' }, [
-            h('strong', null, '该楼无已持久化 MVU 快照'),
-            h('p', null, 'Provider 返回 branchReset 或 head 为空，因此不会用 initialState 的空对象冒充历史状态。'),
+            h('strong', null, '该楼没有可显示的变量记录'),
+            h('p', null, '可以选择其他楼层，或点击“重新读取”后再试。'),
           ]);
         }
         const detail = state.floorDetail;
@@ -1509,22 +1522,19 @@
         const rows = floorRows.value.slice(treeStart.value, treeEnd.value);
         const top = treeVirtual.value ? treeStart.value * floorRowHeight.value : 0;
         const bottom = treeVirtual.value ? (floorRows.value.length - treeEnd.value) * floorRowHeight.value : 0;
-        const readonlyMeta = { ...detail.hotState };
-        delete readonlyMeta.stat_data;
         return h('div', { class: 'lwcs-tvm-floor-detail-inner' }, [
           h('div', { class: 'lwcs-tvm-floor-detail-head' }, [
             isMobile.value ? h('button', { type: 'button', onClick: () => { state.floorMobileDetail = false; } }, '返回楼层') : null,
             h('div', null, [
-              h('strong', null, '第 ' + detail.pointer.absoluteIndex + ' 楼 · snapshot revision ' + (detail.snapshotRevision ?? '—')),
-              h('span', null, 'selected swipe ' + (detail.pointer.swipeId ?? '—') + ' · source floor ' + (sourceIndex ?? '—')),
-              detail.inherited ? h('span', { class: 'lwcs-tvm-inherited' }, '继承自第 ' + sourceIndex + ' 楼') : h('span', null, '该楼直接快照'),
+              h('strong', null, '第 ' + detail.pointer.absoluteIndex + ' 楼'),
+              detail.inherited ? h('span', { class: 'lwcs-tvm-inherited' }, '沿用第 ' + sourceIndex + ' 楼的变量记录') : h('span', null, '本楼变量记录'),
             ]),
-            h('button', { type: 'button', class: 'lwcs-tvm-primary', onClick: () => { state.activeTab = 'mvu'; } }, '编辑当前 canonical'),
+            h('button', { type: 'button', class: 'lwcs-tvm-primary', onClick: () => { state.activeTab = 'mvu'; } }, '编辑当前变量'),
           ]),
           h('div', { class: 'lwcs-tvm-floor-tree-tools' }, [
             h('label', { class: 'lwcs-tvm-search' }, [
               h('span', { class: 'lwcs-tvm-sr-only' }, '搜索楼层变量'),
-              h('input', { type: 'search', value: state.floorSearchInput, placeholder: '搜索该楼键名、路径或值',
+              h('input', { type: 'search', value: state.floorSearchInput, placeholder: '搜索该楼的名称或内容',
                 onInput: event => { state.floorSearchInput = event.target.value; scheduleFloorSearch(); } }),
             ]),
             state.floorSearchBusy ? h('span', { class: 'lwcs-tvm-floor-search-state', role: 'status' }, '搜索中…') : null,
@@ -1539,31 +1549,27 @@
               });
             } }, '全部折叠'),
           ]),
-          h('div', { class: 'lwcs-tvm-grid-head' }, [h('span', null, '键名'), h('span', null, '类型'), h('span', null, '历史值'), h('span', null, '操作')]),
-          h('div', { class: 'lwcs-tvm-tree-viewport lwcs-tvm-floor-tree-viewport', role: 'tree', 'aria-label': '楼层 stat_data 只读变量树',
+          h('div', { class: 'lwcs-tvm-grid-head' }, [h('span', null, '名称'), h('span', null, '类型'), h('span', null, '当时的值'), h('span', null, '操作')]),
+          h('div', { class: 'lwcs-tvm-tree-viewport lwcs-tvm-floor-tree-viewport', role: 'tree', 'aria-label': '楼层变量记录',
             'aria-rowcount': floorRows.value.length, 'aria-busy': String(state.floorSearchBusy),
             onScroll: event => { state.floorTreeScrollTop = event.currentTarget.scrollTop; state.floorTreeHeight = event.currentTarget.clientHeight; } }, [
             top ? h('div', { style: { height: top + 'px' }, 'aria-hidden': 'true' }) : null,
             ...rows.map((row, index) => h(DataRow, { key: row.key, row, index: treeStart.value + index, readonly: true, searchMode: !!state.floorSearchQuery })),
             bottom ? h('div', { style: { height: bottom + 'px' }, 'aria-hidden': 'true' }) : null,
             !state.floorSearchBusy && !floorRows.value.length
-              ? h('div', { class: 'lwcs-tvm-empty' }, state.floorSearchQuery ? '没有匹配项' : '该快照 stat_data 为空')
+              ? h('div', { class: 'lwcs-tvm-empty' }, state.floorSearchQuery ? '没有找到匹配的变量。' : '该楼暂时没有可显示的变量。')
               : null,
-          ]),
-          h('details', { class: 'lwcs-tvm-floor-meta' }, [
-            h('summary', null, '只读顶层元数据'),
-            h('pre', null, JSON.stringify(readonlyMeta, null, 2)),
           ]),
         ]);
       }
 
       return () => h('section', { class: ['lwcs-tvm-floor-page', state.floorMobileDetail ? 'is-mobile-detail' : ''] }, [
         h('header', { class: 'lwcs-tvm-floor-toolbar' }, [
-          h('div', null, [h('strong', null, '消息楼层'), h('span', null, '历史快照严格只读；仅选择楼层时调用 Provider.readState')]),
-          h('button', { type: 'button', disabled: state.floorListLoading, onClick: refreshFloorList }, state.floorListLoading ? '读取中…' : '刷新楼层'),
+          h('div', null, [h('strong', null, '楼层记录'), h('span', null, '查看各楼层保存下来的变量；这里不会修改内容。')]),
+          h('button', { type: 'button', disabled: state.floorListLoading, onClick: refreshFloorList }, state.floorListLoading ? '读取中…' : '重新读取'),
         ]),
         h('div', { class: 'lwcs-tvm-floor-status' }, [
-          state.floorError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.floorError) : null,
+          state.floorError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, '楼层记录暂时无法读取。请点击“重新读取”再试。') : null,
         ]),
         h('div', { class: 'lwcs-tvm-floor-workspace' }, [
           h('aside', { class: 'lwcs-tvm-floor-list-pane' }, [renderList()]),
@@ -1576,70 +1582,70 @@
   const DatabasePage = defineComponent({
     name: 'LwcsTvmDatabasePage',
     setup() {
-      return () => h('section', { class: 'lwcs-tvm-page', 'aria-labelledby': 'lwcs-tvm-db-title' }, [
+      return () => {
+        const selectedIndex = state.databaseKeys.indexOf(state.databaseSelectedKey);
+        return h('section', { class: 'lwcs-tvm-page', 'aria-labelledby': 'lwcs-tvm-db-title' }, [
         h('div', { class: 'lwcs-tvm-page-heading' }, [
           h('div', null, [
-            h('h2', { id: 'lwcs-tvm-db-title' }, '数据库持久化'),
-            h('p', null, '底层键只读，数据编辑请使用数据库编辑器。这里不会修改 raw head、index 或 frame。'),
+            h('h2', { id: 'lwcs-tvm-db-title' }, '剧情资料 / 数据库'),
+            h('p', null, '这里用于查看已保存的资料；修改内容请使用数据库编辑器。'),
           ]),
           h('div', { class: 'lwcs-tvm-actions' }, [
-            h('button', { type: 'button', disabled: state.databaseLoading, onClick: refreshDatabase }, state.databaseLoading ? '读取中…' : '刷新键列表'),
+            h('button', { type: 'button', disabled: state.databaseLoading, onClick: refreshDatabase }, state.databaseLoading ? '读取中…' : '重新读取'),
             h('button', { class: 'lwcs-tvm-primary', type: 'button', onClick: openDatabaseEditor }, '打开数据库编辑器'),
           ]),
         ]),
-        state.databaseError ? h('div', { class: 'lwcs-tvm-alert lwcs-tvm-alert-error', role: 'alert' }, state.databaseError) : null,
-        h('div', { class: 'lwcs-tvm-db-meta' }, [
-          h('div', null, [h('span', null, 'Backend'), h('strong', null, state.databaseBackend || '不可用')]),
-          h('div', null, [h('span', null, 'Stable chat'), h('strong', { title: state.databaseStableChatId }, state.databaseStableChatId || '—')]),
-          h('div', null, [h('span', null, 'Namespace'), h('strong', null, DATABASE_NAMESPACE)]),
-          h('div', null, [h('span', null, '能力'), h('strong', null, state.databaseCapabilities?.verifiedWrite ? '已验证读写' : '不可用')]),
-        ]),
+        state.databaseError ? h('div', { class: 'lwcs-tvm-alert lwcs-tvm-alert-error', role: 'alert' }, '剧情资料暂时无法读取。请点击“重新读取”或打开数据库编辑器。') : null,
         h('div', { class: 'lwcs-tvm-db-layout' }, [
-          h('div', { class: 'lwcs-tvm-key-list', 'aria-label': '数据库底层键' }, [
-            state.databaseLoading ? h('div', { class: 'lwcs-tvm-state' }, '正在读取键列表…') : null,
-            !state.databaseLoading && state.databaseKeys.length === 0 ? h('div', { class: 'lwcs-tvm-state' }, '该 namespace 暂无键。') : null,
-            ...state.databaseKeys.map(key => h('button', {
+          h('div', { class: 'lwcs-tvm-key-list', 'aria-label': '剧情资料项目' }, [
+            state.databaseLoading ? h('div', { class: 'lwcs-tvm-state' }, '正在读取资料…') : null,
+            !state.databaseLoading && state.databaseKeys.length === 0 ? h('div', { class: 'lwcs-tvm-state' }, '当前聊天暂时没有可显示的剧情资料。') : null,
+            ...state.databaseKeys.map((key, index) => h('button', {
               key,
               type: 'button',
               'aria-pressed': String(state.databaseSelectedKey === key),
               class: state.databaseSelectedKey === key ? 'is-selected' : '',
               onClick: () => selectDatabaseKey(key),
-            }, key)),
+            }, '剧情资料 ' + (index + 1))),
           ]),
           h('div', { class: 'lwcs-tvm-value-view' }, [
-            h('div', { class: 'lwcs-tvm-value-title' }, state.databaseSelectedKey || '选择一个键查看只读值'),
+            h('div', { class: 'lwcs-tvm-value-title' }, selectedIndex >= 0 ? '剧情资料 ' + (selectedIndex + 1) : '选择一项查看内容'),
             state.databaseValueLoading ? h('div', { class: 'lwcs-tvm-state' }, '读取中…') : null,
             !state.databaseValueLoading && state.databaseSelectedKey
-              ? h('pre', { tabindex: '0' }, JSON.stringify(state.databaseSelectedValue, null, 2) ?? 'undefined')
+              ? h('pre', { tabindex: '0' }, JSON.stringify(state.databaseSelectedValue, null, 2) ?? '（无内容）')
               : null,
           ]),
         ]),
-      ]);
+        ]);
+      };
     },
   });
 
   const DiagnosticsPage = defineComponent({
     name: 'LwcsTvmDiagnosticsPage',
     setup() {
-      return () => h('section', { class: 'lwcs-tvm-page', 'aria-labelledby': 'lwcs-tvm-diag-title' }, [
+      return () => {
+        const checks = [
+          ['变量', state.mvuLoading || state.mvuSaving ? '处理中' : state.mvuError ? '需要重试' : '正常'],
+          ['楼层记录', state.floorListLoading || state.floorDetailLoading ? '读取中' : state.floorError ? '需要重试' : '正常'],
+          ['剧情资料', state.databaseLoading || state.databaseValueLoading ? '读取中' : state.databaseError ? '需要重试' : '正常'],
+          ['当前聊天', state.baselineChatId ? '已识别' : '等待载入'],
+        ];
+        return h('section', { class: 'lwcs-tvm-page', 'aria-labelledby': 'lwcs-tvm-diag-title' }, [
         h('div', { class: 'lwcs-tvm-page-heading' }, [
           h('div', null, [
-            h('h2', { id: 'lwcs-tvm-diag-title' }, '持久化诊断'),
-            h('p', null, '只展示后端、会话和队列状态，不展示聊天内容、变量值或密钥。'),
+            h('h2', { id: 'lwcs-tvm-diag-title' }, '运行检查'),
+            h('p', null, '查看变量、楼层记录和剧情资料是否可以正常使用。'),
           ]),
-          h('button', { type: 'button', disabled: state.diagnosticLoading, onClick: refreshDiagnostics }, state.diagnosticLoading ? '读取中…' : '刷新诊断'),
+          h('button', { type: 'button', disabled: state.diagnosticLoading, onClick: refreshDiagnostics }, state.diagnosticLoading ? '检查中…' : '重新检查'),
         ]),
-        state.diagnosticError ? h('div', { class: 'lwcs-tvm-alert lwcs-tvm-alert-error', role: 'alert' }, state.diagnosticError) : null,
-        state.diagnostics ? h('div', { class: 'lwcs-tvm-diagnostic-grid' }, [
-          ['MVU persistence', state.diagnostics.mvuPersistence],
-          ['MVU provider', state.diagnostics.provider],
-          ['Persistence adapter', state.diagnostics.adapter],
-          ['Database session', state.diagnostics.database],
-        ].map(([title, value]) => h('article', { class: 'lwcs-tvm-diagnostic-card', key: title }, [
+        state.diagnosticError ? h('div', { class: 'lwcs-tvm-alert lwcs-tvm-alert-error', role: 'alert' }, '运行检查暂时无法完成，请稍后重试。') : null,
+        h('div', { class: 'lwcs-tvm-diagnostic-grid' }, checks.map(([title, value]) => h('article', { class: 'lwcs-tvm-diagnostic-card', key: title }, [
           h('h3', null, title),
-          h('pre', { tabindex: '0' }, JSON.stringify(value, null, 2)),
-        ]))) : h('div', { class: 'lwcs-tvm-state' }, '暂无诊断状态。'),
-      ]);
+          h('p', { class: value === '需要重试' ? 'lwcs-tvm-message is-error' : 'lwcs-tvm-message' }, value),
+        ]))),
+        ]);
+      };
     },
   });
 
@@ -1647,10 +1653,10 @@
     name: 'LwcsTvmRoot',
     setup() {
       const tabs = [
-        { id: 'mvu', label: 'MVU', detail: '编辑 canonical stat_data' },
-        { id: 'floors', label: '楼层', detail: '只读历史 TT-store 快照' },
-        { id: 'database', label: '数据库', detail: '查看 TT-store 底层键' },
-        { id: 'diagnostics', label: '诊断', detail: '检查持久化会话' },
+        { id: 'mvu', label: '变量', detail: '查看和修改当前变量' },
+        { id: 'floors', label: '楼层记录', detail: '查看过去楼层的变量' },
+        { id: 'database', label: '剧情资料', detail: '查看数据库内容' },
+        { id: 'diagnostics', label: '运行检查', detail: '查看各项功能是否正常' },
       ];
       watch(() => state.activeTab, async tab => {
         invalidateFloorReads(false);
@@ -1672,14 +1678,12 @@
         }, [
           h('header', { class: 'lwcs-tvm-header' }, [
             h('div', { class: 'lwcs-tvm-title-group' }, [
-              h('h1', { id: 'lwcs-tvm-title' }, '数据检修台'),
-              h('span', { class: 'lwcs-tvm-context' }, 'TT-store 变量管理'),
+              h('h1', { id: 'lwcs-tvm-title' }, '变量管理器'),
+              h('span', { class: 'lwcs-tvm-context' }, '变量与剧情资料'),
             ]),
             h('div', { class: 'lwcs-tvm-header-status', 'aria-live': 'polite' }, [
-              h('span', { class: `lwcs-tvm-badge ${backendLabel.value === 'tt-store' ? 'is-online' : 'is-offline'}` }, backendLabel.value === 'tt-store' ? 'TT-store' : '不可用'),
-              h('span', { class: 'lwcs-tvm-badge' }, `revision ${revisionLabel.value}`),
-              h('span', { class: `lwcs-tvm-badge ${isDirty.value ? 'is-dirty' : ''}` }, isDirty.value ? '未保存' : '已同步'),
-              h('button', { class: 'lwcs-tvm-close', type: 'button', 'aria-label': '关闭 TT-store 变量管理器', onClick: closeManager }, '×'),
+              h('span', { class: `lwcs-tvm-badge ${isDirty.value ? 'is-dirty' : ''}` }, saveStatusText.value),
+              h('button', { class: 'lwcs-tvm-close', type: 'button', 'aria-label': '关闭变量管理器', onClick: closeManager }, '×'),
             ]),
           ]),
           h('div', { class: 'lwcs-tvm-workspace' }, [
@@ -1713,7 +1717,7 @@
 '.lwcs-tvm-shell{width:min(1240px,100%);height:min(820px,calc(100dvh - 24px));min-height:420px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line);border-radius:4px;background:var(--bg);box-shadow:0 18px 58px rgba(0,0,0,.5)}',
 '.lwcs-tvm-header{height:48px;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 6px 0 14px;border-bottom:1px solid var(--line);background:#1b1d1e}',
 '.lwcs-tvm-title-group,.lwcs-tvm-header-status,.lwcs-tvm-actions,.lwcs-tvm-context{display:flex;align-items:center;gap:8px;min-width:0}.lwcs-tvm-title-group h1{margin:0;font-size:15px}.lwcs-tvm-title-group .lwcs-tvm-context{color:var(--muted);font-size:11px}',
-'.lwcs-tvm-badge,.lwcs-tvm-backend,.lwcs-tvm-state{display:inline-flex;align-items:center;min-height:24px;padding:2px 7px;border:1px solid var(--line);border-radius:2px;color:var(--muted);background:#171819;font:11px/1.2 ui-monospace,Consolas,monospace;white-space:nowrap}.lwcs-tvm-badge.is-online,.lwcs-tvm-backend.is-online{color:var(--cyan);border-color:rgba(86,216,208,.4)}.lwcs-tvm-badge.is-offline{color:#ffc4ca}.lwcs-tvm-badge.is-dirty,.lwcs-tvm-state[data-state="draft"],.lwcs-tvm-state[data-state="editing"]{color:#ffc47a;border-color:rgba(243,154,50,.5)}.lwcs-tvm-state[data-state="conflict"],.lwcs-tvm-state[data-state="error"]{color:#ffc4ca;border-color:rgba(255,131,141,.55)}',
+'.lwcs-tvm-badge{display:inline-flex;align-items:center;min-height:24px;padding:2px 7px;border:1px solid var(--line);border-radius:2px;color:var(--muted);background:#171819;font:11px/1.2 ui-monospace,Consolas,monospace;white-space:nowrap}.lwcs-tvm-badge.is-dirty,.lwcs-tvm-badge[data-state="draft"],.lwcs-tvm-badge[data-state="editing"]{color:#ffc47a;border-color:rgba(243,154,50,.5)}.lwcs-tvm-badge[data-state="conflict"],.lwcs-tvm-badge[data-state="error"]{color:#ffc4ca;border-color:rgba(255,131,141,.55)}',
 '.lwcs-tvm-overlay button,.lwcs-tvm-overlay input,.lwcs-tvm-overlay textarea,.lwcs-tvm-overlay select{font:inherit;color:inherit}.lwcs-tvm-overlay button{min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:3px;background:var(--panel2);cursor:pointer;touch-action:manipulation}.lwcs-tvm-overlay button:hover{border-color:#5a5d60;background:#292b2d}.lwcs-tvm-overlay button:disabled{opacity:.44;cursor:not-allowed}.lwcs-tvm-overlay button:focus-visible,.lwcs-tvm-overlay input:focus-visible,.lwcs-tvm-overlay textarea:focus-visible,.lwcs-tvm-overlay select:focus-visible,.lwcs-tvm-row:focus-visible{outline:2px solid var(--orange);outline-offset:-2px}.lwcs-tvm-primary{color:#21160b;border-color:var(--orange);background:var(--orange);font-weight:750}.lwcs-tvm-close,.lwcs-tvm-icon-button{width:44px;min-width:44px;padding:0;background:transparent;font-size:21px}',
 '.lwcs-tvm-workspace{min-height:0;flex:1;display:grid;grid-template-rows:42px minmax(0,1fr)}.lwcs-tvm-nav{display:flex;align-items:stretch;padding:0 10px;border-bottom:1px solid var(--line);background:#18191a}.lwcs-tvm-nav button{position:relative;min-height:42px;padding:4px 16px;border:0;border-radius:0;background:transparent}.lwcs-tvm-nav button span{display:none}.lwcs-tvm-nav button.is-active{color:#fff1df}.lwcs-tvm-nav button.is-active:after{content:"";position:absolute;inset:auto 10px 0;height:2px;background:var(--orange)}',
 '.lwcs-tvm-main{min-width:0;min-height:0;overflow:hidden}.lwcs-tvm-page{height:100%;padding:12px 14px;overflow:auto}.lwcs-tvm-mvu-page{height:100%;min-height:0;display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;overflow:hidden}.lwcs-tvm-status-stack{min-height:0;overflow:auto}',
@@ -1723,14 +1727,14 @@
 '.lwcs-tvm-cell-key{min-width:0;height:100%;display:flex;align-items:center;padding-left:calc(var(--lwcs-tvm-depth) * 14px);background-image:repeating-linear-gradient(90deg,transparent 0,transparent 13px,rgba(255,255,255,.055) 13px,rgba(255,255,255,.055) 14px);background-size:calc(var(--lwcs-tvm-depth) * 14px) 100%;background-repeat:no-repeat}.lwcs-tvm-disclosure{width:28px;min-width:28px;min-height:28px;padding:0;border:0;background:transparent;color:var(--orange)}.lwcs-tvm-scalar-space{width:28px;min-width:28px}.lwcs-tvm-key-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12px/1.2 ui-monospace,Consolas,monospace}.lwcs-tvm-type{color:#777a7c;font:10px/1 ui-monospace,Consolas,monospace}.lwcs-tvm-value-wrap{min-width:0;overflow:hidden}.lwcs-tvm-cell-value,.lwcs-tvm-old,.lwcs-tvm-new{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12px/1.25 ui-monospace,Consolas,monospace}.lwcs-tvm-diff{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);align-items:center}.lwcs-tvm-old{color:#777;text-decoration:line-through}.lwcs-tvm-arrow{text-align:center;color:#806947}.lwcs-tvm-new{color:#ffc16b}.lwcs-tvm-breadcrumb-value{min-width:0;min-height:28px;padding:2px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:0;background:transparent;color:#9b9690}',
 '.lwcs-tvm-row-actions{display:flex;justify-content:flex-end;gap:3px}.lwcs-tvm-row-action{min-height:26px;padding:2px 6px;opacity:0;border-color:transparent;background:transparent;font-size:10px}.lwcs-tvm-row:hover .lwcs-tvm-row-action,.lwcs-tvm-row:focus-within .lwcs-tvm-row-action,.lwcs-tvm-row-action.lwcs-tvm-undo{opacity:1}.lwcs-tvm-undo{color:#ffc16b}.lwcs-tvm-inline-editor{display:flex;align-items:center;gap:4px}.lwcs-tvm-inline-input{min-width:0;width:100%;height:27px;padding:3px 6px;border:1px solid var(--orange);background:#101112}.lwcs-tvm-inline-editor button{min-height:27px;padding:2px 6px;font-size:10px}',
 '.lwcs-tvm-draft-bar{min-height:54px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:7px 10px;border-top:1px solid var(--line);background:#1b1d1e}.lwcs-tvm-draft-bar div{display:flex;flex-direction:column;min-width:0}.lwcs-tvm-draft-bar span{color:var(--muted);font-size:11px}.lwcs-tvm-save{min-width:138px}.lwcs-tvm-empty{padding:28px;color:var(--muted);text-align:center}',
-'.lwcs-tvm-floor-page{height:100%;min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);overflow:hidden}.lwcs-tvm-floor-toolbar{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:2px solid var(--orange);background:#1a1c1d}.lwcs-tvm-floor-toolbar div{display:flex;flex-direction:column;min-width:0}.lwcs-tvm-floor-toolbar span{color:var(--muted);font-size:11px}.lwcs-tvm-floor-status{min-height:0}.lwcs-tvm-floor-workspace{min-height:0;display:grid;grid-template-columns:280px minmax(0,1fr)}.lwcs-tvm-floor-list-pane{min-height:0;border-right:1px solid var(--line);background:#171819}.lwcs-tvm-floor-list{height:100%;overflow:auto}.lwcs-tvm-floor-item{width:100%;height:56px;display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto;gap:2px 7px;padding:6px 9px;border:0;border-bottom:1px solid var(--soft);border-radius:0;text-align:left;background:transparent}.lwcs-tvm-floor-item.is-selected{box-shadow:inset 3px 0 var(--orange);background:#24211d}.lwcs-tvm-floor-number{font-weight:700}.lwcs-tvm-floor-role,.lwcs-tvm-floor-swipe{color:var(--muted);font-size:10px}.lwcs-tvm-floor-swipe{text-align:right}.lwcs-tvm-floor-summary{grid-column:1/-1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c5c0ba}.lwcs-tvm-floor-detail{min-width:0;min-height:0;overflow:hidden}.lwcs-tvm-floor-detail-inner{height:100%;min-height:0;display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto}.lwcs-tvm-floor-detail-head{min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line)}.lwcs-tvm-floor-detail-head>div{display:flex;flex-direction:column;min-width:0}.lwcs-tvm-floor-detail-head span{color:var(--muted);font-size:11px}.lwcs-tvm-floor-detail-head .lwcs-tvm-inherited{color:#ffc16b}.lwcs-tvm-floor-tree-tools{display:flex;align-items:center;gap:7px;padding:6px 9px;border-bottom:1px solid var(--line)}.lwcs-tvm-floor-search-state{color:var(--muted);font-size:11px;white-space:nowrap}.lwcs-tvm-floor-none{padding:24px}.lwcs-tvm-floor-none p{color:var(--muted)}.lwcs-tvm-floor-meta{max-height:180px;overflow:auto;border-top:1px solid var(--line);background:#151617}.lwcs-tvm-floor-meta summary{min-height:40px;padding:10px;cursor:pointer;color:var(--muted)}.lwcs-tvm-floor-meta pre{margin:0;padding:9px;border-top:1px solid var(--soft);white-space:pre-wrap;overflow-wrap:anywhere;color:#aaa}',
+'.lwcs-tvm-floor-page{height:100%;min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);overflow:hidden}.lwcs-tvm-floor-toolbar{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:2px solid var(--orange);background:#1a1c1d}.lwcs-tvm-floor-toolbar div{display:flex;flex-direction:column;min-width:0}.lwcs-tvm-floor-toolbar span{color:var(--muted);font-size:11px}.lwcs-tvm-floor-status{min-height:0}.lwcs-tvm-floor-workspace{min-height:0;display:grid;grid-template-columns:280px minmax(0,1fr)}.lwcs-tvm-floor-list-pane{min-height:0;border-right:1px solid var(--line);background:#171819}.lwcs-tvm-floor-list{height:100%;overflow:auto}.lwcs-tvm-floor-item{width:100%;height:56px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;gap:2px 7px;padding:6px 9px;border:0;border-bottom:1px solid var(--soft);border-radius:0;text-align:left;background:transparent}.lwcs-tvm-floor-item.is-selected{box-shadow:inset 3px 0 var(--orange);background:#24211d}.lwcs-tvm-floor-number{font-weight:700}.lwcs-tvm-floor-role{color:var(--muted);font-size:10px;text-align:right}.lwcs-tvm-floor-summary{grid-column:1/-1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c5c0ba}.lwcs-tvm-floor-detail{min-width:0;min-height:0;overflow:hidden}.lwcs-tvm-floor-detail-inner{height:100%;min-height:0;display:grid;grid-template-rows:auto auto auto minmax(0,1fr)}.lwcs-tvm-floor-detail-head{min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line)}.lwcs-tvm-floor-detail-head>div{display:flex;flex-direction:column;min-width:0}.lwcs-tvm-floor-detail-head span{color:var(--muted);font-size:11px}.lwcs-tvm-floor-detail-head .lwcs-tvm-inherited{color:#ffc16b}.lwcs-tvm-floor-tree-tools{display:flex;align-items:center;gap:7px;padding:6px 9px;border-bottom:1px solid var(--line)}.lwcs-tvm-floor-search-state{color:var(--muted);font-size:11px;white-space:nowrap}.lwcs-tvm-floor-none{padding:24px}.lwcs-tvm-floor-none p{color:var(--muted)}',
 '.lwcs-tvm-mobile-crumbs{display:flex;gap:2px;overflow:auto;padding:5px 8px;border-bottom:1px solid var(--line);background:#18191a}.lwcs-tvm-mobile-crumbs button{min-height:34px;padding:3px 8px;white-space:nowrap;background:transparent}.lwcs-tvm-mobile-crumbs button:after{content:"›";margin-left:8px;color:#6d6964}.lwcs-tvm-mobile-crumbs button.is-current{color:#ffc16b}.lwcs-tvm-mobile-crumbs button.is-current:after{content:""}',
 '.lwcs-tvm-sheet-backdrop{position:fixed;inset:0;z-index:3;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.58)}.lwcs-tvm-detail-sheet{width:min(720px,100%);max-height:min(82dvh,var(--lwcs-tvm-visual-height,82dvh));display:grid;grid-template-rows:auto minmax(0,1fr) auto;border:1px solid var(--line);border-bottom:0;background:#1a1c1d;animation:lwcs-tvm-sheet-in .2s ease-out}.lwcs-tvm-detail-sheet header,.lwcs-tvm-detail-sheet footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}.lwcs-tvm-detail-sheet footer{justify-content:flex-end;border-top:1px solid var(--line);border-bottom:0;padding-bottom:calc(9px + env(safe-area-inset-bottom))}.lwcs-tvm-detail-sheet h3,.lwcs-tvm-detail-sheet p{margin:0}.lwcs-tvm-detail-sheet p{max-width:560px;color:var(--muted);overflow-wrap:anywhere}.lwcs-tvm-kicker{color:#8d8984;font:10px/1 monospace}.lwcs-tvm-detail-body{min-height:0;display:flex;flex-direction:column;gap:8px;overflow:auto;padding:12px}.lwcs-tvm-detail-body select{width:140px;height:40px;padding:6px;border:1px solid var(--line);background:#111213}.lwcs-tvm-detail-input{width:100%;min-height:180px;resize:vertical;padding:9px;border:1px solid var(--line);background:#111213;font:12px/1.45 ui-monospace,Consolas,monospace;overflow-wrap:anywhere}.lwcs-tvm-boolean-toggle{min-height:48px;color:#ffc16b}.lwcs-tvm-original-block{min-width:0;color:var(--muted)}.lwcs-tvm-original-block pre{max-height:180px;margin:5px 0 0;padding:8px;overflow:auto;border:1px solid var(--soft);background:#121314;color:#aaa;white-space:pre-wrap;overflow-wrap:anywhere}',
 '.lwcs-tvm-page-heading{display:flex;justify-content:space-between;gap:12px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--soft)}.lwcs-tvm-page-heading h2{margin:0;font-size:16px}.lwcs-tvm-page-heading p{margin:2px 0;color:var(--muted)}.lwcs-tvm-alert,.lwcs-tvm-field-error{margin:7px 0;padding:7px 9px;border-left:2px solid var(--orange);background:#211e19;overflow-wrap:anywhere}.lwcs-tvm-alert-error,.lwcs-tvm-field-error{border-color:var(--danger);color:#ffd0d5}.lwcs-tvm-state{padding:18px;color:var(--muted)}',
-'.lwcs-tvm-db-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-bottom:8px;border:1px solid var(--line);background:var(--line)}.lwcs-tvm-db-meta div{min-width:0;padding:7px 9px;background:var(--panel)}.lwcs-tvm-db-meta span{display:block;color:var(--muted);font-size:10px}.lwcs-tvm-db-meta strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lwcs-tvm-db-layout{min-height:400px;display:grid;grid-template-columns:minmax(190px,28%) minmax(0,1fr);border:1px solid var(--line)}.lwcs-tvm-key-list{overflow:auto;padding:5px;border-right:1px solid var(--line)}.lwcs-tvm-key-list button{width:100%;display:block;margin-bottom:3px;text-align:left;overflow-wrap:anywhere}.lwcs-tvm-key-list button.is-selected{border-color:var(--orange)}.lwcs-tvm-value-view{min-width:0;overflow:auto;padding:9px}.lwcs-tvm-value-view pre,.lwcs-tvm-diagnostic-card pre{margin:0;padding:8px;overflow:auto;border:1px solid var(--soft);background:#111213;white-space:pre-wrap;overflow-wrap:anywhere}.lwcs-tvm-diagnostic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.lwcs-tvm-diagnostic-card{min-width:0;padding:8px;border:1px solid var(--line);background:var(--panel)}.lwcs-tvm-diagnostic-card h3{margin:0 0 6px}.lwcs-tvm-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}',
+'.lwcs-tvm-db-layout{min-height:400px;display:grid;grid-template-columns:minmax(190px,28%) minmax(0,1fr);border:1px solid var(--line)}.lwcs-tvm-key-list{overflow:auto;padding:5px;border-right:1px solid var(--line)}.lwcs-tvm-key-list button{width:100%;display:block;margin-bottom:3px;text-align:left;overflow-wrap:anywhere}.lwcs-tvm-key-list button.is-selected{border-color:var(--orange)}.lwcs-tvm-value-view{min-width:0;overflow:auto;padding:9px}.lwcs-tvm-value-view pre,.lwcs-tvm-diagnostic-card pre{margin:0;padding:8px;overflow:auto;border:1px solid var(--soft);background:#111213;white-space:pre-wrap;overflow-wrap:anywhere}.lwcs-tvm-diagnostic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.lwcs-tvm-diagnostic-card{min-width:0;padding:8px;border:1px solid var(--line);background:var(--panel)}.lwcs-tvm-diagnostic-card h3{margin:0 0 6px}.lwcs-tvm-diagnostic-errors{margin-top:8px}.lwcs-tvm-diagnostic-errors summary{min-height:40px;padding:6px;cursor:pointer}.lwcs-tvm-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}',
 '@keyframes lwcs-tvm-sheet-in{from{transform:translateY(18px);opacity:.7}to{transform:none;opacity:1}}',
 '@media(max-width:899px){.lwcs-tvm-overlay{padding:0}.lwcs-tvm-shell{width:100%;height:100dvh;border-radius:0;border-inline:0}.lwcs-tvm-context-bar{grid-template-columns:minmax(180px,1fr) minmax(180px,1fr);}.lwcs-tvm-tree-tools{grid-column:1/-1}.lwcs-tvm-grid-head,.lwcs-tvm-row{grid-template-columns:minmax(140px,30%) 64px minmax(160px,1fr) 118px}.lwcs-tvm-floor-workspace{grid-template-columns:240px minmax(0,1fr)}.lwcs-tvm-page{padding:10px}.lwcs-tvm-header-status .lwcs-tvm-badge:nth-child(2){display:none}}',
-'@media(max-width:599px){.lwcs-tvm-header{height:48px;min-height:48px;padding-left:10px}.lwcs-tvm-title-group{min-width:0;overflow:hidden}.lwcs-tvm-title-group h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lwcs-tvm-title-group .lwcs-tvm-context,.lwcs-tvm-header-status .lwcs-tvm-badge{display:none}.lwcs-tvm-header-status{display:flex;flex:0 0 44px}.lwcs-tvm-close{display:block}.lwcs-tvm-workspace{grid-template-rows:44px minmax(0,1fr)}.lwcs-tvm-nav{padding:0}.lwcs-tvm-nav button{flex:1;min-height:44px;padding:4px}.lwcs-tvm-main{overflow:hidden}.lwcs-tvm-context-bar{grid-template-columns:1fr;padding:7px 8px}.lwcs-tvm-context{overflow:auto;flex-wrap:nowrap}.lwcs-tvm-tree-tools{display:grid;grid-template-columns:repeat(3,1fr)}.lwcs-tvm-tree-tools button{min-height:44px}.lwcs-tvm-grid-head{display:none}.lwcs-tvm-tree-viewport{padding-bottom:0}.lwcs-tvm-row{height:auto;min-height:48px;grid-template-columns:minmax(90px,34%) 48px minmax(0,1fr);padding:0 7px}.lwcs-tvm-row.is-readonly{height:48px;min-height:48px;max-height:48px;overflow:hidden}.lwcs-tvm-row-actions{display:none}.lwcs-tvm-cell-key{padding-left:0;background:none}.lwcs-tvm-disclosure{width:44px;min-width:44px;min-height:44px}.lwcs-tvm-scalar-space{display:none}.lwcs-tvm-cell-value,.lwcs-tvm-old,.lwcs-tvm-new{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.lwcs-tvm-row.is-readonly .lwcs-tvm-cell-value{line-height:16px;max-height:32px}.lwcs-tvm-breadcrumb-value{min-height:44px}.lwcs-tvm-draft-bar{grid-template-columns:1fr auto;padding-bottom:calc(7px + env(safe-area-inset-bottom));background:#1a1c1d}.lwcs-tvm-draft-bar div{grid-column:1/-1}.lwcs-tvm-save{min-width:0}.lwcs-tvm-floor-toolbar span{display:none}.lwcs-tvm-floor-workspace{display:block}.lwcs-tvm-floor-list-pane,.lwcs-tvm-floor-detail{height:100%}.lwcs-tvm-floor-list-pane{border-right:0}.lwcs-tvm-floor-page.is-mobile-detail .lwcs-tvm-floor-list-pane{display:none}.lwcs-tvm-floor-page:not(.is-mobile-detail) .lwcs-tvm-floor-detail{display:none}.lwcs-tvm-floor-detail-head{align-items:flex-start;flex-wrap:wrap}.lwcs-tvm-floor-detail-head>div{flex:1}.lwcs-tvm-floor-tree-tools{flex-wrap:wrap}.lwcs-tvm-floor-tree-tools .lwcs-tvm-search{flex:1 1 100%}.lwcs-tvm-floor-detail-inner{grid-template-rows:auto auto minmax(0,1fr) auto}.lwcs-tvm-floor-detail-inner>.lwcs-tvm-grid-head{display:none}.lwcs-tvm-floor-meta{max-height:130px}.lwcs-tvm-db-meta,.lwcs-tvm-diagnostic-grid{grid-template-columns:1fr}.lwcs-tvm-db-layout{grid-template-columns:1fr;grid-template-rows:minmax(150px,34%) minmax(200px,1fr)}.lwcs-tvm-key-list{border-right:0;border-bottom:1px solid var(--line)}}',
+'@media(max-width:599px){.lwcs-tvm-header{height:48px;min-height:48px;padding-left:10px}.lwcs-tvm-title-group{min-width:0;overflow:hidden}.lwcs-tvm-title-group h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lwcs-tvm-title-group .lwcs-tvm-context,.lwcs-tvm-header-status .lwcs-tvm-badge{display:none}.lwcs-tvm-header-status{display:flex;flex:0 0 44px}.lwcs-tvm-close{display:block}.lwcs-tvm-workspace{grid-template-rows:44px minmax(0,1fr)}.lwcs-tvm-nav{padding:0}.lwcs-tvm-nav button{flex:1;min-height:44px;padding:4px}.lwcs-tvm-main{overflow:hidden}.lwcs-tvm-context-bar{grid-template-columns:1fr;padding:7px 8px}.lwcs-tvm-context{overflow:auto;flex-wrap:nowrap}.lwcs-tvm-tree-tools{display:grid;grid-template-columns:repeat(3,1fr)}.lwcs-tvm-tree-tools button{min-height:44px}.lwcs-tvm-grid-head{display:none}.lwcs-tvm-tree-viewport{padding-bottom:0}.lwcs-tvm-row{height:auto;min-height:48px;grid-template-columns:minmax(90px,34%) 48px minmax(0,1fr);padding:0 7px}.lwcs-tvm-row.is-readonly{height:48px;min-height:48px;max-height:48px;overflow:hidden}.lwcs-tvm-row-actions{display:none}.lwcs-tvm-cell-key{padding-left:0;background:none}.lwcs-tvm-disclosure{width:44px;min-width:44px;min-height:44px}.lwcs-tvm-scalar-space{display:none}.lwcs-tvm-cell-value,.lwcs-tvm-old,.lwcs-tvm-new{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.lwcs-tvm-row.is-readonly .lwcs-tvm-cell-value{line-height:16px;max-height:32px}.lwcs-tvm-breadcrumb-value{min-height:44px}.lwcs-tvm-draft-bar{grid-template-columns:1fr auto;padding-bottom:calc(7px + env(safe-area-inset-bottom));background:#1a1c1d}.lwcs-tvm-draft-bar div{grid-column:1/-1}.lwcs-tvm-save{min-width:0}.lwcs-tvm-floor-toolbar span{display:none}.lwcs-tvm-floor-workspace{display:block}.lwcs-tvm-floor-list-pane,.lwcs-tvm-floor-detail{height:100%}.lwcs-tvm-floor-list-pane{border-right:0}.lwcs-tvm-floor-page.is-mobile-detail .lwcs-tvm-floor-list-pane{display:none}.lwcs-tvm-floor-page:not(.is-mobile-detail) .lwcs-tvm-floor-detail{display:none}.lwcs-tvm-floor-detail-head{align-items:flex-start;flex-wrap:wrap}.lwcs-tvm-floor-detail-head>div{flex:1}.lwcs-tvm-floor-tree-tools{flex-wrap:wrap}.lwcs-tvm-floor-tree-tools .lwcs-tvm-search{flex:1 1 100%}.lwcs-tvm-floor-detail-inner{grid-template-rows:auto auto minmax(0,1fr)}.lwcs-tvm-floor-detail-inner>.lwcs-tvm-grid-head{display:none}.lwcs-tvm-diagnostic-grid{grid-template-columns:1fr}.lwcs-tvm-db-layout{grid-template-columns:1fr;grid-template-rows:minmax(150px,34%) minmax(200px,1fr)}.lwcs-tvm-key-list{border-right:0;border-bottom:1px solid var(--line)}}',
 '@media(prefers-reduced-motion:reduce){.lwcs-tvm-overlay *{scroll-behavior:auto;transition:none;animation:none}}'
 ].join('\n');
     hostWindow.document.head.appendChild(styleElement);

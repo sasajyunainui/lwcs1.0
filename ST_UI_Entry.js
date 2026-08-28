@@ -1131,16 +1131,6 @@
     } catch (错误) {}
   }
 
-  function 构建入口按钮错误文本(入口名, 错误) {
-    const 名称 = String(入口名 || '入口').trim();
-    const 主错误 = 错误 && 错误.message ? 错误.message : String(错误 || '未知错误');
-    const 数据库错误 = String(加载状态.数据库模块错误 || '').trim();
-    if (数据库错误 && 数据库错误 !== 主错误) {
-      return `${名称}打开失败：${主错误}（数据库模块：${数据库错误}）`;
-    }
-    return `${名称}打开失败：${主错误}`;
-  }
-
   async function waitForVueMounted(timeout) {
     const start = Date.now();
     const limit = timeout || 10000;
@@ -1187,8 +1177,8 @@
       ) {
         return false;
       }
-      appendInexistentScriptButtons([{ name: 'MVU冷归档', visible: true }]);
-      const 订阅 = eventOn(getButtonEvent('MVU冷归档'), async () => {
+      appendInexistentScriptButtons([{ name: '变量归档', visible: true }]);
+      const 订阅 = eventOn(getButtonEvent('变量归档'), async () => {
         try {
           await 引导加载();
           await 确保模块已加载('冷归档存储', { 来源: 'cold_archive_button', 允许失败降级: false, 抛错: true });
@@ -1201,7 +1191,7 @@
           打开冷归档面板();
         } catch (错误) {
           console.error('[MVU] MVU冷归档按钮执行失败:', 错误);
-          显示入口按钮提示(构建入口按钮错误文本('MVU冷归档', 错误), 'error');
+          显示入口按钮提示('变量归档暂时无法打开，请稍后重试。', 'error');
         }
       });
       if (订阅 && typeof 订阅.stop === 'function') 入口实例.subscriptions.push(订阅);
@@ -1330,7 +1320,7 @@
       await 打开消息统计界面(界面);
     } catch (错误) {
       console.error('[MVU] 消息统计按钮执行失败:', 错误);
-      显示入口按钮提示(构建入口按钮错误文本('消息统计', 错误), 'error');
+      显示入口按钮提示('消息统计暂时无法打开，请稍后重试。', 'error');
     }
   }
 
@@ -1352,11 +1342,11 @@
         抛错: true,
       });
       const 管理器 = 读取共享值('__LWCS_TT_STORE_VARIABLE_MANAGER_V1__');
-      if (typeof 管理器?.open !== 'function') throw new Error('TT-store 变量管理器未就绪');
+      if (typeof 管理器?.open !== 'function') throw new Error('变量管理器尚未准备好');
       await 管理器.open();
     } catch (错误) {
       console.error('[MVU] TT-store 变量管理按钮执行失败:', 错误);
-      显示入口按钮提示(构建入口按钮错误文本('变量管理', 错误), 'error');
+      显示入口按钮提示('变量管理暂时无法打开，请稍后重试。', 'error');
     }
   }
 
