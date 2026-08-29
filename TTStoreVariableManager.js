@@ -269,7 +269,9 @@
   });
 
   const saveStatusText = computed(() => {
+    if (state.mvuLoading) return '正在读取';
     if (state.mvuSaving) return '正在保存';
+    if (!state.snapshot) return state.mvuError ? '读取失败' : '尚未读取';
     return isDirty.value ? `有 ${draftList.value.length} 项未保存` : '已保存';
   });
 
@@ -320,14 +322,20 @@
     discardDraft();
   }
 
-  function readCanonicalHotMvu(mvu) {
+  function readHotMvu(mvu) {
     if (typeof mvu?.getMvuData !== 'function') throw new Error('Mvu.getMvuData 同步热读不可用');
     const data = mvu.getMvuData({ type: 'chat' });
-    if (!data || typeof data !== 'object') throw new Error('未从当前 chat 热态读取到 canonical MvuData');
-    if (!data.stat_data || typeof data.stat_data !== 'object' || Array.isArray(data.stat_data)) {
-      throw new Error('当前 chat canonical 热态缺少有效 stat_data');
-    }
+    if (!data || typeof data !== 'object') throw new Error('未读取到当前聊天的 MVU 数据');
     return cloneJson(data);
+  }
+
+  function readCanonicalHotMvu(mvu) {
+    const data = readHotMvu(mvu);
+    if (!data.stat_data || typeof data.stat_data !== 'object' || Array.isArray(data.stat_data)
+      || Object.keys(data.stat_data).length === 0 || !Object.prototype.hasOwnProperty.call(data, 'schema')) {
+      throw new Error('当前聊天尚未形成可读取的 MVU 变量');
+    }
+    return data;
   }
 
   async function readCanonicalMvu() {
@@ -372,6 +380,12 @@
       if (state.searchInput.trim()) scheduleSearch();
       return true;
     } catch (error) {
+      state.snapshot = null;
+      state.baselineChatId = '';
+      state.baselineStableChatId = '';
+      state.baselineRevision = null;
+      state.baselineFingerprint = '';
+      state.saveState = 'error';
       state.mvuError = errorText(error);
       return false;
     } finally {
@@ -932,13 +946,21 @@
     state.floorListLoading = true;
     state.floorError = '';
     try {
-      const canonical = await readCanonicalMvu();
+      const chatId = currentChatId();
+      if (!chatId) throw new Error('尚未识别当前聊天');
       if (generation !== floorGeneration || state.activeTab !== 'floors') return false;
-      const identityChanged = updateFloorIdentity(canonical.chatId, canonical.stableChatId, canonical.revision);
+      const hasCurrentBaseline = state.baselineChatId === chatId;
+      const identityChanged = updateFloorIdentity(
+        chatId,
+        hasCurrentBaseline ? state.baselineStableChatId : '',
+        hasCurrentBaseline ? state.baselineRevision : null,
+      );
       generation = floorGeneration;
-      const context = hostWindow.SillyTavern?.getContext?.() || currentWindow.SillyTavern?.getContext?.();
+      const currentContext = currentWindow.SillyTavern?.getContext?.();
+      const hostContext = hostWindow.SillyTavern?.getContext?.();
+      const context = Array.isArray(currentContext?.chat) ? currentContext : hostContext;
       const messages = Array.isArray(context?.chat) ? context.chat : [];
-      if (canonical.chatId !== currentChatId()) throw new Error('读取楼层列表期间聊天已切换');
+      if (chatId !== currentChatId()) throw new Error('读取楼层列表期间聊天已切换');
       state.floorMessages = messages.map((message, absoluteIndex) => ({
         absoluteIndex,
         role: floorRole(message),
@@ -970,9 +992,14 @@
     if (isMobile.value) state.floorMobileDetail = true;
     try {
       const requestedChatId = currentChatId();
-      const helper = hostWindow.TavernHelper || currentWindow.TavernHelper;
-      if (typeof helper?.getChatMessages !== 'function') throw new Error('TavernHelper.getChatMessages 不可用');
-      const selectedMessages = await helper.getChatMessages(absoluteIndex, { include_swipes: true });
+      const messageReader = [
+        [currentWindow.TavernHelper, currentWindow.TavernHelper?.getChatMessages],
+        [currentWindow, currentWindow.getChatMessages],
+        [hostWindow.TavernHelper, hostWindow.TavernHelper?.getChatMessages],
+        [hostWindow, hostWindow.getChatMessages],
+      ].find(([, fn]) => typeof fn === 'function');
+      if (!messageReader) throw new Error('getChatMessages 不可用');
+      const selectedMessages = await messageReader[1].call(messageReader[0], absoluteIndex, { include_swipes: true });
       if (!requestedChatId || requestedChatId !== currentChatId()) throw new Error('读取楼层消息期间聊天已切换');
       const message = Array.isArray(selectedMessages) ? selectedMessages.at(-1) : null;
       if (!message) throw new Error('无法读取第 ' + absoluteIndex + ' 楼消息');
@@ -1002,7 +1029,7 @@
       if (!detail) {
         const initialState = state.baselineChatId === chatId && state.snapshot
           ? cloneJson(state.snapshot)
-          : (await readCanonicalMvu()).data;
+          : readHotMvu(hostWindow.Mvu || currentWindow.Mvu);
         const result = await opened.handle.readState({ initialState, message: pointer });
         if (result?.state !== 'committed') {
           throw new Error(result?.error || '楼层读取失败：' + (result?.state || 'uncertain'));
