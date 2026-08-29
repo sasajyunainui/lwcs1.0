@@ -4735,7 +4735,7 @@ $CONTENT
     function 调度已确认正文数据库更新_ACU(事件名, 事件消息编号) {
         const 正文上下文 = 读取正文后置上下文_ACU();
         if (!正文上下文)
-            return false;
+            return 生成结束后置状态_ACU.已调度消息键 !== '';
         if (正文上下文.epoch !== databaseGenerationEpoch_ACU) {
             generationGate_ACU.正文后置上下文 = null;
             return false;
@@ -56027,13 +56027,15 @@ $CONTENT
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
                         logDebug_ACU(`ACU GENERATION_ENDED event for message_id: ${message_id}`);
-                        if (调度已确认正文数据库更新_ACU('GENERATION_ENDED', message_id)) {
-                            logDebug_ACU(`ACU: Confirmed body floor ${message_id} for automatic table update.`);
-                        }
-                        else {
-                            logDebug_ACU('ACU: Skip automatic table update because no confirmed body context was found.');
-                        }
+                        logDebug_ACU('ACU: Generation ended; waiting for the received body floor before automatic table update.');
                         onLoopGenerationEnded_ACU();
+                    });
+                }
+                if (SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED) {
+                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id) => {
+                        if (调度已确认正文数据库更新_ACU('MESSAGE_RECEIVED', message_id)) {
+                            logDebug_ACU(`ACU: Confirmed received body floor ${message_id} for automatic table update.`);
+                        }
                     });
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED) {

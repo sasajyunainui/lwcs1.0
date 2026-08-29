@@ -5948,15 +5948,22 @@
 
   // Sealed runtime binding for the exact base, reaction and causal definitions
   // embedded below. Runtime never reads an external training artifact.
-  const MODEL_HASH = '9ada527dea24d4df882aeffaf2f8057e57e95d22eb836616c82e7a793b20a499';
+  const BASE_MODEL_HASH = '9ada527dea24d4df882aeffaf2f8057e57e95d22eb836616c82e7a793b20a499';
+  const MODEL_HASH = '6ca55cf48790533db04272c146c98ba21c91b746c59e7053cf5a8d943976d145';
   const WEIGHTS_HASH = '190c00a8f137b0cbf2d186f685718df1786d9be17324a4083f43927a858f5e7d';
   const FEATURE_SCHEMA_HASH = '1ae9cd7d4d2353efd76df73576d6a235bcefb72fe9ee26d40b626f1afc52a76f';
-  const DBP_REVISION = 15;
+  const DBP_REVISION = 16;
   const DBP_CONTRACT_HASH = '69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8';
   const BIF_CONTRACT_HASH = '8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76';
   const BASE_SECTION_HASH = '64783fa923cc70215dadaba0bb75390200c3297e82a68ef6d0a25d9b12a4fcb2';
   const REACTION_HEAD_HASH = 'b08565ade014bed633f5917aaa3891ba2730a18f8c9885c1c9c983db5c8f4a62';
-  const MODEL_COMPOSITE_HASH = 'f9cd6065fa30ae04116368c7b06d77ad5e0debbcc20499bdac036ca5d20070cf';
+  const BASE_WEIGHT_POLICY = Object.freeze({
+    id: 'CANDIDATE_SET_OPPORTUNITY_VALUE_V1',
+    reactionCounter: 1,
+    active: Object.freeze({ hasCreation: 0, hasNonDamageSkill: 0.4, otherwise: 1 }),
+  });
+  const BASE_WEIGHT_POLICY_HASH = 'e6c8d3a7a576deafbc2de81880f51038fa9e27efb80b47968c0950b31b0552d0';
+  const MODEL_COMPOSITE_HASH = '183b4e0b60d1269d4e3e4d92b0a0f443b9a690a6a60ca3c43418045cb34ea785';
   const REACTION_ALGORITHM_HASH = '5ddd1dff3f07d3aa7c1b48f627cd5a3c64de9025941fab25923b52851b8a1852';
   const DAMAGE_POWER_TRANSFORM = 'DAMAGE_POWER_EFFECTIVE_V1';
   const DAMAGE_POWER_TRANSFORM_HASH = '5562d24109a11e67b447817aa73d1e60748bcec6611fa0b4132caceecba6a3aa';
@@ -6486,6 +6493,25 @@
     return score;
   }
 
+  function candidateHasImmediateDamage(candidate) {
+    const actionKind = String(candidate?.declaration?.actionKind || '').trim().toUpperCase();
+    if (actionKind === 'BASIC_ATTACK') return true;
+    const skill = candidate?.declaration?.skill || candidate?.skill || candidate?.item || {};
+    const effects = Array.isArray(skill?._效果数组)
+      ? skill._效果数组
+      : Array.isArray(skill?.效果数组) ? skill.效果数组 : [];
+    return effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算');
+  }
+
+  function activeBaseWeight(frozenCandidates, actionRole) {
+    if (['REACTION', 'COUNTER'].includes(actionRole)) return BASE_WEIGHT_POLICY.reactionCounter;
+    if (frozenCandidates.some(candidate => candidate?.creation)) return BASE_WEIGHT_POLICY.active.hasCreation;
+    return frozenCandidates.some(candidate =>
+      String(candidate?.declaration?.actionKind || '').trim().toUpperCase() === 'RELEASE_SKILL' &&
+      !candidateHasImmediateDamage(candidate),
+    ) ? BASE_WEIGHT_POLICY.active.hasNonDamageSkill : BASE_WEIGHT_POLICY.active.otherwise;
+  }
+
   // Exclusion-surface reader (closed 10-code set). HARD_EXCLUSION is a BOOL
   // row and HARD_EXCLUSION_REASON an ENUM row; they are read verbatim for the
   // exclusion judgement only and never scalarized into the 31-code cells.
@@ -6518,6 +6544,7 @@
     }
     if (!Array.isArray(featureInputs)) fail('FEATURE_INPUTS_SHAPE', 'featureInputs must be an array');
     const documents = featureInputs;
+    const baseWeight = activeBaseWeight(frozenCandidates, actionRole);
     work.documentBuilds = 0;
     const docByCandidate = new Map(documents.map(doc => [String(doc && doc.candidateId || '').trim(), doc]));
     if (docByCandidate.size !== candidateIds.length || candidateIds.some(id => !docByCandidate.has(id))) {
@@ -6542,7 +6569,7 @@
         if (HARD_EXCLUSION_CODES.indexOf(reasonCode) < 0) fail('HARD_EXCLUSION_CODE_UNKNOWN', reasonCode);
         hardExclusionAudit.push({ candidateId, disposition: 'HARD_EXCLUDED_PREVIEW_SKIPPED', reasonCode, source: 'BIF_IMMEDIATE_PUBLIC' });
       }
-      const row = { candidateId, cells, hardExcluded, eligible: !hardExcluded, baseScore: null, extensionScore: null, causalScore: null, score: null };
+      const row = { candidateId, cells, hardExcluded, eligible: !hardExcluded, rawBaseScore: null, baseWeight, baseScore: null, extensionScore: null, causalScore: null, score: null };
       featureVector.push({
         candidateId,
         cells,
@@ -6550,7 +6577,8 @@
       });
       if (!hardExcluded) {
         assertScorable(cells);
-        row.baseScore = baseScoreOf(cells);
+        row.rawBaseScore = baseScoreOf(cells);
+        row.baseScore = row.rawBaseScore * baseWeight;
         row.extensionScore = reactionScoreOf(cells);
         row.causalScore = causalScoreOf(cells, actionRole);
         row.score = row.baseScore + row.extensionScore + row.causalScore;
@@ -6570,6 +6598,8 @@
     const rankedSummary = ranked.map(row => ({
       candidateId: row.candidateId,
       score: row.score,
+      rawBaseScore: row.rawBaseScore,
+      baseWeight: row.baseWeight,
       baseScore: row.baseScore,
       extensionScore: row.extensionScore,
       causalScore: row.causalScore,
@@ -6579,17 +6609,26 @@
     for (const row of eligible) {
       const factors = [];
       for (const code of SCOREABLE_INVENTORY) {
-        factors.push(
+        let factor =
           CAUSAL_CODES.indexOf(code) >= 0
             ? causalContributionOf(row.cells, code, actionRole)
             : REACTION_CODES.indexOf(code) >= 0
               ? reactionContributionOf(row.cells, code)
-              : contributionOf(row.cells, code),
-        );
+              : contributionOf(row.cells, code);
+        if (CAUSAL_CODES.indexOf(code) < 0 && REACTION_CODES.indexOf(code) < 0 && baseWeight !== 1) {
+          factor = {
+            ...factor,
+            coefficient: factor.coefficient * baseWeight,
+            contribution: factor.contribution * baseWeight,
+          };
+        }
+        factors.push(factor);
         work.reasonFactors += 1;
       }
       scoreContributions[row.candidateId] = {
         score: row.score,
+        rawBaseScore: row.rawBaseScore,
+        baseWeight: row.baseWeight,
         baseScore: row.baseScore,
         extensionScore: row.extensionScore,
         causalScore: row.causalScore,
@@ -6675,6 +6714,7 @@
     engine: ENGINE,
     schemaVersion: SCHEMA_VERSION,
     modelHash: MODEL_HASH,
+    baseModelHash: BASE_MODEL_HASH,
     weightsHash: WEIGHTS_HASH,
     featureSchemaHash: FEATURE_SCHEMA_HASH,
     dbpRevision: DBP_REVISION,
@@ -6683,6 +6723,7 @@
     baseSectionHash: BASE_SECTION_HASH,
     reactionHeadHash: REACTION_HEAD_HASH,
     modelCompositeHash: MODEL_COMPOSITE_HASH,
+    baseWeightPolicyHash: BASE_WEIGHT_POLICY_HASH,
     damagePowerTransformHash: DAMAGE_POWER_TRANSFORM_HASH,
     intercept: LINEAR.intercept,
     effectiveDamagePower,
@@ -6692,6 +6733,7 @@
       baseScoreableCodes: SCOREABLE_CODES.slice(),
       reactionCodes: REACTION_CODES.slice(),
       causalCodes: CAUSAL_CODES.slice(),
+      baseWeightPolicy: BASE_WEIGHT_POLICY,
       relationalCodes: RELATIONAL_CODES.slice(),
       exclusionOnly: EXCLUSION_ONLY.slice(),
       catalogOnly: CATALOG_ONLY.slice(),
