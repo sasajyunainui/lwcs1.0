@@ -671,7 +671,7 @@ index 0000000..62389e1
 +
 +function readMessagePointer(message_id: number | 'latest' = -1): MessagePointer {
 +    try {
-+        const message = getChatMessages(message_id, { include_swipes: true })?.at(-1) as
++        const message = getChatMessages(message_id)?.at(-1) as
 +            | { message_id?: number; message?: string; mes?: string; swipe_id?: number | string }
 +            | undefined;
 +        const absoluteIndex = Number(message?.message_id ?? (typeof message_id === 'number' ? message_id : -1));
