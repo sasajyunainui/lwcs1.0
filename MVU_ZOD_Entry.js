@@ -179,31 +179,6 @@ if (MVU核心就绪解决_V1) {
 }
 const MVU本轮核心就绪解决_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_RESOLVE_V1__ || MVU核心就绪解决_V1;
 const MVU本轮核心就绪拒绝_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_REJECT_V1__ || MVU核心就绪拒绝_V1;
-const MVU项目引擎状态_V1 = (() => {
-  const 键 = '__LWCS_MVU_ENGINE_STATE_V1__';
-  const 会话键 = `${读取MVU资源提交_V1()}:${MVU入口启动代号_V1}`;
-  const 已有状态 = MVU共享宿主窗口_V1[键];
-  if (已有状态 && 已有状态.version === '1.2.0' && 已有状态.sessionKey === 会话键) {
-    try { globalThis[键] = 已有状态; } catch (_) {}
-    return 已有状态;
-  }
-  const 新状态 = {
-    version: '1.2.0',
-    sessionKey: 会话键,
-    status: 'idle',
-    phase: '等待',
-    upstreamCommit: MVU_ENGINE_UPSTREAM_COMMIT_V1,
-    bundleFile: MVU_ENGINE_BUNDLE_FILE_V1,
-    bundleSha256: MVU_ENGINE_BUNDLE_SHA256_V1,
-    url: '',
-    error: '',
-    loadPromise: null,
-  };
-  MVU共享宿主窗口_V1[键] = 新状态;
-  try { globalThis[键] = 新状态; } catch (_) {}
-  return 新状态;
-})();
-
 function 发布MVU模块状态_V1(名称, 状态, 阶段, 错误 = '') {
   if (!是当前MVU启动轮次_V1()) return;
   MVU共享启动状态_V1.mvuHeartbeatAt = Date.now();
@@ -241,6 +216,30 @@ const MVU_ZOD_ENTRY_BASE_CANDIDATES_V1 = (() => {
     return 文本.endsWith('/') ? 文本 : `${文本}/`;
   };
   return [MVU_ZOD_ENTRY_BASE_V1.href, ...候选列表.map(清理地址)].filter((地址, 序号, 列表) => 地址 && 列表.indexOf(地址) === 序号);
+})();
+const MVU项目引擎状态_V1 = (() => {
+  const 键 = '__LWCS_MVU_ENGINE_STATE_V1__';
+  const 会话键 = `${读取MVU资源提交_V1()}:${MVU入口启动代号_V1}`;
+  const 已有状态 = MVU共享宿主窗口_V1[键];
+  if (已有状态 && 已有状态.version === '1.2.0' && 已有状态.sessionKey === 会话键) {
+    try { globalThis[键] = 已有状态; } catch (_) {}
+    return 已有状态;
+  }
+  const 新状态 = {
+    version: '1.2.0',
+    sessionKey: 会话键,
+    status: 'idle',
+    phase: '等待',
+    upstreamCommit: MVU_ENGINE_UPSTREAM_COMMIT_V1,
+    bundleFile: MVU_ENGINE_BUNDLE_FILE_V1,
+    bundleSha256: MVU_ENGINE_BUNDLE_SHA256_V1,
+    url: '',
+    error: '',
+    loadPromise: null,
+  };
+  MVU共享宿主窗口_V1[键] = 新状态;
+  try { globalThis[键] = 新状态; } catch (_) {}
+  return 新状态;
 })();
 const MVU共享预取_V1 = MVU共享宿主窗口_V1.__LWCS_PREFETCH_SHARED_TEXT_V1__;
 if (typeof MVU共享预取_V1 === 'function') {
