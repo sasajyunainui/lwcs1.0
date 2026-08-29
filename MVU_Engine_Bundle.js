@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Persistence_Adapter.js:99db441c20e82c31d01da4f82f3d7d4742136367e18fdbef03c9fb2e24e516ef|LWCS_MVU_Persistence_Provider.js:822a1b712bb25a69e3231356776c4c353124da08384b3b041194218a4a9504da|MVU_Engine_Runtime.js:70fcf5222979ea3ac05a7d4be3a99f49e304d56e94a9043df576ce27e9be31df */
+/* sources-sha256: LWCS_Persistence_Adapter.js:99db441c20e82c31d01da4f82f3d7d4742136367e18fdbef03c9fb2e24e516ef|LWCS_MVU_Persistence_Provider.js:352bf769b6cff84675f286414f43bea8211b79536ec04f5b86a44a74747e490b|MVU_Engine_Runtime.js:70fcf5222979ea3ac05a7d4be3a99f49e304d56e94a9043df576ce27e9be31df */
 ;
 /* source: LWCS_Persistence_Adapter.js */
 (function (root) {
@@ -1158,7 +1158,7 @@
     if (normalized.absoluteIndex < 0) return normalized;
     const helper = findFunction('getChatMessages');
     if (!helper) throw new ProviderError('MESSAGE_POINTER_UNAVAILABLE');
-    const messages = await helper.fn.call(helper.owner, normalized.absoluteIndex, { include_swipes: true });
+    const messages = await helper.fn.call(helper.owner, normalized.absoluteIndex);
     const message = Array.isArray(messages) ? messages.at(-1) : null;
     if (!message) throw new ProviderError('STALE_CHAT');
     return normalizeFloor({

@@ -409,7 +409,7 @@
     if (normalized.absoluteIndex < 0) return normalized;
     const helper = findFunction('getChatMessages');
     if (!helper) throw new ProviderError('MESSAGE_POINTER_UNAVAILABLE');
-    const messages = await helper.fn.call(helper.owner, normalized.absoluteIndex, { include_swipes: true });
+    const messages = await helper.fn.call(helper.owner, normalized.absoluteIndex);
     const message = Array.isArray(messages) ? messages.at(-1) : null;
     if (!message) throw new ProviderError('STALE_CHAT');
     return normalizeFloor({
