@@ -464,7 +464,6 @@
   function isCanonicalMvuState(value) {
     return isObject(value)
       && isObject(value.stat_data)
-      && Object.keys(value.stat_data).length > 0
       && isObject(value.schema);
   }
 

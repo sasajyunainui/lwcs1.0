@@ -154,7 +154,7 @@ index 321bd11..c7dbc51 100644
 @@ -238 +243,0 @@ async function onVariableUpdatedCall(args: any): Promise<string> {
 -    await replaceVariables(variables, { type: 'message', message_id: message_id });
 diff --git a/src/function/global/index.ts b/src/function/global/index.ts
-index caf3097..580eec7 100644
+index caf3097..d0606ec 100644
 --- a/src/function/global/index.ts
 +++ b/src/function/global/index.ts
 @@ -2,0 +3,8 @@ import { updateVariable, updateVariables } from '@/function/update_variables';
@@ -166,7 +166,7 @@ index caf3097..580eec7 100644
 +    mvu_runtime_events,
 +    replaceMvuDataControlled,
 +} from '@/function/update/mvu_runtime';
-@@ -7,0 +16,16 @@ function createMvu() {
+@@ -7,0 +16,15 @@ function createMvu() {
 +    const replaceMvuData = (mvu_data: MvuData, options: VariableOption) =>
 +        replaceMvuDataControlled(mvu_data, options);
 +    const waitForCanonicalMvuData = async (options: VariableOption): Promise<MvuData> => {
@@ -176,17 +176,16 @@ index caf3097..580eec7 100644
 +            const data = getCanonicalMvuData(options);
 +            if (
 +                _.isPlainObject(data?.stat_data)
-+                && !_.isEmpty(data.stat_data)
 +                && _.isPlainObject(data.schema)
 +            ) return data;
 +            await new Promise(resolve => setTimeout(resolve, 50));
 +        } while (Date.now() < deadline);
 +        throw new Error('MVU canonical data unavailable after initialization wait');
 +    };
-@@ -9 +33 @@ function createMvu() {
+@@ -9 +32 @@ function createMvu() {
 -        events: variable_events,
 +        events: Object.freeze({ ...variable_events, ...mvu_runtime_events }),
-@@ -29 +53,12 @@ function createMvu() {
+@@ -29 +52,12 @@ function createMvu() {
 -            return getVariables(options) as MvuData;
 +            return getCanonicalMvuData(options);
 +        },
@@ -200,18 +199,18 @@ index caf3097..580eec7 100644
 +        persistence: {
 +            awaitIdle,
 +            getStatus,
-@@ -48,2 +83 @@ function createMvu() {
+@@ -48,2 +82 @@ function createMvu() {
 -            /** 旧酒馆助手的 replaceVariables 是异步函数, 因此需要返回 Promise */
 -            return replaceVariables(mvu_data, options);
 +            return replaceMvuData(mvu_data, options);
-@@ -77,2 +111 @@ function createMvu() {
+@@ -77,2 +110 @@ function createMvu() {
 -            const variables = getVariables({ type: 'message', message_id: getCurrentMessageId() });
 -            return variables as MvuData;
 +            return getCanonicalMvuData({ type: 'message', message_id: getCurrentMessageId() });
-@@ -83 +116 @@ function createMvu() {
+@@ -83 +115 @@ function createMvu() {
 -            await replaceVariables(mvu_data, {
 +            await replaceMvuData(mvu_data, {
-@@ -165 +198,11 @@ function createMvu() {
+@@ -165 +197,11 @@ function createMvu() {
 -export function initGlobals() {
 +const LWCS_MVU_ENGINE_OWNER_V1 = Object.freeze({
 +    version: '1.0.0',
@@ -224,7 +223,7 @@ index caf3097..580eec7 100644
 +    } catch (error) {
 +        console.error('[LWCS MVU] 持久化 Provider 初始化失败，已禁止 TT 消息楼变量写入', error);
 +    }
-@@ -171,0 +215,7 @@ export function initGlobals() {
+@@ -171,0 +214,7 @@ export function initGlobals() {
 +                if (!Object.prototype.hasOwnProperty.call(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__')) {
 +                    Object.defineProperty(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__', {
 +                        value: LWCS_MVU_ENGINE_OWNER_V1,
@@ -232,14 +231,14 @@ index caf3097..580eec7 100644
 +                        configurable: false,
 +                    });
 +                }
-@@ -172,0 +223 @@ export function initGlobals() {
+@@ -172,0 +222 @@ export function initGlobals() {
 +                _.set(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__', LWCS_MVU_ENGINE_OWNER_V1);
-@@ -182,0 +234,3 @@ export function initGlobals() {
+@@ -182,0 +233,3 @@ export function initGlobals() {
 +            if (_.get(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__') === LWCS_MVU_ENGINE_OWNER_V1) {
 +                _.unset(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__');
 +            }
 diff --git a/src/function/initvar/variable_init.ts b/src/function/initvar/variable_init.ts
-index c3ddcb5..4ff4e4a 100644
+index c3ddcb5..28bfc05 100644
 --- a/src/function/initvar/variable_init.ts
 +++ b/src/function/initvar/variable_init.ts
 @@ -2,0 +3,5 @@ import { updateVariables } from '@/function/update_variables';
@@ -263,13 +262,11 @@ index c3ddcb5..4ff4e4a 100644
 -export async function initCheck() {
 +export async function initCheck(): Promise<void> {
 +    if (!isCurrentMvuEngineGeneration()) return;
-@@ -66,0 +71,3 @@ export async function initCheck() {
-+    if (_.isEmpty(variables.stat_data)) {
-+        variables.initialized_lorebooks = {};
-+    }
-@@ -69,0 +77 @@ export async function initCheck() {
+@@ -67 +70,0 @@ export async function initCheck() {
+-
+@@ -69,0 +73 @@ export async function initCheck() {
 +    if (!isCurrentMvuEngineGeneration()) return;
-@@ -138,6 +146,2 @@ export async function initCheck() {
+@@ -138,6 +142,2 @@ export async function initCheck() {
 -        await setChatMessages([
 -            {
 -                // last_msg 不一定存在 message_id
@@ -278,11 +275,11 @@ index c3ddcb5..4ff4e4a 100644
 -                    last_msg.swipes!.map(async (swipe, index) => {
 +        const swipes_data = await Promise.all(
 +            last_msg.swipes!.map(async (swipe, index) => {
-@@ -187,0 +192 @@ export async function initCheck() {
+@@ -187,0 +188 @@ export async function initCheck() {
 +                        if (!isCurrentMvuEngineGeneration()) return current_data;
-@@ -188,0 +194 @@ export async function initCheck() {
+@@ -188,0 +190 @@ export async function initCheck() {
 +                        if (!isCurrentMvuEngineGeneration()) return current_data;
-@@ -194,4 +200,15 @@ export async function initCheck() {
+@@ -194,4 +196,15 @@ export async function initCheck() {
 -                    })
 -                ),
 -            },
@@ -302,51 +299,51 @@ index c3ddcb5..4ff4e4a 100644
 +                },
 +            ]);
 +        }
-@@ -200 +217,2 @@ export async function initCheck() {
+@@ -200 +213,2 @@ export async function initCheck() {
 -        await replaceVariables(variables, { type: 'message' });
 +        if (!isCurrentMvuEngineGeneration()) return;
 +        await replaceMvuDataControlled(variables, { type: isTtMvuHost() ? 'chat' : 'message' });
-@@ -201,0 +220 @@ export async function initCheck() {
+@@ -201,0 +216 @@ export async function initCheck() {
 +    if (!isCurrentMvuEngineGeneration()) return;
-@@ -234 +253 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -234 +249 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -        const char_lorebook = await getCharLorebooks();
 +        const char_lorebook = getCharWorldbookNames('current');
-@@ -238 +257 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -238 +253 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -        if (char_lorebook.additional !== null) {
 +        if (Array.isArray(char_lorebook.additional)) {
-@@ -244 +263 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -244 +259 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -    return enabled_lorebook_list;
 +    return [...new Set(enabled_lorebook_list.filter(Boolean))];
-@@ -265 +283,0 @@ export async function loadInitVarData(
+@@ -265 +279,0 @@ export async function loadInitVarData(
 -        mvu_data.initialized_lorebooks[current_lorebook] = [];
-@@ -267 +285 @@ export async function loadInitVarData(
+@@ -267 +281 @@ export async function loadInitVarData(
 -            const init_entries = (await getLorebookEntries(current_lorebook)) as LorebookEntry[];
 +            const init_entries = await getWorldbook(current_lorebook);
-@@ -271,2 +289,3 @@ export async function loadInitVarData(
+@@ -271,2 +285,3 @@ export async function loadInitVarData(
 -                if (entry.comment?.toLowerCase().includes('[initvar]')) {
 -                    const xml_match = entry.content
 +                if (entry.name.toLowerCase().includes('[initvar]')) {
 +                    let entry_content = entry.content;
 +                    const xml_match = entry_content
-@@ -276 +295 @@ export async function loadInitVarData(
+@@ -276 +291 @@ export async function loadInitVarData(
 -                        entry.content = xml_match[1];
 +                        entry_content = xml_match[1];
-@@ -278 +297 @@ export async function loadInitVarData(
+@@ -278 +293 @@ export async function loadInitVarData(
 -                    const codeblock_match = entry.content.trim().match(/```.*\n([\s\S]*)\n```/m);
 +                    const codeblock_match = entry_content.trim().match(/```.*\n([\s\S]*)\n```/m);
-@@ -280 +299 @@ export async function loadInitVarData(
+@@ -280 +295 @@ export async function loadInitVarData(
 -                        entry.content = codeblock_match[1];
 +                        entry_content = codeblock_match[1];
-@@ -282 +301 @@ export async function loadInitVarData(
+@@ -282 +297 @@ export async function loadInitVarData(
 -                    const content = substitudeMacros(entry.content);
 +                    const content = substitudeMacros(entry_content);
-@@ -296 +315 @@ export async function loadInitVarData(
+@@ -296 +311 @@ export async function loadInitVarData(
 -                                comment: entry.comment ?? '',
 +                                comment: entry.name,
-@@ -305 +324 @@ export async function loadInitVarData(
+@@ -305 +320 @@ export async function loadInitVarData(
 -                                comment: _.escape(entry.comment ?? ''),
 +                                comment: _.escape(entry.name),
-@@ -319,0 +339 @@ export async function loadInitVarData(
+@@ -319,0 +335 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
 index 722db33..a9ec48f 100644
@@ -477,7 +474,7 @@ index 722db33..a9ec48f 100644
 +    }
 diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
 new file mode 100644
-index 0000000..f00b466
+index 0000000..d528102
 --- /dev/null
 +++ b/src/function/update/mvu_runtime.ts
 @@ -0,0 +1,759 @@
@@ -809,7 +806,7 @@ index 0000000..f00b466
 +
 +function isCanonicalMvuData(value: unknown): value is MvuData {
 +    return _.isPlainObject(value)
-+        && _.isPlainObject((value as MvuData).stat_data) && !_.isEmpty((value as MvuData).stat_data)
++        && _.isPlainObject((value as MvuData).stat_data)
 +        && _.isPlainObject((value as MvuData).schema);
 +}
 +
