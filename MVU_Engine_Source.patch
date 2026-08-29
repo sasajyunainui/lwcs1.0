@@ -275,7 +275,7 @@ index caf3097..f38517f 100644
 +                _.unset(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__');
 +            }
 diff --git a/src/function/initvar/variable_init.ts b/src/function/initvar/variable_init.ts
-index c3ddcb5..fed21bd 100644
+index c3ddcb5..15451a3 100644
 --- a/src/function/initvar/variable_init.ts
 +++ b/src/function/initvar/variable_init.ts
 @@ -2,0 +3,6 @@ import { updateVariables } from '@/function/update_variables';
@@ -329,6 +329,9 @@ index c3ddcb5..fed21bd 100644
 -
 @@ -69,0 +81 @@ export async function initCheck() {
 +    if (!is_current()) return;
+@@ -132 +144 @@ export async function initCheck() {
+-        await updateVariablesWith(data => _.assign(data, variables), { type: 'chat' });
++        await updateVariablesWith(data => _.assign(data, variables), { type: 'chat' }, is_current);
 @@ -138,6 +150,2 @@ export async function initCheck() {
 -        await setChatMessages([
 -            {
@@ -342,7 +345,7 @@ index c3ddcb5..fed21bd 100644
 +                        if (!is_current()) return current_data;
 @@ -188,0 +198 @@ export async function initCheck() {
 +                        if (!is_current()) return current_data;
-@@ -194,4 +204,15 @@ export async function initCheck() {
+@@ -194,4 +204,19 @@ export async function initCheck() {
 -                    })
 -                ),
 -            },
@@ -352,7 +355,11 @@ index c3ddcb5..fed21bd 100644
 +        if (!is_current()) return;
 +        if (isTtMvuHost()) {
 +            const active_swipe = Number(last_msg.swipe_id ?? 0);
-+            await replaceMvuDataControlled(swipes_data[active_swipe] ?? variables, { type: 'chat' });
++            await replaceMvuDataControlled(
++                swipes_data[active_swipe] ?? variables,
++                { type: 'chat' },
++                is_current
++            );
 +        } else {
 +            await setChatMessages([
 +                {
@@ -362,51 +369,55 @@ index c3ddcb5..fed21bd 100644
 +                },
 +            ]);
 +        }
-@@ -200 +221,2 @@ export async function initCheck() {
+@@ -200 +225,6 @@ export async function initCheck() {
 -        await replaceVariables(variables, { type: 'message' });
 +        if (!is_current()) return;
-+        await replaceMvuDataControlled(variables, { type: isTtMvuHost() ? 'chat' : 'message' });
-@@ -201,0 +224 @@ export async function initCheck() {
++        await replaceMvuDataControlled(
++            variables,
++            { type: isTtMvuHost() ? 'chat' : 'message' },
++            is_current
++        );
+@@ -201,0 +232 @@ export async function initCheck() {
 +    if (!is_current()) return;
-@@ -234 +257 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -234 +265 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -        const char_lorebook = await getCharLorebooks();
 +        const char_lorebook = getCharWorldbookNames('current');
-@@ -238 +261 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -238 +269 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -        if (char_lorebook.additional !== null) {
 +        if (Array.isArray(char_lorebook.additional)) {
-@@ -244 +267 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -244 +275 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -    return enabled_lorebook_list;
 +    return [...new Set(enabled_lorebook_list.filter(Boolean))];
-@@ -265 +287,0 @@ export async function loadInitVarData(
+@@ -265 +295,0 @@ export async function loadInitVarData(
 -        mvu_data.initialized_lorebooks[current_lorebook] = [];
-@@ -267 +289 @@ export async function loadInitVarData(
+@@ -267 +297 @@ export async function loadInitVarData(
 -            const init_entries = (await getLorebookEntries(current_lorebook)) as LorebookEntry[];
 +            const init_entries = await getWorldbook(current_lorebook);
-@@ -271,2 +293,3 @@ export async function loadInitVarData(
+@@ -271,2 +301,3 @@ export async function loadInitVarData(
 -                if (entry.comment?.toLowerCase().includes('[initvar]')) {
 -                    const xml_match = entry.content
 +                if (entry.name.toLowerCase().includes('[initvar]')) {
 +                    let entry_content = entry.content;
 +                    const xml_match = entry_content
-@@ -276 +299 @@ export async function loadInitVarData(
+@@ -276 +307 @@ export async function loadInitVarData(
 -                        entry.content = xml_match[1];
 +                        entry_content = xml_match[1];
-@@ -278 +301 @@ export async function loadInitVarData(
+@@ -278 +309 @@ export async function loadInitVarData(
 -                    const codeblock_match = entry.content.trim().match(/```.*\n([\s\S]*)\n```/m);
 +                    const codeblock_match = entry_content.trim().match(/```.*\n([\s\S]*)\n```/m);
-@@ -280 +303 @@ export async function loadInitVarData(
+@@ -280 +311 @@ export async function loadInitVarData(
 -                        entry.content = codeblock_match[1];
 +                        entry_content = codeblock_match[1];
-@@ -282 +305 @@ export async function loadInitVarData(
+@@ -282 +313 @@ export async function loadInitVarData(
 -                    const content = substitudeMacros(entry.content);
 +                    const content = substitudeMacros(entry_content);
-@@ -296 +319 @@ export async function loadInitVarData(
+@@ -296 +327 @@ export async function loadInitVarData(
 -                                comment: entry.comment ?? '',
 +                                comment: entry.name,
-@@ -305 +328 @@ export async function loadInitVarData(
+@@ -305 +336 @@ export async function loadInitVarData(
 -                                comment: _.escape(entry.comment ?? ''),
 +                                comment: _.escape(entry.name),
-@@ -319,0 +343 @@ export async function loadInitVarData(
+@@ -319,0 +351 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
 index 722db33..a9ec48f 100644
