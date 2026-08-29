@@ -4732,6 +4732,59 @@ $CONTENT
             hasPendingBodyContext: !!generationGate_ACU.正文后置上下文,
         });
     }
+    function 恢复遗漏开始事件的TT正文上下文_ACU(事件消息编号, 消息类型) {
+        if (String(消息类型 || '') !== 'normal'
+            || !hasTauriTavernChatStoreSurface_ACU()
+            || 读取正文后置上下文_ACU())
+            return false;
+        const 聊天数组 = getChatArray_ACU();
+        const 数字索引 = Number(事件消息编号);
+        if (!Array.isArray(聊天数组)
+            || !Number.isInteger(数字索引)
+            || 数字索引 !== 聊天数组.length - 1)
+            return false;
+        const 目标消息 = 聊天数组[数字索引];
+        const 用户消息 = 聊天数组[数字索引 - 1];
+        if (!目标消息 || 目标消息.is_user || 目标消息.is_system || !用户消息?.is_user)
+            return false;
+        const 目标元信息 = 读取角色消息元信息_ACU(目标消息, 数字索引);
+        if (String(目标元信息.文本 || '').trim().length < 5)
+            return false;
+        let 上一角色元信息 = { 消息索引: -1, 文本签名: '' };
+        for (let 索引 = 数字索引 - 2; 索引 >= 0; 索引 -= 1) {
+            if (聊天数组[索引] && !聊天数组[索引].is_user) {
+                上一角色元信息 = 读取角色消息元信息_ACU(聊天数组[索引], 索引);
+                break;
+            }
+        }
+        advanceDatabaseGenerationEpoch_ACU();
+        const epoch = databaseGenerationEpoch_ACU;
+        const 生成上下文 = {
+            type: 'normal',
+            params: {},
+            dryRun: false,
+            at: Date.now(),
+            epoch,
+            chatId: getActiveChatId_ACU(),
+            开始聊天长度: 数字索引,
+            开始最后角色索引: 上一角色元信息.消息索引,
+            开始最后角色签名: 上一角色元信息.文本签名 || '',
+        };
+        generationGate_ACU.lastGeneration = { ...生成上下文, 是否正文生成: true };
+        generationGate_ACU.正文后置上下文 = {
+            ...生成上下文,
+            最后用户消息编号: 数字索引 - 1,
+            生成已结束: false,
+        };
+        生成结束后置状态_ACU.已调度消息键 = '';
+        recordTtAutoUpdateDebug_ACU('恢复遗漏开始事件的正文上下文', {
+            targetIndex: 数字索引,
+            userIndex: 数字索引 - 1,
+            previousAssistantIndex: 上一角色元信息.消息索引,
+            epoch,
+        });
+        return true;
+    }
     function clearDatabaseGenerationPlan_ACU(transaction = null) {
         if (!transaction)
             return;
@@ -56115,17 +56168,17 @@ $CONTENT
             const parentDoc = (window.parent || window).document;
             const doc = parentDoc || document;
             if (!window.__ACU_sendIntentHooksInstalled) {
-                window.__ACU_sendIntentHooksInstalled = { send: false, enter: false };
+                window.__ACU_sendIntentHooksInstalled = { send: null, enter: null };
             }
             const sendBtn = doc.getElementById('send_but');
-            if (sendBtn && !window.__ACU_sendIntentHooksInstalled.send) {
+            if (sendBtn && window.__ACU_sendIntentHooksInstalled.send !== sendBtn) {
                 sendBtn.addEventListener('click', () => markUserSendIntent_ACU(), true);
                 sendBtn.addEventListener('pointerup', () => markUserSendIntent_ACU(), true);
                 sendBtn.addEventListener('touchend', () => markUserSendIntent_ACU(), true);
-                window.__ACU_sendIntentHooksInstalled.send = true;
+                window.__ACU_sendIntentHooksInstalled.send = sendBtn;
             }
             const ta = doc.getElementById('send_textarea');
-            if (ta && !window.__ACU_sendIntentHooksInstalled.enter) {
+            if (ta && window.__ACU_sendIntentHooksInstalled.enter !== ta) {
                 ta.addEventListener('keydown', (e) => {
                     try {
                         const key = e.key || e.code;
@@ -56135,7 +56188,7 @@ $CONTENT
                     }
                     catch (err) { }
                 }, true);
-                window.__ACU_sendIntentHooksInstalled.enter = true;
+                window.__ACU_sendIntentHooksInstalled.enter = ta;
             }
             if ((!sendBtn || !ta) && !window.__ACU_sendIntentHooksRetryScheduled) {
                 window.__ACU_sendIntentHooksRetryScheduled = true;
@@ -56208,7 +56261,8 @@ $CONTENT
                             logDebug_ACU('[SQLite] CHAT_CHANGED: 立即销毁旧数据库实例');
                     }
                     // [触发门控] generationGate 重置已搬到 service 层的 resetScriptStateForNewChat_ACU 中
-                    // [触发门控] 每次切换聊天都尝试安装一次 capture 钩子（防止 DOM 重新渲染导致丢失）          installSendIntentCaptureHooks_ACU();
+                    // [触发门控] 每次切换聊天都尝试安装一次 capture 钩子（防止 DOM 重新渲染导致丢失）
+                    installSendIntentCaptureHooks_ACU();
                     // [剧情推进] 切换聊天时停止循环并加载预设
                     if (loopState_ACU.isLooping) {
                         stopAutoLoop_ACU();
@@ -56325,6 +56379,8 @@ $CONTENT
                         });
                         if (!是正文消息)
                             return;
+                        if (!读取正文后置上下文_ACU())
+                            恢复遗漏开始事件的TT正文上下文_ACU(message_id, 消息类型);
                         if (调度已确认正文数据库更新_ACU('MESSAGE_RECEIVED', message_id))
                             logDebug_ACU(`ACU: Confirmed received body floor ${message_id} for automatic table update.`);
                     });
@@ -56353,6 +56409,7 @@ $CONTENT
                             hasPendingBodyContext: !!读取正文后置上下文_ACU(),
                         });
                         if (!读取正文后置上下文_ACU()
+                            && !生成结束后置状态_ACU.已调度消息键
                             && !dryRun
                             && !isQuietLikeGeneration_ACU(type, params)
                             && !params?.automatic_trigger

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:fb760bbd1f1554d01c1f47f60ad5157770c1295d57fc4e521e664f2e79624bd0 */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:04c158000c20f08a3a7f49cdd7b0fd7d0d0cee397f8621a0a6236eda9effa4aa */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -177839,6 +177839,59 @@ $CONTENT
             hasPendingBodyContext: !!generationGate_ACU.正文后置上下文,
         });
     }
+    function 恢复遗漏开始事件的TT正文上下文_ACU(事件消息编号, 消息类型) {
+        if (String(消息类型 || '') !== 'normal'
+            || !hasTauriTavernChatStoreSurface_ACU()
+            || 读取正文后置上下文_ACU())
+            return false;
+        const 聊天数组 = getChatArray_ACU();
+        const 数字索引 = Number(事件消息编号);
+        if (!Array.isArray(聊天数组)
+            || !Number.isInteger(数字索引)
+            || 数字索引 !== 聊天数组.length - 1)
+            return false;
+        const 目标消息 = 聊天数组[数字索引];
+        const 用户消息 = 聊天数组[数字索引 - 1];
+        if (!目标消息 || 目标消息.is_user || 目标消息.is_system || !用户消息?.is_user)
+            return false;
+        const 目标元信息 = 读取角色消息元信息_ACU(目标消息, 数字索引);
+        if (String(目标元信息.文本 || '').trim().length < 5)
+            return false;
+        let 上一角色元信息 = { 消息索引: -1, 文本签名: '' };
+        for (let 索引 = 数字索引 - 2; 索引 >= 0; 索引 -= 1) {
+            if (聊天数组[索引] && !聊天数组[索引].is_user) {
+                上一角色元信息 = 读取角色消息元信息_ACU(聊天数组[索引], 索引);
+                break;
+            }
+        }
+        advanceDatabaseGenerationEpoch_ACU();
+        const epoch = databaseGenerationEpoch_ACU;
+        const 生成上下文 = {
+            type: 'normal',
+            params: {},
+            dryRun: false,
+            at: Date.now(),
+            epoch,
+            chatId: getActiveChatId_ACU(),
+            开始聊天长度: 数字索引,
+            开始最后角色索引: 上一角色元信息.消息索引,
+            开始最后角色签名: 上一角色元信息.文本签名 || '',
+        };
+        generationGate_ACU.lastGeneration = { ...生成上下文, 是否正文生成: true };
+        generationGate_ACU.正文后置上下文 = {
+            ...生成上下文,
+            最后用户消息编号: 数字索引 - 1,
+            生成已结束: false,
+        };
+        生成结束后置状态_ACU.已调度消息键 = '';
+        recordTtAutoUpdateDebug_ACU('恢复遗漏开始事件的正文上下文', {
+            targetIndex: 数字索引,
+            userIndex: 数字索引 - 1,
+            previousAssistantIndex: 上一角色元信息.消息索引,
+            epoch,
+        });
+        return true;
+    }
     function clearDatabaseGenerationPlan_ACU(transaction = null) {
         if (!transaction)
             return;
@@ -229222,17 +229275,17 @@ $CONTENT
             const parentDoc = (window.parent || window).document;
             const doc = parentDoc || document;
             if (!window.__ACU_sendIntentHooksInstalled) {
-                window.__ACU_sendIntentHooksInstalled = { send: false, enter: false };
+                window.__ACU_sendIntentHooksInstalled = { send: null, enter: null };
             }
             const sendBtn = doc.getElementById('send_but');
-            if (sendBtn && !window.__ACU_sendIntentHooksInstalled.send) {
+            if (sendBtn && window.__ACU_sendIntentHooksInstalled.send !== sendBtn) {
                 sendBtn.addEventListener('click', () => markUserSendIntent_ACU(), true);
                 sendBtn.addEventListener('pointerup', () => markUserSendIntent_ACU(), true);
                 sendBtn.addEventListener('touchend', () => markUserSendIntent_ACU(), true);
-                window.__ACU_sendIntentHooksInstalled.send = true;
+                window.__ACU_sendIntentHooksInstalled.send = sendBtn;
             }
             const ta = doc.getElementById('send_textarea');
-            if (ta && !window.__ACU_sendIntentHooksInstalled.enter) {
+            if (ta && window.__ACU_sendIntentHooksInstalled.enter !== ta) {
                 ta.addEventListener('keydown', (e) => {
                     try {
                         const key = e.key || e.code;
@@ -229242,7 +229295,7 @@ $CONTENT
                     }
                     catch (err) { }
                 }, true);
-                window.__ACU_sendIntentHooksInstalled.enter = true;
+                window.__ACU_sendIntentHooksInstalled.enter = ta;
             }
             if ((!sendBtn || !ta) && !window.__ACU_sendIntentHooksRetryScheduled) {
                 window.__ACU_sendIntentHooksRetryScheduled = true;
@@ -229315,7 +229368,8 @@ $CONTENT
                             logDebug_ACU('[SQLite] CHAT_CHANGED: 立即销毁旧数据库实例');
                     }
                     // [触发门控] generationGate 重置已搬到 service 层的 resetScriptStateForNewChat_ACU 中
-                    // [触发门控] 每次切换聊天都尝试安装一次 capture 钩子（防止 DOM 重新渲染导致丢失）          installSendIntentCaptureHooks_ACU();
+                    // [触发门控] 每次切换聊天都尝试安装一次 capture 钩子（防止 DOM 重新渲染导致丢失）
+                    installSendIntentCaptureHooks_ACU();
                     // [剧情推进] 切换聊天时停止循环并加载预设
                     if (loopState_ACU.isLooping) {
                         stopAutoLoop_ACU();
@@ -229432,6 +229486,8 @@ $CONTENT
                         });
                         if (!是正文消息)
                             return;
+                        if (!读取正文后置上下文_ACU())
+                            恢复遗漏开始事件的TT正文上下文_ACU(message_id, 消息类型);
                         if (调度已确认正文数据库更新_ACU('MESSAGE_RECEIVED', message_id))
                             logDebug_ACU(`ACU: Confirmed received body floor ${message_id} for automatic table update.`);
                     });
@@ -229460,6 +229516,7 @@ $CONTENT
                             hasPendingBodyContext: !!读取正文后置上下文_ACU(),
                         });
                         if (!读取正文后置上下文_ACU()
+                            && !生成结束后置状态_ACU.已调度消息键
                             && !dryRun
                             && !isQuietLikeGeneration_ACU(type, params)
                             && !params?.automatic_trigger
