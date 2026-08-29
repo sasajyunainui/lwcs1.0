@@ -5046,6 +5046,9 @@ $CONTENT
             .replace(/<JSONPatch\b[^>]*>[\s\S]*?<\/JSONPatch>/gi, '')
             // 插图插件会在正文落楼后追加机器提示标签；它不属于剧情正文，不能让同楼事务失效。
             .replace(/image###[\s\S]*?###/gi, '')
+            .replace(/<images\b[^>]*>[\s\S]*?<\/images>/gi, '')
+            .replace(/<image\b[^>]*\/>/gi, '')
+            .replace(/<image\b[^>]*>[\s\S]*?<\/image>/gi, '')
             .trimEnd();
     }
     function 读取角色消息元信息_ACU(消息, 消息索引) {
