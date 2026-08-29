@@ -154,7 +154,7 @@ index 321bd11..c7dbc51 100644
 @@ -238 +243,0 @@ async function onVariableUpdatedCall(args: any): Promise<string> {
 -    await replaceVariables(variables, { type: 'message', message_id: message_id });
 diff --git a/src/function/global/index.ts b/src/function/global/index.ts
-index caf3097..d0606ec 100644
+index caf3097..0cf889b 100644
 --- a/src/function/global/index.ts
 +++ b/src/function/global/index.ts
 @@ -2,0 +3,8 @@ import { updateVariable, updateVariables } from '@/function/update_variables';
@@ -166,7 +166,7 @@ index caf3097..d0606ec 100644
 +    mvu_runtime_events,
 +    replaceMvuDataControlled,
 +} from '@/function/update/mvu_runtime';
-@@ -7,0 +16,15 @@ function createMvu() {
+@@ -7,0 +16,12 @@ function createMvu() {
 +    const replaceMvuData = (mvu_data: MvuData, options: VariableOption) =>
 +        replaceMvuDataControlled(mvu_data, options);
 +    const waitForCanonicalMvuData = async (options: VariableOption): Promise<MvuData> => {
@@ -174,18 +174,15 @@ index caf3097..d0606ec 100644
 +        do {
 +            await ensureMvuPersistence().then(() => awaitIdle());
 +            const data = getCanonicalMvuData(options);
-+            if (
-+                _.isPlainObject(data?.stat_data)
-+                && _.isPlainObject(data.schema)
-+            ) return data;
++            if (_.isPlainObject(data?.stat_data) && _.isPlainObject(data.schema)) return data;
 +            await new Promise(resolve => setTimeout(resolve, 50));
 +        } while (Date.now() < deadline);
 +        throw new Error('MVU canonical data unavailable after initialization wait');
 +    };
-@@ -9 +32 @@ function createMvu() {
+@@ -9 +29 @@ function createMvu() {
 -        events: variable_events,
 +        events: Object.freeze({ ...variable_events, ...mvu_runtime_events }),
-@@ -29 +52,12 @@ function createMvu() {
+@@ -29 +49,12 @@ function createMvu() {
 -            return getVariables(options) as MvuData;
 +            return getCanonicalMvuData(options);
 +        },
@@ -199,23 +196,53 @@ index caf3097..d0606ec 100644
 +        persistence: {
 +            awaitIdle,
 +            getStatus,
-@@ -48,2 +82 @@ function createMvu() {
+@@ -48,2 +79 @@ function createMvu() {
 -            /** 旧酒馆助手的 replaceVariables 是异步函数, 因此需要返回 Promise */
 -            return replaceVariables(mvu_data, options);
 +            return replaceMvuData(mvu_data, options);
-@@ -77,2 +110 @@ function createMvu() {
+@@ -77,2 +107 @@ function createMvu() {
 -            const variables = getVariables({ type: 'message', message_id: getCurrentMessageId() });
 -            return variables as MvuData;
 +            return getCanonicalMvuData({ type: 'message', message_id: getCurrentMessageId() });
-@@ -83 +115 @@ function createMvu() {
+@@ -83 +112 @@ function createMvu() {
 -            await replaceVariables(mvu_data, {
 +            await replaceMvuData(mvu_data, {
-@@ -165 +197,11 @@ function createMvu() {
+@@ -165 +194,41 @@ function createMvu() {
 -export function initGlobals() {
-+const LWCS_MVU_ENGINE_OWNER_V1 = Object.freeze({
++const LWCS_MVU_ENGINE_COMMIT_V1 = String(_.get(window.parent, '__LWCS_MVU_当前远程提交__') || '');
++const LWCS_MVU_ENGINE_GENERATION_V1 = Number(
++    _.get(window.parent, '__LWCS_MVU_ACTIVE_GENERATION_V1__')
++);
++let resolveMvuEngineTeardown: () => void = () => {};
++const LWCS_MVU_ENGINE_LIFECYCLE_V1 = {
 +    version: '1.0.0',
++    sessionKey: `${LWCS_MVU_ENGINE_COMMIT_V1}:${LWCS_MVU_ENGINE_GENERATION_V1}`,
++    commit: LWCS_MVU_ENGINE_COMMIT_V1,
++    generation: LWCS_MVU_ENGINE_GENERATION_V1,
++    status: 'starting' as 'starting' | 'ready' | 'stopping' | 'released',
++    teardownPromise: new Promise<void>(resolve => {
++        resolveMvuEngineTeardown = resolve;
++    }),
++};
++_.set(window.parent, '__LWCS_MVU_ENGINE_LIFECYCLE_V1__', LWCS_MVU_ENGINE_LIFECYCLE_V1);
++const LWCS_MVU_ENGINE_OWNER_V1 = Object.freeze({
++    version: '1.2.0',
 +    owner: 'lwcs-controlled-magvarupdate',
++    commit: LWCS_MVU_ENGINE_COMMIT_V1,
++    generation: LWCS_MVU_ENGINE_GENERATION_V1,
++    lifecycle: LWCS_MVU_ENGINE_LIFECYCLE_V1,
 +});
++
++export function beginMvuEngineTeardown(): void {
++    if (LWCS_MVU_ENGINE_LIFECYCLE_V1.status !== 'released') {
++        LWCS_MVU_ENGINE_LIFECYCLE_V1.status = 'stopping';
++    }
++}
++
++export function finishMvuEngineTeardown(): void {
++    LWCS_MVU_ENGINE_LIFECYCLE_V1.status = 'released';
++    resolveMvuEngineTeardown();
++}
 +
 +export async function initGlobals() {
 +    try {
@@ -223,7 +250,8 @@ index caf3097..d0606ec 100644
 +    } catch (error) {
 +        console.error('[LWCS MVU] 持久化 Provider 初始化失败，已禁止 TT 消息楼变量写入', error);
 +    }
-@@ -171,0 +214,7 @@ export function initGlobals() {
+@@ -171,0 +241,8 @@ export function initGlobals() {
++                LWCS_MVU_ENGINE_LIFECYCLE_V1.status = 'ready';
 +                if (!Object.prototype.hasOwnProperty.call(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__')) {
 +                    Object.defineProperty(mvu, '__LWCS_MVU_ENGINE_OWNER_V1__', {
 +                        value: LWCS_MVU_ENGINE_OWNER_V1,
@@ -231,9 +259,17 @@ index caf3097..d0606ec 100644
 +                        configurable: false,
 +                    });
 +                }
-@@ -172,0 +222 @@ export function initGlobals() {
+@@ -172,0 +250,6 @@ export function initGlobals() {
 +                _.set(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__', LWCS_MVU_ENGINE_OWNER_V1);
-@@ -182,0 +233,3 @@ export function initGlobals() {
++                _.set(
++                    window.parent,
++                    '__LWCS_MVU_ENGINE_LIFECYCLE_V1__',
++                    LWCS_MVU_ENGINE_LIFECYCLE_V1
++                );
+@@ -180 +263 @@ export function initGlobals() {
+-        if (store.should_enable && _.get(window.parent, 'Mvu') === mvu) {
++        if (_.get(window.parent, 'Mvu') === mvu) {
+@@ -182,0 +266,3 @@ export function initGlobals() {
 +            if (_.get(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__') === LWCS_MVU_ENGINE_OWNER_V1) {
 +                _.unset(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__');
 +            }
@@ -1412,25 +1448,224 @@ index e144b79..8d85f00 100644
 @@ -1574,0 +1637 @@ export async function handleVariablesInMessage(message_id: number) {
 +    return has_variable_modified;
 diff --git a/src/main.ts b/src/main.ts
-index 364eb10..6dd2392 100644
+index 364eb10..2780a21 100644
 --- a/src/main.ts
 +++ b/src/main.ts
+@@ -6 +6 @@ import { initExportedEvents } from '@/function/exported_events';
+-import { initGlobals } from '@/function/global';
++import { beginMvuEngineTeardown, finishMvuEngineTeardown, initGlobals } from '@/function/global';
 @@ -16 +15,0 @@ import { checkMinimumVersion } from '@util/common';
 -import { registerAsUniqueScript } from '@util/script';
-@@ -39 +38 @@ $(async () => {
+@@ -23,27 +22,26 @@ setActivePinia(getActivePinia() ?? createPinia());
+-$(async () => {
+-    const minimum_tavern_helper_version = '3.4.17';
+-    await checkMinimumVersion(minimum_tavern_helper_version, {
+-        message: tr('runtime.main.minimumVersionRequired', {
+-            version: minimum_tavern_helper_version,
+-        }),
+-        title: tr('runtime.main.versionIncompatibleTitle'),
+-    });
+-
+-    const store = useDataStore();
+-    await store._wait_init();
+-
+-    const stop_list: Stop[] = [];
+-
+-    stop_list.push(initPanel());
+-    stop_list.push(initButtons());
 -    stop_list.push(initGlobals());
-+    stop_list.push(await initGlobals());
-@@ -51,0 +51 @@ $(async () => {
-+        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
-@@ -79,0 +80 @@ $(async () => {
-+                    _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', true);
-@@ -84,0 +86 @@ $(async () => {
-+                _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
-@@ -105,0 +108 @@ $(async () => {
-+        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
-@@ -110 +113 @@ $(async () => {
+-
+-    let chat_level_stop_list: Stop[] = [];
+-    let current_chat_id = SillyTavern.getCurrentChatId();
+-    let chat_level_generation = 0;
+-    let chat_level_transition = Promise.resolve();
+-
+-    // 串行销毁和初始化聊天级模块，并用代次号淘汰快速切换聊天时产生的过期任务。
+-    const transitionToChat = (chat_id: string, force = false): Promise<void> => {
+-        if (!force && current_chat_id === chat_id) {
+-            return chat_level_transition;
++const store = useDataStore();
++const stop_list: Stop[] = [];
++let chat_level_stop_list: Stop[] = [];
++let chat_level_generation = 0;
++let chat_level_transition = Promise.resolve();
++let teardown_requested = false;
++let initialization: Promise<void> = Promise.resolve();
++let engine_teardown: Promise<void> | null = null;
++
++function requestEngineTeardown(): Promise<void> {
++    teardown_requested = true;
++    beginMvuEngineTeardown();
++    engine_teardown ??= (async () => {
++        try {
++            await initialization.catch(() => {});
++            _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
++            chat_level_generation++;
++            await chat_level_transition;
++            await stopAll(chat_level_stop_list);
++            await stopAll(stop_list);
++        } finally {
++            try {
++                store.stop_unique_script_registration();
++            } finally {
++                finishMvuEngineTeardown();
++            }
+@@ -50,0 +49,7 @@ $(async () => {
++    })();
++    return engine_teardown;
++}
++
++$(window).on('pagehide', () => {
++    void requestEngineTeardown();
++});
+@@ -52,20 +57,52 @@ $(async () => {
+-        current_chat_id = chat_id;
+-        const generation = ++chat_level_generation;
+-        chat_level_transition = chat_level_transition
+-            .then(async () => {
+-                if (generation !== chat_level_generation) {
+-                    return;
+-                }
+-
+-                const previous_stop_list = chat_level_stop_list;
+-                chat_level_stop_list = [];
+-                await stopAll(previous_stop_list);
+-                if (
+-                    generation !== chat_level_generation ||
+-                    SillyTavern.getCurrentChatId() !== chat_id
+-                ) {
+-                    return;
+-                }
+-
+-                const next_stop_list = await initChatLevel(
+-                    () =>
++$(async () => {
++    if (teardown_requested) return;
++    initialization = (async () => {
++        const minimum_tavern_helper_version = '3.4.17';
++        await checkMinimumVersion(minimum_tavern_helper_version, {
++            message: tr('runtime.main.minimumVersionRequired', {
++                version: minimum_tavern_helper_version,
++            }),
++            title: tr('runtime.main.versionIncompatibleTitle'),
++        });
++        if (teardown_requested) return;
++
++        await store._wait_init();
++        if (teardown_requested) return;
++
++        stop_list.push(initPanel());
++        stop_list.push(initButtons());
++        stop_list.push(await initGlobals());
++
++        let current_chat_id = SillyTavern.getCurrentChatId();
++
++        // 串行销毁和初始化聊天级模块，并用代次号淘汰快速切换聊天时产生的过期任务。
++        const transitionToChat = (chat_id: string, force = false): Promise<void> => {
++            if (!force && current_chat_id === chat_id) {
++                return chat_level_transition;
++            }
++
++            _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
++            current_chat_id = chat_id;
++            const generation = ++chat_level_generation;
++            chat_level_transition = chat_level_transition
++                .then(async () => {
++                    if (generation !== chat_level_generation) {
++                        return;
++                    }
++
++                    const previous_stop_list = chat_level_stop_list;
++                    chat_level_stop_list = [];
++                    await stopAll(previous_stop_list);
++                    if (
++                        generation !== chat_level_generation ||
++                        SillyTavern.getCurrentChatId() !== chat_id
++                    ) {
++                        return;
++                    }
++
++                    const next_stop_list = await initChatLevel(
++                        () =>
++                            generation === chat_level_generation &&
++                            SillyTavern.getCurrentChatId() === chat_id
++                    );
++                    if (
+@@ -74,38 +111,36 @@ $(async () => {
+-                );
+-                if (
+-                    generation === chat_level_generation &&
+-                    SillyTavern.getCurrentChatId() === chat_id
+-                ) {
+-                    chat_level_stop_list = next_stop_list;
+-                } else {
+-                    await stopAll(next_stop_list);
+-                }
+-            })
+-            .catch(error => {
+-                console.error(tr('runtime.main.chatReinitializeFailedLog'), error);
+-                toastr.error(
+-                    tr('runtime.common.errorCause', { cause: _.escape(String(error)) }),
+-                    tr('runtime.main.reinitializeFailedTitle'),
+-                    { timeOut: 5000 }
+-                );
+-            });
+-        return chat_level_transition;
+-    };
+-
+-    stop_list.push(
+-        controlledStoppableEventOn(tavern_events.CHAT_CHANGED, (chat_id: string) =>
+-            transitionToChat(chat_id)
+-        )
+-    );
+-    stop_list.push(watchPreferredChatSync(() => store.should_enable, transitionToChat));
+-    await transitionToChat(current_chat_id, true);
+-
+-    stop_list.push(initNotification());
+-
+-    $(window).on('pagehide', async () => {
+-        chat_level_generation++;
+-        await chat_level_transition;
+-        await stopAll(chat_level_stop_list);
+-        await stopAll(stop_list);
 -        registerAsUniqueScript('MVU变量框架').unregister();
-+        store.stop_unique_script_registration();
+-    });
++                    ) {
++                        chat_level_stop_list = next_stop_list;
++                        _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', true);
++                    } else {
++                        await stopAll(next_stop_list);
++                    }
++                })
++                .catch(error => {
++                    _.set(window.parent, '__LWCS_MVU_CHAT_HOOKS_READY_V1__', false);
++                    console.error(tr('runtime.main.chatReinitializeFailedLog'), error);
++                    toastr.error(
++                        tr('runtime.common.errorCause', { cause: _.escape(String(error)) }),
++                        tr('runtime.main.reinitializeFailedTitle'),
++                        { timeOut: 5000 }
++                    );
++                });
++            return chat_level_transition;
++        };
++
++        stop_list.push(
++            controlledStoppableEventOn(tavern_events.CHAT_CHANGED, (chat_id: string) =>
++                transitionToChat(chat_id)
++            )
++        );
++        stop_list.push(watchPreferredChatSync(() => store.should_enable, transitionToChat));
++        await transitionToChat(current_chat_id, true);
++        if (teardown_requested) return;
++
++        stop_list.push(initNotification());
++    })();
++    try {
++        await initialization;
++    } catch (error) {
++        await requestEngineTeardown();
++        throw error;
++    }
 diff --git a/src/store.ts b/src/store.ts
 index 5ef9748..ade06a9 100644
 --- a/src/store.ts

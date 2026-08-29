@@ -18,7 +18,7 @@ const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = 'c88d0589755836b7866725c21ab559a38a1dfc591be68dc6d38fafaba699efbc';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = '898ef1d1f964e5a3c4bb9c2742cfa04c8d0ae3728813687db1ddf4745d20d186';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   MVU_ENGINE_BUNDLE_FILE_V1,
@@ -131,8 +131,9 @@ function 导出MVU链路诊断_V1() {
     },
     data: {
       present: !!当前数据 && typeof 当前数据 === 'object',
-      canonical: !!当前数据?.stat_data && typeof 当前数据.stat_data === 'object' && Object.keys(当前数据.stat_data).length > 0
-        && Object.prototype.hasOwnProperty.call(当前数据, 'schema'),
+      canonical: !!当前数据 && typeof 当前数据 === 'object'
+        && Object.prototype.toString.call(当前数据.stat_data) === '[object Object]'
+        && Object.prototype.toString.call(当前数据.schema) === '[object Object]',
       keys: 当前数据 && typeof 当前数据 === 'object' ? Object.keys(当前数据) : [],
       statKeys: 当前数据?.stat_data && typeof 当前数据.stat_data === 'object' ? Object.keys(当前数据.stat_data) : [],
     },
@@ -180,13 +181,15 @@ const MVU本轮核心就绪解决_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_
 const MVU本轮核心就绪拒绝_V1 = MVU共享宿主窗口_V1.__LWCS_MVU_CORE_READY_REJECT_V1__ || MVU核心就绪拒绝_V1;
 const MVU项目引擎状态_V1 = (() => {
   const 键 = '__LWCS_MVU_ENGINE_STATE_V1__';
+  const 会话键 = `${读取MVU资源提交_V1()}:${MVU入口启动代号_V1}`;
   const 已有状态 = MVU共享宿主窗口_V1[键];
-  if (已有状态 && 已有状态.version === '1.1.0') {
+  if (已有状态 && 已有状态.version === '1.2.0' && 已有状态.sessionKey === 会话键) {
     try { globalThis[键] = 已有状态; } catch (_) {}
     return 已有状态;
   }
   const 新状态 = {
-    version: '1.1.0',
+    version: '1.2.0',
+    sessionKey: 会话键,
     status: 'idle',
     phase: '等待',
     upstreamCommit: MVU_ENGINE_UPSTREAM_COMMIT_V1,
@@ -368,6 +371,29 @@ const MVU资源所有者状态_V1 = (() => {
   globalThis[键] = 新状态;
   return 新状态;
 })();
+const MVU经典脚本所有权表_V1 = (() => {
+  const 键 = '__LWCS_MVU_CLASSIC_RESOURCE_OWNERS_V1__';
+  const 已有 = MVU共享宿主窗口_V1[键];
+  const 所有权表 = 已有 && typeof 已有 === 'object' ? 已有 : Object.create(null);
+  MVU共享宿主窗口_V1[键] = 所有权表;
+  return 所有权表;
+})();
+
+function 当前Realm已执行经典资源_V1(记录) {
+  const 所有权 = MVU经典脚本所有权表_V1[记录.relativePath];
+  return 所有权?.sessionKey === MVU资源所有者状态_V1.sessionKey
+    && 所有权.ownerWindow === globalThis
+    && 所有权.ownerDocument === globalThis.document;
+}
+
+function 标记当前Realm经典资源_V1(记录) {
+  MVU经典脚本所有权表_V1[记录.relativePath] = Object.freeze({
+    sessionKey: MVU资源所有者状态_V1.sessionKey,
+    ownerWindow: globalThis,
+    ownerDocument: globalThis.document,
+    loadedAt: Date.now(),
+  });
+}
 
 function MVU资源状态快照_V1(记录) {
   return Object.freeze({
@@ -411,7 +437,8 @@ function 创建MVU资源所有者_V1() {
   async function 执行资源加载_V1(记录, 文件名, 选项) {
     const 模式 = 记录.mode;
     const 就绪检查 = typeof 选项.ready === 'function' ? 选项.ready : () => false;
-    if (await Promise.resolve(就绪检查())) {
+    if (模式 === 'script-global' && 当前Realm已执行经典资源_V1(记录)
+      && await Promise.resolve(就绪检查())) {
       记录.status = 'loaded';
       记录.phase = 'existing';
       记录.value = null;
@@ -464,6 +491,7 @@ function 创建MVU资源所有者_V1() {
         throw new Error(`MVU资源加载失败：${记录.relativePath} ${错误列表.join(' | ')}`);
       }
       if (!(await Promise.resolve(就绪检查()))) throw new Error(`MVU资源未暴露预期接口：${记录.relativePath}`);
+      标记当前Realm经典资源_V1(记录);
     } else if (模式 === 'dynamic-import') {
       const 候选地址 = 构建MVU候选资源地址列表_V1(文件名);
       const 错误列表 = [];
@@ -583,11 +611,65 @@ function 取MVU引擎窗口_V1() {
 function 取已有MVU引擎_V1() {
   return 取MVU引擎窗口_V1().map(窗口 => 窗口.Mvu).find(接口 =>
     接口 && 接口.__LWCS_MVU_ENGINE_OWNER_V1__?.owner === 'lwcs-controlled-magvarupdate'
+      && 接口.__LWCS_MVU_ENGINE_OWNER_V1__?.commit === 读取MVU资源提交_V1()
+      && Number(接口.__LWCS_MVU_ENGINE_OWNER_V1__?.generation) === MVU入口启动代号_V1
+      && 接口.__LWCS_MVU_ENGINE_OWNER_V1__?.lifecycle?.status === 'ready'
   ) || null;
+}
+
+function 取已有LWCS_MVU引擎_V1() {
+  return 取MVU引擎窗口_V1().map(窗口 => 窗口.Mvu).find(接口 =>
+    接口 && 接口.__LWCS_MVU_ENGINE_OWNER_V1__?.owner === 'lwcs-controlled-magvarupdate'
+  ) || null;
+}
+
+function 取待释放LWCS_MVU生命周期_V1() {
+  return 取MVU引擎窗口_V1().map(窗口 => 窗口.__LWCS_MVU_ENGINE_LIFECYCLE_V1__).find(生命周期 =>
+    生命周期 && 生命周期.status !== 'released'
+  ) || null;
+}
+
+function 读取MVU唯一脚本实例数_V1() {
+  const 实例表 = MVU共享宿主窗口_V1.th_unique_check?.['MVU变量框架_instances'];
+  if (!实例表 || typeof 实例表.values !== 'function') return null;
+  let 实例数 = 0;
+  for (const 令牌集 of 实例表.values()) {
+    if (令牌集 && typeof 令牌集.size === 'number') 实例数 += 令牌集.size;
+  }
+  return 实例数;
 }
 
 function 取已有外部MVU_V1() {
   return 取MVU引擎窗口_V1().map(窗口 => 窗口.Mvu).find(Boolean) || null;
+}
+
+async function 等待旧LWCS_MVU引擎释放_V1() {
+  const 旧引擎 = 取已有LWCS_MVU引擎_V1();
+  const 旧标记 = 旧引擎?.__LWCS_MVU_ENGINE_OWNER_V1__;
+  const 旧生命周期 = 旧标记?.lifecycle || 取待释放LWCS_MVU生命周期_V1();
+  const 旧唯一脚本实例数 = 读取MVU唯一脚本实例数_V1();
+  if ((!旧引擎 && !旧生命周期 && !(旧唯一脚本实例数 > 0)) || 取已有MVU引擎_V1()) return;
+  MVU项目引擎状态_V1.status = 'loading';
+  MVU项目引擎状态_V1.phase = '等待旧轮次释放';
+  发布MVU模块状态_V1(MVU_ENGINE_BUNDLE_FILE_V1, 'loading', '等待旧轮次释放');
+  const 截止时间 = performance.now() + 15000;
+  while (performance.now() < 截止时间) {
+    if (!是当前MVU启动轮次_V1()) throw new Error(`MVU引擎交接轮次已过期：${MVU入口启动代号_V1}`);
+    if (取已有MVU引擎_V1()) return;
+    const 旧轮次已注销 = 旧生命周期
+      ? 旧生命周期.status === 'released'
+      : 读取MVU唯一脚本实例数_V1() === 0;
+    if (!取已有LWCS_MVU引擎_V1() && 旧轮次已注销) {
+      await new Promise(继续 => setTimeout(继续, 0));
+      if (!是当前MVU启动轮次_V1()) throw new Error(`MVU引擎交接轮次已过期：${MVU入口启动代号_V1}`);
+      if (取已有MVU引擎_V1()
+        || (!取已有LWCS_MVU引擎_V1() && (旧生命周期
+          ? 旧生命周期.status === 'released'
+          : 读取MVU唯一脚本实例数_V1() === 0))) return;
+    }
+    await new Promise(继续 => setTimeout(继续, 25));
+  }
+  throw new Error(`旧LWCS MVU引擎未释放：commit=${旧标记?.commit || 'unknown'} generation=${旧标记?.generation ?? 'unknown'} uniqueInstances=${读取MVU唯一脚本实例数_V1() ?? 'unknown'}`);
 }
 
 async function 等待项目MVU接口_V1() {
@@ -607,6 +689,7 @@ async function 等待项目MVU接口_V1() {
 }
 
 async function 确保项目MVU引擎_V1() {
+  await 等待旧LWCS_MVU引擎释放_V1();
   const 已有项目引擎 = 取已有MVU引擎_V1();
   if (已有项目引擎) {
     const 适配器 = 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__');
