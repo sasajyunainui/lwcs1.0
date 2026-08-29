@@ -275,22 +275,23 @@ index caf3097..f38517f 100644
 +                _.unset(window.parent, '__LWCS_MVU_ENGINE_OWNER_V1__');
 +            }
 diff --git a/src/function/initvar/variable_init.ts b/src/function/initvar/variable_init.ts
-index c3ddcb5..28bfc05 100644
+index c3ddcb5..fed21bd 100644
 --- a/src/function/initvar/variable_init.ts
 +++ b/src/function/initvar/variable_init.ts
-@@ -2,0 +3,5 @@ import { updateVariables } from '@/function/update_variables';
+@@ -2,0 +3,6 @@ import { updateVariables } from '@/function/update_variables';
 +import {
++    ensureMvuPersistence,
 +    isTtMvuHost,
 +    replaceMvuDataControlled,
 +    updateVariablesWithControlled as updateVariablesWith,
 +} from '@/function/update/mvu_runtime';
-@@ -5 +10,4 @@ import { useDataStore } from '@/store';
+@@ -5 +11,4 @@ import { useDataStore } from '@/store';
 -import { getLastValidVariable } from '@/util';
 +import {
 +    getLastValidVariable,
 +    isCurrentMvuEngineGeneration,
 +} from '@/util';
-@@ -17,6 +25,2 @@ import { klona } from 'klona';
+@@ -17,6 +26,2 @@ import { klona } from 'klona';
 -type LorebookEntry = {
 -    content: string;
 -    comment?: string;
@@ -299,11 +300,36 @@ index c3ddcb5..28bfc05 100644
 -export async function initCheck() {
 +export async function initCheck(): Promise<void> {
 +    if (!isCurrentMvuEngineGeneration()) return;
-@@ -67 +70,0 @@ export async function initCheck() {
+@@ -25,0 +31,15 @@ export async function initCheck() {
++    if (SillyTavern.chat.length === 0) {
++        console.error(tr('runtime.initvar.noMessagesLog'));
++        toastr.error(
++            tr('runtime.initvar.greetingRequired'),
++            tr('runtime.initvar.initializationFailedTitle')
++        );
++        return;
++    }
++    const chat_id = SillyTavern.getCurrentChatId();
++    const is_current = () =>
++        isCurrentMvuEngineGeneration() && SillyTavern.getCurrentChatId() === chat_id;
++    if (isTtMvuHost()) {
++        await ensureMvuPersistence();
++        if (!is_current()) return;
++    }
+@@ -31,8 +50,0 @@ export async function initCheck() {
+-        if (SillyTavern.chat.length === 0) {
+-            console.error(tr('runtime.initvar.noMessagesLog'));
+-            toastr.error(
+-                tr('runtime.initvar.greetingRequired'),
+-                tr('runtime.initvar.initializationFailedTitle')
+-            );
+-            return;
+-        }
+@@ -67 +78,0 @@ export async function initCheck() {
 -
-@@ -69,0 +73 @@ export async function initCheck() {
-+    if (!isCurrentMvuEngineGeneration()) return;
-@@ -138,6 +142,2 @@ export async function initCheck() {
+@@ -69,0 +81 @@ export async function initCheck() {
++    if (!is_current()) return;
+@@ -138,6 +150,2 @@ export async function initCheck() {
 -        await setChatMessages([
 -            {
 -                // last_msg 不一定存在 message_id
@@ -312,18 +338,18 @@ index c3ddcb5..28bfc05 100644
 -                    last_msg.swipes!.map(async (swipe, index) => {
 +        const swipes_data = await Promise.all(
 +            last_msg.swipes!.map(async (swipe, index) => {
-@@ -187,0 +188 @@ export async function initCheck() {
-+                        if (!isCurrentMvuEngineGeneration()) return current_data;
-@@ -188,0 +190 @@ export async function initCheck() {
-+                        if (!isCurrentMvuEngineGeneration()) return current_data;
-@@ -194,4 +196,15 @@ export async function initCheck() {
+@@ -187,0 +196 @@ export async function initCheck() {
++                        if (!is_current()) return current_data;
+@@ -188,0 +198 @@ export async function initCheck() {
++                        if (!is_current()) return current_data;
+@@ -194,4 +204,15 @@ export async function initCheck() {
 -                    })
 -                ),
 -            },
 -        ]);
 +            })
 +        );
-+        if (!isCurrentMvuEngineGeneration()) return;
++        if (!is_current()) return;
 +        if (isTtMvuHost()) {
 +            const active_swipe = Number(last_msg.swipe_id ?? 0);
 +            await replaceMvuDataControlled(swipes_data[active_swipe] ?? variables, { type: 'chat' });
@@ -336,51 +362,51 @@ index c3ddcb5..28bfc05 100644
 +                },
 +            ]);
 +        }
-@@ -200 +213,2 @@ export async function initCheck() {
+@@ -200 +221,2 @@ export async function initCheck() {
 -        await replaceVariables(variables, { type: 'message' });
-+        if (!isCurrentMvuEngineGeneration()) return;
++        if (!is_current()) return;
 +        await replaceMvuDataControlled(variables, { type: isTtMvuHost() ? 'chat' : 'message' });
-@@ -201,0 +216 @@ export async function initCheck() {
-+    if (!isCurrentMvuEngineGeneration()) return;
-@@ -234 +249 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -201,0 +224 @@ export async function initCheck() {
++    if (!is_current()) return;
+@@ -234 +257 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -        const char_lorebook = await getCharLorebooks();
 +        const char_lorebook = getCharWorldbookNames('current');
-@@ -238 +253 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -238 +261 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -        if (char_lorebook.additional !== null) {
 +        if (Array.isArray(char_lorebook.additional)) {
-@@ -244 +259 @@ export async function getEnabledLorebookList(): Promise<string[]> {
+@@ -244 +267 @@ export async function getEnabledLorebookList(): Promise<string[]> {
 -    return enabled_lorebook_list;
 +    return [...new Set(enabled_lorebook_list.filter(Boolean))];
-@@ -265 +279,0 @@ export async function loadInitVarData(
+@@ -265 +287,0 @@ export async function loadInitVarData(
 -        mvu_data.initialized_lorebooks[current_lorebook] = [];
-@@ -267 +281 @@ export async function loadInitVarData(
+@@ -267 +289 @@ export async function loadInitVarData(
 -            const init_entries = (await getLorebookEntries(current_lorebook)) as LorebookEntry[];
 +            const init_entries = await getWorldbook(current_lorebook);
-@@ -271,2 +285,3 @@ export async function loadInitVarData(
+@@ -271,2 +293,3 @@ export async function loadInitVarData(
 -                if (entry.comment?.toLowerCase().includes('[initvar]')) {
 -                    const xml_match = entry.content
 +                if (entry.name.toLowerCase().includes('[initvar]')) {
 +                    let entry_content = entry.content;
 +                    const xml_match = entry_content
-@@ -276 +291 @@ export async function loadInitVarData(
+@@ -276 +299 @@ export async function loadInitVarData(
 -                        entry.content = xml_match[1];
 +                        entry_content = xml_match[1];
-@@ -278 +293 @@ export async function loadInitVarData(
+@@ -278 +301 @@ export async function loadInitVarData(
 -                    const codeblock_match = entry.content.trim().match(/```.*\n([\s\S]*)\n```/m);
 +                    const codeblock_match = entry_content.trim().match(/```.*\n([\s\S]*)\n```/m);
-@@ -280 +295 @@ export async function loadInitVarData(
+@@ -280 +303 @@ export async function loadInitVarData(
 -                        entry.content = codeblock_match[1];
 +                        entry_content = codeblock_match[1];
-@@ -282 +297 @@ export async function loadInitVarData(
+@@ -282 +305 @@ export async function loadInitVarData(
 -                    const content = substitudeMacros(entry.content);
 +                    const content = substitudeMacros(entry_content);
-@@ -296 +311 @@ export async function loadInitVarData(
+@@ -296 +319 @@ export async function loadInitVarData(
 -                                comment: entry.comment ?? '',
 +                                comment: entry.name,
-@@ -305 +320 @@ export async function loadInitVarData(
+@@ -305 +328 @@ export async function loadInitVarData(
 -                                comment: _.escape(entry.comment ?? ''),
 +                                comment: _.escape(entry.name),
-@@ -319,0 +335 @@ export async function loadInitVarData(
+@@ -319,0 +343 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
 index 722db33..a9ec48f 100644
@@ -511,7 +537,7 @@ index 722db33..a9ec48f 100644
 +    }
 diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
 new file mode 100644
-index 0000000..62389e1
+index 0000000..76940f5
 --- /dev/null
 +++ b/src/function/update/mvu_runtime.ts
 @@ -0,0 +1,759 @@
