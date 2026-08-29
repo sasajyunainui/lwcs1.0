@@ -12,6 +12,7 @@ const 打包定义 = Object.freeze({
     'MVU_Engine_Runtime.js',
   ],
   'LWCS_MVU_Project_Runtime_Bundle.js': [
+    'LWCS_TT_AutoUpdate_Debug.js',
     'LibraryData_Runtime.js',
     'EraDataRegistry.js',
     'EraCurrencyRegistry.js',
@@ -47,6 +48,7 @@ const 打包定义 = Object.freeze({
     'BattleUI_Module.js',
   ],
   'LWCS_UI_Runtime_Bundle.js': [
+    'LWCS_TT_AutoUpdate_Debug.js',
     'LWCS_Database_Adapter.js',
     'mvu_logic_bridge.js',
     'TradeUI_Module.js',

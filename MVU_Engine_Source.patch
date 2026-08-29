@@ -349,27 +349,50 @@ index c3ddcb5..4ff4e4a 100644
 @@ -319,0 +339 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
-index 722db33..13c8407 100644
+index 722db33..5c90bbd 100644
 --- a/src/function/update/index.ts
 +++ b/src/function/update/index.ts
-@@ -3,0 +4,5 @@ import { onMessageReceived } from '@/function/update/on_message_received';
+@@ -3,0 +4,6 @@ import { onMessageReceived } from '@/function/update/on_message_received';
 +import {
 +    awaitBeforeGeneration,
 +    isTtMvuHost,
++    recordTtAutoUpdateDebug,
 +    scheduleMvuTask,
 +} from '@/function/update/mvu_runtime';
-@@ -4,0 +10 @@ import { handleVariablesInMessage } from '@/function/update_variables';
+@@ -4,0 +11 @@ import { handleVariablesInMessage } from '@/function/update_variables';
 +import { useDataStore } from '@/store';
-@@ -8,0 +15,34 @@ export function initResponse() {
+@@ -8,0 +16,68 @@ export function initResponse() {
 +    const is_tt_host = isTtMvuHost();
 +    const pending_tt_message_keys = new Set<string>();
 +    const completed_tt_message_keys = new Set<string>();
++    recordTtAutoUpdateDebug('事件监听初始化', {
++        isTtHost: is_tt_host,
++        hasMessageReceived: !!tavern_events.MESSAGE_RECEIVED,
++        hasGenerationAfterCommands: !!tavern_events.GENERATION_AFTER_COMMANDS,
++    });
 +    const handle_message_received = (message_id: number) => {
++        recordTtAutoUpdateDebug('MESSAGE_RECEIVED回调', {
++            messageId: message_id,
++            messageIdType: typeof message_id,
++            isTtHost: is_tt_host,
++        });
 +        if (!is_tt_host) {
 +            return onMessageReceived(message_id);
 +        }
 +        const message = getChatMessages(message_id, { include_swipes: true }).at(-1);
++        recordTtAutoUpdateDebug('读取事件目标消息', {
++            messageId: message_id,
++            found: !!message,
++            textLength: message?.message?.length ?? 0,
++            resolvedMessageId: message?.message_id ?? null,
++            swipeId: message?.swipe_id ?? null,
++        });
 +        if (!message || message.message.length < 5) {
++            recordTtAutoUpdateDebug('MESSAGE_RECEIVED跳过', {
++                reason: !message ? 'message_not_found' : 'placeholder_or_short_message',
++                messageId: message_id,
++                textLength: message?.message?.length ?? 0,
++            });
 +            return;
 +        }
 +        const message_key = JSON.stringify([
@@ -378,13 +401,24 @@ index 722db33..13c8407 100644
 +            message.swipe_id ?? null,
 +        ]);
 +        if (pending_tt_message_keys.has(message_key) || completed_tt_message_keys.has(message_key)) {
++            recordTtAutoUpdateDebug('MESSAGE_RECEIVED跳过', {
++                reason: pending_tt_message_keys.has(message_key) ? 'task_pending' : 'task_completed',
++                messageId: message_id,
++            });
 +            return;
 +        }
 +        pending_tt_message_keys.add(message_key);
++        recordTtAutoUpdateDebug('MVU任务已调度', {
++            messageId: message_id,
++            textLength: message.message.length,
++        });
 +        // 只提交异步任务，不把额外模型和落盘耗时挂在宿主的楼层事件上。
 +        scheduleMvuTask('message_received', message_id, async task => {
 +            try {
-+                if (await onMessageReceived(message_id, { task })) {
++                recordTtAutoUpdateDebug('MVU任务开始', { messageId: message_id });
++                const updated = await onMessageReceived(message_id, { task });
++                recordTtAutoUpdateDebug('MVU任务返回', { messageId: message_id, updated });
++                if (updated) {
 +                    completed_tt_message_keys.add(message_key);
 +                    if (completed_tt_message_keys.size > 64) {
 +                        completed_tt_message_keys.delete(completed_tt_message_keys.values().next().value!);
@@ -392,17 +426,19 @@ index 722db33..13c8407 100644
 +                }
 +            } finally {
 +                pending_tt_message_keys.delete(message_key);
++                recordTtAutoUpdateDebug('MVU任务结束', { messageId: message_id });
 +            }
 +        });
 +    };
-@@ -15 +55,5 @@ export function initResponse() {
+@@ -15 +90,5 @@ export function initResponse() {
 -            is_jest_environment ? onMessageReceived : _.throttle(onMessageReceived, 3000)
 +            is_jest_environment
 +                ? handle_message_received
 +                : is_tt_host
 +                  ? handle_message_received
 +                  : _.throttle(handle_message_received, 3000)
-@@ -17,0 +62,13 @@ export function initResponse() {
+@@ -17,0 +97,14 @@ export function initResponse() {
++    recordTtAutoUpdateDebug('MESSAGE_RECEIVED监听已注册', { isTtHost: is_tt_host });
 +    if (is_tt_host) {
 +        stop_list.push(
 +            controlledStoppableEventOn(
@@ -418,10 +454,10 @@ index 722db33..13c8407 100644
 +    }
 diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
 new file mode 100644
-index 0000000..07cc2e0
+index 0000000..8e35aa3
 --- /dev/null
 +++ b/src/function/update/mvu_runtime.ts
-@@ -0,0 +1,742 @@
+@@ -0,0 +1,754 @@
 +import type { MvuData } from '@/variable_def';
 +
 +export const mvu_runtime_events = Object.freeze({
@@ -729,6 +765,18 @@ index 0000000..07cc2e0
 +
 +export function isTtMvuHost(): boolean {
 +    return isTauriTavern();
++}
++
++export function recordTtAutoUpdateDebug(stage: string, data: Record<string, unknown> = {}): void {
++    try {
++        (globalThis as typeof globalThis & {
++            __LWCS_TT_AUTO_UPDATE_DEBUG_V1__?: {
++                record?: (stage: string, data: Record<string, unknown>) => void;
++            };
++        }).__LWCS_TT_AUTO_UPDATE_DEBUG_V1__?.record?.(`MVU:${stage}`, data);
++    } catch (_) {
++        // 临时诊断不得影响 MVU 正常链路。
++    }
 +}
 +
 +function isCanonicalMvuData(value: unknown): value is MvuData {
@@ -1165,54 +1213,83 @@ index 0000000..07cc2e0
 +    invalidateAll(reason);
 +}
 diff --git a/src/function/update/on_message_received.ts b/src/function/update/on_message_received.ts
-index 2f7a0bf..e044f2f 100644
+index 2f7a0bf..7ece86b 100644
 --- a/src/function/update/on_message_received.ts
 +++ b/src/function/update/on_message_received.ts
 @@ -3,0 +4 @@ import { invokeExtraModelWithStrategy } from '@/function/update/invoke_extra_mod
-+import type { MvuRuntimeTask } from '@/function/update/mvu_runtime';
-@@ -10,2 +11,5 @@ export async function onMessageReceived(
++import { recordTtAutoUpdateDebug, type MvuRuntimeTask } from '@/function/update/mvu_runtime';
+@@ -10,2 +11,9 @@ export async function onMessageReceived(
 -    { force = false }: { force?: boolean } = {}
 -) {
 +    { force = false, task }: { force?: boolean; task?: MvuRuntimeTask } = {}
 +): Promise<boolean> {
 +    const is_current = task?.isCurrent ?? (() => true);
 +    const refresh_current = task?.refreshFingerprint ?? (() => undefined);
-+    if (!is_current()) return false;
-@@ -14 +18 @@ export async function onMessageReceived(
--        return;
++    recordTtAutoUpdateDebug('处理消息进入', { messageId: message_id, force, hasTask: !!task });
++    if (!is_current()) {
++        recordTtAutoUpdateDebug('处理消息跳过', { messageId: message_id, reason: 'stale_task_before_read' });
 +        return false;
-@@ -22 +26 @@ export async function onMessageReceived(
++    }
+@@ -14 +22,2 @@ export async function onMessageReceived(
 -        return;
++        recordTtAutoUpdateDebug('处理消息跳过', { messageId: message_id, reason: 'message_not_found' });
 +        return false;
-@@ -28 +32 @@ export async function onMessageReceived(
+@@ -22 +31,2 @@ export async function onMessageReceived(
 -        return;
++        recordTtAutoUpdateDebug('处理消息跳过', { messageId: message_id, reason: 'message_author_mismatch' });
 +        return false;
-@@ -38,2 +42 @@ export async function onMessageReceived(
+@@ -28 +38,6 @@ export async function onMessageReceived(
+-        return;
++        recordTtAutoUpdateDebug('处理消息跳过', {
++            messageId: message_id,
++            reason: 'placeholder_or_short_message',
++            textLength: message_content.length,
++        });
++        return false;
+@@ -38,2 +53,2 @@ export async function onMessageReceived(
 -        await handleVariablesInMessage(message_id);
 -        return;
++        recordTtAutoUpdateDebug('处理消息路由', { messageId: message_id, kind: 'inline_update' });
 +        return handleVariablesInMessage(message_id, is_current, refresh_current);
-@@ -41,0 +45 @@ export async function onMessageReceived(
-+    if (!is_current()) return false;
-@@ -44 +48 @@ export async function onMessageReceived(
+@@ -41,0 +57,4 @@ export async function onMessageReceived(
++    if (!is_current()) {
++        recordTtAutoUpdateDebug('处理消息跳过', { messageId: message_id, reason: 'stale_task_before_extra_model' });
++        return false;
++    }
+@@ -42,0 +62 @@ export async function onMessageReceived(
++        recordTtAutoUpdateDebug('处理消息跳过', { messageId: message_id, reason: 'first_floor_extra_model_skip' });
+@@ -44 +64 @@ export async function onMessageReceived(
 -        return;
 +        return true;
-@@ -49 +53 @@ export async function onMessageReceived(
+@@ -47,0 +68 @@ export async function onMessageReceived(
++        recordTtAutoUpdateDebug('处理消息跳过', { messageId: message_id, reason: 'extra_model_auto_request_disabled' });
+@@ -49 +70 @@ export async function onMessageReceived(
 -        return;
 +        return true;
-@@ -52,0 +57 @@ export async function onMessageReceived(
-+    if (!is_current()) return false;
-@@ -54 +59,2 @@ export async function onMessageReceived(
+@@ -51,0 +73 @@ export async function onMessageReceived(
++    recordTtAutoUpdateDebug('处理消息路由', { messageId: message_id, kind: 'extra_model_update' });
+@@ -52,0 +75,4 @@ export async function onMessageReceived(
++    if (!is_current()) {
++        recordTtAutoUpdateDebug('处理消息跳过', { messageId: message_id, reason: 'stale_task_after_extra_model' });
++        return false;
++    }
+@@ -54 +80,5 @@ export async function onMessageReceived(
 -        const chat_message = getChatMessages(message_id);
 +        const chat_message = getChatMessages(message_id).at(-1);
-+        if (!chat_message) return false;
-@@ -60 +66 @@ export async function onMessageReceived(
++        if (!chat_message) {
++            recordTtAutoUpdateDebug('处理消息跳过', { messageId: message_id, reason: 'message_missing_after_extra_model' });
++            return false;
++        }
+@@ -60 +90 @@ export async function onMessageReceived(
 -                    message: chat_message[0].message.trimEnd() + '\n\n' + result,
 +                    message: chat_message.message.trimEnd() + '\n\n' + result,
-@@ -66,0 +73 @@ export async function onMessageReceived(
+@@ -66,0 +97 @@ export async function onMessageReceived(
 +        refresh_current();
-@@ -71,0 +79 @@ export async function onMessageReceived(
+@@ -67,0 +99 @@ export async function onMessageReceived(
++        recordTtAutoUpdateDebug('处理消息失败', { messageId: message_id, reason: 'extra_model_returned_null' });
+@@ -71,0 +104 @@ export async function onMessageReceived(
 +        return false;
-@@ -73 +81 @@ export async function onMessageReceived(
+@@ -73 +106 @@ export async function onMessageReceived(
 -    await handleVariablesInMessage(message_id);
 +    return handleVariablesInMessage(message_id, is_current, refresh_current);
 diff --git a/src/function/update_variables.ts b/src/function/update_variables.ts

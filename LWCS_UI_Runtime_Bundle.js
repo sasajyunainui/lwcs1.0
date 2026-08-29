@@ -1,6 +1,221 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:3132577aafb6263b0253a3d8a500f63c79deb30e03dd9f36219468931f8ceafc */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:1250a405d3dbf308a4eb8b26c527407d54ee6635a039bcb2b03863802d6fc9bd|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:ff2cdc26f015c58496c6e5c75ca4b8bda966c871ab049ad03d98f7dc3e8e9097 */
+;
+/* source: LWCS_TT_AutoUpdate_Debug.js */
+(function installLwcsTtAutoUpdateDebug() {
+  'use strict';
+
+  const DEBUG_KEY = '__LWCS_TT_AUTO_UPDATE_DEBUG_V1__';
+  if (globalThis[DEBUG_KEY]?.version === '1.0.0') return;
+
+  const listeners = [];
+  const records = [];
+  const knownGenerationTypes = new Set(['normal', 'regenerate', 'continue', 'quiet', 'impersonate', 'swipe']);
+  const safeStringKeys = new Set(['eventName', 'source', 'reason', 'result', 'type', 'action', 'status', 'kind', 'version']);
+
+  function getRealm() {
+    try {
+      const frameId = String(globalThis.frameElement?.id || '');
+      if (frameId.includes('MVU_ZOD')) return 'MVU';
+      if (frameId.includes('MVU外置状态栏')) return '数据库/UI';
+      if (frameId) return '其他iframe';
+    } catch (_) {}
+    return globalThis === globalThis.top ? '主窗口' : '未识别iframe';
+  }
+
+  function getHostScopes() {
+    const scopes = [globalThis];
+    for (const candidate of [globalThis.parent, globalThis.top]) {
+      try {
+        if (candidate && !scopes.includes(candidate)) scopes.push(candidate);
+      } catch (_) {}
+    }
+    return scopes;
+  }
+
+  function getApiCandidates() {
+    const candidates = [];
+    for (const scope of getHostScopes()) {
+      try {
+        const api = scope.SillyTavern;
+        if (!api) continue;
+        if (typeof api.getContext === 'function') {
+          const context = api.getContext();
+          if (context) candidates.push(context);
+        }
+        candidates.push(api);
+      } catch (_) {}
+    }
+    return candidates;
+  }
+
+  function fingerprint(value) {
+    const text = String(value || '');
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i += 1) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `${text.length}:${(hash >>> 0).toString(16)}`;
+  }
+
+  function summarizeString(value) {
+    return knownGenerationTypes.has(value)
+      ? value
+      : { type: 'string', length: value.length, fingerprint: fingerprint(value) };
+  }
+
+  function summarize(value, depth = 0, key = '') {
+    if (value === null || value === undefined || typeof value === 'number' || typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return knownGenerationTypes.has(value) || safeStringKeys.has(key)
+        ? value.slice(0, 160)
+        : summarizeString(value);
+    }
+    if (typeof value === 'function') return { type: 'function' };
+    if (Array.isArray(value)) {
+      if (depth >= 3) return { type: 'array', length: value.length };
+      return value.slice(0, 16).map(item => summarize(item, depth + 1));
+    }
+    if (typeof value !== 'object') return { type: typeof value };
+
+    const keys = Object.keys(value).slice(0, 24);
+    if (depth >= 3) return { type: 'object', keys };
+    const result = {};
+    for (const property of keys) result[property] = summarize(value[property], depth + 1, property);
+    return result;
+  }
+
+  function getSnapshot() {
+    const api = getApiCandidates().find(candidate => Array.isArray(candidate?.chat)) || null;
+    const chat = Array.isArray(api?.chat) ? api.chat : [];
+    const lastIndex = chat.length - 1;
+    const last = lastIndex >= 0 ? chat[lastIndex] : null;
+    const text = String(last?.mes ?? last?.message ?? '');
+    let chatId = '';
+    try {
+      chatId = String(api?.chatId ?? api?.chat_id ?? globalThis.SillyTavern?.getCurrentChatId?.() ?? '');
+    } catch (_) {}
+    return {
+      chatCount: chat.length,
+      chatId: chatId ? fingerprint(chatId) : '',
+      last: last ? {
+        index: lastIndex,
+        messageId: summarize(last.message_id ?? last.id ?? lastIndex),
+        swipeId: summarize(last.swipe_id ?? last.swipeId ?? null),
+        isUser: last.is_user === true,
+        isSystem: last.is_system === true,
+        textLength: text.length,
+        placeholder: text.trim() === '...' || text.trim().length < 5,
+        hasUpdateVariable: /<UpdateVariable\b/i.test(text),
+      } : null,
+    };
+  }
+
+  function record(stage, data = {}) {
+    const entry = {
+      at: new Date().toISOString(),
+      realm: getRealm(),
+      stage,
+      data: summarize(data),
+      snapshot: getSnapshot(),
+    };
+    records.push(entry);
+    if (records.length > 240) records.shift();
+    console.info(`[LWCS][TT自动更新诊断] ${JSON.stringify(entry)}`);
+    return entry;
+  }
+
+  function resolveEventSources() {
+    const sources = [];
+    for (const api of getApiCandidates()) {
+      const eventSource = api?.eventSource;
+      const eventTypes = api?.eventTypes;
+      if (eventSource && typeof eventSource.on === 'function' && eventTypes && !sources.some(item => item.eventSource === eventSource)) {
+        sources.push({ eventSource, eventTypes });
+      }
+    }
+    try {
+      const eventSource = globalThis.eventSource;
+      const eventTypes = globalThis.tavern_events;
+      if (eventSource && typeof eventSource.on === 'function' && eventTypes && !sources.some(item => item.eventSource === eventSource)) {
+        sources.push({ eventSource, eventTypes });
+      }
+    } catch (_) {}
+    return sources;
+  }
+
+  function attach() {
+    if (listeners.length > 0) return true;
+    const eventKeys = [
+      'GENERATION_STARTED',
+      'GENERATION_AFTER_COMMANDS',
+      'GENERATION_ENDED',
+      'GENERATION_STOPPED',
+      'MESSAGE_SENT',
+      'MESSAGE_RECEIVED',
+      'MESSAGE_UPDATED',
+      'MESSAGE_SWIPED',
+    ];
+    const sources = resolveEventSources();
+    for (const { eventSource, eventTypes } of sources) {
+      const registered = new Set();
+      for (const key of eventKeys) {
+        const eventName = eventTypes[key];
+        if (!eventName || registered.has(eventName)) continue;
+        registered.add(eventName);
+        const handler = (...args) => record(`宿主事件:${key}`, {
+          eventName: String(eventName),
+          argumentCount: args.length,
+          arguments: args.map(argument => summarize(argument)),
+        });
+        eventSource.on(eventName, handler);
+        listeners.push({ eventSource, eventName, handler });
+      }
+    }
+    record('诊断监听注册', {
+      eventSourceCount: sources.length,
+      listenerCount: listeners.length,
+      ttMarker: getHostScopes().some(scope => {
+        try {
+          return !!(scope.__TAURITAVERN__ || scope.__TAURITAVERN_MAIN_READY__ || scope.__TAURI_RUNNING__);
+        } catch (_) {
+          return false;
+        }
+      }),
+    });
+    return listeners.length > 0;
+  }
+
+  const debug = {
+    version: '1.0.0',
+    records,
+    record,
+    snapshot: getSnapshot,
+    attach,
+    uninstall() {
+      for (const { eventSource, eventName, handler } of listeners.splice(0)) {
+        try {
+          if (typeof eventSource.removeListener === 'function') eventSource.removeListener(eventName, handler);
+          else if (typeof eventSource.off === 'function') eventSource.off(eventName, handler);
+        } catch (_) {}
+      }
+      delete globalThis[DEBUG_KEY];
+    },
+  };
+
+  globalThis[DEBUG_KEY] = debug;
+  record('诊断脚本加载', { version: debug.version });
+  if (!attach()) {
+    for (const delay of [250, 1000, 3000]) {
+      setTimeout(() => attach(), delay);
+    }
+  }
+})();
+
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -172887,6 +173102,12 @@ window.mountBattleUI = function(containerElement, snapshot, options = {}) {
 // ==/UserScript==
 (function () {
     'use strict';
+    function recordTtAutoUpdateDebug_ACU(stage, data = {}) {
+        try {
+            globalThis.__LWCS_TT_AUTO_UPDATE_DEBUG_V1__?.record?.(`数据库:${stage}`, data);
+        }
+        catch (_) { }
+    }
 
     /**
      * shared/runtime-env.ts — 运行时环境检测
@@ -177526,6 +177747,16 @@ $CONTENT
             };
             生成结束后置状态_ACU.已调度消息键 = '';
         }
+        recordTtAutoUpdateDebug_ACU('记录生成上下文', {
+            type,
+            dryRun: dryRun === true,
+            automatic_trigger: params?.automatic_trigger === true,
+            isBodyGeneration: 是否正文生成,
+            epoch: generationEpoch,
+            chatCount: 聊天数组.length,
+            lastAssistantIndex: 最新角色消息?.消息索引 ?? -1,
+            hasPendingBodyContext: !!generationGate_ACU.正文后置上下文,
+        });
     }
     function clearDatabaseGenerationPlan_ACU(transaction = null) {
         if (!transaction)
@@ -177610,31 +177841,73 @@ $CONTENT
 
     function 调度已确认正文数据库更新_ACU(事件名, 事件消息编号) {
         const 正文上下文 = 读取正文后置上下文_ACU();
-        if (!正文上下文)
+        recordTtAutoUpdateDebug_ACU('确认正文事件进入', {
+            source: 事件名,
+            messageId: 事件消息编号,
+            hasPendingBodyContext: !!正文上下文,
+            epoch: databaseGenerationEpoch_ACU,
+        });
+        if (!正文上下文) {
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 生成结束后置状态_ACU.已调度消息键 ? 'already_scheduled' : 'missing_generation_context',
+            });
             return 生成结束后置状态_ACU.已调度消息键 !== '';
+        }
         if (正文上下文.epoch !== databaseGenerationEpoch_ACU) {
             generationGate_ACU.正文后置上下文 = null;
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 'stale_generation_epoch',
+                contextEpoch: 正文上下文.epoch,
+                currentEpoch: databaseGenerationEpoch_ACU,
+            });
             return false;
         }
         const 目标消息元信息 = 读取事件目标角色消息元信息_ACU(正文上下文, 事件消息编号)
             || 读取指定角色消息元信息_ACU(正文上下文);
-        if (!目标消息元信息 || 目标消息元信息.消息索引 < 0 || String(目标消息元信息.文本 || '').trim().length < 5)
+        if (!目标消息元信息 || 目标消息元信息.消息索引 < 0 || String(目标消息元信息.文本 || '').trim().length < 5) {
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 'target_message_unavailable',
+                targetIndex: 目标消息元信息?.消息索引 ?? -1,
+                targetTextLength: String(目标消息元信息?.文本 || '').trim().length,
+            });
             return false;
+        }
         const 消息键 = getDatabaseGenerationTargetIdentity_ACU(
             目标消息元信息,
             正文上下文.epoch,
             正文上下文.chatId,
         )?.key || '';
-        if (!消息键)
+        if (!消息键) {
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 'target_identity_unavailable',
+                targetIndex: 目标消息元信息.消息索引,
+            });
             return false;
-        if (生成结束后置状态_ACU.已调度消息键 === 消息键)
+        }
+        if (生成结束后置状态_ACU.已调度消息键 === 消息键) {
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 'duplicate_target',
+                targetIndex: 目标消息元信息.消息索引,
+            });
             return true;
+        }
         生成结束后置状态_ACU.已调度消息键 = 消息键;
         正文上下文.生成已结束 = true;
         generationGate_ACU.正文后置上下文 = null;
         handleNewMessageDebounced_ACU(事件名, {
             目标消息元信息,
             eventEpoch: 正文上下文.epoch,
+        });
+        recordTtAutoUpdateDebug_ACU('数据库更新已调度', {
+            source: 事件名,
+            targetIndex: 目标消息元信息.消息索引,
+            targetTextLength: String(目标消息元信息.文本 || '').trim().length,
+            epoch: 正文上下文.epoch,
         });
         return true;
     }
@@ -210685,17 +210958,36 @@ $CONTENT
     async function handleNewMessageDebounced_ACU(eventType = 'unknown_acu', 选项 = {}) {
         const 目标消息元信息 = 选项?.目标消息元信息 || null;
         const eventEpoch = Number.isInteger(选项?.eventEpoch) ? Number(选项.eventEpoch) : null;
-        if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU)
+        recordTtAutoUpdateDebug_ACU('防抖调度进入', {
+            source: eventType,
+            eventEpoch,
+            currentEpoch: databaseGenerationEpoch_ACU,
+            targetIndex: 目标消息元信息?.消息索引 ?? -1,
+        });
+        if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU) {
+            recordTtAutoUpdateDebug_ACU('防抖调度跳过', { source: eventType, reason: 'stale_epoch_before_timer' });
             return;
-        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息))
+        }
+        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+            recordTtAutoUpdateDebug_ACU('防抖调度跳过', { source: eventType, reason: 'target_changed_before_timer' });
             return;
+        }
         logDebug_ACU(`New message event (${eventType}) detected for ACU, debouncing for ${NEW_MESSAGE_DEBOUNCE_DELAY_ACU}ms...`);
         clearTimeout(newMessageDebounceTimer_ACU);
         _set_newMessageDebounceTimer_ACU(setTimeout(async () => {
-            if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU)
+            recordTtAutoUpdateDebug_ACU('防抖计时结束', {
+                source: eventType,
+                eventEpoch,
+                currentEpoch: databaseGenerationEpoch_ACU,
+            });
+            if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU) {
+                recordTtAutoUpdateDebug_ACU('防抖执行跳过', { source: eventType, reason: 'stale_epoch_after_timer' });
                 return;
-            if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息))
+            }
+            if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+                recordTtAutoUpdateDebug_ACU('防抖执行跳过', { source: eventType, reason: 'target_changed_after_timer' });
                 return;
+            }
             try {
                 maybeLiftWorldbookSuppression_ACU();
             }
@@ -210710,6 +211002,15 @@ $CONTENT
                     return;
                 const runtimeContext = { ...eventContext, eventTransaction };
                 const result = evaluateNewMessageAction_ACU(eventContext.chat, isAutoUpdatingCard_ACU, coreApisAreReady_ACU, wasStoppedByUser_ACU, settings_ACU.contentOptimizationSettings, 目标消息元信息);
+                recordTtAutoUpdateDebug_ACU('自动更新判定', {
+                    source: eventType,
+                    action: result.action,
+                    reason: result.reason,
+                    targetIndex: 目标消息元信息?.消息索引 ?? -1,
+                    autoUpdating: isAutoUpdatingCard_ACU === true,
+                    coreApisReady: coreApisAreReady_ACU === true,
+                    stoppedByUser: wasStoppedByUser_ACU === true,
+                });
                 logDebug_ACU(`[NewMessage] Evaluation result: action=${result.action}, reason=${result.reason}`);
                 if (result.action === 'skip') {
                     logDebug_ACU(`ACU: ${result.reason}. Skipping.`);
@@ -210740,6 +211041,11 @@ $CONTENT
                 }
             }
             catch (error) {
+                recordTtAutoUpdateDebug_ACU('防抖执行失败', {
+                    source: eventType,
+                    reason: 'exception',
+                    errorName: String(error?.name || 'Error'),
+                });
                 logError_ACU(`ACU ${eventType} 自动更新调度失败:`, error);
             }
         }, NEW_MESSAGE_DEBOUNCE_DELAY_ACU));
@@ -228790,6 +229096,12 @@ $CONTENT
                 SillyTavern_API_ACU.eventSource &&
                 typeof SillyTavern_API_ACU.eventSource.on === 'function' &&
                 SillyTavern_API_ACU.eventTypes) {
+                recordTtAutoUpdateDebug_ACU('事件监听开始注册', {
+                    hasGenerationStarted: !!SillyTavern_API_ACU.eventTypes.GENERATION_STARTED,
+                    hasGenerationEnded: !!SillyTavern_API_ACU.eventTypes.GENERATION_ENDED,
+                    hasMessageReceived: !!SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED,
+                    hasGenerationAfterCommands: !!SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS,
+                });
                 // [调试] 检查可用的事件类型
                 logDebug_ACU('[提示词模板] 可用的事件类型:', Object.keys(SillyTavern_API_ACU.eventTypes));
                 // [提示词模板] 监听 CHAT_COMPLETION_SETTINGS_READY 事件，使用 makeLast 确保在 st-prompt-template 之后执行
@@ -228894,14 +229206,28 @@ $CONTENT
                 // [触发门控] 记录最近一次生成的上下文（用于过滤 quiet/后台生成导致的误触发）
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_STARTED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_STARTED, (type, params, dryRun) => {
+                        recordTtAutoUpdateDebug_ACU('GENERATION_STARTED回调', {
+                            type,
+                            dryRun: dryRun === true,
+                            automatic_trigger: params?.automatic_trigger === true,
+                        });
                         try {
                             recordGenerationContext_ACU(type, params, dryRun);
                         }
-                        catch (e) { }
+                        catch (e) {
+                            recordTtAutoUpdateDebug_ACU('GENERATION_STARTED回调失败', {
+                                reason: 'exception',
+                                errorName: String(e?.name || 'Error'),
+                            });
+                        }
                     });
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
+                        recordTtAutoUpdateDebug_ACU('GENERATION_ENDED回调', {
+                            messageId: message_id,
+                            hasPendingBodyContext: !!读取正文后置上下文_ACU(),
+                        });
                         logDebug_ACU(`ACU GENERATION_ENDED event for message_id: ${message_id}`);
                         logDebug_ACU('ACU: Generation ended; waiting for the received body floor before automatic table update.');
                         onLoopGenerationEnded_ACU();
@@ -228909,6 +229235,11 @@ $CONTENT
                 }
                 if (SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id) => {
+                        recordTtAutoUpdateDebug_ACU('MESSAGE_RECEIVED回调', {
+                            messageId: message_id,
+                            messageIdType: typeof message_id,
+                            hasPendingBodyContext: !!读取正文后置上下文_ACU(),
+                        });
                         if (调度已确认正文数据库更新_ACU('MESSAGE_RECEIVED', message_id)) {
                             logDebug_ACU(`ACU: Confirmed received body floor ${message_id} for automatic table update.`);
                         }
@@ -228928,6 +229259,12 @@ $CONTENT
                 // [剧情推进] 拦截用户输入进行剧情规划
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS, async (type, params, dryRun) => {
+                        recordTtAutoUpdateDebug_ACU('GENERATION_AFTER_COMMANDS回调', {
+                            type,
+                            dryRun: dryRun === true,
+                            automatic_trigger: params?.automatic_trigger === true,
+                            hasPendingBodyContext: !!读取正文后置上下文_ACU(),
+                        });
                         if (!读取正文后置上下文_ACU()
                             && !dryRun
                             && !isQuietLikeGeneration_ACU(type, params)

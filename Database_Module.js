@@ -11,6 +11,12 @@
 // ==/UserScript==
 (function () {
     'use strict';
+    function recordTtAutoUpdateDebug_ACU(stage, data = {}) {
+        try {
+            globalThis.__LWCS_TT_AUTO_UPDATE_DEBUG_V1__?.record?.(`数据库:${stage}`, data);
+        }
+        catch (_) { }
+    }
 
     /**
      * shared/runtime-env.ts — 运行时环境检测
@@ -4650,6 +4656,16 @@ $CONTENT
             };
             生成结束后置状态_ACU.已调度消息键 = '';
         }
+        recordTtAutoUpdateDebug_ACU('记录生成上下文', {
+            type,
+            dryRun: dryRun === true,
+            automatic_trigger: params?.automatic_trigger === true,
+            isBodyGeneration: 是否正文生成,
+            epoch: generationEpoch,
+            chatCount: 聊天数组.length,
+            lastAssistantIndex: 最新角色消息?.消息索引 ?? -1,
+            hasPendingBodyContext: !!generationGate_ACU.正文后置上下文,
+        });
     }
     function clearDatabaseGenerationPlan_ACU(transaction = null) {
         if (!transaction)
@@ -4734,31 +4750,73 @@ $CONTENT
 
     function 调度已确认正文数据库更新_ACU(事件名, 事件消息编号) {
         const 正文上下文 = 读取正文后置上下文_ACU();
-        if (!正文上下文)
+        recordTtAutoUpdateDebug_ACU('确认正文事件进入', {
+            source: 事件名,
+            messageId: 事件消息编号,
+            hasPendingBodyContext: !!正文上下文,
+            epoch: databaseGenerationEpoch_ACU,
+        });
+        if (!正文上下文) {
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 生成结束后置状态_ACU.已调度消息键 ? 'already_scheduled' : 'missing_generation_context',
+            });
             return 生成结束后置状态_ACU.已调度消息键 !== '';
+        }
         if (正文上下文.epoch !== databaseGenerationEpoch_ACU) {
             generationGate_ACU.正文后置上下文 = null;
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 'stale_generation_epoch',
+                contextEpoch: 正文上下文.epoch,
+                currentEpoch: databaseGenerationEpoch_ACU,
+            });
             return false;
         }
         const 目标消息元信息 = 读取事件目标角色消息元信息_ACU(正文上下文, 事件消息编号)
             || 读取指定角色消息元信息_ACU(正文上下文);
-        if (!目标消息元信息 || 目标消息元信息.消息索引 < 0 || String(目标消息元信息.文本 || '').trim().length < 5)
+        if (!目标消息元信息 || 目标消息元信息.消息索引 < 0 || String(目标消息元信息.文本 || '').trim().length < 5) {
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 'target_message_unavailable',
+                targetIndex: 目标消息元信息?.消息索引 ?? -1,
+                targetTextLength: String(目标消息元信息?.文本 || '').trim().length,
+            });
             return false;
+        }
         const 消息键 = getDatabaseGenerationTargetIdentity_ACU(
             目标消息元信息,
             正文上下文.epoch,
             正文上下文.chatId,
         )?.key || '';
-        if (!消息键)
+        if (!消息键) {
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 'target_identity_unavailable',
+                targetIndex: 目标消息元信息.消息索引,
+            });
             return false;
-        if (生成结束后置状态_ACU.已调度消息键 === 消息键)
+        }
+        if (生成结束后置状态_ACU.已调度消息键 === 消息键) {
+            recordTtAutoUpdateDebug_ACU('确认正文事件跳过', {
+                source: 事件名,
+                reason: 'duplicate_target',
+                targetIndex: 目标消息元信息.消息索引,
+            });
             return true;
+        }
         生成结束后置状态_ACU.已调度消息键 = 消息键;
         正文上下文.生成已结束 = true;
         generationGate_ACU.正文后置上下文 = null;
         handleNewMessageDebounced_ACU(事件名, {
             目标消息元信息,
             eventEpoch: 正文上下文.epoch,
+        });
+        recordTtAutoUpdateDebug_ACU('数据库更新已调度', {
+            source: 事件名,
+            targetIndex: 目标消息元信息.消息索引,
+            targetTextLength: String(目标消息元信息.文本 || '').trim().length,
+            epoch: 正文上下文.epoch,
         });
         return true;
     }
@@ -37809,17 +37867,36 @@ $CONTENT
     async function handleNewMessageDebounced_ACU(eventType = 'unknown_acu', 选项 = {}) {
         const 目标消息元信息 = 选项?.目标消息元信息 || null;
         const eventEpoch = Number.isInteger(选项?.eventEpoch) ? Number(选项.eventEpoch) : null;
-        if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU)
+        recordTtAutoUpdateDebug_ACU('防抖调度进入', {
+            source: eventType,
+            eventEpoch,
+            currentEpoch: databaseGenerationEpoch_ACU,
+            targetIndex: 目标消息元信息?.消息索引 ?? -1,
+        });
+        if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU) {
+            recordTtAutoUpdateDebug_ACU('防抖调度跳过', { source: eventType, reason: 'stale_epoch_before_timer' });
             return;
-        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息))
+        }
+        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+            recordTtAutoUpdateDebug_ACU('防抖调度跳过', { source: eventType, reason: 'target_changed_before_timer' });
             return;
+        }
         logDebug_ACU(`New message event (${eventType}) detected for ACU, debouncing for ${NEW_MESSAGE_DEBOUNCE_DELAY_ACU}ms...`);
         clearTimeout(newMessageDebounceTimer_ACU);
         _set_newMessageDebounceTimer_ACU(setTimeout(async () => {
-            if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU)
+            recordTtAutoUpdateDebug_ACU('防抖计时结束', {
+                source: eventType,
+                eventEpoch,
+                currentEpoch: databaseGenerationEpoch_ACU,
+            });
+            if (eventEpoch !== null && eventEpoch !== databaseGenerationEpoch_ACU) {
+                recordTtAutoUpdateDebug_ACU('防抖执行跳过', { source: eventType, reason: 'stale_epoch_after_timer' });
                 return;
-            if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息))
+            }
+            if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
+                recordTtAutoUpdateDebug_ACU('防抖执行跳过', { source: eventType, reason: 'target_changed_after_timer' });
                 return;
+            }
             try {
                 maybeLiftWorldbookSuppression_ACU();
             }
@@ -37834,6 +37911,15 @@ $CONTENT
                     return;
                 const runtimeContext = { ...eventContext, eventTransaction };
                 const result = evaluateNewMessageAction_ACU(eventContext.chat, isAutoUpdatingCard_ACU, coreApisAreReady_ACU, wasStoppedByUser_ACU, settings_ACU.contentOptimizationSettings, 目标消息元信息);
+                recordTtAutoUpdateDebug_ACU('自动更新判定', {
+                    source: eventType,
+                    action: result.action,
+                    reason: result.reason,
+                    targetIndex: 目标消息元信息?.消息索引 ?? -1,
+                    autoUpdating: isAutoUpdatingCard_ACU === true,
+                    coreApisReady: coreApisAreReady_ACU === true,
+                    stoppedByUser: wasStoppedByUser_ACU === true,
+                });
                 logDebug_ACU(`[NewMessage] Evaluation result: action=${result.action}, reason=${result.reason}`);
                 if (result.action === 'skip') {
                     logDebug_ACU(`ACU: ${result.reason}. Skipping.`);
@@ -37864,6 +37950,11 @@ $CONTENT
                 }
             }
             catch (error) {
+                recordTtAutoUpdateDebug_ACU('防抖执行失败', {
+                    source: eventType,
+                    reason: 'exception',
+                    errorName: String(error?.name || 'Error'),
+                });
                 logError_ACU(`ACU ${eventType} 自动更新调度失败:`, error);
             }
         }, NEW_MESSAGE_DEBOUNCE_DELAY_ACU));
@@ -55914,6 +56005,12 @@ $CONTENT
                 SillyTavern_API_ACU.eventSource &&
                 typeof SillyTavern_API_ACU.eventSource.on === 'function' &&
                 SillyTavern_API_ACU.eventTypes) {
+                recordTtAutoUpdateDebug_ACU('事件监听开始注册', {
+                    hasGenerationStarted: !!SillyTavern_API_ACU.eventTypes.GENERATION_STARTED,
+                    hasGenerationEnded: !!SillyTavern_API_ACU.eventTypes.GENERATION_ENDED,
+                    hasMessageReceived: !!SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED,
+                    hasGenerationAfterCommands: !!SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS,
+                });
                 // [调试] 检查可用的事件类型
                 logDebug_ACU('[提示词模板] 可用的事件类型:', Object.keys(SillyTavern_API_ACU.eventTypes));
                 // [提示词模板] 监听 CHAT_COMPLETION_SETTINGS_READY 事件，使用 makeLast 确保在 st-prompt-template 之后执行
@@ -56018,14 +56115,28 @@ $CONTENT
                 // [触发门控] 记录最近一次生成的上下文（用于过滤 quiet/后台生成导致的误触发）
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_STARTED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_STARTED, (type, params, dryRun) => {
+                        recordTtAutoUpdateDebug_ACU('GENERATION_STARTED回调', {
+                            type,
+                            dryRun: dryRun === true,
+                            automatic_trigger: params?.automatic_trigger === true,
+                        });
                         try {
                             recordGenerationContext_ACU(type, params, dryRun);
                         }
-                        catch (e) { }
+                        catch (e) {
+                            recordTtAutoUpdateDebug_ACU('GENERATION_STARTED回调失败', {
+                                reason: 'exception',
+                                errorName: String(e?.name || 'Error'),
+                            });
+                        }
                     });
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
+                        recordTtAutoUpdateDebug_ACU('GENERATION_ENDED回调', {
+                            messageId: message_id,
+                            hasPendingBodyContext: !!读取正文后置上下文_ACU(),
+                        });
                         logDebug_ACU(`ACU GENERATION_ENDED event for message_id: ${message_id}`);
                         logDebug_ACU('ACU: Generation ended; waiting for the received body floor before automatic table update.');
                         onLoopGenerationEnded_ACU();
@@ -56033,6 +56144,11 @@ $CONTENT
                 }
                 if (SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id) => {
+                        recordTtAutoUpdateDebug_ACU('MESSAGE_RECEIVED回调', {
+                            messageId: message_id,
+                            messageIdType: typeof message_id,
+                            hasPendingBodyContext: !!读取正文后置上下文_ACU(),
+                        });
                         if (调度已确认正文数据库更新_ACU('MESSAGE_RECEIVED', message_id)) {
                             logDebug_ACU(`ACU: Confirmed received body floor ${message_id} for automatic table update.`);
                         }
@@ -56052,6 +56168,12 @@ $CONTENT
                 // [剧情推进] 拦截用户输入进行剧情规划
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_AFTER_COMMANDS, async (type, params, dryRun) => {
+                        recordTtAutoUpdateDebug_ACU('GENERATION_AFTER_COMMANDS回调', {
+                            type,
+                            dryRun: dryRun === true,
+                            automatic_trigger: params?.automatic_trigger === true,
+                            hasPendingBodyContext: !!读取正文后置上下文_ACU(),
+                        });
                         if (!读取正文后置上下文_ACU()
                             && !dryRun
                             && !isQuietLikeGeneration_ACU(type, params)
