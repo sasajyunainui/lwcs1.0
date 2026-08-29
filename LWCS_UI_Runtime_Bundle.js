@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:6fac8919af22c61d629c35416289b572d7deb947518c5b07cfab660ebb6ad51a */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:ddee0c6c968e3892d1123cf9e7a482572466d27af4dbfc9dcd3f31121c0dbe8d */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -176359,6 +176359,7 @@ $CONTENT
     // ── IndexedDB 配置缓存 ──
     const CONFIG_IDB_DB_NAME_ACU = `${SCRIPT_ID_PREFIX_ACU}_config_v1`;
     const CONFIG_IDB_STORE_NAME_ACU = 'kv';
+    const CONFIG_IDB_INIT_TIMEOUT_MS_ACU = 5000;
     let configIdbPromise_ACU = null;
     const configIdbCache_ACU = new Map();
     const configIdbDeletedKeys_ACU = new Set();
@@ -176372,25 +176373,55 @@ $CONTENT
         if (configIdbPromise_ACU)
             return configIdbPromise_ACU;
         configIdbPromise_ACU = new Promise((resolve, reject) => {
+            let settled = false;
+            let req = null;
+            const timer = setTimeout(() => {
+                if (settled)
+                    return;
+                settled = true;
+                reject(new Error(`IndexedDB open timed out after ${CONFIG_IDB_INIT_TIMEOUT_MS_ACU}ms`));
+            }, CONFIG_IDB_INIT_TIMEOUT_MS_ACU);
+            const fail = (error) => {
+                if (settled)
+                    return;
+                settled = true;
+                clearTimeout(timer);
+                reject(error);
+            };
             try {
-                const req = topLevelWindow_ACU.indexedDB.open(CONFIG_IDB_DB_NAME_ACU, 1);
+                req = topLevelWindow_ACU.indexedDB.open(CONFIG_IDB_DB_NAME_ACU, 1);
                 req.onupgradeneeded = () => {
                     const db = req.result;
                     if (!db.objectStoreNames.contains(CONFIG_IDB_STORE_NAME_ACU)) {
                         db.createObjectStore(CONFIG_IDB_STORE_NAME_ACU);
                     }
                 };
-                req.onsuccess = () => resolve(req.result);
-                req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+                req.onsuccess = () => {
+                    if (settled) {
+                        try {
+                            req.result?.close?.();
+                        }
+                        catch (_) { }
+                        return;
+                    }
+                    settled = true;
+                    clearTimeout(timer);
+                    resolve(req.result);
+                };
+                req.onerror = () => fail(req.error || new Error('IndexedDB open failed'));
+                req.onblocked = () => fail(new Error('IndexedDB open blocked by another connection'));
             }
             catch (e) {
-                reject(e);
+                fail(e);
             }
+        }).catch((error) => {
+            configIdbPromise_ACU = null;
+            throw error;
         });
         return configIdbPromise_ACU;
     }
     function loadConfigIdbCache_ACU() {
-        if (configIdbCacheLoaded_ACU || configIdbCacheLoadFailed_ACU)
+        if (configIdbCacheLoaded_ACU && !configIdbCacheLoadFailed_ACU)
             return Promise.resolve();
         if (configIdbCacheLoadingPromise_ACU)
             return configIdbCacheLoadingPromise_ACU;
@@ -176398,44 +176429,65 @@ $CONTENT
             configIdbCacheLoaded_ACU = true;
             return Promise.resolve();
         }
-        configIdbCacheLoadingPromise_ACU = new Promise(async (resolve) => {
+        configIdbCacheLoaded_ACU = false;
+        configIdbCacheLoadFailed_ACU = false;
+        configIdbCacheLoadingPromise_ACU = (async () => {
             try {
                 const db = await openConfigDb_ACU();
                 if (!db) {
                     configIdbCacheLoaded_ACU = true;
-                    resolve();
                     return;
                 }
-                const tx = db.transaction(CONFIG_IDB_STORE_NAME_ACU, 'readonly');
-                const store = tx.objectStore(CONFIG_IDB_STORE_NAME_ACU);
-                const req = store.openCursor();
-                req.onsuccess = () => {
-                    const cursor = req.result;
-                    if (cursor) {
-                        const key = cursor.key;
-                        if (!configIdbDeletedKeys_ACU.has(key) && !configIdbCache_ACU.has(key)) {
-                            configIdbCache_ACU.set(key, cursor.value);
+                const loadedCache = new Map();
+                await new Promise((resolve, reject) => {
+                    let settled = false;
+                    const finish = (error = null) => {
+                        if (settled)
+                            return;
+                        settled = true;
+                        clearTimeout(timer);
+                        if (error)
+                            reject(error);
+                        else
+                            resolve();
+                    };
+                    const timer = setTimeout(() => {
+                        finish(new Error(`IndexedDB cache load timed out after ${CONFIG_IDB_INIT_TIMEOUT_MS_ACU}ms`));
+                    }, CONFIG_IDB_INIT_TIMEOUT_MS_ACU);
+                    const tx = db.transaction(CONFIG_IDB_STORE_NAME_ACU, 'readonly');
+                    const store = tx.objectStore(CONFIG_IDB_STORE_NAME_ACU);
+                    const req = store.openCursor();
+                    tx.oncomplete = () => finish();
+                    tx.onabort = () => finish(tx.error || new Error('IndexedDB cache transaction aborted'));
+                    tx.onerror = () => finish(tx.error || new Error('IndexedDB cache transaction failed'));
+                    req.onsuccess = () => {
+                        if (settled)
+                            return;
+                        const cursor = req.result;
+                        if (cursor) {
+                            const key = cursor.key;
+                            if (!configIdbDeletedKeys_ACU.has(key))
+                                loadedCache.set(key, cursor.value);
+                            cursor.continue();
                         }
-                        cursor.continue();
-                    }
-                    else {
-                        configIdbCacheLoaded_ACU = true;
-                        resolve();
-                    }
-                };
-                req.onerror = () => {
-                    logWarn_ACU('[TavernStorage] IndexedDB 配置缓存加载失败:', req.error);
-                    configIdbCacheLoadFailed_ACU = true;
-                    configIdbCacheLoaded_ACU = true;
-                    resolve();
-                };
+                    };
+                    req.onerror = () => finish(req.error || new Error('IndexedDB cache cursor failed'));
+                });
+                // 游标只写临时 Map；事务完整提交后才合并，失败重试不会遗留半截缓存。
+                // 加载期间若已有本轮新写入，则保留内存中的新值覆盖磁盘旧值。
+                loadedCache.forEach((value, key) => {
+                    if (!configIdbDeletedKeys_ACU.has(key) && !configIdbCache_ACU.has(key))
+                        configIdbCache_ACU.set(key, value);
+                });
+                configIdbCacheLoaded_ACU = true;
             }
             catch (e) {
                 logWarn_ACU('[TavernStorage] IndexedDB 配置缓存加载失败:', e);
                 configIdbCacheLoadFailed_ACU = true;
                 configIdbCacheLoaded_ACU = true;
-                resolve();
             }
+        })().finally(() => {
+            configIdbCacheLoadingPromise_ACU = null;
         });
         return configIdbCacheLoadingPromise_ACU;
     }
@@ -178085,6 +178137,8 @@ $CONTENT
             .replace(/<StatusPlaceHolderImpl\b[^>]*\/>/gi, '')
             .replace(/<StatusPlaceHolderImpl\b[^>]*>[\s\S]*?<\/StatusPlaceHolderImpl>/gi, '')
             .replace(/<JSONPatch\b[^>]*>[\s\S]*?<\/JSONPatch>/gi, '')
+            // 插图插件会在正文落楼后追加机器提示标签；它不属于剧情正文，不能让同楼事务失效。
+            .replace(/image###[\s\S]*?###/gi, '')
             .trimEnd();
     }
     function 读取角色消息元信息_ACU(消息, 消息索引) {
@@ -190145,6 +190199,8 @@ $CONTENT
     function 读取角色消息正文_ACU(消息) {
         if (!消息 || typeof 消息 !== 'object')
             return '';
+        if (typeof 消息.mes === 'string')
+            return 消息.mes;
         const 当前滑动编号 = 读取消息当前滑动编号_ACU(消息);
         if (当前滑动编号 !== '' && Array.isArray(消息.swipes)) {
             const 当前滑动正文 = 消息.swipes[当前滑动编号];
@@ -190153,7 +190209,7 @@ $CONTENT
             if (当前滑动正文 && typeof 当前滑动正文 === 'object' && typeof 当前滑动正文.mes === 'string')
                 return 当前滑动正文.mes;
         }
-        return typeof 消息.mes === 'string' ? 消息.mes : '';
+        return '';
     }
     function 读取最新用户消息文本_ACU() {
         const 聊天数组 = getChatArray_ACU();
@@ -202473,10 +202529,19 @@ $CONTENT
         logDebug_ACU(`[设置加载] IndexedDB 配置缓存尚未就绪，暂停本轮加载并等待重载：${reason}`);
         void ensureConfigIdbCacheLoaded_ACU().then(() => {
             settingsReloadAfterIdbScheduled_ACU = false;
+            if (configIdbCacheLoadFailed_ACU) {
+                // 持续不可用时保持保存锁定；只允许下一次显式加载/保存再重试，避免 Promise 自递归刷屏。
+                logWarn_ACU('[设置加载] IndexedDB 配置缓存本轮读取失败，保持设置保存锁定。');
+                return;
+            }
             if (pendingSettingsReloadFromIdb_ACU) {
                 _set_pendingSettingsReloadFromIdb_ACU(false);
                 loadSettings_ACU();
             }
+        }).catch((error) => {
+            settingsReloadAfterIdbScheduled_ACU = false;
+            _set_pendingSettingsReloadFromIdb_ACU(false);
+            logError_ACU('[设置加载] 等待 IndexedDB 配置缓存失败:', error);
         });
     }
     function applyGlobalPlotEnabledSetting_ACU() {
@@ -202552,11 +202617,14 @@ $CONTENT
     }
     function saveSettings_ACU() {
         if (!settingsStorageReadyForSave_ACU) {
-            if (isIndexedDbAvailable_ACU() && !configIdbCacheLoaded_ACU) {
+            if (isIndexedDbAvailable_ACU() && (!configIdbCacheLoaded_ACU || configIdbCacheLoadFailed_ACU)) {
                 scheduleSettingsReloadAfterIdbReady_ACU('save_before_config_cache_ready');
             }
             else {
-                void initTavernSettingsBridge_ACU();
+                void initTavernSettingsBridge_ACU().then(() => {
+                    if (!settingsStorageReadyForSave_ACU)
+                        loadSettings_ACU();
+                });
             }
             logWarn_ACU('[设置保存] 设置尚未完成可靠加载，已拒绝本次保存以避免默认配置覆盖真实配置。');
             return {
@@ -202597,11 +202665,29 @@ $CONTENT
         }
     }
     function loadSettings_ACU() {
+        settingsStorageReadyForSave_ACU = false;
+        try {
+            return loadSettingsNow_ACU();
+        }
+        catch (error) {
+            settingsStorageReadyForSave_ACU = false;
+            logError_ACU('[设置加载] 加载设置失败，保存功能保持锁定:', error);
+            return false;
+        }
+    }
+    function loadSettingsNow_ACU() {
         // 确保酒馆设置桥接已就绪（best-effort，不阻塞）
         void initTavernSettingsBridge_ACU();
-        if (!configIdbCacheLoaded_ACU && isIndexedDbAvailable_ACU()) {
+        // TT namespace 与 IndexedDB 按“具体键”回退读取；namespace 存在不代表每个配置键都已迁入 TT。
+        // 因此首次可靠加载必须先完成 IndexedDB 首读，避免把仅存在于 IDB 的真实配置误判为空。
+        if (isIndexedDbAvailable_ACU() && (!configIdbCacheLoaded_ACU || configIdbCacheLoadFailed_ACU)) {
             scheduleSettingsReloadAfterIdbReady_ACU('load_before_config_cache_ready');
-            return;
+            return false;
+        }
+        if (!getTavernSettingsNamespace_ACU()
+            && (!isIndexedDbAvailable_ACU() || configIdbCacheLoadFailed_ACU)) {
+            logError_ACU('[设置加载] TT 设置桥接与 IndexedDB 回退均不可用，拒绝使用默认值冒充已加载设置。');
+            return false;
         }
         _set_pendingSettingsReloadFromIdb_ACU(false);
         // 可选迁移：把旧 localStorage 的设置/模板搬迁到酒馆设置（迁移开关默认为 false）
@@ -202787,7 +202873,6 @@ $CONTENT
             shouldPersistSettingsAfterLoad_ACU = true;
             logDebug_ACU('[剧情推进预设] 已补齐内置预设：时间召回');
         }
-        settingsStorageReadyForSave_ACU = true;
         // [交火模式配置] 权威配置存放在 globalMeta.vectorMemoryConfigGlobal（跨 profile 全局）。
         // settings_ACU.vectorMemoryConfig 只保留为运行时投影，兼容旧调用方。
         if (!globalMeta_ACU.vectorMemoryConfigGlobal || typeof globalMeta_ACU.vectorMemoryConfigGlobal !== 'object' || Array.isArray(globalMeta_ACU.vectorMemoryConfigGlobal)) {
@@ -202882,7 +202967,6 @@ $CONTENT
             }
         }
         settings_ACU.vectorMemoryConfig = globalMeta_ACU.vectorMemoryConfigGlobal;
-        settingsStorageReadyForSave_ACU = true;
         refreshDefaultTableTemplateOnce_ACU(activeCode);
         if (shouldPersistSettingsAfterLoad_ACU) {
             saveGlobalMeta_ACU();
@@ -202892,7 +202976,9 @@ $CONTENT
         if (!Number.isFinite(settings_ACU.maxConcurrentGroups) || settings_ACU.maxConcurrentGroups < 1) {
             settings_ACU.maxConcurrentGroups = 1;
         }
+        settingsStorageReadyForSave_ACU = true;
         logDebug_ACU('Settings loaded:', settings_ACU);
+        return true;
     }
     // loadSettingsAndRefreshUI_ACU 已搬到 presentation/components/settings-ui-helpers.ts
     function loadTemplateFromStorage_ACU(codeOverride = null) {
@@ -210973,7 +211059,7 @@ $CONTENT
         return coreApisAreReady_ACU;
     }
     async function handleNewMessageDebounced_ACU(eventType = 'unknown_acu', 选项 = {}) {
-        const 目标消息元信息 = 选项?.目标消息元信息 || null;
+        let 目标消息元信息 = 选项?.目标消息元信息 || null;
         const eventEpoch = Number.isInteger(选项?.eventEpoch) ? Number(选项.eventEpoch) : null;
         recordTtAutoUpdateDebug_ACU('防抖调度进入', {
             source: eventType,
@@ -210985,9 +211071,20 @@ $CONTENT
             recordTtAutoUpdateDebug_ACU('防抖调度跳过', { source: eventType, reason: 'stale_epoch_before_timer' });
             return;
         }
-        if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
-            recordTtAutoUpdateDebug_ACU('防抖调度跳过', { source: eventType, reason: 'target_changed_before_timer' });
-            return;
+        if (目标消息元信息) {
+            const 当前消息元信息 = 读取当前目标角色消息元信息_ACU(目标消息元信息);
+            const 滑页已变化 = String(当前消息元信息?.滑动编号 ?? '') !== String(目标消息元信息.滑动编号 ?? '');
+            if (!当前消息元信息 || 滑页已变化) {
+                recordTtAutoUpdateDebug_ACU('防抖调度跳过', {
+                    source: eventType,
+                    reason: 'target_changed_before_timer',
+                    currentTargetFound: !!当前消息元信息,
+                    swipeChanged: 滑页已变化,
+                    currentTextLength: String(当前消息元信息?.文本 || '').length,
+                });
+                return;
+            }
+            目标消息元信息 = 当前消息元信息;
         }
         logDebug_ACU(`New message event (${eventType}) detected for ACU, debouncing for ${NEW_MESSAGE_DEBOUNCE_DELAY_ACU}ms...`);
         clearTimeout(newMessageDebounceTimer_ACU);
@@ -211001,9 +211098,28 @@ $CONTENT
                 recordTtAutoUpdateDebug_ACU('防抖执行跳过', { source: eventType, reason: 'stale_epoch_after_timer' });
                 return;
             }
-            if (目标消息元信息 && !目标角色消息仍匹配_ACU(目标消息元信息)) {
-                recordTtAutoUpdateDebug_ACU('防抖执行跳过', { source: eventType, reason: 'target_changed_after_timer' });
-                return;
+            if (目标消息元信息) {
+                const 当前消息元信息 = 读取当前目标角色消息元信息_ACU(目标消息元信息);
+                const 滑页已变化 = String(当前消息元信息?.滑动编号 ?? '') !== String(目标消息元信息.滑动编号 ?? '');
+                if (!当前消息元信息 || 滑页已变化) {
+                    recordTtAutoUpdateDebug_ACU('防抖执行跳过', {
+                        source: eventType,
+                        reason: 'target_changed_after_timer',
+                        currentTargetFound: !!当前消息元信息,
+                        swipeChanged: 滑页已变化,
+                        currentTextLength: String(当前消息元信息?.文本 || '').length,
+                    });
+                    return;
+                }
+                const 正文已刷新 = 当前消息元信息.文本签名 !== 目标消息元信息.文本签名;
+                目标消息元信息 = 当前消息元信息;
+                if (正文已刷新) {
+                    recordTtAutoUpdateDebug_ACU('防抖目标正文已刷新', {
+                        source: eventType,
+                        targetIndex: 目标消息元信息.消息索引,
+                        targetTextLength: String(目标消息元信息.文本 || '').length,
+                    });
+                }
             }
             try {
                 maybeLiftWorldbookSuppression_ACU();
@@ -211011,12 +211127,27 @@ $CONTENT
             catch (e) { }
             try {
                 const eventTransaction = getDatabaseGenerationTransaction_ACU(目标消息元信息);
-                if (eventEpoch !== null && eventTransaction?.epoch !== eventEpoch)
+                if (eventEpoch !== null && eventTransaction?.epoch !== eventEpoch) {
+                    recordTtAutoUpdateDebug_ACU('防抖执行跳过', {
+                        source: eventType,
+                        reason: 'transaction_epoch_mismatch',
+                        eventEpoch,
+                        transactionEpoch: eventTransaction?.epoch ?? null,
+                    });
                     return;
+                }
                 await loadAllChatMessages_ACU({ fullHistory: false, eventTransaction });
                 const eventContext = getDatabaseGenerationContext_ACU(eventTransaction);
-                if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息))
+                if (eventTransaction && !databaseGenerationTransactionStillCurrent_ACU(eventTransaction, 目标消息元信息)) {
+                    recordTtAutoUpdateDebug_ACU('防抖执行跳过', {
+                        source: eventType,
+                        reason: 'transaction_changed_after_load',
+                        eventEpoch,
+                        transactionEpoch: eventTransaction.epoch,
+                        currentEpoch: databaseGenerationEpoch_ACU,
+                    });
                     return;
+                }
                 const runtimeContext = { ...eventContext, eventTransaction };
                 const result = evaluateNewMessageAction_ACU(eventContext.chat, isAutoUpdatingCard_ACU, coreApisAreReady_ACU, wasStoppedByUser_ACU, settings_ACU.contentOptimizationSettings, 目标消息元信息);
                 recordTtAutoUpdateDebug_ACU('自动更新判定', {
@@ -229101,14 +229232,22 @@ $CONTENT
             // ignore
         }
     }
-    function mainInitialize_ACU() {
+    async function mainInitialize_ACU() {
         console.log('ACU_INIT_DEBUG: mainInitialize_ACU called.');
         if (attemptToLoadCoreApis_ACU()) {
+            await initTavernSettingsBridge_ACU();
+            // TT namespace 缺少的具体配置键仍会回退到 IndexedDB，因此首轮必须等待缓存完成。
+            // IndexedDB 打开和读取均有超时与失败收口，不会再无限卡住初始化。
+            await ensureConfigIdbCacheLoaded_ACU();
+            loadSettings_ACU();
+            if (!settingsStorageReadyForSave_ACU) {
+                logError_ACU('[设置加载] 首次可靠加载未完成，停止开放设置界面。');
+                return false;
+            }
             logDebug_ACU('AutoCardUpdater Initialization successful! Core APIs loaded.');
             showToastr_ACU('success', '数据库自动更新脚本已加载！', '脚本启动');
             if (readLegacyUiMenuVisible())
                 enableOptionalFeature_ACU('editor');
-            loadSettings_ACU();
             if (SillyTavern_API_ACU &&
                 SillyTavern_API_ACU.eventSource &&
                 typeof SillyTavern_API_ACU.eventSource.on === 'function' &&
@@ -229548,10 +229687,12 @@ $CONTENT
                 // 没有当前聊天时只等待宿主的 CHAT_CHANGED，不启动轮询。
                 logWarn_ACU('ACU: chatId not available on initial load. Waiting for CHAT_CHANGED event.');
             }
+            return true;
         }
         else {
             logError_ACU('ACU: Failed to initialize. Core APIs not available on DOM ready.');
             console.error('数据库自动更新脚本初始化失败：核心API加载失败。');
+            return false;
         }
     }
 
@@ -275129,15 +275270,20 @@ ${lines.join('\n')}
     // ═══════════════════════════════════════════════════════════════
     // 运行时环境检测（必须最先导入）
     // ═══════════════════════════════════════════════════════════════
-    $(function () {
+    $(async function () {
         // 互斥检测：如果已有实例（插件或另一个油猴脚本）在运行，跳过初始化
         if (checkAndMarkInstance()) {
             console.warn('[SP·数据库 V] 油猴脚本检测到已有实例运行，跳过初始化。');
             return;
         }
         console.log('ACU_INIT_DEBUG: Document is ready, attempting to initialize ACU script (Userscript mode).');
-        mainInitialize_ACU();
-        bootstrapAcuV2();
+        try {
+            if (await mainInitialize_ACU())
+                bootstrapAcuV2();
+        }
+        catch (error) {
+            logError_ACU('[初始化] 数据库模块启动失败:', error);
+        }
     });
 
 })();

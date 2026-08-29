@@ -362,7 +362,7 @@ index 722db33..b9a8949 100644
 +} from '@/function/update/mvu_runtime';
 @@ -4,0 +12 @@ import { handleVariablesInMessage } from '@/function/update_variables';
 +import { useDataStore } from '@/store';
-@@ -8,0 +17,63 @@ export function initResponse() {
+@@ -8,0 +17,64 @@ export function initResponse() {
 +    const is_tt_host = isTtMvuHost();
 +    const pending_tt_message_keys = new Set<string>();
 +    const completed_tt_message_keys = new Set<string>();
@@ -374,13 +374,14 @@ index 722db33..b9a8949 100644
 +        hasGenerationAfterCommands: !!tavern_events.GENERATION_AFTER_COMMANDS,
 +    });
 +    const handle_completed_message = (message_id: number) => {
-+        const message = getChatMessages(message_id, { include_swipes: true }).at(-1);
++        const message = getChatMessages(message_id).at(-1);
++        const swipe_id = getChatMessages(message_id, { include_swipes: true }).at(-1)?.swipe_id ?? null;
 +        recordTtAutoUpdateDebug('解析完成正文楼层', {
 +            messageId: message_id,
 +            found: !!message,
 +            textLength: message?.message?.length ?? 0,
 +            resolvedMessageId: message?.message_id ?? null,
-+            swipeId: message?.swipe_id ?? null,
++            swipeId: swipe_id,
 +        });
 +        if (!message || message.message.length < 5) {
 +            recordTtAutoUpdateDebug('正文完成事件跳过', {
@@ -393,7 +394,7 @@ index 722db33..b9a8949 100644
 +        const message_key = JSON.stringify([
 +            SillyTavern.getCurrentChatId(),
 +            message.message_id ?? message_id,
-+            message.swipe_id ?? null,
++            swipe_id,
 +            textFingerprint(message.message),
 +        ]);
 +        if (pending_tt_message_keys.has(message_key) || completed_tt_message_keys.has(message_key)) {
@@ -426,12 +427,12 @@ index 722db33..b9a8949 100644
 +            }
 +        });
 +    };
-@@ -12,2 +83,2 @@ export function initResponse() {
+@@ -12,2 +84,2 @@ export function initResponse() {
 -    stop_list.push(
 -        controlledStoppableEventOn(
 +    if (!is_tt_host) {
 +        stop_list.push(controlledStoppableEventOn(
-@@ -16,2 +87,37 @@ export function initResponse() {
+@@ -16,2 +88,37 @@ export function initResponse() {
 -        )
 -    );
 +        ));
