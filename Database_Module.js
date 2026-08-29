@@ -4752,6 +4752,8 @@ $CONTENT
     function isQuietLikeGeneration_ACU(type, params) {
         if (type === 'quiet')
             return true;
+        if (params?.quietImage === true)
+            return true;
         if (params && typeof params.quiet_prompt === 'string' && params.quiet_prompt.trim().length > 0)
             return true;
         return false;
@@ -21807,8 +21809,6 @@ $CONTENT
                 }
                 syncFullDatabaseChatHistoryTailFromHost_ACU(index);
             }
-            if (!loadIsCurrent())
-                return getCurrentIndex();
             index.latestAbsoluteIndex = latestAbsoluteIndex;
             index.totalMessages = latestAbsoluteIndex + 1;
             index.ready = true;
@@ -56271,6 +56271,7 @@ $CONTENT
                             type,
                             dryRun: dryRun === true,
                             automatic_trigger: params?.automatic_trigger === true,
+                            quietImage: params?.quietImage === true,
                         });
                         try {
                             recordGenerationContext_ACU(type, params, dryRun);
@@ -56336,12 +56337,14 @@ $CONTENT
                             type,
                             dryRun: dryRun === true,
                             automatic_trigger: params?.automatic_trigger === true,
+                            quietImage: params?.quietImage === true,
                             hasPendingBodyContext: !!读取正文后置上下文_ACU(),
                         });
                         if (!读取正文后置上下文_ACU()
                             && !dryRun
                             && !isQuietLikeGeneration_ACU(type, params)
-                            && !params?.automatic_trigger) {
+                            && !params?.automatic_trigger
+                            && hasFreshUserGenerationTrigger_ACU().result) {
                             recordGenerationContext_ACU(type, params, dryRun);
                             logDebug_ACU(`[生成结束后置] 在 GENERATION_AFTER_COMMANDS 补记正文生成上下文: type=${type}`);
                         }
