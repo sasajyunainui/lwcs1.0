@@ -349,7 +349,7 @@ index c3ddcb5..4ff4e4a 100644
 @@ -319,0 +339 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
-index 722db33..5c90bbd 100644
+index 722db33..74bf7d5 100644
 --- a/src/function/update/index.ts
 +++ b/src/function/update/index.ts
 @@ -3,0 +4,6 @@ import { onMessageReceived } from '@/function/update/on_message_received';
@@ -361,26 +361,19 @@ index 722db33..5c90bbd 100644
 +} from '@/function/update/mvu_runtime';
 @@ -4,0 +11 @@ import { handleVariablesInMessage } from '@/function/update_variables';
 +import { useDataStore } from '@/store';
-@@ -8,0 +16,68 @@ export function initResponse() {
+@@ -8,0 +16,61 @@ export function initResponse() {
 +    const is_tt_host = isTtMvuHost();
 +    const pending_tt_message_keys = new Set<string>();
 +    const completed_tt_message_keys = new Set<string>();
 +    recordTtAutoUpdateDebug('事件监听初始化', {
 +        isTtHost: is_tt_host,
-+        hasMessageReceived: !!tavern_events.MESSAGE_RECEIVED,
++        hasGenerationStarted: !!tavern_events.GENERATION_STARTED,
++        hasGenerationEnded: !!tavern_events.GENERATION_ENDED,
 +        hasGenerationAfterCommands: !!tavern_events.GENERATION_AFTER_COMMANDS,
 +    });
-+    const handle_message_received = (message_id: number) => {
-+        recordTtAutoUpdateDebug('MESSAGE_RECEIVED回调', {
-+            messageId: message_id,
-+            messageIdType: typeof message_id,
-+            isTtHost: is_tt_host,
-+        });
-+        if (!is_tt_host) {
-+            return onMessageReceived(message_id);
-+        }
++    const handle_completed_message = (message_id: number) => {
 +        const message = getChatMessages(message_id, { include_swipes: true }).at(-1);
-+        recordTtAutoUpdateDebug('读取事件目标消息', {
++        recordTtAutoUpdateDebug('解析完成正文楼层', {
 +            messageId: message_id,
 +            found: !!message,
 +            textLength: message?.message?.length ?? 0,
@@ -388,7 +381,7 @@ index 722db33..5c90bbd 100644
 +            swipeId: message?.swipe_id ?? null,
 +        });
 +        if (!message || message.message.length < 5) {
-+            recordTtAutoUpdateDebug('MESSAGE_RECEIVED跳过', {
++            recordTtAutoUpdateDebug('正文完成事件跳过', {
 +                reason: !message ? 'message_not_found' : 'placeholder_or_short_message',
 +                messageId: message_id,
 +                textLength: message?.message?.length ?? 0,
@@ -401,7 +394,7 @@ index 722db33..5c90bbd 100644
 +            message.swipe_id ?? null,
 +        ]);
 +        if (pending_tt_message_keys.has(message_key) || completed_tt_message_keys.has(message_key)) {
-+            recordTtAutoUpdateDebug('MESSAGE_RECEIVED跳过', {
++            recordTtAutoUpdateDebug('正文完成事件跳过', {
 +                reason: pending_tt_message_keys.has(message_key) ? 'task_pending' : 'task_completed',
 +                messageId: message_id,
 +            });
@@ -413,7 +406,7 @@ index 722db33..5c90bbd 100644
 +            textLength: message.message.length,
 +        });
 +        // 只提交异步任务，不把额外模型和落盘耗时挂在宿主的楼层事件上。
-+        scheduleMvuTask('message_received', message_id, async task => {
++        scheduleMvuTask('generation_ended', message_id, async task => {
 +            try {
 +                recordTtAutoUpdateDebug('MVU任务开始', { messageId: message_id });
 +                const updated = await onMessageReceived(message_id, { task });
@@ -430,27 +423,85 @@ index 722db33..5c90bbd 100644
 +            }
 +        });
 +    };
-@@ -15 +90,5 @@ export function initResponse() {
--            is_jest_environment ? onMessageReceived : _.throttle(onMessageReceived, 3000)
-+            is_jest_environment
-+                ? handle_message_received
-+                : is_tt_host
-+                  ? handle_message_received
-+                  : _.throttle(handle_message_received, 3000)
-@@ -17,0 +97,14 @@ export function initResponse() {
-+    recordTtAutoUpdateDebug('MESSAGE_RECEIVED监听已注册', { isTtHost: is_tt_host });
-+    if (is_tt_host) {
-+        stop_list.push(
-+            controlledStoppableEventOn(
-+                tavern_events.GENERATION_AFTER_COMMANDS,
-+                (_type: string, _option: Record<string, unknown>, dry_run: boolean) => {
-+                    if (dry_run || useDataStore().runtimes.is_during_extra_analysis) {
+@@ -12,2 +80,2 @@ export function initResponse() {
+-    stop_list.push(
+-        controlledStoppableEventOn(
++    if (!is_tt_host) {
++        stop_list.push(controlledStoppableEventOn(
+@@ -16,2 +84,72 @@ export function initResponse() {
+-        )
+-    );
++        ));
++    } else {
++        const active_generations: Array<{ body: boolean; chat_id: string }> = [];
++        const pending_body_submissions = new Set<ReturnType<typeof setTimeout>>();
++        const is_background_generation = (
++            type: string,
++            option: Record<string, unknown> = {},
++            dry_run = false
++        ) => dry_run || type === 'quiet' || option.automatic_trigger === true
++            || (typeof option.quiet_prompt === 'string' && option.quiet_prompt.trim().length > 0);
++        stop_list.push(controlledStoppableEventOn(
++            tavern_events.GENERATION_STARTED,
++            (type: string, option: Record<string, unknown> = {}, dry_run = false) => {
++                active_generations.push({
++                    body: !is_background_generation(type, option, dry_run),
++                    chat_id: String(SillyTavern.getCurrentChatId()),
++                });
++            }
++        ));
++        stop_list.push(controlledStoppableEventOn(
++            tavern_events.GENERATION_ENDED,
++            (host_message_id: unknown) => {
++                const generation = active_generations.pop();
++                recordTtAutoUpdateDebug('GENERATION_ENDED回调', {
++                    hostMessageId: host_message_id,
++                    matchedGeneration: !!generation,
++                    bodyGeneration: generation?.body === true,
++                });
++                if (!generation?.body) return;
++                const message_id = getLastMessageId();
++                const timer = setTimeout(() => {
++                    pending_body_submissions.delete(timer);
++                    if (String(SillyTavern.getCurrentChatId()) !== generation.chat_id) {
++                        recordTtAutoUpdateDebug('正文完成事件跳过', {
++                            reason: 'chat_changed_before_submission',
++                            messageId: message_id,
++                        });
 +                        return;
 +                    }
-+                    return awaitBeforeGeneration();
++                    handle_completed_message(message_id);
++                }, 0);
++                pending_body_submissions.add(timer);
++            }
++        ));
++        stop_list.push(controlledStoppableEventOn(tavern_events.GENERATION_STOPPED, () => {
++            active_generations.pop();
++        }));
++        stop_list.push(controlledStoppableEventOn(
++            tavern_events.GENERATION_AFTER_COMMANDS,
++            (type: string, option: Record<string, unknown> = {}, dry_run = false) => {
++                if (is_background_generation(type, option, dry_run)
++                    || useDataStore().runtimes.is_during_extra_analysis) return;
++                const generation = active_generations.at(-1);
++                if (generation) {
++                    generation.body = true;
++                    generation.chat_id = String(SillyTavern.getCurrentChatId());
++                } else {
++                    active_generations.push({
++                        body: true,
++                        chat_id: String(SillyTavern.getCurrentChatId()),
++                    });
 +                }
-+            )
-+        );
++                return awaitBeforeGeneration();
++            }
++        ));
++        stop_list.push(() => {
++            pending_body_submissions.forEach(timer => clearTimeout(timer));
++            pending_body_submissions.clear();
++            active_generations.length = 0;
++        });
++        recordTtAutoUpdateDebug('TT正文完成监听已注册', {});
 +    }
 diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
 new file mode 100644

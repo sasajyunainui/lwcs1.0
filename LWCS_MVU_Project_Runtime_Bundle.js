@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:1250a405d3dbf308a4eb8b26c527407d54ee6635a039bcb2b03863802d6fc9bd|LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:e89899d36c1d5d95ea55b0eefb95b3da569feed05e74ae3c384a85f5f2d61671|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:9cbf90556e2556fc6906e06744a9f1cac0106f5b4bce3aaf31873ccb3ca9243f|MVU_Schema_Runtime.js:70101553f5ae833431197ad24ce19e95f58c657efdf7f5b91a94fca25bfa9cce|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:e89899d36c1d5d95ea55b0eefb95b3da569feed05e74ae3c384a85f5f2d61671|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:9cbf90556e2556fc6906e06744a9f1cac0106f5b4bce3aaf31873ccb3ca9243f|MVU_Schema_Runtime.js:70101553f5ae833431197ad24ce19e95f58c657efdf7f5b91a94fca25bfa9cce|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -12,7 +12,6 @@
   const listeners = [];
   const records = [];
   const knownGenerationTypes = new Set(['normal', 'regenerate', 'continue', 'quiet', 'impersonate', 'swipe']);
-  const safeStringKeys = new Set(['eventName', 'source', 'reason', 'result', 'type', 'action', 'status', 'kind', 'version']);
 
   function getRealm() {
     try {
@@ -66,14 +65,12 @@
       : { type: 'string', length: value.length, fingerprint: fingerprint(value) };
   }
 
-  function summarize(value, depth = 0, key = '') {
+  function summarize(value, depth = 0) {
     if (value === null || value === undefined || typeof value === 'number' || typeof value === 'boolean') {
       return value;
     }
     if (typeof value === 'string') {
-      return knownGenerationTypes.has(value) || safeStringKeys.has(key)
-        ? value.slice(0, 160)
-        : summarizeString(value);
+      return knownGenerationTypes.has(value) ? value : summarizeString(value);
     }
     if (typeof value === 'function') return { type: 'function' };
     if (Array.isArray(value)) {
@@ -82,10 +79,21 @@
     }
     if (typeof value !== 'object') return { type: typeof value };
 
-    const keys = Object.keys(value).slice(0, 24);
-    if (depth >= 3) return { type: 'object', keys };
+    let descriptors;
+    try {
+      descriptors = Object.getOwnPropertyDescriptors(value);
+    } catch (_) {
+      return { type: 'object', unreadable: true };
+    }
+    const keys = Object.keys(descriptors).slice(0, 24);
+    if (depth >= 1) return { type: 'object', keys };
     const result = {};
-    for (const property of keys) result[property] = summarize(value[property], depth + 1, property);
+    for (const property of keys) {
+      const descriptor = descriptors[property];
+      result[property] = descriptor && Object.hasOwn(descriptor, 'value')
+        ? summarize(descriptor.value, depth + 1)
+        : { type: 'accessor' };
+    }
     return result;
   }
 
@@ -167,11 +175,19 @@
         const eventName = eventTypes[key];
         if (!eventName || registered.has(eventName)) continue;
         registered.add(eventName);
-        const handler = (...args) => record(`宿主事件:${key}`, {
-          eventName: String(eventName),
-          argumentCount: args.length,
-          arguments: args.map(argument => summarize(argument)),
-        });
+        const handler = (...args) => {
+          try {
+            record(`宿主事件:${key}`, {
+              eventName: String(eventName),
+              argumentCount: args.length,
+              arguments: args,
+            });
+          } catch (_) {
+            try {
+              console.warn(`[LWCS][TT自动更新诊断] 宿主事件 ${key} 的诊断采集已跳过。`);
+            } catch (_) {}
+          }
+        };
         eventSource.on(eventName, handler);
         listeners.push({ eventSource, eventName, handler });
       }

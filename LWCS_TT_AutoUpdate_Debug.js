@@ -7,7 +7,6 @@
   const listeners = [];
   const records = [];
   const knownGenerationTypes = new Set(['normal', 'regenerate', 'continue', 'quiet', 'impersonate', 'swipe']);
-  const safeStringKeys = new Set(['eventName', 'source', 'reason', 'result', 'type', 'action', 'status', 'kind', 'version']);
 
   function getRealm() {
     try {
@@ -61,14 +60,12 @@
       : { type: 'string', length: value.length, fingerprint: fingerprint(value) };
   }
 
-  function summarize(value, depth = 0, key = '') {
+  function summarize(value, depth = 0) {
     if (value === null || value === undefined || typeof value === 'number' || typeof value === 'boolean') {
       return value;
     }
     if (typeof value === 'string') {
-      return knownGenerationTypes.has(value) || safeStringKeys.has(key)
-        ? value.slice(0, 160)
-        : summarizeString(value);
+      return knownGenerationTypes.has(value) ? value : summarizeString(value);
     }
     if (typeof value === 'function') return { type: 'function' };
     if (Array.isArray(value)) {
@@ -77,10 +74,21 @@
     }
     if (typeof value !== 'object') return { type: typeof value };
 
-    const keys = Object.keys(value).slice(0, 24);
-    if (depth >= 3) return { type: 'object', keys };
+    let descriptors;
+    try {
+      descriptors = Object.getOwnPropertyDescriptors(value);
+    } catch (_) {
+      return { type: 'object', unreadable: true };
+    }
+    const keys = Object.keys(descriptors).slice(0, 24);
+    if (depth >= 1) return { type: 'object', keys };
     const result = {};
-    for (const property of keys) result[property] = summarize(value[property], depth + 1, property);
+    for (const property of keys) {
+      const descriptor = descriptors[property];
+      result[property] = descriptor && Object.hasOwn(descriptor, 'value')
+        ? summarize(descriptor.value, depth + 1)
+        : { type: 'accessor' };
+    }
     return result;
   }
 
@@ -162,11 +170,19 @@
         const eventName = eventTypes[key];
         if (!eventName || registered.has(eventName)) continue;
         registered.add(eventName);
-        const handler = (...args) => record(`宿主事件:${key}`, {
-          eventName: String(eventName),
-          argumentCount: args.length,
-          arguments: args.map(argument => summarize(argument)),
-        });
+        const handler = (...args) => {
+          try {
+            record(`宿主事件:${key}`, {
+              eventName: String(eventName),
+              argumentCount: args.length,
+              arguments: args,
+            });
+          } catch (_) {
+            try {
+              console.warn(`[LWCS][TT自动更新诊断] 宿主事件 ${key} 的诊断采集已跳过。`);
+            } catch (_) {}
+          }
+        };
         eventSource.on(eventName, handler);
         listeners.push({ eventSource, eventName, handler });
       }
