@@ -5049,6 +5049,9 @@ $CONTENT
             .replace(/<images\b[^>]*>[\s\S]*?<\/images>/gi, '')
             .replace(/<image\b[^>]*\/>/gi, '')
             .replace(/<image\b[^>]*>[\s\S]*?<\/image>/gi, '')
+            // 插图回填还会改写 content 标签边界的空行；仅规范化标签边界，不触碰正文内部排版。
+            .replace(/(?:[\t ]*\r?\n)+[\t ]*(?=<content\b)/gi, '\n')
+            .replace(/(?:[\t ]*\r?\n)+[\t ]*(?=<\/content>)/gi, '\n')
             .trimEnd();
     }
     function 读取角色消息元信息_ACU(消息, 消息索引) {
