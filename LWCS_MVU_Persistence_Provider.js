@@ -82,6 +82,19 @@
     return !!value && typeof value === 'object' && !Array.isArray(value);
   }
 
+  function isPlainObject(value) {
+    if (!isObject(value) || Object.prototype.toString.call(value) !== '[object Object]') return false;
+    try {
+      const prototype = Object.getPrototypeOf(value);
+      if (prototype === null) return true;
+      const constructor = Object.prototype.hasOwnProperty.call(prototype, 'constructor') && prototype.constructor;
+      return typeof constructor === 'function'
+        && Function.prototype.toString.call(constructor) === Function.prototype.toString.call(Object);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function canonicalJson(value) {
     if (value === null || typeof value === 'boolean' || typeof value === 'string') return JSON.stringify(value);
     if (typeof value === 'number') return Number.isFinite(value) ? JSON.stringify(value) : undefined;
@@ -462,9 +475,9 @@
   }
 
   function isCanonicalMvuState(value) {
-    return isObject(value)
-      && isObject(value.stat_data)
-      && isObject(value.schema);
+    return isPlainObject(value)
+      && isPlainObject(value.stat_data)
+      && (isPlainObject(value.schema) || value.schema === '没有用别管这个');
   }
 
   function createSession(adapter, opened) {

@@ -18,7 +18,7 @@ const MVU_UI_PREFETCH_FILES_V1 = Object.freeze([
   'sheep_map_restore.js',
 ]);
 const MVU_ENGINE_UPSTREAM_COMMIT_V1 = '0a730cd4a9b99689d1135a49b542c780b977c24c';
-const MVU_ENGINE_BUNDLE_SHA256_V1 = '898ef1d1f964e5a3c4bb9c2742cfa04c8d0ae3728813687db1ddf4745d20d186';
+const MVU_ENGINE_BUNDLE_SHA256_V1 = 'b67dab908a70218d0af06d27c6afb80d17ad750c545d8297cd88df107e2ee53a';
 const MVU追踪模块顺序_V1 = Object.freeze([
   'MVU_ZOD_Entry.js',
   MVU_ENGINE_BUNDLE_FILE_V1,
@@ -99,6 +99,18 @@ function 安全读取MVU链路值_V1(读取器, 默认值 = null) {
     return { error: 错误?.message || String(错误 || 'unknown_error') };
   }
 }
+function 是MVU普通对象_V1(值) {
+  if (!值 || Object.prototype.toString.call(值) !== '[object Object]') return false;
+  try {
+    const 原型 = Object.getPrototypeOf(值);
+    if (原型 === null) return true;
+    const 构造器 = Object.prototype.hasOwnProperty.call(原型, 'constructor') && 原型.constructor;
+    return typeof 构造器 === 'function'
+      && Function.prototype.toString.call(构造器) === Function.prototype.toString.call(Object);
+  } catch (错误) {
+    return false;
+  }
+}
 function 导出MVU链路诊断_V1() {
   const Mvu = 安全读取MVU链路值_V1(() => MVU共享宿主窗口_V1.Mvu || globalThis.Mvu);
   const Provider = 安全读取MVU链路值_V1(() => MVU共享宿主窗口_V1.__LWCS_MVU_PERSISTENCE_PROVIDER_V1__ || globalThis.__LWCS_MVU_PERSISTENCE_PROVIDER_V1__);
@@ -131,9 +143,10 @@ function 导出MVU链路诊断_V1() {
     },
     data: {
       present: !!当前数据 && typeof 当前数据 === 'object',
-      canonical: !!当前数据 && typeof 当前数据 === 'object'
-        && Object.prototype.toString.call(当前数据.stat_data) === '[object Object]'
-        && Object.prototype.toString.call(当前数据.schema) === '[object Object]',
+      canonical: 是MVU普通对象_V1(当前数据)
+        && 是MVU普通对象_V1(当前数据.stat_data)
+        && (是MVU普通对象_V1(当前数据.schema)
+          || 当前数据.schema === '没有用别管这个'),
       keys: 当前数据 && typeof 当前数据 === 'object' ? Object.keys(当前数据) : [],
       statKeys: 当前数据?.stat_data && typeof 当前数据.stat_data === 'object' ? Object.keys(当前数据.stat_data) : [],
     },
