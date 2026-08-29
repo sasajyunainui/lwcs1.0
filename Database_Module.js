@@ -56273,11 +56273,18 @@ $CONTENT
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
+                        const 正文上下文待处理 = !!读取正文后置上下文_ACU();
+                        const TT越界结束事件 = 正文上下文待处理
+                            && hasTauriTavernChatStoreSurface_ACU()
+                            && Number(message_id) === getChatLength_ACU();
                         recordTtAutoUpdateDebug_ACU('GENERATION_ENDED回调', {
                             hostMessageId: message_id,
-                            hasPendingBodyContext: !!读取正文后置上下文_ACU(),
+                            hasPendingBodyContext: 正文上下文待处理,
+                            ttOutOfRangeCompletion: TT越界结束事件,
                         });
                         logDebug_ACU(`ACU GENERATION_ENDED event for message_id: ${message_id}`);
+                        if (TT越界结束事件 && 调度已确认正文数据库更新_ACU('GENERATION_ENDED', message_id))
+                            logDebug_ACU(`ACU: Confirmed completed body floor ${message_id} for automatic table update.`);
                         onLoopGenerationEnded_ACU();
                     });
                 }
