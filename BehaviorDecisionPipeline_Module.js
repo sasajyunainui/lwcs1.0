@@ -5943,21 +5943,23 @@
 
   const PROVIDER_ID = 'r9v2';
   const ENGINE = 'R9V2_LINEAR';
-  const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV2';
+  const SCHEMA_VERSION = 'BehaviorLinearScoreProviderV3';
   const MOUNT_NAME = '__LWCS_BEHAVIOR_LINEAR_PROVIDER__';
 
   // Sealed runtime binding for the exact base, reaction and causal definitions
   // embedded below. Runtime never reads an external training artifact.
-  const MODEL_HASH = 'b13c6c2356d632a296c26f20e0d4e07bd5d9e2b753bf781920040c8d8733826d';
+  const MODEL_HASH = '9ada527dea24d4df882aeffaf2f8057e57e95d22eb836616c82e7a793b20a499';
   const WEIGHTS_HASH = '190c00a8f137b0cbf2d186f685718df1786d9be17324a4083f43927a858f5e7d';
   const FEATURE_SCHEMA_HASH = '1ae9cd7d4d2353efd76df73576d6a235bcefb72fe9ee26d40b626f1afc52a76f';
   const DBP_REVISION = 15;
   const DBP_CONTRACT_HASH = '69f353556b6bc555db1f67e8d0549a68bed5de18f112ff89496912559c784de8';
   const BIF_CONTRACT_HASH = '8dc4ff92e2ac2d81bee176e8839b23c8ab34ceec951b2ab91ebe80c12ec02a76';
-  const BASE_SECTION_HASH = '1a6ba7bbf8543221f9620b29a6884d723a35b1eedc64ac9b508418e242f3fa0d';
+  const BASE_SECTION_HASH = '64783fa923cc70215dadaba0bb75390200c3297e82a68ef6d0a25d9b12a4fcb2';
   const REACTION_HEAD_HASH = 'b08565ade014bed633f5917aaa3891ba2730a18f8c9885c1c9c983db5c8f4a62';
-  const MODEL_COMPOSITE_HASH = '363155cfcae91184c4ca5360ad0ef8ae7babbe77eeb1c2fbff2c8cc60825d128';
+  const MODEL_COMPOSITE_HASH = 'f9cd6065fa30ae04116368c7b06d77ad5e0debbcc20499bdac036ca5d20070cf';
   const REACTION_ALGORITHM_HASH = '5ddd1dff3f07d3aa7c1b48f627cd5a3c64de9025941fab25923b52851b8a1852';
+  const DAMAGE_POWER_TRANSFORM = 'DAMAGE_POWER_EFFECTIVE_V1';
+  const DAMAGE_POWER_TRANSFORM_HASH = '5562d24109a11e67b447817aa73d1e60748bcec6611fa0b4132caceecba6a3aa';
   const OP_DAMAGE_POWER = 'NEUMAIER\u005fSUM';
   const OP_DAMAGE_SEGMENTS = 'INTEGER\u005fSUM';
 
@@ -6075,14 +6077,19 @@
     collapsedInBif: Object.freeze(['ATTRIBUTE_DELTA']),
   });
 
-  // Sealed normalization (training KNOWN rows only; scales = std + 1e-6).
+  // Sealed normalization (training KNOWN rows only; scales = std + 1e-6), except
+  // PUBLIC_RECIPIENT_NEED_MATCH. That feature is zero-inflated: its historical
+  // near-zero standard deviation amplified ordinary 4%-9% resource gaps into
+  // +4 to +10 score points. Deep-route audits classified those creations as
+  // ZERO_EFFECT_COSTLY, so recipient need uses a stable 10 percentage-point
+  // domain scale instead of the sparse empirical standard deviation.
   const NORMALIZATION = Object.freeze({
     means: Object.freeze({
       ATTRIBUTE_DELTA: 14.5, COST_AFFORDABILITY: 1, DAMAGE_PENETRATION: 14.225806451612904,
       DAMAGE_POWER: 23.38761904761905, DAMAGE_SEGMENTS: 2.142857142857143, DAMAGE_TYPE: 1,
       JUDGMENT_DELTA: -2.609375, OUTSIDE_BATCH1_ROW_COUNT: 0.10471204188481675,
       OVERKILL_AVAILABILITY: 0, PUBLIC_HP_RATIO: 0.9090386642361269,
-      PUBLIC_RECIPIENT_NEED_MATCH: 0.0002879581151832461, PUBLIC_RESOURCE_RATIO: 0.6952879581151833,
+      PUBLIC_RECIPIENT_NEED_MATCH: 0, PUBLIC_RESOURCE_RATIO: 0.6952879581151833,
       RELATION_TARGET_COUNT: 1.1151832460732984, RELATION_TARGET_SIDE: 0,
       RESOURCE_CONSUMER_FIT: 0, RESOURCE_DEFICIT_COVERAGE: 0, RESOURCE_DELTA: 0,
       RESOURCE_DELTA_PERCENT: 15.344, REVEAL_STRENGTH: 0, SETTLEMENT_MODIFIER_PERCENT: 4,
@@ -6096,7 +6103,7 @@
       DAMAGE_POWER: 27.46451106988264, DAMAGE_SEGMENTS: 2.5501777312373113, DAMAGE_TYPE: 1,
       JUDGMENT_DELTA: 5.167106051126307, OUTSIDE_BATCH1_ROW_COUNT: 0.42132873903100887,
       OVERKILL_AVAILABILITY: 1, PUBLIC_HP_RATIO: 0.22487126666354648,
-      PUBLIC_RECIPIENT_NEED_MATCH: 0.003970228698245883, PUBLIC_RESOURCE_RATIO: 0.24281348191416682,
+      PUBLIC_RECIPIENT_NEED_MATCH: 0.1, PUBLIC_RESOURCE_RATIO: 0.24281348191416682,
       RELATION_TARGET_COUNT: 0.4659401719641251, RELATION_TARGET_SIDE: 1,
       RESOURCE_CONSUMER_FIT: 1, RESOURCE_DEFICIT_COVERAGE: 1, RESOURCE_DELTA: 1,
       RESOURCE_DELTA_PERCENT: 4.10187179269935, REVEAL_STRENGTH: 1,
@@ -6270,6 +6277,13 @@
     return Object.is(result, -0) ? 0 : result;
   }
 
+  // Settlement compresses power above 100 per damage effect. Scoring must use
+  // the same effective domain before effects are aggregated.
+  function effectiveDamagePower(value) {
+    const power = Math.max(0, Number(value) || 0);
+    return power <= 100 ? power : 100 * Math.pow(power / 100, 0.25);
+  }
+
   // Per-candidate 35-code scalarization, isomorphic to the trainer's
   // scalarizeCode (single-instance identity; duplicate rows via frozen perCode
   // SUM/MAX; ENUM identity; missing rows become UNKNOWN:NOT_EMITTED).
@@ -6289,7 +6303,9 @@
         return { status: 'KNOWN', value: String(knownRows[0].value), reasonCode: 'OK', rowCount: knownRows.length, kind: 'ENUM' };
       }
       const aggregationRows = DAMAGE_AGGREGATION_CODES.has(code) ? aggregationRowsOf(knownRows, code) : null;
-      const numeric = aggregationRows ? aggregationRows.map(row => row.value) : knownRows.map(r => Number(r.value)).filter(Number.isFinite);
+      const numeric = aggregationRows
+        ? aggregationRows.map(row => code === 'DAMAGE_POWER' ? effectiveDamagePower(row.value) : row.value)
+        : knownRows.map(r => Number(r.value)).filter(Number.isFinite);
       if (numeric.length !== knownRows.length) fail('NON_NUMERIC_KNOWN_VALUE', code + ':' + knownRows.map(r => String(r.value)).join(','));
       let value;
       if (knownRows.length === 1) {
@@ -6299,7 +6315,7 @@
         if (!op) fail('AGGREGATION_MISSING_IN_CONTRACT', code + ':rows=' + knownRows.length);
         if (op === 'MAX') value = Math.max(...numeric);
         else if (op === 'SUM') value = numeric.reduce((sum, v) => sum + v, 0);
-        else if (op === OP_DAMAGE_POWER) value = neumaierSum(aggregationRows.map(row => row.value));
+        else if (op === OP_DAMAGE_POWER) value = neumaierSum(numeric);
         else if (op === OP_DAMAGE_SEGMENTS) {
           value = numeric.reduce((sum, v) => {
             const next = sum + v;
@@ -6357,6 +6373,17 @@
     const policy = MISSING_POLICY[code];
     const scale = NORMALIZATION.scales[code];
     const mean = NORMALIZATION.means[code];
+    const targetSide = cells.RELATION_TARGET_SIDE;
+    if (
+      code === 'PUBLIC_RESOURCE_RATIO' &&
+      targetSide?.status === 'KNOWN' &&
+      ['SELF', 'ALLY'].includes(String(targetSide.value || '').trim())
+    ) {
+      // Resource remaining describes hostile vulnerability. It must not punish
+      // a friendly buff/creation target; recipient need and runway are scored
+      // by the causal feature head instead.
+      return 0;
+    }
     if (cell.status === 'KNOWN') {
       if (ENUM_CODES.has(code)) return 0;
       return (cell.value - mean) / scale;
@@ -6656,8 +6683,11 @@
     baseSectionHash: BASE_SECTION_HASH,
     reactionHeadHash: REACTION_HEAD_HASH,
     modelCompositeHash: MODEL_COMPOSITE_HASH,
+    damagePowerTransformHash: DAMAGE_POWER_TRANSFORM_HASH,
     intercept: LINEAR.intercept,
+    effectiveDamagePower,
     constants: Object.freeze({
+      damagePowerTransform: DAMAGE_POWER_TRANSFORM,
       scoreableCodes: SCOREABLE_INVENTORY.slice(),
       baseScoreableCodes: SCOREABLE_CODES.slice(),
       reactionCodes: REACTION_CODES.slice(),

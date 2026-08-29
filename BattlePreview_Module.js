@@ -420,7 +420,10 @@
     operationGraphEventApplications: 0,
     operationGraphStateExpansions: 0,
     operationGraphStateMerges: 0,
+    cacheClears: 0,
+    cacheEvictions: 0,
   };
+  const MAX_PREVIEW_CACHE_ENTRIES = 1024;
   const previewCache = new Map();
   const worldActionContextBindings = new WeakMap();
   let activeWorldActionContextBinding = null;
@@ -1229,63 +1232,55 @@
   }
 
   function fusionSkillMetadata(unit = {}, skill = {}) {
-    if (unit && typeof unit === 'object' && skill && typeof skill === 'object') {
-      let bySkill = fusionMetadataCache.get(unit);
-      if (!bySkill) {
-        bySkill = new WeakMap();
-        fusionMetadataCache.set(unit, bySkill);
-      }
-      if (bySkill.has(skill)) return bySkill.get(skill);
-      const result = readFusionSkillMetadata(unit, skill);
-      bySkill.set(skill, result);
-      return result;
-    }
-    return readFusionSkillMetadata(unit, skill);
-  }
-
-  function readFusionSkillMetadata(unit = {}, skill = {}) {
-    const wantedName = String(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.名称 || '').trim();
-    const wantedEffects = effectArrayHash(skill?._效果数组);
-    const seen = new Set();
-    let found = null;
-    const visit = value => {
-      if (found || !value || typeof value !== 'object' || seen.has(value)) return;
-      seen.add(value);
-      if (Array.isArray(value)) {
-        value.forEach(visit);
-        return;
-      }
+    if (!unit || typeof unit !== 'object' || !skill || typeof skill !== 'object') return null;
+    let index = fusionMetadataCache.get(unit);
+    if (!index) {
+      const bySkill = new WeakMap();
+      const entries = [];
+      const seen = new Set();
+      const visit = value => {
+        if (!value || typeof value !== 'object' || seen.has(value)) return;
+        seen.add(value);
+        if (Array.isArray(value)) {
+          value.forEach(visit);
+          return;
+        }
         const skillData = value?.技能数据;
-      if (
-        skillData && typeof skillData === 'object' &&
-        (value?.融合模式 !== undefined || value?.融合对象 !== undefined || Array.isArray(value?.融合参与者))
-      ) {
-        const candidateName = String(skillData?.name || skillData?.魂技名 || skillData?.技能名称 || skillData?.名称 || '').trim();
-        const candidateEffects = effectArrayHash(skillData?._效果数组);
         if (
-          skillData === skill ||
-          (
-            wantedName && candidateName === wantedName &&
-            (!wantedEffects || !candidateEffects || wantedEffects === candidateEffects)
-          )
+          skillData && typeof skillData === 'object' &&
+          (value?.融合模式 !== undefined || value?.融合对象 !== undefined || Array.isArray(value?.融合参与者))
         ) {
-          found = {
-            name: candidateName || wantedName,
+          const metadata = Object.freeze({
+            name: String(skillData?.name || skillData?.魂技名 || skillData?.技能名称 || skillData?.名称 || '').trim(),
             mode: String(value?.融合模式 || 'partner').trim().toLowerCase(),
             usageMode: String(value?.用法模式 || value?.融合用法 || '').trim(),
             partnerName: String(value?.融合对象 || '').trim(),
             participants: cloneValue(Array.isArray(value?.融合参与者) ? value.融合参与者 : []),
-          };
-          return;
+          });
+          bySkill.set(skillData, metadata);
+          entries.push(Object.freeze({
+            skill: skillData,
+            name: metadata.name,
+            effects: effectArrayHash(skillData?._效果数组),
+            metadata,
+          }));
         }
-      }
-      Object.entries(value).forEach(([key, child]) => {
-        if (/状态效果|战斗历史|历史快照|参战者|复制效果|__battleRuntime|__行动闭环诊断/.test(key)) return;
-        visit(child);
-      });
-    };
-    visit(unit);
-    return found;
+        Object.entries(value).forEach(([key, child]) => {
+          if (/状态效果|战斗历史|历史快照|参战者|复制效果|__battleRuntime|__行动闭环诊断/.test(key)) return;
+          visit(child);
+        });
+      };
+      visit(unit);
+      index = Object.freeze({ bySkill, entries: Object.freeze(entries) });
+      fusionMetadataCache.set(unit, index);
+    }
+    if (index.bySkill.has(skill)) return index.bySkill.get(skill);
+    const wantedName = String(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.名称 || '').trim();
+    const wantedEffects = effectArrayHash(skill?._效果数组);
+    return index.entries.find(entry =>
+      wantedName && entry.name === wantedName &&
+      (!wantedEffects || !entry.effects || wantedEffects === entry.effects)
+    )?.metadata || null;
   }
 
   function fusionParticipantIdentifiers(participant = {}) {
@@ -2178,12 +2173,30 @@
     return clamp(Math.pow(Math.max(0.01, actorMax / Math.max(1, targetMax)), 0.45), 0.35, 1.85);
   }
 
+  function calculateDamageTargetCoverage(effect = {}, targetCount = 1) {
+    const count = Math.max(1, Math.floor(Number(targetCount || 1)));
+    const targetScope = String(effect?.目标 || '单体').trim() || '单体';
+    const multiTarget = /全场|群体/.test(targetScope);
+    const coverageBudget = /全场/.test(targetScope)
+      ? 2.6
+      : /群体/.test(targetScope)
+        ? 1.8
+        : 1;
+    return Object.freeze({
+      targetScope,
+      targetCount: count,
+      coverageBudget,
+      multiplier: multiTarget ? Math.min(1, coverageBudget / count) : 1,
+    });
+  }
+
   function calculateDamageFormula(
     effect = {},
     actor = {},
     target = {},
     projectionContext = null,
     actionDamageMultiplier = 1,
+    resourceDriveEnabled = true,
   ) {
     const damageClass = classifyDamageType(effect?.伤害类型);
     const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0));
@@ -2217,19 +2230,20 @@
       rawDefense - penetration.penetrationValue,
     );
     const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)));
-    const powerRatio = power / 100;
+    const powerRatio = power <= 100 ? power / 100 : Math.pow(power / 100, 0.25);
+    const resourceName = damageClass === 'MENTAL' ? '精神力' : '魂力';
+    // 基础攻击的等级差已经由力量/防御面板承载；再按魂力上限比放大会对同一等级差重复计权。
+    // 魂技仍保留资源驱动，只让无消耗的基础攻击回到纯攻防公式。
+    const resourceDriveApplied = resourceDriveEnabled !== false;
+    const resourceDrive = resourceDriveApplied
+      ? resourceDriveScale(actor, target, resourceName, projectionContext)
+      : 1;
     let total = 0;
     if (damageClass === 'TRUE') {
       total = attack * powerRatio * 0.4;
     } else {
       const mitigation = attack / Math.max(1, attack + defense);
-      total = attack * powerRatio * mitigation * 0.4 *
-        resourceDriveScale(
-          actor,
-          target,
-          damageClass === 'MENTAL' ? '精神力' : '魂力',
-          projectionContext,
-        );
+      total = attack * powerRatio * mitigation * 0.4 * resourceDrive;
     }
     const actorMultiplier = actorProfile
       ? actorProfile.outgoingDamageMultiplier
@@ -2265,11 +2279,7 @@
     );
     const perSegment = total * actorMultiplier * limitedOutgoingMultiplier * targetMultiplier * limitedIncomingMultiplier / segments;
     const baseRawDamage = Math.max(0, perSegment * segments);
-    const normalizedActionMultiplier = Math.max(
-      0,
-      Number(actionDamageMultiplier || 1),
-    );
-    const resourceName = damageClass === 'MENTAL' ? '精神力' : '魂力';
+    const normalizedActionMultiplier = Math.max(0, Number(actionDamageMultiplier ?? 1));
     const actorResourceMax = Number.isFinite(Number(actorProfile?.resourceMax?.[resourceName]))
       ? Number(actorProfile.resourceMax[resourceName])
       : readResourceMax(actor, resourceName);
@@ -2279,12 +2289,6 @@
     const resourceRatio = Math.max(
       0.01,
       actorResourceMax / Math.max(1, targetResourceMax),
-    );
-    const resourceDrive = resourceDriveScale(
-      actor,
-      target,
-      resourceName,
-      projectionContext,
     );
     return Object.freeze({
       damageClass,
@@ -2305,6 +2309,7 @@
       targetResourceMax,
       resourceRatio,
       resourceDrive,
+      resourceDriveApplied,
       baseRawDamage,
       actionDamageMultiplier: normalizedActionMultiplier,
       rawDamage: Math.max(0, baseRawDamage * normalizedActionMultiplier),
@@ -2322,13 +2327,16 @@
     if (!['DECISION_VISIBLE', 'BELIEF', 'RUNTIME_ACTUAL'].includes(basisView)) {
       throw new Error(`DAMAGE_BASIS_VIEW_INVALID:${basisView || 'missing'}`);
     }
-    const formulaVersion = 'R8_DAMAGE_FORMULA_V1';
+    const formulaVersion = 'R9_DAMAGE_FORMULA_V5';
+    const targetCoverage = calculateDamageTargetCoverage(effect, options?.targetCount);
+    const actionEffectMultiplier = Math.max(0, Number(options?.actionDamageMultiplier ?? 1));
     const formula = calculateDamageFormula(
       effect,
       actor,
       target,
       projectionContext,
-      options?.actionDamageMultiplier,
+      actionEffectMultiplier * targetCoverage.multiplier,
+      options?.resourceDriveEnabled !== false,
     );
     const reactionDamageMultiplier = clamp(
       Number(options?.reactionDamageMultiplier ?? 1),
@@ -2353,6 +2361,11 @@
       penetration: formula.penetration,
       defense: formula.defense,
       segments: formula.segments,
+      targetScope: targetCoverage.targetScope,
+      targetCount: targetCoverage.targetCount,
+      targetCoverageBudget: targetCoverage.coverageBudget,
+      targetCoverageMultiplier: targetCoverage.multiplier,
+      actionEffectMultiplier,
       actorMultiplier: formula.actorMultiplier,
       targetMultiplier: formula.targetMultiplier,
       resourceName: formula.resourceName,
@@ -2360,6 +2373,7 @@
       targetResourceMax: formula.targetResourceMax,
       resourceRatio: formula.resourceRatio,
       resourceDrive: formula.resourceDrive,
+      resourceDriveApplied: formula.resourceDriveApplied,
       actionDamageMultiplier: formula.actionDamageMultiplier,
       reactionDamageMultiplier,
       baseRawDamage: formula.baseRawDamage,
@@ -2371,6 +2385,10 @@
       power: formula.power,
       powerRatio: formula.powerRatio,
       segments: formula.segments,
+      targetScope: targetCoverage.targetScope,
+      targetCount: targetCoverage.targetCount,
+      targetCoverageBudget: targetCoverage.coverageBudget,
+      targetCoverageMultiplier: targetCoverage.multiplier,
       actionDamageMultiplier: formula.actionDamageMultiplier,
     });
     const basisHash = stableHash({
@@ -2422,7 +2440,7 @@
     if (!['DECISION_VISIBLE', 'BELIEF', 'RUNTIME_ACTUAL'].includes(String(basis.basisView || '').trim())) {
       throw new Error(`DAMAGE_BASIS_VIEW_INVALID:${String(basis.basisView || '')}`);
     }
-    if (basis.formulaVersion !== 'R8_DAMAGE_FORMULA_V1') {
+    if (basis.formulaVersion !== 'R9_DAMAGE_FORMULA_V5') {
       throw new Error(`DAMAGE_BASIS_FORMULA_VERSION_INVALID:${String(basis.formulaVersion || '')}`);
     }
     const identity = basis.identity;
@@ -2500,8 +2518,17 @@
     actor = {},
     target = {},
     projectionContext = null,
+    options = {},
   ) {
-    return calculateDamageFormula(effect, actor, target, projectionContext).rawDamage;
+    const targetCoverage = calculateDamageTargetCoverage(effect, options?.targetCount);
+    return calculateDamageFormula(
+      effect,
+      actor,
+      target,
+      projectionContext,
+      Math.max(0, Number(options?.actionDamageMultiplier ?? 1)) * targetCoverage.multiplier,
+      options?.resourceDriveEnabled !== false,
+    ).rawDamage;
   }
 
   function calculateDefensePenetration(
@@ -3825,6 +3852,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     target = {},
     context = {},
   ) {
+    if (!Array.isArray(effect?.条件分支) || effect.条件分支.length === 0) return true;
     return resolveConditionalEffectPlan(
       effect,
       worldSnapshot,
@@ -6202,7 +6230,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               sourceActionId: context.rootActionId,
               snapshotRevision: context.snapshotRevision,
               actionDamageMultiplier: context?.actionDamageMultiplier,
+              targetCount: targets.length,
               reactionDamageMultiplier,
+              resourceDriveEnabled: String(context?.declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
             },
           );
           assertDamageBasis(damageBasis, {
@@ -7205,23 +7235,71 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               if (removedKeys.length) {
                 replaceStates(unit, stateEntries(unit).filter(([key]) => !removedKeys.includes(key)));
               }
-              const stateKey = `preview:${context.effectInstanceId}:机制抹消`;
               unit.状态效果 ||= {};
-              unit.状态效果[stateKey] = {
+              const suppressionRule = { 抹消对象: matcher, 抹消方式: '持续阻断' };
+              const existingEntry = stateEntries(unit).find(([, existing]) =>
+                stateName(existing) === '机制抹消'
+              );
+              const nextState = {
                 状态: '机制抹消',
                 状态名称: '机制抹消',
                 类型: 'debuff',
                 duration: Math.max(1, Number(effect?.持续回合 || 1)),
                 来源原型摘要: prototype,
-                抹消规则: [{ 抹消对象: matcher, 抹消方式: '持续阻断' }],
+                抹消规则: [suppressionRule],
                 战斗效果: {},
                 面板修改比例: {},
                 面板固定修正: {},
               };
+              if (existingEntry) {
+                const [stateKey, existing] = existingEntry;
+                const existingRules = Array.isArray(existing?.抹消规则) ? existing.抹消规则 : [];
+                const suppressionRuleKey = JSON.stringify(suppressionRule);
+                unit.状态效果[stateKey] = {
+                  ...existing,
+                  ...nextState,
+                  duration: Math.max(
+                    Number(existing?.duration ?? existing?.持续回合 ?? 0),
+                    nextState.duration,
+                  ),
+                  抹消规则: existingRules.some(rule => JSON.stringify(rule) === suppressionRuleKey)
+                    ? existingRules
+                    : [...existingRules, suppressionRule],
+                };
+              } else {
+                unit.状态效果[`preview:${context.effectInstanceId}:机制抹消`] = nextState;
+              }
             } else {
               const state = rulePrototypeState(effect, prototype, context);
               unit.状态效果 ||= {};
-              unit.状态效果[`preview:${context.effectInstanceId}:${prototype}`] = state;
+              const existingEntry = stateEntries(unit).find(([, existing]) =>
+                stateName(existing) === stateName(state)
+              );
+              if (existingEntry) {
+                const [stateKey, existing] = existingEntry;
+                const existingCombatEffect = existing?.战斗效果 || {};
+                const nextCombatEffect = state?.战斗效果 || {};
+                unit.状态效果[stateKey] = {
+                  ...existing,
+                  ...state,
+                  duration: Math.max(
+                    Number(existing?.duration ?? existing?.持续回合 ?? 0),
+                    Number(state?.duration ?? state?.持续回合 ?? 1),
+                  ),
+                  战斗效果: {
+                    ...existingCombatEffect,
+                    ...nextCombatEffect,
+                    ...(nextCombatEffect.block_count !== undefined
+                      ? { block_count: Math.max(0, Number(existingCombatEffect.block_count || 0)) + Math.max(0, Number(nextCombatEffect.block_count || 0)) }
+                      : {}),
+                    ...(nextCombatEffect.death_save_count !== undefined
+                      ? { death_save_count: Math.max(0, Number(existingCombatEffect.death_save_count || 0)) + Math.max(0, Number(nextCombatEffect.death_save_count || 0)) }
+                      : {}),
+                  },
+                };
+              } else {
+                unit.状态效果[`preview:${context.effectInstanceId}:${prototype}`] = state;
+              }
             }
           });
           const rule = prototype === '机制抹消'
@@ -8414,7 +8492,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               sourceActionId,
               snapshotRevision: String(snapshotRevision || basis.identity || '').trim(),
               actionDamageMultiplier: 1,
+              targetCount: targets.length,
               reactionDamageMultiplier: 1,
+              resourceDriveEnabled: String(basis.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
             },
           );
           assertDamageBasis(damageBasis, { basisView });
@@ -9491,7 +9571,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : Number.POSITIVE_INFINITY;
     return effects.filter(effect => effectConditionEnabled(effect, declaration?.worldSnapshot || {}, actor, target)).reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() === '伤害结算' && target) {
-        const expectedDamage = calculateBaseDamage(effect, actor, target) * estimateHitProbability(
+        const expectedDamage = calculateBaseDamage(effect, actor, target, null, {
+          targetCount: declaration?.targetCount ?? declaration?.targetIds?.length,
+          resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
+        }) * estimateHitProbability(
           actor,
           target,
           effect,
@@ -10068,7 +10151,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               sourceActionId,
               snapshotRevision: String(input?.revision || basis.identity || '').trim(),
               actionDamageMultiplier: 1,
+              targetCount: branchTargets.length,
               reactionDamageMultiplier: 1,
+              resourceDriveEnabled: String(basis.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
             });
             assertDamageBasis(damageBasis, { basisView: input?.basisView || 'DECISION_VISIBLE' });
             const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
@@ -10903,9 +10988,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
     const result = Object.freeze(resultValue);
     previewCache.set(cacheKey, result);
-    // B2：容量上限（约 3 个决策代），淘汰最旧插入项；缓存只影响重算次数不影响语义。
-    while (previewCache.size > 8192) {
+    // 高基数 7v7 一回合可产生近千条唯一预演；缓存仅影响重算次数，不影响语义。
+    while (previewCache.size > MAX_PREVIEW_CACHE_ENTRIES) {
       previewCache.delete(previewCache.keys().next().value);
+      metrics.cacheEvictions += 1;
     }
     return result;
     } finally {
@@ -12874,6 +12960,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function clearCache() {
     previewCache.clear();
     normalizedObjectivesCache = new WeakMap();
+    metrics.cacheClears += 1;
   }
 
   function readMetrics() {
@@ -12926,6 +13013,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     dependencyValueForKey,
     parseSignedValue,
     calculateDefensePenetration,
+    calculateDamageTargetCoverage,
     calculateSettledSegmentDamage,
     normalizeEffectProbability,
     effectTargetsAllies,

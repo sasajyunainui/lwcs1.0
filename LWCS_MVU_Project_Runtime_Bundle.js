@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:1cb66ad1f375d1128f6e811841c0d8e59b42fe73f82394516ea28f5564afd743|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:1e962d9813d5c3ec0576c759a71b058e887c5554fafdc3e3f2d2c58f7fba8a4e|MVU_Schema_Runtime.js:70101553f5ae833431197ad24ce19e95f58c657efdf7f5b91a94fca25bfa9cce|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
+/* sources-sha256: LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:4d38b588b87822caee40114ea444d4ab1b2b27009a44293de0b0fc06caf71694|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:9cbf90556e2556fc6906e06744a9f1cac0106f5b4bce3aaf31873ccb3ca9243f|MVU_Schema_Runtime.js:70101553f5ae833431197ad24ce19e95f58c657efdf7f5b91a94fca25bfa9cce|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
 ;
 /* source: LibraryData_Runtime.js */
 !(function (global) {
@@ -3288,7 +3288,9 @@
 !(function (global) {
   'use strict';
 
-  const VERSION = '1.0.0-era-cultivation-20260819';
+  const VERSION = '1.0.1-era-cultivation-20260829';
+  const PARAMETER_VERSION = 'era-cultivation-final-20260829';
+  const D3_UNDER_TEN_HIGH_TALENT_CALIBRATION = 1.37;
   const ERA_BY_PROFILE = Object.freeze({ dldl: '斗一', jueshitangmen: '斗二', current: '斗三', zjdl: '斗四' });
   const NO_SOUL_CORE_GATE = Number.POSITIVE_INFINITY;
   const LEVEL_CAPS_BY_ERA = Object.freeze({
@@ -3547,7 +3549,11 @@
         * Number(params.eraTalent[eraValue]?.[talentIdx] || 1)
       * Number(params.eraTalentAge[eraValue]?.[talent]?.[interactionIndex] || 1)
         * Number(params.coreGrowth[eraValue]?.[Math.min(3, coreCount)] || 1);
-      if (age < 22 && earlyTalents.has(talent)) value *= Number(params.earlyTalent[eraValue]?.[talent]?.[earlyAgeBandIndex(age)] || 1);
+      if (age < 22 && earlyTalents.has(talent)) {
+        let earlyTalentMultiplier = Number(params.earlyTalent[eraValue]?.[talent]?.[earlyAgeBandIndex(age)] || 1);
+        if (eraValue === '斗三' && age < 10) earlyTalentMultiplier *= D3_UNDER_TEN_HIGH_TALENT_CALIBRATION;
+        value *= earlyTalentMultiplier;
+      }
       return value * variation ** exponent;
     };
     const blend = resolveBlend(options.currentTick, options);
@@ -3876,7 +3882,7 @@
 
   const API = Object.freeze({
     version: VERSION,
-    parameterVersion: PARAMETERS.version,
+    parameterVersion: PARAMETER_VERSION,
     parameters: PARAMETERS,
     resolveEraAtTick,
     resolveEra,
@@ -3903,7 +3909,7 @@
   });
 
   const existing = global.__LWCS_ERA_CULTIVATION_RUNTIME_V1__;
-  if (existing && existing.parameterVersion !== PARAMETERS.version) throw new Error('EraCultivation_Runtime封版参数版本冲突');
+  if (existing && existing.parameterVersion !== PARAMETER_VERSION) throw new Error('EraCultivation_Runtime封版参数版本冲突');
   const runtime = existing || API;
   global.__LWCS_ERA_CULTIVATION_RUNTIME_V1__ = runtime;
   try { if (global.parent && global.parent !== global) global.parent.__LWCS_ERA_CULTIVATION_RUNTIME_V1__ = runtime; } catch (_) {}
@@ -8361,7 +8367,7 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   伤害转移: [原型编译条目('结算修正', { 结算: '伤害转移', 数值: '+20%' })],
   伤害分摊: [原型编译条目('结算修正', { 结算: '伤害分摊', 数值: '+20%' })],
   消耗分摊: [原型编译条目('结算修正', { 结算: '消耗分摊', 数值: '+20%' })],
-  体力恢复: [原型编译条目('资源变化', { 资源: '体力' })],
+  体力恢复: [原型编译条目('资源变化', { 资源: '生命' })],
   魂力恢复: [原型编译条目('资源变化', { 资源: '魂力' })],
   精神恢复: [原型编译条目('资源变化', { 资源: '精神力' })],
   持续恢复: [原型编译条目('状态施加', { 状态: '持续恢复' })],
@@ -8960,8 +8966,10 @@ var 特殊魂技天赋预算倍率表_V1 = Object.freeze({
   顶级天才: 1.35,
   绝世妖孽: 1.55,
 });
-// 第 N 魂技基础 COST 预算（10/20/.../90 与威力 70/.../2100 的强度对位）
-var SKILL_BASE_BUDGET_BY_TIER_V1 = Object.freeze([10, 20, 30, 40, 50, 60, 70, 80, 90]);
+// 第一魂技仍要消耗对应阶层约半数资源，预算 10 生成的伤害却常低于或只略高于
+// 免费普攻（威力 50），会让低阶角色在整场战斗里理性地拒绝魂技。只抬高第一档，
+// 保持第二至第九档及所有资源消耗口径不变，避免同步放大中高阶爆发。
+var SKILL_BASE_BUDGET_BY_TIER_V1 = Object.freeze([15, 20, 30, 40, 50, 60, 70, 80, 90]);
 
 function 是武魂真身魂技位_V1(魂技位 = 1) {
   return Math.floor(Number(魂技位 || 1)) === 7;
@@ -10478,7 +10486,7 @@ function 读取普通回复随机权重表_V1(品质 = 'B') {
 
 var 普通恢复原型资源映射_V1 = Object.freeze({
   魂力恢复: '魂力',
-  体力恢复: '体力',
+  体力恢复: '生命',
   精神恢复: '精神力',
 });
 var 自动生成增益属性集合_V1 = new Set(['力量', '防御', '敏捷', '魂力', '精神力']);
@@ -11019,7 +11027,7 @@ function 读取技能机制原型条目基础预算档_V1(条目 = {}, 上下文
   });
   if (原型 === '伤害结算') return 可调(10, 95, ['威力倍率'], ['攻击段数']);
   if (原型 === '资源变化') {
-    const 资源 = String(条目.资源 || (机制 === '魂力恢复' ? '魂力' : 机制 === '精神恢复' ? '精神力' : 机制 === '体力恢复' ? '体力' : '生命')).trim() || '生命';
+    const 资源 = String(条目.资源 || (机制 === '魂力恢复' ? '魂力' : 机制 === '精神恢复' ? '精神力' : '生命')).trim() || '生命';
     const 负向 = String(构建自动生成档案估算效果_V1(条目, 上下文).数值 || '').trim().startsWith('-');
     const 单位 = Number(SKILL_UNIT_COST_TABLE_V1.资源变化?.[资源]?.[负向 ? '负向' : '正向'] ?? SKILL_UNIT_COST_TABLE_V1.资源变化?.[资源]?.正向 ?? SKILL_UNIT_COST_TABLE_V1.资源变化?.[资源]?.负向 ?? 1);
     return 可调(单位 * 5, 单位 * 80, ['数值'], ['持续回合']);
@@ -12226,6 +12234,10 @@ function v9_3_推入主机制(main = '') {
 
 function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], options = {}) {
   if (String(type || '').trim() === '召唤系') return 构建召唤系技能蓝图_V1(grade, ringIndex, preferredSecondary, options);
+  const 是治疗系第一魂技 =
+    String(type || '').trim() === '治疗系' &&
+    Number(ringIndex) === 1 &&
+    String(options?.sourceCategory || '魂技').trim() === '魂技';
   const 蓝图总开始毫秒 = 读取性能计时毫秒_V1();
   const 预算摘要 = 估算自动生成预算摘要_V1({
     ...(options || {}),
@@ -12245,10 +12257,12 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
   });
   const mainRoll = Math.floor(Math.random() * 100) + 1;
   const 本轮排除主机制大类 = new Set(Array.isArray(options?.排除主机制大类) ? options.排除主机制大类.map(项 => String(项 || '').trim()).filter(Boolean) : []);
-  let main = rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, { ...options, 排除主机制大类: [...本轮排除主机制大类] });
+  let main = 是治疗系第一魂技
+    ? '回复类'
+    : rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, { ...options, 排除主机制大类: [...本轮排除主机制大类] });
   if (!main) throw new Error(`技能生成错误:${type || '未知系别'}没有合法主机制`);
   // v9.3：若与最近 2 次主机制大类重复，最多重 roll 3 次以避让（避免连续 3 次相同）
-  for (let 尝试 = 0; 尝试 < 3 && v9_3_最近主机制队列_V1.includes(main); 尝试 += 1) {
+  for (let 尝试 = 0; !是治疗系第一魂技 && 尝试 < 3 && v9_3_最近主机制队列_V1.includes(main); 尝试 += 1) {
     const 重roll = Math.floor(Math.random() * 100) + 1;
     const 候选 = rollMainMechanicByGrade(type, grade, 重roll, ringIndex, options);
     if (候选 && !v9_3_最近主机制队列_V1.includes(候选)) {
@@ -12262,29 +12276,34 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
   const 初始排除子原型 = Array.isArray(options?.排除子原型)
     ? options.排除子原型.map(项 => String(项 || '').trim()).filter(Boolean)
     : [];
+  // 普通自动生成无法同时提供复制来源或回溯快照；显式编写的完整结构仍由正式运行时处理。
+  // 保留原候选池与随机映射，仅在实际抽中时重选/剔除，避免无关种子的生成结果整体漂移。
+  const 自动生成缺少上下文子原型 = new Set(['复制', '时光回溯']);
   const 本轮排除子原型 = new Set(初始排除子原型);
   const 本轮失败子原型 = new Set();
   const deliveryPool = SKILL_DELIVERY_FORM_BY_TYPE_V1[type] || ['直接生效'];
   let 最后子原型错误 = null;
   for (let 子原型尝试 = 0; 子原型尝试 < 6; 子原型尝试 += 1) {
     const 子原型开始毫秒 = 读取性能计时毫秒_V1();
-    let subModel = '';
+    let subModel = 是治疗系第一魂技 ? '体力恢复' : '';
     const subRoll = Math.floor(Math.random() * 100) + 1;
     try {
-      subModel = rollSubModelByGrade(main, grade, subRoll, {
-        ...options,
-        type,
-        系别: type,
-        sourceName,
-        ringIndex,
-        魂环位: ringIndex,
-        age: options?.age,
-        ringAge: options?.ringAge,
-        sourceCategory: options?.sourceCategory,
-        预算门禁,
-        预算门禁优先: true,
-        排除子原型: [...本轮排除子原型],
-      });
+      if (!是治疗系第一魂技) {
+        subModel = rollSubModelByGrade(main, grade, subRoll, {
+          ...options,
+          type,
+          系别: type,
+          sourceName,
+          ringIndex,
+          魂环位: ringIndex,
+          age: options?.age,
+          ringAge: options?.ringAge,
+          sourceCategory: options?.sourceCategory,
+          预算门禁,
+          预算门禁优先: true,
+          排除子原型: [...本轮排除子原型],
+        });
+      }
     } catch (错误) {
       最后子原型错误 = 错误;
       记录技能生成事件_V1(options, {
@@ -12309,6 +12328,24 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
         continue;
       }
       break;
+    }
+    if (自动生成缺少上下文子原型.has(subModel)) {
+      最后子原型错误 = new Error(`技能生成错误:${subModel}缺少自动生成所需上下文`);
+      本轮排除子原型.add(subModel);
+      本轮失败子原型.add(subModel);
+      记录技能生成事件_V1(options, {
+        类型: '子原型重选',
+        阶段: '自动生成上下文门禁',
+        系别: type,
+        品质: grade,
+        魂环位: ringIndex,
+        主机制大类: main,
+        主机制原型: subModel,
+        子原型尝试,
+        失败类型: '缺少复制来源或回溯快照',
+        耗时毫秒: Number(Math.max(0, 读取性能计时毫秒_V1() - 子原型开始毫秒).toFixed(3)),
+      });
+      continue;
     }
     const attrRoll = Math.floor(Math.random() * 100) + 1;
     const attrHints = rollAttributeDirectionByType(type, subModel, attrRoll, {
@@ -12386,7 +12423,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       系别来源: type,
       主机制大类: main,
       主机制原型: subModel,
-      副机制: extra.secondary,
+      副机制: extra.secondary.filter(机制 => !自动生成缺少上下文子原型.has(String(机制 || '').trim())),
       释放形态: delivery,
       目标: target,
       加成属性候选: [...attrHints],
@@ -13792,7 +13829,7 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
         if (parseSkillSignedChangeNumber(斩杀补伤数值) !== 0) 字段.数值 = 斩杀补伤数值;
       }
     } else if (原型 === '资源变化') {
-      const 资源 = 机制 === '魂力恢复' ? '魂力' : 机制 === '精神恢复' ? '精神力' : 机制 === '体力恢复' ? '体力' : '生命';
+      const 资源 = 机制 === '魂力恢复' ? '魂力' : 机制 === '精神恢复' ? '精神力' : '生命';
       字段.资源 ??= 资源;
       字段.数值 ??= 数值倍率(机制 === '体力恢复' ? (伤害意图.恢复比例 || 8) / 100 : 0.1, 0.1, 1);
     } else if (原型 === '资源转移') {
@@ -18024,9 +18061,10 @@ function 计算防御穿透COST系数_V1(穿透 = 0) {
 function 读取伤害结算COST系数_V1(效果 = {}, 上下文 = {}) {
   const 目标系数 = 读取效果目标系数信息_V1(效果, 上下文).目标系数;
   const 伤害类型乘数 = 获取单位COST_V1('伤害结算', '伤害类型', 效果?.伤害类型) ?? 1;
-  const 攻击段数 = Math.max(1, Number(效果?.攻击段数 || 1));
   const 穿透系数 = 计算防御穿透COST系数_V1(效果?.防御穿透);
-  return Math.max(0.01, 目标系数 * 伤害类型乘数 * 攻击段数 * 穿透系数);
+  // 战斗结算会把总伤害均分到各段；段数改变命中分布，不会线性放大总伤害。
+  // COST 真值表也明确将“攻击段数”记为 0，因此不能再按段数重复收费。
+  return Math.max(0.01, 目标系数 * 伤害类型乘数 * 穿透系数);
 }
 
 function 按伤害COST反推威力倍率_V1(目标COST = 0, 效果 = {}, 上下文 = {}) {
@@ -19574,19 +19612,18 @@ function 收敛技能到预算区间_V1(技能 = {}, 上下文 = {}, 候选档�
   let 收敛上限 = Math.min(Number(区间.上限 || 区间.硬上限 || 0), Number(区间.硬上限 || 0));
   if (!(收敛上限 > 0)) 收敛上限 = Number(区间.硬上限 || 0);
   if (Number(评估.实际COST || 0) > 收敛上限 + 技能预算超预算容差_V1) {
-    压缩到当前硬上限();
-    if (技能COST超预算_V1(Number(评估.实际COST || 0), 区间.硬上限)) {
-      补足消耗前摇承载();
-      if (技能COST超预算_V1(Number(评估.实际COST || 0), 区间.硬上限)) 压缩到当前硬上限();
-    }
     if (技能COST超预算_V1(Number(评估.实际COST || 0), 区间.硬上限) && 上下文?.禁止副作用 !== true) {
       const 副作用数量 = 尝试生成阶段副作用降压_V1(技能, 预算上下文);
       if (副作用数量 > 0) {
         诊断.副作用变化 += 副作用数量;
         改动 = true;
         重新评估();
-        if (技能COST超预算_V1(Number(评估.实际COST || 0), 区间.硬上限)) 压缩到当前硬上限();
-      } else 诊断.未参与原因.push('副作用:未参与或不允许');
+      }
+    }
+    压缩到当前硬上限();
+    if (技能COST超预算_V1(Number(评估.实际COST || 0), 区间.硬上限)) {
+      补足消耗前摇承载();
+      if (技能COST超预算_V1(Number(评估.实际COST || 0), 区间.硬上限)) 压缩到当前硬上限();
     }
     if (技能COST超预算_V1(Number(评估.实际COST || 0), 区间.硬上限)) 补足消耗前摇承载();
   }
@@ -20622,10 +20659,10 @@ function 计算直接结算收益预算效果压力_V1(效果 = {}) {
   const 持续系数 = 读取直接结算预算持续系数_V1(效果);
   if (原型 === '伤害结算') {
     const 威力倍率 = Math.max(0, Number(效果?.威力倍率 || 100));
-    const 攻击段数 = Math.max(1, Number(效果?.攻击段数 || 1));
     const 穿透系数 = 计算防御穿透COST系数_V1(效果?.防御穿透);
     const 伤害类型系数 = String(效果?.伤害类型 || '').includes('真实') ? 直接结算收益预算系数_V1.真实伤害系数 : 1;
-    return { 高绑定压力: 威力倍率 * 攻击段数 * 目标系数 * 伤害类型系数 * 穿透系数, 中绑定压力: 0 };
+    // 攻击段数只拆分同一总伤害，不复制总威力；收益压力必须与正式结算和 COST 真值表使用同一量纲。
+    return { 高绑定压力: 威力倍率 * 目标系数 * 伤害类型系数 * 穿透系数, 中绑定压力: 0 };
   }
   if (原型 === '结算修正') {
     const 结算 = String(效果?.结算 || '').trim();
@@ -24380,6 +24417,7 @@ function autoGenerateSkill(
     承载方式: blueprint.释放形态 || '直接生效',
     _效果数组: packedEffects,
   };
+  if (!passiveMode && archetype === '反制') 生成结果.触发方式 = '受击前';
   if (副作用列表.length) 生成结果.副作用列表 = 副作用列表;
   let 收口结果 = 收口技能执行结构_V1(生成结果, { 目标: blueprint.释放形态 === '造物承载' ? '自身' : '单体', passiveMode });
   应用生成魂技系别驱动属性_V1(收口结果._效果数组, type);
@@ -26281,6 +26319,7 @@ function cloneSkillStructData(skill = {}) {
     前摇: Math.max(0, Number(skill?.前摇 ?? 0) || 0),
     附带属性: attachedAttributes,
     使用条件: skill?.使用条件 && typeof skill.使用条件 === 'object' && !Array.isArray(skill.使用条件) ? cloneJsonValue(skill.使用条件, {}) : undefined,
+    触发方式: String(skill?.触发方式 || '').trim() || undefined,
     _效果数组: packedEffects,
   };
   const 场外冷却至tick = Math.max(0, Number(skill?.场外冷却至tick || 0));
@@ -26302,6 +26341,7 @@ function cloneSkillStructData(skill = {}) {
   };
   if (Math.max(0, Number(working.场外冷却至tick || 0)) > 0) result.场外冷却至tick = Math.max(0, Number(working.场外冷却至tick || 0));
   if (working.使用条件 && typeof working.使用条件 === 'object' && !Array.isArray(working.使用条件)) result.使用条件 = cloneJsonValue(working.使用条件, {});
+  if (String(working.触发方式 || '').trim()) result.触发方式 = String(working.触发方式).trim();
   const 收口副作用列表 = normalizeSkillSideEffectList(working.副作用列表 || []);
   if (收口副作用列表.length) result.副作用列表 = 收口副作用列表;
   if (String(result.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(result._效果数组)) result.产物描述 = working.产物描述 || '无';
@@ -27053,6 +27093,8 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
       候选技能.承载方式 = String(生成结果.承载方式 || 候选技能.承载方式 || (是造物承载效果数组_V1(效果数组) ? '造物承载' : '直接生效')).trim() || '直接生效';
       候选技能.消耗 = cloneJsonValue(生成结果.消耗 ?? 候选技能.消耗 ?? '无');
       候选技能.前摇 = Math.max(0, Number(生成结果.前摇 ?? 候选技能.前摇 ?? 0) || 0);
+      if (String(生成结果.触发方式 || '').trim()) 候选技能.触发方式 = String(生成结果.触发方式).trim();
+      else delete 候选技能.触发方式;
       候选技能._效果数组 = 效果数组;
       const 副作用列表 = normalizeSkillSideEffectList(生成结果.副作用列表 || 候选技能.副作用列表 || []);
       if (副作用列表.length) 候选技能.副作用列表 = 副作用列表;
@@ -27191,6 +27233,22 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
   }
   Object.keys(skill).forEach(键 => delete skill[键]);
   强制普通魂技固定启动消耗_V1(临时技能, 基础生成选项);
+  const 角色资源上限 = {
+    魂力: Number(基础生成选项?.角色?.属性?.魂力上限 || 0),
+    体力: Number(基础生成选项?.角色?.属性?.体力上限 || 0),
+    精神力: Number(基础生成选项?.角色?.属性?.精神力上限 || 0),
+    生命: Number(基础生成选项?.角色?.属性?.HP上限 || 0),
+    HP: Number(基础生成选项?.角色?.属性?.HP上限 || 0),
+  };
+  if (临时技能.消耗 && typeof 临时技能.消耗 === 'object' && !Array.isArray(临时技能.消耗)) {
+    Object.entries(临时技能.消耗).forEach(([资源, 原始消耗]) => {
+      const 消耗 = Number(原始消耗);
+      const 上限 = Number(角色资源上限[资源] || 0);
+      if (Number.isFinite(消耗) && 消耗 > 0 && 上限 > 0 && 消耗 > 上限) {
+        临时技能.消耗[资源] = Math.max(1, Math.floor(上限));
+      }
+    });
+  }
   Object.assign(skill, 临时技能);
   清空恢复增益重复账本缓存_V1(恢复增益重复账本缓存);
   记录技能生成事件_V1(context, {
@@ -27331,6 +27389,7 @@ function 初始化补齐角色技能效果数组_V1(rootData = {}) {
 
   _(角色集 || {}).forEach((char, charName) => {
     if (!char || typeof char !== 'object') return;
+    v9_3_最近主机制队列_V1 = [];
     const 通用技能年限 = Math.max(1000, Number(char?.属性?.等级 || 1) * 200);
     const 是持久魂兽 = isSoulBeastCharacter(char);
     const 魂兽名称 = String(char?.name || char?.base?.name || charName || char?.具体物种 || char?.标准物种 || '').trim();

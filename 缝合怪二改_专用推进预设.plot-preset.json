@@ -127,12 +127,17 @@
           },
           {
             "role": "ASSISTANT",
-            "content": "Edward：好，当前时空、已有角色和候选记录都在这里了。我按刚才确定的方法校准。",
+            "content": "Edward：资料齐了。时间只取本轮用户输入中已经完成的动作；新事务对照角色简表；当前锚点匹配纪要索引；受影响对象匹配偏差候选。",
             "deletable": true
           },
           {
             "role": "USER",
-            "content": "User：开始校准。依次输出下面五个标签；工作表标签中的三行填写本轮实际采用的短结论。\n\n<output_format>\n\n<recall_worktable>\n时间：本轮已完成行动段｜重叠处理｜合计\n纪要：本轮地点、人物、未决事项、关系或物品锚点→命中AM编码\n偏差：当前人物、地点、组织或原著节点→仍在改变它的DV编码\n</recall_worktable>\n\n<time_jump>数字+单位；单位限分、小时、天、月、年。</time_jump>\n<original_character_seed>需要持续个人身份且【角色简表】没有可承担者时，每行填写：姓名｜职责｜年龄｜等级/资历｜身份所属｜采用标准｜必要原因；其余写“无”。</original_character_seed>\n<recall>与本轮锚点直接相关的AM编码，最多20条；没有命中写“无”。</recall>\n<deviation_ledger_recall>仍在改变当前对象的候选DV编码，最多8条；没有命中写“无相关偏差记录”。</deviation_ledger_recall>\n\n</output_format>",
+            "content": "User：按刚才的顺序完成校准，依次输出下面五个标签。工作表中的四步填写本轮实际采用的短结论。\n\n<output_format>\n\n<recall_worktable>\nstep1 时间｜已完成动作及各段耗时：…｜重叠处理：…｜合计：…\nstep2 角色｜本轮新事务：…｜岗位可替代性与持续个人身份：…｜角色简表命中：…｜建立结果：…\nstep3 纪要｜当前地点、人物、未决事项、关系与物品锚点：…｜纪要索引命中：…\nstep4 偏差｜当前人物、地点、组织与原著节点：…｜偏差候选中仍在改变这些对象的记录：…\n</recall_worktable>\n\n<time_jump>数字+单位；单位限分、小时、天、月、年。</time_jump>\n<original_character_seed>需要持续个人身份且【角色简表】没有可承担者时，每行填写：姓名｜职责｜年龄｜等级/资历｜身份所属｜采用标准｜必要原因；其余写“无”。</original_character_seed>\n<recall>与本轮锚点直接相关的AM编码，最多20条；没有命中写“无”。</recall>\n<deviation_ledger_recall>仍在改变当前对象的候选DV编码，最多8条；没有命中写“无相关偏差记录”。</deviation_ledger_recall>\n\n</output_format>",
+            "deletable": true
+          },
+          {
+            "role": "ASSISTANT",
+            "content": "Edward：好，开始按四步校准。",
             "deletable": true
           }
         ],
@@ -429,12 +434,17 @@
       },
       {
         "role": "ASSISTANT",
-        "content": "Edward：好，当前时空、已有角色和候选记录都在这里了。我按刚才确定的方法校准。",
+        "content": "Edward：资料齐了。时间只取本轮用户输入中已经完成的动作；新事务对照角色简表；当前锚点匹配纪要索引；受影响对象匹配偏差候选。",
         "deletable": true
       },
       {
         "role": "USER",
-        "content": "User：开始校准。依次输出下面五个标签；工作表标签中的三行填写本轮实际采用的短结论。\n\n<output_format>\n\n<recall_worktable>\n时间：本轮已完成行动段｜重叠处理｜合计\n纪要：本轮地点、人物、未决事项、关系或物品锚点→命中AM编码\n偏差：当前人物、地点、组织或原著节点→仍在改变它的DV编码\n</recall_worktable>\n\n<time_jump>数字+单位；单位限分、小时、天、月、年。</time_jump>\n<original_character_seed>需要持续个人身份且【角色简表】没有可承担者时，每行填写：姓名｜职责｜年龄｜等级/资历｜身份所属｜采用标准｜必要原因；其余写“无”。</original_character_seed>\n<recall>与本轮锚点直接相关的AM编码，最多20条；没有命中写“无”。</recall>\n<deviation_ledger_recall>仍在改变当前对象的候选DV编码，最多8条；没有命中写“无相关偏差记录”。</deviation_ledger_recall>\n\n</output_format>",
+        "content": "User：按刚才的顺序完成校准，依次输出下面五个标签。工作表中的四步填写本轮实际采用的短结论。\n\n<output_format>\n\n<recall_worktable>\nstep1 时间｜已完成动作及各段耗时：…｜重叠处理：…｜合计：…\nstep2 角色｜本轮新事务：…｜岗位可替代性与持续个人身份：…｜角色简表命中：…｜建立结果：…\nstep3 纪要｜当前地点、人物、未决事项、关系与物品锚点：…｜纪要索引命中：…\nstep4 偏差｜当前人物、地点、组织与原著节点：…｜偏差候选中仍在改变这些对象的记录：…\n</recall_worktable>\n\n<time_jump>数字+单位；单位限分、小时、天、月、年。</time_jump>\n<original_character_seed>需要持续个人身份且【角色简表】没有可承担者时，每行填写：姓名｜职责｜年龄｜等级/资历｜身份所属｜采用标准｜必要原因；其余写“无”。</original_character_seed>\n<recall>与本轮锚点直接相关的AM编码，最多20条；没有命中写“无”。</recall>\n<deviation_ledger_recall>仍在改变当前对象的候选DV编码，最多8条；没有命中写“无相关偏差记录”。</deviation_ledger_recall>\n\n</output_format>",
+        "deletable": true
+      },
+      {
+        "role": "ASSISTANT",
+        "content": "Edward：好，开始按四步校准。",
         "deletable": true
       }
     ]

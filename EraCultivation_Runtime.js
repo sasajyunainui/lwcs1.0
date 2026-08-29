@@ -4,7 +4,9 @@
 !(function (global) {
   'use strict';
 
-  const VERSION = '1.0.0-era-cultivation-20260819';
+  const VERSION = '1.0.1-era-cultivation-20260829';
+  const PARAMETER_VERSION = 'era-cultivation-final-20260829';
+  const D3_UNDER_TEN_HIGH_TALENT_CALIBRATION = 1.37;
   const ERA_BY_PROFILE = Object.freeze({ dldl: '斗一', jueshitangmen: '斗二', current: '斗三', zjdl: '斗四' });
   const NO_SOUL_CORE_GATE = Number.POSITIVE_INFINITY;
   const LEVEL_CAPS_BY_ERA = Object.freeze({
@@ -263,7 +265,11 @@
         * Number(params.eraTalent[eraValue]?.[talentIdx] || 1)
       * Number(params.eraTalentAge[eraValue]?.[talent]?.[interactionIndex] || 1)
         * Number(params.coreGrowth[eraValue]?.[Math.min(3, coreCount)] || 1);
-      if (age < 22 && earlyTalents.has(talent)) value *= Number(params.earlyTalent[eraValue]?.[talent]?.[earlyAgeBandIndex(age)] || 1);
+      if (age < 22 && earlyTalents.has(talent)) {
+        let earlyTalentMultiplier = Number(params.earlyTalent[eraValue]?.[talent]?.[earlyAgeBandIndex(age)] || 1);
+        if (eraValue === '斗三' && age < 10) earlyTalentMultiplier *= D3_UNDER_TEN_HIGH_TALENT_CALIBRATION;
+        value *= earlyTalentMultiplier;
+      }
       return value * variation ** exponent;
     };
     const blend = resolveBlend(options.currentTick, options);
@@ -592,7 +598,7 @@
 
   const API = Object.freeze({
     version: VERSION,
-    parameterVersion: PARAMETERS.version,
+    parameterVersion: PARAMETER_VERSION,
     parameters: PARAMETERS,
     resolveEraAtTick,
     resolveEra,
@@ -619,7 +625,7 @@
   });
 
   const existing = global.__LWCS_ERA_CULTIVATION_RUNTIME_V1__;
-  if (existing && existing.parameterVersion !== PARAMETERS.version) throw new Error('EraCultivation_Runtime封版参数版本冲突');
+  if (existing && existing.parameterVersion !== PARAMETER_VERSION) throw new Error('EraCultivation_Runtime封版参数版本冲突');
   const runtime = existing || API;
   global.__LWCS_ERA_CULTIVATION_RUNTIME_V1__ = runtime;
   try { if (global.parent && global.parent !== global) global.parent.__LWCS_ERA_CULTIVATION_RUNTIME_V1__ = runtime; } catch (_) {}

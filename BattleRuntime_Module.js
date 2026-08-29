@@ -321,11 +321,50 @@
     return `[副作用] ${previewRuntime.unitName(unit) || '目标'}触发[${type || '未知副作用'}](${timing})`;
   }
 
-  function settleConditionSideEffects(unit = {}, key = '', condition = {}, timing = '', label = '', combatData = {}) {
+  function settleConditionSideEffects(unit = {}, key = '', condition = {}, timing = '', label = '', combatData = {}, eventContext = {}) {
     const logs = normalizeSideEffectList(condition?.副作用列表 || [])
       .filter(effect => String(effect?.触发时机 || '').trim() === timing)
       .filter(effect => !String(effect?.关联状态 || '').trim() || String(effect?.关联状态 || '').trim() === key)
-      .map(effect => applyRoundEndSideEffect(unit, effect, key || label, combatData))
+      .map(effect => {
+        const beforeHp = previewRuntime.readHp(unit);
+        const log = applyRoundEndSideEffect(unit, effect, key || label, combatData);
+        if (!log) return '';
+        const afterHp = previewRuntime.readHp(unit);
+        const hpDelta = afterHp - beforeHp;
+        const blocked = /无视异常|持续状态移除/.test(log);
+        writeLedgerEvent(combatData, {
+          eventKind: hpDelta ? 'resource_change' : 'state_apply',
+          round: Number(combatData?.回合 || 0),
+          actorId: String(eventContext?.actorId || previewRuntime.unitId(unit)).trim(),
+          actorName: String(eventContext?.actorName || label || previewRuntime.unitName(unit)).trim(),
+          targetId: previewRuntime.unitId(unit),
+          targetName: previewRuntime.unitName(unit),
+          actionName: String(eventContext?.actionName || key || label || '副作用').trim(),
+          actionType: String(eventContext?.actionType || 'SIDE_EFFECT').trim(),
+          actorControl: String(eventContext?.actorControl || 'SYSTEM').trim(),
+          actionRole: String(eventContext?.actionRole || 'STATE_TICK').trim(),
+          actionId: String(eventContext?.actionId || '').trim(),
+          sourceActionId: String(eventContext?.sourceActionId || eventContext?.actionId || '').trim(),
+          parentNodeId: String(eventContext?.parentNodeId || '').trim(),
+          sourceNodeId: String(eventContext?.sourceNodeId || '').trim(),
+          result: blocked ? 'blocked' : 'triggered',
+          resultState: blocked ? 'NO_EFFECT' : 'SUCCESS',
+          primaryOutcome: blocked ? 'side_effect_blocked' : 'side_effect_triggered',
+          ruleCode: blocked ? 'SIDE_EFFECT_BLOCKED' : 'SIDE_EFFECT_TRIGGERED',
+          factType: hpDelta ? 'RESOURCE' : 'STATE',
+          effectPrototype: '副作用',
+          operation: hpDelta < 0 ? 'REDUCE' : hpDelta > 0 ? 'RESTORE' : '',
+          meta: {
+            source: 'structured_runtime',
+            sideEffectType: effect.副作用类型,
+            timing,
+            duration: Number(effect.持续回合 || 0),
+            log,
+            ...(hpDelta ? { resource: '生命', resourceKey: 'hp', before: beforeHp, after: afterHp, delta: hpDelta, amount: Math.abs(hpDelta) } : {}),
+          },
+        });
+        return log;
+      })
       .filter(Boolean);
     return logs.join(' ');
   }
@@ -361,23 +400,29 @@
     return Math.max(0, Number(unit?.shield ?? unit?.护盾 ?? unit?.护盾值 ?? 0));
   }
 
-  function applyRuntimeShield(unit = {}, shieldAmount = 0, duration = 1, sourceName = '护盾', effect = {}) {
+  function applyRuntimeShield(unit = {}, shieldAmount = 0, duration = null, sourceName = '护盾', effect = {}) {
     const amount = previewRuntime.calculateShieldGain(unit, shieldAmount);
     if (!(amount > 0)) return 0;
     if (!unit.状态效果) unit.状态效果 = {};
     const stateName = /护盾|屏障|结界/.test(String(sourceName || '')) ? String(sourceName || '护盾') : `${sourceName || '护盾'}护盾`;
+    const normalizedDuration = Number(duration);
+    const timed = Number.isFinite(normalizedDuration) && normalizedDuration > 0;
     const existing = unit.状态效果[stateName];
     if (existing) {
       existing.状态 = String(existing.状态 || stateName).trim() || stateName;
       existing.状态名称 = String(existing.状态名称 || stateName).trim() || stateName;
-      existing.duration = Math.max(Number(existing.duration || 0), Number(duration || 0));
+      if (timed) existing.duration = Math.max(Number(existing.duration || 0), normalizedDuration);
+      else delete existing.duration;
+      existing.__本回合新附加 = true;
       existing.shield_value = Math.max(0, Number(existing.shield_value || 0)) + amount;
       if (effect?.对应等级 !== undefined) existing.对应等级 = Math.max(0, Number(effect.对应等级 || 0));
     } else {
       unit.状态效果[stateName] = {
         类型: 'buff', 状态: stateName, 状态名称: stateName, 层数: 1,
         描述: `由[${sourceName || stateName}]附加`, 来源原型摘要: '护盾变化',
-        duration: Number(duration || 0), 面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
+        ...(timed ? { duration: normalizedDuration } : {}),
+        __本回合新附加: true,
+        面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
         战斗效果: createEmptyCombatEffectMap(), shield_value: amount,
         ...(effect?.对应等级 !== undefined ? { 对应等级: Math.max(0, Number(effect.对应等级 || 0)) } : {}),
       };
@@ -670,7 +715,8 @@
       const before = currentShieldTotal(unit);
       if (value >= 0) {
         const amount = /%$/.test(valueText) || Math.abs(value) <= 1 ? Math.floor(previewRuntime.readHpMax(unit) * Math.abs(value)) : Math.floor(Math.abs(value));
-        const applied = applyRuntimeShield(unit, amount, Math.max(1, Number(effect?.持续回合 || 1)), '延迟护盾', effect);
+        const duration = Number(effect?.持续回合) > 0 ? Math.max(1, Number(effect.持续回合)) : null;
+        const applied = applyRuntimeShield(unit, amount, duration, '延迟护盾', effect);
         const after = currentShieldTotal(unit);
         if (applied > 0) {
           writeFact({
@@ -2927,11 +2973,43 @@
   }
 
   function buildCombatFinalStats(unit = {}, currentTick = 0) {
-    const source = unit && typeof unit === 'object' ? { ...unit } : {};
-    delete source.final;
-    const final = JSON.parse(JSON.stringify(source));
-    final.状态效果 = JSON.parse(JSON.stringify(unit?.状态效果 || {}));
-    final.战斗效果 = createEmptyCombatEffectMap();
+    const attributes = unit?.属性 && typeof unit.属性 === 'object'
+      ? unit.属性
+      : {};
+    const readFinite = (directKeys, attributeKeys = directKeys) => {
+      for (const key of directKeys) {
+        const value = Number(unit?.[key]);
+        if (Number.isFinite(value)) return value;
+      }
+      for (const key of attributeKeys) {
+        const value = Number(attributes?.[key]);
+        if (Number.isFinite(value)) return value;
+      }
+      return undefined;
+    };
+    const final = { 战斗效果: createEmptyCombatEffectMap() };
+    [
+      ['level', ['level', '等级', '修为等级'], ['等级']],
+      ['等级', ['等级', 'level', '修为等级'], ['等级']],
+      ['hp', ['hp', 'HP', '生命'], ['HP', '生命']],
+      ['hp_max', ['hp_max', 'HP上限', '生命上限'], ['HP上限', '生命上限', '体力上限']],
+      ['sp', ['sp', '魂力'], ['魂力']],
+      ['sp_max', ['sp_max', '魂力上限'], ['魂力上限']],
+      ['men', ['men', '精神力'], ['精神力']],
+      ['men_max', ['men_max', '精神力上限'], ['精神力上限']],
+      ['vit', ['vit', 'sta', '体力'], ['体力']],
+      ['vit_max', ['vit_max', 'sta_max', '体力上限'], ['体力上限']],
+      ['sta', ['sta', 'vit', '体力'], ['体力']],
+      ['sta_max', ['sta_max', 'vit_max', '体力上限'], ['体力上限']],
+      ['str', ['str', '力量', '攻击'], ['力量', '攻击']],
+      ['def', ['def', '防御'], ['防御']],
+      ['agi', ['agi', '敏捷'], ['敏捷']],
+      ['shield', ['shield', '护盾', '护盾值'], ['护盾', '护盾值']],
+    ].forEach(([targetKey, directKeys, attributeKeys]) => {
+      const value = readFinite(directKeys, attributeKeys);
+      if (value !== undefined) final[targetKey] = value;
+    });
+    const stateEffects = cloneValue(unit?.状态效果 || {});
     const normalizedTick = Math.max(0, Number(currentTick || 0));
     const applyCopiedStats = snapshot => {
       if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return;
@@ -2942,7 +3020,7 @@
         });
     };
     const copiedSnapshots = [];
-    Object.values(final.状态效果 || {}).forEach(condition => {
+    Object.values(stateEffects).forEach(condition => {
       const ratios = condition?.面板修改比例 || {};
       const deltas = condition?.面板固定修正 || {};
       ['str', 'def', 'agi'].forEach(key => { final[key] = Number(final[key] || 0) * Number(ratios[key] ?? 1) + Number(deltas[key] || 0); });
@@ -3214,8 +3292,8 @@
     const facts = [];
     paymentPlan.payments.forEach(payment => {
       const before = persistentResourceValue(actor, payment.key);
-      const after = before - payment.amount;
-      writeCombatResource(actor, payment.key, after);
+      const after = writeCombatResource(actor, payment.key, before - payment.amount);
+      const appliedCost = Math.max(0, before - after);
       facts.push(writeStructuredResourceFact(
         combatData,
         actor,
@@ -3223,7 +3301,7 @@
         action,
         actionEvent,
         payment.key,
-        -payment.amount,
+        -appliedCost,
         actionRole,
         'PAY',
         {
@@ -3233,7 +3311,7 @@
           factType: 'RESOURCE',
           effectPrototype: String(effect?.原型 || '').trim(),
           sourceEffectId: String(effect?.effectId || effect?.效果ID || '').trim(),
-          meta: { triggerCost: true, resource: payment.resource, amount: payment.amount },
+          meta: { triggerCost: true, resource: payment.resource, requestedAmount: payment.amount, amount: appliedCost },
         },
       ));
     });
@@ -7518,6 +7596,13 @@
         meta: {
           source: 'equipment_passive_counter_v1',
           sourceDamageEventId: String(damageEvent?.eventId || '').trim(),
+          effectIndex: Number(damageEvent?.meta?.effectIndex ?? -1),
+          segmentIndex: Number(
+            damageEvent?.meta?.segmentIndex ??
+            damageEvent?.meta?.segment ??
+            damageEvent?.segment ??
+            0,
+          ),
           counterRatio: ratio,
           reflectedDamage: reflected,
           before,
@@ -9192,7 +9277,8 @@
         const before = persistentResourceValue(costPayer, key);
         const cost = payment.amount;
         if (before + 1e-9 < cost) throw new Error(`battle_structured_resource_insufficient:${resource}`);
-        writeCombatResource(costPayer, key, before - cost);
+        const after = writeCombatResource(costPayer, key, before - cost);
+        const appliedCost = Math.max(0, before - after);
         facts.push(writeStructuredResourceFact(
           combatData,
           costPayer,
@@ -9200,9 +9286,10 @@
           action,
           actionEvent,
           key,
-          -cost,
+          -appliedCost,
           actionRole,
           'PAY',
+          { before, after, meta: { requestedAmount: cost } },
         ));
         facts.push(writeLedgerEvent(combatData, {
           eventKind: 'action_cost',
@@ -9223,8 +9310,9 @@
             source: 'structured_runtime',
             resourceKey: key,
             resource,
-            amount: cost,
-            reqSp: key === 'sp' ? cost : 0,
+            amount: appliedCost,
+            requestedAmount: cost,
+            reqSp: key === 'sp' ? appliedCost : 0,
             fusionKey: String(declaration?.fusionKey || '').trim(),
             auditOnly: true,
           },
@@ -10112,7 +10200,9 @@
               sourceActionId: actionEvent.actionId,
               snapshotRevision: actualSnapshotRevision,
               actionDamageMultiplier,
+              targetCount: resolvedTargets.length,
               reactionDamageMultiplier,
+              resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
             },
           );
           previewRuntime.assertDamageBasis(actualDamageBasis, {
@@ -10539,7 +10629,10 @@
             }
             return;
           }
-          if (requested >= 0) applyRuntimeShield(target, requested, Math.max(1, Number(effect?.持续回合 || 1)), actionName, effect);
+          if (requested >= 0) {
+            const duration = Number(effect?.持续回合) > 0 ? Math.max(1, Number(effect.持续回合)) : null;
+            applyRuntimeShield(target, requested, duration, actionName, effect);
+          }
           else removeRuntimeShield(target, effect?.数值 || requested);
           const after = currentShieldTotal(target);
           const actual = after - before;
@@ -11156,6 +11249,99 @@
         actionEvent,
       );
     }
+    if (releaseSucceeded) {
+      const sideEffects = [
+        ...normalizeSideEffectList(declaration?.skill?.副作用列表 || []),
+        ...baseEffects
+          .filter(effect => String(effect?.原型 || '').trim())
+          .flatMap(effect => normalizeSideEffectList(effect?.副作用列表 || [])),
+      ].filter((effect, index, rows) => rows.findIndex(row => hashBattleValue(row) === hashBattleValue(effect)) === index);
+      if (sideEffects.length) {
+        const successfulTargetIds = [...new Set(facts
+          .filter(event =>
+            String(event?.resultState || '').trim().toUpperCase() === 'SUCCESS' &&
+            !['action_start', 'action_cost'].includes(String(event?.eventKind || '').trim())
+          )
+          .flatMap(event => [event?.targetId, ...(Array.isArray(event?.targetIds) ? event.targetIds : [])])
+          .map(value => String(value || '').trim())
+          .filter(Boolean))];
+        const effectTargets = successfulTargetIds
+          .map(targetId => listCombatUnits(combatData).find(unit => previewRuntime.unitId(unit) === targetId))
+          .filter(Boolean);
+        if (!effectTargets.length && primaryTarget) effectTargets.push(primaryTarget);
+        const hitSucceeded = facts.some(event =>
+          event?.eventKind === 'hit_result' &&
+          String(event?.actorId || '').trim() === previewRuntime.unitId(actor) &&
+          !/miss|failure|dodged|evaded/i.test(String(event?.result || event?.resultState || ''))
+        );
+        const eventContext = {
+          actorId: previewRuntime.unitId(actor),
+          actorName: previewRuntime.unitName(actor),
+          actionName,
+          actionType: actionKind,
+          actorControl,
+          actionRole,
+          actionId: actionEvent.actionId,
+          sourceActionId: actionEvent.actionId,
+          parentNodeId: actionEvent.chainNodeId || '',
+          sourceNodeId: actionEvent.chainNodeId || '',
+        };
+        sideEffects.forEach((sideEffect, sideEffectIndex) => {
+          const targetMode = String(sideEffect.生效对象 || '技能释放者').trim();
+          const targets = [...new Map((targetMode === '技能释放者'
+            ? [actor]
+            : targetMode === '双方'
+              ? [actor, ...effectTargets]
+              : effectTargets
+          ).map(unit => [previewRuntime.unitId(unit), unit])).values()];
+          const timing = String(sideEffect.触发时机 || '效果生效后').trim();
+          if (timing === '效果生效后' || (timing === '命中后' && hitSucceeded)) {
+            targets.forEach(target => settleConditionSideEffects(
+              target,
+              actionName,
+              { 副作用列表: [sideEffect] },
+              timing,
+              previewRuntime.unitName(actor),
+              combatData,
+              eventContext,
+            ));
+            return;
+          }
+          targets.forEach(target => {
+            target.状态效果 = target.状态效果 && typeof target.状态效果 === 'object' && !Array.isArray(target.状态效果)
+              ? target.状态效果
+              : {};
+            if (timing === '效果结束后') {
+              const linkedState = String(sideEffect.关联状态 || '').trim();
+              const matched = Object.entries(target.状态效果).find(([key, state]) =>
+                key === linkedState || String(state?.状态 || state?.状态名称 || '').trim() === linkedState
+              );
+              if (matched) {
+                const [key, state] = matched;
+                state.副作用列表 = [
+                  ...normalizeSideEffectList(state.副作用列表 || []),
+                  { ...sideEffect, 关联状态: key },
+                ];
+                return;
+              }
+            }
+            const carrierKey = `副作用待结算:${actionEvent.actionId}:${sideEffectIndex}:${previewRuntime.unitId(target)}`;
+            const duration = timing === '回合结束时'
+              ? 1
+              : Math.max(1, ...baseEffects.map(effect => Number(effect?.持续回合 || 1)));
+            target.状态效果[carrierKey] = {
+              类型: 'neutral',
+              状态: carrierKey,
+              状态名称: carrierKey,
+              描述: `由[${actionName}]安排的副作用结算`,
+              来源技能: actionName,
+              duration,
+              副作用列表: [{ ...sideEffect, ...(timing === '效果结束后' ? { 关联状态: carrierKey } : {}) }],
+            };
+          });
+        });
+      }
+    }
     const receivedDamageIds = [...new Set(facts
       .filter(event =>
         event?.eventKind === 'hit_result' &&
@@ -11724,6 +11910,286 @@
     return { opened, event, probability, roll };
   }
 
+  function buildAnalyticsDecisionAudit(decision = {}) {
+    const compactCandidate = candidate => {
+      const declaration = candidate?.declaration || {};
+      return {
+        candidateId: String(candidate?.candidateId || '').trim(),
+        actionKind: String(candidate?.actionKind || declaration?.actionKind || '').trim(),
+        actionName: normalizeActionDisplayName(
+          candidate?.actionName ||
+          declaration?.skill?.name ||
+          declaration?.skill?.魂技名 ||
+          declaration?.actionKind ||
+          candidate?.candidateId ||
+          '',
+        ),
+        targetIds: (Array.isArray(candidate?.targetIds)
+          ? candidate.targetIds
+          : declaration?.targetIds || []
+        ).map(value => String(value || '').trim()).filter(Boolean),
+        score: Number(candidate?.score ?? candidate?.objectiveUtility ?? 0),
+        objectiveUtility: Number(candidate?.objectiveUtility || 0),
+        rank: Math.max(0, Number(candidate?.rank || 0)),
+        selected: candidate?.selected === true,
+      };
+    };
+    const selected = decision?.selected && typeof decision.selected === 'object'
+      ? decision.selected
+      : null;
+    const declaration = selected?.declaration || {};
+    const skill = declaration?.skill && typeof declaration.skill === 'object'
+      ? declaration.skill
+      : {};
+    return {
+      version: String(decision?.version || '').trim(),
+      schemaVersion: String(decision?.schemaVersion || '').trim(),
+      decisionEngine: String(decision?.decisionEngine || '').trim().toUpperCase(),
+      providerId: String(decision?.providerId || '').trim(),
+      round: Number(decision?.round || 0),
+      actorId: String(decision?.actorId || '').trim(),
+      actionRole: normalizeActionRole(decision?.actionRole || 'ACTIVE'),
+      actorControl: normalizeActorControl(
+        decision?.actorControl || '',
+        selected?.playerLocked === true ? 'PLAYER_LOCKED' : 'AI',
+      ),
+      sourceActorId: String(decision?.sourceActorId || '').trim(),
+      opportunityId: String(decision?.opportunityId || '').trim(),
+      grantId: String(decision?.grantId || '').trim(),
+      opportunitySequence: Math.max(0, Number(decision?.opportunitySequence || 0)),
+      continuation: decision?.continuation === true,
+      candidateCount: Math.max(0, Number(decision?.candidateCount || 0)),
+      eligibleCount: Math.max(0, Number(decision?.eligibleCount || 0)),
+      preEnumerationRejections: (Array.isArray(decision?.preEnumerationRejections)
+        ? decision.preEnumerationRejections
+        : []
+      ).map(entry => ({
+        candidateId: String(entry?.candidateId || '').trim(),
+        rejectionCode: String(entry?.rejectionCode || '').trim(),
+      })),
+      selected: selected
+        ? {
+            candidateId: String(selected?.candidateId || '').trim(),
+            selectedActionName: normalizeActionDisplayName(
+              selected?.selectedActionName ||
+              skill?.name ||
+              skill?.魂技名 ||
+              declaration?.actionKind ||
+              selected?.candidateId ||
+              '',
+            ),
+            actionFamily: String(selected?.actionFamily || '').trim(),
+            objectiveUtility: Number(selected?.objectiveUtility || 0),
+            declaration: {
+              actionId: String(declaration?.actionId || '').trim(),
+              actorId: String(declaration?.actorId || '').trim(),
+              actionKind: String(declaration?.actionKind || '').trim(),
+              targetIds: (Array.isArray(declaration?.targetIds)
+                ? declaration.targetIds
+                : []
+              ).map(value => String(value || '').trim()).filter(Boolean),
+              resourceCosts:
+                declaration?.resourceCosts &&
+                typeof declaration.resourceCosts === 'object'
+                  ? { ...declaration.resourceCosts }
+                  : {},
+              skill: {
+                name: String(skill?.name || '').trim(),
+                魂技名: String(skill?.魂技名 || '').trim(),
+                技能名称: String(skill?.技能名称 || '').trim(),
+                名称: String(skill?.名称 || '').trim(),
+                _效果数组: (Array.isArray(skill?._效果数组)
+                  ? skill._效果数组
+                  : []
+                ).map(effect => ({ 原型: String(effect?.原型 || '').trim() })),
+              },
+            },
+            repeatedActionAudit: selected?.repeatedActionAudit
+              ? {
+                  lifecycleWindowRealizable:
+                    selected.repeatedActionAudit.lifecycleWindowRealizable === true,
+                  repeatedActionDelta: Number(
+                    selected.repeatedActionAudit.repeatedActionDelta || 0,
+                  ),
+                  resourceRunwayAfter: Number.isFinite(
+                    Number(selected.repeatedActionAudit.resourceRunwayAfter),
+                  )
+                    ? Number(selected.repeatedActionAudit.resourceRunwayAfter)
+                    : null,
+                }
+              : null,
+            terminalEvidence: selected?.terminalEvidence
+              ? {
+                  direct: {
+                    achieved: selected?.terminalEvidence?.direct?.achieved === true,
+                  },
+                }
+              : null,
+            crisisResponseAudit: selected?.crisisResponseAudit
+              ? {
+                  realized: selected.crisisResponseAudit.realized === true,
+                  problemId: String(
+                    selected.crisisResponseAudit.problemId || '',
+                  ).trim(),
+                }
+              : null,
+            predictedOutcomeEvidence: (Array.isArray(
+              selected?.predictedOutcomeEvidence,
+            )
+              ? selected.predictedOutcomeEvidence
+              : []
+            ).map(evidence => ({
+              outcomeKind: String(evidence?.outcomeKind || '').trim(),
+            })),
+          }
+        : null,
+      problems: (Array.isArray(decision?.problems) ? decision.problems : []).map(
+        problem => ({ problemId: String(problem?.problemId || '').trim() }),
+      ),
+      candidateAudit: (Array.isArray(decision?.candidateAudit)
+        ? decision.candidateAudit
+        : []
+      ).map(compactCandidate),
+      scoreAudit: (Array.isArray(decision?.scoreAudit)
+        ? decision.scoreAudit
+        : []
+      ).map(compactCandidate),
+      lostOpportunity: decision?.lostOpportunity
+        ? {
+            reasonCode: String(decision.lostOpportunity?.reasonCode || '').trim(),
+            opportunityId: String(
+              decision.lostOpportunity?.opportunityId || '',
+            ).trim(),
+          }
+        : null,
+    };
+  }
+
+  function buildAnalyticsLedgerEvent(event = {}) {
+    const meta = event?.meta || {};
+    const formulaTrace = meta?.formulaTrace || {};
+    return {
+      eventId: String(event?.eventId || '').trim(),
+      sequence: Number(event?.sequence || 0),
+      eventKind: String(event?.eventKind || '').trim(),
+      round: Number(event?.round || 0),
+      actorId: String(event?.actorId || '').trim(),
+      actorName: String(event?.actorName || '').trim(),
+      targetId: String(event?.targetId || '').trim(),
+      targetName: String(event?.targetName || '').trim(),
+      targetIds: (Array.isArray(event?.targetIds) ? event.targetIds : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean),
+      actionName: String(event?.actionName || '').trim(),
+      actionType: String(event?.actionType || '').trim(),
+      actionRole: String(event?.actionRole || '').trim(),
+      actionId: String(event?.actionId || '').trim(),
+      opportunityId: String(event?.opportunityId || '').trim(),
+      sourceActionId: String(event?.sourceActionId || '').trim(),
+      ruleCode: String(event?.ruleCode || '').trim(),
+      result: String(event?.result || '').trim(),
+      resultState: String(event?.resultState || '').trim(),
+      factType: String(event?.factType || '').trim(),
+      effectPrototype: String(event?.effectPrototype || '').trim(),
+      primaryOutcome: String(event?.primaryOutcome || '').trim(),
+      appliedDamage: Number(event?.appliedDamage || 0),
+      appliedHealing: Number(event?.appliedHealing || 0),
+      resource: String(event?.resource || '').trim(),
+      resourceDelta: Number(event?.resourceDelta || event?.delta || 0),
+      duration: Number(event?.duration || 0),
+      createdName: String(event?.createdName || '').trim(),
+      itemName: String(event?.itemName || '').trim(),
+      count: Number(event?.count || 0),
+      quantity: Number(event?.quantity || 0),
+      meta: {
+        decisionCandidateId: String(meta?.decisionCandidateId || '').trim(),
+        resource: String(meta?.resource || '').trim(),
+        resourceKey: String(meta?.resourceKey || '').trim(),
+        delta: Number(meta?.delta || 0),
+        amount: Number(meta?.amount || 0),
+        requestedAmount: Number(meta?.requestedAmount || 0),
+        requestedDelta: Number(meta?.requestedDelta || 0),
+        before: Number(meta?.before || 0),
+        after: Number(meta?.after || 0),
+        quantityAfter: Number(meta?.quantityAfter || 0),
+        intentLethalPrevented: meta?.intentLethalPrevented === true,
+        sideEffectType: String(meta?.sideEffectType || '').trim(),
+        timing: String(meta?.timing || '').trim(),
+        formulaTrace: {
+          attackValue: Number(
+            formulaTrace?.attackValue ?? formulaTrace?.attack ?? 0,
+          ),
+          defenseValue: Number(
+            formulaTrace?.defenseValue ?? formulaTrace?.defense ?? 0,
+          ),
+          powerRatio: Number(formulaTrace?.powerRatio || 0),
+          resourceDrive: Number(formulaTrace?.resourceDrive || 0),
+          targetScope: String(formulaTrace?.targetScope || '').trim(),
+          targetCount: Number(formulaTrace?.targetCount || 0),
+          targetCoverageBudget: Number(formulaTrace?.targetCoverageBudget || 0),
+          targetCoverageMultiplier: Number(formulaTrace?.targetCoverageMultiplier || 0),
+          actionDamageMultiplier: Number(formulaTrace?.actionDamageMultiplier || 0),
+        },
+      },
+    };
+  }
+
+  function buildAnalyticsReportBlock(block = {}) {
+    return {
+      blockId: String(block?.blockId || '').trim(),
+      text: String(block?.text || '').trim(),
+      intentSummary: String(block?.intentSummary || '').trim(),
+      outcomeSummary: String(block?.outcomeSummary || '').trim(),
+      nextWindow: String(block?.nextWindow || '').trim(),
+      facts: (Array.isArray(block?.facts) ? block.facts : [])
+        .map(fact => ({
+          factId: String(fact?.factId || fact?.sourceEventId || '').trim(),
+        }))
+        .filter(fact => fact.factId),
+    };
+  }
+
+  function auditAnalyticsEvidence(decisions = [], ledger = [], reportBlocks = []) {
+    const fatals = [];
+    decisions.forEach((decision, index) => {
+      const selectedId = String(decision?.selected?.candidateId || '').trim();
+      const candidateIds = new Set(
+        (Array.isArray(decision?.candidateAudit) ? decision.candidateAudit : [])
+          .map(candidate => String(candidate?.candidateId || '').trim())
+          .filter(Boolean),
+      );
+      if (selectedId && candidateIds.size && !candidateIds.has(selectedId)) {
+        fatals.push({
+          code: 'SELECTED_CANDIDATE_MISSING_FROM_AUDIT',
+          decisionIndex: index,
+          selectedCandidateId: selectedId,
+        });
+      }
+    });
+    const eventIds = new Set(
+      ledger.map(event => String(event?.eventId || '').trim()).filter(Boolean),
+    );
+    reportBlocks.forEach(block => {
+      (Array.isArray(block?.facts) ? block.facts : []).forEach(fact => {
+        const factId = String(fact?.factId || '').trim();
+        if (factId && !eventIds.has(factId)) {
+          fatals.push({
+            code: 'REPORT_FACT_NOT_IN_LEDGER',
+            blockId: String(block?.blockId || '').trim(),
+            factId,
+          });
+        }
+      });
+    });
+    return {
+      mode: 'ANALYTICS_COMPACT_V1',
+      fatalCount: fatals.length,
+      warningCount: 0,
+      fatals,
+      warnings: [],
+    };
+  }
+
   function runStructuredBattle(input = {}) {
     const performanceTraceEnabled =
       root?.process?.env?.BATTLE_R8_PERF_TRACE === '1';
@@ -11746,6 +12212,7 @@
     const caseId = String(input?.caseId || 'structured-shadow').trim() || 'structured-shadow';
     const seed = Math.max(1, Math.floor(Number(input?.seed || 1)));
     const roundLimit = Math.max(1, Math.min(20, Math.floor(Number(input?.rounds || input?.settings?.maxRounds || 1))));
+    const analyticsCompactEvidence = input?.settings?.analyticsCompactEvidence === true;
     performanceTrace('battle-start', {
       caseId: String(input?.caseId || '').trim(),
       roundLimit,
@@ -13077,13 +13544,19 @@
                   decisionRuntimeSnapshot,
                 ),
             };
-            recordDecisionPerformance(decisionResult, {
-              ...decisionAuditFields,
-              routeFactOwnershipSummary,
-              behaviorLayerSemanticHashes,
-              evaluationSessionObservation,
-            });
-            decisions.push(buildDecisionAuditRecord(decisionAuditFields));
+            if (!analyticsCompactEvidence) {
+              recordDecisionPerformance(decisionResult, {
+                ...decisionAuditFields,
+                routeFactOwnershipSummary,
+                behaviorLayerSemanticHashes,
+                evaluationSessionObservation,
+              });
+            }
+            decisions.push(
+              analyticsCompactEvidence
+                ? buildAnalyticsDecisionAudit(decisionAuditFields)
+                : buildDecisionAuditRecord(decisionAuditFields),
+            );
             return decisionResult;
           }
           const selectedDeclaration = decisionResult.selected.declaration;
@@ -13109,16 +13582,28 @@
           const previousBeliefRevision = String(history.at(-1)?.beliefRevision || '').trim();
           const currentCapacity = Math.max(0, Number(decisionResult?.stateCapacityTotal || 0));
           const currentBeliefRevision = String(decisionResult?.beliefRevision || '').trim();
+          const resolvedSelectedDeclaration = decisionResult?.selected?.declaration || {};
+          const selectedActionKind = String(resolvedSelectedDeclaration?.actionKind || '').trim().toUpperCase();
+          const selectedActionName = String(
+            decisionResult?.selected?.selectedActionName ||
+            resolvedSelectedDeclaration?.skill?.name ||
+            resolvedSelectedDeclaration?.skill?.魂技名 ||
+            selectedActionKind ||
+            '',
+          ).trim();
           history.push({
             signature: String(decisionResult?.strategicSignature || '').trim(),
             actionFamily: String(
               decisionResult?.selected?.actionFamily ||
-              decisionResult?.selected?.declaration?.actionKind ||
+              selectedActionKind ||
               '',
             ).trim(),
+            actionKind: selectedActionKind,
+            actionName: selectedActionName,
+            candidateId: String(decisionResult?.selected?.candidateId || '').trim(),
             actionRole: normalizeActionRole(extras.role || node.actionRole),
-            targetIds: Array.isArray(decisionResult?.selected?.declaration?.targetIds)
-              ? decisionResult.selected.declaration.targetIds.map(value => String(value || '').trim()).filter(Boolean)
+            targetIds: Array.isArray(resolvedSelectedDeclaration?.targetIds)
+              ? resolvedSelectedDeclaration.targetIds.map(value => String(value || '').trim()).filter(Boolean)
               : [],
             opportunitySequence: decisionOpportunitySequence,
             capacityTotal: currentCapacity,
@@ -13160,16 +13645,22 @@
                 decisionRuntimeSnapshot,
               ),
           };
-          recordDecisionPerformance(decisionResult, {
-            ...decisionAuditFields,
-            routeFactOwnershipSummary:
-              typeof routeFactOwnershipSummary === 'object'
-                ? routeFactOwnershipSummary
-                : {},
-            behaviorLayerSemanticHashes,
-            evaluationSessionObservation,
-          });
-          decisions.push(buildDecisionAuditRecord(decisionAuditFields));
+          if (!analyticsCompactEvidence) {
+            recordDecisionPerformance(decisionResult, {
+              ...decisionAuditFields,
+              routeFactOwnershipSummary:
+                typeof routeFactOwnershipSummary === 'object'
+                  ? routeFactOwnershipSummary
+                  : {},
+              behaviorLayerSemanticHashes,
+              evaluationSessionObservation,
+            });
+          }
+          decisions.push(
+            analyticsCompactEvidence
+              ? buildAnalyticsDecisionAudit(decisionAuditFields)
+              : buildDecisionAuditRecord(decisionAuditFields),
+          );
           return decisionResult;
         };
         const cooperativeSummonsForHost = host => listSummonCombatUnits(combatData).filter(summon =>
@@ -14313,13 +14804,90 @@
       }
       listCombatUnits(combatData).forEach(clearC2FoodMaintenanceRuntime);
       if (JSON.stringify(source) !== sourceJson) throw new Error('PREVIEW_MUTATED_STATE');
-      const ledger = ensureLedger(combatData).map(item => cloneAuditSnapshot(item));
-      const trace = collectResolutionTrace(combatData).map(normalizeCausalNode);
-      const decisionAudits = decisions.map(item => cloneAuditSnapshot(item));
+      const sourceLedger = ensureLedger(combatData);
       const finalAlive = readTeamAlive(combatData);
       const winner = terminal?.terminal === true ? terminal.winner : 'unfinished';
       combatData.进行中 = winner === 'unfinished';
       combatData.裁断结果 = winner === 'player' ? '我方胜利' : winner === 'enemy' ? '敌方胜利' : winner === 'draw' ? '平局' : '未裁断';
+      const finalSnapshot = getBattleSnapshot(combatData);
+      const previewStopReason = terminal?.terminal === true
+        ? {
+            code: 'BATTLE_TERMINAL',
+            text: String(terminal?.terminalReason || terminal?.reason || '战斗已达到终局条件。').trim(),
+          }
+        : continuationStopReason || {
+            code: input?.mode === 'single_round'
+              ? 'SINGLE_ROUND_COMPLETE'
+              : roundsExecuted >= roundLimit
+                ? 'ROUND_CAP_REACHED'
+                : 'PREVIEW_INTERRUPTED',
+            text: input?.mode === 'single_round'
+              ? '本次单回合结算已完成，战斗仍可继续。'
+              : roundsExecuted >= roundLimit
+                ? `已完成本次预演设置的${roundLimit}回合，战斗仍可继续。`
+                : '本次预演提前中断，战斗仍可继续。',
+          };
+      if (analyticsCompactEvidence) {
+        const publicEntries = projectPublicReportBlocks(sourceLedger);
+        const reportBlocks = buildReportBlocks(
+          sourceLedger,
+          decisions,
+          publicEntries,
+        ).map(buildAnalyticsReportBlock);
+        const ledger = sourceLedger.map(buildAnalyticsLedgerEvent);
+        const audit = auditAnalyticsEvidence(decisions, ledger, reportBlocks);
+        return {
+          caseId,
+          seed,
+          mode: 'structured',
+          preview: true,
+          inputUnchanged: true,
+          providerId,
+          evidenceMode: 'analytics-compact-v1',
+          reportEvidenceMode: 'projected-compact-v1',
+          roundsRequested: roundLimit,
+          roundsExecuted,
+          executedRoundNumbers: [...executedRoundNumbers],
+          roundStart: executedRoundNumbers.length ? executedRoundNumbers[0] : null,
+          roundEnd: executedRoundNumbers.length
+            ? executedRoundNumbers[executedRoundNumbers.length - 1]
+            : null,
+          ledger,
+          eventLedger: ledger,
+          trace: [],
+          resolutionTrace: [],
+          scoreAudit: [],
+          scoringAudit: [],
+          scoringMutationDetected: false,
+          decisions,
+          decisionPerformanceDiagnostics: [],
+          evaluationSessionMetrics: null,
+          decisionTrace: [],
+          actionChains: [],
+          actionQueueTrace: [],
+          reportBlocks,
+          publicReportBlocks: [],
+          roundOverview: [],
+          finalBattleReport: null,
+          aiSummaryInput: null,
+          finalSnapshot,
+          snapshot: finalSnapshot,
+          combatData: null,
+          logs,
+          initialSnapshot,
+          previewStopReason,
+          terminal,
+          objectiveResolution: terminal,
+          winner,
+          playerAlive: finalAlive.playerAlive,
+          enemyAlive: finalAlive.enemyAlive,
+          audit,
+          beliefObservations: [],
+        };
+      }
+      const ledger = sourceLedger.map(item => cloneAuditSnapshot(item));
+      const trace = collectResolutionTrace(combatData).map(normalizeCausalNode);
+      const decisionAudits = decisions.map(item => cloneAuditSnapshot(item));
       const scoringAudit = decisionAudits.map(item => ({
         round: Number(item?.round || 0),
         actor: String(item?.actorId || '').trim(),
@@ -14354,24 +14922,6 @@
         proofCoverage: cloneAuditSnapshot(item?.proofCoverage || null),
         candidateCoverage: cloneAuditSnapshot(item?.candidateCoverage || null),
       }));
-      const finalSnapshot = getBattleSnapshot(combatData);
-      const previewStopReason = terminal?.terminal === true
-        ? {
-            code: 'BATTLE_TERMINAL',
-            text: String(terminal?.terminalReason || terminal?.reason || '战斗已达到终局条件。').trim(),
-          }
-        : continuationStopReason || {
-            code: input?.mode === 'single_round'
-              ? 'SINGLE_ROUND_COMPLETE'
-              : roundsExecuted >= roundLimit
-                ? 'ROUND_CAP_REACHED'
-                : 'PREVIEW_INTERRUPTED',
-            text: input?.mode === 'single_round'
-              ? '本次单回合结算已完成，战斗仍可继续。'
-              : roundsExecuted >= roundLimit
-                ? `已完成本次预演设置的${roundLimit}回合，战斗仍可继续。`
-                : '本次预演提前中断，战斗仍可继续。',
-          };
       const publicReportBlocks = projectPublicReportBlocks(ledger).map(cloneAuditSnapshot);
       const reportBlocks = buildReportBlocks(ledger, decisionAudits, publicReportBlocks);
       const summary = buildFinalSummary(ledger, decisionAudits, finalSnapshot, combatData);
@@ -14713,6 +15263,10 @@
         'power',
         'powerRatio',
         'segments',
+        'targetScope',
+        'targetCount',
+        'targetCoverageBudget',
+        'targetCoverageMultiplier',
         'actionDamageMultiplier',
       ];
       return {
@@ -18096,6 +18650,9 @@
       frozenCandidateIds: Array.isArray(decision?.frozenCandidateIds)
         ? decision.frozenCandidateIds.map(item => String(item || '').trim()).filter(Boolean)
         : [],
+      preEnumerationRejections: Array.isArray(decision?.preEnumerationRejections)
+        ? decision.preEnumerationRejections.map(entry => cloneValue(entry))
+        : [],
       preparedEntryCandidateIds: normalizeCandidateIdList(
         decision?.preparedEntryCandidateIds,
       ),
@@ -18126,6 +18683,7 @@
               selected?.candidateId ||
               '',
             ),
+            actionFamily: String(selected?.actionFamily || '').trim(),
             utilityBefore: Number(selected?.utilityBefore || 0),
             utilityAfter: Number(selected?.utilityAfter || 0),
             objectiveUtility: Number(selected?.objectiveUtility || 0),
