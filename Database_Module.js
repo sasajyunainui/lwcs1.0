@@ -4561,7 +4561,6 @@ $CONTENT
         lastUserSendIntentAt: 0,
         lastGeneration: null,
         正文后置上下文: null,
-        活跃生成栈: [],
     };
     let activeDatabaseGenerationTransaction_ACU = null;
     let databaseGenerationEpoch_ACU = 0;
@@ -4623,7 +4622,7 @@ $CONTENT
             // ignore
         }
     }
-    function recordGenerationContext_ACU(type, params, dryRun, 替换当前生成 = false) {
+    function recordGenerationContext_ACU(type, params, dryRun) {
         const 聊天数组 = getChatArray_ACU();
         const 最新角色消息 = 读取最新角色消息元信息_ACU();
         const 是否正文生成 = !dryRun && !isQuietLikeGeneration_ACU(type, params) && !params?.automatic_trigger;
@@ -4642,10 +4641,6 @@ $CONTENT
             开始最后角色签名: 最新角色消息?.文本签名 || '',
             是否正文生成,
         };
-        if (替换当前生成 && generationGate_ACU.活跃生成栈.length > 0)
-            generationGate_ACU.活跃生成栈[generationGate_ACU.活跃生成栈.length - 1] = generationGate_ACU.lastGeneration;
-        else
-            generationGate_ACU.活跃生成栈.push(generationGate_ACU.lastGeneration);
         if (是否正文生成) {
             generationGate_ACU.正文后置上下文 = {
                 type,
@@ -4667,7 +4662,6 @@ $CONTENT
             dryRun: dryRun === true,
             automatic_trigger: params?.automatic_trigger === true,
             isBodyGeneration: 是否正文生成,
-            replacedCurrentGeneration: 替换当前生成,
             epoch: generationEpoch,
             chatCount: 聊天数组.length,
             lastAssistantIndex: 最新角色消息?.消息索引 ?? -1,
@@ -22129,7 +22123,6 @@ $CONTENT
                 generationGate_ACU.lastUserSendIntentAt = 0;
                 generationGate_ACU.lastGeneration = null;
                 generationGate_ACU.正文后置上下文 = null;
-                generationGate_ACU.活跃生成栈.length = 0;
                 重置生成结束运行时状态_ACU();
                 return { changed: true, active: false };
             }
@@ -22162,7 +22155,6 @@ $CONTENT
         generationGate_ACU.lastUserSendIntentAt = 0;
         generationGate_ACU.lastGeneration = null;
         generationGate_ACU.正文后置上下文 = null;
-        generationGate_ACU.活跃生成栈.length = 0;
         重置生成结束运行时状态_ACU();
         logDebug_ACU(`ACU: currentChatFileIdentifier FINAL set to: "${currentChatFileIdentifier_ACU}" (Source: CHAT_CHANGED event)`);
         // 持久化聊天数据读取由 presentation/bootstrap/init.ts 的延迟 CHAT_CHANGED 阶段统一执行。
@@ -56142,28 +56134,33 @@ $CONTENT
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_ENDED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_ENDED, (message_id) => {
-                        const 完成生成 = generationGate_ACU.活跃生成栈.pop() || null;
                         recordTtAutoUpdateDebug_ACU('GENERATION_ENDED回调', {
                             hostMessageId: message_id,
                             hasPendingBodyContext: !!读取正文后置上下文_ACU(),
-                            matchedGeneration: !!完成生成,
-                            generationType: 完成生成?.type || '',
-                            bodyGeneration: 完成生成?.是否正文生成 === true,
                         });
                         logDebug_ACU(`ACU GENERATION_ENDED event for message_id: ${message_id}`);
-                        if (完成生成?.是否正文生成 && 调度已确认正文数据库更新_ACU('GENERATION_ENDED', null)) {
-                            logDebug_ACU('ACU: Confirmed completed body floor for automatic table update.');
-                        }
-                        else {
-                            logDebug_ACU('ACU: Skip automatic table update because this was not a confirmed body generation.');
-                        }
                         onLoopGenerationEnded_ACU();
+                    });
+                }
+                if (SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED) {
+                    SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.MESSAGE_RECEIVED, (message_id, type) => {
+                        const 消息类型 = String(type || '');
+                        const 是正文消息 = ['normal', 'regenerate', 'continue', 'swipe', 'append', 'appendFinal'].includes(消息类型);
+                        recordTtAutoUpdateDebug_ACU('MESSAGE_RECEIVED回调', {
+                            hostMessageId: message_id,
+                            type: 消息类型,
+                            bodyMessage: 是正文消息,
+                            hasPendingBodyContext: !!读取正文后置上下文_ACU(),
+                        });
+                        if (!是正文消息)
+                            return;
+                        if (调度已确认正文数据库更新_ACU('MESSAGE_RECEIVED', message_id))
+                            logDebug_ACU(`ACU: Confirmed received body floor ${message_id} for automatic table update.`);
                     });
                 }
                 if (SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED) {
                     SillyTavern_API_ACU.eventSource.on(SillyTavern_API_ACU.eventTypes.GENERATION_STOPPED, () => {
-                        const 停止生成 = generationGate_ACU.活跃生成栈.pop() || null;
-                        if (!停止生成?.是否正文生成)
+                        if (!generationGate_ACU.lastGeneration?.是否正文生成)
                             return;
                         const 正文上下文 = 读取正文后置上下文_ACU();
                         if (!正文上下文)
@@ -56187,7 +56184,7 @@ $CONTENT
                             && !dryRun
                             && !isQuietLikeGeneration_ACU(type, params)
                             && !params?.automatic_trigger) {
-                            recordGenerationContext_ACU(type, params, dryRun, true);
+                            recordGenerationContext_ACU(type, params, dryRun);
                             logDebug_ACU(`[生成结束后置] 在 GENERATION_AFTER_COMMANDS 补记正文生成上下文: type=${type}`);
                         }
                         // 前置过滤（纯 UI/宿主层判断）

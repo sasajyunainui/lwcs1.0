@@ -349,19 +349,20 @@ index c3ddcb5..4ff4e4a 100644
 @@ -319,0 +339 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
-index 722db33..74bf7d5 100644
+index 722db33..b9a8949 100644
 --- a/src/function/update/index.ts
 +++ b/src/function/update/index.ts
-@@ -3,0 +4,6 @@ import { onMessageReceived } from '@/function/update/on_message_received';
+@@ -3,0 +4,7 @@ import { onMessageReceived } from '@/function/update/on_message_received';
 +import {
 +    awaitBeforeGeneration,
 +    isTtMvuHost,
 +    recordTtAutoUpdateDebug,
 +    scheduleMvuTask,
++    textFingerprint,
 +} from '@/function/update/mvu_runtime';
-@@ -4,0 +11 @@ import { handleVariablesInMessage } from '@/function/update_variables';
+@@ -4,0 +12 @@ import { handleVariablesInMessage } from '@/function/update_variables';
 +import { useDataStore } from '@/store';
-@@ -8,0 +16,61 @@ export function initResponse() {
+@@ -8,0 +17,63 @@ export function initResponse() {
 +    const is_tt_host = isTtMvuHost();
 +    const pending_tt_message_keys = new Set<string>();
 +    const completed_tt_message_keys = new Set<string>();
@@ -369,6 +370,7 @@ index 722db33..74bf7d5 100644
 +        isTtHost: is_tt_host,
 +        hasGenerationStarted: !!tavern_events.GENERATION_STARTED,
 +        hasGenerationEnded: !!tavern_events.GENERATION_ENDED,
++        hasMessageReceived: !!tavern_events.MESSAGE_RECEIVED,
 +        hasGenerationAfterCommands: !!tavern_events.GENERATION_AFTER_COMMANDS,
 +    });
 +    const handle_completed_message = (message_id: number) => {
@@ -392,6 +394,7 @@ index 722db33..74bf7d5 100644
 +            SillyTavern.getCurrentChatId(),
 +            message.message_id ?? message_id,
 +            message.swipe_id ?? null,
++            textFingerprint(message.message),
 +        ]);
 +        if (pending_tt_message_keys.has(message_key) || completed_tt_message_keys.has(message_key)) {
 +            recordTtAutoUpdateDebug('正文完成事件跳过', {
@@ -406,7 +409,7 @@ index 722db33..74bf7d5 100644
 +            textLength: message.message.length,
 +        });
 +        // 只提交异步任务，不把额外模型和落盘耗时挂在宿主的楼层事件上。
-+        scheduleMvuTask('generation_ended', message_id, async task => {
++        scheduleMvuTask('message_received', message_id, async task => {
 +            try {
 +                recordTtAutoUpdateDebug('MVU任务开始', { messageId: message_id });
 +                const updated = await onMessageReceived(message_id, { task });
@@ -423,18 +426,16 @@ index 722db33..74bf7d5 100644
 +            }
 +        });
 +    };
-@@ -12,2 +80,2 @@ export function initResponse() {
+@@ -12,2 +83,2 @@ export function initResponse() {
 -    stop_list.push(
 -        controlledStoppableEventOn(
 +    if (!is_tt_host) {
 +        stop_list.push(controlledStoppableEventOn(
-@@ -16,2 +84,72 @@ export function initResponse() {
+@@ -16,2 +87,37 @@ export function initResponse() {
 -        )
 -    );
 +        ));
 +    } else {
-+        const active_generations: Array<{ body: boolean; chat_id: string }> = [];
-+        const pending_body_submissions = new Set<ReturnType<typeof setTimeout>>();
 +        const is_background_generation = (
 +            type: string,
 +            option: Record<string, unknown> = {},
@@ -442,70 +443,37 @@ index 722db33..74bf7d5 100644
 +        ) => dry_run || type === 'quiet' || option.automatic_trigger === true
 +            || (typeof option.quiet_prompt === 'string' && option.quiet_prompt.trim().length > 0);
 +        stop_list.push(controlledStoppableEventOn(
-+            tavern_events.GENERATION_STARTED,
-+            (type: string, option: Record<string, unknown> = {}, dry_run = false) => {
-+                active_generations.push({
-+                    body: !is_background_generation(type, option, dry_run),
-+                    chat_id: String(SillyTavern.getCurrentChatId()),
++            tavern_events.MESSAGE_RECEIVED,
++            (message_id: number, type: string) => {
++                const body_message = ['normal', 'regenerate', 'continue', 'swipe', 'append', 'appendFinal'].includes(String(type || ''));
++                recordTtAutoUpdateDebug('MESSAGE_RECEIVED回调', {
++                    messageId: message_id,
++                    type: String(type || ''),
++                    bodyMessage: body_message,
++                    duringExtraAnalysis: useDataStore().runtimes.is_during_extra_analysis,
 +                });
++                if (
++                    !body_message
++                    || useDataStore().runtimes.is_during_extra_analysis
++                    || !Number.isInteger(message_id)
++                    || message_id < 0
++                ) return;
++                handle_completed_message(message_id);
 +            }
 +        ));
-+        stop_list.push(controlledStoppableEventOn(
-+            tavern_events.GENERATION_ENDED,
-+            (host_message_id: unknown) => {
-+                const generation = active_generations.pop();
-+                recordTtAutoUpdateDebug('GENERATION_ENDED回调', {
-+                    hostMessageId: host_message_id,
-+                    matchedGeneration: !!generation,
-+                    bodyGeneration: generation?.body === true,
-+                });
-+                if (!generation?.body) return;
-+                const message_id = getLastMessageId();
-+                const timer = setTimeout(() => {
-+                    pending_body_submissions.delete(timer);
-+                    if (String(SillyTavern.getCurrentChatId()) !== generation.chat_id) {
-+                        recordTtAutoUpdateDebug('正文完成事件跳过', {
-+                            reason: 'chat_changed_before_submission',
-+                            messageId: message_id,
-+                        });
-+                        return;
-+                    }
-+                    handle_completed_message(message_id);
-+                }, 0);
-+                pending_body_submissions.add(timer);
-+            }
-+        ));
-+        stop_list.push(controlledStoppableEventOn(tavern_events.GENERATION_STOPPED, () => {
-+            active_generations.pop();
-+        }));
 +        stop_list.push(controlledStoppableEventOn(
 +            tavern_events.GENERATION_AFTER_COMMANDS,
 +            (type: string, option: Record<string, unknown> = {}, dry_run = false) => {
 +                if (is_background_generation(type, option, dry_run)
 +                    || useDataStore().runtimes.is_during_extra_analysis) return;
-+                const generation = active_generations.at(-1);
-+                if (generation) {
-+                    generation.body = true;
-+                    generation.chat_id = String(SillyTavern.getCurrentChatId());
-+                } else {
-+                    active_generations.push({
-+                        body: true,
-+                        chat_id: String(SillyTavern.getCurrentChatId()),
-+                    });
-+                }
 +                return awaitBeforeGeneration();
 +            }
 +        ));
-+        stop_list.push(() => {
-+            pending_body_submissions.forEach(timer => clearTimeout(timer));
-+            pending_body_submissions.clear();
-+            active_generations.length = 0;
-+        });
 +        recordTtAutoUpdateDebug('TT正文完成监听已注册', {});
 +    }
 diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
 new file mode 100644
-index 0000000..8e35aa3
+index 0000000..6f7ca82
 --- /dev/null
 +++ b/src/function/update/mvu_runtime.ts
 @@ -0,0 +1,754 @@
@@ -657,7 +625,7 @@ index 0000000..8e35aa3
 +    }
 +}
 +
-+function textFingerprint(value: string): string {
++export function textFingerprint(value: string): string {
 +    let hash = 2166136261;
 +    for (const character of String(value)) hash = Math.imul(hash ^ character.codePointAt(0)!, 16777619);
 +    return (hash >>> 0).toString(16).padStart(8, '0');
