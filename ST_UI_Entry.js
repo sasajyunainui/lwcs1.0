@@ -208,15 +208,6 @@
         return !!提供者 && typeof 提供者.open === 'function';
       },
     },
-    MVU提示投影器: {
-      类型: 'wait-global',
-      全局键: '__LWCS_MVU_PROMPT_PROJECTOR_V1__',
-      值类型: 'function',
-      关键: true,
-      分组: 'core',
-      依赖: ['MVU持久化提供者'],
-      已就绪: () => typeof 读取共享值('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function',
-    },
     ...(是TT宿主 ? {} : {
       冷归档存储: { 类型: 'inline-js', 地址: 资源基础地址 + 'LWCS_Cold_Archive_Store.js' + 资源版本后缀, 关键: true, 分组: 'core', 依赖: ['持久化适配器'] },
     }),
@@ -296,7 +287,6 @@
   const 冷归档前置模块顺序 = Object.freeze([
     '持久化适配器',
     'MVU持久化提供者',
-    'MVU提示投影器',
     ...(是TT宿主 ? [] : ['冷归档存储']),
   ]);
   const 核心模块顺序 = Object.freeze([...核心前置模块顺序, ...冷归档前置模块顺序, 'UI运行时', '地图模块', '数据库模块']);

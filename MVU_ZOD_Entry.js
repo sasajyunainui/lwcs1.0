@@ -715,8 +715,7 @@ async function 确保MVU项目运行时_V1() {
   await 加载MVU经典依赖_V1(MVU_PROJECT_RUNTIME_BUNDLE_FILE_V1, () => {
     const 集成 = 读取MVU共享全局值_V1('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
     const 修炼运行时 = 读取MVU共享全局值_V1('__LWCS_ERA_CULTIVATION_RUNTIME_V1__');
-    return typeof 读取MVU共享全局值_V1('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function'
-      && 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__')?.version === '2.0.0'
+    return 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__')?.version === '2.0.0'
       && 读取MVU共享全局值_V1('__LWCS_ERA_DATA_REGISTRY_V1__')?.version === '1.1.0-era-resource-owner-20260822'
       && !!读取MVU共享全局值_V1('__LWCS_ERA_CURRENCY_REGISTRY_V1__')
       && 读取MVU共享全局值_V1('__LWCS_TIMELINE_RUNTIME_V1__')?.version === '1.0.0'
@@ -860,7 +859,6 @@ const 必需接口_V1 = [
   ['Mvu', typeof 读取MVU共享全局值_V1('Mvu')?.getMvuData === 'function'],
   ['PersistenceAdapter', typeof 读取MVU共享全局值_V1('__LWCS_PERSISTENCE_ADAPTER_V1__')?.openSession === 'function'],
   ['PersistenceProvider', typeof 读取MVU共享全局值_V1('__LWCS_MVU_PERSISTENCE_PROVIDER_V1__')?.open === 'function'],
-  ['PromptProjector', typeof 读取MVU共享全局值_V1('__LWCS_MVU_PROMPT_PROJECTOR_V1__') === 'function'],
   ['LibraryData', 读取MVU共享全局值_V1('__LWCS_LIBRARY_DATA_RUNTIME_V1__')?.version === '2.0.0'],
   ['EraDataRegistry', !!读取MVU共享全局值_V1('__LWCS_ERA_DATA_REGISTRY_V1__')],
   ['EraCurrencyRegistry', !!读取MVU共享全局值_V1('__LWCS_ERA_CURRENCY_REGISTRY_V1__')],
