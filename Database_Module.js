@@ -4677,7 +4677,18 @@ $CONTENT
     function recordGenerationContext_ACU(type, params, dryRun) {
         const 聊天数组 = getChatArray_ACU();
         const 最新角色消息 = 读取最新角色消息元信息_ACU();
-        const 是否正文生成 = !dryRun && !isQuietLikeGeneration_ACU(type, params) && !params?.automatic_trigger;
+        const TT末楼 = 聊天数组.length > 0 ? 聊天数组[聊天数组.length - 1] : null;
+        const TT正文占位生成 = dryRun === true
+            && hasTauriTavernChatStoreSurface_ACU()
+            && ['normal', 'regenerate', 'continue', 'swipe', 'append', 'appendFinal'].includes(String(type || ''))
+            && !!TT末楼
+            && !TT末楼.is_user
+            && !TT末楼.is_system
+            && 最新角色消息?.消息索引 === 聊天数组.length - 1
+            && String(最新角色消息?.文本 || '').trim().length === 0;
+        const 是否正文生成 = (!dryRun || TT正文占位生成)
+            && !isQuietLikeGeneration_ACU(type, params)
+            && !params?.automatic_trigger;
         if (是否正文生成)
             advanceDatabaseGenerationEpoch_ACU();
         const generationEpoch = databaseGenerationEpoch_ACU;
@@ -4713,6 +4724,7 @@ $CONTENT
             type,
             dryRun: dryRun === true,
             automatic_trigger: params?.automatic_trigger === true,
+            ttPlaceholderGeneration: TT正文占位生成,
             isBodyGeneration: 是否正文生成,
             epoch: generationEpoch,
             chatCount: 聊天数组.length,

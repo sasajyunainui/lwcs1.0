@@ -461,6 +461,13 @@
     return clone(value);
   }
 
+  function isCanonicalMvuState(value) {
+    return isObject(value)
+      && isObject(value.stat_data)
+      && Object.keys(value.stat_data).length > 0
+      && isObject(value.schema);
+  }
+
   function createSession(adapter, opened) {
     const sessionId = ++sessionCounter;
     const adapterSession = opened.session;
@@ -500,7 +507,9 @@
     function operationFailure(error) {
       const state = ['not_committed', 'conflict', 'uncertain', 'stale_chat', 'unavailable'].includes(error?.state)
         ? error.state
-        : (error?.code === 'STALE_CHAT' ? 'stale_chat' : 'uncertain');
+        : (error?.code === 'STALE_CHAT'
+          ? 'stale_chat'
+          : (['STATE_INVALID', 'PLACEHOLDER_MESSAGE'].includes(error?.code) ? 'not_committed' : 'uncertain'));
       lastError = error?.code || 'PERSISTENCE_OPERATION_FAILED';
       return result(state, { error: lastError, backend: opened.backend, stableChatId: opened.stableChatId });
     }
@@ -517,6 +526,58 @@
       assertLive();
       const written = await adapterSession.setJson({ namespace: NAMESPACE, key, value, verify });
       if (written.state !== 'committed') throw resultError(written);
+    }
+
+    async function readRevisionChain(targetRevision) {
+      const targetRead = await readKey(`state:revision:${targetRevision}`, { schemaVersion: SCHEMA_VERSION, kind: 'revision', revision: targetRevision });
+      if (!targetRead.found || !validRevision(targetRead.value, targetRevision)) throw new ProviderError('REVISION_HEAD_INVALID');
+      const reverseRecords = [targetRead.value];
+      const visitedRevisions = new Set([targetRevision]);
+      let cursor = targetRead.value;
+      while (cursor.mode !== 'checkpoint') {
+        if (reverseRecords.length > 20 || !Number.isInteger(cursor.parent)) throw new ProviderError('REVISION_WINDOW_EXCEEDED');
+        const parentRevision = cursor.parent;
+        if (parentRevision >= cursor.revision || visitedRevisions.has(parentRevision)) throw new ProviderError('REVISION_CHAIN_INVALID');
+        const parentRead = await readKey(`state:revision:${parentRevision}`, { schemaVersion: SCHEMA_VERSION, kind: 'revision', revision: parentRevision });
+        if (!parentRead.found || !validRevision(parentRead.value, parentRevision)) throw new ProviderError('REVISION_CHAIN_INVALID');
+        visitedRevisions.add(parentRevision);
+        cursor = parentRead.value;
+        reverseRecords.push(cursor);
+      }
+      if (reverseRecords.length > 20) throw new ProviderError('REVISION_WINDOW_EXCEEDED');
+      const records = reverseRecords.reverse();
+      const checkpointRevision = records[0].revision;
+      if (records.some(record => record.mode === 'patch' && record.checkpointRevision !== checkpointRevision)) throw new ProviderError('REVISION_CHAIN_INVALID');
+      return records;
+    }
+
+    function selectCanonicalState(records, requestedFloor) {
+      let targetIndex = records.length - 1;
+      if (requestedFloor.absoluteIndex >= 0) {
+        targetIndex = -1;
+        let targetAbsoluteIndex = -1;
+        for (let index = records.length - 1; index >= 0; index -= 1) {
+          const candidateFloor = normalizeFloor(records[index].floor);
+          if (!floorCompatible(candidateFloor, requestedFloor) || candidateFloor.absoluteIndex <= targetAbsoluteIndex) continue;
+          targetIndex = index;
+          targetAbsoluteIndex = candidateFloor.absoluteIndex;
+        }
+      }
+      if (targetIndex < 0) return null;
+      let candidateState = normalizeState(records[0].checkpoint);
+      let canonicalTargetIndex = isCanonicalMvuState(candidateState) ? 0 : -1;
+      let canonicalState = canonicalTargetIndex === 0 ? clone(candidateState) : null;
+      for (let index = 1; index <= targetIndex; index += 1) {
+        const record = records[index];
+        candidateState = record.mode === 'checkpoint'
+          ? normalizeState(record.checkpoint)
+          : normalizeState(applyPatch(candidateState, record.patch));
+        if (isCanonicalMvuState(candidateState)) {
+          canonicalTargetIndex = index;
+          canonicalState = clone(candidateState);
+        }
+      }
+      return canonicalTargetIndex < 0 ? null : { records, targetIndex: canonicalTargetIndex, state: canonicalState };
     }
 
     async function loadNow(request = {}) {
@@ -542,43 +603,31 @@
       latestRevision = Math.max(latestRevision, persistedHead.revision);
       let targetRevision = persistedHead.revision;
       if (branchRead.found && validFloorPointer(branchRead.value, requestedFloor) && branchRead.value.revision <= persistedHead.revision) targetRevision = branchRead.value.revision;
-      const targetRevisionRead = await readKey(`state:revision:${targetRevision}`, { schemaVersion: SCHEMA_VERSION, kind: 'revision', revision: targetRevision });
-      if (!targetRevisionRead.found || !validRevision(targetRevisionRead.value, targetRevision)) throw new ProviderError('REVISION_HEAD_INVALID');
-      const reverseRecords = [targetRevisionRead.value];
-      let cursor = targetRevisionRead.value;
-      while (cursor.mode !== 'checkpoint') {
-        if (reverseRecords.length > 20 || !Number.isInteger(cursor.parent)) throw new ProviderError('REVISION_WINDOW_EXCEEDED');
-        const parentRevision = cursor.parent;
-        const parentRead = await readKey(`state:revision:${parentRevision}`, { schemaVersion: SCHEMA_VERSION, kind: 'revision', revision: parentRevision });
-        if (!parentRead.found || !validRevision(parentRead.value, parentRevision)) throw new ProviderError('REVISION_CHAIN_INVALID');
-        cursor = parentRead.value;
-        reverseRecords.push(cursor);
+      let selected = null;
+      let candidateRevision = targetRevision;
+      const visitedCheckpointHeads = new Set();
+      for (let attempt = 0; attempt < 20 && Number.isInteger(candidateRevision); attempt += 1) {
+        if (visitedCheckpointHeads.has(candidateRevision)) throw new ProviderError('REVISION_CHAIN_INVALID');
+        visitedCheckpointHeads.add(candidateRevision);
+        const records = await readRevisionChain(candidateRevision);
+        selected = selectCanonicalState(records, requestedFloor);
+        if (selected) break;
+        const parentRevision = records[0].parent;
+        if (Number.isInteger(parentRevision) && parentRevision >= records[0].revision) throw new ProviderError('REVISION_CHAIN_INVALID');
+        candidateRevision = parentRevision;
       }
-      if (reverseRecords.length > 20 || reverseRecords[reverseRecords.length - 1].mode !== 'checkpoint') throw new ProviderError('CHECKPOINT_MISSING');
-      const records = reverseRecords.reverse();
+      if (!selected && Number.isInteger(candidateRevision)) throw new ProviderError('REVISION_WINDOW_EXCEEDED');
+      if (!selected) {
+        await assertCurrentFloor(requestedFloor);
+        hotState = clone(initialState);
+        head = null;
+        floor = requestedFloor;
+        loaded = true;
+        lastError = '';
+        return result('committed', { hotState: clone(hotState), head: null, floor, invalidStateReset: true, backend: opened.backend, stableChatId: opened.stableChatId });
+      }
+      const { records, targetIndex, state: canonicalState } = selected;
       const checkpointRevision = records[0].revision;
-      if (records.some(record => record.mode === 'patch' && record.checkpointRevision !== checkpointRevision)) throw new ProviderError('REVISION_CHAIN_INVALID');
-      let state = normalizeState(records[0].checkpoint);
-      let targetIndex = records.length - 1;
-      if (requestedFloor.absoluteIndex >= 0) {
-        targetIndex = -1;
-        let targetAbsoluteIndex = -1;
-        for (let index = records.length - 1; index >= 0; index -= 1) {
-          const candidateFloor = normalizeFloor(records[index].floor);
-          if (!floorCompatible(candidateFloor, requestedFloor) || candidateFloor.absoluteIndex < targetAbsoluteIndex) continue;
-          targetIndex = index;
-          targetAbsoluteIndex = candidateFloor.absoluteIndex;
-        }
-        if (targetIndex < 0) {
-          await assertCurrentFloor(requestedFloor);
-          hotState = clone(initialState);
-          head = null;
-          floor = requestedFloor;
-          loaded = true;
-          lastError = '';
-          return result('committed', { hotState: clone(hotState), head: null, floor, branchReset: true, backend: opened.backend, stableChatId: opened.stableChatId });
-        }
-      }
       const target = records[targetIndex];
       const targetHead = {
         schemaVersion: SCHEMA_VERSION,
@@ -589,18 +638,13 @@
         floor: target.floor,
         mode: target.mode,
       };
-      state = normalizeState(records[0].checkpoint);
-      for (let index = 1; index <= targetIndex; index += 1) {
-        const record = records[index];
-        state = record.mode === 'checkpoint' ? normalizeState(record.checkpoint) : normalizeState(applyPatch(state, record.patch));
-      }
       await assertCurrentFloor(requestedFloor);
-      hotState = state;
+      hotState = canonicalState;
       head = clone(targetHead);
       floor = normalizeFloor(target.floor);
       loaded = true;
       lastError = '';
-      return result('committed', { hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
+      return result('committed', { hotState: clone(hotState), head: clone(head), floor, recovered: target.revision !== targetRevision, backend: opened.backend, stableChatId: opened.stableChatId });
     }
 
     async function readStateNow(request = {}) {
@@ -629,6 +673,8 @@
         : normalizeState(request.fullState);
       if (nextState === null) throw new ProviderError('FULL_STATE_REQUIRED');
       const nextFloor = normalizeFloor(request.message);
+      if (!isCanonicalMvuState(nextState)) throw new ProviderError('STATE_INVALID');
+      if (nextFloor.absoluteIndex < 0 || nextFloor.textFingerprint === textFingerprint('')) throw new ProviderError('PLACEHOLDER_MESSAGE');
       await assertCurrentFloor(nextFloor);
       if (head && jsonEqual(previousState, nextState)) {
         lastError = '';

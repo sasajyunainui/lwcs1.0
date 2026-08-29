@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:feed19b544975d09707489a08571daae0f5077708021168522798491425bb4fb */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:ada315f737c0626b420d2a756e6397852dccdd0680ade8af29b77c6fd9e01bea */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -177784,7 +177784,18 @@ $CONTENT
     function recordGenerationContext_ACU(type, params, dryRun) {
         const 聊天数组 = getChatArray_ACU();
         const 最新角色消息 = 读取最新角色消息元信息_ACU();
-        const 是否正文生成 = !dryRun && !isQuietLikeGeneration_ACU(type, params) && !params?.automatic_trigger;
+        const TT末楼 = 聊天数组.length > 0 ? 聊天数组[聊天数组.length - 1] : null;
+        const TT正文占位生成 = dryRun === true
+            && hasTauriTavernChatStoreSurface_ACU()
+            && ['normal', 'regenerate', 'continue', 'swipe', 'append', 'appendFinal'].includes(String(type || ''))
+            && !!TT末楼
+            && !TT末楼.is_user
+            && !TT末楼.is_system
+            && 最新角色消息?.消息索引 === 聊天数组.length - 1
+            && String(最新角色消息?.文本 || '').trim().length === 0;
+        const 是否正文生成 = (!dryRun || TT正文占位生成)
+            && !isQuietLikeGeneration_ACU(type, params)
+            && !params?.automatic_trigger;
         if (是否正文生成)
             advanceDatabaseGenerationEpoch_ACU();
         const generationEpoch = databaseGenerationEpoch_ACU;
@@ -177820,6 +177831,7 @@ $CONTENT
             type,
             dryRun: dryRun === true,
             automatic_trigger: params?.automatic_trigger === true,
+            ttPlaceholderGeneration: TT正文占位生成,
             isBodyGeneration: 是否正文生成,
             epoch: generationEpoch,
             chatCount: 聊天数组.length,

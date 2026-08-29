@@ -154,7 +154,7 @@ index 321bd11..c7dbc51 100644
 @@ -238 +243,0 @@ async function onVariableUpdatedCall(args: any): Promise<string> {
 -    await replaceVariables(variables, { type: 'message', message_id: message_id });
 diff --git a/src/function/global/index.ts b/src/function/global/index.ts
-index caf3097..6665ece 100644
+index caf3097..580eec7 100644
 --- a/src/function/global/index.ts
 +++ b/src/function/global/index.ts
 @@ -2,0 +3,8 @@ import { updateVariable, updateVariables } from '@/function/update_variables';
@@ -177,7 +177,7 @@ index caf3097..6665ece 100644
 +            if (
 +                _.isPlainObject(data?.stat_data)
 +                && !_.isEmpty(data.stat_data)
-+                && Object.prototype.hasOwnProperty.call(data, 'schema')
++                && _.isPlainObject(data.schema)
 +            ) return data;
 +            await new Promise(resolve => setTimeout(resolve, 50));
 +        } while (Date.now() < deadline);
@@ -349,7 +349,7 @@ index c3ddcb5..4ff4e4a 100644
 @@ -319,0 +339 @@ export async function loadInitVarData(
 +            mvu_data.initialized_lorebooks[current_lorebook] = [];
 diff --git a/src/function/update/index.ts b/src/function/update/index.ts
-index 722db33..b9a8949 100644
+index 722db33..a9ec48f 100644
 --- a/src/function/update/index.ts
 +++ b/src/function/update/index.ts
 @@ -3,0 +4,7 @@ import { onMessageReceived } from '@/function/update/on_message_received';
@@ -362,7 +362,7 @@ index 722db33..b9a8949 100644
 +} from '@/function/update/mvu_runtime';
 @@ -4,0 +12 @@ import { handleVariablesInMessage } from '@/function/update_variables';
 +import { useDataStore } from '@/store';
-@@ -8,0 +17,64 @@ export function initResponse() {
+@@ -8,0 +17,67 @@ export function initResponse() {
 +    const is_tt_host = isTtMvuHost();
 +    const pending_tt_message_keys = new Set<string>();
 +    const completed_tt_message_keys = new Set<string>();
@@ -374,20 +374,23 @@ index 722db33..b9a8949 100644
 +        hasGenerationAfterCommands: !!tavern_events.GENERATION_AFTER_COMMANDS,
 +    });
 +    const handle_completed_message = (message_id: number) => {
-+        const message = getChatMessages(message_id).at(-1);
++        const message = getChatMessages(message_id).at(-1) as
++            | { message_id?: number; message?: string; mes?: string }
++            | undefined;
++        const message_text = typeof message?.message === 'string' ? message.message : message?.mes ?? '';
 +        const swipe_id = getChatMessages(message_id, { include_swipes: true }).at(-1)?.swipe_id ?? null;
 +        recordTtAutoUpdateDebug('解析完成正文楼层', {
 +            messageId: message_id,
 +            found: !!message,
-+            textLength: message?.message?.length ?? 0,
++            textLength: message_text.length,
 +            resolvedMessageId: message?.message_id ?? null,
 +            swipeId: swipe_id,
 +        });
-+        if (!message || message.message.length < 5) {
++        if (!message || message_text.length < 5) {
 +            recordTtAutoUpdateDebug('正文完成事件跳过', {
 +                reason: !message ? 'message_not_found' : 'placeholder_or_short_message',
 +                messageId: message_id,
-+                textLength: message?.message?.length ?? 0,
++                textLength: message_text.length,
 +            });
 +            return;
 +        }
@@ -395,7 +398,7 @@ index 722db33..b9a8949 100644
 +            SillyTavern.getCurrentChatId(),
 +            message.message_id ?? message_id,
 +            swipe_id,
-+            textFingerprint(message.message),
++            textFingerprint(message_text),
 +        ]);
 +        if (pending_tt_message_keys.has(message_key) || completed_tt_message_keys.has(message_key)) {
 +            recordTtAutoUpdateDebug('正文完成事件跳过', {
@@ -407,7 +410,7 @@ index 722db33..b9a8949 100644
 +        pending_tt_message_keys.add(message_key);
 +        recordTtAutoUpdateDebug('MVU任务已调度', {
 +            messageId: message_id,
-+            textLength: message.message.length,
++            textLength: message_text.length,
 +        });
 +        // 只提交异步任务，不把额外模型和落盘耗时挂在宿主的楼层事件上。
 +        scheduleMvuTask('message_received', message_id, async task => {
@@ -427,12 +430,12 @@ index 722db33..b9a8949 100644
 +            }
 +        });
 +    };
-@@ -12,2 +84,2 @@ export function initResponse() {
+@@ -12,2 +87,2 @@ export function initResponse() {
 -    stop_list.push(
 -        controlledStoppableEventOn(
 +    if (!is_tt_host) {
 +        stop_list.push(controlledStoppableEventOn(
-@@ -16,2 +88,37 @@ export function initResponse() {
+@@ -16,2 +91,37 @@ export function initResponse() {
 -        )
 -    );
 +        ));
@@ -474,10 +477,10 @@ index 722db33..b9a8949 100644
 +    }
 diff --git a/src/function/update/mvu_runtime.ts b/src/function/update/mvu_runtime.ts
 new file mode 100644
-index 0000000..6f7ca82
+index 0000000..f00b466
 --- /dev/null
 +++ b/src/function/update/mvu_runtime.ts
-@@ -0,0 +1,754 @@
+@@ -0,0 +1,759 @@
 +import type { MvuData } from '@/variable_def';
 +
 +export const mvu_runtime_events = Object.freeze({
@@ -634,8 +637,7 @@ index 0000000..6f7ca82
 +
 +function readMessagePointer(message_id: number | 'latest' = -1): MessagePointer {
 +    try {
-+        const messages = getChatMessages(message_id, { include_swipes: true });
-+        const message = messages?.at(-1) as
++        const message = getChatMessages(message_id, { include_swipes: true })?.at(-1) as
 +            | { message_id?: number; message?: string; mes?: string; swipe_id?: number | string }
 +            | undefined;
 +        const absoluteIndex = Number(message?.message_id ?? (typeof message_id === 'number' ? message_id : -1));
@@ -747,6 +749,12 @@ index 0000000..6f7ca82
 +    message: MessagePointer,
 +    is_current: () => boolean = () => true
 +): Promise<ProviderResult> {
++    if (!isCanonicalMvuData(full_state)) {
++        throw providerResultError({ state: 'not_committed', error: 'MVU_STATE_INVALID' });
++    }
++    if (message.absoluteIndex < 0 || message.textFingerprint === textFingerprint('')) {
++        throw providerResultError({ state: 'not_committed', error: 'PLACEHOLDER_MESSAGE' });
++    }
 +    await ensureMvuPersistence();
 +    if (!provider_handle || !provider_handle.isLive() || !is_current()) {
 +        throw providerResultError({ state: 'stale_chat', error: 'STALE_CHAT' });
@@ -802,7 +810,7 @@ index 0000000..6f7ca82
 +function isCanonicalMvuData(value: unknown): value is MvuData {
 +    return _.isPlainObject(value)
 +        && _.isPlainObject((value as MvuData).stat_data) && !_.isEmpty((value as MvuData).stat_data)
-+        && Object.prototype.hasOwnProperty.call(value, 'schema');
++        && _.isPlainObject((value as MvuData).schema);
 +}
 +
 +export function getCanonicalMvuData(options: VariableOption): MvuData {
