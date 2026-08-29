@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:b578cf13f856050503073b07a366f1037da2c76e582020e6f40c07a179357afc */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:3bd68a87715b2075fec3a5c9b442835d3d76e4d099705dc551d8c9ec63c4053b */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -182416,21 +182416,26 @@ $CONTENT
         return hashUserInput_ACU(databasePersistenceCanonicalJson_ACU(value)) || '0';
     }
 
-    function databaseMessageFingerprint_ACU(message, messageIndex) {
+    function databaseStableMessageText_ACU(message) {
         const text = String(message?.mes ?? message?.content ?? '');
+        return message?.is_user === true ? text : 清理后端块后正文_ACU(text);
+    }
+
+    function databaseMessageFingerprint_ACU(message, messageIndex) {
+        const text = databaseStableMessageText_ACU(message);
         const messageId = String(message?.id ?? message?.message_id ?? messageIndex ?? '');
         const swipeId = String(message?.swipe_id ?? message?.swipeId ?? '');
         return hashUserInput_ACU(`${message?.is_user ? 'user' : 'assistant'}\n${messageId}\n${swipeId}\n${text}`) || '0';
     }
 
     function databaseMessageTextHash_ACU(message) {
-        const text = String(message?.mes ?? message?.content ?? '');
+        const text = databaseStableMessageText_ACU(message);
         const swipeId = String(message?.swipe_id ?? message?.swipeId ?? '');
         return hashUserInput_ACU(`${swipeId}\n${text}`) || '0';
     }
 
     function databaseMessageContentFingerprint_ACU(message) {
-        return hashUserInput_ACU(String(message?.mes ?? message?.content ?? '')) || '0';
+        return hashUserInput_ACU(databaseStableMessageText_ACU(message)) || '0';
     }
 
     function normalizeDatabaseIdempotencyGroup_ACU(groupKeys) {
@@ -183193,7 +183198,8 @@ $CONTENT
             const current = currentMessages.get(messageIndex);
             if (!current)
                 return;
-            // messageFingerprint 包含消息 id、swipe_id 和正文；textHash 再次锁定 swipe_id + 正文。
+            // messageFingerprint 包含消息 id、swipe_id 和稳定正文；textHash 再次锁定 swipe_id + 稳定正文。
+            // 同楼后置的 MVU、状态占位和图片机器块不属于剧情正文，不能让已提交 frame 失活。
             // idempotencyParts.swipe 用来显式拒绝同一楼层的其他 swipe 分支。
             if (String(frame.messageFingerprint || '') !== current.messageFingerprint
                 || String(frame.textHash || '') !== current.textHash

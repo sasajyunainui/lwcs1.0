@@ -9309,21 +9309,26 @@ $CONTENT
         return hashUserInput_ACU(databasePersistenceCanonicalJson_ACU(value)) || '0';
     }
 
-    function databaseMessageFingerprint_ACU(message, messageIndex) {
+    function databaseStableMessageText_ACU(message) {
         const text = String(message?.mes ?? message?.content ?? '');
+        return message?.is_user === true ? text : 清理后端块后正文_ACU(text);
+    }
+
+    function databaseMessageFingerprint_ACU(message, messageIndex) {
+        const text = databaseStableMessageText_ACU(message);
         const messageId = String(message?.id ?? message?.message_id ?? messageIndex ?? '');
         const swipeId = String(message?.swipe_id ?? message?.swipeId ?? '');
         return hashUserInput_ACU(`${message?.is_user ? 'user' : 'assistant'}\n${messageId}\n${swipeId}\n${text}`) || '0';
     }
 
     function databaseMessageTextHash_ACU(message) {
-        const text = String(message?.mes ?? message?.content ?? '');
+        const text = databaseStableMessageText_ACU(message);
         const swipeId = String(message?.swipe_id ?? message?.swipeId ?? '');
         return hashUserInput_ACU(`${swipeId}\n${text}`) || '0';
     }
 
     function databaseMessageContentFingerprint_ACU(message) {
-        return hashUserInput_ACU(String(message?.mes ?? message?.content ?? '')) || '0';
+        return hashUserInput_ACU(databaseStableMessageText_ACU(message)) || '0';
     }
 
     function normalizeDatabaseIdempotencyGroup_ACU(groupKeys) {
@@ -10086,7 +10091,8 @@ $CONTENT
             const current = currentMessages.get(messageIndex);
             if (!current)
                 return;
-            // messageFingerprint 包含消息 id、swipe_id 和正文；textHash 再次锁定 swipe_id + 正文。
+            // messageFingerprint 包含消息 id、swipe_id 和稳定正文；textHash 再次锁定 swipe_id + 稳定正文。
+            // 同楼后置的 MVU、状态占位和图片机器块不属于剧情正文，不能让已提交 frame 失活。
             // idempotencyParts.swipe 用来显式拒绝同一楼层的其他 swipe 分支。
             if (String(frame.messageFingerprint || '') !== current.messageFingerprint
                 || String(frame.textHash || '') !== current.textHash
