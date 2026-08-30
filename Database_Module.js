@@ -9274,6 +9274,7 @@ $CONTENT
     let databasePersistenceOpenPromise_ACU = null;
     let databasePersistenceFallbackRegistered_ACU = false;
     let databaseProjectionRefreshQueue_ACU = Promise.resolve();
+    let databaseExternalHistoryProjection_ACU = null;
     const DATABASE_DELETED_QUIET_WINDOW_MS_ACU = 220;
     let databasePendingTailDeletionRefresh_ACU = null;
     const DATABASE_CHAT_INDEX_TAIL_LIMIT_ACU = 64;
@@ -9485,6 +9486,7 @@ $CONTENT
         databaseTauriChatHandleChatId_ACU = '';
         databaseTauriChatHandleEpoch_ACU = 0;
         databaseTauriChatHandlePromise_ACU = null;
+        databaseExternalHistoryProjection_ACU = null;
     }
 
     function buildDatabaseChatIndexMeta_ACU(message, messageIndex) {
@@ -9956,8 +9958,53 @@ $CONTENT
     function invalidateDatabasePersistence_ACU() {
         const adapter = getPersistenceAdapter_ACU();
         databasePersistenceOpenPromise_ACU = null;
+        databaseExternalHistoryProjection_ACU = null;
         if (adapter && typeof adapter.invalidateChatGeneration === 'function')
             adapter.invalidateChatGeneration();
+    }
+
+    function cacheDatabaseExternalHistoryProjection_ACU(isolationKey, session, frameRefs, chatId, epoch, revision) {
+        if (session?.backend !== 'tt-store'
+            || epoch !== databaseGenerationEpoch_ACU
+            || String(chatId) !== String(getDatabaseChatIndexChatId_ACU()))
+            return;
+        const currentRevision = Number(revision) || 0;
+        const cached = databaseExternalHistoryProjection_ACU;
+        if (cached
+            && cached.chatId === String(chatId)
+            && cached.epoch === epoch
+            && cached.isolationKey === String(isolationKey || '')
+            && cached.revision > currentRevision)
+            return;
+        databaseExternalHistoryProjection_ACU = {
+            chatId: String(chatId),
+            epoch,
+            revision: currentRevision,
+            isolationKey: String(isolationKey || ''),
+            frameRefs: Array.isArray(frameRefs) ? frameRefs : [],
+        };
+    }
+
+    function getDatabaseExternalHistoryFrameRefs_ACU(chat, isolationKey) {
+        const cached = databaseExternalHistoryProjection_ACU;
+        if (!cached
+            || cached.epoch !== databaseGenerationEpoch_ACU
+            || cached.chatId !== String(getDatabaseChatIndexChatId_ACU())
+            || cached.isolationKey !== String(isolationKey || '')
+            || !Array.isArray(chat))
+            return null;
+        for (const ref of cached.frameRefs) {
+            const messageIndex = Number(ref?.messageIndex);
+            const message = Number.isInteger(messageIndex) ? chat[messageIndex] : null;
+            const metadata = ref?.metadata;
+            if (!message || message.is_user || !metadata)
+                return null;
+            if (Number(metadata.messageIndex) !== messageIndex
+                || Number(metadata.idempotencyParts?.assistantIndex) !== messageIndex
+                || String(metadata.idempotencyParts?.swipe ?? '') !== String(message.swipe_id ?? message.swipeId ?? ''))
+                return null;
+        }
+        return cached.frameRefs;
     }
 
     function databaseHeadKey_ACU(isolationHash) {
@@ -10127,9 +10174,9 @@ $CONTENT
             if (!message || message.is_user)
                 continue;
             aiFloor += 1;
-            const meta = databaseMessageMeta_ACU(message, messageIndex, false, aiFloor);
             currentMessages.set(messageIndex, {
-                ...meta,
+                messageIndex,
+                aiFloor,
                 swipeId: String(message?.swipe_id ?? message?.swipeId ?? ''),
             });
         }
@@ -10139,11 +10186,9 @@ $CONTENT
             const current = currentMessages.get(messageIndex);
             if (!current)
                 return;
-            // messageFingerprint 包含消息 id、swipe_id 和稳定正文；textHash 再次锁定 swipe_id + 稳定正文。
-            // 同楼后置的 MVU、状态占位和图片机器块不属于剧情正文，不能让已提交 frame 失活。
-            // idempotencyParts.swipe 用来显式拒绝同一楼层的其他 swipe 分支。
-            if (String(frame.messageFingerprint || '') !== current.messageFingerprint
-                || String(frame.textHash || '') !== current.textHash
+            // TT 的持久 frame 对齐原版消息楼层语义：聊天由 session 隔离，记录绑定 AI 楼层与 swipe。
+            // 正文优化或用户编辑不能让已落地记录失活；正文指纹只参与提交幂等，不参与楼层归属。
+            if (Number(frame.idempotencyParts?.assistantIndex) !== messageIndex
                 || String(frame.idempotencyParts?.swipe ?? '') !== current.swipeId)
                 return;
             live.push({ ...frame, messageIndex, aiFloor: current.aiFloor, order });
@@ -10326,6 +10371,9 @@ $CONTENT
     }
 
     async function readDatabaseExternalProjection_ACU(chat, isolationKey, { maxMessageIndex, prune = false } = {}) {
+        const shouldCacheHistory = maxMessageIndex === undefined;
+        const projectionChatId = shouldCacheHistory ? getDatabaseChatIndexChatId_ACU() : '';
+        const projectionEpoch = databaseGenerationEpoch_ACU;
         const opened = await ensureDatabasePersistenceSession_ACU();
         if (opened.state !== 'committed' || !opened.session)
             return { ...opened, present: false };
@@ -10338,8 +10386,11 @@ $CONTENT
         });
         if (headResult.state !== 'committed' || headResult.verified !== true)
             return { ...headResult, present: false };
-        if (headResult.value === undefined)
+        if (headResult.value === undefined) {
+            if (shouldCacheHistory)
+                cacheDatabaseExternalHistoryProjection_ACU(isolationKey, session, [], projectionChatId, projectionEpoch, 0);
             return { state: 'committed', verified: true, present: false, session, isolationHash, indexKey };
+        }
         const head = headResult.value;
         if (!head || head.kind !== 'head' || head.schemaVersion !== LWCS_DATABASE_SCHEMA_VERSION_ACU
             || head.stableChatId !== session.stableChatId || head.isolationHash !== isolationHash || !head.pointerKey || !head.pointerChecksum
@@ -10414,6 +10465,8 @@ $CONTENT
             }
             projection = { ...projection, orphanFrames: remainingOrphans };
         }
+        if (shouldCacheHistory)
+            cacheDatabaseExternalHistoryProjection_ACU(isolationKey, session, frameRefs, projectionChatId, projectionEpoch, head.revision);
         return {
             state: 'committed',
             verified: true,
@@ -10554,6 +10607,8 @@ $CONTENT
     async function persistDatabaseExternalCommit_ACU(options, chat, target, isolationKey, afterData, filledSheetKeys, effectiveChangedSheetKeys, operations, externalState) {
         const session = externalState.session;
         const isTtStore = session.backend === 'tt-store';
+        const commitChatId = options.eventTransaction?.chatId || getDatabaseChatIndexChatId_ACU();
+        const commitEpoch = options.eventTransaction?.epoch ?? databaseGenerationEpoch_ACU;
         const allowMessageMutation = !isTtStore;
         const activeRefs = externalState.frameRefs || [];
         const previousIndex = externalState.present ? externalState.index : undefined;
@@ -10862,6 +10917,19 @@ $CONTENT
         }
         if (!committedRead || committedRead.state !== 'committed' || committedRead.verified !== true || !saveVerificationValuesEqual_ACU(committedRead.value, nextHead))
             return rollbackExternalCommit(committedRead, 'COMMITTED_READ_FAILED');
+        if (isTtStore) {
+            const nextActiveRefs = shouldCheckpoint ? [] : activeRefs;
+            cacheDatabaseExternalHistoryProjection_ACU(isolationKey, session, [
+                ...nextActiveRefs,
+                {
+                    messageIndex: target.index,
+                    aiFloor,
+                    frameKey,
+                    metadata: frameMeta,
+                    frame: storageFrame,
+                },
+            ], commitChatId, commitEpoch, revision);
+        }
         return {
             state: 'committed',
             saved: true,
@@ -23914,14 +23982,6 @@ $CONTENT
         }
         return latestFloor;
     }
-    function hasTableDataInMessage_ACU(msg, options) {
-        const { sheetKey, isolationKey } = options;
-        return v2FrameHasSheetData_ACU(readIsolatedTagData_ACU(msg, isolationKey), sheetKey);
-    }
-    function getTrackedUpdateFloorInMessage_ACU(msg, options, messageAiFloor) {
-        const { sheetKey, isolationKey } = options;
-        return v2FrameTrackedUpdateFloor_ACU(readIsolatedTagData_ACU(msg, isolationKey), sheetKey, messageAiFloor);
-    }
     function projectTableHistoryStatesFromChat_ACU(chat, sheetKeys, isolationKey, aiIndices) {
         const keys = [...new Set((Array.isArray(sheetKeys) ? sheetKeys : [])
             .map(sheetKey => String(sheetKey || '').trim())
@@ -23937,17 +23997,24 @@ $CONTENT
         }]));
         if (!Array.isArray(chat) || !Array.isArray(aiIndices) || keys.length === 0)
             return states;
+        const externalFrameRefs = getDatabaseExternalHistoryFrameRefs_ACU(chat, isolationKey);
+        const historyFrames = externalFrameRefs !== null
+            ? externalFrameRefs.map(ref => ({
+                messageIndex: ref.messageIndex,
+                aiFloor: ref.aiFloor,
+                tagData: { storageFrame: ref.frame },
+            }))
+            : aiIndices.map((messageIndex, cursor) => ({
+                messageIndex,
+                aiFloor: cursor + 1,
+                tagData: readIsolatedTagData_ACU(chat[messageIndex], isolationKey),
+            }));
         const pendingData = new Set(keys);
         const pendingTracked = new Set(keys);
-        for (let cursor = aiIndices.length - 1; cursor >= 0; cursor -= 1) {
+        for (let cursor = historyFrames.length - 1; cursor >= 0; cursor -= 1) {
             if (pendingData.size === 0 && pendingTracked.size === 0)
                 break;
-            const messageIndex = aiIndices[cursor];
-            const message = Number.isInteger(messageIndex) ? chat[messageIndex] : null;
-            if (!message || message.is_user)
-                continue;
-            const tagData = readIsolatedTagData_ACU(message, isolationKey);
-            const messageAiFloor = cursor + 1;
+            const { messageIndex, aiFloor: messageAiFloor, tagData } = historyFrames[cursor];
             for (const sheetKey of [...pendingData]) {
                 if (!v2FrameHasSheetData_ACU(tagData, sheetKey))
                     continue;
@@ -24000,21 +24067,21 @@ $CONTENT
         }
         return latestAiMessageIndex;
     }
-    function countAiMessagesUpToIndex_ACU(chat, messageIndex, aiIndices = null) {
-        if (Array.isArray(aiIndices))
-            return getIndexedAiCountUpToIndex_ACU(messageIndex, aiIndices);
-        if (!Array.isArray(chat) || messageIndex < 0)
-            return 0;
-        let count = 0;
-        for (let i = 0; i <= messageIndex && i < chat.length; i += 1) {
-            if (chat[i] && !chat[i].is_user)
-                count += 1;
-        }
-        return count;
-    }
     function collectV2CheckpointFloorsFromChat_ACU(chat, isolationKey) {
         if (!Array.isArray(chat))
             return [];
+        const externalFrameRefs = getDatabaseExternalHistoryFrameRefs_ACU(chat, isolationKey);
+        if (externalFrameRefs !== null) {
+            return externalFrameRefs.flatMap(ref => {
+                const checkpoint = ref.frame?.checkpoint;
+                return checkpoint?.kind === 'full' ? [{
+                    messageIndex: ref.messageIndex,
+                    aiFloor: ref.aiFloor,
+                    reason: checkpoint.reason,
+                    createdAt: checkpoint.createdAt,
+                }] : [];
+            });
+        }
         const checkpoints = [];
         let aiFloor = 0;
         for (let i = 0; i < chat.length; i += 1) {
@@ -24038,45 +24105,18 @@ $CONTENT
         return checkpoints;
     }
     function resolveTableHistoryStateFromChat_ACU(chat, options = {}) {
-        const indexedAiIndices = Array.isArray(options.aiIndices) ? options.aiIndices : null;
-        const latestAiMessageIndex = indexedAiIndices
-            ? (indexedAiIndices.length > 0 ? indexedAiIndices[indexedAiIndices.length - 1] : -1)
-            : getLatestAiMessageIndexFromChat_ACU(chat, options.expectedChatId, options.contextChat);
-        let latestDataMessageIndex = -1;
-        let lastTrackedUpdateMessageIndex = -1;
-        let lastTrackedUpdateAiFloor = 0;
-        if (Array.isArray(chat)) {
-            const candidateIndices = Array.isArray(indexedAiIndices) ? indexedAiIndices : null;
-            for (let cursor = (candidateIndices ? candidateIndices.length : chat.length) - 1; cursor >= 0; cursor -= 1) {
-                const i = candidateIndices ? candidateIndices[cursor] : cursor;
-                const msg = chat[i];
-                if (!msg || msg.is_user)
-                    continue;
-                const messageAiFloor = countAiMessagesUpToIndex_ACU(chat, i, indexedAiIndices);
-                if (latestDataMessageIndex === -1 && hasTableDataInMessage_ACU(msg, options)) {
-                    latestDataMessageIndex = i;
-                }
-                if (lastTrackedUpdateMessageIndex === -1) {
-                    const trackedFloor = getTrackedUpdateFloorInMessage_ACU(msg, options, messageAiFloor);
-                    if (trackedFloor > 0) {
-                        lastTrackedUpdateMessageIndex = i;
-                        lastTrackedUpdateAiFloor = trackedFloor;
-                    }
-                }
-                if (latestDataMessageIndex !== -1 && lastTrackedUpdateMessageIndex !== -1) {
-                    break;
-                }
-            }
-        }
-        return {
-            latestAiMessageIndex,
-            latestDataMessageIndex,
-            lastTrackedUpdateMessageIndex,
-            latestDataAiFloor: countAiMessagesUpToIndex_ACU(chat, latestDataMessageIndex, indexedAiIndices),
-            lastTrackedUpdateAiFloor,
-            hasAnyData: latestDataMessageIndex !== -1,
-            hasTrackedUpdate: lastTrackedUpdateAiFloor > 0,
-        };
+        const runtimeIndex = getDatabaseChatIndexForRead_ACU(chat, options.expectedChatId, options.contextChat);
+        const aiIndices = Array.isArray(options.aiIndices)
+            ? options.aiIndices
+            : (runtimeIndex?.aiIndices || (Array.isArray(chat)
+                ? chat.map((message, index) => message && !message.is_user ? index : -1).filter(index => index >= 0)
+                : []));
+        return projectTableHistoryStatesFromChat_ACU(
+            chat,
+            [options.sheetKey],
+            options.isolationKey,
+            aiIndices,
+        )[options.sheetKey];
     }
 
     const SUMMARY_VECTOR_INDEX_MANIFEST_VERSION_ACU = 1;
