@@ -1005,7 +1005,7 @@
         [hostWindow, hostWindow.getChatMessages],
       ].find(([, fn]) => typeof fn === 'function');
       if (!messageReader) throw new Error('getChatMessages 不可用');
-      const selectedMessages = await messageReader[1].call(messageReader[0], absoluteIndex, { include_swipes: true });
+      const selectedMessages = await messageReader[1].call(messageReader[0], absoluteIndex);
       if (!requestedChatId || requestedChatId !== currentChatId()) throw new Error('读取楼层消息期间聊天已切换');
       const message = Array.isArray(selectedMessages) ? selectedMessages.at(-1) : null;
       if (!message) throw new Error('无法读取第 ' + absoluteIndex + ' 楼消息');
