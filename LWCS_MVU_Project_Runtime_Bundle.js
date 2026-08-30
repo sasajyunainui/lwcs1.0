@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:e89899d36c1d5d95ea55b0eefb95b3da569feed05e74ae3c384a85f5f2d61671|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:9cbf90556e2556fc6906e06744a9f1cac0106f5b4bce3aaf31873ccb3ca9243f|MVU_Schema_Runtime.js:70101553f5ae833431197ad24ce19e95f58c657efdf7f5b91a94fca25bfa9cce|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:8e5cd494e98126942370ef6ecc4587234bf055ca72b28fc9c78d101d3c0ad979|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:f2a8b5e80ccd7223a81b3635902c42e44a4151eb11b623881a23f9ba620422af|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:e89899d36c1d5d95ea55b0eefb95b3da569feed05e74ae3c384a85f5f2d61671|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:53b2c73a1bcc2d8dc8bbd4647e43240f3f87f16381720d33b7b57b98b4322e59|MVU_Schema_Runtime.js:70101553f5ae833431197ad24ce19e95f58c657efdf7f5b91a94fca25bfa9cce|MVU_Competition_Runtime.js:05e0687c9c59fd58ae2be28a44634c27c005562d1da99c69983710962b26c318|MVU_Runtime_View.js:371ffe4ce2ee0a8d6a9c0559abb8d37e520928e75902fc742b5f4a7113591d13 */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -4436,8 +4436,19 @@ function 读取技能生成统计器_V1(context = {}) {
 function 记录技能生成事件_V1(context = {}, 事件 = {}) {
   const 统计器 = 读取技能生成统计器_V1(context);
   if (!统计器) return;
+  const 上下文元数据 = {};
+  [
+    ['候选序号', context?.候选序号],
+    ['系别', context?.type || context?.系别 || context?.武魂系别],
+    ['品质', context?.grade || context?.gradeOverride || context?.sourceQuality || context?.品质],
+    ['魂环位', context?.ringIndex ?? context?.魂环位],
+    ['来源', context?.sourceCategory || context?.来源],
+  ].forEach(([键, 值]) => {
+    if (值 !== undefined && 值 !== null && String(值).trim() !== '') 上下文元数据[键] = 值;
+  });
   const 记录 = {
     时间毫秒: 读取性能计时毫秒_V1(),
+    ...上下文元数据,
     ...(事件 && typeof 事件 === 'object' ? 事件 : {}),
   };
   if (typeof 统计器.记录 === 'function') {
@@ -4547,6 +4558,8 @@ var TypeMultipliers = {
   元素系: { sp_max: 1.0, men_max: 1.5, str: 0.8, def: 0.6, agi: 0.8, vit_max: 0.7 },
   召唤系: { sp_max: 1.0, men_max: 1.35, str: 0.8, def: 0.8, agi: 0.8, vit_max: 0.8 },
 };
+
+globalThis.__LWCS_SKILL_TYPE_REGISTRY__ = Object.freeze(Object.keys(TypeMultipliers));
 
 var 魂力获取速度系数表 = Object.freeze({
   强攻系: 1.0,
@@ -7192,13 +7205,13 @@ var SPECIAL_RULE_EXPANDED_ARCHETYPE_SET_V1 = new Set([
 var SKILL_DELIVERY_FORM_BY_TYPE_V1 = {
   强攻系: ['直接生效'],
   控制系: ['直接生效'],
-  食物系: ['造物承载', '直接生效'],
+  食物系: ['造物承载'],
   精神系: ['直接生效'],
   防御系: ['直接生效'],
   敏攻系: ['直接生效'],
   元素系: ['直接生效'],
-  辅助系: ['直接生效', '造物承载'],
-  治疗系: ['直接生效', '造物承载'],
+  辅助系: ['直接生效'],
+  治疗系: ['直接生效'],
   召唤系: ['直接生效'],
 };
 
@@ -8621,18 +8634,18 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   净化: [原型编译条目('状态移除', { 状态: '任意负面' })],
   解控: [原型编译条目('状态移除', { 状态: '任意负面' })],
   感知干扰: [原型编译条目('决策干扰', { 干扰: '索敌干扰' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '-12%' }), 原型编译条目('判定修正', { 判定: '反应', 数值: '-12%' }), 原型编译条目('结算修正', { 结算: '前摇', 数值: '+12%' })],
-  标记锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-100%' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '+10%' }), 原型编译条目('判定修正', { 判定: '闪避', 数值: '-10%' })],
+  标记锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-100%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' }), 原型编译条目('判定修正', { 判定: '闪避', 数值: '-10%' })],
   共享视野: [原型编译条目('状态施加', { 状态: '共享视野' })],
   幻境: [原型编译条目('状态施加', { 状态: '混乱' }), 原型编译条目('属性修正', { 属性: '敏捷', 数值: '-18%' }), 原型编译条目('判定修正', { 判定: '反应', 数值: '-16%' })],
   催眠: [原型编译条目('状态施加', { 状态: '眩晕' })],
   认知扭曲: [原型编译条目('状态施加', { 状态: '精神紊乱' }), 原型编译条目('决策干扰', { 干扰: '索敌干扰' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '-12%' }), 原型编译条目('结算修正', { 结算: '前摇', 数值: '+12%' })],
-  目标锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-100%' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '+10%' })],
+  目标锁定: [原型编译条目('状态施加', { 状态: '标记', 数值: '-100%' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' })],
   自身位移: [原型编译条目('位移执行', { 目标: '自身', 位移类型: '瞬移', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '闪避' })],
   强制位移: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '击退', 位移对象: '目标', 驱动属性: '魂力上限', 影响方向: '效果强度' }), 原型编译条目('判定修正', { 目标: '单体', 判定: '闪避' })],
   位移交换: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '换位', 位移对象: '自身与目标', 驱动属性: '魂力上限', 影响方向: '效果强度' })],
-  追击位移: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '拉近', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '单体', 判定: '命中', 数值: '+10%' })],
+  追击位移: [原型编译条目('位移执行', { 目标: '单体', 位移类型: '拉近', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' })],
   脱离位移: [原型编译条目('位移执行', { 目标: '自身', 位移类型: '脱离', 位移对象: '自身' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '闪避' }), 原型编译条目('结算修正', { 目标: '自身', 结算: '前摇', 数值: '-20%' })],
-  追击: [原型编译条目('判定修正', { 目标: '单体', 判定: '命中', 数值: '+10%' }), 原型编译条目('结算修正', { 目标: '单体', 结算: '受到伤害', 数值: '+20%' })],
+  追击: [原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+10%' }), 原型编译条目('结算修正', { 目标: '单体', 结算: '受到伤害', 数值: '+20%' })],
   分身: [原型编译条目('召唤生成', { 召唤物名称: '分身' }), 原型编译条目('判定修正', { 判定: '闪避' }), 原型编译条目('结算修正', { 结算: '受到伤害', 数值: '-20%' })],
   复制: [原型编译条目('复制执行')],
   召唤: [原型编译条目('召唤生成')],
@@ -8662,14 +8675,14 @@ var SKILL_MECHANISM_NAME_TO_PROTOTYPES_V1 = Object.freeze({
   隐身: [原型编译条目('状态施加', { 状态: '隐匿' })],
   护卫: [原型编译条目('状态施加', { 状态: '护卫', 数值: '+10%' })],
   嘲讽: [原型编译条目('状态施加', { 状态: '嘲讽' })],
-  破隐: [原型编译条目('状态移除', { 状态: '隐匿' }), 原型编译条目('判定修正', { 判定: '命中', 数值: '+8%' })],
+  破隐: [原型编译条目('状态移除', { 状态: '隐匿' }), 原型编译条目('判定修正', { 目标: '自身', 判定: '命中', 数值: '+8%' })],
   减速: [原型编译条目('属性修正', { 属性: '敏捷' })],
   迟缓: [原型编译条目('状态施加', { 状态: '迟缓' })],
   致盲: [原型编译条目('状态施加', { 状态: '致盲' })],
   沉默: [原型编译条目('状态施加', { 状态: '沉默' })],
   标记弱点: [原型编译条目('结算修正', { 结算: '防御剥夺', 数值: '+20%' }), 原型编译条目('结算修正', { 结算: '精神抗性剥夺', 数值: '+20%' })],
   斩杀补伤: [原型编译条目('伤害结算', { 威力倍率: 50 }), 原型编译条目('结算修正', { 结算: '受到伤害', 数值: '+15%' })],
-  穿透: [原型编译条目('结算修正', { 结算: '防御穿透', 数值: '+20%' })],
+  穿透: [原型编译条目('结算修正', { 目标: '自身', 结算: '防御穿透', 数值: '+20%' })],
   伤害吸收: [原型编译条目('结算修正', { 结算: '伤害吸收', 数值: '+20%', 吸收来源: '造成伤害', 吸收资源: '生命' })],
   流血DOT: [原型编译条目('状态施加', { 状态: '持续创伤' })],
   生命链接: [原型编译条目('结算修正', { 结算: '伤害分摊', 数值: '+20%' })],
@@ -9670,6 +9683,7 @@ if (typeof globalThis !== 'undefined') {
     计算武魂真身预算基准_V1,
     计算融合相关度预算倍率_V1,
     计算武魂融合技预算基准_V1,
+    读取生成预算利用率档位_V1,
     计算天赋预算利用率_V1,
     计算生成目标COST_V1,
     读取普通回复随机权重表_V1,
@@ -10362,7 +10376,17 @@ function rollMainMechanicByGrade(type, grade, roll, ringIndex = 1, options = {})
     value: item.main,
     weight: Math.max(1, Number(item.max || 0) - Number(item.min || 0) + 1),
   }));
-  return rollWeightedBucket(normalizeWeightedTableTotal(权重表), effectiveRoll) || table[0]?.main || '';
+  const 归一权重表 = normalizeWeightedTableTotal(权重表);
+  const 选中 = rollWeightedBucket(归一权重表, effectiveRoll) || table[0]?.main || '';
+  记录技能生成事件_V1(context, {
+    类型: '主机制抽取',
+    抽取用途: String(options?.抽取用途 || '常规').trim() || '常规',
+    原始骰: Number(roll || 0),
+    生效骰: effectiveRoll,
+    候选权重: 归一权重表.map(item => ({ 机制: item.value, 权重: Number(item.weight || 0) })),
+    选中主机制大类: 选中,
+  });
+  return 选中;
 }
 
 function normalizeWeightedTableTotal(table = [], totalWeight = 100) {
@@ -12090,6 +12114,13 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
   const 结构合法表 = table;
   const 候选池 = 构建预算可行候选池_V1(table, 机制上下文);
   table = 候选池.候选表;
+  记录技能生成事件_V1(context, {
+    类型: '子原型候选池',
+    主机制大类: mainMechanic,
+    原始骰: Number(roll || 0),
+    结构合法候选: 结构合法表.map(item => ({ 原型: item.value, 权重: Number(item.weight || 0) })),
+    预算后候选: table.map(item => ({ 原型: item.value, 权重: Number(item.weight || 0) })),
+  });
   候选池.过滤.forEach(项 => {
     记录技能生成事件_V1(context, {
       类型: '候选前置过滤',
@@ -12112,16 +12143,52 @@ function rollSubModelByGrade(mainMechanic, grade, roll, context = {}) {
       !排除原型.has(String(特殊规则原型 || '').trim()) &&
       自动生成机制满足五环恢复增益约束_V1(特殊规则原型, 机制上下文) &&
       自动生成机制满足预算范围_V1(特殊规则原型, 机制上下文)
-    ) return 特殊规则原型;
+    ) {
+      记录技能生成事件_V1(context, {
+        类型: '子原型抽取',
+        主机制大类: mainMechanic,
+        原始骰: Number(roll || 0),
+        选中主机制原型: 特殊规则原型,
+        抽取路径: '特殊规则权重表',
+      });
+      return 特殊规则原型;
+    }
   }
   if (table.length) {
     const 抽取原型 = rollWeightedBucket(normalizeWeightedTableTotal(table), roll) || table[0]?.value || '';
-    if (机制是合法生成主机制_V1(抽取原型, 机制上下文)) return 抽取原型;
+    if (机制是合法生成主机制_V1(抽取原型, 机制上下文)) {
+      记录技能生成事件_V1(context, {
+        类型: '子原型抽取',
+        主机制大类: mainMechanic,
+        原始骰: Number(roll || 0),
+        选中主机制原型: 抽取原型,
+        抽取路径: '预算后候选池',
+      });
+      return 抽取原型;
+    }
     const 合法原型 = 查找合法生成主机制原型_V1(mainMechanic, 机制上下文);
-    if (合法原型) return 合法原型;
+    if (合法原型) {
+      记录技能生成事件_V1(context, {
+        类型: '子原型抽取',
+        主机制大类: mainMechanic,
+        原始骰: Number(roll || 0),
+        选中主机制原型: 合法原型,
+        抽取路径: '合法兜底',
+      });
+      return 合法原型;
+    }
   }
   const 合法原型 = 查找合法生成主机制原型_V1(mainMechanic, 机制上下文);
-  if (合法原型) return 合法原型;
+  if (合法原型) {
+    记录技能生成事件_V1(context, {
+      类型: '子原型抽取',
+      主机制大类: mainMechanic,
+      原始骰: Number(roll || 0),
+      选中主机制原型: 合法原型,
+      抽取路径: '空池兜底',
+    });
+    return 合法原型;
+  }
   throw new Error(`技能生成错误:${mainMechanic || '未命名大类'}没有合法子原型`);
 }
 
@@ -12309,7 +12376,10 @@ function rollAttributeDirectionByType(type, subModel, roll, context = {}) {
 
 function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], type = '强攻系', context = {}) {
   const 排除原型 = new Set(Array.isArray(context?.排除子原型) ? context.排除子原型.map(项 => String(项 || '').trim()).filter(Boolean) : []);
-  let weightedPool = buildSecondaryWeightedPool(main, type, preferredSecondary);
+  const 主机制目标侧 = 读取技能机制目标侧_V1(context?.主机制原型);
+  let weightedPool = buildSecondaryWeightedPool(main, type, preferredSecondary)
+    .filter(item => !(主机制目标侧 === '友方' && 读取技能机制目标侧_V1(item?.value) === '敌对'));
+  const 初始候选权重 = weightedPool.map(item => ({ 原型: item.value, 权重: Number(item.weight || 0), 来源标签: [...(item.来源标签 || [])] }));
   const 主机制COST = Math.max(0, Number(context?.主机制COST || 0));
   const 主机制最高COST = Math.max(主机制COST, Number(context?.主机制最高COST ?? context?.主机制补强COST ?? 主机制COST));
   const 当前门禁 = 读取自动生成当前最高承载COST_V1(context);
@@ -12345,9 +12415,19 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
   };
   const secondaryChance = getSecondaryGenerationChance(grade, ringIndex);
   const doubleChance = getSecondaryDoubleChance(grade, ringIndex);
-  const 目标数量 = Math.random() * 100 < secondaryChance
-    ? (Math.random() * 100 < doubleChance ? 2 : 1)
-    : 0;
+  const 副机制骰 = Math.random() * 100;
+  const 双副机制骰 = 副机制骰 < secondaryChance ? Math.random() * 100 : null;
+  const 目标数量 = 副机制骰 < secondaryChance ? (双副机制骰 < doubleChance ? 2 : 1) : 0;
+  记录技能生成事件_V1(context, {
+    类型: '副机制机会',
+    主机制大类: main,
+    生成概率: Number((secondaryChance / 100).toFixed(4)),
+    双副机制概率: Number((doubleChance / 100).toFixed(4)),
+    生成骰: Number((副机制骰 / 100).toFixed(6)),
+    双副机制骰: 双副机制骰 == null ? null : Number((双副机制骰 / 100).toFixed(6)),
+    目标数量,
+    初始候选权重,
+  });
   if (!(目标数量 > 0)) return { secondary: [] };
   const 副机制可进入 = (item, 剩余副槽 = 0) => {
     const 范围 = 估算副机制预算范围(item?.value);
@@ -12363,17 +12443,31 @@ function rollExtraMechanics(main, grade, ringIndex, preferredSecondary = [], typ
     自动生成机制满足五环恢复增益约束_V1(item?.value, { ...(context || {}), type, 系别: type, grade, ringIndex }) &&
     副机制可进入(item, Math.max(0, 目标数量 - 1))
   );
+  记录技能生成事件_V1(context, {
+    类型: '副机制候选池',
+    主机制大类: main,
+    目标数量,
+    初始候选数: 初始候选权重.length,
+    预算后候选权重: weightedPool.map(item => ({ 原型: item.value, 权重: Number(item.weight || 0), 来源标签: [...(item.来源标签 || [])] })),
+  });
   let secondary = [];
   for (let 序号 = 0; 序号 < 目标数量 && weightedPool.length > 0; 序号 += 1) {
     const 可选 = weightedPool.filter(item => {
       const 机制 = String(item?.value || '').trim();
       return 副机制可进入({ ...item, value: 机制 }, Math.max(0, 目标数量 - 序号 - 1));
     });
-    const 选中 = pickUniqueWeightedRandom(可选, 1)[0];
-    if (!选中) break;
-    const 选中机制 = String(选中?.value || '').trim();
+    const 选中机制 = String(pickUniqueWeightedRandom(可选, 1)[0] || '').trim();
     if (!选中机制) break;
+    const 选中条目 = 可选.find(item => String(item?.value || '').trim() === 选中机制);
     secondary.push(选中机制);
+    记录技能生成事件_V1(context, {
+      类型: '副机制抽取',
+      主机制大类: main,
+      序号,
+      选中副机制: 选中机制,
+      选择来源标签: [...(选中条目?.来源标签 || ['基础保底'])],
+      当前候选权重: 可选.map(item => ({ 原型: item.value, 权重: Number(item.weight || 0), 来源标签: [...(item.来源标签 || [])] })),
+    });
     const 选中范围 = 估算副机制预算范围(选中机制);
     const 已用最低COST = Number(选中范围?.最低可达COST ?? Infinity);
     const 已用最高COST = Math.max(Number.isFinite(已用最低COST) ? 已用最低COST : 0, Number(选中范围?.补强可达COST ?? 选中范围?.最高常规COST ?? 选中范围?.最低可达COST ?? 0));
@@ -12505,12 +12599,16 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
   const 本轮排除主机制大类 = new Set(Array.isArray(options?.排除主机制大类) ? options.排除主机制大类.map(项 => String(项 || '').trim()).filter(Boolean) : []);
   let main = 是治疗系第一魂技
     ? '回复类'
-    : rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, { ...options, 排除主机制大类: [...本轮排除主机制大类] });
+    : rollMainMechanicByGrade(type, grade, mainRoll, ringIndex, {
+        ...options,
+        抽取用途: '初抽',
+        排除主机制大类: [...本轮排除主机制大类],
+      });
   if (!main) throw new Error(`技能生成错误:${type || '未知系别'}没有合法主机制`);
   // v9.3：若与最近 2 次主机制大类重复，最多重 roll 3 次以避让（避免连续 3 次相同）
   for (let 尝试 = 0; !是治疗系第一魂技 && 尝试 < 3 && v9_3_最近主机制队列_V1.includes(main); 尝试 += 1) {
     const 重roll = Math.floor(Math.random() * 100) + 1;
-    const 候选 = rollMainMechanicByGrade(type, grade, 重roll, ringIndex, options);
+    const 候选 = rollMainMechanicByGrade(type, grade, 重roll, ringIndex, { ...options, 抽取用途: '多样性重抽' });
     if (候选 && !v9_3_最近主机制队列_V1.includes(候选)) {
       main = 候选;
       break;
@@ -12567,6 +12665,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       if (main) 本轮排除主机制大类.add(main);
       const 新主机制 = rollMainMechanicByGrade(type, grade, Math.floor(Math.random() * 100) + 1, ringIndex, {
         ...options,
+        抽取用途: '子原型失败后重选',
         排除主机制大类: [...本轮排除主机制大类],
       });
       if (新主机制 && 新主机制 !== main) {
@@ -12661,6 +12760,7 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       预算门禁,
       预算门禁优先: true,
       sourceName,
+      主机制原型: subModel,
       排除子原型: [...本轮排除子原型],
       主机制COST: 主机制最低COST,
       主机制最高COST: Number(主机制范围?.补强可达COST ?? 主机制范围?.最高常规COST ?? 主机制最低COST),
@@ -12686,6 +12786,11 @@ function rollSkillBlueprint(type, grade, ringIndex, preferredSecondary = [], opt
       魂环位: ringIndex,
       主机制大类: main,
       主机制原型: subModel,
+      副机制: [...蓝图.副机制],
+      承载方式: delivery,
+      承载来源: type === '食物系' ? '食物系固定造物' : (指定释放形态 ? '显式结构' : '系别默认'),
+      目标: target,
+      加成属性候选: [...attrHints],
       子原型尝试,
       耗时毫秒: Number(Math.max(0, 读取性能计时毫秒_V1() - 蓝图总开始毫秒).toFixed(3)),
     });
@@ -12812,7 +12917,7 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
     blueprintOverride?.燃料模型 && typeof blueprintOverride.燃料模型 === 'object'
       ? { ...blueprintOverride.燃料模型 }
       : buildFuelModelByType(type, main);
-  return {
+  const 蓝图 = {
     系别来源: type,
     主机制大类: main,
     主机制原型: archetype,
@@ -12820,7 +12925,8 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
       机制具备共享原型编译_V1(机制) &&
       技能机制满足品质门槛_V1(机制, 指定机制基础上下文) &&
       自动生成机制满足五环恢复增益约束_V1(机制, 重复门禁上下文) &&
-      自动生成机制满足预算范围_V1(机制, { ...options, type, 系别: type, grade, ringIndex, 魂环位: ringIndex, sourceName, 预算门禁, 预算门禁优先: true, 释放形态: delivery }),
+      自动生成机制满足预算范围_V1(机制, { ...options, type, 系别: type, grade, ringIndex, 魂环位: ringIndex, sourceName, 预算门禁, 预算门禁优先: true, 释放形态: delivery }) &&
+      !(读取技能机制目标侧_V1(archetype) === '友方' && 读取技能机制目标侧_V1(机制) === '敌对'),
     ),
     释放形态: delivery,
     目标: 归一化执行效果作用目标_V1(blueprintOverride?.目标 || '', ''),
@@ -12831,6 +12937,21 @@ function normalizeBlueprintOverrideForAutoGenerate(blueprintOverride = {}, type 
     _子模型骰: Number(blueprintOverride?._子模型骰 ?? -1),
     _属性方向骰: Number(blueprintOverride?._属性方向骰 ?? -1),
   };
+  记录技能生成事件_V1(options, {
+    类型: '蓝图成功',
+    系别: type,
+    品质: grade,
+    魂环位: ringIndex,
+    主机制大类: main,
+    主机制原型: archetype,
+    副机制: [...蓝图.副机制],
+    承载方式: delivery,
+    承载来源: String(blueprintOverride?.释放形态 || '').trim() ? '显式结构' : (type === '食物系' ? '食物系固定造物' : '系别默认'),
+    目标: 蓝图.目标,
+    加成属性候选: [...attrHints],
+    指定蓝图: true,
+  });
+  return 蓝图;
 }
 
 function 生成被动技能蓝图_V1(type = '强攻系', grade = 'B', ringIndex = 1, preferredSecondary = [], options = {}) {
@@ -13141,6 +13262,13 @@ function 约束第三批原型顶层目标_V1(原型 = '', 目标 = '') {
   if (原型名 === '状态移除') return ['自身', '单体', '群体'].includes(当前目标) ? 当前目标 : '单体';
   if (原型名 === '规则防御') return ['自身', '单体', '群体'].includes(当前目标) ? 当前目标 : '自身';
   return 当前目标;
+}
+
+function 读取技能机制目标侧_V1(机制名 = '') {
+  const 目标语义 = String(SKILL_MECHANISM_META_V1?.[String(机制名 || '').trim()]?.目标语义 || '').trim();
+  if (目标语义 === '敌对') return '敌对';
+  if (['可赋予', '仅自身'].includes(目标语义)) return '友方';
+  return '';
 }
 
 function 生成技能机制正式目标_V1(机制名 = '', 上下文 = {}) {
@@ -13954,9 +14082,14 @@ function 构建机制编译输入覆盖列表_V1(机制名 = '', 原型列表 = 
     return Number(((Number(下限) + Math.random() * (Number(上限) - Number(下限))) * 效果缩放).toFixed(4));
   };
   const 属性列表 = 数量 => {
-    const 合法 = 属性候选
-      .map(属性 => 中文化技能机制参数值_V1(属性))
-      .filter(属性 => SKILL_PROTOTYPE_FIELD_OPTIONS_V1.属性.includes(属性));
+    const 合法 = Array.from(new Set(属性候选
+      .map(属性 => {
+        const 属性名 = 中文化技能机制参数值_V1(属性);
+        if (属性名 === '魂力') return '魂力上限';
+        if (属性名 === '精神力') return '精神力上限';
+        return 属性名;
+      })
+      .filter(属性 => SKILL_PROTOTYPE_FIELD_OPTIONS_V1.属性.includes(属性))));
     if (机制 === '全属性增益') return ['力量', '防御', '敏捷', '魂力上限', '精神力上限'];
     if (机制 === '速度提升' || 机制 === '速度压制' || 机制 === '减速') return ['敏捷'];
     return (合法.length ? 合法 : ['力量']).slice(0, Math.max(1, 数量));
@@ -17190,7 +17323,7 @@ function 食物造物效果为正向数值_V1(effect = {}) {
 
 // 结算修正的增益方向表：符号结算按 数值×方向>0 判增益；集合内结算为正向百分比防御/输出增益。
 // 反击（仅限后续触发槽位）与 持续伤害引爆（需要敌方DOT时机）刻意排除，必须继续走机制授予壳。
-var 结算修正符号增益方向表_V1 = Object.freeze({ 造成伤害: 1, 治疗: 1, 技能效果: 1, 受到伤害: -1, 消耗: -1, 前摇: -1 });
+var 结算修正符号增益方向表_V1 = Object.freeze({ 造成伤害: 1, 治疗: 1, 技能效果: 1, 受到伤害: -1, 消耗: -1, 前摇: -1, 伤害分摊: 1, 消耗分摊: 1 });
 var 结算修正正向增益结算集合_V1 = new Set(['反伤', '伤害转移', '伤害吸收', '伤害转治疗', '防御穿透']);
 
 function 结算修正是否增益语义_V1(effect = {}) {
@@ -17288,11 +17421,9 @@ function wrapGrantableRuntimeEffectsForSupport(packedEffects = [], type = '强�
   const 授予效果 = 可授予效果列表.filter(需要授予);
   if (!授予效果.length) return false;
   packedEffects.length = 0;
-  if (系别 === '食物系') {
-    有效效果列表.forEach(效果 => {
-      if (!需要授予(效果)) packedEffects.push(效果);
-    });
-  }
+  有效效果列表.forEach(效果 => {
+    if (!需要授予(效果)) packedEffects.push(效果);
+  });
   packedEffects.push({
     原型: '机制授予',
     目标: 系别 === '食物系' ? '自身' : '单体',
@@ -18041,7 +18172,7 @@ function 评估触发限制档_V1(skill = {}) {
     if (抵扣率 > 0) return '轻';
     return '无';
   };
-  const 候选 = [];
+  const 候选 = [读取档位(skill?.触发限制)];
   (Array.isArray(skill?._效果数组) ? skill._效果数组 : []).forEach(效果 => {
     if (效果 && typeof 效果 === 'object') 候选.push(读取档位(效果?.触发限制));
   });
@@ -18551,6 +18682,9 @@ function 计算单项效果COST_V1(效果 = {}, 上下文 = {}) {
 function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
   const 效果数组 = Array.isArray(技能?._效果数组) ? 技能._效果数组 : (Array.isArray(技能) ? 技能 : []);
   const 限制抵扣上限 = 读取技能限制抵扣上限_V1(技能);
+  const 技能限制抵扣率 = Array.isArray(技能)
+    ? 0
+    : Math.min(限制抵扣上限, 解析次数限制抵扣率_V1(技能?.触发限制));
   const 新建统计 = () => ({ 百分比累计: 0, 绝对值累计: 0, 限制累计: 0, 明细: [] });
   const 合并统计 = (目标, 来源) => {
     目标.百分比累计 += 来源.百分比累计 || 0;
@@ -18662,7 +18796,7 @@ function 计算技能效果累计COST_V1(技能 = {}, 上下文 = {}) {
     });
     return 返回统计;
   };
-  const 总统计 = 访问列表(效果数组, Array.isArray(技能) ? '' : '_效果数组', 0, '基础');
+  const 总统计 = 访问列表(效果数组, Array.isArray(技能) ? '' : '_效果数组', 技能限制抵扣率, '基础');
   const 百分比累计 = 总统计.百分比累计;
   const 绝对值累计 = 总统计.绝对值累计;
   const 限制累计 = 总统计.限制累计;
@@ -18986,6 +19120,10 @@ var 生成预算利用率档位_V1 = Object.freeze({
   绝世妖孽: Object.freeze([0.95, 1.00]),
 });
 
+function 读取生成预算利用率档位_V1() {
+  return 生成预算利用率档位_V1;
+}
+
 function 读取生成随机数_V1(上下文 = {}, 盐 = 0) {
   if (typeof 上下文?.随机函数 === 'function') {
     const 值 = Number(上下文.随机函数(盐));
@@ -19002,6 +19140,30 @@ function 读取生成随机数_V1(上下文 = {}, 盐 = 0) {
     return (状态 - 1) / 2147483646;
   }
   return Math.random();
+}
+
+function 读取技能结构独立随机数_V1(技能 = {}, 上下文 = {}, 盐 = 0) {
+  if (typeof 上下文?.随机函数 === 'function' || 上下文?.随机种子 !== undefined || 上下文?.seed !== undefined) {
+    return 读取生成随机数_V1(上下文, 盐);
+  }
+  const 种子文本 = JSON.stringify([
+    String(上下文?.path || ''),
+    String(上下文?.martialSoulName || ''),
+    String(上下文?.type || 上下文?.系别 || 上下文?.武魂系别 || ''),
+    Number(上下文?.ringIndex ?? 上下文?.魂环位 ?? 0),
+    Number(上下文?.候选序号 || 0),
+    String(技能?.魂技名 || 技能?.名称 || ''),
+    技能?.消耗 || {},
+    技能?._效果数组 || [],
+  ]);
+  let 哈希 = 2166136261;
+  for (let 索引 = 0; 索引 < 种子文本.length; 索引 += 1) {
+    哈希 ^= 种子文本.charCodeAt(索引);
+    哈希 = Math.imul(哈希, 16777619);
+  }
+  哈希 ^= Number(盐 || 0);
+  哈希 = Math.imul(哈希, 16777619) >>> 0;
+  return 哈希 / 4294967296;
 }
 
 function 计算天赋预算利用率_V1(角色 = {}, 上下文 = {}) {
@@ -19952,7 +20114,13 @@ function 技能是增幅类魂技_V1(技能 = {}) {
   return 命中;
 }
 
+function 生成技能是武魂真身_V1(技能 = {}, 上下文 = {}) {
+  if (上下文?.forceTrueBody === true || 上下文?.强制真身 === true) return true;
+  return 判定技能消耗来源_V1(技能, 上下文).武魂真身 === true;
+}
+
 function 允许生成阶段自动副作用_V1(技能 = {}, 上下文 = {}) {
+  if (生成技能是武魂真身_V1(技能, 上下文)) return false;
   if (!生成技能属于食物辅助系_V1(上下文)) return true;
   return 技能是增幅类魂技_V1(技能);
 }
@@ -19968,32 +20136,241 @@ function 生成技能命中原型_V1(技能 = {}, 原型列表 = []) {
   return 命中;
 }
 
-function 计算生成阶段自动副作用概率_V1(技能 = {}, 上下文 = {}) {
-  if (!允许生成阶段自动副作用_V1(技能, 上下文)) return 0;
+function 读取生成阶段副作用风险档案_V1(技能 = {}, 上下文 = {}) {
+  if (!允许生成阶段自动副作用_V1(技能, 上下文)) {
+    if (生成技能是武魂真身_V1(技能, 上下文)) {
+      return { 可生成: false, 概率: 0, 风险档: '真身独立预算', 原因: '武魂真身使用独立比例消耗与生成口径，不参与常规自动副作用COST收口' };
+    }
+    return { 可生成: false, 概率: 0, 风险档: '不适用', 原因: '当前系别仅对增幅类技能生成固有副作用' };
+  }
   if (生成技能命中原型_V1(技能, ['属性修正'])) {
     let 全属性 = false;
     let 多属性 = false;
     遍历直接结算预算效果_V1(Array.isArray(技能?._效果数组) ? 技能._效果数组 : [], 效果 => {
       if (!效果 || typeof 效果 !== 'object' || String(效果?.原型 || '').trim() !== '属性修正') return;
+      if (!(读取技能比例值_V1(效果?.数值) > 0)) return;
       const 属性 = Array.isArray(效果.属性) ? 效果.属性 : String(效果.属性 || '').split(/[\/、,，]/).map(项 => 项.trim()).filter(Boolean);
       if (属性.includes('全属性') || 属性.length >= 5) 全属性 = true;
       else if (属性.length >= 2) 多属性 = true;
     });
-    if (全属性) return 0.40;
-    if (多属性) return 0.20;
+    if (全属性) return { 可生成: true, 概率: 0.40, 风险档: '全属性增幅', 原因: '全属性增幅收益覆盖面最高' };
+    if (多属性) return { 可生成: true, 概率: 0.20, 风险档: '多属性增幅', 原因: '多属性增幅收益覆盖面较高' };
   }
-  return 生成技能属于食物辅助系_V1(上下文) ? 0.10 : 0.05;
+  if (生成技能属于食物辅助系_V1(上下文)) {
+    return { 可生成: true, 概率: 0.10, 风险档: '支援增幅', 原因: '辅助、治疗、食物增幅技能基础风险' };
+  }
+  return { 可生成: true, 概率: 0.05, 风险档: '常规技能', 原因: '常规技能基础风险' };
 }
 
 function 生成阶段已有自动副作用_V1(技能 = {}) {
   const 顶层 = normalizeSkillSideEffectList(技能?.副作用列表 || []);
-  if (顶层.some(项 => String(项?.副作用类型 || '').trim() === '施法僵直')) return true;
+  if (顶层.length) return true;
   if (String(技能?.承载方式 || '').trim() === '造物承载' || 是造物承载效果数组_V1(技能?._效果数组)) {
     return (Array.isArray(技能?._效果数组) ? 技能._效果数组 : []).some(模板 =>
-      normalizeSkillSideEffectList(模板?.副作用列表 || []).some(项 => String(项?.副作用类型 || '').trim() === '施法僵直'),
+      normalizeSkillSideEffectList(模板?.副作用列表 || []).length > 0,
     );
   }
   return false;
+}
+
+var 生成阶段自动副作用风险判定缓存_V1 = new WeakMap();
+
+function 构建生成阶段自动副作用判定事件字段_V1(判定 = {}) {
+  const 已判定 = 判定?.已判定 === true;
+  const 是否复用 = 判定?.是否复用 === true;
+  const 随机骰 = Number(判定?.随机骰);
+  return {
+    可生成: 判定?.可生成 === true,
+    风险档: String(判定?.风险档 || '').trim(),
+    概率: Number(判定?.概率 || 0),
+    随机骰: 已判定 && Number.isFinite(随机骰) ? Number(随机骰.toFixed(6)) : undefined,
+    是否进入掷骰: 已判定 && !是否复用,
+    是否复用,
+    首次判定阶段: String(判定?.首次判定阶段 || '').trim(),
+    风险骰结果: 已判定 ? (判定?.命中 === true ? '命中' : '未命中') : '未进入掷骰',
+  };
+}
+
+function 读取或创建生成阶段自动副作用风险判定_V1(技能 = {}, 上下文 = {}, 判定阶段 = '') {
+  const 当前档案 = 读取生成阶段副作用风险档案_V1(技能, 上下文);
+  const 已缓存判定 = 生成阶段自动副作用风险判定缓存_V1.get(技能);
+  if (已缓存判定) {
+    const 语义漂移 =
+      已缓存判定.可生成 !== 当前档案.可生成 ||
+      已缓存判定.风险档 !== 当前档案.风险档 ||
+      Math.abs(Number(已缓存判定.概率 || 0) - Number(当前档案.概率 || 0)) > 1e-12;
+    if (语义漂移) {
+      记录技能生成事件_V1(上下文, {
+        类型: '自动副作用风险语义漂移',
+        当前判定阶段: String(判定阶段 || '').trim(),
+        首次判定阶段: 已缓存判定.首次判定阶段,
+        首次风险档: 已缓存判定.风险档,
+        首次概率: 已缓存判定.概率,
+        当前可生成: 当前档案.可生成,
+        当前风险档: 当前档案.风险档,
+        当前概率: 当前档案.概率,
+        当前原因: 当前档案.原因,
+        处理: '保留首次判定，不重新掷骰',
+      });
+    }
+    const 复用判定 = { ...已缓存判定, 是否复用: true };
+    记录技能生成事件_V1(上下文, {
+      类型: '自动副作用风险判定',
+      判定阶段: String(判定阶段 || '').trim(),
+      ...构建生成阶段自动副作用判定事件字段_V1(复用判定),
+      结果: 复用判定.命中 ? '命中' : '未命中',
+      原因: 已缓存判定.原因,
+    });
+    return 复用判定;
+  }
+  if (!当前档案.可生成 || 生成阶段已有自动副作用_V1(技能)) {
+    return {
+      ...当前档案,
+      已判定: false,
+      是否复用: false,
+      首次判定阶段: '',
+      随机骰: null,
+      命中: false,
+    };
+  }
+  const 随机骰 = 读取技能结构独立随机数_V1(技能, 上下文, 79);
+  const 首次判定 = Object.freeze({
+    ...当前档案,
+    已判定: true,
+    首次判定阶段: String(判定阶段 || '').trim(),
+    随机骰,
+    命中: 随机骰 < 当前档案.概率,
+  });
+  生成阶段自动副作用风险判定缓存_V1.set(技能, 首次判定);
+  const 返回判定 = { ...首次判定, 是否复用: false };
+  记录技能生成事件_V1(上下文, {
+    类型: '自动副作用风险判定',
+    判定阶段: 返回判定.首次判定阶段,
+    ...构建生成阶段自动副作用判定事件字段_V1(返回判定),
+    结果: 返回判定.命中 ? '命中' : '未命中',
+    原因: 当前档案.原因,
+  });
+  return 返回判定;
+}
+
+function 构建生成阶段自动副作用条目_V1(技能 = {}, 上下文 = {}, 风险档案 = {}) {
+  const 系别 = 读取预算上下文系别_V1(上下文);
+  const 关联状态 = 查找技能首个持续状态_V1(技能._效果数组);
+  const 是高覆盖属性增幅 = ['全属性增幅', '多属性增幅'].includes(String(风险档案?.风险档 || '').trim());
+  const 是支援系 = ['辅助系', '食物系', '治疗系'].includes(系别);
+  if (是高覆盖属性增幅 && 关联状态) {
+    return normalizeSkillSideEffectEntry({
+      副作用类型: '全属性降低',
+      触发时机: '效果结束后',
+      生效对象: '效果承受者',
+      触发概率: 1,
+      持续回合: 2,
+      数值: '+10%',
+      关联状态,
+    });
+  }
+  const 原型集合 = new Set();
+  遍历直接结算预算效果_V1(Array.isArray(技能?._效果数组) ? 技能._效果数组 : [], 效果 => {
+    const 原型 = String(效果?.原型 || '').trim();
+    if (原型) 原型集合.add(原型);
+  });
+  const 候选类型 = [];
+  const 添加候选 = (...类型列表) => 类型列表.forEach(类型 => {
+    if (SKILL_SIDE_EFFECT_TYPE_OPTIONS_V1.includes(类型) && 类型 !== '致死献祭') 候选类型.push(类型);
+  });
+  if (原型集合.has('伤害结算')) 添加候选('自损反噬', '施法僵直');
+  if (原型集合.has('资源变化') || 原型集合.has('护盾变化')) 添加候选('魂力反噬', '动作迟缓');
+  if (原型集合.has('属性修正') || 原型集合.has('结算修正')) 添加候选('动作迟缓', '施法僵直');
+  if (原型集合.has('判定修正')) 添加候选('命中下降', '精神紊乱');
+  if (原型集合.has('位移执行')) 添加候选('动作迟缓', '施法僵直');
+  if (原型集合.has('状态施加') || 原型集合.has('规则干预') || 原型集合.has('规则防御')) 添加候选('目标错乱', '精神紊乱');
+  if (!候选类型.length) 添加候选('施法僵直');
+  const 副作用类型 = 候选类型[Math.min(
+    候选类型.length - 1,
+    Math.floor(读取技能结构独立随机数_V1(技能, 上下文, 83) * 候选类型.length),
+  )];
+  const 生效对象 = String(技能?.承载方式 || '').trim() === '造物承载' && 是支援系 ? '效果承受者' : '技能释放者';
+  const 类型参数 = {
+    自损反噬: { 持续回合: 1, 数值: '+5%' },
+    魂力反噬: { 持续回合: 1, 数值: '+5%' },
+    精神紊乱: { 持续回合: 2, 数值: '+10%', 触发概率: 0.5 },
+    命中下降: { 持续回合: 2, 数值: '+10%' },
+    动作迟缓: { 持续回合: 1, 数值: '+15%', 副数值: '+10%' },
+    目标错乱: { 持续回合: 1, 数值: '+30%' },
+    施法僵直: { 持续回合: 1, 数值: '+20%' },
+  }[副作用类型] || { 持续回合: 1, 数值: '+20%' };
+  return normalizeSkillSideEffectEntry({
+    副作用类型,
+    触发时机: '效果生效后',
+    生效对象,
+    触发概率: 类型参数.触发概率 ?? 1,
+    持续回合: 类型参数.持续回合,
+    数值: 类型参数.数值,
+    副数值: 类型参数.副数值 || '',
+  });
+}
+
+function 尝试生成阶段固有副作用_V1(技能 = {}, 上下文 = {}) {
+  if (!技能 || typeof 技能 !== 'object') return 0;
+  const 当前风险档案 = 读取生成阶段副作用风险档案_V1(技能, 上下文);
+  const 已缓存判定 = 生成阶段自动副作用风险判定缓存_V1.get(技能);
+  const 已有副作用 = 生成阶段已有自动副作用_V1(技能);
+  if (!已缓存判定 && (!当前风险档案.可生成 || 已有副作用)) {
+    记录技能生成事件_V1(上下文, {
+      类型: '固有副作用判定',
+      副作用来源: '固有风险',
+      可生成: 当前风险档案.可生成,
+      风险档: 当前风险档案.风险档,
+      概率: 当前风险档案.概率,
+      是否进入掷骰: false,
+      是否复用: false,
+      风险骰结果: '未进入掷骰',
+      结果: 已有副作用 ? '已有显式副作用' : '不适用',
+      原因: 当前风险档案.原因,
+    });
+    return 0;
+  }
+  const 判定 = 读取或创建生成阶段自动副作用风险判定_V1(技能, 上下文, '最终固有风险');
+  if (!判定.已判定) return 0;
+  if (已有副作用) {
+    记录技能生成事件_V1(上下文, {
+      类型: '固有副作用判定',
+      副作用来源: '固有风险',
+      ...构建生成阶段自动副作用判定事件字段_V1(判定),
+      结果: '已有自动副作用，复用首次判定且不再掷骰',
+      原因: 判定.原因,
+    });
+    return 0;
+  }
+  记录技能生成事件_V1(上下文, {
+    类型: '固有副作用判定',
+    副作用来源: '固有风险',
+    ...构建生成阶段自动副作用判定事件字段_V1(判定),
+    结果: 判定.命中 ? '命中' : '未命中',
+    原因: 判定.原因,
+  });
+  if (!判定.命中) return 0;
+  const 副作用 = 构建生成阶段自动副作用条目_V1(技能, 上下文, 判定);
+  if (!副作用 || !写入生成阶段自动副作用_V1(技能, 副作用, 上下文)) {
+    记录技能生成事件_V1(上下文, {
+      类型: '副作用写入失败',
+      副作用来源: '固有风险',
+      ...构建生成阶段自动副作用判定事件字段_V1(判定),
+      结果: '命中但未写入',
+      原因: 副作用 ? '正式副作用写入失败' : '正式副作用条目构建失败',
+    });
+    return 0;
+  }
+  记录技能生成事件_V1(上下文, {
+    类型: '自动副作用生成',
+    副作用来源: '固有风险',
+    ...构建生成阶段自动副作用判定事件字段_V1(判定),
+    副作用类型: 副作用.副作用类型,
+    触发时机: 副作用.触发时机,
+    生效对象: 副作用.生效对象,
+    结果: '命中并保留',
+  });
+  return 1;
 }
 
 function 写入生成阶段自动副作用_V1(技能 = {}, 副作用 = null, 上下文 = {}) {
@@ -20166,31 +20543,82 @@ function 尝试生成阶段触发限制降压_V1(技能 = {}, 上下文 = null) 
   return 改动;
 }
 
-function 尝试生成阶段副作用降压_V1(技能 = {}, 上下文 = {}, 选项 = {}) {
+function 尝试生成阶段副作用降压_V1(技能 = {}, 上下文 = {}) {
   if (!技能 || typeof 技能 !== 'object') return 0;
-  if (!允许生成阶段自动副作用_V1(技能, 上下文)) return 0;
-  if (生成阶段已有自动副作用_V1(技能)) return 0;
+  const 当前风险档案 = 读取生成阶段副作用风险档案_V1(技能, 上下文);
+  const 已缓存判定 = 生成阶段自动副作用风险判定缓存_V1.get(技能);
+  const 复用判定 = 已缓存判定
+    ? 读取或创建生成阶段自动副作用风险判定_V1(技能, 上下文, '预算降压')
+    : null;
+  if (!已缓存判定 && !当前风险档案.可生成) {
+    记录技能生成事件_V1(上下文, {
+      类型: '副作用跳过',
+      副作用来源: '预算降压',
+      可生成: false,
+      风险档: 当前风险档案.风险档,
+      概率: 当前风险档案.概率,
+      是否进入掷骰: false,
+      是否复用: false,
+      风险骰结果: '未进入掷骰',
+      原因: 当前风险档案.原因,
+    });
+    return 0;
+  }
+  if (生成阶段已有自动副作用_V1(技能)) {
+    记录技能生成事件_V1(上下文, {
+      类型: '副作用跳过',
+      副作用来源: '预算降压',
+      ...(复用判定 ? 构建生成阶段自动副作用判定事件字段_V1(复用判定) : {
+        可生成: true,
+        风险档: 当前风险档案.风险档,
+        概率: 当前风险档案.概率,
+        是否进入掷骰: false,
+        是否复用: false,
+        风险骰结果: '未进入掷骰',
+      }),
+      结果: 复用判定 ? '已有自动副作用，复用首次判定且不再掷骰' : '已有显式副作用',
+      原因: 复用判定?.原因 || '已有显式副作用',
+    });
+    return 0;
+  }
   const 写入前评估 = 评估技能预算_V1(技能, 上下文);
   const 强制门禁 = Number(上下文?.强制预算门禁 || 0) > 0 ? Number(上下文.强制预算门禁) : null;
   const 当前门禁 = 强制门禁 != null ? Math.min(Number(写入前评估?.实际门禁 || 0) || 强制门禁, 强制门禁) : Number(写入前评估?.实际门禁 || 0);
   if (!技能COST超预算_V1(写入前评估.实际COST, 当前门禁)) {
     记录技能生成事件_V1(上下文, {
       类型: '副作用跳过',
+      副作用来源: '预算降压',
       原因: '未超预算',
       实际COST: Number(写入前评估.实际COST || 0),
       门禁: Number(当前门禁 || 0),
     });
     return 0;
   }
-  const 概率 = 计算生成阶段自动副作用概率_V1(技能, 上下文);
-  if (选项?.强制概率检查 !== false && 读取生成随机数_V1(上下文, 83) >= 概率) {
-    记录技能生成事件_V1(上下文, { 类型: '副作用概率未命中', 概率 });
+  const 判定 = 复用判定 || 读取或创建生成阶段自动副作用风险判定_V1(技能, 上下文, '预算降压');
+  if (!判定.已判定) return 0;
+  if (!判定.命中) {
+    记录技能生成事件_V1(上下文, {
+      类型: '副作用概率未命中',
+      副作用来源: '预算降压',
+      ...构建生成阶段自动副作用判定事件字段_V1(判定),
+      结果: '未命中',
+      原因: 判定.原因,
+    });
     return 0;
   }
   const 系别 = 读取预算上下文系别_V1(上下文);
   const 关联状态 = 查找技能首个持续状态_V1(技能._效果数组);
   const 结束后副作用 = ['辅助系', '食物系', '治疗系'].includes(系别);
-  if (结束后副作用 && !关联状态) return 0;
+  if (结束后副作用 && !关联状态) {
+    记录技能生成事件_V1(上下文, {
+      类型: '副作用延后',
+      副作用来源: '预算降压',
+      ...构建生成阶段自动副作用判定事件字段_V1(判定),
+      结果: '命中但未写入，延后至最终固有风险阶段',
+      原因: '支援技能缺少关联持续状态',
+    });
+    return 0;
+  }
   const 生效对象 = String(技能?.承载方式 || '').trim() === '造物承载' ? '效果承受者' : '技能释放者';
   const 副作用 = normalizeSkillSideEffectEntry({
     副作用类型: '施法僵直',
@@ -20201,22 +20629,59 @@ function 尝试生成阶段副作用降压_V1(技能 = {}, 上下文 = {}, 选�
     数值: '+20%',
     关联状态,
   });
-  if (!副作用) return 0;
+  if (!副作用) {
+    记录技能生成事件_V1(上下文, {
+      类型: '副作用写入失败',
+      副作用来源: '预算降压',
+      ...构建生成阶段自动副作用判定事件字段_V1(判定),
+      结果: '命中但未写入',
+      原因: '预算降压副作用条目构建失败',
+    });
+    return 0;
+  }
   const 写入前快照 = cloneJsonValue(技能, {});
-  if (!写入生成阶段自动副作用_V1(技能, 副作用, 上下文)) return 0;
+  if (!写入生成阶段自动副作用_V1(技能, 副作用, 上下文)) {
+    记录技能生成事件_V1(上下文, {
+      类型: '副作用写入失败',
+      副作用来源: '预算降压',
+      ...构建生成阶段自动副作用判定事件字段_V1(判定),
+      结果: '命中但未写入',
+      原因: '预算降压副作用写入失败',
+    });
+    return 0;
+  }
   const 写入后评估 = 评估技能预算_V1(技能, 上下文);
   if (Number(写入后评估.实际COST || 0) < Number(写入后评估.最低有效COST || 0) - 技能预算COST容差_V1) {
     Object.keys(技能).forEach(键 => delete 技能[键]);
     Object.assign(技能, 写入前快照);
     记录技能生成事件_V1(上下文, {
       类型: '副作用回滚',
+      副作用来源: '预算降压',
       原因: '低于最低有效COST',
+      ...构建生成阶段自动副作用判定事件字段_V1(判定),
+      结果: '命中但写入后回滚，最终阶段复用命中结果',
       写入后COST: Number(写入后评估.实际COST || 0),
       最低有效COST: Number(写入后评估.最低有效COST || 0),
+      副作用原始COST: Number(写入后评估.副作用原始COST || 0),
+      副作用有效COST: Number(写入后评估.副作用有效COST || 0),
     });
     return 0;
   }
-  记录技能生成事件_V1(上下文, { 类型: '自动副作用生成', 副作用类型: 副作用.副作用类型, 概率, 触发时机: 副作用.触发时机, 生效对象: 副作用.生效对象 });
+  记录技能生成事件_V1(上下文, {
+    类型: '自动副作用生成',
+    副作用来源: '预算降压',
+    ...构建生成阶段自动副作用判定事件字段_V1(判定),
+    副作用类型: 副作用.副作用类型,
+    触发时机: 副作用.触发时机,
+    生效对象: 副作用.生效对象,
+    结果: '命中并保留',
+    写入前实际COST: Number(写入前评估.实际COST || 0),
+    副作用原始COST: Number(写入后评估.副作用原始COST || 0),
+    副作用有效COST: Number(写入后评估.副作用有效COST || 0),
+    最终实际COST: Number(写入后评估.实际COST || 0),
+    最低有效COST: Number(写入后评估.最低有效COST || 0),
+    预算门禁: Number(写入后评估.实际门禁 || 0),
+  });
   return 1;
 }
 
@@ -20556,8 +21021,16 @@ function 生成阶段按目标COST填充效果强度_V1(技能 = {}, 上下文 =
       .split(/[.[\]]/)
       .map(项 => String(项 || '').trim())
       .filter(Boolean);
-    if (片段[0] === '_效果数组') return 读取运行时路径值_V1(技能._效果数组, 片段.slice(1));
-    return 读取运行时路径值_V1(技能, 片段);
+    const 根 = 片段[0] === '_效果数组' ? 技能._效果数组 : 技能;
+    const 有效片段 = 片段[0] === '_效果数组' ? 片段.slice(1) : 片段;
+    let 当前 = 根;
+    for (const 片段值 of 有效片段) {
+      if (当前 == null || typeof 当前 !== 'object') return undefined;
+      const 键 = Array.isArray(当前) && /^\d+$/.test(片段值) ? Number(片段值) : 片段值;
+      if (!Object.prototype.hasOwnProperty.call(当前, 键)) return undefined;
+      当前 = 当前[键];
+    }
+    return 当前;
   };
   const 候选 = (Array.isArray(评估?.效果明细) ? 评估.效果明细 : []).map(明细 => {
     if (明细?.计入COST !== true) return null;
@@ -24207,6 +24680,12 @@ function buildSeventhRingTrueBodySkill(
     }
   }
   skill._效果数组 = 效果数组.filter(Boolean);
+  const 副作用列表 = normalizeSkillSideEffectList(options?.副作用列表 || []);
+  副作用列表.forEach(副作用 => {
+    if (!写入生成阶段自动副作用_V1(skill, 副作用, 真身上下文)) {
+      throw new Error(`技能生成错误:武魂真身显式副作用${副作用.副作用类型 || '未命名'}缺少合法承载位置`);
+    }
+  });
   return 收口技能执行结构_V1(skill, { 目标: '自身' });
 }
 
@@ -24273,21 +24752,9 @@ function autoGenerateSkill(
     主机制大类: blueprint?.主机制大类,
     主机制原型: blueprint?.主机制原型,
   });
-  const 战斗 = buildSkillCombatProfile(blueprint, {
-    ...(options || {}),
-    quality,
-    ringIndex,
-    ringAge,
-    type,
-    系别: type,
-    passiveMode,
-    grade,
-    sourceCategory: skillSourceCategory,
-    来源: skillSourceCategory,
-  });
   const main = blueprint.主机制大类;
   const archetype = blueprint.主机制原型;
-  const secondary = blueprint.副机制 || [];
+  const 原始副机制 = blueprint.副机制 || [];
   const 副作用列表 = normalizeSkillSideEffectList(
     Array.isArray(options?.副作用列表) && options.副作用列表.length ? options.副作用列表 : [],
   );
@@ -24302,6 +24769,29 @@ function autoGenerateSkill(
     typeof globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__ === 'object'
       ? globalThis.__LWCS_SKILL_MECHANISM_REGISTRY__
       : SKILL_MECHANISM_REGISTRY_V1;
+  const 主机制目标侧 = 读取技能机制目标侧_V1(archetype);
+  const secondary = 原始副机制.filter(机制名 => !(主机制目标侧 === '友方' && 读取技能机制目标侧_V1(机制名) === '敌对'));
+  if (secondary.length !== 原始副机制.length) {
+    记录技能生成事件_V1(options, {
+      类型: '副机制目标侧过滤',
+      主机制原型: archetype,
+      主机制目标侧,
+      过滤副机制: 原始副机制.filter(机制名 => !secondary.includes(机制名)),
+      原因: '友方主机制不能绑定敌对副机制',
+    });
+  }
+  const 战斗 = buildSkillCombatProfile({ ...blueprint, 副机制: secondary }, {
+    ...(options || {}),
+    quality,
+    ringIndex,
+    ringAge,
+    type,
+    系别: type,
+    passiveMode,
+    grade,
+    sourceCategory: skillSourceCategory,
+    来源: skillSourceCategory,
+  });
   const 解析打包语义目标 = (机制名输入 = '', 回退目标 = '') => {
     const 机制名 = String(机制名输入 || '').trim();
     const 蓝图目标 = String(blueprint?.目标 || '').trim();
@@ -24452,8 +24942,16 @@ function autoGenerateSkill(
     effect.条件分支 = [...baseBranches, ...newBranches];
     return effect;
   };
-  const 标记副机制跟随主原型_V1 = effect => {
+  const 标记副机制跟随主原型_V1 = (effect, 机制名 = '') => {
     if (!effect || typeof effect !== 'object' || Array.isArray(effect)) return effect;
+    const 副机制目标侧 = 读取技能机制目标侧_V1(机制名);
+    if (主机制目标侧 && 副机制目标侧 && 主机制目标侧 !== 副机制目标侧) {
+      return {
+        ...effect,
+        目标: 主机制目标侧 === '敌对' && 副机制目标侧 === '友方' ? '自身' : effect.目标,
+        生效方式: '独立生效',
+      };
+    }
     const 当前主目标 = 归一化执行效果作用目标_V1(
       packedEffects.find(item => item && typeof item === 'object' && !Array.isArray(item) && String(item.原型 || '').trim())?.目标 || '',
       '',
@@ -24485,8 +24983,7 @@ function autoGenerateSkill(
     const 副机制效果列表 = 编译共享机制效果(机制, {
       主副机制上下文: '副机制',
       副机制: true,
-      生效方式: '跟随主原型',
-    }).map(标记副机制跟随主原型_V1);
+    }).map(effect => 标记副机制跟随主原型_V1(effect, 机制));
     if (!副机制效果列表.length) throw new Error(`技能生成错误:${机制}未生成可执行副机制原型`);
     packedEffects.push(...副机制效果列表);
     packedEffects.splice(0, packedEffects.length, ...收口生成后正式效果列表_V1(packedEffects, 解析打包语义目标(机制, '单体')));
@@ -24726,6 +25223,18 @@ function autoGenerateSkill(
   });
   Object.defineProperty(收口结果, '品质等级', {
     value: grade,
+    enumerable: false,
+    configurable: true,
+  });
+  Object.defineProperty(收口结果, '生成蓝图', {
+    value: Object.freeze({
+      主机制大类: main,
+      主机制原型: archetype,
+      副机制: Object.freeze([...secondary]),
+      承载方式: blueprint.释放形态 || '直接生效',
+      目标: blueprint.目标 || '',
+      加成属性候选: Object.freeze([...attrs]),
+    }),
     enumerable: false,
     configurable: true,
   });
@@ -25647,13 +26156,28 @@ function buildSecondaryWeightedPool(main = '', type = '强攻系', preferredSeco
   );
   return SOUL_SPIRIT_SECONDARY_OPTIONS_V1.map(option => {
     let weight = 1;
-    if (mainSet.has(option)) weight += 7;
-    if (typePotentialSet.has(option)) weight += 2;
-    if (typeBiasSet.has(option)) weight += 4;
-    if (preferredSet.has(option)) weight += 10;
-    return { value: option, weight };
+    const 来源标签 = [];
+    if (mainSet.has(option)) {
+      weight += 7;
+      来源标签.push('主机制匹配');
+    }
+    if (typePotentialSet.has(option)) {
+      weight += 2;
+      来源标签.push('系别潜力');
+    }
+    if (typeBiasSet.has(option)) {
+      weight += 4;
+      来源标签.push('系别偏好');
+    }
+    if (preferredSet.has(option)) {
+      weight += 10;
+      来源标签.push('显式偏好');
+    }
+    if (!来源标签.length) 来源标签.push('基础保底');
+    return { value: option, weight, 来源标签 };
   }).filter(entry =>
     entry.weight > 0 &&
+    !物品被动战斗外原型集合_V1.has(String(entry.value || '').trim()) &&
     SKILL_MECHANISM_META_V1[String(entry.value || '').trim()]?.可副机制 === true &&
     机制具备共享原型编译_V1(entry.value),
   );
@@ -26259,7 +26783,7 @@ function resolveSkillAttachedAttributes(
   if (source === '自身操控' && structureAttrs.length) return structureAttrs;
   const invocationAttrs = extractWuxingInvocationElements(wuxingInvocation);
   if (source === '魂技调用' && invocationAttrs.length) return invocationAttrs;
-  void context;
+  if (source === '自身操控') return buildSkillAttributeGateContext(context).callableElements;
   void profile;
   return [];
 }
@@ -27257,6 +27781,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
   const 显式生成品质 = String(context?.gradeOverride || context?.grade || context?.品质 || context?.sourceQuality || context?.来源品质 || '').trim();
   let 固定生成品质 = 显式生成品质 ? normalizeSkillTableGrade(显式生成品质) : '';
   let 临时技能 = null;
+  let 接受候选序号 = 0;
   let 最后错误 = null;
   const 失败记录 = [];
   const 失败主机制大类 = new Set();
@@ -27317,6 +27842,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         )
         : autoGenerateSkill(系别, 天赋层级, 魂环年限, 魂环位, 契合度, 偏好副机制, 当前tick, {
             ...基础生成选项,
+            候选序号,
             消耗前摇收口方案: 候选消耗前摇方案,
             ...(候选序号 > 0 ? {
               ...(固定生成品质 ? { gradeOverride: 固定生成品质 } : {}),
@@ -27386,9 +27912,44 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         释放形态: 候选技能.承载方式,
       });
       const 最终正式技能 = 校验生成技能正式结构_V1(候选技能, '生成技能最终预算', 候选预算上下文);
+      if (!是武魂真身候选) {
+        收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 候选序号, 机制标签: 候选机制标签 }, 候选预算档案);
+      }
+      const 副作用前评估 = 评估技能预算_V1(最终正式技能, 候选预算上下文);
+      const 自动副作用数 = 尝试生成阶段固有副作用_V1(最终正式技能, {
+        ...(候选预算上下文 || {}),
+        候选序号,
+        type: 系别,
+        品质: String(最终正式技能?.品质等级 || 固定生成品质 || '').trim(),
+        grade: String(最终正式技能?.品质等级 || 固定生成品质 || '').trim(),
+        魂环位,
+        ringIndex: 魂环位,
+        sourceCategory: 基础生成选项.sourceCategory,
+      });
+      if (自动副作用数 > 0) {
+        收口技能执行结构_V1(最终正式技能, {
+          目标: String(最终正式技能?.承载方式 || '').trim() === '造物承载' ? '自身' : '单体',
+          passiveMode: context?.passiveMode === true,
+        });
+        if (!是武魂真身候选) {
+          收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 候选序号, 机制标签: 候选机制标签 }, 候选预算档案);
+        }
+        const 副作用后评估 = 评估技能预算_V1(最终正式技能, 候选预算上下文);
+        记录技能生成事件_V1(context, {
+          类型: '副作用COST收口',
+          候选序号,
+          系别,
+          主机制原型: 候选机制标签,
+          副作用前实际COST: Number(副作用前评估?.实际COST || 0),
+          副作用原始COST: Number(副作用后评估?.副作用原始COST || 0),
+          副作用有效COST: Number(副作用后评估?.副作用有效COST || 0),
+          最终实际COST: Number(副作用后评估?.实际COST || 0),
+          最低有效COST: Number(副作用后评估?.最低有效COST || 0),
+          预算门禁: Number(副作用后评估?.实际门禁 || 0),
+        });
+      }
       当前候选保留技能 = 最终正式技能;
       if (!是武魂真身候选) {
-        收敛技能到预算区间_V1(最终正式技能, { ...候选预算上下文, 机制标签: 候选机制标签 }, 候选预算档案);
         断言并同步自动生成最终预算_V1(最终正式技能, {
           ...候选预算上下文,
           仅断言预算: true,
@@ -27396,6 +27957,7 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         断言直接结算收益预算_V1(最终正式技能, '生成技能', context || {});
       }
       临时技能 = 最终正式技能;
+      接受候选序号 = 候选序号;
       记录技能生成事件_V1(context, {
         类型: '候选成功',
         候选序号,
@@ -27403,7 +27965,13 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
         天赋: 天赋层级,
         魂环位,
         来源: 基础生成选项.sourceCategory,
+        主机制大类: String(生成结果?.生成蓝图?.主机制大类 || '').trim(),
         主机制原型: 当前候选机制原型,
+        副机制: [...(生成结果?.生成蓝图?.副机制 || [])],
+        承载方式: String(生成结果?.承载方式 || '').trim(),
+        目标: String(生成结果?.生成蓝图?.目标 || '').trim(),
+        品质: String(生成结果?.品质等级 || 固定生成品质 || '').trim(),
+        副作用数量: 读取技能分阶段副作用列表_V1(最终正式技能).length,
         耗时毫秒: Number(Math.max(0, 读取性能计时毫秒_V1() - 候选开始毫秒).toFixed(3)),
       });
       break;
@@ -27503,6 +28071,10 @@ function 直接自动生成技能结构_V1(skill = {}, context = {}) {
     天赋: 天赋层级,
     魂环位,
     来源: 基础生成选项.sourceCategory,
+    主机制原型: String(临时技能?.机制原型 || '').trim(),
+    承载方式: String(skill?.承载方式 || '直接生效').trim() || '直接生效',
+    触发方式: String(skill?.触发方式 || '').trim(),
+    副作用数量: 读取技能分阶段副作用列表_V1(skill).length,
     重抽次数: Math.max(0, 失败记录.length),
     失败记录: [...失败记录],
     耗时毫秒: Number(Math.max(0, 读取性能计时毫秒_V1() - 直接生成开始毫秒).toFixed(3)),

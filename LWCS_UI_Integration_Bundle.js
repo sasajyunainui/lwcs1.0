@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b */
+/* sources-sha256: LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c18fb17328115c1b145b297336c9e4854a2bedac5bba449cdface0d0f7128389 */
 ;
 /* source: LWCS_Database_Adapter.js */
 (() => {
@@ -20748,11 +20748,11 @@
     const 数值 = parseSkillDesignerSignedValue(value);
     if (!Number.isFinite(数值)) return value;
     if (字段 === '数值' && (技能设计台状态施加状态分类矩阵.持续伤害类 || []).includes(状态名))
-      return formatSkillDesignerSignedValue(-Math.max(0.05, Math.abs(数值)), true);
+      return formatSkillDesignerSignedValue(-Math.max(0.01, Math.abs(数值)), true);
     if (字段 === '数值' && 状态名 === '持续恢复')
       return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     if (字段 === '数值' && ['资源燃烧', '魂力枯竭'].includes(状态名))
-      return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
+      return formatSkillDesignerSignedValue(Math.max(0.01, Math.abs(数值)), true);
     if (字段 === '数值' && ['护盾', '禁疗', '治疗反转', '防御剥夺', '精神抗性剥夺'].includes(状态名))
       return formatSkillDesignerSignedValue(Math.max(0.05, Math.abs(数值)), true);
     return value;
@@ -58341,9 +58341,8 @@ ${播报文本}
         }));
     },
 
-    收集角色可复刻技能列表(角色 = {}) {
+    收集角色可复刻技能列表(角色 = {}, statData = {}) {
       const 列表 = [];
-      const statData = this.readStatData();
       const 取定义技能表 = 记录 => {
         const 名称 = toText(记录 && 记录.名称, '').trim();
         if (!名称) return {};
@@ -58503,7 +58502,7 @@ ${播报文本}
         const 保存上限 = Math.max(1, parseSkillDesignerIntegerInputValue(effect['保存上限'], 1, 1));
         const 当前复制效果 = cloneJsonValue(deepGet(statData, ['char', 使用者键, '复制效果'], {}), {});
         let 已有数量 = this.统计可保存复刻技能数量(当前复制效果);
-        const 目标技能列表 = this.收集角色可复刻技能列表(目标.char);
+        const 目标技能列表 = this.收集角色可复刻技能列表(目标.char, statData);
         while (已有数量 >= 保存上限) {
           const 丢弃键 = await this.选择丢弃复刻技能(当前复制效果);
           if (!丢弃键) throw new Error('复刻技能已达保存上限。');

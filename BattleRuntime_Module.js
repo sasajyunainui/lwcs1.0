@@ -5286,7 +5286,9 @@
     return writeLedgerEvent(combatData, {
       eventKind: 'resource_change',
       round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(unit),
       actorName: String(meta.sourceActorName || unit?.name || unit?.名称 || label || '').trim(),
+      targetId: previewRuntime.unitId(unit),
       targetName: unit?.name || unit?.名称 || label || '',
       actionName: String(meta.sourceActionName || meta.stateName || '回合末资源变化').trim(),
       actionType: 'state_tick',
@@ -9091,7 +9093,9 @@
     const actionEvent = writeLedgerEvent(combatData, {
       eventKind,
       round: Number(combatData?.回合 || 0),
+      actorId: previewRuntime.unitId(actor),
       actorName: previewRuntime.unitName(actor),
+      targetId: previewRuntime.unitId(primaryTarget),
       targetName: previewRuntime.unitName(primaryTarget),
       targetIds: declaration?.targetIds || [],
       declaredTargetId:
@@ -11928,10 +11932,15 @@
           ? candidate.targetIds
           : declaration?.targetIds || []
         ).map(value => String(value || '').trim()).filter(Boolean),
-        score: Number(candidate?.score ?? candidate?.objectiveUtility ?? 0),
-        objectiveUtility: Number(candidate?.objectiveUtility || 0),
+        score: Number(candidate?.score || 0),
         rank: Math.max(0, Number(candidate?.rank || 0)),
         selected: candidate?.selected === true,
+        classification: String(candidate?.classification || '').trim(),
+        rejectionCode: String(candidate?.rejectionCode || '').trim(),
+        selectionMode: String(candidate?.selectionMode || '').trim(),
+        tieGroup: (Array.isArray(candidate?.tieGroup) ? candidate.tieGroup : [])
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
       };
     };
     const selected = decision?.selected && typeof decision.selected === 'object'
@@ -11944,7 +11953,10 @@
     return {
       version: String(decision?.version || '').trim(),
       schemaVersion: String(decision?.schemaVersion || '').trim(),
-      decisionEngine: String(decision?.decisionEngine || '').trim().toUpperCase(),
+      decisionEngine: String(
+        decision?.decisionEngine ||
+        (/next/i.test(String(decision?.version || '')) ? 'NEXT' : 'LEGACY'),
+      ).trim().toUpperCase(),
       providerId: String(decision?.providerId || '').trim(),
       round: Number(decision?.round || 0),
       actorId: String(decision?.actorId || '').trim(),
@@ -11954,18 +11966,45 @@
         selected?.playerLocked === true ? 'PLAYER_LOCKED' : 'AI',
       ),
       sourceActorId: String(decision?.sourceActorId || '').trim(),
+      sourceActionId: String(decision?.sourceActionId || '').trim(),
       opportunityId: String(decision?.opportunityId || '').trim(),
       grantId: String(decision?.grantId || '').trim(),
       opportunitySequence: Math.max(0, Number(decision?.opportunitySequence || 0)),
       continuation: decision?.continuation === true,
       candidateCount: Math.max(0, Number(decision?.candidateCount || 0)),
       eligibleCount: Math.max(0, Number(decision?.eligibleCount || 0)),
+      hardExcludedCount: Math.max(0, Number(decision?.hardExcludedCount || 0)),
+      frozenCandidateIds: (Array.isArray(decision?.frozenCandidateIds)
+        ? decision.frozenCandidateIds
+        : []
+      ).map(value => String(value || '').trim()).filter(Boolean),
       preEnumerationRejections: (Array.isArray(decision?.preEnumerationRejections)
         ? decision.preEnumerationRejections
         : []
       ).map(entry => ({
-        candidateId: String(entry?.candidateId || '').trim(),
+        actionKind: String(entry?.actionKind || '').trim(),
+        sourceActionId: String(entry?.sourceActionId || '').trim(),
+        targetIds: (Array.isArray(entry?.targetIds) ? entry.targetIds : [])
+          .map(value => String(value || '').trim())
+          .filter(Boolean),
+        paymentMode: String(entry?.paymentMode || '').trim(),
         rejectionCode: String(entry?.rejectionCode || '').trim(),
+        rejectionStage: String(entry?.rejectionStage || '').trim(),
+        skillId: String(entry?.skillId || '').trim(),
+        skillName: String(entry?.skillName || '').trim(),
+        fusionKey: String(entry?.fusionKey || '').trim(),
+      })),
+      hardExclusionAudit: (Array.isArray(decision?.hardExclusionAudit)
+        ? decision.hardExclusionAudit
+        : []
+      ).map(entry => ({
+        candidateId: String(entry?.candidateId || '').trim(),
+        reasonCode: String(
+          entry?.reasonCode || entry?.code || entry?.rejectionCode || '',
+        ).trim(),
+        dominatedBy: String(
+          entry?.dominatedBy || entry?.witnessCandidateId || '',
+        ).trim(),
       })),
       selected: selected
         ? {
@@ -11979,7 +12018,14 @@
               '',
             ),
             actionFamily: String(selected?.actionFamily || '').trim(),
+            classification: String(selected?.classification || 'VIABLE').trim() || 'VIABLE',
+            rejectionCode: String(selected?.rejectionCode || '').trim(),
+            selectionMode: String(selected?.selectionMode || '').trim(),
+            counterDeclineFallback: selected?.counterDeclineFallback === true,
+            utilityBefore: Number(selected?.utilityBefore || 0),
+            utilityAfter: Number(selected?.utilityAfter || 0),
             objectiveUtility: Number(selected?.objectiveUtility || 0),
+            goalUtilityDeltaHEPP: Number(selected?.goalUtilityDeltaHEPP || 0),
             declaration: {
               actionId: String(declaration?.actionId || '').trim(),
               actorId: String(declaration?.actorId || '').trim(),
@@ -11993,75 +12039,39 @@
                 typeof declaration.resourceCosts === 'object'
                   ? { ...declaration.resourceCosts }
                   : {},
-              skill: {
-                name: String(skill?.name || '').trim(),
-                魂技名: String(skill?.魂技名 || '').trim(),
-                技能名称: String(skill?.技能名称 || '').trim(),
-                名称: String(skill?.名称 || '').trim(),
-                _效果数组: (Array.isArray(skill?._效果数组)
-                  ? skill._效果数组
-                  : []
-                ).map(effect => ({ 原型: String(effect?.原型 || '').trim() })),
-              },
             },
-            repeatedActionAudit: selected?.repeatedActionAudit
-              ? {
-                  lifecycleWindowRealizable:
-                    selected.repeatedActionAudit.lifecycleWindowRealizable === true,
-                  repeatedActionDelta: Number(
-                    selected.repeatedActionAudit.repeatedActionDelta || 0,
-                  ),
-                  resourceRunwayAfter: Number.isFinite(
-                    Number(selected.repeatedActionAudit.resourceRunwayAfter),
-                  )
-                    ? Number(selected.repeatedActionAudit.resourceRunwayAfter)
-                    : null,
-                }
-              : null,
-            terminalEvidence: selected?.terminalEvidence
-              ? {
-                  direct: {
-                    achieved: selected?.terminalEvidence?.direct?.achieved === true,
-                  },
-                }
-              : null,
-            crisisResponseAudit: selected?.crisisResponseAudit
-              ? {
-                  realized: selected.crisisResponseAudit.realized === true,
-                  problemId: String(
-                    selected.crisisResponseAudit.problemId || '',
-                  ).trim(),
-                }
-              : null,
-            predictedOutcomeEvidence: (Array.isArray(
-              selected?.predictedOutcomeEvidence,
-            )
-              ? selected.predictedOutcomeEvidence
-              : []
-            ).map(evidence => ({
-              outcomeKind: String(evidence?.outcomeKind || '').trim(),
-            })),
+            predictedOutcomeEvidence: cloneValue(
+              Array.isArray(selected?.predictedOutcomeEvidence)
+                ? selected.predictedOutcomeEvidence
+                : [],
+            ),
+            immediateReactionAudit: cloneValue(
+              Array.isArray(selected?.immediateReactionAudit)
+                ? selected.immediateReactionAudit
+                : [],
+            ),
+            effectTargetAudit: cloneValue(
+              Array.isArray(selected?.effectTargetAudit)
+                ? selected.effectTargetAudit
+                : [],
+            ),
+            nextValueAudit: cloneValue(selected?.nextValueAudit || null),
           }
         : null,
-      problems: (Array.isArray(decision?.problems) ? decision.problems : []).map(
-        problem => ({ problemId: String(problem?.problemId || '').trim() }),
-      ),
       candidateAudit: (Array.isArray(decision?.candidateAudit)
         ? decision.candidateAudit
         : []
       ).map(compactCandidate),
-      scoreAudit: (Array.isArray(decision?.scoreAudit)
-        ? decision.scoreAudit
-        : []
-      ).map(compactCandidate),
-      lostOpportunity: decision?.lostOpportunity
-        ? {
-            reasonCode: String(decision.lostOpportunity?.reasonCode || '').trim(),
-            opportunityId: String(
-              decision.lostOpportunity?.opportunityId || '',
-            ).trim(),
-          }
-        : null,
+      probabilitySources: cloneValue({
+        responseModel: selected?.goalProjection?.responseModel || null,
+        mechanicObservations: Array.isArray(selected?.mechanicObservations)
+          ? selected.mechanicObservations
+          : [],
+      }),
+      uncertaintyBounds: cloneValue(
+        selected?.primaryRoute?.probabilityBounds || { lower: 0, upper: 1 },
+      ),
+      lostOpportunity: decision?.lostOpportunity ? true : null,
     };
   }
 
@@ -12075,34 +12085,58 @@
       round: Number(event?.round || 0),
       actorId: String(event?.actorId || '').trim(),
       actorName: String(event?.actorName || '').trim(),
+      actorSide: String(event?.actorSide || '').trim(),
       targetId: String(event?.targetId || '').trim(),
       targetName: String(event?.targetName || '').trim(),
+      targetSide: String(event?.targetSide || '').trim(),
       targetIds: (Array.isArray(event?.targetIds) ? event.targetIds : [])
         .map(value => String(value || '').trim())
         .filter(Boolean),
+      declaredTargetId: String(event?.declaredTargetId || '').trim(),
+      resolvedTargetId: String(event?.resolvedTargetId || '').trim(),
+      targetScope: String(event?.targetScope || '').trim(),
       actionName: String(event?.actionName || '').trim(),
       actionType: String(event?.actionType || '').trim(),
+      actorControl: String(event?.actorControl || '').trim(),
       actionRole: String(event?.actionRole || '').trim(),
       actionId: String(event?.actionId || '').trim(),
       opportunityId: String(event?.opportunityId || '').trim(),
+      opportunitySequence: Number(event?.opportunitySequence || 0),
+      grantId: String(event?.grantId || '').trim(),
       sourceActionId: String(event?.sourceActionId || '').trim(),
+      sourceRound: Number(event?.sourceRound || 0),
+      chainNodeId: String(event?.chainNodeId || '').trim(),
+      parentNodeId: String(event?.parentNodeId || '').trim(),
+      sourceNodeId: String(event?.sourceNodeId || '').trim(),
+      reactionNodeId: String(event?.reactionNodeId || '').trim(),
       ruleCode: String(event?.ruleCode || '').trim(),
       result: String(event?.result || '').trim(),
       resultState: String(event?.resultState || '').trim(),
       factType: String(event?.factType || '').trim(),
       effectPrototype: String(event?.effectPrototype || '').trim(),
+      sourceEffectId: String(event?.sourceEffectId || '').trim(),
+      applicationId: String(event?.applicationId || '').trim(),
+      actionStatus: String(event?.actionStatus || '').trim(),
+      failReason: String(event?.failReason || '').trim(),
       primaryOutcome: String(event?.primaryOutcome || '').trim(),
       appliedDamage: Number(event?.appliedDamage || 0),
       appliedHealing: Number(event?.appliedHealing || 0),
       resource: String(event?.resource || '').trim(),
-      resourceDelta: Number(event?.resourceDelta || event?.delta || 0),
+      resourceDelta: Number(event?.resourceDelta || 0),
       duration: Number(event?.duration || 0),
       createdName: String(event?.createdName || '').trim(),
       itemName: String(event?.itemName || '').trim(),
       count: Number(event?.count || 0),
       quantity: Number(event?.quantity || 0),
+      probability: event?.probability == null ? null : Number(event.probability),
+      roll: event?.roll == null ? null : Number(event.roll),
+      operation: String(event?.operation || '').trim(),
       meta: {
         decisionCandidateId: String(meta?.decisionCandidateId || '').trim(),
+        sourceActionId: String(meta?.sourceActionId || '').trim(),
+        opportunityId: String(meta?.opportunityId || '').trim(),
+        opportunitySequence: Number(meta?.opportunitySequence || 0),
+        grantId: String(meta?.grantId || '').trim(),
         resource: String(meta?.resource || '').trim(),
         resourceKey: String(meta?.resourceKey || '').trim(),
         delta: Number(meta?.delta || 0),
@@ -12113,6 +12147,24 @@
         after: Number(meta?.after || 0),
         quantityAfter: Number(meta?.quantityAfter || 0),
         intentLethalPrevented: meta?.intentLethalPrevented === true,
+        hitProbability: meta?.hitProbability == null
+          ? null
+          : Number(meta.hitProbability),
+        probability: meta?.probability == null ? null : Number(meta.probability),
+        roll: meta?.roll == null ? null : Number(meta.roll),
+        rawDamage: Number(meta?.rawDamage || 0),
+        rawDamageTotal: Number(meta?.rawDamageTotal || 0),
+        incomingDamage: Number(meta?.incomingDamage || 0),
+        defenseMultiplier: meta?.defenseMultiplier == null
+          ? null
+          : Number(meta.defenseMultiplier),
+        damageMultiplier: meta?.damageMultiplier == null
+          ? null
+          : Number(meta.damageMultiplier),
+        shieldAbsorb: Number(meta?.shieldAbsorb || 0),
+        appliedDamage: Number(meta?.appliedDamage || 0),
+        damageType: String(meta?.damageType || '').trim(),
+        reactionEventId: String(meta?.reactionEventId || '').trim(),
         sideEffectType: String(meta?.sideEffectType || '').trim(),
         timing: String(meta?.timing || '').trim(),
         formulaTrace: {
@@ -12182,7 +12234,7 @@
       });
     });
     return {
-      mode: 'ANALYTICS_COMPACT_V1',
+      mode: 'ANALYTICS_COMPACT_V2',
       fatalCount: fatals.length,
       warningCount: 0,
       fatals,
@@ -12198,6 +12250,93 @@
       typeof performance.now === 'function'
         ? performance.now()
         : Date.now();
+    const collectPerformanceBreakdown =
+      input?.settings?.collectPerformanceBreakdown === true;
+    const performanceStartedAt = collectPerformanceBreakdown
+      ? performanceNow()
+      : 0;
+    const performanceBreakdown = {
+      schemaVersion: 'BATTLE_RUNTIME_PERFORMANCE_V1',
+      initializationMs: 0,
+      roundPreparationMs: 0,
+      decisionContextMs: 0,
+      worldBuildMs: 0,
+      candidateEnumerationMs: 0,
+      candidateContextMs: 0,
+      routeAnalysisMs: 0,
+      requestAssemblyMs: 0,
+      futureProjectionMs: 0,
+      requestFinalizationMs: 0,
+      featureInputBuildMs: 0,
+      providerScoringMs: 0,
+      providerAuditMs: 0,
+      featureInputBreakdown: {},
+      creationFutureUseBreakdown: {},
+      decisionCommitMs: 0,
+      queueDispatchMs: 0,
+      reactionSettlementMs: 0,
+      actionSettlementMs: 0,
+      settlementObservationMs: 0,
+      roundEndMs: 0,
+      finalStateMs: 0,
+      reportAndAuditMs: 0,
+      decisionTotalMs: 0,
+      prepareTotalMs: 0,
+      providerTotalMs: 0,
+      decisionCount: 0,
+      reactionSettlementCount: 0,
+      actionSettlementCount: 0,
+    };
+    const addPerformanceTime = (stage, startedAt) => {
+      if (!collectPerformanceBreakdown) return;
+      performanceBreakdown[stage] = Number((
+        Number(performanceBreakdown[stage] || 0) +
+        performanceNow() - startedAt
+      ).toFixed(3));
+    };
+    const addPerformanceValue = (stage, value) => {
+      if (!collectPerformanceBreakdown) return;
+      performanceBreakdown[stage] = Number((
+        Number(performanceBreakdown[stage] || 0) + Number(value || 0)
+      ).toFixed(3));
+    };
+    const performanceBreakdownSnapshot = () => {
+      if (!collectPerformanceBreakdown) return null;
+      const totalMs = Number((performanceNow() - performanceStartedAt).toFixed(3));
+      const exclusiveStages = [
+        'initializationMs',
+        'roundPreparationMs',
+        'decisionContextMs',
+        'worldBuildMs',
+        'candidateEnumerationMs',
+        'candidateContextMs',
+        'routeAnalysisMs',
+        'requestAssemblyMs',
+        'futureProjectionMs',
+        'requestFinalizationMs',
+        'featureInputBuildMs',
+        'providerScoringMs',
+        'providerAuditMs',
+        'decisionCommitMs',
+        'queueDispatchMs',
+        'reactionSettlementMs',
+        'actionSettlementMs',
+        'settlementObservationMs',
+        'roundEndMs',
+        'finalStateMs',
+        'reportAndAuditMs',
+      ];
+      const accountedMs = Number(exclusiveStages.reduce(
+        (sum, stage) => sum + Number(performanceBreakdown[stage] || 0),
+        0,
+      ).toFixed(3));
+      return {
+        ...performanceBreakdown,
+        totalMs,
+        accountedMs,
+        unattributedMs: Number(Math.max(0, totalMs - accountedMs).toFixed(3)),
+      };
+    };
     const performanceTrace = (stage, fields = {}) => {
       if (!performanceTraceEnabled) return;
       console.error(`[r8-runtime-perf] ${JSON.stringify({
@@ -12610,6 +12749,7 @@
     let terminal = null;
     let continuationStopReason = null;
     const naturalActionBudget = 40;
+    addPerformanceTime('initializationMs', performanceStartedAt);
     try {
       if (input?.worldActionContext !== undefined) {
         if (typeof previewRuntime.bindWorldActionContext !== 'function' ||
@@ -12619,6 +12759,9 @@
         previewRuntime.bindWorldActionContext(combatData, input.worldActionContext);
       }
       for (let roundOffset = 1; roundOffset <= roundLimit; roundOffset += 1) {
+        const roundPreparationStartedAt = collectPerformanceBreakdown
+          ? performanceNow()
+          : 0;
         combatData.回合 = Number(source?.回合 || 0) + roundOffset;
         roundsExecuted = roundOffset;
         executedRoundNumbers.push(Number(combatData?.回合 || 0));
@@ -13353,6 +13496,29 @@
           const contextPreparedAt = performanceNow();
           let decisionResult;
           let decisionTiming = {};
+          let decisionPrepareMs = 0;
+          let decisionProviderMs = 0;
+          let decisionCoreFinishedAt = contextPreparedAt;
+          let decisionTimingFinalized = false;
+          const finalizeDecisionTiming = () => {
+            if (decisionTimingFinalized) return;
+            decisionTimingFinalized = true;
+            if (!collectPerformanceBreakdown) return;
+            const decisionFinishedAt = performanceNow();
+            decisionTiming = {
+              totalMs: Number((decisionFinishedAt - decisionStartedAt).toFixed(3)),
+              contextMs: Number((contextPreparedAt - decisionStartedAt).toFixed(3)),
+              neutralDecisionMs: Number((decisionFinishedAt - contextPreparedAt).toFixed(3)),
+              prepareMs: Number(decisionPrepareMs.toFixed(3)),
+              providerMs: Number(decisionProviderMs.toFixed(3)),
+              commitMs: Number((decisionFinishedAt - decisionCoreFinishedAt).toFixed(3)),
+              queueDecisionIndex: decisionPerformanceDiagnostics.length,
+            };
+            addPerformanceValue('decisionTotalMs', decisionTiming.totalMs);
+            addPerformanceValue('decisionContextMs', decisionTiming.contextMs);
+            addPerformanceValue('decisionCommitMs', decisionTiming.commitMs);
+            performanceBreakdown.decisionCount += 1;
+          };
           let decisionRuntimeSnapshot = null;
           if (playerLockedSettlement) {
             const lockedDeclaration = extras.playerLockedDeclaration && typeof extras.playerLockedDeclaration === 'object'
@@ -13421,25 +13587,118 @@
               },
               alternatives: [],
             };
-           decisionTiming = {
-             totalMs: Number((performanceNow() - decisionStartedAt).toFixed(3)),
-             neutralDecisionMs: Number((performanceNow() - contextPreparedAt).toFixed(3)),
-             queueDecisionIndex: decisionPerformanceDiagnostics.length,
-           };
+            if (collectPerformanceBreakdown) {
+              decisionCoreFinishedAt = performanceNow();
+            } else {
+              decisionTiming = {
+                totalMs: Number((performanceNow() - decisionStartedAt).toFixed(3)),
+                neutralDecisionMs: Number((performanceNow() - contextPreparedAt).toFixed(3)),
+                queueDecisionIndex: decisionPerformanceDiagnostics.length,
+              };
+            }
           } else if (providerId) {
+            const prepareStartedAt = collectPerformanceBreakdown
+              ? performanceNow()
+              : 0;
             const preparedRequest = decisionRuntime.prepareDecisionRequest({
               ...decisionInput,
               analysisDepth: 'CANDIDATES_ONLY',
+              collectPerformanceBreakdown,
             });
-            decisionResult = decisionRuntime.runProvider({
+            if (collectPerformanceBreakdown) {
+              const prepareFinishedAt = performanceNow();
+              decisionPrepareMs = prepareFinishedAt - prepareStartedAt;
+              addPerformanceValue('prepareTotalMs', decisionPrepareMs);
+              const prepareBreakdown =
+                decisionRuntime.readPreparedRequestPerformance?.(
+                  preparedRequest,
+                ) || {};
+              const prepareStages = [
+                'worldBuildMs',
+                'candidateEnumerationMs',
+                'candidateContextMs',
+                'creationFutureUseMs',
+                'routeAnalysisMs',
+                'requestAssemblyMs',
+                'futureProjectionMs',
+                'requestFinalizationMs',
+              ];
+              prepareStages.forEach(stage =>
+                addPerformanceValue(stage, prepareBreakdown[stage]),
+              );
+              Object.entries(
+                prepareBreakdown.creationFutureUseBreakdown || {},
+              ).forEach(([stage, value]) => {
+                performanceBreakdown.creationFutureUseBreakdown[stage] = Number((
+                  Number(
+                    performanceBreakdown.creationFutureUseBreakdown[stage] || 0,
+                  ) + Number(value || 0)
+                ).toFixed(3));
+              });
+              const measuredPrepareMs = prepareStages.reduce(
+                (sum, stage) => sum + Number(prepareBreakdown[stage] || 0),
+                0,
+              );
+              addPerformanceValue(
+                'requestFinalizationMs',
+                Math.max(0, decisionPrepareMs - measuredPrepareMs),
+              );
+            }
+            const providerStartedAt = collectPerformanceBreakdown
+              ? performanceNow()
+              : 0;
+            const providerResult = decisionRuntime.runProvider({
               providerId,
               request: preparedRequest,
-            }).decisionAudit;
+            });
+            decisionResult = providerResult.decisionAudit;
+            if (collectPerformanceBreakdown) {
+              const providerFinishedAt = performanceNow();
+              decisionProviderMs = providerFinishedAt - providerStartedAt;
+              const providerBreakdown = providerResult.performanceBreakdown || {};
+              Object.entries(
+                providerBreakdown.featureInputBreakdown || {},
+              ).forEach(([stage, value]) => {
+                performanceBreakdown.featureInputBreakdown[stage] = Number((
+                  Number(
+                    performanceBreakdown.featureInputBreakdown[stage] || 0,
+                  ) + Number(value || 0)
+                ).toFixed(3));
+              });
+              addPerformanceValue(
+                'featureInputBuildMs',
+                providerBreakdown.featureInputBuildMs,
+              );
+              addPerformanceValue(
+                'providerScoringMs',
+                providerBreakdown.providerScoringMs,
+              );
+              addPerformanceValue(
+                'providerAuditMs',
+                Math.max(
+                  0,
+                  decisionProviderMs -
+                    Number(providerBreakdown.featureInputBuildMs || 0) -
+                    Number(providerBreakdown.providerScoringMs || 0),
+                ),
+              );
+              addPerformanceValue('providerTotalMs', decisionProviderMs);
+              decisionCoreFinishedAt = providerFinishedAt;
+            }
           } else if (testLinearProvider) {
+            const providerStartedAt = collectPerformanceBreakdown
+              ? performanceNow()
+              : 0;
             decisionResult = decisionRuntime.runR9v2LinearProviderForTest({
               ...decisionInput,
               __r9v2LinearTest: true,
             });
+            if (collectPerformanceBreakdown) {
+              decisionCoreFinishedAt = performanceNow();
+              decisionProviderMs = decisionCoreFinishedAt - providerStartedAt;
+              addPerformanceValue('providerAuditMs', decisionProviderMs);
+              addPerformanceValue('providerTotalMs', decisionProviderMs);
+            }
           } else {
             throw new Error('NO_FORMAL_PROVIDER');
           }
@@ -13526,6 +13785,7 @@
                 stanceType: lostOpportunity.stanceType,
               },
             });
+            finalizeDecisionTiming();
             const decisionAuditFields = {
               ...decisionResult,
               round: combatData.回合,
@@ -13533,6 +13793,9 @@
               actionRole: normalizeActionRole(extras.role || node.actionRole),
               continuation: node.nodeKind === 'CONTINUATION',
               sourceActorId: String(extras.sourceActorId || '').trim(),
+              sourceActionId: String(
+                extras.sourceActionId || node?.sourceActionId || '',
+              ).trim(),
               opportunityId: String(node?.opportunityId || node?.grantId || '').trim(),
               grantId: String(node?.grantId || '').trim(),
               opportunitySequence: decisionOpportunitySequence,
@@ -13627,6 +13890,7 @@
               : null,
           });
           strategicHistoryByActor.set(actorId, history.slice(-8));
+          finalizeDecisionTiming();
           const decisionAuditFields = {
             ...decisionResult,
             round: combatData.回合,
@@ -13634,6 +13898,9 @@
             actionRole: normalizeActionRole(extras.role || node.actionRole),
             continuation: node.nodeKind === 'CONTINUATION',
             sourceActorId: String(extras.sourceActorId || '').trim(),
+            sourceActionId: String(
+              extras.sourceActionId || node?.sourceActionId || '',
+            ).trim(),
             opportunityId: String(node?.opportunityId || node?.grantId || '').trim(),
             grantId: String(node?.grantId || '').trim(),
             opportunitySequence: decisionOpportunitySequence,
@@ -13786,6 +14053,16 @@
           });
           return true;
         };
+        addPerformanceTime('roundPreparationMs', roundPreparationStartedAt);
+        const queueExecutionStartedAt = collectPerformanceBreakdown
+          ? performanceNow()
+          : 0;
+        const queueNestedTimeBefore = collectPerformanceBreakdown
+          ? Number(performanceBreakdown.decisionTotalMs || 0) +
+            Number(performanceBreakdown.reactionSettlementMs || 0) +
+            Number(performanceBreakdown.actionSettlementMs || 0) +
+            Number(performanceBreakdown.settlementObservationMs || 0)
+          : 0;
         while (queue.pendingCount > 0 && !queue.fatal) {
           terminal = evaluateBattleTerminal({ combatData, currentRound: combatData.回合, rounds: roundOffset, roundCompleted: false }, {});
           if (terminal?.terminal === true) {
@@ -14007,6 +14284,9 @@
               const reactionDeclaration = preparedDefense
                 ? { actorId, actionKind: preparedDefense.actionKind, targetIds: [actorId] }
                 : cloneValue(decisionResult.selected.declaration);
+              const reactionSettlementStartedAt = collectPerformanceBreakdown
+                ? performanceNow()
+                : 0;
               const reaction = settleStructuredReaction({
                 combatData,
                 reactor: actor,
@@ -14019,16 +14299,30 @@
                 preparedDefense,
                 decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
               });
+              addPerformanceTime(
+                'reactionSettlementMs',
+                reactionSettlementStartedAt,
+              );
+              if (collectPerformanceBreakdown) {
+                performanceBreakdown.reactionSettlementCount += 1;
+              }
               invalidateRouteHashesFromFacts(combatData, actorId, [
                 reaction?.event,
                 ...(Array.isArray(reaction?.facts) ? reaction.facts : []),
               ]);
               registerPredictedEvidence(reaction?.event, decisionResult);
               if (reaction?.event && Array.isArray(reaction?.facts) && reaction.facts.length) {
+                const settlementObservationStartedAt = collectPerformanceBreakdown
+                  ? performanceNow()
+                  : 0;
                 recordSettledBeliefs(decisionResult, {
                   actionEvent: reaction.event,
                   facts: reaction.facts,
                 });
+                addPerformanceTime(
+                  'settlementObservationMs',
+                  settlementObservationStartedAt,
+                );
               }
               recordPublicReactionObservation({
                 reactor: actor,
@@ -14115,14 +14409,31 @@
                 });
                 continue;
               }
+              const actionSettlementStartedAt = collectPerformanceBreakdown
+                ? performanceNow()
+                : 0;
               const settlement = executeStructuredDeclaration({
                 combatData,
                 declaration: shared.declaration,
                 actionContext: shared.actionContext,
                 reactionByTarget: shared.reactionByTarget,
               });
+              addPerformanceTime(
+                'actionSettlementMs',
+                actionSettlementStartedAt,
+              );
+              if (collectPerformanceBreakdown) {
+                performanceBreakdown.actionSettlementCount += 1;
+              }
               invalidateRouteHashesFromFacts(combatData, previewRuntime.unitId(actor), settlement?.facts);
+              const settlementObservationStartedAt = collectPerformanceBreakdown
+                ? performanceNow()
+                : 0;
               recordSettledBeliefs(shared.decisionResult, settlement);
+              addPerformanceTime(
+                'settlementObservationMs',
+                settlementObservationStartedAt,
+              );
               if (node.actionRole === 'COUNTER') {
                 const counterHit = settlement.facts.find(event => String(event?.eventKind || '').trim() === 'hit_result');
                 const counterSourceAction = node?.state?.parentActionEvent || null;
@@ -14461,7 +14772,18 @@
                 }
               }
               decisionResult = decideForNode(actor, node, node.nodeKind === 'COUNTER'
-                ? { role: 'COUNTER', counterWindow: true, counterActionAvailable: true, sourceActorId, immediateBudget: 40 }
+                ? {
+                    role: 'COUNTER',
+                    counterWindow: true,
+                    counterActionAvailable: true,
+                    sourceActorId,
+                    sourceActionId: String(
+                      node?.state?.parentActionEvent?.actionId ||
+                      node?.sourceActionId ||
+                      '',
+                    ).trim(),
+                    immediateBudget: 40,
+                  }
                 : node.nodeKind === 'CONTINUATION'
                   ? { role: 'ACTIVE', continuationGrant: true, immediateBudget: naturalActionBudget, enforceImmediateBudget: true }
                   : { role: node.actionRole });
@@ -14750,7 +15072,25 @@
             break;
           }
         }
+        if (collectPerformanceBreakdown) {
+          const queueNestedTimeAfter =
+            Number(performanceBreakdown.decisionTotalMs || 0) +
+            Number(performanceBreakdown.reactionSettlementMs || 0) +
+            Number(performanceBreakdown.actionSettlementMs || 0) +
+            Number(performanceBreakdown.settlementObservationMs || 0);
+          addPerformanceValue(
+            'queueDispatchMs',
+            Math.max(
+              0,
+              performanceNow() - queueExecutionStartedAt -
+                (queueNestedTimeAfter - queueNestedTimeBefore),
+            ),
+          );
+        }
         if (queue.fatal) throw new Error(`${queue.fatal.code}:${queue.fatal.message || ''}`);
+        const roundEndStartedAt = collectPerformanceBreakdown
+          ? performanceNow()
+          : 0;
         if (terminal?.terminal !== true) {
           settleBattleRoundEnd(combatData, logs, {
             worldActionContext: input?.worldActionContext,
@@ -14769,7 +15109,10 @@
             executionRound: roundOffset,
           },
         });
-        if (terminal?.terminal === true) break;
+        if (terminal?.terminal === true) {
+          addPerformanceTime('roundEndMs', roundEndStartedAt);
+          break;
+        }
         if (roundOffset < roundLimit) {
           const hasAutoContinueSettings = input?.settings && [
             'stopDamagePercent',
@@ -14790,10 +15133,15 @@
               code: String(continuation?.reasonCode || 'AUTO_CONTINUE_STOPPED').trim(),
               text: String(continuation?.log || '自动续推已停止。').trim(),
             };
+            addPerformanceTime('roundEndMs', roundEndStartedAt);
             break;
           }
         }
+        addPerformanceTime('roundEndMs', roundEndStartedAt);
       }
+      const finalStateStartedAt = collectPerformanceBreakdown
+        ? performanceNow()
+        : 0;
       if (evaluationSession) {
         advanceRuntimeEvaluationSession(
           eventOwnedEvaluationEnabled
@@ -14827,6 +15175,10 @@
                 ? `已完成本次预演设置的${roundLimit}回合，战斗仍可继续。`
                 : '本次预演提前中断，战斗仍可继续。',
           };
+      addPerformanceTime('finalStateMs', finalStateStartedAt);
+      const reportAndAuditStartedAt = collectPerformanceBreakdown
+        ? performanceNow()
+        : 0;
       if (analyticsCompactEvidence) {
         const publicEntries = projectPublicReportBlocks(sourceLedger);
         const reportBlocks = buildReportBlocks(
@@ -14836,6 +15188,8 @@
         ).map(buildAnalyticsReportBlock);
         const ledger = sourceLedger.map(buildAnalyticsLedgerEvent);
         const audit = auditAnalyticsEvidence(decisions, ledger, reportBlocks);
+        addPerformanceTime('reportAndAuditMs', reportAndAuditStartedAt);
+        const runtimePerformanceBreakdown = performanceBreakdownSnapshot();
         return {
           caseId,
           seed,
@@ -14843,8 +15197,8 @@
           preview: true,
           inputUnchanged: true,
           providerId,
-          evidenceMode: 'analytics-compact-v1',
-          reportEvidenceMode: 'projected-compact-v1',
+          evidenceMode: 'analytics-compact-v2',
+          reportEvidenceMode: 'projected-compact-v2',
           roundsRequested: roundLimit,
           roundsExecuted,
           executedRoundNumbers: [...executedRoundNumbers],
@@ -14883,6 +15237,9 @@
           enemyAlive: finalAlive.enemyAlive,
           audit,
           beliefObservations: [],
+          ...(runtimePerformanceBreakdown
+            ? { performanceBreakdown: runtimePerformanceBreakdown }
+            : {}),
         };
       }
       const ledger = sourceLedger.map(item => cloneAuditSnapshot(item));
@@ -14941,6 +15298,8 @@
         roundsRequested: roundLimit,
         roundsExecuted,
       });
+      addPerformanceTime('reportAndAuditMs', reportAndAuditStartedAt);
+      const runtimePerformanceBreakdown = performanceBreakdownSnapshot();
       return {
         caseId, seed, mode: 'structured', preview: true, inputUnchanged: true,
         providerId,
@@ -14969,6 +15328,9 @@
         playerAlive: finalAlive.playerAlive,
         enemyAlive: finalAlive.enemyAlive,
         audit, beliefObservations,
+        ...(runtimePerformanceBreakdown
+          ? { performanceBreakdown: runtimePerformanceBreakdown }
+          : {}),
       };
     } finally {
       if (typeof previewRuntime.clearWorldActionContext === 'function') {
@@ -18472,9 +18834,10 @@
         executionKinds.has(String(event?.eventKind || '').trim()) &&
         normalizeActionRole(event?.actionRole || 'ACTIVE') === selectedRole
       );
-      const matchesActor = event =>
-        isSameReportName(event?.actorName || '', actionAudit?.actor || '') ||
-        String(event?.actorId || '').trim() === String(actionAudit?.actor || '').trim();
+      const auditActorId = String(actionAudit?.actor || '').trim();
+      const matchesActor = event => auditActorId
+        ? String(event?.actorId || '').trim() === auditActorId
+        : isSameReportName(event?.actorName || '', actionAudit?.actor || '');
       const matchingStart = auditOpportunityId
         ? executionEvents.find(event =>
             matchesActor(event) &&
@@ -18640,6 +19003,7 @@
       actionRole: normalizeActionRole(decision?.actionRole || 'ACTIVE'),
       actorControl: normalizeActorControl(decision?.actorControl || '', decision?.selected?.playerLocked === true ? 'PLAYER_LOCKED' : 'AI'),
       sourceActorId: String(decision?.sourceActorId || '').trim(),
+      sourceActionId: String(decision?.sourceActionId || '').trim(),
       opportunityId: String(decision?.opportunityId || '').trim(),
       grantId: String(decision?.grantId || '').trim(),
       opportunitySequence: Math.max(0, Number(decision?.opportunitySequence || 0)),

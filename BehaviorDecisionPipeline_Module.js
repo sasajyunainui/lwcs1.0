@@ -2012,6 +2012,7 @@
     };
   }
 
+  var registrySnapshot = freezeDeep(buildRegistry());
   var api = {
     providerId: 'behavior-prototype-adapter-v1',
     kind: 'CANDIDATE_ONLY',
@@ -2035,7 +2036,7 @@
       return classifyParsed(parsed, LIFT_MAP, PROJECTION_MAP);
     },
     registry: function () {
-      return freezeDeep(buildRegistry());
+      return registrySnapshot;
     },
     readMetrics: function () {
       var out = {};
@@ -2047,7 +2048,6 @@
     }
   };
 
-  freezeDeep(api.registry());
   if (typeof globalThis !== 'undefined') globalThis[MOUNT_NAME] = api;
   if (typeof self !== 'undefined' && typeof globalThis === 'undefined') self[MOUNT_NAME] = api;
   if (typeof window !== 'undefined' && typeof globalThis === 'undefined') window[MOUNT_NAME] = api;
@@ -2645,6 +2645,7 @@
       mechanicMetadataEntries: lifted.mechanicMetadataEntries,
       projectionFamilies: lifted.projectionFamilies
     };
+    if (Array.isArray(input.legalityFlags)) bifInput.legalityFlags = input.legalityFlags.slice();
     if (actionOpportunity !== undefined) bifInput.actionOpportunity = actionOpportunity;
     bifInput.prototypeRegistry = prototypeRegistryFrom(pdaApi);
     if (Array.isArray(declaration.publicCost) && declaration.publicCost.length > 0) {
@@ -4677,6 +4678,7 @@
       projectorId: PROJECTORS[row[2]], effectAxis: row[3],
     };
   });
+  var mechanicalFingerprintCache = new WeakMap();
 
   function isObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
   function isPlainObject(value) {
@@ -4762,16 +4764,31 @@
     return kinds && kinds.sort();
   }
   function mechanicalFingerprint(skill, costs, previewApi) {
+    var cacheable = skill !== null && typeof skill === 'object' &&
+      costs !== null && typeof costs === 'object' &&
+      Object.isFrozen(skill) && Object.isFrozen(costs);
+    var cachedByCosts = cacheable ? mechanicalFingerprintCache.get(skill) : null;
+    if (cacheable && cachedByCosts && cachedByCosts.has(costs)) return cachedByCosts.get(costs);
     var normalized = normalizeCosts(costs), prototypeKinds = mechanicalPrototypeKinds(skill);
     var targetModes = mechanicalTargetModes(skill), carrier = skill && CARRIER_CODES[skill['承载方式']];
-    if (!normalized.complete || !prototypeKinds || !targetModes || !carrier) return '';
-    var payload = {
-      actionKind: 'RELEASE_SKILL', resourceCosts: normalized.values,
-      prototypeKinds: prototypeKinds, targetModes: targetModes, carrierMode: carrier,
-    };
-    var hash = '';
-    try { hash = previewApi.stableHash(payload); } catch (error) { return ''; }
-    return validId(hash) ? 'public-action:' + hash : '';
+    var result = '';
+    if (normalized.complete && prototypeKinds && targetModes && carrier) {
+      var payload = {
+        actionKind: 'RELEASE_SKILL', resourceCosts: normalized.values,
+        prototypeKinds: prototypeKinds, targetModes: targetModes, carrierMode: carrier,
+      };
+      var hash = '';
+      try { hash = previewApi.stableHash(payload); } catch (error) { hash = ''; }
+      result = validId(hash) ? 'public-action:' + hash : '';
+    }
+    if (cacheable) {
+      if (!cachedByCosts) {
+        cachedByCosts = new WeakMap();
+        mechanicalFingerprintCache.set(skill, cachedByCosts);
+      }
+      cachedByCosts.set(costs, result);
+    }
+    return result;
   }
   function fail(code, detail) { throw new Error(code + (detail ? ':' + detail : '')); }
   function requireFunction(value, name) { if (typeof value !== 'function') fail('SOURCE_API_REQUIRED', name); }

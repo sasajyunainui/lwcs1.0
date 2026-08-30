@@ -22,10 +22,18 @@
   const MAX_RECURSION_DEPTH = 4;
   const effectHashCache = new WeakMap();
   const effectArrayHashCache = new WeakMap();
+  const sharedEffectArrayHashCache = new Map();
+  const MAX_SHARED_EFFECT_ARRAY_HASH_ENTRIES = 4096;
   const fusionMetadataCache = new WeakMap();
+  const overlayUnitOriginCache = new WeakMap();
+  const skillCostStagesCache = new WeakMap();
+  const sharedSkillCostStagesCache = new Map();
+  const MAX_SHARED_SKILL_COST_STAGE_ENTRIES = 4096;
   const stableHashCache = new WeakMap();
   const stableHashImmutableCache = new WeakMap();
+  let passiveSkillCollectionCache = new WeakMap();
   let normalizedObjectivesCache = new WeakMap();
+  let withdrawalPressureUnitProfileCache = new WeakMap();
   const SKILL_COST_RESOURCE_KEYS = Object.freeze(['魂力', '精神力', '体力']);
   const SKILL_COST_RESOURCE_SET = new Set(SKILL_COST_RESOURCE_KEYS);
   const SKILL_COST_STAGE_META_KEYS = new Set([
@@ -65,6 +73,113 @@
   function normalizeSkillCostIllegalItems(value) {
     const values = Array.isArray(value) ? value : value ? [value] : [];
     return values.map(formatSkillCostDiagnostic).filter(Boolean);
+  }
+
+  function skillCostCacheSignature(rawCost, context = {}, skill = {}) {
+    return JSON.stringify([
+      rawCost,
+      context?.sourceCategory,
+      context?.来源类别,
+      context?.来源,
+      context?.category,
+      context?.source_category,
+      context?.sourceType,
+      context?.来源类型,
+      context?.来源明细,
+      context?.sourceDetail,
+      context?.source_detail,
+      context?.path,
+      context?.写入路径,
+      context?.writePath,
+      context?.路径,
+      context?.写入类型,
+      context?.技能类型,
+      context?.技能分类,
+      context?.技能名,
+      context?.魂技名,
+      context?.name,
+      context?.名称,
+      context?.类型,
+      context?.效果模式,
+      context?.effectMode,
+      context?.技能效果模式,
+      context?.释放形态,
+      context?.画面描述,
+      context?.效果描述,
+      context?.技能描述,
+      context?.描述,
+      context?.触发关键词,
+      context?.关键词,
+      context?.标签,
+      context?.附带属性,
+      context?.动作,
+      context?.动作类型,
+      context?.action,
+      context?.actionKind,
+      context?.actionType,
+      context?.action_kind,
+      context?.来源模块,
+      context?.sourceModule,
+      context?.外部动作,
+      context?.actionContext,
+      context?.forceTrueBody,
+      context?.强制真身,
+      context?.ringIndex,
+      context?.魂环位,
+      context?.ringSlot,
+      context?.需求魂环数,
+      context?.需求魂环槽位,
+      context?.魂技槽位,
+      context?.融合参与者,
+      context?.fusionParticipantIds,
+      context?.fusionPartnerIds,
+      context?.融合模式,
+      context?.fusionMode,
+      context?.fusionUsageMode,
+      !!(context?.融合技 && typeof context.融合技 === 'object' && Object.keys(context.融合技).length),
+      skill?.来源类别,
+      skill?.来源类型,
+      skill?.内容类型,
+      skill?.__战斗来源类别,
+      skill?.来源明细,
+      skill?.__战斗来源明细,
+      skill?.写入路径,
+      skill?.写入类型,
+      skill?.path,
+      skill?.路径,
+      skill?.技能类型,
+      skill?.技能分类,
+      skill?.类型,
+      skill?.魂技名,
+      skill?.name,
+      skill?.技能名,
+      skill?.名称,
+      skill?.效果模式,
+      skill?.effectMode,
+      skill?.技能效果模式,
+      skill?.释放形态,
+      skill?.画面描述,
+      skill?.效果描述,
+      skill?.技能描述,
+      skill?.描述,
+      skill?.触发关键词,
+      skill?.关键词,
+      skill?.标签,
+      skill?.keywords,
+      skill?.附带属性,
+      skill?.forceTrueBody,
+      skill?.强制真身,
+      skill?.ringIndex,
+      skill?.魂环位,
+      skill?.ringSlot,
+      skill?.需求魂环数,
+      skill?.__魂技槽位,
+      skill?.融合参与者,
+      skill?.fusionParticipantIds,
+      skill?.fusionPartnerIds,
+      skill?.融合模式,
+      skill?.fusionMode,
+    ]);
   }
 
   function normalizeSkillCostPhase(phase, form = 'absolute', phaseName = '启动') {
@@ -185,9 +300,7 @@
         非法项: Object.freeze(isEmptyCost ? [] : ['COST_PARSER_UNAVAILABLE']),
       });
     }
-    let parsed;
-    try {
-      const parserContext = {
+    const parserContext = {
         ...context,
         技能: contextSkill,
         技能类型: context?.技能类型 ?? context?.skillType ?? context?.技能类型名称 ?? contextSkill?.技能类型 ?? contextSkill?.技能分类 ?? contextSkill?.类型 ?? '',
@@ -207,10 +320,32 @@
         fusionParticipantIds: context?.fusionParticipantIds ?? context?.融合参与者 ?? context?.fusionPartnerIds ?? contextSkill?.fusionParticipantIds ?? contextSkill?.融合参与者 ?? contextSkill?.fusionPartnerIds,
         融合模式: context?.融合模式 ?? context?.fusionMode ?? context?.fusionUsageMode ?? contextSkill?.融合模式 ?? contextSkill?.fusionMode,
         fusionMode: context?.fusionMode ?? context?.融合模式 ?? context?.fusionUsageMode ?? contextSkill?.fusionMode ?? contextSkill?.融合模式,
-      };
-      if (!contextSkill || typeof contextSkill !== 'object' || !Object.keys(contextSkill).length) {
-        delete parserContext.技能;
+    };
+    if (!contextSkill || typeof contextSkill !== 'object' || !Object.keys(contextSkill).length) {
+      delete parserContext.技能;
+    }
+    const cacheSignature = isSkill
+      ? skillCostCacheSignature(rawCost, parserContext, contextSkill)
+      : '';
+    if (isSkill) {
+      const cached = skillCostStagesCache.get(contextSkill)?.get(cacheSignature);
+      if (cached) {
+        metrics.skillCostStageCacheHits += 1;
+        return cached;
       }
+      const sharedCached = sharedSkillCostStagesCache.get(cacheSignature);
+      if (sharedCached) {
+        metrics.skillCostStageCacheHits += 1;
+        metrics.skillCostStageSharedCacheHits += 1;
+        const cachedByContext = skillCostStagesCache.get(contextSkill) || new Map();
+        cachedByContext.set(cacheSignature, sharedCached);
+        skillCostStagesCache.set(contextSkill, cachedByContext);
+        return sharedCached;
+      }
+      metrics.skillCostStageCacheMisses += 1;
+    }
+    let parsed;
+    try {
       parsed = parser(rawCost, parserContext);
     } catch (error) {
       return Object.freeze({
@@ -236,12 +371,23 @@
       ...startup.illegal,
       ...sustain.illegal,
     ];
-    return Object.freeze({
+    const normalizedResult = Object.freeze({
       启动: startup.values,
       维持: sustain.values,
       形式: illegal.length ? 'invalid' : parsedForm,
       非法项: Object.freeze([...new Set(illegal)]),
     });
+    if (isSkill) {
+      const cachedByContext = skillCostStagesCache.get(contextSkill) || new Map();
+      cachedByContext.set(cacheSignature, normalizedResult);
+      skillCostStagesCache.set(contextSkill, cachedByContext);
+      sharedSkillCostStagesCache.set(cacheSignature, normalizedResult);
+      while (sharedSkillCostStagesCache.size > MAX_SHARED_SKILL_COST_STAGE_ENTRIES) {
+        sharedSkillCostStagesCache.delete(sharedSkillCostStagesCache.keys().next().value);
+        metrics.skillCostStageSharedCacheEvictions += 1;
+      }
+    }
+    return normalizedResult;
   }
 
   function normalizeSkillCostMap(costs = {}, form = 'absolute', phaseName = '启动') {
@@ -415,6 +561,10 @@
     stableHashChars: 0,
     stableHashCacheHits: 0,
     stableHashImmutableCacheHits: 0,
+    effectArrayHashIdentityHits: 0,
+    effectArrayHashSharedHits: 0,
+    effectArrayHashMisses: 0,
+    effectArrayHashSharedEvictions: 0,
     operationGraphBuilds: 0,
     operationGraphEvaluations: 0,
     operationGraphEventApplications: 0,
@@ -422,14 +572,25 @@
     operationGraphStateMerges: 0,
     cacheClears: 0,
     cacheEvictions: 0,
+    skillCostStageCacheHits: 0,
+    skillCostStageCacheMisses: 0,
+    skillCostStageSharedCacheHits: 0,
+    skillCostStageSharedCacheEvictions: 0,
+    mechanicalProjectionProfileIdentityReuses: 0,
+    mechanicalProjectionProfileBuilds: 0,
+    passiveSkillCollectionCacheHits: 0,
+    passiveSkillCollectionBuilds: 0,
   };
   const MAX_PREVIEW_CACHE_ENTRIES = 1024;
   const previewCache = new Map();
+  let builtDamageBasisCache = new WeakSet();
+  let validatedDamageBasisCache = new WeakSet();
   const worldActionContextBindings = new WeakMap();
   let activeWorldActionContextBinding = null;
   const unitIdCache = new WeakMap();
   const unitNameCache = new WeakMap();
   const dependencyCaptureStack = [];
+  let activePreviewDependencyCapture = null;
   // 预演自造召唤物的依赖键：这些实体随路线重放重新生成，不构成对外部世界的依赖
   const PREVIEW_SUMMON_DEPENDENCY_KEY = /^(?:unit|target):preview-summon:/;
   const PAYMENT_ROLE_DEPENDENCY_KEY =
@@ -440,6 +601,7 @@
   }
 
   function cloneValue(value) {
+    if (value === null || typeof value !== 'object') return value;
     if (typeof structuredClone === 'function') return structuredClone(value);
     return JSON.parse(JSON.stringify(value));
   }
@@ -490,9 +652,10 @@
     value = null,
     dependencyRole = 'MECHANICAL',
   ) {
-    const capture = dependencyCaptureStack[dependencyCaptureStack.length - 1];
+    const capture = activePreviewDependencyCapture;
+    if (!capture) return;
     const normalizedKey = String(key || '').trim();
-    if (!capture || !normalizedKey) return;
+    if (!normalizedKey) return;
     // 预演召唤物的读取不记依赖：其 id 只存在于候选自身的 overlay 里；一旦记入
     // dependencyKeys，会话复用重定基会拿它对真实世界求哈希，unit() 解析直接抛
     // battle_decision_dependency_unit_missing（B1-P0，raid 决策33 实测复现）。
@@ -517,7 +680,7 @@
   }
 
   function withPreviewDependencyRole(role, callback) {
-    const capture = dependencyCaptureStack[dependencyCaptureStack.length - 1];
+    const capture = activePreviewDependencyCapture;
     if (!capture || typeof callback !== 'function') return callback();
     if (!Array.isArray(capture.roleStack)) capture.roleStack = [];
     capture.roleStack.push(String(role || 'MECHANICAL').trim().toUpperCase());
@@ -536,7 +699,7 @@
     };
     const attribute = unit?.属性 && typeof unit.属性 === 'object' ? cloneValue(unit.属性) : unit?.属性;
     const directStates = unit?.状态效果 && typeof unit.状态效果 === 'object' ? unit.状态效果 : attribute?.状态效果;
-    return {
+    const clone = {
       ...unit,
       属性: attribute,
       状态: unit?.状态 && typeof unit.状态 === 'object' ? { ...unit.状态 } : unit?.状态,
@@ -551,6 +714,18 @@
       物品: unit?.物品 && typeof unit.物品 === 'object' ? cloneValue(unit.物品) : unit?.物品,
       战斗物品: unit?.战斗物品 && typeof unit.战斗物品 === 'object' ? cloneValue(unit.战斗物品) : unit?.战斗物品,
     };
+    overlayUnitOriginCache.set(clone, overlayUnitOriginCache.get(unit) || unit);
+    return clone;
+  }
+
+  function overlayOriginUnit(unit = {}) {
+    return overlayUnitOriginCache.get(unit) || null;
+  }
+
+  function inheritOverlayOrigin(unit = {}, source = {}) {
+    if (!unit || typeof unit !== 'object' || !source || typeof source !== 'object') return unit;
+    overlayUnitOriginCache.set(unit, overlayUnitOriginCache.get(source) || source);
+    return unit;
   }
 
   function stableHash(value) {
@@ -623,9 +798,48 @@
   function effectArrayHash(effects) {
     if (!Array.isArray(effects)) return '';
     const cached = effectArrayHashCache.get(effects);
-    if (cached) return cached;
+    if (cached) {
+      metrics.effectArrayHashIdentityHits += 1;
+      return cached;
+    }
+    let contentKey = '';
+    let jsonSafe = true;
+    let rootHolder = null;
+    try {
+      contentKey = JSON.stringify(effects, function detectNonJsonValue(key, value) {
+        if (rootHolder === null) rootHolder = this;
+        const original = this === rootHolder && key === '' ? effects : this?.[key];
+        const type = typeof original;
+        if (
+          original === undefined || type === 'function' || type === 'symbol' || type === 'bigint' ||
+          (original && type === 'object' && !Array.isArray(original) && !isPlainRecord(original))
+        ) {
+          jsonSafe = false;
+        }
+        return value;
+      });
+    } catch (_error) {
+      jsonSafe = false;
+    }
+    if (!jsonSafe || typeof contentKey !== 'string') contentKey = '';
+    if (contentKey) {
+      const shared = sharedEffectArrayHashCache.get(contentKey);
+      if (shared) {
+        metrics.effectArrayHashSharedHits += 1;
+        effectArrayHashCache.set(effects, shared);
+        return shared;
+      }
+    }
+    metrics.effectArrayHashMisses += 1;
     const result = stableHash(effects);
     effectArrayHashCache.set(effects, result);
+    if (contentKey) {
+      sharedEffectArrayHashCache.set(contentKey, result);
+      while (sharedEffectArrayHashCache.size > MAX_SHARED_EFFECT_ARRAY_HASH_ENTRIES) {
+        sharedEffectArrayHashCache.delete(sharedEffectArrayHashCache.keys().next().value);
+        metrics.effectArrayHashSharedEvictions += 1;
+      }
+    }
     return result;
   }
 
@@ -688,7 +902,9 @@
     const value = Number.isFinite(direct)
       ? Math.max(1, direct)
       : Math.max(1, readNumber(unit, ['hp_max', 'HP上限', '生命上限', 'vit_max', '体力上限'], 1));
-    recordPreviewDependency(`unit:${unitId(unit)}:baseMaxHp`, value);
+    if (activePreviewDependencyCapture) {
+      recordPreviewDependency(`unit:${unitId(unit)}:baseMaxHp`, value);
+    }
     return value;
   }
 
@@ -698,7 +914,9 @@
     const value = Number.isFinite(direct)
       ? clamp(direct, 0, maximum)
       : clamp(readNumber(unit, ['hp', 'HP', '生命', 'vit', '体力'], maximum), 0, maximum);
-    recordPreviewDependency(`unit:${unitId(unit)}:hp`, value);
+    if (activePreviewDependencyCapture) {
+      recordPreviewDependency(`unit:${unitId(unit)}:hp`, value);
+    }
     return value;
   }
 
@@ -711,10 +929,12 @@
     // Runtime stores active shields as state entries; direct fields are only the
     // fallback for snapshots that have not been materialized into states yet.
     const value = stateTotal > 0 ? stateTotal : direct;
-    recordPreviewDependency(
-      `target:${unitId(unit)}:defense`,
-      defenseDependencyValue(unit),
-    );
+    if (activePreviewDependencyCapture) {
+      recordPreviewDependency(
+        `target:${unitId(unit)}:defense`,
+        defenseDependencyValue(unit),
+      );
+    }
     return value;
   }
 
@@ -797,7 +1017,9 @@
       const direct = Number(unit?.sp_max);
       value = Math.max(1, Number.isFinite(direct) ? direct : readNumber(unit, ['sp_max', '魂力上限'], 1));
     }
-    recordPreviewDependency(`unit:${unitId(unit)}:resourceMax:${resource}`, value);
+    if (activePreviewDependencyCapture) {
+      recordPreviewDependency(`unit:${unitId(unit)}:resourceMax:${resource}`, value);
+    }
     return value;
   }
 
@@ -824,7 +1046,9 @@
         ? clamp(direct, 0, maximum)
         : clamp(readNumber(unit, ['sp', '魂力'], 0), 0, maximum);
     }
-    recordPreviewDependency(`unit:${unitId(unit)}:resource:${resource}`, value);
+    if (activePreviewDependencyCapture) {
+      recordPreviewDependency(`unit:${unitId(unit)}:resource:${resource}`, value);
+    }
     return value;
   }
 
@@ -897,12 +1121,14 @@
         const value = Number(finalStats[alias]);
         if (Number.isFinite(value)) {
           const result = Math.max(1, value);
-          recordPreviewDependency(`unit:${unitId(unit)}:stat:${key}`, result);
-          if (key === 'def' || key === 'men' || key === 'agi') {
-            recordPreviewDependency(
-              `target:${unitId(unit)}:defense`,
-              defenseDependencyValue(unit),
-            );
+          if (activePreviewDependencyCapture) {
+            recordPreviewDependency(`unit:${unitId(unit)}:stat:${key}`, result);
+            if (key === 'def' || key === 'men' || key === 'agi') {
+              recordPreviewDependency(
+                `target:${unitId(unit)}:defense`,
+                defenseDependencyValue(unit),
+              );
+            }
           }
           return result;
         }
@@ -912,12 +1138,14 @@
     const result = Number.isFinite(direct)
       ? Math.max(1, direct)
       : readCombatStatBreakdown(unit, key).value;
-    recordPreviewDependency(`unit:${unitId(unit)}:stat:${key}`, result);
-    if (key === 'def' || key === 'men' || key === 'agi') {
-      recordPreviewDependency(
-        `target:${unitId(unit)}:defense`,
-        defenseDependencyValue(unit),
-      );
+    if (activePreviewDependencyCapture) {
+      recordPreviewDependency(`unit:${unitId(unit)}:stat:${key}`, result);
+      if (key === 'def' || key === 'men' || key === 'agi') {
+        recordPreviewDependency(
+          `target:${unitId(unit)}:defense`,
+          defenseDependencyValue(unit),
+        );
+      }
     }
     return result;
   }
@@ -1016,6 +1244,7 @@
   }
 
   function buildMechanicalProjectionProfile(unit = {}, side = '') {
+    metrics.mechanicalProjectionProfileBuilds += 1;
     const states = collectStateEntries(unit);
     const outgoingDamageMultiplier = states.reduce((multiplier, [, state]) => {
       const combatEffect = state?.战斗效果 || {};
@@ -1092,6 +1321,7 @@
         魂力: readResourceMax(unit, '魂力'),
         精神力: readResourceMax(unit, '精神力'),
       }),
+      hpMax: readHpMax(unit),
       outgoingDamageMultiplier,
       incomingDamageMultiplier,
       outgoingDamageLimited: Object.freeze(outgoingDamageLimited),
@@ -1100,6 +1330,41 @@
       outgoingArmorPenRatio,
       incomingAvoidanceAdjustment,
     });
+  }
+
+  function mechanicalProjectionProfilesEquivalent(left = null, right = null) {
+    if (!left || !right) return false;
+    const leftOutgoingDamageLimited = left.outgoingDamageLimited;
+    const rightOutgoingDamageLimited = right.outgoingDamageLimited;
+    const leftIncomingDamageLimited = left.incomingDamageLimited;
+    const rightIncomingDamageLimited = right.incomingDamageLimited;
+    const outgoingDamageLimitedEqual = Array.isArray(leftOutgoingDamageLimited) &&
+      Array.isArray(rightOutgoingDamageLimited) &&
+      (leftOutgoingDamageLimited === rightOutgoingDamageLimited ||
+        (leftOutgoingDamageLimited.length === 0 && rightOutgoingDamageLimited.length === 0));
+    const incomingDamageLimitedEqual = Array.isArray(leftIncomingDamageLimited) &&
+      Array.isArray(rightIncomingDamageLimited) &&
+      (leftIncomingDamageLimited === rightIncomingDamageLimited ||
+        (leftIncomingDamageLimited.length === 0 && rightIncomingDamageLimited.length === 0));
+    return Object.is(left.id, right.id) &&
+      Object.is(left.side, right.side) &&
+      Object.is(left.physicallyAlive, right.physicallyAlive) &&
+      Object.is(left.battleCapable, right.battleCapable) &&
+      Object.is(left.hasPendingGrantedEffects, right.hasPendingGrantedEffects) &&
+      Object.is(left.stats?.str, right.stats?.str) &&
+      Object.is(left.stats?.def, right.stats?.def) &&
+      Object.is(left.stats?.agi, right.stats?.agi) &&
+      Object.is(left.stats?.men, right.stats?.men) &&
+      Object.is(left.resourceMax?.魂力, right.resourceMax?.魂力) &&
+      Object.is(left.resourceMax?.精神力, right.resourceMax?.精神力) &&
+      Object.is(left.hpMax, right.hpMax) &&
+      Object.is(left.outgoingDamageMultiplier, right.outgoingDamageMultiplier) &&
+      Object.is(left.incomingDamageMultiplier, right.incomingDamageMultiplier) &&
+      Object.is(left.outgoingHitAdjustment, right.outgoingHitAdjustment) &&
+      Object.is(left.outgoingArmorPenRatio, right.outgoingArmorPenRatio) &&
+      Object.is(left.incomingAvoidanceAdjustment, right.incomingAvoidanceAdjustment) &&
+      outgoingDamageLimitedEqual &&
+      incomingDamageLimitedEqual;
   }
 
   function buildMechanicalProjectionContextEntries(
@@ -1127,10 +1392,23 @@
       ) {
         return baseEntry;
       }
+      const profile = buildMechanicalProjectionProfile(unit, entry.side);
+      if (
+        baseEntry &&
+        baseEntry.side === entry.side &&
+        mechanicalProjectionProfilesEquivalent(profile, baseEntry.profile)
+      ) {
+        metrics.mechanicalProjectionProfileIdentityReuses += 1;
+        return Object.freeze({
+          unit,
+          side: entry.side,
+          profile: baseEntry.profile,
+        });
+      }
       return Object.freeze({
         unit,
         side: entry.side,
-        profile: buildMechanicalProjectionProfile(unit, entry.side),
+        profile,
       });
     });
   }
@@ -1209,16 +1487,22 @@
   }
 
   function isBattleCapable(unit = {}) {
-    const directStamina = Number(unit?.vit);
-    const stamina = Number.isFinite(directStamina) ? directStamina : readResource(unit, '体力');
+    const captureActive = !!activePreviewDependencyCapture;
+    let stamina;
+    if (captureActive) {
+      const directStamina = Number(unit?.vit);
+      stamina = Number.isFinite(directStamina) ? directStamina : readResource(unit, '体力');
+    }
     const incapacityReason = readIncapacityReason(unit);
     const capable = !incapacityReason;
-    recordPreviewDependency(`unit:${unitId(unit)}:state:__action`, {
-      alive: !isDead(unit),
-      stamina,
-      incapacityReason,
-      capable,
-    });
+    if (captureActive) {
+      recordPreviewDependency(`unit:${unitId(unit)}:state:__action`, {
+        alive: !isDead(unit),
+        stamina,
+        incapacityReason,
+        capable,
+      });
+    }
     return capable;
   }
 
@@ -1233,7 +1517,8 @@
 
   function fusionSkillMetadata(unit = {}, skill = {}) {
     if (!unit || typeof unit !== 'object' || !skill || typeof skill !== 'object') return null;
-    let index = fusionMetadataCache.get(unit);
+    const metadataUnit = overlayUnitOriginCache.get(unit) || unit;
+    let index = fusionMetadataCache.get(metadataUnit);
     if (!index) {
       const bySkill = new WeakMap();
       const entries = [];
@@ -1270,9 +1555,9 @@
           visit(child);
         });
       };
-      visit(unit);
+      visit(metadataUnit);
       index = Object.freeze({ bySkill, entries: Object.freeze(entries) });
-      fusionMetadataCache.set(unit, index);
+      fusionMetadataCache.set(metadataUnit, index);
     }
     if (index.bySkill.has(skill)) return index.bySkill.get(skill);
     const wantedName = String(skill?.name || skill?.魂技名 || skill?.技能名称 || skill?.名称 || '').trim();
@@ -2398,7 +2683,7 @@
       identity,
       operands,
     });
-    return Object.freeze({
+    const basis = Object.freeze({
       schemaVersion: 'DamageBasisV1',
       basisView,
       formulaVersion,
@@ -2428,47 +2713,52 @@
         ...operands,
       }),
     });
+    builtDamageBasisCache.add(basis);
+    return basis;
   }
 
   function assertDamageBasis(basis = {}, expected = {}) {
     if (!basis || typeof basis !== 'object' || Array.isArray(basis)) {
       throw new TypeError('DAMAGE_BASIS_INVALID');
     }
-    if (basis.schemaVersion !== 'DamageBasisV1') {
-      throw new Error(`DAMAGE_BASIS_SCHEMA_INVALID:${String(basis.schemaVersion || '')}`);
-    }
-    if (!['DECISION_VISIBLE', 'BELIEF', 'RUNTIME_ACTUAL'].includes(String(basis.basisView || '').trim())) {
-      throw new Error(`DAMAGE_BASIS_VIEW_INVALID:${String(basis.basisView || '')}`);
-    }
-    if (basis.formulaVersion !== 'R9_DAMAGE_FORMULA_V5') {
-      throw new Error(`DAMAGE_BASIS_FORMULA_VERSION_INVALID:${String(basis.formulaVersion || '')}`);
-    }
     const identity = basis.identity;
-    const operands = basis.operands;
-    if (!identity || typeof identity !== 'object' || !operands || typeof operands !== 'object') {
-      throw new Error('DAMAGE_BASIS_PAYLOAD_MISSING');
-    }
-    ['actorId', 'targetId', 'effectInstanceId', 'sourceEffectId', 'sourceActionId', 'snapshotRevision']
-      .forEach(key => {
-        if (typeof identity[key] !== 'string') {
-          throw new Error(`DAMAGE_BASIS_IDENTITY_INVALID:${key}`);
-        }
+    if (!validatedDamageBasisCache.has(basis)) {
+      if (basis.schemaVersion !== 'DamageBasisV1') {
+        throw new Error(`DAMAGE_BASIS_SCHEMA_INVALID:${String(basis.schemaVersion || '')}`);
+      }
+      if (!['DECISION_VISIBLE', 'BELIEF', 'RUNTIME_ACTUAL'].includes(String(basis.basisView || '').trim())) {
+        throw new Error(`DAMAGE_BASIS_VIEW_INVALID:${String(basis.basisView || '')}`);
+      }
+      if (basis.formulaVersion !== 'R9_DAMAGE_FORMULA_V5') {
+        throw new Error(`DAMAGE_BASIS_FORMULA_VERSION_INVALID:${String(basis.formulaVersion || '')}`);
+      }
+      const operands = basis.operands;
+      if (!identity || typeof identity !== 'object' || !operands || typeof operands !== 'object') {
+        throw new Error('DAMAGE_BASIS_PAYLOAD_MISSING');
+      }
+      ['actorId', 'targetId', 'effectInstanceId', 'sourceEffectId', 'sourceActionId', 'snapshotRevision']
+        .forEach(key => {
+          if (typeof identity[key] !== 'string') {
+            throw new Error(`DAMAGE_BASIS_IDENTITY_INVALID:${key}`);
+          }
+        });
+      if (!identity.actorId || !identity.targetId || !identity.effectInstanceId || !identity.sourceActionId || !identity.snapshotRevision) {
+        throw new Error('DAMAGE_BASIS_IDENTITY_INCOMPLETE');
+      }
+      if (typeof basis.basisHash !== 'string' || !basis.basisHash) {
+        throw new Error('DAMAGE_BASIS_HASH_MISSING');
+      }
+      const expectedHash = stableHash({
+        schemaVersion: 'DamageBasisV1',
+        formulaVersion: basis.formulaVersion,
+        basisView: basis.basisView,
+        identity,
+        operands,
       });
-    if (!identity.actorId || !identity.targetId || !identity.effectInstanceId || !identity.sourceActionId || !identity.snapshotRevision) {
-      throw new Error('DAMAGE_BASIS_IDENTITY_INCOMPLETE');
-    }
-    if (typeof basis.basisHash !== 'string' || !basis.basisHash) {
-      throw new Error('DAMAGE_BASIS_HASH_MISSING');
-    }
-    const expectedHash = stableHash({
-      schemaVersion: 'DamageBasisV1',
-      formulaVersion: basis.formulaVersion,
-      basisView: basis.basisView,
-      identity,
-      operands,
-    });
-    if (basis.basisHash !== expectedHash) {
-      throw new Error('DAMAGE_BASIS_HASH_MISMATCH');
+      if (basis.basisHash !== expectedHash) {
+        throw new Error('DAMAGE_BASIS_HASH_MISMATCH');
+      }
+      if (builtDamageBasisCache.has(basis)) validatedDamageBasisCache.add(basis);
     }
     const expectedView = String(expected?.basisView || '').trim().toUpperCase();
     if (expectedView && basis.basisView !== expectedView) {
@@ -2807,14 +3097,16 @@
 
   function collectPassiveSkills(unit = {}) {
     const equipmentPackage = itemPassiveConsumer()?.编译角色装备被动消费者_V1(unit);
+    const runtimeSkills = Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills)
+      ? unit.__battleRuntime.itemPassiveTriggeredSkills
+      : [];
+    const equipmentSkills = Array.isArray(equipmentPackage?.技能条目)
+      ? equipmentPackage.技能条目.map(entry => entry?.技能).filter(skill => skill && typeof skill === 'object')
+      : [];
     const roots = [
       ...(Array.isArray(unit?.技能列表) ? [unit.技能列表] : []),
-      ...(Array.isArray(unit?.__battleRuntime?.itemPassiveTriggeredSkills)
-        ? [unit.__battleRuntime.itemPassiveTriggeredSkills]
-        : []),
-      ...(Array.isArray(equipmentPackage?.技能条目)
-        ? [equipmentPackage.技能条目.map(entry => entry?.技能).filter(skill => skill && typeof skill === 'object')]
-        : []),
+      ...(runtimeSkills.length ? [runtimeSkills] : []),
+      ...(equipmentSkills.length ? [equipmentSkills] : []),
       ...Object.entries(unit || {})
         .filter(([key, value]) =>
           /^(?:第\d+)?武魂|血脉之力|自创魂技|技能/.test(key) &&
@@ -2822,6 +3114,23 @@
         )
         .map(([, value]) => value),
     ];
+    const cacheKey = !runtimeSkills.length && !equipmentSkills.length
+      ? overlayOriginUnit(unit) || unit
+      : null;
+    const rootSignature = cacheKey
+      ? roots.map(root => [root, Array.isArray(root) ? root.length : -1])
+      : null;
+    const cached = cacheKey ? passiveSkillCollectionCache.get(cacheKey) : null;
+    if (
+      cached &&
+      cached.rootSignature.length === rootSignature.length &&
+      cached.rootSignature.every(([root, length], index) =>
+        root === rootSignature[index][0] && length === rootSignature[index][1]
+      )
+    ) {
+      metrics.passiveSkillCollectionCacheHits += 1;
+      return cached.output;
+    }
     const output = [];
     const seenObjects = new Set();
     const seenSkills = new Set();
@@ -2853,7 +3162,15 @@
       });
     };
     roots.forEach((root, index) => visit(root, `技能根${index}`));
-    return Object.freeze(output);
+    const frozen = Object.freeze(output);
+    if (cacheKey) {
+      passiveSkillCollectionCache.set(cacheKey, Object.freeze({
+        rootSignature: Object.freeze(rootSignature.map(entry => Object.freeze(entry))),
+        output: frozen,
+      }));
+    }
+    metrics.passiveSkillCollectionBuilds += 1;
+    return frozen;
   }
 
   function passiveEffectEntries(skill = {}) {
@@ -4356,6 +4673,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!eligible || !respectStealth || groupTarget || effectTargetsAllies(effect)) return eligible;
       return !stealthBlocksSingleTarget(actor, target, effect, declaration);
     };
+    if (/召唤物/.test(targetText)) {
+      const summonEntries = all.filter(entry =>
+        isSummonUnit(entry.unit) && targetIsEligible(entry.unit, false),
+      );
+      if (/全场/.test(targetText)) return summonEntries.map(entry => entry.unit);
+      const targetSide = /敌方|对方/.test(targetText)
+        ? entry => entry.side !== actorSide
+        : entry => entry.side === actorSide;
+      const eligibleSummons = summonEntries.filter(targetSide).map(entry => entry.unit);
+      const declaredSummons = declaredIds.length
+        ? eligibleSummons.filter(unit => declaredIds.includes(unitId(unit)))
+        : [];
+      return declaredSummons.length ? declaredSummons : eligibleSummons;
+    }
     if (/自身/.test(targetText)) return [actor];
     if (/融合伙伴/.test(targetText)) {
       const participantRefs = [
@@ -5440,22 +5771,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function stateEntries(unit = {}, scope = 'COLLECTION') {
     const entries = collectStateEntries(unit);
     const normalizedScope = String(scope || 'COLLECTION').trim().toUpperCase();
-    const dependencyScope =
-      normalizedScope === 'COLLECTION' ? 'collection' : normalizedScope;
-    recordPreviewDependency(
-      `unit:${unitId(unit)}:state:__${dependencyScope}`,
-      stateDependencyProjection(entries, normalizedScope),
-    );
-    if (normalizedScope === 'COLLECTION' || normalizedScope === 'FULL') {
-      entries.forEach(([key, state]) => {
-        const dependencyKey = String(
-          state?.状态 || state?.状态名称 || key
-        ).trim() || String(key);
-        recordPreviewDependency(
-          `unit:${unitId(unit)}:state:${dependencyKey}`,
-          state,
-        );
-      });
+    if (activePreviewDependencyCapture) {
+      const dependencyScope =
+        normalizedScope === 'COLLECTION' ? 'collection' : normalizedScope;
+      recordPreviewDependency(
+        `unit:${unitId(unit)}:state:__${dependencyScope}`,
+        stateDependencyProjection(entries, normalizedScope),
+      );
+      if (normalizedScope === 'COLLECTION' || normalizedScope === 'FULL') {
+        entries.forEach(([key, state]) => {
+          const dependencyKey = String(
+            state?.状态 || state?.状态名称 || key
+          ).trim() || String(key);
+          recordPreviewDependency(
+            `unit:${unitId(unit)}:state:${dependencyKey}`,
+            state,
+          );
+        });
+      }
     }
     return entries;
   }
@@ -7398,7 +7731,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const nestedContext = {
                 ...context,
                 actor: grantedActor,
-                effectInstanceId: `${context.effectInstanceId}:grant:${index}`,
+                effectInstanceId: `${context.effectInstanceId}:recipient:${targetId}:grant:${index}`,
                 depth: depth + 1,
                 effectPath: effectContext.effectPath,
               };
@@ -9563,6 +9896,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function calculateBaseActionValue(actor = {}, target = {}, declaration = {}) {
+    const projectionContext = declaration?.projectionContext ?? null;
     const effects = declaration?.actionKind === 'BASIC_ATTACK'
       ? [basicAttackEffect()]
       : Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object') : [];
@@ -9571,14 +9905,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : Number.POSITIVE_INFINITY;
     return effects.filter(effect => effectConditionEnabled(effect, declaration?.worldSnapshot || {}, actor, target)).reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() === '伤害结算' && target) {
-        const expectedDamage = calculateBaseDamage(effect, actor, target, null, {
+        const expectedDamage = calculateBaseDamage(effect, actor, target, projectionContext, {
           targetCount: declaration?.targetCount ?? declaration?.targetIds?.length,
           resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
         }) * estimateHitProbability(
           actor,
           target,
           effect,
-          null,
+          projectionContext,
           declaration?.environmentContext || null,
         );
         const availableHp = declaration?.capacityMode === true ? readHpMax(target) : readHp(target);
@@ -9861,6 +10195,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       roleStack: [],
     };
     dependencyCaptureStack.push(dependencyCapture);
+    activePreviewDependencyCapture = dependencyCapture || null;
     try {
       const result = evaluateMechanicalBasisImpl(input);
       if (!result || typeof result !== 'object') return result;
@@ -9892,8 +10227,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const popped = dependencyCaptureStack.pop();
       if (popped !== dependencyCapture) {
         dependencyCaptureStack.length = 0;
+        activePreviewDependencyCapture = null;
         throw new Error('R9V2_MECHANICAL_DEPENDENCY_CAPTURE_STACK_INVALID');
       }
+      activePreviewDependencyCapture = dependencyCaptureStack[dependencyCaptureStack.length - 1] || null;
     }
   }
 
@@ -10364,6 +10701,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       cacheSnapshotRevision,
       input.environmentCacheKey || '',
       input.captureDamageBasisTrace === true ? 'capture-damage-basis-trace' : '',
+      input.buildOperationGraph === false ? 'no-operation-graph' : '',
+      input.captureDependencies === false ? 'no-dependencies' : '',
     ].join('|');
   }
 
@@ -10394,13 +10733,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (effect !== undefined && !isPlainRecord(effect)) throw new TypeError('battle_preview_effect_invalid');
       });
     }
-    const dependencyCapture = {
-      recorder: input?.dependencyRecorder,
-      reads: new Map(),
-      dependencyRoles: new Map(),
-      roleStack: [],
-    };
+    const dependencyCapture = input?.captureDependencies === false
+      ? null
+      : {
+          recorder: input?.dependencyRecorder,
+          reads: new Map(),
+          dependencyRoles: new Map(),
+          roleStack: [],
+        };
     dependencyCaptureStack.push(dependencyCapture);
+    activePreviewDependencyCapture = dependencyCapture || null;
     try {
     const actor = findUnit(worldSnapshot, input?.actorId || declaration?.actorId);
     if (!actor) throw new Error('battle_preview_actor_missing');
@@ -10947,24 +11289,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       effects,
       consumer: 'BattlePreview.previewAction',
     });
-    const operationGraph = buildActionOperationGraph({
-      previewResult: resultValue,
-      worldSnapshot,
-      actionFingerprint: input.actionFingerprint || cacheKey,
-      rootActionId,
-      round: Number(worldSnapshot?.回合 || 0),
-      opportunitySequence: Number(
-        input?.actionOpportunity?.sequence ||
-        input?.actionOpportunity?.createdAtSequence ||
-        0
-      ),
-      actionSequence: Number(input?.actionSequence || 0),
-    });
+    const operationGraph = input?.buildOperationGraph === false
+      ? null
+      : buildActionOperationGraph({
+          previewResult: resultValue,
+          worldSnapshot,
+          actionFingerprint: input.actionFingerprint || cacheKey,
+          rootActionId,
+          round: Number(worldSnapshot?.回合 || 0),
+          opportunitySequence: Number(
+            input?.actionOpportunity?.sequence ||
+            input?.actionOpportunity?.createdAtSequence ||
+            0
+          ),
+          actionSequence: Number(input?.actionSequence || 0),
+        });
     Object.defineProperty(resultValue, 'dependencyReads', {
       configurable: false,
       enumerable: false,
       writable: false,
-      value: Object.freeze([...dependencyCapture.reads.entries()].map(([key, value]) =>
+      value: Object.freeze([...(dependencyCapture?.reads || [])].map(([key, value]) =>
         Object.freeze([key, cloneValue(value)])
       )),
     });
@@ -10973,7 +11317,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       enumerable: false,
       writable: false,
       value: Object.freeze(
-        [...dependencyCapture.dependencyRoles.entries()]
+        [...(dependencyCapture?.dependencyRoles || [])]
           .map(([key, roles]) => Object.freeze([
             key,
             Object.freeze([...roles].sort()),
@@ -10998,8 +11342,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const popped = dependencyCaptureStack.pop();
       if (popped !== dependencyCapture) {
         dependencyCaptureStack.length = 0;
+        activePreviewDependencyCapture = null;
         throw new Error('battle_preview_dependency_capture_stack_corrupted');
       }
+      activePreviewDependencyCapture = dependencyCaptureStack[dependencyCaptureStack.length - 1] || null;
     }
   }
 
@@ -12685,40 +13031,79 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   }
 
   function calculateWithdrawalPressureDetails(unit = {}, opponent = {}, stance = 'WITHDRAW') {
-    const agilityBreakdown = readCombatStatBreakdown(unit, 'agi');
-    const agility = agilityBreakdown.value;
-    const spirit = readResource(unit, '精神力');
-    const spiritMax = readResourceMax(unit, '精神力');
-    const stamina = readResource(unit, '体力');
-    const staminaMax = readResourceMax(unit, '体力');
-    const spiritRatio = clamp(spirit / Math.max(1, spiritMax), 0, 1);
-    const staminaRatio = clamp(stamina / Math.max(1, staminaMax), 0, 1);
-    const stateEffects = stateEntries(unit, 'WITHDRAWAL').map(([stateKey, state]) => ({
-      source: stateName(state) || String(stateKey || '状态效果').trim(),
-      effect: state?.战斗效果 || {},
-    }));
-    const effectContributions = [];
-    const dodgeModifier = stateEffects.reduce((sum, entry) => {
-      const value = Number(entry.effect?.dodge_bonus || 0) * 100 - Number(entry.effect?.dodge_penalty || 0) * 100;
-      if (value) effectContributions.push({ kind: 'add', value, source: `${entry.source}·闪避修正` });
-      return sum + value;
-    }, 0);
-    const reactionModifier = stateEffects.reduce((sum, entry) => {
-      const value = Number(entry.effect?.reaction_bonus || 0) * 80 - Number(entry.effect?.reaction_penalty || 0) * 80;
-      if (value) effectContributions.push({ kind: 'add', value, source: `${entry.source}·反应修正` });
-      return sum + value;
-    }, 0);
-    const hardControlSource = stateEffects.find(entry => entry.effect?.skip_turn === true || entry.effect?.cannot_react === true);
-    const hardControlPenalty = hardControlSource ? 999999 : 0;
-    if (hardControlSource) effectContributions.push({ kind: 'subtract', value: hardControlPenalty, source: `${hardControlSource.source}·无法反应` });
+    const captureActive = !!activePreviewDependencyCapture;
+    let unitProfile = captureActive
+      ? null
+      : withdrawalPressureUnitProfileCache.get(unit);
+    if (!unitProfile) {
+      const agilityBreakdown = readCombatStatBreakdown(unit, 'agi');
+      const agility = agilityBreakdown.value;
+      const spirit = readResource(unit, '精神力');
+      const spiritMax = readResourceMax(unit, '精神力');
+      const stamina = readResource(unit, '体力');
+      const staminaMax = readResourceMax(unit, '体力');
+      const spiritRatio = clamp(spirit / Math.max(1, spiritMax), 0, 1);
+      const staminaRatio = clamp(stamina / Math.max(1, staminaMax), 0, 1);
+      const stateEffects = stateEntries(unit, 'WITHDRAWAL').map(([stateKey, state]) => ({
+        source: stateName(state) || String(stateKey || '状态效果').trim(),
+        effect: state?.战斗效果 || {},
+      }));
+      const effectContributions = [];
+      const dodgeModifier = stateEffects.reduce((sum, entry) => {
+        const value = Number(entry.effect?.dodge_bonus || 0) * 100 - Number(entry.effect?.dodge_penalty || 0) * 100;
+        if (value) effectContributions.push({ kind: 'add', value, source: `${entry.source}·闪避修正` });
+        return sum + value;
+      }, 0);
+      const reactionModifier = stateEffects.reduce((sum, entry) => {
+        const value = Number(entry.effect?.reaction_bonus || 0) * 80 - Number(entry.effect?.reaction_penalty || 0) * 80;
+        if (value) effectContributions.push({ kind: 'add', value, source: `${entry.source}·反应修正` });
+        return sum + value;
+      }, 0);
+      const hardControlSource = stateEffects.find(entry => entry.effect?.skip_turn === true || entry.effect?.cannot_react === true);
+      const hardControlPenalty = hardControlSource ? 999999 : 0;
+      if (hardControlSource) effectContributions.push({ kind: 'subtract', value: hardControlPenalty, source: `${hardControlSource.source}·无法反应` });
+      const base = agility * 0.72 + spirit * 0.012 + spiritMax * 0.025;
+      const conditionFactor = 0.35 + spiritRatio * 0.4 + staminaRatio * 0.25;
+      unitProfile = {
+        agilityBreakdown,
+        agility,
+        spirit,
+        spiritMax,
+        stamina,
+        staminaMax,
+        spiritRatio,
+        staminaRatio,
+        dodgeModifier,
+        reactionModifier,
+        hardControlPenalty,
+        effectContributions,
+        base,
+        conditionFactor,
+      };
+      if (!captureActive) withdrawalPressureUnitProfileCache.set(unit, unitProfile);
+    }
+    const {
+      agilityBreakdown,
+      agility,
+      spirit,
+      spiritMax,
+      stamina,
+      staminaMax,
+      spiritRatio,
+      staminaRatio,
+      dodgeModifier,
+      reactionModifier,
+      hardControlPenalty,
+      effectContributions,
+      base,
+      conditionFactor,
+    } = unitProfile;
     const opposingSpirit = readResource(opponent, '精神力');
     const resourcePressure = clamp(
       Math.pow(Math.max(0.01, spirit / Math.max(1, opposingSpirit)), 0.35) * (0.45 + 0.55 * spiritRatio),
       0.35,
       1.65,
     );
-    const base = agility * 0.72 + spirit * 0.012 + spiritMax * 0.025;
-    const conditionFactor = 0.35 + spiritRatio * 0.4 + staminaRatio * 0.25;
     const stanceMultiplier = stance === 'PURSUIT' ? 1.08 : 1;
     const value = Math.max(0, base * conditionFactor * resourcePressure * stanceMultiplier + dodgeModifier + reactionModifier - hardControlPenalty);
     return Object.freeze({
@@ -12959,7 +13344,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function clearCache() {
     previewCache.clear();
+    builtDamageBasisCache = new WeakSet();
+    validatedDamageBasisCache = new WeakSet();
     normalizedObjectivesCache = new WeakMap();
+    withdrawalPressureUnitProfileCache = new WeakMap();
+    passiveSkillCollectionCache = new WeakMap();
     metrics.cacheClears += 1;
   }
 
@@ -12980,6 +13369,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     unitName,
     listUnits,
     findUnit,
+    overlayOriginUnit,
+    inheritOverlayOrigin,
     sideOf,
     isAlive,
     isDead,
@@ -13049,6 +13440,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     compileMechanicalBasis,
     compileMechanicalProjectionContext,
     deriveMechanicalProjectionContext,
+    mechanicalProjectionProfile,
     evaluateMechanicalBasis,
     evaluateMechanicalBasisRouteScalarColumns,
     deriveStateCombatEffect,
