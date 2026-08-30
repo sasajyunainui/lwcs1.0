@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:04c158000c20f08a3a7f49cdd7b0fd7d0d0cee397f8621a0a6236eda9effa4aa */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:8c8afa3f78c7a83809ccf7b996340f9b64b80bce300fc401aa6bfe80dc100c6c */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -178061,7 +178061,6 @@ $CONTENT
             floor,
             messageId: String(消息元信息?.消息编号 ?? 消息元信息?.messageId ?? 消息元信息?.id ?? ''),
             swipe: String(消息元信息?.滑动编号 ?? 消息元信息?.swipeId ?? 消息元信息?.swipe_id ?? ''),
-            fingerprint: String(消息元信息?.文本签名 ?? 消息元信息?.fingerprint ?? 消息元信息?.messageFingerprint ?? ''),
         };
         identity.key = JSON.stringify([
             identity.epoch,
@@ -178069,7 +178068,6 @@ $CONTENT
             identity.floor,
             identity.messageId,
             identity.swipe,
-            identity.fingerprint,
         ]);
         return identity;
     }
@@ -178082,8 +178080,7 @@ $CONTENT
             && String(transaction.chatId) === identity.chatId
             && Number(transaction.floor) === identity.floor
             && String(transaction.messageId) === identity.messageId
-            && String(transaction.swipe) === identity.swipe
-            && String(transaction.fingerprint) === identity.fingerprint;
+            && String(transaction.swipe) === identity.swipe;
     }
 
     function databaseGenerationTransactionStillCurrent_ACU(transaction, targetMessageMeta = null) {
@@ -178098,13 +178095,10 @@ $CONTENT
                 || String(transaction.context.chatId) !== identity.chatId
                 || String(getDatabaseChatIndexChatId_ACU()) !== identity.chatId))
             return false;
-        if (transaction.context) {
-            const currentIndex = activeDatabaseChatIndex_ACU;
-            if (!currentIndex
-                || currentIndex.chatId !== identity.chatId
-                || Number(currentIndex.revision) !== Number(transaction.context.indexRevision))
-                return false;
-        }
+        if (transaction.context
+            && (!activeDatabaseChatIndex_ACU
+                || activeDatabaseChatIndex_ACU.chatId !== identity.chatId))
+            return false;
         return !!target && 目标角色消息仍匹配_ACU(target);
     }
 
@@ -178172,7 +178166,6 @@ $CONTENT
             || String(transaction.swipe) !== identity.swipe)
             return false;
         transaction.key = identity.key;
-        transaction.fingerprint = identity.fingerprint;
         transaction.targetMessageMeta = targetMessageMeta;
         transaction.context = null;
         clearDatabaseGenerationPlan_ACU(transaction);
@@ -178309,8 +178302,7 @@ $CONTENT
         const 当前元信息 = 读取当前目标角色消息元信息_ACU(目标消息元信息);
         if (!当前元信息 || 当前元信息.消息索引 < 0)
             return false;
-        return String(当前元信息.滑动编号 ?? '') === String(目标消息元信息.滑动编号 ?? '')
-            && String(当前元信息.文本签名 ?? '') === String(目标消息元信息.文本签名 ?? '');
+        return String(当前元信息.滑动编号 ?? '') === String(目标消息元信息.滑动编号 ?? '');
     }
     // ═══ 业务运行时状态 ═══
     let coreApisAreReady_ACU = false;
@@ -182389,6 +182381,7 @@ $CONTENT
     let databasePersistenceOpenPromise_ACU = null;
     let databasePersistenceFallbackRegistered_ACU = false;
     let databaseProjectionRefreshQueue_ACU = Promise.resolve();
+    let databaseExternalHistoryProjection_ACU = null;
     const DATABASE_DELETED_QUIET_WINDOW_MS_ACU = 220;
     let databasePendingTailDeletionRefresh_ACU = null;
     const DATABASE_CHAT_INDEX_TAIL_LIMIT_ACU = 64;
@@ -182600,6 +182593,7 @@ $CONTENT
         databaseTauriChatHandleChatId_ACU = '';
         databaseTauriChatHandleEpoch_ACU = 0;
         databaseTauriChatHandlePromise_ACU = null;
+        databaseExternalHistoryProjection_ACU = null;
     }
 
     function buildDatabaseChatIndexMeta_ACU(message, messageIndex) {
@@ -183071,8 +183065,53 @@ $CONTENT
     function invalidateDatabasePersistence_ACU() {
         const adapter = getPersistenceAdapter_ACU();
         databasePersistenceOpenPromise_ACU = null;
+        databaseExternalHistoryProjection_ACU = null;
         if (adapter && typeof adapter.invalidateChatGeneration === 'function')
             adapter.invalidateChatGeneration();
+    }
+
+    function cacheDatabaseExternalHistoryProjection_ACU(isolationKey, session, frameRefs, chatId, epoch, revision) {
+        if (session?.backend !== 'tt-store'
+            || epoch !== databaseGenerationEpoch_ACU
+            || String(chatId) !== String(getDatabaseChatIndexChatId_ACU()))
+            return;
+        const currentRevision = Number(revision) || 0;
+        const cached = databaseExternalHistoryProjection_ACU;
+        if (cached
+            && cached.chatId === String(chatId)
+            && cached.epoch === epoch
+            && cached.isolationKey === String(isolationKey || '')
+            && cached.revision > currentRevision)
+            return;
+        databaseExternalHistoryProjection_ACU = {
+            chatId: String(chatId),
+            epoch,
+            revision: currentRevision,
+            isolationKey: String(isolationKey || ''),
+            frameRefs: Array.isArray(frameRefs) ? frameRefs : [],
+        };
+    }
+
+    function getDatabaseExternalHistoryFrameRefs_ACU(chat, isolationKey) {
+        const cached = databaseExternalHistoryProjection_ACU;
+        if (!cached
+            || cached.epoch !== databaseGenerationEpoch_ACU
+            || cached.chatId !== String(getDatabaseChatIndexChatId_ACU())
+            || cached.isolationKey !== String(isolationKey || '')
+            || !Array.isArray(chat))
+            return null;
+        for (const ref of cached.frameRefs) {
+            const messageIndex = Number(ref?.messageIndex);
+            const message = Number.isInteger(messageIndex) ? chat[messageIndex] : null;
+            const metadata = ref?.metadata;
+            if (!message || message.is_user || !metadata)
+                return null;
+            if (Number(metadata.messageIndex) !== messageIndex
+                || Number(metadata.idempotencyParts?.assistantIndex) !== messageIndex
+                || String(metadata.idempotencyParts?.swipe ?? '') !== String(message.swipe_id ?? message.swipeId ?? ''))
+                return null;
+        }
+        return cached.frameRefs;
     }
 
     function databaseHeadKey_ACU(isolationHash) {
@@ -183242,9 +183281,9 @@ $CONTENT
             if (!message || message.is_user)
                 continue;
             aiFloor += 1;
-            const meta = databaseMessageMeta_ACU(message, messageIndex, false, aiFloor);
             currentMessages.set(messageIndex, {
-                ...meta,
+                messageIndex,
+                aiFloor,
                 swipeId: String(message?.swipe_id ?? message?.swipeId ?? ''),
             });
         }
@@ -183254,11 +183293,9 @@ $CONTENT
             const current = currentMessages.get(messageIndex);
             if (!current)
                 return;
-            // messageFingerprint 包含消息 id、swipe_id 和稳定正文；textHash 再次锁定 swipe_id + 稳定正文。
-            // 同楼后置的 MVU、状态占位和图片机器块不属于剧情正文，不能让已提交 frame 失活。
-            // idempotencyParts.swipe 用来显式拒绝同一楼层的其他 swipe 分支。
-            if (String(frame.messageFingerprint || '') !== current.messageFingerprint
-                || String(frame.textHash || '') !== current.textHash
+            // TT 的持久 frame 对齐原版消息楼层语义：聊天由 session 隔离，记录绑定 AI 楼层与 swipe。
+            // 正文优化或用户编辑不能让已落地记录失活；正文指纹只参与提交幂等，不参与楼层归属。
+            if (Number(frame.idempotencyParts?.assistantIndex) !== messageIndex
                 || String(frame.idempotencyParts?.swipe ?? '') !== current.swipeId)
                 return;
             live.push({ ...frame, messageIndex, aiFloor: current.aiFloor, order });
@@ -183441,6 +183478,9 @@ $CONTENT
     }
 
     async function readDatabaseExternalProjection_ACU(chat, isolationKey, { maxMessageIndex, prune = false } = {}) {
+        const shouldCacheHistory = maxMessageIndex === undefined;
+        const projectionChatId = shouldCacheHistory ? getDatabaseChatIndexChatId_ACU() : '';
+        const projectionEpoch = databaseGenerationEpoch_ACU;
         const opened = await ensureDatabasePersistenceSession_ACU();
         if (opened.state !== 'committed' || !opened.session)
             return { ...opened, present: false };
@@ -183453,8 +183493,11 @@ $CONTENT
         });
         if (headResult.state !== 'committed' || headResult.verified !== true)
             return { ...headResult, present: false };
-        if (headResult.value === undefined)
+        if (headResult.value === undefined) {
+            if (shouldCacheHistory)
+                cacheDatabaseExternalHistoryProjection_ACU(isolationKey, session, [], projectionChatId, projectionEpoch, 0);
             return { state: 'committed', verified: true, present: false, session, isolationHash, indexKey };
+        }
         const head = headResult.value;
         if (!head || head.kind !== 'head' || head.schemaVersion !== LWCS_DATABASE_SCHEMA_VERSION_ACU
             || head.stableChatId !== session.stableChatId || head.isolationHash !== isolationHash || !head.pointerKey || !head.pointerChecksum
@@ -183529,6 +183572,8 @@ $CONTENT
             }
             projection = { ...projection, orphanFrames: remainingOrphans };
         }
+        if (shouldCacheHistory)
+            cacheDatabaseExternalHistoryProjection_ACU(isolationKey, session, frameRefs, projectionChatId, projectionEpoch, head.revision);
         return {
             state: 'committed',
             verified: true,
@@ -183669,6 +183714,8 @@ $CONTENT
     async function persistDatabaseExternalCommit_ACU(options, chat, target, isolationKey, afterData, filledSheetKeys, effectiveChangedSheetKeys, operations, externalState) {
         const session = externalState.session;
         const isTtStore = session.backend === 'tt-store';
+        const commitChatId = options.eventTransaction?.chatId || getDatabaseChatIndexChatId_ACU();
+        const commitEpoch = options.eventTransaction?.epoch ?? databaseGenerationEpoch_ACU;
         const allowMessageMutation = !isTtStore;
         const activeRefs = externalState.frameRefs || [];
         const previousIndex = externalState.present ? externalState.index : undefined;
@@ -183867,7 +183914,7 @@ $CONTENT
                 : (cleanupState === 'committed' ? resultState : 'uncertain');
             return databasePersistenceFailure_ACU(failureState, writeResult?.error || fallbackError, { messageIndex: target.index, idempotencyKey });
         };
-        if (!databaseTargetFingerprintMatches_ACU(chat, target, options)
+        if (!databaseTargetIdentityMatches_ACU(chat, target, options)
             || !databaseCommitMetadataStillMatches_ACU(chat, target, metadata))
             return databasePersistenceFailure_ACU('stale_chat', 'STALE_TARGET_MESSAGE', { messageIndex: target.index, idempotencyKey });
         let frameWrite;
@@ -183977,6 +184024,19 @@ $CONTENT
         }
         if (!committedRead || committedRead.state !== 'committed' || committedRead.verified !== true || !saveVerificationValuesEqual_ACU(committedRead.value, nextHead))
             return rollbackExternalCommit(committedRead, 'COMMITTED_READ_FAILED');
+        if (isTtStore) {
+            const nextActiveRefs = shouldCheckpoint ? [] : activeRefs;
+            cacheDatabaseExternalHistoryProjection_ACU(isolationKey, session, [
+                ...nextActiveRefs,
+                {
+                    messageIndex: target.index,
+                    aiFloor,
+                    frameKey,
+                    metadata: frameMeta,
+                    frame: storageFrame,
+                },
+            ], commitChatId, commitEpoch, revision);
+        }
         return {
             state: 'committed',
             saved: true,
@@ -184327,9 +184387,11 @@ $CONTENT
         const targetIndex = Number.isInteger(requestedIndex) && requestedIndex >= 0
             ? requestedIndex
             : (Number.isInteger(metaIndex) && metaIndex >= 0 ? metaIndex : -1);
-        let message = options.targetMessage && !options.targetMessage.is_user ? options.targetMessage : null;
-        if (!message && Array.isArray(chat) && targetIndex >= 0)
-            message = chat[targetIndex] && !chat[targetIndex].is_user ? chat[targetIndex] : null;
+        let message = Array.isArray(chat) && targetIndex >= 0 && !chat[targetIndex]?.is_user
+            ? chat[targetIndex]
+            : null;
+        if (!message && options.targetMessage && !options.targetMessage.is_user)
+            message = options.targetMessage;
         const targetMessageId = targetMeta?.消息编号 ?? targetMeta?.messageId ?? targetMeta?.id;
         if (!message && Array.isArray(chat) && targetMessageId !== undefined) {
             message = chat.find(candidate => !candidate?.is_user
@@ -184360,7 +184422,7 @@ $CONTENT
         return { message, index: targetIndex, synthetic: !Array.isArray(chat) || chat[targetIndex] !== message };
     }
 
-    function databaseTargetFingerprintMatches_ACU(chat, target, options = {}) {
+    function databaseTargetIdentityMatches_ACU(chat, target, options = {}) {
         const expected = options.targetMessageMeta || options.messageMeta || null;
         if (!expected || !target || !Number.isInteger(target.index) || target.index < 0)
             return true;
@@ -184378,17 +184440,6 @@ $CONTENT
         if (expectedSwipeId !== undefined
             && String(expectedSwipeId ?? '') !== String(currentMessage.swipe_id ?? currentMessage.swipeId ?? ''))
             return false;
-        if (expected.textHash !== undefined
-            && String(expected.textHash) !== String(databaseMessageTextHash_ACU(currentMessage)))
-            return false;
-        if (expected.messageFingerprint !== undefined
-            && String(expected.messageFingerprint) !== String(databaseMessageFingerprint_ACU(currentMessage, target.index)))
-            return false;
-        if (expected.文本签名 !== undefined) {
-            const currentMeta = 读取角色消息元信息_ACU(currentMessage, target.index);
-            if (String(expected.文本签名 ?? '') !== String(currentMeta.文本签名 ?? ''))
-                return false;
-        }
         return true;
     }
 
@@ -197038,14 +197089,6 @@ $CONTENT
         }
         return latestFloor;
     }
-    function hasTableDataInMessage_ACU(msg, options) {
-        const { sheetKey, isolationKey } = options;
-        return v2FrameHasSheetData_ACU(readIsolatedTagData_ACU(msg, isolationKey), sheetKey);
-    }
-    function getTrackedUpdateFloorInMessage_ACU(msg, options, messageAiFloor) {
-        const { sheetKey, isolationKey } = options;
-        return v2FrameTrackedUpdateFloor_ACU(readIsolatedTagData_ACU(msg, isolationKey), sheetKey, messageAiFloor);
-    }
     function projectTableHistoryStatesFromChat_ACU(chat, sheetKeys, isolationKey, aiIndices) {
         const keys = [...new Set((Array.isArray(sheetKeys) ? sheetKeys : [])
             .map(sheetKey => String(sheetKey || '').trim())
@@ -197061,17 +197104,24 @@ $CONTENT
         }]));
         if (!Array.isArray(chat) || !Array.isArray(aiIndices) || keys.length === 0)
             return states;
+        const externalFrameRefs = getDatabaseExternalHistoryFrameRefs_ACU(chat, isolationKey);
+        const historyFrames = externalFrameRefs !== null
+            ? externalFrameRefs.map(ref => ({
+                messageIndex: ref.messageIndex,
+                aiFloor: ref.aiFloor,
+                tagData: { storageFrame: ref.frame },
+            }))
+            : aiIndices.map((messageIndex, cursor) => ({
+                messageIndex,
+                aiFloor: cursor + 1,
+                tagData: readIsolatedTagData_ACU(chat[messageIndex], isolationKey),
+            }));
         const pendingData = new Set(keys);
         const pendingTracked = new Set(keys);
-        for (let cursor = aiIndices.length - 1; cursor >= 0; cursor -= 1) {
+        for (let cursor = historyFrames.length - 1; cursor >= 0; cursor -= 1) {
             if (pendingData.size === 0 && pendingTracked.size === 0)
                 break;
-            const messageIndex = aiIndices[cursor];
-            const message = Number.isInteger(messageIndex) ? chat[messageIndex] : null;
-            if (!message || message.is_user)
-                continue;
-            const tagData = readIsolatedTagData_ACU(message, isolationKey);
-            const messageAiFloor = cursor + 1;
+            const { messageIndex, aiFloor: messageAiFloor, tagData } = historyFrames[cursor];
             for (const sheetKey of [...pendingData]) {
                 if (!v2FrameHasSheetData_ACU(tagData, sheetKey))
                     continue;
@@ -197124,21 +197174,21 @@ $CONTENT
         }
         return latestAiMessageIndex;
     }
-    function countAiMessagesUpToIndex_ACU(chat, messageIndex, aiIndices = null) {
-        if (Array.isArray(aiIndices))
-            return getIndexedAiCountUpToIndex_ACU(messageIndex, aiIndices);
-        if (!Array.isArray(chat) || messageIndex < 0)
-            return 0;
-        let count = 0;
-        for (let i = 0; i <= messageIndex && i < chat.length; i += 1) {
-            if (chat[i] && !chat[i].is_user)
-                count += 1;
-        }
-        return count;
-    }
     function collectV2CheckpointFloorsFromChat_ACU(chat, isolationKey) {
         if (!Array.isArray(chat))
             return [];
+        const externalFrameRefs = getDatabaseExternalHistoryFrameRefs_ACU(chat, isolationKey);
+        if (externalFrameRefs !== null) {
+            return externalFrameRefs.flatMap(ref => {
+                const checkpoint = ref.frame?.checkpoint;
+                return checkpoint?.kind === 'full' ? [{
+                    messageIndex: ref.messageIndex,
+                    aiFloor: ref.aiFloor,
+                    reason: checkpoint.reason,
+                    createdAt: checkpoint.createdAt,
+                }] : [];
+            });
+        }
         const checkpoints = [];
         let aiFloor = 0;
         for (let i = 0; i < chat.length; i += 1) {
@@ -197162,45 +197212,18 @@ $CONTENT
         return checkpoints;
     }
     function resolveTableHistoryStateFromChat_ACU(chat, options = {}) {
-        const indexedAiIndices = Array.isArray(options.aiIndices) ? options.aiIndices : null;
-        const latestAiMessageIndex = indexedAiIndices
-            ? (indexedAiIndices.length > 0 ? indexedAiIndices[indexedAiIndices.length - 1] : -1)
-            : getLatestAiMessageIndexFromChat_ACU(chat, options.expectedChatId, options.contextChat);
-        let latestDataMessageIndex = -1;
-        let lastTrackedUpdateMessageIndex = -1;
-        let lastTrackedUpdateAiFloor = 0;
-        if (Array.isArray(chat)) {
-            const candidateIndices = Array.isArray(indexedAiIndices) ? indexedAiIndices : null;
-            for (let cursor = (candidateIndices ? candidateIndices.length : chat.length) - 1; cursor >= 0; cursor -= 1) {
-                const i = candidateIndices ? candidateIndices[cursor] : cursor;
-                const msg = chat[i];
-                if (!msg || msg.is_user)
-                    continue;
-                const messageAiFloor = countAiMessagesUpToIndex_ACU(chat, i, indexedAiIndices);
-                if (latestDataMessageIndex === -1 && hasTableDataInMessage_ACU(msg, options)) {
-                    latestDataMessageIndex = i;
-                }
-                if (lastTrackedUpdateMessageIndex === -1) {
-                    const trackedFloor = getTrackedUpdateFloorInMessage_ACU(msg, options, messageAiFloor);
-                    if (trackedFloor > 0) {
-                        lastTrackedUpdateMessageIndex = i;
-                        lastTrackedUpdateAiFloor = trackedFloor;
-                    }
-                }
-                if (latestDataMessageIndex !== -1 && lastTrackedUpdateMessageIndex !== -1) {
-                    break;
-                }
-            }
-        }
-        return {
-            latestAiMessageIndex,
-            latestDataMessageIndex,
-            lastTrackedUpdateMessageIndex,
-            latestDataAiFloor: countAiMessagesUpToIndex_ACU(chat, latestDataMessageIndex, indexedAiIndices),
-            lastTrackedUpdateAiFloor,
-            hasAnyData: latestDataMessageIndex !== -1,
-            hasTrackedUpdate: lastTrackedUpdateAiFloor > 0,
-        };
+        const runtimeIndex = getDatabaseChatIndexForRead_ACU(chat, options.expectedChatId, options.contextChat);
+        const aiIndices = Array.isArray(options.aiIndices)
+            ? options.aiIndices
+            : (runtimeIndex?.aiIndices || (Array.isArray(chat)
+                ? chat.map((message, index) => message && !message.is_user ? index : -1).filter(index => index >= 0)
+                : []));
+        return projectTableHistoryStatesFromChat_ACU(
+            chat,
+            [options.sheetKey],
+            options.isolationKey,
+            aiIndices,
+        )[options.sheetKey];
     }
 
     const SUMMARY_VECTOR_INDEX_MANIFEST_VERSION_ACU = 1;
