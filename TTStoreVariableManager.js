@@ -44,7 +44,13 @@
 
   function cloneJson(value) {
     if (value === undefined || value === null || typeof value !== 'object') return value;
-    if (typeof structuredClone === 'function') return structuredClone(value);
+    if (typeof structuredClone === 'function') {
+      try {
+        return structuredClone(value);
+      } catch (_) {
+        // TT-store may return cross-realm or Vue proxy objects. Persisted MVU data is JSON-safe.
+      }
+    }
     return JSON.parse(JSON.stringify(value));
   }
 
