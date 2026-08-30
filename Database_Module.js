@@ -10627,9 +10627,7 @@ $CONTENT
             target.message,
             target.index,
             allowMessageMutation,
-            isTtStore
-                ? (Number.isFinite(Number(options.targetAiFloor)) ? Number(options.targetAiFloor) : target.index + 1)
-                : countAiFloor_ACU$1(chat, target.index),
+            countAiFloor_ACU$1(chat, target.index),
         );
         const idempotencyParts = databaseIdempotencyParts_ACU(session.stableChatId, target, groupKeys);
         const idempotencyKey = options.idempotencyKey || databaseIdempotencyKey_ACU(session.stableChatId, target, groupKeys);
@@ -23982,6 +23980,18 @@ $CONTENT
         }
         return latestFloor;
     }
+    function v2ExternalFrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor, totalAiFloors) {
+        if (!isV2TagData_ACU(tagData))
+            return 0;
+        let latestFloor = Math.min(v2ScheduleFilledFloor_ACU(tagData, sheetKey), totalAiFloors);
+        if (v2EventTracksFill_ACU(tagData.storageFrame.checkpoint?.event, sheetKey))
+            latestFloor = Math.max(latestFloor, messageAiFloor);
+        for (const entry of tagData.storageFrame.logEntries || []) {
+            if (v2EventTracksFill_ACU(entry, sheetKey))
+                latestFloor = Math.max(latestFloor, messageAiFloor);
+        }
+        return latestFloor;
+    }
     function projectTableHistoryStatesFromChat_ACU(chat, sheetKeys, isolationKey, aiIndices) {
         const keys = [...new Set((Array.isArray(sheetKeys) ? sheetKeys : [])
             .map(sheetKey => String(sheetKey || '').trim())
@@ -23998,7 +24008,8 @@ $CONTENT
         if (!Array.isArray(chat) || !Array.isArray(aiIndices) || keys.length === 0)
             return states;
         const externalFrameRefs = getDatabaseExternalHistoryFrameRefs_ACU(chat, isolationKey);
-        const historyFrames = externalFrameRefs !== null
+        const usesExternalFrames = externalFrameRefs !== null;
+        const historyFrames = usesExternalFrames
             ? externalFrameRefs.map(ref => ({
                 messageIndex: ref.messageIndex,
                 aiFloor: ref.aiFloor,
@@ -24025,7 +24036,9 @@ $CONTENT
                 pendingData.delete(sheetKey);
             }
             for (const sheetKey of [...pendingTracked]) {
-                const trackedFloor = v2FrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor);
+                const trackedFloor = usesExternalFrames
+                    ? v2ExternalFrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor, aiIndices.length)
+                    : v2FrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor);
                 if (!(trackedFloor > 0))
                     continue;
                 const state = states[sheetKey];

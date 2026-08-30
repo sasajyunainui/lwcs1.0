@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:8c8afa3f78c7a83809ccf7b996340f9b64b80bce300fc401aa6bfe80dc100c6c */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:1ce932d7926d35b1b65a68bcd5f4875754ca4e4c44285e5b93368746937c334b|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:5cef2e701331f9902b7be6d98fb56a6d2bd34f71d6207760afd9103e6cd41e01|BehaviorDecisionPipeline_Module.js:efb0d30b09d97246810e04caa04c1a5000e43d3b63120c04865a0d3712a6de5a|BattleDecision_Module.js:6a3e35abbc8c3b930ee4481bf7b5148bb7051c0627e80e83258951826576b747|BattleRuntime_Module.js:03a092d5480e93e039b2a1309cc1b05a2e25a4ce84f8d8d19dd45bc487b8daae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:acce78b45d5a6c41197af59d313c3491743ab1421667a47b128504bc1016df8d */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -183734,9 +183734,7 @@ $CONTENT
             target.message,
             target.index,
             allowMessageMutation,
-            isTtStore
-                ? (Number.isFinite(Number(options.targetAiFloor)) ? Number(options.targetAiFloor) : target.index + 1)
-                : countAiFloor_ACU$1(chat, target.index),
+            countAiFloor_ACU$1(chat, target.index),
         );
         const idempotencyParts = databaseIdempotencyParts_ACU(session.stableChatId, target, groupKeys);
         const idempotencyKey = options.idempotencyKey || databaseIdempotencyKey_ACU(session.stableChatId, target, groupKeys);
@@ -197089,6 +197087,18 @@ $CONTENT
         }
         return latestFloor;
     }
+    function v2ExternalFrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor, totalAiFloors) {
+        if (!isV2TagData_ACU(tagData))
+            return 0;
+        let latestFloor = Math.min(v2ScheduleFilledFloor_ACU(tagData, sheetKey), totalAiFloors);
+        if (v2EventTracksFill_ACU(tagData.storageFrame.checkpoint?.event, sheetKey))
+            latestFloor = Math.max(latestFloor, messageAiFloor);
+        for (const entry of tagData.storageFrame.logEntries || []) {
+            if (v2EventTracksFill_ACU(entry, sheetKey))
+                latestFloor = Math.max(latestFloor, messageAiFloor);
+        }
+        return latestFloor;
+    }
     function projectTableHistoryStatesFromChat_ACU(chat, sheetKeys, isolationKey, aiIndices) {
         const keys = [...new Set((Array.isArray(sheetKeys) ? sheetKeys : [])
             .map(sheetKey => String(sheetKey || '').trim())
@@ -197105,7 +197115,8 @@ $CONTENT
         if (!Array.isArray(chat) || !Array.isArray(aiIndices) || keys.length === 0)
             return states;
         const externalFrameRefs = getDatabaseExternalHistoryFrameRefs_ACU(chat, isolationKey);
-        const historyFrames = externalFrameRefs !== null
+        const usesExternalFrames = externalFrameRefs !== null;
+        const historyFrames = usesExternalFrames
             ? externalFrameRefs.map(ref => ({
                 messageIndex: ref.messageIndex,
                 aiFloor: ref.aiFloor,
@@ -197132,7 +197143,9 @@ $CONTENT
                 pendingData.delete(sheetKey);
             }
             for (const sheetKey of [...pendingTracked]) {
-                const trackedFloor = v2FrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor);
+                const trackedFloor = usesExternalFrames
+                    ? v2ExternalFrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor, aiIndices.length)
+                    : v2FrameTrackedUpdateFloor_ACU(tagData, sheetKey, messageAiFloor);
                 if (!(trackedFloor > 0))
                     continue;
                 const state = states[sheetKey];
