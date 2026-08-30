@@ -4954,7 +4954,6 @@ $CONTENT
             floor,
             messageId: String(消息元信息?.消息编号 ?? 消息元信息?.messageId ?? 消息元信息?.id ?? ''),
             swipe: String(消息元信息?.滑动编号 ?? 消息元信息?.swipeId ?? 消息元信息?.swipe_id ?? ''),
-            fingerprint: String(消息元信息?.文本签名 ?? 消息元信息?.fingerprint ?? 消息元信息?.messageFingerprint ?? ''),
         };
         identity.key = JSON.stringify([
             identity.epoch,
@@ -4962,7 +4961,6 @@ $CONTENT
             identity.floor,
             identity.messageId,
             identity.swipe,
-            identity.fingerprint,
         ]);
         return identity;
     }
@@ -4975,8 +4973,7 @@ $CONTENT
             && String(transaction.chatId) === identity.chatId
             && Number(transaction.floor) === identity.floor
             && String(transaction.messageId) === identity.messageId
-            && String(transaction.swipe) === identity.swipe
-            && String(transaction.fingerprint) === identity.fingerprint;
+            && String(transaction.swipe) === identity.swipe;
     }
 
     function databaseGenerationTransactionStillCurrent_ACU(transaction, targetMessageMeta = null) {
@@ -4991,13 +4988,10 @@ $CONTENT
                 || String(transaction.context.chatId) !== identity.chatId
                 || String(getDatabaseChatIndexChatId_ACU()) !== identity.chatId))
             return false;
-        if (transaction.context) {
-            const currentIndex = activeDatabaseChatIndex_ACU;
-            if (!currentIndex
-                || currentIndex.chatId !== identity.chatId
-                || Number(currentIndex.revision) !== Number(transaction.context.indexRevision))
-                return false;
-        }
+        if (transaction.context
+            && (!activeDatabaseChatIndex_ACU
+                || activeDatabaseChatIndex_ACU.chatId !== identity.chatId))
+            return false;
         return !!target && 目标角色消息仍匹配_ACU(target);
     }
 
@@ -5065,7 +5059,6 @@ $CONTENT
             || String(transaction.swipe) !== identity.swipe)
             return false;
         transaction.key = identity.key;
-        transaction.fingerprint = identity.fingerprint;
         transaction.targetMessageMeta = targetMessageMeta;
         transaction.context = null;
         clearDatabaseGenerationPlan_ACU(transaction);
@@ -5202,8 +5195,7 @@ $CONTENT
         const 当前元信息 = 读取当前目标角色消息元信息_ACU(目标消息元信息);
         if (!当前元信息 || 当前元信息.消息索引 < 0)
             return false;
-        return String(当前元信息.滑动编号 ?? '') === String(目标消息元信息.滑动编号 ?? '')
-            && String(当前元信息.文本签名 ?? '') === String(目标消息元信息.文本签名 ?? '');
+        return String(当前元信息.滑动编号 ?? '') === String(目标消息元信息.滑动编号 ?? '');
     }
     // ═══ 业务运行时状态 ═══
     let coreApisAreReady_ACU = false;
@@ -10760,7 +10752,7 @@ $CONTENT
                 : (cleanupState === 'committed' ? resultState : 'uncertain');
             return databasePersistenceFailure_ACU(failureState, writeResult?.error || fallbackError, { messageIndex: target.index, idempotencyKey });
         };
-        if (!databaseTargetFingerprintMatches_ACU(chat, target, options)
+        if (!databaseTargetIdentityMatches_ACU(chat, target, options)
             || !databaseCommitMetadataStillMatches_ACU(chat, target, metadata))
             return databasePersistenceFailure_ACU('stale_chat', 'STALE_TARGET_MESSAGE', { messageIndex: target.index, idempotencyKey });
         let frameWrite;
@@ -11220,9 +11212,11 @@ $CONTENT
         const targetIndex = Number.isInteger(requestedIndex) && requestedIndex >= 0
             ? requestedIndex
             : (Number.isInteger(metaIndex) && metaIndex >= 0 ? metaIndex : -1);
-        let message = options.targetMessage && !options.targetMessage.is_user ? options.targetMessage : null;
-        if (!message && Array.isArray(chat) && targetIndex >= 0)
-            message = chat[targetIndex] && !chat[targetIndex].is_user ? chat[targetIndex] : null;
+        let message = Array.isArray(chat) && targetIndex >= 0 && !chat[targetIndex]?.is_user
+            ? chat[targetIndex]
+            : null;
+        if (!message && options.targetMessage && !options.targetMessage.is_user)
+            message = options.targetMessage;
         const targetMessageId = targetMeta?.消息编号 ?? targetMeta?.messageId ?? targetMeta?.id;
         if (!message && Array.isArray(chat) && targetMessageId !== undefined) {
             message = chat.find(candidate => !candidate?.is_user
@@ -11253,7 +11247,7 @@ $CONTENT
         return { message, index: targetIndex, synthetic: !Array.isArray(chat) || chat[targetIndex] !== message };
     }
 
-    function databaseTargetFingerprintMatches_ACU(chat, target, options = {}) {
+    function databaseTargetIdentityMatches_ACU(chat, target, options = {}) {
         const expected = options.targetMessageMeta || options.messageMeta || null;
         if (!expected || !target || !Number.isInteger(target.index) || target.index < 0)
             return true;
@@ -11271,17 +11265,6 @@ $CONTENT
         if (expectedSwipeId !== undefined
             && String(expectedSwipeId ?? '') !== String(currentMessage.swipe_id ?? currentMessage.swipeId ?? ''))
             return false;
-        if (expected.textHash !== undefined
-            && String(expected.textHash) !== String(databaseMessageTextHash_ACU(currentMessage)))
-            return false;
-        if (expected.messageFingerprint !== undefined
-            && String(expected.messageFingerprint) !== String(databaseMessageFingerprint_ACU(currentMessage, target.index)))
-            return false;
-        if (expected.文本签名 !== undefined) {
-            const currentMeta = 读取角色消息元信息_ACU(currentMessage, target.index);
-            if (String(expected.文本签名 ?? '') !== String(currentMeta.文本签名 ?? ''))
-                return false;
-        }
         return true;
     }
 
