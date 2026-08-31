@@ -4646,12 +4646,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (type === 'buff') return true;
       if (type === 'debuff') return false;
       const state = String(effect?.状态 || effect?.状态名称 || '').trim();
-      if (/迟缓|僵直|眩晕|昏迷|中毒|灼烧|虚弱|禁锢|束缚|沉默|缴械|致盲|标记|减速|索敌干扰/.test(state)) return false;
+      if (/迟缓|僵直|眩晕|昏迷|中毒|灼烧|虚弱|禁锢|束缚|沉默|缴械|致盲|标记|减速|索敌干扰|禁疗|治疗反转/.test(state)) return false;
       if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速/.test(state)) return true;
       const combatEffect = deriveStateCombatEffect(effect);
       if (combatEffect.skip_turn === true || combatEffect.cannot_act === true ||
         Number(combatEffect.dodge_penalty || 0) > 0 || Number(combatEffect.reaction_penalty || 0) > 0 ||
-        Number(combatEffect.lock_level || 0) > 0 || Number(combatEffect.dot_damage || 0) > 0) return false;
+        Number(combatEffect.lock_level || 0) > 0 || Number(combatEffect.dot_damage || 0) > 0 ||
+        Number(combatEffect.heal_reduction || 0) > 0) return false;
       const rawValue = effect?.数值 ?? effect?.副数值;
       return String(rawValue ?? '').trim() ? parseSignedValue(rawValue, 1) >= 0 : false;
     }

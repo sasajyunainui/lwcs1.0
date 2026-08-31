@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c18fb17328115c1b145b297336c9e4854a2bedac5bba449cdface0d0f7128389|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:0a05a0b73c738880331b37bc9e9012b3a45e2b8bbb51140c102261e4c5e13fed|BehaviorDecisionPipeline_Module.js:5d46e97aef657ef6fe3f6066a2f684a859ef04fe49be1fa07a6ac348a6eceb60|BattleDecision_Module.js:8c90a02e389a4d9ab9a3225490a37e747c794db92c99d22c4fdbd490ed917005|BattleRuntime_Module.js:83feb3421b06f1532b10613a268558c85b5674f9dee8938986ad526bbd21d3ae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:acce78b45d5a6c41197af59d313c3491743ab1421667a47b128504bc1016df8d */
+/* sources-sha256: LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:3864e6e6545ca059a70bc048b03fa0893da9d345bd7b8a26a268913fed795e6f|mvu_logic_bridge.js:c18fb17328115c1b145b297336c9e4854a2bedac5bba449cdface0d0f7128389|TradeUI_Module.js:f2d0e8764b24903b5fdfe6437d2f7261c046ebb2e53c40e5c7035f1d7d890727|ProfessionUI_Module.js:934f90718222a9fa5a838464c955726f1424cc7724bcfdf61c400acacc847aa3|CompetitionPrivilegeUI_Module.js:4d504800e11b78e86fb6c2ddf2151726d02a6d217559cf8ec5bb3d620767d68e|BattlePreview_Module.js:0c484bedc86aa4e367f60a8a7ae28d08c70b706a8d76deb0ada657bf32637ee0|BehaviorDecisionPipeline_Module.js:5d46e97aef657ef6fe3f6066a2f684a859ef04fe49be1fa07a6ac348a6eceb60|BattleDecision_Module.js:8c90a02e389a4d9ab9a3225490a37e747c794db92c99d22c4fdbd490ed917005|BattleRuntime_Module.js:83feb3421b06f1532b10613a268558c85b5674f9dee8938986ad526bbd21d3ae|BattleReport_Module.js:74efa89b67afbb0ac331a0b2c607d5a5a0cf421db2ccd4dcc7cc68fd8bdef024|BattleUI_Module.js:dd1bf21504c52a4a82ae0f9cc7f27bda78f3ae6293503f9df1a351981add5aa5|Database_Module.js:acce78b45d5a6c41197af59d313c3491743ab1421667a47b128504bc1016df8d */
 ;
 /* source: LWCS_TT_AutoUpdate_Debug.js */
 (function installLwcsTtAutoUpdateDebug() {
@@ -70379,12 +70379,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (type === 'buff') return true;
       if (type === 'debuff') return false;
       const state = String(effect?.状态 || effect?.状态名称 || '').trim();
-      if (/迟缓|僵直|眩晕|昏迷|中毒|灼烧|虚弱|禁锢|束缚|沉默|缴械|致盲|标记|减速|索敌干扰/.test(state)) return false;
+      if (/迟缓|僵直|眩晕|昏迷|中毒|灼烧|虚弱|禁锢|束缚|沉默|缴械|致盲|标记|减速|索敌干扰|禁疗|治疗反转/.test(state)) return false;
       if (/护盾|恢复|治疗|增幅|强化|免疫|无视异常|霸体|加速/.test(state)) return true;
       const combatEffect = deriveStateCombatEffect(effect);
       if (combatEffect.skip_turn === true || combatEffect.cannot_act === true ||
         Number(combatEffect.dodge_penalty || 0) > 0 || Number(combatEffect.reaction_penalty || 0) > 0 ||
-        Number(combatEffect.lock_level || 0) > 0 || Number(combatEffect.dot_damage || 0) > 0) return false;
+        Number(combatEffect.lock_level || 0) > 0 || Number(combatEffect.dot_damage || 0) > 0 ||
+        Number(combatEffect.heal_reduction || 0) > 0) return false;
       const rawValue = effect?.数值 ?? effect?.副数值;
       return String(rawValue ?? '').trim() ? parseSignedValue(rawValue, 1) >= 0 : false;
     }
