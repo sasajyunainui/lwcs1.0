@@ -78,6 +78,20 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function phaseTime(name, start) {
+    const timeline = root.performance;
+    const end = typeof timeline?.now === 'function' ? timeline.now() : null;
+    if (name && Number.isFinite(start) && Number.isFinite(end) && typeof timeline.measure === 'function') {
+      try { timeline.measure(name, { start, end }); } catch (_) {}
+    }
+    return end;
+  }
+
+  async function timeAsync(name, action) {
+    const startedAt = phaseTime();
+    try { return await action(); } finally { phaseTime(name, startedAt); }
+  }
+
   function isObject(value) {
     return !!value && typeof value === 'object' && !Array.isArray(value);
   }
@@ -596,11 +610,13 @@
       assertLive();
       const initialState = request.initialState === undefined ? {} : normalizeState(request.initialState);
       const requestedFloor = normalizeFloor(request.message);
+      const pointersStartedAt = phaseTime();
       await assertCurrentFloor(requestedFloor);
       const branchRead = requestedFloor.absoluteIndex >= 0
         ? await readKey(floorPointerKey(requestedFloor), {})
         : { found: false, value: undefined };
       const headRead = await readKey('state:head', {});
+      phaseTime('lwcs:mvu:load:read-pointers', pointersStartedAt);
       if (!headRead.found) {
         await assertCurrentFloor(requestedFloor);
         hotState = clone(initialState);
@@ -621,8 +637,12 @@
       for (let attempt = 0; attempt < 20 && Number.isInteger(candidateRevision); attempt += 1) {
         if (visitedCheckpointHeads.has(candidateRevision)) throw new ProviderError('REVISION_CHAIN_INVALID');
         visitedCheckpointHeads.add(candidateRevision);
+        const revisionsStartedAt = phaseTime();
         const records = await readRevisionChain(candidateRevision);
+        phaseTime('lwcs:mvu:load:read-revisions', revisionsStartedAt);
+        const replayStartedAt = phaseTime();
         selected = selectCanonicalState(records, requestedFloor);
+        phaseTime('lwcs:mvu:load:replay', replayStartedAt);
         if (selected) break;
         const parentRevision = records[0].parent;
         if (Number.isInteger(parentRevision) && parentRevision >= records[0].revision) throw new ProviderError('REVISION_CHAIN_INVALID');
@@ -679,6 +699,7 @@
     async function commitNow(request = {}) {
       assertLive();
       if (!loaded || hotState === null) throw new ProviderError('STATE_NOT_LOADED');
+      const compareStartedAt = phaseTime();
       const previousState = clone(hotState);
       const nextState = request.fullState === undefined
         ? (typeof request.updater === 'function' ? normalizeState(request.updater(clone(hotState))) : null)
@@ -687,8 +708,10 @@
       const nextFloor = normalizeFloor(request.message);
       if (!isCanonicalMvuState(nextState)) throw new ProviderError('STATE_INVALID');
       if (nextFloor.absoluteIndex < 0 || nextFloor.textFingerprint === textFingerprint('')) throw new ProviderError('PLACEHOLDER_MESSAGE');
+      const unchanged = !!head && jsonEqual(previousState, nextState);
+      phaseTime('lwcs:mvu:commit:compare', compareStartedAt);
       await assertCurrentFloor(nextFloor);
-      if (head && jsonEqual(previousState, nextState)) {
+      if (unchanged) {
         lastError = '';
         return result('committed', { skipped: true, revision: head?.revision || 0, hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
       }
@@ -696,9 +719,13 @@
       while ((await readKey(`state:revision:${revision}`, {})).found) revision += 1;
       const parent = head?.revision ?? null;
       latestRevision = revision;
+      const diffStartedAt = phaseTime();
       const patch = createPatch(previousState, nextState);
+      phaseTime('lwcs:mvu:commit:diff', diffStartedAt);
+      const serializeStartedAt = phaseTime();
       const fullSize = Math.max(1, JSON.stringify(nextState).length);
       const patchSize = JSON.stringify(patch).length;
+      phaseTime('lwcs:mvu:commit:serialize', serializeStartedAt);
       const checkpointBase = head?.checkpointRevision || 0;
       const checkpoint = !head || revision - checkpointBase >= 20 || patchSize > fullSize * 0.35;
       const record = {
@@ -724,6 +751,7 @@
       const nextPointer = { schemaVersion: SCHEMA_VERSION, kind: 'floor', revision, floor: nextFloor };
       hotState = clone(nextState);
       let headWriteStarted = false;
+      const writeStartedAt = phaseTime();
       try {
         await assertCurrentFloor(nextFloor);
         await writeKey(`state:revision:${revision}`, record, { schemaVersion: SCHEMA_VERSION, kind: 'revision', revision });
@@ -760,12 +788,14 @@
         hotState = previousState;
         if (headWriteStarted && durableHead === null) invalidated = true;
         throw error;
+      } finally {
+        phaseTime('lwcs:mvu:commit:write', writeStartedAt);
       }
     }
 
-    const load = request => enqueue(() => loadNow(request).catch(operationFailure));
-    const readState = request => enqueue(() => readStateNow(request).catch(operationFailure));
-    const commit = request => enqueue(() => commitNow(request).catch(operationFailure));
+    const load = request => enqueue(() => timeAsync('lwcs:mvu:load:total', () => loadNow(request)).catch(operationFailure));
+    const readState = request => enqueue(() => timeAsync('lwcs:mvu:load:total', () => readStateNow(request)).catch(operationFailure));
+    const commit = request => enqueue(() => timeAsync('lwcs:mvu:commit:total', () => commitNow(request)).catch(operationFailure));
     const handle = {
       version: VERSION,
       namespace: NAMESPACE,

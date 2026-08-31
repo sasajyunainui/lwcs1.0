@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Persistence_Adapter.js:99db441c20e82c31d01da4f82f3d7d4742136367e18fdbef03c9fb2e24e516ef|LWCS_MVU_Persistence_Provider.js:352bf769b6cff84675f286414f43bea8211b79536ec04f5b86a44a74747e490b|MVU_Engine_Runtime.js:68d64f28ec6f25a25bab937048cfc845c9513cf77162622265f68d43340090df */
+/* sources-sha256: LWCS_Persistence_Adapter.js:97e3e76a83ed40b81753f27a8c3628ec9e71b22210f49c2cbd7be2e3ef674fd1|LWCS_MVU_Persistence_Provider.js:0f239b782cb62adf8da9b9d35c43f8febb99732f3a4264ab429186121082c782|MVU_Engine_Runtime.js:68d64f28ec6f25a25bab937048cfc845c9513cf77162622265f68d43340090df */
 ;
 /* source: LWCS_Persistence_Adapter.js */
 (function (root) {
@@ -193,6 +193,12 @@
     }
   }
 
+  function isTauriStoreNotFound(error) {
+    const structured = error?.cause?.NotFound;
+    return (typeof structured === 'string' && /Chat store entry not found(?::|$)/.test(structured))
+      || /Chat store entry not found(?::|$)/.test(String(error?.message || error));
+  }
+
   function createTauriStoreBackend(store) {
     return Object.freeze({
       setJson: ({ namespace, key, value }) => callTtHost('store.setJson()', () => store.setJson({
@@ -207,7 +213,7 @@
             key: encodeTauriStoreComponent(key),
           }));
         } catch (error) {
-          if (/Chat store entry not found(?::|$)/.test(String(error?.message || error))) return undefined;
+          if (isTauriStoreNotFound(error)) return undefined;
           throw error;
         }
       },
@@ -596,17 +602,6 @@
         assertRequest(request);
         return run('read', async check => {
           const key = confirmedKey(request.namespace, request.key);
-          if (backend === 'tt-store' && !confirmedKeys.has(key)) {
-            const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
-            check();
-            if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
-            if (!keys.includes(request.key)) {
-              return request.verify === undefined
-                ? resultMeta(session, 'committed', { verified: true, value: undefined })
-                : failureMeta(session, 'not_committed', 'NOT_FOUND');
-            }
-            confirmedKeys.add(key);
-          }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
           if (value === undefined) {
@@ -825,6 +820,20 @@
       if (typeof root.structuredClone === 'function') return root.structuredClone(value);
     } catch (_) {}
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function phaseTime(name, start) {
+    const timeline = root.performance;
+    const end = typeof timeline?.now === 'function' ? timeline.now() : null;
+    if (name && Number.isFinite(start) && Number.isFinite(end) && typeof timeline.measure === 'function') {
+      try { timeline.measure(name, { start, end }); } catch (_) {}
+    }
+    return end;
+  }
+
+  async function timeAsync(name, action) {
+    const startedAt = phaseTime();
+    try { return await action(); } finally { phaseTime(name, startedAt); }
   }
 
   function isObject(value) {
@@ -1345,11 +1354,13 @@
       assertLive();
       const initialState = request.initialState === undefined ? {} : normalizeState(request.initialState);
       const requestedFloor = normalizeFloor(request.message);
+      const pointersStartedAt = phaseTime();
       await assertCurrentFloor(requestedFloor);
       const branchRead = requestedFloor.absoluteIndex >= 0
         ? await readKey(floorPointerKey(requestedFloor), {})
         : { found: false, value: undefined };
       const headRead = await readKey('state:head', {});
+      phaseTime('lwcs:mvu:load:read-pointers', pointersStartedAt);
       if (!headRead.found) {
         await assertCurrentFloor(requestedFloor);
         hotState = clone(initialState);
@@ -1370,8 +1381,12 @@
       for (let attempt = 0; attempt < 20 && Number.isInteger(candidateRevision); attempt += 1) {
         if (visitedCheckpointHeads.has(candidateRevision)) throw new ProviderError('REVISION_CHAIN_INVALID');
         visitedCheckpointHeads.add(candidateRevision);
+        const revisionsStartedAt = phaseTime();
         const records = await readRevisionChain(candidateRevision);
+        phaseTime('lwcs:mvu:load:read-revisions', revisionsStartedAt);
+        const replayStartedAt = phaseTime();
         selected = selectCanonicalState(records, requestedFloor);
+        phaseTime('lwcs:mvu:load:replay', replayStartedAt);
         if (selected) break;
         const parentRevision = records[0].parent;
         if (Number.isInteger(parentRevision) && parentRevision >= records[0].revision) throw new ProviderError('REVISION_CHAIN_INVALID');
@@ -1428,6 +1443,7 @@
     async function commitNow(request = {}) {
       assertLive();
       if (!loaded || hotState === null) throw new ProviderError('STATE_NOT_LOADED');
+      const compareStartedAt = phaseTime();
       const previousState = clone(hotState);
       const nextState = request.fullState === undefined
         ? (typeof request.updater === 'function' ? normalizeState(request.updater(clone(hotState))) : null)
@@ -1436,8 +1452,10 @@
       const nextFloor = normalizeFloor(request.message);
       if (!isCanonicalMvuState(nextState)) throw new ProviderError('STATE_INVALID');
       if (nextFloor.absoluteIndex < 0 || nextFloor.textFingerprint === textFingerprint('')) throw new ProviderError('PLACEHOLDER_MESSAGE');
+      const unchanged = !!head && jsonEqual(previousState, nextState);
+      phaseTime('lwcs:mvu:commit:compare', compareStartedAt);
       await assertCurrentFloor(nextFloor);
-      if (head && jsonEqual(previousState, nextState)) {
+      if (unchanged) {
         lastError = '';
         return result('committed', { skipped: true, revision: head?.revision || 0, hotState: clone(hotState), head: clone(head), floor, backend: opened.backend, stableChatId: opened.stableChatId });
       }
@@ -1445,9 +1463,13 @@
       while ((await readKey(`state:revision:${revision}`, {})).found) revision += 1;
       const parent = head?.revision ?? null;
       latestRevision = revision;
+      const diffStartedAt = phaseTime();
       const patch = createPatch(previousState, nextState);
+      phaseTime('lwcs:mvu:commit:diff', diffStartedAt);
+      const serializeStartedAt = phaseTime();
       const fullSize = Math.max(1, JSON.stringify(nextState).length);
       const patchSize = JSON.stringify(patch).length;
+      phaseTime('lwcs:mvu:commit:serialize', serializeStartedAt);
       const checkpointBase = head?.checkpointRevision || 0;
       const checkpoint = !head || revision - checkpointBase >= 20 || patchSize > fullSize * 0.35;
       const record = {
@@ -1473,6 +1495,7 @@
       const nextPointer = { schemaVersion: SCHEMA_VERSION, kind: 'floor', revision, floor: nextFloor };
       hotState = clone(nextState);
       let headWriteStarted = false;
+      const writeStartedAt = phaseTime();
       try {
         await assertCurrentFloor(nextFloor);
         await writeKey(`state:revision:${revision}`, record, { schemaVersion: SCHEMA_VERSION, kind: 'revision', revision });
@@ -1509,12 +1532,14 @@
         hotState = previousState;
         if (headWriteStarted && durableHead === null) invalidated = true;
         throw error;
+      } finally {
+        phaseTime('lwcs:mvu:commit:write', writeStartedAt);
       }
     }
 
-    const load = request => enqueue(() => loadNow(request).catch(operationFailure));
-    const readState = request => enqueue(() => readStateNow(request).catch(operationFailure));
-    const commit = request => enqueue(() => commitNow(request).catch(operationFailure));
+    const load = request => enqueue(() => timeAsync('lwcs:mvu:load:total', () => loadNow(request)).catch(operationFailure));
+    const readState = request => enqueue(() => timeAsync('lwcs:mvu:load:total', () => readStateNow(request)).catch(operationFailure));
+    const commit = request => enqueue(() => timeAsync('lwcs:mvu:commit:total', () => commitNow(request)).catch(operationFailure));
     const handle = {
       version: VERSION,
       namespace: NAMESPACE,

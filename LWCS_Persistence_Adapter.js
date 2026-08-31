@@ -188,6 +188,12 @@
     }
   }
 
+  function isTauriStoreNotFound(error) {
+    const structured = error?.cause?.NotFound;
+    return (typeof structured === 'string' && /Chat store entry not found(?::|$)/.test(structured))
+      || /Chat store entry not found(?::|$)/.test(String(error?.message || error));
+  }
+
   function createTauriStoreBackend(store) {
     return Object.freeze({
       setJson: ({ namespace, key, value }) => callTtHost('store.setJson()', () => store.setJson({
@@ -202,7 +208,7 @@
             key: encodeTauriStoreComponent(key),
           }));
         } catch (error) {
-          if (/Chat store entry not found(?::|$)/.test(String(error?.message || error))) return undefined;
+          if (isTauriStoreNotFound(error)) return undefined;
           throw error;
         }
       },
@@ -591,17 +597,6 @@
         assertRequest(request);
         return run('read', async check => {
           const key = confirmedKey(request.namespace, request.key);
-          if (backend === 'tt-store' && !confirmedKeys.has(key)) {
-            const keys = await backendApi.listKeys({ namespace: request.namespace, stableChatId: session.stableChatId });
-            check();
-            if (!Array.isArray(keys)) return failureMeta(session, 'uncertain', 'READBACK_MISMATCH');
-            if (!keys.includes(request.key)) {
-              return request.verify === undefined
-                ? resultMeta(session, 'committed', { verified: true, value: undefined })
-                : failureMeta(session, 'not_committed', 'NOT_FOUND');
-            }
-            confirmedKeys.add(key);
-          }
           const value = await backendApi.getJson({ namespace: request.namespace, key: request.key, stableChatId: session.stableChatId });
           check();
           if (value === undefined) {
